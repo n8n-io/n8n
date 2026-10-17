@@ -702,14 +702,45 @@ export class LoadNodesAndCredentials {
 	}
 
 	recognizesNode(fullNodeType: string): boolean {
-		const [packageName, nodeType] = fullNodeType.split('.');
+		const lastDotIndex = fullNodeType.lastIndexOf('.');
+		if (lastDotIndex === -1) return false;
+
+		// Edge case: If there's a slash after the last dot (e.g. pkg.foo/bar), split at the first dot.
+		// Otherwise, the last dot is our true package/node separator.
+		const hasSlashAfterDot = fullNodeType.indexOf('/', lastDotIndex) !== -1;
+		const dotIndex = hasSlashAfterDot ? fullNodeType.indexOf('.') : lastDotIndex;
+		if (dotIndex === -1) return false;
+
+		const packageName = fullNodeType.substring(0, dotIndex);
+		const nodeType = fullNodeType.substring(dotIndex + 1);
+
 		const { loaders } = this;
 		const loader = loaders[packageName];
 		return !!loader && nodeType in loader.known.nodes;
 	}
 
+	// recognizesNode(fullNodeType: string): boolean {
+	// 	const [packageName, nodeType] = fullNodeType.split('.');
+	// 	const { loaders } = this;
+	// 	const loader = loaders[packageName];
+	// 	return !!loader && nodeType in loader.known.nodes;
+	// }
+
 	getNode(fullNodeType: string): LoadedClass<INodeType | IVersionedNodeType> {
-		const [packageName, nodeType] = fullNodeType.split('.');
+		const lastDotIndex = fullNodeType.lastIndexOf('.');
+		if (lastDotIndex === -1) {
+			throw new UnrecognizedNodeTypeError('', fullNodeType);
+		}
+
+		const hasSlashAfterDot = fullNodeType.indexOf('/', lastDotIndex) !== -1;
+		const dotIndex = hasSlashAfterDot ? fullNodeType.indexOf('.') : lastDotIndex;
+		if (dotIndex === -1) {
+			throw new UnrecognizedNodeTypeError('', fullNodeType);
+		}
+
+		const packageName = fullNodeType.substring(0, dotIndex);
+		const nodeType = fullNodeType.substring(dotIndex + 1);
+
 		const { loaders } = this;
 		const loader = loaders[packageName];
 		if (!loader) {
@@ -725,15 +756,48 @@ export class LoadNodesAndCredentials {
 		return loadedNode;
 	}
 
+	// getNode(fullNodeType: string): LoadedClass<INodeType | IVersionedNodeType> {
+	// 	const [packageName, nodeType] = fullNodeType.split('.');
+	// 	const { loaders } = this;
+	// 	const loader = loaders[packageName];
+	// 	if (!loader) {
+	// 		throw new UnrecognizedNodeTypeError(packageName, nodeType);
+	// 	}
+	// 	const loadedNode = loader.getNode(nodeType);
+	// 	if (
+	// 		this.shouldInjectContextEstablishmentHooks() &&
+	// 		'properties' in loadedNode.type.description
+	// 	) {
+	// 		this.augmentNodeTypeDescription(loadedNode.type.description);
+	// 	}
+	// 	return loadedNode;
+	// }
+
 	/**
 	 * Absolute path of a node's source file. A loader keeps the path relative to
 	 * its own package directory, so it must be resolved before any file access.
 	 */
+
 	resolveNodeSourcePath(fullNodeType: string, sourcePath: string): string {
-		const [packageName] = fullNodeType.split('.');
+		const lastDotIndex = fullNodeType.lastIndexOf('.');
+		let dotIndex = lastDotIndex;
+
+		if (lastDotIndex !== -1) {
+			const hasSlashAfterDot = fullNodeType.indexOf('/', lastDotIndex) !== -1;
+			dotIndex = hasSlashAfterDot ? fullNodeType.indexOf('.') : lastDotIndex;
+		}
+
+		const packageName = dotIndex !== -1 ? fullNodeType.substring(0, dotIndex) : fullNodeType;
+
 		const loader = this.loaders[packageName];
 		return loader ? loader.resolveSourcePath(sourcePath) : sourcePath;
 	}
+
+	// resolveNodeSourcePath(fullNodeType: string, sourcePath: string): string {
+	// 	const [packageName] = fullNodeType.split('.');
+	// 	const loader = this.loaders[packageName];
+	// 	return loader ? loader.resolveSourcePath(sourcePath) : sourcePath;
+	// }
 
 	getCredential(credentialType: string): LoadedClass<ICredentialType> {
 		const { loadedCredentials } = this;
