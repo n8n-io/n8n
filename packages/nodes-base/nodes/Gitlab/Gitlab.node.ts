@@ -1464,6 +1464,7 @@ export class Gitlab implements INodeType {
 							Object.hasOwn(ISSUE_STATE_EVENTS, body.state)
 						) {
 							body.state_event = ISSUE_STATE_EVENTS[body.state];
+							// Remove state to avoid sending both state and state_event
 							delete body.state;
 						}
 
