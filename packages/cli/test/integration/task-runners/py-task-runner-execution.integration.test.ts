@@ -40,7 +40,8 @@ const venvPresent = existsSync(PyTaskRunnerProcess.getVenvPath());
 describe.skipIf(!venvPresent)('Python TaskRunner execution on internal mode', () => {
 	const runnerConfig = Container.get(TaskRunnersConfig);
 	runnerConfig.mode = 'internal';
-	runnerConfig.port = 45679;
+	// A fixed port can collide with an ephemeral port in use on the CI host.
+	runnerConfig.port = 0;
 	// n8n forwards these to the runner as it spawns. The whole point of the test is
 	// that the runner then enforces exactly this.
 	process.env.N8N_RUNNERS_STDLIB_ALLOW = 'json';
