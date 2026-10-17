@@ -266,6 +266,8 @@ erDiagram
 "self_healing_result" {
   varchar backgroundUserId FK
   datetime_3_ completedAt
+  datetime_3_ continuedAt
+  varchar continuedById FK
   datetime_3_ createdAt
   datetime_3_ dismissedAt
   varchar dismissedById FK

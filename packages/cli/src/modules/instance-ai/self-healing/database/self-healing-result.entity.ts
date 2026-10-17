@@ -74,4 +74,15 @@ export class SelfHealingResult extends WithTimestampsAndStringId {
 	@ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
 	@JoinColumn({ name: 'dismissedById' })
 	dismissedBy: Relation<User> | null;
+
+	@DateTimeColumn({ nullable: true })
+	continuedAt: Date | null;
+
+	@Index()
+	@Column({ type: 'uuid', nullable: true })
+	continuedById: string | null;
+
+	@ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
+	@JoinColumn({ name: 'continuedById' })
+	continuedBy: Relation<User> | null;
 }

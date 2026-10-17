@@ -47,6 +47,7 @@ type SelfHealingInboxQuery = {
 };
 
 const inboxState = `CASE WHEN result.dismissedAt IS NULL
+	AND result.continuedAt IS NULL
 	AND (result.suggestionId IS NULL OR suggestion.state = 'pending')
 	THEN 'open' ELSE 'closed' END`;
 
@@ -153,14 +154,28 @@ export class SelfHealingResultRepository extends BaseRepository<SelfHealingResul
 				...input,
 				dismissedAt: null,
 				dismissedById: null,
+				continuedAt: null,
+				continuedById: null,
 			}),
 		);
+	}
+
+	async recordContinuation(id: string, userId: string, ctx: OperationContext) {
+		const result = await this.managerFor(ctx).update(
+			SelfHealingResult,
+			{ id, dismissedAt: IsNull(), continuedAt: IsNull() },
+			{
+				continuedAt: new Date(),
+				continuedById: userId,
+			},
+		);
+		return result.affected === 1;
 	}
 
 	async dismissResult(id: string, userId: string, ctx: OperationContext) {
 		const result = await this.managerFor(ctx).update(
 			SelfHealingResult,
-			{ id, dismissedAt: IsNull() },
+			{ id, dismissedAt: IsNull(), continuedAt: IsNull() },
 			{ dismissedAt: new Date(), dismissedById: userId },
 		);
 		return result.affected === 1;
