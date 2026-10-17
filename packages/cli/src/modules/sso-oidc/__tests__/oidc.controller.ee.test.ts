@@ -1,3 +1,4 @@
+import type { OidcConfigDto } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { EventService, UrlService } from '@n8n/backend-services';
 import type { GlobalConfig, InstanceSettingsLoaderConfig } from '@n8n/config';
@@ -14,7 +15,7 @@ import type { AuthlessRequest } from '@/requests';
 
 import { isOidcCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
 
-import { OIDC_ID_TOKEN_COOKIE_NAME } from '../constants';
+import { OIDC_CLIENT_SECRET_REDACTED_VALUE, OIDC_ID_TOKEN_COOKIE_NAME } from '../constants';
 import { OidcController } from '../oidc.controller.ee';
 import type { OidcService } from '../oidc.service.ee';
 
@@ -731,6 +732,74 @@ describe('OidcController', () => {
 			expect(authService.invalidateToken).toHaveBeenCalledWith(req);
 			expect(authService.clearCookie).toHaveBeenCalledWith(res);
 			expect(logger.warn).toHaveBeenCalled();
+		});
+	});
+
+	describe('saveConfiguration', () => {
+		const previous: OidcConfigDto = {
+			clientId: 'old-client',
+			clientSecret: OIDC_CLIENT_SECRET_REDACTED_VALUE,
+			discoveryEndpoint: 'https://idp.example.com/.well-known/openid-configuration',
+			loginEnabled: false,
+			prompt: 'select_account',
+			authenticationContextClassReference: [],
+			additionalScopes: '',
+			emailVerifiedRequired: false,
+			rpInitiatedLogoutEnabled: false,
+		};
+
+		test('emits sso-settings-updated and names the client secret when a new one is submitted', async () => {
+			const saved = { ...previous, clientId: 'new-client', loginEnabled: true };
+			oidcService.getRedactedConfig.mockReturnValueOnce(previous).mockReturnValueOnce(saved);
+			const payload = { ...saved, clientSecret: 'new-secret' };
+			const req = mock<AuthenticatedRequest>({ user });
+
+			const result = await controller.saveConfiguration(req, mock<Response>(), payload);
+
+			expect(oidcService.updateConfig).toHaveBeenCalledWith(payload);
+			expect(eventService.emit).toHaveBeenCalledWith('sso-settings-updated', {
+				user,
+				protocol: 'oidc',
+				loginEnabled: true,
+				fieldsChanged: ['clientId', 'loginEnabled', 'clientSecret'],
+				publicApi: false,
+			});
+			const [, eventPayload] = eventService.emit.mock.calls[0];
+			expect(JSON.stringify(eventPayload)).not.toContain('new-secret');
+			expect(result).toEqual(saved);
+		});
+
+		test('leaves the client secret out of the changed fields when the redacted sentinel is submitted', async () => {
+			oidcService.getRedactedConfig.mockReturnValueOnce(previous).mockReturnValueOnce(previous);
+
+			await controller.saveConfiguration(
+				mock<AuthenticatedRequest>({ user }),
+				mock<Response>(),
+				previous,
+			);
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'sso-settings-updated',
+				expect.objectContaining({ loginEnabled: false, fieldsChanged: [] }),
+			);
+		});
+
+		test('does not emit when the settings are managed by the environment', async () => {
+			instanceSettingsLoaderConfig.ssoManagedByEnv = true;
+			try {
+				await expect(
+					controller.saveConfiguration(
+						mock<AuthenticatedRequest>({ user }),
+						mock<Response>(),
+						previous,
+					),
+				).rejects.toThrow(ForbiddenError);
+			} finally {
+				instanceSettingsLoaderConfig.ssoManagedByEnv = false;
+			}
+
+			expect(oidcService.updateConfig).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
 		});
 	});
 });

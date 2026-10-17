@@ -2389,6 +2389,32 @@ describe('TelemetryEventRelay', () => {
 				role: 'global:admin',
 			});
 		});
+
+		it('should track on `sso-settings-updated` event', () => {
+			const event: RelayEventMap['sso-settings-updated'] = {
+				user: {
+					id: 'user123',
+					email: 'owner@example.com',
+					firstName: 'Olga',
+					lastName: 'Owner',
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
+				},
+				protocol: 'saml',
+				loginEnabled: true,
+				fieldsChanged: ['metadata', 'loginEnabled'],
+				publicApi: false,
+			};
+
+			eventService.emit('sso-settings-updated', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith(TELEMETRY_EVENT.SSO.USER_UPDATED_SSO_SETTINGS, {
+				user_id: 'user123',
+				authentication_method: 'saml',
+				is_active: true,
+				fields_changed: ['metadata', 'loginEnabled'],
+				public_api: false,
+			});
+		});
 	});
 
 	describe('workflow events', () => {

@@ -148,6 +148,7 @@ export const eventNamesAudit = [
 	'n8n.audit.role-mapping.rule.updated',
 	'n8n.audit.role-mapping.rule.deleted',
 	'n8n.audit.role-mapping.rules.bulk-deleted',
+	'n8n.audit.sso.settings.updated',
 	'n8n.audit.cluster.version-mismatch.detected',
 	'n8n.audit.cluster.version-mismatch.resolved',
 	'n8n.audit.cluster.hostid-clash.detected',

@@ -102,6 +102,7 @@ export class LogStreamingEventRelay extends EventRelay {
 			'user-signed-up': (event) => this.userSignedUp(event),
 			'user-logged-in': (event) => this.userLoggedIn(event),
 			'user-login-failed': (event) => this.userLoginFailed(event),
+			'sso-settings-updated': (event) => this.ssoSettingsUpdated(event),
 			'user-invite-email-click': (event) => this.userInviteEmailClick(event),
 			'user-password-reset-email-click': (event) => this.userPasswordResetEmailClick(event),
 			'user-password-reset-request-click': (event) => this.userPasswordResetRequestClick(event),
@@ -626,6 +627,20 @@ export class LogStreamingEventRelay extends EventRelay {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.login.failed',
 			payload: event,
+		});
+	}
+
+	@Redactable()
+	private ssoSettingsUpdated({
+		user,
+		protocol,
+		loginEnabled,
+		fieldsChanged,
+		publicApi,
+	}: RelayEventMap['sso-settings-updated']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.sso.settings.updated',
+			payload: { ...user, protocol, loginEnabled, fieldsChanged, publicApi },
 		});
 	}
 
