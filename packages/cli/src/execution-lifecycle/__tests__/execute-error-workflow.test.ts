@@ -3,7 +3,7 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
-import type { INode, IRun, IWorkflowBase } from 'n8n-workflow';
+import type { INode, IRun, IWorkflowBase, WorkflowExecuteMode } from 'n8n-workflow';
 import { createRunExecutionData, NodeOperationError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
@@ -206,6 +206,67 @@ describe('executeErrorWorkflow', () => {
 			await new Promise(process.nextTick);
 
 			expect(workflowExecutionService.executeErrorWorkflow).toHaveBeenCalled();
+		});
+	});
+
+	describe('errorWorkflow setting', () => {
+		const errorTrigger = mock<INode>({ type: 'n8n-nodes-base.errorTrigger' });
+
+		const runFailedWorkflow = async (errorWorkflow: string, mode: WorkflowExecuteMode) => {
+			const workflowData = mock<IWorkflowBase>({
+				id: 'workflow-123',
+				settings: { errorWorkflow },
+				nodes: [errorTrigger],
+			});
+			ownershipService.getWorkflowProjectCached.mockResolvedValue({ id: 'project-1' } as never);
+
+			executeErrorWorkflow(
+				workflowData,
+				{
+					data: createRunExecutionData({
+						resultData: { error: new NodeOperationError(mockNode, 'Test error'), runData: {} },
+					}),
+					mode,
+					startedAt: new Date(),
+					storedAt: 'db',
+					status: 'error',
+				},
+				mode,
+				'execution-1',
+			);
+			await new Promise(process.nextTick);
+		};
+
+		// `DEFAULT` is what the editor sends for "No Workflow".
+		it.each(['DEFAULT', '={{ $json.workflowId }}'])(
+			'runs the workflow through its own Error Trigger when errorWorkflow is %j',
+			async (errorWorkflow) => {
+				await runFailedWorkflow(errorWorkflow, 'webhook');
+
+				expect(workflowExecutionService.executeErrorWorkflow).toHaveBeenCalledTimes(1);
+				expect(workflowExecutionService.executeErrorWorkflow).toHaveBeenCalledWith(
+					'workflow-123',
+					expect.anything(),
+					expect.anything(),
+				);
+			},
+		);
+
+		it('runs the configured error workflow instead of its own Error Trigger', async () => {
+			await runFailedWorkflow('error-workflow-456', 'webhook');
+
+			expect(workflowExecutionService.executeErrorWorkflow).toHaveBeenCalledTimes(1);
+			expect(workflowExecutionService.executeErrorWorkflow).toHaveBeenCalledWith(
+				'error-workflow-456',
+				expect.anything(),
+				expect.anything(),
+			);
+		});
+
+		it('runs no error workflow when an error-mode execution fails and errorWorkflow is DEFAULT', async () => {
+			await runFailedWorkflow('DEFAULT', 'error');
+
+			expect(workflowExecutionService.executeErrorWorkflow).not.toHaveBeenCalled();
 		});
 	});
 
