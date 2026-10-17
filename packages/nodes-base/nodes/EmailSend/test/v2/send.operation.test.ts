@@ -638,8 +638,8 @@ describe('Test EmailSendV2, send operation', () => {
 					cc: 'cc@example.com',
 					bcc: 'bcc@example.com',
 					subject: 'Test Subject',
-					text: 'plain text',
-					html: 'rich text',
+					text: '["plain text"]',
+					html: '["rich text"]',
 					replyTo: 'reply@example.com',
 				}),
 			);
@@ -664,6 +664,7 @@ describe('Test EmailSendV2, send operation', () => {
 					appendAttribution: false,
 					ccEmail: ['cc1@example.com', 'cc2@example.com'],
 					bccEmail: ['bcc@example.com'],
+					replyTo: ['reply1@example.com', 'reply2@example.com'],
 				})
 				.mockReturnValueOnce('<p>Test HTML</p>');
 			transporter.sendMail.mockResolvedValue({ messageId: 'test-id' });
@@ -675,6 +676,7 @@ describe('Test EmailSendV2, send operation', () => {
 					to: 'to1@example.com, to2@example.com',
 					cc: 'cc1@example.com, cc2@example.com',
 					bcc: 'bcc@example.com',
+					replyTo: 'reply1@example.com, reply2@example.com',
 				}),
 			);
 		});
