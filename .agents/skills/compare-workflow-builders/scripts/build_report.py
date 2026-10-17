@@ -87,7 +87,19 @@ def png_size(path):
 
 
 def read_jsonl(path):
-	return [json.loads(line) for line in Path(path).read_text().splitlines() if line.strip()]
+	lines = Path(path).read_text().splitlines()
+	rows = []
+	for i, line in enumerate(lines):
+		if not line.strip():
+			continue
+		try:
+			rows.append(json.loads(line))
+		except json.JSONDecodeError:
+			# A running builder can be in the middle of writing the last line.
+			if i == len(lines) - 1:
+				break
+			raise
+	return rows
 
 
 def run_seconds(meta):
@@ -451,17 +463,25 @@ def render_verdict(v):
 	)
 
 
+PLAYER_CACHE = ASSET_CACHE / f'asciinema-player-{PLAYER_VERSION}'
+PLAYER_CDN = f'https://cdn.jsdelivr.net/npm/asciinema-player@{PLAYER_VERSION}/dist/bundle/'
+
+
+def ensure_player_cache():
+	"""Download the asciinema player once. Raises OSError when the download fails."""
+	PLAYER_CACHE.mkdir(parents=True, exist_ok=True)
+	for name in PLAYER_FILES:
+		if not (PLAYER_CACHE / name).exists():
+			partial = PLAYER_CACHE / f'{name}.part'
+			urllib.request.urlretrieve(PLAYER_CDN + name, partial)
+			partial.rename(PLAYER_CACHE / name)
+
+
 def player_assets(report):
 	"""Copy the asciinema player next to the page, so the page works offline. Returns its URLs."""
-	cache = ASSET_CACHE / f'asciinema-player-{PLAYER_VERSION}'
-	cdn = f'https://cdn.jsdelivr.net/npm/asciinema-player@{PLAYER_VERSION}/dist/bundle/'
+	cache, cdn = PLAYER_CACHE, PLAYER_CDN
 	try:
-		cache.mkdir(parents=True, exist_ok=True)
-		for name in PLAYER_FILES:
-			if not (cache / name).exists():
-				partial = cache / f'{name}.part'
-				urllib.request.urlretrieve(cdn + name, partial)
-				partial.rename(cache / name)
+		ensure_player_cache()
 		(report / 'vendor').mkdir(exist_ok=True)
 		for name in PLAYER_FILES:
 			shutil.copy(cache / name, report / 'vendor' / name)
@@ -568,13 +588,94 @@ def badge(verdict):
 	return f'<span class="badge {esc(verdict)}">{esc(verdict.upper())}</span>'
 
 
-def main():
-	run_dir = Path(sys.argv[1] if len(sys.argv) > 1 else '.').resolve()
+RUN_ORDER = {'instance-ai': 0, 'claude': 1, 'codex': 2}
+
+
+def load_case(run_dir):
 	case = json.loads((run_dir / 'case.json').read_text())
 	if 'prompt' not in case:
 		case['prompt'] = (run_dir / 'prompt.txt').read_text().strip()
+	return case
+
+
+def load_verdicts(run_dir):
 	verdicts_file = run_dir / 'verdicts.json'
-	verdicts = json.loads(verdicts_file.read_text()) if verdicts_file.exists() else {}
+	return json.loads(verdicts_file.read_text()) if verdicts_file.exists() else {}
+
+
+def load_run(sub, meta, prices):
+	try:
+		return LOADERS[meta['kind']](sub, meta, prices)
+	except Exception as e:  # keep the other runs when one run has broken files
+		return {'events': [], 'calls': [], 'model': meta.get('model'), 'duration': '-', 'cost': '-',
+		        'costSource': None, 'loadError': f'{type(e).__name__}: {e}'}
+
+
+def collect_runs(run_dir, case):
+	runs = []
+	for meta_file in sorted(run_dir.glob('*/run.json')):
+		sub = meta_file.parent
+		meta = json.loads(meta_file.read_text())
+		if meta.get('kind') not in LOADERS or sub.name == 'report':
+			continue
+		runs.append((sub.name, meta, load_run(sub, meta, case.get('prices'))))
+	runs.sort(key=lambda r: (RUN_ORDER.get(r[1]['kind'], 9), r[0]))
+	return runs
+
+
+def token_scale(runs):
+	all_calls = [c for _, _, d in runs for c in d['calls']]
+	return max([c['prompt'] for c in all_calls] + [1]), max([c['out'] for c in all_calls] + [1])
+
+
+def run_title(name, meta):
+	title = TITLES.get(meta['kind'], meta['kind'])
+	return title if name in ('iai', 'claude', 'codex') else f'{title} ({name})'
+
+
+def render_row_cells(name, meta, data, result):
+	"""The table cells of one run. result is the HTML of the Result cell."""
+	calls = data['calls']
+	tools = [e for e in data['events'] if e['kind'] == 'tool']
+	errors = sum(e['error'] for e in tools)
+	prompt = sum(c['prompt'] for c in calls)
+	cached = sum(c['cache_read'] for c in calls)
+	out = sum(c['out'] for c in calls)
+	cells = [
+		f'<span class="run-name">{esc(run_title(name, meta))}</span>', esc(data.get('model') or '-'),
+		result, data['duration'], str(len(calls)),
+		f'{len(tools)}' + (f' <span class="err">({errors} err)</span>' if errors else ''),
+		kilo(prompt), f'{100 * cached / prompt:.0f}%' if prompt else '-', kilo(out),
+		f'<strong>{esc(data["cost"])}</strong>',
+	]
+	return ''.join(f'<td>{c}</td>' for c in cells)
+
+
+def render_canvas_box(name, meta, report, base_url, empty='No workflow was created.'):
+	wf = meta.get('workflowId')
+	image = report / 'img' / f'{name}.png'
+	# capture_canvas.mjs takes the screenshot at twice the CSS size.
+	size = ' '.join(f'{k}="{v // 2}"' for k, v in zip(('width', 'height'), png_size(image))) if image.exists() else ''
+	canvas = (
+		f'<a class="canvas" href="img/{name}.png" target="_blank"><img src="img/{name}.png" {size} '
+		f'alt="{esc(run_title(name, meta))} canvas"></a>'
+		if image.exists() else f'<p class="dim">{esc(empty)}</p>'
+	)
+	link = f'<a href="{base_url}/workflow/{wf}" target="_blank">Open in n8n ↗</a>' if wf else ''
+	return f'<div class="box"><div class="head"><h2>Canvas</h2>{link}</div>{canvas}</div>'
+
+
+def render_panel_body(data, verdict, canvas_box, max_prompt, max_out, prompt):
+	"""The content of the section of one run: result, canvas and LLM steps."""
+	error = f'<div class="box err">Could not read this run: {esc(data["loadError"])}</div>' if data.get('loadError') else ''
+	return (f'{error}<div class="result-row">{render_verdict(verdict)}{canvas_box}</div>'
+	        f'{render_steps(data["calls"], data["events"], max_prompt, max_out, prompt)}')
+
+
+def main():
+	run_dir = Path(sys.argv[1] if len(sys.argv) > 1 else '.').resolve()
+	case = load_case(run_dir)
+	verdicts = load_verdicts(run_dir)
 	report = run_dir / 'report'
 	(report / 'img').mkdir(parents=True, exist_ok=True)
 	if ASSET_CACHE.exists():
@@ -582,71 +683,32 @@ def main():
 			if (ASSET_CACHE / sub).exists():
 				shutil.copytree(ASSET_CACHE / sub, report / sub, dirs_exist_ok=True)
 
-	order = {'instance-ai': 0, 'claude': 1, 'codex': 2}
-	runs = []
-	for meta_file in sorted(run_dir.glob('*/run.json')):
-		sub = meta_file.parent
-		meta = json.loads(meta_file.read_text())
-		loader = LOADERS.get(meta.get('kind'))
-		if not loader or sub.name == 'report':
-			continue
-		try:
-			data = loader(sub, meta, case.get('prices'))
-		except Exception as e:  # keep the other runs when one run has broken files
-			data = {'events': [], 'calls': [], 'model': meta.get('model'), 'duration': '-', 'cost': '-',
-			        'costSource': None, 'loadError': f'{type(e).__name__}: {e}'}
-		if (sub / 'canvas.png').exists():
-			shutil.copy(sub / 'canvas.png', report / 'img' / f'{sub.name}.png')
-		runs.append((sub.name, meta, data))
-	runs.sort(key=lambda r: (order.get(r[1]['kind'], 9), r[0]))
+	runs = collect_runs(run_dir, case)
 	if not runs:
 		sys.exit('No runs found.')
+	for name, _, _ in runs:
+		if (run_dir / name / 'canvas.png').exists():
+			shutil.copy(run_dir / name / 'canvas.png', report / 'img' / f'{name}.png')
 
-	all_calls = [c for _, _, d in runs for c in d['calls']]
-	max_prompt = max([c['prompt'] for c in all_calls] + [1])
-	max_out = max([c['out'] for c in all_calls] + [1])
+	max_prompt, max_out = token_scale(runs)
 	base_url = case.get('baseUrl', 'http://localhost:5678')
 
 	rows, panels = [], []
 	for i, (name, meta, data) in enumerate(runs):
 		active = ' active' if i == 0 else ''
-		calls = data['calls']
-		tools = [e for e in data['events'] if e['kind'] == 'tool']
-		errors = sum(e['error'] for e in tools)
-		prompt = sum(c['prompt'] for c in calls)
-		cached = sum(c['cache_read'] for c in calls)
-		out = sum(c['out'] for c in calls)
-		title = TITLES.get(meta['kind'], meta['kind'])
-		if name not in ('iai', 'claude', 'codex'):
-			title += f' ({name})'
 		verdict = verdicts.get(name)
-		cells = [
-			f'<span class="run-name">{esc(title)}</span>', esc(data.get('model') or '-'),
-			badge((verdict or {}).get('verdict')), data['duration'], str(len(calls)),
-			f'{len(tools)}' + (f' <span class="err">({errors} err)</span>' if errors else ''),
-			kilo(prompt), f'{100 * cached / prompt:.0f}%' if prompt else '-', kilo(out),
-			f'<strong>{esc(data["cost"])}</strong>',
-		]
 		rows.append(f'<tr class="row{active}" data-run="{name}" onclick="show(\'{name}\')">'
-		            + ''.join(f'<td>{c}</td>' for c in cells) + '</tr>')
-
-		wf = meta.get('workflowId')
-		image = report / 'img' / f'{name}.png'
-		# capture_canvas.mjs takes the screenshot at twice the CSS size.
-		size = ' '.join(f'{k}="{v // 2}"' for k, v in zip(('width', 'height'), png_size(image))) if image.exists() else ''
-		canvas = (
-			f'<a class="canvas" href="img/{name}.png" target="_blank"><img src="img/{name}.png" {size} alt="{esc(title)} canvas"></a>'
-			if image.exists() else '<p class="dim">No workflow was created.</p>'
-		)
-		link = f'<a href="{base_url}/workflow/{wf}" target="_blank">Open in n8n ↗</a>' if wf else ''
-		error = f'<div class="box err">Could not read this run: {esc(data["loadError"])}</div>' if data.get('loadError') else ''
-		panels.append(
-			f'<section class="run{active}" id="{name}">{error}<div class="result-row">{render_verdict(verdict)}'
-			f'<div class="box"><div class="head"><h2>Canvas</h2>{link}</div>{canvas}</div></div>'
-			f'{render_steps(calls, data["events"], max_prompt, max_out, case["prompt"])}</section>'
-		)
+		            + render_row_cells(name, meta, data, badge((verdict or {}).get('verdict'))) + '</tr>')
+		canvas_box = render_canvas_box(name, meta, report, base_url)
+		panels.append(f'<section class="run{active}" id="{name}">'
+		              + render_panel_body(data, verdict, canvas_box, max_prompt, max_out, case['prompt'])
+		              + '</section>')
 
 	notes = ['Token bars use one scale for all runs. Times are seconds from the prompt.']
+	status_file = run_dir / 'status.json'
+	if status_file.exists() and json.loads(status_file.read_text()).get('mode') == 'parallel':
+		notes.append('The builders ran at the same time on one n8n instance and one machine, '
+		             'so their times include the shared load.')
 	if any(meta['kind'] == 'instance-ai' for _, meta, _ in runs):
 		notes.append('Instance AI steps come from LangSmith call times. An asterisk on a time marks Instance AI text '
 		             'placed at the previous tool call.')
@@ -745,6 +807,20 @@ td:first-child{font-family:var(--sans)}
 .badge.partial{background:var(--bg-3);color:var(--black)}
 .badge.fail{background:var(--pink-70);color:var(--bg)}
 .badge.none{box-shadow:inset 0 0 0 1px var(--line-strong);color:var(--dim)}
+/* Live page */
+.badge.st-waiting,.badge.st-skipped{box-shadow:inset 0 0 0 1px var(--line-strong);color:var(--dim)}
+.badge.st-running{background:var(--pink-10);color:var(--pink-70);box-shadow:inset 0 0 0 1px var(--pink-30)}
+.badge.st-running::before{content:"";display:inline-block;width:6px;height:6px;margin-right:var(--s8);border-radius:50%;background:var(--pink-70);vertical-align:1px;animation:pulse 1.2s ease-in-out infinite}
+.badge.st-done{background:var(--bg-3);color:var(--black)}
+.badge.st-failed{background:var(--pink-70);color:var(--bg)}
+@keyframes pulse{50%{opacity:.25}}
+@media (prefers-reduced-motion:reduce){.badge.st-running::before{animation:none}}
+.live-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:var(--s16)}
+.live-card{display:flex;flex-direction:column;gap:var(--s8);min-width:0}
+.live-screen{border-radius:var(--r8);overflow:hidden;background:var(--black);min-height:120px}
+.live-screen img{display:block;width:100%;height:auto}
+.live-screen .live-empty{display:grid;place-items:center;aspect-ratio:16/10;color:var(--gray-50);font:10px/14px var(--mono);text-transform:uppercase;letter-spacing:.02em;padding:var(--s16);text-align:center}
+.live-screen .ap-control-bar,.live-screen .ap-overlay-info{display:none !important}
 .summary{margin:0 0 var(--s8)}
 .checks{list-style:none;margin:0;padding:0}
 .checks li{display:flex;gap:var(--s8);padding:2px 0}
@@ -867,15 +943,19 @@ function selectStep(root, step, focus){
   item.scrollIntoView({block:'nearest'});
   if (focus) item.focus({preventScroll:true});
 }
-document.querySelectorAll('.steps').forEach(root=>{
-  root.addEventListener('click', e=>{ const b = e.target.closest('.step'); if (b) selectStep(root, b.dataset.step); });
-  root.querySelector('.step-list').addEventListener('keydown', e=>{
-    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
-    e.preventDefault();
-    const items = [...root.querySelectorAll('.step')];
-    const i = items.findIndex(b=>b.classList.contains('active')) + (e.key === 'ArrowDown' ? 1 : -1);
-    if (items[i]) selectStep(root, items[i].dataset.step, true);
-  });
+// Delegated, so the steps keep working when the live page replaces them.
+document.addEventListener('click', e=>{
+  const b = e.target.closest('.steps .step');
+  if (b) selectStep(b.closest('.steps'), b.dataset.step);
+});
+document.addEventListener('keydown', e=>{
+  const list = e.target.closest ? e.target.closest('.step-list') : null;
+  if (!list || (e.key !== 'ArrowDown' && e.key !== 'ArrowUp')) return;
+  e.preventDefault();
+  const root = list.closest('.steps');
+  const items = [...root.querySelectorAll('.step')];
+  const i = items.findIndex(b=>b.classList.contains('active')) + (e.key === 'ArrowDown' ? 1 : -1);
+  if (items[i]) selectStep(root, items[i].dataset.step, true);
 });
 
 // Replay

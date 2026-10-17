@@ -13,7 +13,8 @@ description: >-
 # Compare workflow builders
 
 This skill sends the same prompt to up to three builders on the local n8n
-instance. It then builds one page that shows, for each run:
+instance. The builders run at the same time, and a local page shows them
+live. It then builds one page that shows, for each run:
 
 - the result against the expected outcome (pass, partial or fail, with reasons)
 - the canvas of the workflow that the builder made
@@ -51,7 +52,9 @@ The most important settings:
 | Setting | Use |
 |---|---|
 | `COMPARE_BUILDERS` | Default builders, for example `iai,claude,codex` |
-| `COMPARE_LIVE` | `1` (default) opens live views of each run. `0` turns them off |
+| `COMPARE_PARALLEL` | `1` (default) runs the builders at the same time. `0` runs them one at a time |
+| `COMPARE_LIVE` | `1` (default) opens a live page of the runs. `0` turns it off |
+| `COMPARE_LIVE_WINDOWS` | `1` also opens the Instance AI thread and a terminal window for each CLI. Default `0` |
 | `COMPARE_RECORD` | `1` (default) records the Instance AI video for the replay. `0` turns it off |
 | `COMPARE_CLI_MODE` | `interactive` (default) records the real CLI screen. `headless` uses the JSON event stream |
 | `CLAUDE_MODEL`, `CODEX_MODEL` | Model ids. Empty uses the CLI default. A prefix such as `anthropic/` is removed |
@@ -87,37 +90,65 @@ Use `--builders iai,claude` to change the builders for one run. Use
 
 The command takes 5 to 30 minutes. Start it in the background if the harness
 supports it, and read its output until it ends. It prints one line for each
-tool call, so the user can follow the run. It does these steps:
+tool call, with the builder name in front, so the user can follow the run.
+It does these steps:
 
 1. Checks the setup and skips a builder that cannot run. It prints the
    reason.
-2. Runs each builder one at a time.
-3. Fetches the Instance AI cost from LangSmith.
-4. Takes a screenshot of each canvas.
-5. Writes `summary.txt` for the judge step.
-6. Builds the page without verdicts.
+2. Starts the live page (see below).
+3. Runs the builders at the same time. `--sequential` or
+   `COMPARE_PARALLEL=0` runs them one at a time.
+4. Fetches the Instance AI cost from LangSmith.
+5. Takes a screenshot of each canvas.
+6. Writes `summary.txt` for the judge step.
+7. Builds the page without verdicts.
 
-The last output is JSON with `runDir`, `report`, `summary`, `models` and
-`skipped`.
+The last output is JSON with `runDir`, `report`, `live`, `parallel`,
+`summary`, `models` and `skipped`.
+
+Parallel runs share one n8n instance and one machine. Thus the times of the
+builders include the shared load. The page says so in its notes. Use
+`--sequential` when the user wants to compare times exactly.
 
 ### Watch the runs
 
-When a builder starts, the script opens a live view of it:
+`compare.py` starts `live_server.py` and opens its page in the default
+browser. It prints `live page: <url>`. Give the user this URL. The page
+shows each builder while it runs, and updates every 2 seconds without a
+reload:
 
-- **Instance AI:** the thread opens in the default browser. The user sees
-  the chat, the tool calls and the canvas in the n8n UI while the run
-  continues. The browser must be logged in as `N8N_EVAL_EMAIL`, because a
-  thread is visible only to its owner. The script answers the confirmation
-  cards, so the user must not click them.
+- the table: status, time, LLM calls, tool calls and tokens of each builder
+- **Live:** the real terminal screen of Claude Code and Codex, streamed from
+  the tmux recording, and a screenshot of the Instance AI thread every
+  2.5 seconds
+- the LLM steps of each builder. Claude Code and Codex steps come from the
+  session files of the CLIs, with tokens. Instance AI steps come from its
+  event stream, without tokens until the run ends
+
+The cost, the canvases and the Instance AI tokens come after the run. When
+the report is ready, the page changes to it. The server listens on
+`127.0.0.1` only. It stops 30 minutes after the last request, when the run
+is done. After you write `verdicts.json` and build the page again, the user
+can reload the page to see the verdicts.
+
+Headless mode and clean isolation have no terminal screen. For them, the
+page shows only the table and the LLM steps. `COMPARE_RECORD=0` removes the
+Instance AI screenshot.
+
+`COMPARE_LIVE_WINDOWS=1` also opens the old live views:
+
+- **Instance AI:** the thread opens in the default browser. The browser must
+  be logged in as `N8N_EVAL_EMAIL`, because a thread is visible only to its
+  owner. The script answers the confirmation cards, so the user must not
+  click them.
 - **Claude Code and Codex:** a terminal window shows the real screen of the
   CLI, read-only (`docker exec … tmux attach -r`). In headless mode, the
   window follows `<builder>/live.log` instead. On macOS the window opens in
   Terminal. The first time, macOS asks if the agent's app can control
   Terminal.
 
-If a view cannot open, the script prints the URL or the command. Tell the
-user about the live views before the run starts. Use `--no-live` or
-`COMPARE_LIVE=0` for runs without a display, for example in CI.
+Use `--no-live` or `COMPARE_LIVE=0` for runs without a display, for example
+in CI.
 
 ### Replay on the page
 
@@ -252,7 +283,8 @@ If the command prints `models without a published price`, do step 3 for
 those models and build the page again.
 
 The page is `<runDir>/report/index.html`. It works offline. Give the user the
-path. Then, in a few sentences, report:
+path, and the `live` URL from the output of `compare.py` while the server
+runs. Then, in a few sentences, report:
 
 - the verdict of each builder, with the most important reason
 - the cost, time and number of LLM calls of each builder
@@ -320,6 +352,7 @@ the host disk.
 | `run_instance_ai.py --out <dir>/iai --prompt-file <file>` | Run Instance AI |
 | `run_cli_builder.py --builder claude\|codex --out <dir>/<name> --prompt-file <file>` | Run a CLI builder. `--mode headless` skips the screen |
 | `node record_iai.mjs <dir>/iai` | Record the Instance AI video. `run_instance_ai.py` starts it |
+| `live_server.py --run-dir <dir>` | Serve the live page and the report of a run folder. Prints nothing. The URL is in `<dir>/live-url.txt` |
 | `langsmith_usage.py --run-dir <dir>/iai` | Fetch Instance AI usage |
 | `node capture_canvas.mjs <dir>` | Save `workflow.json` and `canvas.png` for each run |
 | `summarize_runs.py <dir>` | Print the judge summary |

@@ -1,7 +1,9 @@
-"""Live views of a run: a browser tab for Instance AI and a terminal window for each CLI builder.
+"""Live views of a run.
 
-Set COMPARE_LIVE=0 to turn them off. If a view cannot open, the script prints how to open it.
-Set COMPARE_RECORD=0 to skip the screen recordings that the report replays.
+COMPARE_LIVE=1 (default): compare.py serves a live page (live_server.py). COMPARE_LIVE=0 turns it off.
+COMPARE_LIVE_WINDOWS=1 also opens the Instance AI thread in the browser and a terminal window for
+each CLI builder. If a view cannot open, the script prints how to open it.
+COMPARE_RECORD=0 skips the screen recordings that the report replays.
 """
 
 import shlex
@@ -13,12 +15,16 @@ import webbrowser
 from n8n_api import setting
 
 
-def is_on(name):
-	return setting(name, default='1').strip().lower() not in ('0', 'false', 'no', 'off')
+def is_on(name, default='1'):
+	return setting(name, default=default).strip().lower() not in ('0', 'false', 'no', 'off')
 
 
 def enabled():
 	return is_on('COMPARE_LIVE')
+
+
+def windows():
+	return enabled() and is_on('COMPARE_LIVE_WINDOWS', default='0')
 
 
 def recording():
@@ -26,7 +32,7 @@ def recording():
 
 
 def open_url(url):
-	if not enabled():
+	if not windows():
 		return
 	try:
 		opened = webbrowser.open(url)
@@ -49,7 +55,7 @@ def log_window_launchers(command):
 
 def open_terminal(title, command, cols=None, rows=None):
 	"""Open a terminal window with a title that runs a shell command. Returns False if none opened."""
-	if not enabled():
+	if not windows():
 		return True
 	prefix = f"printf '\\033]0;%s\\007' {shlex.quote(title)}; "
 	if cols and rows:

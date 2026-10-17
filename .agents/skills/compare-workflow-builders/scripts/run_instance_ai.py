@@ -29,6 +29,7 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
+from live import enabled as live_enabled
 from live import open_url, recording
 from n8n_api import N8nClient
 
@@ -44,7 +45,8 @@ class Recorder:
 		node = shutil.which('node')
 		if not recording() or not node:
 			return
-		self.proc = subprocess.Popen([node, str(HERE / 'record_iai.mjs'), str(out.resolve())], cwd=HERE,
+		live_flag = ['--live'] if live_enabled() else []
+		self.proc = subprocess.Popen([node, str(HERE / 'record_iai.mjs'), str(out.resolve()), *live_flag], cwd=HERE,
 		                             stdin=subprocess.PIPE, stdout=subprocess.PIPE,
 		                             stderr=(out / 'record.log').open('w'), text=True)
 		threading.Thread(target=self._read, daemon=True).start()
