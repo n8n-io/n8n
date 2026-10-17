@@ -232,12 +232,8 @@ export class PromotionChangeService {
 			{ manifest: instance.manifest, blobByPath: blobsByPath(instance.files) },
 			projectId,
 		);
-		const unknownKeys = keys.filter((key) => !branchIndex.has(key) && !instanceIndex.has(key));
-		if (unknownKeys.length > 0) {
-			throw new BadRequestError(
-				`The preview has no resources with these keys: ${unknownKeys.join(', ')}`,
-			);
-		}
+		// A resource can disappear after the summary, for example when a local workflow is deleted.
+		const missingKeys = keys.filter((key) => !branchIndex.has(key) && !instanceIndex.has(key));
 
 		const branchContents = await readBranch(
 			keys.flatMap((key) => branchIndex.get(key)?.path ?? []),
@@ -284,7 +280,7 @@ export class PromotionChangeService {
 				}),
 			];
 		});
-		return { details };
+		return { details, missingKeys };
 	}
 
 	private async compareProject(
