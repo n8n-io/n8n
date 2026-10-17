@@ -281,7 +281,10 @@ describe('AgentSkillsSection', () => {
 		it('says "Not added" without a caption when the published agent does not use the skill', () => {
 			const { published, publishedCaption } = cells(versionInfo({ live: null }));
 
-			expect(published.text()).toBe('agents.builder.skills.version.published.notAdded');
+			expect(published.text()).toBe('—');
+			expect(published.attributes('aria-label')).toBe(
+				'agents.builder.skills.version.published.notAdded',
+			);
 			expect(published.attributes('data-state')).toBe('notAdded');
 			expect(publishedCaption).toBeUndefined();
 		});

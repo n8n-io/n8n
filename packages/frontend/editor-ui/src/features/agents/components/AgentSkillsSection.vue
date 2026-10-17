@@ -354,16 +354,20 @@ function rowSubtitle(row: {
 										>
 											{{ versionNumber(row.info.live) }}
 										</N8nBadge>
-										<N8nBadge
+										<!-- The same empty mark as the settings skills table. -->
+										<N8nText
 											v-else
-											variant="outline"
 											size="small"
+											color="text-light"
 											:class="$style.notAdded"
+											:aria-label="
+												i18n.baseText('agents.builder.skills.version.published.notAdded')
+											"
 											data-state="notAdded"
 											data-testid="agent-skill-published-version"
 										>
-											{{ i18n.baseText('agents.builder.skills.version.published.notAdded') }}
-										</N8nBadge>
+											—
+										</N8nText>
 										<N8nText
 											v-if="publishedCaption(row.info)"
 											size="small"
@@ -548,8 +552,23 @@ function rowSubtitle(row: {
 	display: flex;
 	grid-column: 3;
 	grid-row: 1;
+	/* Shown on row hover and keyboard focus; the two version numbers already show the difference. */
+	opacity: 0;
+	transition: opacity var(--animation--duration--snappy) var(--animation--easing);
 	/* Keeps the column the same width when a row has no compare button. */
 	min-width: var(--spacing--xl);
+}
+
+.row:hover .compareCell,
+.row:focus-within .compareCell {
+	opacity: 1;
+}
+
+/* Touch screens have no hover. */
+@media (hover: none) {
+	.compareCell {
+		opacity: 1;
+	}
 }
 
 .remove {
@@ -567,9 +586,9 @@ function rowSubtitle(row: {
 	white-space: nowrap;
 }
 
-.publishedCell .notAdded {
-	border-style: dashed;
-	--n8n-badge--text-color: var(--text-color--subtle);
+.notAdded {
+	/* Level with the version tags in the other rows. */
+	line-height: var(--spacing--lg);
 }
 
 .nameLine {
