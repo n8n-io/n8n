@@ -10,6 +10,7 @@ import { WorkflowsConfig } from '@n8n/config';
 import type { IWorkflowDb } from '@n8n/db';
 import { WorkflowDependencyRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { ErrorReporter, Tracing } from 'n8n-core';
 import type { INode } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
@@ -251,6 +252,169 @@ describe('WorkflowIndexService Integration', () => {
 					},
 				});
 			});
+		});
+	});
+
+	describe('credential changes after publication', () => {
+		const credentialNode = (credentialId: string): INode => ({
+			id: 'node-1',
+			name: 'HTTP Request',
+			type: 'n8n-nodes-base.httpRequest',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+			credentials: { httpBasicAuth: { id: credentialId, name: credentialId } },
+		});
+
+		it.each([
+			{
+				name: 'retains the published credential while the workflow stays published',
+				unpublish: false,
+			},
+			{ name: 'removes the old credential after unpublish and a draft save', unpublish: true },
+		])('$name', async ({ unpublish }) => {
+			// KNO-188: An unpublished version must not keep a credential in the usage list.
+			const owner = await createOwner();
+			const oldCredentialId = uuid();
+			const newCredentialId = uuid();
+			const workflow = await createWorkflow({ nodes: [credentialNode(oldCredentialId)] });
+			await createWorkflowHistory(workflow);
+			await setActiveVersion(workflow.id, workflow.versionId);
+			// The workflow fixture indexes only node types. Rebuild it with credentials.
+			await workflowDependencyRepository.removeDependenciesForWorkflow(workflow.id);
+			await workflowIndexService.updateIndexForDraft(workflow);
+			await workflowIndexService.updateIndexForPublished(
+				workflow,
+				workflow.versionId,
+				workflow.nodes,
+			);
+			expect(
+				await workflowDependencyRepository.findBy({
+					workflowId: workflow.id,
+					dependencyType: 'credentialId',
+					dependencyKey: oldCredentialId,
+				}),
+			).toHaveLength(2);
+
+			if (unpublish) {
+				await workflowRepository.update(workflow.id, { active: false, activeVersionId: null });
+				const deactivated = await workflowRepository.findOneByOrFail({ id: workflow.id });
+				eventService.emit('workflow-deactivated', {
+					user: createUserPayload(owner),
+					workflowId: workflow.id,
+					workflow: deactivated,
+					deactivatedVersionId: workflow.versionId,
+					publicApi: false,
+				});
+				await retryUntil(async () => {
+					const dependencies = await workflowDependencyRepository.findBy({
+						workflowId: workflow.id,
+						dependencyType: 'credentialId',
+					});
+					expect(dependencies).toEqual([
+						expect.objectContaining({
+							dependencyKey: oldCredentialId,
+							publishedVersionId: null,
+						}),
+					]);
+				});
+			}
+
+			await workflowRepository.update(workflow.id, { nodes: [credentialNode(newCredentialId)] });
+			const saved = await workflowRepository.findOneByOrFail({ id: workflow.id });
+			expect(saved.versionCounter).toBeGreaterThan(workflow.versionCounter);
+			expect(saved.activeVersionId).toBe(unpublish ? null : workflow.versionId);
+			eventService.emit('workflow-saved', {
+				user: createUserPayload(owner),
+				workflow: saved,
+				publicApi: false,
+			});
+
+			await retryUntil(async () => {
+				const dependencies = await workflowDependencyRepository.findBy({
+					workflowId: workflow.id,
+					dependencyType: 'credentialId',
+				});
+				expect(dependencies.filter((dep) => dep.publishedVersionId === null)).toEqual([
+					expect.objectContaining({
+						dependencyKey: newCredentialId,
+						workflowVersionId: saved.versionCounter,
+					}),
+				]);
+				expect(dependencies.filter((dep) => dep.dependencyKey === oldCredentialId)).toEqual(
+					unpublish ? [] : [expect.objectContaining({ publishedVersionId: workflow.versionId })],
+				);
+			});
+		});
+
+		it('retains the published credential when unpublish cleanup runs after same-version republish', async () => {
+			const owner = await createOwner();
+			const credentialId = uuid();
+			const workflow = await createWorkflow({ nodes: [credentialNode(credentialId)] });
+			await createWorkflowHistory(workflow);
+			await setActiveVersion(workflow.id, workflow.versionId);
+			await workflowIndexService.updateIndexForPublished(
+				workflow,
+				workflow.versionId,
+				workflow.nodes,
+			);
+
+			const cleanupStarted = createDeferredPromise();
+			const resumeCleanup = createDeferredPromise();
+			let cleanup: Promise<void> | undefined;
+			const removePublishedDependencies =
+				workflowDependencyRepository.removePublishedDependenciesForWorkflow.bind(
+					workflowDependencyRepository,
+				);
+			const cleanupSpy = vi
+				.spyOn(workflowDependencyRepository, 'removePublishedDependenciesForWorkflow')
+				.mockImplementationOnce(async (workflowId, publishedVersionId) => {
+					cleanupStarted.resolve();
+					cleanup = resumeCleanup.promise.then(async () => {
+						await removePublishedDependencies(workflowId, publishedVersionId);
+					});
+					await cleanup;
+				});
+
+			try {
+				await workflowRepository.update(workflow.id, { active: false, activeVersionId: null });
+				const deactivated = await workflowRepository.findOneByOrFail({ id: workflow.id });
+				eventService.emit('workflow-deactivated', {
+					user: createUserPayload(owner),
+					workflowId: workflow.id,
+					workflow: deactivated,
+					deactivatedVersionId: workflow.versionId,
+					publicApi: false,
+				});
+				await cleanupStarted.promise;
+
+				await setActiveVersion(workflow.id, workflow.versionId);
+				const republished = await workflowRepository.findOneByOrFail({ id: workflow.id });
+				expect(republished.versionCounter).toBe(workflow.versionCounter);
+				// Finish activation indexing before the delayed cleanup resumes.
+				await workflowIndexService.updateIndexForPublished(
+					republished,
+					workflow.versionId,
+					republished.nodes,
+				);
+				resumeCleanup.resolve();
+				await cleanup;
+
+				expect(
+					await workflowDependencyRepository.findBy({
+						workflowId: workflow.id,
+						publishedVersionId: workflow.versionId,
+						dependencyType: 'credentialId',
+					}),
+				).toEqual([expect.objectContaining({ dependencyKey: credentialId })]);
+			} finally {
+				resumeCleanup.resolve();
+				try {
+					await cleanup;
+				} finally {
+					cleanupSpy.mockRestore();
+				}
+			}
 		});
 	});
 
