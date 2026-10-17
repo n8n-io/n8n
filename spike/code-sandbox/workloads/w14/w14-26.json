@@ -1,0 +1,161 @@
+{
+	"id": "spikeW1400000026",
+	"name": "W14 copy 26",
+	"active": false,
+	"nodes": [
+		{
+			"id": "c1000000-0000-4000-8000-000000000243",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [
+				0,
+				0
+			],
+			"webhookId": "b2000000-0000-4000-8000-000000000242",
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "spike-w14-26",
+				"responseMode": "lastNode",
+				"responseData": "allEntries",
+				"options": {}
+			}
+		},
+		{
+			"id": "c1000000-0000-4000-8000-000000000244",
+			"name": "Code 1",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [
+				200,
+				0
+			],
+			"parameters": {
+				"mode": "runOnceForAllItems",
+				"jsCode": "return $input.all().map(i => ({ json: { ...i.json, step1: true } }));"
+			}
+		},
+		{
+			"id": "c1000000-0000-4000-8000-000000000245",
+			"name": "Code 2",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [
+				400,
+				0
+			],
+			"parameters": {
+				"mode": "runOnceForAllItems",
+				"jsCode": "return $input.all().map(i => ({ json: { ...i.json, step2: true } }));"
+			}
+		},
+		{
+			"id": "c1000000-0000-4000-8000-000000000246",
+			"name": "Code 3",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [
+				600,
+				0
+			],
+			"parameters": {
+				"mode": "runOnceForAllItems",
+				"jsCode": "return $input.all().map(i => ({ json: { ...i.json, step3: true } }));"
+			}
+		},
+		{
+			"id": "c1000000-0000-4000-8000-000000000247",
+			"name": "Code 4",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [
+				800,
+				0
+			],
+			"parameters": {
+				"mode": "runOnceForAllItems",
+				"jsCode": "return $input.all().map(i => ({ json: { ...i.json, step4: true } }));"
+			}
+		},
+		{
+			"id": "c1000000-0000-4000-8000-000000000248",
+			"name": "Code 5",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [
+				1000,
+				0
+			],
+			"parameters": {
+				"mode": "runOnceForAllItems",
+				"jsCode": "return $input.all().map(i => ({ json: { ...i.json, step5: true } }));"
+			}
+		}
+	],
+	"connections": {
+		"Webhook": {
+			"main": [
+				[
+					{
+						"node": "Code 1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Code 1": {
+			"main": [
+				[
+					{
+						"node": "Code 2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Code 2": {
+			"main": [
+				[
+					{
+						"node": "Code 3",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Code 3": {
+			"main": [
+				[
+					{
+						"node": "Code 4",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Code 4": {
+			"main": [
+				[
+					{
+						"node": "Code 5",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1",
+		"saveDataSuccessExecution": "none",
+		"saveManualExecutions": false
+	},
+	"pinData": {},
+	"meta": {
+		"spike": "code-sandbox-opus"
+	}
+}

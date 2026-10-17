@@ -1,0 +1,87 @@
+{
+	"id": "spikeW5000000002",
+	"name": "W5b binary transfer with Buffers",
+	"active": false,
+	"nodes": [
+		{
+			"id": "a1000000-0000-4000-8000-000000000045",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [
+				0,
+				0
+			],
+			"webhookId": "b1000000-0000-4000-8000-000000000046",
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "spike-w5b",
+				"responseMode": "lastNode",
+				"responseData": "allEntries",
+				"options": {}
+			}
+		},
+		{
+			"id": "d0000000-0000-4000-8000-000000000047",
+			"name": "Read File",
+			"type": "n8n-nodes-base.readWriteFile",
+			"typeVersion": 1,
+			"position": [
+				200,
+				0
+			],
+			"parameters": {
+				"operation": "read",
+				"fileSelector": "={{ '/tmp/n8n-spike/w5-' + ($json.query.size || '1mb') + '.bin' }}",
+				"options": {}
+			}
+		},
+		{
+			"id": "c0000000-0000-4000-8000-000000000048",
+			"name": "Code",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [
+				400,
+				0
+			],
+			"parameters": {
+				"mode": "runOnceForAllItems",
+				"jsCode": "const buf = await helpers.getBinaryDataBuffer(0, \"data\");\nconst out = await helpers.prepareBinaryData(Buffer.from(buf), \"copy.bin\", \"application/octet-stream\");\nreturn [{ json: { bytes: buf.length }, binary: { data: out } }];"
+			}
+		}
+	],
+	"connections": {
+		"Webhook": {
+			"main": [
+				[
+					{
+						"node": "Read File",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Read File": {
+			"main": [
+				[
+					{
+						"node": "Code",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1",
+		"saveDataSuccessExecution": "none",
+		"saveManualExecutions": false
+	},
+	"pinData": {},
+	"meta": {
+		"spike": "code-sandbox-opus"
+	}
+}

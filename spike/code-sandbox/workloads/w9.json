@@ -1,0 +1,95 @@
+{
+	"id": "spikeW9000000001",
+	"name": "W9 sub-workflows",
+	"active": false,
+	"nodes": [
+		{
+			"id": "a1000000-0000-4000-8000-000000000054",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [
+				0,
+				0
+			],
+			"webhookId": "b1000000-0000-4000-8000-000000000055",
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "spike-w9",
+				"responseMode": "lastNode",
+				"responseData": "allEntries",
+				"options": {}
+			}
+		},
+		{
+			"id": "d0000000-0000-4000-8000-000000000056",
+			"name": "Generate",
+			"type": "n8n-nodes-base.debugHelper",
+			"typeVersion": 1,
+			"position": [
+				200,
+				0
+			],
+			"parameters": {
+				"category": "randomData",
+				"randomDataType": "uuid",
+				"randomDataCount": 20
+			}
+		},
+		{
+			"id": "e1000000-0000-4000-8000-000000000057",
+			"name": "Execute Workflow",
+			"type": "n8n-nodes-base.executeWorkflow",
+			"typeVersion": 1.2,
+			"position": [
+				400,
+				0
+			],
+			"parameters": {
+				"source": "database",
+				"workflowId": {
+					"__rl": true,
+					"value": "spikeW9000000002",
+					"mode": "id"
+				},
+				"mode": "each",
+				"options": {
+					"waitForSubWorkflow": true
+				}
+			}
+		}
+	],
+	"connections": {
+		"Webhook": {
+			"main": [
+				[
+					{
+						"node": "Generate",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Generate": {
+			"main": [
+				[
+					{
+						"node": "Execute Workflow",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1",
+		"saveDataSuccessExecution": "none",
+		"saveManualExecutions": false
+	},
+	"pinData": {},
+	"meta": {
+		"spike": "code-sandbox-opus"
+	}
+}

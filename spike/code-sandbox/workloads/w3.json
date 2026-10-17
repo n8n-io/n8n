@@ -1,0 +1,124 @@
+{
+	"id": "spikeW3000000001",
+	"name": "W3 loop with a Code node",
+	"active": false,
+	"nodes": [
+		{
+			"id": "a1000000-0000-4000-8000-000000000011",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [
+				0,
+				0
+			],
+			"webhookId": "b1000000-0000-4000-8000-000000000012",
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "spike-w3",
+				"responseMode": "lastNode",
+				"responseData": "allEntries",
+				"options": {}
+			}
+		},
+		{
+			"id": "d0000000-0000-4000-8000-000000000013",
+			"name": "Generate",
+			"type": "n8n-nodes-base.debugHelper",
+			"typeVersion": 1,
+			"position": [
+				200,
+				0
+			],
+			"parameters": {
+				"category": "randomData",
+				"randomDataType": "uuid",
+				"randomDataCount": 100
+			}
+		},
+		{
+			"id": "e0000000-0000-4000-8000-000000000014",
+			"name": "Loop",
+			"type": "n8n-nodes-base.splitInBatches",
+			"typeVersion": 3,
+			"position": [
+				400,
+				0
+			],
+			"parameters": {
+				"batchSize": 1,
+				"options": {}
+			}
+		},
+		{
+			"id": "c0000000-0000-4000-8000-000000000015",
+			"name": "Code",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [
+				600,
+				0
+			],
+			"parameters": {
+				"mode": "runOnceForAllItems",
+				"jsCode": "return $input.all().map(i => ({ json: { ...i.json, seen: true } }));"
+			}
+		}
+	],
+	"connections": {
+		"Webhook": {
+			"main": [
+				[
+					{
+						"node": "Generate",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Generate": {
+			"main": [
+				[
+					{
+						"node": "Loop",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Loop": {
+			"main": [
+				[],
+				[
+					{
+						"node": "Code",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Code": {
+			"main": [
+				[
+					{
+						"node": "Loop",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1",
+		"saveDataSuccessExecution": "none",
+		"saveManualExecutions": false
+	},
+	"pinData": {},
+	"meta": {
+		"spike": "code-sandbox-opus"
+	}
+}

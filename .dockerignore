@@ -39,3 +39,7 @@
 !packages/@n8n/typescript-config
 !packages/@n8n/typescript-config/**
 
+
+# === code sandbox image (docker/images/code-sandbox/Dockerfile, spike) ===
+!dist/code-runtime
+!dist/code-runtime/**

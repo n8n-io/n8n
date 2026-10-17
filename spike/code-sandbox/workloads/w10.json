@@ -1,0 +1,54 @@
+{
+	"id": "spikeW1000000010",
+	"name": "W10 live console output (run manually in the editor)",
+	"active": false,
+	"nodes": [
+		{
+			"id": "a3000000-0000-4000-8000-000000000058",
+			"name": "Manual",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [
+				0,
+				0
+			],
+			"parameters": {}
+		},
+		{
+			"id": "c0000000-0000-4000-8000-000000000059",
+			"name": "Code",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [
+				200,
+				0
+			],
+			"parameters": {
+				"mode": "runOnceForAllItems",
+				"jsCode": "for (let i = 0; i < 15; i++) {\n  console.log(`line ${i} at ${new Date().toISOString()}`);\n  await new Promise((r) => setTimeout(r, 200));\n}\nconsole.warn(\"a warning\");\nreturn [{ json: { done: true } }];"
+			}
+		}
+	],
+	"connections": {
+		"Manual": {
+			"main": [
+				[
+					{
+						"node": "Code",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1",
+		"saveDataSuccessExecution": "none",
+		"saveManualExecutions": false
+	},
+	"pinData": {},
+	"meta": {
+		"spike": "code-sandbox-opus"
+	}
+}
