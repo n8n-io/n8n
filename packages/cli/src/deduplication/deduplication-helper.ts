@@ -235,14 +235,19 @@ export class DeduplicationHelper implements IDataDeduplicator {
 		const processedDataValue = processedData.value;
 		const processedItemsSet = new Set(processedDataValue.data);
 
+		const newHashedItems: string[] = [];
+
 		hashedItems.forEach((item, index) => {
 			if (processedItemsSet.has(item)) {
 				returnData.processed.push(items[index]);
 			} else {
 				returnData.new.push(items[index]);
-				processedDataValue.data.push(item);
+				newHashedItems.push(item);
 			}
 		});
+
+		// Only add new items to processed data after processing all items
+		processedDataValue.data.push(...newHashedItems);
 
 		if (options.maxEntries) {
 			processedDataValue.data.splice(0, processedDataValue.data.length - options.maxEntries);
