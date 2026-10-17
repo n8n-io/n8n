@@ -8,7 +8,9 @@ import type { OAuthClientResponseDto } from '@n8n/api-types';
 import {
 	N8nButton,
 	N8nDialog,
+	N8nDialogBody,
 	N8nDialogClose,
+	N8nDialogDescription,
 	N8nDialogFooter,
 	N8nNotice,
 	N8nSettingsLayout,
@@ -445,9 +447,13 @@ onBeforeUnmount(() => {
 			v-model:open="showDisableDialog"
 			size="small"
 			:header="i18n.baseText('settings.mcp.status.disableDialog.title')"
-			:description="i18n.baseText('settings.mcp.status.disableDialog.description')"
 			data-test-id="mcp-disable-dialog"
 		>
+			<N8nDialogBody>
+				<N8nDialogDescription>
+					{{ i18n.baseText('settings.mcp.status.disableDialog.description') }}
+				</N8nDialogDescription>
+			</N8nDialogBody>
 			<N8nDialogFooter>
 				<N8nDialogClose as-child>
 					<N8nButton variant="outline" :label="i18n.baseText('generic.cancel')" />

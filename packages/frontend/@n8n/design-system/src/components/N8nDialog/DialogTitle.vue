@@ -22,7 +22,7 @@ defineProps<DialogTitleProps>();
 	margin: 0;
 	font-size: var(--font-size--lg);
 	font-weight: var(--font-weight--medium);
-	line-height: var(--line-height--lg);
+	line-height: var(--line-height--xl);
 	color: light-dark(var(--color--neutral-900), var(--color--neutral-100));
 }
 </style>

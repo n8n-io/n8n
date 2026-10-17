@@ -12,6 +12,8 @@ import { promptMfaCodeBus, type MfaModalClosedEventPayload } from '../auth.event
 import {
 	N8nButton,
 	N8nDialog,
+	N8nDialogBody,
+	N8nDialogDescription,
 	N8nDialogFooter,
 	N8nInput,
 	N8nInputLabel,
@@ -147,42 +149,44 @@ const onConfirm = async () => {
 	<N8nDialog
 		:open="true"
 		:header="copy.title"
-		:description="copy.description"
 		size="medium"
 		@update:open="onOpenChange"
 		@open-auto-focus="onOpenAutoFocus"
 	>
-		<div :class="$style.body" data-test-id="prompt-mfa-code-modal">
-			<N8nInputLabel input-name="mfa-prompt-code" :label="copy.label">
-				<div :class="[$style.field, { [$style.fieldInvalid]: error }]">
-					<N8nInput
-						id="mfa-prompt-code"
-						ref="codeInput"
-						v-model="code"
-						name="mfaCodeOrMfaRecoveryCode"
-						size="medium"
-						autocomplete="one-time-code"
-						:maxlength="isChangingEmail ? MFA_AUTHENTICATION_CODE_INPUT_MAX_LENGTH : undefined"
-						:placeholder="copy.placeholder"
-						:aria-invalid="Boolean(error)"
-						:aria-describedby="error ? 'mfa-prompt-code-error' : undefined"
-						data-test-id="mfa-code-or-recovery-code-input"
-						@blur="showFormatError = true"
-						@keydown.enter="onConfirm"
-					/>
-					<N8nText
-						v-if="error"
-						id="mfa-prompt-code-error"
-						size="small"
-						color="danger"
-						role="alert"
-						data-test-id="mfa-code-error"
-					>
-						{{ error }}
-					</N8nText>
-				</div>
-			</N8nInputLabel>
-		</div>
+		<N8nDialogBody>
+			<N8nDialogDescription>{{ copy.description }}</N8nDialogDescription>
+			<div :class="$style.body" data-test-id="prompt-mfa-code-modal">
+				<N8nInputLabel input-name="mfa-prompt-code" :label="copy.label">
+					<div :class="[$style.field, { [$style.fieldInvalid]: error }]">
+						<N8nInput
+							id="mfa-prompt-code"
+							ref="codeInput"
+							v-model="code"
+							name="mfaCodeOrMfaRecoveryCode"
+							size="medium"
+							autocomplete="one-time-code"
+							:maxlength="isChangingEmail ? MFA_AUTHENTICATION_CODE_INPUT_MAX_LENGTH : undefined"
+							:placeholder="copy.placeholder"
+							:aria-invalid="Boolean(error)"
+							:aria-describedby="error ? 'mfa-prompt-code-error' : undefined"
+							data-test-id="mfa-code-or-recovery-code-input"
+							@blur="showFormatError = true"
+							@keydown.enter="onConfirm"
+						/>
+						<N8nText
+							v-if="error"
+							id="mfa-prompt-code-error"
+							size="small"
+							color="danger"
+							role="alert"
+							data-test-id="mfa-code-error"
+						>
+							{{ error }}
+						</N8nText>
+					</div>
+				</N8nInputLabel>
+			</div>
+		</N8nDialogBody>
 		<N8nDialogFooter>
 			<N8nButton
 				variant="outline"

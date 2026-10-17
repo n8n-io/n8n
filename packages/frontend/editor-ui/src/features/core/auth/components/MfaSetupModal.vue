@@ -18,6 +18,7 @@ import router from '@/app/router';
 import {
 	N8nButton,
 	N8nDialog,
+	N8nDialogBody,
 	N8nDialogDescription,
 	N8nDialogFooter,
 	N8nIcon,
@@ -299,111 +300,115 @@ onBeforeUnmount(() => clearTimeout(copyFeedbackTimer));
 				@after-enter="onStepEntered"
 			>
 				<div v-if="!showRecoveryCodes" key="setup">
-					<div :class="$style.setup">
-						<div :class="$style.scan">
-							<div :class="$style.scanHeader">
-								<N8nText tag="h3" size="medium" bold>
-									{{ i18n.baseText('mfa.setup.step1.instruction1.title') }}
-								</N8nText>
-								<N8nText tag="p" size="small" color="text-light">
-									{{ i18n.baseText('mfa.setup.step1.instruction1.description') }}
-								</N8nText>
-							</div>
-							<div :class="[$style.inset, $style.qrCode]">
-								<!-- The QR code sharpens into place while the skeleton blurs away, so it reads as the code resolving instead of popping in. -->
-								<div :class="$style.qrFrame">
-									<Transition
-										:enter-active-class="$style.swapEnterActive"
-										:leave-active-class="$style.qrLoadingLeaveActive"
-									>
-										<N8nLoading
-											v-if="loadingQrCode"
-											variant="rect"
-											:class="$style.qrLoading"
-											:style="{ width: `${QR_CODE_SIZE}px`, height: `${QR_CODE_SIZE}px` }"
-										/>
-										<QrcodeVue
-											v-else
-											:value="qrCode"
-											:size="QR_CODE_SIZE"
-											level="H"
-											render-as="svg"
-										/>
-									</Transition>
+					<N8nDialogBody>
+						<div :class="$style.setup">
+							<div :class="$style.scan">
+								<div :class="$style.scanHeader">
+									<N8nText tag="h3" size="medium" bold>
+										{{ i18n.baseText('mfa.setup.step1.instruction1.title') }}
+									</N8nText>
+									<N8nText tag="p" size="small" color="text-light">
+										{{ i18n.baseText('mfa.setup.step1.instruction1.description') }}
+									</N8nText>
 								</div>
-								<!-- The row keeps its height while the key loads, so the dialog doesn't grow when it arrives. -->
-								<div :class="$style.secret">
-									<Transition :enter-active-class="$style.swapEnterActive">
-										<div v-if="secret" :class="$style.secretContent">
-											<span
-												:class="$style.secretKey"
-												data-test-id="mfa-secret"
-												@click="onSecretClick"
-											>
-												<span v-for="(group, index) in secretGroups" :key="index">{{ group }}</span>
-											</span>
-											<N8nTooltip :content="secretCopyLabel">
-												<N8nButton
-													variant="ghost"
-													size="small"
-													icon-only
-													:aria-label="secretCopyLabel"
-													data-test-id="mfa-secret-button"
-													@click="copySecret"
+								<div :class="[$style.inset, $style.qrCode]">
+									<!-- The QR code sharpens into place while the skeleton blurs away, so it reads as the code resolving instead of popping in. -->
+									<div :class="$style.qrFrame">
+										<Transition
+											:enter-active-class="$style.swapEnterActive"
+											:leave-active-class="$style.qrLoadingLeaveActive"
+										>
+											<N8nLoading
+												v-if="loadingQrCode"
+												variant="rect"
+												:class="$style.qrLoading"
+												:style="{ width: `${QR_CODE_SIZE}px`, height: `${QR_CODE_SIZE}px` }"
+											/>
+											<QrcodeVue
+												v-else
+												:value="qrCode"
+												:size="QR_CODE_SIZE"
+												level="H"
+												render-as="svg"
+											/>
+										</Transition>
+									</div>
+									<!-- The row keeps its height while the key loads, so the dialog doesn't grow when it arrives. -->
+									<div :class="$style.secret">
+										<Transition :enter-active-class="$style.swapEnterActive">
+											<div v-if="secret" :class="$style.secretContent">
+												<span
+													:class="$style.secretKey"
+													data-test-id="mfa-secret"
+													@click="onSecretClick"
 												>
-													<template #icon>
-														<span :class="$style.iconSwap">
-															<Transition
-																:enter-active-class="$style.swapEnterActive"
-																:leave-active-class="$style.swapLeaveActive"
-															>
-																<N8nIcon
-																	v-if="copiedTarget === 'secret'"
-																	key="check"
-																	icon="check"
-																	size="small"
-																/>
-																<N8nIcon v-else key="copy" icon="copy" size="small" />
-															</Transition>
-														</span>
-													</template>
-												</N8nButton>
-											</N8nTooltip>
-										</div>
-									</Transition>
+													<span v-for="(group, index) in secretGroups" :key="index">{{
+														group
+													}}</span>
+												</span>
+												<N8nTooltip :content="secretCopyLabel">
+													<N8nButton
+														variant="ghost"
+														size="small"
+														icon-only
+														:aria-label="secretCopyLabel"
+														data-test-id="mfa-secret-button"
+														@click="copySecret"
+													>
+														<template #icon>
+															<span :class="$style.iconSwap">
+																<Transition
+																	:enter-active-class="$style.swapEnterActive"
+																	:leave-active-class="$style.swapLeaveActive"
+																>
+																	<N8nIcon
+																		v-if="copiedTarget === 'secret'"
+																		key="check"
+																		icon="check"
+																		size="small"
+																	/>
+																	<N8nIcon v-else key="copy" icon="copy" size="small" />
+																</Transition>
+															</span>
+														</template>
+													</N8nButton>
+												</N8nTooltip>
+											</div>
+										</Transition>
+									</div>
 								</div>
 							</div>
+							<div :class="[$style.code, { [$style.codeInvalid]: codeError }]">
+								<N8nInputLabel
+									input-name="mfa-setup-code"
+									:label="i18n.baseText('mfa.setup.step1.instruction2.title')"
+								>
+									<N8nInput
+										id="mfa-setup-code"
+										ref="codeInput"
+										v-model="authenticatorCode"
+										size="medium"
+										:maxlength="MFA_AUTHENTICATION_CODE_INPUT_MAX_LENGTH"
+										autocomplete="one-time-code"
+										:placeholder="i18n.baseText('mfa.setup.step1.input.placeholder')"
+										:aria-invalid="Boolean(codeError)"
+										:aria-describedby="codeError ? 'mfa-setup-code-error' : undefined"
+										data-test-id="mfa-token-input"
+										@keydown.enter="onContinueClick"
+									/>
+								</N8nInputLabel>
+								<N8nText
+									v-if="codeError"
+									id="mfa-setup-code-error"
+									size="small"
+									color="danger"
+									role="alert"
+								>
+									{{ codeError }}
+								</N8nText>
+							</div>
 						</div>
-						<div :class="[$style.code, { [$style.codeInvalid]: codeError }]">
-							<N8nInputLabel
-								input-name="mfa-setup-code"
-								:label="i18n.baseText('mfa.setup.step1.instruction2.title')"
-							>
-								<N8nInput
-									id="mfa-setup-code"
-									ref="codeInput"
-									v-model="authenticatorCode"
-									size="medium"
-									:maxlength="MFA_AUTHENTICATION_CODE_INPUT_MAX_LENGTH"
-									autocomplete="one-time-code"
-									:placeholder="i18n.baseText('mfa.setup.step1.input.placeholder')"
-									:aria-invalid="Boolean(codeError)"
-									:aria-describedby="codeError ? 'mfa-setup-code-error' : undefined"
-									data-test-id="mfa-token-input"
-									@keydown.enter="onContinueClick"
-								/>
-							</N8nInputLabel>
-							<N8nText
-								v-if="codeError"
-								id="mfa-setup-code-error"
-								size="small"
-								color="danger"
-								role="alert"
-							>
-								{{ codeError }}
-							</N8nText>
-						</div>
-					</div>
+					</N8nDialogBody>
 					<N8nDialogFooter>
 						<N8nButton
 							:disabled="!isCodeComplete"
@@ -417,12 +422,14 @@ onBeforeUnmount(() => clearTimeout(copyFeedbackTimer));
 				</div>
 
 				<div v-else key="recovery" ref="recoveryStep" :class="$style.recovery">
-					<N8nDialogDescription>
-						{{ i18n.baseText('mfa.setup.step2.description') }}
-					</N8nDialogDescription>
-					<ul :class="[$style.inset, $style.recoveryCodes]" data-test-id="mfa-recovery-codes">
-						<li v-for="recoveryCode in recoveryCodes" :key="recoveryCode">{{ recoveryCode }}</li>
-					</ul>
+					<N8nDialogBody>
+						<N8nDialogDescription>
+							{{ i18n.baseText('mfa.setup.step2.description') }}
+						</N8nDialogDescription>
+						<ul :class="[$style.inset, $style.recoveryCodes]" data-test-id="mfa-recovery-codes">
+							<li v-for="recoveryCode in recoveryCodes" :key="recoveryCode">{{ recoveryCode }}</li>
+						</ul>
+					</N8nDialogBody>
 					<N8nDialogFooter>
 						<div :class="$style.saveActions">
 							<N8nButton

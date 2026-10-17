@@ -178,7 +178,7 @@ describe('AgentSkillModal', () => {
 			'data-size',
 			'fit',
 		);
-		expect(container.querySelector('[data-testid="agent-skill-modal"]')).toHaveAttribute(
+		expect(container.querySelector('[data-testid="agent-skill-modal"]')).not.toHaveAttribute(
 			'data-body-flush',
 			'true',
 		);

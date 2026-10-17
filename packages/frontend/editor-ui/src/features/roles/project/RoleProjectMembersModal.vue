@@ -4,6 +4,7 @@ import { useRolesStore } from '@n8n/stores/roles.store';
 import {
 	N8nButton,
 	N8nDialog,
+	N8nDialogBody,
 	N8nDialogFooter,
 	N8nDialogHeader,
 	N8nDialogTitle,
@@ -85,7 +86,7 @@ function navigateToProjectSettings() {
 			</N8nDialogTitle>
 		</N8nDialogHeader>
 
-		<div :class="$style.content">
+		<N8nDialogBody :class="$style.body">
 			<N8nLoading v-if="isLoading" :rows="3" />
 			<div v-else :class="$style.memberList">
 				<div v-for="member in membersData.members" :key="member.userId" :class="$style.memberRow">
@@ -99,7 +100,7 @@ function navigateToProjectSettings() {
 					</N8nText>
 				</div>
 			</div>
-		</div>
+		</N8nDialogBody>
 
 		<N8nDialogFooter>
 			<N8nButton variant="outline" @click="emit('update:open', false)">
@@ -113,10 +114,8 @@ function navigateToProjectSettings() {
 </template>
 
 <style lang="css" module>
-.content {
-	margin-top: var(--spacing--sm);
+.body {
 	max-height: 400px;
-	overflow-y: auto;
 }
 
 .memberList {
