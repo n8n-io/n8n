@@ -26,6 +26,42 @@ describe('Data Transformation Functions', () => {
 			});
 		});
 
+		describe('.isBlank', () => {
+			test('should return true for whitespace-only string', () => {
+				expect(evaluate('={{"   ".isBlank()}}')).toEqual(true);
+			});
+
+			test('should return true for empty string', () => {
+				expect(evaluate('={{"".isBlank()}}')).toEqual(true);
+			});
+
+			test('should return false for non-blank string', () => {
+				expect(evaluate('={{"hello".isBlank()}}')).toEqual(false);
+			});
+
+			test('should return false for whitespace-padded string', () => {
+				expect(evaluate('={{"  hello  ".isBlank()}}')).toEqual(false);
+			});
+		});
+
+		describe('.isNotBlank', () => {
+			test('should return true for non-blank string', () => {
+				expect(evaluate('={{"hello".isNotBlank()}}')).toEqual(true);
+			});
+
+			test('should return true for whitespace-padded string', () => {
+				expect(evaluate('={{"  hello  ".isNotBlank()}}')).toEqual(true);
+			});
+
+			test('should return false for whitespace-only string', () => {
+				expect(evaluate('={{"   ".isNotBlank()}}')).toEqual(false);
+			});
+
+			test('should return false for empty string', () => {
+				expect(evaluate('={{"".isNotBlank()}}')).toEqual(false);
+			});
+		});
+
 		test('.length should return the string length', () => {
 			expect(evaluate('={{"String".length()}}')).toEqual(6);
 		});
