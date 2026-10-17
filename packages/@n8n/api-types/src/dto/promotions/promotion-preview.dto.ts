@@ -94,9 +94,8 @@ const resourceDetailSchema = <Type extends PromotionResourceType, Content extend
 		key: z.string(),
 		type: z.literal(type),
 		/**
-		 * The resource file content on each side, as stored in the package. `null` when the side
-		 * has no file, or when its file does not match the package format. In the second case,
-		 * the revision is set.
+		 * The content of the resource file on each side. `null` when the side has no file, or
+		 * when its file does not match the package format. In the second case, the revision is set.
 		 */
 		before: content.nullable(),
 		after: content.nullable(),
