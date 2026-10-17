@@ -27,6 +27,7 @@ export const agentConfigValidationIssueCodeSchema = z.enum([
 	'incompatible_credential',
 	'missing_reference',
 	'incompatible_reference',
+	'restricted_node_type',
 ]);
 export type AgentConfigValidationIssueCode = z.infer<typeof agentConfigValidationIssueCodeSchema>;
 
@@ -51,10 +52,22 @@ export const agentConfigValidationIssueSchema = z.object({
 	/**
 	 * Stable, machine-readable sub-reason for `incompatible_reference` issues
 	 * (e.g. `'incompatible_nodes'`, `'no_supported_trigger'`, `'not_published'`
-	 * for workflow tools). Absent when the code itself is specific enough.
+	 * for workflow tools), and for `restricted_node_type` the level that denied
+	 * the type (`'restricted_by_instance'`, `'restricted_by_project'`), absent
+	 * when the level is unknown. `'restricted_by_inline_tool'` instead means the
+	 * entry itself is allowed and embeds an agent that holds a denied type.
+	 * Values are qualified by their code because frontends resolve this field
+	 * before the code.
 	 * Frontends map this to a reason-specific i18n key; never display it raw.
 	 */
 	reason: z.string().optional(),
+	/**
+	 * What a policy named, for `restricted_node_type`: the denied node type, which is not always
+	 * the type the entry itself runs as. An MCP server is denied as the MCP client while its own
+	 * registry type stays allowed, and a tool can be denied by what its inline agent holds.
+	 * Frontends resolve it to a display name; never show it raw.
+	 */
+	subject: z.string().optional(),
 });
 export type AgentConfigValidationIssue = z.infer<typeof agentConfigValidationIssueSchema>;
 

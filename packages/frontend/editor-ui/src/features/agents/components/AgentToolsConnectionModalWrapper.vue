@@ -57,6 +57,7 @@ import {
 	removePreviewToken,
 } from '@/features/shared/nodeCreator/nodeCreator.utils';
 import { useRestrictedNodeWarning } from '@/features/shared/nodeCreator/composables/useRestrictedNodeWarning';
+import { inlineAgentToolTypes } from '../utils/inlineAgentToolTypes';
 import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
 import type { IWorkflowDb } from '@/Interface';
 import ToolsConnectionModal from '@/features/shared/toolsConnection/ToolsConnectionModal.vue';
@@ -323,6 +324,10 @@ onMounted(() => {
 		void loadRegistryCatalog();
 		void preloadCredentials();
 	}
+	// The builder loads the policy once and keeps it, so a policy that changed since then would
+	// still offer a blocked type here and the save would be refused. Refetch on open: this is the
+	// one place where the verdicts decide what the user may pick.
+	void typeAvailabilityPoliciesStore.reload();
 	// Same catalog load the canvas uses for verified community previews.
 	void nodeTypesStore.fetchCommunityNodePreviews();
 	// Config gates which tools are eligible for the n8n Connect section; the
@@ -742,9 +747,19 @@ function connectedToolItem(entry: WorkingToolEntry): ToolConnectionItem | null {
 		iconSource: toToolIconSource(nodeType),
 		credentials: credentialsFromNode(node),
 		verified: isVerifiedCommunityTool(nodeType),
-		restriction: getNodeItemRestriction(nodeType.name),
+		// A connected tool can embed an inline agent, so its own type is not the whole answer.
+		restriction: getNodeItemRestriction(nodeType.name) ?? embeddedRestriction(node),
 	};
 	return item;
+}
+
+/** The verdict of the first denied type an inline agent inside this node would run. */
+function embeddedRestriction(node: INode): ReturnType<typeof getNodeItemRestriction> {
+	for (const type of inlineAgentToolTypes(node.type, node.parameters)) {
+		const restriction = getNodeItemRestriction(type);
+		if (restriction) return restriction;
+	}
+	return undefined;
 }
 
 function connectedMcpItem(entry: WorkingMcpServerEntry): ToolConnectionItem | null {

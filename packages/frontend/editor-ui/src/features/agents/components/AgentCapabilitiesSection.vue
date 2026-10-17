@@ -4,7 +4,11 @@ import { AI_MCP_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { useToast } from '@n8n/composables/useToast';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import type { AgentConfigValidationIssue, AgentJsonTaskConfig } from '@n8n/api-types';
+import type {
+	AgentConfigValidationIssue,
+	AgentJsonTaskConfig,
+	NodeTypeAvailabilityScope,
+} from '@n8n/api-types';
 import {
 	N8nDropdownMenu,
 	N8nDropdownMenuItem,
@@ -24,7 +28,8 @@ import { useAgentCapabilityIssueMessages } from '../composables/useAgentCapabili
 import { toolRefToNode } from '../composables/useAgentToolRefAdapter';
 import { AGENT_SUB_AGENTS_MODAL_KEY } from '../constants';
 import { formatToolNameForDisplay } from '../utils/toolDisplayName';
-import { isWarningIssue } from '../utils/validationIssues';
+import { inlineAgentToolTypes } from '../utils/inlineAgentToolTypes';
+import { isRestrictedIssue, isWarningIssue, restrictionScope } from '../utils/validationIssues';
 import type {
 	ToolMenuItem,
 	ToolOpenTarget,
@@ -34,6 +39,12 @@ import type {
 	SingleToolRow,
 } from './AgentCapabilitiesSection.types';
 import { buildToolRows } from './AgentCapabilitiesSection.utils';
+import {
+	describeAgentToolRestriction,
+	getNodeTypeRestriction,
+	isNodeTypeRestricted,
+} from '@n8n/frontend-module-type-availability-policies';
+
 import AgentChipButton from './AgentChipButton.vue';
 import AgentChipRow from './AgentChipRow.vue';
 import AgentItemContextMenu from './AgentItemContextMenu.vue';
@@ -156,6 +167,108 @@ const mcpServerIssueMessages = computed(() =>
 const subAgentIssueMessages = computed(() =>
 	groupIssueMessages('subAgent', (issue) => issue.capability.id),
 );
+
+/**
+ * The restricted capabilities, from the validation issues: the backend reports what its own
+ * publish gate would refuse, so the reported lock and the blocked Publish agree. Tools key on
+ * their position, MCP servers on their name.
+ *
+ * The issues go empty while an edit is unsaved, because the builder drops the stale result. The
+ * store verdict covers that window, so a lock does not blink off mid-edit — see `toolRestriction`.
+ */
+const restrictedTools = computed(() => {
+	const found = new Map<number, AgentConfigValidationIssue>();
+	for (const issue of props.validationIssues) {
+		if (!isRestrictedIssue(issue) || issue.capability.kind !== 'tool') continue;
+		if (issue.capability.index === undefined) continue;
+		found.set(issue.capability.index, issue);
+	}
+	return found;
+});
+const restrictedMcpServers = computed(() => {
+	const found = new Map<string, AgentConfigValidationIssue>();
+	for (const issue of props.validationIssues) {
+		if (!isRestrictedIssue(issue) || issue.capability.kind !== 'mcpServer') continue;
+		if (issue.capability.id === undefined) continue;
+		found.set(issue.capability.id, issue);
+	}
+	return found;
+});
+
+/** The project's own verdict, which an unsaved edit cannot invalidate. */
+function storedRestriction(entry: CapabilityToolEntry): ChipRestriction | null {
+	const nodeType = toolNodeType(entry);
+	if (nodeType) {
+		const own = getNodeTypeRestriction(nodeType.name);
+		if (own) return { restricted: true, scope: own.scope, message: '', subject: nodeType.name };
+	}
+
+	if (entry.kind === 'mcpServer' || entry.tool.type !== 'node') return null;
+	const embedded = inlineAgentToolTypes(
+		entry.tool.node.nodeType,
+		entry.tool.node.nodeParameters,
+	).some((type) => isNodeTypeRestricted(type));
+
+	return embedded
+		? {
+				restricted: true,
+				scope: undefined,
+				message: i18n.baseText('agents.builder.validation.issue.restrictedByInlineTool'),
+				subject: '',
+			}
+		: null;
+}
+
+type ChipRestriction = {
+	restricted: boolean;
+	scope: NodeTypeAvailabilityScope | undefined;
+	/** Set only when the entry itself is allowed and something it embeds is denied. */
+	message: string;
+	/** The denied node type, which the entry does not always run as. Empty when unknown. */
+	subject: string;
+};
+
+function reportedRestriction(issue: AgentConfigValidationIssue): ChipRestriction {
+	// The entry's own type is fine, so naming it in the node popover would be wrong: the lock
+	// carries plain text instead.
+	if (issue.reason === 'restricted_by_inline_tool') {
+		return {
+			restricted: true,
+			scope: undefined,
+			message: i18n.baseText('agents.builder.validation.issue.restrictedByInlineTool'),
+			subject: '',
+		};
+	}
+	return {
+		restricted: true,
+		scope: restrictionScope(issue),
+		message: '',
+		subject: issue.subject ?? '',
+	};
+}
+
+function restrictedTypeLabel(
+	restriction: ChipRestriction,
+	entry: CapabilityToolEntry,
+	nodeType = toolNodeType(entry),
+): string {
+	if (!restriction.subject) return toolTypeLabel(entry, nodeType);
+	const denied = nodeTypesStore.getNodeType(restriction.subject);
+	return denied?.displayName.replace(/ Tool$/, '') ?? restriction.subject;
+}
+
+function toolRestriction(entry: CapabilityToolEntry): ChipRestriction {
+	// A reported issue wins: it carries the verdict the publish gate itself reached.
+	const reported =
+		entry.kind === 'mcpServer'
+			? restrictedMcpServers.value.get(entry.server.name)
+			: restrictedTools.value.get(entry.index);
+	if (reported) return reportedRestriction(reported);
+
+	return (
+		storedRestriction(entry) ?? { restricted: false, scope: undefined, message: '', subject: '' }
+	);
+}
 
 async function ensureSubAgentNamesLoaded() {
 	const agents = await ensureProjectAgentsLoaded();
@@ -289,6 +402,7 @@ function buildCapabilityToolRows(entries: CapabilityToolEntry[]): ToolRow[] {
 				entry.kind === 'tool' && entry.tool.enabled !== false
 					? (toolWarningMessages.value.get(entry.index) ?? [])
 					: [];
+			const restriction = toolRestriction(entry);
 			return {
 				index: entry.index,
 				enabled: entry.kind === 'mcpServer' || entry.tool.enabled !== false,
@@ -302,6 +416,11 @@ function buildCapabilityToolRows(entries: CapabilityToolEntry[]): ToolRow[] {
 				invalidReasons: reasons,
 				warning: warningReasons.length > 0,
 				warningReasons,
+				restricted: restriction.restricted,
+				restrictedScope: restriction.scope,
+				restrictedMessage: restriction.message,
+				// Name the type the policy denied; it is not always the one this entry displays.
+				restrictedTypeLabel: restrictedTypeLabel(restriction, entry, nodeType),
 			};
 		}),
 	);
@@ -367,6 +486,12 @@ function fromTargetKey(key: string): ToolOpenTarget | null {
 	};
 }
 
+function menuRestrictionText(data: ToolMenuItem['data']): string {
+	if (!data) return '';
+	if (data.restrictedMessage) return data.restrictedMessage;
+	return describeAgentToolRestriction(data.restrictedTypeLabel, data.restrictedScope);
+}
+
 function toolMenuItems(tool: ToolRow): ToolMenuItem[] {
 	if (!tool.isGrouped) return [];
 
@@ -380,6 +505,10 @@ function toolMenuItems(tool: ToolRow): ToolMenuItem[] {
 			openTarget: item.openTarget,
 			invalid: item.invalid,
 			invalidReasons: item.invalidReasons,
+			restricted: item.restricted,
+			restrictedScope: item.restrictedScope,
+			restrictedTypeLabel: item.restrictedTypeLabel,
+			restrictedMessage: item.restrictedMessage,
 		},
 	}));
 }
@@ -545,6 +674,10 @@ function openExistingSubAgentModal(subAgent: {
 										:invalid-reasons="tool.invalidReasons"
 										:warning="tool.warning"
 										:warning-reasons="tool.warningReasons"
+										:restricted="tool.restricted"
+										:restricted-scope="tool.restrictedScope"
+										:restricted-type-label="tool.restrictedTypeLabel"
+										:restricted-message="tool.restrictedMessage"
 										:disabled="props.disabled"
 										:class="$style.capabilityChip"
 										data-testid="agent-capabilities-tool-row"
@@ -587,6 +720,10 @@ function openExistingSubAgentModal(subAgent: {
 													:text="i18n.baseText('agents.builder.capabilities.deactivated')"
 													:clickable="false"
 												/>
+												<N8nTooltip v-else-if="item.data?.restricted" placement="left">
+													<N8nIcon icon="lock" size="xsmall" data-test-id="node-restricted-icon" />
+													<template #content>{{ menuRestrictionText(item.data) }}</template>
+												</N8nTooltip>
 												<N8nTooltip
 													v-else-if="item.data?.invalid"
 													:disabled="(item.data.invalidReasons ?? []).length === 0"
@@ -627,6 +764,10 @@ function openExistingSubAgentModal(subAgent: {
 								:invalid-reasons="tool.invalidReasons"
 								:warning="tool.warning"
 								:warning-reasons="tool.warningReasons"
+								:restricted="tool.restricted"
+								:restricted-scope="tool.restrictedScope"
+								:restricted-type-label="tool.restrictedTypeLabel"
+								:restricted-message="tool.restrictedMessage"
 								:disabled="props.disabled"
 								:class="$style.capabilityChip"
 								data-testid="agent-capabilities-tool-row"
@@ -645,6 +786,10 @@ function openExistingSubAgentModal(subAgent: {
 								:invalid-reasons="tool.invalidReasons"
 								:warning="tool.warning"
 								:warning-reasons="tool.warningReasons"
+								:restricted="tool.restricted"
+								:restricted-scope="tool.restrictedScope"
+								:restricted-type-label="tool.restrictedTypeLabel"
+								:restricted-message="tool.restrictedMessage"
 								:disabled="props.disabled"
 								:class="$style.capabilityChip"
 								data-testid="agent-capabilities-tool-row"

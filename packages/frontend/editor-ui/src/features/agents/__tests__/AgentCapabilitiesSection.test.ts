@@ -32,6 +32,15 @@ function createNodeType(name: string, displayName: string): SimplifiedNodeType {
 	};
 }
 
+// The store-backed fallback needs Pinia, which this suite does not mount.
+const storeRestrictions = new Map<string, { scope: 'instance' | 'project' }>();
+vi.mock('@n8n/frontend-module-type-availability-policies', () => ({
+	getNodeTypeRestriction: (name: string) => storeRestrictions.get(name) ?? null,
+	isNodeTypeRestricted: (name: string) => storeRestrictions.has(name),
+	describeAgentToolRestriction: (nodeType: string, scope?: string) =>
+		`typeAvailabilityPolicies.restrictedNode.agentTool.${scope ?? 'generic'}:${nodeType}`,
+}));
+
 vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: () => ({
 		getNodeType,
@@ -1502,5 +1511,302 @@ describe('AgentCapabilitiesSection', () => {
 			/** The project-agent list is not needed for hidden sub-agents. */
 			expect(ensureProjectAgentsLoadedSpy).not.toHaveBeenCalled();
 		});
+	});
+});
+
+describe('AgentCapabilitiesSection — restricted node types', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		storeRestrictions.clear();
+	});
+
+	const slackTool = (name: string): AgentJsonToolRef => ({
+		type: 'node',
+		name,
+		node: { nodeType: 'n8n-nodes-base.slackTool', nodeTypeVersion: 1, nodeParameters: {} },
+	});
+
+	/** The text of every rendered tooltip; a restricted chip suppresses the error one. */
+	function lockText(w: ReturnType<typeof mountSection>): string {
+		return w
+			.findAll('[data-testid="stub-tooltip-content"]')
+			.map((node) => node.text())
+			.join(' ');
+	}
+
+	const restrictedToolIssue = (index: number, reason: string) => ({
+		code: 'restricted_node_type' as const,
+		reason,
+		path: `tools.${index}.node.nodeType`,
+		capability: { kind: 'tool' as const, index, toolType: 'node' as const, id: 'Slack' },
+	});
+
+	it.each([
+		['restricted_by_instance', 'instance'],
+		['restricted_by_project', 'project'],
+	])('locks a tool chip and shows the %s scope', async (reason, scope) => {
+		getNodeType.mockReturnValue(createNodeType('n8n-nodes-base.slackTool', 'Slack Tool'));
+		const wrapper = mountSection([slackTool('send_message')], {}, null, [], [], {
+			validationIssues: [restrictedToolIssue(0, reason)],
+		});
+		await flushPromises();
+
+		expect(wrapper.find('[data-test-id="node-restricted-icon"]').exists()).toBe(true);
+		expect(lockText(wrapper)).toContain(
+			`typeAvailabilityPolicies.restrictedNode.agentTool.${scope}`,
+		);
+		expect(lockText(wrapper)).toContain('Slack');
+	});
+
+	it('dims the restricted chip', async () => {
+		getNodeType.mockReturnValue(createNodeType('n8n-nodes-base.slackTool', 'Slack Tool'));
+		const wrapper = mountSection([slackTool('send_message')], {}, null, [], [], {
+			validationIssues: [restrictedToolIssue(0, 'restricted_by_instance')],
+		});
+		await flushPromises();
+
+		const chip = wrapper.find('[data-testid="agent-capabilities-tool-row"]');
+		expect(chip.classes().some((c) => c.includes('restricted'))).toBe(true);
+	});
+
+	it('shows the lock alone, without the error icon of an invalid chip', async () => {
+		getNodeType.mockReturnValue(createNodeType('n8n-nodes-base.slackTool', 'Slack Tool'));
+		const wrapper = mountSection([slackTool('send_message')], {}, null, [], [], {
+			validationIssues: [restrictedToolIssue(0, 'restricted_by_instance')],
+		});
+		await flushPromises();
+
+		expect(wrapper.find('[data-test-id="node-restricted-icon"]').exists()).toBe(true);
+		expect(wrapper.find('[data-testid="agent-chip-invalid-icon"]').exists()).toBe(false);
+	});
+
+	it('leaves an unrestricted tool chip unlocked', async () => {
+		getNodeType.mockReturnValue(createNodeType('n8n-nodes-base.slackTool', 'Slack Tool'));
+		const wrapper = mountSection([slackTool('send_message')], {}, null, [], [], {
+			validationIssues: [],
+		});
+		await flushPromises();
+
+		expect(wrapper.find('[data-test-id="node-restricted-icon"]').exists()).toBe(false);
+	});
+
+	it('locks the grouped chip when the tools of a restricted type are grouped', async () => {
+		getNodeType.mockReturnValue(createNodeType('n8n-nodes-base.slackTool', 'Slack Tool'));
+		const wrapper = mountSection(
+			[slackTool('send_message'), slackTool('read_messages')],
+			{},
+			null,
+			[],
+			[],
+			{
+				validationIssues: [
+					restrictedToolIssue(0, 'restricted_by_instance'),
+					restrictedToolIssue(1, 'restricted_by_instance'),
+				],
+			},
+		);
+		await flushPromises();
+
+		expect(wrapper.findAll('[data-testid="agent-capabilities-tool-row"]')).toHaveLength(1);
+		expect(wrapper.findAll('[data-test-id="node-restricted-icon"]')).toHaveLength(1);
+	});
+
+	it('locks the restricted member rows of an open group menu', async () => {
+		getNodeType.mockReturnValue(createNodeType('n8n-nodes-base.slackTool', 'Slack Tool'));
+		mountSection(
+			[slackTool('send_message'), slackTool('read_messages')],
+			{},
+			null,
+			[],
+			[],
+			{
+				validationIssues: [
+					restrictedToolIssue(0, 'restricted_by_instance'),
+					restrictedToolIssue(1, 'restricted_by_instance'),
+				],
+			},
+			document.body,
+		);
+		await flushPromises();
+
+		await fireEvent.click(screen.getByRole('button', { name: /2 Slack/ }));
+		await flushPromises();
+
+		// The menu teleports out of the component root, so assert against the document.
+		// One lock on the group chip plus one on each member row, and no error icon anywhere.
+		expect(document.querySelectorAll('[data-test-id="node-restricted-icon"]')).toHaveLength(3);
+		expect(
+			document.querySelectorAll('[data-testid="agent-capabilities-tool-menu-invalid-icon"]'),
+		).toHaveLength(0);
+	});
+
+	it('does not open the tool when the lock itself is clicked', async () => {
+		getNodeType.mockReturnValue(createNodeType('n8n-nodes-base.slackTool', 'Slack Tool'));
+		const wrapper = mountSection([slackTool('send_message')], {}, null, [], [], {
+			validationIssues: [restrictedToolIssue(0, 'restricted_by_instance')],
+		});
+		await flushPromises();
+
+		await wrapper.find('[data-test-id="node-restricted-icon"]').trigger('click');
+
+		expect(wrapper.emitted('open-tool')).toBeUndefined();
+	});
+
+	it('keeps the lock from the policy store while an unsaved edit clears the issues', async () => {
+		getNodeType.mockReturnValue(createNodeType('n8n-nodes-base.slackTool', 'Slack Tool'));
+		storeRestrictions.set('n8n-nodes-base.slackTool', { scope: 'project' });
+		// No issues: the builder drops the stale result as soon as the draft is edited.
+		const wrapper = mountSection([slackTool('send_message')], {}, null, [], [], {
+			validationIssues: [],
+		});
+		await flushPromises();
+
+		expect(wrapper.find('[data-test-id="node-restricted-icon"]').exists()).toBe(true);
+		expect(lockText(wrapper)).toContain(
+			'typeAvailabilityPolicies.restrictedNode.agentTool.project',
+		);
+	});
+
+	it('prefers the scope the publish gate reported over the store verdict', async () => {
+		getNodeType.mockReturnValue(createNodeType('n8n-nodes-base.slackTool', 'Slack Tool'));
+		storeRestrictions.set('n8n-nodes-base.slackTool', { scope: 'project' });
+		const wrapper = mountSection([slackTool('send_message')], {}, null, [], [], {
+			validationIssues: [restrictedToolIssue(0, 'restricted_by_instance')],
+		});
+		await flushPromises();
+
+		expect(lockText(wrapper)).toContain(
+			'typeAvailabilityPolicies.restrictedNode.agentTool.instance',
+		);
+	});
+
+	it('labels an inline restriction with plain text, not the node popover', async () => {
+		getNodeType.mockReturnValue(createNodeType('n8n-nodes-base.slackTool', 'Slack Tool'));
+		const wrapper = mountSection([slackTool('ask_billing_agent')], {}, null, [], [], {
+			validationIssues: [restrictedToolIssue(0, 'restricted_by_inline_tool')],
+		});
+		await flushPromises();
+
+		// The embedded reason, not a scope line that would claim this tool's own type is denied.
+		expect(wrapper.find('[data-test-id="node-restricted-icon"]').exists()).toBe(true);
+		expect(lockText(wrapper)).toContain('agents.builder.validation.issue.restrictedByInlineTool');
+		expect(lockText(wrapper)).not.toContain('typeAvailabilityPolicies.restrictedNode.agentTool');
+	});
+
+	it('keeps a restricted tool out of the group of its allowed same-type siblings', async () => {
+		getNodeType.mockReturnValue(createNodeType('n8n-nodes-base.slackTool', 'Slack Tool'));
+		// Same node type, but only the first embeds something denied.
+		const wrapper = mountSection(
+			[slackTool('ask_billing_agent'), slackTool('message_an_agent')],
+			{},
+			null,
+			[],
+			[],
+			{ validationIssues: [restrictedToolIssue(0, 'restricted_by_inline_tool')] },
+		);
+		await flushPromises();
+
+		const chips = wrapper.findAll('[data-testid="agent-capabilities-tool-row"]');
+		expect(chips).toHaveLength(2);
+		expect(
+			chips.filter((c) => c.find('[data-test-id="node-restricted-icon"]').exists()),
+		).toHaveLength(1);
+	});
+
+	it('keeps an inline lock while an unsaved edit clears the issues', async () => {
+		getNodeType.mockReturnValue(
+			createNodeType('n8n-nodes-base.messageAnAgentTool', 'Message an Agent Tool'),
+		);
+		// The embedding tool is allowed; only what it holds is denied.
+		storeRestrictions.set('n8n-nodes-base.mySql', { scope: 'instance' });
+		const embedding: AgentJsonToolRef = {
+			type: 'node',
+			name: 'ask_billing_agent',
+			node: {
+				nodeType: 'n8n-nodes-base.messageAnAgentTool',
+				nodeTypeVersion: 1,
+				nodeParameters: {
+					agentSource: 'inline',
+					inlineAgent: {
+						config: {
+							tools: [
+								{
+									type: 'node',
+									name: 'inline_query',
+									node: { nodeType: 'n8n-nodes-base.mySql', nodeParameters: {} },
+								},
+							],
+						},
+					},
+				},
+			},
+		};
+		const wrapper = mountSection([embedding], {}, null, [], [], { validationIssues: [] });
+		await flushPromises();
+
+		expect(wrapper.find('[data-test-id="node-restricted-icon"]').exists()).toBe(true);
+		expect(lockText(wrapper)).toContain('agents.builder.validation.issue.restrictedByInlineTool');
+	});
+
+	it('names the denied type, not the one the entry displays', async () => {
+		// A registry MCP server stays allowed on its own type and is denied as the MCP client.
+		getNodeType.mockImplementation((name: string) =>
+			name === '@n8n/n8n-nodes-langchain.mcpClientTool'
+				? createNodeType(name, 'MCP Client Tool')
+				: createNodeType('@n8n/mcp-registry.github', 'GitHub MCP'),
+		);
+		const config = configWithMcpServers([
+			{
+				name: 'GitHub',
+				url: 'https://mcp.example.com',
+				transport: 'streamableHttp',
+				authentication: 'none',
+				metadata: { nodeTypeName: '@n8n/mcp-registry.github' },
+			},
+		]);
+		const wrapper = mountSection([], {}, config, [], [], {
+			validationIssues: [
+				{
+					code: 'restricted_node_type',
+					reason: 'restricted_by_instance',
+					path: 'mcpServers.0',
+					capability: { kind: 'mcpServer', id: 'GitHub', index: 0 },
+					subject: '@n8n/n8n-nodes-langchain.mcpClientTool',
+				},
+			],
+		});
+		await flushPromises();
+
+		expect(lockText(wrapper)).toContain('MCP Client');
+	});
+
+	it('locks an MCP server chip whose node type a policy denies', async () => {
+		getNodeType.mockReturnValue(
+			createNodeType('@n8n/n8n-nodes-langchain.mcpClientTool', 'MCP Client Tool'),
+		);
+		const config = configWithMcpServers([
+			{
+				name: 'Docs',
+				url: 'https://mcp.example.com',
+				transport: 'streamableHttp',
+				authentication: 'none',
+			},
+		]);
+		const wrapper = mountSection([], {}, config, [], [], {
+			validationIssues: [
+				{
+					code: 'restricted_node_type',
+					reason: 'restricted_by_project',
+					path: 'mcpServers.0',
+					capability: { kind: 'mcpServer', id: 'Docs', index: 0 },
+				},
+			],
+		});
+		await flushPromises();
+
+		expect(wrapper.find('[data-test-id="node-restricted-icon"]').exists()).toBe(true);
+		expect(lockText(wrapper)).toContain(
+			'typeAvailabilityPolicies.restrictedNode.agentTool.project',
+		);
 	});
 });

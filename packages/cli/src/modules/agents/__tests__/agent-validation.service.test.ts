@@ -1,6 +1,7 @@
 import type { CredentialProvider } from '@n8n/agents';
 import { AI_GATEWAY_MANAGED_TAG, type AgentJsonConfig } from '@n8n/api-types';
 import type { TransactionRunner, WorkflowRepository } from '@n8n/db';
+import type { PolicyViolation } from '@n8n/decorators';
 import { mock } from 'vitest-mock-extended';
 
 import type { NodeTypes } from '@/node-types';
@@ -8,6 +9,7 @@ import type { AiGatewayService } from '@/services/ai-gateway.service';
 
 import type { AgentSkillsService } from '../agent-skills.service';
 import { AgentDefinitionService } from '../agent-definition.service';
+import type { AgentPolicyService } from '../agent-policy.service';
 import { AgentValidationService } from '../agent-validation.service';
 import type { Agent } from '../entities/agent.entity';
 import type { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
@@ -80,6 +82,8 @@ function makeService() {
 	const chatIntegrationRegistry = mock<ChatIntegrationRegistry>();
 	chatIntegrationRegistry.get.mockReturnValue(undefined);
 	const aiGatewayService = mock<AiGatewayService>();
+	const agentPolicyService = mock<AgentPolicyService>();
+	agentPolicyService.evaluatePublish.mockResolvedValue({ violations: [] });
 	return {
 		service: new AgentValidationService(
 			agentRepository,
@@ -95,6 +99,7 @@ function makeService() {
 			chatIntegrationRegistry,
 			aiGatewayService,
 			skillRefs,
+			agentPolicyService,
 		),
 		skillRefs,
 		agentRepository,
@@ -105,6 +110,7 @@ function makeService() {
 		workflowRepository,
 		chatIntegrationRegistry,
 		aiGatewayService,
+		agentPolicyService,
 	};
 }
 
@@ -1604,5 +1610,288 @@ describe('AgentValidationService — validateAgentEntityConfiguration', () => {
 		);
 		expect(agentRepository.findByIdAndProjectId).not.toHaveBeenCalled();
 		expect(agentTaskRepository.findByAgentId).not.toHaveBeenCalled();
+	});
+});
+
+describe('AgentValidationService — restricted node types', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	// A `…Tool` type resolves to itself, so the policed type is the configured one.
+	const slackTool = {
+		type: 'node',
+		name: 'Post message',
+		node: { nodeType: 'n8n-nodes-base.slackTool', nodeTypeVersion: 1, nodeParameters: {} },
+	} as const;
+
+	const deny = (subject: string, scope?: string): PolicyViolation => ({
+		kind: 'node-type-unavailable',
+		checkId: 'node-type-availability',
+		message: `Node type "${subject}" is blocked by a policy`,
+		subject,
+		subjectType: 'nodeType',
+		...(scope === undefined ? {} : { scope }),
+	});
+
+	function setUpDenied(config: AgentJsonConfig, violations: PolicyViolation[]) {
+		const made = makeService();
+		made.agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent(config));
+		made.agentPolicyService.evaluatePublish.mockResolvedValue({ violations });
+		return made;
+	}
+
+	it.each([
+		['instance', 'restricted_by_instance'],
+		['project', 'restricted_by_project'],
+	])('reports a tool denied at the %s level with its scope', async (scope, reason) => {
+		const { service } = setUpDenied({ ...runnableConfig, tools: [slackTool] }, [
+			deny('n8n-nodes-base.slackTool', scope),
+		]);
+
+		const result = await service.validateAgentConfiguration(
+			agentId,
+			projectId,
+			makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),
+		);
+
+		expect(result.status).toBe('invalid');
+		expect(result.issues).toContainEqual({
+			code: 'restricted_node_type',
+			path: 'tools.0.node.nodeType',
+			capability: { kind: 'tool', id: 'Post message', index: 0, toolType: 'node' },
+			reason,
+			subject: 'n8n-nodes-base.slackTool',
+		});
+	});
+
+	it('reports no scope when the policy does not name one', async () => {
+		const { service } = setUpDenied({ ...runnableConfig, tools: [slackTool] }, [
+			deny('n8n-nodes-base.slackTool'),
+		]);
+
+		const result = await service.validateAgentConfiguration(
+			agentId,
+			projectId,
+			makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),
+		);
+
+		expect(result.issues).toContainEqual({
+			code: 'restricted_node_type',
+			path: 'tools.0.node.nodeType',
+			capability: { kind: 'tool', id: 'Post message', index: 0, toolType: 'node' },
+			subject: 'n8n-nodes-base.slackTool',
+		});
+	});
+
+	it.each(['runtime', 'publish'] as const)('reports the issue in the %s scope', async (scope) => {
+		const { service } = setUpDenied({ ...runnableConfig, tools: [slackTool] }, [
+			deny('n8n-nodes-base.slackTool', 'instance'),
+		]);
+
+		const result = await service.validateAgentConfiguration(
+			agentId,
+			projectId,
+			makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),
+			scope,
+		);
+
+		expect(result.issues).toContainEqual(
+			expect.objectContaining({ code: 'restricted_node_type', path: 'tools.0.node.nodeType' }),
+		);
+	});
+
+	it('reports a disabled tool too, because the publish gate does not read the enabled flag', async () => {
+		const { service } = setUpDenied(
+			{ ...runnableConfig, tools: [{ ...slackTool, enabled: false }] },
+			[deny('n8n-nodes-base.slackTool', 'instance')],
+		);
+
+		const result = await service.validateAgentConfiguration(
+			agentId,
+			projectId,
+			makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),
+		);
+
+		expect(result.issues).toContainEqual(
+			expect.objectContaining({ code: 'restricted_node_type', path: 'tools.0.node.nodeType' }),
+		);
+	});
+
+	it('reports only the restriction for a tool the agent cannot use at all', async () => {
+		const { service, nodeTypes } = setUpDenied({ ...runnableConfig, tools: [slackTool] }, [
+			deny('n8n-nodes-base.slackTool', 'instance'),
+		]);
+		nodeTypes.getByNameAndVersion.mockReturnValue({
+			description: { credentials: [{ name: 'slackApi', required: true }], properties: [] },
+		} as never);
+
+		const result = await service.validateAgentConfiguration(
+			agentId,
+			projectId,
+			makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),
+		);
+
+		expect(result.issues.filter((i) => i.capability.index === 0)).toEqual([
+			expect.objectContaining({ code: 'restricted_node_type' }),
+		]);
+	});
+
+	it('reports the restriction on the tool that embeds an inline agent', async () => {
+		const messageAnAgent = {
+			type: 'node',
+			name: 'Ask the billing agent',
+			node: {
+				nodeType: 'n8n-nodes-base.messageAnAgentTool',
+				nodeTypeVersion: 1,
+				nodeParameters: {
+					agentSource: 'inline',
+					inlineAgent: { config: { tools: [slackTool] } },
+				},
+			},
+		} as const;
+		const { service } = setUpDenied({ ...runnableConfig, tools: [messageAnAgent] }, [
+			deny('n8n-nodes-base.slackTool', 'project'),
+		]);
+
+		const result = await service.validateAgentConfiguration(
+			agentId,
+			projectId,
+			makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),
+		);
+
+		expect(result.issues).toContainEqual({
+			code: 'restricted_node_type',
+			path: 'tools.0.node.nodeType',
+			capability: { kind: 'tool', id: 'Ask the billing agent', index: 0, toolType: 'node' },
+			// Its own type is allowed, so the reason names the embedded tool rather than a scope:
+			// the tool stays editable, because removing that tool is the fix.
+			reason: 'restricted_by_inline_tool',
+			// The denied type, not the one this tool runs as.
+			subject: 'n8n-nodes-base.slackTool',
+		});
+	});
+
+	it('reports the scope when the embedding tool is itself denied', async () => {
+		const messageAnAgent = {
+			type: 'node',
+			name: 'Ask the billing agent',
+			node: {
+				nodeType: 'n8n-nodes-base.messageAnAgentTool',
+				nodeTypeVersion: 1,
+				nodeParameters: {
+					agentSource: 'inline',
+					inlineAgent: { config: { tools: [slackTool] } },
+				},
+			},
+		} as const;
+		const { service } = setUpDenied({ ...runnableConfig, tools: [messageAnAgent] }, [
+			deny('n8n-nodes-base.messageAnAgentTool', 'instance'),
+			deny('n8n-nodes-base.slackTool', 'project'),
+		]);
+
+		const result = await service.validateAgentConfiguration(
+			agentId,
+			projectId,
+			makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),
+		);
+
+		expect(result.issues).toContainEqual(
+			expect.objectContaining({ code: 'restricted_node_type', reason: 'restricted_by_instance' }),
+		);
+	});
+
+	it('reports an MCP server whose client node type is denied', async () => {
+		const { service } = setUpDenied(
+			{
+				...runnableConfig,
+				mcpServers: [
+					{
+						name: 'Docs',
+						url: 'https://mcp.example.com',
+						transport: 'streamableHttp' as const,
+						authentication: 'none',
+					},
+				],
+			},
+			[deny('@n8n/n8n-nodes-langchain.mcpClientTool', 'instance')],
+		);
+
+		const result = await service.validateAgentConfiguration(
+			agentId,
+			projectId,
+			makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),
+		);
+
+		expect(result.issues).toContainEqual({
+			code: 'restricted_node_type',
+			path: 'mcpServers.0',
+			capability: { kind: 'mcpServer', id: 'Docs', index: 0 },
+			reason: 'restricted_by_instance',
+			subject: '@n8n/n8n-nodes-langchain.mcpClientTool',
+		});
+	});
+
+	it('reports only the restriction for an MCP server that also lacks a credential', async () => {
+		const { service } = setUpDenied(
+			{
+				...runnableConfig,
+				mcpServers: [
+					{
+						name: 'Docs',
+						url: 'https://mcp.example.com',
+						transport: 'streamableHttp' as const,
+						authentication: 'bearerAuth',
+					},
+				],
+			},
+			[deny('@n8n/n8n-nodes-langchain.mcpClientTool', 'instance')],
+		);
+
+		const result = await service.validateAgentConfiguration(
+			agentId,
+			projectId,
+			makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),
+		);
+
+		expect(result.issues.filter((i) => i.capability.kind === 'mcpServer')).toEqual([
+			expect.objectContaining({ code: 'restricted_node_type' }),
+		]);
+	});
+
+	it('ignores a violation that does not deny a node type', async () => {
+		const { service, nodeTypes } = setUpDenied({ ...runnableConfig, tools: [slackTool] }, [
+			{ ...deny('slackApi', 'instance'), kind: 'credential-type-unavailable' },
+		]);
+		// Not restricted, so the tool goes on to its own checks and needs a resolvable type.
+		nodeTypes.getByNameAndVersion.mockReturnValue({
+			description: { credentials: [], properties: [] },
+		} as never);
+
+		const result = await service.validateAgentConfiguration(
+			agentId,
+			projectId,
+			makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),
+		);
+
+		expect(result.issues).not.toContainEqual(
+			expect.objectContaining({ code: 'restricted_node_type' }),
+		);
+	});
+
+	it('accepts the agent again once the restricted tool is removed', async () => {
+		const { service, agentPolicyService, agentRepository } = makeService();
+		agentPolicyService.evaluatePublish.mockResolvedValue({ violations: [] });
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent({ ...runnableConfig, tools: [] }),
+		);
+
+		const result = await service.validateAgentConfiguration(
+			agentId,
+			projectId,
+			makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),
+		);
+
+		expect(result).toEqual({ status: 'valid', issues: [] });
 	});
 });

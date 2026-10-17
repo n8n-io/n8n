@@ -2,6 +2,7 @@ export { TypeAvailabilityPoliciesModule } from './type-availability-policies.mod
 export { useTypeAvailabilityPoliciesStore } from './type-availability-policies.store';
 export { SCOPE_LABEL_KEY, type RestrictedTypeKind } from './type-availability-policies.constants';
 export {
+	describeAgentToolRestriction,
 	describeNodeTypeRestriction,
 	getNodeTypeRestriction,
 	isNodeTypeRestricted,

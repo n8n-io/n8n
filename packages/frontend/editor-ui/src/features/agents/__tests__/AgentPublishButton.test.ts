@@ -118,6 +118,13 @@ const blockingIssue: AgentConfigValidationIssue = {
 	capability: { kind: 'agent' },
 };
 
+const restrictedIssue: AgentConfigValidationIssue = {
+	code: 'restricted_node_type',
+	reason: 'restricted_by_instance',
+	path: 'tools.0.node.nodeType',
+	capability: { kind: 'tool', toolType: 'node', id: 'Post message', index: 0 },
+};
+
 const notPublishedIssue: AgentConfigValidationIssue = {
 	code: 'incompatible_reference',
 	reason: 'not_published',
@@ -461,6 +468,51 @@ describe('AgentPublishButton', () => {
 			expect(
 				publishedWrapper.find('[data-testid="stub-tooltip"]').attributes('data-disabled'),
 			).toBe('true');
+		});
+
+		it('blocks publishing while a policy restricts a tool node type', async () => {
+			const wrapper = await renderComponent({
+				agent: createAgent({ activeVersionId: null }),
+				configValidationStatus: 'invalid',
+				configValidationIssues: [restrictedIssue],
+			});
+
+			expect(
+				wrapper.find('[data-testid="publish-agent-button"]').attributes('disabled'),
+			).toBeDefined();
+			expect(wrapper.emitted('publish-ready')?.at(-1)).toEqual([false]);
+		});
+
+		it('blocks publishing while a policy restricts an MCP server node type', async () => {
+			const wrapper = await renderComponent({
+				agent: createAgent({ activeVersionId: null }),
+				configValidationStatus: 'invalid',
+				configValidationIssues: [
+					{
+						code: 'restricted_node_type',
+						reason: 'restricted_by_project',
+						path: 'mcpServers.0',
+						capability: { kind: 'mcpServer', id: 'Docs', index: 0 },
+					},
+				],
+			});
+
+			expect(
+				wrapper.find('[data-testid="publish-agent-button"]').attributes('disabled'),
+			).toBeDefined();
+		});
+
+		it('allows publishing again once the restricted tool is removed', async () => {
+			const wrapper = await renderComponent({
+				agent: createAgent({ activeVersionId: null }),
+				configValidationStatus: 'valid',
+				configValidationIssues: [],
+			});
+
+			expect(
+				wrapper.find('[data-testid="publish-agent-button"]').attributes('disabled'),
+			).toBeUndefined();
+			expect(wrapper.emitted('publish-ready')?.at(-1)).toEqual([true]);
 		});
 
 		it('reports readiness when tool credentials and validation change', async () => {

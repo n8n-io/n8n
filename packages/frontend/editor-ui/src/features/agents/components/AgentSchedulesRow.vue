@@ -72,6 +72,8 @@ const ISSUE_KEYS: Record<AgentConfigValidationIssue['code'], BaseTextKey> = {
 	incompatible_credential: 'agents.builder.validation.issue.incompatibleCredential' as BaseTextKey,
 	missing_reference: 'agents.builder.validation.issue.missingReference' as BaseTextKey,
 	incompatible_reference: 'agents.builder.validation.issue.incompatibleReference' as BaseTextKey,
+	// A channel and a task carry no node type, so this never reaches here; the map is exhaustive.
+	restricted_node_type: 'agents.builder.validation.issue.restrictedNodeType' as BaseTextKey,
 };
 
 const taskIssueMessages = computed(() => {

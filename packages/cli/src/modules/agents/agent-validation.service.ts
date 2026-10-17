@@ -32,10 +32,12 @@ import {
 
 import { getMissingSkillIds } from '@/modules/agents/utils/agent-missing-skill-ids';
 import { NodeTypes } from '@/node-types';
+import { toPolicedNodes, withInlineAgentToolNodes } from '@/policy/policed-agent-nodes';
 import { checkAiGatewayEligibility } from '@/services/ai-gateway-eligibility';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 
 import { AgentDefinitionService } from './agent-definition.service';
+import { AgentPolicyService, deniedNodeTypes, restrictionReason } from './agent-policy.service';
 import { AgentSkillRefsService } from './agent-skill-refs.service';
 import {
 	getAgentDefinitionContent,
@@ -78,8 +80,15 @@ function issue(
 	path: string,
 	capability: AgentConfigValidationIssue['capability'],
 	reason?: string,
+	subject?: string,
 ): AgentConfigValidationIssue {
-	return reason === undefined ? { code, path, capability } : { code, path, capability, reason };
+	return {
+		code,
+		path,
+		capability,
+		...(reason === undefined ? {} : { reason }),
+		...(subject === undefined ? {} : { subject }),
+	};
 }
 
 function agentIssue(
@@ -99,6 +108,7 @@ export class AgentValidationService {
 		private readonly chatIntegrationRegistry: ChatIntegrationRegistry,
 		private readonly aiGatewayService: AiGatewayService,
 		private readonly agentSkillRefs: AgentSkillRefsService,
+		private readonly agentPolicyService: AgentPolicyService,
 	) {}
 
 	/**
@@ -327,9 +337,12 @@ export class AgentValidationService {
 		await this.collectVertexModelIssues(config, findCredential, issues);
 		this.collectSubAgentRefIssues(ctx, agentsById, issues);
 		this.collectSkillIssues(config, ctx.skills, issues);
+		// Runs in both scopes: the runtime scope is what blocks the draft preview.
+		const restricted = await this.collectRestrictedTypeIssues(ctx, issues);
 		if (scope === 'publish') {
 			for (const violation of findHttpRequestToolUrlFromAiViolations(config.tools)) {
 				if (config.tools?.[violation.toolIndex].enabled === false) continue;
+				if (restricted.toolIndexes.has(violation.toolIndex)) continue;
 				issues.push(
 					issue('invalid_value', violation.path, {
 						kind: 'tool',
@@ -342,8 +355,15 @@ export class AgentValidationService {
 			this.collectTaskIssues(config, ctx.tasks, issues);
 			await this.collectChannelIssues(ctx.integrations, findCredential, issues);
 		}
-		await this.collectToolIssues(ctx, findCredential, workflowsByReference, issues, scope);
-		await this.collectMcpServerIssues(config, findCredential, issues);
+		await this.collectToolIssues(
+			ctx,
+			findCredential,
+			workflowsByReference,
+			issues,
+			scope,
+			restricted.toolIndexes,
+		);
+		await this.collectMcpServerIssues(config, findCredential, issues, restricted.mcpIndexes);
 
 		return this.dedupe(issues);
 	}
@@ -604,16 +624,98 @@ export class AgentValidationService {
 		}
 	}
 
+	/**
+	 * Reports every tool and MCP server whose node type a policy denies, and returns their
+	 * positions so the callers that follow leave them alone: a locked entry shows one reason,
+	 * not a lock plus the credential issues of a tool the agent cannot use at all.
+	 *
+	 * Reads the types through the same mapping the publish gate polices, so the reported set
+	 * and the refused publish never disagree, inline agents and MCP servers included. Disabled
+	 * tools are reported too, because the gate does not read `enabled`.
+	 */
+	private async collectRestrictedTypeIssues(
+		ctx: ConfigurationValidationContext,
+		issues: AgentConfigValidationIssue[],
+	): Promise<{ toolIndexes: Set<number>; mcpIndexes: Set<number> }> {
+		const { config } = ctx;
+		const toolIndexes = new Set<number>();
+		const mcpIndexes = new Set<number>();
+
+		const decision = await this.agentPolicyService.evaluatePublish(ctx.projectId, ctx.agentId, {
+			name: config.name,
+			tools: config.tools,
+			mcpServers: config.mcpServers,
+		});
+		const denied = deniedNodeTypes(decision);
+		if (denied.size === 0) return { toolIndexes, mcpIndexes };
+
+		const firstDenied = (nodes: readonly { type: string }[]) => {
+			for (const node of nodes) {
+				const violation = denied.get(node.type);
+				if (violation) return violation;
+			}
+			return undefined;
+		};
+
+		const tools = config.tools ?? [];
+		for (let index = 0; index < tools.length; index++) {
+			const tool = tools[index];
+			// Only a node tool names a node type, and only a node tool can embed an inline agent.
+			if (tool.type !== 'node') continue;
+
+			const own = toPolicedNodes([tool]);
+			const ownViolation = firstDenied(own);
+			// An inline agent's own tools run under the tool that embeds them, so the parent carries
+			// the issue: a violation names a type, never the entry that holds it. It reads as its own
+			// reason, because the tool itself stays usable and editable — the fix is to open it and
+			// drop the embedded tool.
+			const violation = ownViolation ?? firstDenied(withInlineAgentToolNodes(own));
+			if (!violation) continue;
+
+			toolIndexes.add(index);
+			issues.push(
+				issue(
+					'restricted_node_type',
+					`tools.${index}.node.nodeType`,
+					{ kind: 'tool', id: tool.name, index, toolType: 'node' },
+					ownViolation ? restrictionReason(ownViolation) : 'restricted_by_inline_tool',
+					violation.subject,
+				),
+			);
+		}
+
+		const servers = config.mcpServers ?? [];
+		for (let index = 0; index < servers.length; index++) {
+			const violation = firstDenied(toPolicedNodes([], [servers[index]]));
+			if (!violation) continue;
+
+			mcpIndexes.add(index);
+			issues.push(
+				issue(
+					'restricted_node_type',
+					`mcpServers.${index}`,
+					{ kind: 'mcpServer', id: servers[index].name, index },
+					restrictionReason(violation),
+					violation.subject,
+				),
+			);
+		}
+
+		return { toolIndexes, mcpIndexes };
+	}
+
 	private async collectToolIssues(
 		ctx: ConfigurationValidationContext,
 		findCredential: FindCredential,
 		workflowsByReference: Map<string, WorkflowEntity>,
 		issues: AgentConfigValidationIssue[],
 		scope: AgentValidationScope,
+		restrictedIndexes: ReadonlySet<number>,
 	) {
 		const tools = ctx.config.tools ?? [];
 		for (let index = 0; index < tools.length; index++) {
 			const tool = tools[index];
+			if (restrictedIndexes.has(index)) continue;
 			if (tool.enabled === false) continue;
 
 			if (tool.type === 'custom') {
@@ -748,9 +850,11 @@ export class AgentValidationService {
 		config: AgentJsonConfig,
 		findCredential: FindCredential,
 		issues: AgentConfigValidationIssue[],
+		restrictedIndexes: ReadonlySet<number>,
 	) {
 		const servers = config.mcpServers ?? [];
 		for (let index = 0; index < servers.length; index++) {
+			if (restrictedIndexes.has(index)) continue;
 			const server = servers[index];
 			const capability: AgentConfigValidationIssue['capability'] = {
 				kind: 'mcpServer',
