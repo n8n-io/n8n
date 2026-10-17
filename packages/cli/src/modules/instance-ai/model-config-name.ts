@@ -20,14 +20,15 @@ export function withModelName(
 		const provider = splitModelId(config).provider || 'custom';
 		return `${provider}/${nameFor(provider)}`;
 	}
-	if ('project' in config) {
-		return { ...config, id: `google-vertex-anthropic/${nameFor('google-vertex-anthropic')}` };
+	if (!('kind' in config)) return undefined;
+	switch (config.kind) {
+		case 'vertex-anthropic':
+			return { ...config, id: `google-vertex-anthropic/${nameFor('google-vertex-anthropic')}` };
+		case 'endpoint': {
+			const provider = splitModelId(config.id).provider || 'custom';
+			return { ...config, id: `${provider}/${nameFor(provider)}` };
+		}
 	}
-	if ('url' in config) {
-		const provider = splitModelId(config.id).provider || 'custom';
-		return { ...config, id: `${provider}/${nameFor(provider)}` };
-	}
-	return undefined;
 }
 
 /**
