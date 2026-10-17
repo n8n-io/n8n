@@ -1,11 +1,12 @@
+import { DATA_TABLE_SYSTEM_COLUMNS, DATA_TABLE_SYSTEM_TESTING_COLUMN } from 'n8n-workflow';
+import { z } from 'zod';
+
 import {
 	dataTableColumnNameSchema,
 	dataTableColumnTypeSchema,
 	dataTableIdSchema,
 	dataTableNameSchema,
-} from '@n8n/api-types';
-import { DATA_TABLE_SYSTEM_COLUMNS, DATA_TABLE_SYSTEM_TESTING_COLUMN } from 'n8n-workflow';
-import { z } from 'zod';
+} from '../../schemas/data-table.schema';
 
 const reservedColumnNames = new Set(
 	[...DATA_TABLE_SYSTEM_COLUMNS, DATA_TABLE_SYSTEM_TESTING_COLUMN].map((name) =>

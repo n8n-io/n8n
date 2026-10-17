@@ -1,5 +1,6 @@
-import { variableTypeSchema, variableValueSchema } from '@n8n/api-types';
 import { z } from 'zod';
+
+import { variableTypeSchema, variableValueSchema } from '../variables/base.dto';
 
 export const serializedVariableSchema = z
 	.object({
