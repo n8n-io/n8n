@@ -1,6 +1,7 @@
-import type { TagEntity, ITagWithCountDb } from '@n8n/db';
-import { isUniqueConstraintError, TagRepository, TransactionRunner } from '@n8n/db';
+import type { TagEntity, ITagWithCountDb, OperationContext } from '@n8n/db';
+import { generateNanoId, isUniqueConstraintError, TagRepository, TransactionRunner } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { UnexpectedError } from 'n8n-workflow';
 
 import { ExternalHooks } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
@@ -172,5 +173,60 @@ export class TagService {
 			}
 		}
 		return result;
+	}
+
+	/**
+	 * Resolves names to tags in the caller's transaction and inserts the missing ones.
+	 * Names are normalized like `findOrCreateByNames`. Only the `tag.beforeCreate` hooks
+	 * run here. Pass `created` to `runAfterCreateHooks` after the transaction commits, so a
+	 * rolled-back transaction leaves no tag and runs no after-create hook.
+	 */
+	async findOrCreateByNamesInTransaction(
+		names: string[],
+		ctx: OperationContext,
+	): Promise<{ tags: TagEntity[]; created: TagEntity[] }> {
+		const uniqueNames = [
+			...new Set(names.map((name) => name.trim()).filter((name) => name.length > 0)),
+		];
+		if (uniqueNames.length === 0) return { tags: [], created: [] };
+
+		const existing = await this.tagRepository.findManyByName(uniqueNames, ctx);
+		const existingNames = new Set(existing.map((tag) => tag.name));
+
+		const candidates: TagEntity[] = [];
+		for (const name of uniqueNames.filter((n) => !existingNames.has(n))) {
+			const tag = this.toEntity({ name, id: generateNanoId() });
+			await validateEntity(tag);
+			await this.externalHooks.run('tag.beforeCreate', [tag]);
+			candidates.push(tag);
+		}
+
+		if (candidates.length === 0) {
+			return { tags: this.orderByNames(existing, uniqueNames), created: [] };
+		}
+
+		// A concurrent create of the same name wins, so read back what is stored.
+		await this.tagRepository.insertIgnoringNameConflicts(candidates, ctx);
+		const stored = await this.tagRepository.findManyByName(uniqueNames, ctx);
+		const tags = this.orderByNames(stored, uniqueNames);
+		const candidateIds = new Set(candidates.map((tag) => tag.id));
+
+		return { tags, created: tags.filter((tag) => candidateIds.has(tag.id)) };
+	}
+
+	/** Runs the `tag.afterCreate` hooks for tags that `findOrCreateByNamesInTransaction` created. */
+	async runAfterCreateHooks(tags: TagEntity[]) {
+		for (const tag of tags) {
+			await this.externalHooks.run('tag.afterCreate', [tag]);
+		}
+	}
+
+	private orderByNames(tags: TagEntity[], names: string[]): TagEntity[] {
+		const byName = new Map(tags.map((tag) => [tag.name, tag]));
+		return names.map((name) => {
+			const tag = byName.get(name);
+			if (!tag) throw new UnexpectedError(`Tag "${name}" was not found after it was saved`);
+			return tag;
+		});
 	}
 }

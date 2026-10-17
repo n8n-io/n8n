@@ -20,4 +20,12 @@ export class WorkflowTagMappingRepository extends BaseRepository<WorkflowTagMapp
 			return await tx.insert(WorkflowTagMapping, taggings);
 		});
 	}
+
+	async findTagIdsByWorkflowId(workflowId: string, ctx: OperationContext = {}): Promise<string[]> {
+		const mappings = await this.managerFor(ctx).find(WorkflowTagMapping, {
+			select: ['tagId'],
+			where: { workflowId },
+		});
+		return mappings.map((mapping) => mapping.tagId);
+	}
 }

@@ -1,5 +1,10 @@
 import type { User } from '@n8n/db';
-import { isTriggerNodeType, type INode, type INodeTypes } from 'n8n-workflow';
+import {
+	calculateWorkflowChecksum,
+	isTriggerNodeType,
+	type INode,
+	type INodeTypes,
+} from 'n8n-workflow';
 import z from 'zod';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
@@ -246,6 +251,7 @@ export async function getWorkflowDetails(
 		active: workflow.activeVersionId !== null,
 		isArchived: workflow.isArchived,
 		versionId: workflow.versionId,
+		checksum: await calculateWorkflowChecksum(workflow),
 		activeVersionId: workflow.activeVersionId,
 		triggerCount: workflow.triggerCount,
 		// Reported in both modes so callers (and telemetry) can size the workflow

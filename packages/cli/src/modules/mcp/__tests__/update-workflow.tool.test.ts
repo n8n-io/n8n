@@ -3,6 +3,7 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { SharedWorkflowRepository, User, WorkflowEntity, type Project } from '@n8n/db';
 import {
+	calculateWorkflowChecksum,
 	ERROR_TRIGGER_NODE_TYPE,
 	NodeConnectionTypes,
 	type IConnections,
@@ -19,6 +20,7 @@ import { NON_FATAL_OPERATION_TYPES } from '../tools/workflow-builder/workflow-op
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { NotFoundError } from '@n8n/errors';
+import { WorkflowChecksumConflictError } from '@/errors/response-errors/workflow-checksum-conflict.error';
 import { SubworkflowPolicyDenialError } from '@/errors/subworkflow-policy-denial.error';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';
 import { NodeTypes } from '@/node-types';
@@ -240,6 +242,7 @@ describe('update-workflow MCP tool', () => {
 	const callHandler = async (
 		input: {
 			workflowId: string;
+			expectedChecksum?: string;
 			skillsUsed?: string[];
 			operations: unknown[];
 			versionName?: string;
@@ -250,6 +253,7 @@ describe('update-workflow MCP tool', () => {
 		await tool.handler(
 			{
 				workflowId: input.workflowId,
+				expectedChecksum: input.expectedChecksum,
 				skillsUsed: input.skillsUsed,
 				operations: input.operations as never,
 				versionName: input.versionName as string,
@@ -2652,6 +2656,87 @@ describe('update-workflow MCP tool', () => {
 			);
 		});
 
+		describe('stale-save protection', () => {
+			const operations = [
+				{ type: 'updateNodeParameters', nodeName: 'B', parameters: { url: 'https://new' } },
+			];
+
+			test('saves and forwards expectedChecksum when it matches the stored workflow', async () => {
+				const expectedChecksum = await calculateWorkflowChecksum(buildExistingWorkflow());
+
+				const result = await callHandler({ workflowId: 'wf-1', expectedChecksum, operations });
+
+				expect(result.isError).toBeUndefined();
+				expect(workflowService.update).toHaveBeenCalledWith(
+					user,
+					expect.any(WorkflowEntity),
+					'wf-1',
+					expect.objectContaining({ expectedChecksum }),
+				);
+			});
+
+			test('returns a WORKFLOW_CONFLICT error and saves nothing when the checksum is stale', async () => {
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					expectedChecksum: 'stale-checksum',
+					operations,
+				});
+
+				const response = parseResult(result);
+				expect(result.isError).toBe(true);
+				expect(response.errorCode).toBe('WORKFLOW_CONFLICT');
+				expect(response.error).toContain('get_workflow_details');
+				expect(workflowService.update).not.toHaveBeenCalled();
+				expect(telemetry.track).toHaveBeenCalledWith(
+					'User called mcp tool',
+					expect.objectContaining({
+						parameters: expect.objectContaining({ hasExpectedChecksum: true }),
+						results: expect.objectContaining({ success: false }),
+					}),
+				);
+			});
+
+			test('treats an empty expectedChecksum as stale instead of skipping the check', async () => {
+				const result = await callHandler({ workflowId: 'wf-1', expectedChecksum: '', operations });
+
+				const response = parseResult(result);
+				expect(result.isError).toBe(true);
+				expect(response.errorCode).toBe('WORKFLOW_CONFLICT');
+				expect(workflowService.update).not.toHaveBeenCalled();
+			});
+
+			test('maps a conflict raised by the service at save time to WORKFLOW_CONFLICT without recovery', async () => {
+				const expectedChecksum = await calculateWorkflowChecksum(buildExistingWorkflow());
+				updateMock.mockRejectedValue(new WorkflowChecksumConflictError());
+
+				const result = await callHandler({ workflowId: 'wf-1', expectedChecksum, operations });
+
+				const response = parseResult(result);
+				expect(result.isError).toBe(true);
+				expect(response.errorCode).toBe('WORKFLOW_CONFLICT');
+				// Only the pre-update read: a conflict skips the post-save recovery lookup.
+				expect(findWorkflowMock).toHaveBeenCalledTimes(1);
+				expect(postSaveMetrics.incrementPostSaveFailure).not.toHaveBeenCalled();
+			});
+
+			test('skips the check when expectedChecksum is omitted', async () => {
+				const result = await callHandler({ workflowId: 'wf-1', operations });
+
+				expect(result.isError).toBeUndefined();
+				expect(updateMock.mock.calls[0][3]).not.toHaveProperty('expectedChecksum');
+			});
+
+			test('returns the checksum of the saved workflow for the next call', async () => {
+				const result = await callHandler({ workflowId: 'wf-1', operations });
+
+				const response = parseResult(result);
+				const saved = updateMock.mock.calls[0][1] as WorkflowEntity;
+				expect(response.checksum).toBe(
+					await calculateWorkflowChecksum(Object.assign(new WorkflowEntity(), saved)),
+				);
+			});
+		});
+
 		test('broadcasts workflow update on success', async () => {
 			await callHandler({
 				workflowId: 'wf-1',
@@ -4144,6 +4229,74 @@ describe('update-workflow MCP tool', () => {
 				expect(findOrCreateByNamesMock).toHaveBeenCalledWith(['production']);
 				const [, , , updateOptions] = updateMock.mock.calls[0];
 				expect(updateOptions.tagIds).toEqual(['tag-0']);
+			});
+
+			test('passes the read tag ids as expectedTagIds when a checksum is given', async () => {
+				const existing = workflowWithTags(['production', 'critical']);
+				findWorkflowMock.mockResolvedValue(existing);
+
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					expectedChecksum: await calculateWorkflowChecksum(existing),
+					operations: [{ type: 'removeTags', names: ['critical'] }],
+				});
+
+				expect(result.isError).toBeUndefined();
+				const [, , , updateOptions] = updateMock.mock.calls[0];
+				expect(updateOptions.expectedTagIds).toEqual(['tag-0', 'tag-1']);
+			});
+
+			test('with a checksum, leaves tag creation to the save transaction', async () => {
+				const existing = workflowWithTags(['production']);
+				findWorkflowMock.mockResolvedValue(existing);
+
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					expectedChecksum: await calculateWorkflowChecksum(existing),
+					operations: [{ type: 'addTags', names: ['critical', ' Critical '] }],
+				});
+
+				expect(result.isError).toBeUndefined();
+				expect(findOrCreateByNamesMock).not.toHaveBeenCalled();
+				const [, , , updateOptions] = updateMock.mock.calls[0];
+				expect(updateOptions.tagNames.sort()).toEqual(['critical', 'production']);
+				expect(updateOptions).not.toHaveProperty('tagIds');
+			});
+
+			test('creates no tag when a guarded save with a new tag is rejected', async () => {
+				const existing = workflowWithTags(['production']);
+				findWorkflowMock.mockResolvedValue(existing);
+				updateMock.mockRejectedValue(new WorkflowChecksumConflictError());
+
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					expectedChecksum: await calculateWorkflowChecksum(existing),
+					operations: [{ type: 'addTags', names: ['critical'] }],
+				});
+
+				const response = parseResult(result);
+				expect(result.isError).toBe(true);
+				expect(response.errorCode).toBe('WORKFLOW_CONFLICT');
+				expect(findOrCreateByNamesMock).not.toHaveBeenCalled();
+			});
+
+			test('does not pass expectedTagIds without a checksum or without tag ops', async () => {
+				const existing = workflowWithTags(['production']);
+				findWorkflowMock.mockResolvedValue(existing);
+				findOrCreateByNamesMock.mockResolvedValue([{ id: 'tag-0', name: 'production' }]);
+
+				await callHandler({
+					workflowId: 'wf-1',
+					operations: [{ type: 'addTags', names: ['production'] }],
+				});
+				await callHandler({
+					workflowId: 'wf-1',
+					expectedChecksum: await calculateWorkflowChecksum(existing),
+					operations: [{ type: 'setWorkflowMetadata', name: 'renamed' }],
+				});
+
+				expect(updateMock.mock.calls[0][3]).not.toHaveProperty('expectedTagIds');
+				expect(updateMock.mock.calls[1][3]).not.toHaveProperty('expectedTagIds');
 			});
 
 			test('removing the last tag passes an empty tagIds array', async () => {
