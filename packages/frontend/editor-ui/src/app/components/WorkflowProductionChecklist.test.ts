@@ -13,6 +13,7 @@ import { useEvaluationStore } from '@/features/ai/evaluation.ee/evaluation.store
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowSettingsCache } from '@/app/composables/useWorkflowsCache';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useProductionChecklistStore } from '@/app/stores/productionChecklist.store';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useRouter } from 'vue-router';
@@ -471,6 +472,72 @@ describe('WorkflowProductionChecklist', () => {
 			await vi.waitFor(() => {
 				expect(mockN8nSuggestedActionsProps.open).toBe(true);
 			});
+		});
+
+		it('reserves the canvas until the first-publish checklist closes', async () => {
+			const pinia = createTestingPinia({ stubActions: false });
+			const checklistStore = useProductionChecklistStore(pinia);
+			uiStore = useUIStore(pinia);
+			workflowDocumentStoreRef.value?.setActiveState({
+				activeVersionId: null,
+				activeVersion: null,
+			});
+
+			const { unmount } = renderComponent({ pinia });
+			await flushPromises();
+			uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
+			workflowDocumentStoreRef.value?.setActiveState({
+				activeVersionId: 'v1',
+				activeVersion: null,
+			});
+			await nextTick();
+
+			expect(checklistStore.activeWorkflowId).toBe(mockWorkflow.id);
+			expect(mockN8nSuggestedActionsProps.open).toBe(false);
+
+			uiStore.closeModal(WORKFLOW_SETTINGS_MODAL_KEY);
+			await vi.waitFor(() => expect(mockN8nSuggestedActionsProps.open).toBe(true));
+			expect(checklistStore.activeWorkflowId).toBe(mockWorkflow.id);
+
+			mockN8nSuggestedActionsEmits['update:open'](false);
+			await nextTick();
+			expect(checklistStore.activeWorkflowId).toBeNull();
+
+			mockN8nSuggestedActionsEmits['update:open'](true);
+			await nextTick();
+			expect(checklistStore.activeWorkflowId).toBe(mockWorkflow.id);
+			unmount();
+			expect(checklistStore.activeWorkflowId).toBeNull();
+		});
+
+		it('releases the canvas if publication ends before the checklist opens', async () => {
+			const pinia = createTestingPinia({ stubActions: false });
+			const checklistStore = useProductionChecklistStore(pinia);
+			uiStore = useUIStore(pinia);
+			workflowDocumentStoreRef.value?.setActiveState({
+				activeVersionId: null,
+				activeVersion: null,
+			});
+			renderComponent({ pinia });
+			await flushPromises();
+
+			uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
+			workflowDocumentStoreRef.value?.setActiveState({
+				activeVersionId: 'v1',
+				activeVersion: null,
+			});
+			await nextTick();
+			expect(checklistStore.activeWorkflowId).toBe(mockWorkflow.id);
+
+			workflowDocumentStoreRef.value?.setActiveState({
+				activeVersionId: null,
+				activeVersion: null,
+			});
+			await nextTick();
+			expect(checklistStore.activeWorkflowId).toBeNull();
+			uiStore.closeModal(WORKFLOW_SETTINGS_MODAL_KEY);
+			await flushPromises();
+			expect(mockN8nSuggestedActionsProps.open).toBe(false);
 		});
 
 		it('should not open popover automatically if workflow was previously activated', async () => {
