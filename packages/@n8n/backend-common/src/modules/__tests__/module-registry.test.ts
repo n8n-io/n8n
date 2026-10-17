@@ -57,7 +57,6 @@ describe('eligibleModules', () => {
 		expect(Container.get(ModuleRegistry).eligibleModules).not.toContain('policy-infrastructure');
 	});
 
-<<<<<<< HEAD
 	it('should not include the deprecated chat-hub module by default', () => {
 		expect(Container.get(ModuleRegistry).eligibleModules).not.toContain('chat-hub');
 	});
@@ -67,10 +66,7 @@ describe('eligibleModules', () => {
 		expect(Container.get(ModuleRegistry).eligibleModules).toContain('chat-hub');
 	});
 
-	it.each(['instance-ai', 'agents', 'agent-evals'])(
-=======
 	it.each(['instance-ai', 'agents', 'agent-evals', 'inbox', 'type-availability-policies'])(
->>>>>>> 842ec5b62d9274bff50901d290ff02f837a2e904
 		'should include %s by default',
 		(moduleName) => {
 			expect(Container.get(ModuleRegistry).eligibleModules).toContain(moduleName);
