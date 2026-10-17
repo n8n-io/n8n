@@ -1,6 +1,7 @@
-import { GoogleGenerativeAIEmbeddings } from '@langchain/google-genai';
 import {
 	NodeConnectionTypes,
+	NodeOperationError,
+	type INode,
 	type INodeType,
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
@@ -8,6 +9,30 @@ import {
 } from 'n8n-workflow';
 
 import { logWrapper, getConnectionHintNoticeField } from '@n8n/ai-utilities';
+
+import { GeminiEmbeddings } from './helpers';
+
+/**
+ * The `minValue` and `numberPrecision` constraints only apply to values typed into the editor, so
+ * an expression can still resolve to a fraction or to a value below 1. Such a value is rejected
+ * here, because the API answers it with a request error that does not name the parameter.
+ */
+function parseOutputDimensionality(node: INode, value: unknown): number | undefined {
+	if (value === undefined || value === null || value === '') return undefined;
+
+	const dimensionality = typeof value === 'string' ? Number(value) : value;
+	if (
+		typeof dimensionality !== 'number' ||
+		!Number.isInteger(dimensionality) ||
+		dimensionality < 1
+	) {
+		throw new NodeOperationError(node, `Invalid output dimensionality: ${JSON.stringify(value)}`, {
+			description: 'The output dimensionality must be a whole number of 1 or more.',
+		});
+	}
+
+	return dimensionality;
+}
 
 export class EmbeddingsGoogleGemini implements INodeType {
 	description: INodeTypeDescription = {
@@ -52,7 +77,7 @@ export class EmbeddingsGoogleGemini implements INodeType {
 			getConnectionHintNoticeField([NodeConnectionTypes.AiVectorStore]),
 			{
 				displayName:
-					'Each model is using different dimensional density for embeddings. Please make sure to use the same dimensionality for your vector store. The default model is using 768-dimensional embeddings.',
+					'Each model uses a different embedding dimensionality. Make sure your vector store is configured for the same dimensionality. The default model (gemini-embedding-001) returns 3072-dimensional embeddings unless the Output Dimensionality option is set.',
 				name: 'notice',
 				type: 'notice',
 				default: '',
@@ -111,6 +136,25 @@ export class EmbeddingsGoogleGemini implements INodeType {
 				},
 				default: 'models/gemini-embedding-001',
 			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				placeholder: 'Add Option',
+				description: 'Additional options to add',
+				type: 'collection',
+				default: {},
+				options: [
+					{
+						displayName: 'Output Dimensionality',
+						name: 'outputDimensionality',
+						default: undefined,
+						description:
+							'The number of dimensions the returned embeddings should have, e.g. 768, 1536 or 3072 for gemini-embedding-001. Leave unset to use the model default.',
+						type: 'number',
+						typeOptions: { minValue: 1, numberPrecision: 0 },
+					},
+				],
+			},
 		],
 	};
 
@@ -121,11 +165,20 @@ export class EmbeddingsGoogleGemini implements INodeType {
 			itemIndex,
 			'models/gemini-embedding-001',
 		) as string;
+		const options = this.getNodeParameter('options', itemIndex, {}) as {
+			outputDimensionality?: unknown;
+		};
+		const outputDimensionality = parseOutputDimensionality(
+			this.getNode(),
+			options.outputDimensionality,
+		);
+
 		const credentials = await this.getCredentials('googlePalmApi');
-		const embeddings = new GoogleGenerativeAIEmbeddings({
+		const embeddings = new GeminiEmbeddings({
 			apiKey: credentials.apiKey as string,
 			baseUrl: credentials.host as string,
 			model: modelName,
+			outputDimensionality,
 		});
 
 		return {
