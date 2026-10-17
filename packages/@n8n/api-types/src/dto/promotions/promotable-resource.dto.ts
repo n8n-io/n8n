@@ -20,9 +20,25 @@ export const promotableResourceStatusSchema = z.enum([
 
 export type PromotableResourceStatus = z.infer<typeof promotableResourceStatusSchema>;
 
-export const promotableResourceTypeSchema = z.enum(['workflow']);
+export const promotableResourceTypeSchema = z.enum(['workflow', 'folder', 'project']);
 
 export type PromotableResourceType = z.infer<typeof promotableResourceTypeSchema>;
+
+export const promotableDependencyTypeSchema = z.enum([
+	'credential',
+	'dataTable',
+	'variable',
+	'tag',
+]);
+
+export type PromotableDependencyType = z.infer<typeof promotableDependencyTypeSchema>;
+
+export const promotableChangedDependencySchema = z.object({
+	type: promotableDependencyTypeSchema,
+	name: z.string(),
+});
+
+export type PromotableChangedDependency = z.infer<typeof promotableChangedDependencySchema>;
 
 export const promotableResourceSchema = z.object({
 	id: n8nIdSchema,
@@ -33,6 +49,14 @@ export const promotableResourceSchema = z.object({
 	updatedAt: z.string().nullable(),
 	updatedBy: z.string().nullable(),
 	dependencyCount: z.number().int().nonnegative(),
+	changedDependencies: promotableChangedDependencySchema
+		.array()
+		.describe('Dependencies of this workflow that differ between the source and the destination.'),
+	parentId: n8nIdSchema
+		.nullable()
+		.describe(
+			'Nearest renamed project or folder that contains this change. Null when the row is not inside a renamed container.',
+		),
 });
 
 export type PromotableResource = z.infer<typeof promotableResourceSchema>;

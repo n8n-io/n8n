@@ -7,6 +7,13 @@ import type {
 } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { getPromotableChanges, promoteProjectSelection } from '../promotions.api';
+import {
+	containerSelectionState,
+	filterPromotionChanges,
+	orderPromotionChanges,
+	workflowIdsByContainer,
+	type SelectionState,
+} from '../structuralSelection';
 
 export function usePromotionChanges(projectId: string, direction: PromotionDirection = 'promote') {
 	const rootStore = useRootStore();
@@ -20,27 +27,54 @@ export function usePromotionChanges(projectId: string, direction: PromotionDirec
 	const searchQuery = ref('');
 	const lastRefreshedAt = ref<string | null>(null);
 
+	// Workflow ids only. A renamed project or folder has no selection of its own: it is
+	// included when any workflow inside it is selected.
 	const selectedIds = ref<Set<string>>(new Set());
 
-	// Only the rows the user can currently see are eligible for select-all.
-	const filteredChanges = computed(() => {
-		if (!searchQuery.value) return changes.value;
-		const term = searchQuery.value.toLowerCase();
-		return changes.value.filter((c) => c.name.toLowerCase().includes(term));
+	// A search hit stays with the renamed containers above it.
+	const filteredChanges = computed(() =>
+		orderPromotionChanges(filterPromotionChanges(changes.value, searchQuery.value)),
+	);
+
+	const workflowsByContainer = computed(() => workflowIdsByContainer(changes.value));
+	const visibleWorkflowsByContainer = computed(() => workflowIdsByContainer(filteredChanges.value));
+
+	const selectedWorkflowIds = computed(() =>
+		changes.value
+			.filter((change) => change.type === 'workflow' && selectedIds.value.has(change.id))
+			.map((change) => change.id),
+	);
+
+	// Each selected workflow counts once, and so does each container that has one inside it.
+	const selectedCount = computed(() => {
+		let includedContainers = 0;
+		for (const workflowIds of workflowsByContainer.value.values()) {
+			if (workflowIds.some((id) => selectedIds.value.has(id))) includedContainers += 1;
+		}
+		return selectedWorkflowIds.value.length + includedContainers;
 	});
 
-	const selectedCount = computed(() => selectedIds.value.size);
+	const visibleWorkflowIds = computed(() =>
+		filteredChanges.value.filter((c) => c.type === 'workflow').map((c) => c.id),
+	);
 
-	// Select-all state reflects the visible (filtered) rows, not the full list.
+	// Select-all state reflects the visible (filtered) workflows, not the full list.
 	const allSelected = computed(
 		() =>
-			filteredChanges.value.length > 0 &&
-			filteredChanges.value.every((c) => selectedIds.value.has(c.id)),
+			visibleWorkflowIds.value.length > 0 &&
+			visibleWorkflowIds.value.every((id) => selectedIds.value.has(id)),
 	);
 
 	const someSelected = computed(
-		() => filteredChanges.value.some((c) => selectedIds.value.has(c.id)) && !allSelected.value,
+		() => visibleWorkflowIds.value.some((id) => selectedIds.value.has(id)) && !allSelected.value,
 	);
+
+	/** Checkbox state of a visible row. A container follows the visible workflows inside it. */
+	function selectionState(id: string): SelectionState {
+		const visibleWorkflows = visibleWorkflowsByContainer.value.get(id);
+		if (!visibleWorkflows) return selectedIds.value.has(id) ? 'checked' : 'unchecked';
+		return containerSelectionState(visibleWorkflows, selectedIds.value);
+	}
 
 	// Drop selections whose resource no longer exists in the latest response.
 	function reconcileSelection() {
@@ -66,36 +100,43 @@ export function usePromotionChanges(projectId: string, direction: PromotionDirec
 		}
 	}
 
+	// A container toggles the visible workflows inside it: all off when all are on, else all on.
 	function toggleSelected(id: string) {
 		if (isSubmitting.value) return;
 		const next = new Set(selectedIds.value);
-		if (next.has(id)) {
-			next.delete(id);
-		} else {
-			next.add(id);
+		const containerWorkflows = visibleWorkflowsByContainer.value.get(id);
+		if (containerWorkflows) {
+			const clear = containerWorkflows.every((workflowId) => next.has(workflowId));
+			for (const workflowId of containerWorkflows) {
+				if (clear) next.delete(workflowId);
+				else next.add(workflowId);
+			}
+		} else if (changes.value.some((change) => change.id === id)) {
+			if (next.has(id)) next.delete(id);
+			else next.add(id);
 		}
 		selectedIds.value = next;
 	}
 
-	// Add or remove only the currently visible rows; hidden selections are untouched.
+	// Add or remove only the currently visible workflows.
 	function toggleSelectAll() {
 		if (isSubmitting.value) return;
 		const next = new Set(selectedIds.value);
-		if (allSelected.value) {
-			for (const c of filteredChanges.value) next.delete(c.id);
-		} else {
-			for (const c of filteredChanges.value) next.add(c.id);
+		for (const id of visibleWorkflowIds.value) {
+			if (allSelected.value) next.delete(id);
+			else next.add(id);
 		}
 		selectedIds.value = next;
 	}
 
 	async function submitSelection(): Promise<PromotePackageResultDto | null> {
-		if (selectedCount.value === 0 || isSubmitting.value) return null;
+		const workflowIds = selectedWorkflowIds.value;
+		if (workflowIds.length === 0 || isSubmitting.value) return null;
 
 		isSubmitting.value = true;
 		try {
 			return await promoteProjectSelection(rootStore.publicApiContext, projectId, {
-				workflowIds: [...selectedIds.value],
+				workflowIds,
 			});
 		} finally {
 			isSubmitting.value = false;
@@ -114,6 +155,9 @@ export function usePromotionChanges(projectId: string, direction: PromotionDirec
 		lastRefreshedAt,
 		selectedIds,
 		selectedCount,
+		selectedWorkflowIds,
+		selectionState,
+		workflowsByContainer,
 		allSelected,
 		someSelected,
 		fetchChanges,

@@ -669,7 +669,7 @@ export class PromotionsPublicController {
 	@ApiKeyScope({ anyOf: ['gitConnection:push', 'gitConnection:pull'] })
 	@ApiSummary('List the changes of a project in one direction')
 	@ApiDescription(
-		'Compares a team project on this instance with the branch of its promotion configuration and lists the workflows that differ. For `promote` the rows are what a promotion sends to the branch, and the key needs the gitConnection:push scope. For `apply` the rows are what applying the branch changes on this instance, and the key needs the gitConnection:pull scope. `commitSha` is the commit the rows were read from. Requires the direction to be cloned first.',
+		'Compares a team project on this instance with the branch of its promotion configuration and lists the workflows that differ. A renamed project or folder is listed with the workflows inside it. Selecting any of those workflows includes the rename. For `promote` the rows are what a promotion sends to the branch, and the key needs the gitConnection:push scope. For `apply` the rows are what applying the branch changes on this instance, and the key needs the gitConnection:pull scope. `commitSha` is the commit the rows were read from. Requires the direction to be cloned first.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, PromotionChangesDto)

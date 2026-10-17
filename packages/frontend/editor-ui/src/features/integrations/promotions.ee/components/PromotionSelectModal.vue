@@ -12,9 +12,10 @@ import { useToast } from '@n8n/composables/useToast';
 import { MODAL_CONFIRM } from '@/app/constants/modals';
 import Modal from '@/app/components/Modal.vue';
 import TimeAgo from '@/app/components/TimeAgo.vue';
-import { N8nButton, N8nCheckbox, N8nInput, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nCheckbox, N8nIcon, N8nInput, N8nText } from '@n8n/design-system';
 import {
 	PROMOTION_BRANCH_PREFIX,
+	type PromotableResource,
 	type PromotableResourceStatus,
 	type PromotionDirection,
 } from '@n8n/api-types';
@@ -22,6 +23,7 @@ import { usePromotionChanges } from '../composables/usePromotionChanges';
 import { promotionEventBus } from '../promotions.eventBus';
 import { applyProjectSelection } from '../promotionsSettings.api';
 import { getPromoteErrorMessage } from '../promoteErrorMessage';
+import { movingContainer, promotionChangeDepth } from '../structuralSelection';
 import PromotionBindingsFlow from './PromotionBindingsFlow.vue';
 import type { AppliedResult, BlockedApplyResult } from '../promotions.types';
 
@@ -63,6 +65,9 @@ const {
 	lastRefreshedAt,
 	selectedIds,
 	selectedCount,
+	selectedWorkflowIds,
+	selectionState,
+	workflowsByContainer,
 	allSelected,
 	someSelected,
 	fetchChanges,
@@ -144,8 +149,69 @@ function getApplySelectedButtonLabel(): string {
 	});
 }
 
-function isSelected(id: string): boolean {
-	return selectedIds.value.has(id);
+const changesById = computed(() => new Map(changes.value.map((change) => [change.id, change])));
+
+function isContainer(change: PromotableResource): boolean {
+	return change.type !== 'workflow';
+}
+
+function isRowActive(change: PromotableResource): boolean {
+	return selectionState(change.id) !== 'unchecked';
+}
+
+const changeDepths = computed(() => {
+	const byId = new Map(filteredChanges.value.map((change) => [change.id, change]));
+	return new Map(
+		filteredChanges.value.map((change) => [change.id, promotionChangeDepth(change, byId)]),
+	);
+});
+
+function changedDependencyLabels(change: PromotableResource): string[] {
+	return change.changedDependencies.map(({ type, name }) =>
+		i18n.baseText('promotions.modal.changedDependency', {
+			interpolate: { type: i18n.baseText(`promotions.modal.dependencyType.${type}`), name },
+		}),
+	);
+}
+
+/** Explains why a workflow is listed when only a dependency changed. */
+function changedDependencySummary(change: PromotableResource): string | undefined {
+	const labels = changedDependencyLabels(change);
+	if (labels.length <= 1) return labels[0];
+	return i18n.baseText('promotions.modal.changedDependencies', {
+		interpolate: { count: String(labels.length) },
+	});
+}
+
+function hasActivityMeta(change: PromotableResource): boolean {
+	return Boolean(
+		getChangedByLabel(change.updatedBy) ||
+			change.updatedAt ||
+			change.dependencyCount > 0 ||
+			change.changedDependencies.length > 0,
+	);
+}
+
+/** Tells the user that an unselected workflow still moves with a renamed container. */
+function movesWithLabel(change: PromotableResource): string | undefined {
+	if (isContainer(change) || selectionState(change.id) === 'checked') return undefined;
+	const container = movingContainer(
+		change,
+		changesById.value,
+		workflowsByContainer.value,
+		selectedIds.value,
+	);
+	if (!container) return undefined;
+	return i18n.baseText('promotions.modal.structural.movesWith', {
+		interpolate: { name: container.name },
+	});
+}
+
+function rowDepthStyle(changeId: string): Record<string, string> | undefined {
+	const depth = changeDepths.value.get(changeId) ?? 0;
+	if (depth === 0) return undefined;
+	// The depth is an index. The spacing token supplies the size.
+	return { '--promotion-row-depth': String(depth) };
 }
 
 const isPromoteDisabled = computed(
@@ -280,7 +346,7 @@ async function onApplySelected() {
 	);
 	if (confirmed !== MODAL_CONFIRM) return;
 	isApplying.value = true;
-	const workflowIds = Array.from(selectedIds.value);
+	const workflowIds = selectedWorkflowIds.value;
 	try {
 		// Pin the reviewed commit on the source the preview resolved: a branch that moved since
 		// the preview is reported, not applied.
@@ -426,16 +492,18 @@ onMounted(async () => {
 								:key="change.id"
 								:class="[
 									$style.row,
-									isSelected(change.id) && $style.rowSelected,
+									isRowActive(change) && $style.rowSelected,
 									isSelectionLocked && $style.rowDisabled,
 									index === 0 && $style.rowFirst,
 									index === filteredChanges.length - 1 && $style.rowLast,
 								]"
+								:style="rowDepthStyle(change.id)"
 								data-test-id="promotion-change-row"
 								@click="onToggleSelected(change.id)"
 							>
 								<N8nCheckbox
-									:model-value="isSelected(change.id)"
+									:model-value="selectionState(change.id) === 'checked'"
+									:indeterminate="selectionState(change.id) === 'mixed'"
 									:disabled="isSelectionLocked"
 									@update:model-value="onToggleSelected(change.id)"
 									@click.stop
@@ -443,7 +511,14 @@ onMounted(async () => {
 
 								<div :class="$style.rowContent">
 									<div :class="$style.rowHeader">
-										<N8nText size="medium" bold>{{ change.name }}</N8nText>
+										<div :class="$style.rowTitle">
+											<N8nIcon
+												v-if="isContainer(change)"
+												:icon="change.type === 'folder' ? 'folder' : 'layers'"
+												size="small"
+											/>
+											<N8nText size="medium" bold>{{ change.name }}</N8nText>
+										</div>
 										<span
 											:class="[
 												$style.statusLabel,
@@ -456,6 +531,23 @@ onMounted(async () => {
 										</span>
 									</div>
 									<div :class="$style.rowMeta">
+										<N8nText v-if="isContainer(change)" size="small" color="text-light">
+											{{ i18n.baseText(`promotions.modal.type.${change.type}`) }}
+										</N8nText>
+										<N8nText
+											v-if="movesWithLabel(change)"
+											size="small"
+											color="text-light"
+											data-test-id="promotion-change-moves-with"
+										>
+											{{ movesWithLabel(change) }}
+										</N8nText>
+										<N8nText
+											v-if="movesWithLabel(change) && hasActivityMeta(change)"
+											size="small"
+											color="text-light"
+											>·</N8nText
+										>
 										<N8nText
 											v-if="getChangedByLabel(change.updatedBy)"
 											size="small"
@@ -472,6 +564,17 @@ onMounted(async () => {
 										<N8nText v-if="change.updatedAt" size="small" color="text-light">
 											<TimeAgo :date="change.updatedAt" />
 										</N8nText>
+										<template v-if="changedDependencySummary(change)">
+											<N8nText size="small" color="text-light">·</N8nText>
+											<N8nText
+												size="small"
+												color="text-base"
+												:title="changedDependencyLabels(change).join('\n')"
+												data-test-id="promotion-change-changed-dependencies"
+											>
+												{{ changedDependencySummary(change) }}
+											</N8nText>
+										</template>
 										<template v-if="change.dependencyCount > 0">
 											<N8nText size="small" color="text-light">·</N8nText>
 											<N8nText size="small" bold>
@@ -640,7 +743,11 @@ onMounted(async () => {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--xs);
-	padding: var(--spacing--xs) var(--spacing--sm);
+	padding-block: var(--spacing--xs);
+	padding-inline-end: var(--spacing--sm);
+	padding-inline-start: calc(
+		var(--spacing--sm) + var(--promotion-row-depth, 0) * var(--spacing--lg)
+	);
 	background-color: var(--background--surface);
 	border-bottom: 1px solid var(--border-color);
 	cursor: pointer;
@@ -665,6 +772,13 @@ onMounted(async () => {
 
 .rowSelected {
 	background-color: var(--color--bg-promotion-row-selected);
+}
+
+.rowTitle {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+	min-width: 0;
 }
 
 .rowContent {

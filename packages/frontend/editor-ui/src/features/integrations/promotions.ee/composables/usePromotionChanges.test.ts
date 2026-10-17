@@ -21,6 +21,8 @@ const mockChanges = [
 		updatedAt: new Date().toISOString(),
 		updatedBy: 'user-1',
 		dependencyCount: 3,
+		changedDependencies: [],
+		parentId: null,
 	},
 	{
 		id: 'wf-002',
@@ -31,6 +33,8 @@ const mockChanges = [
 		updatedAt: new Date().toISOString(),
 		updatedBy: null,
 		dependencyCount: 0,
+		changedDependencies: [],
+		parentId: null,
 	},
 	{
 		id: 'wf-003',
@@ -41,6 +45,8 @@ const mockChanges = [
 		updatedAt: new Date().toISOString(),
 		updatedBy: 'user-2',
 		dependencyCount: 1,
+		changedDependencies: [],
+		parentId: null,
 	},
 	{
 		id: 'wf-004',
@@ -51,6 +57,8 @@ const mockChanges = [
 		updatedAt: new Date().toISOString(),
 		updatedBy: null,
 		dependencyCount: 0,
+		changedDependencies: [],
+		parentId: null,
 	},
 ];
 
@@ -195,5 +203,129 @@ describe('usePromotionChanges', () => {
 		expect(selectedIds.value.has('wf-003')).toBe(false);
 		expect(selectedIds.value.has('wf-004')).toBe(false);
 		expect(allSelected.value).toBe(true);
+	});
+
+	it('derives a renamed folder state from the workflows inside it', async () => {
+		vi.mocked(promotionsApi.getPromotableChanges).mockResolvedValue({
+			commitSha: COMMIT_SHA,
+			source: SOURCE,
+			changes: [
+				{
+					id: 'folder-1',
+					name: 'Revenue',
+					type: 'folder',
+					status: 'renamed',
+					version: null,
+					updatedAt: null,
+					updatedBy: null,
+					dependencyCount: 0,
+					changedDependencies: [],
+					parentId: null,
+				},
+				{
+					id: 'wf-a',
+					name: 'Alpha',
+					type: 'workflow',
+					status: 'renamed',
+					version: 2,
+					updatedAt: null,
+					updatedBy: null,
+					dependencyCount: 0,
+					changedDependencies: [],
+					parentId: 'folder-1',
+				},
+				{
+					id: 'wf-b',
+					name: 'Beta',
+					type: 'workflow',
+					status: 'modified',
+					version: 3,
+					updatedAt: null,
+					updatedBy: null,
+					dependencyCount: 0,
+					changedDependencies: [],
+					parentId: 'folder-1',
+				},
+				{
+					id: 'wf-c',
+					name: 'Gamma',
+					type: 'workflow',
+					status: 'modified',
+					version: 1,
+					updatedAt: null,
+					updatedBy: null,
+					dependencyCount: 0,
+					changedDependencies: [],
+					parentId: null,
+				},
+			],
+		});
+
+		const {
+			fetchChanges,
+			toggleSelected,
+			selectedIds,
+			selectedCount,
+			selectionState,
+			searchQuery,
+			filteredChanges,
+			submitSelection,
+		} = usePromotionChanges('project-1');
+		await fetchChanges();
+
+		// One workflow includes the folder rename. The other workflow stays out.
+		toggleSelected('wf-a');
+		expect(selectedIds.value).toEqual(new Set(['wf-a']));
+		expect(selectionState('folder-1')).toBe('mixed');
+		expect(selectedCount.value).toBe(2);
+
+		toggleSelected('wf-b');
+		expect(selectionState('folder-1')).toBe('checked');
+		expect(selectedCount.value).toBe(3);
+
+		// A child clears on its own, and the folder stays included while a workflow is left.
+		toggleSelected('wf-a');
+		expect(selectedIds.value).toEqual(new Set(['wf-b']));
+		expect(selectionState('folder-1')).toBe('mixed');
+
+		// A mixed folder selects everything inside it, and a full folder clears it.
+		toggleSelected('folder-1');
+		expect(selectedIds.value).toEqual(new Set(['wf-a', 'wf-b']));
+		toggleSelected('folder-1');
+		expect(selectedIds.value).toEqual(new Set());
+		expect(selectionState('folder-1')).toBe('unchecked');
+		expect(selectedCount.value).toBe(0);
+
+		// A search keeps the folder above the match, and the folder acts on what is visible.
+		searchQuery.value = 'Alpha';
+		expect(filteredChanges.value.map((change) => change.id)).toEqual(['folder-1', 'wf-a']);
+		toggleSelected('folder-1');
+		expect(selectedIds.value).toEqual(new Set(['wf-a']));
+		searchQuery.value = '';
+		toggleSelected('wf-a');
+
+		toggleSelected('wf-c');
+		expect(selectedIds.value).toEqual(new Set(['wf-c']));
+		expect(selectedCount.value).toBe(1);
+
+		vi.mocked(promotionsApi.promoteProjectSelection).mockResolvedValue({
+			connectionId: 'c1',
+			configId: 'cfg1',
+			counts: {
+				workflows: 1,
+				folders: 0,
+				credentials: 0,
+				dataTables: 0,
+				variables: 0,
+				tags: 0,
+			},
+			git: { commitSha: 'a'.repeat(40), branchName: 'main' },
+		});
+		await submitSelection();
+		expect(promotionsApi.promoteProjectSelection).toHaveBeenCalledWith(
+			publicApiContext,
+			'project-1',
+			{ workflowIds: ['wf-c'] },
+		);
 	});
 });

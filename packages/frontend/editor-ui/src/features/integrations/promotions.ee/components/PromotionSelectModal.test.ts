@@ -51,6 +51,7 @@ const mockChanges = [
 		updatedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
 		updatedBy: 'user-001',
 		dependencyCount: 7,
+		changedDependencies: [{ type: 'variable' as const, name: 'API_URL' }],
 	},
 	{
 		id: 'wf-002',
@@ -61,6 +62,10 @@ const mockChanges = [
 		updatedAt: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
 		updatedBy: 'user-002',
 		dependencyCount: 2,
+		changedDependencies: [
+			{ type: 'credential' as const, name: 'Slack account' },
+			{ type: 'dataTable' as const, name: 'Orders' },
+		],
 	},
 ];
 
@@ -189,6 +194,100 @@ describe('PromotionSelectModal', () => {
 		expect(submitButton).toHaveTextContent('Promote 1 change');
 	});
 
+	it('includes a renamed folder when one workflow is selected and shows what moves with it', async () => {
+		server.get('/rest/promotions/project-1/changes/promote', () => ({
+			data: changesBody([
+				{
+					id: 'folder-1',
+					name: 'Revenue',
+					type: 'folder',
+					status: 'renamed',
+					version: null,
+					updatedAt: null,
+					updatedBy: null,
+					dependencyCount: 0,
+					changedDependencies: [],
+					parentId: null,
+				},
+				{
+					id: 'wf-a',
+					name: 'Alpha',
+					type: 'workflow',
+					status: 'renamed',
+					version: 2,
+					updatedAt: null,
+					updatedBy: null,
+					dependencyCount: 0,
+					changedDependencies: [],
+					parentId: 'folder-1',
+				},
+				{
+					id: 'wf-b',
+					name: 'Beta',
+					type: 'workflow',
+					status: 'modified',
+					version: 1,
+					updatedAt: null,
+					updatedBy: null,
+					dependencyCount: 0,
+					changedDependencies: [],
+					parentId: 'folder-1',
+				},
+			]),
+		}));
+
+		const { findByText, findByTestId, getAllByTestId, queryAllByTestId } = renderComponent({
+			pinia,
+			props: {
+				modalName: PROMOTION_SELECT_MODAL_KEY,
+				data: { projectId: 'project-1', direction: 'promote' },
+			},
+		});
+
+		const checkbox = (row: HTMLElement) => {
+			const box = row.querySelector('[role="checkbox"]');
+			if (!box) throw new Error('Missing checkbox');
+			return box;
+		};
+
+		await userEvent.click(await findByText('Alpha'));
+
+		const rows = getAllByTestId('promotion-change-row');
+		expect(rows.map((row) => row.textContent)).toEqual([
+			expect.stringContaining('Revenue'),
+			expect.stringContaining('Alpha'),
+			expect.stringContaining('Beta'),
+		]);
+		expect(rows[0]).toHaveTextContent('Folder');
+		expect(checkbox(rows[0])).toHaveAttribute('data-state', 'indeterminate');
+		expect(checkbox(rows[1])).toHaveAttribute('data-state', 'checked');
+		expect(checkbox(rows[2])).toHaveAttribute('data-state', 'unchecked');
+		expect(checkbox(rows[2])).not.toHaveAttribute('data-disabled');
+		expect(rows[2]).toHaveTextContent('Moves with Revenue');
+		expect(queryAllByTestId('promotion-change-moves-with')).toHaveLength(1);
+		expect(await findByTestId('promotion-submit')).toHaveTextContent('Promote 2 changes');
+
+		await userEvent.click(rows[2]);
+		expect(checkbox(rows[0])).toHaveAttribute('data-state', 'checked');
+		expect(queryAllByTestId('promotion-change-moves-with')).toHaveLength(0);
+		expect(await findByTestId('promotion-submit')).toHaveTextContent('Promote 3 changes');
+
+		await userEvent.click(rows[0]);
+		expect(checkbox(rows[0])).toHaveAttribute('data-state', 'unchecked');
+		expect(checkbox(rows[1])).toHaveAttribute('data-state', 'unchecked');
+		expect(checkbox(rows[2])).toHaveAttribute('data-state', 'unchecked');
+
+		await userEvent.click(rows[0]);
+		await userEvent.click(rows[1]);
+		await userEvent.click(await findByTestId('promotion-submit'));
+
+		await waitFor(() =>
+			expect(api.promoteProjectSelection).toHaveBeenCalledWith(expect.anything(), 'project-1', {
+				workflowIds: ['wf-b'],
+			}),
+		);
+	});
+
 	it('should promote the selected workflow ids and close on success', async () => {
 		const emitSpy = vi.spyOn(promotionEventBus, 'emit');
 		const uiStore = useUIStore();
@@ -292,6 +391,26 @@ describe('PromotionSelectModal', () => {
 		});
 	});
 
+	it('should show which dependency changed on a workflow row', async () => {
+		const { getAllByTestId } = renderComponent({
+			pinia,
+			props: {
+				modalName: PROMOTION_SELECT_MODAL_KEY,
+				data: { projectId: 'project-1', direction: 'promote' },
+			},
+		});
+
+		await waitFor(() => {
+			const labels = getAllByTestId('promotion-change-changed-dependencies');
+			expect(labels[0]).toHaveTextContent('Variable changed: API_URL');
+			expect(labels[1]).toHaveTextContent('2 dependencies changed');
+			expect(labels[1]).toHaveAttribute(
+				'title',
+				'Credential changed: Slack account\nData table changed: Orders',
+			);
+		});
+	});
+
 	it('should show empty state when no changes', async () => {
 		server.get('/rest/promotions/project-1/changes/promote', () => ({ data: changesBody([]) }));
 
@@ -391,6 +510,7 @@ describe('PromotionSelectModal', () => {
 					updatedAt: new Date().toISOString(),
 					updatedBy: null,
 					dependencyCount: 0,
+					changedDependencies: [],
 				},
 				{
 					id: 'wf-deleted',
@@ -401,6 +521,7 @@ describe('PromotionSelectModal', () => {
 					updatedAt: null,
 					updatedBy: null,
 					dependencyCount: 0,
+					changedDependencies: [],
 				},
 			]),
 		}));
