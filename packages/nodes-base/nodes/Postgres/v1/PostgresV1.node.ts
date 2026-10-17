@@ -14,7 +14,12 @@ import { oldVersionNotice } from '@utils/descriptions';
 
 import { pgInsertV2, pgQueryV2, pgUpdate, wrapData } from './genericFunctions';
 import { configurePostgres } from '../transport';
-import type { PgpConnection, PostgresNodeCredentials } from '../v2/helpers/interfaces';
+import type {
+	ConnectionsData,
+	PgpConnection,
+	PostgresNodeCredentials,
+} from '../v2/helpers/interfaces';
+import { parsePostgresError, prepareErrorItem } from '../v2/helpers/utils';
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Postgres',
@@ -336,16 +341,26 @@ export class PostgresV1 implements INodeType {
 			'',
 		) as string;
 
-		const { db, pgp } = await configurePostgres.call(this, credentials, {
-			largeNumbersOutput:
-				largeNumbersOutput === 'numbers' || largeNumbersOutput === 'text'
-					? largeNumbersOutput
-					: undefined,
-		});
+		const items = this.getInputData();
+		let connection: ConnectionsData;
+		try {
+			connection = await configurePostgres.call(this, credentials, {
+				largeNumbersOutput:
+					largeNumbersOutput === 'numbers' || largeNumbersOutput === 'text'
+						? largeNumbersOutput
+						: undefined,
+			});
+		} catch (err) {
+			if (!this.continueOnFail()) throw err;
+			const error = parsePostgresError(this.getNode(), err, []);
+			return [
+				items.map((_, index) => prepareErrorItem({ ...error, message: error.message }, index)),
+			];
+		}
+		const { db, pgp } = connection;
 
 		let returnItems: INodeExecutionData[] = [];
 
-		const items = this.getInputData();
 		const operation = this.getNodeParameter('operation', 0);
 
 		if (operation === 'executeQuery') {
