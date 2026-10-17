@@ -308,6 +308,14 @@ function resolveSubworkflowDeadline(
 	return parentDeadline ?? subWorkflowDeadline;
 }
 
+/** A caller without `loadedWorkflowData` must name the parent workflow. */
+function requireParentWorkflowId(options: ExecuteWorkflowOptions): string {
+	if (options.parentWorkflowId === undefined) {
+		throw new UnexpectedError('A sub-workflow execution needs a parent workflow ID.');
+	}
+	return options.parentWorkflowId;
+}
+
 /**
  * Executes the workflow with the given ID
  */
@@ -327,12 +335,12 @@ export async function executeWorkflow(
 		(useDraftVersion
 			? await getDraftWorkflowData(
 					workflowInfo,
-					options.parentWorkflowId,
+					requireParentWorkflowId(options),
 					options.parentWorkflowSettings,
 				)
 			: await getPublishedWorkflowData(
 					workflowInfo,
-					options.parentWorkflowId,
+					requireParentWorkflowId(options),
 					options.parentWorkflowSettings,
 				));
 
@@ -650,12 +658,22 @@ async function startExecution(
 				additionalData.userId,
 			);
 		}
-		await Container.get(SubworkflowPolicyChecker).check(
-			workflow,
-			options.parentWorkflowId,
-			options.node,
-			additionalData.userId,
-		);
+		const subworkflowPolicyChecker = Container.get(SubworkflowPolicyChecker);
+		if (options.parentProjectId !== undefined) {
+			// A project-scoped caller, such as an agent, has no parent workflow.
+			await subworkflowPolicyChecker.checkForProject(
+				workflow,
+				options.parentProjectId,
+				additionalData.userId,
+			);
+		} else {
+			await subworkflowPolicyChecker.check(
+				workflow,
+				requireParentWorkflowId(options),
+				options.node,
+				additionalData.userId,
+			);
+		}
 
 		// Create new additionalData to have different workflow loaded and to call
 		// different webhooks
@@ -697,6 +715,7 @@ async function startExecution(
 		}
 		// Propagate streaming state to subworkflows
 		additionalDataIntegrated.streamingEnabled = additionalData.streamingEnabled;
+		await options.configureAdditionalData?.(additionalDataIntegrated);
 
 		const executionsConfig = Container.get(ExecutionsConfig);
 

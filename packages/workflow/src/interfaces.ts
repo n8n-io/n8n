@@ -3897,7 +3897,17 @@ export interface IWorkflowExecutionDataProcess {
 
 export interface ExecuteWorkflowOptions {
 	node?: INode;
-	parentWorkflowId: string;
+	/** Required unless `parentProjectId` is set or `loadedWorkflowData` supplies the workflow. */
+	parentWorkflowId?: string;
+	/**
+	 * Set when the caller is a project-scoped agent with no parent workflow. The caller policy is
+	 * then checked against this project instead of a parent workflow.
+	 */
+	parentProjectId?: string;
+	/** Decorates the sub-execution's `additionalData` before it runs. Used by agent evals. */
+	configureAdditionalData?: (
+		additionalData: IWorkflowExecuteAdditionalData,
+	) => void | Promise<void>;
 	inputData?: INodeExecutionData[];
 	loadedWorkflowData?: IWorkflowBase;
 	loadedRunData?: IWorkflowExecutionDataProcess;

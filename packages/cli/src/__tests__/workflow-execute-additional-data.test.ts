@@ -137,7 +137,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 	const workflowRepository = mockInstance(WorkflowRepository);
 	const activeExecutions = mockInstance(ActiveExecutions);
 	const credentialsPermissionChecker = mockInstance(CredentialsPermissionChecker);
-	mockInstance(SubworkflowPolicyChecker);
+	const subworkflowPolicyChecker = mockInstance(SubworkflowPolicyChecker);
 	const workflowPreExecute = mockInstance(WorkflowPreExecute);
 	mockInstance(WorkflowStatisticsService);
 	mockInstance(WorkflowPublishHistoryRepository);
@@ -275,6 +275,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 			await expect(
 				executeWorkflow(mock<IExecuteWorkflowInfo>(), mock<IWorkflowExecuteAdditionalData>(), {
 					...mock<ExecuteWorkflowOptions>(),
+					parentWorkflowId: 'parent-1',
 					loadedWorkflowData: undefined,
 					loadedRunData: { ...mock<IWorkflowExecutionDataProcess>(), executionData },
 					returnLastRunOnly: false,
@@ -629,6 +630,119 @@ describe('WorkflowExecuteAdditionalData', () => {
 				);
 				const integratedAdditionalData = vi.mocked(WorkflowExecute).mock.calls[0][0];
 				expect(integratedAdditionalData.userId).toBe('user-1');
+			});
+		});
+
+		describe('project-scoped and decorated callers', () => {
+			const nodeTypes = mockInstance(NodeTypes);
+			const nodeType = mock<INodeType>({ description: { properties: [] } });
+			const subWorkflowData = (): IWorkflowBase =>
+				({
+					id: 'sub-id',
+					name: 'Sub Workflow',
+					nodes: [
+						{
+							id: 'trigger',
+							name: 'Trigger',
+							type: 'n8n-nodes-base.executeWorkflowTrigger',
+							typeVersion: 1.1,
+							position: [0, 0],
+							parameters: {},
+						},
+					],
+					connections: {},
+					staticData: {},
+					settings: {},
+				}) as IWorkflowBase;
+			// A plain object: a deep mock auto-stubs `rootExecutionMode`, which `??` then keeps.
+			const parentAdditionalData = () =>
+				mock<IWorkflowExecuteAdditionalData>({ userId: 'user-1', rootExecutionMode: undefined });
+
+			beforeEach(() => {
+				nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
+				vi.mocked(subworkflowPolicyChecker.check).mockClear();
+				vi.mocked(subworkflowPolicyChecker.checkForProject).mockClear();
+				vi.mocked(WorkflowExecute).mockClear();
+			});
+
+			it('checks the caller policy against the parent project when one is given', async () => {
+				await executeWorkflow({ id: 'sub-id' }, parentAdditionalData(), {
+					parentProjectId: 'project-1',
+					loadedWorkflowData: subWorkflowData(),
+					executionMode: 'manual',
+				});
+
+				expect(subworkflowPolicyChecker.checkForProject).toHaveBeenCalledWith(
+					expect.objectContaining({ id: 'sub-id' }),
+					'project-1',
+					'user-1',
+				);
+				expect(subworkflowPolicyChecker.check).not.toHaveBeenCalled();
+			});
+
+			it('checks the caller policy against the parent workflow when no project is given', async () => {
+				await executeWorkflow({ id: 'sub-id' }, parentAdditionalData(), {
+					parentWorkflowId: 'parent-1',
+					loadedWorkflowData: subWorkflowData(),
+					executionMode: 'manual',
+				});
+
+				expect(subworkflowPolicyChecker.check).toHaveBeenCalledWith(
+					expect.objectContaining({ id: 'sub-id' }),
+					'parent-1',
+					undefined,
+					'user-1',
+				);
+				expect(subworkflowPolicyChecker.checkForProject).not.toHaveBeenCalled();
+			});
+
+			it('rejects a caller that names neither a parent workflow nor a parent project', async () => {
+				await expect(
+					executeWorkflow({ id: 'sub-id' }, parentAdditionalData(), {
+						loadedWorkflowData: subWorkflowData(),
+						executionMode: 'manual',
+					}),
+				).rejects.toThrow('needs a parent workflow ID');
+			});
+
+			it('needs a parent workflow ID to load the workflow itself', async () => {
+				await expect(
+					executeWorkflow({ id: 'sub-id' }, parentAdditionalData(), {
+						parentProjectId: 'project-1',
+						executionMode: 'manual',
+					}),
+				).rejects.toThrow('needs a parent workflow ID');
+			});
+
+			it('lets the caller decorate the additionalData that the sub-execution runs with', async () => {
+				const configureAdditionalData = vi.fn();
+
+				await executeWorkflow({ id: 'sub-id' }, parentAdditionalData(), {
+					parentProjectId: 'project-1',
+					loadedWorkflowData: subWorkflowData(),
+					executionMode: 'manual',
+					configureAdditionalData,
+				});
+
+				const integratedAdditionalData = vi.mocked(WorkflowExecute).mock.calls[0][0];
+				expect(configureAdditionalData).toHaveBeenCalledTimes(1);
+				expect(configureAdditionalData).toHaveBeenCalledWith(integratedAdditionalData);
+			});
+
+			it('applies the decoration before the sub-execution starts', async () => {
+				const configureAdditionalData = vi.fn();
+				processRunExecutionData.mockClear();
+
+				await executeWorkflow({ id: 'sub-id' }, parentAdditionalData(), {
+					parentProjectId: 'project-1',
+					loadedWorkflowData: subWorkflowData(),
+					executionMode: 'manual',
+					configureAdditionalData,
+				});
+
+				expect(configureAdditionalData.mock.invocationCallOrder[0]).toBeLessThan(
+					processRunExecutionData.mock.invocationCallOrder[0],
+				);
 			});
 		});
 
@@ -1026,6 +1140,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				await expect(
 					executeWorkflow(mock<IExecuteWorkflowInfo>(), mock<IWorkflowExecuteAdditionalData>(), {
 						...mock<ExecuteWorkflowOptions>(),
+						parentWorkflowId: 'parent-1',
 						loadedWorkflowData: undefined,
 						loadedRunData: { ...mock<IWorkflowExecutionDataProcess>(), executionData },
 						doNotWaitToFinish: false,
