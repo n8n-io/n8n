@@ -381,65 +381,22 @@ describe('AgentSkillsSection', () => {
 		]);
 	});
 
-	it('shows each hint in the row of its skill', () => {
-		const wrapper = mount(AgentSkillsSection, {
-			props: {
-				skills: [
-					{ id: 'tone', skill },
-					{ id: 'sql', skill: { ...skill, name: 'SQL' } },
-				],
-				skillVersions: {
-					tone: {
-						draft: 3,
-						live: 3,
-						latest: 3,
-						pinned: false,
-						liveHasSameContent: false,
-						scope: 'project',
-					},
-					sql: {
-						draft: 2,
-						live: null,
-						latest: 4,
-						pinned: true,
-						liveHasSameContent: false,
-						scope: 'project',
-					},
-				},
-			},
-			global: { stubs: versionStubs },
-		});
-
-		const [tone, sql] = wrapper.findAll('[data-testid="agent-skill-row"]');
-		expect(tone.find('[data-testid="agent-skill-version-hint"]').exists()).toBe(false);
-		expect(tone.find('[data-testid="agent-skill-version-badge"]').exists()).toBe(true);
-		expect(sql.find('[data-testid="agent-skill-version-hint"]').exists()).toBe(true);
-		expect(sql.find('[data-testid="agent-skill-version-badge"]').exists()).toBe(true);
-	});
-
-	it('says a skill is not published yet when no published version uses it', () => {
-		const wrapper = mountWithVersion(versionInfo({ live: null }));
-
-		const hint = wrapper.get('[data-testid="agent-skill-version-hint"]');
-		expect(hint.text()).toBe('agents.builder.skills.version.hint.notLive');
-		expect(hint.find('[data-testid="agent-skill-see-changes"]').exists()).toBe(false);
-	});
-
 	it.each<[string, AgentSkillVersionInfo]>([
+		['the published agent does not use the skill', versionInfo({ live: null })],
 		[
 			'the published agent runs the same content',
 			versionInfo({ draft: 10, live: 7, latest: 10, liveHasSameContent: true }),
 		],
-		['the draft follows the latest version and the published agent runs it', versionInfo()],
-		['the draft is pinned to the latest version', versionInfo({ pinned: true })],
+		['the draft is ahead of the published agent', versionInfo({ draft: 5, live: 4, latest: 5 })],
 		[
-			'the draft is pinned behind the latest version on the published one',
+			'the draft is pinned behind the latest version',
 			versionInfo({ draft: 2, live: 2, latest: 4, pinned: true }),
 		],
-	])('shows no hint when %s', (_, info) => {
+	])('shows no hint line when %s, because the version columns say it', (_, info) => {
 		const wrapper = mountWithVersion(info);
 
 		expect(wrapper.find('[data-testid="agent-skill-version-hint"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="agent-skill-version-badge"]').exists()).toBe(true);
 	});
 
 	it('puts the update link in the draft column under a pin behind the latest version', () => {

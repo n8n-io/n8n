@@ -70,7 +70,6 @@ type SkillRow = {
 	skill: AgentSkill;
 	info?: AgentSkillVersionInfo;
 	state?: SkillVersionState;
-	hint?: VersionHint;
 	/** The old warning, only for skills the server sends no version state for. */
 	outdated: boolean;
 	invalidReasons: string[];
@@ -85,7 +84,6 @@ const rows = computed<SkillRow[]>(() =>
 			skill,
 			info,
 			state,
-			hint: versionHint(info),
 			outdated: !info && outdatedSkillIds.value.has(id),
 			invalidReasons: skillIssueMessages.value.get(id) ?? [],
 		};
@@ -100,17 +98,6 @@ const diffRow = computed(() => rows.value.find((row) => row.id === diff.value?.s
 
 function skillName(row: Pick<SkillRow, 'id' | 'skill'>): string {
 	return row.skill.name || row.id;
-}
-
-/**
- * One line under the row when the user can act on it: the draft runs other content than
- * the published agent, or only the draft uses the skill.
- */
-type VersionHint = { text: string };
-
-function versionHint(info: AgentSkillVersionInfo | undefined): VersionHint | undefined {
-	if (info?.live !== null) return undefined;
-	return { text: i18n.baseText('agents.builder.skills.version.hint.notLive') };
 }
 
 /** The draft runs other content than the published agent, so a diff between them helps. */
@@ -279,16 +266,6 @@ function rowSubtitle(row: {
 									>
 										{{ rowSubtitle(row) }}
 									</N8nText>
-									<div
-										v-if="row.hint"
-										:class="$style.hint"
-										:data-kind="row.state?.kind"
-										data-testid="agent-skill-version-hint"
-									>
-										<N8nText size="small" color="text-base" :class="$style.hintText">
-											{{ row.hint.text }}
-										</N8nText>
-									</div>
 								</div>
 
 								<template v-if="hasVersionColumns && row.info">
@@ -505,7 +482,6 @@ function rowSubtitle(row: {
 .headerDraft {
 	grid-column: 2;
 	grid-row: 1;
-	justify-self: end;
 }
 
 .headerPublished {
@@ -538,8 +514,8 @@ function rowSubtitle(row: {
 	grid-column: 2;
 	grid-row: 1;
 	flex-direction: column;
-	/* The draft tag and its caption line up toward the compare button. */
-	align-items: flex-end;
+	/* Left-aligned like the data columns of other n8n tables. */
+	align-items: flex-start;
 	gap: var(--spacing--5xs);
 }
 
@@ -653,30 +629,6 @@ function rowSubtitle(row: {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
-}
-
-.hint {
-	display: flex;
-	align-items: center;
-	margin-top: var(--spacing--4xs);
-	gap: var(--spacing--2xs);
-	min-width: 0;
-	white-space: nowrap;
-
-	:global(.n8n-link) {
-		flex-shrink: 0;
-		border-radius: var(--radius--sm);
-
-		&:focus-visible {
-			@include focus.focus-ring;
-		}
-	}
-}
-
-.hintText {
-	min-width: 0;
-	overflow: hidden;
-	text-overflow: ellipsis;
 }
 
 /*

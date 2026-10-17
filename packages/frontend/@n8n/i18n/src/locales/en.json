@@ -9098,7 +9098,6 @@
 	"agents.builder.skills.version.caption.live": "Live",
 	"agents.builder.skills.version.published.notAdded": "Not added",
 	"agents.builder.skills.version.updateTo": "Update to latest (v{latest})",
-	"agents.builder.skills.version.hint.notLive": "Draft only. Publish the agent to use it in production.",
 	"agents.builder.skills.version.seeChanges": "See what changed",
 	"agents.builder.skills.version.detachSkill": "Detach skill",
 	"agents.builder.skills.version.followLatest": "Follow latest",
