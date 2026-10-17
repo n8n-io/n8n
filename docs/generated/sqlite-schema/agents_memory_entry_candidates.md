@@ -93,6 +93,7 @@ erDiagram
   varchar_16_ scope
   datetime_3_ setupCompletedAt
   TEXT skills
+  varchar_36_ sourceAgentId
   TEXT tools
   datetime_3_ updatedAt
   varchar_36_ versionId
