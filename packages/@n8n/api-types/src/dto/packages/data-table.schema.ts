@@ -1,11 +1,12 @@
+import { DATA_TABLE_SYSTEM_COLUMNS, DATA_TABLE_SYSTEM_TESTING_COLUMN } from 'n8n-workflow';
+import { z } from 'zod';
+
 import {
 	dataTableColumnNameSchema,
 	dataTableColumnTypeSchema,
 	dataTableIdSchema,
 	dataTableNameSchema,
-} from '@n8n/api-types';
-import { DATA_TABLE_SYSTEM_COLUMNS, DATA_TABLE_SYSTEM_TESTING_COLUMN } from 'n8n-workflow';
-import { z } from 'zod';
+} from '../../schemas/data-table.schema';
 
 const reservedColumnNames = new Set(
 	[...DATA_TABLE_SYSTEM_COLUMNS, DATA_TABLE_SYSTEM_TESTING_COLUMN].map((name) =>
@@ -15,7 +16,7 @@ const reservedColumnNames = new Set(
 
 export const serializedDataTableColumnSchema = z
 	.object({
-		// Optional: packages exported before column ids pair columns by name.
+		// Optional, because older packages have no column ids. Import then matches columns by name.
 		id: dataTableIdSchema.min(1).optional(),
 		name: dataTableColumnNameSchema,
 		type: dataTableColumnTypeSchema,
@@ -23,8 +24,8 @@ export const serializedDataTableColumnSchema = z
 	})
 	.strict();
 
-// Column names are re-validated here (not only at creation time) so a package
-// that could never be created is rejected at parse time, before any writes.
+// Check the column names here too, not only when the table is created. Then
+// import rejects a table that it cannot create before it writes anything.
 export const serializedDataTableSchema = z
 	.object({
 		id: dataTableIdSchema.min(1),
