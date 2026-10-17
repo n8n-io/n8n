@@ -7,9 +7,10 @@ const ruleTester = new RuleTester();
 function createTriggerNode(options: {
 	group?: string;
 	hasWebhooks?: boolean;
+	preamble?: string;
 	webhookMethods?: string | null;
 }): string {
-	const { group = 'trigger', hasWebhooks = true, webhookMethods } = options;
+	const { group = 'trigger', hasWebhooks = true, preamble = '', webhookMethods } = options;
 	const webhooksProp = hasWebhooks
 		? "webhooks: [{ name: 'default', httpMethod: 'POST', responseMode: 'onReceived', path: 'webhook' }],"
 		: '';
@@ -18,6 +19,7 @@ function createTriggerNode(options: {
 	return `
 import type { INodeType, INodeTypeDescription, IHookFunctions } from 'n8n-workflow';
 
+${preamble}
 export class TestTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Test Trigger',
@@ -47,6 +49,66 @@ ruleTester.run('webhook-lifecycle-complete', WebhookLifecycleCompleteRule, {
 		{
 			name: 'trigger node with all three webhook lifecycle methods',
 			code: createTriggerNode({ webhookMethods: completeWebhookMethods }),
+		},
+		{
+			name: 'lifecycle methods referenced with shorthand properties',
+			code: createTriggerNode({
+				preamble: `
+async function checkExists(this: IHookFunctions): Promise<boolean> { return true; }
+async function create(this: IHookFunctions): Promise<boolean> { return true; }
+async function deleteWebhook(this: IHookFunctions): Promise<boolean> { return true; }
+`,
+				webhookMethods: `{
+					default: {
+						checkExists,
+						create,
+						delete: deleteWebhook,
+					},
+				}`,
+			}),
+		},
+		{
+			name: 'lifecycle methods assigned from identifiers',
+			code: createTriggerNode({
+				preamble: `
+async function checkExistsFn(this: IHookFunctions): Promise<boolean> { return true; }
+async function createFn(this: IHookFunctions): Promise<boolean> { return true; }
+async function deleteFn(this: IHookFunctions): Promise<boolean> { return true; }
+`,
+				webhookMethods: `{
+					default: {
+						checkExists: checkExistsFn,
+						create: createFn,
+						delete: deleteFn,
+					},
+				}`,
+			}),
+		},
+		{
+			name: 'lifecycle methods referenced from object properties',
+			code: createTriggerNode({
+				preamble: 'const GenericFunctions = { createWebhook: async () => true };',
+				webhookMethods: `{
+					default: {
+						async checkExists() { return true; },
+						create: GenericFunctions.createWebhook,
+						async delete() { return true; },
+					},
+				}`,
+			}),
+		},
+		{
+			name: 'last lifecycle property provides the method',
+			code: createTriggerNode({
+				webhookMethods: `{
+					default: {
+						async checkExists() { return true; },
+						async create() { return true; },
+						delete: undefined,
+						delete: async () => true,
+					},
+				}`,
+			}),
 		},
 		{
 			name: 'non-trigger node without webhookMethods',
@@ -160,6 +222,43 @@ export class RegularClass {
 					default: {
 						async checkExists() { return true; },
 						async create() { return true; },
+					},
+				}`,
+			}),
+			errors: [
+				{
+					messageId: 'missingLifecycleMethod',
+					data: { group: 'default', missing: '`delete`' },
+				},
+			],
+		},
+		{
+			name: 'trigger node with undefined delete method',
+			code: createTriggerNode({
+				webhookMethods: `{
+					default: {
+						async checkExists() { return true; },
+						async create() { return true; },
+						delete: undefined,
+					},
+				}`,
+			}),
+			errors: [
+				{
+					messageId: 'missingLifecycleMethod',
+					data: { group: 'default', missing: '`delete`' },
+				},
+			],
+		},
+		{
+			name: 'trigger node with undefined as the last delete method',
+			code: createTriggerNode({
+				webhookMethods: `{
+					default: {
+						async checkExists() { return true; },
+						async create() { return true; },
+						delete: async () => true,
+						delete: undefined,
 					},
 				}`,
 			}),
