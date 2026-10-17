@@ -533,8 +533,14 @@ def collect_screens(runs, run_dir, report, verdicts):
 PLAY_ICON = '<span class="play-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg></span>'
 
 
-def render_replay(screens):
-	"""A strip of final screens that play in place, and a full-screen player that Expand opens."""
+REPLAY_FINEPRINT = ('Terminal screens are exact recordings of the interactive CLI. Instance AI is a video '
+                    'of the n8n UI. Skip pauses shortens idle time in the terminal recordings only. Press Esc to close.')
+
+
+def render_replay(screens, fineprint=REPLAY_FINEPRINT):
+	"""A strip of final screens that play in place, and a full-screen player that Expand opens.
+
+	A screen can set "label" to replace the "Terminal" or "n8n UI" text under its card."""
 	if not screens:
 		return ''
 	cards = []
@@ -545,7 +551,7 @@ def render_replay(screens):
 			thumb = f'<img src="{esc(s["poster"])}" alt="">'
 		else:
 			thumb = f'<video muted preload="metadata" src="{esc(s["src"])}"></video>'
-		kind = 'Terminal' if s['type'] == 'cast' else 'n8n UI'
+		kind = s.get('label') or ('Terminal' if s['type'] == 'cast' else 'n8n UI')
 		cards.append(
 			f'<div class="reel-card"><div class="thumb" data-thumb="{esc(s["name"])}">'
 			f'<button type="button" class="thumb-poster" data-play="{esc(s["name"])}" aria-label="Play {esc(s["title"])}">'
@@ -577,8 +583,7 @@ def render_replay(screens):
 		'<button type="button" class="btn accent" id="play-all">Play all</button>'
 		'<button type="button" class="btn" id="theater-close">Close</button></div>'
 		f'<div class="replay-grid" id="replay-grid">{figures}</div>'
-		'<p class="fineprint">Terminal screens are exact recordings of the interactive CLI. Instance AI is a video '
-		'of the n8n UI. Skip pauses shortens idle time in the terminal recordings only. Press Esc to close.</p></div>'
+		f'<p class="fineprint">{fineprint}</p></div>'
 	)
 
 
@@ -741,20 +746,38 @@ def main():
 			f'<script src="{esc(s["src"])}"></script>' for s in screens if s['type'] == 'cast')
 	scripts += f'<script>const SCREENS = {json.dumps(screens)};</script>'
 
-	page = (TEMPLATE
-	        .replace('{{HEAD}}', head)
-	        .replace('{{REPLAY}}', render_replay(screens))
-	        .replace('{{SCRIPTS}}', scripts)
-	        .replace('{{TITLE}}', esc(case.get('title') or 'Builder comparison'))
-	        .replace('{{PROMPT}}', esc(case['prompt']))
-	        .replace('{{EXPECTED}}', esc(case.get('expected') or '-'))
-	        .replace('{{ROWS}}', ''.join(rows))
-	        .replace('{{NOTES}}', ' '.join(notes))
-	        .replace('{{PANELS}}', ''.join(panels)))
+	page = fill_template(esc(case.get('title') or 'Builder comparison'), ''.join(rows), ' '.join(notes),
+	                     ''.join(panels), replay=render_replay(screens), head=head, scripts=scripts,
+	                     prompt=esc(case['prompt']), expected=esc(case.get('expected') or '-'))
 	(report / 'index.html').write_text(page)
 	print(report / 'index.html')
 	if unpriced:
 		print('models without a published price in case.json: ' + ', '.join(unpriced))
+
+
+CASE_BOXES = ('<div class="case"><div class="box"><div class="mono-label">Prompt</div><div class="msg">{{PROMPT}}</div></div>\n'
+              '<div class="box"><div class="mono-label">Expected outcome</div><div class="msg">{{EXPECTED}}</div></div></div>')
+THEAD = ('<tr><th>Run</th><th>Model</th><th>Result</th><th>Active time</th><th>LLM calls</th><th>Tool calls</th>'
+         '<th>Input tokens</th><th>Cached</th><th>Output tokens</th><th>Cost</th></tr>')
+
+
+def fill_template(title, rows, notes, panels, replay='', head='', scripts='', case=None, thead=THEAD,
+                  prompt='', expected='', after_table=''):
+	"""The full page. Text arguments are HTML. case defaults to the prompt and expected outcome boxes.
+	replay comes before the table, and after_table between the table and the panels."""
+	return (TEMPLATE
+	        .replace('{{CASE}}', CASE_BOXES if case is None else case)
+	        .replace('{{THEAD}}', thead)
+	        .replace('{{HEAD}}', head)
+	        .replace('{{REPLAY}}', replay)
+	        .replace('{{AFTER_TABLE}}', after_table)
+	        .replace('{{SCRIPTS}}', scripts)
+	        .replace('{{TITLE}}', title)
+	        .replace('{{PROMPT}}', prompt)
+	        .replace('{{EXPECTED}}', expected)
+	        .replace('{{ROWS}}', rows)
+	        .replace('{{NOTES}}', notes)
+	        .replace('{{PANELS}}', panels))
 
 
 TEMPLATE = """<!doctype html>
@@ -819,8 +842,18 @@ td:first-child{font-family:var(--sans)}
 .live-card{display:flex;flex-direction:column;gap:var(--s8);min-width:0}
 .live-screen{border-radius:var(--r8);overflow:hidden;background:var(--black);min-height:120px}
 .live-screen img{display:block;width:100%;height:auto}
+.live-screen img[hidden]{display:none}
 .live-screen .live-empty{display:grid;place-items:center;aspect-ratio:16/10;color:var(--gray-50);font:10px/14px var(--mono);text-transform:uppercase;letter-spacing:.02em;padding:var(--s16);text-align:center}
 .live-screen .ap-control-bar,.live-screen .ap-overlay-info{display:none !important}
+.live-zoom{display:block;width:100%;padding:0;border:0;background:none;cursor:zoom-in}
+.live-zoom:has(img[hidden]){display:none}
+.live-zoom:focus-visible{outline-offset:-2px}
+.live-theater [data-zoom-close]{margin-left:auto}
+.live-theater{overflow:hidden}
+.live-zoomed{flex:1;min-height:0;display:flex;align-items:center;justify-content:center}
+.live-zoomed img{display:block;max-width:100%;max-height:100%;border-radius:var(--r8);box-shadow:0 0 0 1px var(--line)}
+.live-zoomed .live-empty{display:grid;place-items:center;width:min(100%,960px);aspect-ratio:16/10;border-radius:var(--r8);background:var(--black);color:var(--gray-50);font:10px/14px var(--mono);text-transform:uppercase;letter-spacing:.02em}
+.live-zoomed [hidden]{display:none}
 .summary{margin:0 0 var(--s8)}
 .checks{list-style:none;margin:0;padding:0}
 .checks li{display:flex;gap:var(--s8);padding:2px 0}
@@ -917,12 +950,12 @@ summary.card-head{margin-bottom:0;cursor:pointer}
 .card pre{background:var(--white);border-radius:var(--r4);box-shadow:inset 0 0 0 1px var(--line);padding:var(--s12);margin:var(--s8) 0 0;overflow:auto;max-height:320px;font-size:12px;line-height:16px;white-space:pre-wrap;word-break:break-word}
 </style>{{HEAD}}</head><body>
 <header><img src="brand/n8n-logo-black-accent.svg" alt="n8n" onerror="this.remove()"><h1>{{TITLE}}</h1></header>
-<div class="case"><div class="box"><div class="mono-label">Prompt</div><div class="msg">{{PROMPT}}</div></div>
-<div class="box"><div class="mono-label">Expected outcome</div><div class="msg">{{EXPECTED}}</div></div></div>
-<table><thead><tr><th>Run</th><th>Model</th><th>Result</th><th>Active time</th><th>LLM calls</th><th>Tool calls</th><th>Input tokens</th><th>Cached</th><th>Output tokens</th><th>Cost</th></tr></thead>
+{{CASE}}
+{{REPLAY}}
+<table><thead>{{THEAD}}</thead>
 <tbody>{{ROWS}}</tbody></table>
 <p class="fineprint">{{NOTES}}</p>
-{{REPLAY}}
+{{AFTER_TABLE}}
 {{PANELS}}
 {{SCRIPTS}}
 <script>

@@ -15,6 +15,8 @@ writes its address to <run-dir>/live-url.txt. Routes:
 
 compare.py writes the status of each builder to <run-dir>/status.json. The server stops
 30 minutes after the last request, when the run is done or compare.py has stopped.
+
+Other skills reuse the server: they call serve() with their own app (see BuilderApp).
 """
 
 import argparse
@@ -158,7 +160,8 @@ def render_live_box(status, runs):
 		if screen == 'cast':
 			inner = f'<div data-cast="{name}"></div>'
 		elif screen == 'shot':
-			inner = (f'<img data-shot="{name}" alt="{title} in the n8n UI" hidden>'
+			inner = (f'<button type="button" class="live-zoom" data-zoom="{name}" aria-label="Show {title} larger">'
+			         f'<img data-shot="{name}" alt="{title} in the n8n UI" hidden></button>'
 			         f'<div class="live-empty" data-shot-empty="{name}">Waiting for the first screenshot</div>')
 		else:
 			inner = '<div class="live-empty">No live screen for this builder. The LLM steps below update live.</div>'
@@ -187,17 +190,11 @@ def render_page(run_dir):
 		player_js, player_css = (br.PLAYER_CDN + n for n in br.PLAYER_FILES)
 	notes = ('This page updates while the builders run, and changes to the full report when the run is done. '
 	         'Costs, canvases and verdicts come after the run. Times are seconds from the start of each builder.')
-	return (br.TEMPLATE
-	        .replace('{{HEAD}}', f'<link rel="stylesheet" href="{player_css}">')
-	        .replace('{{REPLAY}}', render_live_box(status, runs))
-	        .replace('{{SCRIPTS}}', f'<script src="{player_js}"></script><script>const SCREENS = [];</script>'
-	                                f'<script>{LIVE_JS}</script>')
-	        .replace('{{TITLE}}', br.esc(case.get('title') or 'Builder comparison'))
-	        .replace('{{PROMPT}}', br.esc(case['prompt']))
-	        .replace('{{EXPECTED}}', br.esc(case.get('expected') or '-'))
-	        .replace('{{ROWS}}', ''.join(rows))
-	        .replace('{{NOTES}}', br.esc(notes))
-	        .replace('{{PANELS}}', ''.join(panels)))
+	return br.fill_template(
+		br.esc(case.get('title') or 'Builder comparison'), ''.join(rows), br.esc(notes), ''.join(panels),
+		replay=render_live_box(status, runs), head=f'<link rel="stylesheet" href="{player_css}">',
+		scripts=f'<script src="{player_js}"></script><script>const SCREENS = [];</script><script>{LIVE_JS}</script>',
+		prompt=br.esc(case['prompt']), expected=br.esc(case.get('expected') or '-'))
 
 
 def render_state(run_dir):
@@ -220,6 +217,60 @@ window.addEventListener('DOMContentLoaded', ()=>{
   document.querySelectorAll('[data-cast]').forEach(el=>{
     AsciinemaPlayer.create({driver: 'eventsource', url: `/api/cast/${el.dataset.cast}`, bufferTime: 0}, el,
       {fit: 'width', autoPlay: true, controls: false});
+  });
+  // A live screen opens larger in a full-screen viewer. The viewer follows the newest screenshot.
+  const zoomNames = [...document.querySelectorAll('[data-zoom]')].map(b=>b.dataset.zoom);
+  const viewer = document.createElement('div');
+  let zoomed = null, opener = null;
+  viewer.className = 'theater live-theater';
+  viewer.hidden = true;
+  viewer.setAttribute('role', 'dialog');
+  viewer.setAttribute('aria-modal', 'true');
+  viewer.setAttribute('aria-label', 'Live screen');
+  viewer.innerHTML = '<div class="theater-bar"><h2>Live</h2><span data-zoom-badge></span>'
+    + '<button type="button" class="btn" data-zoom-close>Close</button></div><div class="tabs"></div>'
+    + '<div class="live-zoomed"><img alt=""><div class="live-empty">Waiting for the first screenshot</div></div>'
+    + '<p class="fineprint">The screen updates every few seconds. Press the left or right arrow key to change the '
+    + 'scenario. Press Esc to close.</p>';
+  for (const name of zoomNames) {
+    const tab = Object.assign(document.createElement('button'), {type: 'button', className: 'tab'});
+    tab.dataset.zoomTab = name;
+    tab.textContent = document.querySelector(`[data-zoom="${name}"]`).closest('.live-card').querySelector('.run-name').textContent;
+    tab.addEventListener('click', ()=>showZoom(name));
+    viewer.querySelector('.tabs').append(tab);
+  }
+  document.body.append(viewer);
+  function showZoom(name){
+    zoomed = name;
+    viewer.querySelectorAll('[data-zoom-tab]').forEach(t=>t.classList.toggle('active', t.dataset.zoomTab === name));
+    const shot = document.querySelector(`img[data-shot="${name}"]`);
+    const img = viewer.querySelector('.live-zoomed img');
+    img.hidden = shot.hidden;
+    if (!shot.hidden && img.getAttribute('src') !== shot.getAttribute('src')) { img.src = shot.src; img.alt = shot.alt; }
+    viewer.querySelector('.live-zoomed .live-empty').hidden = !shot.hidden;
+    viewer.querySelector('[data-zoom-badge]').innerHTML = document.querySelector(`[data-live-badge="${name}"]`)?.innerHTML || '';
+  }
+  function closeZoom(){
+    viewer.hidden = true;
+    zoomed = null;
+    document.body.classList.remove('theater-open');
+    opener?.focus();
+  }
+  document.querySelectorAll('[data-zoom]').forEach(b=>b.addEventListener('click', ()=>{
+    opener = b;
+    viewer.hidden = false;
+    document.body.classList.add('theater-open');
+    showZoom(b.dataset.zoom);
+    viewer.querySelector('[data-zoom-close]').focus();
+  }));
+  viewer.querySelector('[data-zoom-close]').addEventListener('click', closeZoom);
+  document.addEventListener('keydown', e=>{
+    if (zoomed === null) return;
+    if (e.key === 'Escape') closeZoom();
+    else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+      const step = e.key === 'ArrowRight' ? 1 : -1;
+      showZoom(zoomNames[(zoomNames.indexOf(zoomed) + step + zoomNames.length) % zoomNames.length]);
+    }
   });
   function selectQuietly(root, step){
     root.querySelectorAll('.step').forEach(b=>b.classList.toggle('active', b.dataset.step === step));
@@ -283,6 +334,7 @@ window.addEventListener('DOMContentLoaded', ()=>{
         document.querySelector(`[data-shot-empty="${name}"]`)?.remove();
       }
     }
+    if (zoomed !== null) showZoom(zoomed);
     setTimeout(poll, 2000);
   }
   poll();
@@ -290,22 +342,54 @@ window.addEventListener('DOMContentLoaded', ()=>{
 """
 
 
-class LiveServer(ThreadingHTTPServer):
-	daemon_threads = True
+class BuilderApp:
+	"""What the server shows for compare.py: one live card, table row and panel for each builder.
 
-	def __init__(self, address, run_dir):
-		super().__init__(address, Handler)
-		port = self.server_address[1]
+	Another skill can serve its own page with the same server: give LiveServer an object with
+	these methods."""
+
+	def __init__(self, run_dir):
 		self.run_dir = run_dir
-		self.allowed_hosts = {f'127.0.0.1:{port}', f'localhost:{port}'}
-		self.last_request = time.time()
 
-	def builder(self, name):
+	def entry(self, name):
+		"""The status.json entry of a live card, or None for an unknown name."""
 		return read_status(self.run_dir).get('builders', {}).get(name)
 
 	def finished(self, name):
-		state = (self.builder(name) or {}).get('status')
+		state = (self.entry(name) or {}).get('status')
 		return state in ('done', 'failed', 'skipped') or (self.run_dir / name / 'run.json').exists()
+
+	def done(self):
+		return read_status(self.run_dir).get('phase') == 'done' and (self.run_dir / 'report' / 'index.html').exists()
+
+	def page(self):
+		return render_page(self.run_dir)
+
+	def state(self):
+		return render_state(self.run_dir)
+
+	def shot(self, name):
+		return self.run_dir / name / 'live.png'
+
+	def casts(self, name):
+		"""The live recording, then the place where the runner moves it when the builder stops."""
+		sub = self.run_dir / name
+		return sub / '.screen' / 'screen.cast', sub / 'screen.cast'
+
+	def file(self, path):
+		"""A file for a route that the server does not know, or None."""
+		return None
+
+
+class LiveServer(ThreadingHTTPServer):
+	daemon_threads = True
+
+	def __init__(self, address, app):
+		super().__init__(address, Handler)
+		port = self.server_address[1]
+		self.app, self.run_dir = app, app.run_dir
+		self.allowed_hosts = {f'127.0.0.1:{port}', f'localhost:{port}'}
+		self.last_request = time.time()
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -321,24 +405,24 @@ class Handler(BaseHTTPRequestHandler):
 		if self.headers.get('Host', '') not in srv.allowed_hosts:
 			return self.send_error(403)
 		path = unquote(urlparse(self.path).path)
+		app = srv.app
 		try:
 			if path in ('/', '/report', '/report/'):
-				done = read_status(srv.run_dir).get('phase') == 'done' and (srv.run_dir / 'report' / 'index.html').exists()
-				return self.redirect('/report/index.html' if done else '/report/live')
+				return self.redirect('/report/index.html' if app.done() else '/report/live')
 			if path == '/report/live':
-				return self.send_body(render_page(srv.run_dir).encode(), 'text/html; charset=utf-8')
+				return self.send_body(app.page().encode(), 'text/html; charset=utf-8')
 			if path == '/api/state':
-				return self.send_body(json.dumps(render_state(srv.run_dir)).encode(), 'application/json')
+				return self.send_body(json.dumps(app.state()).encode(), 'application/json')
 			name = path.rsplit('/', 1)[-1]
-			if path.startswith(('/api/cast/', '/api/shot/')) and not srv.builder(name):
+			if path.startswith(('/api/cast/', '/api/shot/')) and not app.entry(name):
 				return self.send_error(404)
 			if path.startswith('/api/cast/'):
 				return self.stream_cast(name)
 			if path.startswith('/api/shot/'):
-				return self.send_file(srv.run_dir / name / 'live.png')
+				return self.send_file(app.shot(name))
 			if path.startswith('/report/'):
 				return self.send_file(self.static_file(path.removeprefix('/report/')))
-			self.send_error(404)
+			self.send_file(app.file(path))
 		except (BrokenPipeError, ConnectionResetError):
 			pass
 
@@ -414,16 +498,16 @@ class Handler(BaseHTTPRequestHandler):
 
 	def stream_cast(self, name):
 		"""Send the screen recording so far as one reset frame, then each new frame as it arrives."""
-		srv, sub = self.server, self.server.run_dir / name
+		srv = self.server
 		self.send_response(200)
 		self.send_header('Content-Type', 'text/event-stream')
 		self.send_header('Cache-Control', 'no-store')
 		self.end_headers()
 		path = None
 		while path is None:
-			path = next((p for p in (sub / '.screen' / 'screen.cast', sub / 'screen.cast') if p.exists()), None)
+			path = next((p for p in srv.app.casts(name) if p.exists()), None)
 			if path is None:
-				if srv.finished(name):
+				if srv.app.finished(name):
 					return self.sse('{}', 'done')
 				self.wfile.write(b': waiting\n\n')
 				self.wfile.flush()
@@ -441,7 +525,7 @@ class Handler(BaseHTTPRequestHandler):
 
 			lines = complete_lines()
 			while not lines:
-				if srv.finished(name):
+				if srv.app.finished(name):
 					return self.sse('{}', 'done')
 				time.sleep(0.2)
 				lines = complete_lines()
@@ -461,7 +545,7 @@ class Handler(BaseHTTPRequestHandler):
 				if lines:
 					last_data = now
 					continue
-				if srv.finished(name) and now - last_data > 3:
+				if srv.app.finished(name) and now - last_data > 3:
 					return self.sse('{}', 'done')
 				if now - last_ping > 15:
 					self.wfile.write(b': ping\n\n')
@@ -491,17 +575,21 @@ def stop_when_idle(server, parent_pid):
 			return
 
 
+def serve(app, parent_pid=None, port=0):
+	"""Serve app until it is idle. Writes the address to <run-dir>/live-url.txt."""
+	server = LiveServer(('127.0.0.1', port), app)
+	(app.run_dir / 'live-url.txt').write_text(f'http://127.0.0.1:{server.server_address[1]}\n')
+	threading.Thread(target=stop_when_idle, args=(server, parent_pid), daemon=True).start()
+	server.serve_forever()
+
+
 def main():
 	ap = argparse.ArgumentParser()
 	ap.add_argument('--run-dir', required=True)
 	ap.add_argument('--parent-pid', type=int)
 	ap.add_argument('--port', type=int, default=0)
 	args = ap.parse_args()
-	run_dir = Path(args.run_dir).resolve()
-	server = LiveServer(('127.0.0.1', args.port), run_dir)
-	(run_dir / 'live-url.txt').write_text(f'http://127.0.0.1:{server.server_address[1]}\n')
-	threading.Thread(target=stop_when_idle, args=(server, args.parent_pid), daemon=True).start()
-	server.serve_forever()
+	serve(BuilderApp(Path(args.run_dir).resolve()), args.parent_pid, args.port)
 
 
 if __name__ == '__main__':

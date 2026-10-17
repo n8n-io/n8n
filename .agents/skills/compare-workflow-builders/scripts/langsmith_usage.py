@@ -8,7 +8,13 @@ LANGSMITH_PROJECT from the config (see n8n_api.config).
   langsmith_usage.py --run-dir <run-dir>/iai
 
 It takes all LLM runs in the project between startedAt and finishedAt from run.json.
-Do not start other Instance AI work on the same instance during the run.
+Do not start other Instance AI work on the same instance during the run, or use --by-trace.
+
+  langsmith_usage.py --run-dir <dir> --by-trace
+
+--by-trace keeps only the calls of the traces in run.json "langsmithRunIds" (the root run id of
+each run-start event is also its LangSmith trace id). Use it when other Instance AI work runs
+at the same time.
 """
 
 import argparse
@@ -24,9 +30,13 @@ from n8n_api import setting
 def main():
 	ap = argparse.ArgumentParser()
 	ap.add_argument('--run-dir', required=True)
+	ap.add_argument('--by-trace', action='store_true')
 	args = ap.parse_args()
 	run_dir = Path(args.run_dir)
 	meta = json.loads((run_dir / 'run.json').read_text())
+	traces = set(meta.get('langsmithRunIds') or [])
+	if args.by_trace and not traces:
+		raise SystemExit('run.json has no langsmithRunIds. Is LANGSMITH_TRACING=true on the instance?')
 
 	key = setting('LANGSMITH_API_KEY')
 	if not key:
@@ -65,7 +75,7 @@ def main():
 			started = datetime.fromisoformat(run['start_time'].replace('Z', '+00:00'))
 			if started.tzinfo is None:
 				started = started.replace(tzinfo=start.tzinfo)
-			if started > end:
+			if started > end or (args.by_trace and run.get('trace_id') not in traces):
 				continue
 			details = run.get('prompt_token_details') or {}
 			metadata = (run.get('extra') or {}).get('metadata') or {}

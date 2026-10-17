@@ -8,7 +8,11 @@ import { fileURLToPath } from 'node:url';
 const here = dirname(fileURLToPath(import.meta.url));
 const repo = resolve(here, '../../../..');
 const require = createRequire(join(repo, 'packages/quality/testing/playwright/package.json'));
-const { chromium } = require('@playwright/test');
+const { chromium, expect, selectors } = require('@playwright/test');
+export { expect, selectors };
+// pngjs, as Playwright bundles it. Image diffs use it, so the skills need no extra package.
+export const loadPng = () =>
+	createRequire(require.resolve('@playwright/test'))('playwright-core/lib/utilsBundle').PNG;
 
 // Same order as n8n_api.config(): .env.local, then .env.ai-surfaces, then the environment.
 const settings = {};

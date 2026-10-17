@@ -1,0 +1,509 @@
+#!/usr/bin/env python3
+"""Build the report of a feature test run, and the live page while it runs.
+
+  report.py <run-dir>          build <run-dir>/report/index.html (run it again after verdicts.json)
+  report.py <run-dir> --summary  print the summary for the judge
+
+Inputs in <run-dir>:
+  plan/scenarios.json    the plan (run.py copies it)
+  status.json            the status of each run (run.py writes it)
+  runs/<name>/           the files of one run (run_scenario.mjs and run.py write them)
+  visual.json            the visual check (visual_diff.mjs and run.py write it)
+  verdicts.json          optional: {"<name>": {"verdict": "pass|partial|fail", "summary": "...",
+                         "checks": [{"ok": true|false|null, "text": "..."}]}}
+
+The page uses the template and the LLM steps view of compare-workflow-builders.
+"""
+
+import json
+import shutil
+import sys
+import time
+from datetime import datetime
+from pathlib import Path
+
+import common  # noqa: F401  (puts the shared scripts on the import path)
+import build_report as br
+import live_server as ls
+
+STATUS = {'waiting': ('st-waiting', 'Waiting'), 'running': ('st-running', 'Running'),
+          'passed': ('st-done', 'Passed'), 'failed': ('st-failed', 'Failed'), 'error': ('st-failed', 'Error'),
+          'skipped': ('st-skipped', 'Skipped')}
+FINISHED = ('passed', 'failed', 'error', 'skipped')
+KIND_LABELS = {'feature': 'Feature', 'regression': 'Regression', 'visual': 'Visual'}
+VISUAL = {'changed': ('vis-changed', 'Changed'), 'unchanged': ('vis-same', 'Unchanged'),
+          'branch-only': ('vis-only', 'Only on branch'), 'master-only': ('vis-only', 'Only on master')}
+THEAD = ('<tr><th>Scenario</th><th>Kind</th><th>Result</th><th>Steps</th><th>Time</th><th>LLM calls</th>'
+         '<th>Tool calls</th><th>Input tokens</th><th>Output tokens</th><th>Cost</th><th>Browser errors</th></tr>')
+
+CSS = """<style>
+.badge.vis-changed{background:var(--pink-70);color:var(--bg)}
+.badge.vis-same{background:var(--bg-3);color:var(--black)}
+.badge.vis-only{box-shadow:inset 0 0 0 1px var(--line-strong);color:var(--dim)}
+.facts{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:var(--s4) var(--s16);margin:0}
+.facts dt{font:10px/18px var(--mono);text-transform:uppercase;letter-spacing:.02em;color:var(--dim)}
+.facts dd{margin:0;word-break:break-word}
+.run-error{margin:var(--s12) 0 0;background:var(--pink-10);color:var(--pink-70);border-radius:var(--r8);padding:var(--s12);white-space:pre-wrap;word-break:break-word;font:12px/16px var(--mono);max-height:240px;overflow:auto}
+.tsteps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:var(--s8)}
+.tstep{display:grid;grid-template-columns:24px minmax(0,1fr) 200px;gap:var(--s12);align-items:start;background:var(--white);border-radius:var(--r8);padding:var(--s12);box-shadow:inset 0 0 0 1px var(--line)}
+.tstep.failed{background:var(--pink-10);box-shadow:inset 4px 0 0 var(--pink-70)}
+.tstep.running .num{background:var(--pink-10);color:var(--pink-70)}
+.tstep.passed .num{background:var(--pink)}
+.tstep.failed .num{background:var(--pink-70);color:var(--bg)}
+.tstep-title{display:flex;gap:var(--s8);align-items:baseline;flex-wrap:wrap}
+.tstep pre{margin:var(--s8) 0 0;white-space:pre-wrap;word-break:break-word;font:12px/16px var(--mono);color:var(--pink-70);max-height:200px;overflow:auto}
+.tstep img{display:block;width:200px;height:auto;border-radius:var(--r4);box-shadow:0 0 0 1px var(--line)}
+.err-list{margin:0;padding-left:var(--s16);font:12px/16px var(--mono)}
+.err-list li{margin-bottom:var(--s4);word-break:break-word}
+.vis{background:var(--white);border-radius:var(--r8);padding:var(--s12);box-shadow:inset 0 0 0 1px var(--line);margin-top:var(--s12)}
+.vis.changed{box-shadow:inset 4px 0 0 var(--pink-70),inset 0 0 0 1px var(--line)}
+.vis-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--s12)}
+.vis-grid figure{margin:0}
+.vis-grid figcaption{margin-bottom:var(--s4)}
+.vis-grid img{display:block;width:100%;height:auto;border-radius:var(--r4);box-shadow:0 0 0 1px var(--line)}
+.vis details summary{cursor:pointer;color:var(--dim);margin-top:var(--s8);font:10px/14px var(--mono);text-transform:uppercase;letter-spacing:.02em}
+.vis pre{background:var(--bg);border-radius:var(--r4);padding:var(--s12);margin:var(--s8) 0 0;overflow:auto;max-height:320px;font-size:12px;line-height:16px;white-space:pre}
+</style>"""
+
+
+def read_json(path, default):
+	try:
+		return json.loads(path.read_text())
+	except (OSError, ValueError):
+		return default
+
+
+def seconds(value):
+	return f'{value:.0f}s'
+
+
+def load_trace(sub, result):
+	"""LLM steps from the thread events, and per-call tokens from usage.json when LangSmith had them."""
+	data = ls.load_instance_ai_live(sub)
+	events_file = sub / 'events.jsonl'
+	rows = br.read_jsonl(events_file) if events_file.exists() else []
+	starts = [r['ts'] / 1000 for r in rows if r.get('type') == 'run-start' and r.get('ts')]
+	usage = read_json(sub / 'usage.json', None)
+	if usage and starts:
+		start = starts[0]
+		data['calls'] = sorted((
+			{'t': br.ts(u['start']) - start, 'start': br.ts(u['start']) - start,
+			 'end': br.ts(u['end']) - start if u.get('end') else None,
+			 'name': (u.get('name') or '').removeprefix('llm: ') or None,
+			 'prompt': u['in'], 'cache_read': u['cache_read'], 'cache_write': u['cache_write'],
+			 'out': u['out'], 'cost': u['cost']} for u in usage), key=lambda c: c['t'])
+		data['model'] = ', '.join(sorted({u['model'] for u in usage if u.get('model')})) or None
+		data['cost'] = f'${sum(c["cost"] for c in data["calls"]):.2f}'
+		data['costSource'] = 'langsmith'
+	if result.get('startedAt') and result.get('finishedAt'):
+		data['duration'] = seconds(br.ts(result['finishedAt']) - br.ts(result['startedAt']))
+	return data
+
+
+def load(run_dir):
+	"""The plan, the status, and one dict for each run in plan order."""
+	plan = read_json(run_dir / 'plan' / 'scenarios.json', {'scenarios': []})
+	status = ls.read_status(run_dir)
+	entries = status.get('runs') or {}
+	runs = []
+	for s in plan['scenarios']:
+		for name in (s['id'], f'{s["id"]}--master'):
+			if name not in entries:
+				continue
+			entry = entries[name]
+			sub = run_dir / 'runs' / name
+			result = read_json(sub / 'result.json', {})
+			data = load_trace(sub, result)
+			if entry.get('status') in ('waiting', 'running'):
+				data['cost'] = '-'
+				if entry.get('startedAt'):
+					data['duration'] = seconds((entry.get('finishedAt') or time.time()) - entry['startedAt'])
+			runs.append({
+				'name': name, 'scenario': s, 'entry': entry, 'master': name.endswith('--master'),
+				'steps': read_json(sub / 'steps.json', []), 'result': result,
+				'console': read_json(sub / 'console.json', {}), 'meta': read_json(sub / 'run.json', {}),
+				'data': data,
+			})
+	return plan, status, runs
+
+
+def status_badge(state):
+	cls, label = STATUS.get(state, ('st-waiting', state))
+	return f'<span class="badge {cls}">{br.esc(label)}</span>'
+
+
+def run_title(run):
+	return run['scenario']['title'] + (' (master)' if run['master'] else '')
+
+
+def check_count(steps):
+	checked = [s for s in steps if s['kind'] in ('step', 'check', 'capture')]
+	return f'{sum(s["status"] == "passed" for s in checked)}/{len(checked)}' if checked else '-'
+
+
+def row_cells(run, result_html):
+	data, result = run['data'], run['result']
+	calls, tools = data['calls'], [e for e in data['events'] if e['kind'] == 'tool']
+	errors = sum(e['error'] for e in tools)
+	browser = (result.get('consoleErrors') or 0) + (result.get('requestErrors') or 0)
+	cells = [
+		f'<span class="run-name">{br.esc(run_title(run))}</span>',
+		KIND_LABELS.get(run['scenario']['kind'], run['scenario']['kind']),
+		result_html, check_count(run['steps']), data['duration'], str(len(calls)) if calls else '-',
+		f'{len(tools)}' + (f' <span class="err">({errors} err)</span>' if errors else ''),
+		br.kilo(sum(c['prompt'] for c in calls)) if calls else '-',
+		br.kilo(sum(c['out'] for c in calls)) if calls else '-',
+		f'<strong>{br.esc(data["cost"])}</strong>',
+		f'<span class="err">{browser}</span>' if browser else '0',
+	]
+	return ''.join(f'<td>{c}</td>' for c in cells)
+
+
+def result_html(run, verdict):
+	"""The judge's verdict. The script status shows only while it runs or when it fails, because the Steps
+	column already counts the steps that passed."""
+	if verdict and verdict.get('verdict'):
+		return br.badge(verdict['verdict'])
+	state = run['entry'].get('status', 'waiting')
+	if state != 'passed':
+		return status_badge(state)
+	if run['master']:
+		return '<span class="badge st-done">Baseline</span>'
+	return br.badge(None)
+
+
+def render_expected(run, verdict):
+	head = br.badge(verdict.get('verdict')) if verdict else ''
+	body = f'<div class="msg">{br.esc(run["scenario"]["expected"])}</div>'
+	if verdict:
+		marks = {True: ('ok', '✓'), False: ('bad', '✗'), None: ('warn', '–')}
+		checks = ''.join(
+			f'<li class="{marks[c.get("ok")][0]}"><span class="mark">{marks[c.get("ok")][1]}</span>{br.esc(c.get("text", ""))}</li>'
+			for c in verdict.get('checks') or [])
+		body += f'<p class="summary">{br.esc(verdict.get("summary", ""))}</p><ul class="checks">{checks}</ul>'
+	elif run['entry'].get('status') in FINISHED:
+		body += '<p class="dim">Not judged yet.</p>'
+	return f'<div class="box"><div class="head"><h2>Expected outcome</h2>{head}</div>{body}</div>'
+
+
+def render_run_box(run):
+	entry, result, meta = run['entry'], run['result'], run['meta']
+	facts = [('Instance', f'{"master" if run["master"] else "branch"} · {entry.get("baseUrl") or "-"}')]
+	if entry.get('startedAt'):
+		facts.append(('Started', datetime.fromtimestamp(entry['startedAt']).strftime('%H:%M:%S')))
+	if result.get('threads'):
+		facts.append(('Threads', ', '.join(result['threads'])))
+	if meta.get('decisions'):
+		facts.append(('Confirmations', f'{len(meta["decisions"])} answered by the auto-approve policy'))
+	if result:
+		facts.append(('Browser errors', f'{result.get("consoleErrors", 0)} console, {result.get("requestErrors", 0)} requests'))
+	dl = ''.join(f'<dt>{br.esc(k)}</dt><dd>{br.esc(v)}</dd>' for k, v in facts)
+	error = result.get('error') or (entry.get('reason') if entry.get('status') in ('error', 'skipped') else None)
+	error_html = f'<pre class="run-error">{br.esc(error)}</pre>' if error else ''
+	return (f'<div class="box"><div class="head"><h2>Run</h2>{status_badge(entry.get("status", "waiting"))}</div>'
+	        f'<dl class="facts">{dl}</dl>{error_html}</div>')
+
+
+def render_scenario_steps(steps, files):
+	if not steps:
+		return ('<div class="box"><div class="head"><h2>Scenario steps</h2></div>'
+		        '<p class="dim">No steps yet.</p></div>')
+	items = []
+	for s in steps:
+		duration = f' · {s["duration"]:.1f}s' if s.get('duration') is not None else ''
+		thumb = (f'<a href="{files}{br.esc(s["shot"])}" target="_blank"><img src="{files}{br.esc(s["shot"])}" '
+		         f'loading="lazy" alt="Screen after: {br.esc(s["title"])}"></a>') if s.get('shot') else '<span></span>'
+		error = f'<pre>{br.esc(s["error"])}</pre>' if s.get('error') else ''
+		items.append(
+			f'<li class="tstep {br.esc(s["status"])}"><span class="num">{s["i"]}</span><div>'
+			f'<div class="tstep-title"><span class="mono-label">{br.esc(s["kind"])}</span><span>{br.esc(s["title"])}</span></div>'
+			f'<div class="mono-label">{s["t"]:.1f}s{duration}</div>{error}</div>{thumb}</li>')
+	passed = sum(s['status'] == 'passed' for s in steps)
+	return (f'<div class="box"><div class="head"><h2>Scenario steps</h2><span class="mono-label">{passed} of {len(steps)} '
+	        f'passed</span></div><ol class="tsteps">{"".join(items)}</ol></div>')
+
+
+def render_errors(console):
+	console_errors, request_errors = console.get('consoleErrors') or [], console.get('requestErrors') or []
+	if not console_errors and not request_errors:
+		return ''
+	items = [f'<li>{br.esc(e.get("text", ""))}</li>' for e in console_errors[:50]]
+	items += [f'<li>{e.get("status") or "failed"} {br.esc(e.get("method", ""))} {br.esc(e.get("url", ""))}'
+	          f'{" · " + br.esc(e["error"]) if e.get("error") else ""}</li>' for e in request_errors[:50]]
+	return (f'<div class="box"><div class="head"><h2>Browser errors</h2><span class="mono-label">'
+	        f'{len(console_errors)} console · {len(request_errors)} requests</span></div>'
+	        f'<ul class="err-list">{"".join(items)}</ul></div>')
+
+
+def render_panel(run, verdict, files, scale):
+	data = run['data']
+	prompt = (run['result'].get('prompts') or [{}])[0].get('text', '')
+	load_error = f'<div class="box err">Could not read the trace: {br.esc(data["loadError"])}</div>' if data.get('loadError') else ''
+	return (f'{load_error}<div class="result-row">{render_expected(run, verdict)}{render_run_box(run)}</div>'
+	        f'{render_scenario_steps(run["steps"], files)}'
+	        f'{br.render_steps(data["calls"], data["events"], *scale, prompt)}'
+	        f'{render_errors(run["console"])}')
+
+
+def render_case(plan, status):
+	branch, master = status.get('branch') or {}, status.get('master')
+	kinds = [s['kind'] for s in plan['scenarios']]
+	lines = [f'Branch {branch.get("commit") or "?"}' + (' with local changes' if branch.get('dirty') else '')
+	         + (f' on {branch["url"]}' if branch.get('url') else ' on a fresh instance')]
+	if master is not None:
+		lines.append(f'Master {master.get("commit") or "(building)"} on a fresh instance')
+	lines.append(f'{len(kinds)} scenarios: ' + ', '.join(f'{kinds.count(k)} {k}' for k in KIND_LABELS if kinds.count(k)))
+	lines.append(f'{status.get("concurrency", 1)} at a time')
+	return (f'<div class="case"><div class="box"><div class="mono-label">Feature</div><div class="msg">'
+	        f'{br.esc(plan.get("feature") or "-")}</div></div><div class="box"><div class="mono-label">Run</div>'
+	        f'<div class="msg">{br.esc(chr(10).join(lines))}</div></div></div>')
+
+
+def notes(status, runs):
+	parts = ['Times are seconds from the start of each scenario. Several scenarios ran at the same time on one '
+	         'machine, so their times include the shared load. Tokens and cost come from LangSmith, matched by the '
+	         'traces of the threads of each scenario. An asterisk on a time marks text placed at the previous tool call.']
+	if any(r['master'] for r in runs):
+		parts.append('Visual scenarios ran on a second fresh branch instance and on a fresh master instance, so both '
+		             'start from the same empty state.')
+	if status.get('stale'):
+		parts.append('Warning: these packages had source changes newer than their build, so the branch instance ran '
+		             f'an old build: {", ".join(status["stale"])}.')
+	return br.esc(' '.join(parts))
+
+
+def render_visual(results, runs, files):
+	if not results:
+		return ''
+	titles = {r['scenario']['id']: r['scenario']['title'] for r in runs}
+	cards = []
+	for r in results:
+		cls, label = VISUAL.get(r['status'], ('vis-only', r['status']))
+		ratio = f'{100 * r["ratio"]:.2f}% of pixels' if r.get('ratio') is not None else ''
+		sizes = (f' · size {r["masterSize"][0]}×{r["masterSize"][1]} → {r["branchSize"][0]}×{r["branchSize"][1]}'
+		         if r.get('branchSize') and r['branchSize'] != r.get('masterSize') else '')
+		figures = ''
+		for caption, key in (('Master', 'master'), ('Branch', 'branch'), ('Difference', 'diff')):
+			src = files(r, key)
+			figures += (f'<figure><figcaption class="mono-label">{caption}</figcaption>'
+			            + (f'<a href="{src}" target="_blank"><img src="{src}" loading="lazy" alt="{caption}: {br.esc(r["name"])}"></a>'
+			               if src else '<p class="dim">No screen.</p>') + '</figure>')
+		tree = (f'<details><summary>Accessibility tree diff</summary><pre>{br.esc(r["ariaDiff"])}</pre></details>'
+		        if r.get('ariaDiff') else '')
+		cards.append(
+			f'<div class="vis {"changed" if r["status"] != "unchanged" else ""}"><div class="head">'
+			f'<h3>{br.esc(titles.get(r["scenario"], r["scenario"]))} › {br.esc(r["name"])}</h3>'
+			f'<span class="mono-label">{ratio}{sizes}</span><span class="badge {cls}">{label}</span></div>'
+			f'<div class="vis-grid">{figures}</div>{tree}</div>')
+	changed = sum(r['status'] != 'unchanged' for r in results)
+	return (f'<div class="box"><div class="head"><h2>Visual check against master</h2><span class="mono-label">'
+	        f'{len(results)} captures · {changed} changed</span></div>'
+	        '<p class="fineprint">Pink pixels in the difference changed by more than a small color threshold. Magenta '
+	        'boxes are masked parts, such as LLM text. The accessibility tree diff shows changes in structure, roles '
+	        'and labels.</p>' + ''.join(cards) + '</div>')
+
+
+def build(run_dir):
+	"""Write report/index.html with its images and videos. Returns its path."""
+	plan, status, runs = load(run_dir)
+	verdicts = br.load_verdicts(run_dir)
+	report = run_dir / 'report'
+	for sub in ('runs', 'screens', 'visual'):
+		shutil.rmtree(report / sub, ignore_errors=True)
+	report.mkdir(parents=True, exist_ok=True)
+	for sub in ('fonts', 'brand'):
+		if (br.ASSET_CACHE / sub).exists():
+			shutil.copytree(br.ASSET_CACHE / sub, report / sub, dirs_exist_ok=True)
+
+	scale = br.token_scale([(r['name'], {}, r['data']) for r in runs])
+	rows, panels, screens = [], [], []
+	for i, run in enumerate(runs):
+		name, sub = run['name'], run_dir / 'runs' / run['name']
+		shots = report / 'runs' / name
+		for png in sub.glob('*.png'):
+			if png.name not in ('live.png', 'screen-poster.png'):
+				shots.mkdir(parents=True, exist_ok=True)
+				shutil.copy(png, shots / png.name)
+		verdict = verdicts.get(name)
+		active = ' active' if i == 0 else ''
+		rows.append(f'<tr class="row{active}" data-run="{name}" onclick="show(\'{name}\')">'
+		            + row_cells(run, result_html(run, verdict)) + '</tr>')
+		panels.append(f'<section class="run{active}" id="{name}">'
+		              + render_panel(run, verdict, f'runs/{name}/', scale) + '</section>')
+		if (sub / 'screen.webm').exists():
+			(report / 'screens').mkdir(exist_ok=True)
+			shutil.copy(sub / 'screen.webm', report / 'screens' / f'{name}.webm')
+			screen = {'name': name, 'title': run_title(run), 'duration': run['data']['duration'], 'type': 'video',
+			          'src': f'screens/{name}.webm', 'verdict': (verdict or {}).get('verdict'),
+			          'label': KIND_LABELS.get(run['scenario']['kind'], '')}
+			if (sub / 'screen-poster.png').exists():
+				shutil.copy(sub / 'screen-poster.png', report / 'screens' / f'{name}-poster.png')
+				screen['poster'] = f'screens/{name}-poster.png'
+			screens.append(screen)
+
+	results = read_json(run_dir / 'visual.json', [])
+	for r in results:
+		target = report / 'visual' / r['scenario']
+		target.mkdir(parents=True, exist_ok=True)
+		for key, source in (('branch', run_dir / 'runs' / r['scenario'] / 'captures' / f'{r["name"]}.png'),
+		                    ('master', run_dir / 'runs' / f'{r["scenario"]}--master' / 'captures' / f'{r["name"]}.png'),
+		                    ('diff', run_dir / (r.get('diff') or 'missing'))):
+			if source.is_file():
+				shutil.copy(source, target / f'{r["name"]}.{key}.png')
+
+	def visual_file(r, key):
+		return (f'visual/{r["scenario"]}/{r["name"]}.{key}.png'
+		        if (report / 'visual' / r['scenario'] / f'{r["name"]}.{key}.png').exists() else None)
+
+	replay = br.render_replay(screens, 'Each video shows one scenario in the n8n UI. Press Esc to close.')
+	page = br.fill_template(
+		br.esc(plan.get('title') or 'Instance AI feature test'), ''.join(rows), notes(status, runs), ''.join(panels),
+		replay=replay, after_table=render_visual(results, runs, visual_file), head=CSS,
+		scripts=f'<script>const SCREENS = {json.dumps(screens)};</script>', case=render_case(plan, status), thead=THEAD)
+	(report / 'index.html').write_text(page)
+	return report / 'index.html'
+
+
+def clock(status):
+	started = status.get('startedAt')
+	elapsed = seconds((status.get('finishedAt') or time.time()) - started) if started else ''
+	return ' · '.join(x for x in (f'{status.get("concurrency", 1)} at a time', elapsed, status.get('step')) if x)
+
+
+def live_box(status, runs):
+	cards = []
+	for run in runs:
+		name, title = run['name'], br.esc(run_title(run))
+		cards.append(
+			f'<div class="live-card"><div class="reel-meta"><span class="run-name">{title}</span>'
+			f'<span data-live-badge="{name}">{status_badge(run["entry"].get("status", "waiting"))}</span></div>'
+			f'<div class="live-screen"><button type="button" class="live-zoom" data-zoom="{name}" '
+			f'aria-label="Show {title} larger"><img data-shot="{name}" alt="{title} in the n8n UI" hidden></button>'
+			f'<div class="live-empty" data-shot-empty="{name}">Waiting for the first screenshot</div></div></div>')
+	return (f'<div class="box"><div class="head"><h2>Live</h2><span class="mono-label" id="live-clock">'
+	        f'{br.esc(clock(status))}</span></div><div class="live-grid">{"".join(cards)}</div></div>')
+
+
+def render_live(run_dir):
+	plan, status, runs = load(run_dir)
+	verdicts = br.load_verdicts(run_dir)
+	scale = br.token_scale([(r['name'], {}, r['data']) for r in runs])
+	rows, panels = [], []
+	for i, run in enumerate(runs):
+		name, active = run['name'], ' active' if i == 0 else ''
+		rows.append(f'<tr class="row{active}" data-run="{name}" onclick="show(\'{name}\')">'
+		            + row_cells(run, result_html(run, verdicts.get(name))) + '</tr>')
+		panels.append(f'<section class="run{active}" id="{name}">'
+		              + render_panel(run, verdicts.get(name), f'/files/runs/{name}/', scale) + '</section>')
+	text = ('This page updates while the scenarios run, and changes to the full report when the run is done. '
+	        'Tokens, cost, the visual check and verdicts come after the run.')
+	return br.fill_template(
+		br.esc(plan.get('title') or 'Instance AI feature test'), ''.join(rows), br.esc(text), ''.join(panels),
+		replay=live_box(status, runs), head=CSS,
+		scripts=f'<script>const SCREENS = [];</script><script>{ls.LIVE_JS}</script>',
+		case=render_case(plan, status), thead=THEAD)
+
+
+class ScenarioApp:
+	"""The live page for live_server.serve(): one card, table row and panel for each scenario run."""
+
+	def __init__(self, run_dir):
+		self.run_dir = run_dir
+
+	def entry(self, name):
+		return ls.read_status(self.run_dir).get('runs', {}).get(name)
+
+	def finished(self, name):
+		return (self.entry(name) or {}).get('status') in FINISHED
+
+	def done(self):
+		return ls.read_status(self.run_dir).get('phase') == 'done' and (self.run_dir / 'report' / 'index.html').exists()
+
+	def page(self):
+		return render_live(self.run_dir)
+
+	def state(self):
+		plan, status, runs = load(self.run_dir)
+		verdicts = br.load_verdicts(self.run_dir)
+		scale = br.token_scale([(r['name'], {}, r['data']) for r in runs])
+		state = {'phase': status.get('phase', 'running'), 'clock': clock(status), 'runs': {}}
+		if self.done():
+			state['report'] = '/report/index.html'
+		for run in runs:
+			name = run['name']
+			shot = self.shot(name)
+			state['runs'][name] = {
+				'row': row_cells(run, result_html(run, verdicts.get(name))),
+				'panel': render_panel(run, verdicts.get(name), f'/files/runs/{name}/', scale),
+				'badge': status_badge(run['entry'].get('status', 'waiting')),
+				'shot': shot.stat().st_mtime if shot.exists() else None,
+			}
+		return state
+
+	def shot(self, name):
+		return self.run_dir / 'runs' / name / 'live.png'
+
+	def casts(self, name):
+		return ()
+
+	def file(self, path):
+		"""The step screenshots of a run while it runs: /files/runs/<name>/<file>.png."""
+		if not path.startswith('/files/runs/') or not path.endswith('.png'):
+			return None
+		base = (self.run_dir / 'runs').resolve()
+		candidate = (self.run_dir / path.removeprefix('/files/')).resolve()
+		return candidate if candidate.is_relative_to(base) and candidate.is_file() else None
+
+
+def summarize(run_dir):
+	"""Plain text for the judge: each run with its steps, final reply, errors and visual results."""
+	plan, status, runs = load(run_dir)
+	visual = read_json(run_dir / 'visual.json', [])
+	out = [f'# {plan.get("title", "")}', '', 'Feature:', plan.get('feature') or '-', '']
+	for run in runs:
+		s, result, data = run['scenario'], run['result'], run['data']
+		out += [f'## {run["name"]}: {run_title(run)} ({s["kind"]}, {"master" if run["master"] else "branch"})',
+		        f'Expected: {s["expected"]}',
+		        f'Status: {run["entry"].get("status")}' + (f' ({result["error"]})' if result.get('error') else ''),
+		        'Steps:']
+		for st in run['steps']:
+			out.append(f'  {st["i"]}. [{st["status"]}] {st["kind"]}: {st["title"]}')
+			if st.get('error'):
+				out.append('     ' + st['error'].replace('\n', '\n     ')[:1500])
+		for p in result.get('prompts') or []:
+			out.append(f'Prompt (thread {p.get("thread")}): {p["text"]}')
+		tools = [e for e in data['events'] if e['kind'] == 'tool']
+		if tools:
+			out.append('Tool calls: ' + ', '.join(e['name'] + (' (error)' if e['error'] else '') for e in tools))
+		texts = [e['text'] for e in data['events'] if e['kind'] == 'text']
+		if texts:
+			out.append('Last reply: ' + texts[-1].strip()[:2000])
+		for d in run['meta'].get('decisions') or []:
+			out.append(f'Confirmation: {d["decision"]} [{d.get("toolName")}]')
+		console = run['console']
+		for e in (console.get('consoleErrors') or [])[:8]:
+			out.append(f'Console error: {e.get("text", "")[:300]}')
+		for e in (console.get('requestErrors') or [])[:8]:
+			out.append(f'Request error: {e.get("status")} {e.get("method")} {e.get("url")}')
+		if s['kind'] == 'visual' and not run['master']:
+			for r in (v for v in visual if v['scenario'] == s['id']):
+				ratio = f', {100 * r["ratio"]:.2f}% of pixels' if r.get('ratio') is not None else ''
+				out.append(f'Visual {r["name"]}: {r["status"]}{ratio}')
+				if r.get('ariaDiff'):
+					out.append('  Accessibility tree diff:\n    ' + '\n    '.join(r['ariaDiff'].splitlines()[:40]))
+		out.append('')
+	return '\n'.join(out)
+
+
+def main():
+	if len(sys.argv) < 2:
+		sys.exit(__doc__)
+	run_dir = Path(sys.argv[1]).resolve()
+	if '--summary' in sys.argv:
+		print(summarize(run_dir))
+	else:
+		print(build(run_dir))
+
+
+if __name__ == '__main__':
+	main()
