@@ -70,13 +70,15 @@ async function openMenu(wrapper: ReturnType<typeof mountBadge>['wrapper']) {
 }
 
 describe('AgentSkillVersionBadge', () => {
-	it.each<[AgentSkillVersionInfo, string, string]>([
+	it.each<[string, AgentSkillVersionInfo, string, string | undefined]>([
 		[
+			'follows the latest version',
 			{ draft: 3, live: 3, latest: 3, pinned: false, liveHasSameContent: false, scope: 'project' },
 			'latest',
-			'badge.latest',
+			undefined,
 		],
 		[
+			'follows the latest version before a publish',
 			{
 				draft: 3,
 				live: null,
@@ -85,42 +87,33 @@ describe('AgentSkillVersionBadge', () => {
 				liveHasSameContent: false,
 				scope: 'project',
 			},
-			'notLive',
-			'badge.notLive',
+			'latest',
+			undefined,
 		],
 		[
+			'follows the latest version with the published agent behind',
 			{ draft: 3, live: 2, latest: 3, pinned: false, liveHasSameContent: false, scope: 'project' },
-			'liveBehind',
-			'badge.liveBehind',
+			'latest',
+			undefined,
 		],
 		[
+			'is pinned',
 			{ draft: 2, live: 2, latest: 3, pinned: true, liveHasSameContent: false, scope: 'project' },
 			'pinned',
-			'badge.pinned',
+			'pin',
 		],
-	])('shows the %o state', (info, kind, textKey) => {
+	])('shows only what the draft uses when it %s', (_, info, kind, icon) => {
 		const { wrapper } = mountBadge(info);
 
 		const badge = wrapper.get('[data-testid="agent-skill-version-badge"]');
 		expect(badge.attributes('data-state')).toBe(kind);
-		expect(badge.text()).toContain(`agents.builder.skills.version.${textKey}`);
-	});
-
-	it('shows latest with a same-content tooltip when the published agent runs the same content', () => {
-		const { wrapper } = mountBadge({
-			draft: 10,
-			live: 7,
-			latest: 10,
-			pinned: false,
-			liveHasSameContent: true,
-			scope: 'project',
-		});
-
-		const badge = wrapper.get('[data-testid="agent-skill-version-badge"]');
-		expect(badge.attributes('data-state')).toBe('latest');
-		expect(badge.text()).toContain('agents.builder.skills.version.badge.latest');
+		expect(badge.attributes('variant')).toBe('outline');
+		expect(badge.attributes('leading-icon')).toBe(icon);
+		expect(badge.text()).toBe(
+			`agents.builder.skills.version.badge.${kind} {"version":"${info.draft}"}`,
+		);
 		expect(wrapper.get('[data-tooltip]').attributes('data-tooltip')).toBe(
-			'agents.builder.skills.version.tooltip.sameContent {"version":"10","live":"7"}',
+			`agents.builder.skills.version.tooltip.${kind} {"version":"${info.draft}"}`,
 		);
 	});
 
@@ -138,7 +131,9 @@ describe('AgentSkillVersionBadge', () => {
 
 		expect(loader.loadVersions).toHaveBeenCalledWith('refund', 3);
 		expect(wrapper.findAll('[data-testid="agent-skill-version-option"]')).toHaveLength(3);
-		const [followLatest, ...options] = wrapper.findAll('[data-testid="menu-item"]');
+		const [followLatest, ...rest] = wrapper.findAll('[data-testid="menu-item"]');
+		const options = rest.filter((item) => item.find('[data-version]').exists());
+		expect(options).toHaveLength(3);
 		expect(followLatest.attributes('data-checked')).toBe('true');
 		expect(options.every((option) => option.attributes('data-checked') === 'false')).toBe(true);
 	});
@@ -200,7 +195,27 @@ describe('AgentSkillVersionBadge', () => {
 		expect(wrapper.emitted('follow-latest')).toBeUndefined();
 	});
 
-	it('compares the draft with another version without pinning it', async () => {
+	it('compares the pinned draft with the latest version from the last menu item', async () => {
+		const { wrapper } = mountBadge({
+			draft: 2,
+			live: 2,
+			latest: 3,
+			pinned: true,
+			liveHasSameContent: false,
+			scope: 'project',
+		});
+		await openMenu(wrapper);
+
+		const items = wrapper.findAll('[data-testid="menu-item"]');
+		const compare = items[items.length - 1];
+		expect(compare.text()).toBe('agents.builder.skills.version.menu.compare');
+		await compare.trigger('click');
+
+		expect(wrapper.emitted('compare')).toEqual([[2, 3]]);
+		expect(wrapper.emitted('pin')).toBeUndefined();
+	});
+
+	it('compares the two newest versions when the draft is on the latest one', async () => {
 		const { wrapper } = mountBadge({
 			draft: 3,
 			live: 3,
@@ -211,13 +226,24 @@ describe('AgentSkillVersionBadge', () => {
 		});
 		await openMenu(wrapper);
 
-		const compares = wrapper.findAll('[data-testid="agent-skill-version-compare"]');
-		// The draft row has nothing to compare with itself.
-		expect(compares).toHaveLength(2);
-		await compares[1].trigger('click');
+		const items = wrapper.findAll('[data-testid="menu-item"]');
+		await items[items.length - 1].trigger('click');
 
-		expect(wrapper.emitted('compare')).toEqual([[3, 1]]);
-		expect(wrapper.emitted('pin')).toBeUndefined();
+		expect(wrapper.emitted('compare')).toEqual([[2, 3]]);
+	});
+
+	it('has no version rows that hold their own buttons', async () => {
+		const { wrapper } = mountBadge({
+			draft: 2,
+			live: 2,
+			latest: 3,
+			pinned: true,
+			liveHasSameContent: false,
+			scope: 'project',
+		});
+		await openMenu(wrapper);
+
+		expect(wrapper.findAll('[data-testid="agent-skill-version-option"] button')).toHaveLength(0);
 	});
 
 	it('reports a failed version load', async () => {

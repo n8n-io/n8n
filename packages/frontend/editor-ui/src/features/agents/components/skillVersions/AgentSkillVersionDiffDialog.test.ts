@@ -91,7 +91,7 @@ describe('AgentSkillVersionDiffDialog', () => {
 		await flushPromises();
 
 		const fromOptions = wrapper
-			.get('[data-testid="agent-skill-version-diff-from"]')
+			.get('[data-testid="skill-version-compare-from"]')
 			.findAll('[data-testid="option"]')
 			.map((option) => option.text());
 		expect(fromOptions).toEqual(['v4 (draft, latest)', 'v3 (live)', 'v2']);
@@ -106,8 +106,20 @@ describe('AgentSkillVersionDiffDialog', () => {
 		);
 	});
 
-	it('says the published agent already runs the content when both sides match', async () => {
-		// As after a restore: v4 saved the content of v3 again.
+	it('says the published agent already runs the content when the server says so', async () => {
+		const { wrapper } = mountDialog(
+			{ draft: 4, live: 3, latest: 4, pinned: false, liveHasSameContent: true, scope: 'project' },
+			{ from: 3, to: 4 },
+		);
+		await flushPromises();
+
+		expect(wrapper.get('[data-testid="agent-skill-version-diff-note"]').text()).toBe(
+			'agents.builder.skills.version.diff.note.sameContent',
+		);
+	});
+
+	it('does not compare the loaded content to pick the note', async () => {
+		// As after a restore: v4 saved the content of v3 again. Only the server decides.
 		const { wrapper } = mountDialog(
 			{ draft: 4, live: 3, latest: 4, pinned: false, liveHasSameContent: false, scope: 'project' },
 			{ from: 3, to: 4 },
@@ -116,8 +128,26 @@ describe('AgentSkillVersionDiffDialog', () => {
 		await flushPromises();
 
 		expect(wrapper.get('[data-testid="agent-skill-version-diff-note"]').text()).toBe(
-			'agents.builder.skills.version.diff.note.sameContent',
+			'agents.builder.skills.version.diff.note.liveBehind',
 		);
+	});
+
+	it('uses the shared compare bar and swaps the two sides', async () => {
+		const { wrapper, loader } = mountDialog(
+			{ draft: 4, live: 3, latest: 4, pinned: false, liveHasSameContent: false, scope: 'project' },
+			{ from: 3, to: 4 },
+		);
+		await flushPromises();
+
+		const bar = wrapper.getComponent({ name: 'SkillVersionCompareBar' });
+		expect(bar.text()).toContain('settings.context.skills.versions.compare.title');
+		await wrapper.get('[data-testid="skill-version-compare-swap"]').trigger('click');
+		await flushPromises();
+
+		const diff = wrapper.getComponent({ name: 'SkillVersionDiff' });
+		expect(diff.props('from')).toEqual(detail(4).skill);
+		expect(diff.props('to')).toEqual(detail(3).skill);
+		expect(loader.loadVersion).toHaveBeenCalledTimes(4);
 	});
 
 	it('offers follow latest for a skill pinned behind the latest version', async () => {

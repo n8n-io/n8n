@@ -11,6 +11,7 @@ export const AgentModalTestStub = defineComponent({
 		showBack: { type: Boolean, default: false },
 		showFooter: { type: Boolean, default: undefined },
 		showCancel: { type: Boolean, default: true },
+		cancelLabel: { type: String, default: undefined },
 		bodyFlush: { type: Boolean, default: false },
 		stableHeight: { type: Boolean, default: false },
 		busy: { type: Boolean, default: false },
@@ -83,7 +84,7 @@ export const AgentModalTestStub = defineComponent({
 							data-testid="agent-modal-cancel"
 							:disabled="busy"
 							@click="$emit('update:open', false)"
-						>Cancel</button>
+						>{{ cancelLabel ?? 'Cancel' }}</button>
 						<slot name="footerActions" />
 					</div>
 				</slot>
@@ -103,6 +104,7 @@ export const AgentModalMultiStepTestStub = defineComponent({
 		showBack: { type: Boolean, default: false },
 		showFooter: { type: Boolean, default: undefined },
 		showCancel: { type: Boolean, default: true },
+		cancelLabel: { type: String, default: undefined },
 		bodyFlush: { type: Boolean, default: false },
 		stableHeight: { type: Boolean, default: false },
 		busy: { type: Boolean, default: false },

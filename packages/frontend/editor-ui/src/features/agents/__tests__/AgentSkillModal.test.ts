@@ -247,6 +247,16 @@ describe('AgentSkillModal', () => {
 		).not.toBeInTheDocument();
 	});
 
+	it('says Cancel while creating a skill and Close for an existing one', async () => {
+		const created = renderModal();
+		await fireEvent.click(created.getByTestId('agent-skill-add-manually'));
+		expect(created.getByTestId('agent-modal-cancel')).toHaveTextContent('generic.cancel');
+		created.unmount();
+
+		const existing = renderModal({ skill: SAVED_SKILL, skillId: 'brand-voice' });
+		expect(existing.getByTestId('agent-modal-cancel')).toHaveTextContent('generic.close');
+	});
+
 	it('generates a unique title for a new manual skill', async () => {
 		const { container, getByTestId } = renderModal({
 			existingSkillNames: ['new skill', 'New skill 2'],

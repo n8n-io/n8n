@@ -5,7 +5,6 @@ import {
 	N8nDropdownMenu,
 	N8nText,
 	N8nTooltip,
-	type BadgeVariant,
 	type DropdownMenuItemProps,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -15,7 +14,7 @@ import { computed, ref } from 'vue';
 import TimeAgo from '@/app/components/TimeAgo.vue';
 import { formatSkillVersion } from './skillVersionLabels';
 import { skillUserName } from './skillVersionDiff.utils';
-import { skillVersionState, type SkillVersionStateKind } from './skillVersionState';
+import { skillVersionStyle } from './skillVersionStyle';
 import type { SkillVersionLoader } from './useSkillVersionLoader';
 
 const props = withDefaults(
@@ -32,6 +31,7 @@ const emit = defineEmits<{
 	/** Pins the draft ref to one version. `versionId` is the version's uuid. */
 	pin: [versionId: string, version: number];
 	'follow-latest': [];
+	/** Opens the diff dialog. `from` is the older version. */
 	compare: [from: number, to: number];
 }>();
 
@@ -40,44 +40,37 @@ const { showError } = useToast();
 
 const FOLLOW_LATEST = 'follow-latest';
 const PIN_HEADER = 'pin-header';
+const COMPARE = 'compare';
 
-const state = computed(() => skillVersionState(props.info));
 const open = ref(false);
 const loading = ref(false);
 const versions = ref<SkillVersionSummary[]>([]);
 
-const VARIANT: Record<SkillVersionStateKind, BadgeVariant> = {
-	latest: 'success',
-	notLive: 'info',
-	liveBehind: 'info',
-	pinned: 'warning',
-};
+/** The badge says only what the draft uses. The row hint covers the published agent. */
+const kind = computed(() => (props.info.pinned ? 'pinned' : 'latest'));
+const style = computed(() => skillVersionStyle(kind.value));
 
-const badgeText = computed(() => {
-	const { kind, draft, live } = state.value;
-	const interpolate = { version: String(draft), live: String(live ?? '') };
-	if (kind === 'latest')
-		return i18n.baseText('agents.builder.skills.version.badge.latest', { interpolate });
-	if (kind === 'notLive')
-		return i18n.baseText('agents.builder.skills.version.badge.notLive', { interpolate });
-	if (kind === 'liveBehind') {
-		return i18n.baseText('agents.builder.skills.version.badge.liveBehind', { interpolate });
-	}
-	return i18n.baseText('agents.builder.skills.version.badge.pinned', { interpolate });
-});
+const badgeText = computed(() =>
+	i18n.baseText(`agents.builder.skills.version.badge.${kind.value}`, {
+		interpolate: { version: String(props.info.draft) },
+	}),
+);
 
-const tooltip = computed(() => {
-	const { kind, draft, live } = state.value;
-	const interpolate = { version: String(draft), live: String(live ?? '') };
-	if (kind === 'latest' && live !== null && live !== draft) {
-		return i18n.baseText('agents.builder.skills.version.tooltip.sameContent', { interpolate });
-	}
-	if (kind === 'latest') return i18n.baseText('agents.builder.skills.version.tooltip.latest');
-	if (kind === 'notLive') return i18n.baseText('agents.builder.skills.version.tooltip.notLive');
-	if (kind === 'liveBehind') {
-		return i18n.baseText('agents.builder.skills.version.tooltip.liveBehind', { interpolate });
-	}
-	return i18n.baseText('agents.builder.skills.version.tooltip.pinned', { interpolate });
+const tooltip = computed(() =>
+	i18n.baseText(`agents.builder.skills.version.tooltip.${kind.value}`, {
+		interpolate: { version: String(props.info.draft) },
+	}),
+);
+
+/**
+ * The pair "Compare versions…" opens: the draft and the latest version, or the two
+ * newest versions when the draft is on the latest one.
+ */
+const compareRange = computed(() => {
+	const { draft, latest } = props.info;
+	if (draft < latest) return { from: draft, to: latest };
+	const previous = versions.value.find((summary) => summary.version < latest)?.version;
+	return previous === undefined ? undefined : { from: previous, to: latest };
 });
 
 type MenuItem = DropdownMenuItemProps<string, SkillVersionSummary>;
@@ -102,6 +95,17 @@ const menuItems = computed<MenuItem[]>(() => [
 		checked: props.info.pinned && props.info.draft === summary.version,
 		data: summary,
 	})),
+	...(compareRange.value
+		? [
+				{
+					id: COMPARE,
+					label: i18n.baseText('agents.builder.skills.version.menu.compare'),
+					icon: { type: 'icon', value: 'file-diff' },
+					divided: true,
+					testId: 'agent-skill-version-compare',
+				} satisfies MenuItem,
+			]
+		: []),
 ]);
 
 async function onOpenChange(next: boolean) {
@@ -118,6 +122,10 @@ async function onOpenChange(next: boolean) {
 }
 
 function onSelect(id: string) {
+	if (id === COMPARE) {
+		if (compareRange.value) emit('compare', compareRange.value.from, compareRange.value.to);
+		return;
+	}
 	if (id === FOLLOW_LATEST) {
 		if (props.info.pinned) emit('follow-latest');
 		return;
@@ -126,11 +134,6 @@ function onSelect(id: string) {
 	if (!summary) return;
 	if (props.info.pinned && props.info.draft === summary.version) return;
 	emit('pin', summary.id, summary.version);
-}
-
-function onCompare(version: number) {
-	open.value = false;
-	emit('compare', props.info.draft, version);
 }
 </script>
 
@@ -150,12 +153,13 @@ function onCompare(version: number) {
 			<N8nTooltip as-child :content="tooltip" :disabled="open" placement="top">
 				<N8nBadge
 					clickable
-					:variant="VARIANT[state.kind]"
+					:variant="style.variant"
+					:leading-icon="style.icon"
 					size="small"
 					trailing-icon="chevron-down"
 					:disabled="props.disabled"
 					:class="$style.badge"
-					:data-state="state.kind"
+					:data-state="kind"
 					data-testid="agent-skill-version-badge"
 				>
 					{{ badgeText }}
@@ -193,21 +197,7 @@ function onCompare(version: number) {
 					<TimeAgo :date="item.data.createdAt" />
 				</N8nText>
 			</span>
-		</template>
-
-		<template #item-trailing="{ item }">
-			<!-- Compare lives inside the option row, so it must not also pin the version. -->
-			<button
-				v-if="item.data && item.data.version !== props.info.draft"
-				type="button"
-				:class="$style.compare"
-				data-testid="agent-skill-version-compare"
-				@pointerdown.stop
-				@pointerup.stop
-				@click.stop="onCompare(item.data.version)"
-			>
-				{{ i18n.baseText('agents.builder.skills.version.menu.compare') }}
-			</button>
+			<N8nText v-else size="small" color="text-dark" :class="ui.class">{{ item.label }}</N8nText>
 		</template>
 
 		<template v-if="loading" #footer>
@@ -229,21 +219,6 @@ function onCompare(version: number) {
 	flex-direction: column;
 	gap: var(--spacing--5xs);
 	min-width: 0;
-}
-
-.compare {
-	padding: 0;
-	border: none;
-	background: none;
-	font: inherit;
-	font-size: var(--font-size--2xs);
-	color: var(--text-color--subtle);
-	text-decoration: underline;
-	cursor: pointer;
-
-	&:hover {
-		color: var(--text-color);
-	}
 }
 
 .loading {

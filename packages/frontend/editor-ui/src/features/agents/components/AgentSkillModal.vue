@@ -24,14 +24,16 @@ import {
 	N8nInputLabel,
 	N8nOption,
 	N8nSelect,
+	N8nStatusDot,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
-import type { ActionDropdownItem, IconName } from '@n8n/design-system';
+import type { ActionDropdownItem, IconName, KeyboardShortcut } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { UnexpectedError } from 'n8n-workflow';
 
+import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import { VIEWS } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useSkillsStore } from '@/features/settings/context/skills.store';
@@ -290,7 +292,11 @@ const showRemove = computed(() => {
 const footerPrimaryAction = computed<'add' | 'save' | 'useLatest' | undefined>(() => {
 	if (step.value === 'select') return undefined;
 	if (step.value === 'preview') return previewIsAdded.value ? undefined : 'add';
-	if (isOutdated.value) return props.data.onUseLatestVersion ? 'useLatest' : undefined;
+	if (isOutdated.value) {
+		// The pinned callout has its own "Use latest".
+		if (pinnedBehindLatest.value) return undefined;
+		return props.data.onUseLatestVersion ? 'useLatest' : undefined;
+	}
 	// A versioned skill saves from the header.
 	if (showVersions.value) return undefined;
 	return isReadOnly.value ? undefined : 'save';
@@ -313,6 +319,12 @@ const isReadOnly = computed(
 		skillAccessFailed.value ||
 		skillAccess.value?.canEdit === false ||
 		isOutdated.value,
+);
+/** An existing skill opens to read or edit it, so the footer closes it rather than cancels. */
+const cancelLabel = computed(() =>
+	isEditing.value && step.value === 'edit'
+		? i18n.baseText('generic.close')
+		: i18n.baseText('generic.cancel'),
 );
 const cannotEdit = computed(
 	() => props.data.readOnly === true || skillAccess.value?.canEdit === false || isOutdated.value,
@@ -367,7 +379,8 @@ const removeLabel = computed(() =>
 const footerHint = computed(() => {
 	const shownSkill = step.value === 'preview' ? previewSkill.value : skillAccess.value;
 	if (step.value === 'edit' && isOutdated.value) {
-		return i18n.baseText('agents.builder.skills.hint.outdated');
+		// The pinned callout already says it.
+		return pinnedBehindLatest.value ? '' : i18n.baseText('agents.builder.skills.hint.outdated');
 	}
 	if (!shownSkill || (step.value !== 'preview' && step.value !== 'edit')) return '';
 	// The read-only callout already says it.
@@ -732,25 +745,41 @@ const baseVersion = computed(() =>
 );
 /** What the file list and the editor show: an older version, or the edits. */
 const displayedSkill = computed(() => viewing.value?.skill ?? skill.value);
+/**
+ * The draft of this agent runs a version older than the latest one. Known from the props,
+ * so the footer does not change when the versions load.
+ */
+const pinnedBehindLatest = computed(
+	() => showVersions.value && isOutdated.value && !!props.data.pinnedVersion,
+);
+/** The pinned callout gives way to the views of another version or a compare. */
+const showPinnedCallout = computed(
+	() =>
+		pinnedBehindLatest.value &&
+		latestVersion.value > baseVersion.value &&
+		!viewing.value &&
+		!compare.value,
+);
+/** "v9" or "v9 · Worldwide refunds". The Save button already says whether it is saved. */
 const versionStatus = computed(() => {
-	// A pinned older version shows what this agent runs, not only the latest.
-	if (baseVersion.value !== latestVersion.value) {
+	if (pinnedBehindLatest.value) {
+		// The pinned callout says it, so the header does not repeat it.
+		if (showPinnedCallout.value) return '';
 		return i18n.baseText('settings.context.skills.versions.statusPinned', {
 			interpolate: { version: String(baseVersion.value), latest: String(latestVersion.value) },
 		});
 	}
-	const status = i18n.baseText('settings.context.skills.versions.status', {
-		interpolate: { version: String(latestVersion.value) },
-	});
-	return latestVersionLabel.value ? `${status} · ${latestVersionLabel.value}` : status;
+	return versionName(latestVersion.value, latestVersionLabel.value);
 });
 const unsavedSkill = computed(() => (hasContentChanges.value ? skill.value : null));
 
-function versionName(version: number): string {
+function versionName(
+	version: number,
+	label = versions.value.find((summary) => summary.version === version)?.label,
+): string {
 	const short = i18n.baseText('settings.context.skills.versions.number', {
 		interpolate: { version: String(version) },
 	});
-	const label = versions.value.find((summary) => summary.version === version)?.label;
 	return label ? `${short} · ${label}` : short;
 }
 
@@ -840,7 +869,9 @@ async function afterVersionSave(saved: AgentSkill, created: boolean) {
 		title: i18n.baseText('settings.context.skills.versions.saved.toast', {
 			interpolate: { version: String(latestVersion.value) },
 		}),
-		message: i18n.baseText('settings.context.skills.versions.saved.toastDescription'),
+		message: i18n.baseText('settings.context.skills.versions.saved.toastDescription', {
+			interpolate: { version: String(latestVersion.value) },
+		}),
 		type: 'success',
 	});
 }
@@ -900,15 +931,12 @@ const canSaveVersion = computed(
 		!defaultNameLoading.value,
 );
 
-type VersionAction = 'save' | 'review' | 'name' | 'timeline';
+// Save is the button and the timeline is the clock icon, so the menu holds the rest.
+type VersionAction = 'review' | 'name';
+
+const SAVE_SHORTCUT = { metaKey: true, keys: ['S'] } satisfies KeyboardShortcut;
 
 const versionMenuItems = computed<Array<ActionDropdownItem<VersionAction>>>(() => [
-	{
-		id: 'save',
-		label: i18n.baseText('settings.context.skills.versions.menu.save'),
-		shortcut: { metaKey: true, keys: ['S'] },
-		disabled: !canSaveVersion.value,
-	},
 	{
 		id: 'review',
 		label: i18n.baseText('settings.context.skills.versions.menu.review'),
@@ -923,27 +951,15 @@ const versionMenuItems = computed<Array<ActionDropdownItem<VersionAction>>>(() =
 		),
 		disabled: hasChanges.value ? !canSaveVersion.value : latestVersion.value === 0,
 	},
-	{
-		id: 'timeline',
-		label: i18n.baseText('settings.context.skills.versions.menu.timeline'),
-		divided: true,
-	},
 ]);
 
 function onVersionMenuSelect(action: VersionAction) {
 	switch (action) {
-		case 'save':
-			void onSave();
-			break;
 		case 'review':
 			openCompare(latestVersion.value, 'unsaved');
 			break;
 		case 'name':
 			nameDialog.value = hasChanges.value ? 'saveWithName' : 'name';
-			break;
-		case 'timeline':
-			timelineOpen.value = true;
-			if (versions.value.length === 0) void loadVersions();
 			break;
 	}
 }
@@ -1006,6 +1022,7 @@ function onRemove() {
 		:show-back="step === 'manual' || step === 'preview' || (step === 'upload' && hasPicker)"
 		:show-footer="step === 'select' || step === 'manual' || step === 'edit' || step === 'preview'"
 		:show-cancel="step !== 'select'"
+		:cancel-label="cancelLabel"
 		:body-flush="step !== 'select'"
 		:busy="isImporting || previewLoading || isSaving"
 		size="fit"
@@ -1017,7 +1034,7 @@ function onRemove() {
 		<template v-if="showVersions" #headerActions>
 			<div :class="$style.versionHeader">
 				<N8nText
-					v-if="latestVersion > 0"
+					v-if="latestVersion > 0 && versionStatus"
 					size="small"
 					color="text-light"
 					:class="$style.versionStatus"
@@ -1025,7 +1042,6 @@ function onRemove() {
 				>
 					{{ versionStatus }}
 				</N8nText>
-				<!-- The timeline is also in the Save menu, but a menu entry alone is easy to miss. -->
 				<N8nTooltip :content="i18n.baseText('settings.context.skills.versions.timeline.open')">
 					<N8nIconButton
 						variant="ghost"
@@ -1037,29 +1053,36 @@ function onRemove() {
 					/>
 				</N8nTooltip>
 				<div v-if="canWriteVersions" :class="$style.buttonGroup">
-					<N8nButton
-						:class="$style.groupButtonLeft"
-						variant="ghost"
+					<KeyboardShortcutTooltip
+						:label="i18n.baseText('settings.context.skills.versions.save.tooltip')"
+						:shortcut="SAVE_SHORTCUT"
+						placement="bottom"
 						:disabled="!canSaveVersion"
-						:loading="isSaving"
-						data-testid="skill-version-save"
-						@click="onSave()"
 					>
-						<span :class="$style.saveLabel">
-							<span
-								v-if="hasChanges"
-								:class="$style.unsavedDot"
-								data-testid="skill-version-dirty"
-							/>
-							{{
-								i18n.baseText(
-									hasChanges
-										? 'settings.context.skills.versions.save'
-										: 'settings.context.skills.versions.saved',
-								)
-							}}
-						</span>
-					</N8nButton>
+						<N8nButton
+							:class="$style.groupButtonLeft"
+							variant="ghost"
+							:disabled="!canSaveVersion"
+							:loading="isSaving"
+							data-testid="skill-version-save"
+							@click="onSave()"
+						>
+							<span :class="$style.saveLabel">
+								<N8nStatusDot
+									v-if="hasChanges"
+									variant="warning"
+									data-testid="skill-version-dirty"
+								/>
+								{{
+									i18n.baseText(
+										hasChanges
+											? 'settings.context.skills.versions.save'
+											: 'settings.context.skills.versions.saved',
+									)
+								}}
+							</span>
+						</N8nButton>
+					</KeyboardShortcutTooltip>
 					<N8nActionDropdown
 						:items="versionMenuItems"
 						placement="bottom-end"
@@ -1144,53 +1167,89 @@ function onRemove() {
 			>
 				{{ i18n.baseText('agents.builder.skills.missingContent.callout' as BaseTextKey) }}
 			</N8nCallout>
-			<div
+			<N8nCallout
 				v-if="showVersions && viewing && !compare"
-				:class="$style.viewingBanner"
+				theme="secondary"
+				icon="eye"
+				:class="$style.callout"
 				data-testid="skill-version-viewing"
 			>
-				<N8nIcon icon="eye" :size="16" />
-				<N8nText size="small" color="text-dark" :class="$style.viewingText">
-					{{
-						i18n.baseText('settings.context.skills.versions.viewing', {
-							interpolate: { version: versionName(viewing.version) },
-						})
-					}}
-				</N8nText>
-				<N8nButton
-					variant="outline"
-					size="small"
-					data-testid="skill-version-viewing-compare"
-					@click="openCompare(viewing.version, latestVersion)"
-				>
-					{{ i18n.baseText('settings.context.skills.versions.viewing.compare') }}
-				</N8nButton>
-				<N8nButton
-					variant="outline"
-					size="small"
-					data-testid="skill-version-viewing-back"
-					@click="viewing = null"
-				>
-					{{
-						baseVersion === latestVersion
-							? i18n.baseText('settings.context.skills.versions.viewing.back')
-							: i18n.baseText('agents.builder.skills.version.viewing.backToPinned', {
-									interpolate: { version: String(baseVersion) },
-								})
-					}}
-				</N8nButton>
-				<N8nButton
-					v-if="canWriteVersions"
-					variant="solid"
-					size="small"
-					:loading="isSaving"
-					:disabled="isReadOnly"
-					data-testid="skill-version-restore"
-					@click="onRestore"
-				>
-					{{ i18n.baseText('settings.context.skills.versions.viewing.restore') }}
-				</N8nButton>
-			</div>
+				{{
+					i18n.baseText('settings.context.skills.versions.viewing', {
+						interpolate: { version: versionName(viewing.version) },
+					})
+				}}
+				<template #trailingContent>
+					<div :class="$style.calloutActions">
+						<N8nButton
+							variant="outline"
+							size="small"
+							data-testid="skill-version-viewing-compare"
+							@click="openCompare(viewing.version, latestVersion)"
+						>
+							{{ i18n.baseText('settings.context.skills.versions.viewing.compare') }}
+						</N8nButton>
+						<N8nButton
+							variant="outline"
+							size="small"
+							data-testid="skill-version-viewing-back"
+							@click="viewing = null"
+						>
+							{{
+								baseVersion === latestVersion
+									? i18n.baseText('settings.context.skills.versions.viewing.back')
+									: i18n.baseText('agents.builder.skills.version.viewing.backToPinned', {
+											interpolate: { version: String(baseVersion) },
+										})
+							}}
+						</N8nButton>
+						<N8nButton
+							v-if="canWriteVersions"
+							variant="solid"
+							size="small"
+							:loading="isSaving"
+							:disabled="isReadOnly"
+							data-testid="skill-version-restore"
+							@click="onRestore"
+						>
+							{{ i18n.baseText('settings.context.skills.versions.viewing.restore') }}
+						</N8nButton>
+					</div>
+				</template>
+			</N8nCallout>
+			<N8nCallout
+				v-else-if="showPinnedCallout"
+				theme="warning"
+				:class="$style.callout"
+				data-testid="skill-version-pinned"
+			>
+				{{
+					i18n.baseText('settings.context.skills.versions.pinned.callout', {
+						interpolate: { version: String(baseVersion), latest: String(latestVersion) },
+					})
+				}}
+				<template #trailingContent>
+					<div :class="$style.calloutActions">
+						<N8nButton
+							variant="outline"
+							size="small"
+							data-testid="skill-version-pinned-see-changes"
+							@click="openCompare(baseVersion, latestVersion)"
+						>
+							{{ i18n.baseText('settings.context.skills.versions.pinned.seeChanges') }}
+						</N8nButton>
+						<N8nButton
+							v-if="data.onUseLatestVersion"
+							variant="solid"
+							size="small"
+							data-testid="agent-skill-use-latest"
+							@click="onUseLatestVersion"
+						>
+							{{ i18n.baseText('settings.context.skills.versions.pinned.useLatest') }}
+						</N8nButton>
+					</div>
+				</template>
+			</N8nCallout>
 			<div :class="[$style.content, showVersions && timelineOpen && $style.withTimeline]">
 				<SkillVersionCompare
 					v-if="showVersions && compare"
@@ -1439,22 +1498,12 @@ function onRemove() {
 	height: min(70dvh, calc(var(--height--5xl) * 6));
 }
 
-.viewingBanner {
+.calloutActions {
 	display: flex;
-	align-items: center;
 	flex-wrap: wrap;
+	justify-content: flex-end;
 	gap: var(--spacing--2xs);
-	margin: var(--spacing--md) var(--spacing--lg) 0;
-	padding: var(--spacing--2xs) var(--spacing--xs);
-	border: var(--border);
-	border-color: var(--color--secondary);
-	border-radius: var(--radius--lg);
-	background-color: var(--color--secondary--tint-2);
-}
-
-.viewingText {
-	flex: 1;
-	min-width: 0;
+	margin-left: var(--spacing--xs);
 }
 
 .versionHeader {
@@ -1482,23 +1531,24 @@ function onRemove() {
 	border-right-color: transparent;
 }
 
+.groupButtonLeft:hover {
+	border-right-color: inherit;
+}
+
 .groupButtonRight {
 	border-top-left-radius: 0;
 	border-bottom-left-radius: 0;
 	border-left: var(--border);
 }
 
+.buttonGroup:has(.groupButtonLeft:not(:disabled):hover) .groupButtonRight {
+	border-left-color: transparent;
+}
+
 .saveLabel {
 	display: inline-flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
-}
-
-.unsavedDot {
-	width: var(--spacing--2xs);
-	height: var(--spacing--2xs);
-	border-radius: 50%;
-	background-color: var(--color--yellow-500);
 }
 
 @media (max-width: 480px) {

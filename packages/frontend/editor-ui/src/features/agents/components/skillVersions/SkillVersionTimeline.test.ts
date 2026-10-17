@@ -99,10 +99,80 @@ describe('SkillVersionTimeline', () => {
 		});
 		const [latest, named] = getAllByTestId('skill-version-row');
 
-		expect(latest).toHaveTextContent('Version 6');
-		expect(latest).toHaveTextContent('v6 · latest');
+		expect(within(latest).getByTestId('skill-version-row-select').textContent).toMatch(
+			/^\s*v6\s*Latest/,
+		);
+		expect(latest).not.toHaveTextContent('Version 6');
+		expect(within(latest).getByTestId('skill-version-latest')).toHaveTextContent('Latest');
 		expect(latest).toHaveTextContent('Ada Lovelace');
 		expect(named).toHaveTextContent('EU rules');
+		expect(named).toHaveTextContent('v3');
+		expect(within(named).queryByTestId('skill-version-latest')).not.toBeInTheDocument();
+	});
+
+	it('renders a list with one select button for each row and the actions beside it', () => {
+		const { getAllByTestId, getByTestId } = renderComponent({
+			props: { versions: VERSIONS, latestVersion: 6, usedBy: USED_BY, selectedVersion: 3 },
+		});
+		const rows = getAllByTestId('skill-version-row');
+
+		expect(getByTestId('skill-version-timeline').querySelector('ul')).not.toBeNull();
+		for (const row of rows) {
+			expect(row.tagName).toBe('LI');
+			expect(row).not.toHaveAttribute('role');
+			const select = within(row).getByTestId('skill-version-row-select');
+			expect(select.tagName).toBe('BUTTON');
+			// No control sits inside the select button.
+			expect(select.querySelector('button')).toBeNull();
+		}
+		expect(within(rows[1]).getByTestId('skill-version-row-select')).toHaveAttribute(
+			'aria-current',
+			'true',
+		);
+		expect(within(rows[0]).getByTestId('skill-version-row-select')).not.toHaveAttribute(
+			'aria-current',
+		);
+	});
+
+	it('names the agent count in a tooltip', async () => {
+		const { getAllByTestId } = renderComponent({
+			props: { versions: VERSIONS, latestVersion: 6, usedBy: USED_BY },
+		});
+
+		await userEvent.hover(
+			within(getAllByTestId('skill-version-row')[0]).getByTestId('skill-version-agents'),
+		);
+
+		expect(await screen.findByText('Used by 1 agent')).toBeInTheDocument();
+	});
+
+	it('shows the summary in the agents list only when the agents differ in state', async () => {
+		const { getAllByTestId } = renderComponent({
+			props: {
+				versions: VERSIONS,
+				latestVersion: 6,
+				usedBy: {
+					drafts: [
+						{ agentId: 'a1', agentName: 'One', projectId: 'p1', version: 6, pinned: false },
+						{ agentId: 'a2', agentName: 'Two', projectId: 'p1', version: 6, pinned: false },
+						{ agentId: 'a3', agentName: 'Three', projectId: 'p1', version: 3, pinned: false },
+						{ agentId: 'a4', agentName: 'Four', projectId: 'p1', version: 3, pinned: true },
+					],
+					pins: [],
+					hiddenAgents: 0,
+				},
+			},
+		});
+		const rows = getAllByTestId('skill-version-row');
+
+		await openAgents(rows[0]);
+		expect(screen.queryByTestId('skill-version-agents-summary')).not.toBeInTheDocument();
+		await closeAgents(rows[0]);
+
+		await openAgents(rows[1]);
+		expect(screen.getByTestId('skill-version-agents-summary')).toHaveTextContent(
+			'2 agents · 1 draft · 1 pinned',
+		);
 	});
 
 	it('summarises the agents on each version', () => {
@@ -272,7 +342,7 @@ describe('SkillVersionTimeline', () => {
 		await userEvent.hover(compare);
 		expect(await findByText('Compare with latest')).toBeInTheDocument();
 
-		await fireEvent.click(rows[1]);
+		await fireEvent.click(within(rows[1]).getByTestId('skill-version-row-select'));
 		await fireEvent.click(within(rows[2]).getByTestId('skill-version-row-compare'));
 
 		expect(emitted('select')).toEqual([[3]]);

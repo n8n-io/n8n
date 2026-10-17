@@ -2,10 +2,11 @@
 import { computed, ref, watch } from 'vue';
 import type { SkillVersionSummary } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
-import { N8nButton, N8nIcon, N8nLoading, N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nLoading } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
 import type { AgentSkill } from '../../types';
+import SkillVersionCompareBar from './SkillVersionCompareBar.vue';
 import SkillVersionDiff from './SkillVersionDiff.vue';
 
 /** A saved version number, or the edits the user has not saved yet. */
@@ -32,7 +33,7 @@ const contents = ref<{ from: AgentSkill; to: AgentSkill } | null>(null);
 const loading = ref(false);
 let latestLoad = 0;
 
-const options = computed(() => [
+const options = computed<Array<{ value: SkillCompareTarget; label: string }>>(() => [
 	...(props.unsavedSkill
 		? [
 				{
@@ -62,22 +63,6 @@ function optionLabel(version: number, label: string | null): string {
 
 function targetLabel(target: SkillCompareTarget): string {
 	return options.value.find(({ value }) => value === target)?.label ?? '';
-}
-
-function toTarget(value: unknown): SkillCompareTarget | undefined {
-	if (value === 'unsaved') return 'unsaved';
-	return typeof value === 'number' ? value : undefined;
-}
-
-function onSelect(side: 'from' | 'to', value: unknown) {
-	const target = toTarget(value);
-	if (target === undefined) return;
-	if (side === 'from') from.value = target;
-	else to.value = target;
-}
-
-function onSwap() {
-	[from.value, to.value] = [to.value, from.value];
 }
 
 async function contentOf(target: SkillCompareTarget): Promise<AgentSkill> {
@@ -110,53 +95,7 @@ watch(
 
 <template>
 	<div :class="$style.compare" data-testid="skill-version-compare">
-		<div :class="$style.bar">
-			<N8nText size="small" color="text-light">
-				{{ i18n.baseText('settings.context.skills.versions.compare.title') }}
-			</N8nText>
-			<N8nSelect
-				:model-value="from"
-				size="small"
-				:teleported="false"
-				:class="$style.select"
-				:aria-label="i18n.baseText('settings.context.skills.versions.compare.from')"
-				data-testid="skill-version-compare-from"
-				@update:model-value="onSelect('from', $event)"
-			>
-				<N8nOption
-					v-for="option in options"
-					:key="option.value"
-					:value="option.value"
-					:label="option.label"
-				/>
-			</N8nSelect>
-			<N8nIcon icon="arrow-right" size="small" color="text-light" />
-			<N8nSelect
-				:model-value="to"
-				size="small"
-				:teleported="false"
-				:class="$style.select"
-				:aria-label="i18n.baseText('settings.context.skills.versions.compare.to')"
-				data-testid="skill-version-compare-to"
-				@update:model-value="onSelect('to', $event)"
-			>
-				<N8nOption
-					v-for="option in options"
-					:key="option.value"
-					:value="option.value"
-					:label="option.label"
-				/>
-			</N8nSelect>
-			<N8nButton
-				variant="outline"
-				size="small"
-				data-testid="skill-version-compare-swap"
-				@click="onSwap"
-			>
-				<template #icon><N8nIcon icon="arrow-left-right" size="small" /></template>
-				{{ i18n.baseText('settings.context.skills.versions.compare.swap') }}
-			</N8nButton>
-			<span :class="$style.spacer" />
+		<SkillVersionCompareBar v-model:from="from" v-model:to="to" :options="options">
 			<N8nButton
 				variant="ghost"
 				size="small"
@@ -165,7 +104,7 @@ watch(
 			>
 				{{ i18n.baseText('settings.context.skills.versions.compare.close') }}
 			</N8nButton>
-		</div>
+		</SkillVersionCompareBar>
 
 		<N8nLoading v-if="loading && !contents" :rows="4" />
 		<SkillVersionDiff
@@ -187,20 +126,5 @@ watch(
 	min-width: 0;
 	flex: 1;
 	overflow-y: auto;
-}
-
-.bar {
-	display: flex;
-	align-items: center;
-	flex-wrap: wrap;
-	gap: var(--spacing--2xs);
-}
-
-.select {
-	width: 14rem;
-}
-
-.spacer {
-	flex: 1;
 }
 </style>

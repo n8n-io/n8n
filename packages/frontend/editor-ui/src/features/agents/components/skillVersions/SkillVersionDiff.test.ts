@@ -49,6 +49,9 @@ describe('SkillVersionDiff', () => {
 			'reference:references/old.md',
 			'reference:references/new.md',
 		]);
+		// The section names match the field labels of the skill form.
+		expect(sections[1]).toHaveTextContent('When to use this skill');
+		expect(sections[2]).toHaveTextContent('What the skill does');
 		expect(within(sections[0]).getByTestId('skill-version-diff-section-unchanged')).toBeVisible();
 		expect(within(sections[2]).getByTestId('skill-version-diff-section-stat')).toHaveTextContent(
 			'+1 −0',

@@ -30,10 +30,11 @@ function sectionTitle(section: SkillDiffSection): string {
 	switch (section.kind) {
 		case 'name':
 			return i18n.baseText('settings.context.skills.versions.diff.name');
+		// The same names as the fields of the skill form.
 		case 'description':
-			return i18n.baseText('settings.context.skills.versions.diff.description');
+			return i18n.baseText('agents.builder.skills.description.label');
 		case 'instructions':
-			return i18n.baseText('settings.context.skills.versions.diff.instructions');
+			return i18n.baseText('agents.builder.skills.instructions.label');
 		case 'reference':
 			return section.path ?? '';
 	}

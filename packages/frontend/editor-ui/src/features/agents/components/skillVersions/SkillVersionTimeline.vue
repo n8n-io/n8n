@@ -10,13 +10,14 @@ import {
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
-import type { IconName } from '@n8n/design-system';
+import type { BadgeVariant, IconName } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useStyles } from '@n8n/composables/useStyles';
 
 import TimeAgo from '@/app/components/TimeAgo.vue';
 
 import { groupSkillTimeline, skillUserName } from './skillVersionDiff.utils';
+import { skillVersionStyle } from './skillVersionStyle';
 
 type AgentState = 'draft' | 'pinned' | 'published';
 
@@ -27,7 +28,7 @@ type AgentChip = {
 	states: AgentState[];
 	label: string;
 	tooltip: string;
-	variant: 'success' | 'warning' | 'info';
+	variant: BadgeVariant;
 	icon?: IconName;
 	/** A draft whose published agent runs the same version. */
 	live?: boolean;
@@ -83,15 +84,19 @@ function agentTooltip(name: string, states: AgentState[]): string {
 
 function agentChip(key: string, name: string, states: AgentState[]): AgentChip {
 	const [first] = states;
+	const live = states.includes('published');
+	// The badge styles of workflow history: published is green, a draft stays neutral.
+	const style = skillVersionStyle(live ? 'published' : first === 'pinned' ? 'pinned' : 'latest');
 	return {
 		key,
 		name,
 		states,
 		label: states.map((state) => i18n.baseText(STATE_LABELS[state])).join(' · '),
 		tooltip: agentTooltip(name, states),
-		variant: first === 'pinned' ? 'warning' : first === 'draft' ? 'success' : 'info',
-		icon: first === 'pinned' ? 'pin' : first === 'published' ? 'send' : undefined,
-		live: first !== 'published' && states.includes('published'),
+		variant: style.variant,
+		// A pinned draft keeps its pin, also when the published agent runs the same version.
+		icon: first === 'pinned' ? skillVersionStyle('pinned').icon : style.icon,
+		live: first !== 'published' && live,
 	};
 }
 
@@ -136,6 +141,19 @@ function agentSummary(chips: AgentChip[]): string {
 	return `${agentCount(chips)} · ${agentBreakdown(chips)}`;
 }
 
+/** The list header repeats the badges when every agent is in the same state, so it hides then. */
+function showAgentSummary(chips: AgentChip[]): boolean {
+	const [first] = chips;
+	return !!first && chips.some((chip) => chip.states.join() !== first.states.join());
+}
+
+function agentsTooltip(chips: AgentChip[]): string {
+	return i18n.baseText('settings.context.skills.versions.timeline.agents.tooltip', {
+		interpolate: { count: String(chips.length) },
+		adjustToNumber: chips.length,
+	});
+}
+
 /** For example "2 drafts · 1 published". A merged entry counts in both states. */
 function agentBreakdown(chips: AgentChip[]): string {
 	const order: AgentState[] = ['draft', 'pinned', 'published'];
@@ -173,22 +191,10 @@ function expand(key: string) {
 	expandedGroups.value = new Set([...expandedGroups.value, key]);
 }
 
-function versionTitle(version: SkillVersionSummary): string {
-	return (
-		version.label ??
-		i18n.baseText('settings.context.skills.versions.timeline.version', {
-			interpolate: { version: String(version.version) },
-		})
-	);
-}
-
 function versionNumber(version: SkillVersionSummary): string {
-	const short = i18n.baseText('settings.context.skills.versions.number', {
+	return i18n.baseText('settings.context.skills.versions.number', {
 		interpolate: { version: String(version.version) },
 	});
-	return version.version === props.latestVersion
-		? `${short} · ${i18n.baseText('settings.context.skills.versions.timeline.latest')}`
-		: short;
 }
 
 function authorName(version: SkillVersionSummary): string {
@@ -215,7 +221,7 @@ function authorName(version: SkillVersionSummary): string {
 			/>
 		</header>
 
-		<div :class="$style.list">
+		<div :class="$style.scroll">
 			<div v-if="loading && versions.length === 0" :class="$style.placeholder">
 				<N8nLoading :rows="3" />
 			</div>
@@ -223,53 +229,79 @@ function authorName(version: SkillVersionSummary): string {
 				v-else-if="versions.length === 0"
 				size="small"
 				color="text-light"
+				tag="p"
 				:class="$style.placeholder"
 				data-testid="skill-version-timeline-empty"
 			>
 				{{ i18n.baseText('settings.context.skills.versions.timeline.empty') }}
 			</N8nText>
-			<template
-				v-for="entry in rows"
-				:key="entry.type === 'unnamed' ? entry.key : entry.version.id"
-			>
-				<button
-					v-if="entry.type === 'unnamed'"
-					type="button"
-					:class="$style.unnamed"
-					data-testid="skill-version-unnamed"
-					@click="expand(entry.key)"
+			<ul v-else :class="$style.list">
+				<li
+					v-for="entry in rows"
+					:key="entry.type === 'unnamed' ? entry.key : entry.version.id"
+					:class="
+						entry.type === 'unnamed'
+							? undefined
+							: [
+									$style.row,
+									entry.version.version === latestVersion && $style.latest,
+									entry.version.version === selectedVersion && $style.selected,
+								]
+					"
+					:data-version="entry.type === 'unnamed' ? undefined : entry.version.version"
+					:data-testid="entry.type === 'unnamed' ? undefined : 'skill-version-row'"
 				>
-					<N8nIcon icon="chevron-right" size="small" />
-					{{
-						i18n.baseText('settings.context.skills.versions.timeline.unnamed', {
-							interpolate: { count: String(entry.versions.length) },
-							adjustToNumber: entry.versions.length,
-						})
-					}}
-				</button>
-				<div
-					v-else
-					role="button"
-					tabindex="0"
-					:class="[
-						$style.row,
-						entry.version.version === latestVersion && $style.latest,
-						entry.version.version === selectedVersion && $style.selected,
-					]"
-					:data-version="entry.version.version"
-					:aria-current="entry.version.version === selectedVersion ? 'true' : undefined"
-					data-testid="skill-version-row"
-					@click="emit('select', entry.version.version)"
-					@keydown.enter.prevent="emit('select', entry.version.version)"
-					@keydown.space.prevent="emit('select', entry.version.version)"
-				>
-					<div :class="$style.rowTitle">
-						<N8nText size="small" bold color="text-dark" :class="$style.name">
-							{{ versionTitle(entry.version) }}
-						</N8nText>
-						<N8nText size="xsmall" color="text-light" :class="$style.number">
-							{{ versionNumber(entry.version) }}
-						</N8nText>
+					<button
+						v-if="entry.type === 'unnamed'"
+						type="button"
+						:class="$style.unnamed"
+						data-testid="skill-version-unnamed"
+						@click="expand(entry.key)"
+					>
+						<N8nIcon icon="chevron-right" size="small" />
+						{{
+							i18n.baseText('settings.context.skills.versions.timeline.unnamed', {
+								interpolate: { count: String(entry.versions.length) },
+								adjustToNumber: entry.versions.length,
+							})
+						}}
+					</button>
+					<template v-else>
+						<!-- One button selects the version. The row actions are its siblings, not its children. -->
+						<button
+							type="button"
+							:class="$style.select"
+							:aria-current="entry.version.version === selectedVersion ? 'true' : undefined"
+							data-testid="skill-version-row-select"
+							@click="emit('select', entry.version.version)"
+						>
+							<span :class="$style.rowTitle">
+								<N8nText size="small" bold color="text-dark" :class="$style.name">
+									{{ entry.version.label ?? versionNumber(entry.version) }}
+								</N8nText>
+								<N8nText
+									v-if="entry.version.label"
+									size="xsmall"
+									color="text-light"
+									:class="$style.number"
+								>
+									{{ versionNumber(entry.version) }}
+								</N8nText>
+								<N8nBadge
+									v-if="entry.version.version === latestVersion"
+									variant="outline"
+									size="xsmall"
+									:class="$style.latestBadge"
+									data-testid="skill-version-latest"
+								>
+									{{ i18n.baseText('settings.context.skills.versions.timeline.latest') }}
+								</N8nBadge>
+							</span>
+							<N8nText size="small" color="text-base" tag="span" :class="$style.meta">
+								{{ authorName(entry.version) }} ·
+								<TimeAgo :date="entry.version.createdAt" />
+							</N8nText>
+						</button>
 						<span :class="$style.rowActions">
 							<span v-if="entry.version.version !== latestVersion">
 								<N8nTooltip
@@ -278,84 +310,84 @@ function authorName(version: SkillVersionSummary): string {
 								>
 									<N8nIconButton
 										variant="ghost"
-										icon="arrow-left-right"
+										icon="file-diff"
 										size="xsmall"
 										:class="$style.compare"
 										:aria-label="i18n.baseText('settings.context.skills.versions.timeline.compare')"
 										data-testid="skill-version-row-compare"
-										@click.stop="emit('compare', entry.version.version)"
-										@keydown.stop
+										@click="emit('compare', entry.version.version)"
 									/>
 								</N8nTooltip>
 							</span>
-							<span v-if="chipsByVersion.get(entry.version.version)?.length">
-								<N8nPopover
-									width="280px"
-									max-height="320px"
-									align="end"
-									:z-index="APP_Z_INDEXES.MODALS + 1"
-								>
-									<template #trigger>
-										<button
-											type="button"
-											:class="$style.agentsTrigger"
-											:aria-label="agentSummary(chipsByVersion.get(entry.version.version) ?? [])"
-											data-testid="skill-version-agents"
-											@click.stop
-											@keydown.stop
-										>
-											<N8nIcon icon="bot" size="xsmall" />
-											{{ chipsByVersion.get(entry.version.version)?.length }}
-										</button>
-									</template>
-									<template #content>
-										<N8nText
-											size="xsmall"
-											color="text-light"
-											tag="div"
-											:class="$style.agentListHeader"
-											data-testid="skill-version-agents-summary"
-										>
-											{{ agentSummary(chipsByVersion.get(entry.version.version) ?? []) }}
-										</N8nText>
-										<ul :class="$style.agentList" data-testid="skill-version-agents-list">
-											<li
-												v-for="chip in chipsByVersion.get(entry.version.version)"
-												:key="chip.key"
-												:class="$style.agentItem"
-												data-testid="skill-version-agent"
-												:data-live="chip.live ? 'true' : undefined"
+							<N8nTooltip
+								v-if="chipsByVersion.get(entry.version.version)?.length"
+								:content="agentsTooltip(chipsByVersion.get(entry.version.version) ?? [])"
+								placement="top"
+							>
+								<span>
+									<N8nPopover
+										width="280px"
+										max-height="320px"
+										align="end"
+										:z-index="APP_Z_INDEXES.MODALS + 1"
+									>
+										<template #trigger>
+											<button
+												type="button"
+												:class="$style.agentsTrigger"
+												:aria-label="agentSummary(chipsByVersion.get(entry.version.version) ?? [])"
+												data-testid="skill-version-agents"
 											>
-												<N8nIcon icon="bot" size="small" color="text-light" />
-												<N8nText size="small" color="text-dark" :class="$style.agentName">
-													{{ chip.name }}
-												</N8nText>
-												<N8nTooltip :content="chip.tooltip" placement="top">
-													<N8nBadge
-														:variant="chip.variant"
-														size="xsmall"
-														:class="$style.agentBadge"
-														data-testid="skill-version-agent-state"
-													>
-														<template v-if="chip.icon" #leading>
-															<N8nIcon :icon="chip.icon" size="xsmall" />
-														</template>
-														{{ chip.label }}
-													</N8nBadge>
-												</N8nTooltip>
-											</li>
-										</ul>
-									</template>
-								</N8nPopover>
-							</span>
+												<N8nIcon icon="bot" size="xsmall" />
+												{{ chipsByVersion.get(entry.version.version)?.length }}
+											</button>
+										</template>
+										<template #content>
+											<N8nText
+												v-if="showAgentSummary(chipsByVersion.get(entry.version.version) ?? [])"
+												size="xsmall"
+												color="text-light"
+												tag="div"
+												:class="$style.agentListHeader"
+												data-testid="skill-version-agents-summary"
+											>
+												{{ agentSummary(chipsByVersion.get(entry.version.version) ?? []) }}
+											</N8nText>
+											<ul :class="$style.agentList" data-testid="skill-version-agents-list">
+												<li
+													v-for="chip in chipsByVersion.get(entry.version.version)"
+													:key="chip.key"
+													:class="$style.agentItem"
+													data-testid="skill-version-agent"
+													:data-live="chip.live ? 'true' : undefined"
+												>
+													<N8nIcon icon="bot" size="small" color="text-light" />
+													<N8nText size="small" color="text-dark" :class="$style.agentName">
+														{{ chip.name }}
+													</N8nText>
+													<N8nTooltip :content="chip.tooltip" placement="top">
+														<N8nBadge
+															:variant="chip.variant"
+															size="xsmall"
+															:class="$style.agentBadge"
+															data-testid="skill-version-agent-state"
+														>
+															<template v-if="chip.icon" #leading>
+																<N8nIcon :icon="chip.icon" size="xsmall" />
+															</template>
+															{{ chip.label }}
+														</N8nBadge>
+													</N8nTooltip>
+												</li>
+											</ul>
+										</template>
+									</N8nPopover>
+								</span>
+							</N8nTooltip>
 						</span>
-					</div>
-					<N8nText size="xsmall" color="text-light" tag="div">
-						{{ authorName(entry.version) }} ·
-						<TimeAgo :date="entry.version.createdAt" />
-					</N8nText>
-				</div>
-			</template>
+					</template>
+				</li>
+			</ul>
 		</div>
 	</aside>
 </template>
@@ -377,29 +409,37 @@ function authorName(version: SkillVersionSummary): string {
 	border-bottom: var(--border);
 }
 
-.list {
+.scroll {
 	flex: 1;
 	min-height: 0;
 	overflow-y: auto;
 	padding: var(--spacing--2xs);
+}
+
+.list {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--5xs);
+	margin: 0;
+	padding: 0;
+	list-style: none;
 }
 
 .placeholder {
+	margin: 0;
 	padding: var(--spacing--xs);
 }
 
+/*
+ * The select button takes the first column and the row actions the second. The button
+ * stretches its click target over the whole row (see `.select::after`).
+ */
 .row {
 	position: relative;
-	display: flex;
-	flex-direction: column;
-	align-items: flex-start;
-	gap: var(--spacing--5xs);
-	padding: var(--spacing--3xs) var(--spacing--3xs) var(--spacing--3xs) var(--spacing--lg);
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto;
+	align-items: start;
 	border-radius: var(--radius--lg);
-	cursor: pointer;
 
 	/* The dot of the timeline. The latest version has a green one. */
 	&::before {
@@ -411,6 +451,7 @@ function authorName(version: SkillVersionSummary): string {
 		height: var(--spacing--2xs);
 		border-radius: 50%;
 		background-color: var(--color--foreground--shade-1);
+		pointer-events: none;
 	}
 
 	&:hover {
@@ -422,30 +463,62 @@ function authorName(version: SkillVersionSummary): string {
 	&:focus-within .compare {
 		opacity: 1;
 	}
-
-	&:focus-visible {
-		outline: var(--focus--border-width) solid var(--color--primary);
-		outline-offset: calc(-1 * var(--spacing--5xs));
-	}
 }
 
 .latest::before {
 	background-color: var(--color--success);
 }
 
-.selected {
+/* Selected differs from hover: an accent on the left edge and the active background. */
+.selected,
+.selected:hover {
 	background-color: var(--background--active);
+	box-shadow: inset var(--spacing--5xs) 0 0 var(--color--primary);
 
 	.compare {
 		opacity: 1;
 	}
 }
 
+.select {
+	grid-column: 1;
+	grid-row: 1;
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: var(--spacing--5xs);
+	width: 100%;
+	min-width: 0;
+	padding: var(--spacing--3xs) var(--spacing--3xs) var(--spacing--3xs) var(--spacing--lg);
+	border: none;
+	border-radius: inherit;
+	background: none;
+	color: inherit;
+	font: inherit;
+	text-align: left;
+	cursor: pointer;
+
+	/* Makes the whole row a click target, also the space under the row actions. */
+	&::after {
+		content: '';
+		position: absolute;
+		inset: 0;
+		border-radius: inherit;
+	}
+
+	&:focus-visible {
+		outline: none;
+	}
+
+	&:focus-visible::after {
+		outline: var(--focus--border-width) solid var(--color--primary);
+		outline-offset: calc(-1 * var(--spacing--5xs));
+	}
+}
+
 .rowTitle {
 	display: flex;
 	align-items: baseline;
-	/* Full row width, so the compare button sits at the right edge. */
-	align-self: stretch;
 	gap: var(--spacing--3xs);
 	min-width: 0;
 	width: 100%;
@@ -458,13 +531,30 @@ function authorName(version: SkillVersionSummary): string {
 	white-space: nowrap;
 }
 
-.agents {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-	min-width: 0;
+.number,
+.latestBadge {
+	flex-shrink: 0;
+}
+
+.latestBadge {
+	align-self: center;
+}
+
+.meta {
 	max-width: 100%;
-	margin-left: calc(-1 * var(--spacing--4xs));
+}
+
+/* Agents and compare sit at the right edge of the title line. Each tooltip wraps its button in an element. */
+.rowActions {
+	grid-column: 2;
+	grid-row: 1;
+	/* Above the stretched click target of the select button. */
+	position: relative;
+	z-index: 1;
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--5xs);
+	padding: var(--spacing--4xs) var(--spacing--3xs) 0 0;
 }
 
 .agentsTrigger {
@@ -493,12 +583,6 @@ function authorName(version: SkillVersionSummary): string {
 	}
 }
 
-.agentBreakdown {
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}
-
 .agentList {
 	display: flex;
 	flex-direction: column;
@@ -525,20 +609,6 @@ function authorName(version: SkillVersionSummary): string {
 .agentBadge {
 	flex-shrink: 0;
 	margin-left: var(--spacing--xs);
-}
-
-.number {
-	flex-shrink: 0;
-}
-
-/* Agents and compare sit at the right edge. Each tooltip wraps its button in an element. */
-.rowActions {
-	display: inline-flex;
-	flex-shrink: 0;
-	align-self: center;
-	align-items: center;
-	gap: var(--spacing--5xs);
-	margin-left: auto;
 }
 
 .agentListHeader {

@@ -16,6 +16,7 @@ const props = withDefaults(
 		showBack?: boolean;
 		showFooter?: boolean;
 		showCancel?: boolean;
+		cancelLabel?: string;
 		bodyFlush?: boolean;
 		stableHeight?: boolean;
 		busy?: boolean;
@@ -32,6 +33,7 @@ const props = withDefaults(
 		showBack: false,
 		showFooter: undefined,
 		showCancel: true,
+		cancelLabel: undefined,
 		bodyFlush: false,
 		stableHeight: false,
 		busy: false,
@@ -82,6 +84,7 @@ watch(
 		:show-back="showBack"
 		:show-footer="showFooter"
 		:show-cancel="showCancel"
+		:cancel-label="cancelLabel"
 		:body-scrollable="!isPickerStep"
 		:body-flush="bodyFlush"
 		:stable-height="stableHeight"

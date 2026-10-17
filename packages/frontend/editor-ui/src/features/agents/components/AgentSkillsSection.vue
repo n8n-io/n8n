@@ -1,6 +1,14 @@
 <script setup lang="ts">
 import type { AgentConfigValidationIssue, AgentSkillVersionInfo } from '@n8n/api-types';
-import { N8nButton, N8nIcon, N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nIcon,
+	N8nIconButton,
+	N8nLink,
+	N8nStatusDot,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, ref } from 'vue';
 
@@ -59,6 +67,7 @@ type SkillRow = {
 	skill: AgentSkill;
 	info?: AgentSkillVersionInfo;
 	state?: SkillVersionState;
+	hint?: VersionHint;
 	/** The old warning, only for skills the server sends no version state for. */
 	outdated: boolean;
 	invalidReasons: string[];
@@ -67,11 +76,13 @@ type SkillRow = {
 const rows = computed<SkillRow[]>(() =>
 	props.skills.map(({ id, skill }) => {
 		const info = props.skillVersions?.[id];
+		const state = info ? skillVersionState(info) : undefined;
 		return {
 			id,
 			skill,
 			info,
-			state: info ? skillVersionState(info) : undefined,
+			state,
+			hint: versionHint(state),
 			outdated: !info && outdatedSkillIds.value.has(id),
 			invalidReasons: skillIssueMessages.value.get(id) ?? [],
 		};
@@ -85,17 +96,47 @@ function skillName(row: Pick<SkillRow, 'id' | 'skill'>): string {
 	return row.skill.name || row.id;
 }
 
-function hintText(row: SkillRow): string {
-	const state = row.state;
-	if (!state) return '';
+/**
+ * One line under the row when the draft and the published agent differ, or when a
+ * newer version waits for a pinned draft. Same content needs no hint.
+ */
+type VersionHint = { text: string; unpublished: boolean; changes?: SkillVersionRange };
+
+function versionHint(state: SkillVersionState | undefined): VersionHint | undefined {
+	if (!state) return undefined;
 	if (state.kind === 'pinned') {
-		return i18n.baseText('agents.builder.skills.version.hint.pinned', {
-			interpolate: { latest: String(state.latest) },
-		});
+		if (!state.changes) return undefined;
+		return {
+			text: i18n.baseText('agents.builder.skills.version.hint.pinned', {
+				interpolate: { latest: String(state.latest) },
+			}),
+			unpublished: false,
+			changes: state.changes,
+		};
 	}
-	return i18n.baseText('agents.builder.skills.version.hint.liveBehind', {
-		interpolate: { version: String(state.draft) },
-	});
+	if (state.kind === 'notLive') {
+		return {
+			text: i18n.baseText('agents.builder.skills.version.hint.notLive'),
+			unpublished: true,
+		};
+	}
+	if (state.kind === 'liveBehind' && state.live !== null) {
+		return {
+			text: i18n.baseText('agents.builder.skills.version.hint.liveBehind', {
+				interpolate: { live: String(state.live) },
+			}),
+			unpublished: true,
+			changes: state.changes,
+		};
+	}
+	return undefined;
+}
+
+/** An `<a>` without `href` is not in the tab order, so the hint links act as buttons. */
+function onLinkKeydown(event: KeyboardEvent, action: () => void) {
+	if (event.key !== 'Enter' && event.key !== ' ') return;
+	event.preventDefault();
+	action();
 }
 
 /** An invalid skill shows its issues. Else an outdated one shows the older-version warning. */
@@ -106,6 +147,14 @@ function alertReasons(row: SkillRow): string[] {
 
 function openDiff(skillId: string, range: SkillVersionRange) {
 	diff.value = { skillId, range };
+}
+
+function seeChanges(row: SkillRow) {
+	if (row.hint?.changes) openDiff(row.id, row.hint.changes);
+}
+
+function followLatest(row: SkillRow) {
+	emit('set-skill-version', row.id, null);
 }
 
 function onDiffOpenChange(open: boolean) {
@@ -202,39 +251,39 @@ function rowSubtitle(row: {
 							>
 								{{ rowSubtitle(row) }}
 							</N8nText>
-							<N8nText
-								v-if="row.state?.changes"
-								size="small"
-								:class="[
-									$style.hint,
-									row.state.kind === 'pinned' ? $style.hintPinned : $style.hintInfo,
-								]"
+							<div
+								v-if="row.hint"
+								:class="$style.hint"
+								:data-unpublished="row.hint.unpublished"
 								data-testid="agent-skill-version-hint"
 							>
-								{{ hintText(row) }}
-								<button
-									type="button"
-									:class="$style.hintAction"
-									:disabled="props.disabled"
+								<N8nStatusDot v-if="row.hint.unpublished" variant="warning" />
+								<N8nText size="small" color="text-base" :class="$style.hintText">
+									{{ row.hint.text }}
+								</N8nText>
+								<N8nLink
+									v-if="row.hint.changes"
+									size="small"
+									role="button"
+									tabindex="0"
 									data-testid="agent-skill-see-changes"
-									@click="row.state?.changes && openDiff(row.id, row.state.changes)"
+									@click="seeChanges(row)"
+									@keydown="onLinkKeydown($event, () => seeChanges(row))"
 								>
 									{{ i18n.baseText('agents.builder.skills.version.seeChanges') }}
-								</button>
-								<button
-									v-if="row.state.kind === 'pinned'"
-									type="button"
-									:class="$style.hintAction"
-									:disabled="props.disabled"
+								</N8nLink>
+								<N8nLink
+									v-if="row.state?.kind === 'pinned'"
+									size="small"
+									role="button"
+									tabindex="0"
 									data-testid="agent-skill-follow-latest"
-									@click="emit('set-skill-version', row.id, null)"
+									@click="followLatest(row)"
+									@keydown="onLinkKeydown($event, () => followLatest(row))"
 								>
-									{{ i18n.baseText('agents.builder.skills.version.followLatest') }}
-								</button>
-								<template v-else>
-									{{ i18n.baseText('agents.builder.skills.version.hint.testThenPublish') }}
-								</template>
-							</N8nText>
+									{{ i18n.baseText('agents.builder.skills.version.useLatest') }}
+								</N8nLink>
+							</div>
 						</div>
 
 						<AgentSkillVersionBadge
@@ -248,13 +297,16 @@ function rowSubtitle(row: {
 							@compare="(from, to) => openDiff(row.id, { from, to })"
 						/>
 
-						<N8nTooltip :content="i18n.baseText('agents.builder.skills.remove')" placement="top">
+						<N8nTooltip
+							:content="i18n.baseText('agents.builder.skills.version.detachSkill')"
+							placement="top"
+						>
 							<N8nIconButton
 								icon="x"
 								variant="ghost"
 								size="small"
 								:disabled="props.disabled"
-								:aria-label="i18n.baseText('agents.builder.skills.remove')"
+								:aria-label="i18n.baseText('agents.builder.skills.version.detachSkill')"
 								data-testid="agent-skill-row-remove"
 								@click="emit('remove-skill', row.id)"
 							/>
@@ -416,33 +468,26 @@ function rowSubtitle(row: {
 
 .hint {
 	display: flex;
-	flex-wrap: wrap;
-	align-items: baseline;
-	gap: var(--spacing--3xs);
+	align-items: center;
+	gap: var(--spacing--2xs);
+	min-width: 0;
 	margin-top: var(--spacing--4xs);
-}
+	white-space: nowrap;
 
-.hintInfo {
-	color: var(--text-color--info);
-}
+	:global(.n8n-link) {
+		flex-shrink: 0;
+		border-radius: var(--radius--sm);
 
-.hintPinned {
-	color: var(--text-color--warning);
-}
-
-.hintAction {
-	padding: 0;
-	border: none;
-	background: none;
-	font: inherit;
-	color: var(--text-color);
-	text-decoration: underline;
-	cursor: pointer;
-
-	&:disabled {
-		cursor: default;
-		color: var(--text-color--subtler);
+		&:focus-visible {
+			@include focus.focus-ring;
+		}
 	}
+}
+
+.hintText {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
 .addButton {

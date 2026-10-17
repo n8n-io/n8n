@@ -3,11 +3,15 @@ import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import type { SkillListItem, SkillUsage } from '@n8n/api-types';
 import { N8nBadge, N8nDropdownMenu, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
-import type { DropdownMenuItemProps } from '@n8n/design-system';
+import type { BadgeVariant, DropdownMenuItemProps, IconName } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 
 import { AGENT_BUILDER_VIEW } from '@/features/agents/constants';
+import {
+	skillVersionStyle,
+	type SkillVersionStyleKind,
+} from '@/features/agents/components/skillVersions/skillVersionStyle';
 
 import { useSkillsStore } from '../skills.store';
 
@@ -17,7 +21,8 @@ const TITLE_ITEM = 'title';
 /** The version an agent uses, as a badge next to its name. */
 type VersionBadge = {
 	label: string;
-	variant: 'success' | 'warning' | 'info' | 'subtle';
+	variant: BadgeVariant;
+	icon?: IconName;
 	tooltip?: string;
 };
 
@@ -61,39 +66,46 @@ function versionText(key: 'latest' | 'pinned' | 'live', version: number) {
 	});
 }
 
+function badge(kind: SkillVersionStyleKind, label: string, tooltip?: string): VersionBadge {
+	return { label, ...skillVersionStyle(kind), tooltip };
+}
+
 /**
- * The draft decides the badge: pinned, or following the latest. A live version that is
- * behind the draft shows too, because the agent runs it until its next publish.
+ * The draft decides the label: pinned, or following the latest. The color tells if the
+ * published agent runs that version, as in the builder and in workflow history.
  */
 function versionBadge({ draft, pin }: AgentUsage): VersionBadge {
-	if (draft?.pinned) return { label: versionText('pinned', draft.version), variant: 'warning' };
-	if (
-		draft &&
-		pin?.version !== undefined &&
-		pin.version !== null &&
-		pin.version !== draft.version
-	) {
+	const live = pin?.version ?? null;
+	if (draft?.pinned) return badge('pinned', versionText('pinned', draft.version));
+	if (draft) {
+		const label = versionText('latest', draft.version);
+		if (live === null) {
+			return badge(
+				'unpublished',
+				label,
+				i18n.baseText('settings.context.skills.versions.agents.notPublished'),
+			);
+		}
+		if (live === draft.version) return badge('published', label);
 		// A restore saves old content as a new version, so the published agent is up to date.
 		if (draft.liveHasSameContent) {
-			return {
-				label: versionText('latest', draft.version),
-				variant: 'success',
-				tooltip: i18n.baseText('settings.context.skills.versions.agents.sameContent', {
-					interpolate: { live: String(pin.version) },
+			return badge(
+				'published',
+				label,
+				i18n.baseText('settings.context.skills.versions.agents.sameContent', {
+					interpolate: { live: String(live) },
 				}),
-			};
+			);
 		}
-		return {
-			label: i18n.baseText('settings.context.skills.versions.agents.liveRuns', {
-				interpolate: { version: String(draft.version), live: String(pin.version) },
+		return badge(
+			'unpublished',
+			label,
+			i18n.baseText('settings.context.skills.versions.agents.liveRuns', {
+				interpolate: { live: String(live) },
 			}),
-			variant: 'info',
-		};
+		);
 	}
-	if (draft) return { label: versionText('latest', draft.version), variant: 'success' };
-	if (pin?.version !== undefined && pin.version !== null) {
-		return { label: versionText('live', pin.version), variant: 'info' };
-	}
+	if (live !== null) return badge('published', versionText('live', live));
 	return {
 		label: i18n.baseText('settings.context.skills.versions.agents.olderPublished'),
 		variant: 'subtle',
@@ -185,6 +197,7 @@ async function onSelect(agentId: string) {
 				>
 					<N8nBadge
 						:variant="item.data.variant"
+						:leading-icon="item.data.icon"
 						size="xsmall"
 						:class="$style.badge"
 						data-test-id="skill-agents-version"
@@ -197,7 +210,12 @@ async function onSelect(agentId: string) {
 				<button
 					type="button"
 					:class="$style.trigger"
-					:aria-label="i18n.baseText('settings.context.skills.agents.label')"
+					:aria-label="
+						i18n.baseText('settings.context.skills.versions.agents.trigger', {
+							interpolate: { count: props.skill.usedByAgents },
+							adjustToNumber: props.skill.usedByAgents,
+						})
+					"
 					data-test-id="skill-agents-trigger"
 				>
 					<N8nText size="small" color="text-base">{{ props.skill.usedByAgents }}</N8nText>

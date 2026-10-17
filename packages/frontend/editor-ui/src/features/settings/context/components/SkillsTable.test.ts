@@ -4,7 +4,7 @@ import { createTestingPinia } from '@pinia/testing';
 import type { SkillDetail, SkillListItem } from '@n8n/api-types';
 import { STORES } from '@n8n/stores';
 import userEvent from '@testing-library/user-event';
-import { waitFor, within } from '@testing-library/vue';
+import { screen, waitFor, within } from '@testing-library/vue';
 
 import SkillsTable from './SkillsTable.vue';
 import { useSkillsStore } from '../skills.store';
@@ -192,15 +192,33 @@ describe('SkillsTable', () => {
 		await waitFor(() =>
 			expect(document.querySelectorAll('[data-test-id="skill-agents-version"]')).toHaveLength(4),
 		);
-		const badges = [...document.querySelectorAll('[data-test-id="skill-agents-version"]')].map(
-			(badge) => badge.textContent?.trim(),
-		);
-		expect(badges).toEqual([
-			'v4 · latest',
-			'v4 · published agent runs v3',
-			'v3 · pinned',
-			'v2 · published agent',
+		const badges = [...document.querySelectorAll('[data-test-id="skill-agents-version"]')];
+		expect(badges.map((badge) => badge.textContent?.trim())).toEqual([
+			'Latest (v4)',
+			'Latest (v4)',
+			'v3',
+			'Published (v2)',
 		]);
+		// No published agent runs it, the published agent is behind, pinned, published.
+		expect(badges.map((badge) => badge.className)).toEqual([
+			expect.stringMatching(/warning/),
+			expect.stringMatching(/warning/),
+			expect.stringMatching(/outline/),
+			expect.stringMatching(/success/),
+		]);
+		expect(badges[2].querySelector('svg')).not.toBeNull();
+		expect(document.querySelector('[data-test-id="skill-agents-menu"]')).toHaveTextContent(
+			'Used by',
+		);
+
+		await userEvent.hover(badges[1]);
+		expect(await screen.findByText('Published agent uses v3')).toBeInTheDocument();
+	});
+
+	it('names the agent count in the trigger label', () => {
+		const { getByTestId } = render([skill({ usedByAgents: 3 })]);
+
+		expect(getByTestId('skill-agents-trigger')).toHaveAttribute('aria-label', 'Show 3 agents');
 	});
 
 	it('shows a draft as latest when the published agent runs the same content', async () => {
@@ -230,7 +248,8 @@ describe('SkillsTable', () => {
 			expect(found).not.toBeNull();
 			return found!;
 		});
-		expect(badge).toHaveTextContent('v10 · latest');
+		expect(badge).toHaveTextContent('Latest (v10)');
+		expect(badge.className).toMatch(/success/);
 		await userEvent.hover(badge);
 		expect(await findByText('Same content as the published v7')).toBeInTheDocument();
 	});

@@ -154,6 +154,13 @@ async function editable(container: Element): Promise<HTMLInputElement> {
 	return titleInput(container);
 }
 
+/** Each timeline row selects its version through one button. */
+function selectButton(row: HTMLElement | undefined): HTMLElement {
+	const button = row?.querySelector<HTMLElement>('[data-testid="skill-version-row-select"]');
+	if (!button) throw new Error('Expected a select button in the timeline row');
+	return button;
+}
+
 function titleInput(container: Element): HTMLInputElement {
 	const input = container.querySelector<HTMLInputElement>(
 		'[data-testid="agent-modal-title-input"]',
@@ -190,7 +197,7 @@ describe('AgentSkillModal with versions', () => {
 		const { getByTestId, findByTestId, queryByTestId, container } = renderModal();
 
 		await editable(container);
-		expect(await findByTestId('skill-version-status')).toHaveTextContent('Saved · v2');
+		expect(await findByTestId('skill-version-status')).toHaveTextContent(/^v2$/);
 		expect(getByTestId('skill-version-save')).toBeDisabled();
 		expect(getByTestId('skill-version-save')).toHaveTextContent('Saved');
 		expect(queryByTestId('skill-version-dirty')).not.toBeInTheDocument();
@@ -201,6 +208,23 @@ describe('AgentSkillModal with versions', () => {
 		expect(getByTestId('skill-version-save')).toBeEnabled();
 		expect(getByTestId('skill-version-dirty')).toBeInTheDocument();
 		expect(getByTestId('skill-version-save')).toHaveTextContent('Save');
+	});
+
+	it('keeps Save and the timeline out of the menu, as the header has buttons for them', async () => {
+		const { queryByTestId, getByTestId, container } = renderModal();
+		await editable(container);
+
+		expect(queryByTestId('skill-version-menu-save')).not.toBeInTheDocument();
+		expect(queryByTestId('skill-version-menu-timeline')).not.toBeInTheDocument();
+		expect(getByTestId('skill-version-menu-review')).toBeInTheDocument();
+		expect(getByTestId('skill-version-menu-name')).toBeInTheDocument();
+	});
+
+	it('closes rather than cancels an existing skill from the footer', async () => {
+		const { getByTestId, container } = renderModal();
+		await editable(container);
+
+		expect(getByTestId('agent-modal-cancel')).toHaveTextContent('Close');
 	});
 
 	it('opens the timeline from the header icon next to Save', async () => {
@@ -219,7 +243,7 @@ describe('AgentSkillModal with versions', () => {
 		const { getByTestId } = renderModal({ initialVersionView: 'timeline' });
 
 		await waitFor(() =>
-			expect(getByTestId('skill-version-status')).toHaveTextContent('Saved · v2 · EU rules'),
+			expect(getByTestId('skill-version-status')).toHaveTextContent(/^v2 · EU rules$/),
 		);
 	});
 
@@ -240,12 +264,16 @@ describe('AgentSkillModal with versions', () => {
 			skill: { ...LATEST, name: 'Refunds' },
 			baseSkillHash: 'hash-2',
 		});
-		await waitFor(() =>
-			expect(getByTestId('skill-version-status')).toHaveTextContent('Saved · v3'),
-		);
+		await waitFor(() => expect(getByTestId('skill-version-status')).toHaveTextContent(/^v3$/));
 		expect(uiStore.closeModal).not.toHaveBeenCalled();
 		expect(getByTestId('skill-version-save')).toBeDisabled();
-		expect(showMessage).toHaveBeenCalledWith(expect.objectContaining({ title: 'Saved v3' }));
+		expect(showMessage).toHaveBeenCalledWith(
+			expect.objectContaining({
+				title: 'Saved v3',
+				message:
+					'Drafts that use the latest version now use v3. Publish an agent to use it there too.',
+			}),
+		);
 	});
 
 	it('saves on Cmd+S', async () => {
@@ -297,10 +325,12 @@ describe('AgentSkillModal with versions', () => {
 
 		const rows = await findAllByTestId('skill-version-row');
 		expect(rows.map((row) => row.getAttribute('data-version'))).toEqual(['2', '1']);
-		await fireEvent.click(rows[1]);
+		await fireEvent.click(selectButton(rows[1]));
 
 		await waitFor(() => expect(getByTestId('skill-version-viewing')).toBeInTheDocument());
-		expect(getByTestId('skill-version-viewing')).toHaveTextContent('Viewing v1 · First draft');
+		expect(getByTestId('skill-version-viewing')).toHaveTextContent(
+			"You're viewing v1 · First draft. It's read-only.",
+		);
 		expect(queryByTestId('agent-modal-title-input')).not.toBeInTheDocument();
 
 		await fireEvent.click(getByTestId('skill-version-restore'));
@@ -318,7 +348,7 @@ describe('AgentSkillModal with versions', () => {
 			initialVersionView: 'timeline',
 		});
 		const rows = await findAllByTestId('skill-version-row');
-		await fireEvent.click(rows[1]);
+		await fireEvent.click(selectButton(rows[1]));
 		await waitFor(() => expect(getByTestId('skill-version-viewing')).toBeInTheDocument());
 
 		await fireEvent.click(getByTestId('skill-version-viewing-back'));
@@ -352,7 +382,7 @@ describe('AgentSkillModal with versions', () => {
 		expect(queryByTestId('skill-version-save')).not.toBeInTheDocument();
 		await fireEvent.click(getByTestId('skill-version-timeline-toggle'));
 		const rows = await findAllByTestId('skill-version-row');
-		await fireEvent.click(rows[1]);
+		await fireEvent.click(selectButton(rows[1]));
 
 		await waitFor(() => expect(getByTestId('skill-version-viewing')).toBeInTheDocument());
 		expect(queryByTestId('skill-version-restore')).not.toBeInTheDocument();
@@ -375,7 +405,9 @@ describe('AgentSkillModal with versions', () => {
 			const { findAllByTestId, queryByTestId } = renderPinned();
 
 			const rows = await findAllByTestId('skill-version-row');
-			const selected = rows.find((row) => row.getAttribute('aria-current') === 'true');
+			const selected = rows.find(
+				(row) => selectButton(row).getAttribute('aria-current') === 'true',
+			);
 			expect(selected?.getAttribute('data-version')).toBe('1');
 			expect(queryByTestId('skill-version-save')).not.toBeInTheDocument();
 			expect(queryByTestId('skill-version-viewing')).not.toBeInTheDocument();
@@ -385,22 +417,47 @@ describe('AgentSkillModal with versions', () => {
 			const { getByTestId, findAllByTestId, queryByTestId } = renderPinned();
 			const rows = await findAllByTestId('skill-version-row');
 
-			await fireEvent.click(rows[0]);
+			await fireEvent.click(selectButton(rows[0]));
 			await waitFor(() => expect(getByTestId('skill-version-viewing')).toBeInTheDocument());
-			expect(getByTestId('skill-version-viewing')).toHaveTextContent('Viewing v2');
+			expect(getByTestId('skill-version-viewing')).toHaveTextContent("You're viewing v2.");
 			expect(getByTestId('skill-version-viewing-back')).toHaveTextContent('Back to v1');
 
 			await fireEvent.click(getByTestId('skill-version-viewing-back'));
 			expect(queryByTestId('skill-version-viewing')).not.toBeInTheDocument();
 		});
 
-		it('follows the latest version from the footer', async () => {
+		it('says it once, in a warning callout with the actions', async () => {
+			const { findByTestId, queryByTestId, getByTestId } = renderPinned();
+
+			const callout = await findByTestId('skill-version-pinned');
+			await waitFor(() =>
+				expect(callout).toHaveTextContent('This agent uses v1. The latest version is v2.'),
+			);
+			expect(getByTestId('skill-version-pinned-see-changes')).toHaveTextContent('See changes');
+			// No repeat in the header or the footer.
+			expect(queryByTestId('skill-version-status')).not.toBeInTheDocument();
+			expect(queryByTestId('agent-skill-footer-hint')).not.toBeInTheDocument();
+			expect(getByTestId('agent-modal-footer-actions').textContent).not.toContain('Follow latest');
+		});
+
+		it('opens the changes from the pinned version to the latest one', async () => {
+			const { findByTestId, queryByTestId } = renderPinned();
+
+			await fireEvent.click(await findByTestId('skill-version-pinned-see-changes'));
+
+			expect(await findByTestId('skill-version-compare')).toBeInTheDocument();
+			expect(await findByTestId('skill-version-diff-from')).toHaveTextContent('v1');
+			expect(await findByTestId('skill-version-diff-to')).toHaveTextContent('v2');
+			expect(queryByTestId('skill-version-pinned')).not.toBeInTheDocument();
+		});
+
+		it('follows the latest version from the callout', async () => {
 			const onUseLatestVersion = vi.fn();
 			const { findByTestId } = renderPinned(onUseLatestVersion);
 
-			const followLatest = await findByTestId('agent-skill-use-latest');
-			expect(followLatest).toHaveTextContent('Follow latest');
-			await fireEvent.click(followLatest);
+			const useLatest = await findByTestId('agent-skill-use-latest');
+			expect(useLatest).toHaveTextContent('Use latest');
+			await fireEvent.click(useLatest);
 
 			expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
 			expect(onUseLatestVersion).toHaveBeenCalledWith('s1');

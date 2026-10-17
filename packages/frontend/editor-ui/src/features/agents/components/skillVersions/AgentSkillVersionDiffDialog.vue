@@ -4,15 +4,15 @@ import type {
 	SkillVersionDetail,
 	SkillVersionSummary,
 } from '@n8n/api-types';
-import { N8nButton, N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 import { computed, ref, watch } from 'vue';
 
 import AgentModal from '../modals/AgentModal.vue';
+import SkillVersionCompareBar from './SkillVersionCompareBar.vue';
 import SkillVersionDiff from './SkillVersionDiff.vue';
 import { formatSkillVersion } from './skillVersionLabels';
-import { getSkillDiffSections } from './skillVersionDiff.utils';
 import { isPinnedBehindLatest, type SkillVersionRange } from './skillVersionState';
 import type { SkillVersionLoader } from './useSkillVersionLoader';
 
@@ -66,6 +66,10 @@ function optionLabel(summary: Pick<SkillVersionSummary, 'version' | 'label'>): s
 	});
 }
 
+const options = computed(() =>
+	versions.value.map((summary) => ({ value: summary.version, label: optionLabel(summary) })),
+);
+
 function versionLabel(version: number): string {
 	const summary = versions.value.find((entry) => entry.version === version);
 	return formatSkillVersion(i18n, version, summary?.label);
@@ -85,7 +89,7 @@ async function loadVersions() {
 	try {
 		versions.value = await props.loader.loadVersions(props.skillId, props.info.latest);
 	} catch (error) {
-		showError(error, i18n.baseText('agents.builder.skills.version.menu.loadError'));
+		showError(error, i18n.baseText('settings.context.skills.versions.timeline.error'));
 	}
 }
 
@@ -97,7 +101,7 @@ async function loadDetail(side: 'from' | 'to', version: number) {
 		// A newer pick may have replaced this one while it loaded.
 		if (selected.value === version) detail.value = loaded;
 	} catch (error) {
-		showError(error, i18n.baseText('agents.builder.skills.version.diff.loadError'));
+		showError(error, i18n.baseText('settings.context.skills.versions.loadError'));
 	}
 }
 
@@ -126,17 +130,6 @@ const ready = computed(
 	() => fromDetail.value?.version === from.value && toDetail.value?.version === to.value,
 );
 
-/** True when both loaded sides have the same content, as a restore saves. */
-const sameContent = computed(
-	() =>
-		ready.value &&
-		!!fromDetail.value &&
-		!!toDetail.value &&
-		getSkillDiffSections(fromDetail.value.skill, toDetail.value.skill).every(
-			(section) => !section.changed,
-		),
-);
-
 const note = computed(() => {
 	const { draft, live } = props.info;
 	if (canFollowLatest.value) {
@@ -145,7 +138,7 @@ const note = computed(() => {
 		});
 	}
 	if (live !== null && live !== draft) {
-		if (props.info.liveHasSameContent || sameContent.value) {
+		if (props.info.liveHasSameContent) {
 			return i18n.baseText('agents.builder.skills.version.diff.note.sameContent');
 		}
 		return i18n.baseText('agents.builder.skills.version.diff.note.liveBehind', {
@@ -165,40 +158,7 @@ const note = computed(() => {
 		@update:open="emit('update:open', $event)"
 	>
 		<div :class="$style.content" data-testid="agent-skill-version-diff-dialog">
-			<div :class="$style.bar">
-				<N8nText size="small" color="text-light">
-					{{ i18n.baseText('agents.builder.skills.version.diff.compare') }}
-				</N8nText>
-				<N8nSelect
-					v-model="from"
-					size="small"
-					:class="$style.select"
-					:aria-label="i18n.baseText('agents.builder.skills.version.diff.from')"
-					data-testid="agent-skill-version-diff-from"
-				>
-					<N8nOption
-						v-for="summary in versions"
-						:key="summary.id"
-						:value="summary.version"
-						:label="optionLabel(summary)"
-					/>
-				</N8nSelect>
-				<N8nText size="small" color="text-light" aria-hidden="true">→</N8nText>
-				<N8nSelect
-					v-model="to"
-					size="small"
-					:class="$style.select"
-					:aria-label="i18n.baseText('agents.builder.skills.version.diff.to')"
-					data-testid="agent-skill-version-diff-to"
-				>
-					<N8nOption
-						v-for="summary in versions"
-						:key="summary.id"
-						:value="summary.version"
-						:label="optionLabel(summary)"
-					/>
-				</N8nSelect>
-			</div>
+			<SkillVersionCompareBar v-model:from="from" v-model:to="to" :options="options" />
 
 			<SkillVersionDiff
 				v-if="ready && fromDetail && toDetail"
@@ -208,7 +168,7 @@ const note = computed(() => {
 				:to-label="optionLabel(toDetail)"
 			/>
 			<N8nText v-else size="small" color="text-light">
-				{{ i18n.baseText('agents.builder.skills.version.menu.loading') }}
+				{{ i18n.baseText('settings.context.skills.versions.compare.loading') }}
 			</N8nText>
 		</div>
 
@@ -242,16 +202,5 @@ const note = computed(() => {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--sm);
-}
-
-.bar {
-	display: flex;
-	align-items: center;
-	flex-wrap: wrap;
-	gap: var(--spacing--2xs);
-}
-
-.select {
-	width: calc(var(--spacing--5xl) + var(--spacing--xl));
 }
 </style>
