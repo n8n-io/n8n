@@ -161,10 +161,13 @@ export async function execute(
 	this: IExecuteFunctions,
 	sheet: GoogleSheet,
 	sheetName: string,
+	_sheetId = '',
+	selectedItemIndexes?: number[],
 ): Promise<INodeExecutionData[]> {
 	const items = this.getInputData();
+	const itemIndexes = selectedItemIndexes ?? items.map((_, index) => index);
 
-	for (let i = 0; i < items.length; i++) {
+	for (const i of itemIndexes) {
 		const clearType = this.getNodeParameter('clear', i) as string;
 		const keepFirstRow = this.getNodeParameter('keepFirstRow', i, false) as boolean;
 		let range = '';
@@ -206,5 +209,7 @@ export async function execute(
 		}
 	}
 
-	return items;
+	if (selectedItemIndexes === undefined) return items;
+
+	return itemIndexes.map((index) => ({ ...items[index], pairedItem: { item: index } }));
 }

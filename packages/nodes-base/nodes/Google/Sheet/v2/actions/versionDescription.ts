@@ -23,12 +23,31 @@ export const authentication: INodeProperties = {
 	default: 'oAuth2',
 };
 
+export const singleResourceExpressionHints: NonNullable<INodeTypeDescription['hints']> = [
+	{
+		type: 'info',
+		message:
+			'Note on using an expression for Sheet: It will be evaluated only once, so all items will use the <em>same</em> sheet. It will be calculated by evaluating the expression for the <strong>first input item</strong>.',
+		displayCondition: '={{ $rawParameter.sheetName?.startsWith("=") && $input.all().length > 1 }}',
+		whenToDisplay: 'always',
+		location: 'outputPane',
+	},
+	{
+		type: 'info',
+		message:
+			'Note on using an expression for Document: It will be evaluated only once, so all items will use the <em>same</em> document. It will be calculated by evaluating the expression for the <strong>first input item</strong>.',
+		displayCondition: '={{ $rawParameter.documentId?.startsWith("=") && $input.all().length > 1 }}',
+		whenToDisplay: 'always',
+		location: 'outputPane',
+	},
+];
+
 export const versionDescription: INodeTypeDescription = {
 	displayName: 'Google Sheets',
 	name: 'googleSheets',
 	icon: 'file:googleSheets.svg',
 	group: ['input', 'output'],
-	version: [3, 4, 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 4.7],
+	version: [3, 4, 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 4.7, 4.8],
 	subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 	description: 'Read, update and write data to Google Sheets',
 	defaults: {
@@ -53,24 +72,7 @@ export const versionDescription: INodeTypeDescription = {
 			whenToDisplay: 'beforeExecution',
 			location: 'outputPane',
 		},
-		{
-			type: 'info',
-			message:
-				'Note on using an expression for Sheet: It will be evaluated only once, so all items will use the <em>same</em> sheet. It will be calculated by evaluating the expression for the <strong>first input item</strong>.',
-			displayCondition:
-				'={{ $rawParameter.sheetName?.startsWith("=") && $input.all().length > 1 }}',
-			whenToDisplay: 'always',
-			location: 'outputPane',
-		},
-		{
-			type: 'info',
-			message:
-				'Note on using an expression for Document: It will be evaluated only once, so all items will use the <em>same</em> document. It will be calculated by evaluating the expression for the <strong>first input item</strong>.',
-			displayCondition:
-				'={{ $rawParameter.documentId?.startsWith("=") && $input.all().length > 1 }}',
-			whenToDisplay: 'always',
-			location: 'outputPane',
-		},
+		...singleResourceExpressionHints,
 	],
 	credentials: [
 		{
