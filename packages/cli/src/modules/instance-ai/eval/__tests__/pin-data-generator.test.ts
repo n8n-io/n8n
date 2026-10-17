@@ -61,6 +61,16 @@ describe('generatePinData', () => {
 		expect(result).toEqual({ 'Get Posted Keys': [] });
 	});
 
+	it('reads the fenced JSON when the model explains it afterwards', async () => {
+		respondWith(
+			'```json\n{ "Get Posted Keys": [] }\n```\n\n**Get Posted Keys (`[]`):** every key is already stored, so the read returns no rows.',
+		);
+
+		const result = await generatePinData({ workflow, nodeNames: ['Get Posted Keys'] });
+
+		expect(result).toEqual({ 'Get Posted Keys': [] });
+	});
+
 	it('wraps raw items and passes json-wrapped items through', async () => {
 		respondWith(
 			JSON.stringify({

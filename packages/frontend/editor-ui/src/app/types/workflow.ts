@@ -8,6 +8,7 @@ export type WorkflowObjectAccessors = Pick<
 	Workflow,
 	| 'id'
 	| 'connectionsBySourceNode'
+	| 'connectionsByDestinationNode'
 	| 'expression'
 	| 'pinData'
 	| 'getNode'

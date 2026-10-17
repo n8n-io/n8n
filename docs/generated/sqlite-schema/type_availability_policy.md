@@ -34,6 +34,7 @@ CREATE TABLE "type_availability_policy" ("id" varchar(36) PRIMARY KEY NOT NULL, 
 
 | Name | Definition |
 | ---- | ---------- |
+| IDX_type_availability_policy_kind_createdAt_id | CREATE INDEX "IDX_type_availability_policy_kind_createdAt_id" ON "type_availability_policy" ("kind", "createdAt", "id")  |
 | sqlite_autoindex_type_availability_policy_1 | PRIMARY KEY (id) |
 
 ## Relations

@@ -1,6 +1,7 @@
 import { addVarType } from '@/features/settings/environments.ee/completions/variables.completions';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 import { useI18n } from '@n8n/i18n';
+import { matchBeforeCursor } from './utils';
 
 const escape = (str: string) => str.replace('$', '\\$');
 
@@ -16,9 +17,8 @@ export function useWorkflowCompletions() {
 	): CompletionResult | null => {
 		const pattern = new RegExp(`${escape(matcher)}\..*`);
 
-		const preCursor = context.matchBefore(pattern);
-
-		if (!preCursor || (preCursor.from === preCursor.to && !context.explicit)) return null;
+		const preCursor = matchBeforeCursor(context, pattern);
+		if (!preCursor) return null;
 
 		const options: Completion[] = [
 			{

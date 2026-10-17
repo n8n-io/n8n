@@ -24,7 +24,7 @@ import { join } from 'node:path';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { Push } from '@/push';
-import { UrlService } from '@/services/url.service';
+import { UrlService } from '@n8n/backend-services';
 import { Telemetry } from '@/telemetry';
 
 import { BrowserLocalMcpServer } from './browser-local-mcp-server';

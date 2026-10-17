@@ -48,6 +48,7 @@ describe('AgentsCredentialProvider', () => {
 		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
 			{
 				...listItem({ id: 'allowed' }),
+				description: null,
 				createdAt: '2024-01-01T00:00:00.000Z',
 				updatedAt: '2024-01-01T00:00:00.000Z',
 				scopes: [],
@@ -57,6 +58,7 @@ describe('AgentsCredentialProvider', () => {
 				currentUserHasAccess: true,
 				homeProject: null,
 				sharedWithProjects: [],
+				sharedRoute: 'project',
 			},
 		]);
 
@@ -67,6 +69,7 @@ describe('AgentsCredentialProvider', () => {
 		]);
 		expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledWith(user, {
 			projectId: 'project-1',
+			excludePersonalRoute: true,
 		});
 		expect(credentialsService.findAllCredentialIdsForProject).not.toHaveBeenCalled();
 	});
@@ -207,6 +210,7 @@ describe('AgentsCredentialProvider', () => {
 		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
 			{
 				...listItem({ id: 'allowed' }),
+				description: null,
 				createdAt: '2024-01-01T00:00:00.000Z',
 				updatedAt: '2024-01-01T00:00:00.000Z',
 				scopes: [],
@@ -216,6 +220,7 @@ describe('AgentsCredentialProvider', () => {
 				currentUserHasAccess: true,
 				homeProject: null,
 				sharedWithProjects: [],
+				sharedRoute: 'project',
 			},
 		]);
 		credentialsService.findAllCredentialIdsForProject.mockResolvedValue([projectCred]);

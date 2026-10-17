@@ -6,7 +6,7 @@ import intersection from 'lodash/intersection';
 
 import { FolderTagMapping, TagEntity, WorkflowTagMapping } from '../entities';
 import { BaseRepository } from './base-repository';
-import type { IWorkflowDb } from '../entities/types-db';
+import type { ITagWithCountDb, IWorkflowDb } from '../entities/types-db';
 import type { OperationContext } from '../services/transaction';
 import { TransactionRunner } from '../services/transaction';
 
@@ -29,6 +29,27 @@ export class TagRepository extends BaseRepository<TagEntity> {
 			select: ['id', 'name'],
 			where: { name: In(names) },
 		});
+	}
+
+	/**
+	 * Tags with their non-archived workflow usage count, via `loadRelationCountAndMap`
+	 * (no plain-SQL equivalent, so this stays a query builder).
+	 */
+	async findAllWithUsageCount(options: {
+		orderByName?: boolean;
+		limit?: number;
+	}): Promise<ITagWithCountDb[]> {
+		const qb = this.createQueryBuilder('tag')
+			.select(['tag.id', 'tag.name', 'tag.createdAt', 'tag.updatedAt'])
+			.loadRelationCountAndMap('tag.usageCount', 'tag.workflowMappings', 'wm', (qb2) =>
+				qb2.leftJoin('wm.workflows', 'workflow').where('workflow.isArchived = :isArchived', {
+					isArchived: false,
+				}),
+			);
+		if (options.orderByName) qb.orderBy('tag.name', 'ASC');
+		if (options.limit !== undefined) qb.limit(options.limit);
+
+		return (await qb.getMany()) as unknown as ITagWithCountDb[];
 	}
 
 	/**

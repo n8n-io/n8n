@@ -22,6 +22,7 @@ export class ChatServer {
 
 	setup(server: HttpServer, app: Application) {
 		server.on('upgrade', (req: ChatRequest, socket, head) => {
+			// oxlint-disable-next-line typescript/no-deprecated
 			const parsedUrl = parseUrl(req.url ?? '');
 
 			if (parsedUrl.pathname?.startsWith('/chat')) {

@@ -65,7 +65,10 @@ const props = withDefaults(
 		immediateUpdates: false,
 	},
 );
-const emit = defineEmits<{ 'update:config': [changes: Partial<AgentJsonConfig>] }>();
+const emit = defineEmits<{
+	'update:config': [changes: Partial<AgentJsonConfig>, meta?: { source: 'auto' }];
+	'draft:config': [];
+}>();
 
 const i18n = useI18n();
 const instructionsEditorId = useId();
@@ -177,7 +180,9 @@ const showDeploymentName = computed(() => {
 	const credentialId = props.config?.credential;
 	if (!credentialId || credentialId === AI_GATEWAY_MANAGED_TAG) return false;
 	if (!credentialsStore.getCredentialById(credentialId)) return false;
-	return azureEndpointType.value !== 'foundry';
+	// Visible for classic, foundry, and unknown endpoint types alike: a
+	// deployment name is optional on Foundry but can override the model id.
+	return true;
 });
 
 const deploymentName = ref(props.config?.modelDeploymentName ?? '');
@@ -218,6 +223,7 @@ function scheduleDeploymentNameEmit(value: string) {
 
 function onDeploymentNameInput(value: string) {
 	deploymentName.value = value;
+	emit('draft:config');
 	if (props.immediateUpdates) {
 		cancelDeploymentNameEmit();
 		emit('update:config', { modelDeploymentName: value });
@@ -264,28 +270,36 @@ function onModelChange(selection: AgentModelSelection, source: 'user' | 'auto' =
 	// A default applied by the resolver surfaces a hint so the user knows they
 	// can change it; any explicit user pick clears the hint.
 	defaultModelHint.value = source === 'auto';
-	// Azure OpenAI classic needs a user-named deployment; seed it from the model
-	// so the field isn't blank. Following the model on change is the sensible
-	// default — deployments are usually named after the model. Foundry endpoints
-	// take the model id directly and don't need one.
-	// Drop any in-flight typed/cleared value so it can't land after this seed
-	// and wipe the model-derived name.
+	// The deployment name is optional on Foundry: an empty value means the
+	// call uses the model id. Classic requires a user-named deployment, so
+	// seed it from the model — deployments are usually named after the model.
+	// Foundry deployments are often named differently, so a model-derived
+	// guess would be wrong; clear instead, so the old model's deployment
+	// name can't survive a model switch.
 	cancelDeploymentNameEmit();
-	const deploymentNameChange =
-		selection.provider === 'azure-openai' && azureEndpointType.value !== 'foundry'
-			? { modelDeploymentName: deriveDefaultDeploymentName(selection) }
-			: {};
+	const deploymentNameChange: { modelDeploymentName?: string } =
+		selection.provider !== 'azure-openai'
+			? {}
+			: azureEndpointType.value === 'foundry'
+				? { modelDeploymentName: '' }
+				: { modelDeploymentName: deriveDefaultDeploymentName(selection) };
 	if (deploymentNameChange.modelDeploymentName !== undefined) {
 		deploymentName.value = deploymentNameChange.modelDeploymentName;
 	}
-	emit('update:config', {
-		model,
-		credential: credentialId,
-		...webSearchChanges,
-		...promptCachingChanges,
-		...reasoningChanges,
-		...deploymentNameChange,
-	});
+	emit(
+		'update:config',
+		{
+			model,
+			credential: credentialId,
+			...webSearchChanges,
+			...promptCachingChanges,
+			...reasoningChanges,
+			...deploymentNameChange,
+		},
+		// A pending agent must not be persisted just because a default model was
+		// auto-applied — let the host apply it to the draft without autosaving.
+		source === 'auto' ? { source: 'auto' } : undefined,
+	);
 }
 
 watch(
@@ -344,6 +358,8 @@ function onSelectCredential(provider: AgentModelProvider, credentialId: string |
 }
 
 const instructions = ref(props.config?.instructions ?? '');
+const instructionsEditor = ref<InstanceType<typeof N8nMarkdownEditor>>();
+const modelSelector = ref<InstanceType<typeof AgentModelSelector>>();
 
 // Keep the local editor stable while external config updates arrive.
 watch(
@@ -357,14 +373,24 @@ const emitInstructionsDebounced = useDebounceFn(() => {
 	emit('update:config', { instructions: instructions.value });
 }, getDebounceTime(DEBOUNCE_TIME.API.HEAVY_OPERATION));
 
+function focusInstructions() {
+	instructionsEditor.value?.focus();
+}
+
+function focusModel() {
+	modelSelector.value?.open();
+}
+
 function onInstructionsInput(value: string) {
 	instructions.value = value;
+	emit('draft:config');
 	if (props.immediateUpdates) {
 		emit('update:config', { instructions: value });
 		return;
 	}
 	void emitInstructionsDebounced();
 }
+defineExpose({ focusInstructions, focusModel });
 </script>
 
 <template>
@@ -372,7 +398,6 @@ function onInstructionsInput(value: string) {
 		:header="i18n.baseText('agents.builder.agent.title')"
 		header-visibility="visually-hidden"
 		data-testid="agent-info-panel"
-		:container-class="$style.containerClass"
 	>
 		<div :class="$style.panels">
 			<div v-if="props.showModel" data-testid="agent-model-panel">
@@ -380,12 +405,14 @@ function onInstructionsInput(value: string) {
 					<div :class="[$style.label, props.disabled && shared.disabled]">
 						<N8nText step="sm" bold :class="shared.dataEntryLabel">
 							{{ i18n.baseText('agents.builder.agent.model.label') }}
+							<N8nText step="sm" bold color="danger">*</N8nText>
 						</N8nText>
 						<N8nText step="sm" color="text-light">
 							{{ i18n.baseText('agents.builder.agent.model.description') }}
 						</N8nText>
 					</div>
 					<AgentModelSelector
+						ref="modelSelector"
 						:disabled="props.disabled"
 						:selected-model="selectedAgent"
 						:credentials="effectiveCredentials"
@@ -461,20 +488,23 @@ function onInstructionsInput(value: string) {
 				<div :class="[$style.label, props.disabled && shared.disabled]">
 					<N8nText step="sm" bold :class="shared.dataEntryLabel">
 						{{ i18n.baseText('agents.builder.agent.instructions.label') }}
+						<N8nText step="sm" bold color="danger">*</N8nText>
 					</N8nText>
 					<N8nText step="sm" color="text-light">
 						{{ i18n.baseText('agents.builder.agent.instructions.description') }}
 					</N8nText>
 				</div>
 				<N8nMarkdownEditor
+					ref="instructionsEditor"
 					:id="instructionsEditorId"
 					:class="$style.instructionsDocument"
 					:model-value="instructions"
 					:disabled="props.disabled"
 					:placeholder="i18n.baseText('agents.builder.agent.instructions.placeholder')"
-					is-collapsible
 					show-toolbar="floating"
-					variant="ghost"
+					expandedViewToolbarMode="always"
+					variant="contained"
+					allowExpandedView
 					data-testid="agent-instructions-document"
 					@update:model-value="onInstructionsInput"
 				/>
@@ -500,11 +530,11 @@ function onInstructionsInput(value: string) {
 .instructionsDocument {
 	display: block;
 	width: 100%;
-	margin-inline: calc(var(--spacing--xs) * -1);
 }
 
 .instructionsDocument:disabled {
 	opacity: 0.5;
+	pointer-events: none;
 }
 
 .field {
@@ -541,9 +571,5 @@ function onInstructionsInput(value: string) {
 	height: 1px;
 	background-color: var(--border-color--subtle);
 	margin-inline: calc(var(--spacing--sm) * -1);
-}
-
-.containerClass {
-	padding-bottom: 0;
 }
 </style>

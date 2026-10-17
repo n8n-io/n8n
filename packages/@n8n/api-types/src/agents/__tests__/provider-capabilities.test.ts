@@ -1,4 +1,16 @@
-import { resolvePromptCaching } from '../provider-capabilities';
+import { acceptedMimeTypesFromCapabilities, resolvePromptCaching } from '../provider-capabilities';
+
+describe('acceptedMimeTypesFromCapabilities', () => {
+	it('joins every accepted media-type family', () => {
+		expect(acceptedMimeTypesFromCapabilities({ image: true, pdf: true, audio: true })).toBe(
+			'image/*,application/pdf,audio/*',
+		);
+	});
+
+	it('returns an empty string when nothing is accepted', () => {
+		expect(acceptedMimeTypesFromCapabilities({ image: false, pdf: false, audio: false })).toBe('');
+	});
+});
 
 describe('resolvePromptCaching', () => {
 	it('strips (returns undefined) for an unsupported provider regardless of current config', () => {

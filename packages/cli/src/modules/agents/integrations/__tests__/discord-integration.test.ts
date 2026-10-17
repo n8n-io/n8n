@@ -3,8 +3,7 @@ import type { HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { BadRequestError, ConflictError } from '@n8n/errors';
 
 import type { Agent } from '../../entities/agent.entity';
 import type { AgentRepository } from '../../repositories/agent.repository';
@@ -253,6 +252,14 @@ describe('DiscordIntegration', () => {
 			replyExpectation: 'optional',
 		} as never);
 		expect(optional.statusHandle).toBeUndefined();
+		expect(startTyping).not.toHaveBeenCalled();
+
+		const queued = await integration.createBridgeExecutionContext({
+			...params,
+			replyExpectation: 'required',
+			startStatus: false,
+		} as never);
+		expect(queued.statusHandle).toBeUndefined();
 		expect(startTyping).not.toHaveBeenCalled();
 
 		const required = await integration.createBridgeExecutionContext({

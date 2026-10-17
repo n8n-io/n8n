@@ -3587,6 +3587,26 @@ describe('Validation', () => {
 
 			expect(warnings).toHaveLength(0);
 		});
+
+		it.each([false, true])(
+			'does not require an output on a disabled Switch with incoming connection: %s',
+			(connectedInput) => {
+				const workflowJson = createTerminalSwitchWorkflow();
+				workflowJson.nodes[1].disabled = true;
+				if (!connectedInput) workflowJson.connections = {};
+
+				expect(getTerminalSwitchWarnings(workflowJson)).toHaveLength(0);
+			},
+		);
+
+		it('requires an output when a disabled Switch is enabled again', () => {
+			const workflowJson = createTerminalSwitchWorkflow();
+			workflowJson.nodes[1].disabled = true;
+			expect(getTerminalSwitchWarnings(workflowJson)).toHaveLength(0);
+
+			workflowJson.nodes[1].disabled = false;
+			expect(getTerminalSwitchWarnings(workflowJson)).toHaveLength(1);
+		});
 	});
 
 	describe('validatePlaceholderSlots (builderHint.placeholderSupported=false)', () => {

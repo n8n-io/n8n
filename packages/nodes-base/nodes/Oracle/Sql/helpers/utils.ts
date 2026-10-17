@@ -28,6 +28,7 @@ import type {
 	OracleDBNodeOptions,
 	TableColumnRow,
 } from './interfaces';
+import { operatorOptions } from '../actions/common.descriptions';
 
 type DefaultStringBindParam = Omit<
 	Extract<ExecuteOpBindParam, { datatype: 'string' }>,
@@ -212,6 +213,10 @@ export function quoteSqlIdentifier(name: string): string {
 	 *  Invalid examples:
 	 * 	 my"column → contains an illegal ".
 	 *	 my..column → double dot not allowed.
+	 *
+	 *  A single quote is legal here: Oracle double-quoted identifiers may contain
+	 *  any character except " (e.g. "O'Brien"). Callers that embed the result in a
+	 *  string literal (the Drop path) must escape it via escapeSqlStringLiteral.
 	 */
 	const validateRegex = /^(?:"[^"]+"|[^".]+)(?:\.(?:"[^"]+"|[^".]+))*$/;
 	if (!validateRegex.test(name)) {
@@ -231,6 +236,25 @@ export function quoteSqlIdentifier(name: string): string {
 	const quotedParts = groups.map((g) => `"${g}"`);
 	return quotedParts.join('.');
 }
+
+// Escapes a value for embedding inside an Oracle single-quoted text literal.
+// Doubling ' is Oracle's only literal escape (no backslash processing), so a
+// quoted identifier such as "O'Brien" cannot terminate the surrounding literal.
+export function escapeSqlStringLiteral(value: string): string {
+	return value.replace(/'/g, "''");
+}
+
+// Operators are concatenated into the WHERE clause, so only a fixed set is allowed.
+// Derived from the Operator dropdown (so a new dropdown entry is permitted automatically),
+// plus the case/synonym variants Oracle accepts that arrive via an expression-driven value.
+const VALID_WHERE_OPERATORS = new Set<string>([
+	...operatorOptions.map((option) =>
+		option.value === 'equal' ? '=' : String(option.value).toUpperCase(),
+	),
+	'<>',
+	'^=',
+	'NOT LIKE',
+]);
 
 export function addSortRules(query: string, rules: SortRule[]): string {
 	if (rules.length === 0) return query;
@@ -809,6 +833,8 @@ export function addWhereClauses(
 	clauses: WhereClause[],
 	combineConditions: string,
 	schema: ColumnMap,
+	node: INode,
+	itemIndex: number,
 	isExecuteMany: boolean = false,
 ): [string, oracledb.BindParameter[] | oracledb.BindDefinition[]] {
 	if (clauses.length === 0) return [query, []];
@@ -826,6 +852,22 @@ export function addWhereClauses(
 		if (clause.condition === 'equal') {
 			clause.condition = '=';
 		}
+
+		// The operator can be expression-driven, so accept the case/whitespace variants
+		// Oracle itself tolerates, then check against the fixed set it is concatenated from.
+		// An expression can also yield a non-string; route that to the invalid-operator error.
+		const normalizedCondition =
+			typeof clause.condition === 'string'
+				? clause.condition.trim().replace(/\s+/g, ' ').toUpperCase()
+				: '';
+		if (!VALID_WHERE_OPERATORS.has(normalizedCondition)) {
+			throw new NodeOperationError(
+				node,
+				`Operator "${clause.condition}" is not valid. Supported operators: ${[...VALID_WHERE_OPERATORS].join(', ')}`,
+				{ itemIndex },
+			);
+		}
+		clause.condition = normalizedCondition;
 
 		// The condition value is json type, so convert to required type only
 		// if fixed expression is used instead of n8n expressions.

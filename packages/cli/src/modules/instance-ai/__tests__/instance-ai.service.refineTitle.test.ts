@@ -32,6 +32,12 @@ vi.mock('@n8n/instance-ai', async () => {
 		releaseTraceClient: vi.fn(),
 		generateTitleForRun,
 		patchThread,
+		setTracePromptVersion: vi.fn(),
+		setTraceModelId: vi.fn(),
+		modelIdTraceMetadata: (modelId: unknown) =>
+			typeof modelId === 'string' && modelId.length > 0 ? { model_id: modelId } : {},
+		modelConfigId: (config: unknown) =>
+			typeof config === 'string' && config.length > 0 ? config : undefined,
 	};
 });
 

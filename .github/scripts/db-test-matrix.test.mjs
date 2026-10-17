@@ -62,14 +62,27 @@ describe('buildMatrix', () => {
 		}
 	});
 
-	it('collects coverage and checks schema docs on the primary Postgres leg only', () => {
-		const legs = buildMatrix(versions());
+	it('collects coverage on the primary Postgres leg in pr scope only', () => {
+		const legs = buildMatrix(versions(), 'pr');
 
 		const collecting = legs.filter((leg) => leg.collectCoverage === 'true');
 		assert.deepEqual(
 			collecting.map((leg) => leg.name),
 			['Postgres 18'],
 		);
+	});
+
+	it('does not collect coverage in full scope', () => {
+		const legs = buildMatrix(versions(), 'full');
+
+		assert.equal(
+			legs.some((leg) => leg.collectCoverage === 'true'),
+			false,
+		);
+	});
+
+	it('checks schema docs on the primary Postgres leg only', () => {
+		const legs = buildMatrix(versions());
 
 		const checkingPostgresSchema = legs.filter(
 			(leg) => leg['schema-check-cmd'] === 'pnpm --filter=@n8n/db schema:check:postgres',

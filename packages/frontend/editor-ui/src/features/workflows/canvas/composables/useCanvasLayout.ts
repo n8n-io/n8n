@@ -24,7 +24,11 @@ import {
 	GROUP_HEADER_WIDTH_COLLAPSED,
 } from '../stores/canvasNodeGroups.constants';
 import type { ComputedRef, Ref } from 'vue';
-import { computeNodeDisplaySize, type CanvasRenderData } from '../canvas.utils';
+import {
+	computeNodeDisplaySize,
+	parseCanvasConnectionHandleString,
+	type CanvasRenderData,
+} from '../canvas.utils';
 import { computeGroupFrameRects } from './useCanvasMapping.groups';
 import {
 	hasMeasuredDimensions,
@@ -59,7 +63,13 @@ export type CanvasLayoutEvent = {
 export type CanvasLayoutOptions = { nodeIdsFilter?: string[] };
 
 type CanvasLayoutNodeDictionary = Record<string, CanvasLayoutNode>;
-type LayoutConnection = { source: string; target: string; targetX?: number; targetY?: number };
+type LayoutConnection = {
+	source: string;
+	target: string;
+	targetX?: number;
+	targetY?: number;
+	sourceHandle?: string | null;
+};
 
 type CanvasLayoutTargetData = {
 	nodes: CanvasLayoutNode[];
@@ -508,6 +518,15 @@ export function useCanvasLayout(
 	}
 
 	function sortEdgesByPosition(edgeA: LayoutConnection, edgeB: LayoutConnection): number {
+		if (
+			edgeA.source === edgeB.source &&
+			findNode<CanvasNodeData>(edgeA.source)?.data.type === 'n8n-nodes-base.if'
+		) {
+			const indexA = parseCanvasConnectionHandleString(edgeA.sourceHandle).index;
+			const indexB = parseCanvasConnectionHandleString(edgeB.sourceHandle).index;
+			if (indexA !== indexB) return indexA - indexB;
+		}
+
 		return sortByPosition(positionFromEdge(edgeA), positionFromEdge(edgeB));
 	}
 

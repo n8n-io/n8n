@@ -9,6 +9,26 @@ const options = [
 ];
 
 describe('N8nTabs', () => {
+	it.each([
+		{ value: 'plain', label: 'Plain', tag: 'New' },
+		{ value: 'external', label: 'External', tag: 'New', href: 'https://example.com' },
+		{ value: 'route', label: 'Route', tag: 'New', to: '/workflows' },
+	])('renders the $value tab label as a badge', function testTabBadge(option) {
+		const { getByText, container } = render(N8nTabs, {
+			props: { modelValue: option.value, options: [option] },
+			global: {
+				stubs: {
+					RouterLink: { template: '<a><slot /></a>' },
+				},
+			},
+		});
+
+		const badge = getByText('New').closest('.n8n-badge');
+		expect(badge).toBeVisible();
+		expect(badge?.tagName).toBe('SPAN');
+		expect(container.querySelector('.n8n-tag')).not.toBeInTheDocument();
+	});
+
 	it('emits update:modelValue when an enabled tab is clicked', async () => {
 		const { getByText, emitted } = render(N8nTabs, {
 			props: { modelValue: 'second', options },

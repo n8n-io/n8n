@@ -341,6 +341,12 @@ describe('mapAgentChunkToEvent', () => {
 					},
 					setupRequests: [validSetupNode],
 					workflowId: 'wf-1',
+					resourceName: 'CRM Lead enrichment',
+					approvalDetails: {
+						action: 'insert-rows',
+						count: 1,
+						rows: [{ values: [{ column: 'name', value: '"Alice"' }], remainingColumns: 0 }],
+					},
 					resourceDecision: {
 						toolGroup: 'Local Gateway',
 						resource: '/tmp/file.txt',
@@ -379,6 +385,12 @@ describe('mapAgentChunkToEvent', () => {
 				},
 				setupRequests: [validSetupNode],
 				workflowId: 'wf-1',
+				resourceName: 'CRM Lead enrichment',
+				approvalDetails: {
+					action: 'insert-rows',
+					count: 1,
+					rows: [{ values: [{ column: 'name', value: '"Alice"' }], remainingColumns: 0 }],
+				},
 				questions: [
 					{
 						id: 'q1',
@@ -433,6 +445,7 @@ describe('mapAgentChunkToEvent', () => {
 			toolCallId: 'tc-1',
 			suspendPayload: {
 				severity: 'unknown',
+				approvalDetails: { action: 'insert-rows', count: -1 },
 				credentialRequests: [{ invalid: true }],
 				inputType: 'bad-input-type',
 				questions: [{ invalid: true }],
@@ -654,6 +667,97 @@ describe('mapAgentChunkToEvent', () => {
 
 		expect(event).toMatchObject({ type: 'confirmation-request' });
 		expect(event).not.toHaveProperty('payload.mcpConnectRequest');
+	});
+
+	it('maps confirmations with a testListener payload', () => {
+		const testListener = {
+			workflowId: 'wf-1',
+			triggers: [
+				{
+					nodeName: 'Webhook',
+					url: 'http://localhost:5678/webhook-test/abc/intake',
+					method: 'POST',
+				},
+			],
+			deadlineAt: '2026-01-01T00:10:00.000Z',
+		};
+
+		expect(
+			map({
+				type: 'tool-call-suspended',
+				toolCallId: 'tc-1',
+				toolName: 'executions',
+				input: { action: 'listen', workflowId: 'wf-1' },
+				suspendPayload: {
+					requestId: 'request-1',
+					severity: 'info',
+					message: 'Waiting for a test request to Intake',
+					testListener,
+				},
+			}),
+		).toEqual({
+			type: 'confirmation-request',
+			runId,
+			agentId,
+			payload: {
+				requestId: 'request-1',
+				toolCallId: 'tc-1',
+				toolName: 'executions',
+				args: { action: 'listen', workflowId: 'wf-1' },
+				severity: 'info',
+				message: 'Waiting for a test request to Intake',
+				testListener,
+			},
+		});
+	});
+
+	it.each([
+		['without triggers', { workflowId: 'wf-1' }],
+		[
+			'with an empty workflowId',
+			{
+				workflowId: '',
+				triggers: [
+					{ nodeName: 'Webhook', url: 'http://localhost:5678/webhook-test/abc', method: 'POST' },
+				],
+				deadlineAt: '2026-01-01T00:10:00.000Z',
+			},
+		],
+		[
+			'with an empty triggers list',
+			{ workflowId: 'wf-1', triggers: [], deadlineAt: '2026-01-01T00:10:00.000Z' },
+		],
+		[
+			'with an empty trigger URL',
+			{
+				workflowId: 'wf-1',
+				triggers: [{ nodeName: 'Webhook', url: '', method: 'POST' }],
+				deadlineAt: '2026-01-01T00:10:00.000Z',
+			},
+		],
+		[
+			'with a relative trigger URL',
+			{
+				workflowId: 'wf-1',
+				triggers: [{ nodeName: 'Webhook', url: 'webhook-test/abc/intake', method: 'POST' }],
+				deadlineAt: '2026-01-01T00:10:00.000Z',
+			},
+		],
+	])('drops a malformed testListener payload %s', (_, testListener) => {
+		const event = map({
+			type: 'tool-call-suspended',
+			toolCallId: 'tc-1',
+			toolName: 'executions',
+			suspendPayload: {
+				requestId: 'request-1',
+				severity: 'info',
+				message: 'Waiting for a test request to Intake',
+				testListener,
+			},
+		});
+
+		expect(event).toMatchObject({ type: 'confirmation-request' });
+		expect(event).not.toHaveProperty('payload.testListener');
 	});
 
 	it('returns null for suspensions without a tool call id', () => {

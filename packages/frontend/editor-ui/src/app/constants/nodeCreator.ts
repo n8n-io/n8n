@@ -23,6 +23,15 @@ export const NODE_CREATOR_OPEN_SOURCES: Record<
 	INSTANCE_AI: 'instance_ai',
 	'': '',
 };
+
+export function isNodeCreatorOpenFromConnection(source: NodeCreatorOpenSource) {
+	return [
+		NODE_CREATOR_OPEN_SOURCES.PLUS_ENDPOINT,
+		NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_ACTION,
+		NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_DROP,
+	].includes(source);
+}
+
 export const CORE_NODES_CATEGORY = 'Core Nodes';
 export const HUMAN_IN_THE_LOOP_CATEGORY = 'HITL';
 export const CUSTOM_NODES_CATEGORY = 'Custom Nodes';
@@ -31,6 +40,7 @@ export const AI_OTHERS_NODE_CREATOR_VIEW = 'AI Other';
 export const AI_NODE_CREATOR_VIEW = 'AI';
 export const REGULAR_NODE_CREATOR_VIEW = 'Regular';
 export const TRIGGER_NODE_CREATOR_VIEW = 'Trigger';
+export const ADD_EMPTY_GROUP_NODE_CREATOR_ITEM = 'add-empty-group';
 export const OTHER_TRIGGER_NODES_SUBCATEGORY = 'Other Trigger Nodes';
 export const TRANSFORM_DATA_SUBCATEGORY = 'Data Transformation';
 export const FILES_SUBCATEGORY = 'Files';

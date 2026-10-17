@@ -27,6 +27,16 @@ function findEntityFiles(dir: string): string[] {
 		.filter((file) => readFileSync(file, 'utf8').includes('@Entity('));
 }
 
+function findPackagedModuleEntityFiles(): string[] {
+	const modulesDir = path.join(REPO_ROOT, 'packages/modules');
+	return readdirSync(modulesDir, { withFileTypes: true })
+		.filter((entry) => entry.isDirectory())
+		.flatMap((entry) => {
+			const backendSourceDir = path.join(modulesDir, entry.name, 'backend/src');
+			return existsSync(backendSourceDir) ? findEntityFiles(backendSourceDir) : [];
+		});
+}
+
 /**
  * Guard: every entity that belongs to a Project must be explicitly
  * accounted for in the ownership-transfer manifest, so that adding a new
@@ -43,8 +53,11 @@ describe('ownership-transfer manifest', () => {
 
 	beforeAll(async () => {
 		// Register module entity decorators via the filesystem so that a newly
-		// added module entity is picked up without editing this test.
-		const moduleEntityFiles = findEntityFiles(path.resolve(__dirname, '../../../modules'));
+		// added CLI or packaged module entity is picked up without editing this test.
+		const moduleEntityFiles = [
+			...findEntityFiles(path.resolve(__dirname, '../../../modules')),
+			...findPackagedModuleEntityFiles(),
+		];
 		moduleEntityFileCount = moduleEntityFiles.length;
 		await Promise.all(moduleEntityFiles.map(async (file) => await import(file)));
 

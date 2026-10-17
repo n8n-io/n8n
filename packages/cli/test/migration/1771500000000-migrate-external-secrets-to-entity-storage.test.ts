@@ -107,7 +107,7 @@ describe('MigrateExternalSecretsToEntityStorage Migration', () => {
 				},
 			};
 
-			const encrypted = cipher.encrypt(JSON.stringify(settings));
+			const encrypted = cipher.encryptWithInstanceKey(JSON.stringify(settings));
 			await insertSettingsBlob(context, encrypted);
 			await context.queryRunner.release();
 
@@ -122,13 +122,13 @@ describe('MigrateExternalSecretsToEntityStorage Migration', () => {
 			const aws = connections.find((c) => c.providerKey === 'awsSecretsManager');
 			expect(aws).toBeDefined();
 			expect(aws!.type).toBe('awsSecretsManager');
-			const awsDecrypted = JSON.parse(cipher.decrypt(aws!.encryptedSettings));
+			const awsDecrypted = JSON.parse(cipher.decryptWithInstanceKey(aws!.encryptedSettings));
 			expect(awsDecrypted).toEqual({ region: 'us-east-1', accessKeyId: 'AKIA...' });
 
 			const gcp = connections.find((c) => c.providerKey === 'gcpSecretsManager');
 			expect(gcp).toBeDefined();
 			expect(gcp!.type).toBe('gcpSecretsManager');
-			const gcpDecrypted = JSON.parse(cipher.decrypt(gcp!.encryptedSettings));
+			const gcpDecrypted = JSON.parse(cipher.decryptWithInstanceKey(gcp!.encryptedSettings));
 			expect(gcpDecrypted).toEqual({ projectId: 'my-project' });
 
 			await postContext.queryRunner.release();
@@ -150,7 +150,7 @@ describe('MigrateExternalSecretsToEntityStorage Migration', () => {
 				},
 			};
 
-			const encrypted = cipher.encrypt(JSON.stringify(settings));
+			const encrypted = cipher.encryptWithInstanceKey(JSON.stringify(settings));
 			await insertSettingsBlob(context, encrypted);
 			await context.queryRunner.release();
 
@@ -169,7 +169,7 @@ describe('MigrateExternalSecretsToEntityStorage Migration', () => {
 		it('should skip providers that already exist in secrets_provider_connection', async () => {
 			const context = createTestMigrationContext(dataSource);
 
-			const existingEncryptedSettings = cipher.encrypt({ region: 'eu-west-1' });
+			const existingEncryptedSettings = cipher.encryptWithInstanceKey({ region: 'eu-west-1' });
 			await insertProviderConnection(
 				context,
 				'awsSecretsManager',
@@ -185,7 +185,7 @@ describe('MigrateExternalSecretsToEntityStorage Migration', () => {
 				},
 			};
 
-			const encrypted = cipher.encrypt(JSON.stringify(settings));
+			const encrypted = cipher.encryptWithInstanceKey(JSON.stringify(settings));
 			await insertSettingsBlob(context, encrypted);
 			await context.queryRunner.release();
 
@@ -197,7 +197,7 @@ describe('MigrateExternalSecretsToEntityStorage Migration', () => {
 
 			expect(connections).toHaveLength(1);
 			// Should still have the original settings, not the migrated ones
-			const decrypted = JSON.parse(cipher.decrypt(connections[0].encryptedSettings));
+			const decrypted = JSON.parse(cipher.decryptWithInstanceKey(connections[0].encryptedSettings));
 			expect(decrypted).toEqual({ region: 'eu-west-1' });
 
 			await postContext.queryRunner.release();
@@ -206,7 +206,7 @@ describe('MigrateExternalSecretsToEntityStorage Migration', () => {
 		it('should skip when settings blob is empty', async () => {
 			const context = createTestMigrationContext(dataSource);
 
-			const encrypted = cipher.encrypt(JSON.stringify({}));
+			const encrypted = cipher.encryptWithInstanceKey(JSON.stringify({}));
 			await insertSettingsBlob(context, encrypted);
 			await context.queryRunner.release();
 
@@ -245,7 +245,7 @@ describe('MigrateExternalSecretsToEntityStorage Migration', () => {
 				},
 			};
 
-			const encrypted = cipher.encrypt(JSON.stringify(settings));
+			const encrypted = cipher.encryptWithInstanceKey(JSON.stringify(settings));
 			await insertSettingsBlob(context, encrypted);
 			await context.queryRunner.release();
 
@@ -256,7 +256,7 @@ describe('MigrateExternalSecretsToEntityStorage Migration', () => {
 			const connections = await getProviderConnections(postContext);
 
 			expect(connections).toHaveLength(1);
-			const decrypted = JSON.parse(cipher.decrypt(connections[0].encryptedSettings));
+			const decrypted = JSON.parse(cipher.decryptWithInstanceKey(connections[0].encryptedSettings));
 			expect(decrypted).toEqual({});
 
 			await postContext.queryRunner.release();

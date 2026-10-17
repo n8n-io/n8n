@@ -1,6 +1,5 @@
-import type { WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DATA_TABLE_NODE_TYPES } from 'n8n-workflow';
+import { DATA_TABLE_NODE_TYPES, type INode } from 'n8n-workflow';
 
 import type { WorkflowDataTableRequirement } from './data-table.types';
 import type { RequirementsExtractor } from '../requirements-extractor';
@@ -9,10 +8,16 @@ import type { RequirementsExtractor } from '../requirements-extractor';
 export class DataTableRequirementsExtractor
 	implements RequirementsExtractor<WorkflowDataTableRequirement>
 {
-	extract(workflow: WorkflowEntity): WorkflowDataTableRequirement[] {
-		const byId = new Map<string, WorkflowDataTableRequirement>();
+	extract(workflow: { id: string; nodes?: INode[] }): WorkflowDataTableRequirement[] {
+		return this.extractIds(workflow.nodes ?? []).map((dataTableId) => ({
+			workflowId: workflow.id,
+			dataTableId,
+		}));
+	}
 
-		for (const node of workflow.nodes ?? []) {
+	extractIds(nodes: Array<{ type: string; parameters?: Record<string, unknown> }>): string[] {
+		const ids = new Set<string>();
+		for (const node of nodes) {
 			if (!DATA_TABLE_NODE_TYPES.includes(node.type)) continue;
 
 			const resourceLocator = node.parameters?.dataTableId as
@@ -26,17 +31,14 @@ export class DataTableRequirementsExtractor
 				typeof resourceLocator.value !== 'string' ||
 				resourceLocator.mode === 'name' ||
 				resourceLocator.value.includes('{') ||
-				byId.has(resourceLocator.value)
+				ids.has(resourceLocator.value)
 			) {
 				continue;
 			}
 
-			byId.set(resourceLocator.value, {
-				workflowId: workflow.id,
-				dataTableId: resourceLocator.value,
-			});
+			ids.add(resourceLocator.value);
 		}
 
-		return [...byId.values()];
+		return [...ids];
 	}
 }

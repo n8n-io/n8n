@@ -153,7 +153,9 @@ describe('Secret Providers Connections API', () => {
 
 			// Check we can decrypt them
 			const cipher = Container.get(Cipher);
-			const decryptedSettings = JSON.parse(cipher.decrypt(savedConnection.encryptedSettings));
+			const decryptedSettings = JSON.parse(
+				cipher.decryptWithInstanceKey(savedConnection.encryptedSettings),
+			);
 			expect(decryptedSettings).toEqual(payload.settings);
 		});
 
@@ -268,7 +270,9 @@ describe('Secret Providers Connections API', () => {
 			});
 
 			const cipher = Container.get(Cipher);
-			const decryptedSettings = JSON.parse(cipher.decrypt(updated.encryptedSettings));
+			const decryptedSettings = JSON.parse(
+				cipher.decryptWithInstanceKey(updated.encryptedSettings),
+			);
 
 			expect(decryptedSettings).toEqual({
 				region: 'eu-west-1',

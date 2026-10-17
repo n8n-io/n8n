@@ -8,11 +8,12 @@ import { UserError, type N8nOAuth2FlowResult, type N8nOAuth2RefreshResult } from
 import { createHash, randomBytes } from 'node:crypto';
 import pkceChallenge from 'pkce-challenge';
 
-import { CacheService } from '@/services/cache/cache.service';
-import { OAuthTokenVerifierProxy } from '@/services/oauth-token-verifier-proxy.service';
-import type { N8nOAuth2Flow } from '@/services/oauth2-flow-proxy.service';
-import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
-import { UrlService } from '@/services/url.service';
+import { CacheService, UrlService } from '@n8n/backend-services';
+import {
+	OAuthTokenVerifierProxy,
+	type N8nOAuth2Flow,
+	ProtectedResourceRegistry,
+} from '@n8n/backend-services/auth';
 
 import { OAuthServerService } from './oauth-server.service';
 

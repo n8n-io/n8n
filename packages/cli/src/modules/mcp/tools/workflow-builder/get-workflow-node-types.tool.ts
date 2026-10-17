@@ -16,6 +16,7 @@ import type {
 	ToolDefinition,
 	UserCalledMCPToolEventPayload,
 } from '../../mcp.types';
+import { trackAndRethrowToolError } from '../tool-error.utils';
 
 const nodeRequestSchema = z.object({
 	nodeId: z.string().describe('The node type ID (e.g. "n8n-nodes-base.gmail")'),
@@ -64,6 +65,8 @@ export const createGetWorkflowNodeTypesTool = (
 	nodeCatalogService: NodeCatalogService,
 	telemetry: Telemetry,
 	aiGatewayService: AiGatewayService,
+	/** Resolve defs for verified community nodes not installed here. See search_nodes. */
+	includeUninstalled: boolean = false,
 ): ToolDefinition<typeof inputSchema> => ({
 	name: CODE_BUILDER_GET_NODE_TYPES_TOOL.toolName,
 	config: {
@@ -88,7 +91,9 @@ export const createGetWorkflowNodeTypesTool = (
 
 		try {
 			const [result, availability] = await Promise.all([
-				nodeCatalogService.getNodeTypes(nodeIds),
+				// Matches search_nodes: MCP is the only surface that resolves node
+				// types from the verified-but-uninstalled registry tier.
+				nodeCatalogService.getNodeTypes(nodeIds, { includeUninstalled }),
 				aiGatewayService.isAvailable(),
 			]);
 
@@ -109,12 +114,7 @@ export const createGetWorkflowNodeTypesTool = (
 				structuredContent: structured,
 			};
 		} catch (error) {
-			telemetryPayload.results = {
-				success: false,
-				error: error instanceof Error ? error.message : String(error),
-			};
-			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
-			throw error;
+			trackAndRethrowToolError(telemetry, telemetryPayload, error);
 		}
 	},
 });

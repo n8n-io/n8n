@@ -48,7 +48,7 @@ describe('AtlassianServiceAccountApi Credential', () => {
 	it('should have correct static properties', () => {
 		expect(credential.name).toBe('atlassianServiceAccountApi');
 		expect(credential.displayName).toBe('Atlassian Service Account');
-		expect(credential.documentationUrl).toBe('atlassianserviceaccount');
+		expect(credential.documentationUrl).toBe('jira');
 		expect(credential.icon).toBe('file:icons/Atlassian.svg');
 
 		const accessToken = credential.properties.find(
@@ -75,7 +75,9 @@ describe('AtlassianServiceAccountApi Credential', () => {
 		it('exchanges client credentials for an access token without a scope parameter', async () => {
 			const result = await callPreAuthentication(baseCredentials);
 
-			expect(result).toEqual({ accessToken: 'abc' });
+			expect(result.accessToken).toBe('abc');
+			// Stored so core can skip the refresh-and-resend while the token is still live
+			expect(Number(result.n8n_expires_at)).toBeGreaterThan(Date.now() + 3_500_000);
 			expect(requestMock).toHaveBeenCalledTimes(1);
 			const options = requestMock.mock.calls[0][0] as IHttpRequestOptions;
 			expect(options.url).toBe('https://auth.atlassian.com/oauth/token');
@@ -90,6 +92,22 @@ describe('AtlassianServiceAccountApi Credential', () => {
 			expect(body.has('scope')).toBe(false);
 			expect(requestsMock).toHaveBeenCalledWith({ useDefaultSsrfPolicy: 'unsafe' });
 		});
+
+		it.each([
+			['omitted', {}],
+			['zero', { expires_in: 0 }],
+			['not a number', { expires_in: 'soon' }],
+		])(
+			'leaves the expiry empty when expires_in is %s, so core keeps retrying',
+			async (_label, extra) => {
+				requestMock.mockResolvedValue({ access_token: 'abc', ...extra });
+
+				expect(await getAccessToken(baseCredentials)).toEqual({
+					accessToken: 'abc',
+					n8n_expires_at: '',
+				});
+			},
+		);
 
 		it('trims whitespace from the client ID and secret', async () => {
 			await getAccessToken({ ...baseCredentials, clientId: '  client-id  ' });

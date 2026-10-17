@@ -2,7 +2,7 @@ import type { PushMessage } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 
 import { Push } from '@/push';
-import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
+import { WorkflowSharingService } from '@n8n/backend-services';
 
 /** Sends a push message only to users who can currently read the workflow it concerns. */
 @Service()

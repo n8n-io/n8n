@@ -8,8 +8,8 @@ import { AuthService } from '@/auth/auth.service';
 import { ScopedJwtStrategy } from '@/modules/token-exchange/services/scoped-jwt.strategy';
 import { TOKEN_EXCHANGE_ISSUER } from '@/modules/token-exchange/token-exchange.types';
 import { ApiKeyAuthStrategy } from '@/services/api-key-auth.strategy';
-import { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
-import { JwtService } from '@/services/jwt.service';
+import { AuthStrategyRegistry } from '@n8n/backend-services/auth';
+import { JwtService } from '@n8n/backend-services';
 import { SessionCookieAuthStrategy } from '@/services/session-cookie-auth.strategy';
 import { createMember, createOwner, createOwnerWithApiKey } from '@test-integration/db/users';
 
@@ -21,7 +21,7 @@ function makeScopedJwt(
 	opts: { actSub?: string; expired?: boolean } = {},
 ): string {
 	const now = Math.floor(Date.now() / 1000);
-	return jwtService.sign({
+	return jwtService.sign('tokenExchange', {
 		iss: TOKEN_EXCHANGE_ISSUER,
 		sub,
 		...(opts.actSub && { act: { sub: opts.actSub } }),
@@ -166,10 +166,9 @@ describe('McpServerApiKeyService.verifyApiKey (integration)', () => {
 		// the JWT verify step (with the expected audience) must still reject a token signed
 		// with a different aud claim.
 		const owner = await createOwner();
-		const jwt = jwtService.sign({
+		const jwt = jwtService.sign('publicApiKey', {
 			sub: owner.id,
 			iss: 'n8n',
-			aud: 'public-api',
 			jti: 'tampered',
 		});
 

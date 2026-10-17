@@ -3,6 +3,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
 import type { ChatMessageAttachment } from '@/features/ai/shared/agentsChat/types';
 import AgentChatMessageAttachments from '../components/AgentChatMessageAttachments.vue';
+import { AGENT_ATTACHMENT_URL_KEY } from '../components/agentChatInjectionKeys';
 
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({ restApiContext: { baseUrl: '/rest' } }),
@@ -12,9 +13,17 @@ vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({ baseText: (key: string) => key }),
 }));
 
-function renderComponent(attachments: ChatMessageAttachment[]) {
+function renderComponent(
+	attachments: ChatMessageAttachment[],
+	options: { attachmentUrlBuilder?: (attachmentId: string) => string } = {},
+) {
 	return mount(AgentChatMessageAttachments, {
 		props: { attachments, projectId: 'project-1', agentId: 'agent-1' },
+		global: {
+			provide: options.attachmentUrlBuilder
+				? { [AGENT_ATTACHMENT_URL_KEY as symbol]: options.attachmentUrlBuilder }
+				: {},
+		},
 	});
 }
 
@@ -34,6 +43,14 @@ describe('AgentChatMessageAttachments', () => {
 			'/rest/projects/project-1/agents/v2/agent-1/chat/attachments/att-1',
 		);
 		expect(wrapper.find('a').attributes('href')).toBe(img.attributes('src'));
+	});
+
+	it("uses the panel's injected URL builder when one is provided", () => {
+		const wrapper = renderComponent([imageAttachment], {
+			attachmentUrlBuilder: (id) => `/rest/n8n-chat/${id}`,
+		});
+
+		expect(wrapper.find('img').attributes('src')).toBe('/rest/n8n-chat/att-1');
 	});
 
 	it('renders a file chip with a download link for non-image attachments', () => {

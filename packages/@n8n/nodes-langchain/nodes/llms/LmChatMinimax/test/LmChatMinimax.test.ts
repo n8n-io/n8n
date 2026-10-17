@@ -2,7 +2,12 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/unbound-method */
 import { ChatOpenAI } from '@langchain/openai';
-import { makeN8nLlmFailedAttemptHandler, N8nLlmTracing, getProxyAgent } from '@n8n/ai-utilities';
+import {
+	makeN8nLlmFailedAttemptHandler,
+	N8nLlmTracing,
+	getProxyAgent,
+	aiClientFetch,
+} from '@n8n/ai-utilities';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
@@ -16,6 +21,7 @@ const MockedChatOpenAI = vi.mocked(ChatOpenAI);
 const MockedN8nLlmTracing = vi.mocked(N8nLlmTracing);
 const mockedMakeN8nLlmFailedAttemptHandler = vi.mocked(makeN8nLlmFailedAttemptHandler);
 const mockedGetProxyAgent = vi.mocked(getProxyAgent);
+const mockedAiClientFetch = vi.mocked(aiClientFetch);
 
 describe('LmChatMinimax', () => {
 	let node: LmChatMinimax;
@@ -66,8 +72,8 @@ describe('LmChatMinimax', () => {
 				displayName: 'MiniMax Chat Model',
 				name: 'lmChatMinimax',
 				group: ['transform'],
-				version: [1, 1.1],
-				defaultVersion: 1.1,
+				version: [1, 1.1, 1.2],
+				defaultVersion: 1.2,
 			});
 		});
 
@@ -84,7 +90,7 @@ describe('LmChatMinimax', () => {
 			const legacyModelProperty = node.description.properties.find(
 				(property) => property?.name === 'model' && property.default === 'MiniMax-M2.7',
 			);
-			const currentModelProperty = node.description.properties.find(
+			const staticModelProperty = node.description.properties.find(
 				(property) => property?.name === 'model' && property.default === 'MiniMax-M3',
 			);
 
@@ -96,11 +102,33 @@ describe('LmChatMinimax', () => {
 				name: 'MiniMax-M3',
 				value: 'MiniMax-M3',
 			});
-			expect(currentModelProperty).toMatchObject({
+			expect(staticModelProperty).toMatchObject({
 				default: 'MiniMax-M3',
 				options: expect.arrayContaining([{ name: 'MiniMax-M3', value: 'MiniMax-M3' }]),
-				displayOptions: { show: { '@version': [{ _cnd: { gte: 1.1 } }] } },
+				displayOptions: { show: { '@version': [1.1] } },
 			});
+		});
+
+		it('should use a searchable resourceLocator for version 1.2 and later', () => {
+			const currentModelProperty = node.description.properties.find(
+				(property) => property?.name === 'model' && property.type === 'resourceLocator',
+			);
+
+			expect(currentModelProperty).toMatchObject({
+				type: 'resourceLocator',
+				default: { mode: 'list', value: 'MiniMax-M3' },
+				modes: expect.arrayContaining([
+					expect.objectContaining({
+						name: 'list',
+						typeOptions: { searchListMethod: 'modelSearch', searchable: true },
+					}),
+				]),
+				displayOptions: { show: { '@version': [{ _cnd: { gte: 1.2 } }] } },
+			});
+		});
+
+		it('should expose modelSearch via listSearch methods', () => {
+			expect(node.methods?.listSearch).toHaveProperty('modelSearch');
 		});
 	});
 
@@ -119,6 +147,7 @@ describe('LmChatMinimax', () => {
 					callbacks: expect.arrayContaining([expect.any(Object)]),
 					onFailedAttempt: expect.any(Function),
 					configuration: expect.objectContaining({
+						fetch: mockedAiClientFetch,
 						baseURL: 'https://api.minimax.io/v1',
 					}),
 				}),
@@ -195,6 +224,7 @@ describe('LmChatMinimax', () => {
 					headersTimeout: undefined,
 					bodyTimeout: undefined,
 				}),
+				ctx.helpers.getSecureEgressFilter(),
 			);
 		});
 
@@ -214,6 +244,7 @@ describe('LmChatMinimax', () => {
 					headersTimeout: 120000,
 					bodyTimeout: 120000,
 				}),
+				ctx.helpers.getSecureEgressFilter(),
 			);
 		});
 	});

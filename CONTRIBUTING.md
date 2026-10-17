@@ -84,7 +84,7 @@ If you already have VS Code and Docker installed, you can click [here](https://v
 [pnpm](https://pnpm.io/) is required for development. Install it globally with npm:
 
 ```bash
-npm i -g pnpm@12.3.4
+npm i -g pnpm@12.4.2
 ```
 
 The root [package.json](package.json) pins the exact version in its `packageManager` field. Always install that version, and update your global install when the pin changes.
@@ -349,6 +349,20 @@ When developing custom nodes or credentials, you can enable hot reload to automa
 N8N_DEV_RELOAD=true pnpm dev:be
 ```
 
+This enables two mechanisms:
+
+- a **file watcher** over the loaded node directories, and
+- `POST /rest/dev/reload`, an unauthenticated (rate-limited) endpoint that re-reads the node
+  files already on disk. `@n8n/node-cli`'s `dev` command uses this to push a
+  reload after each successful compile, because a container cannot watch a bind
+  mount and the Alpine image has no `@parcel/watcher` prebuild.
+
+The variable is honoured regardless of `NODE_ENV`, so it also applies to
+production builds and the published Docker image. Never set it on an instance
+reachable by anyone you would not give a shell to. It also disables the crash
+journal, so a dev container that was killed rather than shut down gracefully
+does not pay the 10 second crash-loop penalty on its next boot.
+
 **Performance considerations:**
 - File watching adds overhead to your system, especially on slower machines
 - The watcher monitors potentially thousands of files, which can impact CPU and memory usage
@@ -418,7 +432,7 @@ Each instance gets its own port, and the webhook URL matches the main URL. Multi
 >- This does not work with Podman out of the box. You need to [configure Testcontainers for Podman](https://podman-desktop.io/tutorial/testcontainers-with-podman) first.
 >- Alternatively, you can use colima and set DOCKER_HOST and TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE environment variables as described [here](https://node.testcontainers.org/supported-container-runtimes/#colima)
 
-Refer to [packages/testing/containers/README.md](packages/testing/containers/README.md) for more information.
+Refer to [packages/quality/environments/containers/README.md](packages/quality/environments/containers/README.md) for more information.
 
 ### Work locally with syslog
 
@@ -647,7 +661,7 @@ E2E tests can be started via one of the following commands:
 - `pnpm --filter=n8n-playwright test:local --ui` - Run tests in interactive UI mode (useful for debugging)
 - `pnpm --filter=n8n-playwright test:local --grep="test-name"` - Run specific tests matching pattern
 
-See `packages/testing/playwright/README.md` for more test commands and `packages/testing/playwright/CONTRIBUTING.md` for writing guidelines.
+See `packages/quality/testing/playwright/README.md` for more test commands and `packages/quality/testing/playwright/CONTRIBUTING.md` for writing guidelines.
 
 ## Create custom nodes
 

@@ -7,6 +7,7 @@ import {
 	UpsertPromotionApplyConfigDto,
 	UpsertPromotionPromoteConfigDto,
 	promotionConnectionConfigsPublicSchema,
+	promotionConnectionConfigsSummarySchema,
 } from './promotion-config.dto';
 import { promotionProviderSummarySchema } from './promotion-provider.dto';
 import { n8nIdSchema } from '../../schemas/id.schema';
@@ -26,14 +27,21 @@ export type PromotionConnectionScope = z.infer<typeof promotionConnectionScopeSc
  */
 const remoteUrlSchema = z.string().trim().min(1);
 
-/**
- * Plain Git points at a repository with its full SSH or HTTP(S) remote URL. A new
- * provider type adds its own target here and needs no remote URL.
- */
+/** Git host targets store a path internally. The API exposes the resolved clone URL. */
 export const promotionConnectionTargetSchema = z
-	.object({ schemaVersion: z.literal(1), remoteUrl: remoteUrlSchema })
+	.object({
+		schemaVersion: z.literal(1),
+		remoteUrl: remoteUrlSchema,
+	})
 	.strict();
 export type PromotionConnectionTarget = z.infer<typeof promotionConnectionTargetSchema>;
+
+const promotionConnectionTargetPublicSchema = promotionConnectionTargetSchema.extend({
+	repositoryPath: z.string().optional().openapi({
+		description:
+			'The stored repository path of a GitLab target. URL-encode it before you use it as repositoryId to list branches. Requests do not accept it.',
+	}),
+});
 
 export class CreatePromotionConnectionDto extends Z.class(
 	{
@@ -119,15 +127,13 @@ export class ListPromotionConnectionsQueryDto extends Z.class({
  * by direction to match the request side.
  *
  * The provider is embedded as a summary, which names it but leaves out its public
- * config. Detail and list share this schema, so the full form would put the SSH
- * public key in every row of the connection list. Read the key from the provider
- * detail route.
+ * config. Read the key from the provider detail route.
  */
 export const promotionConnectionPublicSchema = z.object({
 	id: n8nIdSchema,
 	name: z.string(),
 	scope: promotionConnectionScopeSchema,
-	target: promotionConnectionTargetSchema,
+	target: promotionConnectionTargetPublicSchema,
 	provider: promotionProviderSummarySchema,
 	configs: promotionConnectionConfigsPublicSchema,
 	createdAt: z.string().datetime(),
@@ -136,8 +142,17 @@ export const promotionConnectionPublicSchema = z.object({
 
 export class PromotionConnectionPublicDto extends Z.class(promotionConnectionPublicSchema.shape) {}
 
+/**
+ * Lists contain stored connection data only. Checkout state is local to the
+ * responding instance, so callers read it from the connection detail route.
+ */
+export const promotionConnectionSummarySchema = promotionConnectionPublicSchema.extend({
+	configs: promotionConnectionConfigsSummarySchema,
+});
+export type PromotionConnectionSummary = z.infer<typeof promotionConnectionSummarySchema>;
+
 export class PromotionConnectionListPublicDto extends Z.class({
-	data: z.array(promotionConnectionPublicSchema),
+	data: z.array(promotionConnectionSummarySchema),
 	nextCursor: z.string().nullable(),
 }) {}
 

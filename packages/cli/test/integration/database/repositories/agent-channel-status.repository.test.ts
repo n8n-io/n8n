@@ -1,3 +1,4 @@
+import type { AgentChannelRef } from '@/modules/agents/utils/agent-channel';
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
@@ -5,10 +6,7 @@ import { v4 as uuid } from 'uuid';
 
 import type { Agent } from '@/modules/agents/entities/agent.entity';
 import type { AgentChannelObservation } from '@/modules/agents/repositories/agent-channel-status.repository';
-import {
-	AgentChannelStatusRepository,
-	type AgentChannelRef,
-} from '@/modules/agents/repositories/agent-channel-status.repository';
+import { AgentChannelStatusRepository } from '@/modules/agents/repositories/agent-channel-status.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 
 const CONNECTED: AgentChannelObservation = {

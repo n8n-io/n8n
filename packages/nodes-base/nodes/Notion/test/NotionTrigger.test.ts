@@ -27,8 +27,8 @@ function createPollContext(
 		getWorkflowStaticData: vi.fn().mockReturnValue(staticData),
 		getNodeParameter: vi.fn().mockImplementation((name: string) => {
 			const params: Record<string, unknown> = {
-				databaseId: 'test-db-id',
-				dataSourceId: 'test-data-source-id',
+				databaseId: 'parent/child?view#section',
+				dataSourceId: 'parent/child?view#section',
 				event: 'pageAddedToDatabase',
 				simple: false,
 			};
@@ -131,7 +131,7 @@ describe('NotionTrigger', () => {
 			expect(result).toBeNull();
 			expect(mockNotionApiRequestV3).toHaveBeenCalledWith(
 				'POST',
-				'/data_sources/test-data-source-id/query',
+				'/data_sources/parent%2Fchild%3Fview%23section/query',
 				expect.objectContaining({ page_size: 1 }),
 			);
 		});
@@ -148,7 +148,7 @@ describe('NotionTrigger', () => {
 			expect(result).toBeNull();
 			expect(mockNotionApiRequest).toHaveBeenCalledWith(
 				'POST',
-				'/databases/test-db-id/query',
+				'/databases/parent%2Fchild%3Fview%23section/query',
 				expect.objectContaining({ page_size: 1 }),
 				{},
 				'',

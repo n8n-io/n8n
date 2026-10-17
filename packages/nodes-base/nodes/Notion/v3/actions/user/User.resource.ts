@@ -1,4 +1,5 @@
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import { toPathSegment } from 'n8n-workflow';
 
 import { returnAllOrLimit } from '../common.descriptions';
 import { handleOperationError } from '../../helpers/utils';
@@ -38,7 +39,11 @@ export async function get(this: IExecuteFunctions, items: INodeExecutionData[]) 
 	for (let i = 0; i < items.length; i++) {
 		try {
 			const userId = this.getNodeParameter('userId', i) as string;
-			const response = await notionApiRequestV3.call(this, 'GET', `/users/${userId}`);
+			const response = await notionApiRequestV3.call(
+				this,
+				'GET',
+				`/users/${toPathSegment(userId)}`,
+			);
 			const executionData = this.helpers.constructExecutionMetaData(
 				this.helpers.returnJsonArray(response),
 				{ itemData: { item: i } },

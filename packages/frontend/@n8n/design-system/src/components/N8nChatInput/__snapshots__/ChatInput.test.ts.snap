@@ -34,7 +34,7 @@ exports[`N8nChatInput > rendering > should render correctly with default props 1
               aria-disabled="true"
               aria-label="Send"
               aria-live="polite"
-              class="button button solid medium iconOnly disabled is-disabled"
+              class="button button brand medium iconOnly disabled is-disabled"
               data-icon-only="true"
               data-test-id="send-message-button"
               disabled=""
@@ -56,19 +56,16 @@ exports[`N8nChatInput > rendering > should render correctly with default props 1
                   aria-hidden="true"
                   class="n8n-icon"
                   data-icon="arrow-up"
+                  fill="currentColor"
                   focusable="false"
-                  height="16px"
+                  height="14px"
                   role="img"
-                  viewBox="0 0 24 24"
-                  width="16px"
+                  viewBox="0 0 16 16"
+                  width="14px"
+                  xmlns="http://www.w3.org/2000/svg"
                 >
                   <path
-                    d="m5 12l7-7l7 7m-7 7V5"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
+                    d="M15.56 8 14.5 9.06 8.75 3.31v11.94h-1.5V3.31L1.5 9.06.44 8 8 .44z"
                   />
                 </svg>
                 
@@ -120,7 +117,7 @@ exports[`N8nChatInput > rendering > should render streaming state without disabl
             <button
               aria-label="Stop"
               aria-live="polite"
-              class="button button solid medium iconOnly"
+              class="button button brand medium iconOnly"
               data-icon-only="true"
               data-test-id="send-message-button"
               type="button"
@@ -143,11 +140,11 @@ exports[`N8nChatInput > rendering > should render streaming state without disabl
                   data-icon="filled-square"
                   fill="currentColor"
                   focusable="false"
-                  height="12px"
+                  height="14px"
                   overflow="hidden"
                   role="img"
                   viewBox="0 0 10 10"
-                  width="12px"
+                  width="14px"
                   xmlns="http://www.w3.org/2000/svg"
                 >
                   <rect

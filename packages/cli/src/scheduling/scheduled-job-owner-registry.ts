@@ -2,6 +2,7 @@ import { ScheduledJobOwnerType } from '@n8n/constants';
 import { ScheduledJobOwnerRegistry } from '@n8n/scheduler';
 
 import type { AgentScheduledJobOwner } from './agent-scheduled-job-owner';
+import type { SystemTaskScheduledJobOwner } from './system-tasks/system-task-scheduled-job-owner';
 import type { WorkflowScheduledJobOwner } from './workflow-scheduled-job-owner';
 
 /**
@@ -11,9 +12,11 @@ import type { WorkflowScheduledJobOwner } from './workflow-scheduled-job-owner';
 export function createScheduledJobOwnerRegistry(
 	workflowOwner: WorkflowScheduledJobOwner,
 	agentOwner: AgentScheduledJobOwner,
+	systemTaskOwner: SystemTaskScheduledJobOwner,
 ): ScheduledJobOwnerRegistry {
 	const owners = new ScheduledJobOwnerRegistry();
 	owners.register(ScheduledJobOwnerType.Workflow, workflowOwner);
 	owners.register(ScheduledJobOwnerType.Agent, agentOwner);
+	owners.register(ScheduledJobOwnerType.SystemTask, systemTaskOwner);
 	return owners;
 }

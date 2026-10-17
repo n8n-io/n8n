@@ -7,6 +7,7 @@ import { useI18n } from '@n8n/i18n';
 import type { IRunData, IDataObject } from 'n8n-workflow';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { computed } from 'vue';
+import { matchBeforeCursor } from './utils';
 
 function useJsonFieldCompletions() {
 	const i18n = useI18n();
@@ -31,9 +32,8 @@ function useJsonFieldCompletions() {
 		variablesToValues: Record<string, string>,
 	): CompletionResult | null => {
 		const pattern = new RegExp(`(${escape(matcher)})\..*`);
-		const preCursor = context.matchBefore(pattern);
-
-		if (!preCursor || (preCursor.from === preCursor.to && !context.explicit)) return null;
+		const preCursor = matchBeforeCursor(context, pattern);
+		if (!preCursor) return null;
 
 		const inputNodeName = getInputNodeName();
 		if (!inputNodeName) return null;

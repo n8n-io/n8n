@@ -3,12 +3,14 @@ import { describe, it, expect, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
 import type { TimelineItem } from '../session-timeline.types';
 
-vi.mock('@n8n/i18n', () => ({
-	useI18n: () => ({ baseText: (key: string) => key }),
-}));
-
 vi.mock('vue-router', () => ({
 	useRouter: () => ({ resolve: () => ({ href: '/wf/1' }) }),
+}));
+
+vi.mock('@/app/stores/nodeTypes.store', () => ({
+	useNodeTypesStore: () => ({
+		getNodeType: (name: string) => (name === 'n8n-nodes-base.httpRequest' ? { name } : undefined),
+	}),
 }));
 
 vi.mock('@/app/utils/formatters/dateFormatter', () => ({
@@ -44,6 +46,10 @@ const STUBS = {
 		props: ['kind'],
 		template: '<span :data-testid="pill" :data-kind="kind" />',
 	},
+	NodeIcon: {
+		props: ['nodeType', 'size'],
+		template: '<span data-testid="node-icon" :data-node-type="nodeType.name" :data-size="size" />',
+	},
 };
 
 function item(partial: Partial<TimelineItem>): TimelineItem {
@@ -65,6 +71,28 @@ async function renderComponent(it: TimelineItem) {
 }
 
 describe('SessionTimelineRow', () => {
+	it('renders a skill with its name and pill', async () => {
+		const wrapper = await renderComponent(item({ kind: 'skill', skillName: 'Triage' }));
+
+		expect(wrapper.text()).toContain('Triage');
+		expect(wrapper.find('[data-kind="skill"]').exists()).toBe(true);
+	});
+
+	it('renders the node icon when the node type is available', async () => {
+		const wrapper = await renderComponent(
+			item({ kind: 'node', nodeType: 'n8n-nodes-base.httpRequest', nodeTypeVersion: 4.2 }),
+		);
+
+		expect(wrapper.get('[data-testid="node-icon"]').attributes('data-size')).toBe('20');
+		expect(wrapper.find('[data-kind]').exists()).toBe(false);
+	});
+
+	it('renders the pill when the node type is unavailable', async () => {
+		const wrapper = await renderComponent(item({ kind: 'node', nodeType: 'unknown' }));
+
+		expect(wrapper.find('[data-kind="node"]').exists()).toBe(true);
+	});
+
 	it('renders the failure icon for a generic tool soft-failure', async () => {
 		const wrapper = await renderComponent(
 			item({
@@ -103,4 +131,17 @@ describe('SessionTimelineRow', () => {
 		const wrapper = await renderComponent(item({ kind: 'user', toolSuccess: false }));
 		expect(wrapper.find('[data-test-id="timeline-tool-error-badge"]').exists()).toBe(false);
 	});
+});
+
+it('shows task titles and translated statuses in a signal row', async () => {
+	const wrapper = await renderComponent(
+		item({
+			kind: 'background-task-signal',
+			backgroundJobSignal: {
+				tasks: [{ id: 'job-1', title: 'Check invoices', kind: 'subagent', status: 'failed' }],
+			},
+		}),
+	);
+	expect(wrapper.text()).toContain('Check invoices — Failed');
+	expect(wrapper.find('[data-kind="background-task-signal"]').exists()).toBe(true);
 });

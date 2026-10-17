@@ -15,7 +15,10 @@ run-name: Codespace preview for PR ${{ github.event.pull_request.number || input
 # answers nobody until `up` runs again — with no commit and no label toggle.
 #
 # Output: a `<!-- codespace-preview -->` comment on the PR with the instance URL,
-# a one-click sign-in link, and the commit it serves.
+# a one-click sign-in link, and the commit it serves. `up` and `refresh` take
+# minutes, so that comment goes up first as a phase checklist and is edited about
+# once a minute until the instance answers. A cancelled or timed-out job kills the
+# script mid-checklist, so the last step below writes the outcome instead.
 
 on:
   pull_request:
@@ -118,3 +121,17 @@ jobs:
           PREVIEW_OPERATION: ${{ inputs.operation }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: node .github/scripts/codespace-preview.mjs
+
+      - name: Report a stopped run
+        # Covers a manual cancel and the timeout-minutes above, both of which kill
+        # the step above while its checklist is on the PR. No GH_TOKEN: this makes no
+        # `gh` call, so the Codespaces token stays out of it.
+        if: cancelled()
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PULL_REQUEST_NUMBER: ${{ github.event.pull_request.number || inputs.pr_number }}
+          EVENT_ACTION: ${{ github.event.action }}
+          LABEL_NAME: ${{ github.event.label.name }}
+          PREVIEW_OPERATION: ${{ inputs.operation }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: node .github/scripts/codespace-preview.mjs --report-cancelled

@@ -50,12 +50,11 @@ export async function gristApiRequest(
 	body: IDataObject | number[] = {},
 	qs: IDataObject = {},
 ) {
-	const credentials = await this.getCredentials<GristCredentials>('gristApi');
+	const authentication = this.getNodeParameter('authentication', 0, 'apiKey') as string;
+	const credentialsType = authentication === 'oAuth2' ? 'gristOAuth2Api' : 'gristApi';
+	const credentials = await this.getCredentials<GristCredentials>(credentialsType);
 
 	const options: IRequestOptions = {
-		headers: {
-			Authorization: `Bearer ${credentials.apiKey}`,
-		},
 		method,
 		uri: `${gristBaseUrl(credentials)}/api${endpoint}`,
 		qs,
@@ -71,7 +70,15 @@ export async function gristApiRequest(
 		delete options.qs;
 	}
 
+	// The OAuth helper attaches its own Authorization header; the API key path sets one here.
+	if (authentication !== 'oAuth2') {
+		options.headers = { Authorization: `Bearer ${credentials.apiKey}` };
+	}
+
 	try {
+		if (authentication === 'oAuth2') {
+			return await this.helpers.requestOAuth2.call(this, 'gristOAuth2Api', options);
+		}
 		return await this.helpers.request(options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);

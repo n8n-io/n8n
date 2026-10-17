@@ -1,134 +1,26 @@
-import { ChatOpenAI, type ClientOptions } from '@langchain/openai';
+import { ChatOpenAI } from '@langchain/openai';
 import {
-	createRefreshingAuthFetch,
-	getProxyAgent,
 	makeN8nLlmFailedAttemptHandler,
 	N8nLlmTracing,
 	getConnectionHintNoticeField,
 } from '@n8n/ai-utilities';
-import { DATABRICKS_PARTNER_USER_AGENT } from 'n8n-nodes-base/dist/nodes/Databricks/constants';
 import {
-	NodeApiError,
 	NodeConnectionTypes,
-	NodeOperationError,
-	type ILoadOptionsFunctions,
-	type INodeListSearchResult,
 	type INodeType,
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { databricksAuthHeaders } from './constants';
-import { makeDatabricksFailedAttemptHandler, wrapDatabricksErrorFetch } from './error-handling';
-import type { DatabricksOAuth2Credential } from './token-provider';
-import { getDatabricksTokenProvider } from './token-provider';
+import { makeDatabricksFailedAttemptHandler } from '@utils/databricks/error-handling';
+import { createDatabricksGatewayConfig } from '@utils/databricks/gateway-config';
+import { CHAT_CAPABILITY, makeModelSearch } from '@utils/databricks/model-services';
+import {
+	DATABRICKS_CREDENTIAL_TYPE,
+	type DatabricksOAuth2Credential,
+} from '@utils/databricks/token-provider';
 
-// Every request carries a secret (bearer token, or the client secret on the
-// mint path), so an http host would ship it in cleartext
-function assertHttpsHost(ctx: ILoadOptionsFunctions | ISupplyDataFunctions, host: string) {
-	if (!URL.canParse(host) || new URL(host).protocol !== 'https:') {
-		throw new NodeOperationError(ctx.getNode(), 'Databricks host must use https');
-	}
-}
-
-interface ModelService {
-	name: string;
-	comment?: string;
-	supported_api_types?: string[];
-}
-
-interface ModelServicesResponse {
-	model_services?: ModelService[];
-	next_page_token?: string;
-}
-
-async function searchModels(
-	this: ILoadOptionsFunctions,
-	filter?: string,
-): Promise<INodeListSearchResult> {
-	const credentials = await this.getCredentials<DatabricksOAuth2Credential>('databricksOAuth2Api');
-	assertHttpsHost(this, credentials.host);
-	const host = credentials.host.replace(/\/$/, '');
-
-	const listModelServices = async (parent?: string): Promise<ModelService[]> => {
-		let services: ModelService[] = [];
-		let pageToken: string | undefined;
-		let pages = 0;
-		do {
-			// Guard against a host or proxy that echoes the same next_page_token back
-			if (++pages > 50) {
-				throw new NodeOperationError(this.getNode(), 'Model service list exceeded 50 pages');
-			}
-			const page: ModelServicesResponse = await this.helpers.httpRequestWithAuthentication.call(
-				this,
-				'databricksOAuth2Api',
-				{
-					method: 'GET',
-					url: `${host}/api/2.1/unity-catalog/model-services`,
-					// FULL view is needed for supported_api_types
-					qs: { view: 'FULL', parent, page_token: pageToken },
-					headers: { Accept: 'application/json', 'User-Agent': DATABRICKS_PARTNER_USER_AGENT },
-					json: true,
-				},
-			);
-			services = services.concat(page.model_services ?? []);
-			pageToken = page.next_page_token;
-		} while (pageToken);
-		return services;
-	};
-
-	let services: ModelService[];
-	try {
-		// The docs mark `parent` as required, but the unscoped call returns every
-		// service the caller can access across all schemas (verified live). If the
-		// API starts to enforce it, fall back to the Databricks-provided schema.
-		services = await listModelServices();
-	} catch (error) {
-		if (!(error instanceof NodeApiError) || error.httpCode !== '400') throw error;
-		services = await listModelServices('schemas/system.ai');
-	}
-
-	if (services.length === 0) {
-		throw new NodeOperationError(this.getNode(), 'No model services found', {
-			description:
-				'Check that Unity AI Gateway is enabled on this workspace and that this credential can access at least one model service',
-		});
-	}
-
-	// Live workspaces advertise mlflow/v1/chat/completions even though the
-	// openai/v1 route answers, so match any chat-completions type; embeddings-only
-	// and untyped services drop out but stay reachable via ID mode
-	const chatServices = services.filter((service) =>
-		service.supported_api_types?.some((type) => type.endsWith('/chat/completions')),
-	);
-
-	if (chatServices.length === 0) {
-		throw new NodeOperationError(this.getNode(), 'No chat-capable model services found', {
-			description:
-				'None of the visible model services supports chat completions. Use ID mode to enter a service name directly',
-		});
-	}
-
-	const allResults = chatServices.map((service) => {
-		// The API returns the resource name; the gateway expects catalog.schema.service
-		const name = service.name.replace(/^model-services\//, '');
-		return { name, value: name, description: service.comment };
-	});
-
-	if (filter) {
-		const filterLower = filter.toLowerCase();
-		return {
-			results: allResults.filter(
-				(r) =>
-					r.name.toLowerCase().includes(filterLower) ||
-					(r.description ?? '').toLowerCase().includes(filterLower),
-			),
-		};
-	}
-
-	return { results: allResults };
-}
+const searchModels = makeModelSearch(CHAT_CAPABILITY);
 
 export class LmChatDatabricks implements INodeType {
 	methods = {
@@ -140,8 +32,10 @@ export class LmChatDatabricks implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Databricks Chat Model',
 		name: 'lmChatDatabricks',
-		hidden: true,
-		icon: { light: 'file:databricks.svg', dark: 'file:databricks.dark.svg' },
+		icon: {
+			light: 'file:../../shared/icons/databricks.svg',
+			dark: 'file:../../shared/icons/databricks.dark.svg',
+		},
 		group: ['transform'],
 		version: [1],
 		description: 'For advanced usage with an AI chain',
@@ -308,11 +202,9 @@ export class LmChatDatabricks implements INodeType {
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-		const credential = await this.getCredentials<DatabricksOAuth2Credential>('databricksOAuth2Api');
-
-		assertHttpsHost(this, credential.host);
-
-		const baseURL = `${credential.host.replace(/\/$/, '')}/ai-gateway/openai/v1`;
+		const credential = await this.getCredentials<DatabricksOAuth2Credential>(
+			DATABRICKS_CREDENTIAL_TYPE,
+		);
 
 		const modelName = this.getNodeParameter('model', itemIndex, '', {
 			extractValue: true,
@@ -321,54 +213,16 @@ export class LmChatDatabricks implements INodeType {
 		const options = this.getNodeParameter('options', itemIndex, {}) as {
 			frequencyPenalty?: number;
 			maxTokens?: number;
-			maxRetries: number;
-			timeout: number;
+			maxRetries?: number;
+			timeout?: number;
 			presencePenalty?: number;
 			temperature?: number;
 			topP?: number;
 			responseFormat?: 'text' | 'json_object';
 		};
 
-		const egressFilter = this.helpers.getSecureEgressFilter();
-
 		const timeout = options.timeout;
-		const tokenSource = getDatabricksTokenProvider(this, credential, egressFilter);
-		const { refreshAfterRejection } = tokenSource;
-		const configuration: ClientOptions = {
-			baseURL,
-			// The model client builds its own transport, so it never reaches the
-			// request helpers: `resolveHeaders` runs the expiry clock before every
-			// request, and `refreshHeaders` covers the rejection the clock missed -
-			// revoked server-side, or clock skew
-			fetch: wrapDatabricksErrorFetch(
-				createRefreshingAuthFetch({
-					baseFetch: fetch,
-					expiredStatus: tokenSource.expiredStatus,
-					resolveHeaders: async () => databricksAuthHeaders(await tokenSource.getToken()),
-					...(refreshAfterRejection && {
-						refreshHeaders: async () => {
-							const refreshed = await refreshAfterRejection();
-							return refreshed ? databricksAuthHeaders(refreshed) : null;
-						},
-					}),
-					assertAllowedUrl: async (hopUrl) => {
-						if (!egressFilter) return;
-						const result = await egressFilter.validateUrl(hopUrl);
-						if (!result.ok) throw result.error;
-					},
-				}),
-			),
-			fetchOptions: {
-				dispatcher: getProxyAgent(
-					baseURL,
-					{
-						headersTimeout: timeout,
-						bodyTimeout: timeout,
-					},
-					egressFilter?.createSecureLookup(),
-				),
-			},
-		};
+		const { configuration, tokenSource } = createDatabricksGatewayConfig(this, credential, timeout);
 
 		const modelKwargs: Record<string, unknown> = {};
 		if (options.responseFormat) {
@@ -387,7 +241,7 @@ export class LmChatDatabricks implements INodeType {
 			modelKwargs: Object.keys(modelKwargs).length > 0 ? modelKwargs : undefined,
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(
 				this,
-				makeDatabricksFailedAttemptHandler(tokenSource.expiredStatus),
+				makeDatabricksFailedAttemptHandler(tokenSource.expiredStatus, modelName),
 			),
 		});
 

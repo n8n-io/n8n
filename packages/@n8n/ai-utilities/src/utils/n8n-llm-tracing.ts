@@ -33,6 +33,27 @@ type ProviderTokenUsageResult = TokenUsageResult & {
 
 type TokensUsageParser = (result: LLMResult) => TokenUsageResult;
 
+/** Anthropic Messages usage. Cached input tokens count as prompt tokens. */
+export function anthropicTokensUsageParser(result: LLMResult): TokenUsageResult {
+	const usage = (result?.llmOutput?.usage as
+		| {
+				input_tokens: number;
+				output_tokens: number;
+				cache_creation_input_tokens?: number;
+				cache_read_input_tokens?: number;
+		  }
+		| undefined) ?? { input_tokens: 0, output_tokens: 0 };
+	const promptTokens =
+		usage.input_tokens +
+		(usage.cache_creation_input_tokens ?? 0) +
+		(usage.cache_read_input_tokens ?? 0);
+	return {
+		completionTokens: usage.output_tokens,
+		promptTokens,
+		totalTokens: promptTokens + usage.output_tokens,
+	};
+}
+
 type RunDetail = {
 	index: number;
 	messages: BaseMessage[] | string[] | string;

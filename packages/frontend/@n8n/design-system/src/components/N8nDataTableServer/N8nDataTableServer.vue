@@ -543,7 +543,7 @@ const table = useVueTable({
 	th {
 		position: relative;
 		color: var(--color--text);
-		font-weight: 600;
+		font-weight: var(--font-weight--medium);
 		font-size: 12px;
 		padding: 0 8px;
 		height: 36px;
@@ -612,6 +612,7 @@ const table = useVueTable({
 .table-scroll {
 	max-height: 100%;
 	overflow: auto;
+	scrollbar-gutter: stable;
 	position: relative;
 }
 

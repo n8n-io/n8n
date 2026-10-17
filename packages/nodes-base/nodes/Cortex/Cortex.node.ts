@@ -163,7 +163,7 @@ export class Cortex implements INodeType {
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'analyzer') {
-					//https://github.com/TheHive-Project/CortexDocs/blob/master/api/api-guide.md#run
+					//https://docs.strangebee.com/cortex/api/api-guide/#run
 					if (operation === 'execute') {
 						let force = false;
 
@@ -241,13 +241,13 @@ export class Cortex implements INodeType {
 				}
 
 				if (resource === 'job') {
-					//https://github.com/TheHive-Project/CortexDocs/blob/master/api/api-guide.md#get-details-1
+					//https://docs.strangebee.com/cortex/api/api-guide/#get-details
 					if (operation === 'get') {
 						const jobId = this.getNodeParameter('jobId', i) as string;
 
 						responseData = await cortexApiRequest.call(this, 'GET', `/job/${jobId}`);
 					}
-					//https://github.com/TheHive-Project/CortexDocs/blob/master/api/api-guide.md#get-details-and-report
+					//https://docs.strangebee.com/cortex/api/api-guide/#get-details-and-report
 					if (operation === 'report') {
 						const jobId = this.getNodeParameter('jobId', i) as string;
 

@@ -102,6 +102,14 @@ describe('CredentialsOverwrites', () => {
 			});
 		});
 
+		it('should skip an empty overwrite value so the stored field stays unset', () => {
+			credentialsOverwrites.setPlainData({ test: { username: 'user', password: '' } });
+
+			const result = credentialsOverwrites.applyOverwrite('test', { username: '' });
+
+			expect(result).toEqual({ username: 'user' });
+		});
+
 		it('should return original data if no overwrites exist', () => {
 			const data = {
 				username: 'user1',

@@ -7,8 +7,11 @@
 export type ActionToggleItem<T extends string = string> = {
 	label: string;
 	disabled?: boolean;
+	divided?: boolean;
+	/** Whether to render the item as a destructive action. */
+	destructive?: boolean;
 	type?: 'external-link';
-	/** When set, the item's label is wrapped in a tooltip (useful to explain a disabled item). */
+	/** Tooltip content for a trailing info icon, such as the reason an item is disabled. */
 	tooltip?: string;
 } & ({ id: T; value?: T } | { id?: T; value: T });
 

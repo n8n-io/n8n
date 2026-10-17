@@ -1,12 +1,15 @@
+import '../../openapi-extend';
+
 import { jsonParse } from 'n8n-workflow';
 import { z } from 'zod';
 
+import { listDataTableRowsQueryDocs } from './data-table-public.openapi';
 import { dataTableFilterSchema } from '../../schemas/data-table-filter.schema';
 import { dataTableColumnNameSchema } from '../../schemas/data-table.schema';
 import { Z } from '../../zod-class';
 import { paginationSchema, publicApiPaginationSchema } from '../pagination/pagination.dto';
 
-const filterValidator = z
+export const filterValidator = z
 	.string()
 	.optional()
 	.transform((val, ctx) => {
@@ -33,7 +36,7 @@ const filterValidator = z
 		}
 	});
 
-const sortByValidator = z
+export const sortByValidator = z
 	.string()
 	.optional()
 	.transform((val, ctx) => {
@@ -43,7 +46,6 @@ const sortByValidator = z
 			ctx.addIssue({
 				code: z.ZodIssueCode.custom,
 				message: 'Invalid sort format, expected <columnName>:<asc/desc>',
-				path: ['sort'],
 			});
 			return z.NEVER;
 		}
@@ -58,7 +60,6 @@ const sortByValidator = z
 			ctx.addIssue({
 				code: z.ZodIssueCode.custom,
 				message: errorMessage,
-				path: ['sortBy'],
 			});
 			return z.NEVER;
 		}
@@ -68,7 +69,6 @@ const sortByValidator = z
 			ctx.addIssue({
 				code: z.ZodIssueCode.custom,
 				message: 'Invalid sort direction',
-				path: ['sort'],
 			});
 
 			return z.NEVER;
@@ -84,10 +84,10 @@ export class ListDataTableContentQueryDto extends Z.class({
 	search: z.string().optional(),
 }) {}
 
-export class PublicApiListDataTableContentQueryDto extends Z.class({
+export class PublicApiListDataTableRowsQueryDto extends Z.class({
 	limit: publicApiPaginationSchema.limit,
-	offset: publicApiPaginationSchema.offset,
-	filter: filterValidator.optional(),
-	sortBy: sortByValidator.optional(),
-	search: z.string().optional(),
+	cursor: z.string().optional(),
+	filter: filterValidator.openapi(listDataTableRowsQueryDocs.filter),
+	sortBy: sortByValidator.openapi(listDataTableRowsQueryDocs.sortBy),
+	search: z.string().optional().openapi(listDataTableRowsQueryDocs.search),
 }) {}

@@ -6,6 +6,7 @@ import {
 	createCanvasProvide,
 } from '@/features/workflows/canvas/__tests__/utils';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
 import { createTestingPinia } from '@pinia/testing';
 import { fireEvent } from '@testing-library/vue';
 import { NodeConnectionTypes, type IPinData } from 'n8n-workflow';
@@ -74,6 +75,7 @@ const renderComponent = createComponentRenderer(CanvasNodeDefault, {
 });
 
 let nodeTypesStore: MockedStore<typeof useNodeTypesStore>;
+let typeAvailabilityPoliciesStore: MockedStore<typeof useTypeAvailabilityPoliciesStore>;
 const mockedUseRoute = vi.mocked(useRoute);
 
 beforeEach(() => {
@@ -88,6 +90,7 @@ beforeEach(() => {
 	const pinia = createTestingPinia();
 	setActivePinia(pinia);
 	nodeTypesStore = mockedStore(useNodeTypesStore);
+	typeAvailabilityPoliciesStore = mockedStore(useTypeAvailabilityPoliciesStore);
 	mockedUseRoute.mockReturnValue({} as RouteLocationNormalizedLoadedGeneric);
 	vi.mocked(useNodePrivateCredential).mockReturnValue({
 		hasPrivateCredential: computed(() => false),
@@ -140,6 +143,51 @@ describe('CanvasNodeDefault', () => {
 				'data-badge-tooltip',
 				'This node uses private credentials that are resolved at runtime.',
 			);
+		});
+	});
+
+	describe('restricted node type', () => {
+		beforeEach(() => {
+			typeAvailabilityPoliciesStore.getNodeTypeAvailability.mockReturnValue({
+				name: 'n8n-nodes-base.slack',
+				available: false,
+				scope: 'instance',
+			});
+		});
+
+		it('renders the restricted treatment: deactivated look, greyed icon, lock and label', () => {
+			const { getByTestId } = renderComponent({
+				global: {
+					stubs,
+					provide: {
+						...createCanvasNodeProvide({
+							data: { type: 'n8n-nodes-base.slack', subtitle: 'send: message' },
+						}),
+					},
+				},
+			});
+
+			const node = getByTestId('canvas-default-node');
+			expect(node).toHaveClass('disabled');
+			expect(node.querySelector('node-icon-stub')).toHaveAttribute('disabled', 'true');
+			expect(getByTestId('canvas-node-restricted')).toHaveTextContent('Restricted');
+			expect(getByTestId('node-restricted')).toBeInTheDocument();
+			expect(node).not.toHaveTextContent('send: message');
+		});
+
+		it('keeps the lock visible on a deactivated restricted node', () => {
+			const { getByTestId } = renderComponent({
+				global: {
+					stubs,
+					provide: {
+						...createCanvasNodeProvide({
+							data: { type: 'n8n-nodes-base.slack', disabled: true },
+						}),
+					},
+				},
+			});
+
+			expect(getByTestId('node-restricted')).toBeInTheDocument();
 		});
 	});
 

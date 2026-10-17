@@ -27,6 +27,7 @@ export class DataTableDDLService {
 		columns: DataTableColumn[],
 		trx?: EntityManager,
 	) {
+		// oxlint-disable-next-line typescript/no-deprecated
 		await withTransaction(this.dataSource.manager, trx, async (em) => {
 			if (!em.queryRunner) {
 				throw new UnexpectedError('QueryRunner is not available');
@@ -42,6 +43,7 @@ export class DataTableDDLService {
 	}
 
 	async dropTable(dataTableId: string, trx?: EntityManager) {
+		// oxlint-disable-next-line typescript/no-deprecated
 		await withTransaction(this.dataSource.manager, trx, async (em) => {
 			if (!em.queryRunner) {
 				throw new UnexpectedError('QueryRunner is not available');
@@ -61,6 +63,7 @@ export class DataTableDDLService {
 		if (!isValidDataTableId(oldDataTableId) || !isValidDataTableId(newDataTableId)) {
 			throw new UnexpectedError('Invalid data table ID');
 		}
+		// oxlint-disable-next-line typescript/no-deprecated
 		await withTransaction(this.dataSource.manager, trx, async (em) => {
 			await em.query(
 				renameTableQuery(toTableName(oldDataTableId), toTableName(newDataTableId), dbType),
@@ -69,6 +72,7 @@ export class DataTableDDLService {
 	}
 
 	async tableExists(dataTableId: string, trx?: EntityManager): Promise<boolean> {
+		// oxlint-disable-next-line typescript/no-deprecated
 		return await withTransaction(this.dataSource.manager, trx, async (em) => {
 			if (!em.queryRunner) {
 				throw new UnexpectedError('QueryRunner is not available');
@@ -83,6 +87,7 @@ export class DataTableDDLService {
 		dbType: DataSourceOptions['type'],
 		trx?: EntityManager,
 	) {
+		// oxlint-disable-next-line typescript/no-deprecated
 		await withTransaction(this.dataSource.manager, trx, async (em) => {
 			await em.query(addColumnQuery(toTableName(dataTableId), column, dbType));
 		});
@@ -94,6 +99,7 @@ export class DataTableDDLService {
 		dbType: DataSourceOptions['type'],
 		trx?: EntityManager,
 	) {
+		// oxlint-disable-next-line typescript/no-deprecated
 		await withTransaction(this.dataSource.manager, trx, async (em) => {
 			await em.query(deleteColumnQuery(toTableName(dataTableId), columnName, dbType));
 		});
@@ -106,6 +112,7 @@ export class DataTableDDLService {
 		dbType: DataSourceOptions['type'],
 		trx?: EntityManager,
 	) {
+		// oxlint-disable-next-line typescript/no-deprecated
 		await withTransaction(this.dataSource.manager, trx, async (em) => {
 			await em.query(
 				renameColumnQuery(toTableName(dataTableId), oldColumnName, newColumnName, dbType),

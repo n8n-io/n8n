@@ -12,6 +12,7 @@ import {
 	conversationHistoryMessagesResultSchema,
 	conversationHistorySearchResultSchema,
 } from './conversation-history.schema';
+import { toSafeErrorMessage } from './shared/safe-error-message';
 import { DOMAIN_TOOL_IDS } from './tool-ids';
 
 // ── Action schemas ──────────────────────────────────────────────────────────
@@ -112,16 +113,6 @@ function requireConversationHistoryService(context: InstanceAiContext) {
 	return conversationHistoryService;
 }
 
-/** `UserError`s are written for the caller and pass through; anything else could
- *  carry driver/SQL detail — the model gets the fallback, the log the real error. */
-function toSafeErrorMessage(context: InstanceAiContext, error: unknown, fallback: string): string {
-	if (error instanceof UserError) return error.message;
-	context.logger.warn('conversation-history tool call failed', {
-		error: error instanceof Error ? error.message : String(error),
-	});
-	return fallback;
-}
-
 async function handleSearch(
 	context: InstanceAiContext,
 	input: Extract<Input, { action: 'search' }>,
@@ -134,7 +125,12 @@ async function handleSearch(
 	} catch (error) {
 		return {
 			hits: [],
-			error: toSafeErrorMessage(context, error, 'Failed to search conversation history.'),
+			error: toSafeErrorMessage(
+				context.logger,
+				error,
+				'Failed to search conversation history.',
+				'conversation-history tool call failed',
+			),
 		};
 	}
 }
@@ -157,7 +153,12 @@ async function handleGetMessages(
 			messages: [],
 			hasMoreBefore: false,
 			hasMoreAfter: false,
-			error: toSafeErrorMessage(context, error, 'Failed to read the conversation.'),
+			error: toSafeErrorMessage(
+				context.logger,
+				error,
+				'Failed to read the conversation.',
+				'conversation-history tool call failed',
+			),
 		};
 	}
 }

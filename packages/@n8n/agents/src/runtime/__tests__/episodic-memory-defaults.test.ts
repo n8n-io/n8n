@@ -54,7 +54,10 @@ describe('episodic memory defaults', () => {
 					},
 				],
 			});
-			return await Promise.resolve({ output: parsedOutput });
+			return await Promise.resolve({
+				output: parsedOutput,
+				finalStep: { providerMetadata: undefined },
+			});
 		});
 
 		await expect(
@@ -77,7 +80,11 @@ describe('episodic memory defaults', () => {
 
 		mockGenerateText.mockImplementationOnce(async ({ output }) => {
 			const parsedOutput = output.schema.parse({ drop: [], merge: [] });
-			return await Promise.resolve({ output: parsedOutput, usage: { totalTokens: 13 } });
+			return await Promise.resolve({
+				output: parsedOutput,
+				usage: { totalTokens: 13 },
+				finalStep: { providerMetadata: undefined },
+			});
 		});
 
 		await createEpisodicMemoryReflectFn(fakeModel)({
