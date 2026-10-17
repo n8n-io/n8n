@@ -583,7 +583,10 @@ function toChanges(
 	};
 }
 
-/** `null` when the side has no file, or the file does not match the package format. */
+/**
+ * Reads one side of a resource. `null` when the side has no file, or when its file does not
+ * match the package format.
+ */
 function parseContent<Schema extends z.ZodTypeAny>(
 	schema: Schema,
 	content: string | null,
