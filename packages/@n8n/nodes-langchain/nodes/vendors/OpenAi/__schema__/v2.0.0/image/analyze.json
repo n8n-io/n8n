@@ -1,0 +1,60 @@
+{
+	"type": "array",
+	"description": "The item's `json` IS this array (the Responses API `output` list), not an object: emit one item shaped { \"json\": [ ...output items ] }. Reasoning models put a `reasoning` item before the `message` item",
+	"items": {
+		"oneOf": [
+			{
+				"type": "object",
+				"required": ["type", "content"],
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"type": {
+						"const": "message"
+					},
+					"status": {
+						"type": "string"
+					},
+					"role": {
+						"type": "string"
+					},
+					"content": {
+						"type": "array",
+						"items": {
+							"type": "object",
+							"properties": {
+								"type": {
+									"type": "string"
+								},
+								"text": {
+									"type": "string",
+									"description": "The model's answer as a plain STRING, even when the prompt asks for JSON (then it is often wrapped in a ```json code fence)"
+								},
+								"annotations": {
+									"type": "array"
+								}
+							}
+						}
+					}
+				}
+			},
+			{
+				"type": "object",
+				"required": ["type"],
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"type": {
+						"const": "reasoning"
+					},
+					"summary": {
+						"type": "array"
+					}
+				}
+			}
+		]
+	},
+	"version": 1
+}

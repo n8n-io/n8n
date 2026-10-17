@@ -1,0 +1,97 @@
+{
+	"type": "object",
+	"properties": {
+		"id": {
+			"type": "string"
+		},
+		"object": {
+			"type": "string"
+		},
+		"created_at": {
+			"type": "number"
+		},
+		"status": {
+			"type": "string",
+			"description": "`incomplete` when Max Tokens ran out (reasoning tokens count too)"
+		},
+		"incomplete_details": {
+			"type": ["object", "null"]
+		},
+		"model": {
+			"type": "string"
+		},
+		"output": {
+			"type": "array",
+			"items": {
+				"oneOf": [
+					{
+						"type": "object",
+						"required": ["type", "content"],
+						"properties": {
+							"id": {
+								"type": "string"
+							},
+							"type": {
+								"const": "message"
+							},
+							"status": {
+								"type": "string"
+							},
+							"role": {
+								"type": "string"
+							},
+							"content": {
+								"type": "array",
+								"items": {
+									"type": "object",
+									"properties": {
+										"type": {
+											"type": "string"
+										},
+										"text": {
+											"type": "string",
+											"description": "The model's answer as a plain STRING, even when the prompt asks for JSON"
+										},
+										"annotations": {
+											"type": "array"
+										}
+									}
+								}
+							}
+						}
+					},
+					{
+						"type": "object",
+						"required": ["type"],
+						"properties": {
+							"id": {
+								"type": "string"
+							},
+							"type": {
+								"const": "reasoning"
+							},
+							"summary": {
+								"type": "array"
+							}
+						}
+					}
+				]
+			}
+		},
+		"usage": {
+			"type": "object",
+			"properties": {
+				"input_tokens": {
+					"type": "number"
+				},
+				"output_tokens": {
+					"type": "number"
+				},
+				"total_tokens": {
+					"type": "number"
+				}
+			}
+		}
+	},
+	"version": 1
+}
