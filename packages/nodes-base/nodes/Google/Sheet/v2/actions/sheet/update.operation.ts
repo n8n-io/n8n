@@ -437,7 +437,7 @@ export async function execute(
 					}
 
 					// null and undefined values are mapped to undefined
-					if (mappingValues[key] === undefined) {
+					if (key === columnsToMatchOn[0] && mappingValues[key] === undefined) {
 						this.addExecutionHints({
 							message: 'Warning: The value of column to match is null or undefined',
 							location: 'outputPane',
