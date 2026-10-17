@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import { action } from 'storybook/actions';
-import { defineComponent, ref } from 'vue';
+import { defineComponent, ref, watch } from 'vue';
 
 import RadioGroup from './RadioGroup.vue';
 import RadioGroupItem from './RadioGroupItem.vue';
@@ -97,7 +97,6 @@ const RadioGroupDefaultDemo = defineComponent({
 					:data-test-id="'radio-' + option.value"
 				/>
 			</RadioGroup>
-			<p style="margin-top: 16px; font-size: 14px;">Selected: {{ value }}</p>
 		</div>
 	`,
 });
@@ -298,6 +297,113 @@ export const Default: Story = {
 		orientation: 'vertical',
 		disabled: false,
 	},
+};
+
+const playgroundItemCounts = [2, 3, 4, 5, 6] as const;
+type PlaygroundItemCount = (typeof playgroundItemCounts)[number];
+
+const playgroundOptionsByCount: Record<
+	PlaygroundItemCount,
+	Array<{ value: string; label: string }>
+> = {
+	2: [
+		{ value: '1', label: 'Item 1' },
+		{ value: '2', label: 'Item 2' },
+	],
+	3: [
+		{ value: '1', label: 'Item 1' },
+		{ value: '2', label: 'Item 2' },
+		{ value: '3', label: 'Item 3' },
+	],
+	4: [
+		{ value: '1', label: 'Item 1' },
+		{ value: '2', label: 'Item 2' },
+		{ value: '3', label: 'Item 3' },
+		{ value: '4', label: 'Item 4' },
+	],
+	5: [
+		{ value: '1', label: 'Item 1' },
+		{ value: '2', label: 'Item 2' },
+		{ value: '3', label: 'Item 3' },
+		{ value: '4', label: 'Item 4' },
+		{ value: '5', label: 'Item 5' },
+	],
+	6: [
+		{ value: '1', label: 'Item 1' },
+		{ value: '2', label: 'Item 2' },
+		{ value: '3', label: 'Item 3' },
+		{ value: '4', label: 'Item 4' },
+		{ value: '5', label: 'Item 5' },
+		{ value: '6', label: 'Item 6' },
+	],
+};
+
+type PlaygroundArgs = {
+	itemCount: PlaygroundItemCount;
+	orientation: 'vertical' | 'horizontal';
+	disabled: boolean;
+};
+
+export const Playground: StoryObj<PlaygroundArgs> = {
+	argTypes: {
+		itemCount: {
+			control: 'radio',
+			options: [...playgroundItemCounts],
+			description: 'Number of radio items. Map to the Figma "number of items" property.',
+		},
+		orientation: {
+			control: 'select',
+			options: ['vertical', 'horizontal'],
+		},
+		disabled: { control: 'boolean' },
+	},
+	args: {
+		itemCount: 3,
+		orientation: 'vertical',
+		disabled: false,
+	},
+	render: (args) => ({
+		components: { RadioGroup, RadioGroupItem },
+		setup() {
+			const value = ref('1');
+
+			watch(
+				() => args.itemCount,
+				(itemCount) => {
+					const next = playgroundOptionsByCount[itemCount];
+					if (!next.some((option) => option.value === value.value)) {
+						value.value = next[0]?.value ?? '1';
+					}
+				},
+			);
+
+			return {
+				args,
+				value,
+				playgroundOptionsByCount,
+				radioItemId,
+				onUpdate: action('update:modelValue'),
+			};
+		},
+		template: `
+			<RadioGroup
+				v-model="value"
+				:orientation="args.orientation"
+				:disabled="args.disabled"
+				name="radio-group-playground"
+				aria-label="Playground radio group"
+				@update:model-value="onUpdate"
+			>
+				<RadioGroupItem
+					v-for="option in playgroundOptionsByCount[args.itemCount]"
+					:key="option.value"
+					:id="radioItemId('radio-group-playground', option.value)"
+					:value="option.value"
+					:label="option.label"
+				/>
+			</RadioGroup>
+		`,
+	}),
 };
 
 export const ControlledUncontrolled: Story = {
