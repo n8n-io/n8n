@@ -1,4 +1,4 @@
-import { query } from '../../Queries';
+import { query } from '../../v1/Queries';
 
 // Reuse the node's own query strings so the nock matchers can't drift from the
 // real request bodies. Only `variables` are asserted explicitly per request.
