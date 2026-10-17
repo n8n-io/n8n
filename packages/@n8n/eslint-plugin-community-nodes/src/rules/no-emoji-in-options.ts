@@ -32,9 +32,7 @@ export const NoEmojiInOptionsRule = createRule({
 	},
 	defaultOptions: [],
 	create(context) {
-		if (!isFileType(context.filename, '.node.ts')) {
-			return {};
-		}
+		const isNodeFile = isFileType(context.filename, '.node.ts');
 
 		const checkLabelValue = (key: string, valueNode: TSESTree.Node): void => {
 			const value = getStringLiteralValue(valueNode);
@@ -89,7 +87,7 @@ export const NoEmojiInOptionsRule = createRule({
 
 		return {
 			ClassDeclaration(node) {
-				if (!isNodeTypeClass(node)) {
+				if (!isNodeFile || !isNodeTypeClass(node)) {
 					return;
 				}
 
@@ -99,6 +97,22 @@ export const NoEmojiInOptionsRule = createRule({
 				}
 
 				traverse(description);
+			},
+			VariableDeclarator(node) {
+				if (node.id.type !== AST_NODE_TYPES.Identifier || !node.init) {
+					return;
+				}
+
+				const typeAnnotation = node.id.typeAnnotation?.typeAnnotation;
+				if (
+					typeAnnotation?.type !== AST_NODE_TYPES.TSTypeReference ||
+					typeAnnotation.typeName.type !== AST_NODE_TYPES.Identifier ||
+					typeAnnotation.typeName.name !== 'INodeProperties'
+				) {
+					return;
+				}
+
+				traverse(node.init);
 			},
 		};
 	},
