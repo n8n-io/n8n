@@ -25,6 +25,11 @@ export class AgentChatAttachmentRepository extends Repository<AgentChatAttachmen
 		return await this.findOneBy({ id, agentId: scope.agentId, projectId: scope.projectId });
 	}
 
+	/** An attachment of a system agent. The caller checks access to its thread. */
+	async findByIdForSystemAgent(id: string, agentId: string): Promise<AgentChatAttachment | null> {
+		return await this.findOneBy({ id, agentId });
+	}
+
 	/**
 	 * Thread lookup scoped to a project or agent — the scope carries the
 	 * caller's authorization and lets the matching composite index
