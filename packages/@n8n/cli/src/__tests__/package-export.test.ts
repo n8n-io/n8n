@@ -1,4 +1,4 @@
-import type { Config } from '@oclif/core';
+import { Config } from '@oclif/core';
 import * as fs from 'node:fs';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 
@@ -10,6 +10,7 @@ vi.mock('node:fs');
 const mockedWriteFileSync = vi.mocked(fs.writeFileSync);
 
 interface ExportFlags {
+	agentId?: string[];
 	workflowId?: string[];
 	folderId?: string[];
 	projectId?: string[];
@@ -61,6 +62,56 @@ function stubCommand(
 describe('package export command', () => {
 	afterEach(() => {
 		vi.restoreAllMocks();
+	});
+
+	it.each([false, true])('parses repeated Agent selection with mixed=%s', async (mixed) => {
+		const argv = ['--agent-id=agent-1', '--agent-id=agent-2', '--output=/tmp/agents.n8np'];
+		if (mixed)
+			argv.push(
+				'--workflow-id=workflow',
+				'--folder-id=folder',
+				'--dependency-policy=include-in-package',
+				'--version-policy=published-strict',
+			);
+		const command = new PackageExport(argv, await Config.load(process.cwd()));
+		const internals = command as unknown as ExportInternals;
+		const counts = { ...DEFAULT_COUNTS, agents: 3, workflows: 1 };
+		const exportPackage = vi.fn().mockResolvedValue({ archive: Buffer.from('package'), counts });
+		vi.spyOn(internals, 'getClient').mockReturnValue({ exportPackage } as unknown as N8nClient);
+		vi.spyOn(internals, 'succeed').mockImplementation(() => {});
+		await command.run();
+		expect(exportPackage).toHaveBeenCalledWith(
+			expect.objectContaining({
+				agentIds: ['agent-1', 'agent-2'],
+				workflowIds: mixed ? ['workflow'] : [],
+				folderIds: mixed ? ['folder'] : [],
+				versionPolicy: mixed ? 'published-strict' : 'latest',
+				dependencyPolicy: mixed ? 'include-in-package' : 'fail',
+			}),
+		);
+		expect(internals.succeed).toHaveBeenCalledWith(
+			'Exported 3 agent(s), 1 workflow(s) to /tmp/agents.n8np',
+			expect.anything(),
+			expect.objectContaining({ agentIds: ['agent-1', 'agent-2'], counts }),
+		);
+		expect(mockedWriteFileSync).toHaveBeenCalledWith('/tmp/agents.n8np', Buffer.from('package'));
+	});
+
+	it.each([
+		{ counts: undefined, summary: '1 agent(s), 0 workflow(s) and 0 folder(s)' },
+		{ counts: DEFAULT_COUNTS, summary: '1 agent(s)' },
+		{ counts: { ...DEFAULT_COUNTS, agents: 0 }, summary: 'nothing' },
+	])('reports Agent exports with counts=$counts', async ({ counts, summary }) => {
+		const { command, internals } = stubCommand(
+			{ agentId: ['agent'], output: '/tmp/agent.n8np' },
+			vi.fn().mockResolvedValue({ archive: Buffer.from('package'), counts }),
+		);
+		await command.run();
+		expect(internals.succeed).toHaveBeenCalledWith(
+			`Exported ${summary} to /tmp/agent.n8np`,
+			expect.anything(),
+			expect.objectContaining({ agentIds: ['agent'] }),
+		);
 	});
 
 	it('forwards workflow ids (and an empty folder list) and writes the archive', async () => {
@@ -377,31 +428,18 @@ describe('package export command', () => {
 		});
 	});
 
-	it('rejects providing both workflow and project IDs', async () => {
-		const { command, exportPackage } = stubCommand({
-			workflowId: ['wf-1'],
-			projectId: ['proj-1'],
-			output: '/tmp/export.n8np',
-		});
-
-		await expect(command.run()).rejects.toThrow(
-			'Provide either --workflow-id/--folder-id or --project-id, not both',
-		);
-		expect(exportPackage).not.toHaveBeenCalled();
-	});
-
-	it('rejects providing both folder and project IDs', async () => {
-		const { command, exportPackage } = stubCommand({
-			folderId: ['fld-1'],
-			projectId: ['proj-1'],
-			output: '/tmp/export.n8np',
-		});
-
-		await expect(command.run()).rejects.toThrow(
-			'Provide either --workflow-id/--folder-id or --project-id, not both',
-		);
-		expect(exportPackage).not.toHaveBeenCalled();
-	});
+	it.each(['agent-id', 'workflow-id', 'folder-id'])(
+		'rejects --%s with a project selection',
+		async (flag) => {
+			const command = new PackageExport(
+				[`--${flag}=entity`, '--project-id=project'],
+				await Config.load(process.cwd()),
+			);
+			await expect(command.run()).rejects.toThrow(
+				'Provide either --agent-id/--workflow-id/--folder-id or --project-id, not both',
+			);
+		},
+	);
 
 	it('errors when neither a workflow, folder, nor project is given', async () => {
 		const { command, exportPackage } = stubCommand({ output: '/tmp/empty.n8np' });

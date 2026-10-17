@@ -15,8 +15,8 @@ interface ImportSelectionFlags {
 	selectedProjectId: string;
 	selectedWorkflowIds?: string[];
 	deletedWorkflowIds?: string[];
-	workflowConflictPolicy?: string;
-	workflowIdPolicy?: string;
+	conflictPolicy?: string;
+	idPolicy?: string;
 	overwriteDeletionPolicy?: string;
 }
 
@@ -53,8 +53,8 @@ describe('package import-selection command', () => {
 			selectedProjectId: 'sp-1',
 			selectedWorkflowIds: ['w-1', 'w-2'],
 			deletedWorkflowIds: ['w-3'],
-			workflowConflictPolicy: 'skip',
-			workflowIdPolicy: 'new',
+			conflictPolicy: 'skip',
+			idPolicy: 'new',
 			overwriteDeletionPolicy: 'hard-delete',
 		});
 
@@ -70,7 +70,7 @@ describe('package import-selection command', () => {
 			selectedWorkflowIds: ['w-1', 'w-2'],
 			deletedWorkflowIds: ['w-3'],
 			conflictPolicy: 'skip',
-			workflowIdPolicy: 'new',
+			idPolicy: 'new',
 			overwriteDeletionPolicy: 'hard-delete',
 		});
 	});
@@ -79,7 +79,7 @@ describe('package import-selection command', () => {
 		const { command, importPackageSelection } = stubCommand({
 			file: '/tmp/export.n8np',
 			selectedProjectId: 'sp-1',
-			workflowConflictPolicy: 'new-version',
+			conflictPolicy: 'new-version',
 		});
 
 		await command.run();
@@ -89,19 +89,19 @@ describe('package import-selection command', () => {
 			selectedWorkflowIds: [],
 			deletedWorkflowIds: undefined,
 			conflictPolicy: 'new-version',
-			workflowIdPolicy: undefined,
+			idPolicy: undefined,
 			overwriteDeletionPolicy: undefined,
 		});
 	});
 
 	it('defines the enum flags with kebab aliases and the full server option lists', () => {
-		const conflictPolicy = PackageImportSelection.flags.workflowConflictPolicy;
-		expect(conflictPolicy.aliases).toEqual(['workflow-conflict-policy']);
+		const conflictPolicy = PackageImportSelection.flags.conflictPolicy;
+		expect(conflictPolicy.aliases).toEqual(['conflict-policy']);
 		expect(conflictPolicy.options).toEqual(['new-version', 'fail', 'skip']);
 		expect(conflictPolicy.default).toBe('new-version');
 
-		const idPolicy = PackageImportSelection.flags.workflowIdPolicy;
-		expect(idPolicy.aliases).toEqual(['workflow-id-policy']);
+		const idPolicy = PackageImportSelection.flags.idPolicy;
+		expect(idPolicy.aliases).toEqual(['id-policy']);
 		expect(idPolicy.options).toEqual(['new', 'source']);
 		expect(idPolicy.default).toBeUndefined();
 
@@ -153,11 +153,17 @@ describe('package import-selection command', () => {
 				'--selected-project-id=sp-1',
 				'--selected-workflow-ids=w-1',
 				'--selected-workflow-ids=w-2',
+				'--conflict-policy=skip',
+				'--id-policy=new',
 			]);
 
 			expect(importPackageSelection).toHaveBeenCalledWith(
 				expect.anything(),
-				expect.objectContaining({ selectedWorkflowIds: ['w-1', 'w-2'] }),
+				expect.objectContaining({
+					selectedWorkflowIds: ['w-1', 'w-2'],
+					conflictPolicy: 'skip',
+					idPolicy: 'new',
+				}),
 			);
 		});
 
@@ -175,6 +181,24 @@ describe('package import-selection command', () => {
 					conflictPolicy: 'new-version',
 				}),
 			);
+		});
+
+		it.each([
+			'workflow-conflict-policy',
+			'workflowConflictPolicy',
+			'workflow-id-policy',
+			'workflowIdPolicy',
+			'agent-id-policy',
+			'agentIdPolicy',
+			'workflow-publishing-policy',
+			'workflowPublishingPolicy',
+			'agent-publishing-policy',
+			'agentPublishingPolicy',
+			'publishing-policy',
+		])('rejects the unsupported --%s flag', async (flag) => {
+			await expect(
+				runWithArgv(['--file=/tmp/export.n8np', '--selected-project-id=sp-1', `--${flag}=source`]),
+			).rejects.toThrow(/Nonexistent flag/i);
 		});
 
 		it('requires the --file flag', async () => {

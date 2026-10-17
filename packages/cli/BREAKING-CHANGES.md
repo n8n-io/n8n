@@ -18,7 +18,16 @@ Update API clients to send this field to `/api/v1/n8n-packages/import` and `/api
 Both endpoints reject the old `workflowConflictPolicy` field.
 The ordinary import endpoint requires `conflictPolicy`.
 The selection endpoint defaults it to `new-version`.
-The current CLI sends the new field and keeps its existing flags.
+The ordinary import API also uses `idPolicy` and `publishingPolicy` for both Agents and workflows.
+These fields replace `workflowIdPolicy`, `agentIdPolicy`, `workflowPublishingPolicy`, and `agentPublishingPolicy`.
+The old fields are rejected.
+The selection import API replaces `workflowIdPolicy` with `idPolicy`.
+Selection imports retain their fixed `match-source` publication policy.
+
+Use `--conflict-policy`, `--id-policy`, and `--publishing-policy` in the CLI.
+The CLI rejects the old workflow-specific flag names, including their camelCase spellings.
+Selection imports accept `--conflict-policy` and `--id-policy`.
+There are no compatibility aliases or per-kind policy overrides.
 
 # 2.0.0
 

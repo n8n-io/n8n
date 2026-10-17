@@ -24,7 +24,7 @@ properties:
           description: Agent ID in the package.
         localId:
           type: string
-          description: Agent ID on the target instance. New Agents use a fresh ID under `agentIdPolicy=new`. Under `source`, they use the package ID. Updated and skipped Agents keep their destination ID.
+          description: Agent ID on the target instance. New Agents use a fresh ID under `idPolicy=new`. Under `source`, they use the package ID. Updated and skipped Agents keep their destination ID.
         name:
           type: string
         projectId:
@@ -110,7 +110,7 @@ properties:
           description: Workflow id as it appeared in the package.
         localId:
           type: string
-          description: "Workflow id on the target instance: newly assigned for `created` (fresh under `workflowIdPolicy=new`, the package id under `source`), the existing workflow's id for `updated`/`skipped`."
+          description: "Workflow id on the target instance: newly assigned for `created` (fresh under `idPolicy=new`, the package id under `source`), the existing workflow's id for `updated`/`skipped`."
         name:
           type: string
         projectId:

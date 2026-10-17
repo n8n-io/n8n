@@ -230,8 +230,8 @@ describe('contentImport on a git pull', () => {
 	const pullPolicy: Omit<ImportRequest, 'user'> = {
 		projectConflictPolicy: 'overwrite',
 		conflictPolicy: 'new-version',
-		workflowIdPolicy: 'source',
-		workflowPublishingPolicy: 'match-source',
+		idPolicy: 'source',
+		publishingPolicy: 'match-source',
 		missingNodeTypeMode: 'fail',
 		credentialMatchingMode: 'id-only',
 		credentialMissingMode: 'create-stub',
