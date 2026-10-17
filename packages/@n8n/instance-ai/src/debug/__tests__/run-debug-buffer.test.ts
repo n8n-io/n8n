@@ -8,6 +8,7 @@ import {
 	RunDebugBuffer,
 	buildRunDebugLabel,
 	createRunDebugStepHooks,
+	createRunDebugSubAgentStepHooks,
 	sanitizeStepFinish,
 	sanitizeStepStart,
 } from '../run-debug-buffer';
@@ -69,6 +70,50 @@ describe('RunDebugBuffer', () => {
 		expect(record?.steps).toHaveLength(3);
 		expect(record?.steps.map((step) => step.stepNumber)).toEqual([0, 1, 2]);
 		expect(record?.steps.map((step) => step.output?.text)).toEqual(['first', 'second', 'third']);
+	});
+
+	it('records sub-agent steps separately from orchestrator steps', () => {
+		const buffer = new RunDebugBuffer();
+		buffer.ensure('run-1', 'thread-1');
+		const orchestrator = createRunDebugStepHooks(buffer, { runId: 'run-1', threadId: 'thread-1' });
+		orchestrator.onStepStart(makeStepStartEvent());
+		orchestrator.onStepEnd(makeStepEndEvent('spawn builder'));
+
+		const subAgent = createRunDebugSubAgentStepHooks(buffer, 'run-1', {
+			role: 'agent-builder',
+			label: 'Support Triage',
+			parentToolCallId: 'tc-1',
+		});
+		expect(subAgent).toBeDefined();
+		for (const label of ['builder first', 'builder second']) {
+			subAgent?.onStepStart(makeStepStartEvent());
+			subAgent?.onStepEnd(makeStepEndEvent(label));
+		}
+
+		orchestrator.onStepStart(makeStepStartEvent());
+		orchestrator.onStepEnd(makeStepEndEvent('after builder'));
+
+		const record = buffer.get('run-1');
+		expect(record?.steps.map((step) => step.stepNumber)).toEqual([0, 1]);
+		expect(record?.subAgents).toHaveLength(1);
+		expect(record?.subAgents[0]).toMatchObject({
+			role: 'agent-builder',
+			label: 'Support Triage',
+			parentToolCallId: 'tc-1',
+			afterStepNumber: 0,
+		});
+		expect(record?.subAgents[0]?.steps.map((step) => step.stepNumber)).toEqual([0, 1]);
+		expect(record?.subAgents[0]?.steps.map((step) => step.output?.text)).toEqual([
+			'builder first',
+			'builder second',
+		]);
+	});
+
+	it('returns no sub-agent hooks for an unknown run', () => {
+		const buffer = new RunDebugBuffer();
+		expect(
+			createRunDebugSubAgentStepHooks(buffer, 'missing', { role: 'agent-builder' }),
+		).toBeUndefined();
 	});
 
 	it('continues step numbering after resume hooks are recreated', () => {

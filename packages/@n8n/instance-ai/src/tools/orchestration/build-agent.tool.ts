@@ -67,6 +67,7 @@ import {
 } from '../../tracing/agent-snapshot-event';
 import { modelIdTraceMetadata } from '../../tracing/langsmith-tracing';
 import type {
+	BuilderDelegateSession,
 	BuilderTurnStream,
 	InstanceAiBuilderDelegate,
 	InstanceAiContext,
@@ -190,6 +191,21 @@ function builderSessionFor(context: OrchestrationContext, agentId: string) {
 
 function builderAgentIdFor(agentId: string): string {
 	return `${BUILDER_SUB_AGENT_ROLE}:${agentId}`;
+}
+
+/** Adds run debug step hooks to one builder turn. Called per turn, so each turn gets its own step list. */
+function withRunDebugStepHooks(
+	context: OrchestrationContext,
+	session: BuilderDelegateSession,
+	target: AgentBuilderTarget,
+	parentToolCallId: string | undefined,
+): BuilderDelegateSession {
+	const stepHooks = context.createSubAgentStepHooks?.({
+		role: BUILDER_SUB_AGENT_ROLE,
+		label: target.name ?? target.agentId,
+		...(parentToolCallId ? { parentToolCallId } : {}),
+	});
+	return stepHooks ? { ...session, stepHooks } : session;
 }
 
 const buildAgentInputSchema = z.object({
@@ -794,7 +810,7 @@ async function handleResume(
 		turn = await delegate.resumeBuild(
 			target.agentId,
 			{ runId: ref.runId, toolCallId: ref.toolCallId, resumeData: ctx.resumeData },
-			session,
+			withRunDebugStepHooks(context, session, target, ctx.toolCallId),
 		);
 	} catch (error) {
 		// Only genuinely call-time-reachable errors land here (e.g. the scope
@@ -1148,7 +1164,11 @@ export function createBuildAgentTool(context: OrchestrationContext) {
 
 			let turn: BuilderTurnStream;
 			try {
-				turn = await delegate.streamBuild(boundTarget.agentId, outboundMessage, session);
+				turn = await delegate.streamBuild(
+					boundTarget.agentId,
+					outboundMessage,
+					withRunDebugStepHooks(context, session, boundTarget, ctx.toolCallId),
+				);
 			} catch (error) {
 				// Only genuinely call-time-reachable errors land here (e.g. the scope
 				// check in the delegate adapter) — see the comment in
