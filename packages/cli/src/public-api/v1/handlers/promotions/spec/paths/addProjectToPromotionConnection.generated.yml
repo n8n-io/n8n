@@ -5,6 +5,7 @@ summary: Link a project to a promotion connection
 description: Links a team project to a project-scoped connection. A project can be linked to only one connection.
 x-required-scope: gitConnection:manageProjects
 parameters:
+  - $ref: ../../../../shared/spec/parameters/idempotencyKey.yml
   - schema:
       type: string
     required: true
@@ -46,5 +47,7 @@ responses:
     $ref: ../../../../shared/spec/responses/notFound.yml
   '409':
     $ref: ../../../../shared/spec/responses/conflict.yml
+  '422':
+    $ref: ../../../../shared/spec/responses/unprocessableEntity.yml
   '503':
     $ref: ../../../../shared/spec/responses/serviceUnavailable.yml

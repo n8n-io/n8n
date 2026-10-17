@@ -23,9 +23,9 @@ const startSpanMock = vi.fn().mockReturnValue({
 
 function buildConfig(overrides: Partial<ExpressionEngineConfig> = {}): ExpressionEngineConfig {
 	const config = new ExpressionEngineConfig();
-	// The provider is a no-op unless engine === 'vm'. Default tests to the active
-	// engine so shared assertions exercise the real code path.
-	return Object.assign(config, { engine: 'vm' as const, ...overrides });
+	// The provider is a no-op unless engine is 'vm', and spans are off by default.
+	// Turn both on so shared assertions exercise the real code path.
+	return Object.assign(config, { engine: 'vm' as const, tracesEnabled: true, ...overrides });
 }
 
 function buildLogger(): Logger {

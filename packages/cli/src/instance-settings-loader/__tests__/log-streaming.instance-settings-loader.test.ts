@@ -163,6 +163,17 @@ describe('LogStreamingInstanceSettingsLoader', () => {
 			await expect(loader.run()).resolves.toBe('created');
 		});
 
+		it('hosts that passed the earlier, looser checks', async () => {
+			const loader = createLoader({
+				logStreamingDestinations: JSON.stringify([
+					{ type: 'syslog', label: 'S', host: '127.1' },
+					{ type: 'webhook', label: 'W', url: 'ftp://example.com/n8n-events' },
+				]),
+			});
+
+			await expect(loader.run()).resolves.toBe('created');
+		});
+
 		it('syslog with protocol tls and no tlsCa', async () => {
 			const loader = createLoader({
 				logStreamingDestinations: JSON.stringify([

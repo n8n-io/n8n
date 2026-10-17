@@ -14,6 +14,7 @@ import type { Skill } from '../entities/skill.entity';
 import type { ResolvedSkillRow, SkillRepository } from '../repositories/skill.repository';
 import { SkillsApiService } from '../skills/skills-api.service';
 import type { SkillService } from '../skills/skill.service';
+import type { SkillsTelemetry } from '../skills/skills-telemetry';
 import { getAgentSkillHash } from '../utils/agent-config-hash';
 
 vi.mock('@/permissions.ee/check-access', () => ({ userHasScopes: vi.fn() }));
@@ -77,12 +78,14 @@ describe('SkillsApiService', () => {
 	const projectScopeService = mock<ProjectScopeService>();
 	const txRunner = mock<TransactionRunner>();
 	const userRepository = mock<UserRepository>();
+	const skillsTelemetry = mock<SkillsTelemetry>();
 	const service = new SkillsApiService(
 		skillService,
 		repository,
 		projectScopeService,
 		txRunner,
 		userRepository,
+		skillsTelemetry,
 	);
 	const TX_CTX = { trx: {} } as OperationContext;
 	let visible: Skill[];
@@ -376,6 +379,38 @@ describe('SkillsApiService', () => {
 			expect(detail).toMatchObject({ id: 'skill_new', name: 'Skill', canEdit: false });
 		});
 
+		it('reports the create with the method the client sent', async () => {
+			vi.mocked(hasGlobalScope).mockReturnValue(true);
+
+			await service.create(user, payload({ method: 'upload' }));
+
+			expect(skillsTelemetry.created).toHaveBeenCalledWith(
+				user.id,
+				[{ id: 'skill_new', projectId: null, agentId: null }],
+				'ui',
+				'upload',
+			);
+		});
+
+		it('reports a create without a method as manual', async () => {
+			vi.mocked(hasGlobalScope).mockReturnValue(true);
+
+			await service.create(user, payload({}));
+
+			expect(skillsTelemetry.created).toHaveBeenCalledWith(
+				user.id,
+				[{ id: 'skill_new', projectId: null, agentId: null }],
+				'ui',
+				'manual',
+			);
+		});
+
+		it('reports nothing for a refused create', async () => {
+			await expect(service.create(user, payload({}))).rejects.toThrow(ForbiddenError);
+
+			expect(skillsTelemetry.created).not.toHaveBeenCalled();
+		});
+
 		it('creates an agent skill with projectSkill:create on the project of the agent', async () => {
 			vi.mocked(userHasScopes).mockResolvedValue(true);
 
@@ -482,6 +517,7 @@ describe('SkillsApiService', () => {
 				user.id,
 			);
 			expect(skillService.canAccess).toHaveBeenCalledWith(user, visible[0], 'update');
+			expect(skillsTelemetry.updated).toHaveBeenCalledWith(user.id, visible[0], 'ui', 3, false);
 			const { followingAgentIds: _following, ...response } = saved;
 			expect(result).toEqual({
 				id: 'skill_a',
@@ -513,6 +549,7 @@ describe('SkillsApiService', () => {
 				new Map([['project-1', { name: 'Team', type: 'team' as const }]]),
 			);
 			skillService.save.mockResolvedValue(saved);
+			skillService.assertCanMove.mockResolvedValue({ projectId: null, agentId: null });
 
 			await service.update(
 				user,
@@ -525,7 +562,8 @@ describe('SkillsApiService', () => {
 				{ projectId: 'project-1', agentId: null },
 				undefined,
 				TX_CTX,
-				undefined,
+				// The move is refused under its lock if the skill left the scope checked here.
+				{ nameAfterMove: undefined, checkedSource: { projectId: null, agentId: null } },
 			);
 			expect(skillService.save).toHaveBeenCalledWith(
 				'skill_a',
@@ -534,10 +572,26 @@ describe('SkillsApiService', () => {
 				TX_CTX,
 			);
 			expect(skillService.refreshFollowingAgents).toHaveBeenCalledWith(['agent-1']);
+			// The place the move wrote, not a read after the commit.
+			expect(skillsTelemetry.updated).toHaveBeenCalledWith(
+				user.id,
+				{ id: 'skill_a', projectId: 'project-1', agentId: null },
+				'ui',
+				3,
+				true,
+			);
 			// The move runs first, so the save checks a rename in the new scope.
 			expect(skillService.changeTarget.mock.invocationCallOrder[0]).toBeLessThan(
 				skillService.save.mock.invocationCallOrder[0],
 			);
+		});
+
+		it('reports nothing for a save that stored no new version', async () => {
+			skillService.save.mockResolvedValue({ ...saved, created: false, followingAgentIds: [] });
+
+			await service.update(user, 'skill_a', update({ instructions: 'Do it.', baseSkillHash: 'b' }));
+
+			expect(skillsTelemetry.updated).not.toHaveBeenCalled();
 		});
 
 		it('does not move a skill that is already in the requested scope', async () => {
@@ -571,6 +625,7 @@ describe('SkillsApiService', () => {
 
 			expect(skillService.canAccess).toHaveBeenCalledWith(user, visible[0], 'delete');
 			expect(skillService.deleteSkill).toHaveBeenCalledWith('skill_a', ['project-1']);
+			expect(skillsTelemetry.deleted).toHaveBeenCalledWith(user.id, visible[0]);
 		});
 
 		it('names the agents of the projects the user may read in a conflict', async () => {
@@ -592,6 +647,7 @@ describe('SkillsApiService', () => {
 
 			await expect(service.delete(user, 'skill_a')).rejects.toThrow(ForbiddenError);
 			expect(skillService.deleteSkill).not.toHaveBeenCalled();
+			expect(skillsTelemetry.deleted).not.toHaveBeenCalled();
 		});
 	});
 });

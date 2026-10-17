@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import {
 	N8nButton,
+	N8nExternalLink,
 	N8nIcon,
 	N8nLink,
 	N8nSettingsLayout,
@@ -294,19 +295,13 @@ const sortedInstanceResults = computed(() => {
 							</div>
 							<N8nText tag="p" color="text-base">
 								{{ issue.ruleDescription }}{{ issue.ruleDescription.endsWith('.') ? '' : '.' }}
-								<N8nLink
+								<N8nExternalLink
 									v-if="issue.ruleDocumentationUrl"
-									theme="text"
+									inline
+									size="small"
 									:href="issue.ruleDocumentationUrl"
-									target="_blank"
-									rel="noopener noreferrer"
-									:class="$style.NoLineBreak"
+									>{{ i18n.baseText('settings.migrationReport.documentation') }}</N8nExternalLink
 								>
-									<span :class="$style.UnderlinedText">{{
-										i18n.baseText('settings.migrationReport.documentation')
-									}}</span>
-									↗
-								</N8nLink>
 							</N8nText>
 							<div :class="$style.FindingCounts" data-test-id="migration-rule-finding-counts">
 								<N8nText
@@ -382,19 +377,13 @@ const sortedInstanceResults = computed(() => {
 							</div>
 							<N8nText tag="p" color="text-base">
 								{{ issue.ruleDescription }}{{ issue.ruleDescription.endsWith('.') ? '' : '.' }}
-								<N8nLink
+								<N8nExternalLink
 									v-if="issue.ruleDocumentationUrl"
-									theme="text"
+									inline
+									size="small"
 									:href="issue.ruleDocumentationUrl"
-									target="_blank"
-									rel="noopener noreferrer"
-									:class="$style.NoLineBreak"
+									>{{ i18n.baseText('settings.migrationReport.documentation') }}</N8nExternalLink
 								>
-									<span :class="$style.UnderlinedText">{{
-										i18n.baseText('settings.migrationReport.documentation')
-									}}</span>
-									↗
-								</N8nLink>
 							</N8nText>
 						</template>
 					</N8nSettingsRow>
@@ -457,10 +446,6 @@ const sortedInstanceResults = computed(() => {
 	:global(.el-skeleton__p) {
 		margin-top: 0;
 	}
-}
-
-.UnderlinedText {
-	text-decoration: underline;
 }
 
 .TitleLink {

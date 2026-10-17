@@ -3,6 +3,7 @@ import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import { createTestingPinia } from '@pinia/testing';
 import { SKILL_NAME_TAKEN_MESSAGE, type SkillDetail, type SkillListItem } from '@n8n/api-types';
 import { ResponseError } from '@n8n/rest-api-client';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { IUser } from '@n8n/rest-api-client/api/users';
 import { useUsersStore } from '@n8n/stores/users.store';
 import userEvent from '@testing-library/user-event';
@@ -22,6 +23,11 @@ const routeQuery: Record<string, string> = {};
 const confirmMock = vi.fn().mockResolvedValue('confirm');
 const showMessageMock = vi.fn();
 const showErrorMock = vi.fn();
+const trackMock = vi.fn();
+
+vi.mock('@n8n/composables/useTelemetry', () => ({
+	useTelemetry: () => ({ track: trackMock }),
+}));
 
 vi.mock('@/app/composables/useMessage', () => ({
 	useMessage: () => ({ confirm: confirmMock, alert: vi.fn(), prompt: vi.fn() }),
@@ -123,6 +129,7 @@ describe('SettingsSkillsView', () => {
 		confirmMock.mockResolvedValue('confirm');
 		showMessageMock.mockClear();
 		showErrorMock.mockClear();
+		trackMock.mockClear();
 	});
 
 	it('loads the first page on mount', async () => {
@@ -136,6 +143,30 @@ describe('SettingsSkillsView', () => {
 		const { findByTestId } = renderView();
 
 		expect(await findByTestId('skills-empty-state')).toHaveTextContent('No skills yet');
+	});
+
+	it('reports the visit once, with the total count', async () => {
+		skillsStore.fetchSkills.mockImplementation(async () => {
+			skillsStore.count = 72;
+			return { count: 72, data: [] };
+		});
+
+		renderView();
+		await new Promise(process.nextTick);
+
+		expect(trackMock).toHaveBeenCalledTimes(1);
+		expect(trackMock).toHaveBeenCalledWith(TELEMETRY_EVENT.CONTEXT.USER_VIEWED_SKILLS, {
+			count: 72,
+		});
+	});
+
+	it('reports no visit when the load fails', async () => {
+		skillsStore.fetchSkills.mockRejectedValueOnce(new Error('offline'));
+
+		renderView();
+		await new Promise(process.nextTick);
+
+		expect(trackMock).not.toHaveBeenCalled();
 	});
 
 	it('does not show the empty state when the load fails', async () => {
@@ -249,13 +280,18 @@ describe('SettingsSkillsView', () => {
 				description: 'Write copy.',
 				instructions: 'Be brief.',
 			};
-			lastModalData().onConfirm({ skill: content, scope: 'project:personal-1' });
+			lastModalData().onConfirm({
+				skill: content,
+				scope: 'project:personal-1',
+				method: 'upload',
+			});
 			await new Promise(process.nextTick);
 
 			expect(skillsStore.createSkill).toHaveBeenCalledWith({
 				scope: 'project',
 				projectId: 'personal-1',
 				skill: content,
+				method: 'upload',
 			});
 			// The new row is the feedback, as on the preferences page.
 			expect(showMessageMock).not.toHaveBeenCalled();
@@ -309,6 +345,11 @@ describe('SettingsSkillsView', () => {
 			await new Promise(process.nextTick);
 
 			expect(lastModalData().readOnly).toBe(true);
+			expect(trackMock).toHaveBeenCalledWith(TELEMETRY_EVENT.CONTEXT.USER_OPENED_SKILL, {
+				skill_id: 's1',
+				scope: 'instance',
+				read_only: true,
+			});
 		});
 
 		it('locks the scope while agents use the skill', async () => {
@@ -332,6 +373,22 @@ describe('SettingsSkillsView', () => {
 			expect(lastModalData().initialScope).toBe('agent');
 			expect(lastModalData().scopeLockedReason).toBe(
 				'Used by 1 agent. Remove the skill from it to change where it is available.',
+			);
+		});
+
+		it('locks the scope when the user may edit but not delete the skill', async () => {
+			skillsStore.skills = [skill()];
+			skillsStore.count = 1;
+			skillsStore.fetchSkill.mockResolvedValue(detail({ canEdit: true, canDelete: false }));
+			const { getByText } = renderView();
+			await new Promise(process.nextTick);
+
+			await userEvent.click(getByText('research-search'));
+			await new Promise(process.nextTick);
+
+			expect(lastModalData().readOnly).toBe(false);
+			expect(lastModalData().scopeLockedReason).toBe(
+				'You need permission to delete this skill to move it, because moving removes it from where it is now.',
 			);
 		});
 

@@ -132,6 +132,18 @@ describe('components', () => {
 				});
 				const link = wrapper.getByRole('link');
 				expect(link).toHaveClass('link');
+				expect(link).not.toHaveClass('inline');
+			});
+
+			it('should apply the inline treatment when inline is set', () => {
+				const wrapper = render(N8nExternalLink, {
+					props: { href: 'https://n8n.io', inline: true },
+					slots: { default: 'documentation' },
+					global: { stubs },
+				});
+				const link = wrapper.getByRole('link');
+				expect(link).toHaveClass('link');
+				expect(link).toHaveClass('inline');
 			});
 		});
 	});

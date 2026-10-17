@@ -8,8 +8,9 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { AGENT_TOOLS_MODAL_KEY, AGENT_SKILL_MODAL_KEY } from '../constants';
 import { useAgentCapabilitiesActions } from '../composables/useAgentCapabilitiesActions';
-import { createAgentSkill, getHubSkill } from '../composables/useAgentApi';
-import type { SkillDetail, SkillListItem } from '@n8n/api-types';
+import { createAgentSkill, getHubSkill, getNewSkillName } from '../composables/useAgentApi';
+import { SKILL_NAME_TAKEN_MESSAGE, type SkillDetail, type SkillListItem } from '@n8n/api-types';
+import { ResponseError } from '@n8n/rest-api-client';
 import type {
 	AgentJsonConfig,
 	AgentJsonMcpServerConfig,
@@ -37,6 +38,7 @@ vi.mock('@n8n/composables/useToast', () => ({
 vi.mock('../composables/useAgentApi', () => ({
 	createAgentSkill: vi.fn(),
 	getHubSkill: vi.fn(),
+	getNewSkillName: vi.fn(),
 }));
 
 const { hasScopeSpy } = vi.hoisted(() => ({
@@ -177,11 +179,13 @@ type SkillModalData = {
 	onUseLatestVersion?: (skillId: string) => void;
 	getAttachedSkills?: () => Array<{ id: string; name: string }>;
 	canCreateInstanceSkills?: boolean;
+	getDefaultName?: (availableTo: string) => Promise<string>;
 	onConfirm: (payload: {
 		id?: string;
 		skill: AgentSkill;
 		availableTo?: 'project' | 'agent' | 'instance';
-	}) => void;
+		method?: 'manual' | 'upload';
+	}) => unknown;
 	onAttach?: (skill: SkillListItem) => Promise<void>;
 	onRemove?: (skillId: string) => void;
 };
@@ -243,6 +247,12 @@ describe('useAgentCapabilitiesActions — localSkills host seam', () => {
 		let releasePersist: () => void = () => {};
 		const persisted = new Promise<void>((resolve) => {
 			releasePersist = resolve;
+		});
+		vi.mocked(createAgentSkill).mockResolvedValue({
+			id: 'skill_new',
+			skill: { ...triage, name: 'New Skill' },
+			skillHash: 'hash-new',
+			versionId: 'v2',
 		});
 		const { uiStore, actions } = setup({ ensureAgentPersisted: async () => await persisted });
 
@@ -730,6 +740,50 @@ describe('useAgentCapabilitiesActions — skills hub', () => {
 		expect(hasScopeSpy).toHaveBeenCalledWith('skill:create');
 	});
 
+	it.each([
+		['project', { scope: 'project', projectId: 'project-1' }],
+		['agent', { scope: 'agent', agentId: 'agent-1' }],
+		['instance', { scope: 'instance' }],
+	])(
+		'asks the server for a default name where "available to" %s puts the skill',
+		async (availableTo, target) => {
+			vi.mocked(getNewSkillName).mockResolvedValue('New skill 3');
+			const { modalData } = setupHub();
+
+			await expect(modalData.getDefaultName?.(availableTo)).resolves.toBe('New skill 3');
+			expect(getNewSkillName).toHaveBeenCalledWith(expect.anything(), {
+				...target,
+				name: 'agents.builder.skills.defaultName',
+			});
+		},
+	);
+
+	it('keeps the modal open with the error on the name when the name is taken', async () => {
+		vi.mocked(createAgentSkill).mockRejectedValue(
+			new ResponseError(SKILL_NAME_TAKEN_MESSAGE, { httpStatusCode: 409 }),
+		);
+		const { modalData } = setupHub();
+
+		const result = await modalData.onConfirm({ skill: sqlHelper, availableTo: 'project' });
+
+		expect(result).toEqual({
+			saved: false,
+			nameError: 'settings.context.skills.error.nameTaken',
+		});
+		expect(showErrorSpy).not.toHaveBeenCalled();
+	});
+
+	it('keeps the modal open and reports any other failed create', async () => {
+		const error = new Error('Network down');
+		vi.mocked(createAgentSkill).mockRejectedValue(error);
+		const { modalData } = setupHub();
+
+		const result = await modalData.onConfirm({ skill: sqlHelper, availableTo: 'project' });
+
+		expect(result).toEqual({ saved: false });
+		expect(showErrorSpy).toHaveBeenCalledWith(error, 'agents.builder.skills.create.error');
+	});
+
 	it('keeps the picker off and creates the skill on the agent when the skills hub is off', async () => {
 		vi.mocked(createAgentSkill).mockResolvedValue({
 			id: 'sql',
@@ -740,6 +794,8 @@ describe('useAgentCapabilitiesActions — skills hub', () => {
 		const { modalData, actions, uiStore } = setupHub({ skillsHubEnabled: false });
 
 		expect(modalData.hubSkillsEnabled).toBe(false);
+		// Without the hub, names are only unique per agent, so the modal numbers them itself.
+		expect(modalData.getDefaultName).toBeUndefined();
 		modalData.onConfirm({ skill: sqlHelper, availableTo: 'project' });
 		await flushPromises();
 		expect(createAgentSkill).toHaveBeenCalledWith(
@@ -747,6 +803,7 @@ describe('useAgentCapabilitiesActions — skills hub', () => {
 			'project-1',
 			'agent-1',
 			sqlHelper,
+			undefined,
 			undefined,
 		);
 		expect(getHubSkill).not.toHaveBeenCalled();
@@ -846,7 +903,7 @@ describe('useAgentCapabilitiesActions — skills hub', () => {
 			});
 			const { modalData } = setupHub();
 
-			modalData.onConfirm({ skill: sqlHelper, availableTo });
+			modalData.onConfirm({ skill: sqlHelper, availableTo, method: 'upload' });
 			await flushPromises();
 
 			expect(createAgentSkill).toHaveBeenCalledWith(
@@ -855,6 +912,7 @@ describe('useAgentCapabilitiesActions — skills hub', () => {
 				'agent-1',
 				sqlHelper,
 				availableTo,
+				'upload',
 			);
 		},
 	);

@@ -90,6 +90,9 @@ export const TYPE_AVAILABILITY_POLICIES_TELEMETRY = defineTelemetryEvents({
 			shadow_warning_count: z
 				.number()
 				.describe('Saved rules that can never match, because an earlier rule already covers them'),
+			not_loaded_warning_count: z
+				.number()
+				.describe('Saved rules that name a package or type this instance has not loaded'),
 			version: z.number().describe('The scope version after the write'),
 		}),
 	},

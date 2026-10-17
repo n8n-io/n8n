@@ -39,6 +39,8 @@ paths:
     delete:
       $ref: ./handlers/credential-type-policies/spec/paths/deleteCredentialTypePolicyDocument.generated.yml
   /credential-type-policies/scopes/{scopeId}/attachments:
+    get:
+      $ref: ./handlers/credential-type-policies/spec/paths/getCredentialTypePolicyAttachments.generated.yml
     put:
       $ref: ./handlers/credential-type-policies/spec/paths/replaceCredentialTypePolicyAttachments.generated.yml
   /credentials:
@@ -215,6 +217,8 @@ paths:
     delete:
       $ref: ./handlers/node-type-policies/spec/paths/deleteNodeTypePolicyDocument.generated.yml
   /node-type-policies/scopes/{scopeId}/attachments:
+    get:
+      $ref: ./handlers/node-type-policies/spec/paths/getNodeTypePolicyAttachments.generated.yml
     put:
       $ref: ./handlers/node-type-policies/spec/paths/replaceNodeTypePolicyAttachments.generated.yml
   /settings/otel:

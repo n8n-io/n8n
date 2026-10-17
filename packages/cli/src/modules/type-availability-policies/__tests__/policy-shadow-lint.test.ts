@@ -26,7 +26,7 @@ describe('lintRulesForShadowing', () => {
 		];
 
 		expect(lintRulesForShadowing(rules)).toEqual([
-			{ ruleId: 'deny-slack', shadowedByRuleId: 'allow-package' },
+			{ kind: 'shadowed', ruleId: 'deny-slack', shadowedByRuleId: 'allow-package' },
 		]);
 	});
 
@@ -66,7 +66,7 @@ describe('lintRulesForShadowing', () => {
 		];
 
 		expect(lintRulesForShadowing(rules, undefined, policedType)).toEqual([
-			{ ruleId: 'deny-gmail-tool', shadowedByRuleId: 'allow-gmail' },
+			{ kind: 'shadowed', ruleId: 'deny-gmail-tool', shadowedByRuleId: 'allow-gmail' },
 		]);
 	});
 
@@ -109,7 +109,7 @@ describe('lintRulesForShadowing', () => {
 		];
 
 		expect(lintRulesForShadowing(rules)).toEqual([
-			{ ruleId: 'deny-slack', shadowedByRuleId: 'allow-slack' },
+			{ kind: 'shadowed', ruleId: 'deny-slack', shadowedByRuleId: 'allow-slack' },
 		]);
 	});
 
@@ -121,8 +121,8 @@ describe('lintRulesForShadowing', () => {
 		];
 
 		expect(lintRulesForShadowing(rules)).toEqual([
-			{ ruleId: 'second-package', shadowedByRuleId: 'first-package' },
-			{ ruleId: 'later-name', shadowedByRuleId: 'first-package' },
+			{ kind: 'shadowed', ruleId: 'second-package', shadowedByRuleId: 'first-package' },
+			{ kind: 'shadowed', ruleId: 'later-name', shadowedByRuleId: 'first-package' },
 		]);
 	});
 
@@ -137,7 +137,7 @@ describe('lintRulesForShadowing', () => {
 		];
 
 		expect(lintRulesForShadowing(rules, resolvePackage)).toEqual([
-			{ ruleId: 'deny-slack-api', shadowedByRuleId: 'allow-package' },
+			{ kind: 'shadowed', ruleId: 'deny-slack-api', shadowedByRuleId: 'allow-package' },
 		]);
 	});
 
@@ -162,7 +162,7 @@ describe('lintRulesForShadowing', () => {
 		];
 
 		expect(lintRulesForShadowing(nameFirst)).toEqual([
-			{ ruleId: 'later-name', shadowedByRuleId: 'earlier-name' },
+			{ kind: 'shadowed', ruleId: 'later-name', shadowedByRuleId: 'earlier-name' },
 		]);
 
 		const packageFirst = [
@@ -172,8 +172,8 @@ describe('lintRulesForShadowing', () => {
 		];
 
 		expect(lintRulesForShadowing(packageFirst)).toEqual([
-			{ ruleId: 'later-name-1', shadowedByRuleId: 'earlier-package' },
-			{ ruleId: 'later-name-2', shadowedByRuleId: 'earlier-package' },
+			{ kind: 'shadowed', ruleId: 'later-name-1', shadowedByRuleId: 'earlier-package' },
+			{ kind: 'shadowed', ruleId: 'later-name-2', shadowedByRuleId: 'earlier-package' },
 		]);
 	});
 
@@ -196,18 +196,18 @@ describe('lintRulesForShadowing', () => {
 		it('flags a later name rule for a type built on an earlier family rule', () => {
 			expect(
 				lint([family('oauth2', 'oAuth2Api'), name('sheets', 'googleSheetsOAuth2Api')]),
-			).toEqual([{ ruleId: 'sheets', shadowedByRuleId: 'oauth2' }]);
+			).toEqual([{ kind: 'shadowed', ruleId: 'sheets', shadowedByRuleId: 'oauth2' }]);
 		});
 
 		it('flags a later name rule for the family base itself', () => {
 			expect(lint([family('oauth2', 'oAuth2Api'), name('generic', 'oAuth2Api')])).toEqual([
-				{ ruleId: 'generic', shadowedByRuleId: 'oauth2' },
+				{ kind: 'shadowed', ruleId: 'generic', shadowedByRuleId: 'oauth2' },
 			]);
 		});
 
 		it('flags a later family rule nested inside an earlier one', () => {
 			expect(lint([family('oauth2', 'oAuth2Api'), family('google', 'googleOAuth2Api')])).toEqual([
-				{ ruleId: 'google', shadowedByRuleId: 'oauth2' },
+				{ kind: 'shadowed', ruleId: 'google', shadowedByRuleId: 'oauth2' },
 			]);
 		});
 

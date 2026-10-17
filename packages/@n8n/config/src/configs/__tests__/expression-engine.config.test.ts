@@ -156,8 +156,8 @@ describe('ExpressionEngineConfig', () => {
 			expect(Container.get(ExpressionEngineConfig).observabilityEnabled).toBe(true);
 		});
 
-		test('tracesEnabled defaults to true', () => {
-			expect(Container.get(ExpressionEngineConfig).tracesEnabled).toBe(true);
+		test('tracesEnabled defaults to false', () => {
+			expect(Container.get(ExpressionEngineConfig).tracesEnabled).toBe(false);
 		});
 
 		test('slowEvaluationThresholdMs defaults to 50', () => {

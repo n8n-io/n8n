@@ -7,6 +7,7 @@ import {
 	type PackageResolver,
 	type PolicedType,
 } from './policy-evaluator';
+import type { PolicySelector } from './policy-rule.types';
 
 /**
  * A credential type name (e.g. `slackApi`) carries no package prefix, unlike a node type
@@ -93,7 +94,7 @@ export function policedTypeFor(
 	});
 }
 
-/** Whether a credential type is known, checked at write time for an `extends` rule's value. */
+/** Whether a credential type is known, checked at write time for a rule's value. */
 export function isCredentialTypeKnown(
 	loadNodesAndCredentials: LoadNodesAndCredentials,
 	typeName: string,
@@ -102,8 +103,7 @@ export function isCredentialTypeKnown(
 }
 
 /**
- * Whether `packageName` names a package this instance actually has loaded — checked at write
- * time so a `package` rule can never be saved unable to match anything.
+ * Whether `packageName` names a package this instance actually has loaded.
  *
  * `Object.hasOwn`, not `in`: `in` also matches an inherited property, so a rule naming
  * `toString` or `constructor` would pass this check through `Object.prototype` even though
@@ -114,4 +114,31 @@ export function isPackageInstalled(
 	packageName: string,
 ): boolean {
 	return Object.hasOwn(loadNodesAndCredentials.loaders, packageName);
+}
+
+/**
+ * Whether a selector names something this instance has loaded, for the write-time
+ * `notLoaded` warning. A `name` rule on a synthetic tool variant checks its base node.
+ */
+export function loadedCheckFor(
+	kind: string,
+	nodeTypes: NodeTypes,
+	loadNodesAndCredentials: LoadNodesAndCredentials,
+): (selector: PolicySelector) => boolean {
+	const policedType = policedTypeFor(kind, nodeTypes, loadNodesAndCredentials);
+	const isNameKnown =
+		kind === NODE_TYPES_KIND
+			? (name: string) => Object.hasOwn(loadNodesAndCredentials.knownNodes, name)
+			: (name: string) => isCredentialTypeKnown(loadNodesAndCredentials, name);
+
+	return (selector) => {
+		switch (selector.kind) {
+			case 'package':
+				return isPackageInstalled(loadNodesAndCredentials, selector.value);
+			case 'extends':
+				return isCredentialTypeKnown(loadNodesAndCredentials, selector.value);
+			case 'name':
+				return isNameKnown(policedType(selector.value).baseName);
+		}
+	};
 }

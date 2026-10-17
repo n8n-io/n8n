@@ -484,6 +484,9 @@
 		"DELETE /node-type-policies/policies/{policyId}": {
 			"status": "gap"
 		},
+		"GET /node-type-policies/scopes/{scopeId}/attachments": {
+			"status": "gap"
+		},
 		"PUT /node-type-policies/scopes/{scopeId}/attachments": {
 			"status": "gap"
 		},
@@ -512,6 +515,9 @@
 			"status": "gap"
 		},
 		"DELETE /credential-type-policies/policies/{policyId}": {
+			"status": "gap"
+		},
+		"GET /credential-type-policies/scopes/{scopeId}/attachments": {
 			"status": "gap"
 		},
 		"PUT /credential-type-policies/scopes/{scopeId}/attachments": {

@@ -8,6 +8,7 @@ import {
 	ListWorkflowHistoryQueryDto,
 	ListWorkflowsQueryDto,
 	PublishWorkflowPublicDto,
+	RetrievedWorkflowPublicDto,
 	TagIdsPublicDto,
 	TransferWorkflowPublicDto,
 	UpdatedWorkflowPublicDto,
@@ -119,6 +120,10 @@ function toPublicFolder(folder: Folder) {
 		createdAt: folder.createdAt.toISOString(),
 		updatedAt: folder.updatedAt.toISOString(),
 	};
+}
+
+function toPublicParentFolderRef(folder: Folder | null) {
+	return folder ? { id: folder.id } : null;
 }
 
 function toPublicSharedWorkflow(sharedWorkflow: SharedWorkflow) {
@@ -254,6 +259,7 @@ export class WorkflowsPublicController {
 				includePinnedData: !query.excludePinnedData,
 				includeTags: true,
 				includeActiveVersion: true,
+				includeParentFolder: query.includeParentFolder,
 			},
 		);
 
@@ -283,6 +289,9 @@ export class WorkflowsPublicController {
 				...(query.excludePinnedData ? {} : { pinData: toPublicJson(workflow.pinData) }),
 				...(workflow.tags ? { tags: workflow.tags.map(toPublicTag) } : {}),
 				shared: workflow.shared.map(toPublicListSharedWorkflow),
+				...(query.includeParentFolder
+					? { parentFolder: toPublicParentFolderRef(workflow.parentFolder) }
+					: {}),
 				activeVersion: workflow.activeVersion
 					? toPublicActiveVersionWithoutHistory(workflow.activeVersion)
 					: null,
@@ -331,14 +340,14 @@ export class WorkflowsPublicController {
 	@ApiSummary('Retrieve a workflow')
 	@ApiDescription('Retrieve a workflow.')
 	@ApiTags(['Workflow'])
-	@ApiResponse(200, WorkflowPublicDto)
+	@ApiResponse(200, RetrievedWorkflowPublicDto)
 	@ApiErrorResponse(404)
 	async getWorkflow(
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('workflowId', workflowIdParamSchema) workflowId: string,
 		@Query query: GetWorkflowQueryDto,
-	): Promise<WorkflowPublicDto> {
+	): Promise<RetrievedWorkflowPublicDto> {
 		const workflow = await this.workflowFinderService.findWorkflowForUser(
 			workflowId,
 			req.user,
@@ -346,6 +355,7 @@ export class WorkflowsPublicController {
 			{
 				includeTags: true,
 				includeActiveVersion: true,
+				includeParentFolder: true,
 			},
 		);
 
@@ -358,7 +368,10 @@ export class WorkflowsPublicController {
 			publicApi: true,
 		});
 
-		return this.toWorkflowPublicDto(workflow, { excludePinnedData: query.excludePinnedData });
+		return {
+			...this.toWorkflowPublicDto(workflow, { excludePinnedData: query.excludePinnedData }),
+			parentFolder: workflow.parentFolder ? toPublicFolder(workflow.parentFolder) : null,
+		};
 	}
 
 	@Put('/:workflowId')
