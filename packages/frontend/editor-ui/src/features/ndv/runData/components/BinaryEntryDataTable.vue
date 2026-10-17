@@ -85,7 +85,7 @@ const fileIcon = computed(() => {
 				v-if="tablePreview"
 				:src="fileUrl"
 				:class="$style.imagePreview"
-				:alt="fileName || 'Image preview'"
+				:alt="fileName || i18n.baseText('binaryDataDisplay.imagePreview')"
 			/>
 			<div v-else :class="$style.iconWrapper">
 				<N8nIcon :icon="fileIcon" size="xlarge" />
