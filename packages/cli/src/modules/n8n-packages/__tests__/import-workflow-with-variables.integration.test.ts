@@ -152,7 +152,7 @@ describe('variable error consumers', () => {
 				conflictPolicy: 'fail',
 			},
 			options: {
-				workflowConflictPolicy: 'fail',
+				conflictPolicy: 'fail',
 				workflowPublishingPolicy: 'preserve-published-state',
 				workflowIdPolicy: 'new',
 				missingNodeTypeMode: 'fail',

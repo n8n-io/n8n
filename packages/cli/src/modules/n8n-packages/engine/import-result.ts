@@ -1,3 +1,4 @@
+import type { AgentImportOutcome } from '../entities/agent/agent-import.types';
 import type { TagImportPlan } from '../entities/tag/tag.types';
 import type { VariableApplyResult, VariableImportPlan } from '../entities/variable/variable.types';
 import type {
@@ -17,6 +18,8 @@ import type {
 	ImportedWorkflowSummary,
 	ImportPackageSummary,
 	ImportResult,
+	ImportStatusCounts,
+	ImportedAgentSummary,
 	ImportTagSummary,
 	ImportVariableSummary,
 	PackageImportBindings,
@@ -66,6 +69,7 @@ export function toImportedWorkflowSummaries(
 
 export function buildImportResult(input: {
 	package: ImportPackageSummary;
+	agentOutcomes: AgentImportOutcome[];
 	workflows: ImportedWorkflowSummary[];
 	removedWorkflows: RemovedWorkflowSummary[];
 	removedFolders: RemovedFolderSummary[];
@@ -79,6 +83,8 @@ export function buildImportResult(input: {
 }): ImportResult {
 	return {
 		package: input.package,
+		agents: input.agentOutcomes.map(toImportedAgentSummary),
+		counts: { agents: countImportStatuses(input.agentOutcomes) },
 		workflows: input.workflows,
 		removedWorkflows: input.removedWorkflows,
 		removedFolders: input.removedFolders,
@@ -90,6 +96,31 @@ export function buildImportResult(input: {
 		variables: input.variables,
 		tags: input.tags,
 	};
+}
+
+function toImportedAgentSummary({
+	sourceAgentId,
+	agent,
+	status,
+	publishing,
+}: AgentImportOutcome): ImportedAgentSummary {
+	return {
+		sourceAgentId,
+		localId: agent.id,
+		name: agent.name,
+		projectId: agent.projectId,
+		activeVersionId: agent.activeVersionId ?? null,
+		status,
+		publishing,
+	};
+}
+
+export function countImportStatuses(
+	outcomes: Array<{ status: keyof ImportStatusCounts }>,
+): ImportStatusCounts {
+	const counts: ImportStatusCounts = { created: 0, updated: 0, skipped: 0 };
+	for (const { status } of outcomes) counts[status]++;
+	return counts;
 }
 
 export function reconcileVariableSummary(input: {

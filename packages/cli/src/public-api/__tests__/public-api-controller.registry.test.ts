@@ -450,7 +450,7 @@ describe('PublicApiControllerRegistry', () => {
 		}
 
 		class PackageBodyDto extends Z.class(
-			{ package: publicApiUploadedFileSchema, workflowConflictPolicy: z.string() },
+			{ package: publicApiUploadedFileSchema, conflictPolicy: z.string() },
 			{ strict: true },
 		) {}
 
@@ -487,7 +487,7 @@ describe('PublicApiControllerRegistry', () => {
 					@Body({ mediaType: 'multipart/form-data', uploadLimits: () => ({}) })
 					body: PackageBodyDto,
 				) {
-					return { workflowConflictPolicy: body.workflowConflictPolicy, size: body.package.size };
+					return { conflictPolicy: body.conflictPolicy, size: body.package.size };
 				}
 			}
 			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
@@ -583,18 +583,18 @@ describe('PublicApiControllerRegistry', () => {
 			it('parses a multipart body, merging the uploaded file with text fields', async () => {
 				const response = await request(activate())
 					.post('/api/v1/widgets/upload')
-					.field('workflowConflictPolicy', 'new-version')
+					.field('conflictPolicy', 'new-version')
 					.attach('package', Buffer.from('hello'), 'export.n8np')
 					.expect(200);
 
-				expect(response.body).toEqual({ workflowConflictPolicy: 'new-version', size: 5 });
+				expect(response.body).toEqual({ conflictPolicy: 'new-version', size: 5 });
 			});
 
 			it('rejects a JSON body with 415 for a multipart-only route', async () => {
 				const response = await request(activate())
 					.post('/api/v1/widgets/upload')
 					.set('Content-Type', 'application/json')
-					.send({ workflowConflictPolicy: 'new-version' })
+					.send({ conflictPolicy: 'new-version' })
 					.expect(415);
 
 				expect(response.body.message).toBe('unsupported media type application/json');
@@ -603,7 +603,7 @@ describe('PublicApiControllerRegistry', () => {
 			it('rejects a request missing the required file with 400', async () => {
 				const response = await request(activate())
 					.post('/api/v1/widgets/upload')
-					.field('workflowConflictPolicy', 'new-version')
+					.field('conflictPolicy', 'new-version')
 					.expect(400);
 
 				expect(response.body.message).toBe("request/body must have required property 'package'");
@@ -612,7 +612,7 @@ describe('PublicApiControllerRegistry', () => {
 			it('rejects an unknown form field with 400', async () => {
 				const response = await request(activate())
 					.post('/api/v1/widgets/upload')
-					.field('workflowConflictPolicy', 'new-version')
+					.field('conflictPolicy', 'new-version')
 					.field('evil', 'x')
 					.attach('package', Buffer.from('hello'), 'export.n8np')
 					.expect(400);
@@ -630,7 +630,7 @@ describe('PublicApiControllerRegistry', () => {
 						_res: unknown,
 						@Body({ mediaType: 'multipart/form-data', uploadLimits }) body: PackageBodyDto,
 					) {
-						return { workflowConflictPolicy: body.workflowConflictPolicy, size: body.package.size };
+						return { conflictPolicy: body.conflictPolicy, size: body.package.size };
 					}
 				}
 				markPublicApiController(WidgetsUploadLimitedPublicController as Controller, '/widgets');
@@ -641,7 +641,7 @@ describe('PublicApiControllerRegistry', () => {
 
 				const response = await request(activate())
 					.post('/api/v1/widgets/upload-limited')
-					.field('workflowConflictPolicy', 'new-version')
+					.field('conflictPolicy', 'new-version')
 					.attach('package', Buffer.from('hello'), 'export.n8np')
 					.expect(413);
 
@@ -656,7 +656,7 @@ describe('PublicApiControllerRegistry', () => {
 				// parsed before authentication ran.
 				await request(activate())
 					.post('/api/v1/widgets/upload-limited')
-					.field('workflowConflictPolicy', 'new-version')
+					.field('conflictPolicy', 'new-version')
 					.attach('package', Buffer.from('hello'), 'export.n8np')
 					.expect(401);
 			});
@@ -688,7 +688,7 @@ describe('PublicApiControllerRegistry', () => {
 				// scope check ran.
 				const response = await request(activate())
 					.post('/api/v1/widgets/upload-scoped')
-					.field('workflowConflictPolicy', 'new-version')
+					.field('conflictPolicy', 'new-version')
 					.attach('package', Buffer.from('hello'), 'export.n8np')
 					.expect(403);
 
@@ -721,12 +721,12 @@ describe('PublicApiControllerRegistry', () => {
 
 				await request(activate())
 					.post('/api/v1/widgets/upload-middleware')
-					.field('workflowConflictPolicy', 'new-version')
+					.field('conflictPolicy', 'new-version')
 					.attach('package', Buffer.from('hello'), 'export.n8np')
 					.expect(200);
 
 				expect(middlewareSaw).toHaveLength(1);
-				expect(middlewareSaw[0]).toMatchObject({ workflowConflictPolicy: 'new-version' });
+				expect(middlewareSaw[0]).toMatchObject({ conflictPolicy: 'new-version' });
 			});
 		});
 	});

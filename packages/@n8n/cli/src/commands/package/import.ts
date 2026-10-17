@@ -28,7 +28,7 @@ export default class PackageImport extends BaseCommand {
 			aliases: ['folder-id', 'folder'],
 		}),
 		workflowConflictPolicy: Flags.string({
-			description: 'What to do when a workflow already exists in the target project',
+			description: 'What to do when an Agent or workflow already exists in the target project',
 			options: ['new-version', 'fail', 'skip'],
 			default: 'new-version',
 			aliases: ['workflow-conflict-policy'],
@@ -149,7 +149,7 @@ export default class PackageImport extends BaseCommand {
 					{
 						projectId: flags.projectId,
 						folderId: flags.folderId,
-						workflowConflictPolicy: flags.workflowConflictPolicy,
+						conflictPolicy: flags.workflowConflictPolicy,
 						workflowPublishingPolicy: flags.workflowPublishingPolicy,
 						workflowIdPolicy: flags.workflowIdPolicy,
 						missingNodeTypeMode: flags.missingNodeTypeMode,

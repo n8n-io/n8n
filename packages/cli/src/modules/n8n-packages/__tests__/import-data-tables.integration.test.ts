@@ -281,13 +281,13 @@ describe('workflow package import — with data tables', () => {
 				user: owner,
 				projectId: project.id,
 				packageBuffer,
-				workflowConflictPolicy: 'new-version',
+				conflictPolicy: 'new-version',
 			});
 			await importPackage({
 				user: owner,
 				projectId: project.id,
 				packageBuffer,
-				workflowConflictPolicy: 'new-version',
+				conflictPolicy: 'new-version',
 			});
 
 			expect(await tablesInProject(project.id)).toHaveLength(1);
@@ -1039,7 +1039,7 @@ describe('workflow package import — with data tables', () => {
 			const again = await importWithOverwrite({
 				user: owner,
 				packageBuffer,
-				workflowConflictPolicy: 'new-version',
+				conflictPolicy: 'new-version',
 			});
 
 			expect(again.dataTables).toEqual({ matched: 1, created: 0, updated: 0 });

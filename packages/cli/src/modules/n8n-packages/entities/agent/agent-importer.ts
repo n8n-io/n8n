@@ -24,7 +24,7 @@ import {
 	type PreparedAgent,
 	type PersistedAgentOutcome,
 } from './agent-import.types';
-import type { ImportWorkflowProperties } from '../../n8n-packages.types';
+import type { ImportAgentProperties, ImportConflictProperties } from '../../n8n-packages.types';
 import { decideImportConflictAction } from '../import-conflict-policy';
 import { derivePublishedState } from '../workflow/workflow-published-state';
 import { decidePublishingAction } from '../workflow/workflow-publishing-policy';
@@ -109,7 +109,7 @@ export class AgentImporter {
 	async plan(
 		context: AgentImportMatchContext,
 		agents: PreparedAgent[],
-		options: ImportWorkflowProperties,
+		options: ImportAgentProperties & ImportConflictProperties,
 	): Promise<AgentImportPlan> {
 		const plan: AgentImportPlan = {
 			items: [],
@@ -121,7 +121,7 @@ export class AgentImporter {
 			context,
 			agents.map((a) => a.sourceAgentId),
 		);
-		const identities = await this.matcher.allocateAgentIds(matches, options.workflowIdPolicy);
+		const identities = await this.matcher.allocateAgentIds(matches, options.agentIdPolicy);
 		for (const conflict of identities.lineageConflicts) {
 			plan.issues.push({
 				type: 'agent-conflict',
@@ -155,11 +155,11 @@ export class AgentImporter {
 		agent: PreparedAgent,
 		identity: ResolvedAgentImportIdentity,
 		context: AgentImportMatchContext,
-		options: ImportWorkflowProperties,
+		options: ImportAgentProperties & ImportConflictProperties,
 		plan: AgentImportPlan,
 	): Promise<void> {
 		const { action, blocked } = decideImportConflictAction(
-			options.workflowConflictPolicy,
+			options.conflictPolicy,
 			identity.existing !== null,
 		);
 		if (blocked) {
@@ -185,7 +185,7 @@ export class AgentImporter {
 			return;
 		}
 		const statuses = { create: 'created', update: 'updated', skip: 'skipped' } as const;
-		const publishingAction = decidePublishingAction(options.workflowPublishingPolicy, {
+		const publishingAction = decidePublishingAction(options.agentPublishingPolicy, {
 			status: statuses[action],
 			currentlyPublished: Boolean(existing?.activeVersionId),
 			sourcePublished: derivePublishedState(agent.metadata),
