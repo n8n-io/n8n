@@ -925,9 +925,12 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			}
 
 			// Persist inline source first so the workspace file stays canonical for later repairs.
-			if (input.sourceCode !== undefined && context.workspace) {
+			// Blank source means "build the file as it is": OpenAI strict tool calls cannot
+			// omit optional fields and send "" instead, which must not empty the file.
+			const inlineSource = input.sourceCode?.trim() ? input.sourceCode : undefined;
+			if (inlineSource !== undefined && context.workspace) {
 				try {
-					await writeWorkspaceFile(context.workspace, filePath, input.sourceCode, {
+					await writeWorkspaceFile(context.workspace, filePath, inlineSource, {
 						logger: context.logger,
 						resourceLabel: 'Workflow source file',
 						abortSignal: ctx.abortSignal,
