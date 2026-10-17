@@ -85,7 +85,11 @@ export class RuntimeContextBuilder {
 	): StaticLoopContext {
 		const ai = loadAi();
 		const aiProviderTools = toAiSdkProviderTools(this.config.providerTools);
-		const model = createModel(this.config.model, this.config.modelFetch);
+		const model = createModel(
+			this.config.model,
+			this.config.modelFetch,
+			this.config.telemetry ?? execOptions?.telemetry,
+		);
 		const outputSchema = this.config.structuredOutput;
 		const isRawJsonSchemaOutput = outputSchema !== undefined && !isZodSchema(outputSchema);
 		const providerOptions = this.relaxStrictJsonSchemaIfNeeded(
