@@ -962,6 +962,8 @@
     "@n8n/errors": "workspace:*",
     "@n8n/imap": "workspace:*",
     "@n8n/utils": "workspace:*",
+    "@napi-rs/canvas": "catalog:",
+    "@napi-rs/image": "catalog:",
     "@thednp/dommatrix": "^3.1.1",
     "alasql": "4.4.0",
     "amqplib": "0.10.6",

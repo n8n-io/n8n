@@ -338,6 +338,12 @@ catalogs:
     '@n8n_io/ai-assistant-sdk':
       specifier: 1.27.0
       version: 1.27.0
+    '@napi-rs/canvas':
+      specifier: 1.0.11
+      version: 1.0.11
+    '@napi-rs/image':
+      specifier: 1.15.0
+      version: 1.15.0
     '@openrouter/ai-sdk-provider':
       specifier: ^3.0.0
       version: 3.0.0
@@ -1056,7 +1062,7 @@ overrides:
   '@grpc/grpc-js@<1.14.5': 1.14.5
   prosemirror-model: 1.25.12
   prosemirror-view@<1.42.3: 1.42.3
-  pdf-parse>@napi-rs/canvas: ^1.0.0
+  pdf-parse>@napi-rs/canvas: 1.0.11
   '@icetee/ftp>xregexp': npm:empty-npm-package@1.0.0
   toml@<4.2.0: 4.2.0
   '@langchain/langgraph': 1.4.21
@@ -2348,8 +2354,8 @@ importers:
         specifier: workspace:*
         version: link:../mcp-browser
       '@napi-rs/image':
-        specifier: ^1.12.0
-        version: 1.12.0
+        specifier: 'catalog:'
+        version: 1.15.0
       '@vscode/ripgrep':
         specifier: ^1.17.1
         version: 1.17.1(supports-color@8.1.1)
@@ -7990,6 +7996,12 @@ importers:
       '@n8n/utils':
         specifier: workspace:*
         version: link:../@n8n/utils
+      '@napi-rs/canvas':
+        specifier: 'catalog:'
+        version: 1.0.11
+      '@napi-rs/image':
+        specifier: 'catalog:'
+        version: 1.15.0
       '@smithy/node-http-handler':
         specifier: 4.5.0
         version: 4.5.0
@@ -12002,96 +12014,88 @@ packages:
     resolution: {integrity: sha512-vt5tog1cr+QKadIddGe+3LrcX0EmjEd0izF717Uwf92mBmgYfq2XRmL2r4bZU40spB69exxhrBn9I91HYEr/7w==}
     engines: {node: '>= 10'}
 
-  '@napi-rs/image-android-arm64@1.12.0':
-    resolution: {integrity: sha512-MAm8EHmtO47OZYsHgiMuP+nYZOEbNWbHjkoNfRS9wFJiRQ5p/pIlvdeWL9DqkSrjcgHjIJXLcrt94MMF1jXOuw==}
+  '@napi-rs/image-android-arm64@1.15.0':
+    resolution: {integrity: sha512-BhW7Zyk0Y17FNWcrc+7bwK8Yo9gdt/OsB5AsK3yvu+z3pCvVtztjuANNfdwcC2KHolJkJWeu42ZfC0qwBYB57A==}
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [android]
 
-  '@napi-rs/image-darwin-arm64@1.12.0':
-    resolution: {integrity: sha512-NXDXy9qNmNdesKCTWMcKa9QHP74Ut75Lwi4psUzo5e7ptOeK6ACIanVPynnfWGMUXY4pTIXvGooLf5mbn6r7iQ==}
+  '@napi-rs/image-darwin-arm64@1.15.0':
+    resolution: {integrity: sha512-HHUDoMil1WONvbFs97FBtO2G0C6Xjzo7G4Ioywn/wmEgFFgWdlNO0n1ARp3WsnssH4j89rDEVHfkpjrwNa96OQ==}
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [darwin]
 
-  '@napi-rs/image-darwin-x64@1.12.0':
-    resolution: {integrity: sha512-577Ysv/m60Pmv2rahxf2c6ChfNwGyAs3Pyoopao6YxknXnq+M8/x8PW3f9Gxg9+a/nxxnFIYoMDkD1GeQRecXg==}
+  '@napi-rs/image-darwin-x64@1.15.0':
+    resolution: {integrity: sha512-CIEDQYJEjk81TIM2tpWj1T6R9RkzZU7rVwBw/6+El/tcER+v9HF4oZIp+YLUMT3G5kVXqoNtda8mRcTs9CUwMw==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [darwin]
 
-  '@napi-rs/image-freebsd-x64@1.12.0':
-    resolution: {integrity: sha512-WwQvpQ8FCpFjEHuI5nGKl67oPj4Yc5clbNrSy2wBzIcmuuOjfzGFi96MDZU6gQvRYZz+jbGa71+Fk3bMtbp8ew==}
+  '@napi-rs/image-freebsd-x64@1.15.0':
+    resolution: {integrity: sha512-ztYxPGsPEpw8Odc2d9w6+gLkEe1Ocifjae938DFFKytYztRcFenFIq+6Ha6fsnr/4LtZHH70GnBwB0lhM8dwtQ==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [freebsd]
 
-  '@napi-rs/image-linux-arm-gnueabihf@1.12.0':
-    resolution: {integrity: sha512-UaIVUREI7q9NpR6mBNyGJ7D8S4vdQ65X2RoUmAv7f89ILvKobyyn8LFx8MqjPU5UpmWQhoU5nATQzKsYF70HoQ==}
+  '@napi-rs/image-linux-arm-gnueabihf@1.15.0':
+    resolution: {integrity: sha512-Pgnt8ekNnYmDX/dB2n+o3WABojL2u9vrceoSa85VFa1zs5fMy+k6z1UCjDgDwpQOSmq2AotTABedvL8vqZKDJA==}
     engines: {node: '>= 10'}
     cpu: [arm]
     os: [linux]
 
-  '@napi-rs/image-linux-arm64-gnu@1.12.0':
-    resolution: {integrity: sha512-QwZRPAJjtRAPtrtvn8slmtcMtAWLd15kRL6BxBaAA/VHR/sOzKxCbXbapzf/nHUJUsO7Gy3wQu0SKr7Wjp5K9w==}
+  '@napi-rs/image-linux-arm64-gnu@1.15.0':
+    resolution: {integrity: sha512-/4XHp1GbXNfVmMQYmyUAErMBXaAxGF3JZnv+Q73P9jhEwfOvgl3CUTCZwZEivScIbVjdxrcQnlWw9xSzZXsx3w==}
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [linux]
     libc: [glibc]
 
-  '@napi-rs/image-linux-arm64-musl@1.12.0':
-    resolution: {integrity: sha512-1laZq0DdtuI6DBFkGRB0tSv/STo11qjGKfCVUndt3JbP4nidO4enRDjofBTu5ROFcxqSdIq/t7hYhlS+BeJRnw==}
+  '@napi-rs/image-linux-arm64-musl@1.15.0':
+    resolution: {integrity: sha512-jjqW0eg09OY2rYZl07tHNKKXqwwHNgeuwQyU2/1OX34qFoc1nfmITaud2WAuaAjmVnxbYpigs0JQiAHYTs0koA==}
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [linux]
     libc: [musl]
 
-  '@napi-rs/image-linux-x64-gnu@1.12.0':
-    resolution: {integrity: sha512-TaaITRqJXnRip1kV2o+M6dMFyQdKs8zlPHyxZU6sfbjyPfgtkliKXR6kxxug2MVCr7jXuAFdrJRCdfyAeK4MIQ==}
+  '@napi-rs/image-linux-x64-gnu@1.15.0':
+    resolution: {integrity: sha512-IiayUG47OTY89iPLiN/wtnIwqOqtHbO1W/h5aZdSzfQa7Ke0NlNuUsE4qkbLIkInYyd7gWSs1GiX8+VpewIhZw==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [linux]
     libc: [glibc]
 
-  '@napi-rs/image-linux-x64-musl@1.12.0':
-    resolution: {integrity: sha512-QdvbOh+lekT+gKpYhINOHd4ruEYQHzEVhNqswZ2V3mWH5tbXS9ypjzzfZ1UVeHNfce3NooZ+XsZVGITX/KyUwQ==}
+  '@napi-rs/image-linux-x64-musl@1.15.0':
+    resolution: {integrity: sha512-EqHJBpf+LXB47Andl5IWaP2Tdavb3ehH3a9/cLkBAZ3mW07h1PTnhNHtWbxP/O2RkBCr87gi92OVA+1J2KSJKg==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [linux]
     libc: [musl]
 
-  '@napi-rs/image-wasm32-wasi@1.12.0':
-    resolution: {integrity: sha512-tlLe2+4RdJfkT8DOGJ7KpUGYxlhvqaYCKuPoyO2x/LPnfF2kSKO9nLIdBhCNw7v61gfxIEpr2ccz01Mw8FeSjA==}
-    engines: {node: '>=14.0.0'}
-    cpu: [wasm32]
-
-  '@napi-rs/image-win32-arm64-msvc@1.12.0':
-    resolution: {integrity: sha512-JlyIKiwhMRq0MUGIILaHeqS0Rc2kazdN9t0cjv7DrN5FLwTPmXFQyDsgGEW8oFJ08DKpbn6Dfy/5UogjII+hKg==}
+  '@napi-rs/image-win32-arm64-msvc@1.15.0':
+    resolution: {integrity: sha512-n34XcQjrMAQZ8/O2uK/E+rqVo+G0h4Y6eDMvJduZWVL7c9fpcfiSWaUDdaw+6lz3RugauJ97ectCDk5LTlXnjg==}
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [win32]
 
-  '@napi-rs/image-win32-ia32-msvc@1.12.0':
-    resolution: {integrity: sha512-nzg7bUJWkVz05zbsBmu4fZ5wj1KFyBbJwEV4OuV5qdz0IFAl37NEannO0yg0Yi9Amavgqmr5y7OmA2TiandpPA==}
+  '@napi-rs/image-win32-ia32-msvc@1.15.0':
+    resolution: {integrity: sha512-SOs9Mc5/7cMMu3vXl97SwvlG2l4jcACcLTcPotl6N3u/Vi8N6Qc6rnxqol2L5KRzLkmULgs3nNx/OqFEvpPpsg==}
     engines: {node: '>= 10'}
     cpu: [ia32]
     os: [win32]
 
-  '@napi-rs/image-win32-x64-msvc@1.12.0':
-    resolution: {integrity: sha512-tTS4k9Bep2bJbymuu523sp8MZDdUaTkjORWkiwOHPFULt2e+pgnCCQ6+gXJ7WAWXvdwKn06gfdMsC2DM8k5EtA==}
+  '@napi-rs/image-win32-x64-msvc@1.15.0':
+    resolution: {integrity: sha512-3S4O+oJnLZ3MmWYhGLPwqlNoNLu2GP2ZIXlJrTXDvCqxq9Qpb4lh4ymAUKvztxkQn6CsPLUa4j2XR5GydFBrwg==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [win32]
 
-  '@napi-rs/image@1.12.0':
-    resolution: {integrity: sha512-hfW9EvlUj4R+RYu5Cgcm9/d/2eMTj3Dhypj0BD+snasawBpYwSfkPZx/6C1Hm2cVCbRT6zovGdSHUXwPLb29dw==}
+  '@napi-rs/image@1.15.0':
+    resolution: {integrity: sha512-WtMwFCgKDPcWLKH3Ooy8pCTMmjwC3NNlBicb5Qaqx0PafOjbRQ/zx5ZEWlxnjTFfMWIW3ptskuX8wt4NXJvvVg==}
     engines: {node: '>= 10'}
 
   '@napi-rs/wasm-runtime@0.2.11':
     resolution: {integrity: sha512-9DPkXtvHydrcOsopiYpUgPHpmj0HWZKMUnL2dZqpvC42lsratuBG06V5ipyno0fUek5VlFsNQ+AcFATSrJXgMA==}
-
-  '@napi-rs/wasm-runtime@1.1.1':
-    resolution: {integrity: sha512-p64ah1M1ld8xjWv3qbvFwHiFVWrq1yFvV4f7w+mzaqiR4IlSgkqhcRdHwsGgomwzBH51sRY4NEowLxnaBjcW/A==}
 
   '@napi-rs/wasm-runtime@1.1.6':
     resolution: {integrity: sha512-ZLv/JdUfkvOy9eCnnBaGfiO+XimbjebAeO+MRQqD/B+FR1tnRN0tpKSJHRbE8sFfS6aqsXZ67TQjfwfsxULVbg==}
@@ -14994,9 +14998,6 @@ packages:
     resolution: {integrity: sha512-gh5lwDA2d4aBdLvTANhFsFEgxbBqKZ4m4dCyChw9GoX8b+Esk8H3p25Q+rlWCUVJ2o6Hne10ZTL0QSFfWD4gIA==}
     cpu: [arm64]
     os: [win32]
-
-  '@tybys/wasm-util@0.10.1':
-    resolution: {integrity: sha512-9tTaPJLSiejZKx+Bmog4uSubteqTvFrVrURwkmHixBo0G4seD0zUxp98E1DzUBJxLQ3NPwXrGKDiVjwx/DpPsg==}
 
   '@tybys/wasm-util@0.10.3':
     resolution: {integrity: sha512-F3fo1MYrRJYL3zER0OUOmkutjr1Vp23m7OsSgp7nq4SP6OqX6C/56XFIPAl5bt3zaBRjmW7SGz3u/6LwFpYcOg==}
@@ -30049,75 +30050,62 @@ snapshots:
       '@napi-rs/canvas-win32-arm64-msvc': 1.0.11
       '@napi-rs/canvas-win32-x64-msvc': 1.0.11
 
-  '@napi-rs/image-android-arm64@1.12.0':
+  '@napi-rs/image-android-arm64@1.15.0':
     optional: true
 
-  '@napi-rs/image-darwin-arm64@1.12.0':
+  '@napi-rs/image-darwin-arm64@1.15.0':
     optional: true
 
-  '@napi-rs/image-darwin-x64@1.12.0':
+  '@napi-rs/image-darwin-x64@1.15.0':
     optional: true
 
-  '@napi-rs/image-freebsd-x64@1.12.0':
+  '@napi-rs/image-freebsd-x64@1.15.0':
     optional: true
 
-  '@napi-rs/image-linux-arm-gnueabihf@1.12.0':
+  '@napi-rs/image-linux-arm-gnueabihf@1.15.0':
     optional: true
 
-  '@napi-rs/image-linux-arm64-gnu@1.12.0':
+  '@napi-rs/image-linux-arm64-gnu@1.15.0':
     optional: true
 
-  '@napi-rs/image-linux-arm64-musl@1.12.0':
+  '@napi-rs/image-linux-arm64-musl@1.15.0':
     optional: true
 
-  '@napi-rs/image-linux-x64-gnu@1.12.0':
+  '@napi-rs/image-linux-x64-gnu@1.15.0':
     optional: true
 
-  '@napi-rs/image-linux-x64-musl@1.12.0':
+  '@napi-rs/image-linux-x64-musl@1.15.0':
     optional: true
 
-  '@napi-rs/image-wasm32-wasi@1.12.0':
-    dependencies:
-      '@napi-rs/wasm-runtime': 1.1.1
+  '@napi-rs/image-win32-arm64-msvc@1.15.0':
     optional: true
 
-  '@napi-rs/image-win32-arm64-msvc@1.12.0':
+  '@napi-rs/image-win32-ia32-msvc@1.15.0':
     optional: true
 
-  '@napi-rs/image-win32-ia32-msvc@1.12.0':
+  '@napi-rs/image-win32-x64-msvc@1.15.0':
     optional: true
 
-  '@napi-rs/image-win32-x64-msvc@1.12.0':
-    optional: true
-
-  '@napi-rs/image@1.12.0':
+  '@napi-rs/image@1.15.0':
     optionalDependencies:
-      '@napi-rs/image-android-arm64': 1.12.0
-      '@napi-rs/image-darwin-arm64': 1.12.0
-      '@napi-rs/image-darwin-x64': 1.12.0
-      '@napi-rs/image-freebsd-x64': 1.12.0
-      '@napi-rs/image-linux-arm-gnueabihf': 1.12.0
-      '@napi-rs/image-linux-arm64-gnu': 1.12.0
-      '@napi-rs/image-linux-arm64-musl': 1.12.0
-      '@napi-rs/image-linux-x64-gnu': 1.12.0
-      '@napi-rs/image-linux-x64-musl': 1.12.0
-      '@napi-rs/image-wasm32-wasi': 1.12.0
-      '@napi-rs/image-win32-arm64-msvc': 1.12.0
-      '@napi-rs/image-win32-ia32-msvc': 1.12.0
-      '@napi-rs/image-win32-x64-msvc': 1.12.0
+      '@napi-rs/image-android-arm64': 1.15.0
+      '@napi-rs/image-darwin-arm64': 1.15.0
+      '@napi-rs/image-darwin-x64': 1.15.0
+      '@napi-rs/image-freebsd-x64': 1.15.0
+      '@napi-rs/image-linux-arm-gnueabihf': 1.15.0
+      '@napi-rs/image-linux-arm64-gnu': 1.15.0
+      '@napi-rs/image-linux-arm64-musl': 1.15.0
+      '@napi-rs/image-linux-x64-gnu': 1.15.0
+      '@napi-rs/image-linux-x64-musl': 1.15.0
+      '@napi-rs/image-win32-arm64-msvc': 1.15.0
+      '@napi-rs/image-win32-ia32-msvc': 1.15.0
+      '@napi-rs/image-win32-x64-msvc': 1.15.0
 
   '@napi-rs/wasm-runtime@0.2.11':
     dependencies:
       '@emnapi/core': 1.8.1
       '@emnapi/runtime': 1.8.1
       '@tybys/wasm-util': 0.9.0
-    optional: true
-
-  '@napi-rs/wasm-runtime@1.1.1':
-    dependencies:
-      '@emnapi/core': 1.8.1
-      '@emnapi/runtime': 1.8.1
-      '@tybys/wasm-util': 0.10.1
     optional: true
 
   '@napi-rs/wasm-runtime@1.1.6(@emnapi/core@1.11.0)(@emnapi/runtime@1.11.0)':
@@ -33057,11 +33045,6 @@ snapshots:
     optional: true
 
   '@turbo/windows-arm64@2.11.4':
-    optional: true
-
-  '@tybys/wasm-util@0.10.1':
-    dependencies:
-      tslib: 2.8.1
     optional: true
 
   '@tybys/wasm-util@0.10.3':
