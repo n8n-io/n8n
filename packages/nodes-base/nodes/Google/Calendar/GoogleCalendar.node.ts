@@ -111,7 +111,7 @@ export class GoogleCalendar implements INodeType {
 					hangoutsMeet: 'Google Meet',
 				};
 				const {
-					conferenceProperties: { allowedConferenceSolutionTypes },
+					conferenceProperties: { allowedConferenceSolutionTypes = [] } = {},
 				} = await googleApiRequest.call(
 					this,
 					'GET',
