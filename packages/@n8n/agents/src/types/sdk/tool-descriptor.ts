@@ -1,5 +1,7 @@
 import type { JSONSchema7 } from 'json-schema';
 
+import type { ToolRiskLevel } from './tool';
+
 export interface ToolDescriptor {
 	name: string;
 	description: string;
@@ -17,6 +19,7 @@ export interface ToolDescriptor {
 	hasResume: boolean;
 	hasToMessage: boolean;
 	requireApproval: boolean;
+	riskLevel?: ToolRiskLevel | null;
 	outputTrust?: 'untrusted' | null;
 	providerOptions: Record<string, unknown> | null;
 }

@@ -75,11 +75,14 @@ interface InteractivePayloadBase {
 	cancelled?: boolean;
 }
 
+export type ApprovalRiskLevel = 'low' | 'medium' | 'high' | 'critical';
+
 export interface ApprovalInput {
 	type: 'approval';
 	toolName: string;
 	displayName?: string;
 	supportsSessionApproval?: boolean;
+	riskLevel?: ApprovalRiskLevel;
 	args: unknown;
 }
 

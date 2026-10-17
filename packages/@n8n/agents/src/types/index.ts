@@ -75,6 +75,7 @@ export type {
 	ToolApprovalContext,
 	InterruptibleToolContext,
 	ToolSuspendOptions,
+	ToolRiskLevel,
 	BuiltTool,
 	BuiltProviderTool,
 } from './sdk/tool';
