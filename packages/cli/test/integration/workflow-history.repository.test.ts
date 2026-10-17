@@ -63,6 +63,47 @@ describe('WorkflowHistoryRepository', () => {
 			]);
 		});
 
+		test('pages past the first 500 versions, also when they share a timestamp', async () => {
+			const [busy, quiet] = await Promise.all([createWorkflow(), createWorkflow()]);
+			const sameTime = new Date('2026-01-02T00:00:00.000Z');
+			// The quiet workflow's version ids sort last, so they land on a later page.
+			const row = (workflowId: string, versionId: string, authors: string, createdAt: Date) => ({
+				versionId,
+				workflowId,
+				authors,
+				createdAt,
+				nodes: [],
+				connections: {},
+			});
+			await repository.insert([
+				row(quiet.id, '00000000-0000-0000-0000-000000000001', 'Alice Adams', sameTime),
+				row(
+					quiet.id,
+					'00000000-0000-0000-0000-000000000002',
+					'Bob Brown',
+					new Date('2026-01-01T00:00:00.000Z'),
+				),
+			]);
+			for (let batch = 0; batch < 6; batch++) {
+				await repository.insert(
+					Array.from({ length: 100 }, () =>
+						row(busy.id, `ffffffff-${randomUUID().slice(9)}`, 'Carol Clark', sameTime),
+					),
+				);
+			}
+
+			const recent = await repository.findRecentAuthorsByWorkflowIds([busy.id, quiet.id], 2);
+
+			expect(recent.get(busy.id)?.map((entry) => entry.authors)).toEqual([
+				'Carol Clark',
+				'Carol Clark',
+			]);
+			expect(recent.get(quiet.id)?.map((entry) => entry.authors)).toEqual([
+				'Alice Adams',
+				'Bob Brown',
+			]);
+		});
+
 		test('omits a workflow without versions and returns nothing for no ids', async () => {
 			const workflow = await createWorkflow();
 

@@ -15,6 +15,9 @@ import { WorkflowReviewRequest } from '../entities/workflow-review-request.ee';
 import type { OperationContext } from '../services/transaction';
 import { TransactionRunner } from '../services/transaction';
 
+/** Rows per page when the recent authors of many workflows are read. */
+const RECENT_AUTHORS_PAGE_SIZE = 500;
+
 @Service()
 export class WorkflowHistoryRepository extends BaseRepository<WorkflowHistory> {
 	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
@@ -43,17 +46,35 @@ export class WorkflowHistoryRepository extends BaseRepository<WorkflowHistory> {
 		const recent = new Map<string, Array<{ authors: string; at: Date }>>();
 		if (workflowIds.length === 0 || perWorkflow <= 0) return recent;
 
+		// Pages newest first and stops once every workflow has its share, so a
+		// workflow with a long autosave history does not pull every version row.
+		// The cursor includes `versionId` because versions can share a `createdAt`.
 		for (const chunk of chunkIds([...new Set(workflowIds)])) {
-			const rows = await this.find({
-				select: ['versionId', 'workflowId', 'authors', 'createdAt'],
-				where: { workflowId: In(chunk) },
-				order: { createdAt: 'DESC' },
-			});
-			for (const row of rows) {
-				const entries = recent.get(row.workflowId) ?? [];
-				if (entries.length >= perWorkflow) continue;
-				entries.push({ authors: row.authors, at: row.createdAt });
-				recent.set(row.workflowId, entries);
+			const pending = new Set(chunk);
+			let before: { createdAt: Date; versionId: string } | undefined;
+			while (pending.size > 0) {
+				const inScope = { workflowId: In([...pending]) };
+				const rows = await this.find({
+					select: ['versionId', 'workflowId', 'authors', 'createdAt'],
+					where: before
+						? [
+								{ ...inScope, createdAt: LessThan(before.createdAt) },
+								{ ...inScope, createdAt: before.createdAt, versionId: LessThan(before.versionId) },
+							]
+						: inScope,
+					order: { createdAt: 'DESC', versionId: 'DESC' },
+					take: RECENT_AUTHORS_PAGE_SIZE,
+				});
+				for (const row of rows) {
+					const entries = recent.get(row.workflowId) ?? [];
+					if (entries.length >= perWorkflow) continue;
+					entries.push({ authors: row.authors, at: row.createdAt });
+					recent.set(row.workflowId, entries);
+					if (entries.length >= perWorkflow) pending.delete(row.workflowId);
+				}
+				if (rows.length < RECENT_AUTHORS_PAGE_SIZE) break;
+				const last = rows[rows.length - 1];
+				before = { createdAt: last.createdAt, versionId: last.versionId };
 			}
 		}
 		return recent;

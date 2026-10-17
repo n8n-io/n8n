@@ -1,5 +1,5 @@
 import { Service } from '@n8n/di';
-import { DataSource, In, IsNull, Not } from '@n8n/typeorm';
+import { DataSource, In, IsNull, LessThan, Not } from '@n8n/typeorm';
 import type { EntityManager } from '@n8n/typeorm';
 
 import { BaseRepository } from './base-repository';
@@ -8,6 +8,9 @@ import { type OperationContext, TransactionRunner } from '../services/transactio
 import { chunkIds } from '../utils/chunk-ids';
 
 export type PublishHistoryScope = 'all' | 'latestActivation' | 'none';
+
+/** Rows per page when the recent events of many workflows are read. */
+const RECENT_EVENTS_PAGE_SIZE = 500;
 
 @Service()
 export class WorkflowPublishHistoryRepository extends BaseRepository<WorkflowPublishHistory> {
@@ -65,7 +68,8 @@ export class WorkflowPublishHistoryRepository extends BaseRepository<WorkflowPub
 	/**
 	 * The newest publish and unpublish events per workflow that still name their user,
 	 * newest first and at most `perWorkflow` each, keyed by workflow id. Workflows
-	 * without one are absent from the result.
+	 * without one are absent from the result. Events are ordered by `id`, which
+	 * is the insertion order of this append-only log.
 	 */
 	async findRecentAttributedByWorkflowIds(
 		workflowIds: string[],
@@ -74,18 +78,32 @@ export class WorkflowPublishHistoryRepository extends BaseRepository<WorkflowPub
 		const recent = new Map<string, Array<{ userId: string; at: Date }>>();
 		if (workflowIds.length === 0 || perWorkflow <= 0) return recent;
 
+		// Pages newest first and stops once every workflow has its share, so a
+		// workflow that was published many times does not pull every event row.
 		for (const chunk of chunkIds([...new Set(workflowIds)])) {
-			const rows = await this.find({
-				select: ['id', 'workflowId', 'userId', 'createdAt'],
-				where: { workflowId: In(chunk), userId: Not(IsNull()) },
-				order: { createdAt: 'DESC', id: 'DESC' },
-			});
-			for (const row of rows) {
-				if (row.userId === null) continue;
-				const entries = recent.get(row.workflowId) ?? [];
-				if (entries.length >= perWorkflow) continue;
-				entries.push({ userId: row.userId, at: row.createdAt });
-				recent.set(row.workflowId, entries);
+			const pending = new Set(chunk);
+			let beforeId: number | undefined;
+			while (pending.size > 0) {
+				const rows = await this.find({
+					select: ['id', 'workflowId', 'userId', 'createdAt'],
+					where: {
+						workflowId: In([...pending]),
+						userId: Not(IsNull()),
+						...(beforeId !== undefined ? { id: LessThan(beforeId) } : {}),
+					},
+					order: { id: 'DESC' },
+					take: RECENT_EVENTS_PAGE_SIZE,
+				});
+				for (const row of rows) {
+					if (row.userId === null) continue;
+					const entries = recent.get(row.workflowId) ?? [];
+					if (entries.length >= perWorkflow) continue;
+					entries.push({ userId: row.userId, at: row.createdAt });
+					recent.set(row.workflowId, entries);
+					if (entries.length >= perWorkflow) pending.delete(row.workflowId);
+				}
+				if (rows.length < RECENT_EVENTS_PAGE_SIZE) break;
+				beforeId = rows[rows.length - 1].id;
 			}
 		}
 		return recent;
