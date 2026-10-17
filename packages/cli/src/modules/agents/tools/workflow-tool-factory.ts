@@ -23,6 +23,7 @@ import type {
 	INode,
 	IPinData,
 	IRun,
+	IWorkflowExecuteAdditionalData,
 	IWorkflowExecutionDataProcess,
 	RelatedAgentRun,
 	WorkflowExecuteMode,
@@ -503,13 +504,13 @@ export async function executeWorkflow(
 	};
 
 	// Eval runs decorate the sub-execution's additionalData (HTTP mock handler,
-	// mocked credentials helper). The closure does not survive queue
-	// serialization — eval callers refuse queue mode upfront.
+	// mocked credentials helper). That closure cannot cross a queue boundary, so
+	// an eval run never goes through `WorkflowRunner`, which may enqueue.
 	const instrument = context.instrumentToolAdditionalData;
 	if (instrument && instrumentedToolName) {
-		runData.configureAdditionalData = (additionalData) => {
-			instrument(additionalData, { toolName: instrumentedToolName, toolKind: 'workflow' });
-		};
+		return await executeInProcess(workflow, runData, context, allOutputs, (additionalData) =>
+			instrument(additionalData, { toolName: instrumentedToolName, toolKind: 'workflow' }),
+		);
 	}
 
 	const responsePromise = createDeferredPromise<IExecuteResponsePromiseData>();
@@ -625,6 +626,50 @@ async function withWorkflowCancellation<T>(
 		throw error;
 	} finally {
 		signal.removeEventListener('abort', onAbort);
+	}
+}
+
+/**
+ * Runs the tool workflow in this process through the sub-workflow path, which
+ * is never enqueued — also in queue mode. The path reads the result from the
+ * execution store, the same as a manual run through `WorkflowRunner`.
+ *
+ * Not covered yet: a Respond to Webhook response does not reach the tool,
+ * because only `WorkflowRunner` connects the response promise.
+ */
+async function executeInProcess(
+	workflow: WorkflowEntity,
+	runData: IWorkflowExecutionDataProcess,
+	context: WorkflowToolRunContext,
+	allOutputs: boolean,
+	configureAdditionalData: (additionalData: IWorkflowExecuteAdditionalData) => void,
+): Promise<WorkflowToolExecutionResult> {
+	const { executeWorkflow: runSubWorkflow, getBase } = await import(
+		'@/workflow-execute-additional-data.js'
+	);
+	const additionalData = await getBase({
+		userId: context.userId,
+		workflowId: workflow.id,
+		projectId: context.projectId,
+		workflowSettings: workflow.settings ?? undefined,
+		// The sub-workflow deadline is the earlier of this and the workflow's own.
+		executionTimeoutTimestamp: Date.now() + DEFAULT_TIMEOUT_MS,
+	});
+
+	try {
+		const { executionId } = await runSubWorkflow({ id: workflow.id }, additionalData, {
+			parentProjectId: context.projectId,
+			loadedWorkflowData: runData.workflowData,
+			loadedRunData: runData,
+			executionMode: context.executionMode,
+			configureAdditionalData,
+		});
+		return await extractResult(executionId, allOutputs);
+	} catch (error) {
+		// A failed run throws, but its execution is stored. Report it like any other result.
+		const executionId = isRecord(error) ? error.executionId : undefined;
+		if (typeof executionId === 'string') return await extractResult(executionId, allOutputs);
+		throw error;
 	}
 }
 
