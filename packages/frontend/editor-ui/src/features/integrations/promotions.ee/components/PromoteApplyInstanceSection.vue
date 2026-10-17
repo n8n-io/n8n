@@ -122,6 +122,7 @@ const applyConnected = computed(() => applyConfig.value?.checkout.matchesConfig 
 			:connection-id="connection.id"
 			:base-branch-name="promoteConfig.settings.baseBranchName"
 			:create-branch-on-promotion="promoteConfig.settings.createBranchOnPromotion"
+			:provider-type="connection.provider.type"
 			@update:open="promoteDialogOpen = $event"
 		/>
 		<ApplyInstanceDialog

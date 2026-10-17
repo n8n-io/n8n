@@ -9,7 +9,7 @@ import type { PromotionConfig } from './database/entities/promotion-config.entit
 import { PromotionConfigRepository } from './database/repositories/promotion-config.repository';
 import { PromotionConnectionProjectRepository } from './database/repositories/promotion-connection-project.repository';
 import { PromotionConnectionRepository } from './database/repositories/promotion-connection.repository';
-import { resolvePromotionGitTarget } from './git-hosts/git-host-target';
+import { promotionHostBaseUrl, resolvePromotionGitTarget } from './git-hosts/git-host-target';
 import { resolveStoredConfig } from './promotion-config-settings';
 import type { PromotionOperationInput } from './promotions.types';
 
@@ -112,6 +112,7 @@ export class PromotionConfigResolver {
 			providerType: providerType.data,
 			authType: provider.authType,
 			encryptedAuth: provider.auth,
+			hostBaseUrl: promotionHostBaseUrl(provider),
 			target,
 			config: resolved,
 		});

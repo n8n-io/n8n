@@ -811,6 +811,8 @@ export {
 	promotePackageCountsSchema,
 	promotePackageResultSchema,
 	promotionGitResultSchema,
+	promotionPromoteWarningSchema,
+	type PromotionPromoteWarning,
 } from './promotions/promotion-operations.dto';
 export {
 	parsePromotionRunDetails,
