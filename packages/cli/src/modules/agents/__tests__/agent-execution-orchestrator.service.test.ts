@@ -883,6 +883,7 @@ describe('AgentExecutionOrchestratorService', () => {
 			announceExecution = true,
 			onBudgetNotice,
 			budget,
+			runtimeChunks,
 		}: {
 			abortSignal?: AbortSignal;
 			previewChat?: boolean;
@@ -890,9 +891,10 @@ describe('AgentExecutionOrchestratorService', () => {
 			announceExecution?: boolean;
 			onBudgetNotice?: () => void;
 			budget?: BudgetGuardrailConfig;
+			runtimeChunks?: StreamChunk[];
 		} = {}) {
 			const fixtures = makeService();
-			const runtime = makeRuntime(undefined, undefined, budget);
+			const runtime = makeRuntime(runtimeChunks, undefined, budget);
 			fixtures.runtimeCacheService.getRuntime.mockResolvedValue(runtime);
 			fixtures.checkpointStorage.getStatus.mockResolvedValue({
 				status: 'active',
@@ -1135,7 +1137,7 @@ describe('AgentExecutionOrchestratorService', () => {
 					userId,
 				});
 			});
-			await expect(collect(stream)).rejects.toMatchObject({ name: 'AbortError' });
+			await expect(collect(stream)).resolves.toEqual([]);
 			expect(sdkStart).not.toHaveBeenCalled();
 			expect(executionService.finalizeExecution).toHaveBeenCalledWith(
 				'execution-1',
@@ -1280,6 +1282,70 @@ describe('AgentExecutionOrchestratorService', () => {
 				);
 			},
 		);
+
+		it.each([
+			{ name: 'requested stop', previewChat: true, abort: true, expectedReason: 'cancelled' },
+			{ name: 'model failure', previewChat: true, abort: false, expectedReason: 'error' },
+			{
+				name: 'ownership loss',
+				previewChat: true,
+				abort: true,
+				abortReason: new OperationalError('Execution ownership lost'),
+				expectedReason: 'error',
+			},
+			{ name: 'non-chat abort', previewChat: false, abort: true, expectedReason: 'error' },
+		])('emits the correct finish reason after $name', async (scenario) => {
+			const controller = new AbortController();
+			const error = new Error('Runtime ended');
+			const usage = { promptTokens: 2, completionTokens: 3, totalTokens: 5, cost: 0.01 };
+			const { stream, executionService, chatExecutionService } = makeTurn({
+				previewChat: scenario.previewChat,
+				abortSignal: controller.signal,
+				runtimeChunks: [
+					{ type: 'text-start', id: 'text-1' },
+					{ type: 'text-delta', id: 'text-1', delta: 'partial answer' },
+					{ type: 'error', error },
+					{ type: 'finish', finishReason: 'error', model: 'mock-model', usage },
+				],
+			});
+			if (scenario.name === 'ownership loss')
+				executionService.getAbortSignal.mockReturnValue(controller.signal);
+			const chunks: AgentExecutionStreamChunk[] = [];
+			for await (const chunk of stream) {
+				chunks.push(chunk);
+				if (chunk.type !== 'text-delta' || !scenario.abort) continue;
+				if (scenario.name === 'requested stop') {
+					await chatExecutionService.handleCancel({
+						projectId,
+						agentId,
+						threadId: 'thread-1',
+						executionId: 'execution-1',
+						userId,
+						scope: 'foreground',
+					});
+				} else controller.abort(scenario.abortReason);
+			}
+
+			expect(chunks.filter((chunk) => chunk.type === 'finish')).toEqual([
+				{ type: 'finish', finishReason: scenario.expectedReason, model: 'mock-model', usage },
+			]);
+			expect(chunks.filter((chunk) => chunk.type === 'error')).toEqual(
+				scenario.expectedReason === 'cancelled' ? [] : [{ type: 'error', error }],
+			);
+			if (scenario.expectedReason === 'cancelled') {
+				expect(executionService.finalizeExecution).toHaveBeenCalledWith(
+					'execution-1',
+					expect.objectContaining({
+						record: expect.objectContaining({
+							assistantResponse: 'partial answer',
+							finishReason: 'cancelled',
+							error: null,
+							usage: { promptTokens: 2, completionTokens: 3, totalTokens: 5 },
+						}),
+					}),
+				);
+			}
+		});
 
 		it('releases the runtime when preparation fails after acquisition', async () => {
 			const fixtures = makeTurn();

@@ -166,6 +166,15 @@ export class AgentMessageQueueConsumer {
 			}
 		} catch (error) {
 			await this.queue.recordFailure(claim, error, controller.signal);
+			const { isAbortError } = await import('@n8n/agents');
+			if (
+				controller.signal.aborted &&
+				isAbortError(controller.signal.reason) &&
+				isAbortError(error)
+			) {
+				sender?.send({ type: 'done', sessionId: thread.id, executionId: admission.executionId });
+				return;
+			}
 			sender?.send(toChatErrorEvent(error, 'Chat failed'));
 			this.logger.warn('Queued agent message failed', {
 				queueId: item.id,

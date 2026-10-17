@@ -138,6 +138,11 @@ export class AgentTurnExecutionService {
 			const stream = await this.admitTurn(preparedTurn, config, recorder, state, chatControl);
 			yield* this.streamTurn(stream, preparedTurn, config, recorder, state);
 		} catch (error) {
+			if (
+				(await this.isStoppedChatTurn(turn, config)) &&
+				!(error instanceof AgentExecutionRecordingError)
+			)
+				return;
 			state.executionError = error;
 			recorder.record({ type: 'error', error });
 			recorder.record({ type: 'finish', finishReason: 'error' });
@@ -153,6 +158,18 @@ export class AgentTurnExecutionService {
 				}
 			}
 		}
+	}
+
+	private async isStoppedChatTurn(
+		turn: AgentTurnRequest | undefined,
+		config: ExecuteTurnConfig,
+	): Promise<boolean> {
+		const signal = turn?.options.abortSignal;
+		if (!signal?.aborted || config.chatSurface === undefined) return false;
+		const { isAbortError } = await import('@n8n/agents');
+		return Boolean(
+			config.chatSurface !== undefined && signal?.aborted && isAbortError(signal.reason),
+		);
 	}
 
 	private createChatExecutionControl(
@@ -214,7 +231,7 @@ export class AgentTurnExecutionService {
 	): AsyncGenerator<AgentExecutionStreamChunk> {
 		const attributionTracker = createAttributionTracker(config.mcpServerAttributions);
 
-		for await (const chunk of streamAgentChunks(stream)) {
+		for await (let chunk of streamAgentChunks(stream)) {
 			if (chunk.type === 'input-boundary') {
 				chunk.acknowledge();
 				continue;
@@ -226,6 +243,14 @@ export class AgentTurnExecutionService {
 					yield event;
 				}
 				continue;
+			}
+			// The runtime reports requested stops as errors. Keep chat outcomes consistent.
+			if (
+				(chunk.type === 'error' || (chunk.type === 'finish' && chunk.finishReason === 'error')) &&
+				(await this.isStoppedChatTurn(turn, config))
+			) {
+				if (chunk.type === 'error') continue;
+				chunk = { ...chunk, finishReason: 'cancelled' };
 			}
 			recorder.record(chunk);
 			if (chunk.type === 'tool-call-suspended') state.suspendedRunId = chunk.runId;
