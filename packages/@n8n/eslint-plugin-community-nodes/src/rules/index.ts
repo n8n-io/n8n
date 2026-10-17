@@ -33,6 +33,7 @@ import { NodeRegistrationCompleteRule } from './node-registration-complete.js';
 import { NodeUsableAsToolRule } from './node-usable-as-tool.js';
 import { OpenEndedNodeFieldsRule } from './open-ended-node-fields.js';
 import { PackageNameConventionRule } from './package-name-convention.js';
+import { PreferDeclarativeStyleRule } from './prefer-declarative-style.js';
 import { RequireFilesArrayRule } from './require-files-array.js';
 import { RequireHomepageRule } from './require-homepage.js';
 import { RequireNodeApiErrorRule } from './require-node-api-error.js';
@@ -57,6 +58,7 @@ export const rules = {
 	'node-usable-as-tool': NodeUsableAsToolRule,
 	'open-ended-node-fields': OpenEndedNodeFieldsRule,
 	'package-name-convention': PackageNameConventionRule,
+	'prefer-declarative-style': PreferDeclarativeStyleRule,
 	'credential-test-required': CredentialTestRequiredRule,
 	'credential-unnecessary-password': CredentialUnnecessaryPasswordRule,
 	'no-credential-reuse': NoCredentialReuseRule,
