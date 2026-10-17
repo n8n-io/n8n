@@ -273,6 +273,21 @@ describe('Expression', () => {
 			expect(thrownError?.context.itemIndex).toBe(3);
 		});
 
+		describe('when it returns objects as strings', () => {
+			const evaluateAsString = (value: string) =>
+				expression.getParameterValue(value, null, 0, 0, 'node', [], 'manual', {}, undefined, true);
+
+			it('should throw for an invalid DateTime', () => {
+				expect(() => evaluateAsString('={{ DateTime.invalid("test") }}')).toThrow(
+					'invalid DateTime',
+				);
+			});
+
+			it('should not throw for a plain object that carries the luxon DateTime flag', () => {
+				expect(() => evaluateAsString('={{ { isLuxonDateTime: true } }}')).not.toThrow();
+			});
+		});
+
 		describe('SafeObject security wrapper', () => {
 			it('should block Object.defineProperty', () => {
 				expect(() => evaluate('={{Object.defineProperty}}')).toThrow();
