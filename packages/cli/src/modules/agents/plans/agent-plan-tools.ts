@@ -247,6 +247,7 @@ export function presentPlan(plan: AgentPlanSnapshot | null) {
 
 	return {
 		planId: plan.id,
+		...(plan.workState ? { workState: plan.workState } : {}),
 		revision: plan.revision,
 		closed: plan.closedAt !== null,
 		startedAt,
@@ -350,6 +351,9 @@ export function createAgentPlanTools(service: AgentPlanService): BuiltTool[] {
 					'For a task status change, send document.items with only the task id, status, and any changed title or resultSummary. ' +
 					'For a child task, include its group id and put the child update in tasks. Omitted fields and items stay unchanged. ' +
 					'If an update is rejected, correct it and retry before reporting progress. Read the plan again if the revision changed. ' +
+					'Use workState to distinguish stopped tasks from their saved statuses. A new message does not resume stopped tasks. ' +
+					'For an explicit continuation request, call resume_background_jobs with planId and only the requested taskIds. Omit taskIds only when the user requests the whole plan. ' +
+					'Pass planTask with planId and the permanent leaf task ID when you delegate background plan work. ' +
 					'For sub-agent work on a plan task, always use delegate_subagent with mode: "background", even for short or sequential tasks. ' +
 					'Do not use foreground delegation for plan work. ' +
 					'This rule overrides the default foreground-delegation guidance for plan work. ' +

@@ -1,3 +1,5 @@
+import type { AgentPlanTaskRef } from '@n8n/api-types';
+import { AgentPlanWorkRepository } from './agent-plan-work.repository';
 import { BaseRepository, TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, In, IsNull, LessThan, Not } from '@n8n/typeorm';
@@ -15,6 +17,7 @@ import { AgentExecutionThreadRepository } from './agent-execution-thread.reposit
 
 type NewAgentBackgroundJobBase = {
 	sourceExecutionId?: string;
+	planTask?: AgentPlanTaskRef;
 	id: string;
 	parentAgentId: string;
 	parentThreadId: string;
@@ -24,6 +27,8 @@ type NewAgentBackgroundJobBase = {
 };
 
 export type NewSubAgentJob = NewAgentBackgroundJobBase & {
+	validatePlanTask?: boolean;
+	inheritedPlanTask?: boolean;
 	kind: 'subagent';
 	subAgentId: string;
 	childThreadId: string;
@@ -69,6 +74,7 @@ export class AgentBackgroundJobRepository extends BaseRepository<AgentBackground
 		transactionRunner: TransactionRunner,
 		private readonly threadRepository: AgentExecutionThreadRepository,
 		private readonly cancellations: AgentTaskCancellationRepository,
+		private readonly planWork: AgentPlanWorkRepository,
 	) {
 		super(AgentBackgroundJob, dataSource.manager, transactionRunner);
 	}
@@ -82,7 +88,11 @@ export class AgentBackgroundJobRepository extends BaseRepository<AgentBackground
 			}
 			if ((await this.countActiveSubAgentsByParentThread(job.parentThreadId, ctx)) >= limit)
 				return false;
-			await manager.insert(AgentBackgroundJob, { ...job, status: 'running' });
+			const { planTask, validatePlanTask, inheritedPlanTask, ...stored } = job;
+			if (validatePlanTask || planTask)
+				await this.planWork.validateTask(job.parentThreadId, planTask, ctx, inheritedPlanTask);
+			await manager.insert(AgentBackgroundJob, { ...stored, ...planTask, status: 'running' });
+			if (planTask) await this.planWork.recordReplacement(planTask, ctx);
 			return true;
 		});
 	}
@@ -96,13 +106,21 @@ export class AgentBackgroundJobRepository extends BaseRepository<AgentBackground
 	): Promise<{ inserted: true } | { inserted: false; existing: AgentBackgroundJob }> {
 		await this.runInTransaction({}, async (manager, ctx) => {
 			await this.cancellations.lockScope(job.parentThreadId, ctx);
+			const { planTask, ...stored } = job;
+			if (
+				planTask &&
+				!(await manager.existsBy(AgentBackgroundJob, { childExecutionId: job.childExecutionId }))
+			)
+				await this.planWork.validateTask(job.parentThreadId, planTask, ctx, true);
 			await manager
 				.createQueryBuilder()
 				.insert()
 				.into(AgentBackgroundJob)
-				.values({ ...job, status: 'running' })
+				.values({ ...stored, ...planTask, status: 'running' })
 				.orIgnore()
 				.execute();
+			if (planTask && (await manager.existsBy(AgentBackgroundJob, { id: job.id })))
+				await this.planWork.recordReplacement(planTask, ctx);
 			// The service stops late workflow receipts before returning them to the caller.
 		});
 
@@ -446,6 +464,34 @@ export class AgentBackgroundJobRepository extends BaseRepository<AgentBackground
 		});
 	}
 
+	async reservePlanJobs(
+		threadId: string,
+		stopId: string,
+		ids: string[],
+		timeoutAt: Date,
+		limit: number,
+	) {
+		return await this.runInTransaction({}, async (manager, ctx) => {
+			await this.cancellations.lockScope(threadId, ctx);
+			const stop = await this.cancellations.latest(threadId, ctx);
+			if (stop?.pause.id !== stopId || !stop.pause.resumedAt) return 'changed' as const;
+			if (!ids.length) return 'reserved' as const;
+			const jobs = await manager.find(AgentBackgroundJob, { where: { id: In(ids) } });
+			if (
+				jobs.length !== ids.length ||
+				jobs.some((job) => job.status !== 'paused' || !job.pauseRequestId || !job.notifiedAt)
+			)
+				return 'changed' as const;
+			for (const parentThreadId of new Set(jobs.map((job) => job.parentThreadId))) {
+				const selected = jobs.filter((job) => job.parentThreadId === parentThreadId).length;
+				if ((await this.countActiveSubAgentsByParentThread(parentThreadId, ctx)) + selected > limit)
+					return 'limit-reached' as const;
+			}
+			await manager.update(AgentBackgroundJob, { id: In(ids) }, { status: 'suspended', timeoutAt });
+			return 'reserved' as const;
+		});
+	}
+
 	async releasePausedResume(id: string, pauseRequestId: string, timeoutAt: Date): Promise<boolean> {
 		const result = await this.update(
 			{ id, status: 'suspended', pauseRequestId, timeoutAt, notifiedAt: Not(IsNull()) },
@@ -480,7 +526,7 @@ export class AgentBackgroundJobRepository extends BaseRepository<AgentBackground
 					where: { ...scope, kind: 'subagent', status: 'paused', pauseRequestId: Not(IsNull()) },
 				})
 			).filter((job) => {
-				if (!job.pauseRequestId || job.pauseRequestId === latestId) return false;
+				if (job.planId || !job.pauseRequestId || job.pauseRequestId === latestId) return false;
 				if (job.pauseRequestId[14] !== '7') return true;
 				return latestId[14] === '7' && job.pauseRequestId < latestId;
 			});
