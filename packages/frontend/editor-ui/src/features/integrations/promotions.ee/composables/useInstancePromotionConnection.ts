@@ -5,7 +5,9 @@ import {
 	type PromotionConnectionSummary,
 } from '../promotionsSettings.api';
 
-let instanceConnection: Promise<PromotionConnectionSummary | null> | undefined;
+type ConnectionLookup = { connection: PromotionConnectionSummary | null; failed: boolean };
+
+let instanceConnection: Promise<ConnectionLookup> | undefined;
 
 export function invalidateInstancePromotionConnection() {
 	instanceConnection = undefined;
@@ -15,21 +17,25 @@ export function invalidateInstancePromotionConnection() {
 export function useInstancePromotionConnection() {
 	const rootStore = useRootStore();
 	const connection = ref<PromotionConnectionSummary | null>(null);
+	/** True when the last lookup failed, so a caller can tell it apart from "no connection". */
+	const failed = ref(false);
 
 	async function load() {
 		instanceConnection ??= fetchPromotionConnections(rootStore.publicApiContext, {
 			scope: 'instance',
 		})
-			.then((connections) => connections[0] ?? null)
+			.then((connections) => ({ connection: connections[0] ?? null, failed: false }))
 			.catch(() => {
 				invalidateInstancePromotionConnection();
-				return null;
+				return { connection: null, failed: true };
 			});
-		connection.value = await instanceConnection;
+		const lookup = await instanceConnection;
+		connection.value = lookup.connection;
+		failed.value = lookup.failed;
 	}
 
 	const hasPromoteConfig = computed(() => connection.value?.configs.promote !== undefined);
 	const hasApplyConfig = computed(() => connection.value?.configs.apply !== undefined);
 
-	return { connection, hasPromoteConfig, hasApplyConfig, load };
+	return { connection, failed, hasPromoteConfig, hasApplyConfig, load };
 }

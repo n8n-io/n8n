@@ -53,17 +53,19 @@ describe('useInstancePromotionConnection', () => {
 		expect(hasPromoteConfig.value).toBe(false);
 	});
 
-	it('should treat a failed lookup as no connection and retry on the next load', async () => {
+	it('should report a failed lookup and retry on the next load', async () => {
 		vi.mocked(api.fetchPromotionConnections)
 			.mockRejectedValueOnce(new Error('offline'))
 			.mockResolvedValueOnce([connection]);
-		const { connection: current, load } = useInstancePromotionConnection();
+		const { connection: current, failed, load } = useInstancePromotionConnection();
 
 		await load();
 		expect(current.value).toBeNull();
+		expect(failed.value).toBe(true);
 
 		await load();
 		expect(current.value).toEqual(connection);
+		expect(failed.value).toBe(false);
 		expect(api.fetchPromotionConnections).toHaveBeenCalledTimes(2);
 	});
 
