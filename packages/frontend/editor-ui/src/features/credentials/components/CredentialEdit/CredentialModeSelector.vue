@@ -12,6 +12,8 @@ import {
 	getNodeCredentialForSelectedAuthType,
 } from '@/app/utils/nodeTypesUtils';
 import { useCredentialOAuth } from '@/features/credentials/composables/useCredentialOAuth';
+import { hasManagedOAuthApp } from '@/features/credentials/credentials.utils';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 
 export interface CredentialModeOption {
 	type: string;
@@ -38,10 +40,10 @@ const emit = defineEmits<{
 }>();
 
 const nodeTypesStore = useNodeTypesStore();
+const credentialsStore = useCredentialsStore();
 const ndvStore = injectNDVStore();
 const i18n = useI18n();
-const { canOAuthCredentialQuickConnect, isOAuthCredentialType, hasManualCredentialInputFields } =
-	useCredentialOAuth();
+const { isOAuthCredentialType, hasManualCredentialInputFields } = useCredentialOAuth();
 
 const activeNode = computed<INode | null>(() => props.contextNode ?? ndvStore.value.activeNode);
 const activeNodeType = computed<INodeTypeDescription | null>(() => {
@@ -116,11 +118,13 @@ const manualOptions = computed<Option[]>(() => {
 		const credential = activeNodeType.value
 			? getNodeCredentialForSelectedAuthType(activeNodeType.value, option.value)
 			: null;
+		// Not `canOAuthCredentialQuickConnect`: the managed app can exist while a
+		// required field, such as Jira's Site URL, stays the user's to fill.
 		const splitsIntoManagedPair = !!(
 			credential &&
 			props.showManagedOauthOptions &&
 			isOAuthCredentialType(credential.name) &&
-			canOAuthCredentialQuickConnect(credential.name)
+			hasManagedOAuthApp(credentialsStore.getCredentialTypeByName(credential.name))
 		);
 		return { option, splitsIntoManagedPair };
 	});
