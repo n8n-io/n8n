@@ -157,6 +157,24 @@ describe('buildAxiosConfigFromLegacyRequest', () => {
 		});
 	});
 
+	test.each([
+		{ 'CONTENT-TYPE': 'application/x-www-form-urlencoded' },
+		{ 'Content-Type': 'application/x-www-form-urlencoded', 'content-type': 'multipart/form-data' },
+	])(
+		'should use the first case-insensitive content-type header when merging form data',
+		async (headers) => {
+			const axiosOptions = await buildAxiosConfigFromLegacyRequest({
+				url: 'https://example.com',
+				headers,
+				body: { foo: 'bar' },
+				form: { baz: 'qux' },
+			});
+
+			expect(axiosOptions.data).toBe('foo=bar&baz=qux');
+			expect(axiosOptions.headers).toMatchObject(headers);
+		},
+	);
+
 	test('should not use Host header for SNI', async () => {
 		const axiosOptions = await buildAxiosConfigFromLegacyRequest({
 			url: 'https://example.de/foo/bar',
