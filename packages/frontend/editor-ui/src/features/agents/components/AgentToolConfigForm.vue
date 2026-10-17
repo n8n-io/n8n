@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { AgentConfigValidationIssue } from '@n8n/api-types';
+import type { AgentConfigValidationIssue, NodeToolTrustedMetadata } from '@n8n/api-types';
 import { N8nText } from '@n8n/design-system';
 import {
 	RestrictedToolCallout,
@@ -32,6 +32,7 @@ import AgentToolConfigCustomContent from './AgentToolConfigCustomContent.vue';
 import AgentToolConfigMcpApprovalSetting from './AgentToolConfigMcpApprovalSetting.vue';
 import AgentToolConfigNodeContent from './AgentToolConfigNodeContent.vue';
 import AgentToolConfigWorkflowContent from './AgentToolConfigWorkflowContent.vue';
+import NodeToolTrustedMetadata from './NodeToolTrustedMetadata.vue';
 
 interface ToolModalData {
 	toolRef: AgentJsonToolRef;
@@ -106,6 +107,8 @@ const approvalRequired = ref(false);
 const mcpPermissions = ref<AgentJsonMcpServerConfig['toolPermissions']>();
 const mcpApprovalValid = ref(true);
 const draftNode = ref<INode | null>(null);
+const trustedMetadata = ref<NodeToolTrustedMetadata | undefined>();
+const trustedMetadataValid = ref(true);
 
 const initialNode = computed<INode | null>(() =>
 	isMcpTool.value
@@ -167,6 +170,7 @@ watch(
 	() => toolModalData.value?.toolRef,
 	(toolRef) => {
 		approvalRequired.value = Boolean(toolRef?.requireApproval);
+		trustedMetadata.value = toolRef?.type === 'node' ? toolRef.trustedMetadata : undefined;
 	},
 	{ immediate: true },
 );
@@ -211,7 +215,7 @@ const canSave = computed(() => {
 	if (isMcpTool.value) {
 		return isValid.value && (!supportsApproval.value || mcpApprovalValid.value);
 	}
-	return isValid.value && !hasHttpRequestUrlIssue.value;
+	return isValid.value && trustedMetadataValid.value && !hasHttpRequestUrlIssue.value;
 });
 
 const fromAiDisabledParameters = computed(() => {
@@ -295,7 +299,11 @@ function confirm(): boolean {
 	const currentToolNode = nodeContentRef.value?.getNode();
 	const toolData = toolModalData.value;
 	if (!currentToolNode || !toolData) return false;
-	const updatedRef = updateToolRefFromNode(toolData.toolRef, currentToolNode);
+	const updatedRef = updateToolRefFromNode(
+		toolData.toolRef,
+		currentToolNode,
+		trustedMetadata.value,
+	);
 	toolData.onConfirm(withApprovalRequirement(updatedRef));
 	return true;
 }
@@ -395,6 +403,14 @@ defineExpose({ canSave, confirm, remove, changeTitle });
 				@update:valid="isValid = $event"
 				@update:node-name="handleNodeNameUpdate"
 				@update:node="draftNode = $event"
+			/>
+			<NodeToolTrustedMetadata
+				v-if="initialNode && !isMcpTool && !isWorkflowTool"
+				v-model="trustedMetadata"
+				:tool-name="nodeName"
+				:submitted="submitCount > 0"
+				:disabled="isRestricted"
+				@update:valid="trustedMetadataValid = $event"
 			/>
 			<AgentToolConfigApprovalSetting
 				v-if="!isMcpTool && initialNode && showApprovalSetting"

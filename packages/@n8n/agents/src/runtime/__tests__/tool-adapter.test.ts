@@ -269,6 +269,16 @@ describe('executeTool — context propagation', () => {
 		expect(handler).toHaveBeenCalledWith({}, expect.objectContaining({ executionCounter }));
 	});
 
+	it('passes runtime metadata to the tool handler', async () => {
+		const handler = vi.fn().mockResolvedValue('ok');
+		const tool: BuiltTool = { name: 'trusted', description: 'd', handler };
+		const runtimeMetadata = { tenant_id: 'tenant-789' };
+
+		await executeTool({}, tool, undefined, undefined, 'call-1', { runtimeMetadata });
+
+		expect(handler).toHaveBeenCalledWith({}, expect.objectContaining({ runtimeMetadata }));
+	});
+
 	it('passes the execution counter to interruptible tool handlers', async () => {
 		const handler = vi.fn().mockResolvedValue('ok');
 		const tool: BuiltTool = {

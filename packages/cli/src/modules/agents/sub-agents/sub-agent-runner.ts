@@ -121,6 +121,12 @@ export interface SubAgentRunContext {
 	runtimeSnapshot?: string;
 	/** Preview-chat budget sink forwarded from the root run. Absent elsewhere. */
 	onBudgetNotice?: (notice: AgentBudgetNotice) => void;
+	/**
+	 * Caller-mapped trusted tool metadata values from the root run
+	 * (`ExecutionOptions.runtimeMetadata`). Delegated children inherit them;
+	 * not persisted — a resumed child run continues without them.
+	 */
+	runtimeMetadata?: Record<string, unknown>;
 }
 
 export interface SubAgentRunResult {
@@ -368,6 +374,9 @@ export class SubAgentRunner {
 					...modelStreamStallOptions(this.aiConfig),
 					executionCounter: context.executionCounter,
 					shouldPause: context.shouldPause,
+					...(context.runtimeMetadata !== undefined
+						? { runtimeMetadata: context.runtimeMetadata }
+						: {}),
 				},
 				{
 					useRootSessionCap: true,

@@ -3,7 +3,9 @@ import {
 	findVectorStoreToolNameCollisions,
 	formatAgentConfigZodError,
 	McpOAuth2CredentialTypeSchema,
+	TRUSTED_METADATA_RESERVED_KEYS,
 } from '../agent-json-config.schema';
+import { sanitizeAgentJsonConfig } from '../sanitize-agent-json-config';
 
 const minimalConfig = {
 	name: 'test-agent',
@@ -792,6 +794,109 @@ describe('WorkflowToolJsonConfigSchema — inputs', () => {
 
 			expect(result.success).toBe(false);
 		}
+	});
+});
+
+describe('NodeToolJsonConfigSchema — trustedMetadata', () => {
+	const toolWithMetadata = (trustedMetadata: unknown) => ({
+		...minimalConfig,
+		tools: [
+			{
+				type: 'node',
+				name: 'read_file',
+				node: { nodeType: 'n8n-nodes-base.readWriteFile', nodeTypeVersion: 1, nodeParameters: {} },
+				trustedMetadata,
+			},
+		],
+	});
+
+	it('round-trips fixed and expression bindings', () => {
+		const trustedMetadata = {
+			customer_id: { mode: 'fixed', value: 'cust_456' },
+			tenant_id: { mode: 'fixed', value: 'tenant_789' },
+			session_prefix: { mode: 'expression', value: '={{ $vars.sessionPrefix }}' },
+		};
+		const result = AgentJsonConfigSchema.safeParse(toolWithMetadata(trustedMetadata));
+
+		expect(result.success).toBe(true);
+		if (result.success) {
+			expect(result.data.tools?.[0]).toMatchObject({ trustedMetadata });
+		}
+	});
+
+	it('accepts structured fixed values', () => {
+		const result = AgentJsonConfigSchema.safeParse(
+			toolWithMetadata({
+				scopes: { mode: 'fixed', value: ['orders.read', 'orders.write'] },
+				context: { mode: 'fixed', value: { region: 'eu', flag: true, limit: null } },
+			}),
+		);
+
+		expect(result.success).toBe(true);
+	});
+
+	it.each([
+		['a value-less fixed binding', { tenant_id: { mode: 'fixed' } }],
+		['an unknown mode', { tenant_id: { mode: 'ai', description: 'Model-controlled' } }],
+		[
+			'an expression without the leading =',
+			{ tenant_id: { mode: 'expression', value: '$vars.tenantId' } },
+		],
+		['a blank expression', { tenant_id: { mode: 'expression', value: '=   ' } }],
+		['a non-JSON fixed value', { tenant_id: { mode: 'fixed', value: new Date() } }],
+	])('rejects %s', (_name, trustedMetadata) => {
+		expect(AgentJsonConfigSchema.safeParse(toolWithMetadata(trustedMetadata)).success).toBe(false);
+	});
+
+	it.each(['', 'a'.repeat(65), 'tenant id', 'tenant/id'])(
+		'rejects the invalid metadata name %s',
+		(name) => {
+			const result = AgentJsonConfigSchema.safeParse(
+				toolWithMetadata({ [name]: { mode: 'fixed', value: 'x' } }),
+			);
+			expect(result.success).toBe(false);
+		},
+	);
+
+	it.each(TRUSTED_METADATA_RESERVED_KEYS)('rejects the reserved metadata name %s', (name) => {
+		const result = AgentJsonConfigSchema.safeParse(
+			toolWithMetadata({ [name]: { mode: 'fixed', value: 'x' } }),
+		);
+		expect(result.success).toBe(false);
+	});
+
+	it('rejects an unknown field next to trustedMetadata', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			tools: [
+				{
+					type: 'node',
+					name: 'read_file',
+					node: {
+						nodeType: 'n8n-nodes-base.readWriteFile',
+						nodeTypeVersion: 1,
+						nodeParameters: {},
+					},
+					trustedMetadata: { tenant_id: { mode: 'fixed', value: 'tenant_789' } },
+					inputSchema: { type: 'object' },
+				},
+			],
+		});
+
+		expect(result.success).toBe(false);
+	});
+
+	it('survives sanitizeAgentJsonConfig (unknown-field stripping) unchanged', () => {
+		const trustedMetadata = {
+			customer_id: { mode: 'fixed', value: 'cust_456' },
+			tenant_id: { mode: 'expression', value: '={{ $vars.tenantId }}' },
+		};
+		const sanitized = sanitizeAgentJsonConfig(toolWithMetadata(trustedMetadata));
+
+		expect(AgentJsonConfigSchema.safeParse(sanitized)).toMatchObject({
+			success: true,
+			data: { tools: [{ trustedMetadata }] },
+		});
 	});
 });
 

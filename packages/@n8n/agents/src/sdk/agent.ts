@@ -1327,6 +1327,11 @@ export class Agent implements BuiltAgent, AgentBuilder {
 					...(request.parentExecutionCounter !== undefined
 						? { executionCounter: request.parentExecutionCounter }
 						: {}),
+					// Delegated children inherit the parent run's trusted tool
+					// metadata so their tools receive the same caller-mapped values.
+					...(request.parentRuntimeMetadata !== undefined
+						? { runtimeMetadata: request.parentRuntimeMetadata }
+						: {}),
 				};
 				const resultStream = resume
 					? await childRuntime.resume('stream', resume.resumeData, {

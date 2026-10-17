@@ -1,7 +1,7 @@
 import type { AgentJsonToolConfig } from '@n8n/api-types';
 import type { PolicyViolation } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import { hasPolicyRefusalMarker } from 'n8n-workflow';
+import { hasPolicyRefusalMarker, WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE } from 'n8n-workflow';
 import { z } from 'zod';
 
 import type { EphemeralNodeExecutor } from '@/node-execution';
@@ -349,5 +349,312 @@ describe('resolveNodeTool → eval instrumentation', () => {
 		const request = executeInline.mock.calls[0][0] as Record<string, unknown>;
 		expect(request.nodeName).toBeUndefined();
 		expect(request.configureAdditionalData).toBeUndefined();
+	});
+});
+
+describe('resolveNodeTool → trusted metadata', () => {
+	it('puts trusted metadata into the tool execution input and keeps `$fromAI` parameters wired', async () => {
+		const executeInline = vi.fn().mockResolvedValue({ status: 'success', data: [] });
+		// The placeholder for the trusted key keeps the injected value reachable
+		// from node parameters via `$fromAI('customer_id')` at node execution.
+		const nodeParameters = {
+			customerId: "={{ $fromAI('customer_id', 'The customer', 'string') }}",
+			orderId: "={{ $fromAI('order_id', 'The order', 'string') }}",
+		};
+		const tool = await resolveNodeTool(
+			{
+				...baseToolSchema,
+				node: { ...baseToolSchema.node, nodeParameters },
+				trustedMetadata: {
+					customer_id: { mode: 'fixed', value: 'cust_456' },
+					tenant_id: { mode: 'fixed', value: 'tenant_789' },
+				},
+			},
+			{ executor: { executeInline } as unknown as EphemeralNodeExecutor, projectId: 'p1' },
+		);
+
+		// Both placeholders would be advertised without trusted metadata; the
+		// trusted key must not appear as a model-editable field.
+		const schema = tool.inputSchema as z.ZodObject<z.ZodRawShape>;
+		expect(Object.keys(schema.shape)).toEqual(['order_id']);
+
+		await tool.handler!({ order_id: 'ORD-123' }, {} as never);
+
+		expect(executeInline).toHaveBeenCalledWith(
+			expect.objectContaining({
+				inputData: [
+					{ json: { order_id: 'ORD-123', customer_id: 'cust_456', tenant_id: 'tenant_789' } },
+				],
+				nodeParameters,
+			}),
+		);
+	});
+
+	it('lets the injected trusted value win over a same-named model argument', async () => {
+		const executeInline = vi.fn().mockResolvedValue({ status: 'success', data: [] });
+		const tool = await resolveNodeTool(
+			{
+				...baseToolSchema,
+				node: { ...baseToolSchema.node, nodeParameters: {} },
+				trustedMetadata: {
+					customer_id: { mode: 'fixed', value: 'cust_456' },
+					tenant_id: { mode: 'fixed', value: 'tenant_789' },
+				},
+			},
+			{ executor: { executeInline } as unknown as EphemeralNodeExecutor, projectId: 'p1' },
+		);
+
+		await tool.handler!(
+			{
+				order_id: 'ORD-123',
+				// The model invents an identity value the config trusted. It must
+				// not reach the tool — tenant isolation depends on the runtime's
+				// value, not on schema enforcement.
+				customer_id: 'invented-by-the-model',
+				tenant_id: 'invented-by-the-model',
+			} as never,
+			{} as never,
+		);
+
+		expect(executeInline).toHaveBeenCalledWith(
+			expect.objectContaining({
+				inputData: [
+					{ json: { order_id: 'ORD-123', customer_id: 'cust_456', tenant_id: 'tenant_789' } },
+				],
+			}),
+		);
+	});
+
+	it('resolves expression metadata in a context without the model arguments', async () => {
+		const executeInline = vi.fn().mockResolvedValue({ status: 'success', data: [] });
+		const evaluateExpressions = vi.fn().mockResolvedValue({ tenant_id: 'tenant-789' });
+		const tool = await resolveNodeTool(
+			{
+				...baseToolSchema,
+				node: { ...baseToolSchema.node, nodeParameters: {} },
+				trustedMetadata: {
+					tenant_id: { mode: 'expression', value: '={{ $vars.tenantId }}' },
+				},
+			},
+			{
+				executor: { executeInline, evaluateExpressions } as unknown as EphemeralNodeExecutor,
+				projectId: 'proj-1',
+			},
+		);
+
+		await tool.handler!({ query: 'invoices' }, {} as never);
+
+		// The evaluation context is the trusted-input context the workflow tool
+		// factory uses, carrying no tool-call input: a metadata expression
+		// cannot resolve `$json` (the model's arguments).
+		expect(evaluateExpressions).toHaveBeenCalledWith(
+			expect.objectContaining({
+				projectId: 'proj-1',
+				nodeType: WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE,
+				nodeParameters: {},
+				nodeName: 'Google_Drive',
+			}),
+			{ tenant_id: '={{ $vars.tenantId }}' },
+			[],
+		);
+
+		expect(executeInline).toHaveBeenCalledWith(
+			expect.objectContaining({
+				inputData: [{ json: { query: 'invoices', tenant_id: 'tenant-789' } }],
+			}),
+		);
+	});
+
+	it('fails the tool call loudly when a metadata expression cannot resolve', async () => {
+		const executeInline = vi.fn().mockResolvedValue({ status: 'success', data: [] });
+		const evaluateExpressions = vi
+			.fn()
+			.mockRejectedValue(new Error('Cannot resolve input "tenant_id": no data'));
+		const tool = await resolveNodeTool(
+			{
+				...baseToolSchema,
+				node: { ...baseToolSchema.node, nodeParameters: {} },
+				trustedMetadata: {
+					tenant_id: { mode: 'expression', value: '={{ $vars.tenantId }}' },
+				},
+			},
+			{
+				executor: { executeInline, evaluateExpressions } as unknown as EphemeralNodeExecutor,
+				projectId: 'p1',
+			},
+		);
+
+		await expect(tool.handler!({ query: 'x' }, {} as never)).rejects.toThrow(
+			/Cannot resolve input "tenant_id"/,
+		);
+		// The node must not run without its trusted value.
+		expect(executeInline).not.toHaveBeenCalled();
+	});
+
+	it('strips trusted keys from an introspected zod schema', async () => {
+		const introspectSupplyDataToolSchema = vi
+			.fn()
+			.mockResolvedValue(z.object({ tenant_id: z.string(), query: z.string() }));
+		Container.set(NodeTypes, {
+			getByNameAndVersion: vi.fn().mockReturnValue({
+				description: { description: 'Search Wikipedia' },
+				supplyData: vi.fn(),
+			}),
+		} as unknown as NodeTypes);
+
+		const tool = await resolveNodeTool(
+			{
+				...baseToolSchema,
+				node: { ...baseToolSchema.node, nodeParameters: {} },
+				trustedMetadata: {
+					tenant_id: { mode: 'fixed', value: 'tenant_789' },
+				},
+			},
+			{
+				executor: { introspectSupplyDataToolSchema } as unknown as EphemeralNodeExecutor,
+				projectId: 'p1',
+			},
+		);
+
+		const schema = tool.inputSchema as z.ZodObject<z.ZodRawShape>;
+		expect(Object.keys(schema.shape)).toEqual(['query']);
+	});
+
+	it('strips trusted keys from an introspected JSON schema', async () => {
+		const introspectSupplyDataToolSchema = vi.fn().mockResolvedValue({
+			type: 'object',
+			properties: { tenant_id: { type: 'string' }, query: { type: 'string' } },
+			required: ['tenant_id', 'query'],
+		});
+		Container.set(NodeTypes, {
+			getByNameAndVersion: vi.fn().mockReturnValue({
+				description: { description: 'Search Wikipedia' },
+				supplyData: vi.fn(),
+			}),
+		} as unknown as NodeTypes);
+
+		const tool = await resolveNodeTool(
+			{
+				...baseToolSchema,
+				node: { ...baseToolSchema.node, nodeParameters: {} },
+				trustedMetadata: {
+					tenant_id: { mode: 'fixed', value: 'tenant_789' },
+				},
+			},
+			{
+				executor: { introspectSupplyDataToolSchema } as unknown as EphemeralNodeExecutor,
+				projectId: 'p1',
+			},
+		);
+
+		const schema = tool.inputSchema as { properties: Record<string, unknown>; required?: string[] };
+		expect(Object.keys(schema.properties)).toEqual(['query']);
+		expect(schema.required).toEqual(['query']);
+	});
+
+	it('keeps existing configurations unchanged without trusted metadata', async () => {
+		const executeInline = vi.fn().mockResolvedValue({ status: 'success', data: [] });
+		const tool = await resolveNodeTool(
+			{
+				...baseToolSchema,
+				node: {
+					...baseToolSchema.node,
+					nodeParameters: {
+						query:
+							"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('query', 'The query', 'string') }}",
+					},
+				},
+			},
+			{ executor: { executeInline } as unknown as EphemeralNodeExecutor, projectId: 'p1' },
+		);
+
+		const schema = tool.inputSchema as z.ZodObject<z.ZodRawShape>;
+		expect(Object.keys(schema.shape)).toEqual(['query']);
+
+		await tool.handler!({ query: 'n8n agents' }, {} as never);
+
+		expect(executeInline).toHaveBeenCalledWith(
+			expect.objectContaining({
+				inputData: [{ json: { query: 'n8n agents' } }],
+			}),
+		);
+	});
+
+	it('lets the calling workflow override a declared trusted key at runtime', async () => {
+		const executeInline = vi.fn().mockResolvedValue({ status: 'success', data: [] });
+		const tool = await resolveNodeTool(
+			{
+				...baseToolSchema,
+				node: { ...baseToolSchema.node, nodeParameters: {} },
+				trustedMetadata: {
+					tenant_id: { mode: 'fixed', value: 'tenant_789' },
+				},
+			},
+			{ executor: { executeInline } as unknown as EphemeralNodeExecutor, projectId: 'p1' },
+		);
+
+		// The Message an Agent node resolves this mapping in the calling
+		// workflow's context; the author's explicit mapping replaces the
+		// tool's own binding for the invocation.
+		await tool.handler!(
+			{ order_id: 'ORD-123' } as never,
+			{ runtimeMetadata: { tenant_id: 'caller-mapped' } } as never,
+		);
+
+		expect(executeInline).toHaveBeenCalledWith(
+			expect.objectContaining({
+				inputData: [{ json: { order_id: 'ORD-123', tenant_id: 'caller-mapped' } }],
+			}),
+		);
+	});
+
+	it('drops runtime values for undeclared names and inherited properties', async () => {
+		const executeInline = vi.fn().mockResolvedValue({ status: 'success', data: [] });
+		const tool = await resolveNodeTool(
+			{
+				...baseToolSchema,
+				node: { ...baseToolSchema.node, nodeParameters: {} },
+				trustedMetadata: {
+					tenant_id: { mode: 'fixed', value: 'tenant_789' },
+				},
+			},
+			{ executor: { executeInline } as unknown as EphemeralNodeExecutor, projectId: 'p1' },
+		);
+
+		// A caller can only map values onto names the tool config already
+		// declares as trusted; a prototype-seeded name must not be picked up.
+		const runtime = Object.create({
+			inherited_key: 'must-not-inject',
+		}) as Record<string, unknown>;
+		runtime.undeclared_key = 'must-not-inject';
+		await tool.handler!({ order_id: 'ORD-123' } as never, { runtimeMetadata: runtime } as never);
+
+		expect(executeInline).toHaveBeenCalledWith(
+			expect.objectContaining({
+				inputData: [{ json: { order_id: 'ORD-123', tenant_id: 'tenant_789' } }],
+			}),
+		);
+	});
+
+	it('ignores runtime metadata when the tool declares no trusted keys', async () => {
+		const executeInline = vi.fn().mockResolvedValue({ status: 'success', data: [] });
+		const tool = await resolveNodeTool(
+			{
+				...baseToolSchema,
+				node: { ...baseToolSchema.node, nodeParameters: {} },
+			},
+			{ executor: { executeInline } as unknown as EphemeralNodeExecutor, projectId: 'p1' },
+		);
+
+		await tool.handler!(
+			{ order_id: 'ORD-123' } as never,
+			{ runtimeMetadata: { anything: 'value' } } as never,
+		);
+
+		expect(executeInline).toHaveBeenCalledWith(
+			expect.objectContaining({
+				inputData: [{ json: { order_id: 'ORD-123' } }],
+			}),
+		);
 	});
 });

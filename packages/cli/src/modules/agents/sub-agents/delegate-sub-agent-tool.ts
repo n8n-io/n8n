@@ -97,6 +97,9 @@ export function createN8nDelegateSubAgentTool(options: CreateN8nDelegateSubAgent
 						? { abortSignal: request.parentAbortSignal }
 						: {}),
 					...(request.parentTelemetry !== undefined ? { telemetry: request.parentTelemetry } : {}),
+					...(request.parentRuntimeMetadata !== undefined
+						? { runtimeMetadata: request.parentRuntimeMetadata }
+						: {}),
 					onChunk: helpers.emitChunk,
 					...(isSelfDelegation && request.difficulty !== undefined
 						? { selfDelegationDifficulty: request.difficulty }
@@ -129,6 +132,9 @@ export function createN8nDelegateSubAgentTool(options: CreateN8nDelegateSubAgent
 					? { abortSignal: request.parentAbortSignal }
 					: {}),
 				...(request.parentTelemetry !== undefined ? { telemetry: request.parentTelemetry } : {}),
+				...(request.parentRuntimeMetadata !== undefined
+					? { runtimeMetadata: request.parentRuntimeMetadata }
+					: {}),
 				onChunk: helpers.emitChunk,
 				...(request.subAgentId === INLINE_SUB_AGENT_ID && request.difficulty !== undefined
 					? { selfDelegationDifficulty: request.difficulty }

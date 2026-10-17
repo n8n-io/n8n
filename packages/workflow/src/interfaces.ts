@@ -2468,6 +2468,15 @@ export type ExecuteAgentInfo = ExecuteAgentSource & {
 	 * which can read any executed node's output. Off by default.
 	 */
 	exposeWorkflowData?: boolean;
+	/**
+	 * Caller-resolved values for the agent's tools' trusted runtime metadata,
+	 * keyed by the metadata name declared in each tool's config. The calling
+	 * node author creates these (e.g. a Message an Agent node maps expressions
+	 * to names); the agent runtime merges them onto the tool invocation inputs
+	 * and never exposes them to the model. A mapped key replaces the tool's own
+	 * fixed or expression binding for that key.
+	 */
+	trustedValues?: Record<string, unknown>;
 };
 
 /**
@@ -2507,6 +2516,11 @@ export interface ExecuteAgentInvocationContext {
 	nodeName: string;
 	runIndex: number;
 	itemIndex: number;
+	/**
+	 * Caller-resolved trusted runtime metadata values for the agent's tools
+	 * (see `ExecuteAgentInfo.trustedValues`).
+	 */
+	runtimeMetadata?: Record<string, unknown>;
 	sendResponseChunk?: (type: ChunkType, content?: string) => Promise<void>;
 }
 

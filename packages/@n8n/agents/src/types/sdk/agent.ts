@@ -288,6 +288,14 @@ export interface ExecutionOptions {
 	 */
 	stepCheckpoints?: boolean;
 	guardrails?: GuardrailsOptions;
+	/**
+	 * Host-supplied values exposed to local tool handlers through the tool
+	 * context (`ctx.runtimeMetadata`) for this execution. Hosts pass trusted
+	 * runtime metadata their handlers know how to use, e.g. caller-mapped
+	 * trusted values from a Message an Agent node. Never persisted to
+	 * checkpoints and never exposed to the model.
+	 */
+	runtimeMetadata?: Record<string, unknown>;
 }
 
 export interface PersistedExecutionOptions {

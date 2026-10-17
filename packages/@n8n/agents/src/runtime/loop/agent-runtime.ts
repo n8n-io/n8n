@@ -953,6 +953,7 @@ export class AgentRuntime {
 			list: ctx.list,
 			runId: this.runId,
 			persistence: ctx.options?.persistence,
+			runtimeMetadata: ctx.options?.runtimeMetadata,
 			telemetry: ctx.runTelemetry,
 			executionCounter: ctx.options?.executionCounter,
 			guardrails: ctx.options?.guardrails,

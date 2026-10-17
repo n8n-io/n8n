@@ -102,6 +102,8 @@ interface WorkflowAgentStreamParams {
 	recordingParams?: StartExecutionParams;
 	budget?: BudgetGuardrailConfig;
 	streamObserver?: WorkflowAgentStreamObserver;
+	/** Caller-resolved trusted tool metadata values (see `ExecutionOptions.runtimeMetadata`). */
+	runtimeMetadata?: Record<string, unknown>;
 	sandboxScope?: { projectId: string; principalHash: AgentSandboxPrincipalHash };
 }
 
@@ -126,12 +128,16 @@ interface WorkflowExecutionContext {
 	outputSchema?: JSONSchema7;
 	workflowContext?: ExecuteAgentWorkflowContext;
 	streamObserver?: WorkflowAgentStreamObserver;
+	/** Caller-resolved trusted tool metadata values, per run (never persisted). */
+	runtimeMetadata?: Record<string, unknown>;
 }
 
-/** Optional hooks for one workflow agent run. */
+/** Optional hooks and per-run data for one workflow agent run. */
 export interface WorkflowAgentRunOptions {
 	streamObserver?: WorkflowAgentStreamObserver;
 	prepareForEval?: PrepareWorkflowAgentForEval;
+	/** Trusted tool metadata values the calling node resolved for this run. */
+	runtimeMetadata?: Record<string, unknown>;
 }
 
 interface StoredWorkflowExecutionContext extends WorkflowExecutionContext {
@@ -467,6 +473,9 @@ export class AgentWorkflowExecutionService {
 					runType,
 					source: AGENT_WORKFLOW_TRIGGER_TYPE,
 				}),
+				...(params.runtimeMetadata !== undefined
+					? { runtimeMetadata: params.runtimeMetadata }
+					: {}),
 				...modelStreamStallOptions(this.aiConfig),
 				...(telemetry ? { telemetry } : {}),
 			},
@@ -641,7 +650,7 @@ export class AgentWorkflowExecutionService {
 		outputSchema?: JSONSchema7,
 		workflowContext?: ExecuteAgentWorkflowContext,
 		sandboxScope?: WorkflowSandboxScope,
-		{ streamObserver, prepareForEval }: WorkflowAgentRunOptions = {},
+		{ streamObserver, prepareForEval, runtimeMetadata }: WorkflowAgentRunOptions = {},
 	): Promise<ExecuteAgentData> {
 		return await this.executeForWorkflowInternal({
 			agentId,
@@ -656,6 +665,7 @@ export class AgentWorkflowExecutionService {
 			sandboxScope,
 			streamObserver,
 			prepareForEval,
+			runtimeMetadata,
 		});
 	}
 
@@ -836,6 +846,7 @@ export class AgentWorkflowExecutionService {
 			executionId,
 			workflowContext,
 			streamObserver,
+			runtimeMetadata,
 		} = params;
 		return await this.streamWorkflowAgent({
 			agentInstance,
@@ -844,6 +855,7 @@ export class AgentWorkflowExecutionService {
 			telemetryUserId,
 			outputSchema,
 			...run,
+			runtimeMetadata,
 			tracing: {
 				projectId,
 				executionId,
@@ -874,7 +886,7 @@ export class AgentWorkflowExecutionService {
 		runType: AgentRunTelemetryType = 'production',
 		outputSchema?: JSONSchema7,
 		workflowContext?: ExecuteAgentWorkflowContext,
-		{ streamObserver, prepareForEval }: WorkflowAgentRunOptions = {},
+		{ streamObserver, prepareForEval, runtimeMetadata }: WorkflowAgentRunOptions = {},
 	): Promise<ExecuteAgentData> {
 		await this.settingsService.assertEnabled();
 		const { runtimeConfig, skills, credentialProvider } = await this.prepareInlineRuntime(
@@ -913,6 +925,7 @@ export class AgentWorkflowExecutionService {
 			outputSchema,
 			workflowContext,
 			streamObserver,
+			runtimeMetadata,
 		};
 		const agentInstance = compiled.agent;
 		try {

@@ -185,6 +185,11 @@ export interface DelegateSubAgentRequest extends DelegateSubAgentInput {
 	/** Parent aggregate execution counter (`ctx.executionCounter`) for inline child accounting. */
 	parentExecutionCounter?: AgentExecutionCounter;
 	/**
+	 * Parent run's trusted tool metadata (`ctx.runtimeMetadata`). Delegated
+	 * children inherit it so their tools receive the same caller-mapped values.
+	 */
+	parentRuntimeMetadata?: Record<string, unknown>;
+	/**
 	 * Parent's live, resolved telemetry (`ctx.parentTelemetry`). Hosts derive the
 	 * child's own telemetry from this (see `deriveSubAgentTelemetry`) so the
 	 * sub-agent shares the parent's tracer and nests under the parent's

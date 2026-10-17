@@ -390,6 +390,55 @@ export const WorkflowToolInputFieldSchema = z.discriminatedUnion('mode', [
 		.strict(),
 ]);
 
+/**
+ * A runtime-resolved value for a node tool's trusted metadata. Authored in the
+ * tool configuration by an agent editor; the model cannot set, change, or
+ * remove it.
+ */
+export const TrustedMetadataValueSchema = z.discriminatedUnion('mode', [
+	z
+		.object({
+			mode: z.literal('fixed'),
+			// Reject missing/undefined — fixed metadata must pin a concrete value.
+			value: jsonValueSchema,
+		})
+		.strict(),
+	z
+		.object({
+			mode: z.literal('expression'),
+			value: z.string().regex(/^=\s*\S/, 'Enter an expression that starts with ='),
+		})
+		.strict(),
+]);
+
+/**
+ * Key charset mirrors the `$fromAI` placeholder-key rules (same length cap and
+ * character set), so a metadata key is a valid `$fromAI('key')` lookup.
+ * Reserved keys are rejected explicitly: the runtime merges trusted values
+ * over the model's arguments, and a reserved key would target the prototype
+ * chain instead of an own property.
+ */
+export const TRUSTED_METADATA_RESERVED_KEYS = ['__proto__', 'constructor', 'prototype'] as const;
+
+export const TrustedMetadataKeySchema = z
+	.string()
+	.min(1)
+	.max(64)
+	.regex(
+		/^[A-Za-z0-9_-]+$/,
+		'Metadata names can only contain letters, numbers, underscores, and hyphens',
+	)
+	.refine((key) => !TRUSTED_METADATA_RESERVED_KEYS.includes(key as never), {
+		message: 'Reserved metadata name. Pick another name for this value',
+	});
+
+export const NodeToolTrustedMetadataSchema = z.record(
+	TrustedMetadataKeySchema,
+	TrustedMetadataValueSchema,
+);
+
+export type NodeToolTrustedMetadata = z.infer<typeof NodeToolTrustedMetadataSchema>;
+
 export const WorkflowToolJsonConfigSchema = z
 	.object({
 		type: z.literal('workflow'),
@@ -421,6 +470,16 @@ export const NodeToolJsonConfigSchema = z
 		inputSchema: z.never().optional(),
 		node: NodeConfigSchema,
 		requireApproval: z.boolean().optional(),
+		/**
+		 * Trusted runtime metadata for the tool. Each entry is a named value the
+		 * n8n runtime resolves and merges over the tool-call arguments at invoke
+		 * time. Entries are omitted from the model-facing tool schema and always
+		 * win over a same-named model argument, so the model can never invent,
+		 * override, or remove them. The trust boundary is authorship: values are
+		 * written in the tool configuration (the same authority that owns the
+		 * tool's credentials), never taken from model-generated data.
+		 */
+		trustedMetadata: NodeToolTrustedMetadataSchema.optional(),
 	})
 	.strict();
 

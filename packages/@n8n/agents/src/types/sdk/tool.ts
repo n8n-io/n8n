@@ -66,6 +66,9 @@ export interface ToolExecutionContext {
 	/** Resume schema restored from persistence for a resumed tool call. */
 	resumeSchema?: ToolSuspendOptions['resumeSchema'];
 
+	/** Host-supplied values for this execution (see `ExecutionOptions.runtimeMetadata`). */
+	runtimeMetadata?: Record<string, unknown>;
+
 	onGuardrailNotice?: (notice: GuardrailNotice) => void;
 }
 
@@ -89,6 +92,12 @@ export interface ToolContext {
 	executionCounter?: ToolExecutionContext['executionCounter'];
 	approvalContext?: ToolExecutionContext['approvalContext'];
 	onGuardrailNotice?: (notice: GuardrailNotice) => void;
+	/**
+	 * Host-supplied values for this execution (see `ExecutionOptions.runtimeMetadata`).
+	 * Local tool handlers merge them in per their own trust rules; the runtime
+	 * never exposes them through any model-facing surface.
+	 */
+	runtimeMetadata?: Record<string, unknown>;
 }
 
 export interface InterruptibleToolContext<S = unknown, R = unknown> {

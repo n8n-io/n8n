@@ -1075,6 +1075,72 @@ describe('MessageAnAgent Node', () => {
 			}
 		}
 	});
+
+	describe('trusted tool values', () => {
+		it('passes mapped trusted values through to executeAgent', async () => {
+			executeFunctions.getInputData.mockReturnValue([{ json: {} }]);
+			mockParams({
+				trustedValues: {
+					values: [
+						{ name: 'tenant_id', value: 'tenant-42' },
+						{ name: 'region', value: 'eu-1' },
+					],
+				},
+			});
+			executeFunctions.executeAgent.mockResolvedValue(mockAgentResult);
+
+			await node.execute.call(executeFunctions);
+
+			expect(executeFunctions.executeAgent).toHaveBeenCalledWith(
+				expect.objectContaining({
+					trustedValues: { tenant_id: 'tenant-42', region: 'eu-1' },
+				}),
+				'Hello agent',
+				'exec-123',
+				0,
+			);
+		});
+
+		it('omits trustedValues when nothing is mapped', async () => {
+			executeFunctions.getInputData.mockReturnValue([{ json: {} }]);
+			mockParams();
+			executeFunctions.executeAgent.mockResolvedValue(mockAgentResult);
+
+			await node.execute.call(executeFunctions);
+
+			const agentInfo = executeFunctions.executeAgent.mock.calls[0][0] as Record<string, unknown>;
+			expect('trustedValues' in agentInfo).toBe(false);
+		});
+
+		it('throws when a trusted value has an empty name', async () => {
+			executeFunctions.getInputData.mockReturnValue([{ json: {} }]);
+			mockParams({ trustedValues: { values: [{ name: '   ', value: 'x' }] } });
+			executeFunctions.executeAgent.mockResolvedValue(mockAgentResult);
+
+			await expect(node.execute.call(executeFunctions)).rejects.toThrow(
+				'A trusted value is missing its Name',
+			);
+			expect(executeFunctions.executeAgent).not.toHaveBeenCalled();
+		});
+
+		it('throws when a trusted value name uses invalid characters', async () => {
+			executeFunctions.getInputData.mockReturnValue([{ json: {} }]);
+			mockParams({ trustedValues: { values: [{ name: 'bad name', value: 'x' }] } });
+			executeFunctions.executeAgent.mockResolvedValue(mockAgentResult);
+
+			await expect(node.execute.call(executeFunctions)).rejects.toThrow(
+				'is not a valid trusted value name',
+			);
+		});
+
+		it('throws when a trusted value name is reserved', async () => {
+			executeFunctions.getInputData.mockReturnValue([{ json: {} }]);
+			mockParams({ trustedValues: { values: [{ name: '__proto__', value: 'x' }] } });
+			executeFunctions.executeAgent.mockResolvedValue(mockAgentResult);
+
+			await expect(node.execute.call(executeFunctions)).rejects.toThrow('is a reserved name');
+		});
+	});
 });
 
 describe('MessageAnAgent versioning', () => {

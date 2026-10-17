@@ -454,7 +454,16 @@ export async function executeAgent(
 			})
 		: undefined;
 	const runOptions: [] | [WorkflowAgentRunOptions] =
-		streamObserver || prepareForEval ? [{ streamObserver, prepareForEval }] : [];
+		streamObserver || prepareForEval || invocationContext?.runtimeMetadata
+			? [
+					{
+						streamObserver,
+						prepareForEval,
+						// Trusted values the calling node mapped for this invocation.
+						runtimeMetadata: invocationContext?.runtimeMetadata,
+					},
+				]
+			: [];
 	if (!additionalData.workflowId) {
 		throw new UnexpectedError('Cannot execute agent without a workflowId in additional data');
 	}

@@ -103,6 +103,8 @@ export interface ToolBatchContext {
 	list: AgentMessageList;
 	runId: string;
 	persistence?: AgentPersistenceOptions;
+	/** Host-supplied per-run tool metadata (see `ExecutionOptions.runtimeMetadata`). */
+	runtimeMetadata?: Record<string, unknown>;
 	telemetry?: BuiltTelemetry;
 	executionCounter?: AgentExecutionCounter;
 	guardrails?: GuardrailsOptions;
@@ -121,6 +123,8 @@ export interface ProcessToolCallParams extends ToolCallIdentity {
 	list: AgentMessageList;
 	runId: string;
 	persistence?: AgentPersistenceOptions;
+	/** Host-supplied per-run tool metadata (from `ToolBatchContext`). */
+	runtimeMetadata?: Record<string, unknown>;
 	resumeData?: unknown;
 	resolvedTelemetry?: BuiltTelemetry;
 	executionCounter?: AgentExecutionCounter;

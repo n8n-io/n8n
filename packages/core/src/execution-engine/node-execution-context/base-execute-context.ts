@@ -303,6 +303,9 @@ export class BaseExecuteContext extends NodeExecutionContext {
 				nodeName: this.node.name,
 				runIndex: this.runIndex,
 				itemIndex,
+				// Caller-mapped trusted metadata values ride on the invocation so
+				// they stay per agent call, never baked into the runtime.
+				runtimeMetadata: agentInfo.trustedValues,
 				...(sendResponseChunk ? { sendResponseChunk } : {}),
 			},
 		);

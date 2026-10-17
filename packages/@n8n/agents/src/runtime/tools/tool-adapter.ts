@@ -171,6 +171,7 @@ function createToolContext(
 		executionCounter: executionContext.executionCounter,
 		approvalContext: executionContext.approvalContext,
 		onGuardrailNotice: executionContext.onGuardrailNotice,
+		runtimeMetadata: executionContext.runtimeMetadata,
 	};
 }
 

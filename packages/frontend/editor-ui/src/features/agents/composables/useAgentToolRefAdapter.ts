@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import type { INode, INodeCredentials, INodeTypeDescription } from 'n8n-workflow';
+import type { NodeToolTrustedMetadata } from '@n8n/api-types';
 
 import type { IWorkflowDb } from '@/Interface';
 import type { AgentJsonMcpServerConfig, AgentJsonToolRef, NodeToolConfig } from '../types';
@@ -101,13 +102,20 @@ export function nodeTypeToNewToolRef(
 
 /**
  * Merge edits made to an `INode` back into the original ref (preserving extra
- * fields).
+ * fields). Passing `trustedMetadata` replaces the stored bindings; `undefined`
+ * removes them so a user-cleared section does not keep stale entries.
  */
-export function updateToolRefFromNode(original: AgentJsonToolRef, node: INode): AgentJsonToolRef {
+export function updateToolRefFromNode(
+	original: AgentJsonToolRef,
+	node: INode,
+	trustedMetadata?: NodeToolTrustedMetadata,
+): AgentJsonToolRef {
 	if (original.type !== 'node' || !original.node) return original;
 
+	const { trustedMetadata: _staleMetadata, ...rest } = original;
+
 	return {
-		...original,
+		...rest,
 		name: node.name,
 		node: {
 			...original.node,
@@ -116,6 +124,7 @@ export function updateToolRefFromNode(original: AgentJsonToolRef, node: INode): 
 			nodeParameters: node.parameters as Record<string, unknown>,
 			credentials: toConfigCredentials(node.credentials),
 		},
+		...(trustedMetadata ? { trustedMetadata } : {}),
 	};
 }
 

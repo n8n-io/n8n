@@ -239,6 +239,7 @@ function createDelegateSubAgentRequest(
 		...(ctx.executionCounter !== undefined
 			? { parentExecutionCounter: withoutMessageCount(ctx.executionCounter) }
 			: {}),
+		...(ctx.runtimeMetadata !== undefined ? { parentRuntimeMetadata: ctx.runtimeMetadata } : {}),
 		...(ctx.parentTelemetry !== undefined ? { parentTelemetry: ctx.parentTelemetry } : {}),
 		...(ctx.onGuardrailNotice !== undefined
 			? { parentOnGuardrailNotice: ctx.onGuardrailNotice }

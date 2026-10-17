@@ -8,7 +8,13 @@ import type {
 	INodeTypeDescription,
 	InlineAgentPayload,
 } from 'n8n-workflow';
-import { jsonParse, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import {
+	jsonParse,
+	NodeConnectionTypes,
+	NodeOperationError,
+	isSafeObjectProperty,
+	setSafeObjectProperty,
+} from 'n8n-workflow';
 import crypto from 'node:crypto';
 
 import { generateSchemaFromExample } from './generateSchemaFromExample';
@@ -65,6 +71,73 @@ const defaultOutputSchema = `{
 const defaultJsonSchemaExample = `{
   "result": "The result of the task"
 }`;
+
+/** Character rules mirror `TrustedMetadataKeySchema` on the agent tool config side. */
+const TRUSTED_VALUE_NAME_PATTERN = /^[A-Za-z0-9_-]+$/;
+const TRUSTED_VALUE_MAX_LENGTH = 64;
+const TRUSTED_VALUE_RESERVED_NAMES = new Set(['__proto__', 'constructor', 'prototype']);
+
+/**
+ * Validate one trusted value name against the same rules the agent tool
+ * config applies to trusted metadata names. Checking here surfaces a mapping
+ * mistake in the calling node instead of a silent no-op inside the agent.
+ */
+function validateTrustedValueName(ctx: IExecuteFunctions, name: string, itemIndex: number): void {
+	if (!TRUSTED_VALUE_NAME_PATTERN.test(name) || name.length > TRUSTED_VALUE_MAX_LENGTH) {
+		throw new NodeOperationError(
+			ctx.getNode(),
+			`"${name}" is not a valid trusted value name. Use up to 64 letters, numbers, underscores, or hyphens, and no spaces.`,
+			{ itemIndex },
+		);
+	}
+	if (TRUSTED_VALUE_RESERVED_NAMES.has(name)) {
+		throw new NodeOperationError(
+			ctx.getNode(),
+			`"${name}" is a reserved name. Pick another name for this trusted value.`,
+			{ itemIndex },
+		);
+	}
+}
+
+/**
+ * Read the node's "Trusted Tool Values" mappings as a plain record keyed by
+ * trusted metadata name. Each entry's value resolves expressions in this
+ * node's context, so it can map the input message, `$json`, or data from
+ * previous nodes. Expressions are runtime data resolved by the workflow
+ * author's own mapping — the agent runtime still never lets the model see or
+ * change them, and ignores any name the target tool does not declare.
+ *
+ * The record is built with a null prototype and guard-routed writes so an
+ * unsafe name cannot pollute the object; undeclared names are dropped later
+ * by the agent-side filter.
+ */
+export function getTrustedValues(
+	ctx: IExecuteFunctions,
+	itemIndex: number,
+): Record<string, unknown> | undefined {
+	const raw = ctx.getNodeParameter('trustedValues', itemIndex, {}) as unknown;
+	const entries = Array.isArray((raw as { values?: unknown })?.values)
+		? (raw as { values: Array<{ name?: unknown; value?: unknown }> }).values
+		: [];
+	if (entries.length === 0) return undefined;
+
+	const record: Record<string, unknown> = Object.create(null);
+	for (const entry of entries) {
+		const name = typeof entry?.name === 'string' ? entry.name.trim() : '';
+		if (!name) {
+			throw new NodeOperationError(
+				ctx.getNode(),
+				'A trusted value is missing its Name. Set a name for every entry in "Trusted Tool Values".',
+				{ itemIndex },
+			);
+		}
+		validateTrustedValueName(ctx, name, itemIndex);
+		if (isSafeObjectProperty(name)) {
+			setSafeObjectProperty(record, name, entry?.value);
+		}
+	}
+	return record;
+}
 
 export const commonProperties: INodeProperties[] = [
 	{
@@ -180,6 +253,43 @@ export const commonProperties: INodeProperties[] = [
 				useStructuredOutput: [true],
 			},
 		},
+	},
+	{
+		displayName: 'Trusted Tool Values',
+		name: 'trustedValues',
+		placeholder: 'Add Trusted Value',
+		type: 'fixedCollection',
+		typeOptions: {
+			multipleValues: true,
+			multipleValueButtonText: 'Add Trusted Value',
+		},
+		default: {},
+		description:
+			"Values the agent's node tools always receive. Each name maps onto a trusted metadata key that tool already declares in the agent; the model never sees or changes these values.",
+		hint: 'Names must match trusted metadata keys declared in the agent tool configuration',
+		options: [
+			{
+				displayName: 'Values',
+				name: 'values',
+				values: [
+					{
+						displayName: 'Name',
+						name: 'name',
+						type: 'string',
+						default: '',
+						description: 'Trusted metadata key name declared in the agent tool configuration',
+					},
+					{
+						displayName: 'Value',
+						name: 'value',
+						type: 'string',
+						default: '',
+						description:
+							'The value for this name. Use an expression to map the input message, item data, or output from previous nodes.',
+					},
+				],
+			},
+		],
 	},
 	{
 		displayName: 'Advanced',
@@ -612,6 +722,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			}
 
 			const outputSchema = getStructuredOutputSchema(this, i);
+			const trustedValues = getTrustedValues(this, i);
 
 			const result = await this.executeAgent(
 				{
@@ -621,6 +732,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 					...(advanced.enableStreaming === false ? { enableStreaming: false } : {}),
 					inputDataScope: runOnceForAll ? 'all' : 'item',
 					exposeWorkflowData: allowOtherNodesData,
+					...(trustedValues ? { trustedValues } : {}),
 				},
 				prompt,
 				executionId,
