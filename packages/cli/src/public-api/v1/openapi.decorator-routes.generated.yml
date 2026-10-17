@@ -3,6 +3,11 @@ info:
   title: decorator-routes
   version: 0.0.0
 paths:
+  /annotation-tags:
+    get:
+      $ref: ./handlers/annotation-tags/spec/paths/getAnnotationTags.generated.yml
+    post:
+      $ref: ./handlers/annotation-tags/spec/paths/createAnnotationTag.generated.yml
   /audit:
     post:
       $ref: ./handlers/audit/spec/paths/generateAudit.generated.yml
