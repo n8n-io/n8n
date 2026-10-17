@@ -1,0 +1,116 @@
+{
+	"worker-drain-fetched-job": {
+		"issue": "CAT-4728",
+		"spec": "worker-drain-fetched-job.spec.ts",
+		"before": "n8nio/n8n:2.42.2",
+		"after": "n8nio/n8n:rig-cat4728-fix",
+		"afterRef": "148b84fa79c, the top of the CAT-4728 stack (n8n-io/n8n#40162)"
+	},
+	"worker-drain-detached-subworkflow": {
+		"issue": "CAT-4349",
+		"spec": "worker-drain-detached-subworkflow.spec.ts",
+		"before": "n8nio/n8n:2.38.7",
+		"after": "n8nio/n8n:2.39.0"
+	},
+	"worker-drain-long-task": {
+		"issue": "CAT-4338",
+		"spec": "worker-drain-long-task.spec.ts",
+		"before": "n8nio/n8n:2.38.3",
+		"after": "n8nio/n8n:2.38.4"
+	},
+	"worker-drain-pending-task-request": {
+		"issue": "CAT-4749",
+		"spec": "worker-drain-pending-task-request.spec.ts",
+		"before": "n8nio/n8n:2.42.2",
+		"after": "n8nio/n8n:rig-master-51c47706431",
+		"afterRef": "master at 51c47706431"
+	},
+	"worker-drain-own-error-workflow": {
+		"issue": "CAT-4802",
+		"spec": "worker-drain-own-error-workflow.spec.ts",
+		"before": "n8nio/n8n:2.38.7",
+		"after": "n8nio/n8n:rig-master-51c47706431",
+		"afterRef": "master at 51c47706431"
+	},
+	"worker-drain-enqueued-error-workflow": {
+		"issue": "CAT-4731",
+		"spec": "worker-drain-enqueued-error-workflow.spec.ts",
+		"before": "n8nio/n8n:2.42.2",
+		"after": "n8nio/n8n:rig-master-51c47706431",
+		"afterRef": "master at 51c47706431"
+	},
+	"stalled-success-leak": {
+		"issue": "CAT-4491",
+		"spec": "stalled-success-leak.spec.ts",
+		"before": "n8nio/n8n:2.40.7",
+		"after": "n8nio/n8n:2.41.0"
+	},
+	"worker-drain-rejected-run": {
+		"issue": "CAT-4336",
+		"spec": "worker-drain-rejected-run.spec.ts",
+		"before": "n8nio/n8n:2.38.2",
+		"after": "n8nio/n8n:2.38.3"
+	},
+	"fetched-before-lock": {
+		"issue": "CAT-4776",
+		"spec": "fetched-before-lock.spec.ts",
+		"before": "n8nio/n8n:2.42.2",
+		"after": null
+	},
+	"worker-drain-long-task-external": {
+		"issue": "CAT-4338",
+		"spec": "worker-drain-long-task.spec.ts",
+		"before": "n8nio/n8n:2.38.3",
+		"after": "n8nio/n8n:2.38.4",
+		"env": {
+			"TEST_RIG_RUNNERS": "external"
+		}
+	},
+	"worker-drain-detached-subworkflow-external": {
+		"issue": "CAT-4349",
+		"spec": "worker-drain-detached-subworkflow.spec.ts",
+		"before": "n8nio/n8n:2.38.7",
+		"after": "n8nio/n8n:2.39.0",
+		"env": {
+			"TEST_RIG_RUNNERS": "external"
+		}
+	},
+	"worker-drain-dequeued-after-stop": {
+		"issue": "CAT-4728",
+		"spec": "worker-drain-dequeued-after-stop.spec.ts",
+		"before": "n8nio/n8n:2.42.2",
+		"after": "n8nio/n8n:rig-cat4728-fix",
+		"afterRef": "148b84fa79c, the top of the CAT-4728 stack (n8n-io/n8n#40162)"
+	},
+	"worker-drain-fetched-on-complete": {
+		"issue": "CAT-4728",
+		"spec": "worker-drain-fetched-on-complete.spec.ts",
+		"before": "n8nio/n8n:2.42.2",
+		"after": "n8nio/n8n:rig-cat4728-fix",
+		"afterRef": "148b84fa79c, the top of the CAT-4728 stack (n8n-io/n8n#40162)"
+	},
+	"ecs-style-stop": {
+		"issue": "CAT-4753",
+		"spec": "ecs-style-stop.spec.ts",
+		"before": "n8nio/n8n:2.39.0",
+		"after": "n8nio/n8n:rig-combined-d4e0ac68708",
+		"afterRef": "master at e18afc84cce with n8n-io/n8n#40162 at 2fecbb9a236 merged in"
+	},
+	"ecs-style-stop-runner-gone": {
+		"issue": "CAT-4753",
+		"spec": "ecs-style-stop-runner-gone.spec.ts",
+		"before": "n8nio/n8n:2.39.0",
+		"after": "n8nio/n8n:rig-combined-d4e0ac68708",
+		"afterRef": "master at e18afc84cce with n8n-io/n8n#40162 at 2fecbb9a236 merged in"
+	},
+	"multi-main-leader-killed": {
+		"spec": "multi-main-leader-killed.spec.ts",
+		"before": null,
+		"after": "n8nio/n8n:2.42.2"
+	},
+	"multi-main-leader-frozen": {
+		"spec": "multi-main-leader-frozen.spec.ts",
+		"before": null,
+		"after": "n8nio/n8n:2.42.2"
+	}
+}
