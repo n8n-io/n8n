@@ -275,7 +275,8 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 		params: IntegrationActionParams,
 	): Promise<IntegrationActionResult> {
 		const input = sendDmInputSchema.parse(params.input);
-		const thread = await chat.openDM(input.userId);
+		const thread = await this.openDirectMessageThread(chat, params.descriptor, input.userId);
+		if (!thread) return unsupportedAction(params.descriptor.integration.type, 'send_dm');
 		const sent = await thread.post(await this.toPostable(params.descriptor, input.message, params));
 		// Re-anchor at the sent message ts on platforms where a top-level DM
 		// starts its own thread; otherwise keep the openDM thread.
@@ -292,6 +293,22 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 				target: { type: 'dm', userId: input.userId, threadId },
 			}),
 		};
+	}
+
+	/**
+	 * `chat.openDM` guesses the adapter from the user ID format, and it has no
+	 * rule for a WhatsApp phone number. Only WhatsApp opens the DM on its own
+	 * adapter. Other platforms keep the inference.
+	 */
+	private async openDirectMessageThread(
+		chat: ChatInstance,
+		descriptor: IntegrationToolConnectionDescriptor,
+		userId: string,
+	) {
+		if (descriptor.integration.type !== 'whatsapp') return await chat.openDM(userId);
+		const adapter = chat.getAdapter('whatsapp');
+		if (!supportsOpenDM(adapter)) return undefined;
+		return chat.thread(await adapter.openDM(userId));
 	}
 
 	private async editMessageInCurrentThread(
@@ -435,6 +452,10 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 
 function supportsMessageEditing(adapter: unknown): adapter is Pick<Adapter, 'editMessage'> {
 	return isRecord(adapter) && typeof adapter.editMessage === 'function';
+}
+
+function supportsOpenDM(adapter: unknown): adapter is Required<Pick<Adapter, 'openDM'>> {
+	return isRecord(adapter) && typeof adapter.openDM === 'function';
 }
 
 function supportsAddReaction(adapter: unknown): adapter is Pick<Adapter, 'addReaction'> {

@@ -11,6 +11,10 @@ import {
 	LINEAR_ACTION_TOOL_DEFINITIONS,
 	LINEAR_CONTEXT_QUERY_TOOL_DEFINITIONS,
 } from './platforms/linear-tool-definitions';
+import {
+	WHATSAPP_ACTION_TOOL_DEFINITIONS,
+	WHATSAPP_CONTEXT_QUERY_TOOL_DEFINITIONS,
+} from './platforms/whatsapp/whatsapp-tool-definitions';
 import type {
 	IntegrationAction,
 	IntegrationActionDefinition,
@@ -317,6 +321,7 @@ export const DEFAULT_INTEGRATION_ACTION_TOOL_DEFINITIONS = GENERIC_ACTION_TOOL_D
 const ALL_CONTEXT_QUERY_TOOL_DEFINITIONS = [
 	...GENERIC_CONTEXT_QUERY_TOOL_DEFINITIONS,
 	...LINEAR_CONTEXT_QUERY_TOOL_DEFINITIONS,
+	...WHATSAPP_CONTEXT_QUERY_TOOL_DEFINITIONS,
 ] satisfies IntegrationContextQueryDefinition[];
 
 const ALL_ACTION_TOOL_DEFINITIONS = [
@@ -324,6 +329,7 @@ const ALL_ACTION_TOOL_DEFINITIONS = [
 	...EDIT_MESSAGE_ACTION_TOOL_DEFINITIONS,
 	...OPT_IN_ACTION_TOOL_DEFINITIONS,
 	...LINEAR_ACTION_TOOL_DEFINITIONS,
+	...WHATSAPP_ACTION_TOOL_DEFINITIONS,
 ] satisfies IntegrationActionDefinition[];
 
 // Compile-time: every operation union member must have a matching definition.
