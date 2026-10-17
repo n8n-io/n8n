@@ -18,13 +18,17 @@ import { InstanceAiModule } from '../instance-ai.module';
 import { InstanceAiService } from '../instance-ai.service';
 import { SelfHealingInvestigationService } from '../self-healing/self-healing-investigation.service';
 
-const { loadSuggestionEventRelay, createSuggestionEventRelay, loadResultController } = vi.hoisted(
-	() => ({
-		loadSuggestionEventRelay: vi.fn(),
-		createSuggestionEventRelay: vi.fn(),
-		loadResultController: vi.fn(),
-	}),
-);
+const {
+	loadSuggestionEventRelay,
+	createSuggestionEventRelay,
+	loadResultController,
+	loadConfigurationController,
+} = vi.hoisted(() => ({
+	loadSuggestionEventRelay: vi.fn(),
+	createSuggestionEventRelay: vi.fn(),
+	loadResultController: vi.fn(),
+	loadConfigurationController: vi.fn(),
+}));
 
 vi.mock('@/credentials/instance-credential-broker', () => ({
 	InstanceCredentialBroker: vi.fn(),
@@ -55,6 +59,10 @@ vi.mock('../self-healing/self-healing-investigation.service', () => ({
 }));
 vi.mock('../instance-ai.controller', () => ({}));
 vi.mock('../mcp/instance-ai-mcp-connection.controller', () => ({}));
+vi.mock('../self-healing/self-healing-configurations.controller', () => {
+	loadConfigurationController();
+	return {};
+});
 vi.mock('../self-healing/self-healing-results.controller', () => {
 	loadResultController();
 	return {};
@@ -100,6 +108,7 @@ describe('InstanceAiModule.init', () => {
 		expect(loadSuggestionEventRelay).not.toHaveBeenCalled();
 		expect(createSuggestionEventRelay).not.toHaveBeenCalled();
 		expect(loadResultController).not.toHaveBeenCalled();
+		expect(loadConfigurationController).not.toHaveBeenCalled();
 		expect(sources.register).not.toHaveBeenCalled();
 
 		config.workflowSuggestionsEnabled = true;
@@ -109,6 +118,7 @@ describe('InstanceAiModule.init', () => {
 		expect(loadSuggestionEventRelay).toHaveBeenCalledOnce();
 		expect(createSuggestionEventRelay).toHaveBeenCalledOnce();
 		expect(loadResultController).toHaveBeenCalledOnce();
+		expect(loadConfigurationController).toHaveBeenCalledOnce();
 		expect(sources.register).toHaveBeenCalledWith(
 			expect.objectContaining({ type: 'self_healing_result' }),
 		);

@@ -33,6 +33,7 @@ export class InstanceAiModule implements ModuleInterface {
 		const { InstanceAiConfig } = await import('@n8n/config');
 		if (Container.get(InstanceAiConfig).workflowSuggestionsEnabled) {
 			await import('./self-healing/self-healing-results.controller.js');
+			await import('./self-healing/self-healing-configurations.controller.js');
 			const { InboxSourceRegistry } = await import('../inbox/inbox-source.registry.js');
 			const { SelfHealingResultService } = await import(
 				'./self-healing/self-healing-result.service.js'
@@ -117,6 +118,7 @@ export class InstanceAiModule implements ModuleInterface {
 			workflowBuilderAvailable: enabled && sandboxStatus.workflowBuilderAvailable,
 			sandboxUnavailableReason: sandboxStatus.unavailableReason,
 			runDebugEnabled: globalConfig.instanceAi.runDebugEnabled,
+			workflowSuggestionsEnabled: globalConfig.instanceAi.workflowSuggestionsEnabled,
 		};
 	}
 
@@ -159,6 +161,18 @@ export class InstanceAiModule implements ModuleInterface {
 			'./self-healing/database/self-healing-investigation.entity.js'
 		);
 
+		const { SelfHealingConfiguration } = await import(
+			'./self-healing/database/self-healing-configuration.entity.js'
+		);
+
+		const { SelfHealingConfigurationWorkflow } = await import(
+			'./self-healing/database/self-healing-configuration-workflow.entity.js'
+		);
+
+		const { SelfHealingConfigurationReviewer } = await import(
+			'./self-healing/database/self-healing-configuration-reviewer.entity.js'
+		);
+
 		return [
 			InstanceAiThread,
 			InstanceAiMessage,
@@ -177,6 +191,9 @@ export class InstanceAiModule implements ModuleInterface {
 			WorkflowSuggestionActivity,
 			SelfHealingResult,
 			SelfHealingInvestigation,
+			SelfHealingConfigurationReviewer,
+			SelfHealingConfigurationWorkflow,
+			SelfHealingConfiguration,
 		];
 	}
 

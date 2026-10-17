@@ -7,13 +7,30 @@ import {
 	WorkflowEntity,
 	WithTimestampsAndStringId,
 } from '@n8n/db';
-import { Column, Entity, Index, JoinColumn, ManyToOne, type Relation } from '@n8n/typeorm';
+import {
+	Column,
+	Entity,
+	Index,
+	JoinColumn,
+	ManyToOne,
+	OneToMany,
+	type Relation,
+} from '@n8n/typeorm';
 
-import { WorkflowSuggestion } from '../../workflow-suggestions/database/workflow-suggestion.entity';
+import type { WorkflowSuggestion } from '../../workflow-suggestions/database/workflow-suggestion.entity';
+
+import { SelfHealingConfiguration } from './self-healing-configuration.entity';
 
 @Entity('self_healing_result')
-@Index(['suggestionId'], { unique: true, where: '"suggestionId" IS NOT NULL' })
 export class SelfHealingResult extends WithTimestampsAndStringId {
+	@Index()
+	@Column({ type: 'int' })
+	configurationId: number;
+
+	@ManyToOne(() => SelfHealingConfiguration, { nullable: false, onDelete: 'CASCADE' })
+	@JoinColumn({ name: 'configurationId' })
+	configuration: Relation<SelfHealingConfiguration>;
+
 	@Index()
 	@Column({ type: 'varchar', length: 36 })
 	workflowId: string;
@@ -54,12 +71,8 @@ export class SelfHealingResult extends WithTimestampsAndStringId {
 	@Column({ type: 'varchar', length: 36 })
 	executionId: string;
 
-	@Column({ type: 'varchar', length: 36, nullable: true })
-	suggestionId: string | null;
-
-	@ManyToOne(() => WorkflowSuggestion, { nullable: true, onDelete: 'CASCADE' })
-	@JoinColumn({ name: 'suggestionId' })
-	suggestion: Relation<WorkflowSuggestion> | null;
+	@OneToMany('WorkflowSuggestion', 'selfHealingResult')
+	suggestions: Relation<WorkflowSuggestion[]>;
 
 	@JsonColumn()
 	usage: SelfHealingResultUsage;

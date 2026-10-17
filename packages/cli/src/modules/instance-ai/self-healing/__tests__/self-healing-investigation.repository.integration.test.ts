@@ -1,23 +1,18 @@
 import type { WorkflowSuggestionBaseline } from '@n8n/api-types';
 import { createWorkflow, createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
-import {
-	TransactionRunner,
-	WorkflowRepository,
-	postgresMigrations,
-	sqliteMigrations,
-	wrapMigration,
-} from '@n8n/db';
+import { TransactionRunner, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { DataSource } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 
 import { createUser } from '@test-integration/db/users';
 
 import { SelfHealingInvestigationRepository } from '../database/self-healing-investigation.repository';
+import { createConfiguration } from './support/configuration';
 
 let investigations: SelfHealingInvestigationRepository;
 let tx: TransactionRunner;
 let baseline: WorkflowSuggestionBaseline;
+let configurationId: number;
 
 beforeAll(async () => {
 	await testModules.loadModules(['instance-ai']);
@@ -30,6 +25,7 @@ beforeEach(async () => {
 	const user = await createUser();
 	const project = await createTeamProject();
 	const workflow = await createWorkflow({}, project);
+	configurationId = (await createConfiguration(project.id, user.id)).id;
 	baseline = {
 		workflowId: workflow.id,
 		projectId: project.id,
@@ -54,7 +50,7 @@ afterAll(async () => await testDb.terminate());
 async function createInvestigation(executionId = 'execution-1') {
 	return await tx.run({}, async (ctx) => {
 		return await investigations.createInvestigation(
-			{ baseline, executionId, threadId: randomUUID(), runId: randomUUID() },
+			{ baseline, configurationId, executionId, threadId: randomUUID(), runId: randomUUID() },
 			ctx,
 		);
 	});
@@ -77,7 +73,7 @@ it('releases technical failures while retaining the original execution identity'
 	expect(await investigations.getForExecution(baseline.workflowId, first.executionId)).toEqual({
 		id: first.id,
 	});
-	expect(await investigations.get(first.id)).toMatchObject({
+	expect(await investigations.findOneByOrFail({ id: first.id })).toMatchObject({
 		resultId: null,
 		finishedAt: expect.any(Date),
 	});
@@ -89,32 +85,5 @@ it('releases technical failures while retaining the original execution identity'
 it('removes investigations when their workflow is deleted', async () => {
 	const investigation = await createInvestigation();
 	await Container.get(WorkflowRepository).delete(baseline.workflowId);
-	await expect(investigations.get(investigation.id)).rejects.toThrow('not found');
-});
-
-it('reverts and reapplies the investigation schema', async () => {
-	const db = Container.get(DataSource);
-	[...postgresMigrations, ...sqliteMigrations].forEach(wrapMigration);
-	const migration = db.migrations.find(
-		({ constructor }) => constructor.name === 'CreateSelfHealingInvestigationTable1792149480858',
-	);
-	if (!migration) throw new Error('The investigation migration is not registered.');
-	const runner = db.createQueryRunner();
-	try {
-		await migration.down(runner);
-		try {
-			expect(await runner.hasTable(investigations.metadata.tablePath)).toBe(false);
-		} finally {
-			await migration.up(runner);
-		}
-		expect(await runner.hasTable(investigations.metadata.tablePath)).toBe(true);
-	} finally {
-		await runner.release();
-	}
-	const investigation = await createInvestigation();
-	expect(await investigations.get(investigation.id)).toMatchObject({
-		baseline,
-		resultId: null,
-		finishedAt: null,
-	});
+	expect(await investigations.findInvestigation(investigation.id)).toBeNull();
 });

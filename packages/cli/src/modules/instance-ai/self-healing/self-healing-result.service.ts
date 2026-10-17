@@ -28,8 +28,10 @@ import { WorkflowSuggestionActionsService } from '../workflow-suggestions/workfl
 import { WorkflowSuggestionService } from '../workflow-suggestions/workflow-suggestion.service';
 import type { SelfHealingResult } from './database/self-healing-result.entity';
 import type { SelfHealingInvestigation } from './database/self-healing-investigation.entity';
+import { SelfHealingConfigurationRepository } from './database/self-healing-configuration.repository';
 import { SelfHealingInvestigationRepository } from './database/self-healing-investigation.repository';
 import { SelfHealingResultRepository } from './database/self-healing-result.repository';
+import { SelfHealingConfigurationService } from './self-healing-configuration.service';
 import { SelfHealingExecutionReferenceService } from './self-healing-execution-reference.service';
 
 export type SelfHealingResultInput = {
@@ -60,6 +62,8 @@ export class SelfHealingResultService {
 		private readonly investigations: SelfHealingInvestigationRepository,
 		private readonly users: UserRepository,
 		private readonly roles: RoleService,
+		private readonly configurations: SelfHealingConfigurationRepository,
+		private readonly configurationService: SelfHealingConfigurationService,
 	) {}
 
 	private async getInboxAccess(userId: string) {
@@ -96,7 +100,8 @@ export class SelfHealingResultService {
 		...input
 	}: SelfHealingResultInput & { investigationId: string; signal?: AbortSignal }) {
 		signal?.throwIfAborted();
-		const investigation = await this.investigations.get(investigationId);
+		const investigation = await this.investigations.findInvestigation(investigationId);
+		if (!investigation) return null;
 		if (investigation.resultId) {
 			return await this.results.getResult(investigation.resultId, investigation);
 		}
@@ -108,29 +113,48 @@ export class SelfHealingResultService {
 		signal?.throwIfAborted();
 
 		return await this.txRunner.run({}, async (ctx) => {
-			await this.suggestions.readWorkflowTargetForApply(investigation.workflowId, ctx);
-			const current = await this.investigations.get(investigationId, ctx);
+			const configuration = await this.configurations.findForUpdate(
+				investigation.configurationId,
+				investigation.projectId,
+				ctx,
+			);
+			if (!configuration) return null;
+			const current = await this.investigations.findInvestigation(investigationId, ctx);
+			if (!current) return null;
 			if (current.resultId) {
 				return await this.results.getResult(current.resultId, current, ctx);
 			}
 			if (current.finishedAt) {
 				throw new ConflictError('The self-healing investigation has already finished.');
 			}
+			if (
+				!(await this.configurationService.resolveActorOrPause(
+					configuration,
+					current.workflowId,
+					ctx,
+				))
+			) {
+				await this.investigations.finishWithoutResult(investigationId, ctx);
+				return null;
+			}
+			await this.suggestions.readWorkflowTargetForApply(investigation.workflowId, ctx);
 			await this.suggestions.requireCurrentBaseline(current.baseline, ctx);
 			signal?.throwIfAborted();
-			const suggestion = prepared ? await this.suggestions.createSuggestion(prepared, ctx) : null;
 			const result = await this.results.createResult(
 				{
+					configurationId: current.configurationId,
 					workflowId: current.workflowId,
 					projectId: current.projectId,
 					backgroundUserId: current.backgroundUserId,
 					executionId: current.executionId,
 					...content,
 					completedAt,
-					suggestionId: suggestion?.id ?? null,
 				},
 				ctx,
 			);
+			result.suggestions = prepared
+				? [await this.suggestions.createSuggestion(prepared, result.id, ctx)]
+				: [];
 			await this.investigations.completeWithResult(investigationId, result.id, ctx);
 			// Abort before commit so the result and suggestion roll back together.
 			signal?.throwIfAborted();
@@ -194,8 +218,9 @@ export class SelfHealingResultService {
 		const reviewer = authorized.reviewer;
 		let result = authorized.result;
 		await this.requireCurrentProject(workflowId, projectId);
-		let suggestion = result.suggestionId
-			? await this.suggestions.getProposal(reviewer, projectId, workflowId, result.suggestionId)
+		const suggestionId = result.suggestions[0]?.id;
+		let suggestion = suggestionId
+			? await this.suggestions.getProposal(reviewer, projectId, workflowId, suggestionId)
 			: null;
 		if (suggestion) {
 			// A concurrent dismissal commits the result and suggestion together.
@@ -256,7 +281,8 @@ export class SelfHealingResultService {
 			workflowId,
 			resultId,
 		);
-		if (result.outcome !== 'fix_ready' || !result.suggestionId) {
+		const suggestionId = result.suggestions[0]?.id;
+		if (result.outcome !== 'fix_ready' || !suggestionId) {
 			throw new ConflictError("This fix isn't ready to apply. Review the report for next steps.");
 		}
 		const { publishError, ...suggestion } =
@@ -265,10 +291,10 @@ export class SelfHealingResultService {
 						reviewer,
 						projectId,
 						workflowId,
-						result.suggestionId,
+						suggestionId,
 						clientId,
 					)
-				: await this.actions.apply(reviewer, projectId, workflowId, result.suggestionId, clientId);
+				: await this.actions.apply(reviewer, projectId, workflowId, suggestionId, clientId);
 		const execution = await this.executionReferences.getReference(
 			reviewer,
 			workflowId,
@@ -290,12 +316,13 @@ export class SelfHealingResultService {
 				ctx,
 			);
 			if (result.dismissedAt) return true;
-			if (result.suggestionId) {
+			const suggestionId = result.suggestions[0]?.id;
+			if (suggestionId) {
 				const outcome = await this.actions.discardPending(
 					reviewer,
 					projectId,
 					workflowId,
-					result.suggestionId,
+					suggestionId,
 					ctx,
 				);
 				if (outcome === 'unavailable') return false;
@@ -326,6 +353,9 @@ export class SelfHealingResultService {
 	) {
 		const reviewer = await this.suggestions.requireEditor(user.id, workflowId, ctx);
 		const result = await this.results.getResult(resultId, { projectId, workflowId }, ctx);
+		if (!(await this.configurations.isReviewer(result.configurationId, user.id, ctx))) {
+			throw new NotFoundError('Self-healing result not found.');
+		}
 		return { result, reviewer };
 	}
 

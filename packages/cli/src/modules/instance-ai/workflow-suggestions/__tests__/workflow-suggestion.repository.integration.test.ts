@@ -16,6 +16,7 @@ import { randomUUID } from 'node:crypto';
 
 import { createUser } from '@test-integration/db/users';
 
+import { createResult } from '../../self-healing/__tests__/support/result';
 import { WorkflowSuggestionActivity } from '../database/workflow-suggestion-activity.entity';
 import { WorkflowSuggestion } from '../database/workflow-suggestion.entity';
 import { WorkflowSuggestionRepository } from '../database/workflow-suggestion.repository';
@@ -26,6 +27,7 @@ let tx: TransactionRunner;
 let workflow: WorkflowEntity;
 let project: Project;
 let backgroundUser: User;
+let resultId: string;
 const baseline = (): WorkflowSuggestionBaseline => ({
 	workflowId: workflow.id,
 	projectId: project.id,
@@ -47,7 +49,13 @@ const payload = (): WorkflowSuggestionContent => ({
 });
 const saveProposal = async () =>
 	await tx.run({}, async (ctx) => {
-		const suggestion = await suggestions.createPending(baseline(), payload(), ctx, 'fix_ready');
+		const suggestion = await suggestions.createPending(
+			baseline(),
+			payload(),
+			ctx,
+			'fix_ready',
+			resultId,
+		);
 		await suggestions.appendSubmittedActivity(suggestion.id, ctx);
 		return suggestion;
 	});
@@ -62,6 +70,7 @@ beforeEach(async () => {
 	backgroundUser = await createUser();
 	project = await createTeamProject();
 	workflow = await createWorkflow({}, project);
+	resultId = (await createResult(baseline())).id;
 });
 afterAll(async () => await testDb.terminate());
 afterEach(async () => {
@@ -80,6 +89,19 @@ it('accepts only one concurrent pending proposal for a workflow', async () => {
 	await expect(saveProposal()).rejects.toThrow('pending proposal');
 });
 
+it('requires an existing owning result', async () => {
+	const suggestion = await saveProposal();
+	await expect(
+		suggestions.update(suggestion.id, { selfHealingResultId: () => 'NULL' }),
+	).rejects.toThrow(/not.null/i);
+	await expect(
+		suggestions.update(suggestion.id, { selfHealingResultId: randomUUID() }),
+	).rejects.toThrow(/foreign key/i);
+	expect((await suggestions.findOneByOrFail({ id: suggestion.id })).selfHealingResultId).toBe(
+		resultId,
+	);
+});
+
 it('allows a new proposal after the previous proposal closes', async () => {
 	const first = await saveProposal();
 	await suggestions.update(first.id, {
@@ -95,7 +117,13 @@ it('allows a new proposal after the previous proposal closes', async () => {
 it('rolls back the suggestion and its activity when activity insertion fails', async () => {
 	await expect(
 		tx.run({}, async (ctx) => {
-			const suggestion = await suggestions.createPending(baseline(), payload(), ctx, 'fix_ready');
+			const suggestion = await suggestions.createPending(
+				baseline(),
+				payload(),
+				ctx,
+				'fix_ready',
+				resultId,
+			);
 			await suggestions.appendSubmittedActivity(suggestion.id, ctx);
 			await suggestions.appendSubmittedActivity(suggestion.id, ctx);
 		}),
@@ -108,7 +136,13 @@ it('joins the caller transaction and rolls back both rows if finalization fails'
 	await expect(
 		tx.run({}, async (ctx) => {
 			await tx.run(ctx, async (ctx) => {
-				const suggestion = await suggestions.createPending(baseline(), payload(), ctx, 'fix_ready');
+				const suggestion = await suggestions.createPending(
+					baseline(),
+					payload(),
+					ctx,
+					'fix_ready',
+					resultId,
+				);
 				await suggestions.appendSubmittedActivity(suggestion.id, ctx);
 			});
 			throw new Error('Investigation completion failed.');
@@ -146,7 +180,7 @@ it.each([
 			tx.run(
 				{},
 				async (ctx) =>
-					await suggestions.createPending(originalBaseline, payload(), ctx, 'fix_ready'),
+					await suggestions.createPending(originalBaseline, payload(), ctx, 'fix_ready', resultId),
 			),
 		).rejects.toThrow(/foreign key/i);
 		expect(await suggestions.count()).toBe(0);
@@ -161,7 +195,13 @@ it('leaves workflow and history unchanged and reads the current saved workflow',
 	await tx.run({}, async (ctx) => {
 		const currentWorkflow = await workflows.findByIdInContext(workflow.id, ctx);
 		expect(currentWorkflow?.versionId).toBe(before.versionId);
-		const suggestion = await suggestions.createPending(baseline(), payload(), ctx, 'fix_ready');
+		const suggestion = await suggestions.createPending(
+			baseline(),
+			payload(),
+			ctx,
+			'fix_ready',
+			resultId,
+		);
 		await suggestions.appendSubmittedActivity(suggestion.id, ctx);
 	});
 	expect(await workflows.findOneByOrFail({ id: workflow.id })).toEqual(before);

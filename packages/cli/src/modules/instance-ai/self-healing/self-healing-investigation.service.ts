@@ -8,7 +8,7 @@ import {
 	type User,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { BadRequestError, NotFoundError } from '@n8n/errors';
+import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { selfHealingOutputSchema } from '@n8n/instance-ai';
 import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import { randomUUID } from 'node:crypto';
@@ -20,8 +20,10 @@ import { InstanceAiEventLogRepository } from '../repositories/instance-ai-event-
 import { WorkflowSuggestionRepository } from '../workflow-suggestions/database/workflow-suggestion.repository';
 import { WorkflowSuggestionService } from '../workflow-suggestions/workflow-suggestion.service';
 import type { SelfHealingInvestigation } from './database/self-healing-investigation.entity';
+import { SelfHealingConfigurationRepository } from './database/self-healing-configuration.repository';
 import { SelfHealingInvestigationRepository } from './database/self-healing-investigation.repository';
 import type { SelfHealingRunResult } from './self-healing-agent.service';
+import { SelfHealingConfigurationService } from './self-healing-configuration.service';
 import { SelfHealingExecutionReferenceService } from './self-healing-execution-reference.service';
 import {
 	SelfHealingResultService,
@@ -31,7 +33,6 @@ import {
 type StartInvestigation = {
 	workflowId: string;
 	projectId: string;
-	backgroundUserId: string;
 	executionId: string;
 };
 
@@ -55,35 +56,62 @@ export class SelfHealingInvestigationService {
 		private readonly txRunner: TransactionRunner,
 		private readonly config: InstanceAiConfig,
 		private readonly logger: Logger,
+		private readonly configurations: SelfHealingConfigurationRepository,
+		private readonly configurationService: SelfHealingConfigurationService,
 	) {}
 
 	/** Internal entry point. Automatic triggers and retry policy belong to the caller. */
-	async start(input: StartInvestigation): Promise<ExistingWork> {
+	async start(input: StartInvestigation): Promise<ExistingWork | null> {
 		if (!this.config.workflowSuggestionsEnabled) {
 			throw new BadRequestError('Self-healing investigations are disabled.');
 		}
-		const actor = await this.suggestions.requireEditor(input.backgroundUserId, input.workflowId);
+		const configuration = await this.configurations.findForWorkflow(
+			input.projectId,
+			input.workflowId,
+		);
+		if (!configuration) return null;
+		const actor = await this.txRunner.run({}, async (ctx) => {
+			const current = await this.configurations.findForUpdate(
+				configuration.id,
+				input.projectId,
+				ctx,
+			);
+			return current
+				? await this.configurationService.resolveActorOrPause(current, input.workflowId, ctx)
+				: null;
+		});
+		if (!actor) return null;
 		await this.requireProject(input.workflowId, input.projectId);
 		await this.suggestions.reconcileWorkflow(input.workflowId);
 		const existing = await this.findExisting(input);
 		if (existing) return existing;
 
-		const baseline = await this.suggestions.captureBaseline(input.workflowId, actor.id);
-		if (baseline.projectId !== input.projectId) {
-			throw new NotFoundError('Workflow not found in this project.');
-		}
-		await this.executions.validateFailure(actor, baseline, input.executionId);
-		const claimed = await this.claim(input, baseline);
-		if ('kind' in claimed) return claimed;
+		try {
+			const baseline = await this.suggestions.captureBaseline(input.workflowId, actor.id);
+			if (baseline.projectId !== input.projectId) {
+				throw new NotFoundError('Workflow not found in this project.');
+			}
+			await this.executions.validateFailure(actor, baseline, input.executionId);
+			const claimed = await this.claim(input, baseline, configuration.id);
+			if (!claimed || 'kind' in claimed) return claimed;
 
-		// Return the investigation ID without waiting for the agent to finish.
-		void this.run(claimed, actor).catch((error: unknown) => {
-			this.logger.error('Self-healing investigation failed.', {
-				investigationId: claimed.id,
-				error,
+			// Return the investigation ID without waiting for the agent to finish.
+			void this.run(claimed, actor).catch((error: unknown) => {
+				this.logger.error('Self-healing investigation failed.', {
+					investigationId: claimed.id,
+					error,
+				});
 			});
-		});
-		return { kind: 'investigation', investigationId: claimed.id };
+			return { kind: 'investigation', investigationId: claimed.id };
+		} catch (error) {
+			if (error instanceof ForbiddenError)
+				await this.configurationService.recheckAccess(
+					configuration.id,
+					input.projectId,
+					input.workflowId,
+				);
+			throw error;
+		}
 	}
 
 	private async findExisting(
@@ -111,8 +139,24 @@ export class SelfHealingInvestigationService {
 		return suggestion ? { kind: 'suggestion', suggestionId: suggestion.id } : null;
 	}
 
-	private async claim(input: StartInvestigation, baseline: WorkflowSuggestionBaseline) {
+	private async claim(
+		input: StartInvestigation,
+		baseline: WorkflowSuggestionBaseline,
+		configurationId: number,
+	) {
 		return await this.txRunner.run({}, async (ctx) => {
+			const configuration = await this.configurations.findForUpdate(
+				configurationId,
+				input.projectId,
+				ctx,
+			);
+			if (!configuration) return null;
+			const actor = await this.configurationService.resolveActorOrPause(
+				configuration,
+				input.workflowId,
+				ctx,
+			);
+			if (!actor || actor.id !== baseline.backgroundUserId) return null;
 			await this.suggestions.readWorkflowTargetForApply(input.workflowId, ctx);
 			const existing = await this.findExisting(input, ctx);
 			if (existing) return existing;
@@ -120,6 +164,7 @@ export class SelfHealingInvestigationService {
 			return await this.investigations.createInvestigation(
 				{
 					baseline,
+					configurationId,
 					executionId: input.executionId,
 					threadId: randomUUID(),
 					runId: randomUUID(),
@@ -145,6 +190,13 @@ export class SelfHealingInvestigationService {
 				},
 			);
 		} catch (error) {
+			if (error instanceof ForbiddenError) {
+				await this.configurationService.recheckAccess(
+					investigation.configurationId,
+					investigation.projectId,
+					investigation.workflowId,
+				);
+			}
 			await this.investigations.finishWithoutResult(investigation.id);
 			throw error;
 		}
@@ -156,6 +208,7 @@ export class SelfHealingInvestigationService {
 		signal: AbortSignal,
 	) {
 		if (run.status !== 'completed' || run.finishReason !== 'stop' || !run.output) {
+			if (run.error instanceof ForbiddenError) throw run.error;
 			await this.investigations.finishWithoutResult(investigation.id);
 			return;
 		}
