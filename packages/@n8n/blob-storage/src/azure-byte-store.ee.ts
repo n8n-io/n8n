@@ -1,13 +1,18 @@
 import { binaryToBuffer } from '@n8n/backend-network';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import chunk from 'lodash/chunk';
+import { UnexpectedError } from 'n8n-workflow';
 import type { Readable } from 'node:stream';
 
 import type { AzureBlobService } from './azure-blob/azure-blob.service.ee';
+import { toDirectoryPrefix } from './assert-delete-prefix';
 import { assertChunkSize } from './stream-utils';
 import type { BlobMetadata, ByteStore, ByteStoreKey, PreWriteBlobMetadata } from './types';
 
 const MAX_DELETE_CONCURRENCY = 50;
+
+/** Delete passes over one prefix. The last pass must list nothing, so a skipped blob is caught. */
+const MAX_PREFIX_DELETE_PASSES = 3;
 
 export class AzureByteStore implements ByteStore {
 	constructor(private readonly azureBlob: AzureBlobService) {}
@@ -56,6 +61,28 @@ export class AzureByteStore implements ByteStore {
 		for (const batch of chunk(keys, MAX_DELETE_CONCURRENCY)) {
 			await Promise.all(batch.map(async (key) => await this.azureBlob.delete(key)));
 		}
+	}
+
+	async deletePrefix(prefix: string): Promise<void> {
+		const directoryPrefix = toDirectoryPrefix(prefix);
+
+		for (let pass = 0; pass < MAX_PREFIX_DELETE_PASSES; pass++) {
+			let foundBlobs = false;
+
+			// Delete each page before listing the next, to bound memory and to resume after a crash.
+			for await (const names of this.azureBlob.listPages(directoryPrefix)) {
+				if (names.length === 0) continue;
+				foundBlobs = true;
+				await this.delete(names);
+			}
+
+			// A list taken during deletes can skip blobs, so succeed only after a pass finds none.
+			if (!foundBlobs) return;
+		}
+
+		throw new UnexpectedError('Blobs remain under the prefix after repeated deletes', {
+			extra: { prefix },
+		});
 	}
 
 	async getMetadata(key: ByteStoreKey): Promise<BlobMetadata | null> {

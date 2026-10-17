@@ -6,7 +6,6 @@ import { Container } from '@n8n/di';
 import type { SelectQueryBuilder } from '@n8n/typeorm';
 import { In, LessThan, LessThanOrEqual, MoreThanOrEqual, And, Not } from '@n8n/typeorm';
 import { DateUtils } from '@n8n/typeorm/util/DateUtils';
-import { BinaryDataService } from 'n8n-core';
 import type { IRunExecutionData, IWorkflowBase } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { mock } from 'vitest-mock-extended';
@@ -29,7 +28,6 @@ describe('ExecutionRepository', () => {
 	const globalConfig = mockInstance(GlobalConfig, {
 		logging: { outputs: ['console'], scopes: [] },
 	});
-	mockInstance(BinaryDataService);
 	const logger = mockInstance(Logger);
 	const sharedWorkflowRepository = mockInstance(SharedWorkflowRepository);
 	const transactionRunner = mock<TransactionRunner>();
@@ -603,28 +601,27 @@ describe('ExecutionRepository', () => {
 		);
 	});
 
-	describe('deleteExecutionsByFilter', () => {
-		test('should delete binary data', async () => {
+	describe('findExecutionsToDelete', () => {
+		test('should return the matching executions without deleting anything', async () => {
 			const workflowId = nanoid();
-			const binaryDataService = Container.get(BinaryDataService);
+			const deleteSpy = vi.spyOn(executionRepository, 'delete');
 
 			vi.spyOn(executionRepository, 'createQueryBuilder').mockReturnValue(
 				mock<SelectQueryBuilder<ExecutionEntity>>({
 					select: vi.fn().mockReturnThis(),
 					andWhere: vi.fn().mockReturnThis(),
-					getMany: vi.fn().mockResolvedValue([{ id: '1', workflowId }]),
+					getMany: vi.fn().mockResolvedValue([{ id: '1', workflowId, storedAt: 'db' }]),
 				}),
 			);
 
-			await executionRepository.deleteExecutionsByFilter({
+			const refs = await executionRepository.findExecutionsToDelete({
 				filters: { id: '1' },
 				accessibleWorkflowIds: ['1'],
 				deleteConditions: { ids: ['1'] },
 			});
 
-			expect(binaryDataService.deleteMany).toHaveBeenCalledWith([
-				{ type: 'execution', executionId: '1', workflowId },
-			]);
+			expect(refs).toEqual([{ executionId: '1', workflowId, storedAt: 'db' }]);
+			expect(deleteSpy).not.toHaveBeenCalled();
 		});
 	});
 
