@@ -80,8 +80,121 @@ describe('IdBasedCredentialMatcher', () => {
 		expect(result.failures).toEqual([createFailure(requirement, 'not_found')]);
 		expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledWith(user, {
 			projectId: targetProject.id,
+			excludePersonalRoute: false,
 		});
 	});
+
+	it.each(['id-only', 'name-and-type'] as const)(
+		'resolves an untyped Agent credential through %s',
+		async (mode) => {
+			const requirement: PackageCredentialRequirement = {
+				id: 'source',
+				usedBy: [{ kind: 'agent', id: 'agent' }],
+			};
+			const targetId = mode === 'id-only' ? 'source' : 'target';
+			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([usable(targetId)]);
+			if (mode === 'name-and-type') context.credentialBindings = new Map([['source', targetId]]);
+			const resolution = await matcherFactory.getMatcher(mode).match([requirement], context);
+			expect(resolution).toEqual({ successes: new Map([['source', targetId]]), failures: [] });
+			if (mode === 'name-and-type') {
+				delete context.credentialBindings;
+				expect(
+					(await matcherFactory.getMatcher(mode).match([requirement], context)).failures,
+				).toEqual([createFailure(requirement, 'unknown_type')]);
+			}
+		},
+	);
+
+	it.each(['githubApi', undefined])(
+		'keeps personal-route credentials available only to workflow consumers with Agent type %s',
+		async (type) => {
+			const workflowRequirement: PackageCredentialRequirement = {
+				id: 'workflow-personal',
+				name: 'Personal',
+				type: 'githubApi',
+				usedBy: [{ kind: 'workflow', id: 'wf-1' }],
+			};
+			const agentRequirement: PackageCredentialRequirement = {
+				id: 'agent-personal',
+				type,
+				usedBy: [{ kind: 'agent', id: 'agent-1' }],
+			};
+			const mixedRequirement: PackageCredentialRequirement = {
+				...workflowRequirement,
+				id: 'mixed-personal',
+				usedBy: [...workflowRequirement.usedBy, ...agentRequirement.usedBy],
+			};
+			const sharedRequirement = { ...agentRequirement, id: 'agent-shared' };
+			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockImplementation(
+				async (_user, { excludePersonalRoute }) => {
+					const shared = [usable('agent-shared')];
+					if (excludePersonalRoute) return shared;
+					return [
+						...shared,
+						usable('workflow-personal'),
+						usable('agent-personal'),
+						usable('mixed-personal'),
+					];
+				},
+			);
+
+			const result = await matcherFactory
+				.getMatcher('id-only')
+				.match(
+					[workflowRequirement, agentRequirement, mixedRequirement, sharedRequirement],
+					context,
+				);
+
+			expect(result).toEqual({
+				successes: new Map([
+					['workflow-personal', 'workflow-personal'],
+					['agent-shared', 'agent-shared'],
+				]),
+				failures: [
+					createFailure(agentRequirement, 'not_found'),
+					createFailure(mixedRequirement, 'not_found'),
+				],
+			});
+		},
+	);
+
+	it.each(['id-only', 'name-and-type', 'type-only'] as const)(
+		'rejects an explicit personal-route binding for Agent consumers in %s mode',
+		async (mode) => {
+			const workflowRequirement: PackageCredentialRequirement = {
+				id: 'workflow-source',
+				name: 'Source GitHub',
+				type: 'githubApi',
+				usedBy: [{ kind: 'workflow', id: 'wf-1' }],
+			};
+			const agentRequirement: PackageCredentialRequirement = {
+				...workflowRequirement,
+				id: 'agent-source',
+				usedBy: [{ kind: 'agent', id: 'agent-1' }],
+			};
+			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockImplementation(
+				async (_user, { excludePersonalRoute }) =>
+					excludePersonalRoute ? [] : [usable('target-personal')],
+			);
+
+			const result = await matcherFactory
+				.getMatcher(mode)
+				.match([workflowRequirement, agentRequirement], {
+					...context,
+					credentialBindings: new Map([
+						['workflow-source', 'target-personal'],
+						['agent-source', 'target-personal'],
+					]),
+				});
+
+			expect(result).toEqual({
+				successes: new Map([['workflow-source', 'target-personal']]),
+				failures: [
+					{ ...createFailure(agentRequirement, 'not_found'), targetId: 'target-personal' },
+				],
+			});
+		},
+	);
 
 	it('does not query the database for unknown credential types', async () => {
 		credentialTypes.recognizes.mockReturnValue(false);

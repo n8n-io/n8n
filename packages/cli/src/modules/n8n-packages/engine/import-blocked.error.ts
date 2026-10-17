@@ -12,6 +12,7 @@ export function toImportBlockedError(
 	if (
 		issues.some(
 			(issue) =>
+				issue.type === 'agent-conflict' ||
 				issue.type === 'workflow-conflict' ||
 				issue.type === 'workflow-lineage-conflict' ||
 				issue.type === 'workflow-id-conflict' ||
