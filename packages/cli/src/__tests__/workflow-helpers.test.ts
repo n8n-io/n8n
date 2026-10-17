@@ -1427,11 +1427,15 @@ describe('updateParentExecutionWithChildResults', () => {
 				},
 			}) as unknown as IRun;
 
-		async function persistedContextAfter(parent: IExecutionResponse, child: IRun) {
+		async function persistedContextAfter(
+			parent: IExecutionResponse,
+			child: IRun,
+			childWorkflowData?: IWorkflowBase,
+		) {
 			const executionPersistence = mockInstance(ExecutionPersistence);
 			executionPersistence.findSingleExecution.mockResolvedValue(parent);
 
-			await updateParentExecutionWithChildResults(PARENT_ID, child);
+			await updateParentExecutionWithChildResults(PARENT_ID, child, undefined, childWorkflowData);
 
 			const [, payload] = executionPersistence.updateExistingExecution.mock.calls[0];
 			return (payload as IExecutionResponse).data.executionData?.runtimeData;
@@ -1475,6 +1479,38 @@ describe('updateParentExecutionWithChildResults', () => {
 			);
 
 			expect(runtimeData).not.toHaveProperty('subWorkflowRedaction');
+		});
+
+		describe('when the child opts out of redacting its callers', () => {
+			const library = {
+				id: 'library',
+				name: 'Library',
+				nodes: [],
+				connections: {},
+				settings: { redactCallerExecutions: false },
+			} as unknown as IWorkflowBase;
+
+			it("does not escalate the parent context with the child's own channels", async () => {
+				const runtimeData = await persistedContextAfter(
+					parentWithContext(),
+					childWithRedaction({ production: true, manual: true }),
+					library,
+				);
+
+				expect(runtimeData).not.toHaveProperty('subWorkflowRedaction');
+			});
+
+			it('still escalates with the channels its own sub-workflows reported', async () => {
+				const child = childWithRedaction({ production: true, manual: true });
+				child.data.executionData!.runtimeData!.subWorkflowRedaction = {
+					production: true,
+					manual: false,
+				};
+
+				const runtimeData = await persistedContextAfter(parentWithContext(), child, library);
+
+				expect(runtimeData?.subWorkflowRedaction).toEqual({ production: true, manual: false });
+			});
 		});
 	});
 
