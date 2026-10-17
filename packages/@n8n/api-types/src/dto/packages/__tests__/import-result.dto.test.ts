@@ -16,6 +16,7 @@ describe('ImportResultDto', () => {
 					projectId: 'proj-1',
 					activeVersionId: null,
 					status: 'created',
+					channelSetupRequired: [],
 					publishing: { state: 'failed', error: 'Not ready' },
 					schema: { instructions: 'Private instructions' },
 					skills: {},
@@ -86,6 +87,7 @@ describe('ImportResultDto', () => {
 				projectId: 'proj-1',
 				activeVersionId: null,
 				status: 'created',
+				channelSetupRequired: [],
 				publishing: { state: 'failed', error: 'Not ready' },
 			});
 		}

@@ -7,6 +7,7 @@ import {
 	type AgentIntegrationConnectResponse,
 	type AgentIntegrationStatusEntry,
 	type AgentIntegrationSettings,
+	type AgentIntegrationStatusResponse,
 } from '@n8n/api-types';
 import { ResponseError } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -26,6 +27,7 @@ import {
 type Status = AgentChannelRuntimeStatus | 'disconnected' | 'unknown';
 
 interface AgentIntegrationStatusState {
+	channelSetupRequired: Ref<AgentIntegrationStatusResponse['channelSetupRequired']>;
 	statuses: Ref<Record<string, Status>>;
 	connectedCredentials: Ref<Record<string, string>>;
 	integrationSettings: Ref<Record<string, AgentIntegrationSettings | undefined>>;
@@ -47,6 +49,7 @@ interface AgentIntegrationStatusState {
 	 * nobody has asked about yet.
 	 */
 	serverConfirmed: Ref<Set<string>>;
+	fetchVersion: number;
 	fetchInFlight: Promise<void> | null;
 }
 
@@ -63,6 +66,7 @@ function getOrCreate(projectId: string, agentId: string): AgentIntegrationStatus
 	let state = cache.get(key);
 	if (!state) {
 		state = {
+			channelSetupRequired: ref([]),
 			statuses: ref({}),
 			connectedCredentials: ref({}),
 			integrationSettings: ref({}),
@@ -72,11 +76,17 @@ function getOrCreate(projectId: string, agentId: string): AgentIntegrationStatus
 			errorIsConflict: ref({}),
 			runtimeErrors: ref({}),
 			serverConfirmed: ref(new Set()),
+			fetchVersion: 0,
 			fetchInFlight: null,
 		};
 		cache.set(key, state);
 	}
 	return state;
+}
+
+function invalidateStatusFetch(state: AgentIntegrationStatusState): void {
+	state.fetchVersion += 1;
+	state.fetchInFlight = null;
 }
 
 /** Wipe the cache for an agent — use when an agent is deleted or the builder unmounts. */
@@ -113,8 +123,13 @@ function applyStatus(
 		state.serverConfirmed.value.has(type) &&
 		previousStatuses[type] !== 'disconnected' &&
 		previousStatuses[type] !== 'unknown';
+	const retainedTypes = new Set(
+		fromServer ? [] : state.channelSetupRequired.value.map(({ type }) => type),
+	);
 
 	for (const type of integrationTypes) {
+		// Draft intent is separate from the configured destination connection.
+		if (retainedTypes.has(type)) continue;
 		state.statuses.value[type] = 'disconnected';
 		state.connectedCredentials.value[type] = '';
 		state.integrationSettings.value[type] = undefined;
@@ -122,6 +137,14 @@ function applyStatus(
 		state.runtimeErrors.value[type] = '';
 	}
 	for (const integration of integrations) {
+		if (
+			!fromServer &&
+			state.channelSetupRequired.value.some(
+				(pending) =>
+					pending.type === integration.type && pending.credentialId === integration.credentialId,
+			)
+		)
+			continue;
 		// Only `starting` is the seed guessing at runtime state, and only a guess
 		// has to give way. `configured` is the seed saying the agent is unpublished,
 		// which is configuration's own fact and outranks any earlier answer — the
@@ -147,7 +170,10 @@ function applyStatus(
 		}
 		// A channel configuration no longer has is gone whatever the server last
 		// said about it, so its answer goes with it.
-		if (!integrations.some((integration) => integration.type === type)) {
+		if (
+			!retainedTypes.has(type) &&
+			!integrations.some((integration) => integration.type === type)
+		) {
 			state.serverConfirmed.value.delete(type);
 		}
 	}
@@ -174,9 +200,12 @@ export function useAgentIntegrationStatus(projectId: string, agentId: string) {
 			await state.fetchInFlight;
 			return;
 		}
+		const fetchVersion = state.fetchVersion;
 		state.fetchInFlight = (async () => {
 			try {
 				const result = await getIntegrationStatus(rootStore.restApiContext, projectId, agentId);
+				if (fetchVersion !== state.fetchVersion) return;
+				state.channelSetupRequired.value = result.channelSetupRequired ?? [];
 				// The report keeps n8n Chat while only the published version has it.
 				// The builder edits the draft, so a draft without it is unavailable.
 				const integrations = (result.integrations ?? []).filter(
@@ -186,6 +215,7 @@ export function useAgentIntegrationStatus(projectId: string, agentId: string) {
 				);
 				applyStatus(state, integrationTypes, integrations, 'server');
 			} catch {
+				if (fetchVersion !== state.fetchVersion) return;
 				// Mark only types the server hasn't answered for as `unknown` — a
 				// transient network failure shouldn't claim that a channel the server
 				// already told us about is now disconnected, and shouldn't dress up a
@@ -196,7 +226,9 @@ export function useAgentIntegrationStatus(projectId: string, agentId: string) {
 					}
 				}
 			} finally {
-				state.fetchInFlight = null;
+				if (fetchVersion === state.fetchVersion) {
+					state.fetchInFlight = null;
+				}
 			}
 		})();
 		await state.fetchInFlight;
@@ -221,6 +253,7 @@ export function useAgentIntegrationStatus(projectId: string, agentId: string) {
 				settings,
 				options,
 			);
+			invalidateStatusFetch(state);
 			// Reflect the change in the shared reactive state immediately so the
 			// other consumer re-renders without waiting for a round-trip refetch.
 			state.statuses.value[type] = result.status;
@@ -232,14 +265,17 @@ export function useAgentIntegrationStatus(projectId: string, agentId: string) {
 			// The server answered for this channel, even though it was a mutation
 			// rather than a status read — a later failed refetch must not downgrade it.
 			state.serverConfirmed.value.add(type);
+			if (options?.setupId) {
+				state.channelSetupRequired.value = state.channelSetupRequired.value.filter(
+					(entry) => entry.setupId !== options.setupId,
+				);
+			}
 			return result;
 		} catch (e: unknown) {
-			const msg =
-				e instanceof Error
-					? e.message
-					: typeof e === 'object' && e !== null && 'message' in e
-						? String((e as { message: unknown }).message)
-						: 'Failed to connect';
+			let msg = 'Failed to connect';
+			if (typeof e === 'object' && e !== null && 'message' in e) {
+				msg = String(e.message);
+			}
 			state.errorMessages.value[type] = msg;
 			state.errorIsConflict.value[type] = e instanceof ResponseError && e.httpStatusCode === 409;
 			throw e;
@@ -263,6 +299,7 @@ export function useAgentIntegrationStatus(projectId: string, agentId: string) {
 				credId,
 				options.deleteExternalResource,
 			);
+			invalidateStatusFetch(state);
 			state.statuses.value[type] = 'disconnected';
 			state.connectedCredentials.value[type] = '';
 			state.integrationSettings.value[type] = undefined;
@@ -277,6 +314,25 @@ export function useAgentIntegrationStatus(projectId: string, agentId: string) {
 
 	function isConnected(type: string): boolean {
 		return state.statuses.value[type] === 'connected';
+	}
+
+	async function cancelSetup(setupId: string): Promise<void> {
+		const pending = state.channelSetupRequired.value.find((entry) => entry.setupId === setupId);
+		if (!pending) return;
+		await disconnectIntegration(
+			rootStore.restApiContext,
+			projectId,
+			agentId,
+			pending.type,
+			pending.credentialId,
+			false,
+			setupId,
+		);
+		invalidateStatusFetch(state);
+		state.channelSetupRequired.value = state.channelSetupRequired.value.filter(
+			(entry) => entry.setupId !== setupId,
+		);
+		await fetchStatus(Object.keys(state.statuses.value));
 	}
 
 	/** Set up, whether or not it is currently running. */
@@ -302,6 +358,8 @@ export function useAgentIntegrationStatus(projectId: string, agentId: string) {
 	}
 
 	return {
+		channelSetupRequired: state.channelSetupRequired,
+		cancelSetup,
 		statuses: state.statuses,
 		connectedCredentials: state.connectedCredentials,
 		integrationSettings: state.integrationSettings,

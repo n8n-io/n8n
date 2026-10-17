@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/unbound-method -- mock-based tests intentionally reference unbound methods */
 import type { Logger } from '@n8n/backend-common';
 import type { OutboundHttp } from '@n8n/backend-network';
+import type { CredentialsRepository } from '@n8n/db';
 import type { Cipher } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
@@ -20,6 +21,13 @@ describe('SlackMethodsService', () => {
 		const agentRepository = mock<AgentRepository>();
 		const urlService = mock<UrlService>();
 		urlService.getWebhookBaseUrl.mockReturnValue('https://hooks.example/');
+		const credentialsRepository = mock<CredentialsRepository>();
+		credentialsRepository.updateDataIfUnchanged.mockResolvedValue(true);
+		const cipher = mock<Cipher>();
+		cipher.decryptV2.mockResolvedValue(
+			JSON.stringify({ accessToken: 'xoxb-token', signatureSecret: 'signing-secret' }),
+		);
+		cipher.encryptV2.mockImplementation(async (data) => JSON.stringify(data));
 		return {
 			service: new SlackMethodsService(
 				credentialsService,
@@ -28,10 +36,12 @@ describe('SlackMethodsService', () => {
 				urlService,
 				mock<OutboundHttp>(),
 				mock<CacheService>(),
-				mock<Cipher>(),
+				cipher,
 				mock<Logger>(),
+				credentialsRepository,
 			),
 			credentialsService,
+			credentialsRepository,
 			managementService,
 			agentRepository,
 		};
@@ -56,10 +66,11 @@ describe('SlackMethodsService', () => {
 	};
 
 	it('creates a bot credential and delegates activation to integration management', async () => {
-		const { service, credentialsService, managementService } = makeService();
+		const { service, credentialsService, credentialsRepository, managementService } = makeService();
 		const user = { id: 'user-1' };
 		credentialsService.createUnmanagedCredential.mockResolvedValue({
 			id: 'credential-1',
+			data: 'encrypted-bot-credential',
 		} as never);
 		managementService.connect.mockResolvedValue({
 			integration: {
@@ -78,11 +89,26 @@ describe('SlackMethodsService', () => {
 				data: {
 					accessToken: 'xoxb-token',
 					signatureSecret: 'signing-secret',
-					agentId: 'agent-1',
 				},
 				projectId: 'project-1',
 			},
 			user,
+		);
+		expect(credentialsRepository.updateDataIfUnchanged).toHaveBeenCalledWith(
+			'credential-1',
+			'slackApi',
+			'encrypted-bot-credential',
+			JSON.stringify({
+				accessToken: 'xoxb-token',
+				signatureSecret: 'signing-secret',
+				agentId: 'agent-1',
+				agentProjectId: 'project-1',
+				agentWebhookUrl:
+					'https://hooks.example/rest/projects/project-1/agents/v2/agent-1/webhooks/slack',
+			}),
+		);
+		expect(credentialsRepository.updateDataIfUnchanged.mock.invocationCallOrder[0]).toBeLessThan(
+			managementService.connect.mock.invocationCallOrder[0],
 		);
 		expect(managementService.connect).toHaveBeenCalledWith({
 			agent,
@@ -103,10 +129,23 @@ describe('SlackMethodsService', () => {
 			const context = makeService();
 			context.credentialsService.createUnmanagedCredential.mockResolvedValue({
 				id: 'credential-1',
+				data: 'encrypted-bot-credential',
 			} as never);
 			context.managementService.connect.mockRejectedValue(new Error('startup failed'));
 			return context;
 		}
+
+		it('does not connect when the credential changes during setup', async () => {
+			const { service, credentialsRepository, managementService, agentRepository } =
+				arrangeFailedConnect();
+			credentialsRepository.updateDataIfUnchanged.mockResolvedValue(false);
+			agentRepository.findIntegrationState.mockResolvedValue({ integrations: [] } as never);
+
+			await expect(
+				service.connectBotCredential(agent, user as never, 'xoxb-token', session),
+			).rejects.toThrow('The Slack credential changed during channel setup. Start setup again.');
+			expect(managementService.connect).not.toHaveBeenCalled();
+		});
 
 		it('deletes the credential it created when nothing references it', async () => {
 			const { service, credentialsService, agentRepository } = arrangeFailedConnect();

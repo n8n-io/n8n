@@ -3,6 +3,7 @@ export { sanitizeAgentToolName as sanitizeToolName } from '@n8n/api-types';
 
 import { toAgentDocument, type AgentSkillRefs } from './agent-document';
 import type { Agent } from '../entities/agent.entity';
+import { getDraftIntegrations, type AgentChannelState } from '../utils/agent-channel-setup';
 
 /**
  * Build the unified `AgentJsonConfig` view of an agent draft. The schema
@@ -11,13 +12,13 @@ import type { Agent } from '../entities/agent.entity';
  * LLM consumes the merged shape.
  */
 export function composeJsonConfig(
-	agent: Pick<Agent, 'schema' | 'integrations'>,
+	agent: Pick<Agent, 'schema'> & AgentChannelState,
 	skillRefs: AgentSkillRefs,
 ): AgentJsonConfig | null {
 	if (!agent.schema) return null;
 	return {
 		...toAgentDocument(agent.schema, skillRefs),
-		integrations: agent.integrations ?? [],
+		integrations: getDraftIntegrations(agent),
 	};
 }
 

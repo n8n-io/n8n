@@ -33,6 +33,8 @@ export const SLACK_BOT_SCOPES = [
 ] as const;
 
 export interface SlackAppSetupSession {
+	setupId?: string;
+	requestUrl?: string;
 	projectId: string;
 	agentId: string;
 	userId: string;
@@ -57,22 +59,40 @@ export function hasSessionShape(value: unknown): value is SlackAppSetupSession {
 		'signingSecret',
 		'redirectUrl',
 	];
-	return isRecord(value) && keys.every((key) => typeof value[key] === 'string');
+	return (
+		isRecord(value) &&
+		keys.every((key) => typeof value[key] === 'string') &&
+		(value.setupId === undefined || typeof value.setupId === 'string') &&
+		(value.requestUrl === undefined || typeof value.requestUrl === 'string')
+	);
 }
 
 export function slackSetupCacheKey(state: string): string {
 	return `${SLACK_APP_SETUP_CACHE_PREFIX}${state}`;
 }
 
+export function slackCredentialMatchesDestination(
+	credential: unknown,
+	destination: { agentId: string; projectId: string; webhookUrl: string },
+): boolean {
+	return (
+		stringProperty(credential, 'agentId') === destination.agentId &&
+		stringProperty(credential, 'agentProjectId') === destination.projectId &&
+		stringProperty(credential, 'agentWebhookUrl') === destination.webhookUrl
+	);
+}
+
 /** Both Slack setup services read and write this entry, so the key must stay identical. */
 export function managedSlackAppCacheKey(options: {
+	setupId?: string;
 	projectId: string;
 	agentId: string;
 	managerCredentialId: string;
 	workspaceId: string;
 	userId: string;
 }): string {
-	return `${SLACK_MANAGED_APP_CACHE_PREFIX}${options.projectId}:${options.agentId}:${options.managerCredentialId}:${options.workspaceId}:${options.userId}`;
+	const key = `${SLACK_MANAGED_APP_CACHE_PREFIX}${options.projectId}:${options.agentId}:${options.managerCredentialId}:${options.workspaceId}:${options.userId}`;
+	return options.setupId ? `${key}:${options.setupId}` : key;
 }
 
 export function childRecord(

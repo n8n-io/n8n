@@ -1,4 +1,4 @@
-import type { ImportBlockingIssue } from '@n8n/api-types';
+import type { AgentChannelSetupRequired, ImportBlockingIssue } from '@n8n/api-types';
 import type { Scope } from '@n8n/permissions';
 
 import type { Agent } from '@/modules/agents/entities/agent.entity';
@@ -40,6 +40,7 @@ export type PersistedAgentOutcome =
 	  };
 
 export interface AgentImportOutcome {
+	channelSetupRequired: AgentChannelSetupRequired[];
 	status: PersistedAgentOutcome['status'];
 	agent: Agent;
 	sourceAgentId: string;

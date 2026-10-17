@@ -28,6 +28,7 @@ import { z } from 'zod';
 import { CredentialDescriptionsService } from '@/credentials/credential-descriptions.service';
 import { UM_FIX_INSTRUCTION } from '@/constants';
 import { CredentialsService } from '@/credentials/credentials.service';
+import { stripAgentChannelSetupEvidence } from '@/modules/agents/integrations/agent-channel-setup-evidence';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
 
@@ -298,12 +299,33 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 		return { credential: { ...credential, type }, existing, cleared };
 	}
 
+	private async sanitizeCredentialDataForImport(
+		credential: AdmittedCredential['credential'],
+		ctx: OperationContext,
+	): Promise<void> {
+		if (credential.data === undefined) return;
+		const storedData = credential.id
+			? await Container.get(CredentialsRepository).findStoredDataForImport(
+					credential.id,
+					credential.type,
+					ctx,
+				)
+			: undefined;
+		credential.data = await stripAgentChannelSetupEvidence(
+			credential.type,
+			credential.data,
+			storedData,
+		);
+	}
+
 	private async storeCredential(
 		transactionManager: EntityManager,
 		{ credential, existing, cleared }: AdmittedCredential,
 		project: Project,
 		ctx: OperationContext,
 	): Promise<void> {
+		await this.sanitizeCredentialDataForImport(credential, ctx);
+
 		// Validated after the policy gate, so a blocked provider connection is skipped even when
 		// its stored data can't be read.
 		if (credential.usageScope === 'instance') {

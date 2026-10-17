@@ -6,6 +6,8 @@ import isEqual from 'lodash/isEqual';
 
 import { CredentialsFinderService } from '@n8n/backend-services';
 
+import { sanitizeAgentChannelSetupData } from '@/modules/agents/integrations/agent-channel-setup-evidence';
+
 import { selectCredentialDataForExport } from './credential-export-policy';
 import { CredentialSerializer } from './credential.serializer';
 import type { CredentialRequirement } from './credential.types';
@@ -72,7 +74,7 @@ export class CredentialExporter {
 							credential.type,
 							credential.data,
 						).getData();
-						return decryptedData;
+						return sanitizeAgentChannelSetupData(decryptedData, credential.type);
 					},
 				);
 				entries.push(

@@ -16,8 +16,10 @@ import {
 	slackSetupCacheKey,
 } from './slack-setup.types';
 import { stringProperty } from '../../integration-helpers';
+import { requirePendingChannel } from '../../../utils/agent-channel-setup';
 
 export interface CreateSlackAppOptions {
+	setupId?: string;
 	projectId: string;
 	agentId: string;
 	appConfigurationToken: string;
@@ -52,6 +54,7 @@ export class SlackManualSetupService {
 		}
 
 		const agent = await this.methods.getAgent(options.agentId, options.projectId);
+		if (options.setupId) requirePendingChannel(agent, options.setupId, 'slack');
 		const redirectUrl = this.methods.callbackUrl(options.projectId, options.agentId);
 		const manifest = this.methods.buildManifest(agent.name, options.projectId, options.agentId, {
 			redirectUrl,
@@ -83,6 +86,7 @@ export class SlackManualSetupService {
 		const user = await this.getInstallUser(session);
 
 		const agent = await this.methods.getAgent(session.agentId, session.projectId);
+		this.methods.assertSetupDestination(agent, session);
 		const { accessToken, teamName } = await this.exchangeInstallCode(session, options.code);
 		await this.methods.connectBotCredential(agent, user, accessToken, {
 			...session,
@@ -112,6 +116,8 @@ export class SlackManualSetupService {
 
 		const state = randomBytes(32).toString('hex');
 		const setupSession = {
+			setupId: options.setupId,
+			requestUrl: this.methods.webhookUrl(options.projectId, options.agentId),
 			projectId: options.projectId,
 			agentId: options.agentId,
 			userId: options.user.id,

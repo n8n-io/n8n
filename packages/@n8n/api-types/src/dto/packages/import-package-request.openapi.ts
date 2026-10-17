@@ -63,6 +63,9 @@ export const importPackageRequestFieldDocs = {
 			'`publish-all` requests publication of imported entities. `unpublish-all` leaves new ' +
 			'entities unpublished and unpublishes updated entities. Skipped entities remain unchanged. ' +
 			'Archived workflows remain unpublished. Publication failures do not undo saved definitions. ' +
+			'Agent channels require setup for the destination Agent. Pending setup blocks publication ' +
+			'and appears in `agents[].channelSetupRequired`, with a link to the Agent editor. ' +
+			'Existing published versions and configured connections stay operational. Unpublication is allowed. ' +
 			'Only the Agent revision saved by the import can be published or unpublished. ' +
 			'This field replaces `workflowPublishingPolicy` and `agentPublishingPolicy`. The old fields are rejected.',
 	},

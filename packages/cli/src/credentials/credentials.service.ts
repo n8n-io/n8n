@@ -65,6 +65,7 @@ import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@
 import { ExternalHooks } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
 import { getChangedSharedFields } from '@/modules/dynamic-credentials.ee/services/shared-fields';
+import { sanitizeAgentChannelSetupData } from '@/modules/agents/integrations/agent-channel-setup-evidence';
 import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
 import { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee';
 import { DCR_MANAGED_CREDENTIAL_FIELDS } from '@/oauth/dcr-managed-fields';
@@ -817,16 +818,22 @@ export class CredentialsService {
 		decryptedData: ICredentialDataDecryptedObject,
 		credentialType: string,
 		dataMerge: NonNullable<PrepareUpdateDataOptions['dataMerge']>,
+		nextCredentialType = credentialType,
 	): ICredentialDataDecryptedObject {
-		if (dataMerge === 'replace') {
-			return incomingData;
+		let mergedData = incomingData;
+		if (dataMerge !== 'replace') {
+			const dataToUnredact =
+				dataMerge === 'partial' ? { ...decryptedData, ...incomingData } : incomingData;
+			mergedData = this.unredact(
+				dataToUnredact,
+				decryptedData,
+				this.getCredentialTypeProperties(credentialType),
+			);
 		}
-		const dataToUnredact =
-			dataMerge === 'partial' ? { ...decryptedData, ...incomingData } : incomingData;
-		return this.unredact(
-			dataToUnredact,
-			decryptedData,
-			this.getCredentialTypeProperties(credentialType),
+		return sanitizeAgentChannelSetupData(
+			mergedData,
+			nextCredentialType,
+			nextCredentialType === credentialType ? decryptedData : undefined,
 		);
 	}
 
@@ -850,6 +857,7 @@ export class CredentialsService {
 				decryptedData,
 				existingCredential.type,
 				dataMerge,
+				mergedData.type,
 			);
 		}
 		if (existingCredential.usageScope === 'instance') {
@@ -1632,7 +1640,7 @@ export class CredentialsService {
 	// Take data and replace all sensitive values with a sentinel value.
 	// This will replace password fields and oauth data.
 	redact(data: ICredentialDataDecryptedObject, credential: CredentialsEntity) {
-		const copiedData = deepCopy(data);
+		const copiedData = deepCopy(sanitizeAgentChannelSetupData(data, credential.type));
 
 		let credType: ICredentialType;
 		try {
@@ -1642,7 +1650,7 @@ export class CredentialsService {
 			// production it means it's either a mangled credential or a
 			// credential for a removed community node. Either way, there's
 			// no way to know what to redact.
-			return data;
+			return copiedData;
 		}
 
 		const getExtendedProps = (type: ICredentialType) => {
@@ -2065,7 +2073,7 @@ export class CredentialsService {
 		},
 		user: User,
 	): Promise<CredentialsEntity> {
-		const data = opts.data ?? {};
+		const data = sanitizeAgentChannelSetupData(opts.data ?? {}, opts.type);
 		await this.validateStubCredentialData(data, user, opts.projectId);
 		const encryptedCredential = await this.createEncryptedData({
 			id: opts.id ?? null,
@@ -2237,6 +2245,7 @@ export class CredentialsService {
 		user: User,
 		options: { id?: string } = {},
 	) {
+		opts = { ...opts, data: sanitizeAgentChannelSetupData(opts.data, opts.type) };
 		// The pending state ends when a token lands on the credential row. End-user
 		// credentials store tokens per user and instance credentials take another
 		// write path, so neither would ever leave it.
@@ -2346,7 +2355,10 @@ export class CredentialsService {
 		if (opts.isResolvable === true || opts.isManaged) {
 			throw new BadRequestError('Provider connections cannot be end-user or managed credentials');
 		}
-		const data = opts.data as ICredentialDataDecryptedObject;
+		const data = sanitizeAgentChannelSetupData(
+			opts.data as ICredentialDataDecryptedObject,
+			opts.type,
+		);
 		this.validateInstanceCredentialData(data);
 
 		this.validateCredentialData(opts.type, data);

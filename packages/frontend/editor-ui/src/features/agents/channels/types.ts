@@ -47,6 +47,7 @@ export interface AgentChannelViewExpose {
 }
 
 export interface AgentChannelRuntimeContext {
+	setupId?: Readonly<Ref<string | undefined>>;
 	projectId: Ref<string>;
 	agentId: Ref<string>;
 	selectedCredentialId: Ref<string>;

@@ -170,6 +170,7 @@ export function useSlackChannelRuntime(context: AgentChannelRuntimeContext): Sla
 			context.projectId.value,
 			context.agentId.value,
 			appConfigurationToken,
+			context.setupId?.value,
 		);
 		const connected = await waitForSetupCompletion(openAuthorizationPopup(installUrl));
 		if (!connected) throw new Error('Slack app installation was not completed');
@@ -255,6 +256,7 @@ export function useSlackChannelRuntime(context: AgentChannelRuntimeContext): Sla
 			context.agentId.value,
 			managerCredentialId,
 			workspaceId,
+			context.setupId?.value,
 		);
 		if (result.status === 'manual_install_required') {
 			const connected = await waitForSetupCompletion(openAuthorizationPopup(result.installUrl));

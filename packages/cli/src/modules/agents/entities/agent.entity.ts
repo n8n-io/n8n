@@ -4,6 +4,7 @@ import { DateTimeColumn, JsonColumn, Project, WithTimestampsAndStringId } from '
 import { Column, Entity, Index, ManyToOne, JoinColumn, type Relation } from '@n8n/typeorm';
 
 import type { AgentHistory } from './agent-history.entity';
+import type { PendingChannelSetup } from '../utils/agent-channel';
 
 @Entity({ name: 'agents' })
 @Index(['projectId', 'sourceAgentId'])
@@ -31,6 +32,13 @@ export class Agent extends WithTimestampsAndStringId {
 
 	@JsonColumn({ default: '[]' })
 	integrations: AgentIntegrationConfig[];
+
+	@JsonColumn({
+		nullable: true,
+		default: null,
+		comment: 'Requested channels that require destination setup',
+	})
+	pendingChannelSetup: PendingChannelSetup | null;
 
 	@JsonColumn({ default: '{}' })
 	tools: Record<

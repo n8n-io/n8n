@@ -270,6 +270,18 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 		return (result.affected ?? 0) > 0;
 	}
 
+	async findStoredDataForImport(
+		credentialId: string,
+		credentialType: string,
+		ctx: OperationContext,
+	): Promise<string | undefined> {
+		const credential = await this.managerFor(ctx).findOne(CredentialsEntity, {
+			where: { id: credentialId, type: credentialType },
+			select: ['data'],
+		});
+		return credential?.data;
+	}
+
 	/**
 	 * Persists an imported credential row, gated on a clearance for `contentImport`. Binds to the
 	 * id when there is one, else to the type hash, same as `WorkflowRepository`.

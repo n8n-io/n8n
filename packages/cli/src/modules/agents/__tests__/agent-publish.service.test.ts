@@ -484,11 +484,31 @@ describe('AgentPublishService', () => {
 			target,
 			agent.integrations,
 			expect.anything(),
+			undefined,
 		);
 		expect(agentValidationService.validateAgentConfiguration).not.toHaveBeenCalled();
 		expect(agentValidationService.validateAgentEntityConfiguration).not.toHaveBeenCalled();
 		expect(agent.activeVersionId).toBe('v0');
 	});
+
+	it.each([undefined, 'version-1', 'historical-version'])(
+		'requires channel setup before publishing %s, including an already active version',
+		async (requestedVersion) => {
+			const { service, agentRepository, transactionRunner } = makeService();
+			const pending: Agent['pendingChannelSetup'] = {
+				requested: [{ integration: { type: 'slack', credentialId: 'pending' }, setupId: 'setup' }],
+			};
+			const agent = makeAgent({ activeVersionId: versionId, pendingChannelSetup: pending });
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+			await expect(
+				service.publishAgent(agentId, projectId, user, byUser, requestedVersion),
+			).rejects.toThrow('Agent configuration has errors');
+			expect(transactionRunner.run).not.toHaveBeenCalled();
+			await service.unpublishAgent(agentId, projectId, user, 'user');
+			expect(agent.activeVersionId).toBeNull();
+			expect(agent.pendingChannelSetup).toEqual(pending);
+		},
+	);
 
 	it('publishes the current draft as a snapshot and activates that version', async () => {
 		const {
@@ -872,10 +892,19 @@ describe('AgentPublishService', () => {
 			taskSnapshotRepository,
 			agentTaskRepository,
 		} = makeService();
+		const pendingChannelSetup = {
+			requested: [
+				{
+					setupId: 'pending',
+					integration: { type: 'slack' as const, credentialId: 'incoming' },
+				},
+			],
+		};
 		const agent = makeAgent({
 			activeVersionId: 'current-active',
 			activeVersion: makeHistory({ versionId: 'current-active' }),
 			integrations: [{ type: 'n8n_chat', credentialId: '' }],
+			pendingChannelSetup,
 		});
 		const target = makeHistory({
 			versionId: 'older-version',
@@ -900,6 +929,7 @@ describe('AgentPublishService', () => {
 		expect(agent.name).toBe('Older Agent');
 		expect(agent.activeVersionId).toBe('current-active');
 		expect(agent.integrations).toEqual([{ type: 'n8n_chat', credentialId: '' }]);
+		expect(agent.pendingChannelSetup).toEqual(pendingChannelSetup);
 		expect(agent.versionId).not.toBe('older-version');
 		expect(agentTaskRepository.replaceForAgent).toHaveBeenCalledWith(
 			agentId,

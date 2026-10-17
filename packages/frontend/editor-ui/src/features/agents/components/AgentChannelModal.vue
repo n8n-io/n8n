@@ -33,6 +33,7 @@ interface Props {
 	agentId: string;
 	projectId: string;
 	view: ChannelView;
+	setupId?: string;
 	disabled?: boolean;
 	isPublished?: boolean;
 	simpleSetup?: boolean;
@@ -77,7 +78,18 @@ const {
 	hasRuntimeError,
 	connect,
 	clearError: clearIntegrationError,
+	channelSetupRequired,
+	cancelSetup,
 } = integrationStatus;
+
+const pendingSetup = computed(() =>
+	channelSetupRequired.value.find((entry) => entry.setupId === props.setupId),
+);
+const setupCredentials = computed(() => {
+	const pending = pendingSetup.value;
+	if (!pending) return connectedCredentials.value;
+	return { ...connectedCredentials.value, [pending.type]: pending.credentialId };
+});
 
 const currentView = ref<ChannelView>(props.view);
 const openedFromList = ref(props.view === 'list');
@@ -191,7 +203,7 @@ const {
 } = useAgentChannelSetup({
 	projectId: () => props.projectId,
 	currentIntegration,
-	connectedCredentials,
+	connectedCredentials: setupCredentials,
 	fetchStatus,
 });
 
@@ -222,11 +234,12 @@ const runtimes: Record<string, AgentChannelRuntime> = Object.fromEntries(
 		createAgentChannelRuntime(platform, {
 			projectId: projectIdRef,
 			agentId: agentIdRef,
+			setupId: computed(() => pendingSetup.value?.setupId),
 			selectedCredentialId: computed(() => getChannelCredentialId(platform.type)),
 			credentialModalOpen,
 			fetchStatus,
-			isConnected: isIntegrationConnected,
-			isConfigured: isIntegrationConfigured,
+			isConnected: (type) => !pendingSetup.value && isIntegrationConnected(type),
+			isConfigured: (type) => !pendingSetup.value && isIntegrationConfigured(type),
 			ensureAgentPersisted: props.ensureAgentPersisted,
 		}),
 	]),
@@ -488,6 +501,7 @@ async function writeChannelConfig(): Promise<boolean> {
 			return false;
 		}
 		await connect(channelType, credentialId, channelViewRef.value?.currentSettings, {
+			...(pendingSetup.value ? { setupId: pendingSetup.value.setupId } : {}),
 			...(credentialIdToReplace ? { replaces: { credentialId: credentialIdToReplace } } : {}),
 			// Only the edit view shows the approval control, so only it may carry one.
 			...(isEditMode.value && channelApproval.value ? { approval: channelApproval.value } : {}),
@@ -587,12 +601,30 @@ function handlePlatformConnected() {
 }
 
 function removeCurrentChannel() {
+	if (pendingSetup.value) {
+		void discardPendingSetup(pendingSetup.value.setupId);
+		return;
+	}
 	const channelType = selectedChannelType.value;
 	if (!channelType) return;
 	void requestDisconnect(
 		channelType,
 		credentialIdAtEditOpen.value || connectedCredentials.value[channelType] || '',
 	);
+}
+
+async function discardPendingSetup(setupId: string) {
+	if (props.disabled || actionInFlight.value) return;
+	channelActionInFlight.value = true;
+	try {
+		await cancelSetup(setupId);
+		emit('agent-changed');
+		completeAndClose();
+	} catch (error) {
+		toast.showError(error, i18n.baseText('agents.channels.modal.saveChannelError'));
+	} finally {
+		channelActionInFlight.value = false;
+	}
 }
 
 /** The list's "Make unavailable" menu item. n8n Chat has no credential to carry. */
@@ -609,6 +641,10 @@ async function loadChannelState() {
 	]);
 	if (isEditMode.value) {
 		prepareChannelEdit(selectedChannelType.value);
+	}
+	if (pendingSetup.value) {
+		selectedCredentials.value[pendingSetup.value.type] = pendingSetup.value.credentialId;
+		channelApproval.value = pendingSetup.value.integration.approval;
 	}
 }
 
@@ -636,7 +672,7 @@ watch(
 		:step="currentStep"
 		:title="headerText"
 		:show-back="currentView !== 'list' && openedFromList"
-		:show-footer="showFooterActions"
+		:show-footer="showFooterActions || !!pendingSetup"
 		:show-cancel="!isN8nChatSelected"
 		:busy="actionInFlight"
 		:trap-focus="!credentialModalOpen"
@@ -655,6 +691,9 @@ watch(
 		</template>
 
 		<div data-testid="agent-channel-modal" :class="$style.container">
+			<N8nText v-if="pendingSetup" size="small" color="text-base">
+				{{ i18n.baseText('agents.channels.setupRequired.help') }}
+			</N8nText>
 			<div v-show="currentView === 'list'" key="list" :class="$style.listView">
 				<ul :class="$style.channelList">
 					<AgentChannelListItem
@@ -696,13 +735,17 @@ watch(
 					:credential-permissions="credentialPermissions"
 					:credentials-loading="credentialsLoading"
 					:loading="isLoading(currentIntegration.type)"
-					:connected="isConfigured(currentIntegration.type)"
+					:connected="!pendingSetup && isConfigured(currentIntegration.type)"
 					:connected-description="integrationConnectedText(currentIntegration.type)"
 					:error-message="
 						hasError(currentIntegration.type) ? errorMessages[currentIntegration.type] : ''
 					"
 					:error-is-conflict="errorIsConflict[currentIntegration.type]"
-					:saved-settings="integrationSettings[currentIntegration.type]"
+					:saved-settings="
+						pendingSetup
+							? pendingSetup.integration.settings
+							: integrationSettings[currentIntegration.type]
+					"
 					:is-published="isPublished"
 					:agent-name="agentId"
 					:project-id="projectId"
@@ -738,7 +781,7 @@ watch(
 			</div>
 		</div>
 
-		<template v-if="showFooterActions && isEditMode" #footerLeft>
+		<template v-if="(showFooterActions && isEditMode) || pendingSetup" #footerLeft>
 			<N8nButton
 				variant="ghost"
 				size="medium"
@@ -748,7 +791,9 @@ watch(
 				@click="removeCurrentChannel"
 			>
 				<template v-if="!isN8nChatSelected" #icon><N8nIcon icon="trash-2" :size="16" /></template>
-				{{ removeChannelLabel }}
+				{{
+					pendingSetup ? i18n.baseText('agents.channels.setupRequired.discard') : removeChannelLabel
+				}}
 			</N8nButton>
 		</template>
 		<template v-if="showFooterActions" #footerActions>

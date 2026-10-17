@@ -4,6 +4,7 @@ import { z } from 'zod';
 
 import { importBlockingIssueSchema } from './import-blocking-issue.schema';
 import { Z } from '../../zod-class';
+import { agentChannelSetupRequiredSchema } from '../../agents/agent-channel-setup.schema';
 
 const importPackageSummarySchema = z.object({
 	sourceN8nVersion: z.string(),
@@ -15,8 +16,8 @@ const publishingOutcomeSchema = z.object({
 	state: z.enum(['published', 'unpublished', 'unchanged', 'blocked', 'failed']).openapi({
 		description:
 			'`blocked` means the imported version could not be published and no version is active ' +
-			'(for example because the Agent or workflow uses an empty or incomplete credential, or a node type this ' +
-			'instance does not have). When a prior published version remains active, `state` is ' +
+			'(for example because of an empty or incomplete credential, a missing node type, or pending Agent channel setup). ' +
+			'When a prior published version remains active, `state` is ' +
 			'`unchanged` with `skippedPublishReason` instead. `failed` means publish or unpublish was ' +
 			'attempted but did not succeed.',
 	}),
@@ -25,7 +26,12 @@ const publishingOutcomeSchema = z.object({
 			'Present when `state` is `failed`. Explains why publish or unpublish could not be applied.',
 	}),
 	blockedReason: z
-		.enum(['stub-credential', 'incomplete-credential', 'missing-node-type'])
+		.enum([
+			'stub-credential',
+			'incomplete-credential',
+			'missing-node-type',
+			'channel-setup-required',
+		])
 		.optional()
 		.openapi({
 			description:
@@ -33,13 +39,18 @@ const publishingOutcomeSchema = z.object({
 				'version is active.',
 		}),
 	skippedPublishReason: z
-		.enum(['stub-credential', 'incomplete-credential', 'missing-node-type'])
+		.enum([
+			'stub-credential',
+			'incomplete-credential',
+			'missing-node-type',
+			'channel-setup-required',
+		])
 		.optional()
 		.openapi({
 			description:
 				'Present when `state` is `unchanged` but the policy wanted to publish the imported ' +
 				'version: a prior published version is still active (for example after an update with ' +
-				'empty or incomplete credentials).',
+				'empty or incomplete credentials, or pending channel setup).',
 		}),
 });
 
@@ -78,6 +89,9 @@ const importedWorkflowSummarySchema = z.object({
 });
 
 const importedAgentSummarySchema = z.object({
+	channelSetupRequired: z.array(agentChannelSetupRequiredSchema).openapi({
+		description: 'Channels that require setup in the destination UI before the Agent can publish.',
+	}),
 	sourceAgentId: z.string().openapi({ description: 'Agent ID in the package.' }),
 	localId: z.string().openapi({
 		description:

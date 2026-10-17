@@ -150,6 +150,8 @@ describe('AgentsService', () => {
 		expect(agentRepository.create).toHaveBeenCalledWith({
 			name: 'Support Agent',
 			projectId,
+			integrations: [],
+			pendingChannelSetup: null,
 			schema: {
 				name: 'Support Agent',
 				model: '',
@@ -190,10 +192,7 @@ describe('AgentsService', () => {
 		});
 	});
 
-	it('splits a seeded config so integrations land on their own column', async () => {
-		// `composeJsonConfig` reads integrations from the entity column, so leaving
-		// them inside `schema` loses every trigger on the next read — an eval seed
-		// would restore an agent whose integrations silently vanished.
+	it('retains seeded channels as pending destination setup', async () => {
 		const { service, agentRepository } = makeService();
 		const saved = makeAgent();
 		mockCreateReturning(agentRepository, saved);
@@ -210,12 +209,15 @@ describe('AgentsService', () => {
 		});
 
 		const [entity] = agentRepository.create.mock.calls[0];
-		expect(entity.integrations).toEqual(integrations);
+		expect(entity.integrations).toEqual([]);
+		expect(entity.pendingChannelSetup?.requested?.map((entry) => entry.integration)).toEqual(
+			integrations,
+		);
 		expect(entity.schema).not.toHaveProperty('integrations');
 		expect(entity.schema).toMatchObject({ name: 'Support Agent', instructions: 'Triage tickets.' });
 	});
 
-	it('omits the integrations column when the seeded config declares none', async () => {
+	it('stores no pending setup when the seeded config declares no channels', async () => {
 		const { service, agentRepository } = makeService();
 		const saved = makeAgent();
 		mockCreateReturning(agentRepository, saved);
@@ -226,7 +228,8 @@ describe('AgentsService', () => {
 		});
 
 		const [entity] = agentRepository.create.mock.calls[0];
-		expect(entity).not.toHaveProperty('integrations');
+		expect(entity.integrations).toEqual([]);
+		expect(entity.pendingChannelSetup).toBeNull();
 	});
 
 	it('seeds custom tool bodies onto the entity when duplicating a configured agent', async () => {
@@ -329,7 +332,7 @@ describe('AgentsService', () => {
 		it('copies chat channels as drafts so the clone does not claim the source credential', async () => {
 			// The credential-claim check ignores publish state, so a copy holding the
 			// source's channel credentialId would block the original from republishing.
-			// Drafts (credentialId '') are skipped by that check and show needs-setup.
+			// Pending setup does not claim credentials.
 			const { service, agentRepository } = makeService();
 			const saved = makeAgent();
 			mockCreateReturning(agentRepository, saved);
@@ -349,7 +352,8 @@ describe('AgentsService', () => {
 			});
 
 			const [entity] = agentRepository.create.mock.calls[0];
-			expect(entity.integrations).toEqual([
+			expect(entity.integrations).toEqual([]);
+			expect(entity.pendingChannelSetup?.requested?.map((entry) => entry.integration)).toEqual([
 				{ type: 'telegram', credentialId: '' },
 				{ type: 'slack', credentialId: '' },
 			]);
@@ -396,7 +400,10 @@ describe('AgentsService', () => {
 			// Inaccessible episodic-memory credential blanked.
 			expect(schema.memory?.episodicMemory?.credential).toBe('');
 			// Channels always drafted regardless of access.
-			expect(entity.integrations).toEqual([{ type: 'telegram', credentialId: '' }]);
+			expect(entity.integrations).toEqual([]);
+			expect(entity.pendingChannelSetup?.requested?.map((entry) => entry.integration)).toEqual([
+				{ type: 'telegram', credentialId: '' },
+			]);
 		});
 
 		it('emits agent-saved for the duplicate (creation is tracked by the frontend "User duplicated agent" event)', async () => {
@@ -442,9 +449,12 @@ describe('AgentsService', () => {
 				},
 			});
 
-			// Eval seeding copies integrations verbatim and emits nothing.
+			// Eval seeding retains the intent and emits nothing.
 			const [entity] = agentRepository.create.mock.calls[0];
-			expect(entity.integrations).toEqual([{ type: 'slack', credentialId: 'cred-slack-1' }]);
+			expect(entity.integrations).toEqual([]);
+			expect(entity.pendingChannelSetup?.requested?.map((entry) => entry.integration)).toEqual([
+				{ type: 'slack', credentialId: 'cred-slack-1' },
+			]);
 			expect(eventService.emit).not.toHaveBeenCalledWith('agent-saved', expect.anything());
 		});
 	});

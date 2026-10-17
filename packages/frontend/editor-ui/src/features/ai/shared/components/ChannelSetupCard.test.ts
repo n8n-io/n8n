@@ -1,10 +1,14 @@
 /* eslint-disable import-x/no-extraneous-dependencies -- test-only */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { mount, flushPromises } from '@vue/test-utils';
-import { ref } from 'vue';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { mount, flushPromises, enableAutoUnmount } from '@vue/test-utils';
+import { computed, ref } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
-import type { ChatIntegrationDescriptor } from '@n8n/api-types';
+import type {
+	AgentIntegrationStatusResponse,
+	AgentSlackIntegrationSettings,
+	ChatIntegrationDescriptor,
+} from '@n8n/api-types';
 
 /**
  * `ChannelSetupCard` owns the body + orchestration for the `configure_channel`
@@ -41,6 +45,8 @@ const mocks = vi.hoisted(() => {
 		fetchStatus: vi.fn(),
 		connect: vi.fn(),
 		disconnect: vi.fn(),
+		cancelSetup: vi.fn(),
+		setPending: vi.fn<(pending: AgentIntegrationStatusResponse['channelSetupRequired']) => void>(),
 		isConnected: vi.fn(),
 		isConfigured: vi.fn(),
 		getAgent: vi.fn(),
@@ -86,21 +92,29 @@ vi.mock('@/features/agents/composables/useAgentIntegrationsCatalog', () => {
 	};
 });
 
-vi.mock('@/features/agents/composables/useAgentIntegrationStatus', () => ({
-	useAgentIntegrationStatus: () => ({
-		connectedCredentials: ref<Record<string, string>>({}),
-		integrationSettings: ref({}),
-		integrationApproval: ref({}),
-		loadingMap: ref<Record<string, boolean>>({}),
-		errorMessages: ref<Record<string, string>>({}),
-		errorIsConflict: ref<Record<string, boolean>>({}),
-		fetchStatus: mocks.fetchStatus,
-		connect: mocks.connect,
-		disconnect: mocks.disconnect,
-		isConnected: mocks.isConnected,
-		isConfigured: mocks.isConfigured,
-	}),
-}));
+vi.mock('@/features/agents/composables/useAgentIntegrationStatus', () => {
+	const channelSetupRequired = ref<AgentIntegrationStatusResponse['channelSetupRequired']>([]);
+	mocks.setPending.mockImplementation((pending) => {
+		channelSetupRequired.value = pending;
+	});
+	return {
+		useAgentIntegrationStatus: () => ({
+			channelSetupRequired,
+			cancelSetup: mocks.cancelSetup,
+			connectedCredentials: ref<Record<string, string>>({}),
+			integrationSettings: ref({}),
+			integrationApproval: ref({}),
+			loadingMap: ref<Record<string, boolean>>({}),
+			errorMessages: ref<Record<string, string>>({}),
+			errorIsConflict: ref<Record<string, boolean>>({}),
+			fetchStatus: mocks.fetchStatus,
+			connect: mocks.connect,
+			disconnect: mocks.disconnect,
+			isConnected: mocks.isConnected,
+			isConfigured: mocks.isConfigured,
+		}),
+	};
+});
 
 vi.mock('@/features/agents/composables/useAgentApi', () => ({
 	getAgent: mocks.getAgent,
@@ -131,12 +145,18 @@ vi.mock('@/features/agents/channels/slack/api', () => ({
 
 vi.mock('@/features/agents/components/AgentChannelSlackSetup.vue', () => ({
 	default: {
-		props: ['modelValue', 'setupMode', 'setupSlackApp', 'connected'],
+		props: ['modelValue', 'setupMode', 'setupSlackApp', 'connected', 'savedSettings'],
 		emits: ['update:modelValue', 'connect'],
 		// `setupSlackApp` can reject (e.g. popup blocked) — mirror the real
 		// component catching that itself, so the test doesn't see an unhandled
 		// rejection when asserting the resulting no-op.
-		setup(props: { setupSlackApp?: (appConfigurationToken: string) => Promise<boolean> }) {
+		setup(props: {
+			savedSettings?: AgentSlackIntegrationSettings;
+			setupSlackApp?: (appConfigurationToken: string) => Promise<boolean>;
+		}) {
+			const currentSettings = computed<AgentSlackIntegrationSettings>(
+				() => props.savedSettings ?? { messagingExperience: 'agent' },
+			);
 			async function runSlackAppSetup() {
 				try {
 					await props.setupSlackApp?.('app-token');
@@ -144,7 +164,7 @@ vi.mock('@/features/agents/components/AgentChannelSlackSetup.vue', () => ({
 					// swallowed, matching the real AgentChannelSlackSetup component
 				}
 			}
-			return { runSlackAppSetup };
+			return { currentSettings, runSlackAppSetup };
 		},
 		template: `
 			<div
@@ -257,6 +277,26 @@ const defaultProps = {
 	projectId: 'project-1',
 };
 
+function pendingChannel(
+	setupId: string,
+): AgentIntegrationStatusResponse['channelSetupRequired'][number] {
+	return {
+		setupId,
+		agentId: 'agent-1',
+		projectId: 'project-1',
+		type: 'slack',
+		credentialId: '',
+		path: ['integrations', 0],
+		reason: 'destination-setup-required',
+		setupUrl: '/setup',
+		integration: {
+			type: 'slack',
+			credentialId: '',
+			settings: { messagingExperience: 'assistant' },
+		},
+	};
+}
+
 function mountCard(props: Record<string, unknown> = {}) {
 	return mount(ChannelSetupCard, {
 		props: { ...defaultProps, ...props },
@@ -278,11 +318,14 @@ function mountCard(props: Record<string, unknown> = {}) {
 	});
 }
 
+enableAutoUnmount(afterEach);
+
 describe('ChannelSetupCard', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		setActivePinia(createTestingPinia({ stubActions: false }));
 		mocks.setCatalog([mocks.slackIntegration, mocks.linearIntegration]);
+		mocks.setPending([]);
 		mocks.ensureLoaded.mockResolvedValue([mocks.slackIntegration, mocks.linearIntegration]);
 		mocks.reloadCatalog.mockResolvedValue([mocks.slackIntegration, mocks.linearIntegration]);
 		mocks.fetchStatus.mockResolvedValue(undefined);
@@ -374,18 +417,35 @@ describe('ChannelSetupCard', () => {
 		).toBe('');
 	});
 
-	it('emits resolve({ approved: true }) after the channel connects', async () => {
-		const wrapper = mountCard();
-		await flushPromises();
+	it.each([
+		{ initialSetupId: undefined, setupId: undefined },
+		{ initialSetupId: 'pending', setupId: 'pending' },
+		{ initialSetupId: 'removed', setupId: undefined },
+		{ initialSetupId: 'removed', setupId: 'replacement' },
+	])(
+		'completes setup after pending ID $initialSetupId changes to $setupId',
+		async ({ initialSetupId, setupId }) => {
+			if (initialSetupId) mocks.setPending([pendingChannel(initialSetupId)]);
+			const wrapper = mountCard();
+			await flushPromises();
+			mocks.setPending(setupId ? [pendingChannel(setupId)] : []);
+			await flushPromises();
 
-		await wrapper.find('[data-testid="mock-slack-connect"]').trigger('click');
-		await flushPromises();
+			await wrapper.find('[data-testid="mock-slack-connect"]').trigger('click');
+			await flushPromises();
 
-		expect(mocks.connect).toHaveBeenCalledWith('slack', 'cred-1', undefined, {});
-		expect(wrapper.emitted('resolve')).toEqual([[{ approved: true }]]);
-	});
+			expect(mocks.connect).toHaveBeenCalledWith(
+				'slack',
+				'cred-1',
+				{ messagingExperience: setupId ? 'assistant' : 'agent' },
+				setupId ? { setupId } : {},
+			);
+			expect(wrapper.emitted('resolve')).toEqual([[{ approved: true }]]);
+		},
+	);
 
-	it('uses managed Slack setup and resolves after the app installs', async () => {
+	it('carries pending setup through managed Slack installation', async () => {
+		mocks.setPending([pendingChannel('pending')]);
 		mocks.getSlackManagedSetup.mockResolvedValueOnce({
 			managedSetupAvailable: true,
 			managerCredentials: [
@@ -413,8 +473,32 @@ describe('ChannelSetupCard', () => {
 			'agent-1',
 			'manager-credential',
 			'T123',
+			'pending',
 		);
 		expect(wrapper.emitted('resolve')).toEqual([[{ approved: true }]]);
+	});
+
+	it('cancels only the selected pending channel when several use the same platform', async () => {
+		mocks.setPending([pendingChannel('removed')]);
+		mocks.isConfigured.mockReturnValue(true);
+		const wrapper = mountCard();
+		await flushPromises();
+		mocks.setPending([pendingChannel('first'), pendingChannel('second'), pendingChannel('third')]);
+		await flushPromises();
+		expect(wrapper.find('[data-testid="mock-slack-setup"]').exists()).toBe(false);
+		await wrapper.findAll('[data-testid="channel-setup-card-pending"]')[1].trigger('click');
+		await flushPromises();
+		mocks.setPending([pendingChannel('first'), pendingChannel('second')]);
+		await flushPromises();
+		expect(wrapper.find('[data-testid="mock-slack-setup"]').attributes('data-connected')).toBe(
+			'false',
+		);
+		await wrapper.find('[data-testid="channel-setup-card-skip"]').trigger('click');
+		await flushPromises();
+		expect(mocks.cancelSetup).toHaveBeenCalledTimes(1);
+		expect(mocks.cancelSetup).toHaveBeenCalledWith('second');
+		expect(mocks.disconnect).not.toHaveBeenCalled();
+		expect(wrapper.emitted('resolve')).toEqual([[{ approved: false }]]);
 	});
 
 	it('keeps skip disabled while managed Slack authorization is in flight', async () => {

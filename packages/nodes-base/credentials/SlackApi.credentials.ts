@@ -58,6 +58,18 @@ export class SlackApi implements ICredentialType {
 			default: '',
 		},
 		{
+			displayName: 'Agent Project ID',
+			name: 'agentProjectId',
+			type: 'hidden',
+			default: '',
+		},
+		{
+			displayName: 'Agent Webhook URL',
+			name: 'agentWebhookUrl',
+			type: 'hidden',
+			default: '',
+		},
+		{
 			// Base URL of the connection test only, so an eval can aim the test at a stand-in. Node requests ignore it
 			displayName: 'Base URL',
 			name: 'url',

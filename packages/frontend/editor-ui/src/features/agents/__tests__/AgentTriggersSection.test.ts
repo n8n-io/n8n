@@ -5,6 +5,7 @@ import { ref } from 'vue';
 import { createPinia, setActivePinia } from 'pinia';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { mock } from 'vitest-mock-extended';
+import type { AgentIntegrationStatusResponse } from '@n8n/api-types';
 
 import * as credentialsApi from '@/features/credentials/credentials.api';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
@@ -79,6 +80,7 @@ const { fetchStatusSpy, disconnectSpy, loadRuntimeSpy, showErrorSpy, showMessage
 const connectedCredentials = ref<Record<string, string>>({});
 const configured = ref<Record<string, boolean>>({});
 const managedCredential = ref(false);
+const channelSetupRequired = ref<AgentIntegrationStatusResponse['channelSetupRequired']>([]);
 
 vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showError: showErrorSpy, showMessage: showMessageSpy }),
@@ -99,6 +101,7 @@ vi.mock('../composables/useAgentIntegrationStatus', function mockIntegrationStat
 		useAgentIntegrationStatus: function useAgentIntegrationStatus() {
 			return {
 				connectedCredentials,
+				channelSetupRequired,
 				fetchStatus: fetchStatusSpy,
 				disconnect: disconnectSpy,
 				loadingMap: ref({}),
@@ -112,7 +115,14 @@ vi.mock('../composables/useAgentIntegrationStatus', function mockIntegrationStat
 });
 
 vi.mock('@n8n/i18n', () => ({
-	useI18n: () => ({ baseText: (key: string) => key }),
+	useI18n: () => ({
+		baseText: (key: string, options?: { interpolate: Record<string, string | number> }) => {
+			if (key === 'agents.channels.setupRequired.connection' && options) {
+				return `${options.interpolate.channel} ${options.interpolate.number}`;
+			}
+			return key;
+		},
+	}),
 }));
 
 const n8nChatFlag = vi.hoisted(() => ({ value: false }));
@@ -123,7 +133,7 @@ vi.mock('../composables/useAgentsN8nChatFlag', () => ({
 vi.mock('../components/AgentChannelModal.vue', () => ({
 	default: {
 		name: 'AgentChannelModal',
-		props: ['simpleSetup', 'isPublished', 'view', 'savedDescription', 'saveDescription'],
+		props: ['simpleSetup', 'isPublished', 'view', 'savedDescription', 'saveDescription', 'setupId'],
 		template:
 			'<div data-testid="agent-channel-modal-stub" :data-simple-setup="simpleSetup" :data-is-published="isPublished" :data-view="view" :data-saved-description="savedDescription" />',
 	},
@@ -161,6 +171,7 @@ function mountSection(
 describe('AgentTriggersSection', () => {
 	beforeEach(function resetMocks() {
 		vi.clearAllMocks();
+		channelSetupRequired.value = [];
 		setActivePinia(createPinia());
 		vi.mocked(credentialsApi.getUsableCredentials).mockResolvedValue([]);
 		connectedCredentials.value = {};
@@ -230,6 +241,41 @@ describe('AgentTriggersSection', () => {
 		await flushPromises();
 
 		expect(wrapper.find('[data-testid="agent-channel-modal-stub"]').exists()).toBe(false);
+	});
+
+	it('opens the pending channel named by the setup link and keeps the configured channel visible', async () => {
+		connectedCredentials.value = { slack: 'working' };
+		configured.value = { slack: true };
+		channelSetupRequired.value = [
+			{ setupId: 'notion', type: 'notion' },
+			{ setupId: 'first', type: 'slack' },
+			{ setupId: 'second', type: 'slack' },
+		].map(({ setupId, type }) => ({
+			setupId,
+			type,
+			agentId: 'agent-1',
+			projectId: 'project-1',
+			credentialId: setupId,
+			path: ['integrations', 0],
+			reason: 'destination-setup-required',
+			setupUrl: '/setup',
+			integration: { type, credentialId: setupId },
+		}));
+		routeQuery.value = { channelSetup: 'second' };
+		const wrapper = mountSection();
+		await flushPromises();
+		expect(wrapper.findComponent({ name: 'AgentChannelModal' }).props()).toMatchObject({
+			setupId: 'second',
+			view: 'slack_setup',
+		});
+		expect(screen.getByRole('button', { name: 'slack' })).toBeVisible();
+		expect(
+			wrapper.findAll('[data-testid="agent-channel-setup-required"]').map((chip) => chip.text()),
+		).toEqual([
+			'notion · agents.channels.setupRequired.label',
+			'slack 1 · agents.channels.setupRequired.label',
+			'slack 2 · agents.channels.setupRequired.label',
+		]);
 	});
 
 	it.each(['credential-1', ''])(

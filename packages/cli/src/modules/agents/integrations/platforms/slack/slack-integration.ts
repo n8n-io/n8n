@@ -6,8 +6,10 @@ import type {
 import { Container, Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
 import type { Thread } from 'chat';
+import { UserError } from 'n8n-workflow';
 
 import { AgentRepository } from '../../../repositories/agent.repository';
+import { isConfiguredIntegration } from '../../../utils/agent-channel-setup';
 import {
 	AgentChatIntegration,
 	type AgentChannelPreconditionContext,
@@ -24,7 +26,7 @@ import {
 import type { ChatInstance } from '../../chat-integration.service';
 import { assertCredentialNotClaimed } from '../../credential-claim';
 import { loadSlackAdapter } from '../../esm-loader';
-import { connectionUnavailable } from '../../integration-helpers';
+import { connectionUnavailable, stringProperty } from '../../integration-helpers';
 import {
 	resolveIntegrationActionDefinitions,
 	resolveIntegrationContextQueryDefinitions,
@@ -40,6 +42,7 @@ import {
 } from './slack-bridge-behavior';
 import { SlackManagedSetupService } from './slack-managed-setup.service';
 import { executeSlackContextQuery, subscribeSlackThread } from './slack-operations';
+import { slackCredentialMatchesDestination } from './slack-setup.types';
 
 /**
  * Slack platform integration.
@@ -114,6 +117,29 @@ export class SlackIntegration extends AgentChatIntegration {
 
 	async onBeforeConnect(ctx: AgentChatIntegrationContext): Promise<void> {
 		await this.assertStartupPreconditions(ctx);
+		// The manual UI flow confirms the supplied manifest. Persistence records that setup.
+		if (ctx.setupAuthorized && !stringProperty(ctx.credential, 'agentWebhookUrl')) return;
+		if (!(await this.isDestinationConfigured(ctx, { allowLegacy: true }))) {
+			throw new UserError('Complete Slack setup for this Agent in the editor.');
+		}
+	}
+
+	async isDestinationConfigured(
+		ctx: AgentChatIntegrationContext,
+		options: { allowLegacy?: boolean } = {},
+	): Promise<boolean> {
+		const { credential, agentId, projectId } = ctx;
+		const requestUrl = stringProperty(credential, 'agentWebhookUrl');
+		if (requestUrl) {
+			return slackCredentialMatchesDestination(credential, {
+				agentId,
+				projectId,
+				webhookUrl: ctx.webhookUrlFor(this.type),
+			});
+		}
+		if (!options.allowLegacy) return false;
+		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
+		return !!agent && isConfiguredIntegration(agent, ctx.integration);
 	}
 
 	async onRemove(

@@ -1,6 +1,11 @@
 import { EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, getChildNodes, type IConnections } from 'n8n-workflow';
 
-import type { AgentApproval, AgentIntegrationSettings } from './agent-integration.schema';
+import type {
+	AgentApproval,
+	CredentialAgentIntegrationConfig,
+	AgentIntegrationSettings,
+} from './agent-integration.schema';
+import type { AgentChannelSetupRequired } from './agent-channel-setup.schema';
 import type { AgentJsonConfig } from './agent-json-config.schema';
 import type { AgentPersonalisation } from './agent-personalisation';
 import type { AgentBackgroundJobSignal } from './background-job';
@@ -160,6 +165,11 @@ export interface AgentIntegrationStatusEntry {
 }
 
 export interface AgentIntegrationStatusResponse {
+	channelSetupRequired: Array<
+		AgentChannelSetupRequired & {
+			integration: CredentialAgentIntegrationConfig;
+		}
+	>;
 	/**
 	 * Rollup across `integrations`, for callers that only need one word:
 	 * `disconnected` with none configured, `partial` when the channels disagree.

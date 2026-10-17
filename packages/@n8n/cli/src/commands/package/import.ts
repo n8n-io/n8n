@@ -8,6 +8,8 @@ import { BaseCommand } from '../../base-command';
 
 export default class PackageImport extends BaseCommand {
 	static override description = 'Import Agents and workflows from an n8n package (.n8np)';
+	static override summary =
+		'Import definitions and report publication and destination channel setup separately';
 
 	static override examples = [
 		'<%= config.bin %> package import --file=export.n8np',

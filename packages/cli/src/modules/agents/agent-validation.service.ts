@@ -52,6 +52,8 @@ import { findWorkflowToolWorkflows } from './tools/workflow-tool-workflow-resolv
 import { extractAgentWorkflowRefs } from './utils/extract-agent-workflow-refs';
 import { findHttpRequestToolUrlFromAiViolations } from './utils/node-tool-validation';
 import { findNameClashGroups } from './skills/skill-names';
+import { getChannelSetupIssues } from './utils/agent-channel-setup';
+import type { PendingChannelSetup } from './utils/agent-channel';
 
 type AgentValidationScope = 'runtime' | 'publish';
 
@@ -71,6 +73,7 @@ interface ConfigurationValidationContext {
 	integrations: AgentIntegrationConfig[];
 	tasks: ReadonlyMap<string, TaskBody>;
 	credentialProvider: CredentialProvider;
+	pendingChannelSetup?: PendingChannelSetup | null;
 }
 
 function issue(
@@ -188,6 +191,7 @@ export class AgentValidationService {
 			agent.integrations ?? [],
 			credentialProvider,
 			scope,
+			agent.pendingChannelSetup,
 		);
 	}
 
@@ -216,6 +220,7 @@ export class AgentValidationService {
 			agent.integrations ?? [],
 			credentialProvider,
 			scope,
+			agent.pendingChannelSetup,
 		);
 	}
 
@@ -231,6 +236,7 @@ export class AgentValidationService {
 		history: AgentHistory,
 		currentIntegrations: AgentIntegrationConfig[],
 		credentialProvider: CredentialProvider,
+		pendingChannelSetup?: PendingChannelSetup | null,
 	): Promise<AgentConfigValidationResponse> {
 		const definition = await this.definitionService.readVersion(history);
 		return await this.validateDefinition(
@@ -240,6 +246,7 @@ export class AgentValidationService {
 			currentIntegrations,
 			credentialProvider,
 			'publish',
+			pendingChannelSetup,
 		);
 	}
 
@@ -250,6 +257,7 @@ export class AgentValidationService {
 		integrations: AgentIntegrationConfig[],
 		credentialProvider: CredentialProvider,
 		scope: AgentValidationScope,
+		pendingChannelSetup?: PendingChannelSetup | null,
 	): Promise<AgentConfigValidationResponse> {
 		return await this.runValidation(
 			{
@@ -261,6 +269,7 @@ export class AgentValidationService {
 				tasks: definition.tasks,
 				integrations,
 				credentialProvider,
+				pendingChannelSetup,
 			},
 			scope,
 		);
@@ -328,6 +337,7 @@ export class AgentValidationService {
 		this.collectSubAgentRefIssues(ctx, agentsById, issues);
 		this.collectSkillIssues(config, ctx.skills, issues);
 		if (scope === 'publish') {
+			issues.push(...getChannelSetupIssues(ctx));
 			for (const violation of findHttpRequestToolUrlFromAiViolations(config.tools)) {
 				if (config.tools?.[violation.toolIndex].enabled === false) continue;
 				issues.push(

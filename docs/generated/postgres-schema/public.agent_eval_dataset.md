@@ -66,6 +66,7 @@ erDiagram
   varchar_36_ id
   json integrations
   varchar_128_ name
+  json pendingChannelSetup
   varchar_255_ projectId FK
   integer revision
   json schema

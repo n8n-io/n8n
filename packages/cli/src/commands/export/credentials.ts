@@ -10,6 +10,7 @@ import z from 'zod';
 
 import { CredentialDescriptionsService } from '@/credentials/credential-descriptions.service';
 import type { ICredentialsDecryptedDb } from '@/interfaces';
+import { stripAgentChannelSetupEvidence } from '@/modules/agents/integrations/agent-channel-setup-evidence';
 
 import { BaseCommand } from '../base-command';
 import '../../zod-alias-support';
@@ -118,12 +119,7 @@ export class ExportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 			}
 		}
 
-		const credentials: ICredentialsDb[] = await Container.get(CredentialsRepository).find({
-			where: this.getWhereFilter(flags),
-			relations: ['shared.project'],
-		});
-
-		await Container.get(CredentialDescriptionsService).stripIfDisabled(credentials);
+		const credentials = await this.getCredentialsToExport();
 
 		if (flags.decrypted) {
 			for (let i = 0; i < credentials.length; i++) {
@@ -165,6 +161,28 @@ export class ExportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 	async catch(error: Error) {
 		this.logger.error('Error exporting credentials. See log messages for details.');
 		this.logger.error(error.message);
+	}
+
+	private async getCredentialsToExport(): Promise<ICredentialsDb[]> {
+		const credentials = await Container.get(CredentialsRepository).find({
+			where: this.getWhereFilter(this.flags),
+			relations: ['shared.project'],
+		});
+		await Container.get(CredentialDescriptionsService).stripIfDisabled(credentials);
+
+		const sanitizedCredentials: ICredentialsDb[] = [];
+		for (const credential of credentials) {
+			try {
+				credential.data = await stripAgentChannelSetupEvidence(credential.type, credential.data);
+				sanitizedCredentials.push(credential);
+			} catch (error) {
+				if (this.flags.decrypted) throw error;
+				this.logger.warn(
+					`Skipping credential ${credential.id}: Could not sanitize credential data.`,
+				);
+			}
+		}
+		return sanitizedCredentials;
 	}
 
 	private getWhereFilter(flags: z.infer<typeof flagsSchema>) {

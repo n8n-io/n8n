@@ -47,6 +47,7 @@ import { AgentTask } from './entities/agent-task.entity';
 import type { Agent } from './entities/agent.entity';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { toAgentDocument } from './json-config/agent-document';
+import { getChannelSetupIssues } from './utils/agent-channel-setup';
 import { AgentHistoryRepository } from './repositories/agent-history.repository';
 import { AgentTaskSnapshotRepository } from './repositories/agent-task-snapshot.repository';
 import { AgentTaskRepository } from './repositories/agent-task.repository';
@@ -146,6 +147,10 @@ export class AgentPublishService {
 		if (agent.revision !== expectedRevision) {
 			throw new ConflictError('Agent was modified concurrently while publishing; please retry');
 		}
+		const channelIssues = getChannelSetupIssues(agent);
+		if (channelIssues.length > 0) {
+			requireValidValidation({ status: 'invalid', issues: channelIssues });
+		}
 
 		if (!versionId && agent.versionId !== null && agent.versionId === agent.activeVersionId) {
 			return { agent };
@@ -231,6 +236,7 @@ export class AgentPublishService {
 					targetHistory,
 					agent.integrations ?? [],
 					credentialProvider,
+					agent.pendingChannelSetup,
 				)
 			: await this.agentValidationService.validateAgentEntityConfiguration(
 					agent,

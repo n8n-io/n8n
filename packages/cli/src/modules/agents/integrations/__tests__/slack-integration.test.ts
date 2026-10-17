@@ -133,6 +133,48 @@ describe('SlackIntegration', () => {
 		).rejects.toThrow(ConflictError);
 	});
 
+	it('requires destination routing evidence even when the credential has the same Agent ID', async () => {
+		const ctx = connectionContext({ type: 'slack', credentialId: 'credential-1' });
+		ctx.credential.agentId = ctx.agentId;
+		expect(await integration.isDestinationConfigured(ctx)).toBe(false);
+		ctx.credential.agentProjectId = ctx.projectId;
+		ctx.credential.agentWebhookUrl = 'https://other-instance.test/webhook';
+		expect(await integration.isDestinationConfigured(ctx)).toBe(false);
+		ctx.credential.agentWebhookUrl = ctx.webhookUrlFor('slack');
+		ctx.credential.agentProjectId = 'other-project';
+		expect(await integration.isDestinationConfigured(ctx)).toBe(false);
+		ctx.credential.agentProjectId = ctx.projectId;
+		expect(await integration.isDestinationConfigured(ctx)).toBe(true);
+		expect(mockedLoadSlackAdapter).not.toHaveBeenCalled();
+	});
+
+	it('allows the manual UI setup flow to establish an unconfigured connection', async () => {
+		const agentRepository = mock<AgentRepository>();
+		agentRepository.findByIntegrationCredential.mockResolvedValue([]);
+		integration = new SlackIntegration(agentRepository);
+		const ctx = connectionContext({ type: 'slack', credentialId: 'manual-credential' });
+		await expect(integration.onBeforeConnect(ctx)).rejects.toThrow('Complete Slack setup');
+		await expect(
+			integration.onBeforeConnect({ ...ctx, setupAuthorized: true }),
+		).resolves.toBeUndefined();
+		expect(mockedLoadSlackAdapter).not.toHaveBeenCalled();
+	});
+
+	it.each([undefined, ''])(
+		'retains a legacy destination connection with routing value %s',
+		async (requestUrl) => {
+			const agentRepository = mock<AgentRepository>();
+			const ctx = connectionContext({ type: 'slack', credentialId: 'credential-1' });
+			ctx.credential.agentWebhookUrl = requestUrl;
+			agentRepository.findByIdAndProjectId.mockResolvedValue({
+				integrations: [ctx.integration],
+			} as never);
+			integration = new SlackIntegration(agentRepository);
+			expect(await integration.isDestinationConfigured(ctx)).toBe(false);
+			expect(await integration.isDestinationConfigured(ctx, { allowLegacy: true })).toBe(true);
+		},
+	);
+
 	it('extracts the Slack bot user ID for bridge message context', () => {
 		const chat = {
 			getAdapter: vi.fn().mockReturnValue({ botUserId: 'U_BOT' }),

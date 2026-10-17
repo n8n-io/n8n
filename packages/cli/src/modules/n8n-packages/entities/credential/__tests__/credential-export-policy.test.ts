@@ -83,13 +83,13 @@ describe('selectCredentialDataForExport', () => {
 			expect(result).toEqual({ allExpressions: ['={{ $vars.a }}', '={{ $vars.b }}'] });
 		});
 
-		it('drops oauthTokenData at any depth', async () => {
+		it.each(['oauthTokenData', 'agentSetupDestination'])('drops %s at any depth', async (key) => {
 			const result = await selectCredentialDataForExport(
 				'expression-values-only',
 				dataThunk({
-					oauthTokenData: { access_token: '={{ $secrets.fake }}' },
+					[key]: { access_token: '={{ $secrets.fake }}' },
 					nested: {
-						oauthTokenData: { refresh_token: '={{ $secrets.fake }}' },
+						[key]: { refresh_token: '={{ $secrets.fake }}' },
 						ok: '={{ $vars.x }}',
 					},
 				}),

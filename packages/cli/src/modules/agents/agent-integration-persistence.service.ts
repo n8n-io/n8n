@@ -7,6 +7,7 @@ import {
 import { EventService } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import isEqual from 'lodash/isEqual';
 import { OperationalError, UserError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
@@ -14,19 +15,30 @@ import { CredentialsService } from '@/credentials/credentials.service';
 
 import {
 	AgentModificationTelemetryService,
-	diffAgentConfigParts,
-	isUnconfiguredAgent,
+	buildAgentMutationEvent,
+	captureAgentMutation,
 	type AgentActor,
 } from './agent-modification-telemetry.service';
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
 import { AgentSetupCompletionService } from './agent-setup-completion.service';
 import { AgentSkillRefsService } from './agent-skill-refs.service';
 import type { Agent } from './entities/agent.entity';
-import { toAgentDocument, type AgentSkillRefs } from './json-config/agent-document';
+import type { AgentSkillRefs } from './json-config/agent-document';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import { AgentRepository } from './repositories/agent.repository';
 import { createAgentCredentialProvider } from './utils/agent-credential-provider';
-import type { IntegrationRef } from './utils/agent-channel';
+import { matchesIntegrationRef, type IntegrationRef } from './utils/agent-channel';
+import { AgentChannelSetupService } from './agent-channel-setup.service';
+import {
+	assertChannelSetupReference,
+	cancelChannelSetup,
+	completeChannelSetup,
+	getDraftIntegrations,
+	projectChannelSetup,
+	type AgentChannelState,
+} from './utils/agent-channel-setup';
+
+export { matchesIntegrationRef } from './utils/agent-channel';
 
 export interface CredentialIntegrationMutationContext {
 	user: User;
@@ -40,6 +52,9 @@ export interface CredentialIntegrationMutationContext {
 export interface IntegrationDelta {
 	add?: AgentIntegrationConfig;
 	remove?: IntegrationRef;
+	setupId?: string;
+	request?: { integration: AgentIntegrationConfig; replaces?: IntegrationRef };
+	cancelSetup?: { setupId: string; type: string };
 }
 
 export interface IntegrationDeltaResult {
@@ -48,6 +63,7 @@ export interface IntegrationDeltaResult {
 	changed: boolean;
 	/** The entry that was actually removed, for the caller's runtime teardown. */
 	removed?: AgentIntegrationConfig;
+	removedIntegrations?: AgentIntegrationConfig[];
 	/**
 	 * Publication state of the row this was applied to. The caller's own copy can
 	 * predate a concurrent publish or unpublish; this cannot. `undefined` when no
@@ -59,10 +75,6 @@ export interface IntegrationDeltaResult {
 /** Retries cover a lost compare-and-set, which needs a fresh read to resolve. */
 const MAX_WRITE_ATTEMPTS = 3;
 
-export function matchesIntegrationRef(integration: IntegrationRef, ref: IntegrationRef): boolean {
-	return integration.type === ref.type && integration.credentialId === ref.credentialId;
-}
-
 /**
  * Project the next `integrations` array. Removal runs first so replacing a
  * credential can drop the old entry and add the new one in the same array.
@@ -70,6 +82,7 @@ export function matchesIntegrationRef(integration: IntegrationRef, ref: Integrat
 function projectIntegrations(
 	current: AgentIntegrationConfig[],
 	delta: IntegrationDelta,
+	removeDrafts = true,
 ): AgentIntegrationConfig[] {
 	let next = delta.remove
 		? current.filter((entry) => !matchesIntegrationRef(entry, delta.remove!))
@@ -81,7 +94,9 @@ function projectIntegrations(
 	// Drop a same-type draft entry (empty credentialId, written by the builder
 	// before setup completes) so connecting a real credential replaces it
 	// instead of leaving both the draft and the connected entry behind.
-	next = next.filter((entry) => !(entry.type === add.type && isDraftIntegration(entry)));
+	if (removeDrafts) {
+		next = next.filter((entry) => !(entry.type === add.type && isDraftIntegration(entry)));
+	}
 
 	if (!next.some((entry) => matchesIntegrationRef(entry, add))) return [...next, add];
 	return next.map((entry) => (matchesIntegrationRef(entry, add) ? add : entry));
@@ -98,6 +113,7 @@ export class AgentIntegrationPersistenceService {
 		private readonly credentialsService: CredentialsService,
 		private readonly setupCompletionService: AgentSetupCompletionService,
 		private readonly agentSkillRefs: AgentSkillRefsService,
+		private readonly channelSetupService: AgentChannelSetupService,
 	) {}
 
 	/**
@@ -141,7 +157,7 @@ export class AgentIntegrationPersistenceService {
 		// would have the caller tear down the channel this write keeps.
 		const remove =
 			delta.remove && add && matchesIntegrationRef(add, delta.remove) ? undefined : delta.remove;
-		if (!add && !remove) return { agent, changed: false };
+		if (!add && !remove && !delta.request && !delta.cancelSetup) return { agent, changed: false };
 
 		const credentialProvider = createAgentCredentialProvider(
 			this.credentialsService,
@@ -152,7 +168,7 @@ export class AgentIntegrationPersistenceService {
 		for (let attempt = 1; attempt <= MAX_WRITE_ATTEMPTS; attempt++) {
 			const result = await this.applyIntegrationAttempt(
 				agent,
-				{ add, remove },
+				{ ...delta, add, remove },
 				context,
 				credentialProvider,
 			);
@@ -179,32 +195,9 @@ export class AgentIntegrationPersistenceService {
 		return parseResult.data;
 	}
 
-	private recordIntegrationMutation(
-		agent: Agent,
-		skillRefs: AgentSkillRefs,
-		previousIntegrations: AgentIntegrationConfig[],
-		context: CredentialIntegrationMutationContext,
-	): void {
-		const config = agent.schema ? toAgentDocument(agent.schema, skillRefs) : null;
-		const wasUnconfigured = isUnconfiguredAgent(config, previousIntegrations);
-		this.modificationTelemetry.record({
-			agent,
-			config,
-			projectId: agent.projectId,
-			user: context.user,
-			by: context.modifiedBy,
-			changedParts: diffAgentConfigParts(
-				config,
-				config,
-				previousIntegrations,
-				agent.integrations ?? [],
-			),
-			wasUnconfigured,
-		});
-	}
 	private async applyIntegrationAttempt(
 		agent: Agent,
-		{ add, remove }: IntegrationDelta,
+		delta: IntegrationDelta,
 		context: CredentialIntegrationMutationContext,
 		credentialProvider: ReturnType<typeof createAgentCredentialProvider>,
 	): Promise<IntegrationDeltaResult | undefined> {
@@ -212,27 +205,39 @@ export class AgentIntegrationPersistenceService {
 		if (!state) throw new UserError(`Agent "${agent.id}" no longer exists`);
 		// Setup validation must use the definition that belongs to this revision.
 		Object.assign(agent, state);
+		const skillRefs = await this.agentSkillRefs.refsForDraft(agent, {});
+		const previous = captureAgentMutation(state, skillRefs);
+		const { add, remove } = delta;
 
 		const current = state.integrations ?? [];
 		const removed = remove
 			? current.find((entry) => matchesIntegrationRef(entry, remove))
 			: undefined;
+		const removesPending =
+			remove &&
+			state.pendingChannelSetup?.requested.some(({ integration }) =>
+				matchesIntegrationRef(integration, remove),
+			);
 
 		const published = state.activeVersionId !== null;
 
 		// A removal of something already gone is not a failure — and with
 		// nothing to add there is no write left to make.
-		if (!add && !removed) {
+		if (!add && !removed && !removesPending && !delta.request && !delta.cancelSetup) {
 			return { agent, changed: false, published };
 		}
 
-		const integrations = projectIntegrations(current, { add, remove });
-		// A channel write keeps the skill refs as they are.
-		const skillRefs = await this.agentSkillRefs.refsForDraft(agent, {});
+		const next = await this.projectDelta(state, delta);
+		if (
+			isEqual(current, next.integrations) &&
+			isEqual(state.pendingChannelSetup ?? null, next.pendingChannelSetup)
+		) {
+			return { agent, changed: false, published };
+		}
 		const written = await this.persistIntegrations(
 			agent,
 			skillRefs,
-			integrations,
+			next,
 			state,
 			context,
 			credentialProvider,
@@ -241,15 +246,71 @@ export class AgentIntegrationPersistenceService {
 		this.runtimeCacheService.clearRuntimes(agent.id);
 		this.eventService.emit('agent-saved', { agentId: agent.id });
 		await written.emitSetupCompleted?.();
-		this.recordIntegrationMutation(agent, skillRefs, current, context);
+		this.modificationTelemetry.record(
+			buildAgentMutationEvent(agent, skillRefs, agent.projectId, context, previous, {}),
+		);
 
-		return { agent, changed: true, published, ...(removed ? { removed } : {}) };
+		const removedIntegrations = current.filter(
+			(entry) =>
+				!next.integrations.some((integration) => matchesIntegrationRef(entry, integration)),
+		);
+		return {
+			agent,
+			changed: true,
+			published,
+			removedIntegrations,
+			...(removed ? { removed } : {}),
+		};
+	}
+
+	private async projectDelta(
+		agent: Agent,
+		delta: IntegrationDelta,
+	): Promise<Required<AgentChannelState>> {
+		if (delta.request) {
+			const { integration, replaces } = delta.request;
+			const requested = projectIntegrations(
+				getDraftIntegrations(agent),
+				{ add: integration, remove: replaces },
+				false,
+			);
+			return await this.channelSetupService.prepare(agent, requested, {
+				requested: integration,
+				replaces,
+			});
+		}
+		if (delta.cancelSetup) {
+			return cancelChannelSetup(agent, delta.cancelSetup.setupId, delta.cancelSetup.type);
+		}
+		if (delta.add && delta.setupId) {
+			return completeChannelSetup(agent, delta.setupId, delta.add, delta.remove);
+		}
+		return this.projectConfiguredDelta(agent, delta);
+	}
+
+	private projectConfiguredDelta(
+		agent: Agent,
+		delta: IntegrationDelta,
+	): Required<AgentChannelState> {
+		const integrations = projectIntegrations(agent.integrations ?? [], delta);
+		if (!agent.pendingChannelSetup) return { integrations, pendingChannelSetup: null };
+		const { add, remove } = delta;
+		if (add) assertChannelSetupReference(agent, add);
+		const requested = agent.pendingChannelSetup.requested.filter(
+			(entry) => !remove || !matchesIntegrationRef(entry.integration, remove),
+		);
+		if (add) {
+			const index = requested.findIndex((entry) => matchesIntegrationRef(entry.integration, add));
+			if (index < 0) requested.push({ integration: add });
+			else requested[index] = { integration: add };
+		}
+		return projectChannelSetup({ integrations }, requested);
 	}
 
 	private async persistIntegrations(
 		agent: Agent,
 		skillRefs: AgentSkillRefs,
-		integrations: AgentIntegrationConfig[],
+		next: Required<AgentChannelState>,
 		state: Pick<Agent, 'revision' | 'versionId' | 'activeVersionId'>,
 		context: CredentialIntegrationMutationContext,
 		credentialProvider: ReturnType<typeof createAgentCredentialProvider>,
@@ -259,7 +320,7 @@ export class AgentIntegrationPersistenceService {
 
 		// Gate evaluated against the state about to be written; the marker is
 		// claimed and reported only once that write succeeded.
-		agent.integrations = integrations;
+		Object.assign(agent, next);
 		const emitSetupCompleted = await this.setupCompletionService.recordIfSetupComplete(
 			agent,
 			skillRefs,
@@ -270,13 +331,14 @@ export class AgentIntegrationPersistenceService {
 
 		const written = await this.agentRepository.updateIntegrations(
 			agent.id,
-			integrations,
+			next.integrations,
 			{
 				revision: state.revision,
 				versionId: state.versionId,
 				activeVersionId: state.activeVersionId,
 			},
 			versionId,
+			next.pendingChannelSetup,
 		);
 		if (!written) return undefined;
 

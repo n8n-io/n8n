@@ -2,17 +2,20 @@ import { AgentIntegrationConfig } from '@n8n/api-types';
 import type { RichCardComponentType } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
+import { CredentialsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
 import type { Thread, Author } from 'chat';
 import { createHmac } from 'crypto';
 import { InstanceSettings } from 'n8n-core';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError, UserError } from 'n8n-workflow';
 
+import { CredentialsService } from '@/credentials/credentials.service';
 import { BadRequestError } from '@n8n/errors';
 import { UrlService } from '@n8n/backend-services';
 
 import { AgentRepository } from '../../repositories/agent.repository';
+import { isConfiguredIntegration } from '../../utils/agent-channel-setup';
 import {
 	AgentChatIntegration,
 	type AgentChannelPreconditionContext,
@@ -23,6 +26,7 @@ import {
 	type BridgeResumeExecutionContext,
 } from '../agent-chat-integration';
 import type { SuspendComponent } from '../component-mapper';
+import { rememberAgentChannelSetup } from '../agent-channel-setup-evidence';
 import { assertCredentialNotClaimed } from '../credential-claim';
 import { loadTelegramAdapter } from '../esm-loader';
 import { resolveIntegrationActionDefinitions } from '../integration-tool-definitions';
@@ -149,6 +153,8 @@ export class TelegramIntegration extends AgentChatIntegration {
 		private readonly agentRepository: AgentRepository,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly outboundHttp: OutboundHttp,
+		private readonly credentialsService: CredentialsService,
+		private readonly credentialsRepository: CredentialsRepository,
 	) {
 		super();
 	}
@@ -158,7 +164,14 @@ export class TelegramIntegration extends AgentChatIntegration {
 		const mode = ctx.ingressEnabled ? this.getMode() : 'webhook';
 		const secretToken = this.deriveSecretToken(ctx.agentId, ctx.credentialId);
 		const { createTelegramAdapter } = await loadTelegramAdapter();
-		return createTelegramAdapter({ botToken, mode, secretToken });
+		return createTelegramAdapter({
+			botToken,
+			mode,
+			secretToken,
+			...(mode === 'polling'
+				? { longPolling: { deleteWebhook: !!ctx.setupAuthorized || this.hasDestinationSetup(ctx) } }
+				: {}),
+		});
 	}
 
 	validateConfig(integration: AgentIntegrationConfig): void {
@@ -179,23 +192,37 @@ export class TelegramIntegration extends AgentChatIntegration {
 		return ingressEnabled && this.getMode() === 'polling';
 	}
 
-	/**
-	 * We deliberately don't probe Telegram for an existing webhook here —
-	 * `onAfterConnect` overwrites whatever URL Telegram has on file, so a stale
-	 * webhook from elsewhere isn't a connect blocker. That leaves the claim
-	 * check, which reads only our own DB, so publishing can run it as a
-	 * preflight.
-	 */
 	async assertStartupPreconditions(ctx: AgentChannelPreconditionContext): Promise<void> {
 		await assertCredentialNotClaimed(this.agentRepository, this.displayLabel, this.type, ctx);
 	}
 
 	async onBeforeConnect(ctx: AgentChatIntegrationContext): Promise<void> {
 		await this.assertStartupPreconditions(ctx);
+		if (ctx.setupAuthorized) return;
+		if (!(await this.isDestinationConfigured(ctx, { allowLegacy: true }))) {
+			throw new UserError('Complete channel setup for this destination in the Agent editor.');
+		}
+	}
+
+	async onSetupComplete(ctx: AgentChatIntegrationContext): Promise<void> {
+		await this.rememberDestinationSetup(ctx);
+	}
+
+	async isDestinationConfigured(
+		ctx: AgentChatIntegrationContext,
+		options: { allowLegacy?: boolean } = {},
+	): Promise<boolean> {
+		const proof = ctx.credential.agentSetupDestination;
+		if (proof !== undefined && proof !== '') return this.hasDestinationSetup(ctx);
+		if (!options.allowLegacy) return false;
+		const agent = await this.agentRepository.findByIdAndProjectId(ctx.agentId, ctx.projectId);
+		return !!agent && isConfiguredIntegration(agent, ctx.integration);
 	}
 
 	async onAfterConnect(ctx: AgentChatIntegrationContext): Promise<void> {
-		if (this.getMode() !== 'webhook') return;
+		if (this.getMode() !== 'webhook' || (!ctx.setupAuthorized && !this.hasDestinationSetup(ctx))) {
+			return;
+		}
 		const webhookUrl = ctx.webhookUrlFor('telegram');
 		const secretToken = this.deriveSecretToken(ctx.agentId, ctx.credentialId);
 		const response = await this.botApiRequest(ctx.credential, 'setWebhook', {
@@ -214,7 +241,9 @@ export class TelegramIntegration extends AgentChatIntegration {
 	 * connections never registered a webhook with Telegram, so skip.
 	 */
 	async onBeforeDisconnect(ctx: AgentChatIntegrationContext): Promise<void> {
-		if (this.getMode() !== 'webhook') return;
+		if (this.getMode() !== 'webhook' || (!ctx.setupAuthorized && !this.hasDestinationSetup(ctx))) {
+			return;
+		}
 		const response = await this.botApiRequest(ctx.credential, 'deleteWebhook');
 		if (!this.isOkStatus(response.statusCode)) {
 			throw new Error(
@@ -310,6 +339,39 @@ export class TelegramIntegration extends AgentChatIntegration {
 		return createHmac('sha256', this.instanceSettings.encryptionKey)
 			.update(`telegram:${agentId}:${credentialId}`)
 			.digest('hex');
+	}
+
+	private hasDestinationSetup(ctx: AgentChatIntegrationContext): boolean {
+		const proof = ctx.credential.agentSetupDestination;
+		return typeof proof === 'string' && proof !== '' && proof === this.destinationSetupProof(ctx);
+	}
+
+	private destinationSetupProof(ctx: AgentChatIntegrationContext): string {
+		return createHmac('sha256', this.instanceSettings.hmacSignatureSecret)
+			.update(
+				JSON.stringify([
+					'telegram-setup',
+					ctx.agentId,
+					ctx.projectId,
+					ctx.credentialId,
+					ctx.webhookUrlFor(this.type),
+					this.botApiUrl(ctx.credential, 'setWebhook'),
+				]),
+			)
+			.digest('hex');
+	}
+
+	private async rememberDestinationSetup(ctx: AgentChatIntegrationContext): Promise<void> {
+		const proof = this.destinationSetupProof(ctx);
+		await rememberAgentChannelSetup(ctx, {
+			credentialTypes: this.credentialTypes,
+			displayLabel: this.displayLabel,
+			proof,
+			matchesSetupCredential: (credential) =>
+				proof === this.destinationSetupProof({ ...ctx, credential }),
+			credentialsService: this.credentialsService,
+			credentialsRepository: this.credentialsRepository,
+		});
 	}
 
 	private extractBotToken(credential: Record<string, unknown>): string {

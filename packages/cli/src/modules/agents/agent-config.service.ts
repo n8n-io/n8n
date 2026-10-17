@@ -27,6 +27,8 @@ import { AgentSetupCompletionService } from './agent-setup-completion.service';
 import { AgentSkillRefsService } from './agent-skill-refs.service';
 import { AgentDefinitionService } from './agent-definition.service';
 import { AgentsSettingsService } from './agents-settings.service';
+import { AgentChannelSetupService } from './agent-channel-setup.service';
+import { getDraftIntegrations } from './utils/agent-channel-setup';
 import type { Agent } from './entities/agent.entity';
 import { syncAgentIntegrations } from './integrations/integrations-sync';
 import { composeJsonConfig, decomposeJsonConfig } from './json-config/agent-config-composition';
@@ -148,7 +150,10 @@ export class AgentConfigService {
 			? decomposeJsonConfig(content.config)
 			: { schemaConfig: null, integrations: [] };
 		agent.name = content.config?.name ?? content.name;
-		agent.integrations = decomposed.integrations;
+		Object.assign(
+			agent,
+			await Container.get(AgentChannelSetupService).prepare(agent, decomposed.integrations),
+		);
 		markAgentDraftDirty(agent);
 		const tasksChanged = await Container.get(AgentDefinitionService).replaceDraft(
 			agent,
@@ -244,7 +249,13 @@ export class AgentConfigService {
 		const next = fromAgentDocument(replacement.nextSchema);
 		entity.schema = next.config;
 		entity.name = validatedConfig.name;
-		entity.integrations = replacement.nextIntegrations;
+		if (writesField(validatedConfig, 'integrations', clearOmitted)) {
+			Object.assign(
+				entity,
+				await Container.get(AgentChannelSetupService).prepare(entity, replacement.nextIntegrations),
+			);
+			replacement.nextIntegrations = entity.integrations;
+		}
 		markAgentDraftDirty(entity);
 		this.removeUnreferencedResources(entity, validatedConfig, clearOmitted);
 
@@ -398,8 +409,10 @@ export class AgentConfigService {
 		const changedParts = diffAgentConfigParts(
 			previousSchema,
 			nextSchema,
-			previousIntegrations,
-			nextIntegrations,
+			getDraftIntegrations(entity),
+			writesField(validatedConfig, 'integrations', clearOmitted)
+				? integrations
+				: getDraftIntegrations(entity),
 		);
 		return {
 			nextSchema,

@@ -7,6 +7,7 @@ import { ensureError } from '@n8n/utils/errors/ensure-error';
 
 import { AgentPublishService } from '@/modules/agents/agent-publish.service';
 import { AgentsService } from '@/modules/agents/agents.service';
+import { AgentChannelSetupService } from '@/modules/agents/agent-channel-setup.service';
 
 import type { AgentImportOutcome, PersistedAgentOutcome } from './agent-import.types';
 import { blockedPublishingOutcome } from '../publishing';
@@ -18,6 +19,7 @@ export class AgentPublisher {
 		private readonly projectScopeService: ProjectScopeService,
 		private readonly publishService: AgentPublishService,
 		private readonly agentsService: AgentsService,
+		private readonly channelSetupService: AgentChannelSetupService,
 	) {}
 
 	async applyToPackage(
@@ -33,19 +35,20 @@ export class AgentPublisher {
 
 	private async apply(user: User, outcome: PersistedAgentOutcome): Promise<AgentImportOutcome> {
 		const { status, sourceAgentId, agent } = outcome;
-		const imported = { status, sourceAgentId, agent };
+		const channelSetupRequired = this.channelSetupService.getRequirements(agent);
+		const imported = { status, sourceAgentId, agent, channelSetupRequired };
 		if (outcome.status === 'skipped' || outcome.item.publishingAction === 'noop') {
 			return { ...imported, publishing: { state: 'unchanged' } };
 		}
 
 		const action = outcome.item.publishingAction;
-		if (action === 'publish' && outcome.blockedFromPublish) {
+		const blockedReason =
+			outcome.blockedFromPublish ??
+			(channelSetupRequired.length > 0 ? 'channel-setup-required' : undefined);
+		if (action === 'publish' && blockedReason) {
 			return {
 				...imported,
-				publishing: blockedPublishingOutcome(
-					outcome.blockedFromPublish,
-					Boolean(agent.activeVersionId),
-				),
+				publishing: blockedPublishingOutcome(blockedReason, Boolean(agent.activeVersionId)),
 			};
 		}
 
@@ -93,6 +96,7 @@ export class AgentPublisher {
 			return {
 				...imported,
 				agent: current ?? agent,
+				channelSetupRequired: this.channelSetupService.getRequirements(current ?? agent),
 				publishing: { state: 'failed', error: message },
 			};
 		}

@@ -353,6 +353,7 @@ export class AgentChatResumeDto extends Z.class({
 const agentConnectIntegrationShape = {
 	type: z.string().min(1),
 	credentialId: z.string(),
+	setupId: z.string().min(1).optional(),
 	/**
 	 * Credential of the same type this channel takes over from. Swapping in one
 	 * request keeps the agent from ever holding two live channels or none.
@@ -433,6 +434,7 @@ export class AgentDisconnectIntegrationDto extends Z.class({
 	type: z.string().min(1),
 	// Empty string targets a draft integration entry (`credentialId: ''`).
 	credentialId: z.string(),
+	setupId: z.string().min(1).optional(),
 	deleteExternalResource: z.boolean().optional(),
 }) {}
 

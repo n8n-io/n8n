@@ -576,13 +576,17 @@ describe('AgentConfigService', () => {
 		it('keeps omitted integrations without syncing channels', async () => {
 			const { service, agentRepository } = makeService();
 			const slack = { type: 'slack', credentialId: 'slack-cred' } as const;
-			const agent = makeAgent({ integrations: [slack] });
+			const pendingChannelSetup = {
+				requested: [{ integration: { ...slack, credentialId: 'pending' }, setupId: 'setup-1' }],
+			};
+			const agent = makeAgent({ integrations: [slack], pendingChannelSetup });
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 
 			await service.updateConfig(agentId, projectId, { ...baseConfig }, user, fencedOn(agent));
 
 			const saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as Agent;
 			expect(saved.integrations).toEqual([slack]);
+			expect(saved.pendingChannelSetup).toEqual(pendingChannelSetup);
 			expect(syncAgentIntegrations).not.toHaveBeenCalled();
 		});
 
@@ -625,12 +629,15 @@ describe('AgentConfigService', () => {
 				fencedOn(agent),
 			);
 			expect(agent.integrations).toEqual([
-				{ type: 'slack', credentialId: '' },
 				{ type: 'n8n_chat', credentialId: '' },
+				{ type: 'slack', credentialId: 'slack-cred' },
 			]);
 			const saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0];
 			expect(saved?.integrations).toEqual(agent.integrations);
-			expect(composeStoredJsonConfig(agent)?.integrations).toEqual(agent.integrations);
+			expect(composeStoredJsonConfig(agent)?.integrations).toEqual([
+				{ type: 'slack', credentialId: '' },
+				{ type: 'n8n_chat', credentialId: '' },
+			]);
 		});
 
 		it('persists a trimmed description, retains it when omitted, and clears it when empty', async () => {
@@ -1064,7 +1071,10 @@ describe('AgentConfigService', () => {
 			expect(savedConfig.memory?.observationalMemory?.reflectorModel?.credential).toBe(
 				'known-cred',
 			);
-			expect(saved.integrations).toEqual([{ type: 'slack', credentialId: '' }]);
+			expect(saved.integrations).toEqual([]);
+			expect(composeStoredJsonConfig(saved)?.integrations).toEqual([
+				{ type: 'slack', credentialId: '' },
+			]);
 			expect(savedConfig.mcpServers?.[0].credential).toBe('');
 			expect(savedConfig.vectorStores?.[0].credential).toBe('');
 			expect(savedConfig.vectorStores?.[0].embedding.credential).toBe('');
@@ -1752,7 +1762,7 @@ describe('AgentConfigService', () => {
 			});
 		});
 
-		it('reports a channel change as a trigger part', async () => {
+		it('reports a pending channel change without counting it as a configured trigger', async () => {
 			const { service, agentRepository, credentialsService, telemetry } = makeService();
 			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
 			mockAccessibleCredentials(credentialsService, ['slack-cred']);
@@ -1767,7 +1777,7 @@ describe('AgentConfigService', () => {
 
 			expect(modifiedEvent(telemetry, TELEMETRY_EVENT.AGENTS.USER_MODIFIED_AGENT)).toMatchObject({
 				changed_parts: ['triggers'],
-				trigger_count: 1,
+				trigger_count: 0,
 			});
 		});
 	});

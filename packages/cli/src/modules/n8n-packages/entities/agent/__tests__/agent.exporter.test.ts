@@ -1,4 +1,4 @@
-import { AgentJsonConfigSchema } from '@n8n/api-types';
+import { AgentJsonConfigSchema, type AgentIntegrationConfig } from '@n8n/api-types';
 import { ConflictError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 import { ZodError } from 'zod';
@@ -71,6 +71,24 @@ function setup() {
 }
 
 describe('AgentExporter', () => {
+	it('exports draft channel intent separately from configured published connections', async () => {
+		const { agent, exporter } = setup();
+		const integration: AgentIntegrationConfig = {
+			type: 'slack',
+			credentialId: 'pending-slack',
+			settings: { messagingExperience: 'agent' },
+		};
+		agent.pendingChannelSetup = { requested: [{ integration, setupId: 'private-setup-id' }] };
+		const latest = await exporter.prepare(agent, ExportVersionPolicy.Latest);
+		const published = await exporter.prepare(agent, ExportVersionPolicy.PublishedStrict);
+		expect(latest?.content.config?.integrations).toEqual([integration]);
+		expect(published?.content.config?.integrations).toEqual([
+			{ type: 'slack', credentialId: 'current-slack' },
+			{ type: 'n8n_chat', credentialId: '' },
+		]);
+		expect(JSON.stringify(latest)).not.toContain('private-setup-id');
+	});
+
 	it.each([
 		{ policy: undefined, published: true, selected: 'draft' },
 		{ policy: ExportVersionPolicy.Latest, published: false, selected: 'draft' },

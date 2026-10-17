@@ -1,7 +1,8 @@
 /* eslint-disable @typescript-eslint/unbound-method -- mock-based tests intentionally reference unbound methods */
 import type { AgentIntegrationConfig, AgentJsonConfig } from '@n8n/api-types';
-import type { EventService } from '@n8n/backend-services';
+import type { EventService, UrlService } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
+import { Container } from '@n8n/di';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { OperationalError, UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
@@ -10,13 +11,17 @@ import type { CredentialsService } from '@/credentials/credentials.service';
 import type { Telemetry } from '@/telemetry';
 
 import { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service';
+import { AgentChannelSetupService } from '../agent-channel-setup.service';
 import { AgentModificationTelemetryService } from '../agent-modification-telemetry.service';
 import type { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import type { AgentSetupCompletionService } from '../agent-setup-completion.service';
 import type { Agent } from '../entities/agent.entity';
 import type { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
+import { ChatIntegrationService } from '../integrations/chat-integration.service';
 import type { AgentRepository } from '../repositories/agent.repository';
 import { createAgentSkillRefsService, storedAgentConfig } from './test-utils/stored-agent-config';
+
+vi.mock('../integrations/chat-integration.service', () => ({ ChatIntegrationService: class {} }));
 
 const agentId = 'agent-1';
 const projectId = 'project-1';
@@ -38,6 +43,7 @@ const configuredConfig: AgentJsonConfig = {
 type SetupOptions = {
 	/** Persisted channels; also seeds the caller's entity unless `stale` overrides it. */
 	integrations?: AgentIntegrationConfig[];
+	pendingChannelSetup?: Agent['pendingChannelSetup'];
 	/** What the caller's entity believes is persisted, when that has gone stale. */
 	stale?: AgentIntegrationConfig[];
 	versionId?: string | null;
@@ -65,6 +71,7 @@ function setup(options: SetupOptions = {}) {
 		revision: 0,
 		schema: options.schema === undefined ? configuredConfig : options.schema,
 		integrations: options.integrations ?? [],
+		pendingChannelSetup: options.pendingChannelSetup ?? null,
 		versionId: options.versionId ?? 'version-1',
 		activeVersionId: options.activeVersionId === undefined ? 'version-1' : options.activeVersionId,
 		setupCompletedAt: null,
@@ -76,11 +83,12 @@ function setup(options: SetupOptions = {}) {
 		integrations: [...(row.integrations ?? [])],
 	}));
 	agentRepository.updateIntegrations.mockImplementation(
-		async (_id, integrations, expected, versionId) => {
+		async (_id, integrations, expected, versionId, pendingChannelSetup) => {
 			if (row.revision !== expected.revision) return false;
 			if (row.versionId !== expected.versionId) return false;
 			if (row.activeVersionId !== expected.activeVersionId) return false;
 			row.integrations = integrations;
+			if (pendingChannelSetup !== undefined) row.pendingChannelSetup = pendingChannelSetup;
 			row.versionId = versionId;
 			row.revision += 1;
 			return true;
@@ -103,6 +111,7 @@ function setup(options: SetupOptions = {}) {
 			credentialsService,
 			setupCompletionService,
 			createAgentSkillRefsService(),
+			new AgentChannelSetupService(mock<UrlService>()),
 		),
 		agent,
 		row,
@@ -119,6 +128,10 @@ function setup(options: SetupOptions = {}) {
 describe('AgentIntegrationPersistenceService', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+	});
+
+	afterEach(() => {
+		Container.reset();
 	});
 
 	it('lists public descriptor metadata from the integration registry', () => {
@@ -167,6 +180,31 @@ describe('AgentIntegrationPersistenceService', () => {
 		expect(chatIntegrationRegistry.list).not.toHaveBeenCalled();
 	});
 
+	it('requires setup when the destination cannot reuse a configured channel', async () => {
+		const integration: AgentIntegrationConfig = { type: 'slack', credentialId: 'slack-1' };
+		const { service, agent, row } = setup({ integrations: [integration] });
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		chatIntegrationService.canReuseConnection.mockResolvedValue(false);
+		Container.set(ChatIntegrationService, chatIntegrationService);
+
+		const result = await service.applyIntegrationDelta(agent, { request: { integration } }, byUser);
+
+		expect(result.changed).toBe(true);
+		expect(row.pendingChannelSetup).toEqual({
+			requested: [{ integration, setupId: expect.any(String) }],
+		});
+		expect(row.integrations).toEqual([integration]);
+		expect(result.removedIntegrations).toEqual([]);
+		expect(chatIntegrationService.canReuseConnection).toHaveBeenCalledWith(
+			agentId,
+			integration,
+			projectId,
+		);
+		expect(chatIntegrationService.connect).not.toHaveBeenCalled();
+		expect(chatIntegrationService.disconnect).not.toHaveBeenCalled();
+		expect(chatIntegrationService.validateBeforeConnect).not.toHaveBeenCalled();
+	});
+
 	describe('adding a channel', () => {
 		it('appends to an empty list, starts a draft, and invalidates the runtime cache', async () => {
 			const { service, agent, row, runtimeCacheService, eventService } = setup();
@@ -202,6 +240,7 @@ describe('AgentIntegrationPersistenceService', () => {
 				[{ type: 'slack', credentialId: 'slack-1' }],
 				{ revision: 0, versionId: 'version-1', activeVersionId: 'version-1' },
 				expect.not.stringMatching('^version-1$'),
+				null,
 			);
 		});
 
@@ -342,26 +381,37 @@ describe('AgentIntegrationPersistenceService', () => {
 	});
 
 	describe('removing a channel', () => {
-		it('removes only the matching entry and reports it for runtime teardown', async () => {
-			const { service, agent, row, runtimeCacheService } = setup({
-				integrations: [
-					{ type: 'slack', credentialId: 'slack-1' },
-					{ type: 'linear', credentialId: 'linear-1' },
-				],
-			});
+		it.each([false, true])(
+			'removes only the matching channel (pending only: %s)',
+			async (pendingOnly) => {
+				const integration: AgentIntegrationConfig = { type: 'slack', credentialId: 'slack-1' };
+				const retained: AgentIntegrationConfig = { type: 'linear', credentialId: 'linear-1' };
+				const { service, agent, row, runtimeCacheService } = setup({
+					integrations: pendingOnly ? [retained] : [integration, retained],
+					pendingChannelSetup: pendingOnly
+						? {
+								requested: [{ integration, setupId: 'setup-1' }, { integration: retained }],
+							}
+						: null,
+				});
+				const chatIntegrationService = mock<ChatIntegrationService>();
+				Container.set(ChatIntegrationService, chatIntegrationService);
+				agent.pendingChannelSetup = null;
 
-			const result = await service.applyIntegrationDelta(
-				agent,
-				{ remove: { type: 'slack', credentialId: 'slack-1' } },
-				byUser,
-			);
+				const result = await service.applyIntegrationDelta(agent, { remove: integration }, byUser);
 
-			expect(result.changed).toBe(true);
-			expect(result.removed).toEqual({ type: 'slack', credentialId: 'slack-1' });
-			expect(row.integrations).toEqual([{ type: 'linear', credentialId: 'linear-1' }]);
-			expect(row.versionId).not.toBe(row.activeVersionId);
-			expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
-		});
+				expect(result.changed).toBe(true);
+				expect(result.removed).toEqual(pendingOnly ? undefined : integration);
+				expect(result.removedIntegrations).toEqual(pendingOnly ? [] : [integration]);
+				expect(row.integrations).toEqual([retained]);
+				expect(row.pendingChannelSetup).toBeNull();
+				expect(row.versionId).not.toBe(row.activeVersionId);
+				expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
+				expect(chatIntegrationService.connect).not.toHaveBeenCalled();
+				expect(chatIntegrationService.disconnect).not.toHaveBeenCalled();
+				expect(chatIntegrationService.validateBeforeConnect).not.toHaveBeenCalled();
+			},
+		);
 
 		it('writes nothing when the list is empty', async () => {
 			const { service, agent, agentRepository, telemetry } = setup();

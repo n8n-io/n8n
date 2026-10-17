@@ -19,6 +19,12 @@ export class TelegramApi implements ICredentialType {
 				'Chat with the <a href="https://telegram.me/botfather">bot father</a> to obtain the access token',
 		},
 		{
+			displayName: 'Agent Setup Destination',
+			name: 'agentSetupDestination',
+			type: 'hidden',
+			default: '',
+		},
+		{
 			displayName: 'Base URL',
 			name: 'baseUrl',
 			type: 'string',

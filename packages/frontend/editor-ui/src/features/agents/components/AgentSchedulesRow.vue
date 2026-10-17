@@ -72,6 +72,7 @@ const ISSUE_KEYS: Record<AgentConfigValidationIssue['code'], BaseTextKey> = {
 	incompatible_credential: 'agents.builder.validation.issue.incompatibleCredential' as BaseTextKey,
 	missing_reference: 'agents.builder.validation.issue.missingReference' as BaseTextKey,
 	incompatible_reference: 'agents.builder.validation.issue.incompatibleReference' as BaseTextKey,
+	setup_required: 'agents.builder.validation.issue.setupRequired',
 };
 
 const taskIssueMessages = computed(() => {

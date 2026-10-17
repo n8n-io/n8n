@@ -2,16 +2,20 @@
 import type { Mock, Mocked, MockedFunction } from 'vitest';
 import type { Logger } from '@n8n/backend-common';
 import type { HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
+import type { CredentialsEntity, CredentialsRepository } from '@n8n/db';
 import type { Author } from 'chat';
 import { createHmac } from 'crypto';
 import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
+import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 
+import type { CredentialsService } from '@/credentials/credentials.service';
 import { BadRequestError, ConflictError } from '@n8n/errors';
 import type { UrlService } from '@n8n/backend-services';
 
 import type { Agent } from '../../../../entities/agent.entity';
 import type { AgentRepository } from '../../../../repositories/agent.repository';
+import { cancelChannelSetup } from '../../../../utils/agent-channel-setup';
 import type { AgentChatIntegrationContext } from '../../../agent-chat-integration';
 import { loadTelegramAdapter } from '../../../esm-loader';
 import { TelegramIntegration } from '../../telegram-integration';
@@ -64,8 +68,13 @@ const makeIntegration = (
 			return u;
 		})();
 	const agentRepository = opts.agentRepository ?? mock<AgentRepository>();
+	agentRepository.findByIntegrationCredential.mockResolvedValue([]);
+	const credentialsService = mock<CredentialsService>();
+	const credentialsRepository = mock<CredentialsRepository>();
+	credentialsRepository.updateDataIfUnchanged.mockResolvedValue(true);
 	const instanceSettings = mock<InstanceSettings>({
 		encryptionKey: opts.encryptionKey ?? 'test-encryption-key',
+		hmacSignatureSecret: 'test-signing-secret',
 	});
 	const httpClient = mock<HttpRequestClient>();
 	const requestMock = httpClient.request as Mock;
@@ -77,7 +86,25 @@ const makeIntegration = (
 		agentRepository,
 		instanceSettings,
 		outboundHttp,
+		credentialsService,
+		credentialsRepository,
 	);
+	const setupContext = async (overrides: Partial<AgentChatIntegrationContext> = {}) => {
+		const ctx = makeContext({ ...overrides, setupAuthorized: true });
+		const credential = mock<CredentialsEntity>({
+			id: ctx.credentialId,
+			name: 'Telegram bot',
+			type: 'telegramApi',
+			data: 'stored-ciphertext',
+		});
+		credentialsService.findAllCredentialIdsForProject.mockResolvedValue([credential]);
+		credentialsService.findAllGlobalCredentialIds.mockResolvedValue([]);
+		credentialsService.decrypt.mockResolvedValue(ctx.credential as ICredentialDataDecryptedObject);
+		credentialsService.createEncryptedData.mockResolvedValue({ data: 'encrypted' } as never);
+		await integration.onSetupComplete(ctx);
+		ctx.setupAuthorized = false;
+		return ctx;
+	};
 	return {
 		integration,
 		urlService,
@@ -85,6 +112,9 @@ const makeIntegration = (
 		instanceSettings,
 		outboundHttp,
 		requestMock,
+		credentialsService,
+		credentialsRepository,
+		setupContext,
 	};
 };
 
@@ -118,10 +148,14 @@ describe('TelegramIntegration.onBeforeConnect', () => {
 		requestMock = built.requestMock;
 	});
 
-	it('passes through when no other agent uses the credential', async () => {
+	it('restores a locally configured channel without contacting Telegram', async () => {
 		agentRepository.findByIntegrationCredential.mockResolvedValue([]);
+		const ctx = makeContext();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent(ctx.agentId, 'Agent', [{ type: 'telegram', credentialId: ctx.credentialId }]),
+		);
 
-		await expect(integration.onBeforeConnect(makeContext())).resolves.toBeUndefined();
+		await expect(integration.onBeforeConnect(ctx)).resolves.toBeUndefined();
 
 		expect(agentRepository.findByIntegrationCredential).toHaveBeenCalledWith(
 			'telegram',
@@ -129,9 +163,13 @@ describe('TelegramIntegration.onBeforeConnect', () => {
 			'proj-1',
 			'agent-1',
 		);
-		// onBeforeConnect must not call Telegram — the connect flow overwrites
-		// any leftover webhook in onAfterConnect, so probing here would just
-		// burn an API call and risk false-positive conflicts.
+		expect(requestMock).not.toHaveBeenCalled();
+	});
+
+	it('requires UI setup when the credential has no destination binding', async () => {
+		await expect(integration.onBeforeConnect(makeContext())).rejects.toThrow(
+			'Complete channel setup',
+		);
 		expect(requestMock).not.toHaveBeenCalled();
 	});
 
@@ -159,6 +197,129 @@ describe('TelegramIntegration.onBeforeConnect', () => {
 		await expect(promise).rejects.toThrow(
 			'Telegram credential is already connected to agent "Alpha"',
 		);
+	});
+});
+
+describe('TelegramIntegration destination setup', () => {
+	it.each([
+		{ accessToken: 'changed-token' },
+		{ accessToken: 'bot-token', baseUrl: 'https://other-bot-api.test' },
+	])('requires UI setup again when the stored credential changes', async (stored) => {
+		const { integration, setupContext, credentialsService, credentialsRepository } =
+			makeIntegration();
+		const ctx = await setupContext();
+		credentialsService.decrypt.mockResolvedValue(stored);
+		credentialsService.createEncryptedData.mockClear();
+		credentialsRepository.updateDataIfUnchanged.mockClear();
+
+		await expect(integration.onSetupComplete(ctx)).rejects.toThrow('changed during channel setup');
+
+		expect(ctx.credential.accessToken).toBe('bot-token');
+		expect(credentialsService.createEncryptedData).not.toHaveBeenCalled();
+		expect(credentialsRepository.updateDataIfUnchanged).not.toHaveBeenCalled();
+	});
+
+	it('keeps a concurrent credential edit when the setup proof is saved', async () => {
+		const { integration, setupContext, credentialsService, credentialsRepository } =
+			makeIntegration();
+		const ctx = await setupContext();
+		credentialsService.decrypt.mockResolvedValue({ accessToken: 'bot-token', note: 'Updated' });
+		credentialsRepository.updateDataIfUnchanged.mockClear();
+		credentialsRepository.updateDataIfUnchanged.mockResolvedValue(false);
+
+		await expect(integration.onSetupComplete(ctx)).rejects.toThrow('changed during channel setup');
+
+		expect(credentialsRepository.updateDataIfUnchanged).toHaveBeenCalledWith(
+			'cred-1',
+			'telegramApi',
+			'stored-ciphertext',
+			'encrypted',
+		);
+		expect(ctx.credential.note).toBeUndefined();
+	});
+
+	it('leaves a failed and canceled UI setup unverified', async () => {
+		const { integration, credentialsRepository, requestMock, agentRepository } = makeIntegration();
+		const ctx = makeContext({ setupAuthorized: true });
+		const agent = makeAgent(ctx.agentId, 'Agent', [ctx.integration]);
+		agent.pendingChannelSetup = {
+			requested: [{ integration: ctx.integration, setupId: 'pending-setup' }],
+		};
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		await integration.onBeforeConnect(ctx);
+		requestMock.mockResolvedValue({ statusCode: 500, body: {} });
+		await expect(integration.onAfterConnect(ctx)).rejects.toThrow('Failed to register');
+		expect(credentialsRepository.updateDataIfUnchanged).not.toHaveBeenCalled();
+		Object.assign(agent, cancelChannelSetup(agent, 'pending-setup', 'telegram'));
+		ctx.setupAuthorized = false;
+		expect(await integration.isDestinationConfigured(ctx)).toBe(false);
+		requestMock.mockClear();
+		await integration.onBeforeConnect(ctx);
+		await integration.onAfterConnect(ctx);
+		expect(requestMock).not.toHaveBeenCalled();
+	});
+
+	it('records UI setup so a draft can register its webhook on publication', async () => {
+		const { integration, setupContext, credentialsService, requestMock, instanceSettings } =
+			makeIntegration();
+		const ctx = await setupContext();
+		expect(requestMock).not.toHaveBeenCalled();
+		const savedData = credentialsService.createEncryptedData.mock.calls[0][0].data;
+		const published = makeContext({ credential: savedData });
+		expect(await integration.isDestinationConfigured(published)).toBe(true);
+		Object.defineProperty(instanceSettings, 'encryptionKey', { value: 'rotated-encryption-key' });
+		expect(await integration.isDestinationConfigured(published)).toBe(true);
+		Object.defineProperty(instanceSettings, 'hmacSignatureSecret', {
+			value: 'rotated-signing-secret',
+		});
+		expect(await integration.isDestinationConfigured(published)).toBe(false);
+		Object.defineProperty(instanceSettings, 'hmacSignatureSecret', {
+			value: 'test-signing-secret',
+		});
+		requestMock.mockResolvedValue({ statusCode: 200, body: {} });
+		await integration.onAfterConnect(published);
+		expect(requestMock.mock.calls[0][0].body.url).toBe(ctx.webhookUrlFor('telegram'));
+	});
+
+	const destinationChanges: Array<[string, Partial<AgentChatIntegrationContext>]> = [
+		['Agent', { agentId: 'other-agent' }],
+		['project', { projectId: 'other-project' }],
+		['credential', { credentialId: 'other-credential' }],
+		['routing', { webhookUrlFor: () => 'https://other-instance.test/telegram' }],
+		['bot', { credential: { accessToken: 'other-bot' } }],
+		[
+			'Bot API',
+			{ credential: { accessToken: 'bot-token', baseUrl: 'https://other-bot-api.test' } },
+		],
+	];
+	it.each(destinationChanges)(
+		'requires setup again when the %s changes',
+		async (_label, change) => {
+			const { integration, setupContext, requestMock } = makeIntegration();
+			const ctx = await setupContext();
+			const changed = { ...ctx, ...change };
+			if (change.credential) changed.credential = { ...ctx.credential, ...change.credential };
+			expect(await integration.isDestinationConfigured(changed)).toBe(false);
+			await expect(integration.onBeforeConnect(changed)).rejects.toThrow('Complete channel setup');
+			await integration.onAfterConnect(changed);
+			await integration.onBeforeDisconnect(changed);
+			expect(requestMock).not.toHaveBeenCalled();
+		},
+	);
+
+	it.each([undefined, ''])('preserves legacy routing with setup proof %s', async (proof) => {
+		const { integration, agentRepository, requestMock } = makeIntegration();
+		const ctx = makeContext({
+			credential: { accessToken: 'bot-token', agentSetupDestination: proof },
+		});
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent(ctx.agentId, 'Agent', [{ type: 'telegram', credentialId: ctx.credentialId }]),
+		);
+		expect(await integration.isDestinationConfigured(ctx)).toBe(false);
+		expect(await integration.isDestinationConfigured(ctx, { allowLegacy: true })).toBe(true);
+		await integration.onAfterConnect(ctx);
+		await integration.onBeforeDisconnect(ctx);
+		expect(requestMock).not.toHaveBeenCalled();
 	});
 });
 
@@ -343,7 +504,17 @@ describe('TelegramIntegration secret token', () => {
 		await integration.createAdapter(makeContext());
 
 		expect(createTelegramAdapter).toHaveBeenCalledWith(
-			expect.objectContaining({ mode: 'polling' }),
+			expect.objectContaining({ mode: 'polling', longPolling: { deleteWebhook: false } }),
+		);
+	});
+
+	it('allows UI setup to prepare a local polling channel', async () => {
+		const urlService = mock<UrlService>();
+		urlService.getWebhookBaseUrl.mockReturnValue('http://localhost:5678/');
+		const { integration, setupContext } = makeIntegration({ urlService });
+		await integration.createAdapter(await setupContext());
+		expect(createTelegramAdapter).toHaveBeenCalledWith(
+			expect.objectContaining({ mode: 'polling', longPolling: { deleteWebhook: true } }),
 		);
 	});
 
@@ -383,10 +554,14 @@ describe('TelegramIntegration secret token', () => {
 	});
 
 	it('onAfterConnect sends secret_token to Telegram matching the secret used by the adapter', async () => {
-		const { integration, requestMock } = makeIntegration({ encryptionKey: 'cluster-key' });
+		const { integration, requestMock, setupContext } = makeIntegration({
+			encryptionKey: 'cluster-key',
+		});
 		requestMock.mockResolvedValue({ statusCode: 200, body: {} });
 
-		await integration.onAfterConnect(makeContext({ agentId: 'agent-Z', credentialId: 'cred-Z' }));
+		await integration.onAfterConnect(
+			await setupContext({ agentId: 'agent-Z', credentialId: 'cred-Z' }),
+		);
 
 		expect(requestMock).toHaveBeenCalledTimes(1);
 		const request = requestMock.mock.calls[0][0] as {
@@ -401,29 +576,29 @@ describe('TelegramIntegration secret token', () => {
 	});
 
 	it('onAfterConnect uses the default safe client (user-configurable Bot API host)', async () => {
-		const { integration, requestMock, outboundHttp } = makeIntegration();
+		const { integration, requestMock, outboundHttp, setupContext } = makeIntegration();
 		requestMock.mockResolvedValue({ statusCode: 200, body: {} });
 
-		await integration.onAfterConnect(makeContext());
+		await integration.onAfterConnect(await setupContext());
 
 		expect(outboundHttp.requests).toHaveBeenCalledWith();
 	});
 
 	it('onAfterConnect throws when Telegram rejects setWebhook', async () => {
-		const { integration, requestMock } = makeIntegration();
+		const { integration, requestMock, setupContext } = makeIntegration();
 		requestMock.mockResolvedValue({ statusCode: 400, body: 'bad request' });
 
-		await expect(integration.onAfterConnect(makeContext())).rejects.toThrow(
+		await expect(integration.onAfterConnect(await setupContext())).rejects.toThrow(
 			'Failed to register Telegram webhook: bad request',
 		);
 	});
 
 	it('onAfterConnect honors a custom baseUrl from the credential (self-hosted Bot API)', async () => {
-		const { integration, requestMock } = makeIntegration();
+		const { integration, requestMock, setupContext } = makeIntegration();
 		requestMock.mockResolvedValue({ statusCode: 200, body: {} });
 
 		await integration.onAfterConnect(
-			makeContext({
+			await setupContext({
 				credential: {
 					accessToken: 'bot-token',
 					baseUrl: 'https://bot-api.self-hosted.example.com/',
@@ -440,10 +615,10 @@ describe('TelegramIntegration.onBeforeDisconnect', () => {
 	it('calls deleteWebhook on Telegram with the bot token in webhook mode', async () => {
 		const urlService = mock<UrlService>();
 		urlService.getWebhookBaseUrl.mockReturnValue('https://n8n.example.com/');
-		const { integration, requestMock } = makeIntegration({ urlService });
+		const { integration, requestMock, setupContext } = makeIntegration({ urlService });
 		requestMock.mockResolvedValue({ statusCode: 200, body: {} });
 
-		await integration.onBeforeDisconnect(makeContext());
+		await integration.onBeforeDisconnect(await setupContext());
 
 		expect(requestMock).toHaveBeenCalledTimes(1);
 		const request = requestMock.mock.calls[0][0] as { url: string; method: string };
@@ -464,10 +639,10 @@ describe('TelegramIntegration.onBeforeDisconnect', () => {
 	it('throws when Telegram rejects deleteWebhook so the caller can log it', async () => {
 		const urlService = mock<UrlService>();
 		urlService.getWebhookBaseUrl.mockReturnValue('https://n8n.example.com/');
-		const { integration, requestMock } = makeIntegration({ urlService });
+		const { integration, requestMock, setupContext } = makeIntegration({ urlService });
 		requestMock.mockResolvedValue({ statusCode: 401, body: 'invalid token' });
 
-		await expect(integration.onBeforeDisconnect(makeContext())).rejects.toThrow(
+		await expect(integration.onBeforeDisconnect(await setupContext())).rejects.toThrow(
 			'Failed to deregister Telegram webhook: invalid token',
 		);
 	});
@@ -475,11 +650,11 @@ describe('TelegramIntegration.onBeforeDisconnect', () => {
 	it('honors a custom baseUrl from the credential (self-hosted Bot API)', async () => {
 		const urlService = mock<UrlService>();
 		urlService.getWebhookBaseUrl.mockReturnValue('https://n8n.example.com/');
-		const { integration, requestMock } = makeIntegration({ urlService });
+		const { integration, requestMock, setupContext } = makeIntegration({ urlService });
 		requestMock.mockResolvedValue({ statusCode: 200, body: {} });
 
 		await integration.onBeforeDisconnect(
-			makeContext({
+			await setupContext({
 				credential: {
 					accessToken: 'bot-token',
 					baseUrl: 'https://bot-api.self-hosted.example.com',

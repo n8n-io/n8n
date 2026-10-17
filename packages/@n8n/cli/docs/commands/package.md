@@ -44,6 +44,9 @@ exports require `project:export`, including projects with Agents.
 Export summaries include Agent counts from the server, including added dependencies.
 JSON output includes these counts and the selected Agent IDs.
 
+Draft Agent exports retain pending channel settings. Published exports use the
+configured external connections. Packages contain no destination setup evidence.
+
 `--version-policy` applies to workflows and agents, including agents in a
 project export. The selected version supplies the definition and its references.
 Workflow names, settings (including `errorWorkflow`), and tags always use their
@@ -127,8 +130,28 @@ The API rejects the old workflow-specific and Agent-specific policy fields.
 Human and JSON results include `agents`, `bindings.agents`, and `counts.agents`.
 Each Agent summary reports its source and destination IDs, name, project,
 active version, import status, and separate `publishing` outcome.
-Publication failures retain successfully imported definitions. The command
-returns success for these results and reports the publication failure separately.
+Each summary also includes `channelSetupRequired`. Each entry identifies the
+destination Agent, channel, reference location, and setup URL.
+Publication failures and blockers retain successfully imported definitions.
+The command returns success for these results.
+
+An import reuses a channel only when it is configured for the destination Agent.
+A matching credential or Agent ID does not establish a connection. New or
+unverified connections retain their settings as pending setup. Open the returned
+`setupUrl` to complete the normal channel setup flow. You can use a new credential
+in that flow. Canceling pending setup keeps the existing destination connection.
+
+Pending setup blocks publication, including republication of a historical
+version. When publication is requested, a new Agent reports `blocked` with
+`channel-setup-required`. An Agent with a published version reports `unchanged`
+with that skipped reason for the publication request. Its published version and
+configured connections stay operational. Unpublication still runs. Skipped
+imports and publication no-ops stay unchanged.
+
+If several publication blockers apply, the reported reason follows this order:
+missing node types, credential stubs, incomplete credentials, then channel setup.
+`channelSetupRequired` still lists every pending channel. Credential access and
+missing-credential policies still apply. No policy flag bypasses channel setup.
 
 When the import is blocked, the command exits non-zero and lists the blocking
 issues. Examples:

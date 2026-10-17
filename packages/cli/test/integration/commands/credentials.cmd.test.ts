@@ -22,6 +22,7 @@ import { setupTestCommand } from '@test-integration/utils/test-command';
 
 import {
 	createCredentials,
+	decryptCredentialData,
 	encryptCredentialData,
 	getAllCredentials,
 	getAllSharedCredentials,
@@ -92,6 +93,90 @@ test('import:credentials should import a credential', async () => {
 		],
 	});
 });
+
+test.each(
+	[
+		'slackApi',
+		'telegramApi',
+		'discordBotApi',
+		'linearOAuth2Api',
+		'microsoftEntraServicePrincipalApi',
+		'whatsAppBotApi',
+	].flatMap((type) => [false, true].map((encrypted) => ({ type, encrypted }))),
+)(
+	'import:credentials keeps local $type setup evidence with encrypted=$encrypted',
+	async ({ type, encrypted }) => {
+		const owner = await createOwner();
+		const project = await getPersonalProject(owner);
+		const data = {
+			accessToken: 'xoxb-local-bot-token',
+			agentSetupDestination: 'local-setup-proof',
+			...(type === 'slackApi'
+				? {
+						signatureSecret: 'local-signing-secret',
+						agentId: 'agent-1',
+						agentProjectId: 'project-1',
+						agentWebhookUrl: 'https://hooks.example/slack',
+					}
+				: {}),
+		};
+		const credential = await createCredentials(
+			await encryptCredentialData(
+				Object.assign(new CredentialsEntity(), { name: 'Channel bot', type, data }),
+			),
+			project,
+		);
+		const temporaryDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'n8n-credential-import-'));
+		const input = path.join(temporaryDirectory, 'credentials.json');
+		const importedData = {
+			...data,
+			agentSetupDestination: 'imported-setup-proof',
+			...(type === 'slackApi'
+				? {
+						agentId: 'imported-agent',
+						agentProjectId: 'imported-project',
+						agentWebhookUrl: 'https://hooks.example/imported-slack',
+					}
+				: {}),
+		};
+		try {
+			const encryptedImport = await encryptCredentialData(
+				Object.assign(new CredentialsEntity(), { ...credential, data: importedData }),
+			);
+			fs.writeFileSync(
+				input,
+				JSON.stringify([{ ...credential, data: encrypted ? encryptedImport.data : importedData }]),
+			);
+			await command.run([`--input=${input}`, '--exclude=type']);
+			const [imported] = await getAllCredentials();
+			expect(await decryptCredentialData(imported)).toEqual(data);
+
+			if (type !== 'slackApi') return;
+			const changedIdentity = {
+				...importedData,
+				accessToken: 'xoxb-changed-bot-token',
+				signatureSecret: 'changed-signing-secret',
+			};
+			const encryptedChange = await encryptCredentialData(
+				Object.assign(new CredentialsEntity(), { ...credential, data: changedIdentity }),
+			);
+			fs.writeFileSync(
+				input,
+				JSON.stringify([
+					{ ...credential, data: encrypted ? encryptedChange.data : changedIdentity },
+				]),
+			);
+			await command.run([`--input=${input}`, '--exclude=type']);
+			const [changed] = await getAllCredentials();
+			expect(await decryptCredentialData(changed)).toEqual({
+				accessToken: changedIdentity.accessToken,
+				signatureSecret: changedIdentity.signatureSecret,
+			});
+		} finally {
+			fs.rmSync(temporaryDirectory, { recursive: true, force: true });
+		}
+	},
+);
 
 test('import:credentials should import a credential from separated files', async () => {
 	//

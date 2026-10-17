@@ -32,11 +32,16 @@ import { ScheduleTrigger } from 'n8n-nodes-base/nodes/Schedule/ScheduleTrigger.n
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { CredentialTypes } from '@/credential-types';
 import { AgentRuntimeCacheService } from '@/modules/agents/agent-runtime-cache.service';
+import { AgentIntegrationManagementService } from '@/modules/agents/agent-integration-management.service';
+import { composeJsonConfig } from '@/modules/agents/json-config/agent-config-composition';
+import { SlackMethodsService } from '@/modules/agents/integrations/platforms/slack/slack-methods.service';
 import { AgentSaveCompletionService } from '@/modules/agents/agent-save-completion.service';
 import { AgentSetupCompletionService } from '@/modules/agents/agent-setup-completion.service';
 import { AgentTaskService } from '@/modules/agents/agent-task.service';
 import { AgentUpdateBroadcaster } from '@/modules/agents/agent-update-broadcaster';
 import { ChatIntegrationService } from '@/modules/agents/integrations/chat-integration.service';
+import { ChatIntegrationRegistry } from '@/modules/agents/integrations/agent-chat-integration';
+import { SlackIntegration } from '@/modules/agents/integrations/platforms/slack/slack-integration';
 import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
 import { AgentTaskRepository } from '@/modules/agents/repositories/agent-task.repository';
 import { AgentTaskSnapshotRepository } from '@/modules/agents/repositories/agent-task-snapshot.repository';
@@ -47,7 +52,7 @@ import { PolicyViolationError } from '@/policy/policy-violation.error';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 import { Telemetry } from '@/telemetry';
 import { WorkflowService } from '@/workflows/workflow.service';
-import { createCredentials } from '@test-integration/db/credentials';
+import { createCredentials, saveCredential } from '@test-integration/db/credentials';
 import { createCustomRoleWithScopeSlugs } from '@test-integration/db/roles';
 import { createMember, createOwner, createUser } from '@test-integration/db/users';
 import { LicenseMocker } from '@test-integration/license';
@@ -117,6 +122,7 @@ let orchestrator: ImportOrchestrator;
 beforeAll(async () => {
 	await testModules.loadModules(['agents', 'n8n-packages']);
 	await testDb.init();
+	Container.get(ChatIntegrationRegistry).register(Container.get(SlackIntegration));
 	await initNodeTypes({
 		'n8n-nodes-base.executeWorkflowTrigger': { type: new ExecuteWorkflowTrigger(), sourcePath: '' },
 		'n8n-nodes-base.scheduleTrigger': { type: new ScheduleTrigger(), sourcePath: '' },
@@ -378,7 +384,10 @@ it('applies selected Agents with complete bodies, cycles, workflow bindings and 
 	expect(await Container.get(CredentialsRepository).findOneBy({ id: 'source-chat' })).toMatchObject(
 		{ type: 'slackApi' },
 	);
-	expect(saved.integrations).toEqual([{ type: 'slack', credentialId: 'source-chat' }]);
+	expect(saved.integrations).toEqual([]);
+	expect(saved.pendingChannelSetup?.requested).toMatchObject([
+		{ integration: { type: 'slack', credentialId: 'source-chat' }, setupId: expect.any(String) },
+	]);
 	expect(await Container.get(AgentHistoryRepository).count()).toBe(0);
 	expect(observed).toHaveBeenCalledTimes(2);
 	expect(runtimes.clearRuntimes).toHaveBeenCalledWith(saved.id);
@@ -388,14 +397,14 @@ it('applies selected Agents with complete bodies, cycles, workflow bindings and 
 	const setupCompleted = telemetry.track.mock.calls.filter(([event]) =>
 		Object.is(event, TELEMETRY_EVENT.AGENTS.AGENT_SETUP_COMPLETED),
 	);
-	expect(setupCompleted).toHaveLength(2);
-	for (const agent of [saved, child]) {
-		expect(await agents.findById(agent.id)).toMatchObject({ setupCompletedAt: expect.any(Date) });
-		expect(setupCompleted).toContainEqual([
+	expect(await agents.findById(saved.id)).toMatchObject({ setupCompletedAt: null });
+	expect(await agents.findById(child.id)).toMatchObject({ setupCompletedAt: expect.any(Date) });
+	expect(setupCompleted).toEqual([
+		[
 			TELEMETRY_EVENT.AGENTS.AGENT_SETUP_COMPLETED,
-			expect.objectContaining({ agent_id: agent.id, project_id: project.id, user_id: owner.id }),
-		]);
-	}
+			expect.objectContaining({ agent_id: child.id, project_id: project.id, user_id: owner.id }),
+		],
+	]);
 	expect(input).toEqual(original);
 });
 
@@ -468,6 +477,122 @@ it('reuses destination IDs, replaces removed content, skips writes and preserves
 		activeVersionId: initial.versionId,
 	});
 	expect(await tasks.findByAgentId(initial.id)).toEqual([]);
+});
+
+it('retains a published connection until UI setup completes the imported channel', async () => {
+	const input = publishableFixture();
+	input.manifest.agents.splice(1);
+	const initial = (await importSelected(input, { publishingPolicy: 'publish-all' }))
+		.agentOutcomes[0].agent;
+	const old = await saveCredential(
+		{ name: 'Existing channel', type: 'slackApi', data: { accessToken: 'existing-token' } },
+		{ project, role: 'credential:owner' },
+	);
+	const existing = { type: 'slack' as const, credentialId: old.id };
+	await agents.update(initial.id, { integrations: [existing] });
+	const incoming = await saveCredential(
+		{
+			name: 'Incoming channel',
+			type: 'slackApi',
+			data: { agentId: initial.id, agentWebhookUrl: 'https://source.example/webhook' },
+		},
+		{ project, role: 'credential:owner' },
+	);
+	const config = source(input).config!;
+	config.integrations = [
+		{ type: 'slack', credentialId: incoming.id, settings: { messagingExperience: 'agent' } },
+	];
+	input.manifest.requirements = {
+		credentials: [
+			{ id: incoming.id, type: 'slackApi', usedBy: [{ kind: 'agent', id: source(input).id }] },
+		],
+	};
+	const chat = Container.get(ChatIntegrationService);
+	const connect = vi.spyOn(chat, 'connect').mockResolvedValue();
+	const disconnect = vi.spyOn(chat, 'disconnectChannel').mockResolvedValue();
+	vi.spyOn(chat, 'isChannelLive').mockReturnValue(true);
+	const result = await importSelected(input, { publishingPolicy: 'publish-all' });
+	const imported = result.agentOutcomes[0];
+	const [setup] = imported.channelSetupRequired;
+	expect(imported.publishing).toEqual({
+		state: 'unchanged',
+		skippedPublishReason: 'channel-setup-required',
+	});
+	expect(imported.agent.activeVersionId).toBe(initial.activeVersionId);
+	expect(imported.agent.integrations).toEqual([existing]);
+	expect(composeJsonConfig(imported.agent)?.integrations).toEqual(config.integrations);
+	expect(result.result.agents[0].channelSetupRequired).toEqual([setup]);
+	expect(setup).toMatchObject({
+		agentId: initial.id,
+		projectId: project.id,
+		path: ['integrations', 0],
+	});
+	expect(setup.setupUrl).toContain(`channelSetup=${setup.setupId}`);
+	expect(connect).not.toHaveBeenCalled();
+	expect(disconnect).not.toHaveBeenCalled();
+
+	const repeated = (await importSelected(input)).agentOutcomes[0];
+	expect(repeated.channelSetupRequired).toEqual([setup]);
+	const skipped = (await importSelected(input, { conflictPolicy: 'skip' })).agentOutcomes[0];
+	expect(skipped.agent.revision).toBe(repeated.agent.revision);
+	expect(skipped.publishing).toEqual({ state: 'unchanged' });
+
+	const fresh = await saveCredential(
+		{
+			name: 'Destination channel',
+			type: 'slackApi',
+			data: {
+				accessToken: 'destination-token',
+				agentId: initial.id,
+				agentProjectId: project.id,
+				agentWebhookUrl: Container.get(SlackMethodsService).webhookUrl(project.id, initial.id),
+			},
+		},
+		{ project, role: 'credential:owner' },
+	);
+	const beforeSetup = await agents.findById(initial.id);
+	const write = vi
+		.spyOn(agents, 'updateIntegrations')
+		.mockRejectedValueOnce(new Error('Channel write failed'));
+	await expect(
+		Container.get(AgentIntegrationManagementService).connect({
+			agent: repeated.agent,
+			user: owner,
+			setupId: setup.setupId,
+			integration: { type: 'slack', credentialId: fresh.id },
+		}),
+	).rejects.toThrow('Channel write failed');
+	expect(await agents.findById(initial.id)).toEqual(beforeSetup);
+	expect(disconnect).not.toHaveBeenCalledWith(initial.id, existing);
+	write.mockRestore();
+	await Container.get(AgentIntegrationManagementService).connect({
+		agent: repeated.agent,
+		user: owner,
+		setupId: setup.setupId,
+		integration: { type: 'slack', credentialId: fresh.id },
+	});
+	const saved = await agents.findById(initial.id);
+	expect(saved).toMatchObject({
+		activeVersionId: initial.activeVersionId,
+		pendingChannelSetup: null,
+	});
+	const configured = {
+		type: 'slack' as const,
+		credentialId: fresh.id,
+		settings: { messagingExperience: 'agent' },
+	};
+	expect(saved!.integrations).toEqual([configured, existing]);
+	expect(disconnect).not.toHaveBeenCalledWith(initial.id, existing);
+	connect.mockClear();
+	vi.spyOn(chat, 'syncToConfig').mockResolvedValue();
+	const reused = (
+		await importSelected(input, {
+			bindings: { credentials: new Map([[incoming.id, fresh.id]]) },
+		})
+	).agentOutcomes[0];
+	expect(reused.channelSetupRequired).toEqual([]);
+	expect(reused.agent.integrations).toEqual([configured]);
+	expect(connect).not.toHaveBeenCalled();
 });
 
 it('completes a committed update when the setup check fails', async () => {
@@ -665,8 +790,14 @@ it.each([
 		}
 		const first = source(input);
 		first.config!.credential = 'missing-model';
+		const channel = await createCredentials(
+			{ type: 'slackApi', name: 'Channel', data: '' },
+			project,
+		);
+		first.config!.integrations = [{ type: 'slack', credentialId: channel.id }];
 		input.manifest.requirements = {
 			credentials: [
+				{ id: channel.id, type: 'slackApi', usedBy: [{ kind: 'agent', id: first.id }] },
 				{
 					id: 'missing-model',
 					name: 'Model',
@@ -695,12 +826,14 @@ it.each([
 				: { state: 'blocked', blockedReason: reason },
 		);
 		expect(imported.agentOutcomes[0].agent.activeVersionId).toBe(activeVersionId);
+		expect(imported.agentOutcomes[0].channelSetupRequired).toHaveLength(1);
 		expect(imported.agentOutcomes[0].agent.schema!.credential).toBe('missing-model');
 		expect(imported.agentOutcomes[1].publishing).toEqual({ state: 'published' });
 		expect(imported.result.workflows[0].publishing).toEqual({ state: 'published' });
 		if (published) {
 			source(input).config!.credential = 'unpublish-model';
-			input.manifest.requirements.credentials![0].id = 'unpublish-model';
+			input.manifest.requirements.credentials!.find(({ id }) => id === 'missing-model')!.id =
+				'unpublish-model';
 			const unpublished = await importSelected(input, {
 				...options,
 				publishingPolicy: 'unpublish-all',
@@ -844,6 +977,7 @@ it.each(['create', 'update'] as const)(
 		const second = source(input, 1);
 		first.config!.instructions = 'Keep this earlier save.';
 		second.config!.instructions = 'Roll back this save.';
+		second.config!.integrations = [{ type: 'slack', credentialId: '' }];
 		second.tasks.research_source_task.objective = 'Changed objective';
 		second.availableInMCP = true;
 		const plan = await planFor(input, options);
@@ -875,6 +1009,7 @@ it.each(['draft', 'publication'] as const)(
 		const input = fixture();
 		input.manifest.agents.splice(1);
 		const saved = (await importSelected(input)).scopes[0].imported.agentOutcomes[0].agent;
+		source(input).config!.integrations = [{ type: 'slack', credentialId: '' }];
 		const plan = await planFor(input);
 		const current = (await agents.findById(saved.id))!;
 		if (change === 'draft') {
