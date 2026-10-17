@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { isPinnedBehindLatest, skillVersionState } from './skillVersionState';
+import {
+	draftMatchesPublished,
+	isPinnedBehindLatest,
+	skillVersionState,
+} from './skillVersionState';
 
 describe('skillVersionState', () => {
 	it('is latest when the draft follows the latest version and the live agent runs it', () => {
@@ -108,7 +112,7 @@ describe('skillVersionState', () => {
 		});
 	});
 
-	it('keeps a pin over the live state', () => {
+	it('uses the live state for a pin on the latest version', () => {
 		expect(
 			skillVersionState({
 				draft: 2,
@@ -119,7 +123,7 @@ describe('skillVersionState', () => {
 				scope: 'project',
 			}),
 		).toEqual({
-			kind: 'pinned',
+			kind: 'notLive',
 			draft: 2,
 			live: null,
 			latest: 2,
@@ -132,8 +136,21 @@ describe('skillVersionState', () => {
 				pinned: true,
 				liveHasSameContent: false,
 				scope: 'project',
-			}).kind,
-		).toBe('pinned');
+			}),
+		).toMatchObject({ kind: 'liveBehind', changes: { from: 1, to: 2 } });
+	});
+
+	it('keeps a pin behind the latest version over the live state', () => {
+		expect(
+			skillVersionState({
+				draft: 2,
+				live: null,
+				latest: 3,
+				pinned: true,
+				liveHasSameContent: false,
+				scope: 'project',
+			}),
+		).toMatchObject({ kind: 'pinned', changes: { from: 2, to: 3 } });
 	});
 });
 
@@ -170,5 +187,26 @@ describe('isPinnedBehindLatest', () => {
 			}),
 		).toBe(false);
 		expect(isPinnedBehindLatest(undefined)).toBe(false);
+	});
+});
+
+describe('draftMatchesPublished', () => {
+	const info = {
+		draft: 3,
+		live: 3,
+		latest: 3,
+		pinned: false,
+		liveHasSameContent: false,
+		scope: 'project',
+	} as const;
+
+	it('is true when the published agent runs the draft version or the same content', () => {
+		expect(draftMatchesPublished(info)).toBe(true);
+		expect(draftMatchesPublished({ ...info, live: 2, liveHasSameContent: true })).toBe(true);
+	});
+
+	it('is false when the published agent runs other content or does not use the skill', () => {
+		expect(draftMatchesPublished({ ...info, live: 2 })).toBe(false);
+		expect(draftMatchesPublished({ ...info, live: null })).toBe(false);
 	});
 });

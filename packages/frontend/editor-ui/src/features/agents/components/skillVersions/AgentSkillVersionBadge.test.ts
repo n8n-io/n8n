@@ -70,12 +70,12 @@ async function openMenu(wrapper: ReturnType<typeof mountBadge>['wrapper']) {
 }
 
 describe('AgentSkillVersionBadge', () => {
-	it.each<[string, AgentSkillVersionInfo, string, string | undefined]>([
+	it.each<[string, AgentSkillVersionInfo, string, string]>([
 		[
-			'follows the latest version',
+			'follows the latest version and the published agent runs it',
 			{ draft: 3, live: 3, latest: 3, pinned: false, liveHasSameContent: false, scope: 'project' },
 			'latest',
-			undefined,
+			'outline',
 		],
 		[
 			'follows the latest version before a publish',
@@ -88,30 +88,35 @@ describe('AgentSkillVersionBadge', () => {
 				scope: 'project',
 			},
 			'latest',
-			undefined,
+			'warning',
 		],
 		[
 			'follows the latest version with the published agent behind',
 			{ draft: 3, live: 2, latest: 3, pinned: false, liveHasSameContent: false, scope: 'project' },
 			'latest',
-			undefined,
+			'warning',
 		],
 		[
-			'is pinned',
+			'follows the latest version and the published agent runs the same content',
+			{ draft: 3, live: 2, latest: 3, pinned: false, liveHasSameContent: true, scope: 'project' },
+			'latest',
+			'outline',
+		],
+		[
+			'is pinned to the published version',
 			{ draft: 2, live: 2, latest: 3, pinned: true, liveHasSameContent: false, scope: 'project' },
 			'pinned',
-			'pin',
+			'outline',
 		],
-	])('shows only what the draft uses when it %s', (_, info, kind, icon) => {
+	])('shows only the draft version when it %s', (_, info, kind, variant) => {
 		const { wrapper } = mountBadge(info);
 
 		const badge = wrapper.get('[data-testid="agent-skill-version-badge"]');
 		expect(badge.attributes('data-state')).toBe(kind);
-		expect(badge.attributes('variant')).toBe('outline');
-		expect(badge.attributes('leading-icon')).toBe(icon);
-		expect(badge.text()).toBe(
-			`agents.builder.skills.version.badge.${kind} {"version":"${info.draft}"}`,
-		);
+		expect(badge.attributes('variant')).toBe(variant);
+		expect(badge.attributes('data-unpublished')).toBe(String(variant === 'warning'));
+		expect(badge.attributes('leading-icon')).toBeUndefined();
+		expect(badge.text()).toBe(`agents.builder.skills.version.number {"version":"${info.draft}"}`);
 		expect(wrapper.get('[data-tooltip]').attributes('data-tooltip')).toBe(
 			`agents.builder.skills.version.tooltip.${kind} {"version":"${info.draft}"}`,
 		);

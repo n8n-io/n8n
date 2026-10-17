@@ -1,6 +1,5 @@
 import { enableAutoUnmount, mount } from '@vue/test-utils';
 import type { AgentConfigValidationIssue, AgentSkillVersionInfo } from '@n8n/api-types';
-import { N8nStatusDot } from '@n8n/design-system';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import AgentSkillsSection from '../components/AgentSkillsSection.vue';
@@ -168,14 +167,102 @@ describe('AgentSkillsSection', () => {
 		).toBeDefined();
 	});
 
-	it('shows no version badge without version state, as with the hub off', () => {
+	it.each([
+		['no version state', undefined],
+		['an empty version state, as with the hub off', {}],
+	])('shows no version columns with %s', (_, skillVersions) => {
 		const wrapper = mount(AgentSkillsSection, {
-			props: { skills: [{ id: 'tone', skill }] },
+			props: { skills: [{ id: 'tone', skill }], skillVersions },
 			global: { stubs: versionStubs },
 		});
 
+		expect(wrapper.find('[data-testid="agent-skill-table-header"]').exists()).toBe(false);
 		expect(wrapper.findComponent(AgentSkillVersionBadge).exists()).toBe(false);
+		expect(wrapper.find('[data-testid="agent-skill-draft-version"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="agent-skill-published-version"]').exists()).toBe(false);
 		expect(wrapper.find('[data-testid="agent-skill-version-hint"]').exists()).toBe(false);
+	});
+
+	it('names the skill, draft, and published agent columns', () => {
+		const header = mountWithVersion(versionInfo()).get('[data-testid="agent-skill-table-header"]');
+
+		expect(header.text()).toBe(
+			[
+				'agents.builder.skills.version.column.skill',
+				'agents.builder.skills.version.column.draft',
+				'agents.builder.skills.version.column.published',
+			].join(''),
+		);
+	});
+
+	describe('version columns', () => {
+		function cells(info: AgentSkillVersionInfo) {
+			const wrapper = mountWithVersion(info);
+			const published = wrapper.get('[data-testid="agent-skill-published-version"]');
+			const publishedCaption = wrapper.find('[data-testid="agent-skill-published-caption"]');
+			return {
+				wrapper,
+				draftCaption: wrapper.get('[data-testid="agent-skill-draft-caption"]').text(),
+				published,
+				publishedCaption: publishedCaption.exists() ? publishedCaption.text() : undefined,
+			};
+		}
+
+		it('shows the draft badge in the draft column', () => {
+			const { wrapper } = cells(versionInfo());
+
+			expect(
+				wrapper
+					.get('[data-testid="agent-skill-draft-version"]')
+					.find('[data-testid="agent-skill-version-badge"]')
+					.exists(),
+			).toBe(true);
+		});
+
+		it.each<[string, AgentSkillVersionInfo, string]>([
+			['follows the latest version', versionInfo(), 'caption.followsLatest'],
+			['is pinned to the latest version', versionInfo({ pinned: true }), 'caption.pinned'],
+			[
+				'is pinned behind the latest version',
+				versionInfo({ draft: 2, live: 2, latest: 4, pinned: true }),
+				'caption.pinnedBehind',
+			],
+		])('captions a draft that %s', (_, info, caption) => {
+			expect(cells(info).draftCaption).toBe(`agents.builder.skills.version.${caption}`);
+		});
+
+		it.each<[string, AgentSkillVersionInfo, string]>([
+			['runs the draft version', versionInfo(), 'caption.sameAsDraft'],
+			[
+				'runs the same content',
+				versionInfo({ draft: 10, live: 7, latest: 10, liveHasSameContent: true }),
+				'caption.sameAsDraft',
+			],
+			['runs an older version', versionInfo({ draft: 5, live: 4, latest: 5 }), 'caption.live'],
+		])('shows the published version when the published agent %s', (_, info, caption) => {
+			const { published, publishedCaption } = cells(info);
+
+			expect(published.text()).toBe('agents.builder.skills.version.number');
+			expect(published.attributes('data-state')).toBeUndefined();
+			expect(published.element.tagName).toBe('SPAN');
+			expect(publishedCaption).toBe(`agents.builder.skills.version.${caption}`);
+		});
+
+		it('says "Not added" without a caption when the published agent does not use the skill', () => {
+			const { published, publishedCaption } = cells(versionInfo({ live: null }));
+
+			expect(published.text()).toBe('agents.builder.skills.version.published.notAdded');
+			expect(published.attributes('data-state')).toBe('notAdded');
+			expect(publishedCaption).toBeUndefined();
+		});
+	});
+
+	it('says the draft is ahead when a pin on the latest version is newer than the published one', () => {
+		const wrapper = mountWithVersion(versionInfo({ draft: 3, live: 2, latest: 3, pinned: true }));
+
+		const hint = wrapper.get('[data-testid="agent-skill-version-hint"]');
+		expect(hint.text()).toContain('agents.builder.skills.version.hint.liveBehind');
+		expect(hint.find('[data-testid="agent-skill-follow-latest"]').exists()).toBe(false);
 	});
 
 	it('shows a version badge instead of the outdated warning when the server sends version state', () => {
@@ -291,13 +378,12 @@ describe('AgentSkillsSection', () => {
 		expect(sql.find('[data-testid="agent-skill-version-badge"]').exists()).toBe(true);
 	});
 
-	it('names the version the published agent uses when it is behind the draft', () => {
+	it('says the draft is ahead when the published agent runs an older version', () => {
 		const wrapper = mountWithVersion(versionInfo({ draft: 5, live: 4, latest: 5 }));
 
 		const hint = wrapper.get('[data-testid="agent-skill-version-hint"]');
 		expect(hint.text()).toContain('agents.builder.skills.version.hint.liveBehind');
-		expect(hint.text()).not.toContain('testThenPublish');
-		expect(hint.findComponent(N8nStatusDot).props('variant')).toBe('warning');
+		expect(hint.text()).toContain('agents.builder.skills.version.seeChanges');
 		expect(hint.find('[data-testid="agent-skill-see-changes"]').exists()).toBe(true);
 		expect(hint.find('[data-testid="agent-skill-follow-latest"]').exists()).toBe(false);
 	});
@@ -307,7 +393,6 @@ describe('AgentSkillsSection', () => {
 
 		const hint = wrapper.get('[data-testid="agent-skill-version-hint"]');
 		expect(hint.text()).toBe('agents.builder.skills.version.hint.notLive');
-		expect(hint.findComponent(N8nStatusDot).props('variant')).toBe('warning');
 		expect(hint.find('[data-testid="agent-skill-see-changes"]').exists()).toBe(false);
 	});
 
@@ -323,11 +408,11 @@ describe('AgentSkillsSection', () => {
 		expect(wrapper.find('[data-testid="agent-skill-version-hint"]').exists()).toBe(false);
 	});
 
-	it('shows a pinned hint without the status dot', () => {
+	it('offers the changes and the latest version under a pin behind the latest version', () => {
 		const wrapper = mountWithVersion(versionInfo({ draft: 2, live: 2, latest: 4, pinned: true }));
 
 		const hint = wrapper.get('[data-testid="agent-skill-version-hint"]');
-		expect(hint.findComponent(N8nStatusDot).exists()).toBe(false);
+		expect(hint.find('[data-testid="agent-skill-see-changes"]').exists()).toBe(true);
 		expect(hint.get('[data-testid="agent-skill-follow-latest"]').text()).toBe(
 			'agents.builder.skills.version.useLatest',
 		);

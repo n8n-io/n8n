@@ -14,6 +14,7 @@ import { computed, ref } from 'vue';
 import TimeAgo from '@/app/components/TimeAgo.vue';
 import { formatSkillVersion } from './skillVersionLabels';
 import { skillUserName } from './skillVersionDiff.utils';
+import { draftMatchesPublished } from './skillVersionState';
 import { skillVersionStyle } from './skillVersionStyle';
 import type { SkillVersionLoader } from './useSkillVersionLoader';
 
@@ -46,12 +47,16 @@ const open = ref(false);
 const loading = ref(false);
 const versions = ref<SkillVersionSummary[]>([]);
 
-/** The badge says only what the draft uses. The row hint covers the published agent. */
+/**
+ * The badge shows only the draft version. The caption under it says if the draft is
+ * pinned. The color tells if the published agent runs other content.
+ */
 const kind = computed(() => (props.info.pinned ? 'pinned' : 'latest'));
-const style = computed(() => skillVersionStyle(kind.value));
+const unpublished = computed(() => !draftMatchesPublished(props.info));
+const style = computed(() => skillVersionStyle(unpublished.value ? 'unpublished' : 'latest'));
 
 const badgeText = computed(() =>
-	i18n.baseText(`agents.builder.skills.version.badge.${kind.value}`, {
+	i18n.baseText('agents.builder.skills.version.number', {
 		interpolate: { version: String(props.info.draft) },
 	}),
 );
@@ -154,12 +159,12 @@ function onSelect(id: string) {
 				<N8nBadge
 					clickable
 					:variant="style.variant"
-					:leading-icon="style.icon"
 					size="small"
 					trailing-icon="chevron-down"
 					:disabled="props.disabled"
 					:class="$style.badge"
 					:data-state="kind"
+					:data-unpublished="unpublished"
 					data-testid="agent-skill-version-badge"
 				>
 					{{ badgeText }}
