@@ -1,0 +1,51 @@
+name: 'Release: Publish env vars manifest'
+# Attaches env-vars.json to every GitHub release so the docs site can ingest
+# the full list of `@Env` variables (name, type, default, description,
+# deprecation) for that exact version instead of maintaining tables by hand.
+#
+# Always-latest URL for a track:
+#   https://github.com/n8n-io/n8n/releases/latest/download/env-vars.json
+# Pinned:
+#   https://github.com/n8n-io/n8n/releases/download/n8n@<version>/env-vars.json
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to attach the manifest to (e.g. n8n@2.43.0)'
+        required: true
+        type: string
+
+permissions: {}
+
+jobs:
+  publish:
+    if: github.repository == 'n8n-io/n8n'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    env:
+      TAG: ${{ inputs.tag || github.event.release.tag_name }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.TAG }}
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: ''
+
+      - name: Generate manifest
+        run: node scripts/env-vars-manifest.mjs --out env-vars.json
+
+      - name: Attach to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$TAG" env-vars.json --clobber
