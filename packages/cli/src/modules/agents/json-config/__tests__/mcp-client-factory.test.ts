@@ -4,9 +4,19 @@ import type { CustomFetch } from '@n8n/backend-network';
 import { mock } from 'vitest-mock-extended';
 import { OperationalError, UserError } from 'n8n-workflow';
 
+import { resolveMcpRegistryConnection } from '@/modules/mcp-registry/mcp-registry-connection';
+import { pairAiGatewayServers } from '@/modules/mcp-registry/registry/mcp-registry-ai-gateway';
+import {
+	firecrawlAiGatewayMockServer,
+	firecrawlMockServer,
+} from '@/modules/mcp-registry/registry/mock-servers';
 import type { OauthService } from '@/oauth/oauth.service';
 
-import { buildMcpClientForServer, listMcpServerTools } from '../mcp-client-factory';
+import {
+	buildMcpClientForServer,
+	listMcpServerTools,
+	type AiGatewayMcpCredentialResolver,
+} from '../mcp-client-factory';
 
 // ---------------------------------------------------------------------------
 // Module mocks
@@ -808,6 +818,66 @@ describe('buildMcpClientForServer — unresolvable credential', () => {
 		await expect(configs[0].fetch(configs[0].url)).rejects.toThrow(
 			'does not contain an OAuth2 access token',
 		);
+		expect(proxyFetchMock).not.toHaveBeenCalled();
+	});
+});
+
+// ---------------------------------------------------------------------------
+// buildMcpClientForServer — Gateway credits
+// ---------------------------------------------------------------------------
+
+describe('buildMcpClientForServer — Gateway credits', () => {
+	const [pairedServer] = pairAiGatewayServers(
+		[firecrawlMockServer, firecrawlAiGatewayMockServer],
+		() => true,
+	);
+	const connection = resolveMcpRegistryConnection(pairedServer);
+
+	async function build(server: Partial<AgentJsonMcpServerConfig>) {
+		const credentialProvider = mock<CredentialProvider & AiGatewayMcpCredentialResolver>();
+		credentialProvider.resolveAiGatewayMcpCredential.mockResolvedValue({ token: 'minted' });
+		await buildMcpClientForServer(
+			makeServer({ metadata: { nodeTypeName: '@n8n/mcp-registry.firecrawl' }, ...server }),
+			{
+				credentialProvider,
+				oauthService: mock<OauthService>(),
+				projectId: 'proj-1',
+				proxyFetch,
+				resolveRegistryConnection: async () => connection,
+			},
+		);
+		const [configs] = mcpClientCtor.mock.calls[0] as [Array<{ url: string; fetch: typeof fetch }>];
+		return { config: configs[0], credentialProvider };
+	}
+
+	beforeEach(() => {
+		mcpClientCtor.mockReset();
+		proxyFetchMock.mockReset();
+		proxyFetchMock.mockResolvedValue(makeOk());
+	});
+
+	it('mints Gateway credits for a registry entry with authentication "none", and connects to the AI Gateway', async () => {
+		const { config, credentialProvider } = await build({ authentication: 'none' });
+
+		await config.fetch(config.url);
+
+		expect(credentialProvider.resolveAiGatewayMcpCredential).toHaveBeenCalledWith(
+			'n8nConnectFirecrawlMcpAiGatewayApi',
+		);
+		expect(config.url).toBe('https://gateway.n8n.test/v1/gateway/mcp/firecrawl');
+		const [, init] = proxyFetchMock.mock.calls[0] as [string, RequestInit];
+		expect(headersToCaseInsensitiveRecord(init.headers).Authorization).toBe('Bearer minted');
+	});
+
+	it('does not mint Gateway credits for an OAuth2 entry without a credential', async () => {
+		const { config, credentialProvider } = await build({
+			authentication: 'firecrawlMcpOAuth2Api' as never,
+		});
+
+		await expect(config.fetch(config.url)).rejects.toThrow(
+			'MCP registry connection could not be resolved',
+		);
+		expect(credentialProvider.resolveAiGatewayMcpCredential).not.toHaveBeenCalled();
 		expect(proxyFetchMock).not.toHaveBeenCalled();
 	});
 });

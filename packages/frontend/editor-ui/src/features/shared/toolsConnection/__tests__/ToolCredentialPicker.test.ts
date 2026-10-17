@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { fireEvent } from '@testing-library/vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
+import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 
 import ToolCredentialPicker from '../ToolCredentialPicker.vue';
 import {
@@ -142,6 +143,42 @@ describe('ToolCredentialPicker', () => {
 		await fireEvent.click(row);
 		const events = emitted()['select-credential'];
 		expect(events?.[0]).toEqual([baseNodeItem, 'slackApi', 'c-1']);
+	});
+
+	describe('Gateway credits', () => {
+		const aiGatewayRef = { authType: 'n8nConnectFirecrawlMcpAiGatewayApi', aiGateway: true };
+
+		it('connects a gateway-only server with one button that emits the Gateway credits tag', async () => {
+			const { getByTestId, queryByTestId, emitted } = render(baseMcpItem, [aiGatewayRef]);
+
+			await fireEvent.click(getByTestId('tool-credential-picker-ai-gateway'));
+
+			expect(queryByTestId('tool-credential-picker-trigger-connect')).toBeNull();
+			expect(emitted()['select-credential']?.[0]).toEqual([
+				baseMcpItem,
+				aiGatewayRef.authType,
+				AI_GATEWAY_MANAGED_TAG,
+			]);
+		});
+
+		it('lists Gateway credits first on a paired server, and emits the tag', async () => {
+			const { getByTestId, findAllByRole, emitted } = render(
+				baseMcpItem,
+				[aiGatewayRef, { authType: 'firecrawlMcpOAuth2Api' }],
+				[{ id: 'c-1', name: 'My Firecrawl', type: 'firecrawlMcpOAuth2Api' }],
+			);
+
+			await fireEvent.click(getByTestId('tool-credential-picker-trigger-connect'));
+			const [firstRow] = await findAllByRole('listitem');
+			await fireEvent.click(firstRow);
+
+			expect(firstRow).toHaveAttribute('data-test-id', 'tool-credential-picker-ai-gateway-row');
+			expect(emitted()['select-credential']?.[0]).toEqual([
+				baseMcpItem,
+				aiGatewayRef.authType,
+				AI_GATEWAY_MANAGED_TAG,
+			]);
+		});
 	});
 
 	it('emits credential-dropdown-open when the credential dropdown opens', async () => {

@@ -65,6 +65,8 @@ const shouldShowCredentialPicker = computed(() => {
 	if (!credentialAdapter || !props.item.credentials?.length) return false;
 	if (props.item.status === 'connecting') return false;
 	if (hasToolConnection(props.item.status)) return true;
+	// Gateway credits need no stored credential, so the picker offers them to every user.
+	if (props.item.credentials?.some(({ aiGateway }) => aiGateway)) return true;
 
 	return Boolean(
 		props.item.credentials?.some(

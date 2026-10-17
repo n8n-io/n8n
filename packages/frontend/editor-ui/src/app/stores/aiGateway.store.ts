@@ -1,6 +1,6 @@
 import { computed, ref } from 'vue';
 import { defineStore } from 'pinia';
-import type { INode } from 'n8n-workflow';
+import { isMcpAiGatewayAuthentication, type INode } from 'n8n-workflow';
 import type { AiGatewayConfigDto, AiGatewayUsageEntry } from '@n8n/api-types';
 import { STORES } from '@n8n/stores';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -160,6 +160,8 @@ export const useAiGatewayStore = defineStore(STORES.AI_GATEWAY, () => {
 	}
 
 	function isCredentialTypeSupported(credentialType: string): boolean {
+		// Registry MCP servers generate these types only for a server the AI Gateway lists.
+		if (isMcpAiGatewayAuthentication(credentialType)) return true;
 		return config.value?.credentialTypes.includes(credentialType) ?? false;
 	}
 

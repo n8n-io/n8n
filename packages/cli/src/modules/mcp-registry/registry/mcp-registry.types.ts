@@ -1,3 +1,4 @@
+import type { McpRegistryBindingEndpoint } from 'n8n-workflow';
 import { z } from 'zod';
 
 import type { McpRegistryServerEntity } from './mcp-registry-server.entity';
@@ -8,6 +9,23 @@ export type McpRegistryServerUpsertRow = Pick<
 >;
 
 const serverStatuses = ['active', 'deprecated'] as const;
+
+/** `authType` of a row made from an AI Gateway MCP server. Stored in the database. */
+export const AI_GATEWAY_MANAGED_AUTH_TYPE = '__aiGatewayManaged';
+
+/** Slug prefix of AI Gateway rows. Reserved: the refresh ignores registry rows that use it. */
+export const AI_GATEWAY_MCP_SLUG_PREFIX = 'n8n-connect-';
+
+/** Registry capability of AI Gateway rows. The instance supports it while Gateway credits are on. */
+export const AI_GATEWAY_MCP_CAPABILITY = 'n8n-connect';
+
+export const mcpRegistryIconMimeTypeSchema = z.enum([
+	'image/png',
+	'image/jpeg',
+	'image/jpg',
+	'image/svg+xml',
+	'image/webp',
+]);
 
 const optionalField = <T extends z.ZodType>(schema: T) =>
 	schema.nullish().transform((value) => value ?? undefined);
@@ -84,9 +102,7 @@ const mcpRegistryServerBaseSchema = z.object({
 	icons: z.array(
 		z.object({
 			src: z.string(),
-			mimeType: optionalField(
-				z.enum(['image/png', 'image/jpeg', 'image/jpg', 'image/svg+xml', 'image/webp']),
-			),
+			mimeType: optionalField(mcpRegistryIconMimeTypeSchema),
 			theme: optionalField(z.enum(['light', 'dark'])),
 		}),
 	),
@@ -136,16 +152,35 @@ const mcpRegistryServerAuthSchema = z.discriminatedUnion('authType', [
 		authType: z.literal('usesCredentials'),
 		usesCredentials: mcpRegistryUsesCredentialsSchema,
 	}),
+	// No user credential: the token is minted for Gateway credits on each use.
+	z.object({ authType: z.literal(AI_GATEWAY_MANAGED_AUTH_TYPE) }),
 ]);
 
 export const mcpRegistryServerSchema = mcpRegistryServerBaseSchema.and(mcpRegistryServerAuthSchema);
 
-export type McpRegistryServer = z.output<typeof mcpRegistryServerSchema>;
+/** Set by `pairAiGatewayServers` when the server is read. Never stored. */
+export interface McpRegistryAiGatewayPair {
+	/** Slug of the AI Gateway row. */
+	slug: string;
+	endpoint: McpRegistryBindingEndpoint;
+}
+
+export type McpRegistryServer = z.output<typeof mcpRegistryServerSchema> & {
+	/** On a registry row: the AI Gateway row that offers Gateway credits for it. */
+	aiGateway?: McpRegistryAiGatewayPair;
+	/** On an AI Gateway row: the slug of the registry row that offers it. */
+	pairedSlug?: string;
+};
 export type McpRegistryIcon = McpRegistryServer['icons'][number];
 export type McpRegistryRemote = McpRegistryServer['remotes'][number];
 export type McpRegistryRemoteType = McpRegistryRemote['type'];
 export type McpRegistryTool = McpRegistryServer['tools'][number];
 export type McpRegistryToolAnnotations = NonNullable<McpRegistryTool['annotations']>;
+
+/** Whether a row comes from the AI Gateway, not from the MCP registry. */
+export function isAiGatewayMcpServer(server: Pick<McpRegistryServer, 'authType'>): boolean {
+	return server.authType === AI_GATEWAY_MANAGED_AUTH_TYPE;
+}
 
 export function parseMcpRegistryServer(value: unknown): McpRegistryServer | null {
 	const result = mcpRegistryServerSchema.safeParse(value);
@@ -153,7 +188,16 @@ export function parseMcpRegistryServer(value: unknown): McpRegistryServer | null
 }
 
 export function toEntity(server: McpRegistryServer): McpRegistryServerUpsertRow {
-	const { slug, status, version, updatedAt, ...rest } = server;
+	// The pair fields are derived when the server is read, so they are never stored.
+	const {
+		slug,
+		status,
+		version,
+		updatedAt,
+		aiGateway: _pair,
+		pairedSlug: _pairedSlug,
+		...rest
+	} = server;
 	let mappedStatus = status;
 	// make sure that unknown statuses get mapped to a valid value
 	if (!serverStatuses.includes(status)) {

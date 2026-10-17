@@ -2365,6 +2365,60 @@ describe('NodeCredentials', () => {
 			});
 		});
 
+		describe('Gateway credits only (MCP registry server)', () => {
+			const aiGatewayType = 'n8nConnectBraveSearchMcpAiGatewayApi';
+			const aiGatewayNodeType: INodeTypeDescription = {
+				...googleAiNodeType,
+				name: '@n8n/mcp-registry.n8nConnectBraveSearch',
+				credentials: [{ name: aiGatewayType, required: true }],
+			};
+			const aiGatewayNode: INodeUi = {
+				...googleAiNode,
+				type: aiGatewayNodeType.name,
+				credentials: { [aiGatewayType]: { id: null, name: '', __aiGatewayManaged: true } },
+			};
+
+			beforeEach(() => {
+				vi.mocked(useAiGateway).mockReturnValue({
+					...useAiGateway(),
+					isCredentialTypeSupported: vi.fn((credType: string) => credType === aiGatewayType),
+				});
+				credentialsStore.state.credentialTypes = {
+					[aiGatewayType]: { name: aiGatewayType, displayName: 'Brave Search', properties: [] },
+				};
+				ndvStore.activeNode = aiGatewayNode;
+			});
+
+			it('shows a locked Gateway credits field instead of a picker', () => {
+				mockedStore(useNodeTypesStore).setNodeTypes([aiGatewayNodeType]);
+
+				renderComponent({ props: { node: aiGatewayNode, overrideCredType: aiGatewayType } });
+
+				expect(screen.getByTestId('node-credentials-ai-gateway-only')).toHaveTextContent(
+					'Gateway credits',
+				);
+				expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+				expect(screen.getByTestId('credential-topup-button')).toBeInTheDocument();
+			});
+
+			it('keeps the picker when the node also offers its own credential', () => {
+				mockedStore(useNodeTypesStore).setNodeTypes([
+					{
+						...aiGatewayNodeType,
+						credentials: [
+							{ name: 'braveSearchMcpOAuth2Api', required: true },
+							...(aiGatewayNodeType.credentials ?? []),
+						],
+					},
+				]);
+
+				renderComponent({ props: { node: aiGatewayNode, overrideCredType: aiGatewayType } });
+
+				expect(screen.queryByTestId('node-credentials-ai-gateway-only')).not.toBeInTheDocument();
+				expect(screen.getByTestId('node-credentials-select')).toBeInTheDocument();
+			});
+		});
+
 		describe('multiple credential types (n8n credits on a non-default auth)', () => {
 			// Mirrors a node whose `authentication` defaults to an option mapping to a
 			// credential type NOT covered by n8n credits, while a sibling auth option

@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent, onMounted, watchEffect } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { flushPromises } from '@vue/test-utils';
-import type { McpRegistryServerResponse } from '@n8n/api-types';
+import { AI_GATEWAY_MANAGED_TAG, type McpRegistryServerResponse } from '@n8n/api-types';
 import { NodeConnectionTypes, type INodeTypeDescription } from 'n8n-workflow';
 
 import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
@@ -1143,6 +1143,66 @@ describe('AgentToolsConnectionModalWrapper', () => {
 			await saveConfiguration(configured);
 
 			expect(onConfirm).toHaveBeenCalledWith({ tools: [], mcpServers: [configured] });
+		});
+
+		describe('Gateway credits', () => {
+			const firecrawl: McpRegistryServerResponse = {
+				slug: 'firecrawl',
+				nodeTypeName: '@n8n/mcp-registry.firecrawl',
+				name: 'dev.firecrawl/mcp',
+				title: 'Firecrawl',
+				description: 'Scrape the web',
+				tagline: 'Firecrawl tools',
+				version: '1.0.0',
+				updatedAt: '2026-09-25T00:00:00.000Z',
+				icons: [],
+				credentials: [
+					{ credentialType: 'firecrawlMcpOAuth2Api', name: 'OAuth2', value: 'oAuth2' },
+					{
+						credentialType: 'n8nConnectFirecrawlMcpAiGatewayApi',
+						name: 'Gateway credits',
+						value: 'aiGateway',
+					},
+				],
+				tools: [{ name: 'firecrawl_scrape' }],
+				isTemplated: false,
+				isOfficial: true,
+				status: 'active',
+			};
+
+			it("drafts a Gateway credits entry with authentication 'none' and no credential", async () => {
+				fetchMcpRegistryCatalogMock.mockResolvedValue([firecrawl]);
+				render([], vi.fn());
+				await flushPromises();
+
+				const item = getItems().find((candidate) => candidate.id === 'registry:firecrawl');
+				emitSelectCredential(item!, 'n8nConnectFirecrawlMcpAiGatewayApi', AI_GATEWAY_MANAGED_TAG);
+				await flushPromises();
+
+				const { mcpServer } = getConfigData() as { mcpServer: AgentJsonMcpServerConfig };
+				expect(mcpServer).toMatchObject({
+					authentication: 'none',
+					metadata: { nodeTypeName: firecrawl.nodeTypeName },
+				});
+				expect(mcpServer.credential).toBeUndefined();
+			});
+
+			it('shows a saved Gateway credits entry as connected', async () => {
+				fetchMcpRegistryCatalogMock.mockResolvedValue([firecrawl]);
+				render([], vi.fn(), [
+					{
+						name: 'Firecrawl',
+						url: 'https://mcp.firecrawl.dev/mcp',
+						transport: 'streamableHttp',
+						authentication: 'none',
+						metadata: { nodeTypeName: firecrawl.nodeTypeName },
+					},
+				]);
+				await flushPromises();
+
+				const connected = getItems().find((item) => item.id.startsWith('mcp:'));
+				expect(connected?.status).toBe('connected');
+			});
 		});
 
 		it('commits an added MCP server to the host once its configure step saves', async () => {

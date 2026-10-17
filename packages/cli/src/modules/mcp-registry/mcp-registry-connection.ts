@@ -3,14 +3,19 @@ import {
 	getConfiguredEndpointUrl,
 	getMcpAuthHeaders,
 	type ICredentialTypes,
+	isMcpAiGatewayAuthentication,
 	isMcpOAuth2Authentication,
+	isMcpRegistryAuthentication,
+	type McpAiGatewayCredentialType,
 	type McpOAuth2CredentialType,
 	type McpRegistryConnection,
+	type McpRegistryCredentialBinding,
 	type PrepareMcpRegistryConnectionInput,
 	type PrepareMcpRegistryConnectionResult,
 } from 'n8n-workflow';
 
 import type { McpRegistryServer, McpRegistryUsesCredential } from './registry/mcp-registry.types';
+import { AI_GATEWAY_MANAGED_AUTH_TYPE } from './registry/mcp-registry.types';
 
 export { getConfiguredEndpointUrl };
 
@@ -25,9 +30,41 @@ export function getMcpRegistryCredentialTypeName(
 	return `${camelCase(server.slug)}McpOAuth2Api`;
 }
 
+/** Takes a slug, not a server, because a registry server can offer the type of another row. */
+export function getMcpRegistryAiGatewayCredentialTypeName(
+	slug: string,
+): McpAiGatewayCredentialType {
+	return `${camelCase(slug)}McpAiGatewayApi`;
+}
+
+/** The credential type of the connection's Gateway credits option, if it has one. */
+export function findAiGatewayCredentialType(
+	connection: McpRegistryConnection,
+): McpAiGatewayCredentialType | undefined {
+	return connection.credentialBindings
+		.map((binding) => binding.credentialType)
+		.find(isMcpAiGatewayAuthentication);
+}
+
+function getAiGatewayCredentialOption(slug: string): McpRegistryUsesCredential {
+	return {
+		credentialType: getMcpRegistryAiGatewayCredentialTypeName(slug),
+		name: 'Gateway credits',
+		value: 'aiGateway',
+	};
+}
+
 export function getMcpRegistryCredentialOptions(
 	server: McpRegistryServer,
 ): McpRegistryUsesCredential[] {
+	if (server.authType === AI_GATEWAY_MANAGED_AUTH_TYPE) {
+		return [getAiGatewayCredentialOption(server.slug)];
+	}
+	// Last, because the first option is the node default and saved workflows omit defaults.
+	if (server.aiGateway) {
+		const ownOptions = getMcpRegistryCredentialOptions({ ...server, aiGateway: undefined });
+		return [...ownOptions, getAiGatewayCredentialOption(server.aiGateway.slug)];
+	}
 	if (server.authType === 'usesCredentials') return server.usesCredentials ?? [];
 	return [
 		{
@@ -55,6 +92,16 @@ export function isSupportedMcpRegistryCredentialType(
 	}
 }
 
+/** A paired server's AI Gateway option connects to the AI Gateway, not to the server's own remote. */
+function getBindingEndpoint(
+	server: McpRegistryServer,
+	credentialType: string,
+): Pick<McpRegistryCredentialBinding, 'endpoint'> {
+	return server.aiGateway && isMcpAiGatewayAuthentication(credentialType)
+		? { endpoint: server.aiGateway.endpoint }
+		: {};
+}
+
 export function resolveMcpRegistryConnection(
 	server: McpRegistryServer,
 ): McpRegistryConnection | null {
@@ -67,7 +114,9 @@ export function resolveMcpRegistryConnection(
 	const nodeTypeName = `${MCP_REGISTRY_PACKAGE_NAME}.${camelCase(server.slug)}`;
 	const credentialBindings = getMcpRegistryCredentialOptions(server).flatMap(
 		({ credentialType, value }) =>
-			isMcpOAuth2Authentication(credentialType) ? [{ credentialType, selector: value }] : [],
+			isMcpRegistryAuthentication(credentialType)
+				? [{ credentialType, selector: value, ...getBindingEndpoint(server, credentialType) }]
+				: [],
 	);
 
 	// A templated remote's url is an unresolved `$self`-expression, not a
@@ -108,7 +157,10 @@ export function prepareMcpRegistryConnection({
 	credentialData,
 	headers: preparedHeaders,
 }: PrepareMcpRegistryConnectionInput): PrepareMcpRegistryConnectionResult {
-	if (!connection.credentialBindings.some((binding) => binding.credentialType === credentialType)) {
+	const binding = connection.credentialBindings.find(
+		(candidate) => candidate.credentialType === credentialType,
+	);
+	if (!binding) {
 		return {
 			ok: false,
 			error: {
@@ -126,12 +178,30 @@ export function prepareMcpRegistryConnection({
 			ok: false,
 			error: {
 				code: 'missing_access_token',
-				message: `Credential type "${credentialType}" does not contain an OAuth2 access token`,
+				message: isMcpAiGatewayAuthentication(credentialType)
+					? `Credential type "${credentialType}" does not contain a Gateway credits token`
+					: `Credential type "${credentialType}" does not contain an OAuth2 access token`,
 			},
 		};
 	}
 
 	const { nodeTypeName, transport } = connection;
+
+	if (binding.endpoint) {
+		// The row's own headers are for the row's server, not for the AI Gateway.
+		return {
+			ok: true,
+			value: {
+				nodeTypeName,
+				credentialType,
+				transport: binding.endpoint.transport,
+				endpointUrl: binding.endpoint.url,
+				headers,
+				allowedDomains: binding.endpoint.hostname,
+			},
+		};
+	}
+
 	// Credential headers win over registry-configured ones on a name clash
 	const mergedHeaders = { ...connection.headers, ...headers };
 
