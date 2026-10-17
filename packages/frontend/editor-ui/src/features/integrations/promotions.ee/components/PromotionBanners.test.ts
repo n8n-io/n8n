@@ -35,7 +35,12 @@ const renderComponent = createComponentRenderer(PromotionBanners, {
 const commitSha = 'a'.repeat(40);
 
 const oneChange = (name: string, status: string) => ({
-	data: { commitSha, changes: [{ id: 'workflow-1', name, type: 'workflow', status }] },
+	data: {
+		commitSha,
+		changes: [{ id: 'workflow-1', name, type: 'workflow', status }],
+		resources: [],
+		dependencies: [],
+	},
 });
 
 const environments = (...directions: string[]) => ({
@@ -129,7 +134,9 @@ describe('PromotionBanners', () => {
 	});
 
 	it('shows incoming changes only with pull access and an apply configuration', async () => {
-		const promoteChanges = vi.fn(() => ({ data: { commitSha, changes: [] } }));
+		const promoteChanges = vi.fn(() => ({
+			data: { commitSha, changes: [], resources: [], dependencies: [] },
+		}));
 		server.get('/api/v1/promotions/environments', () => environments('apply'));
 		server.get('/rest/promotions/project-1/changes/promote', promoteChanges);
 		server.get('/rest/promotions/project-1/changes/apply', () =>
