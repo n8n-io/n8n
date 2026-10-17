@@ -17,6 +17,14 @@ export interface WebhookNotification {
 	clientState?: string;
 }
 
+export interface LifecycleNotification {
+	subscriptionId: string;
+	subscriptionExpirationDateTime: string;
+	tenantId: string;
+	clientState?: string;
+	lifecycleEvent: 'reauthorizationRequired' | 'subscriptionRemoved' | 'missed';
+}
+
 export interface ResourceData {
 	id: string;
 	[key: string]: unknown;
