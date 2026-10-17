@@ -38,6 +38,9 @@ const props = withDefaults(
 		tidyUp?: boolean;
 		showBackButton?: boolean;
 		showFullscreenButton?: boolean;
+		/** Hides the workflow name when the parent already shows it. Fullscreen still shows it. */
+		hideTitle?: boolean;
+		canvasIdPrefix?: string;
 		source?: 'version_history' | 'push_pull_modal' | 'unknown';
 	}>(),
 	{
@@ -47,6 +50,8 @@ const props = withDefaults(
 		targetLabel: 'After',
 		showBackButton: false,
 		showFullscreenButton: false,
+		hideTitle: false,
+		canvasIdPrefix: undefined,
 		source: 'unknown',
 	},
 );
@@ -164,7 +169,7 @@ const onNodeChangeSelect = (change: { node: INodeUi; status: NodeDiffStatus }) =
 						icon-size="large"
 						@click="emit('back')"
 					/>
-					<N8nHeading tag="h4" size="medium">
+					<N8nHeading v-if="!hideTitle || isFullscreen" tag="h4" size="medium">
 						{{ sourceWorkflow?.name || targetWorkflow?.name }}
 					</N8nHeading>
 				</div>
@@ -173,7 +178,7 @@ const onNodeChangeSelect = (change: { node: INodeUi; status: NodeDiffStatus }) =
 					<N8nCheckbox
 						v-model="syncIsEnabled"
 						label-size="small"
-						label="Sync views"
+						:label="i18n.baseText('workflowDiff.syncViews')"
 						class="mb-0 mr-s"
 					/>
 					<ElDropdown
@@ -332,6 +337,7 @@ const onNodeChangeSelect = (change: { node: INodeUi; status: NodeDiffStatus }) =
 				:apply-layout="tidyUp"
 				:nodes-diff="nodesDiff"
 				:connections-diff="connectionsDiff"
+				:canvas-id-prefix="canvasIdPrefix"
 				@close-aside="selectedDetailId = undefined"
 			>
 				<template v-if="$slots.sourceLabel" #sourceLabel>

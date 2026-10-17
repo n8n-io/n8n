@@ -117,7 +117,11 @@ const statusSummary = computed(() =>
 		>
 			<template #header>
 				<N8nText bold color="text-light" size="medium">
-					{{ i18n.baseText('workflowReviews.detail.metadata.workflow') }}
+					{{
+						i18n.baseText('workflowReviews.detail.metadata.workflow', {
+							adjustToNumber: detail.workflows.length,
+						})
+					}}
 				</N8nText>
 			</template>
 			<div :class="$style.workflows">

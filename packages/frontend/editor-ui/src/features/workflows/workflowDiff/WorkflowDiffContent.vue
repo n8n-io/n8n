@@ -8,7 +8,7 @@ import NodeDiff from './NodeDiff.vue';
 import HighlightedEdge from './HighlightedEdge.vue';
 import Node from '@/features/workflows/canvas/components/elements/nodes/CanvasNode.vue';
 import { useI18n } from '@n8n/i18n';
-import { useCssModule } from 'vue';
+import { computed, useCssModule } from 'vue';
 import { N8nHeading, N8nText } from '@n8n/design-system';
 import { NodeDiffStatus } from 'n8n-workflow';
 
@@ -29,6 +29,8 @@ const props = defineProps<{
 	applyLayout?: boolean;
 	nodesDiff: Map<string, { status: NodeDiffStatus; node: INodeUi }>;
 	connectionsDiff: Map<string, { status: NodeDiffStatus; connection: unknown }>;
+	/** Prefix for the Vue Flow store ids. Set it when several diffs can be mounted at once. */
+	canvasIdPrefix?: string;
 }>();
 
 const emit = defineEmits<{
@@ -37,6 +39,14 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const $style = useCssModule();
+
+// Vue Flow shares one store for each id across the page.
+const sourceCanvasId = computed(() =>
+	props.canvasIdPrefix ? `${props.canvasIdPrefix}-top` : 'top',
+);
+const targetCanvasId = computed(() =>
+	props.canvasIdPrefix ? `${props.canvasIdPrefix}-bottom` : 'bottom',
+);
 
 function getNodeStatusClass(id: string) {
 	const status = props.nodesDiff?.get(id)?.status ?? 'equal';
@@ -61,7 +71,7 @@ function getEdgeStatusClass(id: string) {
 				</slot>
 				<template v-if="sourceExists">
 					<SyncedWorkflowCanvas
-						id="top"
+						:id="sourceCanvasId"
 						:nodes="sourceNodes"
 						:connections="sourceConnections"
 						:render-data="sourceRenderData"
@@ -104,7 +114,7 @@ function getEdgeStatusClass(id: string) {
 				</slot>
 				<template v-if="targetExists">
 					<SyncedWorkflowCanvas
-						id="bottom"
+						:id="targetCanvasId"
 						:nodes="targetNodes"
 						:connections="targetConnections"
 						:render-data="targetRenderData"
