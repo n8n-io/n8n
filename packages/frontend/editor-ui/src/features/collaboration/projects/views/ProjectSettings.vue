@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { ProjectSelfHealingSection } from '@n8n/frontend-module-self-healing';
 import type { Role } from '@n8n/permissions';
 import { computed, ref, watch, onBeforeMount, onMounted, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
@@ -714,6 +715,13 @@ onMounted(async () => {
 		</div>
 		<form @submit.prevent="onSubmit">
 			<template v-if="canUpdateProject">
+				<ProjectSelfHealingSection
+					v-if="
+						settingsStore.moduleSettings['instance-ai']?.workflowSuggestionsEnabled &&
+						projectsStore.currentProject
+					"
+					:project-id="projectsStore.currentProject.id"
+				/>
 				<fieldset>
 					<label for="projectName">{{ i18n.baseText('projects.settings.name') }}</label>
 					<div :class="$style.projectName">

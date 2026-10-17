@@ -7,8 +7,10 @@ It also provides the result review API.
 
 Call `SelfHealingInvestigationService.start(input)` from backend code.
 Set `N8N_INSTANCE_AI_WORKFLOW_SUGGESTIONS_ENABLED=true` before startup.
-Supply `backgroundUserId`, `projectId`, `workflowId`, and the original failed `executionId`.
-The caller supplies the user who enabled self-healing. The producer checks their current access.
+Supply `projectId`, `workflowId`, and the original failed `executionId`.
+The producer selects the project configuration and checks the enabling user’s current access.
+A selected-workflow configuration takes precedence over all-workflow coverage, even when paused.
+The call returns `null` when no enabled configuration authorizes the investigation.
 It captures the baseline with `WorkflowSuggestionService.captureBaseline()`.
 The workflow must be fully published. The failure must belong to its current published version.
 Manual and evaluation executions are ineligible.
@@ -26,7 +28,8 @@ The call returns `{ kind: 'investigation', investigationId }` or
 A workflow can have one unfinished investigation or pending suggestion.
 Repeated starts for the same failed execution return the original investigation, including after completion.
 Automatic triggers and eligibility for a new failure remain the caller's responsibility.
-After the actor loses access, the caller must require explicit re-enablement before starting new work.
+When an access check fails, the producer pauses the configuration. Another eligible user must
+explicitly enable it before new work can start.
 Re-enablement does not change the actor recorded on an existing investigation.
 
 The producer calls `InstanceAiService.startSelfHealingRun()` with its stored thread and run IDs.
@@ -85,6 +88,29 @@ Apply runs the normal save validation on the retained groups.
 Unchanged candidates can be checked. Final acceptance must require a useful change for a suggestion.
 Recheck the baseline before saving the result. A successful execution is not required to store useful changes.
 There is no automatic trigger or public launch endpoint.
+
+## Configure self-healing
+
+Project Settings provides configuration management under the existing `project:update` permission.
+The same rollout flag controls settings, investigations, and reviews.
+Each project can have one all-workflows configuration and multiple selected-workflow configurations.
+Explicit workflow selections cannot overlap, including when configurations are paused.
+New configurations start disabled. The form selects the creator as the initial reviewer.
+Enabling a configuration records the user whose access authorizes subsequent investigations.
+
+Pause stops new investigations and prevents results from being saved while paused.
+Running agents can finish. If the configuration resumes before completion, their results can be saved.
+Saved results remain available to assigned reviewers while the configuration is paused.
+
+Every suggestion belongs to a result. A result can have no suggestions.
+The current producer and review API use one suggestion per result.
+Removal deletes the configuration. Foreign keys cascade deletion to selections, reviewers,
+investigations, results, and their suggestions and activity records.
+Running agents can finish, but their results are not saved.
+Late completion skips missing configurations and investigations.
+Already applied workflow changes remain saved.
+Admission and result acceptance coordinate with pause and removal through a short configuration
+row lock. Agent execution stays outside database transactions.
 
 ## Verify a candidate
 
@@ -162,7 +188,8 @@ The producer uses one runtime invocation. Persistence stores its usage without c
 Credit billing still uses token counts from the existing runtime billing path.
 Recovery closes interrupted investigations without a result. It does not infer a new usage shape.
 
-Workflow, original-project, background-user, and suggestion deletion cascade to the result.
+Configuration, workflow, original-project, and background-user deletion cascade to the result.
+Result deletion cascades to its suggestions and their activity.
 Execution pruning and private-thread deletion do not remove reports or the stored execution ID.
 Execution references can point to either execution engine. Reads check current workflow and
 execution read access and workflow association. Missing or inaccessible execution references
@@ -178,7 +205,8 @@ Routes use `/projects/:projectId/workflows/:workflowId/self-healing-results`:
 - `POST /:resultId/apply`
 - `POST /:resultId/dismiss`
 
-Current workflow editors can review results. Approval also requires publish access.
+Assigned reviewers with current workflow edit access can review results. Approval also requires
+publish access. Reviewer filtering applies to Inbox lists, counts, details, and actions.
 Each action resolves its suggestion from the result and returns the updated review.
 Send the editor client ID in `push-ref` for Apply actions.
 Read the returned review state before navigating. A competing action can close the suggestion first.
@@ -211,7 +239,7 @@ Saved review services do not require Assistant model availability. Recovery of e
 investigations remains available when the flag is off.
 
 The shared Inbox reads result rows through `SelfHealingResultService.listForInbox()`.
-It reads counts through `countForInbox()`. Both use current editor access and original-project ownership.
+It reads counts through `countForInbox()`. Both use current reviewer membership, editor access, and original-project ownership.
 The source selects rows before applying the shared pagination boundary and limit.
 The shared API uses `GET /inbox` and `GET /inbox/summary`.
 Open and Closed derive from result dismissal and suggestion closure. Inbox reads do not change either state.

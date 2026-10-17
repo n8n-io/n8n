@@ -1,3 +1,6 @@
+import type { SelfHealingConfigurationRepository } from '../database/self-healing-configuration.repository';
+import type { SelfHealingConfigurationService } from '../self-healing-configuration.service';
+import type { SelfHealingConfiguration } from '../database/self-healing-configuration.entity';
 import type { WorkflowSuggestionBaseline } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { InstanceAiConfig } from '@n8n/config';
@@ -45,6 +48,13 @@ describe('SelfHealingInvestigationService', () => {
 	const txRunner = mock<TransactionRunner>();
 	const config = mock<InstanceAiConfig>({ workflowSuggestionsEnabled: true });
 	const logger = mock<Logger>();
+	const configurations = mock<SelfHealingConfigurationRepository>();
+	const configurationService = mock<SelfHealingConfigurationService>();
+	const configuration = mock<SelfHealingConfiguration>({
+		id: 1,
+		enabled: true,
+		enabledById: user.id,
+	});
 	const service = new SelfHealingInvestigationService(
 		investigations,
 		results,
@@ -59,6 +69,8 @@ describe('SelfHealingInvestigationService', () => {
 		txRunner,
 		config,
 		logger,
+		configurations,
+		configurationService,
 	);
 	let investigation: SelfHealingInvestigation;
 	let run: SelfHealingRunResult;
@@ -68,11 +80,15 @@ describe('SelfHealingInvestigationService', () => {
 	beforeEach(() => {
 		vi.resetAllMocks();
 		config.workflowSuggestionsEnabled = true;
+		configurations.findForWorkflow.mockResolvedValue(configuration);
+		configurations.findForUpdate.mockResolvedValue(configuration);
+		configurationService.resolveActorOrPause.mockResolvedValue(user);
 		execution = undefined;
 		controller = new AbortController();
 		investigation = mock<SelfHealingInvestigation>({
 			...input,
 			id: 'investigation',
+			configurationId: configuration.id,
 			baseline,
 			threadId: 'private-thread',
 			runId: 'run',
@@ -299,8 +315,27 @@ describe('SelfHealingInvestigationService', () => {
 			expect(investigations.finishWithoutResult).toHaveBeenCalledWith(investigation.id);
 			expect(run.candidate?.compile).not.toHaveBeenCalled();
 			expect(results.complete).not.toHaveBeenCalled();
+			expect(configurationService.recheckAccess).not.toHaveBeenCalled();
 		},
 	);
+
+	it('rechecks configuration access when the agent returns an access error', async () => {
+		run.status = 'errored';
+		run.error = new ForbiddenError('Workflow edit access is required.');
+		delete run.output;
+
+		await expect(startAndFinish()).rejects.toBe(run.error);
+		await vi.waitFor(() =>
+			expect(investigations.finishWithoutResult).toHaveBeenCalledWith(investigation.id),
+		);
+
+		expect(configurationService.recheckAccess).toHaveBeenCalledWith(
+			configuration.id,
+			input.projectId,
+			input.workflowId,
+		);
+		expect(results.complete).not.toHaveBeenCalled();
+	});
 
 	it.each(['max-iterations', 'other'] as const)(
 		'creates no result for termination reason %s',
@@ -367,8 +402,8 @@ describe('SelfHealingInvestigationService', () => {
 
 	it('checks current access before returning existing work', async () => {
 		investigations.getForExecution.mockResolvedValue(investigation);
-		suggestions.requireEditor.mockRejectedValue(new ForbiddenError('No access.'));
-		await expect(service.start(input)).rejects.toBeInstanceOf(ForbiddenError);
+		configurationService.resolveActorOrPause.mockResolvedValue(null);
+		await expect(service.start(input)).resolves.toBeNull();
 		expect(investigations.getForExecution).not.toHaveBeenCalled();
 	});
 

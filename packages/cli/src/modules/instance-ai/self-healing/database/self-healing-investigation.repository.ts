@@ -1,7 +1,7 @@
 import type { WorkflowSuggestionBaseline } from '@n8n/api-types';
 import { BaseRepository, TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { ConflictError, NotFoundError } from '@n8n/errors';
+import { ConflictError } from '@n8n/errors';
 import { DataSource, IsNull } from '@n8n/typeorm';
 
 import { SelfHealingInvestigation } from './self-healing-investigation.entity';
@@ -12,10 +12,8 @@ export class SelfHealingInvestigationRepository extends BaseRepository<SelfHeali
 		super(SelfHealingInvestigation, dataSource.manager, transactionRunner);
 	}
 
-	async get(id: string, ctx: OperationContext = {}) {
-		const investigation = await this.managerFor(ctx).findOneBy(SelfHealingInvestigation, { id });
-		if (!investigation) throw new NotFoundError('Self-healing investigation not found.');
-		return investigation;
+	async findInvestigation(id: string, ctx: OperationContext = {}) {
+		return await this.managerFor(ctx).findOneBy(SelfHealingInvestigation, { id });
 	}
 
 	async getUnfinishedForWorkflow(workflowId: string, ctx: OperationContext = {}) {
@@ -35,6 +33,7 @@ export class SelfHealingInvestigationRepository extends BaseRepository<SelfHeali
 	async createInvestigation(
 		input: {
 			baseline: WorkflowSuggestionBaseline;
+			configurationId: number;
 			executionId: string;
 			threadId: string;
 			runId: string;
