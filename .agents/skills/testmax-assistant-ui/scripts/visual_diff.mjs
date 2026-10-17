@@ -12,7 +12,7 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
-import { loadPng } from '../../compare-workflow-builders/scripts/n8n_browser.mjs';
+import { loadPng } from '../../testmax-n8n-ai/scripts/n8n_browser.mjs';
 
 const PIXEL_THRESHOLD = 32;
 const RATIO_THRESHOLD = 0.0005;

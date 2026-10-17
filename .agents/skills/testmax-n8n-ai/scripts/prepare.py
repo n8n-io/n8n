@@ -21,7 +21,7 @@ def mcp_handshake(base_url, token):
 	body = json.dumps({
 		'jsonrpc': '2.0', 'id': 1, 'method': 'initialize',
 		'params': {'protocolVersion': '2025-03-26', 'capabilities': {},
-		           'clientInfo': {'name': 'compare-workflow-builders', 'version': '1'}},
+		           'clientInfo': {'name': 'testmax-n8n-ai', 'version': '1'}},
 	}).encode()
 	req = urllib.request.Request(base_url + '/mcp-server/http', data=body, method='POST', headers={
 		'content-type': 'application/json',

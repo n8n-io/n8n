@@ -13,6 +13,7 @@
 //   console.json          browser errors and failed requests to the instance
 //   result.json           {status: passed|failed|error, error, threads, prompts, startedAt, finishedAt, ...}
 // Prints "thread <id>" for each thread that the scenario opens, so run.py can read its events.
+import { randomUUID } from 'node:crypto';
 import { copyFileSync, mkdirSync, mkdtempSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -23,8 +24,9 @@ import {
 	baseUrl,
 	launchBrowser,
 	selectors,
+	setting,
 	signIn,
-} from '../../compare-workflow-builders/scripts/n8n_browser.mjs';
+} from '../../testmax-n8n-ai/scripts/n8n_browser.mjs';
 import { StepFailed, createKit } from './kit.mjs';
 
 const { values: args } = parseArgs({
@@ -44,12 +46,42 @@ const size = { width, height };
 const LIVE_SHOT_MS = 2500;
 const emit = (line) => console.log(line.replace(/\s+/g, ' ').slice(0, 300));
 
+/**
+ * Sign in through the REST API, which is about 1.3 seconds faster than the sign-in page. The auth cookie
+ * is bound to the browser-id header of the login, so the page gets the same id in localStorage.
+ * Falls back to the sign-in page.
+ */
+async function signedInState(browser) {
+	const login = await browser.newContext();
+	try {
+		const browserId = randomUUID();
+		const res = await login.request.post(`${baseUrl}/rest/login`, {
+			headers: { 'browser-id': browserId },
+			data: {
+				emailOrLdapLoginId: setting('N8N_EVAL_EMAIL', 'nathan@n8n.io'),
+				password: setting('N8N_EVAL_PASSWORD', 'PlaywrightTest123'),
+			},
+		});
+		if (res.ok()) {
+			const state = await login.storageState();
+			state.origins = [
+				{
+					origin: new URL(baseUrl).origin,
+					localStorage: [{ name: 'n8n-browserId', value: browserId }],
+				},
+			];
+			return state;
+		}
+		await signIn(await login.newPage());
+		return await login.storageState();
+	} finally {
+		await login.close();
+	}
+}
+
 selectors.setTestIdAttribute('data-test-id');
 const browser = await launchBrowser();
-const login = await browser.newContext();
-await signIn(await login.newPage());
-const storageState = await login.storageState();
-await login.close();
+const storageState = await signedInState(browser);
 
 // The video starts after the sign-in, at the first page of the scenario.
 const videoDir = mkdtempSync(join(tmpdir(), 'feature-test-video-'));

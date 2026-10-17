@@ -1,5 +1,5 @@
 ---
-name: n8n:compare-workflow-builders
+name: n8n:testmax-n8n-ai
 description: >-
   Runs one workflow prompt through Instance AI, Claude Code with the n8n MCP
   server, and Codex with the n8n MCP server on a local n8n instance. Collects
@@ -7,7 +7,7 @@ description: >-
   against the expected outcome, and builds one HTML comparison page. Claude
   Code and Codex run in a sandbox that sees only the n8n MCP server. Use when
   the user wants to compare builders, test a prompt across Instance AI and
-  MCP, or says /compare-workflow-builders.
+  MCP, or says /testmax-n8n-ai.
 ---
 
 # Compare workflow builders
@@ -31,7 +31,7 @@ All scripts are in `scripts/` next to this file. They use only the Python
 standard library and the Playwright copy in the repository.
 
 ```bash
-S="$(git rev-parse --show-toplevel)/.agents/skills/compare-workflow-builders/scripts"
+S="$(git rev-parse --show-toplevel)/.agents/skills/testmax-n8n-ai/scripts"
 ```
 
 ## Settings

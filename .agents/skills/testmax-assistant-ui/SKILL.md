@@ -1,5 +1,5 @@
 ---
-name: n8n:test-instance-ai-feature
+name: n8n:testmax-assistant-ui
 description: >-
   Tests an n8n Assistant (Instance AI) UI feature end to end. Drafts the test
   paths from the feature and the diff, writes one Playwright script for each
@@ -9,7 +9,7 @@ description: >-
   report with video replays, step screenshots, LLM steps, tokens, cost and
   visual diffs. Use when the user wants to test an Instance AI or Assistant
   UI feature end to end, check that a UI change does not break existing
-  screens, or says /test-instance-ai-feature.
+  screens, or says /testmax-assistant-ui.
 ---
 
 # Test an Instance AI feature
@@ -19,7 +19,7 @@ the Assistant is "Instance AI". You draft the test paths, the user approves
 them, and the skill runs them all at the same time. A local page shows each run
 live. At the end, you judge each run and build one report.
 
-The skill uses the scripts of `compare-workflow-builders` for the n8n API, the
+The skill uses the scripts of `testmax-n8n-ai` for the n8n API, the
 LangSmith usage, the live page server, and the report template. Do not copy
 those scripts.
 
@@ -28,16 +28,17 @@ those scripts.
 ```mermaid
 flowchart LR
     A[Feature + diff] --> B[Draft scenarios.json<br/>and scripts]
-    B --> C{User approves}
+    B --> T[--try and --estimate]
+    T --> C{User approves<br/>plan + cost}
     C --> D[run.py]
-    D --> E[Fresh branch instance<br/>feature + regression]
+    D --> E[One fresh branch instance<br/>for each feature + regression]
     D --> F[Fresh branch instance<br/>visual]
-    D --> G[Fresh master instance<br/>visual]
+    D --> G[Fresh master instance<br/>visual, or a kept run]
     E & F & G --> H[Live page]
     F & G --> I[Pixel + accessibility tree diff]
-    E & F & G --> J[summary.txt]
+    E & F & G --> J[summary.txt with triage]
     J --> K[You judge: verdicts.json]
-    K --> L[report/index.html]
+    K --> L[Report rebuilds itself]
 ```
 
 - Each run is one scenario: a Playwright script that drives the real
@@ -49,16 +50,29 @@ flowchart LR
     then compares the captures.
 - All instances are fresh: a new data folder, a new owner, and no workflows or
   threads. Thus the screens of the branch and master are the same when the
-  code is the same.
-- The branch instances start from this checkout's build. The master instance
-  starts from a git worktree at `~/.cache/n8n-feature-test/master`. The skill
-  builds it the first time, and then again only when `origin/master` moves.
+  code is the same. A fresh instance starts in about 5 seconds, because it
+  copies a data folder that is already migrated and seeded.
+- Each feature and regression scenario gets its own fresh instance, so the
+  scenarios do not see each other's data. The visual scenarios share one
+  branch instance and one master instance.
+- The feature flags are the same on all instances. The instances do not ask
+  PostHog for flags, so no instance gets a random experiment variant. Set the
+  flags that the feature needs in the plan, with `featureFlags`.
+- `run.py` builds this checkout first (with turbo, so a build that is up to
+  date takes about 1 second). The master instance starts from a git worktree
+  at `~/.cache/n8n-feature-test/master`, at the merge base of `HEAD` and
+  `origin/master`. Thus the visual check shows only the changes of this
+  branch, not the changes that master got after the branch started.
+- A master visual run that passed is kept. The next run with the same merge
+  base, the same script and the same flags uses it again, and does not start
+  master.
 
 ## Requirements
 
-- Build this checkout before a run: `pnpm build > build.log 2>&1`. The run
-  uses the built files, not the source. When source files are newer than
-  their build, `run.py` prints a warning, and the report shows it.
+Run `python3 $S/run.py --check` before the first run. It checks the tools,
+Chrome, the settings, the disk space and the master build, and prints the
+plan folder for this branch.
+
 - Google Chrome. The scripts use the Playwright package of the repository.
 - The Instance AI model settings in `.env.local` or `.env.ai-surfaces`, as for
   your own instance. Fresh instances get the same settings, without the
@@ -84,20 +98,24 @@ Read the changed Vue components, the stores, and the backend events that they
 use. Find the `data-test-id` values of the new elements. If the user did not
 describe the feature, ask for one or two sentences about it.
 
-Start the master baseline now, in the background. The first build takes 15 to
-20 minutes, and you can draft the plan while it builds:
+If the plan has visual scenarios, start the master baseline now, in the
+background. The first build takes 15 to 20 minutes. Later builds take less
+than a minute when the turbo cache has the files. You can draft the plan while
+it builds:
 
 ```bash
-S=.agents/skills/test-instance-ai-feature/scripts
+S=.agents/skills/testmax-assistant-ui/scripts
+python3 $S/run.py --check         # the setup, and the plan folder
 python3 $S/baseline.py prepare    # in the background
 python3 $S/baseline.py status     # later: is it ready?
 ```
 
 ## 2. Draft the test paths
 
-Write a plan folder in the run root, for example
-`/tmp/feature-test/plans/<feature>/`. It holds `scenarios.json` and one script
-for each scenario.
+Write the plan folder that `--check` prints:
+`~/.cache/n8n-feature-test/plans/<branch>/<feature>/`. The folder stays after
+a reboot. It holds `scenarios.json` and one script for each scenario. The
+folder name is the name of the run folders.
 
 Draft these paths:
 
@@ -116,17 +134,17 @@ Keep each scenario short and focused. A scenario that fails must show where it
 failed. Use more scenarios, not longer ones. A visual scenario must not need
 the new feature, because it also runs on master.
 
-Scenarios that share an instance see each other's data. For example, a
-credential that one scenario creates shows in the credential card of another
-scenario. Set `"isolated": true` on each scenario that depends on the data of
-the instance.
-
 Some UI states show only for a moment, for example a status line that folds
 away when the run ends. Check them while the run is active, not after it.
 
-Show the user the list of paths: the id, the kind, the title and the expected
-result of each. Change the plan until the user approves it. Tell the user the
-number of LLM runs, because each one costs money.
+If the feature is behind a feature flag or an experiment, set the flag in
+`featureFlags`. Without it, the instances use the default value of each flag.
+
+Before you show the plan to the user, check the new scripts and get the
+estimate (see [Check the scripts](#check-the-scripts)). Then show the user the
+list of paths: the id, the kind, the title and the expected result of each.
+Also show the estimate: the number of LLM runs, the cost and the time. Change
+the plan until the user approves it.
 
 ### scenarios.json
 
@@ -154,6 +172,15 @@ number of LLM runs, because each one costs money.
 }
 ```
 
+The plan has these fields: `title` (required), `feature` (the feature, for the
+judge), and `featureFlags` (optional). `featureFlags` maps a flag name to
+`true`, `false` or a variant name, for example
+`{ "<flag name>": "variant" }`. Each instance gets these flags, on the
+branch and on master. They go into `N8N_FEATURE_FLAG_OVERRIDES` and replace
+the values in your env files.
+
+Each scenario has these fields:
+
 | Field | Required | Description |
 |---|---|---|
 | `id` | yes | Lowercase letters, digits and `-`. No `--`. Unique. |
@@ -162,7 +189,7 @@ number of LLM runs, because each one costs money.
 | `script` | yes | A path relative to `scenarios.json`, or `lib:<file>` for a library script. |
 | `expected` | yes | The expected result, for the judge. |
 | `autoConfirm` | no | Answer the Assistant's confirmations automatically. Default `true`. Credential and setup cards get "Later". Set `false` when the script answers a confirmation or a card. |
-| `isolated` | no | Run the scenario on its own fresh instance. Default `false`: the feature and regression scenarios share one branch instance. Set `true` when the scenario creates or reads instance data, such as credentials or workflows, that another scenario can change. Each isolated scenario adds about 20 seconds to start its instance. |
+| `isolated` | no | Run the scenario on its own fresh instance. Default `true`. Instances start ahead of their scenario, so this costs almost no time. Set `false` to run the scenario on one branch instance that it shares with the other `false` scenarios. Visual scenarios ignore this field. |
 | `timeoutMin` | no | The time limit of the scenario. Default 10. |
 | `viewport` | no | The window size, for example `1600x1000` (the default). |
 
@@ -207,13 +234,30 @@ Rules for scripts:
   need a known answer.
 - To test an approval, set `"autoConfirm": false`, wait with
   `t.waitForIdle()` until it returns `'suspended'`, then click the button.
-- Check each new script against a running instance before the full run:
 
-  ```bash
-  N8N_BASE_URL=http://localhost:5678 node $S/run_scenario.mjs --out /tmp/feature-test/try/<id> --script <plan>/<id>.mjs
-  ```
+### Check the scripts
 
-  This uses your own instance and leaves the thread there.
+Check the new scripts on fresh instances before you show the plan:
+
+```bash
+python3 $S/run.py --plan <plan>/scenarios.json --try --only id1,id2
+```
+
+`--try` does not run master, does not start the live page, and builds no
+report. It prints a table with the status, the steps and the first error of
+each run. The runs are in `/tmp/feature-test/try/`. Fix the scripts that fail
+because of the script, then try them again. Each LLM scenario in a try costs
+money too, so try only the new scripts.
+
+Then get the estimate for the full run:
+
+```bash
+python3 $S/run.py --plan <plan>/scenarios.json --estimate
+```
+
+The estimate uses the cost and time of earlier runs of the same scenario ids.
+A scenario without an earlier run shows `*` and the median of all earlier
+runs. A master run that is kept shows `(kept)` and costs nothing.
 
 ## 3. Run
 
@@ -245,40 +289,54 @@ Open the live page for the user on each run. Do not skip this step. Do this:
 
 `run.py` does these steps:
 
-1. Copies the plan into a new run folder, `/tmp/feature-test/<time>-<title>/`.
-2. Starts the live page and prints its URL. Without `--no-open`, it opens the
+1. Prints the estimate and checks the setup. It stops when the setup has an
+   error, for example a missing Chrome.
+2. Copies the plan into a new run folder,
+   `/tmp/feature-test/<time>-<plan folder name>/`.
+3. Starts the live page and prints its URL. Without `--no-open`, it opens the
    page in the default browser.
-3. Starts a fresh branch instance for the feature and regression scenarios.
-4. Prepares the master build, if it is not ready. Then it starts a fresh
-   master instance and a second fresh branch instance for the visual
-   scenarios.
-5. Runs the scenarios, 4 at a time. Each run records a video, the steps with
+4. Builds this checkout with turbo. A build error stops the run, and the
+   output shows the end of `build.log`.
+5. Starts the instances: one for each feature and regression scenario, one
+   branch instance for the visual scenarios, and one master instance. It
+   starts the instances ahead of their scenario. Master starts only for the
+   master runs that it does not keep from an earlier run. It prepares the
+   master build first, if it is not ready.
+6. Runs the scenarios, 4 at a time. Each run records a video, the steps with
    screenshots, the browser errors, the thread events, and the LangSmith ids.
-6. Stops the instances, gets the tokens and cost from LangSmith, compares
-   the visual captures, writes `summary.txt`, and builds the report without
-   verdicts.
-
-The last output line is JSON: `runDir`, `report`, `live`, `summary`,
-`results` (the status of each run), and `visual` (the number of captures and
-the changed ones).
+7. Stops the instances, compares the visual captures, writes `summary.txt`,
+   and builds the report without verdicts.
+8. Prints a result table, the command to run the plan again, and one JSON
+   line: `runDir`, `report`, `live`, `summary`, `results` (the status of each
+   run), `visual` (the number of captures and the changed ones), `rerun` and
+   `next`.
+9. Gets the tokens and cost from LangSmith, then builds the report again.
+   LangSmith receives traces with a delay, so this can take up to 90 seconds.
+   You can start to judge while it runs.
 
 | Option | Use |
 |---|---|
+| `--check` | Check the setup and print the plan folder, then stop. |
+| `--estimate` | Print the expected cost and time, then stop. |
+| `--try` | Check new scripts: no master, no live page, no report. See [Check the scripts](#check-the-scripts). |
 | `--only id1,id2` | Run only these scenarios. |
-| `--rerun <run-dir>` | Run the plan of an earlier run again, in a new folder. |
+| `--rerun last` | Run the plan of the last run again, in a new folder. |
+| `--rerun <run-dir>` | Run the plan of this earlier run again, in a new folder. If the plan folder of that run still exists, it uses the current plan and scripts from there. Thus a fixed script runs in its fixed version. |
 | `--concurrency N` | Runs at the same time. Default 4, or `FEATURE_TEST_CONCURRENCY`. |
-| `--branch-url URL` | Use a running instance for the branch runs, not a fresh one. The threads stay on that instance. The visual check is not reliable then. |
+| `--branch-url URL` | Use a running instance for all branch runs, not fresh ones. The threads stay on that instance. The scenarios share its data, and the visual check is not reliable. |
+| `--no-build` | Do not build this checkout. The output warns when source files are newer than their build. |
 | `--no-baseline` | Do not run master. There is no visual check. |
-| `--no-fetch` | Do not fetch `origin/master`. Use the master that the worktree has. |
+| `--no-cache` | Run master again, also when a kept master run exists. |
+| `--no-fetch` | Do not fetch `origin/master`. Use the merge base with the `origin/master` that git has. |
 | `--no-open` | Do not open the live page in the default browser. Use this when you open it in the editor tab. |
 | `--no-live` | Do not start the live page. Use this only when the user asks for it. |
-| `--keep-instances` | Keep the fresh instances running after the run, for a manual check. Stop them yourself. |
+| `--keep-instances` | Keep the fresh instances running after the run, for a manual check. The output gives `instancePorts`. Each instance is at `http://localhost:<port>`. Stop them yourself. |
 | `--run-dir DIR` | Use this run folder. |
 
 | Setting | Default |
 |---|---|
 | `FEATURE_TEST_RUNS_DIR` | `/tmp/feature-test` |
-| `FEATURE_TEST_CACHE` | `~/.cache/n8n-feature-test` (the master worktree, its build state and log) |
+| `FEATURE_TEST_CACHE` | `~/.cache/n8n-feature-test`: the plans, the master worktree, the kept master runs, and the instance data templates |
 | `FEATURE_TEST_CONCURRENCY` | `4` |
 
 ### Watch the runs
@@ -290,10 +348,15 @@ request.
 
 ## 4. Judge
 
-Read `<runDir>/summary.txt`. It has, for each run: the expected result, the
-steps and their status, the prompts, the last reply, the browser errors, and
-the visual results. Look at the step screenshots in `runs/<name>/` and the
-diff images in `visual/<id>/` when the text is not enough.
+Read `<runDir>/summary.txt`. It starts with a triage: each run is `clean`, or
+`look closer` with the reasons (a failed step or check, a browser error, a
+failed tool call, or a visual change). Then it has, for each run: the expected
+result, the steps and their status with the path of each screenshot, the
+prompts, the last reply, the browser errors, and the visual results.
+
+For a clean run, look at the last screenshot and check it against the expected
+result. For a run to look at closer, look at the screenshots of the steps in
+the reasons, and the diff images in `visual/<id>/`.
 
 A script that passed is not always a pass. Check that the run shows the
 expected result, not only that the script ended. Check for these problems:
@@ -326,7 +389,12 @@ Use `pass` when all checks pass, `fail` when the main goal is not met, and
 intended by the feature, a regression, or noise (for example, a timestamp
 that is not masked). Be strict and factual.
 
-## 5. Build the report again
+## 5. The report
+
+While the live page runs, it builds the report again each time
+`verdicts.json` changes. The open tab loads the new report by itself, and
+keeps the selected run and the scroll position. Thus you do not need to load
+the page again. When the live page does not run, build the report yourself:
 
 ```bash
 python3 $S/report.py <runDir>
@@ -345,11 +413,10 @@ files, so you can copy or share it. It has, from top to bottom:
 - for each run: the expected result and the verdict, the steps with their
   screenshots, the browser errors, and the LLM steps from the trace
 
-If the page still runs, load the `live` URL again in the tab that you opened,
-so that the user sees the verdicts. Give the user the path, and the `live`
-URL. Tell the
-user the result of each scenario, the visual changes, and the problems that
-you found.
+A master run that is kept from an earlier run shows "Reused" in its run box.
+
+Give the user the path and the `live` URL. Tell the user the result of each
+scenario, the visual changes, and the problems that you found.
 
 ## Single steps
 
@@ -365,8 +432,10 @@ you found.
 ## Limits
 
 - LLM answers change from run to run, and a run can fail because of the LLM.
-  Run a failed scenario again with `--rerun <runDir> --only <id>` before you
-  call it a bug.
+  Run a failed scenario again with `--rerun last --only <id>` before you call
+  it a bug.
+- A stopped LLM call does not show in LangSmith. The cost of a run with a stop
+  includes only the calls that ended.
 - Each LLM scenario costs money. The tokens and cost show in the report.
 - Parallel runs share the CPU and the LLM rate limits. The times include the
   shared load.
@@ -375,3 +444,8 @@ you found.
   runs. The accessibility tree diff shows changes in structure and text.
 - The worktree shows in `git worktree list`. To remove it, run
   `git worktree remove ~/.cache/n8n-feature-test/master`.
+- Kept master runs older than 14 days are deleted. The instance data
+  templates in `~/.cache/n8n-feature-test/templates` change when the
+  migrations change. You can delete old templates at any time.
+- A run folder is about 35 MB. The run folders are in `/tmp`, so the system
+  deletes them on reboot.

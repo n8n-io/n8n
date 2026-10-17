@@ -12,9 +12,10 @@ Inputs in <run-dir>:
   verdicts.json          optional: {"<name>": {"verdict": "pass|partial|fail", "summary": "...",
                          "checks": [{"ok": true|false|null, "text": "..."}]}}
 
-The page uses the template and the LLM steps view of compare-workflow-builders.
+The page uses the template and the LLM steps view of testmax-n8n-ai.
 """
 
+import fcntl
 import json
 import shutil
 import sys
@@ -26,7 +27,7 @@ import common  # noqa: F401  (puts the shared scripts on the import path)
 import build_report as br
 import live_server as ls
 
-STATUS = {'waiting': ('st-waiting', 'Waiting'), 'running': ('st-running', 'Running'),
+STATUS = {'waiting': ('st-waiting', 'Waiting'), 'starting': ('st-waiting', 'Starting'), 'running': ('st-running', 'Running'),
           'passed': ('st-done', 'Passed'), 'failed': ('st-failed', 'Failed'), 'error': ('st-failed', 'Error'),
           'skipped': ('st-skipped', 'Skipped')}
 FINISHED = ('passed', 'failed', 'error', 'skipped')
@@ -193,6 +194,8 @@ def render_run_box(run):
 		facts.append(('Started', datetime.fromtimestamp(entry['startedAt']).strftime('%H:%M:%S')))
 	if result.get('threads'):
 		facts.append(('Threads', ', '.join(result['threads'])))
+	if meta.get('cached'):
+		facts.append(('Reused', 'This master run is from an earlier run of the same master commit and script.'))
 	if meta.get('decisions'):
 		facts.append(('Confirmations', f'{len(meta["decisions"])} answered by the auto-approve policy'))
 	if result:
@@ -251,7 +254,7 @@ def render_case(plan, status):
 	lines = [f'Branch {branch.get("commit") or "?"}' + (' with local changes' if branch.get('dirty') else '')
 	         + (f' on {branch["url"]}' if branch.get('url') else ' on a fresh instance')]
 	if master is not None:
-		lines.append(f'Master {master.get("commit") or "(building)"} on a fresh instance')
+		lines.append(f'Master {(master.get("commit") or "(building)")[:11]} (the merge base) on a fresh instance')
 	lines.append(f'{len(kinds)} scenarios: ' + ', '.join(f'{kinds.count(k)} {k}' for k in KIND_LABELS if kinds.count(k)))
 	lines.append(f'{status.get("concurrency", 1)} at a time')
 	return (f'<div class="case"><div class="box"><div class="mono-label">Feature</div><div class="msg">'
@@ -259,13 +262,16 @@ def render_case(plan, status):
 	        f'<div class="msg">{br.esc(chr(10).join(lines))}</div></div></div>')
 
 
-def notes(status, runs):
-	parts = ['Times are seconds from the start of each scenario. Several scenarios ran at the same time on one '
-	         'machine, so their times include the shared load. Tokens and cost come from LangSmith, matched by the '
-	         'traces of the threads of each scenario. An asterisk on a time marks text placed at the previous tool call.']
+def notes(status, runs, verdicts):
+	parts = []
+	if not verdicts and status.get('phase') == 'done':
+		parts.append('The runs are not judged yet. This page reloads when the verdicts and the token usage are ready.')
+	parts.append('Times are seconds from the start of each scenario. Several scenarios ran at the same time on one '
+	             'machine, so their times include the shared load. Tokens and cost come from LangSmith, matched by the '
+	             'traces of the threads of each scenario. An asterisk on a time marks text placed at the previous tool call.')
 	if any(r['master'] for r in runs):
-		parts.append('Visual scenarios ran on a second fresh branch instance and on a fresh master instance, so both '
-		             'start from the same empty state.')
+		parts.append('Visual scenarios ran on a fresh branch instance and on a fresh master instance, so both start '
+		             'from the same empty state. Master is the merge base of the branch.')
 	if status.get('stale'):
 		parts.append('Warning: these packages had source changes newer than their build, so the branch instance ran '
 		             f'an old build: {", ".join(status["stale"])}.')
@@ -303,8 +309,40 @@ def render_visual(results, runs, files):
 	        'and labels.</p>' + ''.join(cards) + '</div>')
 
 
+RELOAD_JS = """
+// Served by the live page: reload when the report is built again, for example after the verdicts.
+(()=>{
+  if (!location.protocol.startsWith('http')) return;
+  const saved = JSON.parse(sessionStorage.getItem('report-view') || 'null');
+  if (saved) {
+    sessionStorage.removeItem('report-view');
+    if (document.getElementById(saved.run)) show(saved.run);
+    window.scrollTo(0, saved.y);
+  }
+  setInterval(async ()=>{
+    try {
+      const version = (await (await fetch('version.txt', {cache: 'no-store'})).text()).trim();
+      if (version && version !== REPORT_VERSION) {
+        const run = document.querySelector('.run.active')?.id;
+        sessionStorage.setItem('report-view', JSON.stringify({run, y: window.scrollY}));
+        location.reload();
+      }
+    } catch {}
+  }, 3000);
+})();
+"""
+
+
 def build(run_dir):
-	"""Write report/index.html with its images and videos. Returns its path."""
+	"""Write report/index.html with its images and videos. Returns its path. Two builds of one run can
+	happen at the same time (run.py, report.py, the live page), so they take turns."""
+	run_dir.mkdir(parents=True, exist_ok=True)
+	with (run_dir / 'report.lock').open('w') as lock:
+		fcntl.flock(lock, fcntl.LOCK_EX)
+		return _build(run_dir)
+
+
+def _build(run_dir):
 	plan, status, runs = load(run_dir)
 	verdicts = br.load_verdicts(run_dir)
 	report = run_dir / 'report'
@@ -356,11 +394,15 @@ def build(run_dir):
 		        if (report / 'visual' / r['scenario'] / f'{r["name"]}.{key}.png').exists() else None)
 
 	replay = br.render_replay(screens, 'Each video shows one scenario in the n8n UI. Press Esc to close.')
+	version = str(time.time_ns())
 	page = br.fill_template(
-		br.esc(plan.get('title') or 'Instance AI feature test'), ''.join(rows), notes(status, runs), ''.join(panels),
-		replay=replay, after_table=render_visual(results, runs, visual_file), head=CSS,
-		scripts=f'<script>const SCREENS = {json.dumps(screens)};</script>', case=render_case(plan, status), thead=THEAD)
+		br.esc(plan.get('title') or 'Instance AI feature test'), ''.join(rows), notes(status, runs, verdicts),
+		''.join(panels), replay=replay, after_table=render_visual(results, runs, visual_file), head=CSS,
+		scripts=(f'<script>const SCREENS = {json.dumps(screens)}; const REPORT_VERSION = "{version}";</script>'
+		         f'<script>window.addEventListener("DOMContentLoaded", ()=>{{{RELOAD_JS}}});</script>'),
+		case=render_case(plan, status), thead=THEAD)
 	(report / 'index.html').write_text(page)
+	(report / 'version.txt').write_text(version)
 	return report / 'index.html'
 
 
@@ -455,11 +497,43 @@ class ScenarioApp:
 		return candidate if candidate.is_relative_to(base) and candidate.is_file() else None
 
 
+def triage(run, visual):
+	"""The reasons to look closer at a run. An empty list means that the run looks clean: every step and check
+	passed, with no browser error, no failed tool call, and no visual change."""
+	reasons = []
+	status = run['entry'].get('status')
+	if status != 'passed':
+		reasons.append(f'the run {status}')
+	failed = [s for s in run['steps'] if s['status'] == 'failed']
+	if failed:
+		reasons.append(f'{len(failed)} failed step(s) or check(s)')
+	console = run['console']
+	errors = len(console.get('consoleErrors') or []) + len(console.get('requestErrors') or [])
+	if errors:
+		reasons.append(f'{errors} browser error(s)')
+	tool_errors = sum(e['error'] for e in run['data']['events'] if e['kind'] == 'tool')
+	if tool_errors:
+		reasons.append(f'{tool_errors} failed tool call(s)')
+	changed = [r['name'] for r in visual if r['scenario'] == run['scenario']['id'] and r['status'] != 'unchanged']
+	if changed and not run['master']:
+		reasons.append(f'visual change in {", ".join(changed)}')
+	return reasons
+
+
 def summarize(run_dir):
-	"""Plain text for the judge: each run with its steps, final reply, errors and visual results."""
+	"""Plain text for the judge: a triage list, then each run with its steps, final reply, errors and visual
+	results."""
 	plan, status, runs = load(run_dir)
 	visual = read_json(run_dir / 'visual.json', [])
-	out = [f'# {plan.get("title", "")}', '', 'Feature:', plan.get('feature') or '-', '']
+	out = [f'# {plan.get("title", "")}', '', 'Feature:', plan.get('feature') or '-', '', '## Triage', '',
+	       'Clean runs passed every step and check, with no browser error, failed tool call or visual change.',
+	       'For these, check that the last reply and the final screenshot match the expected result.',
+	       'Look closely at the other runs: their screenshots, errors and diffs.', '']
+	judged = [r for r in runs if not r['master']]
+	for run in judged:
+		reasons = triage(run, visual)
+		out.append(f'- {run["name"]}: ' + ('clean' if not reasons else 'look closer: ' + '; '.join(reasons)))
+	out.append('')
 	for run in runs:
 		s, result, data = run['scenario'], run['result'], run['data']
 		out += [f'## {run["name"]}: {run_title(run)} ({s["kind"]}, {"master" if run["master"] else "branch"})',
@@ -467,7 +541,8 @@ def summarize(run_dir):
 		        f'Status: {run["entry"].get("status")}' + (f' ({result["error"]})' if result.get('error') else ''),
 		        'Steps:']
 		for st in run['steps']:
-			out.append(f'  {st["i"]}. [{st["status"]}] {st["kind"]}: {st["title"]}')
+			shot = f'  (runs/{run["name"]}/{st["shot"]})' if st.get('shot') else ''
+			out.append(f'  {st["i"]}. [{st["status"]}] {st["kind"]}: {st["title"]}{shot}')
 			if st.get('error'):
 				out.append('     ' + st['error'].replace('\n', '\n     ')[:1500])
 		for p in result.get('prompts') or []:

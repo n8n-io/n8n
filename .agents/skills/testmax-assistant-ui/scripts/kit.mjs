@@ -13,7 +13,7 @@
 import { mkdirSync, renameSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { expect } from '../../compare-workflow-builders/scripts/n8n_browser.mjs';
+import { expect } from '../../testmax-n8n-ai/scripts/n8n_browser.mjs';
 
 const THREAD_URL = /\/assistant\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/;
 const RUN_GRACE_MS = 10_000;
