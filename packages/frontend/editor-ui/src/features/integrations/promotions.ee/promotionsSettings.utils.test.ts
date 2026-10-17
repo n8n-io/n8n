@@ -7,6 +7,7 @@ import {
 	emptyProviderForm,
 	planConnectionWrites,
 	providerFormFrom,
+	repositoryDisplayName,
 	toConnection,
 	type ConnectionFormState,
 } from './promotionsSettings.utils';
@@ -335,5 +336,26 @@ describe('planConnectionWrites', () => {
 				},
 			},
 		]);
+	});
+});
+
+describe('repositoryDisplayName', () => {
+	it('uses the stored path of a GitLab target', () => {
+		expect(
+			repositoryDisplayName({
+				schemaVersion: 1,
+				remoteUrl: 'https://gitlab.example.com/acme/platform/workflows.git',
+				repositoryPath: 'acme/platform/workflows',
+			}),
+		).toBe('acme/platform/workflows');
+	});
+
+	it.each([
+		['https://github.com/acme/workflows.git', 'acme/workflows'],
+		['git@github.com:acme/workflows.git', 'acme/workflows'],
+		['ssh://git@git.example.com:2222/acme/workflows.git', 'acme/workflows'],
+		['/srv/git/workflows.git', '/srv/git/workflows'],
+	])('shortens %s to %s', (remoteUrl, name) => {
+		expect(repositoryDisplayName({ schemaVersion: 1, remoteUrl })).toBe(name);
 	});
 });
