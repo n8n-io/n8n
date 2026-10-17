@@ -3,7 +3,7 @@ import { N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { AgentVariable } from '@n8n/api-types';
 
-import { describeVariableDefault } from '../composables/useAgentTestVariables';
+import { describeVariableDefault, hasUsableDefault } from '../composables/useAgentTestVariables';
 import type { ToolOpenTarget } from './AgentCapabilitiesSection.types';
 
 defineProps<{ variables: AgentVariable[] }>();
@@ -42,7 +42,11 @@ function openTool(name: string) {
 					</template>
 				</N8nText>
 			</div>
-			<div v-if="variable.default" :class="$style.status" data-testid="agent-variable-status">
+			<div
+				v-if="hasUsableDefault(variable)"
+				:class="$style.status"
+				data-testid="agent-variable-status"
+			>
 				<N8nIcon icon="check" size="small" color="success" aria-hidden="true" />
 				<N8nText size="small" color="text-base">
 					{{ i18n.baseText('agents.variables.status.hasDefault') }}

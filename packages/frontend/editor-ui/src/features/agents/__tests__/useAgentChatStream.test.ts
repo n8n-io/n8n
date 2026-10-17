@@ -357,6 +357,48 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		expect(assistantMessages[0].toolCalls?.[0].state).toBe('suspended');
 	});
 
+	it.each([
+		['sends non-empty testVariables', { token: 'abc' }, { token: 'abc' }],
+		['omits empty testVariables', {}, undefined],
+		['omits unset testVariables', undefined, undefined],
+	])('resume %s in the request body', async (_label, testVariables, expected) => {
+		const suspended = (): Response =>
+			makeSseResponse([
+				{
+					type: 'tool-call',
+					toolCallId: 'tc-v',
+					toolName: 'calculator',
+					input: { input: '1' },
+				},
+				{
+					type: 'tool-call-suspended',
+					payload: {
+						toolCallId: 'tc-v',
+						runId: 'run-v',
+						toolName: 'calculator',
+						input: { type: 'approval', toolName: 'calculator', args: { input: '1' } },
+					},
+				},
+				{ type: 'done' },
+			]);
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(suspended())
+			.mockResolvedValueOnce(makeSseResponse([{ type: 'done' }]));
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+		const hook = buildHook(undefined, { testVariables: () => testVariables });
+		await hook.sendMessage('go');
+		await flushPromises();
+		await nextTick();
+		await hook.resume({ runId: 'run-v', toolCallId: 'tc-v', resumeData: { approved: true } });
+
+		const resumeCall = fetchMock.mock.calls.find(([url]) => String(url).endsWith('/chat/resume'));
+		const body = JSON.parse((resumeCall?.[1] as { body: string }).body) as Record<string, unknown>;
+		if (expected) expect(body.testVariables).toEqual(expected);
+		else expect(body).not.toHaveProperty('testVariables');
+	});
+
 	it('posts approval resumes to the chat resume endpoint in preview chat mode', async () => {
 		const fetchMock = vi
 			.fn()

@@ -30,6 +30,7 @@ vi.mock('../ParameterInputFull.vue', async () => {
 						'data-test-id': `input-${props.parameter.name}`,
 						placeholder: props.parameter.placeholder,
 						title: props.parameter.description,
+						'data-path': props.path,
 						value: props.value,
 						onInput: (e: Event) =>
 							emit('update', {
@@ -126,5 +127,56 @@ describe('AgentVariablesParameter', () => {
 			const events = emitted('valueChanged') as Array<[{ name: string; value: unknown }]>;
 			expect(events.at(-1)?.[0]).toEqual({ name: 'trustedValues.values', value: undefined });
 		});
+	});
+
+	it('uses the saved entry index for the row path, not the render index', async () => {
+		const { findByTestId } = render({
+			values: [
+				{ name: 'tenant', value: 'a' },
+				{ name: 'dashboard_url', value: 'x' },
+			],
+		});
+		const dashboard = await findByTestId('input-dashboard_url');
+		const tenant = await findByTestId('input-tenant');
+		expect(dashboard).toHaveValue('x');
+		expect(dashboard).toHaveAttribute('data-path', 'trustedValues.values[1].value');
+		expect(tenant).toHaveValue('a');
+		expect(tenant).toHaveAttribute('data-path', 'trustedValues.values[0].value');
+	});
+
+	it('uses append positions for variables without a saved entry', async () => {
+		const { findByTestId } = render({ values: [{ name: 'tenant', value: 'a' }] });
+		expect(await findByTestId('input-dashboard_url')).toHaveAttribute(
+			'data-path',
+			'trustedValues.values[1].value',
+		);
+		expect(await findByTestId('input-tenant')).toHaveAttribute(
+			'data-path',
+			'trustedValues.values[0].value',
+		);
+	});
+
+	it('reads the variables of an inline agent stored as a JSON string', async () => {
+		const { findByTestId } = renderComponent({
+			props: {
+				parameter,
+				path: 'trustedValues',
+				nodeValues: { agentSource: 'inline', inlineAgent: JSON.stringify({ config: { tools } }) },
+			} as never,
+		});
+		await findByTestId('input-dashboard_url');
+		expect(getAgentConfig).not.toHaveBeenCalled();
+	});
+
+	it('treats an invalid inline agent JSON string as no variables', async () => {
+		const { findByTestId, queryByTestId } = renderComponent({
+			props: {
+				parameter,
+				path: 'trustedValues',
+				nodeValues: { agentSource: 'inline', inlineAgent: '{not json' },
+			} as never,
+		});
+		await findByTestId('agent-variables-empty');
+		expect(queryByTestId('input-dashboard_url')).toBeNull();
 	});
 });

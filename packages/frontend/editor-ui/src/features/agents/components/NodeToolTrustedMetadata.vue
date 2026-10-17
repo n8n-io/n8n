@@ -2,7 +2,11 @@
 import { computed, onBeforeUnmount, provide, ref, useId, watch } from 'vue';
 import { N8nText } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
-import { extractNodeToolVariables, type NodeToolTrustedMetadata } from '@n8n/api-types';
+import {
+	extractNodeToolVariables,
+	TrustedMetadataKeySchema,
+	type NodeToolTrustedMetadata,
+} from '@n8n/api-types';
 import { WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE, type INodeProperties } from 'n8n-workflow';
 import type { IUpdateInformation } from '@/Interface';
 import { ExpressionLocalResolveContextSymbol, WorkflowDocumentStoreKey } from '@/app/constants';
@@ -39,7 +43,12 @@ const emit = defineEmits<{ 'update:valid': [valid: boolean] }>();
 const i18n = useI18n();
 const id = useId();
 
-const variableNames = computed(() => extractNodeToolVariables(props.nodeParameters));
+// Names the wire schema rejects can't be saved, so they never become rows.
+const variableNames = computed(() =>
+	extractNodeToolVariables(props.nodeParameters).filter(
+		(name) => TrustedMetadataKeySchema.safeParse(name).success,
+	),
+);
 
 /** Rows the user edited in this session. Other rows come from the stored defaults. */
 const edited = ref<Record<string, TrustedMetadataRow>>({});

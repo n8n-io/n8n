@@ -43,6 +43,15 @@ describe('NodeToolTrustedMetadata', () => {
 		expect(wrapper.findAll('button')).toHaveLength(0);
 	});
 
+	it('does not render rows for names the wire schema rejects', () => {
+		const long = 'a'.repeat(64);
+		const wrapper = render({
+			nodeParameters: { url: `={{ $json.ok }}/{{ $json.${long} }}` },
+		});
+		const names = wrapper.findAll('[data-test-id="agent-trusted-metadata-name"]');
+		expect(names.map((n) => n.text())).toEqual(['ok']);
+	});
+
 	it('is hidden when no variables are detected', () => {
 		const wrapper = render({ nodeParameters: { url: 'https://x.test' } });
 		expect(wrapper.find('[data-test-id="agent-node-tool-trusted-metadata"]').exists()).toBe(false);

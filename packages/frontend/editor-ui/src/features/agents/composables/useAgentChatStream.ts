@@ -1653,7 +1653,8 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				runId: payload.runId,
 				toolCallId: payload.toolCallId,
 				resumeData,
-				...(resumeTestVariables && { testVariables: resumeTestVariables }),
+				...(resumeTestVariables &&
+					Object.keys(resumeTestVariables).length > 0 && { testVariables: resumeTestVariables }),
 			},
 			onAccepted,
 		);

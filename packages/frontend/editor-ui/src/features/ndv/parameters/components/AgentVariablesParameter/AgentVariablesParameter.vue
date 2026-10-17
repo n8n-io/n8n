@@ -27,6 +27,7 @@ const emit = defineEmits<{
 
 type Tools = Parameters<typeof collectAgentVariables>[0];
 type Entry = { name: string; value: string };
+type SavedEntry = Entry & { index: number };
 
 const i18n = useI18n();
 const rootStore = useRootStore();
@@ -44,8 +45,21 @@ const agentId = computed(() => {
 });
 const isInline = computed(() => props.nodeValues.agentSource === 'inline');
 const inlineTools = computed(() => {
-	const inline = props.nodeValues.inlineAgent as { config?: { tools?: unknown } } | undefined;
-	return inline?.config?.tools;
+	let inline: unknown = props.nodeValues.inlineAgent;
+	// The parameter can be stored as a JSON string. Invalid JSON means no agent is known.
+	if (typeof inline === 'string') {
+		try {
+			inline = JSON.parse(inline);
+		} catch {
+			return undefined;
+		}
+	}
+	if (!inline || typeof inline !== 'object') return undefined;
+	const config: unknown = Object.hasOwn(inline, 'config')
+		? (inline as { config?: unknown }).config
+		: undefined;
+	if (!config || typeof config !== 'object' || !Object.hasOwn(config, 'tools')) return undefined;
+	return (config as { tools?: unknown }).tools;
 });
 
 let requestId = 0;
@@ -81,16 +95,25 @@ async function loadVariables() {
 
 watch([agentId, isInline, inlineTools, projectId], loadVariables, { immediate: true });
 
-const saved = computed<Entry[]>(() => {
+const rawValues = computed(() => {
 	const raw = props.values?.values;
-	if (!Array.isArray(raw)) return [];
-	return raw
-		.filter((entry) => typeof entry?.name === 'string' && entry.name !== '')
-		.map((entry) => ({
-			name: entry.name as string,
-			value: typeof entry.value === 'string' ? entry.value : String(entry.value ?? ''),
-		}));
+	return Array.isArray(raw) ? raw : [];
 });
+
+/** Valid saved entries, each with its index in the stored `values` array. */
+const saved = computed<SavedEntry[]>(() =>
+	rawValues.value.flatMap((entry, index) =>
+		typeof entry?.name === 'string' && entry.name !== ''
+			? [
+					{
+						name: entry.name,
+						value: typeof entry.value === 'string' ? entry.value : String(entry.value ?? ''),
+						index,
+					},
+				]
+			: [],
+	),
+);
 
 function describeDefault(variable: AgentVariable): string {
 	const fallback = variable.default;
@@ -103,14 +126,20 @@ function describeDefault(variable: AgentVariable): string {
 }
 
 const rows = computed(() => {
-	const savedByName = new Map(saved.value.map((entry) => [entry.name, entry.value]));
-	const result = variables.value.map((variable) => ({
-		name: variable.name,
-		value: savedByName.get(variable.name) ?? '',
-		placeholder: describeDefault(variable),
-		tools: variable.tools,
-		unused: false,
-	}));
+	const savedByName = new Map(saved.value.map((entry) => [entry.name, entry]));
+	// Entries without a saved value get the append positions they will get on insert.
+	let nextIndex = rawValues.value.length;
+	const result = variables.value.map((variable) => {
+		const entry = savedByName.get(variable.name);
+		return {
+			name: variable.name,
+			value: entry?.value ?? '',
+			index: entry ? entry.index : nextIndex++,
+			placeholder: describeDefault(variable),
+			tools: variable.tools,
+			unused: false,
+		};
+	});
 	if (agentKnown.value) {
 		const known = new Set(variables.value.map((variable) => variable.name));
 		for (const entry of saved.value) {
@@ -154,7 +183,7 @@ function commit(name: string, value: NodeParameterValueType) {
 			if (text !== '') merged.push({ name, value: text });
 			placed = true;
 		} else {
-			merged.push(entry);
+			merged.push({ name: entry.name, value: entry.value });
 		}
 	}
 	if (!placed && text !== '') merged.push({ name, value: text });
@@ -187,7 +216,7 @@ function onUpdate(name: string, update: IUpdateInformation) {
 			}}
 		</N8nText>
 		<div
-			v-for="(row, index) in rows"
+			v-for="row in rows"
 			:key="row.name"
 			:class="$style.row"
 			:data-test-id="`agent-variable-${row.name}`"
@@ -196,7 +225,7 @@ function onUpdate(name: string, update: IUpdateInformation) {
 				<ParameterInputFull
 					:parameter="rowParameter(row)"
 					:value="row.value"
-					:path="`${path}.values[${index}].value`"
+					:path="`${path}.values[${row.index}].value`"
 					:is-read-only="isReadOnly"
 					@update="onUpdate(row.name, $event)"
 				/>

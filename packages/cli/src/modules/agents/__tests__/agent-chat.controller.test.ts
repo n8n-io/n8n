@@ -93,7 +93,9 @@ function makeController() {
 		mock<Subscriber>(),
 	);
 
-	const previewTestVariables = new AgentPreviewTestVariablesService();
+	const previewTestVariables = new AgentPreviewTestVariablesService(
+		mock<AgentsConfig>({ checkpointTtlSeconds: 96 * 3600 }),
+	);
 	const controller = new AgentChatController(
 		agentExecutionOrchestratorService,
 		agentTestRunService,

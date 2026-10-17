@@ -1,11 +1,53 @@
-import {
-	TRUSTED_METADATA_RESERVED_KEYS,
-	type NodeToolTrustedMetadata,
-} from './agent-json-config.schema';
+import { TrustedMetadataKeySchema, type NodeToolTrustedMetadata } from './agent-json-config.schema';
 
-const JSON_DOT_REFERENCE = /\$json\.([A-Za-z_][A-Za-z0-9_-]*)/g;
-const JSON_BRACKET_REFERENCE = /\$json\[\s*(['"])([A-Za-z0-9_-]+)\1\s*\]/g;
-const FROM_AI_KEY = /\$fromAI\(\s*(['"])([^'"]+)\1/g;
+// Hyphenated names are only valid through brackets: `$json.a-b` is `$json.a` minus `b`.
+const JSON_DOT_REFERENCE = /\$json\??\.([A-Za-z_][A-Za-z0-9_]*)/g;
+const JSON_BRACKET_REFERENCE = /\$json\??\.?\[\s*(['"`])([A-Za-z0-9_-]+)\1\s*\]/g;
+// Same call shape the shared `$fromAI` parser accepts: optional whitespace before `(`.
+const FROM_AI_KEY = /\$fromAI\s*\(\s*(['"`])((?:(?!\1)[^\\])+)\1/gi;
+
+/**
+ * Copy of an expression with the contents of quoted strings and template
+ * literals blanked out, so text inside a literal is not read as a reference.
+ * Code inside a template `${...}` placeholder is kept.
+ */
+function blankStringLiterals(expression: string): string {
+	let out = '';
+	let quote: string | null = null;
+	let placeholderDepth = 0;
+	for (let i = 0; i < expression.length; i++) {
+		const char = expression[i];
+		if (quote === null) {
+			if (char === "'" || char === '"' || char === '`') quote = char;
+			out += char;
+			continue;
+		}
+		if (char === '\\') {
+			out += '  ';
+			i++;
+			continue;
+		}
+		if (quote === '`' && placeholderDepth === 0 && char === '$' && expression[i + 1] === '{') {
+			placeholderDepth = 1;
+			out += '${';
+			i++;
+			continue;
+		}
+		if (placeholderDepth > 0) {
+			if (char === '{') placeholderDepth++;
+			if (char === '}') placeholderDepth--;
+			out += char;
+			continue;
+		}
+		if (char === quote) {
+			quote = null;
+			out += char;
+			continue;
+		}
+		out += ' ';
+	}
+	return out;
+}
 
 function collectStrings(value: unknown, out: string[]): void {
 	if (typeof value === 'string') {
@@ -32,13 +74,15 @@ export function extractNodeToolVariables(nodeParameters: unknown): string[] {
 	const names = new Set<string>();
 	for (const expression of expressions) {
 		for (const match of expression.matchAll(FROM_AI_KEY)) modelKeys.add(match[2]);
-		for (const match of expression.matchAll(JSON_DOT_REFERENCE)) names.add(match[1]);
+		for (const match of blankStringLiterals(expression).matchAll(JSON_DOT_REFERENCE)) {
+			names.add(match[1]);
+		}
 		for (const match of expression.matchAll(JSON_BRACKET_REFERENCE)) names.add(match[2]);
 	}
 
+	// Every returned name must be persistable as a trusted metadata key.
 	return [...names].filter(
-		(name) =>
-			!modelKeys.has(name) && !(TRUSTED_METADATA_RESERVED_KEYS as readonly string[]).includes(name),
+		(name) => !modelKeys.has(name) && TrustedMetadataKeySchema.safeParse(name).success,
 	);
 }
 
@@ -68,8 +112,10 @@ export function collectAgentVariables(tools: readonly ToolWithNode[] | undefined
 		for (const name of extractNodeToolVariables(tool.node?.nodeParameters)) {
 			const entry = byName.get(name) ?? { name, tools: [] };
 			if (tool.name) entry.tools.push(tool.name);
-			const binding = tool.trustedMetadata?.[name];
-			if (binding && entry.default === undefined) entry.default = binding;
+			// Own-property lookup: `toString` and friends are not defaults.
+			if (entry.default === undefined && Object.hasOwn(tool.trustedMetadata ?? {}, name)) {
+				entry.default = tool.trustedMetadata?.[name];
+			}
 			byName.set(name, entry);
 		}
 	}

@@ -7,6 +7,18 @@ import { formatTrustedMetadataFixedValue } from '../utils/nodeToolTrustedMetadat
 /** Values typed in the preview chat, per agent. They live for the editor session only. */
 const valuesByAgent = reactive<Record<string, Record<string, string>>>({});
 
+/** Own-property read, so names like `constructor` never hit Object.prototype. */
+function readOwn(record: Record<string, string> | undefined, name: string): string | undefined {
+	return record && Object.hasOwn(record, name) ? record[name] : undefined;
+}
+
+/** An empty fixed default means "no default". */
+export function hasUsableDefault(variable: AgentVariable): boolean {
+	const binding = variable.default;
+	if (!binding) return false;
+	return !(binding.mode === 'fixed' && binding.value === '');
+}
+
 export function useAgentVariables(config: MaybeRefOrGetter<AgentJsonConfig | null | undefined>) {
 	return computed<AgentVariable[]>(() => collectAgentVariables(toValue(config)?.tools));
 }
@@ -25,20 +37,32 @@ export function useAgentTestVariables(
 ) {
 	const variables = useAgentVariables(config);
 
-	const values = computed(() => valuesByAgent[toValue(agentId)] ?? {});
+	const values = computed(() => {
+		const id = toValue(agentId);
+		return Object.hasOwn(valuesByAgent, id) ? valuesByAgent[id] : {};
+	});
+
+	function getValue(name: string): string {
+		return readOwn(values.value, name) ?? '';
+	}
 
 	function setValue(name: string, value: string) {
 		const id = toValue(agentId);
-		valuesByAgent[id] = { ...valuesByAgent[id], [name]: value };
+		const next: Record<string, string> = Object.create(null) as Record<string, string>;
+		Object.assign(next, Object.hasOwn(valuesByAgent, id) ? valuesByAgent[id] : {});
+		next[name] = value;
+		valuesByAgent[id] = next;
 	}
 
 	/** Only filled entries for variables the agent still reads. */
 	const payload = computed<Record<string, string> | undefined>(() => {
-		const entries = variables.value
-			.map(({ name }) => [name, values.value[name]] as const)
-			.filter(([, value]) => value !== undefined && value !== '');
+		const entries: Array<[string, string]> = [];
+		for (const { name } of variables.value) {
+			const value = readOwn(values.value, name);
+			if (value !== undefined && value !== '') entries.push([name, value]);
+		}
 		return entries.length ? Object.fromEntries(entries) : undefined;
 	});
 
-	return { variables, values, setValue, payload };
+	return { variables, values, getValue, setValue, payload };
 }

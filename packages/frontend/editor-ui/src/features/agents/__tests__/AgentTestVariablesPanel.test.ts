@@ -72,6 +72,27 @@ describe('AgentTestVariablesPanel', () => {
 		expect(payload.value).toEqual({ token: 'secret' });
 	});
 
+	it('does not read inherited object members for variables named like them (toString, valueOf)', async () => {
+		const config = {
+			tools: [
+				{
+					type: 'node',
+					name: 'Fetch',
+					node: { nodeParameters: { a: '={{ $json.valueOf }}/{{ $json.toString }}' } },
+				},
+			],
+		} as unknown as AgentJsonConfig;
+		const { wrapper, agentId } = render(config);
+		await wrapper.find('[data-testid="agent-test-values-toggle"]').trigger('click');
+		const inputs = wrapper.findAll('input');
+		expect(inputs.map((i) => i.element.value)).toEqual(['', '']);
+		expect(useAgentTestVariables(agentId, config).payload.value).toBeUndefined();
+
+		await inputs[0].setValue('x');
+		expect(useAgentTestVariables(agentId, config).payload.value).toEqual({ valueOf: 'x' });
+		expect(wrapper.findAll('input')[1].element.value).toBe('');
+	});
+
 	it('has no payload when nothing is entered', () => {
 		const { payload } = useAgentTestVariables('fresh-agent', makeConfig());
 		expect(payload.value).toBeUndefined();

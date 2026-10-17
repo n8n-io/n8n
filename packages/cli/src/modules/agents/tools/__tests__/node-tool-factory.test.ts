@@ -833,11 +833,13 @@ describe('resolveNodeTool → schema sanitizing of non-object shapes', () => {
 						z.object({ b: z.string() }),
 					]),
 				)
+				.nullable()
 				.optional(),
 		);
 		const schema = tool.inputSchema as z.ZodTypeAny;
 		expect(schema.safeParse({ q: 'x', a: 'y' }).success).toBe(true);
 		expect(schema.safeParse(undefined).success).toBe(true);
+		expect(schema.safeParse(null).success).toBe(true);
 		const json = JSON.stringify(
 			(await import('zod-to-json-schema')).zodToJsonSchema(schema as never),
 		);
@@ -854,6 +856,79 @@ describe('resolveNodeTool → schema sanitizing of non-object shapes', () => {
 		const json = JSON.stringify(tool.inputSchema);
 		expect(json).not.toContain('tenant_id');
 		expect(json).toContain('"q"');
+	});
+});
+
+describe('resolveNodeTool → error redaction and trusted precedence', () => {
+	const secretTool = async (executeInline: ReturnType<typeof vi.fn>, extra = {}) =>
+		await resolveNodeTool(
+			{
+				...baseToolSchema,
+				node: { ...baseToolSchema.node, nodeParameters: {} },
+				trustedMetadata: { tenant_id: { mode: 'fixed', value: 'tenant_789_secret' } },
+				...extra,
+			},
+			{ executor: { executeInline } as unknown as EphemeralNodeExecutor, projectId: 'p1' },
+		);
+
+	it('redacts trusted values from a thrown executor error', async () => {
+		const executeInline = vi.fn().mockResolvedValue({
+			status: 'error',
+			data: [],
+			error: 'Request failed for tenant_789_secret and caller-secret-value',
+		});
+		const tool = await secretTool(executeInline);
+		const error = await tool.handler!({}, {
+			runtimeMetadata: { tenant_id: 'caller-secret-value' },
+		} as never).catch((e: Error) => e);
+		expect((error as Error).message).toBe('Request failed for [redacted] and [redacted]');
+	});
+
+	it('redacts trusted values from a policy refusal message', async () => {
+		const executeInline = vi.fn().mockResolvedValue({
+			status: 'error',
+			data: [],
+			error: 'Blocked for tenant_789_secret',
+			violations: [violation()],
+		});
+		const tool = await secretTool(executeInline);
+		const output = await tool.handler!({}, {} as never);
+		expect(output).toMatchObject({ isPolicyRefusal: true, message: 'Blocked for [redacted]' });
+	});
+
+	it('does not let a model argument survive when a non-variable trusted default is empty', async () => {
+		const executeInline = vi.fn().mockResolvedValue({ status: 'success', data: [] });
+		const tool = await secretTool(executeInline, {
+			trustedMetadata: { tenant_id: { mode: 'fixed', value: '' } },
+		});
+		await tool.handler!({ tenant_id: 'invented' } as never, {} as never);
+		expect(executeInline.mock.calls[0][0].inputData[0].json).toEqual({ tenant_id: '' });
+	});
+
+	it('advertises no input field in the native string fallback when input is trusted', async () => {
+		Container.set(NodeTypes, {
+			getByNameAndVersion: vi.fn().mockReturnValue({
+				description: { description: 'Think' },
+				supplyData: vi.fn(),
+			}),
+		} as unknown as NodeTypes);
+		const tool = await resolveNodeTool(
+			{
+				...baseToolSchema,
+				node: { ...baseToolSchema.node, nodeParameters: {} },
+				trustedMetadata: { input: { mode: 'fixed', value: 'fixed-input-value' } },
+			},
+			{
+				executor: {
+					introspectSupplyDataToolSchema: vi.fn().mockResolvedValue(null),
+				} as unknown as EphemeralNodeExecutor,
+				projectId: 'p1',
+			},
+		);
+		const schema = tool.inputSchema as z.ZodTypeAny;
+		const parsed = schema.safeParse({ input: 'model value' });
+		expect(parsed.success).toBe(true);
+		expect(parsed.success && parsed.data).toEqual({});
 	});
 });
 

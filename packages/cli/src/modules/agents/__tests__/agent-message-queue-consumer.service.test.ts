@@ -1,4 +1,5 @@
 import { mockLogger } from '@n8n/backend-test-utils';
+import type { AgentsConfig } from '@n8n/config';
 import type { AgentIntegrationConfig } from '@n8n/api-types';
 import type { User, UserRepository } from '@n8n/db';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
@@ -36,7 +37,9 @@ describe('AgentMessageQueueConsumer', () => {
 	const chatExecutions = mock<AgentChatExecutionService>();
 	const integrations = mock<ChatIntegrationService>();
 	const orchestrator = mock<AgentExecutionOrchestratorService>();
-	const previewTestVariables = new AgentPreviewTestVariablesService();
+	const previewTestVariables = new AgentPreviewTestVariablesService(
+		mock<AgentsConfig>({ checkpointTtlSeconds: 96 * 3600 }),
+	);
 	const sender = { send: vi.fn(), close: vi.fn(async () => {}) };
 	let consumer: AgentMessageQueueConsumer;
 
@@ -209,6 +212,7 @@ describe('AgentMessageQueueConsumer', () => {
 		await vi.waitFor(() =>
 			expect(queue.settle).toHaveBeenCalledWith('session', item.admission.executionId),
 		);
+		expect(testRuns.executePreparedDraftRun).toHaveBeenCalledTimes(1);
 		expect(testRuns.executePreparedDraftRun.mock.lastCall?.[0]).not.toHaveProperty(
 			'runtimeMetadata',
 		);

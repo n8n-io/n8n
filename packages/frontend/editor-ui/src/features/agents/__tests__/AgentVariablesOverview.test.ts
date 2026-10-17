@@ -49,6 +49,15 @@ describe('AgentVariablesOverview', () => {
 		expect(toolNames).toEqual(['Fetch', 'Post']);
 	});
 
+	it('treats an empty fixed default as no default', () => {
+		const wrapper = render([
+			{ name: 'token', tools: ['Fetch'], default: { mode: 'fixed', value: '' } },
+		]);
+		const status = wrapper.find('[data-testid="agent-variable-status"]');
+		expect(status.text()).toContain('agents.variables.status.noDefault');
+		expect(wrapper.find('[data-testid="agent-variable-default"]').exists()).toBe(false);
+	});
+
 	it('flags a variable without a default', () => {
 		const wrapper = render([{ name: 'token', tools: ['Fetch'] }]);
 		const status = wrapper.find('[data-testid="agent-variable-status"]');

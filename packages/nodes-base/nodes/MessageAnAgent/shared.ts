@@ -99,6 +99,27 @@ function validateTrustedValueName(ctx: IExecuteFunctions, name: string, itemInde
 	}
 }
 
+function isNonEmptyExpression(value: unknown): boolean {
+	return typeof value === 'string' && value.startsWith('=') && value.slice(1).trim() !== '';
+}
+
+/** Unresolved "Trusted Tool Values" entries, to tell expressions from literal values. */
+function getRawTrustedEntries(
+	ctx: IExecuteFunctions,
+	itemIndex: number,
+): Array<{ value?: unknown } | undefined> {
+	const raw = ctx.getNodeParameter(
+		'trustedValues',
+		itemIndex,
+		{},
+		{
+			rawExpressions: true,
+		},
+	) as unknown;
+	const values = (raw as { values?: unknown } | undefined)?.values;
+	return Array.isArray(values) ? (values as Array<{ value?: unknown } | undefined>) : [];
+}
+
 /**
  * Read the node's "Trusted Tool Values" mappings as a plain record keyed by
  * trusted metadata name. Each entry's value resolves expressions in this
@@ -120,10 +141,11 @@ export function getTrustedValues(
 		? (raw as { values: Array<{ name?: unknown; value?: unknown }> }).values
 		: [];
 	if (entries.length === 0) return undefined;
+	const rawEntries = getRawTrustedEntries(ctx, itemIndex);
 
 	const record: Record<string, unknown> = Object.create(null);
 	const seen = new Set<string>();
-	for (const entry of entries) {
+	for (const [index, entry] of entries.entries()) {
 		const name = typeof entry?.name === 'string' ? entry.name.trim() : '';
 		if (!name) {
 			throw new NodeOperationError(
@@ -141,8 +163,20 @@ export function getTrustedValues(
 			);
 		}
 		seen.add(name);
-		// An empty value means "not provided": the agent tool falls back to its default.
-		if (entry?.value === undefined || entry.value === null || entry.value === '') continue;
+		if (entry?.value === undefined || entry.value === null || entry.value === '') {
+			// A mapping written as an expression that resolves to nothing is a
+			// failed lookup, not "not provided". Falling back to the tool default
+			// could send the call to the wrong tenant.
+			if (isNonEmptyExpression(rawEntries[index]?.value)) {
+				throw new NodeOperationError(
+					ctx.getNode(),
+					`The expression for trusted value "${name}" resolved to an empty value. Check the field it reads, or clear the value to use the tool default.`,
+					{ itemIndex },
+				);
+			}
+			// A literally empty value means "not provided": the agent tool falls back to its default.
+			continue;
+		}
 		if (isSafeObjectProperty(name)) {
 			setSafeObjectProperty(record, name, entry.value);
 		}

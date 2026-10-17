@@ -1076,6 +1076,8 @@ describe('MessageAnAgent Node', () => {
 		}
 	});
 
+	// Trusted value entries use `name:` keys that are not node parameter display names.
+	/* eslint-disable n8n-nodes-base/node-param-display-name-miscased, n8n-nodes-base/node-param-display-name-excess-inner-whitespace, n8n-nodes-base/node-param-display-name-untrimmed */
 	describe('trusted tool values', () => {
 		it('passes mapped trusted values through to executeAgent', async () => {
 			executeFunctions.getInputData.mockReturnValue([{ json: {} }]);
@@ -1186,6 +1188,41 @@ describe('MessageAnAgent Node', () => {
 			expect(agentInfo.trustedValues).toEqual({ tenant_id: 'tenant-42' });
 		});
 
+		it.each([[undefined], [null], ['']])(
+			'throws when an expression mapping resolves to %p',
+			async (resolved) => {
+				executeFunctions.getInputData.mockReturnValue([{ json: {} }]);
+				executeFunctions.getNodeParameter.mockImplementation(
+					(
+						param: string,
+						_i?: number,
+						fallback?: unknown,
+						options?: { rawExpressions?: boolean },
+					) => {
+						if (param === 'trustedValues') {
+							return {
+								values: [
+									{
+										name: 'tenant_id',
+										value: options?.rawExpressions ? '={{ $json.tenant }}' : resolved,
+									},
+								],
+							} as unknown as NodeParameterValueType;
+						}
+						if (param === 'agentId') return { mode: 'id', value: 'agent-1' };
+						if (param === 'message') return 'Hello agent';
+						if (param === 'advanced.invokeMode') return 'perItem';
+						if (param === 'advanced' || param === 'advanced.session.session') return fallback ?? {};
+						return undefined;
+					},
+				);
+				executeFunctions.executeAgent.mockResolvedValue(mockAgentResult);
+
+				await expect(node.execute.call(executeFunctions)).rejects.toThrow('"tenant_id"');
+				expect(executeFunctions.executeAgent).not.toHaveBeenCalled();
+			},
+		);
+
 		it('omits trustedValues when every mapped value is empty', async () => {
 			executeFunctions.getInputData.mockReturnValue([{ json: {} }]);
 			mockParams({ trustedValues: { values: [{ name: 'region', value: '' }] } });
@@ -1197,6 +1234,7 @@ describe('MessageAnAgent Node', () => {
 			expect('trustedValues' in agentInfo).toBe(false);
 		});
 	});
+	/* eslint-enable n8n-nodes-base/node-param-display-name-miscased, n8n-nodes-base/node-param-display-name-excess-inner-whitespace, n8n-nodes-base/node-param-display-name-untrimmed */
 });
 
 describe('MessageAnAgent versioning', () => {

@@ -53,7 +53,13 @@ function toExecutorCredentials(
 	return Object.keys(out).length > 0 ? out : undefined;
 }
 
-function createNativeStringToolInputSchema(description: string): z.ZodType {
+function createNativeStringToolInputSchema(
+	description: string,
+	trustedKeys: ReadonlySet<string>,
+): z.ZodType {
+	// `input` is the only field of this fallback. When it is trusted, the model
+	// has nothing to choose.
+	if (trustedKeys.has('input')) return z.object({});
 	return z.preprocess(
 		(value) => (typeof value === 'string' ? { input: value } : value),
 		z.object({
@@ -124,10 +130,6 @@ export async function resolveNodeToolMetadata(
 		[],
 	);
 	return { ...getFixedNodeToolMetadata(metadata), ...resolved };
-}
-
-function withoutEmpty(values: Record<string, unknown>): Record<string, unknown> {
-	return Object.fromEntries(Object.entries(values).filter(([, value]) => hasValue(value)));
 }
 
 function hasValue(value: unknown): boolean {
@@ -259,6 +261,13 @@ function redactTrustedValues(value: unknown, secrets: ReadonlySet<string>): unkn
 	return value;
 }
 
+/** Replace trusted strings contained in free text, such as an error message. */
+function redactTrustedText(text: string, secrets: ReadonlySet<string>): string {
+	let out = text;
+	for (const secret of secrets) out = out.split(secret).join('[redacted]');
+	return out;
+}
+
 /**
  * Native tool nodes expose a LangChain tool via `supplyData`. The shape of its
  * schema depends on the class:
@@ -325,6 +334,7 @@ async function resolveInputSchema(
 			toolSchema.description ??
 				nodeType.description.description ??
 				`The query or input text to pass to ${toolSchema.node.nodeType}.`,
+			trustedKeys,
 		);
 	}
 
@@ -389,19 +399,25 @@ export async function resolveNodeTool(
 					`Tool "${sanitizedName}" needs a value for ${missing.map((name) => `"${name}"`).join(', ')}. Map it in the Message an Agent node. Runs without a calling workflow (chat, schedule, channels, tests) use the default value from the tool configuration, so set one there.`,
 				);
 			}
+			const secrets = new Set(
+				[...Object.values(trusted), ...Object.values(runtime)].filter(
+					(value): value is string =>
+						typeof value === 'string' && value.length >= MIN_REDACTED_LENGTH,
+				),
+			);
 			const result = await ctx.executor.executeInline({
 				nodeType,
 				nodeTypeVersion: toolSchema.node.nodeTypeVersion,
 				nodeParameters: toolSchema.node.nodeParameters as INodeParameters,
 				credentialDetails: toExecutorCredentials(toolSchema.node.credentials),
-				inputData: [{ json: { ...input, ...withoutEmpty(trusted), ...runtime } as IDataObject }],
+				inputData: [{ json: { ...input, ...trusted, ...runtime } as IDataObject }],
 				projectId: ctx.projectId,
 				...instrumentedExecution,
 			});
 			// A refusal is returned, not thrown: thrown errors reach the chat as plain text.
 			if (result.status === 'error' && result.violations) {
 				return toPolicyRefusalResult(
-					result.error ?? result.violations[0].message,
+					redactTrustedText(result.error ?? result.violations[0].message, secrets),
 					result.violations,
 				);
 			}
@@ -410,14 +426,13 @@ export async function resolveNodeTool(
 			// marks the timeline entry as a failed call. Returning the error
 			// object normally would otherwise read as a successful tool call.
 			if (result.status === 'error') {
-				throw new Error(result.error ?? `Node "${toolSchema.node.nodeType}" failed to execute`);
+				throw new Error(
+					redactTrustedText(
+						result.error ?? `Node "${toolSchema.node.nodeType}" failed to execute`,
+						secrets,
+					),
+				);
 			}
-			const secrets = new Set(
-				Object.values({ ...withoutEmpty(trusted), ...runtime }).filter(
-					(value): value is string =>
-						typeof value === 'string' && value.length >= MIN_REDACTED_LENGTH,
-				),
-			);
 			return secrets.size > 0 ? redactTrustedValues(result, secrets) : result;
 		})
 		.build();

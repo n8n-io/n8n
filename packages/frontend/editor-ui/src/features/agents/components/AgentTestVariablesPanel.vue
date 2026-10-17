@@ -5,6 +5,7 @@ import { useI18n } from '@n8n/i18n';
 
 import {
 	describeVariableDefault,
+	hasUsableDefault,
 	useAgentTestVariables,
 } from '../composables/useAgentTestVariables';
 import type { AgentJsonConfig } from '../types';
@@ -17,7 +18,7 @@ const props = defineProps<{
 const i18n = useI18n();
 const expanded = ref(false);
 
-const { variables, values, setValue } = useAgentTestVariables(
+const { variables, getValue, setValue } = useAgentTestVariables(
 	() => props.agentId,
 	() => props.config,
 );
@@ -25,7 +26,7 @@ const { variables, values, setValue } = useAgentTestVariables(
 const rows = computed(() =>
 	variables.value.map((variable) => {
 		const text = describeVariableDefault(variable);
-		const placeholder = !variable.default
+		const placeholder = !hasUsableDefault(variable)
 			? i18n.baseText('agents.variables.test.placeholder.required')
 			: text === undefined
 				? i18n.baseText('agents.variables.test.placeholder.expression')
@@ -61,7 +62,7 @@ const rows = computed(() =>
 			<label v-for="row in rows" :key="row.name" :class="$style.field">
 				<code :class="$style.name">{{ row.name }}</code>
 				<N8nInput
-					:model-value="values[row.name] ?? ''"
+					:model-value="getValue(row.name)"
 					:placeholder="row.placeholder"
 					size="small"
 					:aria-label="
