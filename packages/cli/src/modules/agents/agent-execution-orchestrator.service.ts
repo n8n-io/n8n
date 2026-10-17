@@ -128,6 +128,11 @@ export interface ExecuteForChatConfig extends ChatExecutionInput, ChatExecutionC
 	previewChat?: boolean;
 	/** Preview chat sends the approaching-budget card. The run continues. */
 	onBudgetNotice?: (notice: AgentBudgetNotice) => void;
+	/**
+	 * Editor test values for node tool variables. Used only when `previewChat`
+	 * is set. Never stored or sent to the model.
+	 */
+	runtimeMetadata?: Record<string, unknown>;
 	abortSignal?: AbortSignal;
 }
 
@@ -177,6 +182,8 @@ export interface ResumeForChatConfig extends ChatExecutionCallbacks {
 	user?: User;
 	/** Defaults to true for external integrations; preview chat passes false. */
 	usePublishedVersion?: boolean;
+	/** Editor test values. Used only for a draft resume on the preview surface. */
+	runtimeMetadata?: Record<string, unknown>;
 	/**
 	 * Required when the suspended turn invoked a platform-injected tool
 	 * (e.g. an integration action). Without it, `getRuntime` rebuilds the agent
@@ -260,6 +267,8 @@ export interface StreamChatResponseConfig extends ChatExecutionInput, ChatExecut
 	isWakeRun?: boolean;
 	pauseReport?: boolean;
 	backgroundJobSignal?: AgentBackgroundJobSignal;
+	/** Trusted tool values for this turn (`ExecutionOptions.runtimeMetadata`). */
+	runtimeMetadata?: Record<string, unknown>;
 }
 
 /**
@@ -1368,6 +1377,10 @@ export class AgentExecutionOrchestratorService {
 		return {
 			runId,
 			toolCallId,
+			// Gate: only a draft resume on the preview surface may supply test values.
+			...(config.chatSurface === 'preview' && !usePublishedVersion && config.runtimeMetadata
+				? { runtimeMetadata: config.runtimeMetadata }
+				: {}),
 			hostMetadata: encodeIntegrationMessageContext(selectedContext),
 			...(selectedContext && conversation
 				? {
@@ -1622,6 +1635,10 @@ export class AgentExecutionOrchestratorService {
 			onExecutionStarted: config.onExecutionStarted,
 			sandboxPrincipalHash: setup.sandboxPrincipalHash,
 			sessionMode,
+			// Gate: only the editor preview surface may supply test values.
+			...(setup.surface === 'preview' && config.runtimeMetadata
+				? { runtimeMetadata: config.runtimeMetadata }
+				: {}),
 		});
 	}
 
@@ -1688,6 +1705,7 @@ export class AgentExecutionOrchestratorService {
 			options: withBudgetGuardrail(
 				{
 					persistence: { threadId, resourceId, hostMetadata },
+					...(config.runtimeMetadata ? { runtimeMetadata: config.runtimeMetadata } : {}),
 					...(config.pauseReport
 						? {
 								toolsEnabled: false,

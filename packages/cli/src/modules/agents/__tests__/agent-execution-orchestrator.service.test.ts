@@ -883,7 +883,11 @@ describe('AgentExecutionOrchestratorService', () => {
 			announceExecution = true,
 			onBudgetNotice,
 			budget,
+			runtimeMetadata,
+			usePublishedVersion = false,
 		}: {
+			runtimeMetadata?: Record<string, unknown>;
+			usePublishedVersion?: boolean;
 			abortSignal?: AbortSignal;
 			previewChat?: boolean;
 			automaticPreviewContinuation?: boolean;
@@ -912,12 +916,14 @@ describe('AgentExecutionOrchestratorService', () => {
 							onExecutionRecorded,
 							...(announceExecution ? { onExecutionStarted } : {}),
 							previewChat,
+							...(runtimeMetadata ? { runtimeMetadata } : {}),
 							...(onBudgetNotice ? { onBudgetNotice } : {}),
 							abortSignal,
 						})
 					: fixtures.service.resumeForChat({
 							user,
-							usePublishedVersion: false,
+							usePublishedVersion,
+							...(runtimeMetadata ? { runtimeMetadata } : {}),
 							agentId,
 							projectId,
 							runId: 'run-1',
@@ -986,6 +992,33 @@ describe('AgentExecutionOrchestratorService', () => {
 				executionService.startExecutionRecording.mock.invocationCallOrder[0],
 			);
 			expect(sdkStart.mock.calls[0].at(-1)).toMatchObject({ approvalContext });
+		});
+
+		it.each([
+			{ previewChat: true, expected: true },
+			{ previewChat: false, expected: false },
+		])(
+			'passes test runtime metadata to the SDK only for a preview turn (previewChat=$previewChat)',
+			async ({ previewChat, expected }) => {
+				const { stream, sdkStart } = makeTurn({
+					previewChat,
+					runtimeMetadata: { tenant_id: 'acme' },
+				});
+				await collect(stream);
+				const options = sdkStart.mock.calls[0]?.[operation === 'start' ? 1 : 2] as
+					| ExecutionOptions
+					| undefined;
+				if (expected) expect(options?.runtimeMetadata).toEqual({ tenant_id: 'acme' });
+				else expect(options).not.toHaveProperty('runtimeMetadata');
+			},
+		);
+
+		it('does not set runtime metadata when none is supplied', async () => {
+			const { stream, sdkStart } = makeTurn({ previewChat: true });
+			await collect(stream);
+			expect(sdkStart.mock.calls[0]?.[operation === 'start' ? 1 : 2]).not.toHaveProperty(
+				'runtimeMetadata',
+			);
 		});
 
 		it.each([true, false])(

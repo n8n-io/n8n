@@ -1,15 +1,11 @@
 <script lang="ts" setup>
-import { computed, ref, watch } from 'vue';
+import { computed, ref, shallowRef, watch } from 'vue';
 import { collectAgentVariables, type AgentVariable } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { N8nIconButton, N8nText } from '@n8n/design-system';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import type {
-	INodeParameters,
-	INodeProperties,
-	IUpdateInformation,
-	NodeParameterValueType,
-} from 'n8n-workflow';
+import type { INodeParameters, INodeProperties, NodeParameterValueType } from 'n8n-workflow';
+import type { IUpdateInformation } from '@/Interface';
 import { getAgentConfig } from '@/features/agents/composables/useAgentApi';
 import { useAgentScopeProjectId } from '@/features/agents/composables/useAgentScopeProjectId';
 import ParameterInputFull from '../ParameterInputFull.vue';
@@ -36,7 +32,7 @@ const i18n = useI18n();
 const rootStore = useRootStore();
 const projectId = useAgentScopeProjectId();
 
-const variables = ref<AgentVariable[]>([]);
+const variables = shallowRef<AgentVariable[]>([]);
 /** False while the agent cannot be resolved (nothing picked, expression, load error). */
 const agentKnown = ref(false);
 const loadFailed = ref(false);

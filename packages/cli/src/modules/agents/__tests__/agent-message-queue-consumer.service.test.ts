@@ -13,6 +13,7 @@ import type { AgentExecutionService } from '../agent-execution.service';
 import { AgentMessageQueueConsumer } from '../agent-message-queue-consumer.service';
 import { AgentN8nChatUnavailableError } from '../agent-n8n-chat-unavailable.error';
 import type { AgentMessageQueueService, ClaimedAgentMessage } from '../agent-message-queue.service';
+import { AgentPreviewTestVariablesService } from '../agent-preview-test-variables.service';
 import type { AgentQueuedPreviewStreamService } from '../agent-queued-preview-stream.service';
 import type { AgentTestRunService } from '../agent-test-run.service';
 import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
@@ -35,6 +36,7 @@ describe('AgentMessageQueueConsumer', () => {
 	const chatExecutions = mock<AgentChatExecutionService>();
 	const integrations = mock<ChatIntegrationService>();
 	const orchestrator = mock<AgentExecutionOrchestratorService>();
+	const previewTestVariables = new AgentPreviewTestVariablesService();
 	const sender = { send: vi.fn(), close: vi.fn(async () => {}) };
 	let consumer: AgentMessageQueueConsumer;
 
@@ -117,6 +119,7 @@ describe('AgentMessageQueueConsumer', () => {
 			integrations,
 			orchestrator,
 			mockLogger(),
+			previewTestVariables,
 		);
 	});
 
@@ -178,6 +181,36 @@ describe('AgentMessageQueueConsumer', () => {
 		}
 		await vi.waitFor(() =>
 			expect(queue.settle).toHaveBeenCalledWith('first', first.admission.executionId),
+		);
+	});
+
+	it('passes held test variables to the preview run once as runtime metadata', async () => {
+		const item = claim('session');
+		item.item.id = 'queue-1';
+		previewTestVariables.hold('queue-1', { tenant_id: 'acme' });
+		repository.findThreadIds.mockResolvedValue(['session']);
+		queue.claimNext.mockResolvedValueOnce(item).mockResolvedValue(null);
+		consumer.start();
+		await vi.waitFor(() =>
+			expect(queue.settle).toHaveBeenCalledWith('session', item.admission.executionId),
+		);
+		expect(testRuns.executePreparedDraftRun).toHaveBeenCalledWith(
+			expect.objectContaining({ runtimeMetadata: { tenant_id: 'acme' } }),
+		);
+		expect(previewTestVariables.take('queue-1')).toBeUndefined();
+	});
+
+	it('runs a preview message without runtime metadata when no test variables are held', async () => {
+		const item = claim('session');
+		item.item.id = 'queue-2';
+		repository.findThreadIds.mockResolvedValue(['session']);
+		queue.claimNext.mockResolvedValueOnce(item).mockResolvedValue(null);
+		consumer.start();
+		await vi.waitFor(() =>
+			expect(queue.settle).toHaveBeenCalledWith('session', item.admission.executionId),
+		);
+		expect(testRuns.executePreparedDraftRun.mock.lastCall?.[0]).not.toHaveProperty(
+			'runtimeMetadata',
 		);
 	});
 

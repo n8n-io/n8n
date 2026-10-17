@@ -19,6 +19,7 @@ import type { InstanceSettings } from 'n8n-core';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import type { AgentMessageQueueService } from '../agent-message-queue.service';
+import { AgentPreviewTestVariablesService } from '../agent-preview-test-variables.service';
 import { AgentQueuedPreviewStreamService } from '../agent-queued-preview-stream.service';
 import type { AgentMessageQueueRepository } from '../repositories/agent-message-queue.repository';
 import type { AgentMessageQueue } from '../entities/agent-message-queue.entity';
@@ -92,6 +93,7 @@ function makeController() {
 		mock<Subscriber>(),
 	);
 
+	const previewTestVariables = new AgentPreviewTestVariablesService();
 	const controller = new AgentChatController(
 		agentExecutionOrchestratorService,
 		agentTestRunService,
@@ -106,10 +108,12 @@ function makeController() {
 		messageQueue,
 		previewStreams,
 		agentsConfig,
+		previewTestVariables,
 	);
 
 	return {
 		controller,
+		previewTestVariables,
 		agentsConfig,
 		messageQueue,
 		previewStreams,
@@ -1652,5 +1656,111 @@ describe('AgentChatController n8n Chat read-route ownership', () => {
 			await expect(controller.getProductionChatAttachment(req, res)).rejects.toThrow(NotFoundError);
 			expect(agentChatAttachmentService.getStream).not.toHaveBeenCalled();
 		});
+	});
+});
+
+describe('AgentChatController preview test variables', () => {
+	const request = { params: { projectId: 'project-1' }, user: { id: 'user-1' } };
+	const testVariables = { tenant_id: 'acme' };
+
+	async function send(
+		run: (res: FlushableResponse) => Promise<void>,
+		previewStreams: AgentQueuedPreviewStreamService,
+		messageQueue: Mocked<AgentMessageQueueService>,
+	) {
+		const pending = run(makeSseResponse([]));
+		await vi.waitFor(() => expect(messageQueue.enqueue).toHaveBeenCalled());
+		previewStreams.handleRelay({ queueId: 'queue-1', sequence: 1, event: null });
+		await pending;
+	}
+
+	it('holds preview test variables in memory and keeps them out of the queued payload', async () => {
+		const { controller, messageQueue, previewStreams, previewTestVariables } = makeController();
+		await send(
+			async (res) =>
+				await controller.chat(request as never, res, 'agent-1', {
+					message: 'hello',
+					testVariables,
+				} as never),
+			previewStreams,
+			messageQueue,
+		);
+		expect(JSON.stringify(messageQueue.enqueue.mock.lastCall?.[0])).not.toContain('acme');
+		expect(previewTestVariables.take('queue-1')).toEqual(testVariables);
+		expect(previewTestVariables.take('queue-1')).toBeUndefined();
+	});
+
+	it('holds nothing when the preview message has no test variables', async () => {
+		const { controller, messageQueue, previewStreams, previewTestVariables } = makeController();
+		await send(
+			async (res) =>
+				await controller.chat(request as never, res, 'agent-1', { message: 'hello' } as never),
+			previewStreams,
+			messageQueue,
+		);
+		expect(previewTestVariables.take('queue-1')).toBeUndefined();
+	});
+
+	it('ignores test variables on a production n8n Chat message', async () => {
+		const { controller, agentsService, messageQueue, previewStreams, previewTestVariables } =
+			makeController();
+		agentsService.isN8nChatPublished.mockResolvedValue(true);
+		await send(
+			async (res) =>
+				await controller.productionChat(request as never, res, 'agent-1', {
+					message: 'hello',
+					testVariables,
+				} as never),
+			previewStreams,
+			messageQueue,
+		);
+		expect(previewTestVariables.take('queue-1')).toBeUndefined();
+	});
+
+	it('passes test variables to a preview resume as runtime metadata', async () => {
+		const { controller, agentExecutionOrchestratorService } = makeController();
+		agentExecutionOrchestratorService.resumeForChat.mockImplementation(async function* () {
+			yield { type: 'finish', finishReason: 'stop' };
+		});
+		await controller.chatResume(request as never, makeSseResponse([]), 'agent-1', {
+			runId: 'run-1',
+			toolCallId: 'tc-1',
+			resumeData: {},
+			testVariables,
+		} as never);
+		expect(agentExecutionOrchestratorService.resumeForChat).toHaveBeenCalledWith(
+			expect.objectContaining({ runtimeMetadata: testVariables, chatSurface: 'preview' }),
+		);
+	});
+
+	it('does not pass runtime metadata when a preview resume has no test variables', async () => {
+		const { controller, agentExecutionOrchestratorService } = makeController();
+		agentExecutionOrchestratorService.resumeForChat.mockImplementation(async function* () {
+			yield { type: 'finish', finishReason: 'stop' };
+		});
+		await controller.chatResume(request as never, makeSseResponse([]), 'agent-1', {
+			runId: 'run-1',
+			toolCallId: 'tc-1',
+			resumeData: {},
+		} as never);
+		expect(agentExecutionOrchestratorService.resumeForChat.mock.lastCall?.[0]).not.toHaveProperty(
+			'runtimeMetadata',
+		);
+	});
+
+	it('ignores test variables on a production n8n Chat resume', async () => {
+		const { controller, agentExecutionOrchestratorService } = makeController();
+		agentExecutionOrchestratorService.resumeForChat.mockImplementation(async function* () {
+			yield { type: 'finish', finishReason: 'stop' };
+		});
+		await controller.productionChatResume(request as never, makeSseResponse([]), 'agent-1', {
+			runId: 'run-1',
+			toolCallId: 'tc-1',
+			resumeData: {},
+			testVariables,
+		} as never);
+		expect(agentExecutionOrchestratorService.resumeForChat.mock.lastCall?.[0]).not.toHaveProperty(
+			'runtimeMetadata',
+		);
 	});
 });

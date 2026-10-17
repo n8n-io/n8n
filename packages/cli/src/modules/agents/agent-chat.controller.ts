@@ -44,6 +44,7 @@ import type { AgentChatAttachment } from './entities/agent-chat-attachment.entit
 import type { StoredAttachmentRef } from './types/agent-chat-attachment';
 import { AgentExecutionOrchestratorService } from './agent-execution-orchestrator.service';
 import { AgentMessageQueueService } from './agent-message-queue.service';
+import { AgentPreviewTestVariablesService } from './agent-preview-test-variables.service';
 import { AgentQueuedPreviewStreamService } from './agent-queued-preview-stream.service';
 import { AgentChatExecutionService } from './agent-chat-execution.service';
 import { AgentExecutionService } from './agent-execution.service';
@@ -83,6 +84,7 @@ export class AgentChatController {
 		private readonly messageQueue: AgentMessageQueueService,
 		private readonly queuedPreviewStreams: AgentQueuedPreviewStreamService,
 		private readonly agentsConfig: AgentsConfig,
+		private readonly previewTestVariables: AgentPreviewTestVariablesService,
 	) {}
 
 	private createChatExecution(res: FlushableResponse) {
@@ -207,7 +209,13 @@ export class AgentChatController {
 		accept: (
 			send: (event: AgentSseEvent) => void,
 			abortSignal: AbortSignal,
-		) => Promise<Parameters<AgentMessageQueueService['enqueue']>[0] | undefined>,
+		) => Promise<
+			| (Parameters<AgentMessageQueueService['enqueue']>[0] & {
+					/** Editor preview only. Kept in memory, never stored in the queue. */
+					testVariables?: Record<string, string>;
+			  })
+			| undefined
+		>,
 	): Promise<void> {
 		const delivery = initSseStream(res);
 		const { send, abortSignal } = delivery;
@@ -215,12 +223,14 @@ export class AgentChatController {
 		let subscription: ReturnType<AgentQueuedPreviewStreamService['subscribe']> | undefined;
 		let attachments: StoredAttachmentRef[] | undefined;
 		try {
-			const input = await accept(send, abortSignal);
-			if (!input) return;
+			const queuedInput = await accept(send, abortSignal);
+			if (!queuedInput) return;
+			const { testVariables, ...input } = queuedInput;
 			attachments = input.payload.attachments;
 			abortSignal.throwIfAborted();
 			const result = await this.messageQueue.enqueue(input, (queueId) => {
 				subscription = this.queuedPreviewStreams.subscribe(queueId, delivery);
+				this.previewTestVariables.hold(queueId, testVariables);
 			});
 			if (result.status === 'duplicate') {
 				send({ type: 'done' });
@@ -349,7 +359,7 @@ export class AgentChatController {
 	) {
 		const { projectId } = req.params;
 		// The text-or-attachment invariant is enforced by the DTO schema.
-		const { message, sessionId, messageId, newSession, attachments } = payload;
+		const { message, sessionId, messageId, newSession, attachments, testVariables } = payload;
 
 		const credentialProvider = new AgentsCredentialProvider(
 			this.credentialsService,
@@ -390,6 +400,8 @@ export class AgentChatController {
 				threadId,
 				sessionMode: prepared.sessionMode,
 				source: 'chat',
+				// Only this editor preview endpoint forwards test variables.
+				testVariables,
 				payload: {
 					kind: 'preview',
 					message,
@@ -417,7 +429,7 @@ export class AgentChatController {
 		@Body payload: AgentChatResumeDto,
 	) {
 		const { projectId } = req.params;
-		const { runId, toolCallId, resumeData } = payload;
+		const { runId, toolCallId, resumeData, testVariables } = payload;
 		const execution = this.createChatExecution(res);
 		const { send, onChunk, abortSignal, onExecutionStarted } = execution;
 		try {
@@ -430,6 +442,8 @@ export class AgentChatController {
 				resumeData,
 				user: req.user,
 				chatSurface: 'preview',
+				// A resume re-supplies the values: they are never stored with the checkpoint.
+				...(testVariables ? { runtimeMetadata: testVariables } : {}),
 				errorMode: 'forward',
 				onChunk,
 				onBudgetNotice: (notice) => send({ type: 'budget-notice', ...notice }),

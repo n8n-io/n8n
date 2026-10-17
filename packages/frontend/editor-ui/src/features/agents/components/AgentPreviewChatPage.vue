@@ -10,6 +10,8 @@ import type {
 } from '../types';
 import type { BudgetAmountField } from '../utils/budget-config';
 import AgentChatPanel from './AgentChatPanel.vue';
+import AgentTestVariablesPanel from './AgentTestVariablesPanel.vue';
+import { useAgentTestVariables } from '../composables/useAgentTestVariables';
 
 const props = withDefaults(
 	defineProps<{
@@ -50,6 +52,10 @@ const emit = defineEmits<{
 }>();
 
 const inputDraft = ref('');
+const { payload: testVariables } = useAgentTestVariables(
+	() => props.agentId,
+	() => props.localConfig,
+);
 const chatPanel = useTemplateRef<InstanceType<typeof AgentChatPanel>>('chatPanel');
 
 function focusInput(options?: FocusOptions) {
@@ -103,12 +109,17 @@ defineExpose({ focusInput, getConversationMarkdown, clearBudgetStops });
 				:before-send="beforeSend"
 				:budget-cards="budgetCards"
 				:increase-budget="increaseBudget"
+				:test-variables="testVariables"
 				@continue-loaded="emit('continue-loaded', $event)"
 				@session-created="emit('session-created', $event)"
 				@initial-consumed="emit('initial-consumed')"
 				@open-build="emit('open-build')"
 				@send-to-assistant="emit('send-to-assistant', $event)"
-			/>
+			>
+				<template #above-input>
+					<AgentTestVariablesPanel :agent-id="agentId" :config="localConfig" />
+				</template>
+			</AgentChatPanel>
 		</div>
 	</component>
 </template>

@@ -183,7 +183,7 @@ describe('AgentToolConfigForm variable defaults', () => {
 						},
 					},
 					supportsToolApproval: false,
-					onConfirm,
+					onConfirm: onConfirm as never,
 				},
 			},
 			global: {

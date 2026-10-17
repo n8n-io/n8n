@@ -9,7 +9,11 @@ import {
 	MAX_AGENT_CHAT_ATTACHMENTS_PER_MESSAGE,
 } from './agent-chat-attachments.constants';
 import { AgentApprovalSchema, AgentTeamsSettingsSchema } from './agent-integration.schema';
-import { AgentVectorStoreConfigSchema, AgentJsonConfigSchema } from './agent-json-config.schema';
+import {
+	AgentVectorStoreConfigSchema,
+	AgentJsonConfigSchema,
+	TrustedMetadataKeySchema,
+} from './agent-json-config.schema';
 import {
 	agentSkillAvailabilitySchema,
 	agentSkillSchema,
@@ -275,6 +279,14 @@ export const agentChatAttachmentSchema = z.object({
 
 export type AgentChatAttachmentPayload = z.infer<typeof agentChatAttachmentSchema>;
 
+/** Test values for node tool variables, sent by the editor preview chat only. */
+const testVariablesSchema = z
+	.record(TrustedMetadataKeySchema, z.string().max(10_000))
+	.refine((values) => Object.keys(values).length <= 50, {
+		message: 'At most 50 test variables are allowed',
+	})
+	.optional();
+
 const agentChatMessageShape = {
 	// `message` may be empty when at least one attachment is present
 	// (attachment-only sends) — see the schema-level refinement below.
@@ -292,6 +304,13 @@ const agentChatMessageShape = {
 	 * shape and validates it. Project agents ignore it.
 	 */
 	clientContext: z.record(z.unknown()).optional(),
+	/**
+	 * Test values for the variables the agent's node tools read (see
+	 * `collectAgentVariables`). Only the editor's preview chat sends them, to
+	 * stand in for a calling workflow's Message an Agent node. Tools still fall
+	 * back to their own defaults for names left out.
+	 */
+	testVariables: testVariablesSchema,
 };
 
 const agentChatMessageSchema = z
@@ -348,6 +367,8 @@ export class AgentChatResumeDto extends Z.class({
 	// know about). Each interactive tool validates its own resume payload via
 	// `.resume(schema)`.
 	resumeData: z.unknown(),
+	/** Preview chat only: re-supplies test variables, which are never stored. */
+	testVariables: testVariablesSchema,
 }) {}
 
 const agentConnectIntegrationShape = {

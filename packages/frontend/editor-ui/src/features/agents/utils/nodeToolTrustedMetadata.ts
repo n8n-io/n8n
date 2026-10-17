@@ -1,5 +1,11 @@
 import type { NodeToolTrustedMetadata } from '@n8n/api-types';
 
+/** The JSON value a fixed default can hold on the wire. */
+export type FixedDefaultValue = Extract<
+	NodeToolTrustedMetadata[string],
+	{ mode: 'fixed' }
+>['value'];
+
 export type TrustedMetadataRowMode = 'fixed' | 'expression';
 
 type Binding = NodeToolTrustedMetadata[string];
@@ -39,11 +45,11 @@ export function formatTrustedMetadataFixedValue(value: unknown): string {
  * `{`, `[` or `"` is parsed as JSON. Everything else (12345, null, true, large
  * integers) stays the exact string. Incomplete JSON stays raw while the user types.
  */
-export function parseTrustedMetadataFixedValue(raw: string): unknown {
+export function parseTrustedMetadataFixedValue(raw: string): FixedDefaultValue {
 	const trimmed = raw.trim();
 	if (!startsLikeJson(trimmed)) return raw;
 	try {
-		return JSON.parse(trimmed) as unknown;
+		return JSON.parse(trimmed) as FixedDefaultValue;
 	} catch {
 		return raw;
 	}

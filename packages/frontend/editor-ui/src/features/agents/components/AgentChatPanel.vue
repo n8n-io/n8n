@@ -129,6 +129,11 @@ const props = withDefaults(
 		 */
 		clientContext?: () => Record<string, unknown> | undefined;
 		/**
+		 * Test values for the agent's tool variables. Only the editor's preview
+		 * chat sets it. It is sent with each new message.
+		 */
+		testVariables?: Record<string, string>;
+		/**
 		 * Replaces the default composer placeholder. The placeholders for an open
 		 * question card and for a non-empty queue still take priority.
 		 */
@@ -160,6 +165,7 @@ const props = withDefaults(
 		budgetCards: false,
 		increaseBudget: undefined,
 		clientContext: undefined,
+		testVariables: undefined,
 		placeholder: undefined,
 		showAttachButton: true,
 		interactionExtensions: () => [],
@@ -267,6 +273,7 @@ const {
 	onAgentUnavailable: () => emit('agent-unavailable'),
 	budgetCards: props.budgetCards,
 	interactionExtensions: props.interactionExtensions,
+	testVariables: () => props.testVariables,
 });
 
 provide(

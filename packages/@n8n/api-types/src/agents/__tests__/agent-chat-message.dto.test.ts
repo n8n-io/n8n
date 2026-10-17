@@ -100,4 +100,34 @@ describe('AgentChatMessageDto', () => {
 			}).success,
 		).toBe(false);
 	});
+
+	describe('testVariables', () => {
+		it('accepts valid test variables and omits them when absent', () => {
+			expect(
+				AgentChatMessageDto.parse({ message: 'hi', testVariables: { tenant_id: 'acme' } })
+					.testVariables,
+			).toEqual({ tenant_id: 'acme' });
+			expect(AgentChatMessageDto.parse({ message: 'hi' })).not.toHaveProperty('testVariables');
+		});
+
+		it('rejects invalid keys, long values and non-string values', () => {
+			const parse = (testVariables: unknown) =>
+				AgentChatMessageDto.safeParse({ message: 'hi', testVariables }).success;
+			expect(parse({ 'bad key!': 'x' })).toBe(false);
+			expect(parse({ '': 'x' })).toBe(false);
+			expect(parse({ a: 'x'.repeat(10_001) })).toBe(false);
+			expect(parse({ a: 1 })).toBe(false);
+		});
+
+		it('rejects more than 50 test variables', () => {
+			const many = (n: number) =>
+				Object.fromEntries(Array.from({ length: n }, (_, i) => [`v${i}`, 'x']));
+			expect(
+				AgentChatMessageDto.safeParse({ message: 'hi', testVariables: many(50) }).success,
+			).toBe(true);
+			expect(
+				AgentChatMessageDto.safeParse({ message: 'hi', testVariables: many(51) }).success,
+			).toBe(false);
+		});
+	});
 });

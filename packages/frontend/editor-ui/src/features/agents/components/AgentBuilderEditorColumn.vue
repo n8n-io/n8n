@@ -24,6 +24,8 @@ import AgentAdvancedPanel from './AgentAdvancedPanel.vue';
 import AgentBudgetPanel from './AgentBudgetPanel.vue';
 import AgentCapabilitiesSection from './AgentCapabilitiesSection.vue';
 import AgentTriggersSection from './AgentTriggersSection.vue';
+import AgentVariablesOverview from './AgentVariablesOverview.vue';
+import { useAgentVariables } from '../composables/useAgentTestVariables';
 import { AGENT_PERSONALISATION_KEY } from '../channels/types';
 import AgentIdentityHeader from './AgentIdentityHeader.vue';
 import AgentInfoPanel from './AgentInfoPanel.vue';
@@ -72,6 +74,7 @@ const props = defineProps<{
 	saveDescription?: (description: string) => Promise<void>;
 }>();
 
+const agentVariables = useAgentVariables(() => props.localConfig);
 const childrenDisabled = computed(() => !props.canEditAgent);
 provide(
 	AGENT_PERSONALISATION_KEY,
@@ -275,6 +278,18 @@ defineExpose({ onSetupTaskAction });
 							@add-tool="emit('add-tool', $event)"
 							@update:config="emit('update:config', $event)"
 							@remove-tool="emit('remove-tool', $event)"
+						/>
+					</AgentPanel>
+
+					<AgentPanel
+						v-if="agentVariables.length"
+						:header="i18n.baseText('agents.variables.title')"
+						:description="i18n.baseText('agents.variables.description')"
+						data-testid="agent-variables-panel"
+					>
+						<AgentVariablesOverview
+							:variables="agentVariables"
+							@open-tool="emit('open-tool', $event)"
 						/>
 					</AgentPanel>
 

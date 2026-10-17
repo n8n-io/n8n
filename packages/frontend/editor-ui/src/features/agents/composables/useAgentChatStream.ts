@@ -88,6 +88,8 @@ export interface UseAgentChatStreamParams {
 	budgetCards?: boolean;
 	/** Card types of the chat host. The stream maps suspended tool calls with them. */
 	interactionExtensions?: readonly AgentsChatInteractionExtension[];
+	/** Test values for the agent's tool variables, sent with new messages and resumes. */
+	testVariables?: () => Record<string, string> | undefined;
 }
 
 type ResumePayload =
@@ -1531,6 +1533,8 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			if (newSession) body.newSession = true;
 		}
 		if (clientContext) body.clientContext = clientContext;
+		const testVariables = params.testVariables?.();
+		if (testVariables && Object.keys(testVariables).length > 0) body.testVariables = testVariables;
 		if (files?.length) {
 			body.attachments = await Promise.all(
 				files.map(async (file) => {
@@ -1641,10 +1645,16 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			});
 		}
 
+		const resumeTestVariables = params.testVariables?.();
 		const url = `${agentChatBaseUrl(rootStore.restApiContext, params.projectId.value, params.agentId.value, channel.value)}/resume`;
 		const { outcome } = await postAndConsume(
 			url,
-			{ runId: payload.runId, toolCallId: payload.toolCallId, resumeData },
+			{
+				runId: payload.runId,
+				toolCallId: payload.toolCallId,
+				resumeData,
+				...(resumeTestVariables && { testVariables: resumeTestVariables }),
+			},
 			onAccepted,
 		);
 		let reconciled = false;

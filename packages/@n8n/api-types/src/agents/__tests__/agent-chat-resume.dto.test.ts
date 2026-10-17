@@ -42,4 +42,13 @@ describe('AgentChatResumeDto', () => {
 		// otherwise silently resolve as skipped despite claiming success.
 		expect(() => credentialResumeSchema.parse({ approved: true })).toThrow();
 	});
+
+	it('accepts optional test variables and rejects invalid keys', () => {
+		const withVars = AgentChatResumeDto.parse({ ...base, testVariables: { tenant_id: 'acme' } });
+		expect(withVars.testVariables).toEqual({ tenant_id: 'acme' });
+		expect(AgentChatResumeDto.parse(base)).not.toHaveProperty('testVariables');
+		expect(
+			AgentChatResumeDto.safeParse({ ...base, testVariables: { 'bad key!': 'x' } }).success,
+		).toBe(false);
+	});
 });

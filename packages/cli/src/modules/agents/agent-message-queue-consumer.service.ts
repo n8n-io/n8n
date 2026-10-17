@@ -13,6 +13,7 @@ import { AgentChatExecutionService } from './agent-chat-execution.service';
 import { AgentExecutionOrchestratorService } from './agent-execution-orchestrator.service';
 import { AgentExecutionService } from './agent-execution.service';
 import { AgentMessageQueueService, type ClaimedAgentMessage } from './agent-message-queue.service';
+import { AgentPreviewTestVariablesService } from './agent-preview-test-variables.service';
 import { AgentQueuedPreviewStreamService } from './agent-queued-preview-stream.service';
 import { emitChunkEvents, toChatErrorEvent } from './agent-sse-stream';
 import { AgentTestRunService } from './agent-test-run.service';
@@ -40,6 +41,7 @@ export class AgentMessageQueueConsumer {
 		private readonly integrations: ChatIntegrationService,
 		private readonly orchestrator: AgentExecutionOrchestratorService,
 		private readonly logger: Logger,
+		private readonly previewTestVariables: AgentPreviewTestVariablesService,
 	) {}
 
 	start(): void {
@@ -229,7 +231,9 @@ export class AgentMessageQueueConsumer {
 			});
 			return;
 		}
+		const testVariables = this.previewTestVariables.take(claim.item.id);
 		const result = await this.testRunService.executePreparedDraftRun({
+			...(testVariables ? { runtimeMetadata: testVariables } : {}),
 			agentId: thread.agentId,
 			projectId: thread.projectId,
 			user,

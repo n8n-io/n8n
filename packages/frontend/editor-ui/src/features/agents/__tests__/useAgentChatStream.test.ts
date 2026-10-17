@@ -230,6 +230,7 @@ function buildHook(
 		budgetCards?: boolean;
 		channel?: Ref<'chat' | 'n8n-chat'>;
 		interactionExtensions?: readonly AgentsChatInteractionExtension[];
+		testVariables?: () => Record<string, string> | undefined;
 	} = {},
 ) {
 	const scope = effectScope();
@@ -5069,6 +5070,26 @@ describe('useAgentChatStream — client context', () => {
 		expect(fetchMock).toHaveBeenCalledTimes(1);
 		expect(sentBody()).toEqual({ message: 'hello' });
 		expect(sentBody()).not.toHaveProperty('clientContext');
+	});
+
+	it('sends test variables with the message when any are set', async () => {
+		const { sentBody } = mockChatFetch();
+		const hook = buildHook(undefined, { testVariables: () => ({ region: 'eu' }) });
+
+		await hook.sendMessage('hello');
+		await flushPromises();
+
+		expect(sentBody()).toEqual({ message: 'hello', testVariables: { region: 'eu' } });
+	});
+
+	it('leaves test variables out of the request body when none are set', async () => {
+		const { sentBody } = mockChatFetch();
+		const hook = buildHook(undefined, { testVariables: () => ({}) });
+
+		await hook.sendMessage('hello');
+		await flushPromises();
+
+		expect(sentBody()).not.toHaveProperty('testVariables');
 	});
 });
 
