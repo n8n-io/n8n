@@ -51,8 +51,14 @@ const mocks = vi.hoisted(() => {
 		installSlackManagedApp: vi.fn(),
 		authorizeNewCredential: vi.fn(),
 		fetchCredentials: vi.fn(),
+		showMessage: vi.fn(),
+		showError: vi.fn(),
 	};
 });
+
+vi.mock('@n8n/composables/useToast', () => ({
+	useToast: () => ({ showMessage: mocks.showMessage, showError: mocks.showError }),
+}));
 
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({ baseText: (k: string) => k }),
@@ -205,7 +211,7 @@ vi.mock('@/features/agents/channels/teams/AgentChannelTeamsSetupKindSelector.vue
 vi.mock('@/features/agents/channels/teams/AgentChannelTeamsSetupView.vue', () => ({
 	default: {
 		props: ['modelValue'],
-		emits: ['update:modelValue', 'persist', 'done', 'connect'],
+		emits: ['update:modelValue', 'persist', 'done', 'connect', 'restart'],
 		setup(
 			_: unknown,
 			{
@@ -235,6 +241,8 @@ vi.mock('@/features/agents/channels/teams/AgentChannelTeamsSetupView.vue', () =>
 			<button data-testid="mock-teams-provision" @click="provision">Provision</button>
 			<button data-testid="mock-teams-download" @click="download">Download</button>
 			<button data-testid="mock-teams-done" @click="finish">Done</button>
+			<button data-testid="mock-teams-restart" @click="$emit('restart', { credentialId: '' })">Set up again</button>
+			<span data-testid="mock-teams-credential">{{ modelValue }}</span>
 		</div>`,
 	},
 }));
@@ -287,7 +295,7 @@ describe('ChannelSetupCard', () => {
 		mocks.reloadCatalog.mockResolvedValue([mocks.slackIntegration, mocks.linearIntegration]);
 		mocks.fetchStatus.mockResolvedValue(undefined);
 		mocks.connect.mockResolvedValue({ status: 'connected' });
-		mocks.disconnect.mockResolvedValue(undefined);
+		mocks.disconnect.mockResolvedValue({});
 		mocks.isConnected.mockReturnValue(false);
 		mocks.teamsKeepOpenAfterConnect = false;
 		mocks.isConfigured.mockReturnValue(false);
@@ -733,6 +741,58 @@ describe('ChannelSetupCard', () => {
 			expect(mocks.connect).toHaveBeenCalledTimes(1);
 			expect(wrapper.emitted('resolve')).toBeUndefined();
 			expect(wrapper.find('[data-testid="channel-setup-card-skip"]').exists()).toBe(true);
+		});
+
+		it('removes the saved channel and starts the setup again', async () => {
+			const wrapper = mountCard({ integrationType: 'teams' });
+			await flushPromises();
+			await wrapper.find('[data-testid="mock-teams-provision"]').trigger('click');
+			await flushPromises();
+			expect(wrapper.find('[data-testid="channel-setup-card-skip"]').exists()).toBe(false);
+
+			await wrapper.find('[data-testid="mock-teams-restart"]').trigger('click');
+			await flushPromises();
+
+			expect(mocks.disconnect).toHaveBeenCalledWith('teams', 'teams-cred', {
+				deleteExternalResource: undefined,
+			});
+			expect(wrapper.find('[data-testid="mock-teams-credential"]').text()).toBe('');
+			expect(wrapper.find('[data-testid="channel-setup-card-skip"]').exists()).toBe(true);
+			expect(wrapper.emitted('resolve')).toBeUndefined();
+		});
+
+		it('tells the user where to remove what the old setup left behind', async () => {
+			mocks.disconnect.mockResolvedValueOnce({
+				warning: {
+					integrationType: 'teams',
+					code: 'resources_not_deleted',
+					action: { type: 'open_url', url: 'https://admin.teams.microsoft.com' },
+				},
+			});
+			const wrapper = mountCard({ integrationType: 'teams' });
+			await flushPromises();
+			await wrapper.find('[data-testid="mock-teams-provision"]').trigger('click');
+			await flushPromises();
+
+			await wrapper.find('[data-testid="mock-teams-restart"]').trigger('click');
+			await flushPromises();
+
+			expect(mocks.showMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'warning' }));
+		});
+
+		it('keeps the saved channel and reports the error when removal fails', async () => {
+			const wrapper = mountCard({ integrationType: 'teams' });
+			await flushPromises();
+			await wrapper.find('[data-testid="mock-teams-provision"]').trigger('click');
+			await flushPromises();
+			mocks.disconnect.mockRejectedValueOnce(new Error('disconnect failed'));
+
+			await wrapper.find('[data-testid="mock-teams-restart"]').trigger('click');
+			await flushPromises();
+
+			expect(mocks.showError).toHaveBeenCalled();
+			expect(wrapper.find('[data-testid="mock-teams-credential"]').text()).toBe('teams-cred');
+			expect(wrapper.find('[data-testid="channel-setup-card-skip"]').exists()).toBe(false);
 		});
 
 		it('stays open after a connect when the setup has steps past it', async () => {

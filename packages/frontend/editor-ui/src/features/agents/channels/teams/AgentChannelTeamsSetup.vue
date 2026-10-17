@@ -146,17 +146,6 @@ const offerManagedApp = computed(() => {
 	);
 });
 
-// The credential the saved channel runs on, so a swap counts as an app change.
-// The modal can hand it over after mount, so the first one given is the saved one.
-const savedCredentialId = ref(credentialId.value);
-if (!savedCredentialId.value) {
-	const stop = watch(credentialId, (id) => {
-		if (!id) return;
-		savedCredentialId.value = id;
-		stop();
-	});
-}
-
 const organization = computed(() => {
 	const managed = props.managedRuntime;
 	const id = managed?.managerCredentialId.value;
@@ -227,9 +216,9 @@ function editAvailability(value: TeamsAvailability) {
 }
 
 /**
- * Whether saving changes what the installed app carries: its scopes, its bot,
- * or an identity override this view no longer keeps. Teams only picks that up
- * from a new package.
+ * Whether saving changes what the installed app carries: its scopes, or an
+ * identity override this view no longer keeps. Teams only picks that up from
+ * a new package.
  */
 const manifestChanged = computed(() => {
 	if (props.mode !== 'edit') return false;
@@ -239,7 +228,6 @@ const manifestChanged = computed(() => {
 		availability.value.groupChats !== (saved?.groupChats ?? false) ||
 		availability.value.readAllChannelMessages !== (saved?.readAllChannelMessages ?? false) ||
 		availability.value.readAllGroupMessages !== (saved?.readAllGroupMessages ?? false) ||
-		credentialId.value !== savedCredentialId.value ||
 		savedIdentityOverride.value
 	);
 });
@@ -573,7 +561,7 @@ function showDownloaded() {
 // The package matches what n8n has saved, not the unsaved form, so an
 // installed app never runs on settings that were never saved.
 async function downloadSaved() {
-	if (!(await downloadPackage(props.savedSettings, savedCredentialId.value))) return;
+	if (!(await downloadPackage(props.savedSettings, credentialId.value))) return;
 	showDownloaded();
 	await loadSetupState();
 }

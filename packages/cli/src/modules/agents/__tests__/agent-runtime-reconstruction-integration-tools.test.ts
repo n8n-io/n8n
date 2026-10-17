@@ -293,6 +293,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			saveCompletion,
 			new AgentPolicyService(new PolicyEnforcementService()),
 			skillRefs,
+			mock<ChatIntegrationRegistry>(),
 		);
 		agentCustomToolsService = new AgentCustomToolsService(
 			logger,

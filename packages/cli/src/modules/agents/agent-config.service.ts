@@ -23,7 +23,9 @@ import { AgentSaveCompletionService } from './agent-save-completion.service';
 import { AgentSetupCompletionService } from './agent-setup-completion.service';
 import { AgentSkillRefsService } from './agent-skill-refs.service';
 import type { Agent } from './entities/agent.entity';
+import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import { syncAgentIntegrations } from './integrations/integrations-sync';
+import { assertSingleConnections } from './integrations/single-connection';
 import { composeJsonConfig, decomposeJsonConfig } from './json-config/agent-config-composition';
 import {
 	fromAgentDocument,
@@ -68,6 +70,7 @@ export class AgentConfigService {
 		private readonly saveCompletion: AgentSaveCompletionService,
 		private readonly agentPolicyService: AgentPolicyService,
 		private readonly agentSkillRefs: AgentSkillRefsService,
+		private readonly chatIntegrationRegistry: ChatIntegrationRegistry,
 	) {}
 
 	/**
@@ -141,6 +144,11 @@ export class AgentConfigService {
 			validatedConfig,
 			config,
 			clearOmitted,
+		);
+		assertSingleConnections(
+			this.chatIntegrationRegistry,
+			replacement.previousIntegrations,
+			replacement.nextIntegrations,
 		);
 		if (replacement.nextSchema.skills !== undefined) {
 			// Validate, store and report the refs that are saved, not the submitted ones.

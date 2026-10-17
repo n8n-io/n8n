@@ -57,15 +57,26 @@ export interface AgentChannelRuntimeContext {
 	ensureAgentPersisted?: () => Promise<void>;
 }
 
+export interface AgentChannelRestart {
+	/** The channel credential for the new setup, or '' to start without one. */
+	credentialId: string;
+	/** The account the new setup signs in with, for a platform that signs in first. */
+	signInCredentialId?: string;
+}
+
 export interface AgentChannelRuntime {
 	load: () => Promise<void>;
 	loading: Readonly<Ref<boolean>>;
+	/** Forgets what an earlier setup left here, so the next one starts from the first step. */
+	reset?: (restart: AgentChannelRestart) => void;
 }
 
 export interface AgentChannelViewProps {
 	mode: AgentChannelMode;
 	integration: ChatIntegrationDescriptor;
 	modelValue: string;
+	/** The credential the saved channel runs on, or '' while there is none. */
+	savedCredentialId?: string;
 	credentials: AgentCredentialOption[];
 	credentialPermissions: PermissionsRecord['credential'];
 	credentialsLoading: boolean;

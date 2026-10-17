@@ -25,6 +25,7 @@ import { AgentRepository } from '@/modules/agents/repositories/agent.repository'
 import { getAgentConfigHash } from '@/modules/agents/utils/agent-config-hash';
 import type { AgentDefinition } from '@/modules/agents/utils/agent-definition';
 import { AgentSkillRefsService } from '@/modules/agents/agent-skill-refs.service';
+import type { ChatIntegrationRegistry } from '@/modules/agents/integrations/agent-chat-integration';
 import { toAgentDocument } from '@/modules/agents/json-config/agent-document';
 import {
 	composeStoredJsonConfig,
@@ -190,6 +191,7 @@ describe('AgentRepository', () => {
 				completion,
 				mock<AgentPolicyService>(),
 				Container.get(AgentSkillRefsService),
+				mock<ChatIntegrationRegistry>(),
 			);
 			const deleteTasks = taskRepo.deleteForAgent.bind(taskRepo);
 			vi.spyOn(taskRepo, 'deleteForAgent').mockImplementationOnce(async (id, ids, ctx) => {
