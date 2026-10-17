@@ -13,7 +13,7 @@ import {
 	BACKGROUND_PAUSE_USER_TURN_KEY,
 	PARENT_TASK_CANCELLED_REASON,
 } from './sub-agent-background-state';
-import { EXECUTION_METADATA_KEY } from '../types/agent-queued-message';
+import { executionIdFromMetadata, EXECUTION_METADATA_KEY } from '../types/agent-queued-message';
 import type {
 	BackgroundSubAgentRunContext,
 	SubAgentBackgroundRunner,
@@ -100,6 +100,7 @@ export function createBackgroundSubAgentHandler(
 				...(isSelfDelegation && input.difficulty !== undefined
 					? { difficulty: input.difficulty }
 					: {}),
+				sourceExecutionId: executionIdFromMetadata(ctx.persistence?.hostMetadata),
 				parentThreadId,
 				parentResourceId,
 				parentSandboxPrincipalHash: sandboxScope.principalHash,
