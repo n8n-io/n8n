@@ -18,7 +18,6 @@ import type {
 } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
-import { ExecutionsConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import type { EvalLlmMockHandler } from 'n8n-core';
@@ -151,7 +150,6 @@ export async function resolveCanonicalMcpCatalogs(
 export class EvalAgentExecutionService {
 	constructor(
 		private readonly logger: Logger,
-		private readonly executionsConfig: ExecutionsConfig,
 		private readonly moduleRegistry: ModuleRegistry,
 		private readonly outboundHttp: OutboundHttp,
 		private readonly credentialsService: CredentialsService,
@@ -167,15 +165,6 @@ export class EvalAgentExecutionService {
 		// receives is this input verbatim — how a fixed eval case is executed.
 		caseInput?: string,
 	): Promise<InstanceAiEvalAgentExecutionResult> {
-		// Workflow-tool sub-executions carry a configureAdditionalData closure
-		// that doesn't survive queue serialization — refuse upfront so tool
-		// HTTP can't leak to real services.
-		if (this.executionsConfig.mode === 'queue') {
-			return this.errorResult(
-				'Agent eval execution requires main process mode — queue mode is not supported.',
-			);
-		}
-
 		if (!this.moduleRegistry.isActive('agents')) {
 			return this.errorResult('Agent eval execution requires the agents module to be active.');
 		}
