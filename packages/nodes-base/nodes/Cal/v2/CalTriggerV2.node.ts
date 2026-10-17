@@ -15,18 +15,10 @@ import {
 
 import { verifySignature } from '../CalTriggerHelpers';
 import { calApiRequestV2, sortOptionParameters } from '../GenericFunctions';
+import type { CalApiResponse, CalEventType } from '../helpers/interfaces';
 
 const WEBHOOK_PAGE_SIZE = 250;
 const MAX_WEBHOOK_PAGES = 10;
-
-interface CalApiResponse<T> {
-	data: T;
-}
-
-interface CalEventType {
-	id: number;
-	title: string;
-}
 
 interface CalWebhook {
 	id: number;
