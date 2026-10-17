@@ -25,9 +25,15 @@ import {
 	type McpAppTelemetryConfig,
 } from '@n8n/mcp-apps/server';
 import { lazyImport } from '@n8n/utils/lazy-import';
+import { createHash } from 'node:crypto';
 import { createDeferredPromise, type IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { InstanceSettings } from 'n8n-core';
-import { ManualExecutionCancelledError, type FeatureFlags, type IRun } from 'n8n-workflow';
+import {
+	ManualExecutionCancelledError,
+	UnexpectedError,
+	type FeatureFlags,
+	type IRun,
+} from 'n8n-workflow';
 import type z from 'zod';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -231,6 +237,14 @@ function getWorkflowId(source: unknown): string | undefined {
 
 @Service()
 export class McpService {
+	private readonly toolListRevisions = new WeakMap<McpServer, string>();
+
+	getToolListRevision(server: McpServer): string {
+		const revision = this.toolListRevisions.get(server);
+		if (!revision) throw new UnexpectedError('MCP tool list revision is missing');
+		return revision;
+	}
+
 	/**
 	 * Map of execution ID to pending response promise.
 	 * Used in queue mode to wait for worker responses.
@@ -365,6 +379,7 @@ export class McpService {
 		user: User,
 		clientInfo?: McpClientInfo,
 		auth?: McpAuthContext,
+		onRegistered?: (definition: Record<string, unknown>) => void,
 	) {
 		return (tool: ToolDefinition<z.ZodRawShape, ToolHandlerResult>) => {
 			// `ToolHandler` is a union of 1- and 2-arity signatures, so we invoke it
@@ -404,12 +419,20 @@ export class McpService {
 			};
 
 			const { inputSchema, outputSchema, ...config } = tool.config;
+			const input = inputSchema ? shapeToStandardSchema(inputSchema) : undefined;
+			const output = outputSchema ? shapeToStandardSchema(outputSchema) : undefined;
+			onRegistered?.({
+				name: tool.name,
+				...config,
+				inputSchema: input?.['~standard'].jsonSchema.input({ target: 'draft-2020-12' }),
+				outputSchema: output?.['~standard'].jsonSchema.output({ target: 'draft-2020-12' }),
+			});
 			return server.registerTool(
 				tool.name,
 				{
 					...config,
-					...(inputSchema ? { inputSchema: shapeToStandardSchema(inputSchema) } : {}),
-					...(outputSchema ? { outputSchema: shapeToStandardSchema(outputSchema) } : {}),
+					...(input ? { inputSchema: input } : {}),
+					...(output ? { outputSchema: output } : {}),
 				},
 				instrumentedHandler,
 			);
@@ -479,7 +502,7 @@ export class McpService {
 		const server = new McpServer(
 			{
 				name: 'n8n MCP Server',
-				version: agentsEnabled ? '1.2.0' : builderEnabled ? '1.1.0' : '1.0.0',
+				version: N8N_VERSION,
 			},
 			{
 				instructions: getMcpInstructions({
@@ -496,7 +519,10 @@ export class McpService {
 			},
 		);
 
-		const registerTool = this.createToolRegistrar(server, user, clientInfo, auth);
+		const toolListHash = createHash('sha256');
+		const registerTool = this.createToolRegistrar(server, user, clientInfo, auth, (definition) => {
+			toolListHash.update(JSON.stringify(definition));
+		});
 		const registerResource = this.createResourceRegistrar(server);
 
 		const registerIfAllowed: RegisterToolFn = (tool) => {
@@ -828,6 +854,7 @@ export class McpService {
 			);
 		}
 
+		this.toolListRevisions.set(server, toolListHash.digest('hex'));
 		return server;
 	}
 
