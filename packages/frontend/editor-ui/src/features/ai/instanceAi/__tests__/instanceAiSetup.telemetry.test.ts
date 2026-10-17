@@ -11,12 +11,14 @@ const baseSettings = {
 	searchCredentialId: null,
 	modelCredentialId: null,
 	modelName: null,
+	memoryModelName: null,
+	modelEnvProvider: null,
 	modelEnvConfigured: false,
 	sandboxEnvConfigured: false,
 	searchEnvConfigured: false,
 	searchDisabled: false,
 	envManaged: {
-		model: { provider: false, apiKey: false, baseUrl: false, model: false },
+		model: { provider: false, apiKey: false, baseUrl: false, model: false, memoryModel: false },
 		sandbox: { provider: false, serviceUrl: false, apiKey: false },
 		search: { provider: false, apiKey: false, url: false },
 	},
@@ -60,6 +62,8 @@ describe('buildSetupSnapshot', () => {
 		const snapshot = buildSetupSnapshot(
 			{
 				...baseSettings,
+				memoryModelName: null,
+				modelEnvProvider: null,
 				modelEnvConfigured: true,
 				modelName: 'gpt-4',
 				sandboxEnabled: true,

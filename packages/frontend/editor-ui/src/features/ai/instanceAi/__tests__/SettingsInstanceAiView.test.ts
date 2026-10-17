@@ -177,6 +177,8 @@ describe('SettingsInstanceAiView', () => {
 				searchCredentialId: null,
 				modelCredentialId: null,
 				modelName: null,
+				memoryModelName: null,
+				modelEnvProvider: null,
 				modelEnvConfigured: false,
 				sandboxEnvConfigured: false,
 				searchEnvConfigured: false,
@@ -307,6 +309,8 @@ describe('SettingsInstanceAiView', () => {
 				settings: {
 					...store.settings!,
 					modelCredentialId: 'openai-id',
+					memoryModelName: null,
+					modelEnvProvider: null,
 					modelEnvConfigured: true,
 					sandboxEnabled: true,
 					sandboxEnvConfigured: true,
@@ -323,6 +327,8 @@ describe('SettingsInstanceAiView', () => {
 				settings: {
 					...store.settings!,
 					modelCredentialId: 'openai-id',
+					memoryModelName: null,
+					modelEnvProvider: null,
 					modelEnvConfigured: true,
 					sandboxEnabled: true,
 					sandboxEnvConfigured: true,
@@ -449,10 +455,18 @@ describe('SettingsInstanceAiView', () => {
 			store.$patch({
 				settings: {
 					...store.settings!,
+					memoryModelName: null,
+					modelEnvProvider: null,
 					modelEnvConfigured: true,
 					modelName: 'gpt-4o',
 					envManaged: {
-						model: { provider: true, apiKey: true, baseUrl: false, model: false },
+						model: {
+							provider: true,
+							apiKey: true,
+							baseUrl: false,
+							model: false,
+							memoryModel: false,
+						},
 						sandbox: { provider: false, serviceUrl: false, apiKey: false },
 						search: { provider: false, apiKey: false, url: false },
 					},
@@ -488,11 +502,19 @@ describe('SettingsInstanceAiView', () => {
 			store.$patch({
 				settings: {
 					...store.settings!,
+					memoryModelName: null,
+					modelEnvProvider: null,
 					modelEnvConfigured: true,
 					sandboxEnabled: true,
 					sandboxEnvConfigured: true,
 					envManaged: {
-						model: { provider: true, apiKey: true, baseUrl: false, model: true },
+						model: {
+							provider: true,
+							apiKey: true,
+							baseUrl: false,
+							model: true,
+							memoryModel: false,
+						},
 						sandbox: { provider: true, serviceUrl: true, apiKey: true },
 						search: { provider: false, apiKey: false, url: false },
 					},

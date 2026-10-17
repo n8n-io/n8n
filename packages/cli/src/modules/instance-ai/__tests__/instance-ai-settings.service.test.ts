@@ -113,6 +113,7 @@ describe('InstanceAiSettingsService', () => {
 			vertexProjectId: '',
 			vertexLocation: '',
 			vertexServiceAccountJson: '',
+			memoryModel: '',
 		});
 		globalConfig.deployment.type = 'default';
 		instanceCredentialBroker.listForUse.mockResolvedValue([]);
@@ -1841,6 +1842,17 @@ describe('InstanceAiSettingsService', () => {
 			expect((await service.getAdminSettings()).modelEnvConfigured).toBe(true);
 		});
 
+		it('reports the env model provider only when the connection is env-configured', async () => {
+			expect((await service.getAdminSettings()).modelEnvProvider).toBeNull();
+
+			globalConfig.instanceAi.model = 'anthropic/claude-opus-5-5';
+			vi.stubEnv('ANTHROPIC_API_KEY', 'provider-key');
+			expect((await service.getAdminSettings()).modelEnvProvider).toBe('anthropic');
+
+			aiService.isProxyEnabled.mockReturnValue(true);
+			expect((await service.getAdminSettings()).modelEnvProvider).toBeNull();
+		});
+
 		it('reports Vertex as env-configured only when a project id is resolvable', async () => {
 			globalConfig.instanceAi.model = 'google-vertex-anthropic/claude-opus-4-8';
 			expect((await service.getAdminSettings()).modelEnvConfigured).toBe(false);
@@ -2531,6 +2543,62 @@ describe('InstanceAiSettingsService', () => {
 			expect(userService.updateSettings).toHaveBeenCalledWith('user-2', {
 				instanceAi: { credentialId: 'cred-old', modelName: 'gpt-3.5', localGatewayDisabled: true },
 			});
+		});
+	});
+
+	describe('memory model', () => {
+		it('stores the admin memory model and uses it on direct self-hosted', async () => {
+			aiService.isProxyEnabled.mockReturnValue(false);
+
+			const response = await service.updateAdminSettings({ memoryModelName: 'gpt-4.1-mini' });
+
+			expect(response.memoryModelName).toBe('gpt-4.1-mini');
+			expect(persistedSettingsValue).toContain('"memoryModelName":"gpt-4.1-mini"');
+			expect(service.getConfiguredMemoryModelName()).toBe('gpt-4.1-mini');
+		});
+
+		it('clears the admin memory model when set to null', async () => {
+			aiService.isProxyEnabled.mockReturnValue(false);
+			await service.updateAdminSettings({ memoryModelName: 'gpt-4.1-mini' });
+
+			const response = await service.updateAdminSettings({ memoryModelName: null });
+
+			expect(response.memoryModelName).toBeNull();
+			expect(service.getConfiguredMemoryModelName()).toBe('');
+		});
+
+		it('prefers the env memory model and rejects admin updates while it is set', async () => {
+			aiService.isProxyEnabled.mockReturnValue(false);
+			globalConfig.instanceAi.memoryModel = 'gpt-5-mini';
+
+			await expect(
+				service.updateAdminSettings({ memoryModelName: 'gpt-4.1-mini' }),
+			).rejects.toThrow(UnprocessableRequestError);
+			const settings = await service.getAdminSettings();
+			expect(settings.memoryModelName).toBeNull();
+			expect(settings.envManaged.model.memoryModel).toBe(true);
+			expect(service.getConfiguredMemoryModelName()).toBe('gpt-5-mini');
+		});
+
+		it('rejects the admin memory model and ignores a stored one behind the proxy', async () => {
+			aiService.isProxyEnabled.mockReturnValue(false);
+			await service.updateAdminSettings({ memoryModelName: 'gpt-4.1-mini' });
+			aiService.isProxyEnabled.mockReturnValue(true);
+
+			await expect(
+				service.updateAdminSettings({ memoryModelName: 'gpt-4.1-mini' }),
+			).rejects.toThrow(UnprocessableRequestError);
+			expect((await service.getAdminSettings()).memoryModelName).toBeNull();
+			expect(service.getConfiguredMemoryModelName()).toBe('');
+		});
+
+		it('rejects the admin memory model on cloud', async () => {
+			globalConfig.deployment.type = 'cloud';
+			service = createService();
+
+			await expect(
+				service.updateAdminSettings({ memoryModelName: 'gpt-4.1-mini' }),
+			).rejects.toThrow(UnprocessableRequestError);
 		});
 	});
 

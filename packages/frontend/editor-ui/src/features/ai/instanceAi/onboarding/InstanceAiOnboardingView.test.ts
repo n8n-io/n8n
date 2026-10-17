@@ -118,13 +118,21 @@ function setupStore(overrides: Record<string, unknown> = {}) {
 			searchCredentialId: null,
 			modelCredentialId: null,
 			modelName: null,
+			memoryModelName: null,
+			modelEnvProvider: null,
 			modelEnvConfigured: false,
 			sandboxEnvConfigured: false,
 			searchEnvConfigured: false,
 			searchDisabled: false,
 			n8nSandboxServiceUrl: null,
 			envManaged: {
-				model: { provider: false, apiKey: false, baseUrl: false, model: false },
+				model: {
+					provider: false,
+					apiKey: false,
+					baseUrl: false,
+					model: false,
+					memoryModel: false,
+				},
 				sandbox: { provider: false, serviceUrl: false, apiKey: false },
 				search: { provider: false, apiKey: false, url: false },
 			},
@@ -203,6 +211,8 @@ describe('InstanceAiOnboardingView', () => {
 
 	it('requires the sandbox step when server configuration is present but disabled', async () => {
 		const { pinia } = setupStore({
+			memoryModelName: null,
+			modelEnvProvider: null,
 			modelEnvConfigured: true,
 			sandboxEnabled: false,
 			sandboxEnvConfigured: true,
@@ -257,6 +267,8 @@ describe('InstanceAiOnboardingView', () => {
 		incompleteView.unmount();
 
 		const complete = setupStore({
+			memoryModelName: null,
+			modelEnvProvider: null,
 			modelEnvConfigured: true,
 			sandboxEnabled: true,
 			sandboxEnvConfigured: true,

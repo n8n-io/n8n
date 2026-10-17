@@ -102,6 +102,8 @@ const modelProvider = ref<InstanceAiModelProvider>('anthropic');
 const modelApiKey = ref('');
 const modelBaseUrl = ref('');
 const modelName = ref<string>(DEFAULT_MODEL_NAME);
+// Empty means the memory tasks use the main model.
+const memoryModelName = ref('');
 const sandboxProvider = ref<'n8n-sandbox' | 'daytona' | null>(null);
 const sandboxServiceUrl = ref('');
 const sandboxApiKey = ref('');
@@ -124,6 +126,29 @@ const modelOptions = computed(() =>
 	modelConnectionLocked.value
 		? getAllInstanceAiModelOptions(store.modelCatalog, modelName.value)
 		: getInstanceAiModelOptions(modelProvider.value, store.modelCatalog, modelName.value),
+);
+// The memory model is an advanced setting, so onboarding never shows it.
+const showMemoryModel = computed(
+	() =>
+		props.surface === 'settings' &&
+		props.step === 'model' &&
+		store.settings?.envManaged?.model?.memoryModel !== true,
+);
+// The memory model reuses the main model's credential, so list only that provider's models.
+// An env-configured connection reports its provider; without a known catalog, use free text.
+const memoryModelProvider = computed<InstanceAiModelProvider | null>(() => {
+	if (!modelConnectionLocked.value) return modelProvider.value;
+	const envProvider = store.settings?.modelEnvProvider;
+	return INSTANCE_AI_MODEL_PROVIDERS.find(({ id }) => id === envProvider)?.id ?? null;
+});
+const memoryModelOptions = computed(() =>
+	memoryModelProvider.value
+		? getInstanceAiModelOptions(
+				memoryModelProvider.value,
+				store.modelCatalog,
+				memoryModelName.value,
+			)
+		: [],
 );
 const sandboxEnvManaged = computed(() => store.settings?.sandboxEnvConfigured === true);
 const searchEnvManaged = computed(() => store.settings?.searchEnvConfigured === true);
@@ -202,6 +227,7 @@ function formSnapshot(): string {
 		modelApiKey: modelApiKey.value,
 		modelBaseUrl: modelBaseUrl.value,
 		modelName: modelName.value,
+		memoryModelName: memoryModelName.value,
 		sandboxProvider: sandboxProvider.value,
 		sandboxServiceUrl: sandboxServiceUrl.value,
 		sandboxApiKey: sandboxApiKey.value,
@@ -345,6 +371,7 @@ async function hydrateModel(generation: number, rememberProvider = true): Promis
 	modelApiKey.value = '';
 	modelBaseUrl.value = '';
 	modelName.value = store.settings?.modelName || DEFAULT_MODEL_NAME;
+	memoryModelName.value = store.settings?.memoryModelName ?? '';
 	if (modelConnectionLocked.value) {
 		if (modelNameLocked.value) modelName.value = '';
 		return;
@@ -474,6 +501,8 @@ async function selectModelProvider(provider: unknown): Promise<void> {
 	modelApiKey.value = '';
 	modelBaseUrl.value = '';
 	modelName.value = INSTANCE_AI_CURATED_MODELS[next.id][0] ?? '';
+	// A memory model from the previous provider would not exist on the new one.
+	memoryModelName.value = '';
 	if (next.id !== 'custom') void store.loadModelCatalog();
 }
 
@@ -529,7 +558,13 @@ function searchConnection(): InstanceAiConnectionUpdate | undefined {
 	};
 }
 
+function setMemoryModelField(): void {
+	if (showMemoryModel.value)
+		store.setField('memoryModelName', memoryModelName.value.trim() || null);
+}
+
 async function saveVerifiedModel(): Promise<boolean> {
+	setMemoryModelField();
 	if (modelConnectionLocked.value) {
 		if (!modelNameLocked.value) store.setField('modelName', modelName.value.trim());
 	} else {
@@ -574,6 +609,7 @@ async function saveExistingCredential(): Promise<boolean> {
 	if (props.step === 'model') {
 		store.setField('modelCredentialId', credential.id);
 		store.setField('modelName', modelName.value.trim());
+		setMemoryModelField();
 	} else if (props.step === 'sandbox') {
 		const provider = credential.type === 'daytonaApi' ? 'daytona' : 'n8n-sandbox';
 		store.setField('daytonaCredentialId', provider === 'daytona' ? credential.id : null);
@@ -611,10 +647,18 @@ async function verifyExistingCredential(): Promise<InstanceAiVerificationRespons
 async function runVerification(): Promise<InstanceAiVerificationResponse | null> {
 	if (selectedExistingCredentialId.value) return await verifyExistingCredential();
 	if (props.step === 'model') {
-		return await store.verifyModel({
-			...(modelConnectionLocked.value ? {} : { connection: modelConnection() }),
-			modelName: modelName.value.trim(),
-		});
+		const connection = modelConnectionLocked.value ? {} : { connection: modelConnection() };
+		const result = await store.verifyModel({ ...connection, modelName: modelName.value.trim() });
+		const memoryModel = showMemoryModel.value ? memoryModelName.value.trim() : '';
+		if (!result.ok || !memoryModel || memoryModel === modelName.value.trim()) return result;
+		const memoryResult = await store.verifyModel({ ...connection, modelName: memoryModel });
+		if (memoryResult.ok) return result;
+		return {
+			...memoryResult,
+			error: i18n.baseText('instanceAi.onboarding.model.memoryModelFailed', {
+				interpolate: { error: memoryResult.error ?? memoryModel },
+			}),
+		};
 	}
 	if (props.step === 'sandbox') {
 		if (sandboxEnvManaged.value) {
@@ -915,6 +959,48 @@ const existingCredentialLabel = (credential: InstanceAiProviderConnection) =>
 					>
 						{{ i18n.baseText('instanceAi.onboarding.model.anthropicHint') }}
 					</N8nText>
+					<template v-if="showMemoryModel">
+						<N8nInputLabel
+							:class="$style.compactLabel"
+							:label="i18n.baseText('instanceAi.onboarding.model.memoryModel')"
+							input-name="assistant-memory-model-name"
+						>
+							<N8nSelect
+								v-if="memoryModelOptions.length"
+								id="assistant-memory-model-name"
+								:model-value="memoryModelName"
+								:teleported="true"
+								filterable
+								:disabled="readOnly"
+								data-test-id="n8n-agent-model-memory-model-select"
+								@update:model-value="memoryModelName = String($event ?? '')"
+							>
+								<N8nOption
+									value=""
+									:label="i18n.baseText('instanceAi.onboarding.model.memoryModelDefault')"
+								/>
+								<N8nOption
+									v-for="model in memoryModelOptions"
+									:key="model.id"
+									:value="model.id"
+									:label="model.name"
+								/>
+							</N8nSelect>
+							<N8nInput
+								v-else
+								id="assistant-memory-model-name"
+								v-model="memoryModelName"
+								class="ph-no-capture"
+								:disabled="readOnly"
+								:placeholder="i18n.baseText('instanceAi.onboarding.model.memoryModelDefault')"
+								:spellcheck="false"
+								data-test-id="n8n-agent-model-memory-model-input"
+							/>
+						</N8nInputLabel>
+						<N8nText step="xs" color="text-light" :class="$style.fieldHint">
+							{{ i18n.baseText('instanceAi.onboarding.model.memoryModelHint') }}
+						</N8nText>
+					</template>
 				</div>
 
 				<N8nCallout

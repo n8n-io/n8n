@@ -16,13 +16,15 @@ function createSettings(
 		searchCredentialId: null,
 		modelCredentialId: null,
 		modelName: null,
+		memoryModelName: null,
+		modelEnvProvider: null,
 		modelEnvConfigured: false,
 		sandboxEnvConfigured: false,
 		searchEnvConfigured: false,
 		searchDisabled: false,
 		n8nSandboxServiceUrl: null,
 		envManaged: {
-			model: { provider: false, apiKey: false, baseUrl: false, model: false },
+			model: { provider: false, apiKey: false, baseUrl: false, model: false, memoryModel: false },
 			sandbox: { provider: false, serviceUrl: false, apiKey: false },
 			search: { provider: false, apiKey: false, url: false },
 		},
@@ -53,6 +55,8 @@ describe('deriveInstanceAiConfiguration', () => {
 	it('accepts env-managed services without exposing configuration details', () => {
 		const configuration = deriveInstanceAiConfiguration(
 			createSettings({
+				memoryModelName: null,
+				modelEnvProvider: null,
 				modelEnvConfigured: true,
 				sandboxEnabled: true,
 				sandboxEnvConfigured: true,

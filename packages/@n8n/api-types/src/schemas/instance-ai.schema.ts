@@ -2465,6 +2465,7 @@ export interface InstanceAiEnvManagedFields {
 		apiKey: boolean;
 		baseUrl: boolean;
 		model: boolean;
+		memoryModel: boolean;
 	};
 	sandbox: {
 		provider: boolean;
@@ -2489,7 +2490,11 @@ export interface InstanceAiAdminSettingsResponse {
 	searchCredentialId: string | null;
 	modelCredentialId: string | null;
 	modelName: string | null;
+	/** Model for background memory tasks; `null` means the main model is used. */
+	memoryModelName: string | null;
 	modelEnvConfigured: boolean;
+	/** Provider id (for example `anthropic`) of an env-configured model connection; otherwise `null`. */
+	modelEnvProvider: string | null;
 	sandboxEnvConfigured: boolean;
 	searchEnvConfigured: boolean;
 	searchDisabled: boolean;
@@ -2605,6 +2610,7 @@ export class InstanceAiAdminSettingsUpdateRequest extends Z.class({
 	sandboxConnection: instanceAiConnectionSchema.nullable().optional(),
 	searchConnection: instanceAiConnectionSchema.nullable().optional(),
 	modelName: z.string().trim().min(1).nullable().optional(),
+	memoryModelName: z.string().trim().min(1).nullable().optional(),
 	searchDisabled: z.boolean().optional(),
 	n8nSandboxServiceUrl: z.string().url().nullable().optional(),
 	localGatewayDisabled: z.boolean().optional(),
