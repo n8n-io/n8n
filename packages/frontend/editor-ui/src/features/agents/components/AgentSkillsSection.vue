@@ -19,7 +19,6 @@ import AgentSkillVersionBadge from './skillVersions/AgentSkillVersionBadge.vue';
 import AgentSkillVersionDiffDialog from './skillVersions/AgentSkillVersionDiffDialog.vue';
 import {
 	draftMatchesPublished,
-	isPinnedBehindLatest,
 	skillVersionState,
 	type SkillVersionRange,
 	type SkillVersionState,
@@ -131,13 +130,11 @@ function versionHint(state: SkillVersionState | undefined): VersionHint | undefi
 	}
 }
 
+/** The row hint says when a newer version waits for a pin, so the caption stays short. */
 function draftCaption(info: AgentSkillVersionInfo): string {
-	if (!info.pinned) return i18n.baseText('agents.builder.skills.version.caption.followsLatest');
-	if (!isPinnedBehindLatest(info))
-		return i18n.baseText('agents.builder.skills.version.caption.pinned');
-	return i18n.baseText('agents.builder.skills.version.caption.pinnedBehind', {
-		interpolate: { latest: String(info.latest) },
-	});
+	return info.pinned
+		? i18n.baseText('agents.builder.skills.version.caption.pinned')
+		: i18n.baseText('agents.builder.skills.version.caption.followsLatest');
 }
 
 /** No caption when the published agent does not use the skill: the "Not added" tag says it. */

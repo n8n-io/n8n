@@ -225,7 +225,7 @@ describe('AgentSkillsSection', () => {
 			[
 				'is pinned behind the latest version',
 				versionInfo({ draft: 2, live: 2, latest: 4, pinned: true }),
-				'caption.pinnedBehind',
+				'caption.pinned',
 			],
 		])('captions a draft that %s', (_, info, caption) => {
 			expect(cells(info).draftCaption).toBe(`agents.builder.skills.version.${caption}`);

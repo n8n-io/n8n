@@ -9095,7 +9095,6 @@
 	"agents.builder.skills.version.tooltip.pinned": "The draft stays on v{version} until you choose another version.",
 	"agents.builder.skills.version.caption.followsLatest": "Follows latest",
 	"agents.builder.skills.version.caption.pinned": "Pinned",
-	"agents.builder.skills.version.caption.pinnedBehind": "Pinned · v{latest} available",
 	"agents.builder.skills.version.caption.live": "Live",
 	"agents.builder.skills.version.caption.sameAsDraft": "Same as draft",
 	"agents.builder.skills.version.published.notAdded": "Not added",
