@@ -33,6 +33,7 @@ on:
       - 'scripts/smoke-n8n-image.mjs'
       - 'package.json'
       - '.github/scripts/docker/kafka-native-smoke-check.mjs'
+      - '.github/scripts/docker/canvas-native-smoke-check.mjs'
       - '.github/scripts/docker/should-smoke-build.mjs'
       # These drive the build and the image distribution, so a change here can
       # break the chain without touching a Dockerfile.

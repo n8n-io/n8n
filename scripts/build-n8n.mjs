@@ -69,6 +69,57 @@ function printDivider() {
 	echo(chalk.gray('-----------------------------------------------'));
 }
 
+async function installCanvasNativeBinding() {
+	const canvasManifests =
+		await $`find ${config.compiledAppDir}/node_modules/.pnpm -path '*/node_modules/@napi-rs/canvas/package.json' -print`.lines();
+	const canvasVersions = new Set();
+	for (const manifestPath of canvasManifests) {
+		if (manifestPath) canvasVersions.add((await fs.readJson(manifestPath)).version);
+	}
+	if (canvasVersions.size !== 1) {
+		throw new Error(
+			`Expected one @napi-rs/canvas version in the production closure, found: ${[...canvasVersions].join(', ') || 'none'}`,
+		);
+	}
+
+	const version = [...canvasVersions][0];
+	const configuredPlatforms = process.env.DOCKER_PLATFORM?.split(',') ?? [os.arch()];
+	const architectures = new Set();
+	for (const platform of configuredPlatforms) {
+		const targetArchitecture = platform.split('/')[1] ?? platform;
+		const architecture = { amd64: 'x64', arm64: 'arm64', x64: 'x64' }[targetArchitecture];
+		if (!architecture) throw new Error(`Unsupported canvas build architecture: ${platform}`);
+		architectures.add(architecture);
+	}
+
+	const manifestPath = path.join(config.compiledAppDir, 'package.json');
+	const manifest = await fs.readJson(manifestPath);
+	manifest.dependencies ??= {};
+
+	for (const architecture of architectures) {
+		const packageName = `@napi-rs/canvas-linux-${architecture}-musl`;
+		const platformOptions = [`--cpu=${architecture}`, '--os=linux', '--libc=musl'];
+		const stagingDir = await fs.mkdtemp(path.join(os.tmpdir(), 'n8n-canvas-binding-'));
+		try {
+			await fs.writeJson(path.join(stagingDir, 'package.json'), {
+				name: 'n8n-canvas-binding',
+				private: true,
+				version: '1.0.0',
+			});
+			await $`pnpm --dir ${stagingDir} add --save-exact --save-prod --ignore-scripts --config.minimum-release-age=0 ${platformOptions} ${`${packageName}@${version}`}`;
+
+			const sourceDir = await fs.realpath(path.join(stagingDir, 'node_modules', packageName));
+			const targetDir = path.join(config.compiledAppDir, 'node_modules', packageName);
+			await fs.copy(sourceDir, targetDir);
+			manifest.dependencies[packageName] = version;
+		} finally {
+			await fs.remove(stagingDir);
+		}
+	}
+
+	await fs.writeJson(manifestPath, manifest, { spaces: 2 });
+}
+
 // #endregion ===== Helper Functions =====
 
 // #region ===== Main Build Process =====
@@ -236,6 +287,9 @@ try {
 	};
 
 	await $`cd ${config.rootDir} && NODE_ENV=production DOCKER_BUILD=true pnpm --filter=n8n ${deployFlags} deploy --no-optional ./compiled`;
+	echo(chalk.yellow('INFO: Installing the canvas native binding for the image platform...'));
+	await installCanvasNativeBinding();
+	echo(chalk.green('✅ Canvas native binding installed'));
 	await verifyNoPnpmIntermediateLinks(config.compiledAppDir);
 	await removePnpmDeployFiles(config.compiledAppDir);
 
