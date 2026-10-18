@@ -1,3 +1,4 @@
+import { isRecord } from '@n8n/utils/is-record';
 import { reactive } from 'vue';
 import {
 	getRenderHint,
@@ -116,14 +117,22 @@ function createRunState(rootAgentId?: string): AgentRunState {
 /**
  * Rewrite former builder tool names in a persisted snapshot tree to their
  * current names, in place. Live events get the same treatment in the shared
- * reducer, so the UI only has to handle current names.
+ * reducer, so the UI only has to handle current names. Persisted trees can be
+ * malformed, so it skips invalid entries and leaves repair to `stateFromAgentTree`.
  */
-export function normalizeAgentTreeToolNames(node: InstanceAiAgentNode): void {
-	for (const toolCall of node.toolCalls) {
-		toolCall.toolName = resolveBuilderToolName(toolCall.toolName);
+export function normalizeAgentTreeToolNames(node: unknown): void {
+	if (!isRecord(node)) return;
+	if (Array.isArray(node.toolCalls)) {
+		for (const toolCall of node.toolCalls) {
+			if (isRecord(toolCall) && typeof toolCall.toolName === 'string') {
+				toolCall.toolName = resolveBuilderToolName(toolCall.toolName);
+			}
+		}
 	}
-	for (const child of node.children) {
-		normalizeAgentTreeToolNames(child);
+	if (Array.isArray(node.children)) {
+		for (const child of node.children) {
+			normalizeAgentTreeToolNames(child);
+		}
 	}
 }
 

@@ -18,13 +18,20 @@ import { COMPILED_WORKFLOW_TRACE_RUN_NAME, DOMAIN_TOOL_IDS } from '../../src/too
 const DEFAULT_SOURCE_PROJECT = 'instance-ai';
 
 // Reference the live tool-id so a rename there follows here (or breaks the import).
-// Trace tool names are resolved with `resolveBuilderToolName` so older traces still match.
+// Trace tool names are resolved with `resolveTraceToolName` so older traces still match.
 // patch/submit-workflow were removed in #32545 but stay for older traces.
 const WORKFLOW_BUILD_TOOLS = new Set<string>([
 	DOMAIN_TOOL_IDS.BUILD_WORKFLOW,
 	'patch-workflow',
 	'submit-workflow',
 ]);
+
+/** Resolves a former tool name in a trace run name and keeps an `[action]` suffix. */
+function resolveTraceToolName(name: string): string {
+	const bracket = name.indexOf('[');
+	if (bracket === -1) return resolveBuilderToolName(name);
+	return resolveBuilderToolName(name.slice(0, bracket)) + name.slice(bracket);
+}
 
 // Workspace tools (@n8n/agents) whose ops mutate file content we replay. The names
 // live here only; a contract test pins them — and the arg keys below — against the
@@ -472,12 +479,12 @@ function buildSeedMessages(rootRuns: Run[], toolRuns: Run[], boundaryMs: number)
 			emittedToolCallIds.add(toolCallId);
 			// Redact data-table row payloads: seeded messages are written to the eval
 			// instance + shown to the judge, so real (PII) rows must not ride along.
-			const isDataTable =
-				resolveBuilderToolName(tool.name.split('[')[0]) === DOMAIN_TOOL_IDS.DATA_TABLES;
+			const toolName = resolveTraceToolName(tool.name);
+			const isDataTable = toolName.split('[')[0] === DOMAIN_TOOL_IDS.DATA_TABLES;
 			content.push({
 				type: 'tool-call',
 				toolCallId,
-				toolName: resolveBuilderToolName(tool.name),
+				toolName,
 				state: 'resolved',
 				input: isDataTable ? redactDataTableRowPayload(tool.inputs) : (tool.inputs ?? {}),
 				output: isDataTable ? redactDataTableRowPayload(tool.outputs) : (tool.outputs ?? {}),
@@ -631,7 +638,7 @@ function buildSeedWorkflows(
 		// can't evict a seed workflow, and to success === true so a suspended (HITL) or denied
 		// delete keeps it. Chronological loop ⇒ a later rebuild re-adds it.
 		if (
-			resolveBuilderToolName(tool.name.split('[')[0]) === DOMAIN_TOOL_IDS.WORKFLOWS &&
+			resolveTraceToolName(tool.name).split('[')[0] === DOMAIN_TOOL_IDS.WORKFLOWS &&
 			isRecord(tool.inputs) &&
 			tool.inputs.action === 'delete'
 		) {
@@ -661,7 +668,7 @@ function buildSeedWorkflows(
 		if (filePath === undefined && inlineCode === undefined) continue;
 		// A build happened for this id (even if the tool's name isn't recognised).
 		buildSignalIds.add(workflowId);
-		if (!WORKFLOW_BUILD_TOOLS.has(resolveBuilderToolName(tool.name))) continue;
+		if (!WORKFLOW_BUILD_TOOLS.has(resolveTraceToolName(tool.name))) continue;
 		// Current builder: the workspace file's content at this build. Legacy: inline code.
 		const code = filePath !== undefined ? (files.get(filePath) ?? '') : (inlineCode ?? '');
 		const diverged = filePath !== undefined ? divergedPaths.has(filePath) : false;

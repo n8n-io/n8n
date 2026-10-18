@@ -9,7 +9,7 @@ import {
 	createRunStateFromTree,
 } from '../instanceAi.reducer';
 import type { InstanceAiReducerState } from '../instanceAi.reducer';
-import type { InstanceAiEvent } from '@n8n/api-types';
+import type { InstanceAiAgentNode, InstanceAiEvent } from '@n8n/api-types';
 
 // ---------------------------------------------------------------------------
 // Factory helpers
@@ -907,6 +907,24 @@ describe('instanceAi.reducer', () => {
 			expect(runState?.toolCallsById['tc-1']?.toolName).toBe('workflow_builder_build_workflow');
 			expect(tree.toolCalls[0].toolName).toBe('workflow_builder_build_workflow');
 			expect(tree.children[0].toolCalls[0].toolName).toBe('agent_builder_write_config');
+		});
+
+		test('createRunStateFromTree tolerates malformed collections in a snapshot', () => {
+			const tree = {
+				agentId: 'agent-root',
+				role: 'orchestrator',
+				status: 'completed',
+				textContent: '',
+				reasoning: '',
+				toolCalls: { broken: true },
+				children: [null, { agentId: 'agent-child', role: 'agent-builder', status: 'completed' }],
+				timeline: [],
+			} as unknown as InstanceAiAgentNode;
+
+			const runState = createRunStateFromTree(tree);
+
+			expect(runState?.agentsById['agent-root']?.toolCalls).toEqual([]);
+			expect(runState?.agentsById['agent-child']?.toolCalls).toEqual([]);
 		});
 
 		test('createRunStateFromTree preserves planItems', () => {

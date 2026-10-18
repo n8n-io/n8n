@@ -1039,8 +1039,8 @@ function renderInteraction(interaction: ToolInteraction): string | null {
 				.join('');
 			const summary =
 				answerByQId.size > 0
-					? '❓ workflow_builder_ask_user (with answers)'
-					: `❓ workflow_builder_ask_user (${String(interaction.questions.length)} question${interaction.questions.length === 1 ? '' : 's'})`;
+					? `❓ ${DOMAIN_TOOL_IDS.ASK_USER} (with answers)`
+					: `❓ ${DOMAIN_TOOL_IDS.ASK_USER} (${String(interaction.questions.length)} question${interaction.questions.length === 1 ? '' : 's'})`;
 			return `<details class="transcript-aside" open><summary>${summary}</summary><ul class="transcript-questions">${lines}</ul></details>`;
 		}
 		case 'setup-wizard': {

@@ -327,7 +327,7 @@ determines its executor:
 
 | Kind | Executor | Tools |
 |------|----------|-------|
-| `workflow_builder_build_workflow` | Orchestrator follow-up with workflow-builder skill | `workflow_builder_nodes`, workspace file tools, `workflow_builder_build_workflow`, etc. |
+| `build-workflow` | Orchestrator follow-up with workflow-builder skill | `workflow_builder_nodes`, workspace file tools, `workflow_builder_build_workflow`, etc. |
 | `checkpoint` | Orchestrator follow-up | Semantic or cross-workflow validation that standard runtime verification cannot cover |
 
 Standalone data-table work bypasses planned tasks: the orchestrator loads the

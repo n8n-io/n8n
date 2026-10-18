@@ -39,13 +39,15 @@ Check what you can see on the n8n side first. These checks are read-only, so
 run them unprompted:
 
 - **Auth errors (401, 403, "unauthorized", "invalid key").** Confirm that the
-  credential exists (`credentials(action="list")` or `get`), that the node uses
-  it (the node's `credentials` in `workflows(action="get")`; resolved
-  parameters show only the auth type, not which credential is bound), and what
-  `credentials(action="test")` reports. A generic credential, such as Header
-  Auth, can pass its test without a call to the service, so a pass does not
-  show that the service accepts it. Say so when you report the check.
-- **Other node errors.** Start from `executions(action="debug")` and the
+  credential exists (`workflow_builder_credentials(action="list")` or `get`),
+  that the node uses it (the node's `credentials` in
+  `workflow_builder_workflows(action="get")`; resolved parameters show only the
+  auth type, not which credential is bound), and what
+  `workflow_builder_credentials(action="test")` reports. A generic credential,
+  such as Header Auth, can pass its test without a call to the service, so a
+  pass does not show that the service accepts it. Say so when you report the
+  check.
+- **Other node errors.** Start from `workflow_builder_executions(action="debug")` and the
   resolved parameters of the failed node.
 
 Then report the checks and their results, and only after that give a cause.

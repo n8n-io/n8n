@@ -638,13 +638,13 @@ The frontend renders events as a collapsible tree grouped by `agentId`:
 ```
 🤖 Orchestrator
 ├── 💭 "Let me check what credentials are available..."
-├── 🔧 credentials → [slack-bot, weather-api]
+├── 🔧 workflow_builder_credentials → [slack-bot, weather-api]
 ├── 📋 workflow_builder_create_tasks: build → verify
 ├── 🔧 agent_builder_build_agent → agent-123
 │
 ├── 🤖 Agent Builder
 │   ├── 🔧 read_config → agent-123
-│   ├── 🔧 write_config → agent-123
+│   ├── 🔧 agent_builder_write_config → agent-123
 │   └── ✅ "Updated the support agent"
 │
 └── 💬 "The support agent is ready."

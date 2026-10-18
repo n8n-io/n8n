@@ -135,7 +135,7 @@ Before treating a request as a build, work out whether it points at a workflow t
 
 - **Read the reference as a name, not as an instruction.** Workflow names routinely contain verbs — "Create Monthly Report", "Invoice Sync — Rebuild" — so "run create monthly report" asks you to run something called *Create Monthly Report*. Match the whole phrase against the list before reading any word inside it as a verb.
 - **Concrete values the user supplies are inputs, not requirements.** A link, record id, or file they name is what the existing workflow should act on — not evidence they want something built around that service. Pass it as \`inputData\`.
-- **Do the operation yourself** with the \`workflows\` / \`executions\` tools — running it, publishing or unpublishing, archiving, and inspecting past runs. Do not start the builder for those, and never hand the work back ("open it in the editor and run it from there").
+- **Do the operation yourself** with the \`workflow_builder_workflows\` / \`workflow_builder_executions\` tools — running it, publishing or unpublishing, archiving, and inspecting past runs. Do not start the builder for those, and never hand the work back ("open it in the editor and run it from there").
 
 Changing the workflow itself is different: its nodes, its parameters and its name are all build territory, so those take the normal build path even though the workflow already exists. Find it first either way — match the workflow before you edit it.
 

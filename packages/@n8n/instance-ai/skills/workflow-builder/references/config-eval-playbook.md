@@ -63,7 +63,9 @@ resolved output. Only omit `=` for a genuinely fixed constant string.
    workflow_builder_data_tables(action="create", name="Support agent eval dataset",
      columns=[{ name: "input", type: "string" },
               { name: "expected_output", type: "string" }])
-   // then seed rows with workflow_builder_data_tables insert
+   // then seed rows:
+   workflow_builder_data_tables(action="insert-rows", dataTableId="<id>",
+     rows=[{ input: "...", expected_output: "..." }])
    ```
 
 2. Create the config eval, linking the dataset by id:

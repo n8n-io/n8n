@@ -232,6 +232,38 @@ describe('reconstructSeedFromThread', () => {
 		expect((insertBlock.input as Record<string, unknown>).dataTableId).toBe('s8srkfMDKYIAjEHR');
 	});
 
+	it('resolves a former tool name with an action suffix in seeded messages', async () => {
+		const insertRows: FakeRun = {
+			id: 'dt-insert-legacy',
+			run_type: 'tool',
+			name: 'data-tables[insert-rows]',
+			start_time: t(5),
+			inputs: {
+				action: 'insert-rows',
+				dataTableId: 'table-1',
+				rows: [{ keywords: 'price' }],
+			},
+			outputs: { insertedCount: 1 },
+			extra: { metadata: { langsmith_root_run_id: 'r1' } },
+		};
+		const runs: FakeRun[] = [
+			{ ...turn('r1', 1, 'Build a FAQ bot'), outputs: { response: 'Done.' } },
+			insertRows,
+			turn('r2', 30, 'Now change something'),
+		];
+		const result = await reconstructSeedFromThread({ threadId: 'th1' }, fakeClient(runs));
+
+		const assistant = result.seed.messages.find((m) => m.role === 'assistant')!;
+		const toolNames = (assistant.content as Array<Record<string, unknown>>)
+			.filter((b) => b.type === 'tool-call')
+			.map((b) => b.toolName);
+		expect(toolNames).toEqual(['workflow_builder_data_tables[insert-rows]']);
+		const insertBlock = (assistant.content as Array<Record<string, unknown>>).find(
+			(b) => b.type === 'tool-call',
+		)!;
+		expect((insertBlock.input as Record<string, unknown>).rows).toBe('<1 row(s) omitted>');
+	});
+
 	it('takes the latest successful build per workflow id before the boundary', async () => {
 		const earlyBuild: FakeRun = {
 			id: 'tool1',
@@ -436,7 +468,7 @@ describe('reconstructSeedFromThread', () => {
 		const setupBlocks = result.seed.messages
 			.filter((m) => Array.isArray(m.content))
 			.flatMap((m) => m.content as Array<Record<string, unknown>>)
-			.filter((b) => b.type === 'tool-call' && b.toolName === 'workflows[setup]');
+			.filter((b) => b.type === 'tool-call' && b.toolName === 'workflow_builder_workflows[setup]');
 		expect(setupBlocks).toHaveLength(1); // suspend dropped, resume kept
 	});
 
