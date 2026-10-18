@@ -27,7 +27,6 @@
 	"inbox.selfHealing.tabs.activity": "Activity",
 	"inbox.selfHealing.tabs.changes": "Changes",
 	"inbox.selfHealing.report": "Report",
-	"inbox.selfHealing.failureContext": "Original failure",
 	"inbox.selfHealing.outcome.needsAttention": "The Assistant needs your input. Review the report to continue.",
 	"inbox.selfHealing.outcome.couldNotFix": "The Assistant couldn't prepare a fix. Review the report for next steps.",
 	"inbox.selfHealing.state.applied": "Applied",
