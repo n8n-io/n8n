@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
+import { useRouter } from 'vue-router';
 import type { SkillUsage, SkillVersionSummary } from '@n8n/api-types';
 import {
 	N8nBadge,
 	N8nIcon,
 	N8nIconButton,
+	N8nLink,
 	N8nLoading,
 	N8nPopover,
 	N8nText,
@@ -16,6 +18,8 @@ import { useStyles } from '@n8n/composables/useStyles';
 
 import TimeAgo from '@/app/components/TimeAgo.vue';
 
+import { AGENT_BUILDER_VIEW } from '../../constants';
+
 import { groupSkillTimeline, skillUserName } from './skillVersionDiff.utils';
 import { skillVersionStyle } from './skillVersionStyle';
 
@@ -24,6 +28,8 @@ type AgentState = 'draft' | 'pinned' | 'published';
 type AgentChip = {
 	key: string;
 	name: string;
+	/** The agent builder, opened in a new tab so the skill stays open. */
+	href: string;
 	/** The draft state first, then `published` when the published agent runs this version. */
 	states: AgentState[];
 	label: string;
@@ -52,6 +58,7 @@ const emit = defineEmits<{
 // The timeline lives in a modal, so the agents popover must sit above modals.
 const { APP_Z_INDEXES } = useStyles();
 const i18n = useI18n();
+const router = useRouter();
 const expandedGroups = ref(new Set<string>());
 
 const STATE_LABELS: Record<AgentState, BaseTextKey> = {
@@ -82,14 +89,21 @@ function agentTooltip(name: string, states: AgentState[]): string {
 	return i18n.baseText(key, { interpolate: { name } });
 }
 
-function agentChip(key: string, name: string, states: AgentState[]): AgentChip {
+type ChipAgent = { agentId: string; agentName: string; projectId: string };
+
+function agentChip(key: string, agent: ChipAgent, states: AgentState[]): AgentChip {
 	const [first] = states;
+	const name = agent.agentName;
 	const live = states.includes('published');
 	// The badge styles of workflow history: published is green, a draft stays neutral.
 	const style = skillVersionStyle(live ? 'published' : first === 'pinned' ? 'pinned' : 'latest');
 	return {
 		key,
 		name,
+		href: router.resolve({
+			name: AGENT_BUILDER_VIEW,
+			params: { projectId: agent.projectId, agentId: agent.agentId },
+		}).href,
 		states,
 		label: states.map((state) => i18n.baseText(STATE_LABELS[state])).join(' · '),
 		tooltip: agentTooltip(name, states),
@@ -120,11 +134,11 @@ const chipsByVersion = computed(() => {
 		if (live) merged.add(draft.agentId);
 		const states: AgentState[] = [draft.pinned ? 'pinned' : 'draft'];
 		if (live) states.push('published');
-		add(draft.version, agentChip(`draft:${draft.agentId}`, draft.agentName, states));
+		add(draft.version, agentChip(`draft:${draft.agentId}`, draft, states));
 	}
 	for (const pin of props.usedBy?.pins ?? []) {
 		if (pin.version === null || merged.has(pin.agentId)) continue;
-		add(pin.version, agentChip(`live:${pin.agentId}`, pin.agentName, ['published']));
+		add(pin.version, agentChip(`live:${pin.agentId}`, pin, ['published']));
 	}
 	return chips;
 });
@@ -197,6 +211,16 @@ function versionNumber(version: SkillVersionSummary): string {
 	});
 }
 
+/** The secondary part of the title: "· v5", "· Latest" or "· v7 · Latest". Empty for an older unnamed version. */
+function versionDetail(version: SkillVersionSummary): string {
+	const parts: string[] = [];
+	if (version.label) parts.push(versionNumber(version));
+	if (version.version === props.latestVersion) {
+		parts.push(i18n.baseText('settings.context.skills.versions.timeline.latest'));
+	}
+	return parts.map((part) => `· ${part}`).join(' ');
+}
+
 function authorName(version: SkillVersionSummary): string {
 	return (
 		skillUserName(version.createdBy) ??
@@ -211,14 +235,16 @@ function authorName(version: SkillVersionSummary): string {
 			<N8nText bold color="text-dark">
 				{{ i18n.baseText('settings.context.skills.versions.timeline.title') }}
 			</N8nText>
-			<N8nIconButton
-				variant="ghost"
-				icon="x"
-				size="small"
-				:aria-label="i18n.baseText('settings.context.skills.versions.timeline.close')"
-				data-testid="skill-version-timeline-close"
-				@click="emit('close')"
-			/>
+			<N8nTooltip :content="i18n.baseText('settings.context.skills.versions.timeline.close')">
+				<N8nIconButton
+					variant="ghost"
+					icon="chevrons-right"
+					size="small"
+					:aria-label="i18n.baseText('settings.context.skills.versions.timeline.close')"
+					data-testid="skill-version-timeline-close"
+					@click="emit('close')"
+				/>
+			</N8nTooltip>
 		</header>
 
 		<div :class="$style.scroll">
@@ -242,11 +268,7 @@ function authorName(version: SkillVersionSummary): string {
 					:class="
 						entry.type === 'unnamed'
 							? undefined
-							: [
-									$style.row,
-									entry.version.version === latestVersion && $style.latest,
-									entry.version.version === selectedVersion && $style.selected,
-								]
+							: [$style.row, entry.version.version === selectedVersion && $style.selected]
 					"
 					:data-version="entry.type === 'unnamed' ? undefined : entry.version.version"
 					:data-testid="entry.type === 'unnamed' ? undefined : 'skill-version-row'"
@@ -280,22 +302,14 @@ function authorName(version: SkillVersionSummary): string {
 									{{ entry.version.label ?? versionNumber(entry.version) }}
 								</N8nText>
 								<N8nText
-									v-if="entry.version.label"
-									size="xsmall"
+									v-if="versionDetail(entry.version)"
+									size="small"
 									color="text-light"
-									:class="$style.number"
+									:class="$style.detail"
+									data-testid="skill-version-detail"
 								>
-									{{ versionNumber(entry.version) }}
+									{{ versionDetail(entry.version) }}
 								</N8nText>
-								<N8nBadge
-									v-if="entry.version.version === latestVersion"
-									variant="outline"
-									size="xsmall"
-									:class="$style.latestBadge"
-									data-testid="skill-version-latest"
-								>
-									{{ i18n.baseText('settings.context.skills.versions.timeline.latest') }}
-								</N8nBadge>
 							</span>
 							<N8nText size="small" color="text-base" tag="span" :class="$style.meta">
 								{{ authorName(entry.version) }} ·
@@ -362,9 +376,18 @@ function authorName(version: SkillVersionSummary): string {
 													:data-live="chip.live ? 'true' : undefined"
 												>
 													<N8nIcon icon="bot" size="small" color="text-light" />
-													<N8nText size="small" color="text-dark" :class="$style.agentName">
+													<N8nLink
+														:to="chip.href"
+														new-window
+														rel="noopener"
+														theme="text"
+														size="small"
+														:underline="false"
+														:class="$style.agentName"
+														data-testid="skill-version-agent-link"
+													>
 														{{ chip.name }}
-													</N8nText>
+													</N8nLink>
 													<N8nTooltip :content="chip.tooltip" placement="top">
 														<N8nBadge
 															:variant="chip.variant"
@@ -398,7 +421,6 @@ function authorName(version: SkillVersionSummary): string {
 	flex-direction: column;
 	min-height: 0;
 	height: 100%;
-	background-color: var(--color--background--light-2);
 }
 
 .header {
@@ -439,20 +461,7 @@ function authorName(version: SkillVersionSummary): string {
 	display: grid;
 	grid-template-columns: minmax(0, 1fr) auto;
 	align-items: start;
-	border-radius: var(--radius--lg);
-
-	/* The dot of the timeline. The latest version has a green one. */
-	&::before {
-		content: '';
-		position: absolute;
-		left: var(--spacing--xs);
-		top: calc(var(--spacing--3xs) + var(--spacing--3xs));
-		width: var(--spacing--2xs);
-		height: var(--spacing--2xs);
-		border-radius: 50%;
-		background-color: var(--color--foreground--shade-1);
-		pointer-events: none;
-	}
+	border-radius: var(--radius);
 
 	&:hover {
 		background-color: var(--background--hover);
@@ -465,15 +474,10 @@ function authorName(version: SkillVersionSummary): string {
 	}
 }
 
-.latest::before {
-	background-color: var(--color--success);
-}
-
-/* Selected differs from hover: an accent on the left edge and the active background. */
+/* The active background is stronger than the hover one, so selected reads apart from hover. */
 .selected,
 .selected:hover {
 	background-color: var(--background--active);
-	box-shadow: inset var(--spacing--5xs) 0 0 var(--color--primary);
 
 	.compare {
 		opacity: 1;
@@ -489,7 +493,7 @@ function authorName(version: SkillVersionSummary): string {
 	gap: var(--spacing--5xs);
 	width: 100%;
 	min-width: 0;
-	padding: var(--spacing--3xs) var(--spacing--3xs) var(--spacing--3xs) var(--spacing--lg);
+	padding: var(--spacing--3xs) var(--spacing--3xs) var(--spacing--3xs) var(--spacing--xs);
 	border: none;
 	border-radius: inherit;
 	background: none;
@@ -531,13 +535,8 @@ function authorName(version: SkillVersionSummary): string {
 	white-space: nowrap;
 }
 
-.number,
-.latestBadge {
+.detail {
 	flex-shrink: 0;
-}
-
-.latestBadge {
-	align-self: center;
 }
 
 .meta {
@@ -623,7 +622,7 @@ function authorName(version: SkillVersionSummary): string {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
-	padding: var(--spacing--4xs) var(--spacing--xs) var(--spacing--4xs) var(--spacing--lg);
+	padding: var(--spacing--4xs) var(--spacing--xs);
 	border: none;
 	background: none;
 	color: var(--color--text--tint-1);

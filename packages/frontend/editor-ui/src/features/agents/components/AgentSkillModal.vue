@@ -815,6 +815,14 @@ async function openInitialVersionView() {
 	}
 }
 
+const timelineToggleLabel = computed(() =>
+	i18n.baseText(
+		timelineOpen.value
+			? 'settings.context.skills.versions.timeline.close'
+			: 'settings.context.skills.versions.timeline.open',
+	),
+);
+
 function toggleTimeline() {
 	timelineOpen.value = !timelineOpen.value;
 	if (timelineOpen.value && versions.value.length === 0) void loadVersions();
@@ -844,16 +852,10 @@ function openCompare(from: SkillCompareTarget, to: SkillCompareTarget) {
 	compare.value = { from, to };
 }
 
-/** Saves the content of the version on screen as the next version. */
+/** Saves the content of the version on screen as the next version, without a name. */
 async function onRestore() {
 	if (!viewing.value || !canWriteVersions.value) return;
-	const { version, skill: content } = viewing.value;
-	await onSave({
-		restored: content,
-		label: i18n.baseText('settings.context.skills.versions.restore.label', {
-			interpolate: { version: String(version) },
-		}),
-	});
+	await onSave({ restored: viewing.value.skill });
 }
 
 async function afterVersionSave(saved: AgentSkill, created: boolean) {
@@ -1042,11 +1044,12 @@ function onRemove() {
 				>
 					{{ versionStatus }}
 				</N8nText>
-				<N8nTooltip :content="i18n.baseText('settings.context.skills.versions.timeline.open')">
+				<N8nTooltip :content="timelineToggleLabel">
 					<N8nIconButton
 						variant="ghost"
 						icon="history"
-						:aria-label="i18n.baseText('settings.context.skills.versions.timeline.open')"
+						:class="$style.timelineToggle"
+						:aria-label="timelineToggleLabel"
 						:aria-pressed="timelineOpen"
 						data-testid="skill-version-timeline-toggle"
 						@click="toggleTimeline"
@@ -1151,238 +1154,234 @@ function onRemove() {
 			/>
 		</div>
 		<template v-else-if="step !== 'select'">
-			<N8nCallout
-				v-if="data.readOnly"
-				theme="info"
-				:class="$style.callout"
-				data-testid="agent-skill-read-only-callout"
-			>
-				{{ i18n.baseText('settings.context.skills.readOnly') }}
-			</N8nCallout>
-			<N8nCallout
-				v-if="openedWithMissingContent && !isReadOnly"
-				theme="warning"
-				:class="$style.callout"
-				data-testid="agent-skill-missing-content-callout"
-			>
-				{{ i18n.baseText('agents.builder.skills.missingContent.callout' as BaseTextKey) }}
-			</N8nCallout>
-			<N8nCallout
-				v-if="showVersions && viewing && !compare"
-				theme="secondary"
-				icon="eye"
-				:class="$style.callout"
-				data-testid="skill-version-viewing"
-			>
-				{{
-					i18n.baseText('settings.context.skills.versions.viewing', {
-						interpolate: { version: versionName(viewing.version) },
-					})
-				}}
-				<template #trailingContent>
-					<div :class="$style.calloutActions">
-						<N8nButton
-							variant="outline"
-							size="small"
-							data-testid="skill-version-viewing-compare"
-							@click="openCompare(viewing.version, latestVersion)"
-						>
-							{{ i18n.baseText('settings.context.skills.versions.viewing.compare') }}
-						</N8nButton>
-						<N8nButton
-							variant="outline"
-							size="small"
-							data-testid="skill-version-viewing-back"
-							@click="viewing = null"
-						>
-							{{
-								baseVersion === latestVersion
-									? i18n.baseText('settings.context.skills.versions.viewing.back')
-									: i18n.baseText('agents.builder.skills.version.viewing.backToPinned', {
-											interpolate: { version: String(baseVersion) },
-										})
-							}}
-						</N8nButton>
-						<N8nButton
-							v-if="canWriteVersions"
-							variant="solid"
-							size="small"
-							:loading="isSaving"
-							:disabled="isReadOnly"
-							data-testid="skill-version-restore"
-							@click="onRestore"
-						>
-							{{ i18n.baseText('settings.context.skills.versions.viewing.restore') }}
-						</N8nButton>
-					</div>
-				</template>
-			</N8nCallout>
-			<N8nCallout
-				v-else-if="showPinnedCallout"
-				theme="warning"
-				:class="$style.callout"
-				data-testid="skill-version-pinned"
-			>
-				{{
-					i18n.baseText('settings.context.skills.versions.pinned.callout', {
-						interpolate: { version: String(baseVersion), latest: String(latestVersion) },
-					})
-				}}
-				<template #trailingContent>
-					<div :class="$style.calloutActions">
-						<N8nButton
-							variant="outline"
-							size="small"
-							data-testid="skill-version-pinned-see-changes"
-							@click="openCompare(baseVersion, latestVersion)"
-						>
-							{{ i18n.baseText('settings.context.skills.versions.pinned.seeChanges') }}
-						</N8nButton>
-						<N8nButton
-							v-if="data.onUseLatestVersion"
-							variant="solid"
-							size="small"
-							data-testid="agent-skill-use-latest"
-							@click="onUseLatestVersion"
-						>
-							{{ i18n.baseText('settings.context.skills.versions.pinned.useLatest') }}
-						</N8nButton>
-					</div>
-				</template>
-			</N8nCallout>
 			<div :class="[$style.content, showVersions && timelineOpen && $style.withTimeline]">
-				<SkillVersionCompare
-					v-if="showVersions && compare"
-					v-model:from="compare.from"
-					v-model:to="compare.to"
-					:versions="versions"
-					:latest-version="latestVersion"
-					:load-version="loadVersion"
-					:unsaved-skill="unsavedSkill"
-					@close="compare = null"
-				/>
-				<AgentSkillUpload
-					v-else-if="step === 'upload'"
-					v-model:busy="isImporting"
-					@uploaded="onSkillUploaded"
-					@add-manually="onAddManually"
-					@import:skill="onImportSkill"
-				/>
-				<template v-else>
-					<AgentSkillFileNav
-						:skill="displayedSkill"
-						:selected-path="selectedPath"
-						:add-reference-disabled="!canAddReference"
-						:read-only="editorLocked"
-						@add-reference="onAddReference"
-						@remove-reference="onRemoveReference"
-						@select="selectedPath = $event"
-					/>
-					<AgentSkillViewer
-						:skill="displayedSkill"
-						:selected-path="selectedPath"
-						:disabled="editorLocked"
-						:read-only="cannotEdit || !!viewing"
-						:errors="visibleErrors"
-						:show-validation-warnings="submitted || openedWithMissingContent"
-						@select:path="selectedPath = $event"
-						@update:skill="onSkillUpdate"
-						@update:valid="onValidUpdate"
+				<!-- The callouts sit over the editor only, so they never run under the timeline. -->
+				<div :class="$style.editorColumn">
+					<N8nCallout
+						v-if="data.readOnly"
+						theme="info"
+						:class="$style.callout"
+						data-testid="agent-skill-read-only-callout"
 					>
-						<template v-if="showScope" #fields-start>
-							<N8nInputLabel
-								:label="i18n.baseText('settings.context.skills.modal.scope.label')"
-								:tooltip-text="i18n.baseText('settings.context.skills.modal.scope.tooltip')"
-								size="small"
-								data-testid="agent-skill-scope"
-							>
-								<N8nTooltip
-									:disabled="!data.scopeLockedReason"
-									:content="data.scopeLockedReason"
-									placement="top"
+						{{ i18n.baseText('settings.context.skills.readOnly') }}
+					</N8nCallout>
+					<N8nCallout
+						v-if="openedWithMissingContent && !isReadOnly"
+						theme="warning"
+						:class="$style.callout"
+						data-testid="agent-skill-missing-content-callout"
+					>
+						{{ i18n.baseText('agents.builder.skills.missingContent.callout' as BaseTextKey) }}
+					</N8nCallout>
+					<N8nCallout
+						v-if="showVersions && viewing && !compare"
+						theme="secondary"
+						icon="eye"
+						:class="$style.callout"
+						data-testid="skill-version-viewing"
+					>
+						{{
+							i18n.baseText('settings.context.skills.versions.viewing', {
+								interpolate: { version: versionName(viewing.version) },
+							})
+						}}
+						<template #trailingContent>
+							<div :class="$style.calloutActions">
+								<N8nButton
+									variant="outline"
+									size="small"
+									data-testid="skill-version-viewing-compare"
+									@click="openCompare(viewing.version, latestVersion)"
 								>
-									<!-- A disabled select drops pointer events, so the tooltip needs its own target. -->
-									<div>
-										<N8nSelect
-											v-model="scope"
-											size="large"
-											:disabled="!canChangeScope || isSaving || !!viewing"
-											:teleported="false"
-											data-testid="agent-skill-scope-select"
-										>
-											<template v-if="selectedScopeIcon" #prefix>
-												<N8nIcon :icon="selectedScopeIcon" />
-											</template>
-											<N8nOption
-												v-for="option in data.scopeOptions"
-												:key="option.value"
-												:value="option.value"
-												:label="option.label"
-											>
-												<span :class="$style.availabilityOption">
-													<N8nIcon :icon="option.icon" />
-													<span>{{ option.label }}</span>
-												</span>
-											</N8nOption>
-										</N8nSelect>
-									</div>
-								</N8nTooltip>
-							</N8nInputLabel>
+									{{ i18n.baseText('settings.context.skills.versions.viewing.compare') }}
+								</N8nButton>
+								<N8nButton
+									v-if="canWriteVersions"
+									variant="solid"
+									size="small"
+									:loading="isSaving"
+									:disabled="isReadOnly"
+									data-testid="skill-version-restore"
+									@click="onRestore"
+								>
+									{{ i18n.baseText('settings.context.skills.versions.viewing.restore') }}
+								</N8nButton>
+							</div>
 						</template>
-						<template v-else-if="showAvailabilitySelect" #fields-start>
-							<N8nInputLabel
-								:label="i18n.baseText('agents.builder.skills.availableTo.label')"
-								:tooltip-text="i18n.baseText('agents.builder.skills.availableTo.tooltip')"
-								show-tooltip
-								size="small"
-							>
-								<N8nTooltip
-									:content="i18n.baseText('agents.builder.skills.availableTo.locked')"
-									:disabled="!usedByOtherAgents"
-									placement="top"
+					</N8nCallout>
+					<N8nCallout
+						v-else-if="showPinnedCallout"
+						theme="warning"
+						:class="$style.callout"
+						data-testid="skill-version-pinned"
+					>
+						{{
+							i18n.baseText('settings.context.skills.versions.pinned.callout', {
+								interpolate: { version: String(baseVersion), latest: String(latestVersion) },
+							})
+						}}
+						<template #trailingContent>
+							<div :class="$style.calloutActions">
+								<N8nButton
+									variant="outline"
+									size="small"
+									data-testid="skill-version-pinned-see-changes"
+									@click="openCompare(baseVersion, latestVersion)"
 								>
-									<N8nSelect
-										v-model="availableTo"
-										:teleported="false"
-										:disabled="usedByOtherAgents || !!viewing"
-										data-testid="agent-skill-availability-select"
+									{{ i18n.baseText('settings.context.skills.versions.pinned.seeChanges') }}
+								</N8nButton>
+								<N8nButton
+									v-if="data.onUseLatestVersion"
+									variant="solid"
+									size="small"
+									data-testid="agent-skill-use-latest"
+									@click="onUseLatestVersion"
+								>
+									{{ i18n.baseText('settings.context.skills.versions.pinned.useLatest') }}
+								</N8nButton>
+							</div>
+						</template>
+					</N8nCallout>
+					<div :class="$style.editorRow">
+						<SkillVersionCompare
+							v-if="showVersions && compare"
+							v-model:from="compare.from"
+							v-model:to="compare.to"
+							:versions="versions"
+							:latest-version="latestVersion"
+							:load-version="loadVersion"
+							:unsaved-skill="unsavedSkill"
+							@close="compare = null"
+						/>
+						<AgentSkillUpload
+							v-else-if="step === 'upload'"
+							v-model:busy="isImporting"
+							@uploaded="onSkillUploaded"
+							@add-manually="onAddManually"
+							@import:skill="onImportSkill"
+						/>
+						<template v-else>
+							<AgentSkillFileNav
+								:skill="displayedSkill"
+								:selected-path="selectedPath"
+								:add-reference-disabled="!canAddReference"
+								:read-only="editorLocked"
+								@add-reference="onAddReference"
+								@remove-reference="onRemoveReference"
+								@select="selectedPath = $event"
+							/>
+							<AgentSkillViewer
+								:skill="displayedSkill"
+								:selected-path="selectedPath"
+								:disabled="editorLocked"
+								:read-only="cannotEdit || !!viewing"
+								:errors="visibleErrors"
+								:show-validation-warnings="submitted || openedWithMissingContent"
+								@select:path="selectedPath = $event"
+								@update:skill="onSkillUpdate"
+								@update:valid="onValidUpdate"
+							>
+								<template v-if="showScope" #fields-start>
+									<N8nInputLabel
+										:label="i18n.baseText('settings.context.skills.modal.scope.label')"
+										:tooltip-text="i18n.baseText('settings.context.skills.modal.scope.tooltip')"
+										size="small"
+										data-testid="agent-skill-scope"
 									>
-										<template #prefix>
-											<N8nIcon
-												:icon="AVAILABILITY_ICONS[availableTo]"
-												:size="16"
-												color="text-dark"
-											/>
-										</template>
-										<N8nOption
-											v-for="option in availabilityOptions"
-											:key="option.value"
-											:value="option.value"
-											:label="option.label"
+										<N8nTooltip
+											:disabled="!data.scopeLockedReason"
+											:content="data.scopeLockedReason"
+											placement="top"
 										>
-											<span :class="$style.availabilityOption">
-												<N8nIcon :icon="AVAILABILITY_ICONS[option.value]" :size="16" />
-												{{ option.label }}
-											</span>
-										</N8nOption>
-									</N8nSelect>
-								</N8nTooltip>
-							</N8nInputLabel>
+											<!-- A disabled select drops pointer events, so the tooltip needs its own target. -->
+											<div>
+												<N8nSelect
+													v-model="scope"
+													size="large"
+													:disabled="!canChangeScope || isSaving || !!viewing"
+													:teleported="false"
+													data-testid="agent-skill-scope-select"
+												>
+													<template v-if="selectedScopeIcon" #prefix>
+														<N8nIcon :icon="selectedScopeIcon" />
+													</template>
+													<N8nOption
+														v-for="option in data.scopeOptions"
+														:key="option.value"
+														:value="option.value"
+														:label="option.label"
+													>
+														<span :class="$style.availabilityOption">
+															<N8nIcon :icon="option.icon" />
+															<span>{{ option.label }}</span>
+														</span>
+													</N8nOption>
+												</N8nSelect>
+											</div>
+										</N8nTooltip>
+									</N8nInputLabel>
+								</template>
+								<template v-else-if="showAvailabilitySelect" #fields-start>
+									<N8nInputLabel
+										:label="i18n.baseText('agents.builder.skills.availableTo.label')"
+										:tooltip-text="i18n.baseText('agents.builder.skills.availableTo.tooltip')"
+										show-tooltip
+										size="small"
+									>
+										<N8nTooltip
+											:content="i18n.baseText('agents.builder.skills.availableTo.locked')"
+											:disabled="!usedByOtherAgents"
+											placement="top"
+										>
+											<N8nSelect
+												v-model="availableTo"
+												:teleported="false"
+												:disabled="usedByOtherAgents || !!viewing"
+												data-testid="agent-skill-availability-select"
+											>
+												<template #prefix>
+													<N8nIcon
+														:icon="AVAILABILITY_ICONS[availableTo]"
+														:size="16"
+														color="text-dark"
+													/>
+												</template>
+												<N8nOption
+													v-for="option in availabilityOptions"
+													:key="option.value"
+													:value="option.value"
+													:label="option.label"
+												>
+													<span :class="$style.availabilityOption">
+														<N8nIcon :icon="AVAILABILITY_ICONS[option.value]" :size="16" />
+														{{ option.label }}
+													</span>
+												</N8nOption>
+											</N8nSelect>
+										</N8nTooltip>
+									</N8nInputLabel>
+								</template>
+							</AgentSkillViewer>
 						</template>
-					</AgentSkillViewer>
-				</template>
-				<div v-if="showVersions && timelineOpen" :class="$style.timelineColumn">
-					<SkillVersionTimeline
-						:versions="versions"
-						:latest-version="latestVersion"
-						:used-by="skillAccess?.usedBy"
-						:selected-version="viewing?.version ?? baseVersion"
-						:loading="versionsLoading"
-						@select="onSelectVersion"
-						@compare="openCompare($event, latestVersion)"
-						@close="closeTimeline"
-					/>
+					</div>
 				</div>
+				<Transition
+					:enter-from-class="$style.timelineHidden"
+					:leave-to-class="$style.timelineHidden"
+				>
+					<div v-if="showVersions && timelineOpen" :class="$style.timelineColumn">
+						<SkillVersionTimeline
+							:versions="versions"
+							:latest-version="latestVersion"
+							:used-by="skillAccess?.usedBy"
+							:selected-version="viewing?.version ?? baseVersion"
+							:loading="versionsLoading"
+							@select="onSelectVersion"
+							@compare="openCompare($event, latestVersion)"
+							@close="closeTimeline"
+						/>
+					</div>
+				</Transition>
 			</div>
 			<SkillVersionNameDialog
 				v-if="showVersions"
@@ -1460,6 +1459,20 @@ function onRemove() {
 		calc(var(--height--5xl) * 6 - var(--spacing--lg))
 	);
 	display: flex;
+	transition: width var(--duration--snappy) var(--easing--ease-out);
+}
+
+.editorColumn {
+	flex: 1;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+}
+
+.editorRow {
+	flex: 1;
+	min-height: 0;
+	display: flex;
 }
 
 .picker {
@@ -1468,7 +1481,8 @@ function onRemove() {
 }
 
 .callout {
-	margin: var(--spacing--md) var(--spacing--lg) 0;
+	/* Starts where the file list tiles start, which reach past the title by --spacing--2xs. */
+	margin: var(--spacing--md) var(--spacing--lg) 0 calc(var(--spacing--lg) - var(--spacing--2xs));
 }
 
 .footerHint {
@@ -1496,6 +1510,27 @@ function onRemove() {
 	top: 0;
 	align-self: flex-start;
 	height: min(70dvh, calc(var(--height--5xl) * 6));
+	transition:
+		transform var(--duration--snappy) var(--easing--ease-out),
+		opacity var(--duration--snappy) var(--easing--ease-out);
+}
+
+/* The panel slides in from the right edge and back out. */
+.timelineHidden {
+	transform: translateX(100%);
+	opacity: 0;
+}
+
+/* The toggle looks pressed while the panel is open. */
+.timelineToggle[aria-pressed='true'] {
+	background-color: var(--background--active);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.content,
+	.timelineColumn {
+		transition: none;
+	}
 }
 
 .calloutActions {
@@ -1552,7 +1587,8 @@ function onRemove() {
 }
 
 @media (max-width: 480px) {
-	.content {
+	.content,
+	.editorRow {
 		flex-direction: column;
 	}
 }

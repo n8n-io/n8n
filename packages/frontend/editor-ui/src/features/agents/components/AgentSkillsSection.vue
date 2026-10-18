@@ -3,13 +3,14 @@ import type { AgentConfigValidationIssue, AgentSkillVersionInfo } from '@n8n/api
 import {
 	N8nBadge,
 	N8nButton,
+	N8nDropdownMenu,
 	N8nIcon,
 	N8nIconButton,
-	N8nLink,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import type { DropdownMenuItemProps } from '@n8n/design-system';
 import { computed, ref } from 'vue';
 
 import { useAgentCapabilityIssueMessages } from '../composables/useAgentCapabilityIssueMessages';
@@ -112,30 +113,56 @@ function isPinnedBehind(info: AgentSkillVersionInfo): boolean {
 	return info.pinned && info.draft < info.latest;
 }
 
-/** A pinned draft behind the latest version has no caption: its "Update to latest" link says it. */
-function draftCaption(info: AgentSkillVersionInfo): string | undefined {
-	if (!info.pinned) return i18n.baseText('agents.builder.skills.version.caption.followsLatest');
-	if (isPinnedBehind(info)) return undefined;
-	return i18n.baseText('agents.builder.skills.version.caption.pinnedLatest');
+/** A pinned draft behind the latest version names the newer one; the version menu updates it. */
+function draftCaption(info: AgentSkillVersionInfo): string {
+	if (isPinnedBehind(info)) {
+		return i18n.baseText('agents.builder.skills.version.caption.available', {
+			interpolate: { latest: String(info.latest) },
+		});
+	}
+	return i18n.baseText('agents.builder.skills.version.caption.followsLatest');
 }
 
-/** No caption when the published agent does not use the skill: the "Not added" tag says it. */
-function publishedCaption(info: AgentSkillVersionInfo): string | undefined {
-	if (info.live === null) return undefined;
-	return i18n.baseText('agents.builder.skills.version.caption.live');
+type RowAction = 'compare' | 'remove';
+
+function rowActions(row: SkillRow): Array<DropdownMenuItemProps<RowAction>> {
+	const canCompare = hasVersionColumns.value && !!row.info && canCompareWithPublished(row.info);
+	return [
+		...(canCompare
+			? [
+					{
+						id: 'compare' as const,
+						label: i18n.baseText('agents.builder.skills.version.compareDraftWithPublished'),
+						icon: { type: 'icon' as const, value: 'file-diff' as const },
+						testId: 'agent-skill-row-compare',
+					},
+				]
+			: []),
+		{
+			id: 'remove',
+			label: i18n.baseText('agents.builder.skills.version.removeFromAgent'),
+			icon: { type: 'icon', value: 'x' },
+			destructive: true,
+			divided: canCompare,
+			testId: 'agent-skill-row-remove',
+		},
+	];
+}
+
+function onRowAction(row: SkillRow, action: RowAction) {
+	if (action === 'remove') {
+		emit('remove-skill', row.id);
+		return;
+	}
+	if (row.info && canCompareWithPublished(row.info)) {
+		openDiff(row.id, { from: row.info.live, to: row.info.draft });
+	}
 }
 
 function versionNumber(version: number): string {
 	return i18n.baseText('agents.builder.skills.version.number', {
 		interpolate: { version: String(version) },
 	});
-}
-
-/** An `<a>` without `href` is not in the tab order, so the hint links act as buttons. */
-function onLinkKeydown(event: KeyboardEvent, action: () => void) {
-	if (event.key !== 'Enter' && event.key !== ' ') return;
-	event.preventDefault();
-	action();
 }
 
 /** An invalid skill shows its issues. Else an outdated one shows the older-version warning. */
@@ -146,10 +173,6 @@ function alertReasons(row: SkillRow): string[] {
 
 function openDiff(skillId: string, range: SkillVersionRange) {
 	diff.value = { skillId, range };
-}
-
-function followLatest(row: SkillRow) {
-	emit('set-skill-version', row.id, null);
 }
 
 function onDiffOpenChange(open: boolean) {
@@ -280,7 +303,6 @@ function rowSubtitle(row: {
 											@compare="(from, to) => openDiff(row.id, { from, to })"
 										/>
 										<N8nText
-											v-if="draftCaption(row.info)"
 											size="small"
 											color="text-light"
 											:class="$style.caption"
@@ -288,21 +310,6 @@ function rowSubtitle(row: {
 										>
 											{{ draftCaption(row.info) }}
 										</N8nText>
-										<N8nLink
-											v-if="isPinnedBehind(row.info)"
-											size="small"
-											role="button"
-											tabindex="0"
-											data-testid="agent-skill-follow-latest"
-											@click="followLatest(row)"
-											@keydown="onLinkKeydown($event, () => followLatest(row))"
-										>
-											{{
-												i18n.baseText('agents.builder.skills.version.updateTo', {
-													interpolate: { latest: String(row.info.latest) },
-												})
-											}}
-										</N8nLink>
 									</div>
 
 									<div :class="$style.compareCell">
@@ -345,33 +352,28 @@ function rowSubtitle(row: {
 										>
 											—
 										</N8nText>
-										<N8nText
-											v-if="publishedCaption(row.info)"
-											size="small"
-											color="text-light"
-											:class="$style.caption"
-											data-testid="agent-skill-published-caption"
-										>
-											{{ publishedCaption(row.info) }}
-										</N8nText>
 									</div>
 								</template>
 
 								<div :class="$style.remove">
-									<N8nTooltip
-										:content="i18n.baseText('agents.builder.skills.version.detachSkill')"
-										placement="top"
+									<N8nDropdownMenu
+										:items="rowActions(row)"
+										placement="bottom-end"
+										:disabled="props.disabled"
+										data-testid="agent-skill-row-menu"
+										@select="(action: RowAction) => onRowAction(row, action)"
 									>
-										<N8nIconButton
-											icon="x"
-											variant="ghost"
-											size="small"
-											:disabled="props.disabled"
-											:aria-label="i18n.baseText('agents.builder.skills.version.detachSkill')"
-											data-testid="agent-skill-row-remove"
-											@click="emit('remove-skill', row.id)"
-										/>
-									</N8nTooltip>
+										<template #trigger>
+											<N8nIconButton
+												icon="ellipsis"
+												variant="ghost"
+												size="small"
+												:disabled="props.disabled"
+												:aria-label="i18n.baseText('agents.builder.skills.version.rowActions')"
+												data-testid="agent-skill-row-actions"
+											/>
+										</template>
+									</N8nDropdownMenu>
 								</div>
 							</div>
 						</AgentItemContextMenu>

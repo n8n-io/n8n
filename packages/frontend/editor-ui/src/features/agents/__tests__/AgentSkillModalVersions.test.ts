@@ -232,10 +232,14 @@ describe('AgentSkillModal with versions', () => {
 
 		await editable(container);
 		expect(getByTestId('skill-version-save')).toBeInTheDocument();
-		await fireEvent.click(getByTestId('skill-version-timeline-toggle'));
+		const toggle = getByTestId('skill-version-timeline-toggle');
+		expect(toggle).toHaveAttribute('aria-label', 'View timeline');
+		expect(toggle).toHaveAttribute('aria-pressed', 'false');
+		await fireEvent.click(toggle);
 
 		expect(await findAllByTestId('skill-version-row')).not.toHaveLength(0);
-		expect(getByTestId('skill-version-timeline-toggle')).toHaveAttribute('aria-pressed', 'true');
+		expect(toggle).toHaveAttribute('aria-pressed', 'true');
+		expect(toggle).toHaveAttribute('aria-label', 'Hide timeline');
 	});
 
 	it('adds the version name to the status', async () => {
@@ -335,25 +339,37 @@ describe('AgentSkillModal with versions', () => {
 
 		await fireEvent.click(getByTestId('skill-version-restore'));
 
+		// A restore has no automatic name.
 		expect(onConfirm).toHaveBeenCalledWith({
 			id: 's1',
 			skill: OLDER,
-			label: 'Restored from v1',
 			baseSkillHash: 'hash-2',
 		});
 	});
 
-	it('goes back to the latest version from a viewed one', async () => {
+	it('goes back to the latest version from the latest row of the timeline', async () => {
 		const { getByTestId, findAllByTestId, queryByTestId } = renderModal({
 			initialVersionView: 'timeline',
 		});
 		const rows = await findAllByTestId('skill-version-row');
 		await fireEvent.click(selectButton(rows[1]));
 		await waitFor(() => expect(getByTestId('skill-version-viewing')).toBeInTheDocument());
+		expect(queryByTestId('skill-version-viewing-back')).not.toBeInTheDocument();
 
-		await fireEvent.click(getByTestId('skill-version-viewing-back'));
+		await fireEvent.click(selectButton(rows[0]));
 
 		expect(queryByTestId('skill-version-viewing')).not.toBeInTheDocument();
+	});
+
+	it('shows the callout of a viewed version beside the timeline, not above it', async () => {
+		const { getByTestId, findAllByTestId } = renderModal({ initialVersionView: 'timeline' });
+		const rows = await findAllByTestId('skill-version-row');
+		await fireEvent.click(selectButton(rows[1]));
+		await waitFor(() => expect(getByTestId('skill-version-viewing')).toBeInTheDocument());
+
+		// The callout's own column holds the editor only, not the timeline.
+		const callout = getByTestId('skill-version-viewing');
+		expect(callout.parentElement?.contains(getByTestId('skill-version-timeline'))).toBe(false);
 	});
 
 	it('compares the two newest versions when opened for compare', async () => {
@@ -420,9 +436,8 @@ describe('AgentSkillModal with versions', () => {
 			await fireEvent.click(selectButton(rows[0]));
 			await waitFor(() => expect(getByTestId('skill-version-viewing')).toBeInTheDocument());
 			expect(getByTestId('skill-version-viewing')).toHaveTextContent("You're viewing v2.");
-			expect(getByTestId('skill-version-viewing-back')).toHaveTextContent('Back to v1');
 
-			await fireEvent.click(getByTestId('skill-version-viewing-back'));
+			await fireEvent.click(selectButton(rows[1]));
 			expect(queryByTestId('skill-version-viewing')).not.toBeInTheDocument();
 		});
 

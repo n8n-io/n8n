@@ -10,9 +10,12 @@ import SkillsTable from './SkillsTable.vue';
 import { useSkillsStore } from '../skills.store';
 
 const push = vi.fn();
+const resolve = vi.fn(({ params }: { params: { projectId: string; agentId: string } }) => ({
+	href: `/projects/${params.projectId}/agents/${params.agentId}`,
+}));
 
 vi.mock('vue-router', () => ({
-	useRouter: () => ({ push }),
+	useRouter: () => ({ push, resolve }),
 	useRoute: () => ({ params: {}, query: {} }),
 	RouterLink: vi.fn(),
 }));
@@ -254,17 +257,33 @@ describe('SkillsTable', () => {
 		expect(await findByText('Same content as the published v7')).toBeInTheDocument();
 	});
 
-	it('shows the latest version and its name', () => {
-		const { getAllByTestId, getByTestId } = render([
-			skill({ id: 's1', latestVersion: 4, latestVersionLabel: 'EU rules' }),
-			skill({ id: 's2', latestVersion: 2 }),
-		]);
+	it('opens an agent from the agents list in a new tab', async () => {
+		const open = vi.spyOn(window, 'open').mockReturnValue(null);
+		const skillsStore = mockedStore(useSkillsStore);
+		skillsStore.fetchSkill.mockResolvedValue({
+			usedBy: {
+				drafts: [
+					{ agentId: 'a1', agentName: 'Support bot', projectId: 'p1', version: 1, pinned: false },
+				],
+				pins: [],
+				hiddenAgents: 0,
+			},
+		} as unknown as SkillDetail);
+		const { getByTestId } = render([skill({ usedByAgents: 1 })]);
 
-		const [named, unnamed] = getAllByTestId('skills-table-version');
-		expect(named).toHaveTextContent('v4');
-		expect(getByTestId('skills-table-version-label')).toHaveTextContent('EU rules');
-		expect(unnamed).toHaveTextContent('v2');
-		expect(within(unnamed).queryByTestId('skills-table-version-label')).not.toBeInTheDocument();
+		await userEvent.click(getByTestId('skill-agents-trigger'));
+		await userEvent.click(await screen.findByText('Support bot'));
+
+		expect(open).toHaveBeenCalledWith('/projects/p1/agents/a1', '_blank', 'noopener');
+		expect(push).not.toHaveBeenCalled();
+		open.mockRestore();
+	});
+
+	it('has no version column', () => {
+		const { queryByTestId, queryByText } = render([skill({ latestVersion: 4 })]);
+
+		expect(queryByTestId('skills-table-version')).not.toBeInTheDocument();
+		expect(queryByText('Version')).not.toBeInTheDocument();
 	});
 
 	it('shows who saved the latest version', () => {

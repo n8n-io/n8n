@@ -12,6 +12,31 @@ vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({ baseText: (key: string) => key }),
 }));
 
+/** Render the row menu items as buttons, so a test can select one without opening the menu. */
+vi.mock('@n8n/design-system', async (importOriginal) => {
+	const actual = await importOriginal<object>();
+	return {
+		...actual,
+		N8nDropdownMenu: {
+			name: 'N8nDropdownMenu',
+			inheritAttrs: false,
+			props: ['items', 'disabled', 'placement'],
+			emits: ['select'],
+			template: `<div v-bind="$attrs">
+				<slot name="trigger" />
+				<button
+					v-for="item in items"
+					:key="item.id"
+					:data-testid="item.testId"
+					:data-destructive="item.destructive ? 'true' : undefined"
+					:data-divided="item.divided ? 'true' : undefined"
+					@click="$emit('select', item.id)"
+				>{{ item.label }}</button>
+			</div>`,
+		},
+	};
+});
+
 vi.mock('../components/skillVersions/useSkillVersionLoader', () => ({
 	useSkillVersionLoader: () => ({ loadVersions: vi.fn(), loadVersion: vi.fn() }),
 }));
@@ -160,8 +185,9 @@ describe('AgentSkillsSection', () => {
 			wrapper.get('[data-testid="agent-capabilities-skill-row"]').attributes('disabled'),
 		).toBeDefined();
 		expect(
-			wrapper.get('[data-testid="agent-skill-row-remove"]').attributes('disabled'),
+			wrapper.get('[data-testid="agent-skill-row-actions"]').attributes('disabled'),
 		).toBeDefined();
+		expect(wrapper.findComponent({ name: 'N8nDropdownMenu' }).props('disabled')).toBe(true);
 		expect(
 			wrapper.get('[data-testid="agent-capabilities-add-skill"]').attributes('disabled'),
 		).toBeDefined();
@@ -199,14 +225,12 @@ describe('AgentSkillsSection', () => {
 		function cells(info: AgentSkillVersionInfo) {
 			const wrapper = mountWithVersion(info);
 			const published = wrapper.get('[data-testid="agent-skill-published-version"]');
-			const publishedCaption = wrapper.find('[data-testid="agent-skill-published-caption"]');
 			return {
 				wrapper,
 				draftCaption: wrapper.find('[data-testid="agent-skill-draft-caption"]').exists()
 					? wrapper.get('[data-testid="agent-skill-draft-caption"]').text()
 					: undefined,
 				published,
-				publishedCaption: publishedCaption.exists() ? publishedCaption.text() : undefined,
 			};
 		}
 
@@ -223,18 +247,20 @@ describe('AgentSkillsSection', () => {
 
 		it.each<[string, AgentSkillVersionInfo, string]>([
 			['follows the latest version', versionInfo(), 'caption.followsLatest'],
-			['is pinned to the latest version', versionInfo({ pinned: true }), 'caption.pinnedLatest'],
+			['is pinned to the latest version', versionInfo({ pinned: true }), 'caption.followsLatest'],
+			[
+				'is pinned behind the latest version',
+				versionInfo({ draft: 2, live: 2, latest: 4, pinned: true }),
+				'caption.available',
+			],
 		])('captions a draft that %s', (_, info, caption) => {
 			expect(cells(info).draftCaption).toBe(`agents.builder.skills.version.${caption}`);
 		});
 
-		it('shows no caption, only the update link, for a draft pinned behind the latest version', () => {
-			const { wrapper, draftCaption } = cells(
-				versionInfo({ draft: 2, live: 2, latest: 4, pinned: true }),
-			);
+		it('offers no "Update to" link under a draft pinned behind the latest version', () => {
+			const { wrapper } = cells(versionInfo({ draft: 2, live: 2, latest: 4, pinned: true }));
 
-			expect(draftCaption).toBeUndefined();
-			expect(wrapper.find('[data-testid="agent-skill-follow-latest"]').exists()).toBe(true);
+			expect(wrapper.find('[data-testid="agent-skill-follow-latest"]').exists()).toBe(false);
 		});
 
 		it.each<[string, AgentSkillVersionInfo]>([
@@ -244,49 +270,24 @@ describe('AgentSkillsSection', () => {
 				versionInfo({ draft: 10, live: 7, latest: 10, liveHasSameContent: true }),
 			],
 			['runs an older version', versionInfo({ draft: 5, live: 4, latest: 5 })],
-		])('shows the published version as live when the published agent %s', (_, info) => {
-			const { published, publishedCaption } = cells(info);
+		])('shows only the published version tag when the published agent %s', (_, info) => {
+			const { wrapper, published } = cells(info);
 
 			expect(published.text()).toBe('agents.builder.skills.version.number');
 			expect(published.attributes('data-state')).toBeUndefined();
 			expect(published.element.tagName).toBe('SPAN');
-			expect(publishedCaption).toBe('agents.builder.skills.version.caption.live');
-		});
-
-		it('offers "Update to" under the caption of a draft pinned behind the latest version', async () => {
-			const { wrapper } = cells(versionInfo({ draft: 2, live: 2, latest: 4, pinned: true }));
-
-			const link = wrapper
-				.get('[data-testid="agent-skill-draft-version"]')
-				.get('[data-testid="agent-skill-follow-latest"]');
-			expect(link.text()).toBe('agents.builder.skills.version.updateTo');
-			await link.trigger('click');
-
-			expect(wrapper.emitted('set-skill-version')).toEqual([['tone', null]]);
-		});
-
-		it.each<[string, AgentSkillVersionInfo]>([
-			['follows the latest version', versionInfo()],
-			['is pinned to the latest version', versionInfo({ pinned: true })],
-			[
-				'is pinned to the latest version ahead of the published one',
-				versionInfo({ draft: 3, live: 2, latest: 3, pinned: true }),
-			],
-		])('offers no "Update to" when the draft %s', (_, info) => {
-			const { wrapper } = cells(info);
-
-			expect(wrapper.find('[data-testid="agent-skill-follow-latest"]').exists()).toBe(false);
+			expect(wrapper.find('[data-testid="agent-skill-published-caption"]').exists()).toBe(false);
 		});
 
 		it('says "Not added" without a caption when the published agent does not use the skill', () => {
-			const { published, publishedCaption } = cells(versionInfo({ live: null }));
+			const { wrapper, published } = cells(versionInfo({ live: null }));
 
 			expect(published.text()).toBe('—');
 			expect(published.attributes('aria-label')).toBe(
 				'agents.builder.skills.version.published.notAdded',
 			);
 			expect(published.attributes('data-state')).toBe('notAdded');
-			expect(publishedCaption).toBeUndefined();
+			expect(wrapper.find('[data-testid="agent-skill-published-caption"]').exists()).toBe(false);
 		});
 	});
 
@@ -399,33 +400,85 @@ describe('AgentSkillsSection', () => {
 		expect(wrapper.find('[data-testid="agent-skill-version-badge"]').exists()).toBe(true);
 	});
 
-	it('puts the update link in the draft column under a pin behind the latest version', () => {
-		const wrapper = mountWithVersion(versionInfo({ draft: 2, live: 1, latest: 4, pinned: true }));
-
-		expect(
-			wrapper
-				.get('[data-testid="agent-skill-draft-version"]')
-				.find('[data-testid="agent-skill-follow-latest"]')
-				.exists(),
-		).toBe(true);
-	});
-	it('runs the update link from the keyboard', async () => {
-		const wrapper = mountWithVersion(versionInfo({ draft: 2, live: 1, latest: 4, pinned: true }));
-
-		const followLatest = wrapper.get('[data-testid="agent-skill-follow-latest"]');
-		expect(followLatest.attributes('tabindex')).toBe('0');
-		expect(followLatest.attributes('role')).toBe('button');
-		await followLatest.trigger('keydown', { key: 'Tab' });
-		expect(wrapper.emitted('set-skill-version')).toBeUndefined();
-		await followLatest.trigger('keydown', { key: ' ' });
-		expect(wrapper.emitted('set-skill-version')).toEqual([['tone', null]]);
-	});
-	it('labels the remove button as detaching the skill', () => {
+	it('labels the row menu trigger', () => {
 		const wrapper = mountWithVersion(versionInfo());
 
-		expect(wrapper.get('[data-testid="agent-skill-row-remove"]').attributes('aria-label')).toBe(
-			'agents.builder.skills.version.detachSkill',
+		expect(wrapper.get('[data-testid="agent-skill-row-actions"]').attributes('aria-label')).toBe(
+			'agents.builder.skills.version.rowActions',
 		);
+	});
+
+	describe('row menu', () => {
+		function menuItemIds(wrapper: ReturnType<typeof mountWithVersion>) {
+			const items = wrapper.findComponent({ name: 'N8nDropdownMenu' }).props('items') as Array<{
+				id: string;
+			}>;
+			return items.map((item) => item.id);
+		}
+
+		it.each<[string, AgentSkillVersionInfo]>([
+			['the draft is ahead of the published agent', versionInfo({ draft: 5, live: 4, latest: 5 })],
+			[
+				'the draft is pinned behind the latest version and differs from the published one',
+				versionInfo({ draft: 2, live: 1, latest: 4, pinned: true }),
+			],
+		])('offers compare and then remove when %s', (_, info) => {
+			const wrapper = mountWithVersion(info);
+
+			expect(menuItemIds(wrapper)).toEqual(['compare', 'remove']);
+			const remove = wrapper.get('[data-testid="agent-skill-row-remove"]');
+			expect(remove.text()).toBe('agents.builder.skills.version.removeFromAgent');
+			expect(remove.attributes('data-destructive')).toBe('true');
+			expect(remove.attributes('data-divided')).toBe('true');
+			expect(wrapper.get('[data-testid="agent-skill-row-compare"]').text()).toBe(
+				'agents.builder.skills.version.compareDraftWithPublished',
+			);
+		});
+
+		it.each<[string, AgentSkillVersionInfo | undefined]>([
+			['there are no version columns', undefined],
+			['the published agent runs the draft version', versionInfo()],
+			[
+				'the published agent runs the same content',
+				versionInfo({ draft: 10, live: 7, latest: 10, liveHasSameContent: true }),
+			],
+			['the published agent does not use the skill', versionInfo({ live: null })],
+		])('offers only remove when %s', (_, info) => {
+			const wrapper = mount(AgentSkillsSection, {
+				props: {
+					skills: [{ id: 'tone', skill }],
+					skillVersions: info ? { tone: info } : undefined,
+				},
+				global: { stubs: versionStubs },
+			});
+
+			expect(menuItemIds(wrapper)).toEqual(['remove']);
+			expect(wrapper.find('[data-testid="agent-skill-row-compare"]').exists()).toBe(false);
+			expect(
+				wrapper.get('[data-testid="agent-skill-row-remove"]').attributes('data-divided'),
+			).toBeUndefined();
+		});
+
+		it('emits remove-skill from the remove item', async () => {
+			const wrapper = mountWithVersion(versionInfo({ draft: 5, live: 4, latest: 5 }));
+
+			await wrapper.get('[data-testid="agent-skill-row-remove"]').trigger('click');
+
+			expect(wrapper.emitted('remove-skill')).toEqual([['tone']]);
+			expect(wrapper.findComponent(AgentSkillVersionDiffDialog).exists()).toBe(false);
+		});
+
+		it('opens the diff from the published version to the draft from the compare item', async () => {
+			const wrapper = mountWithVersion(versionInfo({ draft: 2, live: 1, latest: 4, pinned: true }));
+
+			await wrapper.get('[data-testid="agent-skill-row-compare"]').trigger('click');
+
+			expect(wrapper.findComponent(AgentSkillVersionDiffDialog).props()).toMatchObject({
+				skillId: 'tone',
+				range: { from: 1, to: 2 },
+			});
+			expect(wrapper.emitted('remove-skill')).toBeUndefined();
+		});
 	});
 
 	describe('scope label', () => {

@@ -110,35 +110,28 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 	{
 		title: i18n.baseText('settings.context.skills.columns.skill'),
 		key: 'name',
-		width: 280,
+		width: 300,
 		disableSort: true,
 		resize: false,
 	},
 	{
 		title: i18n.baseText('settings.context.skills.columns.scope'),
 		key: 'scope',
-		width: 170,
-		disableSort: true,
-		resize: false,
-	},
-	{
-		title: i18n.baseText('settings.context.skills.versions.column'),
-		key: 'latestVersion',
-		width: 100,
+		width: 220,
 		disableSort: true,
 		resize: false,
 	},
 	{
 		title: i18n.baseText('settings.context.skills.columns.agents'),
 		key: 'usedByAgents',
-		width: 90,
+		width: 110,
 		disableSort: true,
 		resize: false,
 	},
 	{
 		title: i18n.baseText('settings.context.skills.columns.createdBy'),
 		key: 'createdBy',
-		width: 200,
+		width: 210,
 		disableSort: true,
 		resize: false,
 	},
@@ -192,27 +185,6 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 
 			<template #[`item.scope`]="{ item }">
 				<SkillScopeBadge :skill="item" />
-			</template>
-
-			<template #[`item.latestVersion`]="{ item }">
-				<div :class="$style.versionCell" data-test-id="skills-table-version">
-					<N8nText size="small" color="text-dark">
-						{{
-							i18n.baseText('settings.context.skills.versions.number', {
-								interpolate: { version: String(item.latestVersion) },
-							})
-						}}
-					</N8nText>
-					<N8nText
-						v-if="item.latestVersionLabel"
-						size="small"
-						color="text-light"
-						:class="$style.description"
-						data-test-id="skills-table-version-label"
-					>
-						{{ item.latestVersionLabel }}
-					</N8nText>
-				</div>
 			</template>
 
 			<template #[`item.usedByAgents`]="{ item }">

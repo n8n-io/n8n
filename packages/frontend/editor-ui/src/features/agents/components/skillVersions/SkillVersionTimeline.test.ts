@@ -9,6 +9,15 @@ import SkillVersionTimeline from './SkillVersionTimeline.vue';
 
 configure({ testIdAttribute: 'data-testid' });
 
+vi.mock('vue-router', async (importOriginal) => ({
+	...(await importOriginal<typeof import('vue-router')>()),
+	useRouter: () => ({
+		resolve: ({ params }: { params: { projectId: string; agentId: string } }) => ({
+			href: `/projects/${params.projectId}/agents/${params.agentId}`,
+		}),
+	}),
+}));
+
 const renderComponent = createComponentRenderer(SkillVersionTimeline, {
 	pinia: createTestingPinia(),
 });
@@ -99,15 +108,38 @@ describe('SkillVersionTimeline', () => {
 		});
 		const [latest, named] = getAllByTestId('skill-version-row');
 
-		expect(within(latest).getByTestId('skill-version-row-select').textContent).toMatch(
-			/^\s*v6\s*Latest/,
-		);
+		expect(latest).toHaveTextContent('v6');
+		expect(within(latest).getByTestId('skill-version-detail')).toHaveTextContent('· Latest');
 		expect(latest).not.toHaveTextContent('Version 6');
-		expect(within(latest).getByTestId('skill-version-latest')).toHaveTextContent('Latest');
 		expect(latest).toHaveTextContent('Ada Lovelace');
 		expect(named).toHaveTextContent('EU rules');
-		expect(named).toHaveTextContent('v3');
-		expect(within(named).queryByTestId('skill-version-latest')).not.toBeInTheDocument();
+		expect(within(named).getByTestId('skill-version-detail')).toHaveTextContent(/^· v3$/);
+		expect(named).not.toHaveTextContent('Latest');
+	});
+
+	it('names the latest named version with its number and Latest', () => {
+		const { getAllByTestId } = renderComponent({
+			props: { versions: [version(7, 'Escalation'), version(6)], latestVersion: 7 },
+		});
+		const [latest, older] = getAllByTestId('skill-version-row');
+
+		expect(within(latest).getByTestId('skill-version-detail')).toHaveTextContent('· v7 · Latest');
+		expect(within(older).queryByTestId('skill-version-detail')).not.toBeInTheDocument();
+	});
+
+	it('links each agent to its builder in a new tab', async () => {
+		const { getAllByTestId } = renderComponent({
+			props: { versions: VERSIONS, latestVersion: 6, usedBy: USED_BY },
+		});
+
+		await openAgents(getAllByTestId('skill-version-row')[0]);
+		const link = screen.getByTestId('skill-version-agent-link');
+
+		expect(link.tagName).toBe('A');
+		expect(link).toHaveAttribute('href', '/projects/p1/agents/a1');
+		expect(link).toHaveAttribute('target', '_blank');
+		expect(link).toHaveAttribute('rel', 'noopener');
+		expect(link).toHaveTextContent('Support bot');
 	});
 
 	it('renders a list with one select button for each row and the actions beside it', () => {
@@ -349,12 +381,14 @@ describe('SkillVersionTimeline', () => {
 		expect(emitted('compare')).toEqual([[2]]);
 	});
 
-	it('closes', async () => {
+	it('collapses from its header', async () => {
 		const { getByTestId, emitted } = renderComponent({
 			props: { versions: VERSIONS, latestVersion: 6 },
 		});
 
-		await fireEvent.click(getByTestId('skill-version-timeline-close'));
+		const collapse = getByTestId('skill-version-timeline-close');
+		expect(collapse).toHaveAttribute('aria-label', 'Hide timeline');
+		await fireEvent.click(collapse);
 
 		expect(emitted('close')).toHaveLength(1);
 	});

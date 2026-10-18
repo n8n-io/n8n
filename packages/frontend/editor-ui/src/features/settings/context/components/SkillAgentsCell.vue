@@ -157,13 +157,15 @@ async function onOpenChange(open: boolean) {
 	}
 }
 
-async function onSelect(agentId: string) {
+/** Opens the agent in a new tab, so the skills list stays open. */
+function onSelect(agentId: string) {
 	const agent = agents.value.get(agentId);
 	if (!agent) return;
-	await router.push({
+	const { href } = router.resolve({
 		name: AGENT_BUILDER_VIEW,
 		params: { projectId: agent.projectId, agentId },
 	});
+	window.open(href, '_blank', 'noopener');
 }
 </script>
 
