@@ -358,13 +358,7 @@ const treeResizer = useResizablePanel({
 				>
 					<N8nText bold>{{ i18n.baseText(`promotions.preview.error.${direction}`) }}</N8nText>
 					{{ operation.error.value.message }}
-					{{
-						i18n.baseText(
-							operation.error.value.uncertain
-								? 'promotions.preview.error.uncertain'
-								: 'promotions.preview.error.nothingChanged',
-						)
-					}}
+					{{ i18n.baseText(`promotions.preview.error.${operation.error.value.kind}`) }}
 				</N8nCallout>
 				<N8nCallout
 					v-if="operation.notice.value"

@@ -25,9 +25,22 @@ type OperationNotice = 'sourceChanged' | 'newBlockers';
 
 type OperationError = {
 	message: string;
-	/** True when the operation may have run, for example after a timeout. The page reloads first. */
-	uncertain: boolean;
+	/**
+	 * - `rejected`: the server wrote nothing. Users can send the request again.
+	 * - `conflict`: the server wrote nothing, but the same request fails again, for example a
+	 *   folder conflict of the import. Users must change the instance or the branch first.
+	 * - `uncertain`: the operation may have run, for example after a timeout.
+	 * - `explained`: the server wrote nothing, and the message names the next step.
+	 */
+	kind: 'rejected' | 'conflict' | 'uncertain' | 'explained';
 };
+
+function errorKind(cause: unknown): Exclude<OperationError['kind'], 'explained'> {
+	// The server answers 4xx before it writes anything. Other failures can follow a write.
+	const status = cause instanceof ResponseError ? cause.httpStatusCode : undefined;
+	if (status === undefined || status >= 500) return 'uncertain';
+	return status === 409 || status === 422 ? 'conflict' : 'rejected';
+}
 
 /** Runs the promote or the apply of the preview page, and handles its result. */
 export function usePromotionOperation(
@@ -125,20 +138,16 @@ export function usePromotionOperation(
 			if (direction.value === 'promote') await promote(request);
 			else if (source) await apply(request, source);
 		} catch (cause) {
-			// The server answers 4xx before it writes anything. Other failures can follow a write.
-			const uncertain = !(
-				cause instanceof ResponseError &&
-				cause.httpStatusCode !== undefined &&
-				cause.httpStatusCode < 500
-			);
-			error.value = {
-				message:
-					(direction.value === 'promote'
-						? getPromoteErrorMessage(cause, preview.value?.changes ?? [], i18n)
-						: undefined) ?? (cause instanceof Error ? cause.message : String(cause)),
-				uncertain,
-			};
-			if (uncertain) await refresh();
+			const kind = errorKind(cause);
+			const explained =
+				direction.value === 'promote'
+					? getPromoteErrorMessage(cause, preview.value?.changes ?? [], i18n)
+					: undefined;
+			error.value = explained
+				? { message: explained, kind: 'explained' }
+				: { message: cause instanceof Error ? cause.message : String(cause), kind };
+			// The reloaded preview shows what the page knows about the cause, such as a moved folder.
+			if (kind !== 'rejected') await refresh();
 		} finally {
 			phase.value = 'idle';
 		}
