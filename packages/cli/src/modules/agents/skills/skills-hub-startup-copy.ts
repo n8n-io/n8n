@@ -132,6 +132,7 @@ export class SkillsHubStartupCopy {
 		const progress = read ?? { through: null, retryAgentIds: [] };
 		const retry = new Set(progress.retryAgentIds);
 		const failedDrafts: string[] = [];
+		const copiedDrafts: string[] = [];
 		let after: Pick<Agent, 'createdAt' | 'id'> | null = null;
 		for (;;) {
 			const agents = await this.agentRepository.findPageForSkillCopy(after, BATCH_SIZE);
@@ -141,6 +142,7 @@ export class SkillsHubStartupCopy {
 					read !== null && (isAfter(agent, progress.through) || retry.has(agent.id));
 				try {
 					const copied = await this.copyAgentWithRetry(agent.id, draftAllowed);
+					if (draftAllowed) copiedDrafts.push(agent.id);
 					if (!copied) counts.skipped++;
 					else {
 						// Logged after the commit, so a rolled-back copy never shows up here.
@@ -174,7 +176,7 @@ export class SkillsHubStartupCopy {
 			if (agents.length > 0) after = agents[agents.length - 1];
 			if (agents.length < BATCH_SIZE) break;
 		}
-		await this.saveProgress(read, after, failedDrafts);
+		await this.saveProgress(after, copiedDrafts, failedDrafts);
 		this.logger.info('Copied inline agent skills into the skills hub', {
 			...counts,
 			durationMs: Date.now() - startedAt,
@@ -237,54 +239,58 @@ export class SkillsHubStartupCopy {
 	private async readProgress(): Promise<CopyProgress | null> {
 		const row = await this.settingsRepository.findByKey(SKILLS_HUB_COPY_PROGRESS_KEY);
 		if (!row) return { through: null, retryAgentIds: [] };
-		const value = jsonParse<unknown>(row.value, { fallbackValue: null });
-		const through = isRecord(value) && isRecord(value.through) ? value.through : null;
-		if (
-			isRecord(value) &&
-			Array.isArray(value.retryAgentIds) &&
-			(value.through === null ||
-				(typeof through?.createdAt === 'string' && typeof through.id === 'string'))
-		) {
-			return {
-				through: through ? { createdAt: String(through.createdAt), id: String(through.id) } : null,
-				retryAgentIds: value.retryAgentIds.filter((id): id is string => typeof id === 'string'),
-			};
+		const progress = parseProgress(row.value);
+		if (!progress) {
+			// Reopening every draft could bring back deleted skills, so copy no draft this run.
+			this.logger.error(
+				'Unreadable skills hub copy progress: no agent draft is copied in this run',
+				{ key: SKILLS_HUB_COPY_PROGRESS_KEY },
+			);
 		}
-		// Reopening every draft could bring back deleted skills, so copy no draft this run.
-		this.logger.error('Unreadable skills hub copy progress: no agent draft is copied in this run', {
-			key: SKILLS_HUB_COPY_PROGRESS_KEY,
-		});
-		return null;
+		return progress;
 	}
 
 	/**
 	 * Records the last agent this run checked, and the drafts to try again. Written even
-	 * when some agents failed, so one broken agent does not reopen every draft.
+	 * when some agents failed, so one broken agent does not reopen every draft. Another
+	 * main can save while this run works, so the save merges into the stored progress:
+	 * `through` only moves forward, and the retry list keeps the other main's failures.
 	 */
 	private async saveProgress(
-		previous: CopyProgress | null,
 		last: Pick<Agent, 'createdAt' | 'id'> | null,
+		copiedDrafts: string[],
 		failedDrafts: string[],
 	): Promise<void> {
-		const next: CopyProgress = {
-			through: last
-				? { createdAt: last.createdAt.toISOString(), id: last.id }
-				: (previous?.through ?? null),
-			retryAgentIds: failedDrafts,
-		};
-		if (JSON.stringify(next) === JSON.stringify(previous)) return;
-		await this.settingsRepository.upsertByKey(
-			SKILLS_HUB_COPY_PROGRESS_KEY,
-			JSON.stringify(next),
-			false,
-			{},
-		);
-		if (failedDrafts.length > 0) {
+		const mine = last ? { createdAt: last.createdAt.toISOString(), id: last.id } : null;
+		const retryAgentIds = await this.txRunner.run({}, async (ctx) => {
+			const row = await this.settingsRepository.findByKeyForUpdate(
+				SKILLS_HUB_COPY_PROGRESS_KEY,
+				ctx,
+			);
+			const stored = row ? parseProgress(row.value) : null;
+			const handled = new Set([...copiedDrafts, ...failedDrafts]);
+			const next: CopyProgress = {
+				through: furthest(stored?.through ?? null, mine),
+				retryAgentIds: [
+					...(stored?.retryAgentIds ?? []).filter((id) => !handled.has(id)),
+					...failedDrafts,
+				],
+			};
+			if (row && JSON.stringify(next) === row.value) return next.retryAgentIds;
+			await this.settingsRepository.upsertByKey(
+				SKILLS_HUB_COPY_PROGRESS_KEY,
+				JSON.stringify(next),
+				false,
+				ctx,
+			);
+			return next.retryAgentIds;
+		});
+		if (retryAgentIds.length > 0) {
 			this.logger.error(
 				'These agent drafts are copied into the skills hub again at the next start',
 				{
-					agentIds: failedDrafts.slice(0, WARN_AGENT_IDS),
-					agents: failedDrafts.length,
+					agentIds: retryAgentIds.slice(0, WARN_AGENT_IDS),
+					agents: retryAgentIds.length,
 				},
 			);
 		}
@@ -537,6 +543,36 @@ function toInlineBody(raw: unknown): AgentSkill | null {
 		instructions,
 		...(files.size > 0 ? { references: [...files.values()] } : {}),
 	};
+}
+
+/** The stored progress, or null when the value is not a progress object. */
+function parseProgress(raw: string): CopyProgress | null {
+	const value = jsonParse<unknown>(raw, { fallbackValue: null });
+	if (!isRecord(value) || !Array.isArray(value.retryAgentIds)) return null;
+	const through = isRecord(value.through) ? value.through : null;
+	if (
+		value.through !== null &&
+		(typeof through?.createdAt !== 'string' || typeof through.id !== 'string')
+	) {
+		return null;
+	}
+	return {
+		through: through ? { createdAt: String(through.createdAt), id: String(through.id) } : null,
+		retryAgentIds: value.retryAgentIds.filter((id): id is string => typeof id === 'string'),
+	};
+}
+
+/** The later of two positions in (`createdAt`, `id`) order. */
+function furthest(
+	left: CopyProgress['through'],
+	right: CopyProgress['through'],
+): CopyProgress['through'] {
+	if (!left) return right;
+	if (!right) return left;
+	const leftTime = new Date(left.createdAt).getTime();
+	const rightTime = new Date(right.createdAt).getTime();
+	if (leftTime !== rightTime) return leftTime > rightTime ? left : right;
+	return left.id >= right.id ? left : right;
 }
 
 /** Whether the agent comes after `through` in (`createdAt`, `id`) order, or nothing was checked yet. */

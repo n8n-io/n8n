@@ -1041,6 +1041,28 @@ describe('SkillsHubStartupCopy', () => {
 			expect(await skills.count({ where: { agentId: agent.id } })).toBe(1);
 		});
 
+		it('keeps the furthest progress when an earlier run saves after a later one', async () => {
+			await legacyAgent([{ type: 'skill', id: 'tone' }], { tone: body('Tone') });
+			let later: Agent | undefined;
+			const findPage = agents.findPageForSkillCopy.bind(agents);
+			vi.spyOn(agents, 'findPageForSkillCopy').mockImplementationOnce(async (...args) => {
+				const page = await findPage(...args);
+				// Another main starts after this page was read, sees a newer agent, and saves first.
+				later = await legacyAgent([{ type: 'skill', id: 'pricing' }], {
+					pricing: body('Pricing'),
+				});
+				await agents.update({ id: later.id }, { createdAt: new Date(Date.now() + 60_000) });
+				await copy.copyAll();
+				return page;
+			});
+
+			await copy.copyAll();
+			await detachAndDeleteAll(later!);
+			await copy.copyAll();
+
+			expect(await skillRefs.refsForDraft(later!, {})).toEqual([]);
+		});
+
 		it('copies no draft while the progress row is unreadable, and repairs the row', async () => {
 			await settings().upsertByKey(SKILLS_HUB_COPY_PROGRESS_KEY, 'not json', false, {});
 			const agent = await legacyAgent([{ type: 'skill', id: 'tone' }], { tone: body('Tone') });
