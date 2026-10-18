@@ -1,7 +1,7 @@
 ---
 name: agent-builder
 description: >-
-  Load immediately after an Agent intent. Then call build-agent with the user's
+  Load immediately after an Agent intent. Then call agent_builder_build_agent with the user's
   request after any required orchestrator-owned prerequisites are ready. Agent
   Builder owns Agent setup and implementation questions. Governs prerequisite
   creation, faithful handoff, targeting, testing, and publishing. Use directly
@@ -10,10 +10,10 @@ description: >-
 shared_references:
   - credential-setup-with-computer-use
 recommended_tools:
-  - build-agent
+  - agent_builder_build_agent
   - agent-context
-  - build-workflow
-  - data-tables
+  - workflow_builder_build_workflow
+  - workflow_builder_data_tables
 ---
 
 # Agent Builder
@@ -23,26 +23,26 @@ recommended_tools:
 Use this skill after `intent-recognition` chooses an agent-anchored design, or
 when the conversation already targets an Agent and the user is continuing that
 build. Do not rerun intent recognition for routine Agent edits or extensions.
-Use `build-agent` only for Agent artifacts.
+Use `agent_builder_build_agent` only for Agent artifacts.
 
 For read-only research, use `agent-context` directly. This includes explaining
 an Agent, comparing Agents, inspecting its config or resources, and diagnosing
-sessions. Do not call `build-agent` for these requests. Call `build-agent` only
+sessions. Do not call `agent_builder_build_agent` for these requests. Call `agent_builder_build_agent` only
 when the request creates, changes, tests, or publishes an Agent. Set its
 `operation` to the matching activity for an existing Agent.
 
-For a new Agent request, make the first `build-agent` call with a faithful copy
+For a new Agent request, make the first `agent_builder_build_agent` call with a faithful copy
 of the request as soon as any required orchestrator-owned prerequisites are
-ready. Before that call, use `ask-user` only to choose a supported channel or to
+ready. Before that call, use `workflow_builder_ask_user` only to choose a supported channel or to
 define a workflow or data-table prerequisite that the orchestrator must create.
 Only ask about the channel after `agent-context` with `type: "capabilities"` shows that the
 requested channel is unsupported. Do not collect model, service, tool, topic,
 schedule, credential, or other Agent implementation choices first. The embedded
-Agent Builder asks those questions through the `build-agent` call.
+Agent Builder asks those questions through the `agent_builder_build_agent` call.
 
 When the conversation opens from an existing Agent in the editor and the user
 asks to change its configuration or capabilities, that is an agent-anchored
-request — target that Agent and call `build-agent`. Do not reroute to
+request — target that Agent and call `agent_builder_build_agent`. Do not reroute to
 `workflow-builder`, and do not spawn a workflow to satisfy a capability change
 on the Agent.
 
@@ -60,7 +60,7 @@ is unsupported for agents, offer the supported alternatives, and ask which to
 use — or whether the user explicitly wants that unsupported platform as the
 conversation surface, in which case offer the `agent-entrypoint` workflow
 bridge described in Prerequisites (it connects the platform trigger to Message
-an Agent; it is not a channel config). Only forward a channel to `build-agent`
+an Agent; it is not a channel config). Only forward a channel to `agent_builder_build_agent`
 once it is a supported type or the user has chosen an alternative.
 
 ## Faithful handoff
@@ -76,7 +76,7 @@ as possible. Include only:
 - Prerequisite workflows or data tables you created for this Agent.
 
 The host appends an <aia-handoff> block with the current user text and pending
-ask-user answers that have not yet reached Agent Builder. Treat those as the
+workflow_builder_ask_user answers that have not yet reached Agent Builder. Treat those as the
 user's decisions for this build call, not as implementation you invented.
 Still copy user-stated model, channel, and credential choices into message; do not omit
 them because the host also injected them.
@@ -109,7 +109,7 @@ user did not ask for. A change to one field updates only that field.
 
 ## Prerequisites
 
-Before the first `build-agent` call, create prerequisites the builder cannot
+Before the first `agent_builder_build_agent` call, create prerequisites the builder cannot
 create when they must be attached to or used by the Agent:
 
 - Create a workflow tool only when one Agent tool call must run an ordered
@@ -117,23 +117,23 @@ create when they must be attached to or used by the Agent:
   reusable, manually callable, or usable outside the Agent. Follow
   `workflow-builder`, then pass the built workflow in `workflowContext`.
 - When the Agent will store or query tabular data, follow `data-table-manager`
-  and create the required tables via `data-tables`. The builder cannot create
+  and create the required tables via `workflow_builder_data_tables`. The builder cannot create
   tables.
 
 List prerequisite names and schemas in `message`. Let the builder gather the
 remaining Agent-specific requirements, including model, credentials,
 integrations, and direct tools.
 
-`build-agent` can return structured `requiredArtifacts` when the embedded
+`agent_builder_build_agent` can return structured `requiredArtifacts` when the embedded
 builder discovers something Instance AI must create:
 
 - For a workflow with `relationship: "agent-tool"`, build it, pass it in
-  `workflowContext`, and call `build-agent` again so the builder can attach it.
+  `workflowContext`, and call `agent_builder_build_agent` again so the builder can attach it.
 - For a workflow with `relationship: "agent-entrypoint"`, build it after the
   Agent exists, using the returned `agentId`. This workflow invokes the Agent;
   never pass it in `workflowContext`, never attach it to the Agent as a tool,
-  and do not call `build-agent` again solely to attach it.
-- For a data table, create it and call `build-agent` again with its name and
+  and do not call `agent_builder_build_agent` again solely to attach it.
+- For a data table, create it and call `agent_builder_build_agent` again with its name and
   schema in `message`.
 
 For an unsupported chat channel, an `agent-entrypoint` workflow should connect
@@ -168,12 +168,22 @@ sub-agents:
 
 1. Build each child Agent under its own `agentRef` before attaching it to the
    parent.
-2. Call `build-agent` for the parent and identify the child by its display name.
+2. Call `agent_builder_build_agent` for the parent and identify the child by its display name.
    The parent builder must discover the saved child and map its name to the
    valid stored ID. Do not pass a raw `agentId` as a user requirement.
 3. Publication is not required for saved sub-agent delegation. Forward
    publication intent only when the user explicitly asks to publish or activate
    an Agent.
+
+## Reply language
+
+Language requirements for a target Agent apply to its configuration, not to
+your replies. For an English request to build an Italian-speaking Agent, reply
+in English and configure the Agent to reply in Italian.
+
+The most recent non-empty `answers[].customText` returned by
+`agent_builder_build_agent` counts as the user's latest request, the same as a
+`workflow_builder_ask_user` answer. Apply the reply-language rule to that text.
 
 ## Builder-owned interactions
 
@@ -184,7 +194,7 @@ those tools do not appear in your toolset.
 
 When the builder needs a user choice, credential, chat channel, or approval, it
 surfaces an interactive card in this chat. Do not relay the question yourself;
-the `build-agent` call resumes with the user's answer.
+the `agent_builder_build_agent` call resumes with the user's answer.
 
 ## Agent UI labels
 

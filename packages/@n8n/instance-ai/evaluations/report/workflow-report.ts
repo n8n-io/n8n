@@ -11,6 +11,7 @@ import fs from 'fs';
 import path from 'path';
 
 import { getTestCaseAnchorId } from './report-anchors';
+import { DOMAIN_TOOL_IDS, ORCHESTRATION_TOOL_IDS } from '../../src/tools/tool-ids';
 import { groupOutcomesByDimension } from '../binaryChecks/aggregate';
 import { CHECK_DIMENSIONS, type CheckDimension, type CheckOutcome } from '../binaryChecks/types';
 import { getCaseRunStatus, getCaseRunStatusLabel, getRunScoredCounts } from '../summary';
@@ -395,11 +396,17 @@ function summarizeToolCalls(result: WorkflowTestCaseResult): string[] {
 	const count = (toolName: string): number =>
 		toolCalls.filter((call) => call.toolName === toolName).length;
 	const submitCalls = toolCalls.filter((call) => call.toolName === 'submit-workflow');
-	const verifyCalls = toolCalls.filter((call) => call.toolName === 'verify-built-workflow');
+	const verifyCalls = toolCalls.filter(
+		(call) => call.toolName === ORCHESTRATION_TOOL_IDS.VERIFY_BUILT_WORKFLOW,
+	);
 
 	const summaries = [
-		count('nodes') > 0 ? `${String(count('nodes'))} node-research call(s)` : '',
-		count('credentials') > 0 ? `${String(count('credentials'))} credential lookup call(s)` : '',
+		count(DOMAIN_TOOL_IDS.NODES) > 0
+			? `${String(count(DOMAIN_TOOL_IDS.NODES))} node-research call(s)`
+			: '',
+		count(DOMAIN_TOOL_IDS.CREDENTIALS) > 0
+			? `${String(count(DOMAIN_TOOL_IDS.CREDENTIALS))} credential lookup call(s)`
+			: '',
 		submitCalls.length > 0 ? `${String(submitCalls.length)} workflow submission call(s)` : '',
 		verifyCalls.length > 0 ? `${String(verifyCalls.length)} builder verification call(s)` : '',
 	];
@@ -1032,8 +1039,8 @@ function renderInteraction(interaction: ToolInteraction): string | null {
 				.join('');
 			const summary =
 				answerByQId.size > 0
-					? '❓ ask-user (with answers)'
-					: `❓ ask-user (${String(interaction.questions.length)} question${interaction.questions.length === 1 ? '' : 's'})`;
+					? '❓ workflow_builder_ask_user (with answers)'
+					: `❓ workflow_builder_ask_user (${String(interaction.questions.length)} question${interaction.questions.length === 1 ? '' : 's'})`;
 			return `<details class="transcript-aside" open><summary>${summary}</summary><ul class="transcript-questions">${lines}</ul></details>`;
 		}
 		case 'setup-wizard': {
@@ -1313,19 +1320,21 @@ function renderWorkflowSummary(result: WorkflowTestCaseResult): string {
 	let traceHtml = '';
 	if (result.buildTrace) {
 		const nodeResearchCalls = result.buildTrace.toolCalls.filter(
-			(call) => call.toolName === 'nodes',
+			(call) => call.toolName === DOMAIN_TOOL_IDS.NODES,
 		);
 		const workflowWriteCalls = result.buildTrace.toolCalls.filter((call) =>
-			['build-workflow', 'submit-workflow', 'build-workflow-with-agent'].includes(call.toolName),
+			[DOMAIN_TOOL_IDS.BUILD_WORKFLOW, 'submit-workflow', 'build-workflow-with-agent'].includes(
+				call.toolName,
+			),
 		);
 		const validationCalls = result.buildTrace.toolCalls.filter(
 			(call) => call.toolName === 'submit-workflow',
 		);
 		const credentialCalls = result.buildTrace.toolCalls.filter(
-			(call) => call.toolName === 'credentials',
+			(call) => call.toolName === DOMAIN_TOOL_IDS.CREDENTIALS,
 		);
 		const verificationCalls = result.buildTrace.toolCalls.filter(
-			(call) => call.toolName === 'verify-built-workflow',
+			(call) => call.toolName === ORCHESTRATION_TOOL_IDS.VERIFY_BUILT_WORKFLOW,
 		);
 		const completionActivity = [...result.buildTrace.agentActivities]
 			.reverse()

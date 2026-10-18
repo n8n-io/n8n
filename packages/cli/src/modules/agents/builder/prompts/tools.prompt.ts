@@ -8,8 +8,8 @@ workflows, nodes, custom code tools, or provider tools.
 
 ### Workflow
 
-Use this guidance before calling \`agent-context\`, \`search_nodes\`,
-\`get_node_types\`, \`build_custom_tool\`, or adding,
+Use this guidance before calling \`agent-context\`, \`agent_builder_search_nodes\`,
+\`agent_builder_get_node_types\`, \`agent_builder_build_custom_tool\`, or adding,
 changing, or removing entries in \`tools[]\` / \`mcpServers\` / \`providerTools\`.
 
 For an external product, load \`agent-builder-external-services\` once and
@@ -18,7 +18,7 @@ integration setup, and MCP servers. Load \`agent-builder-node-tools\` before
 configuring a node tool.
 
 - Chat/trigger integration: call \`agent-context({ type: "integrations" })\`, then
-  \`configure_channel\` with a returned type. Do not use the queried
+  \`agent_builder_configure_channel\` with a returned type. Do not use the queried
   integration lookup for chat/trigger integrations.
 - A configured chat integration generates its own context and action tools for
   every top-level Agent run, including scheduled tasks. When its capabilities
@@ -33,9 +33,9 @@ configuring a node tool.
   - \`kind: "mcp"\`: follow the skill's MCP Servers section — credential,
     verification, and config workflow.
   - \`kind: "node"\`: load \`agent-builder-node-tools\`, use the returned node
-    results, and continue with \`get_node_types\`.
+    results, and continue with \`agent_builder_get_node_types\`.
 
-Use \`search_nodes\` directly only when the user explicitly asks for an n8n node,
+Use \`agent_builder_search_nodes\` directly only when the user explicitly asks for an n8n node,
 when refining node results, or when a verified MCP server lacks the requested
 capability. Refine MCP results with another \`agent-context\` integration query.
 
@@ -43,7 +43,7 @@ Preference order for non-chat callable services:
 1. MCP servers returned in the \`agent-context\` integration result
 2. Node tools returned in the \`agent-context\` integration result
 3. Workflow tools (\`agent-context({ type: "attachable-workflows" })\`)
-4. Custom tools (\`build_custom_tool\`) — last resort
+4. Custom tools (\`agent_builder_build_custom_tool\`) — last resort
 
 Custom tools are for pure computation, validation, formatting, or planning logic;
 they cannot perform live network, filesystem, process, timer, or host I/O.
@@ -58,8 +58,8 @@ Load \`agent-builder-node-tools\` before adding, changing, or removing
 node-backed tools, \`nodeParameters\`, \`$fromAI\` usage, or n8n expressions.
 For an HTTP Request Tool, use only an exact URL explicitly supplied by the
 user. If the user has not supplied one during an initial build, you MUST ask
-for it through the trailing \`finish_setup\` call, then configure the tool with
-the answer. On later turns, use \`ask_questions\` before mutating the config.
+for it through the trailing \`agent_builder_finish_setup\` call, then configure the tool with
+the answer. On later turns, use \`agent_builder_ask_questions\` before mutating the config.
 Never infer or invent a URL.
 
 #### MCP Servers
@@ -70,7 +70,7 @@ custom MCP server, and follow its MCP Servers section.
 #### Custom Tools
 
 Custom tools are last resort and only for pure computation. Load
-\`agent-builder-custom-tools\` before calling \`build_custom_tool\`.
+\`agent-builder-custom-tools\` before calling \`agent_builder_build_custom_tool\`.
 
 #### Provider Tools
 
@@ -90,7 +90,7 @@ Custom tools are last resort and only for pure computation. Load
 ### Verify
 
 - Chat/trigger integrations used the unqueried \`agent-context\` channel list
-  and were set up through \`configure_channel\`.
+  and were set up through \`agent_builder_configure_channel\`.
 - Each non-chat callable service was resolved separately through
   \`agent-context\` integration search unless the user explicitly requested an n8n node or
   custom MCP server.

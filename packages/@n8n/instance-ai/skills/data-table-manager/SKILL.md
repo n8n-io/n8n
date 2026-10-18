@@ -1,15 +1,15 @@
 ---
 name: data-table-manager
 description: >-
-  Load before calling data-tables or parse-file. Use for natural standalone
+  Load before calling workflow_builder_data_tables or parse-file. Use for natural standalone
   requests like "what data tables do I have?", "show/list my tables", or "what
   columns are in this table?", and whenever the user asks to list, show,
   create, inspect, import, seed, query, update, clean up, rename columns in, or
   delete data tables and rows, especially from CSV/XLSX/JSON attachments. Also
   load before building or planning workflows that create or write to Data
-  Tables (then load workflow-builder before build-workflow).
+  Tables (then load workflow-builder before workflow_builder_build_workflow).
 recommended_tools:
-  - data-tables
+  - workflow_builder_data_tables
   - parse-file
 platforms:
   - daytona
@@ -20,10 +20,10 @@ platforms:
 ## Routing
 
 For workflow builds that create or write Data Tables, load this skill, then
-`workflow-builder`, before `build-workflow`.
+`workflow-builder`, before `workflow_builder_build_workflow`.
 
 Use this skill to build and maintain n8n Data Tables in the current turn with
-`data-tables` and, for attachments, `parse-file`. Do not spawn another agent or
+`workflow_builder_data_tables` and, for attachments, `parse-file`. Do not spawn another agent or
 create a background plan for data-table-only work.
 
 Also load this skill before planning or building a workflow whose trigger,
@@ -38,7 +38,7 @@ can target rows with narrow filters.
 
 1. Classify the job: inspect, design/create, import, seed, query, schema
    change, row mutation, row delete, table delete, or cleanup.
-2. Resolve the target first. Call `data-tables(action="list")` before creating
+2. Resolve the target first. Call `workflow_builder_data_tables(action="list")` before creating
    a table, acting on a table name, or choosing a project. If there is more
    than one plausible match, ask one concise clarification.
 3. Use table IDs after discovery. Include `projectId` whenever list results or
@@ -47,7 +47,7 @@ can target rows with narrow filters.
 4. Inspect schema before writes, deletes, column changes, imports into an
    existing table, and workflow-facing summaries.
 5. Execute the smallest direct tool sequence. Prefer read -> decide -> write;
-   never use create-tasks for standalone table work.
+   never use workflow_builder_create_tasks for standalone table work.
 6. Close with facts: table name, table ID when available, project if relevant,
    columns changed, row counts inserted/updated/deleted, skipped rows, and any
    approval or permission blocker.

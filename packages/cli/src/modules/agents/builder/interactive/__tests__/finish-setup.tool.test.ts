@@ -41,7 +41,7 @@ const BASE_DEPS = {
 	track: vi.fn(),
 };
 
-describe('finish_setup tool', () => {
+describe('agent_builder_finish_setup tool', () => {
 	afterEach(() => {
 		(BASE_DEPS.track as Mock).mockClear();
 	});

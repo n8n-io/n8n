@@ -12,6 +12,8 @@ import {
 	aiPreferencesAppliedPayloadSchema,
 	instanceAiEventSchema,
 	isSafeObjectKey,
+	resolveBuilderToolName,
+	WORKFLOW_BUILDER_TOOL_NAMES,
 	type InstanceAiConfirmation,
 	type InstanceAiConfirmRequest,
 	type InstanceAiConfirmResponse,
@@ -62,7 +64,11 @@ import {
 	EMPTY_ASSISTANT_MENTION_COUNTS,
 	type AssistantMentionCounts,
 } from '@/features/ai/assistant-at-mentions/assistantAtMentions.types';
-import { handleEvent as reduceEvent, createRunStateFromTree } from './instanceAi.reducer';
+import {
+	handleEvent as reduceEvent,
+	createRunStateFromTree,
+	normalizeAgentTreeToolNames,
+} from './instanceAi.reducer';
 import { getLatestBuildResult, type RememberedManualExecution } from './canvasPreview.utils';
 import {
 	useResourceRegistry,
@@ -133,7 +139,7 @@ export type OnboardingExitOutcome = 'build' | 'left' | 'run_failed';
 /** Tool calls that end the onboarding flow, with the outcome each one reports. */
 const ONBOARDING_EXIT_OUTCOMES = new Map<string, OnboardingExitOutcome>([
 	['leave-onboarding', 'left'],
-	['build-workflow', 'build'],
+	[WORKFLOW_BUILDER_TOOL_NAMES.BUILD_WORKFLOW, 'build'],
 ]);
 /** Mirrors the backend's per-thread event buffer cap (MAX_EVENTS_PER_THREAD × 2). */
 const MAX_SEEN_EVENT_IDS = 1000;
@@ -174,7 +180,7 @@ export interface ThreadRuntimeHooks {
 	onTitleUpdated: (threadId: string, title: string) => void;
 	/** A run finished — refresh the thread list to pick up server-generated titles. */
 	onRunFinish: () => void;
-	/** SSE delivered a tool call that ends the onboarding flow (`leave-onboarding` or `build-workflow`), or a failed run. */
+	/** SSE delivered a tool call that ends the onboarding flow (`leave-onboarding` or `workflow_builder_build_workflow`), or a failed run. */
 	onOnboardingLeft?: (
 		threadId: string,
 		outcome: OnboardingExitOutcome,
@@ -985,13 +991,14 @@ export function createThreadRuntime(
 
 	/**
 	 * Returns null when an edit grant cannot be scoped to a workflow ID — storing a
-	 * generic `build-workflow:` key would auto-approve later foreign edits.
+	 * generic `workflow_builder_build_workflow:` key would auto-approve later foreign edits.
 	 */
 	function buildAlwaysAllowKey(
-		toolName: string,
+		rawToolName: string,
 		args: Record<string, unknown>,
 		confirmationWorkflowId?: string,
 	): string | null {
+		const toolName = resolveBuilderToolName(rawToolName);
 		if (toolName === 'submit-workflow') {
 			const isUpdate = typeof args.workflowId === 'string' && args.workflowId.length > 0;
 			return `submit-workflow:${isUpdate ? 'update' : 'create'}`;
@@ -1000,31 +1007,34 @@ export function createThreadRuntime(
 		const workflowId = resolveAlwaysAllowWorkflowId(args, confirmationWorkflowId);
 		// Running a workflow grants "always allow" per workflow, so the grant applies only to the
 		// workflow the user approved.
-		if (toolName === 'executions' && action === 'run') {
+		if (toolName === WORKFLOW_BUILDER_TOOL_NAMES.EXECUTIONS && action === 'run') {
 			return buildRunWorkflowSessionGrantKey(workflowId);
 		}
 		// Running one node grants "always allow" per node, so a debug loop on one
 		// node stops prompting while the rest of the workflow still asks. Without
 		// a node name the key cannot be scoped — refuse to store one (fail closed).
-		if (toolName === 'executions' && action === 'run-step') {
+		if (toolName === WORKFLOW_BUILDER_TOOL_NAMES.EXECUTIONS && action === 'run-step') {
 			const nodeName = typeof args.nodeName === 'string' ? args.nodeName : '';
 			if (!workflowId || !nodeName) return null;
 			return buildRunStepSessionGrantKey(workflowId, nodeName);
 		}
-		// Editing a workflow (build-workflow save or workflows update) is also per-workflow,
-		// matching the backend `workflows:update:<id>` thread grant. Bound build-workflow
+		// Editing a workflow (workflow_builder_build_workflow save or workflows update) is also per-workflow,
+		// matching the backend `workflows:update:<id>` thread grant. Bound workflow_builder_build_workflow
 		// saves often omit args.workflowId — use confirmation.workflowId from the suspend
 		// payload instead. Without either ID, refuse to store a key (fail closed).
-		if ((toolName === 'workflows' && action === 'update') || toolName === 'build-workflow') {
+		if (
+			(toolName === WORKFLOW_BUILDER_TOOL_NAMES.WORKFLOWS && action === 'update') ||
+			toolName === WORKFLOW_BUILDER_TOOL_NAMES.BUILD_WORKFLOW
+		) {
 			if (!workflowId) return null;
 			return buildUpdateWorkflowSessionGrantKey(workflowId);
 		}
-		if (toolName === 'data-tables') {
+		if (toolName === WORKFLOW_BUILDER_TOOL_NAMES.DATA_TABLES) {
 			return buildDataTablesSessionGrantKey(action);
 		}
 		// Executing a node grants "always allow" per node type + resource + operation,
 		// mirroring the backend thread grant. Without a type, fail closed.
-		if (toolName === 'nodes' && action === 'execute') {
+		if (toolName === WORKFLOW_BUILDER_TOOL_NAMES.NODES && action === 'execute') {
 			const nodeType = typeof args.type === 'string' ? args.type : '';
 			if (!nodeType) return null;
 			const config = isRecord(args.config) ? args.config : undefined;
@@ -1224,7 +1234,9 @@ export function createThreadRuntime(
 			// A failed or interrupted run (provider down, key rejected, crash, ...) ends the onboarding
 			// too, so the user gets the normal chrome back instead of a stuck flow.
 			if (parsed.data.type === 'tool-call') {
-				const outcome = ONBOARDING_EXIT_OUTCOMES.get(parsed.data.payload.toolName);
+				const outcome = ONBOARDING_EXIT_OUTCOMES.get(
+					resolveBuilderToolName(parsed.data.payload.toolName),
+				);
 				const reason = parsed.data.payload.args.reason;
 				if (outcome) {
 					hooks.onOnboardingLeft?.(
@@ -1490,6 +1502,9 @@ export function createThreadRuntime(
 				if (messages.value.length > 0) return 'skipped';
 				// Backend now returns InstanceAiMessage[] directly — no conversion needed.
 				if (result.messages.length > 0) {
+					for (const msg of result.messages) {
+						if (msg.agentTree) normalizeAgentTreeToolNames(msg.agentTree);
+					}
 					messages.value = result.messages;
 					latestTasks.value = findLatestTasksFromMessages(result.messages);
 					latestSetupItems.value = findLatestSetupItemsFromMessages(result.messages);

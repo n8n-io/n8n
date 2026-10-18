@@ -1,3 +1,4 @@
+import { AGENT_BUILDER_TOOL_NAMES, WORKFLOW_BUILDER_TOOL_NAMES } from '@n8n/api-types';
 import type {
 	InstanceAiAgentNode,
 	InstanceAiTimelineEntry,
@@ -71,7 +72,7 @@ type ToolCallKind =
  * UI; `hidden` calls are dropped without splitting a run.
  *
  * Builder calls delegated to a sub-agent (`*-with-agent`) are hidden — the
- * child agent section represents them. In-thread builds (`build-workflow`)
+ * child agent section represents them. In-thread builds (`workflow_builder_build_workflow`)
  * render as trace rows so the build step is visible inside the thinking block.
  */
 function classifyToolCall(tc: InstanceAiToolCallState): ToolCallKind {
@@ -143,7 +144,7 @@ export function buildTimelineBlocks(
 				// Keep the explanation before a confirmation outside the trace.
 				tc.confirmation === undefined &&
 				!(
-					tc.toolName === 'build-agent' &&
+					tc.toolName === AGENT_BUILDER_TOOL_NAMES.BUILD_AGENT &&
 					hasBuilderChildInResponse(entry.responseId, builderChildResponseIds)
 				)
 			) {
@@ -227,7 +228,7 @@ export function buildTimelineBlocks(
 		const tc = toolCallsById[entry.toolCallId];
 		if (!tc) return;
 		if (
-			tc.toolName === 'build-agent' &&
+			tc.toolName === AGENT_BUILDER_TOOL_NAMES.BUILD_AGENT &&
 			hasBuilderChildInResponse(entry.responseId, builderChildResponseIds)
 		) {
 			return;
@@ -318,9 +319,13 @@ export interface ArtifactInfo {
 	completedAt?: string;
 }
 
-/** The workflow a build-workflow / submit-workflow call wrote, if it wrote one. */
+/** The workflow a workflow_builder_build_workflow / submit-workflow call wrote, if it wrote one. */
 function workflowArtifactFromToolCall(tc: InstanceAiToolCallState): ArtifactInfo | undefined {
-	if (tc.toolName !== 'build-workflow' && tc.toolName !== 'submit-workflow') return undefined;
+	if (
+		tc.toolName !== WORKFLOW_BUILDER_TOOL_NAMES.BUILD_WORKFLOW &&
+		tc.toolName !== 'submit-workflow'
+	)
+		return undefined;
 	if (!tc.result || typeof tc.result !== 'object') return undefined;
 	const result = tc.result as Record<string, unknown>;
 	if (typeof result.workflowId !== 'string') return undefined;

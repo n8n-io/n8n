@@ -7,8 +7,8 @@
 // `listNodeDiscriminators`) that the real adapter uses, so the agent sees
 // real node metadata — properties, type-definition source, discriminators
 // — rather than a stripped-down stub. Other services (workflows,
-// credentials, executions, data-tables) return minimal canned data — just
-// enough for the `build-workflow` tool path to succeed. The workflow JSON
+// credentials, executions, workflow_builder_data_tables) return minimal canned data — just
+// enough for the `workflow_builder_build_workflow` tool path to succeed. The workflow JSON
 // is captured via `workflowService.createFromWorkflowJSON` and exposed on
 // the capture array returned from `createStubServices`.
 //
@@ -62,7 +62,7 @@ import type { TestCaseCredential } from '../types';
 
 // Single version id reported for every stubbed workflow. The stub doesn't model
 // version increments, so create/update, getWorkflowHead, and getWorkflowSnapshot
-// must all report the same value — otherwise the build-workflow patch cache
+// must all report the same value — otherwise the workflow_builder_build_workflow patch cache
 // always sees a version mismatch and the cache-hit path is never exercised.
 const EVAL_WORKFLOW_VERSION_ID = 'eval-version';
 
@@ -372,7 +372,7 @@ export async function createStubServices(
 				.reverse()
 				.slice(0, options?.limit);
 		},
-		// `verify-built-workflow` invokes `executionService.run()` after the
+		// `workflow_builder_verify_built_workflow` invokes `executionService.run()` after the
 		// eval has captured a built workflow JSON. The eval has no execution
 		// backend, so return a synthetic success to keep discovery runs focused
 		// on tool dispatch rather than workflow execution fidelity.

@@ -9,30 +9,30 @@ export function targetTasksSkill(): RuntimeSkill {
 		description:
 			'Use when the user wants to create or change something the target agent runs on a recurring schedule (a "task"). Not for one-off requests, chat/event triggers, or config/tool/skill/model edits.',
 		recommendedTools: [
-			'create_tasks',
+			'agent_builder_create_tasks',
 			'agent-context',
-			'update_task',
-			'ask_questions',
-			'patch_config',
-			'publish_agent',
+			'agent_builder_update_task',
+			'agent_builder_ask_questions',
+			'agent_builder_patch_config',
+			'agent_builder_publish_agent',
 		],
 		allowedTools: [
-			'create_tasks',
+			'agent_builder_create_tasks',
 			'agent-context',
-			'update_task',
-			'ask_questions',
-			'patch_config',
-			'write_config',
-			'search_nodes',
-			'get_node_types',
-			'ask_credential',
-			'publish_agent',
+			'agent_builder_update_task',
+			'agent_builder_ask_questions',
+			'agent_builder_patch_config',
+			'agent_builder_write_config',
+			'agent_builder_search_nodes',
+			'agent_builder_get_node_types',
+			'agent_builder_ask_credential',
+			'agent_builder_publish_agent',
 		],
 		instructions: `\
 ## Purpose
 
-Use this to create recurring scheduled tasks with \`create_tasks\`, discover
-them with \`agent-context({ type: "tasks" })\`, and edit their saved bodies with \`update_task\`.
+Use this to create recurring scheduled tasks with \`agent_builder_create_tasks\`, discover
+them with \`agent-context({ type: "tasks" })\`, and edit their saved bodies with \`agent_builder_update_task\`.
 A task = a name + an objective (what the agent does each run) + a cron schedule,
 stored as a \`{ type: "task", id, enabled }\` ref in the agent config
 (\`config.tasks\`) plus a saved body. The config is the source of truth for
@@ -59,7 +59,7 @@ ${TASK_OBJECTIVE_TEMPLATE}
 
 ## Fill the template with assumptions (required)
 
-Do NOT call \`create_tasks\`, or replace an objective with \`update_task\`, until
+Do NOT call \`agent_builder_create_tasks\`, or replace an objective with \`agent_builder_update_task\`, until
 BOTH of these are true for it:
 
 1. You can fill EVERY section of the objective template above with concrete,
@@ -73,7 +73,7 @@ BOTH of these are true for it:
    the user did not specify a cadence, pick a sensible default and state it
    as an assumption.
 
-Use \`ask_questions\` only when even a reasonable assumption is impossible —
+Use \`agent_builder_ask_questions\` only when even a reasonable assumption is impossible —
 never during an initial build: add the open decision to the pending setup
 instead, per the Initial Build rules in your system prompt. Never create a
 placeholder or "refine-it-later" task.
@@ -81,7 +81,7 @@ placeholder or "refine-it-later" task.
 ## Workflow
 
 - For an existing task, call \`agent-context({ type: "tasks" })\` to resolve its current id and body.
-  Then call \`update_task\` with only the fields the user asked to change. Never
+  Then call \`agent_builder_update_task\` with only the fields the user asked to change. Never
   rewrite the objective for a name-only or schedule-only edit.
 - For each new or replacement objective, fill every template section with
   run-specific details. Do not duplicate Agent Instructions or Skill bodies;
@@ -100,12 +100,12 @@ placeholder or "refine-it-later" task.
 - Set \`timezone\` to the IANA zone whenever the user names a timezone or a
   location ("9am in Tokyo" -> "Asia/Tokyo"); omit it to run on the instance
   timezone.
-- Call \`create_tasks\` once with a \`tasks\` array containing every task you
+- Call \`agent_builder_create_tasks\` once with a \`tasks\` array containing every task you
   currently know how to write — do not spread multiple fully-specified tasks
   across separate calls. A single task is still a one-item array.
 - On \`{ ok: false, errors }\` (for example an invalid cron), fix the input and
   retry the failed operation. An invalid task rejects the whole
-  \`create_tasks\` batch.
+  \`agent_builder_create_tasks\` batch.
 
 ## Rules
 
@@ -113,21 +113,21 @@ placeholder or "refine-it-later" task.
   without repeating universal instructions or reusable skill procedures.
 - Use a short, descriptive name per task.
 - One task = one objective + one schedule. Include multiple tasks in the same
-  \`create_tasks\` call for multiple recurring jobs.
+  \`agent_builder_create_tasks\` call for multiple recurring jobs.
 
 ## Gotchas
 
-- \`create_tasks\` adds a \`{ type: "task", id, enabled }\` ref per task to
+- \`agent_builder_create_tasks\` adds a \`{ type: "task", id, enabled }\` ref per task to
   \`config.tasks\` and creates each task body. Tasks are enabled by default and
-  only start running once the agent is (re)published via \`publish_agent\`; tell
-  the user this when relevant, and call \`publish_agent\` when they ask to publish
+  only start running once the agent is (re)published via \`agent_builder_publish_agent\`; tell
+  the user this when relevant, and call \`agent_builder_publish_agent\` when they ask to publish
   or make the agent live.
-- \`update_task\` preserves the task id and config ref. Its draft changes affect
+- \`agent_builder_update_task\` preserves the task id and config ref. Its draft changes affect
   scheduled runs after the agent is (re)published.
-- To disable or remove a task, edit \`config.tasks\` with \`patch_config\` (set
+- To disable or remove a task, edit \`config.tasks\` with \`agent_builder_patch_config\` (set
   \`enabled: false\`, or drop the ref). Changes take effect on the next
-  \`publish_agent\`.
-- \`create_tasks\` does not add config tools. This does not mean a scheduled
+  \`agent_builder_publish_agent\`.
+- \`agent_builder_create_tasks\` does not add config tools. This does not mean a scheduled
   message needs a messaging node: configured integrations supply their generated
   action tools at runtime even when the task has no inbound conversation.
 - A proactive or scheduled send through a connected chat platform is not a
@@ -136,7 +136,7 @@ placeholder or "refine-it-later" task.
 - Never claim that a task requires a same-platform messaging node solely because
   it starts without an inbound conversation. If such a redundant tool already
   exists and the integration covers its action, remove it.
-- Do not call \`create_tasks\` once per task when several are ready; batch them
+- Do not call \`agent_builder_create_tasks\` once per task when several are ready; batch them
   into one call so the whole set is stored in a single round trip.`,
 	};
 }

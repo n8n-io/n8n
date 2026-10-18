@@ -1,16 +1,25 @@
 import { useI18n } from '@n8n/i18n';
 import type { BaseTextKey } from '@n8n/i18n';
 import type { IconName } from '@n8n/design-system';
+import {
+	AGENT_BUILDER_TOOL_NAMES,
+	WORKFLOW_BUILDER_TOOL_NAMES,
+	resolveBuilderToolName,
+} from '@n8n/api-types';
 import type { InstanceAiToolCallState } from '@n8n/api-types';
 
-const NO_TOGGLE_TOOLS = new Set(['updateWorkingMemory', 'task-control']);
-const SKILL_TOOLS = new Set([
-	'create_skills',
+const NO_TOGGLE_TOOLS = new Set<string>([
+	'updateWorkingMemory',
+	WORKFLOW_BUILDER_TOOL_NAMES.TASK_CONTROL,
+]);
+const SKILL_TOOLS = new Set<string>([
+	AGENT_BUILDER_TOOL_NAMES.CREATE_SKILLS,
 	'list_skills',
 	'read_skill',
-	'update_skill',
+	AGENT_BUILDER_TOOL_NAMES.UPDATE_SKILL,
 	'load_skill',
 ]);
+const WORKFLOW_BUILDER_PREFIX_PATTERN = /^workflow_builder_/;
 const N8N_SKILL_DIR_TEMPLATE = '$' + '{N8N_SKILL_DIR}';
 type I18n = ReturnType<typeof useI18n>;
 type SkillFileGroup = 'references' | 'scripts' | 'templates' | 'examples' | 'assets';
@@ -105,50 +114,54 @@ function extractSkillScriptPath(command: string): string | undefined {
 function getBuildAgentOperationKey(operation: unknown): BaseTextKey | undefined {
 	switch (operation) {
 		case 'editing':
-			return 'instanceAi.tools.build-agent.editing';
+			return 'instanceAi.tools.agent_builder_build_agent.editing';
 		case 'exploring':
-			return 'instanceAi.tools.build-agent.exploring';
+			return 'instanceAi.tools.agent_builder_build_agent.exploring';
 		case 'testing':
-			return 'instanceAi.tools.build-agent.testing';
+			return 'instanceAi.tools.agent_builder_build_agent.testing';
 		case 'publishing':
-			return 'instanceAi.tools.build-agent.publishing';
+			return 'instanceAi.tools.agent_builder_build_agent.publishing';
 		default:
 			return undefined;
 	}
 }
 
-export function getToolIcon(toolName: string): IconName {
-	if (toolName === 'complete-checkpoint') return 'circle-check';
+export function getToolIcon(rawToolName: string): IconName {
+	const toolName = resolveBuilderToolName(rawToolName);
+	if (toolName === WORKFLOW_BUILDER_TOOL_NAMES.COMPLETE_CHECKPOINT) return 'circle-check';
 	if (toolName.endsWith('-with-agent')) return 'share';
 	if (toolName === 'resolve_integration') return 'share';
 	if (SKILL_TOOLS.has(toolName) || toolName === 'n8n-docs') return 'book-open';
-	if (toolName === 'data-tables') return 'table';
+	if (toolName === WORKFLOW_BUILDER_TOOL_NAMES.DATA_TABLES) return 'table';
 	if (toolName === 'activity') return 'history';
 	if (toolName === 'conversation-history') return 'message-square';
 	if (toolName === 'mcp-servers') return 'plug';
 	if (
-		toolName === 'workflows' ||
-		toolName === 'executions' ||
-		toolName === 'nodes' ||
+		toolName === WORKFLOW_BUILDER_TOOL_NAMES.WORKFLOWS ||
+		toolName === WORKFLOW_BUILDER_TOOL_NAMES.EXECUTIONS ||
+		toolName === WORKFLOW_BUILDER_TOOL_NAMES.NODES ||
 		toolName === 'templates' ||
-		toolName === 'search_nodes' ||
-		toolName === 'get_node_types'
+		toolName === AGENT_BUILDER_TOOL_NAMES.SEARCH_NODES ||
+		toolName === AGENT_BUILDER_TOOL_NAMES.GET_NODE_TYPES
 	)
 		return 'workflow';
 	if (toolName === 'research') return 'search';
-	if (toolName === 'credentials') return 'key-round';
-	if (toolName === 'task-control' || toolName === 'updateWorkingMemory') return 'brain';
+	if (toolName === WORKFLOW_BUILDER_TOOL_NAMES.CREDENTIALS) return 'key-round';
+	if (toolName === WORKFLOW_BUILDER_TOOL_NAMES.TASK_CONTROL || toolName === 'updateWorkingMemory')
+		return 'brain';
 	if (toolName === 'filesystem') return 'file-text';
 	if (toolName === 'workspace' || toolName.startsWith('workspace_')) return 'folder';
-	if (toolName.includes('data-table')) return 'table';
+	// The prefix contains "workflow", so match on the rest of the name only.
+	const unprefixedName = toolName.replace(WORKFLOW_BUILDER_PREFIX_PATTERN, '');
+	if (unprefixedName.includes('data-table')) return 'table';
 	if (
-		toolName.includes('workflow') ||
+		unprefixedName.includes('workflow') ||
 		toolName === 'submit-workflow' ||
 		toolName === 'materialize-node-type'
 	) {
 		return 'workflow';
 	}
-	if (toolName.includes('credential')) return 'key-round';
+	if (unprefixedName.includes('credential')) return 'key-round';
 	// Fallback for tools without a dedicated mapping.
 	return 'wrench';
 }
@@ -160,8 +173,9 @@ export function getToolIcon(toolName: string): IconName {
 export function useToolLabel() {
 	const i18n = useI18n();
 
-	function getToolLabel(toolName: string, args?: Record<string, unknown>): string {
-		if (toolName === 'build-agent') {
+	function getToolLabel(rawToolName: string, args?: Record<string, unknown>): string {
+		const toolName = resolveBuilderToolName(rawToolName);
+		if (toolName === AGENT_BUILDER_TOOL_NAMES.BUILD_AGENT) {
 			const operationKey = getBuildAgentOperationKey(args?.operation);
 			if (operationKey) return i18n.baseText(operationKey);
 		}
@@ -210,16 +224,16 @@ export function useToolLabel() {
 		}
 		const key = `instanceAi.tools.${toolName}` as BaseTextKey;
 		const translated = i18n.baseText(key);
-		return translated === key ? toolName : translated;
+		return translated === key ? rawToolName : translated;
 	}
 
 	function getToggleLabel(toolCall: InstanceAiToolCallState): string | undefined {
-		if (NO_TOGGLE_TOOLS.has(toolCall.toolName)) return undefined;
+		if (NO_TOGGLE_TOOLS.has(resolveBuilderToolName(toolCall.toolName))) return undefined;
 		return i18n.baseText('instanceAi.stepTimeline.showData');
 	}
 
 	function getHideLabel(toolCall: InstanceAiToolCallState): string | undefined {
-		if (NO_TOGGLE_TOOLS.has(toolCall.toolName)) return undefined;
+		if (NO_TOGGLE_TOOLS.has(resolveBuilderToolName(toolCall.toolName))) return undefined;
 		return i18n.baseText('instanceAi.stepTimeline.hideData');
 	}
 

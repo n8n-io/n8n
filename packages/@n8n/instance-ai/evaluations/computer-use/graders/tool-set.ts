@@ -3,7 +3,7 @@
 //
 // The agent sees these tool names verbatim — they're what shows up in the SSE
 // trace `toolName` field for tool-call/tool-result events. Native instance-ai
-// tools use hyphenated names (build-workflow, run-workflow); computer-use
+// tools use hyphenated names (workflow_builder_build_workflow, run-workflow); computer-use
 // tools use snake_case, which is what the daemon advertises over MCP.
 // ---------------------------------------------------------------------------
 

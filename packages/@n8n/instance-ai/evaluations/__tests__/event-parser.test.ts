@@ -16,7 +16,7 @@ describe('saved workflow names', () => {
 			type: 'tool-result',
 			data: {
 				payload: {
-					toolName: 'build-workflow',
+					toolName: 'workflow_builder_build_workflow',
 					result: { success, workflowId: id, workflowName },
 				},
 			},
@@ -101,7 +101,7 @@ describe('extractOutcomeFromEvents', () => {
 					type: 'tool-call',
 					payload: {
 						toolCallId: 'tc-1',
-						toolName: 'build-workflow',
+						toolName: 'workflow_builder_build_workflow',
 						args: { name: 'Test' },
 					},
 				},
@@ -113,7 +113,7 @@ describe('extractOutcomeFromEvents', () => {
 					type: 'tool-result',
 					payload: {
 						toolCallId: 'tc-1',
-						toolName: 'build-workflow',
+						toolName: 'workflow_builder_build_workflow',
 						result: { workflowId: 'wf-123' },
 					},
 				},
@@ -122,7 +122,7 @@ describe('extractOutcomeFromEvents', () => {
 
 		const result = extractOutcomeFromEvents(events);
 		expect(result.toolCalls).toHaveLength(1);
-		expect(result.toolCalls[0].toolName).toBe('build-workflow');
+		expect(result.toolCalls[0].toolName).toBe('workflow_builder_build_workflow');
 		expect(result.toolCalls[0].durationMs).toBe(500);
 		expect(result.workflowIds).toContain('wf-123');
 	});
@@ -216,7 +216,7 @@ describe('extractOutcomeFromEvents', () => {
 			type: 'tool-call',
 			data: {
 				type: 'tool-call',
-				payload: { toolCallId: 'tc-1', toolName: 'data-tables', args },
+				payload: { toolCallId: 'tc-1', toolName: 'workflow_builder_data_tables', args },
 			},
 		},
 		{
@@ -224,12 +224,12 @@ describe('extractOutcomeFromEvents', () => {
 			type: 'tool-result',
 			data: {
 				type: 'tool-result',
-				payload: { toolCallId: 'tc-1', toolName: 'data-tables', result },
+				payload: { toolCallId: 'tc-1', toolName: 'workflow_builder_data_tables', result },
 			},
 		},
 	];
 
-	it('extracts the nested table id from consolidated data-tables create results', () => {
+	it('extracts the nested table id from consolidated workflow_builder_data_tables create results', () => {
 		const events = dataTablesToolEvents(
 			{ action: 'create', name: 'posted_leads' },
 			{ table: { id: 'dt-777', name: 'posted_leads' } },
@@ -239,7 +239,7 @@ describe('extractOutcomeFromEvents', () => {
 		expect(result.dataTableIds).toEqual(['dt-777']);
 	});
 
-	it('extracts the table id from stringified data-tables create results', () => {
+	it('extracts the table id from stringified workflow_builder_data_tables create results', () => {
 		const events = dataTablesToolEvents(
 			{ action: 'create', name: 'posted_leads' },
 			JSON.stringify({ table: { id: 'dt-999' } }),
@@ -249,7 +249,7 @@ describe('extractOutcomeFromEvents', () => {
 		expect(result.dataTableIds).toEqual(['dt-999']);
 	});
 
-	it('does not track data-tables schema results even though they carry a top-level id', () => {
+	it('does not track workflow_builder_data_tables schema results even though they carry a top-level id', () => {
 		const events = dataTablesToolEvents(
 			{ action: 'schema', tableName: 'posted_leads' },
 			{ id: 'dt-888', name: 'posted_leads', columns: [] },
@@ -259,7 +259,7 @@ describe('extractOutcomeFromEvents', () => {
 		expect(result.dataTableIds).toEqual([]);
 	});
 
-	it('does not track denied data-tables create results', () => {
+	it('does not track denied workflow_builder_data_tables create results', () => {
 		const events = dataTablesToolEvents(
 			{ action: 'create', name: 'posted_leads' },
 			{ denied: true, reason: 'User denied the action' },
@@ -276,7 +276,11 @@ describe('extractOutcomeFromEvents', () => {
 				type: 'tool-call',
 				data: {
 					type: 'tool-call',
-					payload: { toolCallId: 'tc-1', toolName: 'executions', args: { action: 'run' } },
+					payload: {
+						toolCallId: 'tc-1',
+						toolName: 'workflow_builder_executions',
+						args: { action: 'run' },
+					},
 				},
 			},
 			{
@@ -286,7 +290,7 @@ describe('extractOutcomeFromEvents', () => {
 					type: 'tool-result',
 					payload: {
 						toolCallId: 'tc-1',
-						toolName: 'executions',
+						toolName: 'workflow_builder_executions',
 						result: { executionId: 'exec-321', status: 'success' },
 					},
 				},
@@ -306,7 +310,7 @@ describe('extractOutcomeFromEvents', () => {
 					type: 'tool-call',
 					payload: {
 						toolCallId: 'tc-1',
-						toolName: 'executions',
+						toolName: 'workflow_builder_executions',
 						args: { action: 'get', executionId: 'exec-555' },
 					},
 				},
@@ -318,7 +322,7 @@ describe('extractOutcomeFromEvents', () => {
 					type: 'tool-result',
 					payload: {
 						toolCallId: 'tc-1',
-						toolName: 'executions',
+						toolName: 'workflow_builder_executions',
 						result: { executionId: 'exec-555', status: 'running' },
 					},
 				},
@@ -336,7 +340,7 @@ describe('extractOutcomeFromEvents', () => {
 				type: 'tool-call',
 				data: {
 					type: 'tool-call',
-					payload: { toolCallId: 'tc-err', toolName: 'build-workflow', args: {} },
+					payload: { toolCallId: 'tc-err', toolName: 'workflow_builder_build_workflow', args: {} },
 				},
 			},
 			{
@@ -413,7 +417,7 @@ describe('extractOutcomeFromEvents', () => {
 			data: { type: 'tool-result', payload: { toolCallId, result } },
 		});
 		const events: CapturedEvent[] = [
-			// build-agent sub-agent announces the created agent via targetResource.
+			// agent_builder_build_agent sub-agent announces the created agent via targetResource.
 			spawn('a1', { type: 'agent', id: 'agent-1', projectId: 'p1', name: 'Support' }),
 			// eval-config create → ref is the owning workflow id from the args.
 			call('tc-2', 'eval-config', { action: 'create', workflowId: 'wf-1', name: 'My eval' }),
@@ -468,7 +472,7 @@ describe('extractOutcomeFromEvents', () => {
 				type: 'tool-call',
 				data: {
 					type: 'tool-call',
-					payload: { toolCallId: 'tc-1', toolName: 'build-workflow', args: {} },
+					payload: { toolCallId: 'tc-1', toolName: 'workflow_builder_build_workflow', args: {} },
 				},
 			},
 			{
@@ -776,14 +780,14 @@ describe('buildConversationMetrics', () => {
 		expect(result.perTurn[0].replanAfterErrorCount).toBe(1);
 	});
 
-	it('counts replan_after_error when a tool-error is followed by create-tasks', () => {
+	it('counts replan_after_error when a tool-error is followed by workflow_builder_create_tasks', () => {
 		const events: CapturedEvent[] = [
 			{ timestamp: 1, type: 'run-start', data: { type: 'run-start' } },
 			{ timestamp: 2, type: 'tool-error', data: { type: 'tool-error' } },
 			{
 				timestamp: 3,
 				type: 'tool-call',
-				data: { type: 'tool-call', payload: { toolName: 'create-tasks' } },
+				data: { type: 'tool-call', payload: { toolName: 'workflow_builder_create_tasks' } },
 			},
 			{ timestamp: 4, type: 'run-finish', data: { type: 'run-finish' } },
 		];
@@ -850,7 +854,7 @@ describe('seededTurnCounters', () => {
 		expect(counter.toolCallCount).toBe(1);
 	});
 
-	it('dual-counts ask-user as a tool call and a questions confirmation (mirrors live)', () => {
+	it('dual-counts workflow_builder_ask_user as a tool call and a questions confirmation (mirrors live)', () => {
 		const [counter] = seededTurnCounters([seededTurn([{ kind: 'ask-user', questions: [] }])]);
 		expect(counter.toolCallCount).toBe(1);
 		expect(counter.confirmationAskedTotal).toBe(1);
@@ -867,7 +871,13 @@ describe('seededTurnCounters', () => {
 
 	it('counts a confirmation as a tool call, keyed by its resumeReason', () => {
 		const [counter] = seededTurnCounters([
-			seededTurn([{ kind: 'confirmation', toolName: 'workflows', resumeReason: 'plan-review' }]),
+			seededTurn([
+				{
+					kind: 'confirmation',
+					toolName: 'workflow_builder_workflows',
+					resumeReason: 'plan-review',
+				},
+			]),
 		]);
 		expect(counter.toolCallCount).toBe(1);
 		expect(counter.confirmationAskedTotal).toBe(1);

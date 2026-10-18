@@ -132,25 +132,25 @@ Imported 1,000 rows into Leads. The file has more rows; import stopped at the 10
 Create a designed table:
 
 ```text
-1. data-tables list
-2. data-tables create { name, projectId?, columns }
+1. workflow_builder_data_tables list
+2. workflow_builder_data_tables create { name, projectId?, columns }
 ```
 
 Import a CSV into a new table:
 
 ```text
 1. parse-file { attachmentIndex: 0, maxRows: 20 }
-2. data-tables list
-3. data-tables create with chosen column names/types
-4. data-tables insert-rows, max 100 rows
+2. workflow_builder_data_tables list
+3. workflow_builder_data_tables create with chosen column names/types
+4. workflow_builder_data_tables insert-rows, max 100 rows
 5. parse-file next page with startRow=nextStartRow; repeat up to safety limit
 ```
 
 Import into an existing table:
 
 ```text
-1. data-tables list
-2. data-tables schema with dataTableId; projectId is optional when dataTableId is present
+1. workflow_builder_data_tables list
+2. workflow_builder_data_tables schema with dataTableId; projectId is optional when dataTableId is present
 3. parse-file preview
 4. Map source columns to existing schema names
 5. insert-rows in batches of 100
@@ -159,17 +159,17 @@ Import into an existing table:
 Update rows:
 
 ```text
-1. data-tables schema
-2. data-tables query with precise filter and small limit
-3. If matches are right, data-tables update-rows with the same filter and data
+1. workflow_builder_data_tables schema
+2. workflow_builder_data_tables query with precise filter and small limit
+3. If matches are right, workflow_builder_data_tables update-rows with the same filter and data
 ```
 
 Delete rows:
 
 ```text
-1. data-tables schema
-2. data-tables query with precise filter and small limit
-3. If matches are right, data-tables delete-rows with the same filter
+1. workflow_builder_data_tables schema
+2. workflow_builder_data_tables query with precise filter and small limit
+3. If matches are right, workflow_builder_data_tables delete-rows with the same filter
 ```
 
 ## Recovery And Edge Cases

@@ -4,7 +4,7 @@
  * off-canvas eval form (name + start/end node + judged metrics + a Data Table
  * dataset), distinct from manually authored on-canvas evaluation nodes.
  *
- * The dataset is a Data Table the agent creates/populates via the `data-tables`
+ * The dataset is a Data Table the agent creates/populates via the `workflow_builder_data_tables`
  * tool; here it is only linked by id.
  */
 import { Tool } from '@n8n/agents';
@@ -86,7 +86,7 @@ const configFields = {
 		.string()
 		.min(1)
 		.describe(
-			'Id of the Data Table holding the test dataset (create/populate it via data-tables first)',
+			'Id of the Data Table holding the test dataset (create/populate it via workflow_builder_data_tables first)',
 		),
 	metrics: z.array(metricInputSchema).min(1).describe('One or more judged metrics'),
 };
@@ -297,7 +297,7 @@ export function createEvalConfigTool(context: InstanceAiContext) {
 			'Manage configuration-based evaluations on a workflow. ' +
 				'A config-based eval attaches a name, a start/end node, judged metrics, and a Data Table ' +
 				'dataset to the workflow via the evaluation-config API (no eval nodes are added to the canvas). ' +
-				'Create/populate the dataset Data Table with the data-tables tool first, then link it by id. ' +
+				'Create/populate the dataset Data Table with the workflow_builder_data_tables tool first, then link it by id. ' +
 				'"get" returns a summary (metric names/types); "describe" returns full metric detail — ' +
 				'read with "describe" before "update", which replaces the entire config.',
 		)
