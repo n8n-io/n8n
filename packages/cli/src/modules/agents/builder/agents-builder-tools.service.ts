@@ -46,7 +46,7 @@ import { z } from 'zod';
 
 import { CredentialTypes } from '@/credential-types';
 import { CollaborationService } from '@/collaboration/collaboration.service';
-import { ConflictError, LockedError } from '@n8n/errors';
+import { ConflictError, LockedError, UnexpectedError } from '@n8n/errors';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import { NodeTypes } from '@/node-types';
 import { OauthService } from '@/oauth/oauth.service';
@@ -88,8 +88,8 @@ import {
 	buildResolveLlmTool,
 } from './interactive';
 import type {
-	NodeToolCredentialWriteResult,
-	ResolvedCredential,
+	FinishSetupConfigApplyResult,
+	FinishSetupConfigWrites,
 } from './interactive/finish-setup.tool';
 import type { ModelLookup } from './interactive/resolve-llm.tool';
 import { SKILL_BODY_GUIDANCE, SKILL_DESCRIPTION_RULE } from './skill-body-template';
@@ -334,6 +334,9 @@ interface BuilderToolsOptions {
 	useEvalModelCatalog?: boolean;
 }
 
+/** Placeholder agent id for the tool set that only supplies tool definitions. */
+const UNRESOLVED_TARGET_AGENT_ID = '';
+
 function snapshotFromConfig(config: AgentJsonConfig | null): AgentConfigSnapshot {
 	return {
 		config,
@@ -524,6 +527,54 @@ export class AgentsBuilderToolsService {
 		};
 	}
 
+	/**
+	 * Builder tools for a host that selects the target agent per call. Each
+	 * handler resolves the target when it runs, then delegates to the tool built
+	 * for that agent. Tool names, schemas, and descriptions do not depend on the
+	 * agent, so a tool set built for a placeholder id supplies them.
+	 */
+	getToolsForResolvedTarget(
+		resolveTargetAgentId: () => Promise<string>,
+		projectId: string,
+		credentialProviderFor: (agentId: string) => CredentialProvider,
+		credentialService: InstanceAiCredentialService,
+		user: User,
+		options: BuilderToolsOptions & { excludeToolNames?: string[] } = {},
+	): BuiltTool[] {
+		const excluded = new Set(options.excludeToolNames ?? []);
+		const buildToolSet = (agentId: string) => {
+			const { json, shared } = this.getTools(
+				agentId,
+				projectId,
+				credentialProviderFor(agentId),
+				credentialService,
+				user,
+				options,
+			);
+			return [...json, ...shared].filter((tool) => !excluded.has(tool.name));
+		};
+
+		const toolSetsByAgentId = new Map<string, Map<string, BuiltTool>>();
+		const toolFor = (agentId: string, toolName: string): BuiltTool | undefined => {
+			let toolSet = toolSetsByAgentId.get(agentId);
+			if (!toolSet) {
+				toolSet = new Map(buildToolSet(agentId).map((tool) => [tool.name, tool]));
+				toolSetsByAgentId.set(agentId, toolSet);
+			}
+			return toolSet.get(toolName);
+		};
+
+		return buildToolSet(UNRESOLVED_TARGET_AGENT_ID).map((template) => ({
+			...template,
+			handler: async (input, ctx) => {
+				const agentId = await resolveTargetAgentId();
+				const handler = toolFor(agentId, template.name)?.handler;
+				if (!handler) throw new UnexpectedError(`Builder tool "${template.name}" has no handler`);
+				return await handler(input, ctx);
+			},
+		}));
+	}
+
 	private getJsonTools(
 		agentId: string,
 		projectId: string,
@@ -611,8 +662,8 @@ export class AgentsBuilderToolsService {
 			agentId,
 			projectId,
 			track,
-			writeCredentialsToNodeTools: async (credentials) =>
-				await this.writeCredentialsToNodeTools(agentId, projectId, user, credentials),
+			applySetupToConfig: async (writes) =>
+				await this.applyFinishSetupToConfig(agentId, projectId, user, writes),
 			isCredentialTypeKnown: (credentialType) => this.credentialTypes.recognizes(credentialType),
 			listIntegrationCredentialIds: async () => {
 				const agent = await this.agentsService.findById(agentId, projectId);
@@ -1396,43 +1447,77 @@ export class AgentsBuilderToolsService {
 		return { applied: true, config: saved.config, configHash: saved.configHash };
 	}
 
-	private async writeCredentialsToNodeTools(
+	/**
+	 * Writes the results of a completed setup flow into the config: each
+	 * credential into the empty node-tool slots of its type, and each answer to
+	 * its config path. A path that does not resolve is reported, not fatal.
+	 */
+	private async applyFinishSetupToConfig(
 		agentId: string,
 		projectId: string,
 		user: User,
-		credentials: ResolvedCredential[],
-	): Promise<NodeToolCredentialWriteResult> {
-		const failed = (errors: Array<{ message: string }>): NodeToolCredentialWriteResult => ({
-			credentialTypes: [],
-			error: errors.map((e) => e.message).join('; '),
-		});
+		writes: FinishSetupConfigWrites,
+	): Promise<FinishSetupConfigApplyResult> {
+		const empty = { credentialTypes: [], paths: [] };
 		const editorLock = await this.getEditorLockFailure(agentId);
-		if (editorLock) return failed(editorLock.errors);
-		const { config, configHash } = await this.getConfigSnapshot(agentId, projectId);
-		if (!config) return failed([{ message: 'Agent has no JSON config yet.' }]);
+		if (editorLock) return { ...empty, errors: editorLock.errors };
 
-		const tools = structuredClone(config.tools ?? []);
-		const credentialTypes: string[] = [];
-		for (const { credentialType, id, name } of credentials) {
-			if (assignCredentialToNodeTools(tools, this.nodeTypes, credentialType, { id, name }) > 0) {
-				credentialTypes.push(credentialType);
-			}
+		const snapshot = await this.getConfigSnapshot(agentId, projectId);
+		if (!snapshot.config) {
+			return { ...empty, errors: [{ path: '(root)', message: 'Agent has no JSON config yet.' }] };
 		}
-		if (credentialTypes.length === 0) return { credentialTypes };
 
-		const next = { ...config, tools };
-		const validated = this.validateBuilderConfig(next, config);
-		if (!validated.ok) return failed(validated.errors);
+		const jsonpatch = (await import('fast-json-patch')).default;
+		let next = jsonpatch.deepClone(snapshot.config) as AgentJsonConfig;
+		const credentialTypes: string[] = [];
+		for (const credential of writes.credentials) {
+			const filled = assignCredentialToNodeTools(
+				next.tools,
+				this.nodeTypes,
+				credential.credentialType,
+				{
+					id: credential.id,
+					name: credential.name,
+				},
+			);
+			if (filled > 0) credentialTypes.push(credential.credentialType);
+		}
+
+		const paths: string[] = [];
+		const errors: Array<{ path: string; message: string }> = [];
+		for (const { path, value } of writes.values) {
+			const op: Operation = { op: 'add', path, value };
+			const invalid = jsonpatch.validate([op], next);
+			if (invalid) {
+				errors.push({ path, message: invalid.message ?? 'Config path does not resolve' });
+				continue;
+			}
+			next = jsonpatch.applyPatch(next, [op]).newDocument;
+			paths.push(path);
+		}
+
+		if (credentialTypes.length === 0 && paths.length === 0) {
+			return { ...empty, ...(errors.length ? { errors } : {}) };
+		}
+
+		const validated = this.validateBuilderConfig(next, snapshot.config);
+		if (!validated.ok) return { ...empty, errors: validated.errors };
 		const saved = await this.saveBuilderConfig(
 			agentId,
 			projectId,
 			user,
 			validated.config,
-			configHash,
+			snapshot.configHash,
 			next,
+			true,
 		);
-		if (!saved.ok) return failed(saved.errors);
-		return { credentialTypes, configHash: saved.configHash };
+		if (!saved.ok) return { ...empty, errors: saved.errors };
+		return {
+			credentialTypes,
+			paths,
+			configHash: saved.configHash,
+			...(errors.length ? { errors } : {}),
+		};
 	}
 
 	private async getFreshConfigSnapshot(

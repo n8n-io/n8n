@@ -8,6 +8,7 @@ import {
 	getLatestWorkflowUpdateResult,
 	getLatestDataTableResult,
 	getLatestDeletedDataTableId,
+	getLatestAgentArtifactResult,
 	getLatestAgentBuilderTarget,
 	getExecutionResultsByWorkflow,
 	type ExecutionResult,
@@ -470,6 +471,31 @@ export function useCanvasPreview({ thread, initialAgentId, tabsStorage }: UseCan
 			}
 
 			showAgentArtifact(target.targetAgentId);
+		},
+		{ flush: 'sync' },
+	);
+
+	// --- Auto-open canvas when the orchestrator creates or changes an Agent ---
+	// The builder tools run in the orchestrator, so their results carry the agent id.
+
+	const latestAgentArtifactResult = computed(() => {
+		for (let i = thread.messages.length - 1; i >= 0; i--) {
+			const msg = thread.messages[i];
+			if (msg.agentTree) {
+				const result = getLatestAgentArtifactResult(msg.agentTree);
+				if (result) return result;
+			}
+		}
+		return null;
+	});
+
+	watch(
+		() => latestAgentArtifactResult.value?.toolCallId,
+		(toolCallId) => {
+			if (!toolCallId || !latestAgentArtifactResult.value) return;
+			if (thread.isHydratingThread) return;
+
+			showAgentArtifact(latestAgentArtifactResult.value.agentId);
 		},
 		{ flush: 'sync' },
 	);

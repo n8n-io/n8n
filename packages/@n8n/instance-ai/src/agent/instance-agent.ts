@@ -2,6 +2,7 @@ import {
 	Agent,
 	createObservationLogObserveFn,
 	createObservationLogReflectFn,
+	extendRuntimeSkillSource,
 	Memory,
 } from '@n8n/agents';
 
@@ -245,7 +246,13 @@ export async function createInstanceAgent(
 	if (hasDeferrableTools) {
 		agent.deferredTool(toolRegistryValues(deferredTools), { search: { topK: 5 } });
 	}
-	const skills = orchestrationContext?.skills;
+	// The agents module owns the builder skills that are generated from its config schema.
+	const builderSkills = context.builderDelegate?.getRuntimeSkills() ?? [];
+	const baseSkills = orchestrationContext?.skills;
+	const skills =
+		baseSkills && builderSkills.length > 0
+			? extendRuntimeSkillSource(baseSkills, builderSkills)
+			: baseSkills;
 	if (telemetry) {
 		agent.telemetry(telemetry);
 	}

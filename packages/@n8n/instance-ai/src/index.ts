@@ -724,6 +724,7 @@ export type {
 	ServiceProxyConfig,
 	InstanceAiBuilderDelegate,
 	AgentValidationSummary,
+	BuilderToolsSession,
 	BuilderDelegateSession,
 	BuilderTurnStream,
 	BuilderOpenSuspension,

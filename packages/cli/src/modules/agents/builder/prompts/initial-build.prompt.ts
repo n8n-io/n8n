@@ -76,11 +76,8 @@ you finish the build.`;
 
 /**
  * Shared one-line deferral interpolated by skills and tool text at their
- * point of use. Kept deliberately agnostic about how the deferred setup is
- * ultimately resolved (today: a closing checklist) so this sentence and every
- * skill that embeds it stay unchanged if the resolution mechanism changes —
- * only INITIAL_BUILD_SECTION's ending and its two references in
- * agents-builder-prompts.ts would need to.
+ * point of use. The canonical initial-build contract is the "Initial Build"
+ * section of the Instance AI `agent-builder` skill.
  */
 export const INITIAL_BUILD_NOTE =
-	'During an initial build, never suspend mid-build: defer pending setup to the end of the build, per the Initial Build rules in your system prompt.';
+	'During an initial build, never suspend mid-build: defer pending setup to the end of the build, per the Initial Build rules in the `agent-builder` skill.';

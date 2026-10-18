@@ -22,13 +22,19 @@ import { AgentSkillsService } from './agent-skills.service';
 import { AgentValidationService } from './agent-validation.service';
 import { AgentsService } from './agents.service';
 import { AgentsSettingsService } from './agents-settings.service';
+import { buildBuilderSessionContext } from './builder/agent-builder-session-context';
 import { AgentsBuilderService } from './builder/agents-builder.service';
 import type { InstanceAiBuilderSessionOptions } from './builder/agents-builder.service';
+import { AgentsBuilderToolsService } from './builder/agents-builder-tools.service';
+import { getBuilderRuntimeSkills } from './builder/skills';
 import { N8nMemory } from './integrations/n8n-memory';
 import { toAgentDocument } from './json-config/agent-document';
 import { AgentThreadRepository } from './repositories/agent-thread.repository';
 import { countAgentCapabilities, totalAgentCapabilities } from './utils/agent-capabilities';
 import { getAgentConfigHash } from './utils/agent-config-hash';
+
+/** Instance AI has its own `agent-context` tool, which covers the builder's. */
+const TOOLS_PROVIDED_BY_INSTANCE_AI = ['agent-context'];
 
 /** Prompt addendum for sub-agent runs; exported for tests. */
 export const INSTANCE_AI_BUILDER_ADDENDUM = `## Instance AI session rules
@@ -86,20 +92,16 @@ function toBuilderTurnStream(
 }
 
 /**
- * Host implementation of the instance-ai builder-delegate port. Wraps
- * `AgentsBuilderService` for use as a sub-agent by instance AI's agent_builder_build_agent
- * tool: one builder conversational turn per `streamBuild`/`resumeBuild` call,
- * with builder sessions keyed to an instance-AI-scoped thread id
- * (`session.threadId`) so nothing surfaces in the agents-module builder UI.
- * The builder's interactive tools stay enabled — suspensions are surfaced to
- * the caller via `findOpenSuspensions`/`resumeBuild` so it can cascade them
- * through its own suspend/resume. `createDelegate` returns a per-request
- * object bound to the calling user + project.
+ * Host implementation of the instance-ai builder-delegate port. The Instance
+ * AI orchestrator runs the agents-module builder tools itself; each tool call
+ * resolves the target agent that the thread selected. `createDelegate` returns
+ * a per-request object bound to the calling user + project.
  */
 @Service()
 export class InstanceAiBuilderDelegateAdapterService {
 	constructor(
 		private readonly agentsService: AgentsService,
+		private readonly agentsBuilderToolsService: AgentsBuilderToolsService,
 		private readonly agentsBuilderService: AgentsBuilderService,
 		private readonly n8nMemory: N8nMemory,
 		private readonly agentThreadRepository: AgentThreadRepository,
@@ -134,16 +136,14 @@ export class InstanceAiBuilderDelegateAdapterService {
 	createDelegate(
 		user: User,
 		projectId: string,
-		// Built per build/resume turn from the concrete target agent id, not once
-		// up front: in the build-new-agent flow the agent does not exist when the
-		// delegate is created, so a provider captured here would tag Gateway spend
-		// with an undefined agent id.
+		// Built per tool call from the resolved target agent id: the target can
+		// change during a run, and Gateway spend must carry the concrete agent id.
 		credentialProviderFor: (agentId: string) => CredentialProvider,
 		credentialService: InstanceAiCredentialService,
 		options: { useEvalModelCatalog?: boolean } = {},
 	): InstanceAiBuilderDelegate {
 		// Mirrors the `@ProjectScope('agent:*')` guards on the agent-builder REST
-		// routes. The delegate calls the builder service directly, bypassing the
+		// routes. The delegate calls the builder services directly, bypassing the
 		// controller middleware, so a user reaching agent-building via Instance AI
 		// must still hold the corresponding project scope before any agent mutation.
 		const assertProjectScope = async (...scopes: Scope[]): Promise<void> => {
@@ -159,15 +159,15 @@ export class InstanceAiBuilderDelegateAdapterService {
 		};
 
 		return {
-			createAgent: async (name, options) => {
+			createAgent: async (name, createOptions) => {
 				// Adopting also needs `agent:update` — see the port's `adoptOnCollision` docs.
 				await assertAccess(
-					...(options?.adoptOnCollision
+					...(createOptions?.adoptOnCollision
 						? (['agent:create', 'agent:update'] as const)
 						: (['agent:create'] as const)),
 				);
 				const { agent, adopted } = await this.agentsService.createOrAdopt(projectId, name, {
-					...options,
+					...createOptions,
 					actor: { kind: 'user', user },
 				});
 				// An adopted row keeps the winner's name, so report the persisted one.
@@ -235,6 +235,35 @@ export class InstanceAiBuilderDelegateAdapterService {
 				await this.agentsBuilderService.cancelCheckpoint(agentId, runId);
 			},
 
+			getBuilderTools: (resolveTargetAgentId, session) =>
+				this.agentsBuilderToolsService.getToolsForResolvedTarget(
+					async () => {
+						await assertAccess('agent:update');
+						const agentId = await resolveTargetAgentId();
+						if (!agentId) {
+							throw new UserError(
+								'No agent is selected. Call agent_builder_select_agent before using the builder tools.',
+							);
+						}
+						return agentId;
+					},
+					projectId,
+					credentialProviderFor,
+					credentialService,
+					user,
+					{
+						threadId: session.threadId,
+						runId: session.runId,
+						...(options.useEvalModelCatalog ? { useEvalModelCatalog: true } : {}),
+						excludeToolNames: TOOLS_PROVIDED_BY_INSTANCE_AI,
+					},
+				),
+
+			getRuntimeSkills: () => getBuilderRuntimeSkills(),
+
+			getBuilderSessionContext: async (agentId) =>
+				await buildBuilderSessionContext(projectId, agentId),
+
 			resolveAgentName: async (agentId) => {
 				await assertAccess('agent:read');
 				return (await this.agentsService.findById(agentId, projectId))?.name;
@@ -283,9 +312,9 @@ export class InstanceAiBuilderDelegateAdapterService {
 	}
 
 	/**
-	 * Delete every builder sub-agent session spawned by one instance-AI thread:
-	 * the `ia-builder:<threadId>:<agentId>` rows in the agents-module memory
-	 * tables (thread, messages, observations, orphaned episodic entries).
+	 * Delete every legacy builder sub-agent session spawned by one instance-AI
+	 * thread: the `ia-builder:<threadId>:<agentId>` rows in the agents-module
+	 * memory tables (thread, messages, observations, orphaned episodic entries).
 	 * Called by the instance-AI host when the thread is deleted or TTL-pruned;
 	 * access control happened there. Instance-AI thread ids are UUIDs, so the
 	 * prefix carries no LIKE metacharacters.
