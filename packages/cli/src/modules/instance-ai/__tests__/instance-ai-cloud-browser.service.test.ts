@@ -18,11 +18,12 @@ describe('InstanceAiCloudBrowserService', () => {
 	const userRepository = mock<UserRepository>();
 	const credentialsService = mock<CredentialsService>();
 	let release: ReturnType<typeof vi.spyOn>;
+	let aiGatewayBrowserUseService: ReturnType<typeof mock<AiGatewayBrowserUseService>>;
 
 	beforeEach(() => {
 		const logger = mock<Logger>();
 		logger.scoped.mockReturnValue(logger);
-		const aiGatewayBrowserUseService = mock<AiGatewayBrowserUseService>();
+		aiGatewayBrowserUseService = mock<AiGatewayBrowserUseService>();
 		aiGatewayBrowserUseService.isGatewayBrowserUseEnabled.mockReturnValue(true);
 		service = new InstanceAiCloudBrowserService(
 			logger,
@@ -140,5 +141,43 @@ describe('InstanceAiCloudBrowserService', () => {
 		const expected = join(tmpdir(), 'n8n-instance-ai-cloud-browser', 'user-1');
 		expect(server['options'].toolContext.dir).toBe(expected);
 		expect(mkdir).toHaveBeenCalledWith(expected, { recursive: true });
+	});
+
+	it('is available only when the gateway can create browser sessions', () => {
+		expect(service.isAvailable()).toBe(true);
+
+		aiGatewayBrowserUseService.isGatewayBrowserUseEnabled.mockReturnValue(false);
+
+		expect(service.isAvailable()).toBe(false);
+	});
+
+	it('refuses to create a server when the gateway cannot create browser sessions', async () => {
+		aiGatewayBrowserUseService.isGatewayBrowserUseEnabled.mockReturnValue(false);
+
+		await expect(service.createServer('user-1', 'job-1')).rejects.toThrow(
+			'Cloud browser use is not enabled',
+		);
+		expect(service.findServer('job-1')).toBeUndefined();
+	});
+
+	it('creates and releases sessions through the gateway for the job', async () => {
+		const session = { id: 'sess-1', connectUrl: 'wss://connect' };
+		aiGatewayBrowserUseService.createSession.mockResolvedValue(session);
+		const server = await service.createServer('user-1', 'job-1');
+		const { sessionProvider, scope } = server['options'];
+
+		await expect(sessionProvider.createSession(scope)).resolves.toEqual(session);
+		await sessionProvider.releaseSession(scope, 'sess-1');
+
+		const attribution = { instanceAiJobId: 'job-1' };
+		expect(aiGatewayBrowserUseService.createSession).toHaveBeenCalledWith({
+			userId: 'user-1',
+			attribution,
+		});
+		expect(aiGatewayBrowserUseService.releaseSession).toHaveBeenCalledWith({
+			userId: 'user-1',
+			attribution,
+			sessionId: 'sess-1',
+		});
 	});
 });

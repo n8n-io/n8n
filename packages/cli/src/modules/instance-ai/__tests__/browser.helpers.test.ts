@@ -14,6 +14,7 @@ import {
 	createBrowserWorkDir,
 	createInMemorySecretsBuffer,
 	executeBrowserTool,
+	toBrowserMcpTool,
 } from '../browser/browser.helpers';
 
 vi.mock('node:fs/promises', () => ({ mkdir: vi.fn().mockResolvedValue(undefined) }));
@@ -93,6 +94,24 @@ describe('executeBrowserTool', () => {
 		} as unknown as ToolDefinition & { execute: ReturnType<typeof vi.fn> };
 	}
 
+	it.each([
+		['an error', true, { isError: true }],
+		['a success', undefined, {}],
+	])(
+		'returns %s whose content is not in the MCP shape as JSON text',
+		async (_case, isError, expected) => {
+			const content = [{ type: 'unsupported', data: 1 }];
+			const tool = fakeTool(async () => ({ content, isError }) as never);
+
+			const result = await executeBrowserTool(tool, { ref: 'e1' }, toolContext);
+
+			expect(result).toEqual({
+				content: [{ type: 'text', text: JSON.stringify(content) }],
+				...expected,
+			});
+		},
+	);
+
 	it('runs the tool with the parsed arguments', async () => {
 		const tool = fakeTool(async () => ({ content: [{ type: 'text', text: 'clicked' }] }));
 
@@ -146,5 +165,29 @@ describe('createBrowserWorkDir', () => {
 		const expected = join(tmpdir(), 'n8n-instance-ai-cloud-browser', 'user-1');
 		expect(workDir).toBe(expected);
 		expect(mkdir).toHaveBeenCalledWith(expected, { recursive: true });
+	});
+});
+
+describe('toBrowserMcpTool', () => {
+	it('converts a tool with an object input schema', () => {
+		const tool = {
+			name: 'browser_click',
+			description: 'Click',
+			inputSchema: z.object({ ref: z.string() }),
+		} as unknown as ToolDefinition;
+
+		expect(toBrowserMcpTool(tool)).toEqual(
+			expect.objectContaining({ name: 'browser_click', annotations: { category: 'browser' } }),
+		);
+	});
+
+	it('gives nothing for an input schema that has no MCP form', () => {
+		const tool = {
+			name: 'browser_odd',
+			description: 'Odd',
+			inputSchema: z.string(),
+		} as unknown as ToolDefinition;
+
+		expect(toBrowserMcpTool(tool)).toBeUndefined();
 	});
 });

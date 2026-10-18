@@ -1,5 +1,6 @@
 import type { HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
 import type { Mock } from 'vitest';
+import { OperationalError, UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { AiGatewayBrowserUseService } from '@/services/ai-gateway-browser-use.service';
@@ -23,6 +24,12 @@ describe('AiGatewayBrowserUseService', () => {
 		service = new AiGatewayBrowserUseService(aiGatewayService, outboundHttp);
 	});
 
+	it.each([true, false])('is enabled when Gateway credits are enabled (%s)', (enabled) => {
+		aiGatewayService.isEnabled.mockReturnValue(enabled);
+
+		expect(service.isGatewayBrowserUseEnabled()).toBe(enabled);
+	});
+
 	describe('createSession()', () => {
 		it('creates a session without keepAlive through the attributed gateway URL', async () => {
 			requestMock.mockResolvedValue({
@@ -44,16 +51,57 @@ describe('AiGatewayBrowserUseService', () => {
 					url: `${TARGET_URL}/v1/sessions`,
 					headers: { 'X-BB-API-Key': 'user-jwt' },
 					body: { keepAlive: false },
+					disableFollowRedirect: true,
 				}),
 			);
 		});
 
-		it('throws when the gateway refuses the request', async () => {
+		it('throws a UserError when the gateway refuses the request', async () => {
 			requestMock.mockResolvedValue({ statusCode: 402, body: {} });
 
-			await expect(service.createSession({ userId: 'user-1', attribution })).rejects.toThrow(
-				'HTTP 402',
+			const result = service.createSession({ userId: 'user-1', attribution });
+
+			await expect(result).rejects.toThrow(UserError);
+			await expect(result).rejects.toThrow('HTTP 402');
+		});
+
+		it("passes on the gateway's own error message", async () => {
+			requestMock.mockResolvedValue({
+				statusCode: 402,
+				body: {
+					message: 'Your Gateway credits have been depleted. Please top up to continue.',
+					type: 'ai_gateway_request_error',
+				},
+			});
+
+			const result = service.createSession({ userId: 'user-1', attribution });
+
+			await expect(result).rejects.toThrow(UserError);
+			await expect(result).rejects.toThrow(
+				'Your Gateway credits have been depleted. Please top up to continue.',
 			);
+		});
+
+		it('does not pass on an error message that is not from the gateway', async () => {
+			requestMock.mockResolvedValue({
+				statusCode: 400,
+				body: { message: 'Invalid project id proj_123', type: 'upstream_error' },
+			});
+
+			const result = service.createSession({ userId: 'user-1', attribution });
+
+			await expect(result).rejects.toThrow(
+				'Failed to complete the browser session request (HTTP 400).',
+			);
+		});
+
+		it('throws an OperationalError when the gateway fails', async () => {
+			requestMock.mockResolvedValue({ statusCode: 502, body: {} });
+
+			const result = service.createSession({ userId: 'user-1', attribution });
+
+			await expect(result).rejects.toThrow(OperationalError);
+			await expect(result).rejects.toThrow('HTTP 502');
 		});
 
 		it('throws when the response has no connect URL', async () => {

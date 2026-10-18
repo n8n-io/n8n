@@ -127,16 +127,17 @@ describe('CloudBrowserLocalMcpServer', () => {
 			if (connectUrl) toolkits.push(toolkit);
 			return toolkit;
 		});
+		const logger = mock<Logger>();
 		const server = new CloudBrowserLocalMcpServer({
 			scope,
 			sessionProvider,
 			createToolkit,
 			toolContext: { dir: '/tmp' },
-			logger: mock<Logger>(),
+			logger,
 		});
 		const start = async (args: Record<string, unknown>) =>
 			await server.callTool({ name: START_SESSION_TOOL_NAME, arguments: args });
-		return { server, sessionProvider, openSessions, createToolkit, toolkits, start };
+		return { server, sessionProvider, openSessions, createToolkit, toolkits, start, logger };
 	}
 
 	describe('tool listing', () => {
@@ -315,6 +316,21 @@ describe('CloudBrowserLocalMcpServer', () => {
 			expect(openSessions.size).toBe(0);
 		});
 
+		it('releases the session and returns an error when creating the toolkit fails', async () => {
+			const { openSessions, createToolkit, start } = setup();
+			createToolkit.mockImplementationOnce(() => {
+				throw new Error('toolkit failed');
+			});
+
+			const result = await start({ url: 'https://example.com' });
+
+			expect(result).toEqual({
+				content: [{ type: 'text', text: 'Could not open a browser session: toolkit failed' }],
+				isError: true,
+			});
+			expect(openSessions.size).toBe(0);
+		});
+
 		it('closes the first session when two starts overlap', async () => {
 			const { server, openSessions, start } = setup();
 
@@ -328,6 +344,34 @@ describe('CloudBrowserLocalMcpServer', () => {
 			await server.release();
 
 			expect(openSessions.size).toBe(0);
+		});
+
+		it('runs an action called during a session start on the new session', async () => {
+			const { server, toolkits, start } = setup();
+			await start({ url: 'https://one.example.com' });
+
+			const restarted = start({ url: 'https://two.example.com' });
+			const clicked = server.callTool({ name: 'browser_click', arguments: { ref: 'e1' } });
+			const [, result] = await Promise.all([restarted, clicked]);
+
+			expect(result).toEqual({ content: [{ type: 'text', text: 'clicked e1' }] });
+			const clickOn = (index: number) =>
+				toolkits[index].tools.find(({ name }) => name === 'browser_click')!.execute;
+			expect(clickOn(1)).toHaveBeenCalledTimes(1);
+			expect(clickOn(0)).not.toHaveBeenCalled();
+		});
+
+		it('logs a release that fails instead of throwing', async () => {
+			const { server, sessionProvider, logger, start } = setup();
+			await start({ url: 'https://example.com' });
+			sessionProvider.releaseSession.mockRejectedValueOnce(new Error('HTTP 502'));
+
+			await expect(server.release()).resolves.toBeUndefined();
+
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to release cloud browser session',
+				expect.objectContaining({ sessionId: 'sess-1', error: 'HTTP 502' }),
+			);
 		});
 
 		it('waits for a start in progress before it releases', async () => {

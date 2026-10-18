@@ -1,7 +1,7 @@
 import { OutboundHttp } from '@n8n/backend-network';
 import { Service } from '@n8n/di';
 import type { IHttpRequestMethods } from 'n8n-workflow';
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError, UserError } from 'n8n-workflow';
 import { z } from 'zod';
 import { AiGatewayService, type AiGatewayRequestAttribution } from './ai-gateway.service';
 
@@ -12,6 +12,12 @@ const BROWSERBASE_API_KEY_HEADER = 'X-BB-API-Key';
 const createdSessionSchema = z.object({
 	id: z.string().min(1),
 	connectUrl: z.string().min(1),
+});
+
+/** Errors from the gateway itself carry a message written for the user. */
+const gatewayErrorSchema = z.object({
+	message: z.string().min(1),
+	type: z.string().startsWith('ai_gateway_'),
 });
 
 /** A browser session. `connectUrl` carries a signing key, so it must never be logged. */
@@ -93,12 +99,29 @@ export class AiGatewayBrowserUseService {
 				json: true,
 				returnFullResponse: true,
 				ignoreHttpStatusErrors: true,
+				disableFollowRedirect: true, // the session routes never redirect
 			});
 		if (response.statusCode < 200 || response.statusCode >= 300) {
-			throw new OperationalError(
-				`Gateway credits browser request failed: HTTP ${response.statusCode}`,
-			);
+			throw toGatewayError(response);
 		}
 		return response.body;
 	}
+}
+
+/**
+ * Turns a failed response into an error: a `UserError` for 4xx, an `OperationalError` otherwise.
+ * Only the gateway's own messages are passed on. Upstream ones are not written for users.
+ */
+function toGatewayError(response: {
+	statusCode: number;
+	body: unknown;
+}): UserError | OperationalError {
+	const gatewayError = gatewayErrorSchema.safeParse(response.body);
+	const message = gatewayError.success
+		? gatewayError.data.message
+		: `Failed to complete the browser session request (HTTP ${response.statusCode}).`;
+
+	return response.statusCode >= 400 && response.statusCode < 500
+		? new UserError(message)
+		: new OperationalError(message);
 }

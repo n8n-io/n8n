@@ -100,7 +100,8 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer {
 
 	/**
 	 * Session starts and releases hold this lock, so they run one at a time and two
-	 * starts cannot both open a session and leak one. Action tools do not wait for it.
+	 * starts cannot both open a session and leak one. Action tools wait for a start or
+	 * release in progress but do not take the lock, so they still run in parallel.
 	 */
 	private sessionLock: Promise<unknown> = Promise.resolve();
 
@@ -127,6 +128,9 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer {
 			if (req.name === START_SESSION_TOOL_NAME) {
 				return await this.startSession(req.arguments);
 			}
+			// wait for any session start or release that is still in progress
+			// so we do not try to use a session that is not ready
+			await this.sessionLock;
 			return await this.executeBrowserTool(req.name, req.arguments);
 		} finally {
 			this.pendingCalls--;
@@ -243,8 +247,9 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer {
 		const { scope, sessionProvider, createToolkit, logger } = this.options;
 		const { id, connectUrl } = await sessionProvider.createSession(scope);
 
-		const toolkit = createToolkit(connectUrl);
+		let toolkit: BrowserToolkit;
 		try {
+			toolkit = createToolkit(connectUrl);
 			await toolkit.connection.connect();
 		} catch (error) {
 			await this.releaseSession(id);
