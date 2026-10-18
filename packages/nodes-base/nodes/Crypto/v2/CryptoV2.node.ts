@@ -7,6 +7,7 @@ import {
 	createHash,
 	createHmac,
 	createSign,
+	createVerify,
 	getHashes,
 	privateDecrypt,
 	publicEncrypt,
@@ -90,7 +91,7 @@ const versionDescription: INodeTypeDescription = {
 			required: true,
 			displayOptions: {
 				show: {
-					action: ['hmac', 'sign', 'encrypt', 'decrypt'],
+					action: ['hmac', 'sign', 'verify', 'encrypt', 'decrypt'],
 				},
 			},
 		},
@@ -136,6 +137,12 @@ const versionDescription: INodeTypeDescription = {
 					description: 'Sign a string using a private key',
 					value: 'sign',
 					action: 'Sign a string using a private key',
+				},
+				{
+					name: 'Verify',
+					description: 'Verify a signature using a public key',
+					value: 'verify',
+					action: 'Verify a signature using a public key',
 				},
 			],
 			default: 'hash',
@@ -423,6 +430,84 @@ const versionDescription: INodeTypeDescription = {
 			required: true,
 		},
 		{
+			displayName: 'Value',
+			name: 'value',
+			displayOptions: {
+				show: {
+					action: ['verify'],
+				},
+			},
+			type: 'string',
+			default: '',
+			description: 'The original value that was signed',
+			required: true,
+		},
+		{
+			displayName: 'Signature',
+			name: 'signature',
+			displayOptions: {
+				show: {
+					action: ['verify'],
+				},
+			},
+			type: 'string',
+			default: '',
+			description: 'The signature to verify against the value',
+			required: true,
+		},
+		{
+			displayName: 'Property Name',
+			name: 'dataPropertyName',
+			type: 'string',
+			default: 'verified',
+			required: true,
+			displayOptions: {
+				show: {
+					action: ['verify'],
+				},
+			},
+			description:
+				'Name of the property to which to write the result (true if the signature is valid)',
+		},
+		{
+			displayName: 'Algorithm Name or ID',
+			name: 'algorithm',
+			displayOptions: {
+				show: {
+					action: ['verify'],
+				},
+			},
+			type: 'options',
+			description:
+				'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+			options: supportedAlgorithms,
+			default: '',
+			required: true,
+		},
+		{
+			displayName: 'Encoding',
+			name: 'encoding',
+			displayOptions: {
+				show: {
+					action: ['verify'],
+				},
+			},
+			type: 'options',
+			options: [
+				{
+					name: 'BASE64',
+					value: 'base64',
+				},
+				{
+					name: 'HEX',
+					value: 'hex',
+				},
+			],
+			default: 'hex',
+			description: 'Encoding of the signature',
+			required: true,
+		},
+		{
 			displayName: 'Property Name',
 			name: 'dataPropertyName',
 			type: 'string',
@@ -592,14 +677,22 @@ export class CryptoV2 implements INodeType {
 
 		let hmacSecret = '';
 		let signPrivateKey = '';
+		let signPublicKey = '';
 		let encryptionPassphrase = '';
 		let encryptionPublicKey = '';
 		let encryptionPrivateKey = '';
 
-		if (action === 'hmac' || action === 'sign' || action === 'encrypt' || action === 'decrypt') {
+		if (
+			action === 'hmac' ||
+			action === 'sign' ||
+			action === 'verify' ||
+			action === 'encrypt' ||
+			action === 'decrypt'
+		) {
 			const credentials = await this.getCredentials<{
 				hmacSecret?: string;
 				signPrivateKey?: string;
+				signPublicKey?: string;
 				encryptionPassphrase?: string;
 				encryptionPublicKey?: string;
 				encryptionPrivateKey?: string;
@@ -623,6 +716,16 @@ export class CryptoV2 implements INodeType {
 					);
 				}
 				signPrivateKey = formatPemBlock(credentials.signPrivateKey);
+			}
+
+			if (action === 'verify') {
+				if (!credentials.signPublicKey) {
+					throw new NodeOperationError(
+						this.getNode(),
+						'No public key set in credentials. Please add a public key to your Crypto credentials.',
+					);
+				}
+				signPublicKey = formatPemBlock(credentials.signPublicKey, true);
 			}
 
 			if (action === 'encrypt' || action === 'decrypt') {
@@ -718,6 +821,24 @@ export class CryptoV2 implements INodeType {
 					sign.write(value);
 					sign.end();
 					newValue = sign.sign(signPrivateKey, encoding);
+				}
+
+				if (action === 'verify') {
+					const algorithm = this.getNodeParameter('algorithm', i) as string;
+					const encoding = this.getNodeParameter('encoding', i) as BinaryToTextEncoding;
+					const signature = this.getNodeParameter('signature', i) as string;
+					const verify = createVerify(algorithm);
+					verify.write(value);
+					verify.end();
+					try {
+						newValue = verify.verify(signPublicKey, signature, encoding);
+					} catch {
+						throw new NodeOperationError(
+							this.getNode(),
+							'Verification failed: the public key is invalid or does not match the algorithm',
+							{ itemIndex: i },
+						);
+					}
 				}
 
 				if (action === 'encrypt') {
