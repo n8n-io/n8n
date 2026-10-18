@@ -216,6 +216,13 @@ failed.
   its scripts look them up in `ALL_TOOLS` at run time. The MCP group thus
   shows only the MCP tools that the run called, with a dashed border and no
   schema. Runs from before the recorder show no Codex tools.
+- **Instance AI:** the system prompt, the context that n8n puts before the
+  prompt (for example `<thread-context>`), and the tools, from the first
+  LangSmith LLM call of each agent. `langsmith_usage.py` saves them in
+  `context.json`. Tools that the agent loads later with `load_tool` show as
+  "System · loaded with load_tool". A sub-agent shows its own system prompt,
+  briefing and tools at its first step. Runs from before `context.json` show
+  no Instance AI context: run `langsmith_usage.py` again for them.
 
 - **Claude Code:** the session file links each event to its LLM call.
 - **Codex:** text goes to the response that wrote it. A tool call goes to the
@@ -441,7 +448,7 @@ read the host disk.
 | `run_cli_builder.py --builder claude\|codex --out <dir>/<name> --prompt-file <file>` | Run a CLI builder. `--mode headless` skips the screen |
 | `node record_iai.mjs <dir>/iai` | Record the Instance AI video. `run_instance_ai.py` starts it |
 | `live_server.py --run-dir <dir>` | Serve the live page and the report of a run folder. Prints nothing. The URL is in `<dir>/live-url.txt` |
-| `langsmith_usage.py --run-dir <dir>/iai` | Fetch Instance AI usage |
+| `langsmith_usage.py --run-dir <dir>/iai` | Fetch Instance AI usage and model context |
 | `node capture_canvas.mjs <dir>` | Save `workflow.json` and `canvas.png` for each run |
 | `summarize_runs.py <dir>` | Print the judge summary |
 | `build_report.py <dir> [--step judge\|prices=queued\|running\|done]` | Build the page. `--step` first sets the state of a step after the run |

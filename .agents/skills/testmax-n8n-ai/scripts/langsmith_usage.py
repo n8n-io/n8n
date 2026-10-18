@@ -15,6 +15,10 @@ Do not start other Instance AI work on the same instance during the run, or use 
 --by-trace keeps only the calls of the traces in run.json "langsmithRunIds" (the root run id of
 each run-start event is also its LangSmith trace id). Use it when other Instance AI work runs
 at the same time.
+
+The script also writes context.json: for each agent, the system prompt, the messages before
+the first model response, and the tools, from the first LLM call of that agent. Tools that the
+agent loads later with load_tool come from its last call.
 """
 
 import argparse
@@ -27,13 +31,11 @@ from pathlib import Path
 from n8n_api import setting
 
 
-def fetch_calls(started_at, finished_at, traces=None):
-	"""LLM calls in the LangSmith project between two ISO times. traces keeps only the calls of these traces."""
+def langsmith_client():
 	key = setting('LANGSMITH_API_KEY')
 	if not key:
 		raise SystemExit('LANGSMITH_API_KEY is not set. Instance AI cost and tokens are not available.')
 	base = setting('LANGSMITH_ENDPOINT', default='https://api.smith.langchain.com').rstrip('/')
-	project = setting('LANGSMITH_PROJECT', default='default')
 
 	def call(method, path, body=None):
 		req = urllib.request.Request(
@@ -43,6 +45,14 @@ def fetch_calls(started_at, finished_at, traces=None):
 		)
 		with urllib.request.urlopen(req, timeout=60) as res:
 			return json.load(res)
+
+	return call
+
+
+def fetch_calls(started_at, finished_at, traces=None):
+	"""LLM calls in the LangSmith project between two ISO times. traces keeps only the calls of these traces."""
+	call = langsmith_client()
+	project = setting('LANGSMITH_PROJECT', default='default')
 
 	sessions = call('GET', '/api/v1/sessions?' + urllib.parse.urlencode({'name': project}))
 	if not sessions:
@@ -56,7 +66,7 @@ def fetch_calls(started_at, finished_at, traces=None):
 		body = {
 			'session': [session_id], 'run_type': 'llm', 'limit': 100,
 			'start_time': start.isoformat(),
-			'select': ['name', 'start_time', 'end_time', 'prompt_tokens', 'completion_tokens',
+			'select': ['id', 'name', 'start_time', 'end_time', 'prompt_tokens', 'completion_tokens',
 			           'total_cost', 'prompt_token_details', 'extra', 'trace_id'],
 		}
 		if cursor:
@@ -71,7 +81,7 @@ def fetch_calls(started_at, finished_at, traces=None):
 			details = run.get('prompt_token_details') or {}
 			metadata = (run.get('extra') or {}).get('metadata') or {}
 			calls.append({
-				'trace': run.get('trace_id'), 'name': run.get('name'),
+				'id': run.get('id'), 'trace': run.get('trace_id'), 'name': run.get('name'),
 				'start': started.isoformat(), 'end': run.get('end_time'),
 				'in': run.get('prompt_tokens') or 0,
 				'cache_read': details.get('cache_read') or 0,
@@ -84,6 +94,42 @@ def fetch_calls(started_at, finished_at, traces=None):
 		if not cursor:
 			break
 	return sorted(calls, key=lambda c: c['start'])
+
+
+def message_text(content):
+	if isinstance(content, str):
+		return content
+	return '\n'.join(p.get('text', '') for p in content or [] if isinstance(p, dict) and p.get('type') == 'text')
+
+
+def tool_spec(t):
+	return {'name': t.get('name') or t.get('id'), 'description': t.get('description') or '',
+	        'schema': t.get('inputSchema') or t.get('parameters'), 'type': t.get('type')}
+
+
+def fetch_contexts(calls):
+	"""What each agent got before its first model response, in the order that the agents started."""
+	call = langsmith_client()
+	by_agent = {}
+	for c in calls:
+		if c.get('id'):
+			by_agent.setdefault(c['name'], []).append(c)
+	contexts = []
+	for name, agent_calls in by_agent.items():
+		first = call('GET', f'/api/v1/runs/{agent_calls[0]["id"]}').get('inputs') or {}
+		messages = []
+		for m in first.get('input') or []:
+			if m.get('role') not in ('system', 'user'):
+				break
+			messages.append({'role': m['role'], 'text': message_text(m.get('content'))})
+		tools = [tool_spec(t) for t in first.get('tools') or []]
+		loaded = []
+		if len(agent_calls) > 1:
+			last = call('GET', f'/api/v1/runs/{agent_calls[-1]["id"]}').get('inputs') or {}
+			known = {t['name'] for t in tools}
+			loaded = [tool_spec(t) for t in last.get('tools') or [] if (t.get('name') or t.get('id')) not in known]
+		contexts.append({'agent': name, 'messages': messages, 'tools': tools, 'loadedTools': loaded})
+	return contexts
 
 
 def totals(calls):
@@ -106,6 +152,7 @@ def main():
 		raise SystemExit('run.json has no langsmithRunIds. Is LANGSMITH_TRACING=true on the instance?')
 	calls = fetch_calls(meta['startedAt'], meta['finishedAt'], traces if args.by_trace else None)
 	(run_dir / 'usage.json').write_text(json.dumps(calls, indent=1))
+	(run_dir / 'context.json').write_text(json.dumps(fetch_contexts(calls), indent=1))
 	print(json.dumps(totals(calls), indent=2))
 
 

@@ -426,8 +426,49 @@ def load_instance_ai(run_dir, meta, prices):
 			 'out': u['out'], 'cost': u['cost']} for u in usage), key=lambda c: c['t'])
 		cost = f'${sum(c["cost"] for c in calls):.2f}'
 	duration = ts(meta['finishedAt']) - ts(meta['startedAt'])
+	contexts = instance_ai_contexts(run_dir / 'context.json')
+	first = next(iter(contexts), None)
 	return {'events': events, 'calls': calls, 'model': model, 'duration': f'{duration:.0f}s', 'cost': cost,
-	        'costSource': 'langsmith' if usage_file.exists() else None}
+	        'costSource': 'langsmith' if usage_file.exists() else None,
+	        'context': contexts.pop(first) if first else {
+	            'messages': [], 'tools': None,
+	            'toolsNote': 'This run has no context.json. Run langsmith_usage.py again to fetch it from LangSmith.'},
+	        'agentContexts': contexts}
+
+
+LEADING_TAG_BLOCK = re.compile(r'\s*<([\w-]+)>.*?</\1>', re.S)
+
+
+def split_tagged_context(text):
+	"""n8n puts tagged blocks, such as <thread-context>, before the user prompt. Returns (blocks, rest)."""
+	blocks, pos = [], 0
+	while m := LEADING_TAG_BLOCK.match(text, pos):
+		blocks.append(m.group(0).strip())
+		pos = m.end()
+	return blocks, text[pos:].strip()
+
+
+def instance_ai_contexts(path):
+	"""{agent: context} from the context.json of langsmith_usage.py, in the order that the agents started.
+	The first agent answers the prompt, so the report shows its prompt in the User card, not here."""
+	if not path.exists():
+		return {}
+	contexts = {}
+	for i, agent in enumerate(json.loads(path.read_text())):
+		messages, system_seen = [], False
+		for m in agent.get('messages') or []:
+			if m['role'] == 'system':
+				messages.append({'label': 'System message' if system_seen else 'System prompt', 'text': m['text']})
+				system_seen = True
+				continue
+			blocks, rest = split_tagged_context(m['text'])
+			messages += [{'label': 'Context', 'text': b} for b in blocks]
+			if rest and i > 0:
+				messages.append({'label': 'Briefing', 'text': rest})
+		loaded = [{**t, 'group': 'System · loaded with load_tool'} for t in agent.get('loadedTools') or []]
+		contexts[(agent['agent'] or '').removeprefix('llm: ') or None] = {
+			'messages': [m for m in messages if m['text'].strip()], 'tools': (agent.get('tools') or []) + loaded or None}
+	return contexts
 
 
 LOADERS = {'instance-ai': load_instance_ai, 'claude': load_claude, 'codex': load_codex}
@@ -704,17 +745,27 @@ def render_context(context, events):
 	return cards
 
 
-def render_steps(calls, events, max_prompt, max_out, prompt, context=None):
+def sub_agent_events(events):
+	"""Sub-agent tool events with the 'role › ' label removed, so that they match the tool names of the agent."""
+	return [{**e, 'name': e['name'].split(' › ', 1)[1], 'fullName': None} for e in events
+	        if e['kind'] == 'tool' and ' › ' in e['name']]
+
+
+def render_steps(calls, events, max_prompt, max_out, prompt, context=None, agent_contexts=None):
 	steps = build_steps(calls, events)
 	if not steps:
 		return '<div class="box steps"><div class="head"><h2>LLM steps</h2></div><p class="dim">No trace for this run.</p></div>'
 	names = {s['call'].get('name') for s in steps if s['call']}
+	pending = dict(agent_contexts or {})
 	items, panes, tool_index = [], [], 0
 	for i, step in enumerate(steps, 1):
 		c, evs = step['call'], step['events']
 		failed = sum(1 for e in evs if e['kind'] == 'tool' and e['error'])
 		# The first call answers the prompt, so the model context and the prompt open its detail.
+		# A sub-agent gets its own context, which opens the detail of its first call.
 		cards = render_context(context, events) if i == 1 else []
+		if c and c.get('name') in pending:
+			cards += render_context(pending.pop(c['name']), sub_agent_events(events))
 		if i == 1 and prompt:
 			cards.append(f'<article class="card user"><div class="card-head"><span class="mono-label">User</span>'
 			             f'<span class="mono-label">0.0s</span></div><div class="msg">{esc(prompt)}</div></article>')
@@ -1083,7 +1134,7 @@ def render_panel_body(data, verdict, canvas_box, max_prompt, max_out, prompt, ex
 	"""The content of the section of one run: result, canvas and LLM steps. judge is the state of the judge step."""
 	error = f'<div class="box err">Could not read this run: {esc(data["loadError"])}</div>' if data.get('loadError') else ''
 	return (f'{error}<div class="result-row">{render_verdict(verdict, expected, judge)}{canvas_box}</div>'
-	        f'{render_steps(data["calls"], data["events"], max_prompt, max_out, prompt, data.get("context"))}')
+	        f'{render_steps(data["calls"], data["events"], max_prompt, max_out, prompt, data.get("context"), data.get("agentContexts"))}')
 
 
 POST_RUN_STEPS = ('judge', 'prices')
