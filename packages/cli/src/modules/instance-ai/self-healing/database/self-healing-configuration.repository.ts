@@ -158,6 +158,10 @@ export class SelfHealingConfigurationRepository extends BaseRepository<SelfHeali
 		);
 	}
 
+	async removeWorkflowSelections(workflowIds: string[]) {
+		await this.manager.delete(SelfHealingConfigurationWorkflow, { workflowId: In(workflowIds) });
+	}
+
 	async deleteConfiguration(id: number, ctx: OperationContext) {
 		await this.managerFor(ctx).delete(SelfHealingConfiguration, { id });
 	}

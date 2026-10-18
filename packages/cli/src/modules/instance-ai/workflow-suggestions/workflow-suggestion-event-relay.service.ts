@@ -10,31 +10,44 @@ const MAX_SAVE_WAIT_MS = 60_000;
 
 @Service()
 export class WorkflowSuggestionEventRelay {
-	constructor(events: EventService, suggestions: WorkflowSuggestionService, logger: Logger) {
-		const pendingSaves = new Map<string, ReturnType<typeof debounce>>();
-		const reconcile = async (workflowId: string) => {
-			pendingSaves.get(workflowId)?.cancel();
-			pendingSaves.delete(workflowId);
-			try {
-				await suggestions.reconcileWorkflow(workflowId);
-			} catch (error) {
-				// Actions repeat this check if delivery is interrupted.
-				logger.warn('Could not reconcile workflow suggestions', { workflowId, error });
-			}
-		};
+	private readonly pendingSaves = new Map<string, ReturnType<typeof debounce>>();
+
+	constructor(
+		events: EventService,
+		private readonly suggestions: WorkflowSuggestionService,
+		private readonly logger: Logger,
+	) {
 		events.on('workflow-saved', ({ workflow }) => {
 			const workflowId = workflow.id;
-			let pending = pendingSaves.get(workflowId);
+			let pending = this.pendingSaves.get(workflowId);
 			if (!pending) {
-				pending = debounce(async () => await reconcile(workflowId), SAVE_DEBOUNCE_MS, {
+				pending = debounce(async () => await this.reconcile(workflowId), SAVE_DEBOUNCE_MS, {
 					maxWait: MAX_SAVE_WAIT_MS,
 				});
-				pendingSaves.set(workflowId, pending);
+				this.pendingSaves.set(workflowId, pending);
 			}
 			void pending();
 		});
-		events.on('workflow-activated', async ({ workflowId }) => await reconcile(workflowId));
-		events.on('workflow-deactivated', async ({ workflowId }) => await reconcile(workflowId));
-		events.on('workflow-archived', async ({ workflowId }) => await reconcile(workflowId));
+		events.on('workflow-deactivated', async ({ workflowId }) => await this.reconcile(workflowId));
+	}
+
+	async afterWorkflowPublished({ workflowId }: { workflowId: string }): Promise<void> {
+		await this.reconcile(workflowId);
+	}
+
+	async afterWorkflowArchived(workflowId: string): Promise<void> {
+		await this.reconcile(workflowId);
+	}
+
+	private async reconcile(workflowId: string): Promise<void> {
+		this.pendingSaves.get(workflowId)?.cancel();
+		this.pendingSaves.delete(workflowId);
+
+		try {
+			await this.suggestions.reconcileWorkflow(workflowId);
+		} catch (error) {
+			// Actions repeat this check if delivery is interrupted.
+			this.logger.warn('Could not reconcile workflow suggestions', { workflowId, error });
+		}
 	}
 }

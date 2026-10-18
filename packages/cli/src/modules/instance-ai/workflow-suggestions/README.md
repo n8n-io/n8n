@@ -20,7 +20,7 @@ Storage checks current edit access and basic graph structure. Apply runs credent
 
 The read requires an enabled user with current workflow read and edit access, including access through sharing. It checks the proposal's original project and the workflow's current owner project. Publish access is not required.
 
-The detail includes the original and proposed snapshots. Stored proposal content does not change after creation. Workflow events update pending suggestions. Save events are debounced per workflow for 30 seconds, with a maximum wait of 60 seconds during continuous saves. Publish, unpublish, and archive events cancel the pending save check and reconcile immediately. Reads can show a pending suggestion until an event or action updates its state. Actions check the current state before saving.
+The detail includes the original and proposed snapshots. Stored proposal content does not change after creation. Workflow events update pending suggestions. Save events are debounced per workflow for 30 seconds, with a maximum wait of 60 seconds during continuous saves. Publish and archive hooks, and unpublish events, cancel the pending save check and reconcile immediately. Reads can show a pending suggestion until an event or action updates its state. Actions check the current state before saving.
 
 ## Review actions
 

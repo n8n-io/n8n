@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { WorkflowMutationHooksProxy } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { InstanceAiConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
@@ -9,6 +10,7 @@ import { InstanceCredentialBroker } from '@/credentials/instance-credential-brok
 import { SandboxSettingsService } from '@/services/sandbox-settings.service';
 
 import { InboxSourceRegistry } from '../../inbox/inbox-source.registry';
+import { SelfHealingConfigurationService } from '../self-healing/self-healing-configuration.service';
 import { SelfHealingResultService } from '../self-healing/self-healing-result.service';
 
 import { InterruptedRunSweeper } from '../event-bus/interrupted-run-sweeper';
@@ -51,6 +53,9 @@ vi.mock('../instance-ai-event-relay.service', () => ({
 vi.mock('../event-bus/interrupted-run-sweeper', () => ({
 	InterruptedRunSweeper: vi.fn(),
 }));
+vi.mock('../self-healing/self-healing-configuration.service', () => ({
+	SelfHealingConfigurationService: vi.fn(),
+}));
 vi.mock('../self-healing/self-healing-result.service', () => ({
 	SelfHealingResultService: vi.fn(),
 }));
@@ -73,7 +78,7 @@ vi.mock('../workflow-suggestions/workflow-suggestion-event-relay.service', () =>
 	@Service()
 	class WorkflowSuggestionEventRelay {
 		constructor() {
-			createSuggestionEventRelay();
+			createSuggestionEventRelay(this);
 		}
 	}
 	return { WorkflowSuggestionEventRelay };
@@ -84,6 +89,8 @@ describe('InstanceAiModule.init', () => {
 		const config = mockInstance(InstanceAiConfig, { workflowSuggestionsEnabled: false });
 		const instanceSettings = mockInstance(InstanceSettings, { instanceType: 'main' });
 		const sources = mockInstance(InboxSourceRegistry);
+		const mutationHooks = mockInstance(WorkflowMutationHooksProxy);
+		const configurations = mockInstance(SelfHealingConfigurationService);
 		mockInstance(SelfHealingResultService);
 		mockInstance(InstanceCredentialBroker);
 		mockInstance(SandboxSettingsService);
@@ -100,6 +107,8 @@ describe('InstanceAiModule.init', () => {
 		vi.stubEnv('E2E_TESTS', 'false');
 		return {
 			config,
+			mutationHooks,
+			configurations,
 			sources,
 			sweeper,
 			investigations,
@@ -111,7 +120,7 @@ describe('InstanceAiModule.init', () => {
 	}
 
 	it('loads suggestion listeners only when workflow suggestions are enabled', async () => {
-		const { config, sources, investigations } = setup();
+		const { config, sources, investigations, mutationHooks, configurations } = setup();
 
 		await new InstanceAiModule().init();
 		await vi.waitFor(() => expect(investigations.reconcile).toHaveBeenCalledOnce());
@@ -121,6 +130,7 @@ describe('InstanceAiModule.init', () => {
 		expect(loadResultController).not.toHaveBeenCalled();
 		expect(loadConfigurationController).not.toHaveBeenCalled();
 		expect(sources.register).not.toHaveBeenCalled();
+		expect(mutationHooks.registerProvider).toHaveBeenCalledWith(configurations);
 
 		config.workflowSuggestionsEnabled = true;
 		await new InstanceAiModule().init();
@@ -128,6 +138,9 @@ describe('InstanceAiModule.init', () => {
 
 		expect(loadSuggestionEventRelay).toHaveBeenCalledOnce();
 		expect(createSuggestionEventRelay).toHaveBeenCalledOnce();
+		expect(mutationHooks.registerProvider).toHaveBeenCalledWith(
+			createSuggestionEventRelay.mock.calls[0][0],
+		);
 		expect(loadResultController).toHaveBeenCalledOnce();
 		expect(loadConfigurationController).toHaveBeenCalledOnce();
 		expect(sources.register).toHaveBeenCalledWith(
@@ -138,7 +151,8 @@ describe('InstanceAiModule.init', () => {
 	it.each(['worker', 'webhook'] as const)(
 		'keeps the Assistant runtime off %s processes',
 		async (instanceType) => {
-			const { instanceSettings, settings, runtime, investigations, sources } = setup();
+			const { instanceSettings, settings, runtime, investigations, sources, mutationHooks } =
+				setup();
 			Object.assign(instanceSettings, { instanceType });
 			const module = new InstanceAiModule();
 
@@ -153,6 +167,7 @@ describe('InstanceAiModule.init', () => {
 			expect(runtime.shutdown).not.toHaveBeenCalled();
 			expect(investigations.reconcile).not.toHaveBeenCalled();
 			expect(sources.register).not.toHaveBeenCalled();
+			expect(mutationHooks.registerProvider).not.toHaveBeenCalled();
 		},
 	);
 

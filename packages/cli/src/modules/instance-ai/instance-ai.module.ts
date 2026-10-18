@@ -12,6 +12,16 @@ export class InstanceAiModule implements ModuleInterface {
 		// Workers and webhook processes only relay eligible failures to main.
 		if (Container.get(InstanceSettings).instanceType !== 'main') return;
 
+		const { WorkflowMutationHooksProxy } = await import('@n8n/backend-services');
+		const { SelfHealingConfigurationService } = await import(
+			'./self-healing/self-healing-configuration.service.js'
+		);
+
+		// Clean up selections after transfers even when self-healing is disabled.
+		Container.get(WorkflowMutationHooksProxy).registerProvider(
+			Container.get(SelfHealingConfigurationService),
+		);
+
 		const { InstanceCredentialBroker } = await import(
 			'@/credentials/instance-credential-broker.js'
 		);
@@ -54,7 +64,9 @@ export class InstanceAiModule implements ModuleInterface {
 			const { WorkflowSuggestionEventRelay } = await import(
 				'./workflow-suggestions/workflow-suggestion-event-relay.service.js'
 			);
-			Container.get(WorkflowSuggestionEventRelay);
+			Container.get(WorkflowMutationHooksProxy).registerProvider(
+				Container.get(WorkflowSuggestionEventRelay),
+			);
 		}
 
 		// Instantiating the relay registers its `user-deleted` listener, which

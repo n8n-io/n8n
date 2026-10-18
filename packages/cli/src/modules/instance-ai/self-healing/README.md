@@ -136,6 +136,8 @@ Project Settings provides configuration management under the existing `project:u
 The same rollout flag controls settings, investigations, and reviews.
 Each project can have one all-workflows configuration and multiple selected-workflow configurations.
 Explicit workflow selections cannot overlap, including when configurations are paused.
+Moving a workflow to another project removes its explicit selections. The destination project's
+configuration applies to later failures. Moving between folders in the same project keeps selections.
 New configurations start disabled. The form selects the creator as the initial reviewer.
 Enabling a configuration records the user whose access authorizes subsequent investigations.
 

@@ -7,11 +7,14 @@ import {
 import { TransactionRunner, postgresMigrations, sqliteMigrations, wrapMigration } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
+import { WorkflowMutationHooksProxy } from '@n8n/backend-services';
 import { randomUUID } from 'node:crypto';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { AuthHandlerRegistry } from '@/auth/auth-handler.registry';
 import { ControllerRegistry } from '@/controller.registry';
+import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
+import { createFolder } from '@test-integration/db/folders';
 import { createUser } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 
@@ -34,6 +37,7 @@ beforeAll(async () => {
 	await Container.get(AuthHandlerRegistry).init();
 	configurations = Container.get(SelfHealingConfigurationService);
 	repository = Container.get(SelfHealingConfigurationRepository);
+	Container.get(WorkflowMutationHooksProxy).registerProvider(configurations);
 });
 
 async function fixture() {
@@ -138,6 +142,99 @@ it('keeps paused selections disjoint and releases them on removal', async () => 
 	await expect(configurations.setEnabled(user, project.id, selected.id, true)).rejects.toThrow(
 		'not found',
 	);
+});
+
+it('removes moved workflow selections and uses the destination configuration', async () => {
+	const { user, project, workflow, input } = await fixture();
+	const remaining = await createWorkflow({}, project);
+	const selected = await configurations.save(user, project.id, {
+		...input,
+		workflowIds: [workflow.id, remaining.id],
+	});
+	const destination = await createTeamProject(undefined, user);
+	const transfers = Container.get(EnterpriseWorkflowService);
+
+	await transfers.transferWorkflow(user, workflow.id, destination.id);
+
+	expect((await configurations.get(project.id, selected.id)).workflowIds).toEqual([remaining.id]);
+	expect(await repository.findForWorkflow(destination.id, workflow.id)).toBeNull();
+
+	const all = await configurations.save(user, destination.id, {
+		...input,
+		scope: 'all',
+		workflowIds: [],
+		enabled: true,
+	});
+	expect((await repository.findForWorkflow(destination.id, workflow.id))?.id).toBe(all.id);
+	expect((await configurations.get(destination.id, all.id)).workflowIds).toEqual([]);
+
+	await transfers.transferWorkflow(user, remaining.id, destination.id);
+	expect((await configurations.get(project.id, selected.id)).workflowIds).toEqual([]);
+
+	await transfers.transferWorkflow(user, workflow.id, project.id);
+	expect(await repository.findForWorkflow(project.id, workflow.id)).toBeNull();
+});
+
+it('keeps selections when a workflow moves between folders in the same project', async () => {
+	const { user, project, workflow, input } = await fixture();
+	const selected = await configurations.save(user, project.id, input);
+	const folder = await createFolder(project);
+
+	await Container.get(EnterpriseWorkflowService).transferWorkflow(
+		user,
+		workflow.id,
+		project.id,
+		[],
+		folder.id,
+	);
+
+	expect((await configurations.get(project.id, selected.id)).workflowIds).toEqual([workflow.id]);
+});
+
+it('removes selected workflows from a transferred folder and its subfolders', async () => {
+	const { user, project, workflow, input } = await fixture();
+	const folder = await createFolder(project);
+	const childFolder = await createFolder(project, { parentFolder: folder });
+	const first = await createWorkflow({ parentFolder: folder }, project);
+	const second = await createWorkflow({ parentFolder: childFolder }, project);
+	const selected = await configurations.save(user, project.id, {
+		...input,
+		workflowIds: [workflow.id, first.id, second.id],
+	});
+	const destination = await createTeamProject(undefined, user);
+
+	await Container.get(EnterpriseWorkflowService).transferFolder(
+		user,
+		project.id,
+		folder.id,
+		destination.id,
+		'0',
+	);
+
+	expect((await configurations.get(project.id, selected.id)).workflowIds).toEqual([workflow.id]);
+	expect((await repository.listProjectWorkflows(destination.id)).map(({ id }) => id)).toEqual(
+		expect.arrayContaining([first.id, second.id]),
+	);
+});
+
+it('does not fail a committed workflow transfer when selection cleanup fails', async () => {
+	const { user, project, workflow, input } = await fixture();
+	await configurations.save(user, project.id, input);
+	const destination = await createTeamProject(undefined, user);
+	const cleanup = vi
+		.spyOn(repository, 'removeWorkflowSelections')
+		.mockRejectedValueOnce(new Error('Database unavailable'));
+
+	try {
+		await expect(
+			Container.get(EnterpriseWorkflowService).transferWorkflow(user, workflow.id, destination.id),
+		).resolves.toBeUndefined();
+		expect((await repository.listProjectWorkflows(destination.id)).map(({ id }) => id)).toContain(
+			workflow.id,
+		);
+	} finally {
+		cleanup.mockRestore();
+	}
 });
 
 it('permits one all-workflows configuration, including paused ones', async () => {

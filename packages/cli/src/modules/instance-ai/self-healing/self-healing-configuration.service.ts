@@ -30,6 +30,10 @@ export class SelfHealingConfigurationService {
 		private readonly transactionRunner: TransactionRunner,
 	) {}
 
+	async afterWorkflowsTransferred(workflowIds: string[]): Promise<void> {
+		await this.configurations.removeWorkflowSelections(workflowIds);
+	}
+
 	async list(projectId: string) {
 		return await this.configurations.list(projectId);
 	}
