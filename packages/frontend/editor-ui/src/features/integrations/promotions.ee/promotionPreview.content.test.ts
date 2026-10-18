@@ -4,6 +4,7 @@ import { billingResources, resource } from './__tests__/preview.fixtures';
 import {
 	describeDataTable,
 	describeFieldChanges,
+	describeWorkflowFieldChanges,
 	sideState,
 	type FieldContext,
 } from './promotionPreview.content';
@@ -101,6 +102,25 @@ describe('promotion preview content', () => {
 
 		expect(describeFieldChanges(detail, context({ resource: moved }))).toEqual([
 			{ field: 'name', before: 'Archive', after: 'Old invoices' },
+			{ field: 'location', before: 'Payments', after: 'Billing' },
+		]);
+	});
+
+	it('should show the rename and move of a workflow from the preview resource', () => {
+		// The workflow was renamed and moved on this instance. Apply restores the branch state.
+		const workflow = resource({
+			key: 'workflow:w1',
+			name: 'Invoice sync',
+			previousName: 'Invoice sync (local)',
+			parentKey: 'project:p1',
+			previousParentKey: 'folder:f1',
+			change: 'modified',
+		});
+
+		expect(
+			describeWorkflowFieldChanges(context({ direction: 'apply', resource: workflow })),
+		).toEqual([
+			{ field: 'name', before: 'Invoice sync (local)', after: 'Invoice sync' },
 			{ field: 'location', before: 'Payments', after: 'Billing' },
 		]);
 	});

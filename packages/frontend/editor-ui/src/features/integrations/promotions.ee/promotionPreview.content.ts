@@ -120,6 +120,21 @@ export function describeFieldChanges(
 		.map((field) => ({ field, before: before[field], after: after[field] }));
 }
 
+/** The page loads no workflow files, so a workflow card shows the rename and move of the resource. */
+export function describeWorkflowFieldChanges(context: FieldContext): FieldChange[] {
+	const { resource } = context;
+	const changes: FieldChange[] = [];
+	if (resource.previousName !== undefined) {
+		changes.push({ field: 'name', before: resource.previousName, after: resource.name });
+	}
+	if (resource.previousParentKey !== undefined) {
+		const before = locationOf(context, 'before').location;
+		const after = locationOf(context, 'after').location;
+		changes.push({ field: 'location', before, after });
+	}
+	return changes;
+}
+
 export type DataTableDescription = {
 	/** Column changes of a table that exists on both sides. */
 	changes: PromotionDataTableChange[];

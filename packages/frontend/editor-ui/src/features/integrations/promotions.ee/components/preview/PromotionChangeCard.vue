@@ -11,6 +11,7 @@ import { usePromotionPreviewLabels } from '../../composables/usePromotionPreview
 import {
 	describeDataTable,
 	describeFieldChanges,
+	describeWorkflowFieldChanges,
 	hasUnreadableSide,
 	isStaleDetail,
 	sideState,
@@ -77,15 +78,11 @@ const footer = computed((): Footer | undefined => {
 
 const detail = computed(() => (props.entry?.status === 'loaded' ? props.entry.detail : undefined));
 const stale = computed(() => !!detail.value && isStaleDetail(detail.value, props.resource));
-const fieldChanges = computed(() =>
-	detail.value
-		? describeFieldChanges(detail.value, {
-				direction: props.direction,
-				resource: props.resource,
-				containerName: nameOf,
-			})
-		: [],
-);
+const fieldChanges = computed(() => {
+	const context = { direction: props.direction, resource: props.resource, containerName: nameOf };
+	if (props.resource.type === 'workflow') return describeWorkflowFieldChanges(context);
+	return detail.value ? describeFieldChanges(detail.value, context) : [];
+});
 const dataTable = computed(() =>
 	detail.value?.type === 'dataTable' ? describeDataTable(detail.value, props.resource) : undefined,
 );
@@ -171,7 +168,7 @@ const isApplyMove = computed(
 					{{ i18n.baseText('promotions.preview.card.noChanges') }}
 				</N8nText>
 				<N8nLoading v-else-if="entry?.status === 'loading'" :rows="2" :class="$style.padded" />
-				<template v-else-if="detail">
+				<template v-else>
 					<DataTableChangeDetails
 						v-if="dataTable"
 						:class="$style.padded"
@@ -185,7 +182,7 @@ const isApplyMove = computed(
 						:absent-sides="absentSides"
 					/>
 					<N8nText
-						v-if="detail.type === 'variable' && detail.valueHidden"
+						v-if="detail?.type === 'variable' && detail.valueHidden"
 						step="2xs"
 						color="text-light"
 						:class="$style.padded"
@@ -294,6 +291,8 @@ const isApplyMove = computed(
 }
 
 .padded {
+	/* N8nText renders a span, which ignores vertical padding. */
+	display: block;
 	padding: var(--spacing--xs) var(--spacing--sm);
 }
 
