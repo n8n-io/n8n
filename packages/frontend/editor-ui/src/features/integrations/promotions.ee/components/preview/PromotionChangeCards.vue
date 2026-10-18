@@ -21,7 +21,6 @@ const emit = defineEmits<{
 	retry: [key: ResourceKey];
 	refresh: [];
 	inspect: [key: ResourceKey];
-	showBlockers: [];
 }>();
 
 const list = ref<HTMLElement | null>(null);
@@ -63,7 +62,6 @@ defineExpose({ scrollToCard });
 					: blockers.byResource.get(resource.key)
 			"
 			@inspect="emit('inspect', $event)"
-			@show-blockers="emit('showBlockers')"
 			@retry="emit('retry', resource.key)"
 			@refresh="emit('refresh')"
 		/>

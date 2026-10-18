@@ -315,9 +315,15 @@ describe('PromotionPreviewView', () => {
 				confirmDestructiveChanges: true,
 			},
 		);
+		// The confirmation says what the apply removes.
+		expect(confirm).toHaveBeenLastCalledWith(
+			expect.stringContaining("can't be restored"),
+			'Apply data table changes?',
+			expect.objectContaining({ confirmButtonText: 'Apply data table changes' }),
+		);
 	});
 
-	it('should not apply any selection while a folder on the branch moved', async () => {
+	it('should not apply any selection while a folder on the branch moved, and say why', async () => {
 		// The branch holds "Payments" under "Reports". This instance holds it at the project root.
 		const preview = billingPreview();
 		vi.mocked(api.getPromotionPreview).mockResolvedValue({
@@ -332,6 +338,9 @@ describe('PromotionPreviewView', () => {
 		const { getByTestId } = await renderApply();
 
 		expect(getByTestId('promotion-preview-submit')).toBeDisabled();
+		expect(getByTestId('promotion-preview-submit-blocked')).toHaveTextContent(
+			'Move the folder on this instance to match the branch, then refresh.',
+		);
 	});
 
 	it('should tell users whether to retry, resolve a conflict or check the changes after a failed apply', async () => {
@@ -345,7 +354,7 @@ describe('PromotionPreviewView', () => {
 		const error = () => getByTestId('promotion-preview-operation-error');
 
 		await userEvent.click(getByTestId('promotion-preview-submit'));
-		expect(error()).toHaveTextContent('Too many requests Nothing was changed. Try again.');
+		expect(error()).toHaveTextContent('Too many requests Nothing changed. Try again.');
 		expect(api.getPromotionPreview).toHaveBeenCalledTimes(1);
 
 		// The import stops for the same reason every time, so a retry alone does not help.
@@ -354,7 +363,7 @@ describe('PromotionPreviewView', () => {
 		expect(api.getPromotionPreview).toHaveBeenCalledTimes(2);
 
 		await userEvent.click(getByTestId('promotion-preview-submit'));
-		expect(error()).toHaveTextContent('the page was refreshed');
+		expect(error()).toHaveTextContent('The request may have run.');
 		expect(api.getPromotionPreview).toHaveBeenCalledTimes(3);
 	});
 

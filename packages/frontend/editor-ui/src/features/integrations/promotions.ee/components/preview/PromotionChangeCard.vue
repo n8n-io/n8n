@@ -37,7 +37,6 @@ const props = defineProps<{
 	included: boolean;
 	entry?: DetailEntry;
 	inspected: boolean;
-	/** The Apply blockers of the resource. */
 	blockers?: Blocker[];
 }>();
 
@@ -45,7 +44,6 @@ const emit = defineEmits<{
 	inspect: [key: ResourceKey];
 	retry: [];
 	refresh: [];
-	showBlockers: [];
 }>();
 
 const i18n = useI18n();
@@ -64,11 +62,23 @@ watch(
 		if (inspected) open.value = true;
 	},
 );
-const statusLabel = computed(() =>
-	i18n.baseText(
-		props.included ? 'promotions.preview.card.included' : 'promotions.preview.card.notIncluded',
-	),
-);
+// A blocker matters more than the inclusion, so it takes the place of the inclusion icon.
+const status = computed(() => {
+	if (blocker.value) {
+		return { label: blocker.value, icon: 'circle-alert' as const, tone: 'blocked' };
+	}
+	return props.included
+		? {
+				label: i18n.baseText('promotions.preview.card.included'),
+				icon: 'circle-check' as const,
+				tone: 'included',
+			}
+		: {
+				label: i18n.baseText('promotions.preview.card.notIncluded'),
+				icon: 'circle-minus' as const,
+				tone: undefined,
+			};
+});
 
 // On a project page, project scope is the default, so only global variables say so.
 const scope = computed(() =>
@@ -141,34 +151,21 @@ const isApplyMove = computed(
 					{{ changeLabel(resource, direction) }}
 				</N8nText>
 				<N8nIcon icon="chevron-down" size="small" :class="$style.chevron" />
-				<N8nTooltip :content="statusLabel" as-child>
+				<N8nTooltip :content="status.label" as-child>
 					<span
 						role="img"
-						:aria-label="statusLabel"
-						:class="[$style.status, { [$style.included]: included }]"
+						:aria-label="status.label"
+						:class="[$style.status, status.tone && $style[status.tone]]"
 						data-test-id="promotion-preview-card-status"
 						:data-included="included"
 					>
-						<N8nIcon :icon="included ? 'circle-check' : 'circle-minus'" size="medium" />
+						<N8nIcon :icon="status.icon" size="medium" />
 					</span>
 				</N8nTooltip>
 			</CollapsibleTrigger>
 
 			<CollapsibleContent>
 				<div :class="$style.notices">
-					<N8nCallout
-						v-if="blocker"
-						theme="warning"
-						slim
-						data-test-id="promotion-preview-card-blocker"
-					>
-						{{ blocker }}
-						<template #trailingContent>
-							<N8nLink size="small" @click="emit('showBlockers')">
-								{{ i18n.baseText('promotions.preview.card.viewBlockers') }}
-							</N8nLink>
-						</template>
-					</N8nCallout>
 					<N8nCallout v-if="entry?.status === 'missing'" theme="warning" slim>
 						{{ i18n.baseText('promotions.preview.card.missing') }}
 						<template #trailingContent>
@@ -379,5 +376,9 @@ const isApplyMove = computed(
 
 .included {
 	color: var(--icon-color--success);
+}
+
+.blocked {
+	color: var(--icon-color--warning);
 }
 </style>

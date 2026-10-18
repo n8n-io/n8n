@@ -28,7 +28,6 @@ const props = defineProps<{
 	check: ApplyCheckResult;
 	/** Folders that moved on the branch. Each one stops the whole apply. */
 	folders: PromotionResource[];
-	/** True while the page runs an operation. */
 	busy: boolean;
 }>();
 
@@ -78,7 +77,6 @@ type BlockerRow = {
 	status: { label: string; tone: 'warning' | 'success' };
 	/** The next step for blockers that users resolve outside this page. */
 	detail?: string;
-	/** The binding to create from this page. */
 	create?: { key: string; label: string };
 };
 
@@ -145,7 +143,7 @@ const blockerRows = computed<BlockerRow[]>(() => {
 			type: 'credential' as const,
 			usedBy: usedBy(access.consumers),
 			status: status('access'),
-			detail: i18n.baseText('promotions.bindings.access.description'),
+			detail: i18n.baseText('promotions.preview.blockers.access'),
 		})),
 		...bindings.hardConflicts.value.map(conflictRow),
 		...movedWorkflows.map((workflow) => ({
@@ -205,6 +203,16 @@ const isCreateDisabled = computed(() => props.busy || bindings.isBusy.value);
 			{{ i18n.baseText('promotions.preview.blockers.intro') }}
 		</N8nText>
 
+		<N8nCallout
+			v-if="unresolvedCount === 0"
+			theme="success"
+			slim
+			role="status"
+			data-test-id="promotion-preview-blockers-status"
+		>
+			{{ i18n.baseText('promotions.preview.blockers.none') }}
+		</N8nCallout>
+
 		<N8nCallout v-if="bindings.error.value?.kind === 'creationMismatch'" theme="danger">
 			{{ i18n.baseText('promotions.bindings.error.creationMismatch') }}
 		</N8nCallout>
@@ -227,7 +235,10 @@ const isCreateDisabled = computed(() => props.busy || bindings.isBusy.value);
 				</N8nHeading>
 			</button>
 			<div v-show="open.blockers">
-				<table :class="$style.table" data-test-id="promotion-preview-blockers-table">
+				<table
+					:class="[$style.table, $style.fixedColumns]"
+					data-test-id="promotion-preview-blockers-table"
+				>
 					<colgroup>
 						<col :class="$style.nameColumn" />
 						<col />
@@ -270,17 +281,18 @@ const isCreateDisabled = computed(() => props.busy || bindings.isBusy.value);
 								</N8nText>
 							</td>
 							<td>
-								<span :class="$style.usedBy">
-									<button
-										v-for="workflow in row.usedBy"
-										:key="workflow.key"
-										type="button"
-										:class="$style.link"
-										@click="emit('inspect', workflow.key)"
+								<N8nText step="2xs" color="text-light">
+									<template v-for="(workflow, index) in row.usedBy" :key="workflow.key"
+										><template v-if="index > 0">, </template
+										><button
+											type="button"
+											:class="$style.link"
+											@click="emit('inspect', workflow.key)"
+										>
+											{{ workflow.name }}
+										</button></template
 									>
-										{{ workflow.name }}
-									</button>
-								</span>
+								</N8nText>
 							</td>
 							<td>
 								<N8nText step="xs" color="text-base">
@@ -363,17 +375,20 @@ const isCreateDisabled = computed(() => props.busy || bindings.isBusy.value);
 									</div>
 								</td>
 								<td>
-									<span :class="$style.usedBy">
-										<button
-											v-for="workflow in usedBy(table.consumers)"
+									<N8nText step="2xs" color="text-light">
+										<template
+											v-for="(workflow, index) in usedBy(table.consumers)"
 											:key="workflow.key"
-											type="button"
-											:class="$style.link"
-											@click="emit('inspect', workflow.key)"
+											><template v-if="index > 0">, </template
+											><button
+												type="button"
+												:class="$style.link"
+												@click="emit('inspect', workflow.key)"
+											>
+												{{ workflow.name }}
+											</button></template
 										>
-											{{ workflow.name }}
-										</button>
-									</span>
+									</N8nText>
 								</td>
 								<td>
 									<N8nText step="xs" color="text-base">{{ removedColumns(table.changes) }}</N8nText>
@@ -430,17 +445,20 @@ const isCreateDisabled = computed(() => props.busy || bindings.isBusy.value);
 									</div>
 								</td>
 								<td>
-									<span :class="$style.usedBy">
-										<button
-											v-for="workflow in usedBy(warning.consumers)"
+									<N8nText step="2xs" color="text-light">
+										<template
+											v-for="(workflow, index) in usedBy(warning.consumers)"
 											:key="workflow.key"
-											type="button"
-											:class="$style.link"
-											@click="emit('inspect', workflow.key)"
+											><template v-if="index > 0">, </template
+											><button
+												type="button"
+												:class="$style.link"
+												@click="emit('inspect', workflow.key)"
+											>
+												{{ workflow.name }}
+											</button></template
 										>
-											{{ workflow.name }}
-										</button>
-									</span>
+									</N8nText>
 								</td>
 							</tr>
 						</tbody>
@@ -450,6 +468,7 @@ const isCreateDisabled = computed(() => props.busy || bindings.isBusy.value);
 		</section>
 
 		<N8nText
+			v-if="unresolvedCount > 0"
 			tag="p"
 			step="xs"
 			color="text-base"
@@ -457,12 +476,10 @@ const isCreateDisabled = computed(() => props.busy || bindings.isBusy.value);
 			data-test-id="promotion-preview-blockers-status"
 		>
 			{{
-				unresolvedCount > 0
-					? i18n.baseText('promotions.preview.blockers.unresolved', {
-							adjustToNumber: unresolvedCount,
-							interpolate: { count: String(unresolvedCount) },
-						})
-					: i18n.baseText('promotions.preview.blockers.none')
+				i18n.baseText('promotions.preview.blockers.unresolved', {
+					adjustToNumber: unresolvedCount,
+					interpolate: { count: String(unresolvedCount) },
+				})
 			}}
 		</N8nText>
 	</div>
@@ -546,8 +563,13 @@ const isCreateDisabled = computed(() => props.busy || bindings.isBusy.value);
 	}
 }
 
+/* Fixed widths keep the columns in place when the last action button goes away. */
+.fixedColumns {
+	table-layout: fixed;
+}
+
 .nameColumn {
-	width: 40%;
+	width: 36%;
 }
 
 .typeColumn,
@@ -556,7 +578,7 @@ const isCreateDisabled = computed(() => props.busy || bindings.isBusy.value);
 }
 
 .actionColumn {
-	width: 1%;
+	width: 16%;
 }
 
 .name {
@@ -574,23 +596,18 @@ const isCreateDisabled = computed(() => props.busy || bindings.isBusy.value);
 	margin-top: var(--spacing--4xs);
 }
 
-.usedBy {
-	display: inline-flex;
-	flex-wrap: wrap;
-	column-gap: var(--spacing--2xs);
-}
-
+/* The same links as the "Used by" names on the change cards. */
 .link {
 	padding: 0;
 	border: none;
 	background: none;
-	color: var(--text-color--subtle);
-	font-size: var(--font-size--2xs);
-	text-align: left;
+	color: inherit;
+	font: inherit;
+	text-decoration: underline;
 	cursor: pointer;
 
 	&:hover {
-		text-decoration: underline;
+		color: var(--text-color);
 	}
 
 	&:focus-visible {

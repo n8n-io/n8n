@@ -68,18 +68,29 @@ export function usePromotionOperation(
 	const notice = ref<OperationNotice | null>(null);
 	const error = shallowRef<OperationError | null>(null);
 
-	async function confirmApply() {
-		const answer = await message.confirm(
-			i18n.baseText('promotions.modal.incoming.confirmSelected.message'),
-			i18n.baseText('promotions.modal.incoming.confirmSelected.title'),
-			{
-				type: 'warning',
-				confirmButtonText: i18n.baseText(
-					'promotions.modal.incoming.confirmSelected.confirmButtonText',
-				),
-				cancelButtonText: i18n.baseText('promotions.modal.close'),
-			},
-		);
+	async function confirmApply({ confirmDestructiveChanges }: OperationRequest) {
+		// The button already names the data table changes. The dialog says what they remove.
+		const answer = confirmDestructiveChanges
+			? await message.confirm(
+					i18n.baseText('promotions.preview.confirmDestructive.message'),
+					i18n.baseText('promotions.preview.confirmDestructive.title'),
+					{
+						type: 'warning',
+						confirmButtonText: i18n.baseText('promotions.bindings.applyDataTableChanges'),
+						cancelButtonText: i18n.baseText('generic.cancel'),
+					},
+				)
+			: await message.confirm(
+					i18n.baseText('promotions.modal.incoming.confirmSelected.message'),
+					i18n.baseText('promotions.modal.incoming.confirmSelected.title'),
+					{
+						type: 'warning',
+						confirmButtonText: i18n.baseText(
+							'promotions.modal.incoming.confirmSelected.confirmButtonText',
+						),
+						cancelButtonText: i18n.baseText('promotions.modal.close'),
+					},
+				);
 		return answer === MODAL_CONFIRM;
 	}
 
@@ -131,7 +142,7 @@ export function usePromotionOperation(
 		// Set before the dialog, so a second click does not open another one.
 		phase.value = 'confirming';
 		try {
-			if (direction.value === 'apply' && !(await confirmApply())) return;
+			if (direction.value === 'apply' && !(await confirmApply(request))) return;
 			phase.value = 'running';
 			notice.value = null;
 			error.value = null;
