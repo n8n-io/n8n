@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { PromotionDirection, PromotionResource } from '@n8n/api-types';
-import { N8nCheckbox, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
+import { N8nButton, N8nCheckbox, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 
@@ -28,7 +28,6 @@ const props = defineProps<{
 	inspectedKey?: ResourceKey;
 	/** Blocked workflows, which users cannot add. */
 	disabled: DisabledKeys;
-	/** True while the selection cannot change. */
 	locked: boolean;
 	direction: PromotionDirection;
 	blockers: BlockerIndex;
@@ -196,15 +195,18 @@ function onToggle(resource: PromotionResource) {
 						</N8nText>
 					</button>
 					<N8nTooltip v-if="marker.blocked" :content="marker.blocked" placement="right">
-						<button
-							type="button"
-							:class="$style.marker"
+						<N8nButton
+							variant="ghost"
+							size="xsmall"
+							icon-only
 							:aria-label="marker.blocked"
 							data-test-id="promotion-preview-tree-blocker"
 							@click="emit('showBlockers')"
 						>
-							<N8nIcon icon="circle-alert" size="small" />
-						</button>
+							<template #icon>
+								<N8nIcon icon="circle-alert" size="small" color="warning" />
+							</template>
+						</N8nButton>
 					</N8nTooltip>
 				</li>
 			</template>
@@ -244,21 +246,7 @@ function onToggle(resource: PromotionResource) {
 }
 
 .resource.blocked {
-	background-color: var(--background--warning);
-}
-
-.marker {
-	display: flex;
-	flex-shrink: 0;
-	padding: 0;
-	border: none;
-	background: none;
-	color: var(--icon-color--warning);
-	cursor: pointer;
-
-	&:focus-visible {
-		outline: var(--focus--border-width) solid var(--focus--outline-color);
-	}
+	background-color: var(--callout--color--background--warning);
 }
 
 .heading {

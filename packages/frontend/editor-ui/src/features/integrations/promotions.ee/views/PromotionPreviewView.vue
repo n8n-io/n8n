@@ -11,7 +11,6 @@ import {
 	N8nResizeWrapper,
 	N8nTabs,
 	N8nText,
-	N8nTooltip,
 	useResizablePanel,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -80,7 +79,6 @@ const blockers = computed(() =>
 const folderConflicts = computed(() =>
 	props.direction === 'apply' && graph.value ? folderMoveConflicts(graph.value) : [],
 );
-// The tree and the cards also mark the moved folders.
 const markers = computed(() =>
 	folderConflicts.value.length === 0
 		? blockers.value
@@ -193,7 +191,6 @@ const blockerCount = computed(() =>
 		? unresolvedBlockerCount(scopedCheck.value) + folderConflicts.value.length
 		: folderConflicts.value.length,
 );
-// Apply has blockers. The tab stays while it is open, so resolving the last blocker keeps it.
 const showBlockersTab = computed(
 	() => props.direction === 'apply' && !!scopedCheck.value && state.value === 'ready',
 );
@@ -288,18 +285,16 @@ const treeResizer = useResizablePanel({
 					>
 						{{ i18n.baseText('promotions.preview.refresh') }}
 					</N8nButton>
-					<N8nTooltip :disabled="!submitBlockedReason" :content="submitBlockedReason">
-						<N8nButton
-							:variant="request.confirmDestructiveChanges ? 'destructive' : 'brand'"
-							size="small"
-							:disabled="!canSubmit"
-							:loading="operation.isRunning.value"
-							data-test-id="promotion-preview-submit"
-							@click="operation.submit(request)"
-						>
-							{{ submitLabel }}
-						</N8nButton>
-					</N8nTooltip>
+					<N8nButton
+						:variant="request.confirmDestructiveChanges ? 'destructive' : 'brand'"
+						size="small"
+						:disabled="!canSubmit"
+						:loading="operation.isRunning.value"
+						data-test-id="promotion-preview-submit"
+						@click="operation.submit(request)"
+					>
+						{{ submitLabel }}
+					</N8nButton>
 				</div>
 			</div>
 		</header>
@@ -349,8 +344,24 @@ const treeResizer = useResizablePanel({
 			data-test-id="promotion-preview-empty"
 		/>
 		<template v-else-if="graph">
-			<!-- Both tabs show the result of the last operation. -->
-			<div v-if="operation.error.value || operation.notice.value" :class="$style.operationNotices">
+			<div
+				v-if="operation.error.value || operation.notice.value || submitBlockedReason"
+				:class="$style.operationNotices"
+			>
+				<!-- A disabled button cannot explain itself to keyboard users, so the reason shows here. -->
+				<N8nCallout
+					v-if="submitBlockedReason && !operation.error.value"
+					theme="warning"
+					slim
+					data-test-id="promotion-preview-submit-blocked"
+				>
+					{{ submitBlockedReason }}
+					<template v-if="showBlockersTab && activeTab !== 'blockers'" #trailingContent>
+						<N8nLink size="small" @click="activeTab = 'blockers'">
+							{{ i18n.baseText('promotions.preview.card.viewBlockers') }}
+						</N8nLink>
+					</template>
+				</N8nCallout>
 				<N8nCallout
 					v-if="operation.error.value"
 					theme="danger"
@@ -417,7 +428,6 @@ const treeResizer = useResizablePanel({
 						:entries="details.entries.value"
 						:inspected-key="inspectedKey"
 						:blockers="markers"
-						@show-blockers="activeTab = 'blockers'"
 						@retry="details.retry"
 						@refresh="refresh"
 						@inspect="inspect"

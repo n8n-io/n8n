@@ -5,7 +5,6 @@ import type {
 } from '@n8n/api-types';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
-import { within } from '@testing-library/vue';
 
 import { createComponentRenderer } from '@/__tests__/render';
 
@@ -212,8 +211,8 @@ describe('PromotionChangeCard', () => {
 		);
 	});
 
-	it('should say that Apply needs a credential that this instance does not have, instead of creating it', async () => {
-		const { getByTestId, emitted } = renderComponent({
+	it('should say that Apply needs a credential that this instance does not have, instead of creating it', () => {
+		const { getByTestId } = renderComponent({
 			pinia: createTestingPinia(),
 			props: {
 				resource: { ...billingResources.stripe, change: 'added' },
@@ -228,12 +227,12 @@ describe('PromotionChangeCard', () => {
 		});
 
 		expect(getByTestId('promotion-preview-card-toggle')).toHaveTextContent('Not on this instance');
-		expect(getByTestId('promotion-preview-card-blocker')).toHaveTextContent(
-			"This credential isn't on this instance, and 1 workflow depends on it.",
+		// The blocker takes the place of the inclusion icon.
+		expect(getByTestId('promotion-preview-card-status')).toHaveAttribute(
+			'aria-label',
+			expect.stringContaining(
+				"This credential isn't on this instance, and 1 workflow depends on it.",
+			),
 		);
-		await userEvent.click(
-			within(getByTestId('promotion-preview-card-blocker')).getByText('View blockers'),
-		);
-		expect(emitted('showBlockers')).toHaveLength(1);
 	});
 });
