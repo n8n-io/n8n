@@ -92,6 +92,40 @@ describe('IdempotencyKey cleanup', () => {
 		});
 	});
 
+	describe('markCompleted', () => {
+		it('completes a processing row', async () => {
+			const id = await repository.insertProcessing({
+				userId: user.id,
+				idempotencyKey: 'complete-me',
+				fingerprint: 'fp',
+			});
+			if (!id) throw new Error('insert did not return an id');
+
+			await repository.markCompleted(id, 201, { ok: true });
+
+			const row = await repository.findOneBy({ id });
+			expect(row).toMatchObject({
+				status: 'completed',
+				responseStatus: 201,
+				responseBody: { ok: true },
+			});
+		});
+
+		it('does not recreate a processing row that was already deleted', async () => {
+			const id = await repository.insertProcessing({
+				userId: user.id,
+				idempotencyKey: 'already-gone',
+				fingerprint: 'fp',
+			});
+			if (!id) throw new Error('insert did not return an id');
+
+			await repository.delete({ id });
+			await repository.markCompleted(id, 201, { ok: true });
+
+			expect(await repository.count()).toBe(0);
+		});
+	});
+
 	describe('IdempotencyKeyCleanupTask', () => {
 		it('should delete keys older than 12 hours and keep newer keys', async () => {
 			const now = Date.now();

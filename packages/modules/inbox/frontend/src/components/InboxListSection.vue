@@ -63,20 +63,20 @@ function sectionTitle(key: 'waiting' | 'authored') {
 		<div
 			:id="`inbox-section-${section.key}`"
 			:class="$style.group"
-			role="listbox"
+			role="list"
 			:aria-labelledby="
 				section.key !== 'closed' ? `inbox-section-header-${section.key}` : undefined
 			"
 			:aria-label="section.key === 'closed' ? i18n.baseText('inbox.tabs.closed') : undefined"
 		>
 			<template v-if="!collapsed">
-				<InboxListItem
-					v-for="item in section.items"
-					:key="`${item.type}:${item.id}`"
-					:item="item"
-					:selected="selectedKey === `${item.type}:${item.id}`"
-					@select="emit('select', item)"
-				/>
+				<div v-for="item in section.items" :key="`${item.type}:${item.id}`" role="listitem">
+					<InboxListItem
+						:item="item"
+						:selected="selectedKey === `${item.type}:${item.id}`"
+						@select="emit('select', item)"
+					/>
+				</div>
 			</template>
 		</div>
 		<template v-if="!collapsed">

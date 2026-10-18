@@ -1,23 +1,19 @@
-import { createSkillLoadTool, filterRuntimeSkillSource } from '@n8n/agents';
+import { createSkillLoadTool } from '@n8n/agents';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
+import { resolvePromptProfile } from '../../prompts/prompt-profiles';
 import { ALWAYS_LOADED_TOOL_NAMES } from '../../tools/tool-ids';
 import {
 	INSTANCE_AI_SKILLS_DIR,
-	loadInstanceAiRuntimeSkillSource,
-	loadInstanceAiRuntimeSkillSourceForBuildMode,
-	warmRuntimeSkills,
-} from '../runtime-skills';
-import {
-	AGENT_BUILDING_SKILL_IDS,
-	CONFIG_EVALS_SKILL_ID,
-	disabledInstanceAiSkillIds,
-} from '../skill-gates';
+	loadInstanceAiPromptSkills,
+	loadInstanceAiSkills,
+} from '../skills';
 
 const ORIGINAL_ENABLED_MODULES = process.env.N8N_ENABLED_MODULES;
+const AGENT_BUILDING_SKILL_IDS = ['agent-builder', 'intent-recognition'];
 
-describe('Instance AI runtime skills', () => {
+describe('Instance AI skills', () => {
 	afterEach(() => {
 		if (ORIGINAL_ENABLED_MODULES === undefined) {
 			delete process.env.N8N_ENABLED_MODULES;
@@ -104,7 +100,7 @@ describe('Instance AI runtime skills', () => {
 	});
 
 	it('loads the bundled credential-recipe-research skill', () => {
-		const source = loadInstanceAiRuntimeSkillSource();
+		const source = loadInstanceAiSkills();
 		const recipeResearch = source.registry.skills.find(
 			(skill) => skill.name === 'credential-recipe-research',
 		);
@@ -126,7 +122,7 @@ describe('Instance AI runtime skills', () => {
 	});
 
 	it('lists only top-level skills in the catalog', () => {
-		const source = loadInstanceAiRuntimeSkillSource();
+		const source = loadInstanceAiSkills();
 		const topLevel = source.registry.skills.filter((skill) => !skill.parents).map(({ id }) => id);
 
 		expect(topLevel.sort()).toEqual([
@@ -145,7 +141,7 @@ describe('Instance AI runtime skills', () => {
 	});
 
 	it('loads every reference file as a reference skill with a description', () => {
-		const source = loadInstanceAiRuntimeSkillSource();
+		const source = loadInstanceAiSkills();
 		const referenceFiles = skillMarkdownFiles().filter((file) => file.includes('/references/'));
 
 		expect(referenceFiles.length).toBeGreaterThan(0);
@@ -162,7 +158,7 @@ describe('Instance AI runtime skills', () => {
 	});
 
 	it('nests the workflow sub-steps under workflow-builder', async () => {
-		const source = loadInstanceAiRuntimeSkillSource();
+		const source = loadInstanceAiSkills();
 		const workflowBuilderReferences = source.registry.skills
 			.filter((skill) => skill.parents?.includes('workflow-builder'))
 			.map(({ id }) => id)
@@ -190,7 +186,7 @@ describe('Instance AI runtime skills', () => {
 	});
 
 	it('shares the Computer Use credential setup reference with agent-builder', async () => {
-		const source = loadInstanceAiRuntimeSkillSource();
+		const source = loadInstanceAiSkills();
 		const skill = source.registry.skills.find(
 			(entry) => entry.id === 'credential-setup-with-computer-use',
 		);
@@ -204,7 +200,7 @@ describe('Instance AI runtime skills', () => {
 	it('loads the bundled data-table-manager skill and its linked files', async () => {
 		expect(existsSync(INSTANCE_AI_SKILLS_DIR)).toBe(true);
 
-		const source = loadInstanceAiRuntimeSkillSource();
+		const source = loadInstanceAiSkills();
 		const dataTableManager = source.registry.skills.find(
 			(skill) => skill.name === 'data-table-manager',
 		);
@@ -244,7 +240,7 @@ describe('Instance AI runtime skills', () => {
 	});
 
 	it('loads the bundled config-evals reference and its playbook', async () => {
-		const source = loadInstanceAiRuntimeSkillSource();
+		const source = loadInstanceAiSkills();
 		const configEvals = source.registry.skills.find((skill) => skill.name === 'config-evals');
 
 		expect(configEvals).toMatchObject({
@@ -266,59 +262,23 @@ describe('Instance AI runtime skills', () => {
 		expect(playbook).toContain('Config Eval Playbook');
 	});
 
-	it('gates the config-evals skill by its folder id', () => {
-		expect(CONFIG_EVALS_SKILL_ID).toBe('config-evals');
-		expect(
-			disabledInstanceAiSkillIds({
-				configEvalsEnabled: false,
-				instanceContextEnabled: true,
-				agentBuildingEnabled: true,
-			}),
-		).toContain(CONFIG_EVALS_SKILL_ID);
-		expect(
-			disabledInstanceAiSkillIds({
-				configEvalsEnabled: true,
-				instanceContextEnabled: true,
-				agentBuildingEnabled: true,
-			}),
-		).not.toContain(CONFIG_EVALS_SKILL_ID);
-
-		const source = loadInstanceAiRuntimeSkillSource();
-		const configEvals = source.registry.skills.find((skill) => skill.name === 'config-evals');
-		expect(configEvals?.id).toBe(CONFIG_EVALS_SKILL_ID);
-	});
-
 	it('keeps the progressive-building fragment out of both profile catalogs', async () => {
-		const source = loadInstanceAiRuntimeSkillSource();
+		const source = loadInstanceAiSkills();
 		const progressive = source.registry.skills.find(
 			(skill) => skill.name === 'progressive-building',
 		);
 		expect(progressive?.id).toBe('progressive-building');
 		for (const mode of ['default', 'progressive'] as const) {
-			const selected = await loadInstanceAiRuntimeSkillSourceForBuildMode(mode);
+			const { source: selected } = await loadInstanceAiPromptSkills(
+				resolvePromptProfile({ mode }).profile,
+			);
 			expect(selected.registry.skills.map(({ id }) => id)).not.toContain('progressive-building');
 			await expect(selected.loadSkill('progressive-building')).resolves.toBeNull();
 		}
 	});
 
-	it('hides the Agents module skills when the skill gates say the module is off', async () => {
-		const source = filterRuntimeSkillSource(
-			loadInstanceAiRuntimeSkillSource(),
-			disabledInstanceAiSkillIds({
-				configEvalsEnabled: true,
-				instanceContextEnabled: true,
-				agentBuildingEnabled: false,
-			}),
-		);
-
-		for (const skillId of AGENT_BUILDING_SKILL_IDS) {
-			expect(source.registry.skills).not.toContainEqual(expect.objectContaining({ id: skillId }));
-			await expect(source.loadSkill(skillId)).resolves.toBeNull();
-		}
-	});
-
 	it('loads the bundled Agents module skills', async () => {
-		const source = loadInstanceAiRuntimeSkillSource();
+		const source = loadInstanceAiSkills();
 		const loadTool = createSkillLoadTool(source);
 
 		for (const skillId of AGENT_BUILDING_SKILL_IDS) {
@@ -331,8 +291,8 @@ describe('Instance AI runtime skills', () => {
 	});
 
 	it('loads every bundled skill whatever N8N_ENABLED_MODULES contains', async () => {
-		const unset = await loadRuntimeSkillSourceWithEnabledModules(undefined);
-		const withoutAgents = await loadRuntimeSkillSourceWithEnabledModules('instance-ai');
+		const unset = await loadSkillsWithEnabledModules(undefined);
+		const withoutAgents = await loadSkillsWithEnabledModules('instance-ai');
 
 		expect(withoutAgents.registry.skillsHash).toBe(unset.registry.skillsHash);
 		for (const skillId of AGENT_BUILDING_SKILL_IDS) {
@@ -341,7 +301,7 @@ describe('Instance AI runtime skills', () => {
 	});
 
 	it('loads the bundled agent-builder skill', async () => {
-		const source = loadInstanceAiRuntimeSkillSource();
+		const source = loadInstanceAiSkills();
 		const skill = source.registry.skills.find((entry) => entry.name === 'agent-builder');
 
 		expect(skill).toBeDefined();
@@ -353,7 +313,7 @@ describe('Instance AI runtime skills', () => {
 	});
 
 	it('loads the bundled Computer Use credential setup skill', async () => {
-		const source = loadInstanceAiRuntimeSkillSource();
+		const source = loadInstanceAiSkills();
 		const skill = source.registry.skills.find(
 			(entry) => entry.name === 'credential-setup-with-computer-use',
 		);
@@ -384,7 +344,7 @@ describe('Instance AI runtime skills', () => {
 	});
 
 	it('loads the bundled n8n docs assistant skill', async () => {
-		const source = loadInstanceAiRuntimeSkillSource();
+		const source = loadInstanceAiSkills();
 		const skill = source.registry.skills.find((entry) => entry.name === 'n8n-docs-assistant');
 
 		expect(skill).toMatchObject({
@@ -410,7 +370,7 @@ describe('Instance AI runtime skills', () => {
 	});
 
 	it('loads the bundled workflow-builder skill', async () => {
-		const source = loadInstanceAiRuntimeSkillSource();
+		const source = loadInstanceAiSkills();
 		const skill = source.registry.skills.find((entry) => entry.name === 'workflow-builder');
 
 		expect(skill?.name).toBe('workflow-builder');
@@ -486,7 +446,7 @@ describe('Instance AI runtime skills', () => {
 	});
 
 	it('loads the bundled planning skill', async () => {
-		const source = loadInstanceAiRuntimeSkillSource();
+		const source = loadInstanceAiSkills();
 		const skill = source.registry.skills.find((entry) => entry.name === 'planning');
 
 		expect(skill?.name).toBe('planning');
@@ -526,7 +486,7 @@ describe('Instance AI runtime skills', () => {
 	});
 
 	it('loads the bundled one-off-operations skill', async () => {
-		const source = loadInstanceAiRuntimeSkillSource();
+		const source = loadInstanceAiSkills();
 		const skill = source.registry.skills.find((entry) => entry.name === 'one-off-operations');
 
 		expect(skill?.description).toContain('one-off operations');
@@ -542,7 +502,7 @@ describe('Instance AI runtime skills', () => {
 	});
 
 	it('loads the bundled post-build-flow skill and trigger input reference', async () => {
-		const source = loadInstanceAiRuntimeSkillSource();
+		const source = loadInstanceAiSkills();
 		const skill = source.registry.skills.find((entry) => entry.name === 'post-build-flow');
 
 		expect(skill?.description).toContain('workflow-verification-follow-up');
@@ -608,7 +568,7 @@ describe('Instance AI runtime skills', () => {
 	});
 
 	it('loads the bundled planned-task-runtime skill', async () => {
-		const source = loadInstanceAiRuntimeSkillSource();
+		const source = loadInstanceAiSkills();
 		const skill = source.registry.skills.find((entry) => entry.name === 'planned-task-runtime');
 
 		expect(skill?.description).toContain('planned-task-follow-up');
@@ -633,7 +593,7 @@ describe('Instance AI runtime skills', () => {
 	});
 
 	it('loads the bundled instance-awareness skill', async () => {
-		const source = loadInstanceAiRuntimeSkillSource();
+		const source = loadInstanceAiSkills();
 		const skill = source.registry.skills.find((entry) => entry.name === 'instance-awareness');
 
 		expect(skill).toBeDefined();
@@ -643,7 +603,7 @@ describe('Instance AI runtime skills', () => {
 	});
 
 	it('loads the bundled debugging-executions skill', async () => {
-		const source = loadInstanceAiRuntimeSkillSource();
+		const source = loadInstanceAiSkills();
 		const skill = source.registry.skills.find((entry) => entry.name === 'debugging-executions');
 
 		expect(skill?.recommendedTools).toEqual(['executions', 'workflows']);
@@ -658,6 +618,23 @@ describe('Instance AI runtime skills', () => {
 		expect(loaded?.instructions).toContain('## Before you name a cause');
 		expect(loaded?.instructions).toContain('credentials(action="test")');
 		expect(skill?.description).toContain('a live run you started');
+	});
+});
+
+describe('knowledge base paths in skills', () => {
+	it('uses paths relative to the workspace root, with no variables to substitute', () => {
+		for (const file of skillMarkdownFiles()) {
+			const content = readFileSync(join(INSTANCE_AI_SKILLS_DIR, file), 'utf-8');
+			expect({ file, hasVariable: /\$\{[A-Z_]+\}/.test(content) }).toEqual({
+				file,
+				hasVariable: false,
+			});
+		}
+		const builder = readFileSync(
+			join(INSTANCE_AI_SKILLS_DIR, 'workflow-builder', 'SKILL.md'),
+			'utf-8',
+		);
+		expect(builder).toContain('`knowledge-base/index.json`');
 	});
 });
 
@@ -687,7 +664,7 @@ function skillLoadText(output: unknown): string {
 	return record.value.map((part) => part.text).join('\n');
 }
 
-async function loadRuntimeSkillSourceWithEnabledModules(enabledModules: string | undefined) {
+async function loadSkillsWithEnabledModules(enabledModules: string | undefined) {
 	vi.resetModules();
 	if (enabledModules === undefined) {
 		delete process.env.N8N_ENABLED_MODULES;
@@ -695,63 +672,6 @@ async function loadRuntimeSkillSourceWithEnabledModules(enabledModules: string |
 		process.env.N8N_ENABLED_MODULES = enabledModules;
 	}
 
-	const { loadInstanceAiRuntimeSkillSource } = await import('../runtime-skills.js');
-	return loadInstanceAiRuntimeSkillSource();
+	const { loadInstanceAiSkills } = await import('../skills.js');
+	return loadInstanceAiSkills();
 }
-
-describe('warmRuntimeSkills', () => {
-	const registry = {
-		schemaVersion: 1 as const,
-		skillsHash: 'skills-hash',
-		skills: [{ id: 'data-table-manager', name: 'data-table-manager', description: 'x' }],
-	};
-
-	it('runs the background preparation in the actor span of the chat trace', async () => {
-		let insideSpan = false;
-		let preparedInsideSpan = false;
-		const actorRun = { id: 'actor-run' };
-		const withActiveSpan = vi.fn(async (_run: unknown, fn: () => Promise<unknown>) => {
-			insideSpan = true;
-			try {
-				return await fn();
-			} finally {
-				insideSpan = false;
-			}
-		});
-		const prepare = vi.fn(async () => {
-			preparedInsideSpan = insideSpan;
-		});
-
-		warmRuntimeSkills({ registry, prepare, loadSkill: vi.fn() } as never, {
-			tracing: { actorRun, withActiveSpan } as never,
-		});
-
-		await vi.waitFor(() => expect(prepare).toHaveBeenCalledTimes(1));
-		expect(withActiveSpan).toHaveBeenCalledWith(actorRun, expect.any(Function));
-		expect(preparedInsideSpan).toBe(true);
-	});
-
-	it('keeps the chat trace open until the background preparation settles', () => {
-		const preparation = Promise.resolve();
-		const keepOpenUntilSettled = vi.fn();
-		const tracing = {
-			actorRun: { id: 'actor-run' },
-			withActiveSpan: vi.fn(async () => await preparation),
-			keepOpenUntilSettled,
-		};
-
-		warmRuntimeSkills({ registry, prepare: vi.fn(), loadSkill: vi.fn() } as never, {
-			tracing: tracing as never,
-		});
-
-		expect(keepOpenUntilSettled).toHaveBeenCalledWith(tracing.withActiveSpan.mock.results[0].value);
-	});
-
-	it('prepares the source without a span when tracing is off', async () => {
-		const prepare = vi.fn(async () => {});
-
-		warmRuntimeSkills({ registry, prepare, loadSkill: vi.fn() } as never);
-
-		await vi.waitFor(() => expect(prepare).toHaveBeenCalledTimes(1));
-	});
-});

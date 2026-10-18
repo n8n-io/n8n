@@ -140,6 +140,32 @@ describe('settings.store', () => {
 			store.settings.inbox = { enabled: false, availableTypes: [], failedTypes: [] };
 		});
 
+		it.each(['availableTypes', 'failedTypes'] as const)(
+			'preserves Assistant %s when Reviews are enabled and disabled',
+			(sourceStatus) => {
+				const store = useSettingsStore();
+				store.settings.inbox = {
+					enabled: true,
+					availableTypes: [],
+					failedTypes: ['workflow_review'],
+				};
+				store.settings.inbox[sourceStatus].push('self_healing_result');
+
+				store.setWorkflowReviewsPolicy({ enabled: true });
+				expect(store.settings.inbox.availableTypes).toContain('workflow_review');
+				expect(store.settings.inbox.failedTypes).not.toContain('workflow_review');
+				expect(store.settings.inbox[sourceStatus]).toContain('self_healing_result');
+
+				store.setWorkflowReviewsPolicy({ enabled: false });
+				expect(store.settings.inbox).toEqual({
+					enabled: true,
+					availableTypes: [],
+					failedTypes: [],
+					[sourceStatus]: ['self_healing_result'],
+				});
+			},
+		);
+
 		it('disables Inbox when its last source is disabled', () => {
 			const store = useSettingsStore();
 			store.setWorkflowReviewsPolicy({ enabled: true });
