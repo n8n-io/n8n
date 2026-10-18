@@ -334,25 +334,28 @@ describe('PromotionPreviewView', () => {
 		expect(getByTestId('promotion-preview-submit')).toBeDisabled();
 	});
 
-	it('should let users retry a rejected apply, and reload the preview first when the result is unknown', async () => {
+	it('should tell users whether to retry, resolve a conflict or check the changes after a failed apply', async () => {
 		vi.mocked(settingsApi.applyProjectSelection)
-			.mockRejectedValueOnce(new ResponseError('Import blocked', { httpStatusCode: 409 }))
+			.mockRejectedValueOnce(new ResponseError('Too many requests', { httpStatusCode: 429 }))
+			.mockRejectedValueOnce(
+				new ResponseError('Import blocked: 1 issue(s) must be resolved', { httpStatusCode: 409 }),
+			)
 			.mockRejectedValueOnce(new ResponseError("Can't connect to n8n."));
-
 		const { getByTestId } = await renderApply();
-		await userEvent.click(getByTestId('promotion-preview-submit'));
+		const error = () => getByTestId('promotion-preview-operation-error');
 
-		expect(getByTestId('promotion-preview-operation-error')).toHaveTextContent(
-			'Import blocked Nothing was changed.',
-		);
+		await userEvent.click(getByTestId('promotion-preview-submit'));
+		expect(error()).toHaveTextContent('Too many requests Nothing was changed. Try again.');
 		expect(api.getPromotionPreview).toHaveBeenCalledTimes(1);
 
+		// The import stops for the same reason every time, so a retry alone does not help.
 		await userEvent.click(getByTestId('promotion-preview-submit'));
-
-		expect(getByTestId('promotion-preview-operation-error')).toHaveTextContent(
-			'the page was refreshed',
-		);
+		expect(error()).toHaveTextContent('Change this instance or the branch to match, then refresh.');
 		expect(api.getPromotionPreview).toHaveBeenCalledTimes(2);
+
+		await userEvent.click(getByTestId('promotion-preview-submit'));
+		expect(error()).toHaveTextContent('the page was refreshed');
+		expect(api.getPromotionPreview).toHaveBeenCalledTimes(3);
 	});
 
 	it('should apply a blocked workflow after the user adds the missing variable', async () => {
