@@ -10,7 +10,7 @@ const i18n = useI18n();
 const rootStore = useRootStore();
 
 type Activity = Omit<WorkflowSuggestionActivity, 'action'> & {
-	action: WorkflowSuggestionActivity['action'] | 'completed' | 'dismissed' | 'continued';
+	action: WorkflowSuggestionActivity['action'] | 'completed' | 'dismissed';
 };
 
 const entries = computed<Activity[]>(() => {
@@ -33,15 +33,6 @@ const entries = computed<Activity[]>(() => {
 			author: 'human',
 			actorId: result.dismissedById,
 			createdAt: result.dismissedAt,
-		});
-	}
-	if (result.continuedAt) {
-		activity.push({
-			id: `${result.resultId}:continued`,
-			action: 'continued',
-			author: 'human',
-			actorId: result.continuedById,
-			createdAt: result.continuedAt,
 		});
 	}
 	return activity.sort((a, b) => a.createdAt.localeCompare(b.createdAt));

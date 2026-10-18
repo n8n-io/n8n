@@ -74,6 +74,7 @@ async function savedResult() {
 			projectId: ownerProject.id,
 			backgroundUserId: backgroundUser.id,
 			executionId: execution.id,
+			suggestionId: null,
 			usage: {
 				credits: 1,
 				turns: 2,
@@ -134,8 +135,8 @@ it('continues a result in a private chat and uses normal chat APIs for the next 
 
 	const chatResponse = await editorAgent.post(`${url}/chat`).expect(200);
 	expect(chatResponse.body.data).toMatchObject({
-		reviewState: 'continued',
-		continuedById: editor.id,
+		reviewState: 'dismissed',
+		dismissedById: editor.id,
 		chatThreadId: expect.any(String),
 	});
 	const threadId: string = chatResponse.body.data.chatThreadId;
@@ -177,8 +178,8 @@ it('continues a result in a private chat and uses normal chat APIs for the next 
 		const agent = testServer.authAgentFor(user);
 		const sharedResult = await agent.get(url).expect(200);
 		expect(sharedResult.body.data).toMatchObject({
-			reviewState: 'continued',
-			continuedById: editor.id,
+			reviewState: 'dismissed',
+			dismissedById: editor.id,
 		});
 		expect(sharedResult.body.data).not.toHaveProperty('chatThreadId');
 		await agent.post(`${url}/chat`).expect(409);
@@ -196,5 +197,5 @@ it('continues a result in a private chat and uses normal chat APIs for the next 
 	);
 	expect(
 		await Container.get(SelfHealingResultRepository).findOneByOrFail({ id: result.id }),
-	).toMatchObject({ continuedAt: expect.any(Date), continuedById: editor.id });
+	).toMatchObject({ dismissedAt: expect.any(Date), dismissedById: editor.id });
 });

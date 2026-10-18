@@ -98,8 +98,6 @@ export function result(overrides: Partial<SelfHealingResultDetail> = {}): SelfHe
 		updatedAt: '2026-10-09T09:00:00.000Z',
 		dismissedAt: null,
 		dismissedById: null,
-		continuedAt: null,
-		continuedById: null,
 		reviewState: 'open',
 		suggestion: suggestion(),
 		execution: { status: 'available', id: 'execution-1' },

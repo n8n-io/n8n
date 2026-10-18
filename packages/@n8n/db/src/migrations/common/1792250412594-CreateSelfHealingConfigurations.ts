@@ -3,16 +3,7 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
 export class CreateSelfHealingConfigurations1792250412594 implements ReversibleMigration {
 	async up(ctx: MigrationContext) {
 		const {
-			schemaBuilder: {
-				createTable,
-				column,
-				createIndex,
-				addColumns,
-				addForeignKey,
-				dropForeignKey,
-				dropIndex,
-				dropColumns,
-			},
+			schemaBuilder: { createTable, column, createIndex, addColumns, addForeignKey },
 			escape,
 			isSqlite,
 		} = ctx;
@@ -85,64 +76,11 @@ export class CreateSelfHealingConfigurations1792250412594 implements ReversibleM
 			);
 			await createIndex(table, ['configurationId']);
 		}
-		await dropForeignKey('self_healing_result', 'suggestionId', ['workflow_suggestion', 'id']);
-		await dropIndex('self_healing_result', ['suggestionId']);
-		await dropColumns('self_healing_result', ['suggestionId'], { recreatesOnSqlite: true });
-		await addColumns(
-			'workflow_suggestion',
-			[column('selfHealingResultId').varchar(36).notNull.comment('Owning self-healing result')],
-			{ recreatesOnSqlite: true },
-		);
-		await addForeignKey(
-			'workflow_suggestion',
-			'selfHealingResultId',
-			['self_healing_result', 'id'],
-			'FK_workflow_suggestion_self_healing_result',
-			'CASCADE',
-		);
-		await createIndex('workflow_suggestion', ['selfHealingResultId']);
 	}
 
 	async down({
-		schemaBuilder: {
-			dropForeignKey,
-			dropIndex,
-			dropColumns,
-			dropTable,
-			addColumns,
-			column,
-			addForeignKey,
-			createIndex,
-		},
-		escape,
+		schemaBuilder: { dropForeignKey, dropIndex, dropColumns, dropTable },
 	}: MigrationContext) {
-		await dropIndex('workflow_suggestion', ['selfHealingResultId']);
-		await dropForeignKey(
-			'workflow_suggestion',
-			'selfHealingResultId',
-			['self_healing_result', 'id'],
-			'FK_workflow_suggestion_self_healing_result',
-		);
-		await dropColumns('workflow_suggestion', ['selfHealingResultId'], { recreatesOnSqlite: true });
-		await addColumns(
-			'self_healing_result',
-			[column('suggestionId').varchar(36).comment('Optional isolated workflow suggestion')],
-			{ recreatesOnSqlite: true },
-		);
-		await addForeignKey(
-			'self_healing_result',
-			'suggestionId',
-			['workflow_suggestion', 'id'],
-			undefined,
-			'CASCADE',
-		);
-		await createIndex(
-			'self_healing_result',
-			['suggestionId'],
-			true,
-			undefined,
-			`${escape.columnName('suggestionId')} IS NOT NULL`,
-		);
 		for (const table of ['self_healing_investigation', 'self_healing_result']) {
 			await dropIndex(table, ['configurationId']);
 			await dropForeignKey(

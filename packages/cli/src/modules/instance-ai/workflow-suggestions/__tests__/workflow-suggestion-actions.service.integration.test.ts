@@ -42,7 +42,6 @@ import {
 import { createAdmin, createUser } from '@test-integration/db/users';
 import { initNodeTypes, setupTestServer } from '@test-integration/utils';
 
-import { createResult } from '../../self-healing/__tests__/support/result';
 import { WorkflowSuggestionActivity } from '../database/workflow-suggestion-activity.entity';
 import { WorkflowSuggestion } from '../database/workflow-suggestion.entity';
 import { WorkflowSuggestionRepository } from '../database/workflow-suggestion.repository';
@@ -90,7 +89,6 @@ beforeEach(() => {
 
 afterEach(async () => {
 	vi.restoreAllMocks();
-	await Container.get(DataSource).getRepository(WorkflowSuggestionActivity).clear();
 	await suggestions.createQueryBuilder().delete().execute();
 });
 
@@ -124,8 +122,7 @@ async function prepareFixture(resultKind: 'fix_ready' | 'needs_you' = 'fix_ready
 
 async function fixture(resultKind: 'fix_ready' | 'needs_you' = 'fix_ready') {
 	const { user, workflow, original, project, graph, prepared } = await prepareFixture(resultKind);
-	const result = await createResult(prepared.baseline, resultKind);
-	const suggestion = await suggestionService.createSuggestion(prepared, result.id);
+	const suggestion = await suggestionService.createSuggestion(prepared);
 	const act = async (action: WorkflowSuggestionAction, actor = user) => {
 		switch (action) {
 			case 'apply':

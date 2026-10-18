@@ -198,7 +198,7 @@ it('stores the exact final graph and activity in the caller transaction', async 
 	});
 	expect(suggestions.createPending).not.toHaveBeenCalled();
 	expect(tx.run).not.toHaveBeenCalled();
-	const result = await service.createSuggestion(prepared, 'result-id', ctx);
+	const result = await service.createSuggestion(prepared, ctx);
 	expect(result).toBe(suggestion);
 	expect(suggestions.createPending).toHaveBeenCalledWith(
 		baseline,
@@ -210,7 +210,6 @@ it('stores the exact final graph and activity in the caller transaction', async 
 		},
 		ctx,
 		'fix_ready',
-		'result-id',
 	);
 	expect(tx.run).toHaveBeenCalledWith(ctx, expect.any(Function));
 	expect(workflowRepository.findByIdInContext).toHaveBeenCalledWith(workflow.id, ctx);
@@ -334,13 +333,12 @@ it.each([
 		graph: candidate,
 		explanation: 'Fix',
 	});
-	await service.createSuggestion(prepared, 'result-id');
+	await service.createSuggestion(prepared);
 	expect(suggestions.createPending).toHaveBeenCalledWith(
 		baseline,
 		expect.objectContaining({ candidate }),
 		ctx,
 		'needs_you',
-		'result-id',
 	);
 	expect(prepared.payload).not.toHaveProperty('validation');
 });
@@ -414,7 +412,7 @@ it.each([
 		if (change === 'missing owner')
 			sharedWorkflowRepository.getWorkflowOwningProject.mockResolvedValue(undefined);
 		if (change === 'deleted') workflowRepository.findByIdInContext.mockResolvedValue(null);
-		await expect(service.createSuggestion(prepared, 'result-id')).rejects.toThrow('baseline');
+		await expect(service.createSuggestion(prepared)).rejects.toThrow('baseline');
 		expect(suggestions.createPending).not.toHaveBeenCalled();
 		expect(suggestions.appendSubmittedActivity).not.toHaveBeenCalled();
 	},

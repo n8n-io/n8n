@@ -55,8 +55,6 @@ function appliedResult(
 ): SelfHealingResultActionResponse {
 	return {
 		...result({ reviewState: 'applied' }),
-		continuedAt: '2026-10-09T10:00:00.000Z',
-		continuedById: 'reviewer-1',
 		...overrides,
 	};
 }
@@ -95,7 +93,7 @@ it.each([
 		vi.mocked(api.reviewSelfHealingResult).mockResolvedValue(
 			appliedResult({
 				...detail,
-				reviewState: withSuggestion ? 'applied' : 'continued',
+				reviewState: withSuggestion ? 'applied' : 'dismissed',
 				...(destination === 'chat' ? { chatThreadId: 'private-thread' } : {}),
 			}),
 		);
@@ -149,7 +147,7 @@ it.each([
 	expect(push).not.toHaveBeenCalled();
 });
 
-it.each(['applied', 'outdated', 'discarded', 'dismissed', 'continued'] as const)(
+it.each(['applied', 'outdated', 'discarded', 'dismissed'] as const)(
 	'ignores every action on a %s result',
 	async (reviewState) => {
 		vi.mocked(api.fetchSelfHealingResult).mockResolvedValue(result({ reviewState }));

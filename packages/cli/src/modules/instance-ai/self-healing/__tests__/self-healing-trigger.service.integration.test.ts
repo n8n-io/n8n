@@ -4,6 +4,7 @@ import { ExecutionsConfig, GlobalConfig, InstanceAiConfig } from '@n8n/config';
 import { SharedWorkflowRepository, type Project } from '@n8n/db';
 import { PubSubMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { InstanceSettings } from 'n8n-core';
 import { Redis } from 'ioredis';
 import { mock } from 'vitest-mock-extended';
@@ -63,10 +64,18 @@ describe.skipIf(!host || !port)('self-healing failure relay (real Redis)', () =>
 	});
 
 	it('delivers consecutive failures to main without debounce or a worker-side start', async () => {
+		const delivered = createDeferredPromise();
+		investigations.start.mockResolvedValueOnce(null).mockImplementationOnce(async () => {
+			delivered.resolve();
+			return null;
+		});
+
 		await workerTrigger.handleFailure({ workflowId: 'workflow-1', executionId: '1' });
 		await workerTrigger.handleFailure({ workflowId: 'workflow-2', executionId: '2' });
 
-		await vi.waitFor(() => expect(investigations.start).toHaveBeenCalledTimes(2));
+		// Use the test timeout for Redis delivery instead of a one-second polling limit.
+		await delivered.promise;
+		expect(investigations.start).toHaveBeenCalledTimes(2);
 		expect(investigations.start).toHaveBeenCalledWith({
 			workflowId: 'workflow-1',
 			executionId: '1',

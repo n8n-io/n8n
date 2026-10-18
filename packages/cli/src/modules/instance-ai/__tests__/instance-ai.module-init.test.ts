@@ -151,8 +151,16 @@ describe('InstanceAiModule.init', () => {
 	it.each(['worker', 'webhook'] as const)(
 		'keeps the Assistant runtime off %s processes',
 		async (instanceType) => {
-			const { instanceSettings, settings, runtime, investigations, sources, mutationHooks } =
-				setup();
+			const {
+				config,
+				instanceSettings,
+				settings,
+				runtime,
+				investigations,
+				sources,
+				mutationHooks,
+			} = setup();
+			config.workflowSuggestionsEnabled = true;
 			Object.assign(instanceSettings, { instanceType });
 			const module = new InstanceAiModule();
 
@@ -168,6 +176,8 @@ describe('InstanceAiModule.init', () => {
 			expect(investigations.reconcile).not.toHaveBeenCalled();
 			expect(sources.register).not.toHaveBeenCalled();
 			expect(mutationHooks.registerProvider).not.toHaveBeenCalled();
+			expect(loadResultController).not.toHaveBeenCalled();
+			expect(loadConfigurationController).not.toHaveBeenCalled();
 		},
 	);
 

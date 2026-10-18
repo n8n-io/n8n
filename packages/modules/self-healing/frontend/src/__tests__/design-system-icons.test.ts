@@ -6,7 +6,7 @@ import { render } from '@testing-library/vue';
  * two icon mechanisms are this package's problem, and each package carries its own
  * `vite.config.ts`. Both cases fail loudly when a plugin goes missing from that file:
  *
- *   - `box` comes from `~icons/lucide/box`, which only `unplugin-icons` resolves.
+ *   - `inbox` comes from `~icons/lucide/inbox`, which only `unplugin-icons` resolves.
  *   - `webhook` comes from `custom/webhook.svg`, which only `svgLoader` turns into a component.
  *     Without it the import is a data-URI string, which Vue renders as a tag name.
  *
@@ -14,7 +14,7 @@ import { render } from '@testing-library/vue';
  */
 describe('design-system icons', () => {
 	it.each([
-		['a lucide icon', 'box'],
+		['a lucide icon', 'inbox'],
 		['a custom svg icon', 'webhook'],
 	])('renders %s', (_case, icon) => {
 		const { container } = render(N8nIcon, { props: { icon } });

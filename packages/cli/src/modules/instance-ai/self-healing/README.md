@@ -47,7 +47,8 @@ The execution must remain saved and readable. Investigation inputs contain no ex
 The call returns `{ kind: 'investigation', investigationId }` or
 `{ kind: 'result', resultId }` for an existing open result.
 A workflow can have one unfinished investigation or open result.
-This check spans configurations within the workflow's current project.
+An unfinished investigation blocks the workflow across projects and configurations.
+An open result blocks investigations only in the workflow's current project.
 Repeated starts for the same failed execution return the original investigation, including after completion.
 Automatic failure triggers remain the caller's responsibility.
 When an access check fails, the producer pauses the configuration. Another eligible user must
@@ -123,7 +124,7 @@ Another investigation requires successful publication and a new eligible failure
 Closing a result, opening the editor, changing a
 configuration, and publishing do not start an investigation.
 
-A report without suggestions stays open until dismissed or continued in chat, even after a new publication.
+A report without a suggestion stays open until closed through dismissal or chat, even after a new publication.
 Pause, resume, and configuration edits do not clear this block. Configuration deletion removes
 its history and resets the block. Results from a previous owning project do not block the new project.
 
@@ -146,10 +147,9 @@ Pause stops new investigations and prevents results from being saved while pause
 Running agents can finish. If the configuration resumes before completion, their results can be saved.
 Saved results remain available to assigned reviewers while the configuration is paused.
 
-Every suggestion belongs to a result. A result can have no suggestions.
-The current producer and review API use one suggestion per result.
-Removal deletes the configuration. Foreign keys cascade deletion to selections, reviewers,
-investigations, results, and their suggestions and activity records.
+A result can reference one independent suggestion. Reports without changes have no suggestion.
+Removal deletes linked suggestions and the configuration in one transaction. Foreign keys
+cascade deletion to suggestion activity, selections, reviewers, investigations, and results.
 Running agents can finish, but their results are not saved.
 Late completion skips missing configurations and investigations.
 Already applied workflow changes remain saved.
@@ -233,7 +233,7 @@ Credit billing still uses token counts from the existing runtime billing path.
 Recovery closes interrupted investigations without a result. It does not infer a new usage shape.
 
 Configuration, workflow, original-project, and background-user deletion cascade to the result.
-Result deletion cascades to its suggestions and their activity.
+Suggestion deletion cascades to its referencing result. Result deletion alone keeps the suggestion.
 Execution pruning and private-thread deletion do not remove reports or the stored execution ID.
 Execution references can point to either execution engine. Reads check current workflow and
 execution read access and workflow association. Missing or inaccessible execution references
@@ -270,8 +270,8 @@ ID and the suggestion's recorded applied version. Open the normal editor for pub
 and recovery.
 
 The editor uses Apply. The chat endpoint uses the same Apply action and creates a private chat
-in the workflow save transaction. For a report without a suggestion, chat records `continuedAt`
-and `continuedById` in the chat creation transaction. Both actions close the result without
+in the workflow save transaction. For a report without a suggestion, chat records `dismissedAt`
+and `dismissedById` in the chat creation transaction. Both actions close the result without
 publishing. If chat creation fails, the transaction rolls back and the result stays open.
 
 The new chat belongs to the reviewer in their personal project. The action response includes its
@@ -297,6 +297,6 @@ The shared Inbox reads result rows through `SelfHealingResultService.listForInbo
 It reads counts through `countForInbox()`. Both use current reviewer membership, editor access, and original-project ownership.
 The source selects rows before applying the shared pagination boundary and limit.
 The shared API uses `GET /inbox` and `GET /inbox/summary`.
-Open and Closed derive from result continuation, dismissal, and suggestion closure.
+Open and Closed derive from result dismissal and suggestion closure.
 Inbox reads do not change these states.
 The review UI provides review screens and chat and editor navigation.

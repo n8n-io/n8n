@@ -12,8 +12,6 @@ import { NotFoundError } from '@n8n/errors';
 import type { Scope } from '@n8n/permissions';
 import { DataSource, IsNull } from '@n8n/typeorm';
 
-import { WorkflowSuggestion } from '../../workflow-suggestions/database/workflow-suggestion.entity';
-
 import { SelfHealingConfigurationReviewer } from './self-healing-configuration-reviewer.entity';
 import { SelfHealingResult } from './self-healing-result.entity';
 
@@ -28,6 +26,7 @@ export type CreateSelfHealingResult = Pick<
 	| 'report'
 	| 'completedAt'
 	| 'executionId'
+	| 'suggestionId'
 	| 'usage'
 >;
 
@@ -60,21 +59,15 @@ export class SelfHealingResultRepository extends BaseRepository<SelfHealingResul
 	}
 
 	private inboxState() {
-		const suggestions = this.manager
-			.createQueryBuilder(WorkflowSuggestion, 'suggestion')
-			.select('1')
-			.where('suggestion.selfHealingResultId = result.id');
-		const anySuggestion = suggestions.getQuery();
-		const pendingSuggestion = suggestions.andWhere("suggestion.state = 'pending'").getQuery();
 		return `CASE WHEN result.dismissedAt IS NULL
-			AND result.continuedAt IS NULL
-			AND (NOT EXISTS (${anySuggestion}) OR EXISTS (${pendingSuggestion}))
+			AND (result.suggestionId IS NULL OR suggestion.state = 'pending')
 			THEN 'open' ELSE 'closed' END`;
 	}
 
 	private inboxQuery({ user, ...roles }: SelfHealingInboxAccess) {
 		const accessible = this.sharedWorkflows.buildSharedWorkflowIdsSubquery(user, roles);
 		return this.createQueryBuilder('result')
+			.leftJoin('result.suggestion', 'suggestion')
 			.innerJoin(
 				SharedWorkflow,
 				'owner',
@@ -96,6 +89,7 @@ export class SelfHealingResultRepository extends BaseRepository<SelfHealingResul
 		return await this.managerFor(ctx)
 			.createQueryBuilder(SelfHealingResult, 'result')
 			.select('result.id')
+			.leftJoin('result.suggestion', 'suggestion')
 			.where({ workflowId, projectId })
 			.andWhere(`(${this.inboxState()}) = :state`, { state: 'open' })
 			.getOne();
@@ -164,12 +158,11 @@ export class SelfHealingResultRepository extends BaseRepository<SelfHealingResul
 		scope: Pick<SelfHealingResult, 'workflowId' | 'projectId'>,
 		ctx: OperationContext = {},
 	) {
-		const result = await this.managerFor(ctx)
-			.createQueryBuilder(SelfHealingResult, 'result')
-			.leftJoin('result.suggestions', 'suggestion')
-			.addSelect('suggestion.id')
-			.where({ id, workflowId: scope.workflowId, projectId: scope.projectId })
-			.getOne();
+		const result = await this.managerFor(ctx).findOneBy(SelfHealingResult, {
+			id,
+			workflowId: scope.workflowId,
+			projectId: scope.projectId,
+		});
 		if (!result) throw new NotFoundError('Self-healing result not found.');
 		return result;
 	}
@@ -181,28 +174,14 @@ export class SelfHealingResultRepository extends BaseRepository<SelfHealingResul
 				...input,
 				dismissedAt: null,
 				dismissedById: null,
-				continuedAt: null,
-				continuedById: null,
 			}),
 		);
-	}
-
-	async recordContinuation(id: string, userId: string, ctx: OperationContext) {
-		const result = await this.managerFor(ctx).update(
-			SelfHealingResult,
-			{ id, dismissedAt: IsNull(), continuedAt: IsNull() },
-			{
-				continuedAt: new Date(),
-				continuedById: userId,
-			},
-		);
-		return result.affected === 1;
 	}
 
 	async dismissResult(id: string, userId: string, ctx: OperationContext) {
 		const result = await this.managerFor(ctx).update(
 			SelfHealingResult,
-			{ id, dismissedAt: IsNull(), continuedAt: IsNull() },
+			{ id, dismissedAt: IsNull() },
 			{ dismissedAt: new Date(), dismissedById: userId },
 		);
 		return result.affected === 1;

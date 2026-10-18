@@ -140,7 +140,7 @@ describe('SelfHealingResultContent', () => {
 		},
 	);
 
-	it('shows a discarded result in its status and activity', () => {
+	it('shows a closed result in its status and activity', () => {
 		const { getByTestId } = renderContent({
 			detail: result({
 				outcome: 'could_not_fix',
@@ -152,10 +152,11 @@ describe('SelfHealingResultContent', () => {
 		});
 
 		expect(getByTestId('self-healing-report')).toBeInTheDocument();
-		expect(getByTestId('self-healing-status-card')).toHaveTextContent('Discarded');
+		expect(getByTestId('self-healing-activity')).not.toHaveTextContent('human-1');
+		expect(getByTestId('self-healing-status-card')).toHaveTextContent('Closed');
 		expect(getByTestId('self-healing-activity')).toHaveTextContent('Completed the investigation');
 		expect(getByTestId('self-healing-activity')).toHaveTextContent(
-			/A user\s*\|\s*Discarded the result/,
+			/A user\s*\|\s*Closed the result/,
 		);
 	});
 
@@ -180,7 +181,7 @@ describe('SelfHealingResultContent', () => {
 		expect(queryByTestId('self-healing-closed-notice')).not.toBeInTheDocument();
 	});
 
-	it.each(['applied', 'outdated', 'discarded', 'dismissed', 'continued'] as const)(
+	it.each(['applied', 'outdated', 'discarded', 'dismissed'] as const)(
 		'keeps %s results read-only',
 		(reviewState) => {
 			const { getByTestId, queryByTestId, queryByRole, queryByText } = renderContent({
@@ -370,24 +371,6 @@ describe('SelfHealingResultContent', () => {
 		expect(entries[1]).toHaveTextContent(/System\s*\|\s*Marked the suggestion as outdated/);
 		expect(entries[2]).toHaveTextContent(/A user\s*\|\s*Discarded the suggested changes/);
 		expect(getByTestId('self-healing-activity')).not.toHaveTextContent('human-private-id');
-	});
-
-	it('shows the saved continuation in activity', () => {
-		const { getByTestId } = renderContent({
-			detail: result({
-				suggestion: null,
-				outcome: 'could_not_fix',
-				reviewState: 'continued',
-				continuedAt: '2026-10-09T10:00:00.000Z',
-				continuedById: 'private-user-id',
-			}),
-		});
-
-		expect(getByTestId('self-healing-status-card')).toHaveTextContent('Continued');
-		expect(getByTestId('self-healing-activity')).toHaveTextContent(
-			'Continued working on the workflow',
-		);
-		expect(getByTestId('self-healing-activity')).not.toHaveTextContent('private-user-id');
 	});
 
 	it('emits tab changes without selecting a new item', async () => {

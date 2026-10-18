@@ -117,7 +117,7 @@
 		{
 			"name": "SelfHealingConfiguration",
 			"path": "packages/cli/src/modules/instance-ai/self-healing/database/self-healing-configuration.entity.ts",
-			"reason": "Project settings retain the original project and enabling user. They are not transferred. Deleted through the project foreign key when the source project is deleted."
+			"reason": "Project settings remain in the original project. They are not transferred. Deleting the enabling user clears that reference. Deleting the source project deletes the configuration through its foreign key."
 		},
 		{
 			"name": "SelfHealingConfigurationWorkflow",

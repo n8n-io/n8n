@@ -268,8 +268,6 @@ erDiagram
   varchar backgroundUserId FK
   datetime_3_ completedAt
   INTEGER configurationId FK
-  datetime_3_ continuedAt
-  varchar continuedById FK
   datetime_3_ createdAt
   datetime_3_ dismissedAt
   varchar dismissedById FK
@@ -278,6 +276,7 @@ erDiagram
   varchar_16_ outcome
   varchar_36_ projectId FK
   TEXT report
+  varchar_36_ suggestionId FK
   TEXT summary
   datetime_3_ updatedAt
   TEXT usage
@@ -351,7 +350,6 @@ erDiagram
   TEXT payload
   varchar_36_ projectId FK
   varchar_16_ resultKind
-  varchar_36_ selfHealingResultId FK
   varchar_16_ state
   datetime_3_ updatedAt
   varchar_36_ workflowId FK

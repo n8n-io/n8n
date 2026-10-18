@@ -213,11 +213,7 @@ export class WorkflowSuggestionService {
 	}
 
 	// Prepare immediately before the caller opens its completion transaction.
-	async createSuggestion(
-		prepared: PreparedWorkflowSuggestion,
-		selfHealingResultId: string,
-		ctx: OperationContext = {},
-	) {
+	async createSuggestion(prepared: PreparedWorkflowSuggestion, ctx: OperationContext = {}) {
 		const { baseline, payload } = prepared;
 		const { workflowId } = baseline;
 		return await this.txRunner.run(ctx, async (ctx) => {
@@ -236,7 +232,6 @@ export class WorkflowSuggestionService {
 				payload,
 				ctx,
 				prepared.resultKind,
-				selfHealingResultId,
 			);
 			await this.suggestions.appendSubmittedActivity(suggestion.id, ctx);
 			return suggestion;

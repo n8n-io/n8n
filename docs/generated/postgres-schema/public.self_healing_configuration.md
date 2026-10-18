@@ -102,8 +102,6 @@ erDiagram
   uuid backgroundUserId FK
   timestamp_3__with_time_zone completedAt
   integer configurationId FK
-  timestamp_3__with_time_zone continuedAt
-  uuid continuedById FK
   timestamp_3__with_time_zone createdAt
   timestamp_3__with_time_zone dismissedAt
   uuid dismissedById FK
@@ -112,6 +110,7 @@ erDiagram
   varchar_16_ outcome
   varchar_36_ projectId FK
   text report
+  varchar_36_ suggestionId FK
   text summary
   timestamp_3__with_time_zone updatedAt
   json usage

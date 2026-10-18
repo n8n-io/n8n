@@ -373,7 +373,7 @@ describe('investigation eligibility after a result', () => {
 				expect(runtime.startSelfHealingRun).not.toHaveBeenCalled();
 			} else {
 				expect(response?.kind).toBe('investigation');
-				const suggestion = await suggestions.findOneByOrFail({ id: result.suggestions[0].id });
+				const suggestion = await suggestions.findOneByOrFail({ id: result.suggestionId! });
 				expect(suggestion.closedReason).toBe('outdated');
 			}
 		},
@@ -383,7 +383,7 @@ describe('investigation eligibility after a result', () => {
 		const { input, user, project, original, result } = await fixture('fix_ready', true);
 		const producer = Container.get(SelfHealingInvestigationService);
 
-		await actions.apply(user, project.id, original.id, result.suggestions[0].id);
+		await actions.apply(user, project.id, original.id, result.suggestionId!);
 		const failureAfterApply = await nextFailure(input);
 
 		await expect(producer.start(failureAfterApply)).rejects.toThrow('fully published');
@@ -675,7 +675,7 @@ it.each([
 			withSuggestion,
 		);
 		expect(result.executionId).toBe(investigation.executionId);
-		expect(Boolean(result.suggestions.length)).toBe(withSuggestion);
+		expect(Boolean(result.suggestionId)).toBe(withSuggestion);
 		expect(await investigations.findOneByOrFail({ id: investigation.id })).toMatchObject({
 			resultId: result.id,
 			finishedAt: expect.any(Date),
@@ -828,7 +828,7 @@ it.each(['needs_you', 'could_not_fix'] as const)(
 
 it('rolls back shared dismissal when result storage fails', async () => {
 	const { user, project, original, result } = await fixture('needs_you', true);
-	const suggestionId = result.suggestions[0].id;
+	const suggestionId = result.suggestionId!;
 	const beforeActivity = await suggestions.getActivity(suggestionId);
 	vi.spyOn(results, 'dismissResult').mockRejectedValueOnce(new Error('Dismissal unavailable.'));
 	await expect(service.dismiss(user, project.id, original.id, result.id)).rejects.toThrow(
@@ -855,7 +855,7 @@ it.each([
 			suggestion: { state: 'closed', closedReason: 'discarded' },
 		});
 		expect(
-			(await suggestions.getActivity(result.suggestions[0].id)).map(({ action }) => action),
+			(await suggestions.getActivity(result.suggestionId!)).map(({ action }) => action),
 		).toEqual(['submitted', 'discarded']);
 		expect(await workflows.findOneByOrFail({ id: original.id })).toEqual(original);
 	},
@@ -890,7 +890,7 @@ it('keeps the winner when informational dismissal races another discard', async 
 	const { user, project, original, result, getDetail } = await fixture('needs_you', true);
 	const [dismissOutcome, discardOutcome] = await Promise.allSettled([
 		service.dismiss(user, project.id, original.id, result.id),
-		actions.discardPending(user, project.id, original.id, result.suggestions[0].id),
+		actions.discardPending(user, project.id, original.id, result.suggestionId!),
 	]);
 	expect(discardOutcome.status).toBe('fulfilled');
 	const directlyDiscarded =
@@ -902,9 +902,9 @@ it('keeps the winner when informational dismissal races another discard', async 
 	const detail = await getDetail();
 	expect(detail.reviewState).toBe(directlyDiscarded ? 'discarded' : 'dismissed');
 	expect(detail.dismissedAt === null).toBe(directlyDiscarded);
-	expect(
-		(await suggestions.getActivity(result.suggestions[0].id)).map(({ action }) => action),
-	).toEqual(['submitted', 'discarded']);
+	expect((await suggestions.getActivity(result.suggestionId!)).map(({ action }) => action)).toEqual(
+		['submitted', 'discarded'],
+	);
 	expect(await workflows.findOneByOrFail({ id: original.id })).toEqual(original);
 });
 
@@ -919,9 +919,9 @@ it.each([
 	async (outcome, reason) => {
 		const { user, project, original, result, getDetail } = await fixture(outcome, true);
 		if (reason === 'discarded') {
-			await actions.discard(user, project.id, original.id, result.suggestions[0].id);
+			await actions.discard(user, project.id, original.id, result.suggestionId!);
 		} else if (reason === 'applied') {
-			await actions.apply(user, project.id, original.id, result.suggestions[0].id);
+			await actions.apply(user, project.id, original.id, result.suggestionId!);
 		} else {
 			await workflows.update(original.id, { settings: { executionTimeout: 60 } });
 		}
@@ -943,18 +943,18 @@ it('preserves outdated reconciliation when shared dismissal rejects a moved work
 		'This result is no longer available in this project. Refresh the page.',
 	);
 	expect(await results.findOneByOrFail({ id: result.id })).toMatchObject({ dismissedAt: null });
-	expect(await suggestions.findOneByOrFail({ id: result.suggestions[0].id })).toMatchObject({
+	expect(await suggestions.findOneByOrFail({ id: result.suggestionId! })).toMatchObject({
 		state: 'closed',
 		closedReason: 'outdated',
 	});
-	expect(
-		(await suggestions.getActivity(result.suggestions[0].id)).map(({ action }) => action),
-	).toEqual(['submitted', 'outdated']);
+	expect((await suggestions.getActivity(result.suggestionId!)).map(({ action }) => action)).toEqual(
+		['submitted', 'outdated'],
+	);
 });
 
 it('reflects internal suggestion actions without a separate result update', async () => {
 	const { user, project, original, result, getDetail } = await fixture('fix_ready', true);
-	await actions.apply(user, project.id, original.id, result.suggestions[0].id);
+	await actions.apply(user, project.id, original.id, result.suggestionId!);
 	expect(await getDetail()).toMatchObject({
 		reviewState: 'applied',
 		dismissedAt: null,
@@ -993,8 +993,8 @@ it.each(['apply', 'approve-and-publish'] as const)(
 it.each([
 	['fix_ready', true, 'apply', 'applied'],
 	['needs_you', true, 'chat', 'applied'],
-	['needs_you', false, 'chat', 'continued'],
-	['could_not_fix', false, 'chat', 'continued'],
+	['needs_you', false, 'chat', 'dismissed'],
+	['could_not_fix', false, 'chat', 'dismissed'],
 ] as const)(
 	'closes %s with proposal=%s through %s as %s',
 	async (outcome, withSuggestion, action, reviewState) => {
@@ -1007,8 +1007,8 @@ it.each([
 			.expect(200);
 		expect(response.body.data).toMatchObject({
 			reviewState,
-			continuedAt: withSuggestion ? null : expect.any(String),
-			continuedById: withSuggestion ? null : user.id,
+			dismissedAt: withSuggestion ? null : expect.any(String),
+			dismissedById: withSuggestion ? null : user.id,
 		});
 		const saved = await workflows.findOneByOrFail({ id: original.id });
 		if (withSuggestion) {
@@ -1048,7 +1048,7 @@ it('checks chat availability before applying a partial proposal', async () => {
 	);
 
 	expect(await workflows.findOneByOrFail({ id: original.id })).toEqual(original);
-	expect(await suggestions.findOneByOrFail({ id: result.suggestions[0].id })).toMatchObject({
+	expect(await suggestions.findOneByOrFail({ id: result.suggestionId! })).toMatchObject({
 		state: 'pending',
 	});
 });
@@ -1166,12 +1166,12 @@ it.each([
 		expect(await threads.countBy({ resourceId: user.id })).toBe(0);
 		if (withSuggestion) {
 			expect(
-				(await suggestions.getActivity(result.suggestions[0].id)).map(({ action }) => action),
+				(await suggestions.getActivity(result.suggestionId!)).map(({ action }) => action),
 			).toEqual(['submitted', winner === 'dismiss' ? 'discarded' : 'applied']);
 		} else {
-			expect(await results.findOneByOrFail({ id: result.id })).toMatchObject(
-				winner === 'dismiss' ? { dismissedById: editor.id } : { continuedById: editor.id },
-			);
+			expect(await results.findOneByOrFail({ id: result.id })).toMatchObject({
+				dismissedById: editor.id,
+			});
 		}
 	},
 );
@@ -1203,19 +1203,19 @@ it.each([
 
 		expect(await workflows.findOneByOrFail({ id: original.id })).toEqual(original);
 		expect(await history.countBy({ workflowId: original.id })).toBe(beforeHistory);
-		expect(await getDetail()).toMatchObject({ reviewState: 'open', continuedAt: null });
+		expect(await getDetail()).toMatchObject({ reviewState: 'open', dismissedAt: null });
 		expect(await Container.get(InstanceAiThreadRepository).countBy({ resourceId: user.id })).toBe(
 			0,
 		);
 		if (withSuggestion) {
 			expect(
-				(await suggestions.getActivity(result.suggestions[0].id)).map(({ action }) => action),
+				(await suggestions.getActivity(result.suggestionId!)).map(({ action }) => action),
 			).toEqual(['submitted']);
 		}
 
 		const response = await service.act(user, project.id, original.id, result.id, 'chat');
 		expect(response).toMatchObject({
-			reviewState: withSuggestion ? 'applied' : 'continued',
+			reviewState: withSuggestion ? 'applied' : 'dismissed',
 			chatThreadId: expect.any(String),
 		});
 	},
@@ -1223,12 +1223,12 @@ it.each([
 
 it('does not create a chat when closing the report fails', async () => {
 	const { user, project, original, result } = await fixture('needs_you');
-	vi.spyOn(results, 'recordContinuation').mockRejectedValueOnce(new Error('Closure unavailable.'));
+	vi.spyOn(results, 'dismissResult').mockRejectedValueOnce(new Error('Closure unavailable.'));
 
 	await expect(service.act(user, project.id, original.id, result.id, 'chat')).rejects.toThrow(
 		'Closure unavailable.',
 	);
-	expect(await results.findOneByOrFail({ id: result.id })).toMatchObject({ continuedAt: null });
+	expect(await results.findOneByOrFail({ id: result.id })).toMatchObject({ dismissedAt: null });
 	expect(await Container.get(InstanceAiThreadRepository).countBy({ resourceId: user.id })).toBe(0);
 });
 
@@ -1240,7 +1240,7 @@ it.each(['dismissed', 'discarded', 'outdated'] as const)(
 			await workflows.update(original.id, { settings: { executionTimeout: 60 } });
 			await suggestionService.reconcileWorkflow(original.id);
 		} else if (state === 'discarded') {
-			await actions.discard(user, project.id, original.id, result.suggestions[0].id);
+			await actions.discard(user, project.id, original.id, result.suggestionId!);
 		} else {
 			await service.dismiss(user, project.id, original.id, result.id);
 		}
@@ -1285,9 +1285,9 @@ it('dismisses Fix ready by discarding its suggestion without saving the graph', 
 		suggestion: { state: 'closed', closedReason: 'discarded' },
 	});
 	await agent.post(`${url}/dismiss`).expect(409);
-	expect(
-		(await suggestions.getActivity(result.suggestions[0].id)).map(({ action }) => action),
-	).toEqual(['submitted', 'discarded']);
+	expect((await suggestions.getActivity(result.suggestionId!)).map(({ action }) => action)).toEqual(
+		['submitted', 'discarded'],
+	);
 	expect(await workflows.findOneByOrFail({ id: original.id })).toEqual(original);
 });
 
@@ -1314,8 +1314,8 @@ it.each([
 	async (outcome, withSuggestion, action) => {
 		const { user, original, result, url } = await fixture(outcome, withSuggestion);
 		const originalResult = await results.getResult(result.id, result);
-		const proposal = result.suggestions[0]
-			? await suggestions.findOneByOrFail({ id: result.suggestions[0].id })
+		const proposal = result.suggestionId
+			? await suggestions.findOneByOrFail({ id: result.suggestionId! })
 			: null;
 		const history = Container.get(WorkflowHistoryRepository);
 		const beforeHistory = await history.countBy({ workflowId: original.id });
@@ -1626,9 +1626,9 @@ describe('Inbox source reads', () => {
 			);
 			if (state === 'dismissed') await service.dismiss(user, project.id, original.id, result.id);
 			else if (state === 'applied')
-				await actions.apply(user, project.id, original.id, result.suggestions[0].id);
+				await actions.apply(user, project.id, original.id, result.suggestionId!);
 			else if (state === 'discarded')
-				await actions.discard(user, project.id, original.id, result.suggestions[0].id);
+				await actions.discard(user, project.id, original.id, result.suggestionId!);
 			else {
 				await workflows.update(original.id, { settings: { executionTimeout: 90 } });
 				await suggestionService.reconcileWorkflow(original.id);
@@ -1803,7 +1803,7 @@ describe('configuration lifecycle', () => {
 		expect(await suggestions.getPendingForWorkflow(original.id)).toBeNull();
 	});
 
-	it('keeps paused reviews visible and cascades deletion through results and suggestions', async () => {
+	it('keeps paused reviews visible and removes linked suggestions with the configuration', async () => {
 		const { user, project, original, result, url } = await fixture('fix_ready', true);
 		const configurations = Container.get(SelfHealingConfigurationService);
 		await configurations.setEnabled(user, project.id, result.configurationId, false);
@@ -1812,28 +1812,65 @@ describe('configuration lifecycle', () => {
 		await configurations.remove(project.id, result.configurationId);
 		expect(await results.findOneBy({ id: result.id })).toBeNull();
 		expect(await suggestions.getPendingForWorkflow(original.id)).toBeNull();
-		expect(await suggestions.findOneBy({ id: result.suggestions[0].id })).toBeNull();
-		expect(await suggestions.getActivity(result.suggestions[0].id)).toEqual([]);
+		expect(await suggestions.findOneBy({ id: result.suggestionId! })).toBeNull();
+		expect(await suggestions.getActivity(result.suggestionId!)).toEqual([]);
 		expect(await service.countForInbox(user)).toEqual({ open: 0, closed: 0 });
 		expect(await service.listForInbox(user, { state: 'open', limit: 10 })).toEqual([]);
 		await testServer.authAgentFor(user).get(url).expect(404);
 		await testServer.authAgentFor(user).post(`${url}/apply`).expect(404);
 	});
 
-	it('deletes all suggestions owned by a result and leaves other results intact', async () => {
+	it('keeps independent suggestions when their result is deleted', async () => {
+		const { result } = await fixture('fix_ready', true);
+
+		await results.delete(result.id);
+
+		expect(await suggestions.findOneBy({ id: result.suggestionId! })).not.toBeNull();
+		expect(await suggestions.getActivity(result.suggestionId!)).toHaveLength(1);
+	});
+
+	it('deletes the referencing result when its suggestion is deleted', async () => {
+		const { result } = await fixture('fix_ready', true);
+
+		await suggestions.delete(result.suggestionId!);
+
+		expect(await results.findOneBy({ id: result.id })).toBeNull();
+		expect(await suggestions.getActivity(result.suggestionId!)).toEqual([]);
+	});
+
+	it('removes only the suggestions linked to the removed configuration', async () => {
 		const first = await fixture('fix_ready', true);
 		const second = await fixture('fix_ready', true);
-		const secondSuggestion = second.result.suggestions[0];
-		await suggestions.update(secondSuggestion.id, { selfHealingResultId: first.result.id });
-		expect(await service.countForInbox(first.user)).toEqual({ open: 1, closed: 0 });
-		expect(await service.listForInbox(first.user, { state: 'open', limit: 10 })).toHaveLength(1);
+		const standalone = await fixture('fix_ready', true);
+		await results.delete(standalone.result.id);
 
-		await results.delete(first.result.id);
+		await Container.get(SelfHealingConfigurationService).remove(
+			first.project.id,
+			first.result.configurationId,
+		);
 
-		expect(await suggestions.findOneBy({ id: first.result.suggestions[0].id })).toBeNull();
-		expect(await suggestions.findOneBy({ id: secondSuggestion.id })).toBeNull();
-		expect(await suggestions.getActivity(secondSuggestion.id)).toEqual([]);
+		expect(await results.findOneBy({ id: first.result.id })).toBeNull();
+		expect(await suggestions.findOneBy({ id: first.result.suggestionId! })).toBeNull();
 		expect(await results.findOneBy({ id: second.result.id })).not.toBeNull();
+		expect(await suggestions.findOneBy({ id: second.result.suggestionId! })).not.toBeNull();
+		expect(await suggestions.findOneBy({ id: standalone.result.suggestionId! })).not.toBeNull();
+	});
+
+	it('rolls back suggestion cleanup if configuration deletion fails', async () => {
+		const { result } = await fixture('fix_ready', true);
+		await expect(
+			Container.get(TransactionRunner).run({}, async (ctx) => {
+				await Container.get(SelfHealingConfigurationRepository).deleteConfiguration(
+					result.configurationId,
+					ctx,
+				);
+				throw new Error('Deletion failed.');
+			}),
+		).rejects.toThrow('Deletion failed.');
+
+		expect(await results.findOneBy({ id: result.id })).not.toBeNull();
+		expect(await suggestions.findOneBy({ id: result.suggestionId! })).not.toBeNull();
+		expect(await suggestions.getActivity(result.suggestionId!)).toHaveLength(1);
 	});
 
 	it('preserves applied workflow changes when the configuration is removed', async () => {
@@ -1842,7 +1879,7 @@ describe('configuration lifecycle', () => {
 		const applied = await workflows.findOneByOrFail({ id: original.id });
 		await Container.get(SelfHealingConfigurationService).remove(project.id, result.configurationId);
 		expect(await results.findOneBy({ id: result.id })).toBeNull();
-		expect(await suggestions.findOneBy({ id: result.suggestions[0].id })).toBeNull();
+		expect(await suggestions.findOneBy({ id: result.suggestionId! })).toBeNull();
 		expect(await workflows.findOneByOrFail({ id: original.id })).toMatchObject({
 			versionId: applied.versionId,
 			nodes: applied.nodes,

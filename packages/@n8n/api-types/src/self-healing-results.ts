@@ -39,13 +39,7 @@ export type SelfHealingExecutionReference =
 	| { status: 'available'; id: string }
 	| { status: 'unavailable' };
 
-export type SelfHealingReviewState =
-	| 'open'
-	| 'applied'
-	| 'discarded'
-	| 'outdated'
-	| 'dismissed'
-	| 'continued';
+export type SelfHealingReviewState = 'open' | 'applied' | 'discarded' | 'outdated' | 'dismissed';
 
 export type SelfHealingResultDetail = SelfHealingResultContent & {
 	resultId: string;
@@ -57,8 +51,6 @@ export type SelfHealingResultDetail = SelfHealingResultContent & {
 	updatedAt: string;
 	dismissedAt: string | null;
 	dismissedById: string | null;
-	continuedAt: string | null;
-	continuedById: string | null;
 	reviewState: SelfHealingReviewState;
 	suggestion: WorkflowSuggestionProposalDetail | null;
 	execution: SelfHealingExecutionReference;

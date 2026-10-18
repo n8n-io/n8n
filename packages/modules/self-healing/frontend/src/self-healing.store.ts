@@ -13,18 +13,27 @@ export const useSelfHealingStore = defineStore('selfHealing', () => {
 	const root = useRootStore();
 	const configurations = ref<Record<string, SelfHealingConfigurationDto[]>>({});
 	const options = ref<Record<string, SelfHealingConfigurationOptions>>({});
+	// Only the latest pending load can replace a project's saved state.
+	const pendingLoads = new Map<string, symbol>();
 
 	async function load(projectId: string) {
+		const request = Symbol();
+		pendingLoads.set(projectId, request);
+
 		const [rows, choices] = await Promise.all([
 			api.fetchConfigurations(root.restApiContext, projectId),
 			api.fetchConfigurationOptions(root.restApiContext, projectId),
 		]);
+
+		if (pendingLoads.get(projectId) !== request) return;
+		pendingLoads.delete(projectId);
 
 		configurations.value[projectId] = rows;
 		options.value[projectId] = choices;
 	}
 
 	function remember(projectId: string, configuration: SelfHealingConfigurationDto) {
+		pendingLoads.delete(projectId);
 		const rows = configurations.value[projectId] ?? [];
 		configurations.value[projectId] = [
 			...rows.filter(({ id }) => id !== configuration.id),
@@ -51,6 +60,7 @@ export const useSelfHealingStore = defineStore('selfHealing', () => {
 
 	async function remove(projectId: string, id: number) {
 		await api.removeConfiguration(root.restApiContext, projectId, id);
+		pendingLoads.delete(projectId);
 
 		configurations.value[projectId] = (configurations.value[projectId] ?? []).filter(
 			(row) => row.id !== id,
