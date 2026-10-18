@@ -6,9 +6,10 @@ import { computed } from 'vue';
 
 import { usePromotionPreviewLabels } from '../../composables/usePromotionPreviewLabels';
 import {
+	availableKeys,
 	containerCheckState,
 	selectableDescendants,
-	selectableKeys,
+	type DisabledKeys,
 	type Inclusion,
 	type ResourceKey,
 	type SelectionGraph,
@@ -24,6 +25,10 @@ const props = defineProps<{
 	includedChanges: number;
 	totalChanges: number;
 	inspectedKey?: ResourceKey;
+	/** Blocked workflows, which users cannot add. */
+	disabled: DisabledKeys;
+	/** True while the selection cannot change. */
+	locked: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -44,11 +49,11 @@ const rows = computed(() =>
 	}),
 );
 
-const selectableCount = computed(() => selectableKeys(props.graph).length);
+const available = computed(() => availableKeys(props.graph, props.disabled));
 
 const allState = computed(() => {
 	if (props.selected.size === 0) return 'unchecked';
-	return props.selected.size >= selectableCount.value ? 'checked' : 'indeterminate';
+	return available.value.every((key) => props.selected.has(key)) ? 'checked' : 'indeterminate';
 });
 
 /**
@@ -57,14 +62,23 @@ const allState = computed(() => {
  */
 function checkbox(resource: PromotionResource) {
 	if (resource.selectable) {
-		return { checked: props.selected.has(resource.key), indeterminate: false, disabled: false };
+		const checked = props.selected.has(resource.key);
+		return {
+			checked,
+			indeterminate: false,
+			// A blocked workflow can still be cleared.
+			disabled: props.locked || (!checked && props.disabled.has(resource.key)),
+		};
 	}
 	if (isContainer(resource)) {
-		const state = containerCheckState(props.graph, props.selected, resource.key);
+		const state = containerCheckState(props.graph, props.selected, resource.key, props.disabled);
+		const canAdd = selectableDescendants(props.graph, resource.key).some(
+			(key) => !props.disabled.has(key),
+		);
 		return {
 			checked: state === 'checked',
 			indeterminate: state === 'indeterminate',
-			disabled: selectableDescendants(props.graph, resource.key).length === 0,
+			disabled: props.locked || (!canAdd && state === 'unchecked'),
 		};
 	}
 	return {
@@ -86,6 +100,7 @@ function onToggle(resource: PromotionResource) {
 			<N8nCheckbox
 				:model-value="allState === 'checked'"
 				:indeterminate="allState === 'indeterminate'"
+				:disabled="locked || (available.length === 0 && allState === 'unchecked')"
 				:aria-label="i18n.baseText('promotions.preview.tree.selectAll')"
 				data-test-id="promotion-preview-select-all"
 				@update:model-value="allState === 'checked' ? emit('clear') : emit('selectAll')"

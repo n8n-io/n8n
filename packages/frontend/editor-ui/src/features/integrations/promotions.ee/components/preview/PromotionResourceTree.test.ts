@@ -24,6 +24,8 @@ function render(selectedKeys: string[]) {
 			inclusion: resolveInclusion(graph, selected),
 			includedChanges: 0,
 			totalChanges: 0,
+			disabled: new Set(),
+			locked: false,
 		},
 	});
 }

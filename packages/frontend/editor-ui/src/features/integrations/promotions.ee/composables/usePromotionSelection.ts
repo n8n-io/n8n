@@ -8,6 +8,7 @@ import {
 	selectAll,
 	toggleContainer,
 	toggleSelection,
+	type DisabledKeys,
 	type Inclusion,
 	type ResourceKey,
 	type SelectionGraph,
@@ -16,22 +17,29 @@ import {
 
 const noInclusion: Inclusion = { included: new Set(), reasons: new Map() };
 
-/** The selection on the preview page. */
-export function usePromotionSelection(graph: Ref<SelectionGraph | null>) {
+/**
+ * The selection on the preview page. `disabled` holds the blocked workflows. The selection does
+ * not change while `locked`, for example while the operation runs.
+ */
+export function usePromotionSelection(
+	graph: Ref<SelectionGraph | null>,
+	{ disabled, locked }: { disabled: Ref<DisabledKeys>; locked: Ref<boolean> },
+) {
 	const selection = ref<SelectionState>(initialSelectionState);
 	/** Selected keys that the last refresh no longer lists, so the page can say why they left. */
 	const dropped = ref<ResourceKey[]>([]);
 
+	// The preview and its blockers load together, so one update applies both.
 	watch(
-		graph,
-		(current) => {
+		[graph, disabled],
+		([current, currentDisabled]) => {
 			// A new project or direction starts with the default selection.
 			if (!current) {
 				selection.value = initialSelectionState;
 				dropped.value = [];
 				return;
 			}
-			const result = applyPreview(selection.value, current);
+			const result = applyPreview(selection.value, current, currentDisabled);
 			selection.value = result.state;
 			dropped.value = result.dropped;
 		},
@@ -43,25 +51,19 @@ export function usePromotionSelection(graph: Ref<SelectionGraph | null>) {
 		graph.value ? resolveInclusion(graph.value, selected.value) : noInclusion,
 	);
 
-	function toggle(key: ResourceKey) {
-		if (graph.value) selection.value = toggleSelection(selection.value, graph.value, key);
-	}
-
-	function toggleAllInside(containerKey: ResourceKey) {
-		if (graph.value) selection.value = toggleContainer(selection.value, graph.value, containerKey);
+	function update(change: (current: SelectionGraph) => SelectionState) {
+		if (graph.value && !locked.value) selection.value = change(graph.value);
 	}
 
 	return {
 		selected,
 		inclusion,
 		dropped,
-		toggle,
-		toggleAllInside,
-		selectAll: () => {
-			if (graph.value) selection.value = selectAll(graph.value);
-		},
-		clear: () => {
-			selection.value = clearSelection();
-		},
+		toggle: (key: ResourceKey) =>
+			update((current) => toggleSelection(selection.value, current, key, disabled.value)),
+		toggleAllInside: (containerKey: ResourceKey) =>
+			update((current) => toggleContainer(selection.value, current, containerKey, disabled.value)),
+		selectAll: () => update((current) => selectAll(selection.value, current, disabled.value)),
+		clear: () => update(() => clearSelection()),
 	};
 }
