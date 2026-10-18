@@ -125,7 +125,7 @@ describe('promotion preview content', () => {
 		]);
 	});
 
-	it('should flag a removed column as data loss and list the columns of a new table', () => {
+	it('should list the column changes of a changed table and the columns of a new table', () => {
 		const modified = describeDataTable(
 			{
 				key: 'dataTable:t1',
@@ -140,7 +140,6 @@ describe('promotion preview content', () => {
 			},
 			billingResources.invoicesTable,
 		);
-		expect(modified.hasDataLoss).toBe(true);
 		expect(modified.changes).toHaveLength(2);
 
 		const added = describeDataTable(
@@ -161,6 +160,5 @@ describe('promotion preview content', () => {
 			resource({ key: 'dataTable:t2', name: 'Refunds', change: 'added' }),
 		);
 		expect(added.addedColumns.map((column) => column.name)).toEqual(['amount', 'reason']);
-		expect(added.hasDataLoss).toBe(false);
 	});
 });

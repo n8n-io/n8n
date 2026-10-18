@@ -9946,7 +9946,6 @@
 	"promotions.preview.dataTable.renameColumn": "Renames column {from} to {to}",
 	"promotions.preview.dataTable.reorderColumns": "Changes the column order",
 	"promotions.preview.dataTable.renameTable": "Renames the table from {from} to {to}",
-	"promotions.preview.dataTable.dataLoss": "These changes can remove data from this table on this instance.",
 	"promotions.preview.dataTable.rowsNotCopied": "The operation copies the table structure only. It doesn't copy rows.",
 	"promotions.preview.side.notOnBranch": "Not on the branch",
 	"promotions.preview.side.notOnInstance": "Not on this instance",

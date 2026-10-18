@@ -140,8 +140,6 @@ export type DataTableDescription = {
 	changes: PromotionDataTableChange[];
 	/** The columns of a table that the operation creates. */
 	addedColumns: SerializedDataTableColumn[];
-	/** True when a change removes stored values, such as a removed column or a new column type. */
-	hasDataLoss: boolean;
 };
 
 export function describeDataTable(
@@ -154,7 +152,7 @@ export function describeDataTable(
 		resource.change === 'added' && after.kind === 'content'
 			? [...after.content.columns].sort((a, b) => a.index - b.index)
 			: [];
-	return { changes, addedColumns, hasDataLoss: changes.some((change) => change.destructive) };
+	return { changes, addedColumns };
 }
 
 /** True when the files changed after the preview loaded, so the card can be out of date. */

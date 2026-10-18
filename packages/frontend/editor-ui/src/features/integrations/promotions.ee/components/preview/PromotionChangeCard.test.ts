@@ -92,7 +92,7 @@ const cases: Case[] = [
 		shows: ['Global', "You don't have permission to see variable values."],
 	},
 	{
-		name: 'the column changes of a data table and that they can remove data',
+		name: 'the column changes of a data table',
 		direction: 'apply',
 		resource: billingResources.invoicesTable,
 		detail: {
@@ -106,12 +106,7 @@ const cases: Case[] = [
 				{ kind: 'rename-column', from: 'amount', to: 'total', destructive: false },
 			],
 		},
-		shows: [
-			'These changes can remove data from this table on this instance.',
-			'Removes column notes and its values',
-			'Renames column amount to total',
-			"The operation copies the table structure only. It doesn't copy rows.",
-		],
+		shows: ['Removes column notes and its values', 'Renames column amount to total'],
 	},
 	{
 		name: 'that a file in an unknown format cannot be shown',
