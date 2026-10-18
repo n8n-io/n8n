@@ -1,7 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 import type { VNode } from 'vue';
-import type { IConnection, INodeTypeDescription } from 'n8n-workflow';
+import {
+	NodeConnectionTypes,
+	type IConnection,
+	type IConnections,
+	type INodeTypeDescription,
+} from 'n8n-workflow';
 
 import { useCanvasNodeGroupOperationGuards } from './useCanvasNodeGroupOperationGuards';
 import {
@@ -13,6 +18,7 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { STICKY_NODE_TYPE } from '@/app/constants/nodeTypes';
 import type { INodeUi } from '@/Interface';
+import { mockNodeTypeDescription } from '@/__tests__/mocks';
 
 const trackSpy = vi.hoisted(() => vi.fn());
 const showToastSpy = vi.hoisted(() => vi.fn((_config: { message: VNode }) => ({ close: vi.fn() })));
@@ -158,6 +164,81 @@ describe('useCanvasNodeGroupOperationGuards', () => {
 
 			expect(allowed).toBe(false);
 			expect(showToastSpy).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	describe('replacement batches', () => {
+		const mainConnection = (source: string, target: string): [IConnection, IConnection] => [
+			{ node: source, type: NodeConnectionTypes.Main, index: 0 },
+			{ node: target, type: NodeConnectionTypes.Main, index: 0 },
+		];
+
+		function setupBatchGroup(): { connectionsBySourceNode: IConnections } {
+			const nodes = ['previous', 'existing', 'replacement', 'helper'].map((id) => ({
+				id,
+				name: id.toUpperCase(),
+				type: 'n8n-nodes-base.set',
+				typeVersion: 1,
+				position: [0, 0] as [number, number],
+				parameters: {},
+			})) as INodeUi[];
+			workflowDocumentStore.setNodes(nodes);
+			workflowDocumentStore.createGroup(['previous', 'existing'], 'Group A');
+			vi.spyOn(workflowDocumentStore, 'getExpressionHandler').mockReturnValue({
+				getSimpleParameterValue: () => undefined,
+			} as unknown as ReturnType<typeof workflowDocumentStore.getExpressionHandler>);
+			vi.spyOn(useNodeTypesStore() as any, 'getNodeType', 'get').mockReturnValue(() =>
+				mockNodeTypeDescription({
+					name: 'n8n-nodes-base.set',
+					inputs: [NodeConnectionTypes.Main],
+					outputs: [NodeConnectionTypes.Main],
+				}),
+			);
+
+			return {
+				connectionsBySourceNode: {
+					PREVIOUS: { main: [[{ node: 'EXISTING', type: 'main', index: 0 }]] },
+				},
+			};
+		}
+
+		it('blocks a batch whose final group membership is disconnected', () => {
+			const connectionsBySourceNode = setupBatchGroup().connectionsBySourceNode;
+			const guards = useCanvasNodeGroupOperationGuards();
+
+			const allowed = guards.isNodeReplacementAllowedForNodeGroups({
+				previousNodeId: 'previous',
+				newNodeId: 'replacement',
+				additionalGroupNodeIds: ['helper'],
+				nodeIds: [],
+				connectionsToRemove: [mainConnection('PREVIOUS', 'EXISTING')],
+				connectionsToAdd: [mainConnection('REPLACEMENT', 'HELPER')],
+				connectionsBySourceNode,
+			});
+
+			expect(allowed).toBe(false);
+			expect(showToastSpy).toHaveBeenCalledTimes(1);
+		});
+
+		it('allows a batch whose final group membership is a connected path', () => {
+			const connectionsBySourceNode = setupBatchGroup().connectionsBySourceNode;
+			const guards = useCanvasNodeGroupOperationGuards();
+
+			const allowed = guards.isNodeReplacementAllowedForNodeGroups({
+				previousNodeId: 'previous',
+				newNodeId: 'replacement',
+				additionalGroupNodeIds: ['helper'],
+				nodeIds: [],
+				connectionsToRemove: [mainConnection('PREVIOUS', 'EXISTING')],
+				connectionsToAdd: [
+					mainConnection('REPLACEMENT', 'HELPER'),
+					mainConnection('HELPER', 'EXISTING'),
+				],
+				connectionsBySourceNode,
+			});
+
+			expect(allowed).toBe(true);
+			expect(showToastSpy).not.toHaveBeenCalled();
 		});
 	});
 });

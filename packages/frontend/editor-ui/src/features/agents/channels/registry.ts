@@ -1,4 +1,5 @@
-import type { AgentIntegrationDisconnectWarning } from '@n8n/api-types';
+import { N8N_CHAT_INTEGRATION_TYPE, type AgentIntegrationDisconnectWarning } from '@n8n/api-types';
+import { N8nButton } from '@n8n/design-system';
 import { h, readonly, ref } from 'vue';
 
 import AgentChannelDiscordSetup from '../components/AgentChannelDiscordSetup.vue';
@@ -6,11 +7,17 @@ import AgentChannelDiscordEditView from './discord/AgentChannelDiscordEditView.v
 import AgentChannelFallbackView from './fallback/AgentChannelFallbackView.vue';
 import AgentChannelLinearEditView from './linear/AgentChannelLinearEditView.vue';
 import AgentChannelLinearSetup from './linear/AgentChannelLinearSetup.vue';
+import AgentChannelN8nChatView from './n8nChat/AgentChannelN8nChatView.vue';
 import AgentChannelSlackEditView from './slack/AgentChannelSlackEditView.vue';
 import AgentChannelSlackRemoveConfirmation from './slack/AgentChannelSlackRemoveConfirmation.vue';
 import AgentChannelSlackSetupKindSelector from './slack/AgentChannelSlackSetupKindSelector.vue';
 import AgentChannelSlackSetupView from './slack/AgentChannelSlackSetupView.vue';
 import { isSlackChannelRuntime, useSlackChannelRuntime } from './slack/useSlackChannelRuntime';
+import AgentChannelTeamsEditView from './teams/AgentChannelTeamsEditView.vue';
+import AgentChannelTeamsRemoveConfirmation from './teams/AgentChannelTeamsRemoveConfirmation.vue';
+import AgentChannelTeamsSetupKindSelector from './teams/AgentChannelTeamsSetupKindSelector.vue';
+import AgentChannelTeamsSetupView from './teams/AgentChannelTeamsSetupView.vue';
+import { useTeamsChannelRuntime } from './teams/useTeamsChannelRuntime';
 import AgentChannelTelegramEditView from './telegram/AgentChannelTelegramEditView.vue';
 import AgentChannelTelegramSetup from './telegram/AgentChannelTelegramSetup.vue';
 import type {
@@ -18,11 +25,24 @@ import type {
 	AgentChannelRuntime,
 	AgentChannelRuntimeContext,
 } from './types';
+import AgentChannelWhatsAppEditView from './whatsapp/AgentChannelWhatsAppEditView.vue';
+import AgentChannelWhatsAppSetup from './whatsapp/AgentChannelWhatsAppSetup.vue';
 
 function createDefaultRuntime(): AgentChannelRuntime {
 	const loading = ref(false);
 	return { load: async () => {}, loading: readonly(loading) };
 }
+
+const isTeamsResourcesNotDeletedWarning = (
+	warning: AgentIntegrationDisconnectWarning,
+): warning is AgentIntegrationDisconnectWarning & { action: { url: string } } => {
+	return (
+		warning.integrationType === 'teams' &&
+		warning.code === 'resources_not_deleted' &&
+		warning.action?.type === 'open_url' &&
+		!!warning.action?.url
+	);
+};
 
 const isSlackNotDeletedWarning = (
 	warning: AgentIntegrationDisconnectWarning,
@@ -105,6 +125,64 @@ const platforms = {
 		setupComponent: AgentChannelDiscordSetup,
 		editComponent: AgentChannelDiscordEditView,
 		getConnectAction: ({ text }) => ({ label: text('generic.connect') }),
+	},
+	whatsapp: {
+		type: 'whatsapp',
+		setupComponent: AgentChannelWhatsAppSetup,
+		editComponent: AgentChannelWhatsAppEditView,
+		getConnectAction: ({ text }) => ({ label: text('generic.connect') }),
+		getConnectedDescription: ({ text }) => text('agents.builder.addTrigger.connectedText.whatsapp'),
+	},
+	teams: {
+		type: 'teams',
+		setupComponent: AgentChannelTeamsSetupView,
+		editComponent: AgentChannelTeamsEditView,
+		headerContent: {
+			setupModal: AgentChannelTeamsSetupKindSelector,
+			setupCard: AgentChannelTeamsSetupKindSelector,
+		},
+		disconnectConfirmationComponent: AgentChannelTeamsRemoveConfirmation,
+		shouldConfirmDisconnect: () => true,
+		createRuntime: useTeamsChannelRuntime,
+		getConnectAction: ({ text }) => ({ label: text('generic.connect') }),
+		presentDisconnectWarning: (warning, { text }) => {
+			if (!isTeamsResourcesNotDeletedWarning(warning)) {
+				return null;
+			}
+			return {
+				title: text('agents.channels.modal.teamsResourcesNotDeleted.title'),
+				message: h(
+					'div',
+					{
+						style: {
+							display: 'flex',
+							flexDirection: 'column',
+							alignItems: 'flex-start',
+							gap: 'var(--spacing--xs)',
+						},
+					},
+					[
+						h('span', text('agents.channels.modal.teamsResourcesNotDeleted.message')),
+						h(
+							N8nButton,
+							{
+								href: warning.action.url,
+								target: '_blank',
+								variant: 'outline',
+								size: 'small',
+							},
+							() => text('agents.channels.modal.teamsResourcesNotDeleted.link'),
+						),
+					],
+				),
+			};
+		},
+	},
+	[N8N_CHAT_INTEGRATION_TYPE]: {
+		type: N8N_CHAT_INTEGRATION_TYPE,
+		setupComponent: AgentChannelN8nChatView,
+		editComponent: AgentChannelN8nChatView,
+		getConnectAction: ({ text }) => ({ label: text('agents.channels.n8nChat.makeAvailable') }),
 	},
 } satisfies Record<string, AgentChannelPlatform>;
 

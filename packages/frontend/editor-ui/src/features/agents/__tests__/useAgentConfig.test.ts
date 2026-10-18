@@ -1,4 +1,5 @@
 import type { AgentJsonConfig } from '@n8n/api-types';
+import { nextTick, ref, watch } from 'vue';
 import { useAgentConfig } from '../composables/useAgentConfig';
 
 const { getAgentConfigMock, updateAgentConfigMock } = vi.hoisted(() => ({
@@ -80,5 +81,55 @@ describe('useAgentConfig', () => {
 			'hash-1',
 			'hash-2',
 		]);
+	});
+
+	it('does not replace a newer draft when an earlier save resolves', async () => {
+		getAgentConfigMock.mockResolvedValue({ config, configHash: 'hash-0' });
+		let finishSave!: (value: {
+			config: AgentJsonConfig;
+			configHash: string;
+			versionId: string;
+		}) => void;
+		updateAgentConfigMock
+			.mockImplementationOnce(
+				() =>
+					new Promise((resolve) => {
+						finishSave = resolve;
+					}),
+			)
+			.mockResolvedValueOnce({
+				config: { ...config, instructions: 'Crisp.' },
+				configHash: 'hash-2',
+				versionId: 'version-2',
+			});
+		const state = useAgentConfig();
+		await state.fetchConfig('project-1', 'agent-1');
+		const draft = ref({ ...config, instructions: 'Cris' });
+		watch(state.config, (value) => {
+			if (value) draft.value = { ...value };
+		});
+
+		const save = state.updateConfig('project-1', 'agent-1', draft.value);
+		draft.value = { ...draft.value, instructions: 'Crisp.' };
+		finishSave({
+			config: { ...config, instructions: 'Cris' },
+			configHash: 'hash-1',
+			versionId: 'version-1',
+		});
+		const result = await save;
+		await nextTick();
+
+		expect(result.config.instructions).toBe('Cris');
+		expect(draft.value.instructions).toBe('Crisp.');
+		expect(state.configHash.value).toBe('hash-1');
+
+		await state.updateConfig('project-1', 'agent-1', draft.value, 'hash-0');
+		expect(updateAgentConfigMock).toHaveBeenLastCalledWith(
+			expect.anything(),
+			'project-1',
+			'agent-1',
+			expect.objectContaining({ instructions: 'Crisp.' }),
+			'hash-1',
+		);
 	});
 });

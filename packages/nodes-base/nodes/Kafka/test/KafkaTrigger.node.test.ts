@@ -38,7 +38,7 @@ const baseDescription: INodeTypeBaseDescription = {
 	name: 'kafkaTrigger',
 	icon: { light: 'file:kafka.svg', dark: 'file:kafka.dark.svg' },
 	group: ['trigger'],
-	defaultVersion: 1.3,
+	defaultVersion: 2,
 	description: 'Consume messages from a Kafka topic',
 };
 
@@ -2558,9 +2558,15 @@ describe('KafkaTrigger (versioned entry point)', () => {
 		expect(kafkaTrigger.nodeVersions[2].description).toEqual(expectedV2Description);
 	});
 
-	it('defaults new workflows to version 1.3', () => {
-		expect(kafkaTrigger.description.defaultVersion).toBe(1.3);
-		expect(kafkaTrigger.currentVersion).toBe(1.3);
-		expect(kafkaTrigger.getNodeType()).toBe(kafkaTrigger.nodeVersions[1.3]);
+	it('defaults new workflows to version 2', () => {
+		expect(kafkaTrigger.description.defaultVersion).toBe(2);
+		expect(kafkaTrigger.currentVersion).toBe(2);
+		expect(kafkaTrigger.getNodeType()).toBe(kafkaTrigger.nodeVersions[2]);
+	});
+
+	it('still resolves a workflow pinned to an earlier version', () => {
+		for (const version of v1Versions) {
+			expect(kafkaTrigger.getNodeType(version)).toBeInstanceOf(KafkaTriggerV1);
+		}
 	});
 });

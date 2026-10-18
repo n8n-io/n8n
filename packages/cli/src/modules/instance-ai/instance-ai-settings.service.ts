@@ -1,3 +1,5 @@
+import { isOpenAiCustomEndpoint } from '@n8n/ai-utilities/model-discovery';
+import { EventService, CredentialsFinderService } from '@n8n/backend-services';
 import { isDeepStrictEqual } from 'node:util';
 
 import {
@@ -5,6 +7,7 @@ import {
 	deriveInstanceAiSetupState,
 	INSTANCE_AI_MODEL_CREDENTIAL_TYPES,
 	INSTANCE_AI_SEARCH_CREDENTIAL_TYPES,
+	resolveInstanceAiPermissions,
 } from '@n8n/api-types';
 import type {
 	CreateCredentialDto,
@@ -15,6 +18,7 @@ import type {
 	InstanceAiUserPreferencesUpdateRequest,
 	InstanceAiProviderConnection,
 	InstanceAiPermissions,
+	McpToolPermissions,
 	InstanceAiSandboxProvider,
 	InstanceAiSetupState,
 } from '@n8n/api-types';
@@ -34,17 +38,13 @@ import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type { ICredentialDataDecryptedObject, IUserSettings } from 'n8n-workflow';
 import { jsonParse, UnexpectedError } from 'n8n-workflow';
 
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import {
 	InstanceCredentialBroker,
 	type InstanceCredentialUse,
 	type ResolvedInstanceCredential,
 } from '@/credentials/instance-credential-broker';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
-import { EventService } from '@/events/event.service';
+import { ConflictError, ForbiddenError, UnprocessableRequestError } from '@n8n/errors';
 import { AiService } from '@/services/ai.service';
 import {
 	INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY,
@@ -55,6 +55,7 @@ import { UserService } from '@/services/user.service';
 
 export { INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY, INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY };
 
+import { withModelName } from './model-config-name';
 import {
 	N8N_SANDBOX_SERVICE_URL_REQUIRED_MESSAGE,
 	normalizeSandboxProvider,
@@ -1248,6 +1249,15 @@ export class InstanceAiSettingsService {
 		return { ...this.permissions };
 	}
 
+	getMcpToolPermissions(): McpToolPermissions {
+		return {
+			categories: {
+				read: this.permissions.mcpRead,
+				write: this.permissions.mcpWrite,
+			},
+		};
+	}
+
 	/** Whether users may connect the n8n Assistant to MCP servers from the registry. */
 	isMcpAccessEnabled(): boolean {
 		return this.mcpAccessEnabled;
@@ -1274,21 +1284,6 @@ export class InstanceAiSettingsService {
 
 	isBrowserUseEnabled(): boolean {
 		return this.config.browserUseEnabled;
-	}
-
-	/** Whether the non-blocking setup panel replaces the suspending setup wizard. */
-	isInstanceAiSetupPanelEnabled(): boolean {
-		return this.config.instanceAiSetupPanelEnabled;
-	}
-
-	/** Whether this instance is in the activation-capped trial cohort. */
-	isActivationCapped(): boolean {
-		return this.config.activationCapped;
-	}
-
-	/** How many assistant messages must precede the activation lock. `0` means activation alone. */
-	getActivationLockMessageThreshold(): number {
-		return this.config.activationLockMessageThreshold;
 	}
 
 	/** Whether workflow building can use the required sandbox workspace. */
@@ -1354,6 +1349,11 @@ export class InstanceAiSettingsService {
 		return this.config.model.trim();
 	}
 
+	/** Model name for the Observer and Reflector memory tasks; empty when unset. */
+	getConfiguredMemoryModelName(): string {
+		return this.config.memoryModel.trim();
+	}
+
 	/** Resolve just the model name (e.g. 'claude-sonnet-4-20250514') for proxy routing. */
 	resolveModelName(user: User): string {
 		const prefs = this.readUserPreferences(user);
@@ -1400,18 +1400,7 @@ export class InstanceAiSettingsService {
 	async resolveModelConfigForVerification(user: User, modelName?: string): Promise<ModelConfig> {
 		const config = await this.resolveModelConfig(user);
 		if (!modelName) return config;
-		if (typeof config === 'string') {
-			const provider = config.includes('/') ? config.slice(0, config.indexOf('/')) : 'custom';
-			return `${provider}/${modelName}`;
-		}
-		if ('id' in config && typeof config.id === 'string' && 'url' in config) {
-			const provider = config.id.includes('/')
-				? config.id.slice(0, config.id.indexOf('/'))
-				: 'custom';
-			const id: `${string}/${string}` = `${provider}/${modelName}`;
-			return { ...config, id };
-		}
-		return config;
+		return withModelName(config, modelName) ?? config;
 	}
 
 	buildModelConfigForConnection(
@@ -1475,8 +1464,8 @@ export class InstanceAiSettingsService {
 		data: Record<string, unknown>,
 		modelName: string,
 	): ModelConfig | null {
-		const provider = CREDENTIAL_TO_MODEL_PROVIDER[credentialType];
-		if (!provider) {
+		const credentialProvider = CREDENTIAL_TO_MODEL_PROVIDER[credentialType];
+		if (!credentialProvider) {
 			return null;
 		}
 
@@ -1484,10 +1473,22 @@ export class InstanceAiSettingsService {
 		const urlField = URL_FIELD_MAP[credentialType];
 		const rawUrl = urlField ? data[urlField] : undefined;
 		const baseUrl = typeof rawUrl === 'string' ? rawUrl : '';
+		// The UI saves its self-hosted option as an OpenAI credential with a custom URL.
+		// These servers speak /chat/completions, so build them like an env `custom/` model.
+		const provider =
+			credentialType === 'openAiApi' && baseUrl && isOpenAiCustomEndpoint(baseUrl)
+				? 'custom'
+				: credentialProvider;
 		const id: `${string}/${string}` = `${provider}/${modelName}`;
 		if (!baseUrl && !apiKey) return null;
 		const headers = modelCredentialHeaders(credentialType, data);
-		return { id, url: baseUrl, ...(apiKey ? { apiKey } : {}), ...(headers ? { headers } : {}) };
+		return {
+			id,
+			url: baseUrl,
+			...(apiKey ? { apiKey } : {}),
+			...(headers ? { headers } : {}),
+			...this.customModelOptionsFor(id),
+		};
 	}
 
 	// ── Private helpers ───────────────────────────────────────────────────
@@ -1735,10 +1736,7 @@ export class InstanceAiSettingsService {
 		const c = this.config;
 		if (persisted.enabled !== undefined) this.enabled = persisted.enabled;
 		if (persisted.permissions) {
-			this.permissions = {
-				...DEFAULT_INSTANCE_AI_PERMISSIONS,
-				...persisted.permissions,
-			};
+			this.permissions = resolveInstanceAiPermissions(persisted.permissions);
 		}
 		if (persisted.mcpServers !== undefined) c.mcpServers = persisted.mcpServers;
 		if (persisted.mcpAccessEnabled !== undefined)
@@ -1860,7 +1858,9 @@ export class InstanceAiSettingsService {
 			this.eventService.emit('instance-ai-settings-updated', {
 				mcpSettingsChanged:
 					current.mcpServers !== previous.mcpServers ||
-					current.mcpAccessEnabled !== previous.mcpAccessEnabled,
+					current.mcpAccessEnabled !== previous.mcpAccessEnabled ||
+					current.permissions?.mcpRead !== previous.permissions?.mcpRead ||
+					current.permissions?.mcpWrite !== previous.permissions?.mcpWrite,
 				credentialSelections,
 			});
 		} catch (error) {

@@ -1,4 +1,5 @@
 import { OpenAIEmbeddings } from '@langchain/openai';
+import { aiClientFetch } from '@n8n/ai-utilities';
 import { AiConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
@@ -84,6 +85,7 @@ describe('EmbeddingsOpenAi', () => {
 					model: 'text-embedding-3-small',
 					apiKey: 'test-api-key',
 					configuration: expect.objectContaining({
+						fetch: aiClientFetch,
 						defaultHeaders,
 						fetchOptions: {
 							dispatcher: expect.any(MockProxyAgent),

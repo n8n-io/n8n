@@ -157,7 +157,7 @@ const iconLightInvert = computed(() => activeIcon.value.lightInvert === true);
 
 .iconFallback {
 	font-size: var(--font-size--2xl);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 }
 
 .label {

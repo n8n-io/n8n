@@ -11,7 +11,7 @@ export class CarbonBlackApi implements ICredentialType {
 
 	httpRequestNode = {
 		name: 'Carbon Black',
-		docsUrl: 'https://developer.carbonblack.com/reference',
+		docsUrl: 'https://developer.carbonblack.com/reference/carbon-black-cloud/',
 		apiBaseUrl: '',
 	};
 

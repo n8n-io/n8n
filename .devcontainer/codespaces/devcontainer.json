@@ -18,9 +18,13 @@
 		"ghcr.io/devcontainers/features/docker-in-docker:2": {}
 	},
 	"forwardPorts": [8080, 5678],
-	// Grant the Codespace token read access to the private skills and harness repositories.
-	// Each user authorizes this access once when they create the Codespace.
 	"customizations": {
+		// Claude Code in VS Code or the browser editor. It runs in the codespace.
+		"vscode": {
+			"extensions": ["anthropic.claude-code"]
+		},
+		// Grant the Codespace token read access to the private skills and harness repositories.
+		// Each user authorizes this access once when they create the Codespace.
 		"codespaces": {
 			"repositories": {
 				"n8n-io/n8n-agent-skills": { "permissions": { "contents": "read" } },

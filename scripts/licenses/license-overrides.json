@@ -17,10 +17,6 @@
       "license": "Python-2.0",
       "source": "https://github.com/ewoudenberg/difflib.js — package.json declares legacy licenses[] array with PSF type, http://docs.python.org/license.html"
     },
-    "pkg:npm/binascii@0.0.2": {
-      "license": "MIT",
-      "source": "compiled/node_modules/binascii/LICENSE — verbatim MIT, no license field in package.json"
-    },
     "pkg:npm/busboy@1.6.0": {
       "license": "MIT",
       "source": "compiled/node_modules/busboy/LICENSE — package.json uses legacy licenses[] array"

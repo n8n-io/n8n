@@ -220,7 +220,7 @@ const isUnavailableRoleItem = (item: SelectOptionBase) =>
 			<template #item-trailing="{ item, ui }">
 				<N8nBadge
 					v-if="isUnavailableRoleItem(item)"
-					theme="warning"
+					variant="warning"
 					v-bind="ui"
 					:class="$style.upgradeBadge"
 				>
@@ -236,7 +236,7 @@ const isUnavailableRoleItem = (item: SelectOptionBase) =>
 							item.label === i18n.baseText('projects.settings.role.selector.section.custom') &&
 							!hasCustomRolesLicense
 						"
-						theme="default"
+						variant="outline"
 						:class="$style.sectionUpgradeBadge"
 						@click.stop="
 							closeDropdown();

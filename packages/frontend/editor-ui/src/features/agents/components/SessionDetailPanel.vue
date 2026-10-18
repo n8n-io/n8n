@@ -20,6 +20,9 @@ import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { VIEWS } from '@/app/constants/navigation';
 import { parseIntegrationActionCard } from '@/features/ai/shared/agentsChat/n8nChatInteraction';
 import type { ChatMessageAttachment } from '@/features/ai/shared/agentsChat/types';
+import { getThinkingDurationSec } from '@/features/ai/shared/agentsChat/thinking';
+import AiThinkingBlock from '@/features/ai/shared/components/AiThinkingBlock.vue';
+import AiReasoningBlock from '@/features/ai/shared/components/AiReasoningBlock.vue';
 import AgentChatMessageAttachments from './AgentChatMessageAttachments.vue';
 import RichInteractionCard from './RichInteractionCard.vue';
 import WorkflowExecutionLogViewer from './WorkflowExecutionLogViewer.vue';
@@ -128,6 +131,7 @@ const toolDisplayName = computed((): string => {
 	if (
 		!props.item ||
 		(props.item.kind !== 'tool' &&
+			props.item.kind !== 'skill' &&
 			props.item.kind !== 'suspension' &&
 			props.item.kind !== 'hitl-response')
 	) {
@@ -202,6 +206,7 @@ const headerTitle = computed((): string => {
 	if (item.kind === 'background-task-signal')
 		return i18n.baseText('agents.chat.backgroundTasks.resultsReceived');
 	if (item.kind === 'workflow') return item.workflowName ?? formatToolNameForDisplay(item.toolName);
+	if (item.kind === 'skill') return item.skillName ?? toolDisplayName.value;
 	if (item.kind === 'tool') return toolDisplayName.value;
 	if (item.kind === 'node') return item.nodeDisplayName ?? formatToolNameForDisplay(item.toolName);
 	if (item.kind === 'user') return item.authorName ?? i18n.baseText('agentSessions.timeline.user');
@@ -223,6 +228,7 @@ const headerIcon = computed((): IconName => {
 	if (isSubAgent.value) return 'bot';
 	if (item.kind === 'background-task-signal') return 'list-checks';
 	if (item.kind === 'workflow') return 'workflow';
+	if (item.kind === 'skill') return 'book-open';
 	if (item.kind === 'tool') return 'wrench';
 	if (item.kind === 'node') return 'box';
 	if (item.kind === 'user') return 'user';
@@ -287,7 +293,7 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 					</N8nTooltip>
 					<N8nBadge
 						v-if="status"
-						:theme="status.theme"
+						:variant="status.theme"
 						size="xsmall"
 						:data-test-id="
 							status.kind === 'hitl-response'
@@ -410,7 +416,7 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 						</div>
 					</template>
 
-					<template v-else-if="item.kind === 'tool'">
+					<template v-else-if="item.kind === 'tool' || item.kind === 'skill'">
 						<N8nCallout
 							v-if="isFailed"
 							theme="danger"
@@ -462,6 +468,20 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 						/>
 						<VueMarkdown :source="item.content ?? ''" :class="$style.markdown" />
 					</template>
+					<AiThinkingBlock
+						v-if="item.kind === 'agent' && item.thinkingSegments?.length"
+						:key="`${item.executionId}:${item.timestamp}`"
+						:segments="item.thinkingSegments"
+						:active="false"
+						:duration-sec="getThinkingDurationSec(item.thinkingSegments)"
+						test-id="session-agent-thinking"
+					>
+						<AiReasoningBlock
+							v-for="segment in item.thinkingSegments"
+							:key="segment.id"
+							:entry="segment"
+						/>
+					</AiThinkingBlock>
 				</div>
 			</div>
 		</template>

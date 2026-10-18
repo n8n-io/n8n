@@ -13,7 +13,7 @@ type RendererOptions = { merge?: boolean };
 
 /** A bare, all-mocked `ThreadRuntime` for components that only need the shape, not real behaviour. */
 export function makeThread(): ThreadRuntime {
-	return reactive({
+	const thread = reactive({
 		id: 'thread-1',
 		messages: [] as InstanceAiMessage[],
 		hasMessages: false,
@@ -21,6 +21,7 @@ export function makeThread(): ThreadRuntime {
 		isStreaming: false,
 		isSendingMessage: false,
 		isAwaitingConfirmation: false,
+		hydrationStatus: 'ready',
 		isHydratingThread: false,
 		amendContext: null,
 		pendingPlanReview: null,
@@ -28,17 +29,36 @@ export function makeThread(): ThreadRuntime {
 		contextualSuggestion: null,
 		currentTasks: null,
 		producedArtifacts: new Map(),
+		producedArtifactOrigins: new Map(),
+		setupItemsByWorkflowId: {},
+		projectId: 'thread-project',
 		resourceNameIndex: new Map(),
 		linkableResourceNameIndex: new Map(),
+		activeArtifactId: undefined,
+		setActiveArtifactId: vi.fn(),
+		setOpenTabs: vi.fn(),
 		feedbackByResponseId: {},
 		rateableResponseId: null,
 		pendingConfirmations: [],
 		resolvedConfirmationIds: new Map(),
 		debugEvents: [],
+		pendingWorkflowAttachment: null as {
+			type: 'workflow';
+			id: string;
+			name?: string;
+			executionId?: string;
+		} | null,
+		setPendingWorkflowAttachment: vi.fn(),
+		clearPendingWorkflowAttachment: vi.fn(),
+		applyEvent: vi.fn(),
+		transientWorkflowReferences: new Map(),
+		upsertTransientWorkflowReference: vi.fn(),
+		removeTransientWorkflowReference: vi.fn(),
 		loadHistoricalMessages: vi.fn().mockResolvedValue('applied'),
 		loadThreadStatus: vi.fn().mockResolvedValue(undefined),
 		connectSSE: vi.fn(),
 		closeSSE: vi.fn(),
+		registerSetupChatTelemetryContext: vi.fn(() => vi.fn()),
 		sendMessage: vi.fn().mockResolvedValue(true),
 		cancelRun: vi.fn().mockResolvedValue(undefined),
 		resolveConfirmation: vi.fn(),
@@ -46,11 +66,28 @@ export function makeThread(): ThreadRuntime {
 		requestPlanChanges: vi.fn().mockResolvedValue(true),
 		copyFullTrace: vi.fn(),
 		submitFeedback: vi.fn(),
-	}) as unknown as ThreadRuntime;
+	});
+	thread.setActiveArtifactId = vi.fn((id) => {
+		thread.activeArtifactId = id;
+	});
+	thread.setPendingWorkflowAttachment = vi.fn((value) => {
+		thread.pendingWorkflowAttachment = value;
+	});
+	thread.clearPendingWorkflowAttachment = vi.fn(() => {
+		thread.pendingWorkflowAttachment = null;
+	});
+	thread.upsertTransientWorkflowReference = vi.fn((reference) => {
+		thread.transientWorkflowReferences.set(reference.referenceId, reference);
+	});
+	thread.removeTransientWorkflowReference = vi.fn((referenceId) => {
+		thread.transientWorkflowReferences.delete(referenceId);
+	});
+	return thread as unknown as ThreadRuntime;
 }
 
 export const defaultModuleSettings: NonNullable<FrontendModuleSettings['instance-ai']> = {
 	enabled: true,
+	mcpConnectionsAvailable: true,
 	localGatewayDisabled: false,
 	browserUseEnabled: true,
 	proxyEnabled: false,
@@ -78,8 +115,21 @@ export const InstanceAiInputStub = defineComponent({
 		isSubmitting: { type: Boolean, required: false },
 		isWorkflowBuilderAvailable: { type: Boolean, required: false },
 		contextChip: { type: Object, required: false },
+		placeholderKey: { type: String, required: false },
+		mentionsEnabled: { type: Boolean, required: false },
+		mentionProjectId: { type: String, required: false },
+		mentionArtifacts: { type: Array, required: false },
+		mentionActiveWorkflowId: { type: String, required: false },
+		reservedAttachmentCount: { type: Number, required: false },
+		isOutOfCredits: { type: Boolean, required: false },
 	},
-	emits: ['submit', 'dismiss-context-chip'],
+	emits: [
+		'submit',
+		'dismiss-context-chip',
+		'mention-reference-added',
+		'mention-reference-removed',
+		'mention-workflow-open',
+	],
 	setup(props, { emit, expose }) {
 		const inputDraft = ref(inputState.initialDraft);
 		const hasAttachments = ref(inputState.hasAttachments);
@@ -139,7 +189,17 @@ export const InstanceAiInputStub = defineComponent({
 					{ 'data-test-id': 'instance-ai-input-context-chip-icon' },
 					props.contextChip?.icon ?? '',
 				),
+				h(
+					'span',
+					{ 'data-test-id': 'instance-ai-input-placeholder-key' },
+					props.placeholderKey ?? 'unset',
+				),
 				h('span', { 'data-test-id': 'instance-ai-input-draft' }, inputDraft.value),
+				h(
+					'span',
+					{ 'data-test-id': 'instance-ai-input-out-of-credits' },
+					String(Boolean(props.isOutOfCredits)),
+				),
 				h(
 					'span',
 					{ 'data-test-id': 'instance-ai-input-attachments' },

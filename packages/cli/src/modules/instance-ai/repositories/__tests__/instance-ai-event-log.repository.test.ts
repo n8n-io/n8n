@@ -271,4 +271,77 @@ describe('InstanceAiEventLogRepository', () => {
 			]);
 		});
 	});
+
+	describe('getLastPreferencesInjectionRunId', () => {
+		const createRepo = (row: Partial<InstanceAiEventLogEntry> | null) => {
+			const repo = Object.create(
+				InstanceAiEventLogRepository.prototype,
+			) as InstanceAiEventLogRepository;
+			const findOne = vi.fn().mockResolvedValue(row);
+			Object.defineProperty(repo, 'findOne', { value: findOne, configurable: true });
+			return { repo, findOne };
+		};
+		const preferencesApplied = (runId: string, payload: Record<string, unknown>) => ({
+			seq: 7,
+			runId,
+			createdAt: new Date('2026-07-01T10:00:00.000Z'),
+			payload: JSON.stringify({ type: 'preferences-applied', runId, agentId: 'a1', payload }),
+		});
+
+		it('names the injecting run itself from the latest fact', async () => {
+			const { repo, findOne } = createRepo(
+				preferencesApplied('run-3', {
+					preferences: [],
+					renderedLength: 42,
+					injectedThisTurn: true,
+				}),
+			);
+
+			await expect(repo.getLastPreferencesInjectionRunId('thread-1')).resolves.toBe('run-3');
+			expect(findOne).toHaveBeenCalledWith({
+				where: { threadId: 'thread-1', type: 'preferences-applied' },
+				order: { seq: 'DESC' },
+			});
+		});
+
+		it('propagates the carried run when the latest fact only carried the block', async () => {
+			const { repo } = createRepo(
+				preferencesApplied('run-4', {
+					preferences: [],
+					renderedLength: 42,
+					injectedThisTurn: false,
+					carriedFromRunId: 'run-2',
+				}),
+			);
+
+			await expect(repo.getLastPreferencesInjectionRunId('thread-1')).resolves.toBe('run-2');
+		});
+
+		it('resolves undefined when no turn has reported preferences', async () => {
+			const { repo } = createRepo(null);
+
+			await expect(repo.getLastPreferencesInjectionRunId('thread-1')).resolves.toBeUndefined();
+		});
+
+		it('returns the payload of the latest fact for a reader opening the thread', async () => {
+			const payload = {
+				preferences: [{ id: 'pref-1', scope: 'user' }],
+				renderedLength: 42,
+				injectedThisTurn: true,
+			};
+			const { repo, findOne } = createRepo(preferencesApplied('run-3', payload));
+
+			await expect(repo.getLastAppliedPreferences('thread-1')).resolves.toEqual(payload);
+			expect(findOne).toHaveBeenCalledWith({
+				where: { threadId: 'thread-1', type: 'preferences-applied' },
+				order: { seq: 'DESC' },
+			});
+		});
+
+		it('reports no payload when no turn has reported preferences', async () => {
+			const { repo } = createRepo(null);
+
+			await expect(repo.getLastAppliedPreferences('thread-1')).resolves.toBeUndefined();
+		});
+	});
 });

@@ -1,7 +1,10 @@
 import {
+	PromotionApplyConfigPublicDto,
 	PromotionPromoteConfigPublicDto,
 	UpsertPromotionApplyConfigDto,
 	UpsertPromotionPromoteConfigDto,
+	promotionApplyConfigSummarySchema,
+	promotionPromoteConfigSummarySchema,
 } from '../promotion-config.dto';
 
 const applySettings = { schemaVersion: 1 as const, branchName: 'dev' };
@@ -9,6 +12,13 @@ const promoteSettings = {
 	schemaVersion: 1 as const,
 	baseBranchName: 'staging',
 	createBranchOnPromotion: false,
+};
+const checkout = { hasCheckout: true, matchesConfig: true };
+const publicConfigFields = {
+	id: 'cfg-1',
+	name: 'Promote',
+	createdAt: '2026-09-07T08:00:00.000Z',
+	updatedAt: '2026-09-07T08:00:00.000Z',
 };
 
 describe('UpsertPromotionApplyConfigDto', () => {
@@ -87,10 +97,8 @@ describe('UpsertPromotionPromoteConfigDto', () => {
 
 describe('PromotionPromoteConfigPublicDto', () => {
 	const base = {
-		id: 'cfg-1',
-		name: 'Promote',
-		createdAt: '2026-09-07T08:00:00.000Z',
-		updatedAt: '2026-09-07T08:00:00.000Z',
+		...publicConfigFields,
+		checkout,
 	};
 
 	it('always reports createBranchOnPromotion', () => {
@@ -103,5 +111,40 @@ describe('PromotionPromoteConfigPublicDto', () => {
 		expect(
 			PromotionPromoteConfigPublicDto.safeParse({ ...base, settings: promoteSettings }).success,
 		).toBe(true);
+	});
+});
+
+describe('promotion config response schemas', () => {
+	it('requires checkout state in public responses', () => {
+		expect(
+			PromotionApplyConfigPublicDto.safeParse({
+				...publicConfigFields,
+				settings: applySettings,
+			}).success,
+		).toBe(false);
+		expect(
+			PromotionPromoteConfigPublicDto.safeParse({
+				...publicConfigFields,
+				settings: promoteSettings,
+			}).success,
+		).toBe(false);
+	});
+
+	it('omits checkout state from summary responses', () => {
+		const applySummary = promotionApplyConfigSummarySchema.parse({
+			...publicConfigFields,
+			checkout,
+			settings: applySettings,
+		});
+		const promoteSummary = promotionPromoteConfigSummarySchema.parse({
+			...publicConfigFields,
+			checkout,
+			settings: promoteSettings,
+		});
+
+		expect(applySummary).not.toHaveProperty('checkout');
+		expect(applySummary.settings).toEqual(applySettings);
+		expect(promoteSummary).not.toHaveProperty('checkout');
+		expect(promoteSummary.settings).toEqual(promoteSettings);
 	});
 });

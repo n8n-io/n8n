@@ -28,6 +28,20 @@ interface ResourcePermissions {
 	deny: string[];
 }
 
+const resourcePermissionsSchema = z
+	.object(
+		Object.fromEntries(
+			Object.keys(TOOL_GROUP_DEFINITIONS).map((key) => [
+				key,
+				z.object({
+					allow: z.array(z.string()),
+					deny: z.array(z.string()),
+				}),
+			]),
+		),
+	)
+	.partial(); // Partial<Record<ToolGroup, ResourcePermissions>>
+
 const persistentSettingsSchema = z.object({
 	logLevel: logLevelSchema.optional(),
 	permissions: z
@@ -38,19 +52,12 @@ const persistentSettingsSchema = z.object({
 		)
 		.partial(), //Partial<Record<ToolGroup, PermissionMode>>,
 	filesystemDir: z.string().optional(),
-	resourcePermissions: z
-		.object(
-			Object.fromEntries(
-				Object.keys(TOOL_GROUP_DEFINITIONS).map((key) => [
-					key,
-					z.object({
-						allow: z.array(z.string()),
-						deny: z.array(z.string()),
-					}),
-				]),
-			),
-		)
-		.partial(), // Partial<Record<ToolGroup, ResourcePermissions>>,
+	/**
+	 * Rules saved before rules were scoped to an origin. The first origin that connects takes them
+	 * over. Still written as `{}` so that older versions accept the file.
+	 */
+	resourcePermissions: resourcePermissionsSchema,
+	resourcePermissionsByOrigin: z.record(z.string(), resourcePermissionsSchema).optional(),
 });
 
 type PersistentSettings = z.infer<typeof persistentSettingsSchema>;
@@ -60,7 +67,7 @@ function isValidPersistentSettings(raw: unknown): raw is PersistentSettings {
 }
 
 function emptySettings(): PersistentSettings {
-	return { permissions: {}, resourcePermissions: {} };
+	return { permissions: {}, resourcePermissions: {}, resourcePermissionsByOrigin: {} };
 }
 
 // ---------------------------------------------------------------------------
@@ -155,8 +162,11 @@ export class SettingsStore {
 	// ---------------------------------------------------------------------------
 
 	/** Read persistent resource rules for a tool group — used by GatewaySession.check(). */
-	getResourcePermissions(toolGroup: ToolGroup): { allow: string[]; deny: string[] } {
-		const rp = this.persistent.resourcePermissions[toolGroup];
+	getResourcePermissions(
+		origin: string,
+		toolGroup: ToolGroup,
+	): { allow: string[]; deny: string[] } {
+		const rp = this.persistent.resourcePermissionsByOrigin?.[origin]?.[toolGroup];
 		return { allow: rp?.allow ?? [], deny: rp?.deny ?? [] };
 	}
 
@@ -164,20 +174,35 @@ export class SettingsStore {
 	// Mutation methods
 	// ---------------------------------------------------------------------------
 
-	alwaysAllow(toolGroup: ToolGroup, resource: string): void {
-		const rp = this.getOrInitResourcePermissions(toolGroup);
+	alwaysAllow(origin: string, toolGroup: ToolGroup, resource: string): void {
+		const rp = this.getOrInitResourcePermissions(origin, toolGroup);
 		if (!rp.allow.includes(resource)) {
 			rp.allow.push(resource);
 			this.scheduleWrite();
 		}
 	}
 
-	alwaysDeny(toolGroup: ToolGroup, resource: string): void {
-		const rp = this.getOrInitResourcePermissions(toolGroup);
+	alwaysDeny(origin: string, toolGroup: ToolGroup, resource: string): void {
+		const rp = this.getOrInitResourcePermissions(origin, toolGroup);
 		if (!rp.deny.includes(resource)) {
 			rp.deny.push(resource);
 			this.scheduleWrite();
 		}
+	}
+
+	/** Moves rules saved before rules were scoped to an origin to `origin`. */
+	claimUnscopedRules(origin: string): void {
+		const unscoped = Object.entries(this.persistent.resourcePermissions) as Array<
+			[ToolGroup, ResourcePermissions | undefined]
+		>;
+		if (unscoped.length === 0) return;
+		for (const [toolGroup, rules] of unscoped) {
+			const target = this.getOrInitResourcePermissions(origin, toolGroup);
+			target.allow = [...new Set([...target.allow, ...(rules?.allow ?? [])])];
+			target.deny = [...new Set([...target.deny, ...(rules?.deny ?? [])])];
+		}
+		this.persistent.resourcePermissions = {};
+		this.scheduleWrite();
 	}
 
 	/** Force immediate write — must be called on shutdown. */
@@ -191,8 +216,10 @@ export class SettingsStore {
 	// Private helpers
 	// ---------------------------------------------------------------------------
 
-	private getOrInitResourcePermissions(toolGroup: ToolGroup): ResourcePermissions {
-		const existing = this.persistent.resourcePermissions[toolGroup];
+	private getOrInitResourcePermissions(origin: string, toolGroup: ToolGroup): ResourcePermissions {
+		const byOrigin = (this.persistent.resourcePermissionsByOrigin ??= {});
+		const rules = (byOrigin[origin] ??= {});
+		const existing = rules[toolGroup];
 		if (existing) {
 			// Normalise: zod schema marks allow/deny as optional; ensure they exist.
 			existing.allow ??= [];
@@ -200,7 +227,7 @@ export class SettingsStore {
 			return existing;
 		}
 		const fresh: ResourcePermissions = { allow: [], deny: [] };
-		this.persistent.resourcePermissions[toolGroup] = fresh;
+		rules[toolGroup] = fresh;
 		return fresh;
 	}
 

@@ -124,6 +124,9 @@ of the breaking removal on `3.x`.
 
 ## How the daily sync works
 
+The sync runs automation code from the triggering `master` SHA while its working checkout
+stays on `3.x`.
+
 [`util-sync-master-to-3x.yml`](./workflows/util-sync-master-to-3x.yml) runs daily and
 **replays the `3.x`-only commits on top of `master`** (a rebase), then force-pushes `3.x`:
 
@@ -133,20 +136,19 @@ of the breaking removal on `3.x`.
    original message and author. Nothing is ever squashed. Merge commits in the range (breaking
    PRs merged into `3.x`) are flattened away, and a breaking commit that also landed on
    `master` is dropped as empty.
-3. Conflicts confined to **mechanical files** — tool-generated content with a deterministic
-   resolution (`pnpm-lock.yaml`, `packages/frontend/editor-ui/data/node-popularity.json`,
+3. Conflicts confined to **non-lockfile mechanical files** — bot-maintained content with a
+   deterministic resolution (`packages/frontend/editor-ui/data/node-popularity.json`,
    `packages/@n8n/instance-ai/src/tools/nodes/credential-setupability.json`, and
    `.github/test-metrics/e2e-impact-map.json`) — are **auto-resolved during the replay**,
-   exactly as a human resolver would: the lockfile is regenerated with
-   `pnpm install --lockfile-only` (pnpm merges its own conflict markers), bot-maintained data
-   files take `master`'s side. The resolution is folded into the stalled commit, so this
-   still adds **no commit and no PR**. The list lives in `MECHANICAL_PATHS` in
+   by taking `master`'s side. The resolution is folded into the stalled commit, so this still
+   adds **no commit and no PR**. The list lives in `MECHANICAL_PATHS` in
    [`sync-master-to-3x.mjs`](./scripts/sync-master-to-3x.mjs).
-4. On a **real code conflict**, `3.x` is left **untouched** and a **draft conflict PR**
-   (labeled `automation:v3-sync`) carrying the conflict markers is opened on
-   `sync/master-to-3x` — with the mechanical files already pre-resolved — plus a post to the
-   **`#alerts-v3-sync`** Slack channel. **Syncs pause until that PR is merged** — so
-   conflicts never pile up silently.
+4. On a **real code conflict or any `pnpm-lock.yaml` conflict**, `3.x` is left **untouched**
+   and a **draft conflict PR** (labeled `automation:v3-sync`) carrying the conflict markers is
+   opened on `sync/master-to-3x`. Other mechanical files are already pre-resolved. The
+   lockfile stays unresolved because pnpm validation is not reliable while the merge index is
+   unresolved. The workflow also posts to the **`#alerts-v3-sync`** Slack channel. **Syncs
+   pause until that PR is merged**, so conflicts never pile up silently.
 
 Whatever route it takes, the sync verifies that the content it is about to push is **exactly
 the tree a merge of `3.x` and `master` produces** (`git merge-tree`), and that no conflict
@@ -165,8 +167,8 @@ rewriting `3.x`.
 
 The conflict branch is `master` merged into `3.x` with the **conflict markers committed**, so
 you see exactly what clashed — and the required checks stay red until they're gone, so the PR
-can't be merged half-resolved. Mechanical files arrive **pre-resolved** (listed in the PR
-under "Auto-resolved for you"), so only the real code conflicts need you:
+can't be merged half-resolved. Non-lockfile mechanical files arrive **pre-resolved** (listed
+in the PR under "Auto-resolved for you"), so only the code and lockfile conflicts need you:
 
 ```bash
 git fetch origin sync/master-to-3x && git switch sync/master-to-3x
@@ -174,9 +176,8 @@ git fetch origin sync/master-to-3x && git switch sync/master-to-3x
 git push origin sync/master-to-3x
 ```
 
-If the PR says the lockfile was **deferred** (a `package.json` / `pnpm-workspace.yaml` is
-conflicted too), resolve the manifests first, then regenerate it with
-`pnpm install --lockfile-only` and include the result in your fix commit.
+If the PR says the lockfile was **deferred**, resolve the other conflicts first. Then
+regenerate it with `pnpm install --lockfile-only` and include the result in your fix commit.
 
 Watch for the **"Deleted on one side, changed on the other"** section. Git leaves no markers
 for a delete/modify, so the branch looks clean where it is not: the merge keeps `3.x`'s side

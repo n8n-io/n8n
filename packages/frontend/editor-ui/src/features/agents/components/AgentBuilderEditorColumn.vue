@@ -1,10 +1,15 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, provide, ref, watch } from 'vue';
 import { N8nCard, N8nIcon, N8nTabs, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import type { AgentConfigValidationIssue, AgentFileDto } from '@n8n/api-types';
+import {
+	resolveAgentPersonalisation,
+	type AgentConfigValidationIssue,
+	type AgentFileDto,
+} from '@n8n/api-types';
 
 import type { AgentBuilderMainTab } from '../composables/useAgentBuilderMainTabs';
+import type { SetupTask } from './AgentSetupTasks/agentSetupTasks.registry';
 import type {
 	AgentJsonConfig,
 	AgentJsonVectorStoreConfig,
@@ -13,10 +18,13 @@ import type {
 } from '../types';
 import type { ToolOpenTarget, ToolPickerMode } from './AgentCapabilitiesSection.types';
 import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
 import AgentSessionsListView from '../views/AgentSessionsListView.vue';
 import AgentAdvancedPanel from './AgentAdvancedPanel.vue';
+import AgentBudgetPanel from './AgentBudgetPanel.vue';
 import AgentCapabilitiesSection from './AgentCapabilitiesSection.vue';
 import AgentTriggersSection from './AgentTriggersSection.vue';
+import { AGENT_PERSONALISATION_KEY } from '../channels/types';
 import AgentIdentityHeader from './AgentIdentityHeader.vue';
 import AgentInfoPanel from './AgentInfoPanel.vue';
 import AgentFilesPanel from './AgentFilesPanel.vue';
@@ -28,6 +36,7 @@ import AgentBuilderTabPanel from './AgentBuilderTabPanel.vue';
 import AgentPanel from './AgentPanel.vue';
 import AgentEvalsSection from './AgentEvalsSection.vue';
 import AgentPreviewButton from './AgentPreviewButton.vue';
+import AgentSkillsSection from './AgentSkillsSection.vue';
 
 const props = defineProps<{
 	activeMainTab: AgentBuilderMainTab;
@@ -41,7 +50,7 @@ const props = defineProps<{
 	agentFilesUploading: boolean;
 	knowledgeBaseEnabled: boolean;
 	deletingAgentFileId?: string | null;
-	appliedSkills: Array<{ id: string; skill: AgentSkill }>;
+	appliedSkills: Array<{ id: string; skill: AgentSkill; enabled?: boolean }>;
 	connectedTriggers: string[];
 	canEditAgent: boolean;
 	/** `agent:execute`, which a project viewer holds without holding update. */
@@ -51,13 +60,27 @@ const props = defineProps<{
 	generatingEvalCases?: boolean;
 	tasksReloadKey?: number;
 	artifactMode?: boolean;
+	preventScroll?: boolean;
+	embeddedAiBuilding?: boolean;
 	/** No agent row exists yet, so agent-scoped endpoints would 404. */
 	agentUnsaved?: boolean;
 	ensureAgentPersisted?: () => Promise<void>;
 	configValidationIssues?: AgentConfigValidationIssue[];
+	/** n8n Chat's saved description, forwarded to the channel modal. */
+	savedDescription?: string;
+	/** Persists n8n Chat's description, forwarded to the channel modal. */
+	saveDescription?: (description: string) => Promise<void>;
 }>();
 
 const childrenDisabled = computed(() => !props.canEditAgent);
+provide(
+	AGENT_PERSONALISATION_KEY,
+	computed(() =>
+		resolveAgentPersonalisation(
+			props.localConfig?.personalisation ?? props.agent?.schema?.personalisation,
+		),
+	),
+);
 const isKnowledgeAdvancedExpanded = ref(false);
 
 const settingsStore = useSettingsStore();
@@ -65,9 +88,21 @@ const isMcpAvailable = computed(
 	() => settingsStore.isModuleActive('mcp') && !!settingsStore.moduleSettings.mcp?.mcpAccessEnabled,
 );
 
+const typeAvailabilityPoliciesStore = useTypeAvailabilityPoliciesStore();
+watch(
+	() => props.projectId,
+	(projectId) => {
+		if (projectId) void typeAvailabilityPoliciesStore.fetchForProject(projectId);
+	},
+	{ immediate: true },
+);
+
 const emit = defineEmits<{
 	'update:activeMainTab': [tab: AgentBuilderMainTab];
 	'update:config': [updates: Partial<AgentJsonConfig>, meta?: { source: 'auto' }];
+	/** A budget settings modal saved — the view clears matching budget stops once the save persists. */
+	'update:budget-config': [updates: Partial<AgentJsonConfig>];
+	'draft:config': [];
 	'open-tool': [target: ToolOpenTarget];
 	'open-skill': [id: string];
 	'add-tool': [mode: ToolPickerMode];
@@ -84,21 +119,55 @@ const emit = defineEmits<{
 	'toggle-task': [payload: { id: string; enabled: boolean }];
 	'toggle-mcp-access': [enabled: boolean];
 	'tasks-changed': [];
+	'preview-task': [instructions: string];
 	'agent-changed': [];
 	'generate-eval-cases': [];
 	'open-preview': [];
+	'publish-agent': [];
+	'setup-task-action': [task: SetupTask];
 }>();
 
 const i18n = useI18n();
+
+const agentInfoPanel = ref<InstanceType<typeof AgentInfoPanel>>();
+const agentTriggersSection = ref<InstanceType<typeof AgentTriggersSection>>();
+
+function onSetupTaskAction(task: SetupTask) {
+	if (task.id === 'publish-agent') {
+		emit('publish-agent');
+		return;
+	}
+
+	if (task.action.target.kind === 'tool') {
+		emit('add-tool', 'tools');
+		return;
+	}
+
+	if (task.action.target.kind === 'channel') {
+		agentTriggersSection.value?.openChannelModal();
+		return;
+	}
+
+	if (task.action.path === 'instructions') {
+		agentInfoPanel.value?.focusInstructions();
+		return;
+	}
+
+	if (task.action.path === 'model') {
+		agentInfoPanel.value?.focusModel();
+	}
+}
+
+defineExpose({ onSetupTaskAction });
 </script>
 
 <template>
 	<section
-		:class="$style.editorColumn"
+		:class="[$style.editorColumn, { [$style.embeddedAiBuilding]: props.embeddedAiBuilding }]"
 		:aria-label="i18n.baseText('agents.builder.editorColumn.ariaLabel')"
 		data-testid="agent-builder-editor-column"
 	>
-		<div :class="$style.panelArea">
+		<div :class="[$style.panelArea, { [$style.preventScroll]: props.preventScroll }]">
 			<div :class="$style.identityHeaderRow" data-testid="agent-builder-identity-header">
 				<AgentIdentityHeader
 					:config="localConfig"
@@ -121,11 +190,30 @@ const i18n = useI18n();
 			<div :class="$style.panelAreaContainer">
 				<AgentBuilderTabPanel v-if="activeMainTab === 'agent'" data-testid="agent-tab-content">
 					<AgentInfoPanel
+						ref="agentInfoPanel"
 						:config="localConfig"
 						:disabled="childrenDisabled"
 						:project-id="projectId"
 						@update:config="(changes, meta) => emit('update:config', changes, meta)"
+						@draft:config="emit('draft:config')"
 					/>
+
+					<AgentPanel
+						:header="i18n.baseText('agents.builder.skills.title')"
+						:description="i18n.baseText('agents.builder.skills.description')"
+						data-testid="agent-skills-panel"
+					>
+						<AgentSkillsSection
+							:skills="appliedSkills"
+							:disabled="childrenDisabled"
+							:show-label="false"
+							:validation-issues="configValidationIssues ?? []"
+							:outdated-skill-ids="agent?.outdatedSkillIds ?? []"
+							@open-skill="emit('open-skill', $event)"
+							@add-skill="emit('add-skill')"
+							@remove-skill="emit('remove-skill', $event)"
+						/>
+					</AgentPanel>
 
 					<AgentPanel
 						:header="i18n.baseText('agents.builder.triggers.title')"
@@ -133,6 +221,7 @@ const i18n = useI18n();
 					>
 						<template #header-actions>
 							<AgentPreviewButton
+								:icon-only="true"
 								:is-runnable="props.agent?.isRunnable === true"
 								:validation-issues="props.configValidationIssues ?? []"
 								test-id="agent-triggers-preview-chat-button"
@@ -140,16 +229,20 @@ const i18n = useI18n();
 							/>
 						</template>
 						<AgentTriggersSection
+							ref="agentTriggersSection"
 							:key="`${projectId}:${agentId}`"
 							:connected-triggers="connectedTriggers"
 							:disabled="childrenDisabled"
 							:agent-id="agentId"
 							:project-id="projectId"
 							:is-published="Boolean(agent?.activeVersionId)"
+							:is-runnable="props.agent?.isRunnable === true"
 							:validation-issues="configValidationIssues ?? []"
 							:simple-channel-setup="artifactMode"
 							:agent-unsaved="agentUnsaved"
 							:ensure-agent-persisted="ensureAgentPersisted"
+							:saved-description="savedDescription"
+							:save-description="saveDescription"
 							:task-refs="localConfig?.tasks ?? []"
 							:reload-key="tasksReloadKey"
 							@update:connected-triggers="emit('update:connected-triggers', $event)"
@@ -157,6 +250,7 @@ const i18n = useI18n();
 							@agent-changed="emit('agent-changed')"
 							@toggle-task="emit('toggle-task', $event)"
 							@tasks-changed="emit('tasks-changed')"
+							@preview-task="emit('preview-task', $event)"
 						/>
 					</AgentPanel>
 
@@ -165,6 +259,7 @@ const i18n = useI18n();
 						:description="i18n.baseText('agents.builder.capabilities.description')"
 					>
 						<AgentCapabilitiesSection
+							supports-activation
 							:config="localConfig"
 							:tools="localConfig?.tools ?? []"
 							:custom-tools="agent?.tools ?? {}"
@@ -175,13 +270,11 @@ const i18n = useI18n();
 							:is-published="Boolean(agent?.activeVersionId)"
 							:validation-issues="configValidationIssues ?? []"
 							:agent-unsaved="agentUnsaved"
+							:sections="['tools', 'subAgents', 'tasks']"
 							@open-tool="emit('open-tool', $event)"
-							@open-skill="emit('open-skill', $event)"
 							@add-tool="emit('add-tool', $event)"
-							@add-skill="emit('add-skill')"
 							@update:config="emit('update:config', $event)"
 							@remove-tool="emit('remove-tool', $event)"
-							@remove-skill="emit('remove-skill', $event)"
 						/>
 					</AgentPanel>
 
@@ -271,6 +364,13 @@ const i18n = useI18n();
 					data-testid="agent-settings-tab-content"
 				>
 					<div :class="$style.settingsCards">
+						<AgentBudgetPanel
+							:config="localConfig"
+							:project-id="projectId"
+							:agent-id="agentId"
+							:disabled="childrenDisabled"
+							@update:config="emit('update:budget-config', $event)"
+						/>
 						<AgentSubAgentsPanel
 							:config="localConfig"
 							:disabled="childrenDisabled"
@@ -320,6 +420,7 @@ const i18n = useI18n();
 
 <style lang="scss" module>
 @use '@n8n/design-system/css/mixins/_focus.scss' as focus;
+@use '@n8n/design-system/css/mixins/mixins' as scrollbar-mixins;
 
 .advancedTrigger {
 	display: flex;
@@ -352,12 +453,18 @@ const i18n = useI18n();
 	width: 100%;
 }
 
+.embeddedAiBuilding {
+	--agent-panel-header-opacity: 0.5;
+	--agent-row-label-opacity: 0.5;
+}
+
 .editorColumn {
 	display: flex;
 	flex-direction: column;
 	background-color: light-dark(var(--background--surface), var(--background));
 	min-height: 0;
-	min-width: var(--agent-builder-editor-min-width, 35rem);
+	min-width: 0;
+	container: agent-editor / inline-size;
 }
 
 .panelArea {
@@ -370,9 +477,20 @@ const i18n = useI18n();
 	display: flex;
 	flex-direction: column;
 	overflow: auto;
-	scrollbar-width: thin;
-	scrollbar-color: var(--border-color) transparent;
 	scrollbar-gutter: stable;
+	@include scrollbar-mixins.hoverable-scroll-bar;
+}
+
+// A container query does not resolve a custom property.
+// 40rem is two 16rem steps plus one 8rem step.
+@container agent-editor (max-width: 40rem) {
+	.panelArea {
+		--agent-builder-content-padding-inline: var(--spacing--sm);
+	}
+}
+
+.preventScroll {
+	overflow: hidden;
 }
 
 .panelAreaContainer {
@@ -405,6 +523,7 @@ const i18n = useI18n();
 .identityHeaderRow {
 	flex-shrink: 0;
 	display: flex;
+	align-items: center;
 	width: 100%;
 }
 
@@ -438,5 +557,13 @@ const i18n = useI18n();
 	:global([data-test-id='tab-agent'] > *) {
 		padding-left: 0;
 	}
+}
+
+.setupTasks {
+	padding-inline: var(--agent-builder-content-padding-inline);
+	padding-block-end: var(--spacing--lg);
+	max-width: var(--agent-builder-content-max-width);
+	margin: 0 auto;
+	width: 100%;
 }
 </style>

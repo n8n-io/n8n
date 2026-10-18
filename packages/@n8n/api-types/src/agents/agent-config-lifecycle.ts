@@ -1,7 +1,7 @@
 /**
  * Draft-lifecycle predicates. A capability is a "draft" while its setup is
  * pending: the agent config until a model is chosen (`model: ""`), an
- * integration entry until a credential is connected (`credentialId: ""`).
+ * credential-backed integration entry until a credential is connected.
  */
 
 /** True while no model has been chosen yet (setup pending). */
@@ -10,6 +10,6 @@ export function isDraftAgentConfig(config: { model?: string } | null | undefined
 }
 
 /** True while no credential is connected yet (setup pending). */
-export function isDraftIntegration(integration: { credentialId: string }): boolean {
-	return integration.credentialId.trim() === '';
+export function isDraftIntegration(integration: { type: string; credentialId: string }): boolean {
+	return integration.type !== 'n8n_chat' && integration.credentialId.trim() === '';
 }

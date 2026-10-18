@@ -1,8 +1,10 @@
 import type { OpenAIClient } from '@langchain/openai';
 import get from 'lodash/get';
 import isObject from 'lodash/isObject';
-import { isObjectEmpty, jsonParse, type IDataObject, type IExecuteFunctions } from 'n8n-workflow';
+import { isObjectEmpty, type IDataObject, type IExecuteFunctions } from 'n8n-workflow';
 import type { ResponseInputImage } from 'openai/resources/responses/responses';
+
+import { parseJsonParameter } from '@utils/helpers';
 
 import { getBinaryDataFile } from '../../../../helpers/binary-data';
 import type {
@@ -140,9 +142,7 @@ export async function createRequest(
 	}
 
 	if (options.metadata) {
-		body.metadata = jsonParse(options.metadata as string, {
-			errorMessage: 'Failed to parse metadata',
-		});
+		body.metadata = parseJsonParameter(options.metadata, 'Failed to parse metadata');
 	}
 
 	if (options.promptConfig) {
@@ -151,9 +151,7 @@ export async function createRequest(
 			id: prompt.promptId,
 			version: prompt.version,
 			...(prompt.variables && {
-				variables: jsonParse(prompt.variables as string, {
-					errorMessage: 'Failed to parse prompt variables',
-				}),
+				variables: parseJsonParameter(prompt.variables, 'Failed to parse prompt variables'),
 			}),
 		});
 	}
@@ -175,9 +173,7 @@ export async function createRequest(
 			textConfig.format = {
 				type: textOptions.type,
 				name: textOptions.name as string,
-				schema: jsonParse(textOptions.schema as string, {
-					errorMessage: 'Failed to parse schema',
-				}),
+				schema: parseJsonParameter(textOptions.schema, 'Failed to parse schema'),
 			};
 		} else if (textOptions.type === 'json_object') {
 			textConfig.format = {
@@ -249,17 +245,13 @@ export async function createRequest(
 		}
 
 		if (builtInTools.fileSearch) {
-			const vectorStoreIds = get(builtInTools.fileSearch, 'vectorStoreIds', '[]') as string;
-			const filters = get(builtInTools.fileSearch, 'filters', '{}') as string;
+			const vectorStoreIds = get(builtInTools.fileSearch, 'vectorStoreIds', '[]');
+			const filters = get(builtInTools.fileSearch, 'filters', '{}');
 			newTools.push(
 				removeEmptyProperties({
 					type: 'file_search',
-					vector_store_ids: jsonParse(vectorStoreIds, {
-						errorMessage: 'Failed to parse vector store IDs',
-					}),
-					filters: filters
-						? jsonParse(filters, { errorMessage: 'Failed to parse filters' })
-						: undefined,
+					vector_store_ids: parseJsonParameter(vectorStoreIds, 'Failed to parse vector store IDs'),
+					filters: filters ? parseJsonParameter(filters, 'Failed to parse filters') : undefined,
 					max_num_results: get(builtInTools.fileSearch, 'maxResults') as number,
 				}),
 			);

@@ -4,6 +4,7 @@ import {
 	getLatestBuildResult,
 	getLatestBuilderTarget,
 	getLatestAgentBuilderTarget,
+	getLatestCallAgentResult,
 	getLatestDataTableResult,
 	getLatestDeletedDataTableId,
 	getLatestWorkflowUpdateResult,
@@ -191,6 +192,152 @@ describe('getLatestBuildResult', () => {
 	});
 });
 
+describe('getLatestCallAgentResult', () => {
+	test('returns undefined for node with no tool calls', () => {
+		expect(getLatestCallAgentResult(makeAgentNode(), 'agent-1')).toBeUndefined();
+	});
+
+	test('returns undefined for non-call_agent tool calls', () => {
+		const node = makeAgentNode({
+			targetResource: { type: 'agent', id: 'agent-1' },
+			toolCalls: [makeToolCall({ toolName: 'build-agent', result: { agentChange: 'created' } })],
+		});
+		expect(getLatestCallAgentResult(node, 'agent-1')).toBeUndefined();
+	});
+
+	test('returns undefined for a loading call_agent call', () => {
+		const node = makeAgentNode({
+			targetResource: { type: 'agent', id: 'agent-1' },
+			toolCalls: [
+				makeToolCall({
+					toolName: 'call_agent',
+					isLoading: true,
+					args: { message: 'Summarize the thread' },
+					result: undefined,
+				}),
+			],
+		});
+		expect(getLatestCallAgentResult(node, 'agent-1')).toBeUndefined();
+	});
+
+	test('returns undefined for a call_agent call that did not complete', () => {
+		const node = makeAgentNode({
+			targetResource: { type: 'agent', id: 'agent-1' },
+			toolCalls: [
+				makeToolCall({
+					toolName: 'call_agent',
+					args: { message: 'Summarize the thread' },
+					result: { status: 'error', code: 'agent_misconfigured' },
+				}),
+			],
+		});
+		expect(getLatestCallAgentResult(node, 'agent-1')).toBeUndefined();
+	});
+
+	test('returns the message and response from a completed call_agent call', () => {
+		const node = makeAgentNode({
+			targetResource: { type: 'agent', id: 'agent-1' },
+			toolCalls: [
+				makeToolCall({
+					toolCallId: 'tc-call-1',
+					toolName: 'call_agent',
+					args: { message: 'Summarize the thread about the outage' },
+					result: {
+						status: 'completed',
+						response: 'Ticket #48219 is a P1 SSO outage.',
+						executionId: 'exec-1',
+						sessionId: 'session-1',
+					},
+				}),
+			],
+		});
+		expect(getLatestCallAgentResult(node, 'agent-1')).toEqual({
+			message: 'Summarize the thread about the outage',
+			response: 'Ticket #48219 is a P1 SSO outage.',
+			toolCallId: 'tc-call-1',
+		});
+	});
+
+	test('returns the latest result when multiple test calls exist', () => {
+		const node = makeAgentNode({
+			targetResource: { type: 'agent', id: 'agent-1' },
+			toolCalls: [
+				makeToolCall({
+					toolCallId: 'tc-call-1',
+					toolName: 'call_agent',
+					args: { message: 'first try' },
+					result: { status: 'completed', response: 'old answer', executionId: 'exec-1' },
+				}),
+				makeToolCall({
+					toolCallId: 'tc-call-2',
+					toolName: 'call_agent',
+					args: { message: 'second try' },
+					result: { status: 'completed', response: 'new answer', executionId: 'exec-2' },
+				}),
+			],
+		});
+		expect(getLatestCallAgentResult(node, 'agent-1')).toEqual({
+			message: 'second try',
+			response: 'new answer',
+			toolCallId: 'tc-call-2',
+		});
+	});
+
+	test('finds result in child agent nodes, resolving identity from the child target', () => {
+		const child = makeAgentNode({
+			agentId: 'builder-1',
+			kind: 'agent-builder',
+			targetResource: { type: 'agent', id: 'agent-1' },
+			toolCalls: [
+				makeToolCall({
+					toolCallId: 'tc-child',
+					toolName: 'call_agent',
+					args: { message: 'child message' },
+					result: { status: 'completed', response: 'child answer', executionId: 'exec-1' },
+				}),
+			],
+		});
+		const parent = makeAgentNode({ children: [child] });
+		expect(getLatestCallAgentResult(parent, 'agent-1')).toEqual({
+			message: 'child message',
+			response: 'child answer',
+			toolCallId: 'tc-child',
+		});
+	});
+
+	test('ignores a completed call_agent result that tested a different agent', () => {
+		// Reproduces building agent A, then agent B without B's own completed
+		// call_agent yet — A's test run must not be mistaken for B's.
+		const agentABuilder = makeAgentNode({
+			agentId: 'builder-a',
+			kind: 'agent-builder',
+			targetResource: { type: 'agent', id: 'agent-a' },
+			toolCalls: [
+				makeToolCall({
+					toolCallId: 'tc-call-a',
+					toolName: 'call_agent',
+					args: { message: 'test agent A' },
+					result: { status: 'completed', response: 'A answer', executionId: 'exec-a' },
+				}),
+			],
+		});
+		const agentBBuilder = makeAgentNode({
+			agentId: 'builder-b',
+			kind: 'agent-builder',
+			targetResource: { type: 'agent', id: 'agent-b' },
+			toolCalls: [],
+		});
+		const parent = makeAgentNode({ children: [agentABuilder, agentBBuilder] });
+
+		expect(getLatestCallAgentResult(parent, 'agent-b')).toBeUndefined();
+		expect(getLatestCallAgentResult(parent, 'agent-a')).toEqual({
+			message: 'test agent A',
+			response: 'A answer',
+			toolCallId: 'tc-call-a',
+		});
+	});
+});
+
 describe('getLatestBuilderTarget', () => {
 	test('returns undefined for node with no children', () => {
 		expect(getLatestBuilderTarget(makeAgentNode())).toBeUndefined();
@@ -334,6 +481,25 @@ describe('getLatestAgentBuilderTarget', () => {
 });
 
 describe('getLatestAgentArtifactResult', () => {
+	test('returns no artifact for an explicit unchanged result', () => {
+		const orchestrator = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolName: 'build-agent',
+					args: { name: 'Existing Agent' },
+					result: { ok: true, agentChange: 'none', configUpdated: false },
+				}),
+			],
+		});
+
+		expect(
+			getLatestAgentArtifactResult(orchestrator, {
+				agentId: 'agent-1',
+				projectId: 'project-1',
+			}),
+		).toBeUndefined();
+	});
+
 	test('uses parent agent target for nested agent mutations', () => {
 		const nestedAgentBuilder = makeAgentNode({
 			agentId: 'nested-builder',
@@ -1166,6 +1332,49 @@ describe('getLatestWorkflowUpdateResult', () => {
 });
 
 describe('isAgentEditingWorkflow', () => {
+	test('keeps early setup active between tool calls until the agent finishes', () => {
+		const node = makeAgentNode({
+			status: 'active',
+			toolCalls: [
+				makeToolCall({
+					toolName: 'credentials',
+					args: { action: 'setup' },
+					result: { announced: true, preBuild: true, workflowId: 'wf-1' },
+				}),
+			],
+		});
+		expect(isAgentEditingWorkflow(node, 'wf-1')).toBe(true);
+		expect(isAgentEditingWorkflow(node, 'wf-2')).toBe(false);
+		node.status = 'completed';
+		expect(isAgentEditingWorkflow(node, 'wf-1')).toBe(false);
+	});
+
+	test('locks an announced workflow while its first build has no result yet', () => {
+		const call = makeToolCall({
+			toolName: 'build-workflow',
+			args: { filePath: 'workflow.ts' },
+			isLoading: true,
+			startedAt: '2026-09-15T08:00:00.000Z',
+		});
+		const node = makeAgentNode({
+			status: 'active',
+			toolCalls: [call],
+			setupItemsByWorkflowId: { 'wf-other': [], 'wf-1': [] },
+			latestSetupAnnouncement: {
+				workflowId: 'wf-1',
+				agentId: 'agent-1',
+				timestamp: '2026-09-15T08:00:01.000Z',
+			},
+		});
+		expect(isAgentEditingWorkflow(node, 'wf-1')).toBe(true);
+		expect(isAgentEditingWorkflow(node, 'wf-other')).toBe(false);
+		call.startedAt = '2026-09-15T08:01:00.000Z';
+		expect(isAgentEditingWorkflow(node, 'wf-1')).toBe(false);
+		call.startedAt = '2026-09-15T08:00:00.000Z';
+		call.isLoading = false;
+		expect(isAgentEditingWorkflow(node, 'wf-1')).toBe(false);
+	});
+
 	test('locks while an active agent run has already built the workflow', () => {
 		const node = makeAgentNode({
 			status: 'active',

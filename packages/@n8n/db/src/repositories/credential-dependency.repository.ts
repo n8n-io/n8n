@@ -26,16 +26,18 @@ export function addCredentialDependencyExistsFilter(
 	qb: SelectQueryBuilder<CredentialsEntity>,
 	filter: CredentialDependencyFilter,
 ) {
-	return qb.andWhere(
-		`EXISTS (
-			SELECT 1
-			FROM credential_dependency cd
-			WHERE cd."credentialId" = credential.id
-				AND cd."dependencyType" = :dependencyType
-				AND cd."dependencyId" = :dependencyId
-		)`,
-		filter,
-	);
+	// Built as a subquery so TypeORM resolves the table path (schema, table prefix)
+	// and escapes column names for the active driver.
+	const exists = qb
+		.subQuery()
+		.select('1')
+		.from(CredentialDependency, 'cd')
+		.where('cd.credentialId = credential.id')
+		.andWhere('cd.dependencyType = :dependencyType')
+		.andWhere('cd.dependencyId = :dependencyId')
+		.getQuery();
+
+	return qb.andWhere(`EXISTS ${exists}`, filter);
 }
 
 type DependencyMutationOptions = {

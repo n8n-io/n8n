@@ -18,6 +18,9 @@ import {
 /** Maximum number of redirects axios will follow before aborting. */
 const WEB_FETCH_MAX_REDIRECTS = 5;
 
+/** Maximum number of table cells expanded by the GFM Turndown plugin. */
+const WEB_FETCH_MAX_TABLE_CELLS = 1_000;
+
 // ============================================================================
 // URL PROVENANCE
 // ============================================================================
@@ -83,6 +86,64 @@ export interface ExtractedContent {
 	content: string;
 	truncated: boolean;
 	truncateReason?: string;
+}
+
+function replaceOversizedTablesWithPlainText(root: Element): void {
+	let remainingCells = WEB_FETCH_MAX_TABLE_CELLS;
+
+	for (const table of root.querySelectorAll('table')) {
+		if (!root.contains(table)) continue;
+
+		let cellCount = 0;
+
+		for (const cell of table.querySelectorAll('th, td')) {
+			if (cell.closest('table') !== table) continue;
+
+			const colspan = Number(cell.getAttribute('colspan') ?? 1);
+			cellCount += Number.isNaN(colspan) || colspan < 1 ? 1 : Math.ceil(colspan);
+
+			if (cellCount > remainingCells) break;
+		}
+
+		if (cellCount <= remainingCells) {
+			remainingCells -= cellCount;
+			continue;
+		}
+
+		const plainText = Array.from(table.querySelectorAll('tr'))
+			.filter((row) => row.closest('table') === table)
+			.map((row) =>
+				Array.from(row.children)
+					.filter((cell) => cell.tagName === 'TH' || cell.tagName === 'TD')
+					.map((cell) => cell.textContent?.replace(/\s+/g, ' ').trim() ?? '')
+					.filter(Boolean)
+					.join(' '),
+			)
+			.filter(Boolean)
+			.join('\n');
+		table.replaceWith(root.ownerDocument.createTextNode(plainText));
+	}
+}
+
+function promoteFirstRowInHeaderlessTables(root: Element): void {
+	for (const table of root.querySelectorAll('table')) {
+		if (table.querySelector('th')) continue;
+
+		const firstRow = table.querySelector('tr');
+		if (!firstRow) continue;
+
+		for (const cell of Array.from(firstRow.children)) {
+			if (cell.tagName !== 'TD') continue;
+
+			const headerCell = root.ownerDocument.createElement('th');
+
+			for (const attribute of Array.from(cell.attributes)) {
+				headerCell.setAttribute(attribute.name, attribute.value);
+			}
+			headerCell.innerHTML = cell.innerHTML;
+			cell.replaceWith(headerCell);
+		}
+	}
 }
 
 // ============================================================================
@@ -232,8 +293,13 @@ export async function fetchUrl(
  * Libraries are lazy-loaded to avoid pulling jsdom (~15-20MB) into memory at startup.
  */
 export async function extractReadableContent(html: string, url: string): Promise<ExtractedContent> {
-	const [{ JSDOM, VirtualConsole }, { Readability }, { default: TurndownService }] =
-		await Promise.all([import('jsdom'), import('@mozilla/readability'), import('turndown')]);
+	const [{ JSDOM, VirtualConsole }, { Readability }, { default: TurndownService }, { gfm }] =
+		await Promise.all([
+			import('jsdom'),
+			import('@mozilla/readability'),
+			import('turndown'),
+			import('@joplin/turndown-plugin-gfm'),
+		]);
 
 	const virtualConsole = new VirtualConsole();
 	const dom = new JSDOM(html, { url, virtualConsole });
@@ -241,11 +307,16 @@ export async function extractReadableContent(html: string, url: string): Promise
 
 	const title = article?.title ?? '';
 	const articleHtml = article?.content ?? '';
+	const articleRoot = dom.window.document.createElement('div');
+	articleRoot.innerHTML = articleHtml;
+	replaceOversizedTablesWithPlainText(articleRoot);
+	promoteFirstRowInHeaderlessTables(articleRoot);
 	const turndownService = new TurndownService({
 		headingStyle: 'atx',
 		codeBlockStyle: 'fenced',
 	});
-	let content = articleHtml ? turndownService.turndown(articleHtml) : '';
+	turndownService.use(gfm);
+	let content = articleHtml ? turndownService.turndown(articleRoot.innerHTML) : '';
 	let truncated = false;
 	let truncateReason: string | undefined;
 

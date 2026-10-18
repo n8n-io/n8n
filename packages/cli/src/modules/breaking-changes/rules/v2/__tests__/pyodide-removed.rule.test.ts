@@ -20,7 +20,7 @@ describe('PyodideRemovedRule', () => {
 				description:
 					'The Pyodide-based Python implementation in the Code node has been removed and replaced with a native Python task runner implementation',
 				category: BreakingChangeCategory.workflow,
-				severity: 'medium',
+				impact: 'executionsFail',
 			});
 		});
 	});
@@ -39,7 +39,7 @@ describe('PyodideRemovedRule', () => {
 				{
 					action: 'Review and adjust Python scripts',
 					description:
-						'Review Code node scripts relying on Pyodide syntax and adjust for breaking changes. See: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.code/#python-native-beta',
+						'Review Code node scripts relying on Pyodide syntax and adjust for breaking changes. See: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.code/#python-native',
 				},
 				{
 					action: 'Set up Python task runner',

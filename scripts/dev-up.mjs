@@ -19,7 +19,7 @@ import {
 	servePort,
 	shareWithOrg,
 	waitForHealth,
-} from './serve-ready.mjs';
+} from './codespace-preview/serve-ready.mjs';
 
 const build = process.argv.includes('--build');
 const port = servePort();

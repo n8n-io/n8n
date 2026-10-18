@@ -8,7 +8,7 @@ import {
 	N8nLoading,
 	N8nText,
 	N8nTooltip,
-	N8nActionPill,
+	N8nBadge,
 } from '@n8n/design-system';
 import type { TableHeader } from '@n8n/design-system';
 import type { AiGatewayUsageEntry } from '@n8n/api-types';
@@ -170,12 +170,14 @@ onMounted(async () => {
 			<div :class="$style.headings">
 				<div :class="$style.headingRow">
 					<N8nHeading size="2xlarge">{{ i18n.baseText('settings.n8nConnect.title') }}</N8nHeading>
-					<N8nActionPill
+					<N8nBadge
 						v-if="walletBadgeText"
-						size="medium"
-						:text="walletBadgeText"
+						size="xsmall"
+						variant="success"
 						data-test-id="ai-gateway-header-credits-badge"
-					/>
+					>
+						{{ walletBadgeText }}
+					</N8nBadge>
 				</div>
 				<N8nText size="small" color="text-light">
 					{{ i18n.baseText('settings.n8nConnect.description') }}
@@ -203,7 +205,7 @@ onMounted(async () => {
 					<div :class="$style.usageTableActions">
 						<N8nTooltip :content="i18n.baseText('settings.n8nConnect.usage.refresh.tooltip')">
 							<N8nButton
-								variant="subtle"
+								variant="outline"
 								icon-only
 								size="small"
 								icon="refresh-cw"
@@ -342,7 +344,7 @@ onMounted(async () => {
 	padding: var(--spacing--5xs) var(--spacing--2xs);
 	border-radius: var(--radius);
 	font-size: var(--font-size--2xs);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	background-color: var(--color--foreground);
 	color: var(--color--text);
 }

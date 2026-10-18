@@ -18,7 +18,8 @@ const meta = {
 	parameters: {
 		docs: {
 			description: {
-				component: 'A compact tag or chip component for displaying labels and metadata.',
+				component:
+					'A compact chip-like component for displaying actionable items in a List or TagsInput.',
 			},
 		},
 	},

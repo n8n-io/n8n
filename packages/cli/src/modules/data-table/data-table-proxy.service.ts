@@ -25,9 +25,9 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { ForbiddenError } from '@n8n/errors';
 import { userHasScopes } from '@/permissions.ee/check-access';
-import { InstanceWriteAccessService } from '@/services/instance-write-access.service';
+import { InstanceWriteAccessService } from '@n8n/backend-services';
 import { OwnershipService } from '@/services/ownership.service';
 
 import { DataTableAggregateService } from './data-table-aggregate.service';

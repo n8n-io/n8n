@@ -21,6 +21,7 @@ const RUNTIME_SKILL_FRONTMATTER_FIELDS = [
 	'interface',
 	'policy',
 	'dependencies',
+	'shared_references',
 	'platforms',
 	'version',
 	'license',
@@ -82,6 +83,7 @@ export function parseRuntimeSkillMarkdown(
 	const skillInterface = optionalSkillInterface(frontmatter.data, errors);
 	const policy = optionalSkillPolicy(frontmatter.data, errors);
 	const dependencies = optionalSkillDependencies(frontmatter.data, errors);
+	const sharedReferences = optionalStringArray(frontmatter.data, 'shared_references', errors);
 	const platforms = optionalStringArray(frontmatter.data, 'platforms', errors)?.map((platform) =>
 		platform.toLowerCase(),
 	);
@@ -108,6 +110,7 @@ export function parseRuntimeSkillMarkdown(
 		...(skillInterface ? { interface: skillInterface } : {}),
 		...(policy ? { policy } : {}),
 		...(dependencies ? { dependencies } : {}),
+		...(sharedReferences?.length ? { sharedReferences } : {}),
 		...(version ? { version } : {}),
 		...(license ? { license } : {}),
 		...(compatibility ? { compatibility } : {}),

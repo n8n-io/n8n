@@ -51,7 +51,8 @@ type MockMcpStore = {
 
 let mockMcpStore: MockMcpStore;
 
-vi.mock('@/features/ai/mcpAccess/mcp.store', () => ({
+vi.mock('@n8n/frontend-module-mcp', async (importOriginal) => ({
+	...(await importOriginal()),
 	useMCPStore: () => mockMcpStore,
 }));
 

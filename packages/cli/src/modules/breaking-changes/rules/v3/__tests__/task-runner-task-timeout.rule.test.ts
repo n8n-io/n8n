@@ -33,4 +33,10 @@ describe('TaskRunnerTaskTimeoutRule', () => {
 			expect(result.instanceIssues).toHaveLength(0);
 		});
 	});
+
+	describe('getMetadata()', () => {
+		it('should report an executionsFail impact because a timed-out task fails the Code node', () => {
+			expect(rule.getMetadata().impact).toBe('executionsFail');
+		});
+	});
 });

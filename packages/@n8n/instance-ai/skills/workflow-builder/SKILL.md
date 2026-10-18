@@ -9,6 +9,11 @@ description: >-
   data-table-manager first, then this skill. Do not load planning or
   create-tasks first. Load planning only when multiple coordinated workflows
   or shared cross-task data tables require a dependency-aware task graph.
+  Don't use this skill for explicit one-off tasks that can be done by a single
+  node execution: load one-off-operations and run the node with
+  nodes(action="execute"). Also load for a workflow's evaluations, model
+  choices, credential setup, and post-build verification: this skill lists the
+  references for those steps.
 recommended_tools:
   - read_file
   - write_file
@@ -56,6 +61,20 @@ first action turn (each extra sequential turn resends the whole context). When
 unsure which nodes to use, load this skill first and follow its research
 process below.
 
+## Early service connections
+
+When the `credentials(action="setup")` schema offers `filePath`, announce
+known service credentials immediately after the first node definitions or
+credential type search. Do this before detailed planning, SDK research, or
+source generation. Do not wait for every service to be resolved.
+
+Pick the source `filePath` and call credential setup with the complete list
+of types known so far. Make it the only tool call in that response. Wait for
+its successful `preBuild: true` result before continuing. Add later discoveries
+with another complete list. Do not batch setup with source writing.
+
+When early setup is unavailable, keep the post-build setup flow below.
+
 ## Repair Strategy
 
 When the edit is to fix a node the user reports as erroring or showing a red
@@ -94,12 +113,17 @@ resources, credentials, channel IDs, or timezone; use placeholders or unresolved
 for a capability the user did not name,
 discover coverage first and use a Gateway credits–covered node instead of asking
 when the user has no credential for a comparable tool (see Gateway credits
-Preference). Setup details — recipients, accounts,
-resources, channels, credentials, timezone — belong in placeholders or
-unresolved `newCredential()` calls until post-build setup. After the first
-build, use `ask-user` when stuck or genuinely ambiguous; do not retry the same
+Preference). Setup details such as recipients, accounts, resources,
+channels, credentials, and timezone belong in placeholders or
+unresolved `newCredential()` calls. Announce known credentials through early
+setup when available, then continue building without waiting for the user.
+After the first build, resolve remaining setup and use `ask-user` when stuck
+or when choices are ambiguous; do not retry the same
 failing approach more than twice. Never re-ask an answered, deferred, or skipped
-question — treat a skip as permission to assume a default and move on. Never
+question. A skip grants no additional permission. Choose defaults only for
+unspecified details within the requested task. If a skipped question seeks
+permission to change existing authentication, delete nodes, or expand scope,
+preserve the existing state and report any remaining blocker. Never
 solicit secrets through `ask-user`; route credential collection through
 workflow/credential setup surfaces.
 
@@ -128,18 +152,19 @@ setup steps or node semantics from memory when those sources can answer.
 1. **Knowledge base** — consult before
    building. Read the relevant `.md` guides and templates for each technique
    the request involves. Skip only for trivial mechanical edits you have
-   already reviewed in this thread. The knowledge base lives at the workspace
-   root (NOT inside this skill's directory) — all paths below are
-   workspace-root-relative:
-   - `${N8N_WORKSPACE_DIR}/knowledge-base/index.json` — catalog of technique
-     guides (`${N8N_WORKSPACE_DIR}/knowledge-base/best-practices/index.json`;
+   already reviewed in this thread. The knowledge base is in the sandbox
+   workspace. Read it with the workspace tools, not `load_skill`. Paths in
+   `knowledge-base/` and `node-types/` in this skill are relative to the
+   workspace root:
+   - `knowledge-base/index.json` — catalog of technique
+     guides (`knowledge-base/best-practices/index.json`;
      read the linked `.md` files) and orchestration reference docs
-     (`${N8N_WORKSPACE_DIR}/knowledge-base/reference/index.json`)
-   - `${N8N_WORKSPACE_DIR}/knowledge-base/templates/` — curated SDK workflow
+     (`knowledge-base/reference/index.json`)
+   - `knowledge-base/templates/` — curated SDK workflow
      examples: use `workspace_execute_command` with `rg` or `find` to locate
      matches, then read only the relevant `.ts` files —
      never load `templates/index.json` wholesale
-   - `${N8N_WORKSPACE_DIR}/node-types/index.txt` — searchable catalog of
+   - `node-types/index.txt` — searchable catalog of
      available n8n nodes
 2. **Runtime skills** — when another skill matches (e.g. `data-table-manager`,
    `debugging-executions`, `post-build-flow`), `load_skill` and follow it
@@ -151,17 +176,17 @@ setup steps or node semantics from memory when those sources can answer.
 
 For workflows with multiple external systems, multiple requested effects,
 digests or reports, non-trivial branching, or Code nodes, read
-`${N8N_WORKSPACE_DIR}/knowledge-base/reference/workflow-builder-guardrails.md`
+`knowledge-base/reference/workflow-builder-guardrails.md`
 before writing code. Use it as the build checklist for source preservation,
 fan-out/fan-in, effect-specific gating, and list itemization.
 
 When mapping downstream fields from an OpenAI node, read
-`${N8N_WORKSPACE_DIR}/knowledge-base/reference/open-ai-output-shape.md`
+`knowledge-base/reference/open-ai-output-shape.md`
 (v2+ text/response uses `$json.output[0].content[0].text`; v1 text/message
 uses `$json.message.content` — not `$json.text`; `json_object`/`json_schema`
 output is already a parsed object, never `JSON.parse` it). When mapping fields
 from an Anthropic node, read
-`${N8N_WORKSPACE_DIR}/knowledge-base/reference/anthropic-output-shape.md`
+`knowledge-base/reference/anthropic-output-shape.md`
 (`$json.content` is an array of blocks — read text with
 `$json.content[0].text`, never treat `$json.content` as a string).
 
@@ -173,8 +198,8 @@ Trigger — never a name, placeholder, `activeVersionId`, or local SDK id).
 n8n has no global error workflow setting; mention that only if the user asks
 about global behavior. Do not offer or build an error workflow before the
 primary workflow is published. Before building or attaching an error
-workflow, load this skill's `references/error-workflows.md` linked file and
-follow its build → publish → assign steps.
+workflow, load the `error-workflows` reference and follow its build → publish
+→ assign steps.
 
 ## Mandatory Process
 
@@ -198,6 +223,8 @@ follow its build → publish → assign steps.
    method name, method type, credential type, and credential ID — mandatory
    for calendars, spreadsheets, channels, folders, databases, models, and any
    other list-backed parameter when a credential is available.
+   For new model choices, follow `model-selection` before writing code,
+   even without credentials.
 5. Pick a stable workspace `filePath` for the source file, typically
    `src/workflows/main.workflow.ts` for a one-off new workflow, or a clearly
    named `.workflow.ts` file when multiple source files are useful. For an
@@ -226,12 +253,17 @@ follow its build → publish → assign steps.
    SDK validation on the workspace source file via
    `workspace_execute_command`:
    `node --import tsx node_modules/@n8n/workflow-sdk/dist/cli/index.js validate <filePath>`
-   Output is lint-style (`line  severity  code  message`); fix every `error`
-   row. Warnings do not block the save and the command may still exit 0, but
-   they flag defects that surface at run time — resolve or consciously dismiss
-   each one. A clean validate run does not guarantee `build-workflow` will
-   succeed (no full node-type registry in the sandbox CLI), so still call
-   `build-workflow`.
+   Output is lint-style (`line  severity  code  message`). For new workflows,
+   fix every `error` row. For edits, fix errors introduced by your change.
+   Preserve unrelated existing nodes and code even if the CLI reports errors
+   on them. The CLI has no saved-workflow baseline; call `build-workflow` to
+   decide which findings still block. It can keep existing authentication and
+   missing-output findings informational when their cause is unchanged.
+   If the save remains blocked, report the blocker without
+   expanding scope. CLI warning rows do not block saves; resolve or consciously dismiss
+   them within the requested scope. A clean validate run does not guarantee
+   `build-workflow` will succeed (no full node-type registry in the sandbox CLI),
+   so still call `build-workflow`.
 8. Call `build-workflow` with the `filePath` you wrote.
    For planned build follow-ups where `buildTask.isSupportingWorkflow === true`,
    pass `isSupportingWorkflow: true`; that saved supporting workflow is the
@@ -445,7 +477,8 @@ When choosing a service:
 - When setup completion and popularity clearly support one candidate, choose it
   and continue without asking.
 - When the signals are close or conflict and the user has not delegated the
-  choice, ask exactly one `single` question. If skipped, choose a sensible default.
+  choice, ask exactly one `single` question. If skipped, choose a default within
+  the user's requested scope.
 - When the user explicitly asks you to choose, make a sensible choice and
   continue without asking.
 
@@ -516,7 +549,9 @@ When `nodes(action="explore-resources")` returns no results for a required
 resource:
 
 1. If the resource can be represented as a user choice, use
-   `placeholder('Select <resource>')` and let setup collect it after the build.
+   `placeholder('Select <resource>')` and let setup collect it. When the persistent
+   setup panel is enabled, the user can fill announced requirements during the
+   build. Do not tell them to wait until the build finishes.
 2. If the user explicitly asked you to create the resource and the node type
    definition has a safe create operation, build and verify that
    resource-creation workflow as part of the requested work.
@@ -539,9 +574,8 @@ explicit input schema, built with `isSupportingWorkflow: true`) referenced from
 the main workflow's `executeWorkflow` node (`source: 'database'`, real returned
 `workflowId`), main workflow saved last. This is part of the approved build
 task — not a reason to create a new plan, and simple
-workflows stay in one workflow. Before writing multi-workflow code, load this
-skill's `references/compositional-workflows.md` linked file for the required
-steps and SDK examples.
+workflows stay in one workflow. Before writing multi-workflow code, load the
+`compositional-workflows` reference for the required steps and SDK examples.
 
 ## Data Tables
 
@@ -609,7 +643,7 @@ every reported error and warning before calling `build-workflow`.
   graph; it is not a Code node and does not run. Build strings with template
   literals; do runtime joining, aggregation, or transforms with `expr()` in a
   native node. Full allowed/forbidden list and "Native node mappings" table:
-  `${N8N_WORKSPACE_DIR}/knowledge-base/reference/workflow-sdk-language.md`.
+  `knowledge-base/reference/workflow-sdk-language.md`.
 - Use `@n8n/workflow-sdk`.
 - Do not specify node positions. They are auto-calculated by the layout engine.
 - Use `expr('{{ $json.field }}')` for n8n expressions. Variables must be inside
@@ -709,7 +743,7 @@ import {
 
 Declare a group with `.group(name, members, { description })` on the workflow builder; members
 are the node handles. Before you emit a `.group(...)`, read
-`${N8N_WORKSPACE_DIR}/knowledge-base/reference/node-groups.md` — it carries the rules that make
+`knowledge-base/reference/node-groups.md` — it carries the rules that make
 a group valid and the contract for editing an existing workflow's groups. Do not restate those
 rules from memory: an invalid group is dropped from the saved workflow with a warning, so the
 source has to be fixed rather than re-emitted.
@@ -795,10 +829,9 @@ asked for that exact name.
 
 ## Node Configuration Safety Rules
 
-- Fetch `nodes(action="type-definition")` before configuring nodes. Generated
-  definitions and `@builderHint` annotations are the source of truth.
+- Fetch `nodes(action="type-definition")` for parameter names and shapes.
 - Use live `nodes(action="explore-resources")` for resource locator, list, and
-  model fields when credentials are available.
+  model fields when credentials are available, including Gateway credits.
 - If a configuration is unclear after reading the definition, ask for
   clarification or use placeholders. Do not guess.
 - Pay attention to `@builderHint` annotations in search results and type
@@ -963,7 +996,7 @@ For AI Agent workflows:
 
 After building a workflow that uses a trigger with an HTTP endpoint, share the
 full production URL with the user. Use the Webhook base URL and Form base URL
-from Instance Info in the system prompt. Each trigger type has a distinct
+from the `<instance-urls>` block in the user's turn. Each trigger type has a distinct
 pattern:
 
 - **Webhook Trigger**: `{webhookBaseUrl}/{path}` (where `{path}` is the node's

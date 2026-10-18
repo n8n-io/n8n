@@ -595,6 +595,19 @@ describe('NodeExecutionContext', () => {
 			);
 			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
 		});
+
+		it('rejects signed resume URLs in the engine process', () => {
+			const previousInstanceType = instanceSettings.instanceType;
+			Object.assign(instanceSettings, { instanceType: 'engine' });
+			try {
+				expect(() => testContext.getSignedResumeUrl()).toThrow(
+					'Engine v2 does not support signed resume URLs yet',
+				);
+			} finally {
+				Object.assign(instanceSettings, { instanceType: previousInstanceType });
+			}
+		});
+
 		it('should return a resume URL with HMAC signature', () => {
 			const result = testContext.getSignedResumeUrl();
 

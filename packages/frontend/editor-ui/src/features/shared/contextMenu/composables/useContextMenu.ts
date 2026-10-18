@@ -3,6 +3,9 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { computed, ref, watch } from 'vue';
 import { getMousePosition } from '@/app/utils/nodeViewUtils';
 import { useContextMenuItems, type ContextMenuAction } from './useContextMenuItems';
+import { getEmptyGroupAnchor } from 'n8n-workflow';
+import { isPresent } from '@/app/utils/typesUtils';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 export type ContextMenuTarget = {
 	readOnly?: boolean;
@@ -28,15 +31,26 @@ function getTargetEntityId(menuTarget: ContextMenuTarget): string | undefined {
 
 export const useContextMenu = () => {
 	const uiStore = useUIStore();
+	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const isOpen = computed(() => target.value !== undefined);
 
 	const targetNodeIds = computed(() => {
 		if (!target.value) return [];
 
 		const currentTarget = target.value;
-		return currentTarget.source === 'canvas' || currentTarget.source === 'group'
-			? currentTarget.nodeIds
-			: [currentTarget.nodeId];
+		if (currentTarget.source !== 'group') {
+			return currentTarget.source === 'canvas' ? currentTarget.nodeIds : [currentTarget.nodeId];
+		}
+
+		const group = workflowDocumentStore?.value?.getGroupById(currentTarget.groupId);
+		if (!group) return currentTarget.nodeIds;
+
+		const currentMemberNodes = group.nodeIds
+			.map((nodeId) => workflowDocumentStore?.value?.getNodeById(nodeId))
+			.filter(isPresent);
+		const anchor = getEmptyGroupAnchor(group, currentMemberNodes);
+
+		return anchor ? [anchor.id] : currentTarget.nodeIds;
 	});
 
 	const targetGroupId = computed(() =>

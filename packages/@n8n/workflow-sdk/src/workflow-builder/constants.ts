@@ -38,10 +38,24 @@ export const STICKY_PADDING = GRID_SIZE * 2; // 32
 /** Headroom above wrapped nodes so the sticky's text does not sit on top of them. */
 export const STICKY_HEADER_HEIGHT = GRID_SIZE * 4; // 64
 
-/** Bound on the sticky de-overlap walk so a pathological graph can't spin. */
-export const MAX_STICKY_SEPARATION_STEPS = 50;
-
 // BFS layout constants (used by calculateNodePositions for basic positioning)
 export const NODE_SPACING_X = 200;
 export const DEFAULT_Y = 300;
 export const START_X = 100;
+
+// Node group geometry. Mirrors
+// packages/frontend/editor-ui/src/features/workflows/canvas/stores/canvasNodeGroups.constants.ts
+// A collapsed group is drawn as a fixed-size chip, so that is the footprint
+// layout reserves; the canvas pushes neighbours aside when a group is expanded.
+
+/** Gap between the group frame's edge and its member nodes. */
+export const GROUP_PADDING_X = 56;
+
+/** Headroom between the group's title bar and its member nodes. */
+export const GROUP_PADDING_Y_TOP = 40;
+
+/** Title bar height; matches node height. */
+export const GROUP_HEADER_HEIGHT = DEFAULT_NODE_SIZE[1]; // 96
+
+/** Fixed title bar width while collapsed. */
+export const GROUP_HEADER_WIDTH_COLLAPSED = 400;

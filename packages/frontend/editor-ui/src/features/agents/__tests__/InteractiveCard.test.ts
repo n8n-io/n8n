@@ -1,141 +1,45 @@
-/* eslint-disable import-x/no-extraneous-dependencies -- test-only */
 import { mount } from '@vue/test-utils';
-import { APPROVAL_TOOL_NAME, WAIT_TOOL_NAME } from '@n8n/api-types';
-import { describe, expect, it, vi } from 'vitest';
+import { WAIT_TOOL_NAME } from '@n8n/api-types';
+import { computed } from 'vue';
+import { describe, expect, it } from 'vitest';
 
-import InteractiveCard from '../components/interactive/InteractiveCard.vue';
+import { INTERACTION_EXTENSION_TOOL_NAME } from '@/features/ai/shared/agentsChat/constants';
+import { AGENTS_CHAT_INTERACTION_EXTENSIONS } from '@/features/ai/shared/agentsChat/interactionRegistry';
 import type { InteractivePayload } from '@/features/ai/shared/agentsChat/types';
+import {
+	TEST_EXTENSION_KEY,
+	testInteractionExtensions,
+} from '@/features/ai/shared/agentsChat/__tests__/fixtures/testInteractionExtension';
+import InteractiveCard from '../components/interactive/InteractiveCard.vue';
 
-vi.mock('@n8n/i18n', () => {
-	const i18n = {
-		baseText: (key: string, options?: { interpolate?: Record<string, string> }) => {
-			if (key === 'agents.chat.approval.title') return 'Approval required';
-			if (key === 'agents.chat.approval.description') {
-				return `The agent wants to run the ${options?.interpolate?.toolName ?? ''} tool.`;
-			}
-			if (key === 'agents.chat.approval.approve') return 'Approve';
-			if (key === 'agents.chat.approval.reject') return 'Reject';
-			if (key === 'agents.chat.approval.approved') return 'Approved';
-			if (key === 'agents.chat.approval.rejected') return 'Rejected';
-			if (key === 'agents.chat.approval.viewToolDetails') return 'View tool details';
-			return key;
-		},
-	};
-	return { useI18n: () => i18n, i18n, i18nInstance: { install: vi.fn() } };
-});
-
-function mountCard(payload: InteractivePayload) {
-	return mount(InteractiveCard, {
-		props: { payload },
-		global: {
-			stubs: {
-				N8nCard: { template: '<section><slot /></section>' },
-				N8nText: { template: '<span><slot /></span>', props: ['tag', 'bold', 'size', 'color'] },
-				N8nIcon: { template: '<i />', props: ['icon', 'size', 'color'] },
-				N8nButton: {
-					template:
-						'<button :disabled="disabled" :data-testid="$attrs[\'data-testid\']" @click="$emit(\'click\')"><slot /></button>',
-					props: ['disabled', 'type', 'variant', 'size'],
-					emits: ['click'],
-				},
-			},
-		},
-	});
-}
-
-const approvalPayload: InteractivePayload = {
-	toolName: APPROVAL_TOOL_NAME,
-	toolCallId: 'tc-approval',
-	runId: 'run-approval',
-	input: {
-		type: 'approval',
-		toolName: 'calculator',
-		displayName: 'Calculator',
-		args: { input: '2 + 2' },
-		details: {
-			toolName: 'calculator',
-			input: { input: '2 + 2' },
-			node: { parameters: { operation: 'calculate' } },
-		},
-	},
+const extensionPayload: InteractivePayload = {
+	toolName: INTERACTION_EXTENSION_TOOL_NAME,
+	extensionKey: TEST_EXTENSION_KEY,
+	toolCallId: 'tc-ext',
+	runId: 'run-ext',
+	input: { question: 'Continue?', tool: 'ask_host' },
 };
 
 describe('InteractiveCard', () => {
-	it('renders approval details and emits approved resume data', async () => {
-		const wrapper = mountCard(approvalPayload);
-
-		expect(wrapper.text()).toContain('Approval required');
-		expect(wrapper.text()).toContain('The agent wants to run the Calculator tool.');
-		expect(wrapper.text()).not.toContain('calculator.');
-		expect(wrapper.text()).toContain('2 + 2');
-		expect(wrapper.text()).toContain('operation');
-		const details = wrapper.find('[data-testid="agent-approval-tool-details"]');
-		expect(details.exists()).toBe(true);
-		expect(details.attributes('open')).toBeUndefined();
-
-		await wrapper.find('[data-testid="agent-approval-approve"]').trigger('click');
-
-		expect(wrapper.emitted('submit')).toEqual([[{ approved: true }]]);
-	});
-
-	it('renders approval args as provided by the backend', () => {
-		const wrapper = mountCard({
-			...approvalPayload,
-			input: {
-				type: 'approval',
-				toolName: 'calculator',
-				displayName: 'Calculator',
-				args: {
-					query: 'project status',
-					password: 'super-secret-password',
-					nested: {
-						apiKey: 'api-key-value',
-						authorization: 'Bearer token-value',
-					},
-				},
-			},
-		});
-
-		expect(wrapper.text()).toContain('project status');
-		expect(wrapper.text()).toContain('super-secret-password');
-		expect(wrapper.text()).toContain('api-key-value');
-		expect(wrapper.text()).toContain('token-value');
-	});
-
-	it('emits rejected resume data from the reject action', async () => {
-		const wrapper = mountCard(approvalPayload);
-
-		await wrapper.find('[data-testid="agent-approval-reject"]').trigger('click');
-
-		expect(wrapper.emitted('submit')).toEqual([[{ approved: false }]]);
-	});
-
-	it('renders resolved approval state without active actions', () => {
-		const wrapper = mountCard({
-			...approvalPayload,
-			resolvedAt: 1,
-			resolvedValue: { approved: false },
-		});
-
-		expect(wrapper.text()).toContain('Rejected');
-		expect(wrapper.find('[data-testid="agent-approval-approve"]').exists()).toBe(false);
-		expect(wrapper.find('[data-testid="agent-approval-reject"]').exists()).toBe(false);
-	});
 	// A workflow tool parked on a Wait node reuses the chat card renderer, and its
 	// buttons resume the parked run with the value the backend declared.
 	it('renders the waiting card and emits the clicked button as resume data', async () => {
-		const wrapper = mountCard({
-			toolName: WAIT_TOOL_NAME,
-			toolCallId: 'tc-wait',
-			runId: 'run-wait',
-			input: {
-				card: {
-					title: 'Waiting on "Approval workflow"',
-					components: [
-						{ type: 'section', text: 'The "Approval workflow" workflow is paused.' },
-						{ type: 'button', label: 'Check for the result', value: 'continue' },
-						{ type: 'button', label: 'Stop waiting', value: 'cancel' },
-					],
+		const wrapper = mount(InteractiveCard, {
+			props: {
+				payload: {
+					toolName: WAIT_TOOL_NAME,
+					toolCallId: 'tc-wait',
+					runId: 'run-wait',
+					input: {
+						card: {
+							title: 'Waiting on "Approval workflow"',
+							components: [
+								{ type: 'section', text: 'The "Approval workflow" workflow is paused.' },
+								{ type: 'button', label: 'Check for the result', value: 'continue' },
+								{ type: 'button', label: 'Stop waiting', value: 'cancel' },
+							],
+						},
+					},
 				},
 			},
 		});
@@ -150,5 +54,56 @@ describe('InteractiveCard', () => {
 		await buttons[1].trigger('click');
 
 		expect(wrapper.emitted('submit')).toEqual([[{ type: 'button', value: 'cancel' }]]);
+	});
+
+	it('renders a host extension card and emits its resume data', async () => {
+		const wrapper = mount(InteractiveCard, {
+			props: { payload: extensionPayload },
+			global: {
+				provide: {
+					[AGENTS_CHAT_INTERACTION_EXTENSIONS]: computed(() => testInteractionExtensions),
+				},
+			},
+		});
+
+		expect(wrapper.find('[data-testid="test-card"]').text()).toContain('Continue?');
+
+		await wrapper.find('[data-testid="test-card-answer"]').trigger('click');
+
+		expect(wrapper.emitted('submit')).toEqual([[{ answer: 'yes' }]]);
+	});
+
+	it('disables a host extension card that has no run to resume', () => {
+		const wrapper = mount(InteractiveCard, {
+			props: { payload: { ...extensionPayload, runId: undefined } },
+			global: {
+				provide: {
+					[AGENTS_CHAT_INTERACTION_EXTENSIONS]: computed(() => testInteractionExtensions),
+				},
+			},
+		});
+
+		expect(wrapper.find('[data-testid="test-card-answer"]').attributes('disabled')).toBeDefined();
+	});
+
+	it('renders nothing for an extension without a card component', () => {
+		const wrapper = mount(InteractiveCard, {
+			props: { payload: extensionPayload },
+			global: {
+				provide: {
+					[AGENTS_CHAT_INTERACTION_EXTENSIONS]: computed(() => [{ key: TEST_EXTENSION_KEY }]),
+				},
+			},
+		});
+
+		expect(wrapper.find('[data-testid="test-card"]').exists()).toBe(false);
+		expect(wrapper.text()).toBe('');
+	});
+
+	it('renders nothing for an extension card that the chat does not provide', () => {
+		const wrapper = mount(InteractiveCard, { props: { payload: extensionPayload } });
+
+		expect(wrapper.find('[data-testid="test-card"]').exists()).toBe(false);
+		expect(wrapper.text()).toBe('');
 	});
 });

@@ -1,7 +1,7 @@
 import type { ConsentUiHints } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
-import type { INode } from 'n8n-workflow';
-import { CHAT_TRIGGER_NODE_TYPE } from 'n8n-workflow';
+import type { INode, N8nOAuth2BrowserFlowMode } from 'n8n-workflow';
+import { CHAT_TRIGGER_NODE_TYPE, resolveOAuthClientMode } from 'n8n-workflow';
 
 /**
  * Scopes advertised for per-workflow MCP trigger resources. Empty on purpose:
@@ -143,4 +143,21 @@ export function methodQueryString(method: string): string {
 export function parseMethodParam(value: string | null | undefined): string | undefined {
 	const method = value?.trim().toUpperCase();
 	return method === '' ? undefined : method;
+}
+
+/**
+ * Whether a webhook trigger's URL may act as its own virtual OAuth client, i.e. the
+ * resource is first-party and a browser can be redirected through `/oauth/authorize`
+ * with no client registration. Only a GET can ever take that redirect (a redirect
+ * carries a URL and nothing else), so any other method is never first-party — otherwise
+ * a token could be minted via the virtual client for a method the browser flow could
+ * never reach. Shared by the production and test resolvers so they cannot diverge from
+ * each other or from the node's runtime decision (`resolveOAuthClientMode`).
+ */
+export function webhookAllowsBrowserFlow(node: INode, requestedMethod: string): boolean {
+	const options = node.parameters.options as { oauthClient?: N8nOAuth2BrowserFlowMode } | undefined;
+	return (
+		requestedMethod === 'GET' &&
+		resolveOAuthClientMode(options?.oauthClient, node.typeVersion) !== 'bearer'
+	);
 }

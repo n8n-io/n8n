@@ -16,13 +16,14 @@ import type {
 	InstanceAiEvalAgentExecutionResult,
 	InstanceAiEvalExecutionResult,
 	InstanceAiRunDebugResponse,
+	InstanceAiEvalThreadMemoryResponse,
 	InstanceAiThreadDebugRunsResponse,
 	InstanceAiThreadStatusResponse,
 	InstanceAiEvalSeedAgent,
 	InstanceAiEvalSeedDataTable,
 	InstanceAiEvalSeedFolder,
 	InstanceAiEvalSeedWorkflow,
-	InstanceAiWorkflowAttachment,
+	InstanceAiResourceAttachment,
 	AgentJsonConfig,
 	AgentSkill,
 	EvaluationConfigDto,
@@ -30,6 +31,8 @@ import type {
 import type { ExecutionStatus } from 'n8n-workflow';
 import { Agent, setGlobalDispatcher } from 'undici';
 import { z } from 'zod';
+
+import { recordEvalUsage } from '../../src/utils/eval-usage';
 
 // Disable undici's 300s timeouts — mocked eval runs take minutes; the per-request
 // AbortSignal is the real bound. This is process-global: only ever imported by the
@@ -274,6 +277,9 @@ export class N8nClient {
 	 *  never logged in takes the strict path. */
 	private hasGlobalWorkflowDelete = false;
 
+	/** The logged-in user's name, when the login payload carries both parts. */
+	userName?: { firstName: string; lastName: string };
+
 	/** Public: the browser runtime needs to know where n8n ACTUALLY is, which is
 	 *  not always what n8n reports as its own base URL (see `planRelayConnection`). */
 	constructor(readonly baseUrl: string) {}
@@ -292,13 +298,22 @@ export class N8nClient {
 		const result = (await this.fetch('/rest/login', {
 			method: 'POST',
 			body: { emailOrLdapLoginId: loginEmail, password: loginPassword },
-		})) as { data?: { globalScopes?: string[]; isOwner?: boolean } };
+		})) as {
+			data?: {
+				globalScopes?: string[];
+				isOwner?: boolean;
+				firstName?: string | null;
+				lastName?: string | null;
+			};
+		};
 
 		// `/rest/login` returns the public user with `withScopes: true`. `isOwner`
 		// is the fallback for a payload that carries no scope list: an owner always
 		// holds the scope, so the two agree wherever both are present.
 		this.hasGlobalWorkflowDelete =
 			result.data?.globalScopes?.includes('workflow:delete') ?? result.data?.isOwner ?? false;
+		const { firstName, lastName } = result.data ?? {};
+		this.userName = firstName && lastName ? { firstName, lastName } : undefined;
 
 		if (!this.sessionCookie) {
 			throw new Error('Failed to authenticate with n8n — no session cookie received');
@@ -339,15 +354,16 @@ export class N8nClient {
 	 *
 	 * `attachments` are resource references the agent resolves with its tools — the
 	 *  same channel the editor uses when a user opens the assistant with a workflow
-	 * in front of them, so the agent is handed it by id instead of hunting by name.
+	 *  or Agent in front of them. The assistant receives the resource by id.
 	 */
 	async sendMessage(
 		threadId: string,
 		message: string,
-		attachments?: InstanceAiWorkflowAttachment[],
+		attachments?: InstanceAiResourceAttachment[],
 		mode: InstanceAiBuildMode = 'default',
 		promptVersion?: string,
 		handoffContext?: InstanceAiHandoffContext,
+		observerThresholdTokens?: number,
 	): Promise<{ runId: string }> {
 		const result = await this.fetch(`/rest/instance-ai/chat/${threadId}`, {
 			method: 'POST',
@@ -357,6 +373,8 @@ export class N8nClient {
 				mode,
 				...(promptVersion ? { promptVersion } : {}),
 				...(handoffContext ? { context: handoffContext } : {}),
+				// Per-thread, so other cases in the suite keep the instance default.
+				...(observerThresholdTokens ? { observerThresholdTokens } : {}),
 			} satisfies InstanceAiSendMessageRequest,
 		});
 		return this.unwrapRestData<{ runId: string }>(result);
@@ -436,6 +454,16 @@ export class N8nClient {
 	async getRunDebug(runId: string, timeoutMs?: number): Promise<InstanceAiRunDebugResponse> {
 		return this.unwrapRestData<InstanceAiRunDebugResponse>(
 			await this.fetch(`/rest/instance-ai/debug/runs/${runId}`, { timeoutMs }),
+		);
+	}
+
+	/** Live observations + the compaction cursor for a thread. */
+	async getThreadMemory(
+		threadId: string,
+		timeoutMs?: number,
+	): Promise<InstanceAiEvalThreadMemoryResponse> {
+		return this.unwrapRestData<InstanceAiEvalThreadMemoryResponse>(
+			await this.fetch(`/rest/instance-ai/eval/threads/${threadId}/memory`, { timeoutMs }),
 		);
 	}
 
@@ -799,17 +827,25 @@ export class N8nClient {
 	}
 
 	/**
-	 * Create a credential.
-	 * POST /rest/credentials  body: { name, type, data }
+	 * Create a credential, in `projectId` when given (else the caller's personal project).
+	 * POST /rest/credentials  body: { name, type, data, projectId? }
 	 */
 	async createCredential(
 		name: string,
 		type: string,
 		data: Record<string, unknown>,
+		description?: string | null,
+		projectId?: string,
 	): Promise<{ id: string }> {
 		const result = (await this.fetch('/rest/credentials', {
 			method: 'POST',
-			body: { name, type, data },
+			body: {
+				name,
+				type,
+				data,
+				...(description !== undefined ? { description } : {}),
+				...(projectId !== undefined ? { projectId } : {}),
+			},
 		})) as { data: { id: string } };
 		return { id: result.data.id };
 	}
@@ -961,6 +997,17 @@ export class N8nClient {
 				credentialIds,
 				...(bypassCredentialTest?.length ? { bypassCredentialTest } : {}),
 			},
+		});
+	}
+
+	/** Send the thread's connection tests for one credential type to a provider stand-in. */
+	async setThreadCredentialTestTarget(
+		threadId: string,
+		target: { credentialType: string; baseUrl: string; urlField: string },
+	): Promise<void> {
+		await this.fetch('/rest/instance-ai/eval/thread-credential-test-target', {
+			method: 'POST',
+			body: { threadId, ...target },
 		});
 	}
 
@@ -1286,17 +1333,27 @@ export class N8nClient {
 	 * sub-nodes actually run instead of being short-circuited by pin data;
 	 * pass `pinNodes` to keep specific roots on the pinned baseline (e.g. for
 	 * A/B comparison). Gated server-side behind the
-	 * `085_eval_vendor_sdk_interception` PostHog flag.
+	 * `085_eval_vendor_sdk_interception` PostHog flag. Data Table reads of
+	 * `seededDataTableIds` run live instead of pinned.
 	 */
 	async executeWithLlmMock(
 		workflowId: string,
 		scenarioHints?: string,
 		timeoutMs: number = 120_000,
 		pinNodes?: string[],
+		seededDataTableIds?: string[],
 	): Promise<InstanceAiEvalExecutionResult> {
-		const body: { scenarioHints?: string; pinNodes?: string[]; timeoutMs?: number } = {};
+		const body: {
+			scenarioHints?: string;
+			pinNodes?: string[];
+			timeoutMs?: number;
+			seededDataTableIds?: string[];
+		} = {};
 		if (scenarioHints) body.scenarioHints = scenarioHints;
 		if (pinNodes && pinNodes.length > 0) body.pinNodes = pinNodes;
+		if (seededDataTableIds && seededDataTableIds.length > 0) {
+			body.seededDataTableIds = seededDataTableIds;
+		}
 		// Forwarded so the server stops the run rather than leaving it burning CPU.
 		const serverBudgetMs = serverBudgetFor(timeoutMs);
 		body.timeoutMs = serverBudgetMs;
@@ -1306,6 +1363,7 @@ export class N8nClient {
 			body,
 			timeoutMs: serverBudgetMs + CLIENT_ABORT_MARGIN_MS,
 		})) as { data: InstanceAiEvalExecutionResult };
+		recordEvalUsage(result.data.llmUsage);
 		return result.data;
 	}
 
@@ -1333,6 +1391,7 @@ export class N8nClient {
 				timeoutMs: serverBudgetMs + CLIENT_ABORT_MARGIN_MS,
 			},
 		)) as { data: InstanceAiEvalAgentExecutionResult };
+		recordEvalUsage(result.data.llmUsage);
 		return result.data;
 	}
 

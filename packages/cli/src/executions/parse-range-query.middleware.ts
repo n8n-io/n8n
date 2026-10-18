@@ -4,7 +4,7 @@ import { validate } from 'jsonschema';
 import type { JsonObject } from 'n8n-workflow';
 import { jsonParse, UnexpectedError } from 'n8n-workflow';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError } from '@n8n/errors';
 import * as ResponseHelper from '@/response-helper';
 
 import { parseExecutionCursor } from './execution-cursor';

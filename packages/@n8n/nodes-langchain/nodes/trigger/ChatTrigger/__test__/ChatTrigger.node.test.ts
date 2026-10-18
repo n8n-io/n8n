@@ -984,6 +984,17 @@ describe('ChatTrigger Node', () => {
 			expect(renderedView().sandbox).not.toContain('allow-popups-to-escape-sandbox');
 		});
 
+		it('removes the route sandbox from the public chat page', async () => {
+			await renderSetupPage('none');
+
+			expect(mockResponse.removeHeader).toHaveBeenCalledWith('Content-Security-Policy');
+			expect(mockResponse.setHeader).not.toHaveBeenCalledWith(
+				'Content-Security-Policy',
+				expect.anything(),
+			);
+			expect(renderedPage()).toContain('createChat');
+		});
+
 		it('renders the author chat for the frame own request', async () => {
 			mockRequest.query = { n8nShellInner: '1' };
 			mockRequest.headers = {
@@ -998,6 +1009,7 @@ describe('ChatTrigger Node', () => {
 				'Content-Security-Policy',
 				'sandbox allow-scripts allow-forms allow-modals allow-popups',
 			);
+			expect(mockResponse.removeHeader).not.toHaveBeenCalled();
 			expect(renderedPage()).toContain('createChat');
 			// Identity injected server-side, and a header token for the messages that follow.
 			expect(renderedPage()).toContain('"email":"visitor@example.com"');

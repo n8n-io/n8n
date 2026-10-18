@@ -2,6 +2,7 @@ import { z } from 'zod/v4';
 
 import { buildCatalog, formatCatalog } from '../catalog';
 import { defineTelemetryEvents } from '../define';
+import { INSTANCE_AI_TELEMETRY } from '../events/instance-ai';
 
 const WORKFLOWS_FIXTURE = defineTelemetryEvents({
 	USER_CLICKED_EXECUTE_WORKFLOW: {
@@ -38,6 +39,39 @@ describe('buildCatalog', () => {
 				],
 			},
 		]);
+	});
+
+	it('lists common and conditional properties from object unions', () => {
+		const [entry] = buildCatalog({
+			INSTANCE_AI: { INSTANCE_CONTEXT_TURN: INSTANCE_AI_TELEMETRY.INSTANCE_CONTEXT_TURN },
+		});
+
+		expect(entry.properties).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ name: 'surface', type: '"aia" | "mcp"', optional: false }),
+				{ name: 'block_state', type: '"absent" | "injected"', optional: false },
+				{
+					name: 'absence_reason',
+					type: '"disabled" | "machine-follow-up" | "empty" | "failed"',
+					optional: true,
+					description: 'Why this turn received no block',
+				},
+				{
+					name: 'block_chars',
+					type: 'integer',
+					optional: true,
+					description: 'Exact rendered block length',
+				},
+				{
+					name: 'status',
+					type: '"completed" | "cancelled" | "errored" | "suspended"',
+					optional: false,
+					description: 'How this segment ended',
+				},
+			]),
+		);
+		expect(entry.properties).toHaveLength(24);
+		expect(new Set(entry.properties.map((property) => property.name)).size).toBe(24);
 	});
 });
 

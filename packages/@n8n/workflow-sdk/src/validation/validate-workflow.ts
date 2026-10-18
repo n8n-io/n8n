@@ -1324,6 +1324,8 @@ function validateSwitchHasOutgoingConnections(
 ): void {
 	for (const sourceNode of json.nodes) {
 		if (!sourceNode.name || sourceNode.type !== 'n8n-nodes-base.switch') continue;
+		// Disabled nodes pass data through without evaluating Switch routing rules.
+		if (sourceNode.disabled === true) continue;
 		if (hasAnyMainOutputConnection(json.connections[sourceNode.name])) continue;
 
 		warnings.push(

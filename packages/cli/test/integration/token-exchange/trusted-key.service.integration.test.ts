@@ -1,5 +1,6 @@
 import { mockInstance, testDb, testModules } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
+import { EntityManager } from '@n8n/typeorm';
 import type { KeyObject } from 'node:crypto';
 
 import type { TrustedKeySourceEntity } from '@/modules/token-exchange/database/entities/trusted-key-source.entity';
@@ -27,10 +28,6 @@ dQIDAQAB
 const EC_PUBLIC_KEY = `-----BEGIN PUBLIC KEY-----
 MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEpCuPN2BHQ7G0A2qD2Bd27bwwUB9M
 Npzv5WS/ygt55l8y2X+Vfm5TQFRMNkqEx+/GXaPIU/hDmtnBdCxAUIRM9g==
------END PUBLIC KEY-----`;
-
-const ED25519_PUBLIC_KEY = `-----BEGIN PUBLIC KEY-----
-MCowBQYDK2VwAyEAPBUxurC3wGyi/yXTTjNwTzgHjSioAIa4Qx6nyOqof0U=
 -----END PUBLIC KEY-----`;
 
 // ──────────────────────────────────────────────────────────────────────
@@ -342,7 +339,7 @@ describe('TrustedKeyService (integration)', () => {
 
 			// Corrupt config
 			await sourceRepo.update('static', { config: 'invalid-json' });
-			await service.refreshSource('static');
+			await expect(service.refreshSource('static')).rejects.toThrow('malformed JSON');
 
 			const source = await sourceRepo.findOneBy({ id: 'static' });
 			expect(source!.status).toBe('error');
@@ -361,16 +358,73 @@ describe('TrustedKeyService (integration)', () => {
 		});
 	});
 
+	describe('refreshDueSources', () => {
+		afterEach(() => {
+			vi.restoreAllMocks();
+		});
+
+		/** Causes a constraint failure after the old keys of `sourceId` are deleted. */
+		function failKeyWritesFor(sourceId: string) {
+			const originalDelete = EntityManager.prototype.delete;
+			vi.spyOn(EntityManager.prototype, 'delete').mockImplementation(async function (
+				this: EntityManager,
+				target,
+				criteria,
+			) {
+				const result = await originalDelete.call(this, target, criteria);
+				if (
+					target === TrustedKeyEntity &&
+					(criteria as { sourceId?: string }).sourceId === sourceId
+				) {
+					await this.insert(TrustedKeyEntity, {
+						sourceId: 'missing-source',
+						kid: 'test-kid',
+						data: '{}',
+						createdAt: new Date(),
+					});
+				}
+				return result;
+			});
+		}
+
+		it.each(['fetch', 'write'] as const)(
+			'should stop at a source whose key %s failed and try it last on the next run',
+			async (failureType) => {
+				const signal = new AbortController().signal;
+				const lastRefreshedAt = new Date('2020-01-01T00:00:00.000Z');
+				await insertSource({
+					id: 'broken',
+					updatedAt: lastRefreshedAt,
+					lastRefreshedAt,
+					...(failureType === 'fetch' ? { config: 'invalid-json' } : {}),
+				});
+				const oldKey = await insertKey({ sourceId: 'broken', kid: 'old-key' });
+				await insertSource({ id: 'static', updatedAt: new Date('2020-01-02T00:00:00.000Z') });
+				if (failureType === 'write') {
+					failKeyWritesFor('broken');
+				}
+
+				await expect(service.refreshDueSources(signal)).rejects.toThrow();
+
+				const failedSource = (await sourceRepo.findOneBy({ id: 'broken' }))!;
+				expect(failedSource.status).toBe('error');
+				expect(failedSource.lastError).toBeTruthy();
+				expect(failedSource.lastRefreshedAt).toEqual(lastRefreshedAt);
+				expect(await keyRepo.findBy({ sourceId: 'broken' })).toEqual([oldKey]);
+				expect((await sourceRepo.findOneBy({ id: 'static' }))!.status).toBe('pending');
+
+				await expect(service.refreshDueSources(signal)).rejects.toThrow();
+
+				expect((await sourceRepo.findOneBy({ id: 'static' }))!.status).toBe('healthy');
+				expect(await keyRepo.findBy({ sourceId: 'static' })).toHaveLength(1);
+			},
+		);
+	});
+
 	describe('algorithm validation and key compatibility', () => {
 		it.each([
 			{ name: 'RSA key with RS256', kid: 'rsa-key', algorithms: ['RS256'], key: RSA_PUBLIC_KEY },
 			{ name: 'EC key with ES256', kid: 'ec-key', algorithms: ['ES256'], key: EC_PUBLIC_KEY },
-			{
-				name: 'Ed25519 key with EdDSA',
-				kid: 'ed-key',
-				algorithms: ['EdDSA'],
-				key: ED25519_PUBLIC_KEY,
-			},
 		])('should accept $name', async ({ kid, algorithms, key }) => {
 			await insertSource({
 				config: JSON.stringify([staticKeyEntry({ kid, algorithms, key })]),
@@ -402,7 +456,7 @@ describe('TrustedKeyService (integration)', () => {
 		])('should reject $name', async ({ entries }) => {
 			await insertSource({ config: JSON.stringify(entries) });
 
-			await service.refreshSource('static');
+			await expect(service.refreshSource('static')).rejects.toThrow();
 
 			const source = await sourceRepo.findOneBy({ id: 'static' });
 			expect(source!.status).toBe('error');

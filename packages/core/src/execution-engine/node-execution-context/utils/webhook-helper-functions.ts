@@ -53,6 +53,7 @@ export function getNodeWebhookUrl(
 
 	// Prefer the field's native resolver (see `webhookDescriptionFields` in
 	// n8n-workflow) so static-parameter nodes never engage the expression engine.
+	// TODO(native-evaluation rollout, CAT-4699): remove both native resolutions below.
 	const nativePath = resolveWebhookDescriptionField(node, webhookDescription, 'path');
 	const path = nativePath.resolved
 		? nativePath.value

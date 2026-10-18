@@ -2,11 +2,8 @@ operationId: updatePromotionConnection
 tags:
   - Promotions
 summary: Update a promotion connection
-description: Updates the name, target, or provider. Scope cannot change, and configurations have their own routes.
+description: Updates the name, target, or provider. A target replaces the whole saved target. GitLab connections store a repository path and derive remoteUrl from the provider. Plain Git connections keep the full remote URL. If the provider changes during a target or provider update, the update returns 409. Reload the connection and try again. Scope cannot change, and configurations have their own routes.
 x-required-scope: gitConnection:update
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 parameters:
   - schema:
       type: string
@@ -60,6 +57,8 @@ responses:
     $ref: ../../../../shared/spec/responses/forbidden.yml
   '404':
     $ref: ../../../../shared/spec/responses/notFound.yml
+  '409':
+    $ref: ../../../../shared/spec/responses/conflict.yml
   '415':
     $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml
   '503':

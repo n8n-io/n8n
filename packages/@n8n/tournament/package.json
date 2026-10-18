@@ -1,6 +1,6 @@
 {
   "name": "@n8n/tournament",
-  "version": "1.12.0",
+  "version": "1.14.0",
   "description": "Output compatible rewrite of riot tmpl",
   "main": "dist/index.js",
   "module": "src/index.ts",
@@ -22,8 +22,8 @@
     "test": "vitest run",
     "test:unit": "vitest run",
     "test:dev": "vitest --silent=false",
-    "lint": "eslint src --quiet",
-    "lint:fix": "eslint src --fix",
+    "lint": "oxlint src --quiet",
+    "lint:fix": "oxlint src --fix",
     "format": "biome format --write .",
     "format:check": "biome ci ."
   },
@@ -38,9 +38,12 @@
   "author": "",
   "license": "Apache-2.0",
   "devDependencies": {
-    "@types/node": "^18.13.0",
+    "@n8n/oxlint-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
+    "@types/node": "^18.13.0",
     "@vitest/coverage-v8": "catalog:",
+    "oxlint": "catalog:",
+    "oxlint-tsgolint": "catalog:",
     "vite": "catalog:",
     "vitest": "catalog:",
     "typescript": "catalog:typescript"
