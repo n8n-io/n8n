@@ -76,6 +76,23 @@ const scopedCheck = computed(() =>
 const blockers = computed(() =>
 	scopedCheck.value ? indexBlockers(listBlockers(scopedCheck.value)) : emptyBlockerIndex,
 );
+// A moved folder stops the whole apply, so it blocks every selection.
+const folderConflicts = computed(() =>
+	props.direction === 'apply' && graph.value ? folderMoveConflicts(graph.value) : [],
+);
+// The tree and the cards also mark the moved folders.
+const markers = computed(() =>
+	folderConflicts.value.length === 0
+		? blockers.value
+		: indexBlockers([
+				...(scopedCheck.value ? listBlockers(scopedCheck.value) : []),
+				...folderConflicts.value.map(({ key }) => ({
+					kind: 'moved' as const,
+					resourceKey: key,
+					workflowKeys: [],
+				})),
+			]),
+);
 const operation = usePromotionOperation(projectId, direction, { preview, check, refresh });
 const selection = usePromotionSelection(graph, {
 	disabled: computed(() => blockers.value.blocked),
@@ -141,10 +158,6 @@ const request = computed(() => {
 });
 const hasSelectedBlocked = computed(() =>
 	[...selection.selected.value].some((key) => blockers.value.blocked.has(key)),
-);
-// A moved folder stops the whole apply, so it blocks every selection.
-const folderConflicts = computed(() =>
-	props.direction === 'apply' && graph.value ? folderMoveConflicts(graph.value) : [],
 );
 const submitBlockedReason = computed(() => {
 	if (folderConflicts.value.length > 0) {
@@ -379,6 +392,9 @@ const treeResizer = useResizablePanel({
 						:inspected-key="inspectedKey"
 						:disabled="blockers.blocked"
 						:locked="operation.isBusy.value"
+						:direction="direction"
+						:blockers="markers"
+						@show-blockers="activeTab = 'blockers'"
 						@toggle="selection.toggle"
 						@toggle-container="selection.toggleAllInside"
 						@select-all="selection.selectAll"
@@ -406,6 +422,8 @@ const treeResizer = useResizablePanel({
 						:inclusion="selection.inclusion.value"
 						:entries="details.entries.value"
 						:inspected-key="inspectedKey"
+						:blockers="markers"
+						@show-blockers="activeTab = 'blockers'"
 						@retry="details.retry"
 						@refresh="refresh"
 						@inspect="inspect"

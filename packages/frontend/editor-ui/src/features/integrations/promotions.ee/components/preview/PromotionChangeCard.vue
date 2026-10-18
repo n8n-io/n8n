@@ -14,6 +14,7 @@ import { computed, ref, watch } from 'vue';
 import { I18nT } from 'vue-i18n';
 
 import type { DetailEntry } from '../../composables/usePromotionResourceDetails';
+import type { Blocker } from '../../promotionOperation';
 import { usePromotionPreviewLabels } from '../../composables/usePromotionPreviewLabels';
 import {
 	describeDataTable,
@@ -36,17 +37,24 @@ const props = defineProps<{
 	included: boolean;
 	entry?: DetailEntry;
 	inspected: boolean;
+	/** The Apply blockers of the resource. */
+	blockers?: Blocker[];
 }>();
 
 const emit = defineEmits<{
 	inspect: [key: ResourceKey];
 	retry: [];
 	refresh: [];
+	showBlockers: [];
 }>();
 
 const i18n = useI18n();
 const nameOf = (key: string) => props.graph.resources.get(key)?.name ?? key;
-const { changeLabel } = usePromotionPreviewLabels();
+const { changeLabel, blockerMessage } = usePromotionPreviewLabels();
+// A moved folder explains itself in the card body.
+const blocker = computed(() =>
+	props.resource.type === 'folder' ? undefined : blockerMessage(props.resource, props.blockers),
+);
 
 // Cards start open. Inspecting a resource from the tree opens its card again.
 const open = ref(true);
@@ -127,8 +135,8 @@ const isApplyMove = computed(
 				<N8nText bold size="medium" color="text-dark" :title="resource.name" :class="$style.title">
 					{{ resource.name }}
 				</N8nText>
-				<N8nText v-if="changeLabel(resource)" step="xs" color="text-light">
-					{{ changeLabel(resource) }}
+				<N8nText v-if="changeLabel(resource, direction)" step="xs" color="text-light">
+					{{ changeLabel(resource, direction) }}
 				</N8nText>
 				<N8nIcon icon="chevron-down" size="small" :class="$style.chevron" />
 				<N8nTooltip :content="statusLabel" as-child>
@@ -146,6 +154,19 @@ const isApplyMove = computed(
 
 			<CollapsibleContent>
 				<div :class="$style.notices">
+					<N8nCallout
+						v-if="blocker"
+						theme="warning"
+						slim
+						data-test-id="promotion-preview-card-blocker"
+					>
+						{{ blocker }}
+						<template #trailingContent>
+							<N8nLink size="small" @click="emit('showBlockers')">
+								{{ i18n.baseText('promotions.preview.card.viewBlockers') }}
+							</N8nLink>
+						</template>
+					</N8nCallout>
 					<N8nCallout v-if="entry?.status === 'missing'" theme="warning" slim>
 						{{ i18n.baseText('promotions.preview.card.missing') }}
 						<template #trailingContent>
