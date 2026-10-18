@@ -8,8 +8,8 @@ import { makeRestApiRequest, type IRestApiContext } from '@n8n/rest-api-client';
 import type { InboxSelection } from '../inbox.constants';
 
 export type SelfHealingSelection = Extract<InboxSelection, { type: 'self_healing_result' }>;
-export type SelfHealingReviewAction = 'apply' | 'chat' | 'approve-and-publish' | 'dismiss';
-export type SelfHealingResultAction = Exclude<SelfHealingReviewAction, 'apply'> | 'editor';
+export type SelfHealingReviewAction = 'apply' | 'approve-and-publish' | 'dismiss';
+export type SelfHealingResultAction = Exclude<SelfHealingReviewAction, 'apply'> | 'editor' | 'chat';
 
 function resultPath({ projectId, workflowId, id }: SelfHealingSelection) {
 	return `/projects/${encodeURIComponent(projectId)}/workflows/${encodeURIComponent(workflowId)}/self-healing-results/${encodeURIComponent(id)}`;

@@ -62,7 +62,7 @@ function appliedResult(
 beforeEach(() => {
 	vi.resetAllMocks();
 	selectedId = resultSelection.id;
-	startChat.mockResolvedValue(true);
+	startChat.mockResolvedValue(undefined);
 	capabilityRegistry.provide(capabilities.createSelfHealingChatHandoff, () => ({
 		available: computed(() => true),
 		start: startChat,
@@ -89,29 +89,32 @@ it.each([
 				? suggestion({ resultKind: outcome === 'fix_ready' ? 'fix_ready' : 'needs_you' })
 				: null,
 		});
-		vi.mocked(api.fetchSelfHealingResult).mockResolvedValue(detail);
-		vi.mocked(api.reviewSelfHealingResult).mockResolvedValue(
-			appliedResult({
-				...detail,
-				reviewState: withSuggestion ? 'applied' : 'dismissed',
-				...(destination === 'chat' ? { chatThreadId: 'private-thread' } : {}),
-			}),
-		);
-		const navigate = destination === 'chat' ? startChat : push;
-		navigate.mockImplementation(async () => {
-			expect(onItemChange).toHaveBeenCalledOnce();
+		const closedResult = result({
+			...detail,
+			reviewState: withSuggestion ? 'applied' : 'dismissed',
 		});
+		vi.mocked(api.fetchSelfHealingResult).mockResolvedValue(detail);
+		vi.mocked(api.reviewSelfHealingResult).mockResolvedValue(closedResult);
+
+		const navigate = destination === 'chat' ? startChat : push;
+		let itemChangeCountAtNavigation = -1;
+		navigate.mockImplementation(async () => {
+			itemChangeCountAtNavigation = onItemChange.mock.calls.length;
+		});
+
 		const view = renderComponent();
 		await waitAllPromises();
+
 		view.getByTestId(destination).click();
 		await waitAllPromises();
 
 		expect(api.reviewSelfHealingResult).toHaveBeenCalledExactlyOnceWith(
 			useRootStore().restApiContext,
 			resultSelection,
-			destination === 'editor' ? 'apply' : 'chat',
+			withSuggestion ? 'apply' : 'dismiss',
 		);
 		expect(api.fetchSelfHealingResult).toHaveBeenCalledOnce();
+		expect(itemChangeCountAtNavigation).toBe(1);
 		expect(onItemChange).toHaveBeenCalledExactlyOnceWith(
 			expect.objectContaining({
 				type: 'self_healing_result',
@@ -120,7 +123,7 @@ it.each([
 			}),
 		);
 		if (destination === 'chat') {
-			expect(startChat).toHaveBeenCalledExactlyOnceWith({ threadId: 'private-thread' });
+			expect(startChat).toHaveBeenCalledExactlyOnceWith(closedResult);
 			expect(push).not.toHaveBeenCalled();
 		} else {
 			expect(push).toHaveBeenCalledExactlyOnceWith({
@@ -231,7 +234,6 @@ it.each(['editor', 'chat'] as const)(
 		vi.mocked(api.reviewSelfHealingResult).mockResolvedValue(
 			appliedResult({
 				outcome,
-				...(destination === 'chat' ? { chatThreadId: 'saved-thread' } : {}),
 			}),
 		);
 		const navigate = destination === 'chat' ? startChat : push;
@@ -252,23 +254,6 @@ it.each(['editor', 'chat'] as const)(
 		expect(api.reviewSelfHealingResult).toHaveBeenCalledOnce();
 	},
 );
-
-it('retains closure when the shell handles a chat navigation failure', async () => {
-	vi.mocked(api.fetchSelfHealingResult).mockResolvedValue(result({ outcome: 'needs_you' }));
-	vi.mocked(api.reviewSelfHealingResult).mockResolvedValue(
-		appliedResult({ outcome: 'needs_you', chatThreadId: 'saved-thread' }),
-	);
-	startChat.mockResolvedValue(false);
-	const view = renderComponent();
-	await waitAllPromises();
-	view.getByTestId('chat').click();
-	await waitAllPromises();
-
-	expect(useSelfHealingResultStore().detail?.reviewState).toBe('applied');
-	expect(onItemChange).toHaveBeenCalledOnce();
-	expect(api.fetchSelfHealingResult).toHaveBeenCalledOnce();
-	expect(api.reviewSelfHealingResult).toHaveBeenCalledOnce();
-});
 
 it('reconciles the result after leaving the detail without navigating away from the new page', async () => {
 	const action = createDeferredPromise<ResultDetail>();

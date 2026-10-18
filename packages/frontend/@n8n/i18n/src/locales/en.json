@@ -66,6 +66,8 @@
 	"inbox.selfHealing.usage.promptTokens": "Input tokens",
 	"inbox.selfHealing.usage.completionTokens": "Output tokens",
 	"inbox.selfHealing.usage.totalTokens": "Total tokens",
+	"inbox.selfHealing.chat.prompt": "Continue from this investigation report. Help me resolve the remaining issues.",
+	"inbox.selfHealing.chat.appliedContext": "The suggested changes have already been applied to the workflow draft. They have not been published.",
 	"inbox.selfHealing.activity.user": "A user",
 	"inbox.selfHealing.activity.system": "System",
 	"inbox.selfHealing.activity.completed": "Completed the investigation",

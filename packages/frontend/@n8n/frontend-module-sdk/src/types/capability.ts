@@ -1,3 +1,4 @@
+import type { SelfHealingResultDetail } from '@n8n/api-types';
 import type { ComputedRef } from 'vue';
 
 /**
@@ -33,12 +34,13 @@ export interface McpExposeAllOffer {
 	offer(onExposed: () => Promise<void> | void): Promise<boolean>;
 }
 
-export interface SelfHealingChatInput {
-	threadId: string;
-}
+export type SelfHealingChatInput = Pick<
+	SelfHealingResultDetail,
+	'resultId' | 'projectId' | 'workflowId' | 'report' | 'outcome' | 'reviewState' | 'execution'
+>;
 
 export interface SelfHealingChatHandoff {
 	available: ComputedRef<boolean>;
-	/** Returns true after the existing chat opens. */
-	start(input: SelfHealingChatInput): Promise<boolean>;
+	/** Opens a chat and sends the report through the normal Assistant handoff. */
+	start(input: SelfHealingChatInput): Promise<void>;
 }

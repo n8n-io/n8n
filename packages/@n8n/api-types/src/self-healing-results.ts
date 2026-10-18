@@ -57,8 +57,6 @@ export type SelfHealingResultDetail = SelfHealingResultContent & {
 };
 
 export type SelfHealingResultActionResponse = SelfHealingResultDetail & {
-	/** The chat created by this action. */
-	chatThreadId?: string;
 	/** This request error does not establish whether the saved version is live. */
 	publishError?: string;
 };

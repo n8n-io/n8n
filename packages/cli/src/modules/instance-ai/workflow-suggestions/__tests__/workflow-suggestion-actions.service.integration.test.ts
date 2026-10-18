@@ -198,8 +198,7 @@ it.each(['apply', 'approve-and-publish'] as const)(
 		const saved = await workflows.findOneByOrFail({ id: original.id });
 		const beforeHistory = await history.countBy({ workflowId: original.id });
 		const publish = vi.spyOn(workflowService, 'activateWorkflow');
-		const onApplied = vi.fn(async () => {});
-		const options = { requirePending: true, onApplied };
+		const options = { requirePending: true };
 		const repeated =
 			action === 'apply'
 				? actions.apply(user, project.id, original.id, suggestion.id, undefined, options)
@@ -214,7 +213,6 @@ it.each(['apply', 'approve-and-publish'] as const)(
 
 		await expect(repeated).rejects.toBeInstanceOf(ConflictError);
 
-		expect(onApplied).not.toHaveBeenCalled();
 		expect(publish).not.toHaveBeenCalled();
 		expect(await workflows.findOneByOrFail({ id: original.id })).toEqual(saved);
 		expect(await history.countBy({ workflowId: original.id })).toBe(beforeHistory);

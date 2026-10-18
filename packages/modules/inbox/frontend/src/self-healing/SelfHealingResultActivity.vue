@@ -15,17 +15,21 @@ type Activity = Omit<WorkflowSuggestionActivity, 'action'> & {
 
 const entries = computed<Activity[]>(() => {
 	const result = props.detail;
-	const activity: Activity[] = result.suggestion
-		? [...result.suggestion.activity]
-		: [
-				{
-					id: `${result.resultId}:completed`,
-					action: 'completed',
-					author: 'assistant',
-					actorId: null,
-					createdAt: result.completedAt,
-				},
-			];
+	let activity: Activity[];
+	if (result.suggestion) {
+		activity = [...result.suggestion.activity];
+	} else {
+		activity = [
+			{
+				id: `${result.resultId}:completed`,
+				action: 'completed',
+				author: 'assistant',
+				actorId: null,
+				createdAt: result.completedAt,
+			},
+		];
+	}
+
 	if (result.dismissedAt) {
 		activity.push({
 			id: `${result.resultId}:dismissed`,
@@ -35,6 +39,7 @@ const entries = computed<Activity[]>(() => {
 			createdAt: result.dismissedAt,
 		});
 	}
+
 	return activity.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 });
 

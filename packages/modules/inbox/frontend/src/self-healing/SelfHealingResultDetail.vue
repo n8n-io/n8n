@@ -18,6 +18,7 @@ import {
 	fetchSelfHealingResult,
 	reviewSelfHealingResult,
 	type SelfHealingResultAction,
+	type SelfHealingReviewAction,
 	type SelfHealingSelection,
 } from './selfHealingResults.api';
 
@@ -37,6 +38,7 @@ const i18n = useI18n();
 const { showError, showMessage } = useToast();
 const chat = capabilityRegistry.tryUse(capabilities.createSelfHealingChatHandoff)?.();
 const unresolvedResult = ref<SelfHealingResultDetail | null>(null);
+
 const workflowName = computed(
 	() =>
 		workflow.value?.name ??
@@ -61,10 +63,10 @@ watch(
 	{ immediate: true },
 );
 
-function reconcile(
+function notifyResultClosed(
 	before: SelfHealingResultDetail,
 	after: SelfHealingResultDetail,
-	onItemChange = props.onItemChange,
+	onItemChange: (change: InboxItemChange) => void,
 ) {
 	if (before.reviewState === 'open' && after.reviewState !== 'open') {
 		onItemChange({
@@ -76,7 +78,7 @@ function reconcile(
 	}
 }
 
-async function openEditor(workflowId = props.selection.workflowId) {
+async function openEditor(workflowId: string) {
 	try {
 		const failure = await router.push({ name: VIEWS.WORKFLOW, params: { workflowId } });
 		if (failure) throw failure;
@@ -87,11 +89,13 @@ async function openEditor(workflowId = props.selection.workflowId) {
 
 async function retryDetail() {
 	if (pendingAction.value) return;
+
 	const before = unresolvedResult.value;
 	const onItemChange = props.onItemChange;
 	const result = await store.refreshDetail();
+
 	if (before && result) {
-		reconcile(before, result, onItemChange);
+		notifyResultClosed(before, result, onItemChange);
 		if (unresolvedResult.value === before) unresolvedResult.value = null;
 	}
 }
@@ -100,6 +104,7 @@ async function onAction(action: SelfHealingResultAction) {
 	const before = detail.value;
 	if (before?.reviewState !== 'open' || pendingAction.value || !store.isSelected(props.selection))
 		return;
+
 	if (action === 'approve-and-publish' && (!canPublish.value || before.outcome !== 'fix_ready'))
 		return;
 	if (action === 'editor' && before.outcome !== 'fix_ready') return;
@@ -108,19 +113,28 @@ async function onAction(action: SelfHealingResultAction) {
 	const target = { ...props.selection };
 	const isSelected = props.isSelected;
 	const onItemChange = props.onItemChange;
+
+	let reviewAction: SelfHealingReviewAction;
+	if (action === 'editor') {
+		reviewAction = 'apply';
+	} else if (action === 'chat') {
+		reviewAction = before.suggestion ? 'apply' : 'dismiss';
+	} else {
+		reviewAction = action;
+	}
+
 	pendingAction.value = action;
 	try {
-		const result = await reviewSelfHealingResult(
-			rootStore.restApiContext,
-			target,
-			action === 'editor' ? 'apply' : action,
-		);
+		const result = await reviewSelfHealingResult(rootStore.restApiContext, target, reviewAction);
+
 		store.acceptResult(result);
-		reconcile(before, result, onItemChange);
+		notifyResultClosed(before, result, onItemChange);
+
 		if (!isSelected(target.id) || action === 'dismiss') return;
+
 		if (action === 'chat') {
 			try {
-				if (result.chatThreadId) await chat?.start({ threadId: result.chatThreadId });
+				await chat?.start(result);
 			} catch (cause) {
 				showError(cause, i18n.baseText('inbox.selfHealing.action.chatError'));
 			}
@@ -133,19 +147,22 @@ async function onAction(action: SelfHealingResultAction) {
 					message: result.publishError,
 				});
 			}
+
 			await openEditor(result.workflowId);
 		}
 	} catch (cause) {
 		// Refresh saved state before the user retries a request with a lost response.
 		try {
 			const current = await fetchSelfHealingResult(rootStore.restApiContext, target);
+
 			store.acceptResult(current);
-			reconcile(before, current, onItemChange);
+			notifyResultClosed(before, current, onItemChange);
 			if (isSelected(target.id)) void store.refreshWorkflow();
 		} catch (readError) {
 			store.setError(target, readError);
 			if (isSelected(target.id)) unresolvedResult.value = before;
 		}
+
 		if (isSelected(target.id)) showError(cause, i18n.baseText('inbox.selfHealing.action.error'));
 	} finally {
 		pendingAction.value = null;

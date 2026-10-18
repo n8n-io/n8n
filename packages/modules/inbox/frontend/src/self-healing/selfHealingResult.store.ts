@@ -19,8 +19,8 @@ export const useSelfHealingResultStore = defineStore('selfHealingResultDetail', 
 	const error = ref<unknown>(null);
 	const workflowError = ref<unknown>(null);
 	const pendingAction = ref<SelfHealingResultAction | null>(null);
-	let detailRequest = 0;
-	let workflowRequest = 0;
+	let detailRequestSequence = 0;
+	let workflowRequestSequence = 0;
 
 	function isSelected(target: SelfHealingSelection) {
 		return (
@@ -32,7 +32,8 @@ export const useSelfHealingResultStore = defineStore('selfHealingResultDetail', 
 
 	function setError(target: SelfHealingSelection, cause: unknown) {
 		if (!isSelected(target)) return;
-		detailRequest++;
+
+		detailRequestSequence++;
 		detail.value = null;
 		error.value = cause;
 		loading.value = false;
@@ -45,8 +46,9 @@ export const useSelfHealingResultStore = defineStore('selfHealingResultDetail', 
 			selection.value.projectId !== result.projectId
 		)
 			return;
+
 		// A read started before this action must not restore the pending state.
-		detailRequest++;
+		detailRequestSequence++;
 		detail.value = result;
 		error.value = null;
 		loading.value = false;
@@ -55,47 +57,57 @@ export const useSelfHealingResultStore = defineStore('selfHealingResultDetail', 
 	async function refreshDetail() {
 		const target = selection.value;
 		if (!target) return;
-		const request = ++detailRequest;
+
+		const requestSequence = ++detailRequestSequence;
 		loading.value = true;
 		error.value = null;
+
 		try {
 			const result = await fetchSelfHealingResult(rootStore.restApiContext, target);
-			if (request === detailRequest) {
+
+			if (requestSequence === detailRequestSequence) {
 				detail.value = result;
 				return result;
 			}
 		} catch (cause) {
-			if (request === detailRequest) setError(target, cause);
+			if (requestSequence === detailRequestSequence) setError(target, cause);
 		} finally {
-			if (request === detailRequest) loading.value = false;
+			if (requestSequence === detailRequestSequence) loading.value = false;
 		}
+
 		return undefined;
 	}
 
 	async function refreshWorkflow() {
 		const target = selection.value;
 		if (!target) return;
-		const request = ++workflowRequest;
+
+		const requestSequence = ++workflowRequestSequence;
+
 		try {
 			const response = await fetchResultWorkflow(rootStore.restApiContext, target.workflowId);
-			if (request !== workflowRequest) return;
+			if (requestSequence !== workflowRequestSequence) return;
+
 			workflow.value = response;
 			workflowError.value = null;
 		} catch (cause) {
-			if (request !== workflowRequest) return;
+			if (requestSequence !== workflowRequestSequence) return;
+
 			workflow.value = null;
 			workflowError.value = cause;
 		}
 	}
 
 	async function select(target: SelfHealingSelection) {
-		detailRequest++;
-		workflowRequest++;
+		detailRequestSequence++;
+		workflowRequestSequence++;
+
 		selection.value = { ...target };
 		detail.value = null;
 		workflow.value = null;
 		error.value = null;
 		workflowError.value = null;
+
 		await Promise.all([refreshDetail(), refreshWorkflow()]);
 	}
 

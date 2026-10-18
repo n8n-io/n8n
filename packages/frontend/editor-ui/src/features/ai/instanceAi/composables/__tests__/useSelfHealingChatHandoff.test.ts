@@ -1,23 +1,26 @@
-import type { SelfHealingChatHandoff } from '@n8n/frontend-module-sdk';
+import type { SelfHealingChatHandoff, SelfHealingChatInput } from '@n8n/frontend-module-sdk';
 import { createComponentRenderer } from '@n8n/frontend-test-utils';
 import { computed, defineComponent, getCurrentInstance, ref } from 'vue';
 
-import { INSTANCE_AI_THREAD_VIEW } from '../../constants';
 import { useSelfHealingChatHandoff } from '../useSelfHealingChatHandoff';
 
-const mocks = vi.hoisted(() => ({ push: vi.fn(), useRouter: vi.fn(), showError: vi.fn() }));
-const available = ref(true);
+const mocks = vi.hoisted(() => ({ startThread: vi.fn(), useHandoff: vi.fn() }));
+const ready = ref(true);
 
 vi.mock('../useInstanceAiAvailability', () => ({
-	useInstanceAiAvailable: () => computed(() => available.value),
+	useInstanceAiReady: () => computed(() => ready.value),
 }));
-vi.mock('vue-router', async (importOriginal) => ({
-	...(await importOriginal<typeof import('vue-router')>()),
-	useRouter: mocks.useRouter,
-}));
-vi.mock('@n8n/composables/useToast', () => ({
-	useToast: () => ({ showError: mocks.showError }),
-}));
+vi.mock('../useInstanceAiHandoff', () => ({ useInstanceAiHandoff: mocks.useHandoff }));
+
+const result: SelfHealingChatInput = {
+	resultId: 'result-1',
+	projectId: 'team-project',
+	workflowId: 'workflow-1',
+	outcome: 'needs_you',
+	reviewState: 'dismissed',
+	report: 'The request failed. Check the connection settings.',
+	execution: { status: 'available', id: 'execution-1' },
+};
 
 function createHandoff() {
 	let handoff: SelfHealingChatHandoff | undefined;
@@ -35,59 +38,50 @@ function createHandoff() {
 
 beforeEach(() => {
 	vi.resetAllMocks();
-	available.value = true;
-	mocks.useRouter.mockImplementation(() => {
+	ready.value = true;
+	mocks.useHandoff.mockImplementation(() => {
 		expect(getCurrentInstance()).not.toBeNull();
-		return { push: mocks.push };
+		return { startThread: mocks.startThread };
 	});
 });
 
-it('opens the existing backend thread using a router initialized during setup', async () => {
+it('starts the normal chat handoff with the full report and execution attachment', async () => {
 	const handoff = createHandoff();
-	expect(mocks.push).not.toHaveBeenCalled();
+	await handoff.start(result);
 
-	await expect(handoff.start({ threadId: 'private-thread' })).resolves.toBe(true);
-
-	expect(mocks.useRouter).toHaveBeenCalledOnce();
-	expect(mocks.push).toHaveBeenCalledExactlyOnceWith({
-		name: INSTANCE_AI_THREAD_VIEW,
-		params: { threadId: 'private-thread' },
-	});
+	expect(mocks.startThread).toHaveBeenCalledExactlyOnceWith(
+		'team-project',
+		`Continue from this investigation report. Help me resolve the remaining issues.\n\n${result.report}`,
+		{ kind: 'prefill', prefillType: 'handoff_self_healing_report' },
+		{
+			source: 'self_healing_result',
+			origin: 'internal',
+			sourceContext: { resultId: 'result-1', outcome: 'needs_you' },
+		},
+		[{ type: 'workflow', id: 'workflow-1', executionId: 'execution-1' }],
+	);
 });
 
-it('reopens the same thread on a later request', async () => {
-	const handoff = createHandoff();
-	await handoff.start({ threadId: 'private-thread' });
-	await handoff.start({ threadId: 'private-thread' });
+it('tells the Assistant when the suggested changes are already in the draft', async () => {
+	await createHandoff().start({ ...result, reviewState: 'applied' });
 
-	expect(mocks.push).toHaveBeenCalledTimes(2);
-	expect(mocks.push).toHaveBeenLastCalledWith({
-		name: INSTANCE_AI_THREAD_VIEW,
-		params: { threadId: 'private-thread' },
-	});
+	expect(mocks.startThread.mock.calls[0]?.[1]).toBe(
+		`Continue from this investigation report. Help me resolve the remaining issues.\n\nThe suggested changes have already been applied to the workflow draft. They have not been published.\n\n${result.report}`,
+	);
 });
 
-it('tracks Assistant availability and does not navigate when it becomes unavailable', async () => {
+it('omits an unavailable execution from the workflow attachment', async () => {
+	await createHandoff().start({ ...result, execution: { status: 'unavailable' } });
+
+	expect(mocks.startThread.mock.calls[0]?.[4]).toEqual([{ type: 'workflow', id: 'workflow-1' }]);
+});
+
+it('requires the Assistant to be ready before starting a conversation', async () => {
 	const handoff = createHandoff();
 	expect(handoff.available.value).toBe(true);
-	available.value = false;
-
-	await expect(handoff.start({ threadId: 'private-thread' })).resolves.toBe(false);
+	ready.value = false;
+	await handoff.start(result);
 
 	expect(handoff.available.value).toBe(false);
-	expect(mocks.push).not.toHaveBeenCalled();
+	expect(mocks.startThread).not.toHaveBeenCalled();
 });
-
-it.each(['returned', 'thrown'] as const)(
-	'reports a %s navigation failure without changing the saved thread',
-	async (failure) => {
-		const cause = new Error('Navigation failed');
-		if (failure === 'returned') mocks.push.mockResolvedValue(cause);
-		else mocks.push.mockRejectedValue(cause);
-
-		await expect(createHandoff().start({ threadId: 'private-thread' })).resolves.toBe(false);
-
-		expect(mocks.showError).toHaveBeenCalledExactlyOnceWith(cause, "Couldn't open chat");
-		expect(mocks.push).toHaveBeenCalledOnce();
-	},
-);

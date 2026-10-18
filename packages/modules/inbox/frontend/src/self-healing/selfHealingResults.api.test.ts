@@ -16,9 +16,9 @@ it('encodes the full result address and forwards the editor context for each act
 	const path = '/projects/project%2Fid/workflows/workflow%2Fid/self-healing-results/result%2Fid';
 	await fetchSelfHealingResult(context, selection);
 	expect(makeRestApiRequest).toHaveBeenLastCalledWith(context, 'GET', path);
-	for (const action of ['apply', 'chat', 'approve-and-publish', 'dismiss'] as const) {
+	for (const action of ['apply', 'approve-and-publish', 'dismiss'] as const) {
 		await reviewSelfHealingResult(context, selection, action);
 		expect(makeRestApiRequest).toHaveBeenLastCalledWith(context, 'POST', `${path}/${action}`);
 	}
-	expect(makeRestApiRequest).toHaveBeenCalledTimes(5);
+	expect(makeRestApiRequest).toHaveBeenCalledTimes(4);
 });

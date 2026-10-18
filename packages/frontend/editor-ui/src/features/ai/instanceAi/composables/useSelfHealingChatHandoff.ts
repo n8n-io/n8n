@@ -1,27 +1,41 @@
-import { useToast } from '@n8n/composables/useToast';
 import type { SelfHealingChatHandoff, SelfHealingChatInput } from '@n8n/frontend-module-sdk';
 import { useI18n } from '@n8n/i18n';
-import { useRouter } from 'vue-router';
 
-import { INSTANCE_AI_THREAD_VIEW } from '../constants';
-import { useInstanceAiAvailable } from './useInstanceAiAvailability';
+import { useInstanceAiReady } from './useInstanceAiAvailability';
+import { useInstanceAiHandoff } from './useInstanceAiHandoff';
 
 export function useSelfHealingChatHandoff(): SelfHealingChatHandoff {
-	const available = useInstanceAiAvailable();
-	const router = useRouter();
-	const { showError } = useToast();
+	const available = useInstanceAiReady();
+	const { startThread } = useInstanceAiHandoff();
 	const i18n = useI18n();
 
-	async function start({ threadId }: SelfHealingChatInput): Promise<boolean> {
-		if (!available.value) return false;
-		try {
-			const failure = await router.push({ name: INSTANCE_AI_THREAD_VIEW, params: { threadId } });
-			if (failure) throw failure;
-			return true;
-		} catch (cause) {
-			showError(cause, i18n.baseText('inbox.selfHealing.action.chatError'));
-			return false;
+	async function start(result: SelfHealingChatInput): Promise<void> {
+		if (!available.value) return;
+
+		const messageParts = [i18n.baseText('inbox.selfHealing.chat.prompt')];
+		if (result.reviewState === 'applied') {
+			messageParts.push(i18n.baseText('inbox.selfHealing.chat.appliedContext'));
 		}
+		messageParts.push(result.report);
+
+		const message = messageParts.join('\n\n');
+		await startThread(
+			result.projectId,
+			message,
+			{ kind: 'prefill', prefillType: 'handoff_self_healing_report' },
+			{
+				source: 'self_healing_result',
+				origin: 'internal',
+				sourceContext: { resultId: result.resultId, outcome: result.outcome },
+			},
+			[
+				{
+					type: 'workflow',
+					id: result.workflowId,
+					...(result.execution.status === 'available' ? { executionId: result.execution.id } : {}),
+				},
+			],
+		);
 	}
 
 	return { available, start };

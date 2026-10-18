@@ -44,7 +44,6 @@ import { WorkflowSuggestionRepository } from '../../workflow-suggestions/databas
 import { WorkflowSuggestionActionsService } from '../../workflow-suggestions/workflow-suggestion-actions.service';
 import { WorkflowSuggestionService } from '../../workflow-suggestions/workflow-suggestion.service';
 import { InstanceAiThreadRepository } from '../../repositories/instance-ai-thread.repository';
-import { SelfHealingChatService } from '../self-healing-chat.service';
 import { SelfHealingResultRepository } from '../database/self-healing-result.repository';
 import { SelfHealingInvestigationRepository } from '../database/self-healing-investigation.repository';
 import type { SelfHealingRunResult } from '../self-healing-agent.service';
@@ -105,7 +104,6 @@ beforeEach(() => {
 	validation.validatePublisherCredentialAccess.mockResolvedValue({ isValid: true });
 	validation.validateSubWorkflowReferences.mockResolvedValue({ isValid: true });
 	validation.validateCredentialNodeRestrictions.mockReturnValue({ isValid: true });
-	vi.spyOn(Container.get(SelfHealingChatService), 'assertAvailable').mockResolvedValue(undefined);
 });
 
 afterEach(async () => {
@@ -320,7 +318,7 @@ describe('investigation eligibility after a result', () => {
 	);
 
 	it.each(['needs_you', 'could_not_fix'] as const)(
-		'allows another investigation after continuing a %s report in chat',
+		'allows another investigation after closing a %s report',
 		async (outcome) => {
 			const { input, result, user, project, original } = await fixture(outcome);
 			const producer = Container.get(SelfHealingInvestigationService);
@@ -330,7 +328,7 @@ describe('investigation eligibility after a result', () => {
 				kind: 'result',
 				resultId: result.id,
 			});
-			await service.act(user, project.id, original.id, result.id, 'chat');
+			await service.dismiss(user, project.id, original.id, result.id);
 
 			expect(await results.getOpenForWorkflow(original.id, project.id)).toBeNull();
 			expect(await service.countForInbox(user)).toEqual({ open: 0, closed: 1 });
@@ -888,23 +886,32 @@ it.each(['before', 'after'] as const)(
 
 it('keeps the winner when informational dismissal races another discard', async () => {
 	const { user, project, original, result, getDetail } = await fixture('needs_you', true);
+
 	const [dismissOutcome, discardOutcome] = await Promise.allSettled([
 		service.dismiss(user, project.id, original.id, result.id),
 		actions.discardPending(user, project.id, original.id, result.suggestionId!),
 	]);
+
 	expect(discardOutcome.status).toBe('fulfilled');
-	const directlyDiscarded =
+	const suggestionDiscardWon =
 		discardOutcome.status === 'fulfilled' && discardOutcome.value === 'discarded';
-	expect(dismissOutcome.status).toBe(directlyDiscarded ? 'rejected' : 'fulfilled');
-	if (dismissOutcome.status === 'rejected') {
-		expect(dismissOutcome.reason).toBeInstanceOf(ConflictError);
-	}
 	const detail = await getDetail();
-	expect(detail.reviewState).toBe(directlyDiscarded ? 'discarded' : 'dismissed');
-	expect(detail.dismissedAt === null).toBe(directlyDiscarded);
-	expect((await suggestions.getActivity(result.suggestionId!)).map(({ action }) => action)).toEqual(
-		['submitted', 'discarded'],
-	);
+
+	if (suggestionDiscardWon) {
+		expect(dismissOutcome.status).toBe('rejected');
+		if (dismissOutcome.status === 'rejected') {
+			expect(dismissOutcome.reason).toBeInstanceOf(ConflictError);
+		}
+		expect(detail.reviewState).toBe('discarded');
+		expect(detail.dismissedAt).toBeNull();
+	} else {
+		expect(dismissOutcome.status).toBe('fulfilled');
+		expect(detail.reviewState).toBe('dismissed');
+		expect(detail.dismissedAt).not.toBeNull();
+	}
+
+	const activity = await suggestions.getActivity(result.suggestionId!);
+	expect(activity.map(({ action }) => action)).toEqual(['submitted', 'discarded']);
 	expect(await workflows.findOneByOrFail({ id: original.id })).toEqual(original);
 });
 
@@ -991,20 +998,22 @@ it.each(['apply', 'approve-and-publish'] as const)(
 );
 
 it.each([
-	['fix_ready', true, 'apply', 'applied'],
-	['needs_you', true, 'chat', 'applied'],
-	['needs_you', false, 'chat', 'dismissed'],
-	['could_not_fix', false, 'chat', 'dismissed'],
+	{ outcome: 'fix_ready', withSuggestion: true, action: 'apply', reviewState: 'applied' },
+	{ outcome: 'needs_you', withSuggestion: true, action: 'apply', reviewState: 'applied' },
+	{ outcome: 'needs_you', withSuggestion: false, action: 'dismiss', reviewState: 'dismissed' },
+	{ outcome: 'could_not_fix', withSuggestion: false, action: 'dismiss', reviewState: 'dismissed' },
 ] as const)(
-	'closes %s with proposal=%s through %s as %s',
-	async (outcome, withSuggestion, action, reviewState) => {
+	'closes $outcome with proposal=$withSuggestion through $action as $reviewState',
+	async ({ outcome, withSuggestion, action, reviewState }) => {
 		const { user, original, result, url, graph } = await fixture(outcome, withSuggestion);
 		const publish = vi.spyOn(Container.get(WorkflowService), 'activateWorkflow');
 		const agent = testServer.authAgentFor(user);
+
 		const response = await agent
 			.post(`${url}/${action}`)
 			.set('push-ref', 'review-editor')
 			.expect(200);
+
 		expect(response.body.data).toMatchObject({
 			reviewState,
 			dismissedAt: withSuggestion ? null : expect.any(String),
@@ -1021,13 +1030,11 @@ it.each([
 		} else {
 			expect(saved).toEqual(original);
 		}
+
 		const receipt = await results.findOneByOrFail({ id: result.id });
-		if (action === 'chat') {
-			expect(response.body.data.chatThreadId).toEqual(expect.any(String));
-		} else {
-			expect(response.body.data).not.toHaveProperty('chatThreadId');
-		}
+
 		await agent.post(`${url}/${action}`).expect(409);
+
 		expect(await results.findOneByOrFail({ id: result.id })).toEqual(receipt);
 		expect(await workflows.findOneByOrFail({ id: original.id })).toEqual(saved);
 		expect(publish).not.toHaveBeenCalled();
@@ -1037,35 +1044,18 @@ it.each([
 	},
 );
 
-it('checks chat availability before applying a partial proposal', async () => {
-	const { user, project, original, result } = await fixture('needs_you', true);
-	vi.spyOn(Container.get(SelfHealingChatService), 'assertAvailable').mockRejectedValueOnce(
-		new Error('Assistant unavailable.'),
-	);
-
-	await expect(service.act(user, project.id, original.id, result.id, 'chat')).rejects.toThrow(
-		'Assistant unavailable.',
-	);
-
-	expect(await workflows.findOneByOrFail({ id: original.id })).toEqual(original);
-	expect(await suggestions.findOneByOrFail({ id: result.suggestionId! })).toMatchObject({
-		state: 'pending',
-	});
-});
-
-it('uses the same Apply path before creating a private chat', async () => {
+it('applies a partial proposal without publishing or starting a chat', async () => {
 	const { user, original, graph, url } = await fixture('needs_you', true);
 	const publish = vi.spyOn(Container.get(WorkflowService), 'activateWorkflow');
 	const locks = vi.spyOn(Container.get(CollaborationService), 'validateWriteLock');
 	const response = await testServer
 		.authAgentFor(user)
-		.post(`${url}/chat`)
+		.post(`${url}/apply`)
 		.set('push-ref', 'review-chat')
 		.expect(200);
 
 	expect(response.body.data).toMatchObject({
 		reviewState: 'applied',
-		chatThreadId: expect.any(String),
 	});
 	expect(locks).toHaveBeenCalledWith(user.id, 'review-chat', original.id, 'update');
 	const saved = await workflows.findOneByOrFail({ id: original.id });
@@ -1077,66 +1067,68 @@ it('uses the same Apply path before creating a private chat', async () => {
 
 it.each([
 	['fix_ready', true, 'apply'],
-	['needs_you', true, 'chat'],
-	['needs_you', false, 'chat'],
-	['could_not_fix', false, 'chat'],
+	['needs_you', true, 'apply'],
+	['needs_you', false, 'dismiss'],
+	['could_not_fix', false, 'dismiss'],
 ] as const)(
 	'rejects every action after %s with proposal=%s closes through %s',
 	async (outcome, withSuggestion, firstAction) => {
-		const { user, project, original, result, url, getDetail } = await fixture(
-			outcome,
-			withSuggestion,
-		);
+		const { user, project, original, result, url } = await fixture(outcome, withSuggestion);
 		const editor = await createUser();
 		await shareWorkflowWithUsers(original, [editor]);
 		await addReviewer(result.configurationId, editor.id);
 		const threads = Container.get(InstanceAiThreadRepository);
-		const response = await service.act(user, project.id, original.id, result.id, firstAction);
+		if (firstAction === 'dismiss') {
+			await service.dismiss(user, project.id, original.id, result.id);
+		} else {
+			await service.act(user, project.id, original.id, result.id, firstAction);
+		}
 		const receipt = await results.findOneByOrFail({ id: result.id });
 		const saved = await workflows.findOneByOrFail({ id: original.id });
-		if (firstAction === 'chat') {
-			expect(response.chatThreadId).toEqual(expect.any(String));
-			expect(await threads.findOneByOrFail({ id: response.chatThreadId! })).toMatchObject({
-				resourceId: user.id,
-			});
-		}
 
 		for (const reviewer of [user, editor]) {
-			for (const action of ['apply', 'approve-and-publish', 'chat', 'dismiss']) {
+			for (const action of ['apply', 'approve-and-publish', 'dismiss']) {
 				await testServer.authAgentFor(reviewer).post(`${url}/${action}`).expect(409);
 			}
 		}
 
-		expect(await getDetail()).not.toHaveProperty('chatThreadId');
 		expect(await results.findOneByOrFail({ id: result.id })).toEqual(receipt);
 		expect(await workflows.findOneByOrFail({ id: original.id })).toEqual(saved);
-		expect(await threads.countBy({ resourceId: user.id })).toBe(firstAction === 'chat' ? 1 : 0);
+		expect(await threads.countBy({ resourceId: user.id })).toBe(0);
 		expect(await threads.countBy({ resourceId: editor.id })).toBe(0);
 	},
 );
 
 it.each([
-	['fix_ready', true, 'apply', 'approve-and-publish'],
-	['fix_ready', true, 'dismiss', 'apply'],
-	['needs_you', false, 'chat', 'chat'],
-	['needs_you', false, 'dismiss', 'chat'],
-	['needs_you', false, 'chat', 'dismiss'],
-	['needs_you', true, 'chat', 'chat'],
-	['needs_you', true, 'dismiss', 'chat'],
-	['needs_you', true, 'chat', 'dismiss'],
+	{
+		outcome: 'fix_ready',
+		withSuggestion: true,
+		winningAction: 'apply',
+		staleAction: 'approve-and-publish',
+	},
+	{ outcome: 'fix_ready', withSuggestion: true, winningAction: 'dismiss', staleAction: 'apply' },
+	{ outcome: 'needs_you', withSuggestion: false, winningAction: 'dismiss', staleAction: 'dismiss' },
+	{ outcome: 'needs_you', withSuggestion: true, winningAction: 'apply', staleAction: 'apply' },
+	{ outcome: 'needs_you', withSuggestion: true, winningAction: 'dismiss', staleAction: 'apply' },
+	{ outcome: 'needs_you', withSuggestion: true, winningAction: 'apply', staleAction: 'dismiss' },
 ] as const)(
-	'keeps %s with proposal=%s closed by %s when a stale %s request resumes',
-	async (outcome, withSuggestion, winner, action) => {
+	'keeps $outcome with proposal=$withSuggestion closed by $winningAction when a stale $staleAction request resumes',
+	async ({ outcome, withSuggestion, winningAction, staleAction }) => {
 		const { user, project, original, result, graph } = await fixture(outcome, withSuggestion);
 		const publish = vi.spyOn(Container.get(WorkflowService), 'activateWorkflow');
 		const editor = await createUser();
 		await shareWorkflowWithUsers(original, [editor]);
 		await addReviewer(result.configurationId, editor.id);
+
 		const closeFirst = async () => {
-			if (winner === 'dismiss') await service.dismiss(editor, project.id, original.id, result.id);
-			else await service.act(editor, project.id, original.id, result.id, winner);
+			if (winningAction === 'dismiss') {
+				await service.dismiss(editor, project.id, original.id, result.id);
+			} else {
+				await service.act(editor, project.id, original.id, result.id, winningAction);
+			}
 		};
-		if (action === 'dismiss') {
+
+		if (staleAction === 'dismiss') {
 			// SQLite serializes write transactions. Supply the earlier snapshot after the winner commits.
 			await closeFirst();
 			vi.spyOn(results, 'getResult').mockResolvedValueOnce(result);
@@ -1150,24 +1142,26 @@ it.each([
 		}
 
 		await expect(
-			action === 'dismiss'
+			staleAction === 'dismiss'
 				? service.dismiss(user, project.id, original.id, result.id)
-				: service.act(user, project.id, original.id, result.id, action),
+				: service.act(user, project.id, original.id, result.id, staleAction),
 		).rejects.toBeInstanceOf(ConflictError);
 
 		const saved = await workflows.findOneByOrFail({ id: original.id });
 		expect(saved.nodes).toEqual(
-			withSuggestion && winner !== 'dismiss' ? graph.nodes : original.nodes,
+			withSuggestion && winningAction !== 'dismiss' ? graph.nodes : original.nodes,
 		);
 		expect(saved.activeVersionId).toBe(original.activeVersionId);
+
 		const threads = Container.get(InstanceAiThreadRepository);
 		expect(publish).not.toHaveBeenCalled();
-		expect(await threads.countBy({ resourceId: editor.id })).toBe(winner === 'chat' ? 1 : 0);
+		expect(await threads.countBy({ resourceId: editor.id })).toBe(0);
 		expect(await threads.countBy({ resourceId: user.id })).toBe(0);
+
 		if (withSuggestion) {
-			expect(
-				(await suggestions.getActivity(result.suggestionId!)).map(({ action }) => action),
-			).toEqual(['submitted', winner === 'dismiss' ? 'discarded' : 'applied']);
+			const activity = await suggestions.getActivity(result.suggestionId!);
+			const expectedActions = ['submitted', winningAction === 'dismiss' ? 'discarded' : 'applied'];
+			expect(activity.map(({ action }) => action)).toEqual(expectedActions);
 		} else {
 			expect(await results.findOneByOrFail({ id: result.id })).toMatchObject({
 				dismissedById: editor.id,
@@ -1176,56 +1170,11 @@ it.each([
 	},
 );
 
-it.each([
-	[false, 'before'],
-	[false, 'after'],
-	[true, 'before'],
-	[true, 'after'],
-] as const)(
-	'keeps the result with proposal=%s open when chat creation fails %s insertion',
-	async (withSuggestion, failureTiming) => {
-		const { user, project, original, result, getDetail } = await fixture(
-			'needs_you',
-			withSuggestion,
-		);
-		const history = Container.get(WorkflowHistoryRepository);
-		const beforeHistory = await history.countBy({ workflowId: original.id });
-		const chat = Container.get(SelfHealingChatService);
-		const prepare = chat.prepare.bind(chat);
-		vi.spyOn(chat, 'prepare').mockImplementationOnce(async (...args) => {
-			if (failureTiming === 'after') await prepare(...args);
-			throw new Error('Chat storage unavailable.');
-		});
-
-		await expect(service.act(user, project.id, original.id, result.id, 'chat')).rejects.toThrow(
-			'Chat storage unavailable.',
-		);
-
-		expect(await workflows.findOneByOrFail({ id: original.id })).toEqual(original);
-		expect(await history.countBy({ workflowId: original.id })).toBe(beforeHistory);
-		expect(await getDetail()).toMatchObject({ reviewState: 'open', dismissedAt: null });
-		expect(await Container.get(InstanceAiThreadRepository).countBy({ resourceId: user.id })).toBe(
-			0,
-		);
-		if (withSuggestion) {
-			expect(
-				(await suggestions.getActivity(result.suggestionId!)).map(({ action }) => action),
-			).toEqual(['submitted']);
-		}
-
-		const response = await service.act(user, project.id, original.id, result.id, 'chat');
-		expect(response).toMatchObject({
-			reviewState: withSuggestion ? 'applied' : 'dismissed',
-			chatThreadId: expect.any(String),
-		});
-	},
-);
-
-it('does not create a chat when closing the report fails', async () => {
+it('keeps the result open when closing the report fails', async () => {
 	const { user, project, original, result } = await fixture('needs_you');
 	vi.spyOn(results, 'dismissResult').mockRejectedValueOnce(new Error('Closure unavailable.'));
 
-	await expect(service.act(user, project.id, original.id, result.id, 'chat')).rejects.toThrow(
+	await expect(service.dismiss(user, project.id, original.id, result.id)).rejects.toThrow(
 		'Closure unavailable.',
 	);
 	expect(await results.findOneByOrFail({ id: result.id })).toMatchObject({ dismissedAt: null });
@@ -1233,7 +1182,7 @@ it('does not create a chat when closing the report fails', async () => {
 });
 
 it.each(['dismissed', 'discarded', 'outdated'] as const)(
-	'rejects chat creation for a result already closed as %s',
+	'rejects Apply for a result already closed as %s',
 	async (state) => {
 		const { user, project, original, result } = await fixture('needs_you', true);
 		if (state === 'outdated') {
@@ -1248,7 +1197,7 @@ it.each(['dismissed', 'discarded', 'outdated'] as const)(
 		const saved = await workflows.findOneByOrFail({ id: original.id });
 
 		await expect(
-			service.act(user, project.id, original.id, result.id, 'chat'),
+			service.act(user, project.id, original.id, result.id, 'apply'),
 		).rejects.toBeInstanceOf(ConflictError);
 
 		expect(await results.findOneByOrFail({ id: result.id })).toEqual(receipt);
@@ -1302,8 +1251,6 @@ it('does not report Apply when reconciliation finds an outdated proposal', async
 });
 
 it.each([
-	['fix_ready', true, 'chat'],
-	['needs_you', true, 'apply'],
 	['needs_you', true, 'approve-and-publish'],
 	['needs_you', false, 'apply'],
 	['needs_you', false, 'approve-and-publish'],
@@ -1320,7 +1267,6 @@ it.each([
 		const history = Container.get(WorkflowHistoryRepository);
 		const beforeHistory = await history.countBy({ workflowId: original.id });
 		const publish = vi.spyOn(Container.get(WorkflowService), 'activateWorkflow');
-		const prepareChat = vi.spyOn(Container.get(SelfHealingChatService), 'prepare');
 
 		await testServer.authAgentFor(user).post(`${url}/${action}`).expect(409);
 
@@ -1330,7 +1276,6 @@ it.each([
 		expect(await Container.get(InstanceAiThreadRepository).countBy({ resourceId: user.id })).toBe(
 			0,
 		);
-		expect(prepareChat).not.toHaveBeenCalled();
 		expect(publish).not.toHaveBeenCalled();
 		if (proposal) {
 			expect(await suggestions.findOneByOrFail({ id: proposal.id })).toEqual(proposal);
@@ -1361,12 +1306,12 @@ it('allows assigned reviewers with a workflow share to review', async () => {
 	await expect(service.getDetail(editor, project.id, original.id, result.id)).rejects.toThrow();
 });
 
-it.each(['apply', 'chat', 'dismiss'] as const)(
+it.each(['apply', 'dismiss'] as const)(
 	'keeps detail and %s available without publish scope',
 	async (action) => {
 		testServer.license.enable('feat:advancedPermissions');
 		const { user, original, result } = await fixture(
-			action === 'chat' ? 'needs_you' : 'fix_ready',
+			action === 'apply' ? 'needs_you' : 'fix_ready',
 			true,
 		);
 		const editor = await createUser();
@@ -1887,11 +1832,11 @@ describe('configuration lifecycle', () => {
 		});
 	});
 
-	it.each(['apply', 'approve-and-publish', 'chat', 'dismiss'] as const)(
+	it.each(['apply', 'approve-and-publish', 'dismiss'] as const)(
 		'checks the current reviewer assignment before %s on an existing result',
 		async (action) => {
 			const { result, original, url } = await fixture(
-				action === 'chat' ? 'needs_you' : 'fix_ready',
+				action === 'apply' ? 'needs_you' : 'fix_ready',
 				true,
 			);
 			const originalResult = await results.getResult(result.id, result);

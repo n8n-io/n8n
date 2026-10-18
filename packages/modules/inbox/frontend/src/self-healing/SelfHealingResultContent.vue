@@ -40,7 +40,7 @@ const reportOptions = {
 };
 const WorkflowDiffView = computed(() => componentRegistry.get('workflow-diff'));
 const isOpen = computed(() => props.detail.reviewState === 'open');
-const isInformational = computed(() => props.detail.outcome !== 'fix_ready');
+const isFixReady = computed(() => props.detail.outcome === 'fix_ready');
 const hasSuggestion = computed(() => props.detail.suggestion !== null);
 const chatLabel = computed(() =>
 	i18n.baseText(
@@ -74,7 +74,7 @@ const statusLabel = computed(() => {
 
 const statusClass = computed(() => {
 	if (!isOpen.value) return props.detail.reviewState === 'applied' ? 'applied' : 'closed';
-	return isInformational.value ? 'needsAttention' : 'fixReady';
+	return isFixReady.value ? 'fixReady' : 'needsAttention';
 });
 
 const tabOptions = computed(() => [
@@ -115,7 +115,7 @@ function onTabChange(tab: string) {
 				/>
 				<div v-if="isOpen" :class="$style.decisionActions">
 					<N8nButton
-						v-if="!isInformational"
+						v-if="isFixReady"
 						size="medium"
 						:label="i18n.baseText('inbox.selfHealing.action.applyAndPublish')"
 						:disabled="pending || !canPublish"
@@ -123,7 +123,7 @@ function onTabChange(tab: string) {
 						@click="emit('action', 'approve-and-publish')"
 					/>
 					<N8nButton
-						v-if="!isInformational"
+						v-if="isFixReady"
 						variant="outline"
 						size="medium"
 						:label="i18n.baseText('inbox.selfHealing.action.applyAndOpenInEditor')"
@@ -132,7 +132,7 @@ function onTabChange(tab: string) {
 						@click="emit('action', 'editor')"
 					/>
 					<N8nButton
-						v-if="isInformational"
+						v-if="!isFixReady"
 						variant="outline"
 						size="medium"
 						icon="message-circle"
@@ -152,7 +152,7 @@ function onTabChange(tab: string) {
 				</div>
 			</div>
 			<N8nText
-				v-if="!isInformational && isOpen && !canPublish"
+				v-if="isFixReady && isOpen && !canPublish"
 				size="small"
 				color="text-light"
 				:class="$style.permissionHint"
@@ -160,7 +160,7 @@ function onTabChange(tab: string) {
 				{{ i18n.baseText('inbox.selfHealing.action.publishUnavailable') }}
 			</N8nText>
 			<N8nText
-				v-if="isOpen && isInformational && !canChat"
+				v-if="isOpen && !isFixReady && !canChat"
 				size="small"
 				color="text-light"
 				:class="$style.permissionHint"
@@ -178,7 +178,7 @@ function onTabChange(tab: string) {
 							i18n.baseText('inbox.selfHealing.report')
 						}}</N8nText>
 						<N8nCallout
-							v-if="isInformational"
+							v-if="!isFixReady"
 							theme="warning"
 							:class="$style.outcomeNotice"
 							data-test-id="self-healing-outcome-notice"

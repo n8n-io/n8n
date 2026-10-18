@@ -50,11 +50,13 @@ const usageRows = computed(() => {
 					value: 'totalTokens' in usage ? usage.totalTokens : null,
 				},
 			];
-	const rows = measurements.flatMap((row) =>
-		row.value === null
-			? []
-			: [{ ...row, value: row.value.toLocaleString(rootStore.defaultLocale) }],
-	);
+
+	const rows = measurements.flatMap((row) => {
+		if (row.value === null) return [];
+
+		return [{ ...row, value: row.value.toLocaleString(rootStore.defaultLocale) }];
+	});
+
 	if (usage.durationSeconds !== null) {
 		rows.push({
 			key: 'duration',
@@ -67,6 +69,7 @@ const usageRows = computed(() => {
 			}),
 		});
 	}
+
 	return rows;
 });
 </script>

@@ -21,8 +21,6 @@ import { WorkflowSuggestionService } from './workflow-suggestion.service';
 
 type ApplyOptions = {
 	requirePending?: boolean;
-	/** Runs in the workflow save transaction so failures roll back the action. */
-	onApplied?: (ctx: OperationContext) => Promise<void>;
 };
 
 @Service()
@@ -196,7 +194,6 @@ export class WorkflowSuggestionActionsService {
 				appliedVersion,
 			);
 			if (!closed) throw new ConflictError('The suggestion has already closed.');
-			await options.onApplied?.(ctx);
 			return { saved, appliedVersion };
 		});
 		try {

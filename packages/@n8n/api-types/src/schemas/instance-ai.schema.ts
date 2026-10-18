@@ -1845,6 +1845,7 @@ export type InstanceAiThreadSourcePersisted =
  * surface that skips this fails typecheck rather than reporting untagged
  * messages. Reported on `User sent builder message` as `prefill_type`.
  *
+ * - `handoff_self_healing_report` — continue from a self-healing report in the Inbox
  * - `handoff_execution_error` — "Ask AI" on a failed execution or node error
  * - `handoff_credential_setup` — credential help from the editor, credentials
  *   list, or the workflow artifact in a live thread
@@ -1867,6 +1868,7 @@ export type InstanceAiThreadSourcePersisted =
  *   after a build, accepted with Tab; lands mid-thread
  */
 export const INSTANCE_AI_PREFILL_TYPES = [
+	'handoff_self_healing_report',
 	'handoff_execution_error',
 	'handoff_credential_setup',
 	'handoff_fix_with_ai',

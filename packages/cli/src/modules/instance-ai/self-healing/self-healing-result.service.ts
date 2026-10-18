@@ -6,6 +6,7 @@ import {
 	type SelfHealingExecutionReference,
 	type SelfHealingResultDetail,
 	type SelfHealingResultActionResponse,
+	type WorkflowSuggestionActionResult,
 	type WorkflowSuggestionAppliedVersion,
 	type WorkflowSuggestionProposalDetail,
 } from '@n8n/api-types';
@@ -36,7 +37,6 @@ import { SelfHealingInvestigationRepository } from './database/self-healing-inve
 import { SelfHealingResultRepository } from './database/self-healing-result.repository';
 import { SelfHealingConfigurationService } from './self-healing-configuration.service';
 import { SelfHealingExecutionReferenceService } from './self-healing-execution-reference.service';
-import { SelfHealingChatService } from './self-healing-chat.service';
 
 export type SelfHealingResultInput = {
 	output: SelfHealingOutput;
@@ -69,7 +69,6 @@ export class SelfHealingResultService {
 		private readonly investigations: SelfHealingInvestigationRepository,
 		private readonly users: UserRepository,
 		private readonly roles: RoleService,
-		private readonly chat: SelfHealingChatService,
 		private readonly configurations: SelfHealingConfigurationRepository,
 		private readonly configurationService: SelfHealingConfigurationService,
 	) {}
@@ -301,7 +300,7 @@ export class SelfHealingResultService {
 		projectId: string,
 		workflowId: string,
 		resultId: string,
-		action: WorkflowSuggestionAppliedVersion['action'] | 'chat',
+		action: WorkflowSuggestionAppliedVersion['action'],
 		clientId?: string,
 	): Promise<SelfHealingResultActionResponse> {
 		const { result, reviewer } = await this.getResultForEditor(
@@ -311,68 +310,44 @@ export class SelfHealingResultService {
 			resultId,
 		);
 		const suggestionId = result.suggestionId;
+
 		if (result.dismissedAt) {
 			throw new ConflictError('This result is already closed. Refresh the page to see its status.');
 		}
-		if (
-			action === 'chat'
-				? result.outcome === 'fix_ready'
-				: result.outcome !== 'fix_ready' || !suggestionId
-		) {
+		if (!suggestionId || (action === 'approve-and-publish' && result.outcome !== 'fix_ready')) {
 			throw new ConflictError(
 				"This action isn't available for this result. Refresh the page to see its available actions.",
 			);
 		}
-		if (action === 'chat') await this.chat.assertAvailable(reviewer);
-		const execution =
-			action === 'chat'
-				? await this.executionReferences.getReference(reviewer, workflowId, result.executionId)
-				: undefined;
-		let chatThreadId: string | undefined;
-		const prepareChat = async (ctx: OperationContext) => {
-			chatThreadId = await this.chat.prepare(reviewer, result, ctx, execution);
-		};
-		let publishError: string | undefined;
-		if (suggestionId) {
-			const options = {
-				requirePending: true,
-				...(action === 'chat' ? { onApplied: prepareChat } : {}),
-			};
-			const applied =
-				action === 'approve-and-publish'
-					? await this.actions.approveAndPublish(
-							reviewer,
-							projectId,
-							workflowId,
-							suggestionId,
-							clientId,
-							options,
-						)
-					: await this.actions.apply(
-							reviewer,
-							projectId,
-							workflowId,
-							suggestionId,
-							clientId,
-							options,
-						);
-			publishError = applied.publishError;
+
+		const options = { requirePending: true };
+		let actionResult: WorkflowSuggestionActionResult;
+		if (action === 'approve-and-publish') {
+			actionResult = await this.actions.approveAndPublish(
+				reviewer,
+				projectId,
+				workflowId,
+				suggestionId,
+				clientId,
+				options,
+			);
 		} else {
-			await this.txRunner.run({}, async (ctx) => {
-				await this.suggestions.requireEditor(reviewer.id, workflowId, ctx);
-				await this.requireCurrentProject(workflowId, projectId, ctx);
-				if (!(await this.results.dismissResult(resultId, reviewer.id, ctx))) {
-					throw new ConflictError(
-						'This result is already closed. Refresh the page to see its status.',
-					);
-				}
-				await prepareChat(ctx);
-			});
+			actionResult = await this.actions.apply(
+				reviewer,
+				projectId,
+				workflowId,
+				suggestionId,
+				clientId,
+				options,
+			);
 		}
+
+		const updatedResult = await this.getDetail(reviewer, projectId, workflowId, resultId);
 		return {
-			...(await this.getDetail(reviewer, projectId, workflowId, resultId)),
-			...(chatThreadId !== undefined ? { chatThreadId } : {}),
-			...(publishError !== undefined ? { publishError } : {}),
+			...updatedResult,
+			...(actionResult.publishError !== undefined
+				? { publishError: actionResult.publishError }
+				: {}),
 		};
 	}
 
@@ -385,25 +360,29 @@ export class SelfHealingResultService {
 				resultId,
 				ctx,
 			);
+
 			if (result.dismissedAt) return 'already_closed';
 
 			const suggestionId = result.suggestionId;
 			if (suggestionId) {
-				const outcome = await this.actions.discardPending(
+				const discardOutcome = await this.actions.discardPending(
 					reviewer,
 					projectId,
 					workflowId,
 					suggestionId,
 					ctx,
 				);
-				if (outcome !== 'discarded') return outcome;
+
+				if (discardOutcome !== 'discarded') return discardOutcome;
 			} else {
 				await this.requireCurrentProject(workflowId, projectId, ctx);
 			}
 
 			if (result.outcome !== 'fix_ready') {
-				if (!(await this.results.dismissResult(result.id, user.id, ctx))) return 'already_closed';
+				const dismissed = await this.results.dismissResult(result.id, user.id, ctx);
+				if (!dismissed) return 'already_closed';
 			}
+
 			return 'discarded';
 		});
 
@@ -416,6 +395,7 @@ export class SelfHealingResultService {
 		if (outcome === 'already_closed') {
 			throw new ConflictError('This result is already closed. Refresh the page to see its status.');
 		}
+
 		return await this.getDetail(user, projectId, workflowId, resultId);
 	}
 
