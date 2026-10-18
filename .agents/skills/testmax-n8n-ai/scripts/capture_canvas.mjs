@@ -3,13 +3,53 @@
 //
 //   node capture_canvas.mjs <run-dir>
 //
-// Reads <run-dir>/<builder>/run.json and writes <run-dir>/<builder>/canvas.png and workflow.json.
+// Reads <run-dir>/<builder>/run.json and writes <run-dir>/<builder>/canvas.png, workflow.json and
+// canvas-issues.json.
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
 import { baseUrl, launchBrowser, signIn } from './n8n_browser.mjs';
 
 const runDir = resolve(process.argv[2] ?? '.');
+
+// The status icons that CanvasNodeStatusIcons.vue draws on a node. n8n computes them from the node
+// type description, so they are the verdict of n8n itself on each node.
+const ISSUE_MARKERS = ['node-issues', 'node-setup-required', 'node-not-installed', 'node-restricted'];
+
+/**
+ * The status icon of each node, with the issues that the editor computed for it. The tooltips
+ * are teleported and show after a delay, so the issues come from the workflow document store.
+ */
+async function readIssues(page, workflowId) {
+	return await page.evaluate(
+		({ markers, workflowId }) => {
+			const icons = {};
+			for (const el of document.querySelectorAll(
+				markers.map((m) => `[data-node-name] [data-test-id="${m}"]`).join(','),
+			)) {
+				icons[el.closest('[data-node-name]').dataset.nodeName] = el.dataset.testId;
+			}
+			const pinia = document.querySelector('#app')?.__vue_app__?.config.globalProperties.$pinia;
+			const key = [...(pinia?._s.keys() ?? [])].find((k) =>
+				k.startsWith(`workflowDocuments/${workflowId}@`),
+			);
+			const storeNodes = key ? (pinia._s.get(key).allNodes ?? []) : [];
+			const nodes = storeNodes
+				.filter((n) => icons[n.name] || (n.issues && Object.keys(n.issues).length))
+				.map((n) => ({
+					name: n.name,
+					type: n.type,
+					marker: icons[n.name] ?? null,
+					issues: n.issues ?? {},
+				}));
+			for (const [name, marker] of Object.entries(icons)) {
+				if (!nodes.some((n) => n.name === name)) nodes.push({ name, marker, issues: {} });
+			}
+			return { markers, store: Boolean(key), nodes };
+		},
+		{ markers: ISSUE_MARKERS, workflowId },
+	);
+}
 
 const runs = readdirSync(runDir, { withFileTypes: true })
 	.filter((d) => d.isDirectory() && existsSync(join(runDir, d.name, 'run.json')))
@@ -114,6 +154,9 @@ for (const { dir, meta } of runs) {
 		: undefined;
 	await page.screenshot({ path: join(dir, 'canvas.png'), clip });
 	console.log(`${id}: canvas.png written`);
+	const issues = await readIssues(page, id);
+	writeFileSync(join(dir, 'canvas-issues.json'), JSON.stringify(issues, null, 1));
+	console.log(`${id}: canvas-issues.json written (${issues.nodes.length} nodes with a status icon)`);
 }
 
 await browser.close();

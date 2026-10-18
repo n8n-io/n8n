@@ -754,7 +754,7 @@ def sub_agent_events(events):
 def render_steps(calls, events, max_prompt, max_out, prompt, context=None, agent_contexts=None):
 	steps = build_steps(calls, events)
 	if not steps:
-		return '<div class="box steps"><div class="head"><h2>LLM steps</h2></div><p class="dim">No trace for this run.</p></div>'
+		return fold('LLM steps', '', '<p class="dim">No trace for this run.</p>', cls='steps')
 	names = {s['call'].get('name') for s in steps if s['call']}
 	pending = dict(agent_contexts or {})
 	items, panes, tool_index = [], [], 0
@@ -802,11 +802,9 @@ def render_steps(calls, events, max_prompt, max_out, prompt, context=None, agent
 	legend = ('<div class="legend mono-label"><span><i class="read"></i>Cache read</span><span><i class="write"></i>Cache write</span>'
 	          '<span><i class="fresh"></i>Uncached input</span><span><i class="outp"></i>Output</span></div>')
 	count = f'{len(steps)} LLM calls' if calls else f'{len(steps)} events, no per-call token data'
-	return (
-		f'<div class="box steps"><div class="head"><h2>LLM steps</h2><span class="mono-label">{count}</span></div>'
-		f'{legend if calls else ""}<div class="steps-layout"><div class="step-list">{"".join(items)}</div>'
-		f'<div class="step-pane">{"".join(panes)}</div></div></div>'
-	)
+	return fold('LLM steps', f'<span class="mono-label">{count}</span>',
+	            f'{legend if calls else ""}<div class="steps-layout"><div class="step-list">{"".join(items)}</div>'
+	            f'<div class="step-pane">{"".join(panes)}</div></div>', cls='steps')
 
 
 def code_spans(text):
@@ -824,15 +822,217 @@ def inline_code(text):
 CHECK_GROUPS = ((False, 'bad', '✗', 'Not met'), (None, 'warn', '?', 'Not confirmed'), (True, 'ok', '✓', 'Met'))
 
 
-def verdict_head(v):
+AUTO_CHECKS_FILE = 'auto-checks.json'
+# A failed check in these groups of auto-checks.json changes the verdict, when a group has no gating flag.
+GATING_GROUPS = ('correctness', 'execution', 'contract')
+
+
+def load_auto_checks(sub):
+	path = sub / AUTO_CHECKS_FILE
+	return json.loads(path.read_text()) if path.exists() else None
+
+
+def load_workflow(sub):
+	path = sub / 'workflow.json'
+	return json.loads(path.read_text()) if path.exists() else None
+
+
+def criteria_ids(expected):
+	return [num for _, items in parse_criteria(expected or '') or [] for num, _ in items]
+
+
+def node_value(node, path):
+	"""The value at a path such as parameters.text or rules.values[0]. A path without the parameters
+	prefix also reads from the parameters. Returns (found, value)."""
+	keys = [int(k) if k.isdigit() else k for k in re.findall(r'[^.\[\]\'"]+', path or '')]
+	for root in (node, node.get('parameters') or {}):
+		current, found = root, True
+		for key in keys:
+			if isinstance(current, list) and isinstance(key, int) and key < len(current):
+				current = current[key]
+			elif isinstance(current, dict) and key in current:
+				current = current[key]
+			else:
+				found = False
+				break
+		if found:
+			return True, current
+	return False, None
+
+
+def loose(text):
+	"""Text for a containment test: one quote style and single spaces."""
+	return re.sub(r'\s+', ' ', text.replace('\\"', '"').replace('\\n', ' ')).replace('"', "'").strip()
+
+
+def evidence_problems(evidence, workflow):
+	"""The evidence entries that the workflow does not contain. An entry is {node, path, value}.
+	An entry with "source": "message" quotes the final message and is not checked here."""
+	nodes = {n['name']: n for n in (workflow or {}).get('nodes', [])}
+	problems = []
+	for e in evidence:
+		if e.get('source') == 'message':
+			continue
+		node = nodes.get(e.get('node'))
+		if node is None:
+			problems.append(f'no node is called "{e.get("node")}"')
+			continue
+		target = node
+		if e.get('path'):
+			found, target = node_value(node, e['path'])
+			if not found:
+				problems.append(f'{e["node"]} has no {e["path"]}')
+				continue
+		value = e.get('value')
+		text = target if isinstance(target, str) else json.dumps(target, ensure_ascii=False)
+		if value not in (None, '') and loose(str(value)) not in loose(text):
+			where = f'{e["node"]} › {e["path"]}' if e.get('path') else e['node']
+			problems.append(f'{where} does not contain "{value}"')
+	return problems
+
+
+def is_strict(v):
+	"""A panel verdict, or a verdict with cited evidence: a met check must then cite evidence."""
+	return v.get('version', 1) >= 2 or bool(v.get('judges')) or any(c.get('evidence') for c in v.get('checks') or [])
+
+
+def add_note(check, note):
+	check['note'] = f'{check["note"]} {note}' if check.get('note') else note
+
+
+def verify_checks(v, workflow):
+	"""The checks of a verdict, with a met check that has no evidence, or evidence that the
+	workflow does not contain, changed to not confirmed."""
+	strict = is_strict(v)
+	out = []
+	for c in v.get('checks') or []:
+		c = dict(c)
+		if c.get('ok') is True and strict:
+			if not c.get('evidence'):
+				c['ok'] = None
+				add_note(c, 'No evidence cited, so this is not confirmed.')
+			elif problems := evidence_problems(c['evidence'], workflow):
+				c['ok'] = None
+				add_note(c, 'Evidence not found: ' + '; '.join(problems) + '.')
+		out.append(c)
+	return out
+
+
+def is_gating(group):
+	"""Older auto-checks.json files have no gating flag, so their group key decides."""
+	return group.get('gating', group['key'] in GATING_GROUPS)
+
+
+def gating_failures(auto):
+	return [c for g in (auto or {}).get('groups', []) if is_gating(g)
+	        for c in g['checks'] if c.get('ok') is False and c.get('level') != 'info']
+
+
+def brief_met(checks, ids):
+	"""(met, total) over the expected outcome criteria. Without criteria ids, or when no check has
+	an id, over all checks."""
+	if not ids or all(c.get('id') is None for c in checks):
+		return sum(1 for c in checks if c.get('ok') is True), len(checks)
+	by_id = {}
+	for c in checks:
+		by_id.setdefault(str(c.get('id')), []).append(c.get('ok'))
+	return sum(1 for i in ids if by_id.get(i) and all(ok is True for ok in by_id[i])), len(ids)
+
+
+def compute_verdict(v, checks, auto, has_workflow, ids):
+	"""pass, partial or fail from the criteria, the goal and the auto-checks. The judge verdict of an
+	old verdict file stays, but a failed auto-check turns its pass into partial."""
+	if not v:
+		return None
+	gating = gating_failures(auto)
+	if not is_strict(v):
+		return 'partial' if v.get('verdict') == 'pass' and gating else v.get('verdict')
+	if not has_workflow or v.get('goalMet') is False:
+		return 'fail'
+	met, total = brief_met(checks, ids)
+	return 'pass' if total and met == total and not gating else 'partial'
+
+
+def verdict_view(v, sub, expected):
+	"""The verdict as the page shows it: verified checks and the computed verdict. Returns (view, auto)."""
+	auto = load_auto_checks(sub)
+	if not v:
+		return v, auto
+	workflow = load_workflow(sub)
+	checks = verify_checks(v, workflow)
+	view = dict(v, checks=checks, judgeVerdict=v.get('verdict'))
+	view['verdict'] = compute_verdict(v, checks, auto, workflow is not None, criteria_ids(expected))
+	if quality := quality_group(v):
+		auto = dict(auto or {'groups': []}, groups=[*(auto or {}).get('groups', []), quality])
+	return view, auto
+
+
+def quality_group(v):
+	"""The LLM binary checks of the eval suite, as the judge panel answered them. They do not change the verdict."""
+	items = v.get('quality') or []
+	if not items:
+		return None
+	checks = [{'id': f'Q{i + 1}', 'ok': q.get('ok'), 'text': f'{q["id"]}: {q.get("text", "")}',
+	           'details': [q['note']] if q.get('note') else [],
+	           'source': {'label': 'Instance AI eval binary checks (LLM), answered by the judges',
+	                      'path': 'packages/@n8n/instance-ai/evaluations/binaryChecks/checks'}} for i, q in enumerate(items)]
+	scored = [c for c in checks if c['ok'] is not None]
+	return {'key': 'quality', 'title': 'Eval quality checks', 'gating': False,
+	        'note': 'The LLM binary checks of the Instance AI eval suite. The judge panel answers them. This score does not change the verdict.',
+	        'score': {'passed': sum(1 for c in scored if c['ok']), 'total': len(scored)}, 'checks': checks}
+
+
+def standards_score(auto):
+	group = next((g for g in (auto or {}).get('groups', []) if g['key'] == 'standards'), None)
+	return (group or {}).get('score')
+
+
+def verdict_head(v, expected=''):
 	checks = v.get('checks') or []
-	met = sum(1 for c in checks if c.get('ok') is True)
-	count = f'<span class="mono-label">{met} of {len(checks)} met</span>' if checks else ''
-	return f'<span class="head-meta">{count}{badge(v.get("verdict"))}</span>'
+	met, total = brief_met(checks, criteria_ids(expected))
+	count = f'<span class="mono-label">{met} of {total} met</span>' if total else ''
+	panel = ''
+	if v.get('judges'):
+		split = len(v.get('disagreements') or [])
+		panel = (f'<span class="mono-label{" err" if split else ""}">{v["judges"]} judges'
+		         + (f' · {split} split' if split else '') + '</span>')
+	return f'<span class="head-meta">{panel}{count}{badge(v.get("verdict"))}</span>'
 
 
 CHECK_CLASS = {True: 'ok', False: 'bad', None: 'warn'}
 OTHER_FINDINGS = 'Other findings'
+
+
+def check_body(c):
+	"""The text of a judge check, with its note and the evidence that it cites."""
+	parts = [f'<span>{inline_code(c.get("text", ""))}</span>']
+	if c.get('note'):
+		parts.append(f'<span class="check-note">{inline_code(c["note"])}</span>')
+	cited = []
+	for e in c.get('evidence') or []:
+		where = 'Final message' if e.get('source') == 'message' else ' › '.join(filter(None, [e.get('node'), e.get('path')]))
+		value = f' = <code>{esc(str(e["value"]))}</code>' if e.get('value') not in (None, '') else ''
+		cited.append(f'<li>{esc(where)}{value}</li>')
+	if cited:
+		parts.append(f'<ul class="check-details">{"".join(cited)}</ul>')
+	return f'<span class="check-body">{"".join(parts)}</span>'
+
+
+def render_goal(v):
+	"""A failed goal shows above the checks, because it fails the run on its own. A minority of judges
+	that says the goal is not met shows as a warning."""
+	if v.get('goalMet') is not False:
+		split = next((d for d in v.get('disagreements') or [] if d.get('id') == 'goal'), None)
+		if not split:
+			return ''
+		no = split['votes'].count(False)
+		reasons = '; '.join(t for t in split.get('texts') or [] if t)
+		return (f'<ul class="checks goal"><li class="warn"><span class="mark" aria-hidden="true">?</span>'
+		        f'<span>{no} of {len(split["votes"])} judges {"says" if no == 1 else "say"} the workflow does not do what the prompt asks'
+		        f'{": " + inline_code(reasons) if reasons else ""}</span></li></ul>')
+	reason = f': {inline_code(v["goalReason"])}' if v.get('goalReason') else ''
+	return (f'<ul class="checks goal"><li class="bad"><span class="mark" aria-hidden="true">✗</span>'
+	        f'<span>The workflow does not do what the prompt asks{reason}</span></li></ul>')
 
 
 def render_checks(v, expected=''):
@@ -841,6 +1041,7 @@ def render_checks(v, expected=''):
 	Otherwise the failed checks show first."""
 	checks = v.get('checks') or []
 	summary = f'<p class="summary">{inline_code(v["summary"])}</p>' if v.get('summary') else ''
+	summary += render_goal(v)
 	criteria = parse_criteria(esc(expected)) if expected else None
 	if criteria and any(c.get('id') is not None for c in checks):
 		return summary + render_checks_by_criteria(checks, criteria)
@@ -849,7 +1050,7 @@ def render_checks(v, expected=''):
 		items = [c for c in checks if c.get('ok') is ok]
 		if items:
 			rows = ''.join(f'<li class="{cls}"><span class="mark" aria-hidden="true">{mark}</span>'
-			               f'<span>{inline_code(c.get("text", ""))}</span></li>' for c in items)
+			               f'{check_body(c)}</li>' for c in items)
 			groups.append(f'<div class="check-group"><div class="mono-label">{label} · {len(items)}</div>'
 			              f'<ul class="checks">{rows}</ul></div>')
 	return summary + ''.join(groups)
@@ -870,7 +1071,7 @@ def render_checks_by_criteria(checks, criteria):
 	for heading, rows in groups:
 		html_rows = ''.join(
 			''.join(f'<li class="{CHECK_CLASS.get(c.get("ok"), "warn")}"><span class="mark num" aria-hidden="true">{num}</span>'
-			        f'<span>{inline_code(c.get("text", ""))}</span></li>' for c in cs)
+			        f'{check_body(c)}</li>' for c in cs)
 			if cs else f'<li class="warn"><span class="mark num" aria-hidden="true">{num}</span>'
 			           f'<span class="dim">Not judged: {code_spans(text)}</span></li>'
 			for num, cs, text in rows)
@@ -890,12 +1091,85 @@ def render_checks_by_criteria(checks, criteria):
 JUDGE_WAIT_TEXT = {'queued': 'Waiting for the judge.', 'running': 'The judge is checking this run.'}
 
 
-def render_verdict(v, expected='', judge=None):
+def fold(title, meta, body, open_=False, cls=''):
+	"""A collapsible box: the title and meta HTML in the header row, the body below."""
+	return (f'<details class="box fold{" " + cls if cls else ""}"{" open" if open_ else ""}><summary class="head">'
+	        f'<h2>{title}</h2>{meta}</summary>{body}</details>')
+
+
+def render_verdict(v, expected='', judge=None, pending=False):
+	"""The Expected outcome box. It shows open when the verdict is not pass or a check is not confirmed.
+	pending is true on the live page, before the judges can run."""
 	if not v:
-		return (f'<div class="box"><div class="head"><h2>Expected outcome</h2>{pending_badge("judge", judge)}</div>'
-		        f'<p class="dim">{JUDGE_WAIT_TEXT.get(judge, "Not judged yet.")}</p></div>')
-	return (f'<div class="box"><div class="head"><h2>Expected outcome</h2>{verdict_head(v)}</div>'
-	        f'{render_checks(v, expected)}</div>')
+		if pending:
+			return fold('Expected outcome', '<span class="mono-label">Not verified yet</span>',
+			            '<p class="dim">The judges check this run against the expected outcome after all builders finish.</p>')
+		meta = pending_badge('judge', judge) or '<span class="mono-label">Not judged</span>'
+		return fold('Expected outcome', meta, f'<p class="dim">{JUDGE_WAIT_TEXT.get(judge, "Not judged yet.")}</p>')
+	attention = v.get('verdict') != 'pass' or any(c.get('ok') is not True for c in v.get('checks') or [])
+	return fold('Expected outcome', verdict_head(v, expected), render_checks(v, expected), open_=attention)
+
+
+def auto_check_row(c):
+	info = c.get('level') == 'info'
+	cls = 'info' if info else CHECK_CLASS.get(c.get('ok'), 'warn')
+	details = ''.join(f'<li>{inline_code(d)}</li>' for d in c.get('details') or [])
+	source = c.get('source') or {}
+	links = []
+	for s in (source, source.get('also') or {}):
+		if s.get('url'):
+			links.append(f'<a href="{esc(s["url"])}" target="_blank">{esc(s["label"])} ↗</a>')
+		elif s.get('label'):
+			links.append(esc(s['label']) + (f' (<code>{esc(s["path"])}</code>)' if s.get('path') else ''))
+	return (f'<li class="{cls}"><span class="mark num" aria-hidden="true">{esc(c["id"])}</span><span class="check-body">'
+	        f'<span>{inline_code(c.get("text", ""))}</span>'
+	        + (f'<ul class="check-details">{details}</ul>' if details else '')
+	        + (f'<span class="check-source">Source: {" · ".join(links)}</span>' if links else '')
+	        + '</span></li>')
+
+
+def render_auto_checks(auto):
+	"""The groups of auto-checks.json. A gating group with a failed check shows open."""
+	if not auto:
+		return ''
+	parts = []
+	for g in auto.get('groups', []):
+		judged = [c for c in g['checks'] if c.get('ok') is not None and c.get('level') != 'info']
+		failed = sum(1 for c in judged if c['ok'] is False)
+		gating = is_gating(g)
+		score = g.get('score')
+		if score:
+			label = f'Score {score["passed"]} of {score["total"]} · does not change the verdict'
+		else:
+			label = f'{len(judged) - failed} of {len(judged)} passed' if judged else 'Not checked'
+		rows = ''.join(auto_check_row(c) for c in g['checks'])
+		parts.append(fold(
+			esc(g['title']), f'<span class="mono-label{" err" if gating and failed else ""}">{esc(label)}</span>',
+			f'<p class="dim auto-note">{esc(g.get("note", ""))}</p><ul class="checks">{rows}</ul>',
+			open_=gating and failed > 0, cls='auto-group'))
+	return ''.join(parts)
+
+
+PENDING_CHECK_GROUPS = (
+	('Correctness', 'Checks from the node definitions, the n8n editor and the workflow graph.'),
+	('Execution with pinned data', 'Runs the workflow once for each scenario, with pinned data.'),
+	('n8n standards', 'Rules from n8n-io/skills and the workflow-sdk best practices.'),
+)
+
+
+def render_pending_checks():
+	"""Placeholders for the auto-check groups that every run gets, before auto-checks.json exists."""
+	return ''.join(fold(title, '<span class="mono-label">Not run yet</span>',
+	                    f'<p class="dim auto-note">{esc(note)} These checks run after all builders finish.</p>',
+	                    cls='auto-group') for title, note in PENDING_CHECK_GROUPS)
+
+
+def render_result(verdict, judge, auto):
+	"""The Result cell: the verdict badge and the standards score."""
+	score = standards_score(auto)
+	std = (f' <span class="mono-label std" title="n8n standards score. It does not change the verdict.">'
+	       f'Std {score["passed"]}/{score["total"]}</span>' if score and score['total'] else '')
+	return badge((verdict or {}).get('verdict'), judge) + std
 
 
 PLAYER_CACHE = ASSET_CACHE / f'asciinema-player-{PLAYER_VERSION}'
@@ -1126,14 +1400,22 @@ def render_canvas_box(name, meta, report, base_url, empty='No workflow was creat
 		f'data-n8n="{esc(n8n_url)}"><img src="img/{name}.png" {size} alt="{title} canvas"></a>'
 		if image.exists() else f'<p class="dim">{esc(empty)}</p>'
 	)
+	workflow = load_workflow(report.parent / name)
+	nodes = [n for n in (workflow or {}).get('nodes', []) if n.get('type') != 'n8n-nodes-base.stickyNote']
+	count = f'<span class="mono-label">{len(nodes)} node{"" if len(nodes) == 1 else "s"}</span>' if workflow else ''
 	link = f'<a href="{n8n_url}" target="_blank">Open in n8n ↗</a>' if wf else ''
-	return f'<div class="box"><div class="head"><h2>Canvas</h2>{link}</div>{canvas}</div>'
+	return fold('Canvas', f'<span class="head-meta">{count}{link}</span>', canvas, cls='canvas-box')
 
 
-def render_panel_body(data, verdict, canvas_box, max_prompt, max_out, prompt, expected='', judge=None):
-	"""The content of the section of one run: result, canvas and LLM steps. judge is the state of the judge step."""
+def render_panel_body(data, verdict, canvas_box, max_prompt, max_out, prompt, expected='', judge=None, auto=None,
+                      pending=False):
+	"""The content of the section of one run: canvas, result, auto-checks and LLM steps.
+	judge is the state of the judge step, and auto the content of auto-checks.json. pending is true on the
+	live page: checks and verdicts that do not exist yet show as not run."""
 	error = f'<div class="box err">Could not read this run: {esc(data["loadError"])}</div>' if data.get('loadError') else ''
-	return (f'{error}<div class="result-row">{render_verdict(verdict, expected, judge)}{canvas_box}</div>'
+	checks = render_pending_checks() if pending and not auto else render_auto_checks(auto)
+	return (f'{error}<div class="folds">{canvas_box}{render_verdict(verdict, expected, judge, pending)}'
+	        f'{checks}</div>'
 	        f'{render_steps(data["calls"], data["events"], max_prompt, max_out, prompt, data.get("context"), data.get("agentContexts"))}')
 
 
@@ -1228,22 +1510,23 @@ def main():
 	# A run with a verdict is judged, so a step that was not marked done does not show as pending.
 	judge = post_run.get('judge') if any(name not in verdicts for name, _, _ in runs) else None
 	pending = False
+	views = {name: verdict_view(verdicts.get(name), run_dir / name, case.get('expected') or '') for name, _, _ in runs}
 
 	rows, panels = [], []
 	for i, (name, meta, data) in enumerate(runs):
 		active = ' active' if i == 0 else ''
-		verdict = verdicts.get(name)
+		verdict, auto = views[name]
 		data['costTitle'] = cost_title(meta, data, case.get('prices') or {})
 		if meta['kind'] != 'instance-ai' and data.get('costSource') is None:
 			data['costPending'] = post_run.get('prices')
 		pending = pending or (not verdict and judge in ('queued', 'running')) \
 			or data.get('costPending') in ('queued', 'running')
 		rows.append(f'<tr class="row{active}" data-run="{name}" onclick="show(\'{name}\')">'
-		            + render_row_cells(name, meta, data, badge((verdict or {}).get('verdict'), judge)) + '</tr>')
+		            + render_row_cells(name, meta, data, render_result(verdict, judge, auto)) + '</tr>')
 		canvas_box = render_canvas_box(name, meta, report, base_url)
 		panels.append(f'<section class="run{active}" id="{name}">'
 		              + render_panel_body(data, verdict, canvas_box, max_prompt, max_out, case['prompt'],
-		                                  case.get('expected') or '', judge)
+		                                  case.get('expected') or '', judge, auto=auto)
 		              + '</section>')
 
 	# The agent reads this file to find the models that still need a published price.
@@ -1253,7 +1536,7 @@ def main():
 	unpriced = sorted({m['model'] for m in models
 	                   if m['model'] and m['kind'] != 'instance-ai' and m['costSource'] != 'prices'})
 
-	screens = collect_screens(runs, run_dir, report, verdicts)
+	screens = collect_screens(runs, run_dir, report, {name: v for name, (v, _) in views.items() if v})
 	head, scripts = '', ''
 	if any(s['type'] == 'cast' for s in screens):
 		player_js, player_css = player_assets(report)
@@ -1334,13 +1617,14 @@ def render_brief(prompt, expected):
 	else:
 		body, count = f'<div class="msg">{code_spans(expected)}</div>', ''
 	words = len(html.unescape(prompt).split())
+	prompt_meta = (f'<span class="head-meta"><span class="mono-label">Sent to every builder · {words} words</span>'
+	               '<button type="button" class="btn" data-copy="brief-prompt">Copy</button></span>')
 	return (
-		'<section class="brief"><div class="brief-card prompt"><div class="brief-head">'
-		'<span class="mono-label">Prompt</span><button type="button" class="btn" data-copy="brief-prompt">Copy</button></div>'
-		f'<blockquote class="msg" id="brief-prompt">{prompt}</blockquote>'
-		f'<span class="mono-label">Sent to every builder · {words} words</span></div>'
-		'<div class="brief-card expected"><div class="brief-head"><span class="mono-label">Expected outcome</span>'
-		f'{count}</div>{body}</div></section>'
+		'<section class="brief folds">'
+		+ fold('Prompt', prompt_meta, f'<blockquote class="msg" id="brief-prompt">{prompt}</blockquote>',
+		       open_=True, cls='brief-card prompt')
+		+ fold('Expected outcome', count, body, cls='brief-card expected')
+		+ '</section>'
 	)
 
 
@@ -1404,14 +1688,9 @@ button:focus-visible,select:focus-visible{outline:2px solid var(--pink);outline-
 .brand-row img + .mono-label{padding-left:var(--s12);box-shadow:inset 1px 0 0 var(--line-strong)}
 .page-head h1{margin-top:var(--s16);font-size:32px;line-height:36px;letter-spacing:-.01em;max-width:960px}
 .page-meta{margin:var(--s8) 0 0}
-.brief{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,3fr);align-items:start;gap:var(--s16);margin-bottom:var(--s32)}
-@media (max-width:900px){.brief{grid-template-columns:minmax(0,1fr)}}
-.brief-card{display:flex;flex-direction:column;gap:var(--s16);border-radius:var(--r12);padding:var(--s24)}
-.brief-card.prompt{position:sticky;top:var(--s24);background:var(--white);box-shadow:inset 0 0 0 1px var(--line),inset 4px 0 0 var(--pink)}
-@media (max-width:900px){.brief-card.prompt{position:static}}
-.brief-card.expected{background:var(--bg-2)}
-.brief-head{display:flex;align-items:center;justify-content:space-between;gap:var(--s12);min-height:30px}
-.brief-card blockquote{flex:1;margin:0;font-size:18px;line-height:26px}
+.brief{margin-bottom:var(--s32)}
+.brief-card.prompt{background:var(--white);box-shadow:inset 0 0 0 1px var(--line),inset 4px 0 0 var(--pink);padding-left:calc(var(--s16) + 4px)}
+.brief-card blockquote{margin:0;font-size:18px;line-height:26px}
 details.criteria-group + details.criteria-group{border-top:1px solid var(--line-strong)}
 .criteria-title{display:flex;align-items:baseline;gap:var(--s8);padding:var(--s12) 0;font-weight:500;cursor:pointer;list-style:none}
 .criteria-title::-webkit-details-marker{display:none}
@@ -1500,6 +1779,23 @@ td:first-child{font-family:var(--sans)}
 .checks .warn .mark{box-shadow:inset 0 0 0 1px var(--line-strong);color:var(--dim)}
 .summary code,.checks code{font-size:12px;padding:0 2px;border-radius:var(--r4);background:var(--bg-3);word-break:break-word}
 .checks .bad code{background:var(--pink-20)}
+.checks .info .mark{box-shadow:inset 0 0 0 1px var(--line-strong);color:var(--dim)}
+.checks li.info{background:none;padding-block:var(--s4)}
+.checks.goal{margin-bottom:var(--s12)}
+.check-body{display:grid;gap:var(--s4);min-width:0}
+.check-note,.check-source{font-size:12px;color:var(--dim)}
+.check-details{margin:0;padding-left:var(--s16);font-size:12px;color:var(--dim);display:grid;gap:2px;list-style:disc}
+.checks .check-details li{display:list-item;padding:0;border-radius:0;background:none;box-shadow:none}
+.folds{margin-bottom:var(--s24)}
+.folds > .box{margin-bottom:var(--s12)}
+details.fold > summary{list-style:none;cursor:pointer;margin-bottom:0}
+details.fold > summary::-webkit-details-marker{display:none}
+details.fold > summary h2::before{content:"▸";display:inline-block;width:1em;color:var(--dim);transition:transform .15s}
+details.fold[open] > summary h2::before{transform:rotate(90deg)}
+details.fold[open] > summary{margin-bottom:var(--s12)}
+.canvas-box .canvas img{max-height:480px}
+.auto-note{margin:0 0 var(--s12);font-size:12px}
+.std{margin-left:var(--s8);white-space:nowrap}
 .run{display:none}
 .run.active{display:block}
 .box{background:var(--bg-2);border-radius:var(--r12);padding:var(--s16);margin-bottom:var(--s24)}
@@ -1667,6 +1963,7 @@ const $ = (id) => document.getElementById(id);
 document.addEventListener('click', async e=>{
   const b = e.target.closest('[data-copy]');
   if (!b) return;
+  e.preventDefault();
   const el = $(b.dataset.copy);
   try { await navigator.clipboard.writeText(el.textContent); b.textContent = 'Copied'; }
   catch { getSelection().selectAllChildren(el); b.textContent = 'Selected'; }
@@ -1675,8 +1972,11 @@ document.addEventListener('click', async e=>{
 document.addEventListener('click', e=>{
   const b = e.target.closest('[data-expand-all]');
   if (!b) return;
-  const groups = b.closest('.brief-card').querySelectorAll('details.criteria-group');
+  e.preventDefault();
+  const card = b.closest('.brief-card');
+  const groups = card.querySelectorAll('details.criteria-group');
   const open = [...groups].some(d=>!d.open);
+  card.open = true;
   groups.forEach(d=>{ d.open = open; });
 });
 document.addEventListener('toggle', e=>{
@@ -1731,12 +2031,17 @@ function addRunPickers(){
     head.querySelector('h2').after(select);
   });
 }
-// The new run's steps open at the same place on the screen as the old run's steps.
+// The picker is in the summary of the LLM steps box. A click on it must not open or close the box.
+document.addEventListener('click', e=>{
+  if (e.target.closest && e.target.closest('summary .run-picker')) e.preventDefault();
+});
+// The new run's steps open at the same place on the screen as the old run's steps, open or closed like them.
 document.addEventListener('change', e=>{
   if (!e.target.matches || !e.target.matches('.run-picker')) return;
-  const select = e.target, top = select.closest('.steps').getBoundingClientRect().top;
+  const select = e.target, old = select.closest('.steps'), top = old.getBoundingClientRect().top;
   show(select.value);
   const next = document.getElementById(select.value)?.querySelector('.steps');
+  if (next) next.open = old.open;
   if (next) window.scrollBy(0, next.getBoundingClientRect().top - top);
   select.value = select.closest('.run').id;
   next?.querySelector('.run-picker')?.focus({preventScroll: true});

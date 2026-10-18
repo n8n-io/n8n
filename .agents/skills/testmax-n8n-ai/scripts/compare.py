@@ -2,12 +2,16 @@
 """Run the full comparison in one command, except the judge step.
 
   compare.py --prompt "..." --expected "..." [--title "..."] [--builders iai,claude,codex]
-  compare.py --prompt-file p.txt --expected-file e.txt
-  compare.py --rerun /tmp/builder-compare/<old-run>     same prompt and expected outcome, new run
+  compare.py --prompt-file p.txt --expected-file e.txt [--scenarios-file s.json]
+  compare.py --rerun /tmp/builder-compare/<old-run>     same prompt, expected outcome and scenarios, new run
 
 Steps: check the setup, run the builders at the same time (--sequential: one at a time),
-fetch Instance AI usage, capture the canvases, write summary.txt for the judge, and build
-the report. A local page shows the runs live (see live_server.py).
+fetch Instance AI usage, capture the canvases and their node issues, run each workflow with
+pinned data (run_scenarios.py), run each workflow in process with recorded API requests
+(run_wire.mjs), run the eval binary checks (binary_checks.mts), check the final-message claims
+(claims.py), derive the deterministic checks (derive_checks.mjs), write
+summary.txt and judge/summary-blind.txt for the judges, and build the report. A local page
+shows the runs live (see live_server.py).
 Settings come from .env.ai-surfaces (template: .env.ai-surfaces.example in the repository root).
 """
 
@@ -119,7 +123,8 @@ def main():
 	ap.add_argument('--title')
 	ap.add_argument('--builders', default=setting('COMPARE_BUILDERS', default='iai,claude,codex'))
 	ap.add_argument('--run-dir')
-	ap.add_argument('--rerun', help='Copy prompt.txt and case.json from an earlier run directory.')
+	ap.add_argument('--scenarios-file', help='Pinned-data scenarios for run_scenarios.py (see SKILL.md).')
+	ap.add_argument('--rerun', help='Copy prompt.txt, case.json and scenarios.json from an earlier run directory.')
 	ap.add_argument('--no-live', action='store_true', help='Do not start the live page.')
 	ap.add_argument('--sequential', action='store_true', default=not is_on('COMPARE_PARALLEL'),
 	                help='Run the builders one at a time. Default: COMPARE_PARALLEL=1 runs them at the same time.')
@@ -147,6 +152,12 @@ def main():
 	run_dir.mkdir(parents=True, exist_ok=True)
 	(run_dir / 'prompt.txt').write_text(prompt + '\n')
 	(run_dir / 'case.json').write_text(json.dumps(case, indent=2))
+	scenarios = Path(args.scenarios_file) if args.scenarios_file else (Path(args.rerun) / 'scenarios.json' if args.rerun else None)
+	if scenarios and scenarios.exists():
+		json.loads(scenarios.read_text())
+		shutil.copy(scenarios, run_dir / 'scenarios.json')
+	elif args.scenarios_file:
+		sys.exit(f'No scenarios file at {scenarios}.')
 	print(f'run directory: {run_dir}', flush=True)
 
 	step('Check the setup')
@@ -242,10 +253,42 @@ def main():
 		else:
 			print('node is not on PATH. No canvases.', flush=True)
 
-		step('Summarize the runs for the judge')
+		if not is_on('COMPARE_SCENARIOS'):
+			print('COMPARE_SCENARIOS=0. The workflows do not run with pinned data.', flush=True)
+		elif not node or not status.get('mcpTokenWorks'):
+			print('Pinned-data runs need node and a working MCP token. Skipped.', flush=True)
+		else:
+			step('Run each workflow with pinned data')
+			progress.update(step='Running the workflows with pinned data')
+			run([sys.executable, 'run_scenarios.py', str(run_dir)], run_dir / 'scenarios.log')
+
+		if node and is_on('COMPARE_WIRE'):
+			step('Run each workflow in process with recorded API requests')
+			progress.update(step='Running the workflows with recorded API requests')
+			run([node, 'run_wire.mjs', str(run_dir)], run_dir / 'wire.log')
+		elif node:
+			print('COMPARE_WIRE=0. No in-process runs with recorded API requests.', flush=True)
+
+		pnpm = shutil.which('pnpm')
+		if pnpm and is_on('COMPARE_BINARY_CHECKS'):
+			step('Run the eval binary checks')
+			progress.update(step='Running the eval binary checks')
+			run([pnpm, '--filter', '@n8n/instance-ai', 'exec', 'tsx', str(HERE / 'binary_checks.mts'), str(run_dir)],
+			    run_dir / 'binary-checks.log')
+
+		step('Check the final-message claims')
+		run([sys.executable, 'claims.py', str(run_dir)])
+
+		if node:
+			step('Derive the deterministic checks')
+			progress.update(step='Deriving the deterministic checks')
+			run([node, 'derive_checks.mjs', str(run_dir)])
+
+		step('Summarize the runs for the judges')
 		summary = subprocess.run([sys.executable, 'summarize_runs.py', str(run_dir)], cwd=HERE,
 		                         capture_output=True, text=True)
 		(run_dir / 'summary.txt').write_text(summary.stdout)
+		run([sys.executable, 'summarize_runs.py', str(run_dir), '--blind'])
 
 		step('Build the report')
 		# The agent does the price and judge steps after this script. The page shows them as queued until then.
@@ -261,12 +304,14 @@ def main():
 		'live': f'{live_url}/report/index.html' if live_url else None,
 		'parallel': parallel,
 		'summary': str(run_dir / 'summary.txt'),
+		'blindSummary': str(run_dir / 'judge' / 'summary-blind.txt'),
 		'models': json.loads(models_file.read_text()) if models_file.exists() else [],
 		'results': results,
 		'skipped': skipped,
 		'next': 'Run build_report.py --step prices=running, add published prices for the CLI models to case.json, '
-		        'run build_report.py --step prices=done --step judge=running, judge each run from summary.txt, '
-		        'write verdicts.json, then run build_report.py --step judge=done.',
+		        'run build_report.py --step prices=done --step judge=running, give judge/summary-blind.txt to '
+		        '3 judges with a fresh context, write judge/verdicts-1.json to verdicts-3.json, run '
+		        'merge_verdicts.py, then run build_report.py --step judge=done.',
 	}, indent=2))
 
 

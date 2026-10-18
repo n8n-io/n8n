@@ -149,7 +149,9 @@ def render_run(run_dir, case, name, meta, data, entry, verdict, scale):
 	row = br.render_row_cells(name, meta, data, status_badge(entry.get('status', 'waiting')))
 	canvas = br.render_canvas_box(name, meta, run_dir / 'report', case.get('baseUrl', 'http://localhost:5678'),
 	                              empty='The canvas appears when all builders finish.')
-	return row, br.render_panel_body(data, verdict, canvas, *scale, case['prompt'], case.get('expected') or '')
+	view, auto = br.verdict_view(verdict, run_dir / name, case.get('expected') or '')
+	return row, br.render_panel_body(data, view, canvas, *scale, case['prompt'], case.get('expected') or '', auto=auto,
+	                                 pending=True)
 
 
 def render_live_box(status, runs):
@@ -190,7 +192,7 @@ def render_page(run_dir):
 	except OSError:
 		player_js, player_css = (br.PLAYER_CDN + n for n in br.PLAYER_FILES)
 	notes = ('This page updates while the builders run, and changes to the full report when the run is done. '
-	         'Costs, canvases and verdicts come after the run. Times are seconds from the start of each builder.')
+	         'Costs, canvases, checks and verdicts come after the run. Times are seconds from the start of each builder.')
 	return br.fill_template(
 		br.esc(case.get('title') or 'Builder comparison'), ''.join(rows), br.esc(notes), ''.join(panels),
 		replay=render_live_box(status, runs), head=f'<link rel="stylesheet" href="{player_css}">',
@@ -214,7 +216,19 @@ def render_state(run_dir):
 
 LIVE_JS = """
 window.addEventListener('DOMContentLoaded', ()=>{
-  const seen = {}, shots = {};
+  const seen = {}, shots = {}, userFolds = {};
+  // A box that the user opened or closed stays that way when its panel updates. Other boxes take the new default.
+  document.addEventListener('click', e=>{
+    const summary = e.target.closest && e.target.closest('details.fold > summary');
+    if (!summary || e.target.closest('.run-picker')) return;
+    const section = summary.closest('section.run');
+    if (section) (userFolds[section.id] ??= {})[summary.querySelector('h2').textContent] = !summary.parentElement.open;
+  });
+  document.addEventListener('change', e=>{
+    if (!e.target.matches || !e.target.matches('.run-picker')) return;
+    const steps = document.getElementById(e.target.value)?.querySelector('.steps');
+    if (steps) (userFolds[e.target.value] ??= {})['LLM steps'] = steps.open;
+  });
   document.querySelectorAll('[data-cast]').forEach(el=>{
     AsciinemaPlayer.create({driver: 'eventsource', url: `/api/cast/${el.dataset.cast}`, bufferTime: 0}, el,
       {fit: 'both', autoPlay: true, controls: false});
@@ -306,6 +320,10 @@ window.addEventListener('DOMContentLoaded', ()=>{
     const openState = {};
     section.querySelectorAll('.step-detail').forEach(d=>d.querySelectorAll('details').forEach((x, i)=>{ openState[`${d.dataset.step}:${i}`] = x.open; }));
     section.innerHTML = html;
+    section.querySelectorAll('details.fold').forEach(d=>{
+      const open = (userFolds[section.id] || {})[d.querySelector('summary h2')?.textContent];
+      if (open !== undefined) d.open = open;
+    });
     addRunPickers();
     section.querySelectorAll('.step-detail').forEach(d=>d.querySelectorAll('details').forEach((x, i)=>{
       const key = `${d.dataset.step}:${i}`;
