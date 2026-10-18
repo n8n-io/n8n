@@ -23,6 +23,17 @@ The default URL is `http://127.0.0.1:5698`. The launcher binds to loopback.
 The default data folder is `.agent-setup/self-healing-local`. Set `N8N_USER_FOLDER`
 to reuse another test instance. Complete owner setup on a fresh instance.
 
+The launcher reads optional local settings from
+`.agent-setup/self-healing-local.env` before the shared CLI environment file.
+This file is ignored by Git. Use it for the test data folder, model connection,
+and sandbox connection. Existing shell environment variables take precedence.
+For a local n8n sandbox service, set `N8N_INSTANCE_AI_SANDBOX_PROVIDER=n8n-sandbox`,
+`N8N_SANDBOX_SERVICE_URL`, and `N8N_SANDBOX_SERVICE_API_KEY`. Set
+`N8N_INSTANCE_AI_MODEL` and `N8N_INSTANCE_AI_MODEL_API_KEY` for the model.
+Once the model and sandbox are configured, the launcher disables unconfigured
+web search to complete Assistant setup. This enables the Inbox chat handoff.
+Existing search connections are preserved.
+
 Open **Self-healing playground** in the sidebar, or navigate to
 `/self-healing-playground` on your n8n instance.
 

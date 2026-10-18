@@ -3,6 +3,10 @@ import { fileURLToPath } from 'node:url';
 
 const cli = new URL('../../packages/cli/', import.meta.url);
 const require = createRequire(new URL('package.json', cli));
+require('dotenv').config({
+	path: fileURLToPath(new URL('../../.agent-setup/self-healing-local.env', import.meta.url)),
+	quiet: true,
+});
 process.argv[1] = fileURLToPath(new URL('bin/n8n', cli));
 process.chdir(fileURLToPath(new URL('bin/', cli)));
 require('dotenv').config({ quiet: true });
@@ -50,11 +54,40 @@ const { UserRepository, ProjectRepository } = require('@n8n/db');
 const { ProjectService } = require(
 	fileURLToPath(new URL('dist/services/project.service.ee.js', cli)),
 );
+async function ensureAssistantSetup() {
+	const { InstanceAiSettingsService } = require(
+		fileURLToPath(new URL('dist/modules/instance-ai/instance-ai-settings.service.js', cli)),
+	);
+	const settings = Container.get(InstanceAiSettingsService);
+	if (await settings.isSetupCompleted()) return;
+	const current = await settings.getAdminSettings();
+	if (
+		(await settings.isModelConfigured()) &&
+		settings.getSandboxStatus().workflowBuilderAvailable &&
+		!current.searchEnvConfigured &&
+		!current.searchCredentialId &&
+		!current.searchDisabled
+	) {
+		// Local test workflows do not need web search. Settle the chat setup gate.
+		await settings.updateAdminSettings({ searchDisabled: true });
+		const { ModuleRegistry } = require('@n8n/backend-common');
+		await Container.get(ModuleRegistry).refreshModuleSettings('instance-ai');
+		console.log(`Playground Assistant setup complete: ${await settings.isSetupCompleted()}`);
+	}
+}
 let creating = false;
 async function ensureProject() {
 	if (creating) return;
 	creating = true;
 	try {
+		await ensureAssistantSetup();
+		const { FrontendService } = require(
+			fileURLToPath(new URL('dist/services/frontend.service.js', cli)),
+		);
+		const moduleSettings = Container.get(FrontendService).getModuleSettings();
+		console.log(
+			`Playground chat setup ready: ${moduleSettings['instance-ai']?.setupCompleted === true}`,
+		);
 		const projects = await Container.get(ProjectRepository).findTeamProjects();
 		let project = projects.find(({ name }) => name === 'Self-healing test');
 		if (!project) {
