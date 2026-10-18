@@ -217,10 +217,12 @@ export class AgentsModule implements ModuleInterface {
 		const { AgentChannelMediaRetentionTask } = await import(
 			'./agent-channel-media-retention.task.js'
 		);
+		const { SkillGitSyncTask } = await import('./skills/github/skill-git-sync.task.js');
 		return [
 			AgentCheckpointPruningTask,
 			AgentInterruptedExecutionSweepTask,
 			AgentChannelMediaRetentionTask,
+			SkillGitSyncTask,
 		];
 	}
 
@@ -295,6 +297,8 @@ export class AgentsModule implements ModuleInterface {
 		const { Skill } = await import('./entities/skill.entity.js');
 		const { SkillVersion } = await import('./entities/skill-version.entity.js');
 		const { SkillFile } = await import('./entities/skill-file.entity.js');
+		const { SkillGitLink } = await import('./entities/skill-git-link.entity.js');
+		const { SkillGitUpdate } = await import('./entities/skill-git-update.entity.js');
 		const { AgentSkillDependency } = await import('./entities/agent-skill-dependency.entity.js');
 		const { AgentVersionSkillDependency } = await import(
 			'./entities/agent-version-skill-dependency.entity.js'
@@ -336,6 +340,8 @@ export class AgentsModule implements ModuleInterface {
 			Skill,
 			SkillVersion,
 			SkillFile,
+			SkillGitLink,
+			SkillGitUpdate,
 			AgentSkillDependency,
 			AgentVersionSkillDependency,
 		];

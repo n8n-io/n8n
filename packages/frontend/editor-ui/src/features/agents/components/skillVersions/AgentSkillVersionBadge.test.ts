@@ -51,6 +51,7 @@ const versions: SkillVersionSummary[] = [3, 2, 1].map((version) => ({
 	label: version === 2 ? 'Holiday rules' : null,
 	createdBy: { id: 'u1', email: 'ada@acme.test', firstName: 'Ada', lastName: 'Lovelace' },
 	createdAt: '2026-10-01T00:00:00.000Z',
+	sourceCommitSha: null,
 }));
 
 function mountBadge(info: AgentSkillVersionInfo) {

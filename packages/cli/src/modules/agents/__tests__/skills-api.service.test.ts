@@ -12,6 +12,7 @@ import type { SkillFile } from '../entities/skill-file.entity';
 import type { SkillVersion } from '../entities/skill-version.entity';
 import type { Skill } from '../entities/skill.entity';
 import type { ResolvedSkillRow, SkillRepository } from '../repositories/skill.repository';
+import type { SkillGitSyncService } from '../skills/github/skill-git-sync.service';
 import { SkillsApiService } from '../skills/skills-api.service';
 import type { SkillService } from '../skills/skill.service';
 import type { SkillsTelemetry } from '../skills/skills-telemetry';
@@ -79,6 +80,7 @@ describe('SkillsApiService', () => {
 	const txRunner = mock<TransactionRunner>();
 	const userRepository = mock<UserRepository>();
 	const skillsTelemetry = mock<SkillsTelemetry>();
+	const gitSync = mock<SkillGitSyncService>();
 	const service = new SkillsApiService(
 		skillService,
 		repository,
@@ -86,12 +88,14 @@ describe('SkillsApiService', () => {
 		txRunner,
 		userRepository,
 		skillsTelemetry,
+		gitSync,
 	);
 	const TX_CTX = { trx: {} } as OperationContext;
 	let visible: Skill[];
 
 	beforeEach(() => {
 		vi.resetAllMocks();
+		gitSync.sourceInfo.mockResolvedValue(new Map());
 		txRunner.run.mockImplementation(async (_ctx, fn) => await fn(TX_CTX));
 		visible = Object.keys(NAMES).map((id) => skill(id));
 		projectScopeService.getProjectIds.mockResolvedValue(['project-1']);
@@ -306,6 +310,7 @@ describe('SkillsApiService', () => {
 				usedByAgents: 2,
 				canEdit: true,
 				canDelete: false,
+				gitSource: null,
 				createdAt: DATE.toISOString(),
 				updatedAt: DATE.toISOString(),
 			});
@@ -729,6 +734,7 @@ describe('SkillsApiService', () => {
 				label: null,
 				createdById: null,
 				createdAt: DATE,
+				sourceCommitSha: null,
 				...fields,
 			}) as SkillVersion;
 
@@ -753,6 +759,7 @@ describe('SkillsApiService', () => {
 						label: 'Launch copy',
 						createdBy: { id: 'user-2', email: 'ada@example.com', firstName: 'Ada', lastName: 'L' },
 						createdAt: DATE.toISOString(),
+						sourceCommitSha: null,
 					},
 					{
 						id: 'skill_a-v1',
@@ -760,6 +767,7 @@ describe('SkillsApiService', () => {
 						label: null,
 						createdBy: null,
 						createdAt: DATE.toISOString(),
+						sourceCommitSha: null,
 					},
 				],
 			});
@@ -783,6 +791,7 @@ describe('SkillsApiService', () => {
 			version.version.label = 'First';
 			version.version.createdById = null;
 			version.version.createdAt = DATE;
+			version.version.sourceCommitSha = null;
 			repository.findVersionByNumber.mockResolvedValue(version);
 
 			const detail = await service.getVersion(user, 'skill_a', 1);
@@ -794,6 +803,7 @@ describe('SkillsApiService', () => {
 				label: 'First',
 				createdBy: null,
 				createdAt: DATE.toISOString(),
+				sourceCommitSha: null,
 				skill: { name: 'Brand voice', description: 'Brand voice desc', instructions: 'Old.' },
 			});
 		});

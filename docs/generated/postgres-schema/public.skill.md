@@ -7,7 +7,7 @@
 | agentId | varchar(36) |  | true |  | [public.agents](public.agents.md) | Set when only this agent can use the skill. projectId is then NULL: the agent holds the project |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | createdById | uuid |  | true |  | [public.user](public.user.md) | Author. NULL after the author is deleted |
-| id | varchar(36) |  | false | [public.agent_skill_dependency](public.agent_skill_dependency.md) [public.agent_version_skill_dependency](public.agent_version_skill_dependency.md) [public.skill_version](public.skill_version.md) |  | skill_\<nanoid\>, the same format agents use |
+| id | varchar(36) |  | false | [public.agent_skill_dependency](public.agent_skill_dependency.md) [public.agent_version_skill_dependency](public.agent_version_skill_dependency.md) [public.skill_git_link](public.skill_git_link.md) [public.skill_git_update](public.skill_git_update.md) [public.skill_version](public.skill_version.md) |  | skill_\<nanoid\>, the same format agents use |
 | projectId | varchar(36) |  | true |  | [public.project](public.project.md) | Set for a project skill, team or personal. NULL otherwise |
 | source | varchar(16) |  | false |  |  | How the skill was created, set by the server: "ui" (the skills hub) or "agent" (the agent builder or the copy of agent skills) |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
@@ -43,6 +43,8 @@ erDiagram
 "public.skill" }o--o| "public.user" : "FOREIGN KEY (#quot;createdById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 "public.agent_skill_dependency" }o--|| "public.skill" : "FOREIGN KEY (#quot;skillId#quot;) REFERENCES skill(id) ON DELETE CASCADE"
 "public.agent_version_skill_dependency" }o--|| "public.skill" : "FOREIGN KEY (#quot;skillId#quot;) REFERENCES skill(id) ON DELETE CASCADE"
+"public.skill_git_link" |o--|| "public.skill" : "FOREIGN KEY (#quot;skillId#quot;) REFERENCES skill(id) ON DELETE CASCADE"
+"public.skill_git_update" |o--|| "public.skill" : "FOREIGN KEY (#quot;skillId#quot;) REFERENCES skill(id) ON DELETE CASCADE"
 "public.skill_version" }o--|| "public.skill" : "FOREIGN KEY (#quot;skillId#quot;) REFERENCES skill(id) ON DELETE CASCADE"
 "public.skill" }o--o| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 
@@ -101,6 +103,37 @@ erDiagram
   varchar_36_ skillId FK
   uuid skillVersionId FK
 }
+"public.skill_git_link" {
+  timestamp_3__with_time_zone createdAt
+  timestamp_3__with_time_zone lastCheckedAt
+  varchar_512_ lastError
+  varchar_100_ owner
+  varchar_512_ path
+  varchar_255_ ref
+  varchar_16_ refType
+  varchar_100_ repo
+  varchar_40_ seenCommitSha
+  varchar_40_ seenTreeSha
+  varchar_36_ skillId FK
+  varchar_16_ status
+  varchar_40_ syncedCommitSha
+  timestamp_3__with_time_zone updatedAt
+}
+"public.skill_git_update" {
+  json checkResult
+  varchar_255_ commitAuthor
+  varchar_1024_ commitMessage
+  timestamp_3__with_time_zone committedAt
+  json content
+  varchar_64_ contentHash
+  timestamp_3__with_time_zone createdAt
+  varchar_40_ fromCommitSha
+  varchar_36_ skillId FK
+  json skippedFiles
+  varchar_16_ status
+  varchar_40_ toCommitSha
+  timestamp_3__with_time_zone updatedAt
+}
 "public.skill_version" {
   varchar_64_ contentHash
   timestamp_3__with_time_zone createdAt
@@ -112,6 +145,7 @@ erDiagram
   varchar_128_ label
   varchar_128_ name
   varchar_36_ skillId FK
+  varchar_40_ sourceCommitSha
   timestamp_3__with_time_zone updatedAt
   integer version
 }

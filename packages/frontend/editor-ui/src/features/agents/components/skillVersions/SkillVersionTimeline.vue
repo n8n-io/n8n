@@ -314,6 +314,15 @@ function authorName(version: SkillVersionSummary): string {
 							<N8nText size="small" color="text-base" tag="span" :class="$style.meta">
 								{{ authorName(entry.version) }} ·
 								<TimeAgo :date="entry.version.createdAt" />
+								<span
+									v-if="entry.version.sourceCommitSha"
+									:class="$style.commit"
+									:title="i18n.baseText('settings.context.skills.github.timeline.commit')"
+									data-testid="skill-version-commit"
+								>
+									<N8nIcon icon="github" size="xsmall" />
+									{{ entry.version.sourceCommitSha.slice(0, 7) }}
+								</span>
 							</N8nText>
 						</button>
 						<span :class="$style.rowActions">
@@ -416,6 +425,14 @@ function authorName(version: SkillVersionSummary): string {
 </template>
 
 <style lang="scss" module>
+.commit {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--5xs);
+	margin-left: var(--spacing--4xs);
+	font-family: var(--font-family--monospace);
+}
+
 .timeline {
 	display: flex;
 	flex-direction: column;

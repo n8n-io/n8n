@@ -8,9 +8,14 @@ import { AgentSkillImportError, useAgentSkillImport } from '../composables/useAg
 import type { AgentSkill } from '../types';
 
 const busy = defineModel<boolean>('busy', { default: false });
+defineProps<{
+	/** Shows "Import from GitHub". Only the settings page can import from GitHub. */
+	showGitHubImport?: boolean;
+}>();
 const emit = defineEmits<{
 	uploaded: [skill: AgentSkill];
 	'add-manually': [];
+	'import-github': [];
 	'import:skill': [
 		payload: {
 			source: 'skill_file' | 'folder';
@@ -79,53 +84,84 @@ function onDrop(files: File[] | null, event: DragEvent) {
 
 <template>
 	<div :class="$style.upload" :aria-busy="busy" data-testid="agent-skill-upload">
+		<N8nText color="text-base" :class="$style.intro">
+			{{ i18n.baseText('agents.builder.skills.import.intro') }}
+		</N8nText>
 		<div
 			ref="dropZone"
 			:class="[$style.dropZone, isOverDropZone && !busy && $style.dragOver]"
 			data-testid="agent-skill-drop-zone"
 		>
-			<N8nIcon icon="book-open" :size="32" color="text-light" aria-hidden="true" />
-			<h2 :class="$style.title">{{ i18n.baseText('agents.builder.skills.import.title') }}</h2>
-			<N8nText size="small" color="text-base" :class="$style.description">
-				{{ i18n.baseText('agents.builder.skills.import.description') }}
-			</N8nText>
-			<div :class="$style.actions">
-				<N8nButton
-					variant="solid"
-					:loading="busy"
-					:disabled="busy"
-					data-testid="agent-skill-upload-folder"
-					@click="skillFolderInput?.click()"
-				>
-					{{ i18n.baseText('agents.builder.skills.import.folder') }}
-				</N8nButton>
-				<N8nButton
-					variant="outline"
-					:disabled="busy"
-					data-testid="agent-skill-upload-skill-md"
-					@click="skillFileInput?.click()"
-				>
-					{{ i18n.baseText('agents.builder.skills.import.skillFile') }}
-				</N8nButton>
+			<div :class="[$style.cards, showGitHubImport && $style.twoCards]">
+				<section :class="$style.card">
+					<span :class="$style.cardIcon" aria-hidden="true">
+						<N8nIcon icon="folder-open" :size="16" />
+					</span>
+					<h2 :class="$style.cardTitle">
+						{{ i18n.baseText('agents.builder.skills.import.title') }}
+					</h2>
+					<N8nText size="small" color="text-base" :class="$style.cardDescription">
+						{{ i18n.baseText('agents.builder.skills.import.description') }}
+					</N8nText>
+					<button
+						type="button"
+						:class="$style.linkButton"
+						:disabled="busy"
+						data-testid="agent-skill-upload-skill-md"
+						@click="skillFileInput?.click()"
+					>
+						{{ i18n.baseText('agents.builder.skills.import.skillFile') }}
+					</button>
+					<N8nButton
+						variant="solid"
+						:class="$style.cardButton"
+						:loading="busy"
+						:disabled="busy"
+						data-testid="agent-skill-upload-folder"
+						@click="skillFolderInput?.click()"
+					>
+						{{ i18n.baseText('agents.builder.skills.import.folder') }}
+					</N8nButton>
+				</section>
+				<section v-if="showGitHubImport" :class="$style.card">
+					<span :class="$style.cardIcon" aria-hidden="true">
+						<N8nIcon icon="github" :size="16" />
+					</span>
+					<h2 :class="$style.cardTitle">
+						{{ i18n.baseText('settings.context.skills.github.actions.import') }}
+					</h2>
+					<N8nText size="small" color="text-base" :class="$style.cardDescription">
+						{{ i18n.baseText('agents.builder.skills.import.githubDescription') }}
+					</N8nText>
+					<N8nButton
+						variant="outline"
+						:class="$style.cardButton"
+						:disabled="busy"
+						data-testid="agent-skill-import-github"
+						@click="emit('import-github')"
+					>
+						{{ i18n.baseText('settings.context.skills.github.actions.import') }}
+					</N8nButton>
+				</section>
 			</div>
 			<N8nText v-if="fileError" size="small" color="danger" role="alert">
 				{{ fileError }}
 			</N8nText>
 		</div>
-		<div :class="$style.manual">
-			<N8nText size="small" color="text-base">
-				{{ i18n.baseText('agents.builder.skills.import.manualPrompt') }}
-				<button
-					type="button"
-					:class="$style.manualButton"
-					:disabled="busy"
-					data-testid="agent-skill-add-manually"
-					@click="emit('add-manually')"
-				>
-					{{ i18n.baseText('agents.builder.skills.import.addManually') }}
-				</button>
+		<div :class="$style.divider" aria-hidden="true">
+			<N8nText size="small" color="text-light">
+				{{ i18n.baseText('agents.builder.skills.import.or') }}
 			</N8nText>
 		</div>
+		<N8nButton
+			variant="ghost"
+			icon="pencil-alt"
+			:disabled="busy"
+			data-testid="agent-skill-add-manually"
+			@click="emit('add-manually')"
+		>
+			{{ i18n.baseText('agents.builder.skills.import.addManually') }}
+		</N8nButton>
 		<input
 			ref="skillFileInput"
 			type="file"
@@ -156,23 +192,24 @@ function onDrop(files: File[] | null, event: DragEvent) {
 	flex: 1;
 	flex-direction: column;
 	align-items: center;
-	justify-content: center;
 	gap: var(--spacing--md);
-	padding: var(--spacing--xl);
+	padding: var(--spacing--lg) var(--spacing--xl);
 	min-width: 0;
+}
+
+.intro {
+	align-self: stretch;
 }
 
 .dropZone {
 	display: flex;
 	flex-direction: column;
-	align-items: center;
-	gap: var(--spacing--md);
+	gap: var(--spacing--sm);
 	width: 100%;
 	box-sizing: border-box;
-	padding: var(--spacing--3xl) var(--spacing--xl);
+	padding: var(--spacing--md);
 	border: calc(var(--border-width) * 2) dashed var(--border-color);
 	border-radius: var(--radius--lg);
-	text-align: center;
 }
 
 .dragOver {
@@ -180,37 +217,65 @@ function onDrop(files: File[] | null, event: DragEvent) {
 	background: var(--color--orange-alpha-100);
 }
 
-.title {
-	margin: 0;
-	font-size: var(--font-size--xl);
-	font-weight: var(--font-weight--regular);
+.cards {
+	display: grid;
+	grid-template-columns: 1fr;
+	gap: var(--spacing--md);
 }
 
-.description {
-	/* Use a text measure to keep the upload instructions readable. */
-	max-width: 45ch;
+.twoCards {
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.card {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--md);
+	border: var(--border);
+	border-radius: var(--radius--lg);
+	background: var(--background--surface);
+}
+
+.cardIcon {
+	display: grid;
+	place-items: center;
+	width: var(--spacing--xl);
+	height: var(--spacing--xl);
+	margin-bottom: var(--spacing--3xs);
+	border: var(--border);
+	border-radius: var(--radius);
+	background: var(--background--subtle);
+	color: var(--text-color--subtle);
+}
+
+.cardTitle {
+	margin: 0;
+	font-size: var(--font-size--md);
+	font-weight: var(--font-weight--bold);
+}
+
+.cardDescription {
+	margin-bottom: var(--spacing--2xs);
 	line-height: var(--line-height--xl);
 }
 
-.actions {
-	display: flex;
-	flex-wrap: wrap;
-	align-items: center;
-	justify-content: center;
-	gap: var(--spacing--2xs);
+/* At the bottom of each card, so the buttons line up across both cards. */
+.cardButton {
+	width: 100%;
+	margin-top: auto;
 }
 
-.manual {
-	text-align: center;
-}
-
-.manualButton {
+.linkButton {
+	margin-bottom: var(--spacing--xs);
 	appearance: none;
 	border: 0;
 	background: transparent;
 	padding: 0;
 	font: inherit;
-	color: inherit;
+	font-size: var(--font-size--2xs);
+	color: var(--text-color--subtle);
 	text-decoration: underline;
 	cursor: pointer;
 
@@ -223,13 +288,27 @@ function onDrop(files: File[] | null, event: DragEvent) {
 	}
 }
 
+.divider {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--sm);
+	width: 100%;
+
+	&::before,
+	&::after {
+		content: '';
+		flex: 1;
+		border-top: var(--border);
+	}
+}
+
 @media (max-width: 480px) {
 	.upload {
 		padding: var(--spacing--md);
 	}
 
-	.dropZone {
-		padding: var(--spacing--xl) var(--spacing--sm);
+	.twoCards {
+		grid-template-columns: 1fr;
 	}
 }
 </style>

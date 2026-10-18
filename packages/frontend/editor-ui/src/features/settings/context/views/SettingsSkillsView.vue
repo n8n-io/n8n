@@ -2,7 +2,13 @@
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useDebounceFn } from '@vueuse/core';
-import type { AgentSkill, SkillCreateMethod, SkillListItem, SkillScope } from '@n8n/api-types';
+import type {
+	AgentSkill,
+	ImportGitHubSkillsResponse,
+	SkillCreateMethod,
+	SkillListItem,
+	SkillScope,
+} from '@n8n/api-types';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
@@ -10,6 +16,7 @@ import { getDebounceTime } from '@n8n/composables/useDebounce';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import {
 	N8nButton,
+	N8nCallout,
 	N8nDropdownMenu,
 	N8nHeading,
 	N8nIcon,
@@ -35,12 +42,15 @@ import type {
 	AgentSkillModalScopeOption,
 } from '@/features/agents/components/AgentSkillModal.vue';
 
+import SkillGitHubImportModal from '../components/SkillGitHubImportModal.vue';
+import SkillGitUpdateReviewModal from '../components/SkillGitUpdateReviewModal.vue';
 import SkillsTable, { type SkillOpenView } from '../components/SkillsTable.vue';
 import { PREFERENCES_DEFAULT_PAGE_SIZE } from '../context.constants';
 import { canWriteInstanceSkillScope, canWriteProjectSkillScope } from '../context.utils';
 import type { SkillListQuery } from '../skills.api';
 import { useSkillsStore } from '../skills.store';
 import { useSkillScopeDisplay } from '../skills.utils';
+import { skillsWithPendingUpdate } from '../skillsGitHub.utils';
 
 const INSTANCE_SCOPE = 'instance';
 const PROJECT_SCOPE_PREFIX = 'project:';
@@ -190,6 +200,7 @@ function openCreateModal() {
 		scopeOptions: options,
 		initialScope: options[0].value,
 		existingSkillNames: [],
+		onImportFromGitHub: openImport,
 		getDefaultName: async (scopeValue) =>
 			await skillsStore.fetchNewSkillName({
 				...parseScope(scopeValue),
@@ -305,6 +316,8 @@ async function openEditModal(item: Pick<SkillListItem, 'id'>, view?: SkillOpenVi
 			initialScope: currentValue,
 			...scopeLock(detail),
 			existingSkillNames: [],
+			onReviewGitUpdate: (skillId) => openReview({ id: skillId }),
+			onGitSyncChanged: () => void load(),
 			onConfirm: async ({ skill, scope, label, baseSkillHash }) => {
 				const newScope = scope !== currentValue ? scope : undefined;
 				const result = await onSave(detail.id, skill, {
@@ -379,6 +392,90 @@ async function onDelete(skill: SkillListItem) {
 	} catch (error) {
 		// An agent may have attached the skill since the list loaded: that answers 409.
 		showError(error, i18n.baseText('settings.context.skills.error.delete'));
+	}
+	await load();
+}
+
+// ---- GitHub sync ----
+
+const importOpen = ref(false);
+const reviewSkillId = ref<string | null>(null);
+const reviewOpen = computed({
+	get: () => reviewSkillId.value !== null,
+	set: (open: boolean) => {
+		if (!open) reviewSkillId.value = null;
+	},
+});
+/** Only skills the user can edit show an update, as only they can accept it. */
+const pendingUpdates = computed(() =>
+	skillsWithPendingUpdate(skillsStore.skills).filter((skill) => skill.canEdit),
+);
+
+function openImport() {
+	if (scopeOptions.value.length > 0) importOpen.value = true;
+}
+
+async function onImported(response: ImportGitHubSkillsResponse) {
+	await load();
+	const added = response.created.length;
+	const failures = response.failed.map((failure) => `${failure.path}: ${failure.message}`);
+	showMessage({
+		title: i18n.baseText('settings.context.skills.github.import.success', {
+			interpolate: { count: String(added) },
+			adjustToNumber: added,
+		}),
+		message: failures.join('\n'),
+		type: failures.length > 0 ? 'warning' : 'success',
+	});
+}
+
+function openReview(skill: Pick<SkillListItem, 'id'>) {
+	reviewSkillId.value = skill.id;
+}
+
+async function onCheckGitHub(skill: SkillListItem) {
+	try {
+		const detail = await skillsStore.checkSkillGitHub(skill.id);
+		const status = detail.gitSource?.status;
+		showMessage({
+			title: i18n.baseText(
+				detail.gitSource?.update && !skill.gitSource?.update
+					? 'settings.context.skills.github.check.found'
+					: status === 'ok'
+						? 'settings.context.skills.github.check.upToDate'
+						: 'settings.context.skills.github.check.failed',
+			),
+			type: status === 'ok' ? 'success' : 'warning',
+		});
+	} catch (error) {
+		showError(error, i18n.baseText('settings.context.skills.github.check.error'));
+	}
+	await load();
+}
+
+async function onStopSync(skill: SkillListItem) {
+	const confirmed = await message.confirm(
+		i18n.baseText(
+			skill.gitSource?.update
+				? 'settings.context.skills.github.stop.confirm.messagePending'
+				: 'settings.context.skills.github.stop.confirm.message',
+		),
+		i18n.baseText('settings.context.skills.github.stop.confirm.title'),
+		{
+			type: 'warning',
+			confirmButtonText: i18n.baseText('settings.context.skills.github.stop.confirm.button'),
+			cancelButtonText: i18n.baseText('settings.context.skills.delete.cancel'),
+		},
+	);
+	if (confirmed !== MODAL_CONFIRM) return;
+	try {
+		await skillsStore.stopSkillGitSync(skill.id);
+		showMessage({
+			title: i18n.baseText('settings.context.skills.github.stop.success'),
+			type: 'success',
+		});
+	} catch (error) {
+		showError(error, i18n.baseText('settings.context.skills.github.stop.error'));
 	}
 	await load();
 }
@@ -468,6 +565,34 @@ onMounted(async () => {
 			/>
 		</div>
 
+		<N8nCallout
+			v-if="pendingUpdates.length > 0"
+			theme="warning"
+			icon="github"
+			:class="$style.banner"
+			data-test-id="skills-github-banner"
+		>
+			<strong>
+				{{
+					i18n.baseText('settings.context.skills.github.banner.title', {
+						interpolate: { count: String(pendingUpdates.length) },
+						adjustToNumber: pendingUpdates.length,
+					})
+				}}
+			</strong>
+			{{ i18n.baseText('settings.context.skills.github.banner.description') }}
+			<template #trailingContent>
+				<N8nButton
+					variant="outline"
+					size="small"
+					data-test-id="skills-github-banner-review"
+					@click="openReview(pendingUpdates[0])"
+				>
+					{{ i18n.baseText('settings.context.skills.github.actions.review') }}
+				</N8nButton>
+			</template>
+		</N8nCallout>
+
 		<SkillsTable
 			v-model:table-options="tableOptions"
 			:skills="skillsStore.skills"
@@ -476,6 +601,9 @@ onMounted(async () => {
 			:show-empty="showEmptyState"
 			@open="openEditModal"
 			@delete="onDelete"
+			@review="openReview"
+			@check-git-hub="onCheckGitHub"
+			@stop-sync="onStopSync"
 			@update:options="onOptionsUpdate"
 		>
 			<template #empty>
@@ -495,6 +623,18 @@ onMounted(async () => {
 				</div>
 			</template>
 		</SkillsTable>
+
+		<SkillGitHubImportModal
+			v-model:open="importOpen"
+			:scope-options="scopeOptions"
+			:resolve-scope="parseScope"
+			@imported="onImported"
+		/>
+		<SkillGitUpdateReviewModal
+			v-model:open="reviewOpen"
+			:skill-id="reviewSkillId"
+			@decided="load"
+		/>
 	</N8nSettingsLayout>
 </template>
 
@@ -517,6 +657,10 @@ onMounted(async () => {
 
 .spacer {
 	flex: 1;
+}
+
+.banner {
+	width: 100%;
 }
 
 .search {

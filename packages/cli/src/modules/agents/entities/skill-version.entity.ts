@@ -50,4 +50,8 @@ export class SkillVersion extends WithTimestamps {
 
 	@Column({ type: 'uuid', nullable: true })
 	createdById: string | null;
+
+	/** The GitHub commit this version came from. Null for a version made in n8n. */
+	@Column({ type: 'varchar', length: 40, nullable: true })
+	sourceCommitSha: string | null;
 }

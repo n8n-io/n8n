@@ -137,7 +137,9 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.shared_workflow](public.shared_workflow.md) | 5 |  | BASE TABLE |
 | [public.skill](public.skill.md) | 7 |  | BASE TABLE |
 | [public.skill_file](public.skill_file.md) | 5 |  | BASE TABLE |
-| [public.skill_version](public.skill_version.md) | 12 |  | BASE TABLE |
+| [public.skill_git_link](public.skill_git_link.md) | 14 |  | BASE TABLE |
+| [public.skill_git_update](public.skill_git_update.md) | 13 |  | BASE TABLE |
+| [public.skill_version](public.skill_version.md) | 13 |  | BASE TABLE |
 | [public.tag_entity](public.tag_entity.md) | 4 |  | BASE TABLE |
 | [public.test_case_execution](public.test_case_execution.md) | 14 |  | BASE TABLE |
 | [public.test_run](public.test_run.md) | 16 |  | BASE TABLE |
@@ -392,6 +394,8 @@ erDiagram
 "public.skill" }o--o| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.skill" }o--o| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.skill_file" }o--|| "public.skill_version" : "FOREIGN KEY (#quot;skillVersionId#quot;) REFERENCES skill_version(id) ON DELETE CASCADE"
+"public.skill_git_link" |o--|| "public.skill" : "FOREIGN KEY (#quot;skillId#quot;) REFERENCES skill(id) ON DELETE CASCADE"
+"public.skill_git_update" |o--|| "public.skill" : "FOREIGN KEY (#quot;skillId#quot;) REFERENCES skill(id) ON DELETE CASCADE"
 "public.skill_version" }o--o| "public.user" : "FOREIGN KEY (#quot;createdById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 "public.skill_version" }o--|| "public.skill" : "FOREIGN KEY (#quot;skillId#quot;) REFERENCES skill(id) ON DELETE CASCADE"
 "public.test_case_execution" }o--o| "public.execution_entity" : "FOREIGN KEY (#quot;executionId#quot;) REFERENCES execution_entity(id) ON DELETE SET NULL"
@@ -1727,6 +1731,37 @@ erDiagram
   uuid skillVersionId FK
   timestamp_3__with_time_zone updatedAt
 }
+"public.skill_git_link" {
+  timestamp_3__with_time_zone createdAt
+  timestamp_3__with_time_zone lastCheckedAt
+  varchar_512_ lastError
+  varchar_100_ owner
+  varchar_512_ path
+  varchar_255_ ref
+  varchar_16_ refType
+  varchar_100_ repo
+  varchar_40_ seenCommitSha
+  varchar_40_ seenTreeSha
+  varchar_36_ skillId FK
+  varchar_16_ status
+  varchar_40_ syncedCommitSha
+  timestamp_3__with_time_zone updatedAt
+}
+"public.skill_git_update" {
+  json checkResult
+  varchar_255_ commitAuthor
+  varchar_1024_ commitMessage
+  timestamp_3__with_time_zone committedAt
+  json content
+  varchar_64_ contentHash
+  timestamp_3__with_time_zone createdAt
+  varchar_40_ fromCommitSha
+  varchar_36_ skillId FK
+  json skippedFiles
+  varchar_16_ status
+  varchar_40_ toCommitSha
+  timestamp_3__with_time_zone updatedAt
+}
 "public.skill_version" {
   varchar_64_ contentHash
   timestamp_3__with_time_zone createdAt
@@ -1738,6 +1773,7 @@ erDiagram
   varchar_128_ label
   varchar_128_ name
   varchar_36_ skillId FK
+  varchar_40_ sourceCommitSha
   timestamp_3__with_time_zone updatedAt
   integer version
 }

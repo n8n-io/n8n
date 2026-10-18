@@ -18,7 +18,7 @@ CREATE TABLE "skill" ("id" varchar(36) PRIMARY KEY NOT NULL, "projectId" varchar
 | agentId | varchar(36) |  | true |  | [agents](agents.md) |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | createdById | varchar |  | true |  | [user](user.md) |  |
-| id | varchar(36) |  | false | [agent_skill_dependency](agent_skill_dependency.md) [agent_version_skill_dependency](agent_version_skill_dependency.md) [skill_version](skill_version.md) |  |  |
+| id | varchar(36) |  | false | [agent_skill_dependency](agent_skill_dependency.md) [agent_version_skill_dependency](agent_version_skill_dependency.md) [skill_git_link](skill_git_link.md) [skill_git_update](skill_git_update.md) [skill_version](skill_version.md) |  |  |
 | projectId | varchar(36) |  | true |  | [project](project.md) |  |
 | source | varchar(16) |  | false |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
@@ -51,6 +51,8 @@ erDiagram
 "skill" }o--o| "user" : "FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "agent_skill_dependency" |o--|| "skill" : "FOREIGN KEY (skillId) REFERENCES skill (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_version_skill_dependency" |o--|| "skill" : "FOREIGN KEY (skillId) REFERENCES skill (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"skill_git_link" |o--|| "skill" : "FOREIGN KEY (skillId) REFERENCES skill (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"skill_git_update" |o--|| "skill" : "FOREIGN KEY (skillId) REFERENCES skill (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "skill_version" }o--|| "skill" : "FOREIGN KEY (skillId) REFERENCES skill (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "skill" }o--o| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
@@ -109,6 +111,37 @@ erDiagram
   varchar_36_ skillId PK
   varchar skillVersionId FK
 }
+"skill_git_link" {
+  datetime_3_ createdAt
+  datetime_3_ lastCheckedAt
+  varchar_512_ lastError
+  varchar_100_ owner
+  varchar_512_ path
+  varchar_255_ ref
+  varchar_16_ refType
+  varchar_100_ repo
+  varchar_40_ seenCommitSha
+  varchar_40_ seenTreeSha
+  varchar_36_ skillId PK
+  varchar_16_ status
+  varchar_40_ syncedCommitSha
+  datetime_3_ updatedAt
+}
+"skill_git_update" {
+  TEXT checkResult
+  varchar_255_ commitAuthor
+  varchar_1024_ commitMessage
+  datetime_3_ committedAt
+  TEXT content
+  varchar_64_ contentHash
+  datetime_3_ createdAt
+  varchar_40_ fromCommitSha
+  varchar_36_ skillId PK
+  TEXT skippedFiles
+  varchar_16_ status
+  varchar_40_ toCommitSha
+  datetime_3_ updatedAt
+}
 "skill_version" {
   varchar_64_ contentHash
   datetime_3_ createdAt
@@ -120,6 +153,7 @@ erDiagram
   VARCHAR_128_ label
   varchar_128_ name
   varchar_36_ skillId FK
+  VARCHAR_40_ sourceCommitSha
   datetime_3_ updatedAt
   INTEGER version
 }

@@ -39,6 +39,7 @@ function skill(overrides: Partial<SkillListItem> = {}): SkillListItem {
 		usedByAgents: 0,
 		canEdit: true,
 		canDelete: true,
+		gitSource: null,
 		createdAt: '2026-10-01T00:00:00.000Z',
 		updatedAt: '2026-10-01T00:00:00.000Z',
 		...overrides,
@@ -370,5 +371,81 @@ describe('SkillsTable', () => {
 		await userEvent.click(document.querySelector('[data-test-id="action-delete"]')!);
 
 		expect(emitted('delete')).toEqual([[row]]);
+	});
+
+	describe('GitHub sync', () => {
+		const gitSource = (overrides: Partial<NonNullable<SkillListItem['gitSource']>> = {}) => ({
+			owner: 'acme',
+			repo: 'agent-skills',
+			ref: 'main',
+			refType: 'branch' as const,
+			path: 'skills/notes',
+			htmlUrl: 'https://github.com/acme/agent-skills/tree/main/skills/notes',
+			syncedCommitSha: 'a'.repeat(40),
+			status: 'ok' as const,
+			lastError: null,
+			lastCheckedAt: null,
+			update: null,
+			...overrides,
+		});
+
+		it('names the source of each skill', () => {
+			const { getAllByTestId, getByTestId } = render([
+				skill({ id: 's1', gitSource: gitSource() }),
+				skill({ id: 's2' }),
+			]);
+
+			expect(getByTestId('skill-source-github')).toHaveTextContent('agent-skills');
+			expect(getAllByTestId('skill-source-n8n')[0]).toHaveTextContent('Created in n8n');
+		});
+
+		it.each([
+			[{ update: { status: 'pending' as const, toCommitSha: 'b'.repeat(40) } }, 'Update available'],
+			[{ update: { status: 'blocked' as const, toCommitSha: 'b'.repeat(40) } }, 'Update blocked'],
+			[{ status: 'unavailable' as const }, 'Source unavailable'],
+			[{ status: 'rate_limited' as const }, 'Checks delayed'],
+			[{ refType: 'tag' as const, ref: 'v1.0.0' }, 'Fixed to a tag or commit'],
+		])('shows a chip for %j', (overrides, label) => {
+			const { getByTestId } = render([skill({ gitSource: gitSource(overrides) })]);
+
+			expect(getByTestId('skill-git-state')).toHaveTextContent(label);
+		});
+
+		it('shows no chip for a synced skill that is up to date', () => {
+			const { queryByTestId } = render([skill({ gitSource: gitSource() })]);
+
+			expect(queryByTestId('skill-git-state')).not.toBeInTheDocument();
+		});
+
+		it('emits review and stop syncing from the row menu', async () => {
+			const row = skill({
+				gitSource: gitSource({ update: { status: 'pending', toCommitSha: 'b'.repeat(40) } }),
+			});
+			const { getByTestId, emitted } = render([row]);
+
+			await openActions(getByTestId('skills-table'));
+			await waitFor(() =>
+				expect(document.querySelector('[data-test-id="action-reviewUpdate"]')).toBeInTheDocument(),
+			);
+			await userEvent.click(document.querySelector('[data-test-id="action-reviewUpdate"]')!);
+			expect(emitted('review')).toEqual([[row]]);
+
+			await openActions(getByTestId('skills-table'));
+			await waitFor(() =>
+				expect(document.querySelector('[data-test-id="action-stopSync"]')).toBeInTheDocument(),
+			);
+			await userEvent.click(document.querySelector('[data-test-id="action-stopSync"]')!);
+			expect(emitted('stopSync')).toEqual([[row]]);
+		});
+
+		it('offers no GitHub actions to a user who cannot edit the skill', async () => {
+			const { getByTestId } = render([skill({ canEdit: false, gitSource: gitSource() })]);
+
+			await openActions(getByTestId('skills-table'));
+			await waitFor(() =>
+				expect(document.querySelector('[data-test-id="action-delete"]')).toBeInTheDocument(),
+			);
+			expect(document.querySelector('[data-test-id="action-stopSync"]')).toBeNull();
+		});
 	});
 });

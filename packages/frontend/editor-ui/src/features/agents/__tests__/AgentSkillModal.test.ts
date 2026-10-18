@@ -247,6 +247,18 @@ describe('AgentSkillModal', () => {
 		).not.toBeInTheDocument();
 	});
 
+	it('offers the GitHub import only when the page can open it', async () => {
+		const plain = renderModal();
+		expect(plain.queryByTestId('agent-skill-import-github')).not.toBeInTheDocument();
+		plain.unmount();
+
+		const onImportFromGitHub = vi.fn();
+		const { getByTestId } = renderModal({ onImportFromGitHub });
+		await fireEvent.click(getByTestId('agent-skill-import-github'));
+
+		expect(onImportFromGitHub).toHaveBeenCalledOnce();
+	});
+
 	it('says Cancel while creating a skill and Close for an existing one', async () => {
 		const created = renderModal();
 		await fireEvent.click(created.getByTestId('agent-skill-add-manually'));
@@ -1368,6 +1380,7 @@ function makeListItem(
 		usedByAgents: 0,
 		canEdit: true,
 		canDelete: true,
+		gitSource: null,
 		createdAt: '2026-10-01T00:00:00.000Z',
 		updatedAt: '2026-10-01T00:00:00.000Z',
 		...overrides,

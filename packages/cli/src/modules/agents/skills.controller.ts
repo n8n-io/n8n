@@ -1,5 +1,9 @@
 import {
+	AcceptSkillGitUpdateDto,
 	CreateSkillDto,
+	DiscoverGitHubSkillsDto,
+	ImportGitHubSkillsDto,
+	SkipSkillGitUpdateDto,
 	ListSkillsQueryDto,
 	SaveSkillDto,
 	SkillNewNameQueryDto,
@@ -20,6 +24,7 @@ import {
 import { BadRequestError } from '@n8n/errors';
 import type { NextFunction, Request, Response } from 'express';
 
+import { SkillsGitHubApiService } from './skills/github/skills-github-api.service';
 import { SkillsApiService } from './skills/skills-api.service';
 import { SkillsHubRollout } from './skills/skills-hub-rollout';
 
@@ -32,6 +37,7 @@ export class SkillsController {
 	constructor(
 		private readonly skillsApi: SkillsApiService,
 		private readonly rollout: SkillsHubRollout,
+		private readonly gitHubApi: SkillsGitHubApiService,
 	) {}
 
 	/** Runs before the request is validated, so every request answers 404 while the flag is off. */
@@ -53,6 +59,73 @@ export class SkillsController {
 	@Get('/new-name')
 	async newName(req: AuthenticatedRequest, _res: Response, @Query query: SkillNewNameQueryDto) {
 		return await this.skillsApi.newName(req.user, query);
+	}
+
+	/** Reads a public GitHub link and lists the skills in it, with their check results. */
+	@Post('/github/discover')
+	async discoverGitHub(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body payload: DiscoverGitHubSkillsDto,
+	) {
+		return await this.gitHubApi.discover(req.user, payload);
+	}
+
+	/** Imports the chosen skills from GitHub at the commit that discover returned. */
+	@Post('/github/import')
+	async importGitHub(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body payload: ImportGitHubSkillsDto,
+	) {
+		return await this.gitHubApi.import(req.user, payload);
+	}
+
+	@Get('/:skillId/github/update')
+	async getGitHubUpdate(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('skillId') skillId: string,
+	) {
+		return await this.gitHubApi.getUpdate(req.user, skillId);
+	}
+
+	@Post('/:skillId/github/update/accept')
+	async acceptGitHubUpdate(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('skillId') skillId: string,
+		@Body payload: AcceptSkillGitUpdateDto,
+	) {
+		return await this.gitHubApi.accept(req.user, skillId, payload);
+	}
+
+	@Post('/:skillId/github/update/skip')
+	async skipGitHubUpdate(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('skillId') skillId: string,
+		@Body payload: SkipSkillGitUpdateDto,
+	) {
+		await this.gitHubApi.skip(req.user, skillId, payload);
+		return { ok: true };
+	}
+
+	/** Checks GitHub for this skill now and returns the skill as the list shows it. */
+	@Post('/:skillId/github/check')
+	async checkGitHub(req: AuthenticatedRequest, _res: Response, @Param('skillId') skillId: string) {
+		return await this.gitHubApi.checkNow(req.user, skillId);
+	}
+
+	/** Stop syncing: the skill and its versions stay and become editable. */
+	@Delete('/:skillId/github')
+	async stopGitHubSync(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('skillId') skillId: string,
+	) {
+		await this.gitHubApi.stopSyncing(req.user, skillId);
+		return { ok: true };
 	}
 
 	@Get('/:skillId/versions')

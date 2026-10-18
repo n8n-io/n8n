@@ -73,11 +73,14 @@ export type SkillSummary = {
 /** One saved version without its content, for the version list. */
 export type SkillVersionRow = Pick<
 	SkillVersion,
-	'id' | 'version' | 'label' | 'createdById' | 'createdAt'
+	'id' | 'version' | 'label' | 'createdById' | 'createdAt' | 'sourceCommitSha'
 >;
 
-/** Options of a saved version. `label` names it ("Save with a name"). */
-export type SavedVersionOptions = { label?: string | null };
+/**
+ * Options of a saved version. `label` names it ("Save with a name"). `sourceCommitSha`
+ * is the GitHub commit the content came from.
+ */
+export type SavedVersionOptions = { label?: string | null; sourceCommitSha?: string | null };
 
 /** Persistence for skills, their versions and files, and the agent rows that use them. */
 @Service()
@@ -272,7 +275,7 @@ export class SkillRepository extends BaseRepository<Skill> {
 	/** Every saved version of one skill without its content, newest first. */
 	async findVersionList(skillId: string, ctx: OperationContext = {}): Promise<SkillVersionRow[]> {
 		return await this.managerFor(ctx).find(SkillVersion, {
-			select: ['id', 'version', 'label', 'createdById', 'createdAt'],
+			select: ['id', 'version', 'label', 'createdById', 'createdAt', 'sourceCommitSha'],
 			where: { skillId },
 			order: { version: 'DESC' },
 		});
@@ -306,7 +309,7 @@ export class SkillRepository extends BaseRepository<Skill> {
 			if (!result.affected) return undefined;
 			return (
 				(await manager.findOne(SkillVersion, {
-					select: ['id', 'version', 'label', 'createdById', 'createdAt'],
+					select: ['id', 'version', 'label', 'createdById', 'createdAt', 'sourceCommitSha'],
 					where: { skillId, version },
 				})) ?? undefined
 			);
@@ -419,7 +422,13 @@ export class SkillRepository extends BaseRepository<Skill> {
 
 	/** Inserts the skill with its v1 and returns the id of that version. */
 	async createSkill(
-		skill: { id: string; target: SkillTarget; source: SkillSource; createdById: string | null },
+		skill: {
+			id: string;
+			target: SkillTarget;
+			source: SkillSource;
+			createdById: string | null;
+			sourceCommitSha?: string | null;
+		},
 		content: SkillContent,
 		ctx: OperationContext = {},
 	): Promise<string> {
@@ -431,7 +440,9 @@ export class SkillRepository extends BaseRepository<Skill> {
 				source: skill.source,
 				createdById: skill.createdById,
 			});
-			return await insertVersion(manager, skill.id, 1, content, skill.createdById, null);
+			return await insertVersion(manager, skill.id, 1, content, skill.createdById, {
+				sourceCommitSha: skill.sourceCommitSha ?? null,
+			});
 		});
 	}
 
@@ -442,10 +453,10 @@ export class SkillRepository extends BaseRepository<Skill> {
 		content: SkillContent,
 		createdById: string | null,
 		ctx: OperationContext = {},
-		{ label = null }: SavedVersionOptions = {},
+		options: SavedVersionOptions = {},
 	): Promise<string> {
 		return await this.runInTransaction(ctx, async (manager) => {
-			const id = await insertVersion(manager, skillId, version, content, createdById, label);
+			const id = await insertVersion(manager, skillId, version, content, createdById, options);
 			await manager.update(Skill, { id: skillId }, { updatedAt: new Date() });
 			return id;
 		});
@@ -1021,7 +1032,7 @@ async function insertVersion(
 	version: number,
 	content: SkillContent,
 	createdById: string | null,
-	label: string | null,
+	{ label = null, sourceCommitSha = null }: SavedVersionOptions = {},
 ): Promise<string> {
 	const id = randomUUID();
 	// `save`, not `insert`: the partial-entity type of `insert` rejects free-form JSON.
@@ -1037,6 +1048,7 @@ async function insertVersion(
 			contentHash: skillContentHash(content),
 			label,
 			createdById,
+			sourceCommitSha,
 		}),
 	);
 	await insertFiles(manager, id, content.files);
