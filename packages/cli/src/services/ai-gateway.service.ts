@@ -27,6 +27,20 @@ interface GatewayTokenResponse {
 	expiresIn: number;
 }
 
+/** Who a request made on a user's behalf is for. The gateway bills and attributes it by this. */
+export interface AiGatewayRequestAttribution {
+	/** An Instance AI background job. The gateway bills these requests to Assistant credits. */
+	instanceAiJobId: string;
+}
+
+interface GatewayUrlContext {
+	executionId?: string;
+	workflowId?: string;
+	projectId?: string;
+	agentId?: string;
+	instanceAiJobId?: string;
+}
+
 export type AiGatewayAvailability =
 	| { available: true; config: AiGatewayConfigDto }
 	| { available: false };
@@ -242,6 +256,25 @@ export class AiGatewayService {
 	}
 
 	/**
+	 * Returns the URL and token for a request to a gateway provider on behalf of a
+	 * signed-in user. The URL carries the attribution as an exec context.
+	 */
+	async getRequestTarget({
+		userId,
+		gatewayPath,
+		attribution,
+	}: {
+		userId: string;
+		gatewayPath: string;
+		attribution: AiGatewayRequestAttribution;
+	}): Promise<{ url: string; token: string }> {
+		this.assertEnabled();
+		const baseUrl = this.requireBaseUrl();
+		const token = await this.getOrFetchToken(userId);
+		return { url: this.buildGatewayUrl(baseUrl, gatewayPath, attribution), token };
+	}
+
+	/**
 	 * Builds the credential URL field(s) pointing at the gateway.
 	 *
 	 * When `routing` is present, each `<credential field> → <gateway path>` entry is
@@ -351,14 +384,17 @@ export class AiGatewayService {
 	 *   with context    → `<base>/v1/gateway/exec/29021/R9JFXwkUCL1jZBuw/openai/v1`
 	 *   with project    → `<base>/v1/gateway/exec/29021/R9JFXwkUCL1jZBuw%7Cnr6r2FfB0mVeqZP1/openai/v1`
 	 *   agent           → `<base>/v1/gateway/exec/agent/AG123%7Cnr6r2FfB0mVeqZP1/openai/v1`
+	 *
+	 * Instance AI background jobs work the same way with the literal `instance-ai`,
+	 * which also tells the gateway to bill Assistant credits:
+	 *   instance AI     → `<base>/v1/gateway/exec/instance-ai/JOB123/browserbaseBrowserUse`
 	 */
 	private buildGatewayUrl(
 		baseUrl: string,
 		gatewayPath: string,
-		context: { executionId?: string; workflowId?: string; projectId?: string; agentId?: string },
+		context: GatewayUrlContext,
 	): string {
-		const execId = context.workflowId ? context.executionId : context.agentId && 'agent';
-		const attributionId = context.workflowId ?? context.agentId;
+		const { execId, attributionId } = this.resolveExecContext(context);
 		if (execId && attributionId) {
 			if (!gatewayPath.startsWith(AiGatewayService.GATEWAY_PATH_PREFIX)) {
 				return `${baseUrl}${gatewayPath}`;
@@ -370,6 +406,26 @@ export class AiGatewayService {
 			return `${baseUrl}${AiGatewayService.GATEWAY_PATH_PREFIX}/exec/${encodeURIComponent(execId)}/${contextSegment}${providerSuffix}`;
 		}
 		return `${baseUrl}${gatewayPath}`;
+	}
+
+	/**
+	 * Picks the two exec context segments: the execution slot, and the id that the
+	 * gateway attributes usage to. Returns neither when there is nothing to attribute.
+	 */
+	private resolveExecContext(context: GatewayUrlContext): {
+		execId?: string;
+		attributionId?: string;
+	} {
+		if (context.instanceAiJobId) {
+			return { execId: 'instance-ai', attributionId: context.instanceAiJobId };
+		}
+		if (context.workflowId) {
+			return { execId: context.executionId, attributionId: context.workflowId };
+		}
+		if (context.agentId) {
+			return { execId: 'agent', attributionId: context.agentId };
+		}
+		return {};
 	}
 
 	private requireBaseUrl(): string {

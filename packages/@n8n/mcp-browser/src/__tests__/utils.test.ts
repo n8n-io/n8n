@@ -8,6 +8,7 @@ import {
 	formatErrorResponse,
 	formatImageResponse,
 	generateId,
+	stripUrlCredentials,
 	toError,
 } from '../utils';
 
@@ -103,6 +104,30 @@ describe('toError', () => {
 		const result = toError(null);
 		expect(result).toBeInstanceOf(Error);
 		expect(result.message).toBe('null');
+	});
+});
+
+describe('stripUrlCredentials', () => {
+	it('should remove the query string', () => {
+		expect(stripUrlCredentials('wss://connect.example.com/?signingKey=abc')).toBe(
+			'wss://connect.example.com/',
+		);
+	});
+
+	it('should remove the hash and userinfo', () => {
+		expect(stripUrlCredentials('wss://user:pass@connect.example.com/path#frag')).toBe(
+			'wss://connect.example.com/path',
+		);
+	});
+
+	it('should keep the host and path', () => {
+		expect(stripUrlCredentials('ws://127.0.0.1:9999/cdp/relay-default')).toBe(
+			'ws://127.0.0.1:9999/cdp/relay-default',
+		);
+	});
+
+	it('should not return an endpoint it cannot parse', () => {
+		expect(stripUrlCredentials('not a url?token=abc')).toBe('(unparseable endpoint)');
 	});
 });
 

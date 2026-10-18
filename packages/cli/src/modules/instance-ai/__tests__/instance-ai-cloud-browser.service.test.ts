@@ -1,0 +1,144 @@
+import type { Logger } from '@n8n/backend-common';
+import type { User, UserRepository } from '@n8n/db';
+import { mkdir } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { mock } from 'vitest-mock-extended';
+
+import type { CredentialsService } from '@/credentials/credentials.service';
+import type { AiGatewayBrowserUseService } from '@/services/ai-gateway-browser-use.service';
+
+import { CloudBrowserLocalMcpServer } from '../browser/cloud-browser-local-mcp-server';
+import { InstanceAiCloudBrowserService } from '../browser/instance-ai-cloud-browser.service';
+
+vi.mock('node:fs/promises', () => ({ mkdir: vi.fn().mockResolvedValue(undefined) }));
+
+describe('InstanceAiCloudBrowserService', () => {
+	let service: InstanceAiCloudBrowserService;
+	const userRepository = mock<UserRepository>();
+	const credentialsService = mock<CredentialsService>();
+	let release: ReturnType<typeof vi.spyOn>;
+
+	beforeEach(() => {
+		const logger = mock<Logger>();
+		logger.scoped.mockReturnValue(logger);
+		const aiGatewayBrowserUseService = mock<AiGatewayBrowserUseService>();
+		aiGatewayBrowserUseService.isGatewayBrowserUseEnabled.mockReturnValue(true);
+		service = new InstanceAiCloudBrowserService(
+			logger,
+			aiGatewayBrowserUseService,
+			userRepository,
+			credentialsService,
+		);
+		release = vi.spyOn(CloudBrowserLocalMcpServer.prototype, 'release').mockResolvedValue();
+	});
+
+	afterEach(() => vi.restoreAllMocks());
+
+	it('creates one server per job and finds it by job id', async () => {
+		const first = await service.createServer('user-1', 'job-1');
+		const other = await service.createServer('user-1', 'job-2');
+
+		expect(await service.createServer('user-1', 'job-1')).toBe(first);
+		expect(other).not.toBe(first);
+		expect(service.findServer('job-1')).toBe(first);
+		expect(service.findServer('job-3')).toBeUndefined();
+	});
+
+	it('creates a single server when two calls for a job overlap', async () => {
+		const [first, second] = await Promise.all([
+			service.createServer('user-1', 'job-1'),
+			service.createServer('user-1', 'job-1'),
+		]);
+
+		expect(second).toBe(first);
+	});
+
+	it('refuses to return a job server to another user', async () => {
+		await service.createServer('user-1', 'job-1');
+
+		await expect(service.createServer('user-2', 'job-1')).rejects.toThrow(
+			'Cloud browser job belongs to another user',
+		);
+	});
+
+	it('releases the job server and forgets it', async () => {
+		await service.createServer('user-1', 'job-1');
+
+		await service.release('job-1');
+
+		expect(release).toHaveBeenCalledTimes(1);
+		expect(service.findServer('job-1')).toBeUndefined();
+	});
+
+	it('does nothing when releasing a job without a server', async () => {
+		await service.release('job-1');
+
+		expect(release).not.toHaveBeenCalled();
+	});
+
+	it('releases every server on shutdown', async () => {
+		await service.createServer('user-1', 'job-1');
+		await service.createServer('user-2', 'job-2');
+
+		await service.shutdown();
+
+		expect(release).toHaveBeenCalledTimes(2);
+		expect(service.findServer('job-1')).toBeUndefined();
+		expect(service.findServer('job-2')).toBeUndefined();
+	});
+
+	it('gives the server the real browser tools, without the hidden ones', async () => {
+		const server = await service.createServer('user-1', 'job-1');
+
+		const names = server.getAvailableTools().map((tool) => tool.name);
+
+		expect(names).toEqual(expect.arrayContaining(['browser_start_session', 'browser_navigate']));
+		for (const hidden of [
+			'browser_connect',
+			'browser_disconnect',
+			'browser_cookies',
+			'browser_storage',
+			'browser_evaluate',
+			'browser_upload',
+		]) {
+			expect(names).not.toContain(hidden);
+		}
+		expect(
+			server.getAvailableTools().every((tool) => tool.annotations?.category === 'browser'),
+		).toBe(true);
+	});
+
+	it('creates credentials as the job user', async () => {
+		const user = mock<User>({ id: 'user-1' });
+		userRepository.findOne.mockResolvedValue(user);
+		credentialsService.createUnmanagedCredential.mockResolvedValue({ id: 'cred-1' } as never);
+		const server = await service.createServer('user-1', 'job-1');
+		const payload = { name: 'Acme API', type: 'httpHeaderAuth', data: {} };
+
+		const result = await server['options'].toolContext.createCredential?.(payload);
+
+		expect(result).toEqual({ credentialId: 'cred-1' });
+		expect(userRepository.findOne).toHaveBeenCalledWith(
+			expect.objectContaining({ where: { id: 'user-1' } }),
+		);
+		expect(credentialsService.createUnmanagedCredential).toHaveBeenCalledWith(payload, user);
+	});
+
+	it('gives each job its own secrets buffer', async () => {
+		const first = await service.createServer('user-1', 'job-1');
+		const second = await service.createServer('user-1', 'job-2');
+
+		first['options'].toolContext.secretsBuffer?.capture('acme', 'apiKey', 'secret');
+
+		expect(second['options'].toolContext.secretsBuffer?.getFields('acme')).toBeUndefined();
+	});
+
+	it('gives the tools a cloud browser folder for the user', async () => {
+		const server = await service.createServer('user-1', 'job-1');
+
+		const expected = join(tmpdir(), 'n8n-instance-ai-cloud-browser', 'user-1');
+		expect(server['options'].toolContext.dir).toBe(expected);
+		expect(mkdir).toHaveBeenCalledWith(expected, { recursive: true });
+	});
+});
