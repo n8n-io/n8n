@@ -12,7 +12,7 @@ import { mock } from 'vitest-mock-extended';
 import { createSelfHealingAgent } from '../self-healing-agent';
 import { executeTool, parseToolInput } from '../../__tests__/tool-test-utils';
 import type { SelfHealingCandidateVerifier } from '../../self-healing';
-import { loadInstanceAiRuntimeSkillSource } from '../../skills/runtime-skills';
+import { loadInstanceAiSkills } from '../../skills/skills';
 import type { InstanceAiContext, WorkflowDetail } from '../../types';
 import type { InstanceAiEventBus } from '../../event-bus';
 import { streamAgentRun, type StreamableAgent } from '../../runtime/stream-runner';
@@ -214,7 +214,7 @@ describe('createSelfHealingAgent', () => {
 		expect(config.checkpointStorage).toBe('memory');
 		expect(config.observationalMemory).toBeUndefined();
 		expect(config.skillSource).toBeUndefined();
-		expect(await loadInstanceAiRuntimeSkillSource().loadSkill('self-healing')).toBeNull();
+		expect(await loadInstanceAiSkills().loadSkill('self-healing')).toBeNull();
 	});
 
 	it.each([

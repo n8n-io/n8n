@@ -54,7 +54,7 @@ export async function composeSkillVariants(
 			.filter(({ id }) => !excluded.has(id))
 			.map(async ({ id }) => {
 				const original = await source.loadSkill(id);
-				if (!original) throw new UnexpectedError(`Runtime skill "${id}" is missing`);
+				if (!original) throw new UnexpectedError(`Skill "${id}" is missing`);
 				const selected = changes.get(id);
 				if (!selected) return original;
 				const fragment = await source.loadSkill(selected.change.appendFrom);

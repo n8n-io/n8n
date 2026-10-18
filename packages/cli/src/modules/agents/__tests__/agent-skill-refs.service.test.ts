@@ -478,19 +478,21 @@ describe('AgentSkillRefsService', () => {
 				{ projectId: null, agentId: 'agent-1' },
 				'agent-1',
 				ctx,
-				undefined,
+				{},
 			);
 		});
 
 		it('checks the name that the same save gives the skill', async () => {
-			await service.setAvailability(agent, 'skill_a', 'project', ctx, 'Condense');
+			await service.setAvailability(agent, 'skill_a', 'project', ctx, {
+				nameAfterMove: 'Condense',
+			});
 
 			expect(skillService.changeTarget).toHaveBeenCalledWith(
 				'skill_a',
 				{ projectId: agent.projectId, agentId: null },
 				'agent-1',
 				ctx,
-				'Condense',
+				{ nameAfterMove: 'Condense' },
 			);
 		});
 	});

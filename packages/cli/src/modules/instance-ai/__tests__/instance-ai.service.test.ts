@@ -66,8 +66,6 @@ vi.mock('@n8n/instance-ai', async () => {
 				ensureWorkspace: args.ensureWorkspace,
 			}),
 		),
-		createLazyWorkspaceRuntimeSkillSource: vi.fn(({ source }) => source),
-		loadInstanceAiRuntimeSkillSource: vi.fn(() => ({ registry: { skills: [] } })),
 		setupSandboxWorkspace: vi.fn(),
 		traceSandboxOperation: vi.fn(
 			async <T>(_operation: string, _options: unknown, fn: () => Promise<T>) => await fn(),
@@ -80,13 +78,12 @@ vi.mock('@n8n/instance-ai', async () => {
 			disabledTools: [],
 			source: {
 				registry: {
-					skillsHash: 'runtime-skills-hash',
+					skillsHash: 'skills-hash',
 					skills: [{ id: 'data-table-manager' }],
 				},
 				loadSkill: vi.fn(),
 			},
 		})),
-		disabledInstanceAiSkillIds: vi.fn(() => []),
 		workflowBuildOutcomeSchema: z.object({}),
 		handleBuildOutcome: vi.fn(),
 		handleVerificationVerdict: vi.fn(),
@@ -264,15 +261,12 @@ import { Container } from '@n8n/di';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import {
 	createLazyRuntimeWorkspace,
-	createLazyWorkspaceRuntimeSkillSource,
 	createOrchestratorRunControl,
 	createSetupItemsEmitter,
 	createSandbox,
 	createWorkspace,
 	createInstanceAiTraceContext,
-	disabledInstanceAiSkillIds,
 	loadInstanceAiPromptSkills,
-	loadInstanceAiRuntimeSkillSource,
 	resumeAgentRun,
 	streamAgentRun,
 	isQuotaExhaustedError,
@@ -310,6 +304,7 @@ import {
 } from '../instance-ai-terminal-outcome.service';
 import { INSTANCE_AI_RUN_TIMEOUT_REASON } from '../liveness/instance-ai-liveness.service';
 import { InstanceAiRunLimitError } from '../instance-ai-run-limit.error';
+import { InstanceAiSkillsService } from '../instance-ai-skills.service';
 import { InstanceAiService } from '../instance-ai.service';
 import { buildThreadArtifactsBlock, buildThreadContextBlock } from '../internal-messages';
 import { InstanceAiSandboxService } from '../sandbox';
@@ -817,12 +812,11 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				ensureWorkspace: args.ensureWorkspace,
 			}),
 		);
-		(createLazyWorkspaceRuntimeSkillSource as Mock).mockImplementation(({ source }) => source);
 		(loadInstanceAiPromptSkills as Mock).mockImplementation(() => ({
 			disabledTools: [],
 			source: {
 				registry: {
-					skillsHash: 'runtime-skills-hash',
+					skillsHash: 'skills-hash',
 					skills: [{ id: 'data-table-manager' }],
 				},
 				loadSkill: vi.fn(),
@@ -864,7 +858,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				orchestrationContext: {
 					setupPanelEnabled?: boolean;
 					workspace?: unknown;
-					runtimeSkills?: {
+					skills?: {
 						registry: { skillsHash: string; skills: Array<{ id: string }> };
 						loadSkill: (skillId: string) => Promise<unknown>;
 					};
@@ -892,6 +886,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			modelService: {
 				resolveAgentModelConfig: Mock;
 				resolveProxyModel: Mock;
+				resolveMemoryModelConfig: Mock;
 				getCredits: Mock;
 			};
 			ensureThreadExists: Mock;
@@ -934,8 +929,10 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			creditService: { claimRunUsage: Mock };
 			aiUsageService: { isParameterValueSharingAllowed: Mock };
 			areMcpConnectionsAvailable: Mock;
+			skillsService: InstanceAiSkillsService;
 		};
 		service.areMcpConnectionsAvailable = vi.fn(() => true);
+		service.skillsService = new InstanceAiSkillsService();
 		service.settingsService = {
 			getAdminSettings: vi.fn(() => ({ localGatewayDisabled: false, sandboxEnabled: true })),
 			getSandboxStatus: vi.fn(() => ({
@@ -969,6 +966,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		service.modelService = {
 			resolveAgentModelConfig: vi.fn(async () => 'model-1'),
 			resolveProxyModel: vi.fn(async () => 'model-1'),
+			resolveMemoryModelConfig: vi.fn(async () => undefined),
 			getCredits: vi.fn(async () => ({
 				creditsQuota: UNLIMITED_CREDITS,
 				creditsClaimed: 0,
@@ -1046,6 +1044,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		if (agentBuildingAvailable) {
 			service.adapterService.createContext.mockReturnValue({ builderDelegate: {} });
 		}
+		const loadSkills = vi.spyOn(service.skillsService, 'loadSkills');
 
 		const environment = await service.createExecutionEnvironment(
 			fakeUser,
@@ -1058,7 +1057,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			boundGates,
 		);
 		// The agent-building skills follow whether the context has a builder delegate.
-		expect(disabledInstanceAiSkillIds).toHaveBeenCalledWith(
+		expect(loadSkills).toHaveBeenCalledWith(
 			expect.objectContaining({ agentBuildingEnabled: agentBuildingAvailable }),
 		);
 		const expectedGates = boundGates ?? {
@@ -1095,14 +1094,9 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			);
 		}
 
-		expect(createLazyRuntimeWorkspace).toHaveBeenCalledTimes(2);
-		expect(createLazyRuntimeWorkspace).toHaveBeenNthCalledWith(
-			2,
-			expect.objectContaining({ id: 'instance-ai-runtime-skill-workspace' }),
-		);
-		expect(createLazyWorkspaceRuntimeSkillSource).toHaveBeenCalledTimes(1);
+		expect(createLazyRuntimeWorkspace).toHaveBeenCalledTimes(1);
 		expect(loadInstanceAiPromptSkills).toHaveBeenCalledTimes(1);
-		expect(environment.orchestrationContext.runtimeSkills?.registry.skills).toEqual([
+		expect(environment.orchestrationContext.skills?.registry.skills).toEqual([
 			{ id: 'data-table-manager' },
 		]);
 
@@ -1154,18 +1148,9 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		);
 
 		expect(createSandbox).not.toHaveBeenCalled();
-		const skillWorkspace = (createLazyWorkspaceRuntimeSkillSource as Mock).mock.calls[0]?.[0]
-			.workspace as { ensureWorkspace: () => Promise<unknown> };
 		const lazyWorkspace = environment.orchestrationContext.workspace as {
 			ensureWorkspace: () => Promise<unknown>;
 		};
-
-		await skillWorkspace.ensureWorkspace();
-
-		expect(createSandbox).toHaveBeenCalledTimes(1);
-		expect(createWorkspace).toHaveBeenCalledTimes(1);
-		expect(workspace.init).toHaveBeenCalledTimes(1);
-		expect(setupSandboxWorkspace).not.toHaveBeenCalled();
 
 		await lazyWorkspace.ensureWorkspace();
 
@@ -1185,27 +1170,9 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		expect(createWorkspace).toHaveBeenCalledWith(sandbox);
 		expect(workspace.init).toHaveBeenCalledTimes(1);
 		expect(setupSandboxWorkspace).toHaveBeenCalledTimes(1);
-
-		// Runtime skills and workspace setup share the verified bundles of the sandbox.
-		const { resolveVerifiedBundles, bundleSource } = (createLazyWorkspaceRuntimeSkillSource as Mock)
-			.mock.calls[0]?.[0] as {
-			resolveVerifiedBundles: () => Promise<unknown>;
-			bundleSource: unknown;
-		};
-		// The sandbox stores every bundled skill, the same set that the image and snapshot bake.
-		expect(loadInstanceAiRuntimeSkillSource).toHaveBeenCalled();
-		expect(bundleSource).toBeDefined();
-		expect(bundleSource).toBe((loadInstanceAiRuntimeSkillSource as Mock).mock.results[0]?.value);
-		const verifiedBundles = await resolveVerifiedBundles();
-		expect(verifiedBundles).toEqual(new Map());
-		const setupOptions = (setupSandboxWorkspace as Mock).mock.calls[0]?.[2] as {
-			verifiedBundles: unknown;
-		};
 		expect((setupSandboxWorkspace as Mock).mock.calls[0]?.[0]).toBe(workspace);
-		expect(setupOptions.verifiedBundles).toBe(verifiedBundles);
 
 		(createLazyRuntimeWorkspace as Mock).mockClear();
-		(createLazyWorkspaceRuntimeSkillSource as Mock).mockClear();
 		(createSandbox as Mock).mockClear();
 		(setupSandboxWorkspace as Mock).mockClear();
 		(loadInstanceAiPromptSkills as Mock).mockClear();
@@ -1224,13 +1191,10 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		);
 
 		expect(unavailableEnvironment.orchestrationContext.workspace).toBeUndefined();
-		// Without a sandbox the runtime skill catalog is used as-is (no
-		// workspace-materialized wrapper).
-		expect(unavailableEnvironment.orchestrationContext.runtimeSkills?.registry.skills).toEqual([
+		expect(unavailableEnvironment.orchestrationContext.skills?.registry.skills).toEqual([
 			{ id: 'data-table-manager' },
 		]);
 		expect(createLazyRuntimeWorkspace).not.toHaveBeenCalled();
-		expect(createLazyWorkspaceRuntimeSkillSource).not.toHaveBeenCalled();
 		expect(createSandbox).not.toHaveBeenCalled();
 		expect(setupSandboxWorkspace).not.toHaveBeenCalled();
 	});
@@ -1263,7 +1227,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				orchestrationContext: {
 					outputRedaction?: unknown;
 					workspace?: unknown;
-					runtimeSkills?: {
+					skills?: {
 						registry: { skillsHash: string; skills: Array<{ id: string }> };
 						loadSkill: (skillId: string) => Promise<unknown>;
 					};
@@ -1291,6 +1255,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			modelService: {
 				resolveAgentModelConfig: Mock;
 				resolveProxyModel: Mock;
+				resolveMemoryModelConfig: Mock;
 				getCredits: Mock;
 			};
 			ensureThreadExists: Mock;
@@ -1333,8 +1298,10 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			creditService: { claimRunUsage: Mock };
 			aiUsageService: { isParameterValueSharingAllowed: Mock };
 			areMcpConnectionsAvailable: Mock;
+			skillsService: InstanceAiSkillsService;
 		};
 		service.areMcpConnectionsAvailable = vi.fn(() => false);
+		service.skillsService = new InstanceAiSkillsService();
 		service.settingsService = {
 			getAdminSettings: vi.fn(() => ({ localGatewayDisabled: false, sandboxEnabled: true })),
 			getSandboxStatus: vi.fn(() => ({
@@ -1366,6 +1333,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		service.modelService = {
 			resolveAgentModelConfig: vi.fn(async () => 'model-1'),
 			resolveProxyModel: vi.fn(async () => 'model-1'),
+			resolveMemoryModelConfig: vi.fn(async () => undefined),
 			getCredits: vi.fn(async () => ({
 				creditsQuota: UNLIMITED_CREDITS,
 				creditsClaimed: 0,
@@ -6751,9 +6719,11 @@ describe('createAgentMemoryOptions', () => {
 			user: User,
 			threadId: string,
 			runId: string,
+			memoryModelId?: ModelConfig,
 		) => {
 			observationalMemory: {
 				observerThresholdTokens: number;
+				model?: ModelConfig;
 				onTaskUsage: (report: MemoryTaskUsageReport) => Promise<void>;
 			};
 		};
@@ -6784,6 +6754,28 @@ describe('createAgentMemoryOptions', () => {
 		).observationalMemory;
 		expect(observerThresholdTokens).toBe(8_000);
 		expect(service.runState.getObserverThresholdTokens).toHaveBeenCalledWith('thread-1');
+	});
+
+	it('passes the memory model to the memory tasks, and leaves it unset by default', () => {
+		const service = buildService();
+		const user = { id: 'user-1' } as User;
+		expect(
+			service.createAgentMemoryOptions(user, 'thread-1', 'run-1', 'anthropic/claude-haiku-4-5')
+				.observationalMemory.model,
+		).toBe('anthropic/claude-haiku-4-5');
+		// The proxy and credential paths return object configs, which must pass through as-is.
+		const credentialModel: ModelConfig = {
+			id: 'anthropic/claude-haiku-4-5',
+			url: '',
+			apiKey: 'main-key',
+		};
+		expect(
+			service.createAgentMemoryOptions(user, 'thread-1', 'run-1', credentialModel)
+				.observationalMemory.model,
+		).toBe(credentialModel);
+		expect(
+			service.createAgentMemoryOptions(user, 'thread-1', 'run-1').observationalMemory.model,
+		).toBeUndefined();
 	});
 
 	it('uses the per-thread override when an eval set one', () => {
