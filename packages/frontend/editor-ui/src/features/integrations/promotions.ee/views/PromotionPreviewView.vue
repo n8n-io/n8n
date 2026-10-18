@@ -11,6 +11,7 @@ import {
 	N8nResizeWrapper,
 	N8nTabs,
 	N8nText,
+	N8nTooltip,
 	useResizablePanel,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -26,11 +27,18 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 
 import PromotionChangeCards from '../components/preview/PromotionChangeCards.vue';
 import PromotionResourceTree from '../components/preview/PromotionResourceTree.vue';
+import { usePromotionOperation } from '../composables/usePromotionOperation';
 import { usePromotionResourceDetails } from '../composables/usePromotionResourceDetails';
 import { usePromotionPreview } from '../composables/usePromotionPreview';
 import { usePromotionSelection } from '../composables/usePromotionSelection';
 import { PROMOTIONS_SETTINGS_SCOPES, PROMOTIONS_SETTINGS_VIEW } from '../promotions.constants';
-import { emptyBlockerIndex, indexBlockers, listBlockers } from '../promotionOperation';
+import {
+	emptyBlockerIndex,
+	indexBlockers,
+	listBlockers,
+	toOperationRequest,
+	touchesDestructiveChange,
+} from '../promotionOperation';
 import { includedChangeCount, totalChangeCount } from '../promotionPreview.selection';
 import { buildPreviewTree, cardOrder } from '../promotionPreview.tree';
 
@@ -60,9 +68,10 @@ const {
 const blockers = computed(() =>
 	check.value ? indexBlockers(listBlockers(check.value)) : emptyBlockerIndex,
 );
+const operation = usePromotionOperation(projectId, direction, { preview, check, refresh });
 const selection = usePromotionSelection(graph, {
 	disabled: computed(() => blockers.value.blocked),
-	locked: ref(false),
+	locked: operation.isBusy,
 });
 const details = usePromotionResourceDetails(projectId, direction, preview, graph);
 
@@ -112,6 +121,37 @@ const totalChanges = computed(() => (graph.value ? totalChangeCount(graph.value)
 const includedChanges = computed(() =>
 	graph.value ? includedChangeCount(graph.value, selection.inclusion.value) : 0,
 );
+
+const request = computed(() => {
+	const { workflowIds } = graph.value
+		? toOperationRequest(graph.value, selection.selected.value)
+		: { workflowIds: [] };
+	return {
+		workflowIds,
+		confirmDestructiveChanges: touchesDestructiveChange(blockers.value, selection.selected.value),
+	};
+});
+const hasSelectedBlocked = computed(() =>
+	[...selection.selected.value].some((key) => blockers.value.blocked.has(key)),
+);
+const canSubmit = computed(
+	() =>
+		state.value === 'ready' &&
+		!refreshing.value &&
+		!operation.isBusy.value &&
+		!hasSelectedBlocked.value &&
+		request.value.workflowIds.length > 0 &&
+		(props.direction === 'promote' || !!check.value),
+);
+const submitLabel = computed(() => {
+	if (props.direction === 'apply' && request.value.confirmDestructiveChanges) {
+		return i18n.baseText('promotions.bindings.applyDataTableChanges');
+	}
+	return i18n.baseText(`promotions.preview.submit.${props.direction}`, {
+		adjustToNumber: includedChanges.value,
+		interpolate: { count: String(includedChanges.value) },
+	});
+});
 
 const tabs = computed(() => [
 	{
@@ -174,11 +214,27 @@ const treeResizer = useResizablePanel({
 						size="small"
 						icon="refresh-cw"
 						:loading="refreshing"
+						:disabled="operation.isBusy.value"
 						data-test-id="promotion-preview-refresh"
 						@click="refresh"
 					>
 						{{ i18n.baseText('promotions.preview.refresh') }}
 					</N8nButton>
+					<N8nTooltip
+						:disabled="!hasSelectedBlocked"
+						:content="i18n.baseText('promotions.preview.submit.blocked')"
+					>
+						<N8nButton
+							:variant="request.confirmDestructiveChanges ? 'destructive' : 'brand'"
+							size="small"
+							:disabled="!canSubmit"
+							:loading="operation.isRunning.value"
+							data-test-id="promotion-preview-submit"
+							@click="operation.submit(request)"
+						>
+							{{ submitLabel }}
+						</N8nButton>
+					</N8nTooltip>
 				</div>
 			</div>
 		</header>
@@ -243,7 +299,7 @@ const treeResizer = useResizablePanel({
 					:total-changes="totalChanges"
 					:inspected-key="inspectedKey"
 					:disabled="blockers.blocked"
-					:locked="false"
+					:locked="operation.isBusy.value"
 					@toggle="selection.toggle"
 					@toggle-container="selection.toggleAllInside"
 					@select-all="selection.selectAll"
@@ -252,6 +308,29 @@ const treeResizer = useResizablePanel({
 				/>
 			</N8nResizeWrapper>
 			<section :class="$style.cards">
+				<N8nCallout
+					v-if="operation.error.value"
+					theme="danger"
+					data-test-id="promotion-preview-operation-error"
+				>
+					<N8nText bold>{{ i18n.baseText(`promotions.preview.error.${direction}`) }}</N8nText>
+					{{ operation.error.value.message }}
+					{{
+						i18n.baseText(
+							operation.error.value.uncertain
+								? 'promotions.preview.error.uncertain'
+								: 'promotions.preview.error.nothingChanged',
+						)
+					}}
+				</N8nCallout>
+				<N8nCallout
+					v-if="operation.notice.value"
+					theme="warning"
+					slim
+					data-test-id="promotion-preview-operation-notice"
+				>
+					{{ i18n.baseText(`promotions.preview.notice.${operation.notice.value}`) }}
+				</N8nCallout>
 				<N8nCallout v-if="refreshFailed" theme="warning" slim>
 					{{ i18n.baseText('promotions.preview.refreshFailed') }}
 				</N8nCallout>

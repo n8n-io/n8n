@@ -1,3 +1,5 @@
+import type { ApplyCheckResult } from '@n8n/api-types';
+import { ResponseError } from '@n8n/rest-api-client';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { waitFor, within } from '@testing-library/vue';
@@ -5,25 +7,42 @@ import { createMemoryHistory, createRouter } from 'vue-router';
 
 import { createComponentRenderer } from '@/__tests__/render';
 import { waitAllPromises } from '@/__tests__/utils';
-import { VIEWS } from '@/app/constants';
+import { MODAL_CONFIRM, VIEWS } from '@/app/constants';
 
-import { billingPreview } from '../__tests__/preview.fixtures';
+import { applied, destructiveChange, variable } from '../__tests__/bindings.fixtures';
+import { billingPreview, COMMIT_SHA } from '../__tests__/preview.fixtures';
 import { invalidateInstancePromotionConnection } from '../composables/useInstancePromotionConnection';
 import * as api from '../promotions.api';
+import { PROMOTION_PREVIEW_VIEWS } from '../promotions.constants';
 import * as settingsApi from '../promotionsSettings.api';
 import PromotionPreviewView from './PromotionPreviewView.vue';
+
+const { confirm, showMessage } = vi.hoisted(() => ({ confirm: vi.fn(), showMessage: vi.fn() }));
 
 vi.mock('../promotions.api');
 vi.mock('../promotionsSettings.api');
 // The projects store loads the project of the route on its own.
 vi.mock('@/features/collaboration/projects/projects.api');
+vi.mock('@/app/composables/useMessage', () => ({ useMessage: () => ({ confirm }) }));
+vi.mock('@n8n/composables/useToast', () => ({
+	useToast: () => ({ showMessage, showError: vi.fn() }),
+}));
 
 const stub = { template: '<div />' };
 const router = createRouter({
 	history: createMemoryHistory(),
 	routes: [
 		{ path: '/projects/:projectId/workflows', name: VIEWS.PROJECTS_WORKFLOWS, component: stub },
-		{ path: '/projects/:projectId/promotions/:direction', component: stub },
+		{
+			path: '/projects/:projectId/promotions/promote',
+			name: PROMOTION_PREVIEW_VIEWS.promote,
+			component: stub,
+		},
+		{
+			path: '/projects/:projectId/promotions/apply',
+			name: PROMOTION_PREVIEW_VIEWS.apply,
+			component: stub,
+		},
 	],
 });
 const renderComponent = createComponentRenderer(PromotionPreviewView, {
@@ -38,7 +57,10 @@ const environment = (direction: 'promote' | 'apply') =>
 		remote: { schemaVersion: 1, remoteUrl: 'git@github.com:acme/workflows.git' },
 	}) as unknown as settingsApi.PromotionEnvironmentSummary;
 
-async function render(path = '/projects/p1/promotions/promote', direction = 'promote' as const) {
+async function render(
+	path = '/projects/p1/promotions/promote',
+	direction: 'promote' | 'apply' = 'promote',
+) {
 	await router.push(path);
 	const result = renderComponent({
 		pinia: createTestingPinia(),
@@ -46,6 +68,34 @@ async function render(path = '/projects/p1/promotions/promote', direction = 'pro
 	});
 	await waitAllPromises();
 	return result;
+}
+
+const consumers = (...ids: string[]) => [
+	{ project: { id: 'p1', name: 'Billing' }, workflows: ids.map((id) => ({ id, name: id })) },
+];
+
+const check = (preflight: Partial<ApplyCheckResult['preflight']> = {}): ApplyCheckResult => ({
+	connectionId: 'connection-1',
+	configId: 'config-1',
+	git: { branchName: 'main', commitSha: COMMIT_SHA },
+	preflight: {
+		missingProjects: [],
+		missingBindings: [],
+		accessRequirements: [],
+		conflicts: [],
+		warnings: [],
+		...preflight,
+	},
+	movedWorkflows: [],
+});
+
+const expectedSource = { configId: 'config-1', branchName: 'main', commitSha: COMMIT_SHA };
+
+async function renderApply() {
+	vi.mocked(settingsApi.fetchPromotionConnections).mockResolvedValue([
+		connection({ apply: { id: 'config-1' } }),
+	]);
+	return await render('/projects/p1/promotions/apply', 'apply');
 }
 
 const treeRow = (getAllByTestId: (id: string) => HTMLElement[], key: string) => {
@@ -64,6 +114,8 @@ describe('PromotionPreviewView', () => {
 		vi.mocked(api.getPromotionPreview).mockResolvedValue(billingPreview());
 		vi.mocked(api.getPromotionResourceDetails).mockReset();
 		vi.mocked(api.getPromotionResourceDetails).mockResolvedValue({ details: [], missingKeys: [] });
+		vi.mocked(api.getApplyBlockers).mockResolvedValue(check());
+		confirm.mockResolvedValue(MODAL_CONFIRM);
 	});
 
 	it('should keep the selection while the user inspects cards', async () => {
@@ -164,5 +216,117 @@ describe('PromotionPreviewView', () => {
 
 		// "Nothing to promote" could be out of date, so the page asks for a retry.
 		expect(getByTestId('promotion-preview-error')).toHaveTextContent("Couldn't load the changes");
+	});
+
+	it('should promote the selection to a branch that has no commit yet, then go back to the project', async () => {
+		vi.mocked(api.getPromotionPreview).mockResolvedValue(billingPreview({ commitSha: null }));
+		vi.mocked(api.promoteProjectSelection).mockResolvedValue({
+			git: { branchName: 'promotion/p1', commitSha: COMMIT_SHA },
+		} as Awaited<ReturnType<typeof api.promoteProjectSelection>>);
+
+		const { getByTestId } = await render();
+		await userEvent.click(getByTestId('promotion-preview-submit'));
+
+		expect(api.promoteProjectSelection).toHaveBeenCalledWith(expect.anything(), 'p1', {
+			workflowIds: ['w1', 'w2', 'w3', 'w4'],
+		});
+		expect(showMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }));
+		expect(router.currentRoute.value.name).toBe(VIEWS.PROJECTS_WORKFLOWS);
+	});
+
+	it('should apply only the workflows without blockers, once, at the commit of the check', async () => {
+		// "Weekly KPI report" needs a variable that this instance does not have.
+		vi.mocked(api.getApplyBlockers).mockResolvedValue(
+			check({ missingBindings: [{ ...variable, name: 'API_URL', consumers: consumers('w3') }] }),
+		);
+		let answer: (value: string) => void = () => {};
+		confirm.mockReturnValue(new Promise((resolve) => (answer = resolve)));
+		vi.mocked(settingsApi.applyProjectSelection).mockResolvedValue(applied);
+
+		const { getAllByTestId, getByTestId } = await renderApply();
+		const blocked = treeRow(getAllByTestId, 'workflow:w3').getByRole('checkbox');
+		expect(blocked).not.toBeChecked();
+		expect(blocked).toBeDisabled();
+
+		await userEvent.click(getByTestId('promotion-preview-submit'));
+		await userEvent.click(getByTestId('promotion-preview-submit'));
+		answer(MODAL_CONFIRM);
+		await waitAllPromises();
+
+		expect(confirm).toHaveBeenCalledTimes(1);
+		expect(settingsApi.applyProjectSelection).toHaveBeenCalledTimes(1);
+		expect(settingsApi.applyProjectSelection).toHaveBeenCalledWith(expect.anything(), 'p1', {
+			workflowIds: ['w1', 'w2', 'w4'],
+			expectedSource,
+		});
+		expect(router.currentRoute.value.name).toBe(VIEWS.PROJECTS_WORKFLOWS);
+	});
+
+	it('should confirm a data table change only when the selection imports it, and keep the selection when the branch moves', async () => {
+		// Both invoice workflows include the "Invoices" table. The apply removes a column.
+		vi.mocked(api.getApplyBlockers).mockResolvedValue(
+			check({ conflicts: [{ ...destructiveChange, id: 't1', consumers: consumers('w1', 'w2') }] }),
+		);
+		const { connectionId, configId, git } = check();
+		vi.mocked(settingsApi.applyProjectSelection).mockResolvedValue({
+			connectionId,
+			configId,
+			git,
+			status: 'source-changed',
+		});
+		vi.mocked(settingsApi.continueApplyProjectSelection).mockResolvedValue(applied);
+
+		const { getAllByTestId, getByTestId } = await renderApply();
+		const submit = getByTestId('promotion-preview-submit');
+		expect(submit).toHaveTextContent('Apply data table changes');
+
+		await userEvent.click(treeRow(getAllByTestId, 'workflow:w1').getByRole('checkbox'));
+		await userEvent.click(treeRow(getAllByTestId, 'workflow:w2').getByRole('checkbox'));
+		expect(submit).toHaveTextContent(/^Apply \d+ changes?$/);
+		await userEvent.click(submit);
+
+		expect(settingsApi.applyProjectSelection).toHaveBeenCalledWith(expect.anything(), 'p1', {
+			workflowIds: ['w3', 'w4'],
+			expectedSource,
+		});
+		expect(getByTestId('promotion-preview-operation-notice')).toHaveTextContent(
+			'The branch changed',
+		);
+		expect(api.getPromotionPreview).toHaveBeenCalledTimes(2);
+		expect(treeRow(getAllByTestId, 'workflow:w1').getByRole('checkbox')).not.toBeChecked();
+
+		await userEvent.click(treeRow(getAllByTestId, 'workflow:w1').getByRole('checkbox'));
+		await userEvent.click(submit);
+
+		expect(settingsApi.continueApplyProjectSelection).toHaveBeenCalledWith(
+			expect.anything(),
+			'p1',
+			{
+				workflowIds: ['w1', 'w3', 'w4'],
+				expectedSource,
+				confirmDestructiveChanges: true,
+			},
+		);
+	});
+
+	it('should let users retry a rejected apply, and reload the preview first when the result is unknown', async () => {
+		vi.mocked(settingsApi.applyProjectSelection)
+			.mockRejectedValueOnce(new ResponseError('Import blocked', { httpStatusCode: 409 }))
+			.mockRejectedValueOnce(new ResponseError("Can't connect to n8n."));
+
+		const { getByTestId } = await renderApply();
+		await userEvent.click(getByTestId('promotion-preview-submit'));
+
+		expect(getByTestId('promotion-preview-operation-error')).toHaveTextContent(
+			'Import blocked Nothing was changed.',
+		);
+		expect(api.getPromotionPreview).toHaveBeenCalledTimes(1);
+
+		await userEvent.click(getByTestId('promotion-preview-submit'));
+
+		expect(getByTestId('promotion-preview-operation-error')).toHaveTextContent(
+			'the page was refreshed',
+		);
+		expect(api.getPromotionPreview).toHaveBeenCalledTimes(2);
 	});
 });
