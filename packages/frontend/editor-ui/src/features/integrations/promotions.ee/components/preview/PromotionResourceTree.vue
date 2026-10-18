@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import type { PromotionResource } from '@n8n/api-types';
-import { N8nCheckbox, N8nIcon, N8nText } from '@n8n/design-system';
+import type { PromotionDirection, PromotionResource } from '@n8n/api-types';
+import { N8nCheckbox, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 
 import { usePromotionPreviewLabels } from '../../composables/usePromotionPreviewLabels';
+import type { BlockerIndex } from '../../promotionOperation';
 import {
 	availableKeys,
 	containerCheckState,
@@ -29,6 +30,8 @@ const props = defineProps<{
 	disabled: DisabledKeys;
 	/** True while the selection cannot change. */
 	locked: boolean;
+	direction: PromotionDirection;
+	blockers: BlockerIndex;
 }>();
 
 const emit = defineEmits<{
@@ -37,15 +40,38 @@ const emit = defineEmits<{
 	selectAll: [];
 	clear: [];
 	inspect: [key: ResourceKey];
+	showBlockers: [];
 }>();
 
 const i18n = useI18n();
-const { changeLabel } = usePromotionPreviewLabels();
+const { changeLabel, blockerMessage, warningNote } = usePromotionPreviewLabels();
+
+// A workflow shows the blockers that stop it. A dependency shows the blockers about itself.
+function markers(resource: PromotionResource) {
+	const blockers =
+		resource.type === 'workflow'
+			? props.blockers.byWorkflow.get(resource.key)
+			: props.blockers.byResource.get(resource.key);
+	const blocked = blockerMessage(resource, blockers);
+	const note = warningNote(resource, blockers);
+	// A variable warning replaces the change label, as the variable itself does not change.
+	const meta =
+		note && resource.type !== 'workflow'
+			? i18n.baseText('promotions.preview.marker.warning')
+			: changeLabel(resource, props.direction);
+	return { blocked, note, meta: blocked ? undefined : meta };
+}
 
 const rows = computed(() =>
 	flattenPreviewTree(props.tree).map(({ item, indent }) => {
 		const resource = props.graph.resources.get(item.id);
-		return { item, indent, resource, check: resource ? checkbox(resource) : undefined };
+		return {
+			item,
+			indent,
+			resource,
+			check: resource ? checkbox(resource) : undefined,
+			marker: resource ? markers(resource) : undefined,
+		};
 	}),
 );
 
@@ -119,15 +145,19 @@ function onToggle(resource: PromotionResource) {
 		</div>
 
 		<ul :class="$style.list" role="list">
-			<template v-for="{ item, indent, resource, check } in rows" :key="item.id">
+			<template v-for="{ item, indent, resource, check, marker } in rows" :key="item.id">
 				<li v-if="item.kind === 'section'" :class="$style.heading">
 					<N8nText step="2xs" bold color="text-base">
 						{{ item.label }}
 					</N8nText>
 				</li>
 				<li
-					v-else-if="resource && check"
-					:class="[$style.row, $style.resource, { [$style.inspected]: inspectedKey === item.id }]"
+					v-else-if="resource && check && marker"
+					:class="[
+						$style.row,
+						$style.resource,
+						{ [$style.inspected]: inspectedKey === item.id, [$style.blocked]: marker.blocked },
+					]"
 					data-test-id="promotion-preview-tree-row"
 					:data-resource-key="item.id"
 				>
@@ -149,11 +179,33 @@ function onToggle(resource: PromotionResource) {
 						@click="emit('inspect', item.id)"
 					>
 						<N8nIcon v-if="item.icon" :icon="item.icon" size="small" :class="$style.icon" />
-						<N8nText step="xs" color="text-dark" :class="$style.label">{{ item.label }}</N8nText>
-						<N8nText step="2xs" color="text-light" :class="$style.meta">
-							{{ changeLabel(resource) }}
+						<span :class="$style.text">
+							<N8nText step="xs" color="text-dark" :class="$style.label">{{ item.label }}</N8nText>
+							<N8nText
+								v-if="marker.note"
+								step="2xs"
+								color="text-light"
+								:class="$style.label"
+								data-test-id="promotion-preview-tree-note"
+							>
+								{{ marker.note }}
+							</N8nText>
+						</span>
+						<N8nText v-if="marker.meta" step="2xs" color="text-light" :class="$style.meta">
+							{{ marker.meta }}
 						</N8nText>
 					</button>
+					<N8nTooltip v-if="marker.blocked" :content="marker.blocked" placement="right">
+						<button
+							type="button"
+							:class="$style.marker"
+							:aria-label="marker.blocked"
+							data-test-id="promotion-preview-tree-blocker"
+							@click="emit('showBlockers')"
+						>
+							<N8nIcon icon="circle-alert" size="small" />
+						</button>
+					</N8nTooltip>
 				</li>
 			</template>
 		</ul>
@@ -191,6 +243,24 @@ function onToggle(resource: PromotionResource) {
 	background-color: var(--background--subtle);
 }
 
+.resource.blocked {
+	background-color: var(--background--warning);
+}
+
+.marker {
+	display: flex;
+	flex-shrink: 0;
+	padding: 0;
+	border: none;
+	background: none;
+	color: var(--icon-color--warning);
+	cursor: pointer;
+
+	&:focus-visible {
+		outline: var(--focus--border-width) solid var(--focus--outline-color);
+	}
+}
+
 .heading {
 	display: flex;
 	align-items: center;
@@ -225,6 +295,13 @@ function onToggle(resource: PromotionResource) {
 .icon {
 	flex-shrink: 0;
 	color: var(--icon-color);
+}
+
+.text {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+	padding: var(--spacing--4xs) 0;
 }
 
 .label {

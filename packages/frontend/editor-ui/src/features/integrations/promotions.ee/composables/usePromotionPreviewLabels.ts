@@ -1,14 +1,25 @@
-import type { PromotionResource } from '@n8n/api-types';
+import type { PromotionDirection, PromotionResource } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 
-/** The change label that the tree rows and the change cards share, so both say the same. */
+import { isBlocking, type Blocker } from '../promotionOperation';
+
+/** Apply keeps these resources as they are on the instance. It does not create them. */
+const KEPT_BY_APPLY = new Set<PromotionResource['type']>(['credential', 'variable']);
+
+/** The labels that the tree rows and the change cards share, so both say the same. */
 export function usePromotionPreviewLabels() {
 	const i18n = useI18n();
 
-	function changeLabel(resource: PromotionResource): string | undefined {
+	function changeLabel(
+		resource: PromotionResource,
+		direction: PromotionDirection,
+	): string | undefined {
 		switch (resource.change) {
 			case 'added':
-				return i18n.baseText('promotions.preview.change.added');
+				// The branch has it and this instance does not. Apply asks for it instead.
+				return direction === 'apply' && KEPT_BY_APPLY.has(resource.type)
+					? i18n.baseText('promotions.preview.side.notOnInstance')
+					: i18n.baseText('promotions.preview.change.added');
 			case 'archived':
 				return i18n.baseText('promotions.preview.change.archived');
 			case 'deleted':
@@ -26,5 +37,52 @@ export function usePromotionPreviewLabels() {
 		}
 	}
 
-	return { changeLabel };
+	/** Why the resource stops Apply. `undefined` when it does not. */
+	function blockerMessage(
+		resource: PromotionResource,
+		blockers: readonly Blocker[] = [],
+	): string | undefined {
+		const blocking = blockers.filter(isBlocking);
+		if (blocking.length === 0) return undefined;
+		if (resource.type === 'workflow') {
+			return i18n.baseText('promotions.preview.marker.workflow', {
+				adjustToNumber: blocking.length,
+				interpolate: { count: String(blocking.length) },
+			});
+		}
+		const [first] = blocking;
+		if (first.kind === 'moved') return i18n.baseText('promotions.preview.folder.moveConflict');
+		const count = new Set(blocking.flatMap(({ workflowKeys }) => workflowKeys)).size;
+		const options = { adjustToNumber: count, interpolate: { count: String(count) } };
+		if (first.kind === 'access') return i18n.baseText('promotions.preview.marker.access', options);
+		if (first.kind === 'missing' && resource.type === 'credential') {
+			return i18n.baseText('promotions.preview.marker.missingCredential', options);
+		}
+		if (first.kind === 'missing' && resource.type === 'variable') {
+			return i18n.baseText('promotions.preview.marker.missingVariable', options);
+		}
+		return i18n.baseText('promotions.preview.marker.conflict', options);
+	}
+
+	/** A short note under the name for warnings, which do not stop Apply. */
+	function warningNote(
+		resource: PromotionResource,
+		blockers: readonly Blocker[] = [],
+	): string | undefined {
+		const warnings = blockers.filter(({ kind }) => kind === 'warning');
+		if (warnings.length === 0) return undefined;
+		if (resource.type === 'workflow') {
+			return i18n.baseText('promotions.preview.marker.warnings', {
+				adjustToNumber: warnings.length,
+				interpolate: { count: String(warnings.length) },
+			});
+		}
+		const count = new Set(warnings.flatMap(({ workflowKeys }) => workflowKeys)).size;
+		return i18n.baseText('promotions.preview.marker.usedIn', {
+			adjustToNumber: count,
+			interpolate: { count: String(count) },
+		});
+	}
+
+	return { changeLabel, blockerMessage, warningNote };
 }
