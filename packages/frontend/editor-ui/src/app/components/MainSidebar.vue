@@ -92,6 +92,13 @@ const isResourceCenterEnabled = computed(() => resourceCenterStore.isFeatureEnab
 
 const mainMenuItems = computed<IMenuItem[]>(() => [
 	{
+		id: 'self-healing-playground',
+		icon: 'flask-conical',
+		label: i18n.baseText('selfHealingPlayground.title'),
+		position: 'bottom',
+		route: { to: '/self-healing-playground' },
+	},
+	{
 		id: 'cloud-admin',
 		position: 'bottom',
 		label: i18n.baseText('mainSidebar.cloudConsole'),
