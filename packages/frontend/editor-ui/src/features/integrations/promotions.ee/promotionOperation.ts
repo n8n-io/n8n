@@ -1,6 +1,8 @@
 import type {
 	ApplyCheckResult,
+	PromotionBindingConflict,
 	PromotionBindingConsumer,
+	PromotionResource,
 	PromotionVariableScope,
 } from '@n8n/api-types';
 
@@ -50,6 +52,40 @@ function variableKey(name: string, scope: PromotionVariableScope) {
 
 const consumerKeys = (consumers: PromotionBindingConsumer[]) =>
 	consumers.flatMap(({ workflows }) => workflows.map(({ id }) => workflowKey(id)));
+
+/**
+ * Keeps the blockers of workflows that the preview lists. The check also covers unchanged
+ * workflows, which users cannot select, so their blockers stop nothing on the page.
+ */
+export function scopeCheck(check: ApplyCheckResult, graph: SelectionGraph): ApplyCheckResult {
+	const listed = (id: string) => graph.resources.has(workflowKey(id));
+	const scope = <Entry extends { consumers: PromotionBindingConsumer[] }>(entries: Entry[]) =>
+		entries.flatMap((entry) => {
+			const consumers = entry.consumers.flatMap((consumer) => {
+				const workflows = consumer.workflows.filter(({ id }) => listed(id));
+				return workflows.length > 0 ? [{ ...consumer, workflows }] : [];
+			});
+			return consumers.length > 0 ? [{ ...entry, consumers }] : [];
+		});
+	const { preflight } = check;
+	return {
+		...check,
+		preflight: {
+			...preflight,
+			missingBindings: scope(preflight.missingBindings),
+			accessRequirements: scope(preflight.accessRequirements),
+			conflicts: preflight.conflicts.flatMap((conflict): PromotionBindingConflict[] => {
+				if ('consumers' in conflict) return scope([conflict]);
+				if (conflict.code === 'project-not-team') {
+					return conflict.workflows.some(({ id }) => listed(id)) ? [conflict] : [];
+				}
+				return [conflict];
+			}),
+			warnings: scope(preflight.warnings),
+		},
+		movedWorkflows: check.movedWorkflows.filter(({ id }) => listed(id)),
+	};
+}
 
 export function listBlockers({ preflight, movedWorkflows }: ApplyCheckResult): Blocker[] {
 	const blockers: Blocker[] = [];
@@ -149,10 +185,23 @@ export function indexBlockers(blockers: Blocker[]): BlockerIndex {
  * Folders that the branch holds under another parent. Apply cannot move a folder that exists on
  * this instance, so the import stops for every selection.
  */
-export function folderMoveConflicts(graph: SelectionGraph): ResourceKey[] {
-	return [...graph.resources.values()]
-		.filter((resource) => resource.type === 'folder' && resource.previousParentKey !== undefined)
-		.map(({ key }) => key);
+export function folderMoveConflicts(graph: SelectionGraph): PromotionResource[] {
+	return [...graph.resources.values()].filter(
+		(resource) => resource.type === 'folder' && resource.previousParentKey !== undefined,
+	);
+}
+
+/** The blockers that stop Apply until users resolve them. Folder conflicts come from the preview. */
+export function unresolvedBlockerCount({ preflight, movedWorkflows }: ApplyCheckResult) {
+	const hardConflicts = preflight.conflicts.filter(
+		({ code }) => code !== 'destructive-change' && code !== 'project-deletion',
+	);
+	return (
+		preflight.missingBindings.length +
+		preflight.accessRequirements.length +
+		hardConflicts.length +
+		movedWorkflows.length
+	);
 }
 
 /** True when the apply of these workflows removes data table values. */
