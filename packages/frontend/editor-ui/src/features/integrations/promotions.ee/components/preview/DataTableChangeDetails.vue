@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import type { PromotionDataTableChange } from '@n8n/api-types';
 import { N8nIcon, N8nText } from '@n8n/design-system';
-import { useI18n } from '@n8n/i18n';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import { I18nT } from 'vue-i18n';
 
 import type { DataTableDescription } from '../../promotionPreview.content';
 
@@ -9,30 +10,38 @@ defineProps<{ description: DataTableDescription }>();
 
 const i18n = useI18n();
 
-function changeText(change: PromotionDataTableChange): string {
+type ChangeText = { keypath: BaseTextKey; names: Record<string, string> };
+
+// The names fill slots, so they can stand out from the sentence.
+function changeText(change: PromotionDataTableChange): ChangeText {
 	switch (change.kind) {
 		case 'add-column':
-			return i18n.baseText('promotions.preview.dataTable.addColumn', {
-				interpolate: { column: change.column, type: change.type },
-			});
+			return {
+				keypath: 'promotions.preview.dataTable.addColumn',
+				names: { column: change.column, type: change.type },
+			};
 		case 'remove-column':
-			return i18n.baseText('promotions.preview.dataTable.removeColumn', {
-				interpolate: { column: change.column },
-			});
+			return {
+				keypath: 'promotions.preview.dataTable.removeColumn',
+				names: { column: change.column },
+			};
 		case 'change-column-type':
-			return i18n.baseText('promotions.preview.dataTable.changeColumnType', {
-				interpolate: { column: change.column, from: change.from, to: change.to },
-			});
+			return {
+				keypath: 'promotions.preview.dataTable.changeColumnType',
+				names: { column: change.column, from: change.from, to: change.to },
+			};
 		case 'rename-column':
-			return i18n.baseText('promotions.preview.dataTable.renameColumn', {
-				interpolate: { from: change.from, to: change.to },
-			});
+			return {
+				keypath: 'promotions.preview.dataTable.renameColumn',
+				names: { from: change.from, to: change.to },
+			};
 		case 'reorder-columns':
-			return i18n.baseText('promotions.preview.dataTable.reorderColumns');
+			return { keypath: 'promotions.preview.dataTable.reorderColumns', names: {} };
 		case 'rename-table':
-			return i18n.baseText('promotions.preview.dataTable.renameTable', {
-				interpolate: { from: change.from, to: change.to },
-			});
+			return {
+				keypath: 'promotions.preview.dataTable.renameTable',
+				names: { from: change.from, to: change.to },
+			};
 	}
 }
 </script>
@@ -51,7 +60,13 @@ function changeText(change: PromotionDataTableChange): string {
 					size="small"
 					:class="change.destructive ? $style.destructive : $style.marker"
 				/>
-				<N8nText step="xs">{{ changeText(change) }}</N8nText>
+				<N8nText step="xs">
+					<I18nT :keypath="changeText(change).keypath" scope="global">
+						<template v-for="(name, slot) in changeText(change).names" :key="slot" #[slot]>
+							<span :class="$style.name">{{ name }}</span>
+						</template>
+					</I18nT>
+				</N8nText>
 			</li>
 		</ul>
 
@@ -93,6 +108,10 @@ function changeText(change: PromotionDataTableChange): string {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--3xs);
+}
+
+.name {
+	font-weight: var(--font-weight--bold);
 }
 
 .marker {
