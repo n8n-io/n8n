@@ -22,7 +22,6 @@ export interface TaskTimingRecord {
 	slotWaitMs?: number;
 	t_acquire?: number;
 	t_create?: number;
-	t_channel?: number;
 	createTimings?: unknown;
 	t_build?: number;
 	t_send?: number;
@@ -39,6 +38,9 @@ export interface TaskTimingRecord {
 	bin_in_count?: number;
 	bin_out_count?: number;
 	rpc_count?: number;
+	/** Sum of the RPC result requests of the task, in ms. */
+	t_rpc_post?: number;
+	rpc_post_count?: number;
 	output_bytes?: number;
 	binSentUnused?: boolean;
 	sandboxOutOutsideBinary?: number;
@@ -53,7 +55,6 @@ export interface LeaseRecord {
 	sandboxId: string;
 	workflowId?: string;
 	createMs?: number;
-	channelMs?: number;
 	createdAt: number;
 	releasedAt: number;
 	holdMs: number;
@@ -90,6 +91,15 @@ export class CodeSandboxTimings {
 
 	event(name: string, data: Record<string, unknown>) {
 		this.write({ type: 'code_sandbox_event', name, ts: Date.now(), ...data });
+	}
+
+	/** Writes the buffered records to the file. */
+	async flush() {
+		const file = this.file;
+		if (!file) return;
+		await new Promise<void>((resolve) =>
+			file.writableNeedDrain ? file.once('drain', resolve) : resolve(),
+		);
 	}
 
 	private write(record: object) {

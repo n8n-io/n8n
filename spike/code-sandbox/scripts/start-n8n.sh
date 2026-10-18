@@ -24,8 +24,14 @@ export N8N_DIAGNOSTICS_ENABLED=false
 export N8N_PERSONALIZATION_ENABLED=false
 export N8N_LOG_LEVEL="${N8N_LOG_LEVEL:-info}"
 export N8N_PROXY_HOPS=0
-# Baseline: task runners in external mode need a launcher. Internal mode is
-# the fallback for local runs.
+# Baseline: task runners. External mode (the production mode) needs the runners
+# container: start it with task-runners.sh. Internal mode is the fallback for
+# local runs.
 export N8N_RUNNERS_MODE="${N8N_RUNNERS_MODE:-internal}"
+if [[ "$N8N_RUNNERS_MODE" == "external" ]]; then
+	export N8N_RUNNERS_AUTH_TOKEN="${N8N_RUNNERS_AUTH_TOKEN:-spike-runners-token}"
+	# The runners container reaches the broker through the Docker bridge.
+	export N8N_RUNNERS_BROKER_LISTEN_ADDRESS="${N8N_RUNNERS_BROKER_LISTEN_ADDRESS:-0.0.0.0}"
+fi
 
 exec packages/cli/bin/n8n start

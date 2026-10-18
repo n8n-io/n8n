@@ -49,8 +49,8 @@ const analyze = (file) =>
 const fmt = (s) => (s?.n ? `${s.p50}/${s.p95}` : '-');
 
 console.log('\n## Overhead per task (ms, p50/p95)\n');
-console.log('| run | group | n | total | overhead | create | channel | send | handoff | accept→done | run |');
-console.log('|---|---|---|---|---|---|---|---|---|---|---|');
+console.log('| run | group | n | total | overhead | create | channel | send | handoff | accept→done | run | rpc post/call |');
+console.log('|---|---|---|---|---|---|---|---|---|---|---|---|');
 const timingDirs = [];
 for (const d of readdirSync(dir)) if (d.startsWith('latency-')) timingDirs.push(d);
 if (existsSync(join(dir, 'benchmark')))
@@ -62,7 +62,7 @@ for (const d of timingDirs.sort()) {
 	addOutcomes(out.outcomes);
 	for (const [key, r] of Object.entries(out.tasks)) {
 		console.log(
-			`| ${d} | ${key} | ${r.t_total.n} | ${fmt(r.t_total)} | ${fmt(r.overhead)} | ${fmt(r.t_create)} | ${fmt(r.t_channel)} | ${fmt(r.t_send)} | ${fmt(r.daemon_handoff)} | ${fmt(r.t_accept_to_done)} | ${fmt(r.t_run)} |`,
+			`| ${d} | ${key} | ${r.t_total.n} | ${fmt(r.t_total)} | ${fmt(r.overhead)} | ${fmt(r.t_create)} | ${fmt(r.t_channel)} | ${fmt(r.t_send)} | ${fmt(r.daemon_handoff)} | ${fmt(r.t_accept_to_done)} | ${fmt(r.t_run)} | ${fmt(r.rpc_post_per_call)} |`,
 		);
 	}
 }

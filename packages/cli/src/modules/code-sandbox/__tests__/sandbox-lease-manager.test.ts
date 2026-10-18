@@ -5,7 +5,6 @@ import { mock } from 'vitest-mock-extended';
 import type { CodeSandboxConfig } from '../code-sandbox.config';
 import type { CodeSandboxTimings, LeaseRecord } from '../code-sandbox-timings';
 import { SandboxLeaseManager } from '../sandbox-lease-manager';
-import type { ChannelHandlers } from '../task-api-client';
 
 type Scope = 'node' | 'execution' | 'workflow';
 
@@ -13,8 +12,6 @@ class FakeClient {
 	created: string[] = [];
 
 	deleted: string[] = [];
-
-	channels = new Map<string, ChannelHandlers>();
 
 	failCreate = false;
 
@@ -28,11 +25,6 @@ class FakeClient {
 		const id = `00000000-0000-4000-8000-${String(++this.n).padStart(12, '0')}`;
 		this.created.push(id);
 		return { id, runtime: 'n8n-js', runtimeVersion: '1', slots: 1, state: 'ready' };
-	}
-
-	async openChannel(id: string, handlers: ChannelHandlers) {
-		this.channels.set(id, handlers);
-		return { ws: { readyState: 1, OPEN: 1, ping() {}, close() {} }, runtimeVersion: '1' };
 	}
 
 	async deleteSandbox(id: string) {
@@ -160,13 +152,23 @@ describe('SandboxLeaseManager', () => {
 		await manager.shutdown();
 	});
 
-	it('breaks a lease when its channel closes and fails its tasks', async () => {
+	it('makes a lease ready after the create, without a channel', async () => {
+		const { manager, client } = setup('execution');
+		const { lease, leaseHit } = await manager.acquire('e:1', '1');
+		expect(leaseHit).toBe(false);
+		expect(lease.state).toBe('ready');
+		expect(client.created).toEqual([lease.sandboxId]);
+		manager.onTaskEnd(lease);
+		await manager.shutdown();
+	});
+
+	it('breaks a lease and fails its tasks', async () => {
 		const { manager, client, leaseRecords } = setup('execution');
 		const { lease } = await manager.acquire('e:1', '1');
 		const failed: string[] = [];
 		lease.onBroken.add((reason) => failed.push(reason));
-		client.channels.get(lease.sandboxId)!.onClose('1006 gone');
-		expect(failed).toHaveLength(1);
+		manager.markBroken(lease, 'infra error');
+		expect(failed).toEqual(['infra error']);
 		expect(leaseRecords[0].releaseReason).toBe('broken');
 		expect(client.deleted).toEqual([lease.sandboxId]);
 	});

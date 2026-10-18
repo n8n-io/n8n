@@ -57,6 +57,8 @@ function prettyBytes(n: number): string {
 export interface HelperState {
 	binaryReads: number;
 	rpcCount: number;
+	/** Time spent in RPC calls (worker → n8n → worker), in ms. */
+	rpcMs: number;
 	outputBinaries: Record<string, OutputBinaryInfo>;
 }
 
@@ -91,11 +93,14 @@ export function buildHelpers(opts: HelperOptions): Record<string, unknown> {
 
 	const callRpc = async (name: string, params: unknown[]) => {
 		state.rpcCount++;
+		const t0 = performance.now();
 		try {
 			const result = await rpc(name, params);
 			return isSerializedBuffer(result) ? Buffer.from(result.data) : result;
 		} catch (e) {
 			throw e instanceof Error ? e : errorFromRpc(e);
+		} finally {
+			state.rpcMs += performance.now() - t0;
 		}
 	};
 
