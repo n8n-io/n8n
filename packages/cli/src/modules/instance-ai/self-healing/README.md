@@ -47,7 +47,8 @@ The execution must remain saved and readable. Investigation inputs contain no ex
 The call returns `{ kind: 'investigation', investigationId }` or
 `{ kind: 'result', resultId }` for an existing open result.
 A workflow can have one unfinished investigation or open result.
-This check spans configurations within the workflow's current project.
+An unfinished investigation blocks the workflow across projects and configurations.
+An open result blocks investigations only in the workflow's current project.
 Repeated starts for the same failed execution return the original investigation, including after completion.
 Automatic failure triggers remain the caller's responsibility.
 When an access check fails, the producer pauses the configuration. Another eligible user must

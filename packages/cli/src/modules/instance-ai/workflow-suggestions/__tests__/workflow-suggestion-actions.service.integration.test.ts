@@ -43,6 +43,7 @@ import { createAdmin, createUser } from '@test-integration/db/users';
 import { initNodeTypes, setupTestServer } from '@test-integration/utils';
 
 import { createResult } from '../../self-healing/__tests__/support/result';
+import { SelfHealingConfigurationRepository } from '../../self-healing/database/self-healing-configuration.repository';
 import { WorkflowSuggestionActivity } from '../database/workflow-suggestion-activity.entity';
 import { WorkflowSuggestion } from '../database/workflow-suggestion.entity';
 import { WorkflowSuggestionRepository } from '../database/workflow-suggestion.repository';
@@ -88,8 +89,7 @@ beforeEach(() => {
 
 afterEach(async () => {
 	vi.restoreAllMocks();
-	await Container.get(DataSource).getRepository(WorkflowSuggestionActivity).clear();
-	await suggestions.createQueryBuilder().delete().execute();
+	await Container.get(SelfHealingConfigurationRepository).createQueryBuilder().delete().execute();
 });
 
 async function prepareFixture(resultKind: 'fix_ready' | 'needs_you' = 'fix_ready') {

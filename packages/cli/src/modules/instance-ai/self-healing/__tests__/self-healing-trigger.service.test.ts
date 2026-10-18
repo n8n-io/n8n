@@ -68,6 +68,16 @@ describe('SelfHealingTriggerService', () => {
 		},
 	);
 
+	it('skips the enqueuing main completion after a worker executes the workflow', async () => {
+		ctx.executedInThisProcess = false;
+
+		await service.onWorkflowExecuteAfter(ctx);
+
+		expect(ownership.getWorkflowOwningProject).not.toHaveBeenCalled();
+		expect(investigations.start).not.toHaveBeenCalled();
+		expect(publisher.publishCommand).not.toHaveBeenCalled();
+	});
+
 	it('accepts a production crash reported through the existing recovery hook', async () => {
 		ctx.runData.status = 'crashed';
 

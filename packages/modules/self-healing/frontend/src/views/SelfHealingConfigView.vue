@@ -17,7 +17,7 @@ import {
 import { useI18n } from '@n8n/i18n';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { computed, ref, watch } from 'vue';
-import { onBeforeRouteLeave, useRouter } from 'vue-router';
+import { onBeforeRouteLeave, onBeforeRouteUpdate, useRouter } from 'vue-router';
 
 import { useSelfHealingStore } from '../self-healing.store';
 
@@ -148,7 +148,7 @@ async function save() {
 	}
 }
 
-onBeforeRouteLeave(async () => {
+async function confirmDiscardChanges() {
 	if (!dirty.value) {
 		return true;
 	}
@@ -164,6 +164,18 @@ onBeforeRouteLeave(async () => {
 	);
 
 	return answer === 'confirm';
+}
+
+onBeforeRouteLeave(confirmDiscardChanges);
+onBeforeRouteUpdate(async (to, from) => {
+	if (
+		to.params.projectId !== from.params.projectId ||
+		to.params.configurationId !== from.params.configurationId
+	) {
+		return await confirmDiscardChanges();
+	}
+
+	return true;
 });
 </script>
 

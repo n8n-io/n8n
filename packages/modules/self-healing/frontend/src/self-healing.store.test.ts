@@ -49,3 +49,49 @@ it('removes a configuration from the list after the server removes it', async ()
 	await store.remove('project', 1);
 	expect(store.configurations.project).toEqual([]);
 });
+
+it.each(['save', 'setEnabled', 'remove'] as const)(
+	'ignores an older list response after %s succeeds',
+	async (action) => {
+		const store = useSelfHealingStore();
+		store.configurations.project = [configuration];
+		const pending = Promise.withResolvers<SelfHealingConfigurationDto[]>();
+		vi.mocked(api.fetchConfigurations).mockReturnValue(pending.promise);
+		vi.mocked(api.fetchConfigurationOptions).mockResolvedValue({ workflows: [], reviewers: [] });
+		const load = store.load('project');
+		const updated = { ...configuration, enabled: true, enabledById: 'actor' };
+
+		if (action === 'save') {
+			vi.mocked(api.saveConfiguration).mockResolvedValue(updated);
+			await store.save('project', updated, configuration.id);
+		} else if (action === 'setEnabled') {
+			vi.mocked(api.setConfigurationEnabled).mockResolvedValue(updated);
+			await store.setEnabled('project', configuration.id, true);
+		} else {
+			vi.mocked(api.removeConfiguration).mockResolvedValue();
+			await store.remove('project', configuration.id);
+		}
+
+		pending.resolve([configuration]);
+		await load;
+
+		expect(store.configurations.project).toEqual(action === 'remove' ? [] : [updated]);
+	},
+);
+
+it('keeps the latest list when requests finish out of order', async () => {
+	const store = useSelfHealingStore();
+	const pending = Promise.withResolvers<SelfHealingConfigurationDto[]>();
+	const updated = { ...configuration, enabled: true, enabledById: 'actor' };
+	vi.mocked(api.fetchConfigurations)
+		.mockReturnValueOnce(pending.promise)
+		.mockResolvedValueOnce([updated]);
+	vi.mocked(api.fetchConfigurationOptions).mockResolvedValue({ workflows: [], reviewers: [] });
+
+	const firstLoad = store.load('project');
+	await store.load('project');
+	pending.resolve([configuration]);
+	await firstLoad;
+
+	expect(store.configurations.project).toEqual([updated]);
+});

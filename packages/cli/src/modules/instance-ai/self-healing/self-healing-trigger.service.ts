@@ -60,6 +60,7 @@ export class SelfHealingTriggerService {
 
 	private shouldHandleFailure(ctx: WorkflowExecuteAfterContext): boolean {
 		if (!this.config.workflowSuggestionsEnabled) return false;
+		if (!ctx.executedInThisProcess) return false;
 		if (ctx.runData.status !== 'error' && ctx.runData.status !== 'crashed') return false;
 
 		// Only top-level production runs qualify. Exclude tests, retries, and child runs.

@@ -25,7 +25,7 @@ import { WorkflowService } from '@/workflows/workflow.service';
 import { createUser } from '@test-integration/db/users';
 
 import { createResult } from '../../self-healing/__tests__/support/result';
-import { WorkflowSuggestionActivity } from '../database/workflow-suggestion-activity.entity';
+import { SelfHealingConfigurationRepository } from '../../self-healing/database/self-healing-configuration.repository';
 import { WorkflowSuggestionRepository } from '../database/workflow-suggestion.repository';
 import { WorkflowSuggestionService } from '../workflow-suggestion.service';
 
@@ -41,8 +41,7 @@ beforeAll(async () => {
 });
 afterAll(async () => await testDb.terminate());
 afterEach(async () => {
-	await Container.get(DataSource).getRepository(WorkflowSuggestionActivity).clear();
-	await suggestions.createQueryBuilder().delete().execute();
+	await Container.get(SelfHealingConfigurationRepository).createQueryBuilder().delete().execute();
 });
 
 async function fixture() {

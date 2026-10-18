@@ -17,6 +17,7 @@ import { randomUUID } from 'node:crypto';
 import { createUser } from '@test-integration/db/users';
 
 import { createResult } from '../../self-healing/__tests__/support/result';
+import { SelfHealingConfigurationRepository } from '../../self-healing/database/self-healing-configuration.repository';
 import { WorkflowSuggestionActivity } from '../database/workflow-suggestion-activity.entity';
 import { WorkflowSuggestion } from '../database/workflow-suggestion.entity';
 import { WorkflowSuggestionRepository } from '../database/workflow-suggestion.repository';
@@ -74,8 +75,7 @@ beforeEach(async () => {
 });
 afterAll(async () => await testDb.terminate());
 afterEach(async () => {
-	await Container.get(DataSource).getRepository(WorkflowSuggestionActivity).clear();
-	await suggestions.createQueryBuilder().delete().execute();
+	await Container.get(SelfHealingConfigurationRepository).createQueryBuilder().delete().execute();
 });
 
 it('accepts only one concurrent pending proposal for a workflow', async () => {

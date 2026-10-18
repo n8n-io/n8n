@@ -9899,7 +9899,7 @@
 	"selfHealing.config.actions": "Actions",
 	"selfHealing.config.all": "All workflows",
 	"selfHealing.config.selected": "Select workflows",
-	"selfHealing.config.selectedCount": "{count} selected workflows",
+	"selfHealing.config.selectedCount": "Workflows selected: {count}",
 	"selfHealing.config.active": "Active",
 	"selfHealing.config.paused": "Paused",
 	"selfHealing.config.noActivity": "No activity yet",
