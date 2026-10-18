@@ -115,7 +115,7 @@ There is no public launch endpoint.
 ## Investigate again
 
 Admission uses the same Open and Closed states as Inbox. An undismissed result stays open
-when it has no suggestions or at least one pending suggestion. This includes Fix ready,
+when it has no suggestion or its suggestion is pending. This includes Fix ready,
 Needs attention, and Could not fix reports.
 
 Dismissal, discard, or outdated reconciliation permits another eligible production failure
@@ -123,7 +123,7 @@ on the same published version. Apply saves a draft. Another investigation requir
 publication and a new eligible failure. Closing a result, opening the editor, changing a
 configuration, and publishing do not start an investigation.
 
-A report without suggestions stays open until dismissed, even after a new publication.
+A report without a suggestion stays open until dismissed, even after a new publication.
 Pause, resume, and configuration edits do not clear this block. Configuration deletion removes
 its history and resets the block. Results from a previous owning project do not block the new project.
 

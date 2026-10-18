@@ -41,10 +41,8 @@ export default mergeConfig(
 			}),
 		],
 		resolve: {
-			// The same platform mapping the editor-ui dev server uses, so a test resolves
-			// `@n8n/stores/...` from source rather than from a stale `dist` — the two disagreeing is
-			// what put 1,111 specifiers on the wrong side of the src/dist line. Sibling modules are
-			// deliberately absent: nothing here should make a cross-module import resolve.
+			// Resolve shared frontend packages from source, as the editor does.
+			// Exclude sibling modules to keep the module boundary intact.
 			alias: frontendAliases(packagesDir),
 		},
 	}),
