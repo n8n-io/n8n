@@ -248,7 +248,8 @@ def main():
 		(run_dir / 'summary.txt').write_text(summary.stdout)
 
 		step('Build the report')
-		progress.update(step='Building the report')
+		# The agent does the price and judge steps after this script. The page shows them as queued until then.
+		progress.update(step='Building the report', postRun={'prices': 'queued', 'judge': 'queued'})
 		run([sys.executable, 'build_report.py', str(run_dir)])
 	finally:
 		progress.finish()
@@ -263,8 +264,9 @@ def main():
 		'models': json.loads(models_file.read_text()) if models_file.exists() else [],
 		'results': results,
 		'skipped': skipped,
-		'next': 'Add published prices for the CLI models to case.json, judge each run from summary.txt, '
-		        'write verdicts.json, then run build_report.py again.',
+		'next': 'Run build_report.py --step prices=running, add published prices for the CLI models to case.json, '
+		        'run build_report.py --step prices=done --step judge=running, judge each run from summary.txt, '
+		        'write verdicts.json, then run build_report.py --step judge=done.',
 	}, indent=2))
 
 

@@ -149,7 +149,7 @@ def render_run(run_dir, case, name, meta, data, entry, verdict, scale):
 	row = br.render_row_cells(name, meta, data, status_badge(entry.get('status', 'waiting')))
 	canvas = br.render_canvas_box(name, meta, run_dir / 'report', case.get('baseUrl', 'http://localhost:5678'),
 	                              empty='The canvas appears when all builders finish.')
-	return row, br.render_panel_body(data, verdict, canvas, *scale, case['prompt'])
+	return row, br.render_panel_body(data, verdict, canvas, *scale, case['prompt'], case.get('expected') or '')
 
 
 def render_live_box(status, runs):

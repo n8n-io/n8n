@@ -109,7 +109,8 @@ The last output is JSON with `runDir`, `report`, `live`, `parallel`,
 `summary`, `models` and `skipped`.
 
 Parallel runs share one n8n instance and one machine. Thus the times of the
-builders include the shared load. The page says so in its notes. Use
+builders include the shared load. The page says "run in parallel" under
+the title. Use
 `--sequential` when the user wants to compare times exactly.
 
 ### Watch the runs
@@ -130,8 +131,15 @@ reload:
 The cost, the canvases and the Instance AI tokens come after the run. When
 the report is ready, the page changes to it. The server listens on
 `127.0.0.1` only. It stops 30 minutes after the last request, when the run
-is done. After you write `verdicts.json` and build the page again, the user
-can reload the page to see the verdicts.
+is done.
+
+The report shows the price and judge steps (steps 3 and 4) as queued until
+you start them. The Result column shows "Judge queued" or "Judging", and
+the Cost column of a CLI builder without a price shows "Price queued" or
+"Finding price". Each `build_report.py --step` call builds the page again.
+While a step is queued or running, the page on the live server reloads
+itself when the page changes. A page that you open from the file needs a
+manual reload.
 
 Headless mode and clean isolation have no terminal screen. For them, the
 page shows only the table and the LLM steps. `COMPARE_RECORD=0` removes the
@@ -215,7 +223,8 @@ failed.
   runs with its `exec` tool. The page shows these scripts too, but does not
   count them as tool calls.
 - **Instance AI:** the LangSmith call times place each event. Text times are
-  approximate (see the asterisk note on the page).
+  approximate. An asterisk on a time marks text that the page puts at the
+  previous tool call.
 
 ### When a check fails
 
@@ -241,6 +250,12 @@ without prices the page shows "not reported" for both. `build_report.py`
 prints `models without a published price in case.json: …` while a model has
 no price.
 
+First, tell the page that you look for the prices:
+
+```bash
+python3 $S/build_report.py <runDir> --step prices=running
+```
+
 For each model:
 
 1. Search the web for the official price page of the provider, for example
@@ -264,10 +279,16 @@ Add the prices to `<runDir>/case.json`, with the URL that you used:
 }
 ```
 
-The page calculates the cost of each call from its tokens and shows the
-prices and the source links below the runs table.
+The page calculates the cost of each call from its tokens. The tooltip of a
+Cost cell shows the source of the cost, the prices and the URL.
 
 ## 4. Judge each run
+
+Show the costs and tell the page that you judge the runs:
+
+```bash
+python3 $S/build_report.py <runDir> --step prices=done --step judge=running
+```
 
 Read `<runDir>/summary.txt`. For each run it has the final agent message, the
 nodes, the main parameters and the connections. Compare each run with the
@@ -287,9 +308,10 @@ Write `<runDir>/verdicts.json`. Use the run folder names as keys (`iai`,
     "verdict": "pass",
     "summary": "One sentence about the result.",
     "checks": [
-      { "ok": true, "text": "WhatsApp trigger starts the workflow" },
-      { "ok": false, "text": "Send Reply reads `$json.from`, which does not exist" },
-      { "ok": null, "text": "Could not confirm the sheet columns" }
+      { "id": 1, "ok": true, "text": "WhatsApp trigger starts the workflow" },
+      { "id": 9, "ok": false, "text": "Send Reply reads `$json.from`, which does not exist" },
+      { "id": 16, "ok": null, "text": "Could not confirm the sheet columns" },
+      { "ok": false, "text": "The Slack node is not connected" }
     ]
   }
 }
@@ -302,12 +324,19 @@ results to people who did not see the runs.
 Write each check as one short sentence with one fact. Put the summary in one
 or two sentences, and do not repeat the failed checks in it. Put
 expressions, field paths and parameter names in backticks. The page shows
-them as code. The page shows the failed checks first.
+them as code.
+
+Set `id` to the number of the expected outcome item that the check is for.
+Then the page shows the checks under the same groups as the expected
+outcome. It opens the groups that have a failed or unconfirmed check, and
+shows an item without a check as not judged. Leave out `id` for a problem
+that is not an expected outcome item. The page shows it under "Other
+findings". When no check has an `id`, the page shows the failed checks first.
 
 ## 5. Build the page again
 
 ```bash
-python3 $S/build_report.py <runDir>
+python3 $S/build_report.py <runDir> --step judge=done
 ```
 
 If the command prints `models without a published price`, do step 3 for
@@ -415,7 +444,7 @@ read the host disk.
 | `langsmith_usage.py --run-dir <dir>/iai` | Fetch Instance AI usage |
 | `node capture_canvas.mjs <dir>` | Save `workflow.json` and `canvas.png` for each run |
 | `summarize_runs.py <dir>` | Print the judge summary |
-| `build_report.py <dir>` | Build the page |
+| `build_report.py <dir> [--step judge\|prices=queued\|running\|done]` | Build the page. `--step` first sets the state of a step after the run |
 
 If a runner did not find a workflow id, read its trace for the id. Set
 `workflowId` in that `run.json`, then run `capture_canvas.mjs` and
@@ -427,6 +456,6 @@ If a runner did not find a workflow id, read its trace for the id. Set
   Codex, the cost is tokens × the published prices in `case.json`. Without a
   price, Claude Code in headless mode shows its own estimate. All other runs
   show "not reported".
-  The page lists the source of each cost.
+  The tooltip of each Cost cell shows the source of the cost.
 - The workflows stay in the n8n instance. Archive them in n8n when they are
   no longer necessary.

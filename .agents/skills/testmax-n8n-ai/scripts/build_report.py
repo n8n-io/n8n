@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
 """Build one HTML page that compares the builder runs in a run directory.
 
-  build_report.py <run-dir>
+  build_report.py <run-dir> [--step judge|prices=queued|running|done ...]
+
+--step writes the state of a step that comes after the run to status.json, then builds the page.
+The page shows a queued or running step in the Result and Cost columns. When the live server
+serves the page, the page reloads when it is built again.
 
 Inputs in <run-dir>:
   prompt.txt     the prompt that every builder received
@@ -11,16 +15,20 @@ Inputs in <run-dir>:
                  optional. A model with a price gets its cost calculated from its tokens.
   <name>/run.json and the files that the runner scripts wrote for each builder
   verdicts.json  optional: {"<name>": {"verdict": "pass|partial|fail", "summary": "...",
-                 "checks": [{"ok": true|false|null, "text": "..."}]}}
+                 "checks": [{"id": 3, "ok": true|false|null, "text": "..."}]}}
+                 id is the number of the expected outcome item. It is optional.
 
 Output: <run-dir>/report/index.html with the canvas images copied next to it.
 """
 
+import argparse
 import html
 import json
+import os
 import re
 import shutil
 import sys
+import time
 import urllib.request
 from collections import Counter
 from datetime import datetime
@@ -750,11 +758,16 @@ def render_steps(calls, events, max_prompt, max_out, prompt, context=None):
 	)
 
 
-def inline_code(text):
-	"""Escape text and show `backticked` parts as code. Text with an odd number of backticks stays plain."""
+def code_spans(text):
+	"""Show `backticked` parts of HTML text as code. Text with an odd number of backticks stays plain."""
 	if text.count('`') % 2:
-		return esc(text)
-	return ''.join(f'<code>{part}</code>' if i % 2 else part for i, part in enumerate(esc(text).split('`')))
+		return text
+	return ''.join(f'<code>{part}</code>' if i % 2 else part for i, part in enumerate(text.split('`')))
+
+
+def inline_code(text):
+	"""Escape text and show `backticked` parts as code."""
+	return code_spans(esc(text))
 
 
 CHECK_GROUPS = ((False, 'bad', '✗', 'Not met'), (None, 'warn', '?', 'Not confirmed'), (True, 'ok', '✓', 'Met'))
@@ -767,9 +780,19 @@ def verdict_head(v):
 	return f'<span class="head-meta">{count}{badge(v.get("verdict"))}</span>'
 
 
-def render_checks(v):
-	"""The judge summary and the checks, with the failed checks first."""
+CHECK_CLASS = {True: 'ok', False: 'bad', None: 'warn'}
+OTHER_FINDINGS = 'Other findings'
+
+
+def render_checks(v, expected=''):
+	"""The judge summary and the checks. expected is the plain expected outcome text.
+	When it has numbered groups and the checks have an id, the checks show under the same groups as the brief.
+	Otherwise the failed checks show first."""
 	checks = v.get('checks') or []
+	summary = f'<p class="summary">{inline_code(v["summary"])}</p>' if v.get('summary') else ''
+	criteria = parse_criteria(esc(expected)) if expected else None
+	if criteria and any(c.get('id') is not None for c in checks):
+		return summary + render_checks_by_criteria(checks, criteria)
 	groups = []
 	for ok, cls, mark, label in CHECK_GROUPS:
 		items = [c for c in checks if c.get('ok') is ok]
@@ -778,14 +801,50 @@ def render_checks(v):
 			               f'<span>{inline_code(c.get("text", ""))}</span></li>' for c in items)
 			groups.append(f'<div class="check-group"><div class="mono-label">{label} · {len(items)}</div>'
 			              f'<ul class="checks">{rows}</ul></div>')
-	summary = f'<p class="summary">{inline_code(v["summary"])}</p>' if v.get('summary') else ''
 	return summary + ''.join(groups)
 
 
-def render_verdict(v):
+def render_checks_by_criteria(checks, criteria):
+	"""The checks under the groups of the expected outcome. A group with a failed or unconfirmed check shows open.
+	A criterion without a check shows its own text as not judged. Checks with no known id show under Other findings."""
+	by_id = {}
+	for c in checks:
+		by_id.setdefault(str(c.get('id')), []).append(c)
+	known = {num for _, items in criteria for num, _ in items}
+	other = [c for c in checks if str(c.get('id')) not in known]
+	groups = [(heading, [(num, by_id.get(num), text) for num, text in items]) for heading, items in criteria]
+	if other:
+		groups.append((OTHER_FINDINGS, [('·', [c], '') for c in other]))
+	parts = []
+	for heading, rows in groups:
+		html_rows = ''.join(
+			''.join(f'<li class="{CHECK_CLASS.get(c.get("ok"), "warn")}"><span class="mark num" aria-hidden="true">{num}</span>'
+			        f'<span>{inline_code(c.get("text", ""))}</span></li>' for c in cs)
+			if cs else f'<li class="warn"><span class="mark num" aria-hidden="true">{num}</span>'
+			           f'<span class="dim">Not judged: {code_spans(text)}</span></li>'
+			for num, cs, text in rows)
+		body = f'<ul class="checks">{html_rows}</ul>'
+		if not heading:
+			parts.append(f'<div class="criteria-group">{body}</div>')
+			continue
+		met = sum(1 for _, cs, _ in rows if cs and all(c.get('ok') is True for c in cs))
+		failed = met < len(rows)
+		count = f'{len(rows)} found' if heading == OTHER_FINDINGS else f'{met} of {len(rows)} met'
+		label = f'<span class="mono-label{" err" if failed else ""}">{count}</span>'
+		parts.append(f'<details class="criteria-group"{" open" if failed else ""}><summary class="criteria-title">'
+		             f'<span>{heading}</span>{label}</summary>{body}</details>')
+	return f'<div class="verdict-groups">{"".join(parts)}</div>'
+
+
+JUDGE_WAIT_TEXT = {'queued': 'Waiting for the judge.', 'running': 'The judge is checking this run.'}
+
+
+def render_verdict(v, expected='', judge=None):
 	if not v:
-		return '<div class="box"><div class="head"><h2>Expected outcome</h2></div><p class="dim">Not judged yet.</p></div>'
-	return f'<div class="box"><div class="head"><h2>Expected outcome</h2>{verdict_head(v)}</div>{render_checks(v)}</div>'
+		return (f'<div class="box"><div class="head"><h2>Expected outcome</h2>{pending_badge("judge", judge)}</div>'
+		        f'<p class="dim">{JUDGE_WAIT_TEXT.get(judge, "Not judged yet.")}</p></div>')
+	return (f'<div class="box"><div class="head"><h2>Expected outcome</h2>{verdict_head(v)}</div>'
+	        f'{render_checks(v, expected)}</div>')
 
 
 PLAYER_CACHE = ASSET_CACHE / f'asciinema-player-{PLAYER_VERSION}'
@@ -920,9 +979,22 @@ def render_replay(screens, fineprint=REPLAY_FINEPRINT):
 	)
 
 
-def badge(verdict):
+PENDING_BADGES = {
+	'judge': {'queued': ('st-waiting', 'Judge queued'), 'running': ('st-running', 'Judging')},
+	'prices': {'queued': ('st-waiting', 'Price queued'), 'running': ('st-running', 'Finding price')},
+}
+
+
+def pending_badge(step, state):
+	"""The badge of a step that comes after the run, or '' when the step is not queued or running."""
+	cls, label = PENDING_BADGES[step].get(state, (None, None))
+	return f'<span class="badge {cls}">{label}</span>' if cls else ''
+
+
+def badge(verdict, judge=None):
+	"""The verdict badge. Without a verdict, judge is the state of the judge step."""
 	if not verdict:
-		return '<span class="badge none">Not judged</span>'
+		return pending_badge('judge', judge) or '<span class="badge none">Not judged</span>'
 	return f'<span class="badge {esc(verdict)}">{esc(verdict.upper())}</span>'
 
 
@@ -972,8 +1044,11 @@ def run_title(name, meta):
 
 
 def render_row_cells(name, meta, data, result):
-	"""The table cells of one run. result is the HTML of the Result cell."""
+	"""The table cells of one run. result is the HTML of the Result cell.
+	data can have costPending, the state of the price step, and costTitle, the source of the cost."""
 	calls = data['calls']
+	title = f' title="{esc(data["costTitle"])}"' if data.get('costTitle') else ''
+	cost = pending_badge('prices', data.get('costPending')) or f'<strong{title}>{esc(data["cost"])}</strong>'
 	tools = [e for e in data['events'] if e['kind'] == 'tool']
 	errors = sum(e['error'] for e in tools)
 	prompt = sum(c['prompt'] for c in calls)
@@ -983,8 +1058,7 @@ def render_row_cells(name, meta, data, result):
 		f'<span class="run-name">{esc(run_title(name, meta))}</span>', esc(data.get('model') or '-'),
 		result, data['duration'], str(len(calls)),
 		f'{len(tools)}' + (f' <span class="err">({errors} err)</span>' if errors else ''),
-		kilo(prompt), f'{100 * cached / prompt:.0f}%' if prompt else '-', kilo(out),
-		f'<strong>{esc(data["cost"])}</strong>',
+		kilo(prompt), f'{100 * cached / prompt:.0f}%' if prompt else '-', kilo(out), cost,
 	]
 	return ''.join(f'<td>{c}</td>' for c in cells)
 
@@ -1005,15 +1079,82 @@ def render_canvas_box(name, meta, report, base_url, empty='No workflow was creat
 	return f'<div class="box"><div class="head"><h2>Canvas</h2>{link}</div>{canvas}</div>'
 
 
-def render_panel_body(data, verdict, canvas_box, max_prompt, max_out, prompt):
-	"""The content of the section of one run: result, canvas and LLM steps."""
+def render_panel_body(data, verdict, canvas_box, max_prompt, max_out, prompt, expected='', judge=None):
+	"""The content of the section of one run: result, canvas and LLM steps. judge is the state of the judge step."""
 	error = f'<div class="box err">Could not read this run: {esc(data["loadError"])}</div>' if data.get('loadError') else ''
-	return (f'{error}<div class="result-row">{render_verdict(verdict)}{canvas_box}</div>'
+	return (f'{error}<div class="result-row">{render_verdict(verdict, expected, judge)}{canvas_box}</div>'
 	        f'{render_steps(data["calls"], data["events"], max_prompt, max_out, prompt, data.get("context"))}')
 
 
+POST_RUN_STEPS = ('judge', 'prices')
+POST_RUN_STATES = ('queued', 'running', 'done')
+
+
+def step_arg(value):
+	step, _, state = value.partition('=')
+	if step not in POST_RUN_STEPS or state not in POST_RUN_STATES:
+		raise argparse.ArgumentTypeError(f'use {"|".join(POST_RUN_STEPS)}={"|".join(POST_RUN_STATES)}, not {value}')
+	return step, state
+
+
+def read_status(run_dir, steps=()):
+	"""status.json. steps are (step, state) pairs to write to its postRun object first."""
+	status_file = run_dir / 'status.json'
+	status = json.loads(status_file.read_text()) if status_file.exists() else {}
+	if steps:
+		status.setdefault('postRun', {}).update(steps)
+		tmp = status_file.with_suffix('.tmp')
+		tmp.write_text(json.dumps(status, indent=2))
+		os.replace(tmp, status_file)
+	return status
+
+
+def cost_title(meta, data, prices):
+	"""Where the cost of a run comes from, for the tooltip of its Cost cell."""
+	source = data.get('costSource')
+	if source == 'langsmith':
+		return 'From the LangSmith call costs.'
+	if source == 'claude-code':
+		return 'The estimate of Claude Code.'
+	p = prices.get(data.get('model')) if source == 'prices' else None
+	if not p:
+		return 'Instance AI cost comes from LangSmith.' if meta['kind'] == 'instance-ai' else 'No published price.'
+	return (f'Tokens × the published price of {data["model"]}: ${p.get("input", 0)} input, '
+	        f'${p.get("cached", 0)} cache read, ${p.get("cacheWrite", p.get("input", 0))} cache write, '
+	        f'${p.get("output", 0)} output per million tokens.' + (f' Source: {p["source"]}' if p.get('source') else ''))
+
+
+RELOAD_JS = """
+// Served by the live server while a step is pending: reload when the page is built again.
+window.addEventListener('DOMContentLoaded', ()=>{
+  const saved = JSON.parse(sessionStorage.getItem('report-view') || 'null');
+  if (saved) {
+    sessionStorage.removeItem('report-view');
+    if (document.getElementById(saved.run)) show(saved.run);
+    window.scrollTo(0, saved.y);
+  }
+  if (!PENDING || !location.protocol.startsWith('http')) return;
+  setInterval(async ()=>{
+    try {
+      const version = (await (await fetch('version.txt', {cache: 'no-store'})).text()).trim();
+      if (version && version !== REPORT_VERSION) {
+        sessionStorage.setItem('report-view', JSON.stringify({run: document.querySelector('.run.active')?.id, y: window.scrollY}));
+        location.reload();
+      }
+    } catch {}
+  }, 3000);
+});
+"""
+
+
 def main():
-	run_dir = Path(sys.argv[1] if len(sys.argv) > 1 else '.').resolve()
+	ap = argparse.ArgumentParser(description='Build the comparison page of a run directory.')
+	ap.add_argument('run_dir', nargs='?', default='.')
+	ap.add_argument('--step', type=step_arg, action='append', default=[],
+	                help='Set the state of a step after the run, for example judge=running. Repeat for more steps.')
+	args = ap.parse_args()
+	run_dir = Path(args.run_dir).resolve()
+	status = read_status(run_dir, args.step)
 	case = load_case(run_dir)
 	verdicts = load_verdicts(run_dir)
 	report = run_dir / 'report'
@@ -1032,47 +1173,27 @@ def main():
 
 	max_prompt, max_out = token_scale(runs)
 	base_url = case.get('baseUrl', 'http://localhost:5678')
+	post_run = status.get('postRun') or {}
+	# A run with a verdict is judged, so a step that was not marked done does not show as pending.
+	judge = post_run.get('judge') if any(name not in verdicts for name, _, _ in runs) else None
+	pending = False
 
 	rows, panels = [], []
 	for i, (name, meta, data) in enumerate(runs):
 		active = ' active' if i == 0 else ''
 		verdict = verdicts.get(name)
+		data['costTitle'] = cost_title(meta, data, case.get('prices') or {})
+		if meta['kind'] != 'instance-ai' and data.get('costSource') is None:
+			data['costPending'] = post_run.get('prices')
+		pending = pending or (not verdict and judge in ('queued', 'running')) \
+			or data.get('costPending') in ('queued', 'running')
 		rows.append(f'<tr class="row{active}" data-run="{name}" onclick="show(\'{name}\')">'
-		            + render_row_cells(name, meta, data, badge((verdict or {}).get('verdict'))) + '</tr>')
+		            + render_row_cells(name, meta, data, badge((verdict or {}).get('verdict'), judge)) + '</tr>')
 		canvas_box = render_canvas_box(name, meta, report, base_url)
 		panels.append(f'<section class="run{active}" id="{name}">'
-		              + render_panel_body(data, verdict, canvas_box, max_prompt, max_out, case['prompt'])
+		              + render_panel_body(data, verdict, canvas_box, max_prompt, max_out, case['prompt'],
+		                                  case.get('expected') or '', judge)
 		              + '</section>')
-
-	notes = ['Token bars use one scale for all runs. Times are seconds from the prompt.']
-	status_file = run_dir / 'status.json'
-	status = json.loads(status_file.read_text()) if status_file.exists() else {}
-	if status.get('mode') == 'parallel':
-		notes.append('The builders ran at the same time on one n8n instance and one machine, '
-		             'so their times include the shared load.')
-	claude_tools = {meta.get('claudeTools', 'none') for _, meta, _ in runs if meta['kind'] == 'claude'}
-	if 'default' in claude_tools:
-		notes.append('Claude Code had its built-in tools, such as Bash, Read and Write, and could use all of them '
-		             'without a question (COMPARE_CLAUDE_TOOLS=default). Tool search was on, so the model loaded '
-		             'the schemas of deferred tools with ToolSearch.')
-	elif claude_tools:
-		notes.append('Claude Code ran without its built-in tools (COMPARE_CLAUDE_TOOLS=none). '
-		             'The model saw only the n8n tools.')
-	if any(meta['kind'] == 'instance-ai' for _, meta, _ in runs):
-		notes.append('Instance AI steps come from LangSmith call times. An asterisk on a time marks Instance AI text '
-		             'placed at the previous tool call.')
-	notes = [esc(n) for n in notes]
-	sources = {'langsmith': 'LangSmith', 'claude-code': 'the estimate of Claude Code', 'prices': 'tokens × published price'}
-	for name, meta, data in runs:
-		title = TITLES.get(meta['kind'], meta['kind'])
-		source = sources.get(data.get('costSource'), 'not available')
-		notes.append(f'{esc(title)} cost: {esc(source)}.')
-	for model, p in (case.get('prices') or {}).items():
-		link = f' (<a href="{esc(p["source"])}" target="_blank">source</a>)' if p.get('source') else ''
-		notes.append(
-			f'{esc(model)}: ${p.get("input", 0)} input, ${p.get("cached", 0)} cache read, '
-			f'${p.get("cacheWrite", p.get("input", 0))} cache write, ${p.get("output", 0)} output per million tokens{link}.'
-		)
 
 	# The agent reads this file to find the models that still need a published price.
 	models = [{'run': name, 'kind': meta['kind'], 'model': data.get('model'), 'costSource': data.get('costSource')}
@@ -1088,35 +1209,79 @@ def main():
 		head = f'<link rel="stylesheet" href="{esc(player_css)}">'
 		scripts = f'<script src="{esc(player_js)}"></script>' + ''.join(
 			f'<script src="{esc(s["src"])}"></script>' for s in screens if s['type'] == 'cast')
-	scripts += f'<script>const SCREENS = {json.dumps(screens)};</script>'
+	version = str(time.time_ns())
+	scripts += (f'<script>const SCREENS = {json.dumps(screens)}; const REPORT_VERSION = "{version}"; '
+	            f'const PENDING = {json.dumps(pending)};</script><script>{RELOAD_JS}</script>')
 
 	meta = [f'{len(runs)} builder' + ('s' if len(runs) > 1 else '')]
 	if status.get('startedAt'):
 		meta.insert(0, datetime.fromtimestamp(status['startedAt']).strftime('%b %-d, %Y · %H:%M'))
 	if status.get('mode') == 'parallel':
 		meta.append('run in parallel')
-	page = fill_template(esc(case.get('title') or 'Builder comparison'), ''.join(rows), ' '.join(notes),
+	page = fill_template(esc(case.get('title') or 'Builder comparison'), ''.join(rows), '',
 	                     ''.join(panels), replay=render_replay(screens), head=head, scripts=scripts,
 	                     prompt=esc(case['prompt']), expected=esc(case.get('expected') or '-'),
 	                     meta=esc(' · '.join(meta)))
 	(report / 'index.html').write_text(page)
+	(report / 'version.txt').write_text(version)
 	print(report / 'index.html')
 	if unpriced:
 		print('models without a published price in case.json: ' + ', '.join(unpriced))
 
 
-LIST_ITEM = re.compile(r'^\s*(?:\d+[.)]|[-*•])\s+')
+LIST_ITEM = re.compile(r'^\s*(?:(\d+)[.)]|[-*•])\s+')
+
+
+def parse_criteria(expected):
+	"""Split an expected outcome into [(heading, [(number, text)])].
+	A line that is not a list item starts a new group. Returns None when the text is not a list."""
+	groups = []
+	for line in expected.splitlines():
+		if not line.strip():
+			continue
+		match = LIST_ITEM.match(line)
+		if not match:
+			groups.append((line.strip().rstrip(':'), []))
+			continue
+		if not groups:
+			groups.append(('', []))
+		items = groups[-1][1]
+		items.append((match.group(1) or str(sum(len(g[1]) for g in groups)), line[match.end():].strip()))
+	if sum(len(items) for _, items in groups) < 2 or any(not items for _, items in groups):
+		return None
+	return groups
+
+
+def render_criteria(groups):
+	"""The groups from parse_criteria as numbered lists. A group with a heading shows collapsed. The text is HTML."""
+	parts = []
+	for heading, items in groups:
+		rows = ''.join(f'<li><span class="num">{num}</span><span>{code_spans(text)}</span></li>' for num, text in items)
+		if not heading:
+			parts.append(f'<div class="criteria-group"><ol class="criteria">{rows}</ol></div>')
+			continue
+		span = items[0][0] if len(items) == 1 else f'{items[0][0]}–{items[-1][0]}'
+		parts.append(
+			f'<details class="criteria-group"><summary class="criteria-title"><span>{heading}</span>'
+			f'<span class="mono-label">{span} · {len(items)} checks</span></summary>'
+			f'<ol class="criteria">{rows}</ol></details>')
+	return ''.join(parts)
 
 
 def render_brief(prompt, expected):
 	"""The prompt and expected outcome boxes. Both arguments are HTML.
-	An expected outcome with one numbered or bulleted item on each line shows as a numbered list."""
-	lines = [line for line in expected.splitlines() if line.strip()]
-	if len(lines) > 1 and all(LIST_ITEM.match(line) for line in lines):
-		items = ''.join(f'<li>{LIST_ITEM.sub("", line)}</li>' for line in lines)
-		body, count = f'<ol class="criteria">{items}</ol>', f'<span class="mono-label">{len(lines)} checks</span>'
+	An expected outcome with one numbered or bulleted item on each line shows as numbered lists,
+	grouped under the plain lines between them."""
+	groups = parse_criteria(expected)
+	if groups:
+		total = sum(len(items) for _, items in groups)
+		named = sum(1 for heading, _ in groups if heading)
+		label = f'{total} checks' + (f' · {named} groups' if named > 1 else '')
+		toggle = '<button type="button" class="btn" data-expand-all>Expand all</button>' if named else ''
+		body = render_criteria(groups)
+		count = f'<span class="head-meta"><span class="mono-label">{label}</span>{toggle}</span>'
 	else:
-		body, count = f'<div class="msg">{expected}</div>', ''
+		body, count = f'<div class="msg">{code_spans(expected)}</div>', ''
 	words = len(html.unescape(prompt).split())
 	return (
 		'<section class="brief"><div class="brief-card prompt"><div class="brief-head">'
@@ -1147,7 +1312,7 @@ def fill_template(title, rows, notes, panels, replay='', head='', scripts='', ca
 	        .replace('{{META}}', f'<p class="page-meta mono-label">{meta}</p>' if meta else '')
 	        .replace('{{TITLE}}', title)
 	        .replace('{{ROWS}}', rows)
-	        .replace('{{NOTES}}', notes)
+	        .replace('{{NOTES}}', f'<p class="fineprint">{notes}</p>' if notes else '')
 	        .replace('{{CASE}}', render_brief(prompt, expected) if case is None else case)
 	        .replace('{{PANELS}}', panels))
 
@@ -1188,18 +1353,32 @@ button:focus-visible,select:focus-visible{outline:2px solid var(--pink);outline-
 .brand-row img + .mono-label{padding-left:var(--s12);box-shadow:inset 1px 0 0 var(--line-strong)}
 .page-head h1{margin-top:var(--s16);font-size:32px;line-height:36px;letter-spacing:-.01em;max-width:960px}
 .page-meta{margin:var(--s8) 0 0}
-.brief{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,3fr);gap:var(--s16);margin-bottom:var(--s32)}
+.brief{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,3fr);align-items:start;gap:var(--s16);margin-bottom:var(--s32)}
 @media (max-width:900px){.brief{grid-template-columns:minmax(0,1fr)}}
 .brief-card{display:flex;flex-direction:column;gap:var(--s16);border-radius:var(--r12);padding:var(--s24)}
-.brief-card.prompt{background:var(--white);box-shadow:inset 0 0 0 1px var(--line),inset 4px 0 0 var(--pink)}
+.brief-card.prompt{position:sticky;top:var(--s24);background:var(--white);box-shadow:inset 0 0 0 1px var(--line),inset 4px 0 0 var(--pink)}
+@media (max-width:900px){.brief-card.prompt{position:static}}
 .brief-card.expected{background:var(--bg-2)}
 .brief-head{display:flex;align-items:center;justify-content:space-between;gap:var(--s12);min-height:30px}
 .brief-card blockquote{flex:1;margin:0;font-size:18px;line-height:26px}
-.criteria{list-style:none;margin:0;padding:0;counter-reset:crit}
-.criteria li{counter-increment:crit;display:grid;grid-template-columns:24px minmax(0,1fr);gap:var(--s12);padding:var(--s8) 0;text-wrap:pretty}
+details.criteria-group + details.criteria-group{border-top:1px solid var(--line-strong)}
+.criteria-title{display:flex;align-items:baseline;gap:var(--s8);padding:var(--s12) 0;font-weight:500;cursor:pointer;list-style:none}
+.criteria-title::-webkit-details-marker{display:none}
+.criteria-title::before{content:"";flex:none;align-self:center;width:6px;height:6px;margin-right:var(--s4);border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;transform:rotate(-45deg);transition:transform .15s}
+details[open] > .criteria-title::before{transform:rotate(45deg)}
+.criteria-title .mono-label{margin-left:auto}
+.criteria-title:hover{color:var(--dim)}
+.criteria-title:focus-visible{outline:2px solid var(--pink);outline-offset:2px;border-radius:var(--r4)}
+details.criteria-group > .criteria{padding-bottom:var(--s12)}
+details.criteria-group:first-of-type > .criteria-title{padding-top:0}
+@media (prefers-reduced-motion:reduce){.criteria-title::before{transition:none}}
+.checks .mark.num{width:auto;min-width:20px;height:20px;margin-top:-1px;padding:0 var(--s4);border-radius:var(--full)}
+.criteria{list-style:none;margin:0;padding:0}
+.criteria li{display:grid;grid-template-columns:24px minmax(0,1fr);gap:var(--s12);padding:var(--s8) 0;text-wrap:pretty}
 .criteria li:first-child{padding-top:0}
 .criteria li + li{border-top:1px solid var(--line)}
-.criteria li::before{content:counter(crit);display:grid;place-items:center;height:24px;margin-top:-3px;border-radius:var(--full);background:var(--white);box-shadow:inset 0 0 0 1px var(--line);font:10px/14px var(--mono)}
+.criteria .num{display:grid;place-items:center;height:24px;margin-top:-3px;border-radius:var(--full);background:var(--white);box-shadow:inset 0 0 0 1px var(--line);font:10px/14px var(--mono)}
+.brief code{font-size:12px;padding:0 4px;border-radius:var(--r4);background:var(--white);box-shadow:inset 0 0 0 1px var(--line);word-break:break-word}
 .case{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s16);margin-bottom:var(--s24)}
 .case .mono-label{margin-bottom:var(--s8)}
 .msg{white-space:pre-wrap;word-break:break-word;text-wrap:pretty}
@@ -1420,7 +1599,7 @@ summary.card-head{margin-bottom:0;cursor:pointer}
 {{REPLAY}}
 <table><thead>{{THEAD}}</thead>
 <tbody>{{ROWS}}</tbody></table>
-<p class="fineprint">{{NOTES}}</p>
+{{NOTES}}
 {{AFTER_TABLE}}
 {{PANELS}}
 <div class="theater" id="canvas-view" role="dialog" aria-modal="true" aria-label="Canvas" hidden>
@@ -1442,6 +1621,18 @@ document.addEventListener('click', async e=>{
   catch { getSelection().selectAllChildren(el); b.textContent = 'Selected'; }
   setTimeout(()=>{ b.textContent = 'Copy'; }, 1500);
 });
+document.addEventListener('click', e=>{
+  const b = e.target.closest('[data-expand-all]');
+  if (!b) return;
+  const groups = b.closest('.brief-card').querySelectorAll('details.criteria-group');
+  const open = [...groups].some(d=>!d.open);
+  groups.forEach(d=>{ d.open = open; });
+});
+document.addEventListener('toggle', e=>{
+  const card = e.target.closest?.('.brief-card');
+  const b = card?.querySelector('[data-expand-all]');
+  if (b) b.textContent = [...card.querySelectorAll('details.criteria-group')].every(d=>d.open) ? 'Collapse all' : 'Expand all';
+}, true);
 function show(id){
   document.querySelectorAll('.run').forEach(p=>p.classList.toggle('active',p.id===id));
   document.querySelectorAll('.row').forEach(r=>r.classList.toggle('active',r.dataset.run===id));
