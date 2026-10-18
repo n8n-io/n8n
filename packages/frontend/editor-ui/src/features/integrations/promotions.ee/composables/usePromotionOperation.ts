@@ -1,0 +1,154 @@
+import type { ApplyCheckResult, PromotionDirection, PromotionPreview } from '@n8n/api-types';
+import { useI18n } from '@n8n/i18n';
+import { ResponseError } from '@n8n/rest-api-client';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import { computed, ref, shallowRef, type Ref } from 'vue';
+import { useRouter } from 'vue-router';
+
+import { useMessage } from '@/app/composables/useMessage';
+import { MODAL_CONFIRM, VIEWS } from '@/app/constants';
+
+import { getPromoteErrorMessage } from '../promoteErrorMessage';
+import { promoteProjectSelection } from '../promotions.api';
+import { PROMOTION_PREVIEW_VIEWS } from '../promotions.constants';
+import { applyProjectSelection, continueApplyProjectSelection } from '../promotionsSettings.api';
+import { usePromotionOutcome } from './usePromotionOutcome';
+
+export type OperationRequest = {
+	workflowIds: string[];
+	/** True when the selection imports a data table change that removes values. */
+	confirmDestructiveChanges: boolean;
+};
+
+/** Why the page reloaded the preview after an apply that wrote nothing. */
+type OperationNotice = 'sourceChanged' | 'newBlockers';
+
+type OperationError = {
+	message: string;
+	/** True when the operation may have run, for example after a timeout. The page reloads first. */
+	uncertain: boolean;
+};
+
+/** Runs the promote or the apply of the preview page, and handles its result. */
+export function usePromotionOperation(
+	projectId: Ref<string>,
+	direction: Ref<PromotionDirection>,
+	{
+		preview,
+		check,
+		refresh,
+	}: {
+		preview: Ref<PromotionPreview | null>;
+		check: Ref<ApplyCheckResult | null>;
+		refresh: () => Promise<void>;
+	},
+) {
+	const i18n = useI18n();
+	const rootStore = useRootStore();
+	const router = useRouter();
+	const message = useMessage();
+	const outcome = usePromotionOutcome();
+
+	const phase = ref<'idle' | 'confirming' | 'running'>('idle');
+	/** True from the click to the result. The selection does not change in that time. */
+	const isBusy = computed(() => phase.value !== 'idle');
+	const notice = ref<OperationNotice | null>(null);
+	const error = shallowRef<OperationError | null>(null);
+
+	async function confirmApply() {
+		const answer = await message.confirm(
+			i18n.baseText('promotions.modal.incoming.confirmSelected.message'),
+			i18n.baseText('promotions.modal.incoming.confirmSelected.title'),
+			{
+				type: 'warning',
+				confirmButtonText: i18n.baseText(
+					'promotions.modal.incoming.confirmSelected.confirmButtonText',
+				),
+				cancelButtonText: i18n.baseText('promotions.modal.close'),
+			},
+		);
+		return answer === MODAL_CONFIRM;
+	}
+
+	async function leave() {
+		// Users can leave while the request runs. Then the page must not move them again.
+		if (router.currentRoute.value.name !== PROMOTION_PREVIEW_VIEWS[direction.value]) return;
+		await router.replace({
+			name: VIEWS.PROJECTS_WORKFLOWS,
+			params: { projectId: projectId.value },
+		});
+	}
+
+	async function promote({ workflowIds }: OperationRequest) {
+		const result = await promoteProjectSelection(rootStore.publicApiContext, projectId.value, {
+			workflowIds,
+		});
+		outcome.showPromoted(projectId.value, result.git.branchName);
+		await leave();
+	}
+
+	async function apply(request: OperationRequest, source: ApplyCheckResult) {
+		// Apply the commit that the page shows. A branch that moved since is reported, not applied.
+		const expectedSource = { configId: source.configId, ...source.git };
+		const result = request.confirmDestructiveChanges
+			? await continueApplyProjectSelection(rootStore.publicApiContext, projectId.value, {
+					workflowIds: request.workflowIds,
+					expectedSource,
+					confirmDestructiveChanges: true,
+				})
+			: await applyProjectSelection(rootStore.publicApiContext, projectId.value, {
+					workflowIds: request.workflowIds,
+					expectedSource,
+				});
+		if (result.status === 'applied') {
+			outcome.showApplied(result);
+			await leave();
+			await outcome.announceApplied(projectId.value);
+			return;
+		}
+		// Nothing was written. The reloaded preview and check show what changed.
+		notice.value = result.status === 'source-changed' ? 'sourceChanged' : 'newBlockers';
+		await refresh();
+	}
+
+	async function submit(request: OperationRequest) {
+		if (isBusy.value || request.workflowIds.length === 0) return;
+		const source = check.value;
+		if (direction.value === 'apply' && !source) return;
+		// Set before the dialog, so a second click does not open another one.
+		phase.value = 'confirming';
+		try {
+			if (direction.value === 'apply' && !(await confirmApply())) return;
+			phase.value = 'running';
+			notice.value = null;
+			error.value = null;
+			if (direction.value === 'promote') await promote(request);
+			else if (source) await apply(request, source);
+		} catch (cause) {
+			// The server answers 4xx before it writes anything. Other failures can follow a write.
+			const uncertain = !(
+				cause instanceof ResponseError &&
+				cause.httpStatusCode !== undefined &&
+				cause.httpStatusCode < 500
+			);
+			error.value = {
+				message:
+					(direction.value === 'promote'
+						? getPromoteErrorMessage(cause, preview.value?.changes ?? [], i18n)
+						: undefined) ?? (cause instanceof Error ? cause.message : String(cause)),
+				uncertain,
+			};
+			if (uncertain) await refresh();
+		} finally {
+			phase.value = 'idle';
+		}
+	}
+
+	return {
+		isBusy,
+		isRunning: computed(() => phase.value === 'running'),
+		notice,
+		error,
+		submit,
+	};
+}
