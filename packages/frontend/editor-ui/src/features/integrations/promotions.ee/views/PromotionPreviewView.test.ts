@@ -309,6 +309,23 @@ describe('PromotionPreviewView', () => {
 		);
 	});
 
+	it('should not apply any selection while a folder on the branch moved', async () => {
+		// The branch holds "Payments" under "Reports". This instance holds it at the project root.
+		const preview = billingPreview();
+		vi.mocked(api.getPromotionPreview).mockResolvedValue({
+			...preview,
+			resources: preview.resources.map((resource) =>
+				resource.key === 'folder:f1'
+					? { ...resource, parentKey: 'folder:f2', previousParentKey: 'project:p1' }
+					: resource,
+			),
+		});
+
+		const { getByTestId } = await renderApply();
+
+		expect(getByTestId('promotion-preview-submit')).toBeDisabled();
+	});
+
 	it('should let users retry a rejected apply, and reload the preview first when the result is unknown', async () => {
 		vi.mocked(settingsApi.applyProjectSelection)
 			.mockRejectedValueOnce(new ResponseError('Import blocked', { httpStatusCode: 409 }))

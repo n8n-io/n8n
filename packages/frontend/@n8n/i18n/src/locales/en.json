@@ -9982,6 +9982,7 @@
 	"promotions.preview.submit.promote": "Promote {count} change | Promote {count} changes",
 	"promotions.preview.submit.apply": "Apply {count} change | Apply {count} changes",
 	"promotions.preview.submit.blocked": "Some selected workflows have blockers. Resolve the blockers or clear these workflows.",
+	"promotions.preview.submit.folderMoved": "A folder moved on the branch, and Apply can't move it on this instance. Move the folder on this instance to match the branch, then refresh. | Some folders moved on the branch, and Apply can't move them on this instance. Move the folders on this instance to match the branch, then refresh.",
 	"promotions.preview.notice.sourceChanged": "The branch changed after the page loaded, so nothing was applied. The page now shows the latest changes. Review them and apply again.",
 	"promotions.preview.notice.newBlockers": "Apply found new blockers, so nothing was applied. Review the blockers and apply again.",
 	"promotions.preview.error.promote": "Couldn't promote the changes",
