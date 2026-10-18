@@ -152,7 +152,8 @@ const emit = defineEmits<{
 	'delete:node': [id: string];
 	'replace:node': [id: string];
 	'create:node': [source: NodeCreatorOpenSource];
-	'create:sticky': [];
+	'create:sticky': [position?: XYPosition];
+	'cursor:position': [position: XYPosition];
 	'delete:nodes': [ids: string[], deleteWholeGroupIds?: string[]];
 	'update:nodes:enabled': [ids: string[]];
 	'copy:nodes': [ids: string[]];
@@ -1657,6 +1658,24 @@ function onOpenContextMenu(
 	});
 }
 
+// Flow position of the last empty-canvas right-click. Add node and add sticky use it.
+let paneContextMenuPosition: XYPosition | undefined;
+
+function onPaneContextMenu(event: MouseEvent) {
+	paneContextMenuPosition = getProjectedPosition(event);
+	emit('cursor:position', paneContextMenuPosition);
+	// Empty canvas is a fresh click: drop the selection and target no nodes.
+	clearSelectedNodes();
+	nodesSelectionActive.value = false;
+	lastSelectedNode.value = undefined;
+	emit('update:node:selected', undefined);
+	contextMenu.open(event, {
+		source: 'canvas',
+		nodeIds: [],
+		readOnly: isContextMenuReadOnly.value,
+	});
+}
+
 function onOpenSelectionContextMenu({ event }: { event: MouseEvent }) {
 	onOpenContextMenu(event);
 }
@@ -1711,7 +1730,7 @@ async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[],
 		case 'add_node':
 			return emit('create:node', 'context_menu');
 		case 'add_sticky':
-			return emit('create:sticky');
+			return emit('create:sticky', paneContextMenuPosition);
 		case 'copy':
 			return emit('copy:nodes', nodeIds);
 		case 'delete': {
@@ -2068,7 +2087,7 @@ defineExpose({
 		@connect="onConnect"
 		@connect-end="onConnectEnd"
 		@pane-click="onClickPane"
-		@pane-context-menu="onOpenContextMenu"
+		@pane-context-menu="onPaneContextMenu"
 		@move="onPaneMove"
 		@move-end="onPaneMoveEnd"
 		@node-drag-start="onNodeDragStart"
