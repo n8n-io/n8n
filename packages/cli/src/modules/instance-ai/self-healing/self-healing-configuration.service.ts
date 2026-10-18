@@ -44,7 +44,7 @@ export class SelfHealingConfigurationService {
 		return configuration;
 	}
 
-	async options(projectId: string): Promise<SelfHealingConfigurationOptions> {
+	async getConfigurationChoices(projectId: string): Promise<SelfHealingConfigurationOptions> {
 		const scopes = ['workflow:read', 'workflow:update'] as const;
 		const [projectRoleSlugs, globalRoleSlugs] = await Promise.all([
 			this.roles.rolesWithScope('project', [...scopes]),
@@ -126,7 +126,7 @@ export class SelfHealingConfigurationService {
 			);
 		}
 
-		const options = await this.options(projectId);
+		const options = await this.getConfigurationChoices(projectId);
 		const projectWorkflowIds = new Set(options.workflows.map(({ id }) => id));
 		if (input.workflowIds.some((id) => !projectWorkflowIds.has(id))) {
 			throw new BadRequestError('Select workflows from this project.');
