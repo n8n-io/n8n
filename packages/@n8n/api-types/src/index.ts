@@ -991,3 +991,5 @@ export {
 	JwksResponseSchema,
 	type JwksResponse,
 } from './schemas/jwks.schema';
+
+export * from './self-healing-configurations';

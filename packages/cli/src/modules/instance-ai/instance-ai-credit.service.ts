@@ -1,7 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import type { BuilderUsageItem, TraceStatus } from '@n8n/instance-ai';
+import { isSelfHealingResourceId, type BuilderUsageItem, type TraceStatus } from '@n8n/instance-ai';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { sleep } from '@n8n/utils/sleep';
 import { InstanceSettings } from 'n8n-core';
@@ -296,9 +296,8 @@ export class InstanceAiCreditService {
 	}
 
 	/**
-	 * Update the best-effort per-thread display total. A DB failure here must not
-	 * fail the (already-successful) claim, so it is isolated and only logged;
-	 * returns undefined when the total can't be read or written.
+	 * Update the display total without failing a successful credit claim.
+	 * Internal threads and failed updates return no display total.
 	 */
 	private async accumulateThreadCredits(
 		threadId: string,
@@ -315,6 +314,8 @@ export class InstanceAiCreditService {
 					},
 				}),
 			});
+			if (thread && isSelfHealingResourceId(thread.resourceId)) return undefined;
+
 			return typeof thread?.metadata?.creditsUsed === 'number'
 				? thread.metadata.creditsUsed
 				: undefined;

@@ -21,8 +21,8 @@ import { validateNodeConfig } from '@n8n/workflow-sdk';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
-import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import type { InstanceAiContext, NodeDescription } from '../types';
+import { restrictToolActions } from './restrict-tool-actions';
 import { needsModelSelection } from './nodes/model-selection';
 import { pickPreferredChatModelNode } from './nodes/preferred-chat-model';
 import { addSetupPreference, type NodeWithSetupPreference } from './nodes/setup-preference';
@@ -205,19 +205,23 @@ const suspendSchema = z.object({
 	severity: instanceAiConfirmationSeveritySchema,
 });
 
-const fullInputSchema = sanitizeInputSchema(
-	z.discriminatedUnion('action', [
-		listAction,
-		searchAction,
-		describeAction,
-		typeDefinitionAction,
-		suggestedAction,
-		exploreResourcesAction,
-		executeAction,
-	]),
-);
+const actions = [
+	listAction,
+	searchAction,
+	describeAction,
+	typeDefinitionAction,
+	suggestedAction,
+	exploreResourcesAction,
+	executeAction,
+] as const;
 
-type FullInput = z.infer<typeof fullInputSchema>;
+type FullInput = z.infer<(typeof actions)[number]>;
+
+interface NodesToolOptions {
+	surface?: 'full' | 'orchestrator';
+	allowedActions?: ReadonlyArray<FullInput['action']>;
+	description?: string;
+}
 
 interface SearchEngineCache {
 	nodeTypes?: SearchableNodeType[];
@@ -640,11 +644,12 @@ async function handleExecute(
 
 export function createNodesTool(
 	context: InstanceAiContext,
-	surface: 'full' | 'orchestrator' = 'full',
+	optionsInput: NodesToolOptions | 'full' | 'orchestrator' = 'full',
 ) {
+	const options = typeof optionsInput === 'string' ? { surface: optionsInput } : optionsInput;
 	const searchEngineCache: SearchEngineCache = {};
 
-	if (surface === 'orchestrator') {
+	if (options.surface === 'orchestrator') {
 		const orchestratorExploreAction = z.object({
 			action: z
 				.literal('explore-resources')
@@ -666,8 +671,9 @@ export function createNodesTool(
 				.describe(CURRENT_NODE_PARAMETERS_DESCRIPTION),
 		});
 
-		const orchestratorInputSchema = sanitizeInputSchema(
-			z.discriminatedUnion('action', [typeDefinitionAction, orchestratorExploreAction]),
+		const orchestratorInputSchema = restrictToolActions(
+			[typeDefinitionAction, orchestratorExploreAction],
+			options.allowedActions,
 		);
 
 		type OrchestratorInput = z.infer<typeof orchestratorInputSchema>;
@@ -693,9 +699,10 @@ export function createNodesTool(
 
 	return new Tool('nodes')
 		.description(
-			'Work with n8n node types. Use `suggested` for known workflow categories, `search` for service-specific discovery, `type-definition` before configuring nodes, `explore-resources` for live credential-backed lists, and `execute` to run one node standalone (requires user approval, real side effects).',
+			options.description ??
+				'Work with n8n node types. Use `suggested` for known workflow categories, `search` for service-specific discovery, `type-definition` before configuring nodes, `explore-resources` for live credential-backed lists, and `execute` to run one node standalone (requires user approval, real side effects).',
 		)
-		.input(fullInputSchema)
+		.input(restrictToolActions(actions, options.allowedActions))
 		.suspend(suspendSchema)
 		.resume(instanceAiApprovalResumeSchema)
 		.handler(async (input: FullInput, ctx) => {

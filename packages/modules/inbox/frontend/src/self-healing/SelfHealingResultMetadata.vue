@@ -30,24 +30,24 @@ const usageRows = computed(() => {
 				{
 					key: 'credits',
 					label: i18n.baseText('inbox.selfHealing.usage.credits'),
-					value: usage.credits,
+					value: 'credits' in usage ? usage.credits : null,
 				},
 			]
 		: [
 				{
 					key: 'promptTokens',
 					label: i18n.baseText('inbox.selfHealing.usage.promptTokens'),
-					value: usage.promptTokens,
+					value: 'promptTokens' in usage ? usage.promptTokens : null,
 				},
 				{
 					key: 'completionTokens',
 					label: i18n.baseText('inbox.selfHealing.usage.completionTokens'),
-					value: usage.completionTokens,
+					value: 'completionTokens' in usage ? usage.completionTokens : null,
 				},
 				{
 					key: 'totalTokens',
 					label: i18n.baseText('inbox.selfHealing.usage.totalTokens'),
-					value: usage.totalTokens,
+					value: 'totalTokens' in usage ? usage.totalTokens : null,
 				},
 			];
 	const rows = measurements.flatMap((row) =>

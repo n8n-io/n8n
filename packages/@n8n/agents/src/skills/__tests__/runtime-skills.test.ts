@@ -475,19 +475,50 @@ Use the workflow SDK.`,
 			await Promise.resolve();
 			source.registry = {
 				...source.registry,
-				skills: source.registry.skills.map((skill) => ({
-					...skill,
-					path: '/workspace/skills/summarize_notes/SKILL.md',
-					directory: '/workspace/skills/summarize_notes',
-				})),
+				skills: source.registry.skills.map((skill) => ({ ...skill, hash: 'prepared-hash' })),
 			};
 		});
 		source.prepare = prepare;
 		const loadTool = createSkillLoadTool(source);
 
 		const loaded = skillLoadText(await loadTool.handler?.({ skillId: 'summarize_notes' }, {}));
-		expect(loaded).toContain('/workspace/skills/summarize_notes');
+		expect(loaded).toContain('[Skill hash: "prepared-hash"]');
 		expect(prepare).toHaveBeenCalledTimes(1);
+	});
+
+	it('does not show server file paths to the model', async () => {
+		const source = createRuntimeSkillSource([
+			{
+				id: 'summarize_notes',
+				name: 'Summarize notes',
+				description: 'Use for meeting notes.',
+				instructions: 'Extract decisions.',
+				path: '/usr/local/lib/node_modules/n8n/skills/summarize_notes/SKILL.md',
+				sourcePath: '/usr/local/lib/node_modules/n8n/skills/summarize_notes/SKILL.md',
+				directory: '/usr/local/lib/node_modules/n8n/skills/summarize_notes',
+				linkedFiles: {
+					references: [{ path: 'references/guide.md', bytes: 5, sha256: 'abc' }],
+					templates: [],
+					scripts: [],
+					assets: [],
+					examples: [],
+					other: [],
+				},
+			},
+		]);
+		source.loadFile = async (skillId, filePath) =>
+			await Promise.resolve({ skillId, filePath, content: 'Guide' });
+		const loadTool = createSkillLoadTool(source);
+
+		const skill = skillLoadText(await loadTool.handler?.({ skillId: 'summarize_notes' }, {}));
+		const file = await loadTool.handler?.(
+			{ skillId: 'summarize_notes', filePath: 'references/guide.md' },
+			{},
+		);
+
+		expect(skill).toContain('Extract decisions.');
+		expect(file).toMatchObject({ success: true, content: 'Guide' });
+		expect(JSON.stringify([skill, file])).not.toContain('/usr/local/lib');
 	});
 
 	it('injects the agent skill catalog without preparing the runtime skill source', async () => {

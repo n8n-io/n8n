@@ -66,6 +66,7 @@ const instanceAiModuleSettings: NonNullable<FrontendModuleSettings['instance-ai'
 	workflowBuilderAvailable: true,
 	sandboxUnavailableReason: null,
 	runDebugEnabled: false,
+	workflowSuggestionsEnabled: false,
 };
 
 function setAssistantEnabled(enabled: boolean) {

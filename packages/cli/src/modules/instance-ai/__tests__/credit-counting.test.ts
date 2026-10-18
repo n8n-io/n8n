@@ -38,12 +38,12 @@ function claimedRunIds(service: InstanceAiCreditService) {
 }
 
 function createMockThreadRepo(
-	thread?: { id: string; metadata: Record<string, unknown> | null } | null,
+	thread?: { id: string; resourceId?: string; metadata: Record<string, unknown> | null } | null,
 ) {
 	let current: Thread | null = thread
 		? {
 				id: thread.id,
-				resourceId: 'user-1',
+				resourceId: thread.resourceId ?? 'user-1',
 				metadata: thread.metadata ?? undefined,
 				createdAt: new Date(),
 				updatedAt: new Date(),
@@ -136,6 +136,31 @@ async function callClaim(
 // ---------------------------------------------------------------------------
 
 describe('claimRunUsage', () => {
+	it('returns the measured delta without sending internal thread fields to the browser', async () => {
+		const threadRepo = createMockThreadRepo({
+			id: 'internal-thread',
+			resourceId: 'ia-self-healing:user-1',
+			metadata: { creditsUsed: 2 },
+		});
+		const push = { sendToUsers: vi.fn() };
+		const service = createService({
+			threadRepo,
+			aiService: createMockAiService(),
+			push,
+			telemetry: { track: vi.fn() },
+		});
+
+		expect(await callClaim(service, { threadId: 'internal-thread' })).toBe(0.5);
+		expect(threadRepo.getCurrent()?.metadata?.creditsUsed).toBe(2.5);
+		expect(push.sendToUsers).toHaveBeenCalledWith(
+			{
+				type: 'updateInstanceAiCredits',
+				data: { creditsClaimed: 5.5, creditsQuota: 100 },
+			},
+			['user-1'],
+		);
+	});
+
 	it('claims token usage and accumulates the delta into thread metadata', async () => {
 		const threadRepo = createMockThreadRepo({ id: 't1', metadata: { creditsUsed: 2 } });
 		const ai = createMockAiService({

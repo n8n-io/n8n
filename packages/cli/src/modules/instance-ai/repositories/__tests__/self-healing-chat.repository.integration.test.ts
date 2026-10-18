@@ -7,6 +7,7 @@ import { createUser } from '@test-integration/db/users';
 
 import type { InstanceAiSettingsService } from '../../instance-ai-settings.service';
 import { parseStoredMessages } from '../../message-parser';
+import { createConfiguration } from '../../self-healing/__tests__/support/configuration';
 import { SelfHealingResultRepository } from '../../self-healing/database/self-healing-result.repository';
 import { SelfHealingChatService } from '../../self-healing/self-healing-chat.service';
 import { TypeORMAgentMemory } from '../../storage/typeorm-agent-memory';
@@ -42,8 +43,10 @@ describe('Self-healing private chat persistence', () => {
 		const user = await createUser();
 		const project = await threads.getPersonalProjectForChat(user.id, {});
 		const workflow = await createWorkflow({}, user);
+		const configuration = await createConfiguration(project.id, user.id);
 		const result = await results.createResult(
 			{
+				configurationId: configuration.id,
 				workflowId: workflow.id,
 				projectId: project.id,
 				backgroundUserId: user.id,
@@ -52,14 +55,10 @@ describe('Self-healing private chat persistence', () => {
 				report: 'Connect the account, then retry the workflow.',
 				completedAt: new Date(),
 				executionId: 'saved-execution',
-				suggestionId: null,
 				usage: {
 					credits: null,
 					turns: null,
 					durationSeconds: null,
-					promptTokens: null,
-					completionTokens: null,
-					totalTokens: null,
 				},
 			},
 			{},

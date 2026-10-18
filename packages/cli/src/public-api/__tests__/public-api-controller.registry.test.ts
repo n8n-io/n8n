@@ -35,6 +35,7 @@ import {
 } from '@/public-api/__tests__/public-api-controller-test-utils';
 import type { IdempotencyKeyService } from '@/public-api/idempotency-key.service';
 import { PublicApiControllerRegistry } from '@/public-api/public-api-controller.registry';
+import type { PublicApiRateLimitService } from '@/public-api/public-api-rate-limit.service';
 import type { LastActiveAtService } from '@/services/last-active-at.service';
 
 vi.mock('@/permissions.ee/check-access', () => ({ userHasScopes: vi.fn() }));
@@ -61,6 +62,7 @@ describe('PublicApiControllerRegistry', () => {
 			authStrategyRegistry,
 			lastActiveAtService,
 			eventService,
+			mock<PublicApiRateLimitService>({ createRouteLimiters: () => [] }),
 			idempotencyKeyService,
 			logger,
 		).activate(router, 'v1');

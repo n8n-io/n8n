@@ -272,12 +272,9 @@ describe('SelfHealingResultContent', () => {
 		useSettingsStore().settings.deployment = { type: isCloud ? 'cloud' : 'default' };
 		const detail = result({
 			usage: {
-				credits: 0,
 				turns: 3,
 				durationSeconds: null,
-				promptTokens: 0,
-				completionTokens: null,
-				totalTokens: 0,
+				...(isCloud ? { credits: 0 } : { promptTokens: 0, completionTokens: null, totalTokens: 0 }),
 			},
 		});
 		const { getByTestId, queryByTestId, rerender } = renderContent({ detail });
@@ -291,11 +288,40 @@ describe('SelfHealingResultContent', () => {
 
 		await rerender({
 			detail: result({
-				usage: { ...detail.usage, credits: null, promptTokens: null, totalTokens: null },
+				usage: {
+					turns: 3,
+					durationSeconds: null,
+					...(isCloud
+						? { credits: null }
+						: { promptTokens: null, completionTokens: null, totalTokens: null }),
+				},
 			}),
 		});
 		expect(queryByTestId('self-healing-usage')).not.toBeInTheDocument();
 	});
+
+	it.each(['cloud', 'default'] as const)(
+		'keeps duration when saved usage differs from the %s deployment',
+		(deployment) => {
+			useSettingsStore().settings.deployment = { type: deployment };
+			const { getByTestId, queryByTestId } = renderContent({
+				detail: result({
+					usage: {
+						turns: 3,
+						durationSeconds: 65,
+						...(deployment === 'cloud'
+							? { promptTokens: 100, completionTokens: 50, totalTokens: 150 }
+							: { credits: 1 }),
+					},
+				}),
+			});
+
+			expect(getByTestId('self-healing-usage-duration')).toBeInTheDocument();
+			for (const field of ['credits', 'promptTokens', 'completionTokens', 'totalTokens']) {
+				expect(queryByTestId(`self-healing-usage-${field}`)).not.toBeInTheDocument();
+			}
+		},
+	);
 
 	it('links only an available original execution and preserves the report without it', async () => {
 		const { getByTestId, queryByTestId, rerender } = renderContent();

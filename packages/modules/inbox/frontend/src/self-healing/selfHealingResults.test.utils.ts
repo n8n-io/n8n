@@ -87,7 +87,6 @@ export function result(overrides: Partial<SelfHealingResultDetail> = {}): SelfHe
 		summary: 'Restore the last step',
 		report: 'The workflow stops before the last step. Review the proposed connection.',
 		usage: {
-			credits: null,
 			turns: 3,
 			durationSeconds: 45,
 			promptTokens: 100,

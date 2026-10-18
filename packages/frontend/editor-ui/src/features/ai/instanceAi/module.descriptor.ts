@@ -88,6 +88,25 @@ export const InstanceAiModule = defineFrontendModule({
 	icon: 'n8n-assistant',
 	routes: [
 		{
+			path: 'settings/self-healing/:configurationId',
+			name: 'self-healing-configuration',
+			component: async () =>
+				(await import('@n8n/frontend-module-self-healing')).SelfHealingConfigView,
+			props: true,
+			meta: { projectRoute: true },
+			beforeEnter: async (to) => {
+				const { useProjectsStore } = await import(
+					'@/features/collaboration/projects/projects.store'
+				);
+				const { getResourcePermissions } = await import('@n8n/permissions');
+				const project = useProjectsStore().myProjects.find(({ id }) => id === to.params.projectId);
+				return (
+					!!useSettingsStore().moduleSettings['instance-ai']?.workflowSuggestionsEnabled &&
+					!!getResourcePermissions(project?.scopes).project.update
+				);
+			},
+		},
+		{
 			path: '/assistant',
 			component: InstanceAiView,
 			beforeEnter: () => (useInstanceAiAvailable().value ? true : { name: VIEWS.HOMEPAGE }),

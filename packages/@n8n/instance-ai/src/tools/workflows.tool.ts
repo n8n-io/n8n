@@ -440,6 +440,8 @@ export interface WorkflowsToolOptions {
 	descriptionPrefix?: string;
 	descriptionSuffix?: string;
 	surface?: 'full' | 'orchestrator';
+	/** Override source-edit instructions for a caller with its own candidate lifecycle. */
+	sourceGuidance?: string;
 }
 
 type WorkflowsToolOptionsInput = WorkflowsToolOptions | 'full' | 'orchestrator';
@@ -484,6 +486,7 @@ function normalizeOptions(options: WorkflowsToolOptionsInput = {}): WorkflowsToo
 
 function getSupportedWorkflowActionSchemas(
 	context: InstanceAiContext,
+	options: WorkflowsToolOptions,
 ): Partial<Record<WorkflowAction, WorkflowActionSchema>> {
 	const hasNamedVersions = !!context.workflowService.updateVersion;
 	const hasVersions = !!context.workflowService.listVersions;
@@ -496,7 +499,11 @@ function getSupportedWorkflowActionSchemas(
 		list: pickListAction(context, hasNodeUsage),
 		...(hasNodeUsage ? { 'node-usage': nodeUsageAction } : {}),
 		get: getAction,
-		'get-as-code': getAsCodeAction,
+		'get-as-code': options.sourceGuidance
+			? getAsCodeAction.extend({
+					action: z.literal('get-as-code').describe(options.sourceGuidance),
+				})
+			: getAsCodeAction,
 		delete: deleteAction,
 		unarchive: unarchiveAction,
 		setup: setupAction,
@@ -524,7 +531,7 @@ function getWorkflowActions(
 }
 
 function buildInputSchema(context: InstanceAiContext, options: WorkflowsToolOptions) {
-	const supportedSchemas = getSupportedWorkflowActionSchemas(context);
+	const supportedSchemas = getSupportedWorkflowActionSchemas(context, options);
 	const actionSchemas: WorkflowActionSchema[] = [];
 	for (const action of getWorkflowActions(supportedSchemas, options)) {
 		const schema = supportedSchemas[action];
@@ -2292,7 +2299,7 @@ function formatWorkflowActionList(actions: readonly WorkflowAction[]): string {
 }
 
 function getToolDescription(context: InstanceAiContext, options: WorkflowsToolOptions): string {
-	const supportedSchemas = getSupportedWorkflowActionSchemas(context);
+	const supportedSchemas = getSupportedWorkflowActionSchemas(context, options);
 	const actionList = formatWorkflowActionList(getWorkflowActions(supportedSchemas, options));
 	const description = `${options.descriptionPrefix ?? 'Manage workflows'} — ${actionList}.`;
 	const suffix =
@@ -2326,6 +2333,7 @@ export function createWorkflowsTool(
 		.resume(workflowsResumeSchema)
 		.handler(async (input, ctx) => {
 			const workflowInput = input as Input;
+
 			switch (workflowInput.action) {
 				case 'list':
 					return await handleList(context, workflowInput);
@@ -2333,8 +2341,17 @@ export function createWorkflowsTool(
 					return await handleNodeUsage(context, workflowInput);
 				case 'get':
 					return await handleGet(context, workflowInput);
-				case 'get-as-code':
-					return await handleGetAsCode(context, workflowInput);
+				case 'get-as-code': {
+					const result = await handleGetAsCode(context, workflowInput);
+
+					if (!options.sourceGuidance) return result;
+
+					const conflictNote =
+						'status' in result && result.status === 'conflict'
+							? 'The source file contains unbuilt edits and was left untouched. '
+							: '';
+					return { ...result, note: conflictNote + options.sourceGuidance };
+				}
 				case 'delete':
 					return await handleDelete(context, workflowInput, ctx);
 				case 'unarchive':

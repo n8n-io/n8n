@@ -107,7 +107,22 @@
 		{
 			"name": "SelfHealingResult",
 			"path": "packages/cli/src/modules/instance-ai/self-healing/database/self-healing-result.entity.ts",
-			"reason": "Keeps the original project and investigation identity. Deleted via FK cascade when the original project, workflow, background user, or attached suggestion is deleted."
+			"reason": "Keeps the original project and investigation identity. Deleted via FK cascade when the configuration, original project, workflow, or background user is deleted. Its suggestions are deleted with it."
+		},
+		{
+			"name": "SelfHealingInvestigation",
+			"path": "packages/cli/src/modules/instance-ai/self-healing/database/self-healing-investigation.entity.ts",
+			"reason": "Keeps the original actor, project, and workflow baseline. A workflow transfer prevents completion. Deleted via FK cascade with the original project, workflow, background user, or completed result."
+		},
+		{
+			"name": "SelfHealingConfiguration",
+			"path": "packages/cli/src/modules/instance-ai/self-healing/database/self-healing-configuration.entity.ts",
+			"reason": "Project settings retain the original project and enabling user. They are not transferred. Deleted through the project foreign key when the source project is deleted."
+		},
+		{
+			"name": "SelfHealingConfigurationWorkflow",
+			"path": "packages/cli/src/modules/instance-ai/self-healing/database/self-healing-configuration-workflow.entity.ts",
+			"reason": "Workflow selections belong to the original project configuration. They are not transferred. Deleted through the configuration, project, or workflow foreign key."
 		}
 	]
 }
