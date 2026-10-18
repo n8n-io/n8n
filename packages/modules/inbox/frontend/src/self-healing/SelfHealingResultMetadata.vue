@@ -116,11 +116,12 @@ const usageRows = computed(() => {
 					:to="{ name: VIEWS.WORKFLOW, params: { workflowId: detail.workflowId } }"
 					theme="text"
 					size="medium"
-					:class="$style.link"
 					data-test-id="self-healing-workflow-link"
 				>
-					<N8nIcon icon="workflow" size="medium" />
-					<span :class="$style.workflowName">{{ workflowName }}</span>
+					<span :class="$style.link">
+						<N8nIcon icon="workflow" size="medium" />
+						<span :class="$style.workflowName">{{ workflowName }}</span>
+					</span>
 				</N8nLink>
 			</div>
 			<div :class="$style.section">
@@ -207,6 +208,14 @@ const usageRows = computed(() => {
 	align-items: center;
 	gap: var(--spacing--2xs);
 	min-width: 0;
+}
+
+.link {
+	align-items: flex-start;
+
+	> :first-child {
+		flex-shrink: 0;
+	}
 }
 
 .workflowName {
