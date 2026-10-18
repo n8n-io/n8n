@@ -173,7 +173,6 @@ const isApplyMove = computed(
 						v-if="dataTable"
 						:class="$style.padded"
 						:description="dataTable"
-						:direction="direction"
 					/>
 					<PromotionFieldChanges
 						v-else-if="fieldChanges.length > 0"

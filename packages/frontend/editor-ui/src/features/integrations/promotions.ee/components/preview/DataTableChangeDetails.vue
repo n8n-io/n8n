@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import type { PromotionDataTableChange, PromotionDirection } from '@n8n/api-types';
-import { N8nCallout, N8nIcon, N8nText } from '@n8n/design-system';
+import type { PromotionDataTableChange } from '@n8n/api-types';
+import { N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
 import type { DataTableDescription } from '../../promotionPreview.content';
 
-defineProps<{ description: DataTableDescription; direction: PromotionDirection }>();
+defineProps<{ description: DataTableDescription }>();
 
 const i18n = useI18n();
 
@@ -39,15 +39,6 @@ function changeText(change: PromotionDataTableChange): string {
 
 <template>
 	<div :class="$style.details" data-test-id="promotion-preview-data-table">
-		<!-- Promote cannot know the table on the instance that applies it, so only Apply warns. -->
-		<N8nCallout
-			v-if="direction === 'apply' && description.hasDataLoss"
-			theme="warning"
-			data-test-id="promotion-preview-data-loss"
-		>
-			{{ i18n.baseText('promotions.preview.dataTable.dataLoss') }}
-		</N8nCallout>
-
 		<ul v-if="description.changes.length > 0" :class="$style.list">
 			<li
 				v-for="(change, index) in description.changes"
@@ -74,11 +65,11 @@ function changeText(change: PromotionDataTableChange): string {
 					<N8nText step="2xs" color="text-light">{{ column.type }}</N8nText>
 				</li>
 			</ul>
+			<!-- Only a new table raises the question. A changed table keeps its rows. -->
+			<N8nText step="2xs" color="text-light">
+				{{ i18n.baseText('promotions.preview.dataTable.rowsNotCopied') }}
+			</N8nText>
 		</template>
-
-		<N8nText step="2xs" color="text-light">
-			{{ i18n.baseText('promotions.preview.dataTable.rowsNotCopied') }}
-		</N8nText>
 	</div>
 </template>
 
