@@ -715,13 +715,6 @@ onMounted(async () => {
 		</div>
 		<form @submit.prevent="onSubmit">
 			<template v-if="canUpdateProject">
-				<ProjectSelfHealingSection
-					v-if="
-						settingsStore.moduleSettings['instance-ai']?.workflowSuggestionsEnabled &&
-						projectsStore.currentProject
-					"
-					:project-id="projectsStore.currentProject.id"
-				/>
 				<fieldset>
 					<label for="projectName">{{ i18n.baseText('projects.settings.name') }}</label>
 					<div :class="$style.projectName">
@@ -856,6 +849,14 @@ onMounted(async () => {
 							onTextInput();
 						}
 					"
+				/>
+
+				<ProjectSelfHealingSection
+					v-if="
+						settingsStore.moduleSettings['instance-ai']?.workflowSuggestionsEnabled &&
+						projectsStore.currentProject
+					"
+					:project-id="projectsStore.currentProject.id"
 				/>
 
 				<fieldset>

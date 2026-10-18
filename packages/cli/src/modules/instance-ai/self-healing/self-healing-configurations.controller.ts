@@ -30,7 +30,7 @@ export class SelfHealingConfigurationsController {
 	@Get('/options')
 	@ProjectScope('project:update')
 	async options(req: ConfigurationRequest) {
-		return await this.configurations.options(req.params.projectId);
+		return await this.configurations.getConfigurationChoices(req.params.projectId);
 	}
 
 	@Get('/:configurationId')

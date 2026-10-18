@@ -56,18 +56,23 @@ beforeEach(() => {
 	vi.spyOn(store, 'load').mockResolvedValue();
 });
 
-it('creates a disabled configuration with the creator as reviewer', async () => {
+it('creates an enabled configuration with the creator as reviewer', async () => {
 	const store = useSelfHealingStore();
-	const save = vi.spyOn(store, 'save').mockResolvedValue(configuration);
+	const save = vi.spyOn(store, 'save').mockResolvedValue({
+		...configuration,
+		enabled: true,
+		enabledById: 'creator',
+	});
 	const view = await renderView('new');
-	const button = await view.findByRole('button', { name: 'Save configuration' });
+	const button = await view.findByRole('button', { name: 'Create configuration' });
 	expect(button).toBeEnabled();
-	expect(view.getByRole('switch', { name: 'Enable self-healing' })).not.toBeChecked();
+	expect(view.queryByRole('switch')).not.toBeInTheDocument();
+	expect(view.getByText('Test Reviewer (you)')).toBeVisible();
 	await fireEvent.click(button);
 	await waitFor(() =>
 		expect(save).toHaveBeenCalledWith(
 			'project',
-			{ scope: 'all', workflowIds: [], reviewerIds: ['creator'], enabled: false },
+			{ scope: 'all', workflowIds: [], reviewerIds: ['creator'], enabled: true },
 			undefined,
 		),
 	);
@@ -80,7 +85,7 @@ it('requires a workflow selection when an all-workflows configuration already ex
 	const store = useSelfHealingStore();
 	store.configurations.project = [configuration];
 	const view = await renderView('new');
-	expect(await view.findByRole('button', { name: 'Save configuration' })).toBeDisabled();
+	expect(await view.findByRole('button', { name: 'Create configuration' })).toBeDisabled();
 	expect(view.getByTestId('self-healing-workflows')).toBeVisible();
 });
 
@@ -88,43 +93,43 @@ it('loads an existing configuration without offering to save unchanged values', 
 	const store = useSelfHealingStore();
 	store.configurations.project = [{ ...configuration, enabled: true, enabledById: 'creator' }];
 	const view = await renderView('1');
-	expect(await view.findByRole('button', { name: 'Save configuration' })).toBeDisabled();
-	expect(view.getByRole('switch', { name: 'Enable self-healing' })).toBeChecked();
+	expect(await view.findByRole('button', { name: 'Save changes' })).toBeDisabled();
 });
 
-it('prevents edits while a configuration is being saved', async () => {
-	const store = useSelfHealingStore();
-	const selected = { ...configuration, scope: 'selected' as const, workflowIds: ['workflow'] };
-	store.configurations.project = [selected];
-	const pending = Promise.withResolvers<SelfHealingConfigurationDto>();
-	const save = vi.spyOn(store, 'save').mockReturnValue(pending.promise);
-	const view = await renderView('1');
-	const button = await view.findByRole('button', { name: 'Save configuration' });
-	const enabled = view.getByRole('switch', { name: 'Enable self-healing' });
-	await fireEvent.click(enabled);
-	await fireEvent.click(button);
-
-	expect(enabled).toBeDisabled();
-	for (const select of view.getAllByRole('combobox')) {
-		expect(select).toBeDisabled();
-	}
-	await fireEvent.click(enabled);
-	expect(enabled).toBeChecked();
-	expect(router.currentRoute.value.params.configurationId).toBe('1');
-
-	pending.resolve({ ...selected, enabled: true, enabledById: 'creator' });
-	await waitFor(() => expect(router.currentRoute.value.path).toBe('/projects/project/settings'));
-	expect(save).toHaveBeenCalledWith(
-		'project',
-		{
-			scope: 'selected',
+it.each([false, true])(
+	'preserves enabled=%s when saving edits and blocks changes during save',
+	async (enabled) => {
+		const store = useSelfHealingStore();
+		const selected = {
+			...configuration,
+			enabled,
+			enabledById: enabled ? 'creator' : null,
+			scope: 'selected' as const,
 			workflowIds: ['workflow'],
-			reviewerIds: ['creator'],
-			enabled: true,
-		},
-		1,
-	);
-});
+		};
+		store.configurations.project = [selected];
+		const pending = Promise.withResolvers<SelfHealingConfigurationDto>();
+		const save = vi.spyOn(store, 'save').mockReturnValue(pending.promise);
+		const view = await renderView('1');
+		const button = await view.findByRole('button', { name: 'Save changes' });
+		await fireEvent.click(view.getByRole('radio', { name: 'All' }));
+		await fireEvent.click(button);
+
+		for (const select of view.getAllByRole('combobox')) {
+			expect(select).toBeDisabled();
+		}
+		expect(view.getByRole('radio', { name: 'Select manually' })).toBeDisabled();
+		expect(view.getByRole('button', { name: 'Remove reviewer' })).toBeDisabled();
+		pending.resolve({ ...selected, scope: 'all', workflowIds: [] });
+		await waitFor(() => expect(button).toBeDisabled());
+		expect(router.currentRoute.value.path).toBe('/projects/project/settings/self-healing/1');
+		expect(save).toHaveBeenCalledWith(
+			'project',
+			{ scope: 'all', workflowIds: [], reviewerIds: ['creator'], enabled },
+			1,
+		);
+	},
+);
 
 it.each([
 	'/projects/project/settings',
@@ -139,19 +144,88 @@ it.each([
 	store.configurations.other = [{ ...configuration, projectId: 'other' }];
 	store.options.other = store.options.project;
 	const view = await renderView('1');
-	const enabled = await view.findByRole('switch', { name: 'Enable self-healing' });
-	await fireEvent.click(enabled);
+	const selected = await view.findByRole('radio', { name: 'Select manually' });
+	await fireEvent.click(selected);
 
 	confirm.mockResolvedValueOnce('cancel');
 	await router.push(destination);
 
 	expect(confirm).toHaveBeenCalledOnce();
 	expect(router.currentRoute.value.path).toBe('/projects/project/settings/self-healing/1');
-	expect(enabled).toBeChecked();
+	expect(selected).toBeChecked();
 
 	confirm.mockResolvedValueOnce('confirm');
 	await router.push(destination);
 
 	expect(confirm).toHaveBeenCalledTimes(2);
 	expect(router.currentRoute.value.path).toBe(destination);
+});
+
+it('selects workflow rows and reviewers before saving', async () => {
+	const store = useSelfHealingStore();
+	const save = vi.spyOn(store, 'save').mockResolvedValue({
+		...configuration,
+		scope: 'selected',
+		workflowIds: ['workflow'],
+		enabled: true,
+		enabledById: 'creator',
+	});
+	const view = await renderView('new');
+	await view.findByRole('button', { name: 'Create configuration' });
+	await fireEvent.click(view.getByRole('radio', { name: 'Select manually' }));
+	expect(view.getByRole('button', { name: 'Create configuration' })).toBeDisabled();
+	await fireEvent.click(view.getAllByRole('button', { name: 'Show popup' })[0]);
+	await fireEvent.click(await view.findByRole('option', { name: 'Production workflow' }));
+	expect(view.getByTestId('self-healing-selected-workflow')).toHaveTextContent(
+		'Production workflow',
+	);
+	await fireEvent.click(view.getByRole('button', { name: 'Remove reviewer' }));
+	expect(view.getByRole('button', { name: 'Create configuration' })).toBeDisabled();
+	await fireEvent.click(view.getAllByRole('button', { name: 'Show popup' })[1]);
+	await fireEvent.click(await view.findByRole('option', { name: /Test Reviewer/ }));
+	await fireEvent.click(view.getByRole('button', { name: 'Create configuration' }));
+
+	expect(save).toHaveBeenCalledWith(
+		'project',
+		{
+			scope: 'selected',
+			workflowIds: ['workflow'],
+			reviewerIds: ['creator'],
+			enabled: true,
+		},
+		undefined,
+	);
+});
+
+it('discards edits in place without changing the saved configuration', async () => {
+	const store = useSelfHealingStore();
+	store.configurations.project = [
+		{ ...configuration, scope: 'selected', workflowIds: ['workflow'] },
+	];
+	const save = vi.spyOn(store, 'save');
+	const view = await renderView('1');
+	await fireEvent.click(await view.findByRole('button', { name: 'Remove workflow' }));
+	expect(view.queryByTestId('self-healing-selected-workflow')).not.toBeInTheDocument();
+	await fireEvent.click(view.getByRole('button', { name: 'Discard changes' }));
+	expect(await view.findByTestId('self-healing-selected-workflow')).toHaveTextContent(
+		'Production workflow',
+	);
+	expect(router.currentRoute.value.params.configurationId).toBe('1');
+	expect(save).not.toHaveBeenCalled();
+	expect(view.getByRole('button', { name: 'Save changes' })).toBeDisabled();
+});
+
+it('keeps workflows reserved by other configurations unavailable in the picker', async () => {
+	const store = useSelfHealingStore();
+	store.configurations.project = [
+		{ ...configuration, scope: 'selected', workflowIds: ['workflow'] },
+	];
+	const view = await renderView('new');
+	await view.findByRole('button', { name: 'Create configuration' });
+	await fireEvent.click(view.getByRole('radio', { name: 'Select manually' }));
+	await fireEvent.click(view.getAllByRole('button', { name: 'Show popup' })[0]);
+
+	expect(await view.findByRole('option', { name: /Production workflow/ })).toHaveAttribute(
+		'data-disabled',
+	);
 });
