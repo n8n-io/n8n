@@ -152,9 +152,7 @@ export class WorkflowSuggestionActionsService {
 			throw new NotFoundError('Suggestion not found.');
 		if (suggestion.state !== 'pending') {
 			if (options.requirePending) {
-				throw new ConflictError(
-					'This suggestion is already closed. Refresh the page to see its status.',
-				);
+				throw new ConflictError('This suggestion is already closed.');
 			}
 			return undefined;
 		}

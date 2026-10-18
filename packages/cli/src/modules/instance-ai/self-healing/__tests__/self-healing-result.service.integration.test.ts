@@ -947,7 +947,7 @@ it('preserves outdated reconciliation when shared dismissal rejects a moved work
 		{ projectId: destination.id },
 	);
 	await expect(service.dismiss(user, project.id, original.id, result.id)).rejects.toThrow(
-		'This result is no longer available in this project. Refresh the page.',
+		'This result is no longer available in this project.',
 	);
 	expect(await results.findOneByOrFail({ id: result.id })).toMatchObject({ dismissedAt: null });
 	expect(await suggestions.findOneByOrFail({ id: result.suggestionId! })).toMatchObject({

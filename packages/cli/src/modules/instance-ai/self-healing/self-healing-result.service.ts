@@ -312,12 +312,10 @@ export class SelfHealingResultService {
 		const suggestionId = result.suggestionId;
 
 		if (result.dismissedAt) {
-			throw new ConflictError('This result is already closed. Refresh the page to see its status.');
+			throw new ConflictError('This result is already closed.');
 		}
 		if (!suggestionId || (action === 'approve-and-publish' && result.outcome !== 'fix_ready')) {
-			throw new ConflictError(
-				"This action isn't available for this result. Refresh the page to see its available actions.",
-			);
+			throw new ConflictError("This action isn't available for this result.");
 		}
 
 		const options = { requirePending: true };
@@ -388,12 +386,10 @@ export class SelfHealingResultService {
 
 		// Commit outdated reconciliation before rejecting a stale project route.
 		if (outcome === 'unavailable') {
-			throw new NotFoundError(
-				'This result is no longer available in this project. Refresh the page.',
-			);
+			throw new NotFoundError('This result is no longer available in this project.');
 		}
 		if (outcome === 'already_closed') {
-			throw new ConflictError('This result is already closed. Refresh the page to see its status.');
+			throw new ConflictError('This result is already closed.');
 		}
 
 		return await this.getDetail(user, projectId, workflowId, resultId);
@@ -422,9 +418,7 @@ export class SelfHealingResultService {
 	) {
 		const owner = await this.ownership.getWorkflowOwningProject(workflowId, ctx);
 		if (owner?.id !== projectId) {
-			throw new NotFoundError(
-				'This result is no longer available in this project. Refresh the page.',
-			);
+			throw new NotFoundError('This result is no longer available in this project.');
 		}
 	}
 }
