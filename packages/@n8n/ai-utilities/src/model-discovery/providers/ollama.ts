@@ -8,7 +8,9 @@ import type { ListModelsFn, ProviderModel } from '../types';
 export const listOllamaModels: ListModelsFn = async (options) => {
 	// The node only sends the bearer header when an API key is configured;
 	// a default Ollama install accepts unauthenticated local requests.
-	const headers = options.apiKey ? { Authorization: `Bearer ${options.apiKey}` } : {};
+	const headers: Record<string, string> = options.apiKey
+		? { Authorization: `Bearer ${options.apiKey}` }
+		: {};
 	const data = (await getJson(
 		`${baseUrl(options, 'http://localhost:11434')}/api/tags`,
 		headers,
