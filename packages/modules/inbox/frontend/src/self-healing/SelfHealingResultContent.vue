@@ -192,14 +192,14 @@ function onTabChange(tab: string) {
 							}}
 						</N8nCallout>
 						<N8nCallout
-							v-if="detail.reviewState !== 'open' && detail.reviewState !== 'applied'"
+							v-if="detail.reviewState === 'outdated'"
 							theme="secondary"
-							data-test-id="self-healing-closed-notice"
+							data-test-id="self-healing-outdated-notice"
 						>
 							<strong :class="$style.noticeTitle">{{
-								i18n.baseText(`inbox.selfHealing.state.${detail.reviewState}`)
+								i18n.baseText('inbox.selfHealing.state.outdated')
 							}}</strong>
-							{{ i18n.baseText(`inbox.selfHealing.state.${detail.reviewState}.body`) }}
+							{{ i18n.baseText('inbox.selfHealing.state.outdated.body') }}
 						</N8nCallout>
 						<N8nMarkdown
 							:content="detail.report"
@@ -305,8 +305,8 @@ function onTabChange(tab: string) {
 }
 
 .tabs {
-	/* Reserve space for the tab indicator, which extends below the component. */
-	margin-bottom: var(--review-tab-bar--indicator-overhang);
+	/* Align the labels with the actions, as in the prototype. */
+	transform: translateY(var(--spacing--xs));
 }
 
 .decisionActions {
@@ -327,10 +327,11 @@ function onTabChange(tab: string) {
 	flex: 1;
 	gap: var(--spacing--sm);
 	min-height: 0;
-	padding-top: var(--review-tab-bar--gap);
+	padding-top: calc(var(--review-tab-bar--gap) - var(--spacing--4xs));
 }
 
 .activityPanel {
+	padding-top: var(--spacing--5xs);
 	flex: 1;
 	min-height: 0;
 	min-width: 0;
@@ -342,7 +343,7 @@ function onTabChange(tab: string) {
 .descriptionCard {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--2xs);
+	gap: var(--spacing--4xs);
 	padding: var(--spacing--xs) var(--spacing--sm);
 	border: var(--border);
 	border-radius: var(--radius--2xs);
@@ -431,15 +432,27 @@ function onTabChange(tab: string) {
 @container assistant-detail (max-width: 44rem) {
 	.tabRow {
 		grid-template-columns: minmax(0, 1fr);
+		row-gap: var(--spacing--lg);
+	}
+
+	.tabRow .decisionActions > button {
+		--button--height: var(--height--sm);
+		--button--font-size: var(--font-size--xs);
+	}
+
+	.tabs {
+		transform: none;
 	}
 
 	.detailBody {
 		flex-direction: column;
 		overflow: auto;
+		padding-top: var(--spacing--lg);
 	}
 
 	.activityPanel {
 		flex: 0 0 auto;
+		padding-top: 0;
 		overflow: visible;
 		max-width: none;
 		margin-inline-end: 0;
@@ -449,6 +462,10 @@ function onTabChange(tab: string) {
 		flex: 1 0 auto;
 		/* Keep the canvas usable above the metadata when the detail columns stack. */
 		min-height: calc(var(--spacing--5xl) + var(--spacing--4xl));
+	}
+
+	.diff {
+		margin-top: 0;
 	}
 }
 </style>

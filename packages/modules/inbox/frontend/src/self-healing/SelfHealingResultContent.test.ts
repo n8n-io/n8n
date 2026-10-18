@@ -148,7 +148,7 @@ describe('SelfHealingResultContent', () => {
 	);
 
 	it('shows a closed result in its status and activity', () => {
-		const { getByTestId } = renderContent({
+		const { getByTestId, getAllByText } = renderContent({
 			detail: result({
 				outcome: 'could_not_fix',
 				suggestion: null,
@@ -161,6 +161,7 @@ describe('SelfHealingResultContent', () => {
 		expect(getByTestId('self-healing-report')).toBeInTheDocument();
 		expect(getByTestId('self-healing-activity')).not.toHaveTextContent('human-1');
 		expect(getByTestId('self-healing-status-card')).toHaveTextContent('Closed');
+		expect(getAllByText('Closed', { exact: true })).toHaveLength(1);
 		expect(getByTestId('self-healing-activity')).toHaveTextContent('Completed the investigation');
 		expect(getByTestId('self-healing-activity')).toHaveTextContent(
 			/A user\s*\|\s*Closed the result/,
@@ -185,7 +186,7 @@ describe('SelfHealingResultContent', () => {
 
 		expect(getByTestId('self-healing-status-card')).toHaveTextContent('Applied');
 		expect(getByTestId('self-healing-status-card')).not.toHaveTextContent(/Closed|Published/);
-		expect(queryByTestId('self-healing-closed-notice')).not.toBeInTheDocument();
+		expect(queryByTestId('self-healing-outdated-notice')).not.toBeInTheDocument();
 	});
 
 	it.each(['applied', 'outdated', 'discarded', 'dismissed'] as const)(
@@ -197,10 +198,10 @@ describe('SelfHealingResultContent', () => {
 				canChat: false,
 			});
 
-			if (reviewState === 'applied') {
-				expect(queryByTestId('self-healing-closed-notice')).not.toBeInTheDocument();
+			if (reviewState === 'outdated') {
+				expect(getByTestId('self-healing-outdated-notice')).toBeInTheDocument();
 			} else {
-				expect(getByTestId('self-healing-closed-notice')).toBeInTheDocument();
+				expect(queryByTestId('self-healing-outdated-notice')).not.toBeInTheDocument();
 			}
 			expect(getByTestId('self-healing-report')).toBeInTheDocument();
 			expect(getByTestId('self-healing-activity')).toBeInTheDocument();
