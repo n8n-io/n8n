@@ -69,6 +69,22 @@ describe('tool legacy names', () => {
 		expect(manager.getLoadedTools().map((t) => t.name)).toEqual(['new_name']);
 	});
 
+	it('resolves a legacy name in getTool', () => {
+		const tool = makeTool('new_name', ['old-name']);
+		const manager = new DeferredToolManager([tool]);
+
+		expect(manager.getTool('old-name')).toBe(tool);
+	});
+
+	it('gives a shared legacy name to the first tool, as the tool map does', () => {
+		const first = makeTool('first', ['shared-old']);
+		const second = makeTool('second', ['shared-old']);
+		const manager = new DeferredToolManager([first, second]);
+
+		expect(manager.load('shared-old').toolName).toBe('first');
+		expect(buildToolMap([first, second]).get('shared-old')).toBe(first);
+	});
+
 	it('hydrates a deferred tool loaded under its legacy name', () => {
 		const manager = new DeferredToolManager([makeTool('new_name', ['old-name'])]);
 

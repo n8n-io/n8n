@@ -473,6 +473,46 @@ Use the workflow SDK.`,
 		).toBe(source);
 	});
 
+	it('rejects an added skill that reuses the name of a base skill', () => {
+		const source = createRuntimeSkillSource([
+			{ id: 'base_skill', name: 'Base skill', description: 'Base.', instructions: 'Body.' },
+		]);
+
+		expect(() =>
+			extendRuntimeSkillSource(source, [
+				{ id: 'other_skill', name: 'base SKILL', description: 'Other.', instructions: 'Other.' },
+			]),
+		).toThrow(InvalidRuntimeSkillError);
+	});
+
+	it('rebuilds the merged registry after the base source prepares', async () => {
+		const source = createRuntimeSkillSource([
+			{ id: 'base_skill', name: 'Base skill', description: 'Base.', instructions: 'Body.' },
+		]);
+		source.prepare = async () => {
+			await Promise.resolve();
+			source.registry = {
+				...source.registry,
+				skills: source.registry.skills.map((skill) => ({ ...skill, hash: 'prepared-hash' })),
+			};
+		};
+		const extended = extendRuntimeSkillSource(source, [
+			{ id: 'added_skill', name: 'Added skill', description: 'Added.', instructions: 'Added.' },
+		]);
+		const hashBefore = extended.registry.skillsHash;
+
+		await extended.prepare?.();
+
+		expect(extended.registry.skills.find((skill) => skill.id === 'base_skill')?.hash).toBe(
+			'prepared-hash',
+		);
+		expect(extended.registry.skills.map((skill) => skill.id)).toEqual([
+			'added_skill',
+			'base_skill',
+		]);
+		expect(extended.registry.skillsHash).not.toBe(hashBefore);
+	});
+
 	it('renders a compact skill catalog without skill bodies', () => {
 		const source = createRuntimeSkillSource([
 			{

@@ -109,8 +109,9 @@ export function filterRuntimeSkillSource(
 
 /**
  * Add in-memory skills to an already-loaded source. Skills of the base source
- * win on an id collision. An added reference can name a base skill as its
- * parent. Recomputes `skillsHash` for the merged catalog.
+ * win on an id collision. An added skill must not reuse the name of a base
+ * skill. An added reference can name a base skill as its parent. Recomputes
+ * `skillsHash` for the merged catalog.
  */
 export function extendRuntimeSkillSource(
 	source: RuntimeSkillSource,
@@ -123,19 +124,23 @@ export function extendRuntimeSkillSource(
 	);
 	if (added.registry.skills.length === 0) return source;
 
-	const addedIds = new Set(added.registry.skills.map((skill) => skill.id));
-	const entries = [...source.registry.skills, ...added.registry.skills].sort(
-		compareRegistryEntries,
-	);
-	const { loadFile } = source;
+	const baseNames = new Set(source.registry.skills.map((skill) => skill.name.toLowerCase()));
+	for (const skill of added.registry.skills) {
+		if (baseNames.has(skill.name.toLowerCase())) {
+			throw new InvalidRuntimeSkillError(`Duplicate skill name "${skill.name}"`);
+		}
+	}
 
-	return {
+	const addedIds = new Set(added.registry.skills.map((skill) => skill.id));
+	const mergeRegistry = (base: RuntimeSkillRegistry): RuntimeSkillRegistry => {
+		const entries = [...base.skills, ...added.registry.skills].sort(compareRegistryEntries);
+		return { ...base, skillsHash: hashRegistry(entries), skills: entries };
+	};
+	const { loadFile, prepare } = source;
+
+	const extended: RuntimeSkillSource = {
 		...source,
-		registry: {
-			...source.registry,
-			skillsHash: hashRegistry(entries),
-			skills: entries,
-		},
+		registry: mergeRegistry(source.registry),
 		loadSkill: async (skillId) =>
 			addedIds.has(skillId) ? await added.loadSkill(skillId) : await source.loadSkill(skillId),
 		...(loadFile
@@ -145,6 +150,14 @@ export function extendRuntimeSkillSource(
 				}
 			: {}),
 	};
+	if (prepare) {
+		// Base preparation can replace the base registry, for example to refresh hashes.
+		extended.prepare = async () => {
+			await prepare();
+			extended.registry = mergeRegistry(source.registry);
+		};
+	}
+	return extended;
 }
 
 export function loadRuntimeSkillSourceFromDirectory(

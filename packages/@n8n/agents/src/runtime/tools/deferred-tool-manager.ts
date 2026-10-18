@@ -119,7 +119,13 @@ export class DeferredToolManager {
 
 		for (const tool of [...this.toolsByName.values(), ...this.activeToolsByName.values()]) {
 			for (const legacyName of tool.legacyNames ?? []) {
-				if (this.toolsByName.has(legacyName) || this.activeToolsByName.has(legacyName)) continue;
+				if (
+					this.toolsByName.has(legacyName) ||
+					this.activeToolsByName.has(legacyName) ||
+					this.currentNameByLegacyName.has(legacyName)
+				) {
+					continue;
+				}
 				this.currentNameByLegacyName.set(legacyName, tool.name);
 			}
 		}
@@ -146,9 +152,9 @@ export class DeferredToolManager {
 		return [this.searchTool, this.loadTool];
 	}
 
-	/** A registered deferred tool, loaded or not. */
+	/** A registered deferred tool, loaded or not. Resolves legacy names. */
 	getTool(name: string): BuiltTool | undefined {
-		return this.toolsByName.get(name);
+		return this.toolsByName.get(this.resolveName(name));
 	}
 
 	getLoadedTools(): BuiltTool[] {
