@@ -52,65 +52,95 @@ function actorLabel(author: Activity['author']) {
 </script>
 
 <template>
-	<ol :class="$style.entries" data-test-id="self-healing-activity">
-		<li
-			v-for="entry in entries"
-			:key="entry.id"
-			:class="$style.entry"
-			:data-action="entry.action"
-			data-test-id="self-healing-activity-entry"
-		>
-			<N8nAssistantAvatar v-if="entry.author === 'assistant'" size="mini" />
-			<N8nIcon
-				v-else
-				:icon="entry.author === 'human' ? 'user' : 'info'"
-				size="medium"
-				color="text-light"
-				aria-hidden="true"
-			/>
-			<div :class="$style.headline">
-				<N8nText size="medium" color="text-dark">{{ actorLabel(entry.author) }}</N8nText>
-				<span aria-hidden="true" :class="$style.separator">|</span>
-				<N8nText size="medium" color="text-light">
-					{{ i18n.baseText(`inbox.selfHealing.activity.${entry.action}`) }}
-				</N8nText>
-				<N8nText size="medium" color="text-light">
-					<time :datetime="entry.createdAt">
-						<N8nTimeAgo :date="entry.createdAt" :locale="rootStore.defaultLocale" />
-					</time>
-				</N8nText>
-			</div>
-		</li>
-	</ol>
+	<div :class="$style.activity">
+		<N8nText tag="h3" bold size="medium" color="text-light" :class="$style.heading">{{
+			i18n.baseText('inbox.selfHealing.tabs.activity')
+		}}</N8nText>
+		<ol :class="$style.entries" data-test-id="self-healing-activity">
+			<li
+				v-for="entry in entries"
+				:key="entry.id"
+				:class="$style.entry"
+				:data-action="entry.action"
+				data-test-id="self-healing-activity-entry"
+			>
+				<N8nAssistantAvatar v-if="entry.author === 'assistant'" size="mini" />
+				<N8nIcon
+					v-else
+					:icon="entry.author === 'human' ? 'user' : 'info'"
+					size="large"
+					color="text-light"
+					aria-hidden="true"
+				/>
+				<div :class="$style.headline">
+					<N8nText size="medium" color="text-dark">{{ actorLabel(entry.author) }}</N8nText>
+					<span aria-hidden="true" :class="$style.separator">|</span>
+					<N8nText size="medium" color="text-light">
+						{{ i18n.baseText(`inbox.selfHealing.activity.${entry.action}`) }}
+					</N8nText>
+					<N8nText size="medium" color="text-light">
+						<time :datetime="entry.createdAt">
+							<N8nTimeAgo :date="entry.createdAt" :locale="rootStore.defaultLocale" />
+						</time>
+					</N8nText>
+				</div>
+			</li>
+		</ol>
+	</div>
 </template>
 
 <style module lang="scss">
+@use '../reviews/components/activity-card' as activity;
+
+.activity {
+	--review-activity--avatar-size: var(--height--3xs);
+	--review-activity--line-height: var(--height--2xs);
+	--review-activity--gap: var(--spacing--md);
+
+	padding-block: var(--spacing--sm);
+}
+
+.heading {
+	margin: 0;
+	padding: 0 var(--spacing--sm) var(--spacing--sm);
+}
+
 .entries {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--md);
+	gap: var(--review-activity--gap);
 	list-style: none;
 	margin: 0;
-	padding: var(--spacing--xs) var(--spacing--sm);
+	padding: 0 var(--spacing--sm);
 }
 
 .entry {
-	display: flex;
-	align-items: flex-start;
-	gap: var(--spacing--2xs);
+	@include activity.activity-row;
+	position: relative;
 
 	> :first-child {
-		flex-shrink: 0;
-		margin-top: var(--spacing--5xs);
+		@include activity.activity-avatar;
 	}
 }
 
+/* Join consecutive events through the space between their avatars. */
+.entry:not(:first-child)::before {
+	content: '';
+	position: absolute;
+	bottom: calc(100% + var(--spacing--5xs));
+	height: calc(var(--review-activity--gap) - 2 * var(--spacing--5xs));
+	left: calc(var(--review-activity--avatar-size) / 2);
+	border-left: var(--border);
+}
+
 .headline {
-	display: flex;
-	align-items: center;
-	flex-wrap: wrap;
-	gap: var(--spacing--4xs);
+	@include activity.activity-headline;
 	min-width: 0;
+	line-height: var(--review-activity--line-height);
+
+	> :global(.n8n-text) {
+		line-height: inherit;
+	}
 }
 
 .separator {

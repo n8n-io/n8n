@@ -84,7 +84,7 @@ const usageRows = computed(() => {
 			</template>
 			<N8nText size="medium">{{ statusLabel }}</N8nText>
 		</N8nCard>
-		<N8nCard :class="$style.card">
+		<N8nCard :class="[$style.card, $style.peopleCard]">
 			<div :class="$style.section">
 				<N8nText bold color="text-light" size="medium">{{
 					i18n.baseText('inbox.selfHealing.metadata.createdBy')
@@ -108,10 +108,12 @@ const usageRows = computed(() => {
 			</div>
 		</N8nCard>
 		<N8nCard :class="$style.card">
-			<div :class="$style.section">
+			<template #header>
 				<N8nText bold color="text-light" size="medium">{{
 					i18n.baseText('inbox.selfHealing.metadata.workflow')
 				}}</N8nText>
+			</template>
+			<div :class="$style.section">
 				<N8nLink
 					:to="{ name: VIEWS.WORKFLOW, params: { workflowId: detail.workflowId } }"
 					theme="text"
@@ -119,7 +121,7 @@ const usageRows = computed(() => {
 					data-test-id="self-healing-workflow-link"
 				>
 					<span :class="$style.link">
-						<N8nIcon icon="workflow" size="medium" />
+						<N8nIcon icon="workflow" size="medium" :class="$style.workflowIcon" />
 						<span :class="$style.workflowName">{{ workflowName }}</span>
 					</span>
 				</N8nLink>
@@ -189,10 +191,18 @@ const usageRows = computed(() => {
 
 .card {
 	--card--padding: var(--spacing--xs);
-	--n8n--card-body--gap: var(--spacing--sm);
+	--n8n--card-body--gap: var(--spacing--2xs);
 	align-items: stretch;
 	border-color: var(--border-color);
 	background-color: transparent;
+
+	> div {
+		gap: var(--spacing--4xs);
+	}
+}
+
+.peopleCard {
+	--n8n--card-body--gap: var(--spacing--sm);
 }
 
 .section {
@@ -212,10 +222,13 @@ const usageRows = computed(() => {
 
 .link {
 	align-items: flex-start;
+	gap: var(--spacing--4xs);
+}
 
-	> :first-child {
-		flex-shrink: 0;
-	}
+.workflowIcon {
+	flex-shrink: 0;
+	/* Align the icon with the first line, as in the prototype. */
+	margin-top: calc((1lh - 1em) / 2);
 }
 
 .workflowName {
@@ -226,7 +239,7 @@ const usageRows = computed(() => {
 .usage {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--2xs);
+	gap: var(--spacing--4xs);
 	margin: 0;
 }
 
@@ -239,6 +252,14 @@ const usageRows = computed(() => {
 		margin: 0;
 		text-align: right;
 		font-variant-numeric: tabular-nums;
+	}
+}
+
+/* Match the prototype's sidebar widths. There are no column-width tokens. */
+@media (max-width: 75rem) {
+	.metadata {
+		flex-basis: 15rem;
+		min-width: 12rem;
 	}
 }
 
