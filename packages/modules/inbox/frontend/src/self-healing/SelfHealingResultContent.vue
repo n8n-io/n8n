@@ -67,9 +67,7 @@ const outcomeLabel = computed(() => {
 
 const statusLabel = computed(() => {
 	const state = props.detail.reviewState;
-	return state === 'open'
-		? `${i18n.baseText('inbox.tabs.open')} | ${outcomeLabel.value}`
-		: i18n.baseText(`inbox.selfHealing.state.${state}`);
+	return state === 'open' ? outcomeLabel.value : i18n.baseText(`inbox.selfHealing.state.${state}`);
 });
 
 const statusClass = computed(() => {
@@ -107,6 +105,7 @@ function onTabChange(tab: string) {
 		<div :class="$style.container">
 			<div :class="$style.tabRow">
 				<N8nTabs
+					:class="$style.tabs"
 					:model-value="activeTab"
 					:options="tabOptions"
 					variant="modern"
@@ -299,15 +298,15 @@ function onTabChange(tab: string) {
 }
 
 .tabRow {
-	display: flex;
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto;
 	align-items: center;
-	flex-wrap: wrap;
-	justify-content: space-between;
 	gap: var(--spacing--sm);
+}
 
-	> :global(.n8n-tabs) {
-		transform: translateY(var(--spacing--xs));
-	}
+.tabs {
+	/* Reserve space for the tab indicator, which extends below the component. */
+	margin-bottom: var(--review-tab-bar--indicator-overhang);
 }
 
 .decisionActions {
@@ -431,7 +430,7 @@ function onTabChange(tab: string) {
 /* Match the prototype's detail breakpoint. Container queries cannot use CSS variables. */
 @container assistant-detail (max-width: 44rem) {
 	.tabRow {
-		align-items: flex-start;
+		grid-template-columns: minmax(0, 1fr);
 	}
 
 	.detailBody {
