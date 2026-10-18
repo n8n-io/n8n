@@ -4,8 +4,6 @@ import { useI18n } from '@n8n/i18n';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { ResponseError } from '@n8n/rest-api-client';
-import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useMessage } from '@/app/composables/useMessage';
 import { useToast } from '@n8n/composables/useToast';
@@ -13,13 +11,9 @@ import { MODAL_CONFIRM } from '@/app/constants/modals';
 import Modal from '@/app/components/Modal.vue';
 import TimeAgo from '@/app/components/TimeAgo.vue';
 import { N8nButton, N8nCheckbox, N8nInput, N8nText } from '@n8n/design-system';
-import {
-	PROMOTION_BRANCH_PREFIX,
-	type PromotableResourceStatus,
-	type PromotionDirection,
-} from '@n8n/api-types';
+import type { PromotableResourceStatus, PromotionDirection } from '@n8n/api-types';
 import { usePromotionChanges } from '../composables/usePromotionChanges';
-import { promotionEventBus } from '../promotions.eventBus';
+import { usePromotionOutcome } from '../composables/usePromotionOutcome';
 import { applyProjectSelection } from '../promotionsSettings.api';
 import { getPromoteErrorMessage } from '../promoteErrorMessage';
 import PromotionBindingsFlow from './PromotionBindingsFlow.vue';
@@ -34,7 +28,6 @@ interface Props {
 }
 
 const props = defineProps<Props>();
-const projectsStore = useProjectsStore();
 
 const i18n = useI18n();
 const uiStore = useUIStore();
@@ -43,6 +36,7 @@ const rootStore = useRootStore();
 const message = useMessage();
 const toast = useToast();
 const modalBus = createEventBus();
+const outcome = usePromotionOutcome();
 
 const { direction } = props.data;
 const isIncoming = direction === 'apply';
@@ -167,15 +161,6 @@ function onClose() {
 	uiStore.closeModal(props.modalName);
 }
 
-function getPromoteSuccessMessage(branchName: string): string {
-	if (branchName.startsWith(PROMOTION_BRANCH_PREFIX)) {
-		return i18n.baseText('promotions.modal.toast.success.messageNewBranch');
-	}
-	return i18n.baseText('promotions.modal.toast.success.message', {
-		interpolate: { branch: branchName },
-	});
-}
-
 async function onPromote() {
 	if (isPromoteDisabled.value) return;
 
@@ -183,12 +168,7 @@ async function onPromote() {
 		const result = await submitSelection();
 		if (!result) return;
 
-		promotionEventBus.emit('promoted', { projectId: props.data.projectId });
-		toast.showMessage({
-			title: i18n.baseText('promotions.modal.toast.success.title'),
-			message: getPromoteSuccessMessage(result.git.branchName),
-			type: 'success',
-		});
+		outcome.showPromoted(props.data.projectId, result.git.branchName);
 		onClose();
 	} catch (promoteError) {
 		const title = i18n.baseText('promotions.modal.promoteError');
@@ -208,51 +188,11 @@ async function onRefresh() {
 	await fetchChanges();
 }
 
-// The open views refresh once the outcome for this project is known, so none of them
-// asks for a project the package removed.
-async function announceApplied() {
-	const { projectId } = props.data;
-	try {
-		const project = await projectsStore.fetchProject(projectId);
-		promotionEventBus.emit('applied', { projectId, project });
-	} catch (error) {
-		if (error instanceof ResponseError && error.httpStatusCode === 404) {
-			toast.showMessage({
-				title: i18n.baseText('promotions.applied.projectRemoved'),
-				type: 'info',
-			});
-			promotionEventBus.emit('projectRemoved', { projectId });
-			return;
-		}
-		// The apply went through, so the views still refresh. Only the header keeps its name.
-		promotionEventBus.emit('applied', { projectId });
-	}
-}
-
 async function onApplied(result: AppliedResult) {
-	const { workflows } = result.counts;
-	const notPublished = workflows.publishing.failed + workflows.publishing.blocked;
-	const interpolate = {
-		created: String(workflows.created),
-		updated: String(workflows.updated),
-		archived: String(workflows.archived),
-		deleted: String(workflows.deleted),
-		notPublished: String(notPublished),
-	};
-	// A workflow can be imported and still fail to publish, so success alone would mislead.
-	toast.showMessage({
-		title: i18n.baseText('promotions.modal.incoming.applied.title'),
-		message: i18n.baseText(
-			notPublished
-				? 'promotions.modal.incoming.applied.messageNotPublished'
-				: 'promotions.modal.incoming.applied.message',
-			{ interpolate },
-		),
-		type: notPublished ? 'warning' : 'success',
-	});
+	outcome.showApplied(result);
 	// Close before the project lookup, so the stale change list does not show again.
 	onClose();
-	await announceApplied();
+	await outcome.announceApplied(props.data.projectId);
 }
 
 async function onSourceChanged() {
