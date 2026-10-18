@@ -16,8 +16,10 @@ const createdSessionSchema = z.object({
 
 /** Errors from the gateway itself carry a message written for the user. */
 const gatewayErrorSchema = z.object({
-	message: z.string().min(1),
-	type: z.string().startsWith('ai_gateway_'),
+	error: z.object({
+		message: z.string().min(1),
+		type: z.string().startsWith('ai_gateway_'),
+	}),
 });
 
 /** A browser session. `connectUrl` carries a signing key, so it must never be logged. */
@@ -118,7 +120,7 @@ function toGatewayError(response: {
 }): UserError | OperationalError {
 	const gatewayError = gatewayErrorSchema.safeParse(response.body);
 	const message = gatewayError.success
-		? gatewayError.data.message
+		? gatewayError.data.error.message
 		: `Failed to complete the browser session request (HTTP ${response.statusCode}).`;
 
 	return response.statusCode >= 400 && response.statusCode < 500

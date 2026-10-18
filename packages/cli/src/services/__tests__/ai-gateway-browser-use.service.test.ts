@@ -69,8 +69,10 @@ describe('AiGatewayBrowserUseService', () => {
 			requestMock.mockResolvedValue({
 				statusCode: 402,
 				body: {
-					message: 'Your Gateway credits have been depleted. Please top up to continue.',
-					type: 'ai_gateway_request_error',
+					error: {
+						message: 'Your Gateway credits have been depleted. Please top up to continue.',
+						type: 'ai_gateway_request_error',
+					},
 				},
 			});
 
@@ -85,13 +87,29 @@ describe('AiGatewayBrowserUseService', () => {
 		it('does not pass on an error message that is not from the gateway', async () => {
 			requestMock.mockResolvedValue({
 				statusCode: 400,
-				body: { message: 'Invalid project id proj_123', type: 'upstream_error' },
+				body: { error: { message: 'Invalid project id proj_123', type: 'upstream_error' } },
 			});
 
 			const result = service.createSession({ userId: 'user-1', attribution });
 
 			await expect(result).rejects.toThrow(
 				'Failed to complete the browser session request (HTTP 400).',
+			);
+		});
+
+		it('does not pass on a message outside the gateway error envelope', async () => {
+			requestMock.mockResolvedValue({
+				statusCode: 402,
+				body: {
+					message: 'Your Gateway credits have been depleted. Please top up to continue.',
+					type: 'ai_gateway_request_error',
+				},
+			});
+
+			const result = service.createSession({ userId: 'user-1', attribution });
+
+			await expect(result).rejects.toThrow(
+				'Failed to complete the browser session request (HTTP 402).',
 			);
 		});
 
