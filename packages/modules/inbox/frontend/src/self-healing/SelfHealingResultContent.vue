@@ -115,7 +115,7 @@ function onTabChange(tab: string) {
 				<div v-if="isOpen" :class="$style.decisionActions">
 					<N8nButton
 						v-if="isFixReady"
-						size="medium"
+						size="small"
 						:label="i18n.baseText('inbox.selfHealing.action.applyAndPublish')"
 						:disabled="pending || !canPublish"
 						:loading="pendingAction === 'approve-and-publish'"
@@ -124,7 +124,7 @@ function onTabChange(tab: string) {
 					<N8nButton
 						v-if="isFixReady"
 						variant="outline"
-						size="medium"
+						size="small"
 						:label="i18n.baseText('inbox.selfHealing.action.applyAndOpenInEditor')"
 						:disabled="pending"
 						:loading="pendingAction === 'editor'"
@@ -133,7 +133,7 @@ function onTabChange(tab: string) {
 					<N8nButton
 						v-if="!isFixReady"
 						variant="outline"
-						size="medium"
+						size="small"
 						icon="message-circle"
 						:label="chatLabel"
 						:disabled="pending || !canChat"
@@ -142,7 +142,7 @@ function onTabChange(tab: string) {
 					/>
 					<N8nButton
 						variant="ghost"
-						size="medium"
+						size="small"
 						:label="i18n.baseText('inbox.selfHealing.action.discard')"
 						:disabled="pending"
 						:loading="pendingAction === 'dismiss'"
@@ -207,16 +207,6 @@ function onTabChange(tab: string) {
 							:class="$style.report"
 							data-test-id="self-healing-report"
 						/>
-						<N8nCallout
-							v-if="detail.suggestion?.payload.errorContext"
-							theme="secondary"
-							data-test-id="self-healing-failure-context"
-						>
-							<strong :class="$style.noticeTitle">{{
-								i18n.baseText('inbox.selfHealing.failureContext')
-							}}</strong>
-							{{ detail.suggestion.payload.errorContext.summary }}
-						</N8nCallout>
 					</div>
 					<SelfHealingResultActivity :detail="detail" />
 				</div>
@@ -343,7 +333,7 @@ function onTabChange(tab: string) {
 .descriptionCard {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--4xs);
+	gap: var(--spacing--2xs);
 	padding: var(--spacing--xs) var(--spacing--sm);
 	border: var(--border);
 	border-radius: var(--radius--2xs);
@@ -433,11 +423,6 @@ function onTabChange(tab: string) {
 	.tabRow {
 		grid-template-columns: minmax(0, 1fr);
 		row-gap: var(--spacing--lg);
-	}
-
-	.tabRow .decisionActions > button {
-		--button--height: var(--height--sm);
-		--button--font-size: var(--font-size--xs);
 	}
 
 	.tabs {
