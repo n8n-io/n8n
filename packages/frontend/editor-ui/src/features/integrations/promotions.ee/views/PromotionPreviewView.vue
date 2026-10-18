@@ -178,7 +178,7 @@ const treeResizer = useResizablePanel({
 			v-else-if="state === 'disconnected'"
 			:class="$style.state"
 			:icon="{ type: 'icon', value: 'git-branch' }"
-			:heading="i18n.baseText('promotions.preview.state.disconnected.title')"
+			:heading="i18n.baseText(`promotions.preview.state.disconnected.${direction}.title`)"
 			:description="
 				i18n.baseText(
 					canOpenSettings

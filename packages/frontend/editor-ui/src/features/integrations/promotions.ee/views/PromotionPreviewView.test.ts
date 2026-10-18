@@ -119,9 +119,7 @@ describe('PromotionPreviewView', () => {
 
 		const { getByTestId } = await render();
 
-		expect(getByTestId('promotion-preview-disconnected')).toHaveTextContent(
-			'Ask an admin to set up promotion for this instance.',
-		);
+		expect(getByTestId('promotion-preview-disconnected')).toHaveTextContent("Promote isn't set up");
 	});
 
 	it('should offer a retry when the preview fails to load', async () => {
