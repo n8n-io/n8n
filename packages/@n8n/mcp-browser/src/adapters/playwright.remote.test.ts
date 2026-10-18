@@ -68,6 +68,17 @@ describe('PlaywrightAdapter remote mode', () => {
 			noDefaults: true,
 		});
 	});
+
+	it('closes a page through the relay', async () => {
+		const relay = fakeRelay();
+		relay.closeTab = vi.fn().mockResolvedValue(undefined);
+		const adapter = new PlaywrightAdapter(config, { relay });
+		await adapter.launch({ browser: 'chrome' });
+
+		await adapter.closePage('tab-1');
+
+		expect(relay.closeTab).toHaveBeenCalledWith('tab-1');
+	});
 });
 
 describe('PlaywrightAdapter direct CDP mode', () => {

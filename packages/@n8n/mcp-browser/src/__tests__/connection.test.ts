@@ -1,5 +1,7 @@
+import type { CDPRelayServer } from '../cdp-relay';
 import { BrowserConnection } from '../connection';
 import {
+	BrowserNotAvailableError,
 	ConnectionLostError,
 	ExtensionConflictError,
 	NotConnectedError,
@@ -11,9 +13,34 @@ import type { Adapter, DisconnectDetails } from '../types';
 
 configureLogger({ level: 'silent' });
 
+const { PlaywrightAdapter, constructed, launch } = vi.hoisted(() => {
+	const constructed = vi.fn();
+	const launch = vi.fn().mockResolvedValue(undefined);
+	class PlaywrightAdapter {
+		launch = launch;
+
+		listTabs = vi.fn().mockResolvedValue([]);
+
+		close = vi.fn().mockResolvedValue(undefined);
+
+		constructor(...args: unknown[]) {
+			constructed(...args);
+		}
+	}
+	return { PlaywrightAdapter, constructed, launch };
+});
+
+vi.mock('../adapters/playwright', () => ({ PlaywrightAdapter }));
+
+// No installed browsers, so the result does not depend on the machine.
+vi.mock('../browser-discovery', () => ({
+	getDefaultDiscovery: () => ({ discover: () => ({}) }),
+	getInstallInstructions: () => '',
+}));
+
 /**
- * `connect()` needs a real browser, so drive the connection through the handlers
- * it installs on its adapter instead — that is the surface a lost session uses.
+ * Drive the connection through the handlers it installs on its adapter — that is
+ * the surface a lost session uses.
  */
 function connectionWithHandlers() {
 	const connection = new BrowserConnection();
@@ -153,5 +180,49 @@ describe('BrowserConnection extension block', () => {
 		expect(connection.explainFailure(new Error('unrelated'))).toBeInstanceOf(
 			ExtensionConflictError,
 		);
+	});
+});
+
+describe('BrowserConnection modes', () => {
+	beforeEach(() => vi.clearAllMocks());
+
+	it('connects the Playwright adapter straight to the given endpoint in direct CDP mode', async () => {
+		const connection = new BrowserConnection(
+			{ mode: 'direct_cdp' },
+			{ cdpEndpoint: 'wss://connect.example.com', cdpConnectHeaders: { 'X-Test': '1' } },
+		);
+
+		await connection.connect();
+
+		expect(constructed).toHaveBeenCalledWith(expect.objectContaining({ mode: 'direct_cdp' }), {
+			cdpEndpoint: 'wss://connect.example.com',
+			cdpConnectHeaders: { 'X-Test': '1' },
+		});
+		expect(launch).toHaveBeenCalled();
+		expect(connection.isConnected).toBe(true);
+	});
+
+	it('connects the Playwright adapter through the relay in remote mode', async () => {
+		const relay = {} as CDPRelayServer;
+		const connection = new BrowserConnection(
+			{ mode: 'remote' },
+			{ relay, cdpEndpoint: 'ws://127.0.0.1:5678/cdp', cdpConnectHeaders: { 'X-Test': '1' } },
+		);
+
+		await connection.connect();
+
+		expect(constructed).toHaveBeenCalledWith(expect.objectContaining({ mode: 'remote' }), {
+			relay,
+			cdpEndpoint: 'ws://127.0.0.1:5678/cdp',
+			cdpConnectHeaders: { 'X-Test': '1' },
+		});
+		expect(connection.isConnected).toBe(true);
+	});
+
+	it('requires an installed browser in local mode', async () => {
+		const connection = new BrowserConnection({ mode: 'local' });
+
+		await expect(connection.connect()).rejects.toThrow(BrowserNotAvailableError);
+		expect(constructed).not.toHaveBeenCalled();
 	});
 });
