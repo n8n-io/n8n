@@ -371,7 +371,7 @@ async function prepareBindingApply(unselectedVariableName?: string) {
 				variableNames: [unselectedVariable.key],
 			})
 		: undefined;
-	await service.promote(connection.id, owner, {
+	const promoted = await service.promote(connection.id, owner, {
 		canExportVariableValues: true,
 		commitMessage: 'Export orders',
 	});
@@ -389,6 +389,7 @@ async function prepareBindingApply(unselectedVariableName?: string) {
 	return {
 		remote,
 		connection,
+		commitSha: promoted.git.commitSha,
 		project,
 		credential,
 		variable,
@@ -512,11 +513,20 @@ async function promoteDataTableWorkflows() {
 		{ name: 'Send report', nodes: [], connections: {} },
 		project,
 	);
-	await service.promote(connection.id, owner, {
+	const promoted = await service.promote(connection.id, owner, {
 		canExportVariableValues: true,
 		commitMessage: 'Export sales',
 	});
-	return { connection, project, workflow, plainWorkflow, orders, customers, dataTableService };
+	return {
+		connection,
+		commitSha: promoted.git.commitSha,
+		project,
+		workflow,
+		plainWorkflow,
+		orders,
+		customers,
+		dataTableService,
+	};
 }
 
 async function writeRemoteFile(remote: TestRemote, relativePath: string, content: string) {
@@ -1595,6 +1605,146 @@ describe('Apply a project selection', () => {
 			git: promoted.git,
 		});
 		expect(await snapshotApplyState()).toEqual(before);
+	});
+});
+
+describe('Check Apply blockers', () => {
+	it('reports the same blockers as Apply for all workflows of the project and changes nothing', async () => {
+		const { commitSha, project, workflow, unselectedWorkflow } =
+			await prepareBindingApply('UNSELECTED_URL');
+		assert(unselectedWorkflow);
+		const before = await snapshotApplyState();
+
+		const check = await service.checkApplyBlockers(project.id, commitSha);
+
+		expect(await snapshotApplyState()).toEqual(before);
+		expect(check.preflight.missingBindings).toHaveLength(3);
+		expect(check.movedWorkflows).toEqual([]);
+		expect(
+			await service.applyProjectSelection(project.id, owner, {
+				workflowIds: [workflow.id, unselectedWorkflow.id],
+				expectedSource: { configId: check.configId, ...check.git },
+			}),
+		).toEqual({
+			status: 'blocked',
+			connectionId: check.connectionId,
+			configId: check.configId,
+			git: check.git,
+			preflight: check.preflight,
+		});
+	});
+
+	it('reports a workflow that moved to another project, next to the blockers of other workflows', async () => {
+		const remote = await createRemote();
+		const connection = await createInstanceConnection(remote.bareDir);
+		await service.clone(connection.id, 'promote');
+		await service.clone(connection.id, 'apply');
+		const {
+			project: orders,
+			workflows: [moved],
+		} = await setupProjectWithWorkflows('Orders', ['Moved workflow']);
+		const { project: billing } = await setupProjectWithWorkflows('Billing', []);
+		const variable = await createVariable('API_URL', 'source value');
+		const dependent = await buildWorkflowReferencingVariables({
+			name: 'Uses API_URL',
+			project: orders,
+			variableNames: [variable.key],
+		});
+		// The branch holds the workflow in Billing, while this instance still has it in Orders.
+		const sharedWorkflows = Container.get(SharedWorkflowRepository);
+		await sharedWorkflows.update(
+			{ workflowId: moved.id, role: 'workflow:owner' },
+			{ projectId: billing.id },
+		);
+		const promoted = await service.promote(connection.id, owner, {
+			canExportVariableValues: true,
+			commitMessage: 'Move a workflow to Billing',
+		});
+		await sharedWorkflows.update(
+			{ workflowId: moved.id, role: 'workflow:owner' },
+			{ projectId: orders.id },
+		);
+		await Container.get(VariablesRepository).delete(variable.id);
+		await Container.get(VariablesService).updateCache();
+
+		const check = await service.checkApplyBlockers(orders.id, promoted.git.commitSha);
+
+		expect(check.movedWorkflows).toEqual([
+			{ id: moved.id, name: moved.name, project: { id: billing.id, name: billing.name } },
+		]);
+		expect(check.preflight.missingBindings).toEqual([
+			expect.objectContaining({
+				kind: 'variable',
+				name: 'API_URL',
+				consumers: [
+					{
+						project: { id: orders.id, name: orders.name },
+						workflows: [{ id: dependent.id, name: dependent.name }],
+					},
+				],
+			}),
+		]);
+	});
+
+	it('reports a data table change that removes column values, with the workflow that uses the table', async () => {
+		const { commitSha, project, workflow, orders, dataTableService } =
+			await promoteDataTableWorkflows();
+		await dataTableService.addColumn(orders.id, project.id, { name: 'extra', type: 'string' });
+
+		const check = await service.checkApplyBlockers(project.id, commitSha);
+
+		expect(check.preflight.conflicts).toEqual([
+			expect.objectContaining({
+				code: 'destructive-change',
+				id: orders.id,
+				consumers: [
+					{
+						project: { id: project.id, name: project.name },
+						workflows: [{ id: workflow.id, name: workflow.name }],
+					},
+				],
+			}),
+		]);
+		expect(check.preflight.missingBindings).toEqual([]);
+	});
+
+	it('reports a global variable that a project variable overrides as a warning, not a blocker', async () => {
+		const remote = await createRemote();
+		const connection = await createInstanceConnection(remote.bareDir);
+		await service.clone(connection.id, 'promote');
+		await service.clone(connection.id, 'apply');
+		const project = await createTeamProject('Orders', owner);
+		const variable = await createVariable('API_URL', 'global value');
+		const workflow = await buildWorkflowReferencingVariables({
+			name: 'Uses API_URL',
+			project,
+			variableNames: [variable.key],
+		});
+		const promoted = await service.promote(connection.id, owner, {
+			canExportVariableValues: true,
+			commitMessage: 'Export orders',
+		});
+		await createProjectVariable(variable.key, 'project value', project);
+
+		const check = await service.checkApplyBlockers(project.id, promoted.git.commitSha);
+
+		expect(check.preflight).toMatchObject({
+			missingBindings: [],
+			accessRequirements: [],
+			conflicts: [],
+			warnings: [
+				{
+					code: 'variable-shadowed',
+					name: 'API_URL',
+					consumers: [
+						{
+							project: { id: project.id, name: project.name },
+							workflows: [{ id: workflow.id, name: workflow.name }],
+						},
+					],
+				},
+			],
+		});
 	});
 });
 

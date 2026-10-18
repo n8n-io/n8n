@@ -808,6 +808,7 @@ export {
 	type PromotionConnectionTarget,
 } from './promotions/promotion-connection.dto';
 export {
+	ApplyCheckQueryDto,
 	ApplyPackageDto,
 	ApplyPackageResultDto,
 	ApplySelectionDto,
@@ -820,6 +821,7 @@ export {
 	promotePackageCountsSchema,
 	promotePackageResultSchema,
 	promotionGitResultSchema,
+	type ApplyCheckResult,
 } from './promotions/promotion-operations.dto';
 export {
 	parsePromotionRunDetails,
