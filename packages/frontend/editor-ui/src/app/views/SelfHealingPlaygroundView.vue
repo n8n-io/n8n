@@ -133,7 +133,11 @@ onMounted(
 		await perform(async () => {
 			await projectsStore.getMyProjects();
 			await projectsStore.getPersonalProject();
-			projectId.value = projectsStore.personalProject?.id ?? projectsStore.myProjects[0]?.id ?? '';
+			projectId.value =
+				projectsStore.myProjects.find((project) => project.name === 'Self-healing test')?.id ??
+				projectsStore.personalProject?.id ??
+				projectsStore.myProjects[0]?.id ??
+				'';
 			await refresh();
 		}),
 );

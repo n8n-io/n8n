@@ -42,7 +42,7 @@
     "format": "turbo run format && node scripts/format.mjs",
     "grind": "node scripts/grind.mjs",
     "inspect:activity": "node scripts/instance-seeding/inspectActivity.mjs",
-    "dev:self-healing": "cross-env N8N_ENABLED_MODULES=instance-ai,inbox N8N_INSTANCE_AI_WORKFLOW_SUGGESTIONS_ENABLED=true pnpm start",
+    "dev:self-healing": "node scripts/self-healing-playground/start.mjs",
     "seed:account": "node scripts/instance-seeding/seedInstance.mjs",
     "seed:history": "node scripts/instance-seeding/seedHistory.mjs",
     "seed:preference": "cross-env PROFILE=preference pnpm seed:account && pnpm seed:history",

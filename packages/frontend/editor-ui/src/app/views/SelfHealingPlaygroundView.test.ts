@@ -33,8 +33,11 @@ vi.mock('@/features/collaboration/projects/projects.store', () => ({
 	useProjectsStore: () => ({
 		getMyProjects: vi.fn(),
 		getPersonalProject: vi.fn(),
-		personalProject: { id: 'project1' },
-		myProjects: [{ id: 'project1', name: 'My project' }],
+		personalProject: { id: 'personal' },
+		myProjects: [
+			{ id: 'personal', name: 'Personal' },
+			{ id: 'project1', name: 'Self-healing test' },
+		],
 	}),
 }));
 vi.mock('@/app/api/workflows', () => ({

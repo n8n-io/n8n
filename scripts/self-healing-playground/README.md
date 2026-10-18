@@ -15,10 +15,18 @@ Start n8n with the Assistant, Inbox, and self-healing flag enabled:
 pnpm dev:self-healing
 ```
 
+The local launcher enables test entitlements for one team project. It creates
+**Self-healing test** for the instance owner. It uses the normal project service.
+These test entitlements apply only when this launcher runs.
+
+The default URL is `http://127.0.0.1:5698`. The launcher binds to loopback.
+The default data folder is `.agent-setup/self-healing-local`. Set `N8N_USER_FOLDER`
+to reuse another test instance. Complete owner setup on a fresh instance.
+
 Open **Self-healing playground** in the sidebar, or navigate to
 `/self-healing-playground` on your n8n instance.
 
-1. Select your project.
+1. Select **Self-healing test**. The playground selects it by default.
 2. Create and publish a scenario. This does not run the workflow.
 3. Open self-healing settings. Create and enable your configuration. Select the
    workflow and assign yourself as a reviewer.
