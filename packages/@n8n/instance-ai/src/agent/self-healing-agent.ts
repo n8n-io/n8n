@@ -153,7 +153,7 @@ export async function createSelfHealingAgent(
 			tools: tracedTools,
 			modelId,
 			toolSearchEnabled: false,
-			runtimeSkills: skillSource.registry,
+			skills: skillSource.registry,
 		}),
 	);
 
