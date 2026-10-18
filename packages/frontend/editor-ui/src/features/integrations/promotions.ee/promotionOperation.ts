@@ -145,6 +145,16 @@ export function indexBlockers(blockers: Blocker[]): BlockerIndex {
 	return { byWorkflow, byResource, blocked };
 }
 
+/**
+ * Folders that the branch holds under another parent. Apply cannot move a folder that exists on
+ * this instance, so the import stops for every selection.
+ */
+export function folderMoveConflicts(graph: SelectionGraph): ResourceKey[] {
+	return [...graph.resources.values()]
+		.filter((resource) => resource.type === 'folder' && resource.previousParentKey !== undefined)
+		.map(({ key }) => key);
+}
+
 /** True when the apply of these workflows removes data table values. */
 export function touchesDestructiveChange(index: BlockerIndex, keys: Iterable<ResourceKey>) {
 	for (const key of keys) {

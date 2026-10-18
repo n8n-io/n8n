@@ -34,6 +34,7 @@ import { usePromotionSelection } from '../composables/usePromotionSelection';
 import { PROMOTIONS_SETTINGS_SCOPES, PROMOTIONS_SETTINGS_VIEW } from '../promotions.constants';
 import {
 	emptyBlockerIndex,
+	folderMoveConflicts,
 	indexBlockers,
 	listBlockers,
 	toOperationRequest,
@@ -134,12 +135,24 @@ const request = computed(() => {
 const hasSelectedBlocked = computed(() =>
 	[...selection.selected.value].some((key) => blockers.value.blocked.has(key)),
 );
+// A moved folder stops the whole apply, so it blocks every selection.
+const folderConflicts = computed(() =>
+	props.direction === 'apply' && graph.value ? folderMoveConflicts(graph.value) : [],
+);
+const submitBlockedReason = computed(() => {
+	if (folderConflicts.value.length > 0) {
+		return i18n.baseText('promotions.preview.submit.folderMoved', {
+			adjustToNumber: folderConflicts.value.length,
+		});
+	}
+	return hasSelectedBlocked.value ? i18n.baseText('promotions.preview.submit.blocked') : undefined;
+});
 const canSubmit = computed(
 	() =>
 		state.value === 'ready' &&
 		!refreshing.value &&
 		!operation.isBusy.value &&
-		!hasSelectedBlocked.value &&
+		!submitBlockedReason.value &&
 		request.value.workflowIds.length > 0 &&
 		(props.direction === 'promote' || !!check.value),
 );
@@ -220,10 +233,7 @@ const treeResizer = useResizablePanel({
 					>
 						{{ i18n.baseText('promotions.preview.refresh') }}
 					</N8nButton>
-					<N8nTooltip
-						:disabled="!hasSelectedBlocked"
-						:content="i18n.baseText('promotions.preview.submit.blocked')"
-					>
+					<N8nTooltip :disabled="!submitBlockedReason" :content="submitBlockedReason">
 						<N8nButton
 							:variant="request.confirmDestructiveChanges ? 'destructive' : 'brand'"
 							size="small"
