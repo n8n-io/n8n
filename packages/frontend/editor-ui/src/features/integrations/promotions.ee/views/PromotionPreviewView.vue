@@ -30,6 +30,7 @@ import { usePromotionResourceDetails } from '../composables/usePromotionResource
 import { usePromotionPreview } from '../composables/usePromotionPreview';
 import { usePromotionSelection } from '../composables/usePromotionSelection';
 import { PROMOTIONS_SETTINGS_SCOPES, PROMOTIONS_SETTINGS_VIEW } from '../promotions.constants';
+import { emptyBlockerIndex, indexBlockers, listBlockers } from '../promotionOperation';
 import { includedChangeCount, totalChangeCount } from '../promotionPreview.selection';
 import { buildPreviewTree, cardOrder } from '../promotionPreview.tree';
 
@@ -48,6 +49,7 @@ const direction = toRef(props, 'direction');
 const {
 	state,
 	preview,
+	check,
 	graph,
 	repositoryName,
 	refreshing,
@@ -55,7 +57,13 @@ const {
 	lastRefreshedAt,
 	refresh,
 } = usePromotionPreview(projectId, direction);
-const selection = usePromotionSelection(graph);
+const blockers = computed(() =>
+	check.value ? indexBlockers(listBlockers(check.value)) : emptyBlockerIndex,
+);
+const selection = usePromotionSelection(graph, {
+	disabled: computed(() => blockers.value.blocked),
+	locked: ref(false),
+});
 const details = usePromotionResourceDetails(projectId, direction, preview, graph);
 
 const title = computed(() => i18n.baseText(`promotions.preview.title.${props.direction}`));
@@ -234,6 +242,8 @@ const treeResizer = useResizablePanel({
 					:included-changes="includedChanges"
 					:total-changes="totalChanges"
 					:inspected-key="inspectedKey"
+					:disabled="blockers.blocked"
+					:locked="false"
 					@toggle="selection.toggle"
 					@toggle-container="selection.toggleAllInside"
 					@select-all="selection.selectAll"
