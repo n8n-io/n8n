@@ -55,6 +55,7 @@ describe('Self-healing private chat persistence', () => {
 				report: 'Connect the account, then retry the workflow.',
 				completedAt: new Date(),
 				executionId: 'saved-execution',
+				suggestionId: null,
 				usage: {
 					credits: null,
 					turns: null,
