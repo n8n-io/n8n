@@ -11,7 +11,6 @@ import * as checkAccess from '@/permissions.ee/check-access';
 
 import type { AgentsService } from '../agents.service';
 import { AgentsSettingsService } from '../agents-settings.service';
-import type { AgentsBuilderService } from '../builder/agents-builder.service';
 import type { AgentsBuilderToolsService } from '../builder/agents-builder-tools.service';
 import type { AgentThreadEntity } from '../entities/agent-thread.entity';
 import type { ProjectAgent } from '../entities/agent.entity';
@@ -56,7 +55,6 @@ function setup(options: { useEvalModelCatalog?: boolean } = {}) {
 	const service = new InstanceAiBuilderDelegateAdapterService(
 		agentsService,
 		agentsBuilderToolsService,
-		mock<AgentsBuilderService>(),
 		n8nMemory,
 		agentThreadRepository,
 		agentConfig,

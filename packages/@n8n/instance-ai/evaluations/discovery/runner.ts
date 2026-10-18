@@ -69,7 +69,6 @@ import {
 import { loadInstanceAiSkills } from '../../src/skills/skills';
 import { AGENT_BUILDER_ORCHESTRATOR_TOOL_NAMES } from '../../src/tools/tool-ids';
 import type {
-	BuilderTurnStream,
 	InstanceAiContext,
 	InstanceAiBuilderDelegate,
 	ComputerUseState,
@@ -421,22 +420,6 @@ function createStubBuilderTools(): BuiltTool[] {
 	);
 }
 
-function completedBuilderTurn(): BuilderTurnStream {
-	return {
-		fullStream: (async function* () {
-			await Promise.resolve();
-			yield {
-				type: 'tool-call',
-				toolCallId: 'discovery-write',
-				toolName: AGENT_BUILDER_TOOL_NAMES.WRITE_CONFIG,
-				input: {},
-			};
-			yield { type: 'tool-result', toolCallId: 'discovery-write', output: { ok: true } };
-		})(),
-		text: Promise.resolve('Agent configured for discovery evaluation.'),
-	};
-}
-
 function createStubBuilderDelegate(): InstanceAiBuilderDelegate {
 	return {
 		createAgent: async (name) =>
@@ -445,10 +428,6 @@ function createStubBuilderDelegate(): InstanceAiBuilderDelegate {
 				projectId: 'discovery-project',
 				name,
 			}),
-		streamBuild: async () => await Promise.resolve(completedBuilderTurn()),
-		resumeBuild: async () => await Promise.resolve(completedBuilderTurn()),
-		findOpenSuspensions: async () => await Promise.resolve([]),
-		cancelOpenSuspension: async () => await Promise.resolve(),
 		getBuilderTools: () => createStubBuilderTools(),
 		getRuntimeSkills: () => [],
 		getBuilderSessionContext: async () => await Promise.resolve('## Session context'),
