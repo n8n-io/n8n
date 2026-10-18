@@ -42,6 +42,8 @@
     "format": "turbo run format && node scripts/format.mjs",
     "grind": "node scripts/grind.mjs",
     "inspect:activity": "node scripts/instance-seeding/inspectActivity.mjs",
+    "dev:self-healing": "node scripts/self-healing-playground/server.mjs",
+    "test:self-healing-playground": "pnpm --filter n8n exec vitest run --config ../../scripts/self-healing-playground/vitest.config.mjs --maxWorkers=1",
     "seed:account": "node scripts/instance-seeding/seedInstance.mjs",
     "seed:history": "node scripts/instance-seeding/seedHistory.mjs",
     "seed:preference": "cross-env PROFILE=preference pnpm seed:account && pnpm seed:history",

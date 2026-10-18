@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>Self-healing playground</title>
+		<link rel="stylesheet" href="/style.css" />
+		<script src="/app.js" type="module"></script>
+	</head>
+	<body>
+		<main>
+			<header>
+				<div>
+					<p class="eyebrow">n8n · local testing</p>
+					<h1>Self-healing playground</h1>
+					<p>Create a failure. Review the repair. Try it again.</p>
+				</div>
+				<a id="open-inbox" class="button" target="_blank" rel="noreferrer">Open Inbox ↗</a>
+			</header>
+			<section class="guide" aria-label="Test sequence">
+				<div>
+					<span class="step">1</span>
+					<h2>Create a workflow</h2>
+					<p>Choose a scenario below. Each copy gets its own production webhook.</p>
+				</div>
+				<div>
+					<span class="step">2</span>
+					<h2>Configure self-healing</h2>
+					<p>
+						In n8n project settings, select the workflow, assign yourself as a reviewer, and enable
+						the configuration.
+					</p>
+				</div>
+				<div>
+					<span class="step">3</span>
+					<h2>Send an input</h2>
+					<p>
+						Check the saved execution. Review the result in Inbox, apply and publish a repair, then
+						send both inputs again.
+					</p>
+				</div>
+			</section>
+			<section class="toolbar" aria-label="Connection">
+				<div><span id="connection" class="badge">Connecting…</span><span id="instance"></span></div>
+				<label
+					>Project ID
+					<input
+						id="project-id"
+						placeholder="Leave blank for your personal project"
+						autocomplete="off"
+					/><small>For a team project, copy its ID from the n8n project URL.</small></label
+				>
+			</section>
+			<div id="notice" role="status" aria-live="polite" hidden></div>
+			<section aria-labelledby="scenarios-heading">
+				<div class="section-heading">
+					<h2 id="scenarios-heading">Choose a scenario</h2>
+					<span>Model outcomes can vary</span>
+				</div>
+				<div id="scenarios" class="scenario-grid"></div>
+			</section>
+			<section aria-labelledby="workflows-heading">
+				<div class="section-heading">
+					<h2 id="workflows-heading">Your test workflows <span id="count"></span></h2>
+					<button id="refresh">Refresh workflows</button>
+				</div>
+				<p class="hint">
+					An open result blocks another investigation for that workflow. Close the result before
+					testing another failure. Creating a fresh copy starts a separate test.
+				</p>
+				<div id="workflows"><p class="empty">Loading workflows…</p></div>
+			</section>
+			<footer>
+				Local developer tool · API key stays in the dashboard server · Workflows remain in n8n after
+				you stop this dashboard
+			</footer>
+		</main>
+	</body>
+</html>
