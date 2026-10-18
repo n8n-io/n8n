@@ -33,6 +33,16 @@ function isHitlActionResponse(
 }
 
 /**
+ * Index of the input item whose tool call the HITL response answers
+ */
+function getRequesterItemIndex(
+	actionResponse: ExecuteNodeResult<RequestResponseMetadata>,
+): number | undefined {
+	const index = actionResponse.action?.metadata?.itemIndex;
+	return typeof index === 'number' ? index : undefined;
+}
+
+/**
  * Type guard to check if data contains an approval field
  */
 function isApprovalData(data: unknown): data is { approved: boolean } {
@@ -102,10 +112,15 @@ function getDenialMessage(toolName: string, toolId: string, chatInput?: string):
  * This enables the flow:
  * Agent calls tool → HITL intercepts → sendAndWait → User approves →
  * Agent generates new request for gated tool → Gated tool executes → Result to Agent
+ *
+ * The same EngineResponse is passed to every input batch. When `batchLength` is given, only
+ * HITL responses requested by an item of this batch ([itemIndex, itemIndex + batchLength))
+ * are handled here, so one approval releases the gated tool once, for the item that asked.
  */
 export function processHitlResponses(
 	response: EngineResponse<RequestResponseMetadata> | undefined,
 	itemIndex: number,
+	batchLength?: number,
 ): HitlProcessingResult {
 	if (!response || !response.actionResponses || response.actionResponses.length === 0) {
 		return {
@@ -122,6 +137,16 @@ export function processHitlResponses(
 		if (!isHitlActionResponse(actionResponse)) {
 			// Not an HITL tool, pass through unchanged
 			processedActionResponses.push(actionResponse);
+			continue;
+		}
+
+		const requesterIndex = getRequesterItemIndex(actionResponse);
+		if (
+			batchLength !== undefined &&
+			requesterIndex !== undefined &&
+			(requesterIndex < itemIndex || requesterIndex >= itemIndex + batchLength)
+		) {
+			// Requested by an item of another batch: that batch handles it
 			continue;
 		}
 
@@ -145,7 +170,8 @@ export function processHitlResponses(
 				type: NodeConnectionTypes.AiTool,
 				id: toolId,
 				metadata: {
-					itemIndex,
+					// Bind the gated call to the item whose tool call was approved
+					itemIndex: requesterIndex ?? itemIndex,
 					// Set the parent node to the HITL node for proper log tree structure
 					parentNodeName: actionResponse.action.nodeName,
 				},
