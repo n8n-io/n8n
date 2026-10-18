@@ -13,6 +13,7 @@ import { AgentUpdateBroadcaster } from '../agent-update-broadcaster';
 import type { SkillFrontmatter } from '../entities/skill-version.entity';
 import type { Skill, SkillSource } from '../entities/skill.entity';
 import { AgentRepository } from '../repositories/agent.repository';
+import { SkillGitRepository } from '../repositories/skill-git.repository';
 import {
 	SkillRepository,
 	type ResolvedSkillRow,
@@ -117,6 +118,7 @@ export class SkillService {
 		private readonly txRunner: TransactionRunner,
 		private readonly agentUpdateBroadcaster: AgentUpdateBroadcaster,
 		private readonly projectScopeService: ProjectScopeService,
+		private readonly skillGitRepository: SkillGitRepository,
 	) {}
 
 	// ---------------------------------------------------------------- reads
@@ -201,6 +203,10 @@ export class SkillService {
 			source: SkillSource;
 			createdById: string;
 			checkNameTaken?: boolean;
+			/** SKILL.md frontmatter other than name and description, for a skill read from a file. */
+			frontmatter?: SkillFrontmatter | null;
+			/** The GitHub commit the content came from. */
+			sourceCommitSha?: string;
 		},
 		ctx: OperationContext = {},
 	): Promise<string> {
@@ -211,8 +217,14 @@ export class SkillService {
 		}
 		const id = `skill_${generateNanoId()}`;
 		await this.skillRepository.createSkill(
-			{ id, target: input.target, source: input.source, createdById: input.createdById },
-			toSkillContent(skill),
+			{
+				id,
+				target: input.target,
+				source: input.source,
+				createdById: input.createdById,
+				sourceCommitSha: input.sourceCommitSha,
+			},
+			toSkillContent(skill, input.frontmatter ?? null),
 			ctx,
 		);
 		this.logger.debug('Created skill', { skillId: id });
@@ -236,12 +248,49 @@ export class SkillService {
 		ctx: OperationContext = {},
 		pushRef?: string,
 	): Promise<SkillSaveResult> {
+		return await this.saveVersion(skillId, update, userId, ctx, pushRef);
+	}
+
+	/**
+	 * Accept for a skill that syncs from GitHub: the same Save, with the frontmatter from
+	 * SKILL.md and the commit the content came from. Only this path may save a synced skill.
+	 */
+	async saveFromGitHub(
+		skillId: string,
+		skill: AgentSkill,
+		source: { commitSha: string; frontmatter: SkillFrontmatter | null },
+		userId: string,
+		ctx: OperationContext = {},
+	): Promise<SkillSaveResult> {
+		return await this.saveVersion(skillId, skill, userId, ctx, undefined, source);
+	}
+
+	private async saveVersion(
+		skillId: string,
+		// Without `baseSkillHash` the save does not check for a newer version: GitHub content
+		// replaces whatever is latest.
+		update: Omit<SkillUpdate, 'baseSkillHash'> & { baseSkillHash?: string },
+		userId: string,
+		ctx: OperationContext,
+		pushRef?: string,
+		gitSource?: { commitSha: string; frontmatter: SkillFrontmatter | null },
+	): Promise<SkillSaveResult> {
 		const { saved, following } = await this.txRunner.run(ctx, async (txCtx) => {
 			await this.skillRepository.lockForEdit([skillId], txCtx);
+			if (!gitSource && (await this.skillGitRepository.findLink(skillId, txCtx))) {
+				throw new ConflictError(
+					'This skill syncs from GitHub. Edit it in GitHub, or stop syncing to edit it in n8n.',
+				);
+			}
 			const latest = (await this.skillRepository.findLatestSaved([skillId], txCtx)).get(skillId);
 			if (!latest) throw new NotFoundError('Skill not found');
 			const current = toAgentSkill(latest);
-			const { baseSkillHash, label, allowedTools: _ignored, ...changes } = update;
+			const {
+				baseSkillHash = getAgentSkillHash(current),
+				label,
+				allowedTools: _ignored,
+				...changes
+			} = update;
 			// Only a new name is trimmed, so a save never renames a skill it did not rename.
 			if (changes.name !== undefined) changes.name = trimmedName(changes.name);
 			if (baseSkillHash !== getAgentSkillHash(current)) {
@@ -249,10 +298,21 @@ export class SkillService {
 					'The skill was changed somewhere else. Reload to get the latest version.',
 				);
 			}
-			const skill: AgentSkill = { ...current, ...changes };
+			// GitHub content replaces the whole skill, its file list included.
+			const skill: AgentSkill = gitSource
+				? {
+						...changes,
+						name: changes.name ?? current.name,
+						description: changes.description ?? current.description,
+						instructions: changes.instructions ?? current.instructions,
+					}
+				: { ...current, ...changes };
 			if (!skill.references?.length) delete skill.references;
 			assertHasInstructions(skill);
-			const content = toSkillContent(skill, latest.version.frontmatter);
+			const content = toSkillContent(
+				skill,
+				gitSource ? gitSource.frontmatter : latest.version.frontmatter,
+			);
 			if (skillContentHash(content) === latest.version.contentHash) {
 				const unchanged = { versionId: latest.version.id, version: latest.version.version };
 				const result = { ...unchanged, created: false, skill: current, followingAgentIds: [] };
@@ -271,7 +331,7 @@ export class SkillService {
 				content,
 				userId,
 				txCtx,
-				{ label },
+				{ label, sourceCommitSha: gitSource?.commitSha ?? null },
 			);
 			const followingIds = await this.skillRepository.findFollowingAgentIds([skillId], txCtx);
 			await this.agentRepository.markDraftChangedIfInSync(followingIds, txCtx);

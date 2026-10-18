@@ -57,6 +57,7 @@ const summaries: SkillVersionSummary[] = [4, 3, 2].map((version) => ({
 	label: null,
 	createdBy: null,
 	createdAt: '2026-10-01T00:00:00.000Z',
+	sourceCommitSha: null,
 }));
 
 function detail(version: number): SkillVersionDetail {

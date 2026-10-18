@@ -1,9 +1,16 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import type { SkillListItem } from '@n8n/api-types';
-import { N8nActionToggle, N8nDataTableServer, N8nText, N8nUserInfo } from '@n8n/design-system';
+import {
+	N8nActionToggle,
+	N8nBadge,
+	N8nDataTableServer,
+	N8nIcon,
+	N8nText,
+	N8nUserInfo,
+} from '@n8n/design-system';
 import type { TableHeader, TableOptions } from '@n8n/design-system';
-import { useI18n } from '@n8n/i18n';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useUsersStore } from '@n8n/stores/users.store';
 
 import TimeAgo from '@/app/components/TimeAgo.vue';
@@ -13,8 +20,17 @@ import { skillUserName } from '@/features/agents/components/skillVersions/skillV
 import SkillAgentsCell from './SkillAgentsCell.vue';
 import SkillScopeBadge from './SkillScopeBadge.vue';
 import { PREFERENCES_PAGE_SIZES } from '../context.constants';
+import { skillGitState, type SkillGitState } from '../skillsGitHub.utils';
 
-type SkillAction = 'edit' | 'timeline' | 'compare' | 'delete';
+type SkillAction =
+	| 'edit'
+	| 'timeline'
+	| 'compare'
+	| 'delete'
+	| 'reviewUpdate'
+	| 'checkGitHub'
+	| 'openGitHub'
+	| 'stopSync';
 
 /** Opens the skill with its timeline, or comparing its two newest versions. */
 export type SkillOpenView = 'timeline' | 'compare';
@@ -40,6 +56,10 @@ const props = defineProps<{
 const emit = defineEmits<{
 	open: [skill: SkillListItem, view?: SkillOpenView];
 	delete: [skill: SkillListItem];
+	/** Opens the review of the update from GitHub that waits for the skill. */
+	review: [skill: SkillListItem];
+	checkGitHub: [skill: SkillListItem];
+	stopSync: [skill: SkillListItem];
 	'update:options': [payload: TableOptions];
 }>();
 
@@ -60,6 +80,54 @@ function deleteHint(skill: SkillListItem): string | undefined {
 		interpolate: { count: skill.usedByAgents },
 		adjustToNumber: skill.usedByAgents,
 	});
+}
+
+/** The actions of a skill that syncs from GitHub. Each needs the permission to edit it. */
+function gitActionsFor(skill: SkillListItem): SkillActionItem[] {
+	const source = skill.gitSource;
+	if (!source || !skill.canEdit) return [];
+	const actions: SkillActionItem[] = [];
+	if (source.update?.status === 'pending') {
+		actions.push({
+			value: 'reviewUpdate',
+			label: i18n.baseText('settings.context.skills.github.actions.review'),
+		});
+	}
+	if (source.refType === 'branch') {
+		actions.push({
+			value: 'checkGitHub',
+			label: i18n.baseText('settings.context.skills.github.actions.check'),
+		});
+	}
+	actions.push(
+		{ value: 'openGitHub', label: i18n.baseText('settings.context.skills.github.actions.open') },
+		{ value: 'stopSync', label: i18n.baseText('settings.context.skills.github.actions.stop') },
+	);
+	actions[0] = { ...actions[0], divided: true };
+	return actions;
+}
+
+const GIT_STATE_LABELS: Record<SkillGitState, BaseTextKey> = {
+	update: 'settings.context.skills.github.state.update',
+	blocked: 'settings.context.skills.github.state.blocked',
+	unavailable: 'settings.context.skills.github.state.unavailable',
+	delayed: 'settings.context.skills.github.state.delayed',
+	fixed: 'settings.context.skills.github.state.fixed',
+};
+
+const GIT_STATE_VARIANTS: Record<SkillGitState, 'warning' | 'danger' | 'outline'> = {
+	update: 'warning',
+	blocked: 'danger',
+	unavailable: 'danger',
+	delayed: 'outline',
+	fixed: 'outline',
+};
+
+/** The state chip of a synced skill, or null when it needs none. */
+function gitChip(skill: SkillListItem) {
+	const state = skillGitState(skill.gitSource);
+	if (!state) return null;
+	return { label: i18n.baseText(GIT_STATE_LABELS[state]), variant: GIT_STATE_VARIANTS[state] };
 }
 
 function actionsFor(skill: SkillListItem): SkillActionItem[] {
@@ -83,6 +151,7 @@ function actionsFor(skill: SkillListItem): SkillActionItem[] {
 			// One version has nothing to compare with.
 			disabled: skill.latestVersion < 2,
 		},
+		...gitActionsFor(skill),
 		{
 			value: 'delete',
 			label: i18n.baseText('settings.context.skills.actions.delete'),
@@ -97,6 +166,11 @@ function actionsFor(skill: SkillListItem): SkillActionItem[] {
 function onAction(skill: SkillListItem, action: SkillAction) {
 	if (action === 'edit') emit('open', skill);
 	else if (action === 'timeline' || action === 'compare') emit('open', skill, action);
+	else if (action === 'reviewUpdate') emit('review', skill);
+	else if (action === 'checkGitHub') emit('checkGitHub', skill);
+	else if (action === 'openGitHub') {
+		if (skill.gitSource) window.open(skill.gitSource.htmlUrl, '_blank', 'noopener');
+	} else if (action === 'stopSync') emit('stopSync', skill);
 	else emit('delete', skill);
 }
 
@@ -118,6 +192,13 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 		title: i18n.baseText('settings.context.skills.columns.scope'),
 		key: 'scope',
 		width: 220,
+		disableSort: true,
+		resize: false,
+	},
+	{
+		title: i18n.baseText('settings.context.skills.columns.source'),
+		key: 'gitSource',
+		width: 180,
 		disableSort: true,
 		resize: false,
 	},
@@ -174,9 +255,18 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 
 			<template #[`item.name`]="{ item }">
 				<div :class="$style.skillCell">
-					<N8nText size="medium" color="text-dark" data-test-id="skill-name">
-						{{ item.name }}
-					</N8nText>
+					<div :class="$style.nameRow">
+						<N8nText size="medium" color="text-dark" data-test-id="skill-name">
+							{{ item.name }}
+						</N8nText>
+						<N8nBadge
+							v-if="gitChip(item)"
+							:variant="gitChip(item)?.variant"
+							data-test-id="skill-git-state"
+						>
+							{{ gitChip(item)?.label }}
+						</N8nBadge>
+					</div>
 					<N8nText size="small" color="text-light" :class="$style.description">
 						{{ item.description }}
 					</N8nText>
@@ -185,6 +275,16 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 
 			<template #[`item.scope`]="{ item }">
 				<SkillScopeBadge :skill="item" />
+			</template>
+
+			<template #[`item.gitSource`]="{ item }">
+				<span v-if="item.gitSource" :class="$style.source" data-test-id="skill-source-github">
+					<N8nIcon icon="github" size="small" />
+					<N8nText size="small" color="text-base">{{ item.gitSource.repo }}</N8nText>
+				</span>
+				<N8nText v-else size="small" color="text-light" data-test-id="skill-source-n8n">
+					{{ i18n.baseText('settings.context.skills.github.source.n8n') }}
+				</N8nText>
 			</template>
 
 			<template #[`item.usedByAgents`]="{ item }">
@@ -247,6 +347,20 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 	flex-direction: column;
 	gap: var(--spacing--5xs);
 	min-width: 0;
+}
+
+.nameRow {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	min-width: 0;
+}
+
+.source {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+	color: var(--color--text);
 }
 
 .versionCell {

@@ -12,14 +12,24 @@ import { AgentModalTestStub } from './utils/AgentModalTestStub';
 
 configure({ testIdAttribute: 'data-testid' });
 
-const { getHubSkill, getSkillVersions, getSkillVersion, updateSkillVersionLabel } = vi.hoisted(
-	() => ({
-		getHubSkill: vi.fn(),
-		getSkillVersions: vi.fn(),
-		getSkillVersion: vi.fn(),
-		updateSkillVersionLabel: vi.fn(),
-	}),
-);
+const {
+	getHubSkill,
+	getSkillVersions,
+	getSkillVersion,
+	updateSkillVersionLabel,
+	stopSkillGitSync,
+	checkSkillGitHub,
+	confirm,
+} = vi.hoisted(() => ({
+	getHubSkill: vi.fn(),
+	getSkillVersions: vi.fn(),
+	getSkillVersion: vi.fn(),
+	updateSkillVersionLabel: vi.fn(),
+	stopSkillGitSync: vi.fn(),
+	checkSkillGitHub: vi.fn(),
+	confirm: vi.fn(),
+}));
+vi.mock('@/app/composables/useMessage', () => ({ useMessage: () => ({ confirm }) }));
 vi.mock('../composables/useAgentApi', () => ({
 	getHubSkill,
 	listAttachableSkills: vi.fn(async () => []),
@@ -28,6 +38,8 @@ vi.mock('@/features/settings/context/skills.api', () => ({
 	getSkillVersions,
 	getSkillVersion,
 	updateSkillVersionLabel,
+	stopSkillGitSync,
+	checkSkillGitHub,
 }));
 
 const { showMessage, showError } = vi.hoisted(() => ({ showMessage: vi.fn(), showError: vi.fn() }));
@@ -86,6 +98,7 @@ function summary(versionNumber: number, label: string | null = null): SkillVersi
 		label,
 		createdBy: { id: 'u1', email: 'ada@acme.test', firstName: 'Ada', lastName: null },
 		createdAt: '2026-10-01T00:00:00.000Z',
+		sourceCommitSha: null,
 	};
 }
 
@@ -108,6 +121,7 @@ function detail(overrides: Partial<SkillDetail> = {}): SkillDetail {
 		usedByAgents: 0,
 		canEdit: true,
 		canDelete: true,
+		gitSource: null,
 		createdAt: '2026-10-01T00:00:00.000Z',
 		updatedAt: '2026-10-01T00:00:00.000Z',
 		skill: LATEST,
@@ -476,6 +490,52 @@ describe('AgentSkillModal with versions', () => {
 
 			expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
 			expect(onUseLatestVersion).toHaveBeenCalledWith('s1');
+		});
+	});
+
+	describe('a skill that syncs from GitHub', () => {
+		const gitSource = {
+			owner: 'acme',
+			repo: 'agent-skills',
+			ref: 'main',
+			refType: 'branch' as const,
+			path: 'skills/refunds',
+			htmlUrl: 'https://github.com/acme/agent-skills/tree/main/skills/refunds',
+			syncedCommitSha: 'a'.repeat(40),
+			status: 'ok' as const,
+			lastError: null,
+			lastCheckedAt: null,
+			update: { status: 'pending' as const, toCommitSha: 'b'.repeat(40) },
+		};
+
+		it('is read-only, names its source and offers the review of the update', async () => {
+			getHubSkill.mockResolvedValue(detail({ gitSource }));
+			const onReviewGitUpdate = vi.fn();
+			const { findByTestId, queryByTestId, getByTestId } = renderModal({ onReviewGitUpdate });
+
+			expect(await findByTestId('skill-github-source-callout')).toHaveTextContent(
+				'acme/agent-skills',
+			);
+			expect(queryByTestId('skill-version-save')).not.toBeInTheDocument();
+			expect(queryByTestId('agent-modal-title-input')).not.toBeInTheDocument();
+			expect(getByTestId('skill-github-check')).toBeInTheDocument();
+
+			await fireEvent.click(getByTestId('skill-github-review'));
+			expect(onReviewGitUpdate).toHaveBeenCalledWith('s1');
+		});
+
+		it('stops syncing after the user confirms', async () => {
+			getHubSkill
+				.mockResolvedValueOnce(detail({ gitSource }))
+				.mockResolvedValue(detail({ gitSource: null }));
+			confirm.mockResolvedValue('confirm');
+			const onGitSyncChanged = vi.fn();
+			const { findByTestId } = renderModal({ onGitSyncChanged });
+
+			await fireEvent.click(await findByTestId('skill-version-menu-stop'));
+
+			await waitFor(() => expect(stopSkillGitSync).toHaveBeenCalledWith(expect.anything(), 's1'));
+			await waitFor(() => expect(onGitSyncChanged).toHaveBeenCalled());
 		});
 	});
 });

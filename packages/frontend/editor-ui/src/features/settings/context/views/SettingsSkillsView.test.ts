@@ -62,6 +62,7 @@ function skill(overrides: Partial<SkillListItem> = {}): SkillListItem {
 		usedByAgents: 0,
 		canEdit: true,
 		canDelete: true,
+		gitSource: null,
 		createdAt: '2026-10-01T00:00:00.000Z',
 		updatedAt: '2026-10-01T00:00:00.000Z',
 		...overrides,

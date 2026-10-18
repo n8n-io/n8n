@@ -6,6 +6,7 @@ import {
 	agentSkillShape,
 	skillCreateMethodSchema,
 } from './agent-skill.schema';
+import type { SkillGitSourceInfo } from './skills-github.schema';
 import type { AgentSkill } from './types';
 import type { ProjectType } from '../schemas/project.schema';
 import { paginationSchema } from '../dto/pagination/pagination.dto';
@@ -65,6 +66,8 @@ export type SkillListItem = {
 	usedByAgents: number;
 	canEdit: boolean;
 	canDelete: boolean;
+	/** Set while the skill syncs from GitHub. The skill is then read-only in n8n. */
+	gitSource: SkillGitSourceInfo | null;
 	createdAt: string;
 	updatedAt: string;
 };
@@ -131,6 +134,8 @@ export type SkillVersionSummary = {
 	/** Null when the user is unknown or no longer exists. */
 	createdBy: SkillUserDto | null;
 	createdAt: string;
+	/** The GitHub commit this version came from. Null for a version made in n8n. */
+	sourceCommitSha: string | null;
 };
 
 /** Every version of a skill, newest first. */

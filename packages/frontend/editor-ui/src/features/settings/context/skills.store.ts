@@ -1,5 +1,10 @@
 import type {
+	AcceptSkillGitUpdateDto,
 	CreateSkillDto,
+	DiscoverGitHubSkillsResponse,
+	ImportGitHubSkillsDto,
+	ImportGitHubSkillsResponse,
+	SkillGitUpdateDetail,
 	SaveSkillDto,
 	SkillDetail,
 	SkillListItem,
@@ -83,6 +88,36 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 		return await api.updateSkillVersionLabel(rootStore.restApiContext, id, version, label);
 	}
 
+	async function discoverGitHubSkills(url: string): Promise<DiscoverGitHubSkillsResponse> {
+		return await api.discoverGitHubSkills(rootStore.restApiContext, { url });
+	}
+
+	async function importGitHubSkills(
+		payload: ImportGitHubSkillsDto,
+	): Promise<ImportGitHubSkillsResponse> {
+		return await api.importGitHubSkills(rootStore.restApiContext, payload);
+	}
+
+	async function fetchSkillGitUpdate(id: string): Promise<SkillGitUpdateDetail> {
+		return await api.getSkillGitUpdate(rootStore.restApiContext, id);
+	}
+
+	async function acceptSkillGitUpdate(id: string, payload: AcceptSkillGitUpdateDto) {
+		return await api.acceptSkillGitUpdate(rootStore.restApiContext, id, payload);
+	}
+
+	async function skipSkillGitUpdate(id: string, toCommitSha: string): Promise<void> {
+		await api.skipSkillGitUpdate(rootStore.restApiContext, id, toCommitSha);
+	}
+
+	async function checkSkillGitHub(id: string): Promise<SkillDetail> {
+		return await api.checkSkillGitHub(rootStore.restApiContext, id);
+	}
+
+	async function stopSkillGitSync(id: string): Promise<void> {
+		await api.stopSkillGitSync(rootStore.restApiContext, id);
+	}
+
 	return {
 		skills,
 		count,
@@ -97,5 +132,12 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 		fetchSkillVersions,
 		fetchSkillVersion,
 		updateSkillVersionLabel,
+		discoverGitHubSkills,
+		importGitHubSkills,
+		fetchSkillGitUpdate,
+		acceptSkillGitUpdate,
+		skipSkillGitUpdate,
+		checkSkillGitHub,
+		stopSkillGitSync,
 	};
 });

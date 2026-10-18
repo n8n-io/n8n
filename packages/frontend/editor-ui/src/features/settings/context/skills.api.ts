@@ -1,5 +1,11 @@
 import type {
+	AcceptSkillGitUpdateDto,
 	CreateSkillDto,
+	DiscoverGitHubSkillsDto,
+	DiscoverGitHubSkillsResponse,
+	ImportGitHubSkillsDto,
+	ImportGitHubSkillsResponse,
+	SkillGitUpdateDetail,
 	SaveSkillDto,
 	SkillDetail,
 	SkillListResponse,
@@ -116,4 +122,74 @@ export async function updateSkillVersionLabel(
 		`${ENDPOINT}/${id}/versions/${version}`,
 		{ label },
 	);
+}
+
+/** Reads a public GitHub link and lists the skills in it. Nothing is stored. */
+export async function discoverGitHubSkills(
+	context: IRestApiContext,
+	payload: DiscoverGitHubSkillsDto,
+): Promise<DiscoverGitHubSkillsResponse> {
+	return await makeRestApiRequest<DiscoverGitHubSkillsResponse>(
+		context,
+		'POST',
+		`${ENDPOINT}/github/discover`,
+		payload,
+	);
+}
+
+/** Imports the chosen skills at the commit that discover returned. */
+export async function importGitHubSkills(
+	context: IRestApiContext,
+	payload: ImportGitHubSkillsDto,
+): Promise<ImportGitHubSkillsResponse> {
+	return await makeRestApiRequest<ImportGitHubSkillsResponse>(
+		context,
+		'POST',
+		`${ENDPOINT}/github/import`,
+		payload,
+	);
+}
+
+export async function getSkillGitUpdate(
+	context: IRestApiContext,
+	id: string,
+): Promise<SkillGitUpdateDetail> {
+	return await makeRestApiRequest<SkillGitUpdateDetail>(
+		context,
+		'GET',
+		`${ENDPOINT}/${id}/github/update`,
+	);
+}
+
+export async function acceptSkillGitUpdate(
+	context: IRestApiContext,
+	id: string,
+	payload: AcceptSkillGitUpdateDto,
+): Promise<{ version: number; created: boolean }> {
+	return await makeRestApiRequest<{ version: number; created: boolean }>(
+		context,
+		'POST',
+		`${ENDPOINT}/${id}/github/update/accept`,
+		payload,
+	);
+}
+
+export async function skipSkillGitUpdate(
+	context: IRestApiContext,
+	id: string,
+	toCommitSha: string,
+): Promise<void> {
+	await makeRestApiRequest(context, 'POST', `${ENDPOINT}/${id}/github/update/skip`, {
+		toCommitSha,
+	});
+}
+
+/** Checks GitHub for this skill now. Answers the skill as it is after the check. */
+export async function checkSkillGitHub(context: IRestApiContext, id: string): Promise<SkillDetail> {
+	return await makeRestApiRequest<SkillDetail>(context, 'POST', `${ENDPOINT}/${id}/github/check`);
+}
+
+/** Stop syncing: the skill and its versions stay and become editable. */
+export async function stopSkillGitSync(context: IRestApiContext, id: string): Promise<void> {
+	await makeRestApiRequest(context, 'DELETE', `${ENDPOINT}/${id}/github`);
 }

@@ -29,6 +29,7 @@ function version(versionNumber: number, label: string | null = null): SkillVersi
 		label,
 		createdBy: { id: 'u1', email: 'ada@acme.test', firstName: 'Ada', lastName: 'Lovelace' },
 		createdAt: new Date().toISOString(),
+		sourceCommitSha: null,
 	};
 }
 

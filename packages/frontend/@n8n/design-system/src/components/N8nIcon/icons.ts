@@ -14,6 +14,7 @@ import Entra from './custom/entra.svg';
 import FilledSquare from './custom/filled-square.svg';
 import Form from './custom/form.svg';
 import GripLinesVertical from './custom/grip-lines-vertical.svg';
+import GitHub from './custom/github.svg';
 import Linear from './custom/linear.svg';
 import Lovable from './custom/lovable.svg';
 import Mcp from './custom/mcp.svg';
@@ -570,6 +571,7 @@ export const updatedIconSet = {
 	toolbox: Toolbox,
 	slack: Slack,
 	linear: Linear,
+	github: GitHub,
 	telegram: Telegram,
 	discord: Discord,
 	whatsapp: WhatsApp,

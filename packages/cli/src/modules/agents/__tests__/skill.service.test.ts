@@ -12,6 +12,7 @@ import type { SkillFile } from '../entities/skill-file.entity';
 import type { SkillVersion } from '../entities/skill-version.entity';
 import type { Skill } from '../entities/skill.entity';
 import type { AgentRepository } from '../repositories/agent.repository';
+import type { SkillGitRepository } from '../repositories/skill-git.repository';
 import type { ResolvedSkillRow, SkillRepository } from '../repositories/skill.repository';
 import { skillContentHash } from '../skills/skill-content-hash';
 import { getAgentSkillHash } from '../utils/agent-config-hash';
@@ -93,7 +94,16 @@ describe('SkillService', () => {
 	const txRunner = mock<TransactionRunner>();
 	const broadcaster = mock<AgentUpdateBroadcaster>();
 	const projectScope = mock<ProjectScopeService>();
-	const service = new SkillService(mock(), skills, agents, txRunner, broadcaster, projectScope);
+	const skillGit = mock<SkillGitRepository>();
+	const service = new SkillService(
+		mock(),
+		skills,
+		agents,
+		txRunner,
+		broadcaster,
+		projectScope,
+		skillGit,
+	);
 	const user = mock<User>({ id: 'user-1' });
 
 	beforeEach(() => {
@@ -349,7 +359,7 @@ describe('SkillService', () => {
 				expect.not.objectContaining({ label: expect.anything() }),
 				user.id,
 				TX_CTX,
-				{ label: 'Launch copy' },
+				{ label: 'Launch copy', sourceCommitSha: null },
 			);
 		});
 
@@ -392,7 +402,44 @@ describe('SkillService', () => {
 				}),
 				user.id,
 				TX_CTX,
-				{ label: undefined },
+				{ label: undefined, sourceCommitSha: null },
+			);
+		});
+
+		it('refuses to save a skill that syncs from GitHub', async () => {
+			const baseSkillHash = givenLatest(versionRow(skill, 2));
+			skillGit.findLink.mockResolvedValue(mock());
+
+			await expect(
+				service.save('skill_a', { baseSkillHash, instructions: 'new' }, user.id),
+			).rejects.toThrow('This skill syncs from GitHub.');
+			expect(skills.insertSavedVersion).not.toHaveBeenCalled();
+		});
+
+		it('saves GitHub content as a whole, with its frontmatter and commit', async () => {
+			givenLatest(versionRow(skill, 2));
+			skillGit.findLink.mockResolvedValue(mock());
+
+			await service.saveFromGitHub(
+				'skill_a',
+				{ name: 'Brand voice', description: 'From GitHub', instructions: 'new' },
+				{ commitSha: 'c'.repeat(40), frontmatter: { license: 'MIT' } },
+				user.id,
+			);
+
+			expect(skills.insertSavedVersion).toHaveBeenCalledWith(
+				'skill_a',
+				3,
+				{
+					name: 'Brand voice',
+					description: 'From GitHub',
+					instructions: 'new',
+					frontmatter: { license: 'MIT' },
+					files: [],
+				},
+				user.id,
+				TX_CTX,
+				{ label: undefined, sourceCommitSha: 'c'.repeat(40) },
 			);
 		});
 
@@ -425,7 +472,7 @@ describe('SkillService', () => {
 				expect.objectContaining({ name: 'Renamed' }),
 				user.id,
 				expect.anything(),
-				{ label: undefined },
+				{ label: undefined, sourceCommitSha: null },
 			);
 		});
 
@@ -474,7 +521,7 @@ describe('SkillService', () => {
 				expect.objectContaining({ frontmatter: { 'allowed-tools': 'Read' } }),
 				user.id,
 				TX_CTX,
-				{ label: undefined },
+				{ label: undefined, sourceCommitSha: null },
 			);
 		});
 
@@ -491,7 +538,7 @@ describe('SkillService', () => {
 				expect.objectContaining({ frontmatter: { license: 'MIT', 'allowed-tools': 'Read' } }),
 				user.id,
 				TX_CTX,
-				{ label: undefined },
+				{ label: undefined, sourceCommitSha: null },
 			);
 		});
 

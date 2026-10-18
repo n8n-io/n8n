@@ -61,6 +61,7 @@ erDiagram
   VARCHAR_128_ label
   varchar_128_ name
   varchar_36_ skillId FK
+  VARCHAR_40_ sourceCommitSha
   datetime_3_ updatedAt
   INTEGER version
 }

@@ -34,7 +34,8 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { UnexpectedError } from 'n8n-workflow';
 
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
-import { VIEWS } from '@/app/constants';
+import { MODAL_CONFIRM, VIEWS } from '@/app/constants';
+import { useMessage } from '@/app/composables/useMessage';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useSkillsStore } from '@/features/settings/context/skills.store';
 import ToolsConnectionModal from '@/features/shared/toolsConnection/ToolsConnectionModal.vue';
@@ -137,6 +138,12 @@ export type AgentSkillModalData = {
 	onUseLatestVersion?: (id: string) => void;
 	onAttach?: (skill: SkillListItem) => Promise<void>;
 	onRemove?: (id: string) => void;
+	/** Settings only: opens the review of the update from GitHub that waits for this skill. */
+	onReviewGitUpdate?: (id: string) => void;
+	/** Called after "Check for updates" or "Stop syncing" changed the skill. */
+	onGitSyncChanged?: () => void;
+	/** Settings only: shows "Import from GitHub" on the upload step and opens that flow. */
+	onImportFromGitHub?: () => void;
 };
 
 const props = defineProps<{
@@ -150,6 +157,7 @@ const router = useRouter();
 const rootStore = useRootStore();
 const skillsStore = useSkillsStore();
 const { showError, showMessage } = useToast();
+const message = useMessage();
 const agentTelemetry = useAgentTelemetry();
 const modalOpen = computed(() => uiStore.modalsById[props.modalName]?.open === true);
 const agentModal = useTemplateRef<InstanceType<typeof AgentModalMultiStep>>('agentModal');
@@ -312,9 +320,12 @@ const skillAccess = ref<SkillDetail | null>(null);
 const skillAccessLoading = ref(false);
 const skillAccessFailed = ref(false);
 const isOutdated = computed(() => isEditing.value && !!props.data.outdated);
+/** Set while the skill syncs from GitHub. Edits then happen in GitHub, so the editor is read-only. */
+const gitSource = computed(() => skillAccess.value?.gitSource ?? null);
 const isReadOnly = computed(
 	() =>
 		props.data.readOnly === true ||
+		!!gitSource.value ||
 		skillAccessLoading.value ||
 		skillAccessFailed.value ||
 		skillAccess.value?.canEdit === false ||
@@ -327,7 +338,11 @@ const cancelLabel = computed(() =>
 		: i18n.baseText('generic.cancel'),
 );
 const cannotEdit = computed(
-	() => props.data.readOnly === true || skillAccess.value?.canEdit === false || isOutdated.value,
+	() =>
+		props.data.readOnly === true ||
+		skillAccess.value?.canEdit === false ||
+		isOutdated.value ||
+		!!gitSource.value,
 );
 /** Save sends a snapshot, so the editor is locked until the answer comes back. */
 const editorLocked = computed(() => isReadOnly.value || isSaving.value || !!viewing.value);
@@ -384,7 +399,7 @@ const footerHint = computed(() => {
 	}
 	if (!shownSkill || (step.value !== 'preview' && step.value !== 'edit')) return '';
 	// The read-only callout already says it.
-	if (step.value === 'edit' && props.data.readOnly) return '';
+	if (step.value === 'edit' && (props.data.readOnly || gitSource.value)) return '';
 	if (!shownSkill.canEdit) {
 		return shownSkill.scope === 'instance'
 			? i18n.baseText('agents.builder.skills.hint.readOnly.instance')
@@ -654,6 +669,13 @@ function onImportSkill(payload: {
 		agentId: props.data.agentId,
 		...payload,
 	});
+}
+
+/** The GitHub import has its own modal, so this one closes first. */
+function onImportFromGitHub() {
+	const open = props.data.onImportFromGitHub;
+	closeModal();
+	open?.();
 }
 
 function closeModal() {
@@ -999,6 +1021,103 @@ function onUseLatestVersion() {
 	props.data.onUseLatestVersion?.(skillId);
 }
 
+// ---- A skill that syncs from GitHub ----
+
+/** Name version, check and stop syncing need the same permission as Save. */
+const canManageGitSync = computed(
+	() => showVersions.value && !!gitSource.value && skillAccess.value?.canEdit === true,
+);
+const checkingGitHub = ref(false);
+
+type GitAction = 'name' | 'open' | 'stop';
+
+const gitMenuItems = computed<Array<ActionDropdownItem<GitAction>>>(() => [
+	{
+		id: 'name',
+		label: i18n.baseText('settings.context.skills.versions.menu.name'),
+		disabled: latestVersion.value === 0,
+	},
+	{ id: 'open', label: i18n.baseText('settings.context.skills.github.actions.open') },
+	{
+		id: 'stop',
+		label: i18n.baseText('settings.context.skills.github.actions.stop'),
+		divided: true,
+	},
+]);
+
+function openInGitHub() {
+	if (gitSource.value) window.open(gitSource.value.htmlUrl, '_blank', 'noopener');
+}
+
+async function onCheckGitHub() {
+	if (!props.data.skillId) return;
+	checkingGitHub.value = true;
+	try {
+		const detail = await skillsStore.checkSkillGitHub(props.data.skillId);
+		const hadUpdate = !!skillAccess.value?.gitSource?.update;
+		skillAccess.value = detail;
+		props.data.onGitSyncChanged?.();
+		const update = detail.gitSource?.update;
+		showMessage({
+			title: i18n.baseText(
+				update && !hadUpdate
+					? 'settings.context.skills.github.check.found'
+					: detail.gitSource?.status === 'ok'
+						? 'settings.context.skills.github.check.upToDate'
+						: 'settings.context.skills.github.check.failed',
+			),
+			type: detail.gitSource?.status === 'ok' ? 'success' : 'warning',
+		});
+	} catch (error) {
+		showError(error, i18n.baseText('settings.context.skills.github.check.error'));
+	} finally {
+		checkingGitHub.value = false;
+	}
+}
+
+async function onStopSyncing() {
+	if (!props.data.skillId) return;
+	const pending = !!gitSource.value?.update;
+	const confirmed = await message.confirm(
+		i18n.baseText(
+			pending
+				? 'settings.context.skills.github.stop.confirm.messagePending'
+				: 'settings.context.skills.github.stop.confirm.message',
+		),
+		i18n.baseText('settings.context.skills.github.stop.confirm.title'),
+		{
+			type: 'warning',
+			confirmButtonText: i18n.baseText('settings.context.skills.github.stop.confirm.button'),
+			cancelButtonText: i18n.baseText('generic.cancel'),
+		},
+	);
+	if (confirmed !== MODAL_CONFIRM) return;
+	try {
+		await skillsStore.stopSkillGitSync(props.data.skillId);
+		await refreshSkillAccess();
+		props.data.onGitSyncChanged?.();
+		showMessage({
+			title: i18n.baseText('settings.context.skills.github.stop.success'),
+			type: 'success',
+		});
+	} catch (error) {
+		showError(error, i18n.baseText('settings.context.skills.github.stop.error'));
+	}
+}
+
+function onGitMenuSelect(action: GitAction) {
+	if (action === 'name') nameDialog.value = 'name';
+	else if (action === 'open') openInGitHub();
+	else void onStopSyncing();
+}
+
+function onReviewGitUpdate() {
+	if (!props.data.skillId) return;
+	const skillId = props.data.skillId;
+	closeModal();
+	props.data.onReviewGitUpdate?.(skillId);
+}
+
 function onRemove() {
 	if (step.value === 'preview') {
 		if (previewSkill.value) props.data.onRemove?.(previewSkill.value.id);
@@ -1055,6 +1174,35 @@ function onRemove() {
 						@click="toggleTimeline"
 					/>
 				</N8nTooltip>
+				<template v-if="canManageGitSync">
+					<N8nButton
+						v-if="gitSource?.refType === 'branch'"
+						variant="outline"
+						size="small"
+						icon="refresh-cw"
+						:loading="checkingGitHub"
+						data-testid="skill-github-check"
+						@click="onCheckGitHub"
+					>
+						{{ i18n.baseText('settings.context.skills.github.actions.check') }}
+					</N8nButton>
+					<N8nActionDropdown
+						:items="gitMenuItems"
+						placement="bottom-end"
+						:teleported="false"
+						data-testid="skill-github-menu"
+						@select="onGitMenuSelect"
+					>
+						<template #activator>
+							<N8nIconButton
+								variant="ghost"
+								icon="ellipsis-vertical"
+								:aria-label="i18n.baseText('settings.context.skills.versions.menu.label')"
+								data-testid="skill-github-menu-button"
+							/>
+						</template>
+					</N8nActionDropdown>
+				</template>
 				<div v-if="canWriteVersions" :class="$style.buttonGroup">
 					<KeyboardShortcutTooltip
 						:label="i18n.baseText('settings.context.skills.versions.save.tooltip')"
@@ -1166,6 +1314,76 @@ function onRemove() {
 						{{ i18n.baseText('settings.context.skills.readOnly') }}
 					</N8nCallout>
 					<N8nCallout
+						v-if="gitSource && step === 'edit'"
+						theme="info"
+						icon="github"
+						:class="$style.callout"
+						data-testid="skill-github-source-callout"
+					>
+						{{
+							i18n.baseText(
+								gitSource.refType === 'branch'
+									? 'settings.context.skills.github.callout.branch'
+									: 'settings.context.skills.github.callout.fixed',
+								{
+									interpolate: {
+										repo: `${gitSource.owner}/${gitSource.repo}`,
+										path: gitSource.path || '/',
+										ref: gitSource.ref,
+									},
+								},
+							)
+						}}
+						<template #trailingContent>
+							<N8nButton
+								variant="outline"
+								size="small"
+								data-testid="skill-github-open"
+								@click="openInGitHub"
+							>
+								{{ i18n.baseText('settings.context.skills.github.actions.open') }}
+							</N8nButton>
+						</template>
+					</N8nCallout>
+					<N8nCallout
+						v-if="gitSource?.update && step === 'edit' && canManageGitSync"
+						:theme="gitSource.update.status === 'blocked' ? 'danger' : 'warning'"
+						:class="$style.callout"
+						data-testid="skill-github-update-callout"
+					>
+						{{
+							i18n.baseText(
+								gitSource.update.status === 'blocked'
+									? 'settings.context.skills.github.callout.blocked'
+									: 'settings.context.skills.github.callout.update',
+							)
+						}}
+						<template v-if="data.onReviewGitUpdate" #trailingContent>
+							<N8nButton
+								variant="solid"
+								size="small"
+								data-testid="skill-github-review"
+								@click="onReviewGitUpdate"
+							>
+								{{ i18n.baseText('settings.context.skills.github.actions.review') }}
+							</N8nButton>
+						</template>
+					</N8nCallout>
+					<N8nCallout
+						v-else-if="gitSource && gitSource.status !== 'ok' && step === 'edit'"
+						theme="warning"
+						:class="$style.callout"
+						data-testid="skill-github-status-callout"
+					>
+						{{
+							i18n.baseText(
+								gitSource.status === 'rate_limited'
+									? 'settings.context.skills.github.status.rateLimited'
+									: 'settings.context.skills.github.status.unavailable',
+							)
+						}}
+					</N8nCallout>
+					<N8nCallout
 						v-if="openedWithMissingContent && !isReadOnly"
 						theme="warning"
 						:class="$style.callout"
@@ -1256,9 +1474,11 @@ function onRemove() {
 						<AgentSkillUpload
 							v-else-if="step === 'upload'"
 							v-model:busy="isImporting"
+							:show-git-hub-import="!!data.onImportFromGitHub"
 							@uploaded="onSkillUploaded"
 							@add-manually="onAddManually"
 							@import:skill="onImportSkill"
+							@import-github="onImportFromGitHub"
 						/>
 						<template v-else>
 							<AgentSkillFileNav

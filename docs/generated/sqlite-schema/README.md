@@ -137,7 +137,9 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [shared_workflow](shared_workflow.md) | 5 |  | table |
 | [skill](skill.md) | 7 |  | table |
 | [skill_file](skill_file.md) | 5 |  | table |
-| [skill_version](skill_version.md) | 12 |  | table |
+| [skill_git_link](skill_git_link.md) | 14 |  | table |
+| [skill_git_update](skill_git_update.md) | 13 |  | table |
+| [skill_version](skill_version.md) | 13 |  | table |
 | [tag_entity](tag_entity.md) | 4 |  | table |
 | [test_case_execution](test_case_execution.md) | 16 |  | table |
 | [test_run](test_run.md) | 16 |  | table |
@@ -374,6 +376,8 @@ erDiagram
 "skill" }o--o| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "skill" }o--o| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "skill_file" |o--|| "skill_version" : "FOREIGN KEY (skillVersionId) REFERENCES skill_version (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"skill_git_link" |o--|| "skill" : "FOREIGN KEY (skillId) REFERENCES skill (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"skill_git_update" |o--|| "skill" : "FOREIGN KEY (skillId) REFERENCES skill (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "skill_version" }o--o| "user" : "FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "skill_version" }o--|| "skill" : "FOREIGN KEY (skillId) REFERENCES skill (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "test_case_execution" }o--|| "test_run" : "FOREIGN KEY (testRunId) REFERENCES test_run (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -1713,6 +1717,37 @@ erDiagram
   varchar skillVersionId PK
   datetime_3_ updatedAt
 }
+"skill_git_link" {
+  datetime_3_ createdAt
+  datetime_3_ lastCheckedAt
+  varchar_512_ lastError
+  varchar_100_ owner
+  varchar_512_ path
+  varchar_255_ ref
+  varchar_16_ refType
+  varchar_100_ repo
+  varchar_40_ seenCommitSha
+  varchar_40_ seenTreeSha
+  varchar_36_ skillId PK
+  varchar_16_ status
+  varchar_40_ syncedCommitSha
+  datetime_3_ updatedAt
+}
+"skill_git_update" {
+  TEXT checkResult
+  varchar_255_ commitAuthor
+  varchar_1024_ commitMessage
+  datetime_3_ committedAt
+  TEXT content
+  varchar_64_ contentHash
+  datetime_3_ createdAt
+  varchar_40_ fromCommitSha
+  varchar_36_ skillId PK
+  TEXT skippedFiles
+  varchar_16_ status
+  varchar_40_ toCommitSha
+  datetime_3_ updatedAt
+}
 "skill_version" {
   varchar_64_ contentHash
   datetime_3_ createdAt
@@ -1724,6 +1759,7 @@ erDiagram
   VARCHAR_128_ label
   varchar_128_ name
   varchar_36_ skillId FK
+  VARCHAR_40_ sourceCommitSha
   datetime_3_ updatedAt
   INTEGER version
 }

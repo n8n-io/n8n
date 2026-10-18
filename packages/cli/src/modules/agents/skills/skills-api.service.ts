@@ -30,6 +30,7 @@ import {
 	type SkillVersionRow,
 } from '../repositories/skill.repository';
 import { getAgentSkillHash } from '../utils/agent-config-hash';
+import { SkillGitSyncService } from './github/skill-git-sync.service';
 import { SkillService, toAgentSkill } from './skill.service';
 import { SkillsTelemetry } from './skills-telemetry';
 
@@ -53,6 +54,7 @@ export class SkillsApiService {
 		private readonly txRunner: TransactionRunner,
 		private readonly userRepository: UserRepository,
 		private readonly skillsTelemetry: SkillsTelemetry,
+		private readonly skillGitSync: SkillGitSyncService,
 	) {}
 
 	async list(user: User, query: ListSkillsQueryDto): Promise<SkillListResponse> {
@@ -218,7 +220,7 @@ export class SkillsApiService {
 	}
 
 	/** A skill the user cannot see answers like a missing one. */
-	private async requireAccess(
+	async requireAccess(
 		user: User,
 		skillId: string,
 		operation: 'read' | 'update' | 'delete',
@@ -248,7 +250,7 @@ export class SkillsApiService {
 	}
 
 	/** Where a create or a move puts the skill. The user needs the create permission there. */
-	private async targetForCreate(
+	async targetForCreate(
 		user: User,
 		payload: Pick<CreateSkillDto, 'scope' | 'projectId' | 'agentId'>,
 	): Promise<SkillTarget> {
@@ -300,12 +302,13 @@ export class SkillsApiService {
 		);
 		const projectOf = (skill: Skill) =>
 			skill.projectId ?? (skill.agentId ? (agents.get(skill.agentId)?.projectId ?? null) : null);
-		const [latest, usage, projects, canEdit, canDelete] = await Promise.all([
+		const [latest, usage, projects, canEdit, canDelete, gitSources] = await Promise.all([
 			this.skillRepository.findLatestSummaries(ids),
 			this.skillRepository.countUsingAgents(ids),
 			this.skillRepository.findProjects(skills.flatMap((skill) => projectOf(skill) ?? [])),
 			this.skillService.accessCheck(user, 'update'),
 			this.skillService.accessCheck(user, 'delete'),
+			this.skillGitSync.sourceInfo(ids),
 		]);
 		// Creators and the users who saved the latest versions, in one query.
 		const users = await this.findUsers([
@@ -335,6 +338,7 @@ export class SkillsApiService {
 				usedByAgents: usage.get(skill.id) ?? 0,
 				canEdit: canEdit(skill, projectId),
 				canDelete: canDelete(skill, projectId),
+				gitSource: gitSources.get(skill.id) ?? null,
 				createdAt: skill.createdAt.toISOString(),
 				updatedAt: skill.updatedAt.toISOString(),
 			});
@@ -371,5 +375,6 @@ function toVersionSummary(
 		label: version.label,
 		createdBy: version.createdById ? (users.get(version.createdById) ?? null) : null,
 		createdAt: version.createdAt.toISOString(),
+		sourceCommitSha: version.sourceCommitSha ?? null,
 	};
 }
