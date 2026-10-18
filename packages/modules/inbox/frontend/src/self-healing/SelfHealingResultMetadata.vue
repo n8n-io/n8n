@@ -137,7 +137,11 @@ const usageRows = computed(() => {
 					size="medium"
 					data-test-id="self-healing-execution-link"
 				>
-					{{ i18n.baseText('inbox.selfHealing.metadata.executionLink') }}
+					{{
+						i18n.baseText('inbox.selfHealing.metadata.executionLink', {
+							interpolate: { id: detail.execution.id },
+						})
+					}}
 				</N8nLink>
 				<N8nText
 					v-else

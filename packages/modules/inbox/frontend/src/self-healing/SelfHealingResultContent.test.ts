@@ -84,7 +84,11 @@ describe('SelfHealingResultContent', () => {
 
 	it('offers publishing, the editor, and discard for a ready fix', async () => {
 		const user = userEvent.setup();
-		const { getByRole, queryByRole, queryByText, emitted } = renderContent({ canChat: false });
+		const { getByRole, getByTestId, queryByRole, queryByText, emitted } = renderContent({
+			canChat: false,
+		});
+
+		expect(getByTestId('self-healing-status-card')).toHaveTextContent(/^StatusFix ready$/);
 
 		await user.click(getByRole('button', { name: 'Apply and publish' }));
 		await user.click(getByRole('button', { name: 'Apply and open in editor' }));
@@ -129,6 +133,9 @@ describe('SelfHealingResultContent', () => {
 			});
 
 			expect(getByTestId('self-healing-outcome-notice')).toBeInTheDocument();
+			expect(getByTestId('self-healing-status-card')).toHaveTextContent(
+				outcome === 'needs_you' ? /^StatusNeeds attention$/ : /^StatusCould not fix$/,
+			);
 			expect(queryByRole('button', { name: 'Apply and publish' })).not.toBeInTheDocument();
 			expect(queryByRole('button', { name: /open in editor/i })).not.toBeInTheDocument();
 			expect(queryByRole('tab', { name: 'Changes' }) !== null).toBe(proposal !== null);
@@ -325,7 +332,9 @@ describe('SelfHealingResultContent', () => {
 	);
 
 	it('links only an available original execution and preserves the report without it', async () => {
-		const { getByTestId, queryByTestId, rerender } = renderContent();
+		const { getByText, getByTestId, queryByTestId, rerender } = renderContent();
+		expect(getByText('View execution')).toBeInTheDocument();
+		expect(getByTestId('self-healing-execution-link')).toHaveTextContent('Execution execution-1');
 		expect(getByTestId('self-healing-workflow-link')).toHaveAttribute(
 			'href',
 			'/workflow/workflow-1',
