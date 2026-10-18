@@ -105,6 +105,7 @@ function makeModuleSettings(
 		workflowBuilderAvailable: true,
 		sandboxUnavailableReason: null,
 		runDebugEnabled: false,
+		workflowSuggestionsEnabled: false,
 		...overrides,
 	};
 }
@@ -540,12 +541,13 @@ describe('useInstanceAiSettingsStore', () => {
 	});
 
 	describe('syncInstanceAiFlagIntoGlobalModuleSettings', () => {
-		it('preserves cloudManaged when syncing admin settings', async () => {
+		it('preserves module flags when syncing admin settings', async () => {
 			setModuleSettings(settingsStore, {
 				enabled: false,
 				localGatewayDisabled: false,
 				proxyEnabled: true,
 				cloudManaged: true,
+				workflowSuggestionsEnabled: true,
 			});
 
 			const adminResponse = {
@@ -570,6 +572,7 @@ describe('useInstanceAiSettingsStore', () => {
 
 			const ms = settingsStore.moduleSettings['instance-ai'];
 			expect(ms?.cloudManaged).toBe(true);
+			expect(ms?.workflowSuggestionsEnabled).toBe(true);
 			expect(ms?.proxyEnabled).toBe(true);
 			expect(ms?.enabled).toBe(true);
 			expect(ms?.sandboxEnabled).toBe(false);

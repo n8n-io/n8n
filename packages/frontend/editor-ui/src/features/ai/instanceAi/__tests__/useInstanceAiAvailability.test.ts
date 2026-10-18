@@ -34,6 +34,7 @@ function setModuleSettings(overrides: Partial<InstanceAiModuleSettings> = {}) {
 			workflowBuilderAvailable: true,
 			sandboxUnavailableReason: null,
 			runDebugEnabled: false,
+			workflowSuggestionsEnabled: false,
 			setupCompleted: false,
 			...overrides,
 		},
