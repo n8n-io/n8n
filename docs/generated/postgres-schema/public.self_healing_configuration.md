@@ -110,6 +110,7 @@ erDiagram
   varchar_16_ outcome
   varchar_36_ projectId FK
   text report
+  varchar_36_ suggestionId FK
   text summary
   timestamp_3__with_time_zone updatedAt
   json usage

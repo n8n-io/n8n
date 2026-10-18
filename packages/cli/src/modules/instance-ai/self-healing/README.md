@@ -146,10 +146,9 @@ Pause stops new investigations and prevents results from being saved while pause
 Running agents can finish. If the configuration resumes before completion, their results can be saved.
 Saved results remain available to assigned reviewers while the configuration is paused.
 
-Every suggestion belongs to a result. A result can have no suggestions.
-The current producer and review API use one suggestion per result.
-Removal deletes the configuration. Foreign keys cascade deletion to selections, reviewers,
-investigations, results, and their suggestions and activity records.
+A result can reference one independent suggestion. Reports without changes have no suggestion.
+Removal deletes linked suggestions and the configuration in one transaction. Foreign keys
+cascade deletion to suggestion activity, selections, reviewers, investigations, and results.
 Running agents can finish, but their results are not saved.
 Late completion skips missing configurations and investigations.
 Already applied workflow changes remain saved.
@@ -233,7 +232,7 @@ Credit billing still uses token counts from the existing runtime billing path.
 Recovery closes interrupted investigations without a result. It does not infer a new usage shape.
 
 Configuration, workflow, original-project, and background-user deletion cascade to the result.
-Result deletion cascades to its suggestions and their activity.
+Suggestion deletion cascades to its referencing result. Result deletion alone keeps the suggestion.
 Execution pruning and private-thread deletion do not remove reports or the stored execution ID.
 Execution references can point to either execution engine. Reads check current workflow and
 execution read access and workflow association. Missing or inaccessible execution references

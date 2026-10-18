@@ -151,6 +151,12 @@ export class SelfHealingResultService {
 			await this.suggestions.requireCurrentBaseline(current.baseline, ctx);
 			signal?.throwIfAborted();
 
+			let suggestionId: string | null = null;
+			if (prepared) {
+				const suggestion = await this.suggestions.createSuggestion(prepared, ctx);
+				suggestionId = suggestion.id;
+			}
+
 			const result = await this.results.createResult(
 				{
 					configurationId: current.configurationId,
@@ -158,17 +164,12 @@ export class SelfHealingResultService {
 					projectId: current.projectId,
 					backgroundUserId: current.backgroundUserId,
 					executionId: current.executionId,
+					suggestionId,
 					...content,
 					completedAt,
 				},
 				ctx,
 			);
-			if (prepared) {
-				const suggestion = await this.suggestions.createSuggestion(prepared, result.id, ctx);
-				result.suggestions = [suggestion];
-			} else {
-				result.suggestions = [];
-			}
 
 			await this.investigations.completeWithResult(investigationId, result.id, ctx);
 			// Abort before commit so the result and suggestion roll back together.
@@ -234,7 +235,7 @@ export class SelfHealingResultService {
 		let result = authorized.result;
 		await this.requireCurrentProject(workflowId, projectId);
 
-		const suggestionId = result.suggestions[0]?.id;
+		const suggestionId = result.suggestionId;
 		let suggestion: WorkflowSuggestionProposalDetail | null = null;
 		if (suggestionId) {
 			suggestion = await this.suggestions.getProposal(
@@ -305,7 +306,7 @@ export class SelfHealingResultService {
 			workflowId,
 			resultId,
 		);
-		const suggestionId = result.suggestions[0]?.id;
+		const suggestionId = result.suggestionId;
 		if (result.outcome !== 'fix_ready' || !suggestionId) {
 			throw new ConflictError("This fix isn't ready to apply. Review the report for next steps.");
 		}
@@ -352,7 +353,7 @@ export class SelfHealingResultService {
 			);
 			if (result.dismissedAt) return true;
 
-			const suggestionId = result.suggestions[0]?.id;
+			const suggestionId = result.suggestionId;
 			if (suggestionId) {
 				const outcome = await this.actions.discardPending(
 					reviewer,

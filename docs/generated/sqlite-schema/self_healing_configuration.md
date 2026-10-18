@@ -114,6 +114,7 @@ erDiagram
   varchar_16_ outcome
   varchar_36_ projectId FK
   TEXT report
+  varchar_36_ suggestionId FK
   TEXT summary
   datetime_3_ updatedAt
   TEXT usage

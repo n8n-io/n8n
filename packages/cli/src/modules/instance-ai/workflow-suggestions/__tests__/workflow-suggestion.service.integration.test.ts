@@ -24,8 +24,6 @@ import { License } from '@/license';
 import { WorkflowService } from '@/workflows/workflow.service';
 import { createUser } from '@test-integration/db/users';
 
-import { createResult } from '../../self-healing/__tests__/support/result';
-import { SelfHealingConfigurationRepository } from '../../self-healing/database/self-healing-configuration.repository';
 import { WorkflowSuggestionRepository } from '../database/workflow-suggestion.repository';
 import { WorkflowSuggestionService } from '../workflow-suggestion.service';
 
@@ -41,7 +39,7 @@ beforeAll(async () => {
 });
 afterAll(async () => await testDb.terminate());
 afterEach(async () => {
-	await Container.get(SelfHealingConfigurationRepository).createQueryBuilder().delete().execute();
+	await suggestions.createQueryBuilder().delete().execute();
 });
 
 async function fixture() {
@@ -65,12 +63,11 @@ async function fixture() {
 		nodes: saved.nodes.map((node) => ({ ...node, position: [100, 100] as [number, number] })),
 		connections: saved.connections,
 	};
-	const result = await createResult(baseline);
-	return { user, saved, workflows, project, baseline, graph, resultId: result.id };
+	return { user, saved, workflows, project, baseline, graph };
 }
 
 it('saves only the final suggestion and keeps its snapshot after history pruning', async () => {
-	const { user, saved, workflows, project, baseline, graph, resultId } = await fixture();
+	const { user, saved, workflows, project, baseline, graph } = await fixture();
 	const history = Container.get(WorkflowHistoryRepository);
 	const beforeHistory = await history.findBy({ workflowId: saved.id });
 	expect(await suggestions.count()).toBe(0);
@@ -81,7 +78,7 @@ it('saves only the final suggestion and keeps its snapshot after history pruning
 		errorContext: { summary: 'A node failed', evidenceReference: 'evidence-1' },
 	});
 	expect(await suggestions.count()).toBe(0);
-	const suggestion = await service.createSuggestion(prepared, resultId);
+	const suggestion = await service.createSuggestion(prepared);
 	expect(suggestion.state).toBe('pending');
 	expect(await suggestions.getActivity(suggestion.id)).toHaveLength(1);
 	expect(await workflows.findOneByOrFail({ id: saved.id })).toEqual(saved);
@@ -97,19 +94,19 @@ it('saves only the final suggestion and keeps its snapshot after history pruning
 });
 
 it('rejects changed settings even when version IDs do not change', async () => {
-	const { saved, workflows, baseline, graph, resultId } = await fixture();
+	const { saved, workflows, baseline, graph } = await fixture();
 	const prepared = await service.prepareSuggestion(baseline, {
 		resultKind: 'fix_ready',
 		graph,
 		explanation: 'Sample fix',
 	});
 	await workflows.update(saved.id, { settings: { executionTimeout: 60 } });
-	await expect(service.createSuggestion(prepared, resultId)).rejects.toThrow('baseline');
+	await expect(service.createSuggestion(prepared)).rejects.toThrow('baseline');
 	expect(await suggestions.count()).toBe(0);
 });
 
 it('keeps a suggestion pending after an autosave with no content changes', async () => {
-	const { user, saved, workflows, project, graph, resultId } = await fixture();
+	const { user, saved, workflows, project, graph } = await fixture();
 	const previousTimestamp = new Date('2020-01-01T00:00:00.000Z');
 	await workflows.update(saved.id, { updatedAt: previousTimestamp });
 	const baseline = await service.captureBaseline(saved.id, user.id);
@@ -118,7 +115,7 @@ it('keeps a suggestion pending after an autosave with no content changes', async
 		graph,
 		explanation: 'Sample fix',
 	});
-	const suggestion = await service.createSuggestion(prepared, resultId);
+	const suggestion = await service.createSuggestion(prepared);
 
 	const updated = await Container.get(WorkflowService).update(
 		user,
@@ -139,13 +136,13 @@ it('keeps a suggestion pending after an autosave with no content changes', async
 });
 
 it('keeps reads unchanged and closes an outdated suggestion during reconciliation', async () => {
-	const { user, saved, workflows, project, baseline, graph, resultId } = await fixture();
+	const { user, saved, workflows, project, baseline, graph } = await fixture();
 	const prepared = await service.prepareSuggestion(baseline, {
 		resultKind: 'fix_ready',
 		graph,
 		explanation: 'Sample fix',
 	});
-	const suggestion = await service.createSuggestion(prepared, resultId);
+	const suggestion = await service.createSuggestion(prepared);
 	await workflows.update(saved.id, { settings: { executionTimeout: 60 } });
 
 	const detail = await service.getProposal(user, project.id, saved.id, suggestion.id);
@@ -168,7 +165,7 @@ it('keeps reads unchanged and closes an outdated suggestion during reconciliatio
 });
 
 it('stores proposed changes that still need credential configuration', async () => {
-	const { user, saved, workflows, project, baseline, graph, resultId } = await fixture();
+	const { user, saved, workflows, project, baseline, graph } = await fixture();
 	graph.nodes.push({
 		id: 'request',
 		name: 'Request',
@@ -187,7 +184,7 @@ it('stores proposed changes that still need credential configuration', async () 
 		graph,
 		explanation: 'Configure authentication to test the proposed request.',
 	});
-	const suggestion = await service.createSuggestion(prepared, resultId);
+	const suggestion = await service.createSuggestion(prepared);
 	const detail = await service.getProposal(user, project.id, baseline.workflowId, suggestion.id);
 	expect(detail.resultKind).toBe('needs_you');
 	expect(detail.payload.candidate).toEqual(graph);
@@ -196,7 +193,7 @@ it('stores proposed changes that still need credential configuration', async () 
 });
 
 it('rolls back the suggestion and activity when the caller transaction fails', async () => {
-	const { baseline, graph, resultId } = await fixture();
+	const { baseline, graph } = await fixture();
 	const prepared = await service.prepareSuggestion(baseline, {
 		resultKind: 'fix_ready',
 		graph,
@@ -206,7 +203,7 @@ it('rolls back the suggestion and activity when the caller transaction fails', a
 	let suggestionId = '';
 	await expect(
 		tx.run({}, async (ctx) => {
-			const suggestion = await service.createSuggestion(prepared, resultId, ctx);
+			const suggestion = await service.createSuggestion(prepared, ctx);
 			suggestionId = suggestion.id;
 			expect(await suggestions.getSuggestion(suggestion.id, baseline, ctx)).toMatchObject({
 				state: 'pending',
@@ -220,7 +217,7 @@ it('rolls back the suggestion and activity when the caller transaction fails', a
 });
 
 it('does not keep a suggestion when its activity cannot be saved', async () => {
-	const { baseline, graph, resultId } = await fixture();
+	const { baseline, graph } = await fixture();
 	const prepared = await service.prepareSuggestion(baseline, {
 		resultKind: 'fix_ready',
 		graph,
@@ -230,9 +227,7 @@ it('does not keep a suggestion when its activity cannot be saved', async () => {
 		.spyOn(suggestions, 'appendSubmittedActivity')
 		.mockRejectedValueOnce(new Error('Activity unavailable'));
 	try {
-		await expect(service.createSuggestion(prepared, resultId)).rejects.toThrow(
-			'Activity unavailable',
-		);
+		await expect(service.createSuggestion(prepared)).rejects.toThrow('Activity unavailable');
 		expect(await suggestions.count()).toBe(0);
 	} finally {
 		activity.mockRestore();
@@ -253,14 +248,14 @@ it('rejects final preparation after the background user loses access', async () 
 });
 
 it('lets another editor review after the background identity is disabled', async () => {
-	const { user, project, baseline, graph, resultId } = await fixture();
+	const { user, project, baseline, graph } = await fixture();
 	const otherEditor = await createUser({ role: GLOBAL_OWNER_ROLE });
 	const prepared = await service.prepareSuggestion(baseline, {
 		resultKind: 'fix_ready',
 		graph,
 		explanation: 'Sample fix',
 	});
-	const suggestion = await service.createSuggestion(prepared, resultId);
+	const suggestion = await service.createSuggestion(prepared);
 	await Container.get(UserRepository).update(user.id, { disabled: true });
 	await expect(
 		service.getProposal(user, project.id, baseline.workflowId, suggestion.id),
@@ -272,7 +267,7 @@ it('lets another editor review after the background identity is disabled', async
 });
 
 it('lets shared editors read suggestions and checks their current access on each read', async () => {
-	const { project, baseline, graph, resultId } = await fixture();
+	const { project, baseline, graph } = await fixture();
 	const editor = await createUser();
 	const workflow = await Container.get(WorkflowRepository).findOneByOrFail({
 		id: baseline.workflowId,
@@ -283,7 +278,7 @@ it('lets shared editors read suggestions and checks their current access on each
 		graph,
 		explanation: 'Sample fix',
 	});
-	const suggestion = await service.createSuggestion(prepared, resultId);
+	const suggestion = await service.createSuggestion(prepared);
 	const detail = await service.getProposal(editor, project.id, workflow.id, suggestion.id);
 	expect(detail.suggestionId).toBe(suggestion.id);
 	const editorProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
@@ -299,13 +294,13 @@ it('lets shared editors read suggestions and checks their current access on each
 });
 
 it('requires proposal reads to match the suggestion workflow and project', async () => {
-	const { user, project, baseline, graph, resultId } = await fixture();
+	const { user, project, baseline, graph } = await fixture();
 	const prepared = await service.prepareSuggestion(baseline, {
 		resultKind: 'fix_ready',
 		graph,
 		explanation: 'Sample fix',
 	});
-	const suggestion = await service.createSuggestion(prepared, resultId);
+	const suggestion = await service.createSuggestion(prepared);
 	const otherWorkflow = await createWorkflowWithHistory({}, user);
 	const otherUser = await createUser();
 	const otherProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
@@ -340,7 +335,7 @@ describe.skipIf(process.env.DB_TYPE !== 'postgresdb')('Concurrent workflow saves
 	});
 
 	it('preserves an edit committed after the final baseline check', async () => {
-		const { saved, workflows, baseline, graph, resultId } = await fixture();
+		const { saved, workflows, baseline, graph } = await fixture();
 		const prepared = await service.prepareSuggestion(baseline, {
 			resultKind: 'fix_ready',
 			graph,
@@ -359,7 +354,7 @@ describe.skipIf(process.env.DB_TYPE !== 'postgresdb')('Concurrent workflow saves
 				return await createPending(...args);
 			});
 		try {
-			const suggestion = await service.createSuggestion(prepared, resultId);
+			const suggestion = await service.createSuggestion(prepared);
 			expect(suggestion.expectedBaseline).toEqual(baseline.expectedBaseline);
 			expect(suggestion.payload.original).toEqual(baseline.original);
 			expect(suggestion.payload.candidate).toEqual(graph);
