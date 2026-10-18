@@ -17,12 +17,20 @@ import { PROMOTION_PREVIEW_VIEWS } from '../promotions.constants';
 import * as settingsApi from '../promotionsSettings.api';
 import PromotionPreviewView from './PromotionPreviewView.vue';
 
-const { confirm, showMessage } = vi.hoisted(() => ({ confirm: vi.fn(), showMessage: vi.fn() }));
+const { confirm, showMessage, createBinding } = vi.hoisted(() => ({
+	confirm: vi.fn(),
+	showMessage: vi.fn(),
+	createBinding: vi.fn(),
+}));
 
 vi.mock('../promotions.api');
 vi.mock('../promotionsSettings.api');
 // The projects store loads the project of the route on its own.
 vi.mock('@/features/collaboration/projects/projects.api');
+// The editors are modals of the app. The test answers for them.
+vi.mock('../composables/usePromotionBindingCreation', () => ({
+	usePromotionBindingCreation: () => ({ createBinding, updatePreflight: vi.fn() }),
+}));
 vi.mock('@/app/composables/useMessage', () => ({ useMessage: () => ({ confirm }) }));
 vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showMessage, showError: vi.fn() }),
@@ -335,5 +343,36 @@ describe('PromotionPreviewView', () => {
 			'the page was refreshed',
 		);
 		expect(api.getPromotionPreview).toHaveBeenCalledTimes(2);
+	});
+
+	it('should apply a blocked workflow after the user adds the missing variable', async () => {
+		const missing = { ...variable, name: 'API_URL', consumers: consumers('w3') };
+		vi.mocked(api.getApplyBlockers)
+			.mockResolvedValueOnce(check({ missingBindings: [missing] }))
+			.mockResolvedValue(check());
+		createBinding.mockResolvedValue({
+			kind: 'variable',
+			id: 'v1',
+			name: 'API_URL',
+			scope: { kind: 'global' },
+		});
+
+		const { getAllByTestId, getByTestId, getByRole } = await renderApply();
+		expect(treeRow(getAllByTestId, 'workflow:w3').getByRole('checkbox')).toBeDisabled();
+
+		await userEvent.click(getByRole('tab', { name: /Blockers/ }));
+		const row = within(getByTestId('promotion-preview-blockers-table')).getByRole('row', {
+			name: /API_URL/,
+		});
+		await userEvent.click(within(row).getByRole('button', { name: 'Add variable' }));
+		await waitAllPromises();
+
+		expect(createBinding).toHaveBeenCalledWith(missing);
+		expect(row).toHaveTextContent('Resolved');
+		expect(getByTestId('promotion-preview-blockers-status')).toHaveTextContent('No blockers');
+		// The refreshed check has no blockers, so the workflow joins the selection again.
+		await userEvent.click(getByRole('tab', { name: /Changes/ }));
+		expect(treeRow(getAllByTestId, 'workflow:w3').getByRole('checkbox')).toBeChecked();
+		expect(getByTestId('promotion-preview-submit')).toBeEnabled();
 	});
 });

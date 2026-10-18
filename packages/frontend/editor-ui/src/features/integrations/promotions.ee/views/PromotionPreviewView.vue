@@ -16,7 +16,7 @@ import {
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRBACStore } from '@n8n/stores/rbac.store';
-import { computed, ref, toRef, watch } from 'vue';
+import { computed, nextTick, ref, toRef, watch } from 'vue';
 import { I18nT } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 
@@ -25,6 +25,7 @@ import { VIEWS } from '@/app/constants';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 
+import PromotionBlockers from '../components/preview/PromotionBlockers.vue';
 import PromotionChangeCards from '../components/preview/PromotionChangeCards.vue';
 import PromotionResourceTree from '../components/preview/PromotionResourceTree.vue';
 import { usePromotionOperation } from '../composables/usePromotionOperation';
@@ -38,7 +39,9 @@ import {
 	indexBlockers,
 	listBlockers,
 	toOperationRequest,
+	scopeCheck,
 	touchesDestructiveChange,
+	unresolvedBlockerCount,
 } from '../promotionOperation';
 import { includedChangeCount, totalChangeCount } from '../promotionPreview.selection';
 import { buildPreviewTree, cardOrder } from '../promotionPreview.tree';
@@ -66,8 +69,12 @@ const {
 	lastRefreshedAt,
 	refresh,
 } = usePromotionPreview(projectId, direction);
+// The page shows and enforces only the blockers of the workflows it lists.
+const scopedCheck = computed(() =>
+	check.value && graph.value ? scopeCheck(check.value, graph.value) : null,
+);
 const blockers = computed(() =>
-	check.value ? indexBlockers(listBlockers(check.value)) : emptyBlockerIndex,
+	scopedCheck.value ? indexBlockers(listBlockers(scopedCheck.value)) : emptyBlockerIndex,
 );
 const operation = usePromotionOperation(projectId, direction, { preview, check, refresh });
 const selection = usePromotionSelection(graph, {
@@ -166,13 +173,48 @@ const submitLabel = computed(() => {
 	});
 });
 
+type PreviewTab = 'changes' | 'blockers';
+const activeTab = ref<PreviewTab>('changes');
+const blockerCount = computed(() =>
+	scopedCheck.value
+		? unresolvedBlockerCount(scopedCheck.value) + folderConflicts.value.length
+		: folderConflicts.value.length,
+);
+// Apply has blockers. The tab stays while it is open, so resolving the last blocker keeps it.
+const showBlockersTab = computed(
+	() => props.direction === 'apply' && !!scopedCheck.value && state.value === 'ready',
+);
+watch(showBlockersTab, (show) => {
+	if (!show) activeTab.value = 'changes';
+});
 const tabs = computed(() => [
 	{
-		value: 'changes',
+		value: 'changes' as const,
 		label: i18n.baseText('promotions.preview.tab.changes'),
 		tag: String(totalChanges.value),
 	},
+	...(showBlockersTab.value
+		? [
+				{
+					value: 'blockers' as const,
+					label: i18n.baseText('promotions.preview.tab.blockers'),
+					tag: blockerCount.value > 0 ? String(blockerCount.value) : undefined,
+				},
+			]
+		: []),
 ]);
+
+async function inspectFromBlockers(key: string) {
+	activeTab.value = 'changes';
+	// The cards must be visible before the page scrolls to one.
+	await nextTick();
+	await inspect(key);
+}
+
+// Apply found blockers that the check did not show, so the page opens them.
+watch(operation.notice, (notice) => {
+	if (notice === 'newBlockers') activeTab.value = 'blockers';
+});
 
 // Users can resize the tree to read long names. The browser stores the width.
 const panes = ref<HTMLElement | null>(null);
@@ -197,7 +239,7 @@ const treeResizer = useResizablePanel({
 			<N8nHeading tag="h1" size="xlarge" :class="$style.title">{{ title }}</N8nHeading>
 			<div :class="$style.tabRow">
 				<N8nTabs
-					model-value="changes"
+					v-model="activeTab"
 					:options="tabs"
 					:class="$style.tabs"
 					data-test-id="promotion-preview-tabs"
@@ -293,31 +335,9 @@ const treeResizer = useResizablePanel({
 			:description="i18n.baseText('promotions.preview.state.empty.description')"
 			data-test-id="promotion-preview-empty"
 		/>
-		<div v-else-if="graph" ref="panes" :class="$style.panes">
-			<N8nResizeWrapper
-				:class="$style.tree"
-				:style="{ width: `${treeResizer.width.value}px` }"
-				:resizer="treeResizer"
-				:supported-directions="['right']"
-			>
-				<PromotionResourceTree
-					:tree="tree"
-					:graph="graph"
-					:selected="selection.selected.value"
-					:inclusion="selection.inclusion.value"
-					:included-changes="includedChanges"
-					:total-changes="totalChanges"
-					:inspected-key="inspectedKey"
-					:disabled="blockers.blocked"
-					:locked="operation.isBusy.value"
-					@toggle="selection.toggle"
-					@toggle-container="selection.toggleAllInside"
-					@select-all="selection.selectAll"
-					@clear="selection.clear"
-					@inspect="inspect"
-				/>
-			</N8nResizeWrapper>
-			<section :class="$style.cards">
+		<template v-else-if="graph">
+			<!-- Both tabs show the result of the last operation. -->
+			<div v-if="operation.error.value || operation.notice.value" :class="$style.operationNotices">
 				<N8nCallout
 					v-if="operation.error.value"
 					theme="danger"
@@ -341,31 +361,69 @@ const treeResizer = useResizablePanel({
 				>
 					{{ i18n.baseText(`promotions.preview.notice.${operation.notice.value}`) }}
 				</N8nCallout>
-				<N8nCallout v-if="refreshFailed" theme="warning" slim>
-					{{ i18n.baseText('promotions.preview.refreshFailed') }}
-				</N8nCallout>
-				<N8nCallout v-if="selection.dropped.value.length > 0" theme="info" slim>
-					{{
-						i18n.baseText('promotions.preview.dropped', {
-							adjustToNumber: selection.dropped.value.length,
-							interpolate: { count: String(selection.dropped.value.length) },
-						})
-					}}
-				</N8nCallout>
-				<PromotionChangeCards
-					ref="cards"
-					:order="order"
-					:graph="graph"
-					:direction="direction"
-					:inclusion="selection.inclusion.value"
-					:entries="details.entries.value"
-					:inspected-key="inspectedKey"
-					@retry="details.retry"
-					@refresh="refresh"
-					@inspect="inspect"
-				/>
-			</section>
-		</div>
+			</div>
+			<div v-show="activeTab === 'changes'" ref="panes" :class="$style.panes">
+				<N8nResizeWrapper
+					:class="$style.tree"
+					:style="{ width: `${treeResizer.width.value}px` }"
+					:resizer="treeResizer"
+					:supported-directions="['right']"
+				>
+					<PromotionResourceTree
+						:tree="tree"
+						:graph="graph"
+						:selected="selection.selected.value"
+						:inclusion="selection.inclusion.value"
+						:included-changes="includedChanges"
+						:total-changes="totalChanges"
+						:inspected-key="inspectedKey"
+						:disabled="blockers.blocked"
+						:locked="operation.isBusy.value"
+						@toggle="selection.toggle"
+						@toggle-container="selection.toggleAllInside"
+						@select-all="selection.selectAll"
+						@clear="selection.clear"
+						@inspect="inspect"
+					/>
+				</N8nResizeWrapper>
+				<section :class="$style.cards">
+					<N8nCallout v-if="refreshFailed" theme="warning" slim>
+						{{ i18n.baseText('promotions.preview.refreshFailed') }}
+					</N8nCallout>
+					<N8nCallout v-if="selection.dropped.value.length > 0" theme="info" slim>
+						{{
+							i18n.baseText('promotions.preview.dropped', {
+								adjustToNumber: selection.dropped.value.length,
+								interpolate: { count: String(selection.dropped.value.length) },
+							})
+						}}
+					</N8nCallout>
+					<PromotionChangeCards
+						ref="cards"
+						:order="order"
+						:graph="graph"
+						:direction="direction"
+						:inclusion="selection.inclusion.value"
+						:entries="details.entries.value"
+						:inspected-key="inspectedKey"
+						@retry="details.retry"
+						@refresh="refresh"
+						@inspect="inspect"
+					/>
+				</section>
+			</div>
+			<PromotionBlockers
+				v-if="showBlockersTab && scopedCheck"
+				v-show="activeTab === 'blockers'"
+				:class="$style.blockers"
+				:project-id="projectId"
+				:check="scopedCheck"
+				:folders="folderConflicts"
+				:busy="operation.isBusy.value"
+				@refresh="refresh"
+				@inspect="inspectFromBlockers"
+			/>
+		</template>
 	</div>
 </template>
 
@@ -442,6 +500,18 @@ const treeResizer = useResizablePanel({
 .state {
 	/* The empty states draw their own border, so the space goes outside them. */
 	margin: var(--spacing--sm);
+}
+
+.operationNotices {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--xs);
+	padding: var(--spacing--sm) var(--spacing--sm) 0;
+}
+
+.blockers {
+	flex: 1;
+	min-height: 0;
 }
 
 .panes {

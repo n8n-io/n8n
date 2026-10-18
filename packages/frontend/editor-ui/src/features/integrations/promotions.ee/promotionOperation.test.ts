@@ -1,10 +1,11 @@
 import type { ApplyCheckResult } from '@n8n/api-types';
 
-import { credential, destructiveChange } from './__tests__/bindings.fixtures';
+import { credential, destructiveChange, variable } from './__tests__/bindings.fixtures';
 import { billingPreview, billingResources } from './__tests__/preview.fixtures';
 import {
 	indexBlockers,
 	listBlockers,
+	scopeCheck,
 	toOperationRequest,
 	touchesDestructiveChange,
 } from './promotionOperation';
@@ -73,5 +74,24 @@ describe('promotion operation', () => {
 		// A data table change that removes values needs a confirmation, but does not block.
 		expect(touchesDestructiveChange(index, ['workflow:w2'])).toBe(true);
 		expect(touchesDestructiveChange(index, ['workflow:w1', 'workflow:w3'])).toBe(false);
+	});
+
+	it('should ignore the blockers of workflows that the preview does not list', () => {
+		const graph = buildSelectionGraph(billingPreview());
+		// "w99" is unchanged, so the preview does not list it. The check covers it anyway.
+		const scoped = scopeCheck(
+			check({
+				missingBindings: [{ ...variable, consumers: consumer('w1', 'w99') }],
+				accessRequirements: [
+					{ ...credential, code: 'access-required', consumers: consumer('w99') },
+				],
+			}),
+			graph,
+		);
+
+		expect(scoped.preflight.accessRequirements).toEqual([]);
+		expect(scoped.preflight.missingBindings[0].consumers[0].workflows).toEqual([
+			{ id: 'w1', name: 'w1' },
+		]);
 	});
 });
