@@ -271,6 +271,228 @@ it.each(['same', 'different'] as const)(
 	},
 );
 
+describe('investigation eligibility after a result', () => {
+	async function nextFailure(input: { workflowId: string; projectId: string }) {
+		const workflow = await workflows.findOneByOrFail({ id: input.workflowId });
+		const execution = await createExecution(
+			{ status: 'error', mode: 'trigger', workflowVersionId: workflow.versionId },
+			workflow,
+		);
+
+		return { ...input, executionId: execution.id };
+	}
+
+	it.each([
+		['could_not_fix', false],
+		['needs_you', false],
+		['needs_you', true],
+		['fix_ready', true],
+	] as const)(
+		'blocks an open %s result with suggestion=%s until dismissal',
+		async (outcome, withSuggestion) => {
+			const { input, result, user, project, original } = await fixture(outcome, withSuggestion);
+			const producer = Container.get(SelfHealingInvestigationService);
+			const failure = await nextFailure(input);
+
+			await expect(producer.start(failure)).resolves.toEqual({
+				kind: 'result',
+				resultId: result.id,
+			});
+			expect(runtime.startSelfHealingRun).not.toHaveBeenCalled();
+
+			await service.dismiss(user, project.id, original.id, result.id);
+
+			expect(runtime.startSelfHealingRun).not.toHaveBeenCalled();
+
+			await expect(producer.start(failure)).resolves.toMatchObject({ kind: 'investigation' });
+			expect(runtime.startSelfHealingRun).toHaveBeenCalledTimes(1);
+
+			await expect(producer.start(input)).resolves.toMatchObject({ kind: 'investigation' });
+			expect(runtime.startSelfHealingRun).toHaveBeenCalledTimes(1);
+		},
+	);
+
+	it.each(['could_not_fix', 'fix_ready'] as const)(
+		'keeps only informational results open after a different version is published: %s',
+		async (outcome) => {
+			const { input, result, original } = await fixture(outcome, outcome === 'fix_ready');
+			const versionId = randomUUID();
+			await Container.get(WorkflowHistoryRepository).insert({
+				workflowId: original.id,
+				versionId,
+				nodes: original.nodes,
+				connections: original.connections,
+				authors: 'Test',
+			});
+			await workflows.update(original.id, { versionId, activeVersionId: versionId });
+			await Container.get(WorkflowPublicationTriggerStatusRepository).replaceForWorkflow(
+				original.id,
+				[
+					{
+						nodeId: original.nodes[0].id,
+						versionId,
+						status: 'activated',
+						triggerKind: 'persisted',
+						errorMessage: null,
+					},
+				],
+			);
+
+			const failure = await nextFailure(input);
+			const response = await Container.get(SelfHealingInvestigationService).start(failure);
+
+			if (outcome === 'could_not_fix') {
+				expect(response).toEqual({ kind: 'result', resultId: result.id });
+				expect(runtime.startSelfHealingRun).not.toHaveBeenCalled();
+			} else {
+				expect(response?.kind).toBe('investigation');
+				const suggestion = await suggestions.findOneByOrFail({ id: result.suggestions[0].id });
+				expect(suggestion.closedReason).toBe('outdated');
+			}
+		},
+	);
+
+	it('requires successful publication after Apply before admitting another failure', async () => {
+		const { input, user, project, original, result } = await fixture('fix_ready', true);
+		const producer = Container.get(SelfHealingInvestigationService);
+
+		await actions.apply(user, project.id, original.id, result.suggestions[0].id);
+		const failureAfterApply = await nextFailure(input);
+
+		await expect(producer.start(failureAfterApply)).rejects.toThrow('fully published');
+		expect(runtime.startSelfHealingRun).not.toHaveBeenCalled();
+
+		const draft = await workflows.findOneByOrFail({ id: original.id });
+		await workflows.update(original.id, { activeVersionId: draft.versionId });
+		const failureBeforeActivation = await nextFailure(input);
+
+		await expect(producer.start(failureBeforeActivation)).rejects.toThrow('fully published');
+
+		await Container.get(WorkflowPublicationTriggerStatusRepository).replaceForWorkflow(
+			original.id,
+			[
+				{
+					nodeId: draft.nodes[0].id,
+					versionId: draft.versionId,
+					status: 'activated',
+					triggerKind: 'persisted',
+					errorMessage: null,
+				},
+			],
+		);
+		expect(runtime.startSelfHealingRun).not.toHaveBeenCalled();
+
+		const failureAfterPublication = await nextFailure(input);
+		await expect(producer.start(failureAfterPublication)).resolves.toMatchObject({
+			kind: 'investigation',
+		});
+	});
+
+	it('preserves the block across configuration edits and resets it on deletion', async () => {
+		const { input, user, project, original, result } = await fixture('could_not_fix');
+		const configurationService = Container.get(SelfHealingConfigurationService);
+		const producer = Container.get(SelfHealingInvestigationService);
+
+		await configurationService.setEnabled(user, project.id, input.configurationId, false);
+		await configurationService.setEnabled(user, project.id, input.configurationId, true);
+		await configurationService.save(
+			user,
+			project.id,
+			{
+				scope: 'selected',
+				enabled: true,
+				workflowIds: [original.id],
+				reviewerIds: [user.id],
+			},
+			input.configurationId,
+		);
+		const failureAfterEdit = await nextFailure(input);
+
+		await expect(producer.start(failureAfterEdit)).resolves.toEqual({
+			kind: 'result',
+			resultId: result.id,
+		});
+
+		// The all-workflows configuration now covers this workflow instead.
+		const otherWorkflow = await createWorkflowWithHistory({}, user);
+		await configurationService.save(
+			user,
+			project.id,
+			{
+				scope: 'selected',
+				enabled: true,
+				workflowIds: [otherWorkflow.id],
+				reviewerIds: [user.id],
+			},
+			input.configurationId,
+		);
+		await createConfiguration(project.id, user.id);
+		const failureAfterReplacement = await nextFailure(input);
+
+		await expect(producer.start(failureAfterReplacement)).resolves.toEqual({
+			kind: 'result',
+			resultId: result.id,
+		});
+
+		await configurationService.remove(project.id, input.configurationId);
+
+		await expect(producer.start(input)).resolves.toMatchObject({ kind: 'investigation' });
+		expect(await results.findOneBy({ id: result.id })).toBeNull();
+	});
+
+	it('does not block a moved workflow with an inaccessible old-project report', async () => {
+		const { input, user, project, original } = await fixture('could_not_fix');
+		const destination = await createTeamProject(undefined, user);
+		await Container.get(SharedWorkflowRepository).update(
+			{ workflowId: original.id, projectId: project.id },
+			{ projectId: destination.id },
+		);
+		await createConfiguration(destination.id, user.id);
+		const failure = await nextFailure({ ...input, projectId: destination.id });
+
+		await expect(
+			Container.get(SelfHealingInvestigationService).start(failure),
+		).resolves.toMatchObject({ kind: 'investigation' });
+	});
+
+	it.each(['errored', 'max-iterations'] as const)(
+		'allows a new failure after %s without retrying the same execution',
+		async (reason) => {
+			const { input } = await prepareFixture();
+			const producer = Container.get(SelfHealingInvestigationService);
+			runtime.startSelfHealingRun.mockImplementation(async (_input, lifecycle) => {
+				const run: SelfHealingRunResult = {
+					threadId: lifecycle.threadId,
+					runId: lifecycle.runId,
+					status: reason === 'errored' ? 'errored' : 'completed',
+					finishReason: reason === 'max-iterations' ? reason : undefined,
+					usage: { credits: 1, turns: 3, durationSeconds: 10 },
+				};
+				await lifecycle.onComplete(run, new AbortController().signal);
+				return run;
+			});
+
+			const first = await producer.start(input);
+			await vi.waitFor(async () =>
+				expect(await investigations.getUnfinishedForWorkflow(input.workflowId)).toBeNull(),
+			);
+
+			await expect(producer.start(input)).resolves.toEqual(first);
+			expect(runtime.startSelfHealingRun).toHaveBeenCalledTimes(1);
+
+			const failure = await nextFailure(input);
+			await expect(producer.start(failure)).resolves.toMatchObject({
+				kind: 'investigation',
+			});
+			await vi.waitFor(async () =>
+				expect(await investigations.getUnfinishedForWorkflow(input.workflowId)).toBeNull(),
+			);
+			expect(runtime.startSelfHealingRun).toHaveBeenCalledTimes(2);
+			expect(await results.count()).toBe(0);
+		},
+	);
+});
+
 it('returns committed completion without repeating access or execution checks', async () => {
 	const { investigation, user, completion } = await prepareInvestigation();
 	const result = await completeResult({ investigationId: investigation.id, ...completion });

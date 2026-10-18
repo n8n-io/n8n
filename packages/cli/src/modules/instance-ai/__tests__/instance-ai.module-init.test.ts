@@ -2,6 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { InstanceAiConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
+import { InstanceSettings } from 'n8n-core';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 
 import { InstanceCredentialBroker } from '@/credentials/instance-credential-broker';
@@ -81,14 +82,15 @@ vi.mock('../workflow-suggestions/workflow-suggestion-event-relay.service', () =>
 describe('InstanceAiModule.init', () => {
 	function setup() {
 		const config = mockInstance(InstanceAiConfig, { workflowSuggestionsEnabled: false });
+		const instanceSettings = mockInstance(InstanceSettings, { instanceType: 'main' });
 		const sources = mockInstance(InboxSourceRegistry);
 		mockInstance(SelfHealingResultService);
 		mockInstance(InstanceCredentialBroker);
 		mockInstance(SandboxSettingsService);
-		mockInstance(InstanceAiSettingsService);
+		const settings = mockInstance(InstanceAiSettingsService);
 		mockInstance(InstanceAiSetupTelemetryService);
 		mockInstance(InstanceAiEventRelay);
-		mockInstance(InstanceAiService);
+		const runtime = mockInstance(InstanceAiService);
 		const sweeper = mockInstance(InterruptedRunSweeper);
 		sweeper.sweep.mockResolvedValue();
 		const investigations = mockInstance(SelfHealingInvestigationService);
@@ -96,7 +98,16 @@ describe('InstanceAiModule.init', () => {
 		const logger = mockInstance(Logger);
 		logger.scoped.mockReturnValue(logger);
 		vi.stubEnv('E2E_TESTS', 'false');
-		return { config, sources, sweeper, investigations, logger };
+		return {
+			config,
+			sources,
+			sweeper,
+			investigations,
+			logger,
+			instanceSettings,
+			settings,
+			runtime,
+		};
 	}
 
 	it('loads suggestion listeners only when workflow suggestions are enabled', async () => {
@@ -123,6 +134,27 @@ describe('InstanceAiModule.init', () => {
 			expect.objectContaining({ type: 'self_healing_result' }),
 		);
 	});
+
+	it.each(['worker', 'webhook'] as const)(
+		'keeps the Assistant runtime off %s processes',
+		async (instanceType) => {
+			const { instanceSettings, settings, runtime, investigations, sources } = setup();
+			Object.assign(instanceSettings, { instanceType });
+			const module = new InstanceAiModule();
+
+			await module.init();
+
+			expect(await module.settings()).toEqual({});
+			expect(await module.systemTasks()).toEqual([]);
+
+			await module.shutdown();
+
+			expect(settings.loadFromDb).not.toHaveBeenCalled();
+			expect(runtime.shutdown).not.toHaveBeenCalled();
+			expect(investigations.reconcile).not.toHaveBeenCalled();
+			expect(sources.register).not.toHaveBeenCalled();
+		},
+	);
 
 	it('starts reconciliation after the interrupted-run sweep finishes', async () => {
 		const { sweeper, investigations } = setup();

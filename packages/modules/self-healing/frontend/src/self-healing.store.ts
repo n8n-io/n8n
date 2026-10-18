@@ -19,6 +19,7 @@ export const useSelfHealingStore = defineStore('selfHealing', () => {
 			api.fetchConfigurations(root.restApiContext, projectId),
 			api.fetchConfigurationOptions(root.restApiContext, projectId),
 		]);
+
 		configurations.value[projectId] = rows;
 		options.value[projectId] = choices;
 	}
@@ -34,18 +35,23 @@ export const useSelfHealingStore = defineStore('selfHealing', () => {
 	async function save(projectId: string, input: SaveSelfHealingConfigurationDto, id?: number) {
 		const configuration = await api.saveConfiguration(root.restApiContext, projectId, input, id);
 		remember(projectId, configuration);
+
 		return configuration;
 	}
 
 	async function setEnabled(projectId: string, id: number, enabled: boolean) {
-		remember(
+		const configuration = await api.setConfigurationEnabled(
+			root.restApiContext,
 			projectId,
-			await api.setConfigurationEnabled(root.restApiContext, projectId, id, enabled),
+			id,
+			enabled,
 		);
+		remember(projectId, configuration);
 	}
 
 	async function remove(projectId: string, id: number) {
 		await api.removeConfiguration(root.restApiContext, projectId, id);
+
 		configurations.value[projectId] = (configurations.value[projectId] ?? []).filter(
 			(row) => row.id !== id,
 		);

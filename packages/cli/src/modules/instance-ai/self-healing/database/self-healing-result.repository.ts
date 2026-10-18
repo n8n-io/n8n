@@ -91,6 +91,15 @@ export class SelfHealingResultRepository extends BaseRepository<SelfHealingResul
 			.setParameters(accessible.getParameters());
 	}
 
+	async getOpenForWorkflow(workflowId: string, projectId: string, ctx: OperationContext = {}) {
+		return await this.managerFor(ctx)
+			.createQueryBuilder(SelfHealingResult, 'result')
+			.select('result.id')
+			.where({ workflowId, projectId })
+			.andWhere(`(${this.inboxState()}) = :state`, { state: 'open' })
+			.getOne();
+	}
+
 	async listForInbox(
 		access: SelfHealingInboxAccess,
 		{ state, limit, boundary }: SelfHealingInboxQuery,

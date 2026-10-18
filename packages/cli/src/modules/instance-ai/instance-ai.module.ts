@@ -2,10 +2,16 @@ import { Logger } from '@n8n/backend-common';
 import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule, OnShutdown } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import { InstanceSettings } from 'n8n-core';
 
-@BackendModule({ name: 'instance-ai', instanceTypes: ['main'] })
+@BackendModule({ name: 'instance-ai', instanceTypes: ['main', 'worker', 'webhook'] })
 export class InstanceAiModule implements ModuleInterface {
 	async init() {
+		await import('./self-healing/self-healing-trigger.service.js');
+
+		// Workers and webhook processes only relay eligible failures to main.
+		if (Container.get(InstanceSettings).instanceType !== 'main') return;
+
 		const { InstanceCredentialBroker } = await import(
 			'@/credentials/instance-credential-broker.js'
 		);
@@ -81,6 +87,8 @@ export class InstanceAiModule implements ModuleInterface {
 	}
 
 	async systemTasks() {
+		if (Container.get(InstanceSettings).instanceType !== 'main') return [];
+
 		const { InstanceAiConfig } = await import('@n8n/config');
 		const { SelfHealingReconciliationTask } = await import(
 			'./self-healing/self-healing-reconciliation.task.js'
@@ -94,6 +102,8 @@ export class InstanceAiModule implements ModuleInterface {
 	}
 
 	async settings() {
+		if (Container.get(InstanceSettings).instanceType !== 'main') return {};
+
 		const { GlobalConfig } = await import('@n8n/config');
 		const { InstanceAiService } = await import('./instance-ai.service.js');
 		const { InstanceAiSettingsService } = await import('./instance-ai-settings.service.js');
@@ -199,6 +209,8 @@ export class InstanceAiModule implements ModuleInterface {
 
 	@OnShutdown()
 	async shutdown() {
+		if (Container.get(InstanceSettings).instanceType !== 'main') return;
+
 		const { InstanceAiService } = await import('./instance-ai.service.js');
 		await Container.get(InstanceAiService).shutdown();
 	}

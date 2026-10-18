@@ -24,13 +24,13 @@ export const saveConfiguration = async (
 	projectId: string,
 	input: SaveSelfHealingConfigurationDto,
 	id?: number,
-): Promise<SelfHealingConfigurationDto> =>
-	await makeRestApiRequest(
-		context,
-		id === undefined ? 'POST' : 'PATCH',
-		`${path(projectId)}${id === undefined ? '' : `/${id}`}`,
-		input,
-	);
+): Promise<SelfHealingConfigurationDto> => {
+	if (id === undefined) {
+		return await makeRestApiRequest(context, 'POST', path(projectId), input);
+	}
+
+	return await makeRestApiRequest(context, 'PATCH', `${path(projectId)}/${id}`, input);
+};
 
 export const setConfigurationEnabled = async (
 	context: IRestApiContext,

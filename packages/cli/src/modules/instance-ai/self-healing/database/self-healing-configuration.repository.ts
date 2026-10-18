@@ -40,7 +40,9 @@ export class SelfHealingConfigurationRepository extends BaseRepository<SelfHeali
 			order: { id: 'ASC' },
 		});
 		if (configurations.length === 0) return [];
-		const configurationId = In(configurations.map((configuration) => configuration.id));
+
+		const configurationIds = configurations.map((configuration) => configuration.id);
+		const configurationId = In(configurationIds);
 		const [workflows, reviewers, activity] = await Promise.all([
 			this.manager.findBy(SelfHealingConfigurationWorkflow, { configurationId }),
 			this.manager.findBy(SelfHealingConfigurationReviewer, { configurationId }),
@@ -49,11 +51,12 @@ export class SelfHealingConfigurationRepository extends BaseRepository<SelfHeali
 				.select('investigation.configurationId', 'configurationId')
 				.addSelect('MAX(investigation.createdAt)', 'lastActivity')
 				.where('investigation.configurationId IN (:...ids)', {
-					ids: configurations.map((configuration) => configuration.id),
+					ids: configurationIds,
 				})
 				.groupBy('investigation.configurationId')
 				.getRawMany<{ configurationId: number; lastActivity: Date | string }>(),
 		]);
+
 		return configurations.map((configuration) => {
 			const lastActivity = activity.find(
 				(row) => row.configurationId === configuration.id,
@@ -87,8 +90,13 @@ export class SelfHealingConfigurationRepository extends BaseRepository<SelfHeali
 			})
 			.andWhere('selection.workflowId = :workflowId', { workflowId })
 			.getOne();
+
 		// Paused explicit selections still take precedence over all-workflow coverage.
-		return selected ?? (await this.findOneBy({ projectId, scope: 'all' }));
+		if (selected) {
+			return selected;
+		}
+
+		return await this.findOneBy({ projectId, scope: 'all' });
 	}
 
 	async listProjectWorkflows(projectId: string) {
@@ -107,8 +115,10 @@ export class SelfHealingConfigurationRepository extends BaseRepository<SelfHeali
 		try {
 			return await this.managerFor(ctx).save(configuration);
 		} catch (error) {
-			if (isUniqueConstraintError(error))
+			if (isUniqueConstraintError(error)) {
 				throw new ConflictError('This project already has an all-workflows configuration.');
+			}
+
 			throw error;
 		}
 	}
@@ -122,8 +132,9 @@ export class SelfHealingConfigurationRepository extends BaseRepository<SelfHeali
 		const configurationId = configuration.id;
 		await manager.delete(SelfHealingConfigurationWorkflow, { configurationId });
 		await manager.delete(SelfHealingConfigurationReviewer, { configurationId });
+
 		try {
-			if (input.workflowIds.length)
+			if (input.workflowIds.length) {
 				await manager.insert(
 					SelfHealingConfigurationWorkflow,
 					[...new Set(input.workflowIds)].map((workflowId) => ({
@@ -132,11 +143,15 @@ export class SelfHealingConfigurationRepository extends BaseRepository<SelfHeali
 						workflowId,
 					})),
 				);
+			}
 		} catch (error) {
-			if (isUniqueConstraintError(error))
+			if (isUniqueConstraintError(error)) {
 				throw new ConflictError('A selected workflow already belongs to another configuration.');
+			}
+
 			throw error;
 		}
+
 		await manager.insert(
 			SelfHealingConfigurationReviewer,
 			[...new Set(input.reviewerIds)].map((userId) => ({ configurationId, userId })),

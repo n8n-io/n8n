@@ -28,6 +28,7 @@ const i18n = useI18n();
 const toast = useToast();
 const message = useMessage();
 const router = useRouter();
+
 const loading = ref(true);
 const saving = ref(false);
 const loadError = ref(false);
@@ -38,26 +39,37 @@ const form = ref<SaveSelfHealingConfigurationDto>({
 	reviewerIds: [],
 	enabled: false,
 });
+
 const isNew = computed(() => props.configurationId === 'new');
 const choices = computed(() => store.options[props.projectId]);
-const others = computed(() =>
+const otherConfigurations = computed(() =>
 	(store.configurations[props.projectId] ?? []).filter(
 		({ id }) => String(id) !== props.configurationId,
 	),
 );
-const allTaken = computed(() => others.value.some(({ scope }) => scope === 'all'));
+const hasAllWorkflowsConfiguration = computed(() =>
+	otherConfigurations.value.some(({ scope }) => scope === 'all'),
+);
 const reservedWorkflows = computed(
-	() => new Set(others.value.flatMap(({ workflowIds }) => workflowIds)),
+	() => new Set(otherConfigurations.value.flatMap(({ workflowIds }) => workflowIds)),
 );
+
 const dirty = computed(() => !!savedForm.value && JSON.stringify(form.value) !== savedForm.value);
-const valid = computed(
-	() =>
-		form.value.reviewerIds.length > 0 &&
-		(form.value.scope === 'all'
-			? !allTaken.value
-			: form.value.workflowIds.length > 0 &&
-				form.value.workflowIds.every((id) => !reservedWorkflows.value.has(id))),
-);
+const isFormValid = computed(() => {
+	if (form.value.reviewerIds.length === 0) {
+		return false;
+	}
+
+	if (form.value.scope === 'all') {
+		return !hasAllWorkflowsConfiguration.value;
+	}
+
+	return (
+		form.value.workflowIds.length > 0 &&
+		form.value.workflowIds.every((id) => !reservedWorkflows.value.has(id))
+	);
+});
+
 const title = computed(() =>
 	i18n.baseText(isNew.value ? 'selfHealing.config.create' : 'selfHealing.config.edit'),
 );
@@ -66,26 +78,33 @@ async function load() {
 	loading.value = true;
 	loadError.value = false;
 	savedForm.value = '';
+
 	try {
 		await store.load(props.projectId);
+
 		const configuration = store.configurations[props.projectId]?.find(
 			({ id }) => String(id) === props.configurationId,
 		);
-		if (!isNew.value && !configuration)
+		if (!isNew.value && !configuration) {
 			throw new Error(i18n.baseText('selfHealing.config.notFound'));
-		form.value = configuration
-			? {
-					scope: configuration.scope,
-					workflowIds: [...configuration.workflowIds],
-					reviewerIds: [...configuration.reviewerIds],
-					enabled: configuration.enabled,
-				}
-			: {
-					scope: allTaken.value ? 'selected' : 'all',
-					workflowIds: [],
-					reviewerIds: users.currentUser ? [users.currentUser.id] : [],
-					enabled: false,
-				};
+		}
+
+		if (configuration) {
+			form.value = {
+				scope: configuration.scope,
+				workflowIds: [...configuration.workflowIds],
+				reviewerIds: [...configuration.reviewerIds],
+				enabled: configuration.enabled,
+			};
+		} else {
+			form.value = {
+				scope: hasAllWorkflowsConfiguration.value ? 'selected' : 'all',
+				workflowIds: [],
+				reviewerIds: users.currentUser ? [users.currentUser.id] : [],
+				enabled: false,
+			};
+		}
+
 		savedForm.value = JSON.stringify(form.value);
 	} catch (error) {
 		loadError.value = true;
@@ -94,11 +113,14 @@ async function load() {
 		loading.value = false;
 	}
 }
+
 watch(() => [props.projectId, props.configurationId], load, { immediate: true });
 watch(
 	() => form.value.scope,
 	(scope) => {
-		if (scope === 'all') form.value.workflowIds = [];
+		if (scope === 'all') {
+			form.value.workflowIds = [];
+		}
 	},
 );
 
@@ -108,12 +130,14 @@ function back() {
 
 async function save() {
 	saving.value = true;
+
 	try {
 		await store.save(
 			props.projectId,
 			form.value,
 			isNew.value ? undefined : Number(props.configurationId),
 		);
+
 		savedForm.value = JSON.stringify(form.value);
 		toast.showMessage({ title: i18n.baseText('selfHealing.config.saved'), type: 'success' });
 		back();
@@ -125,18 +149,21 @@ async function save() {
 }
 
 onBeforeRouteLeave(async () => {
-	if (!dirty.value) return true;
-	return (
-		(await message.confirm(
-			i18n.baseText('selfHealing.config.unsavedMessage'),
-			i18n.baseText('selfHealing.config.unsavedTitle'),
-			{
-				confirmButtonText: i18n.baseText('selfHealing.config.discard'),
-				cancelButtonText: i18n.baseText('generic.cancel'),
-				type: 'warning',
-			},
-		)) === 'confirm'
+	if (!dirty.value) {
+		return true;
+	}
+
+	const answer = await message.confirm(
+		i18n.baseText('selfHealing.config.unsavedMessage'),
+		i18n.baseText('selfHealing.config.unsavedTitle'),
+		{
+			confirmButtonText: i18n.baseText('selfHealing.config.discard'),
+			cancelButtonText: i18n.baseText('generic.cancel'),
+			type: 'warning',
+		},
 	);
+
+	return answer === 'confirm';
 });
 </script>
 
@@ -172,7 +199,7 @@ onBeforeRouteLeave(async () => {
 							<N8nOption
 								value="all"
 								:label="i18n.baseText('selfHealing.config.all')"
-								:disabled="allTaken"
+								:disabled="hasAllWorkflowsConfiguration"
 							/>
 							<N8nOption value="selected" :label="i18n.baseText('selfHealing.config.selected')" />
 						</N8nSelect>
@@ -246,7 +273,7 @@ onBeforeRouteLeave(async () => {
 				<N8nButton
 					type="submit"
 					:loading="saving"
-					:disabled="!valid || (!isNew && !dirty)"
+					:disabled="!isFormValid || (!isNew && !dirty)"
 					data-test-id="self-healing-save"
 					>{{ i18n.baseText('selfHealing.config.save') }}</N8nButton
 				>

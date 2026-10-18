@@ -14,14 +14,17 @@ const i18n = useI18n();
 const toast = useToast();
 const message = useMessage();
 const router = useRouter();
+
 const loading = ref(false);
-const busy = ref<number | null>(null);
+const busyConfigurationId = ref<number | null>(null);
 const failed = ref(false);
+
 const configurations = computed(() => store.configurations[props.projectId] ?? []);
 
 async function load() {
 	loading.value = true;
 	failed.value = false;
+
 	try {
 		await store.load(props.projectId);
 	} catch (error) {
@@ -31,6 +34,7 @@ async function load() {
 		loading.value = false;
 	}
 }
+
 watch(() => props.projectId, load, { immediate: true });
 
 function edit(id: number | 'new') {
@@ -44,6 +48,7 @@ function reviewerNames(configuration: SelfHealingConfigurationDto) {
 	return configuration.reviewerIds
 		.map((id) => {
 			const user = store.options[props.projectId]?.reviewers.find((reviewer) => reviewer.id === id);
+
 			return user
 				? [user.firstName, user.lastName].filter(Boolean).join(' ') || user.email
 				: i18n.baseText('selfHealing.config.unavailableReviewer');
@@ -52,13 +57,14 @@ function reviewerNames(configuration: SelfHealingConfigurationDto) {
 }
 
 async function toggle(configuration: SelfHealingConfigurationDto) {
-	busy.value = configuration.id;
+	busyConfigurationId.value = configuration.id;
+
 	try {
 		await store.setEnabled(props.projectId, configuration.id, !configuration.enabled);
 	} catch (error) {
 		toast.showError(error, i18n.baseText('selfHealing.config.saveError'));
 	} finally {
-		busy.value = null;
+		busyConfigurationId.value = null;
 	}
 }
 
@@ -72,14 +78,19 @@ async function remove(configuration: SelfHealingConfigurationDto) {
 			type: 'warning',
 		},
 	);
-	if (answer !== 'confirm') return;
-	busy.value = configuration.id;
+
+	if (answer !== 'confirm') {
+		return;
+	}
+
+	busyConfigurationId.value = configuration.id;
+
 	try {
 		await store.remove(props.projectId, configuration.id);
 	} catch (error) {
 		toast.showError(error, i18n.baseText('selfHealing.config.removeError'));
 	} finally {
-		busy.value = null;
+		busyConfigurationId.value = null;
 	}
 }
 </script>
@@ -147,7 +158,7 @@ async function remove(configuration: SelfHealingConfigurationDto) {
 							<N8nButton
 								type="button"
 								variant="ghost"
-								:disabled="busy !== null"
+								:disabled="busyConfigurationId !== null"
 								@click="toggle(configuration)"
 								>{{
 									i18n.baseText(
@@ -160,7 +171,7 @@ async function remove(configuration: SelfHealingConfigurationDto) {
 							<N8nButton
 								type="button"
 								variant="ghost"
-								:disabled="busy !== null"
+								:disabled="busyConfigurationId !== null"
 								@click="remove(configuration)"
 								>{{ i18n.baseText('selfHealing.config.remove') }}</N8nButton
 							>

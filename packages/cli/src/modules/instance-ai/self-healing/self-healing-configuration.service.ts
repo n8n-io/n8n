@@ -46,6 +46,7 @@ export class SelfHealingConfigurationService {
 			this.roles.rolesWithScope('project', [...scopes]),
 			this.roles.rolesWithScope('global', [...scopes]),
 		]);
+
 		const [workflows, reviewers] = await Promise.all([
 			this.configurations.listProjectWorkflows(projectId),
 			this.users.findEligibleByProjectOrGlobalRoles({
@@ -54,6 +55,7 @@ export class SelfHealingConfigurationService {
 				globalRoleSlugs,
 			}),
 		]);
+
 		return {
 			workflows: workflows.map(({ id, name }) => ({ id, name })),
 			reviewers: reviewers.map(({ id, email, firstName, lastName }) => ({
@@ -67,7 +69,12 @@ export class SelfHealingConfigurationService {
 
 	async save(user: User, projectId: string, input: SaveSelfHealingConfigurationDto, id?: number) {
 		await this.validateSelections(projectId, input);
-		const canEnable = input.enabled && (await this.canEnable(user, projectId));
+
+		let canEnable = false;
+		if (input.enabled) {
+			canEnable = await this.canEnable(user, projectId);
+		}
+
 		const savedId = await this.transactionRunner.run({}, async (ctx) => {
 			let configuration: SelfHealingConfiguration;
 			if (id === undefined) {
@@ -78,22 +85,30 @@ export class SelfHealingConfigurationService {
 			} else {
 				configuration = await this.requireConfiguration(id, projectId, ctx);
 			}
+
 			this.changeEnabled(configuration, input.enabled, user, canEnable);
 			configuration.scope = input.scope;
+
 			await this.configurations.saveConfiguration(configuration, ctx);
 			await this.configurations.replaceSelections(configuration, input, ctx);
 			return configuration.id;
 		});
+
 		return await this.get(projectId, savedId);
 	}
 
 	async setEnabled(user: User, projectId: string, id: number, enabled: boolean) {
-		const canEnable = enabled && (await this.canEnable(user, projectId));
+		let canEnable = false;
+		if (enabled) {
+			canEnable = await this.canEnable(user, projectId);
+		}
+
 		await this.transactionRunner.run({}, async (ctx) => {
 			const configuration = await this.requireConfiguration(id, projectId, ctx);
 			this.changeEnabled(configuration, enabled, user, canEnable);
 			await this.configurations.saveConfiguration(configuration, ctx);
 		});
+
 		return await this.get(projectId, id);
 	}
 
@@ -106,11 +121,13 @@ export class SelfHealingConfigurationService {
 				'An all-workflows configuration cannot include explicit selections.',
 			);
 		}
+
 		const options = await this.options(projectId);
 		const projectWorkflowIds = new Set(options.workflows.map(({ id }) => id));
 		if (input.workflowIds.some((id) => !projectWorkflowIds.has(id))) {
 			throw new BadRequestError('Select workflows from this project.');
 		}
+
 		const eligibleReviewerIds = new Set(options.reviewers.map(({ id }) => id));
 		if (input.reviewerIds.some((id) => !eligibleReviewerIds.has(id))) {
 			throw new BadRequestError('Select reviewers with workflow edit access to this project.');
@@ -159,7 +176,9 @@ export class SelfHealingConfigurationService {
 	async recheckAccess(id: number, projectId: string, workflowId: string) {
 		await this.transactionRunner.run({}, async (ctx) => {
 			const configuration = await this.configurations.findForUpdate(id, projectId, ctx);
-			if (configuration) await this.resolveActorOrPause(configuration, workflowId, ctx);
+			if (configuration) {
+				await this.resolveActorOrPause(configuration, workflowId, ctx);
+			}
 		});
 	}
 
@@ -170,20 +189,20 @@ export class SelfHealingConfigurationService {
 		ctx: OperationContext,
 	) {
 		if (!configuration.enabled) return null;
+
 		if (configuration.enabledById) {
 			const user = await this.users.findByIdWithRole(configuration.enabledById, ctx);
-			if (
-				user &&
-				!user.disabled &&
-				(await this.workflows.findWorkflowForUser(
+			if (user && !user.disabled) {
+				const workflow = await this.workflows.findWorkflowForUser(
 					workflowId,
 					user,
 					['workflow:read', 'workflow:update', 'execution:read'],
 					{ ctx },
-				))
-			)
-				return user;
+				);
+				if (workflow) return user;
+			}
 		}
+
 		// A workflow transfer does not revoke access to the original project.
 		const owner = await this.ownership.getWorkflowOwningProject(workflowId, ctx);
 		if (owner?.id !== configuration.projectId) return null;

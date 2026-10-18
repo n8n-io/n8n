@@ -51,6 +51,10 @@ export type PubSubCommandMap = {
 
 	'reload-otel-config': never;
 	'reload-instance-ai-settings': never;
+	'self-healing-failure': {
+		workflowId: string;
+		executionId: string;
+	};
 	'reload-agents-settings': never;
 
 	// #region Community packages

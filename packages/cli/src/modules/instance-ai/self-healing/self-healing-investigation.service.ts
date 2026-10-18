@@ -17,11 +17,11 @@ import { DurableEventLog } from '../event-bus/durable-event-log';
 import { InterruptedRunSweeper } from '../event-bus/interrupted-run-sweeper';
 import { InstanceAiService } from '../instance-ai.service';
 import { InstanceAiEventLogRepository } from '../repositories/instance-ai-event-log.repository';
-import { WorkflowSuggestionRepository } from '../workflow-suggestions/database/workflow-suggestion.repository';
 import { WorkflowSuggestionService } from '../workflow-suggestions/workflow-suggestion.service';
 import type { SelfHealingInvestigation } from './database/self-healing-investigation.entity';
 import { SelfHealingConfigurationRepository } from './database/self-healing-configuration.repository';
 import { SelfHealingInvestigationRepository } from './database/self-healing-investigation.repository';
+import { SelfHealingResultRepository } from './database/self-healing-result.repository';
 import type { SelfHealingRunResult } from './self-healing-agent.service';
 import { SelfHealingConfigurationService } from './self-healing-configuration.service';
 import { SelfHealingExecutionReferenceService } from './self-healing-execution-reference.service';
@@ -38,7 +38,7 @@ type StartInvestigation = {
 
 type ExistingWork =
 	| { kind: 'investigation'; investigationId: string }
-	| { kind: 'suggestion'; suggestionId: string };
+	| { kind: 'result'; resultId: string };
 
 @Service()
 export class SelfHealingInvestigationService {
@@ -46,7 +46,7 @@ export class SelfHealingInvestigationService {
 		private readonly investigations: SelfHealingInvestigationRepository,
 		private readonly results: SelfHealingResultService,
 		private readonly suggestions: WorkflowSuggestionService,
-		private readonly suggestionRepository: WorkflowSuggestionRepository,
+		private readonly resultRepository: SelfHealingResultRepository,
 		private readonly ownership: SharedWorkflowRepository,
 		private readonly executions: SelfHealingExecutionReferenceService,
 		private readonly runtime: InstanceAiService,
@@ -60,29 +60,33 @@ export class SelfHealingInvestigationService {
 		private readonly configurationService: SelfHealingConfigurationService,
 	) {}
 
-	/** Internal entry point. Automatic triggers and retry policy belong to the caller. */
+	/** Admit an eligible failure. Automatic triggers belong to the caller. */
 	async start(input: StartInvestigation): Promise<ExistingWork | null> {
 		if (!this.config.workflowSuggestionsEnabled) {
 			throw new BadRequestError('Self-healing investigations are disabled.');
 		}
+
 		const configuration = await this.configurations.findForWorkflow(
 			input.projectId,
 			input.workflowId,
 		);
 		if (!configuration) return null;
+
 		const actor = await this.txRunner.run({}, async (ctx) => {
 			const current = await this.configurations.findForUpdate(
 				configuration.id,
 				input.projectId,
 				ctx,
 			);
-			return current
-				? await this.configurationService.resolveActorOrPause(current, input.workflowId, ctx)
-				: null;
+			if (!current) return null;
+
+			return await this.configurationService.resolveActorOrPause(current, input.workflowId, ctx);
 		});
 		if (!actor) return null;
+
 		await this.requireProject(input.workflowId, input.projectId);
 		await this.suggestions.reconcileWorkflow(input.workflowId);
+
 		const existing = await this.findExisting(input);
 		if (existing) return existing;
 
@@ -92,6 +96,7 @@ export class SelfHealingInvestigationService {
 				throw new NotFoundError('Workflow not found in this project.');
 			}
 			await this.executions.validateFailure(actor, baseline, input.executionId);
+
 			const claimed = await this.claim(input, baseline, configuration.id);
 			if (!claimed || 'kind' in claimed) return claimed;
 
@@ -104,18 +109,20 @@ export class SelfHealingInvestigationService {
 			});
 			return { kind: 'investigation', investigationId: claimed.id };
 		} catch (error) {
-			if (error instanceof ForbiddenError)
+			if (error instanceof ForbiddenError) {
 				await this.configurationService.recheckAccess(
 					configuration.id,
 					input.projectId,
 					input.workflowId,
 				);
+			}
+
 			throw error;
 		}
 	}
 
 	private async findExisting(
-		input: Pick<StartInvestigation, 'workflowId' | 'executionId'>,
+		input: StartInvestigation,
 		ctx: OperationContext = {},
 	): Promise<ExistingWork | null> {
 		const executionInvestigation = await this.investigations.getForExecution(
@@ -135,8 +142,12 @@ export class SelfHealingInvestigationService {
 			return { kind: 'investigation', investigationId: unfinishedInvestigation.id };
 		}
 
-		const suggestion = await this.suggestionRepository.getPendingForWorkflow(input.workflowId, ctx);
-		return suggestion ? { kind: 'suggestion', suggestionId: suggestion.id } : null;
+		const result = await this.resultRepository.getOpenForWorkflow(
+			input.workflowId,
+			input.projectId,
+			ctx,
+		);
+		return result ? { kind: 'result', resultId: result.id } : null;
 	}
 
 	private async claim(
@@ -151,15 +162,18 @@ export class SelfHealingInvestigationService {
 				ctx,
 			);
 			if (!configuration) return null;
+
 			const actor = await this.configurationService.resolveActorOrPause(
 				configuration,
 				input.workflowId,
 				ctx,
 			);
 			if (!actor || actor.id !== baseline.backgroundUserId) return null;
+
 			await this.suggestions.readWorkflowTargetForApply(input.workflowId, ctx);
 			const existing = await this.findExisting(input, ctx);
 			if (existing) return existing;
+
 			await this.suggestions.requireCurrentBaseline(baseline, ctx);
 			return await this.investigations.createInvestigation(
 				{
@@ -197,6 +211,7 @@ export class SelfHealingInvestigationService {
 					investigation.workflowId,
 				);
 			}
+
 			await this.investigations.finishWithoutResult(investigation.id);
 			throw error;
 		}
@@ -212,18 +227,22 @@ export class SelfHealingInvestigationService {
 			await this.investigations.finishWithoutResult(investigation.id);
 			return;
 		}
+
 		const output = run.output;
 		const result: SelfHealingResultInput = {
 			output,
 			usage: run.usage,
 			completedAt: new Date().toISOString(),
 		};
+
 		if (output.candidateFilePath) {
 			if (!run.candidate || run.candidate.filePath !== output.candidateFilePath) {
 				throw new BadRequestError('The candidate file is unavailable.');
 			}
+
 			const candidate = await run.candidate.compile();
 			if (!candidate.success) throw new BadRequestError(candidate.errors.join('\n'));
+
 			if (
 				output.outcome === 'fix_ready' &&
 				candidate.credentialResolution.mockedCredentialTypes.length > 0
@@ -244,10 +263,12 @@ export class SelfHealingInvestigationService {
 						'Continue in chat to connect the credentials and verify the repair.',
 				};
 			}
+
 			result.candidate = {
 				graph: { nodes: candidate.workflow.nodes, connections: candidate.workflow.connections },
 			};
 		}
+
 		const outputFields = selfHealingOutputSchema.innerType().shape;
 		result.output = {
 			...result.output,
@@ -260,6 +281,7 @@ export class SelfHealingInvestigationService {
 				outputFields.report.maxLength ?? undefined,
 			),
 		};
+
 		await this.suggestions.requireCurrentBaseline(investigation.baseline);
 		signal.throwIfAborted();
 		await this.results.complete({ investigationId: investigation.id, ...result, signal });
