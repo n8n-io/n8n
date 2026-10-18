@@ -3,6 +3,11 @@ import { check } from 'k6';
 
 const apiBaseUrl = __ENV.API_BASE_URL;
 
+// Spike: the code sandbox results need the p99 of the request duration.
+export const options = {
+	summaryTrendStats: ['avg', 'min', 'med', 'max', 'p(90)', 'p(95)', 'p(99)'],
+};
+
 export default function () {
 	const res = http.post(`${apiBaseUrl}/webhook/code-node-benchmark`, {});
 

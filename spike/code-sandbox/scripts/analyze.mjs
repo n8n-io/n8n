@@ -65,6 +65,7 @@ const taskFields = [
 	'overhead',
 	't_acquire',
 	't_create',
+	// Only in result files from before the RPC channel was removed.
 	't_channel',
 	't_build',
 	't_send',
@@ -74,6 +75,7 @@ const taskFields = [
 	'slotWaitMs',
 	'bytes_task_json',
 	'rpc_count',
+	't_rpc_post',
 ];
 
 const groups = new Map();
@@ -91,6 +93,10 @@ for (const [key, list] of [...groups.entries()].sort()) {
 	for (const f of taskFields) row[f] = stats(list.map((t) => t[f]));
 	row.daemon_handoff = stats(list.map((t) => t.daemon?.handoff));
 	row.daemon_inputWrite = stats(list.map((t) => t.daemon?.inputWrite));
+	// Time of one RPC result request (n8n → API → runner → daemon).
+	row.rpc_post_per_call = stats(
+		list.filter((t) => t.rpc_post_count > 0).map((t) => t.t_rpc_post / t.rpc_post_count),
+	);
 	row.pool_estimate = stats(
 		list
 			.filter((t) => typeof t.t_create === 'number')
@@ -138,13 +144,13 @@ if (args.json) {
 	const fmt = (s) => (s.n ? `${s.p50}/${s.p95}/${s.p99}` : '-');
 	console.log(`# Tasks (p50/p95/p99 ms)${args.variant ? ` - ${args.variant}` : ''}`);
 	console.log(
-		'| workload | scope | task | n | total | overhead | pool est. | acquire | create | send | handoff | accept→done | run | outputs |',
+		'| workload | scope | task | n | total | overhead | pool est. | acquire | create | send | handoff | accept→done | run | outputs | rpc post/call |',
 	);
-	console.log('|---|---|---|---|---|---|---|---|---|---|---|---|---|---|');
+	console.log('|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|');
 	for (const [key, r] of Object.entries(out.tasks)) {
 		const [w, s, k] = key.split(' | ');
 		console.log(
-			`| ${w} | ${s} | ${k} | ${r.t_total.n} | ${fmt(r.t_total)} | ${fmt(r.overhead)} | ${fmt(r.pool_estimate)} | ${fmt(r.t_acquire)} | ${fmt(r.t_create)} | ${fmt(r.t_send)} | ${fmt(r.daemon_handoff)} | ${fmt(r.t_accept_to_done)} | ${fmt(r.t_run)} | ${fmt(r.t_outputs)} |`,
+			`| ${w} | ${s} | ${k} | ${r.t_total.n} | ${fmt(r.t_total)} | ${fmt(r.overhead)} | ${fmt(r.pool_estimate)} | ${fmt(r.t_acquire)} | ${fmt(r.t_create)} | ${fmt(r.t_send)} | ${fmt(r.daemon_handoff)} | ${fmt(r.t_accept_to_done)} | ${fmt(r.t_run)} | ${fmt(r.t_outputs)} | ${fmt(r.rpc_post_per_call)} |`,
 		);
 	}
 	console.log('\n# Leases');

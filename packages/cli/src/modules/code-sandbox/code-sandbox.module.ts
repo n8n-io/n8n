@@ -1,6 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import type { ModuleInterface } from '@n8n/decorators';
-import { BackendModule } from '@n8n/decorators';
+import { BackendModule, OnShutdown } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 
 /**
@@ -27,6 +27,7 @@ export class CodeSandboxModule implements ModuleInterface {
 		});
 	}
 
+	@OnShutdown()
 	async shutdown() {
 		const { CodeSandboxConfig } = await import('./code-sandbox.config.js');
 		if (!Container.get(CodeSandboxConfig).enabled) return;

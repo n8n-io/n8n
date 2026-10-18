@@ -32,6 +32,7 @@ import {
 	type TaskTimingRecord,
 } from './code-sandbox-timings';
 import { CodeTaskBuilder, type BuiltTask } from './code-task-builder';
+import { RpcHandler } from './rpc-handler';
 import { SandboxLeaseManager, type Lease } from './sandbox-lease-manager';
 import {
 	readAll,
@@ -39,6 +40,8 @@ import {
 	type CodeTaskDoneEvent,
 	type CodeTaskErrorEvent,
 	type CodeTaskEvent,
+	type CodeTaskRpcEvent,
+	type RpcReply,
 } from './task-api-client';
 
 const SANDBOX_OUT_PREFIX = 'sandbox-out:';
@@ -250,7 +253,6 @@ export class CodeSandboxBackend {
 				rec.slotWaitMs = acq.slotWaitMs;
 				if (acq.createdForTask) {
 					rec.t_create = lease.createMs;
-					rec.t_channel = lease.channelMs;
 					rec.createTimings = lease.createTimings;
 				}
 			} catch (e) {
@@ -304,7 +306,7 @@ export class CodeSandboxBackend {
 		const client = this.leases.client;
 		const sandboxId = lease.sandboxId;
 		const timeoutMs = this.taskRunnersConfig.taskTimeout * 1000;
-		const target = { executeFunctions, rpcCount: 0 };
+		const rpc = new RpcHandler(executeFunctions);
 		const controller = new AbortController();
 		let brokenReason: string | undefined;
 		let cancelling: 'timeout' | 'cancelled' | undefined;
@@ -341,10 +343,45 @@ export class CodeSandboxBackend {
 			brokenReason = reason;
 			controller.abort();
 		};
+
+		// RPC calls run in the background: the stream must be read while a
+		// helper runs, and calls can run at the same time.
+		let rpcFailure: Error | undefined;
+		let terminalSeen = false;
+		rec.t_rpc_post = 0;
+		rec.rpc_post_count = 0;
+		const postRpcResult = async (ev: CodeTaskRpcEvent, reply: RpcReply) => {
+			const tPost = performance.now();
+			try {
+				await client.postRpcResult(sandboxId, taskId, ev.callId, reply);
+			} catch (e) {
+				// A 4xx is a bug. Do not retry it.
+				if (e instanceof TaskApiError && e.status >= 400 && e.status < 500) throw e;
+				await client.postRpcResult(sandboxId, taskId, ev.callId, reply);
+			} finally {
+				rec.t_rpc_post = (rec.t_rpc_post ?? 0) + ms(performance.now() - tPost);
+				rec.rpc_post_count = (rec.rpc_post_count ?? 0) + 1;
+			}
+		};
+		const answerRpc = async (ev: CodeTaskRpcEvent) => {
+			const reply = await rpc.handleCall(ev);
+			// The task ended while the helper ran. The daemon would answer 404.
+			if (controller.signal.aborted || cancelling || terminalSeen) return;
+			try {
+				await postRpcResult(ev, reply);
+			} catch (e) {
+				if (rpcFailure || controller.signal.aborted) return;
+				this.logger.warn('Code task RPC result could not be sent', {
+					sandboxId,
+					error: (e as Error).message,
+				});
+				rpcFailure = e as Error;
+				controller.abort();
+			}
+		};
 		const cancelSignal = executeFunctions.getExecutionCancelSignal?.();
 		const onCancel = () => (accepted ? cancelTask('cancelled') : controller.abort());
 
-		lease.channel.register(taskId, target);
 		lease.onBroken.add(onBroken);
 		cancelSignal?.addEventListener('abort', onCancel);
 
@@ -365,6 +402,16 @@ export class CodeSandboxBackend {
 				case 'stderr':
 					outputBytes += ev.data.length;
 					stderr.push(ev.data);
+					break;
+				case 'rpc':
+					if (!accepted || cancelling) break;
+					answerRpc(ev).catch((e: unknown) => {
+						this.logger.warn('Code task RPC call failed', { error: (e as Error).message });
+					});
+					break;
+				case 'done':
+				case 'error':
+					terminalSeen = true;
 					break;
 			}
 		};
@@ -392,6 +439,16 @@ export class CodeSandboxBackend {
 				});
 			}
 			if (cancelling === 'cancelled') throw new TaskCancelledError('Execution was cancelled');
+			if (rpcFailure && !brokenReason) {
+				// A transport error (status 0) means the path to the sandbox is
+				// gone. An HTTP error status or another error does not.
+				if (rpcFailure instanceof TaskApiError && rpcFailure.status === 0) {
+					this.leases.markBroken(lease, `RPC result failed: ${rpcFailure.message}`);
+				}
+				throw new CodeSandboxInfraError('Code task failed: RPC result could not be sent', {
+					cause: rpcFailure,
+				});
+			}
 			const reason =
 				brokenReason ?? (acceptTimedOut ? 'no accepted event in time' : (e as Error).message);
 			if (!accepted) {
@@ -406,10 +463,9 @@ export class CodeSandboxBackend {
 			if (graceTimer) clearTimeout(graceTimer);
 			cancelSignal?.removeEventListener('abort', onCancel);
 			lease.onBroken.delete(onBroken);
-			lease.channel.unregister(taskId);
 			stdout.flush();
 			stderr.flush();
-			rec.rpc_count = target.rpcCount;
+			rec.rpc_count = rpc.rpcCount;
 			rec.output_bytes = outputBytes;
 		}
 

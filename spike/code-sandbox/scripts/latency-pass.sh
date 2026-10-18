@@ -34,7 +34,8 @@ echo $! >"$SPIKE_DIR/n8n.pid"
 until curl -sf http://127.0.0.1:5678/healthz/readiness >/dev/null; do sleep 1; done
 sleep 5
 
-# WORKLOADS limits the pass to some workloads, for example "W1 W2 W3".
+# WORKLOADS limits the pass to some workloads, for example "W1 W2 W3". WFILE is
+# not in the default list.
 WORKLOADS="${WORKLOADS:-W1 W2 W3 W5b W6}"
 want() { [[ " $WORKLOADS " == *" $1 "* ]]; }
 run() { node "$S/run-workload.mjs" --label "$1-$NAME" --out "$OUT/client.jsonl" "${@:2}"; }
@@ -43,4 +44,11 @@ want W2 && run W2 --path spike-w2 --runs "$RUNS" --warmup "$WARMUP"
 want W3 && run W3 --path spike-w3 --runs "$W3_RUNS" --warmup 2
 want W5b && run W5b-1mb --path spike-w5b --query size=1mb --runs "$RUNS" --warmup "$WARMUP"
 want W6 && run W6 --path spike-w6 --query mode=ten --runs "$RUNS" --warmup "$WARMUP"
+# WFILE: the W5 binary workflow (streams), one size after the other.
+if want WFILE; then
+	for spec in ${FILE_RUNS:-1mb:20 100mb:10 1gb:5}; do
+		size="${spec%%:*}"
+		run "WFILE-$size" --path spike-w5 --query "size=$size" --runs "${spec##*:}" --warmup 1
+	done
+fi
 exit 0

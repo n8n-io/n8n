@@ -47,6 +47,7 @@ export interface WorkerTimings {
 	write?: number;
 	binaryReads: number;
 	rpcCount: number;
+	rpcMs: number;
 	/** Tasks this worker process has run, this one included. */
 	workerTasks?: number;
 }

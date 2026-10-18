@@ -3,13 +3,15 @@ import * as http from 'node:http';
 import * as https from 'node:https';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
-import WebSocket from 'ws';
 
 /**
  * Client for the Task API of the sandbox service (`/v1/code/...`). It is a
- * copy of `CodeSandboxClient` in the sandbox service SDK, with `ws` for the
- * channel. Production uses the SDK.
+ * copy of `CodeSandboxClient` in the sandbox service SDK. Production uses the
+ * SDK.
  */
+
+/** The largest RPC result body that the service accepts. */
+export const RPC_RESULT_MAX_BYTES = 1024 * 1024 * 1024;
 
 export class TaskApiError extends Error {
 	constructor(
@@ -40,6 +42,11 @@ export interface CodeSandbox {
 	state: string;
 	/** Worker processes started since the sandbox started (GET only). */
 	workersStarted?: number;
+	/** Resource use of the sandbox container since its start (GET only). */
+	cpuUsageUsec?: number;
+	memoryPeakBytes?: number;
+	memoryCurrentBytes?: number;
+	uptimeMs?: number;
 	/** The sandbox service gave a ready sandbox from its warm pool. */
 	pooled?: boolean;
 	timings?: {
@@ -86,6 +93,8 @@ export interface DaemonTimings {
 		write?: number;
 		binaryReads?: number;
 		rpcCount?: number;
+		/** Time spent in RPC calls in the worker, in ms. */
+		rpcMs?: number;
 	};
 }
 
@@ -112,32 +121,23 @@ export interface CodeTaskErrorEvent {
 	timings?: DaemonTimings;
 }
 
-export type CodeTaskEvent =
-	| { type: 'accepted'; taskId: string; slot: number }
-	| { type: 'stdout'; data: string }
-	| { type: 'stderr'; data: string }
-	| CodeTaskDoneEvent
-	| CodeTaskErrorEvent;
-
-export interface RpcCallFrame {
-	type: 'rpc:call';
-	taskId: string;
+/** An RPC call of the task. The task stream is the scope of the call. */
+export interface CodeTaskRpcEvent {
+	type: 'rpc';
 	callId: string;
 	name: string;
 	params: unknown[];
 }
 
+export type CodeTaskEvent =
+	| { type: 'accepted'; taskId: string; slot: number }
+	| { type: 'stdout'; data: string }
+	| { type: 'stderr'; data: string }
+	| CodeTaskRpcEvent
+	| CodeTaskDoneEvent
+	| CodeTaskErrorEvent;
+
 export type RpcReply = { ok: true; data: unknown } | { ok: false; error: unknown };
-
-export interface ChannelHandlers {
-	onCall: (call: RpcCallFrame) => Promise<RpcReply>;
-	onClose: (reason: string) => void;
-}
-
-export interface OpenChannel {
-	ws: WebSocket;
-	runtimeVersion: string;
-}
 
 export class TaskApiClient {
 	private readonly base: URL;
@@ -175,7 +175,8 @@ export class TaskApiClient {
 
 	/**
 	 * Runs a task. Streams the inputs. Calls `onEvent` for each event and
-	 * resolves with the terminal event.
+	 * resolves with the terminal event. `onEvent` must not block: answer `rpc`
+	 * events in the background with `postRpcResult`.
 	 */
 	async runTask(
 		sandboxId: string,
@@ -203,6 +204,7 @@ export class TaskApiClient {
 		try {
 			for await (const ev of readNdjson<CodeTaskEvent>(res)) {
 				if (ev.type === 'accepted') accepted = true;
+				if (ev.type === 'rpc' && !Array.isArray(ev.params)) ev.params = [];
 				onEvent(ev);
 				if (ev.type === 'done' || ev.type === 'error') terminal = ev;
 			}
@@ -231,58 +233,45 @@ export class TaskApiClient {
 		await this.json('DELETE', `v1/code/sandboxes/${sandboxId}/tasks/${taskId}`);
 	}
 
-	/** Opens the RPC channel and waits for `channel:ready`. */
-	async openChannel(sandboxId: string, handlers: ChannelHandlers): Promise<OpenChannel> {
-		const url = new URL(`v1/code/sandboxes/${sandboxId}/channel`, this.base);
-		url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
-		const ws = new WebSocket(url, {
-			headers: this.apiKey ? { 'X-Api-Key': this.apiKey } : {},
-			perMessageDeflate: false,
-			maxPayload: 1024 * 1024 * 1024,
-		});
-		return await new Promise<OpenChannel>((resolve, reject) => {
-			let ready = false;
-			ws.on('message', (raw) => {
-				let frame: { type?: string; runtimeVersion?: string };
-				try {
-					frame = JSON.parse(raw.toString()) as typeof frame;
-				} catch {
-					return;
-				}
-				if (frame.type === 'channel:ready' && !ready) {
-					ready = true;
-					resolve({ ws, runtimeVersion: frame.runtimeVersion ?? '' });
-					return;
-				}
-				if (frame.type === 'rpc:call') {
-					const call = frame as RpcCallFrame;
-					void handlers
-						.onCall({ ...call, params: Array.isArray(call.params) ? call.params : [] })
-						.catch((e: unknown): RpcReply => ({ ok: false, error: { message: String(e) } }))
-						.then((reply) => {
-							if (ws.readyState !== WebSocket.OPEN) return;
-							ws.send(
-								JSON.stringify({
-									type: 'rpc:result',
-									taskId: call.taskId,
-									callId: call.callId,
-									...reply,
-								}),
-							);
-						});
-				}
-			});
-			ws.on('unexpected-response', (_req, res) => {
-				reject(new TaskApiError(`channel upgrade refused: ${res.statusCode}`, res.statusCode ?? 0));
-			});
-			ws.on('error', (e) => {
-				if (!ready) reject(new TaskApiError(`channel error: ${e.message}`, 0));
-			});
-			ws.on('close', (code, reason) => {
-				if (!ready) reject(new TaskApiError(`channel closed before ready: ${code}`, 0));
-				else handlers.onClose(`${code} ${reason.toString()}`);
-			});
-		});
+	/**
+	 * Sends the reply to an RPC call of a running task. A reply larger than
+	 * RPC_RESULT_MAX_BYTES is replaced with an error reply. A 404 (the task or
+	 * the call is no longer open) counts as success.
+	 */
+	async postRpcResult(
+		sandboxId: string,
+		taskId: string,
+		callId: string,
+		reply: RpcReply,
+	): Promise<void> {
+		const errorReply = (message: string) =>
+			Buffer.from(JSON.stringify({ ok: false, error: { message } }));
+		let payload: Buffer;
+		try {
+			payload = Buffer.from(JSON.stringify(reply));
+		} catch (e) {
+			// A value that JSON cannot encode (BigInt, a cycle), or a string that
+			// is too large for V8.
+			payload = errorReply(`RPC result cannot be serialized: ${(e as Error).message}`);
+		}
+		if (payload.length > RPC_RESULT_MAX_BYTES) payload = errorReply('RPC result too large');
+		let res: http.IncomingMessage;
+		let text: string;
+		try {
+			res = await this.request(
+				'POST',
+				`v1/code/sandboxes/${sandboxId}/tasks/${encodeURIComponent(taskId)}/rpc/${encodeURIComponent(callId)}`,
+				{ 'Content-Type': 'application/json', 'Content-Length': String(payload.length) },
+				Readable.from([payload]),
+			);
+			text = await readAll(res);
+		} catch (e) {
+			// Status 0: a transport error.
+			throw new TaskApiError(`rpc result request failed: ${(e as Error).message}`, 0);
+		}
+		const status = res.statusCode ?? 0;
+		if (status === 404 || (status >= 200 && status < 300)) return;
+		throw errorFromText(status, text);
 	}
 
 	private async json<T>(method: string, path: string, body?: unknown): Promise<T> {
@@ -352,22 +341,49 @@ async function* multipartBody(
 	yield Buffer.from(`--${boundary}--\r\n`);
 }
 
-/** Parses an NDJSON stream. Lines have no size limit. */
-export async function* readNdjson<T>(stream: AsyncIterable<Buffer | string>): AsyncGenerator<T> {
+/**
+ * The longest NDJSON line that readNdjson accepts, in characters. A worker
+ * control line is at most 64 MiB, and an 'rpc' event carries one.
+ */
+export const NDJSON_MAX_LINE_CHARS = 128 * 1024 * 1024;
+
+/**
+ * Parses an NDJSON stream. The time is linear in the stream size, also for
+ * long lines: each chunk is searched once.
+ */
+export async function* readNdjson<T>(
+	stream: AsyncIterable<Buffer | string>,
+	maxLineChars = NDJSON_MAX_LINE_CHARS,
+): AsyncGenerator<T> {
 	const decoder = new TextDecoder('utf-8');
-	let pending = '';
+	let parts: string[] = [];
+	let partsLength = 0;
+	const take = (last: string): string => {
+		parts.push(last);
+		const line = parts.join('');
+		parts = [];
+		partsLength = 0;
+		return line.trim();
+	};
 	for await (const chunk of stream) {
-		pending += typeof chunk === 'string' ? chunk : decoder.decode(chunk, { stream: true });
-		let nl = pending.indexOf('\n');
+		const text = typeof chunk === 'string' ? chunk : decoder.decode(chunk, { stream: true });
+		let start = 0;
+		let nl = text.indexOf('\n');
 		while (nl !== -1) {
-			const line = pending.slice(0, nl).trim();
-			pending = pending.slice(nl + 1);
+			if (partsLength + nl - start > maxLineChars) throw new Error('NDJSON line too long');
+			const line = take(text.slice(start, nl));
 			if (line) yield JSON.parse(line) as T;
-			nl = pending.indexOf('\n');
+			start = nl + 1;
+			nl = text.indexOf('\n', start);
+		}
+		if (start < text.length) {
+			partsLength += text.length - start;
+			if (partsLength > maxLineChars) throw new Error('NDJSON line too long');
+			parts.push(text.slice(start));
 		}
 	}
-	pending += decoder.decode();
-	if (pending.trim()) yield JSON.parse(pending.trim()) as T;
+	const line = take(decoder.decode());
+	if (line) yield JSON.parse(line) as T;
 }
 
 export async function readAll(stream: AsyncIterable<Buffer | string>): Promise<string> {

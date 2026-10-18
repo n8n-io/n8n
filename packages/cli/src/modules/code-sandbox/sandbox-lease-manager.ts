@@ -4,7 +4,6 @@ import { UnexpectedError } from 'n8n-workflow';
 
 import { CodeSandboxConfig } from './code-sandbox.config';
 import { CodeSandboxTimings } from './code-sandbox-timings';
-import { RpcChannel } from './rpc-channel';
 import { TaskApiClient } from './task-api-client';
 
 export type LeaseState = 'starting' | 'ready' | 'draining' | 'broken' | 'releasing';
@@ -25,7 +24,6 @@ export interface Lease {
 	workflowId?: string;
 	/** Empty while the sandbox is being created. */
 	sandboxId: string;
-	channel: RpcChannel;
 	slots: number;
 	/** Running tasks plus slots reserved for tasks that wait for the create. */
 	activeTasks: number;
@@ -45,7 +43,6 @@ export interface Lease {
 	maxConcurrentTasks: number;
 	ready: Promise<void>;
 	createMs?: number;
-	channelMs?: number;
 	createTimings?: unknown;
 	/** Called when the lease breaks, to fail the running tasks. */
 	onBroken: Set<(reason: string) => void>;
@@ -94,6 +91,9 @@ export class SandboxLeaseManager {
 	private clientInstance: TaskApiClient | undefined;
 
 	private shuttingDown = false;
+
+	/** Deletes that run now. Shutdown waits for them, so their records are written. */
+	private readonly pendingDeletes = new Set<Promise<void>>();
 
 	constructor(
 		private readonly config: CodeSandboxConfig,
@@ -194,6 +194,13 @@ export class SandboxLeaseManager {
 				w.reject(new SandboxCreateError('n8n is shutting down'));
 			for (const lease of [...group.sandboxes]) this.release(lease, 'shutdown');
 		}
+		// Wait for the deletes (at most 10 s), so the sandboxes do not stay
+		// until the API idle sweeper and the last records are written.
+		await Promise.race([
+			Promise.allSettled([...this.pendingDeletes]),
+			new Promise((r) => setTimeout(r, 10_000).unref()),
+		]);
+		await this.timings.flush();
 	}
 
 	private pump(group: LeaseGroup) {
@@ -257,7 +264,6 @@ export class SandboxLeaseManager {
 			scopeKey: group.scopeKey,
 			workflowId,
 			sandboxId: '',
-			channel: new RpcChannel(),
 			slots: this.config.slots,
 			activeTasks: 0,
 			holders: new Set(),
@@ -299,17 +305,9 @@ export class SandboxLeaseManager {
 			throw new SandboxCreateError('The lease was released while its sandbox was created');
 		}
 
-		const t1 = Date.now();
-		const open = await this.client.openChannel(sandbox.id, {
-			onCall: async (call) => await lease.channel.handleCall(call),
-			onClose: (reason) => this.onChannelClose(lease, reason),
-		});
-		lease.channel.attach(open.ws);
-		lease.channelMs = Date.now() - t1;
-		// The state can change while the channel opens.
-		if ((lease.state as LeaseState) === 'releasing') {
-			throw new SandboxCreateError('The lease was released while its channel opened');
-		}
+		// The lease needs no channel: the RPC calls of a task use its task
+		// request. A sandbox that dies while idle fails the next task before
+		// "accepted", and the backend retries that task on a new lease.
 		if (lease.state === 'starting') lease.state = 'ready';
 		if (this.config.scope === 'workflow') {
 			const remaining = Math.max(0, this.config.maxLifetimeMs - (Date.now() - lease.createdAt));
@@ -326,12 +324,6 @@ export class SandboxLeaseManager {
 		} else if (lease.sandboxId) {
 			this.deleteSandbox(lease.sandboxId);
 		}
-	}
-
-	private onChannelClose(lease: Lease, reason: string) {
-		lease.channel.markClosed();
-		if (lease.state === 'releasing') return;
-		this.markBroken(lease, `channel closed: ${reason}`);
 	}
 
 	private startIdleTimer(lease: Lease) {
@@ -356,7 +348,6 @@ export class SandboxLeaseManager {
 		lease.state = 'releasing';
 		if (lease.idleTimer) clearTimeout(lease.idleTimer);
 		if (lease.lifetimeTimer) clearTimeout(lease.lifetimeTimer);
-		lease.channel.close();
 		if (lease.sandboxId) this.deleteSandbox(lease.sandboxId);
 
 		for (const executionId of lease.holders) {
@@ -379,7 +370,6 @@ export class SandboxLeaseManager {
 			sandboxId: lease.sandboxId,
 			workflowId: lease.workflowId,
 			createMs: lease.createMs,
-			channelMs: lease.channelMs,
 			createdAt: lease.createdAt,
 			releasedAt: now,
 			holdMs,
@@ -397,17 +387,27 @@ export class SandboxLeaseManager {
 
 	private deleteSandbox(sandboxId: string) {
 		this.sandboxIds.delete(sandboxId);
-		void (async () => {
-			// Spike measurement: read the process count before the delete.
+		const pending = (async () => {
+			// Spike measurement: read the process count and the resource use of
+			// the sandbox container before the delete.
 			if (this.config.timings) {
 				try {
-					const { workersStarted } = await this.client.getSandbox(sandboxId);
-					this.timings.event('processes', { sandboxId, workersStarted });
+					const sb = await this.client.getSandbox(sandboxId);
+					this.timings.event('processes', {
+						sandboxId,
+						workersStarted: sb.workersStarted,
+						cpuUsageUsec: sb.cpuUsageUsec,
+						memoryPeakBytes: sb.memoryPeakBytes,
+						memoryCurrentBytes: sb.memoryCurrentBytes,
+						uptimeMs: sb.uptimeMs,
+					});
 				} catch {}
 			}
 			await this.client.deleteSandbox(sandboxId);
 		})().catch((e: Error) => {
 			this.logger.warn('Code sandbox delete failed', { sandboxId, error: e.message });
 		});
+		this.pendingDeletes.add(pending);
+		void pending.finally(() => this.pendingDeletes.delete(pending));
 	}
 }

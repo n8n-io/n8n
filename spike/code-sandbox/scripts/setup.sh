@@ -22,7 +22,8 @@ for spec in ${W5_SIZES:-1mb:1 100mb:100 1gb:1024}; do
 done
 
 echo "==> Import workflows"
-node spike/code-sandbox/scripts/generate-workloads.mjs
+# The W5 workflow reads its files from $SPIKE_DIR.
+FILES_DIR="$SPIKE_DIR" node spike/code-sandbox/scripts/generate-workloads.mjs
 "$N8N" import:workflow --separate --input=spike/code-sandbox/workloads
 "$N8N" import:workflow --separate --input=spike/code-sandbox/workloads/w14
 

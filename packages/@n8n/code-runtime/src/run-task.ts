@@ -117,7 +117,7 @@ export async function runTask(
 	) as CodeTaskFile;
 	const tRead = performance.now();
 
-	const state: HelperState = { binaryReads: 0, rpcCount: 0, outputBinaries: {} };
+	const state: HelperState = { binaryReads: 0, rpcCount: 0, rpcMs: 0, outputBinaries: {} };
 	const { settings } = task;
 	if (!settings?.code) throw new Error('No code to execute');
 
@@ -195,6 +195,7 @@ function timings(
 		run: Math.round(tRun - tBuild),
 		binaryReads: state.binaryReads,
 		rpcCount: state.rpcCount,
+		rpcMs: Math.round(state.rpcMs * 100) / 100,
 	};
 }
 
