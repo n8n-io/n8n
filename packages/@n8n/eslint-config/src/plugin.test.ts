@@ -20,4 +20,12 @@ describe('frontendConfig', () => {
 			)?.rules?.['n8n-local-rules/no-reka-ui-pagination'],
 		).toBe('error');
 	});
+
+	it('enables the reka-ui context menu import ban as an error', () => {
+		expect(
+			frontendConfig.find(
+				(config) => config.rules?.['n8n-local-rules/no-reka-ui-context-menu'] !== undefined,
+			)?.rules?.['n8n-local-rules/no-reka-ui-context-menu'],
+		).toBe('error');
+	});
 });
