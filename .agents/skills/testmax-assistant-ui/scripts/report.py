@@ -38,6 +38,7 @@ THEAD = ('<tr><th>Scenario</th><th>Kind</th><th>Result</th><th>Steps</th><th>Tim
          '<th>Tool calls</th><th>Input tokens</th><th>Output tokens</th><th>Cost</th><th>Browser errors</th></tr>')
 
 CSS = """<style>
+.run-video video{display:block;width:100%;max-height:70vh;aspect-ratio:16/10;object-fit:contain;background:var(--black);border-radius:var(--r8)}
 .badge.vis-changed{background:var(--pink-70);color:var(--bg)}
 .badge.vis-same{background:var(--bg-3);color:var(--black)}
 .badge.vis-only{box-shadow:inset 0 0 0 1px var(--line-strong);color:var(--dim)}
@@ -190,6 +191,16 @@ def result_html(run, verdict):
 	return br.badge(None)
 
 
+def render_video(screen):
+	"""The video of the run, above the expected outcome. Only the built report has it."""
+	if not screen:
+		return ''
+	poster = f' poster="{br.esc(screen["poster"])}"' if screen.get('poster') else ''
+	return br.fold('Video', f'<span class="mono-label">n8n UI · {br.esc(screen["duration"])}</span>',
+	               f'<div class="run-video"><video controls muted playsinline preload="metadata" '
+	               f'src="{br.esc(screen["src"])}"{poster}></video></div>', cls='brief-card prompt')
+
+
 def render_expected(run, verdict):
 	head = br.verdict_head(verdict) if verdict else ''
 	body = f'<div class="msg">{br.esc(run["scenario"]["expected"])}</div>'
@@ -197,7 +208,7 @@ def render_expected(run, verdict):
 		body += f'<div class="verdict-body">{br.render_checks(verdict)}</div>'
 	elif run['entry'].get('status') in FINISHED:
 		body += '<p class="dim">Not judged yet.</p>'
-	return f'<div class="box"><div class="head"><h2>Expected outcome</h2>{head}</div>{body}</div>'
+	return br.fold('Expected outcome', head, body)
 
 
 def render_run_box(run):
@@ -216,14 +227,12 @@ def render_run_box(run):
 	dl = ''.join(f'<dt>{br.esc(k)}</dt><dd>{br.esc(v)}</dd>' for k, v in facts)
 	error = result.get('error') or (entry.get('reason') if entry.get('status') in ('error', 'skipped') else None)
 	error_html = f'<pre class="run-error">{br.esc(error)}</pre>' if error else ''
-	return (f'<div class="box"><div class="head"><h2>Run</h2>{status_badge(entry.get("status", "waiting"))}</div>'
-	        f'<dl class="facts">{dl}</dl>{error_html}</div>')
+	return br.fold('Run', status_badge(entry.get('status', 'waiting')), f'<dl class="facts">{dl}</dl>{error_html}')
 
 
 def render_scenario_steps(steps, files):
 	if not steps:
-		return ('<div class="box"><div class="head"><h2>Scenario steps</h2></div>'
-		        '<p class="dim">No steps yet.</p></div>')
+		return br.fold('Scenario steps', '', '<p class="dim">No steps yet.</p>')
 	items = []
 	for s in steps:
 		status, title = br.esc(s['status']), br.esc(s['title'])
@@ -240,8 +249,8 @@ def render_scenario_steps(steps, files):
 			f'<div class="tstep-title"><span class="mono-label">{br.esc(s["kind"])}</span><span>{title}</span></div>'
 			f'<div class="mono-label">at {s["t"]:.1f}s{duration}</div>{error}</div></div></li>')
 	passed = sum(s['status'] == 'passed' for s in steps)
-	return (f'<div class="box"><div class="head"><h2>Scenario steps</h2><span class="mono-label">{passed} of {len(steps)} '
-	        f'passed</span></div><ol class="tsteps">{"".join(items)}</ol></div>')
+	return br.fold('Scenario steps', f'<span class="mono-label">{passed} of {len(steps)} passed</span>',
+	               f'<ol class="tsteps">{"".join(items)}</ol>')
 
 
 def render_errors(console):
@@ -251,16 +260,16 @@ def render_errors(console):
 	items = [f'<li>{br.esc(e.get("text", ""))}</li>' for e in console_errors[:50]]
 	items += [f'<li>{e.get("status") or "failed"} {br.esc(e.get("method", ""))} {br.esc(e.get("url", ""))}'
 	          f'{" · " + br.esc(e["error"]) if e.get("error") else ""}</li>' for e in request_errors[:50]]
-	return (f'<div class="box"><div class="head"><h2>Browser errors</h2><span class="mono-label">'
-	        f'{len(console_errors)} console · {len(request_errors)} requests</span></div>'
-	        f'<ul class="err-list">{"".join(items)}</ul></div>')
+	return br.fold('Browser errors', f'<span class="mono-label">{len(console_errors)} console · '
+	               f'{len(request_errors)} requests</span>', f'<ul class="err-list">{"".join(items)}</ul>')
 
 
-def render_panel(run, verdict, files, scale):
+def render_panel(run, verdict, files, scale, screen=None):
 	data = run['data']
 	prompt = (run['result'].get('prompts') or [{}])[0].get('text', '')
 	load_error = f'<div class="box err">Could not read the trace: {br.esc(data["loadError"])}</div>' if data.get('loadError') else ''
-	return (f'{load_error}<div class="result-row">{render_expected(run, verdict)}{render_run_box(run)}</div>'
+	return (f'{load_error}{render_video(screen)}'
+	        f'{render_expected(run, verdict)}{render_run_box(run)}'
 	        f'{render_scenario_steps(run["steps"], files)}'
 	        f'{br.render_steps(data["calls"], data["events"], *scale, prompt)}'
 	        f'{render_errors(run["console"])}')
@@ -320,11 +329,11 @@ def render_visual(results, runs, files):
 			f'<span class="mono-label">{ratio}{sizes}</span><span class="badge {cls}">{label}</span></div>'
 			f'<div class="vis-grid">{figures}</div>{tree}</div>')
 	changed = sum(r['status'] != 'unchanged' for r in results)
-	return (f'<div class="box"><div class="head"><h2>Visual check against master</h2><span class="mono-label">'
-	        f'{len(results)} captures · {changed} changed</span></div>'
-	        '<p class="fineprint">Pink pixels in the difference changed by more than a small color threshold. Magenta '
-	        'boxes are masked parts, such as LLM text. The accessibility tree diff shows changes in structure, roles '
-	        'and labels.</p>' + ''.join(cards) + '</div>')
+	return br.fold('Visual check against master',
+	               f'<span class="mono-label">{len(results)} captures · {changed} changed</span>',
+	               '<p class="fineprint">Pink pixels in the difference changed by more than a small color threshold. '
+	               'Magenta boxes are masked parts, such as LLM text. The accessibility tree diff shows changes in '
+	               'structure, roles and labels.</p>' + ''.join(cards))
 
 
 STEP_VIEWER_JS = """
@@ -394,6 +403,15 @@ STEP_VIEWER_JS = """
 })();
 """
 
+VIDEO_JS = """
+// The video of a run plays only while its panel shows.
+const showPanel = show;
+show = (id)=>{
+  showPanel(id);
+  document.querySelectorAll('.run:not(.active) .run-video video').forEach(v=>v.pause());
+};
+"""
+
 RELOAD_JS = """
 // Served by the live page: reload when the report is built again, for example after the verdicts.
 (()=>{
@@ -448,11 +466,7 @@ def _build(run_dir):
 				shots.mkdir(parents=True, exist_ok=True)
 				shutil.copy(png, shots / png.name)
 		verdict = verdicts.get(name)
-		active = ' active' if i == 0 else ''
-		rows.append(f'<tr class="row{active}" data-run="{name}" onclick="show(\'{name}\')">'
-		            + row_cells(run, result_html(run, verdict)) + '</tr>')
-		panels.append(f'<section class="run{active}" id="{name}">'
-		              + render_panel(run, verdict, f'runs/{name}/', scale) + '</section>')
+		screen = None
 		if (sub / 'screen.webm').exists():
 			(report / 'screens').mkdir(exist_ok=True)
 			shutil.copy(sub / 'screen.webm', report / 'screens' / f'{name}.webm')
@@ -463,6 +477,11 @@ def _build(run_dir):
 				shutil.copy(sub / 'screen-poster.png', report / 'screens' / f'{name}-poster.png')
 				screen['poster'] = f'screens/{name}-poster.png'
 			screens.append(screen)
+		active = ' active' if i == 0 else ''
+		rows.append(f'<tr class="row{active}" data-run="{name}" onclick="show(\'{name}\')">'
+		            + row_cells(run, result_html(run, verdict)) + '</tr>')
+		panels.append(f'<section class="run{active}" id="{name}">'
+		              + render_panel(run, verdict, f'runs/{name}/', scale, screen) + '</section>')
 
 	results = read_json(run_dir / 'visual.json', [])
 	for r in results:
@@ -484,7 +503,7 @@ def _build(run_dir):
 		br.esc(plan.get('title') or 'Instance AI feature test'), ''.join(rows), notes(status, runs, verdicts),
 		''.join(panels), replay=replay, after_table=render_visual(results, runs, visual_file), head=CSS,
 		scripts=(f'<script>const SCREENS = {json.dumps(screens)}; const REPORT_VERSION = "{version}";</script>'
-		         f'<script>window.addEventListener("DOMContentLoaded", ()=>{{{RELOAD_JS}}});</script>'
+		         f'<script>window.addEventListener("DOMContentLoaded", ()=>{{{VIDEO_JS}{RELOAD_JS}}});</script>'
 		         f'<script>{STEP_VIEWER_JS}</script>'),
 		case=render_case(plan, status), thead=THEAD, kicker='Assistant UI test')
 	(report / 'index.html').write_text(page)

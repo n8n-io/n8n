@@ -414,8 +414,14 @@ files, so you can copy or share it. It has, from top to bottom:
   `Failed` when its script failed
 - the visual check: the branch screen, the master screen, and the diff image
   of each capture, with the accessibility tree diff
-- for each run: the expected result and the verdict, the steps with their
-  screenshots, the browser errors, and the LLM steps from the trace
+- for each run: the video of the run, the expected result and the verdict,
+  the steps with their screenshots, the browser errors, and the LLM steps
+  from the trace. A click on a row of the table shows the panel and the
+  video of that run, and pauses the video of the other runs
+
+Each box shows closed. It opens and closes when you click its title. On the
+live page, a box that you open or close stays that way when the page
+updates.
 
 A master run that is kept from an earlier run shows "Reused" in its run box.
 
