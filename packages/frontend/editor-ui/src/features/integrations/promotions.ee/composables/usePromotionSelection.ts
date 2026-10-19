@@ -25,7 +25,12 @@ export function usePromotionSelection(graph: Ref<SelectionGraph | null>) {
 	watch(
 		graph,
 		(current) => {
-			if (!current) return;
+			// A new project or direction starts with the default selection.
+			if (!current) {
+				selection.value = initialSelectionState;
+				dropped.value = [];
+				return;
+			}
 			const result = applyPreview(selection.value, current);
 			selection.value = result.state;
 			dropped.value = result.dropped;

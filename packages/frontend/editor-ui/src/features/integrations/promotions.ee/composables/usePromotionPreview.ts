@@ -70,8 +70,13 @@ export function usePromotionPreview(projectId: Ref<string>, direction: Ref<Promo
 			state.value = result.resources.length === 0 ? 'empty' : 'ready';
 		} catch {
 			if (!isLatest()) return;
-			if (preview.value) refreshFailed.value = true;
-			else state.value = 'error';
+			// Only the changes view shows the refresh warning. Other states show the error.
+			if (state.value === 'ready') {
+				refreshFailed.value = true;
+			} else {
+				preview.value = null;
+				state.value = 'error';
+			}
 		} finally {
 			if (isLatest()) refreshing.value = false;
 		}

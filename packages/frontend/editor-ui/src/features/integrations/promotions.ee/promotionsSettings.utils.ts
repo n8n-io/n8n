@@ -49,9 +49,10 @@ export const isSamePromotionHostUrl = (current: string, next: string): boolean =
 export const repositoryDisplayName = (remote: PromotionEnvironment['remote']): string => {
 	if (remote.repositoryPath) return remote.repositoryPath;
 	const url = remote.remoteUrl.replace(/\/+$/, '').replace(/\.git$/, '');
-	// `https://host/acme/workflows`, `ssh://git@host:2222/acme/workflows` or `git@host:acme/workflows`
+	// `https://host/acme/workflows`, `ssh://git@host:2222/acme/workflows`, `git@host:acme/workflows`
+	// or `host:acme/workflows`
 	const match =
-		/^[a-z][a-z\d+.-]*:\/\/[^/]+\/(.+)$/i.exec(url) ?? /^[^@/\s]+@[^:/\s]+:(.+)$/.exec(url);
+		/^[a-z][a-z\d+.-]*:\/\/[^/]+\/(.+)$/i.exec(url) ?? /^(?:[^@/\s]+@)?[^:/\s]+:(.+)$/.exec(url);
 	return match ? match[1] : url;
 };
 

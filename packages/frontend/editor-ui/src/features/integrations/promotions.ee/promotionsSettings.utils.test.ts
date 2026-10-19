@@ -344,7 +344,7 @@ describe('repositoryDisplayName', () => {
 		expect(
 			repositoryDisplayName({
 				schemaVersion: 1,
-				remoteUrl: 'https://gitlab.example.com/acme/platform/workflows.git',
+				remoteUrl: 'https://gitlab.example.com/forked/repository.git',
 				repositoryPath: 'acme/platform/workflows',
 			}),
 		).toBe('acme/platform/workflows');
@@ -353,6 +353,7 @@ describe('repositoryDisplayName', () => {
 	it.each([
 		['https://github.com/acme/workflows.git', 'acme/workflows'],
 		['git@github.com:acme/workflows.git', 'acme/workflows'],
+		['github.com:acme/workflows.git', 'acme/workflows'],
 		['ssh://git@git.example.com:2222/acme/workflows.git', 'acme/workflows'],
 		['/srv/git/workflows.git', '/srv/git/workflows'],
 	])('shortens %s to %s', (remoteUrl, name) => {
