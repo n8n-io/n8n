@@ -1692,6 +1692,32 @@ describe('isAgentEditingAgent', () => {
 		expect(isAgentEditingAgent(node, 'agent-other')).toBe(false);
 	});
 
+	test('releases the previous agent once the active run selects another agent', () => {
+		const node = makeAgentNode({
+			status: 'active',
+			toolCalls: [
+				makeToolCall({
+					toolCallId: 'tc-select-a',
+					toolName: 'agent_builder_select_agent',
+					result: { ok: true, agentId: 'agent-a', agentChange: 'none' },
+				}),
+				makeToolCall({
+					toolCallId: 'tc-select-b',
+					toolName: 'agent_builder_select_agent',
+					result: { ok: true, agentId: 'agent-b', agentChange: 'none' },
+				}),
+				makeToolCall({
+					toolCallId: 'tc-select-failed',
+					toolName: 'agent_builder_select_agent',
+					result: { ok: false, agentId: 'agent-c' },
+				}),
+			],
+		});
+		expect(isAgentEditingAgent(node, 'agent-a')).toBe(false);
+		expect(isAgentEditingAgent(node, 'agent-b')).toBe(true);
+		expect(isAgentEditingAgent(node, 'agent-c')).toBe(false);
+	});
+
 	test('does not lock for a failed or finished agent selection', () => {
 		const selectAgent = (result: Record<string, unknown>, status: 'active' | 'completed') =>
 			makeAgentNode({
@@ -1721,9 +1747,20 @@ describe('getActiveSelectedAgentIds', () => {
 				}),
 			],
 		});
+		const activeChild = makeAgentNode({
+			agentId: 'active-child',
+			status: 'active',
+			toolCalls: [
+				makeToolCall({
+					toolCallId: 'tc-child-select',
+					toolName: 'agent_builder_select_agent',
+					result: { ok: true, agentId: 'agent-child' },
+				}),
+			],
+		});
 		const root = makeAgentNode({
 			status: 'active',
-			children: [finished],
+			children: [finished, activeChild],
 			toolCalls: [
 				makeToolCall({
 					toolCallId: 'tc-select',
@@ -1737,6 +1774,25 @@ describe('getActiveSelectedAgentIds', () => {
 				}),
 			],
 		});
-		expect(getActiveSelectedAgentIds(root)).toEqual(new Set(['agent-1']));
+		expect(getActiveSelectedAgentIds(root)).toEqual(new Set(['agent-1', 'agent-child']));
+	});
+
+	test('returns only the latest selection of an active node', () => {
+		const root = makeAgentNode({
+			status: 'active',
+			toolCalls: [
+				makeToolCall({
+					toolCallId: 'tc-select-a',
+					toolName: 'agent_builder_select_agent',
+					result: { ok: true, agentId: 'agent-a' },
+				}),
+				makeToolCall({
+					toolCallId: 'tc-select-b',
+					toolName: 'agent_builder_select_agent',
+					result: { ok: true, agentId: 'agent-b' },
+				}),
+			],
+		});
+		expect(getActiveSelectedAgentIds(root)).toEqual(new Set(['agent-b']));
 	});
 });

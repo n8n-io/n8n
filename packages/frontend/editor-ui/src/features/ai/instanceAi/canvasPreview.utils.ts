@@ -375,15 +375,25 @@ function getSelectedAgentId(tc: InstanceAiToolCallState): string | undefined {
 	return typeof tc.result.agentId === 'string' ? tc.result.agentId : undefined;
 }
 
-/** Ids of the agents selected by `agent_builder_select_agent` in a run that is still active. */
+/**
+ * The agent the node's latest successful `agent_builder_select_agent` call
+ * selected. An earlier selection no longer counts once the node selects another agent.
+ */
+function getLatestSelectedAgentId(node: InstanceAiAgentNode): string | undefined {
+	for (let i = node.toolCalls.length - 1; i >= 0; i--) {
+		const agentId = getSelectedAgentId(node.toolCalls[i]);
+		if (agentId) return agentId;
+	}
+	return undefined;
+}
+
+/** Ids of the agents that active nodes selected last with `agent_builder_select_agent`. */
 export function getActiveSelectedAgentIds(node: InstanceAiAgentNode): Set<string> {
 	const ids = new Set<string>();
 	const visit = (current: InstanceAiAgentNode) => {
 		if (current.status === 'active') {
-			for (const tc of current.toolCalls) {
-				const agentId = getSelectedAgentId(tc);
-				if (agentId) ids.add(agentId);
-			}
+			const agentId = getLatestSelectedAgentId(current);
+			if (agentId) ids.add(agentId);
 		}
 		for (const child of current.children) visit(child);
 	};
@@ -396,7 +406,7 @@ export function getActiveSelectedAgentIds(node: InstanceAiAgentNode): Set<string
  * agent tree — used to lock the agent artifact editor while a build is in
  * flight so user edits can't race builder config writes (the post-build
  * refetch would clobber them). Any signal is enough:
- *   1. The active run selected this agent with `agent_builder_select_agent` —
+ *   1. The active run selected this agent last with `agent_builder_select_agent` —
  *      covers the whole orchestrator build, including the reads and questions
  *      before the first config write.
  *   2. The active agent tree has already created/mutated this agent.
@@ -405,7 +415,7 @@ export function getActiveSelectedAgentIds(node: InstanceAiAgentNode): Set<string
  */
 export function isAgentEditingAgent(node: InstanceAiAgentNode, agentId: string): boolean {
 	if (node.status === 'active') {
-		if (node.toolCalls.some((tc) => getSelectedAgentId(tc) === agentId)) return true;
+		if (getLatestSelectedAgentId(node) === agentId) return true;
 		if (getLatestAgentArtifactResult(node)?.agentId === agentId) return true;
 	}
 
