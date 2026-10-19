@@ -9982,6 +9982,7 @@
 	"promotions.preview.dataTable.rowsNotCopied": "The operation copies the table structure only. It doesn't copy rows.",
 	"promotions.preview.side.notOnBranch": "Not on the branch",
 	"promotions.preview.side.notOnInstance": "Not on this instance",
+	"promotions.preview.side.instance": "This instance",
 	"promotions.preview.badge.promote": "{count} change to promote | {count} changes to promote",
 	"promotions.preview.badge.apply": "{count} incoming change | {count} incoming changes",
 	"promotions.preview.badge.failed.promote": "Couldn't check for changes to promote. Reload the page to try again.",

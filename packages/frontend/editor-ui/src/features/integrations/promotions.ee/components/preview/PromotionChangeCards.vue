@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import type { PromotionDirection } from '@n8n/api-types';
+import type { PromotionDirection, PromotionResource } from '@n8n/api-types';
 import { computed, nextTick, ref, watch } from 'vue';
 
 import type { DetailEntry } from '../../composables/usePromotionResourceDetails';
 import { blockersOf, type BlockerIndex } from '../../promotionOperation';
 import type { Inclusion, ResourceKey, SelectionGraph } from '../../promotionPreview.selection';
+import { hasWorkflowDiff } from '../../promotionPreview.workflow';
 import PromotionChangeCard from './PromotionChangeCard.vue';
 
 const props = defineProps<{
@@ -15,7 +16,10 @@ const props = defineProps<{
 	entries: ReadonlyMap<ResourceKey, DetailEntry>;
 	inspectedKey?: ResourceKey;
 	blockers: BlockerIndex;
+	branchName?: string;
 }>();
+
+const openWorkflow = defineModel<ResourceKey | undefined>('openWorkflow');
 
 const emit = defineEmits<{
 	retry: [key: ResourceKey];
@@ -35,12 +39,32 @@ const resources = computed(() =>
 async function scrollToCard(key: ResourceKey | undefined) {
 	if (!key) return;
 	await nextTick();
+	// A card above that closes removes its content a few ticks later. Wait for the next frame.
+	await new Promise((resolve) => requestAnimationFrame(resolve));
 	list.value
 		?.querySelector(`[data-resource-key="${CSS.escape(key)}"]`)
 		?.scrollIntoView({ block: 'start' });
 }
 
 watch(() => props.inspectedKey, scrollToCard, { immediate: true });
+
+// Workflow cards share one open state, so opening a diff closes the other. The other cards
+// keep their own open state.
+function openBinding(resource: PromotionResource) {
+	if (!hasWorkflowDiff(resource)) return {};
+	return {
+		open: openWorkflow.value === resource.key,
+		'onUpdate:open': async (open: boolean) => {
+			if (!open) {
+				openWorkflow.value = undefined;
+				return;
+			}
+			openWorkflow.value = resource.key;
+			// Closing a diff above can move this card out of view.
+			await scrollToCard(resource.key);
+		},
+	};
+}
 
 defineExpose({ scrollToCard });
 </script>
@@ -57,6 +81,8 @@ defineExpose({ scrollToCard });
 			:entry="entries.get(resource.key)"
 			:inspected="inspectedKey === resource.key"
 			:blockers="blockersOf(blockers, resource)"
+			:branch-name="branchName"
+			v-bind="openBinding(resource)"
 			@inspect="emit('inspect', $event)"
 			@retry="emit('retry', resource.key)"
 			@refresh="emit('refresh')"

@@ -115,6 +115,14 @@ const treeRow = (getAllByTestId: (id: string) => HTMLElement[], key: string) => 
 	return within(row);
 };
 
+const cardToggle = (getAllByTestId: (id: string) => HTMLElement[], key: string) => {
+	const card = getAllByTestId('promotion-preview-card').find(
+		(element) => element.dataset.resourceKey === key,
+	);
+	if (!card) throw new Error(`No card for ${key}`);
+	return within(card).getByTestId('promotion-preview-card-toggle');
+};
+
 describe('PromotionPreviewView', () => {
 	beforeEach(() => {
 		invalidateInstancePromotionConnection();
@@ -141,15 +149,53 @@ describe('PromotionPreviewView', () => {
 		expect(router.currentRoute.value.query.resource).toBe('dataTable:t1');
 	});
 
-	it('should load the content of changed resources other than workflows with the preview', async () => {
+	it('should load the content of changed resources and only the open workflow with the preview', async () => {
 		await render();
 
 		expect(api.getPromotionResourceDetails).toHaveBeenCalledTimes(1);
 		expect(vi.mocked(api.getPromotionResourceDetails).mock.calls[0][3].keys).toEqual([
 			'folder:f1',
+			'workflow:w1',
 			'dataTable:t1',
 			'variable:global:API_URL',
 		]);
+	});
+
+	it('should keep one workflow diff open and load each workflow when its diff opens', async () => {
+		const { getAllByTestId } = await render();
+		const toggle = (key: string) => cardToggle(getAllByTestId, key);
+		const requestedKeys = () =>
+			vi.mocked(api.getPromotionResourceDetails).mock.calls.map(([, , , { keys }]) => keys);
+		expect(toggle('workflow:w1')).toHaveAttribute('data-state', 'open');
+		expect(toggle('workflow:w3')).toHaveAttribute('data-state', 'closed');
+
+		await userEvent.click(
+			treeRow(getAllByTestId, 'workflow:w1').getByText('Invoice reconciliation'),
+		);
+		await userEvent.click(toggle('workflow:w3'));
+
+		expect(toggle('workflow:w1')).toHaveAttribute('data-state', 'closed');
+		expect(toggle('workflow:w3')).toHaveAttribute('data-state', 'open');
+		expect(requestedKeys().at(-1)).toEqual(['workflow:w3']);
+
+		// Inspecting the first workflow again opens its diff with the content that already loaded.
+		await userEvent.click(
+			treeRow(getAllByTestId, 'workflow:w1').getByText('Invoice reconciliation'),
+		);
+
+		expect(toggle('workflow:w1')).toHaveAttribute('data-state', 'open');
+		expect(toggle('workflow:w3')).toHaveAttribute('data-state', 'closed');
+		expect(requestedKeys()).toHaveLength(2);
+	});
+
+	it('should open the workflow diff of a direct link instead of the first one', async () => {
+		const { getAllByTestId } = await render('/projects/p1/promotions/promote?resource=workflow:w3');
+
+		expect(cardToggle(getAllByTestId, 'workflow:w3')).toHaveAttribute('data-state', 'open');
+		expect(cardToggle(getAllByTestId, 'workflow:w1')).toHaveAttribute('data-state', 'closed');
+		expect(vi.mocked(api.getPromotionResourceDetails).mock.calls[0][3].keys).toContain(
+			'workflow:w3',
+		);
 	});
 
 	it('should open the card of a direct link', async () => {
@@ -158,7 +204,9 @@ describe('PromotionPreviewView', () => {
 		const card = getAllByTestId('promotion-preview-card').find(
 			(element) => element.dataset.resourceKey === 'tag:g1',
 		);
-		expect(vi.mocked(Element.prototype.scrollIntoView).mock.contexts).toEqual([card]);
+		await waitFor(() =>
+			expect(vi.mocked(Element.prototype.scrollIntoView).mock.contexts).toEqual([card]),
+		);
 	});
 
 	it('should scroll to the card again when the same item is inspected twice', async () => {
