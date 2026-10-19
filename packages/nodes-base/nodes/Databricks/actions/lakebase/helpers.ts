@@ -1,4 +1,4 @@
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, toPathSegment } from 'n8n-workflow';
 import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-workflow';
 
 import { extractResourceLocatorValue } from '../helpers';
@@ -82,5 +82,5 @@ export async function resolveLakebaseFunctionUrl(
 	itemIndex: number,
 ): Promise<string> {
 	const functionName = readLocator(context, itemIndex, 'lakebaseFunction', 'function');
-	return `${await resolveLakebaseSchemaUrl(context, itemIndex)}/rpc/${encodeURIComponent(functionName)}`;
+	return `${await resolveLakebaseSchemaUrl(context, itemIndex)}/rpc/${toPathSegment(functionName)}`;
 }

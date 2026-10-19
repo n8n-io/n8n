@@ -4,6 +4,7 @@ import type {
 	ILoadOptionsFunctions,
 	INodeListSearchResult,
 } from 'n8n-workflow';
+import { toPathSegment } from 'n8n-workflow';
 
 import {
 	databricksApiRequest,
@@ -769,7 +770,7 @@ export async function getLakebaseFunctions(
 		const base = await resolveLakebaseRestBase(this, project, branch);
 		const names = await fetchLakebaseFunctions(
 			this,
-			`${base}/${encodeURIComponent(database)}/${encodeURIComponent(schema)}`,
+			`${base}/${toPathSegment(database)}/${toPathSegment(schema)}`,
 		);
 		const results = names
 			.filter((name) => !INTERNAL_FUNCTION_PREFIX.test(name))
