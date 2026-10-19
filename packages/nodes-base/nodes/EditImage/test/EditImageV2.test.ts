@@ -1,4 +1,4 @@
-import { createCanvas, loadImage } from '@napi-rs/canvas';
+import { createCanvas, GlobalFonts, loadImage } from '@napi-rs/canvas';
 import getSystemFonts from 'get-system-fonts';
 import { mockDeep } from 'vitest-mock-extended';
 
@@ -131,6 +131,51 @@ async function nonWhiteBounds(
 	}
 
 	return { left, top, right, bottom };
+}
+
+function measureTextBounds({
+	font,
+	text,
+	fontSize,
+	horizontalAlignment,
+	verticalAlignment,
+	positionX,
+	positionY,
+	width,
+	height,
+}: {
+	font: string;
+	text: string;
+	fontSize: number;
+	horizontalAlignment: 'east' | 'west';
+	verticalAlignment: 'north' | 'south';
+	positionX: number;
+	positionY: number;
+	width: number;
+	height: number;
+}): { left: number; top: number; right: number; bottom: number } {
+	const family = 'n8n-edit-image-test-font';
+	const fontKey = GlobalFonts.registerFromPath(font, family);
+	if (!fontKey) throw new Error('Expected the test font to load');
+
+	try {
+		const context = createCanvas(width, height).getContext('2d');
+		context.font = `${fontSize}px "${family}"`;
+		context.textAlign = horizontalAlignment === 'east' ? 'right' : 'left';
+		context.textBaseline = 'alphabetic';
+		const metrics = context.measureText(text);
+		const x = horizontalAlignment === 'east' ? width - positionX : positionX;
+		const y = verticalAlignment === 'south' ? height - positionY : positionY;
+
+		return {
+			left: Math.max(0, Math.floor(x - metrics.actualBoundingBoxLeft)),
+			top: Math.max(0, Math.floor(y - metrics.actualBoundingBoxAscent)),
+			right: Math.min(width, Math.ceil(x + metrics.actualBoundingBoxRight)),
+			bottom: Math.min(height, Math.ceil(y + metrics.actualBoundingBoxDescent)),
+		};
+	} finally {
+		GlobalFonts.remove(fontKey);
+	}
 }
 
 function createExecuteFunctions({
@@ -635,7 +680,7 @@ describe('Edit Image v2', () => {
 		expect(await compositeFirstPixel(operator, input, overlay)).toEqual(expected);
 	});
 
-	it('converts pixels outside CMYK copy overlays to black', async () => {
+	it('converts pixels outside CMYK copy overlays to complemented RGB channels', async () => {
 		const input = await imageBuffer('#646e78', 2, 1);
 		const overlay = await imageBuffer('#c89632', 1, 1);
 		const executeFunctions = createExecuteFunctions({
@@ -660,7 +705,7 @@ describe('Edit Image v2', () => {
 		const result = await new EditImage().execute.call(executeFunctions);
 		const output = outputBuffer(result);
 
-		expect(await colorAt(output, 0, 0)).toEqual([0, 0, 0, 255]);
+		expect(await colorAt(output, 0, 0)).toEqual([155, 145, 135, 255]);
 		expect(await colorAt(output, 1, 0)).toEqual([55, 145, 135, 255]);
 	});
 
@@ -807,16 +852,22 @@ describe('Edit Image v2', () => {
 			const fonts = await getSystemFonts();
 			const font = fonts.find((systemFont) => systemFont.includes('Arial.')) ?? fonts[0];
 			expect(font).toBeDefined();
-			const input = await imageBuffer('#ffffff', 100, 100);
+			const text = 'Alignment';
+			const fontSize = 14;
+			const positionX = 20;
+			const positionY = 20;
+			const width = 100;
+			const height = 100;
+			const input = await imageBuffer('#ffffff', width, height);
 			const executeFunctions = createExecuteFunctions({
 				parameters: {
 					operation: 'text',
 					dataPropertyName: 'data',
-					text: verticalAlignment === 'north' ? 'Left top' : 'Right bottom',
-					fontSize: 14,
+					text,
+					fontSize,
 					fontColor: '#111111',
-					positionX: 5,
-					positionY: 5,
+					positionX,
+					positionY,
 					horizontalAlignment,
 					verticalAlignment,
 					lineLength: 20,
@@ -831,16 +882,20 @@ describe('Edit Image v2', () => {
 
 			const result = await new EditImage().execute.call(executeFunctions);
 			const bounds = await nonWhiteBounds(outputBuffer(result));
+			const expected = measureTextBounds({
+				font,
+				text,
+				fontSize,
+				horizontalAlignment,
+				verticalAlignment,
+				positionX,
+				positionY,
+				width,
+				height,
+			});
 
-			if (verticalAlignment === 'north') {
-				expect(bounds.left).toBeLessThan(20);
-				expect(bounds.top).toBeLessThan(20);
-			} else {
-				expect(bounds.top).toBeGreaterThan(70);
-				expect(bounds.right).toBeGreaterThan(80);
-				expect(bounds.right).toBeLessThanOrEqual(95);
-				expect(bounds.bottom).toBeGreaterThan(80);
-				expect(bounds.bottom).toBeLessThanOrEqual(100);
+			for (const edge of ['left', 'top', 'right', 'bottom'] as const) {
+				expect(Math.abs(bounds[edge] - expected[edge])).toBeLessThanOrEqual(2);
 			}
 		},
 	);

@@ -100,9 +100,9 @@ function applyCustomComposite(
 	if (CMYK_COPY_OPERATORS.has(operator)) {
 		// GraphicsMagick converts the full destination to CMYK before replacing one channel.
 		for (let index = 0; index < baseData.data.length; index += 4) {
-			baseData.data[index] = 0;
-			baseData.data[index + 1] = 0;
-			baseData.data[index + 2] = 0;
+			baseData.data[index] = MAX_CHANNEL_VALUE - baseData.data[index];
+			baseData.data[index + 1] = MAX_CHANNEL_VALUE - baseData.data[index + 1];
+			baseData.data[index + 2] = MAX_CHANNEL_VALUE - baseData.data[index + 2];
 		}
 	}
 
