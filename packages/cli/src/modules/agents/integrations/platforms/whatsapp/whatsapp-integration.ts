@@ -8,7 +8,13 @@ import { OutboundHttp } from '@n8n/backend-network';
 import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
 import { sleep } from '@n8n/utils/sleep';
-import type { AdapterPostableMessage, ChatInstance, Logger as ChatLogger, RawMessage } from 'chat';
+import type {
+	AdapterPostableMessage,
+	ChatInstance,
+	Logger as ChatLogger,
+	Message,
+	RawMessage,
+} from 'chat';
 import { InstanceSettings } from 'n8n-core';
 import { OperationalError, UserError } from 'n8n-workflow';
 import { createHmac } from 'node:crypto';
@@ -53,7 +59,7 @@ import {
 	resolveIntegrationContextQueryDefinitions,
 } from '../../integration-tool-definitions';
 import { buildIntegrationConnectionId } from '../../integration-tool-factory';
-import type { IntegrationActionResult } from '../../integration-tool-types';
+import type { IntegrationActionResult, ReplyExpectation } from '../../integration-tool-types';
 import { startTypingIndicator } from '../typing-indicator';
 import { GRAPH_API_BASE_URL } from './whatsapp-credential-check.service';
 import {
@@ -68,6 +74,15 @@ import {
 	WHATSAPP_ACTION_TOOL_DEFINITIONS,
 	WHATSAPP_CONTEXT_QUERY_TOOL_DEFINITIONS,
 } from './whatsapp-tool-definitions';
+import {
+	DELIVERY_FAILURE_CHAT_NOTICE,
+	DELIVERY_FAILURE_MESSAGE_ID_SUFFIX,
+	DELIVERY_FAILURE_NOTICE,
+	DeliveryFailureRecoveryLimiter,
+	isRecentFailure,
+	parseWindowClosedFailures,
+	WHATSAPP_REENGAGEMENT_ERROR_CODE,
+} from './whatsapp-delivery-failures';
 import { WhatsAppWebhookVerificationStore } from './whatsapp-webhook-verification.store';
 
 type ChatSdk = Awaited<ReturnType<typeof loadChatSdk>>;
@@ -86,8 +101,9 @@ const WINDOW_CLOSED_MESSAGE =
 	'To reach the customer, call list_templates, choose a template that fits, and send it with send_template. ' +
 	'If no template fits, tell the user that the customer cannot be reached until they message again.';
 
-/** Meta's error for a free-form send outside the customer service window. */
-const WHATSAPP_REENGAGEMENT_ERROR_CODE = 131047;
+/** At most this many recovery turns for each thread in this window. See {@link DeliveryFailureRecoveryLimiter}. */
+const DELIVERY_FAILURE_RECOVERY_WINDOW_MS = 60 * 60 * 1000;
+const DELIVERY_FAILURE_MAX_RECOVERIES = 3;
 
 /** Listing templates runs inside an agent turn, so a stalled request has to give up. */
 const WHATSAPP_TEMPLATE_REQUEST_TIMEOUT_MS = 30_000;
@@ -392,6 +408,10 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 		const connectionId = buildIntegrationConnectionId(ctx.integration);
 		const webhookVerification = this.webhookVerification;
 		const agentId = ctx.agentId;
+		const deliveryFailureLimiter = new DeliveryFailureRecoveryLimiter(
+			DELIVERY_FAILURE_RECOVERY_WINDOW_MS,
+			DELIVERY_FAILURE_MAX_RECOVERIES,
+		);
 
 		// Wraps the real adapter to enforce the 24-hour customer service window
 		// and the rate-limit backoff (see module doc). `stream` needs no override
@@ -413,6 +433,51 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 				const waId = userId.replace(/\D/g, '');
 				if (!waId) throw new UserError('The WhatsApp user ID must be a phone number.');
 				return await super.openDM(waId);
+			}
+
+			// Meta accepts a free-form send outside the 24-hour window and reports
+			// the failure later, in a status webhook. The agent has already been told
+			// the send worked, so this tells it again and lets it send a template.
+			override async handleWebhook(
+				request: Request,
+				options?: Parameters<InstanceType<typeof AdapterClass>['handleWebhook']>[1],
+			): Promise<Response> {
+				const rawBody = request.method === 'POST' ? await request.clone().text() : undefined;
+				const response = await super.handleWebhook(request, options);
+				// The base class returns 200 only for a valid signature.
+				if (rawBody && response.ok) this.reportWindowClosedFailures(rawBody, options);
+				return response;
+			}
+
+			private reportWindowClosedFailures(
+				rawBody: string,
+				options?: Parameters<InstanceType<typeof AdapterClass>['handleWebhook']>[1],
+			): void {
+				let payload: unknown;
+				try {
+					payload = JSON.parse(rawBody);
+				} catch {
+					return;
+				}
+				for (const failure of parseWindowClosedFailures(payload)) {
+					if (!isRecentFailure(failure)) continue;
+					if (!deliveryFailureLimiter.tryAcquire(failure)) continue;
+					logger.info('[WhatsAppIntegration] Free-form send failed outside the 24h window', {
+						agentId,
+					});
+					this.handleInboundMessage(
+						{
+							id: `${failure.messageId}${DELIVERY_FAILURE_MESSAGE_ID_SUFFIX}`,
+							from: failure.recipientId,
+							timestamp: failure.timestamp,
+							type: 'text',
+							text: { body: DELIVERY_FAILURE_NOTICE },
+						},
+						undefined,
+						failure.phoneNumberId,
+						options,
+					);
+				}
 			}
 
 			override async postMessage(
@@ -462,6 +527,25 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 		}
 
 		return new ConversationWindowGuardedAdapter(config);
+	}
+
+	getFailedSendReport(
+		message: Message<unknown>,
+	): { messageId: string; chatNotice: string } | undefined {
+		if (!message.id.endsWith(DELIVERY_FAILURE_MESSAGE_ID_SUFFIX)) return undefined;
+		return {
+			messageId: message.id.slice(0, -DELIVERY_FAILURE_MESSAGE_ID_SUFFIX.length),
+			chatNotice: DELIVERY_FAILURE_CHAT_NOTICE,
+		};
+	}
+
+	/**
+	 * A delivery notice is not a customer message, and a normal reply to it
+	 * would fail for the same reason as the send. The agent may end the turn
+	 * silently.
+	 */
+	getReplyExpectation({ message }: { message: Message<unknown> }): ReplyExpectation {
+		return message.id.endsWith(DELIVERY_FAILURE_MESSAGE_ID_SUFFIX) ? 'optional' : 'required';
 	}
 
 	formatActionDecisionMessage({

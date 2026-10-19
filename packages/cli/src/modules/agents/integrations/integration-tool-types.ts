@@ -164,6 +164,13 @@ export interface IntegrationMessageContextStore {
 	resolveSession(derivedThreadId: string): Promise<SessionBinding | null>;
 	unbindSession(derivedThreadId: string): Promise<void>;
 	clearSessionBindings(originThreadId: string): Promise<void>;
+	/** Remembers which session sent a message, so a later delivery failure reaches that session. */
+	recordSentMessage(
+		derivedThreadId: string,
+		messageId: string,
+		origin: SessionBinding,
+	): Promise<void>;
+	resolveSentMessage(derivedThreadId: string, messageId: string): Promise<SessionBinding | null>;
 }
 
 export interface SessionBinding {

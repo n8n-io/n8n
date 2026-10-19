@@ -13,6 +13,10 @@ import { encodeIntegrationMessageContext } from '../../../integration-message-co
 import { createIntegrationContextTool } from '../../../integration-tools';
 import type { NormalizeComponentsContext, SuspendComponent } from '../../../component-mapper';
 import {
+	draftChatMemoryResourceId,
+	productionChatMemoryResourceId,
+} from '../../../../utils/agent-memory-scope';
+import {
 	createWhatsAppIntegration,
 	createWhatsAppReplayContext,
 	whatsAppThreadId,
@@ -115,6 +119,211 @@ describe('WhatsApp Cloud API integration scenarios', () => {
 		} finally {
 			await ctx.shutdown();
 		}
+	});
+
+	describe('failed free-form sends', () => {
+		const failedStatusWebhook = (
+			fixtures: ReturnType<typeof whatsAppReplayFixtures>,
+			{
+				code = 131047,
+				id = 'wamid.FAILED_SEND',
+				ageSeconds = 0,
+			}: { code?: number; id?: string; ageSeconds?: number } = {},
+		) => ({
+			object: 'whatsapp_business_account',
+			entry: [
+				{
+					id: 'waba-test-1',
+					changes: [
+						{
+							field: 'messages',
+							value: {
+								messaging_product: 'whatsapp',
+								metadata: { phone_number_id: fixtures.phoneNumberId },
+								statuses: [
+									{
+										id,
+										status: 'failed',
+										timestamp: String(Math.floor(Date.now() / 1000) - ageSeconds),
+										recipient_id: fixtures.contact.wa_id,
+										errors: [{ code, title: 'Re-engagement message' }],
+									},
+								],
+							},
+						},
+					],
+				},
+			],
+		});
+
+		it('starts an agent turn that tells the agent to send a template', async () => {
+			const fixtures = whatsAppReplayFixtures();
+			const ctx = await createWhatsAppReplayContext(fixtures);
+			try {
+				await ctx.sendWebhook(failedStatusWebhook(fixtures));
+
+				expect(ctx.agentExecutor.executeForChatPublished).toHaveBeenCalledExactlyOnceWith(
+					expect.objectContaining({
+						message: expect.stringContaining('send_template'),
+						messageContext: expect.objectContaining({
+							target: expect.objectContaining({ threadId: whatsAppThreadId(fixtures) }),
+							replyExpectation: 'optional',
+						}),
+					}),
+				);
+			} finally {
+				await ctx.shutdown();
+			}
+		});
+
+		it('starts one turn when Meta reports the same failure twice', async () => {
+			const fixtures = whatsAppReplayFixtures();
+			const ctx = await createWhatsAppReplayContext(fixtures);
+			try {
+				await ctx.sendWebhook(failedStatusWebhook(fixtures));
+				await ctx.sendWebhook(failedStatusWebhook(fixtures));
+
+				expect(ctx.agentExecutor.executeForChatPublished).toHaveBeenCalledTimes(1);
+			} finally {
+				await ctx.shutdown();
+			}
+		});
+
+		it('starts a turn for each failed send up to the limit for the thread', async () => {
+			const fixtures = whatsAppReplayFixtures();
+			const ctx = await createWhatsAppReplayContext(fixtures);
+			try {
+				for (const id of ['wamid.A', 'wamid.B', 'wamid.C', 'wamid.D']) {
+					await ctx.sendWebhook(failedStatusWebhook(fixtures, { id }));
+				}
+
+				expect(ctx.agentExecutor.executeForChatPublished).toHaveBeenCalledTimes(3);
+			} finally {
+				await ctx.shutdown();
+			}
+		});
+
+		it('sends the report to the session that sent the failed message', async () => {
+			const fixtures = whatsAppReplayFixtures();
+			const ctx = await createWhatsAppReplayContext(fixtures);
+			try {
+				const customerThread = `agent-1:${whatsAppThreadId(fixtures)}`;
+				await ctx.messageContextStore.bindSession(customerThread, {
+					threadId: 'task-first',
+					resourceId: 'task:first',
+				});
+				await ctx.messageContextStore.recordSentMessage(customerThread, 'wamid.SENT', {
+					threadId: 'task-second',
+					resourceId: 'task:second',
+				});
+
+				await ctx.sendWebhook(failedStatusWebhook(fixtures, { id: 'wamid.SENT' }));
+
+				expect(ctx.agentExecutor.executeForChatPublished).toHaveBeenCalledExactlyOnceWith(
+					expect.objectContaining({
+						memory: expect.objectContaining({ resourceId: 'task:second' }),
+					}),
+				);
+			} finally {
+				await ctx.shutdown();
+			}
+		});
+
+		it('sends the report to the bound session when the sender is not recorded', async () => {
+			const fixtures = whatsAppReplayFixtures();
+			const ctx = await createWhatsAppReplayContext(fixtures);
+			try {
+				await ctx.messageContextStore.bindSession(`agent-1:${whatsAppThreadId(fixtures)}`, {
+					threadId: 'task-first',
+					resourceId: 'task:first',
+				});
+
+				await ctx.sendWebhook(failedStatusWebhook(fixtures, { id: 'wamid.UNKNOWN' }));
+
+				expect(ctx.agentExecutor.executeForChatPublished).toHaveBeenCalledExactlyOnceWith(
+					expect.objectContaining({
+						memory: expect.objectContaining({ resourceId: 'task:first' }),
+					}),
+				);
+			} finally {
+				await ctx.shutdown();
+			}
+		});
+
+		it('queues the report in the chat that sent the failed message', async () => {
+			const fixtures = whatsAppReplayFixtures();
+			const ctx = await createWhatsAppReplayContext(fixtures);
+			try {
+				const customerThread = `agent-1:${whatsAppThreadId(fixtures)}`;
+				await ctx.messageContextStore.bindSession(customerThread, {
+					threadId: 'task-first',
+					resourceId: 'task:first',
+				});
+				await ctx.messageContextStore.recordSentMessage(customerThread, 'wamid.CHAT', {
+					threadId: 'chat-thread',
+					resourceId: draftChatMemoryResourceId('user-1'),
+				});
+
+				await ctx.sendWebhook(failedStatusWebhook(fixtures, { id: 'wamid.CHAT' }));
+
+				expect(ctx.agentExecutor.executeForChatPublished).not.toHaveBeenCalled();
+				expect(ctx.chatQueued).toEqual([
+					expect.objectContaining({
+						kind: 'preview',
+						userId: 'user-1',
+						resourceId: draftChatMemoryResourceId('user-1'),
+						messageId: 'delivery-failed:wamid.CHAT',
+						message: expect.stringContaining('Tell the user'),
+					}),
+				]);
+			} finally {
+				await ctx.shutdown();
+			}
+		});
+
+		it('queues the report for a production chat as an n8n chat message', async () => {
+			const fixtures = whatsAppReplayFixtures();
+			const ctx = await createWhatsAppReplayContext(fixtures);
+			try {
+				await ctx.messageContextStore.recordSentMessage(
+					`agent-1:${whatsAppThreadId(fixtures)}`,
+					'wamid.PROD',
+					{ threadId: 'chat-thread', resourceId: productionChatMemoryResourceId('user-2') },
+				);
+
+				await ctx.sendWebhook(failedStatusWebhook(fixtures, { id: 'wamid.PROD' }));
+
+				expect(ctx.chatQueued).toEqual([
+					expect.objectContaining({ kind: 'n8n_chat', userId: 'user-2' }),
+				]);
+			} finally {
+				await ctx.shutdown();
+			}
+		});
+
+		it('does not start a turn for a failure that Meta reports long after it happened', async () => {
+			const fixtures = whatsAppReplayFixtures();
+			const ctx = await createWhatsAppReplayContext(fixtures);
+			try {
+				await ctx.sendWebhook(failedStatusWebhook(fixtures, { ageSeconds: 3 * 60 * 60 }));
+
+				expect(ctx.agentExecutor.executeForChatPublished).not.toHaveBeenCalled();
+			} finally {
+				await ctx.shutdown();
+			}
+		});
+
+		it('does not start a turn for a failure with another error code', async () => {
+			const fixtures = whatsAppReplayFixtures();
+			const ctx = await createWhatsAppReplayContext(fixtures);
+			try {
+				await ctx.sendWebhook(failedStatusWebhook(fixtures, { code: 131026 }));
+
+				expect(ctx.agentExecutor.executeForChatPublished).not.toHaveBeenCalled();
+			} finally {
+				await ctx.shutdown();
+			}
+		});
 	});
 
 	describe('inbound media', () => {

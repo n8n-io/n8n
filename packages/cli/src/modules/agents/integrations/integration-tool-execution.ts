@@ -300,6 +300,27 @@ export async function executeActionToolOperation(params: {
 				{ threadId: persistence.threadId, resourceId: persistence.resourceId },
 			);
 		}
+		// A delivery failure arrives later and names only the message. This lets
+		// it reach the session that sent the message.
+		if (
+			descriptor.integration.type === 'whatsapp' &&
+			(operation.action === 'send_dm' ||
+				operation.action === 'send_channel_message' ||
+				operation.action === 'send_template') &&
+			descriptor.agentId &&
+			messageContext.messageId &&
+			messageContext.target.threadId
+		) {
+			try {
+				await messageContextStore.recordSentMessage(
+					`${descriptor.agentId}:${messageContext.target.threadId}`,
+					messageContext.messageId,
+					{ threadId: persistence.threadId, resourceId: persistence.resourceId },
+				);
+			} catch {
+				// The send worked. Without the record, a failure goes to the bound session.
+			}
+		}
 		actionResult = { ...result, messageContext };
 	}
 
