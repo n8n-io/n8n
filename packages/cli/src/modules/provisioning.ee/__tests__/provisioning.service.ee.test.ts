@@ -18,6 +18,7 @@ import { type InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError, ForbiddenError } from '@n8n/errors';
+import config from '@/config';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import { type RoleMappingRuleService } from '@/modules/provisioning.ee/role-mapping-rule.service.ee';
 import { type RoleResolverService } from '@/modules/provisioning.ee/role-resolver.service.ee';
@@ -1562,6 +1563,52 @@ describe('ProvisioningService', () => {
 				return type === 'project' ? project : instance;
 			});
 		};
+
+		const setAuthenticationMethod = (method: 'email' | 'ldap' | 'saml' | 'oidc') => {
+			config.set('userManagement.authenticationMethod', method);
+		};
+
+		beforeEach(() => setAuthenticationMethod('saml'));
+		afterAll(() => setAuthenticationMethod('email'));
+
+		describe.each(['saml', 'oidc'] as const)('while %s is the authentication method', (method) => {
+			beforeEach(() => setAuthenticationMethod(method));
+
+			it('manages instance roles when instance role claim provisioning is enabled', async () => {
+				setEnabled({ instanceProvisioning: true });
+				expect(await provisioningService.isInstanceRoleManaged()).toBe(true);
+			});
+
+			it('manages project roles when project role claim provisioning is enabled', async () => {
+				setEnabled({ projectProvisioning: true });
+				expect(await provisioningService.isProjectRoleManaged()).toBe(true);
+			});
+
+			it('manages both scopes when expression mapping has rules for both', async () => {
+				setEnabled({ expressionMapping: true });
+				setRules({ instance: 1, project: 1 });
+				expect(await provisioningService.isInstanceRoleManaged()).toBe(true);
+				expect(await provisioningService.isProjectRoleManaged()).toBe(true);
+			});
+		});
+
+		describe.each(['email', 'ldap'] as const)('while %s is the authentication method', (method) => {
+			beforeEach(() => setAuthenticationMethod(method));
+
+			it('does not manage roles when claim provisioning is enabled', async () => {
+				setEnabled({ instanceProvisioning: true, projectProvisioning: true });
+				expect(await provisioningService.isInstanceRoleManaged()).toBe(false);
+				expect(await provisioningService.isProjectRoleManaged()).toBe(false);
+			});
+
+			it('does not manage roles when expression mapping has rules for both scopes', async () => {
+				setEnabled({ expressionMapping: true });
+				setRules({ instance: 1, project: 1 });
+				expect(await provisioningService.isInstanceRoleManaged()).toBe(false);
+				expect(await provisioningService.isProjectRoleManaged()).toBe(false);
+				expect(roleMappingRuleRepository.count).not.toHaveBeenCalled();
+			});
+		});
 
 		describe('isProjectRoleManaged', () => {
 			it('is managed when project role claim provisioning is enabled', async () => {

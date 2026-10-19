@@ -29,6 +29,10 @@ import { BadRequestError } from '@n8n/errors';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { UserService } from '@/services/user.service';
+import {
+	isOidcCurrentAuthenticationMethod,
+	isSamlCurrentAuthenticationMethod,
+} from '@/sso.ee/sso-helpers';
 
 import { PROVISIONING_PREFERENCES_DB_KEY } from './constants';
 import { SsoAccessDeniedError } from './errors/sso-access-denied.error';
@@ -500,7 +504,18 @@ export class ProvisioningService {
 		return (await this.roleMappingRuleRepository.count({ where: { type } })) > 0;
 	}
 
+	/**
+	 * The provisioning settings stay when an admin turns SAML or OIDC sign-in
+	 * off, but then no sign-in applies the mapped roles. So the manual role
+	 * lock applies only while SAML or OIDC is the current method. LDAP does not
+	 * apply mapped roles, so it does not count.
+	 */
+	private isSamlOrOidcCurrentAuthenticationMethod(): boolean {
+		return isSamlCurrentAuthenticationMethod() || isOidcCurrentAuthenticationMethod();
+	}
+
 	async isInstanceRoleManaged(): Promise<boolean> {
+		if (!this.isSamlOrOidcCurrentAuthenticationMethod()) return false;
 		if (await this.isInstanceRoleProvisioningEnabled()) return true;
 		return (
 			(await this.isExpressionMappingEnabled()) &&
@@ -509,6 +524,7 @@ export class ProvisioningService {
 	}
 
 	async isProjectRoleManaged(): Promise<boolean> {
+		if (!this.isSamlOrOidcCurrentAuthenticationMethod()) return false;
 		if (await this.isProjectRolesProvisioningEnabled()) return true;
 		return (
 			(await this.isExpressionMappingEnabled()) && (await this.hasRoleMappingRulesOfType('project'))

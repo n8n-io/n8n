@@ -44,6 +44,7 @@ import { ExecutionService } from '@/executions/execution.service';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import { OwnershipService } from '@/services/ownership.service';
 import { CHANGE_ROLE_ERROR_MESSAGES } from '@/services/user.service';
+import { setCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
 import { Telemetry } from '@/telemetry';
 
 mockInstance(Telemetry);
@@ -1742,12 +1743,15 @@ describe('PATCH /users/:id/role', () => {
 			await provisioningService.getConfig();
 			// @ts-expect-error - provisioningConfig is private
 			savedConfig = { ...provisioningService.provisioningConfig };
+			// The lock applies only while SAML or OIDC is the sign-in method.
+			await setCurrentAuthenticationMethod('saml');
 		});
 
 		afterEach(async () => {
 			// @ts-expect-error - provisioningConfig is private
 			provisioningService.provisioningConfig = { ...savedConfig };
 			await Container.get(RoleMappingRuleRepository).delete({});
+			await setCurrentAuthenticationMethod('email');
 		});
 
 		test('should return 403 when SSO provider controls instance roles', async () => {
