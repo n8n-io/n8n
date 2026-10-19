@@ -1238,6 +1238,28 @@ describe('AgentRuntime — execution counters', () => {
 		expect(counter.incrementTokenCount).toHaveBeenCalledTimes(2);
 	});
 
+	it('resumes a suspended call persisted under a legacy tool name', async () => {
+		const suspendTool = makeInterruptibleTool();
+		const { runtime } = createRuntimeWithTools([suspendTool], 1);
+
+		generateText.mockResolvedValueOnce(
+			makeGenerateWithToolCalls([
+				{ toolCallId: 'tc-1', toolName: 'approve', args: { question: 'continue?' } },
+			]),
+		);
+
+		const first = await runtime.generate('needs approval');
+		const { runId, toolCallId } = first.pendingSuspend![0];
+
+		Object.assign(suspendTool, { name: 'approve_v2', legacyNames: ['approve'] });
+
+		generateText.mockResolvedValueOnce(makeGenerateSuccess('approved'));
+		const resumed = await runtime.resume('generate', { approved: true }, { runId, toolCallId });
+
+		expect(resumed.error).toBeUndefined();
+		expect(resumed.finishReason).not.toBe('error');
+	});
+
 	it('exposes the checkpointed suspend payload to a resumed tool handler via ctx.suspendPayload', async () => {
 		const suspendPayload = { question: 'approve?', marker: 'xyz' };
 		let observedCtx: InterruptibleToolContext | undefined;
