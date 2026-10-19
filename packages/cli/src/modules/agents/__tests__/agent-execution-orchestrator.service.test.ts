@@ -295,7 +295,7 @@ function makeService(sandboxEnabled = false) {
 		backgroundJobRepository,
 		backgroundJobs,
 		settingsService,
-		createAgentSkillRefsService(agentRepository),
+		createAgentSkillRefsService(),
 	);
 
 	return {

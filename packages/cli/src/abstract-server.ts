@@ -269,7 +269,7 @@ export abstract class AbstractServer {
 			// Register a handler for waiting forms (excluded from metrics to avoid double-counting)
 			this.app.all(
 				`/${this.endpointFormWaiting}/:path{/:suffix}`,
-				createWebhookHandlerFor(Container.get(WaitingForms)),
+				createWebhookHandlerFor(Container.get(WaitingForms), undefined, 'form'),
 			);
 
 			// Register a handler for waiting webhooks (excluded from metrics to avoid double-counting)

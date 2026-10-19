@@ -135,7 +135,7 @@ const dataTableChangeSchema = z.discriminatedUnion('kind', [
 ]);
 
 /**
- * Continue can confirm a `destructive-change` conflict.
+ * Continue can confirm a `destructive-change` or `project-deletion` conflict.
  * The other conflicts need a package or target correction before creation can proceed.
  */
 export const promotionBindingConflictSchema = z.discriminatedUnion('code', [
@@ -164,6 +164,12 @@ export const promotionBindingConflictSchema = z.discriminatedUnion('code', [
 		project: promotionBindingProjectSchema,
 		filePath: z.string(),
 		workflows: z.array(workflowSchema),
+	}),
+	/** A full apply deletes each team project that the package does not hold. */
+	z.object({
+		kind: z.literal('project'),
+		code: z.literal('project-deletion'),
+		project: promotionBindingProjectSchema,
 	}),
 	z.object({
 		kind: z.literal('data-table'),

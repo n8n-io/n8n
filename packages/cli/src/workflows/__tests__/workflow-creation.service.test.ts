@@ -10,11 +10,13 @@ import type {
 } from '@n8n/db';
 import { WorkflowEntity } from '@n8n/db';
 import type { PolicyCleared } from '@n8n/decorators';
+import type { INode } from 'n8n-workflow';
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsFinderService } from '@n8n/backend-services';
 import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
+import { UninspectableSubworkflowSourceError } from '@/errors/uninspectable-subworkflow-source.error';
 import type { ExternalHooks, WorkflowLifecycleHookActor } from '@/external-hooks';
 import type { McpSettingsService } from '@/modules/mcp/mcp.settings.service';
 import type { InstanceRedactionEnforcementService } from '@/modules/redaction/instance-redaction-enforcement.service';
@@ -81,6 +83,7 @@ describe('WorkflowCreationService', () => {
 		enterpriseWorkflowServiceMock.collectCredentialReferences.mockReturnValue({
 			ids: new Set(),
 			hasUnresolved: false,
+			hasUninspectableSource: false,
 		});
 
 		// Default: no active floor. Tests opt into a floor explicitly.
@@ -139,6 +142,7 @@ describe('WorkflowCreationService', () => {
 			enterpriseWorkflowServiceMock.collectCredentialReferences.mockReturnValue({
 				ids: new Set(['source-credential']),
 				hasUnresolved: false,
+				hasUninspectableSource: false,
 			});
 
 			const context = await workflowCreationService.prepareBatchContext(
@@ -328,6 +332,7 @@ describe('WorkflowCreationService', () => {
 				enterpriseWorkflowServiceMock.collectCredentialReferences.mockReturnValue({
 					ids: new Set(['credential-1']),
 					hasUnresolved: false,
+					hasUninspectableSource: false,
 				});
 				credentialsFinderServiceMock.findCredentialIdsWithScopeForUser.mockResolvedValue(
 					new Set(['credential-1']),
@@ -384,6 +389,7 @@ describe('WorkflowCreationService', () => {
 				enterpriseWorkflowServiceMock.collectCredentialReferences.mockReturnValue({
 					ids: new Set(['credential-1']),
 					hasUnresolved: true,
+					hasUninspectableSource: false,
 				});
 				credentialsFinderServiceMock.findCredentialIdsWithScopeForUser.mockResolvedValue(
 					new Set(['credential-1']),
@@ -402,6 +408,58 @@ describe('WorkflowCreationService', () => {
 				).rejects.toThrow(
 					'The workflow you are trying to save contains credentials that are not shared with you',
 				);
+			});
+
+			it('should pass full credential access to the source check', async () => {
+				const user = mock<User>();
+				const newWorkflow = new WorkflowEntity();
+				licenseStateMock.isSharingLicensed.mockReturnValue(true);
+				projectServiceMock.getProjectWithScope.mockResolvedValue({ id: 'project-1' } as never);
+				enterpriseWorkflowServiceMock.collectCredentialReferences.mockReturnValue({
+					ids: new Set(),
+					hasUnresolved: false,
+					hasUninspectableSource: true,
+				});
+				enterpriseWorkflowServiceMock.canUseEveryCredential.mockReturnValue(true);
+				enterpriseWorkflowServiceMock.validateCredentialPermissionsToUser.mockImplementation(() => {
+					throw new Error('Stopping for test');
+				});
+
+				await expect(
+					workflowCreationService.createWorkflow(user, newWorkflow, { projectId: 'project-1' }),
+				).rejects.toThrow();
+
+				expect(enterpriseWorkflowServiceMock.canUseEveryCredential).toHaveBeenCalledWith(user);
+				expect(
+					enterpriseWorkflowServiceMock.validateCredentialPermissionsToUser,
+				).toHaveBeenCalledWith(newWorkflow, new Set(), { allowUninspectableSource: true });
+			});
+
+			it('should preserve the source error message for a restricted user', async () => {
+				const user = mock<User>();
+				const newWorkflow = new WorkflowEntity();
+				const node = { name: 'Sub' } as INode;
+				licenseStateMock.isSharingLicensed.mockReturnValue(true);
+				projectServiceMock.getProjectWithScope.mockResolvedValue({ id: 'project-1' } as never);
+				enterpriseWorkflowServiceMock.collectCredentialReferences.mockReturnValue({
+					ids: new Set(),
+					hasUnresolved: false,
+					hasUninspectableSource: true,
+				});
+				enterpriseWorkflowServiceMock.canUseEveryCredential.mockReturnValue(false);
+				enterpriseWorkflowServiceMock.validateCredentialPermissionsToUser.mockImplementation(() => {
+					throw new UninspectableSubworkflowSourceError(node);
+				});
+
+				await expect(
+					workflowCreationService.createWorkflow(user, newWorkflow, { projectId: 'project-1' }),
+				).rejects.toThrow(
+					/'Sub' node loads its sub-workflow from a source that is resolved only when the workflow runs/,
+				);
+
+				expect(
+					enterpriseWorkflowServiceMock.validateCredentialPermissionsToUser,
+				).toHaveBeenCalledWith(newWorkflow, new Set(), { allowUninspectableSource: false });
 			});
 		});
 

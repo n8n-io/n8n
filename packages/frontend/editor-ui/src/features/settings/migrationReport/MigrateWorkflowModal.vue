@@ -22,7 +22,8 @@ const props = defineProps<{
 	modalName: string;
 	data: {
 		ruleId: string;
-		workflow: AffectedWorkflow;
+		// One workflow, or the rows the user selected for a bulk migration.
+		workflows: AffectedWorkflow[];
 		// The rule's recommendations, shown as the concrete "what will change" detail.
 		recommendations: BreakingChangeRecommendation[];
 		// Emitted back to the report so the row can reflect the migrated state.
@@ -34,73 +35,127 @@ const i18n = useI18n();
 const toast = useToast();
 const workflowsStore = useWorkflowsStore();
 
-const workflow = computed(() => props.data.workflow);
+const workflows = computed(() => props.data.workflows);
+const isBulk = computed(() => workflows.value.length > 1);
 
-type Phase = 'confirm' | 'success' | 'error';
+// The failure message, plus the node a migration refused (so the error state can link to it).
+type MigrationError = { message: string; node?: { id: string; name: string } };
+type MigrationOutcome =
+	| { workflow: AffectedWorkflow; result: WorkflowMigrationResult }
+	| { workflow: AffectedWorkflow; error: MigrationError };
+type MigrationSuccess = Extract<MigrationOutcome, { result: WorkflowMigrationResult }>;
+type MigrationFailure = Extract<MigrationOutcome, { error: MigrationError }>;
+
+type Phase = 'confirm' | 'result';
 const phase = ref<Phase>('confirm');
 const migrating = ref(false);
-const result = ref<WorkflowMigrationResult | null>(null);
-// The failure message, plus the node a migration refused (so the error state can link to it).
-const error = ref<{ message: string; node?: { id: string; name: string } } | null>(null);
+const outcomes = ref<MigrationOutcome[]>([]);
 const publishing = ref(false);
-const published = ref(false);
+const publishedWorkflowIds = ref<Set<string>>(new Set());
 
-// Names of the migrated nodes, resolved from the report's issues, for review links.
-const migratedNodes = computed(() =>
-	(result.value?.migratedNodeIds ?? []).map((id) => ({
-		id,
-		name: workflow.value.issues.find((issue) => issue.nodeId === id)?.nodeName ?? id,
-	})),
+const succeeded = computed(() =>
+	outcomes.value.filter((outcome): outcome is MigrationSuccess => 'result' in outcome),
+);
+const failed = computed(() =>
+	outcomes.value.filter((outcome): outcome is MigrationFailure => 'error' in outcome),
+);
+const toPublish = computed(() =>
+	succeeded.value.filter(
+		(outcome) =>
+			outcome.result.republishable && !publishedWorkflowIds.value.has(outcome.workflow.id),
+	),
 );
 
-const warnings = computed(() => [
-	...(result.value?.notes ?? []),
-	...(result.value?.unmapped ?? []),
-]);
+const title = computed(() =>
+	isBulk.value
+		? i18n.baseText('settings.migrationReport.detail.migrate.modal.bulkTitle', {
+				interpolate: { count: String(workflows.value.length) },
+			})
+		: i18n.baseText('settings.migrationReport.detail.migrate.modal.title', {
+				interpolate: { name: workflows.value[0].name },
+			}),
+);
 
+const confirmLabel = computed(() => {
+	if (!isBulk.value) {
+		return i18n.baseText('settings.migrationReport.detail.migrate.modal.confirmButton');
+	}
+	const total = String(workflows.value.length);
+	return migrating.value
+		? i18n.baseText('settings.migrationReport.detail.migrate.modal.bulkProgress', {
+				interpolate: { done: String(outcomes.value.length), total },
+			})
+		: i18n.baseText('settings.migrationReport.detail.migrate.modal.bulkConfirmButton', {
+				interpolate: { count: total },
+			});
+});
+
+// Names of the migrated nodes, resolved from the report's issues, for review links.
+function migratedNodes({ workflow, result }: MigrationSuccess) {
+	return result.migratedNodeIds.map((id) => ({
+		id,
+		name: workflow.issues.find((issue) => issue.nodeId === id)?.nodeName ?? id,
+	}));
+}
+
+function warnings({ result }: MigrationSuccess) {
+	return [...result.notes, ...result.unmapped];
+}
+
+function toMigrationError(e: unknown): MigrationError {
+	// A migration that refuses a specific node tells us which one — surface it so
+	// the user can jump straight there.
+	const meta = e instanceof ResponseError ? e.meta : undefined;
+	return {
+		message: e instanceof Error ? e.message : String(e),
+		node:
+			typeof meta?.nodeId === 'string'
+				? {
+						id: meta.nodeId,
+						name: typeof meta.nodeName === 'string' ? meta.nodeName : meta.nodeId,
+					}
+				: undefined,
+	};
+}
+
+// One workflow at a time: each migration saves a new version, and a failure
+// must not stop the rest.
 async function handleMigrate() {
 	migrating.value = true;
 	try {
-		result.value = await breakingChangesApi.migrateWorkflowForRule(
-			useRootStore().restApiContext,
-			props.data.ruleId,
-			workflow.value.id,
-		);
-		props.data.eventBus.emit('migrated', { workflowId: workflow.value.id });
-		phase.value = 'success';
-	} catch (e) {
-		// A migration that refuses a specific node tells us which one — surface it so
-		// the user can jump straight there.
-		const meta = e instanceof ResponseError ? e.meta : undefined;
-		error.value = {
-			message: e instanceof Error ? e.message : String(e),
-			node:
-				typeof meta?.nodeId === 'string'
-					? {
-							id: meta.nodeId,
-							name: typeof meta.nodeName === 'string' ? meta.nodeName : meta.nodeId,
-						}
-					: undefined,
-		};
-		phase.value = 'error';
+		for (const workflow of workflows.value) {
+			try {
+				const result = await breakingChangesApi.migrateWorkflowForRule(
+					useRootStore().restApiContext,
+					props.data.ruleId,
+					workflow.id,
+				);
+				outcomes.value = [...outcomes.value, { workflow, result }];
+				props.data.eventBus.emit('migrated', { workflowId: workflow.id });
+			} catch (e) {
+				outcomes.value = [...outcomes.value, { workflow, error: toMigrationError(e) }];
+			}
+		}
+		phase.value = 'result';
 	} finally {
 		migrating.value = false;
 	}
 }
 
 async function handlePublish() {
-	if (!result.value) return;
 	publishing.value = true;
 	try {
-		await workflowsStore.publishWorkflow(workflow.value.id, {
-			versionId: result.value.newVersionId,
-		});
-		published.value = true;
-	} catch (e) {
-		toast.showError(
-			e,
-			i18n.baseText('settings.migrationReport.detail.migrate.publish.error.title'),
-		);
+		for (const { workflow, result } of toPublish.value) {
+			try {
+				await workflowsStore.publishWorkflow(workflow.id, { versionId: result.newVersionId });
+				publishedWorkflowIds.value = new Set(publishedWorkflowIds.value).add(workflow.id);
+			} catch (e) {
+				toast.showError(
+					e,
+					i18n.baseText('settings.migrationReport.detail.migrate.publish.error.title'),
+				);
+			}
+		}
 	} finally {
 		publishing.value = false;
 	}
@@ -117,16 +172,11 @@ function close() {
 		:event-bus="data.eventBus"
 		:center="true"
 		:close-on-click-modal="false"
+		:before-close="() => !migrating"
 		width="540px"
 	>
 		<template #header>
-			<N8nHeading size="xlarge">
-				{{
-					i18n.baseText('settings.migrationReport.detail.migrate.modal.title', {
-						interpolate: { name: workflow.name },
-					})
-				}}
-			</N8nHeading>
+			<N8nHeading size="xlarge">{{ title }}</N8nHeading>
 		</template>
 		<template #content>
 			<div :class="$style.content">
@@ -156,46 +206,81 @@ function close() {
 					</N8nCallout>
 				</template>
 
-				<!-- Success -->
-				<template v-else-if="phase === 'success' && result">
-					<N8nCallout theme="success" icon="circle-check">
-						{{
-							i18n.baseText('settings.migrationReport.detail.migrate.modal.successBody', {
-								interpolate: { name: workflow.name },
-							})
-						}}
-						<N8nLink :to="`/workflow/${workflow.id}`" new-window size="small">
-							{{ i18n.baseText('settings.migrationReport.detail.migrate.modal.openWorkflow') }}
-						</N8nLink>
+				<!-- Result -->
+				<template v-else>
+					<N8nCallout v-if="succeeded.length" theme="success" icon="circle-check">
+						<template v-if="isBulk">
+							{{
+								i18n.baseText('settings.migrationReport.detail.migrate.modal.bulkSuccessBody', {
+									adjustToNumber: succeeded.length,
+									interpolate: { count: String(succeeded.length) },
+								})
+							}}
+							<ul :class="$style.workflowList">
+								<li v-for="{ workflow } in succeeded" :key="workflow.id">
+									<N8nLink :to="`/workflow/${workflow.id}`" new-window size="small">
+										{{ workflow.name }}
+									</N8nLink>
+								</li>
+							</ul>
+						</template>
+						<template v-else>
+							{{
+								i18n.baseText('settings.migrationReport.detail.migrate.modal.successBody', {
+									interpolate: { name: succeeded[0].workflow.name },
+								})
+							}}
+							<N8nLink :to="`/workflow/${succeeded[0].workflow.id}`" new-window size="small">
+								{{ i18n.baseText('settings.migrationReport.detail.migrate.modal.openWorkflow') }}
+							</N8nLink>
+						</template>
 					</N8nCallout>
 
 					<!-- Behaviour changes the user should review -->
-					<N8nCallout v-if="warnings.length" theme="warning">
-						<div :class="$style.reviewTitle">
-							{{ i18n.baseText('settings.migrationReport.detail.migrate.modal.reviewTitle') }}
-						</div>
-						<ul :class="$style.warningList">
-							<li v-for="(warning, index) in warnings" :key="index">{{ warning }}</li>
-						</ul>
-						<div :class="$style.reviewNodes">
-							{{ i18n.baseText('settings.migrationReport.detail.migrate.modal.reviewNodes') }}
-							<template v-for="(node, index) in migratedNodes" :key="node.id">
-								<N8nLink :to="`/workflow/${workflow.id}/${node.id}`" new-window size="small">{{
-									node.name
-								}}</N8nLink
-								><template v-if="index < migratedNodes.length - 1">, </template>
-							</template>
-						</div>
-					</N8nCallout>
+					<template v-for="outcome in succeeded" :key="outcome.workflow.id">
+						<N8nCallout v-if="warnings(outcome).length" theme="warning">
+							<div :class="$style.reviewTitle">
+								{{
+									isBulk
+										? i18n.baseText(
+												'settings.migrationReport.detail.migrate.modal.bulkReviewTitle',
+												{
+													interpolate: { name: outcome.workflow.name },
+												},
+											)
+										: i18n.baseText('settings.migrationReport.detail.migrate.modal.reviewTitle')
+								}}
+							</div>
+							<ul :class="$style.warningList">
+								<li v-for="(warning, index) in warnings(outcome)" :key="index">{{ warning }}</li>
+							</ul>
+							<div :class="$style.reviewNodes">
+								{{ i18n.baseText('settings.migrationReport.detail.migrate.modal.reviewNodes') }}
+								<template v-for="(node, index) in migratedNodes(outcome)" :key="node.id">
+									<N8nLink
+										:to="`/workflow/${outcome.workflow.id}/${node.id}`"
+										new-window
+										size="small"
+										>{{ node.name }}</N8nLink
+									><template v-if="index < outcome.result.migratedNodeIds.length - 1">, </template>
+								</template>
+							</div>
+						</N8nCallout>
+					</template>
 
-					<N8nText v-if="published" size="small" color="success">
-						{{ i18n.baseText('settings.migrationReport.detail.migrate.publish.published') }}
-					</N8nText>
-				</template>
-
-				<!-- Error -->
-				<template v-else-if="phase === 'error' && error">
-					<N8nCallout theme="danger" icon="status-error">
+					<N8nCallout
+						v-for="{ workflow, error } in failed"
+						:key="workflow.id"
+						theme="danger"
+						icon="status-error"
+					>
+						<div v-if="isBulk" :class="$style.reviewTitle">
+							{{
+								i18n.baseText('settings.migrationReport.detail.migrate.modal.bulkErrorTitle', {
+									interpolate: { name: workflow.name },
+								})
+							}}
+						</div>
 						{{ error.message }}
 						<template v-if="error.node">
 							<br />
@@ -204,6 +289,17 @@ function close() {
 							}}</N8nLink>
 						</template>
 					</N8nCallout>
+
+					<N8nText v-if="publishedWorkflowIds.size" size="small" color="success">
+						{{
+							isBulk
+								? i18n.baseText('settings.migrationReport.detail.migrate.publish.bulkPublished', {
+										adjustToNumber: publishedWorkflowIds.size,
+										interpolate: { count: String(publishedWorkflowIds.size) },
+									})
+								: i18n.baseText('settings.migrationReport.detail.migrate.publish.published')
+						}}
+					</N8nText>
 				</template>
 			</div>
 		</template>
@@ -211,51 +307,57 @@ function close() {
 			<div :class="$style.actions">
 				<template v-if="phase === 'confirm'">
 					<N8nButton
-						variant="subtle"
+						variant="outline"
 						:disabled="migrating"
 						:label="i18n.baseText('generic.cancel')"
 						data-test-id="migrate-modal-cancel-button"
 						@click="close"
 					/>
+					<!-- A loading button hides its label, so a bulk run only disables it to keep the progress visible. -->
 					<N8nButton
-						:loading="migrating"
-						:label="i18n.baseText('settings.migrationReport.detail.migrate.modal.confirmButton')"
+						:loading="migrating && !isBulk"
+						:disabled="migrating"
+						:label="confirmLabel"
 						data-test-id="migrate-modal-confirm-button"
 						@click="handleMigrate"
 					/>
 				</template>
-				<template v-else-if="phase === 'success'">
-					<template v-if="result?.republishable && !published">
-						<N8nButton
-							variant="subtle"
-							:disabled="publishing"
-							:label="i18n.baseText('settings.migrationReport.detail.migrate.publish.skip')"
-							data-test-id="migrate-modal-skip-publish-button"
-							@click="close"
-						/>
-						<N8nButton
-							:loading="publishing"
-							:label="i18n.baseText('settings.migrationReport.detail.migrate.publish.button')"
-							data-test-id="migrate-modal-publish-button"
-							@click="handlePublish"
-						/>
-					</template>
+				<template v-else-if="toPublish.length">
 					<N8nButton
-						v-else
-						variant="subtle"
-						:label="i18n.baseText('settings.migrationReport.detail.migrate.modal.done')"
-						data-test-id="migrate-modal-done-button"
+						variant="outline"
+						:disabled="publishing"
+						:label="i18n.baseText('settings.migrationReport.detail.migrate.publish.skip')"
+						data-test-id="migrate-modal-skip-publish-button"
 						@click="close"
 					/>
-				</template>
-				<template v-else>
 					<N8nButton
-						variant="subtle"
-						:label="i18n.baseText('generic.close')"
-						data-test-id="migrate-modal-close-button"
-						@click="close"
+						:loading="publishing"
+						:label="
+							isBulk
+								? i18n.baseText('settings.migrationReport.detail.migrate.publish.bulkButton', {
+										adjustToNumber: toPublish.length,
+										interpolate: { count: String(toPublish.length) },
+									})
+								: i18n.baseText('settings.migrationReport.detail.migrate.publish.button')
+						"
+						data-test-id="migrate-modal-publish-button"
+						@click="handlePublish"
 					/>
 				</template>
+				<N8nButton
+					v-else-if="succeeded.length"
+					variant="outline"
+					:label="i18n.baseText('settings.migrationReport.detail.migrate.modal.done')"
+					data-test-id="migrate-modal-done-button"
+					@click="close"
+				/>
+				<N8nButton
+					v-else
+					variant="outline"
+					:label="i18n.baseText('generic.close')"
+					data-test-id="migrate-modal-close-button"
+					@click="close"
+				/>
 			</div>
 		</template>
 	</Modal>
@@ -288,8 +390,14 @@ function close() {
 }
 
 .reviewTitle {
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	margin-bottom: var(--spacing--3xs);
+}
+
+.workflowList {
+	list-style-type: disc;
+	padding-left: var(--spacing--sm);
+	margin-top: var(--spacing--3xs);
 }
 
 .warningList {

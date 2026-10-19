@@ -78,6 +78,46 @@ export const credentialUnresolvedIssueOpenApi: ZodOpenAPIMetadata = {
 	description: 'A credential reference that could not be resolved in the target project.',
 };
 
+export const credentialConflictFieldDocs = {
+	kind: {
+		description:
+			'`differs`: under `credentialConflictPolicy=fail`, the package would change the ' +
+			'name or values of the destination credential. `divergent`: under `overwrite`, two or ' +
+			'more package credentials with different names or values resolve to one destination ' +
+			'credential. The import does not select one of them.',
+	},
+	targetId: { description: 'Id of the destination credential.' },
+	sourceIds: {
+		description:
+			'Ids of the package credentials that resolve to the destination credential. For ' +
+			'`differs`, the package credentials that would change it.',
+	},
+	name: { description: 'Name of the destination credential.' },
+	usedBy: { description: 'Package consumers that use the listed package credentials.' },
+} as const satisfies Record<string, ZodOpenAPIMetadata>;
+
+export const credentialConflictIssueOpenApi: ZodOpenAPIMetadata = {
+	description:
+		'A matched credential that the credential conflict policy does not let the import ' +
+		'change. Only a credential that the import can update is checked: a credential owned by ' +
+		'a project of the import. Values are never reported.',
+};
+
+export const credentialUpdateForbiddenFieldDocs = {
+	targetId: { description: 'Id of the destination credential.' },
+	sourceIds: { description: 'Ids of the package credentials that resolve to it.' },
+	name: { description: 'Name of the destination credential.' },
+	usedBy: { description: 'Package consumers that use the listed package credentials.' },
+} as const satisfies Record<string, ZodOpenAPIMetadata>;
+
+export const credentialUpdateForbiddenIssueOpenApi: ZodOpenAPIMetadata = {
+	description:
+		'A matched credential that the import can update, but the caller has no ' +
+		'`credential:update` permission on it. Only under `credentialConflictPolicy` `overwrite` ' +
+		'or `fail`. The import does not read its values, so this blocks also when the package ' +
+		'would not change it. Use `keep-existing` to bind it without a change.',
+};
+
 export const projectConflictFieldDocs = {
 	name: { description: "The project's name as it appears in the package." },
 } as const satisfies Record<string, ZodOpenAPIMetadata>;

@@ -45,6 +45,7 @@ export class AgentTaskJobRegistrar {
 
 	/** Whether the durable scheduler runs agent tasks on this instance. */
 	isEnabled(): boolean {
+		// oxlint-disable-next-line typescript/no-deprecated -- the in-memory scheduler will be removed in a future version
 		const { enabled, enabledForAgentTasks } = this.globalConfig.scheduler;
 		return enabled && enabledForAgentTasks;
 	}
@@ -119,6 +120,7 @@ export class AgentTaskJobRegistrar {
 	 * startups converge.
 	 */
 	async reconcileAll(): Promise<void> {
+		// oxlint-disable-next-line typescript/no-deprecated -- the in-memory scheduler will be removed in a future version
 		if (!this.globalConfig.scheduler.enabled) return;
 
 		if (!this.isEnabled()) {

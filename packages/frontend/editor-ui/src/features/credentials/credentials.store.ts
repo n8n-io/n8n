@@ -44,7 +44,7 @@ export type CredentialsStore = ReturnType<typeof useCredentialsStore>;
 export type { CredentialFetchScope };
 
 const scopeKey = (scope: CredentialFetchScope): string =>
-	'workflowId' in scope ? `workflow:${scope.workflowId}` : `project:${scope.projectId}`;
+	`${'workflowId' in scope ? `workflow:${scope.workflowId}` : `project:${scope.projectId}`}${scope.forAgent ? ':agent' : ''}`;
 
 export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 	const { isEnabled: credentialDescriptionsEnabled } = useCredentialDescriptionsExperiment();

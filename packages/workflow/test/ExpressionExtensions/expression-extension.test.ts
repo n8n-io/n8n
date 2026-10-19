@@ -72,6 +72,13 @@ describe('Expression Parser', () => {
 			]);
 		});
 
+		test('Multiple escaped closing brackets', () => {
+			expect(splitExpression('{{ [{ a: { b: 1 \\}}, { a: { b: 2 \\}}] }}')).toEqual([
+				{ type: 'text', text: '' },
+				{ type: 'code', text: ' [{ a: { b: 1 }}, { a: { b: 2 }}] ', hasClosingBrackets: true },
+			]);
+		});
+
 		test('Empty input (CAT-3075)', () => {
 			expect(splitExpression('')).toEqual([{ type: 'text', text: '' }]);
 		});
@@ -106,6 +113,15 @@ describe('Expression Parser', () => {
 			expect(joinExpression(splitExpression('test {{ code.test("\\}}") }}'))).toEqual(
 				'test {{ code.test("\\}}") }}',
 			);
+		});
+
+		test('Multiple escaped closing brackets', () => {
+			expect(
+				joinExpression([
+					{ type: 'text', text: '' },
+					{ type: 'code', text: ' [{ a: { b: 1 }}, { a: { b: 2 }}] ', hasClosingBrackets: true },
+				]),
+			).toEqual('{{ [{ a: { b: 1 \\}}, { a: { b: 2 \\}}] }}');
 		});
 	});
 

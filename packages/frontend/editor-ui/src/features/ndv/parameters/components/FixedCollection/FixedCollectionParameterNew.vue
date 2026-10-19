@@ -675,7 +675,7 @@ const onAddButtonClick = () => {
 			<div v-if="shouldShowAddAtBottom" :class="$style.controls">
 				<N8nButton
 					class="n8n-button--highlightFill"
-					variant="subtle"
+					variant="outline"
 					v-if="hasSingleOption"
 					icon="plus"
 					size="small"
@@ -695,7 +695,7 @@ const onAddButtonClick = () => {
 					<template #trigger>
 						<N8nButton
 							class="n8n-button--highlightFill"
-							variant="subtle"
+							variant="outline"
 							icon="plus"
 							size="small"
 							:label="placeholder"
@@ -777,7 +777,7 @@ const onAddButtonClick = () => {
 					<div v-if="shouldShowAddAtBottom" :class="$style.controls">
 						<N8nButton
 							class="n8n-button--highlightFill"
-							variant="subtle"
+							variant="outline"
 							v-if="hasSingleOption"
 							icon="plus"
 							size="small"
@@ -795,7 +795,7 @@ const onAddButtonClick = () => {
 							<template #trigger>
 								<N8nButton
 									class="n8n-button--highlightFill"
-									variant="subtle"
+									variant="outline"
 									icon="plus"
 									size="small"
 									:label="placeholder"

@@ -107,8 +107,11 @@ const confirmDestructiveChangesSchema = z
 		description:
 			'Also applies destructive data table changes, which a `destructive-change` conflict reports: ' +
 			'removed or retyped columns. The values in those columns are removed. ' +
-			'Rows and other columns are kept. The confirmation covers every such change when Continue runs, ' +
-			'including changes that are not in the reviewed result.',
+			'Rows and other columns are kept. ' +
+			'On a full apply, also deletes the team projects that a `project-deletion` conflict reports, ' +
+			'with everything in them. ' +
+			'The confirmation covers every such change and deletion when Continue runs, ' +
+			'including those that are not in the reviewed result.',
 	});
 
 /** Continue must name the source that the paused Apply reported. */

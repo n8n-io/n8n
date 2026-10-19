@@ -2,6 +2,7 @@ import type { JSONSchema7 } from 'json-schema';
 import type { ZodType } from 'zod';
 
 import type { AgentExecutionCounter } from './agent';
+import type { GuardrailNotice } from './guardrail';
 import type { McpToolAnnotations } from './mcp';
 import type { AgentMessage } from './message';
 import type { ApprovalResumePayload } from '../../sdk/tool';
@@ -64,6 +65,8 @@ export interface ToolExecutionContext {
 	continuation?: JSONValue;
 	/** Resume schema restored from persistence for a resumed tool call. */
 	resumeSchema?: ToolSuspendOptions['resumeSchema'];
+
+	onGuardrailNotice?: (notice: GuardrailNotice) => void;
 }
 
 export interface ToolContext {
@@ -85,6 +88,7 @@ export interface ToolContext {
 	/** Aggregate execution counter for usage telemetry inherited from the current agent run. */
 	executionCounter?: ToolExecutionContext['executionCounter'];
 	approvalContext?: ToolExecutionContext['approvalContext'];
+	onGuardrailNotice?: (notice: GuardrailNotice) => void;
 }
 
 export interface InterruptibleToolContext<S = unknown, R = unknown> {
@@ -122,6 +126,7 @@ export interface InterruptibleToolContext<S = unknown, R = unknown> {
 	continuation?: JSONValue;
 	/** Resume schema persisted for this suspension. */
 	resumeSchema?: ToolSuspendOptions['resumeSchema'];
+	onGuardrailNotice?: (notice: GuardrailNotice) => void;
 }
 
 export interface ToolCancellationContext extends ToolContext {

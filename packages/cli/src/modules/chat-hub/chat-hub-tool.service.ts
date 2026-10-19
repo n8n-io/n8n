@@ -53,12 +53,41 @@ export class ChatHubToolService {
 		return await this.chatToolRepository.getToolIdsForAgent(agentId, trx);
 	}
 
-	async setSessionTools(sessionId: string, toolIds: string[], trx?: EntityManager): Promise<void> {
-		await this.chatToolRepository.setSessionTools(sessionId, toolIds, trx);
+	async setSessionTools(
+		sessionId: string,
+		ownerId: string,
+		toolIds: string[],
+		trx?: EntityManager,
+	): Promise<void> {
+		await this.ensureToolsOwnedBy(ownerId, toolIds, trx);
+		await this.chatToolRepository.setSessionTools(sessionId, [...new Set(toolIds)], trx);
 	}
 
-	async setAgentTools(agentId: string, toolIds: string[], trx?: EntityManager): Promise<void> {
-		await this.chatToolRepository.setAgentTools(agentId, toolIds, trx);
+	async setAgentTools(
+		agentId: string,
+		ownerId: string,
+		toolIds: string[],
+		trx?: EntityManager,
+	): Promise<void> {
+		await this.ensureToolsOwnedBy(ownerId, toolIds, trx);
+		await this.chatToolRepository.setAgentTools(agentId, [...new Set(toolIds)], trx);
+	}
+
+	/**
+	 * Throws `NotFoundError` unless the user owns every tool in `toolIds`.
+	 */
+	private async ensureToolsOwnedBy(
+		userId: string,
+		toolIds: string[],
+		trx?: EntityManager,
+	): Promise<void> {
+		const uniqueIds = [...new Set(toolIds)];
+		if (uniqueIds.length === 0) return;
+
+		const ownedTools = await this.chatToolRepository.getByIds(uniqueIds, userId, trx);
+		if (ownedTools.length !== uniqueIds.length) {
+			throw new NotFoundError('Chat hub tool not found');
+		}
 	}
 
 	private validateToolExpressions(definition: INode) {

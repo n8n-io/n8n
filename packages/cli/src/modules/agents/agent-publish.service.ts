@@ -4,7 +4,6 @@ import {
 	isDraftIntegration,
 	type AgentConfigValidationResponse,
 	type AgentJsonConfig,
-	type AgentSkill,
 	type AgentVersionListItemDto,
 	type StoredAgentConfig,
 } from '@n8n/api-types';
@@ -19,12 +18,11 @@ import {
 import { Container, Service } from '@n8n/di';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import isEqual from 'lodash/isEqual';
-import { deepCopy, UserError } from 'n8n-workflow';
+import { UserError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ConflictError, NotFoundError } from '@n8n/errors';
-import { getMissingSkillIds } from '@/modules/agents/utils/agent-missing-skill-ids';
 import { Telemetry } from '@/telemetry';
 
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
@@ -48,7 +46,7 @@ import type { AgentHistory } from './entities/agent-history.entity';
 import { AgentTask } from './entities/agent-task.entity';
 import type { Agent } from './entities/agent.entity';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
-import { toAgentDocument, type AgentSkillRefs } from './json-config/agent-document';
+import { toAgentDocument } from './json-config/agent-document';
 import { AgentHistoryRepository } from './repositories/agent-history.repository';
 import { AgentTaskSnapshotRepository } from './repositories/agent-task-snapshot.repository';
 import { AgentTaskRepository } from './repositories/agent-task.repository';
@@ -442,20 +440,28 @@ export class AgentPublishService {
 	): Promise<void> {
 		await this.enforceRevertPolicy(agent, context.user, version.schema);
 
-		const previousSchema = agent.schema
-			? toAgentDocument(agent.schema, await this.agentSkillRefs.refsForDraft(agent, {}))
-			: null;
+		const previousSkillRefs = await this.agentSkillRefs.refsForDraft(agent, {});
+		// With the hub on, the refs carry their pins. With it off, a revert can keep the ids
+		// and change the bodies, so compare the bodies too.
+		const previousSkills = structuredClone(agent.skills ?? {});
+		const previousSchema = agent.schema ? toAgentDocument(agent.schema, previousSkillRefs) : null;
 		const previousTools = agent.tools ?? {};
-		const previousSkills = agent.skills ?? {};
-		const { tasksChanged, nextSchema } = await this.transactionRunner.run({}, async (ctx) => {
-			const definition = await this.definitionService.readVersion(version, ctx);
-			definition.schema = draftSchemaFromVersion(definition.schema);
-			agent.versionId = nextVersionId;
-			return {
-				tasksChanged: await this.definitionService.replaceDraft(agent, definition, ctx),
-				nextSchema: definition.schema,
-			};
-		});
+		const { tasksChanged, nextSchema, nextSkillRefs } = await this.transactionRunner.run(
+			{},
+			async (ctx) => {
+				const definition = await this.definitionService.readVersion(version, ctx);
+				definition.schema = draftSchemaFromVersion(definition.schema);
+				agent.versionId = nextVersionId;
+				// Each skill ref is pinned to the version that the published version ran.
+				// No skill row is written, so this needs no skill permission.
+				const changed = await this.definitionService.replaceDraft(agent, definition, ctx, version);
+				return {
+					tasksChanged: changed,
+					nextSchema: definition.schema,
+					nextSkillRefs: await this.agentSkillRefs.refsForDraft(agent, ctx),
+				};
+			},
+		);
 		const integrations = agent.integrations ?? [];
 		await this.saveCompletion.configurationSaved(
 			{
@@ -466,7 +472,9 @@ export class AgentPublishService {
 				by: context.modifiedBy,
 				changedParts: diffAgentConfigParts(previousSchema, nextSchema, integrations, integrations, {
 					tools: !isEqual(previousTools, agent.tools),
-					skills: !isEqual(previousSkills, agent.skills),
+					skills:
+						!isEqual(previousSkillRefs, nextSkillRefs) ||
+						(!this.agentSkillRefs.usesSkillsHub && !isEqual(previousSkills, agent.skills ?? {})),
 					tasks: tasksChanged,
 				}),
 				wasUnconfigured: false,
@@ -564,27 +572,6 @@ export class AgentPublishService {
 			}),
 			ctx,
 		);
-	}
-
-	private pickConfiguredSkillBodies(
-		config: StoredAgentConfig | null,
-		skillRefs: AgentSkillRefs,
-		skills: Record<string, AgentSkill>,
-	): Record<string, AgentSkill> | null {
-		if (!config) return null;
-
-		const missing = getMissingSkillIds(skillRefs, skills);
-		if (missing.length > 0) {
-			throw new UserError(`Cannot publish agent with missing skill bodies: ${missing.join(', ')}`);
-		}
-
-		const snapshot: Record<string, AgentSkill> = {};
-		for (const ref of skillRefs ?? []) {
-			const skill = skills[ref.id];
-			if (skill) snapshot[ref.id] = deepCopy(skill);
-		}
-
-		return snapshot;
 	}
 
 	private async readPublishTargetDocument(
@@ -711,27 +698,30 @@ export class AgentPublishService {
 		user: User,
 		versionId: string,
 	) {
-		const skillRefs = await this.agentSkillRefs.refsForDraft(agent, ctx);
 		try {
-			return await this.agentHistoryRepository.saveVersion(
+			const snapshot = await this.agentSkillRefs.versionSnapshot(agent, ctx);
+			const { schema, skills } = snapshot;
+			const history = await this.agentHistoryRepository.saveVersion(
 				{
 					versionId,
 					agentId: agent.id,
-					// The stored config carries the skill refs of the draft into the version.
-					schema: agent.schema
+					schema: schema
 						? {
-								...agent.schema,
+								...schema,
 								integrations: (agent.integrations ?? []).filter(
 									(integration) => integration.type === N8N_CHAT_INTEGRATION_TYPE,
 								),
 							}
 						: null,
 					tools: this.customToolsService.snapshotConfiguredTools(agent.schema, agent.tools ?? {}),
-					skills: this.pickConfiguredSkillBodies(agent.schema, skillRefs, agent.skills ?? {}),
+					skills,
 					publishedBy: user,
 				},
 				ctx,
 			);
+			// The skill pins need the `agent_history` row.
+			await this.agentSkillRefs.pinVersion(versionId, snapshot, ctx);
+			return history;
 		} catch (error) {
 			// Concurrent publishes of one draft can collide before they reach the revision fence.
 			if (isUniqueConstraintError(error)) {

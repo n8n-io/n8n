@@ -26,6 +26,7 @@ import type { CredentialsFinderService } from '@n8n/backend-services';
 import type { EphemeralNodeExecutor } from '@/node-execution';
 import type { OauthService } from '@/oauth/oauth.service';
 import type { AiService } from '@/services/ai.service';
+import type { CredentialsService } from '@/credentials/credentials.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
@@ -141,6 +142,7 @@ function makeReconstructionService(
 		mock<CredentialsFinderService>(),
 		mock<WorkflowFinderService>(),
 		mock<AgentChatAttachmentService>(),
+		mock<CredentialsService>(),
 	);
 }
 
@@ -226,6 +228,44 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — MCP w
 		expect(buildMcpClientForServerMock.mock.calls[0][0]).toMatchObject({ name: 'github' });
 		expect(buildMcpClientForServerMock.mock.calls[1][0]).toMatchObject({ name: 'fs' });
 	});
+
+	it.each([
+		['inline', true],
+		['top-level', false],
+		['sub-agent', false],
+	] as const)(
+		'marks MCP tool permissions as non-interrupting only for %s runtimes: %s',
+		async (runtimeProfile, nonInterrupting) => {
+			const { service, credentialProvider } = setup();
+
+			await service.reconstructFromResolvedSource({
+				config: {
+					name: 'Agent',
+					model: 'anthropic/claude-sonnet-4-5',
+					instructions: 'Help',
+					mcpServers: [
+						{
+							name: 'github',
+							url: 'https://api.example.test/mcp',
+							transport: 'streamableHttp',
+							authentication: 'none',
+						},
+					],
+				},
+				memoryOwnerAgentId: 'agent-1',
+				projectId: 'project-1',
+				credentialProvider,
+				toolDescriptors: {},
+				toolCodeByName: {},
+				skills: {},
+				runtimeProfile,
+				runType: 'production',
+			});
+
+			const deps = buildMcpClientForServerMock.mock.calls[0][1] as { nonInterrupting?: boolean };
+			expect(deps.nonInterrupting).toBe(nonInterrupting);
+		},
+	);
 
 	it('forwards resolved MCP tool names through eval instrumentation', async () => {
 		const { service, credentialProvider } = setup();

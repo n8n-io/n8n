@@ -26,6 +26,7 @@ import {
 	waitForAllActivity,
 	runMultiTurnConversation,
 	recordUserTurn,
+	buildAutoApprovePayload,
 	type ConfirmationStrategy,
 } from './chat-loop';
 import { runWorkflowChecks, summarizeMissingWorkflowError } from './cleanup';
@@ -71,6 +72,7 @@ import {
 	extractOutcomeFromEvents,
 	mergeSeededConversationMetrics,
 } from '../outcome/event-parser';
+import { findForeignWorkflowReads } from '../outcome/foreign-reads';
 import { buildTranscriptFromEvents } from '../outcome/transcript-from-events';
 import { buildAgentOutcome, extractWorkflowIdsFromMessages } from '../outcome/workflow-discovery';
 import type {
@@ -78,6 +80,7 @@ import type {
 	BuildTimeout,
 	BuildTrace,
 	CapturedEvent,
+	CapturedToolCall,
 	ConversationMetrics,
 	ConversationTurn,
 	ExecutionScenario,
@@ -93,6 +96,7 @@ import {
 	lastAgentText,
 	userTurnsAsText,
 } from '../utils/conversation-text';
+import { getEventPayload } from '../utils/confirmation-payload';
 import { UserProxyLlm, type ProxyDecisionStats } from '../utils/user-proxy';
 
 // ---------------------------------------------------------------------------
@@ -333,6 +337,8 @@ export interface BuildResult {
 	 *  one applies even when the BUILD SUCCEEDED, which is exactly the case that would
 	 *  otherwise be scored as an agent failure. */
 	priorRunFailed?: string;
+	/** Workflows the agent read that this build neither created nor seeded. Not scored. */
+	foreignWorkflowReads?: string[];
 	/** Evidence that the MODEL PROVIDER, not the builder, failed this build (a
 	 *  5xx/429 upstream of the n8n instance). Set only after the retry budget is
 	 *  spent. Routed to `framework_issue` with `PROVIDER_OUTAGE_ROOT_CAUSE`, so an
@@ -342,6 +348,24 @@ export interface BuildResult {
 	 *  ordinary case; present even on a failed build, so the deterministic checks
 	 *  can report WHY nothing was created. */
 	credentialSetup?: CredentialSetupRunFacts;
+}
+
+/** A harness fault that decides the iteration without grading. `counted` faults fail it as
+ *  `framework_issue`; the others keep it out of the pass rate. */
+export function harnessFault(build: BuildResult): { reason: string; counted: boolean } | undefined {
+	if (build.priorRunFailed) {
+		return {
+			reason: `prior run staging did not land, so the case premise is missing: ${build.priorRunFailed}`,
+			counted: false,
+		};
+	}
+	if (build.foreignWorkflowReads?.length) {
+		return {
+			reason: `the agent read workflows another build made (${build.foreignWorkflowReads.join(', ')})`,
+			counted: true,
+		};
+	}
+	return undefined;
 }
 
 /**
@@ -599,6 +623,16 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 		buildProject
 			? { buildProjectId: buildProject.projectId, buildUserId: buildProject.userId }
 			: {};
+	let parsedToolCalls: CapturedToolCall[] | undefined;
+	const foreignReadFields = () => {
+		const toolCalls = parsedToolCalls ?? extractOutcomeFromEvents(events).toolCalls;
+		const foreignWorkflowReads = findForeignWorkflowReads(toolCalls, restoredWorkflowIds);
+		if (foreignWorkflowReads.length === 0) return {};
+		logger.warn(
+			`  The agent read workflows another build made: ${foreignWorkflowReads.join(', ')}`,
+		);
+		return { foreignWorkflowReads };
+	};
 	/** The agent the seeded history last targeted — graded and executed first. */
 	let seedActiveAgentId: string | undefined;
 	// Scenario seed tables are created empty before the build
@@ -839,12 +873,31 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 						'Add a fixture for it (evaluations/fixtures/providers/) before running this case locally.',
 				);
 			}
-			credentialSetupLane = await startCredentialSetupLane({
+			const lane = await startCredentialSetupLane({
 				client,
 				selection: config.credentialSetupSelection,
 				logger,
 				localCredentialType: config.credentialSetupType,
 			});
+			credentialSetupLane = lane;
+			// The agent tests the credential it saves. Without this, that test reaches
+			// the real provider and rejects every key the stand-in issued.
+			if (lane?.credentialType && lane.verifyBaseUrl && lane.credentialUrlField) {
+				try {
+					await client.setThreadCredentialTestTarget(threadId, {
+						credentialType: lane.credentialType,
+						baseUrl: lane.verifyBaseUrl,
+						urlField: lane.credentialUrlField,
+					});
+				} catch (error: unknown) {
+					// An older backend has no endpoint: the agent's own test then reaches the
+					// real provider, as before. Any other failure is a lane boot failure.
+					if (!(error instanceof N8nApiError && error.status === 404)) throw error;
+					logger.info(
+						`  Credential-test target endpoint unavailable, agent tests reach the real provider${config.laneTag ?? ''}`,
+					);
+				}
+			}
 			laneBootFailed = false;
 		}
 
@@ -1211,6 +1264,12 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				openingHandoffContext,
 				observerThresholdTokens,
 			);
+			// An empty answer reads to the agent as "no preference", which steers it
+			// off the path a real user would pick, so questions still get the proxy.
+			const questionProxy = new UserProxyLlm({
+				conversation: [{ role: 'user', text: recordedOpeningMessage }],
+				logger,
+			});
 			try {
 				await waitForAllActivity({
 					client,
@@ -1224,6 +1283,13 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 					inactivityTimeoutMs: INACTIVITY_TIMEOUT_MS,
 					logger,
 					proxyResponses,
+					confirmationStrategy: async (event) => {
+						if (getEventPayload(event).inputType !== 'questions') {
+							return buildAutoApprovePayload(event);
+						}
+						questionProxy.ingestEvents(events);
+						return await questionProxy.respondToConfirmation(event);
+					},
 				});
 			} catch (error: unknown) {
 				if (!(error instanceof RunTimeoutError)) throw error;
@@ -1263,6 +1329,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 
 		const messageWorkflowIds = extractWorkflowIdsFromMessages(threadMessages.messages);
 		const eventOutcome = extractOutcomeFromEvents(events);
+		parsedToolCalls = eventOutcome.toolCalls;
 		// Restored workflows keep a seeded build scoreable/cleanable even if the
 		// live turn touches no workflow tool; live ids stay first (primary artifact).
 		const threadWorkflowIds = [
@@ -1335,6 +1402,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 					createdAgentIds: restoredAgentIds,
 					createdProjectIds: seededProjectIds,
 					...buildProjectFields(),
+					...foreignReadFields(),
 					createdFolderIds: restoredFolderIds,
 					conversationMetrics,
 					events,
@@ -1362,6 +1430,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				createdAgentIds: restoredAgentIds,
 				createdProjectIds: seededProjectIds,
 				...buildProjectFields(),
+				...foreignReadFields(),
 				createdFolderIds: restoredFolderIds,
 				seededScenarioTableIdsByName: scenarioTableIdsByName,
 				artifactRefs,
@@ -1412,6 +1481,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			createdAgentIds: restoredAgentIds,
 			createdProjectIds: seededProjectIds,
 			...buildProjectFields(),
+			...foreignReadFields(),
 			createdFolderIds: restoredFolderIds,
 			seededScenarioTableIdsByName: scenarioTableIdsByName,
 			artifactRefs,
@@ -1437,6 +1507,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			createdAgentIds: restoredAgentIds,
 			createdProjectIds: seededProjectIds,
 			...buildProjectFields(),
+			...foreignReadFields(),
 			createdFolderIds: restoredFolderIds,
 			conversationMetrics,
 			events,

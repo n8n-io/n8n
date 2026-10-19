@@ -26,7 +26,7 @@ import type { AgentRepository } from '../repositories/agent.repository';
 import type { SubAgentCleanupService } from '../sub-agents/sub-agent-cleanup.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { AgentPolicyService } from '../agent-policy.service';
-import { createAgentSkillRefsService, storedSkillRefs } from './test-utils/stored-agent-config';
+import { createAgentSkillRefsService } from './test-utils/stored-agent-config';
 
 const agentId = 'agent-1';
 const actor = { kind: 'user', user: { id: 'user-1' } } as const;
@@ -56,6 +56,7 @@ function makeAgent(overrides: Partial<Agent> = {}): Agent {
 }
 
 function makeService() {
+	const skillRefs = createAgentSkillRefsService();
 	const agentRepository = mock<AgentRepository>();
 	const projectRelationRepository = mock<ProjectRelationRepository>();
 	const agentKnowledgeService = mock<AgentKnowledgeService>();
@@ -104,12 +105,13 @@ function makeService() {
 		projectScopeService,
 		agentsSettingsService,
 		agentPolicyService,
-		createAgentSkillRefsService(agentRepository),
+		skillRefs,
 		transactionRunner,
 	);
 
 	return {
 		service,
+		skillRefs,
 		agentPolicyService,
 		agentRepository,
 		projectRelationRepository,
@@ -139,7 +141,7 @@ describe('AgentsService', () => {
 	});
 
 	it('creates a draft agent without a default model or credential', async () => {
-		const { service, agentRepository } = makeService();
+		const { service, agentRepository, skillRefs } = makeService();
 		const saved = makeAgent();
 
 		mockCreateReturning(agentRepository, saved);
@@ -164,8 +166,7 @@ describe('AgentsService', () => {
 			availableInMCP: false,
 		});
 		// The skill refs of the new draft go through the skill refs seam.
-		expect(storedSkillRefs(saved)).toEqual([]);
-		expect(agentRepository.updateDraftSchema).toHaveBeenCalledWith(saved, expect.anything());
+		expect(skillRefs.createDraftRefs).toHaveBeenCalledWith(saved, [], {}, null, expect.anything());
 	});
 
 	it('creates an agent with a resolved default model and credential', async () => {
@@ -257,16 +258,19 @@ describe('AgentsService', () => {
 		});
 	});
 
-	it('seeds skill bodies onto the entity alongside their schema refs', async () => {
-		const { service, agentRepository } = makeService();
+	it('passes seeded skill bodies to the skill refs seam, not to the entity', async () => {
+		const { service, agentRepository, skillRefs } = makeService();
 		const saved = makeAgent();
 		mockCreateReturning(agentRepository, saved);
 		const skills = {
 			skill_abc: { name: 'Triage', description: '', instructions: 'Sort tickets.' },
 		};
 
+		const skillCreator = mock<User>({ id: 'user-1' });
+
 		await service.create(projectId, 'Support Agent', {
 			actor,
+			skillCreator,
 			schema: {
 				name: 'Support Agent',
 				model: 'anthropic/claude-sonnet-4-5',
@@ -277,18 +281,28 @@ describe('AgentsService', () => {
 		});
 
 		const [entity] = agentRepository.create.mock.calls[0];
-		expect(entity.skills).toEqual(skills);
+		expect(entity).not.toHaveProperty('skills');
+		expect(skillRefs.createDraftRefs).toHaveBeenCalledWith(
+			saved,
+			[{ type: 'skill', id: 'skill_abc' }],
+			skills,
+			skillCreator,
+			expect.anything(),
+		);
 	});
 
-	it('stores the skill refs of a seeded config in order, with the enabled flags', async () => {
-		const { service, agentRepository } = makeService();
+	it('stores the skill refs of a seeded config in order', async () => {
+		const { service, agentRepository, skillRefs: refsService } = makeService();
 		const saved = makeAgent();
 		mockCreateReturning(agentRepository, saved);
 		const skillRefs = [
 			{ type: 'skill' as const, id: 'zeta' },
-			{ type: 'skill' as const, id: 'alpha', enabled: false },
-			{ type: 'skill' as const, id: 'mid', enabled: true },
+			{ type: 'skill' as const, id: 'alpha' },
+			{ type: 'skill' as const, id: 'mid' },
 		];
+		// Refs to skills that are in the hub stay, also without a user.
+		const skill = { name: 'Skill', description: 'A skill', instructions: 'Do it.' };
+		refsService.bodies = { zeta: skill, alpha: skill, mid: skill };
 
 		await service.create(projectId, 'Support Agent', {
 			actor,
@@ -302,10 +316,10 @@ describe('AgentsService', () => {
 
 		const [entity] = agentRepository.create.mock.calls[0];
 		expect(entity.schema).not.toHaveProperty('skills');
-		expect(storedSkillRefs(saved)).toEqual(skillRefs);
+		await expect(refsService.refsForDraft(saved, {})).resolves.toEqual(skillRefs);
 		// The insert and the skill refs write share one transaction.
 		const [[, insertCtx]] = agentRepository.insertNew.mock.calls;
-		const [[, refsCtx]] = agentRepository.updateDraftSchema.mock.calls;
+		const [[, , , , refsCtx]] = refsService.createDraftRefs.mock.calls;
 		expect(refsCtx).toBe(insertCtx);
 	});
 
@@ -1134,33 +1148,42 @@ describe('AgentsService', () => {
 		});
 	});
 
-	describe('findByUserMembershipPaginated', () => {
+	describe('findListableByUserPaginated', () => {
 		const user = { id: 'user-1' } as unknown as User;
 
-		it('uses bare project membership and does not consult the scope service', async () => {
+		it('scopes to agent:list, the scope the project list route requires', async () => {
 			const { service, agentRepository, projectRelationRepository, projectScopeService } =
 				makeService();
-			projectRelationRepository.findAllByUser.mockResolvedValue([
-				{ projectId: 'project-1' },
-				{ projectId: 'project-2' },
-			] as never);
+			projectScopeService.getProjectIds.mockResolvedValue(['project-1', 'project-2']);
 			agentRepository.findByProjectIdsPaginated.mockResolvedValue({ count: 0, data: [] });
 			const options = { skip: 0, take: 10 } as never;
 
-			await service.findByUserMembershipPaginated(user, options);
+			await service.findListableByUserPaginated(user, options);
 
-			expect(projectRelationRepository.findAllByUser).toHaveBeenCalledWith('user-1');
-			expect(projectScopeService.getProjectIds).not.toHaveBeenCalled();
+			expect(projectScopeService.getProjectIds).toHaveBeenCalledWith(user, ['agent:list']);
+			expect(projectRelationRepository.findAllByUser).not.toHaveBeenCalled();
 			expect(agentRepository.findByProjectIdsPaginated).toHaveBeenCalledWith(
 				['project-1', 'project-2'],
 				options,
 			);
 		});
+
+		it('passes a null project scope through, so a global role sees every project', async () => {
+			const { service, agentRepository, projectScopeService } = makeService();
+			projectScopeService.getProjectIds.mockResolvedValue(null);
+			agentRepository.findByProjectIdsPaginated.mockResolvedValue({ count: 0, data: [] });
+			const options = { skip: 0, take: 10 } as never;
+
+			await service.findListableByUserPaginated(user, options);
+
+			expect(agentRepository.findByProjectIdsPaginated).toHaveBeenCalledWith(null, options);
+		});
 	});
 
 	describe('getCapabilitySummary', () => {
 		it('projects model, channels, tools, skills and tasks into per-item labels', async () => {
-			const { service, agentRepository, agentTaskRepository } = makeService();
+			const { service, agentRepository, agentTaskRepository, skillRefs } = makeService();
+			skillRefs.bodies.s1 = { name: 'Triage', description: '', instructions: '' };
 			agentRepository.findByIdAndProjectId.mockResolvedValue(
 				makeAgent({
 					name: 'Support Agent',
@@ -1193,7 +1216,6 @@ describe('AgentsService', () => {
 						{ type: 'telegram', credentialId: 'cred-2' },
 					],
 					tools: { c1: { code: '', descriptor: { name: 'Refund tool' } } },
-					skills: { s1: { name: 'Triage', description: '', instructions: '' } },
 				} as unknown as Partial<Agent>),
 			);
 			agentTaskRepository.findByAgentId.mockResolvedValue([

@@ -4,8 +4,8 @@ import { Service } from '@n8n/di';
 import { getApiKeyScopesForRole } from '@n8n/permissions';
 import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
 
-import type { AuthStrategy, AuthStrategyOptions } from '@/services/auth-strategy.types';
-import { JwtService } from '@/services/jwt.service';
+import type { AuthStrategy, AuthStrategyOptions } from '@n8n/backend-services/auth';
+import { JwtService } from '@n8n/backend-services';
 
 import { TOKEN_EXCHANGE_ISSUER, type IssuedJwtPayload } from '../token-exchange.types';
 

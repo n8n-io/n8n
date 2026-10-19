@@ -1,7 +1,44 @@
 import { NodeOperationError } from 'n8n-workflow';
-import type { IExecuteFunctions } from 'n8n-workflow';
+import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-workflow';
 
+import { extractResourceLocatorValue } from '../helpers';
 import { resolveLakebaseRestBase } from '../../transport';
+
+/**
+ * The execute-time resolvers below take an item index, which a dropdown request does
+ * not have, so load options read the locators the editor currently holds instead.
+ */
+export function getSelectedLakebaseTarget(context: ILoadOptionsFunctions) {
+	const read = (name: string) =>
+		extractResourceLocatorValue(context.getCurrentNodeParameter(name)) || undefined;
+	return {
+		project: read('lakebaseProject'),
+		branch: read('lakebaseBranch'),
+		database: read('lakebaseDatabase'),
+		schema: read('lakebaseSchema'),
+		table: read('lakebaseTable'),
+	};
+}
+
+/**
+ * Resolves the REST URL of the schema the editor currently has selected, or null
+ * when the user has not finished choosing a table. Shared by the column dropdown
+ * and the column mapper, which differ only in how they render and how they report
+ * a missing schema document.
+ */
+export async function resolveSelectedLakebaseSchema(
+	context: ILoadOptionsFunctions,
+): Promise<{ schemaUrl: string; table: string } | null> {
+	const { project, branch, database, schema, table } = getSelectedLakebaseTarget(context);
+	// An unset locator means the user has not finished choosing a table yet
+	if (!project || !branch || !database || !schema || !table) return null;
+
+	const base = await resolveLakebaseRestBase(context, project, branch);
+	return {
+		schemaUrl: `${base}/${encodeURIComponent(database)}/${encodeURIComponent(schema)}`,
+		table,
+	};
+}
 
 function readLocator(
 	context: IExecuteFunctions,

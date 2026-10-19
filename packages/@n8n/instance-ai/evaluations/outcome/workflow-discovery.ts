@@ -7,12 +7,7 @@ import type { InstanceAiMessage } from '@n8n/api-types';
 import { N8nApiError, type N8nClient, type WorkflowResponse } from '../clients/n8n-client';
 import type { AgentOutcome, EventOutcome, ExecutionSummary, WorkflowSummary } from '../types';
 import { collectArtifactRefIds } from './collect-refs';
-
-// ---------------------------------------------------------------------------
-// Tool names whose results contain workflow IDs
-// ---------------------------------------------------------------------------
-
-const WORKFLOW_TOOLS = new Set(['build-workflow', 'submit-workflow', 'patch-workflow']);
+import { WORKFLOW_TOOLS } from './event-parser';
 
 // ---------------------------------------------------------------------------
 // snapshotWorkflowIds -- call before the run to know what existed prior

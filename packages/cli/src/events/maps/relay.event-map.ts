@@ -41,7 +41,7 @@ import type {
 	PolicyRule,
 } from '@/modules/type-availability-policies/policy-rule.types';
 import type { TracingContext } from '@/modules/otel/tracing-context';
-import type { McpCallerAuth } from '@/services/oauth-token-verifier-proxy.service';
+import type { McpCallerAuth } from '@n8n/backend-services/auth';
 import type { UserLike } from '@/types/user-like.types';
 
 import type { AiEventMap } from './ai.event-map';
@@ -1013,6 +1013,24 @@ export type RelayEventMap = {
 		role: string;
 	};
 
+	'trusted-source-created': {
+		user: UserLike;
+		sourceId: string;
+		issuer: string;
+	};
+
+	'trusted-source-updated': {
+		user: UserLike;
+		sourceId: string;
+		issuer: string;
+	};
+
+	'trusted-source-deleted': {
+		user: UserLike;
+		sourceId: string;
+		issuer: string;
+	};
+
 	// #endregion
 
 	// #region Token exchange
@@ -1432,7 +1450,8 @@ export type RelayEventMap = {
 		after: { defaultAction: PolicyAction; version: number };
 		rulesBefore: readonly PolicyRule[] | null;
 		rulesAfter: readonly PolicyRule[];
-		warningCount: number;
+		shadowWarningCount: number;
+		notLoadedWarningCount: number;
 	};
 
 	'node-type-policy-attachments-updated': {

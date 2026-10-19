@@ -4,7 +4,7 @@ import { LruCache } from '@n8n/utils/lru-cache';
 
 import { EngineFallbackError, Env, bounded, evalChunk } from './evaluator';
 import { MAX_RESULT_LENGTH, clone, isObj, type SimpleNode } from './grammar';
-import { parseSimple } from './parser';
+import { parseSimple, usesPolyfilledChain } from './parser';
 import type { IWorkflowDataProxyData } from '../../interfaces';
 
 export {
@@ -13,6 +13,7 @@ export {
 	MAX_RESULT_LENGTH,
 	MAX_STEPS,
 	MAX_WORK,
+	TIME_METHODS,
 } from './grammar';
 
 // Fast native evaluation: an in-process interpreter for a closed subset of
@@ -21,6 +22,7 @@ export {
 // The subset is data path access on the data roots (`$json`, `$parameter`,
 // `$vars`, `$binary`, `$itemIndex`, `$runIndex`) and on node references
 // (`$('Name').item`, `$('Name').first()`, `$input.item`, `$node['Name'].json`),
+// primitive reads off the time roots (`$now.toMillis()`, `$today.year`),
 // literals (array literals of literals included), a fixed set of operators,
 // calls to a closed allowlist of native string/number/array methods, and the
 // five array iterators (some/every/find/filter/map) with a one-parameter
@@ -76,7 +78,8 @@ function compileChunk(chunk: ParsedCode): SimpleNode | null {
 	if (statement.type !== 'ExpressionStatement') return null;
 
 	try {
-		return parseSimple(statement.expression);
+		const node = parseSimple(statement.expression);
+		return node !== null && usesPolyfilledChain(node) ? null : node;
 	} catch {
 		return null;
 	}

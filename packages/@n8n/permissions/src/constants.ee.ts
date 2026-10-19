@@ -7,6 +7,10 @@ export const RESOURCES = {
 	// `projectAiPreference`: rows of a project. A user's own rows need no scope.
 	aiPreference: [...DEFAULT_OPERATIONS] as const,
 	projectAiPreference: [...DEFAULT_OPERATIONS] as const,
+	// Skills. `skill`: instance skills. `projectSkill`: the skills of a project and of
+	// its agents.
+	skill: [...DEFAULT_OPERATIONS] as const,
+	projectSkill: [...DEFAULT_OPERATIONS] as const,
 	annotationTag: [...DEFAULT_OPERATIONS] as const,
 	auditLogs: ['manage'] as const,
 	banner: ['dismiss'] as const,
@@ -45,7 +49,14 @@ export const RESOURCES = {
 	securityAudit: ['generate'] as const,
 	securitySettings: ['manage'] as const,
 	sourceControl: ['pull', 'push', 'manage', 'read'] as const,
-	gitConnection: [...DEFAULT_OPERATIONS, 'clone', 'push', 'manageProjects', 'pull'] as const,
+	gitConnection: [
+		...DEFAULT_OPERATIONS,
+		'discover',
+		'clone',
+		'push',
+		'manageProjects',
+		'pull',
+	] as const,
 	tag: [...DEFAULT_OPERATIONS] as const,
 	user: [
 		'resetPassword',
@@ -101,6 +112,7 @@ export const RESOURCES = {
 	instanceAi: ['message', 'manage', 'gateway', 'eval'] as const,
 	roleMappingRule: [...DEFAULT_OPERATIONS] as const,
 	otel: ['manage'] as const,
+	trustedSource: [...DEFAULT_OPERATIONS] as const,
 } as const;
 
 export const API_KEY_RESOURCES = {
@@ -121,7 +133,14 @@ export const API_KEY_RESOURCES = {
 	credential: ['create', 'read', 'update', 'move', 'delete', 'list'] as const,
 	eventBusDestination: ['test', 'create', 'read', 'update', 'delete', 'list'] as const,
 	sourceControl: ['pull', 'push', 'read'] as const,
-	gitConnection: [...DEFAULT_OPERATIONS, 'clone', 'push', 'manageProjects', 'pull'] as const,
+	gitConnection: [
+		...DEFAULT_OPERATIONS,
+		'discover',
+		'clone',
+		'push',
+		'manageProjects',
+		'pull',
+	] as const,
 	workflowTags: ['update', 'list'] as const,
 	executionTags: ['update', 'list'] as const,
 	communityPackage: ['install', 'uninstall', 'update', 'list'] as const,

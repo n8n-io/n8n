@@ -6,7 +6,7 @@ import chainWorkflow from '../../../workflows/Simple_chain_4nodes.json';
 test.describe(
 	'Demo reimport',
 	{
-		annotation: [{ type: 'owner', description: 'Adore' }],
+		annotation: [{ type: 'owner', description: 'Catalysts' }],
 	},
 	() => {
 		const previewRequirements: TestRequirements = {

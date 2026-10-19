@@ -351,6 +351,11 @@ describe('trialPasses', () => {
 		[['clarify'], clarify('workflow'), true],
 		[['clarify:agent'], clarify('both'), true],
 		[['clarify:agent'], clarify('none'), false],
+		[['clarify:workflow'], clarify('workflow'), true],
+		[['clarify:workflow'], clarify('both'), true],
+		[['clarify:workflow'], clarify('agent'), false],
+		[['clarify:workflow'], clarify('none'), false],
+		[['clarify:workflow'], clarify(undefined), false],
 		[['clarify:open'], clarify('none'), true],
 		[['clarify:open'], clarify('workflow'), false],
 		[['answer:agent'], { route: 'answer', steer: 'both', evidence: 'end of turn' }, true],
@@ -362,6 +367,19 @@ describe('trialPasses', () => {
 
 	it('fails a question toward the bucket artifact when the case accepts no question', () => {
 		expect(trialPasses(routingCase('workflow', ['workflow']), clarify('workflow'))).toBe(false);
+	});
+
+	it('replies to a workflow question in a workflow case, then passes only a workflow build', () => {
+		const workflowCase = routingCase('workflow', ['workflow', 'clarify:workflow'], ['workflow']);
+		const answered = (route: RouteResolution) => ({ ...route, questions: [clarify('workflow')] });
+
+		expect(canReplyTo(workflowCase, clarify('workflow'))).toBe(true);
+		expect(trialPasses(workflowCase, answered({ route: 'workflow', evidence: 'build' }))).toBe(
+			true,
+		);
+		expect(trialPasses(workflowCase, answered({ route: 'agent', evidence: 'build-agent' }))).toBe(
+			false,
+		);
 	});
 
 	it('grades the route after an answer against the after routes only', () => {
@@ -413,13 +431,21 @@ describe('afterQuestion', () => {
 });
 
 describe('casePasses', () => {
+	const trial = (outcome: 'pass' | 'fail' | 'none') => ({
+		resolution: { route: outcome === 'none' ? 'none' : 'agent', evidence: 'test' } as const,
+		passed: outcome === 'pass',
+	});
+
 	it.each([
-		[2, 3, true],
-		[1, 3, false],
-		[4, 6, true],
-		[3, 6, false],
-		[0, 0, false],
-	])('%i of %i trials: %s', (passed, total, expected) => {
-		expect(casePasses(passed, total)).toBe(expected);
+		[['pass', 'pass', 'fail'], true],
+		[['pass', 'fail', 'fail'], false],
+		[['pass', 'pass', 'pass', 'fail', 'fail'], true],
+		[['pass', 'pass', 'fail', 'fail'], false],
+		[['pass', 'none', 'none'], true],
+		[['pass', 'fail', 'none'], false],
+		[['none', 'none', 'none'], false],
+		[[], false],
+	] as const)('%j: %s', (outcomes, expected) => {
+		expect(casePasses(outcomes.map(trial))).toBe(expected);
 	});
 });
