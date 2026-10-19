@@ -192,7 +192,7 @@ export class McpSkillToolsService {
 			name: 'update_skill',
 			config: {
 				description:
-					'Save the next version of a skill. Every Agent that uses the skill runs the new version. Pass only the fields to change.',
+					'Update a skill. The update creates a new version of the skill. Pass only the fields to change.',
 				inputSchema: updateSkillInput,
 				annotations: {
 					title: 'Update Skill',
