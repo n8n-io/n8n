@@ -1,7 +1,7 @@
 import type { PromotionDirection } from '@n8n/api-types';
 import { defineFrontendModule } from '@n8n/frontend-module-sdk';
 import { useRBACStore } from '@n8n/stores/rbac.store';
-import type { RouteLocationNormalized } from 'vue-router';
+import type { RouteLocationNormalized, RouteRecordRaw } from 'vue-router';
 
 import { VIEWS } from '@/app/constants';
 import { usePromotionsEnabled } from '@/features/shared/promotions/usePromotionsEnabled';
@@ -20,7 +20,7 @@ const requirePromotionsEnabled = () =>
 	usePromotionsEnabled().isEnabled.value || { name: VIEWS.HOMEPAGE };
 
 /** A project page that shows the changes before the user promotes or applies them. */
-const previewRoute = (direction: PromotionDirection) => ({
+const previewRoute = (direction: PromotionDirection): RouteRecordRaw => ({
 	path: `promotions/${direction}`,
 	name: PROMOTION_PREVIEW_VIEWS[direction],
 	component: PreviewView,
