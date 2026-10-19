@@ -1,0 +1,36 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentApi.test.ts
+  s_f3d2ec4529fb2a::t_7ae366a57b4fc4 126,131-134,142-147
+  s_f3d2ec4529fb2a::t_c5622a0375deb9 192-198,209-215
+  s_f3d2ec4529fb2a::t_b2a5a79f5cf4b3 15
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  s_f3d2ec4529fb2a::t_def5e75b2c378d 4850-4858
+  s_f3d2ec4529fb2a::t_da118cd37cf163 4072
+  s_f3d2ec4529fb2a::t_7881da26a33b52 4870,4883,4886-4894
+  s_f3d2ec4529fb2a::t_8cac4dca87e463 4585
+  s_f3d2ec4529fb2a::t_5b55d8ab3c8d71 4839
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  s_f3d2ec4529fb2a::t_1559be5de36c5f 428
+  s_f3d2ec4529fb2a::t_c1625285c1a1c6 461
+  s_f3d2ec4529fb2a::t_d624fca20f9801 121-123
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_f3d2ec4529fb2a::t_a8ae420fad61e2 266
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  s_f3d2ec4529fb2a::t_3d4a7e0b24c165 796,801
+  s_f3d2ec4529fb2a::t_ddb2034dacc21e 828,833
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7f115c93d6d490dab9fc0598f5dbebafc6325638",
+  "prompts": {},
+  "sessions": {
+    "s_f3d2ec4529fb2a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c28c4414-1c5b-4167-98ad-d5188b3d2601",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

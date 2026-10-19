@@ -1,0 +1,38 @@
+packages/cli/src/modules/agents/__tests__/agent-task.service.test.ts
+  s_7c67b2f5561b1e::t_fca80e7b0658ce 227,231,241
+packages/cli/src/modules/agents/__tests__/agent-skills.service.test.ts
+  s_7c67b2f5561b1e::t_fca80e7b0658ce 85
+packages/frontend/editor-ui/src/features/ndv/agents/composables/__tests__/useInlineAgentConfig.test.ts
+  s_7c67b2f5561b1e::t_fca80e7b0658ce 125
+packages/frontend/editor-ui/src/features/agents/utils/__tests__/inlineAgent.test.ts
+  s_7c67b2f5561b1e::t_fca80e7b0658ce 7-8
+packages/cli/src/modules/agents/agent-task.service.ts
+  s_7c67b2f5561b1e::t_83e1934f87b304 152
+packages/cli/src/modules/agents/agent-skills.service.ts
+  s_7c67b2f5561b1e::t_fca80e7b0658ce 272
+packages/@n8n/db/src/migrations/common/1791454646995-NormalizeAgentSkillIds.ts
+  s_7c67b2f5561b1e::t_83e1934f87b304 1-2,4-213,215-289,291-299
+  s_7c67b2f5561b1e::t_6bb2ccb7afb7f4 3,214,290,300-301
+packages/cli/src/modules/agents/utils/agent-resource-id.ts
+  s_7c67b2f5561b1e::t_fca80e7b0658ce 6,12-13,17
+packages/cli/test/migration/1791454646995-normalize-agent-skill-ids.test.ts
+  s_7c67b2f5561b1e::t_83e1934f87b304 1-602
+packages/frontend/editor-ui/src/features/agents/utils/inlineAgent.ts
+  s_7c67b2f5561b1e::t_fca80e7b0658ce 47,49,55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2781c418b2fe804b72f637efcacf42bcbe2f2fd7",
+  "prompts": {},
+  "sessions": {
+    "s_7c67b2f5561b1e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a11a84-1db0-74f0-8284-8cd79b3c5e60",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/@n8n/scheduler/src/core/executor/task-handler.ts
+  s_61608a519a6f2a::t_ba7bfdeefa17fd 89-90
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "540df8f147e09e5af4bd4503fdfeb0ab1eb0348c",
+  "prompts": {},
+  "sessions": {
+    "s_61608a519a6f2a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "310b5e43-c8f5-4f74-b551-28a88a7e0e0a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

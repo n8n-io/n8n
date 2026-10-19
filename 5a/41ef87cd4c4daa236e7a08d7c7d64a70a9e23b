@@ -1,0 +1,69 @@
+packages/modules/insights/frontend/src/components/InsightsDateRangeAlert.vue
+  s_df6c397ba2c129::t_1db258ba52aff7 82
+packages/frontend/@n8n/design-system/src/components/N8nFormBox/FormBox.vue
+  s_df6c397ba2c129::t_48fc7804446f54 2
+packages/modules/insights/frontend/src/components/InsightsUpgradeModal.vue
+  s_df6c397ba2c129::t_1db258ba52aff7 43
+packages/frontend/editor-ui/src/features/agents/components/AgentPreviewButton.vue
+  s_df6c397ba2c129::t_1db258ba52aff7 14,21,63
+packages/frontend/editor-ui/src/features/core/auth/components/SsoSigninCard.vue
+  s_df6c397ba2c129::t_1db258ba52aff7 173
+packages/frontend/@n8n/design-system/src/components/N8nSelectedItemsInfo/SelectedItemsInfo.stories.ts
+  s_df6c397ba2c129::t_1db258ba52aff7 62-63
+packages/modules/otel/frontend/src/SettingsOpenTelemetryView.vue
+  s_df6c397ba2c129::t_1db258ba52aff7 559
+packages/frontend/editor-ui/src/features/ndv/panel/components/OutputPanel.vue
+  s_df6c397ba2c129::t_1db258ba52aff7 426
+packages/frontend/@n8n/design-system/src/components/N8nSelectedItemsInfo/component-selected-items-info.md
+  s_df6c397ba2c129::t_1db258ba52aff7 42
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/setupPanel/InstanceAiSetupPanel.vue
+  s_df6c397ba2c129::t_1db258ba52aff7 817
+packages/frontend/editor-ui/src/features/ndv/panel/components/InputPanel.vue
+  s_df6c397ba2c129::t_1db258ba52aff7 532
+packages/frontend/@n8n/design-system/src/components/N8nIconButton/IconButton.stories.ts
+  s_df6c397ba2c129::t_1db258ba52aff7 14
+packages/frontend/@n8n/design-system/src/components/N8nIconPicker/IconPicker.stories.ts
+  s_df6c397ba2c129::t_1db258ba52aff7 20
+packages/modules/insights/frontend/src/components/InsightsDataRangePicker.vue
+  s_df6c397ba2c129::t_1db258ba52aff7 167
+packages/modules/type-availability-policies/frontend/src/components/RestrictedNodePanel.vue
+  s_df6c397ba2c129::t_1db258ba52aff7 50
+packages/frontend/@n8n/design-system/src/components/N8nMarkdownEditor/MarkdownEditor.vue
+  s_df6c397ba2c129::t_1db258ba52aff7 412
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/PreferenceEditModal.vue
+  s_df6c397ba2c129::t_1db258ba52aff7 343
+packages/frontend/editor-ui/src/features/settings/context/components/PreferenceModal.vue
+  s_df6c397ba2c129::t_1db258ba52aff7 374
+packages/frontend/@n8n/design-system/src/components/N8nToggle/Toggle.stories.ts
+  s_df6c397ba2c129::t_1db258ba52aff7 12,61
+packages/frontend/@n8n/design-system/src/components/N8nSetupPanel/SetupPanel.stories.ts
+  s_df6c397ba2c129::t_1db258ba52aff7 231
+packages/frontend/editor-ui/src/features/shared/toolsConnection/McpToolSettingsContent.vue
+  s_df6c397ba2c129::t_1db258ba52aff7 335
+packages/frontend/@n8n/design-system/src/components/N8nToggle/Toggle.test.ts
+  s_df6c397ba2c129::t_1db258ba52aff7 26
+packages/frontend/@n8n/design-system/src/components/N8nIcon/__snapshots__/Icon.test.ts.snap
+  s_df6c397ba2c129::t_f70d4cc9b82e00 5,11,23,29,35
+packages/frontend/editor-ui/src/features/ndv/panel/components/__snapshots__/NDVSubConnections.test.ts.snap
+  s_df6c397ba2c129::t_79492c71e820e0 10
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/buttons/__snapshots__/CanvasStopCurrentExecutionButton.test.ts.snap
+  s_df6c397ba2c129::t_07a7e8ebac2bc9 3
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/buttons/__snapshots__/CanvasStopWaitingForWebhookButton.test.ts.snap
+  s_df6c397ba2c129::t_0f7f54c86f32eb 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5a41ef87cd4c4daa236e7a08d7c7d64a70a9e23b",
+  "prompts": {},
+  "sessions": {
+    "s_df6c397ba2c129": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0f6f8-24d9-73c1-a804-786ea56c9af8",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

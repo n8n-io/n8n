@@ -1,0 +1,19 @@
+packages/cli/src/scheduling/system-tasks/__tests__/main-system-tasks.test.ts
+  s_71ca7a879e152b::t_24672646b23a00 11,22,29,45,75-80
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5200b30b00fc62b07753cb592b317ad0efb5f6f8",
+  "prompts": {},
+  "sessions": {
+    "s_71ca7a879e152b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b5003162-c73d-4a2d-803c-5664ba845194",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}

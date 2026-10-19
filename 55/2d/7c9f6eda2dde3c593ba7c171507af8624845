@@ -1,0 +1,29 @@
+packages/@n8n/workflow-sdk/src/index.ts
+  s_7887e2d350f40f::t_d7ce0ff8daeeba 265-268,270
+packages/@n8n/workflow-sdk/src/workflow-builder/layout-utils.ts
+  s_7887e2d350f40f::t_35305fd8d0a829 43-44,277-289
+  s_7887e2d350f40f::t_00ede7237bbd65 290-291
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/preserve-node-positions.test.ts
+  s_7887e2d350f40f::t_5c1bb3192d09c3 229-232
+  s_7887e2d350f40f::t_64d4b6ef3c7ef2 163,166,168,176,193,195-208,218,222,236
+  s_7887e2d350f40f::t_180452199bfc70 161-162,164-165,167,169-175,177,179-180,190-192,194,209-217,219-221,223-228,233-235,237-242
+packages/@n8n/instance-ai/src/tools/workflows/preserve-node-positions.ts
+  s_7887e2d350f40f::t_70ad5b7b11a30a 6-9,12,25-26,47-51,56-83,96-100,104-105,109-112,116,123-126,132,140-231,246,286-324,326-331,333-334,336-361,366-379,382-389,403-405,472,475,486
+  s_7887e2d350f40f::t_5c1bb3192d09c3 52-55,362-365
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "552d7c9f6eda2dde3c593ba7c171507af8624845",
+  "prompts": {},
+  "sessions": {
+    "s_7887e2d350f40f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "62dd6632-b49e-473a-b9fb-b7945d59c21e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

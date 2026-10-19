@@ -1,0 +1,26 @@
+packages/frontend/@n8n/design-system/src/components/N8nFormBox/FormBox.vue
+  h_f8b427917eda26 2-8,15-16,23,35,79
+packages/frontend/@n8n/design-system/src/components/N8nIcon/icons.ts
+  s_e980f852ea73c9::t_1cd1edf8be72aa 37,170,404,626,663
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c073c848bc506b464cfc47242943ed82da8f1fd9",
+  "prompts": {},
+  "humans": {
+    "h_f8b427917eda26": {
+      "author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_e980f852ea73c9": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0d3c8-b9e9-73d3-9e99-dffd8378eb3f",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+packages/cli/src/modules/external-secrets.ee/secrets-cache.service.ts
+  s_d22ec239ec3391::t_483f1462026599 6
+  s_d22ec239ec3391::t_210732c9e97eb7 44-47
+  s_d22ec239ec3391::t_c40025731ac477 38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "38b22f119673697729da44ee13a124968eee2115",
+  "prompts": {},
+  "sessions": {
+    "s_d22ec239ec3391": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b4696d96-20ed-484b-9853-6cf7b140d4a9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}

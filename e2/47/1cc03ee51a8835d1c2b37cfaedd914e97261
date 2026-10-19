@@ -1,0 +1,23 @@
+packages/cli/src/modules/agents/repositories/agent-execution-thread.repository.ts
+  s_d9d13d09c51def::t_e3a832290203cc 149-153,165,167,181,184,189
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_d9d13d09c51def::t_9bf673e4af8027 2012-2021
+  s_d9d13d09c51def::t_6c186f85afa807 1980-2011,2022-2026,2028-2029
+  s_d9d13d09c51def::t_8a29256c5b40f0 2027
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "e2471cc03ee51a8835d1c2b37cfaedd914e97261",
+  "prompts": {},
+  "sessions": {
+    "s_d9d13d09c51def": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0e8e0-db3e-7ff0-85f7-173b1a1451c6",
+        "model": "gpt-6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

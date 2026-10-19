@@ -1,0 +1,34 @@
+packages/nodes-base/nodes/Microsoft/SharePoint/v1/helpers/utils.ts
+  s_2e1fa95fc44f8f::t_78457a9e1b9540 10-16
+  s_2e1fa95fc44f8f::t_2bdaf501f6835f 171,177
+packages/nodes-base/nodes/Microsoft/SharePoint/test/helpers/utils.test.ts
+  s_2e1fa95fc44f8f::t_9f2b56f94a8b31 142-169
+packages/nodes-base/nodes/Microsoft/SharePoint/test/item/deleteEncoded.test.ts
+  s_2e1fa95fc44f8f::t_af24ce892ddcaa 1-22
+packages/nodes-base/nodes/Microsoft/SharePoint/test/item/deleteEncoded.workflow.json
+  s_2e1fa95fc44f8f::t_92202eba5a94fd 1-70
+packages/nodes-base/nodes/Microsoft/SharePoint/test/workflow/requestUrls.workflow.test.ts
+  s_2e1fa95fc44f8f::t_2dc45c5cef1d47 13-14,16,21,26
+packages/nodes-base/nodes/Microsoft/SharePoint/v1/descriptions/file/File.resource.ts
+  s_2e1fa95fc44f8f::t_f9ce5ccd4f5ba4 27,44,59
+packages/nodes-base/nodes/Microsoft/SharePoint/v1/descriptions/item/Item.resource.ts
+  s_2e1fa95fc44f8f::t_74ab658da84b40 31,46,61,85,100,124
+packages/nodes-base/nodes/Microsoft/SharePoint/v1/descriptions/list/List.resource.ts
+  s_2e1fa95fc44f8f::t_9a2e659917a2c0 28,43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3987d3f2ba73bb21bebc491b7104b3f8fe5bb0c9",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

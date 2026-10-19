@@ -1,0 +1,19 @@
+packages/@n8n/db/src/connection/__tests__/db-connection-monitor.test.ts
+  ai_agent 9,37,42,603-605,652,673-676,716-752,893-895,988,1638-1659
+packages/@n8n/db/src/connection/db-connection-monitor.ts
+  ai_agent 331,333,667-689
+packages/cli/src/metrics/prometheus/db-pool-metrics.service.ts
+  ai_agent 57-80
+packages/cli/src/metrics/prometheus/__tests__/db-pool-metrics.service.test.ts
+  ai_agent 28-31,36,43-44,62-68,107,149-166,217-244
+packages/@n8n/db/src/connection/db-connection-metrics.ts
+  ai_agent 6-7
+packages/@n8n/config/src/configs/endpoints.config.ts
+  ai_agent 131
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "99289950391c4a11b20c81a7a594274597d1e4bf",
+  "prompts": {}
+}

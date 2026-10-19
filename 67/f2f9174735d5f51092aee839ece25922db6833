@@ -1,0 +1,24 @@
+packages/frontend/editor-ui/src/features/settings/migrationReport/MigrationRuleDetail.vue
+  s_2956cab75a6463::t_10d617b3502cd5 593-594,604
+packages/frontend/@n8n/design-system/src/components/N8nUserSelect/UserSelect.test.ts
+  s_2956cab75a6463::t_da746c17e480a8 445-468
+packages/frontend/@n8n/design-system/src/components/N8nUserSelect/UserSelect.vue
+  s_2956cab75a6463::t_10d617b3502cd5 6,25-28,40-41,104-105,127,131-139,161-169
+  s_2956cab75a6463::t_4b84040e482a63 170
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "67f2f9174735d5f51092aee839ece25922db6833",
+  "prompts": {},
+  "sessions": {
+    "s_2956cab75a6463": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "23bc5d43-edd4-415c-b854-b3f0f4c7dc7c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

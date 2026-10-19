@@ -1,0 +1,93 @@
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  s_a52166d0bed94b::t_6ea33b8801e00b 431,433,444,450,454
+packages/frontend/editor-ui/src/features/ai/shared/components/ChatMessageQueue.vue
+  s_a52166d0bed94b::t_6ea33b8801e00b 21,83-84,86-128,130,132-133,135,137-156,197,203-205,214
+  s_509bf2cdeb3e3a::t_c3a9ee657fb8a5 69-71,247,257-259,325
+  s_a52166d0bed94b::t_0c9b1b8711d782 193
+  s_509bf2cdeb3e3a::t_74f9bad113df93 72-74
+  s_a52166d0bed94b::t_2d537bf45c9df1 81-82
+  s_a52166d0bed94b::t_4cc8896a0c6275 157-159
+  s_a52166d0bed94b::t_849e0333babc70 190-192
+  s_509bf2cdeb3e3a::t_9f8e5eeb1729c0 244-246
+  s_509bf2cdeb3e3a::t_71b6a2eb700959 260
+  s_509bf2cdeb3e3a::t_18185fee6f7783 323-324
+  s_509bf2cdeb3e3a::t_01f892fb631cd1 326
+packages/frontend/editor-ui/src/features/ai/shared/components/ChatMessageQueue.test.ts
+  s_99d642bdc3249e::t_ffb31065143336 139-141
+  s_99d642bdc3249e::t_a1414f1bba3fa6 1-138,142,145-155
+  s_99d642bdc3249e::t_ccfaa5c8c7b42a 143-144
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_a52166d0bed94b::t_529ef7c338ee12 8080-8081
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_a52166d0bed94b::t_c5dd32569d88ea 36,106,692-696
+  s_a52166d0bed94b::t_524eff053c388b 156-157,168-171
+  s_a52166d0bed94b::t_97306c62eb6a34 658-662
+  s_a52166d0bed94b::t_1d1b4151e44ae2 691,697-698
+  s_a52166d0bed94b::t_3283369abc1dc5 734,738,740,747-755
+  s_a52166d0bed94b::t_bdb59fa374c4da 239-260,1057
+  s_bf154ec7b6fdc0::t_49ade81e3f32d8 150-154,159-167
+  s_a52166d0bed94b::t_8b0a3b9948f88d 118,173,178-181,183-184
+  s_a52166d0bed94b::t_3a00b75870a222 176-177,226,1078
+  s_a52166d0bed94b::t_6ea33b8801e00b 186,195,197-202,209-212,225,227-229,231,233-237,271,722,1052
+  s_a52166d0bed94b::t_b10b13956a4b6d 230,232
+  s_a52166d0bed94b::t_0c9b1b8711d782 34,107,187,196,203-208,263,1068
+  s_a52166d0bed94b::t_3f528e3434ddea 155,182,213-224,735-737,739,741-746,761
+  s_a52166d0bed94b::t_af96e588bed6a1 185
+  s_bf154ec7b6fdc0::t_48207b25e51c29 158
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_a52166d0bed94b::t_2536ee00fe29d7 616-623,653-661,668-669,673-677,688-695,706-713
+  s_a52166d0bed94b::t_8a23eb8f751670 553-554,557-558,561-564,568-592,596-597,601-602,604-608,610-611
+  s_a52166d0bed94b::t_524eff053c388b 296,482-496,514-521
+  s_a52166d0bed94b::t_3f528e3434ddea 497-503,506-510
+  s_a52166d0bed94b::t_3c050a62fb2b77 19-23,271,525-551
+  s_a52166d0bed94b::t_bbe5b81e4d7552 64-67,272,457,466-469,472-481,522-524,615,624-632,649-650,687,696-705,714-724
+  s_99d642bdc3249e::t_eee6d6502d2514 379,634-648
+  s_99d642bdc3249e::t_37836341a85b8d 369
+  s_a52166d0bed94b::t_baa2fcfc02e935 552
+  s_a52166d0bed94b::t_97306c62eb6a34 652,662-665,667,670-672,678-682,684-686
+  s_a52166d0bed94b::t_c7d58d42b84d9e 651
+  s_99d642bdc3249e::t_6c1f5f1ad57fec 633
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_a52166d0bed94b::t_0c9b1b8711d782 256
+  s_a52166d0bed94b::t_8a23eb8f751670 252
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a8396fcbc4553ec8a9d002c3855a8a829680e4d7",
+  "prompts": {},
+  "sessions": {
+    "s_509bf2cdeb3e3a": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0fcc1-8753-734c-95cc-243b2835294f",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_99d642bdc3249e": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0fcd5-dbf6-734c-95cc-24406fca3808",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_a52166d0bed94b": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0fca8-9564-734c-95cc-2439f0309cfc",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_bf154ec7b6fdc0": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0fcc5-3301-734c-95cc-243f65cedaca",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

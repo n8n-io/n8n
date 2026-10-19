@@ -1,0 +1,120 @@
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/__tests__/AgentN8nChatView.test.ts
+  s_71e25d45a5ee90::t_085ac6e1305a33 292-293,298
+  s_71e25d45a5ee90::t_49ecef14d5449c 7
+  s_71e25d45a5ee90::t_0d7548f1490eb0 291,294-297,299-303
+  s_71e25d45a5ee90::t_fdf12071c94f1d 304-318
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/useMergedChatHistory.ts
+  s_71e25d45a5ee90::t_5ca91677acbe28 70-72
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/n8nChatThreads.store.test.ts
+  s_71e25d45a5ee90::t_8fabc7dceb1a15 83-97
+  s_71e25d45a5ee90::t_88fbbbb1b4c5fe 142-143,146,148,150-151
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/useMergedChatHistory.test.ts
+  s_71e25d45a5ee90::t_2ffccc5b20667d 213-217,219-223,225-236
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiThreadsView.test.ts
+  s_71e25d45a5ee90::t_f0bc16b9d753bd 96-104,106-107
+  s_71e25d45a5ee90::t_caf2bebf29ec29 1
+  s_71e25d45a5ee90::t_d018fa5462fe4a 105
+  s_71e25d45a5ee90::t_5f22f11abdd05b 224-239
+  s_71e25d45a5ee90::t_03cbbc6e56987a 30
+  s_71e25d45a5ee90::t_322bfbdaae9c06 6
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  s_71e25d45a5ee90::t_eb88e3d98fd710 127
+  s_71e25d45a5ee90::t_27f8c5ee271ed7 417
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/usePagedN8nChatThreads.test.ts
+  s_71e25d45a5ee90::t_3f65c2858a47fe 3-4
+  s_71e25d45a5ee90::t_557ca7ab634fa9 143-146
+  s_71e25d45a5ee90::t_be3ba948af8946 142,148-155,157-160
+  s_71e25d45a5ee90::t_57375bfebeccd4 147,156
+packages/frontend/editor-ui/src/features/agents/module.descriptor.ts
+  s_71e25d45a5ee90::t_c3defca430dd6f 133
+  s_71e25d45a5ee90::t_08f3020cb261bc 119
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/InstanceAiThreadList.test.ts
+  s_71e25d45a5ee90::t_d43a0efbdff14b 342-353,357-358
+  s_71e25d45a5ee90::t_19da5bb8faac83 354-356
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentApi.test.ts
+  s_71e25d45a5ee90::t_63608265d3c569 296-302
+packages/frontend/editor-ui/src/features/ai/shared/components/ChatHistoryDropdown.test.ts
+  s_71e25d45a5ee90::t_bdbac670fe26b4 174-186,188-190
+  s_71e25d45a5ee90::t_c52b1f5d64d203 173,187
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/components/__tests__/N8nChatAgentGrid.test.ts
+  s_71e25d45a5ee90::t_19702c905915cb 8
+  s_71e25d45a5ee90::t_494b4e0ee39704 51
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useInstanceAiThreadHistory.test.ts
+  s_71e25d45a5ee90::t_d9b5fca4471ba3 1
+  s_71e25d45a5ee90::t_d31e47a89e5f24 57-58,65-66
+  s_71e25d45a5ee90::t_2876b7aba02b96 2-45,48-51,54-56,59-64,67-71
+  s_71e25d45a5ee90::t_2a50a0e864f815 46-47,52-53
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectNavigation.test.ts
+  s_71e25d45a5ee90::t_b92fdbaeda7100 276-296
+  s_71e25d45a5ee90::t_7a77077bf751f5 498-500
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/useRecentChats.ts
+  s_71e25d45a5ee90::t_0ead2ea4872ff4 34-38
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/AgentN8nChatView.vue
+  s_71e25d45a5ee90::t_bc416309fb2f22 45-46
+  s_71e25d45a5ee90::t_60fd329de7f4aa 80
+  s_71e25d45a5ee90::t_6711a641c5da45 44,79
+  s_71e25d45a5ee90::t_ecc15be82d23b6 2
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiThreadList.vue
+  s_71e25d45a5ee90::t_095690a14216a4 117
+  s_71e25d45a5ee90::t_818026912555e8 115
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  s_71e25d45a5ee90::t_380f9248c628be 4768,4798-4811
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/usePagedN8nChatThreads.ts
+  s_71e25d45a5ee90::t_8b0858079007a6 91-93
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/__tests__/AgentN8nChatView.router.test.ts
+  s_71e25d45a5ee90::t_981584ca8a650f 108-109
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiThreadsView.vue
+  s_71e25d45a5ee90::t_7c786000050c6e 44-45
+  s_71e25d45a5ee90::t_b92ac39c741d27 188,191
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/useRecentChats.test.ts
+  s_71e25d45a5ee90::t_de1ae54098efcc 1-46
+packages/frontend/editor-ui/src/features/ai/shared/components/ChatHistoryDropdown.vue
+  s_71e25d45a5ee90::t_9ebd3feb3851c1 86-100
+  s_71e25d45a5ee90::t_aca26900ebb6d6 211
+packages/frontend/editor-ui/src/features/ai/chatHub/components/SkeletonAgentCard.vue
+  s_71e25d45a5ee90::t_9a615ec87a9647 46-47
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/composables/useN8nChatAgents.test.ts
+  s_71e25d45a5ee90::t_caf7c09b39662a 2
+  s_71e25d45a5ee90::t_4b8086f2aaaca3 132,135-159
+  s_71e25d45a5ee90::t_3e015e2e769810 190,192-209
+  s_71e25d45a5ee90::t_2e9d1dd16c9493 179-182
+  s_71e25d45a5ee90::t_e90bb7d4f5df56 106-107,133-134,191
+  s_71e25d45a5ee90::t_bed915cdf85c1a 5
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/components/__tests__/RecentChatIcon.test.ts
+  s_71e25d45a5ee90::t_d196c40b105f56 17-20,27
+  s_71e25d45a5ee90::t_43129a4f25b70d 5
+  s_71e25d45a5ee90::t_72452756e7d21f 47
+  s_71e25d45a5ee90::t_2124da7de55cdc 45-46,48-50
+packages/frontend/editor-ui/src/app/stores/posthog.store.test.ts
+  s_71e25d45a5ee90::t_dc39050034e01a 524-564
+  s_71e25d45a5ee90::t_5442865a7d3d03 2
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/n8nChatThreads.store.ts
+  s_71e25d45a5ee90::t_4914a807fdb56c 28-32
+  s_71e25d45a5ee90::t_ce781ed4f71f7e 71
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_71e25d45a5ee90::t_079345b8ed5c85 237-238
+packages/frontend/editor-ui/src/features/agents/__tests__/module.descriptor.test.ts
+  s_71e25d45a5ee90::t_ad318c1afb77db 77-81,83,85-87,89-95,97-99,101-108
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/composables/useN8nChatAgents.ts
+  s_71e25d45a5ee90::t_147acf8dbf8843 1
+  s_71e25d45a5ee90::t_9c292196cf4611 31-34
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectNavigation.vue
+  s_71e25d45a5ee90::t_57a0e3e7eeecc3 118-119
+  s_71e25d45a5ee90::t_70109afc727ac9 120-121
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7ae437b23f27beb0a3b144b44582e628daac12d1",
+  "prompts": {},
+  "sessions": {
+    "s_71e25d45a5ee90": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2ca6b762-f376-4a31-af78-4066f186c7bb",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

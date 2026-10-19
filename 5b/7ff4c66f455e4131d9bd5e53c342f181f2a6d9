@@ -1,0 +1,19 @@
+packages/@n8n/cli/docs/commands/package.md
+  s_b561300a0bab45::t_d8caa076e156b7 80
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5b7ff4c66f455e4131d9bd5e53c342f181f2a6d9",
+  "prompts": {},
+  "sessions": {
+    "s_b561300a0bab45": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f3343d5d-335c-4adc-8a88-e32a15f80a03",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

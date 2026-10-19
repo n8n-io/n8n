@@ -1,0 +1,29 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentItemContextMenu.vue
+  s_a65a5a88327681::t_e145b1ee91c050 29
+packages/frontend/editor-ui/src/features/agents/components/AgentChipButton.vue
+  s_a65a5a88327681::t_e145b1ee91c050 2,65-67,121,134-135
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentCapabilitiesSection.test.ts
+  s_a65a5a88327681::t_e145b1ee91c050 311-312,327,368,378,455,472
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSchedulesRow.test.ts
+  s_a65a5a88327681::t_e145b1ee91c050 91-94
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_a65a5a88327681::t_e145b1ee91c050 35-37,42-46
+packages/frontend/@n8n/design-system/src/components/N8nIcon/icons.ts
+  s_a65a5a88327681::t_e145b1ee91c050 763
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "7c91a2b0489825771d328e5c2339f30c930114ee",
+  "prompts": {},
+  "sessions": {
+    "s_a65a5a88327681": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0f799-dd8b-7be3-bdcc-3de578ddb55f",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

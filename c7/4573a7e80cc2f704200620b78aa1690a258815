@@ -1,0 +1,241 @@
+packages/@n8n/engine/src/execution/__tests__/step-ready-handler.test.ts
+  s_77655ca8fe3a59::t_358fd53ad47445 8-13,116,722,724,726-758,810-835
+  s_77655ca8fe3a59::t_f393f62234250e 836-837
+  s_77655ca8fe3a59::t_114b5ea08627d8 838-839,841-847,850-858,861,863-871,880,883-885,903,906-908,917-923,926-951,953-956
+  s_77655ca8fe3a59::t_d5ab68f61197a5 117
+  s_77655ca8fe3a59::t_b19cb5779550a1 952
+  s_77655ca8fe3a59::t_171c2fa81956dc 859-860,862
+  s_77655ca8fe3a59::t_cc8ad89cf3a131 118
+  s_77655ca8fe3a59::t_d364794131f188 725,840
+  s_77655ca8fe3a59::t_7bb4e0590a64f1 107
+  s_77655ca8fe3a59::t_a01760ef447896 723
+  s_77655ca8fe3a59::t_e0adb9107b30a9 119
+  s_13d0f2e1be0144::t_b151515fb3d7ab 872-877,880-893
+  s_13d0f2e1be0144::t_3a749f6a5e3653 733
+  s_13d0f2e1be0144::t_628f61ba36032d 759-786
+  s_13d0f2e1be0144::t_b205b158d9e911 787-809
+  s_13d0f2e1be0144::t_7ae292bb668e93 29-30,97-98,848-849,878-879,924-925,1135-1136
+  s_13d0f2e1be0144::t_cc9a6051c5066e 894-902,904-905,909-916
+packages/@n8n/engine/src/execution/step-store.ts
+  s_77655ca8fe3a59::t_0f5e9556ae5333 14-15,17
+  s_77655ca8fe3a59::t_1c2a27d8ded0c0 1-4,6-9,122,125-126,128,170
+  s_77655ca8fe3a59::t_f30b8d089332b1 39,41,129,131,134-137,141,143,168,170
+  s_77655ca8fe3a59::t_16a1410184b3db 69-74,144,148-159
+  s_77655ca8fe3a59::t_743511542137d8 16,174-178,184-188
+  s_77655ca8fe3a59::t_9caf467b4037fc 124,132-133,138-140,145-147,179-183
+  s_77655ca8fe3a59::t_e0adb9107b30a9 160-170
+  s_13d0f2e1be0144::t_bfe87cec71c83b 5,40,42,123,127,130,142
+packages/@n8n/engine/src/dependencies/external-dependencies.ts
+  s_77655ca8fe3a59::t_fb4f2278d3a257 51-54
+  s_77655ca8fe3a59::t_c8d093896a57c3 47-48,50,55-65
+  s_77655ca8fe3a59::t_7b782f847e963a 1
+  s_77655ca8fe3a59::t_115c2e1dfcfc22 49
+packages/@n8n/engine/src/execution/__tests__/step-execution.integration.test.ts
+  s_77655ca8fe3a59::t_8245f0254336b3 97,104-106,108-109,241-251,253,255-267,269-276,278-279
+  s_77655ca8fe3a59::t_bc07f837f2d49e 376-377
+  s_77655ca8fe3a59::t_59f71e31b0df56 282-321,323-332
+  s_77655ca8fe3a59::t_0d21260073fa3c 69-70,75-82,95,101,107,268
+  s_77655ca8fe3a59::t_d364794131f188 252,254
+  s_77655ca8fe3a59::t_7bb4e0590a64f1 333-374,376-377
+  s_77655ca8fe3a59::t_a01760ef447896 96
+  s_77655ca8fe3a59::t_32915d36ff0226 240
+  s_13d0f2e1be0144::t_3a749f6a5e3653 240,271-272
+  s_13d0f2e1be0144::t_88b10e5a785a43 277,322,375
+packages/@n8n/engine/src/database/entities/workflow-step-execution.entity.ts
+  s_77655ca8fe3a59::t_f6b700aecb9b64 27
+  s_77655ca8fe3a59::t_e476629ce94188 11-12,14-17,57,62-64
+  s_77655ca8fe3a59::t_650a0a8de08d01 73
+  s_13d0f2e1be0144::t_a7870e6851e4a2 65,70
+  s_13d0f2e1be0144::t_a3327b2757ed1d 13,50-56,58-61,71-72
+  s_13d0f2e1be0144::t_cc9a6051c5066e 66-69
+packages/@n8n/engine/src/execution/index.ts
+  s_77655ca8fe3a59::t_f6b700aecb9b64 18
+  s_77655ca8fe3a59::t_501c78acb2fc37 30
+  s_77655ca8fe3a59::t_02d2ceec59d420 37-41
+  s_13d0f2e1be0144::t_a3327b2757ed1d 14
+packages/@n8n/engine/src/database/__tests__/workflow-step-execution.integration.test.ts
+  s_77655ca8fe3a59::t_f8cf71a8d4b0d9 1081,1094-1098
+  s_77655ca8fe3a59::t_ac47e95a4f5f21 385-389,391-400,402-437,439-450
+  s_77655ca8fe3a59::t_c1bde97d1c962d 6,8-11,451-454,462-468,473-477,479-488,490-496,498-500,507-512,515-517,541-542,553-554,565,593
+  s_77655ca8fe3a59::t_12807a03cc223d 566,594
+  s_77655ca8fe3a59::t_d364794131f188 390,497
+  s_77655ca8fe3a59::t_cc8ad89cf3a131 80,519-527,529-539,541-543,550-554,557,559,561,565-571,577-611,616
+  s_77655ca8fe3a59::t_6aa5072812dc38 572-576,612-615
+  s_77655ca8fe3a59::t_72ad0d21d1fc64 617
+  s_77655ca8fe3a59::t_a047f619210f06 645,652
+  s_77655ca8fe3a59::t_c161c3eaa7c5cb 619-633,636-644,646-651,653-669,671,674-677,682,684-685
+  s_77655ca8fe3a59::t_c5158c5bae9ebc 670,672-673,678-681,683
+  s_77655ca8fe3a59::t_babed0e2a665a4 719,740-744,752,755-758,764-774
+  s_77655ca8fe3a59::t_e54c281708ed21 775-776
+  s_77655ca8fe3a59::t_a01760ef447896 470-471,518,618,634-635
+  s_77655ca8fe3a59::t_d31e89b55c8393 540,544-549,555-556,562-563
+  s_77655ca8fe3a59::t_f3349bed94c9d4 686-718
+  s_13d0f2e1be0144::t_8f127a21661c3f 7,79,81,401,438,455-460,469,472,478,489,501-506,513-514,528,558,560,564
+  s_13d0f2e1be0144::t_cc9a6051c5066e 461
+packages/@n8n/engine/src/execution/__tests__/step-settled-handler.test.ts
+  s_77655ca8fe3a59::t_0c100d36629ed2 98
+  s_77655ca8fe3a59::t_d5ab68f61197a5 99
+  s_77655ca8fe3a59::t_cc8ad89cf3a131 100
+  s_77655ca8fe3a59::t_7bb4e0590a64f1 103,228,445,462
+  s_77655ca8fe3a59::t_d31e89b55c8393 86
+  s_77655ca8fe3a59::t_e0adb9107b30a9 101
+  s_13d0f2e1be0144::t_7ae292bb668e93 84-85
+packages/@n8n/engine/src/execution/execution.types.ts
+  s_77655ca8fe3a59::t_f6b700aecb9b64 92,118,131
+  s_77655ca8fe3a59::t_19f83ce102e350 97,101-105,107-112
+  s_77655ca8fe3a59::t_c4f5938570bb21 93-94,96,113-117,132-135
+  s_13d0f2e1be0144::t_45be40b56a5d23 40
+  s_77655ca8fe3a59::t_d6c6a3fe1c1182 118,123,125
+  s_77655ca8fe3a59::t_b6ad9f19c285a7 34-35,95,98-100,106,127-130
+  s_13d0f2e1be0144::t_3a749f6a5e3653 3-4
+  s_13d0f2e1be0144::t_66a5910979e568 119-122,124
+packages/@n8n/engine/src/execution/step-ready-handler.ts
+  s_77655ca8fe3a59::t_0f5e9556ae5333 33,36-39
+  s_77655ca8fe3a59::t_f684464c3ac721 2,17,23,40,100-103,113-115,117,120-127,135,137-138,142,160,166,178,180-181,181
+  s_77655ca8fe3a59::t_69463c902d44ff 390
+  s_77655ca8fe3a59::t_9caf91e2de4abe 96,105,108-112,374-375,380,382-383,388-389,391-394
+  s_77655ca8fe3a59::t_309154d04e3773 86-90,136
+  s_77655ca8fe3a59::t_115c2e1dfcfc22 381
+  s_13d0f2e1be0144::t_267efcc9a0463b 71
+  s_13d0f2e1be0144::t_3a749f6a5e3653 74-77,136-137
+  s_13d0f2e1be0144::t_980bfed939aee4 180
+  s_13d0f2e1be0144::t_c2a9f6f0acc734 179,395-413
+  s_13d0f2e1be0144::t_a2495d4df2ea39 423
+  s_13d0f2e1be0144::t_81e3f996344d20 161-165,414-417,419-420
+  s_13d0f2e1be0144::t_8435de3f563d46 418
+  s_13d0f2e1be0144::t_161ca0f894bc61 421-422
+  s_13d0f2e1be0144::t_8915c63337e41d 387
+  s_13d0f2e1be0144::t_cc9a6051c5066e 18,67-70,72,84-85,93-95,106-107,376-379,384-386
+packages/@n8n/engine/src/execution/__tests__/execution-start-handler.test.ts
+  s_77655ca8fe3a59::t_0c100d36629ed2 46
+  s_77655ca8fe3a59::t_d5ab68f61197a5 47
+  s_77655ca8fe3a59::t_cc8ad89cf3a131 48
+  s_77655ca8fe3a59::t_7bb4e0590a64f1 51
+  s_77655ca8fe3a59::t_e0adb9107b30a9 49
+packages/@n8n/engine/src/database/typeorm-step-store.ts
+  s_77655ca8fe3a59::t_be9a267feb7a72 10,191-194,197-199,285-287,289,291
+  s_77655ca8fe3a59::t_72559d0e816c09 134-137,141
+  s_77655ca8fe3a59::t_545b544c2663ab 45-49,52,204-205
+  s_77655ca8fe3a59::t_501c78acb2fc37 210-213
+  s_77655ca8fe3a59::t_56e4caac351c39 19,53,206-209,214-216,218-236
+  s_77655ca8fe3a59::t_743511542137d8 250-254
+  s_77655ca8fe3a59::t_115c2e1dfcfc22 140,201-202
+  s_77655ca8fe3a59::t_e0adb9107b30a9 237-249
+  s_13d0f2e1be0144::t_46f7e259f9d4ad 9,50-51,138-139,167,180-181,190,195-196,200,203,217,288,290
+packages/@n8n/engine/src/index.ts
+  s_77655ca8fe3a59::t_051088ddfb175e 105
+  s_77655ca8fe3a59::t_501c78acb2fc37 88
+  s_13d0f2e1be0144::t_a3327b2757ed1d 99
+packages/@n8n/engine/src/execution/__tests__/wait-sweeper.test.ts
+  s_77655ca8fe3a59::t_c9c08fb5cd8fbe 1-27,29,31-63,66-121,125-146,209-212,358-369
+  s_77655ca8fe3a59::t_7bb4e0590a64f1 30
+  s_77655ca8fe3a59::t_a01760ef447896 64
+  s_77655ca8fe3a59::t_78830e4d9f1434 65,122-124,147-203,206-224
+  s_77655ca8fe3a59::t_11f45f728b61b2 28,229-256,260-292,340-355
+  s_77655ca8fe3a59::t_3981f9baab2c51 257-259
+  s_77655ca8fe3a59::t_8d8d61a214d9e5 314,317,324,331,337
+  s_77655ca8fe3a59::t_4c63b1be6220ba 293-313,315-316,318-323,325-330,334-336,338-339
+  s_77655ca8fe3a59::t_1ce0a69b4180cb 332-333
+  s_77655ca8fe3a59::t_d6013f274fb6cf 204-205
+  s_77655ca8fe3a59::t_718d837227242f 356-357
+packages/@n8n/engine/src/execution/wait-sweeper.ts
+  s_77655ca8fe3a59::t_3573e521e235af 100-102,110
+  s_77655ca8fe3a59::t_40239a488961d2 1-28,32-40,42-45,47,52-54,74-75,96-99,111-134
+  s_77655ca8fe3a59::t_309154d04e3773 103-109
+  s_77655ca8fe3a59::t_0607acddc945e6 46
+  s_77655ca8fe3a59::t_a5b2fc315236aa 29-31,41,48-51,55-84,87-92
+  s_77655ca8fe3a59::t_dd12c7499db79f 93-95
+packages/@n8n/engine/src/runtime/create-engine-runtime.ts
+  s_77655ca8fe3a59::t_164c3994451250 17,50-51,79,118,133,143
+  s_77655ca8fe3a59::t_44a1b3a0d6aff9 140-142
+packages/@n8n/engine/docs/adr/ADR-20260902-steps-declare-waits.md
+  s_77655ca8fe3a59::t_75b63c053b01f6 2-3,5,7-10,27,31,40-42,102-105,143-145,210-212
+  s_77655ca8fe3a59::t_fb61571784b3ba 21-26,32,57-62,106-115,130-132,146-148,150-151,163,167-170,199
+  s_77655ca8fe3a59::t_017255aad7506d 102
+  s_77655ca8fe3a59::t_5c8ced0da71a29 33
+  s_77655ca8fe3a59::t_932644df19e0e6 31
+  s_13d0f2e1be0144::t_865943e44889ca 89-90,192-195
+  s_13d0f2e1be0144::t_51e6d3292b3b4f 88
+  s_13d0f2e1be0144::t_2ae87efc35a707 116-118,149
+  s_13d0f2e1be0144::t_70ed1fdde50ae7 213
+  s_13d0f2e1be0144::t_051f4f6bff6997 11-19
+  s_13d0f2e1be0144::t_4fbb1d9a15d252 119-123,133-137
+  s_13d0f2e1be0144::t_f0f63bf429cf76 152-156,164-166,200
+  s_13d0f2e1be0144::t_5a79710079cff4 66
+  s_13d0f2e1be0144::t_70906987aef7af 160-162
+  s_13d0f2e1be0144::t_ba944af1fb8d00 88-90,192-195
+  s_13d0f2e1be0144::t_d89b764a8df35c 67-68,83-87,157-159
+  s_13d0f2e1be0144::t_8f355cbcd82856 196-198
+  s_13d0f2e1be0144::t_b02c9d80ebc88c 94-96
+  s_13d0f2e1be0144::t_b59f45e9d41ad3 188-191
+  s_13d0f2e1be0144::t_eb3d8bcc7f3899 205-209
+packages/@n8n/engine/docs/adr/ADR-20260828-obtain-trigger-output-before-creating-the-execution.md
+  s_77655ca8fe3a59::t_75b63c053b01f6 1-3,5,7-63,65,67
+packages/@n8n/node-engine-compatibility/src/__tests__/v1-step-executor.test.ts
+  s_77655ca8fe3a59::t_4f3e820e0746cd 1,49-53,290-292
+  s_77655ca8fe3a59::t_a01760ef447896 48
+packages/@n8n/node-engine-compatibility/src/__tests__/v1-execution-read.test.ts
+  s_77655ca8fe3a59::t_0f87c376ac02fd 66-68
+  s_13d0f2e1be0144::t_18cd50c0763379 66-68
+packages/@n8n/engine/src/execution/step-settled-handler.ts
+  s_77655ca8fe3a59::t_743511542137d8 95
+  s_13d0f2e1be0144::t_3a749f6a5e3653 56,72
+  s_13d0f2e1be0144::t_7ab3279adcf456 14,74
+packages/@n8n/node-engine-compatibility/src/v1-execution-read.ts
+  s_77655ca8fe3a59::t_44a1b3a0d6aff9 33-38
+  s_13d0f2e1be0144::t_18cd50c0763379 35-38
+packages/@n8n/engine/src/database/migrations/1784890100000-CreateWorkflowStepExecution.ts
+  s_77655ca8fe3a59::t_110db020ab8968 35,37-39,41-46,49-50,52-54,56,86-91,105
+  s_13d0f2e1be0144::t_badc7ad4b2e327 36,47-48,51
+  s_13d0f2e1be0144::t_cc9a6051c5066e 40,55
+packages/@n8n/engine/src/execution/execution-store.ts
+  s_13d0f2e1be0144::t_3a749f6a5e3653 58
+packages/cli/src/executions/__tests__/engine-v2-execution-reader.service.test.ts
+  s_13d0f2e1be0144::t_3a749f6a5e3653 78,81
+packages/@n8n/engine/src/database/migrations/1778529600000-CreateWorkflowExecution.ts
+  s_13d0f2e1be0144::t_3a749f6a5e3653 42
+packages/@n8n/engine/src/database/typeorm-execution-store.ts
+  s_13d0f2e1be0144::t_3a749f6a5e3653 1,53
+packages/testing/playwright/tests/e2e/workflows/editor/execution/execution.spec.ts
+  s_2f8eada33084f0::t_fe51330c3cba51 53
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "c74573a7e80cc2f704200620b78aa1690a258815",
+  "prompts": {},
+  "sessions": {
+    "s_13d0f2e1be0144": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "46caa7f3-0057-4c97-8c31-ca17c936adc0",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    },
+    "s_2f8eada33084f0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e77b7309-b373-4986-b2d3-46ff8c1ab10e",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    },
+    "s_691719f04965a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "abcde464-1c00-4bc6-9f2b-1b8ad5c76471",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    },
+    "s_77655ca8fe3a59": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d2c5a11b-62c7-4839-ab99-8421196be4d4",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

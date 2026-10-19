@@ -1,0 +1,60 @@
+packages/cli/src/modules/insights/insights.service.ts
+  s_02da82dd62d343::t_e58e95a09b747c 316-317,322-324
+  s_02da82dd62d343::t_b0b1b7f5c3a991 312,318-319,325
+packages/cli/src/modules/instance-reporting.ee/__tests__/instance-reporting.integration.test.ts
+  s_02da82dd62d343::t_a6d39723a73696 529,531-533,538,546-548,553
+  s_02da82dd62d343::t_577c65d0db5d51 835-836
+  s_02da82dd62d343::t_d3bf6e3547cbf9 495
+  s_02da82dd62d343::t_8367be1180edf6 183,188,496-528,530,534-537,539-545,549-552,554-573
+packages/cli/src/modules/instance-reporting.ee/__tests__/instance-reporting-multi-main.integration.test.ts
+  s_02da82dd62d343::t_577c65d0db5d51 71,205
+packages/cli/src/modules/instance-reporting.ee/LOCAL_VERIFICATION.md
+  s_02da82dd62d343::t_6372125f6f7aed 131-140,144-152
+  s_02da82dd62d343::t_0e2b16085bfa59 107
+  s_02da82dd62d343::t_d3bf6e3547cbf9 108-109
+  s_02da82dd62d343::t_c70f5871cf34cb 141-143
+  s_02da82dd62d343::t_31344413532ef1 110
+packages/cli/src/modules/insights/database/repositories/__tests__/insights-by-period.repository.integration.test.ts
+  s_02da82dd62d343::t_ead745128ce5e6 564-679,682-683,687-688,690-691,693,696-697,699-702
+  s_02da82dd62d343::t_6642c58363d16d 680-681,684-686,689,692,694-695,698
+packages/cli/src/modules/insights/database/repositories/insights-by-period.repository.ts
+  s_02da82dd62d343::t_ecd00bd0e26030 107
+  s_02da82dd62d343::t_28631b69803940 92-106,108-112
+  s_02da82dd62d343::t_6ccdb24d504bd0 621,623-627
+  s_02da82dd62d343::t_4e2f2c7b11ac6e 588-620,622,628-629
+packages/cli/src/modules/instance-reporting.ee/README.md
+  s_02da82dd62d343::t_c898180d8f6a92 37
+  s_02da82dd62d343::t_31344413532ef1 33
+  s_02da82dd62d343::t_d3bf6e3547cbf9 34-36
+packages/cli/src/modules/insights/__tests__/insights.service.integration.test.ts
+  s_02da82dd62d343::t_d3bf6e3547cbf9 1566
+  s_02da82dd62d343::t_82e8b5eb4cdb85 1565,1568-1577,1579-1583,1585-1587,1591-1593,1596,1598-1600,1602
+  s_02da82dd62d343::t_e165349d9075d9 1578,1601
+packages/cli/src/modules/insights/__tests__/insights.service.test.ts
+  s_02da82dd62d343::t_ecd00bd0e26030 1179,1188,1191,1200,1209-1212,1217-1219,1224-1226,1230,1233-1237,1240,1249
+  s_02da82dd62d343::t_d3bf6e3547cbf9 1208
+  s_02da82dd62d343::t_1c0aa2a2c18d17 1176-1178,1180-1187,1189-1190,1192-1199,1201-1207,1213-1216,1220-1223,1227-1229,1231-1232,1238-1239,1241-1248,1250-1257
+packages/cli/src/modules/instance-reporting.ee/instance-reporting.service.ts
+  s_02da82dd62d343::t_577c65d0db5d51 389,406
+  s_02da82dd62d343::t_50454d536bbfda 390
+packages/cli/src/modules/instance-reporting.ee/__tests__/instance-reporting.service.test.ts
+  s_02da82dd62d343::t_577c65d0db5d51 571,604,609,808,882,894,939,959,973,1013,1047-1048
+  s_02da82dd62d343::t_3af4c817f51204 56-58,883,940
+  s_02da82dd62d343::t_a91997fb12a5d1 113-115,905-907
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "478236408b2602ca9312c08f8b315fedec6b9dc7",
+  "prompts": {},
+  "sessions": {
+    "s_02da82dd62d343": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1beb5c24-37c0-4deb-b24a-0ac603ad901d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dmitrii Kulikov <dmitrii.kulikov@n8n.io>"
+    }
+  }
+}

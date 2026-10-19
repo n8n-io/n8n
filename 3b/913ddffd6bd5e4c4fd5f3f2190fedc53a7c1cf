@@ -1,0 +1,26 @@
+packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowHeaderDraftPublishActions.vue
+  s_429cab79f2c6bb::t_fa8d00944a127c 378
+  s_429cab79f2c6bb::t_bb430c1848e569 413
+packages/frontend/editor-ui/src/app/composables/useNodeExecution.ts
+  s_429cab79f2c6bb::t_09df4603569a86 202
+packages/frontend/editor-ui/src/features/credentials/composables/useUnusableWorkflowCredentials.ts
+  s_429cab79f2c6bb::t_b01eab4c83eeef 11-12,14,16-17
+packages/frontend/editor-ui/src/app/composables/useNodeHelpers.ts
+  s_429cab79f2c6bb::t_9344aba6c42bde 109-111
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "3b913ddffd6bd5e4c4fd5f3f2190fedc53a7c1cf",
+  "prompts": {},
+  "sessions": {
+    "s_429cab79f2c6bb": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "65bad1e1-6e3c-4424-8e25-dbe22437a468",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,111 @@
+packages/cli/src/public-api/v1/controllers/n8n-packages.public.controller.ts
+  s_8631ec10eb1199::t_2f5bac864c6ede 2,24,26,28-31,42-45,54,57-58,69-70,72-79,84-100
+  s_8631ec10eb1199::t_a760cf1e1bc092 112,155
+  s_8631ec10eb1199::t_dc5c4356d64cf2 80
+  s_8631ec10eb1199::t_039b723567d51e 205-206,208-218,220,225-226,232-233,238-241,243-247,249,251-256,259-261,262,263-265,267-279,290
+packages/cli/src/modules/n8n-packages/CLAUDE.md
+  s_8631ec10eb1199::t_dc76f826423041 71-75
+  s_8631ec10eb1199::t_8f9eb80b248910 17,55-58
+packages/@n8n/api-types/src/dto/packages/export-package-request.dto.ts
+  s_8631ec10eb1199::t_fff3109db1257e 4,7-8,15-37,39-41,44-46,48-59
+  s_8631ec10eb1199::t_3f39f509f46915 3
+packages/@n8n/api-types/src/dto/packages/export-package-request.openapi.ts
+  s_8631ec10eb1199::t_94fba0c6bc2381 33
+  s_8631ec10eb1199::t_20c61d460ad667 1-3,8-17,20-23,25-29,31,34,36,39-42,44-49
+  s_8631ec10eb1199::t_1d93c33666eade 50
+  s_8631ec10eb1199::t_02ed641c802086 38
+  s_8631ec10eb1199::t_89313d65365642 43
+packages/@n8n/api-types/src/dto/packages/__tests__/export-package-request.dto.test.ts
+  s_8631ec10eb1199::t_bc51cb25fdb3b2 201-207
+packages/cli/src/public-api/v1/controllers/openapi/n8n-packages.openapi.ts
+  s_8631ec10eb1199::t_cc3db2a9738d60 1-2,5-6,28-31
+  s_8631ec10eb1199::t_3b13b6e9e4fc8a 16,32-33
+packages/cli/src/public-api/v1/openapi.yml
+  s_8631ec10eb1199::t_7243d8ef6f4a93 82
+  s_8631ec10eb1199::t_05f6368c40013e 81
+packages/cli/src/public-api/v1/controllers/__tests__/n8n-packages.public.controller.test.ts
+  s_8631ec10eb1199::t_4db1e1f8d1be60 4,33,36-37,57-61,64-66,68,70-74,162,174,176-178,254,260,294-295,297-299,301-307,309-311,313-315,317-321,323-325,349-437
+  s_8631ec10eb1199::t_9592400c40c1a3 1-3,5-6,8-20,22-31,34-35,38,41-56,62-63,69,75-100,102-113,115-123,125-161,163-173,175,179-252,255,261,262-266,287,293,438
+packages/cli/test/integration/public-api/n8n-packages-export.test.ts
+  s_8631ec10eb1199::t_dc5c4356d64cf2 219,231
+  s_8631ec10eb1199::t_1e76d44e2bc60b 195,207-215,218,230,252-291
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/exportPackage.generated.yml
+  s_8631ec10eb1199::t_a4ed324fa0af5c 1-3,6,32-41,52-78,80-84,86-89,91-96,98,101-106,108-109,111-127,132-149
+  s_8631ec10eb1199::t_b20179798f8b46 5,17,128-130
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  s_8631ec10eb1199::t_df6ff3e0e722a1 192-194
+packages/cli/src/public-api/media-types/request-body/multipart.request-body.ts
+  s_8631ec10eb1199::t_5d31a28f2a86f9 16,26
+packages/cli/src/public-api/__tests__/public-api-controller.registry.test.ts
+  s_8631ec10eb1199::t_e65c1e35c06e21 78-94
+packages/cli/src/public-api/types.ts
+  s_8631ec10eb1199::t_950f76abdcbb8a 11
+  s_8631ec10eb1199::t_0e468700e9a597 10
+packages/cli/src/public-api/public-api-controller.registry.ts
+  s_8631ec10eb1199::t_0c3a8085b85485 74-81
+  s_8631ec10eb1199::t_3ef39470b178e7 33
+packages/cli/src/public-api/index.ts
+  s_8631ec10eb1199::t_e3794818b9bffb 1
+  s_8631ec10eb1199::t_379700fc89fc80 158-162,168,173,177
+  s_8631ec10eb1199::t_bb668a4a77d8cf 193
+packages/cli/src/public-api/v1/__tests__/scope-parity.test.ts
+  s_8631ec10eb1199::t_8c50c6a38962e2 1,6,26-29
+packages/cli/src/public-api/v1/public-api-error-response.ts
+  s_8631ec10eb1199::t_d8c50012e8752f 3,9-10
+packages/cli/src/public-api/media-types/request-body/multipart-parser.ts
+  s_8631ec10eb1199::t_5d31a28f2a86f9 5
+packages/cli/src/public-api/v1/controllers/data-tables.public.controller.ts
+  s_8631ec10eb1199::t_ef4384a2958ce9 67
+packages/cli/src/public-api/v1/openapi-gen/generate.ts
+  s_8631ec10eb1199::t_367abcb8bede18 231-233
+  s_8631ec10eb1199::t_499bf71188f5fe 21-23,26,149-150,166,209,214-221,223,228-229,235,237-240,242-243,247,250
+  s_8631ec10eb1199::t_1ed8a442ffe2f1 40
+packages/cli/src/public-api/v1/openapi-gen/__tests__/generate.test.ts
+  s_8631ec10eb1199::t_095b6027263943 3-5,7,10-11,13,15-16,26-28,31-35,37-51,54-70,73,75-80,83,85-86,89-94,96,99-102,104-113,116-117,119,121,123,126-127
+packages/cli/src/public-api/media-types/content-type.ts
+  s_8631ec10eb1199::t_5d31a28f2a86f9 13-14
+packages/cli/src/public-api/v1/controllers/credentials.public.controller.ts
+  s_8631ec10eb1199::t_ef4384a2958ce9 95
+packages/cli/src/public-api/v1/openapi-gen/decorator-routes.ts
+  s_8631ec10eb1199::t_ef4384a2958ce9 324
+packages/cli/src/public-api/v1/handlers/discover/__tests__/discover.service.test.ts
+  s_8631ec10eb1199::t_aa2fc31fa24321 4,7-9
+.agents/skills/public-api/reference.md
+  s_8631ec10eb1199::t_8f9eb80b248910 125-128
+packages/cli/scripts/build.mjs
+  s_8631ec10eb1199::t_54f887707b4e5e 78-79,82,84,87,89,92-94,96-97,100-101,122
+  s_8631ec10eb1199::t_fbda745bee6fc2 90,132-133,135,137,141,143-144
+packages/@n8n/backend-services/src/errors/rest-error-classifier.ts
+  s_8631ec10eb1199::t_f44b4c855a7af4 49
+.agents/skills/public-api/SKILL.md
+  s_8631ec10eb1199::t_8f9eb80b248910 24
+packages/cli/src/public-api/v1/openapi-gen/__tests__/decorator-routes.test.ts
+  s_8631ec10eb1199::t_cd1d138892fb08 197
+  s_8631ec10eb1199::t_add231846eedc9 175
+packages/cli/test/integration/public-api/unmatched-routes.test.ts
+  s_8631ec10eb1199::t_337bbe8dc954ae 1,3-5,7-8,10,12-14,16-18,20-22,24-25,28,33-34,37-41,44-48,51-54
+  s_8631ec10eb1199::t_977619971d3662 29-31
+  s_8631ec10eb1199::t_52d5804357b0a5 2,6,9,11,15,19,23,26-27,32,35-36,42-43,49-50,55-56
+packages/cli/src/public-api/public-api-route-resolver.ts
+  s_8631ec10eb1199::t_6d55b1b51be8e1 209-210
+packages/cli/src/public-api/v1/handlers/discover/discover.service.ts
+  s_8631ec10eb1199::t_6d55b1b51be8e1 41,43-45,48,67,169
+packages/cli/src/public-api/v1/shared/middlewares/global.middleware.ts
+  s_8631ec10eb1199::t_fd4fb5fbc7b7bb 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c2072ef233fcba5e63a1135c43ed3589e0c3b796",
+  "prompts": {},
+  "sessions": {
+    "s_8631ec10eb1199": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77132272-9e69-4c36-85e9-f1136efb4942",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,39 @@
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_2f8e12c8ef524c::t_31e918be35b01f 296,332-341,346,357-367,1037-1100,1102-1121,1124-1126,1128-1130,1134,1136-1180,1186-1187,1189,1194-1195,1199-1203,1205-1210,1213-1249,1261-1319
+  s_fdc787c8fbd548::t_2a7e554927d42a 1101,1122-1123,1127,1131-1133,1135
+  s_2f8e12c8ef524c::t_24c99e51a8a94d 1250-1260
+  s_fdc787c8fbd548::t_73961f90e904fc 1181-1185,1188,1190-1193,1196-1198,1204,1211-1212
+  s_3ed9d32328b843::t_8cfa48561307c0 1320-1321
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e2d54dd7756d1cc531f2c8b9fedb88b8a43332de",
+  "prompts": {},
+  "sessions": {
+    "s_2f8e12c8ef524c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0d794-351a-7251-a5c4-8039f0109ab6",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_3ed9d32328b843": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2fa0b01d-c8c2-4984-a373-92463bb9d959",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_fdc787c8fbd548": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9bc44f21-c81c-4beb-919a-9dfedf538263",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

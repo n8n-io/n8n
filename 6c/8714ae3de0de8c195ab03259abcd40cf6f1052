@@ -1,0 +1,19 @@
+packages/@n8n/api-types/src/dto/workflows/__tests__/create-workflow-public.dto.test.ts
+  s_b99486d66cc3d5::t_da8abb00b0d697 76
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "6c8714ae3de0de8c195ab03259abcd40cf6f1052",
+  "prompts": {},
+  "sessions": {
+    "s_b99486d66cc3d5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0b92a54a-6d63-4d90-9fa2-67d631f34af6",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

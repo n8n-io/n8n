@@ -1,0 +1,9 @@
+packages/cli/src/modules/instance-ai/ASSISTANT_V2_PLAN.md
+  ai_agent 101-102,333-396,451,509,517
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "59a3900d941bce03cc00b4d28c3cde473bd98e55",
+  "prompts": {}
+}

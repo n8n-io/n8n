@@ -1,0 +1,29 @@
+ligo-team-promotion-planning/buckets.draft.md
+  h_9b272a633435fb 1-18
+ligo-team-promotion-planning/feedback.md
+  h_9b272a633435fb 17
+ligo-team-promotion-planning/feedback-synthesis.md
+  s_45123286427139::t_d53d92b64def6b 1-25,27-120,124-166,176-183
+  s_45123286427139::t_f89658e99a7852 26,121-123,167-175
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "78662c4c0fc247aae1d4ad03863c94b6d0807d74",
+  "prompts": {},
+  "humans": {
+    "h_9b272a633435fb": {
+      "author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_45123286427139": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b33d3c5d-ff42-4bae-9ddc-12cbbe5f554e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

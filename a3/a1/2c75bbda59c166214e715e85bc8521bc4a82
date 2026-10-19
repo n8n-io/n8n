@@ -1,0 +1,31 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiConversation.vue
+  s_2ed659fa6b1ae7::t_4d5d3c68532053 170,173-175,185-194,202,214,216-218,818,908,1090-1091,1094-1095,1098-1112,1114-1116
+  s_2ed659fa6b1ae7::t_8cf08914f59ac9 176-184,195-200,205-206,209-210,213,215,815
+  s_2ed659fa6b1ae7::t_4d5d9462ff725e 171-172,1093,1097
+  s_2ed659fa6b1ae7::t_e50d22799d7d5d 827-831
+  s_2ed659fa6b1ae7::t_63a3d8733eb1c8 219-221
+  s_2ed659fa6b1ae7::t_fcfb85c2ea7901 1092,1096,1113
+  s_2ed659fa6b1ae7::t_b288dfbba64475 201,204
+  s_2ed659fa6b1ae7::t_7f30cebf3d08ce 72,168-169,203,207-208,821-826,832-833
+packages/@n8n/instance-ai/onboarding/cloud-form.yaml
+  s_2ed659fa6b1ae7::t_4d5d3c68532053 11-12,14-15
+  s_2ed659fa6b1ae7::t_d493865c519918 5-6
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_2ed659fa6b1ae7::t_e50d22799d7d5d 5460
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "a3a12c75bbda59c166214e715e85bc8521bc4a82",
+  "prompts": {},
+  "sessions": {
+    "s_2ed659fa6b1ae7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d3f128a4-3e8f-4275-b045-49313edd5a2e",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

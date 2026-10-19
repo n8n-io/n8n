@@ -1,0 +1,48 @@
+packages/cli/src/telemetry/__tests__/telemetry.test.ts
+  s_e00d3111fa33b6::t_06007fc198478f 5-6,14-15,1198-1210,1212-1260,1264-1269,1271,1276,1279
+  s_e00d3111fa33b6::t_618963193403e5 1211,1272-1273,1275,1287-1288,1291-1308
+  s_e00d3111fa33b6::t_67b3221cc46eb7 1261-1263,1270,1274,1277-1278,1280-1286
+packages/cli/src/commands/__tests__/base-command.test.ts
+  s_e00d3111fa33b6::t_55e52e1258a5c3 3-7,50-51,53-58
+  s_e00d3111fa33b6::t_eb35b138ce78e1 52
+  s_e00d3111fa33b6::t_389764d27c6672 59-62
+packages/cli/src/commands/webhook.ts
+  s_e00d3111fa33b6::t_6872df0ee95c1b 108
+packages/cli/src/scheduling/system-tasks/instance-system-tasks.ts
+  s_e00d3111fa33b6::t_b4dc83c99b72fe 1-18
+packages/cli/src/commands/base-command.ts
+  s_e00d3111fa33b6::t_b8dd472c92ea45 17,51
+  s_e00d3111fa33b6::t_7cafc70961b1d3 18,291-301
+packages/cli/src/telemetry/index.ts
+  s_e00d3111fa33b6::t_5c28b57819abf3 213-214,216,225-226,228-235,258-271
+  s_e00d3111fa33b6::t_5ee665e14c2ba5 215
+  s_e00d3111fa33b6::t_e8cc5cf3d1cb12 217
+packages/cli/src/telemetry/telemetry-buffer-flush.task.ts
+  s_e00d3111fa33b6::t_edf152d0fb82fa 1-33
+packages/cli/src/commands/__tests__/start-system-task-metrics.test.ts
+  s_e00d3111fa33b6::t_ae5de6d27bf26d 29,44,124
+packages/cli/src/scheduling/system-tasks/__tests__/instance-system-tasks.test.ts
+  s_e00d3111fa33b6::t_1a5dba32a3d7e5 1-21
+packages/cli/src/commands/start.ts
+  s_e00d3111fa33b6::t_6872df0ee95c1b 10,430
+packages/cli/src/commands/worker.ts
+  s_e00d3111fa33b6::t_6872df0ee95c1b 230
+packages/cli/src/telemetry/__tests__/telemetry-buffer-flush.task.test.ts
+  s_e00d3111fa33b6::t_1a5dba32a3d7e5 1-31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "37aa3e05ba6510699749533ec078496b2a7f5e5b",
+  "prompts": {},
+  "sessions": {
+    "s_e00d3111fa33b6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d367195c-69ef-4777-9c5d-7ddb90723684",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

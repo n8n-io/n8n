@@ -1,0 +1,40 @@
+packages/frontend/@n8n/design-system/src/components/N8nToolsConnection/__tests__/ToolRow.test.ts
+  s_081a931f85efb0::t_efea39263c2243 18,28
+packages/frontend/@n8n/design-system/src/components/N8nToolsConnection/__tests__/ToolsConnectionModal.test.ts
+  s_081a931f85efb0::t_f214981d3a9508 556-557
+  s_081a931f85efb0::t_efea39263c2243 118-120,149-151,555
+packages/frontend/@n8n/design-system/src/components/N8nToolsConnection/ToolsConnectionModal.vue
+  s_081a931f85efb0::t_df14559a28aebb 383-384,415
+  s_7396ec8a4dae48::t_57e2a900c88705 106,385
+packages/frontend/@n8n/design-system/src/components/N8nToolsConnection/__tests__/DefaultDetailBody.test.ts
+  s_081a931f85efb0::t_efea39263c2243 16
+packages/frontend/@n8n/design-system/src/components/N8nToolsConnection/__tests__/ToolCredentialPicker.test.ts
+  s_081a931f85efb0::t_efea39263c2243 51
+  s_081a931f85efb0::t_7b8c41fc18310b 172
+packages/frontend/@n8n/design-system/src/components/N8nToolsConnection/CreateWorkflowRow.vue
+  s_081a931f85efb0::t_ad0b790f9ee934 27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "dec551c01564285cda8ec671013b4efd1e81919f",
+  "prompts": {},
+  "sessions": {
+    "s_081a931f85efb0": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0c98b-a59d-723d-8d08-315178c379bf",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_7396ec8a4dae48": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0ec4a-a5a2-7699-9a7d-9e91eb66f4ad",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

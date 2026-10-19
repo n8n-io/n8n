@@ -1,0 +1,35 @@
+packages/@n8n/nodes-langchain/nodes/agents/Agent/test/ToolsAgent/ToolsAgentV2.test.ts
+  s_4e9d5b48b9b343::t_1e08216907d029 1188
+  s_4e9d5b48b9b343::t_0bdc1321476e1c 1190-1193
+  s_4e9d5b48b9b343::t_d56b2be11c541e 1187
+packages/@n8n/nodes-langchain/nodes/agents/Agent/test/ToolsAgent/ToolsAgentV3.test.ts
+  s_4e9d5b48b9b343::t_d89947d60db8c5 269-270
+  s_4e9d5b48b9b343::t_a52d534679d5cd 220
+  s_4e9d5b48b9b343::t_a53c393545172c 61-63,68,221-223
+packages/@n8n/nodes-langchain/nodes/agents/Agent/test/utils.test.ts
+  s_4e9d5b48b9b343::t_b73f41dd4052af 5,9,279-280,285-286,288-292,294-295
+  s_4e9d5b48b9b343::t_d56b2be11c541e 3,281-284,287,293
+packages/@n8n/nodes-langchain/nodes/agents/Agent/agents/utils.ts
+  s_4e9d5b48b9b343::t_1275c90539a3a5 12-17
+  s_4e9d5b48b9b343::t_fe7288075848b1 21
+packages/@n8n/nodes-langchain/nodes/agents/Agent/agents/ToolsAgent/V2/execute.ts
+  s_4e9d5b48b9b343::t_cce5fd7bbab879 357-361
+packages/@n8n/nodes-langchain/nodes/agents/Agent/agents/ToolsAgent/V3/helpers/runAgent.ts
+  s_4e9d5b48b9b343::t_cce5fd7bbab879 96-98
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e0d34c842b64476e2f2a5510ed0e6360c9473d98",
+  "prompts": {},
+  "sessions": {
+    "s_4e9d5b48b9b343": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8795d410-6613-4046-ad17-6b379a80e23b",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

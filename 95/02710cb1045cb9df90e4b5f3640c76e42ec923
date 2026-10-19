@@ -1,0 +1,48 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/workflowSetup/composables/useWorkflowSetupActions.ts
+  s_db74c72b258827::t_07250ade98b33d 41
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/agentsChat/InstanceAiConfirmationCard.vue
+  s_db74c72b258827::t_d42b34c54cc229 7,9-16,19,24-29,43-44,50,55-57,60-67,71-73,102-171,211-303,366-377,408-415
+  s_db74c72b258827::t_e9a3920056c011 172-182
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiChannelSetup.vue
+  s_db74c72b258827::t_827e22f2975d21 13,20-21,24,35,44,46
+packages/frontend/editor-ui/src/features/ai/instanceAi/confirmationTransport.ts
+  s_db74c72b258827::t_1e22a265847599 1-52
+packages/frontend/editor-ui/src/features/ai/instanceAi/workflowSetup/composables/useWorkflowSetupApply.ts
+  s_db74c72b258827::t_07250ade98b33d 6,16-22,65,74,98-101,106,137,151-153,158-159
+  s_db74c72b258827::t_9b4cd25e2c96bd 102-105,154-157
+packages/frontend/editor-ui/src/features/ai/instanceAi/workflowSetup/InstanceAiWorkflowSetup.vue
+  s_db74c72b258827::t_07250ade98b33d 8,16-17,28
+packages/frontend/editor-ui/src/features/ai/instanceAi/workflowSetup/composables/useWorkflowSetupContext.ts
+  s_db74c72b258827::t_07250ade98b33d 15,60-61,65,82
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiCredentialSetup.vue
+  s_db74c72b258827::t_273ff26dee7cce 28,43-44,50-51,503,516,540,545,556,561,666,672
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiCredentialSetup.test.ts
+  s_db74c72b258827::t_4587d1c7f8eff7 531-571
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.store.ts
+  s_db74c72b258827::t_1e22a265847599 554-558
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/InstanceAiConfirmationCard.test.ts
+  s_db74c72b258827::t_a8ed2be8ec9a89 50,123-125,246
+  s_db74c72b258827::t_f8917b2a71365b 185
+  s_db74c72b258827::t_e17595942c3dea 1,7-49,51-53,102,115-122,126-172,180-184,186-245,247-285
+  s_db74c72b258827::t_e27956088e6e84 173-179
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/GatewayResourceDecision.vue
+  s_db74c72b258827::t_3bcefc2cf0c23d 10,34-35,41-42,79,82,93-97
+packages/frontend/editor-ui/src/features/ai/instanceAi/workflowSetup/composables/useWorkflowSetupTelemetry.ts
+  s_db74c72b258827::t_07250ade98b33d 53-54,64,69,177
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9502710cb1045cb9df90e4b5f3640c76e42ec923",
+  "prompts": {},
+  "sessions": {
+    "s_db74c72b258827": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "623f2f12-b478-4119-a5b9-9b84971b2bbe",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

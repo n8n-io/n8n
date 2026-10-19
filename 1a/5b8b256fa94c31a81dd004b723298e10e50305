@@ -1,0 +1,21 @@
+packages/cli/test/integration/workflow-history-manager.test.ts
+  s_12d664be52403d::t_ead99754f9f322 227
+  s_12d664be52403d::t_62186ca4fd6a38 228-257,273,277
+  s_12d664be52403d::t_787a398f8674fd 21-35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1a5b8b256fa94c31a81dd004b723298e10e50305",
+  "prompts": {},
+  "sessions": {
+    "s_12d664be52403d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aa3f695d-d7e2-45b3-883c-0c3bafe2e39e",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}

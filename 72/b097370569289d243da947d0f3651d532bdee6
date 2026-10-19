@@ -1,0 +1,21 @@
+packages/modules/type-availability-policies/frontend/src/policy-violations/PolicyViolationList.vue
+  s_66e0f21ba02487::t_f909e6f46ac398 39
+packages/modules/type-availability-policies/frontend/src/policy-violations/PolicyViolationList.test.ts
+  s_66e0f21ba02487::t_6a2c383b816cce 32,61,64,66,70
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "72b097370569289d243da947d0f3651d532bdee6",
+  "prompts": {},
+  "sessions": {
+    "s_66e0f21ba02487": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8b8ee062-7189-4b0e-9fa0-b50866a5d3de",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "sim <olivier.dejong@n8n.io>"
+    }
+  }
+}

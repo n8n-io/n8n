@@ -1,0 +1,20 @@
+packages/cli/src/public-api/__tests__/public-api-controller.registry.test.ts
+  s_fb233da4d2661f::t_b4aca8287c79bd 1,17,196-212
+  s_fb233da4d2661f::t_e06a208f5857f8 213
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "aede014b208de4aaeb05f4df533c82872286c04a",
+  "prompts": {},
+  "sessions": {
+    "s_fb233da4d2661f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "834d9625-7bf9-4f98-ba91-093137034fb5",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

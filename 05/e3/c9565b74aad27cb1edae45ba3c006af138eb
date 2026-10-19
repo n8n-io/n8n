@@ -1,0 +1,14 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentSetupTasks/AgentSetupTasks.vue
+  h_f8b427917eda26 198
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "05e3c9565b74aad27cb1edae45ba3c006af138eb",
+  "prompts": {},
+  "humans": {
+    "h_f8b427917eda26": {
+      "author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

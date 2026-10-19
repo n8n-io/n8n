@@ -1,0 +1,24 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_71e25d45a5ee90::t_8b77d5a06849db 8181
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/components/N8nChatAgentPicker.vue
+  s_71e25d45a5ee90::t_8b77d5a06849db 14,126-135
+  s_71e25d45a5ee90::t_0b41ea91703868 136-137,139-147,149-220,222
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/components/__tests__/N8nChatAgentPicker.test.ts
+  s_71e25d45a5ee90::t_ad57e500efde59 66-73
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "44b3eeb580c3797c06a08150c8e49a35c9f4e6b5",
+  "prompts": {},
+  "sessions": {
+    "s_71e25d45a5ee90": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2ca6b762-f376-4a31-af78-4066f186c7bb",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

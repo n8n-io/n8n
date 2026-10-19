@@ -1,0 +1,21 @@
+packages/cli/src/metrics/prometheus/cached-metric-query.ts
+  s_aeec5e8b3057ef::t_c4f40f69d55737 53-54
+packages/cli/src/metrics/prometheus/__tests__/cached-metric-query.test.ts
+  s_aeec5e8b3057ef::t_c4f40f69d55737 71-91
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "29364b726b896161c2fdf3a239051a57fe059b0d",
+  "prompts": {},
+  "sessions": {
+    "s_aeec5e8b3057ef": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0fcfa-348e-7172-a0f4-31dc2db5c74a",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

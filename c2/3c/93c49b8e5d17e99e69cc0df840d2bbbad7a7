@@ -1,0 +1,215 @@
+packages/nodes-base/nodes/Microsoft/GraphSecurity/test/requestUrlEncoding.test.ts
+  s_2e1fa95fc44f8f::t_e2b77b493d5cea 1-31
+packages/nodes-base/nodes/Microsoft/Teams/test/v1/requestUrlEncoding.test.ts
+  s_2e1fa95fc44f8f::t_65700d61c06436 1-28
+packages/nodes-base/nodes/Microsoft/GraphSecurity/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_f7e3db01c26037 6-8,10,32,63,70
+packages/nodes-base/nodes/Microsoft/GraphSecurity/MicrosoftGraphSecurity.node.ts
+  s_2e1fa95fc44f8f::t_8b3eee121390b4 8,131,160,183,210,237
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/actions/table/append.operation.ts
+  s_351622766b233b::t_23b9f0f5db7d36 7,181,220
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/actions/table/convertToRange.operation.ts
+  s_7e373fcefff3cc::t_d127ef930ef7df 1-7,37,42-46
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/actions/table/create.operation.ts
+  s_7e373fcefff3cc::t_ad17c218b6b595 1-7,79,89,97,106-114
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/actions/table/deleteTable.operation.ts
+  s_7e373fcefff3cc::t_0af6f4b8dd014c 1-6,36
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/actions/table/getAll.operation.ts
+  s_7e373fcefff3cc::t_16fa193d24bc4b 6,8,63,77
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/actions/table/getColumns.operation.ts
+  s_7e373fcefff3cc::t_43d2d8fa846b4f 6,8,47,60
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/actions/table/getRows.operation.ts
+  s_7e373fcefff3cc::t_3762e90c1d85c1 6,8,52,65-70
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/actions/table/lookup.operation.ts
+  s_7e373fcefff3cc::t_6ff97bbc59a4bd 1-7,82,93
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/actions/workbook/addWorksheet.operation.ts
+  s_7e373fcefff3cc::t_cd88c97b73e5db 6,8,79,100
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/actions/workbook/deleteWorkbook.operation.ts
+  s_7e373fcefff3cc::t_879122cdc6e35b 1-6,33
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/actions/worksheet/append.operation.ts
+  s_7e373fcefff3cc::t_d019e6b956d032 1-8,293,305,320,373,415,420
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/actions/worksheet/clear.operation.ts
+  s_7e373fcefff3cc::t_a1a3e2f7bb92fb 1-7,117,125,127-128
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/actions/worksheet/deleteWorksheet.operation.ts
+  s_7e373fcefff3cc::t_0f88097788574c 1-7,40,56
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/actions/worksheet/getAll.operation.ts
+  s_7e373fcefff3cc::t_09153b7eda8813 6,8,80,94
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/actions/worksheet/readRows.operation.ts
+  s_7e373fcefff3cc::t_748bbfab8df520 6,8,191,206,213-214
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/helpers/converters.ts
+  s_351622766b233b::t_9b18c34a858246 1-6,57
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/helpers/listSearch.ts
+  s_351622766b233b::t_239871e0329dad 1,30
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/helpers/matchUpdate.ts
+  s_7e373fcefff3cc::t_8e026735382520 2,52,64,72-78,91,159,179
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/helpers/sessions.ts
+  s_351622766b233b::t_28a9d0ec6d7a0a 1-2,12,19,38,44
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/helpers/tableRead.ts
+  s_29fe1f61565b6f::t_3b1a64eaf85ba8 1-2,13,15,27,32,36
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/helpers/utils.ts
+  s_29fe1f61565b6f::t_c79f8aedbfe8d6 7,9,52,54,79,91,107,203
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/helpers/workbookSearch.ts
+  s_19150bf5812493::t_3aaf8fa81d4479 1-2,22-26,29
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/methods/listSearch.ts
+  s_7e373fcefff3cc::t_71d3518af97844 7,9,29,114,140,197,218
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/methods/loadOptions.ts
+  s_351622766b233b::t_ada839192e4e07 2,16,19,22,63
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/addWorksheet.harness.test.ts
+  s_7e373fcefff3cc::t_74d2c1466bf1f0 3
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/addWorksheet.sp.test.ts
+  s_7e373fcefff3cc::t_393cb32a0af6e3 22,27,37
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/append.harness.test.ts
+  s_7e373fcefff3cc::t_2ccf86aae39adc 30,42,54
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/append.sp.test.ts
+  s_7e373fcefff3cc::t_fb95dee46efd8c 22,32
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/clear.harness.test.ts
+  s_29fe1f61565b6f::t_d168a1e3439294 21,43,64
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/deleteWorkbook.harness.test.ts
+  s_7e373fcefff3cc::t_3e9a841cf34425 3
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/deleteWorksheet.harness.test.ts
+  s_7e373fcefff3cc::t_282b436dd624ac 29,41
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/deleteWorksheet.sp.test.ts
+  s_7e373fcefff3cc::t_91a21c71dbcaec 22
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/helpers/sessions.test.ts
+  s_b674b1e1407988::t_f69fdae20fb1e3 1-2,23,31-33,45,51,69,90-92,105-107
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/helpers/utils.test.ts
+  s_351622766b233b::t_17d48cb6c38f53 1,81-82,87-100,153-154,182,186-187,202
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/methods/listSearch.test.ts
+  s_2e1fa95fc44f8f::t_b10406122402c8 1-2,30,74,92,177,189-190,205,245,268,365,462
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/methods/loadOptions.test.ts
+  s_607917b9ae477c::t_596f3e08a42b29 2,26-27,75,95,123
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/readRows.harness.test.ts
+  s_7e373fcefff3cc::t_7c5264d890e338 30,42
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/readRows.sp.test.ts
+  s_7e373fcefff3cc::t_479b0c2971885c 22
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/requestUrls.test.ts
+  s_7e373fcefff3cc::t_72d9f9c16fc487 14
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/sheetUpdate.sp.test.ts
+  s_7e373fcefff3cc::t_de3d8c06cc59a7 17
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/table/append.test.ts
+  s_7e373fcefff3cc::t_7bb38ddc3fc7ca 1-2,21-22,51-53,85,96,107-113,138,160,177,190-192,217-219,243-245,253
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/table/getAll.test.ts
+  s_607917b9ae477c::t_a49d727b76a082 2,25,74,87-90,103
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/table/lifecycle.test.ts
+  s_607917b9ae477c::t_285bece7124315 2,21,74,91,98,125,136-139
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/table/read.test.ts
+  s_607917b9ae477c::t_c842602f4d97cf 1-2,21,56-57,83-89,102,122,149-154,170
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/tableAppend.sp.test.ts
+  s_7e373fcefff3cc::t_3181f156e91a24 17
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/tableCreate.sp.test.ts
+  s_7e373fcefff3cc::t_e1204edea23b7b 19
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/tableGetAll.harness.test.ts
+  s_7e373fcefff3cc::t_17768997a6e09e 23
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/tableGetAll.sp.test.ts
+  s_607917b9ae477c::t_61fc384f1c6260 21
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/tableGetRows.sp.test.ts
+  s_7e373fcefff3cc::t_a2a02de629a36c 17
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/transport.test.ts
+  s_351622766b233b::t_b23cb1b1bbef93 2,165-171,190-193
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/workbook/addWorksheet.test.ts
+  s_607917b9ae477c::t_a5284e376d3301 1-2,21,60-63,65,75,81,90,101-102,111,121-123,133,153-154,159
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/workbook/deleteWorkbook.test.ts
+  s_607917b9ae477c::t_40403425f25dd8 2,21
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/workbook/getAll.test.ts
+  s_b674b1e1407988::t_984f4e71fa5676 2,22,70,109,121
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/workbookGetAll.sp.test.ts
+  s_7e373fcefff3cc::t_5fdd9f1d8e521a 19
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/worksheet/append.test.ts
+  s_607917b9ae477c::t_a1cd45c12eb81a 2,21-22,74-81,107-114,146-156,191-201,226-236,250-257,280-291,331-341
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/worksheet/clear.test.ts
+  s_607917b9ae477c::t_97e24bfae61489 2,21,68,82,95,110
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/worksheet/deleteWorksheet.test.ts
+  s_607917b9ae477c::t_1570f8c1fd122a 2,21,67
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/worksheet/getAll.test.ts
+  s_607917b9ae477c::t_445178365b7075 2,25,74,87-90,103
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/worksheet/matchUpdate.test.ts
+  s_7e373fcefff3cc::t_9f014a0fdac9ec 1-2,20,54-55,91,109-110,122,130-131,148-151,153,184,187,218,270
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/worksheet/readRows.test.ts
+  s_7e373fcefff3cc::t_0aa52ae1ff030f 1-2,21,75,90,119-120,133,148
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/worksheetGetAll.harness.test.ts
+  s_7e373fcefff3cc::t_7a7e298d8c1a10 30,42
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/transport/index.ts
+  s_351622766b233b::t_09f935eba233ea 1,19,51
+packages/nodes-base/nodes/Microsoft/GraphSecurity/test/GenericFunctions.test.ts
+  s_1ec27c3c45e4cb::t_e07e0cb635debc 3,61-65,72,86,96,110,121,135,149,165,179,189,199-205,217,234,238,258-262,278,293,312,327,347,367,377-381,385,394-398,402,411,415,432,439,454,461,475,482,497,504,519,526,541,548,563,570,585,592,614,621,636,643,658,665,676,690,704,714,728,741,759,767,910
+packages/nodes-base/nodes/Microsoft/Storage/GenericFunctions.ts
+  s_7e373fcefff3cc::t_411d3c8ff269ef 17-18,20,87,99,101,528-534,540-546,579,585
+packages/nodes-base/nodes/Microsoft/Storage/test/listSearch/listSearch.test.ts
+  s_607917b9ae477c::t_f7debd80b83135 2,48,98,136-159
+packages/nodes-base/nodes/Microsoft/Teams/v1/GenericFunctions.ts
+  s_7e373fcefff3cc::t_06e0c206eb5ace 7-8,10,15,22,29,46,81
+packages/nodes-base/nodes/Microsoft/Teams/v1/MicrosoftTeamsV1.node.ts
+  s_7e373fcefff3cc::t_8a459d302c94be 11,105,121-125,141,143,168,191,214,238,257-263,315,326,337,349,358,380,414,421,436,444,474,485,497,505,546,556,561,575,589,599,613,621,660,666
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c23c93c49b8e5d17e99e69cc0df840d2bbbad7a7",
+  "prompts": {},
+  "sessions": {
+    "s_19150bf5812493": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-aaeb313a3a4da81b4",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_1ec27c3c45e4cb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a3f62a035f25f627c",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_29fe1f61565b6f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ad2b09f5b20b4c7e5",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_351622766b233b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a032144dd8116bbb0",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_607917b9ae477c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-afd947c4a80f6efd7",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_7e373fcefff3cc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-af498523455e2af45",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_b674b1e1407988": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a6c9a961b684ea6b5",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

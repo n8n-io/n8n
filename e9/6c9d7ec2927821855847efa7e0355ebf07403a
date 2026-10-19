@@ -1,0 +1,23 @@
+packages/nodes-base/nodes/Google/BusinessProfile/test/workflow/trigger.workflow.json
+  s_2e1fa95fc44f8f::t_a53e1bdafe1492 1-48
+packages/nodes-base/nodes/Google/BusinessProfile/test/workflow/trigger.workflow.test.ts
+  s_2e1fa95fc44f8f::t_9592ed8ec066ce 1-35
+packages/nodes-base/nodes/Google/BusinessProfile/test/RequestUrls.test.ts
+  s_2e1fa95fc44f8f::t_073c4c92bc6c17 1-64
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e96c9d7ec2927821855847efa7e0355ebf07403a",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

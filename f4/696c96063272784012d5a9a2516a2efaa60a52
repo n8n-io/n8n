@@ -1,0 +1,44 @@
+packages/cli/src/services/pruning/__tests__/execution-pruning-hard-delete.task.test.ts
+  s_0a178bf49161fd::t_1581a0bc4bad33 1,8-15,24-25,27,29-30
+  s_0a178bf49161fd::t_9f832413ea85b7 2-7,16-23,26,28,31
+packages/cli/src/scheduling/system-tasks/__tests__/main-system-tasks.test.ts
+  s_0a178bf49161fd::t_cb31f7c7a59fba 45
+  s_0a178bf49161fd::t_257b8b4ccf7239 58,62
+  s_0a178bf49161fd::t_5a2fc458cf30cc 7
+packages/cli/src/services/pruning/__tests__/executions-pruning.service.test.ts
+  s_0a178bf49161fd::t_0799bff2e22b0a 1-2,5,7,9-18,21-32,39,41,45-47,49,51-54,57-58,60,63,65,72-77,80-81,83-84,86-87,90-93,96-97,99-100,112
+  s_0a178bf49161fd::t_1fb383cbb85887 19-20,103,106,108-109
+  s_0a178bf49161fd::t_9d00ea4af46967 50,56,64,67,69,79,95
+  s_0a178bf49161fd::t_bbb4963c561c20 104
+  s_0a178bf49161fd::t_e8ef517046d172 105
+  s_0a178bf49161fd::t_2185c85b8d5d32 33-37
+packages/@n8n/db/src/repositories/execution.repository.ts
+  s_0a178bf49161fd::t_1cfa3d4718e43b 186
+packages/cli/test/integration/executions-pruning.service.test.ts
+  s_0a178bf49161fd::t_85cc6fae191727 4
+packages/cli/src/scheduling/system-tasks/main-system-tasks.ts
+  s_0a178bf49161fd::t_1caf77cd82f51c 42-45
+packages/cli/src/services/pruning/execution-pruning-hard-delete.task.ts
+  s_0a178bf49161fd::t_5185920b7f8efd 1,16-18,25,27,30
+  s_0a178bf49161fd::t_788162fe27c7fb 2-15,19-24,26,28-29,31-32
+packages/cli/src/services/pruning/executions-pruning.service.ts
+  s_0a178bf49161fd::t_fff896c5c51c1b 49-50
+  s_0a178bf49161fd::t_ecb74a84c68b2b 19,43-44,52,57
+  s_0a178bf49161fd::t_9a21f07f045130 2,4,8-10,15-18,45,47-48,54,58,60,62-64
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f4696c96063272784012d5a9a2516a2efaa60a52",
+  "prompts": {},
+  "sessions": {
+    "s_0a178bf49161fd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6518d2d6-9ea1-49fa-9fa3-50b64bef0c32",
+        "model": "unknown"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,101 @@
+packages/frontend/editor-ui/src/features/settings/context/components/PreferenceModal.test.ts
+  s_9b7b2a4c8c37de::t_11694ecb493335 150,170,193,290,375,434,464,491,520,568
+packages/frontend/editor-ui/src/features/settings/context/views/SettingsPreferencesView.test.ts
+  s_9b7b2a4c8c37de::t_11694ecb493335 39
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_9b7b2a4c8c37de::t_11694ecb493335 3427-3428,3431,4661-4665
+packages/@n8n/engine/docs/adr/ADR-20260904-a-derived-token-authorizes-a-resume-request.md
+  s_9b7b2a4c8c37de::t_11694ecb493335 1-226
+packages/@n8n/api-types/src/dto/breaking-changes/__tests__/update-migration-finding-statuses-request.dto.test.ts
+  s_9b7b2a4c8c37de::t_11694ecb493335 1-23
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/PreferenceCard.test.ts
+  s_9b7b2a4c8c37de::t_11694ecb493335 159
+packages/cli/src/binary-data/__tests__/binary-data-access.service.test.ts
+  s_9b7b2a4c8c37de::t_11694ecb493335 6-8,15,20,25-26,38,45,54,61,70-71,136-225
+  s_9b7b2a4c8c37de::t_8a8ca9d149e485 226
+packages/@n8n/db/src/repositories/ai-preference.repository.ts
+  s_9b7b2a4c8c37de::t_11694ecb493335 105
+packages/cli/test/integration/ai-preference.api.test.ts
+  s_9b7b2a4c8c37de::t_11694ecb493335 213-228
+packages/frontend/editor-ui/src/features/settings/context/context.utils.test.ts
+  s_9b7b2a4c8c37de::t_11694ecb493335 30
+packages/cli/src/modules/breaking-changes/triage/migration-finding-triage.service.ts
+  s_9b7b2a4c8c37de::t_11694ecb493335 17,23,38-66
+packages/cli/src/modules/breaking-changes/__tests__/breaking-changes.controller.test.ts
+  s_9b7b2a4c8c37de::t_11694ecb493335 336-365
+packages/cli/src/modules/breaking-changes/__tests__/migration-finding.repository.integration.test.ts
+  s_9b7b2a4c8c37de::t_11694ecb493335 654,666,669-748
+  s_9b7b2a4c8c37de::t_0475ab7a3e3d45 655-665,667-668
+packages/cli/src/modules/breaking-changes/triage/__tests__/migration-finding-triage.service.test.ts
+  s_9b7b2a4c8c37de::t_11694ecb493335 80-115
+packages/cli/src/services/__tests__/ai-preference.service.test.ts
+  s_9b7b2a4c8c37de::t_11694ecb493335 422-443,869-896
+  s_9b7b2a4c8c37de::t_8572e1e010fcd4 897
+packages/cli/src/binary-data/binary-data-access.service.ts
+  s_9b7b2a4c8c37de::t_11694ecb493335 8-10,13-17,31,67-68,70-72,79-97
+packages/cli/src/modules/mcp/__tests__/undo-user-preference.tool.test.ts
+  s_9b7b2a4c8c37de::t_11694ecb493335 33
+packages/frontend/editor-ui/src/features/settings/context/context.utils.ts
+  s_9b7b2a4c8c37de::t_11694ecb493335 1,75-79,81-87
+packages/quality/testing/playwright/pages/components/RunDataPanel.ts
+  s_9b7b2a4c8c37de::t_11694ecb493335 197-201
+packages/quality/testing/playwright/workflows/binary-data-download.json
+  s_9b7b2a4c8c37de::t_11694ecb493335 1-59
+packages/frontend/editor-ui/src/features/settings/context/components/PreferencesTable.test.ts
+  s_9b7b2a4c8c37de::t_11694ecb493335 27,117-118,120-122,125-141
+packages/@n8n/db/src/repositories/__tests__/ai-preference.repository.test.ts
+  s_9b7b2a4c8c37de::t_11694ecb493335 63
+packages/frontend/editor-ui/src/features/settings/context/context.store.test.ts
+  s_9b7b2a4c8c37de::t_11694ecb493335 39
+packages/quality/testing/playwright/tests/e2e/workflows/editor/ndv/binary-data-download.spec.ts
+  s_9b7b2a4c8c37de::t_11694ecb493335 1-38
+packages/cli/src/modules/mcp/__tests__/update-user-preference.tool.test.ts
+  s_9b7b2a4c8c37de::t_11694ecb493335 36
+packages/cli/src/services/ai-preference.service.ts
+  s_9b7b2a4c8c37de::t_11694ecb493335 238,560-567
+packages/frontend/editor-ui/src/features/settings/migrationReport/MigrationRuleDetail.vue
+  s_9b7b2a4c8c37de::t_11694ecb493335 24,39,253,300,303-306,310-318,326-327,336-382,384,386,390-432,560-567,640-675,763-765,892-915,920-937,969-976
+  s_9b7b2a4c8c37de::t_03ffe2b152dc96 977
+packages/cli/src/executions/execution-id.ts
+  s_9b7b2a4c8c37de::t_11694ecb493335 10-16
+packages/frontend/editor-ui/src/features/settings/migrationReport/MigrationRuleDetail.test.ts
+  s_9b7b2a4c8c37de::t_11694ecb493335 22,215-216,358-660,834-841,947,952,955
+packages/frontend/@n8n/rest-api-client/src/api/breaking-changes.ts
+  s_9b7b2a4c8c37de::t_11694ecb493335 91-102
+packages/@n8n/api-types/src/dto/breaking-changes/update-migration-finding-statuses-request.dto.ts
+  s_9b7b2a4c8c37de::t_11694ecb493335 1-9
+packages/quality/testing/playwright/tests/e2e/projects/projects.spec.ts
+  s_9b7b2a4c8c37de::t_11694ecb493335 96-98
+packages/@n8n/api-types/src/schemas/ai-preference.schema.ts
+  s_9b7b2a4c8c37de::t_11694ecb493335 97
+packages/cli/src/modules/breaking-changes/database/repositories/migration-finding.repository.ts
+  s_9b7b2a4c8c37de::t_11694ecb493335 200-223
+  s_9b7b2a4c8c37de::t_fb03fb57b9ef2a 199
+packages/frontend/@n8n/rest-api-client/src/api/__tests__/breaking-changes.test.ts
+  s_9b7b2a4c8c37de::t_11694ecb493335 1-27
+packages/cli/src/modules/mcp/__tests__/save-user-preference.tool.test.ts
+  s_9b7b2a4c8c37de::t_11694ecb493335 48
+packages/frontend/editor-ui/src/features/settings/context/components/PreferencesTable.vue
+  s_9b7b2a4c8c37de::t_11694ecb493335 11,65-66,111-113
+packages/cli/src/modules/breaking-changes/breaking-changes.controller.ts
+  s_9b7b2a4c8c37de::t_11694ecb493335 9,144-153
+  s_9b7b2a4c8c37de::t_810ab59fd98c71 154-155
+packages/@n8n/api-types/src/dto/index.ts
+  s_9b7b2a4c8c37de::t_11694ecb493335 57
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5bfc78bac23a4305f8e974325b0f55cc0c2be95b",
+  "prompts": {},
+  "sessions": {
+    "s_9b7b2a4c8c37de": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "965da30c-0387-48a9-adb7-81d6d381b9e1",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

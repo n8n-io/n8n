@@ -1,0 +1,51 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentConfirmationModal.vue
+  s_e980f852ea73c9::t_9292f45a550acb 71
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_e980f852ea73c9::t_ef7a74d1c5ad0a 2771
+packages/frontend/editor-ui/src/features/agents/components/AgentVectorStoresModal.vue
+  s_e980f852ea73c9::t_ef7a74d1c5ad0a 472
+packages/frontend/editor-ui/src/features/execution/executions/components/workflow/WorkflowExecutionsPreview.vue
+  s_e980f852ea73c9::t_ef7a74d1c5ad0a 427,449
+packages/frontend/editor-ui/src/features/roles/instance/InstanceRoleView.vue
+  s_e980f852ea73c9::t_ef7a74d1c5ad0a 266
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialEdit.vue
+  s_e980f852ea73c9::t_ef7a74d1c5ad0a 1672,1684
+packages/frontend/@n8n/design-system/src/components/N8nMarkdownEditor/MarkdownEditor.vue
+  s_e980f852ea73c9::t_6a6fc691f8a888 427
+packages/frontend/editor-ui/src/features/ai/mcpAccess/modals/MCPConnectAgentsModal.vue
+  s_27dc62af884186::t_3ad126b6cc520b 95
+packages/frontend/editor-ui/src/features/agents/components/AgentChatToolSteps.vue
+  s_27dc62af884186::t_3ad126b6cc520b 357
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectSharing.vue
+  s_27dc62af884186::t_3ad126b6cc520b 352,383
+packages/frontend/editor-ui/src/features/workflows/templates/components/SetupWorkflowCredentialsButton.vue
+  s_27dc62af884186::t_3ad126b6cc520b 152,163
+packages/frontend/editor-ui/src/app/views/NodeView.vue
+  s_27dc62af884186::t_3ad126b6cc520b 2253,2264
+packages/frontend/editor-ui/src/features/ai/mcpAccess/modals/MCPConnectWorkflowsModal.vue
+  s_27dc62af884186::t_3ad126b6cc520b 86
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5aad5bf2c6d15f070216df00c55ac20030646023",
+  "prompts": {},
+  "sessions": {
+    "s_27dc62af884186": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0f6f4-11af-77db-8362-8fef42dbd0b1",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_e980f852ea73c9": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0d3c8-b9e9-73d3-9e99-dffd8378eb3f",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

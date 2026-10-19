@@ -1,0 +1,19 @@
+packages/@n8n/workflow-sdk/src/codegen/emit-instance-ai.test.ts
+  s_7887e2d350f40f::t_2d3570273cdd5f 305
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "984920c8f6ace325d84c49eee8a43a2c5894fdc9",
+  "prompts": {},
+  "sessions": {
+    "s_7887e2d350f40f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "62dd6632-b49e-473a-b9fb-b7945d59c21e",
+        "model": "unknown"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

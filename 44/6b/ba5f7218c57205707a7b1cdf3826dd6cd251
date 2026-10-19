@@ -1,0 +1,24 @@
+packages/@n8n/instance-ai/src/tools/orchestration/verification/analyze-result.ts
+  s_d5003b5d725a42::t_9f87eb1c10ed2b 201
+  s_d5003b5d725a42::t_b502ce2064cb65 158-162,166,168-173,175
+packages/@n8n/instance-ai/src/tools/orchestration/verification/__tests__/analyze-result.test.ts
+  s_d5003b5d725a42::t_0a51ae6c7a5120 559-594
+packages/@n8n/instance-ai/docs/tools.md
+  s_d5003b5d725a42::t_acd36520d85c4e 278-279
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "446bba5f7218c57205707a7b1cdf3826dd6cd251",
+  "prompts": {},
+  "sessions": {
+    "s_d5003b5d725a42": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3bc66e51-1092-4528-9f04-197e684e6367",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

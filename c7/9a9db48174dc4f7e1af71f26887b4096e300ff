@@ -1,0 +1,40 @@
+packages/cli/src/modules/agents/agent-session-lock.service.ts
+  s_934fec7376a80c::t_73931d30465c0e 9-10
+packages/cli/src/modules/agents/integrations/__tests__/n8n-checkpoint-storage.test.ts
+  s_934fec7376a80c::t_73931d30465c0e 36,87
+packages/cli/src/modules/agents/__tests__/agent-chat-attachment.service.test.ts
+  s_934fec7376a80c::t_73931d30465c0e 25
+  s_934fec7376a80c::t_c49690a1f69b30 98
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_934fec7376a80c::t_73931d30465c0e 98
+  s_934fec7376a80c::t_c49690a1f69b30 665,1319
+packages/cli/src/modules/agents/background/agent-background-job.service.ts
+  s_934fec7376a80c::t_73931d30465c0e 150,189
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_934fec7376a80c::t_73931d30465c0e 150,542
+packages/cli/src/modules/agents/agent-chat-attachment.service.ts
+  s_934fec7376a80c::t_73931d30465c0e 113
+packages/cli/src/modules/agents/background/__tests__/agent-background-job.service.test.ts
+  s_934fec7376a80c::t_73931d30465c0e 80
+  s_934fec7376a80c::t_c49690a1f69b30 229,234,662,667
+packages/cli/src/modules/agents/integrations/n8n-checkpoint-storage.ts
+  s_934fec7376a80c::t_73931d30465c0e 114
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_934fec7376a80c::t_73931d30465c0e 762
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "c79a9db48174dc4f7e1af71f26887b4096e300ff",
+  "prompts": {},
+  "sessions": {
+    "s_934fec7376a80c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0c8b5-7083-7d41-b054-88e2c5315cda",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

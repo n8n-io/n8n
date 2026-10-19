@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/ai/shared/components/ChatInputBase.test.ts
+  s_8f032b56f18d14::t_2c551f90975b15 94,177,179,185-192,282
+packages/frontend/editor-ui/src/features/ai/shared/components/ChatInputBase.vue
+  s_8f032b56f18d14::t_84b9b0efda9387 28,297
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0cd8aebdfa9cc86fa94b68808e98115bd0fab20c",
+  "prompts": {},
+  "sessions": {
+    "s_8f032b56f18d14": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "557d70e8-ea9b-47fe-826b-d0074a7d5b17",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

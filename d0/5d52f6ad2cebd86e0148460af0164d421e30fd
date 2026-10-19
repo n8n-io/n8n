@@ -1,0 +1,74 @@
+packages/core/src/encryption/__tests__/cipher.test.ts
+  s_223d08db0c60dd::t_6b4e7b81ad6c10 151-152,164
+  s_223d08db0c60dd::t_bedb8680e58acf 6-7,14-15,22,51,77,79-80,85-86,91,99,110-111,116-117,121-122,127-128,136,140,144-145,158-160,168,171
+  s_223d08db0c60dd::t_7bc13525fc59c4 39,42-48
+  s_223d08db0c60dd::t_dcf9ce0077e7e6 209,251,293,325,356,420
+  s_223d08db0c60dd::t_99b8dc6e368493 40-41
+packages/testing/code-health/src/rules/encryption-boundary.rule.ts
+  s_223d08db0c60dd::t_6b4e7b81ad6c10 22
+packages/testing/code-health/src/rules/encryption-boundary.rule.test.ts
+  s_223d08db0c60dd::t_0d6a955110939d 132,185-186,188,195-198,218-219,227-229
+packages/cli/test/integration/database/repositories/secrets-provider-connection.repository.test.ts
+  s_223d08db0c60dd::t_4aa73c0c1bf0de 50,84
+packages/cli/test/integration/external-secrets/secret-providers-connections.api.test.ts
+  s_223d08db0c60dd::t_f56d3b8f8daf99 156-158,273-275
+packages/cli/test/integration/controllers/oauth/oauth2.api.test.ts
+  s_223d08db0c60dd::t_4aa73c0c1bf0de 350
+packages/cli/test/integration/ldap/ldap.api.test.ts
+  s_223d08db0c60dd::t_4aa73c0c1bf0de 49
+packages/@n8n/eslint-config/src/rules/no-encryption-guardrail-disable.test.ts
+  s_223d08db0c60dd::t_0d6a955110939d 26,34
+packages/cli/test/integration/external-secrets/secret-providers-project.api.test.ts
+  s_223d08db0c60dd::t_4aa73c0c1bf0de 83
+packages/cli/src/__tests__/credentials-helper.test.ts
+  s_223d08db0c60dd::t_4aa73c0c1bf0de 946,1051,1106,1162,1203,1214,1250,1531,1641,2259,2269,2438,2934
+  s_223d08db0c60dd::t_f56d3b8f8daf99 9,980-982
+packages/cli/src/modules/dynamic-credentials.ee/__tests__/dynamic-credentials-cors.integration.test.ts
+  s_223d08db0c60dd::t_4aa73c0c1bf0de 94,104,214,224
+packages/@n8n/eslint-config/src/rules/fixtures/tsconfig.json
+  s_223d08db0c60dd::t_f08935a21c3e9e 2
+AGENTS.md
+  s_223d08db0c60dd::t_f08935a21c3e9e 307-308
+packages/cli/test/migration/1771500000000-migrate-external-secrets-to-entity-storage.test.ts
+  s_223d08db0c60dd::t_4aa73c0c1bf0de 110,125,131,153,172,188,200,209,248,259
+packages/cli/test/integration/environments/source-control.service.test.ts
+  s_223d08db0c60dd::t_4aa73c0c1bf0de 344,351,364,372,396,404,1471,1502,1530,1558,1586
+packages/cli/src/modules/dynamic-credentials.ee/__tests__/dynamic-credentials-rate-limit.integration.test.ts
+  s_223d08db0c60dd::t_4aa73c0c1bf0de 112,120
+packages/cli/test/integration/credentials/credentials-overwrites.integration.test.ts
+  s_223d08db0c60dd::t_4aa73c0c1bf0de 73,92,100,116,134,166,208,231,348
+packages/cli/test/integration/environments/source-control-export.service.test.ts
+  s_223d08db0c60dd::t_4aa73c0c1bf0de 144,204,278,310,363,412,459,506
+packages/cli/test/integration/external-secrets/external-secrets.events.test.ts
+  s_223d08db0c60dd::t_4aa73c0c1bf0de 114,146
+packages/cli/test/integration/external-secrets/external-secrets.module.test.ts
+  s_223d08db0c60dd::t_4aa73c0c1bf0de 81,148
+packages/core/src/encryption/cipher.ts
+  s_223d08db0c60dd::t_3815bb94596dfc 200,210
+  s_223d08db0c60dd::t_bf9687fc85a824 39-40
+packages/cli/src/modules/source-control.ee/__tests__/source-control-export.service.test.ts
+  s_223d08db0c60dd::t_4aa73c0c1bf0de 101,211,270,332,370,415
+packages/cli/test/migration/1773000000000-create-credential-dependency-table.test.ts
+  s_223d08db0c60dd::t_4aa73c0c1bf0de 68,138,151
+  s_223d08db0c60dd::t_f56d3b8f8daf99 156-158
+packages/core/src/__tests__/credentials.test.ts
+  s_223d08db0c60dd::t_4aa73c0c1bf0de 106,149,169,187
+packages/cli/src/encryption/__tests__/key-manager.service.test.ts
+  s_223d08db0c60dd::t_f56d3b8f8daf99 6,696
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d05d52f6ad2cebd86e0148460af0164d421e30fd",
+  "prompts": {},
+  "sessions": {
+    "s_223d08db0c60dd": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f3d77be9dffePL74xPlWxBGKl7",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

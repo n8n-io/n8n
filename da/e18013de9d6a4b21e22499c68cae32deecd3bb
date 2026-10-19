@@ -1,0 +1,38 @@
+packages/cli/src/modules/agents/system-agents/__tests__/system-agent-execution.service.test.ts
+  s_db74c72b258827::t_9016cc7949555b 109
+packages/cli/src/modules/instance-ai/assistant-agent.provider.ts
+  s_db74c72b258827::t_5aa917cb7d249e 3-7,22,46,56,60-61,67,71-93,95-99,103,108-113,117-124
+  s_db74c72b258827::t_c03f1a48813815 57-59,62-66
+packages/cli/src/modules/instance-ai/assistant-turn-options.ts
+  s_db74c72b258827::t_c03f1a48813815 43-44
+packages/cli/src/modules/agents/agent-chat.controller.ts
+  s_db74c72b258827::t_347e72aafee438 387-395
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_db74c72b258827::t_c03f1a48813815 3203-3204,3253
+packages/cli/src/modules/instance-ai/__tests__/assistant-agent.provider.test.ts
+  s_db74c72b258827::t_cc3feaf66c88e3 22
+  s_db74c72b258827::t_9016cc7949555b 97
+packages/@n8n/api-types/src/agents/dto.ts
+  s_db74c72b258827::t_f5badcea363428 244-249
+packages/cli/src/modules/agents/system-agents/system-agent-execution.service.ts
+  s_db74c72b258827::t_347e72aafee438 400-401,416-418,431
+  s_db74c72b258827::t_c03f1a48813815 10,12,61,280-294,297
+packages/cli/src/modules/agents/system-agents/system-agent.types.ts
+  s_db74c72b258827::t_347e72aafee438 83-87
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "dae18013de9d6a4b21e22499c68cae32deecd3bb",
+  "prompts": {},
+  "sessions": {
+    "s_db74c72b258827": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "623f2f12-b478-4119-a5b9-9b84971b2bbe",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

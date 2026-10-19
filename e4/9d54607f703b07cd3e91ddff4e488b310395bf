@@ -1,0 +1,148 @@
+packages/nodes-base/nodes/Airtop/test/node/file/get.test.ts
+  s_2e1fa95fc44f8f::t_01719c958f6470 63-74
+  s_17dcd264474be0::t_78d7f18695f7fa 1,52,93
+packages/nodes-base/nodes/Airtop/transport/index.ts
+  s_2e1fa95fc44f8f::t_fbfd0a93534482 7-9,11,22-25,29,33,38
+packages/nodes-base/nodes/Airtop/GenericFunctions.ts
+  s_6ba58fba7d49bc::t_fa205ab09e3bbf 8,385,412,453-460,507
+packages/nodes-base/nodes/Airtop/actions/agent/agent.utils.ts
+  s_6ba58fba7d49bc::t_bcb3e10992981d 1-8,23,25,65-70
+packages/nodes-base/nodes/Airtop/actions/agent/run.operation.ts
+  s_17dcd264474be0::t_428095ae236391 6,8,171,179
+packages/nodes-base/nodes/Airtop/actions/common/session.utils.ts
+  s_17dcd264474be0::t_711fefaaeff7ff 1-2,25,38-43,48,57
+packages/nodes-base/nodes/Airtop/actions/extraction/getPaginated.operation.ts
+  s_17dcd264474be0::t_010f658b41f585 6,117-118
+packages/nodes-base/nodes/Airtop/actions/extraction/query.operation.ts
+  s_17dcd264474be0::t_8d1ded451a4128 6,72-73
+packages/nodes-base/nodes/Airtop/actions/extraction/scrape.operation.ts
+  s_17dcd264474be0::t_43cd2c0dcc2b1b 2,12-13
+packages/nodes-base/nodes/Airtop/actions/file/delete.operation.ts
+  s_17dcd264474be0::t_4941470e0127e8 2,37
+packages/nodes-base/nodes/Airtop/actions/file/get.operation.ts
+  s_17dcd264474be0::t_fa26112d99ac73 1,52
+packages/nodes-base/nodes/Airtop/actions/file/getMany.operation.ts
+  s_17dcd264474be0::t_37081e33f6e59f 6,77
+packages/nodes-base/nodes/Airtop/actions/file/helpers.ts
+  s_6ba58fba7d49bc::t_f62d4fa8b2bc84 3,24,85,112,191-193,212
+packages/nodes-base/nodes/Airtop/actions/interaction/click.operation.ts
+  s_17dcd264474be0::t_ef770efaf9cdf9 6,82
+packages/nodes-base/nodes/Airtop/actions/interaction/fill.operation.ts
+  s_6ba58fba7d49bc::t_57f9e942f31827 7,51,67-71
+packages/nodes-base/nodes/Airtop/actions/interaction/hover.operation.ts
+  s_17dcd264474be0::t_dc36575aa9720c 6,50
+packages/nodes-base/nodes/Airtop/actions/interaction/scroll.operation.ts
+  s_17dcd264474be0::t_f04e98e19baf58 7,218
+packages/nodes-base/nodes/Airtop/actions/interaction/type.operation.ts
+  s_17dcd264474be0::t_822ae8af8c299e 6,75
+packages/nodes-base/nodes/Airtop/actions/session/create.operation.ts
+  s_17dcd264474be0::t_ddc5a3ad63077f 7,201
+packages/nodes-base/nodes/Airtop/actions/session/save.operation.ts
+  s_17dcd264474be0::t_dd387a92e39633 7,72
+packages/nodes-base/nodes/Airtop/actions/session/terminate.operation.ts
+  s_17dcd264474be0::t_93e0ab4f0ba1af 7,30
+packages/nodes-base/nodes/Airtop/actions/window/close.operation.ts
+  s_17dcd264474be0::t_ecadf29032a758 2,16
+packages/nodes-base/nodes/Airtop/actions/window/create.operation.ts
+  s_17dcd264474be0::t_e7e6b24ba49dd3 7,156,172
+packages/nodes-base/nodes/Airtop/actions/window/getLiveView.operation.ts
+  s_17dcd264474be0::t_e13b021ac3645a 2,85
+packages/nodes-base/nodes/Airtop/actions/window/list.operation.ts
+  s_6ba58fba7d49bc::t_d291600ddb2eea 2,15-20
+packages/nodes-base/nodes/Airtop/actions/window/load.operation.ts
+  s_17dcd264474be0::t_3a5fed678c5ecc 6,86
+packages/nodes-base/nodes/Airtop/actions/window/takeScreenshot.operation.ts
+  s_17dcd264474be0::t_2096f068d02239 7,45
+packages/nodes-base/nodes/Airtop/methods/index.ts
+  s_17dcd264474be0::t_fb33e83926a7ad 6,10,50,52
+packages/nodes-base/nodes/Airtop/test/node/extraction/getPaginated.test.ts
+  s_1ec27c3c45e4cb::t_c8dd4d6cba138f 1,36,41,99,133,168,204,242
+packages/nodes-base/nodes/Airtop/test/node/extraction/query.test.ts
+  s_1ec27c3c45e4cb::t_471f586736d678 1,34,87,125,165,225,263
+packages/nodes-base/nodes/Airtop/test/node/extraction/scrape.test.ts
+  s_1ec27c3c45e4cb::t_2aa447ab129520 1,29,77,108,139
+packages/nodes-base/nodes/Airtop/test/node/file/deleteFile.test.ts
+  s_17dcd264474be0::t_4ecb118f9bc477 1,30
+packages/nodes-base/nodes/Airtop/test/node/file/getMany.test.ts
+  s_17dcd264474be0::t_1b398f80e6419f 1,69,101
+packages/nodes-base/nodes/Airtop/test/node/file/helpers.test.ts
+  s_17dcd264474be0::t_ad41c4dd5eab17 1,71,78,134,172,297,323
+packages/nodes-base/nodes/Airtop/test/node/file/load.test.ts
+  s_17dcd264474be0::t_f0c3fe9963437b 1,55,61,106,128
+packages/nodes-base/nodes/Airtop/test/node/file/upload.test.ts
+  s_17dcd264474be0::t_e5fc11367c5778 1,98,102-103,109,160,218
+packages/nodes-base/nodes/Airtop/test/node/interaction/click.test.ts
+  s_17dcd264474be0::t_185f975ef43334 1,56,104,129,153,173
+packages/nodes-base/nodes/Airtop/test/node/interaction/fill.test.ts
+  s_17dcd264474be0::t_55ec2e60dcdca1 1,57,66
+packages/nodes-base/nodes/Airtop/test/node/interaction/hover.test.ts
+  s_17dcd264474be0::t_6ea95f5bb0af5d 1,55,101,125
+packages/nodes-base/nodes/Airtop/test/node/interaction/scroll.test.ts
+  s_17dcd264474be0::t_5593199d3be11a 1,69,99
+packages/nodes-base/nodes/Airtop/test/node/interaction/type.test.ts
+  s_17dcd264474be0::t_414656d0f99cc3 1,57,99,119,141,168
+packages/nodes-base/nodes/Airtop/test/node/session/create.test.ts
+  s_17dcd264474be0::t_3c786674dbb8ac 1,48,80,92,117,147,177,222,255,288
+packages/nodes-base/nodes/Airtop/test/node/session/save.test.ts
+  s_17dcd264474be0::t_90701486933244 1,42
+packages/nodes-base/nodes/Airtop/test/node/window/close.test.ts
+  s_17dcd264474be0::t_ea9890bfddab60 1,50
+packages/nodes-base/nodes/Airtop/test/node/window/create.test.ts
+  s_17dcd264474be0::t_f0445167fa9f54 1,61,93,101,133,141,173,181,213,221,255,263
+packages/nodes-base/nodes/Airtop/test/node/window/getLiveView.test.ts
+  s_17dcd264474be0::t_0dff47256a6bb7 1,61,93
+packages/nodes-base/nodes/Airtop/test/node/window/list.test.ts
+  s_17dcd264474be0::t_ff68ec54c085b3 1,56
+packages/nodes-base/nodes/Airtop/test/node/window/load.test.ts
+  s_17dcd264474be0::t_663709513e4824 1,55,108
+packages/nodes-base/nodes/Airtop/test/node/window/takeScreenshot.test.ts
+  s_17dcd264474be0::t_4d0c9d30689dd3 1,79,97
+packages/nodes-base/nodes/Airtop/test/utils.test.ts
+  s_1ec27c3c45e4cb::t_d861d79393b846 32,37,42,47
+packages/nodes-base/nodes/Airtop/test/node/agent/run.test.ts
+  s_17dcd264474be0::t_0a97d66a0dbf6a 1,107,132-135,220-224,230,280-284,290,299,305,372,410-414,420,498,522,545,570,594
+packages/nodes-base/nodes/Airtop/test/node/session/terminate.test.ts
+  s_17dcd264474be0::t_df8b3ce58e6aff 1,34-37
+packages/nodes-base/nodes/Airtop/test/session-utils.test.ts
+  s_17dcd264474be0::t_27340e965c1a86 1,55-56,78-79,86,105-106,113,126-127,136,155-156,164,179-180,189
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e49d54607f703b07cd3e91ddff4e488b310395bf",
+  "prompts": {},
+  "sessions": {
+    "s_17dcd264474be0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ae5ccb607dc2571b3",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_1ec27c3c45e4cb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a3f62a035f25f627c",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_6ba58fba7d49bc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a3fc4c89db18073c3",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

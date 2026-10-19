@@ -1,0 +1,19 @@
+packages/cli/src/modules/oauth-server/__tests__/oauth-session.service.test.ts
+  s_a4556b837ab6e9::t_364de6aeed6470 2,4,31-44,48,56,64
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "5380cf7ee1063a929417f92f590a73bfdca300ed",
+  "prompts": {},
+  "sessions": {
+    "s_a4556b837ab6e9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5eb18d59-43bb-430f-8f1b-0d965479bf74",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,26 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useProjectResourceSearch.test.ts
+  s_dff57e7b253b23::t_44185867de6525 189-211
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useProjectResourceSearch.ts
+  s_dff57e7b253b23::t_228139e95dc0a2 109-110,112
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useOpenArtifactTabs.ts
+  ai_agent 200-203
+  s_dff57e7b253b23::t_228139e95dc0a2 26,34-59,183-189,198-199,204-205,208-209
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useOpenArtifactTabs.test.ts
+  s_dff57e7b253b23::t_44185867de6525 183-197,208-230
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6b28dfe51e330479abd8d33f1aefa93fa76fe040",
+  "prompts": {},
+  "sessions": {
+    "s_dff57e7b253b23": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2a1b4b03-5790-4a03-a686-790045e59397",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

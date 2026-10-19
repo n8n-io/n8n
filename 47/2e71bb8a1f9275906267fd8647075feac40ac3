@@ -1,0 +1,153 @@
+packages/frontend/@n8n/design-system/src/components/N8nToolsConnection/__tests__/DefaultDetailBody.test.ts
+  s_9b9696034972ce::t_62960cd769a340 1-65
+packages/frontend/@n8n/design-system/src/components/N8nToolsConnection/__tests__/ToolRow.test.ts
+  s_9b9696034972ce::t_e05fc6d4311cbd 110
+  s_9b9696034972ce::t_62960cd769a340 1-109,111-304
+packages/frontend/@n8n/design-system/src/components/N8nToolsConnection/toolItemIcon.ts
+  s_9b9696034972ce::t_b960cc009eadc4 1-5
+packages/frontend/@n8n/design-system/src/components/N8nToolsConnection/__tests__/ToolCredentialPicker.test.ts
+  s_9b9696034972ce::t_62960cd769a340 1-193
+packages/frontend/@n8n/design-system/src/components/N8nToolsConnection/ToolsConnectionModal.vue
+  s_9b9696034972ce::t_e84475d333e149 73,80
+  s_9b9696034972ce::t_b960cc009eadc4 1-3,11-72,74-79,81-293,296-298,300-340,343-352,356-437,442-447,449,452-453,460-463,465-472,474-527,530-553
+  s_1e32c055a21f7b::t_c0b013150f85d6 295
+  s_824c588980053c::t_5b858e167d6f5d 299,438-441
+  s_9b9696034972ce::t_14e9077f4ee737 4-8
+  s_9b9696034972ce::t_76b0aee0f6c74b 9-10
+  s_9b9696034972ce::t_6eff2a5778af22 341-342
+  s_9b9696034972ce::t_ed3c12983bfd0e 353-355
+  s_9b9696034972ce::t_19df4829b3954a 448
+  s_9b9696034972ce::t_9bf1c19c25db7e 450-451
+  s_9b9696034972ce::t_26bc0708ee6008 454-459
+  s_9b9696034972ce::t_ad906562365468 464
+  s_9b9696034972ce::t_61feadba496009 473
+  s_9b9696034972ce::t_bb2979d64528c7 528-529
+  s_1e32c055a21f7b::t_b3e93ddd28ebee 294
+packages/frontend/@n8n/design-system/src/components/N8nToolsConnection/index.ts
+  s_9b9696034972ce::t_04af644d4ba331 1-10
+packages/frontend/@n8n/design-system/src/components/N8nToolsConnection/ToolRow.vue
+  s_9b9696034972ce::t_b960cc009eadc4 1-2,9-173,175,178-180,182-439
+  s_9b9696034972ce::t_14e9077f4ee737 4-8
+  s_2157abf0156ebc::t_7c5692e2c69a0a 3
+packages/frontend/@n8n/design-system/src/components/N8nToolsConnection/ToolDetailView.vue
+  s_9b9696034972ce::t_b960cc009eadc4 1-2,7-57,60-92,94-100,103-104,107-179
+  s_9b9696034972ce::t_14e9077f4ee737 3-6
+  s_9b9696034972ce::t_2a5fe4aef75a55 58-59
+  s_9b9696034972ce::t_c5dbfab55f391d 93
+  s_9b9696034972ce::t_1e4fac09a408c7 101-102
+  s_9b9696034972ce::t_9c09080413ff7f 105-106
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useInstanceAiInputMenuItems.ts
+  s_9b9696034972ce::t_4805d93b78ca7f 2-7
+packages/frontend/@n8n/design-system/src/components/N8nToolsConnection/McpToolSettingsContent.vue
+  s_9b9696034972ce::t_14e9077f4ee737 3-7
+  s_9b9696034972ce::t_b960cc009eadc4 1-2,8-252
+packages/frontend/@n8n/design-system/src/components/N8nToolsConnection/ToolSettingsView.vue
+  s_9b9696034972ce::t_14e9077f4ee737 3-5,7
+  s_9b9696034972ce::t_b960cc009eadc4 1-2,9-37,48-67,69-102,104-110,120-200,202-218
+  s_824c588980053c::t_2b013c4e0e6576 6,8,38-47,111-119,201
+  s_9b9696034972ce::t_9fdb8148a594a5 68
+  s_9b9696034972ce::t_1c06281f822914 103
+packages/frontend/@n8n/design-system/src/components/N8nToolsConnection/types.ts
+  s_9b9696034972ce::t_b960cc009eadc4 1-202
+packages/frontend/@n8n/design-system/src/components/N8nToolsConnection/ToolCredentialPicker.vue
+  s_9b9696034972ce::t_b960cc009eadc4 1-2,9-403
+  s_9b9696034972ce::t_14e9077f4ee737 3-8
+packages/frontend/@n8n/design-system/package.json
+  s_9b9696034972ce::t_3dcff01d094b73 58
+  s_9b9696034972ce::t_6bce2e64d8b2e9 97
+packages/frontend/@n8n/design-system/src/components/N8nToolsConnection/__tests__/ToolsConnectionModal.test.ts
+  s_9b9696034972ce::t_62960cd769a340 1-10,14-22,29-46,53-67,70-513
+  s_9b9696034972ce::t_1be24ac2f4725b 11-13,23-28,47-52,68-69
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/ConnectionRow.vue
+  s_9b9696034972ce::t_4805d93b78ca7f 3-8
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentToolsConnectionModalWrapper.test.ts
+  s_9b9696034972ce::t_590645b9bd17c5 22
+packages/frontend/@n8n/design-system/src/components/N8nToolsConnection/ToolsConnectionModal.stories.ts
+  s_9b9696034972ce::t_617ba5ec0f9d2f 148-150
+  s_9b9696034972ce::t_b960cc009eadc4 1-2,4-147,151-374
+  s_9b9696034972ce::t_14e9077f4ee737 3
+packages/frontend/@n8n/design-system/src/components/index.ts
+  s_9b9696034972ce::t_00aa049750d123 159
+packages/frontend/@n8n/design-system/src/components/N8nToolsConnection/McpDetailBody.vue
+  s_1e32c055a21f7b::t_fbe5627e856b7c 155-158
+  s_1e32c055a21f7b::t_dc53b6171debd9 42,54,57,60,63,81,100,119
+  s_1e32c055a21f7b::t_4e7cfbd1e8f57b 32,34
+  s_9b9696034972ce::t_14e9077f4ee737 3
+  s_9b9696034972ce::t_b960cc009eadc4 1-2,4-31,33,35-41,43-53,55-56,58-59,61-62,64-80,82-99,101-118,120-154,159-217
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/modals/InstanceAiToolsConnectionModalWrapper.vue
+  s_9b9696034972ce::t_4805d93b78ca7f 9-12,20-21
+packages/frontend/@n8n/design-system/src/components/N8nToolsConnection/fixtures.ts
+  s_9b9696034972ce::t_7396804c44fdea 1-380
+packages/frontend/editor-ui/src/features/agents/components/AgentToolsConnectionModalWrapper.vue
+  s_9b9696034972ce::t_4805d93b78ca7f 42,50-51
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiMcpConnectCard.vue
+  s_9b9696034972ce::t_4805d93b78ca7f 2-10
+packages/frontend/@n8n/design-system/src/components/N8nDialog/Dialog.vue
+  s_824c588980053c::t_2e3b23a1c52038 10-13,121
+packages/frontend/@n8n/design-system/src/components/N8nToolsConnection/ToolIcon.vue
+  s_9b9696034972ce::t_14e9077f4ee737 2-3
+  s_9b9696034972ce::t_b960cc009eadc4 1,4-48
+packages/frontend/@n8n/design-system/src/components/N8nToolsConnection/DefaultDetailBody.vue
+  s_1e32c055a21f7b::t_e0f724974032ee 18,22
+  s_9b9696034972ce::t_14e9077f4ee737 3
+  s_9b9696034972ce::t_b960cc009eadc4 1-2,4-17,19,21,23-42
+  s_9b9696034972ce::t_4cb5259be9aeee 20
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiInputMenu.vue
+  s_9b9696034972ce::t_4805d93b78ca7f 11
+packages/frontend/editor-ui/src/features/agents/composables/useAgentToolCatalog.ts
+  s_9b9696034972ce::t_52eaa58d93f7a1 16
+packages/frontend/editor-ui/src/features/agents/utils/toolIconSource.ts
+  s_9b9696034972ce::t_b62947280947bf 3
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/InstanceAiMcpConnectCard.test.ts
+  s_9b9696034972ce::t_1e1e8b625d9e96 8
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/modals/__tests__/InstanceAiToolsConnectionModalWrapper.test.ts
+  s_9b9696034972ce::t_4c1dddc0016355 13
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useMcpServerConnect.ts
+  s_9b9696034972ce::t_14238e217c32ee 14
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAiSettings.store.ts
+  s_9b9696034972ce::t_0145d010b0e310 44
+packages/frontend/editor-ui/src/features/ai/instanceAi/toolIcons.ts
+  s_9b9696034972ce::t_355e2884412701 2
+pnpm-lock.yaml
+  s_9b9696034972ce::t_edd8f97481f675 5328-5330,5452-5454
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "472e71bb8a1f9275906267fd8647075feac40ac3",
+  "prompts": {},
+  "sessions": {
+    "s_1e32c055a21f7b": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0aa84-c35c-738d-a0b9-ae845184cb2c",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_2157abf0156ebc": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0cdb5-8c5d-7647-8a5f-e1d02cfb6a39",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_824c588980053c": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0aa70-b572-738d-a0b9-ae83ac9aea56",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_9b9696034972ce": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0aa43-4d41-738d-a0b9-ae80b1621714",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,34 @@
+packages/cli/src/modules/n8n-packages/docs/import-updates/README.md
+  s_5acc85a906b003::t_9606dbf69e8044 1-13
+packages/cli/src/modules/n8n-packages/docs/import-updates/credential-update-decisions-log.md
+  s_5acc85a906b003::t_3ab714c87012bb 1-89
+packages/cli/src/modules/n8n-packages/docs/import-updates/credentials.md
+  s_5acc85a906b003::t_6862dc6f2b8250 1-221
+packages/cli/src/modules/n8n-packages/docs/import-updates/folders.md
+  s_5acc85a906b003::t_f5fd2b40b519e2 1-188
+packages/cli/src/modules/n8n-packages/docs/import-updates/review.md
+  s_5acc85a906b003::t_ef7f45993b1150 1-145
+packages/cli/src/modules/n8n-packages/docs/import-updates/variables.md
+  s_5acc85a906b003::t_85fef28102b9a0 1-139
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d15d9cc922418ef954288ef5dc2ff3b0c78b3f8d",
+  "prompts": {},
+  "humans": {
+    "h_9b272a633435fb": {
+      "author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_5acc85a906b003": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1354defb-a57d-434d-8e2c-9070bdf7454a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

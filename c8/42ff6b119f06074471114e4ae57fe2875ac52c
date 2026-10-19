@@ -1,0 +1,22 @@
+packages/cli/src/utils/detect-runtime.ts
+  s_737c9ccda41768::t_3aa3683f0db33c 30
+  s_737c9ccda41768::t_ed74a21bb03d84 31
+packages/@n8n/telemetry/src/events/instance.ts
+  s_737c9ccda41768::t_3aa3683f0db33c 49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c842ff6b119f06074471114e4ae57fe2875ac52c",
+  "prompts": {},
+  "sessions": {
+    "s_737c9ccda41768": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "85336b21-8ee2-4ea5-9704-aa5f3762e6ec",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

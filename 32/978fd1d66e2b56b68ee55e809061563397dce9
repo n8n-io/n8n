@@ -1,0 +1,22 @@
+packages/@n8n/db/src/repositories/execution.repository.ts
+  h_b49cecddc99496 95,564,567-568,599-600
+packages/cli/src/__tests__/workflow-runner.test.ts
+  h_b49cecddc99496 503-504,515,527-530,638,641,661-665
+packages/cli/src/executions/execution-crash.service.ts
+  h_b49cecddc99496 47-71
+packages/cli/src/executions/execution-persistence.ts
+  h_b49cecddc99496 909-915,920
+packages/cli/src/workflow-runner.ts
+  h_b49cecddc99496 32,307-313,314-329
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "32978fd1d66e2b56b68ee55e809061563397dce9",
+  "prompts": {},
+  "humans": {
+    "h_b49cecddc99496": {
+      "author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

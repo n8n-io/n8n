@@ -1,0 +1,35 @@
+packages/@n8n/nodes-langchain/nodes/vendors/Databricks/mlflow/__tests__/trace-writer.test.ts
+  s_6632fc4b04733b::t_c37dceae3c462a 1-291
+packages/@n8n/nodes-langchain/nodes/vendors/Databricks/mlflow/trace-writer.ts
+  s_6632fc4b04733b::t_9a252232c1ba57 1-208
+packages/@n8n/nodes-langchain/nodes/agents/Agent/agents/ToolsAgent/V2/execute.ts
+  s_6632fc4b04733b::t_4fb84190af417e 46-58,266,386,432,439-440,446,475-476
+packages/@n8n/nodes-langchain/nodes/vendors/Databricks/DatabricksAiAgent.node.ts
+  s_6632fc4b04733b::t_6c66f0fb087266 1-242
+packages/@n8n/nodes-langchain/nodes/vendors/Databricks/databricks.dark.svg
+  s_6632fc4b04733b::t_172dc16d11f096 1-19
+packages/@n8n/nodes-langchain/nodes/vendors/Databricks/databricks.svg
+  s_6632fc4b04733b::t_26591ba7e5b87b 1-19
+packages/@n8n/nodes-langchain/nodes/vendors/Databricks/mlflow/transport.ts
+  s_6632fc4b04733b::t_2e324169642ebf 1-90
+packages/@n8n/nodes-langchain/nodes/vendors/Databricks/mlflow/types.ts
+  s_6632fc4b04733b::t_13aac7b2bd0bc6 33-37
+packages/@n8n/nodes-langchain/package.json
+  s_6632fc4b04733b::t_cc93e00f47a907 96
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e53b683f1619d83a9e797008796d57be2cd6ccfb",
+  "prompts": {},
+  "sessions": {
+    "s_6632fc4b04733b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "74c37032-2669-485c-96f2-b3d6bdef0061",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

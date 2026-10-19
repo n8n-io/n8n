@@ -1,0 +1,19 @@
+packages/frontend/@n8n/design-system/src/components/N8nMarkdownEditor/MarkdownEditor.stories.ts
+  s_ead61ee1b62049::t_f6562a28bed77a 7-8,10,12,14-17,19,21,23-28,30,32-34,36,121,138,143-144,151-159,161-163,165-194,197,201,211,217,220,222-232
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f78bda1ad5a144cf538f8e0698e63059c1d73be1",
+  "prompts": {},
+  "sessions": {
+    "s_ead61ee1b62049": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0cd54-e3c5-7697-adba-5085dd1f2841",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

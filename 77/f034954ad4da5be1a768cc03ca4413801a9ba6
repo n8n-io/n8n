@@ -1,0 +1,95 @@
+packages/@n8n/api-types/src/dto/index.ts
+  s_4278dbfca6d1ae::t_bf45714b8f16e1 257,262
+  s_4278dbfca6d1ae::t_51acee9696f588 268
+packages/@n8n/api-types/src/dto/workflows/__tests__/workflow-public.dto.test.ts
+  s_4278dbfca6d1ae::t_51006366d27bb4 170,175-176,185,188-220,233-235
+  s_4278dbfca6d1ae::t_ecb61a6fc053bd 5-6
+  s_4278dbfca6d1ae::t_db71f7a8be9b62 222-225,232
+  s_4278dbfca6d1ae::t_e837d1f143537a 171-174
+  s_4278dbfca6d1ae::t_14ec308c355919 177-179,182-184
+  s_4278dbfca6d1ae::t_a753379f9f1718 186-187
+  s_4278dbfca6d1ae::t_e9c8fa28bd03e9 180-181
+  s_4278dbfca6d1ae::t_3b757bb7ae4bdc 221,226-231
+packages/cli/src/workflows/workflow-finder.service.ts
+  s_4278dbfca6d1ae::t_558002725f2d76 496
+  s_4278dbfca6d1ae::t_69b415cecd6f27 38
+  s_4278dbfca6d1ae::t_c1d097f38733bd 460
+packages/cli/test/integration/public-api/workflows.test.ts
+  s_4278dbfca6d1ae::t_c7ea1d12e4e293 835-845,851-852
+  s_4278dbfca6d1ae::t_2385e8f0f9da63 1093-1102,1104-1109,1124-1136,1142
+  s_4278dbfca6d1ae::t_fbd6fd64e4e41b 846-850
+  s_4278dbfca6d1ae::t_00bb3c989ab634 1137-1141
+  s_4278dbfca6d1ae::t_8af5c89b5c2b7b 1103,1110-1123
+packages/@n8n/api-types/src/dto/workflows/workflow-public.dto.ts
+  s_4278dbfca6d1ae::t_fb107e37bd5a38 135,137-140
+  s_4278dbfca6d1ae::t_de2325f53907bc 125-126
+  s_4278dbfca6d1ae::t_ea9cf397ae7e1f 12
+  s_4278dbfca6d1ae::t_b352c0734a8c60 122-124
+  s_4278dbfca6d1ae::t_a07276926964b6 183
+  s_4278dbfca6d1ae::t_08a3fe46390f91 136
+packages/cli/src/public-api/v1/controllers/workflows.public.controller.ts
+  s_4278dbfca6d1ae::t_92911d801a1314 130-131
+  s_4278dbfca6d1ae::t_8f4dd5e4b81465 276
+  s_4278dbfca6d1ae::t_31bf413bb4368a 383-384,386
+  s_4278dbfca6d1ae::t_fa4838252e3f11 355,362,370
+  s_4278dbfca6d1ae::t_45e9df2cf6585f 11
+  s_4278dbfca6d1ae::t_8bd19a0e1cef35 385
+  s_4278dbfca6d1ae::t_d61287af8daa11 127-129
+  s_4278dbfca6d1ae::t_889433f3f53ff2 306
+  s_57841343866296::t_28e95e78d0a1fc 126
+packages/@n8n/api-types/src/dto/workflows/workflow-public.openapi.ts
+  s_4278dbfca6d1ae::t_d04c0df006d869 302-305
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/getWorkflow.generated.yml
+  s_4278dbfca6d1ae::t_6004638b3ef3d1 29-635,647-648,653-675
+  s_4278dbfca6d1ae::t_86a829c5e713b1 636-646,649-652
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/getWorkflows.generated.yml
+  s_4278dbfca6d1ae::t_f3ba1a27b28960 543-548,554-555,558,577
+  s_4278dbfca6d1ae::t_508c94c83adeb0 549-553,556-557
+packages/cli/test/integration/workflows/workflow-finder.service.test.ts
+  s_4278dbfca6d1ae::t_f3ca98e8466b2a 146
+  s_4278dbfca6d1ae::t_b60fdc93ba1b88 151
+  s_4278dbfca6d1ae::t_1cb9968c330107 168
+  s_4278dbfca6d1ae::t_573c1c3a760449 173
+  s_4278dbfca6d1ae::t_50c6bdb13f1b25 188
+  s_4278dbfca6d1ae::t_44934cef1188b6 158,174-177,180-183
+  s_4278dbfca6d1ae::t_f630d0954ffdac 142-143,152-154
+  s_4278dbfca6d1ae::t_05679e477e3296 167
+  s_4278dbfca6d1ae::t_c13fe3eacb6c33 155
+  s_4278dbfca6d1ae::t_cd5513ec72a5f0 178-179
+  s_4278dbfca6d1ae::t_703e3fd2da2055 186
+  s_4278dbfca6d1ae::t_0f96292bf9452c 147-149,156
+  s_4278dbfca6d1ae::t_692856bbbe0042 140-141,144,157,159-163,171,184,190-191
+  s_4278dbfca6d1ae::t_6705a727139889 145
+  s_4278dbfca6d1ae::t_0e5a371e3cd708 150
+  s_4278dbfca6d1ae::t_e28e90af21fc59 164-166
+  s_4278dbfca6d1ae::t_ffd3c3c493c7f0 169-170
+  s_4278dbfca6d1ae::t_ed72b1c8445486 172
+  s_4278dbfca6d1ae::t_5f9f5cadc9c58e 185
+  s_4278dbfca6d1ae::t_71e88a9db89c78 187
+  s_4278dbfca6d1ae::t_82ad371a7231e3 189
+  s_4278dbfca6d1ae::t_b1c071a25a6a32 192-194
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "77f034954ad4da5be1a768cc03ca4413801a9ba6",
+  "prompts": {},
+  "sessions": {
+    "s_4278dbfca6d1ae": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "406792df-803a-4699-9e40-be3371112120",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    },
+    "s_57841343866296": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f52f9f64-362e-467a-b8b4-1b2b1d87b2c9",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/@n8n/engine/docs/adr/ADR-20260904-timeout-excludes-waiting-time.md
+  s_13d0f2e1be0144::t_e3c6e3f3c00150 47-53
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "38b324de4e97737d2e958ada83aaa20b0bf46952",
+  "prompts": {},
+  "sessions": {
+    "s_13d0f2e1be0144": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "46caa7f3-0057-4c97-8c31-ca17c936adc0",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

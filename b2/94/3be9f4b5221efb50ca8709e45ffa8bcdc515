@@ -1,0 +1,42 @@
+packages/cli/src/__tests__/load-nodes-and-credentials.test.ts
+  s_6911832d1fd2ce::t_bab0747b752651 5-6
+  s_6911832d1fd2ce::t_4f490658b3992f 1076-1138
+  s_6911832d1fd2ce::t_9a85151d8b3d37 1139-1141
+  h_44f8d1c0f2f8c4 1142
+packages/cli/src/services/frontend.service.ts
+  h_44f8d1c0f2f8c4 123,458-460
+  s_6911832d1fd2ce::t_08738f8cbc83b7 462-466,468
+  s_6911832d1fd2ce::t_34bc433e20ed05 10
+  s_6911832d1fd2ce::t_5d11013a4ccecb 122
+  s_6911832d1fd2ce::t_32724a6a8ce070 461
+packages/cli/src/services/__tests__/frontend.service.test.ts
+  s_6911832d1fd2ce::t_429c651be728a2 1299-1300,1304-1307,1309-1314
+  s_6911832d1fd2ce::t_f64f17d17db474 1272-1282,1285-1287,1289-1292,1294-1298,1301-1303,1308,1315-1316
+  s_6911832d1fd2ce::t_ddd7c91bc6dd44 1-3
+  s_6911832d1fd2ce::t_b0fc65199e3ff9 1288,1293
+  s_6911832d1fd2ce::t_ebc61626606d44 11,1283-1284
+packages/cli/src/load-nodes-and-credentials.ts
+  s_6911832d1fd2ce::t_574c20cd20febe 144-147,156-157,164-189
+  s_6911832d1fd2ce::t_4041f004f49340 582-585
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b2943be9f4b5221efb50ca8709e45ffa8bcdc515",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_6911832d1fd2ce": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "99e141f2-1aa1-47e5-8742-3efa05b4000b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

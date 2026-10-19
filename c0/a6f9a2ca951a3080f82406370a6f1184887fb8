@@ -1,0 +1,40 @@
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/ApplyInstanceDialog.vue
+  s_8f364f7c5743a0::t_58be5606090ce2 1-173
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionsSettingsView.vue
+  s_8f364f7c5743a0::t_3bb29641fa4342 154-155
+  s_8f364f7c5743a0::t_ffa78af8a7613f 20
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_8f364f7c5743a0::t_c1370f3af91448 3847-3859
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/ApplyInstanceDialog.test.ts
+  s_8f364f7c5743a0::t_2b9f7a331d0594 1-96
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/ApplyInstanceSection.vue
+  s_8f364f7c5743a0::t_b94245e9bc8920 1-59
+  s_8f364f7c5743a0::t_813b12a45e79ac 60-62
+  s_5bdb68caa2d9f9::t_39a4c028413ac3 63
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/ApplyInstanceSection.test.ts
+  s_8f364f7c5743a0::t_b0748e46defd4f 1-100
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c0a6f9a2ca951a3080f82406370a6f1184887fb8",
+  "prompts": {},
+  "sessions": {
+    "s_5bdb68caa2d9f9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1c3d340c-f3b7-41d5-8772-fd8bae370ffb",
+        "model": "unknown"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_8f364f7c5743a0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f77a805c-fda4-413a-87ea-7588e5f68260",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

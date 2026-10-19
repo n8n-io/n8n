@@ -1,0 +1,43 @@
+packages/@n8n/agents/src/runtime/__tests__/memory-orchestrator-history.test.ts
+  s_1389ed5ff32164::t_43477f31c94114 6,44-53,55-58,60-68,70,74-90
+packages/@n8n/agents/src/runtime/memory/observation-log-observer.ts
+  s_1389ed5ff32164::t_e5cf376ef965c2 73,282-293,298
+packages/@n8n/agents/src/runtime/__tests__/memory-orchestrator-mid-run.test.ts
+  s_1389ed5ff32164::t_76fde646e6b155 328,361,370,405
+  s_1389ed5ff32164::t_09ace2b31570d9 490,492-493,495,497-500
+  s_1389ed5ff32164::t_2b92547a6844f3 466-468,502-503,505-507,526-529,532,536-560,649-651,658,676
+  s_1389ed5ff32164::t_af174dbc220f65 469-477,479-481,483-487,489,491,494,501,508-525
+packages/cli/src/modules/instance-ai/storage/__tests__/typeorm-observation-log-store.test.ts
+  s_1389ed5ff32164::t_e5cf376ef965c2 126
+packages/@n8n/agents/src/runtime/memory/memory-orchestrator.ts
+  s_1389ed5ff32164::t_e5cf376ef965c2 278-279,282-285,438-440
+packages/cli/src/modules/agents/integrations/__tests__/n8n-memory.test.ts
+  s_1389ed5ff32164::t_e5cf376ef965c2 1020,1041
+  s_1389ed5ff32164::t_16a4c72326d44c 1021-1031,1035-1040
+packages/@n8n/agents/src/runtime/__tests__/observation-log-observer.test.ts
+  s_1389ed5ff32164::t_43477f31c94114 531-534,567-569,572,576,586,597-601,603-608,615,632-633,635-647,657-659,667-669
+docs/generated/postgres-schema/README.md
+  s_1389ed5ff32164::t_04404a3091510a 36,81
+docs/generated/sqlite-schema/README.md
+  s_1389ed5ff32164::t_e7c49ff44a1126 36,81,204
+docs/generated/sqlite-schema/agents_observation_cursors.md
+  s_1389ed5ff32164::t_fe7ecec5f1905d 9,29-30
+docs/generated/sqlite-schema/instance_ai_observation_cursors.md
+  s_1389ed5ff32164::t_7a6d8ef286cb90 9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "c1b082f46370e773d6656acd7de639a1b6b75c1e",
+  "prompts": {},
+  "sessions": {
+    "s_1389ed5ff32164": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0afb5-5cd8-7dd1-ab29-acad02c48f33",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

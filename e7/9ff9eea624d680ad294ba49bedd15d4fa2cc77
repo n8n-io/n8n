@@ -1,0 +1,42 @@
+packages/frontend/editor-ui/src/features/settings/migrationReport/MigrationRuleDetail.test.ts
+  s_b853792d545a6c::t_d74e67fbf3c92b 954-958
+  s_b853792d545a6c::t_1520f3e8a23f56 9,943-953,959-971,974,976-981,984-1023,1026-1027,1030-1032,1035-1036,1040-1045,1048-1049,1051-1062,1064-1066,1069-1070,1072-1077,1079-1081,1084-1085,1087-1088,1092
+packages/frontend/editor-ui/src/features/settings/migrationReport/workflowFilters.test.ts
+  s_b853792d545a6c::t_449e44832718ff 1-95
+packages/frontend/editor-ui/src/features/settings/migrationReport/MigrationRuleDetail.vue
+  s_b853792d545a6c::t_184ad911873e68 516-557,559,563,571,573-578,580-583,585-586,761,763,766-779,782-783
+  s_b853792d545a6c::t_35cd6cbf261270 19,28,33,43-49,55,292,340-376,380-381,393-396,398-402,404-406,408,410-412,414-419,421-425,427-431,433-441,445-454,459
+  s_b853792d545a6c::t_062233b43488e0 444
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_b853792d545a6c::t_031abeba1cb76b 4649-4670
+packages/frontend/editor-ui/src/features/settings/migrationReport/workflowFilters.ts
+  s_b853792d545a6c::t_a7ff9707f36ac4 1-70
+packages/frontend/editor-ui/src/features/settings/migrationReport/components/WorkflowFiltersPopover.vue
+  s_b853792d545a6c::t_500caa1baaa852 150,202-203
+  s_b853792d545a6c::t_d0291e36ab7c81 1-149,151-201,204-212
+  s_3ef284ec4e912a::t_c28d954569296b 213-215
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e79ff9eea624d680ad294ba49bedd15d4fa2cc77",
+  "prompts": {},
+  "sessions": {
+    "s_3ef284ec4e912a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b138e788-474c-4896-a1e4-df3d332d4d7e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    },
+    "s_b853792d545a6c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dc6a2c6b-b2c6-44cc-8bd3-5fdfd47fc12e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

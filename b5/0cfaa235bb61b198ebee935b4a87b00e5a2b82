@@ -1,0 +1,31 @@
+packages/nodes-base/nodes/Mailchimp/__tests__/workflow/workflow.json
+  s_22eea66365bbbb::t_6020fb26e70eeb 1-506
+packages/nodes-base/nodes/Mailchimp/__tests__/request-urls.test.ts
+  s_2e1fa95fc44f8f::t_124a9db1a2055a 1-68
+packages/nodes-base/nodes/Mailchimp/__tests__/workflow/workflow.test.ts
+  s_2e1fa95fc44f8f::t_4f298aa6836c2e 1-70
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b50cfaa235bb61b198ebee935b4a87b00e5a2b82",
+  "prompts": {},
+  "sessions": {
+    "s_22eea66365bbbb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a16673bfa31c94f40",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}

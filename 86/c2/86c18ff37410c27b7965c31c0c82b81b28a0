@@ -1,0 +1,46 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentSessionTimelineHeader.vue
+  s_9bafdc1068af44::t_5d36aa8533969d 13,18,28,65-67,183-184
+  s_9bafdc1068af44::t_77749f9c09d381 185-186
+packages/frontend/editor-ui/src/features/agents/views/AgentSessionTimelineView.vue
+  s_9bafdc1068af44::t_5d36aa8533969d 362
+  s_9bafdc1068af44::t_4054d77c6af271 5,127
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderHeader.vue
+  s_9bafdc1068af44::t_5d36aa8533969d 19,24,37,158-160,279-280
+  s_9bafdc1068af44::t_13a553ebc25a39 281-282
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderHeader.test.ts
+  s_9bafdc1068af44::t_ac43609c3eae8d 75-76,125-129,150,167,242-246
+  s_9bafdc1068af44::t_8d226f5764b815 247-249
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_9bafdc1068af44::t_ac43609c3eae8d 14-19
+  s_9bafdc1068af44::t_6658785f72c71c 3-4
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentHeaders.test.ts
+  s_9bafdc1068af44::t_ac43609c3eae8d 44-45,78,113-117
+  s_9bafdc1068af44::t_ee691f3499d4ef 118-120
+packages/frontend/editor-ui/src/features/agents/composables/useAgentProjectBreadcrumb.test.ts
+  s_9bafdc1068af44::t_bee93f71830e06 1-55
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_9bafdc1068af44::t_6658785f72c71c 4512
+  s_9bafdc1068af44::t_5be37f97b16777 584
+packages/frontend/editor-ui/src/features/agents/composables/useAgentProjectBreadcrumb.ts
+  s_9bafdc1068af44::t_4054d77c6af271 1-29
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSessionTimelineView.spec.ts
+  s_9bafdc1068af44::t_ac43609c3eae8d 206
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_9bafdc1068af44::t_4054d77c6af271 39,736,2645
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "86c286c18ff37410c27b7965c31c0c82b81b28a0",
+  "prompts": {},
+  "sessions": {
+    "s_9bafdc1068af44": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0d91f-36fc-79b0-a9db-d71380361f9d",
+        "model": "gpt-6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,22 @@
+.github/WORKFLOWS.md
+  s_2592ccf2ecd43d::t_43a6aa1b85cab9 423
+  s_2592ccf2ecd43d::t_3cd777e6db5a5e 1154-1156,1169-1170
+.github/workflows/sec-sync-bundle-branches.yml
+  s_2592ccf2ecd43d::t_3cd777e6db5a5e 15-16,36,64
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "18f9c28ec69b192bc19c510558ebca3eda3dd69d",
+  "prompts": {},
+  "sessions": {
+    "s_2592ccf2ecd43d": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_eef892ef1ffeaX8FXcmxnxLgUS",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

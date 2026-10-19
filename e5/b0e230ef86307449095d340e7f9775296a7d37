@@ -1,0 +1,36 @@
+packages/@n8n/client-oauth2/oxlint.config.mts
+  s_220038b2328800::t_afe3695ad384b9 1-26
+packages/@n8n/imap/package.json
+  s_220038b2328800::t_afe3695ad384b9 12-13,31,35-36
+packages/@n8n/syslog-client/package.json
+  s_220038b2328800::t_afe3695ad384b9 12-13,29,33-34
+packages/@n8n/client-oauth2/package.json
+  s_220038b2328800::t_afe3695ad384b9 12-13,31,36-37
+packages/@n8n/imap/oxlint.config.mts
+  s_220038b2328800::t_afe3695ad384b9 1-7
+packages/@n8n/syslog-client/oxlint.config.mts
+  s_220038b2328800::t_afe3695ad384b9 1-8,15-22
+  s_220038b2328800::t_508e373a8e351b 9-14
+scripts/lint-parity/oxlint-parity.mjs
+  s_220038b2328800::t_d0f3f61e3d9d94 196,201
+  s_220038b2328800::t_b39541fed57add 25,143,156-160,180,184,194-195,202
+  s_220038b2328800::t_0953b964476179 197-200
+pnpm-lock.yaml
+  s_220038b2328800::t_e999d09ae4f63d 1992-1994,2010-2015,2876-2878,2888-2893,3959-3961,3971-3976
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e5b0e230ef86307449095d340e7f9775296a7d37",
+  "prompts": {},
+  "sessions": {
+    "s_220038b2328800": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f32f268e5ffecxHS8Ci9w6d9ID",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

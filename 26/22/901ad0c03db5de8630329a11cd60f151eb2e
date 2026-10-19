@@ -1,0 +1,63 @@
+packages/cli/src/modules/n8n-packages/io/directory/package-directory-inventory-reader.ts
+  s_cb44df0efad7de::t_02e0e6dca65f03 15-17,60-64,70,73,80,88,226-228,230-235,238-240
+  s_cb44df0efad7de::t_11814c43b8cebd 101-104
+  s_cb44df0efad7de::t_e141cea84421a0 132,229,237
+  s_cb44df0efad7de::t_ff4ce8cfea6808 236
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_cb44df0efad7de::t_a9b41305349f98 1,31,442-486,1417-1429,1641-1655,1659-1676,1680-1697
+  s_cb44df0efad7de::t_e141cea84421a0 1656-1658,1698-1699
+  s_cb44df0efad7de::t_b9e96354f3a7ff 1677-1679
+  s_cb44df0efad7de::t_af7dc2e5cf745c 1700
+  s_cb44df0efad7de::t_de2477e0fb5b4e 1701-1702
+packages/cli/src/modules/n8n-packages/entities/data-table/data-table-matching-mode.ts
+  s_cb44df0efad7de::t_e2a663cfa63449 24-27,38
+packages/cli/src/modules/n8n-packages/entities/data-table/data-table-importer.ts
+  s_cb44df0efad7de::t_e2a663cfa63449 23,120,124,127,130-133,135-136,144-154,156-158
+  s_cb44df0efad7de::t_9b7882709d3429 121-123,125-126,128,137-142,155
+  s_cb44df0efad7de::t_6ed3ad11aa3d41 129
+  s_cb44df0efad7de::t_b23f5a6addcb56 134,143
+packages/cli/src/modules/promotions.ee/__tests__/promotion-binding-preflight.service.test.ts
+  s_cb44df0efad7de::t_9286c276def27b 7-8,26,32-33,125,169,261
+packages/cli/src/modules/promotions.ee/promotion-binding-preflight.service.ts
+  s_cb44df0efad7de::t_76c079880bb126 13-14,50-51
+  s_cb44df0efad7de::t_f07e5a244f6354 15,305
+  s_cb44df0efad7de::t_9b7882709d3429 42-47,100,152,304,308-309,315,386-400
+  s_cb44df0efad7de::t_af7dc2e5cf745c 111-128
+  s_cb44df0efad7de::t_41c3ae191258f4 137
+  s_cb44df0efad7de::t_40dd8e76d6b26b 288-303,306-307,310-314,316-331
+  s_cb44df0efad7de::t_7db8d37d2f22f0 425-426
+packages/cli/src/public-api/v1/shared/spec/schemas/applyPackageResultDto.generated.yml
+  ai_agent 1087-1259
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_cb44df0efad7de::t_9b7882709d3429 9300
+packages/cli/src/modules/n8n-packages/entities/data-table/data-table-requirements.extractor.ts
+  s_cb44df0efad7de::t_02e0e6dca65f03 2,11
+packages/@n8n/api-types/src/dto/promotions/promotion-binding-preflight.dto.ts
+  s_cb44df0efad7de::t_f9c5cb93643431 5,102-130,159-164,166
+  s_cb44df0efad7de::t_a5b23e8f58a92f 165
+packages/cli/src/modules/promotions.ee/__tests__/promotion-binding-preflight.integration.test.ts
+  s_cb44df0efad7de::t_3d93c2d07e380a 602-625
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_cb44df0efad7de::t_9286c276def27b 1467
+packages/cli/src/modules/n8n-packages/io/__tests__/package-directory-inventory-reader.test.ts
+  s_cb44df0efad7de::t_0e0454134072d7 34-39,43,59-60,97-102,174
+  s_cb44df0efad7de::t_9286c276def27b 148
+  s_cb44df0efad7de::t_ff4ce8cfea6808 160-166
+  s_cb44df0efad7de::t_af7dc2e5cf745c 195-203
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2622901ad0c03db5de8630329a11cd60f151eb2e",
+  "prompts": {},
+  "sessions": {
+    "s_cb44df0efad7de": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8a4b6f70-b6af-4932-b51a-1514843c5fe1",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

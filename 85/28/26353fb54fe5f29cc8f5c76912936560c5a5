@@ -1,0 +1,147 @@
+packages/cli/src/modules/agents/__tests__/agent-chat.controller.test.ts
+  s_9a6001e67297f0::t_119843fbbb0ce9 2
+  s_f3d2ec4529fb2a::t_70c90c91182f9e 28
+  s_9a6001e67297f0::t_08b35d9c07190c 43-44
+  s_9a6001e67297f0::t_25158c96f80364 175-180
+  s_f3d2ec4529fb2a::t_be3cd94a158110 1125
+  s_f3d2ec4529fb2a::t_bef9b9e666ba6e 1215-1216
+  s_f3d2ec4529fb2a::t_9bfca5a8cd10e3 1244,1247-1249
+  s_f3d2ec4529fb2a::t_d6a96a5fbffbda 1245
+  s_f3d2ec4529fb2a::t_6f834382b044ed 1246
+  s_f3d2ec4529fb2a::t_3878d111503550 1284
+  s_9a6001e67297f0::t_02398467f3357b 1340-1457,1459-1474,1476-1479,1285,1291,1293-1294,1296,1302-1303,1310,1316,1318-1319,1323,1327-1328,1330-1331,1333,1337-1338,228
+  s_9a6001e67297f0::t_f6bb6fc1a6eb7f 1458,1475
+  s_f3d2ec4529fb2a::t_c43e4698984d41 185
+  s_f3d2ec4529fb2a::t_1962cd3b325a91 1286,1288,1290,1292,1295,1297-1299,1304,1306,1308-1309,1311-1312,1315,1317,1320-1322,1325-1326,1329,1332,1335-1336
+  s_f3d2ec4529fb2a::t_e0762619412888 1287,1289,1300-1301,1305,1307,1313-1314,1324,1334
+  s_f3d2ec4529fb2a::t_13cd2cf3caeb90 182-183
+  s_f3d2ec4529fb2a::t_7e75babe19b2b7 207,212,214,216-222,225,246
+  s_f3d2ec4529fb2a::t_4bb9f265a8ef73 215
+packages/cli/src/modules/agents/__tests__/agent-message-steering.service.test.ts
+  s_f3d2ec4529fb2a::t_18b8200c6ff649 1-58,62-99,101-106,108-139,141-149,282
+  s_f3d2ec4529fb2a::t_99b2d161f86a7e 59-61
+  s_f3d2ec4529fb2a::t_928834966adf6f 100
+  s_f3d2ec4529fb2a::t_d35dcf14014d3d 107
+  s_f3d2ec4529fb2a::t_adeca1bc484b11 140
+  s_f3d2ec4529fb2a::t_8dfc0d2afca43e 150-184,188-204,251-281
+  s_f3d2ec4529fb2a::t_3a49464c45f2f8 185-187,205-250
+packages/cli/src/modules/agents/agent-message-queue.service.ts
+  s_f3d2ec4529fb2a::t_e13ad4b6cd7c58 27-33
+  s_f3d2ec4529fb2a::t_5a78f233083961 191
+  s_f3d2ec4529fb2a::t_fc55b24cb6dc74 267,272,278
+  s_f3d2ec4529fb2a::t_74541f1ba8d06f 295,300,302
+  s_f3d2ec4529fb2a::t_c18f3afccb0338 451
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_f3d2ec4529fb2a::t_3406db92585957 546
+  s_f3d2ec4529fb2a::t_e0762619412888 1874
+  s_f3d2ec4529fb2a::t_6cbe96d8c5db01 1875-1877,1892-1893
+packages/cli/src/modules/agents/agent-message-steering.service.ts
+  s_f3d2ec4529fb2a::t_a0939b0f011740 17,25-26
+  s_f3d2ec4529fb2a::t_ca060cc3c83e10 93-96,124-131
+  s_f3d2ec4529fb2a::t_3a49464c45f2f8 97
+  s_f3d2ec4529fb2a::t_304fd30f672f05 98-99,106,137,141,153-157,171-173
+  s_f3d2ec4529fb2a::t_b926e171edd9a1 201
+  s_f3d2ec4529fb2a::t_1ee211e2074a62 202
+packages/cli/src/modules/agents/__tests__/agent-message-queue.service.test.ts
+  s_f3d2ec4529fb2a::t_a7717fb9565359 1-11,13-79,81-185,187-235
+  s_f3d2ec4529fb2a::t_8841c8c00c2747 12
+  s_f3d2ec4529fb2a::t_4d6a3516236ef6 80,186
+packages/cli/src/modules/agents/agent-turn-execution.service.ts
+  s_f3d2ec4529fb2a::t_7dea75ac187e09 76-77
+  s_f3d2ec4529fb2a::t_ab0c3879a87443 113
+  s_f3d2ec4529fb2a::t_b488281ac4ad7d 132-133,135,143,146,155
+  s_f3d2ec4529fb2a::t_552e250e8998fe 246,250
+  s_f3d2ec4529fb2a::t_24e76776f288f9 411,414-415,417,425,432
+  s_f3d2ec4529fb2a::t_e012ecbc840940 452
+  s_f3d2ec4529fb2a::t_ed57fa0ccbc4f0 471,474,479,486,490,492
+packages/cli/src/modules/agents/repositories/agent-message-queue.repository.ts
+  s_f3d2ec4529fb2a::t_a3c3d062b9b730 8
+  s_f3d2ec4529fb2a::t_99d141aeaa00f8 57
+  s_f3d2ec4529fb2a::t_d59fe7f5b7d4fb 77
+  s_f3d2ec4529fb2a::t_9af790828b87eb 129-140
+packages/cli/src/modules/agents/agent-chat.controller.ts
+  s_f3d2ec4529fb2a::t_1f41075537d3fc 41
+  s_f3d2ec4529fb2a::t_fdb7364422605a 47
+  s_f3d2ec4529fb2a::t_2dc01d5ff705bf 55
+  s_f3d2ec4529fb2a::t_9bdb27f11ac97b 217,319,429
+  s_f3d2ec4529fb2a::t_2bdfb630d0fa8f 244
+  s_f3d2ec4529fb2a::t_4084596fdcaf44 246
+  s_9a6001e67297f0::t_68869ec9c2df5f 515-520,522
+  s_9a6001e67297f0::t_bafeba1550b82b 552-554,556
+  s_9a6001e67297f0::t_4f608c914e2eae 579-581,583
+  s_f3d2ec4529fb2a::t_e0762619412888 676-677,679,682,685,687-688,690-692,694,697-698,618,626,637-639,641,649,659-661
+  s_f3d2ec4529fb2a::t_d3377d8fabe323 678,680-681,683-684,686,689,693,695-696
+  s_f3d2ec4529fb2a::t_65d2d815c9f98a 617,619-625,627-636,640,642-648,650-658
+  s_f3d2ec4529fb2a::t_5b8c277f73c933 756,796
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_9a6001e67297f0::t_82459a5afa4c24 4-5,37
+  s_9a6001e67297f0::t_a87a1dcfd61311 742,747,752,759-761
+  s_9a6001e67297f0::t_2c41ad3709a0e2 743-746,748-750,755-756
+  s_9a6001e67297f0::t_aeecc9059b40e9 753-754,758
+  s_e3560b551eac11::t_987ccb2bd871f5 762-780
+  s_9a6001e67297f0::t_4aa827f0d36fa2 1285-1295
+  s_f3d2ec4529fb2a::t_762420df6b175f 108
+  s_f3d2ec4529fb2a::t_61b609cdfd0c12 109
+  s_f3d2ec4529fb2a::t_94e7b30fc03e7e 231
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_71e25d45a5ee90::t_072ad3615c9247 57-60,70
+  s_71e25d45a5ee90::t_8992836b78980b 61-69,71-76
+  s_9a6001e67297f0::t_604bc9cc27f244 1637-1638,1664,1674,1676-1677,1689,1725
+  s_9a6001e67297f0::t_ffee08673e4a7b 1639,1643-1663,1665,1671-1673,1678-1680,1687-1688,1691-1724,1727-1730
+  s_9a6001e67297f0::t_aeecc9059b40e9 1640-1642
+  s_71e25d45a5ee90::t_689459da2be8fd 1681-1686
+  s_e3560b551eac11::t_407f84da014727 1731-1788,397,401,415-416,419-421
+  s_f3d2ec4529fb2a::t_58af3cbc22b65f 393-396,398-400,402-414,417-418
+packages/cli/src/modules/agents/types/agent-queued-message.ts
+  s_f3d2ec4529fb2a::t_f431e2dc44a610 25-28
+packages/cli/test/integration/agents/n8n-chat-production.api.test.ts
+  s_f3d2ec4529fb2a::t_c327d86d24f89b 4,11-14
+  s_f3d2ec4529fb2a::t_505859bb0169e6 95-109
+  s_f3d2ec4529fb2a::t_174fc6a1e5d3cb 257-262,264-286,288-297
+  s_f3d2ec4529fb2a::t_4bb9f265a8ef73 263,287
+  s_f3d2ec4529fb2a::t_7e53449f93b607 298-299
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_f3d2ec4529fb2a::t_ea62fd348e507b 1664-1671,1917-1924,2059-2066,2120-2127
+  s_f3d2ec4529fb2a::t_9cb19b615e2b42 2225
+  s_f3d2ec4529fb2a::t_bf39e833b1d058 2866
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "852826353fb54fe5f29cc8f5c76912936560c5a5",
+  "prompts": {},
+  "sessions": {
+    "s_71e25d45a5ee90": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2ca6b762-f376-4a31-af78-4066f186c7bb",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    },
+    "s_9a6001e67297f0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f72ae404-381c-4905-9080-63d9e62dffe6",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    },
+    "s_e3560b551eac11": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a7b46ea8-2f97-424a-81d9-bb9c3745b1ba",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    },
+    "s_f3d2ec4529fb2a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c28c4414-1c5b-4167-98ad-d5188b3d2601",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}
