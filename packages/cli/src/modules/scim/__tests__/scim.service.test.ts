@@ -310,6 +310,21 @@ describe('ScimService', () => {
 				{},
 			);
 		});
+
+		it('should create an active user when active is omitted', async () => {
+			const createdUser = createTestUser({ id: 'new-user' });
+			userRepository.findOne.mockResolvedValueOnce(null).mockResolvedValue(createdUser);
+			provisions(createdUser);
+
+			const { active: _, ...withoutActive } = scimUserCreate;
+			await service.createUser(withoutActive);
+
+			expect(scimUserRepository.createProvisioned).toHaveBeenCalledWith(
+				expect.objectContaining({ disabled: false }),
+				expect.anything(),
+				{},
+			);
+		});
 	});
 
 	describe('patchUser', () => {
@@ -441,6 +456,20 @@ describe('ScimService', () => {
 			expect(eventService.emit).toHaveBeenCalledWith('user-updated', {
 				user,
 				fieldsChanged: expect.arrayContaining(['email', 'firstName', 'lastName', 'disabled']),
+			});
+		});
+
+		it('should keep a disabled user disabled when active is omitted', async () => {
+			const user = createTestUser({ disabled: true });
+			userRepository.findOne.mockResolvedValue(user);
+
+			const { active: _, ...withoutActive } = putBody;
+			await service.updateUser('user-1', { ...withoutActive, userName: user.email });
+
+			expect(user.disabled).toBe(true);
+			expect(eventService.emit).toHaveBeenCalledWith('user-updated', {
+				user,
+				fieldsChanged: expect.not.arrayContaining(['disabled']),
 			});
 		});
 
