@@ -241,6 +241,58 @@ packages/@n8n/local-gateway/                            @n8n-io/nodes
 packages/@n8n/mcp-browser/                              @n8n-io/nodes
 packages/@n8n/mcp-browser-extension/                    @n8n-io/nodes
 
+# Enterprise Nodes & Partnerships
+# Specific rules after the general packages/nodes-base/ and nodes-langchain/ rules (last match wins).
+
+packages/nodes-base/nodes/Databricks/                                    @n8n-io/enterprise-nodes
+packages/nodes-base/credentials/DatabricksApi.credentials.ts            @n8n-io/enterprise-nodes
+packages/nodes-base/credentials/DatabricksOAuth2Api.credentials.ts      @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/Kafka/                                         @n8n-io/enterprise-nodes
+packages/nodes-base/credentials/Kafka.credentials.ts                    @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/Confluence/                                    @n8n-io/enterprise-nodes
+packages/nodes-base/credentials/ConfluenceCloudOAuth2Api.credentials.ts @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/Jira/                                          @n8n-io/enterprise-nodes
+packages/nodes-base/credentials/JiraSoftwareCloudApi.credentials.ts     @n8n-io/enterprise-nodes
+packages/nodes-base/credentials/JiraSoftwareCloudOAuth2Api.credentials.ts @n8n-io/enterprise-nodes
+packages/nodes-base/credentials/JiraSoftwareServerApi.credentials.ts    @n8n-io/enterprise-nodes
+packages/nodes-base/credentials/JiraSoftwareServerPatApi.credentials.ts @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/Salesforce/                                    @n8n-io/enterprise-nodes
+packages/nodes-base/credentials/SalesforceJwtApi.credentials.ts         @n8n-io/enterprise-nodes
+packages/nodes-base/credentials/SalesforceOAuth2Api.credentials.ts      @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/ServiceNow/                                    @n8n-io/enterprise-nodes
+packages/nodes-base/credentials/ServiceNowBasicApi.credentials.ts       @n8n-io/enterprise-nodes
+packages/nodes-base/credentials/ServiceNowOAuth2Api.credentials.ts      @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/Snowflake/                                     @n8n-io/enterprise-nodes
+packages/nodes-base/credentials/Snowflake.credentials.ts                @n8n-io/enterprise-nodes
+packages/nodes-base/credentials/SnowflakeOAuth2Api.credentials.ts       @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/Microsoft/Dynamics/                            @n8n-io/enterprise-nodes
+packages/nodes-base/credentials/MicrosoftDynamicsOAuth2Api.credentials.ts @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/Microsoft/Excel/                               @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/                     @n8n-io/enterprise-nodes
+packages/nodes-base/credentials/MicrosoftExcelOAuth2Api.credentials.ts  @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/Microsoft/OneDrive/                            @n8n-io/enterprise-nodes
+packages/nodes-base/credentials/MicrosoftOneDriveOAuth2Api.credentials.ts @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/Microsoft/Outlook/                             @n8n-io/enterprise-nodes
+packages/nodes-base/credentials/MicrosoftOutlookOAuth2Api.credentials.ts @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/Microsoft/SharePoint/                          @n8n-io/enterprise-nodes
+packages/nodes-base/credentials/MicrosoftSharePointOAuth2Api.credentials.ts @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/Microsoft/Teams/                               @n8n-io/enterprise-nodes
+packages/nodes-base/credentials/MicrosoftTeamsOAuth2Api.credentials.ts  @n8n-io/enterprise-nodes
+packages/@n8n/nodes-langchain/nodes/vendors/Databricks/                  @n8n-io/enterprise-nodes
+packages/@n8n/nodes-langchain/nodes/llms/LmChatDatabricks/               @n8n-io/enterprise-nodes
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsDatabricks/     @n8n-io/enterprise-nodes
+packages/@n8n/nodes-langchain/nodes/vector_store/VectorStoreDatabricks/  @n8n-io/enterprise-nodes
+packages/@n8n/nodes-langchain/nodes/vendors/Microsoft/                   @n8n-io/enterprise-nodes
+packages/@n8n/nodes-langchain/credentials/MicrosoftAgent365Api.credentials.ts @n8n-io/enterprise-nodes
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAwsBedrock/               @n8n-io/enterprise-nodes
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsAwsBedrock/     @n8n-io/enterprise-nodes
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/              @n8n-io/enterprise-nodes
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsAzureOpenAi/    @n8n-io/enterprise-nodes
+packages/@n8n/nodes-langchain/credentials/AzureOpenAiApi.credentials.ts  @n8n-io/enterprise-nodes
+packages/@n8n/nodes-langchain/nodes/llms/LmChatGoogleVertex/             @n8n-io/enterprise-nodes
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsGoogleVertex/   @n8n-io/enterprise-nodes
+packages/@n8n/nodes-langchain/credentials/GoogleVertexAiApi.credentials.ts @n8n-io/enterprise-nodes
+
 # Community engineering
 .agents/skills/create-community-node-lint-rule/         @n8n-io/community-engineering
 .agents/skills/community-pr-readiness-check/            @n8n-io/community-engineering
