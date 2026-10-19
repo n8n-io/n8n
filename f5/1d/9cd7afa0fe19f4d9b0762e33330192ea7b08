@@ -1,0 +1,25 @@
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/plan-verification-simulation.test.ts
+  s_4fb61cc4d00e91::t_89f842c1ec2d04 68
+packages/@n8n/instance-ai/src/agent/__tests__/instance-agent.test.ts
+  s_4fb61cc4d00e91::t_89f842c1ec2d04 1127
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/classify-node-destructiveness.service.test.ts
+  s_4fb61cc4d00e91::t_89f842c1ec2d04 216
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/generate-simulation-fixtures.service.test.ts
+  s_4fb61cc4d00e91::t_89f842c1ec2d04 163
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f51d9cd7afa0fe19f4d9b0762e33330192ea7b08",
+  "prompts": {},
+  "sessions": {
+    "s_4fb61cc4d00e91": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e6577937-465c-462d-b8ef-cfb2996abc19",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,30 @@
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/PromotionBlockers.vue
+  s_7f7a4dee511a6b::t_cad2f0398a0fb8 29-30,160-164,167-171
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionPreviewView.test.ts
+  s_7f7a4dee511a6b::t_7dca3d67a642f4 306-331
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionOperation.ts
+  s_7f7a4dee511a6b::t_3ea117d779118d 28-30,32-39,192-193,195,197,201-205
+  s_7f7a4dee511a6b::t_e1d99a8eb6af7f 206
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionPreviewLabels.ts
+  s_7f7a4dee511a6b::t_cad2f0398a0fb8 48-50,57
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionPreviewView.vue
+  s_7f7a4dee511a6b::t_cad2f0398a0fb8 37-38,74-75,77-80,82-86,88,185-189,437
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_7f7a4dee511a6b::t_cad2f0398a0fb8 9875
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "73afcf1a610b0bdfab894ff54fe3ef44b7bc0d5c",
+  "prompts": {},
+  "sessions": {
+    "s_7f7a4dee511a6b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ed162b42-c275-4534-848a-37f52720dc22",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}
