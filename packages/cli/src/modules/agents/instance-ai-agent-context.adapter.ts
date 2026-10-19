@@ -23,6 +23,7 @@ import { listAgentTasks, readAgentSkill } from './agent-context-readers';
 import { AgentIntegrationPersistenceService } from './agent-integration-persistence.service';
 import { AgentSkillsService } from './agent-skills.service';
 import { AgentTaskService } from './agent-task.service';
+import { AgentsSettingsService } from './agents-settings.service';
 import { AgentsToolsService } from './agents-tools.service';
 import { AgentsService } from './agents.service';
 import { AttachableWorkflowsService } from './attachable-workflows.service';
@@ -86,12 +87,17 @@ export class InstanceAiAgentContextAdapterService {
 		private readonly mcpRegistryService: McpRegistryService,
 		private readonly agentsToolsService: AgentsToolsService,
 		private readonly agentSkillRefs: AgentSkillRefsService,
+		private readonly agentsSettingsService: AgentsSettingsService,
 	) {}
 
 	createReader(user: User, projectId: string): InstanceAiAgentContextReader {
 		let canReadAgents: Promise<boolean> | undefined;
 		return {
 			lookup: async (input) => {
+				// Checked on every lookup, so a run loses access as soon as Agents are turned off.
+				await this.agentsSettingsService.assertEnabled().catch((error: unknown) => {
+					throw error instanceof ForbiddenError ? new UserError(error.message) : error;
+				});
 				canReadAgents ??= userHasScopes(user, ['agent:read'], false, { projectId });
 				if (!(await canReadAgents)) {
 					throw new UserError("You don't have permission to read Agents in this project.");

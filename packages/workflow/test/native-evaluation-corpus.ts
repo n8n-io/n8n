@@ -177,7 +177,6 @@ export const HANDLED_CORPUS: string[] = [
 	"={{ $('Source').all().length }}",
 	"={{ $('Source').all()[0].json.item.name }}",
 	"={{ $('Source').item.json.item.missing ?? 'fallback' }}",
-	"={{ $('Source').first()?.json.item.name }}",
 	"=Name: {{ $('Source').item.json.item.name }}",
 	'={{ $node["Source"].json["item"]["name"] }}',
 	"={{ $node['Source'].json.item.count }}",
@@ -233,11 +232,38 @@ export const HANDLED_CORPUS: string[] = [
 	// The Internal only-run-if that moved callbacks into Foundation (CAT-4698).
 	"={{ !!($json.body?.data?.identifiers?.id) && ['research', 'interview', 'survey'].some(s => ($json.body?.data?.subject ?? '').toLowerCase().includes(s)) }}",
 	"={{ !!($json.item.my_object?.addresses?.primary) && ['main', 'elm'].some(s => ($json.item.my_object?.addresses?.primary ?? '').toLowerCase().includes(s)) }}",
+	// Expression extensions on a non-root receiver run through extend(), the
+	// host dispatch the engines call too. The runtime receiver picks the
+	// implementation: a date string's isEmpty() is the Date extension's.
+	'={{ $json.item.names.first() }}',
+	'={{ $json.item.names.last() }}',
+	'={{ $json.item.names.isNotEmpty() }}',
+	'={{ $json.item.names.reverse() }}',
+	"={{ $json.item.names.pluck('x') }}",
+	'={{ $json.item.empty.isEmpty() }}',
+	'={{ $json.item.name.isEmpty() }}',
+	'={{ $json.item.name.hash() }}',
+	'={{ $json.item.name.toTitleCase() }}',
+	"={{ ($json.item.missing || '').toTitleCase() }}",
+	"={{ ($json.item.active ? $json.item.name : '').toTitleCase() }}",
+	'={{ $json.item.name.toJsonString() }}',
+	'={{ $json.item.my_object.toJsonString() }}',
+	'={{ $json.item.my_object.keys() }}',
+	"={{ $json.item.my_object.hasField('addresses') }}",
+	'={{ $json.item.count.round(1) }}',
+	'={{ $json.item.count.isEven() }}',
+	'={{ $json.item.active.toInt() }}',
+	'={{ $json.item.when.isEmpty() }}',
+	'={{ $json.item.names.map(n => n.toTitleCase()) }}',
+	'={{ $input.first().json.item.names.first() }}',
+	"={{ $('Source').item.json.item.my_object.toJsonString() }}",
 ];
 
 // Fits the subset, but a runtime value falls outside what the parse proved:
 // evaluation bails and the engine result must come back unchanged.
 export const RUNTIME_BAILOUT_CORPUS: string[] = [
+	// The receiver is above the content cap.
+	'={{ $json.item.huge.toJsonString() }}',
 	// Allowlisted method on a receiver of another type.
 	'={{ $json.item.count.toUpperCase() }}',
 	'={{ $json.item.name.toFixed(1) }}',
@@ -296,6 +322,19 @@ export const RUNTIME_BAILOUT_CORPUS: string[] = [
 ];
 
 export const DECLINED_CORPUS: string[] = [
+	// Excluded extensions: superlinear in the receiver, or a per-call regex
+	// budget that an iterator multiplies.
+	'={{ $json.item.name.isDomain() }}',
+	"={{ $json.item.name.quote('\"') }}",
+	'={{ $json.item.names.map(n => n.quote($json.item.name)) }}',
+	// A root is a proxy the engines hand to extend() in their own way, and a
+	// logical or conditional receiver can still yield one.
+	'={{ $vars.toJsonString() }}',
+	'={{ $vars.isEmpty() }}',
+	"={{ ($json.item.missing || $parameter).hasField('nope') }}",
+	'={{ ($json.item.missing || $parameter).toJsonString() }}',
+	'={{ ($json.item.active ? $json : $vars).toJsonString() }}',
+	'={{ ($json.item.missing ?? $json).isEmpty() }}',
 	// BigInt literals are not part of the subset.
 	'={{ 1n }}',
 	// Node references stand only under .item / first() / last() / all() (or
@@ -327,7 +366,6 @@ export const DECLINED_CORPUS: string[] = [
 	'={{ $node["Source"].context }}',
 	'={{ $node["Source"].first() }}',
 	'={{ $input.params }}',
-	'={{ $input.first().json.item.names.first() }}',
 	"={{ $('__proto__').item.json }}",
 	'={{ $node.constructor.json }}',
 	// Roots outside the data set, and the time roots outside their allowlists.
@@ -356,7 +394,6 @@ export const DECLINED_CORPUS: string[] = [
 	'={{ $position }}',
 	'={{ $items() }}',
 	'={{ $item(0).$json.item.name }}',
-	'={{ $json.item.names.first() }}',
 	'={{ Object.keys($json.item) }}',
 	'={{ $json.item[$json.item.name] }}',
 	"={{ $json.item['__proto__'] }}",
@@ -397,7 +434,7 @@ export const DECLINED_CORPUS: string[] = [
 	'={{ $json.item.names.some(undefined => undefined) }}',
 	'={{ $json.item.names.some(__proto__ => 1) }}',
 	'={{ $json.item.names.some(constructor => 1) }}',
-	'={{ $json.item.names.some(n => n.first()) }}',
+	'={{ $json.item.names.some(n => n.toDateTime()) }}',
 	// eslint-disable-next-line n8n-local-rules/no-interpolation-in-regular-string
 	'={{ $json.item.names.some(n => `${n}`) }}',
 	'={{ $json.item.names.reduce((a, b) => a + b) }}',
@@ -406,9 +443,44 @@ export const DECLINED_CORPUS: string[] = [
 	'={{ $json.item.names.findIndex(n => n) }}',
 	'={{ $json.item.names.findLast(n => n) }}',
 	"={{ $json.item.names['some'](n => n) }}",
-	// Extension methods and non-allowlisted natives stay on the engine.
-	'={{ $json.item.name.isEmpty() }}',
-	'={{ $json.item.name.hash() }}',
+	// Date-valued extensions, the random one, the unbounded or superlinear
+	// ones, and non-allowlisted natives stay on the engine.
+	'={{ $json.item.name.toDateTime() }}',
+	'={{ $json.item.name.toDate() }}',
+	'={{ $json.item.count.toDateTime() }}',
+	'={{ $json.item.names.randomItem() }}',
+	"={{ $json.item.when.plus(1, 'day') }}",
+	'={{ $json.item.names.chunk(-1) }}',
+	'={{ $json.item.names.unique() }}',
+	'={{ $json.item.names.removeDuplicates() }}',
+	'={{ $json.item.name.isEmail() }}',
+	'={{ $json.item.name.extractEmail() }}',
+	'={{ $json.item.name.extractDomain() }}',
+	'={{ $json.item.name.removeMarkdown() }}',
+	'={{ $json.item.name.toSentenceCase() }}',
+	'={{ $json.item.mixed.min() }}',
+	'={{ $json.item.mixed.max() }}',
+	'={{ $json.item.name.isUrl() }}',
+	'={{ $json.item.names.merge() }}',
+	// An extension call anywhere in a chunk with an optional chain goes
+	// through the engines' own chain polyfill.
+	'={{ $json.item.names?.last() }}',
+	'={{ $json.item.missing?.last() ?? "none" }}',
+	'={{ $json.item?.names.last() }}',
+	'={{ $json.item.names.last?.() }}',
+	'={{ ($json.item.names[9] && $json.item.name) ?? $json.item.names[9]?.last() }}',
+	'={{ $json.item.names?.[9] ?? ($json.item.names.last() && 1) }}',
+	'={{ $json.item.names?.[9] ?? ($input.first() && 1) }}',
+	"={{ $('Source').first()?.json.item.name }}",
+	'={{ $json.item.my_object?.addresses ?? $json.item.name.toTitleCase() }}',
+	// A comment hides the call from the extendSyntax regex.
+	'={{ $json.item.names.first /* c */ () }}',
+	'={{ $json.item.names.first // c\n () }}',
+	'={{ $json.item.count.format() }}',
+	'={{ $json.item.when.format() }}',
+	'={{ $json.item.name.extractUrlPath() }}',
+	'={{ $json.item.name.urlEncode() }}',
+	'={{ $json.item.name.base64Decode() }}',
 	'={{ $json.item.name.padStart(8) }}',
 	// sort()/fill() mutate the receiver in place; only immutable variants are
 	// allowlisted. A callback makes any call non-simple.
@@ -417,8 +489,6 @@ export const DECLINED_CORPUS: string[] = [
 	'={{ $json.item.names.toSorted((a, b) => a.length - b.length) }}',
 	// Iterator-returning methods have no engine-equivalent value.
 	'={{ $json.item.names.entries() }}',
-	'={{ $json.item.names.values() }}',
-	'={{ $json.item.names.keys() }}',
 	"={{ $json.item.name['toUpperCase']() }}",
 	// A computed key on a call declines for node references too.
 	"={{ $input['first']().json.item.name }}",
@@ -452,6 +522,10 @@ export const ENGINE_DECIDED_CORPUS: string[] = [
 	'={{ $json.hasOwnProperty }}',
 	'={{ $json.toString }}',
 	'={{ $json.item.valueOf }}',
+	// keys()/values() are Object extensions; on an array extend() falls
+	// through to the native iterator, which has no representation here.
+	'={{ $json.item.names.keys() }}',
+	'={{ $json.item.names.values() }}',
 ];
 
 // Handled natively, compared to the engine with a clock tolerance: each side

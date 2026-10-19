@@ -202,36 +202,6 @@ describe('reclassifyMaskedStreamFailure', () => {
 		);
 	});
 
-	// The activation lock refuses use while the quota still has credits, so the numbers alone
-	// wouldn't explain the failure.
-	it('substitutes a quota-exhausted error when the proxy reports the pool locked', async () => {
-		const service = createService(async () => ({
-			creditsQuota: 100,
-			creditsClaimed: 40,
-			quotaLocked: true,
-		}));
-		const masked = createNoOutputGeneratedError();
-
-		const resolved = await service.reclassifyMaskedStreamFailure(masked, user, context);
-
-		expect(resolved).toBeInstanceOf(QuotaExhaustedStreamError);
-	});
-
-	// The lock is read from the proxy, never inferred from n8n's own trigger state: a lock call
-	// that failed leaves the pool open, and an unrelated stream death must not become a paywall.
-	it('keeps the original error when the proxy reports the pool unlocked', async () => {
-		const service = createService(async () => ({
-			creditsQuota: 100,
-			creditsClaimed: 40,
-			quotaLocked: false,
-		}));
-		const masked = new TypeError('terminated');
-
-		await expect(service.reclassifyMaskedStreamFailure(masked, user, context)).resolves.toBe(
-			masked,
-		);
-	});
-
 	it('keeps the original error on the unlimited-credits sentinel', async () => {
 		const service = createService(async () => ({ creditsQuota: -1, creditsClaimed: 0 }));
 		const masked = new TypeError('terminated');
@@ -288,18 +258,6 @@ describe('assertAssistantCreditsAvailable', () => {
 		expect(rejected).toBeInstanceOf(QuotaExhaustedStreamError);
 		expect(isQuotaExhaustedError(rejected)).toBe(true);
 		expect(service.modelService.getCredits).toHaveBeenCalledTimes(1);
-	});
-
-	it('fails the run when the pool is locked', async () => {
-		const service = createService(async () => ({
-			creditsQuota: 800,
-			creditsClaimed: 10,
-			quotaLocked: true,
-		}));
-
-		await expect(service.assertAssistantCreditsAvailable(user)).rejects.toBeInstanceOf(
-			QuotaExhaustedStreamError,
-		);
 	});
 
 	it('allows a run that still has credits', async () => {

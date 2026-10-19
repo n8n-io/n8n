@@ -4,7 +4,9 @@ description: >-
   Debug failed or wrong-output workflow executions using executions tools. Load
   when the user reports execution failures, unexpected node output, empty
   parameter values after a successful run, or a node showing a red or failed
-  expression error.
+  expression error. Also load when a live run you started for the user fails
+  with an error from a node or an external service (for example a 401), before
+  you explain the cause to the user.
 recommended_tools:
   - executions
   - workflows
@@ -26,6 +28,37 @@ signals as real: an execution error, partial coverage (`nodesNotReached`), an
 empty node, or a missing node is a real defect to investigate, not something to
 explain away. If you genuinely cannot re-run the failing path, say so plainly and
 name what is unconfirmed instead of repeating a success claim.
+
+## Before you name a cause
+
+Say what you checked before you say why it failed. Do not lead with a cause
+that you did not check. A plausible guess presented first reads as a finding,
+and the user acts on it.
+
+Check what you can see on the n8n side first. These checks are read-only, so
+run them unprompted:
+
+- **Auth errors (401, 403, "unauthorized", "invalid key").** Confirm that the
+  credential exists (`credentials(action="list")` or `get`), that the node uses
+  it (the node's `credentials` in `workflows(action="get")`; resolved
+  parameters show only the auth type, not which credential is bound), and what
+  `credentials(action="test")` reports. A generic credential, such as Header
+  Auth, can pass its test without a call to the service, so a pass does not
+  show that the service accepts it. Say so when you report the check.
+- **Other node errors.** Start from `executions(action="debug")` and the
+  resolved parameters of the failed node.
+
+Then report the checks and their results, and only after that give a cause.
+You cannot read a stored secret, so a cause about its format or value is a
+hypothesis: label it as one, and say which check would confirm it. Do not blame
+the user's account, billing, credit, plan, or quota unless the error says so.
+
+A cause outside the workflow does not mean that the workflow is correct. Before
+you say that the workflow is wired or configured correctly, read the expression
+parameters of every node on the failing path, not only the node that failed. An
+expression that reads the wrong field, or a literal placeholder where an
+expression belongs, is a defect even when a different error stopped the run.
+Report each defect separately from the cause of the failed run.
 
 ## Draft versus live
 
@@ -55,8 +88,8 @@ the fix — an earlier execution ran the old version.
 
 Use `executions(action="run")` with `inputData` matching the trigger's output
 shape — do not rebuild the workflow with a Manual Trigger. For trigger
-`inputData` shapes, read
-`${N8N_WORKSPACE_DIR}/knowledge-base/reference/trigger-input-data-shapes.md`
+`inputData` shapes, read the workspace file
+`knowledge-base/reference/trigger-input-data-shapes.md`
 when a sandbox workspace is available.
 
 ## Failed execution
@@ -199,8 +232,8 @@ call a sub-node made while the Agent ran.
 
 When `debug` doesn't apply because nothing errored, call
 `executions(action="get-resolved-node-parameters", executionId, nodeName)` on the
-node whose output looks off — **do this unprompted**, don't ask the user for
-permission first. It's a cheap read-only inspection and the only reliable way to
-confirm whether an empty value came from an expression silently resolving to
-nullish. Check `emptyResolutions` first; most "this parameter is empty" cases are
+node whose output looks off and on the nodes that feed it —
+**do this unprompted**, don't ask the user for permission first. It's a cheap
+read-only inspection and the only reliable way to confirm whether an empty value came
+from an expression silently resolving to nullish. Check `emptyResolutions` first; most "this parameter is empty" cases are
 expressions resolving to `null`/`undefined`/`""`, not thrown errors.

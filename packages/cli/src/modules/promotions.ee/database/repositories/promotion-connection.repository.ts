@@ -63,12 +63,18 @@ export class PromotionConnectionRepository extends BaseRepository<PromotionConne
 		}
 	}
 
-	/** Scope is immutable, so it is not accepted here. */
+	async renameConnection(id: string, name: string): Promise<void> {
+		await this.update({ id }, { name });
+	}
+
+	/** A target must use the provider it was resolved against. */
 	async updateConnection(
 		id: string,
+		expectedProviderId: string,
 		changes: Partial<Pick<PromotionConnection, 'name' | 'providerId' | 'target'>>,
-	): Promise<void> {
-		await this.update({ id }, changes);
+	): Promise<boolean> {
+		const result = await this.update({ id, providerId: expectedProviderId }, changes);
+		return result.affected === 1;
 	}
 
 	/** Cascades to this connection's configs and project links only. */

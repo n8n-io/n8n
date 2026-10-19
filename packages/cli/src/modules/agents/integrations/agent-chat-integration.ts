@@ -5,8 +5,8 @@ import {
 } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import type { Thread, Author, Message } from 'chat';
-import type { Logger } from 'n8n-workflow';
+import type { Attachment, Thread, Author, Message } from 'chat';
+import { UserError, type Logger } from 'n8n-workflow';
 
 import type { ChatInstance } from './chat-integration.service';
 import type { NormalizeComponentsContext, SuspendComponent } from './component-mapper';
@@ -26,6 +26,12 @@ import type {
 	IntegrationPlatformMessageContext,
 	ReplyExpectation,
 } from './integration-tools';
+
+/**
+ * The platform refused an attachment download for a reason the user can fix.
+ * The message reaches the agent, so it can tell the user what to do.
+ */
+export class InboundAttachmentAccessError extends UserError {}
 
 /**
  * Channel identity, without the decrypted credential. Enough for checks that
@@ -535,6 +541,15 @@ export abstract class AgentChatIntegration {
 	prepareInboundText?(text: string, context: PlatformAgentContext): string;
 
 	/**
+	 * Files the webhook leaves out but the platform API has. They join the
+	 * message's own attachments.
+	 */
+	fetchInboundAttachments?(params: {
+		thread: Thread<unknown, unknown>;
+		message: Message<unknown>;
+	}): Promise<Attachment[]>;
+
+	/**
 	 * Optional per-message reply policy (see `ReplyExpectation`).
 	 * Default (no implementation): 'required'.
 	 */
@@ -592,7 +607,15 @@ export abstract class AgentChatIntegration {
 		logger: Logger;
 		agentId: string;
 		slackThreadContext?: BridgeExecutionContext['slackThreadContext'];
+		/** The channel as stored, for platforms whose status depends on a setting. */
+		integration?: AgentIntegrationConfig;
 	}): Promise<BridgeResumeExecutionContext>;
+
+	/**
+	 * Whether the bridge downloads and stores the files in an inbound message.
+	 * Without it, every platform downloads them.
+	 */
+	shouldDownloadAttachments?(integration: AgentIntegrationConfig): boolean;
 
 	/**
 	 * Execute a context query that this platform owns (e.g. Linear `get_issue`,

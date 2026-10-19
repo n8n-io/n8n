@@ -6,7 +6,7 @@ import type {
 	RoleMappingConfig,
 	RoleMappingProvider,
 	RoleResolverContext,
-} from '@/services/role-mapping-proxy.service';
+} from '@n8n/backend-services/auth';
 
 import { ProvisioningService } from './provisioning.service.ee';
 import { RoleResolverService } from './role-resolver.service.ee';

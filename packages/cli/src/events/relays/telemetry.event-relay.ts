@@ -595,7 +595,8 @@ export class TelemetryEventRelay extends EventRelay {
 		after,
 		rulesBefore,
 		rulesAfter,
-		warningCount,
+		shadowWarningCount,
+		notLoadedWarningCount,
 	}: RelayEventMap['node-type-policy-saved']) {
 		if (!isPolicyKind(kind)) return;
 
@@ -619,7 +620,8 @@ export class TelemetryEventRelay extends EventRelay {
 				...countSelectorKinds(rulesAfter),
 				...summarizeTypeAvailability(rulesAfter, after.defaultAction, types, resolvePackage),
 				previous_rule_count: rulesBefore?.length ?? null,
-				shadow_warning_count: warningCount,
+				shadow_warning_count: shadowWarningCount,
+				not_loaded_warning_count: notLoadedWarningCount,
 				version: after.version,
 			},
 		);
@@ -1405,6 +1407,7 @@ export class TelemetryEventRelay extends EventRelay {
 			workflow_id_policy: options.workflowIdPolicy,
 			credential_matching_mode: options.credentialMatchingMode,
 			credential_missing_mode: options.credentialMissingMode,
+			credential_conflict_policy: options.credentialConflictPolicy,
 			workflow_publishing_policy: options.workflowPublishingPolicy,
 			missing_node_type_mode: options.missingNodeTypeMode,
 			project_conflict_policy: options.projectConflictPolicy,

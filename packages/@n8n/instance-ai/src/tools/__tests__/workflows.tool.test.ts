@@ -3473,6 +3473,78 @@ describe('workflows tool', () => {
 				expect(suspend.mock.calls[0][0]).toMatchObject({ setupRequests: [sheetsRequest] });
 			});
 
+			describe('nodes the build left out of setup', () => {
+				// The build changed only the Sheets node; Slack is pre-existing and unconfigured.
+				function createScopedContext() {
+					const context = createGrantAwareContext();
+					context.runId = 'run-1';
+					(context as { workflowBuildContext?: unknown }).workflowBuildContext = {
+						threadId: 't1',
+						runId: 'run-1',
+						taskId: 'task-1',
+						workItemId: 'wi-1',
+						workflowTaskService: {
+							getLatestBuildOutcomeForWorkflow: vi
+								.fn()
+								.mockResolvedValue({ runId: 'run-1', changedNodeNames: ['Log to Sheet'] }),
+						},
+					};
+					return context;
+				}
+
+				beforeEach(() => {
+					(analyzeWorkflow as Mock).mockResolvedValue([slackRequest, sheetsRequest]);
+					(applyNodeChanges as Mock).mockResolvedValue({ applied: [], failed: [] });
+					(buildCompletedReport as Mock).mockReturnValue([]);
+				});
+
+				it('does not record them as skipped when the user skips the card', async () => {
+					const context = createScopedContext();
+
+					const tool = createWorkflowsTool(context);
+					const result = await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
+						resumeData: { approved: false },
+					} as never);
+
+					expect(context.grantSessionToolApproval).not.toHaveBeenCalledWith(
+						'workflows:setup-skip:cred:slackApi',
+					);
+					expect(result).toMatchObject({ skippedByUser: [{ nodeName: 'Log to Sheet' }] });
+				});
+
+				it('does not report them as still needing setup after apply', async () => {
+					const context = createScopedContext();
+
+					const tool = createWorkflowsTool(context);
+					const result = await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
+						resumeData: { approved: true, action: 'apply' },
+					} as never);
+
+					expect(result).toMatchObject({
+						partial: true,
+						nodesStillNeedingSetup: [{ nodeName: 'Log to Sheet' }],
+					});
+				});
+
+				it('keeps them out of the panel a trigger test rebuilds', async () => {
+					const context = createScopedContext();
+					(context.executionService.run as Mock).mockResolvedValue({ status: 'success' });
+					const suspend = vi.fn();
+
+					const tool = createWorkflowsTool(context);
+					await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
+						suspend,
+						resumeData: {
+							approved: true,
+							action: 'test-trigger',
+							testTriggerNode: 'Log to Sheet',
+						},
+					} as never);
+
+					expect(suspend.mock.calls[0][0]).toMatchObject({ setupRequests: [sheetsRequest] });
+				});
+			});
+
 			it('revalidates the credential test destination after a trigger test', async () => {
 				const fixture = templatedSetupFixture({ testUrl: 'https://status.example.net/me' });
 				(analyzeWorkflow as Mock).mockResolvedValue([fixture.request]);
