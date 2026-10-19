@@ -1,14 +1,6 @@
+import { context } from '@opentelemetry/api';
+import { isTracingSuppressed } from '@opentelemetry/core';
 import type { SpanJSON, TracesSamplerSamplingContext, TransactionEvent } from '@sentry/core';
-
-/**
- * Express auto-instrumentation span ops whose duration only mirrors the
- * handler, so they carry no independent signal. Dropped wholesale.
- */
-const DROPPED_EXPRESS_OPS = new Set([
-	'middleware.express',
-	'router.express',
-	'request_handler.express',
-]);
 
 /** High-volume auto-instrumentation ops kept only when slow or errored. */
 const DURATION_FILTERED_OPS = new Set(['db', 'http.client']);
@@ -54,8 +46,10 @@ export function shouldIgnoreIncomingRequest(urlPath: string): boolean {
 	);
 }
 
-/** Outbound telemetry batch calls carry no tracing signal. */
+/** Outbound telemetry batch calls and OpenTelemetry exports carry no tracing signal. */
 export function shouldIgnoreOutgoingRequest(url: string): boolean {
+	if (isTracingSuppressed(context.active())) return true;
+
 	try {
 		return new URL(url).hostname === TELEMETRY_HOSTNAME;
 	} catch {
@@ -63,16 +57,19 @@ export function shouldIgnoreOutgoingRequest(url: string): boolean {
 	}
 }
 
+function asFilteredOp(op: string | undefined): string | undefined {
+	return op?.startsWith('db.') ? 'db' : op;
+}
+
 /** A span errored unless Sentry explicitly marked it ok. */
-function isErrored(status: SpanJSON['status']): boolean {
+function isErrored(status: string | undefined): boolean {
 	return status !== undefined && status !== 'ok';
 }
 
 /** Whether a child span should survive filtering. */
 function shouldKeepSpan(span: SpanJSON, slowSpanThresholdMs: number): boolean {
-	const { op, timestamp, start_timestamp: startTimestamp } = span;
-
-	if (op && DROPPED_EXPRESS_OPS.has(op)) return false;
+	const { timestamp, start_timestamp: startTimestamp } = span;
+	const op = asFilteredOp(span.op);
 
 	if (op && DURATION_FILTERED_OPS.has(op) && timestamp !== undefined) {
 		const durationMs = (timestamp - startTimestamp) * 1000;
@@ -118,7 +115,6 @@ function reparentChildSpans(
  * Filters noise before Sentry sends a transaction:
  * - Drops transactions rooted on a `db` operation wholesale (DB queries/pool connects
  *   that became roots outside any request/job span — high volume, no signal).
- * - Express middleware/router/handler child spans wholesale.
  * - Fast, non-errored `db`/`http.client` child spans (below `slowSpanThresholdMs`).
  *
  * Kept descendants of dropped child spans are reparented.
@@ -134,7 +130,7 @@ export function buildBeforeSendTransaction(
 		// DB operations (queries, pool connects) get op `db`. A `db`-rooted transaction
 		// ran outside any request/job span — high volume, no signal. Child db spans under
 		// real transactions keep a non-`db` root op, so they are untouched.
-		if (event.contexts?.trace?.op === 'db') return null;
+		if (asFilteredOp(event.contexts?.trace?.op) === 'db') return null;
 
 		if (webhook && webhook.sampleRate < 1 && isSuccessfulWebhook(event, webhook.endpoint)) {
 			if (Math.random() >= webhook.sampleRate) return null;

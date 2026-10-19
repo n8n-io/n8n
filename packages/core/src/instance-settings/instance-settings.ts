@@ -11,6 +11,7 @@ import { chmodSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync
 import os from 'node:os';
 import path from 'path';
 
+import { instanceTypeFromArgv } from './instance-type';
 import { WorkerMissingEncryptionKey } from './worker-missing-encryption-key.error';
 
 const nanoid = customAlphabet(ALPHABET, 16);
@@ -97,8 +98,7 @@ export class InstanceSettings {
 		private readonly config: InstanceSettingsConfig,
 		private readonly logger: Logger,
 	) {
-		const command = process.argv[2] as InstanceType;
-		this.instanceType = ['webhook', 'worker', 'engine'].includes(command) ? command : 'main';
+		this.instanceType = instanceTypeFromArgv(process.argv);
 
 		this.hostId = `${this.instanceType}-${this.isDocker ? os.hostname() : nanoid()}`;
 		this.settings = this.loadOrCreate();
