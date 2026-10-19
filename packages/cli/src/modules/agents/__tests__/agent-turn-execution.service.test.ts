@@ -10,10 +10,14 @@ import { AgentTurnExecutionService, type AgentTurnRequest } from '../agent-turn-
 
 it('ends a preview turn stopped during preparation without recording an error', async () => {
 	const executions = mock<AgentExecutionService>();
+	const chatExecutions = mock<AgentChatExecutionService>();
+	chatExecutions.withTurnLock.mockImplementation(
+		async (_threadId, action) => await action(new AbortController().signal),
+	);
 	const service = new AgentTurnExecutionService(
 		mock<Logger>(),
 		executions,
-		mock<AgentChatExecutionService>(),
+		chatExecutions,
 		mock<AgentMessageQueueService>(),
 		mock<AgentMessageSteeringService>(),
 		mock<AgentToolApprovalService>(),

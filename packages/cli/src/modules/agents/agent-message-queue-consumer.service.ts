@@ -94,31 +94,56 @@ export class AgentMessageQueueConsumer {
 	/** Claim and process one message. A bridge lease prevents teardown until the attempt finishes. */
 	private async consumeNext(threadId: string): Promise<boolean> {
 		let lease: ReturnType<ChatIntegrationService['acquireQueueBridge']>;
+		const controller = new AbortController();
 		try {
-			const claim = await this.queue.claimNext(threadId, async (item, thread, ctx) => {
-				if (this.stopped) return false;
-				if (item.payload.kind !== 'integration') return true;
-				const source = item.message.origin?.source;
-				if (!source) throw new UnexpectedError('Queued integration input has no source');
-				const connection = await this.repository.findPublishedConnection(
-					thread.agentId,
-					thread.projectId,
-					source,
-					item.payload.credentialId,
-					ctx,
-				);
-				if (this.stopped) return false;
-				// Removed connections fail the item. A missing or closing bridge leaves it pending.
-				if (!connection) return true;
-				lease = this.integrations.acquireQueueBridge(
-					thread.agentId,
-					source,
-					item.payload.credentialId,
-				);
-				return lease !== undefined;
+			const claim = await this.chatExecutionService.withTurnLock(threadId, async (signal) => {
+				signal.throwIfAborted();
+				const claimed = await this.queue.claimNext(threadId, async (item, thread, ctx) => {
+					if (this.stopped) return false;
+					if (item.payload.kind !== 'integration') return true;
+					const source = item.message.origin?.source;
+					if (!source) throw new UnexpectedError('Queued integration input has no source');
+					const connection = await this.repository.findPublishedConnection(
+						thread.agentId,
+						thread.projectId,
+						source,
+						item.payload.credentialId,
+						ctx,
+					);
+					if (this.stopped) return false;
+					// Removed connections fail the item. A missing or closing bridge leaves it pending.
+					if (!connection) return true;
+					lease = this.integrations.acquireQueueBridge(
+						thread.agentId,
+						source,
+						item.payload.credentialId,
+					);
+					return lease !== undefined;
+				});
+				if (!claimed) return null;
+				if (signal.aborted) {
+					// Finalize the claimed execution without starting it after the lock expires.
+					controller.abort(new OperationalError('Agent execution startup lock was lost'));
+				} else if (claimed.payload.kind !== 'integration' && claimed.thread.ownerId) {
+					this.chatExecutionService.register(
+						{
+							projectId: claimed.thread.projectId,
+							agentId: claimed.thread.agentId,
+							threadId,
+							userId: claimed.thread.ownerId,
+							executionId: claimed.admission.executionId,
+							surface: claimed.payload.kind === 'n8n_chat' ? 'n8n-chat' : 'preview',
+						},
+						controller,
+					);
+				}
+				return claimed;
 			});
 			if (!claim) return false;
-			await this.consume(claim, lease?.bridge);
+			await this.chatExecutionService.settle(
+				claim.admission.executionId,
+				async () => await this.consume(claim, controller, lease?.bridge),
+			);
 			return true;
 		} finally {
 			lease?.release();
@@ -126,9 +151,12 @@ export class AgentMessageQueueConsumer {
 	}
 
 	/** Execute a claimed message, deliver its output, and settle its queue item. */
-	private async consume(claim: ClaimedAgentMessage, bridge?: AgentChatBridge): Promise<void> {
+	private async consume(
+		claim: ClaimedAgentMessage,
+		controller: AbortController,
+		bridge?: AgentChatBridge,
+	): Promise<void> {
 		const { item, thread, admission, payload } = claim;
-		const controller = new AbortController();
 		const signal = AbortSignal.any([
 			controller.signal,
 			this.executionService.getAbortSignal(admission.executionId),
@@ -138,17 +166,6 @@ export class AgentMessageQueueConsumer {
 		try {
 			if (sender) {
 				const user = await this.getThreadOwner(thread);
-				this.chatExecutionService.register(
-					{
-						projectId: thread.projectId,
-						agentId: thread.agentId,
-						threadId: thread.id,
-						userId: user.id,
-						executionId: admission.executionId,
-						surface: payload.kind === 'n8n_chat' ? 'n8n-chat' : 'preview',
-					},
-					controller,
-				);
 				sender.send({
 					type: 'execution-started',
 					executionId: admission.executionId,
@@ -156,12 +173,12 @@ export class AgentMessageQueueConsumer {
 					inputMessageIds: admission.inputMessageIds,
 					message: payload.message,
 				});
-				await this.chatExecutionService.settle(admission.executionId, async () =>
-					payload.kind === 'n8n_chat'
-						? await this.consumeN8nChat(claim, user, signal, sender.send)
-						: await this.consumePreview(claim, user, signal, sender.send),
-				);
+				signal.throwIfAborted();
+				if (payload.kind === 'n8n_chat')
+					await this.consumeN8nChat(claim, user, signal, sender.send);
+				else await this.consumePreview(claim, user, signal, sender.send);
 			} else {
+				signal.throwIfAborted();
 				await this.consumeIntegration(claim, signal, bridge);
 			}
 		} catch (error) {

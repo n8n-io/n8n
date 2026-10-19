@@ -442,10 +442,31 @@ export class AgentTurnExecutionService {
 		state: TurnExecutionState,
 		chatControl?: ChatExecutionControl,
 	): Promise<ReadableStream<StreamChunk>> {
-		const admission =
-			config.admittedExecution ??
-			(await this.recordTurnStart(turn, config, recorder, state, chatControl));
-		state.executionId = admission.executionId;
+		const admit = async (signal?: AbortSignal) => {
+			signal?.throwIfAborted();
+			const admission =
+				config.admittedExecution ??
+				(await this.recordTurnStart(turn, config, recorder, state, chatControl));
+			state.executionId = admission.executionId;
+			signal?.throwIfAborted();
+			if (chatControl) {
+				this.chatExecutionService.register(
+					{
+						...config.context,
+						userId: chatControl.userId,
+						executionId: admission.executionId,
+						surface: chatControl.surface,
+					},
+					chatControl.controller,
+				);
+				// An admitted turn survives a closed request, but still follows its wake lease.
+				if (!config.isWakeRun) chatControl.detachRequest();
+			}
+			return admission;
+		};
+		const admission = chatControl
+			? await this.chatExecutionService.withTurnLock(config.context.threadId, admit)
+			: await admit();
 		return await this.startAcceptedTurn(admission, turn, config, recorder, state, chatControl);
 	}
 
@@ -512,18 +533,6 @@ export class AgentTurnExecutionService {
 				for (const event of result.events) state.steeredMessages.set(event.message.id, event);
 				return result.messages;
 			};
-			this.chatExecutionService.register(
-				{
-					...config.context,
-					userId: chatControl.userId,
-					executionId,
-					surface: chatControl.surface,
-				},
-				chatControl.controller,
-			);
-			// A closed chat request must not stop an admitted turn. A lost wake lease must,
-			// because the wake leaves its job results unconsumed and another wake retries them.
-			if (!config.isWakeRun) chatControl.detachRequest();
 		}
 		config.onExecutionStarted?.(executionId, config.context.threadId, inputMessageIds);
 		turn.options.abortSignal?.throwIfAborted();

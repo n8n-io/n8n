@@ -94,6 +94,9 @@ describe('AgentMessageQueueConsumer', () => {
 		repository.findThreadIds.mockResolvedValue([]);
 		executions.getAbortSignal.mockImplementation(() => new AbortController().signal);
 		streams.createSender.mockReturnValue(sender);
+		chatExecutions.withTurnLock.mockImplementation(
+			async (_threadId, action) => await action(new AbortController().signal),
+		);
 		chatExecutions.settle.mockImplementation(async (_id, finalize) => await finalize());
 		testRuns.prepareDraftRun.mockResolvedValue({
 			status: 'ready',
@@ -121,6 +124,95 @@ describe('AgentMessageQueueConsumer', () => {
 	});
 
 	afterEach(() => consumer.stop());
+
+	it('registers the claimed execution under the lock and releases it before preparation', async () => {
+		const item = claim('session');
+		let locked = false;
+		chatExecutions.withTurnLock.mockImplementation(async (_threadId, action) => {
+			locked = true;
+			try {
+				return await action(new AbortController().signal);
+			} finally {
+				locked = false;
+			}
+		});
+		repository.findThreadIds.mockResolvedValue(['session']);
+		queue.claimNext
+			.mockImplementationOnce(async () => {
+				expect(locked).toBe(true);
+				return item;
+			})
+			.mockResolvedValue(null);
+		chatExecutions.register.mockImplementation(() => {
+			expect(locked).toBe(true);
+			expect(users.findByIdWithRole).not.toHaveBeenCalled();
+		});
+		users.findByIdWithRole.mockImplementation(async () => {
+			expect(locked).toBe(false);
+			return mock<User>({ id: 'user', disabled: false });
+		});
+		consumer.start();
+		await vi.waitFor(() =>
+			expect(queue.settle).toHaveBeenCalledWith('session', item.admission.executionId),
+		);
+		expect(chatExecutions.register).toHaveBeenCalledOnce();
+		expect(testRuns.executePreparedDraftRun).toHaveBeenCalledOnce();
+		expect(queue.recordFailure).not.toHaveBeenCalled();
+	});
+
+	it('accepts Stop while the thread owner is loading', async () => {
+		const item = claim('session');
+		const owner = createDeferredPromise<User>();
+		users.findByIdWithRole.mockReturnValue(owner.promise);
+		repository.findThreadIds.mockResolvedValue(['session']);
+		queue.claimNext.mockResolvedValueOnce(item).mockResolvedValue(null);
+		consumer.start();
+		try {
+			await vi.waitFor(() => expect(users.findByIdWithRole).toHaveBeenCalledOnce());
+			const controller = chatExecutions.register.mock.calls[0][1];
+			controller.abort(new DOMException('Response stopped', 'AbortError'));
+		} finally {
+			owner.resolve(mock<User>({ id: 'user', disabled: false }));
+		}
+		await vi.waitFor(() =>
+			expect(queue.settle).toHaveBeenCalledWith('session', item.admission.executionId),
+		);
+		expect(testRuns.prepareDraftRun).not.toHaveBeenCalled();
+		expect(testRuns.executePreparedDraftRun).not.toHaveBeenCalled();
+		expect(queue.recordFailure).toHaveBeenCalledWith(
+			item,
+			expect.objectContaining({ name: 'AbortError' }),
+			expect.objectContaining({ aborted: true }),
+		);
+		expect(sender.send).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }));
+	});
+
+	it('finalizes a claimed execution when the startup lock is lost', async () => {
+		const item = claim('session');
+		const lease = new AbortController();
+		chatExecutions.withTurnLock.mockImplementation(
+			async (_threadId, action) => await action(lease.signal),
+		);
+		repository.findThreadIds.mockResolvedValue(['session']);
+		queue.claimNext
+			.mockImplementationOnce(async () => {
+				lease.abort();
+				return item;
+			})
+			.mockResolvedValue(null);
+		consumer.start();
+		await vi.waitFor(() =>
+			expect(queue.settle).toHaveBeenCalledWith('session', item.admission.executionId),
+		);
+		expect(chatExecutions.register).not.toHaveBeenCalled();
+		expect(testRuns.executePreparedDraftRun).not.toHaveBeenCalled();
+		expect(queue.recordFailure).toHaveBeenCalledWith(
+			item,
+			expect.objectContaining({ message: 'Agent execution startup lock was lost' }),
+			expect.any(AbortSignal),
+		);
+		expect(sender.send).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }));
+	});
 
 	it('keeps ownership loss separate from a user Stop', async () => {
 		const item = claim('session');
@@ -348,10 +440,18 @@ describe('AgentMessageQueueConsumer', () => {
 		);
 		expect(testRuns.executePreparedDraftRun).not.toHaveBeenCalled();
 		if (failure !== 'invalid draft') {
-			expect(chatExecutions.register).not.toHaveBeenCalled();
 			expect(testRuns.prepareDraftRun).not.toHaveBeenCalled();
 		}
-		if (failure === 'missing owner') expect(users.findByIdWithRole).not.toHaveBeenCalled();
+		if (failure === 'missing owner') {
+			expect(users.findByIdWithRole).not.toHaveBeenCalled();
+			expect(chatExecutions.register).not.toHaveBeenCalled();
+		} else {
+			expect(chatExecutions.register).toHaveBeenCalledOnce();
+		}
+		expect(chatExecutions.settle).toHaveBeenCalledWith(
+			item.admission.executionId,
+			expect.any(Function),
+		);
 		expect(sender.send).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }));
 	});
 
@@ -373,6 +473,13 @@ describe('AgentMessageQueueConsumer', () => {
 		);
 		expect(testRuns.executePreparedDraftRun).not.toHaveBeenCalled();
 		expect(sender.send).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }));
+		expect(sender.send).toHaveBeenNthCalledWith(1, {
+			type: 'execution-started',
+			inputMessageIds: item.admission.inputMessageIds,
+			executionId: item.admission.executionId,
+			sessionId: item.thread.id,
+			message: item.payload.message,
+		});
 		expect(sender.send).toHaveBeenCalledWith({
 			type: 'done',
 			sessionId: 'session',

@@ -1147,6 +1147,89 @@ describe('AgentExecutionOrchestratorService', () => {
 			);
 		});
 
+		it('waits for execution registration when Stop arrives during admission', async () => {
+			const { stream, sdkStart, executionService, chatExecutionService, executionRepository } =
+				makeTurn({ previewChat: true });
+			const creating = createDeferredPromise();
+			const created = createDeferredPromise();
+			executionService.startExecutionRecording.mockImplementation(async (_params, startedAt) => {
+				creating.resolve();
+				await created.promise;
+				return { executionId: 'execution-1', startedAt, inputMessageIds: ['message-1'] };
+			});
+			const lock = vi.spyOn(chatExecutionService, 'withTurnLock');
+			const result = collect(stream);
+			await creating.promise;
+			const stopping = chatExecutionService.handleForegroundCancel({
+				projectId,
+				agentId,
+				threadId: 'thread-1',
+				executionId: 'execution-1',
+				userId,
+			});
+			try {
+				await vi.waitFor(() => expect(lock).toHaveBeenCalledTimes(2));
+				expect(executionRepository.findOneBy).not.toHaveBeenCalled();
+				expect(sdkStart).not.toHaveBeenCalled();
+			} finally {
+				created.resolve();
+			}
+			await stopping;
+			await expect(result).resolves.toEqual([]);
+			expect(sdkStart).not.toHaveBeenCalled();
+			expect(executionService.finalizeExecution).toHaveBeenCalledWith(
+				'execution-1',
+				expect.objectContaining({
+					record: expect.objectContaining({ finishReason: 'cancelled', error: null }),
+				}),
+			);
+		});
+
+		it('releases the admission lock before the SDK starts', async () => {
+			const { stream, sdkStart, chatExecutionService } = makeTurn({ previewChat: true });
+			const acquired = vi.fn();
+			sdkStart.mockImplementation(async () => {
+				await chatExecutionService.withTurnLock('thread-1', async () => acquired());
+				return {
+					runId: 'runtime-run-1',
+					stream: makeReadableStream([{ type: 'finish', finishReason: 'stop' }]),
+				};
+			});
+
+			await collect(stream);
+
+			expect(acquired).toHaveBeenCalledOnce();
+			const options = sdkStart.mock.calls[0].at(-1) as RunOptions;
+			expect(options.abortSignal?.aborted).toBe(false);
+		});
+
+		it('finalizes the execution if the startup lock is lost during admission', async () => {
+			const { stream, sdkStart, chatExecutionService, executionService } = makeTurn({
+				previewChat: true,
+			});
+			const lease = new AbortController();
+			const failure = new DOMException('Startup lock lost', 'AbortError');
+			vi.spyOn(chatExecutionService, 'withTurnLock').mockImplementation(
+				async (_threadId, action) => await action(lease.signal),
+			);
+			const register = vi.spyOn(chatExecutionService, 'register');
+			executionService.startExecutionRecording.mockImplementation(async (_params, startedAt) => {
+				lease.abort(failure);
+				return { executionId: 'execution-1', startedAt, inputMessageIds: ['message-1'] };
+			});
+
+			await expect(collect(stream)).rejects.toBe(failure);
+
+			expect(register).not.toHaveBeenCalled();
+			expect(sdkStart).not.toHaveBeenCalled();
+			expect(executionService.finalizeExecution).toHaveBeenCalledWith(
+				'execution-1',
+				expect.objectContaining({
+					record: expect.objectContaining({ finishReason: 'error', error: failure.message }),
+				}),
+			);
+		});
+
 		it.each(['startExecutionRecording', 'finalizeExecution'] as const)(
 			'reports the recording phase when %s fails',
 			async (recordingOperation) => {
