@@ -1,5 +1,6 @@
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { FavoriteResourceResolverRegistry } from '@n8n/backend-services';
 import { AgentsConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
@@ -7,7 +8,6 @@ import { mock } from 'vitest-mock-extended';
 
 import { AiService } from '@/services/ai.service';
 import { ExecutionDataJsonStore } from '@/executions/execution-data/execution-data-json-store';
-import { FavoriteResourceResolverRegistry } from '@/modules/favorites/favorite-resource-resolver.registry';
 import { SandboxSettingsService } from '@/services/sandbox-settings.service';
 import { AgentUsageProviderProxy } from '@/modules/workflow-index/agent-usage-provider-proxy.service';
 

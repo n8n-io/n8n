@@ -1,6 +1,5 @@
+import { FavoriteResourceResolverRegistry } from '@n8n/backend-services';
 import { Container } from '@n8n/di';
-
-import { FavoriteResourceResolverRegistry } from '@/modules/favorites/favorite-resource-resolver.registry';
 
 import { DataTableRepository } from './data-table.repository';
 

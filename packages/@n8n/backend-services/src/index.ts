@@ -17,6 +17,12 @@ export {
 export { RoleService } from './services/role.service';
 export { ProjectScopeService } from './services/project-scope.service';
 export {
+	FavoriteResourceResolverRegistry,
+	type FavoriteResourceMeta,
+	type FavoriteResourceResolver,
+	type ResolvedFavoriteResourceType,
+} from './services/favorite-resource-resolver.registry';
+export {
 	OwnershipTransferHandlerRegistry,
 	type ProjectOwnershipTransferHandler,
 } from './services/ownership-transfer-handler.registry';

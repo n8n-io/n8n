@@ -4,19 +4,19 @@ import type { Scope } from '@n8n/permissions';
 
 export type FavoriteResourceMeta = { name: string; projectId: string };
 
-/** Favorite types resolved via a registered resolver; all others are handled by the favorites module itself. */
+/** Registered resolvers handle these favorite types. The favorites module handles all other types. */
 export type ResolvedFavoriteResourceType = Extract<FavoriteResourceType, 'dataTable' | 'agent'>;
 
 /**
- * Resolves favorited resources owned by another backend module. The owning
- * module registers its resolver in its `init()`, so favorites never depends
- * on module internals; if the module is inactive, no resolver exists and
- * favorites of that type are treated as missing resources.
+ * Resolves favorite resources that another backend module owns. The owner
+ * registers its resolver during module initialization. The favorites module
+ * does not depend on the owner. An inactive module has no resolver, so the
+ * favorites module treats its resources as missing.
  */
 export interface FavoriteResourceResolver {
-	/** Scope granting access to the resource regardless of project membership. */
+	/** This scope grants access without project membership. */
 	readonly globalReadScope: Scope;
-	/** Per-id metadata; ids missing from the map are treated as deleted or inaccessible. */
+	/** Missing map entries identify deleted or inaccessible resources. */
 	findMeta(ids: string[]): Promise<Map<string, FavoriteResourceMeta>>;
 	exists(id: string): Promise<boolean>;
 }
