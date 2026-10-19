@@ -43,6 +43,8 @@ const emit = defineEmits<{ click: [] }>();
 </template>
 
 <style lang="scss" module>
+@use '../../features/ai/shared/styles/prompt-suggestion-buttons' as promptSuggestions;
+
 .entry {
 	display: inline-flex;
 	align-items: center;
@@ -110,8 +112,15 @@ const emit = defineEmits<{ click: [] }>();
 	font-size: var(--font-size--2xs);
 	border: var(--border);
 	border-radius: var(--radius--full);
+	background: light-dark(var(--background--surface), var(--background--subtle));
+	box-shadow: var(--shadow--xs);
 	padding: var(--spacing--4xs) var(--spacing--xs);
 	align-self: center;
+
+	&:hover,
+	&:focus-visible {
+		@include promptSuggestions.prompt-suggestion-button-active;
+	}
 }
 .footer .mark {
 	--mcp-agent-logo-size: var(--spacing--sm);
