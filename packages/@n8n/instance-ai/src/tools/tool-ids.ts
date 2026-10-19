@@ -106,6 +106,9 @@ export const ALWAYS_LOADED_TOOL_NAMES = new Set<string>([
 	// every agent build. Registered only when the host provides a builder delegate
 	// (Agents module active), so an instance without it pays nothing.
 	...AGENT_BUILDER_ORCHESTRATOR_TOOL_NAMES,
+	// Hidden handler for stored calls to the removed tool. It has no input schema, so the
+	// model never sees it, and deferring it would only add it to `search_tools` results.
+	AGENT_BUILDER_TOOL_NAMES.BUILD_AGENT,
 ]);
 
 export const CHECKPOINT_FOLLOW_UP_TOOL_NAMES = new Set<string>([

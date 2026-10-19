@@ -296,6 +296,7 @@ describe('domain tool construction', () => {
 		);
 		expect(withoutDelegate.has('agent_builder_select_agent')).toBe(false);
 		expect(withoutDelegate.has('agent_builder_write_config')).toBe(false);
+		expect(withoutDelegate.has('agent_builder_build_agent')).toBe(false);
 
 		const withDelegate = createOrchestrationTools(
 			makeContext({
@@ -306,7 +307,9 @@ describe('domain tool construction', () => {
 			agent_builder_select_agent: { id: 'agent_builder_select_agent' },
 			agent_builder_write_config: { id: 'agent_builder_write_config' },
 		});
-		expect(withDelegate.has('agent_builder_build_agent')).toBe(false);
+		// Registered for stored calls only: without an input schema, the model never sees it.
+		expect(withDelegate.get('agent_builder_build_agent')?.inputSchema).toBeUndefined();
+		expect(withDelegate.get('agent_builder_build_agent')?.legacyNames).toContain('build-agent');
 	});
 
 	it('registers get-session only when a preview session and resolver are present', () => {
