@@ -1,0 +1,21 @@
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsAzureOpenAi/foundry.svg
+  s_25d8b0072a6145::t_2b6015ce3df2ea 1
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/foundry.svg
+  s_25d8b0072a6145::t_648b33f56512d7 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cbd1ce59a4c928da61f95770ea709c827a820c39",
+  "prompts": {},
+  "sessions": {
+    "s_25d8b0072a6145": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b6ac9601-e1fb-4141-b65a-53dc1a53a20f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}
