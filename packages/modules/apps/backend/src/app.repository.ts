@@ -1,22 +1,25 @@
 import type { CreateAppDto, ListAppsQueryDto, UpdateAppDto } from '@n8n/api-types';
 import {
+	BaseRepository,
 	escapeLike,
 	isUniqueConstraintError,
 	LIKE_ESCAPE_CLAUSE,
 	parseListQuerySortBy,
 	Project,
+	TransactionRunner,
+	type OperationContext,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ConflictError } from '@n8n/errors';
-import { DataSource, In, Raw, Repository, type FindOptionsWhere } from '@n8n/typeorm';
+import { DataSource, In, Raw, type FindOptionsWhere } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 
 import { App } from './app.entity';
 
 @Service()
-export class AppRepository extends Repository<App> {
-	constructor(dataSource: DataSource) {
-		super(App, dataSource.manager);
+export class AppRepository extends BaseRepository<App> {
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		super(App, dataSource.manager, transactionRunner);
 	}
 
 	async projectExists(projectId: string) {
@@ -62,13 +65,15 @@ export class AppRepository extends Repository<App> {
 		return { data, count };
 	}
 
-	async updateApp(projectId: string, appId: string, dto: UpdateAppDto) {
+	async updateApp(projectId: string, appId: string, dto: UpdateAppDto, ctx: OperationContext = {}) {
 		const where = { id: appId, projectId };
 		try {
-			const result = await this.update(where, dto);
-			if (!result.affected) return null;
+			return await this.runInTransaction(ctx, async (manager) => {
+				const result = await manager.update(App, where, dto);
+				if (!result.affected) return null;
 
-			return await this.findOneBy(where);
+				return await manager.findOneBy(App, where);
+			});
 		} catch (error) {
 			if (isUniqueConstraintError(error)) {
 				throw new ConflictError('An app already uses this namespace. Choose another namespace.');
