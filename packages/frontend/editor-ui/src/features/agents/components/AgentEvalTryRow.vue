@@ -10,6 +10,7 @@ import {
 	N8nInput,
 	N8nText,
 	N8nTimeAgo,
+	N8nTooltip,
 	type TextColor,
 } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
@@ -241,7 +242,7 @@ watch(
 				:class="$style.expandToggle"
 				:data-test-id="testId && `${testId}-toggle`"
 				:aria-expanded="expanded"
-				:aria-label="i18n.baseText('instanceAi.testAgentPreview.conversation')"
+				:aria-label="i18n.baseText('instanceAi.testAgentPreview.checkDetails')"
 			>
 				<N8nIcon :icon="expanded ? 'chevron-up' : 'chevron-down'" size="small" />
 			</button>
@@ -258,7 +259,7 @@ watch(
 				type="button"
 				:class="$style.expandToggle"
 				:data-test-id="testId && `${testId}-toggle`"
-				:aria-label="i18n.baseText('instanceAi.testAgentPreview.conversation')"
+				:aria-label="i18n.baseText('instanceAi.testAgentPreview.checkDetails')"
 			>
 				<N8nIcon icon="chevron-right" size="small" />
 			</button>
@@ -289,19 +290,29 @@ watch(
 								<N8nIcon icon="pencil" size="small" />
 							</template>
 						</N8nButton>
-						<N8nButton
-							variant="subtle"
-							size="small"
-							icon-only
-							:disabled="disabled || isRunning"
-							:aria-label="i18n.baseText('instanceAi.testAgentPreview.deleteCheck.label')"
-							:data-test-id="testId && `${testId}-delete-check`"
-							@click="onDeleteCheck"
+						<!-- The backend refuses to delete a running result; the span keeps hover
+						     working on the disabled button. -->
+						<N8nTooltip
+							:content="i18n.baseText('instanceAi.testAgentPreview.deleteCheck.runningTooltip')"
+							:disabled="!isRunning"
+							placement="top"
 						>
-							<template #icon>
-								<N8nIcon icon="trash-2" size="small" />
-							</template>
-						</N8nButton>
+							<span :data-test-id="testId && `${testId}-delete-check-hint`">
+								<N8nButton
+									variant="subtle"
+									size="small"
+									icon-only
+									:disabled="disabled || isRunning"
+									:aria-label="i18n.baseText('instanceAi.testAgentPreview.deleteCheck.label')"
+									:data-test-id="testId && `${testId}-delete-check`"
+									@click="onDeleteCheck"
+								>
+									<template #icon>
+										<N8nIcon icon="trash-2" size="small" />
+									</template>
+								</N8nButton>
+							</span>
+						</N8nTooltip>
 					</div>
 				</div>
 
