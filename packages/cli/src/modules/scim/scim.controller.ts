@@ -128,6 +128,9 @@ export class ScimController {
 		try {
 			const createdUser = await this.scimService.createUser(body);
 
+			// RFC 7644 section 3.3: the response to a create carries the resource URI.
+			if (createdUser.meta?.location) res.header('Location', createdUser.meta.location);
+
 			return res.status(201).header('Content-Type', 'application/scim+json').json(createdUser);
 		} catch (error) {
 			return this.handleError(res, error, 'create user');
