@@ -1,11 +1,10 @@
 // Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 import { getMcpClientBrand } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import type { McpCallerAuth } from '@n8n/backend-services/auth';
 import { GlobalConfig } from '@n8n/config';
 import { SettingsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-
-import type { McpCallerAuth } from '@/services/oauth-token-verifier-proxy.service';
 
 export const isClaudeMcpClient = (name: string | undefined): boolean =>
 	Boolean(
