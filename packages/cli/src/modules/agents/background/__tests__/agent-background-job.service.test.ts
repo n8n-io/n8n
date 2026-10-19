@@ -678,10 +678,10 @@ describe('registerSubAgentJob', () => {
 			jobRepository.insertSubAgentJobIfCapacity.mockReturnValue(inserted.promise);
 			const registration = service.registerSubAgentJob(registerParams);
 
-			await chatExecutions.handleForegroundCancel(context);
+			await chatExecutions.onCancelForegroundExecution(context);
 			const foregroundReason: unknown = controller.signal.reason;
 			expect(foregroundReason).toMatchObject({ name: 'AbortError', message: 'Response stopped' });
-			if (cancelAll) await chatExecutions.handleCancel(context);
+			if (cancelAll) await chatExecutions.onCancelExecution(context);
 			expect(controller.signal.reason).toBe(foregroundReason);
 			expect(jobRepository.settleIfActive).not.toHaveBeenCalled();
 

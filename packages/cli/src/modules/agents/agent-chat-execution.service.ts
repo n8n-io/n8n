@@ -149,18 +149,18 @@ export class AgentChatExecutionService {
 	}
 
 	@OnPubSubEvent('cancel-agent-chat-execution', { instanceType: 'main' })
-	async handleCancel(payload: CancelExecutionPayload): Promise<void> {
-		await this.handleCancellation(payload);
+	async onCancelExecution(payload: CancelExecutionPayload): Promise<void> {
+		await this.cancelExecution(payload, 'all');
 	}
 
 	@OnPubSubEvent('cancel-agent-chat-foreground', { instanceType: 'main' })
-	async handleForegroundCancel(payload: CancelExecutionPayload): Promise<void> {
-		await this.handleCancellation(payload, 'foreground');
+	async onCancelForegroundExecution(payload: CancelExecutionPayload): Promise<void> {
+		await this.cancelExecution(payload, 'foreground');
 	}
 
-	private async handleCancellation(
+	private async cancelExecution(
 		payload: CancelExecutionPayload,
-		scope?: ExecutionContext['scope'],
+		scope: NonNullable<ExecutionContext['scope']>,
 	): Promise<void> {
 		const { productionN8nChat, ...rest } = payload;
 		const context: ExecutionContext = {

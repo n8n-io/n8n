@@ -1099,7 +1099,7 @@ describe('AgentExecutionOrchestratorService', () => {
 
 				await expect(resumeAgain()).rejects.toBeInstanceOf(AgentTurnAlreadyRunningError);
 
-				await chatExecutionService.handleCancel({
+				await chatExecutionService.onCancelExecution({
 					projectId,
 					agentId,
 					threadId: 'thread-1',
@@ -1129,7 +1129,7 @@ describe('AgentExecutionOrchestratorService', () => {
 			const { stream, onExecutionStarted, sdkStart, executionService, chatExecutionService } =
 				makeTurn({ previewChat: true });
 			onExecutionStarted.mockImplementation(() => {
-				void chatExecutionService.handleCancel({
+				void chatExecutionService.onCancelExecution({
 					projectId,
 					agentId,
 					threadId: 'thread-1',
@@ -1160,7 +1160,7 @@ describe('AgentExecutionOrchestratorService', () => {
 			const lock = vi.spyOn(chatExecutionService, 'withTurnLock');
 			const result = collect(stream);
 			await creating.promise;
-			const stopping = chatExecutionService.handleForegroundCancel({
+			const stopping = chatExecutionService.onCancelForegroundExecution({
 				projectId,
 				agentId,
 				threadId: 'thread-1',
@@ -1398,7 +1398,7 @@ describe('AgentExecutionOrchestratorService', () => {
 				chunks.push(chunk);
 				if (chunk.type !== 'text-delta' || !scenario.abort) continue;
 				if (scenario.name === 'requested stop') {
-					await chatExecutionService.handleCancel({
+					await chatExecutionService.onCancelExecution({
 						projectId,
 						agentId,
 						threadId: 'thread-1',

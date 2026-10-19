@@ -142,7 +142,7 @@ it('releases the cancellation controller when finalization fails', async () => {
 		}),
 	).rejects.toBe(failure);
 
-	await service.handleForegroundCancel(context);
+	await service.onCancelForegroundExecution(context);
 
 	expect(controller.signal.aborted).toBe(false);
 });
@@ -160,7 +160,7 @@ it.each([
 	await expect(service.requestCancel({ ...context, ...other })).rejects.toBeInstanceOf(
 		NotFoundError,
 	);
-	await service.handleCancel({ ...context, ...other });
+	await service.onCancelExecution({ ...context, ...other });
 	expect(controller.signal.aborted).toBe(false);
 	expect(publisher.publishCommand).not.toHaveBeenCalled();
 	expect(checkpointStorage.cancelSuspended).not.toHaveBeenCalled();
@@ -184,19 +184,19 @@ it('relays Stop to the owning main and leaves other and later executions running
 		command: 'cancel-agent-chat-execution',
 		payload: { ...wireContext, productionN8nChat: false },
 	});
-	await mainA.service.handleCancel(context);
+	await mainA.service.onCancelExecution(context);
 	expect(mainA.backgroundJobs.cancelForParent).toHaveBeenCalledWith(
 		'agent-1',
 		'thread-1',
 		'draft-chat:user-1',
 	);
-	await mainA.service.handleCancel(context);
+	await mainA.service.onCancelExecution(context);
 	expect(controller.signal.aborted).toBe(true);
 	expect(other.signal.aborted).toBe(false);
 	await mainA.service.settle(context.executionId, async () => {});
 	const next = new AbortController();
 	mainA.service.register({ ...context, executionId: 'execution-3' }, next);
-	await mainA.service.handleCancel(context);
+	await mainA.service.onCancelExecution(context);
 	expect(next.signal.aborted).toBe(false);
 });
 
@@ -218,7 +218,7 @@ it('keeps pubsub wire compatibility with a main still on the old productionN8nCh
 	});
 
 	// An old main on the previous version relays this shape, with no `surface` field.
-	await mainA.service.handleCancel({ ...wireContext, productionN8nChat: true });
+	await mainA.service.onCancelExecution({ ...wireContext, productionN8nChat: true });
 	expect(controller.signal.aborted).toBe(true);
 	expect(mainA.backgroundJobs.cancelForParent).toHaveBeenCalledWith(
 		'agent-1',
@@ -244,8 +244,8 @@ describe.each(['foreground', 'all'] as const)('%s Stop during startup', (scope) 
 			});
 			await creating.promise;
 			caller.publisher.publishCommand.mockImplementation(async () => {
-				if (scope === 'foreground') await owner.service.handleForegroundCancel(context);
-				else await owner.service.handleCancel(context);
+				if (scope === 'foreground') await owner.service.onCancelForegroundExecution(context);
+				else await owner.service.onCancelExecution(context);
 			});
 
 			const stopping = caller.service.requestCancel({ ...context, scope });
@@ -320,7 +320,7 @@ it.each([false, true])(
 			id: 'execution-2',
 			hitlStatus: 'suspended',
 		});
-		await service.handleCancel(context);
+		await service.onCancelExecution(context);
 		expect(checkpointStorage.delete).toHaveBeenCalledOnce();
 		expect(next.signal.aborted).toBe(false);
 	},
@@ -333,7 +333,7 @@ it('cancels the recorded suspension if the relay arrives after the execution set
 		status: 'success',
 		hitlStatus: 'suspended',
 	});
-	await service.handleCancel(context);
+	await service.onCancelExecution(context);
 	expect(checkpointStorage.delete).toHaveBeenCalledExactlyOnceWith('run-1', 'agent-1');
 	expect(updates.notify).toHaveBeenCalledWith({
 		projectId: context.projectId,
@@ -342,7 +342,7 @@ it('cancels the recorded suspension if the relay arrives after the execution set
 		executionId: context.executionId,
 	});
 	checkpointStorage.findSuspendedForThread.mockResolvedValue(null);
-	await service.handleCancel(context);
+	await service.onCancelExecution(context);
 	expect(checkpointStorage.delete).toHaveBeenCalledOnce();
 });
 
@@ -420,7 +420,7 @@ it('foreground Stop leaves detached jobs running locally and on other mains', as
 	await service.requestCancel({ ...context, scope: 'foreground' });
 	expect(controller.signal.aborted).toBe(true);
 	expect(backgroundJobs.cancelForParent).not.toHaveBeenCalled();
-	await service.handleForegroundCancel(context);
+	await service.onCancelForegroundExecution(context);
 	expect(backgroundJobs.cancelForParent).not.toHaveBeenCalled();
 	expect(publisher.publishCommand).not.toHaveBeenCalled();
 });
@@ -455,7 +455,7 @@ it('relays cancel-all after the foreground reply settles', async () => {
 		command: 'cancel-agent-chat-execution',
 		payload,
 	});
-	await mainA.service.handleCancel(payload);
+	await mainA.service.onCancelExecution(payload);
 	expect(mainA.backgroundJobs.cancelForParent).toHaveBeenCalledWith(
 		context.agentId,
 		context.threadId,
@@ -471,7 +471,7 @@ it('ignores a delayed cancel-all relay after a later reply settles', async () =>
 		id: 'execution-2',
 		status: 'success',
 	});
-	await service.handleCancel(context);
+	await service.onCancelExecution(context);
 	expect(backgroundJobs.cancelForParent).not.toHaveBeenCalled();
 });
 
