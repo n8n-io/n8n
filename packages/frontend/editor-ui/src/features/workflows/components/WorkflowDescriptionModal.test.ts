@@ -2,6 +2,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
+import { waitFor } from '@testing-library/vue';
 import WorkflowDescriptionModal from '@/features/workflows/components/WorkflowDescriptionModal.vue';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -42,20 +43,26 @@ const initialState = {
 	},
 };
 
-const ModalStub = {
+const DialogStub = {
+	props: ['header', 'description'],
 	template: `
-		<div>
-			<slot name="header" />
-			<slot name="title" />
-			<slot name="content" />
-			<slot name="footer" />
+		<div role="dialog">
+			<h2 v-if="header">{{ header }}</h2>
+			<p v-if="description">{{ description }}</p>
+			<slot />
 		</div>
 	`,
 };
 
+const dialogPartStub = { template: '<div><slot /></div>' };
+
 const global = {
 	stubs: {
-		Modal: ModalStub,
+		Dialog: DialogStub,
+		DialogHeader: dialogPartStub,
+		DialogTitle: dialogPartStub,
+		DialogFooter: dialogPartStub,
+		DialogDescription: dialogPartStub,
 	},
 };
 
@@ -113,6 +120,8 @@ describe('WorkflowDescriptionModal', () => {
 
 	describe('Popover interaction', () => {
 		it('should focus textarea when modal opens', async () => {
+			uiStore.modalStateById[WORKFLOW_DESCRIPTION_MODAL_KEY] = { open: true };
+
 			const { getByTestId } = renderModal({
 				props: {
 					modalName: WORKFLOW_DESCRIPTION_MODAL_KEY,
@@ -121,13 +130,9 @@ describe('WorkflowDescriptionModal', () => {
 					},
 				},
 				pinia,
-				global,
 			});
 
-			await new Promise((resolve) => setTimeout(resolve, 200));
-
-			const textarea = getByTestId('workflow-description-input');
-			expect(textarea).toHaveFocus();
+			await waitFor(() => expect(getByTestId('workflow-description-input')).toHaveFocus());
 		});
 
 		it('should not save description when modal closes by esc', async () => {
