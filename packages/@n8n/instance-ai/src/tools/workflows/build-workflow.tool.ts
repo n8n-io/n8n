@@ -3,7 +3,7 @@ import {
 	instanceAiApprovalResumeSchema,
 	instanceAiConfirmationSeveritySchema,
 } from '@n8n/api-types';
-import { Tool, type RuntimeSkillSource, type RuntimeSkillLoader } from '@n8n/agents';
+import { Tool, type RuntimeSkillLoader } from '@n8n/agents';
 import { hasPlaceholderDeep } from '@n8n/utils/placeholder';
 import {
 	dropInvalidWorkflowJsonGroups,
@@ -97,7 +97,6 @@ import {
 } from './workflow-validation-warnings';
 import { FolderResolutionError } from '../../errors/folder-resolution.error';
 import { WorkflowSaveConflictError } from '../../errors/workflow-save-conflict.error';
-import { loadInstanceAiRuntimeSkillSource } from '../../skills/runtime-skills';
 import { emitTraceOnlyChildRun } from '../../tracing/langsmith-tracing';
 import type { FolderResolutionFailure, InstanceAiContext, WorkflowFolderRef } from '../../types';
 import { BuildFailureTracker } from '../../workflow-builder/build-failure-tracker';
@@ -349,44 +348,37 @@ const POST_BUILD_FLOW_SKILL_ID = 'post-build-flow';
 const ONE_OFF_OPERATIONS_SKILL_ID = 'one-off-operations';
 
 /**
- * Where the follow-up instructions live depends on the branch: the runtime
- * delivers an activated skill with this tool result, and an inlined copy sits
- * in `instructions`.
+ * An activated skill rides on this tool result. Without activation, the agent
+ * loads the skill itself.
  */
-function followInstructionsClause(skillId: string, label: string, activated: boolean): string {
+function followInstructionsClause(skillId: string, activated: boolean): string {
 	return activated
 		? `Follow the active ${skillId} skill instructions now (do NOT call load_skill for it — it is already active)`
-		: `Follow the ${label} instructions in \`instructions\` now (do NOT load the ${skillId} skill — they are the same instructions)`;
+		: `Load the ${skillId} skill with load_skill now and follow it`;
 }
 
 function oneOffOperationsGuidance(activated: boolean): string {
-	return `This one-off build is not complete yet. ${followInstructionsClause(ONE_OFF_OPERATIONS_SKILL_ID, 'one-off', activated)}. Simulated verification is NOT required and NOT the completion criterion: route setup if needed, then run the workflow live with the user’s approval, read back the actual node output, and report only what you read. Offer to keep or delete the workflow when the operation is done.`;
+	return `This one-off build is not complete yet. ${followInstructionsClause(ONE_OFF_OPERATIONS_SKILL_ID, activated)}. Simulated verification is NOT required and NOT the completion criterion: route setup if needed, then run the workflow live with the user’s approval, read back the actual node output, and report only what you read. Offer to keep or delete the workflow when the operation is done.`;
 }
 
 function postBuildFlowGuidance(activated: boolean): string {
-	return `This direct build is not complete yet. ${followInstructionsClause(POST_BUILD_FLOW_SKILL_ID, 'post-build', activated)} before verification, setup, error-workflow follow-up, publishing, testing, or any final user-visible summary. Follow-up order is verification/setup first, then mocked/no-mock live-test when latest verification used mocks or simulations, then generic testing prompts. Until a non-simulated execution succeeds, never offer publishing as an alternative to the live test. A user-run execution counts only after \`executions(action="list")\` and \`executions(action="get")\` confirm that it succeeded and ran the required path; the user's statement alone is not execution evidence. Honor an explicit publish request before live execution only after warning that the live path remains untested. Offer the explicit error-workflow opt-in for direct new primary workflows only after the primary workflow is successfully published. Do not replace the error-workflow opt-in with a generic add-anything, publish, or test question.`;
+	return `This direct build is not complete yet. ${followInstructionsClause(POST_BUILD_FLOW_SKILL_ID, activated)} before verification, setup, error-workflow follow-up, publishing, testing, or any final user-visible summary. Follow-up order is verification/setup first, then mocked/no-mock live-test when latest verification used mocks or simulations, then generic testing prompts. Until a non-simulated execution succeeds, never offer publishing as an alternative to the live test. A user-run execution counts only after \`executions(action="list")\` and \`executions(action="get")\` confirm that it succeeded and ran the required path; the user's statement alone is not execution evidence. Honor an explicit publish request before live execution only after warning that the live path remains untested. Offer the explicit error-workflow opt-in for direct new primary workflows only after the primary workflow is successfully published. Do not replace the error-workflow opt-in with a generic add-anything, publish, or test question.`;
 }
 
-/** Tag-turn-only sections, stripped from the inline copy; follow-up turns load the full skill. */
-const INLINE_SKIPPED_SECTIONS = [
-	'## Verification follow-up',
-	'## Setup follow-up',
-	'## Credentials before build',
-];
-
-async function getInlineSkillInstructions(
+/** Activates the follow-up skill, and returns whether it is active. */
+async function activateFollowUpSkill(
 	skillId: string,
-	source: RuntimeSkillSource = loadInstanceAiRuntimeSkillSource(),
-	activate?: RuntimeSkillLoader,
-): Promise<string> {
-	const skill = await (activate ?? source.loadSkill)(skillId);
-	if (!skill) throw new UnexpectedError(`Runtime skill "${skillId}" is missing`);
-	if (activate) return `Follow the active ${skillId} skill instructions.`;
-	return skill.instructions
-		.split(/\n(?=#{1,2} )/)
-		.filter((section) => !INLINE_SKIPPED_SECTIONS.some((title) => section.startsWith(title)))
-		.join('\n')
-		.trim();
+	activate: RuntimeSkillLoader | undefined,
+): Promise<boolean> {
+	if (!activate) return false;
+	if (!(await activate(skillId))) throw new UnexpectedError(`Skill "${skillId}" is missing`);
+	return true;
+}
+
+function followUpInstructions(skillId: string, activated: boolean): string {
+	return activated
+		? `Follow the active ${skillId} skill instructions.`
+		: `Load the ${skillId} skill with load_skill.`;
 }
 
 // Discriminated on skillId so a mismatched skillId/reason pair cannot validate.
@@ -396,7 +388,7 @@ const postBuildFlowOutputSchema = z.discriminatedUnion('skillId', [
 		skillId: z.literal(POST_BUILD_FLOW_SKILL_ID),
 		reason: z.literal('direct-build-succeeded'),
 		guidance: z.string(),
-		/** Full post-build instructions (the selected skill body), inlined. */
+		/** Tells the agent where the follow-up skill instructions are. */
 		instructions: z.string(),
 	}),
 	z.object({
@@ -412,7 +404,6 @@ async function directPostBuildFlowHandoff(
 	owner: ReturnType<typeof resolveBuildIdentifiers>['owner'],
 	isAuxiliarySupportingWorkflow: boolean,
 	outcome: WorkflowBuildOutcome,
-	skills?: RuntimeSkillSource,
 	activate?: RuntimeSkillLoader,
 ): Promise<z.infer<typeof postBuildFlowOutputSchema> | undefined> {
 	if (owner?.type !== 'direct' || isAuxiliarySupportingWorkflow) return undefined;
@@ -422,21 +413,23 @@ async function directPostBuildFlowHandoff(
 	// build falls back to the standard post-build flow, which handles
 	// not_verifiable outcomes.
 	if (outcome.executionIntent === 'one-off' && outcome.verificationReadiness?.status === 'ready') {
+		const activated = await activateFollowUpSkill(ONE_OFF_OPERATIONS_SKILL_ID, activate);
 		return {
 			required: true,
 			skillId: ONE_OFF_OPERATIONS_SKILL_ID,
 			reason: 'direct-one-off-build-succeeded',
-			guidance: oneOffOperationsGuidance(activate !== undefined),
-			instructions: await getInlineSkillInstructions(ONE_OFF_OPERATIONS_SKILL_ID, skills, activate),
+			guidance: oneOffOperationsGuidance(activated),
+			instructions: followUpInstructions(ONE_OFF_OPERATIONS_SKILL_ID, activated),
 		};
 	}
 
+	const activated = await activateFollowUpSkill(POST_BUILD_FLOW_SKILL_ID, activate);
 	return {
 		required: true,
 		skillId: POST_BUILD_FLOW_SKILL_ID,
 		reason: 'direct-build-succeeded',
-		guidance: postBuildFlowGuidance(activate !== undefined),
-		instructions: await getInlineSkillInstructions(POST_BUILD_FLOW_SKILL_ID, skills, activate),
+		guidance: postBuildFlowGuidance(activated),
+		instructions: followUpInstructions(POST_BUILD_FLOW_SKILL_ID, activated),
 	};
 }
 
@@ -1666,7 +1659,6 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						owner,
 						isAuxiliarySupportingWorkflow,
 						outcome,
-						context.runtimeSkillCatalog,
 						ctx.loadSkill,
 					);
 
