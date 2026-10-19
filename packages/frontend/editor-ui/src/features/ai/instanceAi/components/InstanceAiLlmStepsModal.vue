@@ -11,9 +11,16 @@ import { useI18n } from '@n8n/i18n';
 import { computed, nextTick, ref, watch } from 'vue';
 import { useThread } from '../instanceAi.store';
 import { useInstanceAiDebugStore } from '../instanceAiDebug.store';
-import { parseStepCacheBreaks, parseStepSummary } from '@n8n/api-types';
+import {
+	parseStepCacheBreaks,
+	parseStepSummary,
+	type InstanceAiRunDebugStep,
+	type InstanceAiRunDebugSubAgent,
+} from '@n8n/api-types';
 import { describeCacheBreak } from '../utils/cache-break';
+import { mapSubAgentsByStepNumber } from '../utils/sub-agent-steps';
 import InstanceAiLlmStepDetail from './InstanceAiLlmStepDetail.vue';
+import InstanceAiLlmStepListItem from './InstanceAiLlmStepListItem.vue';
 import InstanceAiRunWorkflowCodeSection from './InstanceAiRunWorkflowCodeSection.vue';
 
 const props = defineProps<{
@@ -26,40 +33,81 @@ const i18n = useI18n();
 const debugStore = useInstanceAiDebugStore();
 const currentThread = useThread();
 const selectedStepNumber = ref<number | null>(null);
+/** Set when a sub-agent step is open in the detail pane instead of the orchestrator step. */
+const selectedSubAgentStep = ref<{ subAgentId: string; stepNumber: number } | null>(null);
 const detailPaneRef = ref<HTMLElement | null>(null);
 const stepDetailRef = ref<InstanceType<typeof InstanceAiLlmStepDetail> | null>(null);
 
 const steps = computed(() => debugStore.runDebug?.steps ?? []);
+const subAgents = computed(() => debugStore.runDebug?.subAgents ?? []);
 const runWorkflowCode = computed(() => debugStore.runDebug?.workflowCode ?? []);
 const selectedRunId = computed(() => debugStore.selectedRunId);
 
-const selectedStep = computed(() => {
-	if (selectedStepNumber.value === null) return undefined;
-	return steps.value.find((step) => step.stepNumber === selectedStepNumber.value);
-});
-
-const cacheBreaks = computed(() => parseStepCacheBreaks(steps.value));
-
-const stepSummaries = computed(() =>
-	steps.value.map((step, index) => {
-		const cacheBreak = cacheBreaks.value[index];
+function summarizeSteps(list: InstanceAiRunDebugStep[]) {
+	const cacheBreaks = parseStepCacheBreaks(list);
+	return list.map((step, index) => {
+		const cacheBreak = cacheBreaks[index];
 		return {
+			step,
 			stepNumber: step.stepNumber,
 			summary: parseStepSummary(step.input, step.output),
 			cacheBreak,
 			cacheBreakDescription: cacheBreak ? describeCacheBreak(i18n, cacheBreak) : undefined,
 		};
-	}),
+	});
+}
+
+const stepSummaries = computed(() => summarizeSteps(steps.value));
+
+const subAgentsByStep = computed(() => mapSubAgentsByStepNumber(steps.value, subAgents.value));
+
+const selectedStepSubAgents = computed<InstanceAiRunDebugSubAgent[]>(() =>
+	selectedStepNumber.value === null
+		? []
+		: (subAgentsByStep.value.get(selectedStepNumber.value) ?? []),
 );
 
-const selectedCacheBreak = computed(() => {
-	const index = steps.value.findIndex((step) => step.stepNumber === selectedStepNumber.value);
-	return index >= 0 ? cacheBreaks.value[index] : undefined;
+const subAgentGroups = computed(() =>
+	selectedStepSubAgents.value.map((subAgent) => ({
+		subAgent,
+		steps: summarizeSteps(subAgent.steps),
+	})),
+);
+
+const subAgentStepTotal = computed(() =>
+	selectedStepSubAgents.value.reduce((total, subAgent) => total + subAgent.steps.length, 0),
+);
+
+const activeSubAgentGroup = computed(() => {
+	const selection = selectedSubAgentStep.value;
+	if (!selection) return undefined;
+	return subAgentGroups.value.find((group) => group.subAgent.id === selection.subAgentId);
+});
+
+const activeSubAgentStep = computed(() => {
+	const selection = selectedSubAgentStep.value;
+	if (!selection) return undefined;
+	return activeSubAgentGroup.value?.steps.find((item) => item.stepNumber === selection.stepNumber);
+});
+
+/** The step shown in the detail pane: a sub-agent step when one is selected, else the orchestrator step. */
+const detailStep = computed(() => {
+	if (activeSubAgentStep.value) {
+		return {
+			step: activeSubAgentStep.value.step,
+			runSteps: activeSubAgentGroup.value?.subAgent.steps ?? [],
+			cacheBreak: activeSubAgentStep.value.cacheBreak,
+		};
+	}
+	const summary = stepSummaries.value.find((item) => item.stepNumber === selectedStepNumber.value);
+	if (!summary) return undefined;
+	return { step: summary.step, runSteps: steps.value, cacheBreak: summary.cacheBreak };
 });
 
 watch(
 	() => props.open,
 	(isOpen) => {
+		selectedSubAgentStep.value = null;
 		if (!isOpen) {
 			selectedStepNumber.value = null;
 			return;
@@ -73,6 +121,7 @@ watch(
 	(nextSteps) => {
 		if (!props.open || nextSteps.length === 0) {
 			selectedStepNumber.value = null;
+			selectedSubAgentStep.value = null;
 			return;
 		}
 		if (
@@ -80,6 +129,7 @@ watch(
 			!nextSteps.some((step) => step.stepNumber === selectedStepNumber.value)
 		) {
 			selectedStepNumber.value = nextSteps[0]?.stepNumber ?? null;
+			selectedSubAgentStep.value = null;
 		}
 	},
 );
@@ -90,6 +140,22 @@ function handleOpenChange(open: boolean) {
 
 function selectStep(stepNumber: number) {
 	selectedStepNumber.value = stepNumber;
+	selectedSubAgentStep.value = null;
+}
+
+function selectSubAgentStep(subAgentId: string, stepNumber: number) {
+	selectedSubAgentStep.value = { subAgentId, stepNumber };
+}
+
+function isSubAgentStepSelected(subAgentId: string, stepNumber: number): boolean {
+	return (
+		selectedSubAgentStep.value?.subAgentId === subAgentId &&
+		selectedSubAgentStep.value.stepNumber === stepNumber
+	);
+}
+
+function formatSubAgentTitle(subAgent: InstanceAiRunDebugSubAgent): string {
+	return subAgent.label ? `${subAgent.role} · ${subAgent.label}` : subAgent.role;
 }
 
 async function scrollDetailToOutput() {
@@ -98,7 +164,7 @@ async function scrollDetailToOutput() {
 	stepDetailRef.value.scrollToOutput(detailPaneRef.value);
 }
 
-watch([selectedStep, () => debugStore.isLoadingRunDebug], ([step, isLoading]) => {
+watch([() => detailStep.value?.step, () => debugStore.isLoadingRunDebug], ([step, isLoading]) => {
 	if (!props.open || !step || isLoading) return;
 	void scrollDetailToOutput();
 });
@@ -107,6 +173,7 @@ async function selectRun(runId: string) {
 	if (runId === selectedRunId.value) return;
 	await debugStore.loadRunDebug(runId);
 	selectedStepNumber.value = debugStore.runDebug?.steps[0]?.stepNumber ?? null;
+	selectedSubAgentStep.value = null;
 }
 
 function formatTimestamp(ms: number): string {
@@ -115,10 +182,6 @@ function formatTimestamp(ms: number): string {
 	} catch {
 		return String(ms);
 	}
-}
-
-function formatCompactTokens(tokens: number): string {
-	return tokens < 1000 ? tokens.toString() : `${(tokens / 1000).toFixed(1)}k`;
 }
 
 function formatStepCount(count: number): string {
@@ -156,7 +219,10 @@ function formatStepCount(count: number): string {
 				{{ i18n.baseText('instanceAi.debug.runDebug.noRuns') }}
 			</div>
 
-			<div v-else :class="$style.layout">
+			<div
+				v-else
+				:class="[$style.layout, selectedStepSubAgents.length > 0 && $style.layoutWithSubAgents]"
+			>
 				<aside :class="[$style.sidebar, $style.runsSidebar]">
 					<div :class="$style.sidebarHeader">
 						{{ i18n.baseText('instanceAi.debug.runDebug.runs') }}
@@ -197,51 +263,57 @@ function formatStepCount(count: number): string {
 						{{ i18n.baseText('instanceAi.debug.runDebug.noSteps') }}
 					</div>
 					<div v-else :class="$style.stepList">
-						<button
+						<InstanceAiLlmStepListItem
 							v-for="{ stepNumber, summary, cacheBreak, cacheBreakDescription } in stepSummaries"
 							:key="stepNumber"
-							type="button"
-							:class="[
-								$style.stepButton,
-								cacheBreak && $style.stepButtonCacheBreak,
-								selectedStepNumber === stepNumber && $style.stepButtonSelected,
-							]"
-							@click="selectStep(stepNumber)"
+							:step-number="stepNumber"
+							:summary="summary"
+							:cache-break="cacheBreak"
+							:cache-break-description="cacheBreakDescription"
+							:sub-agent-count="subAgentsByStep.get(stepNumber)?.length ?? 0"
+							:selected="selectedStepNumber === stepNumber"
+							@select="selectStep(stepNumber)"
+						/>
+					</div>
+				</aside>
+
+				<aside
+					v-if="selectedStepSubAgents.length > 0"
+					:class="[$style.sidebar, $style.subAgentsSidebar]"
+					data-test-id="instance-ai-llm-steps-modal-sub-agents"
+				>
+					<div :class="$style.sidebarHeader">
+						{{ i18n.baseText('instanceAi.debug.runDebug.subAgentSteps') }}
+						<span :class="$style.sidebarCount">{{ subAgentStepTotal }}</span>
+					</div>
+					<div :class="$style.stepList">
+						<div
+							v-for="group in subAgentGroups"
+							:key="group.subAgent.id"
+							:class="$style.subAgentGroup"
 						>
-							<div :class="$style.stepTopRow">
-								<span :class="[$style.stepNumber, cacheBreak && $style.stepNumberCacheBreak]">
-									{{ stepNumber + 1 }}
+							<div :class="$style.subAgentHeader" :title="formatSubAgentTitle(group.subAgent)">
+								<N8nIcon icon="robot" size="xsmall" />
+								<span :class="$style.subAgentTitle">
+									{{ formatSubAgentTitle(group.subAgent) }}
 								</span>
-								<span v-if="summary.finishReason" :class="$style.finishReason">
-									{{ summary.finishReason }}
-								</span>
-								<span
-									v-if="cacheBreak"
-									:class="$style.cacheBreakBadge"
-									:title="cacheBreakDescription"
-									data-test-id="instance-ai-llm-step-cache-break"
-								>
-									<N8nIcon icon="triangle-alert" />
-									{{ i18n.baseText('instanceAi.debug.runDebug.cacheBreak') }}
-									<span :class="$style.cacheBreakTokens">
-										{{
-											i18n.baseText('instanceAi.debug.runDebug.cacheBreakLostTokens', {
-												interpolate: { count: formatCompactTokens(cacheBreak.lostTokens) },
-											})
-										}}
-									</span>
-								</span>
+								<span :class="$style.sidebarCount">{{ group.steps.length }}</span>
 							</div>
-							<span v-if="summary.toolNames.length > 0" :class="$style.stepTools">
-								{{ summary.toolNames.join(', ') }}
-							</span>
-							<span v-else-if="summary.messagePreview" :class="$style.stepPreview">
-								{{ summary.messagePreview }}
-							</span>
-							<span v-if="summary.usageLabel" :class="$style.stepUsage">
-								{{ summary.usageLabel }}
-							</span>
-						</button>
+							<div v-if="group.steps.length === 0" :class="$style.sidebarEmpty">
+								{{ i18n.baseText('instanceAi.debug.runDebug.noSteps') }}
+							</div>
+							<InstanceAiLlmStepListItem
+								v-for="item in group.steps"
+								:key="item.stepNumber"
+								:step-number="item.stepNumber"
+								:summary="item.summary"
+								:cache-break="item.cacheBreak"
+								:cache-break-description="item.cacheBreakDescription"
+								:selected="isSubAgentStepSelected(group.subAgent.id, item.stepNumber)"
+								data-test-id="instance-ai-llm-steps-modal-sub-agent-step"
+								@select="selectSubAgentStep(group.subAgent.id, item.stepNumber)"
+							/>
+						</div>
 					</div>
 				</aside>
 
@@ -249,20 +321,20 @@ function formatStepCount(count: number): string {
 					<div v-if="debugStore.isLoadingRunDebug" :class="$style.loadingState">
 						<N8nIcon icon="spinner" color="primary" spin size="small" />
 					</div>
-					<div v-else-if="selectedStep || runWorkflowCode.length > 0" :class="$style.detailContent">
+					<div v-else-if="detailStep || runWorkflowCode.length > 0" :class="$style.detailContent">
 						<InstanceAiLlmStepDetail
-							v-if="selectedStep"
+							v-if="detailStep"
 							ref="stepDetailRef"
-							:input="selectedStep.input"
-							:output="selectedStep.output"
-							:run-steps="steps"
+							:input="detailStep.step.input"
+							:output="detailStep.step.output"
+							:run-steps="detailStep.runSteps"
 							:workflow-code="runWorkflowCode"
-							:cache-break="selectedCacheBreak"
+							:cache-break="detailStep.cacheBreak"
 						/>
 						<InstanceAiRunWorkflowCodeSection
 							v-if="runWorkflowCode.length > 0"
 							:snapshots="runWorkflowCode"
-							:show-divider="Boolean(selectedStep)"
+							:show-divider="Boolean(detailStep)"
 						/>
 					</div>
 					<div v-else :class="$style.emptyState">
@@ -330,6 +402,40 @@ function formatStepCount(count: number): string {
 	overflow: hidden;
 }
 
+.layoutWithSubAgents {
+	grid-template-columns: 220px 220px 220px minmax(0, 1fr);
+}
+
+.subAgentGroup {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--4xs);
+
+	& + & {
+		margin-top: var(--spacing--3xs);
+		padding-top: var(--spacing--3xs);
+		border-top: var(--border);
+	}
+}
+
+.subAgentHeader {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	padding: 0 var(--spacing--2xs);
+	font-size: var(--font-size--3xs);
+	color: var(--color--text);
+}
+
+.subAgentTitle {
+	flex: 1;
+	min-width: 0;
+	font-family: monospace;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
 .sidebar {
 	display: flex;
 	flex-direction: column;
@@ -373,8 +479,7 @@ function formatStepCount(count: number): string {
 	color: var(--color--text--tint-1);
 }
 
-.runButton,
-.stepButton {
+.runButton {
 	display: flex;
 	flex-direction: column;
 	align-items: flex-start;
@@ -396,8 +501,7 @@ function formatStepCount(count: number): string {
 	}
 }
 
-.runButtonSelected,
-.stepButtonSelected {
+.runButtonSelected {
 	background: var(--background--surface);
 	border-color: var(--color--foreground--tint-2);
 	border-left: 2px solid var(--color--primary);
@@ -407,8 +511,7 @@ function formatStepCount(count: number): string {
 	}
 }
 
-.runTopRow,
-.stepTopRow {
+.runTopRow {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
@@ -424,8 +527,7 @@ function formatStepCount(count: number): string {
 	min-width: 0;
 }
 
-.runNumber,
-.stepNumber {
+.runNumber {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
@@ -438,44 +540,8 @@ function formatStepCount(count: number): string {
 	color: var(--color--text);
 }
 
-.runButtonSelected .runNumber,
-.stepButtonSelected .stepNumber {
+.runButtonSelected .runNumber {
 	background: color-mix(in srgb, var(--color--primary) 12%, var(--color--foreground--tint-2));
-}
-
-.stepButtonCacheBreak:not(.stepButtonSelected) {
-	border-left: 2px solid var(--color--danger);
-	background: color-mix(in srgb, var(--color--danger) 6%, transparent);
-
-	&:hover {
-		background: color-mix(in srgb, var(--color--danger) 10%, var(--background--surface));
-	}
-}
-
-.cacheBreakBadge {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--5xs);
-	flex-shrink: 0;
-	padding: var(--spacing--5xs) var(--spacing--3xs);
-	border: 1px solid color-mix(in srgb, var(--color--danger) 30%, transparent);
-	border-radius: var(--radius--xl);
-	background: color-mix(in srgb, var(--color--danger) 12%, transparent);
-	font-size: var(--font-size--3xs);
-	font-weight: var(--font-weight--medium);
-	line-height: 1;
-	white-space: nowrap;
-	color: var(--color--danger);
-}
-
-.cacheBreakTokens {
-	font-variant-numeric: tabular-nums;
-	opacity: 0.8;
-}
-
-.stepNumber.stepNumberCacheBreak {
-	background: var(--color--danger);
-	color: var(--color--neutral-white);
 }
 
 .currentBadge {
@@ -505,20 +571,11 @@ function formatStepCount(count: number): string {
 	white-space: nowrap;
 }
 
-.runMeta,
-.finishReason,
-.stepTools,
-.stepPreview,
-.stepUsage {
+.runMeta {
 	width: 100%;
 	font-size: var(--font-size--3xs);
 	line-height: var(--line-height--lg);
 	color: var(--color--text--tint-1);
-}
-
-.stepTools {
-	font-family: monospace;
-	color: var(--color--text);
 }
 
 .detail {

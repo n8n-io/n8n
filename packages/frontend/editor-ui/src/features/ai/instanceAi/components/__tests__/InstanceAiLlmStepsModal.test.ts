@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { defineComponent, h } from 'vue';
+import userEvent from '@testing-library/user-event';
 import type { InstanceAiRunDebugStep } from '@n8n/api-types';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
@@ -51,7 +52,15 @@ function step(
 
 const renderModal = createComponentRenderer(InstanceAiLlmStepsModal, {
 	global: {
-		stubs: { InstanceAiLlmStepDetail: true, InstanceAiRunWorkflowCodeSection: true },
+		stubs: {
+			InstanceAiLlmStepDetail: defineComponent({
+				setup: (_, { expose }) => {
+					expose({ scrollToOutput: vi.fn() });
+					return () => h('div');
+				},
+			}),
+			InstanceAiRunWorkflowCodeSection: true,
+		},
 	},
 });
 
@@ -82,5 +91,52 @@ describe('InstanceAiLlmStepsModal', () => {
 		expect(badges).toHaveLength(1);
 		expect(badges[0].getAttribute('title')).toMatch(/67[.,\s\u202f]?500/);
 		expect(badges[0].textContent).toContain('67.5k');
+	});
+
+	it('shows sub-agent steps for the step whose tool call started the sub-agent', async () => {
+		setActivePinia(createTestingPinia());
+		const debugStore = mockedStore(useInstanceAiDebugStore);
+		debugStore.threadDebugRuns = [
+			{ runId: 'run-1', threadId: 'thread-1', startedAt: 0, stepCount: 2, workflowCodeCount: 0 },
+		];
+		debugStore.selectedRunId = 'run-1';
+		const spawningStep = step(1, 0, 100, ['build-agent']);
+		spawningStep.output = {
+			...spawningStep.output,
+			toolCalls: [{ toolName: 'build-agent', toolCallId: 'tc-builder', input: {} }],
+		};
+		debugStore.runDebug = {
+			runId: 'run-1',
+			threadId: 'thread-1',
+			startedAt: 0,
+			steps: [step(0, 0, 100, ['load_skill']), spawningStep],
+			subAgents: [
+				{
+					id: 'sub-agent-1',
+					role: 'agent-builder',
+					label: 'Support Triage',
+					parentToolCallId: 'tc-builder',
+					afterStepNumber: 1,
+					startedAt: 0,
+					steps: [step(0, 0, 50, ['agent-context']), step(1, 50, 10, ['write_config'])],
+				},
+			],
+			workflowCode: [],
+		};
+
+		const { queryByTestId, getAllByTestId, getByText, rerender } = renderModal({
+			props: { open: false },
+		});
+		await rerender({ open: true });
+
+		// The first step did not start a sub-agent, so the third column stays hidden.
+		expect(queryByTestId('instance-ai-llm-steps-modal-sub-agents')).not.toBeInTheDocument();
+		expect(getAllByTestId('instance-ai-llm-step-sub-agent-badge')).toHaveLength(1);
+
+		await userEvent.click(getByText('build-agent'));
+
+		expect(queryByTestId('instance-ai-llm-steps-modal-sub-agents')).toBeInTheDocument();
+		expect(getByText('agent-builder · Support Triage')).toBeInTheDocument();
+		expect(getAllByTestId('instance-ai-llm-steps-modal-sub-agent-step')).toHaveLength(2);
 	});
 });
