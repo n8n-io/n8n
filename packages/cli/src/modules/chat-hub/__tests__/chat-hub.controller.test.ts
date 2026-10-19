@@ -7,6 +7,7 @@ import type {
 import type { ModuleRegistry } from '@n8n/backend-common';
 import type { AuthenticatedRequest } from '@n8n/db';
 import type { ModuleSettings } from '@n8n/decorators';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { NextFunction, Request, Response } from 'express';
 import type { ReadStream } from 'node:fs';
 import { mkdtemp, open, rm, writeFile } from 'node:fs/promises';
@@ -24,36 +25,6 @@ import type { ChatHubToolService } from '../chat-hub-tool.service';
 import type { ChatHubAttachmentService } from '../chat-hub.attachment.service';
 import { ChatHubController } from '../chat-hub.controller';
 import type { ChatHubService } from '../chat-hub.service';
-
-type Deferred<T> = { promise: Promise<T>; resolve: (value: T) => void };
-
-const createDeferred = <T = void>(): Deferred<T> => {
-	let resolve!: (value: T) => void;
-	const promise = new Promise<T>((res) => {
-		resolve = res;
-	});
-	return { promise, resolve };
-};
-
-const TIMED_OUT = Symbol('timed out');
-
-const withTimeout = async <T>(promise: Promise<T>, timeoutMs: number) => {
-	let timer: NodeJS.Timeout | undefined;
-	const timeout = new Promise<typeof TIMED_OUT>((resolve) => {
-		timer = setTimeout(() => resolve(TIMED_OUT), timeoutMs);
-	});
-	try {
-		return await Promise.race([promise, timeout]);
-	} finally {
-		clearTimeout(timer);
-	}
-};
-
-const waitForClose = async (stream: ReadStream, timeoutMs: number) => {
-	if (stream.closed) return true;
-	const closed = new Promise<boolean>((resolve) => stream.once('close', () => resolve(true)));
-	return (await withTimeout(closed, timeoutMs)) === true;
-};
 
 vi.mock('@/response-helper');
 
@@ -246,8 +217,8 @@ describe('ChatHubController', () => {
 		];
 
 		const startAttachmentServer = async () => {
-			const handlerSettled = createDeferred<HandlerOutcome>();
-			const serverResponse = createDeferred<ServerResponse>();
+			const handlerSettled = createDeferredPromise<HandlerOutcome>();
+			const serverResponse = createDeferredPromise<ServerResponse>();
 			server = createServer((_req, serverRes) => {
 				serverResponse.resolve(serverRes);
 				attachmentController
@@ -311,8 +282,8 @@ describe('ChatHubController', () => {
 			const body = await readWholeBody(port);
 
 			expect(body).toEqual({ statusCode: 200, bytes: FILE_SIZE });
-			expect(await withTimeout(handlerSettled, CLOSE_TIMEOUT_MS)).toEqual({ error: undefined });
-			expect(await waitForClose(stream, CLOSE_TIMEOUT_MS)).toBe(true);
+			expect(await handlerSettled).toEqual({ error: undefined });
+			await vi.waitFor(() => expect(stream.closed).toBe(true), { timeout: CLOSE_TIMEOUT_MS });
 		});
 
 		it('should close the file stream and settle when the client disconnects mid-download', async () => {
@@ -322,14 +293,14 @@ describe('ChatHubController', () => {
 
 			await readFirstChunkAndDisconnect(port);
 
-			expect(await waitForClose(stream, CLOSE_TIMEOUT_MS)).toBe(true);
-			expect(await withTimeout(handlerSettled, CLOSE_TIMEOUT_MS)).toEqual({ error: undefined });
+			await vi.waitFor(() => expect(stream.closed).toBe(true), { timeout: CLOSE_TIMEOUT_MS });
+			expect(await handlerSettled).toEqual({ error: undefined });
 		});
 
 		it('should close the file stream and settle when the client disconnects before the response starts', async () => {
 			const stream = await openFileStream();
-			const requestReceived = createDeferred();
-			const releaseAttachment = createDeferred();
+			const requestReceived = createDeferredPromise();
+			const releaseAttachment = createDeferredPromise();
 			chatAttachmentService.getAttachment.mockImplementation(async () => {
 				requestReceived.resolve();
 				await releaseAttachment.promise;
@@ -345,8 +316,8 @@ describe('ChatHubController', () => {
 			await responseClosed;
 			releaseAttachment.resolve();
 
-			expect(await waitForClose(stream, CLOSE_TIMEOUT_MS)).toBe(true);
-			expect(await withTimeout(handlerSettled, CLOSE_TIMEOUT_MS)).toEqual({ error: undefined });
+			await vi.waitFor(() => expect(stream.closed).toBe(true), { timeout: CLOSE_TIMEOUT_MS });
+			expect(await handlerSettled).toEqual({ error: undefined });
 		});
 	});
 });
