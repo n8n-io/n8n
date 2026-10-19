@@ -1,0 +1,66 @@
+packages/cli/src/modules/agents/__tests__/agent-runtime-cache.service.test.ts
+  s_45c9c02db4924e::t_43f1af84471a0a 91,97,589,607,614,618
+packages/cli/src/interfaces.ts
+  s_45c9c02db4924e::t_3ca7bbf9411109 218,249-250
+packages/cli/src/telemetry/__tests__/telemetry.test.ts
+  s_45c9c02db4924e::t_28804036e1557e 479-496,498-503,548-553,648-653,660-665,687-692,765-770
+  s_45c9c02db4924e::t_5929071528093c 514,516,524,526,575,577,598,606,614,671,673,709,717,727,729,739,741,778,852,904
+  s_45c9c02db4924e::t_0a9c8af0ec2107 478,504-510,534-542,921,927-966
+  s_45c9c02db4924e::t_04b4f85b3bc0c1 543,967-968
+packages/cli/src/modules/agents/utils/agent-published-snapshot.ts
+  s_45c9c02db4924e::t_3ca7bbf9411109 33
+packages/cli/src/modules/agents/agent-workflow-execution.service.ts
+  s_45c9c02db4924e::t_3ca7bbf9411109 464
+packages/cli/src/telemetry/index.ts
+  s_45c9c02db4924e::t_3ca7bbf9411109 83,313,316,326-328,330,332,357,455,471
+  s_45c9c02db4924e::t_28804036e1557e 462-467
+packages/@n8n/telemetry/src/events/agents.ts
+  s_45c9c02db4924e::t_28804036e1557e 44-46
+  s_45c9c02db4924e::t_7b4f0b09ed677d 18-21,23-24,42-43,59,284,286,288,312,314
+  s_45c9c02db4924e::t_aa49f4077cd58e 22
+packages/cli/src/modules/agents/sub-agents/sub-agent-runner.ts
+  s_45c9c02db4924e::t_3ca7bbf9411109 304-308
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_45c9c02db4924e::t_5929071528093c 129,1968,1976,3993
+  s_45c9c02db4924e::t_aa49f4077cd58e 2318,2347-2352
+packages/cli/src/modules/agents/__tests__/agent-telemetry.test.ts
+  s_45c9c02db4924e::t_43f1af84471a0a 13,65,77
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_45c9c02db4924e::t_3ca7bbf9411109 1225-1229,1324-1331,1375,1396,1721
+packages/cli/src/modules/agents/sub-agents/sub-agent-source-resolver.ts
+  s_45c9c02db4924e::t_3ca7bbf9411109 34-35,134
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_45c9c02db4924e::t_5929071528093c 1140,1158,1197,1242,1281,1319,1366
+packages/cli/src/modules/agents/utils/agent-execution-counter.ts
+  s_45c9c02db4924e::t_3ca7bbf9411109 10,14-20,27,36,45
+packages/cli/src/modules/agents/agent-telemetry.ts
+  s_45c9c02db4924e::t_3ca7bbf9411109 42,49,67
+packages/@n8n/telemetry/agent-creation.md
+  s_45c9c02db4924e::t_aa49f4077cd58e 28
+  s_45c9c02db4924e::t_7b4f0b09ed677d 1,13-14,22-27,29,36,38
+packages/cli/src/modules/agents/sub-agents/__tests__/sub-agent-runner.test.ts
+  s_45c9c02db4924e::t_0a9c8af0ec2107 895-902
+  s_45c9c02db4924e::t_43f1af84471a0a 64,266-272
+packages/cli/src/modules/agents/sub-agents/__tests__/sub-agent-source-resolver.test.ts
+  s_45c9c02db4924e::t_43f1af84471a0a 93,103,145-149
+packages/cli/src/modules/agents/__tests__/agent-workflow-execution.service.test.ts
+  s_45c9c02db4924e::t_0a9c8af0ec2107 1044-1047
+  s_45c9c02db4924e::t_43f1af84471a0a 65,67-73,346
+  s_45c9c02db4924e::t_5929071528093c 136,326
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "49f6d82639608b098c270000eb8a4654208f70de",
+  "prompts": {},
+  "sessions": {
+    "s_45c9c02db4924e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a13acd-cd08-74b2-b4f6-17aac3637046",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
