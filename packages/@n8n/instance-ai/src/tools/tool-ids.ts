@@ -97,6 +97,7 @@ export const ALWAYS_LOADED_TOOL_NAMES = new Set<string>([
 	// on every agent build. Registered only when the host provides a builder
 	// delegate (Agents module active), so an instance without it pays nothing.
 	ORCHESTRATION_TOOL_IDS.BUILD_AGENT,
+	DOMAIN_TOOL_IDS.SKILLS,
 ]);
 
 export const CHECKPOINT_FOLLOW_UP_TOOL_NAMES = new Set<string>([

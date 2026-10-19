@@ -696,14 +696,6 @@ export class InstanceAiAdapterService {
 			: provider;
 	}
 
-	/**
-	 * Resolve the builder-delegate adapter only when the `agents` module is
-	 * active. The adapter class is statically imported (so its `@Service` is
-	 * always registered), so the module-enabled check is what gates
-	 * agent-building. Returns null when the module is off, so `builderDelegate`
-	 * (and the build-agent sub-agent tool it powers) is simply absent from the
-	 * context.
-	 */
 	private getSkillService(user: User): InstanceAiSkillService | undefined {
 		try {
 			if (!Container.get(ModuleRegistry).isActive('agents')) return undefined;
@@ -717,6 +709,14 @@ export class InstanceAiAdapterService {
 		}
 	}
 
+	/**
+	 * Resolve the builder-delegate adapter only when the `agents` module is
+	 * active. The adapter class is statically imported (so its `@Service` is
+	 * always registered), so the module-enabled check is what gates
+	 * agent-building. Returns null when the module is off, so `builderDelegate`
+	 * (and the build-agent sub-agent tool it powers) is simply absent from the
+	 * context.
+	 */
 	private getBuilderDelegateAdapter(): InstanceAiBuilderDelegateAdapterService | null {
 		if (!isAgentsAccessEnabled()) return null;
 		try {

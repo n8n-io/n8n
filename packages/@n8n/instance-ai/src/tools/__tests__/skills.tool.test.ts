@@ -285,6 +285,28 @@ describe('skills tool', () => {
 			expect(service.delete).not.toHaveBeenCalled();
 		});
 
+		it('asks again even with a session grant', async () => {
+			const suspend = vi.fn();
+			const tool = createSkillsTool(
+				createContext(service, { sessionApprovedToolKeys: new Set(['skills:delete']) }),
+			);
+
+			await executeTool(tool, input, suspendCtx(suspend));
+
+			expect(suspend).toHaveBeenCalled();
+			expect(service.delete).not.toHaveBeenCalled();
+		});
+
+		it('does not store an approval for the session', async () => {
+			const grantSessionToolApproval = vi.fn();
+			const tool = createSkillsTool(createContext(service, { grantSessionToolApproval }));
+
+			await executeTool(tool, input, resumeCtx(true, 'session'));
+
+			expect(service.delete).toHaveBeenCalledWith('skill_a');
+			expect(grantSessionToolApproval).not.toHaveBeenCalled();
+		});
+
 		it('deletes the skill once the user approves', async () => {
 			const tool = createSkillsTool(createContext(service));
 

@@ -1512,7 +1512,8 @@ The actions are `list`, `get`, `create`, `update` and `delete`. `create`,
 `update` and `delete` ask for approval. The `createSkill`, `updateSkill` and
 `deleteSkill` permissions control them. The `update` approval says how many
 Agents use the skill. `list` pages with `limit` and `skip`. `delete` is destructive, so the user cannot allow
-it for the whole session. `update` needs the `skillHash` from `get`. The tool
+it for the whole session. For `update`, pass the `skillHash` that `get` returns as
+`baseSkillHash`. The tool
 does not attach a skill to an Agent.
 
 ## MCP Registry Tool

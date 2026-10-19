@@ -258,6 +258,10 @@ describe('domain tool construction', () => {
 		expect(ALWAYS_LOADED_TOOL_NAMES.has('mcp-servers')).toBe(true);
 	});
 
+	it('never defers skills behind search_tools', () => {
+		expect(ALWAYS_LOADED_TOOL_NAMES.has('skills')).toBe(true);
+	});
+
 	it('gates Agent context on the project-scoped reader', () => {
 		const disabled = makeContext();
 		expect(createOrchestratorDomainTools(disabled).get('agent-context')).toBeUndefined();

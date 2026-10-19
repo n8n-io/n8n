@@ -174,7 +174,9 @@ async function withApproval<T>(
 	}
 
 	const { resumeData } = ctx;
-	const granted = context.sessionApprovedToolKeys?.has(sessionGrantKey(action)) === true;
+	const sessionGrantAllowed = action !== 'delete';
+	const granted =
+		sessionGrantAllowed && context.sessionApprovedToolKeys?.has(sessionGrantKey(action)) === true;
 	if (permission !== 'always_allow' && !granted && !resumeData) {
 		return await ctx.suspend(await request());
 	}
@@ -183,7 +185,7 @@ async function withApproval<T>(
 		return { success: false, denied: true, reason: 'User denied the action' };
 	}
 
-	if (resumeData?.approved && resumeData.scope === 'session') {
+	if (sessionGrantAllowed && resumeData?.approved && resumeData.scope === 'session') {
 		await context.grantSessionToolApproval?.(sessionGrantKey(action));
 	}
 
