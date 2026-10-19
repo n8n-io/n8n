@@ -335,7 +335,11 @@ vi.mock('@/features/agents/n8nChatPage/components/N8nChatAgentPicker.vue', () =>
 			},
 		}),
 		template: `
-			<div data-test-id="n8n-chat-agent-picker-stub" :data-disabled="String(disabled)">
+			<div
+				data-test-id="n8n-chat-agent-picker-stub"
+				:data-disabled="String(disabled)"
+				:data-project-id="projectId"
+			>
 				<button
 					data-test-id="n8n-chat-agent-picker-stub-select-agent"
 					:disabled="disabled"
@@ -1779,6 +1783,22 @@ describe('InstanceAiEmptyView', () => {
 
 			expect(getByTestId('n8n-chat-agent-picker-stub')).toBeInTheDocument();
 			expect(queryByTestId('instance-ai-empty-state')).not.toBeInTheDocument();
+		});
+
+		it("selects the agent's project, and resets to the entry project on the Assistant", async () => {
+			routeQuery.projectId = 'team-project-42';
+			const { getByTestId } = renderView();
+			const picker = getByTestId('n8n-chat-agent-picker-stub');
+
+			expect(picker).toHaveAttribute('data-project-id', 'team-project-42');
+
+			await fireEvent.click(getByTestId('n8n-chat-agent-picker-stub-select-agent'));
+			await nextTick();
+			expect(picker).toHaveAttribute('data-project-id', 'project-1');
+
+			await fireEvent.click(getByTestId('n8n-chat-agent-picker-stub-select-assistant'));
+			await nextTick();
+			expect(picker).toHaveAttribute('data-project-id', 'team-project-42');
 		});
 
 		it('disables the picker while the input is preparing a submission, and re-enables it after', async () => {
