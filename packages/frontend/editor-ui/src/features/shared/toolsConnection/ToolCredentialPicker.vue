@@ -191,7 +191,7 @@ function editCredential(credentialId: string) {
 		data-test-id="tool-credential-picker-ai-gateway"
 		@click="pickAiGateway"
 	>
-		<span>{{ aiGatewayLabel }}</span>
+		<span>{{ i18n.baseText('tools.connection.action.connect') }}</span>
 	</N8nButton>
 	<N8nPopover
 		v-else-if="
