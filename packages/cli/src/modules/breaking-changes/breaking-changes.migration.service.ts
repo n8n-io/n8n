@@ -170,7 +170,8 @@ export class BreakingChangeMigrationService {
 			connections: workflow.connections,
 			migratedNodeIds,
 			unmapped,
-			notes,
+			// Same note from several nodes is one review item, not one per node.
+			notes: [...new Set(notes)],
 		};
 	}
 

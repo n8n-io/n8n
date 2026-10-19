@@ -3,6 +3,7 @@ import {
 	binaryInputLoaderToDefaultDataLoader,
 	jsonInputLoaderToDefaultDataLoader,
 } from './document-loaders.migration';
+import { editImageToV2 } from './edit-image-v2.migration';
 import { htmlExtractToHtml } from './html-extract-to-html.migration';
 import { icalToConvertToFile } from './ical-to-convert-to-file.migration';
 import { itemListsToTransformNodes } from './item-lists.migration';
@@ -24,6 +25,7 @@ export const nodeRemovalMigrations: Migration[] = [
 	aiTransformToCode,
 	binaryInputLoaderToDefaultDataLoader,
 	cronToScheduleTrigger,
+	editImageToV2,
 	htmlExtractToHtml,
 	icalToConvertToFile,
 	inMemoryInsertToVectorStore,
