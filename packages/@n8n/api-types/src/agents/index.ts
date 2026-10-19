@@ -48,3 +48,5 @@ export {
 	type CancellationResumeData,
 } from '../agent-builder-interactive';
 export * from './agent-interaction.schema';
+
+export type * from './task-cancellation';
