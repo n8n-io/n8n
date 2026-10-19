@@ -17,9 +17,9 @@ import {
 	type IconName,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { resolveAgentPersonalisation, type ChatIntegrationDescriptor } from '@n8n/api-types';
+import type { ChatIntegrationDescriptor } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { computed, provide, ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 import { agentsEventBus } from '@/features/agents/agents.eventBus';
 import {
@@ -28,11 +28,8 @@ import {
 	getAgentChannelPlatform,
 	isRegisteredAgentChannelPlatform,
 } from '@/features/agents/channels/registry';
-import {
-	AGENT_PERSONALISATION_KEY,
-	type AgentChannelRuntime,
-	type AgentChannelViewExpose,
-} from '@/features/agents/channels/types';
+import { provideAgentPersonalisation } from '@/features/agents/channels/agentPersonalisation';
+import type { AgentChannelRuntime, AgentChannelViewExpose } from '@/features/agents/channels/types';
 import { getAgent } from '@/features/agents/composables/useAgentApi';
 import { useAgentChannelSetup } from '@/features/agents/composables/useAgentChannelSetup';
 import { useAgentIntegrationStatus } from '@/features/agents/composables/useAgentIntegrationStatus';
@@ -78,10 +75,7 @@ const submitted = ref(false);
 const connectionInFlight = ref(false);
 const agent = ref<AgentResource | null>(null);
 // This card is not under the builder, so it provides the agent's look itself.
-provide(
-	AGENT_PERSONALISATION_KEY,
-	computed(() => resolveAgentPersonalisation(agent.value?.schema?.personalisation)),
-);
+provideAgentPersonalisation(() => agent.value?.schema?.personalisation);
 const catalogLoading = ref(false);
 const catalogLoadFailed = ref(false);
 

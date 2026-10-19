@@ -10,7 +10,7 @@ import type { TeamsChannelRuntime } from './useTeamsChannelRuntime';
 import { checkTeamsFileAccess, fetchTeamsAppPackage, getTeamsSetupState } from './api';
 import { fileAccessJustApproved } from './fileAccessConsent';
 import { ActionDropdownTestStub } from '../../__tests__/utils/ActionDropdownTestStub';
-import { AGENT_PERSONALISATION_KEY } from '../types';
+import { AGENT_PERSONALISATION_KEY } from '../agentPersonalisation';
 
 vi.mock('@n8n/i18n', async (importOriginal) => ({
 	...(await importOriginal()),

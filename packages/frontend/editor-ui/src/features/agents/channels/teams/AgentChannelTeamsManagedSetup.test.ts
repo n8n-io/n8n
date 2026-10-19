@@ -15,7 +15,7 @@ import AgentChannelTeamsManagedSetup from './AgentChannelTeamsManagedSetup.vue';
 import type { TeamsChannelRuntime } from './useTeamsChannelRuntime';
 import { entraApiPermissionsUrl } from './constants';
 import { ActionDropdownTestStub } from '../../__tests__/utils/ActionDropdownTestStub';
-import { AGENT_PERSONALISATION_KEY } from '../types';
+import { AGENT_PERSONALISATION_KEY } from '../agentPersonalisation';
 
 vi.mock('file-saver', () => ({ saveAs: vi.fn() }));
 

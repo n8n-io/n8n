@@ -204,7 +204,9 @@ vi.mock('@/features/agents/channels/teams/AgentChannelTeamsSetupKindSelector.vue
 
 vi.mock('@/features/agents/channels/teams/AgentChannelTeamsSetupView.vue', async () => {
 	const { inject } = await import('vue');
-	const { AGENT_PERSONALISATION_KEY } = await import('@/features/agents/channels/types');
+	const { AGENT_PERSONALISATION_KEY } = await import(
+		'@/features/agents/channels/agentPersonalisation'
+	);
 	return {
 		default: {
 			props: ['modelValue'],

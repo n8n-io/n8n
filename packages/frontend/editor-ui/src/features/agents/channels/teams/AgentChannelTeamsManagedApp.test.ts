@@ -1,5 +1,5 @@
 import { createComponentRenderer } from '@/__tests__/render';
-import type { TeamsCatalogState } from '@n8n/api-types';
+import { resolveAgentPersonalisation, type TeamsCatalogState } from '@n8n/api-types';
 import { createTestingPinia } from '@pinia/testing';
 import { configure, fireEvent, waitFor } from '@testing-library/vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -9,7 +9,7 @@ import { fetchTeamsAppPackage } from './api';
 import AgentChannelTeamsManagedApp from './AgentChannelTeamsManagedApp.vue';
 import type { TeamsChannelRuntime } from './useTeamsChannelRuntime';
 import { ActionDropdownTestStub } from '../../__tests__/utils/ActionDropdownTestStub';
-import { AGENT_PERSONALISATION_KEY } from '../types';
+import { AGENT_PERSONALISATION_KEY } from '../agentPersonalisation';
 
 vi.mock('file-saver', () => ({ saveAs: vi.fn() }));
 
@@ -400,5 +400,18 @@ describe('AgentChannelTeamsManagedApp', () => {
 		);
 		expect(tile?.style.getPropertyValue('--agent-personalisation-gradient-from')).toBe('#2563EB');
 		expect(tile?.querySelector('[data-icon="zap"]')).toBeInTheDocument();
+	});
+
+	it('shows the default icon on the identity card without a provider', () => {
+		const defaults = resolveAgentPersonalisation(null);
+		const { getByTestId } = render();
+
+		const tile = getByTestId('teams-identity').querySelector<HTMLElement>(
+			'[data-test-id="agent-personalisation-icon-tile"]',
+		);
+		expect(tile?.style.getPropertyValue('--agent-personalisation-gradient-from')).toBe(
+			defaults.gradient.from,
+		);
+		expect(tile?.querySelector(`[data-icon="${defaults.icon}"]`)).toBeInTheDocument();
 	});
 });
