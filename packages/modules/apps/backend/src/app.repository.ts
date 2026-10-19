@@ -112,7 +112,6 @@ export class AppRepository extends BaseRepository<App> {
 
 	async updateApp(projectId: string, appId: string, dto: UpdateAppDto, ctx: OperationContext = {}) {
 		const where = { id: appId, projectId };
-		const manager = this.managerFor(ctx);
 		try {
 			return await this.runInTransaction(ctx, async (manager) => {
 				const result = await manager.update(App, where, dto);
