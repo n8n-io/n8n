@@ -1,5 +1,5 @@
 import type { WorkflowSuggestionActivity as WorkflowSuggestionActivityDto } from '@n8n/api-types';
-import { User, WithTimestampsAndStringId } from '@n8n/db';
+import { Actor, WithTimestampsAndStringId } from '@n8n/db';
 import { Column, Entity, Index, JoinColumn, ManyToOne, type Relation } from '@n8n/typeorm';
 
 import { WorkflowSuggestion } from './workflow-suggestion.entity';
@@ -24,7 +24,7 @@ export class WorkflowSuggestionActivity extends WithTimestampsAndStringId {
 	@Column({ type: 'uuid', nullable: true })
 	actorId: string | null;
 
-	@ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
+	@ManyToOne(() => Actor, { nullable: true, onDelete: 'SET NULL' })
 	@JoinColumn({ name: 'actorId' })
-	actor: Relation<User> | null;
+	actor: Relation<Actor> | null;
 }

@@ -1,6 +1,6 @@
 import type { MigrationOwnerSource } from '@n8n/api-types';
 import { DateTimeColumn, WithTimestamps } from '@n8n/db';
-import type { User, WorkflowEntity } from '@n8n/db';
+import type { Actor, WorkflowEntity } from '@n8n/db';
 import {
 	Column,
 	Entity,
@@ -29,9 +29,9 @@ export class MigrationWorkflowOwner extends WithTimestamps {
 	@Column({ type: 'uuid', nullable: true })
 	userId: string | null;
 
-	@ManyToOne('User', { onDelete: 'SET NULL', nullable: true })
+	@ManyToOne('Actor', { onDelete: 'SET NULL', nullable: true })
 	@JoinColumn({ name: 'userId' })
-	user: Relation<User> | null;
+	user: Relation<Actor> | null;
 
 	@Column({ type: 'varchar', length: 16 })
 	source: MigrationOwnerSource;
@@ -40,9 +40,9 @@ export class MigrationWorkflowOwner extends WithTimestamps {
 	@Column({ type: 'uuid', nullable: true })
 	assignedById: string | null;
 
-	@ManyToOne('User', { onDelete: 'SET NULL', nullable: true })
+	@ManyToOne('Actor', { onDelete: 'SET NULL', nullable: true })
 	@JoinColumn({ name: 'assignedById' })
-	assignedBy: Relation<User> | null;
+	assignedBy: Relation<Actor> | null;
 
 	/** When a person assigned the owner. `null` for a suggestion. */
 	@DateTimeColumn({ nullable: true })

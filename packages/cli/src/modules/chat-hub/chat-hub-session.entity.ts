@@ -1,5 +1,5 @@
 import { ChatHubProvider, type ChatHubSessionType } from '@n8n/api-types';
-import { WithTimestamps, DateTimeColumn, User, CredentialsEntity, WorkflowEntity } from '@n8n/db';
+import { WithTimestamps, DateTimeColumn, Actor, CredentialsEntity, WorkflowEntity } from '@n8n/db';
 import {
 	Column,
 	Entity,
@@ -53,9 +53,9 @@ export class ChatHubSession extends WithTimestamps {
 	/**
 	 * The user that owns this chat session.
 	 */
-	@ManyToOne('User', { onDelete: 'CASCADE' })
+	@ManyToOne('Actor', { onDelete: 'CASCADE' })
 	@JoinColumn({ name: 'ownerId' })
-	owner?: Relation<User>;
+	owner?: Relation<Actor>;
 
 	/*
 	 * Timestamp of the last active message in the session.

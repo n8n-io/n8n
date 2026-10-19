@@ -60,10 +60,7 @@ const toProjectPublicDto = (project: Project): ProjectPublicDto => ({
 });
 
 const toProjectMemberPublicDto = (relation: ProjectRelation): ProjectMemberPublicDto => ({
-	id: relation.user.id,
-	email: relation.user.email,
-	firstName: relation.user.firstName,
-	lastName: relation.user.lastName,
+	...relation.user.toIUser(),
 	createdAt: relation.user.createdAt.toISOString(),
 	updatedAt: relation.user.updatedAt.toISOString(),
 	role: relation.role?.slug ?? null,

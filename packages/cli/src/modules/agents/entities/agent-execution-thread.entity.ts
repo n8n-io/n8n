@@ -1,5 +1,5 @@
 import { AGENT_TASK_ID_MAX_LENGTH } from '@n8n/api-types';
-import { Project, User, WithTimestampsAndStringId } from '@n8n/db';
+import { Actor, Project, WithTimestampsAndStringId } from '@n8n/db';
 import { Column, Entity, Index, JoinColumn, ManyToOne, type Relation } from '@n8n/typeorm';
 
 import { AgentHistory } from './agent-history.entity';
@@ -20,9 +20,9 @@ import { Agent } from './agent.entity';
  */
 @Entity({ name: 'agent_execution_threads' })
 export class AgentExecutionThread extends WithTimestampsAndStringId {
-	@ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
+	@ManyToOne(() => Actor, { nullable: true, onDelete: 'SET NULL' })
 	@JoinColumn({ name: 'ownerId', foreignKeyConstraintName: 'FK_agent_execution_threads_owner' })
-	owner: Relation<User> | null;
+	owner: Relation<Actor> | null;
 
 	@Index()
 	@Column({ type: 'uuid', nullable: true, comment: 'User who started this private session' })

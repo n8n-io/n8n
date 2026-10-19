@@ -56,8 +56,8 @@ export class LicenseMetricsRepository extends Repository<LicenseMetrics> {
 			},
 		] = (await this.query(`
 			SELECT
-				(SELECT COUNT(*) FROM ${userTable} WHERE disabled = false) AS enabled_user_count,
-				(SELECT COUNT(*) FROM ${userTable}) AS total_user_count,
+				(SELECT COUNT(*) FROM ${userTable} WHERE disabled = false AND type = 'human') AS enabled_user_count,
+				(SELECT COUNT(*) FROM ${userTable} WHERE type = 'human') AS total_user_count,
 				(SELECT COUNT(*) FROM ${workflowTable} WHERE ${this.toColumnName('activeVersionId')} IS NOT NULL) AS active_workflow_count,
 				(SELECT COUNT(*) FROM ${workflowTable}) AS total_workflow_count,
 				(SELECT COUNT(*) FROM ${credentialTable}) AS total_credentials_count,

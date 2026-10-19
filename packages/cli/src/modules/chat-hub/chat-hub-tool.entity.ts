@@ -1,4 +1,4 @@
-import { User, JsonColumn, WithTimestamps } from '@n8n/db';
+import { Actor, JsonColumn, WithTimestamps } from '@n8n/db';
 import { Column, Entity, ManyToOne, JoinColumn, PrimaryColumn } from '@n8n/typeorm';
 import type { INode } from 'n8n-workflow';
 
@@ -46,9 +46,9 @@ export class ChatHubTool extends WithTimestamps {
 	/**
 	 * The user that owns this tool.
 	 */
-	@ManyToOne('User', { onDelete: 'CASCADE' })
+	@ManyToOne('Actor', { onDelete: 'CASCADE' })
 	@JoinColumn({ name: 'ownerId' })
-	owner?: User;
+	owner?: Actor;
 
 	/**
 	 * The full INode definition of the tool.

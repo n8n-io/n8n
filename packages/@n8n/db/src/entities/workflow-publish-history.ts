@@ -9,7 +9,7 @@ import {
 } from '@n8n/typeorm';
 
 import { WithCreatedAt } from './abstract-entity';
-import { User } from './user';
+import { Actor } from './actor';
 import type { WorkflowHistory } from './workflow-history';
 
 @Entity()
@@ -34,12 +34,12 @@ export class WorkflowPublishHistory extends WithCreatedAt {
 	@Column({ type: 'uuid', nullable: true })
 	userId: string | null;
 
-	@ManyToOne('User', {
+	@ManyToOne('Actor', {
 		onDelete: 'SET NULL',
 		nullable: true,
 	})
 	@JoinColumn({ name: 'userId' })
-	user: User | null;
+	user: Actor | null;
 
 	@ManyToOne('WorkflowHistory', 'workflowPublishHistory', {
 		nullable: true,

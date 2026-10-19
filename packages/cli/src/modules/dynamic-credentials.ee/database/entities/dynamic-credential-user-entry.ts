@@ -1,4 +1,4 @@
-import { CredentialsEntity, User, WithTimestamps } from '@n8n/db';
+import { CredentialsEntity, Actor, WithTimestamps } from '@n8n/db';
 import { Column, Entity, JoinColumn, ManyToOne, PrimaryColumn } from '@n8n/typeorm';
 
 import { DynamicCredentialResolver } from './credential-resolver';
@@ -36,9 +36,9 @@ export class DynamicCredentialUserEntry extends WithTimestamps {
 	@JoinColumn({ name: 'credentialId' })
 	credential: CredentialsEntity;
 
-	@ManyToOne(() => User, { onDelete: 'CASCADE' })
+	@ManyToOne(() => Actor, { onDelete: 'CASCADE' })
 	@JoinColumn({ name: 'userId' })
-	user: User;
+	user: Actor;
 
 	@ManyToOne(() => DynamicCredentialResolver, { onDelete: 'CASCADE' })
 	@JoinColumn({ name: 'resolverId' })

@@ -1,24 +1,8 @@
-import type { AuthPrincipal } from '@n8n/permissions';
-import {
-	AfterLoad,
-	AfterUpdate,
-	BeforeUpdate,
-	Column,
-	Entity,
-	Index,
-	OneToMany,
-	PrimaryGeneratedColumn,
-	BeforeInsert,
-	JoinColumn,
-	ManyToOne,
-} from '@n8n/typeorm';
+import { ChildEntity, Column, Index, OneToMany } from '@n8n/typeorm';
 import type { IUser, IUserSettings } from 'n8n-workflow';
 
-import { JsonColumn, WithTimestamps } from './abstract-entity';
-import type { ApiKey } from './api-key';
-import type { AuthIdentity } from './auth-identity';
-import type { ProjectRelation } from './project-relation';
-import { Role } from './role';
+import { JsonColumn } from './abstract-entity';
+import { Actor } from './actor';
 import type { SharedCredentials } from './shared-credentials';
 import type { SharedWorkflow } from './shared-workflow';
 import type { IPersonalizationSurveyAnswers } from './types-db';
@@ -26,10 +10,10 @@ import { GLOBAL_OWNER_ROLE } from '../constants';
 import { isValidEmail } from '../utils/is-valid-email';
 import { lowerCaser, objectRetriever } from '../utils/transformers';
 
-@Entity()
-export class User extends WithTimestamps implements IUser, AuthPrincipal {
-	@PrimaryGeneratedColumn('uuid')
-	id: string;
+/** A human caller. Lives in the `user` table with `type = 'human'`. Shared columns are on `Actor`. */
+@ChildEntity('human')
+export class User extends Actor implements IUser {
+	declare readonly type: 'human';
 
 	@Column({
 		length: 254,
@@ -57,31 +41,13 @@ export class User extends WithTimestamps implements IUser, AuthPrincipal {
 	@JsonColumn({ nullable: true })
 	settings: IUserSettings | null;
 
-	@ManyToOne(() => Role)
-	@JoinColumn({ name: 'roleSlug', referencedColumnName: 'slug' })
-	role: Role;
-
-	@OneToMany('AuthIdentity', 'user')
-	authIdentities: AuthIdentity[];
-
-	@OneToMany('ApiKey', 'user')
-	apiKeys: ApiKey[];
-
 	@OneToMany('SharedWorkflow', 'user')
 	sharedWorkflows: SharedWorkflow[];
 
 	@OneToMany('SharedCredentials', 'user')
 	sharedCredentials: SharedCredentials[];
 
-	@OneToMany('ProjectRelation', 'user')
-	projectRelations: ProjectRelation[];
-
-	@Column({ type: Boolean, default: false })
-	disabled: boolean;
-
-	@BeforeInsert()
-	@BeforeUpdate()
-	preUpsertHook(): void {
+	override preUpsertHook(): void {
 		this.email = this.email?.toLowerCase() ?? null;
 
 		// Validate email if present (including empty strings)
@@ -110,8 +76,10 @@ export class User extends WithTimestamps implements IUser, AuthPrincipal {
 	 */
 	isPending: boolean;
 
-	@AfterLoad()
-	@AfterUpdate()
+	override postLoadHook(): void {
+		this.computeIsPending();
+	}
+
 	computeIsPending(): void {
 		const hasExternalAuthIdentity =
 			this.authIdentities?.some((identity) => identity.providerType !== 'email') ?? false;
@@ -126,7 +94,7 @@ export class User extends WithTimestamps implements IUser, AuthPrincipal {
 		return rest;
 	}
 
-	createPersonalProjectName() {
+	override createPersonalProjectName() {
 		if (this.firstName && this.lastName && this.email) {
 			return `${this.firstName} ${this.lastName} <${this.email}>`;
 		} else if (this.email) {
@@ -136,7 +104,7 @@ export class User extends WithTimestamps implements IUser, AuthPrincipal {
 		}
 	}
 
-	toIUser(): IUser {
+	override toIUser(): IUser {
 		const { id, email, firstName, lastName } = this;
 		return { id, email, firstName, lastName };
 	}

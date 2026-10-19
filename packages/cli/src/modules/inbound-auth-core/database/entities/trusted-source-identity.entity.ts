@@ -1,4 +1,4 @@
-import { DateTimeColumn, User, WithTimestamps } from '@n8n/db';
+import { DateTimeColumn, Actor, WithTimestamps } from '@n8n/db';
 import { Column, Entity, Index, JoinColumn, ManyToOne, PrimaryColumn } from '@n8n/typeorm';
 
 import { TrustedSourceEntity } from './trusted-source.entity';
@@ -30,9 +30,9 @@ export class TrustedSourceIdentityEntity extends WithTimestamps {
 	@Column({ type: String })
 	userId: string;
 
-	@ManyToOne(() => User, { onDelete: 'CASCADE' })
+	@ManyToOne(() => Actor, { onDelete: 'CASCADE' })
 	@JoinColumn({ name: 'userId' })
-	user: User;
+	user: Actor;
 
 	@Column({ type: 'varchar', length: 32 })
 	provenance: TrustedSourceIdentityProvenance;

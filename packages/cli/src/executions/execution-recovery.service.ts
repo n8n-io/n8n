@@ -7,6 +7,7 @@ import {
 	WorkflowEntity,
 	WorkflowRepository,
 	User,
+	isUser,
 } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { PROJECT_ADMIN_ROLE_SLUG, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
@@ -348,10 +349,8 @@ export class ExecutionRecoveryService {
 			relations: { user: true },
 		});
 
-		if (projectRelations.length > 0) {
-			return projectRelations[0].user;
-		} else {
-			return await this.ownershipService.getInstanceOwner();
-		}
+		// Only a human has a mailbox.
+		const recipient = projectRelations.map((relation) => relation.user).find(isUser);
+		return recipient ?? (await this.ownershipService.getInstanceOwner());
 	}
 }

@@ -69,6 +69,7 @@ erDiagram
   json personalizationAnswers
   varchar_128_ roleSlug FK
   json settings
+  varchar_32_ type
   timestamp_3__with_time_zone updatedAt
 }
 ```

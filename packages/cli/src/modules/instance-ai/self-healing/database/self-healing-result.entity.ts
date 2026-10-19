@@ -3,7 +3,7 @@ import {
 	DateTimeColumn,
 	JsonColumn,
 	Project,
-	User,
+	Actor,
 	WorkflowEntity,
 	WithTimestampsAndStringId,
 } from '@n8n/db';
@@ -34,9 +34,9 @@ export class SelfHealingResult extends WithTimestampsAndStringId {
 	@Column({ type: 'uuid' })
 	backgroundUserId: string;
 
-	@ManyToOne(() => User, { nullable: false, onDelete: 'CASCADE' })
+	@ManyToOne(() => Actor, { nullable: false, onDelete: 'CASCADE' })
 	@JoinColumn({ name: 'backgroundUserId' })
-	backgroundUser: Relation<User>;
+	backgroundUser: Relation<Actor>;
 
 	@Column({ type: 'varchar', length: 16 })
 	outcome: SelfHealingResultOutcome;
@@ -71,7 +71,7 @@ export class SelfHealingResult extends WithTimestampsAndStringId {
 	@Column({ type: 'uuid', nullable: true })
 	dismissedById: string | null;
 
-	@ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
+	@ManyToOne(() => Actor, { nullable: true, onDelete: 'SET NULL' })
 	@JoinColumn({ name: 'dismissedById' })
-	dismissedBy: Relation<User> | null;
+	dismissedBy: Relation<Actor> | null;
 }

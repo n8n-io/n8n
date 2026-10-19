@@ -10,6 +10,7 @@ import {
 	SettingsRepository,
 	type User,
 	UserRepository,
+	isUser,
 } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
@@ -347,7 +348,7 @@ export class OidcService {
 			},
 		});
 
-		if (openidUser) {
+		if (openidUser && isUser(openidUser.user)) {
 			await this.applySsoProvisioning(openidUser.user, claims, userInfo);
 
 			return { user: openidUser.user, idToken: tokens.id_token };

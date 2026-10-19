@@ -12,6 +12,7 @@ import {
 	Role,
 	SettingsRepository,
 	Scope,
+	isUser,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 
@@ -129,6 +130,8 @@ export class OwnershipService {
 			await this.projectRelationRepository.getPersonalProjectOwners(projectIdsToFetch);
 		const ownersToCache: Record<string, Partial<User>> = {};
 		for (const { projectId, user } of ownerRelations) {
+			// The cache holds humans. A personal project of a service account is read again each time.
+			if (!isUser(user)) continue;
 			ownerByProjectId.set(projectId, user);
 			ownersToCache[projectId] = this.copyUser(user);
 		}

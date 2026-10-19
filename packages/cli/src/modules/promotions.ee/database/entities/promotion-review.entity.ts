@@ -1,5 +1,5 @@
 import type { PromotionReviewState, PromotionReviewType } from '@n8n/api-types';
-import { DateTimeColumn, User, WithCreatedAt } from '@n8n/db';
+import { Actor, DateTimeColumn, WithCreatedAt } from '@n8n/db';
 import {
 	BeforeInsert,
 	Column,
@@ -73,13 +73,13 @@ export class PromotionReview extends WithCreatedAt {
 	@JoinColumn({ name: 'connectionId' })
 	connection: Relation<PromotionConnection> | null;
 
-	@ManyToOne(() => User, { onDelete: 'SET NULL', nullable: true })
+	@ManyToOne(() => Actor, { onDelete: 'SET NULL', nullable: true })
 	@JoinColumn({ name: 'createdById' })
-	createdBy: Relation<User> | null;
+	createdBy: Relation<Actor> | null;
 
-	@ManyToOne(() => User, { onDelete: 'SET NULL', nullable: true })
+	@ManyToOne(() => Actor, { onDelete: 'SET NULL', nullable: true })
 	@JoinColumn({ name: 'approvedById' })
-	approvedBy: Relation<User> | null;
+	approvedBy: Relation<Actor> | null;
 
 	@OneToMany(
 		() => PromotionRun,

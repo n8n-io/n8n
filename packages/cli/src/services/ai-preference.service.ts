@@ -10,7 +10,7 @@ import type {
 	AiPreferencesAppliedPayload,
 } from '@n8n/api-types';
 import { AI_PREFERENCE_MAX_PER_SCOPE, aiPreferenceTargetOf } from '@n8n/api-types';
-import type { AiPreference, Project, ProjectRelation, User } from '@n8n/db';
+import type { Actor, AiPreference, Project, ProjectRelation, User } from '@n8n/db';
 import {
 	AiPreferenceRepository,
 	ProjectRelationRepository,
@@ -77,7 +77,7 @@ class ProjectAccess {
 /** A loaded relation outranks the id column on save, so a move sets both. */
 type PreferenceTarget = {
 	userId: string | null;
-	user: User | null;
+	user: Actor | null;
 	projectId: string | null;
 	project: Project | null;
 };
@@ -549,24 +549,10 @@ export class AiPreferenceService {
 			id: row.id,
 			content: row.content,
 			userId: row.userId,
-			user: row.user
-				? {
-						id: row.user.id,
-						email: row.user.email,
-						firstName: row.user.firstName,
-						lastName: row.user.lastName,
-					}
-				: null,
+			user: row.user?.toIUser() ?? null,
 			projectId: row.projectId,
 			source: row.source,
-			createdBy: row.createdBy
-				? {
-						id: row.createdBy.id,
-						email: row.createdBy.email,
-						firstName: row.createdBy.firstName,
-						lastName: row.createdBy.lastName,
-					}
-				: null,
+			createdBy: row.createdBy?.toIUser() ?? null,
 			project: row.project
 				? {
 						id: row.project.id,

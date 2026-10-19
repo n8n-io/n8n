@@ -87,6 +87,7 @@ erDiagram
   TEXT personalizationAnswers
   varchar_128_ roleSlug FK
   TEXT settings
+  VARCHAR_32_ type
   datetime_3_ updatedAt
 }
 "agent_eval_dataset" {

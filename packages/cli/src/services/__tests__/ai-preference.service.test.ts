@@ -5,11 +5,10 @@ import type {
 	ProjectRelation,
 	ProjectRelationRepository,
 	ProjectRepository,
-	User,
 	UserRepository,
 } from '@n8n/db';
 import { AI_PREFERENCE_MAX_PER_SCOPE } from '@n8n/api-types';
-import { GLOBAL_MEMBER_ROLE, GLOBAL_OWNER_ROLE } from '@n8n/db';
+import { GLOBAL_MEMBER_ROLE, GLOBAL_OWNER_ROLE, User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import { AiPreferenceScopeFullError } from '@/errors/response-errors/ai-preference-scope-full.error';
@@ -420,7 +419,7 @@ describe('AiPreferenceService', () => {
 		});
 
 		it('names the caller as the author of a new row', async () => {
-			const author = mock<User>({
+			const author = Object.assign(new User(), {
 				id: 'user-1',
 				role: GLOBAL_MEMBER_ROLE,
 				email: 'jane@acme.com',
@@ -867,7 +866,7 @@ describe('AiPreferenceService', () => {
 		});
 
 		it('returns the author of the row, and no author once that user is deleted', async () => {
-			const author = mock<User>({
+			const author = Object.assign(new User(), {
 				id: 'user-2',
 				email: 'jane@acme.com',
 				firstName: 'Jane',

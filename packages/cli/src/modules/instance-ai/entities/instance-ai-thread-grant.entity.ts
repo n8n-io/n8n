@@ -1,4 +1,4 @@
-import { User, WithTimestamps } from '@n8n/db';
+import { Actor, WithTimestamps } from '@n8n/db';
 import { Entity, Index, JoinColumn, ManyToOne, PrimaryColumn } from '@n8n/typeorm';
 
 import { InstanceAiThread } from './instance-ai-thread.entity';
@@ -27,9 +27,9 @@ export class InstanceAiThreadGrant extends WithTimestamps {
 
 	// `userId` isn't the PK prefix, so index it explicitly for the user cascade.
 	@Index()
-	@ManyToOne(() => User, { onDelete: 'CASCADE' })
+	@ManyToOne(() => Actor, { onDelete: 'CASCADE' })
 	@JoinColumn({ name: 'userId' })
-	user: User;
+	user: Actor;
 
 	@PrimaryColumn({ type: 'uuid' })
 	userId: string;

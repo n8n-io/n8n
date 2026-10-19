@@ -2,7 +2,7 @@ import { inTest, Logger } from '@n8n/backend-common';
 import { EventService, UrlService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type { ApiKey, User } from '@n8n/db';
-import { UserRepository } from '@n8n/db';
+import { isUser, UserRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { AssignableProjectRole } from '@n8n/permissions';
 import { existsSync } from 'fs';
@@ -136,6 +136,8 @@ export class UserManagementMailer {
 		revoker: User;
 	}): Promise<SendEmailResult> {
 		if (!this.mailer) return { emailSent: false };
+		// Only a human has a mailbox.
+		if (!isUser(apiKey.user)) return { emailSent: false };
 
 		const baseUrl = this.urlService.getInstanceBaseUrl();
 		const template = await this.getTemplate('api-key-revoked');

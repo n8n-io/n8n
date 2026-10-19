@@ -3,7 +3,13 @@ import { Logger } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
 import { GlobalConfig } from '@n8n/config';
 import type { Settings, User } from '@n8n/db';
-import { AuthIdentityRepository, isValidEmail, SettingsRepository, UserRepository } from '@n8n/db';
+import {
+	isUser,
+	AuthIdentityRepository,
+	isValidEmail,
+	SettingsRepository,
+	UserRepository,
+} from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { createPublicKey, randomBytes, X509Certificate } from 'crypto';
@@ -395,7 +401,7 @@ export class SamlService {
 				attributes.userPrincipalName,
 				'saml',
 			);
-			if (identity?.user) {
+			if (identity?.user && isUser(identity.user)) {
 				await this.applySsoProvisioning(identity.user, attributes, rawAttributes);
 				return {
 					authenticatedUser: identity.user,

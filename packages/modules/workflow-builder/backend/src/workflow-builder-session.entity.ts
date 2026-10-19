@@ -50,7 +50,7 @@ export class WorkflowBuilderSession extends WithTimestamps implements IWorkflowB
 	@Column({ type: 'uuid' })
 	userId: string;
 
-	@ManyToOne('User', { onDelete: 'CASCADE' })
+	@ManyToOne('Actor', { onDelete: 'CASCADE' })
 	@JoinColumn({ name: 'userId' })
 	user?: Relation<object>;
 

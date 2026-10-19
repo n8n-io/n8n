@@ -18,12 +18,14 @@
 | personalizationAnswers | json |  | true |  |  |  |
 | roleSlug | varchar(128) | 'global:member'::character varying | false |  | [public.role](public.role.md) |  |
 | settings | json |  | true |  |  |  |
+| type | varchar(32) | 'human'::character varying | false |  |  | Kind of caller: human or service |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| CHK_user_type | CHECK | CHECK (((type)::text = ANY ((ARRAY['human'::character varying, 'service'::character varying])::text[]))) |
 | FK_eaea92ee7bfb9c1b6cd01505d56 | FOREIGN KEY | FOREIGN KEY ("roleSlug") REFERENCES role(slug) |
 | PK_ea8f538c94b6e352418254ed6474a81f | PRIMARY KEY | PRIMARY KEY (id) |
 | UQ_e12875dfb3b1d92d7d7c5377e2 | UNIQUE | UNIQUE (email) |
@@ -32,6 +34,7 @@
 | user_id_not_null | n | NOT NULL id |
 | user_mfaEnabled_not_null | n | NOT NULL "mfaEnabled" |
 | user_roleSlug_not_null | n | NOT NULL "roleSlug" |
+| user_type_not_null | n | NOT NULL type |
 | user_updatedAt_not_null | n | NOT NULL "updatedAt" |
 
 ## Indexes
@@ -112,6 +115,7 @@ erDiagram
   json personalizationAnswers
   varchar_128_ roleSlug FK
   json settings
+  varchar_32_ type
   timestamp_3__with_time_zone updatedAt
 }
 "public.activity_event" {

@@ -1,7 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { Time } from '@n8n/constants';
 import type { AuthenticatedRequest, TokenGrant } from '@n8n/db';
-import { ApiKeyRepository } from '@n8n/db';
+import { isUser, ApiKeyRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { TokenExpiredError } from 'jsonwebtoken';
 
@@ -47,6 +47,8 @@ export class ApiKeyAuthStrategy implements AuthStrategy {
 		});
 
 		if (!apiKeyRecord?.user) return false;
+		// A service account API key gets its own path in a later ticket.
+		if (!isUser(apiKeyRecord.user)) return false;
 
 		if (apiKeyRecord.user.disabled) return false;
 

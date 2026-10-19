@@ -14,6 +14,7 @@ import {
 	TransactionRunner,
 	type User,
 	UserRepository,
+	isUser,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import {
@@ -201,12 +202,13 @@ export class TrustedSourceIdentityService extends IdentityService {
 			await this.identities.touchLastSeen(binding.sourceId, binding.subject, new Date(), ctx);
 		}
 
-		// Holds the roles to write, so the closure below sees a narrowed value.
+		// Holds the roles to write and the human they apply to, so the closure below sees narrowed values.
 		const continuous =
 			mappedRoles !== undefined &&
 			binding.provenance === 'jit' &&
+			isUser(binding.user) &&
 			binding.user.role.slug !== GLOBAL_OWNER_ROLE_SLUG
-				? mappedRoles
+				? { ...mappedRoles, user: binding.user }
 				: undefined;
 
 		return {
@@ -217,17 +219,17 @@ export class TrustedSourceIdentityService extends IdentityService {
 				...(continuous && {
 					onCommit: async () => {
 						await continuous.provider.applyResolvedRoles(
-							binding.user,
+							continuous.user,
 							continuous.resolved,
 							continuous.managed,
 						);
 						// The request that changed the role must run with the new role, so re-read it.
 						if (
 							!continuous.managed.instanceRole ||
-							binding.user.role.slug === continuous.instanceRole
+							continuous.user.role.slug === continuous.instanceRole
 						)
 							return;
-						const user = await this.users.findByIdWithRole(binding.user.id);
+						const user = await this.users.findByIdWithRole(continuous.user.id);
 						return user === null ? undefined : principalFromUser(user);
 					},
 				}),

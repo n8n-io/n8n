@@ -3,7 +3,7 @@ import { Entity, JoinColumn, ManyToOne, PrimaryColumn } from '@n8n/typeorm';
 import { WithTimestamps } from './abstract-entity';
 import { Project } from './project';
 import { Role } from './role';
-import { User } from './user';
+import { Actor } from './actor';
 
 @Entity()
 export class ProjectRelation extends WithTimestamps {
@@ -11,8 +11,8 @@ export class ProjectRelation extends WithTimestamps {
 	@JoinColumn({ name: 'role', referencedColumnName: 'slug' })
 	role: Role;
 
-	@ManyToOne('User', 'projectRelations')
-	user: User;
+	@ManyToOne('Actor', 'projectRelations')
+	user: Actor;
 
 	@PrimaryColumn('uuid')
 	userId: string;

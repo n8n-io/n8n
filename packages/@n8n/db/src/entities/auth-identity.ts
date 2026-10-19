@@ -2,7 +2,7 @@ import { Column, Entity, ManyToOne, PrimaryColumn, Unique } from '@n8n/typeorm';
 
 import { WithTimestamps } from './abstract-entity';
 import { AuthProviderType } from './types-db';
-import { User } from './user';
+import { Actor } from './actor';
 
 @Entity()
 @Unique(['providerId', 'providerType'])
@@ -11,10 +11,10 @@ export class AuthIdentity extends WithTimestamps {
 	userId: string;
 
 	@ManyToOne(
-		() => User,
-		(user) => user.authIdentities,
+		() => Actor,
+		(actor) => actor.authIdentities,
 	)
-	user: User;
+	user: Actor;
 
 	@PrimaryColumn({ length: 255 })
 	providerId: string;
@@ -23,7 +23,7 @@ export class AuthIdentity extends WithTimestamps {
 	providerType: AuthProviderType;
 
 	static create(
-		user: User,
+		user: Actor,
 		providerId: string,
 		providerType: AuthProviderType = 'ldap',
 	): AuthIdentity {

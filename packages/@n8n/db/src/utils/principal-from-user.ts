@@ -1,15 +1,19 @@
 import type { Principal } from '@n8n/permissions';
 
-import type { User } from '../entities';
+import { isUser } from './actor-guards';
+import type { Actor } from '../entities';
 
-export function principalFromUser(user: User): Principal {
+export function principalFromUser(actor: Actor): Principal {
+	if (!isUser(actor)) {
+		return { id: actor.id, type: actor.type, role: actor.role };
+	}
 	// The columns are nullable, but the entity types them as `string`.
 	return {
-		id: user.id,
-		type: 'human',
-		role: user.role,
-		email: user.email ?? undefined,
-		firstName: user.firstName ?? undefined,
-		lastName: user.lastName ?? undefined,
+		id: actor.id,
+		type: actor.type,
+		role: actor.role,
+		email: actor.email ?? undefined,
+		firstName: actor.firstName ?? undefined,
+		lastName: actor.lastName ?? undefined,
 	};
 }

@@ -7,7 +7,7 @@ import {
 	DateTimeColumn,
 	JsonColumn,
 	Project,
-	User,
+	Actor,
 	WorkflowEntity,
 	WithTimestampsAndStringId,
 } from '@n8n/db';
@@ -36,9 +36,9 @@ export class WorkflowSuggestion extends WithTimestampsAndStringId {
 	@Column({ type: 'uuid' })
 	backgroundUserId: string;
 
-	@ManyToOne(() => User, { nullable: false, onDelete: 'CASCADE' })
+	@ManyToOne(() => Actor, { nullable: false, onDelete: 'CASCADE' })
 	@JoinColumn({ name: 'backgroundUserId' })
-	backgroundUser: Relation<User>;
+	backgroundUser: Relation<Actor>;
 
 	@JsonColumn()
 	expectedBaseline: WorkflowSuggestionBaseline['expectedBaseline'];

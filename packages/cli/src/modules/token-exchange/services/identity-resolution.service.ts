@@ -6,6 +6,7 @@ import {
 	GLOBAL_MEMBER_ROLE,
 	UserRepository,
 	type User,
+	isUser,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { GLOBAL_OWNER_ROLE_SLUG, isBuiltInRole } from '@n8n/permissions';
@@ -161,15 +162,22 @@ export class IdentityResolutionService {
 		allowedRoles: string[] | undefined,
 		tokenContext: { kid: string; issuer: string; requireVerifiedEmail: boolean } | undefined,
 	): Promise<User> {
-		this.assertKeyMayActAsUser(identity.user, allowedRoles);
+		const user = identity.user;
+		if (!isUser(user)) {
+			throw new TokenExchangeAuthError(
+				TokenExchangeFailureReason.RoleNotAllowed,
+				'Identity is not linked to a user',
+			);
+		}
+		this.assertKeyMayActAsUser(user, allowedRoles);
 
 		this.logger.debug('Resolved user by auth identity', { sub: claims.sub });
 		const resolvedRole = await this.resolveRoleForExistingUser(
 			claims.role,
 			allowedRoles,
-			identity.user.role?.slug,
+			user.role?.slug,
 		);
-		return await this.syncProfile(identity.user, claims, resolvedRole, tokenContext);
+		return await this.syncProfile(user, claims, resolvedRole, tokenContext);
 	}
 
 	/** Path 2: link an external identity to an existing user found by email. */

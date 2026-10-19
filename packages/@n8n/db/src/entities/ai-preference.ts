@@ -11,7 +11,7 @@ import {
 
 import { WithTimestamps } from './abstract-entity';
 import type { Project } from './project';
-import type { User } from './user';
+import type { Actor } from './actor';
 
 /**
  * Free-text instruction injected into AI prompts. `userId` set: personal to one user.
@@ -33,9 +33,9 @@ export class AiPreference extends WithTimestamps {
 	@Column({ type: 'uuid', nullable: true })
 	userId: string | null;
 
-	@ManyToOne('User', { onDelete: 'CASCADE' })
+	@ManyToOne('Actor', { onDelete: 'CASCADE' })
 	@JoinColumn({ name: 'userId' })
-	user: Relation<User> | null;
+	user: Relation<Actor> | null;
 
 	@Index()
 	@Column({ type: 'varchar', length: 36, nullable: true })
@@ -48,7 +48,7 @@ export class AiPreference extends WithTimestamps {
 	@Column({ type: 'uuid', nullable: true })
 	createdById: string | null;
 
-	@ManyToOne('User', { onDelete: 'SET NULL' })
+	@ManyToOne('Actor', { onDelete: 'SET NULL' })
 	@JoinColumn({ name: 'createdById' })
-	createdBy: Relation<User> | null;
+	createdBy: Relation<Actor> | null;
 }

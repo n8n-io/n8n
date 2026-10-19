@@ -308,12 +308,7 @@ export class PublicApiKeyService {
 			...rest,
 			apiKey: this.redactApiKey(apiKeyRecord.apiKey),
 			expiresAt: this.getApiKeyExpiration(apiKeyRecord.apiKey),
-			owner: {
-				id: user.id,
-				firstName: user.firstName ?? null,
-				lastName: user.lastName ?? null,
-				email: user.email,
-			},
+			owner: user.toIUser(),
 		};
 	}
 

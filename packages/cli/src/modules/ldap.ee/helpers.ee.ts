@@ -7,6 +7,7 @@ import {
 	AuthProviderSyncHistoryRepository,
 	UserRepository,
 	GLOBAL_MEMBER_ROLE,
+	isUser,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { validate } from 'jsonschema';
@@ -138,7 +139,7 @@ export const getLdapUsers = async (): Promise<User[]> => {
 			providerType: 'ldap',
 		},
 	});
-	return identities.map((i) => i.user);
+	return identities.map((i) => i.user).filter(isUser);
 };
 
 /**

@@ -3,17 +3,17 @@ import { Column, Entity, Index, ManyToOne, Unique } from '@n8n/typeorm';
 import { ApiKeyAudience } from 'n8n-workflow';
 
 import { DateTimeColumn, JsonColumn, WithTimestampsAndStringId } from './abstract-entity';
-import { User } from './user';
+import { Actor } from './actor';
 
 @Entity('user_api_keys')
 @Unique(['userId', 'label'])
 export class ApiKey extends WithTimestampsAndStringId {
 	@ManyToOne(
-		() => User,
-		(user) => user.id,
+		() => Actor,
+		(actor) => actor.id,
 		{ onDelete: 'CASCADE' },
 	)
-	user: User;
+	user: Actor;
 
 	@Column({ type: String })
 	userId: string;

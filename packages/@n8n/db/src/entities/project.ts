@@ -14,7 +14,7 @@ import type { ProjectSecretsProviderAccess } from './project-secrets-provider-ac
 import type { RoleMappingRule } from './role-mapping-rule';
 import type { SharedCredentials } from './shared-credentials';
 import type { SharedWorkflow } from './shared-workflow';
-import { User } from './user';
+import { Actor } from './actor';
 import type { Variables } from './variables';
 
 @Entity()
@@ -55,7 +55,7 @@ export class Project extends WithTimestampsAndStringId {
 	@Column({ type: String, nullable: true })
 	creatorId: string | null;
 
-	@ManyToOne('User', { onDelete: 'SET NULL' })
+	@ManyToOne('Actor', { onDelete: 'SET NULL' })
 	@JoinColumn({ name: 'creatorId' })
-	creator?: Relation<User>;
+	creator?: Relation<Actor>;
 }

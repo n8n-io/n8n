@@ -302,7 +302,7 @@ describe('POST /ldap/sync', () => {
 
 			// Make sure the changes in the "LDAP server" were not persisted in the database
 			const localLdapIdentities = await getLdapIdentities();
-			const localLdapUsers = localLdapIdentities.map(({ user }) => user);
+			const localLdapUsers = localLdapIdentities.map(({ user }) => user as User);
 			expect(localLdapUsers.length).toBe(1);
 			expect(localLdapUsers[0].id).toBe(member.id);
 			expect(localLdapUsers[0].lastName).toBe(member.lastName);
@@ -323,7 +323,7 @@ describe('POST /ldap/sync', () => {
 
 			// Make sure the changes in the "LDAP server" were not persisted in the database
 			const localLdapIdentities = await getLdapIdentities();
-			const localLdapUsers = localLdapIdentities.map(({ user }) => user);
+			const localLdapUsers = localLdapIdentities.map(({ user }) => user as User);
 			expect(localLdapUsers.length).toBe(1);
 			expect(localLdapUsers[0].id).toBe(member.id);
 			expect(localLdapUsers[0].disabled).toBe(false);
@@ -411,7 +411,7 @@ describe('POST /ldap/sync', () => {
 
 			// Make sure the changes in the "LDAP server" were persisted in the database
 			const localLdapIdentities = await getLdapIdentities();
-			const localLdapUsers = localLdapIdentities.map(({ user }) => user);
+			const localLdapUsers = localLdapIdentities.map(({ user }) => user as User);
 
 			expect(localLdapUsers.length).toBe(1);
 			expect(localLdapUsers[0].email).toBe(ldapUser.mail);
@@ -553,7 +553,7 @@ describe('POST /ldap/sync', () => {
 
 			// Verify user still has original email
 			const localLdapIdentities = await getLdapIdentities();
-			const localLdapUsers = localLdapIdentities.map(({ user }) => user);
+			const localLdapUsers = localLdapIdentities.map(({ user }) => user as User);
 			expect(localLdapUsers.length).toBe(1);
 			expect(localLdapUsers[0].email).toBe(originalEmail);
 		});
@@ -610,7 +610,7 @@ describe('POST /login', () => {
 
 		// Make sure the changes in the "LDAP server" were persisted in the database
 		const localLdapIdentities = await getLdapIdentities();
-		const localLdapUsers = localLdapIdentities.map(({ user }) => user);
+		const localLdapUsers = localLdapIdentities.map(({ user }) => user as User);
 
 		expect(localLdapUsers.length).toBe(1);
 		expect(localLdapUsers[0].email).toBe(ldapUser.mail);

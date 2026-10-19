@@ -1,4 +1,4 @@
-import { DateTimeColumn, User, WithTimestamps } from '@n8n/db';
+import { DateTimeColumn, Actor, WithTimestamps } from '@n8n/db';
 import { Column, Entity, Index, JoinColumn, ManyToOne, PrimaryColumn } from '@n8n/typeorm';
 
 import { InstanceAiCheckpoint } from './instance-ai-checkpoint.entity';
@@ -34,9 +34,9 @@ export class InstanceAiPendingConfirmation extends WithTimestamps {
 	@Column({ type: 'uuid' })
 	threadId: string;
 
-	@ManyToOne(() => User, { onDelete: 'CASCADE' })
+	@ManyToOne(() => Actor, { onDelete: 'CASCADE' })
 	@JoinColumn({ name: 'userId' })
-	user: User;
+	user: Actor;
 
 	@Index()
 	@Column({ type: 'uuid' })

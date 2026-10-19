@@ -2,7 +2,7 @@ import { Time } from '@n8n/constants';
 import { Column, Entity, Index, JoinColumn, ManyToOne, Relation } from '@n8n/typeorm';
 
 import { JsonColumn, WithTimestampsAndStringId } from './abstract-entity';
-import type { User } from './user';
+import type { Actor } from './actor';
 
 export const idempotencyKeyStatuses = ['processing', 'completed'] as const;
 
@@ -22,9 +22,9 @@ export class IdempotencyKey extends WithTimestampsAndStringId {
 	@Column({ type: 'uuid' })
 	userId: string;
 
-	@ManyToOne('User', { onDelete: 'CASCADE' })
+	@ManyToOne('Actor', { onDelete: 'CASCADE' })
 	@JoinColumn({ name: 'userId' })
-	user: Relation<User>;
+	user: Relation<Actor>;
 
 	@Column({ type: 'varchar', length: 128 })
 	idempotencyKey: string;

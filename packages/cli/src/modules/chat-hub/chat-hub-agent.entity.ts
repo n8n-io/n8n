@@ -3,7 +3,7 @@ import type {
 	AgentIconOrEmoji,
 	ChatHubAgentKnowledgeItem,
 } from '@n8n/api-types';
-import { User, CredentialsEntity, JsonColumn, WithTimestamps } from '@n8n/db';
+import { Actor, CredentialsEntity, JsonColumn, WithTimestamps } from '@n8n/db';
 import {
 	Column,
 	Entity,
@@ -77,9 +77,9 @@ export class ChatHubAgent extends WithTimestamps {
 	/**
 	 * The user that owns this chat agent.
 	 */
-	@ManyToOne('User', { onDelete: 'CASCADE' })
+	@ManyToOne('Actor', { onDelete: 'CASCADE' })
 	@JoinColumn({ name: 'ownerId' })
-	owner?: User;
+	owner?: Actor;
 
 	/*
 	 * ID of the selected credential to use by default with the selected LLM provider.

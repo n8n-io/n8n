@@ -1,4 +1,4 @@
-import { JsonColumn, User } from '@n8n/db';
+import { JsonColumn, Actor } from '@n8n/db';
 import { Column, Entity, Index, ManyToOne, PrimaryGeneratedColumn, Unique } from '@n8n/typeorm';
 
 import { OAuthClient } from './oauth-client.entity';
@@ -9,8 +9,8 @@ export class UserConsent {
 	@PrimaryGeneratedColumn()
 	id: number;
 
-	@ManyToOne(() => User, { onDelete: 'CASCADE' })
-	user: User;
+	@ManyToOne(() => Actor, { onDelete: 'CASCADE' })
+	user: Actor;
 
 	@Index()
 	@Column({ type: String })

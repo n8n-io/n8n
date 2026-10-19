@@ -1,5 +1,5 @@
 import type { PromotionDirection, PromotionRunDetails, PromotionRunType } from '@n8n/api-types';
-import { JsonColumn, User, WithCreatedAt } from '@n8n/db';
+import { Actor, JsonColumn, WithCreatedAt } from '@n8n/db';
 import {
 	BeforeInsert,
 	Column,
@@ -58,9 +58,9 @@ export class PromotionRun extends WithCreatedAt {
 	@JoinColumn({ name: 'configId' })
 	config: Relation<PromotionConfig> | null;
 
-	@ManyToOne(() => User, { onDelete: 'SET NULL', nullable: true })
+	@ManyToOne(() => Actor, { onDelete: 'SET NULL', nullable: true })
 	@JoinColumn({ name: 'createdById' })
-	createdBy: Relation<User> | null;
+	createdBy: Relation<Actor> | null;
 
 	@ManyToOne(
 		() => PromotionReview,

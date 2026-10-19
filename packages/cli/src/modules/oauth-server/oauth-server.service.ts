@@ -21,6 +21,7 @@ import { ProtectedResourceRegistry, type ProtectedResource } from '@n8n/backend-
 import { GlobalConfig } from '@n8n/config';
 import { INSTANCE_MCP_RESOURCE_ID } from '@n8n/constants';
 import type { User } from '@n8n/db';
+import { isUser } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import type { Response } from 'express';
@@ -772,12 +773,7 @@ export class OAuthServerService implements OAuthServerProvider {
 				scopes: consent.scope,
 				...(listAll
 					? {
-							owner: {
-								id: consent.user.id,
-								firstName: consent.user.firstName ?? null,
-								lastName: consent.user.lastName ?? null,
-								email: consent.user.email,
-							},
+							owner: consent.user.toIUser(),
 						}
 					: {}),
 			};
@@ -864,7 +860,8 @@ export class OAuthServerService implements OAuthServerProvider {
 			});
 		}
 
-		if (revoker && revoker.id !== userId) {
+		// Only a human has a mailbox.
+		if (revoker && revoker.id !== userId && isUser(consent.user)) {
 			this.mailer
 				.notifyMcpClientRevoked({ clientName: client.name, owner: consent.user, revoker })
 				.catch((e) => {

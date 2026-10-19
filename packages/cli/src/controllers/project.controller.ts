@@ -154,13 +154,7 @@ export class ProjectController {
 			description,
 			customTelemetryTags,
 			creatorId: project.creatorId ?? null,
-			relations: relations.map((r) => ({
-				id: r.user.id,
-				email: r.user.email,
-				firstName: r.user.firstName,
-				lastName: r.user.lastName,
-				role: r.role.slug,
-			})),
+			relations: relations.map((r) => ({ ...r.user.toIUser(), role: r.role.slug })),
 			implicitMembers: implicitMembers.map((user) => ({
 				id: user.id,
 				email: user.email,
