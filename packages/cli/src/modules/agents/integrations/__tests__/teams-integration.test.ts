@@ -6,7 +6,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { ConflictError } from '@n8n/errors';
 
-import type { Agent } from '../../entities/agent.entity';
+import type { ProjectAgent } from '../../entities/agent.entity';
 import type { AgentRepository } from '../../repositories/agent.repository';
 import type {
 	AgentChatIntegrationContext,
@@ -90,6 +90,53 @@ describe('TeamsIntegration', () => {
 		// webhooks is what makes that default correct here.
 		it('runs on every main', () => {
 			expect(integration.requiresLeader()).toBe(false);
+		});
+
+		it('offers sends that need no inbound message, for scheduled tasks', () => {
+			expect(integration.actions).toEqual(
+				expect.arrayContaining(['send_dm', 'send_channel_message']),
+			);
+		});
+	});
+
+	describe('normalizeChannelId', () => {
+		const adapter = { encodeThreadId: vi.fn(() => 'teams:encoded') };
+
+		it('has the adapter encode a raw conversation ID with the pinned service URL', () => {
+			expect(integration.normalizeChannelId('19:abc@thread.tacv2', adapter)).toBe('teams:encoded');
+			expect(adapter.encodeThreadId).toHaveBeenCalledWith({
+				conversationId: '19:abc@thread.tacv2',
+				serviceUrl: 'https://smba.trafficmanager.net/teams/',
+			});
+		});
+
+		it('leaves an ID that is already encoded untouched', () => {
+			expect(integration.normalizeChannelId('teams:abc:def', adapter)).toBe('teams:abc:def');
+		});
+
+		it('prefixes a bare ID like any other platform', () => {
+			expect(integration.normalizeChannelId('abc', adapter)).toBe('teams:abc');
+		});
+	});
+
+	describe('describeActionError', () => {
+		const permissionDenied = Object.assign(new Error('Permission denied'), {
+			code: 'PERMISSION_DENIED',
+		});
+
+		it.each([
+			['send_dm', 'installed'],
+			['send_channel_message', 'added to the team'],
+		] as const)('tells the agent how to unblock a refused %s', (action, hint) => {
+			expect(integration.describeActionError(action, permissionDenied)).toEqual({
+				code: 'PERMISSION_NOT_GRANTED',
+				message: expect.stringContaining(hint),
+			});
+		});
+
+		it('keeps the default error for anything else', () => {
+			expect(integration.describeActionError('send_dm', new Error('boom'))).toBeUndefined();
+			expect(integration.describeActionError('respond', permissionDenied)).toBeUndefined();
 		});
 	});
 
@@ -201,7 +248,7 @@ describe('TeamsIntegration', () => {
 	describe('onBeforeConnect', () => {
 		it('rejects a credential another agent already connected', async () => {
 			agentRepository.findByIntegrationCredential.mockResolvedValue([
-				mock<Agent>({ name: 'Support bot' }),
+				mock<ProjectAgent>({ name: 'Support bot' }),
 			]);
 
 			await expect(integration.onBeforeConnect(connectionContext())).rejects.toThrow(ConflictError);

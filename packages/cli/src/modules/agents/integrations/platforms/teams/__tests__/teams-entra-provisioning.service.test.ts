@@ -14,6 +14,13 @@ const user = mock<User>({ id: 'user-1' });
 const OBJECT_ID = 'object-1';
 const APP_ID = '11111111-2222-3333-4444-555555555555';
 const TENANT_ID = '99999999-8888-7777-6666-555555555555';
+// Files.Read.All, User.ReadBasic.All, Team.ReadBasic.All, Channel.ReadBasic.All
+const GRAPH_ROLES = [
+	{ id: '01d4889c-1287-42c6-ac1f-5d1e02578ef6', type: 'Role' },
+	{ id: '97235f07-e226-4f63-ace3-39588e11d3a1', type: 'Role' },
+	{ id: '2280dda6-0bfd-44ee-a2f4-cb867cfc4c1e', type: 'Role' },
+	{ id: '59a6b24b-4225-4393-8165-ebaec5f55d7a', type: 'Role' },
+];
 
 const options = {
 	user,
@@ -119,7 +126,7 @@ describe('TeamsEntraProvisioningService', () => {
 		expect(result.organizationName).toBe('Acme Corp');
 	});
 
-	it('declares the Graph file permission and the address the consent screen returns to', async () => {
+	it('declares the Graph permissions and the address the consent screen returns to', async () => {
 		const result = await service.provision(options);
 
 		const redirectUri = 'https://n8n.example.com/projects/project-1/agents/agent-1';
@@ -131,7 +138,7 @@ describe('TeamsEntraProvisioningService', () => {
 				requiredResourceAccess: [
 					{
 						resourceAppId: '00000003-0000-0000-c000-000000000000',
-						resourceAccess: [{ id: '01d4889c-1287-42c6-ac1f-5d1e02578ef6', type: 'Role' }],
+						resourceAccess: GRAPH_ROLES,
 					},
 				],
 				web: { redirectUris: [redirectUri] },
@@ -170,10 +177,7 @@ describe('TeamsEntraProvisioningService', () => {
 					{ resourceAppId: 'another-api', resourceAccess: [otherPermission] },
 					{
 						resourceAppId: '00000003-0000-0000-c000-000000000000',
-						resourceAccess: [
-							otherPermission,
-							{ id: '01d4889c-1287-42c6-ac1f-5d1e02578ef6', type: 'Role' },
-						],
+						resourceAccess: [otherPermission, ...GRAPH_ROLES],
 					},
 				],
 				web: {

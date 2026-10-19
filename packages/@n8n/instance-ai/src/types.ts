@@ -14,6 +14,7 @@ import type {
 } from '@n8n/agents';
 import type { AiGatewayNodeMeta } from '@n8n/ai-utilities/node-catalog';
 import type {
+	AgentConfigValidationIssueCode,
 	AgentJsonConfig,
 	AgentSessionStatus,
 	AgentSkill,
@@ -1481,6 +1482,18 @@ export interface InstanceAiBuilderDelegate {
 		skills: Record<string, AgentSkill>;
 		configHash: string | null;
 	} | null>;
+	/** Read-only Publish validation of the agent's draft, for the `agent_verification`
+	 *  trace metric. Resolves to `undefined` when the agent does not exist. Optional
+	 *  for the same reason as `readAgentArtifact`. */
+	validateAgent?(agentId: string): Promise<AgentValidationSummary | undefined>;
+}
+
+export interface AgentValidationSummary {
+	valid: boolean;
+	/** Distinct validation issue codes, sorted. */
+	issueCodes: AgentConfigValidationIssueCode[];
+	issueCount: number;
+	capabilityCount: number;
 }
 
 // ── Computer Use state ──────────────────────────────────────────────────────
@@ -2156,6 +2169,11 @@ export interface InstanceAiTraceContext {
 	 * for any agent (main or sub-agent) whose spans should join this trace.
 	 */
 	onMemoryTaskEvent?: (event: ScopedMemoryTaskEvent) => void;
+	/**
+	 * Keep the trace open until a background operation settles, so its spans
+	 * finish normally when it outlives the root run.
+	 */
+	keepOpenUntilSettled?: (operation: Promise<unknown>) => void;
 	/** Trace replay mode: 'record' captures tool I/O, 'replay' remaps IDs, 'off' disables. */
 	replayMode: TraceReplayMode;
 	/** Shared ID remapper instance — available in 'replay' mode. */
