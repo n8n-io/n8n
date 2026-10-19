@@ -461,7 +461,11 @@ describe('Source Control Helper', () => {
 				{ local: { availableInMCP: false }, remote: { availableInMCP: true } },
 				{ local: { timezone: 'Europe/Berlin' }, remote: { timezone: 'UTC' } },
 				{ local: {}, remote: { timezone: 'UTC' } },
-				{ local: { timezone: 'UTC' }, remote: undefined },
+				{ local: { timezone: 'UTC' }, remote: {} },
+				{
+					local: { timezone: 'UTC', credentialResolverId: 'local-resolver' },
+					remote: { timezone: 'Europe/Berlin', credentialResolverId: 'remote-resolver' },
+				},
 			])('should detect different settings: %j', ({ local, remote }) => {
 				expect(
 					isWorkflowModified(
@@ -476,6 +480,12 @@ describe('Source Control Helper', () => {
 				{ local: undefined, remote: {} },
 				{ local: {}, remote: undefined },
 				{
+					local: { credentialResolverId: 'local-resolver' },
+					remote: { credentialResolverId: 'remote-resolver' },
+				},
+				{ local: { credentialResolverId: 'local-resolver' }, remote: {} },
+				{ local: {}, remote: { credentialResolverId: 'remote-resolver' } },
+				{
 					local: { availableInMCP: true, timezone: 'UTC' },
 					remote: { timezone: 'UTC', availableInMCP: true },
 				},
@@ -488,6 +498,20 @@ describe('Source Control Helper', () => {
 					),
 				).toBe(false);
 			});
+		});
+
+		it('should ignore missing remote settings on pull', () => {
+			const local = createWorkflowVersion({ settings: { timezone: 'UTC' } });
+			const remote = createWorkflowVersion({ settings: undefined });
+
+			expect(isWorkflowModified(local, remote, 'pull')).toBe(false);
+		});
+
+		it('should detect local settings against missing remote settings on push', () => {
+			const local = createWorkflowVersion({ settings: { timezone: 'UTC' } });
+			const remote = createWorkflowVersion({ settings: undefined });
+
+			expect(isWorkflowModified(local, remote, 'push')).toBe(true);
 		});
 
 		test.each(directions)('should detect modifications when owner changes (%s)', (direction) => {

@@ -17,6 +17,7 @@ import {
 import { Container } from '@n8n/di';
 import * as fastGlob from 'fast-glob';
 import { Cipher } from 'n8n-core';
+import type { IWorkflowSettings } from 'n8n-workflow';
 import { readFile, writeFile } from 'node:fs/promises';
 import { basename, isAbsolute } from 'node:path';
 import type { Mock } from 'vitest';
@@ -24,6 +25,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import { DataTable } from '@/modules/data-table/data-table.entity';
+import { InstanceRedactionEnforcementService } from '@/modules/redaction/instance-redaction-enforcement.service';
 import {
 	SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER,
 	SOURCE_CONTROL_DATATABLES_EXPORT_FOLDER,
@@ -644,12 +646,104 @@ describe('SourceControlService', () => {
 		fsReadFile.mockImplementation(async (path) => {
 			const pathStr = String(path);
 			const pathWithoutCwd = isAbsolute(pathStr) ? basename(pathStr) : pathStr;
-			return JSON.stringify(gitFiles[pathWithoutCwd]);
+			return JSON.stringify(
+				gitFiles[pathWithoutCwd] ??
+					gitFiles[`${SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER}/${pathWithoutCwd}`],
+			);
 		});
 	});
 
 	afterAll(async () => {
 		await testDb.terminate();
+	});
+
+	describe('workflow settings imports', () => {
+		const cases: Array<{
+			name: string;
+			localSettings: IWorkflowSettings;
+			remoteSettings?: IWorkflowSettings;
+			expectedSettings: IWorkflowSettings;
+			changeVersion?: boolean;
+		}> = [
+			{
+				name: 'preserves the local resolver binding when other settings change',
+				localSettings: { timezone: 'UTC', credentialResolverId: 'local-resolver' },
+				remoteSettings: { timezone: 'Europe/Berlin', credentialResolverId: 'remote-resolver' },
+				expectedSettings: { timezone: 'Europe/Berlin', credentialResolverId: 'local-resolver' },
+			},
+			{
+				name: 'keeps the default resolver when the remote file has a resolver binding',
+				localSettings: { timezone: 'UTC' },
+				remoteSettings: { timezone: 'Europe/Berlin', credentialResolverId: 'remote-resolver' },
+				expectedSettings: { timezone: 'Europe/Berlin' },
+			},
+			{
+				name: 'preserves the local resolver when the remote settings omit it',
+				localSettings: { timezone: 'UTC', credentialResolverId: 'local-resolver' },
+				remoteSettings: { timezone: 'Europe/Berlin' },
+				expectedSettings: { timezone: 'Europe/Berlin', credentialResolverId: 'local-resolver' },
+			},
+			{
+				name: 'preserves an unchanged legacy redaction policy below the instance floor',
+				localSettings: { timezone: 'UTC', redactionPolicy: 'none' },
+				remoteSettings: { timezone: 'Europe/Berlin', redactionPolicy: 'none' },
+				expectedSettings: { timezone: 'Europe/Berlin', redactionPolicy: 'none' },
+			},
+			{
+				name: 'preserves local settings when the remote file omits settings',
+				localSettings: { timezone: 'UTC', credentialResolverId: 'local-resolver' },
+				expectedSettings: { timezone: 'UTC', credentialResolverId: 'local-resolver' },
+				changeVersion: true,
+			},
+			{
+				name: 'clears ordinary settings but keeps the local resolver for empty remote settings',
+				localSettings: { timezone: 'UTC', credentialResolverId: 'local-resolver' },
+				remoteSettings: {},
+				expectedSettings: { credentialResolverId: 'local-resolver' },
+			},
+		];
+
+		test.each(cases)(
+			'$name',
+			async ({ localSettings, remoteSettings, expectedSettings, changeVersion }) => {
+				const workflow = await createWorkflow({ settings: localSettings }, projectA);
+				const workflowRepository = Container.get(WorkflowRepository);
+				const fileName = `${SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER}/${workflow.id}.json`;
+				gitFiles[fileName] = {
+					...toExportableWorkflow(workflow, projectA),
+					versionId: changeVersion ? 'remote-version' : workflow.versionId,
+					...(remoteSettings && { settings: remoteSettings }),
+				};
+				const floorSpy = vi
+					.spyOn(Container.get(InstanceRedactionEnforcementService), 'get')
+					.mockResolvedValue('all');
+
+				try {
+					const options = { direction: 'pull', preferLocalVersion: false, verbose: false } as const;
+					const initialStatus = await statusService.getStatus(globalAdmin, options);
+					const candidates = initialStatus.filter((file) => file.id === workflow.id);
+					expect(candidates).toEqual([
+						expect.objectContaining({ type: 'workflow', status: 'modified', location: 'remote' }),
+					]);
+					await Container.get(SourceControlImportService).importWorkflowFromWorkFolder(
+						candidates,
+						globalAdmin.id,
+					);
+
+					const updatedWorkflow = await workflowRepository.findOneByOrFail({ id: workflow.id });
+					expect(updatedWorkflow.settings).toEqual(expectedSettings);
+					expect(updatedWorkflow.versionId).toBe(
+						changeVersion ? 'remote-version' : workflow.versionId,
+					);
+					const nextStatus = await statusService.getStatus(globalAdmin, options);
+					expect(nextStatus.filter((file) => file.id === workflow.id)).toEqual([]);
+				} finally {
+					floorSpy.mockRestore();
+					delete gitFiles[fileName];
+					await workflowRepository.delete(workflow.id);
+				}
+			},
+		);
 	});
 
 	describe('getStatus', () => {

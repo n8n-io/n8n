@@ -5,6 +5,7 @@ import { Container } from '@n8n/di';
 import { accessSync, constants as fsConstants, mkdirSync } from 'fs';
 import chunk from 'lodash/chunk';
 import isEqual from 'lodash/isEqual';
+import omit from 'lodash/omit';
 import {
 	deepCopy,
 	jsonParse,
@@ -363,7 +364,14 @@ export function isWorkflowModified(
 		direction === 'pull' && remote.description === undefined
 			? false
 			: normalizeDescription(remote.description) !== normalizeDescription(local.description);
-	const hasSettingsChanged = !isEqual(remote.settings ?? {}, local.settings ?? {});
+	// Resolver IDs belong to one instance. Missing remote settings do not replace local settings.
+	const hasSettingsChanged =
+		direction === 'pull' && remote.settings === undefined
+			? false
+			: !isEqual(
+					omit(remote.settings ?? {}, 'credentialResolverId'),
+					omit(local.settings ?? {}, 'credentialResolverId'),
+				);
 	const ownerChanged = hasOwnerChanged(remote.owner, local.owner);
 
 	return (

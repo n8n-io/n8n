@@ -804,7 +804,16 @@ export class SourceControlImportService {
 		const personalProject = await this.projectRepository.getPersonalProjectForUserOrFail(userId);
 		const candidateIds = candidates.map((c) => c.id);
 		const existingWorkflows = await this.workflowRepository.findByIds(candidateIds, {
-			fields: ['id', 'name', 'versionId', 'active', 'activeVersionId', 'isArchived', 'nodes'],
+			fields: [
+				'id',
+				'name',
+				'versionId',
+				'active',
+				'activeVersionId',
+				'isArchived',
+				'nodes',
+				'settings',
+			],
 		});
 
 		const folders = await this.folderRepository.find({ select: ['id'] });
@@ -877,6 +886,15 @@ export class SourceControlImportService {
 			return;
 		}
 		const existingWorkflow = existingWorkflows.find((e) => e.id === id);
+
+		// Resolver IDs are local to each instance and have no source-control mapping.
+		if (importedWorkflow.settings) {
+			delete importedWorkflow.settings.credentialResolverId;
+			const localResolverId = existingWorkflow?.settings?.credentialResolverId;
+			if (localResolverId !== undefined) {
+				importedWorkflow.settings.credentialResolverId = localResolverId;
+			}
+		}
 
 		// Apply the same deprecated-node enforcement as the REST/public API
 		// endpoints. A re-sync that leaves the deprecated nodes untouched is
