@@ -832,18 +832,18 @@ describe('AiGatewayService', () => {
 	});
 
 	describe('getRequestTarget()', () => {
-		it('returns the user token and an instance-ai exec context URL for the job', async () => {
+		it('returns the user token and an instance-ai exec context URL for the thread and job', async () => {
 			requestMock.mockResolvedValueOnce(ok({ token: 'user-jwt', expiresIn: 3600 }));
 			const service = makeService();
 
 			const target = await service.getRequestTarget({
 				userId: USER_ID,
 				gatewayPath: '/v1/gateway/browserbaseBrowserUse',
-				attribution: { instanceAiJobId: 'job/1' },
+				attribution: { instanceAiThreadId: 'thread-1', instanceAiJobId: 'job/1' },
 			});
 
 			expect(target).toEqual({
-				url: `${BASE_URL}/v1/gateway/exec/instance-ai/job%2F1/browserbaseBrowserUse`,
+				url: `${BASE_URL}/v1/gateway/exec/instance-ai/thread-1%7Cjob%2F1/browserbaseBrowserUse`,
 				token: 'user-jwt',
 			});
 			expect(requestMock).toHaveBeenCalledWith(
@@ -861,7 +861,7 @@ describe('AiGatewayService', () => {
 				service.getRequestTarget({
 					userId: USER_ID,
 					gatewayPath: '/v1/gateway/browserbaseBrowserUse',
-					attribution: { instanceAiJobId: 'job-1' },
+					attribution: { instanceAiThreadId: 'thread-1', instanceAiJobId: 'job-1' },
 				}),
 			).rejects.toThrow('Gateway credits are not enabled on this instance');
 			expect(requestMock).not.toHaveBeenCalled();

@@ -6,8 +6,9 @@ import { mock } from 'vitest-mock-extended';
 import { AiGatewayBrowserUseService } from '@/services/ai-gateway-browser-use.service';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 
-const TARGET_URL = 'http://gateway.test/v1/gateway/exec/instance-ai/job-1/browserbaseBrowserUse';
-const attribution = { instanceAiJobId: 'job-1' };
+const TARGET_URL =
+	'http://gateway.test/v1/gateway/exec/instance-ai/thread-1%7Cjob-1/browserbaseBrowserUse';
+const attribution = { instanceAiThreadId: 'thread-1', instanceAiJobId: 'job-1' };
 
 describe('AiGatewayBrowserUseService', () => {
 	let requestMock: Mock;

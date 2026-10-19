@@ -8,6 +8,8 @@ export interface CloudBrowserSession {
 /** The user and background job that a session is scoped to. */
 export interface CloudBrowserSessionScope {
 	userId: string;
+	/** The thread that owns the background job. */
+	threadId: string;
 	/** The background job that owns the session. */
 	jobId: string;
 }

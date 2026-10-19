@@ -11,7 +11,7 @@ import {
 import type { CloudBrowserSessionProvider } from '../browser/cloud-browser-session-provider';
 
 describe('CloudBrowserLocalMcpServer', () => {
-	const scope = { userId: 'user-1', jobId: 'job-1' };
+	const scope = { userId: 'user-1', threadId: 'thread-1', jobId: 'job-1' };
 	const noSessionResult = {
 		content: [
 			{

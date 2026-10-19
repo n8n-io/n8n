@@ -43,7 +43,11 @@ export class InstanceAiCloudBrowserService {
 	}
 
 	/** Returns the job's server, and creates it on first use. */
-	async createServer(userId: string, jobId: string): Promise<CloudBrowserLocalMcpServer> {
+	async createServer(
+		userId: string,
+		threadId: string,
+		jobId: string,
+	): Promise<CloudBrowserLocalMcpServer> {
 		const { createBrowserTools } = await import('@n8n/mcp-browser');
 		const workDir = await createBrowserWorkDir('n8n-instance-ai-cloud-browser', userId);
 
@@ -58,7 +62,7 @@ export class InstanceAiCloudBrowserService {
 		}
 
 		const server = new CloudBrowserLocalMcpServer({
-			scope: { userId, jobId },
+			scope: { userId, threadId, jobId },
 			sessionProvider: this.getSessionProvider(jobId),
 			createToolkit: (connectUrl) =>
 				createBrowserTools({ mode: 'direct_cdp' }, { cdpEndpoint: connectUrl }),
@@ -109,15 +113,15 @@ export class InstanceAiCloudBrowserService {
 
 	private buildGatewaySessionProvider(): CloudBrowserSessionProvider {
 		return {
-			createSession: async ({ userId, jobId }) =>
+			createSession: async ({ userId, threadId, jobId }) =>
 				await this.aiGatewayBrowserUseService.createSession({
 					userId,
-					attribution: { instanceAiJobId: jobId },
+					attribution: { instanceAiThreadId: threadId, instanceAiJobId: jobId },
 				}),
-			releaseSession: async ({ userId, jobId }, sessionId) =>
+			releaseSession: async ({ userId, threadId, jobId }, sessionId) =>
 				await this.aiGatewayBrowserUseService.releaseSession({
 					userId,
-					attribution: { instanceAiJobId: jobId },
+					attribution: { instanceAiThreadId: threadId, instanceAiJobId: jobId },
 					sessionId,
 				}),
 		};
