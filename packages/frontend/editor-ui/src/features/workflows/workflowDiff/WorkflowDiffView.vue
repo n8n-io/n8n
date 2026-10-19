@@ -190,7 +190,7 @@ const onNodeChangeSelect = (change: { node: INodeUi; status: NodeDiffStatus }) =
 						:popper-class="$style.popper"
 						@visible-change="onChangesDropdownVisibleChange"
 					>
-						<N8nButton variant="outline" style="--button--radius: 4px 0 0 4px">
+						<N8nButton variant="outline">
 							<div v-if="changesCount" :class="$style.circleBadge">
 								{{ changesCount }}
 							</div>
@@ -289,14 +289,12 @@ const onNodeChangeSelect = (change: { node: INodeUi; status: NodeDiffStatus }) =
 						variant="outline"
 						icon="chevron-left"
 						:class="$style.navigationButton"
-						style="--button--radius: 0; margin: 0 -1px"
 						@click="previousNodeChange"
 					/>
 					<N8nIconButton
 						variant="outline"
 						icon="chevron-right"
 						:class="$style.navigationButton"
-						style="--button--radius: 0 4px 4px 0"
 						@click="nextNodeChange"
 					/>
 					<N8nIconButton
@@ -449,9 +447,7 @@ const onNodeChangeSelect = (change: { node: INodeUi; status: NodeDiffStatus }) =
 	border-bottom: 1px solid var(--color--foreground);
 
 	.navigationButton {
-		&:hover {
-			z-index: 1;
-		}
+		margin-left: var(--spacing--4xs);
 	}
 
 	.backButton {
