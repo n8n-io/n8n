@@ -1,0 +1,21 @@
+packages/cli/src/telemetry/__tests__/telemetry.test.ts
+  s_2d1777f2cf3d6a::t_29495f76d30f78 3
+packages/cli/src/telemetry/index.ts
+  s_2d1777f2cf3d6a::t_b9982152e4d518 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2a34d7302c7369604c9bf6ed86f1b197f185e031",
+  "prompts": {},
+  "sessions": {
+    "s_2d1777f2cf3d6a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7e21fc62-92bd-4816-bb07-064b0ce756fc",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

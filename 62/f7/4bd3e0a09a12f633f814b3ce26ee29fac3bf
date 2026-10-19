@@ -1,0 +1,36 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiAgentPreview.test.ts
+  s_b593e752900601::t_f74487f483e842 273-277
+  s_b593e752900601::t_f67f26d5bd6fe3 4,6,226,229-231,254-255,257-259,263-266,268-272,278,280,282-286,288-290
+  s_b593e752900601::t_ac9fabc033edb0 256,260-262,267,279,281,287
+  s_b593e752900601::t_057b5e224a74ec 291
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_b593e752900601::t_f67f26d5bd6fe3 8,362,4984-4986,4997-5002,5008-5050
+  s_b593e752900601::t_b8ad654e7e7b85 5051-5052
+packages/cli/src/modules/agents/__tests__/agents.service.test.ts
+  s_b593e752900601::t_def9adbf6fa08a 44-48,305
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_b593e752900601::t_ac9fabc033edb0 199,1415-1419,1442-1447,1449,1452
+packages/cli/test/integration/agents/agents-create-collision.test.ts
+  s_b593e752900601::t_f67f26d5bd6fe3 19,59-82
+  s_b593e752900601::t_75d701ecfb9c32 83-84
+packages/cli/src/modules/agents/agents.service.ts
+  s_b593e752900601::t_ac9fabc033edb0 33,167
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiAgentPreview.vue
+  s_b593e752900601::t_ac9fabc033edb0 101,106
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "62f74bd3e0a09a12f633f814b3ce26ee29fac3bf",
+  "prompts": {},
+  "sessions": {
+    "s_b593e752900601": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a15358-ba1c-7c33-bff8-d35d64a1aeeb",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
