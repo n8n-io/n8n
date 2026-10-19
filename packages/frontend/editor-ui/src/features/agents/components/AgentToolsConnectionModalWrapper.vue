@@ -101,9 +101,7 @@ import {
 	type AgentRegistryMcpDraft,
 } from '../composables/useAgentRegistryMcpConfig';
 import type { ToolPickerMode } from './AgentCapabilitiesSection.types';
-import type { WorkflowToolIncompatibilityReason } from '@n8n/api-types';
 import { toToolIconSource } from '../utils/toolIconSource';
-import { workflowToolTriggerLabel } from '../utils/workflowToolTriggers';
 import AgentToolConfigContent, { type AgentToolConfigData } from './AgentToolConfigContent.vue';
 import AgentToolConfigCredentialPicker from './AgentToolConfigCredentialPicker.vue';
 import AgentToolConfigTitleIcon from './AgentToolConfigTitleIcon.vue';
@@ -161,13 +159,8 @@ const toolTelemetry = useAgentToolTelemetry(props.data.agentId);
 const { createCredentialAdapter, fetchCatalog, preloadCredentials } = useAgentMcpDiscovery(
 	() => props.data.projectId,
 );
-const {
-	availableToolTypes,
-	availableWorkflows,
-	incompatibleWorkflows,
-	loadWorkflows,
-	resolveToolNodeType,
-} = useAgentToolCatalog();
+const { availableToolTypes, availableWorkflows, loadWorkflows, resolveToolNodeType } =
+	useAgentToolCatalog();
 const { installNode: installCommunityNode } = useInstallNode();
 const { warnIfRestricted } = useRestrictedNodeWarning();
 const usersStore = useUsersStore();
@@ -1024,42 +1017,9 @@ function availableWorkflowItem(workflow: IWorkflowDb): WorkflowConnectionItem {
 		workflowId: workflow.id,
 		title: workflow.name,
 		description: workflow.description ?? undefined,
-		// An unpublished workflow stays selectable; the warning tells the user the
-		// published agent cannot call it until they publish it.
-		warning:
-			workflow.activeVersionId === null
-				? i18n.baseText('agents.tools.workflow.notPublished')
-				: undefined,
 		status: 'none',
 		credentials: [],
 	};
-}
-
-function disabledWorkflowItem(
-	workflow: IWorkflowDb,
-	reason: WorkflowToolIncompatibilityReason,
-): WorkflowConnectionItem {
-	return {
-		id: `workflow-disabled:${workflow.id}`,
-		kind: 'workflow',
-		category: 'workflows',
-		workflowId: workflow.id,
-		title: workflow.name,
-		description: workflow.description ?? undefined,
-		status: 'none',
-		credentials: [],
-		disabled: true,
-		disabledReason: disabledWorkflowReasonText(reason),
-	};
-}
-
-function disabledWorkflowReasonText(reason: WorkflowToolIncompatibilityReason): string {
-	if (reason.reason === 'incompatible_nodes') {
-		return i18n.baseText('agents.tools.workflow.disabled.incompatibleNodes');
-	}
-	return i18n.baseText('agents.tools.workflow.disabled.noSupportedTrigger', {
-		interpolate: { trigger: workflowToolTriggerLabel() },
-	});
 }
 
 /**
@@ -1111,12 +1071,7 @@ const categories = computed<ToolCategoryKey[]>(() => {
 
 const items = computed<ToolConnectionItem[]>(() => {
 	if (isWorkflow.value) {
-		return [
-			...availableWorkflows.value.map(availableWorkflowItem),
-			...incompatibleWorkflows.value.map(({ workflow, reason }) =>
-				disabledWorkflowItem(workflow, reason),
-			),
-		];
+		return availableWorkflows.value.map(availableWorkflowItem);
 	}
 
 	const out: ToolConnectionItem[] = [];
@@ -1173,8 +1128,6 @@ function handleOpenDetail(item: ToolConnectionItem) {
 }
 
 function handleRowActivate(item: ToolConnectionItem) {
-	// Disabled rows (e.g. incompatible workflows) are visible-but-not-selectable;
-	// the row's own tooltip already explains why, so activating does nothing.
 	if (item.disabled) return;
 	if (item.status === 'connecting') return;
 	const isRestricted = item.kind === 'node' && Boolean(item.restriction);

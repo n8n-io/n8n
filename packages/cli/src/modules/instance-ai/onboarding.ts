@@ -6,13 +6,8 @@ import type {
 } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import {
-	ASK_USER_TOOL_ID,
-	loadInstanceAiRuntimeSkillSource,
-	orchestratorAgentId,
-} from '@n8n/instance-ai';
+import { ASK_USER_TOOL_ID, orchestratorAgentId } from '@n8n/instance-ai';
 import { redactTelemetryText, TELEMETRY_EVENT } from '@n8n/telemetry';
-import { UnexpectedError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
@@ -30,16 +25,11 @@ import { buildOnboardingAnswerMessage } from './internal-messages';
 import { ONBOARDING_OPENING } from './onboarding-opening';
 import { InstanceAiPendingConfirmationRepository } from './repositories/instance-ai-pending-confirmation.repository';
 
-/** Folder id under `@n8n/instance-ai/skills` of the skill preloaded on onboarding threads. */
-export const ONBOARDING_SKILL_ID = 'suggest-automations';
-
 /**
  * Marks the host-seeded card's confirmation request so the confirm endpoint can tell it from a
  * card that has a run behind it. Fits the 36-char `requestId` column together with a nanoid.
  */
 const CARD_REQUEST_ID_PREFIX = 'onboarding-';
-/** Start of the `${N8N_*}` placeholders the sandbox materializer substitutes; split so the lint rule for interpolation does not fire. */
-const PRELOAD_FORBIDDEN_PLACEHOLDER_PREFIX = '$' + '{N8N_';
 type Question = InstanceAiQuestion;
 type GivenAnswer = Extract<InstanceAiConfirmRequest, { kind: 'questions' }>['answers'][number];
 /** One answer in the `ask-user` result shape: the wire answer plus the question text. */
@@ -130,22 +120,6 @@ function mentionApps(apps: string[]): string {
 	if (apps.length === 0) return 'your tools';
 	if (apps.length <= 2) return apps.join(' and ');
 	return `${apps[0]}, ${apps[1]}, and your other tools`;
-}
-
-/**
- * Body of the preloaded skill, sent with the opening turn as is. The sandbox materializer
- * substitutes `${N8N_*}` placeholders only in the skills it writes to the workspace, so a
- * placeholder here would reach the shell as an unset variable.
- */
-export async function loadOnboardingSkill(): Promise<string> {
-	const skill = await loadInstanceAiRuntimeSkillSource().loadSkill(ONBOARDING_SKILL_ID);
-	if (!skill) throw new UnexpectedError(`Runtime skill "${ONBOARDING_SKILL_ID}" not found`);
-	if (skill.instructions.includes(PRELOAD_FORBIDDEN_PLACEHOLDER_PREFIX)) {
-		throw new UnexpectedError(
-			`Runtime skill "${ONBOARDING_SKILL_ID}" is preloaded and must not use \${N8N_*} placeholders`,
-		);
-	}
-	return skill.instructions;
 }
 
 /**

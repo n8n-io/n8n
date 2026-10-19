@@ -6,6 +6,7 @@ import {
 	MessageEventBusDestinationSentryOptionsSchema,
 	MessageEventBusDestinationSyslogOptionsSchema,
 	MessageEventBusDestinationWebhookOptionsSchema,
+	storedDestinationHostSchemas,
 	webhookParameterOptionsSchema,
 } from 'n8n-workflow';
 import { z } from 'zod';
@@ -178,17 +179,30 @@ const idSchema = z.string().openapi(commonDocs.id);
 
 const readOnlyIdSchema = readOnlyPublicSchema(logStreamingDestinationRequestReadOnlyFieldDocs.id);
 
-const destinationUnion = <Id extends z.ZodTypeAny>(id: Id) =>
-	z
-		.discriminatedUnion('type', [
-			publicWebhookSchema.extend({ id }),
-			publicSyslogSchema.extend({ id }),
-			publicSentrySchema.extend({ id }),
-		])
-		.openapi(logStreamingDestinationDocs);
-
-export const logStreamingDestinationPublicSchema = destinationUnion(idSchema);
-const createLogStreamingDestinationPublicSchema = destinationUnion(readOnlyIdSchema);
+// Responses carry stored destinations, which can predate the stricter host checks.
+export const logStreamingDestinationPublicSchema = z
+	.discriminatedUnion('type', [
+		publicWebhookSchema.extend({
+			id: idSchema,
+			url: storedDestinationHostSchemas.url.openapi(webhookDocs.url),
+		}),
+		publicSyslogSchema.extend({
+			id: idSchema,
+			host: storedDestinationHostSchemas.host.openapi(syslogDocs.host),
+		}),
+		publicSentrySchema.extend({
+			id: idSchema,
+			dsn: storedDestinationHostSchemas.url.openapi(sentryDocs.dsn),
+		}),
+	])
+	.openapi(logStreamingDestinationDocs);
+const createLogStreamingDestinationPublicSchema = z
+	.discriminatedUnion('type', [
+		publicWebhookSchema.extend({ id: readOnlyIdSchema }),
+		publicSyslogSchema.extend({ id: readOnlyIdSchema }),
+		publicSentrySchema.extend({ id: readOnlyIdSchema }),
+	])
+	.openapi(logStreamingDestinationDocs);
 const updateLogStreamingDestinationPublicSchema = z
 	.discriminatedUnion('type', [publicWebhookSchema, publicSyslogSchema, publicSentrySchema])
 	.openapi(logStreamingDestinationDocs);

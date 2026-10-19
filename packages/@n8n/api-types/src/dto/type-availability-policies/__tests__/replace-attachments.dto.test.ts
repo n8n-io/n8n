@@ -2,12 +2,21 @@ import { ReplaceAttachmentsDto } from '../replace-attachments.dto';
 
 describe('ReplaceAttachmentsDto', () => {
 	it('accepts an empty attachment list', () => {
-		expect(ReplaceAttachmentsDto.safeParse({ attachments: [] }).success).toBe(true);
+		expect(ReplaceAttachmentsDto.safeParse({ attachments: [], version: 0 }).success).toBe(true);
+	});
+
+	it('rejects a missing version', () => {
+		expect(ReplaceAttachmentsDto.safeParse({ attachments: [] }).success).toBe(false);
+	});
+
+	it.each([-1, 0.5])('rejects version %s', (version) => {
+		expect(ReplaceAttachmentsDto.safeParse({ attachments: [], version }).success).toBe(false);
 	});
 
 	it('accepts a list of attachments with unique policyIds and (isFloor, priority) pairs', () => {
 		expect(
 			ReplaceAttachmentsDto.safeParse({
+				version: 1,
 				attachments: [
 					{ policyId: 'p1', priority: 0, isFloor: false },
 					{ policyId: 'p2', priority: 0, isFloor: true },
@@ -19,6 +28,7 @@ describe('ReplaceAttachmentsDto', () => {
 
 	it('rejects duplicate policyId values', () => {
 		const result = ReplaceAttachmentsDto.safeParse({
+			version: 1,
 			attachments: [
 				{ policyId: 'p1', priority: 0, isFloor: false },
 				{ policyId: 'p1', priority: 1, isFloor: false },
@@ -33,6 +43,7 @@ describe('ReplaceAttachmentsDto', () => {
 
 	it('rejects duplicate (isFloor, priority) pairs across different policies', () => {
 		const result = ReplaceAttachmentsDto.safeParse({
+			version: 1,
 			attachments: [
 				{ policyId: 'p1', priority: 0, isFloor: false },
 				{ policyId: 'p2', priority: 0, isFloor: false },
@@ -48,7 +59,7 @@ describe('ReplaceAttachmentsDto', () => {
 	});
 
 	it('can be constructed directly from an already-valid payload', () => {
-		const dto = new ReplaceAttachmentsDto({ attachments: [] });
+		const dto = new ReplaceAttachmentsDto({ attachments: [], version: 0 });
 
 		expect(dto.attachments).toEqual([]);
 	});
@@ -56,6 +67,7 @@ describe('ReplaceAttachmentsDto', () => {
 	it('throws when parsing an invalid payload', () => {
 		expect(() =>
 			ReplaceAttachmentsDto.parse({
+				version: 1,
 				attachments: [
 					{ policyId: 'p1', priority: 0, isFloor: false },
 					{ policyId: 'p1', priority: 1, isFloor: false },

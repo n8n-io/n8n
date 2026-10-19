@@ -100,6 +100,7 @@ exports[`Scope Information > ensure scopes are defined correctly 1`] = `
   "gitConnection:update",
   "gitConnection:delete",
   "gitConnection:list",
+  "gitConnection:discover",
   "gitConnection:clone",
   "gitConnection:push",
   "gitConnection:manageProjects",

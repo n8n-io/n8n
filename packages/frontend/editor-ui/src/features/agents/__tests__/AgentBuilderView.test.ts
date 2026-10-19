@@ -26,6 +26,7 @@ import {
 	NEW_SESSION_PARAM,
 	OPEN_PREVIEW_PARAM,
 	AGENT_TOOL_CONFIG_MODAL_KEY,
+	AGENT_UNPUBLISHED_WORKFLOWS_MODAL_KEY,
 } from '../constants';
 
 const routerPush = vi.fn();
@@ -3165,16 +3166,39 @@ describe('AgentBuilderView — configuration validation', () => {
 		expect(vm.configValidation?.status).toBe('valid');
 	});
 
-	it('allows publishing when revalidation finds only unpublished workflow tools', async () => {
+	it('surfaces unpublished workflow tools in a modal and aborts the publish', async () => {
 		const notPublished = {
 			code: 'incompatible_reference',
 			reason: 'not_published',
 			path: 'tools.0.workflowId',
-			capability: { kind: 'tool', toolType: 'workflow', id: 'lookup' },
+			capability: { kind: 'tool', toolType: 'workflow', id: 'Daily lookup', index: 0 },
 		};
 		getAgentConfigValidationMock
 			.mockResolvedValueOnce({ status: 'valid', issues: [] })
 			.mockResolvedValueOnce({ status: 'invalid', issues: [notPublished] });
+		intendedConfig = {
+			name: 'Agent One',
+			...defaultLlmConfig,
+			instructions: 'You are a helpful assistant.',
+			tools: [{ type: 'workflow', workflow: 'Daily lookup', workflowId: 'wf_1', name: 'lookup' }],
+		};
+
+		const wrapper = await renderView();
+		const vm = wrapper.vm as unknown as {
+			refreshValidationBeforePublish: () => Promise<boolean>;
+		};
+
+		await expect(vm.refreshValidationBeforePublish()).resolves.toBe(false);
+		expect(openModalWithDataMock).toHaveBeenCalledWith({
+			name: AGENT_UNPUBLISHED_WORKFLOWS_MODAL_KEY,
+			data: { workflows: [{ name: 'Daily lookup', workflowId: 'wf_1' }] },
+		});
+	});
+
+	it('proceeds to publish when revalidation finds no unpublished workflow tools', async () => {
+		getAgentConfigValidationMock
+			.mockResolvedValueOnce({ status: 'valid', issues: [] })
+			.mockResolvedValueOnce({ status: 'valid', issues: [] });
 
 		const wrapper = await renderView();
 		const vm = wrapper.vm as unknown as {
@@ -3182,6 +3206,39 @@ describe('AgentBuilderView — configuration validation', () => {
 		};
 
 		await expect(vm.refreshValidationBeforePublish()).resolves.toBe(true);
+		expect(openModalWithDataMock).not.toHaveBeenCalled();
+	});
+
+	it('aborts the publish without opening a modal when the target goes stale mid-flight', async () => {
+		const notPublished = {
+			code: 'incompatible_reference',
+			reason: 'not_published',
+			path: 'tools.0.workflowId',
+			capability: { kind: 'tool', toolType: 'workflow', id: 'Daily lookup', index: 0 },
+		};
+		const pendingValidation = Promise.withResolvers<{
+			status: 'valid' | 'invalid';
+			issues: (typeof notPublished)[];
+		}>();
+		getAgentConfigValidationMock
+			.mockResolvedValueOnce({ status: 'valid', issues: [] })
+			.mockReturnValueOnce(pendingValidation.promise);
+
+		const wrapper = await renderView();
+		const vm = wrapper.vm as unknown as {
+			refreshValidationBeforePublish: () => Promise<boolean>;
+		};
+
+		const publishResult = vm.refreshValidationBeforePublish();
+		// Let the flush and the validation request start before navigating away.
+		await flushPromises();
+
+		routeParams.agentId = 'a2';
+		pendingValidation.resolve({ status: 'invalid', issues: [notPublished] });
+		await flushPromises();
+
+		await expect(publishResult).resolves.toBe(false);
+		expect(openModalWithDataMock).not.toHaveBeenCalled();
 	});
 
 	it('flushes pending edits and revalidates before publishing, aborting when still invalid', async () => {
@@ -5601,6 +5658,7 @@ describe('AgentBuilderView — three-column shell', () => {
 			'summarize_notes',
 			updatedSkill,
 			'skill-hash-1',
+			undefined,
 		);
 	});
 
@@ -5653,6 +5711,7 @@ describe('AgentBuilderView — three-column shell', () => {
 				instructions: skill.instructions,
 			},
 			'skill-hash-1',
+			undefined,
 		);
 	});
 

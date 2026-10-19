@@ -7,9 +7,12 @@ import type {
 	SkillSaveResponse,
 	SaveSkillDto,
 	SkillScope,
+	SkillUserDto,
+	SkillNewNameQueryDto,
+	SkillNewNameResponse,
 } from '@n8n/api-types';
 import { ProjectScopeService } from '@n8n/backend-services';
-import type { User } from '@n8n/db';
+import { TransactionRunner, UserRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ForbiddenError, NotFoundError, UserError } from '@n8n/errors';
 import { hasGlobalScope } from '@n8n/permissions';
@@ -20,6 +23,7 @@ import type { Skill } from '../entities/skill.entity';
 import { SkillRepository, type SkillTarget } from '../repositories/skill.repository';
 import { getAgentSkillHash } from '../utils/agent-config-hash';
 import { SkillService, toAgentSkill } from './skill.service';
+import { SkillsTelemetry } from './skills-telemetry';
 
 function scopeOf(skill: Pick<Skill, 'projectId' | 'agentId'>): SkillScope {
 	if (skill.agentId) return 'agent';
@@ -38,6 +42,9 @@ export class SkillsApiService {
 		private readonly skillService: SkillService,
 		private readonly skillRepository: SkillRepository,
 		private readonly projectScopeService: ProjectScopeService,
+		private readonly txRunner: TransactionRunner,
+		private readonly userRepository: UserRepository,
+		private readonly skillsTelemetry: SkillsTelemetry,
 	) {}
 
 	async list(user: User, query: ListSkillsQueryDto): Promise<SkillListResponse> {
@@ -64,14 +71,27 @@ export class SkillsApiService {
 		return await this.toDetail(user, await this.requireAccess(user, skillId, 'read'));
 	}
 
+	/** A free name for a new skill. Needs the create permission there, so it shows no other scope. */
+	async newName(user: User, query: SkillNewNameQueryDto): Promise<SkillNewNameResponse> {
+		const target = await this.targetForCreate(user, query);
+		return { name: await this.skillService.freeName(query.name, target) };
+	}
+
 	async create(user: User, payload: CreateSkillDto): Promise<SkillDetail> {
 		const target = await this.targetForCreate(user, payload);
 		const id = await this.skillService.create({
+			checkNameTaken: true,
 			target,
 			skill: payload.skill,
 			source: 'ui',
 			createdById: user.id,
 		});
+		await this.skillsTelemetry.created(
+			user.id,
+			[{ id, ...target }],
+			'ui',
+			payload.method ?? 'manual',
+		);
 		// No second access check: a custom role can create skills it cannot read later.
 		const [skill] = await this.skillRepository.findByIds([id]);
 		if (!skill) throw new NotFoundError('Skill not found');
@@ -80,20 +100,58 @@ export class SkillsApiService {
 
 	/** Saves the changes as the next version. Unchanged content creates nothing. */
 	async update(user: User, skillId: string, payload: SaveSkillDto): Promise<SkillSaveResponse> {
-		await this.requireAccess(user, skillId, 'update');
-		const { followingAgentIds: _following, ...saved } = await this.skillService.save(
-			skillId,
-			{ ...payload },
-			user.id,
-		);
+		const skill = await this.requireAccess(user, skillId, 'update');
+		const { scope, projectId, ...update } = payload;
+		const target = scope ? await this.targetForCreate(user, { scope, projectId }) : undefined;
+		const moves =
+			target !== undefined &&
+			(target.projectId !== skill.projectId || target.agentId !== skill.agentId);
+
+		const checkedSource = moves ? await this.skillService.assertCanMove(user, skillId) : undefined;
+
+		if (!moves) {
+			const { followingAgentIds: _following, ...saved } = await this.skillService.save(
+				skillId,
+				update,
+				user.id,
+			);
+			if (saved.created) {
+				// No move, so the skill stays where `requireAccess` read it.
+				await this.skillsTelemetry.updated(user.id, skill, 'ui', saved.version, false);
+			}
+			return { id: skillId, ...saved, skillHash: getAgentSkillHash(saved.skill) };
+		}
+
+		// One transaction, so a refused save does not leave the skill moved. The move runs
+		// first and checks the final name in the new scope only: a name that only the old
+		// scope holds does not block it. The save then checks a rename in the new scope too.
+		const { followingAgentIds, ...saved } = await this.txRunner.run({}, async (ctx) => {
+			await this.skillService.changeTarget(skillId, target, undefined, ctx, {
+				nameAfterMove: update.name,
+				checkedSource,
+			});
+			return await this.skillService.save(skillId, update, user.id, ctx);
+		});
+		// `save` leaves the refresh to the caller when it joins a transaction.
+		await this.skillService.refreshFollowingAgents(followingAgentIds);
+		if (saved.created) {
+			await this.skillsTelemetry.updated(
+				user.id,
+				{ id: skillId, ...target },
+				'ui',
+				saved.version,
+				true,
+			);
+		}
 		return { id: skillId, ...saved, skillHash: getAgentSkillHash(saved.skill) };
 	}
 
 	async delete(user: User, skillId: string): Promise<void> {
-		await this.requireAccess(user, skillId, 'delete');
+		const skill = await this.requireAccess(user, skillId, 'delete');
 		// The conflict message names only the agents the user may read, as the detail does.
 		const agentProjectIds = await this.projectScopeService.getProjectIds(user, ['agent:read']);
 		await this.skillService.deleteSkill(skillId, agentProjectIds ?? 'all');
+		await this.skillsTelemetry.deleted(user.id, skill);
 	}
 
 	private async toDetail(user: User, skill: Skill): Promise<SkillDetail> {
@@ -146,7 +204,11 @@ export class SkillsApiService {
 		return { agentId, projectId: agent.projectId };
 	}
 
-	private async targetForCreate(user: User, payload: CreateSkillDto): Promise<SkillTarget> {
+	/** Where a create or a move puts the skill. The user needs the create permission there. */
+	private async targetForCreate(
+		user: User,
+		payload: Pick<CreateSkillDto, 'scope' | 'projectId' | 'agentId'>,
+	): Promise<SkillTarget> {
 		switch (payload.scope) {
 			case 'instance':
 				if (payload.projectId || payload.agentId) {
@@ -162,7 +224,7 @@ export class SkillsApiService {
 				if (payload.agentId) throw new UserError('A project skill has no agent.');
 				await this.assertCanCreateIn(user, projectId);
 				// A global scope passes without looking at the project, so check that it exists.
-				if (!(await this.skillRepository.findProjectNames([projectId])).has(projectId)) {
+				if (!(await this.skillRepository.findProjects([projectId])).has(projectId)) {
 					throw new NotFoundError('Project not found');
 				}
 				// A personal project keeps its own skills, as a team project does.
@@ -195,10 +257,11 @@ export class SkillsApiService {
 		);
 		const projectOf = (skill: Skill) =>
 			skill.projectId ?? (skill.agentId ? (agents.get(skill.agentId)?.projectId ?? null) : null);
-		const [latest, usage, projects, canEdit, canDelete] = await Promise.all([
+		const [latest, usage, projects, creators, canEdit, canDelete] = await Promise.all([
 			this.skillRepository.findLatestSummaries(ids),
 			this.skillRepository.countUsingAgents(ids),
-			this.skillRepository.findProjectNames(skills.flatMap((skill) => projectOf(skill) ?? [])),
+			this.skillRepository.findProjects(skills.flatMap((skill) => projectOf(skill) ?? [])),
+			this.findCreators(skills),
 			this.skillService.accessCheck(user, 'update'),
 			this.skillService.accessCheck(user, 'delete'),
 		]);
@@ -213,10 +276,12 @@ export class SkillsApiService {
 				description: summary.description,
 				scope: scopeOf(skill),
 				projectId,
-				projectName: projectId ? (projects.get(projectId) ?? null) : null,
+				projectName: projectId ? (projects.get(projectId)?.name ?? null) : null,
+				projectType: projectId ? (projects.get(projectId)?.type ?? null) : null,
 				agentId: skill.agentId,
 				agentName: skill.agentId ? (agents.get(skill.agentId)?.name ?? null) : null,
 				source: skill.source,
+				createdBy: skill.createdById ? (creators.get(skill.createdById) ?? null) : null,
 				latestVersion: summary.version,
 				usedByAgents: usage.get(skill.id) ?? 0,
 				canEdit: canEdit(skill, projectId),
@@ -226,5 +291,23 @@ export class SkillsApiService {
 			});
 		}
 		return items;
+	}
+
+	/** The creators of a page of skills, in one query. */
+	private async findCreators(skills: Skill[]): Promise<Map<string, SkillUserDto>> {
+		const ids = [...new Set(skills.flatMap((skill) => skill.createdById ?? []))];
+		if (ids.length === 0) return new Map();
+		const users = await this.userRepository.findManyByIds(ids);
+		return new Map(
+			users.map((creator) => [
+				creator.id,
+				{
+					id: creator.id,
+					email: creator.email ?? null,
+					firstName: creator.firstName ?? null,
+					lastName: creator.lastName ?? null,
+				},
+			]),
+		);
 	}
 }

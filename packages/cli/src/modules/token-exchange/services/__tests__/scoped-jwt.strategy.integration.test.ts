@@ -5,7 +5,7 @@ import { Container } from '@n8n/di';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import { JwtService } from '@/services/jwt.service';
+import { JwtService } from '@n8n/backend-services';
 import { createMember, createOwner } from '@test-integration/db/users';
 
 import { TOKEN_EXCHANGE_ISSUER } from '../../token-exchange.types';

@@ -155,7 +155,7 @@ const cardBreadcrumbs = computed<PathItem[]>(() => {
 						projectId: props.data.homeProject?.id,
 						folderId: props.data.parentFolder.id,
 					},
-				}).href,
+				}).fullPath,
 			},
 		];
 	}
@@ -174,7 +174,7 @@ const getFolderUrl = (folderId: string) => {
 			folderId,
 		},
 		query: route.query,
-	}).href;
+	}).fullPath;
 };
 
 const onAction = async (action: string) => {

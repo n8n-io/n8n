@@ -109,7 +109,7 @@ export function useAgentNavigationCommands(options: {
 				icon: {
 					component: N8nIcon,
 					props: {
-						icon: 'bot',
+						icon: 'plus',
 						color: 'text-light',
 					},
 				},
