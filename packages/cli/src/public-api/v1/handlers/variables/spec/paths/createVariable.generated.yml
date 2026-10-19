@@ -4,9 +4,6 @@ tags:
 summary: Create a variable
 description: Create a variable in your instance.
 x-required-scope: variable:create
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 requestBody:
   required: true
   content:

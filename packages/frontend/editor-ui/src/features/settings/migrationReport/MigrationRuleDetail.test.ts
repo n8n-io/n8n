@@ -1671,5 +1671,121 @@ describe('MigrationRuleDetail', () => {
 
 			expect(screen.queryByTestId('migration-notify-owner-button')).not.toBeInTheDocument();
 		});
+
+		describe('bulk', () => {
+			const selectRow = async (workflowName: string) =>
+				await userEvent.click(within(getRow(workflowName)).getByRole('checkbox'));
+
+			it('should notify the selected owners in one request and keep the rows without an owner selected', async () => {
+				vi.mocked(breakingChangesApi.notifyFindingOwners).mockResolvedValue({
+					notifiedWorkflowIds: ['workflow-1'],
+					skipped: [],
+				});
+				renderComponent({ props: { migrationRuleId: 'rule-1' } });
+				await screen.findByText('2 affected');
+
+				await selectRow('Test Workflow 1');
+				await selectRow('Test Workflow 2');
+				expect(screen.getByTestId('migration-bulk-notify-no-owner')).toHaveTextContent(
+					'1 without an owner',
+				);
+				await userEvent.click(screen.getByTestId('migration-bulk-notify-button'));
+
+				await waitFor(() => {
+					const row = getRow('Test Workflow 1');
+					expect(within(row).getByTestId('migration-finding-state-select')).toHaveTextContent(
+						'Notified',
+					);
+					expect(within(row).getByTestId('migration-workflow-notified-at')).toBeInTheDocument();
+					expect(screen.getByTestId('selected-items-info')).toHaveTextContent('1 row selected');
+				});
+				expect(within(getRow('Test Workflow 1')).getByRole('checkbox')).not.toBeChecked();
+				expect(within(getRow('Test Workflow 2')).getByRole('checkbox')).toBeChecked();
+				expect(breakingChangesApi.notifyFindingOwners).toHaveBeenCalledTimes(1);
+				expect(breakingChangesApi.notifyFindingOwners).toHaveBeenCalledWith(
+					rootStore.restApiContext,
+					'rule-1',
+					['workflow-1'],
+				);
+				expect(showMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }));
+			});
+
+			it('should not change the state of a row while its notification is in flight', async () => {
+				let finishNotify = () => {};
+				vi.mocked(breakingChangesApi.notifyFindingOwners).mockImplementation(
+					async () =>
+						await new Promise((resolve) => {
+							finishNotify = () => resolve({ notifiedWorkflowIds: ['workflow-1'], skipped: [] });
+						}),
+				);
+				renderComponent({ props: { migrationRuleId: 'rule-1' } });
+				await screen.findByText('2 affected');
+
+				await selectRow('Test Workflow 1');
+				await userEvent.click(screen.getByTestId('migration-bulk-notify-button'));
+
+				expect(screen.getByTestId('migration-bulk-wont-fix-button')).toBeDisabled();
+				finishNotify();
+				await waitFor(() =>
+					expect(
+						within(getRow('Test Workflow 1')).getByTestId('migration-finding-state-select'),
+					).toHaveTextContent('Notified'),
+				);
+				expect(breakingChangesApi.updateFindingStatuses).not.toHaveBeenCalled();
+			});
+
+			it('should disable the action when no selected row has an owner', async () => {
+				renderComponent({ props: { migrationRuleId: 'rule-1' } });
+				await screen.findByText('2 affected');
+
+				await selectRow('Test Workflow 2');
+
+				expect(screen.getByTestId('migration-bulk-notify-button')).toBeDisabled();
+			});
+
+			it('should leave a skipped row open and warn with the reason', async () => {
+				vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
+					createMockRuleResult({
+						affectedWorkflows: [
+							mockWorkflowWithIssue,
+							{ ...mockWorkflowWithMultipleNodes, owner: mockWorkflowWithIssue.owner },
+						],
+					}),
+				);
+				vi.mocked(breakingChangesApi.notifyFindingOwners).mockResolvedValue({
+					notifiedWorkflowIds: ['workflow-1'],
+					skipped: [{ workflowId: 'workflow-2', reason: 'send_failed' }],
+				});
+				renderComponent({ props: { migrationRuleId: 'rule-1' } });
+				await screen.findByText('2 affected');
+
+				await selectRow('Test Workflow 1');
+				await selectRow('Test Workflow 2');
+				await userEvent.click(screen.getByTestId('migration-bulk-notify-button'));
+
+				await waitFor(() =>
+					expect(showMessage).toHaveBeenCalledWith(
+						expect.objectContaining({
+							type: 'warning',
+							title: 'Notified owners of 1 of 2 workflows',
+							message: expect.stringContaining('SMTP'),
+						}),
+					),
+				);
+				expect(
+					within(getRow('Test Workflow 2')).getByTestId('migration-finding-state-select'),
+				).toHaveTextContent('Open');
+			});
+
+			it('should hide the action when SMTP is not set up', async () => {
+				mockedStore(useSettingsStore).isSmtpSetup = false;
+				renderComponent({ props: { migrationRuleId: 'rule-1' } });
+				await screen.findByText('2 affected');
+
+				await selectRow('Test Workflow 1');
+
+				expect(screen.queryByTestId('migration-bulk-notify-button')).not.toBeInTheDocument();
+			});
+		});
 	});
 });

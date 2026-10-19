@@ -4,9 +4,6 @@ tags:
 summary: Add one or more users to a project
 description: Add one or more users to a project on your instance.
 x-required-scope: project:manageMembers
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 parameters:
   - schema:
       type: string

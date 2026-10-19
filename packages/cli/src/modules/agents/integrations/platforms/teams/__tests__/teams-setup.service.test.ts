@@ -4,10 +4,9 @@ import type { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import type { InstanceSettings } from 'n8n-core';
 
-import { JwtService } from '@/services/jwt.service';
+import { JwtService, type UrlService } from '@n8n/backend-services';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
-import type { UrlService } from '@n8n/backend-services';
 
 import type { Agent } from '../../../../entities/agent.entity';
 import { AgentCredentialLookupService } from '../../../agent-credential-lookup.service';

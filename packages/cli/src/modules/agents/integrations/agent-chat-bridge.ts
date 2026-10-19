@@ -291,6 +291,7 @@ export class AgentChatBridge {
 					thread,
 					logger: this.logger,
 					agentId: this.agentId,
+					integration: this.integration,
 				};
 				const resumeExecutionContext =
 					await this.integrationImpl?.createResumeExecutionContext?.(params);
@@ -959,6 +960,7 @@ export class AgentChatBridge {
 					logger: this.logger,
 					agentId: this.agentId,
 					slackThreadContext: payload.slackThreadContext,
+					integration,
 				});
 				statusHandle = onceStatusHandle(context?.statusHandle);
 			}
@@ -1046,6 +1048,16 @@ export class AgentChatBridge {
 		const attachments: StoredAttachmentRef[] = [];
 		const attachmentNotes: string[] = [];
 		if (!this.attachmentService || inboundAttachments.length === 0) {
+			return { attachments, attachmentNotes };
+		}
+
+		if (this.integrationImpl?.shouldDownloadAttachments?.(this.integration) === false) {
+			// The agent still learns that a file arrived, so it can ask for text instead.
+			for (const attachment of inboundAttachments) {
+				attachmentNotes.push(
+					`[Attachment "${attachment.name ?? 'file'}" was not downloaded: media downloads are turned off for this channel]`,
+				);
+			}
 			return { attachments, attachmentNotes };
 		}
 

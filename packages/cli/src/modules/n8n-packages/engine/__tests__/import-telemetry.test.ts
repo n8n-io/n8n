@@ -145,6 +145,8 @@ const scope = (input: {
 			matchingMode: 'id-only',
 			missingMode: 'create-stub',
 			credentialBindings: undefined,
+			conflictPolicy: 'overwrite',
+			updateScope: { projectIds: new Set([context.projectId]) },
 		},
 		dataTableRequest: mock<DataTableImportRequest>({
 			requirements: dt.requirements === 0 ? undefined : new Array(dt.requirements),
@@ -172,6 +174,7 @@ const request = mock<ResolvedImportPackageRequest>({
 	workflowIdPolicy: 'new',
 	credentialMatchingMode: 'id-only',
 	credentialMissingMode: 'create-stub',
+	credentialConflictPolicy: 'overwrite',
 	workflowPublishingPolicy: 'preserve-published-state',
 	folderConflictPolicy: 'overwrite',
 	variableMissingMode: 'create-stub',
@@ -275,6 +278,7 @@ describe('emitPackageImportedEvent', () => {
 			tags: { matched: 1, created: 1, renamed: 1, reconciled: 1, skipped: 1, requirements: 5 },
 		});
 		expect(payload.packageSourceId).toBe('src-1');
+		expect(payload.options.credentialConflictPolicy).toBe('overwrite');
 		expect(payload.options.variableMissingMode).toBe('create-stub');
 		expect(payload.options.variableConflictPolicy).toBe('overwrite');
 		expect(payload.options.variableParentPolicy).toBe('global');

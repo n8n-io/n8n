@@ -8,8 +8,7 @@ import { TokenExpiredError } from 'jsonwebtoken';
 import { isApiKeyAuthEnabled } from '@/public-api';
 
 import type { AuthStrategy, AuthStrategyOptions } from './auth-strategy.types';
-import { JwtService } from './jwt.service';
-import { API_KEY_PURPOSES } from './token-purposes';
+import { JwtService, API_KEY_PURPOSES } from '@n8n/backend-services';
 import { API_KEY_AUDIENCE, API_KEY_ISSUER, PREFIX_LEGACY_API_KEY } from './public-api-key.service';
 
 const API_KEY_HEADER = 'x-n8n-api-key';

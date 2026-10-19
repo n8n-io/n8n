@@ -11,9 +11,6 @@ description: |-
 
   The package must be a project package (a workflow package is rejected with a 400). The cherry-pick conflict policies (folder, tag, and project) are fixed and are not accepted here; only `workflowConflictPolicy`, `workflowIdPolicy`, and `overwriteDeletionPolicy` are configurable. Maximum upload size is `N8N_ENDPOINTS_PAYLOAD_SIZE_MAX` MB (default 16). The caller is authorised through the `workflow:import` scope.
 x-required-scope: workflow:import
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 requestBody:
   required: true
   content:

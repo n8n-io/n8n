@@ -11,9 +11,6 @@ description: |-
 
   Credential references are resolved before any workflow is written.
 x-required-scope: workflow:import
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 requestBody:
   required: true
   content:

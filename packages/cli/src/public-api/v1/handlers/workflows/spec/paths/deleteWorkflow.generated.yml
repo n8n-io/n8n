@@ -4,9 +4,6 @@ tags:
 summary: Delete a workflow
 description: Delete a workflow.
 x-required-scope: workflow:delete
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 parameters:
   - schema:
       type: string

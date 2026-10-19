@@ -686,6 +686,7 @@ describe('TypeAvailabilityPolicyService', () => {
 						{ policyId: 'p1', priority: 0, isFloor: false },
 						{ policyId: 'p1', priority: 1, isFloor: false },
 					],
+					1,
 					'user-1',
 				),
 			).rejects.toThrow('Duplicate policyId');
@@ -703,6 +704,7 @@ describe('TypeAvailabilityPolicyService', () => {
 						{ policyId: 'p1', priority: 0, isFloor: false },
 						{ policyId: 'p2', priority: 0, isFloor: false },
 					],
+					1,
 					'user-1',
 				),
 			).rejects.toThrow('Duplicate (isFloor, priority)');
@@ -718,6 +720,7 @@ describe('TypeAvailabilityPolicyService', () => {
 					KIND,
 					'missing',
 					[{ policyId: 'p1', priority: 0, isFloor: false }],
+					1,
 					'user-1',
 				),
 			).rejects.toThrow(NotFoundError);
@@ -731,7 +734,7 @@ describe('TypeAvailabilityPolicyService', () => {
 			scopeRepository.findScopeByIdAndKind.mockResolvedValue(null);
 
 			await expect(
-				service.replaceAttachments(CREDENTIAL_TYPES_KIND, 'scope-1', [], 'user-1'),
+				service.replaceAttachments(CREDENTIAL_TYPES_KIND, 'scope-1', [], 1, 'user-1'),
 			).rejects.toThrow(NotFoundError);
 
 			expect(scopeRepository.findScopeByIdAndKind).toHaveBeenCalledWith(
@@ -743,7 +746,24 @@ describe('TypeAvailabilityPolicyService', () => {
 			expect(attachmentRepository.replaceAttachmentsForScope).not.toHaveBeenCalled();
 		});
 
-		it('replaces attachments, bumps the version, and emits once', async () => {
+		it('throws ConflictError for a stale version and writes nothing', async () => {
+			const scope = makeScope({ version: 2 });
+			scopeRepository.findScopeByIdAndKind.mockResolvedValueOnce(scope);
+
+			const write = service.replaceAttachments(KIND, scope.id, [], 1, 'user-1');
+			await expect(write).rejects.toThrow(ConflictError);
+			await expect(write).rejects.toThrow(
+				'Policy scope has changed since it was last read (expected version 1, found 2)',
+			);
+
+			expect(scopeRepository.findScopeByIdAndKind).toHaveBeenCalledWith(scope.id, KIND, ROOT, true);
+			expect(attachmentRepository.replaceAttachmentsForScope).not.toHaveBeenCalled();
+			expect(scopeRepository.bumpVersion).not.toHaveBeenCalled();
+			expect(cacheService.deleteMany).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+
+		it('replaces attachments with the current version, bumps the version, and emits once', async () => {
 			const scope = makeScope({ version: 1 });
 			scopeRepository.findScopeByIdAndKind.mockResolvedValueOnce(scope);
 			scopeRepository.findScopeById.mockResolvedValueOnce(makeScope({ version: 2 }));
@@ -755,6 +775,7 @@ describe('TypeAvailabilityPolicyService', () => {
 				KIND,
 				scope.id,
 				[{ policyId: 'p1', priority: 0, isFloor: false }],
+				scope.version,
 				'user-1',
 			);
 
@@ -790,6 +811,7 @@ describe('TypeAvailabilityPolicyService', () => {
 				KIND,
 				scope.id,
 				[{ policyId: 'p1', priority: 0, isFloor: false }],
+				scope.version,
 				'user-1',
 			);
 
@@ -811,6 +833,7 @@ describe('TypeAvailabilityPolicyService', () => {
 						{ policyId: 'p1', priority: 0, isFloor: false },
 						{ policyId: 'p2', priority: 1, isFloor: false },
 					],
+					1,
 					'user-1',
 				),
 			).rejects.toThrow(DELEGATE_RULE_AT_PROJECT_SCOPE);
@@ -830,6 +853,7 @@ describe('TypeAvailabilityPolicyService', () => {
 				KIND,
 				'scope-1',
 				[{ policyId: 'p-delegating', priority: 0, isFloor: false }],
+				1,
 				'user-1',
 			);
 

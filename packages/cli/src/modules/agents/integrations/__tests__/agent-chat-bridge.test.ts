@@ -2120,6 +2120,72 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(config.message).toContain('[Attachment "broken.pdf" could not be processed]');
 			expect(config.message).toContain('[Attachment "huge.pdf" was skipped: larger than 10 MB]');
 		});
+
+		it('adds a note for each attachment and does not download when the channel turns downloads off', async () => {
+			const agentExecutor = makeAgentExecutor([finishChunk]);
+			const attachmentService = makeAttachmentService();
+			const handlers = makeBridge(agentExecutor, attachmentService);
+			const integrationImpl = registry.get('test-streaming')!;
+			const shouldDownloadAttachments = vi.fn().mockReturnValue(false);
+			// The test integration doesn't implement this optional hook; inject one.
+			integrationImpl.shouldDownloadAttachments = shouldDownloadAttachments;
+			const photoFetch = vi.fn().mockResolvedValue(pngBytes);
+			const unnamedFetch = vi.fn().mockResolvedValue(pngBytes);
+
+			try {
+				await handlers.mention!(makeThread(), {
+					text: 'look at these',
+					author: { userId: 'u1', userName: 'user1' },
+					attachments: [
+						{ type: 'image', name: 'photo.png', mimeType: 'image/png', fetchData: photoFetch },
+						{ type: 'file', mimeType: 'application/pdf', fetchData: unnamedFetch },
+					],
+				});
+
+				expect(shouldDownloadAttachments).toHaveBeenCalledWith(streamingIntegration);
+				expect(photoFetch).not.toHaveBeenCalled();
+				expect(unnamedFetch).not.toHaveBeenCalled();
+				expect(attachmentService.storeInbound).not.toHaveBeenCalled();
+				const config = agentExecutor.captured[0] as { message: string; attachments?: unknown };
+				expect(config.attachments).toBeUndefined();
+				expect(config.message).toContain('look at these');
+				expect(config.message).toContain(
+					'[Attachment "photo.png" was not downloaded: media downloads are turned off for this channel]',
+				);
+				expect(config.message).toContain(
+					'[Attachment "file" was not downloaded: media downloads are turned off for this channel]',
+				);
+			} finally {
+				delete integrationImpl.shouldDownloadAttachments;
+			}
+		});
+
+		it('downloads attachments when the channel hook allows it', async () => {
+			const agentExecutor = makeAgentExecutor([finishChunk]);
+			const attachmentService = makeAttachmentService();
+			const handlers = makeBridge(agentExecutor, attachmentService);
+			const integrationImpl = registry.get('test-streaming')!;
+			integrationImpl.shouldDownloadAttachments = vi.fn().mockReturnValue(true);
+
+			try {
+				await handlers.mention!(makeThread(), {
+					text: 'look at this',
+					author: { userId: 'u1', userName: 'user1' },
+					attachments: [
+						{
+							type: 'image',
+							name: 'photo.png',
+							mimeType: 'image/png',
+							fetchData: vi.fn().mockResolvedValue(pngBytes),
+						},
+					],
+				});
+
+				expect(attachmentService.storeInbound).toHaveBeenCalledTimes(1);
+			} finally {
+				delete integrationImpl.shouldDownloadAttachments;
+			}
+		});
 	});
 
 	describe('when integration keeps streaming enabled', () => {

@@ -3,7 +3,7 @@ import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
 import { mock } from 'vitest-mock-extended';
 import { ZodError } from 'zod';
 
-import { JwtService } from '@/services/jwt.service';
+import { JwtService } from '@n8n/backend-services';
 
 import { OAuthSessionService, type OAuthSessionPayload } from '../oauth-session.service';
 

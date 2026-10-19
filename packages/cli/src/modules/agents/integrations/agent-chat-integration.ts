@@ -592,7 +592,15 @@ export abstract class AgentChatIntegration {
 		logger: Logger;
 		agentId: string;
 		slackThreadContext?: BridgeExecutionContext['slackThreadContext'];
+		/** The channel as stored, for platforms whose status depends on a setting. */
+		integration?: AgentIntegrationConfig;
 	}): Promise<BridgeResumeExecutionContext>;
+
+	/**
+	 * Whether the bridge downloads and stores the files in an inbound message.
+	 * Without it, every platform downloads them.
+	 */
+	shouldDownloadAttachments?(integration: AgentIntegrationConfig): boolean;
 
 	/**
 	 * Execute a context query that this platform owns (e.g. Linear `get_issue`,

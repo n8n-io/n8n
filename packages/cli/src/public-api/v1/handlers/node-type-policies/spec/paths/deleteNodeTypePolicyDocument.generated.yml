@@ -7,9 +7,6 @@ description: |-
 
   Deletes a policy document. A document that is still attached to a scope is rejected with 409; detach it first.
 x-required-scope: nodeTypePolicy:manage
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 parameters:
   - schema:
       type: string

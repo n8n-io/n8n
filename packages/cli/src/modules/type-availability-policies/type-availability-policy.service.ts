@@ -688,19 +688,16 @@ export class TypeAvailabilityPolicyService {
 	 * `nodeTypePolicy:manage`) must not reach a scope of a different kind by id, even with an
 	 * empty or same-kind-only attachment list that `assertAttachableToScope` would not catch.
 	 *
-	 * No `expectedVersion` check: the real `ReplaceAttachmentsDto` from IAM-1328 carries no
-	 * version field (unlike `PutInstancePolicyDto`), so this endpoint is last-write-wins. The
-	 * write still runs in one transaction with the scope's version bump, so a concurrent
-	 * reader never observes the attachments changed without the version moving.
+	 * `expectedVersion` must match the scope's current version. The locked read, attachment
+	 * replacement, and version bump share one transaction.
 	 *
-	 * The scope is still locked up front — not for a version check, but so this path takes
-	 * the scope before it touches any policy row (the attachment inserts key-share the
-	 * policies), the same scope → policy order every other write path uses.
+	 * Lock the scope before any policy row to keep the scope → policy order used by other writes.
 	 */
 	async replaceAttachments(
 		kind: string,
 		scopeId: string,
 		attachments: readonly AttachmentInput[],
+		expectedVersion: number,
 		updatedBy: string,
 	): Promise<{ attachments: readonly PolicyAttachment[]; version: number }> {
 		assertNoDuplicateAttachmentSlots(attachments);
@@ -709,6 +706,12 @@ export class TypeAvailabilityPolicyService {
 			const scope = await this.scopeRepository.findScopeByIdAndKind(scopeId, kind, ctx, true);
 			if (!scope) {
 				throw new NotFoundError(`Policy scope not found: ${scopeId}`);
+			}
+
+			if (scope.version !== expectedVersion) {
+				throw new ConflictError(
+					`Policy scope has changed since it was last read (expected version ${expectedVersion}, found ${scope.version})`,
+				);
 			}
 
 			// Attaching a document to a project scope makes its rules that project's policy, so

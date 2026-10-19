@@ -156,6 +156,7 @@ export class TypeAvailabilityPolicyInstanceController {
 			NODE_TYPES_KIND,
 			scopeId,
 			dto.attachments,
+			dto.version,
 			req.user.id,
 		);
 	}

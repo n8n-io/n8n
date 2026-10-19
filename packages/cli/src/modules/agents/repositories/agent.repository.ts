@@ -1,6 +1,13 @@
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import type { AgentIntegrationConfig, ListAgentsQueryDto } from '@n8n/api-types';
-import { BaseRepository, chunkIds, TransactionRunner, type OperationContext } from '@n8n/db';
+import {
+	BaseRepository,
+	chunkIds,
+	escapeLike,
+	LIKE_ESCAPE_CLAUSE,
+	TransactionRunner,
+	type OperationContext,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, In, IsNull, Not, type SelectQueryBuilder } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
@@ -552,6 +559,21 @@ export class AgentRepository extends BaseRepository<Agent> {
 				agent.id !== excludeAgentId &&
 				(agent.integrations ?? []).some((i) => i.type === type && i.credentialId === credentialId),
 		);
+	}
+
+	/**
+	 * Finds every agent with a channel of the given type in its `integrations`
+	 * JSON column. The `LIKE` is a portable pre-filter; it can match another
+	 * field, so the exact check still runs in memory.
+	 */
+	async findWithIntegrationType(type: string): Promise<Array<Pick<Agent, 'id' | 'integrations'>>> {
+		const agents = await this.createQueryBuilder('agent')
+			.select(['agent.id', 'agent.integrations'])
+			.where(`CAST(agent.integrations AS TEXT) LIKE :pattern ${LIKE_ESCAPE_CLAUSE}`, {
+				pattern: `%${escapeLike(JSON.stringify(type))}%`,
+			})
+			.getMany();
+		return agents.filter((agent) => (agent.integrations ?? []).some((i) => i.type === type));
 	}
 
 	/**

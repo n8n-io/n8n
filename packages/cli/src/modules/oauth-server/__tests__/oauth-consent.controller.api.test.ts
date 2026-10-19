@@ -3,9 +3,8 @@ import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import { McpSettingsService } from '@/modules/mcp/mcp.settings.service';
-import { JwtService } from '@/services/jwt.service';
+import { JwtService, UrlService } from '@n8n/backend-services';
 import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
-import { UrlService } from '@n8n/backend-services';
 import { createOwner, createMember } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 

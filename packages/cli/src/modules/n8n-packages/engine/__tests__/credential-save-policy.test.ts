@@ -49,6 +49,8 @@ const request = (
 	requirements,
 	matchingMode: 'id-only',
 	missingMode,
+	conflictPolicy: 'keep-existing',
+	updateScope: { projectIds: new Set() },
 });
 
 const resolution = (...failures: CredentialResolutionFailure[]): CredentialResolution => ({

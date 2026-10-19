@@ -1,23 +1,16 @@
-import { Logger } from '@n8n/backend-common';
-import { EventService, UrlService } from '@n8n/backend-services';
+import { UrlService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
-import type { AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Router, ErrorRequestHandler, RequestHandler } from 'express';
 import express from 'express';
 import fs from 'fs/promises';
-import { UnexpectedError } from 'n8n-workflow';
 import path from 'path';
 import type { JsonObject } from 'swagger-ui-express';
-import validator from 'validator';
 
 import { PublicApiControllerRegistry } from './public-api-controller.registry';
 import { sendPublicApiErrorResponse } from './v1/public-api-error-response';
 
-import { AUTH_COOKIE_NAME } from '@/constants';
 import { License } from '@/license';
-import { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
-import { LastActiveAtService } from '@/services/last-active-at.service';
 
 import './v1/controllers';
 
@@ -122,221 +115,15 @@ function createLazySwaggerMiddleware(
 	};
 }
 
-// Minimal shapes of the express-openapi-validator resolver arguments we depend on.
-interface EovRoute {
-	basePath: string;
-	expressRoute: string;
-	openApiRoute: string;
-	method: string;
-}
-interface EovOperation {
-	operationId?: string;
-	// eslint-disable-next-line @typescript-eslint/naming-convention -- OpenAPI vendor extension keys
-	'x-eov-operation-id'?: string;
-	// eslint-disable-next-line @typescript-eslint/naming-convention -- OpenAPI vendor extension keys
-	'x-eov-operation-handler'?: string;
-}
-interface EovApiDoc {
-	paths?: Record<string, Record<string, EovOperation>>;
-}
-
-/**
- * Test-only express-openapi-validator operation-handler resolver. It is wired in **only** under
- * Vitest (see `operationHandlers` below); production and e2e keep a sync `require()` resolver
- * so runtime behaviour stays on Node's CJS loader.
- *
- * Why it's needed in tests: eov's default resolver `require()`s each handler module, but under
- * Vitest only the `.ts` handler sources exist on disk (no `.js`) and they're served by Vite, not
- * Node's `require` — so `require()` throws and every route 500s.
- *
- * Both resolvers return a no-op when `x-eov-operation-handler` is absent — those routes are
- * owned by `@PublicApiController` (mounted before eov).
- */
-async function importOperationHandlerResolver(
-	handlersPath: string,
-	routeArg: unknown,
-	apiDocArg: unknown,
-): Promise<unknown> {
-	return resolveOperationHandler(handlersPath, routeArg, apiDocArg, 'import');
-}
-
-function requireOperationHandlerResolver(
-	handlersPath: string,
-	routeArg: unknown,
-	apiDocArg: unknown,
-): unknown {
-	return resolveOperationHandler(handlersPath, routeArg, apiDocArg, 'require');
-}
-
-function controllerOwnedNoopHandler() {
-	return [
-		(_req: unknown, _res: unknown, next: (error?: unknown) => void) => {
-			next();
-		},
-	];
-}
-
-function resolveOperationHandler(
-	handlersPath: string,
-	routeArg: unknown,
-	apiDocArg: unknown,
-	loader: 'import' | 'require',
-): unknown | Promise<unknown> {
-	const route = routeArg as EovRoute;
-	const apiDoc = apiDocArg as EovApiDoc;
-	const pathKey = route.openApiRoute.substring(route.basePath.length);
-	const operation = apiDoc.paths?.[pathKey]?.[route.method.toLowerCase()];
-	const operationId = operation?.['x-eov-operation-id'] ?? operation?.operationId;
-	const handlerModule = operation?.['x-eov-operation-handler'];
-
-	if (!handlerModule) {
-		return controllerOwnedNoopHandler();
-	}
-
-	if (!operationId) {
-		throw new UnexpectedError(`Missing operation id for [${route.method}] ${route.expressRoute}`);
-	}
-
-	const modulePath = path.join(handlersPath, handlerModule);
-
-	if (loader === 'require') {
-		// eslint-disable-next-line @typescript-eslint/no-require-imports
-		const imported = require(modulePath) as Record<string, unknown> & {
-			default?: Record<string, unknown>;
-		};
-		const handler = imported[operationId] ?? imported.default?.[operationId] ?? imported.default;
-		if (!handler) {
-			throw new UnexpectedError(
-				`Could not find handler '${operationId}' in module '${modulePath}'`,
-			);
-		}
-		return handler;
-	}
-
-	return (async () => {
-		const imported = (await import(/* @vite-ignore */ modulePath)) as Record<string, unknown> & {
-			default?: Record<string, unknown>;
-		};
-		const handler = imported[operationId] ?? imported.default?.[operationId] ?? imported.default;
-		if (!handler) {
-			throw new UnexpectedError(
-				`Could not find handler '${operationId}' in module '${modulePath}'`,
-			);
-		}
-		return handler;
-	})();
-}
-
 function createPublicControllerMiddleware(version: string): RequestHandler {
 	const router = express.Router({ mergeParams: true });
 	Container.get(PublicApiControllerRegistry).activate(router, version);
 	return router;
 }
 
-function createLazyValidatorMiddleware(
-	openApiSpecPath: string,
-	handlersDirectory: string,
-	version: string,
-): RequestHandler {
-	let cachedRouter: Router | undefined;
-	let initPromise: Promise<Router> | undefined;
-
-	return async (req, res, next) => {
-		if (!cachedRouter) {
-			initPromise ??= (async () => {
-				const { middleware: openApiValidatorMiddleware } = await import(
-					'express-openapi-validator'
-				);
-
-				const authStrategyRegistry = Container.get(AuthStrategyRegistry);
-				const eventService = Container.get(EventService);
-				const lastActiveAtService = Container.get(LastActiveAtService);
-				const logger = Container.get(Logger);
-
-				const authenticate = async (req: AuthenticatedRequest) => {
-					const authenticated = await authStrategyRegistry.authenticate(req);
-
-					if (authenticated) {
-						lastActiveAtService.updateLastActiveIfStale(req.user.id).catch((error: unknown) => {
-							logger.error('Failed to update last active timestamp', { error });
-						});
-						eventService.emit('public-api-invoked', {
-							userId: req.user.id,
-							path: req.path,
-							method: req.method,
-							apiVersion: version,
-							userAgent: req.headers['user-agent'],
-						});
-					}
-
-					return authenticated;
-				};
-
-				const router = express.Router();
-				router.use(
-					openApiValidatorMiddleware({
-						apiSpec: openApiSpecPath,
-						// Production/e2e use eov's default resolver (synchronous `require`). Under Vitest,
-						// where handler modules are `.ts` served by Vite, swap in an `import()`-based
-						// resolver so route handlers can load. See `importOperationHandlerResolver`.
-						operationHandlers: {
-							basePath: handlersDirectory,
-							resolver: process.env.VITEST
-								? importOperationHandlerResolver
-								: requireOperationHandlerResolver,
-						},
-						validateRequests: true,
-						validateApiSpec: true,
-						fileUploader: false,
-						formats: {
-							email: {
-								type: 'string',
-								validate: (email: string) => validator.isEmail(email),
-							},
-							identifier: {
-								type: 'string',
-								validate: (identifier: string) =>
-									validator.isUUID(identifier) || validator.isEmail(identifier),
-							},
-							jsonString: {
-								validate: (data: string) => {
-									try {
-										JSON.parse(data);
-										return true;
-									} catch (e) {
-										return false;
-									}
-								},
-							},
-							nanoid: {
-								type: 'string',
-								validate: (id: string) => {
-									return /^[A-Za-z0-9]{16}$/.test(id);
-								},
-							},
-						},
-						validateSecurity: {
-							handlers: {
-								ApiKeyAuth: authenticate,
-								BearerAuth: authenticate,
-								CookieAuth: authenticate,
-							},
-						},
-					}),
-				);
-				return router;
-			})();
-			cachedRouter = await initPromise;
-		}
-
-		void cachedRouter(req, res, next);
-	};
-}
-
 function createApiRouter(
 	version: string,
 	openApiSpecPath: string,
-	handlersDirectory: string,
 	publicApiEndpoint: string,
 ): Router {
 	const globalConfig = Container.get(GlobalConfig);
@@ -368,23 +155,26 @@ function createApiRouter(
 		next(error);
 	};
 
+	// No route matched: the path is not part of the public API.
+	const notFoundHandler: RequestHandler = (_req, res) => {
+		res.status(404).json({ message: 'not found' });
+	};
+
 	apiController.use(
 		`/${publicApiEndpoint}/${version}`,
 		express.json({ limit: payloadLimit }),
 		jsonParseErrorHandler,
 		createPublicControllerMiddleware(version),
-		createLazyValidatorMiddleware(openApiSpecPath, handlersDirectory, version),
+		notFoundHandler,
 	);
 
 	const publicApiErrorHandler: ErrorRequestHandler = (
 		error: Error,
-		req: express.Request,
+		_req: express.Request,
 		res: express.Response,
 		_next: express.NextFunction,
 	) => {
-		sendPublicApiErrorResponse(res, error, {
-			hasSessionCookie: Boolean(req.cookies?.[AUTH_COOKIE_NAME]),
-		});
+		sendPublicApiErrorResponse(res, error);
 	};
 
 	apiController.use(publicApiErrorHandler);
@@ -400,7 +190,7 @@ export const loadPublicApiVersions = async (
 
 	const apiRouters = versions.map((version) => {
 		const openApiPath = path.join(__dirname, version, 'openapi.yml');
-		return createApiRouter(version, openApiPath, __dirname, publicApiEndpoint);
+		return createApiRouter(version, openApiPath, publicApiEndpoint);
 	});
 
 	const version = versions.pop()?.charAt(1);

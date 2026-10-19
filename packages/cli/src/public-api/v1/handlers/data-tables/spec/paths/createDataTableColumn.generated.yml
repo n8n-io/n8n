@@ -4,9 +4,6 @@ tags:
 summary: Add a column to a data table
 description: Add a new column to an existing data table.
 x-required-scope: dataTableColumn:create
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 parameters:
   - schema:
       type: string

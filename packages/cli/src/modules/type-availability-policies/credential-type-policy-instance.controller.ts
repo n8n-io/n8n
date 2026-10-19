@@ -156,6 +156,7 @@ export class CredentialTypePolicyInstanceController {
 			CREDENTIAL_TYPES_KIND,
 			scopeId,
 			dto.attachments,
+			dto.version,
 			req.user.id,
 		);
 	}

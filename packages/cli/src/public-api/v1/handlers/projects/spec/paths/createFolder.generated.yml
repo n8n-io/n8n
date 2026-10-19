@@ -4,9 +4,6 @@ tags:
 summary: Create a folder
 description: Create a folder within a project.
 x-required-scope: folder:create
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 parameters:
   - schema:
       type: string

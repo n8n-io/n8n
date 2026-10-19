@@ -4,11 +4,16 @@ import { Service } from '@n8n/di';
 import { NodeTypes } from '@/node-types';
 import type { PolicyActor } from '@/policy/policy-enforcement-backend';
 
+import {
+	credentialConflicts,
+	forbiddenCredentialUpdates,
+} from '../entities/credential/credential-conflict-policy';
 import { CredentialImporter } from '../entities/credential/credential-importer';
 import { workflowsBlockedFromPublish } from '../entities/credential/credential-missing-mode';
 import type {
 	CredentialApplyResult,
 	CredentialBindingRequest,
+	CredentialImportPlan,
 	CredentialResolution,
 	CredentialResolutionFailure,
 } from '../entities/credential/credential.types';
@@ -119,7 +124,7 @@ export interface ImportContentResult {
 export interface ImportPlan {
 	input: ImportOrchestrationInput;
 	folderContext: FolderImportContext;
-	credentialPlan: CredentialResolution;
+	credentialPlan: CredentialImportPlan;
 	workflowPlan: WorkflowImportPlan;
 	folderPlan: FolderImportPlan;
 	dataTablePlan: DataTableImportPlan;
@@ -221,6 +226,21 @@ export class ImportOrchestrator {
 						}),
 					),
 			);
+		}
+
+		// Across scopes: one destination credential can be reached from several projects.
+		if (plans.length > 0) {
+			const credentialPlans = plans.map((plan) => plan.credentialPlan);
+			for (const forbidden of forbiddenCredentialUpdates(credentialPlans)) {
+				issues.push({ type: 'credential-update-forbidden', ...forbidden });
+			}
+			const conflicts = credentialConflicts(
+				plans[0].input.credentialRequest.conflictPolicy,
+				credentialPlans,
+			);
+			for (const conflict of conflicts) {
+				issues.push({ type: 'credential-conflict', ...conflict });
+			}
 		}
 
 		const quotaFailure = await this.variableImporter.quotaFailure(
