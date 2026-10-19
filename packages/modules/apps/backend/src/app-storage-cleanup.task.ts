@@ -32,6 +32,7 @@ export class AppStorageCleanupTask implements SystemTask {
 				try {
 					await this.retention.prune(id, signal);
 				} catch (error) {
+					signal.throwIfAborted();
 					this.logger.warn('Could not prune app history.', { appId: id, error });
 				}
 			}
