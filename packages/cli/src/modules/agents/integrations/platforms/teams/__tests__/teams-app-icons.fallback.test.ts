@@ -84,10 +84,10 @@ describe('renderTeamsAppIcons when the icon cannot be drawn', () => {
 		expect(logger.warn).toHaveBeenCalled();
 	});
 
-	it('does not log an icon name Lucide does not have', async () => {
+	it('draws an icon name Lucide does not have without a warning', async () => {
 		await expect(
 			renderTeamsAppIcons({ icon: 'not-a-lucide-icon', gradient }),
-		).resolves.toBeUndefined();
+		).resolves.toBeDefined();
 		expect(logger.warn).not.toHaveBeenCalled();
 	});
 });

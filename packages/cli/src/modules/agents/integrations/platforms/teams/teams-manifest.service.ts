@@ -158,12 +158,10 @@ export class TeamsManifestService {
 	 */
 	async buildPackage(options: BuildTeamsManifestOptions): Promise<Buffer> {
 		const manifest = this.buildManifest(options);
-		const [color, outline] = options.icons
-			? [options.icons.color, options.icons.outline]
-			: await Promise.all([
-					readFile(join(__dirname, 'assets', 'color.png')),
-					readFile(join(__dirname, 'assets', 'outline.png')),
-				]);
+		const [color, outline] = await Promise.all([
+			options.icons?.color ?? readFile(join(__dirname, 'assets', 'color.png')),
+			options.icons?.outline ?? readFile(join(__dirname, 'assets', 'outline.png')),
+		]);
 
 		return Buffer.from(
 			zipSync({

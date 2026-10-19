@@ -555,13 +555,13 @@ describe('TeamsSetupService', () => {
 				expect(manifest.accentColor).toBe('#2563EB');
 			});
 
-			it('keeps the n8n icons for an icon name Lucide does not have', async () => {
+			it('draws the colour but keeps the n8n outline for an icon name Lucide does not have', async () => {
 				const entries = await packageFor('not-a-lucide-icon');
 				const manifest = JSON.parse(Buffer.from(entries['manifest.json']).toString('utf8'));
 
-				expect(Buffer.from(entries['color.png']).equals(bundled('color.png'))).toBe(true);
+				expect(Buffer.from(entries['color.png']).equals(bundled('color.png'))).toBe(false);
 				expect(Buffer.from(entries['outline.png']).equals(bundled('outline.png'))).toBe(true);
-				expect(manifest.accentColor).toBe('#FF91AC');
+				expect(manifest.accentColor).toBe('#2563EB');
 			});
 		});
 

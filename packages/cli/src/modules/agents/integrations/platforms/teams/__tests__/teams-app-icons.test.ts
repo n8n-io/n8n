@@ -48,6 +48,12 @@ async function render(value: AgentPersonalisation | null) {
 	return icons;
 }
 
+async function renderGlyph(value: AgentPersonalisation) {
+	const icons = await render(value);
+	if (!icons.outline) throw new Error('expected an outline');
+	return { ...icons, outline: icons.outline };
+}
+
 const pixelsOf = (png: Buffer, size = 192) => {
 	const pixels = readRgbaPixels(png);
 	return (x: number, y: number): Rgba => pixels[y * size + x];
@@ -63,7 +69,7 @@ const expectColor = ({ r, g, b }: Rgba, expected: [number, number, number], tole
 
 describe('renderTeamsAppIcons', () => {
 	it('draws a 192px colour icon and a 32px outline icon', async () => {
-		const { color, outline } = await render(personalisation('bot'));
+		const { color, outline } = await renderGlyph(personalisation('bot'));
 
 		expect([color.readUInt32BE(16), color.readUInt32BE(20)]).toEqual([192, 192]);
 		expect([outline.readUInt32BE(16), outline.readUInt32BE(20)]).toEqual([32, 32]);
@@ -122,7 +128,7 @@ describe('renderTeamsAppIcons', () => {
 	});
 
 	it('draws the outline icon in white and transparency only', async () => {
-		const pixels = readRgbaPixels((await render(personalisation('bot'))).outline);
+		const pixels = readRgbaPixels((await renderGlyph(personalisation('bot'))).outline);
 
 		// Teams rejects a coloured outline icon with InvalidOutlineIconTransparency.
 		expect(
@@ -136,10 +142,13 @@ describe('renderTeamsAppIcons', () => {
 		await expect(renderTeamsAppIcons(null)).resolves.toBeDefined();
 	});
 
-	it('returns undefined for an icon name Lucide does not have', async () => {
-		await expect(
-			renderTeamsAppIcons(personalisation('not-a-lucide-icon')),
-		).resolves.toBeUndefined();
+	it('draws the gradient without a glyph for an icon name Lucide does not have', async () => {
+		const { color, outline, accentColor } = await render(personalisation('not-a-lucide-icon'));
+
+		expect(readRgbaPixels(color).some(isWhite)).toBe(false);
+		expect(accentColor).toBe((await render(personalisation('bot'))).accentColor);
+		// No outline means the package keeps the bundled n8n one, so the app bar is not empty.
+		expect(outline).toBeUndefined();
 	});
 
 	it('renders downloads that arrive together one at a time', async () => {
@@ -161,7 +170,7 @@ describe('renderTeamsAppIcons', () => {
 		const missing: string[] = [];
 		for (const name of Object.keys(lucide.icons)) {
 			const svgs = await buildTeamsIconSvgs(name, personalisation(name).gradient);
-			if (!svgs) {
+			if (!svgs.outline) {
 				missing.push(name);
 				continue;
 			}

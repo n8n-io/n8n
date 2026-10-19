@@ -22,14 +22,17 @@ import { Worker, type ResourceLimits } from 'node:worker_threads';
 export interface TeamsAppIcons {
 	/** 192×192, full bleed: Teams rounds the corners itself. */
 	color: Buffer;
-	/** 32×32, white on transparent: Teams rejects any other colour. */
-	outline: Buffer;
+	/**
+	 * 32×32, white on transparent: Teams rejects any other colour. Absent when
+	 * there is no glyph, so Teams shows the bundled n8n outline instead of none.
+	 */
+	outline?: Buffer;
 	accentColor: string;
 }
 
 interface IconSvgs {
 	color: string;
-	outline: string;
+	outline?: string;
 	accentColor: string;
 }
 
@@ -52,14 +55,13 @@ type Gradient = AgentPersonalisation['gradient'];
 
 const renders = new Map<string, Promise<unknown>>();
 
-/** Returns undefined for an icon that cannot be drawn, so the caller keeps the bundled icons. */
+/** Returns undefined when rendering fails, so the caller keeps the bundled icons. */
 export async function renderTeamsAppIcons(
 	personalisation?: AgentPersonalisation | null,
 ): Promise<TeamsAppIcons | undefined> {
 	const { icon, gradient } = resolveAgentPersonalisation(personalisation);
 	try {
 		const svgs = await buildTeamsIconSvgs(icon, gradient);
-		if (!svgs) return undefined;
 
 		// Downloads at the same time would otherwise each hold a worker and its wasm memory.
 		const { color, outline } = await runSerially(
@@ -78,19 +80,18 @@ export async function renderTeamsAppIcons(
 	}
 }
 
-/** Returns undefined for an icon name Lucide does not have. */
-export async function buildTeamsIconSvgs(
-	iconName: string,
-	gradient: Gradient,
-): Promise<IconSvgs | undefined> {
+/**
+ * Draws the gradient alone for an icon name Lucide does not have, as the
+ * editor does unless the name is in one of its own icon sets.
+ */
+export async function buildTeamsIconSvgs(iconName: string, gradient: Gradient): Promise<IconSvgs> {
 	// Loaded once and cached. Parsing the set again on each call grows the V8
 	// heap far more than the parsed set costs to keep.
 	const { icons: lucide } = await import('@iconify-json/lucide');
 	// Aliases are skipped, as the editor's icon loader skips them.
-	if (!Object.hasOwn(lucide.icons, iconName)) return undefined;
-	const icon = lucide.icons[iconName];
-	const viewBox = `0 0 ${icon.width ?? lucide.width ?? 24} ${icon.height ?? lucide.height ?? 24}`;
-	const glyph = icon.body.replaceAll('currentColor', '#FFFFFF');
+	const icon = Object.hasOwn(lucide.icons, iconName) ? lucide.icons[iconName] : undefined;
+	const viewBox = `0 0 ${icon?.width ?? lucide.width ?? 24} ${icon?.height ?? lucide.height ?? 24}`;
+	const glyph = icon?.body.replaceAll('currentColor', '#FFFFFF');
 
 	// Mixed in oklch, as the editor does: random agent gradients pair
 	// complementary hues, which sRGB mixing would turn grey in the middle.
@@ -103,9 +104,9 @@ export async function buildTeamsIconSvgs(
 			COLOR_SIZE,
 			`0 0 ${COLOR_SIZE} ${COLOR_SIZE}`,
 			`${gradientDefinition(gradient, colorAt)}<rect width="${COLOR_SIZE}" height="${COLOR_SIZE}" fill="url(#g)"/>` +
-				`<svg x="${offset}" y="${offset}" width="${glyphSize}" height="${glyphSize}" viewBox="${viewBox}">${glyph}</svg>`,
+				`<svg x="${offset}" y="${offset}" width="${glyphSize}" height="${glyphSize}" viewBox="${viewBox}">${glyph ?? ''}</svg>`,
 		),
-		outline: svg(OUTLINE_SIZE, viewBox, glyph),
+		outline: glyph === undefined ? undefined : svg(OUTLINE_SIZE, viewBox, glyph),
 		accentColor: rgbToHex(colorAt(stopProgress(gradient, 0.5))),
 	};
 }
@@ -154,7 +155,10 @@ initWasm(readFileSync(workerData.wasmPath)).then(() => {
 		image.free();
 		return png;
 	};
-	parentPort.postMessage({ color: render(workerData.color), outline: render(workerData.outline) });
+	parentPort.postMessage({
+		color: render(workerData.color),
+		outline: workerData.outline && render(workerData.outline),
+	});
 });
 `;
 
@@ -196,11 +200,14 @@ async function rasterise(svgs: IconSvgs): Promise<Pick<TeamsAppIcons, 'color' | 
 		if (
 			!isRecord(result) ||
 			!(result.color instanceof Uint8Array) ||
-			!(result.outline instanceof Uint8Array)
+			(svgs.outline !== undefined && !(result.outline instanceof Uint8Array))
 		) {
 			throw new UnexpectedError('The icon renderer returned no images');
 		}
-		return { color: Buffer.from(result.color), outline: Buffer.from(result.outline) };
+		return {
+			color: Buffer.from(result.color),
+			outline: result.outline instanceof Uint8Array ? Buffer.from(result.outline) : undefined,
+		};
 	} finally {
 		await worker.terminate();
 	}
