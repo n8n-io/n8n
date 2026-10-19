@@ -7,8 +7,8 @@ import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
 import config from '@/config';
-import { ScimSettingsService } from '@/modules/scim/scim-settings.service';
 
+import { ScimSwitchReader } from '../scim-switch-reader';
 import {
 	emitSsoLoginDisabled,
 	isSamlOrOidcLoginEnabled,
@@ -156,12 +156,13 @@ describe('sso-helpers', () => {
 
 	describe('emitSsoLoginDisabled', () => {
 		const eventService = mock<EventService>();
-		const scimSettingsService = mock<ScimSettingsService>();
 		const logger = mockLogger();
+		let scimSwitchReader: ScimSwitchReader;
 
 		beforeEach(() => {
+			scimSwitchReader = new ScimSwitchReader();
 			Container.set(EventService, eventService);
-			Container.set(ScimSettingsService, scimSettingsService);
+			Container.set(ScimSwitchReader, scimSwitchReader);
 			Container.set(Logger, logger);
 		});
 
@@ -169,7 +170,7 @@ describe('sso-helpers', () => {
 			['saml', true],
 			['oidc', false],
 		] as const)('emits the protocol %s and the SCIM state %s', async (protocol, scimWasEnabled) => {
-			scimSettingsService.isEnabled.mockResolvedValue(scimWasEnabled);
+			scimSwitchReader.register(async () => scimWasEnabled);
 
 			await emitSsoLoginDisabled(protocol);
 
@@ -179,8 +180,21 @@ describe('sso-helpers', () => {
 			});
 		});
 
+		// Without `feat:scim` the module does not start, so a stored switch
+		// from before must not count.
+		it('reports SCIM as off while the SCIM module has not started', async () => {
+			await emitSsoLoginDisabled('saml');
+
+			expect(eventService.emit).toHaveBeenCalledExactlyOnceWith('sso-login-disabled', {
+				protocol: 'saml',
+				scimWasEnabled: false,
+			});
+		});
+
 		it('still emits the event when the SCIM state cannot be read', async () => {
-			scimSettingsService.isEnabled.mockRejectedValue(new Error('db down'));
+			scimSwitchReader.register(async () => {
+				throw new Error('db down');
+			});
 
 			await emitSsoLoginDisabled('saml');
 

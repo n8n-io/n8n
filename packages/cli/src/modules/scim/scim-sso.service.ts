@@ -2,6 +2,7 @@ import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import { Service } from '@n8n/di';
 
+import { ScimSwitchReader } from '@/sso.ee/scim-switch-reader';
 import { isSamlOrOidcLoginEnabled } from '@/sso.ee/sso-helpers';
 
 import { ScimSettingsService } from './scim-settings.service';
@@ -24,6 +25,7 @@ export class ScimSsoService {
 		private readonly eventService: EventService,
 		private readonly scimSettingsService: ScimSettingsService,
 		private readonly moduleRegistry: ModuleRegistry,
+		private readonly scimSwitchReader: ScimSwitchReader,
 	) {}
 
 	isSsoEnabled(): boolean {
@@ -34,10 +36,14 @@ export class ScimSsoService {
 	 * Turns SCIM off on each later `sso-login-disabled` event, and once now.
 	 * The check now covers single sign-on that turned off while the instance
 	 * was down, for example an expired license or a changed env variable.
+	 *
+	 * The event reports if SCIM was on, so SSO code reads the switch through
+	 * `ScimSwitchReader`, which this module sets here.
 	 */
 	async init() {
 		if (!this.listening) {
 			this.listening = true;
+			this.scimSwitchReader.register(async () => await this.scimSettingsService.isEnabled());
 			this.eventService.on('sso-login-disabled', async ({ protocol }) => {
 				await this.turnOffScim(`${protocol.toUpperCase()} single sign-on turned off`);
 			});
