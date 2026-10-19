@@ -387,7 +387,7 @@ function onTabChange(tab: string) {
 	h5,
 	h6,
 	:where(p:has(> strong:only-child)) {
-		margin-block: var(--spacing--sm) 0;
+		margin-block: var(--spacing--sm) var(--spacing--5xs);
 		font-size: var(--font-size--sm);
 		line-height: var(--line-height--lg);
 
