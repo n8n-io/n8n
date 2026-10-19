@@ -35,7 +35,7 @@ export type { PromotionEnvironmentSummary };
  * The settings page shows one environment for each direction as one connection. The
  * shared fields come from the Apply environment, else from the Promote one.
  */
-export type PromotionConnection = Pick<PromotionEnvironment, 'name' | 'provider' | 'target'> & {
+export type PromotionConnection = Pick<PromotionEnvironment, 'name' | 'provider' | 'remote'> & {
 	configs: {
 		apply?: Extract<PromotionEnvironment, { direction: 'apply' }>;
 		promote?: Extract<PromotionEnvironment, { direction: 'promote' }>;

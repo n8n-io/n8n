@@ -1,6 +1,6 @@
 import type {
 	CreatePromotionEnvironmentDto,
-	PromotionEnvironmentTarget,
+	PromotionEnvironmentRemote,
 	PromotionDirection,
 	PromotionEnvironmentCheckout,
 	PromotionEnvironmentProjectListPublicDto,
@@ -27,10 +27,10 @@ import {
 } from './database/repositories/promotion-environment.repository';
 import { resolveStoredConfig } from './promotion-config-settings';
 import {
-	resolvePromotionGitTarget,
-	resolvePromotionTarget,
-	storePromotionTarget,
-} from './git-hosts/git-host-target';
+	resolvePromotionGitRemote,
+	resolvePromotionRemote,
+	storePromotionRemote,
+} from './git-hosts/git-host-remote';
 import { mapPromotionConflicts } from './promotion-conflicts';
 import { PromotionProvidersService } from './promotion-providers.service';
 import { PromotionWorkingDirectoryService } from './promotion-working-directory.service';
@@ -64,8 +64,8 @@ export class PromotionEnvironmentsService {
 
 	async create(input: CreatePromotionEnvironmentDto): Promise<PromotionEnvironmentPublicDto> {
 		const provider = await this.providersService.getEntity(input.providerId);
-		this.gitService.validateRemoteUrl(input.target.remoteUrl, provider.authType);
-		const target = storePromotionTarget(provider, input.target);
+		this.gitService.validateRemoteUrl(input.remote.remoteUrl, provider.authType);
+		const remote = storePromotionRemote(provider, input.remote);
 		const settings = await this.checkSettings(input.direction, input.settings);
 
 		const environment = await mapPromotionConflicts(
@@ -74,7 +74,7 @@ export class PromotionEnvironmentsService {
 					name: input.name,
 					scope: input.scope,
 					providerId: input.providerId,
-					target,
+					remote,
 					direction: input.direction,
 					settings,
 				}),
@@ -113,29 +113,29 @@ export class PromotionEnvironmentsService {
 	): Promise<PromotionEnvironmentPublicDto> {
 		const current = await this.getEntity(id);
 
-		// A new provider may accept different remote URL forms, so recheck the target
-		// on every reassignment, even when the target itself did not change.
+		// A new provider may accept different remote URL forms, so recheck the remote
+		// on every reassignment, even when the remote itself did not change.
 		const provider = input.providerId
 			? await this.providersService.getEntity(input.providerId)
 			: current.provider;
-		const requested: PromotionEnvironmentTarget =
-			input.target ?? resolvePromotionTarget(current.provider, current.target);
+		const requested: PromotionEnvironmentRemote =
+			input.remote ?? resolvePromotionRemote(current.provider, current.remote);
 		this.gitService.validateRemoteUrl(requested.remoteUrl, provider.authType);
-		const changesTarget = input.target !== undefined || provider.id !== current.providerId;
-		const target =
-			input.target === undefined &&
+		const changesRemote = input.remote !== undefined || provider.id !== current.providerId;
+		const remote =
+			input.remote === undefined &&
 			isPromotionGitHostType(provider.type) &&
-			'repositoryPath' in current.target
-				? current.target
-				: changesTarget
-					? storePromotionTarget(provider, requested)
-					: current.target;
+			'repositoryPath' in current.remote
+				? current.remote
+				: changesRemote
+					? storePromotionRemote(provider, requested)
+					: current.remote;
 		const settings =
 			input.settings && (await this.checkSettings(current.direction, input.settings));
 
 		const updated = await this.environmentRepository.updateEnvironment(id, current.providerId, {
 			...(input.name !== undefined && { name: input.name }),
-			...(changesTarget && { target }),
+			...(changesRemote && { remote }),
 			...(input.providerId !== undefined && { providerId: input.providerId }),
 			...(settings && { settings }),
 		});
@@ -221,10 +221,10 @@ export class PromotionEnvironmentsService {
 			id: environment.id,
 			name: environment.name,
 			scope: environment.scope,
-			target: {
-				...resolvePromotionTarget(environment.provider, environment.target),
-				...('repositoryPath' in environment.target && {
-					repositoryPath: environment.target.repositoryPath,
+			remote: {
+				...resolvePromotionRemote(environment.provider, environment.remote),
+				...('repositoryPath' in environment.remote && {
+					repositoryPath: environment.remote.repositoryPath,
 				}),
 			},
 			provider: this.providersService.toSummary(environment.provider),
@@ -247,17 +247,17 @@ export class PromotionEnvironmentsService {
 		const hasCheckout = await this.gitService.hasCheckout(repositoryFolder);
 		if (!hasCheckout) return { hasCheckout: false, matchesConfig: false };
 
-		// Read the target the same way an operation does, so the reported state and the
-		// enforced state cannot drift. A target this version cannot read is not usable.
-		let target: PromotionEnvironmentTarget;
+		// Read the remote the same way an operation does, so the reported state and the
+		// enforced state cannot drift. A remote this version cannot read is not usable.
+		let remote: PromotionEnvironmentRemote;
 		try {
-			target = resolvePromotionGitTarget(environment.provider, environment.target);
+			remote = resolvePromotionGitRemote(environment.provider, environment.remote);
 		} catch {
 			return { hasCheckout, matchesConfig: false };
 		}
 
 		const matchesConfig = await this.workingDirectory.matchesDescriptor(
-			buildCacheDescriptor({ environmentId: environment.id, target, config: resolved }),
+			buildCacheDescriptor({ environmentId: environment.id, remote, config: resolved }),
 		);
 		return { hasCheckout, matchesConfig };
 	}

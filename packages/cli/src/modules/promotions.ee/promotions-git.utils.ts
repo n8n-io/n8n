@@ -1,4 +1,4 @@
-import type { PromotionEnvironmentTarget, PromotionSshKeyType } from '@n8n/api-types';
+import type { PromotionEnvironmentRemote, PromotionSshKeyType } from '@n8n/api-types';
 import { resolveProxyUrl } from '@n8n/backend-network';
 import { generateKeyPairSync } from 'node:crypto';
 
@@ -94,7 +94,7 @@ export function checkoutBranchName(config: ResolvedPromotionConfig): string {
 
 /** Keep the repository URL consistent across Git operations and cache identity. */
 export function repositoryUrl(input: PromotionOperationInput): string {
-	return input.target.remoteUrl;
+	return input.remote.remoteUrl;
 }
 
 /**
@@ -105,13 +105,13 @@ export function repositoryUrl(input: PromotionOperationInput): string {
  */
 export function buildCacheDescriptor(source: {
 	environmentId: string;
-	target: PromotionEnvironmentTarget;
+	remote: PromotionEnvironmentRemote;
 	config: ResolvedPromotionConfig;
 }): PromotionCacheDescriptor {
 	return {
 		schemaVersion: 1,
 		environmentId: source.environmentId,
-		remoteUrl: source.target.remoteUrl,
+		remoteUrl: source.remote.remoteUrl,
 		checkoutBranchName: checkoutBranchName(source.config),
 	};
 }

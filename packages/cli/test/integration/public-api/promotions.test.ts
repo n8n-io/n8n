@@ -52,7 +52,7 @@ describe('Promotions in Public API', () => {
 		return response.body.provider.id as string;
 	}
 
-	const target = { schemaVersion: 1, remoteUrl: 'https://example.com/org/repo.git' };
+	const remote = { schemaVersion: 1, remoteUrl: 'https://example.com/org/repo.git' };
 	const applySettings = { schemaVersion: 1, branchName: 'main' };
 	const promoteEnvironment = {
 		direction: 'promote',
@@ -68,7 +68,7 @@ describe('Promotions in Public API', () => {
 			name: 'Deployments',
 			scope: 'instance',
 			providerId,
-			target,
+			remote,
 			direction: 'apply',
 			settings: applySettings,
 			...over,
@@ -98,7 +98,7 @@ describe('Promotions in Public API', () => {
 			name: 'Deployments',
 			scope: 'instance',
 			providerId,
-			target,
+			remote,
 			direction: 'promote',
 			settings,
 		});
@@ -108,7 +108,7 @@ describe('Promotions in Public API', () => {
 			name: 'Deployments',
 			scope: 'instance',
 			direction: 'promote',
-			target,
+			remote,
 			provider: { id: providerId, type: 'git', authType: 'token' },
 			settings,
 			checkout: { hasCheckout: false, matchesConfig: false },
@@ -167,11 +167,11 @@ describe('Promotions in Public API', () => {
 
 	it('allows one apply and one promote instance environment with different repositories', async () => {
 		const agent = testServer.publicApiAgentFor(owner);
-		const otherTarget = { schemaVersion: 1, remoteUrl: 'https://example.com/org/other.git' };
+		const otherRemote = { schemaVersion: 1, remoteUrl: 'https://example.com/org/other.git' };
 		const applyId = await createEnvironment(agent);
 		const promoteId = await createEnvironment(agent, {
 			...promoteEnvironment,
-			target: otherTarget,
+			remote: otherRemote,
 		});
 
 		const promoteOnly = await agent.get(
@@ -180,9 +180,9 @@ describe('Promotions in Public API', () => {
 		const apply = await agent.get(`/promotions/environments/${applyId}`);
 
 		expect(promoteOnly.body.data).toEqual([
-			expect.objectContaining({ id: promoteId, direction: 'promote', target: otherTarget }),
+			expect.objectContaining({ id: promoteId, direction: 'promote', remote: otherRemote }),
 		]);
-		expect(apply.body).toMatchObject({ direction: 'apply', target });
+		expect(apply.body).toMatchObject({ direction: 'apply', remote });
 	});
 
 	it('rejects a malformed environment id', async () => {
@@ -849,7 +849,7 @@ describe('Promotions in Public API', () => {
 			const id = await createEnvironment(agent, {
 				providerId,
 				scope: 'projects',
-				target: {
+				remote: {
 					schemaVersion: 1,
 					remoteUrl: 'https://gitlab.example.com/platform/workflows.git',
 				},
@@ -925,7 +925,7 @@ describe('Promotions in Public API', () => {
 		}
 
 		async function selectedEnvironment(providerId: string) {
-			const target = { schemaVersion: 1, remoteUrl: project.http_url_to_repo };
+			const remote = { schemaVersion: 1, remoteUrl: project.http_url_to_repo };
 			const response = await testServer
 				.publicApiAgentFor(owner)
 				.post('/promotions/environments')
@@ -933,13 +933,13 @@ describe('Promotions in Public API', () => {
 					name: 'Selected repository',
 					scope: 'projects',
 					providerId,
-					target,
+					remote,
 					direction: 'apply',
 					settings: applySettings,
 				});
 			expect(response.status, JSON.stringify(response.body)).toBe(201);
-			expect(response.body.target).toEqual({
-				...target,
+			expect(response.body.remote).toEqual({
+				...remote,
 				repositoryPath: project.path_with_namespace,
 			});
 			return response.body.id as string;
@@ -1480,7 +1480,7 @@ describe('Promotions in Public API', () => {
 						name: 'URL form',
 						scope: 'projects',
 						providerId,
-						target: {
+						remote: {
 							schemaVersion: 1,
 							remoteUrl: ` ${baseUrl}/${project.path_with_namespace}${suffix} `,
 						},
@@ -1488,7 +1488,7 @@ describe('Promotions in Public API', () => {
 						settings: applySettings,
 					});
 				expect(response.status, JSON.stringify(response.body)).toBe(201);
-				expect(response.body.target).toEqual({
+				expect(response.body.remote).toEqual({
 					schemaVersion: 1,
 					remoteUrl: `${baseUrl}/${project.path_with_namespace}.git`,
 					repositoryPath: project.path_with_namespace,
@@ -1517,7 +1517,7 @@ describe('Promotions in Public API', () => {
 					name: 'Invalid URL',
 					scope: 'projects',
 					providerId,
-					target: { schemaVersion: 1, remoteUrl },
+					remote: { schemaVersion: 1, remoteUrl },
 					direction: 'apply',
 					settings: applySettings,
 				});
@@ -1531,15 +1531,15 @@ describe('Promotions in Public API', () => {
 			const agent = testServer.publicApiAgentFor(owner);
 			const root = `/promotions/environments/${id}`;
 			const repository = Container.get(PromotionEnvironmentRepository);
-			const storedTarget = { schemaVersion: 1, repositoryPath: project.path_with_namespace };
-			const target = { ...storedTarget, remoteUrl: project.http_url_to_repo };
-			expect((await repository.findByIdWithProvider(id))?.target).toEqual(storedTarget);
+			const storedRemote = { schemaVersion: 1, repositoryPath: project.path_with_namespace };
+			const remote = { ...storedRemote, remoteUrl: project.http_url_to_repo };
+			expect((await repository.findByIdWithProvider(id))?.remote).toEqual(storedRemote);
 			const original = await agent.get(root);
-			expect(original.body.target).toEqual(target);
+			expect(original.body.remote).toEqual(remote);
 			const listed = await agent.get('/promotions/environments').query({ providerId });
-			expect(listed.body.data).toContainEqual(expect.objectContaining({ id, target }));
-			expect((await agent.put(root).send({ name: 'Renamed', providerId })).body.target).toEqual(
-				target,
+			expect(listed.body.data).toContainEqual(expect.objectContaining({ id, remote }));
+			expect((await agent.put(root).send({ name: 'Renamed', providerId })).body.remote).toEqual(
+				remote,
 			);
 			const team = await createTeamProject('Path deployment', owner);
 			expect((await agent.post(`${root}/projects/${team.id}`)).status).toBe(200);
@@ -1556,15 +1556,15 @@ describe('Promotions in Public API', () => {
 				remoteUrl: `${baseUrl}/${project.path_with_namespace}.git`,
 			};
 			const after = await agent.get(root);
-			expect(after.body.target).toEqual({
+			expect(after.body.remote).toEqual({
 				...expected,
 				repositoryPath: project.path_with_namespace,
 			});
 			expect(after.body.settings).toEqual(original.body.settings);
 			expect((await agent.get(`${root}/projects`)).body.projectIds).toEqual([team.id]);
-			expect((await repository.findByIdWithProvider(id))?.target).toEqual(storedTarget);
+			expect((await repository.findByIdWithProvider(id))?.remote).toEqual(storedRemote);
 			expect(
-				(await Container.get(PromotionEnvironmentResolver).resolveForEnvironment(id)).target,
+				(await Container.get(PromotionEnvironmentResolver).resolveForEnvironment(id)).remote,
 			).toEqual(expected);
 		});
 
@@ -1573,12 +1573,12 @@ describe('Promotions in Public API', () => {
 			const id = await selectedEnvironment(providerId);
 			const agent = testServer.publicApiAgentFor(owner);
 			const root = `/promotions/environments/${id}`;
-			const target = { schemaVersion: 1, remoteUrl: `${payload.config.baseUrl}/platform/next.git` };
-			const updated = await agent.put(root).send({ target });
+			const remote = { schemaVersion: 1, remoteUrl: `${payload.config.baseUrl}/platform/next.git` };
+			const updated = await agent.put(root).send({ remote });
 			expect(updated.status).toBe(200);
-			expect(updated.body.target).toEqual({ ...target, repositoryPath: 'platform/next' });
+			expect(updated.body.remote).toEqual({ ...remote, repositoryPath: 'platform/next' });
 			expect(
-				(await Container.get(PromotionEnvironmentRepository).findByIdWithProvider(id))?.target,
+				(await Container.get(PromotionEnvironmentRepository).findByIdWithProvider(id))?.remote,
 			).toEqual({ schemaVersion: 1, repositoryPath: 'platform/next' });
 			for (const remoteUrl of [
 				'',
@@ -1587,11 +1587,11 @@ describe('Promotions in Public API', () => {
 			]) {
 				const rejected = await agent
 					.put(root)
-					.send({ name: 'Must not save', target: { schemaVersion: 1, remoteUrl } });
+					.send({ name: 'Must not save', remote: { schemaVersion: 1, remoteUrl } });
 				expect(rejected.status).toBe(400);
 				expect((await agent.get(root)).body).toEqual(updated.body);
 			}
-			const rejectedId = await agent.put(root).send({ target: { ...target, repositoryId: '42' } });
+			const rejectedId = await agent.put(root).send({ remote: { ...remote, repositoryId: '42' } });
 			expect(rejectedId.status).toBe(400);
 		});
 
@@ -1604,63 +1604,63 @@ describe('Promotions in Public API', () => {
 			const root = `/promotions/environments/${id}`;
 			const moved = await agent.put(root).send({ providerId: nextProviderId });
 			expect(moved.status).toBe(200);
-			const target = {
+			const remote = {
 				schemaVersion: 1,
 				remoteUrl: `${baseUrl}/${project.path_with_namespace}.git`,
 			};
-			expect(moved.body.target).toEqual({
-				...target,
+			expect(moved.body.remote).toEqual({
+				...remote,
 				repositoryPath: project.path_with_namespace,
 			});
 			const plainProviderId = await createProvider(agent);
 			const plain = await agent.put(root).send({ providerId: plainProviderId });
 			expect(plain.status).toBe(200);
-			expect(plain.body.target).toEqual(target);
+			expect(plain.body.remote).toEqual(remote);
 			expect(
-				(await Container.get(PromotionEnvironmentRepository).findByIdWithProvider(id))?.target,
-			).toEqual(target);
+				(await Container.get(PromotionEnvironmentRepository).findByIdWithProvider(id))?.remote,
+			).toEqual(remote);
 		});
 
 		it('rejects Git operations for a legacy URL outside the provider host', async () => {
 			const providerId = await savedProvider();
 			const id = await selectedEnvironment(providerId);
-			const target = {
+			const remote = {
 				schemaVersion: 1 as const,
 				remoteUrl: 'https://other.example.com/platform/workflows.git',
 			};
 			await Container.get(PromotionEnvironmentRepository).updateEnvironment(id, providerId, {
-				target,
+				remote,
 			});
 			await expect(
 				Container.get(PromotionEnvironmentResolver).resolveForEnvironment(id),
 			).rejects.toThrow('Select the repository again');
 			const read = await testServer.publicApiAgentFor(owner).get(`/promotions/environments/${id}`);
 			expect(read.status).toBe(200);
-			expect(read.body.target).toEqual(target);
+			expect(read.body.remote).toEqual(remote);
 		});
 
-		it('reads legacy URL targets and converts them to paths when the target is resaved', async () => {
+		it('reads legacy URL remotes and converts them to paths when the remote is resaved', async () => {
 			const providerId = await savedProvider();
 			const id = await selectedEnvironment(providerId);
 			const repository = Container.get(PromotionEnvironmentRepository);
-			const target = { schemaVersion: 1 as const, remoteUrl: project.http_url_to_repo };
-			await repository.updateEnvironment(id, providerId, { target });
+			const remote = { schemaVersion: 1 as const, remoteUrl: project.http_url_to_repo };
+			await repository.updateEnvironment(id, providerId, { remote });
 			const agent = testServer.publicApiAgentFor(owner);
 			const root = `/promotions/environments/${id}`;
-			expect((await agent.get(root)).body.target).toEqual(target);
+			expect((await agent.get(root)).body.remote).toEqual(remote);
 			expect(
-				(await Container.get(PromotionEnvironmentResolver).resolveForEnvironment(id)).target,
-			).toEqual(target);
+				(await Container.get(PromotionEnvironmentResolver).resolveForEnvironment(id)).remote,
+			).toEqual(remote);
 			expect((await agent.put(root).send({ name: 'Legacy rename' })).status).toBe(200);
-			expect((await repository.findByIdWithProvider(id))?.target).toEqual(target);
-			expect((await agent.put(root).send({ target })).status).toBe(200);
-			expect((await repository.findByIdWithProvider(id))?.target).toEqual({
+			expect((await repository.findByIdWithProvider(id))?.remote).toEqual(remote);
+			expect((await agent.put(root).send({ remote })).status).toBe(200);
+			expect((await repository.findByIdWithProvider(id))?.remote).toEqual({
 				schemaVersion: 1,
 				repositoryPath: project.path_with_namespace,
 			});
 		});
 
-		it.each(['target', 'provider'] as const)(
+		it.each(['remote', 'provider'] as const)(
 			'keeps a winning provider reassignment when a stale %s update resumes',
 			async (field) => {
 				const providerId = await savedProvider();
@@ -1680,9 +1680,9 @@ describe('Promotions in Public API', () => {
 					});
 				const root = `/promotions/environments/${id}`;
 				const changes =
-					field === 'target'
+					field === 'remote'
 						? {
-								target: {
+								remote: {
 									schemaVersion: 1,
 									remoteUrl: `${payload.config.baseUrl}/platform/next.git`,
 								},
@@ -1704,7 +1704,7 @@ describe('Promotions in Public API', () => {
 						.send({ name: 'Winning settings', providerId: plainProviderId });
 					expect(winner.status, JSON.stringify(winner.body)).toBe(200);
 					const stored = await repository.findByIdWithProvider(id);
-					expect(stored?.target).toEqual(winner.body.target);
+					expect(stored?.remote).toEqual(winner.body.remote);
 					resume.resolve();
 					const stale = await pending;
 					expect(stale.status, JSON.stringify(stale.body)).toBe(409);
@@ -1716,11 +1716,11 @@ describe('Promotions in Public API', () => {
 					const listed = await agent.get('/promotions/environments');
 					expect(listed.status).toBe(200);
 					expect(listed.body.data).toContainEqual(
-						expect.objectContaining({ id, target: winner.body.target }),
+						expect.objectContaining({ id, remote: winner.body.remote }),
 					);
 					expect(
 						await Container.get(PromotionEnvironmentResolver).resolveForEnvironment(id),
-					).toMatchObject({ providerId: plainProviderId, target: winner.body.target });
+					).toMatchObject({ providerId: plainProviderId, remote: winner.body.remote });
 				} finally {
 					resume.resolve();
 					await pending;
@@ -1915,7 +1915,7 @@ describe('Promotions in Public API', () => {
 				name: 'Deployments',
 				scope: 'instance',
 				providerId: 'doesNotExist',
-				target,
+				remote,
 				direction: 'apply',
 				settings: applySettings,
 			});
@@ -1936,7 +1936,7 @@ describe('Promotions in Public API', () => {
 			name: 'Second',
 			scope: 'instance',
 			providerId,
-			target: { schemaVersion: 1, remoteUrl: 'https://example.com/org/other.git' },
+			remote: { schemaVersion: 1, remoteUrl: 'https://example.com/org/other.git' },
 			direction: 'apply',
 			settings: applySettings,
 		});
@@ -1953,7 +1953,7 @@ describe('Promotions in Public API', () => {
 			name: 'Invalid',
 			scope: 'instance',
 			providerId,
-			target: { schemaVersion: 1, remoteUrl: 'git@example.com:org/repo.git' },
+			remote: { schemaVersion: 1, remoteUrl: 'git@example.com:org/repo.git' },
 			direction: 'apply',
 			settings: applySettings,
 		});
@@ -1989,7 +1989,7 @@ describe('Promotions in Public API', () => {
 			name: 'Deployments',
 			scope: 'instance',
 			providerId,
-			target,
+			remote,
 			direction: 'apply',
 			settings: { schemaVersion: 1, branchName: 'no..pe' },
 		});

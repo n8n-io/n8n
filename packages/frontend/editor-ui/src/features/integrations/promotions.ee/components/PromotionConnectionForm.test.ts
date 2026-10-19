@@ -38,14 +38,14 @@ const provider: PromotionProviderSummary = {
 	...timestamps,
 };
 
-const target = { schemaVersion: 1 as const, remoteUrl: 'git@github.com:acme/workflows.git' };
+const remote = { schemaVersion: 1 as const, remoteUrl: 'git@github.com:acme/workflows.git' };
 
 const applyConfig = (checkout = { hasCheckout: false, matchesConfig: false }) => ({
 	id: 'environment-apply',
 	name: 'Production',
 	scope: 'instance' as const,
 	direction: 'apply' as const,
-	target,
+	remote,
 	provider,
 	settings: { schemaVersion: 1 as const, branchName: 'main' },
 	checkout,
@@ -54,7 +54,7 @@ const applyConfig = (checkout = { hasCheckout: false, matchesConfig: false }) =>
 
 const connectionWith = (
 	configs: PromotionConnection['configs'] = { apply: applyConfig() },
-): PromotionConnection => ({ name: 'Production', target, provider, configs });
+): PromotionConnection => ({ name: 'Production', remote, provider, configs });
 
 const checkoutResult = (hasCheckout: boolean) => ({
 	environmentId: 'environment-apply',

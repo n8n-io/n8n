@@ -19,7 +19,7 @@ const runTypes = ['git'];
 
 /**
  * One environment replaces a connection and its per-direction configs: it holds
- * the provider, the target, and the settings of one direction. Only setups with
+ * the provider, the remote, and the settings of one direction. Only setups with
  * the promotions feature flag hold promotions data, so the old rows are dropped
  * and not copied. Nothing writes runs or reviews yet, so those tables are created
  * again with a foreign key to the environment.
@@ -79,7 +79,7 @@ export class ReplacePromotionConnectionsWithEnvironments1792417570699
 					.comment(
 						'PromotionEnvironmentScope enum: "instance", "projects". Cannot change after creation.',
 					),
-				column('target').json.notNull.comment(
+				column('remote').json.notNull.comment(
 					'Where to push and pull, with its own schemaVersion. Plain Git stores the full remote URL.',
 				),
 				column('settings').json.notNull.comment(

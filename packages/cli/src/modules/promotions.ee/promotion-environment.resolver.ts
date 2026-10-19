@@ -8,7 +8,7 @@ import { BadRequestError, NotFoundError } from '@n8n/errors';
 import type { PromotionEnvironment } from './database/entities/promotion-environment.entity';
 import { PromotionEnvironmentProjectRepository } from './database/repositories/promotion-environment-project.repository';
 import { PromotionEnvironmentRepository } from './database/repositories/promotion-environment.repository';
-import { resolvePromotionGitTarget } from './git-hosts/git-host-target';
+import { resolvePromotionGitRemote } from './git-hosts/git-host-remote';
 import { resolveStoredConfig } from './promotion-config-settings';
 import type { PromotionOperationInput } from './promotions.types';
 
@@ -84,7 +84,7 @@ export class PromotionEnvironmentResolver {
 			throw new BadRequestError('The stored provider type is not supported');
 		}
 
-		const target = resolvePromotionGitTarget(provider, environment.target);
+		const remote = resolvePromotionGitRemote(provider, environment.remote);
 
 		const resolved = resolveStoredConfig(environment);
 		if (!resolved) {
@@ -98,7 +98,7 @@ export class PromotionEnvironmentResolver {
 			providerType: providerType.data,
 			authType: provider.authType,
 			encryptedAuth: provider.auth,
-			target,
+			remote,
 			config: resolved,
 		});
 	}

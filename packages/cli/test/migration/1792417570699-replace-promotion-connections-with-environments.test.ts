@@ -100,7 +100,7 @@ describe('ReplacePromotionConnectionsWithEnvironments migration', () => {
 			providerId,
 			direction,
 			scope,
-			target: JSON.stringify({ schemaVersion: 1, remoteUrl: 'https://example.com/team/repo.git' }),
+			remote: JSON.stringify({ schemaVersion: 1, remoteUrl: 'https://example.com/team/repo.git' }),
 			settings: JSON.stringify(
 				direction === 'apply'
 					? { schemaVersion: 1, branchName: 'dev' }

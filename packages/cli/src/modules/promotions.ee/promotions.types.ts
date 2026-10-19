@@ -1,5 +1,5 @@
 import type {
-	PromotionEnvironmentTarget,
+	PromotionEnvironmentRemote,
 	PromotionEnvironmentScope,
 	PromotionProviderAuthType,
 	PromotionProviderType,
@@ -50,7 +50,7 @@ export type ResolvedPromotionConfig =
 
 /**
  * Everything one operation needs, read in a single load so a concurrent edit
- * cannot pair old credentials with a new target. `encryptedAuth` is decrypted at
+ * cannot pair old credentials with a new remote. `encryptedAuth` is decrypted at
  * the Git boundary, never held beyond it.
  */
 export type PromotionOperationInput = Readonly<{
@@ -60,7 +60,7 @@ export type PromotionOperationInput = Readonly<{
 	providerType: PromotionProviderType;
 	authType: PromotionProviderAuthType;
 	encryptedAuth: string;
-	target: PromotionEnvironmentTarget;
+	remote: PromotionEnvironmentRemote;
 	config: ResolvedPromotionConfig;
 }>;
 

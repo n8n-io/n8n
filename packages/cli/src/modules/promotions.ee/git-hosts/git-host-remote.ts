@@ -1,9 +1,9 @@
 import {
 	isPromotionGitHostType,
-	promotionEnvironmentTargetSchema,
+	promotionEnvironmentRemoteSchema,
 	promotionGitHostBaseUrlSchema,
 	promotionGitHostConfigSchema,
-	type PromotionEnvironmentTarget,
+	type PromotionEnvironmentRemote,
 } from '@n8n/api-types';
 import { z } from 'zod';
 
@@ -20,13 +20,13 @@ const repositoryPathSchema = z.string().refine((value) => {
 	);
 });
 
-export const promotionStoredEnvironmentTargetSchema = z.union([
-	promotionEnvironmentTargetSchema,
+export const promotionStoredEnvironmentRemoteSchema = z.union([
+	promotionEnvironmentRemoteSchema,
 	z.object({ schemaVersion: z.literal(1), repositoryPath: repositoryPathSchema }).strict(),
 ]);
 
-export type PromotionStoredEnvironmentTarget = z.infer<
-	typeof promotionStoredEnvironmentTargetSchema
+export type PromotionStoredEnvironmentRemote = z.infer<
+	typeof promotionStoredEnvironmentRemoteSchema
 >;
 type GitHostProvider = Pick<PromotionProvider, 'type' | 'config'>;
 
@@ -57,27 +57,27 @@ export function repositoryPathFromUrl(baseUrl: string, remoteUrl: string): strin
 	return path;
 }
 
-export function storePromotionTarget(
+export function storePromotionRemote(
 	provider: GitHostProvider,
-	target: PromotionEnvironmentTarget,
-): PromotionStoredEnvironmentTarget {
-	if (!isPromotionGitHostType(provider.type)) return target;
+	remote: PromotionEnvironmentRemote,
+): PromotionStoredEnvironmentRemote {
+	if (!isPromotionGitHostType(provider.type)) return remote;
 	return {
 		schemaVersion: 1,
-		repositoryPath: repositoryPathFromUrl(hostBaseUrl(provider), target.remoteUrl),
+		repositoryPath: repositoryPathFromUrl(hostBaseUrl(provider), remote.remoteUrl),
 	};
 }
 
-export function resolvePromotionTarget(
+export function resolvePromotionRemote(
 	provider: GitHostProvider,
 	stored: unknown,
-): PromotionEnvironmentTarget {
-	const parsed = promotionStoredEnvironmentTargetSchema.safeParse(stored);
-	if (!parsed.success) throw new BadRequestError('The stored environment target cannot be read');
+): PromotionEnvironmentRemote {
+	const parsed = promotionStoredEnvironmentRemoteSchema.safeParse(stored);
+	if (!parsed.success) throw new BadRequestError('The stored environment remote cannot be read');
 	if ('remoteUrl' in parsed.data) return parsed.data;
 	if (!isPromotionGitHostType(provider.type)) {
 		throw new BadRequestError(
-			'Plain Git environments need a remote URL. Update the environment target.',
+			'Plain Git environments need a remote URL. Update the environment remote.',
 		);
 	}
 	return {
@@ -86,16 +86,16 @@ export function resolvePromotionTarget(
 	};
 }
 
-export function resolvePromotionGitTarget(
+export function resolvePromotionGitRemote(
 	provider: GitHostProvider,
 	stored: unknown,
-): PromotionEnvironmentTarget {
-	const target = resolvePromotionTarget(provider, stored);
-	if (!isPromotionGitHostType(provider.type)) return target;
+): PromotionEnvironmentRemote {
+	const remote = resolvePromotionRemote(provider, stored);
+	if (!isPromotionGitHostType(provider.type)) return remote;
 	const baseUrl = hostBaseUrl(provider);
 	let repositoryPath: string;
 	try {
-		repositoryPath = repositoryPathFromUrl(baseUrl, target.remoteUrl);
+		repositoryPath = repositoryPathFromUrl(baseUrl, remote.remoteUrl);
 	} catch {
 		throw new BadRequestError(
 			'The saved repository URL does not use the GitLab base URL. Select the repository again.',

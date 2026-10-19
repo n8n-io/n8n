@@ -61,7 +61,7 @@ describe('PromotionEnvironmentsService', () => {
 			name: 'Staging',
 			scope: 'projects',
 			providerId: 'prov1',
-			target: { schemaVersion: 1, remoteUrl: 'git@github.com:o/r.git' },
+			remote: { schemaVersion: 1, remoteUrl: 'git@github.com:o/r.git' },
 			direction: 'promote',
 			settings: {
 				schemaVersion: 1,
@@ -135,10 +135,10 @@ describe('PromotionEnvironmentsService', () => {
 			});
 		});
 
-		it('normalizes the stored target the same way an operation does', async () => {
+		it('normalizes the stored remote the same way an operation does', async () => {
 			environmentRepository.findByIdWithProvider.mockResolvedValue({
 				...environment(),
-				target: { schemaVersion: 1, remoteUrl: '  git@github.com:o/r.git  ' },
+				remote: { schemaVersion: 1, remoteUrl: '  git@github.com:o/r.git  ' },
 			} as PromotionEnvironment);
 			gitService.hasCheckout.mockResolvedValue(true);
 			await mkdir(workingDirectory.paths(ENVIRONMENT_ID).repositoryFolder, { recursive: true });
@@ -161,7 +161,7 @@ describe('PromotionEnvironmentsService', () => {
 		it('marks a path-based checkout as stale after a provider host change', async () => {
 			const gitlabEnvironment = {
 				...environment(),
-				target: { schemaVersion: 1, repositoryPath: 'platform/workflows' },
+				remote: { schemaVersion: 1, repositoryPath: 'platform/workflows' },
 				provider: {
 					...provider(),
 					type: 'gitlab',
@@ -184,7 +184,7 @@ describe('PromotionEnvironmentsService', () => {
 				baseUrl: 'https://other.example.com/installation',
 			};
 			const after = await service.findOne(ENVIRONMENT_ID);
-			expect(after.target.remoteUrl).toBe(
+			expect(after.remote.remoteUrl).toBe(
 				'https://other.example.com/installation/platform/workflows.git',
 			);
 			expect(after.checkout).toEqual({

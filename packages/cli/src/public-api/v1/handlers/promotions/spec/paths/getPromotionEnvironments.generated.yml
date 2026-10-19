@@ -55,7 +55,7 @@ responses:
                         enum:
                           - instance
                           - projects
-                      target:
+                      remote:
                         type: object
                         properties:
                           schemaVersion:
@@ -67,7 +67,7 @@ responses:
                             minLength: 1
                           repositoryPath:
                             type: string
-                            description: The stored repository path of a GitLab target. URL-encode it before you use it as repositoryId to list branches. Requests do not accept it.
+                            description: The stored repository path of a GitLab remote. URL-encode it before you use it as repositoryId to list branches. Requests do not accept it.
                         required:
                           - schemaVersion
                           - remoteUrl
@@ -133,7 +133,7 @@ responses:
                       - id
                       - name
                       - scope
-                      - target
+                      - remote
                       - provider
                       - createdAt
                       - updatedAt
@@ -152,7 +152,7 @@ responses:
                         enum:
                           - instance
                           - projects
-                      target:
+                      remote:
                         type: object
                         properties:
                           schemaVersion:
@@ -164,7 +164,7 @@ responses:
                             minLength: 1
                           repositoryPath:
                             type: string
-                            description: The stored repository path of a GitLab target. URL-encode it before you use it as repositoryId to list branches. Requests do not accept it.
+                            description: The stored repository path of a GitLab remote. URL-encode it before you use it as repositoryId to list branches. Requests do not accept it.
                         required:
                           - schemaVersion
                           - remoteUrl
@@ -233,7 +233,7 @@ responses:
                       - id
                       - name
                       - scope
-                      - target
+                      - remote
                       - provider
                       - createdAt
                       - updatedAt

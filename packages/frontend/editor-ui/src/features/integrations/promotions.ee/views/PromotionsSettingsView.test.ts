@@ -92,7 +92,7 @@ const promoteConfig = (baseBranchName: string, createBranchOnPromotion = false) 
 	...timestamps,
 });
 
-type ConnectionDraft = Partial<Pick<PromotionConnection, 'name' | 'target' | 'provider'>> & {
+type ConnectionDraft = Partial<Pick<PromotionConnection, 'name' | 'remote' | 'provider'>> & {
 	configs?: {
 		apply?: ReturnType<typeof applyConfig>;
 		promote?: ReturnType<typeof promoteConfig>;
@@ -106,7 +106,7 @@ const instanceConnection = ({
 }: ConnectionDraft = {}): PromotionConnection => {
 	const fields = {
 		name: 'Production',
-		target: { schemaVersion: 1 as const, remoteUrl: 'git@github.com:acme/workflows.git' },
+		remote: { schemaVersion: 1 as const, remoteUrl: 'git@github.com:acme/workflows.git' },
 		provider: summaryOf(sshProvider()),
 		...shared,
 	};
@@ -123,7 +123,7 @@ const instanceConnection = ({
 
 const withShared = (
 	connection: PromotionConnection,
-	fields: Partial<Pick<PromotionConnection, 'name' | 'target' | 'provider'>>,
+	fields: Partial<Pick<PromotionConnection, 'name' | 'remote' | 'provider'>>,
 ): PromotionConnection => ({
 	...connection,
 	...fields,
@@ -179,18 +179,18 @@ const otherRepository = {
 	fullPath: 'team/other',
 	remoteUrl: 'https://gitlab.example.com/team/other.git',
 };
-const requestTargetOf = (repo: PromotionRepository) => ({
+const requestRemoteOf = (repo: PromotionRepository) => ({
 	schemaVersion: 1 as const,
 	remoteUrl: repo.remoteUrl,
 });
-const targetOf = (repo: PromotionRepository) => ({
-	...requestTargetOf(repo),
+const remoteOf = (repo: PromotionRepository) => ({
+	...requestRemoteOf(repo),
 	repositoryPath: repo.fullPath,
 });
 const gitlabConnection = (overrides: ConnectionDraft = {}) =>
 	instanceConnection({
 		provider: summaryOf(gitlabProvider()),
-		target: targetOf(repository),
+		remote: remoteOf(repository),
 		configs: { apply: applyConfig('main') },
 		...overrides,
 	});
@@ -356,7 +356,7 @@ describe('PromotionsSettingsView', () => {
 				name: 'Production',
 				scope: 'instance',
 				providerId: 'provider-gitlab',
-				target: requestTargetOf(repository),
+				remote: requestRemoteOf(repository),
 			};
 			expect(api.createPromotionEnvironment).toHaveBeenCalledWith(expect.anything(), {
 				...shared,
@@ -391,15 +391,15 @@ describe('PromotionsSettingsView', () => {
 			expect(cachedConnection.hasPromoteConfig.value).toBe(true);
 		});
 
-		it('clears dependent branches, supports discard, and converts a saved URL target to a path', async () => {
+		it('clears dependent branches, supports discard, and converts a saved URL remote to a path', async () => {
 			const saved = mockGitlabConnection(
 				gitlabConnection({
-					target: { schemaVersion: 1, remoteUrl: repository.remoteUrl },
+					remote: { schemaVersion: 1, remoteUrl: repository.remoteUrl },
 					configs: { apply: applyConfig('main'), promote: promoteConfig('release/test', true) },
 				}),
 			);
 			api.fetchPromotionProviders.mockResolvedValue([saved.provider, summaryOf(sshProvider())]);
-			mockUpdates(withShared(saved, { target: targetOf(repository) }));
+			mockUpdates(withShared(saved, { remote: remoteOf(repository) }));
 			await renderReadyView();
 			const hint = screen.getByText('Select a repository again to load its branches', {
 				selector: '[role="status"]',
@@ -411,10 +411,10 @@ describe('PromotionsSettingsView', () => {
 			await save();
 			for (const id of ['environment-apply', 'environment-promote']) {
 				expect(api.updatePromotionEnvironment).toHaveBeenCalledWith(expect.anything(), id, {
-					target: requestTargetOf(repository),
+					remote: requestRemoteOf(repository),
 				});
 			}
-			mockUpdates(withShared(saved, { target: targetOf(otherRepository) }));
+			mockUpdates(withShared(saved, { remote: remoteOf(otherRepository) }));
 			await selectRepository();
 			expect(selectedValue('apply-branch')).toHaveValue('');
 			expect(selectedValue('promote-branch')).toHaveValue('');
@@ -431,7 +431,7 @@ describe('PromotionsSettingsView', () => {
 			await save();
 			for (const id of ['environment-apply', 'environment-promote']) {
 				expect(api.updatePromotionEnvironment).toHaveBeenCalledWith(expect.anything(), id, {
-					target: requestTargetOf(otherRepository),
+					remote: requestRemoteOf(otherRepository),
 				});
 			}
 			expect(api.updatePromotionEnvironment).toHaveBeenCalledTimes(4);
@@ -473,7 +473,7 @@ describe('PromotionsSettingsView', () => {
 			};
 			api.fetchPromotionEnvironment
 				.mockResolvedValueOnce(applyOf(saved))
-				.mockResolvedValue(applyOf(withShared(saved, { target: targetOf(movedRepository) })));
+				.mockResolvedValue(applyOf(withShared(saved, { remote: remoteOf(movedRepository) })));
 			await renderReadyView();
 			await userEvent.type(screen.getByTestId('promotion-connection-name-input'), ' draft');
 			api.fetchPromotionRepositories.mockResolvedValue({
@@ -518,7 +518,7 @@ describe('PromotionsSettingsView', () => {
 				});
 			api.fetchPromotionEnvironment
 				.mockResolvedValueOnce(applyOf(saved))
-				.mockResolvedValue(applyOf(withShared(saved, { target: targetOf(movedRepository) })));
+				.mockResolvedValue(applyOf(withShared(saved, { remote: remoteOf(movedRepository) })));
 			await renderReadyView();
 			await selectProvider('GitLab B');
 			await selectRepository(repository);
@@ -600,7 +600,7 @@ describe('PromotionsSettingsView', () => {
 				api.fetchPromotionEnvironment.mockResolvedValueOnce(applyOf(saved)).mockResolvedValue(
 					applyOf(
 						withShared(saved, {
-							target: { schemaVersion: 1, remoteUrl: saved.target.remoteUrl },
+							remote: { schemaVersion: 1, remoteUrl: saved.remote.remoteUrl },
 						}),
 					),
 				);
@@ -634,7 +634,7 @@ describe('PromotionsSettingsView', () => {
 				api.fetchPromotionEnvironment
 					.mockResolvedValueOnce(applyOf(saved))
 					.mockReturnValueOnce(pending.promise);
-				mockUpdates(withShared(saved, { target: targetOf(otherRepository) }));
+				mockUpdates(withShared(saved, { remote: remoteOf(otherRepository) }));
 				await renderReadyView();
 				await editGitlabProvider({ name: 'GitLab renamed' });
 				await selectRepository();
@@ -686,7 +686,7 @@ describe('PromotionsSettingsView', () => {
 					globalScopes: ['gitConnection:clone', 'gitConnection:pull'],
 				});
 				const saved = mockGitlabConnection();
-				const updated = withShared(saved, { target: targetOf(otherRepository) });
+				const updated = withShared(saved, { remote: remoteOf(otherRepository) });
 				api.fetchPromotionEnvironment
 					.mockResolvedValueOnce(applyOf(saved))
 					.mockResolvedValue(applyOf(updated));
@@ -985,7 +985,7 @@ describe('PromotionsSettingsView', () => {
 				name: 'Production',
 				scope: 'instance',
 				providerId: 'provider-ssh',
-				target: { schemaVersion: 1, remoteUrl: 'git@github.com:acme/workflows.git' },
+				remote: { schemaVersion: 1, remoteUrl: 'git@github.com:acme/workflows.git' },
 			};
 			expect(api.createPromotionEnvironment).toHaveBeenCalledWith(expect.anything(), {
 				...shared,
@@ -1019,7 +1019,7 @@ describe('PromotionsSettingsView', () => {
 			api.createPromotionEnvironment.mockResolvedValue(
 				applyOf(
 					instanceConnection({
-						target: { schemaVersion: 1, remoteUrl: 'github.com:acme/workflows.git' },
+						remote: { schemaVersion: 1, remoteUrl: 'github.com:acme/workflows.git' },
 					}),
 				),
 			);
@@ -1033,7 +1033,7 @@ describe('PromotionsSettingsView', () => {
 
 			await waitFor(() => expect(api.createPromotionEnvironment).toHaveBeenCalled());
 			expect(api.createPromotionEnvironment.mock.calls[0][1]).toMatchObject({
-				target: { schemaVersion: 1, remoteUrl: 'github.com:acme/workflows.git' },
+				remote: { schemaVersion: 1, remoteUrl: 'github.com:acme/workflows.git' },
 			});
 		});
 

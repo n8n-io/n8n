@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "promotion_environment" ("id" varchar PRIMARY KEY NOT NULL, "name" varchar(128) NOT NULL, "providerId" varchar(36) NOT NULL, "direction" varchar(16) NOT NULL, "scope" varchar(16) NOT NULL, "target" text NOT NULL, "settings" text NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_promotion_environment_direction" CHECK ("direction" IN ('apply', 'promote')), CONSTRAINT "CHK_promotion_environment_scope" CHECK ("scope" IN ('instance', 'projects')), CONSTRAINT "FK_promotion_environment_providerId" FOREIGN KEY ("providerId") REFERENCES "promotion_provider" ("id") ON DELETE RESTRICT)
+CREATE TABLE "promotion_environment" ("id" varchar PRIMARY KEY NOT NULL, "name" varchar(128) NOT NULL, "providerId" varchar(36) NOT NULL, "direction" varchar(16) NOT NULL, "scope" varchar(16) NOT NULL, "remote" text NOT NULL, "settings" text NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_promotion_environment_direction" CHECK ("direction" IN ('apply', 'promote')), CONSTRAINT "CHK_promotion_environment_scope" CHECK ("scope" IN ('instance', 'projects')), CONSTRAINT "FK_promotion_environment_providerId" FOREIGN KEY ("providerId") REFERENCES "promotion_provider" ("id") ON DELETE RESTRICT)
 ```
 
 </details>
@@ -20,9 +20,9 @@ CREATE TABLE "promotion_environment" ("id" varchar PRIMARY KEY NOT NULL, "name" 
 | id | varchar |  | false | [promotion_environment_project](promotion_environment_project.md) [promotion_review](promotion_review.md) [promotion_run](promotion_run.md) |  |  |
 | name | varchar(128) |  | false |  |  |  |
 | providerId | varchar(36) |  | false |  | [promotion_provider](promotion_provider.md) |  |
+| remote | TEXT |  | false |  |  |  |
 | scope | varchar(16) |  | false |  |  |  |
 | settings | TEXT |  | false |  |  |  |
-| target | TEXT |  | false |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 
 ## Constraints
@@ -59,9 +59,9 @@ erDiagram
   varchar id PK
   varchar_128_ name
   varchar_36_ providerId FK
+  TEXT remote
   varchar_16_ scope
   TEXT settings
-  TEXT target
   datetime_3_ updatedAt
 }
 "promotion_environment_project" {

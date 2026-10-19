@@ -88,7 +88,7 @@ describe('PromotionsService', () => {
 		providerType: 'git',
 		authType: 'ssh-key',
 		encryptedAuth: 'enc:auth',
-		target: { schemaVersion: 1, remoteUrl: REMOTE_URL },
+		remote: { schemaVersion: 1, remoteUrl: REMOTE_URL },
 		config,
 		...over,
 	});
@@ -110,7 +110,7 @@ describe('PromotionsService', () => {
 		await workingDirectory.writeDescriptor({
 			schemaVersion: 1,
 			environmentId: input.environmentId,
-			remoteUrl: input.target.remoteUrl,
+			remoteUrl: input.remote.remoteUrl,
 			checkoutBranchName: branchName,
 		});
 		gitService.hasCheckout.mockResolvedValue(true);
@@ -454,7 +454,7 @@ describe('PromotionsService', () => {
 
 		it('refuses to promote when the checkout was cloned from another remote', async () => {
 			resolver.resolveForEnvironment.mockResolvedValue(
-				promoteInput({ target: { schemaVersion: 1, remoteUrl: 'git@github.com:o/other.git' } }),
+				promoteInput({ remote: { schemaVersion: 1, remoteUrl: 'git@github.com:o/other.git' } }),
 			);
 
 			await expect(

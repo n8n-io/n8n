@@ -60,9 +60,9 @@ erDiagram
   varchar id PK
   varchar_128_ name
   varchar_36_ providerId FK
+  TEXT remote
   varchar_16_ scope
   TEXT settings
-  TEXT target
   datetime_3_ updatedAt
 }
 "project" {

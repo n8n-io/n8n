@@ -78,9 +78,9 @@ erDiagram
   uuid id
   varchar_128_ name
   varchar_36_ providerId FK
+  json remote
   varchar_16_ scope
   json settings
-  json target
   timestamp_3__with_time_zone updatedAt
 }
 "public.promotion_review" {

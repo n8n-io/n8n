@@ -93,9 +93,9 @@ watch(
 		if (
 			form.repositoryPath &&
 			form.providerId === connection?.provider.id &&
-			form.repositoryPath === connection?.target.repositoryPath
+			form.repositoryPath === connection?.remote.repositoryPath
 		) {
-			form.remoteUrl = connection.target.remoteUrl;
+			form.remoteUrl = connection.remote.remoteUrl;
 		}
 		baseline.value = JSON.stringify(
 			connection ? connectionFormFrom(connection) : emptyConnectionForm(),
@@ -116,7 +116,7 @@ function applyProviderChange(change: PromotionProviderChange) {
 	if (
 		change.hostChanged &&
 		(form.providerId !== current.value?.provider.id ||
-			form.repositoryPath !== current.value?.target.repositoryPath)
+			form.repositoryPath !== current.value?.remote.repositoryPath)
 	) {
 		form.remoteUrl = '';
 		form.repositoryPath = undefined;

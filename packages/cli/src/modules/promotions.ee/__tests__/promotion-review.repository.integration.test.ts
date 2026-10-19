@@ -54,7 +54,7 @@ beforeEach(async () => {
 		name: 'repo',
 		scope: 'instance',
 		providerId: provider.id,
-		target: { schemaVersion: 1, remoteUrl: 'https://example.com/org/repo.git' },
+		remote: { schemaVersion: 1, remoteUrl: 'https://example.com/org/repo.git' },
 		direction: 'promote',
 		settings: { schemaVersion: 1, baseBranchName: 'main', createBranchOnPromotion: true },
 	});
@@ -241,7 +241,7 @@ describe('PromotionReviewRepository', () => {
 			name: 'other',
 			scope: 'projects',
 			providerId,
-			target: { schemaVersion: 1, remoteUrl: 'https://example.com/org/other.git' },
+			remote: { schemaVersion: 1, remoteUrl: 'https://example.com/org/other.git' },
 			direction: 'promote',
 			settings: { schemaVersion: 1, baseBranchName: 'main', createBranchOnPromotion: true },
 		});

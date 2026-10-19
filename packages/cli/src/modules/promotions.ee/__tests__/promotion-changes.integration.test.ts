@@ -116,7 +116,7 @@ async function addEnvironment(providerId: string, direction: PromotionDirection)
 		name: 'Preview',
 		scope: 'instance',
 		providerId,
-		target: { schemaVersion: 1, remoteUrl: remoteFolder },
+		remote: { schemaVersion: 1, remoteUrl: remoteFolder },
 		...(direction === 'promote'
 			? {
 					direction,
@@ -146,7 +146,7 @@ it("previews against the project's environment, not the instance one", async () 
 		name: 'Project',
 		scope: 'projects',
 		providerId: instance.promote.providerId,
-		target: { schemaVersion: 1, remoteUrl: remoteFolder },
+		remote: { schemaVersion: 1, remoteUrl: remoteFolder },
 		direction: 'promote',
 		settings: { schemaVersion: 1, baseBranchName: 'production', createBranchOnPromotion: false },
 	});

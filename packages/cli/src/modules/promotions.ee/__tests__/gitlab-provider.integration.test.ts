@@ -43,7 +43,7 @@ describe.skipIf(!fixturePath)('GitLab provider live compatibility', () => {
 				name: 'GitLab verification',
 				scope: 'instance',
 				providerId: provider.body.provider.id,
-				target: { schemaVersion: 1, remoteUrl: `${fixture.baseUrl}/${fixture.projectPath}.git` },
+				remote: { schemaVersion: 1, remoteUrl: `${fixture.baseUrl}/${fixture.projectPath}.git` },
 				...direction,
 			});
 		const apply = await createEnvironment({

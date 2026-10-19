@@ -74,7 +74,7 @@ export const toConnection = (
 ): PromotionConnection | null => {
 	const shared = configs.apply ?? configs.promote;
 	if (!shared) return null;
-	return { name: shared.name, provider: shared.provider, target: shared.target, configs };
+	return { name: shared.name, provider: shared.provider, remote: shared.remote, configs };
 };
 
 export const emptyProviderForm = (): ProviderFormState => ({
@@ -113,8 +113,8 @@ export const connectionFormFrom = (connection: PromotionConnection): ConnectionF
 	return {
 		name: connection.name,
 		providerId: connection.provider.id,
-		remoteUrl: connection.target.remoteUrl,
-		repositoryPath: connection.target.repositoryPath,
+		remoteUrl: connection.remote.remoteUrl,
+		repositoryPath: connection.remote.repositoryPath,
 		apply: {
 			enabled: apply !== undefined,
 			branchName: apply?.settings.branchName ?? '',
@@ -196,7 +196,7 @@ export const planConnectionWrites = (
 ): ConnectionWrite[] => {
 	const name = form.name.trim();
 	const remoteUrl = form.remoteUrl.trim();
-	const target = { schemaVersion: 1 as const, remoteUrl };
+	const remote = { schemaVersion: 1 as const, remoteUrl };
 	const desired = {
 		apply: form.apply.enabled
 			? { direction: 'apply' as const, settings: applySettings(form) }
@@ -226,7 +226,7 @@ export const planConnectionWrites = (
 			writes.push({
 				kind: 'create',
 				direction,
-				payload: { name, scope: 'instance', providerId: form.providerId, target, ...wanted },
+				payload: { name, scope: 'instance', providerId: form.providerId, remote, ...wanted },
 			});
 			continue;
 		}
@@ -234,12 +234,12 @@ export const planConnectionWrites = (
 		const payload: UpdatePromotionEnvironmentDto = {};
 		if (name !== environment.name) payload.name = name;
 		if (form.providerId !== environment.provider.id) payload.providerId = form.providerId;
-		// A matching URL still needs a write when it converts a saved URL target to a path.
+		// A matching URL still needs a write when it converts a saved URL remote to a path.
 		if (
-			remoteUrl !== environment.target.remoteUrl ||
-			form.repositoryPath !== environment.target.repositoryPath
+			remoteUrl !== environment.remote.remoteUrl ||
+			form.repositoryPath !== environment.remote.repositoryPath
 		) {
-			payload.target = target;
+			payload.remote = remote;
 		}
 		if (settingsChanged[direction]) payload.settings = wanted.settings;
 		if (Object.keys(payload).length > 0) {

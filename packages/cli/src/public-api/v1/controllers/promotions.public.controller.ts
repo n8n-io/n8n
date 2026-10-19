@@ -196,7 +196,7 @@ export class PromotionsPublicController {
 	@GlobalScope('gitConnection:discover')
 	@ApiSummary('List repositories of a promotion provider')
 	@ApiDescription(
-		'Lists repositories where the GitLab token identity has at least the Developer role. The token also needs Git write scope for promotions. Protected branches can restrict pushes. Use remoteUrl as an environment target. Search matches names and namespaces in similarity order. Unfiltered results use ascending repository ID order. The limit is an upper bound. GitLab returns at most 100 items per page. Follow nextCursor even when a page has fewer items than the requested limit. A saved environment is not required. Invalid credentials return an error, not an empty list. If a response is too large, restart the list with a smaller limit and no cursor.',
+		'Lists repositories where the GitLab token identity has at least the Developer role. The token also needs Git write scope for promotions. Protected branches can restrict pushes. Use remoteUrl as an environment remote. Search matches names and namespaces in similarity order. Unfiltered results use ascending repository ID order. The limit is an upper bound. GitLab returns at most 100 items per page. Follow nextCursor even when a page has fewer items than the requested limit. A saved environment is not required. Invalid credentials return an error, not an empty list. If a response is too large, restart the list with a smaller limit and no cursor.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, PromotionRepositoryListPublicDto)
@@ -262,7 +262,7 @@ export class PromotionsPublicController {
 	@GlobalScope('gitConnection:create')
 	@ApiSummary('Create a promotion environment')
 	@ApiDescription(
-		'Creates an environment for one direction on an existing provider. The settings must match the direction. A GitLab target URL must belong to the saved provider. The environment stores only the repository path and derives remoteUrl from the current provider base URL. Plain Git environments keep the full remote URL. The instance can have one environment for each direction.',
+		'Creates an environment for one direction on an existing provider. The settings must match the direction. A GitLab remote URL must belong to the saved provider. The environment stores only the repository path and derives remoteUrl from the current provider base URL. Plain Git environments keep the full remote URL. The instance can have one environment for each direction.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(201, PromotionEnvironmentPublicDto)
@@ -333,7 +333,7 @@ export class PromotionsPublicController {
 	@GlobalScope('gitConnection:update')
 	@ApiSummary('Update a promotion environment')
 	@ApiDescription(
-		'Updates the name, provider, target, or settings. A target replaces the whole saved target, and settings replace the whole saved settings. The settings must match the direction of the environment, so `createBranchOnPromotion` is always required for Promote. GitLab environments store a repository path and derive remoteUrl from the provider. Plain Git environments keep the full remote URL. If the provider changes during the update, the update returns 409. Reload the environment and try again. Direction and scope cannot change.',
+		'Updates the name, provider, remote, or settings. A remote replaces the whole saved remote, and settings replace the whole saved settings. The settings must match the direction of the environment, so `createBranchOnPromotion` is always required for Promote. GitLab environments store a repository path and derive remoteUrl from the provider. Plain Git environments keep the full remote URL. If the provider changes during the update, the update returns 409. Reload the environment and try again. Direction and scope cannot change.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, PromotionEnvironmentPublicDto)

@@ -254,7 +254,7 @@ async function createInstanceEnvironments(
 		name: 'Production',
 		scope: 'instance' as const,
 		providerId: provider.id,
-		target: { schemaVersion: 1 as const, remoteUrl },
+		remote: { schemaVersion: 1 as const, remoteUrl },
 	};
 	const apply = await environmentRepository.insertEnvironment({
 		...fields,
@@ -665,7 +665,7 @@ describe('Promote and Apply', () => {
 		).resolves.toEqual([]);
 	});
 
-	// GitLab targets must use the provider host, so a local remote only works with plain Git.
+	// GitLab remotes must use the provider host, so a local remote only works with plain Git.
 	it.each(['git'] as const)(
 		'creates a timestamped branch for each promotion with %s',
 		async (providerType) => {
@@ -2714,7 +2714,7 @@ describe('Promotion base branch listing', () => {
 			name: 'Project production',
 			scope: 'projects',
 			providerId: instance.promote.providerId,
-			target: { schemaVersion: 1, remoteUrl: remote.bareDir },
+			remote: { schemaVersion: 1, remoteUrl: remote.bareDir },
 			direction: 'promote',
 			settings: { schemaVersion: 1, baseBranchName: 'production', createBranchOnPromotion: false },
 		});

@@ -5,7 +5,7 @@ import {
 	promotionEnvironmentSummarySchema,
 } from '../promotion-environment.dto';
 
-const target = { schemaVersion: 1 as const, remoteUrl: 'git@example.com:team/workflows.git' };
+const remote = { schemaVersion: 1 as const, remoteUrl: 'git@example.com:team/workflows.git' };
 const applySettings = { schemaVersion: 1 as const, branchName: 'dev' };
 const promoteSettings = {
 	schemaVersion: 1 as const,
@@ -17,7 +17,7 @@ const newEnvironment = {
 	name: 'Staging',
 	scope: 'instance' as const,
 	providerId: 'prov-1',
-	target,
+	remote,
 };
 
 const timestamp = '2026-09-07T08:00:00.000Z';
@@ -38,7 +38,7 @@ const publicEnvironment = {
 	id: '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b',
 	name: 'Staging',
 	scope: 'instance' as const,
-	target,
+	remote,
 	provider: publicProvider,
 	createdAt: timestamp,
 	updatedAt: timestamp,
@@ -93,7 +93,7 @@ describe('CreatePromotionEnvironmentDto', () => {
 		expect(create('a'.repeat(256))).toBe(false);
 	});
 
-	it('rejects settings and targets of an unsupported schema version', () => {
+	it('rejects settings and remotes of an unsupported schema version', () => {
 		expect(
 			CreatePromotionEnvironmentDto.safeParse({
 				...newEnvironment,
@@ -104,7 +104,7 @@ describe('CreatePromotionEnvironmentDto', () => {
 		expect(
 			CreatePromotionEnvironmentDto.safeParse({
 				...newEnvironment,
-				target: { schemaVersion: 2, remoteUrl: 'git@example.com:team/workflows.git' },
+				remote: { schemaVersion: 2, remoteUrl: 'git@example.com:team/workflows.git' },
 				direction: 'apply',
 				settings: applySettings,
 			}).success,

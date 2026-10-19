@@ -24,19 +24,19 @@ export type PromotionEnvironmentScope = z.infer<typeof promotionEnvironmentScope
  */
 const remoteUrlSchema = z.string().trim().min(1);
 
-/** Git host targets store a path internally. The API exposes the resolved clone URL. */
-export const promotionEnvironmentTargetSchema = z
+/** Git host remotes store a path internally. The API exposes the resolved clone URL. */
+export const promotionEnvironmentRemoteSchema = z
 	.object({
 		schemaVersion: z.literal(1),
 		remoteUrl: remoteUrlSchema,
 	})
 	.strict();
-export type PromotionEnvironmentTarget = z.infer<typeof promotionEnvironmentTargetSchema>;
+export type PromotionEnvironmentRemote = z.infer<typeof promotionEnvironmentRemoteSchema>;
 
-const promotionEnvironmentTargetPublicSchema = promotionEnvironmentTargetSchema.extend({
+const promotionEnvironmentRemotePublicSchema = promotionEnvironmentRemoteSchema.extend({
 	repositoryPath: z.string().optional().openapi({
 		description:
-			'The stored repository path of a GitLab target. URL-encode it before you use it as repositoryId to list branches. Requests do not accept it.',
+			'The stored repository path of a GitLab remote. URL-encode it before you use it as repositoryId to list branches. Requests do not accept it.',
 	}),
 });
 
@@ -80,7 +80,7 @@ const createPromotionEnvironmentFields = {
 	scope: promotionEnvironmentScopeSchema,
 	/** Providers are created on their own route. An environment only picks one. */
 	providerId: n8nIdSchema,
-	target: promotionEnvironmentTargetSchema,
+	remote: promotionEnvironmentRemoteSchema,
 };
 
 const createPromotionEnvironmentSchema = z.discriminatedUnion('direction', [
@@ -122,15 +122,15 @@ const updatePromotionEnvironmentSchema = z
 	.object({
 		name: promotionDisplayNameSchema.optional(),
 		providerId: n8nIdSchema.optional(),
-		target: promotionEnvironmentTargetSchema.optional(),
+		remote: promotionEnvironmentRemoteSchema.optional(),
 		settings: promotionEnvironmentSettingsSchema.optional(),
 	})
 	.strict()
 	.refine(
-		({ name, providerId, target, settings }) =>
+		({ name, providerId, remote, settings }) =>
 			name !== undefined ||
 			providerId !== undefined ||
-			target !== undefined ||
+			remote !== undefined ||
 			settings !== undefined,
 		{ message: 'At least one field is required' },
 	)
@@ -143,7 +143,7 @@ export class UpdatePromotionEnvironmentDto implements UpdatePromotionEnvironment
 
 	providerId?: string;
 
-	target?: PromotionEnvironmentTarget;
+	remote?: PromotionEnvironmentRemote;
 
 	settings?: PromotionEnvironmentSettings;
 
@@ -197,7 +197,7 @@ const promotionEnvironmentFields = {
 	id: n8nIdSchema,
 	name: z.string(),
 	scope: promotionEnvironmentScopeSchema,
-	target: promotionEnvironmentTargetPublicSchema,
+	remote: promotionEnvironmentRemotePublicSchema,
 	provider: promotionProviderSummarySchema,
 	createdAt: z.string().datetime(),
 	updatedAt: z.string().datetime(),

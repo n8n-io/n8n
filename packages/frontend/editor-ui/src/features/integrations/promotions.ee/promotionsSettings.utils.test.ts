@@ -37,7 +37,7 @@ const tokenProvider = (): PromotionProvider =>
 const environmentFields = {
 	name: 'Production',
 	scope: 'instance' as const,
-	target: { schemaVersion: 1 as const, remoteUrl: 'git@github.com:acme/workflows.git' },
+	remote: { schemaVersion: 1 as const, remoteUrl: 'git@github.com:acme/workflows.git' },
 	provider: {
 		id: 'provider-ssh',
 		name: 'Production key',
@@ -159,13 +159,13 @@ describe('toConnection', () => {
 		const promote = {
 			...promoteEnvironment(),
 			name: 'Promote side',
-			target: { schemaVersion: 1 as const, remoteUrl: 'git@github.com:acme/other.git' },
+			remote: { schemaVersion: 1 as const, remoteUrl: 'git@github.com:acme/other.git' },
 		};
 
 		expect(toConnection({ apply, promote })).toEqual({
 			name: 'Apply side',
 			provider: apply.provider,
-			target: apply.target,
+			remote: apply.remote,
 			configs: { apply, promote },
 		});
 	});
@@ -176,7 +176,7 @@ describe('toConnection', () => {
 		expect(toConnection({ apply })).toEqual({
 			name: 'Production',
 			provider: apply.provider,
-			target: apply.target,
+			remote: apply.remote,
 			configs: { apply },
 		});
 	});
@@ -196,7 +196,7 @@ describe('planConnectionWrites', () => {
 			name: 'Production',
 			scope: 'instance',
 			providerId: 'provider-ssh',
-			target: { schemaVersion: 1, remoteUrl: 'git@github.com:acme/workflows.git' },
+			remote: { schemaVersion: 1, remoteUrl: 'git@github.com:acme/workflows.git' },
 		};
 
 		expect(planConnectionWrites(state, null)).toEqual([
@@ -329,7 +329,7 @@ describe('planConnectionWrites', () => {
 					name: 'Production',
 					scope: 'instance',
 					providerId: 'provider-ssh',
-					target: { schemaVersion: 1, remoteUrl: 'git@github.com:acme/workflows.git' },
+					remote: { schemaVersion: 1, remoteUrl: 'git@github.com:acme/workflows.git' },
 					direction: 'apply',
 					settings: { schemaVersion: 1, branchName: 'main' },
 				},

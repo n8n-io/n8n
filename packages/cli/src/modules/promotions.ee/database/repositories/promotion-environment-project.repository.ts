@@ -14,7 +14,7 @@ export class PromotionEnvironmentProjectRepository extends BaseRepository<Promot
 
 	/**
 	 * Loads the link with its environment and provider in one query, so an edit
-	 * that lands between two reads cannot pair old credentials with a new target.
+	 * that lands between two reads cannot pair old credentials with a new remote.
 	 */
 	async findForProject(
 		projectId: string,

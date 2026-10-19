@@ -9,9 +9,9 @@
 | id | uuid |  | false | [public.promotion_environment_project](public.promotion_environment_project.md) [public.promotion_review](public.promotion_review.md) [public.promotion_run](public.promotion_run.md) |  | Also the name of the local checkout directory. |
 | name | varchar(128) |  | false |  |  |  |
 | providerId | varchar(36) |  | false |  | [public.promotion_provider](public.promotion_provider.md) | The provider whose credentials this environment uses. |
+| remote | json |  | false |  |  | Where to push and pull, with its own schemaVersion. Plain Git stores the full remote URL. |
 | scope | varchar(16) |  | false |  |  | PromotionEnvironmentScope enum: "instance", "projects". Cannot change after creation. |
 | settings | json |  | false |  |  | Branch settings for direction, with their own schemaVersion. Validated in code. |
-| target | json |  | false |  |  | Where to push and pull, with its own schemaVersion. Plain Git stores the full remote URL. |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 
 ## Constraints
@@ -27,9 +27,9 @@
 | promotion_environment_id_not_null | n | NOT NULL id |
 | promotion_environment_name_not_null | n | NOT NULL name |
 | promotion_environment_providerId_not_null | n | NOT NULL "providerId" |
+| promotion_environment_remote_not_null | n | NOT NULL remote |
 | promotion_environment_scope_not_null | n | NOT NULL scope |
 | promotion_environment_settings_not_null | n | NOT NULL settings |
-| promotion_environment_target_not_null | n | NOT NULL target |
 | promotion_environment_updatedAt_not_null | n | NOT NULL "updatedAt" |
 
 ## Indexes
@@ -56,9 +56,9 @@ erDiagram
   uuid id
   varchar_128_ name
   varchar_36_ providerId FK
+  json remote
   varchar_16_ scope
   json settings
-  json target
   timestamp_3__with_time_zone updatedAt
 }
 "public.promotion_environment_project" {

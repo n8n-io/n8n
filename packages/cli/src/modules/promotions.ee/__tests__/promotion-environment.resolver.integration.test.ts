@@ -75,7 +75,7 @@ async function createEnvironment(options: {
 		name: options.name,
 		scope: options.scope,
 		providerId: provider.id,
-		target: { schemaVersion: 1, remoteUrl: `https://example.com/org/${options.name}.git` },
+		remote: { schemaVersion: 1, remoteUrl: `https://example.com/org/${options.name}.git` },
 		direction,
 		settings: options.settings ?? (direction === 'apply' ? APPLY_SETTINGS : PROMOTE_SETTINGS),
 	});
@@ -92,7 +92,7 @@ describe('PromotionEnvironmentResolver', () => {
 
 			const input = await resolver.resolveForEnvironment(environment.id, 'apply');
 
-			// The target and the credentials come from the same read, so a concurrent
+			// The remote and the credentials come from the same read, so a concurrent
 			// edit cannot pair old credentials with a new remote.
 			expect(input).toMatchObject({
 				environmentId: environment.id,
@@ -101,7 +101,7 @@ describe('PromotionEnvironmentResolver', () => {
 				providerType: 'git',
 				authType: 'token',
 				encryptedAuth: 'encrypted-instanceRepo',
-				target: { remoteUrl: 'https://example.com/org/instanceRepo.git' },
+				remote: { remoteUrl: 'https://example.com/org/instanceRepo.git' },
 				config: { direction: 'apply', settings: APPLY_SETTINGS },
 			});
 		});

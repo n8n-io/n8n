@@ -8,7 +8,7 @@ import { PromotionConflictError } from '../promotion-conflict.error';
 
 type NewPromotionEnvironment = Pick<
 	PromotionEnvironment,
-	'name' | 'scope' | 'providerId' | 'target' | 'direction' | 'settings'
+	'name' | 'scope' | 'providerId' | 'remote' | 'direction' | 'settings'
 >;
 
 export type PromotionEnvironmentFilter = {
@@ -25,7 +25,7 @@ export class PromotionEnvironmentRepository extends BaseRepository<PromotionEnvi
 
 	/**
 	 * Loads the provider alongside the environment in one query, so an edit that
-	 * lands between two reads cannot pair old credentials with a new target.
+	 * lands between two reads cannot pair old credentials with a new remote.
 	 */
 	async findByIdWithProvider(id: string): Promise<PromotionEnvironment | null> {
 		return await this.findOne({
@@ -60,11 +60,11 @@ export class PromotionEnvironmentRepository extends BaseRepository<PromotionEnvi
 		}
 	}
 
-	/** A target must use the provider it was resolved against. */
+	/** A remote must use the provider it was resolved against. */
 	async updateEnvironment(
 		id: string,
 		expectedProviderId: string,
-		changes: Partial<Pick<PromotionEnvironment, 'name' | 'providerId' | 'target' | 'settings'>>,
+		changes: Partial<Pick<PromotionEnvironment, 'name' | 'providerId' | 'remote' | 'settings'>>,
 	): Promise<boolean> {
 		const result = await this.update({ id, providerId: expectedProviderId }, changes);
 		return result.affected === 1;

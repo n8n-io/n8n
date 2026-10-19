@@ -34,7 +34,7 @@ export function usePromotionConnectionSave() {
 			case 'create':
 				return withEnvironment(configs, await createPromotionEnvironment(context, write.payload));
 			case 'update':
-				// The response re-reads the checkout state, so a target change cannot keep a stale one.
+				// The response re-reads the checkout state, so a remote change cannot keep a stale one.
 				return withEnvironment(
 					configs,
 					await updatePromotionEnvironment(context, write.environmentId, write.payload),

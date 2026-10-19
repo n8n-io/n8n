@@ -29,7 +29,7 @@ const promoteEnvironment = (matchesConfig: boolean, remoteUrl: string) =>
 		...environmentFields,
 		id: 'environment-promote',
 		direction: 'promote',
-		target: { schemaVersion: 1, remoteUrl },
+		remote: { schemaVersion: 1, remoteUrl },
 		settings: { schemaVersion: 1, baseBranchName: 'main', createBranchOnPromotion: false },
 		checkout: { hasCheckout: true, matchesConfig },
 	}) as PromotionEnvironment;
@@ -44,7 +44,7 @@ describe('usePromotionConnectionSave', () => {
 		vi.resetAllMocks();
 	});
 
-	it('uses the checkout state the server recomputed after a target change', async () => {
+	it('uses the checkout state the server recomputed after a remote change', async () => {
 		const current = connectionOf(promoteEnvironment(true, 'git@github.com:acme/old.git'));
 		// The server re-reads the checkout against the new remote and reports it stale.
 		api.updatePromotionEnvironment.mockResolvedValue(
@@ -56,7 +56,7 @@ describe('usePromotionConnectionSave', () => {
 			kind: 'update',
 			direction: 'promote',
 			environmentId: 'environment-promote',
-			payload: { target: { schemaVersion: 1, remoteUrl: 'git@github.com:acme/new.git' } },
+			payload: { remote: { schemaVersion: 1, remoteUrl: 'git@github.com:acme/new.git' } },
 		};
 
 		const result = await run(current, [write]);
@@ -85,7 +85,7 @@ describe('usePromotionConnectionSave', () => {
 				scope: 'instance',
 				direction: 'apply',
 				providerId: 'provider-1',
-				target: { schemaVersion: 1, remoteUrl: 'git@github.com:acme/repo.git' },
+				remote: { schemaVersion: 1, remoteUrl: 'git@github.com:acme/repo.git' },
 				settings: { schemaVersion: 1, branchName: 'main' },
 			},
 		};

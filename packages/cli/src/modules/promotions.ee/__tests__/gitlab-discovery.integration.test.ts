@@ -43,7 +43,7 @@ describe.skipIf(!fixturePath)('GitLab discovery live compatibility', () => {
 		const root = `/promotions/providers/${created.body.provider.id}`;
 		let environmentId: string | undefined;
 		try {
-			const target = {
+			const remote = {
 				schemaVersion: 1,
 				remoteUrl: `${baseUrl.replace(/\/$/, '')}/${fixture.projectPath}.git`,
 			};
@@ -51,24 +51,24 @@ describe.skipIf(!fixturePath)('GitLab discovery live compatibility', () => {
 				name: 'GitLab repository identity verification',
 				scope: 'projects',
 				providerId: created.body.provider.id,
-				target,
+				remote,
 				direction: 'apply',
 				settings: { schemaVersion: 1, branchName: 'main' },
 			});
 			expect(environment.status, JSON.stringify(environment.body)).toBe(201);
 			environmentId = z.string().parse(environment.body.id);
-			const publicTarget = { ...target, repositoryPath: fixture.projectPath };
-			expect(environment.body.target).toEqual(publicTarget);
+			const publicRemote = { ...remote, repositoryPath: fixture.projectPath };
+			expect(environment.body.remote).toEqual(publicRemote);
 			expect(
 				(await Container.get(PromotionEnvironmentRepository).findByIdWithProvider(environmentId))
-					?.target,
+					?.remote,
 			).toEqual({ schemaVersion: 1, repositoryPath: fixture.projectPath });
 			const saved = await agent.get(`/promotions/environments/${environmentId}`);
 			expect(saved.status).toBe(200);
-			expect(saved.body.target).toEqual(publicTarget);
+			expect(saved.body.remote).toEqual(publicRemote);
 
 			const branches = await agent.get(
-				`${root}/repositories/${encodeURIComponent(saved.body.target.repositoryPath)}/branches`,
+				`${root}/repositories/${encodeURIComponent(saved.body.remote.repositoryPath)}/branches`,
 			);
 			expect(branches.status, JSON.stringify(branches.body)).toBe(200);
 			expect(branches.body.data).toContainEqual(expect.objectContaining({ isDefault: true }));

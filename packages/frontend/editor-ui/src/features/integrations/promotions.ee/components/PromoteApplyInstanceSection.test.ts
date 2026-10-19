@@ -16,7 +16,7 @@ const timestamps = {
 const environmentFields = {
 	name: 'Production',
 	scope: 'instance' as const,
-	target: { schemaVersion: 1 as const, remoteUrl: 'git@github.com:acme/workflows.git' },
+	remote: { schemaVersion: 1 as const, remoteUrl: 'git@github.com:acme/workflows.git' },
 	provider: {
 		id: 'provider-ssh',
 		name: 'Production key',
@@ -45,7 +45,7 @@ const applyConfig = (checkout = { hasCheckout: true, matchesConfig: true }) => (
 
 const instanceConnection = (overrides: Partial<PromotionConnection> = {}): PromotionConnection => ({
 	name: environmentFields.name,
-	target: environmentFields.target,
+	remote: environmentFields.remote,
 	provider: environmentFields.provider,
 	configs: { promote: promoteConfig(), apply: applyConfig() },
 	...overrides,
