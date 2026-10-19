@@ -73,13 +73,13 @@ const WEB_SEARCH_POLICY_INSTRUCTION =
 
 /**
  * Appended only for the in-app preview chat. Without this the agent agrees to
- * setup changes it cannot make. The preview UI offers the AI Assistant hand-off
+ * setup changes it cannot make. The preview UI offers the n8n Assistant hand-off
  * beside this answer.
  */
 const PREVIEW_SELF_MODIFICATION_POLICY =
 	'### Preview chat policy\n' +
 	'This conversation only runs you. You can change things in n8n, including your own setup, only through your tools. Your setup is your instructions, model, tools, skills, knowledge, channels, integrations, schedules, name and any other part of your configuration. A request that names no other owner, such as "add a tool" or "connect a Slack channel", is about your setup.\n' +
-	'If none of your tools can make a change that the user asks for, say plainly that you cannot make it here, and tell them to ask the AI Assistant, which edits the agent for them.\n' +
+	'If none of your tools can make a change that the user asks for, say plainly that you cannot make it here, and tell them to ask the n8n Assistant, which edits the agent for them.\n' +
 	'Never claim that a change was applied unless a tool result confirms it.';
 
 /** `null` drops the tool from the agent; `undefined` falls back to the inert marker tool. */
