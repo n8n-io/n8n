@@ -10,6 +10,7 @@ import {
 	type AgentCreationEvent,
 } from './agent-modification-telemetry.service';
 import { AgentUpdateBroadcaster } from './agent-update-broadcaster';
+import type { ProjectAgent } from './entities/agent.entity';
 import { syncAgentIntegrations } from './integrations/integrations-sync';
 
 /** Run save effects only after the complete draft write commits. */
@@ -31,7 +32,7 @@ export class AgentSaveCompletionService {
 	}
 
 	async definitionSaved(
-		event: AgentModificationEvent,
+		event: AgentModificationEvent & { agent: ProjectAgent },
 		previousIntegrations: AgentIntegrationConfig[],
 		credentialProvider: CredentialProvider,
 		tasks: ReadonlyMap<string, AgentTaskConfig>,

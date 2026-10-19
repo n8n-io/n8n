@@ -10,7 +10,7 @@ import { AgentPolicyService } from '@/modules/agents/agent-policy.service';
 import { AgentsService } from '@/modules/agents/agents.service';
 import { AgentsSettingsService } from '@/modules/agents/agents-settings.service';
 import type { CompleteAgentDefinition } from '@/modules/agents/utils/agent-definition';
-import type { Agent } from '@/modules/agents/entities/agent.entity';
+import type { ProjectAgent } from '@/modules/agents/entities/agent.entity';
 
 import { agentBodyIssues } from './agent-body-issues';
 import { AgentImportMatchService } from './agent-import-match.service';
@@ -68,7 +68,7 @@ export class AgentImporter {
 				},
 				plannedDestinations: plan.plannedDestinations,
 			};
-			let agent: Agent;
+			let agent: ProjectAgent;
 			if (item.action === 'create') {
 				agent = await this.agentsService.create(context.projectId, item.name, {
 					...options,

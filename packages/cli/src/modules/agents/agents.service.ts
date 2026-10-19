@@ -340,7 +340,7 @@ export class AgentsService {
 		}
 	}
 
-	async recordSavedSetupComplete(agent: Agent, user: User): Promise<void> {
+	async recordSavedSetupComplete(agent: ProjectAgent, user: User): Promise<void> {
 		if (agent.setupCompletedAt) return;
 		try {
 			const { AgentSetupCompletionService } = await import('./agent-setup-completion.service.js');
