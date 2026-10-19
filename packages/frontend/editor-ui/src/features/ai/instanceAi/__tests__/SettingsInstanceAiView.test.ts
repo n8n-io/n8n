@@ -301,17 +301,22 @@ describe('SettingsInstanceAiView', () => {
 		});
 	});
 
-	describe('status row', () => {
-		it('shows the limited enterprise support badge in the page header', () => {
-			const { getByTestId } = renderComponent();
-			expect(getByTestId('n8n-agent-enterprise-readiness-badge')).toBeVisible();
+	describe('page header', () => {
+		it('shows the limited enterprise support badge next to the title', () => {
+			const { getByRole, getByTestId } = renderComponent();
+			const title = getByRole('heading', { name: 'settings.n8nAgent' });
+			expect(title.parentElement).toContainElement(
+				getByTestId('n8n-agent-enterprise-readiness-badge'),
+			);
 		});
 
 		it('does not show a Preview badge', () => {
 			const { queryByText } = renderComponent();
 			expect(queryByText('Preview')).toBeNull();
 		});
+	});
 
+	describe('status row', () => {
 		it('renders the enabled status action', () => {
 			store.$patch({
 				settings: {
