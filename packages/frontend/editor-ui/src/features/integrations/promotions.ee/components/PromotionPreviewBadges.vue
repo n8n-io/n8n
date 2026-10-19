@@ -27,7 +27,7 @@ const badges = computed(() => {
 			failed: changes.failed.value,
 			changeCount: changes.changeCount.value,
 			label: changes.failed.value
-				? i18n.baseText('promotions.preview.badge.failed')
+				? i18n.baseText(`promotions.preview.badge.failed.${direction}`)
 				: i18n.baseText(`promotions.preview.badge.${direction}`, {
 						adjustToNumber: changes.changeCount.value,
 						interpolate: { count: String(changes.changeCount.value) },
@@ -67,7 +67,8 @@ const badges = computed(() => {
 
 .link {
 	display: inline-flex;
-	border-radius: var(--radius--full);
+	/* Matches the small badge, so the focus ring follows its shape. */
+	border-radius: var(--radius--xs);
 
 	&:focus-visible {
 		outline: var(--focus--border-width) solid var(--focus--outline-color);
