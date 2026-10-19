@@ -139,7 +139,7 @@ describe('initializeQuickJsExpressionShadow', () => {
 
 		expect(track).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.EXPRESSIONS.EXPRESSION_ENGINE_SHADOW_RUN_REPORTED,
-			expect.objectContaining({ evaluations: 1 }),
+			expect.objectContaining({ quickjs_fe_evaluations: 1 }),
 		);
 		expect(Expression.setShadowRunner).toHaveBeenLastCalledWith(undefined);
 		expect(evaluator.dispose).toHaveBeenCalledTimes(1);
@@ -164,7 +164,7 @@ describe('initializeQuickJsExpressionShadow', () => {
 		expect(Expression.setShadowRunner).not.toHaveBeenCalled();
 		expect(track).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.EXPRESSIONS.EXPRESSION_ENGINE_SHADOW_RUN_REPORTED,
-			expect.objectContaining({ init_status: 'failed', evaluations: 0 }),
+			expect.objectContaining({ quickjs_fe_init_status: 'failed', quickjs_fe_evaluations: 0 }),
 		);
 	});
 
@@ -186,13 +186,35 @@ describe('initializeQuickJsExpressionShadow', () => {
 		expect(track).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.EXPRESSIONS.EXPRESSION_ENGINE_SHADOW_RUN_REPORTED,
 			expect.objectContaining({
-				init_status: 'ready',
-				sample_rate: 1,
-				timeout_ms: 50,
-				evaluations: 1,
-				same: 1,
+				quickjs_fe_init_status: 'ready',
+				quickjs_fe_sample_rate: 1,
+				quickjs_fe_timeout_ms: 50,
+				quickjs_fe_evaluations: 1,
+				quickjs_fe_same: 1,
+				quickjs_fe_legacy_missing_input: 0,
 			}),
 		);
+	});
+
+	it('sends every property with the quickjs_fe_ prefix', async () => {
+		postHogStore.getFeatureFlagPayload.mockReturnValue({ sampleRate: 1 });
+		await initializeQuickJsExpressionShadow();
+		installedRunner().beforeLegacy({
+			expression: '{{ 1 }}',
+			source: '{{ 1 }}',
+			data: {} as ExpressionShadowContext['data'],
+			timezone: 'UTC',
+		})?.({ ok: true, value: 1 });
+
+		stopQuickJsExpressionShadow();
+
+		const properties = track.mock.calls.at(-1)?.[1] as Record<string, unknown>;
+		expect(Object.keys(properties).filter((key) => !key.startsWith('quickjs_fe_'))).toEqual([]);
+		expect(
+			TELEMETRY_EVENT.EXPRESSIONS.EXPRESSION_ENGINE_SHADOW_RUN_REPORTED.getValidationError(
+				properties,
+			),
+		).toBeNull();
 	});
 });
 

@@ -29,6 +29,8 @@ description: |
   Knowledge base files and runtime data are excluded. Agent package imports
   remain unavailable.
 x-required-scope: project:export,workflow:export,agent:export
+parameters:
+  - $ref: ../../../../shared/spec/parameters/idempotencyKey.yml
 requestBody:
   required: true
   content:
@@ -142,5 +144,9 @@ responses:
     $ref: ../../../../shared/spec/responses/forbidden.yml
   '404':
     $ref: ../../../../shared/spec/responses/notFound.yml
+  '409':
+    $ref: ../../../../shared/spec/responses/conflict.yml
   '415':
     $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml
+  '422':
+    $ref: ../../../../shared/spec/responses/unprocessableEntity.yml

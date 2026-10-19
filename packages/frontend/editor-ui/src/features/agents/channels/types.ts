@@ -1,22 +1,14 @@
 import type {
 	AgentIntegrationDisconnectWarning,
-	AgentPersonalisation,
 	AgentIntegrationSettings,
 	ChatIntegrationDescriptor,
 } from '@n8n/api-types';
 import type { IconName } from '@n8n/design-system';
 import type { BaseTextKey } from '@n8n/i18n';
 import type { PermissionsRecord } from '@n8n/permissions';
-import type { Component, ComputedRef, InjectionKey, Ref, VNode } from 'vue';
+import type { Component, Ref, VNode } from 'vue';
 
 import type { AgentCredentialOption } from '../components/AgentCredentialSelect.vue';
-
-/**
- * The agent's icon and gradient, with defaults applied. Injected rather than
- * passed down, because only the views that show the agent read it.
- */
-export const AGENT_PERSONALISATION_KEY: InjectionKey<ComputedRef<AgentPersonalisation>> =
-	Symbol('agentPersonalisation');
 
 export type AgentChannelMode = 'setup' | 'edit';
 export type AgentChannelView = 'list' | `${string}_${AgentChannelMode}`;

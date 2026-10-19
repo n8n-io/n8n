@@ -4,6 +4,7 @@ import {
 	AGENT_SKILL_NAME_MAX_LENGTH,
 	agentSkillSchema,
 	agentSkillShape,
+	skillCreateMethodSchema,
 } from './agent-skill.schema';
 import type { AgentSkill } from './types';
 import type { ProjectType } from '../schemas/project.schema';
@@ -149,6 +150,8 @@ export class CreateSkillDto extends Z.class({
 	agentId: z.string().max(36).optional(),
 	/** Hub skills ignore `allowedTools`, so a create that sends it is refused. */
 	skill: agentSkillSchema.omit({ allowedTools: true }).extend({ name: skillNameSchema }),
+	/** For telemetry only. Absent counts as `manual`. */
+	method: skillCreateMethodSchema.optional(),
 }) {}
 
 /**

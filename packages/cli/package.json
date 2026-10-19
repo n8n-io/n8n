@@ -230,7 +230,7 @@
     "file-type": "catalog:",
     "flatted": "catalog:",
     "formidable": "3.5.4",
-    "handlebars": "4.7.9",
+    "handlebars": "4.7.10",
     "helmet": "8.1.0",
     "http-proxy-middleware": "^3.0.7",
     "ioredis": "5.3.2",

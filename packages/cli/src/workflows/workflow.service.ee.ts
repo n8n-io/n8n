@@ -14,6 +14,7 @@ import {
 	FolderRepository,
 	SharedWorkflowRepository,
 	WorkflowRepository,
+	WorkflowHistoryRepository,
 	WorkflowPublishHistoryRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -81,6 +82,10 @@ export type CredentialGuardOptions = {
 	allowUninspectableSource?: boolean;
 };
 
+const EDITABLE_NODE_FIELDS = ['name', 'position', 'disabled'] as const;
+
+const HISTORY_LOOKBACK_LIMIT = 20;
+
 @Service()
 export class EnterpriseWorkflowService {
 	constructor(
@@ -101,6 +106,7 @@ export class EnterpriseWorkflowService {
 		private readonly policyEnforcementService: PolicyEnforcementService,
 		private readonly nodeTypes: NodeTypes,
 		private readonly credentialsPermissionChecker: CredentialsPermissionChecker,
+		private readonly workflowHistoryRepository: WorkflowHistoryRepository,
 	) {}
 
 	async shareWithProjects(
@@ -248,7 +254,7 @@ export class EnterpriseWorkflowService {
 		workflow: T,
 		workflowId: string,
 		user: User,
-		restoredNodes?: INode[],
+		restoredNodes: INode[] = [],
 	) {
 		const previousVersion = await this.workflowRepository.get({ id: workflowId });
 
@@ -261,13 +267,29 @@ export class EnterpriseWorkflowService {
 			{ workflowId },
 		);
 
+		const options = { allowUninspectableSource: this.canUseEveryCredential(user) };
+
+		// A node switched back to a credential the user cannot use is saved as the
+		// version that last stored it did, the same as a restore of that version.
+		const historyNodes = [
+			...restoredNodes,
+			...(await this.findNodesAsHistoryStoredThem(
+				workflow,
+				previousVersion,
+				allCredentials,
+				restoredNodes,
+				options,
+				workflowId,
+			)),
+		];
+
 		try {
 			return this.validateWorkflowCredentialUsage(
 				workflow,
 				previousVersion,
 				allCredentials,
-				restoredNodes,
-				{ allowUninspectableSource: this.canUseEveryCredential(user) },
+				historyNodes,
+				options,
 			);
 		} catch (error) {
 			if (error instanceof NodeOperationError) {
@@ -279,11 +301,70 @@ export class EnterpriseWorkflowService {
 		}
 	}
 
+	private async findNodesAsHistoryStoredThem(
+		workflow: IWorkflowBase,
+		previousVersion: IWorkflowBase,
+		credentialsUserHasAccessTo: Array<{ id: string }>,
+		restoredNodes: INode[],
+		options: CredentialGuardOptions,
+		workflowId: string,
+	): Promise<INode[]> {
+		const allowedCredentialIds = credentialsUserHasAccessTo.map((cred) => cred.id);
+		// Read-only and restored nodes are settled by the other rules; a node without
+		// an id is new. None of them needs the history.
+		const settledNodeIds = new Set([
+			...this.getNodesWithInaccessibleCreds(previousVersion, allowedCredentialIds, options).map(
+				(node) => node.id,
+			),
+			...restoredNodes.map((node) => node.id),
+		]);
+		const allowed = new Set(allowedCredentialIds);
+		const candidates = this.getNodesWithInaccessibleCreds(
+			workflow,
+			allowedCredentialIds,
+			options,
+		).filter((node) => {
+			if (!node.id || settledNodeIds.has(node.id)) return false;
+			const { ids, hasUnresolved } = this.getNodeCredentialRefs(node);
+			return hasUnresolved || ids.some((id) => !allowed.has(id));
+		});
+		if (candidates.length === 0) return [];
+
+		const versions = await this.workflowHistoryRepository.findNewestVersionNodes(
+			workflowId,
+			HISTORY_LOOKBACK_LIMIT,
+		);
+		const storedNodes = versions.flatMap((version) => version.nodes);
+		return candidates.flatMap((candidate) => {
+			const stored = storedNodes.find(
+				(node) =>
+					node.id === candidate.id && this.isSameNodeApartFromEditableFields(node, candidate),
+			);
+			return stored ? [stored] : [];
+		});
+	}
+
+	private isSameNodeApartFromEditableFields(a: INode, b: INode): boolean {
+		return isEqual(this.toComparableNode(a), this.toComparableNode(b));
+	}
+
+	private toComparableNode(node: INode) {
+		const { credentials, ...rest } = omit(node, EDITABLE_NODE_FIELDS);
+		if (!credentials) return rest;
+		const credentialIdentities = Object.fromEntries(
+			Object.entries(credentials).map(([type, credential]) => [
+				type,
+				credential?.id ?? credential?.name ?? null,
+			]),
+		);
+		return { ...rest, credentials: credentialIdentities };
+	}
+
 	validateWorkflowCredentialUsage<T extends IWorkflowBase>(
 		newWorkflowVersion: T,
 		previousWorkflowVersion: IWorkflowBase,
 		credentialsUserHasAccessTo: Array<{ id: string }>,
-		restoredNodes: INode[] = [],
+		historyNodes: INode[] = [],
 		options: CredentialGuardOptions = {},
 	) {
 		const allowedCredentialIds = credentialsUserHasAccessTo.map((cred) => cred.id);
@@ -320,9 +401,9 @@ export class EnterpriseWorkflowService {
 			submittedIdCounts.set(node.id, (submittedIdCounts.get(node.id) ?? 0) + 1);
 		}
 
-		const restoredNodesById = new Map<string, INode>();
-		for (const node of restoredNodes) {
-			if (!restoredNodesById.has(node.id)) restoredNodesById.set(node.id, node);
+		const historyNodesById = new Map<string, INode>();
+		for (const node of historyNodes) {
+			if (!historyNodesById.has(node.id)) historyNodesById.set(node.id, node);
 		}
 
 		newWorkflowVersion.nodes = newWorkflowVersion.nodes.map((node) => {
@@ -335,10 +416,14 @@ export class EnterpriseWorkflowService {
 			const idClaimedOnce = submittedIdCounts.get(node.id) === 1;
 			const blockedBySource = this.isBlockedByUninspectableSource(node, options);
 
-			// A restore brings back a node exactly as a version from this workflow's history
-			// stored it. Any change to it makes it a new edit, which the checks below judge.
-			const historyNode = restoredNodesById.get(node.id);
-			if (idClaimedOnce && historyNode && isEqual(historyNode, node)) return node;
+			const historyNode = historyNodesById.get(node.id);
+			if (
+				idClaimedOnce &&
+				historyNode &&
+				this.isSameNodeApartFromEditableFields(historyNode, node)
+			) {
+				return node;
+			}
 
 			if (!previousNode || !idClaimedOnce || !readOnlyNodeIds.has(node.id)) {
 				this.logger.warn('Blocked workflow update due to tampering attempt', {

@@ -28,6 +28,7 @@ import {
 	getAgentChannelPlatform,
 	isRegisteredAgentChannelPlatform,
 } from '@/features/agents/channels/registry';
+import { provideAgentPersonalisation } from '@/features/agents/channels/agentPersonalisation';
 import type {
 	AgentChannelRestart,
 	AgentChannelRuntime,
@@ -78,6 +79,8 @@ const {
 const submitted = ref(false);
 const connectionInFlight = ref(false);
 const agent = ref<AgentResource | null>(null);
+// This card is not under the builder, so it provides the agent's look itself.
+provideAgentPersonalisation(() => agent.value?.schema?.personalisation);
 const catalogLoading = ref(false);
 const catalogLoadFailed = ref(false);
 

@@ -16,7 +16,7 @@ export const PROMOTE_SELECTION_COMMIT_MESSAGE = 'Promote a selection of project 
  * separate from the repository root leaves `.git` and any files the user commits
  * at the root untouched, and scopes cleanup to a single directory.
  */
-export const PACKAGE_SUBFOLDER = 'n8n-export';
+export const PACKAGE_SUBFOLDER = 'n8n';
 
 /** Config name used when a config write leaves `name` out. */
 export const DIRECTION_LABELS = { apply: 'Apply', promote: 'Promote' } as const;

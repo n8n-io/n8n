@@ -91,6 +91,17 @@ describe('useAgentApi', () => {
 			);
 		});
 
+		it('sends how the user made the skill with the create request', async () => {
+			await createAgentSkill(restApiContext, 'project-1', 'agent-1', skill, undefined, 'upload');
+
+			expect(makeRestApiRequest).toHaveBeenCalledWith(
+				restApiContext,
+				'POST',
+				'/projects/project-1/agents/v2/agent-1/skills',
+				{ ...skill, method: 'upload' },
+			);
+		});
+
 		it('saves the skill text and its target in one request', async () => {
 			await updateAgentSkill(
 				restApiContext,
