@@ -3494,7 +3494,6 @@ export class InstanceAiAdapterService {
 			},
 
 			async insertRows(dataTableId, rows, options) {
-				assertNotReadOnly();
 				const { projectId, tableName, resolvedId } = await resolveTableMeta(
 					['dataTable:writeRow'],
 					dataTableId,
@@ -3515,7 +3514,6 @@ export class InstanceAiAdapterService {
 			},
 
 			async updateRows(dataTableId, filter, data, options) {
-				assertNotReadOnly();
 				const { projectId, tableName, resolvedId } = await resolveTableMeta(
 					['dataTable:writeRow'],
 					dataTableId,
@@ -3536,7 +3534,6 @@ export class InstanceAiAdapterService {
 			},
 
 			async deleteRows(dataTableId, filter, options) {
-				assertNotReadOnly();
 				const { projectId, tableName, resolvedId } = await resolveTableMeta(
 					['dataTable:writeRow'],
 					dataTableId,
