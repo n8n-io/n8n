@@ -347,7 +347,9 @@ watch(
 					<N8nText bold color="text-dark" size="medium">
 						{{ i18n.baseText('agents.builder.agentEvals.suggestion.title') }}
 					</N8nText>
-					<N8nText color="text-dark" size="medium">{{ fixSuggestion }}</N8nText>
+					<N8nText color="text-dark" size="medium" :class="$style.fixSuggestionText">{{
+						fixSuggestion
+					}}</N8nText>
 				</div>
 				<template v-if="!hideRevise">
 					<N8nText bold color="text-dark" :class="$style.correctionHint">
@@ -522,6 +524,12 @@ watch(
 	display: flex;
 	flex-direction: column;
 	padding-top: var(--spacing--lg);
+}
+
+// Keep the line breaks of a suggestion, and wrap a long unbroken word in the row.
+.fixSuggestionText {
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
 }
 
 .correctionActions {
