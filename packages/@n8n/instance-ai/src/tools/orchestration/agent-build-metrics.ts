@@ -9,19 +9,16 @@ import {
 import type { AgentValidationSummary, OrchestrationContext } from '../../types';
 
 /**
- * Agent builder metrics for the inline builder tools. One orchestrator run is
- * one build pass: it spans the run's HITL suspensions, because a resumed run
- * reuses its orchestration context.
+ * Agent builder metrics for the inline builder tools. Each one is emitted from
+ * the builder tool call that caused it, so it shares the tool span's trace.
  *
  * - `agent_shown`: the first config change of each agent in the run.
+ * - `agent_build`: each successful config change.
+ * - `agent_verification`: after each successful config change, whether the
+ *   agent passes the Publish validation with at least one capability.
  * - `agent_test`: each Preview test result.
- * - `agent_build`: the run outcome for each agent that the run selected or changed.
- * - `agent_verification`: after a completed run that changed the config, whether
- *   the agent passes the Publish validation with at least one capability.
  */
 
-export type AgentBuildRunStatus = 'completed' | 'cancelled' | 'errored';
-type AgentBuildOutcome = 'completed' | 'failed' | 'cancelled';
 /** Same values as the old build-agent `activity` input, derived from what the run did. */
 type AgentBuildActivity = 'creating' | 'working' | 'testing' | 'exploring';
 
@@ -34,7 +31,7 @@ interface AgentBuildState {
 interface RunBuildState {
 	agents: Map<string, AgentBuildState>;
 	suspendedAt?: number;
-	/** Time the user took to answer the builder suspensions of this run. */
+	/** Time the user took to answer the builder suspensions since the last config change. */
 	userWaitMs?: number;
 }
 
@@ -123,16 +120,20 @@ export function recordAgentBuilderToolResult(
 	agentId: string,
 	toolCall: { toolName: string; isError: boolean; output?: unknown; configMutated: boolean },
 ): void {
+	const runState = runStateFor(context);
 	const state = agentStateFor(context, agentId);
 	const firstChange = toolCall.configMutated && !state.configUpdated;
 	if (toolCall.configMutated) state.configUpdated = true;
 	const isTest = toolCall.toolName === AGENT_BUILDER_TEST_TOOL_NAME;
 	if (isTest) state.tested = true;
 
-	if (!firstChange && !isTest) return;
+	if (!toolCall.configMutated && !isTest) return;
 	if (!canEmitBuilderMetric(context.tracing)) return;
 	const activity = activityFor(state);
 	const operation = operationFor(state);
+	const userWaitMs = toolCall.configMutated ? runState.userWaitMs : undefined;
+	if (toolCall.configMutated) runState.userWaitMs = undefined;
+
 	detachBuilderMetricWork(context.tracing, async () => {
 		// The open agent panel refetches on the first change, so the user first sees the built agent here.
 		if (firstChange) {
@@ -143,6 +144,19 @@ export function recordAgentBuilderToolResult(
 				activity,
 				tool_name: toolCall.toolName,
 			});
+		}
+		if (toolCall.configMutated) {
+			await emitBuilderMetric(context.tracing, 'agent_build', {
+				success: true,
+				outcome: 'completed',
+				agent_id: agentId,
+				operation,
+				activity,
+				config_updated: true,
+				tool_name: toolCall.toolName,
+				user_wait_ms: userWaitMs,
+			});
+			await emitAgentVerification(context, agentId, { operation, activity });
 		}
 		if (isTest) {
 			const test = readAgentTestResult(toolCall);
@@ -156,63 +170,28 @@ export function recordAgentBuilderToolResult(
 	});
 }
 
-function toOutcome(status: AgentBuildRunStatus): AgentBuildOutcome {
-	return status === 'errored' ? 'failed' : status;
-}
-
-/**
- * Records `agent_build` and `agent_verification` for each agent of the run.
- * Call it on a terminal run status, before the run trace is finalized. A
- * suspended run is not recorded: it reports its real result after the resume.
- * Only the first call for a run records: later calls are no-ops.
- */
-export function recordAgentBuildRunOutcome(
+async function emitAgentVerification(
 	context: OrchestrationContext,
-	status: AgentBuildRunStatus,
-): void {
-	const runState = runStates.get(context);
-	runStates.delete(context);
-	if (!runState || runState.agents.size === 0) return;
-	// No trace, no work: the validation costs a draft read and credential checks.
-	if (!canEmitBuilderMetric(context.tracing)) return;
-	const outcome = toOutcome(status);
-	const delegate = context.domainContext?.builderDelegate;
-
-	for (const [agentId, state] of runState.agents) {
-		const activity = activityFor(state);
-		const operation = operationFor(state);
-		detachBuilderMetricWork(context.tracing, async () => {
-			await emitBuilderMetric(context.tracing, 'agent_build', {
-				success: outcome === 'completed',
-				outcome,
-				agent_id: agentId,
-				operation,
-				activity,
-				config_updated: state.configUpdated,
-				user_wait_ms: runState.userWaitMs,
-			});
-
-			if (!state.configUpdated || outcome !== 'completed') return;
-			let validation: AgentValidationSummary | undefined;
-			try {
-				validation = await delegate?.validateAgent?.(agentId);
-			} catch (error) {
-				context.logger.debug(
-					`[agent-build-metrics] validation for ${agentId} failed: ${error instanceof Error ? error.message : String(error)}`,
-				);
-				return;
-			}
-			if (!validation) return;
-			await emitBuilderMetric(context.tracing, 'agent_verification', {
-				success: validation.valid && validation.capabilityCount > 0,
-				valid: validation.valid,
-				issue_codes: validation.issueCodes.join(','),
-				issue_count: validation.issueCount,
-				capability_count: validation.capabilityCount,
-				agent_id: agentId,
-				operation,
-				activity,
-			});
-		});
+	agentId: string,
+	fields: { operation: 'create' | 'update'; activity: AgentBuildActivity },
+): Promise<void> {
+	let validation: AgentValidationSummary | undefined;
+	try {
+		validation = await context.domainContext?.builderDelegate?.validateAgent?.(agentId);
+	} catch (error) {
+		context.logger.debug(
+			`[agent-build-metrics] validation for ${agentId} failed: ${error instanceof Error ? error.message : String(error)}`,
+		);
+		return;
 	}
+	if (!validation) return;
+	await emitBuilderMetric(context.tracing, 'agent_verification', {
+		success: validation.valid && validation.capabilityCount > 0,
+		valid: validation.valid,
+		issue_codes: validation.issueCodes.join(','),
+		issue_count: validation.issueCount,
+		capability_count: validation.capabilityCount,
+		agent_id: agentId,
+		...fields,
+	});
 }

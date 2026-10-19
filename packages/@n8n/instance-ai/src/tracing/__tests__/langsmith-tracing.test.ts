@@ -10,7 +10,6 @@ import type { Mock } from 'vitest';
 import { executeTool } from '../../__tests__/tool-test-utils';
 import { AGENT_BUILDER_TEST_TOOL_NAME } from '@n8n/api-types';
 import {
-	recordAgentBuildRunOutcome,
 	recordAgentBuilderToolResult,
 	recordAgentSelected,
 } from '../../tools/orchestration/agent-build-metrics';
@@ -2892,9 +2891,8 @@ describe('createInstanceAiTraceContext', () => {
 				await Promise.resolve();
 			});
 
-			// The service order at the end of a run: record the outcome, finalize the
-			// orchestrator span, then finish the message trace.
-			recordAgentBuildRunOutcome(context, 'completed');
+			// The service order at the end of a run: finalize the orchestrator span,
+			// then finish the message trace.
 			await tracing!.finishRun(tracing!.actorRun, { outputs: { status: 'completed' } });
 			await tracing!.finishRun(tracing!.rootRun, { outputs: { status: 'completed' } });
 			// The Publish validation settles after both spans finished.

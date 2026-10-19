@@ -251,8 +251,6 @@ export type {
 	AgentSnapshotReason,
 } from './tracing/agent-snapshot-event';
 
-export const recordAgentBuildRunOutcome: typeof AgentBuildMetricsMod.recordAgentBuildRunOutcome =
-	lazyFunction(() => loadAgentBuildMetrics().recordAgentBuildRunOutcome);
 export const carryAgentBuildRunState: typeof AgentBuildMetricsMod.carryAgentBuildRunState =
 	lazyFunction(() => loadAgentBuildMetrics().carryAgentBuildRunState);
 

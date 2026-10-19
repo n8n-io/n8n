@@ -10,7 +10,6 @@ import type {
 } from '../../../types';
 import {
 	carryAgentBuildRunState,
-	recordAgentBuildRunOutcome,
 	recordAgentBuilderResumed,
 	recordAgentBuilderSuspended,
 	recordAgentBuilderToolResult,
@@ -65,12 +64,10 @@ describe('agent build metrics', () => {
 		detached.length = 0;
 	});
 
-	it('records a created agent with the run outcome and the Publish validation', async () => {
+	it('records each config change of a created agent with the Publish validation', async () => {
 		const { context, validateAgent } = makeContext();
 		recordAgentSelected(context, 'agent-1', { created: true });
 		recordAgentBuilderToolResult(context, 'agent-1', configChange);
-
-		recordAgentBuildRunOutcome(context, 'completed');
 		await flushDetached();
 
 		expect(metricCalls('agent_build')).toEqual([
@@ -81,6 +78,7 @@ describe('agent build metrics', () => {
 				operation: 'create',
 				activity: 'creating',
 				config_updated: true,
+				tool_name: 'agent_builder_patch_config',
 				user_wait_ms: undefined,
 			},
 		]);
@@ -99,6 +97,19 @@ describe('agent build metrics', () => {
 		]);
 	});
 
+	it('records one build and one validation for each config change', async () => {
+		const { context, validateAgent } = makeContext();
+		recordAgentBuilderToolResult(context, 'agent-1', configChange);
+		recordAgentBuilderToolResult(context, 'agent-1', configChange);
+		await flushDetached();
+
+		expect(metricCalls('agent_build')).toEqual([
+			expect.objectContaining({ operation: 'update', activity: 'working' }),
+			expect.objectContaining({ operation: 'update', activity: 'working' }),
+		]);
+		expect(validateAgent).toHaveBeenCalledTimes(2);
+	});
+
 	it.each([
 		{ name: 'invalid', valid: false, capabilityCount: 2 },
 		{ name: 'valid without capabilities', valid: true, capabilityCount: 0 },
@@ -112,8 +123,6 @@ describe('agent build metrics', () => {
 			},
 		});
 		recordAgentBuilderToolResult(context, 'agent-1', configChange);
-
-		recordAgentBuildRunOutcome(context, 'completed');
 		await flushDetached();
 
 		expect(metricCalls('agent_verification')).toEqual([
@@ -121,132 +130,49 @@ describe('agent build metrics', () => {
 		]);
 	});
 
-	it.each([
-		{ state: 'changed', setup: 'change', activity: 'working' },
-		{ state: 'tested', setup: 'test', activity: 'testing' },
-		{ state: 'only selected', setup: 'select', activity: 'exploring' },
-	] as const)('derives the $activity activity when the agent was $state', async (row) => {
-		const { context } = makeContext();
-		if (row.setup === 'change') recordAgentBuilderToolResult(context, 'agent-1', configChange);
-		if (row.setup === 'test') {
-			recordAgentBuilderToolResult(context, 'agent-1', {
-				toolName: AGENT_BUILDER_TEST_TOOL_NAME,
-				isError: false,
-				output: { status: 'completed' },
-				configMutated: false,
-			});
-		}
-		if (row.setup === 'select') recordAgentSelected(context, 'agent-1', { created: false });
-
-		recordAgentBuildRunOutcome(context, 'completed');
-		await flushDetached();
-
-		expect(metricCalls('agent_build')).toEqual([
-			expect.objectContaining({ operation: 'update', activity: row.activity }),
-		]);
-	});
-
-	it.each([
-		{ status: 'errored', outcome: 'failed' },
-		{ status: 'cancelled', outcome: 'cancelled' },
-	] as const)(
-		'records a $status run as $outcome without the validation',
-		async ({ status, outcome }) => {
-			const { context, validateAgent } = makeContext();
-			recordAgentBuilderToolResult(context, 'agent-1', configChange);
-
-			recordAgentBuildRunOutcome(context, status);
-			await flushDetached();
-
-			expect(metricCalls('agent_build')).toEqual([
-				expect.objectContaining({ success: false, outcome, config_updated: true }),
-			]);
-			expect(validateAgent).not.toHaveBeenCalled();
-			expect(metricCalls('agent_verification')).toEqual([]);
-		},
-	);
-
-	it('skips the validation when the run did not change the config', async () => {
+	it('records no build for a call that failed or did not change the config', async () => {
 		const { context, validateAgent } = makeContext();
 		recordAgentSelected(context, 'agent-1', { created: false });
-
-		recordAgentBuildRunOutcome(context, 'completed');
-		await flushDetached();
-
-		expect(metricCalls('agent_build')).toHaveLength(1);
-		expect(validateAgent).not.toHaveBeenCalled();
-	});
-
-	it('records one build for each agent of the run, once', async () => {
-		const { context } = makeContext();
-		recordAgentSelected(context, 'agent-1', { created: false });
-		recordAgentSelected(context, 'agent-2', { created: true });
-
-		recordAgentBuildRunOutcome(context, 'completed');
-		recordAgentBuildRunOutcome(context, 'completed');
-		await flushDetached();
-
-		expect(metricCalls('agent_build').map((fields) => fields.agent_id)).toEqual([
-			'agent-1',
-			'agent-2',
-		]);
-	});
-
-	it('carries the run state to a context that a resume rebuilt', async () => {
-		vi.useFakeTimers();
-		try {
-			const { context: previous } = makeContext();
-			const { context: rebuilt, validateAgent } = makeContext();
-			recordAgentSelected(previous, 'agent-1', { created: true });
-			recordAgentBuilderToolResult(previous, 'agent-1', configChange);
-			recordAgentBuilderSuspended(previous);
-			vi.advanceTimersByTime(800);
-
-			carryAgentBuildRunState(previous, rebuilt);
-			recordAgentBuilderResumed(rebuilt);
-			recordAgentBuildRunOutcome(rebuilt, 'completed');
-			recordAgentBuildRunOutcome(previous, 'completed');
-			await flushDetached();
-
-			expect(metricCalls('agent_build')).toEqual([
-				expect.objectContaining({
-					operation: 'create',
-					activity: 'creating',
-					config_updated: true,
-					user_wait_ms: 800,
-				}),
-			]);
-			expect(validateAgent).toHaveBeenCalledWith('agent-1');
-		} finally {
-			vi.useRealTimers();
-		}
-	});
-
-	it('records nothing for a run that did not work on an agent', async () => {
-		const { context } = makeContext();
-
-		recordAgentBuildRunOutcome(context, 'completed');
+		recordAgentBuilderToolResult(context, 'agent-1', {
+			toolName: 'agent_builder_patch_config',
+			isError: true,
+			configMutated: false,
+		});
+		recordAgentBuilderToolResult(context, 'agent-1', {
+			toolName: 'agent_builder_read_config',
+			isError: false,
+			configMutated: false,
+		});
 		await flushDetached();
 
 		expect(emitBuilderMetric).not.toHaveBeenCalled();
+		expect(validateAgent).not.toHaveBeenCalled();
+	});
+
+	it('keeps agent_build when the validation fails', async () => {
+		const { context, validateAgent } = makeContext();
+		validateAgent.mockRejectedValue(new Error('draft missing'));
+		recordAgentBuilderToolResult(context, 'agent-1', configChange);
+		await flushDetached();
+
+		expect(metricCalls('agent_build')).toHaveLength(1);
+		expect(metricCalls('agent_verification')).toEqual([]);
+		expect(context.logger.debug).toHaveBeenCalledWith(expect.stringContaining('draft missing'));
 	});
 
 	it('records nothing without a trace', async () => {
 		const { context, validateAgent } = makeContext({ withTracing: false });
 		recordAgentBuilderToolResult(context, 'agent-1', configChange);
-
-		recordAgentBuildRunOutcome(context, 'completed');
 		await flushDetached();
 
 		expect(emitBuilderMetric).not.toHaveBeenCalled();
 		expect(validateAgent).not.toHaveBeenCalled();
 	});
 
-	it('records the time the user took to answer the builder suspensions', async () => {
+	it('records the user wait of the builder suspensions on the next config change', async () => {
 		vi.useFakeTimers();
 		try {
 			const { context } = makeContext();
-			recordAgentSelected(context, 'agent-1', { created: false });
 			recordAgentBuilderSuspended(context);
 			vi.advanceTimersByTime(1200);
 			recordAgentBuilderResumed(context);
@@ -256,10 +182,40 @@ describe('agent build metrics', () => {
 			// A resume without a recorded suspension adds nothing.
 			recordAgentBuilderResumed(context);
 
-			recordAgentBuildRunOutcome(context, 'completed');
+			recordAgentBuilderToolResult(context, 'agent-1', configChange);
+			await flushDetached();
+			recordAgentBuilderToolResult(context, 'agent-1', configChange);
 			await flushDetached();
 
-			expect(metricCalls('agent_build')).toEqual([expect.objectContaining({ user_wait_ms: 1500 })]);
+			expect(metricCalls('agent_build').map((fields) => fields.user_wait_ms)).toEqual([
+				1500,
+				undefined,
+			]);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it('carries the run state to a context that a resume rebuilt', async () => {
+		vi.useFakeTimers();
+		try {
+			const { context: previous } = makeContext();
+			const { context: rebuilt } = makeContext();
+			recordAgentSelected(previous, 'agent-1', { created: true });
+			recordAgentBuilderToolResult(previous, 'agent-1', configChange);
+			await flushDetached();
+			recordAgentBuilderSuspended(previous);
+			vi.advanceTimersByTime(800);
+
+			carryAgentBuildRunState(previous, rebuilt);
+			recordAgentBuilderResumed(rebuilt);
+			recordAgentBuilderToolResult(rebuilt, 'agent-1', configChange);
+			await flushDetached();
+
+			expect(metricCalls('agent_shown')).toHaveLength(1);
+			expect(metricCalls('agent_build').at(-1)).toEqual(
+				expect.objectContaining({ operation: 'create', activity: 'creating', user_wait_ms: 800 }),
+			);
 		} finally {
 			vi.useRealTimers();
 		}

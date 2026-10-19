@@ -67,7 +67,6 @@ import {
 	threadProvenanceMetadata,
 	createInternalOperationTraceContext,
 	emitAgentSnapshotTraceEvent,
-	recordAgentBuildRunOutcome,
 	carryAgentBuildRunState,
 	createInstanceAiLivenessPolicyConfig,
 	InstanceAiLivenessPolicy,
@@ -3925,7 +3924,6 @@ export class InstanceAiService {
 		let contextResult: StreamRunResult | undefined;
 		let contextSegmentReported = false;
 		let blockedForQuota = false;
-		let runOrchestrationContext: OrchestrationContext | undefined;
 		const observedContextWork = new WorkSummaryAccumulator();
 		const contextEventBus = this.observeInstanceContextEvents(observedContextWork);
 
@@ -4092,7 +4090,6 @@ export class InstanceAiService {
 				skillScope,
 			} = environment;
 			modelId = resolvedModelId;
-			runOrchestrationContext = orchestrationContext;
 			promptVersion = orchestrationContext.promptConfiguration?.version;
 			setTracePromptVersion(tracing, promptVersion);
 			setTraceModelId(tracing, modelId);
@@ -4771,8 +4768,6 @@ export class InstanceAiService {
 				});
 			}
 			const finalStatus = result.status === 'errored' ? 'error' : result.status;
-			// Before the trace is finalized, so the detached metric spans still export.
-			recordAgentBuildRunOutcome(orchestrationContext, result.status);
 			await this.tracing.finalizeRunTracing(runId, tracing, {
 				status: finalStatus,
 				outputText,
@@ -4849,13 +4844,6 @@ export class InstanceAiService {
 
 			// Shutdown keeps the pending card. Do not finalize its segment here.
 			if (signal.aborted && !quotaAbort && this.shouldPreserveHitlOnShutdown(runId)) return;
-			// Before the trace is finalized, so the detached metric spans still export.
-			if (runOrchestrationContext) {
-				recordAgentBuildRunOutcome(
-					runOrchestrationContext,
-					signal.aborted && !quotaAbort ? 'cancelled' : 'errored',
-				);
-			}
 
 			const contextWork = contextResult
 				? contextResult.workSummary
@@ -6340,10 +6328,6 @@ export class InstanceAiService {
 				);
 			}
 			const finalStatus = result.status === 'errored' ? 'error' : result.status;
-			// Before the trace is finalized, so the detached metric spans still export.
-			if (opts.orchestrationContext) {
-				recordAgentBuildRunOutcome(opts.orchestrationContext, result.status);
-			}
 			await this.tracing.finalizeRunTracing(opts.runId, opts.tracing, {
 				status: finalStatus,
 				outputText,
@@ -6438,13 +6422,6 @@ export class InstanceAiService {
 
 			if (opts.signal.aborted && !quotaAbort && this.shouldPreserveHitlOnShutdown(opts.runId))
 				return;
-			// Before the trace is finalized, so the detached metric spans still export.
-			if (opts.orchestrationContext) {
-				recordAgentBuildRunOutcome(
-					opts.orchestrationContext,
-					opts.signal.aborted && !quotaAbort ? 'cancelled' : 'errored',
-				);
-			}
 
 			const contextWork = contextResult
 				? contextResult.workSummary
