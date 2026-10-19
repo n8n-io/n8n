@@ -115,11 +115,19 @@ describe('ExecuteContext', () => {
 		runExecutionData,
 	});
 
-	describe('getInputData', () => {
+	describe.each([
+		{ name: 'default', prototype: Object.prototype },
+		{ name: 'null', prototype: null },
+	])('getInputData ($name prototype)', ({ prototype }) => {
 		const inputIndex = 0;
 		const connectionType = NodeConnectionTypes.Main;
 
+		beforeEach(() => {
+			Object.setPrototypeOf(inputData, prototype);
+		});
+
 		afterEach(() => {
+			Object.setPrototypeOf(inputData, Object.prototype);
 			inputData[connectionType] = [[{ json: { test: 'data' } }]];
 		});
 
@@ -132,6 +140,13 @@ describe('ExecuteContext', () => {
 		it('should return an empty array if the input name does not exist', () => {
 			const connectionType = 'nonExistent' as typeof NodeConnectionTypes.Main;
 			expect(executeContext.getInputData(inputIndex, connectionType)).toEqual([]);
+		});
+
+		it('should ignore inherited input data', () => {
+			Object.setPrototypeOf(inputData, { main: inputData.main });
+			delete inputData.main;
+
+			expect(executeContext.getInputData()).toEqual([]);
 		});
 
 		it('should throw an error if the input index is out of range', () => {

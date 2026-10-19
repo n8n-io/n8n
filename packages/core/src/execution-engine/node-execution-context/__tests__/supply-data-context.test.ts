@@ -106,10 +106,18 @@ describe('SupplyDataContext', () => {
 		runExecutionData,
 	});
 
-	describe('getInputData', () => {
+	describe.each([
+		{ name: 'default', prototype: Object.prototype },
+		{ name: 'null', prototype: null },
+	])('getInputData ($name prototype)', ({ prototype }) => {
 		const inputIndex = 0;
 
+		beforeEach(() => {
+			Object.setPrototypeOf(inputData, prototype);
+		});
+
 		afterEach(() => {
+			Object.setPrototypeOf(inputData, Object.prototype);
 			inputData[connectionType] = [[{ json: { test: 'data' } }]];
 		});
 
@@ -124,6 +132,13 @@ describe('SupplyDataContext', () => {
 			expect(
 				supplyDataContext.getInputData(inputIndex, connectionType as NodeConnectionType),
 			).toEqual([]);
+		});
+
+		it('should ignore inherited input data', () => {
+			Object.setPrototypeOf(inputData, { main: inputData.main });
+			delete inputData.main;
+
+			expect(supplyDataContext.getInputData()).toEqual([]);
 		});
 
 		it('should throw an error if the input index is out of range', () => {
@@ -334,6 +349,40 @@ describe('SupplyDataContext', () => {
 	});
 
 	describe('addExecutionDataFunctions', () => {
+		it.each([
+			{ name: 'default', prototype: Object.prototype },
+			{ name: 'null', prototype: null },
+		])('should append input runs with a $name prototype', async ({ prototype }) => {
+			const runData = Object.create(prototype) as IRunData;
+			const testRunExecutionData = createRunExecutionData({ resultData: { runData } });
+			const testAdditionalData = mock<IWorkflowExecuteAdditionalData>({
+				currentNodeExecutionIndex: 0,
+				hooks: { runHook: vi.fn().mockResolvedValue(undefined) },
+			});
+			const context = new SupplyDataContext(
+				workflow,
+				node,
+				testAdditionalData,
+				mode,
+				testRunExecutionData,
+				runIndex,
+				connectionInputData,
+				{},
+				connectionType,
+				executeData,
+				[],
+			);
+			const firstInput = [[{ json: { value: 'first' } }]];
+			const secondInput = [[{ json: { value: 'second' } }]];
+
+			await context.addExecutionDataFunctions('input', firstInput, connectionType, node.name, 0);
+			await context.addExecutionDataFunctions('input', secondInput, connectionType, node.name, 1);
+
+			expect(runData[node.name]).toHaveLength(2);
+			expect(runData[node.name][0].data).toEqual({ [connectionType]: firstInput });
+			expect(runData[node.name][1].data).toEqual({ [connectionType]: secondInput });
+		});
+
 		it('should preserve canceled status when execution is aborted and output has error', async () => {
 			const errorData = new ManualExecutionCancelledError('Execution was aborted');
 			const abortedSignal = mock<AbortSignal>({ aborted: true });

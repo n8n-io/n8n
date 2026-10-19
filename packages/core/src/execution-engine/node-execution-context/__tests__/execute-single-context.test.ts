@@ -93,11 +93,19 @@ describe('ExecuteSingleContext', () => {
 		runExecutionData,
 	});
 
-	describe('getInputData', () => {
+	describe.each([
+		{ name: 'default', prototype: Object.prototype },
+		{ name: 'null', prototype: null },
+	])('getInputData ($name prototype)', ({ prototype }) => {
 		const inputIndex = 0;
 		const connectionType = NodeConnectionTypes.Main;
 
+		beforeEach(() => {
+			Object.setPrototypeOf(inputData, prototype);
+		});
+
 		afterEach(() => {
+			Object.setPrototypeOf(inputData, Object.prototype);
 			inputData[connectionType] = [[{ json: { test: 'data' } }]];
 		});
 
@@ -112,6 +120,13 @@ describe('ExecuteSingleContext', () => {
 			const expectedData = { json: {} };
 
 			expect(executeSingleContext.getInputData(inputIndex, connectionType)).toEqual(expectedData);
+		});
+
+		it('should ignore inherited input data', () => {
+			Object.setPrototypeOf(inputData, { main: inputData.main });
+			delete inputData.main;
+
+			expect(executeSingleContext.getInputData()).toEqual({ json: {} });
 		});
 
 		it('should throw an error if the input index is out of range', () => {
