@@ -5,7 +5,7 @@ import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 
 import { usePromotionPreviewLabels } from '../../composables/usePromotionPreviewLabels';
-import type { BlockerIndex } from '../../promotionOperation';
+import { blockersOf, type BlockerIndex } from '../../promotionOperation';
 import {
 	availableKeys,
 	containerCheckState,
@@ -45,12 +45,8 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const { changeLabel, blockerMessage } = usePromotionPreviewLabels();
 
-// A workflow shows the blockers that stop it. A dependency shows the blockers about itself.
 function markers(resource: PromotionResource) {
-	const blockers =
-		resource.type === 'workflow'
-			? props.blockers.byWorkflow.get(resource.key)
-			: props.blockers.byResource.get(resource.key);
+	const blockers = blockersOf(props.blockers, resource);
 	const blocked = blockerMessage(resource, blockers);
 	// A variable warning replaces the change label, as the variable itself does not change.
 	const meta =

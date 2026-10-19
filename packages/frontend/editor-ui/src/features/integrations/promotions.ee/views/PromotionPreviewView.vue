@@ -34,13 +34,13 @@ import { usePromotionSelection } from '../composables/usePromotionSelection';
 import { PROMOTIONS_SETTINGS_SCOPES, PROMOTIONS_SETTINGS_VIEW } from '../promotions.constants';
 import {
 	indexBlockers,
+	isBlocking,
 	listBlockers,
 	locationBlocker,
 	locationConflicts,
 	toOperationRequest,
 	scopeCheck,
 	touchesDestructiveChange,
-	unresolvedBlockerCount,
 } from '../promotionOperation';
 import { includedChangeCount, totalChangeCount } from '../promotionPreview.selection';
 import { buildPreviewTree, cardOrder } from '../promotionPreview.tree';
@@ -74,20 +74,15 @@ const scopedCheck = computed(() =>
 );
 // Apply cannot move a workflow or a folder to another folder. The check does not report this,
 // but the preview shows it. A moved folder stops the whole apply, so it blocks every selection.
-const folderConflicts = computed(() =>
-	props.direction === 'apply' && graph.value ? locationConflicts(graph.value, 'folder') : [],
+const locations = computed(() =>
+	props.direction === 'apply' && graph.value ? locationConflicts(graph.value) : [],
 );
-const workflowLocationConflicts = computed(() =>
-	props.direction === 'apply' && graph.value ? locationConflicts(graph.value, 'workflow') : [],
-);
-const workflowBlockers = computed(() => [
+const folderConflicts = computed(() => locations.value.filter(({ type }) => type === 'folder'));
+const blockerList = computed(() => [
 	...(scopedCheck.value ? listBlockers(scopedCheck.value) : []),
-	...workflowLocationConflicts.value.map(locationBlocker),
+	...locations.value.map(locationBlocker),
 ]);
-const blockers = computed(() => indexBlockers(workflowBlockers.value));
-const markers = computed(() =>
-	indexBlockers([...workflowBlockers.value, ...folderConflicts.value.map(locationBlocker)]),
-);
+const blockers = computed(() => indexBlockers(blockerList.value));
 const operation = usePromotionOperation(projectId, direction, { preview, check, refresh });
 const selection = usePromotionSelection(graph, {
 	disabled: computed(() => blockers.value.blocked),
@@ -184,12 +179,7 @@ const submitLabel = computed(() => {
 
 type PreviewTab = 'changes' | 'blockers';
 const activeTab = ref<PreviewTab>('changes');
-const blockerCount = computed(
-	() =>
-		(scopedCheck.value ? unresolvedBlockerCount(scopedCheck.value) : 0) +
-		folderConflicts.value.length +
-		workflowLocationConflicts.value.length,
-);
+const blockerCount = computed(() => blockerList.value.filter(isBlocking).length);
 const showBlockersTab = computed(
 	() => props.direction === 'apply' && !!scopedCheck.value && state.value === 'ready',
 );
@@ -380,7 +370,7 @@ const treeResizer = useResizablePanel({
 						:disabled="blockers.blocked"
 						:locked="operation.isBusy.value"
 						:direction="direction"
-						:blockers="markers"
+						:blockers="blockers"
 						@show-blockers="activeTab = 'blockers'"
 						@toggle="selection.toggle"
 						@toggle-container="selection.toggleAllInside"
@@ -423,7 +413,7 @@ const treeResizer = useResizablePanel({
 						:inclusion="selection.inclusion.value"
 						:entries="details.entries.value"
 						:inspected-key="inspectedKey"
-						:blockers="markers"
+						:blockers="blockers"
 						@retry="details.retry"
 						@refresh="refresh"
 						@inspect="inspect"
@@ -436,7 +426,7 @@ const treeResizer = useResizablePanel({
 				:class="$style.blockers"
 				:project-id="projectId"
 				:check="scopedCheck"
-				:locations="[...folderConflicts, ...workflowLocationConflicts]"
+				:locations="locations"
 				:busy="operation.isBusy.value"
 				@refresh="refresh"
 				@inspect="inspectFromBlockers"

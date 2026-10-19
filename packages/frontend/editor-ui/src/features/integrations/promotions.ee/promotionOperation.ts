@@ -189,13 +189,18 @@ export function indexBlockers(blockers: Blocker[]): BlockerIndex {
 	return { byWorkflow, byResource, blocked };
 }
 
+/** The blockers that a tree row or a card shows: a workflow shows what stops it. */
+export const blockersOf = (index: BlockerIndex, { key, type }: PromotionResource) =>
+	type === 'workflow' ? index.byWorkflow.get(key) : index.byResource.get(key);
+
 /**
  * Folders and workflows that the branch holds under another parent. Apply cannot move them on
  * this instance. A folder stops the import for every selection. A workflow stops its own apply.
  */
-export function locationConflicts(graph: SelectionGraph, type: 'folder' | 'workflow') {
+export function locationConflicts(graph: SelectionGraph) {
 	return [...graph.resources.values()].filter(
-		(resource) => resource.type === type && resource.previousParentKey !== undefined,
+		({ type, previousParentKey }) =>
+			(type === 'folder' || type === 'workflow') && previousParentKey !== undefined,
 	);
 }
 
@@ -204,19 +209,6 @@ export const locationBlocker = ({ key, type }: PromotionResource): Blocker => ({
 	resourceKey: key,
 	workflowKeys: type === 'workflow' ? [key] : [],
 });
-
-/** The blockers that stop Apply until users resolve them. Folder conflicts come from the preview. */
-export function unresolvedBlockerCount({ preflight, movedWorkflows }: ApplyCheckResult) {
-	const hardConflicts = preflight.conflicts.filter(
-		({ code }) => code !== 'destructive-change' && code !== 'project-deletion',
-	);
-	return (
-		preflight.missingBindings.length +
-		preflight.accessRequirements.length +
-		hardConflicts.length +
-		movedWorkflows.length
-	);
-}
 
 /** True when the apply of these workflows removes data table values. */
 export function touchesDestructiveChange(index: BlockerIndex, keys: Iterable<ResourceKey>) {
