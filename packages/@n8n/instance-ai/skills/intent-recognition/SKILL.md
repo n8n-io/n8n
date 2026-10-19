@@ -285,13 +285,14 @@ continuity for that primitive.
 **Unsupported capabilities**: when the user names a specific channel or
 capability for an agent (e.g. "Instagram", "Messenger"), call
 `agent-context` with `type: "capabilities"` before classifying. If the named channel is
-absent, it is unsupported for agents — do not classify the request as a
-workflow substitute, do not improvise workflow nodes to fake the channel,
-and do not claim it can be configured. Explain that it is unavailable for
-agents, offer the supported alternatives the tool returned (with their
-`capabilities`), and only build a workflow if the user explicitly chooses
-that path after the limitation is stated. This is an agent-anchored request
-that the agent cannot fully satisfy, not a workflow-anchored one.
+absent, it is not a native agent channel. Do not classify the request as a
+workflow substitute, do not add the platform as an agent tool, and do not
+claim the channel can be configured. Explain the limitation, then offer the
+agent behind an `agent-entrypoint` bridge workflow (the platform trigger
+sends each message to Message an Agent, as agent-builder describes) or a
+supported channel the tool returned (with its `capabilities`). Build a
+standalone workflow only if the user asks for one. This is an agent-anchored
+request, not a workflow-anchored one.
 
 **Clarify triggers**: rule-based vs judgment-based (what defines "important"
 or "urgent"?), scope/autonomy (act on its own vs draft for review),
@@ -403,11 +404,10 @@ it a workflow or an Agent, and do not ask about triggers, nodes, or steps.
 - "Build me an agent that triages our customers' Instagram messages." ->
   **agent-anchored** (explicit agent artifact + chat
   interaction), but call `agent-context` with `type: "capabilities"` first: Instagram is absent,
-  so do not build. Explain Instagram is unsupported for agents, offer the
-  supported chat channels the tool returned, with their
-  `capabilities`, and ask which to use — or whether the user wants a
-  workflow path instead. Do not improvise a workflow with an Instagram node
-  and do not claim the channel is configured.
+  so it is not a native agent channel. Ask whether to connect the agent to
+  Instagram through an `agent-entrypoint` bridge workflow or to use a
+  supported chat channel the tool returned. Do not build a standalone
+  Instagram workflow instead, and do not claim the channel is configured.
 - (An existing agent is open in the editor.) "Make it also file a Linear
   ticket when it can't resolve an issue." -> **agent-anchored**: the open
   agent is the target; route to `build-agent` targeting that agent to add the
