@@ -921,7 +921,6 @@ const builderTelemetry = useAgentBuilderTelemetry({
 	projectId,
 	agent,
 	localConfig,
-	connectedTriggers,
 });
 
 /**

@@ -90,14 +90,6 @@ export interface AgentModificationEvent {
 
 export type AgentCreationEvent = Omit<AgentModificationEvent, 'changedParts'>;
 
-export function captureAgentMutation(agent: Agent, skillRefs: AgentSkillRefs) {
-	const schema = agent.schema ? toAgentDocument(agent.schema, skillRefs) : null;
-	const integrations = agent.integrations ?? [];
-	return { schema, integrations };
-}
-
-export type AgentMutationSnapshot = ReturnType<typeof captureAgentMutation>;
-
 export type AgentSidecarChanges = Partial<Record<'tools' | 'skills' | 'tasks', boolean>>;
 
 export function buildAgentMutationEvent(
@@ -105,8 +97,7 @@ export function buildAgentMutationEvent(
 	skillRefs: AgentSkillRefs,
 	projectId: string,
 	context: AgentMutationTelemetryContext,
-	previous: AgentMutationSnapshot,
-	sidecarChanges: AgentSidecarChanges,
+	changedParts: AgentConfigPart[],
 ): AgentModificationEvent {
 	const config = agent.schema ? toAgentDocument(agent.schema, skillRefs) : null;
 	return {
@@ -115,13 +106,7 @@ export function buildAgentMutationEvent(
 		projectId,
 		user: context.user,
 		by: context.modifiedBy,
-		changedParts: diffAgentConfigParts(
-			previous.schema,
-			config,
-			previous.integrations,
-			agent.integrations ?? [],
-			sidecarChanges,
-		),
+		changedParts,
 	};
 }
 

@@ -472,13 +472,15 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 	BUILDER_ADDED_TASKS: {
 		name: 'Builder added tasks to agent',
 		description:
-			'The Instance AI builder created a scheduled task through the `create_tasks` tool. That path persists outside `AgentConfigService.updateConfig`, so it is not covered by "Builder modified agent" — this event stays until the task write path is folded in.',
-		properties: z.object({
-			...builderSessionIdentity,
-			task_added: z.string().describe('Identifier of the newly added task'),
-			tasks: z.array(z.string()).describe('Full task identifier list after the save'),
-			status: builderPreWriteStatus,
-		}),
+			'Historical event for scheduled tasks created by the Instance AI builder. No longer emitted. Task creation now emits Builder modified agent through the shared task persistence service.',
+		properties: z
+			.object({
+				...builderSessionIdentity,
+				task_added: z.string().describe('Identifier of the newly added task'),
+				tasks: z.array(z.string()).describe('Full task identifier list after the save'),
+				status: builderPreWriteStatus,
+			})
+			.meta({ deprecated: true }),
 	},
 	BUILDER_ADDED_TRIGGER: {
 		name: 'Builder added trigger to agent',
