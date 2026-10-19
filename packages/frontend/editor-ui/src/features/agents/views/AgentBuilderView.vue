@@ -27,6 +27,7 @@ import {
 	MAX_AGENT_KNOWLEDGE_BASE_SIZE_GB,
 	addMissingAgentPersonalisation,
 	type AgentFileDto,
+	type AgentSkillAvailability,
 	type InstanceAiHandoffContext,
 	type PushMessage,
 	type PushPayload,
@@ -43,6 +44,7 @@ import { useToast } from '@n8n/composables/useToast';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
@@ -100,6 +102,7 @@ import {
 	AGENT_SESSION_DETAIL_VIEW,
 	AGENT_JSON_IMPORT_MODAL_KEY,
 	AGENT_DESCRIPTION_MODAL_KEY,
+	AGENT_UNPUBLISHED_WORKFLOWS_MODAL_KEY,
 	AGENT_VECTOR_STORES_MODAL_KEY,
 	ASSISTANT_THREAD_PARAM,
 	CONTINUE_SESSION_ID_PARAM,
@@ -167,7 +170,7 @@ import {
 	raisedBudgetCaps,
 	type BudgetAmountField,
 } from '../utils/budget-config';
-import { hasBlockingIssues } from '../utils/validationIssues';
+import { hasBlockingIssues, unpublishedWorkflowTools } from '../utils/validationIssues';
 import { isNotFoundError } from '../utils/errors';
 
 const props = withDefaults(
@@ -227,6 +230,7 @@ const agentEvalsStore = useAgentEvalsStore();
 const credentialsStore = useCredentialsStore();
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
+const nodeTypesStore = useNodeTypesStore();
 const favoritesStore = useFavoritesStore();
 const mcpStore = useMCPStore();
 const mcp = useMcp();
@@ -1321,6 +1325,7 @@ interface SkillAutosaveSnapshot {
 	skillId: string;
 	skill: AgentSkill;
 	baseSkillHash: string | undefined;
+	availableTo?: AgentSkillAvailability;
 }
 
 interface McpAvailabilitySnapshot {
@@ -1553,6 +1558,7 @@ async function saveSkill(snapshot: SkillAutosaveSnapshot): Promise<AutosaveResul
 			snapshot.skillId,
 			snapshot.skill,
 			snapshot.baseSkillHash,
+			snapshot.availableTo,
 		);
 	} catch (error) {
 		if (error instanceof ResponseError && error.httpStatusCode === 409) {
@@ -1886,6 +1892,11 @@ watch(isEditingLocked, (locked) => {
  * re-validates independently, so this is a UX affordance, not the only guard.
  */
 async function refreshValidationBeforePublish(): Promise<boolean> {
+	// Capture the target before the awaits: when the autosave flush or the
+	// validation refresh resolves, the user may have switched to another
+	// agent, and the continuation must not act on the stale one.
+	const targetProjectId = projectId.value;
+	const targetAgentId = agentId.value;
 	// Acquire the write lock before publishing — the lock is lazy.
 	agentCollaborationStore.requestWriteAccess();
 	try {
@@ -1893,8 +1904,26 @@ async function refreshValidationBeforePublish(): Promise<boolean> {
 	} catch {
 		return false;
 	}
-	await refreshConfigValidation(projectId.value, agentId.value);
-	return configValidation.value !== null && !hasBlockingIssues(configValidation.value.issues);
+	if (isStaleAgentTarget(targetProjectId, targetAgentId)) return false;
+	await refreshConfigValidation(targetProjectId, targetAgentId);
+	if (isStaleAgentTarget(targetProjectId, targetAgentId)) return false;
+	if (configValidation.value === null) return false;
+	if (hasBlockingIssues(configValidation.value.issues)) return false;
+	// Unpublished workflow tools do not disable the Publish button, but the
+	// backend rejects the publish — surface them here instead of failing the
+	// request (AGENT-1001).
+	const unpublishedWorkflows = unpublishedWorkflowTools(
+		configValidation.value.issues,
+		localConfig.value?.tools ?? [],
+	);
+	if (unpublishedWorkflows.length > 0) {
+		uiStore.openModalWithData({
+			name: AGENT_UNPUBLISHED_WORKFLOWS_MODAL_KEY,
+			data: { workflows: unpublishedWorkflows },
+		});
+		return false;
+	}
+	return true;
 }
 
 function normalizeAgentMemoryConfig(config: AgentJsonConfig): AgentJsonConfig {
@@ -1955,11 +1984,12 @@ const caps = useAgentCapabilitiesActions({
 	agentId,
 	connectedTriggers,
 	ensureAgentPersisted,
+	flushConfigSave: flushConfigAutosave,
 	beforeAgentMutation: flushAutosaveIgnoringResult,
 	refreshAgentAfterMutation: onConfigUpdated,
 	validationIssues: computed(() => configValidation.value?.issues ?? []),
 	scheduleConfigUpdate: onConfigFieldUpdate,
-	scheduleSkillSave: ({ skillId, skill }) => {
+	scheduleSkillSave: ({ skillId, skill, availableTo }) => {
 		// Acquire the write lock before persisting any change.
 		agentCollaborationStore.requestWriteAccess();
 		// The persisted validation result no longer reflects the working copy —
@@ -1972,6 +2002,7 @@ const caps = useAgentCapabilitiesActions({
 			skillId,
 			skill,
 			baseSkillHash: agent.value?.skillHashes?.[skillId],
+			...(availableTo ? { availableTo } : {}),
 		});
 	},
 	telemetry: {
@@ -2382,7 +2413,7 @@ const headerActions = computed(() => {
 	actions.push({
 		id: 'export-json',
 		label: locale.baseText('agents.builder.exportJson' as BaseTextKey),
-		icon: 'download',
+		icon: 'arrow-block-up',
 		divided: actions.length > 0,
 	});
 
@@ -2390,7 +2421,7 @@ const headerActions = computed(() => {
 		actions.push({
 			id: 'import-json',
 			label: locale.baseText('agents.builder.importJson' as BaseTextKey),
-			icon: 'upload',
+			icon: 'arrow-block-down',
 		});
 	}
 
@@ -2742,11 +2773,15 @@ async function initialize({ preserveState = false }: { preserveState?: boolean }
 			if (probedAgent) void adoptExistingPendingRow(probedAgent);
 		}
 		if (!isCurrentInitialization()) return;
+		// The tools picker and tool icons read the node types store, which stays
+		// empty when this page is the first one loaded. Not awaited: the page does
+		// not need it to render.
+		void nodeTypesStore.loadNodeTypesIfNotLoaded().catch(() => undefined);
 		// Keep agent credential pickers aligned with the workflow editor: load only
 		// credentials the current user can use in this project context.
 		credentialsStore.setCredentials([]);
 		await Promise.all([
-			credentialsStore.fetchUsableCredentials({ projectId: targetProjectId }),
+			credentialsStore.fetchUsableCredentials({ projectId: targetProjectId, forAgent: true }),
 			credentialsStore.fetchCredentialTypes(false),
 		]).catch(() => undefined);
 		if (!isCurrentInitialization()) return;
@@ -3132,7 +3167,7 @@ useKeybindings({
 				:shortcut="{ metaKey: true, keys: ['J'] }"
 			>
 				<N8nButton
-					variant="subtle"
+					variant="outline"
 					size="medium"
 					icon-only
 					:aria-label="locale.baseText('agents.builder.header.editWithAi')"
@@ -3297,7 +3332,6 @@ useKeybindings({
 					@remove-vector-store="onRemoveVectorStore"
 					@remove-tool="caps.onRemoveTool"
 					@remove-skill="caps.onRemoveSkill"
-					@toggle-skill="caps.onToggleSkill"
 					@update:connected-triggers="caps.onConnectedTriggersUpdate"
 					@trigger-added="caps.onTriggerAdded"
 					@toggle-task="caps.onToggleTask"

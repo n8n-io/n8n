@@ -1,8 +1,16 @@
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import type { AgentIntegrationConfig, ListAgentsQueryDto } from '@n8n/api-types';
-import { BaseRepository, chunkIds, TransactionRunner, type OperationContext } from '@n8n/db';
+import {
+	BaseRepository,
+	chunkIds,
+	escapeLike,
+	LIKE_ESCAPE_CLAUSE,
+	TransactionRunner,
+	type OperationContext,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, In, IsNull, Not, type SelectQueryBuilder } from '@n8n/typeorm';
+import { randomUUID } from 'node:crypto';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 
 import { Agent } from '../entities/agent.entity';
@@ -38,10 +46,10 @@ export class AgentRepository extends BaseRepository<Agent> {
 	 * upsert, so an id minted by the client that already names a row would
 	 * update that row instead of colliding on the primary key.
 	 */
-	async insertNew(agent: Agent): Promise<void> {
+	async insertNew(agent: Agent, ctx: OperationContext = {}): Promise<void> {
 		// `schema` is a free-form JSON column, which QueryDeepPartialEntity
 		// cannot express, so cast at this boundary.
-		await this.insert(agent as QueryDeepPartialEntity<Agent>);
+		await this.managerFor(ctx).insert(Agent, agent as QueryDeepPartialEntity<Agent>);
 	}
 
 	async hasRevision(id: string, revision: number): Promise<boolean> {
@@ -554,6 +562,21 @@ export class AgentRepository extends BaseRepository<Agent> {
 	}
 
 	/**
+	 * Finds every agent with a channel of the given type in its `integrations`
+	 * JSON column. The `LIKE` is a portable pre-filter; it can match another
+	 * field, so the exact check still runs in memory.
+	 */
+	async findWithIntegrationType(type: string): Promise<Array<Pick<Agent, 'id' | 'integrations'>>> {
+		const agents = await this.createQueryBuilder('agent')
+			.select(['agent.id', 'agent.integrations'])
+			.where(`CAST(agent.integrations AS TEXT) LIKE :pattern ${LIKE_ESCAPE_CLAUSE}`, {
+				pattern: `%${escapeLike(JSON.stringify(type))}%`,
+			})
+			.getMany();
+		return agents.filter((agent) => (agent.integrations ?? []).some((i) => i.type === type));
+	}
+
+	/**
 	 * Finds agents within a project whose `integrations` JSON column contains an
 	 * entry matching the given `type` + `credentialId`, excluding `excludeAgentId`.
 	 *
@@ -642,5 +665,132 @@ export class AgentRepository extends BaseRepository<Agent> {
 			agent.updatedAt = updatedAt;
 		}
 		return won;
+	}
+
+	/**
+	 * A skill that these agents follow got a new saved version. Give each agent that is in
+	 * sync with its published version a new draft version id, so it shows unpublished
+	 * changes. One conditional UPDATE per agent and no read first, so a concurrent draft
+	 * edit cannot make the skill save fail. `revision` does not move: a draft edit also
+	 * moves `versionId` away from `activeVersionId`, so neither write undoes the other.
+	 * Returns the agents it changed.
+	 */
+	async markDraftChangedIfInSync(
+		agentIds: string[],
+		ctx: OperationContext = {},
+	): Promise<string[]> {
+		const changed: string[] = [];
+		for (const id of agentIds) {
+			const result = await this.managerFor(ctx)
+				.createQueryBuilder()
+				.update(Agent)
+				.set({ versionId: randomUUID() })
+				.where('id = :id', { id })
+				.andWhere('"versionId" = "activeVersionId"')
+				.execute();
+			if ((result.affected ?? 0) > 0) changed.push(id);
+		}
+		return changed;
+	}
+
+	/**
+	 * One page of agent keys, oldest first, for the startup skill copy. Pages by the last
+	 * row seen, so an agent deleted meanwhile cannot shift later agents past the next page.
+	 */
+	async findPageForSkillCopy(
+		after: Pick<Agent, 'createdAt' | 'id'> | null,
+		take: number,
+		ctx: OperationContext = {},
+	): Promise<Array<Pick<Agent, 'id' | 'createdAt'>>> {
+		const query = this.managerFor(ctx)
+			.createQueryBuilder(Agent, 'agent')
+			.select(['agent.id', 'agent.createdAt'])
+			.orderBy('agent.createdAt', 'ASC')
+			.addOrderBy('agent.id', 'ASC')
+			.limit(take);
+		if (after) {
+			query.where(
+				'(agent.createdAt > :createdAt OR (agent.createdAt = :createdAt AND agent.id > :id))',
+				{
+					createdAt: after.createdAt,
+					id: after.id,
+				},
+			);
+		}
+		return await query.getMany();
+	}
+
+	/** The inline skill columns of one agent, for the startup skill copy. */
+	async findForSkillCopy(
+		agentId: string,
+		ctx: OperationContext = {},
+	): Promise<Pick<Agent, 'id' | 'schema' | 'skills'> | null> {
+		return await this.managerFor(ctx).findOne(Agent, {
+			select: ['id', 'schema', 'skills'],
+			where: { id: agentId },
+		});
+	}
+
+	/**
+	 * Holds the agent row until the transaction ends, so a draft write to the agent waits
+	 * for the startup skill copy of it. SQLite allows one write transaction at a time.
+	 */
+	async lockForSkillCopy(agentId: string, ctx: OperationContext): Promise<void> {
+		if (this.manager.connection.options.type !== 'postgres') return;
+		await this.managerFor(ctx).find(Agent, {
+			select: ['id'],
+			where: { id: agentId },
+			lock: { mode: 'pessimistic_write' },
+		});
+	}
+
+	/** The project of each agent, to send an update push to the right project. */
+	async findProjectIdsByIds(
+		ids: string[],
+		ctx: OperationContext = {},
+	): Promise<Array<Pick<Agent, 'id' | 'projectId'>>> {
+		const agents: Array<Pick<Agent, 'id' | 'projectId'>> = [];
+		// In batches: a skill can have more followers than SQLite allows bound parameters.
+		for (const chunk of chunkIds([...new Set(ids)])) {
+			agents.push(
+				...(await this.managerFor(ctx).find(Agent, {
+					where: { id: In(chunk) },
+					select: ['id', 'projectId'],
+				})),
+			);
+		}
+		return agents;
+	}
+
+	/**
+	 * Write the `schema` column of a draft. Write `updatedAt` too, with the value
+	 * from the fenced save: without it, TypeORM sets `CURRENT_TIMESTAMP`. This
+	 * write does not check `revision`: call it only in the same transaction as a
+	 * won `saveDraftFenced`.
+	 */
+	async updateDraftSkills(
+		agent: Pick<Agent, 'id' | 'schema' | 'skills' | 'updatedAt'>,
+		ctx: OperationContext,
+	): Promise<void> {
+		// Write `updatedAt` too, with the value of the fenced save: without it, TypeORM
+		// sets `CURRENT_TIMESTAMP`, which drops the milliseconds on SQLite.
+		await this.managerFor(ctx)
+			.createQueryBuilder()
+			.update(Agent)
+			.set({ schema: agent.schema, skills: agent.skills, updatedAt: agent.updatedAt })
+			.where('id = :id', { id: agent.id })
+			.execute();
+	}
+
+	async updateDraftSchema(
+		agent: Pick<Agent, 'id' | 'schema' | 'updatedAt'>,
+		ctx: OperationContext,
+	): Promise<void> {
+		await this.managerFor(ctx)
+			.createQueryBuilder()
+			.update(Agent)
+			.set({ schema: agent.schema, updatedAt: agent.updatedAt })
+			.where('id = :id', { id: agent.id })
+			.execute();
 	}
 }

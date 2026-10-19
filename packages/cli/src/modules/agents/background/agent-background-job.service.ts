@@ -447,7 +447,8 @@ export class AgentBackgroundJobService {
 		return released;
 	}
 
-	async pruneExpiredPausedJobs(parentThreadId?: string): Promise<void> {
+	/** Fails paused jobs whose checkpoint expired. Stops before the next job once `signal` aborts. */
+	async pruneExpiredPausedJobs(parentThreadId?: string, signal?: AbortSignal): Promise<void> {
 		const cutoff = new Date(
 			Date.now() - this.agentsConfig.checkpointTtlSeconds * Time.seconds.toMilliseconds,
 		);
@@ -455,6 +456,9 @@ export class AgentBackgroundJobService {
 			cutoff,
 			parentThreadId,
 		)) {
+			if (signal?.aborted) {
+				return;
+			}
 			await this.settle(
 				job.id,
 				{ status: 'failed', error: EXPIRED_BACKGROUND_CHECKPOINT_ERROR },

@@ -1,6 +1,11 @@
+import { createGoogleVertex } from '@ai-sdk/google-vertex';
 import type { LanguageModel } from 'ai';
 
-import { createEmbeddingModel, createModel } from '../model/model-factory';
+import {
+	createEmbeddingModel,
+	createModel,
+	supportsSplitSystemMessages,
+} from '../model/model-factory';
 import { forgetEndpointApiStyles } from '../model/openai-api-style';
 
 type ProviderOpts = {
@@ -83,6 +88,15 @@ vi.mock('@ai-sdk/google', () => ({
 		fetch: opts?.fetch,
 		specificationVersion: 'v3',
 	}),
+}));
+
+vi.mock('@ai-sdk/google-vertex', () => ({
+	createGoogleVertex: vi.fn((opts: Record<string, unknown>) => (model: string) => ({
+		...opts,
+		provider: 'google-vertex',
+		modelId: model,
+		specificationVersion: 'v4',
+	})),
 }));
 
 vi.mock('@ai-sdk/xai', () => ({
@@ -859,6 +873,19 @@ describe('createModel', () => {
 			expect(model.useDeploymentBasedUrls).toBeUndefined();
 		});
 
+		it('should use the deployment name on a Foundry endpoint when provided', () => {
+			// A Foundry deployment can be named differently from the model it
+			// serves, so the user's deployment name must reach the request path.
+			const model = createModel({
+				id: 'azure-openai/gpt-4.1-nano',
+				apiKey: 'az-key',
+				endpointType: 'foundry',
+				baseURL: 'https://my-resource.services.ai.azure.com/openai/v1',
+				deploymentName: 'my-chat-model',
+			}) as unknown as Record<string, unknown>;
+			expect(model.modelId).toBe('my-chat-model');
+		});
+
 		it('should treat a foundry endpoint without resourceName as valid', () => {
 			expect(() =>
 				createModel({
@@ -979,6 +1006,19 @@ describe('createModel', () => {
 			expect(mockClientOAuth2.credentials.getToken).toHaveBeenCalledTimes(1);
 		});
 
+		it('uses the deployment name on the Foundry Entra path when provided', () => {
+			// The deployment name can differ from the model it serves; it reaches
+			// the OpenAI-compatible path as the model id.
+			const model = createModel({
+				id: 'azure-openai/gpt-4.1-nano',
+				endpointType: 'foundry',
+				baseURL: 'https://my-resource.services.ai.azure.com/openai/v1',
+				deploymentName: 'my-chat-model',
+				...entraCreds,
+			}) as unknown as Record<string, unknown>;
+			expect(model.modelId).toBe('my-chat-model');
+		});
+
 		it('rejects credentials that supply both apiKey and Entra', () => {
 			expect(() =>
 				createModel({
@@ -1054,6 +1094,74 @@ describe('createModel', () => {
 		});
 	});
 
+	describe('google-vertex', () => {
+		const credentials = {
+			id: 'google-vertex/gemini-3-flash-preview',
+			project: 'selected-project',
+			location: 'europe-west4',
+			clientEmail: 'agent@selected-project.iam.gserviceaccount.com',
+			privateKey: '-----BEGIN PRIVATE KEY-----\\nABC\\n-----END PRIVATE KEY-----\\n',
+		};
+
+		it('uses the selected service account, project, region, and guarded transport', () => {
+			vi.stubEnv('GOOGLE_VERTEX_API_KEY', 'ambient-key');
+			vi.stubEnv('GOOGLE_VERTEX_PROJECT', 'ambient-project');
+			vi.stubEnv('GOOGLE_VERTEX_LOCATION', 'ambient-region');
+			const guardedFetch = vi.fn<typeof globalThis.fetch>();
+			try {
+				const model = createModel(credentials, guardedFetch);
+				expect(model).toMatchObject({
+					modelId: 'gemini-3-flash-preview',
+					apiKey: '',
+					project: 'selected-project',
+					location: 'europe-west4',
+					fetch: guardedFetch,
+					googleAuthOptions: {
+						credentials: {
+							client_email: credentials.clientEmail,
+							private_key: '-----BEGIN PRIVATE KEY-----\nABC\n-----END PRIVATE KEY-----\n',
+						},
+					},
+				});
+			} finally {
+				vi.unstubAllEnvs();
+			}
+		});
+
+		it.each(['project', 'location', 'clientEmail', 'privateKey'])(
+			'requires an explicit %s before model execution',
+			(field) => {
+				expect(() => createModel({ ...credentials, [field]: '' })).toThrow(
+					'Invalid credentials for provider "google-vertex"',
+				);
+			},
+		);
+
+		it.each([
+			'global',
+			'eu',
+			'us',
+			'us-central1',
+			'europe-west12',
+			'northamerica-northeast1',
+			'me-central2',
+		])('accepts location %s', (location) => {
+			expect(createModel({ ...credentials, location })).toMatchObject({ location });
+		});
+
+		it.each(['us-central', 'US-central1', 'us-central1-a', 'us.central1', 'us/central1'])(
+			'rejects invalid location %s before provider creation',
+			(location) => {
+				vi.mocked(createGoogleVertex).mockClear();
+
+				expect(() => createModel({ ...credentials, location })).toThrow(
+					/Invalid credentials for provider "google-vertex"[\s\S]*location/,
+				);
+				expect(createGoogleVertex).not.toHaveBeenCalled();
+			},
+		);
+	});
+
 	describe('google-vertex-anthropic', () => {
 		it('should create model with project, location, and service-account JSON', () => {
 			const model = createModel({
@@ -1122,6 +1230,20 @@ describe('createModel', () => {
 		it('should throw when model has no slash', () => {
 			expect(() => createModel('anthropic-only')).toThrow(/expected "provider\/model-name"/);
 		});
+	});
+});
+
+describe('supportsSplitSystemMessages', () => {
+	it.each([
+		['anthropic/claude-sonnet-4-5', true],
+		['google-vertex-anthropic/claude-opus-4-8', true],
+		['google-vertex/claude-sonnet-4-5', true],
+		['google-vertex/claude-opus-5@default', true],
+		['google-vertex/gemini-3-flash-preview', false],
+		['google-vertex/mistral-large-2411', false],
+		['google-vertex/xai/grok-4', false],
+	] as const)('checks split system messages for %s', (model, expected) => {
+		expect(supportsSplitSystemMessages(model)).toBe(expected);
 	});
 });
 

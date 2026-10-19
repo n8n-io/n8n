@@ -62,6 +62,7 @@ import {
 	formatAsExpression,
 	getParameterTypeOption,
 	isResourceLocatorParameterType,
+	isObjectInPlainParameter,
 	isValidParameterOption,
 	parseFromExpression,
 	shouldSkipParamValidation,
@@ -394,6 +395,28 @@ const parameterOptions = computed(() => {
 	);
 });
 
+// Search text typed into an options dropdown. The search matches the label or
+// the value, so a model shown by its product name is still found by its id.
+const optionsSearch = ref('');
+
+const searchedParameterOptions = computed(() => {
+	const search = optionsSearch.value.trim().toLocaleLowerCase();
+	if (!search) return parameterOptions.value;
+	return parameterOptions.value.filter(
+		(option) =>
+			getOptionsOptionDisplayName(option).toLocaleLowerCase().includes(search) ||
+			String(option.value).toLocaleLowerCase().includes(search),
+	);
+});
+
+function onOptionsSearch(search = '') {
+	optionsSearch.value = search;
+}
+
+function onOptionsVisibleChange(visible: boolean) {
+	if (!visible) optionsSearch.value = '';
+}
+
 const modelValueString = computed<string>(() => {
 	const value = props.modelValue;
 	// For json type parameters, stringify objects to prevent [object object] display
@@ -507,14 +530,15 @@ const displayValue = computed(() => {
 	}
 
 	let returnValue;
-	if (!isModelValueExpression.value) {
-		returnValue = isResourceLocatorParameter.value
-			? isResourceLocatorValue(props.modelValue)
-				? props.modelValue.value
-				: ''
-			: props.modelValue;
-	} else {
+	if (isModelValueExpression.value) {
 		returnValue = props.expressionEvaluated;
+	} else if (isResourceLocatorParameter.value) {
+		returnValue = isResourceLocatorValue(props.modelValue) ? props.modelValue.value : '';
+	} else if (isObjectInPlainParameter(props.parameter, props.modelValue)) {
+		// Saved workflows can still hold a value carried over from a same-named parameter
+		returnValue = JSON.stringify(props.modelValue);
+	} else {
+		returnValue = props.modelValue;
 	}
 
 	if (props.parameter.type === 'credentialsSelect' && typeof props.modelValue === 'string') {
@@ -655,7 +679,10 @@ const getIssues = computed<string[]>(() => {
 		nodeTypesStore.getNodeType(node.value.type, node.value.typeVersion),
 	);
 
-	if (props.parameter.type === 'credentialsSelect' && displayValue.value === '') {
+	if (isObjectInPlainParameter(props.parameter, props.modelValue)) {
+		issues.parameters = issues.parameters ?? {};
+		issues.parameters[props.parameter.name] = [i18n.baseText('parameterInput.valueTypeMismatch')];
+	} else if (props.parameter.type === 'credentialsSelect' && displayValue.value === '') {
 		issues.parameters = issues.parameters ?? {};
 
 		const issue = i18n.baseText('parameterInput.selectACredentialTypeFromTheDropdown');
@@ -2088,6 +2115,7 @@ onUpdated(async () => {
 				ref="inputField"
 				:size="inputSize"
 				filterable
+				:filter-method="onOptionsSearch"
 				:model-value="displayValue"
 				:placeholder="
 					parameter.placeholder ? getPlaceholder() : i18n.baseText('parameterInput.select')
@@ -2099,9 +2127,10 @@ onUpdated(async () => {
 				@keydown.stop
 				@focus="setFocus"
 				@blur="onBlur"
+				@visible-change="onOptionsVisibleChange"
 			>
 				<N8nOption
-					v-for="option in parameterOptions"
+					v-for="option in searchedParameterOptions"
 					:key="option.value.toString()"
 					:value="option.value"
 					:disabled="isOptionDisabled(option)"

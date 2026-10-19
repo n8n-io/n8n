@@ -1,6 +1,8 @@
 import type { INodeProperties } from 'n8n-workflow';
 
 const showForLakebase = { resource: ['lakebase'] };
+const showForGetAll = { resource: ['lakebase'], operation: ['getAll'] };
+const showForFilter = { resource: ['lakebase'], operation: ['getAll', 'deleteRows'] };
 
 export const lakebaseParameters: INodeProperties[] = [
 	{
@@ -35,6 +37,9 @@ export const lakebaseParameters: INodeProperties[] = [
 		displayName: 'Branch',
 		name: 'lakebaseBranch',
 		type: 'resourceLocator',
+		typeOptions: {
+			loadOptionsDependsOn: ['lakebaseProject.value'],
+		},
 		default: { mode: 'list', value: '' },
 		required: true,
 		description: 'The branch of the project',
@@ -63,6 +68,9 @@ export const lakebaseParameters: INodeProperties[] = [
 		displayName: 'Database',
 		name: 'lakebaseDatabase',
 		type: 'resourceLocator',
+		typeOptions: {
+			loadOptionsDependsOn: ['lakebaseProject.value', 'lakebaseBranch.value'],
+		},
 		default: { mode: 'list', value: '' },
 		required: true,
 		description: 'The Postgres database on the branch',
@@ -91,6 +99,13 @@ export const lakebaseParameters: INodeProperties[] = [
 		displayName: 'Schema',
 		name: 'lakebaseSchema',
 		type: 'resourceLocator',
+		typeOptions: {
+			loadOptionsDependsOn: [
+				'lakebaseProject.value',
+				'lakebaseBranch.value',
+				'lakebaseDatabase.value',
+			],
+		},
 		default: { mode: 'list', value: 'public', cachedResultName: 'public' },
 		required: true,
 		description:
@@ -119,6 +134,14 @@ export const lakebaseParameters: INodeProperties[] = [
 		displayName: 'Table',
 		name: 'lakebaseTable',
 		type: 'resourceLocator',
+		typeOptions: {
+			loadOptionsDependsOn: [
+				'lakebaseProject.value',
+				'lakebaseBranch.value',
+				'lakebaseDatabase.value',
+				'lakebaseSchema.value',
+			],
+		},
 		default: { mode: 'list', value: '' },
 		required: true,
 		description: 'The table in the schema',
@@ -142,5 +165,313 @@ export const lakebaseParameters: INodeProperties[] = [
 				placeholder: 'e.g. orders',
 			},
 		],
+	},
+
+	// Everything below this line belongs to the operations, not to PR #40407.
+	// Keep the locators above unmodified so that PR rebases in cleanly.
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		default: false,
+		description: 'Whether to return all results or only up to a given limit',
+		displayOptions: {
+			show: showForGetAll,
+		},
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		default: 50,
+		description: 'Max number of results to return',
+		typeOptions: {
+			minValue: 1,
+		},
+		displayOptions: {
+			show: { ...showForGetAll, returnAll: [false] },
+		},
+	},
+	{
+		displayName: 'Select Rows',
+		name: 'where',
+		type: 'fixedCollection',
+		typeOptions: {
+			multipleValues: true,
+		},
+		placeholder: 'Add Condition',
+		default: {},
+		description:
+			'Which rows to act on. Get Many returns rows from the full table if you set no conditions. Delete needs at least one condition.',
+		displayOptions: {
+			show: showForFilter,
+		},
+		options: [
+			{
+				displayName: 'Values',
+				name: 'values',
+				values: [
+					{
+						displayName: 'Column Name or ID',
+						name: 'column',
+						type: 'options',
+						description:
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+						typeOptions: {
+							loadOptionsMethod: 'getLakebaseColumns',
+							loadOptionsDependsOn: [
+								'lakebaseProject.value',
+								'lakebaseBranch.value',
+								'lakebaseDatabase.value',
+								'lakebaseSchema.value',
+								'lakebaseTable.value',
+							],
+						},
+						default: '',
+					},
+					{
+						displayName: 'Condition',
+						name: 'condition',
+						type: 'options',
+						options: [
+							{ name: 'Equals', value: 'eq' },
+							{ name: 'Greater Than', value: 'gt' },
+							{ name: 'Greater Than or Equal', value: 'gte' },
+							{ name: 'Is Not Null', value: 'not.is.null' },
+							{ name: 'Is Null', value: 'is.null' },
+							{ name: 'Less Than', value: 'lt' },
+							{ name: 'Less Than or Equal', value: 'lte' },
+							{
+								name: 'Like',
+								value: 'like',
+								description: 'Use * in place of %, and _ for a single character',
+							},
+							{
+								name: 'Like (Case-Insensitive)',
+								value: 'ilike',
+								description: 'Use * in place of %, and _ for a single character',
+							},
+							{ name: 'Not Equals', value: 'neq' },
+						],
+						default: 'eq',
+					},
+					{
+						displayName: 'Value',
+						name: 'value',
+						type: 'string',
+						default: '',
+						displayOptions: {
+							hide: {
+								condition: ['is.null', 'not.is.null'],
+							},
+						},
+					},
+				],
+			},
+		],
+	},
+	{
+		displayName: 'Combine Conditions',
+		name: 'combineConditions',
+		type: 'options',
+		description:
+			'How to combine the conditions above. AND requires all of them, OR requires any one of them.',
+		options: [
+			{ name: 'AND', value: 'AND' },
+			{ name: 'OR', value: 'OR' },
+		],
+		default: 'AND',
+		displayOptions: {
+			show: showForFilter,
+		},
+	},
+	{
+		displayName: 'Sort',
+		name: 'sort',
+		type: 'fixedCollection',
+		typeOptions: {
+			multipleValues: true,
+		},
+		placeholder: 'Add Sort Rule',
+		default: {},
+		displayOptions: {
+			show: showForGetAll,
+		},
+		options: [
+			{
+				displayName: 'Values',
+				name: 'values',
+				values: [
+					{
+						displayName: 'Column Name or ID',
+						name: 'column',
+						type: 'options',
+						description:
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+						typeOptions: {
+							loadOptionsMethod: 'getLakebaseColumns',
+							loadOptionsDependsOn: [
+								'lakebaseProject.value',
+								'lakebaseBranch.value',
+								'lakebaseDatabase.value',
+								'lakebaseSchema.value',
+								'lakebaseTable.value',
+							],
+						},
+						default: '',
+					},
+					{
+						displayName: 'Direction',
+						name: 'direction',
+						type: 'options',
+						options: [
+							{ name: 'ASC', value: 'asc' },
+							{ name: 'DESC', value: 'desc' },
+						],
+						default: 'asc',
+					},
+				],
+			},
+		],
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add option',
+		default: {},
+		displayOptions: {
+			show: showForGetAll,
+		},
+		options: [
+			{
+				displayName: 'Output Column Names or IDs',
+				name: 'outputColumns',
+				type: 'multiOptions',
+				description:
+					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+				default: [],
+				typeOptions: {
+					loadOptionsMethod: 'getLakebaseColumnsMultiOptions',
+					loadOptionsDependsOn: [
+						'lakebaseProject.value',
+						'lakebaseBranch.value',
+						'lakebaseDatabase.value',
+						'lakebaseSchema.value',
+						'lakebaseTable.value',
+					],
+				},
+			},
+		],
+	},
+	{
+		displayName: 'Columns',
+		name: 'columns',
+		type: 'resourceMapper',
+		noDataExpression: true,
+		required: true,
+		default: {
+			mappingMode: 'defineBelow',
+			value: null,
+		},
+		typeOptions: {
+			loadOptionsDependsOn: [
+				'lakebaseProject.value',
+				'lakebaseBranch.value',
+				'lakebaseDatabase.value',
+				'lakebaseSchema.value',
+				'lakebaseTable.value',
+				'operation',
+			],
+			resourceMapper: {
+				resourceMapperMethod: 'getLakebaseMappingColumns',
+				mode: 'add',
+				fieldWords: {
+					singular: 'column',
+					plural: 'columns',
+				},
+				addAllFields: true,
+				multiKeyMatch: false,
+				// The saved schema is what core validates against, not a fresh read
+				refreshStaleSchemaOnOpen: true,
+			},
+		},
+		displayOptions: {
+			show: { resource: ['lakebase'], operation: ['insert'] },
+		},
+	},
+	{
+		displayName: 'Columns',
+		name: 'columns',
+		type: 'resourceMapper',
+		noDataExpression: true,
+		required: true,
+		default: {
+			mappingMode: 'defineBelow',
+			value: null,
+		},
+		typeOptions: {
+			loadOptionsDependsOn: [
+				'lakebaseProject.value',
+				'lakebaseBranch.value',
+				'lakebaseDatabase.value',
+				'lakebaseSchema.value',
+				'lakebaseTable.value',
+				'operation',
+			],
+			resourceMapper: {
+				resourceMapperMethod: 'getLakebaseMappingColumns',
+				mode: 'update',
+				fieldWords: {
+					singular: 'column',
+					plural: 'columns',
+				},
+				addAllFields: true,
+				// A composite primary key needs every component selected, or the filter
+				// picks up more rows than the one the user means
+				multiKeyMatch: true,
+				refreshStaleSchemaOnOpen: true,
+			},
+		},
+		displayOptions: {
+			show: { resource: ['lakebase'], operation: ['update'] },
+		},
+	},
+	{
+		displayName: 'Columns',
+		name: 'columns',
+		type: 'resourceMapper',
+		noDataExpression: true,
+		required: true,
+		default: {
+			mappingMode: 'defineBelow',
+			value: null,
+		},
+		typeOptions: {
+			loadOptionsDependsOn: [
+				'lakebaseProject.value',
+				'lakebaseBranch.value',
+				'lakebaseDatabase.value',
+				'lakebaseSchema.value',
+				'lakebaseTable.value',
+				'operation',
+			],
+			resourceMapper: {
+				resourceMapperMethod: 'getLakebaseMappingColumns',
+				mode: 'upsert',
+				fieldWords: {
+					singular: 'column',
+					plural: 'columns',
+				},
+				addAllFields: true,
+				// ON CONFLICT takes the whole key, so a table with a composite primary
+				// key needs every part of it selected
+				multiKeyMatch: true,
+				refreshStaleSchemaOnOpen: true,
+			},
+		},
+		displayOptions: {
+			show: { resource: ['lakebase'], operation: ['upsert'] },
+		},
 	},
 ];

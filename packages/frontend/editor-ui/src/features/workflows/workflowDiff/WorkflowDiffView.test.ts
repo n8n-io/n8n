@@ -353,6 +353,18 @@ describe('WorkflowDiffView', () => {
 				expect(getByTestId('workflow-diff-view').parentElement).not.toBe(baseElement);
 			});
 
+			it('hides the workflow name when hideTitle is set, but shows it in fullscreen', async () => {
+				const { getByTestId, queryByText } = renderView({
+					props: { sourceWorkflow, targetWorkflow, showFullscreenButton: true, hideTitle: true },
+				});
+
+				expect(queryByText('Source Workflow')).not.toBeInTheDocument();
+
+				await userEvent.click(getByTestId('workflow-diff-fullscreen-toggle'));
+
+				expect(queryByText('Source Workflow')).toBeInTheDocument();
+			});
+
 			it('leaves fullscreen on Escape', async () => {
 				const { getByTestId, baseElement } = renderView({
 					props: { sourceWorkflow, targetWorkflow, showFullscreenButton: true },

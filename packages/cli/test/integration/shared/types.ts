@@ -60,12 +60,14 @@ type EndpointGroup =
 	| 'third-party-licenses'
 	| 'mcp'
 	| 'workflowDependencies'
+	| 'trusted-sources'
 	| 'encryption-keys'
 	| 'workflow-reviews'
 	| 'test-webhooks'
 	| 'type-availability-policies';
 
 type ModuleName =
+	| 'inbox'
 	| 'insights'
 	| 'external-secrets'
 	| 'community-packages'

@@ -46,6 +46,7 @@ import type {
 	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiEvalAgentExecutionResult,
 	InstanceAiEvalCredentialAllowlistRequest,
+	InstanceAiEvalCredentialTestTargetRequest,
 	InstanceAiEvalExecutionResult,
 	InstanceAiEvalLlmUsage,
 	InstanceAiEvalRestoreThreadRequest,
@@ -1103,6 +1104,70 @@ describe('InstanceAiController', () => {
 					payload as InstanceAiEvalCredentialAllowlistRequest,
 				),
 			).rejects.toThrow(NotFoundError);
+		});
+	});
+
+	describe('setThreadCredentialTestTarget', () => {
+		const target = {
+			credentialType: 'slackApi',
+			baseUrl: 'http://stand-in.test:4100',
+			urlField: 'url',
+		};
+		const payload = { threadId: THREAD_ID, ...target };
+
+		it('should require instanceAi:eval scope', () => {
+			expect(scopeOf('setThreadCredentialTestTarget')).toEqual({
+				scope: 'instanceAi:eval',
+				globalOnly: true,
+			});
+		});
+
+		beforeEach(() => {
+			globalConfig.instanceAi.evalInstance = true;
+		});
+
+		afterEach(() => {
+			globalConfig.instanceAi.evalInstance = false;
+		});
+
+		it('should set the test target for an owned thread', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+
+			const result = await controller.setThreadCredentialTestTarget(
+				req,
+				res,
+				payload as InstanceAiEvalCredentialTestTargetRequest,
+			);
+
+			expect(result).toEqual({ ok: true });
+			expect(evalCredentialAllowlists.getTestTarget(THREAD_ID, 'slackApi')).toEqual(target);
+		});
+
+		it('should reject a thread that does not exist', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('not_found');
+
+			await expect(
+				controller.setThreadCredentialTestTarget(
+					req,
+					res,
+					payload as InstanceAiEvalCredentialTestTargetRequest,
+				),
+			).rejects.toThrow(NotFoundError);
+		});
+
+		it('should refuse the target on an instance that is not an eval instance', async () => {
+			globalConfig.instanceAi.evalInstance = false;
+			evalCredentialAllowlists.clearThread(THREAD_ID);
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+
+			await expect(
+				controller.setThreadCredentialTestTarget(
+					req,
+					res,
+					payload as InstanceAiEvalCredentialTestTargetRequest,
+				),
+			).rejects.toThrow(NotFoundError);
+			expect(evalCredentialAllowlists.getTestTarget(THREAD_ID, 'slackApi')).toBeUndefined();
 		});
 	});
 

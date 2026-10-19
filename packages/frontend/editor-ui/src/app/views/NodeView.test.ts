@@ -1143,6 +1143,28 @@ describe('NodeView', () => {
 			expect(copiedText[0]).toContain('"name": "Existing"');
 		});
 
+		it('copies a restricted node and confirms the copy', async () => {
+			vi.spyOn(useTypeAvailabilityPoliciesStore(), 'getNodeTypeAvailability').mockReturnValue({
+				name: MANUAL_TRIGGER_NODE_TYPE,
+				available: false,
+			});
+			mockShowMessage.mockClear();
+			const { findByTestId } = renderNodeView();
+
+			await userEvent.click(await findByTestId('canvas-stub-copy'));
+
+			await waitFor(() =>
+				expect(mockMcpJsonNudgeGate).toHaveBeenCalledWith('copy', expect.any(Function)),
+			);
+			await deferred?.();
+
+			expect(copiedText).toHaveLength(1);
+			expect(mockShowMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }));
+			expect(mockShowMessage).not.toHaveBeenCalledWith(
+				expect.objectContaining({ type: 'warning' }),
+			);
+		});
+
 		it('drops a deferred copy once NodeView has unmounted', async () => {
 			const { findByTestId, unmount } = renderNodeView();
 

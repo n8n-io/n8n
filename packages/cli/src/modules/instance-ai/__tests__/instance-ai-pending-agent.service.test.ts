@@ -39,6 +39,7 @@ function setup() {
 	const runnableState = mockInstance(AgentRunnableStateService);
 	const defaultModelResolver = mockInstance(AgentDefaultModelResolverService);
 	const moduleRegistry = mock<ModuleRegistry>();
+	Object.defineProperty(moduleRegistry, 'settings', { value: new Map() });
 	moduleRegistry.isActive.mockReturnValue(true);
 
 	defaultModelResolver.resolve.mockResolvedValue(null);
@@ -262,6 +263,14 @@ describe('InstanceAiPendingAgentService', () => {
 	it('reports agents being unavailable before touching the thread', async () => {
 		const { service, memoryService, moduleRegistry } = setup();
 		moduleRegistry.isActive.mockReturnValue(false);
+
+		await expect(service.persistAndBind(user, THREAD_ID, payload)).rejects.toThrow(NotFoundError);
+		expect(memoryService.getThreadMetadata).not.toHaveBeenCalled();
+	});
+
+	it('reports agents being unavailable when Settings > Agents is off', async () => {
+		const { service, memoryService, moduleRegistry } = setup();
+		moduleRegistry.settings.set('agents', { enabled: false });
 
 		await expect(service.persistAndBind(user, THREAD_ID, payload)).rejects.toThrow(NotFoundError);
 		expect(memoryService.getThreadMetadata).not.toHaveBeenCalled();

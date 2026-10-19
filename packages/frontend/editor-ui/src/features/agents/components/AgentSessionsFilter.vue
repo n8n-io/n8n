@@ -76,7 +76,7 @@ function reset() {
 	>
 		<template #trigger>
 			<N8nButton
-				variant="subtle"
+				variant="outline"
 				icon-only
 				icon="funnel"
 				size="medium"

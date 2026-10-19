@@ -2258,6 +2258,36 @@ describe('CredentialsService', () => {
 		});
 	});
 
+	describe('prepareCredentialsForUse', () => {
+		it('restores a masked key and preserves the original data for secret permission checks', async () => {
+			const storedCredential = mock<CredentialsEntity>({
+				id: 'credential-id',
+				name: 'Vertex',
+				type: 'googleVertexAiApi',
+			});
+			const storedData = { email: 'service@example.com', privateKey: 'stored-key' };
+			vi.spyOn(service, 'decrypt').mockResolvedValue(storedData);
+			vi.spyOn(service, 'replaceCredentialContentsForSharee').mockResolvedValue(undefined);
+			vi.spyOn(service, 'getCredentialTypeProperties').mockReturnValue([]);
+			const result = await service.prepareCredentialsForUse({
+				storedCredential,
+				user: ownerUser,
+				credentialsToUse: {
+					id: storedCredential.id,
+					name: storedCredential.name,
+					type: storedCredential.type,
+					data: { email: 'edited@example.com', privateKey: CREDENTIAL_BLANKING_VALUE },
+				},
+			});
+
+			expect(result.credentials.data).toEqual({
+				email: 'edited@example.com',
+				privateKey: 'stored-key',
+			});
+			expect(result.storedData).toEqual(storedData);
+		});
+	});
+
 	describe('testWithCredentials', () => {
 		it('refuses a stored credential of a blocked type before the tester runs', async () => {
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(
@@ -3646,6 +3676,141 @@ describe('CredentialsService', () => {
 				});
 
 				expect(result).toEqual([]);
+			});
+
+			it('excludes the personal-route credential when excludePersonalRoute is set', async () => {
+				flags.credSharingEnabled = true;
+				credentialsFinderService.findCredentialsForUser.mockResolvedValue([
+					makePersonalCredential(),
+				]);
+				credentialsRepository.findAllCredentialsForProject.mockResolvedValue([]);
+				projectService.getProjectRelationsForUser.mockResolvedValue([
+					mock<ProjectRelation>({ projectId: 'target-project' }),
+				]);
+
+				const result = await service.getCredentialsAUserCanUseInAWorkflow(user, {
+					projectId: 'target-project',
+					excludePersonalRoute: true,
+				});
+
+				expect(result).toEqual([]);
+			});
+
+			it('keeps a project-shared credential when excludePersonalRoute is set', async () => {
+				flags.credSharingEnabled = true;
+				credentialsFinderService.findCredentialsForUser.mockResolvedValue([
+					makePersonalCredential(),
+				]);
+				credentialsRepository.findAllCredentialsForProject.mockResolvedValue([
+					makePersonalCredential(),
+				]);
+				projectService.getProjectRelationsForUser.mockResolvedValue([
+					mock<ProjectRelation>({ projectId: 'target-project' }),
+				]);
+
+				const result = await service.getCredentialsAUserCanUseInAWorkflow(user, {
+					projectId: 'target-project',
+					excludePersonalRoute: true,
+				});
+
+				expect(result).toHaveLength(1);
+				expect(result[0]).toMatchObject({ id: 'cred-personal' });
+			});
+
+			it('keeps the personal credentials of other users that the project owner may use instance-wide, when excludePersonalRoute is set', async () => {
+				flags.credSharingEnabled = true;
+				const foreignCredential = makePersonalCredential();
+				foreignCredential.shared = [
+					{
+						credentialsId: 'cred-personal',
+						role: 'credential:owner',
+						projectId: 'alice-personal-project',
+					},
+				] as SharedCredentials[];
+				credentialsFinderService.findCredentialsForUser.mockResolvedValue([foreignCredential]);
+				userRepository.findPersonalOwnerForProject.mockResolvedValue(ownerUser);
+				credentialsRepository.findAllPersonalCredentials.mockResolvedValue([foreignCredential]);
+				credentialsRepository.findAllCredentialsForProject.mockResolvedValue([]);
+				projectService.getProjectRelationsForUser.mockResolvedValue([
+					mock<ProjectRelation>({ projectId: 'target-project' }),
+				]);
+
+				const result = await service.getCredentialsAUserCanUseInAWorkflow(user, {
+					projectId: 'target-project',
+					excludePersonalRoute: true,
+				});
+
+				expect(result).toHaveLength(1);
+				expect(result[0]).toMatchObject({ id: 'cred-personal' });
+			});
+
+			it('keeps the personal credentials of other users for a workflow, when excludePersonalRoute is set', async () => {
+				flags.credSharingEnabled = true;
+				const foreignCredential = makePersonalCredential();
+				foreignCredential.shared = [
+					{
+						credentialsId: 'cred-personal',
+						role: 'credential:owner',
+						projectId: 'alice-personal-project',
+					},
+				] as SharedCredentials[];
+				credentialsFinderService.findCredentialsForUser.mockResolvedValue([foreignCredential]);
+				userRepository.findPersonalOwnerForWorkflow.mockResolvedValue(ownerUser);
+				credentialsRepository.findAllPersonalCredentials.mockResolvedValue([foreignCredential]);
+				credentialsRepository.findAllCredentialsForWorkflow.mockResolvedValue([]);
+				projectService.getProjectRelationsForUser.mockResolvedValue([
+					mock<ProjectRelation>({ projectId: 'target-project' }),
+				]);
+
+				const result = await service.getCredentialsAUserCanUseInAWorkflow(user, {
+					workflowId: 'workflow-1',
+					excludePersonalRoute: true,
+				});
+
+				expect(result).toHaveLength(1);
+				expect(result[0]).toMatchObject({ id: 'cred-personal' });
+			});
+
+			it('keeps the instance-wide personal credentials when excludePersonalRoute is not set', async () => {
+				flags.credSharingEnabled = true;
+				const foreignCredential = makePersonalCredential();
+				foreignCredential.shared = [
+					{
+						credentialsId: 'cred-personal',
+						role: 'credential:owner',
+						projectId: 'alice-personal-project',
+					},
+				] as SharedCredentials[];
+				credentialsFinderService.findCredentialsForUser.mockResolvedValue([foreignCredential]);
+				userRepository.findPersonalOwnerForProject.mockResolvedValue(ownerUser);
+				credentialsRepository.findAllPersonalCredentials.mockResolvedValue([foreignCredential]);
+				projectService.getProjectRelationsForUser.mockResolvedValue([
+					mock<ProjectRelation>({ projectId: 'target-project' }),
+				]);
+
+				const result = await service.getCredentialsAUserCanUseInAWorkflow(user, {
+					projectId: 'target-project',
+				});
+
+				expect(result).toHaveLength(1);
+			});
+
+			it('keeps the instance-wide personal credentials when the flag is off, even with excludePersonalRoute', async () => {
+				flags.credSharingEnabled = false;
+				const foreignCredential = makePersonalCredential();
+				credentialsFinderService.findCredentialsForUser.mockResolvedValue([foreignCredential]);
+				userRepository.findPersonalOwnerForProject.mockResolvedValue(ownerUser);
+				credentialsRepository.findAllPersonalCredentials.mockResolvedValue([foreignCredential]);
+				projectService.getProjectRelationsForUser.mockResolvedValue([
+					mock<ProjectRelation>({ projectId: 'target-project' }),
+				]);
+
+				const result = await service.getCredentialsAUserCanUseInAWorkflow(user, {
+					projectId: 'target-project',
+					excludePersonalRoute: true,
+				});
+
+				expect(result).toHaveLength(1);
 			});
 
 			it('includes the credential via the personal route for an unsaved workflow (projectId option)', async () => {

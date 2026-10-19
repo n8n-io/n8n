@@ -49,8 +49,10 @@ import { BUILDER_TOOLS } from '../builder/builder-tool-names';
 import type { Agent } from '../entities/agent.entity';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import { getAgentConfigHash } from '../utils/agent-config-hash';
+import { SkillNameTakenError } from '../skills/skill-name-taken.error';
 import * as checkAccess from '@/permissions.ee/check-access';
 import type { InstanceAiCredentialService } from '@n8n/instance-ai';
+import { createAgentSkillRefsService } from './test-utils/stored-agent-config';
 
 const ctx = {
 	resumeData: undefined,
@@ -144,6 +146,7 @@ function makeService() {
 		telemetry,
 		agentContextAdapter,
 		collaborationService,
+		createAgentSkillRefsService(),
 	);
 
 	return {
@@ -603,6 +606,75 @@ describe('AgentsBuilderToolsService', () => {
 				}),
 			);
 			expect(result).toEqual(expect.objectContaining({ ok: true, configMutated: true, agentId }));
+		});
+
+		it('finish_setup writes the resolved credential into the empty node-tool slots of its type', async () => {
+			const { service, agentsService, nodeTypes } = makeService();
+			const gmailTool = (
+				name: string,
+				credentials?: Record<string, { id: string; name: string }>,
+			) => ({
+				type: 'node' as const,
+				name,
+				description: name,
+				node: {
+					nodeType: 'n8n-nodes-base.gmailTool',
+					nodeTypeVersion: 2.2,
+					nodeParameters: {},
+					credentials,
+				},
+			});
+			const ownCredential = { gmailOAuth2: { id: 'own', name: 'Own account' } };
+			let stored: AgentJsonConfig = {
+				...baseConfig,
+				tools: [gmailTool('search'), gmailTool('reply'), gmailTool('archive', ownCredential)],
+			};
+			agentsService.listChatIntegrations.mockReturnValue([]);
+			agentsService.findById.mockImplementation(async () => makeAgent(stored));
+			agentsService.updateConfig.mockImplementation(async (_agentId, _projectId, config) => {
+				stored = config as AgentJsonConfig;
+				return {
+					config: stored,
+					configHash: getAgentConfigHash(stored),
+					updatedAt: '2026-01-02T00:00:00.000Z',
+					versionId: 'v2',
+				};
+			});
+			nodeTypes.getByNameAndVersion.mockReturnValue({
+				description: {
+					displayName: 'Gmail Tool',
+					name: 'n8n-nodes-base.gmailTool',
+					group: [],
+					version: 2.2,
+					description: '',
+					defaults: {},
+					inputs: [],
+					outputs: [],
+					properties: [],
+					credentials: [{ name: 'gmailOAuth2' }],
+				},
+			} as unknown as ReturnType<NodeTypes['getByNameAndVersion']>);
+			credentialService.list.mockResolvedValue([
+				{ id: 'g1', name: 'Gmail account', type: 'gmailOAuth2' },
+			]);
+
+			const tool = getJsonTool(service, BUILDER_TOOLS.FINISH_SETUP);
+			const result = await tool.handler!(
+				{ credentialRequests: [{ credentialType: 'gmailOAuth2', purpose: 'Order emails' }] },
+				ctx as never,
+			);
+
+			const resolved = { gmailOAuth2: { id: 'g1', name: 'Gmail account' } };
+			expect(
+				stored.tools?.map((t) => (t.type === 'node' ? t.node.credentials : undefined)),
+			).toEqual([resolved, resolved, ownCredential]);
+			expect(result).toEqual(
+				expect.objectContaining({
+					completed: true,
+					credentialsWrittenToTools: ['gmailOAuth2'],
+					configHash: getAgentConfigHash(stored),
+				}),
+			);
 		});
 
 		it('patch_config saves a removed top-level field as removed', async () => {
@@ -1740,7 +1812,6 @@ describe('AgentsBuilderToolsService', () => {
 			expect(tool.systemInstruction).toContain('vague or placeholder skill');
 			expect(tool.systemInstruction).toContain('ask the user clarifying');
 			expect(tool.systemInstruction).toContain('Gotchas');
-			expect(tool.systemInstruction).toContain('exact target-agent tool names');
 			expect(tool.systemInstruction).toContain('references are not automatically loaded');
 			expect(tool.systemInstruction).toContain(
 				'instructions must say exactly when to load each one',
@@ -1841,6 +1912,42 @@ describe('AgentsBuilderToolsService', () => {
 				ok: false,
 				errors: [{ message: 'Agent already has a skill named "Summarize Meetings".' }],
 			});
+		});
+
+		it('names a taken skill name instead of asking for a retry', async () => {
+			const { service, agentsService } = makeService();
+			agentsService.createAndAttachSkills.mockRejectedValue(
+				new SkillNameTakenError('Summarize Meetings'),
+			);
+
+			const result = await getCreateSkillsTool(service).handler!(
+				{ skills: [makeSkillInput('Summarize Meetings')] },
+				ctx,
+			);
+
+			expect(result).toEqual({
+				ok: false,
+				errors: [
+					{
+						message: expect.stringContaining(
+							'The skill name "Summarize Meetings" is taken by another skill in the same scope',
+						),
+					},
+				],
+			});
+		});
+
+		it('tells the model that names are unique in the project', () => {
+			const { service } = makeService();
+
+			const tool = getCreateSkillsTool(service);
+			const nameSchema = (
+				tool.inputSchema as unknown as {
+					shape: { skills: { element: { shape: { name: { description?: string } } } } };
+				}
+			).shape.skills.element.shape.name;
+
+			expect(nameSchema.description).toContain('unique in the project');
 		});
 
 		it('rejects an empty skills array via the input schema', () => {
@@ -2011,6 +2118,30 @@ describe('AgentsBuilderToolsService', () => {
 				});
 			});
 
+			it('names a taken skill name on a rename instead of the stale skill error', async () => {
+				const { service, agentsService } = makeService();
+				agentsService.updateSkill.mockRejectedValue(new SkillNameTakenError('Create tickets'));
+
+				const result = await getUpdateSkillTool(service).handler!(
+					{
+						skillId: 'skill_create_tickets',
+						baseSkillHash: 'hash',
+						updates: { name: 'Create tickets' },
+					},
+					ctx,
+				);
+
+				expect(result).toEqual({
+					ok: false,
+					errors: [
+						{
+							message: expect.stringContaining('The skill name "Create tickets" is taken'),
+						},
+					],
+				});
+				expect(JSON.stringify(result)).not.toContain('Skill changed');
+			});
+
 			it('rejects instructions and instructionEdits together', () => {
 				const { service } = makeService();
 				const inputSchema = getUpdateSkillTool(service).inputSchema as unknown as {
@@ -2030,7 +2161,7 @@ describe('AgentsBuilderToolsService', () => {
 			});
 		});
 
-		it('uses null to remove optional list fields and rejects ambiguous empty arrays', async () => {
+		it('uses null to remove the references and rejects an ambiguous empty array', async () => {
 			const { service, agentsService } = makeService();
 			agentsService.updateSkill.mockResolvedValue({
 				id: 'skill_create_tickets',
@@ -2053,7 +2184,7 @@ describe('AgentsBuilderToolsService', () => {
 				{
 					skillId: 'skill_create_tickets',
 					baseSkillHash: 'skill-hash-0',
-					updates: { allowedTools: null, references: null },
+					updates: { references: null },
 				},
 				ctx,
 			);
@@ -2062,7 +2193,7 @@ describe('AgentsBuilderToolsService', () => {
 				agentId,
 				projectId,
 				'skill_create_tickets',
-				{ allowedTools: undefined, references: undefined },
+				{ references: undefined },
 				{ user, modifiedBy: 'builder' },
 				'skill-hash-0',
 				undefined,
@@ -2072,9 +2203,13 @@ describe('AgentsBuilderToolsService', () => {
 				safeParse: (input: unknown) => { success: boolean };
 			};
 			const baseInput = { skillId: 'skill_create_tickets', baseSkillHash: 'skill-hash-0' };
-			expect(inputSchema.safeParse({ ...baseInput, updates: { allowedTools: [] } }).success).toBe(
+			expect(inputSchema.safeParse({ ...baseInput, updates: { references: [] } }).success).toBe(
 				false,
 			);
+			// Skills do not take allowed tools.
+			expect(
+				inputSchema.safeParse({ ...baseInput, updates: { allowedTools: ['search'] } }).success,
+			).toBe(false);
 			expect(inputSchema.safeParse({ ...baseInput, updates: {} }).success).toBe(false);
 			expect(
 				inputSchema.safeParse({

@@ -54,6 +54,9 @@ export type { DiscoverDataPublic } from './discover/discover-public.dto';
 
 export { BreakingChangeReportQueryDto } from './breaking-changes/breaking-change-report-query.dto';
 export { UpdateMigrationFindingStatusRequestDto } from './breaking-changes/update-migration-finding-status-request.dto';
+export { UpdateMigrationFindingStatusesRequestDto } from './breaking-changes/update-migration-finding-statuses-request.dto';
+export { AssignMigrationOwnerDto } from './breaking-changes/assign-migration-owner.dto';
+export { NotifyMigrationOwnersRequestDto } from './breaking-changes/notify-migration-owners-request.dto';
 
 export {
 	AuditPublicDto,
@@ -167,6 +170,7 @@ export { SourceControlPullResponsePublicDto } from './source-control/source-cont
 
 export { CreateCredentialDto } from './credentials/create-credential.dto';
 export { TestCredentialRequestDto } from './credentials/test-credential-request.dto';
+export { CredentialOptionsRequestDto } from './credentials/credential-options-request.dto';
 export {
 	CredentialPublicDto,
 	CredentialListPublicDto,
@@ -185,6 +189,8 @@ export {
 	AI_PREFERENCES_DEFAULT_PAGE_SIZE,
 	AI_PREFERENCES_MAX_IDS_FILTER,
 	AI_PREFERENCES_MAX_PAGE_SIZE,
+	AI_PREFERENCES_SORT_OPTIONS,
+	type AiPreferenceSortOption,
 } from './ai-preference/ai-preference-list-query.dto';
 export { VariableListRequestDto } from './variables/variables-list-request.dto';
 export {
@@ -241,17 +247,25 @@ export { UpdateWorkflowPublicDto } from './workflows/update-workflow-public.dto'
 export { UpdateWorkflowQueryDto } from './workflows/update-workflow-query.dto';
 export { ListWorkflowsQueryDto } from './workflows/list-workflows-query.dto';
 export {
+	ListCallableSubworkflowsQueryDto,
+	type CallableSubworkflow,
+	type CallableSubworkflowsResponse,
+} from './workflows/list-callable-subworkflows-query.dto';
+export {
 	WorkflowPublicDto,
 	CreatedWorkflowPublicDto,
+	RetrievedWorkflowPublicDto,
 	WorkflowListPublicDto,
 	WorkflowPublishPublicDto,
 	workflowPublicSchema,
 	createdWorkflowPublicSchema,
+	retrievedWorkflowPublicSchema,
 	workflowPublishPublicSchema,
 	workflowListItemPublicSchema,
 	sharedWorkflowPublicSchema,
 	activeWorkflowVersionPublicSchema,
 	workflowParentFolderPublicSchema,
+	workflowParentFolderRefPublicSchema,
 	DeletedWorkflowPublicDto,
 	UpdatedWorkflowPublicDto,
 } from './workflows/workflow-public.dto';
@@ -352,26 +366,49 @@ export {
 export { PaginationDto, MAX_ITEMS_PER_PAGE } from './pagination/pagination.dto';
 
 export type {
+	NodeTypePolicyRule,
+	NodeTypePolicySelector,
 	NonDelegatingPolicyAction,
 	NonDelegatingPolicyRule,
 	PolicyAction,
 	PolicyRule,
 	PolicySelector,
 } from './type-availability-policies/policy-rule.types';
-export { policySelectorSchema } from './type-availability-policies/policy-selector.schema';
+export { isNodeTypePolicyRule } from './type-availability-policies/policy-rule.types';
 export {
+	credentialTypePolicySelectorSchema,
+	nodeTypePolicySelectorSchema,
+} from './type-availability-policies/policy-selector.schema';
+export {
+	credentialTypePolicyRuleSchemas,
+	nodeTypePolicyRuleSchemas,
 	nonDelegatingPolicyActionSchema,
-	nonDelegatingPolicyRuleListSchema,
 	policyActionSchema,
-	policyRuleListSchema,
-	policyRuleSchema,
 } from './type-availability-policies/policy-rule.schema';
-export { PutInstancePolicyDto } from './type-availability-policies/put-instance-policy.dto';
-export { PutProjectPolicyDto } from './type-availability-policies/put-project-policy.dto';
-export { CreatePolicyDocumentDto } from './type-availability-policies/create-policy-document.dto';
-export { UpdatePolicyDocumentDto } from './type-availability-policies/update-policy-document.dto';
+export {
+	PutCredentialTypeInstancePolicyDto,
+	PutInstancePolicyDto,
+} from './type-availability-policies/put-instance-policy.dto';
+export {
+	PutCredentialTypeProjectPolicyDto,
+	PutProjectPolicyDto,
+} from './type-availability-policies/put-project-policy.dto';
+export {
+	CreateCredentialTypePolicyDocumentDto,
+	CreatePolicyDocumentDto,
+} from './type-availability-policies/create-policy-document.dto';
+export {
+	UpdateCredentialTypePolicyDocumentDto,
+	UpdatePolicyDocumentDto,
+} from './type-availability-policies/update-policy-document.dto';
 export { ReplaceAttachmentsDto } from './type-availability-policies/replace-attachments.dto';
 export {
+	CredentialTypePolicyAttachmentsPublicDto,
+	CredentialTypePolicyDocumentListPublicDto,
+	CredentialTypePolicyDocumentPublicDto,
+	CredentialTypePolicyDocumentWriteResultPublicDto,
+	CredentialTypePolicyEffectivePublicDto,
+	CredentialTypePolicyEffectiveWriteResultPublicDto,
 	ListNodeTypePolicyDocumentsQueryDto,
 	PolicyAttachmentsPublicDto,
 	PolicyDocumentListPublicDto,
@@ -617,7 +654,8 @@ export {
 	type WorkflowReviewRequestList,
 } from './workflow-reviews/list-workflow-review-requests-query.dto';
 export { UpdateWorkflowReviewRequestVersionDto } from './workflow-reviews/update-workflow-review-request-version.dto';
-export * from './workflow-reviews/list-workflow-review-inbox.dto';
+export type { WorkflowReviewInboxItem } from './workflow-reviews/list-workflow-review-inbox.dto';
+export { ListInboxQueryDto } from './inbox/list-inbox.dto';
 export type * from './workflow-reviews/get-workflow-review-request-detail.dto';
 export {
 	ListWorkflowReviewActivityQueryDto,
@@ -675,7 +713,11 @@ export {
 	PromotionProviderListPublicDto,
 	PromotionProviderPublicDto,
 	UpdatePromotionProviderDto,
+	isPromotionGitHostType,
+	supportsPromotionAuthType,
 	promotionGitConfigSchemas,
+	promotionGitHostBaseUrlSchema,
+	promotionGitHostConfigSchema,
 	promotionGitSshKeyAuthInputSchema,
 	promotionGitSshKeyAuthUpdateSchema,
 	promotionGitSshKeyConfigSchema,
@@ -687,8 +729,11 @@ export {
 	promotionProviderConfigSchema,
 	promotionProviderPublicSchema,
 	promotionProviderSummarySchema,
+	promotionProviderTypeCapabilities,
 	promotionProviderTypeSchema,
 	promotionSshKeyTypeSchema,
+	type PromotionGitHostConfig,
+	type PromotionGitHostType,
 	type PromotionProviderAuthInput,
 	type PromotionProviderAuthType,
 	type PromotionProviderAuthUpdate,
@@ -696,6 +741,18 @@ export {
 	type PromotionProviderType,
 	type PromotionSshKeyType,
 } from './promotions/promotion-provider.dto';
+export {
+	ListPromotionBranchesQueryDto,
+	ListPromotionRepositoriesQueryDto,
+	MAX_PROMOTION_DISCOVERY_ITEMS_PER_PAGE,
+	PromotionBranchListPublicDto,
+	PromotionRepositoryListPublicDto,
+	promotionBranchSchema,
+	promotionRepositoryIdParamSchema,
+	promotionRepositorySchema,
+	type PromotionBranch,
+	type PromotionRepository,
+} from './promotions/promotion-repository.dto';
 export {
 	PromotionApplyConfigPublicDto,
 	PromotionPromoteConfigPublicDto,
@@ -755,5 +812,43 @@ export {
 	promotePackageResultSchema,
 	promotionGitResultSchema,
 } from './promotions/promotion-operations.dto';
+export {
+	parsePromotionRunDetails,
+	promotionGitRunDetailsSchema,
+	promotionRunDetailsSchemas,
+	promotionRunTypeSchema,
+	type PromotionGitRunDetails,
+	type PromotionRunDetails,
+	type PromotionRunType,
+} from './promotions/promotion-run.dto';
+export {
+	ListPromotionReviewsQueryDto,
+	PromotionReviewDetailDto,
+	PromotionReviewListPublicDto,
+	PromotionReviewWorkflowDiffDto,
+	promotionMergeRequestResultSchema,
+	promotionReviewChangeKindSchema,
+	promotionReviewDetailSchema,
+	promotionReviewListPublicSchema,
+	gitLabRemoteReviewIdSchema,
+	parseRemoteReviewId,
+	promotionRemoteReviewIdSchemas,
+	promotionReviewStateSchema,
+	promotionReviewSummarySchema,
+	promotionReviewTabSchema,
+	promotionReviewTypeSchema,
+	promotionReviewWorkflowChangeSchema,
+	promotionReviewWorkflowDiffSchema,
+	type PromotionMergeRequestResult,
+	type PromotionReviewChangeKind,
+	type PromotionReviewRemote,
+	type PromotionReviewState,
+	type PromotionReviewSummary,
+	type PromotionReviewType,
+	type PromotionReviewTab,
+	type PromotionReviewWorkflowChange,
+} from './promotions/promotion-review.dto';
 
 export { ScimConfigPatchDto } from './scim';
+export { CreateTrustedSourceDto } from './trusted-source/create-trusted-source.dto';
+export { UpdateTrustedSourceDto } from './trusted-source/update-trusted-source.dto';

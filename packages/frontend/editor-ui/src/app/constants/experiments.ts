@@ -87,11 +87,6 @@ export const WORKFLOW_CARD_MCP_TOGGLE_EXPERIMENT = createExperiment('086_workflo
 export const INSTANCE_AI_PROACTIVE_AGENT_EXPERIMENT = createExperiment(
 	'082_instance_ai_proactive_agent',
 );
-// Flag key assigned when the PostHog flag is created — follow the
-// `n8n:experiments` skill to create it and fill in the real key here.
-export const INSTANCE_AI_TEST_AGENT_PREVIEW_EXPERIMENT = createExperiment(
-	'<flag-key>_test_agent_preview',
-);
 // Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
 export const INSTANCE_AI_PROMPT_SUGGESTIONS_V2_EXPERIMENT = createExperiment(
 	'085_instance_ai_prompt_suggestions_v2',
@@ -165,6 +160,10 @@ export const SURFACE_ASSISTANT_ON_WORKFLOW_ERROR_EXPERIMENT = createExperiment(
 	'119_surface_assistant_on_workflow_error',
 );
 
+export const WORKFLOW_PREVIEWS_ABOVE_ASSISTANT_EXPERIMENT = createExperiment(
+	'124_workflow_previews_above_assistant',
+);
+
 export const AGENTS_LIST_EMPTY_STATE_TEMPLATES_EXPERIMENT = createExperiment(
 	'120_agents_empty_state_templates',
 );
@@ -174,6 +173,14 @@ export const AGENTS_N8N_CHAT_EXPERIMENT = createExperiment(AGENTS_N8N_CHAT_FLAG,
 	variantA: 'variant-a',
 	variantB: 'variant-b',
 });
+
+/**
+ * Boolean flag, matched by instance and Cloud only. Its payload can set
+ * `sampleRate` and `timeoutMs` for the shadow run.
+ */
+export const QUICKJS_EXPRESSION_SHADOW_EXPERIMENT = createExperiment(
+	'126_quickjs_expression_shadow',
+);
 
 export const EXPERIMENTS_TO_TRACK = [
 	INSTANCE_AI_SETUP_PANEL_EXPERIMENT.name,
@@ -216,7 +223,8 @@ export const EXPERIMENTS_TO_TRACK = [
 	MCP_JSON_NUDGE_EXPERIMENT.name,
 	CREDENTIAL_DESCRIPTIONS_EXPERIMENT.name,
 	SURFACE_ASSISTANT_ON_WORKFLOW_ERROR_EXPERIMENT.name,
+	WORKFLOW_PREVIEWS_ABOVE_ASSISTANT_EXPERIMENT.name,
 	AGENTS_LIST_EMPTY_STATE_TEMPLATES_EXPERIMENT.name,
-	INSTANCE_AI_TEST_AGENT_PREVIEW_EXPERIMENT.name,
 	AGENTS_N8N_CHAT_EXPERIMENT.name,
+	QUICKJS_EXPRESSION_SHADOW_EXPERIMENT.name,
 ];

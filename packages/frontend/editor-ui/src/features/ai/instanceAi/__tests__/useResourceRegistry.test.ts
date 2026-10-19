@@ -1019,11 +1019,11 @@ describe('useResourceRegistry', () => {
 			});
 		});
 
-		test('event-derived names win over metadata: unnamed spawn, then named tool result, then metadata enrichment', async () => {
+		test('event-derived names win over a metadata name that an earlier event carried', async () => {
 			const { messages, producedArtifacts } = setup(undefined, () => ({
 				agentId: 'agent-1',
 				projectId: 'project-1',
-				name: 'Stale Metadata Name',
+				name: 'Support Agent',
 			}));
 
 			messages.value = [
@@ -1032,6 +1032,12 @@ describe('useResourceRegistry', () => {
 						targetResource: { type: 'agent', id: 'agent-1', projectId: 'project-1' },
 						toolCalls: [
 							makeToolCall({
+								toolCallId: 'tc-1',
+								toolName: 'build-agent',
+								result: { ok: true, agentId: 'agent-1', agentName: 'Support Agent' },
+							}),
+							makeToolCall({
+								toolCallId: 'tc-2',
 								toolName: 'build-agent',
 								result: { ok: true, agentId: 'agent-1', agentName: 'Support Bot' },
 							}),
@@ -1047,6 +1053,32 @@ describe('useResourceRegistry', () => {
 				name: 'Support Bot',
 				projectId: 'project-1',
 			});
+		});
+
+		test('a name the user saved in the agent builder wins over the event-derived name', async () => {
+			const target = ref({ agentId: 'agent-1', projectId: 'project-1', name: 'Support Bot' });
+			const { messages, producedArtifacts } = setup(undefined, () => target.value);
+
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						targetResource: { type: 'agent', id: 'agent-1', projectId: 'project-1' },
+						toolCalls: [
+							makeToolCall({
+								toolName: 'build-agent',
+								result: { ok: true, agentId: 'agent-1', agentName: 'Support Bot' },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+			expect(producedArtifacts.get('agent-1')?.name).toBe('Support Bot');
+
+			target.value = { ...target.value, name: 'Helpdesk Bot' };
+			await nextTick();
+
+			expect(producedArtifacts.get('agent-1')?.name).toBe('Helpdesk Bot');
 		});
 	});
 

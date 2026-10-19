@@ -212,7 +212,7 @@ export const codeEditorTheme = ({ isReadOnly, minHeight, maxHeight, rows }: Them
 		},
 		'.cm-completionMatchedText': {
 			textDecoration: 'none',
-			fontWeight: '600',
+			fontWeight: 'var(--font-weight--medium)',
 			color: 'var(--autocomplete--item--color--selected)',
 		},
 		'.cm-faded > span': {

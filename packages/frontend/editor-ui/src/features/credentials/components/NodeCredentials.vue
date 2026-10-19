@@ -112,6 +112,8 @@ type Props = {
 	standalone?: boolean;
 	/** Project ID to scope new credential creation to the correct project. */
 	projectId?: string;
+	/** Agents do not support personal credentials yet, so the usable-credentials fetch omits them. */
+	forAgent?: boolean;
 	/** Pre-fill the credential name when creating a new credential. */
 	suggestedCredentialName?: string;
 	/** Hide the "Ask n8n AI" assistant button inside the credential editor.
@@ -557,16 +559,17 @@ watch(
 );
 
 function getCredentialFetchScope(): CredentialFetchScope | undefined {
-	if (props.workflowId) return { workflowId: props.workflowId };
+	const forAgent = props.forAgent ? { forAgent: true } : {};
+	if (props.workflowId) return { workflowId: props.workflowId, ...forAgent };
 	const workflowId = workflowDocumentStore?.value.workflowId;
 	if (workflowId && !workflowsStore.isNewWorkflow) {
-		return { workflowId };
+		return { workflowId, ...forAgent };
 	}
 
 	const projectId =
 		props.projectId ?? projectsStore.currentProject?.id ?? projectsStore.personalProject?.id;
 
-	return projectId ? { projectId } : undefined;
+	return projectId ? { projectId, ...forAgent } : undefined;
 }
 
 onMounted(() => {

@@ -47,8 +47,6 @@ For built-in providers, the setup service recognizes `ANTHROPIC_API_KEY`,
 | `N8N_INSTANCE_AI_FOLDER_EXPLORATION_ENABLED` | boolean | `false` | Force-enable folder exploration (folder attribution and folder scoping on `workflows(action="list")`). `false` falls back to the PostHog flag. |
 | `N8N_INSTANCE_AI_BROWSER_USE_ENABLED` | boolean | `true` | Computer Use browser tooling, used for credential setup. |
 | `N8N_INSTANCE_AI_PROMPT_VERSION` | string | `''` | Pin every run on this instance to one published prompt profile, e.g. `concise@1`. Empty keeps the backend experiment assignment. An unknown version fails the Instance AI run, not the instance. See [prompt profiles](./prompt-profiles.md). |
-| `N8N_INSTANCE_AI_ACTIVATION_CAPPED` | boolean | `false` | Activation capping. |
-| `N8N_INSTANCE_AI_ACTIVATION_LOCK_MESSAGE_THRESHOLD` | number | `1` | Assistant messages that must be sent, in addition to instance activation, before an activation lock applies. |
 
 The PostHog flag `118_instance_ai_setup_overhaul` selects the setup flow.
 `variant` enables the async panel. `control` or an unavailable assignment uses
@@ -179,6 +177,13 @@ these values from the managed service instead.
 The `instance-ai` module is in the default module set. It does not need to be
 listed in `N8N_ENABLED_MODULES`. `N8N_AI_ENABLED` controls older global AI
 features and does not gate Instance AI.
+
+The `agents` module is also in the default module set. When it is active and
+the Settings > Agents switch is on, the Assistant gets the `build-agent` and
+`agent-context` tools, the `agent-builder` and `intent-recognition` skills, and
+Agent preview handoff. When an admin turns the switch off, the Assistant loses
+all of these at once. A run that is building an Agent fails at its next step.
+To remove the module, add `agents` to `N8N_DISABLED_MODULES`.
 
 Chat and the main UI are gated by `InstanceAiSettingsService.isInstanceAiEnabled()`.
 Member-facing entry points are additionally gated by `isSetupCompleted()`, which

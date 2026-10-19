@@ -157,6 +157,8 @@ export class DatabricksAiAgent implements INodeType {
 			},
 		],
 		properties: [
+			// Use the current list, not AgentV2's deprecated one. #22435 removed the
+			// Guardrails source from new agent versions, and this node has no legacy workflows.
 			promptTypeOptions,
 			{
 				...textFromPreviousNode,
@@ -174,11 +176,41 @@ export class DatabricksAiAgent implements INodeType {
 				noDataExpression: true,
 			},
 			{
+				displayName: `Connect an <a data-action='openSelectiveNodeCreator' data-action-parameter-connectiontype='${NodeConnectionTypes.AiOutputParser}'>output parser</a> on the canvas to specify the output format you require`,
+				name: 'notice',
+				type: 'notice',
+				default: '',
+				displayOptions: {
+					show: {
+						hasOutputParser: [true],
+					},
+				},
+			},
+			// Verbatim from AgentV2 so the parity test can compare the whole object.
+			// The version gate is inert on a 2.2-only node.
+			{
 				displayName: 'Enable Fallback Model',
 				name: 'needsFallback',
 				type: 'boolean',
 				default: false,
 				noDataExpression: true,
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 2.1 } }],
+					},
+				},
+			},
+			{
+				displayName:
+					'Connect an additional language model on the canvas to use it as a fallback if the main model fails',
+				name: 'fallbackNotice',
+				type: 'notice',
+				default: '',
+				displayOptions: {
+					show: {
+						needsFallback: [true],
+					},
+				},
 			},
 			exportTracesField,
 			experimentField,

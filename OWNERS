@@ -30,6 +30,7 @@ packages/@n8n/backend-network/                          @n8n-io/catalysts
 packages/@n8n/backend-services/                         @n8n-io/catalysts
 packages/@n8n/backend-services/src/services/role.service.ts       @n8n-io/iam
 packages/@n8n/backend-services/src/services/role-cache.service.ts @n8n-io/iam
+packages/@n8n/backend-services/src/services/jwt.service.ts @n8n-io/iam
 packages/@n8n/backend-test-utils/                       @n8n-io/catalysts
 packages/@n8n/di/                                       @n8n-io/catalysts
 packages/@n8n/errors/                                   @n8n-io/catalysts
@@ -65,7 +66,7 @@ packages/@n8n/cli/src/commands/tag/                     @n8n-io/context
 packages/@n8n/cli/src/commands/project/                 @n8n-io/ligo
 packages/@n8n/cli/src/commands/source-control/          @n8n-io/ligo
 packages/@n8n/cli/src/commands/variable/                @n8n-io/ligo
-packages/@n8n/cli/src/commands/skill/                   @n8n-io/ai
+packages/@n8n/cli/src/commands/skill/                   @n8n-io/context
 
 # packages/cli
 packages/cli/                                           @n8n-io/catalysts
@@ -84,7 +85,6 @@ packages/cli/src/security-audit/                        @n8n-io/catalysts
 packages/cli/src/modules/workflow-index/                @n8n-io/catalysts
 packages/cli/src/modules/breaking-changes/              @n8n-io/catalysts
 packages/cli/src/workflows/publication/                 @n8n-io/catalysts required
-packages/cli/src/modules/otel/                          @n8n-io/ligo
 
 packages/cli/src/auth/                                  @n8n-io/iam
 packages/cli/src/credentials/                           @n8n-io/iam
@@ -115,14 +115,15 @@ packages/cli/src/binary-data/                           @n8n-io/catalysts
 packages/cli/src/posthog/                               @n8n-io/growth
 packages/cli/src/modules/data-table/                    @n8n-io/knowledge
 
-packages/cli/src/evaluation.ee/                         @n8n-io/ai
+packages/cli/src/evaluation.ee/                         @n8n-io/ai-trust
 packages/cli/src/chat/                                  @n8n-io/ai
 packages/cli/src/tool-generation/                       @n8n-io/ai
-packages/cli/src/modules/workflow-builder/              @n8n-io/ai-assistant
+packages/modules/workflow-builder/                     @n8n-io/ai-assistant
 packages/cli/src/modules/mcp/                           @n8n-io/context
-packages/cli/src/modules/quick-connect/                 @n8n-io/ai
+packages/modules/quick-connect/                        @n8n-io/ai
 packages/cli/src/modules/chat-hub/                      @n8n-io/ai-assistant
 packages/cli/src/modules/instance-ai/                   @n8n-io/ai-assistant
+packages/modules/inbox/                                @n8n-io/ligo
 
 packages/cli/src/modules/community-packages/            @n8n-io/nodes
 
@@ -154,7 +155,6 @@ packages/cli/src/controllers/dynamic-node-parameters.controller.ts 	@n8n-io/node
 packages/cli/src/controllers/e2e.controller.ts          						@n8n-io/qa-dx
 
 # CLI services
-packages/cli/src/services/jwt.service.ts                @n8n-io/iam
 packages/cli/src/services/user.service.ts               @n8n-io/iam
 packages/cli/src/services/password.utility.ts           @n8n-io/iam
 packages/cli/src/services/public-api-key.service.ts     @n8n-io/iam
@@ -163,8 +163,10 @@ packages/cli/src/services/static-auth-service.ts        @n8n-io/iam
 packages/cli/src/services/access.service.ts             @n8n-io/iam
 packages/cli/src/services/ai.service.ts                 @n8n-io/ai-assistant
 packages/cli/src/services/ai-usage.service.ts           @n8n-io/ai-assistant
+packages/cli/src/services/__tests__/ai-usage.service.test.ts @n8n-io/ai-assistant
+packages/cli/src/controllers/__tests__/ai.controller.test.ts @n8n-io/ai-assistant
 packages/cli/src/services/ai-workflow-builder.service.ts @n8n-io/ai-assistant
-packages/cli/src/services/annotation-tag.service.ee.ts  @n8n-io/ai
+packages/cli/src/services/annotation-tag.service.ee.ts  @n8n-io/context
 packages/cli/src/services/folder.service.ts             @n8n-io/context
 packages/cli/src/services/tag.service.ts                @n8n-io/context
 packages/cli/src/services/cta.service.ts                @n8n-io/knowledge
@@ -181,6 +183,7 @@ packages/frontend/editor-ui/                            @n8n-io/frontend
 packages/frontend/editor-ui/src/features/ai/            @n8n-io/ai
 packages/frontend/editor-ui/src/features/ai/assistant/  @n8n-io/ai-assistant
 packages/frontend/editor-ui/src/features/ai/chatHub/    @n8n-io/ai-assistant
+packages/frontend/editor-ui/src/features/ai/instanceAi/ @n8n-io/ai-assistant
 packages/frontend/editor-ui/src/features/credentials/   @n8n-io/iam
 packages/frontend/editor-ui/src/features/execution/     @n8n-io/ligo
 packages/frontend/editor-ui/src/features/integrations/  @n8n-io/ligo
@@ -252,6 +255,27 @@ packages/@n8n/inbound-auth/                             @n8n-io/iam
 
 packages/modules/type-availability-policies/            @n8n-io/governance-and-observability
 packages/cli/src/modules/type-availability-policies/    @n8n-io/governance-and-observability
+packages/modules/otel/                                  @n8n-io/governance-and-observability
+packages/cli/src/modules/otel/                          @n8n-io/governance-and-observability
+packages/cli/src/public-api/v1/controllers/otel.public.controller.ts @n8n-io/governance-and-observability
+packages/cli/src/public-api/v1/shared/otel.mapper.ts @n8n-io/governance-and-observability
+packages/cli/src/public-api/v1/controllers/node-type-policies.public.controller.ts @n8n-io/governance-and-observability
+packages/cli/src/public-api/v1/controllers/credential-type-policies.public.controller.ts @n8n-io/governance-and-observability
+packages/cli/src/public-api/v1/handlers/node-type-policies/ @n8n-io/governance-and-observability
+packages/cli/src/public-api/v1/handlers/credential-type-policies/ @n8n-io/governance-and-observability
+packages/cli/src/modules/policy-infrastructure/         @n8n-io/governance-and-observability
+packages/cli/src/policy/                                @n8n-io/governance-and-observability
+packages/@n8n/decorators/src/policy-check/              @n8n-io/governance-and-observability
+packages/@n8n/api-types/src/dto/otel/                   @n8n-io/governance-and-observability
+packages/@n8n/api-types/src/dto/type-availability-policies/ @n8n-io/governance-and-observability
+packages/@n8n/api-types/src/node-type-availability.ts   @n8n-io/governance-and-observability
+packages/@n8n/api-types/src/credential-type-availability.ts @n8n-io/governance-and-observability
+packages/@n8n/api-types/src/schemas/policy-check-failure.schema.ts @n8n-io/governance-and-observability
+packages/@n8n/api-types/src/schemas/policy-violation.schema.ts @n8n-io/governance-and-observability
+packages/@n8n/telemetry/src/events/policies.ts          @n8n-io/governance-and-observability
+packages/@n8n/telemetry/src/events/type-availability-policies.ts @n8n-io/governance-and-observability
+packages/workflow/src/errors/policy-refusal.ts          @n8n-io/governance-and-observability
+packages/frontend/editor-ui/src/app/composables/usePolicyViolationToast.ts @n8n-io/governance-and-observability
 
 # CI/CD
 
@@ -279,3 +303,15 @@ packages/@n8n/db/src/entities/deployment-key.ts         @n8n-io/iam required
 packages/@n8n/db/src/repositories/deployment-key.repository.ts @n8n-io/iam required
 packages/@n8n/eslint-config/src/configs/encryption-boundary.ts @n8n-io/iam required
 packages/@n8n/eslint-config/src/rules/no-encryption-guardrail-disable.ts @n8n-io/iam required
+
+# AI Trust (evaluations)
+# Placed last so these rules override the broader package rules above.
+
+packages/@n8n/instance-ai/evaluations/                   @n8n-io/ai-trust
+packages/cli/src/modules/instance-ai/eval/               @n8n-io/ai-trust
+packages/quality/testing/playwright/tests/evals/instance-ai/ @n8n-io/ai-trust
+.agents/skills/create-instance-ai-eval/                  @n8n-io/ai-trust
+.agents/skills/create-agent-builder-eval/                 @n8n-io/ai-trust
+packages/cli/src/modules/agent-evals/                    @n8n-io/ai-trust
+packages/@n8n/agents/src/evals/                          @n8n-io/ai-trust
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/ @n8n-io/ai-trust

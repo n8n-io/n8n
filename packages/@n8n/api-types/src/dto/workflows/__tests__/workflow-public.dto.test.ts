@@ -2,6 +2,8 @@ import assert from 'node:assert';
 
 import {
 	CreatedWorkflowPublicDto,
+	RetrievedWorkflowPublicDto,
+	WorkflowListPublicDto,
 	WorkflowPublicDto,
 	WorkflowPublishPublicDto,
 } from '../workflow-public.dto';
@@ -162,6 +164,67 @@ describe('CreatedWorkflowPublicDto', () => {
 		const result = CreatedWorkflowPublicDto.safeParse(baseWorkflow);
 
 		expect(result.success).toBe(false);
+	});
+});
+
+describe('RetrievedWorkflowPublicDto', () => {
+	describe('parentFolder', () => {
+		test('accepts a null parent folder', () => {
+			const result = RetrievedWorkflowPublicDto.safeParse({ ...baseWorkflow, parentFolder: null });
+			expect(result.success).toBe(true);
+		});
+
+		test('accepts a populated parent folder', () => {
+			const parentFolder = {
+				id: 'folder-1',
+				name: 'Target Folder',
+				parentFolderId: null,
+				createdAt: '2024-01-01T00:00:00.000Z',
+				updatedAt: '2024-01-01T00:00:00.000Z',
+			};
+
+			const result = RetrievedWorkflowPublicDto.safeParse({ ...baseWorkflow, parentFolder });
+			expect(result.success).toBe(true);
+		});
+	});
+});
+
+describe('WorkflowListPublicDto', () => {
+	const baseListItem = {
+		id: '1',
+		name: 'My workflow',
+		active: false,
+		activeVersionId: null,
+		createdAt: '2024-01-01T00:00:00.000Z',
+		updatedAt: '2024-01-01T00:00:00.000Z',
+		isArchived: false,
+		versionId: 'version-1',
+		triggerCount: 0,
+		nodes: [],
+		connections: {},
+		nodeGroups: [],
+		settings: null,
+		staticData: null,
+		meta: null,
+		shared: [
+			{
+				role: 'workflow:owner',
+				workflowId: '1',
+				projectId: 'project-1',
+				createdAt: '2024-01-01T00:00:00.000Z',
+				updatedAt: '2024-01-01T00:00:00.000Z',
+			},
+		],
+		activeVersion: null,
+	};
+
+	test('accepts parentFolder as absent, null, or an id-only reference', () => {
+		const listWith = (item: Record<string, unknown>) =>
+			WorkflowListPublicDto.safeParse({ data: [item], nextCursor: null });
+
+		expect(listWith(baseListItem).success).toBe(true);
+		expect(listWith({ ...baseListItem, parentFolder: null }).success).toBe(true);
+		expect(listWith({ ...baseListItem, parentFolder: { id: 'folder-1' } }).success).toBe(true);
 	});
 });
 

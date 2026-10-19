@@ -19,7 +19,7 @@ import { PostHogClient } from '@/posthog';
 import { Push } from '@/push';
 import { packagedModules } from '@/modules/modules.manifest';
 import { ApiKeyAuthStrategy } from '@/services/api-key-auth.strategy';
-import { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
+import { AuthStrategyRegistry } from '@n8n/backend-services/auth';
 import { SessionCookieAuthStrategy } from '@/services/session-cookie-auth.strategy';
 import { Telemetry } from '@/telemetry';
 import { resolveBackendHealthEndpointPath } from '@/utils/health-endpoint.util';
@@ -426,6 +426,10 @@ export const setupTestServer = ({
 
 					case 'encryption-keys':
 						await import('@/modules/encryption-key-manager/encryption-key.controller.js');
+						break;
+
+					case 'trusted-sources':
+						await import('@/modules/inbound-auth-core/trusted-source.controller.js');
 						break;
 
 					case 'test-webhooks':

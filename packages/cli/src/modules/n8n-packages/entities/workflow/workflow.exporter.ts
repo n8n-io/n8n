@@ -7,7 +7,7 @@ import { WorkflowSerializer } from './workflow.serializer';
 import { applyWorkflowVersionPolicy, needsActiveVersion } from './workflow-version-policy';
 import { packageDirectory, writeWorkflowManifestEntry } from '../../io/manifest-entry';
 import type { PackageWriter } from '../../io/package-writer';
-import type { WorkflowVersionPolicy } from '../../n8n-packages.types';
+import type { ExportVersionPolicy } from '../../n8n-packages.types';
 import type { ManifestEntry } from '../../spec/manifest.schema';
 import { CredentialRequirementsExtractor } from '../credential/credential-requirements.extractor';
 import type { WorkflowCredentialRequirement } from '../credential/credential.types';
@@ -26,7 +26,7 @@ export interface WorkflowExportRequest {
 	workflowIds: string[];
 	writer: PackageWriter;
 	includeTags: boolean;
-	workflowVersionPolicy: WorkflowVersionPolicy;
+	versionPolicy: ExportVersionPolicy;
 
 	/**
 	 * Target of the folder or project holding the workflows, which are written
@@ -59,7 +59,7 @@ export class WorkflowExporter {
 			{
 				includeParentFolder: true,
 				includeTags: request.includeTags,
-				includeActiveVersion: needsActiveVersion(request.workflowVersionPolicy),
+				includeActiveVersion: needsActiveVersion(request.versionPolicy),
 			},
 		);
 
@@ -72,7 +72,7 @@ export class WorkflowExporter {
 
 		const workflowsForExport = this.orderWorkflowsByRequest(
 			request.workflowIds,
-			applyWorkflowVersionPolicy(workflows, request.workflowVersionPolicy),
+			applyWorkflowVersionPolicy(workflows, request.versionPolicy),
 		);
 		const entries: ManifestEntry[] = [];
 		const credentials: WorkflowCredentialRequirement[] = [];

@@ -354,3 +354,89 @@ describe('AgentChatStreamConsumer — suspension routing', () => {
 		expect(handleSuspension).toHaveBeenCalledWith(SUSPENDED_CHUNK, thread, undefined);
 	});
 });
+
+const SESSION_BUDGET_MESSAGE =
+	'⚠️ This session reached its cost cap and stopped. Open the agent in n8n and increase the cap.';
+const MONTHLY_BUDGET_MESSAGE =
+	'⚠️ This agent reached its monthly budget and stopped. Open the agent in n8n and increase the cap.';
+
+describe('AgentChatStreamConsumer — budget stop', () => {
+	it('posts the session message once and clears the status when the run never starts', async () => {
+		const postErrorToThread = vi.fn().mockResolvedValue(undefined);
+		const consumer = makeConsumer(postErrorToThread);
+		const localThread = mock<Thread<unknown, unknown>>();
+		const clearBeforeResponse = vi.fn().mockResolvedValue(undefined);
+
+		await consumer.consume(
+			makeStream([
+				{ type: 'finish', finishReason: 'guardrail', guardrail: { code: 'budget.session' } },
+			]),
+			localThread,
+			{ statusHandle: { clearBeforeResponse } },
+		);
+
+		expect(localThread.post).toHaveBeenCalledTimes(1);
+		expect(localThread.post).toHaveBeenCalledWith({ markdown: SESSION_BUDGET_MESSAGE });
+		expect(clearBeforeResponse).toHaveBeenCalledTimes(1);
+		expect(postErrorToThread).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		['streaming', false],
+		['buffered', true],
+	])('posts partial text and then the monthly message (%s)', async (_name, disableStreaming) => {
+		const { thread: localThread, streamedText, discrete } = makeStreamingThread();
+
+		await makeStreamingConsumer({ disableStreaming }).consume(
+			makeStream([
+				{ type: 'text-delta', id: 't-1', delta: 'Partial answer' },
+				{ type: 'finish', finishReason: 'guardrail', guardrail: { code: 'budget.monthly' } },
+			]),
+			localThread,
+		);
+
+		if (disableStreaming) {
+			expect(discrete).toEqual([
+				{ markdown: 'Partial answer' },
+				{ markdown: MONTHLY_BUDGET_MESSAGE },
+			]);
+			return;
+		}
+		expect(streamedText).toEqual(['Partial answer']);
+		expect(discrete).toEqual([{ markdown: MONTHLY_BUDGET_MESSAGE }]);
+	});
+
+	it('does not post a budget message when the run finishes normally', async () => {
+		const { thread: localThread, discrete } = makeStreamingThread();
+
+		await makeStreamingConsumer({ disableStreaming: true }).consume(
+			makeStream([
+				{ type: 'text-delta', id: 't-1', delta: 'All done' },
+				{ type: 'finish', finishReason: 'stop' },
+			]),
+			localThread,
+		);
+
+		expect(discrete).toEqual([{ markdown: 'All done' }]);
+	});
+
+	it('reports a rejected budget post once and does not post the budget line again', async () => {
+		const postErrorToThread = vi.fn().mockResolvedValue(undefined);
+		const consumer = makeConsumer(postErrorToThread);
+		const localThread = mock<Thread<unknown, unknown>>();
+		const deliveryError = new Error('delivery failed');
+		localThread.post.mockRejectedValue(deliveryError);
+
+		await consumer.consume(
+			makeStream([
+				{ type: 'finish', finishReason: 'guardrail', guardrail: { code: 'budget.session' } },
+			]),
+			localThread,
+		);
+
+		expect(localThread.post).toHaveBeenCalledTimes(1);
+		expect(localThread.post).toHaveBeenCalledWith({ markdown: SESSION_BUDGET_MESSAGE });
+		expect(postErrorToThread).toHaveBeenCalledTimes(1);
+		expect(postErrorToThread).toHaveBeenCalledWith(localThread, deliveryError, undefined);
+	});
+});

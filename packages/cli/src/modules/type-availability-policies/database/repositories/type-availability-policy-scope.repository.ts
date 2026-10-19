@@ -187,6 +187,8 @@ export class TypeAvailabilityPolicyScopeRepository extends BaseRepository<TypeAv
 	 *
 	 * Joins the caller's transaction when `ctx` carries one, so the read-back lock is held
 	 * for the rest of the caller's work; opens one otherwise, since the lock needs it.
+	 *
+	 * The new row starts at version 1, which is the first write's own bump.
 	 */
 	async createScopeIfAbsent(
 		input: NewPolicyScope,
@@ -242,6 +244,9 @@ export class TypeAvailabilityPolicyScopeRepository extends BaseRepository<TypeAv
 	 * Call this under the same `ctx` as whatever changed the scope's *effective* policy —
 	 * an attachment added, removed or reordered, or an attached policy's content edited —
 	 * so the version and the change commit together.
+	 *
+	 * One write moves the version once. Do not call this in a write that also ran
+	 * `createScopeIfAbsent` or `updateDefaultAction`: each of those sets the version itself.
 	 */
 	async bumpVersion(id: string, ctx: OperationContext): Promise<void> {
 		await this.managerFor(ctx).increment(TypeAvailabilityPolicyScope, { id }, 'version', 1);

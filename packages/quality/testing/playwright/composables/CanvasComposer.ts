@@ -64,9 +64,9 @@ export class CanvasComposer {
 	/**
 	 * Switch between editor and workflow list and back
 	 */
-	async switchBetweenEditorAndWorkflowList(): Promise<void> {
+	async switchBetweenEditorAndWorkflowList(workflowName: string): Promise<void> {
 		await this.n8n.sideBar.clickHomeButton();
-		await this.n8n.workflows.cards.getWorkflows().first().click();
+		await this.n8n.workflows.cards.getWorkflow(workflowName).click();
 		// Wait for the editor's loading overlay to clear before subsequent header
 		// interactions; nodes can report visible while the overlay still blocks clicks.
 		await this.n8n.canvas.waitForCanvasReady();
