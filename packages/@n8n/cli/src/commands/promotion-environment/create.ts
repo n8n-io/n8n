@@ -7,8 +7,8 @@ export default class PromotionEnvironmentCreate extends BaseCommand {
 		'Create a promotion environment for one direction on an existing provider, from JSON. The settings must match the direction.';
 
 	static override examples = [
-		'echo \'{"name":"Production","scope":"instance","providerId":"prov-1","target":{"schemaVersion":1,"remoteUrl":"git@github.com:acme/flows.git"},"direction":"promote","settings":{"schemaVersion":1,"baseBranchName":"main","createBranchOnPromotion":false}}\' | <%= config.bin %> promotion-environment create --stdin',
-		'echo \'{"name":"Production","scope":"instance","providerId":"prov-1","target":{"schemaVersion":1,"remoteUrl":"git@github.com:acme/flows.git"},"direction":"apply","settings":{"schemaVersion":1,"branchName":"main"}}\' | <%= config.bin %> promotion-environment create --stdin',
+		'echo \'{"name":"Production","scope":"instance","providerId":"prov-1","remote":{"schemaVersion":1,"remoteUrl":"git@github.com:acme/flows.git"},"direction":"promote","settings":{"schemaVersion":1,"baseBranchName":"main","createBranchOnPromotion":false}}\' | <%= config.bin %> promotion-environment create --stdin',
+		'echo \'{"name":"Production","scope":"instance","providerId":"prov-1","remote":{"schemaVersion":1,"remoteUrl":"git@github.com:acme/flows.git"},"direction":"apply","settings":{"schemaVersion":1,"branchName":"main"}}\' | <%= config.bin %> promotion-environment create --stdin',
 		'<%= config.bin %> promotion-environment create --file=environment.json',
 	];
 

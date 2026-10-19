@@ -246,7 +246,7 @@ and `"settings":{"schemaVersion":1,"branchName":"main"}`):
   "name": "Production",
   "scope": "instance",
   "providerId": "prov-1",
-  "target": { "schemaVersion": 1, "remoteUrl": "git@github.com:acme/flows.git" },
+  "remote": { "schemaVersion": 1, "remoteUrl": "git@github.com:acme/flows.git" },
   "direction": "promote",
   "settings": { "schemaVersion": 1, "baseBranchName": "main", "createBranchOnPromotion": false }
 }

@@ -50,7 +50,7 @@ n8n-cli promotion-environment apply env-2
   "name": "Production",
   "scope": "instance",
   "providerId": "prov-1",
-  "target": { "schemaVersion": 1, "remoteUrl": "git@github.com:acme/flows.git" },
+  "remote": { "schemaVersion": 1, "remoteUrl": "git@github.com:acme/flows.git" },
   "direction": "promote",
   "settings": { "schemaVersion": 1, "baseBranchName": "main", "createBranchOnPromotion": false }
 }
@@ -61,7 +61,7 @@ n8n-cli promotion-environment apply env-2
   "name": "Production",
   "scope": "instance",
   "providerId": "prov-1",
-  "target": { "schemaVersion": 1, "remoteUrl": "git@github.com:acme/flows.git" },
+  "remote": { "schemaVersion": 1, "remoteUrl": "git@github.com:acme/flows.git" },
   "direction": "apply",
   "settings": { "schemaVersion": 1, "branchName": "main" }
 }
@@ -137,7 +137,7 @@ n8n-cli promotion-environment create --file=promote.json
 | `name` | Display name. |
 | `scope` | `instance` covers the whole instance. `projects` covers the linked projects. The instance can have one environment for each direction. |
 | `providerId` | The provider to use. |
-| `target.remoteUrl` | The SSH or HTTP(S) remote URL. Do not put credentials in the URL. |
+| `remote.remoteUrl` | The SSH or HTTP(S) remote URL. Do not put credentials in the URL. |
 | `direction` | `promote` or `apply`. |
 | `settings.branchName` | For `apply`: the branch to import from. |
 | `settings.baseBranchName` | For `promote`: the branch to push to. |
@@ -161,7 +161,7 @@ n8n-cli promotion-environment delete env-1
 | `--provider` | Show only the environments that use this provider. Use it to see which environments a provider edit affects. |
 | `--limit` | Maximum number of results. |
 
-`update` takes `name`, `providerId`, `target`, `settings`, or a combination. The
+`update` takes `name`, `providerId`, `remote`, `settings`, or a combination. The
 direction and the scope cannot change. `settings` replaces the whole saved
 settings and must match the direction, so send every setting you want to keep.
 

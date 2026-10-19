@@ -4,7 +4,7 @@ import { BaseCommand } from '../../base-command';
 
 export default class PromotionEnvironmentUpdate extends BaseCommand {
 	static override description =
-		'Update the name, provider, target, or settings of a promotion environment, from JSON. Settings replace the whole saved settings and must match the direction. Direction and scope cannot change.';
+		'Update the name, provider, remote, or settings of a promotion environment, from JSON. Settings replace the whole saved settings and must match the direction. Direction and scope cannot change.';
 
 	static override examples = [
 		'echo \'{"name":"Production (EU)"}\' | <%= config.bin %> promotion-environment update env-1 --stdin',

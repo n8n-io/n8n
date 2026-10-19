@@ -39,7 +39,7 @@ export default class PromotionEnvironmentList extends BaseCommand {
 
 			const data = await this.getClient(flags).listPromotionEnvironments(query, flags.limit);
 			this.output(data, flags, {
-				columns: ['id', 'name', 'scope', 'direction', 'target.remoteUrl'],
+				columns: ['id', 'name', 'scope', 'direction', 'remote.remoteUrl'],
 			});
 		});
 	}
