@@ -185,6 +185,24 @@ describe('skills tool', () => {
 			});
 		});
 
+		it('refuses an instance skill with a project before it asks for approval', async () => {
+			const suspend = vi.fn();
+			const tool = createSkillsTool(createContext(service));
+
+			const result = await executeTool(
+				tool,
+				{ action: 'create', scope: 'instance', projectId: 'project-1', skill },
+				suspendCtx(suspend),
+			);
+
+			expect(suspend).not.toHaveBeenCalled();
+			expect(result).toEqual({
+				success: false,
+				refused: true,
+				reason: 'An instance skill has no projectId.',
+			});
+		});
+
 		it('says that every project can use an instance skill', async () => {
 			const suspend = vi.fn();
 			const tool = createSkillsTool(createContext(service));
@@ -368,6 +386,25 @@ describe('skills tool', () => {
 				success: false,
 				refused: true,
 				reason: 'Pass scope together with projectId.',
+			});
+		});
+
+		it('refuses a move to the instance with a project before it asks for approval', async () => {
+			const suspend = vi.fn();
+			const tool = createSkillsTool(createContext(service));
+
+			const result = await executeTool(
+				tool,
+				{ ...input, scope: 'instance', projectId: 'project-2' },
+				suspendCtx(suspend),
+			);
+
+			expect(suspend).not.toHaveBeenCalled();
+			expect(service.get).not.toHaveBeenCalled();
+			expect(result).toEqual({
+				success: false,
+				refused: true,
+				reason: 'An instance skill has no projectId.',
 			});
 		});
 

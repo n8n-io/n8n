@@ -38,7 +38,7 @@ const projectIdField = z
 	.string()
 	.optional()
 	.describe(
-		'A project ID. list: only skills of this project. create and update: required when scope is project',
+		'A project ID. list: only skills of this project. create and update: required when scope is project, absent otherwise',
 	);
 
 const scopeField = z
@@ -198,6 +198,14 @@ function usedByMessage(detail: SkillDetail): string {
 	return `${detail.usedByAgents} agents use it.`;
 }
 
+function scopeRefusal(scope: 'project' | 'instance' | undefined, projectId: string | undefined) {
+	let reason: string | undefined;
+	if (projectId && !scope) reason = 'Pass scope together with projectId.';
+	if (scope === 'project' && !projectId) reason = 'A project skill needs a projectId.';
+	if (scope === 'instance' && projectId) reason = 'An instance skill has no projectId.';
+	return reason ? { success: false, refused: true, reason } : undefined;
+}
+
 async function audience(
 	context: InstanceAiContext,
 	scope: 'project' | 'instance',
@@ -222,9 +230,8 @@ async function handleCreate(
 	ctx: ConfirmationToolContext,
 ) {
 	const service = requireSkillService(context);
-	if (input.scope === 'project' && !input.projectId) {
-		return { success: false, refused: true, reason: 'A project skill needs a projectId.' };
-	}
+	const refusal = scopeRefusal(input.scope, input.projectId);
+	if (refusal) return refusal;
 	return await withApproval(
 		context,
 		ctx,
@@ -245,12 +252,8 @@ async function handleUpdate(
 	ctx: ConfirmationToolContext,
 ) {
 	const service = requireSkillService(context);
-	if (input.projectId && !input.scope) {
-		return { success: false, refused: true, reason: 'Pass scope together with projectId.' };
-	}
-	if (input.scope === 'project' && !input.projectId) {
-		return { success: false, refused: true, reason: 'A project skill needs a projectId.' };
-	}
+	const refusal = scopeRefusal(input.scope, input.projectId);
+	if (refusal) return refusal;
 	if (permissionFor(context, 'update') === 'blocked') return BLOCKED_RESULT;
 	const { action: _action, skillId, ...update } = input;
 	const current = await service.get(skillId);
