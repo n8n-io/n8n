@@ -1017,3 +1017,13 @@ export {
 	scimListResponseSchema,
 	scimErrorSchema,
 } from './schemas/scim.schema';
+export {
+	scimAuthFailureReasonSchema,
+	scimAuthFailureSchema,
+	type ScimAuthFailureReason,
+	type ScimAuthFailure,
+	type ScimConnectionStatus,
+	type ScimTokenCreator,
+	type ScimTokenDetails,
+	type ScimConfigResponse,
+} from './schemas/scim-config.schema';

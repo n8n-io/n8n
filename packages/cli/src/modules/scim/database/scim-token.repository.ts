@@ -21,8 +21,33 @@ export class ScimTokenRepository extends BaseRepository<ScimToken> {
 		return await this.managerFor(ctx).findOneBy(ScimToken, { slot: 'instance' });
 	}
 
+	/** The instance token with the ID and name of its creator, for display. */
+	async findInstanceTokenWithCreator(ctx: OperationContext) {
+		return await this.managerFor(ctx).findOne(ScimToken, {
+			where: { slot: 'instance' },
+			relations: { createdBy: true },
+			select: {
+				id: true,
+				token: true,
+				createdAt: true,
+				lastUsedAt: true,
+				createdById: true,
+				createdBy: { id: true, firstName: true, lastName: true },
+			},
+		});
+	}
+
 	async findByToken(token: string, ctx: OperationContext) {
 		return await this.managerFor(ctx).findOneBy(ScimToken, { token });
+	}
+
+	/**
+	 * Sets the time of the last request that the token authenticated. The match
+	 * is on the token value, so a write after a rotation does not mark the new
+	 * token as used.
+	 */
+	async markUsed(token: string, at: Date, ctx: OperationContext) {
+		await this.managerFor(ctx).update(ScimToken, { token }, { lastUsedAt: at });
 	}
 
 	/**

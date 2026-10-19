@@ -7,6 +7,7 @@ import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { ScimToken } from '../database/scim-token.entity';
+import type { ScimConnectionService } from '../scim-connection.service';
 import type { ScimOptInService } from '../scim-opt-in.service';
 import type { ScimSettingsService } from '../scim-settings.service';
 import { ScimTokenController } from '../scim-token.controller';
@@ -18,6 +19,7 @@ describe('ScimTokenController', () => {
 	let scimSettingsService: Mocked<ScimSettingsService>;
 	let moduleRegistry: Mocked<ModuleRegistry>;
 	let scimOptInService: Mocked<ScimOptInService>;
+	let scimConnectionService: Mocked<ScimConnectionService>;
 	let controller: ScimTokenController;
 
 	const req = mock<AuthenticatedRequest>({ user: mock<User>({ id: 'user-1' }) });
@@ -33,6 +35,7 @@ describe('ScimTokenController', () => {
 		scimSettingsService = mock<ScimSettingsService>();
 		moduleRegistry = mock<ModuleRegistry>();
 		scimOptInService = mock<ScimOptInService>();
+		scimConnectionService = mock<ScimConnectionService>();
 		scimTokenService.getScimBaseUrl.mockReturnValue('https://n8n.example.com/scim/v2');
 		controller = new ScimTokenController(
 			mock<Logger>(),
@@ -40,6 +43,7 @@ describe('ScimTokenController', () => {
 			scimSettingsService,
 			moduleRegistry,
 			scimOptInService,
+			scimConnectionService,
 		);
 	});
 
@@ -86,9 +90,20 @@ describe('ScimTokenController', () => {
 	});
 
 	describe('GET /config', () => {
-		it('reports the instance token state without ever exposing the token', async () => {
+		const details = {
+			createdAt: '2026-10-05T10:00:00.000Z',
+			createdBy: { id: 'user-1', firstName: 'Ada', lastName: 'Admin' },
+			lastUsedAt: '2026-10-06T10:00:00.000Z',
+		};
+
+		it('reports the instance token state and its connection status', async () => {
 			scimSettingsService.isEnabled.mockResolvedValue(true);
-			scimTokenService.getTokenInfo.mockResolvedValue({ hasToken: true, lastFour: 'ab12' });
+			scimSettingsService.getLastAuthFailure.mockResolvedValue(null);
+			scimTokenService.getTokenInfo.mockResolvedValue({
+				hasToken: true,
+				lastFour: 'ab12',
+				details,
+			});
 			const res = makeRes();
 
 			await controller.getConfig(req, res);
@@ -100,8 +115,48 @@ describe('ScimTokenController', () => {
 				hasToken: true,
 				tokenHint: 'ab12',
 				baseUrl: 'https://n8n.example.com/scim/v2',
+				token: details,
+				lastAuthFailure: null,
+				status: 'connected',
 			});
-			expect(data).not.toHaveProperty('token');
+		});
+
+		it('returns the stored failure and the status that it causes', async () => {
+			const lastAuthFailure = {
+				at: '2026-10-07T10:00:00.000Z',
+				reason: 'superseded_token',
+			} as const;
+			scimSettingsService.isEnabled.mockResolvedValue(true);
+			scimSettingsService.getLastAuthFailure.mockResolvedValue(lastAuthFailure);
+			scimTokenService.getTokenInfo.mockResolvedValue({
+				hasToken: true,
+				lastFour: 'ab12',
+				details,
+			});
+			const res = makeRes();
+
+			await controller.getConfig(req, res);
+
+			expect(res.json.mock.calls[0][0].data).toMatchObject({ lastAuthFailure, status: 'error' });
+		});
+
+		it('returns no token details and the status waiting without a token', async () => {
+			scimSettingsService.isEnabled.mockResolvedValue(false);
+			scimSettingsService.getLastAuthFailure.mockResolvedValue(null);
+			scimTokenService.getTokenInfo.mockResolvedValue({
+				hasToken: false,
+				lastFour: null,
+				details: null,
+			});
+			const res = makeRes();
+
+			await controller.getConfig(req, res);
+
+			expect(res.json.mock.calls[0][0].data).toMatchObject({
+				hasToken: false,
+				token: null,
+				status: 'waiting',
+			});
 		});
 
 		it('returns 500 rather than leaking the error to the client', async () => {
@@ -127,6 +182,25 @@ describe('ScimTokenController', () => {
 			expect(res.status).toHaveBeenCalledWith(200);
 			expect(res.json).toHaveBeenCalledWith({ data: { enabled } });
 		});
+
+		it('resets the stored failure when SCIM turns on', async () => {
+			scimSettingsService.isEnabled.mockResolvedValue(false);
+
+			await controller.updateConfig(req, makeRes(), { enabled: true });
+
+			expect(scimConnectionService.resetAuthFailure).toHaveBeenCalledTimes(1);
+		});
+
+		it.each([
+			['SCIM is already on', true, true],
+			['SCIM turns off', true, false],
+		])('keeps the stored failure when %s', async (_, wasEnabled, enabled) => {
+			scimSettingsService.isEnabled.mockResolvedValue(wasEnabled);
+
+			await controller.updateConfig(req, makeRes(), { enabled });
+
+			expect(scimConnectionService.resetAuthFailure).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('POST /token', () => {
@@ -137,6 +211,7 @@ describe('ScimTokenController', () => {
 			await controller.generateToken(req, res);
 
 			expect(scimTokenService.rotateToken).toHaveBeenCalledWith(req.user);
+			expect(scimConnectionService.resetAuthFailure).toHaveBeenCalledTimes(1);
 			expect(moduleRegistry.refreshModuleSettings).toHaveBeenCalledWith('scim');
 			expect(res.status).toHaveBeenCalledWith(201);
 			expect(res.json).toHaveBeenCalledWith({
@@ -152,6 +227,20 @@ describe('ScimTokenController', () => {
 
 			expect(res.status).toHaveBeenCalledWith(409);
 			expect(moduleRegistry.refreshModuleSettings).not.toHaveBeenCalled();
+			expect(scimConnectionService.resetAuthFailure).not.toHaveBeenCalled();
+		});
+
+		it('still returns the new token when the failure reset fails', async () => {
+			scimTokenService.rotateToken.mockResolvedValue(mock<ScimToken>({ token: 'the-token' }));
+			scimConnectionService.resetAuthFailure.mockRejectedValue(new Error('db down'));
+			const res = makeRes();
+
+			await controller.generateToken(req, res);
+
+			expect(res.status).toHaveBeenCalledWith(201);
+			expect(res.json).toHaveBeenCalledWith({
+				data: { token: 'the-token', baseUrl: 'https://n8n.example.com/scim/v2' },
+			});
 		});
 
 		it('still returns the new token when the settings refresh fails', async () => {

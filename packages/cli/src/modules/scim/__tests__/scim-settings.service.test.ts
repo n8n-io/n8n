@@ -82,4 +82,48 @@ describe('ScimSettingsService', () => {
 			expect(cacheService.set).toHaveBeenCalledWith('scim.provisioning.enabled', String(enabled));
 		});
 	});
+	describe('last auth failure', () => {
+		const KEY = 'scim.provisioning.lastAuthFailure';
+		const failure = { at: '2026-10-19T12:00:00.000Z', reason: 'superseded_token' } as const;
+
+		it('returns null when no failure is stored', async () => {
+			settingsRepository.findByKey.mockResolvedValue(null);
+
+			await expect(service.getLastAuthFailure()).resolves.toBeNull();
+			expect(settingsRepository.findByKey).toHaveBeenCalledWith(KEY);
+		});
+
+		it('returns the stored failure', async () => {
+			settingsRepository.findByKey.mockResolvedValue(
+				mock({ key: KEY, value: JSON.stringify(failure) }),
+			);
+
+			await expect(service.getLastAuthFailure()).resolves.toEqual(failure);
+		});
+
+		it.each([
+			['a value that is not JSON', 'not json'],
+			['an unknown reason', JSON.stringify({ ...failure, reason: 'scim_disabled' })],
+			['a value without a time', JSON.stringify({ reason: 'invalid_token' })],
+		])('returns null for %s', async (_, value) => {
+			settingsRepository.findByKey.mockResolvedValue(mock({ key: KEY, value }));
+
+			await expect(service.getLastAuthFailure()).resolves.toBeNull();
+		});
+
+		it('stores the failure in one row that does not load on startup', async () => {
+			await service.setLastAuthFailure(failure);
+
+			expect(settingsRepository.upsert).toHaveBeenCalledWith(
+				{ key: KEY, value: JSON.stringify(failure), loadOnStartup: false },
+				['key'],
+			);
+		});
+
+		it('clears the stored failure', async () => {
+			await service.clearLastAuthFailure();
+
+			expect(settingsRepository.delete).toHaveBeenCalledWith({ key: KEY });
+		});
+	});
 });

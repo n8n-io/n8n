@@ -124,7 +124,8 @@ describe('SCIM instance token', () => {
 			const response = await testServer.authAgentFor(user).get('/scim/config').expect(200);
 
 			expect(response.body.data).toMatchObject({ hasToken: true, tokenHint: token.slice(-4) });
-			expect(response.body.data).not.toHaveProperty('token');
+			// Show-once: only POST /rest/scim/token returns the full value.
+			expect(JSON.stringify(response.body.data)).not.toContain(token);
 		}
 	});
 
@@ -223,6 +224,150 @@ describe('SCIM instance token', () => {
 		await scimTokenRepository().replace(current?.token ?? null, legacyToken, admin.id, {});
 
 		expect((await scimRequest('get', '/Users', { bearer: legacyToken })).status).toBe(200);
+	});
+});
+
+describe('SCIM connection status', () => {
+	const config = async () => {
+		const response = await testServer.authAgentFor(owner).get('/scim/config').expect(200);
+		return response.body.data;
+	};
+
+	const rotate = async () => {
+		const response = await testServer.authAgentFor(admin).post('/scim/token').expect(201);
+		return response.body.data.token as string;
+	};
+
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
+	it('returns waiting and the creator for a new token', async () => {
+		const data = await config();
+
+		expect(data.status).toBe('waiting');
+		expect(data.lastAuthFailure).toBeNull();
+		expect(data.token).toEqual({
+			createdAt: expect.any(String),
+			createdBy: { id: admin.id, firstName: admin.firstName, lastName: admin.lastName },
+			lastUsedAt: null,
+		});
+	});
+
+	it('returns connected and the last use after a valid request', async () => {
+		await scimRequest('get', '/Users').expect(200);
+
+		const data = await config();
+
+		expect(data.status).toBe('connected');
+		expect(data.token.lastUsedAt).toEqual(expect.any(String));
+		expect(Date.parse(data.token.lastUsedAt)).toBeGreaterThanOrEqual(
+			Date.parse(data.token.createdAt),
+		);
+	});
+
+	it('writes the last use once for many valid requests', async () => {
+		const markUsed = vi.spyOn(scimTokenRepository(), 'markUsed');
+
+		for (let i = 0; i < 10; i++) await scimRequest('get', '/Users').expect(200);
+
+		expect(markUsed).toHaveBeenCalledTimes(1);
+	});
+
+	it('writes the failure once for many failed requests', async () => {
+		const setLastAuthFailure = vi.spyOn(Container.get(ScimSettingsService), 'setLastAuthFailure');
+
+		for (let i = 0; i < 10; i++) {
+			await scimRequest('get', '/Users', { bearer: i % 2 ? 'not-a-scim-token' : null }).expect(401);
+		}
+
+		expect(setLastAuthFailure).toHaveBeenCalledTimes(1);
+		expect((await config()).lastAuthFailure).toEqual({
+			at: expect.any(String),
+			reason: 'missing_header',
+		});
+	});
+
+	it('returns error with superseded_token when the IdP sends the rotated token', async () => {
+		const oldToken = token;
+		await rotate();
+
+		await scimRequest('get', '/Users', { bearer: oldToken }).expect(401);
+
+		const data = await config();
+		expect(data.lastAuthFailure).toEqual({ at: expect.any(String), reason: 'superseded_token' });
+		expect(data.status).toBe('error');
+	});
+
+	it('returns connected and keeps the failure when the IdP then sends the current token', async () => {
+		const oldToken = token;
+		const newToken = await rotate();
+		await scimRequest('get', '/Users', { bearer: oldToken }).expect(401);
+
+		await scimRequest('get', '/Users', { bearer: newToken }).expect(200);
+
+		const data = await config();
+		expect(data.status).toBe('connected');
+		expect(data.lastAuthFailure).toMatchObject({ reason: 'superseded_token' });
+	});
+
+	it('returns connected after a failure between two valid requests in one minute', async () => {
+		await scimRequest('get', '/Users').expect(200);
+		await scimRequest('get', '/Users', { bearer: 'not-a-scim-token' }).expect(401);
+		expect((await config()).status).toBe('error');
+
+		await scimRequest('get', '/Users').expect(200);
+
+		const data = await config();
+		expect(data.status).toBe('connected');
+		expect(data.lastAuthFailure).toMatchObject({ reason: 'invalid_token' });
+	});
+
+	it('clears the failure when an admin rotates the token', async () => {
+		await scimRequest('get', '/Users', { bearer: 'not-a-scim-token' }).expect(401);
+		expect((await config()).status).toBe('error');
+
+		await rotate();
+
+		const data = await config();
+		expect(data.lastAuthFailure).toBeNull();
+		expect(data.status).toBe('waiting');
+	});
+
+	it('clears the failure when an admin turns SCIM on', async () => {
+		await scimRequest('get', '/Users', { bearer: null }).expect(401);
+		const agent = testServer.authAgentFor(admin);
+		await agent.patch('/scim/config').send({ enabled: false }).expect(200);
+
+		await agent.patch('/scim/config').send({ enabled: true }).expect(200);
+
+		expect((await config()).lastAuthFailure).toBeNull();
+	});
+
+	it('does not record a failure when a SCIM operation returns 409', async () => {
+		const body = { schemas: [USER_SCHEMA], userName: 'twice@example.com' };
+		await scimRequest('post', '/Users', { body }).expect(201);
+
+		await scimRequest('post', '/Users', { body }).expect(409);
+
+		const data = await config();
+		expect(data.lastAuthFailure).toBeNull();
+		expect(data.status).toBe('connected');
+	});
+
+	it('does not record a failure while SCIM is disabled', async () => {
+		await Container.get(ScimSettingsService).setEnabled(false);
+
+		await scimRequest('get', '/Users', { bearer: 'not-a-scim-token' }).expect(403);
+		await scimRequest('get', '/Users', { bearer: null }).expect(403);
+
+		expect((await config()).lastAuthFailure).toBeNull();
+	});
+
+	it('returns no creator after the creator is deleted', async () => {
+		await testServer.authAgentFor(owner).delete(`/users/${admin.id}`).expect(200);
+
+		expect((await config()).token).toMatchObject({ createdBy: null });
 	});
 });
 

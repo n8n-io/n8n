@@ -39,6 +39,30 @@ describe('ScimTokenRepository', () => {
 		expect(manager.findOneBy).toHaveBeenCalledWith(ScimToken, { slot: 'instance' });
 	});
 
+	it('reads the instance token with only the ID and name of its creator', async () => {
+		await repository.findInstanceTokenWithCreator(ctx);
+
+		expect(manager.findOne).toHaveBeenCalledWith(ScimToken, {
+			where: { slot: 'instance' },
+			relations: { createdBy: true },
+			select: expect.objectContaining({
+				createdBy: { id: true, firstName: true, lastName: true },
+			}),
+		});
+	});
+
+	it('marks the token with the given value as used', async () => {
+		const at = new Date();
+
+		await repository.markUsed('a-token', at, ctx);
+
+		expect(manager.update).toHaveBeenCalledWith(
+			ScimToken,
+			{ token: 'a-token' },
+			{ lastUsedAt: at },
+		);
+	});
+
 	it('revokes the instance token, whoever created it', async () => {
 		await repository.deleteInstanceToken(ctx);
 
