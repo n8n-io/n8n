@@ -5,6 +5,11 @@ packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/
   s_7f7a4dee511a6b::t_fe78dfdebdcc73 73
 packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/PromotionResourceTree.vue
   s_7f7a4dee511a6b::t_fe78dfdebdcc73 46,57,60,182-183,280-281
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_7f7a4dee511a6b::t_dda10c9d20ae14 9938
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/PromotionBlockers.vue
+  s_7f7a4dee511a6b::t_dda10c9d20ae14 192-196,338,342-343,345,348-350,355-356,358-360,412,511-514
+  s_7f7a4dee511a6b::t_b3b4e03ff8237c 515-516
 ---
 {
   "schema_version": "authorship/3.0.0",

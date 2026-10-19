@@ -1,8 +1,10 @@
 packages/frontend/@n8n/i18n/src/locales/en.json
   s_7f7a4dee511a6b::t_f23353c3098097 9941-9942
   s_7f7a4dee511a6b::t_ef195d6f5d0c43 9935
+  s_7f7a4dee511a6b::t_defadb383eeac9 9903-9904,9909,9943-9944,9947-9950
 packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/PromotionResourceTree.vue
   s_7f7a4dee511a6b::t_36deedddee13b1 3,198-201,206-209
+  s_7f7a4dee511a6b::t_b0a7fe413c14fa 249
 packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionPreviewView.vue
   s_7f7a4dee511a6b::t_36deedddee13b1 288-297,347-364
 packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/PromotionBlockers.vue
@@ -16,6 +18,13 @@ packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/
 packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionPreviewView.test.ts
   s_7f7a4dee511a6b::t_115ec39167b39f 286,301-303
   s_7f7a4dee511a6b::t_0003cb248d0ff9 278-283
+  s_7f7a4dee511a6b::t_958fcd71909b0c 317,326
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/PromotionChangeCard.vue
+  s_7f7a4dee511a6b::t_253b6f5057a79b 68,74,79,156
+  s_7f7a4dee511a6b::t_4dad2c7560630b 65-67,69-73,75-78,80-81,152,155,160,378-380
+  s_7f7a4dee511a6b::t_bd4f4e5a39a0aa 381
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/PromotionChangeCard.test.ts
+  s_7f7a4dee511a6b::t_6f38b7e9d2e857 214-215,230-235
 ---
 {
   "schema_version": "authorship/3.0.0",
