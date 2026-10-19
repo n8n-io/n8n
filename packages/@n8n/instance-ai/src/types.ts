@@ -65,7 +65,6 @@ import type {
 	conversationHistorySearchHitSchema,
 	conversationHistorySearchResultSchema,
 } from './tools/conversation-history.schema';
-import type { BuilderRequiredArtifact } from './tools/orchestration/builder-required-artifact';
 import type { IdRemapper, TraceIndex, TraceWriter } from './tracing/trace-replay';
 import type {
 	VerificationClaim,
@@ -1380,59 +1379,6 @@ export interface BuilderToolsSession {
 	runId: string;
 }
 
-/** Reference to a workflow the current instance-AI session built or touched. */
-export interface SessionWorkflowRef {
-	id: string;
-	name: string;
-	description?: string;
-}
-
-/** Instance-AI-scoped builder session. */
-export interface BuilderDelegateSession {
-	/** Builder persistence thread id, e.g. `ia-builder:<instanceThreadId>:<agentId>`. */
-	threadId: string;
-	/** The visible Instance AI thread this build turn belongs to — used to bill builder OM usage against the conversation the user sees, not the private `ia-builder:` session. */
-	hostThreadId: string;
-	/** The Instance AI run id this build turn belongs to — used for OM billing dedupe. */
-	runId: string;
-	/**
-	 * Host-resolved model for the builder run — overrides the agents-module
-	 * builder's own model settings so the sub-agent inherits the instance-AI
-	 * model. Always set: Instance AI is the only streaming caller.
-	 */
-	modelConfig: ModelConfig;
-	/**
-	 * Host telemetry for the builder run — produced from the parent instance-AI
-	 * trace context so the builder's LLM/tool spans join the parent trace.
-	 */
-	telemetry?: Telemetry | BuiltTelemetry;
-	/**
-	 * Parent trace's memory-task lease hook (`InstanceAiTraceContext.onMemoryTaskEvent`).
-	 * When set, the builder forwards its own observational-memory task events
-	 * to it via `Agent.memoryTaskObserver()`, so the builder's memory LLM spans
-	 * can outlive the parent trace's root finalization.
-	 */
-	memoryTaskObserver?: (event: ScopedMemoryTaskEvent) => void;
-	/** Host run's abort signal, so a user stop ends the builder's own loop rather than only our consumption of it. */
-	abortSignal: AbortSignal;
-	/** The parent orchestrator's validated, approval-wrapped MCP tools. */
-	mcpTools?: InstanceAiToolRegistry;
-}
-
-/** A builder turn stream: consumable by normalizeStreamSource, plus final text. */
-export interface BuilderTurnStream {
-	fullStream: AsyncIterable<unknown>;
-	text: Promise<string>;
-	/** Structured host artifacts the embedded builder reported during this turn. */
-	requiredArtifacts?: Promise<BuilderRequiredArtifact[]>;
-}
-
-/** Reference to a suspended builder tool call awaiting user input. */
-export interface BuilderOpenSuspension {
-	runId: string;
-	toolCallId: string;
-}
-
 /**
  * The agents-module builder, as the orchestrator uses it. The host (cli)
  * supplies it only when the agents module is active.
@@ -1457,23 +1403,6 @@ export interface InstanceAiBuilderDelegate {
 		/** True when the id collided and an existing row was adopted instead of created. */
 		adopted?: boolean;
 	}>;
-	streamBuild(
-		agentId: string,
-		message: string,
-		session: BuilderDelegateSession,
-	): Promise<BuilderTurnStream>;
-	resumeBuild(
-		agentId: string,
-		resume: { runId: string; toolCallId: string; resumeData: unknown },
-		session: BuilderDelegateSession,
-	): Promise<BuilderTurnStream>;
-	/** All suspended tool calls on the builder's open checkpoint for this session thread ([] when none). */
-	findOpenSuspensions(
-		agentId: string,
-		session: BuilderDelegateSession,
-	): Promise<BuilderOpenSuspension[]>;
-	/** Expire the builder checkpoint for `runId` so a failed cascade leaves no orphaned open suspension. */
-	cancelOpenSuspension(agentId: string, runId: string): Promise<void>;
 	/**
 	 * Builder tools that act on the agent `resolveTargetAgentId` returns. The
 	 * resolver runs on each tool call, so the target can change during a run.
@@ -1806,8 +1735,6 @@ export interface InstanceAiContext {
 		workflowTaskService?: WorkflowTaskService;
 		onBuildOutcome?: (outcome: WorkflowBuildOutcome) => void | Promise<void>;
 	};
-	/** Ask-user decisions waiting for the next successful Agent Builder handoff. */
-	resolvedUserDecisions?: ResolvedUserDecision[];
 }
 
 // ── Setup panel v2 ───────────────────────────────────────────────────────────
@@ -2354,9 +2281,3 @@ export interface CreateInstanceAgentOptions {
 	thinkingEnabled?: boolean;
 	onMemoryTaskEvent?: (event: ScopedMemoryTaskEvent) => void;
 }
-
-export type ResolvedUserDecision = {
-	question: string;
-	answer: string;
-	skipped?: boolean;
-};

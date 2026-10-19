@@ -1,11 +1,8 @@
-import type { CredentialProvider, StreamChunk } from '@n8n/agents';
+import type { CredentialProvider } from '@n8n/agents';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import {
 	instanceAiBuilderThreadPrefix,
-	type BuilderDelegateSession,
-	type BuilderRequiredArtifact,
-	type BuilderTurnStream,
 	type InstanceAiBuilderDelegate,
 	type InstanceAiCredentialService,
 } from '@n8n/instance-ai';
@@ -23,8 +20,6 @@ import { AgentValidationService } from './agent-validation.service';
 import { AgentsService } from './agents.service';
 import { AgentsSettingsService } from './agents-settings.service';
 import { buildBuilderSessionContext } from './builder/agent-builder-session-context';
-import { AgentsBuilderService } from './builder/agents-builder.service';
-import type { InstanceAiBuilderSessionOptions } from './builder/agents-builder.service';
 import { AgentsBuilderToolsService } from './builder/agents-builder-tools.service';
 import { getBuilderRuntimeSkills } from './builder/skills';
 import { N8nMemory } from './integrations/n8n-memory';
@@ -35,61 +30,6 @@ import { getAgentConfigHash } from './utils/agent-config-hash';
 
 /** Instance AI has its own `agent-context` tool, which covers the builder's. */
 const TOOLS_PROVIDED_BY_INSTANCE_AI = ['agent-context'];
-
-/** Prompt addendum for sub-agent runs; exported for tests. */
-export const INSTANCE_AI_BUILDER_ADDENDUM = `## Instance AI session rules
-
-You are running as a sub-agent inside n8n's instance AI chat; the user sees your questions as chat cards.
-
-Preview links work in this chat. Include a markdown Preview link after a successful build and when \`agent_builder_call_agent\` reports an unsupported interaction as \`approval_required\`, using the exact relative path from the "Session context" section (form: \`[Preview](<path>)\`). Do not invent absolute URLs. Do not omit the link and describe the path in plain text instead.
-
-When you mention the agent editor, say Sessions tab for history and Preview for live chat. Never say Runs, Executions, or Activity History for agents.
-
-You can publish and unpublish the target agent with \`agent_builder_publish_agent\` and \`agent_builder_unpublish_agent\`. Never tell the user to open the agent editor and click Publish.
-
-Use \`agent-context\` for read-only exploration of the target Agent and related project context. Use the legacy read tools only when a mutation flow specifically requires their freshness token.
-
-The Instance AI orchestrator can create workflows and data tables — never ask the user to create them manually. For each missing artifact, call \`report_required_artifact\` with its concrete requirements before your final reply; the orchestrator will provision them and call you again when the Agent needs the result.
-
-Some requested chat platforms do not have a native Agent integration. In that case, finish the Agent without adding same-platform messaging nodes as Agent tools, then report an \`agent-entrypoint\` workflow. It must use the platform trigger, pass the incoming message and a stable conversation identifier into Message an Agent with a custom session key, then send the Agent's text response back through the platform. This workflow invokes the Agent and must never be attached to the Agent as a workflow tool.`;
-
-function isTextDeltaChunk(
-	chunk: StreamChunk,
-): chunk is Extract<StreamChunk, { type: 'text-delta' }> {
-	return chunk.type === 'text-delta';
-}
-
-/** Wrap a builder stream generator as a `BuilderTurnStream`: forwards every chunk
- *  as-is, while resolving `text` to the concatenated text-delta content once the
- *  stream ends (mirrors the SDK's own `fullStream` + `text` shape). */
-function toBuilderTurnStream(
-	chunks: AsyncGenerator<StreamChunk>,
-	requiredArtifacts: BuilderRequiredArtifact[],
-): BuilderTurnStream {
-	let resolveText: (text: string) => void;
-	const text = new Promise<string>((resolve) => {
-		resolveText = resolve;
-	});
-	let resolveRequiredArtifacts: (artifacts: BuilderRequiredArtifact[]) => void;
-	const requiredArtifactsPromise = new Promise<BuilderRequiredArtifact[]>((resolve) => {
-		resolveRequiredArtifacts = resolve;
-	});
-	let acc = '';
-
-	async function* pump(): AsyncGenerator<StreamChunk> {
-		try {
-			for await (const chunk of chunks) {
-				if (isTextDeltaChunk(chunk)) acc += chunk.delta;
-				yield chunk;
-			}
-		} finally {
-			resolveText(acc);
-			resolveRequiredArtifacts([...requiredArtifacts]);
-		}
-	}
-
-	return { fullStream: pump(), text, requiredArtifacts: requiredArtifactsPromise };
-}
 
 /**
  * Host implementation of the instance-ai builder-delegate port. The Instance
@@ -102,7 +42,6 @@ export class InstanceAiBuilderDelegateAdapterService {
 	constructor(
 		private readonly agentsService: AgentsService,
 		private readonly agentsBuilderToolsService: AgentsBuilderToolsService,
-		private readonly agentsBuilderService: AgentsBuilderService,
 		private readonly n8nMemory: N8nMemory,
 		private readonly agentThreadRepository: AgentThreadRepository,
 		private readonly agentConfig: AgentConfigService,
@@ -111,27 +50,6 @@ export class InstanceAiBuilderDelegateAdapterService {
 		private readonly agentValidation: AgentValidationService,
 		private readonly agentSkillRefs: AgentSkillRefsService,
 	) {}
-
-	/** Builder session options for the sub-agent surface: appends the sub-agent prompt rules. */
-	private buildSubAgentSession(
-		session: BuilderDelegateSession,
-		onRequiredArtifact: (artifact: BuilderRequiredArtifact) => void,
-		useEvalModelCatalog: boolean,
-	): InstanceAiBuilderSessionOptions {
-		return {
-			threadId: session.threadId,
-			hostThreadId: session.hostThreadId,
-			runId: session.runId,
-			instructionsAddendum: INSTANCE_AI_BUILDER_ADDENDUM,
-			modelConfig: session.modelConfig,
-			...(session.telemetry ? { telemetry: session.telemetry } : {}),
-			...(session.memoryTaskObserver ? { memoryTaskObserver: session.memoryTaskObserver } : {}),
-			abortSignal: session.abortSignal,
-			...(session.mcpTools ? { mcpTools: session.mcpTools } : {}),
-			...(useEvalModelCatalog ? { useEvalModelCatalog: true } : {}),
-			onRequiredArtifact,
-		};
-	}
 
 	createDelegate(
 		user: User,
@@ -172,67 +90,6 @@ export class InstanceAiBuilderDelegateAdapterService {
 				});
 				// An adopted row keeps the winner's name, so report the persisted one.
 				return { agentId: agent.id, projectId, name: agent.name, adopted };
-			},
-
-			streamBuild: async (agentId, message, session) => {
-				await assertAccess('agent:update');
-				const requiredArtifacts: BuilderRequiredArtifact[] = [];
-				return toBuilderTurnStream(
-					this.agentsBuilderService.buildAgent(
-						agentId,
-						projectId,
-						message,
-						credentialProviderFor(agentId),
-						credentialService,
-						user,
-						this.buildSubAgentSession(
-							session,
-							(artifact) => requiredArtifacts.push(artifact),
-							options.useEvalModelCatalog === true,
-						),
-					),
-					requiredArtifacts,
-				);
-			},
-
-			resumeBuild: async (agentId, resume, session) => {
-				await assertAccess('agent:update');
-				const requiredArtifacts: BuilderRequiredArtifact[] = [];
-				return toBuilderTurnStream(
-					this.agentsBuilderService.resumeBuild(
-						agentId,
-						projectId,
-						resume.runId,
-						resume.toolCallId,
-						resume.resumeData,
-						credentialProviderFor(agentId),
-						credentialService,
-						user,
-						this.buildSubAgentSession(
-							session,
-							(artifact) => requiredArtifacts.push(artifact),
-							options.useEvalModelCatalog === true,
-						),
-					),
-					requiredArtifacts,
-				);
-			},
-
-			findOpenSuspensions: async (agentId, session) => {
-				await assertAccess('agent:update');
-				const checkpoint = await this.agentsBuilderService.findOpenCheckpointForThread(
-					agentId,
-					session.threadId,
-				);
-				if (!checkpoint) return [];
-				return Object.values(checkpoint.pendingToolCalls ?? {})
-					.filter((tc) => tc.suspended)
-					.map((tc) => ({ runId: tc.runId, toolCallId: tc.toolCallId }));
-			},
-
-			cancelOpenSuspension: async (agentId, runId) => {
-				await assertProjectScope('agent:update');
-				await this.agentsBuilderService.cancelCheckpoint(agentId, runId);
 			},
 
 			getBuilderTools: (resolveTargetAgentId, session) =>
