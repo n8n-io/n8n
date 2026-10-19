@@ -32,5 +32,7 @@ export class ScimUserCreateDto extends Z.class({
 			}),
 		)
 		.optional(),
-	active: z.boolean().default(true),
+	// No default: a PUT that omits `active` must keep the current state.
+	// The service treats an omitted value as true only on create.
+	active: z.boolean().optional(),
 }) {}
