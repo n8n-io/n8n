@@ -32,6 +32,7 @@ import {
 } from '../mcp-scopes';
 import { McpConfig } from '../mcp.config';
 import { McpService } from '../mcp.service';
+import { McpAgentToolsService } from '../tools/agents/agent-tools.service';
 import type { McpFeatureFlags } from '../mcp.service';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -40,6 +41,7 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import { ExecutionListService } from '@/executions/execution-list.service';
 
 import { ExecutionService } from '@/executions/execution.service';
+import { SkillsApiService } from '@/modules/agents/skills/skills-api.service';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
 import { InstanceContextService } from '@/modules/instance-ai/instance-context.service';
 import {
@@ -170,11 +172,15 @@ describe('McpService scope enforcement', () => {
 		builderEnabled = true,
 		foldersLicensed = true,
 		instanceAiActive = false,
+		agentsActive = false,
+		skillsHubEnabled = false,
 		postHogClient = mockInstance(PostHogClient),
 	}: {
 		builderEnabled?: boolean;
 		foldersLicensed?: boolean;
 		instanceAiActive?: boolean;
+		agentsActive?: boolean;
+		skillsHubEnabled?: boolean;
 		postHogClient?: PostHogClient;
 	} = {}) =>
 		new McpService(
@@ -196,6 +202,7 @@ describe('McpService scope enforcement', () => {
 				},
 				tags: { disabled: false },
 				diagnostics: { enabled: false, frontendConfig: '' },
+				agents: { skillsHubEnabled },
 			}),
 			mockInstance(Telemetry),
 			mockInstance(WorkflowRunner),
@@ -229,7 +236,11 @@ describe('McpService scope enforcement', () => {
 			mockInstance(ModuleRegistry, {
 				isActive: vi
 					.fn()
-					.mockImplementation((name: string) => instanceAiActive && name === 'instance-ai'),
+					.mockImplementation(
+						(name: string) =>
+							(instanceAiActive && name === 'instance-ai') || (agentsActive && name === 'agents'),
+					),
+				settings: { get: () => undefined } as unknown as ModuleRegistry['settings'],
 			}),
 			mockInstance(EventService),
 			mockInstance(FolderService),
@@ -254,8 +265,9 @@ describe('McpService scope enforcement', () => {
 		const server = await buildService().getServer(user, mcpFeatureFlags());
 		const registered = getRegisteredToolNames(server);
 
-		// Agent and skill tools require the agents module (inactive here); their own
-		// drift guard lives in agent-tools.service.test.ts. Community-package
+		// Agent and skill tools require the agents module (inactive here). The agent
+		// tools' own drift guard lives in agent-tools.service.test.ts, and the skill
+		// tools are covered by the skills hub tests below. Community-package
 		// tools need that module, the verified catalog, and a scope-bearing
 		// caller; their registration guard lives in
 		// install-community-node.registration.test.ts. Instance-context tools
@@ -270,6 +282,23 @@ describe('McpService scope enforcement', () => {
 		);
 		expect(unregistered).toEqual([]);
 	});
+
+	it.each([true, false])(
+		'registers the skill tools only when the skills hub is on: %s',
+		async (skillsHubEnabled) => {
+			mockInstance(McpAgentToolsService);
+			mockInstance(SkillsApiService);
+			const server = await buildService({ agentsActive: true, skillsHubEnabled }).getServer(
+				user,
+				mcpFeatureFlags(),
+			);
+			const registered = getRegisteredToolNames(server);
+
+			expect([...SKILL_TOOLS].filter((name) => registered.has(name))).toEqual(
+				skillsHubEnabled ? [...SKILL_TOOLS] : [],
+			);
+		},
+	);
 
 	it.each([true, false])(
 		'sets all context tools and the resource from the shared flag override: %s',

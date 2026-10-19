@@ -7,6 +7,7 @@ import { SkillNameTakenError } from '@/modules/agents/skills/skill-name-taken.er
 import type { SkillsApiService } from '@/modules/agents/skills/skills-api.service';
 import type { Telemetry } from '@/telemetry';
 
+import { SKILL_TOOLS } from '../mcp-scopes';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import type { RegisterToolFn } from '../mcp.types';
 import { McpSkillToolsService } from '../tools/skills/skill-tools.service';
@@ -63,14 +64,8 @@ describe('McpSkillToolsService', () => {
 		service.registerTools(registerTool, user);
 	});
 
-	it('registers the skill tools', () => {
-		expect([...tools.keys()]).toEqual([
-			'search_skills',
-			'get_skill',
-			'create_skill',
-			'update_skill',
-			'delete_skill',
-		]);
+	it('registers exactly the skill tools of the scope map (drift guard)', () => {
+		expect(new Set(tools.keys())).toEqual(SKILL_TOOLS);
 	});
 
 	describe('search_skills', () => {
@@ -81,12 +76,13 @@ describe('McpSkillToolsService', () => {
 				query: 'brand',
 				attachableToAgentId: 'agent-1',
 				limit: 20,
+				skip: 40,
 			});
 
 			expect(skillsApi.list).toHaveBeenCalledWith(user, {
 				search: 'brand',
 				attachableTo: 'agent-1',
-				skip: 0,
+				skip: 40,
 				take: 20,
 			});
 			expect(result.structuredContent).toEqual({
@@ -98,7 +94,7 @@ describe('McpSkillToolsService', () => {
 		it('does not return who created a skill', async () => {
 			skillsApi.list.mockResolvedValue({ count: 1, data: [listItem] });
 
-			const result = await callTool('search_skills', { limit: 50 });
+			const result = await callTool('search_skills', { limit: 50, skip: 0 });
 
 			expect(JSON.stringify(result.structuredContent)).not.toContain('someone@example.com');
 		});

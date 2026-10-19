@@ -21,6 +21,7 @@ import { Telemetry } from '@/telemetry';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { RegisterToolFn, UserCalledMCPToolEventPayload } from '../../mcp.types';
+import { trackAndReturnToolError } from '../tool-error.utils';
 
 const searchSkillsInput = {
 	query: z.string().trim().max(200).optional().describe('Filter by skill name or description'),
@@ -32,6 +33,7 @@ const searchSkillsInput = {
 		.optional()
 		.describe('Only the skills this Agent may attach. Do not combine with scope or projectId'),
 	limit: z.number().int().min(1).max(SKILLS_MAX_PAGE_SIZE).optional().default(50),
+	skip: z.number().int().min(0).optional().default(0).describe('Skills to skip, for the next page'),
 } satisfies z.ZodRawShape;
 
 const skillIdInput = {
@@ -127,6 +129,7 @@ export class McpSkillToolsService {
 							scope: input.scope,
 							projectId: input.projectId,
 							attachableTo: input.attachableToAgentId,
+							skip: String(input.skip),
 							take: String(input.limit),
 						}),
 					);
@@ -278,10 +281,11 @@ export class McpSkillToolsService {
 			this.telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 			return toolResult(data, data.ok === false);
 		} catch (error) {
-			const message = error instanceof Error ? error.message : String(error);
-			telemetryPayload.results = { success: false, error: message };
-			this.telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
-			return toolResult({ ok: false, code: 'skill_tool_error', error: message }, true);
+			return trackAndReturnToolError(this.telemetry, telemetryPayload, error, (message) => ({
+				ok: false,
+				code: 'skill_tool_error',
+				error: message,
+			}));
 		}
 	}
 }
