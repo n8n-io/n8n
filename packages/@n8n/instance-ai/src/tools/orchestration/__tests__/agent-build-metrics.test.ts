@@ -225,24 +225,29 @@ describe('withAgentStreamMetrics', () => {
 
 	it('records the first config change of the build as agent_shown, once', async () => {
 		const chunks = [
-			{ type: 'tool-result', toolCallId: 'tc-1', toolName: 'resolve_llm', output: { ok: true } },
+			{
+				type: 'tool-result',
+				toolCallId: 'tc-1',
+				toolName: 'agent_builder_resolve_llm',
+				output: { ok: true },
+			},
 			{
 				type: 'tool-result',
 				toolCallId: 'tc-2',
-				toolName: 'write_config',
+				toolName: 'agent_builder_write_config',
 				output: { configMutated: true },
 				isError: true,
 			},
 			{
 				type: 'tool-result',
 				toolCallId: 'tc-3',
-				toolName: 'write_config',
+				toolName: 'agent_builder_write_config',
 				output: { configMutated: true },
 			},
 			{
 				type: 'tool-result',
 				toolCallId: 'tc-4',
-				toolName: 'patch_config',
+				toolName: 'agent_builder_patch_config',
 				output: { configMutated: true },
 			},
 		];
@@ -263,7 +268,7 @@ describe('withAgentStreamMetrics', () => {
 					agent_id: 'agent-1',
 					operation: 'create',
 					activity: 'creating',
-					tool_name: 'write_config',
+					tool_name: 'agent_builder_write_config',
 				},
 			],
 		]);
@@ -276,7 +281,7 @@ describe('withAgentStreamMetrics', () => {
 				{
 					type: 'tool-result',
 					toolCallId: 'tc-1',
-					toolName: 'patch_config',
+					toolName: 'agent_builder_patch_config',
 					output: { configMutated: true },
 				},
 			]),
@@ -290,30 +295,30 @@ describe('withAgentStreamMetrics', () => {
 
 	it('records each Preview test result as it streams through, and passes every chunk on', async () => {
 		const chunks = [
-			{ type: 'tool-call', toolCallId: 'tc-1', toolName: 'call_agent', input: {} },
+			{ type: 'tool-call', toolCallId: 'tc-1', toolName: 'agent_builder_call_agent', input: {} },
 			{
 				type: 'tool-result',
 				toolCallId: 'tc-1',
-				toolName: 'call_agent',
+				toolName: 'agent_builder_call_agent',
 				output: { status: 'completed' },
 			},
 			{
 				type: 'tool-result',
 				toolCallId: 'tc-2',
-				toolName: 'call_agent',
+				toolName: 'agent_builder_call_agent',
 				output: { status: 'error', code: 'max_iterations' },
 			},
 			{
 				type: 'tool-result',
 				toolCallId: 'tc-3',
-				toolName: 'call_agent',
+				toolName: 'agent_builder_call_agent',
 				output: 'boom',
 				isError: true,
 			},
 			{
 				type: 'tool-result',
 				toolCallId: 'tc-4',
-				toolName: 'write_config',
+				toolName: 'agent_builder_write_config',
 				output: { status: 'ok' },
 			},
 			{ type: 'text-delta', delta: 'Done.' },
@@ -354,7 +359,7 @@ describe('withAgentStreamMetrics', () => {
 			{
 				type: 'tool-result',
 				toolCallId: 'tc-1',
-				toolName: 'call_agent',
+				toolName: 'agent_builder_call_agent',
 				output: { status: 'completed' },
 			},
 		]);
