@@ -10,7 +10,7 @@ description: >-
   including compound requests, independent automations introduced mid-build,
   one-off questions or reports that need external systems you cannot query
   directly, and requests that need clarification before an anchor can be
-  chosen. An explicit Agent request routes to agent-builder before ask-user.
+  chosen. An explicit Agent request routes to agent-builder before workflow_builder_ask_user.
   Do not load for routine edits or extensions when the conversation already
   targets a workflow or Agent.
 ---
@@ -31,7 +31,7 @@ show up inside that flow.
 If the user asked to build, route on the result: workflow-builder for
 workflow-anchored (a bounded LLM step is an AI node in the graph; an embedded
 agent is an AI Agent step inside it), an agent-oriented design for
-agent-anchored (a tool-use loop), `ask-user` for needs-clarification, or answer
+agent-anchored (a tool-use loop), `workflow_builder_ask_user` for needs-clarification, or answer
 directly for out-of-scope.
 
 ## Inputs
@@ -80,7 +80,7 @@ Two orthogonal decisions per request, or per part for compound requests:
   execution, listing or managing workflows or agents, querying data) are not
   classified by this skill at all — route them through their normal paths.
   Per the system prompt's "Existing Resources" section, check
-  `workflows(action="list")` before reading "trigger my X" as a build: a
+  `workflow_builder_workflows(action="list")` before reading "trigger my X" as a build: a
   workflow's own name can contain a build verb ("X — Create"), and a link to
   a service you integrate with is an input value, not a request to build an
   integration for it. Finally, a one-off task with a concrete
@@ -89,7 +89,7 @@ Two orthogonal decisions per request, or per part for compound requests:
   just the vehicle. Classify it by shape (bounded data already in hand,
   imperative ask, no trigger/schedule/reuse vocabulary) — users rarely say
   "one-off" explicitly. Load the `one-off-operations` skill before building
-  and pass `executionIntent: "one-off"` to `build-workflow`; the completion
+  and pass `executionIntent: "one-off"` to `workflow_builder_build_workflow`; the completion
   criterion is then a live run with read-back instead of simulated
   verification.
 
@@ -119,7 +119,7 @@ be a direct agent tool or a workflow tool:
 - Use a **workflow tool** only when one agent tool call must run an ordered
   multi-node procedure, or when the user explicitly needs that workflow
   reusable, manually callable, or usable outside the agent. Build the workflow
-  first, pass it to `build-agent` via `workflowContext`, and set
+  first, pass it to `agent_builder_build_agent` via `workflowContext`, and set
   `embeds_other: true`.
 
 Count the nodes required inside one tool invocation, not the total number of
@@ -128,7 +128,7 @@ two direct node tools; an atomic lookup-transform-write procedure is one
 workflow tool.
 
 After choosing an agent-anchored design, load `agent-builder` before calling
-`build-agent`. It owns prerequisite creation and the handoff to the delegated
+`agent_builder_build_agent`. It owns prerequisite creation and the handoff to the delegated
 builder.
 
 ## Decision Steps
@@ -142,7 +142,7 @@ builder.
    even when it could implement the same behavior. You may explain a simpler
    workflow alternative, but switch only after the user chooses it. Route
    missing setup and implementation choices to Agent Builder. The immediate
-   next routing action is to load `agent-builder`. Do not call `ask-user`
+   next routing action is to load `agent-builder`. Do not call `workflow_builder_ask_user`
    between classification and that handoff. Forward the request without
    selecting services, tools, topics, schedules, or other implementation
    details. Agent Builder owns those questions. An explicit
@@ -266,7 +266,7 @@ user did not build in this conversation but opened in the editor. When the
 editor/canvas context shows an existing agent and the user asks to change,
 add, or remove its configuration or capabilities (instructions, model,
 tools, skills, tasks, channels, memory, sub-agents), classify
-**agent-anchored** and route to `build-agent` targeting that agent. Do not
+**agent-anchored** and route to `agent_builder_build_agent` targeting that agent. Do not
 route to `workflow-builder`, and do not treat the request as a workflow
 change even when a workflow is also in context, unless the user explicitly
 names the workflow as the target. A capability the agent cannot have is
@@ -404,7 +404,7 @@ valid, apply the growth tiebreaker instead of asking a theoretical preference.
   and do not claim the channel is configured.
 - (An existing agent is open in the editor.) "Make it also file a Linear
   ticket when it can't resolve an issue." -> **agent-anchored**: the open
-  agent is the target; route to `build-agent` targeting that agent to add the
+  agent is the target; route to `agent_builder_build_agent` targeting that agent to add the
   capability. Do not start a workflow build, even though a workflow could
   also file a ticket — the user asked to change the agent.
 - (Both an agent and a workflow are open.) "Add a daily summary of new

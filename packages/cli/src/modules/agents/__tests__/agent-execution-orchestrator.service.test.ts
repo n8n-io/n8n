@@ -1791,7 +1791,7 @@ describe('AgentExecutionOrchestratorService', () => {
 			{
 				type: 'tool-call-suspended',
 				toolCallId: 'tc-1',
-				toolName: 'ask_questions',
+				toolName: 'agent_builder_ask_questions',
 				runId: 'run-1',
 			},
 		]);
@@ -4083,7 +4083,7 @@ describe('AgentExecutionOrchestratorService', () => {
 			{
 				type: 'tool-call-suspended',
 				toolCallId: 'tc-2',
-				toolName: 'ask_questions',
+				toolName: 'agent_builder_ask_questions',
 				runId: 'run-2',
 			},
 		]);
