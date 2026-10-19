@@ -17,6 +17,7 @@ import type {
 	RunOutputSink,
 	RunServices,
 } from '../../types/runtime/agent-loop';
+import { withPromptSizeBreakdown } from './prompt-size-usage';
 import { RuntimeContextBuilder, type StaticLoopContext } from './runtime-context';
 import {
 	extractSettledToolCalls,
@@ -1137,7 +1138,7 @@ export class AgentRuntime {
 		state: LoopState,
 		turn: ModelTurnResult,
 	): void {
-		state.totalUsage = mergeUsage(state.totalUsage, turn.usage);
+		state.totalUsage = mergeUsage(state.totalUsage, withPromptSizeBreakdown(turn.usage));
 		incrementTokenCountFromUsage(ctx.options?.executionCounter, turn.usage);
 		sink.reportUsage(state.totalUsage);
 	}
