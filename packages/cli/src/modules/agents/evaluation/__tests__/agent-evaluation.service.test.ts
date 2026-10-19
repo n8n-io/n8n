@@ -188,7 +188,9 @@ describe('AgentEvaluationService', () => {
 		if (!result.preparation) throw new Error('Expected evaluation preparation');
 		expect(skillRefs.skillsForRefs).not.toHaveBeenCalled();
 		const zeta = { name: 'Zeta', description: 'Zeta skill', instructions: 'Use zeta.' };
+		const alpha = { name: 'Alpha', description: 'Alpha skill', instructions: 'Use alpha.' };
 		skillRefs.bodies.zeta = zeta;
+		skillRefs.bodies.alpha = alpha;
 		reconstruction.reconstructFromAgentEntity.mockResolvedValue({
 			agent: mock(),
 			toolRegistry: new Map(),
@@ -197,7 +199,7 @@ describe('AgentEvaluationService', () => {
 		await result.preparation.buildRuntime({});
 		expect(reconstruction.reconstructFromAgentEntity.mock.calls[0][0]).toMatchObject({
 			skillRefs: refs,
-			skills: { zeta },
+			skills: { zeta, alpha },
 		});
 	});
 

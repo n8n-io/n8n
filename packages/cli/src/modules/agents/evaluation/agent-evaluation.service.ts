@@ -10,7 +10,7 @@ import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstructi
 import { hashAgentSandboxPrincipal } from '../agent-sandbox-principal';
 import { AgentSkillRefsService } from '../agent-skill-refs.service';
 import { AgentsSettingsService } from '../agents-settings.service';
-import { Agent } from '../entities/agent.entity';
+import { Agent, type ProjectAgent } from '../entities/agent.entity';
 import { sanitizeToolName } from '../json-config/agent-config-composition';
 import { fromAgentDocument, toAgentDocument } from '../json-config/agent-document';
 import type { AgentSkillRefs } from '../json-config/agent-document';
@@ -91,7 +91,7 @@ export class AgentEvaluationService {
 	private async buildRuntime(
 		user: User,
 		projectId: string,
-		snapshot: { agent: Agent; skillRefs: AgentSkillRefs },
+		snapshot: { agent: ProjectAgent; skillRefs: AgentSkillRefs },
 		skippedFeatures: AgentEvaluationSkippedFeature[],
 		instrumentation: Omit<AgentRuntimeInstrumentation, 'transformDelegatedAgentConfig'>,
 	) {
