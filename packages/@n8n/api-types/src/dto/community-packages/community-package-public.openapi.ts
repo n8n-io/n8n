@@ -34,10 +34,6 @@ export const packagePolicyRestrictionsFieldDocs = {
 		description:
 			'Whether a project can allow this node type. True when an instance policy blocks the node type unless a project allows it.',
 	},
-	blockedProjectCount: {
-		description:
-			'Number of projects that block this node type. Set only when blockedOn is projects.',
-	},
 } as const satisfies Record<string, ZodOpenAPIMetadata>;
 
 export const updateCommunityPackageFieldDocs = {

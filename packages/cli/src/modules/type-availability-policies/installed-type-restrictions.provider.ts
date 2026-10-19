@@ -27,15 +27,15 @@ export function toRestrictedTypes(
 			];
 		}
 
-		const blockedProjectCount = byProject.filter(({ verdicts }) =>
+		const blockedInProjects = byProject.some(({ verdicts }) =>
 			verdicts.some(
 				(projectVerdict) =>
 					projectVerdict.name === verdict.name && projectVerdict.action === 'deny',
 			),
-		).length;
+		);
 
-		return blockedProjectCount > 0
-			? [{ type: verdict.name, blockedOn: 'projects', optInAvailable: false, blockedProjectCount }]
+		return blockedInProjects
+			? [{ type: verdict.name, blockedOn: 'projects', optInAvailable: false }]
 			: [];
 	});
 }
@@ -57,7 +57,10 @@ export class NodeTypePolicyInstalledTypeRestrictionsProvider
 	}): Promise<PackagePolicyRestrictions | null> {
 		if (
 			!this.licenseState.isLicensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES) ||
-			!this.policyEnforcementService.hasChecksFor('workflowStart')
+			!(
+				this.policyEnforcementService.hasChecksFor('workflowStart') ||
+				this.policyEnforcementService.hasChecksFor('workflowSave')
+			)
 		) {
 			return null;
 		}

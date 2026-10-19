@@ -85,9 +85,6 @@ responses:
                       optInAvailable:
                         type: boolean
                         description: Whether a project can allow this node type. True when an instance policy blocks the node type unless a project allows it.
-                      blockedProjectCount:
-                        type: integer
-                        description: Number of projects that block this node type. Set only when blockedOn is projects.
                     required:
                       - type
                       - blockedOn

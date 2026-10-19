@@ -58,7 +58,7 @@ describe('toRestrictedTypes', () => {
 		).toEqual([{ type: ALPHA, blockedOn: 'instance', optInAvailable: true }]);
 	});
 
-	it('counts the projects that deny a type the instance allows', () => {
+	it('reports a type the instance allows but some projects deny', () => {
 		expect(
 			toRestrictedTypes(verdicts([]), [
 				{ projectId: 'p1', verdicts: verdicts([BETA]) },
@@ -66,8 +66,8 @@ describe('toRestrictedTypes', () => {
 				{ projectId: 'p3', verdicts: verdicts([]) },
 			]),
 		).toEqual([
-			{ type: BETA, blockedOn: 'projects', optInAvailable: false, blockedProjectCount: 2 },
-			{ type: GAMMA, blockedOn: 'projects', optInAvailable: false, blockedProjectCount: 1 },
+			{ type: BETA, blockedOn: 'projects', optInAvailable: false },
+			{ type: GAMMA, blockedOn: 'projects', optInAvailable: false },
 		]);
 	});
 
@@ -78,7 +78,7 @@ describe('toRestrictedTypes', () => {
 			]),
 		).toEqual([
 			{ type: ALPHA, blockedOn: 'instance', optInAvailable: false },
-			{ type: BETA, blockedOn: 'projects', optInAvailable: false, blockedProjectCount: 1 },
+			{ type: BETA, blockedOn: 'projects', optInAvailable: false },
 		]);
 	});
 });
@@ -134,7 +134,15 @@ describe('NodeTypePolicyInstalledTypeRestrictionsProvider', () => {
 		expect(service.evaluateComposedTypesForAllProjects).not.toHaveBeenCalled();
 	});
 
-	it('returns null when no policy check runs', async () => {
+	it('evaluates when only the save point has policy checks', async () => {
+		policyEnforcementService.hasChecksFor.mockImplementation((point) => point === 'workflowSave');
+
+		await expect(provider.describeRestrictions({ nodeTypes: PACKAGE_NODES })).resolves.toEqual({
+			nodeTypes: [{ type: ALPHA, blockedOn: 'instance', optInAvailable: false }],
+		});
+	});
+
+	it('returns null when neither the start nor the save point has policy checks', async () => {
 		policyEnforcementService.hasChecksFor.mockReturnValue(false);
 
 		await expect(provider.describeRestrictions({ nodeTypes: PACKAGE_NODES })).resolves.toBeNull();

@@ -266,9 +266,7 @@ describe('Community packages (Public API)', () => {
 			const node = mockNode(packageName);
 			const pkg = mockPackage({ packageName, installedNodes: [node] });
 			const policyRestrictions: PackagePolicyRestrictions = {
-				nodeTypes: [
-					{ type: node.type, blockedOn: 'projects', optInAvailable: false, blockedProjectCount: 2 },
-				],
+				nodeTypes: [{ type: node.type, blockedOn: 'projects', optInAvailable: false }],
 			};
 			communityPackagesService.parseNpmPackageName.mockReturnValue(parsedNpmPackageName);
 			communityPackagesService.findInstalledPackage.mockResolvedValue(null);

@@ -8,11 +8,6 @@ export const restrictedPackageTypeSchema = z.object({
 	type: z.string().openapi(packagePolicyRestrictionsFieldDocs.type),
 	blockedOn: z.enum(['instance', 'projects']).openapi(packagePolicyRestrictionsFieldDocs.blockedOn),
 	optInAvailable: z.boolean().openapi(packagePolicyRestrictionsFieldDocs.optInAvailable),
-	blockedProjectCount: z
-		.number()
-		.int()
-		.optional()
-		.openapi(packagePolicyRestrictionsFieldDocs.blockedProjectCount),
 });
 
 export const packagePolicyRestrictionsSchema = z.object({
