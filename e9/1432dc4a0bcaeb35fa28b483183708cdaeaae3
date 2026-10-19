@@ -1,0 +1,21 @@
+packages/nodes-base/nodes/Coda/Coda.node.ts
+  s_2e1fa95fc44f8f::t_1ead681e19279d 16,337,506,849,878,943
+packages/nodes-base/nodes/Coda/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_d7bbb411c83544 5,39-47,49-53,55-58,60-61
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e91432dc4a0bcaeb35fa28b483183708cdaeaae3",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

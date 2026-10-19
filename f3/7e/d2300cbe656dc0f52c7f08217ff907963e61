@@ -1,0 +1,27 @@
+packages/nodes-base/nodes/Microsoft/Dataverse/MicrosoftDataverse.node.ts
+  s_2e1fa95fc44f8f::t_3549bda5826b7b 25-26
+packages/nodes-base/nodes/Microsoft/Dataverse/operations/upsertRow.ts
+  s_2e1fa95fc44f8f::t_4303d1556e3a5c 2,33-35,139-147
+packages/nodes-base/nodes/Microsoft/Dataverse/test/operations.test.ts
+  s_2e1fa95fc44f8f::t_727fb4286a8c52 601-619
+packages/nodes-base/nodes/Microsoft/Dataverse/test/shared.test.ts
+  s_2e1fa95fc44f8f::t_4b52123e48b735 251-252
+packages/t.log
+  s_2e1fa95fc44f8f::t_7578007e45ea10 1-3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f37ed2300cbe656dc0f52c7f08217ff907963e61",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

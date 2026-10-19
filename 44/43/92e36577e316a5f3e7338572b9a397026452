@@ -1,0 +1,25 @@
+packages/nodes-base/nodes/SeaTable/SeaTable.node.ts
+  s_2e1fa95fc44f8f::t_5ff0f2003450ec 16,23
+packages/nodes-base/nodes/SeaTable/__tests__/v2/getPublicURL.test.ts
+  s_2e1fa95fc44f8f::t_162ba3996f2825 2,8,17,29-40,42-50
+packages/nodes-base/nodes/SeaTable/v2/actions/SeaTable.node.ts
+  s_2e1fa95fc44f8f::t_1def702e12361b 13
+packages/nodes-base/nodes/SeaTable/v2/actions/asset/getPublicURL.operation.ts
+  s_2e1fa95fc44f8f::t_7c8e72584acd4d 8,38,48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "444392e36577e316a5f3e7338572b9a397026452",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,37 @@
+packages/nodes-base/nodes/Google/BusinessProfile/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_06744ba07cef12 353-355,370,375-426
+packages/nodes-base/nodes/Google/BusinessProfile/PostDescription.ts
+  s_2e1fa95fc44f8f::t_20e74a3cc9b4cc 10-11,29,41,57,73,91
+packages/nodes-base/nodes/Google/BusinessProfile/ReviewDescription.ts
+  s_2e1fa95fc44f8f::t_4e110a428a84bd 8-10,28,44,61,78
+packages/nodes-base/nodes/Google/BusinessProfile/test/workflow/declarative.workflow.json
+  s_2e1fa95fc44f8f::t_f0de773e3741f6 1-94
+packages/nodes-base/nodes/Google/BusinessProfile/test/workflow/declarative.workflow.test.ts
+  s_2e1fa95fc44f8f::t_c7787cb147491c 1-29
+packages/nodes-base/nodes/Google/BusinessProfile/test/PathPresend.test.ts
+  s_1853144a1bb8cd::t_9ff82a48369ba1 1-95
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2f012bc4d0711f365b335d5ca19b3f4249daf529",
+  "prompts": {},
+  "sessions": {
+    "s_1853144a1bb8cd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a0bf979d0c47e5327",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

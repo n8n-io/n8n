@@ -1,0 +1,21 @@
+packages/nodes-base/nodes/Aws/S3/test/regression/requests.test.ts
+  s_2e1fa95fc44f8f::t_9658c90423f440 355-356
+packages/nodes-base/nodes/Aws/S3/utils.ts
+  s_2e1fa95fc44f8f::t_7ebc435d99baa3 32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1c13d9dde9b62e8b5bf9209c1c52acf9ab7e7bdf",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}
