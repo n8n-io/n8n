@@ -253,6 +253,8 @@ export type {
 
 export const recordAgentBuildRunOutcome: typeof AgentBuildMetricsMod.recordAgentBuildRunOutcome =
 	lazyFunction(() => loadAgentBuildMetrics().recordAgentBuildRunOutcome);
+export const carryAgentBuildRunState: typeof AgentBuildMetricsMod.carryAgentBuildRunState =
+	lazyFunction(() => loadAgentBuildMetrics().carryAgentBuildRunState);
 
 // Plain re-export, not a lazyFunction: this is a pure mapping with no imports,
 // so it costs nothing to load eagerly.

@@ -9,6 +9,7 @@ import type {
 	OrchestrationContext,
 } from '../../../types';
 import {
+	carryAgentBuildRunState,
 	recordAgentBuildRunOutcome,
 	recordAgentBuilderResumed,
 	recordAgentBuilderSuspended,
@@ -189,6 +190,36 @@ describe('agent build metrics', () => {
 			'agent-1',
 			'agent-2',
 		]);
+	});
+
+	it('carries the run state to a context that a resume rebuilt', async () => {
+		vi.useFakeTimers();
+		try {
+			const { context: previous } = makeContext();
+			const { context: rebuilt, validateAgent } = makeContext();
+			recordAgentSelected(previous, 'agent-1', { created: true });
+			recordAgentBuilderToolResult(previous, 'agent-1', configChange);
+			recordAgentBuilderSuspended(previous);
+			vi.advanceTimersByTime(800);
+
+			carryAgentBuildRunState(previous, rebuilt);
+			recordAgentBuilderResumed(rebuilt);
+			recordAgentBuildRunOutcome(rebuilt, 'completed');
+			recordAgentBuildRunOutcome(previous, 'completed');
+			await flushDetached();
+
+			expect(metricCalls('agent_build')).toEqual([
+				expect.objectContaining({
+					operation: 'create',
+					activity: 'creating',
+					config_updated: true,
+					user_wait_ms: 800,
+				}),
+			]);
+			expect(validateAgent).toHaveBeenCalledWith('agent-1');
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 
 	it('records nothing for a run that did not work on an agent', async () => {

@@ -71,6 +71,17 @@ function operationFor(state: AgentBuildState): 'create' | 'update' {
 	return state.created ? 'create' : 'update';
 }
 
+/** A resume that rebuilds the orchestration context continues the same run. */
+export function carryAgentBuildRunState(
+	previous: OrchestrationContext,
+	rebuilt: OrchestrationContext,
+): void {
+	const state = runStates.get(previous);
+	if (!state || previous === rebuilt) return;
+	runStates.delete(previous);
+	runStates.set(rebuilt, state);
+}
+
 export function recordAgentSelected(
 	context: OrchestrationContext,
 	agentId: string,
@@ -153,6 +164,7 @@ function toOutcome(status: AgentBuildRunStatus): AgentBuildOutcome {
  * Records `agent_build` and `agent_verification` for each agent of the run.
  * Call it on a terminal run status, before the run trace is finalized. A
  * suspended run is not recorded: it reports its real result after the resume.
+ * Only the first call for a run records: later calls are no-ops.
  */
 export function recordAgentBuildRunOutcome(
 	context: OrchestrationContext,

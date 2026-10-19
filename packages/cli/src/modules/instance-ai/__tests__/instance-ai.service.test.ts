@@ -57,6 +57,7 @@ vi.mock('@n8n/instance-ai', async () => {
 		createDomainAccessTracker: vi.fn(),
 		emitAgentSnapshotTraceEvent: vi.fn(async () => await Promise.resolve('emitted')),
 		recordAgentBuildRunOutcome: vi.fn(),
+		carryAgentBuildRunState: vi.fn(),
 		createSandbox: vi.fn(),
 		createWorkspace: vi.fn(),
 		createLazyRuntimeWorkspace: vi.fn(
@@ -273,6 +274,7 @@ import {
 	shutdownProductTelemetryProviders,
 	emitAgentSnapshotTraceEvent,
 	recordAgentBuildRunOutcome,
+	carryAgentBuildRunState,
 	threadProvenanceMetadata,
 	type BuilderUsageItem,
 	type WorkSummary,
@@ -2958,6 +2960,35 @@ describe('InstanceAiService — suspended run user revalidation', () => {
 		},
 	);
 
+	it('carries the agent build state to the rebuilt orchestration context', async () => {
+		const service = createSuspendedRunResumeService();
+		const suspended = service.runState.findSuspendedByRequestId('req-1');
+		const previousContext = { id: 'previous' } as unknown as OrchestrationContext;
+		const rebuiltContext = { id: 'rebuilt' } as unknown as OrchestrationContext;
+		service.runState.findSuspendedByRequestId.mockReturnValue({
+			...suspended,
+			orchestrationContext: previousContext,
+		});
+		service.revalidateActiveUser.mockResolvedValue({ id: 'user-1', disabled: false } as User);
+		service.rebuildAgentForResume.mockResolvedValue({
+			agent: { id: 'rebuilt-agent' },
+			modelId: { provider: 'anthropic', model: 'claude' },
+			orchestrationContext: rebuiltContext,
+		});
+
+		await service.resumeSuspendedRun('user-1', 'req-1', {
+			approved: true,
+			connectedSlugs: ['github'],
+		});
+
+		expect(carryAgentBuildRunState).toHaveBeenCalledWith(previousContext, rebuiltContext);
+		expect(service.processResumedStream).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.anything(),
+			expect.objectContaining({ orchestrationContext: rebuiltContext }),
+		);
+	});
+
 	it('fails the resume and cancels the run when the rebuild fails', async () => {
 		const service = createSuspendedRunResumeService();
 		const freshUser = { id: 'user-1', disabled: false } as User;
@@ -3420,6 +3451,54 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 		);
 
 		expect(recordAgentBuildRunOutcome).toHaveBeenCalledWith(orchestrationContext, 'errored');
+		expect(vi.mocked(recordAgentBuildRunOutcome).mock.invocationCallOrder.at(-1)).toBeLessThan(
+			service.tracing.finalizeRunTracing.mock.invocationCallOrder.at(-1)!,
+		);
+	});
+
+	it('records the agent build outcome of a resumed run that throws', async () => {
+		const service = createTerminalGuardOrderService();
+		const abortController = new AbortController();
+		const orchestrationContext = {} as OrchestrationContext;
+		vi.mocked(resumeAgentRun).mockImplementationOnce(async (_agent, _data, resumeOptions) => {
+			const onResumeClaimed = resumeOptions.onResumeClaimed;
+			if (typeof onResumeClaimed === 'function') await onResumeClaimed();
+			throw new Error('stream broke');
+		});
+
+		await service.processResumedStream(
+			{},
+			{},
+			{
+				runId: 'run-1',
+				agentRunId: 'agent-run-1',
+				threadId: 'thread-a',
+				user: fakeUser,
+				toolCallId: 'tool-call-1',
+				signal: abortController.signal,
+				abortController,
+				orchestrationContext,
+			},
+		);
+
+		expect(recordAgentBuildRunOutcome).toHaveBeenCalledWith(orchestrationContext, 'errored');
+		expect(vi.mocked(recordAgentBuildRunOutcome).mock.invocationCallOrder.at(-1)).toBeLessThan(
+			service.tracing.finalizeRunTracing.mock.invocationCallOrder.at(-1)!,
+		);
+	});
+
+	it('records a thrown run that the user stopped as cancelled', async () => {
+		const service = createTerminalGuardOrderService();
+		const abortController = new AbortController();
+		stubInitialRunSurface(service);
+		vi.mocked(streamAgentRun).mockImplementationOnce(async () => {
+			abortController.abort();
+			throw new Error('aborted');
+		});
+
+		await service.executeRun(fakeUser, 'thread-a', 'run-1', 'Build an agent', abortController);
+
+		expect(recordAgentBuildRunOutcome).toHaveBeenCalledWith(expect.any(Object), 'cancelled');
 		expect(vi.mocked(recordAgentBuildRunOutcome).mock.invocationCallOrder.at(-1)).toBeLessThan(
 			service.tracing.finalizeRunTracing.mock.invocationCallOrder.at(-1)!,
 		);
