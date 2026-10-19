@@ -1,9 +1,23 @@
 import { SCIM_OPT_IN_FLAG } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import { EventService, JwtService } from '@n8n/backend-services';
-import { testDb } from '@n8n/backend-test-utils';
+import {
+	createTeamProject,
+	createWorkflow,
+	getPersonalProject,
+	randomCredentialPayload,
+	testDb,
+} from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import { UserRepository, type User } from '@n8n/db';
+import {
+	CredentialsRepository,
+	ProjectRepository,
+	SharedCredentialsRepository,
+	SharedWorkflowRepository,
+	UserRepository,
+	WorkflowRepository,
+	type User,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import { getApiKeyScopesForRole } from '@n8n/permissions';
 
@@ -11,11 +25,12 @@ import { setSamlLoginEnabled } from '@/modules/sso-saml/saml-helpers';
 import { PostHogClient } from '@/posthog';
 import { PublicApiKeyService } from '@/services/public-api-key.service';
 import { setCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
+import { saveCredential } from '@test-integration/db/credentials';
 import { createAdmin, createMember, createOwner } from '@test-integration/db/users';
 import * as utils from '@test-integration/utils';
 
 import { ScimTokenRepository } from '../database/scim-token.repository';
-import { ScimSettingsService } from '../scim-settings.service';
+import { DEFAULT_SCIM_DEPROVISIONING_POLICY, ScimSettingsService } from '../scim-settings.service';
 import { ScimConfig } from '../scim.config';
 
 const testServer = utils.setupTestServer({
@@ -82,8 +97,21 @@ const turnOnSso = async (protocol: 'saml' | 'oidc') => {
 };
 
 beforeEach(async () => {
-	await testDb.truncate(['ApiKey', 'AuthIdentity', 'ProjectRelation', 'Project', 'User']);
+	await testDb.truncate([
+		'ApiKey',
+		'AuthIdentity',
+		'SharedWorkflow',
+		'WorkflowEntity',
+		'SharedCredentials',
+		'CredentialsEntity',
+		'ProjectRelation',
+		'Project',
+		'User',
+	]);
 	await scimTokenRepository().delete({});
+	await Container.get(ScimSettingsService).setDeprovisioningPolicy({
+		...DEFAULT_SCIM_DEPROVISIONING_POLICY,
+	});
 
 	// Every test except the opt-in ones runs with the opt-in on.
 	Container.get(ScimConfig).optIn = true;
@@ -603,6 +631,290 @@ describe('SCIM-managed users', () => {
 	});
 });
 
+describe('SCIM deprovisioning policy', () => {
+	const patchConfig = (body: object) =>
+		testServer.authAgentFor(admin).patch('/scim/config').send(body);
+
+	const getConfig = async () => {
+		const response = await testServer.authAgentFor(admin).get('/scim/config').expect(200);
+		return response.body.data;
+	};
+
+	const deleteViaScim = async (id: string) => await scimRequest('delete', `/Users/${id}`);
+
+	/** A member with one workflow and one credential in their personal project. */
+	const createMemberWithWork = async () => {
+		const member = await createMember();
+		const workflow = await createWorkflow({ name: 'Leaver workflow' }, member);
+		const credential = await saveCredential(randomCredentialPayload(), {
+			user: member,
+			role: 'credential:owner',
+		});
+		return { member, personalProject: await getPersonalProject(member), workflow, credential };
+	};
+
+	const owningProjects = async (workflowId: string, credentialId: string) => ({
+		workflow: (await Container.get(SharedWorkflowRepository).getWorkflowOwningProject(workflowId))
+			?.id,
+		credential: (
+			await Container.get(SharedCredentialsRepository).findCredentialOwningProject(credentialId)
+		)?.id,
+	});
+
+	const userExists = async (id: string) => await Container.get(UserRepository).existsBy({ id });
+
+	describe('PATCH /rest/scim/config', () => {
+		it('changes only onDelete and keeps enabled', async () => {
+			const response = await patchConfig({ onDelete: 'delete' }).expect(200);
+
+			expect(response.body.data).toEqual({
+				enabled: true,
+				onDelete: 'delete',
+				dataAction: 'transfer',
+				transferProjectId: null,
+			});
+			expect(await getConfig()).toMatchObject({
+				enabled: true,
+				onDelete: 'delete',
+				dataAction: 'transfer',
+				transferTarget: null,
+			});
+		});
+
+		it('keeps SCIM off when the body changes only the policy', async () => {
+			await Container.get(ScimSettingsService).setEnabled(false);
+
+			await patchConfig({ dataAction: 'delete' }).expect(200);
+
+			expect(await getConfig()).toMatchObject({ enabled: false, dataAction: 'delete' });
+		});
+
+		it('returns 400 for a body without fields', async () => {
+			await patchConfig({}).expect(400);
+
+			expect(await getConfig()).toMatchObject({ enabled: true, onDelete: 'disable' });
+		});
+
+		it('returns 400 and saves nothing for a transfer project that does not exist', async () => {
+			const response = await patchConfig({
+				enabled: false,
+				onDelete: 'delete',
+				transferProjectId: 'does-not-exist',
+			});
+
+			expect(response.status).toBe(400);
+			expect(await getConfig()).toMatchObject({
+				enabled: true,
+				onDelete: 'disable',
+				transferTarget: null,
+			});
+		});
+
+		it('returns 400 for the personal project of a deactivated user', async () => {
+			const member = await createMember();
+			await Container.get(UserRepository).update({ id: member.id }, { disabled: true });
+			const { id } = await getPersonalProject(member);
+
+			await patchConfig({ transferProjectId: id }).expect(400);
+		});
+
+		it('returns 403 to a member', async () => {
+			const member = await createMember();
+
+			await testServer
+				.authAgentFor(member)
+				.patch('/scim/config')
+				.send({ onDelete: 'delete' })
+				.expect(403);
+		});
+	});
+
+	describe('GET /rest/scim/config', () => {
+		it('describes a team project target', async () => {
+			const team = await createTeamProject('Platform');
+
+			await patchConfig({ transferProjectId: team.id }).expect(200);
+
+			expect((await getConfig()).transferTarget).toEqual({
+				projectId: team.id,
+				kind: 'project',
+				name: 'Platform',
+				icon: null,
+				valid: true,
+			});
+		});
+
+		it('describes a person target', async () => {
+			const member = await createMember();
+			const { id } = await getPersonalProject(member);
+
+			await patchConfig({ transferProjectId: id }).expect(200);
+
+			expect((await getConfig()).transferTarget).toEqual({
+				projectId: id,
+				kind: 'person',
+				name: `${member.firstName} ${member.lastName}`,
+				email: member.email,
+				valid: true,
+			});
+		});
+
+		it('returns valid false after the person is deactivated', async () => {
+			const member = await createMember();
+			const { id } = await getPersonalProject(member);
+			await patchConfig({ transferProjectId: id }).expect(200);
+
+			await Container.get(UserRepository).update({ id: member.id }, { disabled: true });
+
+			expect((await getConfig()).transferTarget).toMatchObject({ projectId: id, valid: false });
+		});
+
+		it('returns valid false after the project is deleted', async () => {
+			const team = await createTeamProject();
+			await patchConfig({ transferProjectId: team.id }).expect(200);
+
+			await Container.get(ProjectRepository).delete({ id: team.id });
+
+			expect((await getConfig()).transferTarget).toEqual({
+				projectId: team.id,
+				kind: null,
+				name: null,
+				valid: false,
+			});
+		});
+	});
+
+	describe('DELETE /scim/v2/Users/:id', () => {
+		it('disables the user and keeps the work with onDelete disable', async () => {
+			const { member, personalProject, workflow, credential } = await createMemberWithWork();
+
+			await patchConfig({ onDelete: 'disable', dataAction: 'delete' }).expect(200);
+			expect((await deleteViaScim(member.id)).status).toBe(204);
+
+			expect((await reload(member.id)).disabled).toBe(true);
+			expect(await owningProjects(workflow.id, credential.id)).toEqual({
+				workflow: personalProject.id,
+				credential: personalProject.id,
+			});
+		});
+
+		it('moves the work to a team project without members', async () => {
+			const team = await createTeamProject('Leavers');
+			const { member, personalProject, workflow, credential } = await createMemberWithWork();
+			await patchConfig({
+				onDelete: 'delete',
+				dataAction: 'transfer',
+				transferProjectId: team.id,
+			}).expect(200);
+			const emit = vi.spyOn(Container.get(EventService), 'emit');
+
+			const response = await deleteViaScim(member.id);
+
+			expect(response.status).toBe(204);
+			expect(await userExists(member.id)).toBe(false);
+			expect(await Container.get(ProjectRepository).existsBy({ id: personalProject.id })).toBe(
+				false,
+			);
+			expect(await owningProjects(workflow.id, credential.id)).toEqual({
+				workflow: team.id,
+				credential: team.id,
+			});
+			expect(emit).toHaveBeenCalledWith(
+				'user-deleted',
+				expect.objectContaining({
+					user: expect.objectContaining({ id: member.id }),
+					targetUserId: member.id,
+					migrationStrategy: 'transfer_data',
+					migrationUserId: undefined,
+				}),
+			);
+			emit.mockRestore();
+		});
+
+		it('deletes the user, the personal project and the work with dataAction delete', async () => {
+			const { member, personalProject, workflow, credential } = await createMemberWithWork();
+			await patchConfig({ onDelete: 'delete', dataAction: 'delete' }).expect(200);
+
+			const response = await deleteViaScim(member.id);
+
+			expect(response.status).toBe(204);
+			expect(await userExists(member.id)).toBe(false);
+			expect(await Container.get(ProjectRepository).existsBy({ id: personalProject.id })).toBe(
+				false,
+			);
+			expect(await Container.get(WorkflowRepository).existsBy({ id: workflow.id })).toBe(false);
+			expect(await Container.get(CredentialsRepository).existsBy({ id: credential.id })).toBe(
+				false,
+			);
+		});
+
+		it('moves the work to the personal project of the owner when the target is the deleted user', async () => {
+			const { member, personalProject, workflow, credential } = await createMemberWithWork();
+			await patchConfig({
+				onDelete: 'delete',
+				dataAction: 'transfer',
+				transferProjectId: personalProject.id,
+			}).expect(200);
+
+			const response = await deleteViaScim(member.id);
+
+			expect(response.status).toBe(204);
+			expect(await userExists(member.id)).toBe(false);
+			const ownerProject = await getPersonalProject(owner);
+			expect(await owningProjects(workflow.id, credential.id)).toEqual({
+				workflow: ownerProject.id,
+				credential: ownerProject.id,
+			});
+		});
+
+		it('moves the work to the personal project of the owner without a stored target', async () => {
+			const { member, workflow, credential } = await createMemberWithWork();
+			await patchConfig({ onDelete: 'delete', dataAction: 'transfer' }).expect(200);
+
+			await deleteViaScim(member.id);
+
+			const ownerProject = await getPersonalProject(owner);
+			expect(await owningProjects(workflow.id, credential.id)).toEqual({
+				workflow: ownerProject.id,
+				credential: ownerProject.id,
+			});
+		});
+
+		it('returns a SCIM error and keeps the instance owner', async () => {
+			await patchConfig({ onDelete: 'delete', dataAction: 'delete' }).expect(200);
+
+			const response = await deleteViaScim(owner.id);
+
+			expect(response.status).toBe(403);
+			expect(response.body).toMatchObject({ schemas: [ERROR_SCHEMA], status: '403' });
+			const current = await reload(owner.id);
+			expect(current.disabled).toBe(false);
+			expect(current.role.slug).toBe('global:owner');
+		});
+
+		it('returns 404 for an unknown user', async () => {
+			await patchConfig({ onDelete: 'delete' }).expect(200);
+
+			expect((await deleteViaScim('00000000-0000-0000-0000-000000000000')).status).toBe(404);
+		});
+
+		it('only disables the user on PATCH active false', async () => {
+			const { member, personalProject, workflow, credential } = await createMemberWithWork();
+			await patchConfig({ onDelete: 'delete', dataAction: 'delete' }).expect(200);
+
+			await scimRequest('patch', `/Users/${member.id}`, {
+				body: patchOps({ op: 'replace', path: 'active', value: false }),
+			}).expect(200);
+
+			expect((await reload(member.id)).disabled).toBe(true);
+			expect(await owningProjects(workflow.id, credential.id)).toEqual({
+				workflow: personalProject.id,
+				credential: personalProject.id,
+			});
+		});
+	});
+});
+
 describe('SCIM /scim/v2/Schemas', () => {
 	it('lists the User schema without roles and with the Schema schema id', async () => {
 		const response = await scimRequest('get', '/Schemas').expect(200);
@@ -776,7 +1088,10 @@ describe('SCIM and single sign-on', () => {
 		},
 	);
 
-	it('turns SCIM off and keeps the token when an admin turns SAML login off', async () => {
+	it('turns SCIM off and keeps the token and the policy when an admin turns SAML login off', async () => {
+		const team = await createTeamProject('Platform');
+		const policy = { onDelete: 'delete', dataAction: 'transfer', transferProjectId: team.id };
+		await testServer.authAgentFor(admin).patch('/scim/config').send(policy).expect(200);
 		const emit = vi.spyOn(Container.get(EventService), 'emit');
 
 		await toggleSamlLogin(false);
@@ -791,7 +1106,14 @@ describe('SCIM and single sign-on', () => {
 			expect(await moduleSettings()).toMatchObject({ scimEnabled: false }),
 		);
 		const response = await testServer.authAgentFor(admin).get('/scim/config').expect(200);
-		expect(response.body.data).toMatchObject({ enabled: false, hasToken: true });
+		expect(response.body.data).toMatchObject({
+			enabled: false,
+			hasToken: true,
+			onDelete: 'delete',
+			dataAction: 'transfer',
+			transferTarget: { projectId: team.id, valid: true },
+		});
+		expect(await scimSettings().getDeprovisioningPolicy()).toEqual(policy);
 	});
 
 	it('keeps SCIM off when SAML turns on again, and the old token works once an admin enables SCIM', async () => {

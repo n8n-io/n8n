@@ -17,6 +17,8 @@ import {
 	ScimResourceNotFoundError,
 } from '../scim.errors';
 import type { ScimUserRepository } from '../database/scim-user.repository';
+import type { ScimDeprovisioningService } from '../scim-deprovisioning.service';
+import { DEFAULT_SCIM_DEPROVISIONING_POLICY } from '../scim-settings.service';
 import { ScimService } from '../scim.service';
 
 const createTestUser = (overrides: Partial<User> = {}): User =>
@@ -39,6 +41,7 @@ describe('ScimService', () => {
 	let passwordUtility: Mocked<PasswordUtility>;
 	let globalConfig: GlobalConfig;
 	let scimUserRepository: Mocked<ScimUserRepository>;
+	let scimDeprovisioningService: Mocked<ScimDeprovisioningService>;
 	let service: ScimService;
 
 	beforeEach(() => {
@@ -53,6 +56,10 @@ describe('ScimService', () => {
 
 		urlService.getInstanceBaseUrl.mockReturnValue('https://n8n.example.com');
 		passwordUtility.hash.mockResolvedValue('hashed-password');
+		scimDeprovisioningService = mock<ScimDeprovisioningService>();
+		scimDeprovisioningService.getPolicy.mockResolvedValue({
+			...DEFAULT_SCIM_DEPROVISIONING_POLICY,
+		});
 
 		service = new ScimService(
 			mock<Logger>(),
@@ -62,6 +69,7 @@ describe('ScimService', () => {
 			globalConfig,
 			passwordUtility,
 			eventService,
+			scimDeprovisioningService,
 		);
 	});
 
@@ -622,6 +630,52 @@ describe('ScimService', () => {
 			userRepository.findOne.mockResolvedValue(null);
 
 			await expect(service.deleteUser('missing')).rejects.toThrow(ScimResourceNotFoundError);
+		});
+
+		describe('with onDelete delete', () => {
+			const policy = {
+				onDelete: 'delete',
+				dataAction: 'transfer',
+				transferProjectId: 'team-1',
+			} as const;
+
+			beforeEach(() => {
+				scimDeprovisioningService.getPolicy.mockResolvedValue(policy);
+			});
+
+			it('should delete the user under the stored policy', async () => {
+				const user = createTestUser();
+				userRepository.findOne.mockResolvedValue(user);
+
+				await service.deleteUser('user-1');
+
+				expect(scimDeprovisioningService.deleteUser).toHaveBeenCalledWith(user, policy);
+				expect(userRepository.save).not.toHaveBeenCalled();
+				expect(eventService.emit).not.toHaveBeenCalledWith('user-updated', expect.anything());
+			});
+
+			// Only DELETE runs the policy. The identity provider sends active
+			// false to suspend a user, and a suspension must keep the work.
+			it('should only disable the user on PATCH active false', async () => {
+				const user = createTestUser();
+				userRepository.findOne.mockResolvedValue(user);
+
+				await service.patchUser('user-1', {
+					schemas: ['urn:ietf:params:scim:api:messages:2.0:PatchOp'],
+					Operations: [{ op: 'replace', path: 'active', value: false }],
+				});
+
+				expect(user.disabled).toBe(true);
+				expect(scimDeprovisioningService.getPolicy).not.toHaveBeenCalled();
+				expect(scimDeprovisioningService.deleteUser).not.toHaveBeenCalled();
+			});
+
+			it('should throw not-found for unknown users', async () => {
+				userRepository.findOne.mockResolvedValue(null);
+
+				await expect(service.deleteUser('missing')).rejects.toThrow(ScimResourceNotFoundError);
+				expect(scimDeprovisioningService.deleteUser).not.toHaveBeenCalled();
+			});
 		});
 	});
 });

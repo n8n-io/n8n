@@ -16,6 +16,7 @@ import { EventService, UrlService } from '@n8n/backend-services';
 import { PasswordUtility } from '@/services/password.utility';
 
 import { ScimUserRepository } from './database/scim-user.repository';
+import { ScimDeprovisioningService } from './scim-deprovisioning.service';
 import {
 	ScimConflictError,
 	ScimForbiddenError,
@@ -42,6 +43,7 @@ export class ScimService {
 		private readonly globalConfig: GlobalConfig,
 		private readonly passwordUtility: PasswordUtility,
 		private readonly eventService: EventService,
+		private readonly scimDeprovisioningService: ScimDeprovisioningService,
 	) {}
 
 	/**
@@ -379,13 +381,22 @@ export class ScimService {
 	}
 
 	/**
-	 * Deactivate a user. n8n deliberately soft-deletes on SCIM DELETE:
-	 * the user is disabled (which immediately invalidates their sessions
-	 * and API keys) but their workflows and credentials are kept, so
-	 * ownership can be transferred by an admin afterwards.
+	 * Apply the deprovisioning policy to a SCIM DELETE.
+	 *
+	 * `disable` (the default) deactivates the user, which ends their sessions
+	 * and API keys at once. Their workflows and credentials are kept, so an
+	 * admin can transfer the ownership later.
+	 *
+	 * `delete` deletes the user, and transfers or deletes their work.
 	 */
 	async deleteUser(id: string): Promise<void> {
 		const user = await this.getUserEntity(id);
+		const policy = await this.scimDeprovisioningService.getPolicy();
+
+		if (policy.onDelete === 'delete') {
+			await this.scimDeprovisioningService.deleteUser(user, policy);
+			return;
+		}
 
 		if (this.isOwner(user)) {
 			throw new ScimForbiddenError('The instance owner cannot be deleted via SCIM');

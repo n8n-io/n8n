@@ -4,7 +4,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type { CacheService } from '@n8n/backend-services';
 
-import { ScimSettingsService } from '../scim-settings.service';
+import { DEFAULT_SCIM_DEPROVISIONING_POLICY, ScimSettingsService } from '../scim-settings.service';
 
 describe('ScimSettingsService', () => {
 	let settingsRepository: Mocked<SettingsRepository>;
@@ -124,6 +124,56 @@ describe('ScimSettingsService', () => {
 			await service.clearLastAuthFailure();
 
 			expect(settingsRepository.delete).toHaveBeenCalledWith({ key: KEY });
+		});
+	});
+
+	describe('deprovisioning policy', () => {
+		const KEY = 'scim.provisioning.deprovisioningPolicy';
+		const policy = {
+			onDelete: 'delete',
+			dataAction: 'transfer',
+			transferProjectId: 'team-1',
+		} as const;
+
+		// Instances that never saved a policy keep deactivating users.
+		it('returns the default policy, which disables, when no policy is stored', async () => {
+			settingsRepository.findByKey.mockResolvedValue(null);
+
+			await expect(service.getDeprovisioningPolicy()).resolves.toEqual({
+				onDelete: 'disable',
+				dataAction: 'transfer',
+				transferProjectId: null,
+			});
+			expect(settingsRepository.findByKey).toHaveBeenCalledWith(KEY);
+		});
+
+		it('returns the stored policy', async () => {
+			settingsRepository.findByKey.mockResolvedValue(
+				mock({ key: KEY, value: JSON.stringify(policy) }),
+			);
+
+			await expect(service.getDeprovisioningPolicy()).resolves.toEqual(policy);
+		});
+
+		it.each([
+			['a value that is not JSON', 'not json'],
+			['an unknown onDelete', JSON.stringify({ ...policy, onDelete: 'archive' })],
+			['a value without a data action', JSON.stringify({ onDelete: 'delete' })],
+		])('returns the default policy for %s', async (_, value) => {
+			settingsRepository.findByKey.mockResolvedValue(mock({ key: KEY, value }));
+
+			await expect(service.getDeprovisioningPolicy()).resolves.toEqual(
+				DEFAULT_SCIM_DEPROVISIONING_POLICY,
+			);
+		});
+
+		it('stores all fields of the policy in one row', async () => {
+			await service.setDeprovisioningPolicy(policy);
+
+			expect(settingsRepository.upsert).toHaveBeenCalledExactlyOnceWith(
+				{ key: KEY, value: JSON.stringify(policy), loadOnStartup: false },
+				['key'],
+			);
 		});
 	});
 });

@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import type { ProjectIcon } from './project.schema';
+
 /**
  * Why the SCIM bearer check rejected a request from the identity provider.
  * - `missing_header`: the request has no `Authorization: Bearer` header.
@@ -46,6 +48,56 @@ export type ScimTokenDetails = {
 	lastUsedAt: string | null;
 };
 
+/**
+ * What n8n does when the identity provider deletes a user.
+ * - `disable`: deactivate the user and keep the user's work.
+ * - `delete`: delete the user. `dataAction` tells what happens to the work.
+ */
+export const scimOnDeleteSchema = z.enum(['disable', 'delete']);
+
+/**
+ * What happens to the work of a user that SCIM deletes.
+ * - `transfer`: move the workflows and credentials to the transfer target.
+ * - `delete`: delete them together with the personal project of the user.
+ */
+export const scimDataActionSchema = z.enum(['transfer', 'delete']);
+
+/** How n8n applies `DELETE /scim/v2/Users/:id`. */
+export const scimDeprovisioningPolicySchema = z.object({
+	onDelete: scimOnDeleteSchema,
+	dataAction: scimDataActionSchema,
+	/**
+	 * The project that gets the work of a deleted user. Null sends the work to
+	 * the personal project of the instance owner.
+	 */
+	transferProjectId: z.string().nullable(),
+});
+
+export type ScimOnDelete = z.infer<typeof scimOnDeleteSchema>;
+export type ScimDataAction = z.infer<typeof scimDataActionSchema>;
+export type ScimDeprovisioningPolicy = z.infer<typeof scimDeprovisioningPolicySchema>;
+
+/** The stored transfer target, as the SCIM settings page shows it. */
+export type ScimTransferTarget = {
+	projectId: string;
+	/**
+	 * `person` is the personal project of a user. `project` is a team project.
+	 * Null when the project no longer exists.
+	 */
+	kind: 'person' | 'project' | null;
+	/** Full name of the person, or the project name. Null when the project no longer exists. */
+	name: string | null;
+	/** Only for `person`. */
+	email?: string;
+	/** Only for `project`. */
+	icon?: ProjectIcon | null;
+	/**
+	 * False when the project no longer exists or the person is deactivated.
+	 * SCIM DELETE then sends the work to the personal project of the owner.
+	 */
+	valid: boolean;
+};
+
 /** Response of `GET /rest/scim/config`. */
 export type ScimConfigResponse = {
 	enabled: boolean;
@@ -62,4 +114,14 @@ export type ScimConfigResponse = {
 	provisionedCount: number;
 	/** Number of users that SCIM provisioning created and that are deactivated. */
 	deactivatedCount: number;
+	onDelete: ScimOnDelete;
+	dataAction: ScimDataAction;
+	/**
+	 * Null when no target is stored. SCIM DELETE then sends the work to the
+	 * personal project of the owner.
+	 */
+	transferTarget: ScimTransferTarget | null;
 };
+
+/** Response of `PATCH /rest/scim/config`: the stored state after the change. */
+export type ScimConfigPatchResponse = ScimDeprovisioningPolicy & { enabled: boolean };

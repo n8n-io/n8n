@@ -44,3 +44,13 @@ export class ScimTokenConflictError extends UserError {
 		super('The SCIM token changed during this request. Load the token state again and retry.');
 	}
 }
+
+/**
+ * The transfer target in `PATCH /rest/scim/config` does not exist, or it is
+ * the personal project of a deactivated user. Maps to HTTP 400.
+ */
+export class ScimInvalidTransferTargetError extends UserError {
+	constructor(detail: string) {
+		super(detail);
+	}
+}

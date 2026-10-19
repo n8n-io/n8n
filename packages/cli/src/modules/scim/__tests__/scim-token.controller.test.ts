@@ -8,12 +8,13 @@ import { mock } from 'vitest-mock-extended';
 
 import type { ScimToken } from '../database/scim-token.entity';
 import type { ScimConnectionService } from '../scim-connection.service';
+import type { ScimDeprovisioningService } from '../scim-deprovisioning.service';
 import type { ScimOptInService } from '../scim-opt-in.service';
 import type { ScimSettingsService } from '../scim-settings.service';
 import type { ScimSsoService } from '../scim-sso.service';
 import { ScimTokenController } from '../scim-token.controller';
 import type { ScimTokenService } from '../scim-token.service';
-import { ScimTokenConflictError } from '../scim.errors';
+import { ScimInvalidTransferTargetError, ScimTokenConflictError } from '../scim.errors';
 import type { ScimService } from '../scim.service';
 
 describe('ScimTokenController', () => {
@@ -24,7 +25,14 @@ describe('ScimTokenController', () => {
 	let scimConnectionService: Mocked<ScimConnectionService>;
 	let scimSsoService: Mocked<ScimSsoService>;
 	let scimService: Mocked<ScimService>;
+	let scimDeprovisioningService: Mocked<ScimDeprovisioningService>;
 	let controller: ScimTokenController;
+
+	const defaultPolicy = {
+		onDelete: 'disable',
+		dataAction: 'transfer',
+		transferProjectId: null,
+	} as const;
 
 	const req = mock<AuthenticatedRequest>({ user: mock<User>({ id: 'user-1' }) });
 
@@ -45,6 +53,13 @@ describe('ScimTokenController', () => {
 		scimService = mock<ScimService>();
 		scimService.getProvisioningCounts.mockResolvedValue({ provisioned: 0, deactivated: 0 });
 		scimTokenService.getScimBaseUrl.mockReturnValue('https://n8n.example.com/scim/v2');
+		scimDeprovisioningService = mock<ScimDeprovisioningService>();
+		scimDeprovisioningService.describePolicy.mockResolvedValue({
+			onDelete: 'disable',
+			dataAction: 'transfer',
+			transferTarget: null,
+		});
+		scimDeprovisioningService.updatePolicy.mockResolvedValue({ ...defaultPolicy });
 		controller = new ScimTokenController(
 			mock<Logger>(),
 			scimTokenService,
@@ -54,6 +69,7 @@ describe('ScimTokenController', () => {
 			scimConnectionService,
 			scimSsoService,
 			scimService,
+			scimDeprovisioningService,
 		);
 	});
 
@@ -130,6 +146,40 @@ describe('ScimTokenController', () => {
 				status: 'connected',
 				provisionedCount: 0,
 				deactivatedCount: 0,
+				onDelete: 'disable',
+				dataAction: 'transfer',
+				transferTarget: null,
+			});
+		});
+
+		it('returns the deprovisioning policy and its transfer target', async () => {
+			const transferTarget = {
+				projectId: 'team-1',
+				kind: 'project',
+				name: 'Platform',
+				icon: null,
+				valid: false,
+			} as const;
+			scimSettingsService.isEnabled.mockResolvedValue(true);
+			scimSettingsService.getLastAuthFailure.mockResolvedValue(null);
+			scimTokenService.getTokenInfo.mockResolvedValue({
+				hasToken: false,
+				lastFour: null,
+				details: null,
+			});
+			scimDeprovisioningService.describePolicy.mockResolvedValue({
+				onDelete: 'delete',
+				dataAction: 'transfer',
+				transferTarget,
+			});
+			const res = makeRes();
+
+			await controller.getConfig(req, res);
+
+			expect(res.json.mock.calls[0][0].data).toMatchObject({
+				onDelete: 'delete',
+				dataAction: 'transfer',
+				transferTarget,
 			});
 		});
 
@@ -211,7 +261,41 @@ describe('ScimTokenController', () => {
 			// Without this the settings snapshot keeps serving the previous value.
 			expect(moduleRegistry.refreshModuleSettings).toHaveBeenCalledWith('scim');
 			expect(res.status).toHaveBeenCalledWith(200);
-			expect(res.json).toHaveBeenCalledWith({ data: { enabled } });
+			expect(res.json).toHaveBeenCalledWith({ data: { enabled, ...defaultPolicy } });
+		});
+
+		it('changes only the policy and keeps enabled when the body has no enabled', async () => {
+			const policy = { ...defaultPolicy, onDelete: 'delete' } as const;
+			scimDeprovisioningService.updatePolicy.mockResolvedValue(policy);
+			scimSettingsService.isEnabled.mockResolvedValue(true);
+			const res = makeRes();
+
+			await controller.updateConfig(req, res, { onDelete: 'delete' });
+
+			expect(scimDeprovisioningService.updatePolicy).toHaveBeenCalledWith({
+				onDelete: 'delete',
+				dataAction: undefined,
+				transferProjectId: undefined,
+			});
+			expect(scimSettingsService.setEnabled).not.toHaveBeenCalled();
+			expect(moduleRegistry.refreshModuleSettings).not.toHaveBeenCalled();
+			expect(res.status).toHaveBeenCalledWith(200);
+			expect(res.json).toHaveBeenCalledWith({ data: { enabled: true, ...policy } });
+		});
+
+		it('returns 400 and keeps SCIM unchanged when the transfer target is not valid', async () => {
+			scimDeprovisioningService.updatePolicy.mockRejectedValue(
+				new ScimInvalidTransferTargetError('The transfer project missing does not exist.'),
+			);
+			const res = makeRes();
+
+			await controller.updateConfig(req, res, { enabled: true, transferProjectId: 'missing' });
+
+			expect(res.status).toHaveBeenCalledWith(400);
+			expect(res.json).toHaveBeenCalledWith({
+				message: 'The transfer project missing does not exist.',
+			});
+			expect(scimSettingsService.setEnabled).not.toHaveBeenCalled();
 		});
 
 		it('returns 400 and keeps SCIM off when single sign-on is off', async () => {

@@ -39,6 +39,7 @@ import { BadRequestError, ForbiddenError, InternalServerError, NotFoundError } f
 import { ExternalHooks } from '@/external-hooks';
 import type { Invitation } from '@/interfaces';
 import { License } from '@/license';
+import type { PolicyActor } from '@/policy/policy-enforcement-backend';
 import { PostHogClient } from '@/posthog';
 import type { UserRequest } from '@/requests';
 import { isSsoCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
@@ -51,6 +52,9 @@ export const CHANGE_ROLE_ERROR_MESSAGES = {
 	CANNOT_CHANGE_OWN_ROLE: 'Cannot change your own global role',
 	INSTANCE_ROLES_MANAGED: 'Instance roles are managed automatically and cannot be changed manually',
 } as const;
+
+/** The system as the actor of a user deletion that no user asked for. */
+export type SystemDeletionActor = Extract<PolicyActor, { kind: 'system' }>;
 
 @Service()
 export class UserService {
@@ -556,11 +560,21 @@ export class UserService {
 		return usersInvited;
 	}
 
-	async deleteUser(actor: User, idToDelete: string, transferId?: string) {
-		if (actor.id === idToDelete) {
+	/**
+	 * Delete a user. With `transferId`, the work of the user moves to that
+	 * project first. Without it, the work is deleted with the user.
+	 *
+	 * The actor is a user, or the system for a deletion that no user asked for,
+	 * such as a SCIM deletion from the identity provider.
+	 */
+	async deleteUser(actor: User | SystemDeletionActor, idToDelete: string, transferId?: string) {
+		const actorUser = 'kind' in actor ? null : actor;
+		const policyActor: PolicyActor = 'kind' in actor ? actor : { kind: 'user', user: actor };
+
+		if (actorUser?.id === idToDelete) {
 			this.logger.debug(
 				'Request to delete a user failed because it attempted to delete the requesting user',
-				{ userId: actor.id },
+				{ userId: actorUser.id },
 			);
 			throw new BadRequestError('Cannot delete your own user');
 		}
@@ -599,15 +613,16 @@ export class UserService {
 				);
 			}
 
-			const transferee = await this.userRepository.findOneByProjectIdOrFail(transfereeProject.id);
+			// A team project can have no members, and it can still take the work.
+			const transferee = await this.userRepository.findOneByProjectId(transfereeProject.id);
 
-			transfereeId = transferee.id;
+			transfereeId = transferee?.id;
 
 			const ownershipTransferService = await this.getOwnershipTransferService();
 			await ownershipTransferService.enforceTransferPolicy(
 				personalProjectToDelete.id,
 				transfereeProject.id,
-				{ kind: 'user', user: actor },
+				policyActor,
 			);
 			await ownershipTransferService.transferAllResources(
 				[personalProjectToDelete.id],
@@ -653,7 +668,9 @@ export class UserService {
 		});
 
 		this.eventService.emit('user-deleted', {
-			user: actor,
+			// No user acts in a system deletion. The deleted user takes that place,
+			// as in the event of a SCIM deactivation.
+			user: actorUser ?? userToDelete,
 			publicApi: false,
 			targetUserOldStatus: userToDelete.isPending ? 'invited' : 'active',
 			targetUserId: idToDelete,

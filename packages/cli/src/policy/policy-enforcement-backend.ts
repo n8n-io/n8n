@@ -39,7 +39,9 @@ export type PolicySystemReason =
 	/** An integration that refreshes its own credential. */
 	| 'integration'
 	/** A log streaming destination that reads its own credential. */
-	| 'log-streaming';
+	| 'log-streaming'
+	/** The SCIM deprovisioning policy, applied when the identity provider deletes a user. */
+	| 'scim';
 
 /**
  * Who asked for the policed action, named on the block audit event and never shown to checks.

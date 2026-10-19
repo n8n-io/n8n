@@ -909,7 +909,7 @@ describe('UserService', () => {
 			userRepository.findByIdWithRole.mockResolvedValue(userToDelete);
 			projectRepository.getPersonalProjectForUserOrFail.mockResolvedValue(personalProject);
 			projectService.findProject.mockResolvedValue(transfereeProject);
-			userRepository.findOneByProjectIdOrFail.mockResolvedValue(
+			userRepository.findOneByProjectId.mockResolvedValue(
 				Object.assign(new User(), { id: 'transferee-1' }),
 			);
 			sharedWorkflowRepository.find.mockResolvedValue([]);
@@ -959,6 +959,63 @@ describe('UserService', () => {
 			await userService.deleteUser(actor, userToDelete.id);
 
 			expect(ownershipTransferService.enforceTransferPolicy).not.toHaveBeenCalled();
+		});
+
+		it('transfers the work to a team project without members', async () => {
+			userRepository.findOneByProjectId.mockResolvedValue(null);
+
+			await userService.deleteUser(actor, userToDelete.id, transfereeProject.id);
+
+			expect(ownershipTransferService.transferAllResources).toHaveBeenCalledWith(
+				[personalProject.id],
+				transfereeProject.id,
+			);
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'user-deleted',
+				expect.objectContaining({
+					migrationStrategy: 'transfer_data',
+					migrationUserId: undefined,
+				}),
+			);
+		});
+
+		describe('with a system actor', () => {
+			const systemActor = { kind: 'system', reason: 'scim' } as const;
+
+			it('checks the transfer policy with the system actor', async () => {
+				await userService.deleteUser(systemActor, userToDelete.id, transfereeProject.id);
+
+				expect(ownershipTransferService.enforceTransferPolicy).toHaveBeenCalledExactlyOnceWith(
+					personalProject.id,
+					transfereeProject.id,
+					systemActor,
+				);
+			});
+
+			it('names the deleted user as the user of the event', async () => {
+				await userService.deleteUser(systemActor, userToDelete.id);
+
+				expect(eventService.emit).toHaveBeenCalledWith('user-deleted', {
+					user: userToDelete,
+					publicApi: false,
+					targetUserOldStatus: 'active',
+					targetUserId: userToDelete.id,
+					migrationStrategy: 'delete_data',
+					migrationUserId: undefined,
+				});
+			});
+
+			it('refuses the instance owner', async () => {
+				userRepository.findByIdWithRole.mockResolvedValue(
+					Object.assign(new User(), { id: 'owner-1', role: GLOBAL_OWNER_ROLE }),
+				);
+
+				const result = userService.deleteUser(systemActor, 'owner-1');
+
+				await expect(result).rejects.toThrow(ForbiddenError);
+				await expect(result).rejects.toThrow('Instance owner cannot be deleted.');
+				expect(manager.transaction).not.toHaveBeenCalled();
+			});
 		});
 	});
 
