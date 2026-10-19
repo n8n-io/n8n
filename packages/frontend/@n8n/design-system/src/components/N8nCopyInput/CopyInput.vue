@@ -308,6 +308,12 @@ function onInputBlur() {
 		}
 	}
 
+	// The container fades the whole field once; the inner parts must not fade again.
+	&.disabled > div,
+	&.disabled button {
+		opacity: 1;
+	}
+
 	// Loading: the prefix slot carries the skeleton, laid over the (empty) value.
 	&.loading > div {
 		position: relative;
