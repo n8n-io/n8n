@@ -45,6 +45,29 @@ export class InstanceRegistryService {
 			backend: this.storage.kind,
 			instanceType: this.instanceSettings.instanceType,
 		});
+
+		await this.logClusterVersions();
+	}
+
+	private async logClusterVersions() {
+		const instances = await this.getAllInstances();
+		if (instances.length === 0) return;
+
+		const versions = [...new Set(instances.map((instance) => instance.version))].sort();
+		const message =
+			versions.length === 1
+				? `Cluster aligned on version ${versions[0]}`
+				: `Cluster is running multiple n8n versions: ${versions.join(', ')}`;
+
+		// Default text logs omit metadata, so keep the versions in the message.
+		this.logger.info(message, {
+			instances: instances.map(({ hostId, instanceType, instanceRole, version }) => ({
+				hostId,
+				instanceType,
+				instanceRole,
+				version,
+			})),
+		});
 	}
 
 	async shutdown() {

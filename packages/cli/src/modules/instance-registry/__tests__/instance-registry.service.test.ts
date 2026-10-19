@@ -6,6 +6,8 @@ import { Container } from '@n8n/di';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
+import { N8N_VERSION } from '@/constants';
+
 import { InstanceRegistryService } from '../instance-registry.service';
 import { REGISTRY_CONSTANTS } from '../instance-registry.types';
 import type { InstanceStorage } from '../storage/instance-storage.interface';
@@ -245,6 +247,146 @@ describe('InstanceRegistryService', () => {
 			await vi.advanceTimersByTimeAsync(REGISTRY_CONSTANTS.HEARTBEAT_INTERVAL_MS * 3);
 
 			expect(heartbeatSpy).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('startup cluster version log', () => {
+		let storage: ReturnType<typeof mock<RedisInstanceStorage>>;
+		let registrations: InstanceRegistration[];
+
+		const makePeer = (overrides: Partial<InstanceRegistration> = {}): InstanceRegistration => ({
+			schemaVersion: 1,
+			instanceKey: 'peer-key',
+			hostId: 'peer-host',
+			instanceType: 'main',
+			instanceRole: 'leader',
+			version: '1.0.0',
+			registeredAt: 0,
+			lastSeen: 0,
+			...overrides,
+		});
+
+		beforeEach(() => {
+			registrations = [];
+			storage = mock<RedisInstanceStorage>({ kind: 'redis' });
+			storage.register.mockImplementation(async (registration) => {
+				registrations.push(registration);
+			});
+			storage.getAllRegistrations.mockResolvedValue(registrations);
+			Container.set(RedisInstanceStorage, storage);
+		});
+
+		it.each([
+			{ instanceType: 'main', instanceRole: 'leader' },
+			{ instanceType: 'main', instanceRole: 'follower' },
+			{ instanceType: 'main', instanceRole: 'unset' },
+			{ instanceType: 'worker', instanceRole: 'unset' },
+			{ instanceType: 'webhook', instanceRole: 'unset' },
+			{ instanceType: 'engine', instanceRole: 'unset' },
+		] as const)('logs a mismatch on $instanceType/$instanceRole', async (settings) => {
+			registrations.push(makePeer());
+			service = createService(settings, 'queue');
+
+			await service.init();
+
+			expect(logger.info).toHaveBeenCalledWith(
+				`Cluster is running multiple n8n versions: 1.0.0, ${N8N_VERSION}`,
+				{
+					instances: [
+						{
+							hostId: 'peer-host',
+							instanceType: 'main',
+							instanceRole: 'leader',
+							version: '1.0.0',
+						},
+						{
+							hostId: 'main-abc123',
+							...settings,
+							version: N8N_VERSION,
+						},
+					],
+				},
+			);
+		});
+
+		it('logs an aligned cluster after the local instance registers', async () => {
+			service = createService({}, 'queue');
+
+			await service.init();
+
+			expect(logger.info).toHaveBeenCalledWith(`Cluster aligned on version ${N8N_VERSION}`, {
+				instances: [
+					{
+						hostId: 'main-abc123',
+						instanceType: 'main',
+						instanceRole: 'unset',
+						version: N8N_VERSION,
+					},
+				],
+			});
+		});
+
+		it('logs each version once in sorted order', async () => {
+			registrations.push(
+				makePeer({ instanceKey: 'peer-1', version: '9.0.0' }),
+				makePeer({ instanceKey: 'peer-2', version: '1.0.0' }),
+				makePeer({ instanceKey: 'peer-3', version: '1.0.0' }),
+			);
+			service = createService({}, 'queue');
+
+			await service.init();
+
+			expect(logger.info).toHaveBeenCalledWith(
+				`Cluster is running multiple n8n versions: 1.0.0, ${N8N_VERSION}, 9.0.0`,
+				expect.any(Object),
+			);
+		});
+
+		it('logs an aligned cluster when multiple instances use the same version', async () => {
+			registrations.push(makePeer({ version: N8N_VERSION }));
+			service = createService({}, 'queue');
+
+			await service.init();
+
+			expect(logger.info).toHaveBeenCalledWith(
+				`Cluster aligned on version ${N8N_VERSION}`,
+				expect.objectContaining({ instances: expect.arrayContaining([expect.any(Object)]) }),
+			);
+		});
+
+		it('does not repeat the startup log during heartbeats', async () => {
+			registrations.push(makePeer());
+			service = createService({}, 'queue');
+			await service.init();
+			logger.info.mockClear();
+
+			await service.heartbeat();
+			await service.heartbeat();
+
+			expect(storage.getAllRegistrations).toHaveBeenCalledTimes(1);
+			expect(logger.info).not.toHaveBeenCalled();
+		});
+
+		it('keeps startup successful when the version snapshot read fails', async () => {
+			const error = new Error('Registry unavailable');
+			storage.getAllRegistrations.mockRejectedValueOnce(error);
+			service = createService({}, 'queue');
+
+			await expect(service.init()).resolves.toBeUndefined();
+
+			expect(logger.warn).toHaveBeenCalledWith('Failed to get all registrations', { error });
+			expect(logger.info).toHaveBeenCalledTimes(1);
+			expect(logger.info).toHaveBeenCalledWith('Instance registered', expect.any(Object));
+		});
+
+		it('does not report alignment when the registry snapshot is empty', async () => {
+			storage.getAllRegistrations.mockResolvedValueOnce([]);
+			service = createService({}, 'queue');
+
+			await service.init();
+
+			expect(logger.info).toHaveBeenCalledTimes(1);
+			expect(logger.info).toHaveBeenCalledWith('Instance registered', expect.any(Object));
 		});
 	});
 
