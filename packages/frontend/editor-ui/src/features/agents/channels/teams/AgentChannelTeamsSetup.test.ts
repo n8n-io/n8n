@@ -420,17 +420,17 @@ describe('AgentChannelTeamsSetup', () => {
 			expect(checkedSwitch(getByTestId('teams-scope-channels'))).toBe(true);
 			expect(checkedSwitch(getByTestId('teams-read-channels'))).toBe(true);
 		});
-		it('adds a file access step once the agent works where files are shared', async () => {
+		it('always adds a permissions step', async () => {
 			withBot();
 			const { getByTestId, queryByTestId, getByText } = renderComponent({
 				props: props({ modelValue: 'cred-1' }),
 			});
 			await openAvailability(getByTestId);
-			expect(queryByTestId('teams-file-access-step')).toBeNull();
-
-			await fireEvent.click(getByTestId('teams-scope-channels'));
 
 			await waitFor(() => expect(getByTestId('teams-file-access-step')).toBeVisible());
+			expect(
+				getByText('agents.channels.teams.managed.fileAccess.description.directOnly'),
+			).toBeVisible();
 			expect(getByTestId('teams-file-access-menu')).toBeVisible();
 			expect(
 				getByText('agents.channels.teams.setup.availability.fileAccessPermission'),
