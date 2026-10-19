@@ -5,11 +5,12 @@ import { useSSOStore, SupportedProtocols, type SupportedProtocolType } from '../
 import { useI18n } from '@n8n/i18n';
 import { computed, onMounted, ref, useTemplateRef } from 'vue';
 import { onBeforeRouteLeave, type NavigationGuardNext } from 'vue-router';
-import { ElDialog } from 'element-plus';
-
 import {
-	N8nEmptyState,
 	N8nButton,
+	N8nDialog,
+	N8nDialogBody,
+	N8nDialogFooter,
+	N8nEmptyState,
 	N8nCallout,
 	N8nHeading,
 	N8nOption,
@@ -82,24 +83,32 @@ onBeforeRouteLeave((_to, _from, next) => {
 });
 
 async function onSaveAndLeave() {
+	const next = pendingNext.value;
+	pendingNext.value = null;
 	showUnsavedChangesDialog.value = false;
 	const saved = await activeForm.value?.onSave();
 	if (saved) {
-		pendingNext.value?.();
-		pendingNext.value = null;
+		next?.();
+	} else {
+		next?.(false);
 	}
 }
 
 function onLeaveWithoutSaving() {
-	showUnsavedChangesDialog.value = false;
-	pendingNext.value?.();
+	const next = pendingNext.value;
 	pendingNext.value = null;
+	showUnsavedChangesDialog.value = false;
+	next?.();
 }
 
-function onKeepEditing() {
+function onDismissUnsavedChanges() {
 	showUnsavedChangesDialog.value = false;
 	pendingNext.value?.(false);
 	pendingNext.value = null;
+}
+
+function onUnsavedDialogOpenUpdate(open: boolean) {
+	if (!open) onDismissUnsavedChanges();
 }
 
 onMounted(() => {
@@ -180,35 +189,29 @@ onMounted(() => {
 			</template>
 		</N8nEmptyState>
 
-		<ElDialog
-			v-model="showUnsavedChangesDialog"
-			:title="i18n.baseText('settings.sso.settings.unsavedChanges.title')"
-			width="500"
+		<N8nDialog
+			:open="showUnsavedChangesDialog"
+			size="medium"
+			:header="i18n.baseText('settings.sso.settings.unsavedChanges.title')"
 			data-test-id="sso-unsaved-changes-dialog"
+			@update:open="onUnsavedDialogOpenUpdate"
 		>
-			<N8nText>{{ i18n.baseText('settings.sso.settings.unsavedChanges.message') }}</N8nText>
-			<template #footer>
-				<div :class="$style.dialogFooter">
-					<N8nButton variant="ghost" data-test-id="sso-unsaved-keep-editing" @click="onKeepEditing">
-						{{ i18n.baseText('settings.sso.settings.unsavedChanges.keepEditing') }}
-					</N8nButton>
-					<N8nButton
-						variant="outline"
-						data-test-id="sso-unsaved-leave"
-						@click="onLeaveWithoutSaving"
-					>
-						{{ i18n.baseText('settings.sso.settings.unsavedChanges.leaveWithoutSaving') }}
-					</N8nButton>
-					<N8nButton
-						variant="solid"
-						data-test-id="sso-unsaved-save-and-leave"
-						@click="onSaveAndLeave"
-					>
-						{{ i18n.baseText('settings.sso.settings.unsavedChanges.saveAndLeave') }}
-					</N8nButton>
-				</div>
-			</template>
-		</ElDialog>
+			<N8nDialogBody>
+				<N8nText>{{ i18n.baseText('settings.sso.settings.unsavedChanges.message') }}</N8nText>
+			</N8nDialogBody>
+			<N8nDialogFooter>
+				<N8nButton variant="outline" data-test-id="sso-unsaved-leave" @click="onLeaveWithoutSaving">
+					{{ i18n.baseText('settings.sso.settings.unsavedChanges.leaveWithoutSaving') }}
+				</N8nButton>
+				<N8nButton
+					variant="solid"
+					data-test-id="sso-unsaved-save-and-leave"
+					@click="onSaveAndLeave"
+				>
+					{{ i18n.baseText('settings.sso.settings.unsavedChanges.saveAndLeave') }}
+				</N8nButton>
+			</N8nDialogFooter>
+		</N8nDialog>
 	</div>
 </template>
 
@@ -246,11 +249,5 @@ onMounted(() => {
 
 .actionBox {
 	margin-top: var(--spacing--lg);
-}
-
-.dialogFooter {
-	display: flex;
-	justify-content: flex-end;
-	gap: var(--spacing--2xs);
 }
 </style>
