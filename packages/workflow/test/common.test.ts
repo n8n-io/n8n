@@ -6,10 +6,17 @@ import {
 	mapConnectionsByDestination,
 } from '../src/common';
 import { UserError } from '../src/errors';
+import { Workflow } from '../src/workflow';
 
-describe('getConnectionsByDestination', () => {
+describe.each([
+	{ name: 'mapConnectionsByDestination', mapConnections: mapConnectionsByDestination },
+	{
+		name: 'Workflow.getConnectionsByDestination',
+		mapConnections: Workflow.getConnectionsByDestination,
+	},
+])('$name', ({ mapConnections }) => {
 	it('should return empty object when there are no connections', () => {
-		const result = mapConnectionsByDestination({});
+		const result = mapConnections({});
 
 		expect(result).toEqual({});
 	});
@@ -23,7 +30,7 @@ describe('getConnectionsByDestination', () => {
 			},
 		};
 
-		expect(() => mapConnectionsByDestination(connections)).toThrow(UserError);
+		expect(() => mapConnections(connections)).toThrow(UserError);
 	});
 
 	it('should accept a connection index at the maximum', () => {
@@ -35,7 +42,7 @@ describe('getConnectionsByDestination', () => {
 			},
 		};
 
-		const result = mapConnectionsByDestination(connections);
+		const result = mapConnections(connections);
 
 		expect(result.Node2[NodeConnectionTypes.Main]).toHaveLength(MAX_CONNECTION_INDEX + 1);
 	});
@@ -59,13 +66,13 @@ describe('getConnectionsByDestination', () => {
 		it('should throw when connections use more input slots than the budget', () => {
 			const connections = connectToDestinations(destinationsWithinBudget + 1);
 
-			expect(() => mapConnectionsByDestination(connections)).toThrow(UserError);
+			expect(() => mapConnections(connections)).toThrow(UserError);
 		});
 
 		it('should accept connections within the input slot budget', () => {
 			const connections = connectToDestinations(destinationsWithinBudget);
 
-			const result = mapConnectionsByDestination(connections);
+			const result = mapConnections(connections);
 
 			expect(Object.keys(result)).toHaveLength(destinationsWithinBudget);
 		});
@@ -82,7 +89,7 @@ describe('getConnectionsByDestination', () => {
 				],
 			},
 		};
-		const result = mapConnectionsByDestination(connections);
+		const result = mapConnections(connections);
 		expect(result).toEqual({
 			Node2: {
 				[NodeConnectionTypes.Main]: [[{ node: 'Node1', type: NodeConnectionTypes.Main, index: 0 }]],
@@ -106,7 +113,7 @@ describe('getConnectionsByDestination', () => {
 			},
 		};
 
-		const result = mapConnectionsByDestination(connections);
+		const result = mapConnections(connections);
 		expect(result).toEqual({
 			Node2: {
 				[NodeConnectionTypes.Main]: [[{ node: 'Node1', type: NodeConnectionTypes.Main, index: 0 }]],
@@ -126,7 +133,7 @@ describe('getConnectionsByDestination', () => {
 			},
 		};
 
-		const result = mapConnectionsByDestination(connections);
+		const result = mapConnections(connections);
 		expect(result).toEqual({});
 	});
 
@@ -141,7 +148,7 @@ describe('getConnectionsByDestination', () => {
 			},
 		};
 
-		const result = mapConnectionsByDestination(connections);
+		const result = mapConnections(connections);
 		expect(result).toEqual({
 			Node2: {
 				[NodeConnectionTypes.Main]: [[{ node: 'Node1', type: NodeConnectionTypes.Main, index: 1 }]],
@@ -159,7 +166,7 @@ describe('getConnectionsByDestination', () => {
 			},
 		};
 
-		const result = mapConnectionsByDestination(connections);
+		const result = mapConnections(connections);
 		expect(result).toEqual({
 			Node2: {
 				[NodeConnectionTypes.Main]: [
