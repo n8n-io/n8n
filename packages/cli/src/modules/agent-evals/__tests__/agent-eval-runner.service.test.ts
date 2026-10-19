@@ -371,7 +371,7 @@ describe('AgentEvalRunnerService', () => {
 			const first = new Promise<void>((resolve) => {
 				releaseFirst = resolve;
 			});
-			const source = { agent: mock<Agent>({ id: 'agent-1' }), skillRefs: [], skills: {} };
+			const source = { agent: mock<ProjectAgent>({ id: 'agent-1' }), skillRefs: [], skills: {} };
 			evalAgentExecutionService.captureRunSource.mockResolvedValue(source);
 			evalAgentExecutionService.executeWithLlmMock
 				.mockImplementationOnce(async () => {
@@ -384,7 +384,7 @@ describe('AgentEvalRunnerService', () => {
 				expect(evalAgentExecutionService.executeWithLlmMock).toHaveBeenCalledOnce(),
 			);
 			agentRepository.findByIdAndProjectId.mockResolvedValue(
-				mock<Agent>({ id: 'agent-1', schema: { instructions: 'Changed' } as never }),
+				mock<ProjectAgent>({ id: 'agent-1', schema: { instructions: 'Changed' } as never }),
 			);
 			releaseFirst();
 			await finished;

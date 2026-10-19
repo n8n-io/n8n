@@ -12,7 +12,7 @@ import { mock } from 'vitest-mock-extended';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import { AgentRuntimeReconstructionService } from '@/modules/agents/agent-runtime-reconstruction.service';
 import { AgentsSettingsService } from '@/modules/agents/agents-settings.service';
-import type { Agent as AgentEntity } from '@/modules/agents/entities/agent.entity';
+import type { Agent as AgentEntity, ProjectAgent } from '@/modules/agents/entities/agent.entity';
 import type { AgentRunSource } from '@/modules/agents/utils/agent-published-snapshot';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { AgentSkillRefsService } from '@/modules/agents/agent-skill-refs.service';
@@ -78,7 +78,7 @@ const baseConfig: AgentJsonConfig = {
 	],
 } as unknown as AgentJsonConfig;
 
-const makeEntity = (config: AgentJsonConfig, integrations: unknown[] = []): AgentEntity =>
+const makeEntity = (config: AgentJsonConfig, integrations: unknown[] = []): ProjectAgent =>
 	({
 		id: 'agent-1',
 		projectId: 'proj-1',
@@ -88,7 +88,7 @@ const makeEntity = (config: AgentJsonConfig, integrations: unknown[] = []): Agen
 		},
 		skills: {},
 		integrations,
-	}) as unknown as AgentEntity;
+	}) as unknown as ProjectAgent;
 
 const seed = {
 	openingMessage: 'Hi, I need help with order #123',

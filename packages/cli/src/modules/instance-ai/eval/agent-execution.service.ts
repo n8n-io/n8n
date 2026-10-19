@@ -32,7 +32,7 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import { AgentRuntimeReconstructionService } from '@/modules/agents/agent-runtime-reconstruction.service';
 import { hashAgentSandboxPrincipal } from '@/modules/agents/agent-sandbox-principal';
 import { AgentsSettingsService } from '@/modules/agents/agents-settings.service';
-import type { Agent as AgentEntity } from '@/modules/agents/entities/agent.entity';
+import type { Agent as AgentEntity, ProjectAgent } from '@/modules/agents/entities/agent.entity';
 import type { AgentRunSource } from '@/modules/agents/utils/agent-published-snapshot';
 import { AgentSkillRefsService } from '@/modules/agents/agent-skill-refs.service';
 import { sanitizeToolName } from '@/modules/agents/json-config/agent-config-composition';
@@ -161,7 +161,7 @@ export class EvalAgentExecutionService {
 	) {}
 
 	/** Keep the root agent and resolved skills fixed while a batch is in flight. */
-	async captureRunSource(agent: AgentEntity): Promise<AgentRunSource> {
+	async captureRunSource(agent: ProjectAgent): Promise<AgentRunSource> {
 		const detached = {
 			...agent,
 			schema: deepCopy(agent.schema),
