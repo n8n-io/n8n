@@ -77,12 +77,21 @@ const skillsModuleBoundary = {
 		'@/modules/agents/**',
 		'@/modules/instance-ai/**',
 		'@/modules/mcp/**',
-		'../agents/**',
-		'../instance-ai/**',
-		'../mcp/**',
+		// Any depth, so files in subfolders of the skills module are covered too.
+		'../**/agents/**',
+		'../**/instance-ai/**',
+		'../**/mcp/**',
 	],
 	message:
 		'The skills module must not import the modules that use skills. Ask for what you need through SkillAgentsProxy.',
+};
+
+// `no-restricted-imports` does not check `import()` in ESLint (oxlint's rule does), so this
+// selector applies the same boundary to dynamic imports.
+const skillsModuleDynamicImportBoundary = {
+	selector:
+		'ImportExpression[source.value=/^(@\\/modules\\/|\\.\\.\\/(.*\\/)?)(agents|instance-ai|mcp)\\//]',
+	message: skillsModuleBoundary.message,
 };
 
 const METRICS_DATABASE_IMPORT_MESSAGE =
@@ -220,6 +229,7 @@ export default defineConfig(
 					patterns: [jsonwebtokenSubpathRestriction, skillsModuleBoundary],
 				},
 			],
+			'no-restricted-syntax': ['error', skillsModuleDynamicImportBoundary],
 		},
 	},
 	{

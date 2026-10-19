@@ -77,9 +77,10 @@ const skillsModuleBoundary = {
 		'@/modules/agents/**',
 		'@/modules/instance-ai/**',
 		'@/modules/mcp/**',
-		'../agents/**',
-		'../instance-ai/**',
-		'../mcp/**',
+		// Any depth, so files in subfolders of the skills module are covered too.
+		'../**/agents/**',
+		'../**/instance-ai/**',
+		'../**/mcp/**',
 	],
 	message:
 		'The skills module must not import the modules that use skills. Ask for what you need through SkillAgentsProxy.',
