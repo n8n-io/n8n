@@ -242,7 +242,6 @@ packages/@n8n/mcp-browser/                              @n8n-io/nodes
 packages/@n8n/mcp-browser-extension/                    @n8n-io/nodes
 
 # Enterprise Nodes & Partnerships
-# Specific rules after the general packages/nodes-base/ and nodes-langchain/ rules (last match wins).
 
 packages/nodes-base/nodes/Databricks/                                    @n8n-io/enterprise-nodes
 packages/nodes-base/nodes/Kafka/                                         @n8n-io/enterprise-nodes
