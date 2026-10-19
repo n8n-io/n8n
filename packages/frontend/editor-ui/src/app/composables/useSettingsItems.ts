@@ -255,7 +255,8 @@ export function useSettingsItems() {
 				id: 'settings-observability',
 				order: 40,
 				section: 'operations',
-				icon: 'satellite-dish',
+				// Registered as `telescope`; the brand glyph is a pair of binoculars.
+				icon: 'telescope',
 				label: i18n.baseText('settings.observability'),
 				position: 'top',
 				available: canOpenLogStreaming.value || canOpenOpenTelemetry.value,
