@@ -22,7 +22,7 @@ export interface AgentLineageConflict {
 export interface AgentIdConflict {
 	sourceAgentId: string;
 	existingAgentId: string;
-	existingProjectId: string;
+	existingProjectId: string | null;
 }
 
 export interface AgentImportMatches {
