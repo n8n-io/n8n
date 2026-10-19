@@ -2,6 +2,7 @@ import { RuleRunner } from '@n8n/rules-engine';
 import type { RuleSettingsMap } from '@n8n/rules-engine';
 
 import type { CodeHealthContext } from './context.js';
+import { ActorRepositoryBoundaryRule } from './rules/actor-repository-boundary.rule.js';
 import { AdrConventionsRule } from './rules/adr-conventions.rule.js';
 import { CatalogViolationsRule } from './rules/catalog-violations.rule.js';
 import { EncryptionBoundaryRule } from './rules/encryption-boundary.rule.js';
@@ -16,6 +17,7 @@ import { TypeormPersistenceBoundaryRule } from './rules/typeorm-persistence-boun
 import { WorkflowPrTargetSafetyRule } from './rules/workflow-pr-target-safety.rule.js';
 
 export type { CodeHealthContext } from './context.js';
+export { ActorRepositoryBoundaryRule } from './rules/actor-repository-boundary.rule.js';
 export { AdrConventionsRule } from './rules/adr-conventions.rule.js';
 export { CatalogViolationsRule } from './rules/catalog-violations.rule.js';
 export { EncryptionBoundaryRule } from './rules/encryption-boundary.rule.js';
@@ -34,7 +36,7 @@ const defaultRuleSettings: RuleSettingsMap = {
 	'adr-conventions': {
 		enabled: true,
 		severity: 'error',
-		options: { allowedOwners: ['API & OEM', 'Assistant', 'Catalysts'] },
+		options: { allowedOwners: ['API & OEM', 'Assistant', 'Catalysts', 'Identity & Access'] },
 	},
 	'catalog-violations': {
 		enabled: true,
@@ -87,6 +89,13 @@ const defaultRuleSettings: RuleSettingsMap = {
 	'endpoint-scope-coverage': {
 		// Disabled by default: enabling gates CI on ~129 existing authenticated-unscoped
 		// routes, which must first be reviewed and grandfathered into the baseline.
+		enabled: false,
+		severity: 'warning',
+		options: { packages: ['packages/cli'] },
+	},
+	'actor-repository-boundary': {
+		// Disabled by default: enabling gates CI on the files that inject UserRepository
+		// today, which must first be grandfathered into the baseline.
 		enabled: false,
 		severity: 'warning',
 		options: { packages: ['packages/cli'] },
@@ -165,6 +174,7 @@ export function createDefaultRunner(settings?: RuleSettingsMap): RuleRunner<Code
 	runner.registerRule(new LintConfigLayeringRule());
 	runner.registerRule(new StaleOverridesRule());
 	runner.registerRule(new EndpointScopeCoverageRule());
+	runner.registerRule(new ActorRepositoryBoundaryRule());
 	runner.registerRule(new SubpathPurityRule());
 	runner.applySettings(mergeSettings(defaultRuleSettings, settings));
 	return runner;
