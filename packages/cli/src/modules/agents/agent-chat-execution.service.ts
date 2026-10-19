@@ -40,7 +40,7 @@ export interface CancelSuspendedRunParams {
 	agentId: string;
 	runId: string;
 	resourceId: string;
-	/** Connection cleanup leaves detached children running. */
+	/** Foreground Stop leaves detached children running. */
 	cancelBackgroundJobs?: boolean;
 }
 
@@ -125,7 +125,8 @@ export class AgentChatExecutionService {
 				if (this.cancelLocal(context)) return true;
 
 				const running = execution.status === 'running';
-				// A task insert can outlive the reply on another main.
+				// Relay full cancellation even after the response ends.
+				// Another main can still be saving a new background job.
 				if (this.instanceSettings.isMultiMain && (running || context.scope !== 'foreground')) {
 					const { surface, scope, ...rest } = context;
 					await this.publisher.publishCommand({
@@ -136,6 +137,7 @@ export class AgentChatExecutionService {
 						payload: { ...rest, productionN8nChat: surface === 'n8n-chat' },
 					});
 				}
+
 				return running || (await this.cancelRecordedSuspension(context));
 			} finally {
 				if (context.scope !== 'foreground')
@@ -168,21 +170,28 @@ export class AgentChatExecutionService {
 			scope,
 			surface: productionN8nChat ? 'n8n-chat' : 'preview',
 		};
+
 		if (await this.cancelLocalWithChildren(context)) return;
+
 		await this.withTurnLock(context.threadId, async () => {
 			if (await this.cancelLocalWithChildren(context)) return;
+
 			const execution = await this.getOwnedExecution(context);
 			if (!execution) return;
+
 			if (execution.status !== 'running') {
 				const latest = await this.executionRepository.findLatestByThreadId(context.threadId);
 				if (latest?.id !== context.executionId) return;
 			}
-			if (context.scope !== 'foreground')
+
+			if (context.scope !== 'foreground') {
 				await this.backgroundJobService.cancelForParent(
 					context.agentId,
 					context.threadId,
 					chatSurfaceMemoryResourceId(context.surface, context.userId),
 				);
+			}
+
 			await this.cancelRecordedSuspension(context);
 		});
 	}
@@ -190,11 +199,13 @@ export class AgentChatExecutionService {
 	private async cancelLocalWithChildren(context: ExecutionContext): Promise<boolean> {
 		if (!this.cancelLocal(context)) return false;
 		if (context.scope === 'foreground') return true;
+
 		await this.backgroundJobService.cancelForParent(
 			context.agentId,
 			context.threadId,
 			chatSurfaceMemoryResourceId(context.surface, context.userId),
 		);
+
 		return true;
 	}
 
@@ -223,6 +234,7 @@ export class AgentChatExecutionService {
 		const { threadId, projectId, agentId, userId, executionId } = context;
 		const thread = await this.executionService.findThreadById(threadId);
 		if (!thread || !threadBelongsTo(thread, projectId, agentId, userId)) return null;
+
 		const execution = await this.executionRepository.findOneBy({ id: executionId, threadId });
 		if (
 			!execution ||
@@ -235,12 +247,14 @@ export class AgentChatExecutionService {
 				: !canContinueThreadInPreview(thread, userId, execution.source))
 		)
 			return null;
+
 		return execution;
 	}
 
 	private async cancelRecordedSuspension(context: ExecutionContext): Promise<boolean> {
 		const latest = await this.executionRepository.findLatestByThreadId(context.threadId);
 		if (latest?.id !== context.executionId || latest.hitlStatus !== 'suspended') return false;
+
 		const checkpoint = await this.checkpointStorage.findSuspendedForThread(
 			context.agentId,
 			context.threadId,
@@ -249,6 +263,7 @@ export class AgentChatExecutionService {
 			(toolCall) => toolCall.suspended,
 		);
 		if (!pending?.suspended) return false;
+
 		return await this.cancelSuspended({
 			agentId: context.agentId,
 			runId: pending.runId,
@@ -261,6 +276,7 @@ export class AgentChatExecutionService {
 		const checkpointStatus = await this.checkpointStorage.getStatus(params.runId, params.agentId);
 		if (checkpointStatus.status === 'not-found' || checkpointStatus.checkpoint === undefined)
 			return false;
+
 		const { checkpoint } = checkpointStatus;
 		if (
 			checkpoint.status !== 'suspended' ||
@@ -268,6 +284,7 @@ export class AgentChatExecutionService {
 			checkpoint.persistence?.resourceId !== params.resourceId
 		)
 			return false;
+
 		const thread = await this.executionService.findThreadById(checkpoint.persistence.threadId);
 		const productionUserId = userIdFromProductionChatMemoryResourceId(params.resourceId);
 		const userId = userIdFromDraftChatMemoryResourceId(params.resourceId) ?? productionUserId;
@@ -283,8 +300,10 @@ export class AgentChatExecutionService {
 				)))
 		)
 			return false;
+
 		if (thread && (!userId || !threadBelongsTo(thread, thread.projectId, params.agentId, userId)))
 			return false;
+
 		const childCheckpoints = getDelegatedChildCheckpoints(checkpoint, params.agentId);
 		if (checkpointStatus.status === 'active') {
 			const cancelled = await this.checkpointStorage.cancelSuspended(
@@ -294,6 +313,7 @@ export class AgentChatExecutionService {
 			);
 			if (!cancelled) return false;
 		}
+
 		if (params.cancelBackgroundJobs !== false) {
 			await this.backgroundJobService.cancelForParent(
 				params.agentId,
@@ -301,12 +321,14 @@ export class AgentChatExecutionService {
 				params.resourceId,
 			);
 		}
+
 		await Promise.all(
 			childCheckpoints.map(
 				async ({ runId, agentId }) => await this.checkpointStorage.delete(runId, agentId),
 			),
 		);
 		await this.checkpointStorage.delete(params.runId, params.agentId);
+
 		const execution = thread && (await this.executionRepository.findLatestByThreadId(thread.id));
 		if (thread && execution) {
 			this.executionUpdates.notify({
@@ -316,6 +338,7 @@ export class AgentChatExecutionService {
 				executionId: execution.id,
 			});
 		}
+
 		return true;
 	}
 }

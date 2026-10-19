@@ -1368,6 +1368,7 @@ describe('AgentExecutionOrchestratorService', () => {
 
 		it.each([
 			{ name: 'requested stop', previewChat: true, abort: true, expectedReason: 'cancelled' },
+			{ name: 'caller abort', previewChat: true, abort: true, expectedReason: 'cancelled' },
 			{ name: 'model failure', previewChat: true, abort: false, expectedReason: 'error' },
 			{
 				name: 'ownership loss',

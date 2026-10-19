@@ -87,24 +87,15 @@ export class AgentChatController {
 		private readonly agentsConfig: AgentsConfig,
 	) {}
 
-	private createChatExecution(res: FlushableResponse) {
+	private createChatStream(res: FlushableResponse) {
 		const delivery = initSseStream(res);
-		const requestController = new AbortController();
-		const abandon = () => requestController.abort();
-		delivery.abortSignal.addEventListener('abort', abandon, { once: true });
-		if (delivery.abortSignal.aborted) abandon();
 		return {
 			send: delivery.send,
-			abortSignal: requestController.signal,
 			onExecutionStarted: (id: string, sessionId: string, inputMessageIds: string[]) => {
-				delivery.abortSignal.removeEventListener('abort', abandon);
 				delivery.send({ type: 'execution-started', executionId: id, sessionId, inputMessageIds });
 			},
 			onChunk: delivery.onChunk,
-			close: () => {
-				delivery.abortSignal.removeEventListener('abort', abandon);
-				delivery.close();
-			},
+			close: delivery.close,
 		};
 	}
 
@@ -302,11 +293,10 @@ export class AgentChatController {
 		@Param('agentId') agentId: string,
 		@Body payload: AgentChatResumeDto,
 	) {
-		const execution = this.createChatExecution(res);
-		const { send, onChunk, abortSignal, onExecutionStarted } = execution;
+		const delivery = this.createChatStream(res);
+		const { send, onChunk, onExecutionStarted } = delivery;
 		let executionId: string | undefined;
 		try {
-			abortSignal.throwIfAborted();
 			const stream = this.agentExecutionOrchestratorService.resumeForChat({
 				agentId,
 				projectId: req.params.projectId,
@@ -322,7 +312,6 @@ export class AgentChatController {
 				onExecutionRecorded: (id) => {
 					executionId = id;
 				},
-				abortSignal,
 			});
 			let suspended = false;
 			let failed = false;
@@ -337,7 +326,7 @@ export class AgentChatController {
 		} catch (error) {
 			send(toChatErrorEvent(error, 'Resume failed'));
 		} finally {
-			execution.close();
+			delivery.close();
 		}
 	}
 
@@ -420,10 +409,9 @@ export class AgentChatController {
 	) {
 		const { projectId } = req.params;
 		const { runId, toolCallId, resumeData } = payload;
-		const execution = this.createChatExecution(res);
-		const { send, onChunk, abortSignal, onExecutionStarted } = execution;
+		const delivery = this.createChatStream(res);
+		const { send, onChunk, onExecutionStarted } = delivery;
 		try {
-			abortSignal.throwIfAborted();
 			const result = await this.agentTestRunService.resumePreparedDraftRun({
 				agentId,
 				projectId,
@@ -436,7 +424,6 @@ export class AgentChatController {
 				onChunk,
 				onBudgetNotice: (notice) => send({ type: 'budget-notice', ...notice }),
 				onExecutionStarted,
-				abortSignal,
 			});
 			if (result.status === 'completed') {
 				send({
@@ -447,7 +434,7 @@ export class AgentChatController {
 		} catch (error) {
 			send(toChatErrorEvent(error, 'Resume failed'));
 		} finally {
-			execution.close();
+			delivery.close();
 		}
 	}
 
