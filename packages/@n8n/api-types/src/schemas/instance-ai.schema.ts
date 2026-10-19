@@ -1,3 +1,4 @@
+import type { InstanceAiEventLifecycle } from './instance-ai-event-lifecycle';
 import { instanceAiApprovalDetailsSchema } from './instance-ai-approval.schema';
 import { z } from 'zod';
 
@@ -27,14 +28,11 @@ export const UNLIMITED_CREDITS = -1;
  * The instance's n8n Assistant credit standing, as reported by `GET /instance-ai/credits`, by the
  * `updateInstanceAiCredits` push and by the internal callers that pass it around.
  *
- * `creditsQuota` is {@link UNLIMITED_CREDITS} when credits are not metered — either the proxy is
- * disabled, or the amounts are deliberately withheld from a cohort that must not see a balance.
+ * `creditsQuota` is {@link UNLIMITED_CREDITS} when the AI service proxy is disabled.
  */
 export type InstanceAiCredits = {
 	creditsQuota: number;
 	creditsClaimed: number;
-	/** Whether the pool has been locked by the activation cap. */
-	quotaLocked?: boolean;
 };
 
 /**
@@ -2007,6 +2005,8 @@ export type InstanceAiConfirmation = Omit<
 > & { expired?: boolean };
 
 export interface InstanceAiToolCallState {
+	/** Owning run, retained when a message group resumes. */
+	runId?: string;
 	toolCallId: string;
 	toolName: string;
 	args: Record<string, unknown>;
@@ -2054,6 +2054,10 @@ export type InstanceAiTimelineEntry =
 	  };
 
 export interface InstanceAiAgentNode {
+	/** Owning run. The root updates this ID when a follow-up starts. */
+	runId?: string;
+	/** Root-only terminal facts for reconnect and history hydration. */
+	eventLifecycle?: InstanceAiEventLifecycle;
 	agentId: string;
 	role: string;
 	tools?: string[];
@@ -2381,8 +2385,10 @@ export const DEFAULT_INSTANCE_AI_PERMISSIONS: InstanceAiPermissions = {
  * publish/unpublish, credential delete/update, and workflow update have no
  * hard backend lockout — only project-scope gates. branchReadOnly is a
  * UX-level nudge toward the source-control sync workflow, not a global write
- * block (only data-table mutations have a hard middleware lockout). Trimming
- * this set would make the AI stricter than human users on the same instance.
+ * block. Only data-table schema changes (create, rename or delete a table, and
+ * column changes) have a hard backend lockout. Row writes stay allowed because
+ * source control does not carry row data. Trimming this set would make the AI
+ * stricter than human users on the same instance.
  *
  * When changing this set, also update the read-only section in
  * `packages/@n8n/instance-ai/src/agent/system-prompt.ts` (`getReadOnlySection`).
@@ -2397,6 +2403,7 @@ const BRANCH_READ_ONLY_SAFE_PERMISSIONS: ReadonlySet<keyof InstanceAiPermissions
 	'createCredential',
 	'deleteCredential',
 	'restoreWorkflowVersion',
+	'mutateDataTableRows',
 ]);
 
 /** Returns a copy of permissions with all write operations set to 'blocked',
@@ -3040,6 +3047,18 @@ export class InstanceAiEvalCredentialAllowlistRequest extends Z.class({
 	 * behaviour, so every existing case is unaffected.
 	 */
 	bypassCredentialTest: z.array(z.string().min(1)).max(50).optional(),
+}) {}
+
+/**
+ * Aims the thread's connection tests for one credential type at a provider
+ * stand-in, so the eval checks the captured secret without the real provider.
+ */
+export class InstanceAiEvalCredentialTestTargetRequest extends Z.class({
+	threadId: z.string().uuid(),
+	credentialType: z.string().min(1),
+	baseUrl: z.string().url(),
+	/** Credential field the stand-in URL is written into. */
+	urlField: z.string().min(1),
 }) {}
 
 /** The id an authored seed gives a data table, agent or folder. ≥8 chars: the

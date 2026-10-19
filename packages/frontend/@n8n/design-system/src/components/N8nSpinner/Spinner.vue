@@ -1,6 +1,9 @@
 <script lang="ts" setup>
+import { useI18n } from '../../composables/useI18n';
 import type { IconSize } from '../../types';
 import N8nIcon from '../N8nIcon';
+
+const { t } = useI18n();
 
 const TYPE = ['dots', 'ring', 'grid'] as const;
 
@@ -25,13 +28,17 @@ interface SpinnerProps {
 
 defineOptions({ name: 'N8nSpinner' });
 withDefaults(defineProps<SpinnerProps>(), {
-	type: 'dots',
+	type: 'grid',
 	size: 'medium',
 });
 </script>
 
 <template>
-	<span class="n8n-spinner">
+	<span
+		class="n8n-spinner"
+		:role="type === 'grid' ? 'status' : undefined"
+		:aria-label="type === 'grid' ? t('spinner.loading') : undefined"
+	>
 		<div v-if="type === 'ring'" class="lds-ring">
 			<div></div>
 			<div></div>
@@ -113,6 +120,8 @@ withDefaults(defineProps<SpinnerProps>(), {
 	border-radius: 50%;
 	animation: lds-ring 1.2s cubic-bezier(0.5, 0, 0.5, 1) infinite;
 	border-color: var(--color--primary) transparent transparent transparent;
+
+	@include motion.reduced-motion;
 }
 .lds-ring div:nth-child(1) {
 	animation-delay: -0.45s;

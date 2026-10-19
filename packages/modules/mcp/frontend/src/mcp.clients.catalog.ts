@@ -1,13 +1,28 @@
-import type { Component } from 'vue';
+import { markRaw, type Component } from 'vue';
 
 import AntigravityIcon from './assets/client-icons/antigravity.svg?component';
 import ClaudeIcon from './assets/client-icons/claude.svg?component';
 import CodexIcon from './assets/client-icons/codex.svg?component';
 import CursorIcon from './assets/client-icons/cursor.svg?component';
+import DevinIcon from './assets/client-icons/devin.svg?component';
 import GeminiIcon from './assets/client-icons/gemini.svg?component';
 import MistralIcon from './assets/client-icons/mistral.svg?component';
 import OpenAiIcon from './assets/client-icons/openai.svg?component';
 import VsCodeIcon from './assets/client-icons/vscode.svg?component';
+
+/**
+ * Brand marks the decorative empty-state cards cycle through, interleaved so consecutive
+ * marks read clearly different (coral wordmark, blue ribbon, purple blossom, near-black
+ * cube, gradient spark, black blossom).
+ */
+export const MCP_CLIENT_LOGO_CYCLE: Component[] = [
+	ClaudeIcon,
+	VsCodeIcon,
+	CodexIcon,
+	CursorIcon,
+	GeminiIcon,
+	OpenAiIcon,
+].map((icon) => markRaw(icon));
 
 export type McpSetupCategory = 'cli' | 'web' | 'ide';
 
@@ -16,7 +31,7 @@ export interface McpClientSetup {
 	/** Brand name, not translatable. */
 	name: string;
 	category: McpSetupCategory;
-	/** Brand mark; null falls back to the neutral MCP icon (Windsurf has no official inlineable mark). */
+	/** Brand mark; null falls back to the neutral MCP icon. */
 	icon: Component | null;
 	installCommand?: string;
 	/** Snippet for the client's MCP config file (JSON, or TOML for Codex). */
@@ -82,6 +97,14 @@ url = "${serverUrl}"`;
   }
 }`;
 	const serverUrlSnippet = `{\n  "mcpServers": {\n    "n8n": {\n      "serverUrl": "${serverUrl}"\n    }\n  }\n}`;
+	const devinSnippet = `{
+  "mcpServers": {
+    "n8n": {
+      "url": "${serverUrl}",
+      "transport": "http"
+    }
+  }
+}`;
 
 	// One-click deep links, exactly as each editor expects: Cursor takes base64 of
 	// `{"url": …}` in a `config` query param, VS Code a URL-encoded JSON object.
@@ -171,19 +194,19 @@ url = "${serverUrl}"`;
 					configSnippet: cursorSnippet,
 				},
 				{
+					id: 'devin',
+					name: 'Devin',
+					category: 'ide',
+					icon: DevinIcon,
+					configSnippet: devinSnippet,
+				},
+				{
 					id: 'vscode',
 					name: 'VS Code',
 					category: 'ide',
 					icon: VsCodeIcon,
 					deepLink: vscodeDeepLink,
 					configSnippet: vscodeSnippet,
-				},
-				{
-					id: 'windsurf',
-					name: 'Windsurf',
-					category: 'ide',
-					icon: null,
-					configSnippet: serverUrlSnippet,
 				},
 			],
 		},

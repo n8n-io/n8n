@@ -188,6 +188,9 @@ export class LogStreamingEventRelay extends EventRelay {
 			'role-mapping-rule-updated': (event) => this.roleMappingRuleUpdated(event),
 			'role-mapping-rule-deleted': (event) => this.roleMappingRuleDeleted(event),
 			'role-mapping-rules-bulk-deleted': (event) => this.roleMappingRulesBulkDeleted(event),
+			'trusted-source-created': (event) => this.trustedSourceCreated(event),
+			'trusted-source-updated': (event) => this.trustedSourceUpdated(event),
+			'trusted-source-deleted': (event) => this.trustedSourceDeleted(event),
 			'mcp-oauth-completed': (event) => this.mcpOauthCompleted(event),
 			'mcp-tool-called': (event) => this.mcpToolCalled(event),
 			'mcp-access-updated': (event) => this.mcpAccessUpdated(event),
@@ -1595,6 +1598,34 @@ export class LogStreamingEventRelay extends EventRelay {
 					reason: event.reason,
 				},
 			},
+		});
+	}
+
+	// #endregion
+
+	// #region Trusted sources
+
+	@Redactable()
+	private trustedSourceCreated({ user, ...rest }: RelayEventMap['trusted-source-created']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.trusted-source.created',
+			payload: { ...user, ...rest },
+		});
+	}
+
+	@Redactable()
+	private trustedSourceUpdated({ user, ...rest }: RelayEventMap['trusted-source-updated']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.trusted-source.updated',
+			payload: { ...user, ...rest },
+		});
+	}
+
+	@Redactable()
+	private trustedSourceDeleted({ user, ...rest }: RelayEventMap['trusted-source-deleted']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.trusted-source.deleted',
+			payload: { ...user, ...rest },
 		});
 	}
 

@@ -2,7 +2,12 @@
  * Pins what an `extends` rule decides for real host paths: a rule on a base credential type
  * refuses a workflow that asks for a type built on it, exactly as a rule on that type would.
  */
-import { createWorkflow, randomCredentialPayload, testDb } from '@n8n/backend-test-utils';
+import {
+	createWorkflow,
+	getPersonalProject,
+	randomCredentialPayload,
+	testDb,
+} from '@n8n/backend-test-utils';
 import type { PolicyRule } from '@n8n/api-types';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import { ExecutionRepository, WorkflowRepository, type User } from '@n8n/db';
@@ -65,7 +70,7 @@ const workflowBody = () => ({
 	connections: {},
 });
 
-const derivedViolation = {
+const derivedViolation = (projectId: string) => ({
 	kind: 'credential-type-unavailable',
 	checkId: 'credential-type-availability',
 	message: `Credential type "${DERIVED}" is blocked by an instance policy`,
@@ -73,7 +78,9 @@ const derivedViolation = {
 	subjectType: 'credentialType',
 	scope: 'instance',
 	matchedRuleId: 'deny-oauth2-family',
-};
+	projectId,
+	optInAvailable: false,
+});
 
 beforeAll(async () => {
 	await utils.initNodeTypes();
@@ -120,7 +127,8 @@ describe('a rule on a base credential type', () => {
 
 		const response = await ownerAgent.post('/workflows').send(workflowBody()).expect(403);
 
-		expect(response.body.meta.violations).toEqual([derivedViolation]);
+		const { id: projectId } = await getPersonalProject(owner);
+		expect(response.body.meta.violations).toEqual([derivedViolation(projectId)]);
 		await expect(workflowRepository.count()).resolves.toBe(0);
 	});
 
@@ -150,7 +158,8 @@ describe('a rule on a base credential type', () => {
 		});
 		const error = stored?.data.resultData.error as unknown as { violations?: unknown[] };
 
-		expect(error?.violations).toEqual([derivedViolation]);
+		const { id: projectId } = await getPersonalProject(owner);
+		expect(error?.violations).toEqual([derivedViolation(projectId)]);
 	});
 
 	test('lets an earlier allow for the derived type win over the family deny', async () => {
@@ -174,19 +183,19 @@ describe('a rule on a base credential type', () => {
 });
 
 describe('writing an extends rule', () => {
-	test('rejects a base credential type that is not installed', async () => {
+	test('saves a base credential type that is not installed, with a warning', async () => {
 		const response = await ownerAgent.put('/credential-type-policies/instance').send({
-			rules: [
-				{ id: 'r1', action: 'deny', selector: { kind: 'extends', value: 'notInstalledApi' } },
-			],
+			rules: [{ id: 'r1', action: 'deny', selector: { kind: 'extends', value: 'notLoadedApi' } }],
 			defaultAction: 'allow',
 			version: 0,
 		});
 
-		expect(response.statusCode).toBe(400);
-		expect(response.body.message).toBe(
-			'Extends rule names a credential type that is not installed: notInstalledApi',
-		);
+		expect(response.statusCode).toBe(200);
+		const persisted = await ownerAgent.get('/credential-type-policies/instance');
+		expect(persisted.body.data.rules).toEqual([
+			{ id: 'r1', action: 'deny', selector: { kind: 'extends', value: 'notLoadedApi' } },
+		]);
+		expect(response.body.data.warnings).toEqual([{ kind: 'notLoaded', ruleId: 'r1' }]);
 	});
 
 	test('rejects the rule in a node type policy request', async () => {

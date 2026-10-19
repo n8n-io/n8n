@@ -1,13 +1,22 @@
-import type { ConsentUiHints } from '@n8n/api-types';
 import type { AuthPrincipal, SecurityContext } from '@n8n/permissions';
 import type { OAuthResourceGrant } from 'n8n-workflow';
 
-import type { Credential, Extracted, Inbound, Result, Verified } from './pipeline';
+import type { Credential, Extracted, Inbound, RejectReason, Result, Verified } from './pipeline';
 import type { AuthorizationServerMetadata, Jwk, TrustedSource } from './trusted-source';
 import type { SurfaceId } from './trusted-source-config';
 
-/** What a protected resource reads from the user. The `User` entity satisfies it. */
-export type ResourceUser = AuthPrincipal & { id: string; createdAt: Date };
+/** What a resource's gate reads from the caller. A `Principal` and the `User` entity both satisfy it. */
+export type ResourcePrincipal = AuthPrincipal & { id: string };
+
+/** What the consent screen reads from the user. The `User` entity satisfies it. */
+export type ResourceUser = ResourcePrincipal & { createdAt: Date };
+
+export interface ConsentUiHints {
+	/** design-system icon name (updatedIconSet) for the consent logo tile; omit to fall back to the generic mcp icon */
+	icon?: string;
+	/** noun key inserted into first-party consent copy, e.g. 'form' (later 'webhook'); resolved to a localized word on the frontend */
+	consentType?: string;
+}
 
 /**
  * Descriptor for an OAuth 2.1 protected resource served by this instance.
@@ -83,7 +92,7 @@ export interface ProtectedResource {
 	isAvailable?(): Promise<boolean>;
 
 	/** Whether `user` may access this resource at all. */
-	authorize(user: ResourceUser): Promise<boolean>;
+	authorize(user: ResourcePrincipal): Promise<boolean>;
 
 	/** The grant sealed into a run, so the worker re-takes the same decision without the resource. */
 	getGrant?(): OAuthResourceGrant;
@@ -98,6 +107,51 @@ export type AdvertisedResource = Pick<Inbound, 'surface' | 'resource' | 'accepte
  */
 export abstract class AuthenticationPipeline {
 	abstract run(extracted: Extracted): Promise<Result<SecurityContext>>;
+}
+
+/** Why the caller was turned away: the pipeline's vocabulary, plus the resource's own refusal. */
+export type RefusalReason = RejectReason | 'insufficient_scope';
+
+export type Admitted = {
+	ok: true;
+	context: SecurityContext;
+};
+
+export type Refused = {
+	ok: false;
+	reason: RefusalReason;
+	/** The resource as the pipeline saw it. Enough to build the challenge, without the request. */
+	advertised: AdvertisedResource;
+	/** Present when the pipeline accepted the token and the resource then refused the subject. */
+	context?: SecurityContext;
+};
+
+export type AdmissionResult = Admitted | Refused;
+
+/**
+ * What every surface does between taking a credential off the wire and acting as the caller:
+ * stamp the inbound with the resource, run the pipeline, ask the resource to authorize the
+ * subject, and build the 401 challenge when any of that fails.
+ *
+ * A surface keeps what is its own: where the credential travels (`Authorization`, a cookie,
+ * a custom header, a token it just exchanged) and how it answers a refusal.
+ */
+export abstract class ResourceAdmission {
+	/** Admits an extracted credential, for a surface that inspects it before the pipeline runs. */
+	abstract admit(resource: ProtectedResource, extracted: Extracted): Promise<AdmissionResult>;
+
+	/**
+	 * Admits a bearer the surface already took out of its own carrier. An empty token is
+	 * refused with `no-credential`, so the surface can still answer with the challenge.
+	 */
+	abstract admitBearer(
+		resource: ProtectedResource,
+		request: Omit<Inbound['request'], 'headers'>,
+		token: string,
+	): Promise<AdmissionResult>;
+
+	/** The `WWW-Authenticate` value for a refusal: the advertised challenge, then the RFC 6750 error. */
+	abstract challenge(refused: Refused): Promise<string>;
 }
 
 /** The dispatcher. Owns what every method shares: driver lookup and surface acceptance. */
@@ -146,6 +200,9 @@ export abstract class LocalAuthorizationServer {
 	abstract getMetadata(): Promise<AuthorizationServerMetadata>;
 
 	abstract getJwks(): Promise<{ keys: Jwk[] }>;
+
+	/** Whether the server still honours an access token it signed: a revoked one verifies, yet is refused. */
+	abstract isAccessTokenActive(token: string): Promise<boolean>;
 }
 
 export abstract class TrustedSourceGate {

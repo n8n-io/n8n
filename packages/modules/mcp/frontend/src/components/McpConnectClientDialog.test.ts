@@ -93,6 +93,26 @@ describe('McpConnectClientDialog', () => {
 		expect(body().queryByTestId('mcp-connect-one-click')).not.toBeInTheDocument();
 	});
 
+	it('should show the shared Devin config file and entry', async () => {
+		renderComponent({ pinia });
+
+		await waitFor(() => {
+			expect(body().getByTestId('mcp-connect-client-picker-trigger')).toBeInTheDocument();
+		});
+		await userEvent.click(body().getByTestId('mcp-connect-client-picker-trigger'));
+		const menuLabel = await body().findByText('Devin');
+		expect(
+			menuLabel.closest('[role="menuitem"]')?.querySelector('svg.brand-icon'),
+		).toBeInTheDocument();
+		await userEvent.click(menuLabel);
+
+		expect(body().getByText(/~\/\.config\/devin\/mcp_config\.json/)).toHaveTextContent(
+			'Devin desktop app and CLI share this file',
+		);
+		expect(body().getByTestId('mcp-config-snippet')).toHaveTextContent('"transport": "http"');
+		expect(body().queryByTestId('mcp-connect-one-click')).not.toBeInTheDocument();
+	});
+
 	it('should show only the server URL (no one-click) for web clients without a connector URL', async () => {
 		renderComponent({ pinia });
 

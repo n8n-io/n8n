@@ -1,6 +1,6 @@
 {
   "name": "@n8n/n8n-nodes-langchain",
-  "version": "2.43.0",
+  "version": "2.44.0",
   "description": "",
   "main": "index.js",
   "exports": {
@@ -152,6 +152,7 @@
       "dist/nodes/mcp/McpRegistryClientTool/McpRegistryClientTool.node.js",
       "dist/nodes/mcp/McpTrigger/McpTrigger.node.js",
       "dist/nodes/memory/MemoryBufferWindow/MemoryBufferWindow.node.js",
+      "dist/nodes/memory/MemoryLakebaseChat/MemoryLakebaseChat.node.js",
       "dist/nodes/memory/MemoryMotorhead/MemoryMotorhead.node.js",
       "dist/nodes/memory/MemoryPostgresChat/MemoryPostgresChat.node.js",
       "dist/nodes/memory/MemoryMongoDbChat/MemoryMongoDbChat.node.js",

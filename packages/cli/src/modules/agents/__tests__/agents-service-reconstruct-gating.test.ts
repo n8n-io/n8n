@@ -26,6 +26,7 @@ import type { CredentialsFinderService } from '@n8n/backend-services';
 import type { EphemeralNodeExecutor } from '@/node-execution';
 import type { OauthService } from '@/oauth/oauth.service';
 import type { AiService } from '@/services/ai.service';
+import type { CredentialsService } from '@/credentials/credentials.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
@@ -44,7 +45,7 @@ import type {
 	AgentSandboxRuntimeService,
 } from '../agent-sandbox-runtime.service';
 import type { AgentWorkspaceService } from '../agent-workspace.service';
-import type { Agent } from '../entities/agent.entity';
+import type { ProjectAgent } from '../entities/agent.entity';
 import { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
 import { ChatIntegrationActionExecutor } from '../integrations/integration-action-executor';
 import { ChatIntegrationContextQueryExecutor } from '../integrations/integration-context-query-executor';
@@ -141,13 +142,14 @@ function makeReconstructionService(
 		mock<CredentialsFinderService>(),
 		mock<WorkflowFinderService>(),
 		mock<AgentChatAttachmentService>(),
+		mock<CredentialsService>(),
 	);
 }
 
 function makeAgentEntity(
 	schemaConfig?: AgentJsonConfig['config'],
 	overrides?: Partial<AgentJsonConfig>,
-): Agent {
+): ProjectAgent {
 	const schema: AgentJsonConfig = {
 		name: 'Test',
 		model: 'anthropic/claude-sonnet-4-5',
@@ -160,7 +162,7 @@ function makeAgentEntity(
 		projectId: 'project-1',
 		schema,
 		tools: {},
-	} as unknown as Agent;
+	} as unknown as ProjectAgent;
 }
 
 describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — MCP wiring', () => {
@@ -226,6 +228,44 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — MCP w
 		expect(buildMcpClientForServerMock.mock.calls[0][0]).toMatchObject({ name: 'github' });
 		expect(buildMcpClientForServerMock.mock.calls[1][0]).toMatchObject({ name: 'fs' });
 	});
+
+	it.each([
+		['inline', true],
+		['top-level', false],
+		['sub-agent', false],
+	] as const)(
+		'marks MCP tool permissions as non-interrupting only for %s runtimes: %s',
+		async (runtimeProfile, nonInterrupting) => {
+			const { service, credentialProvider } = setup();
+
+			await service.reconstructFromResolvedSource({
+				config: {
+					name: 'Agent',
+					model: 'anthropic/claude-sonnet-4-5',
+					instructions: 'Help',
+					mcpServers: [
+						{
+							name: 'github',
+							url: 'https://api.example.test/mcp',
+							transport: 'streamableHttp',
+							authentication: 'none',
+						},
+					],
+				},
+				memoryOwnerAgentId: 'agent-1',
+				projectId: 'project-1',
+				credentialProvider,
+				toolDescriptors: {},
+				toolCodeByName: {},
+				skills: {},
+				runtimeProfile,
+				runType: 'production',
+			});
+
+			const deps = buildMcpClientForServerMock.mock.calls[0][1] as { nonInterrupting?: boolean };
+			expect(deps.nonInterrupting).toBe(nonInterrupting);
+		},
+	);
 
 	it('forwards resolved MCP tool names through eval instrumentation', async () => {
 		const { service, credentialProvider } = setup();
@@ -569,7 +609,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 				id: 'agent-2',
 				name: 'Research Agent',
 				activeVersionId: 'version-2',
-			} as Agent);
+			} as ProjectAgent);
 			const service = makeReconstructionService({ agentRepository });
 			const entity = makeAgentEntity(undefined, {
 				subAgents: { agents: [{ agentId: 'agent-2' }] },
@@ -612,7 +652,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 			id: 'agent-billing',
 			name: 'Billing Agent',
 			activeVersionId: 'version-billing',
-		} as Agent);
+		} as ProjectAgent);
 		const service = makeReconstructionService({ agentRepository });
 		const entity = makeAgentEntity(undefined, {
 			subAgents: {
@@ -646,7 +686,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 			id: 'agent-billing',
 			name: 'Billing Agent',
 			activeVersionId: 'version-billing',
-		} as Agent);
+		} as ProjectAgent);
 		const service = makeReconstructionService({ agentRepository });
 		const config: AgentJsonConfig = {
 			name: 'Test',
@@ -666,7 +706,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 			id: 'agent-billing',
 			name: 'Billing Agent',
 			activeVersionId: null,
-		} as Agent);
+		} as ProjectAgent);
 		const service = makeReconstructionService({ agentRepository });
 		const config: AgentJsonConfig = {
 			name: 'Test',
@@ -1062,7 +1102,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — backg
 	function setupWithRoster() {
 		const agentRepository = mock<AgentRepository>();
 		agentRepository.findByIdAndProjectId.mockResolvedValue(
-			mock<Agent>({ id: 'agent-2', name: 'Researcher', activeVersionId: 'version-1' }),
+			mock<ProjectAgent>({ id: 'agent-2', name: 'Researcher', activeVersionId: 'version-1' }),
 		);
 		return {
 			service: makeReconstructionService({ agentRepository }),
@@ -1111,7 +1151,9 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — backg
 	it('excludes disabled sub-agents from foreground and background delegation', async () => {
 		Container.get(AgentsConfig).backgroundTasksEnabled = true;
 		const agentRepository = mock<AgentRepository>();
-		agentRepository.findByIdAndProjectId.mockResolvedValue(mock<Agent>({ id: 'disabled-agent' }));
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			mock<ProjectAgent>({ id: 'disabled-agent' }),
+		);
 		const service = makeReconstructionService({ agentRepository });
 		await service.reconstructFromAgentEntity(
 			storedRunSource(

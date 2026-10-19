@@ -39,6 +39,7 @@ import type {
 	WorkflowExecuteModeValues as WorkflowExecuteMode,
 } from './execution-context';
 import type { ExecutionStatus } from './execution-status';
+import type { RedactionChannels } from './redaction-channels';
 import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { Result } from '@n8n/utils/result';
 import type { Workflow } from './workflow';
@@ -174,14 +175,25 @@ export type OAuth2FailureReason = 'invalid_token' | 'verifier_unavailable' | 'in
 
 export type N8nOAuth2ValidationResult =
 	| { valid: true; user: IUser }
-	| { valid: false; reason: OAuth2FailureReason };
+	| {
+			valid: false;
+			reason: OAuth2FailureReason;
+			/**
+			 * The `WWW-Authenticate` value for the 401 that answers this request. It names the
+			 * resource metadata, so a client can discover the issuers the resource accepts.
+			 */
+			challenge?: string;
+	  };
 
 export type N8nOAuth2FlowResult =
 	| {
 			valid: true;
 			token: string;
-			/** Rotated on every use. Never hand this to a browser document or to page script. */
-			refreshToken: string;
+			/**
+			 * Rotated on every use. Never hand this to a browser document or to page script.
+			 * Absent when the issuer granted no refresh token; the flow restarts when `token` expires.
+			 */
+			refreshToken?: string;
 			/** Lifetime of `token` in seconds, as the AS reports it. A duration, not an
 			 * absolute `exp`, so a browser scheduling off it is immune to clock skew. */
 			expiresIn: number;
@@ -1254,6 +1266,24 @@ export type DataTableProxyFunctions = {
 	getDataTableProxy?(dataTableId: string): Promise<IDataTableProjectService>;
 };
 
+/** What a node may ask of a trusted source: the surface it is used on and the capability it needs. */
+export type TrustedSourceFilter = {
+	surface: 'trigger';
+	capability?: 'verify-jwt' | 'redirect-login';
+};
+
+/** One entry of the trusted-source dropdown on a trigger node. */
+export type TrustedSourceOption = { id: string; name: string };
+
+export type TrustedSourceDirectory = {
+	listTrustedSources(filter: TrustedSourceFilter): Promise<TrustedSourceOption[]>;
+};
+
+export type TrustedSourceFunctions = {
+	// Optional to account for situations where the inbound-auth-core module is disabled
+	listTrustedSources?(filter: TrustedSourceFilter): Promise<TrustedSourceOption[]>;
+};
+
 export type CredentialCheckStatus = {
 	credentialId: string;
 	credentialName: string;
@@ -1505,7 +1535,10 @@ export interface ILoadOptionsFunctions extends FunctionsBase {
 	): NodeParameterValueType | object | undefined;
 	getCurrentNodeParameters(): INodeParameters | undefined;
 
-	helpers: RequestHelperFunctions & SSHTunnelFunctions & DataTableProxyFunctions;
+	helpers: RequestHelperFunctions &
+		SSHTunnelFunctions &
+		DataTableProxyFunctions &
+		TrustedSourceFunctions;
 }
 
 export type FieldValueOption = { name: string; type: FieldType | 'any' };
@@ -1641,6 +1674,10 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 	 * Optional `metadata` is stashed server-side against this flow's one-time `state`
 	 * (never sent to the browser) and returned by `completeN8nOAuth2Flow` on success —
 	 * a per-flow slot for carrying data (e.g. the original request query) across the bounce.
+	 *
+	 * The issuer the user signs in at is the trusted source the trigger's resource accepts,
+	 * read from the node's `trustedSource` parameter on the host side. Without one, the
+	 * instance's own OAuth2 server is used.
 	 */
 	beginN8nOAuth2Flow(resourceUrl: string, metadata?: Record<string, string>): Promise<string>;
 	/**
@@ -1649,6 +1686,9 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 	 * exchanges the code for an access token **server-side** (the code never reaches the
 	 * sandboxed form page), and validates it. Returns the token and resolved user on
 	 * success, or a failure reason.
+	 *
+	 * The resource must still accept the source the flow began with; a flow whose trigger
+	 * switched issuer in between is refused.
 	 */
 	completeN8nOAuth2Flow(code: string, state: string): Promise<N8nOAuth2FlowResult>;
 	/**
@@ -2379,7 +2419,14 @@ export interface ITriggerResponse {
 	manualTriggerResponse?: Promise<INodeExecutionData[][]>;
 }
 
-/** Private-credential usage a sub-execution reports to its caller, so the calling node's task inherits the flags and redaction covers the embedded output. */
+/**
+ * What a sub-execution reports to its caller about credentials, so the calling node's task
+ * inherits it and redaction covers the embedded output.
+ *
+ * Despite the name, this is not only about dynamic (private) credentials: `usedCredentialIds`
+ * carries the plain ids of every credential the sub-workflow references, which credential
+ * usability redaction reads. Keep that field when changing dynamic-credential handling.
+ */
 export interface DynamicCredentialsUsage {
 	/** True when the run resolved a private credential. */
 	usedDynamicCredentials?: boolean;
@@ -2387,6 +2434,11 @@ export interface DynamicCredentialsUsage {
 	attemptedDynamicCredentials?: boolean;
 	/** The n8n user a resolved private credential belonged to; keeps the parent execution revealable to that user. */
 	dynamicCredentialsResolvedUserId?: string;
+	/**
+	 * The credentials the run's workflows reference, its own and those its sub-workflows reported.
+	 * Lets the caller's redaction cover output that a credential it does not reference produced.
+	 */
+	usedCredentialIds?: string[];
 }
 
 export interface ExecuteWorkflowData extends DynamicCredentialsUsage {
@@ -2394,6 +2446,8 @@ export interface ExecuteWorkflowData extends DynamicCredentialsUsage {
 	/** Terminal node output: items from every run concatenated per output branch, unless the caller sets `returnLastRunOnly`. */
 	data: Array<INodeExecutionData[] | null>;
 	waitTill?: Date | null;
+	/** Redaction channels the sub-execution reports to its caller, so the caller's execution redacts the copy of its output. Absent when no channel is redacted. */
+	subWorkflowRedaction?: RedactionChannels;
 }
 
 /**
@@ -3539,6 +3593,9 @@ export interface ITaskMetadata {
 	 * Private-credential usage a sub-execution reported while this execution was
 	 * waiting. The waiting task is popped and the node re-runs disabled on resume,
 	 * so the usage rides on the stack entry to reach the freshly stamped task.
+	 * Also carries the plain credential ids the sub-execution reported (see
+	 * {@link DynamicCredentialsUsage}). Persisted for waiting executions, so the key
+	 * must not be renamed.
 	 */
 	dynamicCredentialsUsage?: DynamicCredentialsUsage;
 	subNodeExecutionData?: {
@@ -3648,6 +3705,11 @@ export interface ITaskData extends ITaskStartedData {
 	 * failed attempts (e.g. the running user has not connected the credential).
 	 */
 	attemptedDynamicCredentials?: boolean;
+	/**
+	 * The credentials a sub-workflow this node ran references. Its output embeds what those
+	 * credentials produced, so the redaction layer treats them as used by this execution.
+	 */
+	usedCredentialIds?: string[];
 }
 
 export interface ISourceData {
@@ -3816,11 +3878,15 @@ export interface IWorkflowExecutionDataProcess {
 	 * What, if anything, on the main that started this run awaits its outcome
 	 * and would act on a paused segment as if it were the result. A worker must
 	 * not park such a run at shutdown.
-	 * - `'response'`: a webhook caller is owed a response; satisfied once the run
-	 *   relays one.
+	 * The values differ in what clears them, not in when:
+	 * - `'response'`: a webhook caller is owed a response. Cleared when the worker
+	 *   relays one: at the Respond to Webhook node for `responseNode`, at the end
+	 *   of the run for `lastNode`.
 	 * - `'completion'`: a trigger node's done promise (Kafka, RabbitMQ, MQTT), an
-	 *   Instance AI run or a retry awaits the end of the run; never satisfied early.
-	 * - `'none'`: nothing waits, the run may be parked.
+	 *   Instance AI run, a retry or an MCP Trigger run awaits the end of the run.
+	 *   Never cleared.
+	 * - `'none'`: nothing waits, the run may be parked. A webhook in the default
+	 *   `onReceived` mode is answered at enqueue and starts here.
 	 * Absent (older main): treated as `'completion'`, the strictest reading.
 	 */
 	callerAwaitsOutcome?: 'none' | 'response' | 'completion';
@@ -4039,6 +4105,11 @@ export interface IWorkflowExecuteAdditionalData {
 	 * Telemetry-only; the redaction layer relies on `currentNodeUsedDynamicCredentials`.
 	 */
 	currentNodeAttemptedDynamicCredentials?: boolean;
+	/**
+	 * The credentials a sub-workflow run by the current node reported. Reset by the
+	 * execution engine before each node runs.
+	 */
+	currentNodeUsedCredentialIds?: string[];
 	/**
 	 * The n8n user a dynamically-resolved private credential belongs to, set during
 	 * credential resolution when the resolver maps the execution's identity to an n8n
@@ -4471,7 +4542,7 @@ export type FilterOptionsValue = {
 	caseSensitive: boolean;
 	leftValue: string;
 	typeValidation: 'strict' | 'loose';
-	version: 1 | 2 | 3;
+	version: 1 | 2 | 3 | 4;
 };
 
 export type FilterValue = {

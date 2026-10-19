@@ -4,7 +4,6 @@ import {
 	isDraftIntegration,
 	type AgentConfigValidationResponse,
 	type AgentJsonConfig,
-	type AgentSkill,
 	type AgentVersionListItemDto,
 	type StoredAgentConfig,
 } from '@n8n/api-types';
@@ -19,12 +18,11 @@ import {
 import { Container, Service } from '@n8n/di';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import isEqual from 'lodash/isEqual';
-import { deepCopy, UserError } from 'n8n-workflow';
+import { UserError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ConflictError, NotFoundError } from '@n8n/errors';
-import { getMissingSkillIds } from '@/modules/agents/utils/agent-missing-skill-ids';
 import { Telemetry } from '@/telemetry';
 
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
@@ -46,9 +44,9 @@ import { AgentUpdateBroadcaster } from './agent-update-broadcaster';
 import { AgentValidationService } from './agent-validation.service';
 import type { AgentHistory } from './entities/agent-history.entity';
 import { AgentTask } from './entities/agent-task.entity';
-import type { Agent } from './entities/agent.entity';
+import type { Agent, ProjectAgent } from './entities/agent.entity';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
-import { toAgentDocument, type AgentSkillRefs } from './json-config/agent-document';
+import { toAgentDocument } from './json-config/agent-document';
 import { AgentHistoryRepository } from './repositories/agent-history.repository';
 import { AgentTaskSnapshotRepository } from './repositories/agent-task-snapshot.repository';
 import { AgentTaskRepository } from './repositories/agent-task.repository';
@@ -96,7 +94,7 @@ function draftSchemaFromVersion(schema: AgentJsonConfig | null): AgentJsonConfig
 }
 
 export interface PublishAgentResult {
-	agent: Agent;
+	agent: ProjectAgent;
 	/**
 	 * The draft validation `assertPublishable` already computed while
 	 * guarding this publish call — only present when the current draft (not
@@ -200,7 +198,7 @@ export class AgentPublishService {
 	 * The n8n Chat entry is saved in the published schema.
 	 */
 	private async assertPublishable(
-		agent: Agent,
+		agent: ProjectAgent,
 		projectId: string,
 		user: User,
 		tasks: ReadonlyMap<string, AgentTask>,
@@ -257,7 +255,7 @@ export class AgentPublishService {
 	 * them by this point, and skipping them keeps that the single place that owns
 	 * the rule.
 	 */
-	private async assertChannelsStartable(agent: Agent, projectId: string): Promise<void> {
+	private async assertChannelsStartable(agent: ProjectAgent, projectId: string): Promise<void> {
 		const chatIntegrationService = Container.get(ChatIntegrationService);
 		for (const integration of agent.integrations ?? []) {
 			if (!isCredentialAgentIntegration(integration)) continue;
@@ -272,7 +270,7 @@ export class AgentPublishService {
 		user: User,
 		by: AgentActor,
 		pushRef?: string,
-	): Promise<Agent> {
+	): Promise<ProjectAgent> {
 		const agent = await getAgentOrThrow(this.agentRepository, agentId, projectId);
 
 		// Same optimistic revision fence as publish: a concurrent edit that bumped
@@ -313,7 +311,7 @@ export class AgentPublishService {
 	 * a lookup map would widen the event to a union its payload cannot satisfy.
 	 */
 	private trackPublished(
-		agent: Agent,
+		agent: ProjectAgent,
 		projectId: string,
 		user: User,
 		emitter: AgentPublishEmitter,
@@ -384,7 +382,7 @@ export class AgentPublishService {
 		user: User,
 		modifiedBy: AgentActor,
 		pushRef?: string,
-	): Promise<Agent> {
+	): Promise<ProjectAgent> {
 		const agent = await getAgentOrThrow(this.agentRepository, agentId, projectId);
 
 		const activeVersion = agent.activeVersion;
@@ -409,7 +407,7 @@ export class AgentPublishService {
 		user: User,
 		modifiedBy: AgentActor,
 		pushRef?: string,
-	): Promise<Agent> {
+	): Promise<ProjectAgent> {
 		const agent = await getAgentOrThrow(this.agentRepository, agentId, projectId);
 
 		const version = await this.agentHistoryRepository.findByVersionAndAgentId(versionId, agentId);
@@ -425,7 +423,7 @@ export class AgentPublishService {
 	}
 
 	/** A revert writes an old version back as the draft, so it is policed as a save. */
-	private async enforceRevertPolicy(agent: Agent, user: User, schema: Agent['schema']) {
+	private async enforceRevertPolicy(agent: ProjectAgent, user: User, schema: Agent['schema']) {
 		if (!schema) return;
 		await this.agentPolicyService.enforceSave(agent.projectId, agent.id, schema, agent.schema, {
 			kind: 'user',
@@ -435,27 +433,35 @@ export class AgentPublishService {
 
 	/** Restore versioned content and keep current credential-backed integrations. */
 	private async restoreVersion(
-		agent: Agent,
+		agent: ProjectAgent,
 		version: AgentHistory,
 		nextVersionId: string,
 		context: AgentMutationTelemetryContext,
 	): Promise<void> {
 		await this.enforceRevertPolicy(agent, context.user, version.schema);
 
-		const previousSchema = agent.schema
-			? toAgentDocument(agent.schema, await this.agentSkillRefs.refsForDraft(agent, {}))
-			: null;
+		const previousSkillRefs = await this.agentSkillRefs.refsForDraft(agent, {});
+		// With the hub on, the refs carry their pins. With it off, a revert can keep the ids
+		// and change the bodies, so compare the bodies too.
+		const previousSkills = structuredClone(agent.skills ?? {});
+		const previousSchema = agent.schema ? toAgentDocument(agent.schema, previousSkillRefs) : null;
 		const previousTools = agent.tools ?? {};
-		const previousSkills = agent.skills ?? {};
-		const { tasksChanged, nextSchema } = await this.transactionRunner.run({}, async (ctx) => {
-			const definition = await this.definitionService.readVersion(version, ctx);
-			definition.schema = draftSchemaFromVersion(definition.schema);
-			agent.versionId = nextVersionId;
-			return {
-				tasksChanged: await this.definitionService.replaceDraft(agent, definition, ctx),
-				nextSchema: definition.schema,
-			};
-		});
+		const { tasksChanged, nextSchema, nextSkillRefs } = await this.transactionRunner.run(
+			{},
+			async (ctx) => {
+				const definition = await this.definitionService.readVersion(version, ctx);
+				definition.schema = draftSchemaFromVersion(definition.schema);
+				agent.versionId = nextVersionId;
+				// Each skill ref is pinned to the version that the published version ran.
+				// No skill row is written, so this needs no skill permission.
+				const changed = await this.definitionService.replaceDraft(agent, definition, ctx, version);
+				return {
+					tasksChanged: changed,
+					nextSchema: definition.schema,
+					nextSkillRefs: await this.agentSkillRefs.refsForDraft(agent, ctx),
+				};
+			},
+		);
 		const integrations = agent.integrations ?? [];
 		await this.saveCompletion.configurationSaved(
 			{
@@ -466,7 +472,9 @@ export class AgentPublishService {
 				by: context.modifiedBy,
 				changedParts: diffAgentConfigParts(previousSchema, nextSchema, integrations, integrations, {
 					tools: !isEqual(previousTools, agent.tools),
-					skills: !isEqual(previousSkills, agent.skills),
+					skills:
+						!isEqual(previousSkillRefs, nextSkillRefs) ||
+						(!this.agentSkillRefs.usesSkillsHub && !isEqual(previousSkills, agent.skills ?? {})),
 					tasks: tasksChanged,
 				}),
 				wasUnconfigured: false,
@@ -492,7 +500,7 @@ export class AgentPublishService {
 		agentId: string,
 		projectId: string,
 		versionId: string,
-	): Promise<{ agent: Agent; version: AgentHistory; definition: AgentDefinition }> {
+	): Promise<{ agent: ProjectAgent; version: AgentHistory; definition: AgentDefinition }> {
 		const agent = await getAgentOrThrow(this.agentRepository, agentId, projectId);
 
 		const version = await this.agentHistoryRepository.findByVersionAndAgentId(versionId, agentId);
@@ -566,27 +574,6 @@ export class AgentPublishService {
 		);
 	}
 
-	private pickConfiguredSkillBodies(
-		config: StoredAgentConfig | null,
-		skillRefs: AgentSkillRefs,
-		skills: Record<string, AgentSkill>,
-	): Record<string, AgentSkill> | null {
-		if (!config) return null;
-
-		const missing = getMissingSkillIds(skillRefs, skills);
-		if (missing.length > 0) {
-			throw new UserError(`Cannot publish agent with missing skill bodies: ${missing.join(', ')}`);
-		}
-
-		const snapshot: Record<string, AgentSkill> = {};
-		for (const ref of skillRefs ?? []) {
-			const skill = skills[ref.id];
-			if (skill) snapshot[ref.id] = deepCopy(skill);
-		}
-
-		return snapshot;
-	}
-
 	private async readPublishTargetDocument(
 		agent: Agent,
 		targetHistory: AgentHistory | undefined,
@@ -604,7 +591,7 @@ export class AgentPublishService {
 			: null;
 	}
 
-	private async startPublishedServices(agent: Agent): Promise<void> {
+	private async startPublishedServices(agent: ProjectAgent): Promise<void> {
 		const agentId = agent.id;
 		const credentialIntegrations = (agent.integrations ?? []).filter(isCredentialAgentIntegration);
 		if (credentialIntegrations.length > 0) {
@@ -626,7 +613,7 @@ export class AgentPublishService {
 			);
 	}
 
-	private async commitUnpublication(agent: Agent, expectedRevision: number): Promise<void> {
+	private async commitUnpublication(agent: ProjectAgent, expectedRevision: number): Promise<void> {
 		await this.transactionRunner.run({}, async (ctx) => {
 			const nextVersionId = uuid();
 
@@ -661,7 +648,7 @@ export class AgentPublishService {
 	}
 
 	private async commitPublication(
-		agent: Agent,
+		agent: ProjectAgent,
 		expectedRevision: number,
 		user: User,
 		tasks: ReadonlyMap<string, AgentTask>,
@@ -687,7 +674,7 @@ export class AgentPublishService {
 
 	private async preparePublishedVersion(
 		ctx: OperationContext,
-		agent: Agent,
+		agent: ProjectAgent,
 		user: User,
 		tasks: ReadonlyMap<string, AgentTask>,
 		targetHistory?: AgentHistory,
@@ -707,31 +694,34 @@ export class AgentPublishService {
 
 	private async saveDraftHistory(
 		ctx: OperationContext,
-		agent: Agent,
+		agent: ProjectAgent,
 		user: User,
 		versionId: string,
 	) {
-		const skillRefs = await this.agentSkillRefs.refsForDraft(agent, ctx);
 		try {
-			return await this.agentHistoryRepository.saveVersion(
+			const snapshot = await this.agentSkillRefs.versionSnapshot(agent, ctx);
+			const { schema, skills } = snapshot;
+			const history = await this.agentHistoryRepository.saveVersion(
 				{
 					versionId,
 					agentId: agent.id,
-					// The stored config carries the skill refs of the draft into the version.
-					schema: agent.schema
+					schema: schema
 						? {
-								...agent.schema,
+								...schema,
 								integrations: (agent.integrations ?? []).filter(
 									(integration) => integration.type === N8N_CHAT_INTEGRATION_TYPE,
 								),
 							}
 						: null,
 					tools: this.customToolsService.snapshotConfiguredTools(agent.schema, agent.tools ?? {}),
-					skills: this.pickConfiguredSkillBodies(agent.schema, skillRefs, agent.skills ?? {}),
+					skills,
 					publishedBy: user,
 				},
 				ctx,
 			);
+			// The skill pins need the `agent_history` row.
+			await this.agentSkillRefs.pinVersion(versionId, snapshot, ctx);
+			return history;
 		} catch (error) {
 			// Concurrent publishes of one draft can collide before they reach the revision fence.
 			if (isUniqueConstraintError(error)) {

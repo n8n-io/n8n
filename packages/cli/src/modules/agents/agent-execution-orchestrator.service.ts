@@ -4,6 +4,7 @@ import type {
 	AgentMessageAuthor,
 	AgentChatMessagesResponse,
 	BudgetGuardrailConfig,
+	AgentBudgetNotice,
 } from '@n8n/api-types';
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
@@ -126,7 +127,7 @@ export interface ExecuteForChatConfig extends ChatExecutionInput, ChatExecutionC
 	 */
 	previewChat?: boolean;
 	/** Preview chat sends the approaching-budget card. The run continues. */
-	onBudgetNotice?: () => void;
+	onBudgetNotice?: (notice: AgentBudgetNotice) => void;
 	abortSignal?: AbortSignal;
 }
 
@@ -186,7 +187,7 @@ export interface ResumeForChatConfig extends ChatExecutionCallbacks {
 	/** The chat surface this resume runs under. Undefined for integrations. */
 	chatSurface?: AgentChatSurface;
 	/** Preview chat sends the approaching-budget card. The run continues. */
-	onBudgetNotice?: () => void;
+	onBudgetNotice?: (notice: AgentBudgetNotice) => void;
 	/** Allows an automatic preview resume to overlap its predecessor's finalization. */
 	automaticPreviewContinuation?: boolean;
 	abortSignal?: AbortSignal;
@@ -250,7 +251,7 @@ export interface StreamChatResponseConfig extends ChatExecutionInput, ChatExecut
 	/** The chat surface this turn runs under. Undefined for integrations and tasks. */
 	chatSurface?: AgentChatSurface;
 	/** Preview chat sends the approaching-budget card. The run continues. */
-	onBudgetNotice?: () => void;
+	onBudgetNotice?: (notice: AgentBudgetNotice) => void;
 	abortSignal?: AbortSignal;
 	sandboxPrincipalHash: AgentSandboxPrincipalHash;
 	/** Hide the internal wake instruction from the execution transcript. */

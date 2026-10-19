@@ -170,7 +170,7 @@ describe('AgentTaskService', () => {
 			),
 			settingsService,
 			transactionRunner,
-			createAgentSkillRefsService(agentRepository),
+			createAgentSkillRefsService(),
 		);
 	}
 

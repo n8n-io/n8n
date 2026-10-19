@@ -30,7 +30,10 @@ describe('InstanceAiService Agent context binding', () => {
 		const adapter = mock<InstanceAiAgentContextAdapterService>();
 		adapter.createReader.mockReturnValue(reader);
 		vi.spyOn(Container, 'get')
-			.mockReturnValueOnce({ isActive: vi.fn().mockReturnValue(true) } as unknown as ModuleRegistry)
+			.mockReturnValueOnce({
+				isActive: vi.fn().mockReturnValue(true),
+				settings: new Map(),
+			} as unknown as ModuleRegistry)
 			.mockReturnValueOnce(adapter);
 		const service = Object.create(InstanceAiService.prototype) as ServiceInternals;
 		const context = { projectId: 'project-1' } as unknown as InstanceAiContext;

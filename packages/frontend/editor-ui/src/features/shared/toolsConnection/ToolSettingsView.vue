@@ -3,7 +3,7 @@ import { computed, useTemplateRef } from 'vue';
 import { N8nIcon, N8nIconButton, N8nNodeIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import ToolCredentialPicker from './ToolCredentialPicker.vue';
-import { resolveToolItemIcon } from './toolItemIcon';
+import { resolveToolItemNodeIcon } from './toolItemIcon';
 import type { ToolConnectionItem, ToolConnectionSettings } from './types';
 
 const props = defineProps<{
@@ -25,7 +25,7 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const credentialPickerRef = useTemplateRef('credentialPickerRef');
 
-const resolvedIcon = computed(() => resolveToolItemIcon(props.item));
+const resolvedIcon = computed(() => resolveToolItemNodeIcon(props.item));
 
 function onSave(settings?: ToolConnectionSettings) {
 	emit('save', props.item, settings);

@@ -217,6 +217,22 @@ describe('NodeToolSettingsContent', () => {
 		expect(renderedParameters).not.toContain('__CUSTOM_API_CALL__');
 	});
 
+	it('hides host-owned parameters and keeps unrelated parameters visible', () => {
+		const { getAllByTestId } = renderComponent({
+			props: {
+				initialNode: createMockNode(),
+				hiddenParameters: ['resource'],
+			},
+		});
+
+		const renderedParameters = getAllByTestId('parameter-input-list')
+			.map((element) => element.textContent ?? '')
+			.join('');
+		expect(renderedParameters).not.toContain('"name":"resource"');
+		expect(renderedParameters).toContain('"name":"operation"');
+		expect(renderedParameters).toContain('"name":"nameField"');
+	});
+
 	it('should hide settings tab when there are no settings', () => {
 		const { queryByText } = renderComponent({
 			props: { initialNode: createMockNode() },
@@ -532,6 +548,31 @@ describe('NodeToolSettingsContent', () => {
 				// The last emission should be true (valid)
 				const lastEmission = validEmissions[validEmissions.length - 1];
 				expect(lastEmission[0]).toBe(true);
+			});
+		});
+
+		it('emits valid=false when an agent tool keeps a credential the agent scope excludes', async () => {
+			const simpleNodeType: INodeTypeDescription = {
+				...MOCK_NODE_TYPE,
+				properties: [],
+				credentials: undefined,
+			};
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(simpleNodeType);
+			credentialsStore.getUsableCredentialById = vi.fn().mockReturnValue(undefined);
+
+			const { emitted } = renderComponent({
+				props: {
+					forAgent: true,
+					initialNode: createMockNode({
+						parameters: {},
+						credentials: { testApi: { id: 'personal-cred', name: 'Personal' } },
+					}),
+				},
+			});
+
+			await waitFor(() => {
+				const validEmissions = emitted('update:valid') as boolean[][];
+				expect(validEmissions[validEmissions.length - 1][0]).toBe(false);
 			});
 		});
 

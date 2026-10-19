@@ -4,7 +4,7 @@ import { Container } from '@n8n/di';
 import type { INode } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
+import { WorkflowPublishedDataService } from '@n8n/backend-services';
 
 import { createOwner } from '../shared/db/users';
 import { createWorkflowHistoryItem } from '../shared/db/workflow-history';

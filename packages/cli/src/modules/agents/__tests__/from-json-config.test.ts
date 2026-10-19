@@ -8,6 +8,7 @@ import {
 	type AgentJsonConfig,
 } from '@n8n/api-types';
 import type { JSONSchema7 } from 'json-schema';
+import { UserError } from 'n8n-workflow';
 
 import { buildFromJson, buildProviderToolsForModel } from '../json-config/from-json-config';
 import type { ToolExecutor } from '../json-config/from-json-config';
@@ -221,6 +222,8 @@ describe('buildFromJson()', () => {
 		const preview = await build(true);
 		expect(preview).toContain('You are a test agent.');
 		expect(preview).toContain('Preview chat policy');
+		expect(preview).toContain('including your own setup, only through your tools');
+		expect(preview).not.toContain('you have no tool that can');
 		expect(await build(false)).toBe('You are a test agent.');
 		expect(await build()).toBe('You are a test agent.');
 	});
@@ -330,13 +333,39 @@ describe('buildFromJson()', () => {
 		expect(agent.snapshot.tools.some((tool) => tool.name === 'load_skill')).toBe(true);
 	});
 
+	// Agents can no longer disable a skill. The schema strips a stale `enabled: false`, so the
+	// runtime loads every ref it gets. Disabled refs are detached before they reach it.
+	it('loads a skill whose ref still says enabled: false', async () => {
+		const config = AgentJsonConfigSchema.parse(
+			makeConfig({
+				skills: [{ type: 'skill', id: 'summarize_notes', enabled: false } as never],
+			}),
+		);
+		expect(config.skills).toEqual([{ type: 'skill', id: 'summarize_notes' }]);
+
+		const agent = await buildFromJson(
+			config,
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: makeMockMemoryFactory(),
+				skills: {
+					summarize_notes: {
+						name: 'Summarize notes',
+						description: 'Use for meeting notes and transcripts',
+						instructions: 'Extract decisions and action items.',
+					},
+				},
+			},
+		);
+
+		expect(agent.snapshot.tools.some((tool) => tool.name === 'load_skill')).toBe(true);
+	});
+
 	it('wires load_skill for attached skills and returns the selected skill body on demand', async () => {
 		const config = makeConfig({
-			skills: [
-				{ type: 'skill', id: 'summarize_notes' },
-				{ type: 'skill', id: 'unused_skill', enabled: false },
-				{ type: 'skill', id: 'missing_skill', enabled: false },
-			],
+			skills: [{ type: 'skill', id: 'summarize_notes' }],
 		});
 
 		const agent = await buildFromJson(
@@ -800,21 +829,24 @@ describe('buildFromJson()', () => {
 	});
 
 	it('rejects native web search config for unsupported providers without fallback settings', async () => {
-		await expect(
-			buildFromJson(
-				makeConfig({
-					model: 'google/gemini-2.5-flash',
-					config: { webSearch: { enabled: true } },
-					providerTools: { 'anthropic.web_search': { maxUses: 5 } },
-				}),
-				{},
-				{
-					toolExecutor: makeMockToolExecutor(),
-					credentialProvider: makeMockCredentialProvider(),
-					memoryFactory: makeMockMemoryFactory(),
-				},
-			),
-		).rejects.toThrow('Web search is enabled but no fallback search provider is configured.');
+		const rejected = buildFromJson(
+			makeConfig({
+				model: 'google/gemini-2.5-flash',
+				config: { webSearch: { enabled: true } },
+				providerTools: { 'anthropic.web_search': { maxUses: 5 } },
+			}),
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: makeMockMemoryFactory(),
+			},
+		);
+
+		await expect(rejected).rejects.toThrow(UserError);
+		await expect(rejected).rejects.toThrow(
+			'Web search is enabled but no fallback search provider is configured.',
+		);
 	});
 
 	it('does not enable native web search when config is sparse', async () => {
@@ -982,20 +1014,23 @@ describe('buildFromJson()', () => {
 	});
 
 	it('requires fallback web search credentials for providers without native web search', async () => {
-		await expect(
-			buildFromJson(
-				makeConfig({
-					model: 'deepseek/deepseek-chat',
-					config: { webSearch: { enabled: true, provider: 'brave' } },
-				}),
-				{},
-				{
-					toolExecutor: makeMockToolExecutor(),
-					credentialProvider: makeMockCredentialProvider(),
-					memoryFactory: makeMockMemoryFactory(),
-				},
-			),
-		).rejects.toThrow('Web search is enabled but no search credential is configured.');
+		const rejected = buildFromJson(
+			makeConfig({
+				model: 'deepseek/deepseek-chat',
+				config: { webSearch: { enabled: true, provider: 'brave' } },
+			}),
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: makeMockMemoryFactory(),
+			},
+		);
+
+		await expect(rejected).rejects.toThrow(UserError);
+		await expect(rejected).rejects.toThrow(
+			'Web search is enabled but no search credential is configured.',
+		);
 	});
 
 	it('adds fallback web search tool for the n8n Connect managed credential (brave)', async () => {
@@ -2113,38 +2148,27 @@ describe('AgentJsonConfigSchema', () => {
 			expect(() => AgentJsonConfigSchema.parse({ ...base, mcpServers: servers })).toThrow();
 		});
 
-		it('parses an allow-mode toolFilter', () => {
+		it('parses MCP tool permissions', () => {
 			const parsed = AgentJsonConfigSchema.parse({
 				...base,
 				mcpServers: [
 					{
 						name: 'github',
 						url: 'https://a.example.test/mcp',
-						toolFilter: { mode: 'allow', tools: ['search_repositories'] },
+						toolPermissions: {
+							categories: { read: 'always_allow', write: 'require_approval' },
+							tools: { delete_repository: 'blocked' },
+						},
 					},
 				],
 			});
-			expect(parsed.mcpServers?.[0].toolFilter).toEqual({
-				mode: 'allow',
-				tools: ['search_repositories'],
+			expect(parsed.mcpServers?.[0].toolPermissions).toEqual({
+				categories: { read: 'always_allow', write: 'require_approval' },
+				tools: { delete_repository: 'blocked' },
 			});
 		});
 
-		it('parses approval mode "global"', () => {
-			const parsed = AgentJsonConfigSchema.parse({
-				...base,
-				mcpServers: [
-					{
-						name: 'github',
-						url: 'https://a.example.test/mcp',
-						approval: { mode: 'global' },
-					},
-				],
-			});
-			expect(parsed.mcpServers?.[0].approval).toEqual({ mode: 'global' });
-		});
-
-		it('rejects approval mode "selected" with an empty tools array', () => {
+		it('rejects an unknown MCP tool permission', () => {
 			expect(() =>
 				AgentJsonConfigSchema.parse({
 					...base,
@@ -2152,7 +2176,9 @@ describe('AgentJsonConfigSchema', () => {
 						{
 							name: 'github',
 							url: 'https://a.example.test/mcp',
-							approval: { mode: 'selected', tools: [] },
+							toolPermissions: {
+								categories: { read: 'always_allow', write: 'ask' },
+							},
 						},
 					],
 				}),

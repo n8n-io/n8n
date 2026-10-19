@@ -23,7 +23,12 @@ import {
 	listN8nChatAgents,
 	listN8nChatThreads,
 	duplicateAgent,
+	listAttachableSkills,
+	createAgentSkill,
+	getHubSkill,
+	updateAgentSkill,
 } from '../composables/useAgentApi';
+import type { SkillListItem } from '@n8n/api-types';
 import type { AgentResource, AgentJsonConfig } from '../types';
 
 vi.mock('@n8n/rest-api-client', () => ({
@@ -37,6 +42,90 @@ const restApiContext = { baseUrl: '/rest', pushRef: 'push-ref' };
 describe('useAgentApi', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+	});
+
+	describe('listAttachableSkills', () => {
+		it('lists the attachable skills of the agent in one call, by target and then by name', async () => {
+			const skill = (name: string, scope: SkillListItem['scope'], agentId: string | null = null) =>
+				({ id: name, name, scope, agentId }) as SkillListItem;
+			vi.mocked(makeRestApiRequest).mockResolvedValueOnce({
+				count: 5,
+				data: [
+					skill('Tone', 'instance'),
+					skill('Notes', 'project', 'agent-1'),
+					skill('SQL', 'project'),
+					skill('Brand', 'instance'),
+					skill('Billing', 'project'),
+				],
+			});
+
+			const result = await listAttachableSkills(restApiContext, 'agent-1');
+
+			expect(makeRestApiRequest).toHaveBeenCalledWith(restApiContext, 'GET', '/skills', {
+				attachableTo: 'agent-1',
+			});
+			expect(result.map(({ name }) => name)).toEqual(['Billing', 'SQL', 'Notes', 'Brand', 'Tone']);
+		});
+	});
+
+	describe('hub skill requests', () => {
+		const skill = { name: 'Tone', description: 'Use for replies', instructions: 'Be kind' };
+
+		it('creates an agent skill with its target, and without one when none is given', async () => {
+			await createAgentSkill(restApiContext, 'project-1', 'agent-1', skill, 'agent');
+			await createAgentSkill(restApiContext, 'project-1', 'agent-1', skill);
+
+			expect(makeRestApiRequest).toHaveBeenNthCalledWith(
+				1,
+				restApiContext,
+				'POST',
+				'/projects/project-1/agents/v2/agent-1/skills',
+				{ ...skill, availableTo: 'agent' },
+			);
+			expect(makeRestApiRequest).toHaveBeenNthCalledWith(
+				2,
+				restApiContext,
+				'POST',
+				'/projects/project-1/agents/v2/agent-1/skills',
+				skill,
+			);
+		});
+
+		it('sends how the user made the skill with the create request', async () => {
+			await createAgentSkill(restApiContext, 'project-1', 'agent-1', skill, undefined, 'upload');
+
+			expect(makeRestApiRequest).toHaveBeenCalledWith(
+				restApiContext,
+				'POST',
+				'/projects/project-1/agents/v2/agent-1/skills',
+				{ ...skill, method: 'upload' },
+			);
+		});
+
+		it('saves the skill text and its target in one request', async () => {
+			await updateAgentSkill(
+				restApiContext,
+				'project-1',
+				'agent-1',
+				'skill-1',
+				skill,
+				'hash-1',
+				'instance',
+			);
+
+			expect(makeRestApiRequest).toHaveBeenCalledWith(
+				restApiContext,
+				'PATCH',
+				'/projects/project-1/agents/v2/agent-1/skills/skill-1',
+				{ ...skill, baseSkillHash: 'hash-1', availableTo: 'instance' },
+			);
+		});
+
+		it('gets one hub skill', async () => {
+			await getHubSkill(restApiContext, 'skill-1');
+
+			expect(makeRestApiRequest).toHaveBeenCalledWith(restApiContext, 'GET', '/skills/skill-1');
+		});
 	});
 
 	describe('listAgentsPage', () => {

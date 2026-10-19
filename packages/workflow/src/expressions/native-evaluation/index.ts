@@ -3,9 +3,11 @@ import type { ParsedCode } from '@n8n/tournament';
 import { LruCache } from '@n8n/utils/lru-cache';
 
 import { EngineFallbackError, Env, bounded, evalChunk } from './evaluator';
-import { MAX_RESULT_LENGTH, clone, isObj, type SimpleNode } from './grammar';
-import { parseSimple } from './parser';
+import { MAX_DEPTH, MAX_RESULT_LENGTH, hasOwn, isArray, isObj, type SimpleNode } from './grammar';
+import { parseSimple, usesPolyfilledChain } from './parser';
 import type { IWorkflowDataProxyData } from '../../interfaces';
+
+const { getPrototypeOf, keys } = Object;
 
 export {
 	CALLABLE_METHODS,
@@ -13,6 +15,7 @@ export {
 	MAX_RESULT_LENGTH,
 	MAX_STEPS,
 	MAX_WORK,
+	TIME_METHODS,
 } from './grammar';
 
 // Fast native evaluation: an in-process interpreter for a closed subset of
@@ -21,6 +24,7 @@ export {
 // The subset is data path access on the data roots (`$json`, `$parameter`,
 // `$vars`, `$binary`, `$itemIndex`, `$runIndex`) and on node references
 // (`$('Name').item`, `$('Name').first()`, `$input.item`, `$node['Name'].json`),
+// primitive reads off the time roots (`$now.toMillis()`, `$today.year`),
 // literals (array literals of literals included), a fixed set of operators,
 // calls to a closed allowlist of native string/number/array methods, and the
 // five array iterators (some/every/find/filter/map) with a one-parameter
@@ -92,6 +96,7 @@ function compile(expression: string): CompiledExpression | null {
 	}
 
 	const chunks: CompiledChunk[] = [];
+	const nodes: SimpleNode[] = [];
 	for (const chunk of parsed) {
 		if (chunk.type === 'text') {
 			chunks.push(chunk);
@@ -102,7 +107,10 @@ function compile(expression: string): CompiledExpression | null {
 		if (node === null) return null;
 
 		chunks.push({ type: 'code', node });
+		nodes.push(node);
 	}
+
+	if (usesPolyfilledChain(nodes)) return null;
 
 	// Mirrors the branch condition in ExpressionBuilder.getExpressionCode.
 	const isWholeValue = chunks.length === 2 && chunks[0].type === 'text' && chunks[0].text === '';
@@ -153,16 +161,54 @@ export function evaluateNatively(
 
 // The engines hand back a copy of any object they return; a whole-value read
 // like `{{ $json.body }}` here would hand back the live execution data, which
-// callers then mutate in place (cleanupParameterData). Match the engines.
-// The `$parameter` root is a Proxy and cannot be cloned: the engine owns it.
+// callers then mutate in place (cleanupParameterData). Match the engines with
+// a plain-data copy. Everything else is the engine's: a data proxy (the
+// `$parameter` get trap resolves nested expressions), a non-plain object or
+// array (Date, DateTime), a function, symbol or bigint, data deeper than
+// MAX_DEPTH, and an own `__proto__` key,
+// which the vm and quickjs serialiser drops and legacy keeps.
 function copyResult(value: unknown): unknown {
-	if (!isObj(value)) return value;
+	// A shared object is copied once per reference, so shared or cyclic data
+	// and long sparse arrays are bounded by the slots visited, not by depth.
+	let visits = 0;
 
-	try {
-		return clone(value);
-	} catch {
-		throw new EngineFallbackError();
-	}
+	const copy = (value: unknown, depth: number): unknown => {
+		const nonJsonLeaf =
+			typeof value === 'function' || typeof value === 'symbol' || typeof value === 'bigint';
+		if (nonJsonLeaf) throw new EngineFallbackError();
+		if (!isObj(value)) return value;
+		if (depth > MAX_DEPTH || value.isProxy === true) throw new EngineFallbackError();
+
+		if (isArray(value)) {
+			if (getPrototypeOf(value) !== Array.prototype) throw new EngineFallbackError();
+
+			visits += value.length;
+			if (visits > MAX_RESULT_LENGTH) throw new EngineFallbackError();
+
+			// Holes stay holes: the corpus pins an engine divergence on sparse arrays.
+			const result = new Array<unknown>(value.length);
+			for (let i = 0; i < value.length; i++) {
+				if (hasOwn(value, i)) result[i] = copy(value[i], depth + 1);
+			}
+			return result;
+		}
+
+		const proto: unknown = getPrototypeOf(value);
+		if (proto !== Object.prototype && proto !== null) throw new EngineFallbackError();
+
+		const ownKeys = keys(value);
+		visits += ownKeys.length;
+		if (visits > MAX_RESULT_LENGTH) throw new EngineFallbackError();
+
+		const result: Record<string, unknown> = {};
+		for (const key of ownKeys) {
+			if (key === '__proto__') throw new EngineFallbackError();
+			result[key] = copy(value[key], depth + 1);
+		}
+		return result;
+	};
+
+	return copy(value, 0);
 }
 
 function evalCompiled(compiled: CompiledExpression, data: IWorkflowDataProxyData): unknown {

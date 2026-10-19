@@ -103,6 +103,7 @@ describe('node type policy store reads', () => {
 				kind,
 				scope.id,
 				[{ policyId: policy.id, priority: 1, isFloor: false }],
+				scope.version,
 				'user-1',
 			);
 		}
@@ -227,6 +228,7 @@ describe('node type policy store reads', () => {
 				KIND,
 				scope.id,
 				[{ policyId: policy.id, priority: 0, isFloor: false }],
+				scope.version,
 				'user-1',
 			);
 
@@ -241,6 +243,7 @@ describe('node type policy store reads', () => {
 				KIND,
 				projectScope.id,
 				[{ policyId: policy.id, priority: 0, isFloor: false }],
+				projectScope.version,
 				'user-1',
 			);
 			expect(await slackVerdict(null)).toBe('deny');

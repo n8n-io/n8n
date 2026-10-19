@@ -1,19 +1,20 @@
 export {
-	DEFAULT_SYSTEM_TASK_CONCURRENCY_LIMIT,
 	SystemTask,
+	clusterTarget,
+	instanceTarget,
 	intervalFromMilliseconds,
 	intervalFromSeconds,
-	resolveSystemTaskRunOptions,
-	resolveSystemTaskSchedule,
+	leaderTimerTarget,
+	resolveSystemTask,
 	timeoutAfterLimit,
-	validateSystemTask,
 } from './system-task';
+export type { SystemTaskClass, SystemTaskRunOptions } from './system-task';
 export type {
-	SystemTaskClass,
-	SystemTaskEffects,
-	SystemTaskRunContext,
-	SystemTaskRunOptions,
+	ClusterTarget,
+	InstanceTarget,
+	LeaderTimerTarget,
+	SchedulerOptions,
+	SystemTaskTarget,
 	SystemTaskSchedule,
-} from './system-task';
-export type { SystemTaskPlacement } from './system-task-placement';
+} from './types';
 export { SystemTaskMetadata } from './system-task-metadata';

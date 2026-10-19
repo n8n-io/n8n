@@ -1,6 +1,6 @@
 {
   "name": "@n8n/backend-services",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
@@ -19,6 +19,18 @@
   "main": "dist/index.js",
   "module": "src/index.ts",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "module": "./src/index.ts",
+      "default": "./dist/index.js"
+    },
+    "./auth": {
+      "types": "./dist/auth.d.ts",
+      "module": "./src/auth.ts",
+      "default": "./dist/auth.js"
+    }
+  },
   "files": [
     "dist/**/*"
   ],
@@ -28,15 +40,18 @@
     "@n8n/backend-network": "workspace:*",
     "@n8n/config": "workspace:*",
     "@n8n/constants": "workspace:*",
-    "@n8n/decorators": "workspace:*",
     "@n8n/db": "workspace:*",
+    "@n8n/decorators": "workspace:*",
     "@n8n/di": "workspace:*",
     "@n8n/errors": "workspace:*",
+    "@n8n/inbound-auth": "workspace:*",
     "@n8n/permissions": "workspace:*",
     "@n8n/utils": "workspace:*",
     "cache-manager": "catalog:",
-    "express-openapi-validator": "5.5.3",
     "ioredis": "5.3.2",
+    "jose": "^6.2.9",
+    "jsonwebtoken": "catalog:",
+    "n8n-core": "workspace:*",
     "n8n-workflow": "workspace:*"
   },
   "peerDependencies": {
@@ -48,6 +63,7 @@
     "@n8n/oxlint-config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
+    "@types/jsonwebtoken": "catalog:",
     "@types/lodash": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "eslint": "catalog:",

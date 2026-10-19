@@ -50,7 +50,8 @@ export type UseDataTableOperationsParams = {
 	currentSortOrder: Ref<string | null>;
 	currentFilterJSON?: Ref<string | undefined>;
 	searchQuery?: Ref<string | undefined>;
-	readOnly?: Ref<boolean>;
+	/** Blocks column changes. Row changes are never blocked here. */
+	schemaReadOnly?: Ref<boolean>;
 	handleClearSelection: () => void;
 	selectedRowIds: Ref<Set<number>>;
 	handleCopyFocusedCell: (params: CellKeyDownEvent<DataTableRow>) => Promise<void>;
@@ -78,7 +79,7 @@ export const useDataTableOperations = ({
 	currentSortOrder,
 	currentFilterJSON,
 	searchQuery,
-	readOnly = ref(false),
+	schemaReadOnly = ref(false),
 	handleClearSelection,
 	selectedRowIds,
 	handleCopyFocusedCell,
@@ -114,7 +115,7 @@ export const useDataTableOperations = ({
 	};
 
 	async function onDeleteColumn(columnId: string) {
-		if (readOnly.value) return;
+		if (schemaReadOnly.value) return;
 		const columnToDelete = colDefs.value.find((col) => col.colId === columnId);
 		if (!columnToDelete) return;
 
@@ -129,7 +130,7 @@ export const useDataTableOperations = ({
 			},
 		);
 
-		if (promptResponse !== MODAL_CONFIRM || readOnly.value) {
+		if (promptResponse !== MODAL_CONFIRM || schemaReadOnly.value) {
 			return;
 		}
 
@@ -157,7 +158,7 @@ export const useDataTableOperations = ({
 	}
 
 	async function onRenameColumn(columnId: string, newName: string): Promise<void> {
-		if (readOnly.value) return;
+		if (schemaReadOnly.value) return;
 		const columnToRename = colDefs.value.find((col) => col.colId === columnId);
 		if (!columnToRename) return;
 
@@ -207,7 +208,7 @@ export const useDataTableOperations = ({
 	}
 
 	async function onAddColumn(column: DataTableColumnCreatePayload): Promise<AddColumnResponse> {
-		if (readOnly.value) return { success: false };
+		if (schemaReadOnly.value) return { success: false };
 		try {
 			const newColumn = await dataTableStore.addDataTableColumn(dataTableId, projectId, column);
 			addGridColumn(newColumn);
@@ -233,7 +234,7 @@ export const useDataTableOperations = ({
 
 	const onColumnMoved = async (moveEvent: ColumnMovedEvent) => {
 		if (
-			readOnly.value ||
+			schemaReadOnly.value ||
 			!moveEvent.finished ||
 			moveEvent.source !== 'uiColumnMoved' ||
 			moveEvent.toIndex === undefined ||

@@ -462,6 +462,20 @@ describe('NodeCredentials', () => {
 		});
 	});
 
+	it('keeps the agent scope in the credentials fetch', () => {
+		workflowsStore.isNewWorkflow = true;
+		projectsStore.currentProject = { id: 'project-1' } as Project;
+		ndvStore.activeNode = httpNode;
+		credentialsStore.state.credentials = {};
+
+		renderComponent({ props: { node: httpNode, forAgent: true } }, { merge: true });
+
+		expect(credentialsStore.fetchUsableCredentials).toHaveBeenCalledWith({
+			projectId: 'project-1',
+			forAgent: true,
+		});
+	});
+
 	it('should fall back to the personal project for an unsaved workflow without a current project', () => {
 		workflowsStore.isNewWorkflow = true;
 		projectsStore.currentProject = null;
@@ -1952,11 +1966,10 @@ describe('NodeCredentials', () => {
 			expect(getByIdSpy).not.toHaveBeenCalled();
 		});
 
-		it('leaves the selection untouched when a picked id is in neither the list nor the store', async () => {
-			// After a deletion the store listener re-selects the last credential in the
-			// usable slice. With a host-supplied list that id can be unknown to both the
-			// displayed rows and the flat map; the pick must then be dropped, not applied
-			// with undefined fields or thrown.
+		it('does not re-select a usable-slice ghost after deleting the host-list selection', async () => {
+			// After a deletion the store listener must re-select only from the host-
+			// displayed rows. A usable-slice "ghost" id that is not in the host list
+			// must not be applied; with no remaining host rows the selection clears.
 			const nodeWithSelection: INodeUi = {
 				...httpNodeNoCreds,
 				credentials: { openAiApi: { id: 'payload-older', name: 'Older payload cred' } },
@@ -1968,7 +1981,7 @@ describe('NodeCredentials', () => {
 			vi.spyOn(credentialsApi, 'deleteCredential').mockResolvedValue(true);
 
 			const { emitted } = renderComponent({
-				props: { node: nodeWithSelection, credentials: [olderCred] },
+				props: { node: nodeWithSelection, credentials: [olderCred], skipAutoSelect: true },
 			});
 
 			// Subscribes the component to store mutations for this credential type.
@@ -1978,7 +1991,10 @@ describe('NodeCredentials', () => {
 			await credentialsStore.deleteCredential({ id: 'payload-older' });
 			await nextTick();
 
-			expect(emitted('credentialSelected')).toBeUndefined();
+			const payloads = emitted('credentialSelected') as [SelectedPayload][] | undefined;
+			expect(payloads).toHaveLength(1);
+			expect(payloads?.[0]?.[0]?.properties.credentials).toEqual({});
+			expect(payloads?.[0]?.[0]?.properties.credentials).not.toHaveProperty('openAiApi');
 		});
 	});
 
@@ -3348,6 +3364,37 @@ describe('NodeCredentials', () => {
 			renderComponent({ props: { node: notionNode, overrideCredType: 'openAiApi' } });
 
 			expect(screen.getByTestId('node-credential-private-connect')).toBeInTheDocument();
+			expect(screen.getByTestId('node-credential-private-connect')).toBeEnabled();
+		});
+
+		it('keeps Connect available when the credential exists only in the usable slice', async () => {
+			credentialsStore.state.credentials = {};
+			credentialsStore.usableCredentials = {
+				'private-cred-id': { ...privateCredential, connectedByMe: false },
+			};
+			credentialsStore.hasFetchedUsableCredentials = true;
+			renderComponent({ props: { node: notionNode, overrideCredType: 'openAiApi' } });
+
+			expect(screen.getByTestId('node-credential-private-connect')).toBeEnabled();
+		});
+
+		it('keeps Connect available with a host list after the flat map is cleared', async () => {
+			// Instance AI passes a host-supplied list and may clear the flat map when an
+			// unrelated scoped fetch lands. Private Connect must still resolve via the
+			// usable slice — host-list authoritativeness only applies to delete reselection.
+			const hostPrivate = { ...privateCredential, connectedByMe: false };
+			credentialsStore.state.credentials = {};
+			credentialsStore.usableCredentials = { 'private-cred-id': hostPrivate };
+			credentialsStore.hasFetchedUsableCredentials = true;
+			renderComponent({
+				props: {
+					node: notionNode,
+					overrideCredType: 'openAiApi',
+					credentials: [hostPrivate],
+					skipAutoSelect: true,
+				},
+			});
+
 			expect(screen.getByTestId('node-credential-private-connect')).toBeEnabled();
 		});
 

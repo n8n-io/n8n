@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { MigrationFindingTriageStatus } from '@n8n/api-types';
+import type { MigrationFindingListedStatus, MigrationFindingTriageStatus } from '@n8n/api-types';
 import { N8nSelect2, N8nText } from '@n8n/design-system';
 import type { SelectOptionBase, SelectValue } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -7,13 +7,14 @@ import { computed } from 'vue';
 
 defineOptions({ name: 'FindingStateSelect' });
 
-interface StateSelectItem extends SelectOptionBase<MigrationFindingTriageStatus> {
+interface StateSelectItem extends SelectOptionBase<MigrationFindingListedStatus> {
 	description: string;
 }
 
-const modelValue = defineModel<MigrationFindingTriageStatus>({ required: true });
-
-const { disabled = false } = defineProps<{ disabled?: boolean }>();
+// The value can be any listed state, but a user picks only a triage state. The
+// notified state is set by a notification, so it shows only while it is current.
+const props = defineProps<{ modelValue: MigrationFindingListedStatus; disabled?: boolean }>();
+const emit = defineEmits<{ 'update:modelValue': [value: MigrationFindingTriageStatus] }>();
 
 const i18n = useI18n();
 
@@ -23,6 +24,16 @@ const stateOptions = computed<StateSelectItem[]>(() => [
 		label: i18n.baseText('settings.migrationReport.detail.state.open'),
 		description: i18n.baseText('settings.migrationReport.detail.state.open.description'),
 	},
+	...(props.modelValue === 'notified'
+		? [
+				{
+					value: 'notified' as const,
+					label: i18n.baseText('settings.migrationReport.detail.state.notified'),
+					description: i18n.baseText('settings.migrationReport.detail.state.notified.description'),
+					disabled: true,
+				},
+			]
+		: []),
 	{
 		value: 'wont_fix',
 		label: i18n.baseText('settings.migrationReport.detail.state.wontFix'),
@@ -36,8 +47,8 @@ function findOption(value: SelectValue | undefined) {
 
 function onSelect(value: SelectValue | undefined) {
 	const option = findOption(value);
-	if (option) {
-		modelValue.value = option.value;
+	if (option && option.value !== 'notified') {
+		emit('update:modelValue', option.value);
 	}
 }
 </script>
@@ -46,7 +57,7 @@ function onSelect(value: SelectValue | undefined) {
 	<N8nSelect2
 		:items="stateOptions"
 		:model-value="modelValue"
-		:disabled="disabled"
+		:disabled="disabled ?? false"
 		size="small"
 		:aria-label="i18n.baseText('settings.migrationReport.detail.table.state')"
 		data-test-id="migration-finding-state-select"
