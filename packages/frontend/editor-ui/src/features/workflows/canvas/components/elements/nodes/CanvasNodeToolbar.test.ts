@@ -14,6 +14,7 @@ import { createPinia, setActivePinia, type Pinia } from 'pinia';
 import { EditorEnabledFeaturesKey, WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import { useFocusedNodesStore } from '@/features/ai/assistant/focusedNodes.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
 
 vi.mock('@/features/workflows/canvas/canvas.utils', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('@/features/workflows/canvas/canvas.utils')>();
@@ -564,5 +565,39 @@ describe('CanvasNodeToolbar', () => {
 		await userEvent.click(getByTestId('change-sticky-color'));
 
 		await waitFor(() => expect(toolbar).toHaveClass('forceVisible'));
+	});
+
+	describe('restricted node type', () => {
+		const renderRestricted = () => {
+			vi.spyOn(useTypeAvailabilityPoliciesStore(pinia), 'getNodeTypeAvailability').mockReturnValue({
+				name: 'n8n-nodes-base.slack',
+				available: false,
+				scope: 'instance',
+			});
+
+			return renderComponent({
+				pinia,
+				global: {
+					provide: {
+						...createCanvasNodeProvide({ data: { type: 'n8n-nodes-base.slack' } }),
+						...createCanvasProvide(),
+					},
+				},
+			});
+		};
+
+		it('should hide the run step and deactivate buttons', () => {
+			const { queryByTestId } = renderRestricted();
+
+			expect(queryByTestId('execute-node-button')).not.toBeInTheDocument();
+			expect(queryByTestId('disable-node-button')).not.toBeInTheDocument();
+		});
+
+		it('should keep the delete and more actions buttons', () => {
+			const { getByTestId } = renderRestricted();
+
+			expect(getByTestId('delete-node-button')).toBeInTheDocument();
+			expect(getByTestId('overflow-node-button')).toBeInTheDocument();
+		});
 	});
 });
