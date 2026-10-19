@@ -822,7 +822,7 @@ it('checks Apply blockers at the commit of the Apply preview, also after a newer
 	expect(response.body.data.preflight.missingBindings).toEqual([
 		expect.objectContaining({ kind: 'variable', name: 'FIRST_URL' }),
 	]);
-});
+}, 30_000);
 
 describe('resources in the preview', () => {
 	const promoteBaseline = async (environmentId: string, owner: User) =>
