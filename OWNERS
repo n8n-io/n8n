@@ -251,6 +251,7 @@ packages/nodes-base/nodes/Jira/                                          @n8n-io
 packages/nodes-base/nodes/Salesforce/                                    @n8n-io/enterprise-nodes
 packages/nodes-base/nodes/ServiceNow/                                    @n8n-io/enterprise-nodes
 packages/nodes-base/nodes/Snowflake/                                     @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/Okta/                                          @n8n-io/enterprise-nodes
 packages/nodes-base/nodes/Microsoft/Dynamics/                            @n8n-io/enterprise-nodes
 packages/nodes-base/nodes/Microsoft/Excel/                               @n8n-io/enterprise-nodes
 packages/nodes-base/nodes/Microsoft/ExcelSharePoint/                     @n8n-io/enterprise-nodes
