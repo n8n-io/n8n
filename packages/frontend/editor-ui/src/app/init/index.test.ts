@@ -383,8 +383,10 @@ describe('Init', () => {
 		it('loads credentials and credential types before authenticated pages render', async () => {
 			settingsStore.isCloudDeployment = false;
 			usersStore.currentUser = mock<IUser>({ id: '123', globalScopes: ['user:list'] });
-			const { promise, resolve } = Promise.withResolvers<void>();
-			credentialsStore.fetchAllCredentials.mockReturnValueOnce(promise.then(() => []));
+			const credentials = Promise.withResolvers<[]>();
+			const credentialTypes = Promise.withResolvers<void>();
+			credentialsStore.fetchAllCredentials.mockReturnValueOnce(credentials.promise);
+			credentialsStore.fetchCredentialTypes.mockReturnValueOnce(credentialTypes.promise);
 			let initialized = false;
 			const initializing = initializeAuthenticatedFeatures(false).then(() => {
 				initialized = true;
@@ -395,7 +397,12 @@ describe('Init', () => {
 			expect(credentialsStore.fetchCredentialTypes).toHaveBeenCalledWith(false);
 			expect(initialized).toBe(false);
 
-			resolve();
+			// Each request must hold up init on its own.
+			credentials.resolve([]);
+			await flushPromises();
+			expect(initialized).toBe(false);
+
+			credentialTypes.resolve();
 			await initializing;
 			expect(initialized).toBe(true);
 		});
