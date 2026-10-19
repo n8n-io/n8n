@@ -11,7 +11,8 @@ import {
 	type ScheduledTaskGroup,
 } from '../scheduled-task-manager';
 
-const logger = mock<Logger>({ scoped: vi.fn().mockReturnValue(mock<Logger>()) });
+const scopedLogger = mock<Logger>();
+const logger = mock<Logger>({ scoped: vi.fn().mockReturnValue(scopedLogger) });
 
 describe('ScheduledTaskManager', () => {
 	const workflow = mock<Workflow>({ id: 'workflow-1', timezone: 'GMT' });
@@ -56,12 +57,26 @@ describe('ScheduledTaskManager', () => {
 	});
 
 	it('does not register duplicate cron contexts', () => {
-		const ctx = cronContext();
+		const ctx = cronContext({
+			recurrence: { activated: true, index: 0, intervalSize: 2, typeInterval: 'minutes' },
+		});
 
 		expect(scheduledTaskManager.register(ctx, onTick)).toBe(true);
 		expect(scheduledTaskManager.register(ctx, onTick)).toBe(false);
 
 		expect(scheduledTaskManager.getTargetIds(ctx.group)).toEqual(['test-node-id']);
+		expect(scopedLogger.warn).toHaveBeenCalledExactlyOnceWith(
+			'Skipped registration for already registered cron',
+			{
+				groupType: 'workflow',
+				groupId: 'workflow-1',
+				targetId: 'test-node-id',
+				timezone: 'GMT',
+				expression: everyMinute,
+				recurrence: { activated: true, index: 0, intervalSize: 2, typeInterval: 'minutes' },
+				instanceRole: 'leader',
+			},
+		);
 	});
 
 	it('does not fire duplicate cron contexts twice', () => {
@@ -125,6 +140,18 @@ describe('ScheduledTaskManager', () => {
 		expect(onTick).not.toHaveBeenCalled();
 		vi.advanceTimersByTime(10 * 60 * 1000); // 10 minutes
 		expect(onTick).not.toHaveBeenCalled();
+		expect(scopedLogger.debug).toHaveBeenCalledExactlyOnceWith(
+			'Skipped cron registration on follower instance',
+			{
+				groupType: 'workflow',
+				groupId: 'workflow-1',
+				targetId: 'test-node-id',
+				timezone: 'GMT',
+				expression: everyMinute,
+				recurrence: undefined,
+				instanceRole: 'follower',
+			},
+		);
 	});
 
 	it('should deregister CronJobs for a group', () => {
