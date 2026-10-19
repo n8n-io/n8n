@@ -1025,6 +1025,7 @@ export {
 	scimDataActionSchema,
 	scimDeprovisioningPolicySchema,
 	scimOnDeleteSchema,
+	scimTransferTargetTypeSchema,
 	type ScimAuthFailureReason,
 	type ScimAuthFailure,
 	type ScimConnectionStatus,
@@ -1036,4 +1037,9 @@ export {
 	type ScimDeprovisioningPolicy,
 	type ScimOnDelete,
 	type ScimTransferTarget,
+	type ScimTransferTargetPerson,
+	type ScimTransferTargetProject,
+	type ScimTransferTargetSection,
+	type ScimTransferTargetType,
+	type ScimTransferTargetsResponse,
 } from './schemas/scim-config.schema';

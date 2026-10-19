@@ -156,6 +156,64 @@ describe('ScimDeprovisioningService', () => {
 		projectRepository.getPersonalProjectForUserOrFail.mockResolvedValue(ownerProject);
 	});
 
+	describe('findTransferTargets', () => {
+		const peoplePage = {
+			total: 2,
+			count: 1,
+			items: [
+				{
+					projectId: 'personal-user-1',
+					userId: 'user-1',
+					firstName: 'Ada',
+					lastName: 'Lovelace',
+					email: 'ada@example.com',
+					role: 'global:member',
+				},
+			],
+		};
+		const projectsPage = {
+			total: 3,
+			count: 1,
+			items: [
+				{
+					projectId: 'team-1',
+					name: 'Platform',
+					icon: null,
+					memberCount: 3,
+					workflowCount: 7,
+				},
+			],
+		};
+
+		beforeEach(() => {
+			transferTargetRepository.findPersonTargetPage.mockResolvedValue(peoplePage);
+			transferTargetRepository.findProjectTargetPage.mockResolvedValue(projectsPage);
+		});
+
+		it('returns both sections with the same page for each', async () => {
+			const result = await service.findTransferTargets({ search: 'ada', skip: 10, take: 5 });
+
+			expect(result).toEqual({ people: peoplePage, projects: projectsPage });
+			const page = { search: 'ada', skip: 10, take: 5 };
+			expect(transferTargetRepository.findPersonTargetPage).toHaveBeenCalledWith(page, {});
+			expect(transferTargetRepository.findProjectTargetPage).toHaveBeenCalledWith(page, {});
+		});
+
+		it('returns only people for type people', async () => {
+			const result = await service.findTransferTargets({ type: 'people', skip: 0, take: 50 });
+
+			expect(result).toEqual({ people: peoplePage });
+			expect(transferTargetRepository.findProjectTargetPage).not.toHaveBeenCalled();
+		});
+
+		it('returns only projects for type projects', async () => {
+			const result = await service.findTransferTargets({ type: 'projects', skip: 0, take: 50 });
+
+			expect(result).toEqual({ projects: projectsPage });
+			expect(transferTargetRepository.findPersonTargetPage).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('describePolicy', () => {
 		it('returns no transfer target when none is stored', async () => {
 			await expect(service.describePolicy()).resolves.toEqual({

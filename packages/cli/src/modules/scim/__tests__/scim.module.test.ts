@@ -18,6 +18,7 @@ import { ScimConfig } from '../scim.config';
 vi.mock('../scim.controller', () => ({}));
 vi.mock('../scim-discovery.controller', () => ({}));
 vi.mock('../scim-token.controller', () => ({}));
+vi.mock('../scim-transfer-target.controller', () => ({}));
 
 // Compile-time pin: the frontend reads these settings under this exact key.
 const MODULE_NAME = 'scim' satisfies keyof FrontendModuleSettings;

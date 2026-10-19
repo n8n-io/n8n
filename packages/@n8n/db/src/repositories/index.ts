@@ -151,6 +151,6 @@ export {
 	type NodeUsageScope,
 } from './workflow-dependency.repository';
 export { WebhookRepository } from './webhook.repository';
-export { UserRepository } from './user.repository';
+export { UserRepository, userGlobalRoleOrderSql } from './user.repository';
 export { SecretsProviderConnectionRepository } from './secrets-provider-connection.repository.ee';
 export { ProjectSecretsProviderAccessRepository } from './project-secrets-provider-access.repository.ee';

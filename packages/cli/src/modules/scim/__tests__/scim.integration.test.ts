@@ -5,12 +5,15 @@ import {
 	createTeamProject,
 	createWorkflow,
 	getPersonalProject,
+	linkUserToProject,
 	randomCredentialPayload,
+	shareWorkflowWithProjects,
 	testDb,
 } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import {
 	CredentialsRepository,
+	GLOBAL_MEMBER_ROLE,
 	ProjectRepository,
 	SharedCredentialsRepository,
 	SharedWorkflowRepository,
@@ -20,16 +23,29 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { getApiKeyScopesForRole } from '@n8n/permissions';
+import { DataSource } from '@n8n/typeorm';
 
 import { setSamlLoginEnabled } from '@/modules/sso-saml/saml-helpers';
 import { PostHogClient } from '@/posthog';
 import { PublicApiKeyService } from '@/services/public-api-key.service';
 import { setCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
 import { saveCredential } from '@test-integration/db/credentials';
-import { createAdmin, createMember, createOwner } from '@test-integration/db/users';
+import {
+	createAdmin,
+	createChatUser,
+	createManyUsers,
+	createMember,
+	createOwner,
+	createUserShell,
+} from '@test-integration/db/users';
 import * as utils from '@test-integration/utils';
 
 import { ScimTokenRepository } from '../database/scim-token.repository';
+import { ScimTransferTargetRepository } from '../database/scim-transfer-target.repository';
+import {
+	isValidScimTransferTarget,
+	ScimDeprovisioningService,
+} from '../scim-deprovisioning.service';
 import { DEFAULT_SCIM_DEPROVISIONING_POLICY, ScimSettingsService } from '../scim-settings.service';
 import { ScimConfig } from '../scim.config';
 
@@ -915,6 +931,206 @@ describe('SCIM deprovisioning policy', () => {
 	});
 });
 
+describe('GET /rest/scim/transfer-targets', () => {
+	type PersonItem = { projectId: string; userId: string; email: string | null };
+	type ProjectItem = { projectId: string; name: string };
+
+	const getTargets = async (query: Record<string, string | number> = {}) => {
+		// Do not pool sockets. See `scimRequest`.
+		const response = await testServer
+			.authAgentFor(admin)
+			.get('/scim/transfer-targets')
+			.set('Connection', 'close')
+			.query(query)
+			.expect(200);
+		return response.body.data;
+	};
+
+	const userIds = (items: PersonItem[]) => items.map(({ userId }) => userId);
+
+	const rename = async (user: User, firstName: string, lastName: string) =>
+		await Container.get(UserRepository).update({ id: user.id }, { firstName, lastName });
+
+	const disable = async (user: User) =>
+		await Container.get(UserRepository).update({ id: user.id }, { disabled: true });
+
+	it('returns one page of each section with totals for 200 people and 50 projects', async () => {
+		// The owner and the admin come from the global setup.
+		await createManyUsers(198);
+		await Promise.all(Array.from({ length: 50 }, async () => await createTeamProject()));
+
+		const { people, projects } = await getTargets({ take: 50 });
+
+		expect(people).toMatchObject({ total: 200, count: 200 });
+		expect(people.items).toHaveLength(50);
+		expect(projects).toMatchObject({ total: 50, count: 50 });
+		expect(projects.items).toHaveLength(50);
+	});
+
+	it('finds a person by the current email when the project name has the old email', async () => {
+		const member = await createMember();
+		const newEmail = 'renamed.person@example.com';
+		await Container.get(UserRepository).update({ id: member.id }, { email: newEmail });
+		const personalProject = await getPersonalProject(member);
+		expect(personalProject.name).not.toContain(newEmail);
+
+		const { people } = await getTargets({ search: 'RENAMED.person' });
+
+		expect(people).toMatchObject({ total: 3, count: 1 });
+		expect(people.items).toEqual([
+			{
+				projectId: personalProject.id,
+				userId: member.id,
+				firstName: member.firstName,
+				lastName: member.lastName,
+				email: newEmail,
+				role: 'global:member',
+			},
+		]);
+	});
+
+	it('finds a person by the full name', async () => {
+		const member = await createMember();
+		await rename(member, 'Grace', 'Hopper');
+
+		const { people } = await getTargets({ search: 'grace hop' });
+
+		expect(userIds(people.items)).toEqual([member.id]);
+	});
+
+	it('leaves out deactivated users and returns only valid targets', async () => {
+		const active = await createMember();
+		const deactivated = await createMember();
+		await disable(deactivated);
+		await createTeamProject('Platform');
+
+		const { people, projects } = await getTargets();
+		const searched = await getTargets({ search: deactivated.email });
+
+		expect(userIds(people.items)).toContain(active.id);
+		expect(userIds(people.items)).not.toContain(deactivated.id);
+		expect(people).toMatchObject({ total: 3, count: 3 });
+		expect(searched.people).toEqual({ total: 3, count: 0, items: [] });
+
+		const repository = Container.get(ScimTransferTargetRepository);
+		for (const { projectId } of [...people.items, ...projects.items]) {
+			const project = await repository.findWithCreator(projectId, {});
+			expect(project && isValidScimTransferTarget(project)).toBe(true);
+		}
+	});
+
+	it('orders people by owner, admins and other roles, each group by name', async () => {
+		await rename(owner, 'Zed', 'Owner');
+		await rename(admin, 'Mia', 'Admin');
+		const secondAdmin = await createAdmin();
+		await rename(secondAdmin, 'Bea', 'Admin');
+		const cara = await createMember();
+		await rename(cara, 'Cara', 'Member');
+		const abe = await createMember();
+		await rename(abe, 'abe', 'Member');
+		// Chat users and custom-role users sort with the members (Q29 default).
+		const chatUser = await createChatUser();
+		await rename(chatUser, 'Bob', 'Chat');
+		const pending = await createUserShell(GLOBAL_MEMBER_ROLE);
+
+		const { people } = await getTargets();
+
+		expect(userIds(people.items)).toEqual([
+			owner.id,
+			secondAdmin.id,
+			admin.id,
+			abe.id,
+			chatUser.id,
+			cara.id,
+			pending.id,
+		]);
+	});
+
+	it('counts the members and the owned workflows of a team project', async () => {
+		const team = await createTeamProject('Platform');
+		const members = await Promise.all([createMember(), createMember(), createMember()]);
+		for (const member of members) await linkUserToProject(member, team, 'project:editor');
+		for (let i = 0; i < 7; i++) await createWorkflow({}, team);
+		await createWorkflow({ isArchived: true }, team);
+		const sharedOnly = await createWorkflow({}, owner);
+		await shareWorkflowWithProjects(sharedOnly, [{ project: team }]);
+		const emptyTeam = await createTeamProject('Archive');
+
+		const { projects } = await getTargets({ type: 'projects' });
+
+		expect(projects.items).toEqual([
+			{ projectId: emptyTeam.id, name: 'Archive', icon: null, memberCount: 0, workflowCount: 0 },
+			{ projectId: team.id, name: 'Platform', icon: null, memberCount: 3, workflowCount: 7 },
+		]);
+	});
+
+	it('narrows the count with the search and keeps the total', async () => {
+		await createTeamProject('Platform');
+		await createTeamProject('Data platform');
+		await createTeamProject('Sales');
+
+		const { projects } = await getTargets({ search: 'PLATFORM' });
+
+		expect(projects.total).toBe(3);
+		expect(projects.count).toBe(2);
+		expect(projects.items.map(({ name }: ProjectItem) => name)).toEqual([
+			'Data platform',
+			'Platform',
+		]);
+	});
+
+	it('pages one section with type, skip and take', async () => {
+		await createManyUsers(4);
+
+		const all = await getTargets({ type: 'people' });
+		const page = await getTargets({ type: 'people', skip: 2, take: 2 });
+
+		expect(Object.keys(page)).toEqual(['people']);
+		expect(page.people).toMatchObject({ total: 6, count: 6 });
+		expect(userIds(page.people.items)).toEqual(userIds(all.people.items).slice(2, 4));
+	});
+
+	it('returns 403 to a member', async () => {
+		const member = await createMember();
+
+		await testServer.authAgentFor(member).get('/scim/transfer-targets').expect(403);
+	});
+
+	it('answers while SCIM is off', async () => {
+		await Container.get(ScimSettingsService).setEnabled(false);
+
+		await getTargets();
+	});
+
+	it('runs the same number of queries for every page size', async () => {
+		await createManyUsers(5);
+		for (let i = 0; i < 5; i++) {
+			const team = await createTeamProject();
+			await linkUserToProject(admin, team, 'project:admin');
+			await createWorkflow({}, team);
+		}
+
+		const countQueries = async (take: number) => {
+			const logQuery = vi.spyOn(Container.get(DataSource).logger, 'logQuery');
+			try {
+				const { people, projects } = await Container.get(
+					ScimDeprovisioningService,
+				).findTransferTargets({ search: undefined, skip: 0, take });
+				expect(people?.items).toHaveLength(take);
+				expect(projects?.items).toHaveLength(take);
+				return logQuery.mock.calls.length;
+			} finally {
+				logQuery.mockRestore();
+			}
+		};
+
+		const queriesForOne = await countQueries(1);
+
+		expect(queriesForOne).toBeGreaterThan(0);
+		expect(await countQueries(5)).toBe(queriesForOne);
+	});
+});
+
 describe('SCIM /scim/v2/Schemas', () => {
 	it('lists the User schema without roles and with the Schema schema id', async () => {
 		const response = await scimRequest('get', '/Schemas').expect(200);
@@ -933,6 +1149,7 @@ describe('SCIM opt-in', () => {
 		['patch', '/scim/config'],
 		['post', '/scim/token'],
 		['delete', '/scim/token'],
+		['get', '/scim/transfer-targets'],
 	] as const;
 
 	const moduleSettings = async () => {

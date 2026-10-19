@@ -11,7 +11,7 @@ import type {
 import { Brackets, DataSource, In, IsNull, Not } from '@n8n/typeorm';
 
 import { BaseRepository } from './base-repository';
-import { GLOBAL_OWNER_ROLE } from '../constants';
+import { GLOBAL_ADMIN_ROLE, GLOBAL_OWNER_ROLE } from '../constants';
 import { ApiKey, Project, ProjectRelation, User } from '../entities';
 import { type OperationContext, TransactionRunner } from '../services/transaction';
 import { isUniqueConstraintError } from '../utils/is-unique-constraint-error';
@@ -24,6 +24,14 @@ import { isUniqueConstraintError } from '../utils/is-unique-constraint-error';
  */
 const DEACTIVATED_USER_CONDITION = 'user.disabled = :userListDeactivated';
 const DEACTIVATED_USER_PARAMETERS = { userListDeactivated: true };
+
+/**
+ * SQL expression that orders users by global role: the owner first (0), then
+ * the admins (1), then every other role (2). `alias` is the query alias of
+ * the user entity.
+ */
+export const userGlobalRoleOrderSql = (alias: string) =>
+	`CASE WHEN ${alias}.role='${GLOBAL_OWNER_ROLE.slug}' THEN 0 WHEN ${alias}.role='${GLOBAL_ADMIN_ROLE.slug}' THEN 1 ELSE 2 END`;
 
 @Service()
 export class UserRepository extends BaseRepository<User> {
@@ -526,10 +534,7 @@ export class UserRepository extends BaseRepository<User> {
 			for (const sort of sortBy) {
 				const [field, order] = sort.split(':');
 				if (field === 'role') {
-					queryBuilder.addSelect(
-						"CASE WHEN user.role='global:owner' THEN 0 WHEN user.role='global:admin' THEN 1 ELSE 2 END",
-						'userroleorder',
-					);
+					queryBuilder.addSelect(userGlobalRoleOrderSql('user'), 'userroleorder');
 					queryBuilder.addOrderBy('userroleorder', order.toUpperCase() as 'ASC' | 'DESC');
 				} else {
 					queryBuilder.addOrderBy(`user.${field}`, order.toUpperCase() as 'ASC' | 'DESC');

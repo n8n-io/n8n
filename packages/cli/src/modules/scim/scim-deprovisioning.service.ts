@@ -2,6 +2,8 @@ import type {
 	ScimConfigResponse,
 	ScimDeprovisioningPolicy,
 	ScimTransferTarget,
+	ScimTransferTargetsQueryDto,
+	ScimTransferTargetsResponse,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { ProjectRepository, type Project, type User } from '@n8n/db';
@@ -23,6 +25,7 @@ type TransferTargetProject = Pick<Project, 'type'> & {
 /**
  * The one rule for a valid transfer target: a team project, with or without
  * members, or the personal project of an active user.
+ * `ScimTransferTargetRepository` applies the same rule in SQL for the picker.
  */
 export function isValidScimTransferTarget(project: TransferTargetProject): boolean {
 	if (project.type === 'team') return true;
@@ -89,6 +92,28 @@ export class ScimDeprovisioningService {
 			: null;
 
 		return { onDelete, dataAction, transferTarget };
+	}
+
+	/**
+	 * The people and the team projects that the transfer target picker shows.
+	 * `skip` and `take` apply to each section separately. `type` limits the
+	 * response to one section.
+	 */
+	async findTransferTargets({
+		search,
+		type,
+		skip,
+		take,
+	}: ScimTransferTargetsQueryDto): Promise<ScimTransferTargetsResponse> {
+		const page = { search, skip, take };
+		const [people, projects] = await Promise.all([
+			type === 'projects'
+				? undefined
+				: this.transferTargetRepository.findPersonTargetPage(page, {}),
+			type === 'people' ? undefined : this.transferTargetRepository.findProjectTargetPage(page, {}),
+		]);
+
+		return { ...(people && { people }), ...(projects && { projects }) };
 	}
 
 	/**

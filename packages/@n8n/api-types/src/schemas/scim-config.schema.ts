@@ -98,6 +98,60 @@ export type ScimTransferTarget = {
 	valid: boolean;
 };
 
+/**
+ * A section of the transfer target picker.
+ * - `people`: the personal projects of active users.
+ * - `projects`: the team projects.
+ */
+export const scimTransferTargetTypeSchema = z.enum(['people', 'projects']);
+
+export type ScimTransferTargetType = z.infer<typeof scimTransferTargetTypeSchema>;
+
+/** A person in the transfer target picker: the personal project of an active user. */
+export type ScimTransferTargetPerson = {
+	projectId: string;
+	userId: string;
+	firstName: string | null;
+	lastName: string | null;
+	email: string | null;
+	/** Slug of the global role, for example `global:admin`. */
+	role: string;
+};
+
+/** A team project in the transfer target picker. */
+export type ScimTransferTargetProject = {
+	projectId: string;
+	name: string;
+	icon: ProjectIcon | null;
+	/** Number of users with a role in the project. */
+	memberCount: number;
+	/** Number of workflows that the project owns, archived workflows excluded. */
+	workflowCount: number;
+};
+
+export type ScimTransferTargetSection<Item> = {
+	/** Number of valid targets in this section. The search does not change it. */
+	total: number;
+	/** Number of valid targets in this section that match the search. */
+	count: number;
+	/** One page of the matches. */
+	items: Item[];
+};
+
+/**
+ * Response of `GET /rest/scim/transfer-targets`. Every item is a valid
+ * transfer target for the SCIM deprovisioning policy.
+ *
+ * People come in this order: the owner, the admins, then every other role.
+ * Each group is sorted by name. Projects are sorted by name.
+ */
+export type ScimTransferTargetsResponse = {
+	/** Absent when the request asks for `projects` only. */
+	people?: ScimTransferTargetSection<ScimTransferTargetPerson>;
+	/** Absent when the request asks for `people` only. */
+	projects?: ScimTransferTargetSection<ScimTransferTargetProject>;
+};
+
 /** Response of `GET /rest/scim/config`. */
 export type ScimConfigResponse = {
 	enabled: boolean;

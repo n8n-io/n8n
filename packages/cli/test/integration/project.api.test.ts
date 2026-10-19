@@ -10,7 +10,7 @@ import {
 	testDb,
 	mockInstance,
 } from '@n8n/backend-test-utils';
-import type { Project } from '@n8n/db';
+import type { Project, User } from '@n8n/db';
 import {
 	FolderRepository,
 	GLOBAL_ADMIN_ROLE,
@@ -20,6 +20,7 @@ import {
 	RoleRepository,
 	SharedCredentialsRepository,
 	SharedWorkflowRepository,
+	UserRepository,
 	WorkflowRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -291,6 +292,64 @@ describe('GET /projects/sharing-candidates', () => {
 			.get('/projects/sharing-candidates')
 			.query({ take: 50, skip: 0 });
 		expect(resp.status).toBe(403);
+	});
+
+	// The owner reads through the admin path, the member through the
+	// relation path. Both must apply the flag.
+	describe.each([
+		['owner', createOwner],
+		['member', createMember],
+	])('excludeDeactivatedUsers for the %s', (_, createCaller) => {
+		const candidateIds = async (caller: User, query: Record<string, string | number>) => {
+			const resp = await testServer
+				.authAgentFor(caller)
+				.get('/projects/sharing-candidates')
+				.query({ take: 50, skip: 0, ...query })
+				.expect(200);
+			return (resp.body.data as Project[]).map(({ id }) => id);
+		};
+
+		const setUp = async () => {
+			const caller = await createCaller();
+			const [active, deactivated] = await Promise.all([createMember(), createMember()]);
+			await Container.get(UserRepository).update({ id: deactivated.id }, { disabled: true });
+			const team = await createTeamProject(undefined, caller);
+			const [activeProject, deactivatedProject] = await Promise.all([
+				getPersonalProject(active),
+				getPersonalProject(deactivated),
+			]);
+			return { caller, team, activeProject, deactivatedProject };
+		};
+
+		test('leaves out the personal project of a deactivated user with the flag', async () => {
+			const { caller, team, activeProject, deactivatedProject } = await setUp();
+
+			const ids = await candidateIds(caller, { excludeDeactivatedUsers: 'true' });
+
+			expect(ids).toEqual(expect.arrayContaining([team.id, activeProject.id]));
+			expect(ids).not.toContain(deactivatedProject.id);
+		});
+
+		test('combines the flag with activated', async () => {
+			const { caller, team, activeProject, deactivatedProject } = await setUp();
+
+			const ids = await candidateIds(caller, {
+				excludeDeactivatedUsers: 'true',
+				activated: 'true',
+			});
+
+			expect(ids).toEqual(expect.arrayContaining([team.id, activeProject.id]));
+			expect(ids).not.toContain(deactivatedProject.id);
+		});
+
+		test.each<Record<string, string>>([{}, { excludeDeactivatedUsers: 'false' }])(
+			'keeps the personal project of a deactivated user for %j',
+			async (query) => {
+				const { caller, deactivatedProject } = await setUp();
+
+				expect(await candidateIds(caller, query)).toContain(deactivatedProject.id);
+			},
+		);
 	});
 });
 

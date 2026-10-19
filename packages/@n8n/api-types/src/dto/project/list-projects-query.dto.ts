@@ -25,6 +25,13 @@ const activatedValidator = z
 	.optional()
 	.transform((val) => (val === undefined ? undefined : val === 'true'));
 
+// `true` leaves out the personal projects of deactivated users, so that a
+// transfer picker does not offer them. Without it, the list keeps them.
+const excludeDeactivatedUsersValidator = z
+	.enum(['true', 'false'])
+	.optional()
+	.transform((val) => (val === undefined ? undefined : val === 'true'));
+
 // Custom take validator that defaults to undefined (no limit) for backward
 // compatibility — existing callers that omit `take` receive all projects.
 // When provided, the value is capped at MAX_ITEMS_PER_PAGE.
@@ -46,4 +53,5 @@ export class ListProjectsQueryDto extends Z.class({
 	search: searchValidator,
 	type: typeValidator,
 	activated: activatedValidator,
+	excludeDeactivatedUsers: excludeDeactivatedUsersValidator,
 }) {}

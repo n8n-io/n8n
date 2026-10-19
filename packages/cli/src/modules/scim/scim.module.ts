@@ -24,6 +24,7 @@ export class ScimModule implements ModuleInterface {
 		await import('./scim.controller.js');
 		await import('./scim-discovery.controller.js');
 		await import('./scim-token.controller.js');
+		await import('./scim-transfer-target.controller.js');
 
 		const { ScimOptInService } = await import('./scim-opt-in.service.js');
 		Container.get(ScimOptInService).startSettingsRefresh();

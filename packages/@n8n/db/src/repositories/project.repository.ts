@@ -238,14 +238,22 @@ export class ProjectRepository extends BaseRepository<Project> {
 			idsQuery.andWhere('p.type = :type', { type: options.type });
 		}
 
+		if (options.activated === true || options.excludeDeactivatedUsers === true) {
+			idsQuery.leftJoin('p.creator', 'creator');
+		}
+
 		if (options.activated === true) {
-			idsQuery.leftJoin('p.creator', 'creator').andWhere(
+			idsQuery.andWhere(
 				new Brackets((qb) => {
 					qb.where('p.type != :personalTypeFilter', {
 						personalTypeFilter: 'personal',
 					}).orWhere('creator.password IS NOT NULL');
 				}),
 			);
+		}
+
+		if (options.excludeDeactivatedUsers === true) {
+			this.excludeDeactivatedUserProjects(idsQuery, 'p');
 		}
 	}
 
@@ -285,6 +293,27 @@ export class ProjectRepository extends BaseRepository<Project> {
 				}),
 			);
 		}
+
+		if (options.excludeDeactivatedUsers === true) {
+			this.excludeDeactivatedUserProjects(query, 'project');
+		}
+	}
+
+	/**
+	 * Leaves out the personal projects of deactivated users. The `creator`
+	 * relation must already be joined on the query.
+	 */
+	private excludeDeactivatedUserProjects(
+		query: SelectQueryBuilder<Project>,
+		projectAlias: 'p' | 'project',
+	): void {
+		query.andWhere(
+			new Brackets((qb) => {
+				qb.where(`${projectAlias}.type != :personalTypeDeactivatedFilter`, {
+					personalTypeDeactivatedFilter: 'personal',
+				}).orWhere('creator.disabled = :creatorDisabled', { creatorDisabled: false });
+			}),
+		);
 	}
 
 	/**
@@ -346,4 +375,6 @@ export interface ProjectListOptions {
 	search?: string;
 	type?: 'personal' | 'team';
 	activated?: boolean;
+	/** Leaves out the personal projects of deactivated users. */
+	excludeDeactivatedUsers?: boolean;
 }

@@ -39,6 +39,16 @@ describe('ListProjectsQueryDto', () => {
 				expected: { activated: false },
 			},
 			{
+				name: 'with excludeDeactivatedUsers true',
+				request: { excludeDeactivatedUsers: 'true' },
+				expected: { excludeDeactivatedUsers: true },
+			},
+			{
+				name: 'with excludeDeactivatedUsers false',
+				request: { excludeDeactivatedUsers: 'false' },
+				expected: { excludeDeactivatedUsers: false },
+			},
+			{
 				name: 'with all parameters',
 				request: { skip: '20', take: '10', search: 'test', type: 'team', activated: 'true' },
 				expected: { skip: 20, take: 10, search: 'test', type: 'team', activated: true },
@@ -67,6 +77,14 @@ describe('ListProjectsQueryDto', () => {
 			}
 		});
 
+		it('should leave excludeDeactivatedUsers undefined when not provided', () => {
+			const result = ListProjectsQueryDto.safeParse({});
+			expect(result.success).toBe(true);
+			if (result.success) {
+				expect(result.data.excludeDeactivatedUsers).toBeUndefined();
+			}
+		});
+
 		it('should default skip to undefined when not provided', () => {
 			const result = ListProjectsQueryDto.safeParse({});
 			expect(result.success).toBe(true);
@@ -82,6 +100,11 @@ describe('ListProjectsQueryDto', () => {
 				name: 'invalid type',
 				request: { type: 'invalid' },
 				expectedErrorPath: ['type'],
+			},
+			{
+				name: 'invalid excludeDeactivatedUsers',
+				request: { excludeDeactivatedUsers: 'yes' },
+				expectedErrorPath: ['excludeDeactivatedUsers'],
 			},
 			{
 				name: 'negative skip',
