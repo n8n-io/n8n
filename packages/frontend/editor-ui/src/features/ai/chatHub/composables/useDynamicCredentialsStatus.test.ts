@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { ref, nextTick } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
@@ -265,7 +265,7 @@ describe('useDynamicCredentialsStatus', () => {
 
 			// Authorize returns a valid URL, popup opens
 			mockAuthorizeDynamicCredential.mockResolvedValue('https://accounts.google.com/oauth');
-			const mockPopup = { closed: false, close: vi.fn() };
+			const mockPopup = { closed: false, close: vi.fn(), location: { href: '' } };
 			vi.stubGlobal(
 				'open',
 				vi.fn(() => mockPopup),
@@ -331,7 +331,7 @@ describe('useDynamicCredentialsStatus', () => {
 			});
 
 			mockAuthorizeDynamicCredential.mockResolvedValue('https://accounts.google.com/oauth');
-			const mockPopup = { closed: false, close: vi.fn() };
+			const mockPopup = { closed: false, close: vi.fn(), location: { href: '' } };
 			vi.stubGlobal(
 				'open',
 				vi.fn(() => mockPopup),
@@ -378,7 +378,7 @@ describe('useDynamicCredentialsStatus', () => {
 			});
 
 			mockAuthorizeDynamicCredential.mockResolvedValue('https://accounts.google.com/oauth');
-			const mockPopup = { closed: false, close: vi.fn() };
+			const mockPopup = { closed: false, close: vi.fn(), location: { href: '' } };
 			vi.stubGlobal(
 				'open',
 				vi.fn(() => mockPopup),
@@ -406,6 +406,17 @@ describe('useDynamicCredentialsStatus', () => {
 	});
 
 	describe('authorize', () => {
+		let mockPopup: { closed: boolean; close: ReturnType<typeof vi.fn>; location: { href: string } };
+
+		beforeEach(() => {
+			mockPopup = { closed: false, close: vi.fn(), location: { href: '' } };
+			vi.stubGlobal('open', vi.fn().mockReturnValue(mockPopup));
+		});
+
+		afterEach(() => {
+			vi.unstubAllGlobals();
+		});
+
 		it.each([
 			{ browser: 'desktop', requiresUserActivation: false },
 			{ browser: 'mobile', requiresUserActivation: true },
@@ -489,13 +500,11 @@ describe('useDynamicCredentialsStatus', () => {
 
 			expect(credentials.value[0].error).toBe('Invalid authorization URL');
 			expect(credentials.value[0].isConnecting).toBe(false);
+			expect(mockPopup.location.href).toBe('');
+			expect(mockPopup.close).toHaveBeenCalledOnce();
 		});
 
 		it('should open popup with valid OAuth URL', async () => {
-			const mockPopup = { closed: false, close: vi.fn() };
-			const mockOpen = vi.fn(() => mockPopup);
-			vi.stubGlobal('open', mockOpen);
-
 			mockAuthorizeDynamicCredential.mockResolvedValue('https://accounts.google.com/oauth');
 
 			const workflowId = ref<string | null>('wf-1');
@@ -510,11 +519,12 @@ describe('useDynamicCredentialsStatus', () => {
 				const authorizePromise = authorize('cred-1');
 				await vi.advanceTimersByTimeAsync(0);
 
-				expect(mockOpen).toHaveBeenCalledWith(
-					'https://accounts.google.com/oauth',
+				expect(window.open).toHaveBeenCalledExactlyOnceWith(
+					'about:blank',
 					'OAuth Authorization',
 					expect.any(String),
 				);
+				expect(mockPopup.location.href).toBe('https://accounts.google.com/oauth');
 
 				// Settle the flow: popup closes and the backend reports configured.
 				mockPopup.closed = true;
@@ -550,6 +560,19 @@ describe('useDynamicCredentialsStatus', () => {
 
 			await authorize('cred-1');
 
+			expect(credentials.value[0].error).toBe('Failed to start authorization');
+			expect(credentials.value[0].isConnecting).toBe(false);
+			expect(mockPopup.close).toHaveBeenCalledOnce();
+		});
+
+		it('should skip the authorization request when the popup is blocked', async () => {
+			vi.mocked(window.open).mockReturnValue(null);
+			const { credentials, authorize } = useDynamicCredentialsStatus(ref('wf-1'));
+			await nextTick();
+
+			await authorize('cred-1');
+
+			expect(mockAuthorizeDynamicCredential).not.toHaveBeenCalled();
 			expect(credentials.value[0].error).toBe('Failed to start authorization');
 			expect(credentials.value[0].isConnecting).toBe(false);
 		});

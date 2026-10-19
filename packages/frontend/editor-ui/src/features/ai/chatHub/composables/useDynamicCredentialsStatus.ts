@@ -108,7 +108,20 @@ export function useDynamicCredentialsStatus(workflowId: Ref<string | null>) {
 
 		updateCredentialState(credentialId, { isConnecting: true, error: null });
 
+		let oauthPopup: Window | null = null;
 		try {
+			// Open before the request to keep the click's user activation.
+			const params =
+				'scrollbars=no,resizable=yes,status=no,titlebar=no,location=no,toolbar=no,menubar=no,width=500,height=700';
+			oauthPopup = window.open('about:blank', 'OAuth Authorization', params);
+			if (!oauthPopup) {
+				updateCredentialState(credentialId, {
+					error: 'Failed to start authorization',
+					isConnecting: false,
+				});
+				return;
+			}
+
 			const oauthUrl = await authorizeDynamicCredential(
 				rootStore.restApiContext,
 				credentialId,
@@ -134,18 +147,7 @@ export function useDynamicCredentialsStatus(workflowId: Ref<string | null>) {
 				return;
 			}
 
-			// Open OAuth popup
-			const params =
-				'scrollbars=no,resizable=yes,status=no,titlebar=no,location=no,toolbar=no,menubar=no,width=500,height=700';
-			const oauthPopup = window.open(oauthUrl, 'OAuth Authorization', params);
-
-			if (!oauthPopup) {
-				updateCredentialState(credentialId, {
-					error: 'Failed to start authorization',
-					isConnecting: false,
-				});
-				return;
-			}
+			oauthPopup.location.href = oauthUrl;
 
 			const outcome = await waitForOAuthCallback({
 				popup: oauthPopup,
@@ -160,6 +162,7 @@ export function useDynamicCredentialsStatus(workflowId: Ref<string | null>) {
 			});
 
 			oauthPopup.close();
+			oauthPopup = null;
 
 			if (outcome === 'success') {
 				await pollUntilConfigured(credentialId);
@@ -172,6 +175,8 @@ export function useDynamicCredentialsStatus(workflowId: Ref<string | null>) {
 				error: 'Failed to start authorization',
 				isConnecting: false,
 			});
+		} finally {
+			oauthPopup?.close();
 		}
 	}
 
