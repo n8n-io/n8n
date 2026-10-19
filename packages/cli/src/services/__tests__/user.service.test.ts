@@ -26,9 +26,9 @@ import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import type { ExternalHooks } from '@/external-hooks';
 import type { License } from '@/license';
-import type { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
+import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import { ScimSsoService } from '@/modules/scim/scim-sso.service';
-import { UserService } from '@/services/user.service';
+import { INVITE_ROLE_MANAGED_MESSAGE, UserService } from '@/services/user.service';
 import * as ssoHelpers from '@/sso.ee/sso-helpers';
 import type { UserManagementMailer } from '@/user-management/email';
 
@@ -194,6 +194,41 @@ describe('UserService', () => {
 
 					expect(result.usersInvited[0].user.inviteAcceptUrl).toBeUndefined();
 				});
+
+				// The accept page rejects invite links under SSO, so a link would not work.
+				describe('under SAML or OIDC', () => {
+					beforeEach(() => {
+						vi.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(true);
+						roleService.checkRolesExist.mockResolvedValue();
+						userRepository.findManyByEmail.mockResolvedValue([]);
+						userRepository.createUserWithProject.mockImplementation(async (userData) => {
+							return { user: { ...userData, id: uuid() } as User, project: mock<Project>() };
+						});
+					});
+
+					afterEach(() => {
+						vi.mocked(ssoHelpers.isSsoCurrentAuthenticationMethod).mockRestore();
+					});
+
+					it.each([true, false])(
+						'links the email to the sign-in page and returns no link when emailSent is %s',
+						async (emailSent) => {
+							const owner = Object.assign(new User(), { id: uuid(), role: GLOBAL_ADMIN_ROLE });
+							mailer.invite.mockResolvedValue({ emailSent });
+
+							const result = await userService.inviteUsers(owner, [
+								{ email: 'test@example.com', role: GLOBAL_MEMBER_ROLE.slug },
+							]);
+
+							expect(mailer.invite).toHaveBeenCalledWith({
+								email: 'test@example.com',
+								inviteAcceptUrl: `${urlService.getInstanceBaseUrl()}/signin`,
+							});
+							expect(jwtService.sign).not.toHaveBeenCalled();
+							expect(result.usersInvited[0].user.inviteAcceptUrl).toBeUndefined();
+						},
+					);
+				});
 			});
 		});
 
@@ -247,6 +282,41 @@ describe('UserService', () => {
 					const result = await userService.inviteUsers(owner, invitations);
 
 					expect(result.usersInvited[0].user.inviteAcceptUrl).toBeUndefined();
+				});
+
+				// The accept page rejects invite links under SSO, so a link would not work.
+				describe('under SAML or OIDC', () => {
+					beforeEach(() => {
+						vi.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(true);
+						roleService.checkRolesExist.mockResolvedValue();
+						userRepository.findManyByEmail.mockResolvedValue([]);
+						userRepository.createUserWithProject.mockImplementation(async (userData) => {
+							return { user: { ...userData, id: uuid() } as User, project: mock<Project>() };
+						});
+					});
+
+					afterEach(() => {
+						vi.mocked(ssoHelpers.isSsoCurrentAuthenticationMethod).mockRestore();
+					});
+
+					it.each([true, false])(
+						'links the email to the sign-in page and returns no link when emailSent is %s',
+						async (emailSent) => {
+							const owner = Object.assign(new User(), { id: uuid(), role: GLOBAL_ADMIN_ROLE });
+							mailer.invite.mockResolvedValue({ emailSent });
+
+							const result = await userService.inviteUsers(owner, [
+								{ email: 'test@example.com', role: GLOBAL_MEMBER_ROLE.slug },
+							]);
+
+							expect(mailer.invite).toHaveBeenCalledWith({
+								email: 'test@example.com',
+								inviteAcceptUrl: `${urlService.getInstanceBaseUrl()}/signin`,
+							});
+							expect(jwtService.sign).not.toHaveBeenCalled();
+							expect(result.usersInvited[0].user.inviteAcceptUrl).toBeUndefined();
+						},
+					);
 				});
 			});
 		});
@@ -878,6 +948,39 @@ describe('UserService', () => {
 
 				await expect(userService.inviteUser(inviter, payload)).rejects.toThrow(BadRequestError);
 				expect(scimSsoService.isProvisioningOn).not.toHaveBeenCalled();
+			});
+
+			describe('while single sign-on assigns the instance roles', () => {
+				const provisioningService = mockInstance(ProvisioningService);
+				const adminPayload = new InviteUsersRequestDto({
+					email: 'valid@email.com',
+					role: 'global:admin',
+				});
+
+				beforeEach(() => {
+					scimSsoService.isProvisioningOn.mockResolvedValue(true);
+					provisioningService.isInstanceRoleManaged.mockResolvedValue(true);
+				});
+
+				it('rejects an invite with a role other than member', async () => {
+					const result = userService.inviteUser(inviter, adminPayload);
+
+					await expect(result).rejects.toThrow(ForbiddenError);
+					await expect(result).rejects.toThrow(INVITE_ROLE_MANAGED_MESSAGE);
+					expect(userService.inviteUsers).not.toHaveBeenCalled();
+				});
+
+				it('invites a member', async () => {
+					await expect(userService.inviteUser(inviter, payload)).resolves.toEqual([]);
+					expect(provisioningService.isInstanceRoleManaged).not.toHaveBeenCalled();
+				});
+
+				it('invites an admin while the instance roles are not managed', async () => {
+					provisioningService.isInstanceRoleManaged.mockResolvedValue(false);
+
+					await expect(userService.inviteUser(inviter, adminPayload)).resolves.toEqual([]);
+					expect(userService.inviteUsers).toHaveBeenCalled();
+				});
 			});
 
 			it('does not read the SCIM state without SSO', async () => {

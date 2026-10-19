@@ -39,11 +39,13 @@ import { getApiKeyScopesForRole } from '@n8n/permissions';
 import { DataSource } from '@n8n/typeorm';
 import type express from 'express';
 
+import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import { OidcService } from '@/modules/sso-oidc/oidc.service.ee';
 import { setSamlLoginEnabled } from '@/modules/sso-saml/saml-helpers';
 import { SamlService } from '@/modules/sso-saml/saml.service.ee';
 import { PostHogClient } from '@/posthog';
 import { PublicApiKeyService } from '@/services/public-api-key.service';
+import { INVITE_ROLE_MANAGED_MESSAGE } from '@/services/user.service';
 import { setCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
 import { saveCredential } from '@test-integration/db/credentials';
 import {
@@ -1433,11 +1435,11 @@ describe('SCIM and single sign-on', () => {
 describe('SCIM and manual invites', () => {
 	const inviteeEmail = 'invitee@example.com';
 
-	const invite = async (user: User = admin) =>
+	const invite = async (user: User = admin, role = 'global:member') =>
 		await testServer
 			.authAgentFor(user)
 			.post('/invitations')
-			.send([{ email: inviteeEmail, role: 'global:member' }]);
+			.send([{ email: inviteeEmail, role }]);
 
 	const invitedUser = async () =>
 		await Container.get(UserRepository).findOne({
@@ -1471,9 +1473,38 @@ describe('SCIM and manual invites', () => {
 					error: '',
 				}),
 			]);
+			// The accept page rejects invite links under SSO, so the response
+			// has no link to copy. The invitee signs in through SSO.
+			expect(response.body.data[0].user.inviteAcceptUrl).toBeUndefined();
 			expect(await invitedUser()).toMatchObject({ isPending: true, password: null });
 		},
 	);
+
+	describe('while single sign-on assigns the instance roles', () => {
+		beforeEach(() => {
+			vi.spyOn(Container.get(ProvisioningService), 'isInstanceRoleManaged').mockResolvedValue(true);
+		});
+
+		it('returns 403 and creates no invite for the admin role', async () => {
+			const response = await invite(admin, 'global:admin');
+
+			expect(response.status).toBe(403);
+			expect(response.body.message).toBe(INVITE_ROLE_MANAGED_MESSAGE);
+			expect(await invitedUser()).toBeNull();
+		});
+
+		it('creates the invite for the member role', async () => {
+			expect((await invite()).status).toBe(200);
+			expect(await invitedUser()).toMatchObject({ role: { slug: 'global:member' } });
+		});
+	});
+
+	it('creates an admin invite while single sign-on does not assign the instance roles', async () => {
+		const response = await invite(admin, 'global:admin');
+
+		expect(response.status).toBe(200);
+		expect(await invitedUser()).toMatchObject({ role: { slug: 'global:admin' } });
+	});
 
 	it('returns 400 as on master while SAML is on and SCIM is off', async () => {
 		await Container.get(ScimSettingsService).setEnabled(false);

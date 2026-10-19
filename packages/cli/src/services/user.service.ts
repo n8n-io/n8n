@@ -15,6 +15,7 @@ import {
 	Not,
 	In,
 	GLOBAL_ADMIN_ROLE,
+	GLOBAL_MEMBER_ROLE,
 	GLOBAL_OWNER_ROLE,
 } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
@@ -52,6 +53,9 @@ export const CHANGE_ROLE_ERROR_MESSAGES = {
 	CANNOT_CHANGE_OWN_ROLE: 'Cannot change your own global role',
 	INSTANCE_ROLES_MANAGED: 'Instance roles are managed automatically and cannot be changed manually',
 } as const;
+
+export const INVITE_ROLE_MANAGED_MESSAGE =
+	'Instance roles are managed by single sign-on. Invite users with the member role.';
 
 /** The system as the actor of a user deletion that no user asked for. */
 export type SystemDeletionActor = Extract<PolicyActor, { kind: 'system' }> & { reason: 'scim' };
@@ -210,20 +214,17 @@ export class UserService {
 
 		const inviteLinksEmailOnly = this.globalConfig.userManagement.inviteLinksEmailOnly;
 
+		// Invites pass under SAML or OIDC only while SCIM is on. The accept page
+		// rejects invite links under SSO, and the invitee signs in through the
+		// identity provider, which links the invite by email. So the email links
+		// to the sign-in page, and the response has no link to copy.
+		const signInThroughSso = isSsoCurrentAuthenticationMethod();
+
 		return await Promise.all(
 			Object.entries(toInviteUsers).map(async ([email, id]) => {
-				// Always use JWT-based tamper-proof invite links
-				const token = this.jwtService.sign(
-					'invite',
-					{
-						inviterId: owner.id,
-						inviteeId: id,
-					},
-					{
-						expiresIn: '90d',
-					},
-				);
-				const inviteAcceptUrl = `${domain}/signup?token=${token}`;
+				const inviteAcceptUrl = signInThroughSso
+					? `${domain}/signin`
+					: this.createInviteAcceptUrl(domain, owner.id, id);
 				const invitedUser: UserRequest.InviteResponse = {
 					user: {
 						id,
@@ -252,7 +253,7 @@ export class UserService {
 					// Only include the invite URL in the response if
 					// the users configuration allows it
 					// and the email was not sent (to allow manual copy-paste)
-					if (!inviteLinksEmailOnly && !result.emailSent) {
+					if (!signInThroughSso && !inviteLinksEmailOnly && !result.emailSent) {
 						invitedUser.user.inviteAcceptUrl = inviteAcceptUrl;
 					}
 
@@ -282,6 +283,12 @@ export class UserService {
 				return invitedUser;
 			}),
 		);
+	}
+
+	/** JWT-based, so that the invite link cannot be changed. */
+	private createInviteAcceptUrl(domain: string, inviterId: string, inviteeId: string) {
+		const token = this.jwtService.sign('invite', { inviterId, inviteeId }, { expiresIn: '90d' });
+		return `${domain}/signup?token=${token}`;
 	}
 
 	async inviteUsers(owner: User, invitations: Invitation[]) {
@@ -529,6 +536,8 @@ export class UserService {
 			);
 		}
 
+		await this.assertInviteRolesAreNotManaged(invitations);
+
 		// oxlint-disable-next-line typescript/no-deprecated
 		if (!this.license.isWithinUsersLimit()) {
 			this.logger.debug(
@@ -725,6 +734,20 @@ export class UserService {
 		});
 
 		return { success: true };
+	}
+
+	/**
+	 * While SAML or OIDC assigns the instance roles, an admin cannot change a
+	 * global role by hand. An invite must not set such a role either, so it
+	 * can invite only members. The SSO sign-in then applies the mapped role.
+	 */
+	private async assertInviteRolesAreNotManaged(invitations: Invitation[]) {
+		if (invitations.every(({ role }) => role === GLOBAL_MEMBER_ROLE.slug)) return;
+
+		const provisioningService = await this.getProvisioningService();
+		if (await provisioningService.isInstanceRoleManaged()) {
+			throw new ForbiddenError(INVITE_ROLE_MANAGED_MESSAGE);
+		}
 	}
 
 	/**
