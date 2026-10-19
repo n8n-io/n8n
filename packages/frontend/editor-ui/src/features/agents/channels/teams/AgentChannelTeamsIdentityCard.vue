@@ -61,7 +61,7 @@ const i18n = useI18n();
 				@click="emit('download')"
 			>
 				{{ i18n.baseText('agents.channels.teams.setup.install.button') }}
-				<N8nIcon icon="download" size="medium" />
+				<N8nIcon icon="arrow-circle-down" size="medium" />
 			</N8nButton>
 		</slot>
 	</div>

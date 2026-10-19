@@ -96,7 +96,7 @@ const fileIcon = computed(() => {
 			<div v-if="fileMeta" :class="$style.meta">{{ fileMeta }}</div>
 		</div>
 		<button :class="$style.download" @click="downloadBinaryData">
-			<N8nIcon icon="download" size="large" />
+			<N8nIcon icon="arrow-circle-down" size="large" />
 		</button>
 	</div>
 </template>

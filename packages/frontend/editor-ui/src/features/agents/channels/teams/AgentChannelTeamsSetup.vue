@@ -37,7 +37,7 @@ import {
 	AZURE_BOTS_URL,
 	ENTRA_APP_REGISTRATIONS_URL,
 	entraApiPermissionsUrl,
-	readsSharedConversations as readsShared,
+	permissionUseFor,
 	TEAMS_PACKAGE_FILENAME,
 	type TeamsAvailability,
 } from './constants';
@@ -427,7 +427,6 @@ async function refreshForCredential() {
 watch(credentialId, refreshForCredential, { immediate: true });
 
 const fileAccessStatus = ref<TeamsFileAccessCheck['status'] | null>(null);
-const readsSharedConversations = computed(() => readsShared(availability.value));
 /**
  * Microsoft confirms an approval only on the redirect back here, and applying
  * it can take an hour, so the approval is announced once, from the redirect.
@@ -443,8 +442,8 @@ const fileAccessApprovedNow = computed(() => fileAccessApprovedFor.value === cre
 async function loadFileAccess() {
 	fileAccessStatus.value = null;
 	const id = credentialId.value;
-	// Consumed only by a check that runs: the saved settings can arrive after the first call.
-	if (props.mode !== 'edit' || !id || !readsSharedConversations.value) return;
+	// Consumed only by a check that runs: the credential can arrive after the first call.
+	if (props.mode !== 'edit' || !id) return;
 	if (fileAccessJustApproved.value) {
 		fileAccessJustApproved.value = false;
 		fileAccessApprovedFor.value = id;
@@ -464,7 +463,7 @@ async function loadFileAccess() {
 	}
 }
 
-watch([credentialId, readsSharedConversations], loadFileAccess, { immediate: true });
+watch(credentialId, loadFileAccess, { immediate: true });
 
 /**
  * The settings say nothing until both the check and the setup state answer:
@@ -534,15 +533,13 @@ const steps = computed(() => [
 		id: 'download',
 		title: i18n.baseText('agents.channels.teams.setup.download.title'),
 	},
-	...(readsSharedConversations.value
-		? [
-				{
-					id: 'file-access',
-					title: i18n.baseText('agents.channels.teams.managed.fileAccess.title'),
-					description: i18n.baseText('agents.channels.teams.managed.fileAccess.description'),
-				},
-			]
-		: []),
+	{
+		id: 'file-access',
+		title: i18n.baseText('agents.channels.teams.managed.fileAccess.title'),
+		description: i18n.baseText(
+			`agents.channels.teams.managed.fileAccess.description.${permissionUseFor(availability.value)}`,
+		),
+	},
 	{
 		id: 'install',
 		title: i18n.baseText('agents.channels.teams.setup.install.title'),

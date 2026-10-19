@@ -280,11 +280,12 @@ describe('AgentChannelTeamsEditView', () => {
 			expect(await findByTestId('teams-file-access')).toBeVisible();
 		});
 
-		it('checks nothing while the agent reads only direct messages', async () => {
-			renderView({ props: viewProps, pinia: createTestingPinia() });
+		it('checks the approval while the agent reads only direct messages, to find people by email', async () => {
+			const { findByTestId } = renderView({ props: viewProps, pinia: createTestingPinia() });
 			await flushPromises();
 
-			expect(checkTeamsFileAccess).not.toHaveBeenCalled();
+			expect(checkTeamsFileAccess).toHaveBeenCalledWith(expect.anything(), 'p', 'a', 'cred-1');
+			expect(await findByTestId('teams-file-access')).toBeVisible();
 		});
 	});
 
