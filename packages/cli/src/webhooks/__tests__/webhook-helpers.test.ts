@@ -1717,6 +1717,36 @@ describe('executeWebhook credential-status gate', () => {
 		return { checkCredentialStatus, responseCallback, workflowStartNode };
 	};
 
+	it.each([MCP_TRIGGER_NODE_TYPE, MICROSOFT_AGENT365_TRIGGER_NODE_TYPE, CHAT_TRIGGER_NODE_TYPE])(
+		'seeds and merges execution data for %s',
+		async (startNodeType) => {
+			webhookService.runWebhook.mockImplementationOnce(async (...args) => {
+				const seededStack = args[5]?.executionData?.nodeExecutionStack;
+				expect(seededStack).toEqual([
+					{
+						node: expect.objectContaining({ type: startNodeType }),
+						data: { main: [] },
+						source: null,
+					},
+				]);
+				seededStack![0].data.main = [[{ json: { seeded: true } }]];
+				return { workflowData: [[{ json: { output: true } }]] };
+			});
+
+			await runGate({ authentication: 'none', startNodeType });
+
+			expect(workflowRunner.run).toHaveBeenCalledTimes(1);
+			const [runData] = workflowRunner.run.mock.calls[0];
+			expect(runData.executionData?.executionData?.nodeExecutionStack).toEqual([
+				{
+					node: expect.objectContaining({ type: startNodeType }),
+					data: { main: [[{ json: { seeded: true, output: true } }]] },
+					source: null,
+				},
+			]);
+		},
+	);
+
 	it('responds 428 with the missing-credential list and signed connect links when the caller has unconnected credentials', async () => {
 		const { checkCredentialStatus, responseCallback, workflowStartNode } = await runGate({
 			authentication: 'n8nOAuth2',
@@ -1817,6 +1847,7 @@ describe('executeWebhook credential-status gate', () => {
 			gateResult: missingGateResult,
 		});
 
+		expect(webhookService.runWebhook.mock.calls[0][5]).toBeNull();
 		expect(checkCredentialStatus).not.toHaveBeenCalled();
 		expect(responseCallback).not.toHaveBeenCalledWith(
 			null,
