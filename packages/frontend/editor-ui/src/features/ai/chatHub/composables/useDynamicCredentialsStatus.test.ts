@@ -399,6 +399,7 @@ describe('useDynamicCredentialsStatus', () => {
 			// Should have stopped and set isConnecting to false
 			expect(credentials.value[0].credentialStatus).toBe('missing');
 			expect(credentials.value[0].isConnecting).toBe(false);
+			expect(mockPopup.close).toHaveBeenCalledOnce();
 
 			vi.useRealTimers();
 			vi.unstubAllGlobals();
@@ -444,7 +445,7 @@ describe('useDynamicCredentialsStatus', () => {
 				const mockPopup = { closed: false, close: vi.fn(), location: { href: '' } };
 				let hasUserActivation = true;
 				const mockOpen = vi.fn((url: string) => {
-					// IAM-1090: Mobile browsers can block popups after the click's user activation ends.
+					// Mobile browsers block window.open once the click's user activation ends.
 					if (requiresUserActivation && !hasUserActivation) return null;
 					mockPopup.location.href = url;
 					return mockPopup;
@@ -479,6 +480,7 @@ describe('useDynamicCredentialsStatus', () => {
 					expect(mockPopup.location.href).toBe(oauthUrl);
 					expect(credentials.value[0].credentialStatus).toBe('configured');
 					expect(credentials.value[0].isConnecting).toBe(false);
+					expect(mockPopup.close).toHaveBeenCalledOnce();
 				} finally {
 					vi.useRealTimers();
 					vi.unstubAllGlobals();
@@ -542,6 +544,7 @@ describe('useDynamicCredentialsStatus', () => {
 				);
 				await vi.advanceTimersByTimeAsync(1000);
 				await authorizePromise;
+				expect(mockPopup.close).toHaveBeenCalledOnce();
 			} finally {
 				vi.useRealTimers();
 				vi.unstubAllGlobals();
