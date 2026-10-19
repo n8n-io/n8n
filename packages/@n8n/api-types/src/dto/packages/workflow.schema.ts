@@ -1,14 +1,13 @@
 import { z } from 'zod';
 
-// Check only the fields that all nodes share. `parameters` is not checked,
-// because its shape is different for each node type, and a schema for each
-// node type would be too hard to maintain.
 const credentialReferenceSchema = z.object({
 	id: z.string().nullable(),
 	name: z.string(),
 	__aiGatewayManaged: z.boolean().optional(),
 });
 
+// Check only the fields that all nodes share. `parameters` must be an object,
+// but its content is not checked, because it is different for each node type.
 const nodeSchema = z.object({
 	id: z.string().min(1),
 	name: z.string().min(1),
