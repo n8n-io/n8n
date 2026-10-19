@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
-import { fireEvent } from '@testing-library/vue';
+import { fireEvent, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 
 import { createComponentRenderer } from '@/__tests__/render';
+import { MAX_APPLY_SUGGESTIONS } from '@/features/agents/agentEvals.types';
 import InstanceAiTestAgentExamplesPanel from '../components/InstanceAiTestAgentExamplesPanel.vue';
 
 const examples = [
@@ -244,19 +245,38 @@ describe('InstanceAiTestAgentExamplesPanel', () => {
 		});
 
 		it('keeps each row labeled with its scenario tag once the suite has run', async () => {
-			const user = userEvent.setup();
-			const { getByTestId, findByText, getByText } = renderComponent({ props: { caseRuns } });
-
-			await user.click(getByTestId('instance-ai-test-agent-examples-summary-toggle'));
+			const { findByText, getByText } = renderComponent({ props: { caseRuns } });
 
 			expect(await findByText('Vague')).toBeInTheDocument();
 			expect(getByText('Sensitive data')).toBeInTheDocument();
 			expect(getByText('Custom')).toBeInTheDocument();
 		});
 
-		it('collapses to the summary pill by default, expanding on click', async () => {
+		it('opens its list by default when some checks need work', () => {
+			const { getByText, getByTestId } = renderComponent({ props: { caseRuns } });
+
+			expect(getByText('Saved 3 checks')).toBeInTheDocument();
+			expect(getByTestId('instance-ai-test-agent-examples-case-1')).toBeInTheDocument();
+			expect(getByTestId('instance-ai-test-agent-examples-case-2')).toBeInTheDocument();
+		});
+
+		it('can be collapsed to the summary pill, and expanded again', async () => {
 			const user = userEvent.setup();
-			const { getByText, getByTestId, queryByTestId } = renderComponent({ props: { caseRuns } });
+			const { getByTestId, queryByTestId } = renderComponent({ props: { caseRuns } });
+
+			await user.click(getByTestId('instance-ai-test-agent-examples-summary-toggle'));
+			expect(queryByTestId('instance-ai-test-agent-examples-case-1')).not.toBeInTheDocument();
+
+			await user.click(getByTestId('instance-ai-test-agent-examples-summary-toggle'));
+			expect(getByTestId('instance-ai-test-agent-examples-case-1')).toBeInTheDocument();
+		});
+
+		it('stays collapsed to the summary pill when every check passed', async () => {
+			const user = userEvent.setup();
+			const allPassed = caseRuns.map((run) => ({ ...run, status: 'pass' as const }));
+			const { getByText, getByTestId, queryByTestId } = renderComponent({
+				props: { caseRuns: allPassed },
+			});
 
 			expect(getByText('Saved 3 checks')).toBeInTheDocument();
 			expect(queryByTestId('instance-ai-test-agent-examples-case-1')).not.toBeInTheDocument();
@@ -264,6 +284,17 @@ describe('InstanceAiTestAgentExamplesPanel', () => {
 			await user.click(getByTestId('instance-ai-test-agent-examples-summary-toggle'));
 
 			expect(getByTestId('instance-ai-test-agent-examples-case-1')).toBeInTheDocument();
+		});
+
+		it('opens its list once a running suite settles with checks that need work', async () => {
+			const running = caseRuns.map((run) => ({ ...run, status: 'waiting' as const }));
+			const { queryByTestId, getByTestId, rerender } = renderComponent({
+				props: { caseRuns: running },
+			});
+			await rerender({ caseRuns });
+
+			expect(getByTestId('instance-ai-test-agent-examples-case-2')).toBeInTheDocument();
+			expect(queryByTestId('instance-ai-test-agent-examples-stop')).not.toBeInTheDocument();
 		});
 
 		it('hides "Try agent yourself" while some checks still need work', () => {
@@ -287,7 +318,6 @@ describe('InstanceAiTestAgentExamplesPanel', () => {
 			const withResultIds = caseRuns.map((run) => ({ ...run, resultId: `result-${run.rowId}` }));
 			const { getByTestId, emitted } = renderComponent({ props: { caseRuns: withResultIds } });
 
-			await user.click(getByTestId('instance-ai-test-agent-examples-summary-toggle'));
 			await user.click(getByTestId('instance-ai-test-agent-examples-case-2-toggle'));
 
 			expect(emitted('open-case')).toEqual([['result-2']]);
@@ -303,6 +333,219 @@ describe('InstanceAiTestAgentExamplesPanel', () => {
 
 			expect(queryByTestId('instance-ai-test-agent-examples-run-summary')).not.toBeInTheDocument();
 			expect(getByTestId('instance-ai-test-agent-examples-try')).toBeInTheDocument();
+		});
+	});
+
+	describe('the confirmed try', () => {
+		it('reads as a pass by default', () => {
+			const { getByTestId } = renderComponent();
+
+			expect(
+				within(getByTestId('instance-ai-test-agent-examples-try')).getByRole('img', {
+					name: /Passed/,
+				}),
+			).toBeInTheDocument();
+		});
+
+		it('reflects the state it was graded in instead of always passing', () => {
+			const { getByTestId } = renderComponent({ props: { previewStatus: 'work' as const } });
+			const row = getByTestId('instance-ai-test-agent-examples-try');
+
+			expect(within(row).getByRole('img', { name: /Needs work/ })).toBeInTheDocument();
+			expect(within(row).queryByRole('img', { name: /Passed/ })).not.toBeInTheDocument();
+		});
+	});
+
+	describe('a failed case with a suggestion', () => {
+		const failedRun = {
+			rowId: 1,
+			input: 'Can I pay by invoice?',
+			label: 'Vague',
+			status: 'work' as const,
+			output: 'Sure.',
+			toolCalls: [],
+			resultId: 'result-1',
+			whatToCheck: null,
+			errorMessage: 'It agreed instead of refusing.',
+			fixSuggestion: 'Refuse invoice payments politely.',
+		};
+		const CARD = 'instance-ai-test-agent-examples-case-1-suggestion';
+
+		// A settled run with a failed case opens its list on its own.
+		const expanded = async (caseRuns: unknown[], extra: Record<string, unknown> = {}) => {
+			const user = userEvent.setup();
+			const result = renderComponent({ props: { caseRuns, ...extra } as never });
+			return { user, ...result };
+		};
+
+		it('shows the suggestion card under its row', async () => {
+			const { getByTestId } = await expanded([failedRun]);
+
+			expect(getByTestId(CARD)).toHaveTextContent('Refuse invoice payments politely.');
+		});
+
+		it('shows the judge’s verdict above the card', async () => {
+			const { getByTestId } = await expanded([failedRun]);
+
+			expect(getByTestId('instance-ai-test-agent-examples-case-1-verdict')).toHaveTextContent(
+				'It agreed instead of refusing.',
+			);
+		});
+
+		it('shows no verdict text when the judge gave no reasoning', async () => {
+			const { getByTestId, queryByTestId } = await expanded([{ ...failedRun, errorMessage: null }]);
+
+			expect(getByTestId(CARD)).toBeInTheDocument();
+			expect(queryByTestId('instance-ai-test-agent-examples-case-1-verdict')).toBeNull();
+		});
+
+		it('hides the verdict text together with the card on "Keep as is"', async () => {
+			const { user, getByTestId, queryByTestId } = await expanded([failedRun]);
+
+			await user.click(getByTestId(`${CARD}-dismiss`));
+
+			expect(queryByTestId('instance-ai-test-agent-examples-case-1-verdict')).toBeNull();
+		});
+
+		it('emits apply-suggestion with the result id on "Apply suggestion"', async () => {
+			const { user, getByTestId, emitted } = await expanded([failedRun]);
+
+			await user.click(getByTestId(`${CARD}-apply`));
+
+			expect(emitted('apply-suggestion')).toEqual([['result-1']]);
+		});
+
+		it('hides the card on "Keep as is"', async () => {
+			const { user, getByTestId, queryByTestId, emitted } = await expanded([failedRun]);
+
+			await user.click(getByTestId(`${CARD}-dismiss`));
+
+			expect(queryByTestId(CARD)).not.toBeInTheDocument();
+			expect(emitted('apply-suggestion')).toBeUndefined();
+		});
+
+		it('shows the card again when a different suggestion arrives for the case', async () => {
+			const { user, getByTestId, queryByTestId, rerender } = await expanded([failedRun]);
+			await user.click(getByTestId(`${CARD}-dismiss`));
+
+			await rerender({ caseRuns: [{ ...failedRun, fixSuggestion: 'Decline invoices.' }] });
+
+			expect(queryByTestId(CARD)).toHaveTextContent('Decline invoices.');
+		});
+
+		it.each([
+			['has no suggestion', { fixSuggestion: null }],
+			['has a blank suggestion', { fixSuggestion: '  ' }],
+			['is not a graded fail', { status: 'pass' as const }],
+			['has no result to rerun', { resultId: null }],
+		])('shows no card when the case %s', async (_name, override) => {
+			const { queryByTestId } = await expanded([{ ...failedRun, ...override }]);
+
+			expect(queryByTestId(CARD)).not.toBeInTheDocument();
+		});
+
+		it('shows the card as applying, and hides Stop, while its suggestion is applied', () => {
+			const waiting = { ...failedRun, status: 'waiting' as const };
+			const { getByTestId, queryByTestId } = renderComponent({
+				props: { caseRuns: [waiting], applyingSuggestionIds: ['result-1'] },
+			});
+
+			expect(queryByTestId('instance-ai-test-agent-examples-stop')).not.toBeInTheDocument();
+			expect(getByTestId('instance-ai-test-agent-examples-case-1')).toBeInTheDocument();
+		});
+
+		it('disables the cards of other cases while one suggestion is being applied', async () => {
+			const second = { ...failedRun, rowId: 2, resultId: 'result-2' };
+			const { getByTestId } = await expanded([failedRun, second], {
+				applyingSuggestionIds: ['result-1'],
+			});
+
+			expect(getByTestId('instance-ai-test-agent-examples-case-2-suggestion-apply')).toBeDisabled();
+		});
+	});
+
+	describe('apply all suggestions', () => {
+		const failed = (rowId: number, overrides: Record<string, unknown> = {}) => ({
+			rowId,
+			input: `case ${rowId}`,
+			label: 'Vague',
+			status: 'work' as const,
+			output: 'answer',
+			toolCalls: [],
+			resultId: `result-${rowId}`,
+			whatToCheck: null,
+			errorMessage: 'It broke the rule.',
+			fixSuggestion: `Fix ${rowId}.`,
+			...overrides,
+		});
+		const BUTTON = 'instance-ai-test-agent-examples-apply-all-suggestions';
+
+		it('is hidden with a single failed case, which has its own card', () => {
+			const { queryByTestId } = renderComponent({ props: { caseRuns: [failed(1)] } });
+
+			expect(queryByTestId(BUTTON)).not.toBeInTheDocument();
+		});
+
+		it('is hidden when only one failed case has a suggestion', () => {
+			const { queryByTestId } = renderComponent({
+				props: { caseRuns: [failed(1), failed(2, { fixSuggestion: null })] },
+			});
+
+			expect(queryByTestId(BUTTON)).not.toBeInTheDocument();
+		});
+
+		it('is shown with two failed cases that have suggestions, and emits their result ids', async () => {
+			const user = userEvent.setup();
+			const { getByTestId, emitted } = renderComponent({
+				props: {
+					caseRuns: [failed(1), failed(2), { ...failed(3), status: 'pass' as const }],
+				},
+			});
+
+			await user.click(getByTestId(BUTTON));
+
+			expect(emitted('apply-suggestions')).toEqual([[['result-1', 'result-2']]]);
+		});
+
+		it('leaves out a case whose card was dismissed', async () => {
+			const user = userEvent.setup();
+			const { getByTestId, queryByTestId, emitted } = renderComponent({
+				props: { caseRuns: [failed(1), failed(2), failed(3)] },
+			});
+			await user.click(getByTestId('instance-ai-test-agent-examples-case-2-suggestion-dismiss'));
+
+			await user.click(getByTestId(BUTTON));
+
+			expect(emitted('apply-suggestions')).toEqual([[['result-1', 'result-3']]]);
+			expect(queryByTestId('instance-ai-test-agent-examples-case-2-suggestion')).toBeNull();
+		});
+
+		it('emits every case with a suggestion, however many there are', async () => {
+			const user = userEvent.setup();
+			const many = Array.from({ length: MAX_APPLY_SUGGESTIONS + 2 }, (_, i) => failed(i + 1));
+			const { getByTestId, emitted } = renderComponent({ props: { caseRuns: many } });
+
+			await user.click(getByTestId(BUTTON));
+
+			expect((emitted('apply-suggestions')[0] as [string[]])[0]).toHaveLength(
+				MAX_APPLY_SUGGESTIONS + 2,
+			);
+		});
+
+		it('is disabled while a suggestion is being applied', () => {
+			const { getByTestId } = renderComponent({
+				props: { caseRuns: [failed(1), failed(2)], applyingSuggestionIds: ['result-1'] },
+			});
+
+			expect(getByTestId(BUTTON)).toBeDisabled();
+		});
+
+		it('is hidden while the run is still going', () => {
+			const { queryByTestId } = renderComponent({
+				props: { caseRuns: [failed(1), failed(2), failed(3, { status: 'waiting' as const })] },
+			});
+
+			expect(queryByTestId(BUTTON)).not.toBeInTheDocument();
 		});
 	});
 

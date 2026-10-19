@@ -153,6 +153,88 @@ describe('model-discovery', () => {
 				{ id: 'models/gemini-2.5-pro', name: 'models/gemini-2.5-pro' },
 			]);
 		});
+
+		it("labels models with the API's displayName, else the id", async () => {
+			const fetch = mockFetch({
+				models: [
+					{
+						name: 'models/gemini-2.5-pro',
+						displayName: 'Gemini 2.5 Pro',
+						supportedGenerationMethods: ['generateContent'],
+					},
+					{
+						name: 'models/gemini-2.5-flash',
+						displayName: ' ',
+						supportedGenerationMethods: ['generateContent'],
+					},
+				],
+			});
+
+			const models = await listModelsForProvider('google', { apiKey: 'g-key', fetch });
+
+			expect(models).toEqual([
+				{ id: 'models/gemini-2.5-pro', name: 'Gemini 2.5 Pro' },
+				{ id: 'models/gemini-2.5-flash', name: 'models/gemini-2.5-flash' },
+			]);
+		});
+
+		it('lists models with a priority first and passes the priority on', async () => {
+			const fetch = mockFetch({
+				models: [
+					{ name: 'models/gemini-2.5-pro', supportedGenerationMethods: ['generateContent'] },
+					{
+						name: 'models/gemini-featured',
+						priority: 10,
+						supportedGenerationMethods: ['generateContent'],
+					},
+					{ name: 'models/gemini-2.5-flash', supportedGenerationMethods: ['generateContent'] },
+				],
+			});
+
+			const models = await listModelsForProvider('google', { apiKey: 'g-key', fetch });
+
+			expect(models).toEqual([
+				{ id: 'models/gemini-featured', name: 'models/gemini-featured', priority: 10 },
+				{ id: 'models/gemini-2.5-flash', name: 'models/gemini-2.5-flash' },
+				{ id: 'models/gemini-2.5-pro', name: 'models/gemini-2.5-pro' },
+			]);
+		});
+	});
+
+	describe('google empty response', () => {
+		it('returns no models when the response has no models list', async () => {
+			const fetch = mockFetch({});
+
+			await expect(listModelsForProvider('google', { apiKey: 'g-key', fetch })).resolves.toEqual(
+				[],
+			);
+		});
+	});
+
+	describe('google priority', () => {
+		it('drops a priority that is not a finite number', async () => {
+			const fetch = mockFetch({
+				models: [
+					{
+						name: 'models/gemini-2.5-pro',
+						priority: Number.POSITIVE_INFINITY,
+						supportedGenerationMethods: ['generateContent'],
+					},
+					{
+						name: 'models/gemini-2.5-flash',
+						priority: '5',
+						supportedGenerationMethods: ['generateContent'],
+					},
+				],
+			});
+
+			const models = await listModelsForProvider('google', { apiKey: 'g-key', fetch });
+
+			expect(models).toEqual([
+				{ id: 'models/gemini-2.5-flash', name: 'models/gemini-2.5-flash' },
+				{ id: 'models/gemini-2.5-pro', name: 'models/gemini-2.5-pro' },
+			]);
+		});
 	});
 
 	describe('groq', () => {

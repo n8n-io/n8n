@@ -4,9 +4,6 @@ tags:
 summary: Delete a column
 description: Remove a column from a data table. This will also delete all data in the column.
 x-required-scope: dataTableColumn:delete
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 parameters:
   - schema:
       type: string

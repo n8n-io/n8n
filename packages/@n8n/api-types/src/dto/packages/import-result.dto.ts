@@ -15,7 +15,7 @@ const workflowPublishingOutcomeSchema = z.object({
 	state: z.enum(['published', 'unpublished', 'unchanged', 'blocked', 'failed']).openapi({
 		description:
 			'`blocked` means the imported version could not be published and no version is active ' +
-			'(for example because the workflow uses a stubbed credential, or uses a node type this ' +
+			'(for example because the workflow uses an empty or incomplete credential, or uses a node type this ' +
 			'instance does not have). When a prior published version remains active, `state` is ' +
 			'`unchanged` with `skippedPublishReason` instead. `failed` means publish or unpublish was ' +
 			'attempted but did not succeed.',
@@ -25,7 +25,7 @@ const workflowPublishingOutcomeSchema = z.object({
 			'Present when `state` is `failed`. Explains why publish or unpublish could not be applied.',
 	}),
 	blockedReason: z
-		.enum(['stub-credential', 'missing-node-type'])
+		.enum(['stub-credential', 'incomplete-credential', 'missing-node-type'])
 		.optional()
 		.openapi({
 			description:
@@ -33,13 +33,13 @@ const workflowPublishingOutcomeSchema = z.object({
 				'version is active.',
 		}),
 	skippedPublishReason: z
-		.enum(['stub-credential', 'missing-node-type'])
+		.enum(['stub-credential', 'incomplete-credential', 'missing-node-type'])
 		.optional()
 		.openapi({
 			description:
 				'Present when `state` is `unchanged` but the policy wanted to publish the imported ' +
 				'version: a prior published version is still active (for example after an update with ' +
-				'stubbed credentials).',
+				'empty or incomplete credentials).',
 		}),
 });
 
@@ -144,11 +144,23 @@ const importCredentialSummarySchema = z
 			description:
 				'Source credential ids for which empty placeholder credentials were created in the target project.',
 		}),
+		seeded: z.array(z.string()).openapi({
+			description:
+				'Source credential ids for which credentials were created in the target project with ' +
+				'all their source data from the bundled expression values.',
+		}),
+		incomplete: z.array(z.string()).openapi({
+			description:
+				'Source credential ids for which credentials were created in the target project with ' +
+				'bundled expression values, but the package does not confirm that it carries all source ' +
+				'data. These credentials need input. The import does not publish the imported version ' +
+				'of workflows that use them (`incomplete-credential`).',
+		}),
 	})
 	.openapi({
 		description:
 			'Source credential ids grouped by whether they matched an existing credential or were ' +
-			'created as stubs. Full source→target id mapping is in `bindings.credentials`.',
+			'created as empty stubs, seeded credentials, or incomplete credentials. Full source→target id mapping is in `bindings.credentials`.',
 	});
 
 const importDataTableSummarySchema = z.object({
@@ -234,8 +246,8 @@ const serializedBindingsSchema = z
 			description:
 				'Credential id from `requirements.credentials` in the package manifest → resolved ' +
 				'target credential id on the target instance. Covers both a matched existing ' +
-				'credential and a credential created as a stub under ' +
-				'`credentialMissingMode=create-stub`.',
+				'credential and a credential that the import created under ' +
+				'`credentialMissingMode=create-stub` or `create-with-values`.',
 		}),
 	})
 	.openapi({

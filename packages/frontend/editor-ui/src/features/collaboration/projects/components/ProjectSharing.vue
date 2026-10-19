@@ -382,7 +382,7 @@ watch(
 								placement="top"
 							>
 								<N8nButton
-									variant="subtle"
+									variant="outline"
 									icon-only
 									native-type="button"
 									icon="trash-2"
@@ -421,7 +421,7 @@ watch(
 						placement="top"
 					>
 						<N8nButton
-							variant="subtle"
+							variant="outline"
 							icon-only
 							native-type="button"
 							icon="trash-2"

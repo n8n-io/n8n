@@ -8,7 +8,7 @@ import { GlobalConfig } from '@n8n/config';
 import { INSTANCE_MCP_RESOURCE_ID } from '@n8n/constants';
 import { Container, Service } from '@n8n/di';
 
-import type { ProtectedResource, ResourceUser } from '@n8n/inbound-auth';
+import type { ProtectedResource, ResourcePrincipal, ResourceUser } from '@n8n/inbound-auth';
 import { UrlService } from '@n8n/backend-services';
 import { PostHogClient } from '@/posthog';
 
@@ -203,7 +203,7 @@ export class McpProtectedResource implements ProtectedResource {
 		return await this.mcpSettingsService.getEnabled();
 	}
 
-	async authorize(_user: ResourceUser): Promise<boolean> {
+	async authorize(_user: ResourcePrincipal): Promise<boolean> {
 		// The instance MCP server has no per-user authorization rule: any
 		// authenticated user may access it while the server is enabled, and all
 		// users are denied when it is disabled.

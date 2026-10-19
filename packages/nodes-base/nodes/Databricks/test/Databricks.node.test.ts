@@ -1,6 +1,6 @@
 import { sleep } from '@n8n/utils/sleep';
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, NodeHelpers } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
@@ -15,6 +15,7 @@ import { mockDeep } from 'vitest-mock-extended';
 import { execute as executeQuery } from '../actions/databricksSql/executeQuery.operation';
 import { makePermissionErrorLegible, permissionHintFor } from '../actions/helpers';
 import { execute as runJob } from '../actions/job/run.operation';
+import { Databricks } from '../Databricks.node';
 import { getCatalogs, getJobs, getRuns, getSchemas } from '../methods/listSearch';
 import { jobParameters } from '../resources/job/parameters';
 
@@ -179,11 +180,15 @@ describe('Databricks', () => {
 				.post('/api/2.0/genie/spaces/space123/start-conversation', {
 					content: 'Show me sales data for Q1 2024',
 				})
-				.reply(200, {
-					conversation_id: 'conv-456',
-					message_id: 'msg-789',
-					space_id: 'space123',
-				});
+				.reply(
+					200,
+					{
+						conversation_id: 'conv-456',
+						message_id: 'msg-789',
+						space_id: 'space123',
+					},
+					{ 'x-databricks-org-id': '1234567890' },
+				);
 
 			databricksNock
 				.post('/api/2.0/genie/spaces/space123/conversations/conv-456/messages', {
@@ -198,18 +203,46 @@ describe('Databricks', () => {
 
 			databricksNock
 				.get('/api/2.0/genie/spaces/space123/conversations/conv-456/messages/msg-789')
-				.reply(200, {
-					id: 'msg-789',
-					conversation_id: 'conv-456',
-					content: 'Show me sales data for Q1 2024',
-					status: 'COMPLETED',
-				});
+				.reply(
+					200,
+					{
+						id: 'msg-789',
+						conversation_id: 'conv-456',
+						content: 'Show me sales data for Q1 2024',
+						status: 'COMPLETED',
+					},
+					{ 'x-databricks-org-id': '1234567890' },
+				);
 
-			databricksNock.get('/api/2.0/genie/spaces/space123').reply(200, {
-				id: 'space123',
-				display_name: 'Sales Analytics',
-				description: 'AI-powered sales data assistant',
-			});
+			databricksNock.get('/api/2.0/genie/spaces/space123').reply(
+				200,
+				{
+					id: 'space123',
+					display_name: 'Sales Analytics',
+					description: 'AI-powered sales data assistant',
+				},
+				{ 'x-databricks-org-id': '1234567890' },
+			);
+
+			databricksNock
+				.get(
+					'/api/2.0/genie/spaces/space123/conversations/conv-456/messages/msg-789/attachments/att-001/query-result',
+				)
+				.reply(
+					200,
+					{ statement_response: { status: { state: 'SUCCEEDED' } } },
+					{ 'x-databricks-org-id': '1234567890' },
+				);
+
+			databricksNock
+				.post(
+					'/api/2.0/genie/spaces/space123/conversations/conv-456/messages/msg-789/attachments/att-001/execute-query',
+				)
+				.reply(
+					200,
+					{ statement_response: { status: { state: 'PENDING' } } },
+					{ 'x-databricks-org-id': '1234567890' },
+				);
 		});
 
 		afterAll(() => nock.cleanAll());
@@ -218,6 +251,29 @@ describe('Databricks', () => {
 			credentials,
 			workflowFiles: ['genie.workflow.json'],
 		});
+	});
+
+	describe('Genie -> toolAttribution', () => {
+		it.each([
+			['genie', 'getSpace', 'Powered by Databricks Genie'],
+			['job', 'run', undefined],
+		])(
+			'should resolve toolAttribution only for the genie resource (%s)',
+			(resource, operation, expected) => {
+				const { description } = new Databricks();
+
+				const result = NodeHelpers.getNodeParameters(
+					description.properties,
+					{ resource, operation },
+					true,
+					false,
+					node,
+					description,
+				);
+
+				expect(result?.toolAttribution).toBe(expected);
+			},
+		);
 	});
 
 	describe('Model Serving -> Query Endpoint', () => {

@@ -28,6 +28,7 @@ import { v4 as uuid } from 'uuid';
 
 import { NodeTypes } from '@/node-types';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
+import { findPolicyViolations, type NonEmptyViolations } from '@/policy/policy-violation.error';
 import { withExpressionIsolate } from '@/utils';
 import { getBase } from '@/workflow-execute-additional-data';
 
@@ -71,6 +72,23 @@ export interface NodeExecutionResult {
 	status: 'success' | 'error';
 	data: INodeExecutionData[];
 	error?: string;
+	/** Set when a policy refused the run. */
+	violations?: NonEmptyViolations;
+}
+
+type SupplyDataToolOutcome<T> =
+	| { ok: true; value: T }
+	| { ok: false; error: string; violations?: NonEmptyViolations };
+
+/** The `{ status: 'error' }` result for a caught error, keeping a refusal's violations. */
+function errorResult(error: unknown): NodeExecutionResult {
+	const violations = findPolicyViolations(error);
+	return {
+		status: 'error',
+		data: [],
+		error: getErrorMessage(error),
+		...(violations && { violations }),
+	};
 }
 
 /**
@@ -392,9 +410,9 @@ export class EphemeralNodeExecutor {
 			);
 			return executionResult;
 		} catch (error) {
-			const message = getErrorMessage(error);
-			this.logger.debug('Node execution failed', { nodeType: tool.nodeType, error: message });
-			return { status: 'error', data: [], error: message };
+			const result = errorResult(error);
+			this.logger.debug('Node execution failed', { nodeType: tool.nodeType, error: result.error });
+			return result;
 		}
 	}
 
@@ -514,7 +532,7 @@ export class EphemeralNodeExecutor {
 		tool: EphemeralWorkflowToolLike,
 		inputItems: INodeExecutionData[],
 		onTool: (response: LangChainToolType | StructuredToolkit) => Promise<T> | T,
-	): Promise<{ ok: true; value: T } | { ok: false; error: string }> {
+	): Promise<SupplyDataToolOutcome<T>> {
 		const closeFunctions: CloseFunction[] = [];
 
 		try {
@@ -560,8 +578,8 @@ export class EphemeralNodeExecutor {
 				};
 			});
 		} catch (error) {
-			const message = getErrorMessage(error);
-			return { ok: false, error: message };
+			const violations = findPolicyViolations(error);
+			return { ok: false, error: getErrorMessage(error), ...(violations && { violations }) };
 		} finally {
 			for (const closeFunction of closeFunctions) {
 				try {
@@ -611,7 +629,12 @@ export class EphemeralNodeExecutor {
 				nodeType: tool.nodeType,
 				error: result.error,
 			});
-			return { status: 'error', data: [], error: result.error };
+			return {
+				status: 'error',
+				data: [],
+				error: result.error,
+				...(result.violations && { violations: result.violations }),
+			};
 		}
 
 		return {

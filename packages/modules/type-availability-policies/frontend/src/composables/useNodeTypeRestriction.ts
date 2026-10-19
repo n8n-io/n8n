@@ -73,6 +73,23 @@ export function describeNodeTypeRestriction(
 	);
 }
 
+const AGENT_TOOL_DESCRIPTION_KEY: Record<NodeTypeAvailabilityScope, BaseTextKey> = {
+	instance: 'typeAvailabilityPolicies.restrictedNode.agentTool.instance',
+	project: 'typeAvailabilityPolicies.restrictedNode.agentTool.project',
+};
+
+export function describeAgentToolRestriction(
+	nodeTypeName: string,
+	scope?: NodeTypeAvailabilityScope,
+): string {
+	return useI18n().baseText(
+		scope
+			? AGENT_TOOL_DESCRIPTION_KEY[scope]
+			: 'typeAvailabilityPolicies.restrictedNode.agentTool.generic',
+		{ interpolate: { nodeType: nodeTypeName } },
+	);
+}
+
 export function useNodeTypeRestriction(nodeType: MaybeRefOrGetter<string | null | undefined>) {
 	const restriction = computed(() => {
 		const type = toValue(nodeType);

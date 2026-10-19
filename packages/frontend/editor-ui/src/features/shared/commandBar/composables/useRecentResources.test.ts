@@ -15,6 +15,10 @@ import {
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
 import { useRecentWorkflowsStore } from '@/app/stores/recentWorkflows.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { AGENT_BUILDER_VIEW, AGENT_SESSIONS_LIST_VIEW } from '@/features/agents/constants';
+import { listAgentsPageGlobal } from '@/features/agents/composables/useAgentApi';
+import type { AgentResource } from '@/features/agents/types';
 import { useRecentResources } from './useRecentResources';
 
 const recentNodesRef = ref<Record<string, Array<{ nodeId: string; openedAt: number }>>>({});
@@ -40,9 +44,18 @@ vi.mock('@/app/composables/useCanvasOperations', () => ({
 	}),
 }));
 
-const mockRouterResolve = vi.fn((location: { params: { workflowId: string } }) => ({
-	href: `/workflow/${location.params.workflowId}`,
+vi.mock('@/features/agents/composables/useAgentApi', () => ({
+	listAgentsPageGlobal: vi.fn(),
 }));
+
+const mockRouterResolve = vi.fn(
+	(location: { params: { workflowId?: string; agentId?: string } }) => ({
+		href: location.params.agentId
+			? `/agents/${location.params.agentId}`
+			: `/workflow/${location.params.workflowId}`,
+	}),
+);
+const mockRouterPush = vi.fn();
 const mockCurrentRoute = ref<{ name: string; params: Record<string, string> }>({
 	name: VIEWS.WORKFLOW,
 	params: { workflowId: 'workflow-1' },
@@ -52,6 +65,7 @@ vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal()),
 	useRouter: () => ({
 		resolve: mockRouterResolve,
+		push: mockRouterPush,
 		currentRoute: mockCurrentRoute,
 	}),
 }));
@@ -117,6 +131,9 @@ describe('useRecentResources', () => {
 		vi.spyOn(workflowsListStore, 'searchWorkflows').mockResolvedValue([]);
 
 		recentWorkflowsStore = useRecentWorkflowsStore();
+
+		mockedStore(useSettingsStore).isAgentsEnabled = true;
+		vi.mocked(listAgentsPageGlobal).mockResolvedValue({ count: 0, data: [] });
 
 		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('workflow-1'));
 		vi.spyOn(workflowDocumentStore, 'findNodeByPartialId').mockImplementation((nodeId) =>
@@ -395,6 +412,111 @@ describe('useRecentResources', () => {
 				params: { workflowId: 'workflow-2' },
 			});
 			expect(window.location.href).toBe('/workflow/workflow-2');
+		});
+	});
+	describe('recent agents', () => {
+		const agentRoute = (agentId: string, name: string = AGENT_BUILDER_VIEW) =>
+			({
+				name,
+				params: { projectId: 'project-1', agentId },
+				query: {},
+			}) as unknown as RouteLocationNormalized;
+
+		const createAgent = (id: string, name = `Agent ${id}`) =>
+			({ id, name, projectId: 'project-1' }) as AgentResource;
+
+		beforeEach(() => {
+			mockCurrentRoute.value = { name: VIEWS.WORKFLOWS, params: {} };
+		});
+
+		it('resolves the agents opened on any agent page with one ids request', async () => {
+			const { trackResourceOpened, initialize } = useRecentResources();
+			trackResourceOpened(agentRoute('agent-1'));
+			trackResourceOpened(agentRoute('agent-2', AGENT_SESSIONS_LIST_VIEW));
+
+			await initialize?.();
+
+			expect(listAgentsPageGlobal).toHaveBeenCalledTimes(1);
+			expect(listAgentsPageGlobal).toHaveBeenCalledWith(expect.anything(), {
+				skip: 0,
+				take: 2,
+				filter: { ids: ['agent-2', 'agent-1'] },
+			});
+		});
+
+		it('does not request agents when agents are disabled', async () => {
+			mockedStore(useSettingsStore).isAgentsEnabled = false;
+			const { trackResourceOpened, initialize } = useRecentResources();
+			trackResourceOpened(agentRoute('agent-1'));
+
+			await initialize?.();
+
+			expect(listAgentsPageGlobal).not.toHaveBeenCalled();
+		});
+
+		it('lists agents and workflows together in recent-open order', async () => {
+			workflowsListStore.searchWorkflows.mockResolvedValue([
+				createTestWorkflow({ id: 'workflow-1' }),
+				createTestWorkflow({ id: 'workflow-2' }),
+			]);
+			vi.mocked(listAgentsPageGlobal).mockResolvedValue({
+				count: 1,
+				data: [createAgent('agent-1')],
+			});
+			const { trackResourceOpened, initialize, commands } = useRecentResources();
+			trackResourceOpened(workflowRoute({ workflowId: 'workflow-1' }));
+			trackResourceOpened(agentRoute('agent-1'));
+			trackResourceOpened(workflowRoute({ workflowId: 'workflow-2' }));
+
+			await initialize?.();
+
+			expect(commands.value.map(({ id }) => id)).toEqual([
+				'recent-workflow-workflow-2',
+				'recent-agent-agent-1',
+				'recent-workflow-workflow-1',
+			]);
+		});
+
+		it('excludes the current agent', async () => {
+			mockCurrentRoute.value = { name: AGENT_BUILDER_VIEW, params: { agentId: 'agent-1' } };
+			vi.mocked(listAgentsPageGlobal).mockResolvedValue({
+				count: 2,
+				data: [createAgent('agent-1'), createAgent('agent-2')],
+			});
+			const { trackResourceOpened, initialize, commands } = useRecentResources();
+			trackResourceOpened(agentRoute('agent-1'));
+			trackResourceOpened(agentRoute('agent-2'));
+
+			await initialize?.();
+
+			expect(commands.value.map(({ id }) => id)).toEqual(['recent-agent-agent-2']);
+		});
+
+		it('creates agent items that link to the agent builder and open it', async () => {
+			vi.mocked(listAgentsPageGlobal).mockResolvedValue({
+				count: 1,
+				data: [createAgent('agent-1', 'Support Agent')],
+			});
+			const { trackResourceOpened, initialize, commands } = useRecentResources();
+			trackResourceOpened(agentRoute('agent-1'));
+			await initialize?.();
+
+			const [agentItem] = commands.value;
+			await agentItem.handler?.();
+
+			const location = {
+				name: AGENT_BUILDER_VIEW,
+				params: { projectId: 'project-1', agentId: 'agent-1' },
+			};
+			expect(agentItem).toEqual({
+				id: 'recent-agent-agent-1',
+				title: 'Support Agent',
+				section: 'commandBar.sections.recent',
+				icon: { type: 'icon', value: 'bot' },
+				href: '/agents/agent-1',
+				handler: expect.any(Function),
+			});
+			expect(mockRouterPush).toHaveBeenCalledWith(location);
 		});
 	});
 });

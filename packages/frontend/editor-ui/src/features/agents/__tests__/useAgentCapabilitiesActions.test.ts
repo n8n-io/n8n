@@ -5,9 +5,12 @@ import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 
 import { useUIStore } from '@/app/stores/ui.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { AGENT_TOOLS_MODAL_KEY, AGENT_SKILL_MODAL_KEY } from '../constants';
 import { useAgentCapabilitiesActions } from '../composables/useAgentCapabilitiesActions';
-import { createAgentSkill } from '../composables/useAgentApi';
+import { createAgentSkill, getHubSkill, getNewSkillName } from '../composables/useAgentApi';
+import { SKILL_NAME_TAKEN_MESSAGE, type SkillDetail, type SkillListItem } from '@n8n/api-types';
+import { ResponseError } from '@n8n/rest-api-client';
 import type {
 	AgentJsonConfig,
 	AgentJsonMcpServerConfig,
@@ -34,6 +37,15 @@ vi.mock('@n8n/composables/useToast', () => ({
 
 vi.mock('../composables/useAgentApi', () => ({
 	createAgentSkill: vi.fn(),
+	getHubSkill: vi.fn(),
+	getNewSkillName: vi.fn(),
+}));
+
+const { hasScopeSpy } = vi.hoisted(() => ({
+	hasScopeSpy: vi.fn(() => false),
+}));
+vi.mock('@n8n/stores/rbac.store', () => ({
+	useRBACStore: () => ({ hasScope: hasScopeSpy }),
 }));
 
 function makeConfig(overrides: Partial<AgentJsonConfig> = {}): AgentJsonConfig {
@@ -51,6 +63,7 @@ function setup(
 	overrides: {
 		supportsToolApproval?: boolean;
 		ensureAgentPersisted?: () => Promise<void>;
+		flushConfigSave?: () => Promise<unknown>;
 		beforeAgentMutation?: () => Promise<void>;
 		refreshAgentAfterMutation?: (projectId: string, agentId: string) => Promise<boolean>;
 		agent?: Ref<AgentResource | null>;
@@ -63,6 +76,7 @@ function setup(
 
 	const localConfig = ref<AgentJsonConfig | null>(makeConfig());
 	const scheduleConfigUpdate = vi.fn();
+	const scheduleSkillSave = vi.fn();
 	const agentId = overrides.agentId ?? ref('inline:node-1');
 	const projectId = overrides.projectId ?? ref('project-1');
 
@@ -73,11 +87,19 @@ function setup(
 		agentId: computed(() => agentId.value),
 		connectedTriggers: ref([]),
 		scheduleConfigUpdate,
-		scheduleSkillSave: vi.fn(),
+		scheduleSkillSave,
 		...overrides,
 	});
 
-	return { uiStore, actions, scheduleConfigUpdate, localConfig, agentId, projectId };
+	return {
+		uiStore,
+		actions,
+		scheduleConfigUpdate,
+		scheduleSkillSave,
+		localConfig,
+		agentId,
+		projectId,
+	};
 }
 
 type ToolsModalData = {
@@ -104,6 +126,9 @@ describe('useAgentCapabilitiesActions — tools modal host seam', () => {
 			url: 'https://mcp.example.com',
 			transport: 'streamableHttp',
 			authentication: 'none',
+			toolPermissions: {
+				categories: { read: 'always_allow', write: 'require_approval' },
+			},
 		};
 		modalData.onConfirm({ tools: [], mcpServers: [mcpServer] });
 
@@ -147,9 +172,21 @@ describe('useAgentCapabilitiesActions — tools modal host seam', () => {
 
 type SkillModalData = {
 	skillId?: string;
+	skill?: AgentSkill;
 	existingSkillNames?: string[];
-	availableTools?: Array<{ name: string; label: string; icon?: string }>;
-	onConfirm: (payload: { id?: string; skill: AgentSkill }) => void;
+	hubSkillsEnabled?: boolean;
+	outdated?: boolean;
+	onUseLatestVersion?: (skillId: string) => void;
+	getAttachedSkills?: () => Array<{ id: string; name: string }>;
+	canCreateInstanceSkills?: boolean;
+	getDefaultName?: (availableTo: string) => Promise<string>;
+	onConfirm: (payload: {
+		id?: string;
+		skill: AgentSkill;
+		availableTo?: 'project' | 'agent' | 'instance';
+		method?: 'manual' | 'upload';
+	}) => unknown;
+	onAttach?: (skill: SkillListItem) => Promise<void>;
 	onRemove?: (skillId: string) => void;
 };
 
@@ -210,6 +247,12 @@ describe('useAgentCapabilitiesActions — localSkills host seam', () => {
 		let releasePersist: () => void = () => {};
 		const persisted = new Promise<void>((resolve) => {
 			releasePersist = resolve;
+		});
+		vi.mocked(createAgentSkill).mockResolvedValue({
+			id: 'skill_new',
+			skill: { ...triage, name: 'New Skill' },
+			skillHash: 'hash-new',
+			versionId: 'v2',
 		});
 		const { uiStore, actions } = setup({ ensureAgentPersisted: async () => await persisted });
 
@@ -415,64 +458,20 @@ describe('useAgentCapabilitiesActions — localSkills host seam', () => {
 		expect(createAgentSkill).not.toHaveBeenCalled();
 	});
 
-	it('filters allowedTools to configured tool names before persisting', () => {
-		const { uiStore, actions, createSkill } = setupLocal();
+	it('drops allowedTools before persisting and offers no tool list', () => {
+		const { uiStore, actions, createSkill } = setupLocal({
+			tools: [{ type: 'node', name: 'darwin' } as AgentJsonToolConfig],
+		});
 
 		actions.onOpenAddSkillModal();
 		const modalData = uiStore.modalsById[AGENT_SKILL_MODAL_KEY].data as unknown as SkillModalData;
+		expect(modalData).not.toHaveProperty('availableTools');
 		modalData.onConfirm({
-			skill: { ...triage, name: 'Second Skill', allowedTools: ['not_a_configured_tool'] },
+			skill: { ...triage, name: 'Second Skill', allowedTools: ['darwin'] },
 		});
 
 		expect(createSkill).toHaveBeenCalledWith(
 			expect.not.objectContaining({ allowedTools: expect.anything() }),
-		);
-	});
-
-	it('includes MCP server names in skill availableTools', () => {
-		const { uiStore, actions } = setupLocal({
-			tools: [{ type: 'node', name: 'darwin' } as AgentJsonToolConfig],
-			mcpServers: [
-				{
-					name: 'Notion mcp',
-					url: 'https://mcp.notion.example',
-					transport: 'streamableHttp',
-					authentication: 'none',
-				},
-			],
-		});
-
-		actions.onOpenAddSkillModal();
-		const modalData = uiStore.modalsById[AGENT_SKILL_MODAL_KEY].data as unknown as SkillModalData;
-
-		expect(modalData.availableTools).toEqual(
-			expect.arrayContaining([
-				expect.objectContaining({ name: 'darwin', icon: 'globe' }),
-				expect.objectContaining({ name: 'Notion mcp', icon: 'mcp' }),
-			]),
-		);
-	});
-
-	it('keeps MCP server names in allowedTools on persist', () => {
-		const { uiStore, actions, createSkill } = setupLocal({
-			mcpServers: [
-				{
-					name: 'Notion mcp',
-					url: 'https://mcp.notion.example',
-					transport: 'streamableHttp',
-					authentication: 'none',
-				},
-			],
-		});
-
-		actions.onOpenAddSkillModal();
-		const modalData = uiStore.modalsById[AGENT_SKILL_MODAL_KEY].data as unknown as SkillModalData;
-		modalData.onConfirm({
-			skill: { ...triage, name: 'Second Skill', allowedTools: ['Notion mcp'] },
-		});
-
-		expect(createSkill).toHaveBeenCalledWith(
-			expect.objectContaining({ allowedTools: ['Notion mcp'] }),
 		);
 	});
 
@@ -620,5 +619,430 @@ describe('useAgentCapabilitiesActions — localSkills host seam', () => {
 		});
 
 		expect(actions.appliedSkills.value).toEqual([]);
+	});
+});
+
+describe('useAgentCapabilitiesActions — skills hub', () => {
+	const supportTone: AgentSkill = {
+		name: 'Support tone',
+		description: 'Use for support replies',
+		instructions: 'Be kind.',
+	};
+	const sqlHelper: AgentSkill = {
+		name: 'SQL helper',
+		description: 'Use for SQL questions',
+		instructions: 'Write SQL.',
+	};
+
+	function makeDetail(id: string, skill: AgentSkill): SkillDetail {
+		return {
+			id,
+			name: skill.name,
+			description: skill.description,
+			scope: 'instance',
+			projectId: null,
+			projectName: null,
+			projectType: null,
+			agentId: null,
+			agentName: null,
+			source: 'ui',
+			createdBy: null,
+			latestVersion: 1,
+			usedByAgents: 0,
+			canEdit: false,
+			canDelete: false,
+			createdAt: '2026-10-01T00:00:00.000Z',
+			updatedAt: '2026-10-01T00:00:00.000Z',
+			skill,
+			skillHash: `hash-${id}`,
+			usedBy: { drafts: [], pins: [], hiddenAgents: 0 },
+		};
+	}
+
+	function setupHub({
+		skillsHubEnabled = true,
+		flushConfigSave,
+	}: { skillsHubEnabled?: boolean; flushConfigSave?: () => Promise<unknown> } = {}) {
+		const agent = ref<AgentResource | null>({
+			id: 'agent-1',
+			skills: { tone: supportTone },
+			skillHashes: { tone: 'hash-tone' },
+		} as unknown as AgentResource);
+		const result = setup({ agent, agentId: ref('agent-1'), flushConfigSave });
+		useSettingsStore().moduleSettings.agents = {
+			enabled: true,
+			modules: [],
+			knowledgeBaseEnabled: false,
+			proxyEnabled: false,
+			skillsHubEnabled,
+		};
+		result.localConfig.value = makeConfig({ skills: [{ type: 'skill', id: 'tone' }] });
+		result.actions.onOpenAddSkillModal();
+		const modalData = result.uiStore.modalsById[AGENT_SKILL_MODAL_KEY]
+			.data as unknown as SkillModalData;
+		return { ...result, agent, modalData };
+	}
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		hasScopeSpy.mockReturnValue(false);
+	});
+
+	it('saves a new agent before it opens the picker', async () => {
+		let releasePersist: () => void = () => {};
+		const persisted = new Promise<void>((resolve) => {
+			releasePersist = resolve;
+		});
+		const { uiStore, actions } = setup({ ensureAgentPersisted: async () => await persisted });
+		useSettingsStore().moduleSettings.agents = {
+			enabled: true,
+			modules: [],
+			knowledgeBaseEnabled: false,
+			proxyEnabled: false,
+			skillsHubEnabled: true,
+		};
+
+		void actions.onOpenAddSkillModal();
+		await flushPromises();
+		expect(uiStore.modalsById[AGENT_SKILL_MODAL_KEY]?.open).toBeFalsy();
+
+		releasePersist();
+		await flushPromises();
+		expect(uiStore.modalsById[AGENT_SKILL_MODAL_KEY].open).toBe(true);
+	});
+
+	it('reports a failed agent save and keeps the picker closed', async () => {
+		const error = new Error('create failed');
+		const { uiStore, actions } = setup({
+			ensureAgentPersisted: async () => await Promise.reject(error),
+		});
+		useSettingsStore().moduleSettings.agents = {
+			enabled: true,
+			modules: [],
+			knowledgeBaseEnabled: false,
+			proxyEnabled: false,
+			skillsHubEnabled: true,
+		};
+
+		await actions.onOpenAddSkillModal();
+
+		expect(uiStore.modalsById[AGENT_SKILL_MODAL_KEY]?.open).toBeFalsy();
+		expect(showErrorSpy).toHaveBeenCalledWith(error, 'agents.builder.skills.picker.loadError');
+	});
+
+	it('opens the add modal with the picker data', () => {
+		hasScopeSpy.mockReturnValue(true);
+		const { modalData } = setupHub();
+
+		expect(modalData.hubSkillsEnabled).toBe(true);
+		expect(modalData.getAttachedSkills?.()).toEqual([{ id: 'tone', name: supportTone.name }]);
+		expect(modalData.canCreateInstanceSkills).toBe(true);
+		expect(hasScopeSpy).toHaveBeenCalledWith('skill:create');
+	});
+
+	it.each([
+		['project', { scope: 'project', projectId: 'project-1' }],
+		['agent', { scope: 'agent', agentId: 'agent-1' }],
+		['instance', { scope: 'instance' }],
+	])(
+		'asks the server for a default name where "available to" %s puts the skill',
+		async (availableTo, target) => {
+			vi.mocked(getNewSkillName).mockResolvedValue('New skill 3');
+			const { modalData } = setupHub();
+
+			await expect(modalData.getDefaultName?.(availableTo)).resolves.toBe('New skill 3');
+			expect(getNewSkillName).toHaveBeenCalledWith(expect.anything(), {
+				...target,
+				name: 'agents.builder.skills.defaultName',
+			});
+		},
+	);
+
+	it('keeps the modal open with the error on the name when the name is taken', async () => {
+		vi.mocked(createAgentSkill).mockRejectedValue(
+			new ResponseError(SKILL_NAME_TAKEN_MESSAGE, { httpStatusCode: 409 }),
+		);
+		const { modalData } = setupHub();
+
+		const result = await modalData.onConfirm({ skill: sqlHelper, availableTo: 'project' });
+
+		expect(result).toEqual({
+			saved: false,
+			nameError: 'settings.context.skills.error.nameTaken',
+		});
+		expect(showErrorSpy).not.toHaveBeenCalled();
+	});
+
+	it('keeps the modal open and reports any other failed create', async () => {
+		const error = new Error('Network down');
+		vi.mocked(createAgentSkill).mockRejectedValue(error);
+		const { modalData } = setupHub();
+
+		const result = await modalData.onConfirm({ skill: sqlHelper, availableTo: 'project' });
+
+		expect(result).toEqual({ saved: false });
+		expect(showErrorSpy).toHaveBeenCalledWith(error, 'agents.builder.skills.create.error');
+	});
+
+	it('keeps the picker off and creates the skill on the agent when the skills hub is off', async () => {
+		vi.mocked(createAgentSkill).mockResolvedValue({
+			id: 'sql',
+			skill: sqlHelper,
+			skillHash: 'hash-sql',
+			versionId: 'v2',
+		} as Awaited<ReturnType<typeof createAgentSkill>>);
+		const { modalData, actions, uiStore } = setupHub({ skillsHubEnabled: false });
+
+		expect(modalData.hubSkillsEnabled).toBe(false);
+		// Without the hub, names are only unique per agent, so the modal numbers them itself.
+		expect(modalData.getDefaultName).toBeUndefined();
+		modalData.onConfirm({ skill: sqlHelper, availableTo: 'project' });
+		await flushPromises();
+		expect(createAgentSkill).toHaveBeenCalledWith(
+			expect.anything(),
+			'project-1',
+			'agent-1',
+			sqlHelper,
+			undefined,
+			undefined,
+		);
+		expect(getHubSkill).not.toHaveBeenCalled();
+
+		actions.onOpenSkillFromList('tone');
+		const editData = uiStore.modalsById[AGENT_SKILL_MODAL_KEY].data as unknown as SkillModalData;
+		expect(editData.hubSkillsEnabled).toBe(false);
+		expect(editData.outdated).toBe(false);
+	});
+
+	it('attaches a hub skill as a ref through the config save, without a copy', async () => {
+		vi.mocked(getHubSkill).mockResolvedValue(makeDetail('sql', sqlHelper));
+		const { modalData, scheduleConfigUpdate, agent } = setupHub();
+
+		await modalData.onAttach?.({ id: 'sql', name: 'SQL helper' } as SkillListItem);
+		await flushPromises();
+
+		expect(getHubSkill).toHaveBeenCalledWith(expect.anything(), 'sql');
+		expect(scheduleConfigUpdate).toHaveBeenCalledWith({
+			skills: [
+				{ type: 'skill', id: 'tone' },
+				{ type: 'skill', id: 'sql' },
+			],
+		});
+		expect(agent.value?.skills.sql).toEqual(sqlHelper);
+		expect(agent.value?.skillHashes?.sql).toBe('hash-sql');
+		expect(createAgentSkill).not.toHaveBeenCalled();
+	});
+
+	it('undoes an attach when the config save fails', async () => {
+		vi.mocked(getHubSkill).mockResolvedValue(makeDetail('sql', sqlHelper));
+		const { modalData, scheduleConfigUpdate, agent } = setupHub({
+			flushConfigSave: async () => await Promise.reject(new Error('refused')),
+		});
+
+		await modalData.onAttach?.({ id: 'sql', name: 'SQL helper' } as SkillListItem);
+		await flushPromises();
+
+		expect(scheduleConfigUpdate).toHaveBeenLastCalledWith({
+			skills: [{ type: 'skill', id: 'tone' }],
+		});
+		expect(agent.value?.skills.sql).toBeUndefined();
+		expect(agent.value?.skillHashes?.sql).toBeUndefined();
+		expect(agent.value?.skills.tone).toEqual(supportTone);
+	});
+
+	it('keeps an attach when the config save succeeds', async () => {
+		vi.mocked(getHubSkill).mockResolvedValue(makeDetail('sql', sqlHelper));
+		const { modalData, scheduleConfigUpdate, agent } = setupHub({
+			flushConfigSave: async () => await Promise.resolve(undefined),
+		});
+
+		await modalData.onAttach?.({ id: 'sql', name: 'SQL helper' } as SkillListItem);
+		await flushPromises();
+
+		expect(scheduleConfigUpdate).toHaveBeenCalledTimes(1);
+		expect(agent.value?.skills.sql).toEqual(sqlHelper);
+	});
+
+	it('refuses to attach a skill whose name is hard to tell apart from an attached one', async () => {
+		vi.mocked(getHubSkill).mockResolvedValue(
+			makeDetail('tone-2', { ...supportTone, name: 'support_tone' }),
+		);
+		const { modalData, scheduleConfigUpdate } = setupHub();
+
+		await modalData.onAttach?.({ id: 'tone-2', name: 'support_tone' } as SkillListItem);
+		await flushPromises();
+
+		expect(scheduleConfigUpdate).not.toHaveBeenCalled();
+		expect(showMessageSpy).toHaveBeenCalledWith(
+			expect.objectContaining({ title: 'agents.builder.skills.duplicateName.error' }),
+		);
+	});
+
+	it('reports an attach failure and leaves the config alone', async () => {
+		vi.mocked(getHubSkill).mockRejectedValue(new Error('Not found'));
+		const { modalData, scheduleConfigUpdate } = setupHub();
+
+		await modalData.onAttach?.({ id: 'sql', name: 'SQL helper' } as SkillListItem);
+		await flushPromises();
+
+		expect(showErrorSpy).toHaveBeenCalledWith(
+			expect.any(Error),
+			'agents.builder.skills.attach.error',
+		);
+		expect(scheduleConfigUpdate).not.toHaveBeenCalled();
+	});
+
+	it.each(['project', 'agent', 'instance'] as const)(
+		'creates a skill for the %s through the agent endpoint',
+		async (availableTo) => {
+			vi.mocked(createAgentSkill).mockResolvedValue({
+				id: 'sql',
+				skill: sqlHelper,
+				skillHash: 'hash-sql',
+				versionId: 'v2',
+			});
+			const { modalData } = setupHub();
+
+			modalData.onConfirm({ skill: sqlHelper, availableTo, method: 'upload' });
+			await flushPromises();
+
+			expect(createAgentSkill).toHaveBeenCalledWith(
+				expect.anything(),
+				'project-1',
+				'agent-1',
+				sqlHelper,
+				availableTo,
+				'upload',
+			);
+		},
+	);
+
+	it('detaches a skill by dropping its ref only', () => {
+		const { actions, scheduleConfigUpdate } = setupHub();
+
+		actions.onRemoveSkill('tone');
+
+		expect(scheduleConfigUpdate).toHaveBeenCalledWith({ skills: [] });
+	});
+
+	it('detaches a skill from the picker preview by dropping its ref only', () => {
+		const { modalData, scheduleConfigUpdate } = setupHub();
+
+		modalData.onRemove?.('tone');
+
+		expect(scheduleConfigUpdate).toHaveBeenCalledWith({ skills: [] });
+	});
+
+	it('marks a skill on an older version when the edit modal opens', () => {
+		const { actions, uiStore, agent } = setupHub();
+		agent.value = { ...agent.value, outdatedSkillIds: ['tone'] } as unknown as AgentResource;
+
+		actions.onOpenSkillFromList('tone');
+
+		const modalData = uiStore.modalsById[AGENT_SKILL_MODAL_KEY].data as unknown as SkillModalData;
+		expect(modalData.outdated).toBe(true);
+	});
+
+	it('unpins the skill and saves before it opens the latest version in the editor', async () => {
+		const latest: AgentSkill = { ...supportTone, instructions: 'Be kind and brief.' };
+		vi.mocked(getHubSkill).mockResolvedValue({
+			...makeDetail('tone', latest),
+			skillHash: 'hash-latest',
+		});
+		const agent = ref<AgentResource | null>({
+			id: 'agent-1',
+			skills: { tone: supportTone },
+			skillHashes: { tone: 'hash-tone' },
+			outdatedSkillIds: ['tone'],
+		} as unknown as AgentResource);
+		const events: string[] = [];
+		const beforeAgentMutation = vi.fn(async () => {
+			events.push('flush');
+		});
+		const { actions, uiStore, localConfig, scheduleConfigUpdate } = setup({
+			agent,
+			agentId: ref('agent-1'),
+			beforeAgentMutation,
+		});
+		scheduleConfigUpdate.mockImplementation(() => events.push('config'));
+		localConfig.value = makeConfig({
+			skills: [{ type: 'skill', id: 'tone', versionId: 'v1' }],
+		});
+		actions.onOpenSkillFromList('tone');
+		const outdatedData = uiStore.modalsById[AGENT_SKILL_MODAL_KEY]
+			.data as unknown as SkillModalData;
+
+		outdatedData.onUseLatestVersion?.('tone');
+		await flushPromises();
+
+		expect(scheduleConfigUpdate).toHaveBeenCalledWith({ skills: [{ type: 'skill', id: 'tone' }] });
+		expect(events).toEqual(['config', 'flush']);
+		expect(agent.value?.skills.tone).toEqual(latest);
+		expect(agent.value?.skillHashes?.tone).toBe('hash-latest');
+		expect(agent.value?.outdatedSkillIds).toEqual([]);
+		const editData = uiStore.modalsById[AGENT_SKILL_MODAL_KEY].data as unknown as SkillModalData;
+		expect(editData.skill).toEqual(latest);
+		expect(editData.outdated).toBe(false);
+	});
+
+	function openEdit(options: { skillsHubEnabled?: boolean } = {}) {
+		const result = setupHub(options);
+		result.actions.onOpenSkillFromList('tone');
+		const editData = result.uiStore.modalsById[AGENT_SKILL_MODAL_KEY]
+			.data as unknown as SkillModalData;
+		return { ...result, editData };
+	}
+
+	it('saves the content and the target of an edited skill in one skill save', () => {
+		const { editData, scheduleSkillSave } = openEdit();
+
+		editData.onConfirm({ id: 'tone', skill: supportTone, availableTo: 'agent' });
+
+		expect(scheduleSkillSave).toHaveBeenCalledWith({
+			skillId: 'tone',
+			skill: supportTone,
+			availableTo: 'agent',
+		});
+	});
+
+	it('saves no target when the edit keeps it or the skills hub is off', () => {
+		const kept = openEdit();
+		kept.editData.onConfirm({ id: 'tone', skill: supportTone });
+		const hubOff = openEdit({ skillsHubEnabled: false });
+		hubOff.editData.onConfirm({ id: 'tone', skill: supportTone, availableTo: 'agent' });
+
+		expect(kept.scheduleSkillSave).toHaveBeenCalledWith({ skillId: 'tone', skill: supportTone });
+		expect(hubOff.scheduleSkillSave).toHaveBeenCalledWith({ skillId: 'tone', skill: supportTone });
+	});
+
+	it('tells the edit modal to check the edit permission', () => {
+		const { actions, uiStore } = setupHub();
+
+		actions.onOpenSkillFromList('tone');
+
+		const modalData = uiStore.modalsById[AGENT_SKILL_MODAL_KEY].data as unknown as SkillModalData;
+		expect(modalData.skillId).toBe('tone');
+		expect(modalData.hubSkillsEnabled).toBe(true);
+	});
+
+	it('never enables the hub for a host that keeps its own skill bodies', () => {
+		const localConfig = ref<AgentJsonConfig | null>(makeConfig());
+		setActivePinia(createTestingPinia({ stubActions: false }));
+		const uiStore = useUIStore();
+		const actions = useAgentCapabilitiesActions({
+			localConfig,
+			agent: ref<AgentResource | null>(null),
+			projectId: computed(() => 'project-1'),
+			agentId: computed(() => 'inline:node-1'),
+			connectedTriggers: ref([]),
+			scheduleConfigUpdate: vi.fn(),
+			scheduleSkillSave: vi.fn(),
+			localSkills: { bodies: computed(() => ({})), createSkill: vi.fn(), updateSkill: vi.fn() },
+		});
+
+		actions.onOpenAddSkillModal();
+
+		const modalData = uiStore.modalsById[AGENT_SKILL_MODAL_KEY].data as unknown as SkillModalData;
+		expect(modalData.hubSkillsEnabled).toBe(false);
 	});
 });

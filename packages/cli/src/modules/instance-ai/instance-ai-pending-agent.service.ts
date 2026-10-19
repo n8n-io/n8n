@@ -10,6 +10,7 @@ import { AgentRunnableStateService } from '@/modules/agents/agent-runnable-state
 import { AgentsService } from '@/modules/agents/agents.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
+import { isAgentsAccessEnabled } from './agents-access';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
 
 /**
@@ -39,7 +40,7 @@ export class InstanceAiPendingAgentService {
 	 *  whether or not the agents module is active, and injecting would construct
 	 *  its services (and their repositories) regardless. */
 	private agentsModule() {
-		if (!this.moduleRegistry.isActive('agents')) {
+		if (!isAgentsAccessEnabled(this.moduleRegistry)) {
 			throw new NotFoundError('Agents are not enabled on this instance');
 		}
 		return {

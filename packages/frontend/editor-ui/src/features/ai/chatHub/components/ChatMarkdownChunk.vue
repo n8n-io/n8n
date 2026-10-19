@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import VueMarkdown from 'vue-markdown-render';
+import { N8nMarkdown } from '@n8n/design-system';
 import { useChatHubMarkdownOptions } from '@/features/ai/chatHub/composables/useChatHubMarkdownOptions';
 import { ref } from 'vue';
 import type { ChatMessageContentChunk } from '@n8n/api-types';
@@ -55,10 +55,10 @@ defineExpose({
 </script>
 
 <template>
-	<VueMarkdown
+	<N8nMarkdown
 		v-if="source.type === 'text'"
 		:key="markdown.forceReRenderKey.value"
-		:source="source.content"
+		:content="source.content"
 		:class="['n8n-markdown', { 'n8n-markdown--single-pre': singlePre }]"
 		:options="markdown.options"
 		:plugins="markdown.plugins.value"
@@ -66,9 +66,9 @@ defineExpose({
 		@mouseleave="handleMouseLeave"
 	/>
 	<div v-else-if="source.type === 'with-buttons'" :class="$style.container">
-		<VueMarkdown
+		<N8nMarkdown
 			:key="markdown.forceReRenderKey.value"
-			:source="source.content"
+			:content="source.content"
 			class="n8n-markdown"
 			:options="markdown.options"
 			:plugins="markdown.plugins.value"
@@ -96,6 +96,10 @@ defineExpose({
 
 <style lang="scss">
 @use '@n8n/design-system/css/markdown.scss';
+
+.n8n-markdown .n8n-markdown-footnote-block {
+	display: none;
+}
 </style>
 
 <style lang="scss" module>

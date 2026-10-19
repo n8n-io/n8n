@@ -24,6 +24,7 @@ import type { DataTableService } from '@/modules/data-table/data-table.service';
 import type { EvalAgentExecutionService } from '@/modules/instance-ai/eval/agent-execution.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
+import { generateFixSuggestion } from '../agent-eval-fix-suggestion';
 import { AgentEvalRunnerService } from '../agent-eval-runner.service';
 import type { AgentEvalsFlagGate } from '../agent-evals-flag-gate';
 
@@ -69,6 +70,7 @@ vi.mock('@n8n/agents', async (importOriginal) => ({
 		}),
 	},
 }));
+vi.mock('../agent-eval-fix-suggestion', () => ({ generateFixSuggestion: vi.fn() }));
 const { resolveModelMock } = vi.hoisted(() => ({ resolveModelMock: vi.fn() }));
 vi.mock('@/modules/agents/json-config/model-config', () => ({
 	resolveCredentialAwareModelConfig: (...args: unknown[]) => resolveModelMock(...args),
@@ -176,6 +178,8 @@ describe('AgentEvalRunnerService', () => {
 		correctnessRunMock.mockReset();
 		correctnessRunMock.mockResolvedValue({ pass: true, reasoning: 'Matches the expected answer.' });
 		criteriaRunMock.mockReset();
+		vi.mocked(generateFixSuggestion).mockReset();
+		vi.mocked(generateFixSuggestion).mockResolvedValue(null);
 		criteriaRunMock.mockResolvedValue({ pass: true, reasoning: 'Satisfies the rule.' });
 		resolveModelMock.mockReset();
 		resolveModelMock.mockResolvedValue({ id: 'anthropic/claude-sonnet-4-5' });
@@ -606,6 +610,100 @@ describe('AgentEvalRunnerService', () => {
 					},
 				}),
 			);
+		});
+
+		describe('fix suggestion', () => {
+			const failRule = () => {
+				seedFor([{ id: 'row-1', question: 'Q', answer: 'A', check: 'C' }], { success: 1 });
+				evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(successExec() as never);
+				criteriaRunMock.mockResolvedValue({ pass: false, reasoning: 'Never mentions C.' });
+			};
+
+			it('stores a suggestion on the verdict of a failed rule', async () => {
+				failRule();
+				vi.mocked(generateFixSuggestion).mockResolvedValue('Always mention C.');
+
+				const { finished } = await service.startRun('ds-1', 'proj-1', user);
+				await finished;
+
+				expect(generateFixSuggestion).toHaveBeenCalledWith(
+					expect.anything(),
+					{ input: 'Q', output: 'the answer', rule: 'C', reasoning: 'Never mentions C.' },
+					expect.objectContaining({ agentId: 'agent-1', projectId: 'proj-1' }),
+				);
+				expect(resultRepository.markAsCompleted).toHaveBeenCalledWith(
+					'res-0',
+					expect.objectContaining({
+						verdict: {
+							status: 'completed',
+							outcome: 'fail',
+							reasoning: 'Never mentions C.',
+							suggestion: 'Always mention C.',
+						},
+					}),
+				);
+			});
+
+			it('keeps the plain verdict when no suggestion comes back', async () => {
+				failRule();
+
+				const { finished } = await service.startRun('ds-1', 'proj-1', user);
+				await finished;
+
+				expect(resultRepository.markAsCompleted).toHaveBeenCalledWith(
+					'res-0',
+					expect.objectContaining({
+						verdict: { status: 'completed', outcome: 'fail', reasoning: 'Never mentions C.' },
+					}),
+				);
+			});
+
+			it('does not suggest for a passing rule', async () => {
+				seedFor([{ id: 'row-1', question: 'Q', answer: 'A', check: 'C' }], { success: 1 });
+				evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(successExec() as never);
+
+				const { finished } = await service.startRun('ds-1', 'proj-1', user);
+				await finished;
+
+				expect(generateFixSuggestion).not.toHaveBeenCalled();
+			});
+
+			it('does not suggest when the judge itself fails', async () => {
+				seedFor([{ id: 'row-1', question: 'Q', answer: 'A', check: 'C' }], { success: 1 });
+				evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(successExec() as never);
+				criteriaRunMock.mockRejectedValue(new Error('judge model timed out'));
+
+				const { finished } = await service.startRun('ds-1', 'proj-1', user);
+				await finished;
+
+				expect(generateFixSuggestion).not.toHaveBeenCalled();
+			});
+
+			it('does not suggest for a gold answer mismatch without a rule', async () => {
+				seedFor([{ id: 'row-1', question: 'What is 2+2?', answer: '4' }], { success: 1 });
+				evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(successExec() as never);
+				correctnessRunMock.mockResolvedValue({ pass: false, reasoning: 'Wrong.' });
+
+				const { finished } = await service.startRun('ds-1', 'proj-1', user);
+				await finished;
+
+				expect(generateFixSuggestion).not.toHaveBeenCalled();
+			});
+
+			it('does not suggest when the case is skipped for having nothing to grade', async () => {
+				datasetRepository.findById.mockResolvedValue({
+					...dataset,
+					columnMapping: { input: 'question' },
+				} as AgentEvalDataset);
+				dataTableService.getColumns.mockResolvedValue([{ name: 'question' }] as never);
+				seedFor([{ id: 'row-1', question: 'Q' }], { success: 1 });
+				evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(successExec() as never);
+
+				const { finished } = await service.startRun('ds-1', 'proj-1', user);
+				await finished;
+
+				expect(generateFixSuggestion).not.toHaveBeenCalled();
+			});
 		});
 
 		it('skips judging when the dataset maps neither criteria nor expectedOutput', async () => {

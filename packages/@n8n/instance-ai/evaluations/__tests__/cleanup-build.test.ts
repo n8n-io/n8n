@@ -92,6 +92,51 @@ describe('cleanupBuild', () => {
 		expect(mocks.deleteThread).toHaveBeenCalledWith('T1');
 	});
 
+	it("cleans the build's own project, then deletes the user that owns it", async () => {
+		const { client, mocks } = makeClient({
+			deleteAgent: vi.fn().mockResolvedValue(undefined),
+			deleteUser: vi.fn().mockResolvedValue(undefined),
+		});
+		const build = {
+			...makeBuild(),
+			artifactRefs: [{ type: 'agent' as const, id: 'agent-1' }],
+			buildProjectId: 'build-project',
+			buildUserId: 'build-user',
+		};
+
+		await expect(cleanupBuild(client, build, silentLogger)).resolves.toBe(true);
+
+		expect(mocks.deleteDataTable).toHaveBeenCalledWith('build-project', 'DT1');
+		expect(mocks.deleteAgent).toHaveBeenCalledWith('build-project', 'agent-1');
+		expect(mocks.getPersonalProjectId).not.toHaveBeenCalled();
+		expect(mocks.deleteUser).toHaveBeenCalledWith('build-user');
+		// The thread goes through its own route first, which also stops its sandbox.
+		expect(mocks.deleteUser.mock.invocationCallOrder[0]).toBeGreaterThan(
+			mocks.deleteThread.mock.invocationCallOrder[0],
+		);
+	});
+
+	it('keeps the build user when another delete fails, so the retry still finds its project', async () => {
+		const { client, mocks } = makeClient({
+			deleteDataTable: vi.fn().mockRejectedValue(new Error('HTTP 502')),
+			deleteUser: vi.fn().mockResolvedValue(undefined),
+		});
+		const build = { ...makeBuild(), buildProjectId: 'build-project', buildUserId: 'build-user' };
+
+		await expect(cleanupBuild(client, build, silentLogger)).resolves.toBe(false);
+
+		expect(mocks.deleteUser).not.toHaveBeenCalled();
+	});
+
+	it('reports not clean when the build user cannot be deleted, so the caller can retry', async () => {
+		const { client } = makeClient({
+			deleteUser: vi.fn().mockRejectedValue(new Error('HTTP 502')),
+		});
+		const build = { ...makeBuild(), buildProjectId: 'build-project', buildUserId: 'build-user' };
+
+		await expect(cleanupBuild(client, build, silentLogger)).resolves.toBe(false);
+	});
+
 	it('never calls deleteAgent for a build without an agent ref', async () => {
 		const { client, mocks } = makeClient({ deleteAgent: vi.fn() });
 

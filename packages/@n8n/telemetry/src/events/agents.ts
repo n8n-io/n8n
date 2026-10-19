@@ -15,6 +15,34 @@ const agentRunType = z
 	.enum(['test', 'production'])
 	.describe('production means the run executed the published snapshot; test means it ran a draft');
 
+const agentRunSource = z
+	.string()
+	.describe(
+		'Run source: instance-ai, mcp, chat, n8n_chat, n8n_chat_production, workflow, task, subagent, or a chat integration (slack, telegram, linear, discord, whatsapp, teams). Preserve the runtime source value. unknown means the source was unavailable.',
+	);
+
+const agentExecutionCounts = {
+	message_count: z.number().describe('Fresh top-level user turns; delegated child runs excluded'),
+	token_count: z
+		.number()
+		.describe(
+			'Includes LLM calls belonging to no turn (title generation, memory, embeddings), so runs higher than "Agent session metrics".token_count_sum',
+		),
+	tool_call_count: z.number(),
+};
+
+const agentSessionMetrics = {
+	session_count: z.number(),
+	turn_count: z.number(),
+	latency_ms_sum: z.number(),
+	cost_sum: z.number(),
+	token_count_sum: z
+		.number()
+		.describe('Recorded-turn tokens only; reconciles with cost_sum, unlike token_count'),
+	tool_call_count_sum: z.number(),
+	num_skills_sum: z.number(),
+};
+
 // Spread into the session-metrics payload, matching `IAgentConfigurationTelemetryProperties`.
 const agentConfigurationTelemetry = {
 	model: z.string().nullable(),
@@ -165,6 +193,38 @@ const agentPublish = {
 };
 
 export const AGENTS_TELEMETRY = defineTelemetryEvents({
+	AGENT_TEAMS_SETUP_STEP: {
+		name: 'Agent Teams setup step',
+		description:
+			"One step of the recommended Microsoft Teams setup finished or failed. Tells us which rung of the bot ladder people actually land on, which is the question the ladder exists to answer: n8n can only create the bot when the tenant has an Azure subscription, and a Microsoft 365 tenant does not come with one. `outcome: 'failed'` carries a `reason` naming the wall that was hit, never the message.",
+		properties: z.object({
+			agent_id: z.string(),
+			project_id: z.string(),
+			user_id: z.string(),
+			step: z
+				.enum(['connect', 'create_app', 'create_bot', 'availability', 'install'])
+				.describe('Which step of the recommended setup this reports'),
+			outcome: z.enum(['succeeded', 'failed']),
+			bot_route: z
+				.enum(['provisioned', 'manual'])
+				.optional()
+				.describe(
+					"Only on the bot step. 'provisioned' means n8n created it through Azure; 'manual' means the user was sent to make it themselves.",
+				),
+			install_route: z
+				.enum(['published', 'submitted', 'upload'])
+				.optional()
+				.describe(
+					"Only on the install step. 'submitted' means the account could not publish directly and the app went in for review.",
+				),
+			reason: z
+				.string()
+				.optional()
+				.describe(
+					'A fixed code for why the step failed, such as blocked_by_policy or cannot_register_apps. Never a message, which could carry tenant detail.',
+				),
+		}),
+	},
 	USER_RESPONDED_TO_AGENT_TOOL_APPROVAL: {
 		name: 'User responded to agent tool approval',
 		description:
@@ -175,6 +235,10 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 			run_type: agentRunType,
 			approved: z.boolean(),
 			scope: z.enum(['once', 'session']),
+			counts_by_source: z
+				.record(agentRunSource, z.object({ count: z.literal(1) }))
+				.optional()
+				.describe('One entry for the run source, with count 1 for this approval response'),
 		}),
 	},
 	AGENT_SETUP_COMPLETED: {
@@ -205,24 +269,28 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 	AGENT_EXECUTION_COUNT: {
 		name: 'Agent execution count',
 		description:
-			'Six-hourly pulse of aggregate agent usage, bucketed by agent, run type and optional user. event_version 2 added run_type; version 1 rows are a mix of test and production and must not be read as production. token_count is broader than "Agent session metrics".cost_sum: it also covers LLM calls belonging to no single turn (title generation, observational/episodic memory, embeddings).',
+			'Six-hourly pulse of aggregate agent usage, bucketed by agent, run type and optional user. event_version 3 added first_message_at. event_version 2 added run_type; version 1 rows are a mix of test and production and must not be read as production. token_count is broader than "Agent session metrics".cost_sum: it also covers LLM calls belonging to no single turn (title generation, observational/episodic memory, embeddings).',
 		properties: z.object({
-			event_version: z.literal('2'),
+			event_version: z.literal('3'),
 			agent_id: z.string(),
 			user_id: z
 				.string()
 				.optional()
 				.describe('Present only for runs with an n8n user — absent for chat integrations and cron'),
 			run_type: agentRunType,
-			message_count: z
-				.number()
-				.describe('Fresh top-level user turns; delegated child runs excluded'),
-			token_count: z
-				.number()
+			...agentExecutionCounts,
+			first_message_at: z.iso
+				.datetime()
+				.optional()
 				.describe(
-					'Includes LLM calls belonging to no turn (title generation, memory, embeddings), so runs higher than "Agent session metrics".token_count_sum',
+					'ISO 8601 time of the first message in this buffer window. Absent when message_count is zero.',
 				),
-			tool_call_count: z.number(),
+			counts_by_source: z
+				.record(agentRunSource, z.object(agentExecutionCounts))
+				.optional()
+				.describe(
+					'Counters by run source. Each counter sums to its top-level total. Delegated token and tool usage stays with the parent run source.',
+				),
 		}),
 	},
 	AGENT_SESSION_METRICS: {
@@ -236,15 +304,13 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 			agent_type: z.literal('inline').optional(),
 			run_type: agentRunType,
 			turn_status: z.enum(['succeeded', 'failed']),
-			session_count: z.number(),
-			turn_count: z.number(),
-			latency_ms_sum: z.number(),
-			cost_sum: z.number(),
-			token_count_sum: z
-				.number()
-				.describe('Recorded-turn tokens only; reconciles with cost_sum, unlike token_count'),
-			tool_call_count_sum: z.number(),
-			num_skills_sum: z.number(),
+			...agentSessionMetrics,
+			counts_by_source: z
+				.record(agentRunSource, z.object(agentSessionMetrics))
+				.optional()
+				.describe(
+					'Metrics by run source. Turn metrics sum to the top-level totals. session_count and num_skills_sum count each session once per source, so they can overlap across sources.',
+				),
 			...agentConfigurationTelemetry,
 		}),
 	},
@@ -356,6 +422,16 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 			event_version: z.literal('1'),
 		}),
 	},
+	USER_DISMISSED_AGENT_PUBLISHED_MODAL: {
+		name: 'User dismissed agent published modal',
+		description:
+			'The user closed the "Agent published" confirmation modal shown after a successful agent publish. `dont_show_again` reports the state of the "Don\'t show again" checkbox at dismissal; when checked, the modal is not shown on later publishes.',
+		properties: z.object({
+			agent_id: z.string(),
+			dont_show_again: z.boolean(),
+			session_id: sessionId.optional(),
+		}),
+	},
 	INSTANCE_AI_OPENED_FROM_AGENT_PREVIEW: {
 		name: 'Instance AI opened from agent preview',
 		description:
@@ -461,7 +537,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 	USER_CLICKED_NEW_AGENT: {
 		name: 'User clicked new agent',
 		description:
-			'The user clicked a new-agent entry point (button, dropdown, card, or an Agents empty-state action: create blank, a typed prompt, or a starter template). No agent exists at this point — `agent_id` is the id minted for the click, which whichever path later persists the agent creates it under, so this joins to the eventual creation event. Clicks with no matching creation are abandoned new-agent flows.',
+			'The user clicked a new-agent entry point (button, dropdown, card, command bar, or an Agents empty-state action: create blank, a typed prompt, or a starter template). No agent exists at this point — `agent_id` is the id minted for the click, which whichever path later persists the agent creates it under, so this joins to the eventual creation event. Clicks with no matching creation are abandoned new-agent flows.',
 		properties: z.object({
 			source: z.enum([
 				'button',
@@ -470,6 +546,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 				'empty_state_blank',
 				'empty_state_prompt',
 				'empty_state_template',
+				'command_bar',
 			]),
 			agent_id: z.string().describe('Minted at the click; no agent row exists yet'),
 			template_id: z

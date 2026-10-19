@@ -38,12 +38,6 @@ const effectiveSize = computed(() => {
 	return props.size;
 });
 
-const effectiveVariant = computed(() => {
-	if (props.variant === 'highlight') return 'ghost';
-	if (props.variant === 'highlight-fill') return 'ghost';
-	return props.variant;
-});
-
 const computedIconSize = computed((): IconSize => {
 	if (effectiveSize.value === 'xsmall') return 'xsmall';
 	return effectiveSize.value;
@@ -53,7 +47,7 @@ const classes = computed(() =>
 	cn(
 		'button',
 		$style.toggle,
-		$style[effectiveVariant.value],
+		$style[props.variant],
 		$style[effectiveSize.value],
 		$style.iconOnly,
 		props.disabled && $style.disabled,

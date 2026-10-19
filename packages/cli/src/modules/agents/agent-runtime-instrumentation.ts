@@ -65,3 +65,12 @@ export interface AgentRuntimeInstrumentation {
 export type InstrumentToolAdditionalData = NonNullable<
 	AgentRuntimeInstrumentation['configureToolAdditionalData']
 >;
+
+/**
+ * Set by the Instance AI workflow eval when a workflow calls an agent. Returns
+ * the config to run (features only removed) and the seams that fake its I/O.
+ */
+export type PrepareWorkflowAgentForEval = (
+	config: AgentJsonConfig,
+	context?: { hasChatIntegrations?: boolean },
+) => Promise<{ config: AgentJsonConfig; instrumentation: AgentRuntimeInstrumentation }>;

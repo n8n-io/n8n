@@ -64,7 +64,7 @@ import { ProjectNotFoundError } from '@/services/project.service.ee';
 
 const tags = ['DataTable'];
 
-/** The domain errors the data table service raises, mapped to the public statuses the eov handler sent. */
+/** The domain errors the data table service raises, mapped to public statuses. */
 function handleError(error: unknown): never {
 	if (error instanceof DataTableValidationError) {
 		throw new BadRequestError(error.message);

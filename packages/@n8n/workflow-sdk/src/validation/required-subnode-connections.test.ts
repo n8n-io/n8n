@@ -11,6 +11,8 @@ const PARSER = '@n8n/n8n-nodes-langchain.outputParserStructured';
 const LOADER = '@n8n/n8n-nodes-langchain.documentDefaultDataLoader';
 const MODEL = '@n8n/n8n-nodes-langchain.lmChatOpenAi';
 const AUTOFIX = '@n8n/n8n-nodes-langchain.outputParserAutofixing';
+const APPROVAL = 'n8n-nodes-base.slackHitlTool';
+const TOOL = 'n8n-nodes-base.httpRequestTool';
 
 const BUILDER_HINTS: Record<string, unknown> = {
 	[AGENT]: {
@@ -22,6 +24,9 @@ const BUILDER_HINTS: Record<string, unknown> = {
 	},
 	[AUTOFIX]: {
 		ai_languageModel: { required: true },
+	},
+	[APPROVAL]: {
+		ai_tool: { required: true },
 	},
 	[LOADER]: {
 		ai_textSplitter: {
@@ -185,6 +190,23 @@ describe('connectRequiredSubnodeInputs', () => {
 				viaParent: 'Agent',
 			},
 		]);
+	});
+
+	it('does not wire a tool from the parent into an approval tool', () => {
+		const workflow: WorkflowForSubnodeWiring = {
+			nodes: [
+				{ name: 'Agent', type: AGENT, typeVersion: 3.1, parameters: {} },
+				{ name: 'Slack', type: APPROVAL, typeVersion: 2.3, parameters: {} },
+				{ name: 'HTTP Request', type: TOOL, typeVersion: 4.2, parameters: {} },
+			],
+			connections: {
+				Slack: { ai_tool: [[{ node: 'Agent', type: 'ai_tool', index: 0 }]] },
+				'HTTP Request': { ai_tool: [[{ node: 'Agent', type: 'ai_tool', index: 0 }]] },
+			},
+		};
+
+		expect(connectRequiredSubnodeInputs(workflow, nodeTypes)).toEqual([]);
+		expect(workflow.connections['HTTP Request']?.ai_tool?.[0]).toHaveLength(1);
 	});
 
 	it('ignores node types it cannot resolve', () => {

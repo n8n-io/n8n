@@ -30,6 +30,24 @@ export const INSTANCE_TELEMETRY = defineTelemetryEvents({
 					speed: z.number().describe('Clock speed in MHz'),
 				}),
 				is_docker: z.boolean(),
+				runtime: z
+					.enum([
+						'kubernetes',
+						'ecs',
+						'cloud-run',
+						'azure-container-apps',
+						'azure-app-service',
+						'docker',
+						'other',
+					])
+					.optional()
+					.describe('Platform n8n runs on, read from well-known platform variables'),
+				kubernetes_provider: z
+					.enum(['aws', 'azure', 'gcp', 'other'])
+					.optional()
+					.describe(
+						'Cloud the node runs on, read from vendor tags in the kernel release. `other` also covers node images that do not name their cloud. Only for `kubernetes`',
+					),
 			}),
 			execution_variables: z.object({
 				executions_mode: z.enum(['regular', 'queue']),
@@ -44,10 +62,15 @@ export const INSTANCE_TELEMETRY = defineTelemetryEvents({
 			}),
 			workflow_history: z.object({
 				compaction_optimizing_time_window_hours: z.number(),
-				compaction_trim_on_start_up: z.boolean(),
 				compaction_trimming_time_window_days: z.number(),
 			}),
 			n8n_deployment_type: z.string(),
+			n8n_deployment_artifact: z
+				.string()
+				.optional()
+				.describe(
+					'Official artifact that installed n8n, as `<artifact>[/<version>]`, e.g. `helm-chart/1.14.0`',
+				),
 			n8n_binary_data_mode: z.enum(['default', 'filesystem', 's3', 'azure', 'database']),
 			smtp_set_up: z.boolean(),
 			ldap_allowed: z.boolean(),

@@ -1230,10 +1230,10 @@ describe('createInstanceAiTraceContext', () => {
 		await startForegroundActor(tracing!);
 		const provider = agentsMock.getProvider();
 
-		const acquired = createDeferredPromise<undefined>();
+		const started = createDeferredPromise<undefined>();
 		const operation = tracing!.withActiveSpan(tracing!.actorRun, async () => {
-			await withCurrentTraceSpan({ name: 'sandbox: acquire' }, async () => await acquired.promise);
-			await withCurrentTraceSpan({ name: 'sandbox: sync-skills' }, async () => {});
+			await withCurrentTraceSpan({ name: 'background: start' }, async () => await started.promise);
+			await withCurrentTraceSpan({ name: 'background: finish' }, async () => {});
 		});
 		tracing!.keepOpenUntilSettled?.(operation);
 
@@ -1241,15 +1241,15 @@ describe('createInstanceAiTraceContext', () => {
 		expect(provider.shutdown).not.toHaveBeenCalled();
 		expect(tracing?.isLive?.()).toBe(true);
 
-		acquired.resolve(undefined);
+		started.resolve(undefined);
 		await operation;
 		await vi.waitFor(() => expect(provider.shutdown).toHaveBeenCalledTimes(1));
 
 		const spans = agentsMock.getSpans();
-		const acquireSpan = spans.find((span) => span.name === 'sandbox: acquire');
-		expect(acquireSpan?.ended).toBe(true);
-		expect(acquireSpan?.status?.message).toBeUndefined();
-		expect(spans.find((span) => span.name === 'sandbox: sync-skills')?.ended).toBe(true);
+		const startSpan = spans.find((span) => span.name === 'background: start');
+		expect(startSpan?.ended).toBe(true);
+		expect(startSpan?.status?.message).toBeUndefined();
+		expect(spans.find((span) => span.name === 'background: finish')?.ended).toBe(true);
 		expect(tracing?.isLive?.()).toBe(false);
 	});
 
@@ -1630,10 +1630,10 @@ describe('createInstanceAiTraceContext', () => {
 		expect(JSON.stringify(inputs)).not.toContain('custom.endpoint');
 	});
 
-	it('attaches runtime skill metadata to trace inputs without skill bodies', () => {
+	it('attaches skill metadata to trace inputs without skill bodies', () => {
 		const inputs = buildAgentTraceInputs({
 			tools: createToolRegistry(),
-			runtimeSkills: createRuntimeSkillRegistry([
+			skills: createRuntimeSkillRegistry([
 				{
 					id: 'data-table-manager',
 					name: 'data-table-manager',

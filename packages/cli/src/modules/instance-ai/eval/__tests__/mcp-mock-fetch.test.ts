@@ -9,6 +9,7 @@ const extractText = vi.fn();
 vi.mock('@n8n/instance-ai', () => ({
 	createEvalAgent: vi.fn(() => ({ generate })),
 	extractText: (result: unknown) => extractText(result) as string,
+	isRetryableEvalError: () => true,
 }));
 
 const logger = mock<Logger>();
