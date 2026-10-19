@@ -19,6 +19,9 @@ import type { AgentExecutionThreadRepository } from '../repositories/agent-execu
 import type { AgentMessageQueueRepository } from '../repositories/agent-message-queue.repository';
 import type { AgentMessageRepository } from '../repositories/agent-message.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
+import { SystemAgentRegistry } from '../system-agents/system-agent-registry';
+import type { SystemAgentProvider } from '../system-agents/system-agent.types';
+import { SYSTEM_CHAT_SOURCE } from '../utils/agent-thread-access';
 
 function makeThread(overrides: Partial<AgentExecutionThread> = {}): AgentExecutionThread {
 	return mock<AgentExecutionThread>({
@@ -47,10 +50,12 @@ describe('AgentMessageQueueService', () => {
 	const steering = mock<AgentMessageSteeringService>();
 	const settingsService = mock<AgentsSettingsService>();
 
+	let systemAgents: SystemAgentRegistry;
 	let service: AgentMessageQueueService;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		systemAgents = new SystemAgentRegistry();
 		txRunner.run.mockImplementation(async (ctx, fn) => await fn(ctx));
 		executionRepository.findFirstSourceByThreadIds.mockResolvedValue(
 			new Map([['thread-1', N8N_CHAT_PRODUCTION_SOURCE]]),
@@ -68,7 +73,112 @@ describe('AgentMessageQueueService', () => {
 			messages,
 			steering,
 			settingsService,
+			systemAgents,
 		);
+	});
+
+	describe('hidden system turns', () => {
+		const systemThread = () => makeThread({ agentId: 'system-agent' });
+
+		function queuedItem(id: string, hidden: boolean): AgentMessageQueue {
+			return mock<AgentMessageQueue>({
+				id,
+				payload: { kind: 'system' },
+				steeringOrder: null,
+				steeringExecutionId: null,
+				createdAt: new Date('2026-10-19T00:00:00Z'),
+				message: {
+					content: { role: 'user', content: [{ type: 'text', text: id }] },
+					origin: hidden
+						? { source: SYSTEM_CHAT_SOURCE, hidden: true }
+						: { source: SYSTEM_CHAT_SOURCE },
+				},
+			});
+		}
+
+		beforeEach(() => {
+			systemAgents.register(
+				mock<SystemAgentProvider>({ agentId: 'system-agent', name: 'System agent' }),
+			);
+			executionRepository.findFirstSourceByThreadIds.mockResolvedValue(
+				new Map([['thread-1', SYSTEM_CHAT_SOURCE]]),
+			);
+		});
+
+		it('stores a hidden message with a hidden origin, outside the dispatch', async () => {
+			messages.createInput.mockResolvedValue(mock({ id: 'message-1' }));
+			repository.enqueue.mockResolvedValue(mock<AgentMessageQueue>({ threadId: 'thread-1' }));
+
+			await service.enqueue({
+				agentId: 'system-agent',
+				projectId: 'project-1',
+				threadId: 'thread-1',
+				sessionMode: 'existing',
+				source: SYSTEM_CHAT_SOURCE,
+				payload: {
+					kind: 'system',
+					userId: 'user-1',
+					message: 'Continue the build',
+					resourceId: 'system-chat:user-1',
+					options: { followUp: true },
+					hidden: true,
+				},
+			});
+
+			expect(messages.createInput).toHaveBeenCalledWith(
+				expect.objectContaining({ origin: { source: SYSTEM_CHAT_SOURCE, hidden: true } }),
+				expect.anything(),
+			);
+			expect(repository.enqueue).toHaveBeenCalledWith(
+				'thread-1',
+				'message-1',
+				{ kind: 'system', options: { followUp: true } },
+				expect.anything(),
+			);
+		});
+
+		it('stores a visible message without a hidden origin', async () => {
+			messages.createInput.mockResolvedValue(mock({ id: 'message-1' }));
+			repository.enqueue.mockResolvedValue(mock<AgentMessageQueue>({ threadId: 'thread-1' }));
+
+			await service.enqueue({
+				agentId: 'system-agent',
+				projectId: 'project-1',
+				threadId: 'thread-1',
+				sessionMode: 'existing',
+				source: SYSTEM_CHAT_SOURCE,
+				payload: {
+					kind: 'system',
+					userId: 'user-1',
+					message: 'hello',
+					resourceId: 'system-chat:user-1',
+				},
+			});
+
+			expect(messages.createInput).toHaveBeenCalledWith(
+				expect.objectContaining({ origin: { source: SYSTEM_CHAT_SOURCE } }),
+				expect.anything(),
+			);
+		});
+
+		it('leaves hidden messages out of the pending list', async () => {
+			threadRepository.findOneBy.mockResolvedValue(systemThread());
+			repository.listPending.mockResolvedValue([
+				queuedItem('visible', false),
+				queuedItem('hidden', true),
+			]);
+			steering.findEligible.mockResolvedValue(null);
+
+			const result = await service.listPending({
+				projectId: 'project-1',
+				agentId: 'system-agent',
+				threadId: 'thread-1',
+				userId: 'user-1',
+				kind: 'system',
+			});
+
+			expect(result.items.map((item) => item.id)).toEqual(['visible']);
+		});
 	});
 
 	describe('listPending', () => {

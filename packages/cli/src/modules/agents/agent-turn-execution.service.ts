@@ -58,6 +58,12 @@ interface ExecuteTurnConfig {
 	backgroundJobSignal?: AgentBackgroundJobSignal;
 	/** The chat surface this turn runs under. Undefined for integrations and tasks. */
 	chatSurface?: AgentChatSurface;
+	/**
+	 * The controller of the chat turn. Defaults to a new controller. A cancel
+	 * aborts it, and the caller can abort it to stop the turn at any time. The
+	 * abort signal in the turn options also aborts it.
+	 */
+	chatController?: AbortController;
 	automaticPreviewContinuation?: boolean;
 	onExecutionStarted?: (executionId: string, sessionId: string, inputMessageIds: string[]) => void;
 	onExecutionRecorded?: (executionId: string) => void;
@@ -130,7 +136,11 @@ export class AgentTurnExecutionService {
 			turn = await config.prepare();
 			const preparedTurn = turn;
 			if (config.chatSurface !== undefined) {
-				chatControl = this.createChatExecutionControl(preparedTurn, config.chatSurface);
+				chatControl = this.createChatExecutionControl(
+					preparedTurn,
+					config.chatSurface,
+					config.chatController,
+				);
 				preparedTurn.options.abortSignal = chatControl.controller.signal;
 			}
 
@@ -175,13 +185,13 @@ export class AgentTurnExecutionService {
 	private createChatExecutionControl(
 		turn: AgentTurnRequest,
 		surface: AgentChatSurface,
+		controller = new AbortController(),
 	): ChatExecutionControl {
 		const userId = turn.recording.access.ownerId;
 		if (turn.recording.access.accessScope !== 'user' || !userId) {
 			throw new UnexpectedError('A preview execution must have an owning user.');
 		}
 		const executionSignal = turn.options.abortSignal;
-		const controller = new AbortController();
 		const abort = () => controller.abort(executionSignal?.reason);
 		if (executionSignal?.aborted) abort();
 		else executionSignal?.addEventListener('abort', abort, { once: true });
