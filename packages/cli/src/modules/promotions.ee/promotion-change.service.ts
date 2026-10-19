@@ -40,6 +40,7 @@ import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import { diffDataTableSchema } from '@/modules/n8n-packages/entities/data-table/data-table-compat';
 import { DataTableSerializer } from '@/modules/n8n-packages/entities/data-table/data-table.serializer';
+import { serializeTag } from '@/modules/n8n-packages/entities/tag/tag.exporter';
 import { formatEntityFile } from '@/modules/n8n-packages/io/entity-file-format';
 import { gitBlobSha, HashingPackageWriter } from '@/modules/n8n-packages/io/hashing-package-writer';
 import {
@@ -117,6 +118,8 @@ type ProjectComparison = {
 };
 
 type LocalDataTable = { content: string; blobSha: string };
+
+type LocalTag = LocalDataTable & { id: string; name: string };
 
 type DetailSide = { content: string | null; blobSha: string | null };
 
@@ -256,6 +259,16 @@ export class PromotionChangeService {
 						}),
 					)
 				: new Map<string, LocalDataTable>();
+		// Apply also reuses a tag that exists on this instance, by ID or by name.
+		const localTags =
+			direction === 'apply'
+				? await this.loadLocalTags(
+						keys.flatMap((key) => {
+							const resource = branchIndex.get(key);
+							return resource?.type === 'tag' && !instanceIndex.has(key) ? [resource] : [];
+						}),
+					)
+				: new Map<string, LocalTag>();
 		const canSeeVariableValues = hasGlobalScope(user, 'variable:list');
 
 		const details = keys.flatMap((key): PromotionResourceDetail[] => {
@@ -264,7 +277,8 @@ export class PromotionChangeService {
 			const resource = fromInstance ?? fromBranch;
 			if (!resource) return [];
 			const branchContent = fromBranch && branchContents.get(fromBranch.path);
-			const localTable = fromBranch && localTables.get(fromBranch.id);
+			const localCopy =
+				fromBranch && (fromBranch.type === 'tag' ? localTags : localTables).get(fromBranch.id);
 			const branchSide: DetailSide =
 				branchContent === undefined
 					? { content: null, blobSha: null }
@@ -274,8 +288,8 @@ export class PromotionChangeService {
 						content: instance.contents.get(fromInstance.path) ?? null,
 						blobSha: fromInstance.blobSha,
 					}
-				: localTable
-					? { content: localTable.content, blobSha: localTable.blobSha }
+				: localCopy
+					? { content: localCopy.content, blobSha: localCopy.blobSha }
 					: { content: null, blobSha: null };
 			const [before, after] =
 				direction === 'promote' ? [branchSide, instanceSide] : [instanceSide, branchSide];
@@ -513,12 +527,11 @@ export class PromotionChangeService {
 	): Promise<ApplyDestination> {
 		const requirements = branchManifest?.requirements;
 		const exportedTableIds = new Set(instanceManifest.dataTables?.map(({ id }) => id));
-		const tagIds = requirements?.tags?.map(({ id }) => id) ?? [];
 		const [credentials, tags, dataTables] = await Promise.all([
 			this.credentialsRepository.findNamesByIds(
 				requirements?.credentials?.map(({ id }) => id) ?? [],
 			),
-			tagIds.length > 0 ? this.tagRepository.findMany(tagIds) : [],
+			this.loadLocalTags(requirements?.tags ?? []),
 			this.loadLocalDataTables(
 				(requirements?.dataTables ?? [])
 					.map(({ id }) => id)
@@ -527,12 +540,37 @@ export class PromotionChangeService {
 		]);
 		return {
 			credentialNames: new Map(credentials.map(({ id, name }) => [id, name])),
-			tagNames: new Map(tags.map(({ id, name }) => [id, name])),
+			tags,
 			variableKeys: new Set(
 				(variables ?? []).map(({ key, projectId }) => variableResourceKey(key, projectId)),
 			),
 			dataTables,
 		};
+	}
+
+	/**
+	 * Finds the local tag that Apply uses for each branch tag: the tag with the same ID, else the tag
+	 * with the same name. Names match trimmed and case-sensitive, as in the package import.
+	 * Serializes each tag as the package stores it, so it compares with branch files.
+	 */
+	private async loadLocalTags(
+		branchTags: ReadonlyArray<{ id: string; name: string }>,
+	): Promise<Map<string, LocalTag>> {
+		if (branchTags.length === 0) return new Map();
+		const [byId, byName] = await Promise.all([
+			this.tagRepository.findMany(branchTags.map(({ id }) => id)),
+			this.tagRepository.findManyByName([...new Set(branchTags.map(({ name }) => name.trim()))]),
+		]);
+		const tagsById = new Map(byId.map((tag) => [tag.id, tag]));
+		const tagsByName = new Map(byName.map((tag) => [tag.name, tag]));
+		return new Map(
+			branchTags.flatMap(({ id, name }): Array<[string, LocalTag]> => {
+				const tag = tagsById.get(id) ?? tagsByName.get(name.trim());
+				if (!tag) return [];
+				const content = formatEntityFile(serializeTag(tag));
+				return [[id, { id: tag.id, name: tag.name, content, blobSha: gitBlobSha(content) }]];
+			}),
+		);
 	}
 
 	/** Serializes local data tables as the package stores them, so they compare with branch files. */
