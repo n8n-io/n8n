@@ -1,0 +1,480 @@
+packages/@n8n/api-types/src/dto/inbox/__tests__/list-inbox.dto.test.ts
+  s_71287c13b32be3::t_01b4969c090211 1-33
+packages/frontend/editor-ui/src/features/agents/channels/registry.test.ts
+  s_71287c13b32be3::t_01b4969c090211 1,75-93
+  s_71287c13b32be3::t_2b3e688f64be01 94
+packages/frontend/editor-ui/src/features/agents/channels/teams/AgentChannelTeamsIdentityCard.vue
+  s_71287c13b32be3::t_01b4969c090211 73-74,108
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentModal.test.ts
+  s_71287c13b32be3::t_01b4969c090211 192-204
+packages/frontend/@n8n/composables/src/useIntersectionObserver.ts
+  s_71287c13b32be3::t_01b4969c090211 1-92
+packages/modules/inbox/frontend/src/inbox.routes.test.ts
+  s_71287c13b32be3::t_01b4969c090211 1-111
+packages/modules/inbox/frontend/src/reviews/reviewActivity.store.test.ts
+  s_71287c13b32be3::t_01b4969c090211 1-463
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-inbox.service.ts
+  s_71287c13b32be3::t_01b4969c090211 2-3,20-21,48-50,52-53,57,60-61,65,67,70-75,77,80
+packages/modules/inbox/frontend/src/inbox.api.ts
+  s_71287c13b32be3::t_01b4969c090211 1-20
+packages/frontend/editor-ui/src/features/collaboration/projects/composables/useProjectPages.ts
+  s_71287c13b32be3::t_01b4969c090211 4,26
+packages/modules/inbox/frontend/src/components/InboxListItem.vue
+  s_71287c13b32be3::t_01b4969c090211 1-134
+packages/cli/src/modules/inbox/inbox.controller.ts
+  s_71287c13b32be3::t_01b4969c090211 1-22
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/microsoft.svg
+  s_71287c13b32be3::t_01b4969c090211 1
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentEvalChecksPanel.test.ts
+  s_71287c13b32be3::t_01b4969c090211 463-491,1479-1481
+  s_71287c13b32be3::t_c98cb2ab2f14c0 1482
+packages/modules/inbox/frontend/src/composables/useReviewInboxSectionCollapse.ts
+  s_71287c13b32be3::t_01b4969c090211 1-42
+packages/modules/inbox/frontend/stylelint.config.mjs
+  s_71287c13b32be3::t_01b4969c090211 1-9
+packages/frontend/editor-ui/src/features/agents/channels/teams/AgentChannelTeamsManagedApp.vue
+  s_71287c13b32be3::t_01b4969c090211 216,273
+packages/@n8n/backend-common/src/modules/modules.config.ts
+  s_71287c13b32be3::t_01b4969c090211 6
+packages/frontend/editor-ui/src/features/agents/components/AgentIntegrationCredentialConnection.vue
+  s_71287c13b32be3::t_01b4969c090211 69,170
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewSubmittedDialog.test.ts
+  s_71287c13b32be3::t_01b4969c090211 15,47
+packages/modules/inbox/frontend/README.md
+  s_71287c13b32be3::t_01b4969c090211 1-60
+packages/modules/inbox/frontend/src/reviews/components/WorkflowReviewDetailTabs.vue
+  s_71287c13b32be3::t_01b4969c090211 1-311
+packages/cli/src/modules/agents/integrations/platforms/teams/__tests__/teams-cleanup.service.test.ts
+  s_71287c13b32be3::t_01b4969c090211 27
+packages/frontend/editor-ui/src/features/collaboration/projects/projects.store.test.ts
+  s_71287c13b32be3::t_01b4969c090211 2,341-351
+  s_71287c13b32be3::t_9b563d3b9030b8 352
+packages/modules/inbox/frontend/biome.jsonc
+  s_71287c13b32be3::t_01b4969c090211 1-4
+packages/@n8n/api-types/src/inbox.ts
+  s_71287c13b32be3::t_01b4969c090211 1-45
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectNavigation.vue
+  s_71287c13b32be3::t_01b4969c090211 27,214,216-217,219-220,292-293,295-296
+packages/cli/src/modules/inbox/inbox.module.ts
+  s_71287c13b32be3::t_01b4969c090211 1-8
+packages/cli/src/modules/agents/integrations/platforms/teams/teams-cleanup.service.ts
+  s_71287c13b32be3::t_01b4969c090211 9,50
+packages/frontend/editor-ui/src/features/agents/channels/AgentChannelStandardEditView.vue
+  s_71287c13b32be3::t_01b4969c090211 26-27,70-73
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowUpdateReviewDialog.vue
+  s_71287c13b32be3::t_01b4969c090211 260
+packages/modules/inbox/frontend/src/reviews/components/activity-entries/WorkflowReviewActivityActorAvatar.vue
+  s_71287c13b32be3::t_01b4969c090211 1-50
+packages/modules/inbox/frontend/src/reviews/components/WorkflowReviewActivityFeed.test.ts
+  s_71287c13b32be3::t_01b4969c090211 1-923
+packages/@n8n/db/src/repositories/index.ts
+  s_71287c13b32be3::t_01b4969c090211 130
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_71287c13b32be3::t_01b4969c090211 2-16,9411,9800,9868-9870,9874-9875
+packages/frontend/editor-ui/src/features/workflows/workflowHistory/utils.ts
+  s_71287c13b32be3::t_01b4969c090211 14-17
+packages/modules/inbox/frontend/src/reviews/components/WorkflowReviewDecisionPopover.test.ts
+  s_71287c13b32be3::t_01b4969c090211 1-288
+packages/modules/inbox/frontend/src/reviews/components/WorkflowReviewDetailMetadata.vue
+  s_71287c13b32be3::t_01b4969c090211 1-241
+packages/modules/inbox/frontend/vite.config.ts
+  s_71287c13b32be3::t_01b4969c090211 1-52
+packages/@n8n/db/src/repositories/__tests__/workflow-review.repositories.test.ts
+  s_71287c13b32be3::t_01b4969c090211 617,627-637,718
+packages/nodes-base/nodes/Databricks/transport/lakebaseErrors.ts
+  s_71287c13b32be3::t_01b4969c090211 1-76
+packages/cli/src/modules/n8n-packages/engine/__tests__/import-gates.test.ts
+  s_71287c13b32be3::t_2f3045d1131d31 7,55,68,74,80,88,94
+packages/modules/inbox/frontend/src/reviews/components/activity-entries/WorkflowReviewActivityWorkflowLink.vue
+  s_71287c13b32be3::t_01b4969c090211 1-36
+packages/modules/inbox/frontend/src/views/InboxView.test.ts
+  s_71287c13b32be3::t_01b4969c090211 1-525
+packages/@n8n/db/src/migrations/common/1792139680416-DeleteInstanceAgentsOnRevert.ts
+  s_71287c13b32be3::t_01b4969c090211 1-19
+packages/@n8n/backend-common/src/modules/module-registry.ts
+  s_71287c13b32be3::t_01b4969c090211 84
+packages/frontend/@n8n/design-system/src/components/N8nIcon/icons.ts
+  s_71287c13b32be3::t_01b4969c090211 20,579
+packages/frontend/editor-ui/src/features/ai/shared/components/ChannelSetupCard.test.ts
+  s_71287c13b32be3::t_01b4969c090211 27-32,36-37,194-241,292,355-366,693-755
+  s_71287c13b32be3::t_d6963cfe9a2355 756
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialSharing.ee.test.ts
+  s_71287c13b32be3::t_01b4969c090211 1061-1062,1072,1074-1103,1105-1126,1129-1151
+packages/frontend/editor-ui/tsconfig.json
+  s_71287c13b32be3::t_01b4969c090211 28-29
+packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
+  s_71287c13b32be3::t_01b4969c090211 188-194
+  s_71287c13b32be3::t_2f3045d1131d31 89,196
+packages/frontend/editor-ui/src/features/agents/components/AgentAvatar.vue
+  s_71287c13b32be3::t_01b4969c090211 69
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelApprovalSetting.vue
+  s_71287c13b32be3::t_01b4969c090211 98
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-detail.controller.integration.test.ts
+  s_71287c13b32be3::t_01b4969c090211 37,488-489
+packages/frontend/editor-ui/src/features/ai/shared/components/ChannelSetupCard.vue
+  s_71287c13b32be3::t_01b4969c090211 142-144,206-211,213,224-225,228,234-244,311-316,373-374,378-379,412
+packages/frontend/@n8n/stores/src/settings.store.ts
+  s_71287c13b32be3::t_01b4969c090211 319-333
+packages/@n8n/api-types/src/dto/index.ts
+  s_71287c13b32be3::t_01b4969c090211 654-655
+packages/frontend/editor-ui/src/app/modules.manifest.ts
+  s_71287c13b32be3::t_01b4969c090211 7,39
+packages/frontend/editor-ui/src/features/agents/channels/teams/AgentChannelTeamsAvailability.test.ts
+  s_71287c13b32be3::t_01b4969c090211 77-79
+packages/modules/inbox/frontend/src/reviews/constants.ts
+  s_71287c13b32be3::t_01b4969c090211 1-41
+packages/modules/inbox/frontend/src/__tests__/setup.ts
+  s_71287c13b32be3::t_01b4969c090211 1-4
+packages/frontend/@n8n/stores/src/settings.store.test.ts
+  s_71287c13b32be3::t_01b4969c090211 135-184
+packages/nodes-base/nodes/Databricks/transport/lakebase.ts
+  s_71287c13b32be3::t_01b4969c090211 7,40-42,106
+packages/frontend/editor-ui/src/features/settings/security/SecuritySettings.test.ts
+  s_71287c13b32be3::t_01b4969c090211 942-960
+packages/modules/inbox/frontend/src/reviews/workflowReviewStatus.utils.ts
+  s_71287c13b32be3::t_01b4969c090211 1-44
+packages/frontend/@n8n/frontend-module-sdk/src/types/component.ts
+  s_71287c13b32be3::t_01b4969c090211 1-2,14,16,26-36
+packages/frontend/editor-ui/src/features/agents/channels/teams/AgentChannelTeamsManagedApp.test.ts
+  s_71287c13b32be3::t_01b4969c090211 372
+packages/cli/src/modules/n8n-packages/engine/import-gates.ts
+  s_71287c13b32be3::t_01b4969c090211 6-9,69-78
+  s_71287c13b32be3::t_2f3045d1131d31 10-13,17,85
+  s_71287c13b32be3::t_f3f85ec832744b 79-80
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-inbox.controller.integration.test.ts
+  s_71287c13b32be3::t_01b4969c090211 42,148,152,154,160,162,168,170,181,183,191-192,194-195,198,201-205,209,213,230,242,250,262,272,275-276,292,299,329,332,355,365,385,393,411,463,486-528,554,736-737,739-741
+packages/cli/src/public-api/v1/public-api-error-response.ts
+  s_71287c13b32be3::t_01b4969c090211 1-4,6-7,9-18,26-61
+packages/modules/inbox/frontend/src/components/InboxEmptyState.vue
+  s_71287c13b32be3::t_01b4969c090211 1-86
+packages/quality/testing/playwright/pages/WorkflowReviewsPage.ts
+  s_71287c13b32be3::t_01b4969c090211 5,8-9,13
+packages/cli/src/modules/n8n-packages/__tests__/import-package.integration.test.ts
+  s_71287c13b32be3::t_01b4969c090211 27,2396-2418,2531-2532,2801-2863,2865-2869
+  s_71287c13b32be3::t_0843b9bb6c5bfe 2864
+packages/frontend/@n8n/composables/src/useWorkflowVersionLabel.ts
+  s_71287c13b32be3::t_01b4969c090211 1-23
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowUpdateReviewDialog.test.ts
+  s_71287c13b32be3::t_01b4969c090211 53,132-135
+packages/frontend/editor-ui/src/features/collaboration/projects/projects.store.ts
+  s_71287c13b32be3::t_01b4969c090211 360-361
+packages/modules/inbox/frontend/src/reviews/components/activity-entries/WorkflowReviewActivityEventEntry.vue
+  s_71287c13b32be3::t_01b4969c090211 1-361
+packages/cli/src/modules/agents/tools/workflow-tool-factory.ts
+  s_71287c13b32be3::t_01b4969c090211 36,186,468,470,531-542,544-561,563-565,567,571-627,1162-1166,1184-1214
+packages/cli/src/services/__tests__/frontend.service.test.ts
+  s_71287c13b32be3::t_01b4969c090211 18,210,244,253,287-324
+packages/nodes-base/nodes/Databricks/actions/lakebase/openApiDocument.ts
+  s_71287c13b32be3::t_01b4969c090211 10
+packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowHeaderDraftPublishActions.test.ts
+  s_71287c13b32be3::t_01b4969c090211 50-51,715,728,822,848,1633
+packages/cli/src/modules/inbox/inbox-source.registry.ts
+  s_71287c13b32be3::t_01b4969c090211 1-56
+packages/modules/inbox/frontend/src/reviews/components/WorkflowReviewChangesSection.vue
+  s_71287c13b32be3::t_01b4969c090211 1-219
+packages/cli/test/integration/shared/types.ts
+  s_71287c13b32be3::t_01b4969c090211 70
+packages/frontend/editor-ui/src/features/agents/channels/teams/AgentChannelTeamsManagedSetup.vue
+  s_71287c13b32be3::t_01b4969c090211 164-165,167-186,563-569,660,672,674-682,691-700,721-740,791-810,873,892-894,896,898-903,915,1145-1150
+  s_71287c13b32be3::t_f7ef146bfb2f80 1151-1152
+packages/cli/test/migration/1792051765225-add-instance-scope-to-agents.test.ts
+  s_71287c13b32be3::t_01b4969c090211 1-202
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentEvalTryRow.test.ts
+  s_71287c13b32be3::t_01b4969c090211 438-467
+packages/@n8n/api-types/src/dto/packages/import-package-request.openapi.ts
+  s_71287c13b32be3::t_01b4969c090211 33-34
+packages/cli/src/modules/inbox/__tests__/inbox.service.test.ts
+  s_71287c13b32be3::t_01b4969c090211 1-354
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-version-update.controller.integration.test.ts
+  s_71287c13b32be3::t_01b4969c090211 35,156
+packages/frontend/editor-ui/src/features/workflow-reviews/workflowReviews.utils.ts
+  s_71287c13b32be3::t_01b4969c090211 1
+packages/modules/inbox/frontend/src/inbox.routes.ts
+  s_71287c13b32be3::t_01b4969c090211 1-30
+packages/modules/inbox/frontend/src/inbox.store.test.ts
+  s_71287c13b32be3::t_01b4969c090211 1-349
+packages/modules/inbox/frontend/src/reviews/components/WorkflowReviewDetailMetadata.test.ts
+  s_71287c13b32be3::t_01b4969c090211 1-206
+packages/modules/inbox/frontend/src/reviews/components/WorkflowReviewCommentComposer.vue
+  s_71287c13b32be3::t_01b4969c090211 1-83
+packages/nodes-base/nodes/Databricks/test/lakebasePickers.test.ts
+  s_71287c13b32be3::t_01b4969c090211 13-14,506,509,516-518
+packages/frontend/@n8n/composables/src/useIntersectionObserver.test.ts
+  s_71287c13b32be3::t_01b4969c090211 1-254
+packages/frontend/editor-ui/src/features/agents/components/EvalInitialSample.vue
+  s_71287c13b32be3::t_01b4969c090211 21-22,35,73,76,87-89
+  s_71287c13b32be3::t_0519c4892626e5 90-91
+packages/modules/inbox/frontend/src/reviews/components/_activity-card.scss
+  s_71287c13b32be3::t_01b4969c090211 1-36
+packages/modules/inbox/frontend/src/reviews/reviewActivity.store.ts
+  s_71287c13b32be3::t_01b4969c090211 1-186
+packages/@n8n/api-types/src/dto/workflow-reviews/list-workflow-review-inbox.dto.ts
+  s_71287c13b32be3::t_01b4969c090211 2,4
+packages/modules/inbox/frontend/src/reviews/reviewDetail.store.ts
+  s_71287c13b32be3::t_01b4969c090211 1-74
+packages/nodes-base/nodes/Databricks/test/lakebase.test.ts
+  s_71287c13b32be3::t_01b4969c090211 269-285
+packages/cli/src/modules/workflow-reviews.ee/workflow-reviews.module.ts
+  s_71287c13b32be3::t_01b4969c090211 12-20
+packages/frontend/editor-ui/src/features/agents/channels/teams/AgentChannelTeamsSetup.test.ts
+  s_71287c13b32be3::t_01b4969c090211 423-439,741,758-766,768-769,771-789
+packages/@n8n/db/src/migrations/common/1792051765225-AddInstanceScopeToAgents.ts
+  s_71287c13b32be3::t_01b4969c090211 1-74
+packages/@n8n/db/src/repositories/workflow-review-inbox.repository.ts
+  s_71287c13b32be3::t_01b4969c090211 15-17,21,41,181,191,194,196-197
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewSubmittedDialog.vue
+  s_71287c13b32be3::t_01b4969c090211 45
+packages/frontend/editor-ui/src/features/agents/__tests__/utils/ActionDropdownTestStub.ts
+  s_71287c13b32be3::t_01b4969c090211 5
+packages/frontend/editor-ui/src/features/agents/channels/teams/AgentChannelTeamsAvailability.vue
+  s_71287c13b32be3::t_01b4969c090211 120,133
+packages/frontend/editor-ui/src/features/workflows/workflowDiff/WorkflowDiffSlot.test.ts
+  s_71287c13b32be3::t_01b4969c090211 1-108
+packages/modules/inbox/frontend/package.json
+  s_71287c13b32be3::t_01b4969c090211 1-65
+packages/cli/src/public-api/v1/__tests__/public-api-error-response.test.ts
+  s_71287c13b32be3::t_01b4969c090211 1-2,6,12-16,20,101-263
+  s_71287c13b32be3::t_1876ae6f30a367 264
+packages/frontend/editor-ui/package.json
+  s_71287c13b32be3::t_01b4969c090211 57
+packages/cli/src/modules/inbox/__tests__/inbox-source.registry.test.ts
+  s_71287c13b32be3::t_01b4969c090211 1-17
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-inbox.list.service.test.ts
+  s_71287c13b32be3::t_01b4969c090211 68,70,72,74,77-78,80,83,86,91,93,95-97,100-103,110,112-117,119,121-125
+packages/@n8n/db/src/migrations/sqlite/1792051765225-AddInstanceScopeToAgents.ts
+  s_71287c13b32be3::t_01b4969c090211 1-11
+packages/frontend/editor-ui/src/features/agents/channels/teams/AgentChannelTeamsOptionLabel.vue
+  s_71287c13b32be3::t_01b4969c090211 4,9-12
+packages/frontend/editor-ui/src/features/agents/channels/types.ts
+  s_71287c13b32be3::t_01b4969c090211 125-126
+packages/modules/inbox/frontend/src/components/InboxList.test.ts
+  s_71287c13b32be3::t_01b4969c090211 1-229
+packages/modules/inbox/frontend/src/reviews/workflowReviews.api.ts
+  s_71287c13b32be3::t_01b4969c090211 1-61
+packages/modules/inbox/frontend/src/reviews/components/activity-entries/WorkflowReviewActivityFallback.vue
+  s_71287c13b32be3::t_01b4969c090211 1-49
+packages/nodes-base/nodes/Databricks/test/lakebaseErrors.test.ts
+  s_71287c13b32be3::t_01b4969c090211 1-109
+packages/@n8n/api-types/src/frontend-settings.ts
+  s_71287c13b32be3::t_01b4969c090211 9,243
+packages/cli/src/services/frontend.service.ts
+  s_71287c13b32be3::t_01b4969c090211 29,145,671-673
+packages/cli/test/migration/1792139680416-delete-instance-agents-on-revert.test.ts
+  s_71287c13b32be3::t_01b4969c090211 1-138
+packages/modules/inbox/frontend/src/reviews/components/WorkflowReviewCommentComposer.test.ts
+  s_71287c13b32be3::t_01b4969c090211 1-175
+packages/frontend/editor-ui/src/app/componentSlots.manifest.ts
+  s_71287c13b32be3::t_01b4969c090211 14-19
+  s_71287c13b32be3::t_6e7e9a7d25f31b 13
+packages/modules/inbox/frontend/src/reviews/reviewDetail.store.test.ts
+  s_71287c13b32be3::t_01b4969c090211 1-135
+packages/modules/inbox/frontend/src/reviews/workflowReviews.utils.ts
+  s_71287c13b32be3::t_01b4969c090211 1-18
+packages/modules/inbox/frontend/src/components/InboxList.vue
+  s_71287c13b32be3::t_01b4969c090211 1-195
+packages/modules/inbox/frontend/src/components/InboxListSection.vue
+  s_71287c13b32be3::t_01b4969c090211 1-168
+packages/modules/inbox/frontend/src/reviews/components/activity-entries/WorkflowReviewActivityComment.vue
+  s_71287c13b32be3::t_01b4969c090211 1-116
+packages/modules/inbox/frontend/src/reviews/components/WorkflowReviewDetailTabs.decisionNote.test.ts
+  s_71287c13b32be3::t_01b4969c090211 1-90
+packages/frontend/editor-ui/src/app/composables/useIntersectionObserver.ts
+  s_71287c13b32be3::t_01b4969c090211 1-2
+OWNERS
+  s_71287c13b32be3::t_01b4969c090211 126
+packages/modules/inbox/frontend/src/reviews/components/WorkflowReviewDecisionPopover.vue
+  s_71287c13b32be3::t_01b4969c090211 1-203
+packages/cli/src/modules/inbox/inbox.service.ts
+  s_71287c13b32be3::t_01b4969c090211 1-241
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialSharing.ee.vue
+  s_71287c13b32be3::t_01b4969c090211 159,164-168,170,223-228,387-397
+packages/frontend/editor-ui/src/features/workflow-reviews/constants.ts
+  s_71287c13b32be3::t_01b4969c090211 1-4
+packages/modules/inbox/frontend/tsconfig.json
+  s_71287c13b32be3::t_01b4969c090211 1-21
+packages/modules/inbox/frontend/src/composables/useReviewInboxSectionCollapse.test.ts
+  s_71287c13b32be3::t_01b4969c090211 1-66
+packages/@n8n/backend-common/src/modules/__tests__/module-registry.test.ts
+  s_71287c13b32be3::t_01b4969c090211 60,67,108,150
+packages/modules/inbox/frontend/src/__tests__/design-system-icons.test.ts
+  s_71287c13b32be3::t_01b4969c090211 1-24
+packages/modules/inbox/frontend/src/index.ts
+  s_71287c13b32be3::t_01b4969c090211 1-5
+packages/modules/inbox/frontend/eslint.config.mjs
+  s_71287c13b32be3::t_01b4969c090211 1-4
+packages/frontend/@n8n/frontend-vite-config/index.ts
+  s_71287c13b32be3::t_01b4969c090211 47
+packages/cli/src/modules/inbox/__tests__/inbox.controller.test.ts
+  s_71287c13b32be3::t_01b4969c090211 1-37
+packages/frontend/editor-ui/src/features/agents/channels/registry.ts
+  s_71287c13b32be3::t_01b4969c090211 2,142,154-161,163-177
+packages/frontend/editor-ui/src/features/agents/channels/teams/AgentChannelTeamsManagedSetup.test.ts
+  s_71287c13b32be3::t_01b4969c090211 145,148-156,304-316,1098,1190-1191
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiConversation.vue
+  s_71287c13b32be3::t_01b4969c090211 1094-1095,1102
+packages/modules/inbox/frontend/src/reviews/components/activity-entries/WorkflowReviewActivityComment.test.ts
+  s_71287c13b32be3::t_01b4969c090211 1-103
+packages/modules/inbox/frontend/src/reviews/WorkflowReviewDetail.test.ts
+  s_71287c13b32be3::t_01b4969c090211 1-647
+packages/cli/src/modules/agents/tools/__tests__/workflow-tool-factory.test.ts
+  s_71287c13b32be3::t_01b4969c090211 6,19,102-191,1052-1079
+  s_71287c13b32be3::t_164adc4c24bf75 1080
+packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowHeaderDraftPublishActions.vue
+  s_71287c13b32be3::t_01b4969c090211 323,376
+packages/@n8n/api-types/src/dto/inbox/list-inbox.dto.ts
+  s_71287c13b32be3::t_01b4969c090211 1-12
+packages/@n8n/cli/docs/commands/package.md
+  s_71287c13b32be3::t_01b4969c090211 99
+packages/modules/inbox/frontend/src/inbox.module.ts
+  s_71287c13b32be3::t_01b4969c090211 1-50
+packages/modules/inbox/frontend/src/inbox.constants.ts
+  s_71287c13b32be3::t_01b4969c090211 1-16
+packages/modules/inbox/frontend/src/reviews/components/WorkflowReviewChangesSection.test.ts
+  s_71287c13b32be3::t_01b4969c090211 1-327
+packages/modules/inbox/frontend/src/reviews/components/WorkflowReviewStatusDot.vue
+  s_71287c13b32be3::t_01b4969c090211 1-67
+packages/frontend/editor-ui/src/features/agents/components/AgentEvalChecksPanel.vue
+  s_71287c13b32be3::t_01b4969c090211 4,13,121-127,163-172,464-481,588-589,591-596,628-631
+  s_71287c13b32be3::t_e1d81624a09825 632
+packages/modules/inbox/frontend/src/reviews/components/WorkflowReviewActivityFeed.vue
+  s_71287c13b32be3::t_01b4969c090211 1-312
+packages/frontend/editor-ui/src/features/agents/components/AgentEvalTryRow.vue
+  s_71287c13b32be3::t_01b4969c090211 19,274-276,309-323,336,381-404,406,417-436,477,479-480,483,485-487,513,528-534
+packages/frontend/editor-ui/src/features/workflows/workflowDiff/WorkflowDiffSlot.vue
+  s_71287c13b32be3::t_01b4969c090211 1-50
+packages/modules/inbox/frontend/src/inbox.store.ts
+  s_71287c13b32be3::t_01b4969c090211 1-305
+packages/modules/inbox/frontend/src/reviews/WorkflowReviewDetail.vue
+  s_71287c13b32be3::t_01b4969c090211 1-257
+packages/modules/inbox/frontend/src/views/InboxView.vue
+  s_71287c13b32be3::t_01b4969c090211 1-251
+packages/@n8n/api-types/src/index.ts
+  s_71287c13b32be3::t_01b4969c090211 983
+packages/frontend/editor-ui/src/features/agents/channels/teams/AgentChannelTeamsSetup.vue
+  s_71287c13b32be3::t_01b4969c090211 5-12,38-39,46,225-226,368-370,483-495,537-545,660-663,817,822-851,907,911,934,977,1062-1064
+  s_71287c13b32be3::t_9f99f4913e0140 4,1065-1066
+packages/modules/inbox/frontend/src/reviews/components/WorkflowReviewDetailTabs.test.ts
+  s_71287c13b32be3::t_01b4969c090211 1-434
+packages/modules/inbox/frontend/src/reviews/components/activityEntryRegistry.ts
+  s_71287c13b32be3::t_01b4969c090211 1-27
+docs/generated/postgres-schema/README.md
+  s_71287c13b32be3::t_edde15e4af3053 39,243,761
+docs/generated/postgres-schema/public.agent_background_job.md
+  s_71287c13b32be3::t_c6fa88baf9661a 98
+docs/generated/postgres-schema/public.agent_channel_status.md
+  s_71287c13b32be3::t_0e110cff09c261 73
+docs/generated/postgres-schema/public.agent_chat_attachments.md
+  s_71287c13b32be3::t_e07d39f11d64cf 78
+docs/generated/postgres-schema/public.agent_chat_subscriptions.md
+  s_71287c13b32be3::t_27334de821e7f9 59
+docs/generated/postgres-schema/public.agent_checkpoints.md
+  s_71287c13b32be3::t_7b05b92772eac8 61
+docs/generated/postgres-schema/public.agent_credential_dependency.md
+  s_71287c13b32be3::t_ee9553f3d8aaec 52
+docs/generated/postgres-schema/public.agent_eval_dataset.md
+  s_71287c13b32be3::t_8e369259e9a3fc 72
+docs/generated/postgres-schema/public.agent_execution_threads.md
+  s_71287c13b32be3::t_16145ab9563c2c 105
+docs/generated/postgres-schema/public.agent_files.md
+  s_71287c13b32be3::t_cc082ca0ff67de 73
+docs/generated/postgres-schema/public.agent_history.md
+  s_71287c13b32be3::t_8c0be7920a8378 70
+docs/generated/postgres-schema/public.agent_skill_dependency.md
+  s_71287c13b32be3::t_ca3b39fc06d162 56
+docs/generated/postgres-schema/public.agent_task_definition.md
+  s_71287c13b32be3::t_6cf4f12a05cad7 64
+docs/generated/postgres-schema/public.agent_task_run_lock.md
+  s_71287c13b32be3::t_e9e5a2c6b1cb26 58
+docs/generated/postgres-schema/public.agent_workflow_dependency.md
+  s_71287c13b32be3::t_22b6bbacf197f6 52
+docs/generated/postgres-schema/public.agents.md
+  s_71287c13b32be3::t_0a31607530e4f0 13,16,27-28,38,79,91
+docs/generated/postgres-schema/public.agents_memory_entries.md
+  s_71287c13b32be3::t_9be6ffc6dec29d 85
+docs/generated/postgres-schema/public.agents_memory_entry_candidates.md
+  s_71287c13b32be3::t_a716a776fd7764 94
+docs/generated/postgres-schema/public.agents_memory_entry_locks.md
+  s_71287c13b32be3::t_5c83176962d04a 61
+docs/generated/postgres-schema/public.agents_memory_entry_sources.md
+  s_71287c13b32be3::t_25e3ea62bc6a11 83
+docs/generated/postgres-schema/public.agents_observation_cursors.md
+  s_71287c13b32be3::t_8af53e07ea7a9d 61
+docs/generated/postgres-schema/public.agents_observation_locks.md
+  s_71287c13b32be3::t_000e262e4f9b09 65
+docs/generated/postgres-schema/public.agents_observations.md
+  s_71287c13b32be3::t_139ed0a8e88dd5 84
+docs/generated/postgres-schema/public.project.md
+  s_71287c13b32be3::t_32d3c1e858bf8b 45,151
+docs/generated/postgres-schema/public.skill.md
+  s_71287c13b32be3::t_8a4516fd8afc1c 68
+docs/generated/sqlite-schema/README.md
+  s_71287c13b32be3::t_447f8c5f34bae2 39,225,747
+docs/generated/sqlite-schema/agent_background_job.md
+  s_71287c13b32be3::t_013f22c93c9e83 100
+docs/generated/sqlite-schema/agent_channel_status.md
+  s_71287c13b32be3::t_c7b7bebfc44cbf 80
+docs/generated/sqlite-schema/agent_chat_attachments.md
+  s_71287c13b32be3::t_811d32a436b52a 80
+docs/generated/sqlite-schema/agent_chat_subscriptions.md
+  s_71287c13b32be3::t_8868eacc434489 68
+docs/generated/sqlite-schema/agent_checkpoints.md
+  s_71287c13b32be3::t_f475635929391d 69
+docs/generated/sqlite-schema/agent_credential_dependency.md
+  s_71287c13b32be3::t_f55156c4aa5932 62
+docs/generated/sqlite-schema/agent_eval_dataset.md
+  s_71287c13b32be3::t_e772f0b3e0c564 77
+docs/generated/sqlite-schema/agent_execution_threads.md
+  s_71287c13b32be3::t_265790ba85ee77 105
+docs/generated/sqlite-schema/agent_files.md
+  s_71287c13b32be3::t_5e13992fac42b2 76
+docs/generated/sqlite-schema/agent_history.md
+  s_71287c13b32be3::t_091934e5e50b62 77
+docs/generated/sqlite-schema/agent_skill_dependency.md
+  s_71287c13b32be3::t_3fa8f888762871 66
+docs/generated/sqlite-schema/agent_task_definition.md
+  s_71287c13b32be3::t_1be5009e43a9a3 69
+docs/generated/sqlite-schema/agent_task_run_lock.md
+  s_71287c13b32be3::t_58d5666f5ab288 65
+docs/generated/sqlite-schema/agent_workflow_dependency.md
+  s_71287c13b32be3::t_3d1271aca36d2e 62
+docs/generated/sqlite-schema/agents.md
+  s_71287c13b32be3::t_45e2868b9618cb 9,24,27,38-39,81,93
+docs/generated/sqlite-schema/agents_memory_entries.md
+  s_71287c13b32be3::t_f4f527124fbcfa 88
+docs/generated/sqlite-schema/agents_memory_entry_candidates.md
+  s_71287c13b32be3::t_a9f141dd911b45 93
+docs/generated/sqlite-schema/agents_memory_entry_locks.md
+  s_71287c13b32be3::t_a84cab51602742 68
+docs/generated/sqlite-schema/agents_memory_entry_sources.md
+  s_71287c13b32be3::t_81e5a01b0baf42 87
+docs/generated/sqlite-schema/agents_observation_cursors.md
+  s_71287c13b32be3::t_5adc83d8891dcf 68
+docs/generated/sqlite-schema/agents_observation_locks.md
+  s_71287c13b32be3::t_a0c358ff77a7ab 72
+docs/generated/sqlite-schema/agents_observations.md
+  s_71287c13b32be3::t_21b3c11944bcff 87
+docs/generated/sqlite-schema/project.md
+  s_71287c13b32be3::t_ccc9095cf3bc02 51,157
+docs/generated/sqlite-schema/skill.md
+  s_71287c13b32be3::t_78f37f89bf5b65 76
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/importPackage.generated.yml
+  s_71287c13b32be3::t_ecf222f3edc6fd 46
+pnpm-lock.yaml
+  s_71287c13b32be3::t_5cc0f843c84aad 6639-6641,7042-7159
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "16e3511320fe3303652487be8e9e047308f48fd5",
+  "prompts": {},
+  "sessions": {
+    "s_71287c13b32be3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bdfb0c47-19a6-4c6b-ac16-9299ca5773fb",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,52 @@
+packages/cli/src/modules/agents/background/background-job-tools.ts
+  s_fbba0b32ee6f59::t_702b02a6702ea8 16,103
+packages/cli/src/modules/agents/agent-chat.controller.ts
+  s_fbba0b32ee6f59::t_702b02a6702ea8 6-7,41,78,909-911,933-935,953-989
+packages/cli/test/integration/agents/agent-chat-cancellation.api.test.ts
+  s_fbba0b32ee6f59::t_702b02a6702ea8 1-111
+packages/cli/src/modules/agents/background/__tests__/agent-background-job.service.test.ts
+  s_fbba0b32ee6f59::t_702b02a6702ea8 9,84,104,106,119,318,329-334,392-411,913-936,1364-1410
+packages/cli/src/modules/agents/tools/__tests__/workflow-tool-factory.test.ts
+  s_fbba0b32ee6f59::t_702b02a6702ea8 3,998,1007,1023-1037
+packages/cli/src/modules/agents/background/agent-background-job.service.ts
+  s_fbba0b32ee6f59::t_702b02a6702ea8 12,156,222-238,273-279,339,346,402-405,418,701,715-718,731-733,739,741,743-747,868
+packages/quality/testing/playwright/tests/e2e/agents/background-workflow-stop.spec.ts
+  s_fbba0b32ee6f59::t_702b02a6702ea8 206-210,227
+packages/cli/src/modules/agents/background/__tests__/agent-wake.service.test.ts
+  s_fbba0b32ee6f59::t_702b02a6702ea8 10,14,17,19,88-91,106-107,109,122,126,143-272
+packages/cli/src/modules/agents/background/__tests__/background-job-tools.test.ts
+  s_fbba0b32ee6f59::t_702b02a6702ea8 116,123-128,134
+packages/cli/test/integration/database/repositories/agent-background-job.repository.test.ts
+  s_fbba0b32ee6f59::t_702b02a6702ea8 11,81,262,291-296,490,501,822,834,847
+packages/cli/src/modules/agents/__tests__/agent-task-cancellation.service.test.ts
+  s_fbba0b32ee6f59::t_702b02a6702ea8 1-291
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_fbba0b32ee6f59::t_4b92a181e9183e 29,197-202,204,242,261,275,508,1694-1770
+  s_fbba0b32ee6f59::t_702b02a6702ea8 492
+packages/cli/src/modules/agents/__tests__/agent-chat.controller.test.ts
+  s_fbba0b32ee6f59::t_702b02a6702ea8 11,96,98,115,205-206,433,1698-1726
+packages/cli/src/modules/agents/agent-task-cancellation.service.ts
+  s_fbba0b32ee6f59::t_702b02a6702ea8 1-202
+packages/cli/src/modules/agents/background/agent-wake.service.ts
+  s_fbba0b32ee6f59::t_702b02a6702ea8 10-12,16,18,36,61,74,80,93,98-102,165,180-190,251-331,446
+packages/cli/src/modules/agents/tools/workflow-tool-factory.ts
+  s_fbba0b32ee6f59::t_702b02a6702ea8 42,805
+packages/cli/src/modules/agents/background/sub-agent-background-runner.ts
+  s_fbba0b32ee6f59::t_702b02a6702ea8 43,97
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "66e9eb83785f7a7de9435e742ca7328dfdff132f",
+  "prompts": {},
+  "sessions": {
+    "s_fbba0b32ee6f59": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10c3a-c169-7050-86b8-0b78c91b308c",
+        "model": "gpt-6-astra"
+      },
+      "human_author": null
+    }
+  }
+}
