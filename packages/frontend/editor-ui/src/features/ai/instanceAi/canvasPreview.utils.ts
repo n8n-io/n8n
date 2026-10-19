@@ -367,19 +367,45 @@ export function isAgentEditingWorkflow(
 	return false;
 }
 
+/** The agent a successful `agent_builder_select_agent` call selected, if any. */
+function getSelectedAgentId(tc: InstanceAiToolCallState): string | undefined {
+	if (tc.toolName !== AGENT_BUILDER_TOOL_NAMES.SELECT_AGENT || tc.isLoading) return undefined;
+	if (!isRecord(tc.result) || tc.result.ok !== true) return undefined;
+	return typeof tc.result.agentId === 'string' ? tc.result.agentId : undefined;
+}
+
+/** Ids of the agents selected by `agent_builder_select_agent` in a run that is still active. */
+export function getActiveSelectedAgentIds(node: InstanceAiAgentNode): Set<string> {
+	const ids = new Set<string>();
+	const visit = (current: InstanceAiAgentNode) => {
+		if (current.status === 'active') {
+			for (const tc of current.toolCalls) {
+				const agentId = getSelectedAgentId(tc);
+				if (agentId) ids.add(agentId);
+			}
+		}
+		for (const child of current.children) visit(child);
+	};
+	visit(node);
+	return ids;
+}
+
 /**
  * Whether the AI is actively working on agent `agentId` somewhere in this
  * agent tree — used to lock the agent artifact editor while a build is in
  * flight so user edits can't race builder config writes (the post-build
- * refetch would clobber them). Either signal is enough:
- *   1. The active agent tree has already created/mutated this agent — covers
- *      short gaps between tool calls while the run is still ongoing.
- *   2. An active agent-builder sub-agent targeting the agent — covers the
- *      whole build window from spawn to completion.
+ * refetch would clobber them). Any signal is enough:
+ *   1. The active run selected this agent with `agent_builder_select_agent` —
+ *      covers the whole orchestrator build, including the reads and questions
+ *      before the first config write.
+ *   2. The active agent tree has already created/mutated this agent.
+ *   3. An active agent-builder sub-agent targeting the agent — threads from
+ *      before the builder ran in the orchestrator.
  */
 export function isAgentEditingAgent(node: InstanceAiAgentNode, agentId: string): boolean {
-	if (node.status === 'active' && getLatestAgentArtifactResult(node)?.agentId === agentId) {
-		return true;
+	if (node.status === 'active') {
+		if (node.toolCalls.some((tc) => getSelectedAgentId(tc) === agentId)) return true;
+		if (getLatestAgentArtifactResult(node)?.agentId === agentId) return true;
 	}
 
 	if (
