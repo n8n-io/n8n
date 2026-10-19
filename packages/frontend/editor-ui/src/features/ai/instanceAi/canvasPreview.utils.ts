@@ -1,5 +1,6 @@
 import {
 	AGENT_BUILDER_TOOL_NAMES,
+	REMOVED_BUILDER_TOOL_NAMES,
 	SHARED_BUILDER_TOOL_NAMES,
 	WORKFLOW_BUILDER_TOOL_NAMES,
 } from '@n8n/api-types';
@@ -76,7 +77,7 @@ export function getLatestBuildResult(node: InstanceAiAgentNode): BuildResult | u
 		const tc = node.toolCalls[i];
 		if (
 			(tc.toolName === WORKFLOW_BUILDER_TOOL_NAMES.BUILD_WORKFLOW ||
-				tc.toolName === 'submit-workflow') &&
+				tc.toolName === REMOVED_BUILDER_TOOL_NAMES.SUBMIT_WORKFLOW) &&
 			!tc.isLoading &&
 			tc.result &&
 			typeof tc.result === 'object'
@@ -277,7 +278,7 @@ export function getLatestWorkflowUpdateResult(
 
 const WORKFLOW_LOCKING_TOOLS = new Set<string>([
 	WORKFLOW_BUILDER_TOOL_NAMES.BUILD_WORKFLOW,
-	'build-workflow-with-agent',
+	REMOVED_BUILDER_TOOL_NAMES.BUILD_WORKFLOW_WITH_AGENT,
 	WORKFLOW_BUILDER_TOOL_NAMES.APPLY_WORKFLOW_CREDENTIALS,
 	'setup-workflow',
 	WORKFLOW_BUILDER_TOOL_NAMES.VERIFY_BUILT_WORKFLOW,

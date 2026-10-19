@@ -1,4 +1,8 @@
-import { AGENT_BUILDER_TOOL_NAMES, WORKFLOW_BUILDER_TOOL_NAMES } from '@n8n/api-types';
+import {
+	AGENT_BUILDER_TOOL_NAMES,
+	REMOVED_BUILDER_TOOL_NAMES,
+	WORKFLOW_BUILDER_TOOL_NAMES,
+} from '@n8n/api-types';
 import type {
 	InstanceAiAgentNode,
 	InstanceAiTimelineEntry,
@@ -323,7 +327,7 @@ export interface ArtifactInfo {
 function workflowArtifactFromToolCall(tc: InstanceAiToolCallState): ArtifactInfo | undefined {
 	if (
 		tc.toolName !== WORKFLOW_BUILDER_TOOL_NAMES.BUILD_WORKFLOW &&
-		tc.toolName !== 'submit-workflow'
+		tc.toolName !== REMOVED_BUILDER_TOOL_NAMES.SUBMIT_WORKFLOW
 	)
 		return undefined;
 	if (!tc.result || typeof tc.result !== 'object') return undefined;

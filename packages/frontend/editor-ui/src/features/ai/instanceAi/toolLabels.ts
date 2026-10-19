@@ -3,6 +3,7 @@ import type { BaseTextKey } from '@n8n/i18n';
 import type { IconName } from '@n8n/design-system';
 import {
 	AGENT_BUILDER_TOOL_NAMES,
+	REMOVED_BUILDER_TOOL_NAMES,
 	SHARED_BUILDER_TOOL_NAMES,
 	WORKFLOW_BUILDER_TOOL_NAMES,
 	resolveBuilderToolName,
@@ -157,7 +158,7 @@ export function getToolIcon(rawToolName: string): IconName {
 	if (unprefixedName.includes('data-table')) return 'table';
 	if (
 		unprefixedName.includes('workflow') ||
-		toolName === 'submit-workflow' ||
+		toolName === REMOVED_BUILDER_TOOL_NAMES.SUBMIT_WORKFLOW ||
 		toolName === 'materialize-node-type'
 	) {
 		return 'workflow';

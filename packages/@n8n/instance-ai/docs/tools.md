@@ -1590,7 +1590,7 @@ thrown tool error — when the service is unavailable or a lookup fails.
 
 The orchestrator receives the safe native domain tools and orchestration tools
 from `src/tools/index.ts`. Its workflow tool omits raw workflow JSON reads and
-full-definition replacements. It receives the full six-action `workflow_builder_nodes` tool.
+full-definition replacements. It receives the full seven-action `workflow_builder_nodes` tool.
 External and local MCP tools are added after their names are checked against the
 native tools active for the current request.
 

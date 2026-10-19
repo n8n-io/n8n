@@ -7,6 +7,7 @@
  * 3. Compare — what changed between runs? (cross-report)
  */
 
+import { REMOVED_BUILDER_TOOL_NAMES, resolveBuilderToolName } from '@n8n/api-types';
 import fs from 'fs';
 import path from 'path';
 
@@ -392,12 +393,15 @@ function plannerReview(result: WorkflowTestCaseResult): StageReview {
 }
 
 function summarizeToolCalls(result: WorkflowTestCaseResult): string[] {
-	const toolCalls = result.buildTrace?.toolCalls ?? [];
-	const count = (toolName: string): number =>
-		toolCalls.filter((call) => call.toolName === toolName).length;
-	const submitCalls = toolCalls.filter((call) => call.toolName === 'submit-workflow');
-	const verifyCalls = toolCalls.filter(
-		(call) => call.toolName === ORCHESTRATION_TOOL_IDS.VERIFY_BUILT_WORKFLOW,
+	const toolNames = (result.buildTrace?.toolCalls ?? []).map((call) =>
+		resolveBuilderToolName(call.toolName),
+	);
+	const count = (toolName: string): number => toolNames.filter((name) => name === toolName).length;
+	const submitCalls = toolNames.filter(
+		(name) => name === REMOVED_BUILDER_TOOL_NAMES.SUBMIT_WORKFLOW,
+	);
+	const verifyCalls = toolNames.filter(
+		(name) => name === ORCHESTRATION_TOOL_IDS.VERIFY_BUILT_WORKFLOW,
 	);
 
 	const summaries = [
@@ -1319,23 +1323,19 @@ function renderWorkflowSummary(result: WorkflowTestCaseResult): string {
 
 	let traceHtml = '';
 	if (result.buildTrace) {
-		const nodeResearchCalls = result.buildTrace.toolCalls.filter(
-			(call) => call.toolName === DOMAIN_TOOL_IDS.NODES,
+		const callsNamed = (...toolNames: string[]) =>
+			result.buildTrace?.toolCalls.filter((call) =>
+				toolNames.includes(resolveBuilderToolName(call.toolName)),
+			) ?? [];
+		const nodeResearchCalls = callsNamed(DOMAIN_TOOL_IDS.NODES);
+		const workflowWriteCalls = callsNamed(
+			DOMAIN_TOOL_IDS.BUILD_WORKFLOW,
+			REMOVED_BUILDER_TOOL_NAMES.SUBMIT_WORKFLOW,
+			REMOVED_BUILDER_TOOL_NAMES.BUILD_WORKFLOW_WITH_AGENT,
 		);
-		const workflowWriteCalls = result.buildTrace.toolCalls.filter((call) =>
-			[DOMAIN_TOOL_IDS.BUILD_WORKFLOW, 'submit-workflow', 'build-workflow-with-agent'].includes(
-				call.toolName,
-			),
-		);
-		const validationCalls = result.buildTrace.toolCalls.filter(
-			(call) => call.toolName === 'submit-workflow',
-		);
-		const credentialCalls = result.buildTrace.toolCalls.filter(
-			(call) => call.toolName === DOMAIN_TOOL_IDS.CREDENTIALS,
-		);
-		const verificationCalls = result.buildTrace.toolCalls.filter(
-			(call) => call.toolName === ORCHESTRATION_TOOL_IDS.VERIFY_BUILT_WORKFLOW,
-		);
+		const validationCalls = callsNamed(REMOVED_BUILDER_TOOL_NAMES.SUBMIT_WORKFLOW);
+		const credentialCalls = callsNamed(DOMAIN_TOOL_IDS.CREDENTIALS);
+		const verificationCalls = callsNamed(ORCHESTRATION_TOOL_IDS.VERIFY_BUILT_WORKFLOW);
 		const completionActivity = [...result.buildTrace.agentActivities]
 			.reverse()
 			.find((activity) => activity.status !== 'running');

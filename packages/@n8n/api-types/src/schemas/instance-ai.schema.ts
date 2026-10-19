@@ -10,6 +10,7 @@ import { TimeZoneSchema } from './timezone.schema';
 import { AgentJsonConfigSchema } from '../agents/agent-json-config.schema';
 import {
 	AGENT_BUILDER_TOOL_NAMES,
+	REMOVED_BUILDER_TOOL_NAMES,
 	WORKFLOW_BUILDER_TOOL_NAMES,
 	resolveBuilderToolName,
 } from '../builder-tool-names';
@@ -2743,12 +2744,12 @@ export function getRenderHint(rawToolName: string): InstanceAiToolCallState['ren
 	if (toolName === WORKFLOW_BUILDER_TOOL_NAMES.TASK_CONTROL) return 'tasks';
 	if (
 		toolName === WORKFLOW_BUILDER_TOOL_NAMES.BUILD_WORKFLOW ||
-		toolName === 'build-workflow-with-agent'
+		toolName === REMOVED_BUILDER_TOOL_NAMES.BUILD_WORKFLOW_WITH_AGENT
 	)
 		return 'builder';
-	if (toolName === 'research-with-agent') return 'researcher';
+	if (toolName === REMOVED_BUILDER_TOOL_NAMES.RESEARCH_WITH_AGENT) return 'researcher';
 	if (toolName === WORKFLOW_BUILDER_TOOL_NAMES.CREATE_TASKS) return 'planner';
-	if (toolName === 'eval-setup-with-agent') return 'eval-setup';
+	if (toolName === REMOVED_BUILDER_TOOL_NAMES.EVAL_SETUP_WITH_AGENT) return 'eval-setup';
 	if (
 		[
 			AGENT_BUILDER_TOOL_NAMES.CREATE_SKILLS,

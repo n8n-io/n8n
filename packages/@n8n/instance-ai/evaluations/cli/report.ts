@@ -10,6 +10,7 @@
 // https://www.npmjs.com/package/@n8n_io/n8n-demo-component
 // ---------------------------------------------------------------------------
 
+import { REMOVED_BUILDER_TOOL_NAMES } from '@n8n/api-types';
 import { jsonParse } from 'n8n-workflow';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
@@ -190,7 +191,7 @@ function isErroredToolCall(trace: ToolCallTrace): boolean {
 
 function countSubmitCalls(traces: ToolCallTrace[] | undefined): number {
 	if (!traces) return 0;
-	return traces.filter((t) => t.toolName === 'submit-workflow').length;
+	return traces.filter((t) => t.toolName === REMOVED_BUILDER_TOOL_NAMES.SUBMIT_WORKFLOW).length;
 }
 
 function countToolCallErrors(traces: ToolCallTrace[] | undefined): number {

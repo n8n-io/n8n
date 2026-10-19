@@ -59,6 +59,18 @@ export type WorkflowBuilderToolName =
 export type AgentBuilderToolName =
 	(typeof AGENT_BUILDER_TOOL_NAMES)[keyof typeof AGENT_BUILDER_TOOL_NAMES];
 
+/**
+ * Names of removed tools that have no current replacement. Older traces and
+ * stored conversations can still contain these names. Never remove an entry.
+ */
+export const REMOVED_BUILDER_TOOL_NAMES = {
+	SUBMIT_WORKFLOW: 'submit-workflow',
+	PATCH_WORKFLOW: 'patch-workflow',
+	BUILD_WORKFLOW_WITH_AGENT: 'build-workflow-with-agent',
+	RESEARCH_WITH_AGENT: 'research-with-agent',
+	EVAL_SETUP_WITH_AGENT: 'eval-setup-with-agent',
+} as const;
+
 /** Former tool names mapped to their current names. Never remove an entry. */
 export const LEGACY_BUILDER_TOOL_NAMES: Readonly<Record<string, string>> = {
 	workflows: WORKFLOW_BUILDER_TOOL_NAMES.WORKFLOWS,

@@ -13,6 +13,7 @@ import {
 	instanceAiEventSchema,
 	isSafeObjectKey,
 	resolveBuilderToolName,
+	REMOVED_BUILDER_TOOL_NAMES,
 	SHARED_BUILDER_TOOL_NAMES,
 	WORKFLOW_BUILDER_TOOL_NAMES,
 	type InstanceAiConfirmation,
@@ -1000,9 +1001,9 @@ export function createThreadRuntime(
 		confirmationWorkflowId?: string,
 	): string | null {
 		const toolName = resolveBuilderToolName(rawToolName);
-		if (toolName === 'submit-workflow') {
+		if (toolName === REMOVED_BUILDER_TOOL_NAMES.SUBMIT_WORKFLOW) {
 			const isUpdate = typeof args.workflowId === 'string' && args.workflowId.length > 0;
-			return `submit-workflow:${isUpdate ? 'update' : 'create'}`;
+			return `${REMOVED_BUILDER_TOOL_NAMES.SUBMIT_WORKFLOW}:${isUpdate ? 'update' : 'create'}`;
 		}
 		const action = typeof args.action === 'string' ? args.action : '';
 		const workflowId = resolveAlwaysAllowWorkflowId(args, confirmationWorkflowId);

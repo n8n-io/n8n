@@ -19,6 +19,7 @@
 
 import { ChatAnthropic } from '@langchain/anthropic';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import { REMOVED_BUILDER_TOOL_NAMES } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import { Client as LangSmithClient } from 'langsmith';
 import { promises as fs, readFileSync } from 'node:fs';
@@ -483,7 +484,9 @@ async function writeOutputs(
 	].join(',');
 	const csvRows = records.map((r) => {
 		const find = (m: string) => r.feedback.find((f) => f.metric === m)?.score ?? '';
-		const submits = r.toolCalls.filter((tc) => tc.toolName === 'submit-workflow').length;
+		const submits = r.toolCalls.filter(
+			(tc) => tc.toolName === REMOVED_BUILDER_TOOL_NAMES.SUBMIT_WORKFLOW,
+		).length;
 		const errors = r.toolCalls.filter(isErroredToolCall).length;
 		return [
 			r.exampleId,
@@ -541,7 +544,7 @@ async function writeOutputs(
 		for (const tc of record.toolCalls) {
 			toolCallsTotal++;
 			if (isErroredToolCall(tc)) toolCallErrors++;
-			if (tc.toolName === 'submit-workflow') submitCallsTotal++;
+			if (tc.toolName === REMOVED_BUILDER_TOOL_NAMES.SUBMIT_WORKFLOW) submitCallsTotal++;
 		}
 
 		const primary = record.feedback.find((f) => f.metric === 'pairwise_primary')?.score;

@@ -217,6 +217,40 @@ describe('transcript rendering', () => {
 	});
 });
 
+describe('builder trace summary', () => {
+	function traceSummary(html: string): Record<string, unknown[]> {
+		const match = html.match(
+			/<summary>Builder trace summary<\/summary><pre class="json-block"><code>([\s\S]*?)<\/code>/,
+		);
+		const json = match![1]
+			.replace(/&quot;/g, '"')
+			.replace(/&#39;/g, "'")
+			.replace(/&lt;/g, '<')
+			.replace(/&gt;/g, '>')
+			.replace(/&amp;/g, '&');
+		return JSON.parse(json) as Record<string, unknown[]>;
+	}
+
+	it('counts calls recorded under former tool names', () => {
+		const result: WorkflowTestCaseResult = {
+			...resultWith(undefined),
+			buildTrace: {
+				finalText: '',
+				agentActivities: [],
+				toolCalls: [
+					{ toolCallId: 't1', toolName: 'nodes', args: { action: 'search' }, durationMs: 1 },
+					{ toolCallId: 't2', toolName: 'build-workflow', args: {}, durationMs: 1 },
+				],
+			},
+		};
+
+		const summary = traceSummary(generateWorkflowReport([result]));
+
+		expect(summary.nodeResearchCalls).toEqual([{ action: 'search' }]);
+		expect(summary.workflowWriteCalls).toHaveLength(1);
+	});
+});
+
 // The '1. Prompt' review stage was gated on `failureCategory === 'legitimate_failure'`
 // — a lang-tracer bucket this harness never emits — so it could NEVER fail. TRUST-375
 // rewired it (and the improvement suggestion) to `attribution`, making it reachable

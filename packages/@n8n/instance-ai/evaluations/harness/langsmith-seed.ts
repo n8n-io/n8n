@@ -4,7 +4,7 @@
 // reconstruct each seed workflow from its source at the build boundary. Transient:
 // traces retain ~14 days.
 
-import { resolveBuilderToolName } from '@n8n/api-types';
+import { REMOVED_BUILDER_TOOL_NAMES, resolveBuilderToolName } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import { Client } from 'langsmith';
 import type { Run } from 'langsmith/schemas';
@@ -19,11 +19,10 @@ const DEFAULT_SOURCE_PROJECT = 'instance-ai';
 
 // Reference the live tool-id so a rename there follows here (or breaks the import).
 // Trace tool names are resolved with `resolveTraceToolName` so older traces still match.
-// patch/submit-workflow were removed in #32545 but stay for older traces.
 const WORKFLOW_BUILD_TOOLS = new Set<string>([
 	DOMAIN_TOOL_IDS.BUILD_WORKFLOW,
-	'patch-workflow',
-	'submit-workflow',
+	REMOVED_BUILDER_TOOL_NAMES.PATCH_WORKFLOW,
+	REMOVED_BUILDER_TOOL_NAMES.SUBMIT_WORKFLOW,
 ]);
 
 /** Resolves a former tool name in a trace run name and keeps an `[action]` suffix. */

@@ -1,6 +1,6 @@
 import { computed, shallowReactive, toValue, watch, type MaybeRefOrGetter } from 'vue';
 
-import { WORKFLOW_BUILDER_TOOL_NAMES } from '@n8n/api-types';
+import { REMOVED_BUILDER_TOOL_NAMES, WORKFLOW_BUILDER_TOOL_NAMES } from '@n8n/api-types';
 import type { InstanceAiAgentNode, InstanceAiSetupItem } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import { useWorkflowSetupItems } from '@/features/setupPanel/composables/useWorkflowSetupItems';
@@ -95,7 +95,7 @@ export function useSetupPanelState(options: {
 				if (
 					!earlySetup &&
 					call.toolName !== WORKFLOW_BUILDER_TOOL_NAMES.BUILD_WORKFLOW &&
-					call.toolName !== 'submit-workflow'
+					call.toolName !== REMOVED_BUILDER_TOOL_NAMES.SUBMIT_WORKFLOW
 				)
 					continue;
 				if (latestCompletedAt && call.completedAt && call.completedAt < latestCompletedAt) continue;

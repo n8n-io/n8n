@@ -13,7 +13,7 @@
 // `BuilderRecord` shape, joined by prompt text.
 // ---------------------------------------------------------------------------
 
-import { resolveBuilderToolName } from '@n8n/api-types';
+import { REMOVED_BUILDER_TOOL_NAMES, resolveBuilderToolName } from '@n8n/api-types';
 import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import { jsonParse } from 'n8n-workflow';
 import { promises as fs } from 'node:fs';
@@ -194,7 +194,8 @@ async function loadInstanceAiRun(dir: string): Promise<BuilderRun> {
 			feedback: r.feedback,
 			tokenInput: r.build.tokenUsage?.input,
 			tokenOutput: r.build.tokenUsage?.output,
-			submitCalls: tcs.filter((tc) => tc.toolName === 'submit-workflow').length,
+			submitCalls: tcs.filter((tc) => tc.toolName === REMOVED_BUILDER_TOOL_NAMES.SUBMIT_WORKFLOW)
+				.length,
 			toolCallErrors: tcs.filter(isErroredIAToolCall).length,
 			toolCallsTotal: tcs.length,
 			toolCalls: tcs,
@@ -701,7 +702,7 @@ function summarizeToolCallArgs(toolName: string, args: unknown): string {
 		}
 		case 'workspace_mkdir':
 			return trunc(str(a.path));
-		case 'submit-workflow':
+		case REMOVED_BUILDER_TOOL_NAMES.SUBMIT_WORKFLOW:
 			return trunc(`${str(a.name)} ${str(a.filePath)}`);
 		case ORCHESTRATION_TOOL_IDS.VERIFY_BUILT_WORKFLOW:
 			return trunc(str(a.workflowId) || str(a.workItemId));

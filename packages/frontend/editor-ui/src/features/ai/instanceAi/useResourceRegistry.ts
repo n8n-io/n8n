@@ -1,6 +1,7 @@
 import { reactive, watch } from 'vue';
 import {
 	AGENT_BUILDER_TOOL_NAMES,
+	REMOVED_BUILDER_TOOL_NAMES,
 	SHARED_BUILDER_TOOL_NAMES,
 	WORKFLOW_BUILDER_TOOL_NAMES,
 } from '@n8n/api-types';
@@ -159,9 +160,9 @@ function entryFromListItem(
 /** Tools whose results may contain resource info (workflows, credentials, data tables). */
 const ARTIFACT_TOOLS = new Set<string>([
 	WORKFLOW_BUILDER_TOOL_NAMES.BUILD_WORKFLOW,
-	'build-workflow-with-agent',
+	REMOVED_BUILDER_TOOL_NAMES.BUILD_WORKFLOW_WITH_AGENT,
 	AGENT_BUILDER_TOOL_NAMES.BUILD_AGENT,
-	'submit-workflow',
+	REMOVED_BUILDER_TOOL_NAMES.SUBMIT_WORKFLOW,
 	WORKFLOW_BUILDER_TOOL_NAMES.APPLY_WORKFLOW_CREDENTIALS,
 	WORKFLOW_BUILDER_TOOL_NAMES.WORKFLOWS,
 	WORKFLOW_BUILDER_TOOL_NAMES.CREDENTIALS,

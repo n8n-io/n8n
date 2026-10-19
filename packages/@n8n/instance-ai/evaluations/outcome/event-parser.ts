@@ -2,7 +2,7 @@
 // Event parsing: extract outcome and metrics from captured SSE events
 // ---------------------------------------------------------------------------
 
-import { resolveBuilderToolName } from '@n8n/api-types';
+import { REMOVED_BUILDER_TOOL_NAMES, resolveBuilderToolName } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 
 import {
@@ -31,8 +31,8 @@ import { getNestedRecord as getRecord, getString } from '../utils/safe-extract';
 /** Tools that save a workflow; their results carry its id. */
 export const WORKFLOW_TOOLS = new Set<string>([
 	DOMAIN_TOOL_IDS.BUILD_WORKFLOW,
-	'submit-workflow',
-	'patch-workflow',
+	REMOVED_BUILDER_TOOL_NAMES.SUBMIT_WORKFLOW,
+	REMOVED_BUILDER_TOOL_NAMES.PATCH_WORKFLOW,
 ]);
 
 // Retired standalone tool names, kept so captures from older backends still parse.
