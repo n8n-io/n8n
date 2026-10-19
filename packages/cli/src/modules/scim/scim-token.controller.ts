@@ -5,6 +5,7 @@ import { Body, Delete, Get, GlobalScope, Patch, Post, RestController } from '@n8
 import type { Response } from 'express';
 
 import { ScimSettingsService } from './scim-settings.service';
+import { ScimSsoService } from './scim-sso.service';
 import { ScimTokenService } from './scim-token.service';
 import { ScimTokenConflictError } from './scim.errors';
 
@@ -26,6 +27,7 @@ export class ScimTokenController {
 		private readonly scimTokenService: ScimTokenService,
 		private readonly scimSettingsService: ScimSettingsService,
 		private readonly moduleRegistry: ModuleRegistry,
+		private readonly scimSsoService: ScimSsoService,
 	) {}
 
 	/**
@@ -58,11 +60,19 @@ export class ScimTokenController {
 	/**
 	 * PATCH /rest/scim/config
 	 * Enable or disable SCIM provisioning. The stored token is kept when
-	 * provisioning is turned off.
+	 * provisioning is turned off. Enabling needs SAML or OIDC single sign-on,
+	 * because SCIM users can sign in only through the identity provider.
+	 * Disabling is always allowed.
 	 */
 	@Patch('/config')
 	@GlobalScope('scim:manage')
 	async updateConfig(_req: AuthenticatedRequest, res: Response, @Body body: ScimConfigPatchDto) {
+		if (body.enabled && !this.scimSsoService.isSsoEnabled()) {
+			return res.status(400).json({
+				message: 'Turn on SAML or OIDC single sign-on before you enable SCIM provisioning.',
+			});
+		}
+
 		try {
 			await this.scimSettingsService.setEnabled(body.enabled);
 			// `/rest/module-settings` serves a cached snapshot, so refresh it or

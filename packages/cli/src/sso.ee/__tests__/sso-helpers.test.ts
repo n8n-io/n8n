@@ -1,10 +1,20 @@
+import { LicenseState, Logger } from '@n8n/backend-common';
+import { mockLogger } from '@n8n/backend-test-utils';
+import { EventService } from '@n8n/backend-services';
+import { GlobalConfig } from '@n8n/config';
 import { SettingsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
 import config from '@/config';
+import { ScimSettingsService } from '@/modules/scim/scim-settings.service';
 
-import { isSsoCurrentAuthenticationMethod, reloadAuthenticationMethod } from '../sso-helpers';
+import {
+	emitSsoLoginDisabled,
+	isSamlOrOidcLoginEnabled,
+	isSsoCurrentAuthenticationMethod,
+	reloadAuthenticationMethod,
+} from '../sso-helpers';
 
 vi.mock('@/config');
 
@@ -90,6 +100,95 @@ describe('sso-helpers', () => {
 			await expect(reloadAuthenticationMethod()).rejects.toThrow('Database connection failed');
 
 			expect(mockConfig.set).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('isSamlOrOidcLoginEnabled', () => {
+		const setState = ({
+			method,
+			samlLoginEnabled = false,
+			oidcLoginEnabled = false,
+			licensed = true,
+		}: {
+			method: string;
+			samlLoginEnabled?: boolean;
+			oidcLoginEnabled?: boolean;
+			licensed?: boolean;
+		}) => {
+			vi.spyOn(config, 'getEnv').mockReturnValue(method);
+			Container.set(
+				GlobalConfig,
+				mock<GlobalConfig>({
+					sso: {
+						saml: { loginEnabled: samlLoginEnabled },
+						oidc: { loginEnabled: oidcLoginEnabled },
+					},
+				}),
+			);
+			const licenseState = mock<LicenseState>();
+			licenseState.isSamlLicensed.mockReturnValue(licensed);
+			licenseState.isOidcLicensed.mockReturnValue(licensed);
+			Container.set(LicenseState, licenseState);
+		};
+
+		it.each([
+			['SAML', { method: 'saml', samlLoginEnabled: true }],
+			['OIDC', { method: 'oidc', oidcLoginEnabled: true }],
+		])('is true when %s is the licensed and enabled method', (_, state) => {
+			setState(state);
+
+			expect(isSamlOrOidcLoginEnabled()).toBe(true);
+		});
+
+		it.each([
+			['the method is email', { method: 'email', samlLoginEnabled: true, oidcLoginEnabled: true }],
+			['the method is LDAP', { method: 'ldap', samlLoginEnabled: true }],
+			['SAML login is off', { method: 'saml' }],
+			['OIDC login is off', { method: 'oidc' }],
+			['SAML is not licensed', { method: 'saml', samlLoginEnabled: true, licensed: false }],
+			['OIDC is not licensed', { method: 'oidc', oidcLoginEnabled: true, licensed: false }],
+		])('is false when %s', (_, state) => {
+			setState(state);
+
+			expect(isSamlOrOidcLoginEnabled()).toBe(false);
+		});
+	});
+
+	describe('emitSsoLoginDisabled', () => {
+		const eventService = mock<EventService>();
+		const scimSettingsService = mock<ScimSettingsService>();
+		const logger = mockLogger();
+
+		beforeEach(() => {
+			Container.set(EventService, eventService);
+			Container.set(ScimSettingsService, scimSettingsService);
+			Container.set(Logger, logger);
+		});
+
+		it.each([
+			['saml', true],
+			['oidc', false],
+		] as const)('emits the protocol %s and the SCIM state %s', async (protocol, scimWasEnabled) => {
+			scimSettingsService.isEnabled.mockResolvedValue(scimWasEnabled);
+
+			await emitSsoLoginDisabled(protocol);
+
+			expect(eventService.emit).toHaveBeenCalledExactlyOnceWith('sso-login-disabled', {
+				protocol,
+				scimWasEnabled,
+			});
+		});
+
+		it('still emits the event when the SCIM state cannot be read', async () => {
+			scimSettingsService.isEnabled.mockRejectedValue(new Error('db down'));
+
+			await emitSsoLoginDisabled('saml');
+
+			expect(eventService.emit).toHaveBeenCalledExactlyOnceWith('sso-login-disabled', {
+				protocol: 'saml',
+				scimWasEnabled: false,
+			});
+			expect(logger.warn).toHaveBeenCalled();
 		});
 	});
 
