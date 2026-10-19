@@ -45,8 +45,9 @@ export default class PackageImportSelection extends BaseCommand {
 			aliases: ['conflict-policy'],
 		})(),
 		idPolicy: Flags.option({
-			description: 'Whether imported workflows keep their source ID (source) or receive a new one',
-			options: ['new', 'source'] as const,
+			description:
+				'IDs for newly created workflows. Only source is supported. New workflows use the package IDs. Matched workflows keep their destination IDs.',
+			options: ['source'] as const,
 			aliases: ['id-policy'],
 		})(),
 		overwriteDeletionPolicy: Flags.option({

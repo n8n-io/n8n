@@ -352,7 +352,7 @@ it('applies selected Agents with complete bodies, cycles, workflow bindings and 
 	expect(outcomes.map(({ status }) => status)).toEqual(['created', 'created']);
 	const [saved, child] = outcomes.map(({ agent }) => agent);
 	const workflow = imported.scopes[0].imported.workflowOutcomes[0].workflow;
-	expect(saved.id).not.toBe(workflow.id);
+	expect(saved.id).toBe(workflow.id);
 	expect(saved).toMatchObject({
 		id: first.id,
 		skills: first.skills,

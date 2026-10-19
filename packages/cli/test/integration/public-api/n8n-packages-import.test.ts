@@ -223,7 +223,7 @@ describe('POST /n8n-packages/import', () => {
 		const response = await authOwnerAgent
 			.post('/n8n-packages/import')
 			.field('conflictPolicy', 'fail')
-			.field('idPolicy', 'new')
+			.field('idPolicy', 'source')
 			.attach('package', tarBuffer, 'import.n8np');
 
 		expect(response.statusCode).toBe(200);
@@ -285,7 +285,7 @@ describe('POST /n8n-packages/import', () => {
 			},
 		});
 
-		expect(response.body.workflows[0].localId).not.toBe('wf-http-source');
+		expect(response.body.workflows[0].localId).toBe('wf-http-source');
 	});
 
 	test('creates a missing variable with the package value when variableMissingMode is omitted', async () => {
@@ -322,7 +322,7 @@ describe('POST /n8n-packages/import', () => {
 			.field('credentialMissingMode', 'must-preexist')
 			.field('bindings', '{}')
 			.field('conflictPolicy', 'fail')
-			.field('idPolicy', 'new')
+			.field('idPolicy', 'source')
 			.field('publishingPolicy', 'preserve-published-state')
 			.field('projectConflictPolicy', 'merge')
 			.field('folderConflictPolicy', 'merge')
@@ -339,7 +339,7 @@ describe('POST /n8n-packages/import', () => {
 			.attach('package', tarBuffer, 'import.n8np');
 
 		expect(response.statusCode).toBe(200);
-		expect(response.body.workflows[0].localId).not.toBe('wf-http-source');
+		expect(response.body.workflows[0].localId).toBe('wf-http-source');
 	});
 
 	test('accepts overwrite-non-destructive as the data table schema conflict policy', async () => {

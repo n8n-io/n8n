@@ -69,7 +69,7 @@ describe('package import command', () => {
 			folderId: 'f-1',
 			conflictPolicy: 'fail',
 			publishingPolicy: 'publish-all',
-			idPolicy: 'new',
+			idPolicy: 'source',
 			missingNodeTypeMode: 'import-anyway',
 			projectConflictPolicy: 'overwrite',
 			folderConflictPolicy: 'merge',
@@ -99,7 +99,7 @@ describe('package import command', () => {
 			folderId: 'f-1',
 			conflictPolicy: 'fail',
 			publishingPolicy: 'publish-all',
-			idPolicy: 'new',
+			idPolicy: 'source',
 			missingNodeTypeMode: 'import-anyway',
 			projectConflictPolicy: 'overwrite',
 			folderConflictPolicy: 'merge',
@@ -194,14 +194,14 @@ describe('package import command', () => {
 				const importPackage = await runWithArgv([
 					'--file=/tmp/export.n8np',
 					'--conflict-policy=fail',
-					'--id-policy=new',
+					'--id-policy=source',
 					`--publishing-policy=${publishingPolicy}`,
 				]);
 				expect(importPackage).toHaveBeenCalledWith(
 					expect.anything(),
 					expect.objectContaining({
 						conflictPolicy: 'fail',
-						idPolicy: 'new',
+						idPolicy: 'source',
 						publishingPolicy,
 					}),
 				);

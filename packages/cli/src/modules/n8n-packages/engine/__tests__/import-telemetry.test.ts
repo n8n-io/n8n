@@ -174,7 +174,7 @@ const scope = (input: {
 const request = mock<ResolvedImportPackageRequest>({
 	user: mock(),
 	conflictPolicy: 'new-version',
-	idPolicy: 'new',
+	idPolicy: 'source',
 	credentialMatchingMode: 'id-only',
 	credentialMissingMode: 'create-stub',
 	credentialConflictPolicy: 'overwrite',
@@ -286,8 +286,8 @@ describe('emitPackageImportedEvent', () => {
 		expect(payload.workflowIds).toEqual(['wf1', 'wf3']);
 		expect(payload.agentIds).toEqual(['agent1', 'agent3']);
 		expect(payload.options).toMatchObject({
-			workflowIdPolicy: 'new',
-			agentIdPolicy: 'new',
+			workflowIdPolicy: 'source',
+			agentIdPolicy: 'source',
 			workflowPublishingPolicy: 'preserve-published-state',
 			agentPublishingPolicy: 'preserve-published-state',
 		});

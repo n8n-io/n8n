@@ -22,6 +22,7 @@ The ordinary import API also uses `idPolicy` and `publishingPolicy` for both Age
 These fields replace `workflowIdPolicy`, `agentIdPolicy`, `workflowPublishingPolicy`, and `agentPublishingPolicy`.
 The old fields are rejected.
 The selection import API replaces `workflowIdPolicy` with `idPolicy`.
+Only `source` is supported for `idPolicy`.
 Selection imports retain their fixed `match-source` publication policy.
 
 Use `--conflict-policy`, `--id-policy`, and `--publishing-policy` in the CLI.

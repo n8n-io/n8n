@@ -47,8 +47,8 @@ export default class PackageImport extends BaseCommand {
 		})(),
 		idPolicy: Flags.option({
 			description:
-				'IDs for newly created Agents and workflows: source (instance default) or new. Matched entities keep their destination IDs',
-			options: ['new', 'source'] as const,
+				'IDs for newly created Agents and workflows. Only source is supported. New entities use the package IDs. Matched entities keep their destination IDs.',
+			options: ['source'] as const,
 			aliases: ['id-policy'],
 		})(),
 		missingNodeTypeMode: Flags.option({

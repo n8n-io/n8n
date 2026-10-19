@@ -141,13 +141,13 @@ describe('ImportPackageSelectionRequestDto', () => {
 			const result = ImportPackageSelectionRequestDto.safeParse({
 				...base,
 				conflictPolicy: 'skip',
-				idPolicy: 'new',
+				idPolicy: 'source',
 				overwriteDeletionPolicy: 'hard-delete',
 			});
 			expect(result.success).toBe(true);
 			if (result.success) {
 				expect(result.data.conflictPolicy).toBe('skip');
-				expect(result.data.idPolicy).toBe('new');
+				expect(result.data.idPolicy).toBe('source');
 				expect(result.data.overwriteDeletionPolicy).toBe('hard-delete');
 			}
 		});

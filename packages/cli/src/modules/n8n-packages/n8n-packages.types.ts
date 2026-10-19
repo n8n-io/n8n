@@ -54,8 +54,6 @@ export const ImportConflictPolicy = {
 } as const;
 
 export const WorkflowIdPolicy = {
-	/** Mints a fresh id for each imported workflow; the source id is kept as `sourceWorkflowId`. */
-	New: 'new',
 	/** Reuses the package's own workflow id in the target instance. */
 	Source: 'source',
 } as const;
