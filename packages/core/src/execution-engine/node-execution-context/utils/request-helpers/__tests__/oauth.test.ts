@@ -342,7 +342,7 @@ describe('refreshOAuth2Token', () => {
 		);
 	});
 
-	// IAM-1087: Salesforce needs the stored instance URL after each token refresh.
+	// Salesforce needs the stored instance URL after each token refresh.
 	test.each([
 		{
 			response: 'omits instance_url',
