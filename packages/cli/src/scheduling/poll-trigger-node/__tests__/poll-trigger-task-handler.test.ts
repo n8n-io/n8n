@@ -780,6 +780,18 @@ describe('PollTriggerTaskHandler', () => {
 			);
 			expect(triggersAndPollers.runPollFunction).not.toHaveBeenCalled();
 		});
+
+		test('keeps the poll error message and identifiers when the trigger is missing', async () => {
+			triggerExecutionContextFactory.findPublishedWorkflowData.mockResolvedValue(
+				buildWorkflowData({ nodes: [] }),
+			);
+
+			await expect(handler.execute(buildTask(), report, runOf(leaseSignal))).rejects.toMatchObject({
+				message:
+					'Poll-trigger task points to a node that is missing or disabled in the published workflow',
+				extra: { taskId: 'task-1', jobId: 7, workflowId: 'wf-1', nodeId: 'node-1' },
+			});
+		});
 	});
 
 	describe('poll functions missing the durable-cursor members', () => {

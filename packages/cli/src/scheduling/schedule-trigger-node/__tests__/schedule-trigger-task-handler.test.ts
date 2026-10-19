@@ -328,6 +328,18 @@ describe('ScheduleTriggerTaskHandler', () => {
 			expect(workflowExecutionService.runWorkflow).not.toHaveBeenCalled();
 		});
 
+		test('keeps the schedule error message and identifiers when the trigger is missing', async () => {
+			triggerExecutionContextFactory.findPublishedWorkflowData.mockResolvedValue(
+				buildWorkflowData({ nodes: [] }),
+			);
+
+			await expect(handler.execute(buildTask(), report)).rejects.toMatchObject({
+				message:
+					'Schedule-trigger task points to a node that is missing or disabled in the published workflow',
+				extra: { taskId: 'task-1', jobId: 7, workflowId: 'wf-1', nodeId: 'node-1' },
+			});
+		});
+
 		test('propagates handoff failures so the executor retries with backoff', async () => {
 			const error = new Error('db unavailable');
 			workflowExecutionService.runWorkflow.mockRejectedValue(error);

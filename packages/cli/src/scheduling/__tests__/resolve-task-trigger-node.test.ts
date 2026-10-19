@@ -26,8 +26,21 @@ describe('resolveTaskTriggerNode', () => {
 		expect(node).toBe(triggerNode);
 	});
 
+	test.each([false, undefined])(
+		'returns the requested node by id when disabled is %s',
+		(disabled) => {
+			const node = { ...triggerNode, disabled };
+			const otherNode = { ...triggerNode, id: 'node-2', disabled: true };
+
+			expect(
+				resolveTaskTriggerNode(buildWorkflowData([otherNode, node]), 'node-1', task, errorMessage),
+			).toBe(node);
+		},
+	);
+
 	test.each<[string, INode[]]>([
 		['missing', []],
+		['missing among other nodes', [{ ...triggerNode, id: 'node-2' }]],
 		['disabled', [mock<INode>({ id: 'node-1', disabled: true })]],
 	])('throws the caller message with the task extras when the node is %s', (_case, nodes) => {
 		let caught: UnexpectedError | undefined;
