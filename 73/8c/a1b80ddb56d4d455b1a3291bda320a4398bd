@@ -1,0 +1,32 @@
+packages/@n8n/backend-network/src/http/client-options.ts
+  s_31a885e500033a::t_e4995eb25de61a 30-35
+packages/@n8n/backend-network/src/http/outbound-http.ts
+  s_31a885e500033a::t_389f0bd739fbc3 188-190
+  s_31a885e500033a::t_05314697664389 206
+packages/@n8n/backend-network/src/http/__tests__/outbound-http.requests.test.ts
+  s_31a885e500033a::t_f49fb972fd98d7 40,49,57,65,80,92,106,118,136,150,168,174,186
+packages/cli/src/modules/engine-v2/engine-control-plane-transport.ts
+  s_31a885e500033a::t_c02254d9126390 27
+packages/cli/src/modules/engine-v2/engine-data-plane-client.ts
+  s_31a885e500033a::t_40da184737e8ce 58
+packages/@n8n/backend-network/src/http/__tests__/outbound-http.keep-alive.test.ts
+  s_31a885e500033a::t_c547c1f01b9569 1-55
+packages/@n8n/backend-network/src/http/axios/request.ts
+  s_31a885e500033a::t_9651b4e6ff60ab 28-30,34,47,180,185,190,195,203
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "738ca1b80ddb56d4d455b1a3291bda320a4398bd",
+  "prompts": {},
+  "sessions": {
+    "s_31a885e500033a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0c86ec31-0e91-41df-b4c4-479d15de6065",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}

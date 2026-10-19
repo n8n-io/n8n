@@ -1,0 +1,19 @@
+packages/cli/src/public-api/v1/shared/spec/parameters/idempotencyKey.yml
+  s_209d3652df9edf::t_e35d7d843b637e 9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "694eeae122fcea30e875bea61b0ef9795631619b",
+  "prompts": {},
+  "sessions": {
+    "s_209d3652df9edf": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "2b430ae3-90b8-4e4f-a650-99bf71711d23",
+        "model": "grok-4.7"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

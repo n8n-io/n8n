@@ -1,0 +1,22 @@
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/evaluation.constants.test.ts
+  s_3fb02ceb0c8884::t_8c62fdfa014615 3,36-39
+  s_3fb02ceb0c8884::t_803561c8086b1a 40-41
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/evaluation.constants.ts
+  s_3fb02ceb0c8884::t_cb5d46e4540f02 47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b56815e5da6d041a3fe99a3ab364b464477bc800",
+  "prompts": {},
+  "sessions": {
+    "s_3fb02ceb0c8884": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b223eef3-0258-4eaf-b965-fa8fac274976",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

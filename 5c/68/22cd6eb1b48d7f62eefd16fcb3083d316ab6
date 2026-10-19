@@ -1,0 +1,52 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  ai_agent 8410-8413,8415
+  s_fbba0b32ee6f59::t_fa6fb46728fcae 8420-8421
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_fbba0b32ee6f59::t_b62bafb83a3b52 80,86,1775-1778
+  ai_agent 81-85,87,123-126,394,1126-1161,1549-1567,1569-1593,1641-1774,1779-1812,1858-1859,1871-1876,1880-1883,1956-1968,1994-2019,1597,1604-1607,1610,1612-1616,1618,1630-1632,1636,1638-1640
+  s_fbba0b32ee6f59::t_7a8839c56a8a3d 1568
+  s_fbba0b32ee6f59::t_e1da52a0be8353 2390-2410
+  s_fbba0b32ee6f59::t_fa6fb46728fcae 24,1594-1596,1598-1603,1608-1609,1611,1617,1619-1629,1633-1635,1637
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  ai_agent 295-312,322-328,330
+  s_fbba0b32ee6f59::t_fa6fb46728fcae 313-321
+packages/frontend/editor-ui/src/features/agents/__tests__/fixtures/agent-plan.ts
+  s_fbba0b32ee6f59::t_fa6fb46728fcae 1,48-49
+  s_fbba0b32ee6f59::t_9eaa0f42cdb99b 50-66
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPlan.vue
+  ai_agent 6,12-13,15-23,27-34,69-71,73,76-79,108,114,124,145,148,150-152,200,202-206,225,227-231,258-275,278-280,284-286,357-363,365,26,99,283
+  s_fbba0b32ee6f59::t_fa6fb46728fcae 3,14,24-25,50,72,80-98,103-106,115-116,125-126,149,158,187-189,193-194,201,212-214,218-219,226,238,281-282
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPlan.test.ts
+  ai_agent 110-126,252-283,509-591,31-32,40,42-43,49,52-55,57-58,72,74-75,80-82,84-85,87,90-91,95-96,98,141-143
+  s_fbba0b32ee6f59::t_fa6fb46728fcae 1,21-30,33-39,41,44-48,50-51,56,59-71,73,76-79,83,86,88-89,92-94,97,127-140
+packages/frontend/editor-ui/src/features/agents/utils/agent-plan.ts
+  s_fbba0b32ee6f59::t_804b43155cf6e4 102-103
+  s_fbba0b32ee6f59::t_fa6fb46728fcae 26-34
+packages/frontend/editor-ui/src/features/agents/composables/useAgentTaskCancellation.ts
+  ai_agent 1-24,34-51,53-72,74,76-110,30,32-33
+  s_fbba0b32ee6f59::t_fa6fb46728fcae 25-29,31,52,73
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  ai_agent 89,279,281-287,289-291,293-299,301-303,321-335,337-349,353,562-566,570-579,584,597,599-607,609,611-615,617-623,628-629,635-640,643-660,663-669,677,1742,1747,1753-1761,1769-1775,1777-1778,1780-1782,1836,1842-1845,1847-1850,1988,320
+  s_fbba0b32ee6f59::t_a35791b52f4b4f 278,580-583
+  s_fbba0b32ee6f59::t_6a45d34d050329 288,292,300,336,350-352,585-596,598,610,661-662,675,1768,1776,1783,1852
+  s_fbba0b32ee6f59::t_fa6fb46728fcae 304-319,567-569,608,1779,1785,1846,1854
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentTaskCancellation.test.ts
+  ai_agent 2-94,97-98,100-113,138
+  s_fbba0b32ee6f59::t_fa6fb46728fcae 1,115-137
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5c6822cd6eb1b48d7f62eefd16fcb3083d316ab6",
+  "prompts": {},
+  "sessions": {
+    "s_fbba0b32ee6f59": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10c3a-c169-7050-86b8-0b78c91b308c",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

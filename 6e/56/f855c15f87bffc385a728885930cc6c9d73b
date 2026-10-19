@@ -1,0 +1,24 @@
+packages/cli/src/modules/mcp/__tests__/search-executions.schema.test.ts
+  s_233b83c0de8338::t_0fa91fef2695f5 15,17-23,25-26,30-73,77,80,89-92
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6e56f855c15f87bffc385a728885930cc6c9d73b",
+  "prompts": {},
+  "humans": {
+    "h_4dd92f790825be": {
+      "author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_233b83c0de8338": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a13561-4571-7a83-ae89-cbac378a383d",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}
