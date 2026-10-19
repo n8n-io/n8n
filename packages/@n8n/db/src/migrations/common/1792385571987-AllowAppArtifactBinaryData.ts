@@ -9,7 +9,7 @@ const sourceTypesBefore = [
 	'agent_chat_attachment',
 ];
 
-export class AllowAppArtifactBinaryData1792096072269 implements ReversibleMigration {
+export class AllowAppArtifactBinaryData1792385571987 implements ReversibleMigration {
 	async up(ctx: MigrationContext) {
 		await this.replaceSourceTypeCheck(ctx, [...sourceTypesBefore, 'app_artifact']);
 	}
