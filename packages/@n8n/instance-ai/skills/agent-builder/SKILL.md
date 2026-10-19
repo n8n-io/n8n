@@ -492,7 +492,9 @@ Rules:
 Verify:
 
 - The persisted `model` is in `provider/model` form.
-- The persisted `credential` came from `agent_builder_resolve_llm`.
+- A new non-empty `credential` that you wrote came from
+  `agent_builder_resolve_llm`. Keep a model and credential that the Agent
+  already had.
 - A model change keeps an existing Brave or SearXNG `config.webSearch`,
   unless the user asked to change the web-search method.
 
@@ -591,7 +593,8 @@ Gotchas:
 Verify:
 
 - Chat and trigger integrations came from the `agent-context` channel list
-  without `queries`, and `agent_builder_configure_channel` set them up.
+  without `queries`. `agent_builder_configure_channel` or the initial-build
+  `agent_builder_finish_setup` channel card set them up.
 - Each non-chat callable service came from its own `agent-context`
   integration search, unless the user explicitly asked for an n8n node or a
   custom MCP server.
