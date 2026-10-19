@@ -103,7 +103,7 @@ export interface AgentTraceInputOptions {
 	tools?: InstanceAiToolRegistry;
 	deferredTools?: InstanceAiToolRegistry;
 	runtimeTools?: InstanceAiToolRegistry;
-	runtimeSkills?: RuntimeSkillRegistry;
+	skills?: RuntimeSkillRegistry;
 	modelId?: unknown;
 	memory?: unknown;
 	toolSearchEnabled?: boolean;
@@ -1252,7 +1252,8 @@ function summarizeMemoryBinding(memory: unknown): Record<string, unknown> {
 	};
 }
 
-function summarizeRuntimeSkillRegistry(
+/** The `runtime_skill_*` keys stay as they are, because trace queries read them. */
+function summarizeSkillRegistry(
 	registry: RuntimeSkillRegistry | undefined,
 ): Record<string, unknown> {
 	if (!registry || registry.skills.length === 0) {
@@ -1401,6 +1402,6 @@ export function buildAgentTraceInputs(options: AgentTraceInputOptions): Record<s
 		...summarizeToolSet('loaded', options.tools),
 		...summarizeToolSet('deferred', options.deferredTools),
 		...summarizeToolSet('runtime', options.runtimeTools),
-		...summarizeRuntimeSkillRegistry(options.runtimeSkills),
+		...summarizeSkillRegistry(options.skills),
 	});
 }

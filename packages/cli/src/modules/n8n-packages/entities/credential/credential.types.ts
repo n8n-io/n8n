@@ -118,6 +118,7 @@ export interface CredentialApplyResult {
 	matched: string[];
 	stubbed: string[];
 	seeded: string[];
+	incomplete: string[];
 }
 
 export interface CredentialBindingRequest {

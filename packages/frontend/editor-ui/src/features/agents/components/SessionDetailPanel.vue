@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed } from 'vue';
+import { computed, toRef } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { isRecord } from '@n8n/utils/is-record';
@@ -25,7 +25,6 @@ import AiThinkingBlock from '@/features/ai/shared/components/AiThinkingBlock.vue
 import AiReasoningBlock from '@/features/ai/shared/components/AiReasoningBlock.vue';
 import AgentChatMessageAttachments from './AgentChatMessageAttachments.vue';
 import RichInteractionCard from './RichInteractionCard.vue';
-import WorkflowExecutionLogViewer from './WorkflowExecutionLogViewer.vue';
 import ToolIoView from './ToolIoView.vue';
 import { AGENT_SESSION_DETAIL_VIEW } from '../constants';
 import type { TimelineItem } from '../session-timeline.types';
@@ -40,6 +39,7 @@ import {
 	timelineItemErrorMessage,
 	timelineItemStatus,
 } from '../session-timeline.utils';
+import { useWorkflowOutputAccess } from '../composables/useWorkflowOutputAccess';
 import { backgroundJobResultLabel } from '../utils/background-job-labels';
 import { delegateLabel } from '../utils/delegate-tool';
 import { formatToolNameForDisplay, resolveToolNameForDisplay } from '../utils/toolDisplayName';
@@ -266,6 +266,18 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 		message: typeof rec.message === 'string' ? rec.message : '',
 	};
 });
+
+const { access: workflowOutputAccess } = useWorkflowOutputAccess(toRef(props, 'item'));
+
+/** The workflow tool output, without the execution data when the viewer may not see it. */
+const workflowOutput = computed((): unknown => {
+	const output = props.item?.toolOutput;
+	if (workflowOutputAccess.value === 'visible' || output === undefined) return output;
+	const parsed = ensureParsed(output);
+	if (!isRecord(parsed)) return undefined;
+	const { data: _data, ...rest } = parsed;
+	return rest;
+});
 </script>
 
 <template>
@@ -378,14 +390,8 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 						>
 							{{ errorMessage }}
 						</N8nCallout>
-						<WorkflowExecutionLogViewer
-							v-if="item.workflowExecutionId && item.workflowId"
-							:key="`${item.workflowId}:${item.workflowExecutionId}`"
-							:workflow-id="item.workflowId"
-							:workflow-execution-id="item.workflowExecutionId"
-						/>
 						<div
-							v-else-if="item.workflowTriggerType === 'form' && workflowFormOutput"
+							v-if="item.workflowTriggerType === 'form' && workflowFormOutput"
 							data-test-id="wf-form-card"
 							:class="$style.formCard"
 						>
@@ -398,6 +404,43 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 								>{{ i18n.baseText('agentSessions.timeline.openForm') }}</a
 							>
 						</div>
+						<template v-else-if="item.workflowExecutionId && item.workflowId">
+							<div v-if="item.toolInput !== undefined" data-test-id="workflow-input">
+								<div :class="$style.label">
+									{{ i18n.baseText('agentSessions.timeline.input') }}
+								</div>
+								<N8nCodeBlock :code="stringifyJson(item.toolInput)" language="json" />
+							</div>
+							<div
+								v-if="workflowOutputAccess === 'loading'"
+								data-test-id="workflow-output-loading"
+								:class="$style.label"
+							>
+								{{ i18n.baseText('agentSessions.workflowLog.loading') }}
+							</div>
+							<template v-else>
+								<N8nCallout
+									v-if="workflowOutputAccess === 'redacted'"
+									theme="info"
+									data-test-id="workflow-output-redacted"
+								>
+									{{ i18n.baseText('agentSessions.workflowLog.outputRedacted') }}
+								</N8nCallout>
+								<N8nCallout
+									v-else-if="workflowOutputAccess === 'unavailable'"
+									theme="warning"
+									data-test-id="workflow-output-unavailable"
+								>
+									{{ i18n.baseText('agentSessions.workflowLog.outputUnavailable') }}
+								</N8nCallout>
+								<div v-if="workflowOutput !== undefined" data-test-id="workflow-output">
+									<div :class="$style.label">
+										{{ i18n.baseText('agentSessions.timeline.output') }}
+									</div>
+									<N8nCodeBlock :code="stringifyJson(workflowOutput)" language="json" />
+								</div>
+							</template>
+						</template>
 						<div v-else-if="item.toolSuccess === undefined" data-test-id="workflow-input">
 							<div :class="$style.label">
 								{{ i18n.baseText('agentSessions.timeline.input') }}

@@ -41,6 +41,11 @@ import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
 import {
+	emitAgentBuildMetrics,
+	withAgentStreamMetrics,
+	type AgentBuildOutcome,
+} from './agent-build-metrics';
+import {
 	getSessionAgentByRef,
 	normalizeAgentRef,
 	readPendingAgentTarget,
@@ -291,6 +296,8 @@ const builderCheckpointRefSchema = z.object({
 	activity: agentActivitySchema.optional().default('working'),
 	/** Host-owned artifacts reported before this suspension. */
 	requiredArtifacts: builderRequiredArtifactsSchema.optional(),
+	/** Epoch ms when the build suspended, to measure the user's response time. */
+	suspendedAt: z.number().optional(),
 	/** Target the suspended build belongs to; optional for checkpoints persisted before this field existed. */
 	target: z
 		.object({
@@ -509,6 +516,8 @@ async function runBuilderConsumeLoop(params: {
 	carriedConfigUpdated: boolean;
 	/** Host-owned artifacts accumulated by passes before this one. */
 	carriedRequiredArtifacts: BuilderRequiredArtifact[];
+	/** Time the user took to answer the suspension that this pass resumes. */
+	userWaitMs?: number;
 	/** Runs once the stream settles (any status) — used to persist a deferred agentId-path bind. */
 	onSettled?: () => Promise<void>;
 	/** Trace inputs recorded on the child run (distinct per leg: outbound message vs. resume marker). */
@@ -526,10 +535,23 @@ async function runBuilderConsumeLoop(params: {
 		activity,
 		carriedConfigUpdated,
 		carriedRequiredArtifacts,
+		userWaitMs,
 		onSettled,
 		traceInputs,
 		dedupeBase,
 	} = params;
+
+	// Detached: the metric never delays the tool result or a cancel.
+	const recordPass = (outcome: AgentBuildOutcome, configUpdated: boolean) =>
+		emitAgentBuildMetrics({
+			context,
+			delegate,
+			agentId: target.agentId,
+			activity,
+			outcome,
+			configUpdated,
+			userWaitMs,
+		});
 
 	// Every settled return goes through here, so the state a pass left behind is
 	// snapshotted on the error returns too — a pass that mutated the config, then
@@ -546,6 +568,7 @@ async function runBuilderConsumeLoop(params: {
 				...(target.name ? { name: target.name } : {}),
 			});
 		}
+		recordPass(output.ok ? 'completed' : 'failed', output.configUpdated === true);
 		return { ...output, agentChange };
 	};
 
@@ -565,7 +588,11 @@ async function runBuilderConsumeLoop(params: {
 			async () =>
 				await consumeStreamCascading({
 					agent: undefined,
-					stream: turn,
+					stream: withAgentStreamMetrics(context, turn, {
+						agentId: target.agentId,
+						activity,
+						alreadyShown: carriedConfigUpdated,
+					}),
 					runId: context.runId,
 					agentId: builderAgentId,
 					eventBus: context.eventBus,
@@ -591,6 +618,7 @@ async function runBuilderConsumeLoop(params: {
 				...targetIdentity(target),
 			});
 		}
+		recordPass('failed', carriedConfigUpdated);
 		throw error;
 	}
 
@@ -605,6 +633,7 @@ async function runBuilderConsumeLoop(params: {
 		publishAgentBuilderCancelled(context, builderAgentId);
 		await failTraceRun(context, traceRun, cancelled);
 		await context.claimSubAgentUsage?.(dedupeBase, result.usage?.usage ?? [], result.status);
+		recordPass('cancelled', carriedConfigUpdated || didUpdateConfig(result.workSummary));
 		throw cancelled;
 	}
 
@@ -692,6 +721,7 @@ async function runBuilderConsumeLoop(params: {
 		result.usage?.usage ?? [],
 		'suspended',
 	);
+	// No `agent_build` for a suspended pass: the resumed pass records the result.
 	return await ctx.suspend({
 		...parsedSuspendPayload.data,
 		requestId: nanoid(),
@@ -701,6 +731,7 @@ async function runBuilderConsumeLoop(params: {
 			configUpdated: configUpdatedSoFar,
 			activity,
 			...(requiredArtifacts.length > 0 ? { requiredArtifacts } : {}),
+			suspendedAt: Date.now(),
 			target: {
 				agentId: target.agentId,
 				projectId: target.projectId,
@@ -817,6 +848,9 @@ async function handleResume(
 		activity: ref.activity,
 		carriedConfigUpdated: ref.configUpdated,
 		carriedRequiredArtifacts: ref.requiredArtifacts ?? [],
+		...(ref.suspendedAt !== undefined
+			? { userWaitMs: Math.max(0, Date.now() - ref.suspendedAt) }
+			: {}),
 		traceInputs: { resumed: true },
 		dedupeBase: `${context.runId}:${ctx.toolCallId ?? builderAgentId}:${ref.toolCallId}`,
 	});

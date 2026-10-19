@@ -180,10 +180,10 @@ export class TeamsCatalogService {
 		if (!existing) {
 			throw ours
 				? new UserError(
-						'This agent already has an app in the organisation catalogue, and Microsoft has not listed it yet, so it cannot be updated. Nothing is wrong and nothing was lost — try again in a few minutes.',
+						'This agent already has an app in the organization catalog, and Microsoft has not listed it yet, so it cannot be updated. Nothing is wrong and nothing was lost — try again in a few minutes.',
 					)
 				: new UserError(
-						'An app with this name is already in the organisation catalogue, and Microsoft has not listed it yet, so it cannot be updated. If an earlier publish made it, try again in a few minutes. If another app holds the name, rename the agent and try again.',
+						'An app with this name is already in the organization catalog, and Microsoft has not listed it yet, so it cannot be updated. If an earlier publish made it, try again in a few minutes. If another app holds the name, rename the agent and try again.',
 					);
 		}
 		const status = await this.updateExistingApp(token, existing.teamsAppId, archive);
@@ -401,13 +401,13 @@ export class TeamsCatalogService {
 	 */
 	private publishError(statusCode: number, body: unknown): Error {
 		if (statusCode === 409 || graphErrorCode(body) === 'Conflict') {
-			return new UserError('An app with this name is already in the organisation catalogue.');
+			return new UserError('An app with this name is already in the organization catalog.');
 		}
 		// Waiting changes nothing about a role the account does not hold, and this
 		// is the answer when even the review route is closed to it.
 		if (this.isPermissionRefusal(statusCode, graphErrorCode(body))) {
 			return new UserError(
-				'This account may not put the app in the organisation catalogue. A Teams administrator has to publish it.',
+				'This account may not put the app in the organization catalog. A Teams administrator has to publish it.',
 			);
 		}
 		return new OperationalError(

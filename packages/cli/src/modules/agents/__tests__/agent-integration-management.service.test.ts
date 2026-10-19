@@ -10,7 +10,7 @@ import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { AgentIntegrationManagementService } from '../agent-integration-management.service';
 import type { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service';
 import type { AgentUpdateBroadcaster } from '../agent-update-broadcaster';
-import type { Agent } from '../entities/agent.entity';
+import type { ProjectAgent } from '../entities/agent.entity';
 import type {
 	AgentChatIntegration,
 	ChatIntegrationRegistry,
@@ -26,14 +26,14 @@ describe('AgentIntegrationManagementService', () => {
 	} satisfies AgentIntegrationConfig;
 	const replaced = { type: 'slack', credentialId: 'credential-0' } satisfies AgentIntegrationConfig;
 
-	function makeAgent(overrides: Partial<Agent> = {}): Agent {
+	function makeAgent(overrides: Partial<ProjectAgent> = {}): ProjectAgent {
 		return {
 			id: 'agent-1',
 			projectId: 'project-1',
 			activeVersionId: 'version-1',
 			integrations: [],
 			...overrides,
-		} as Agent;
+		} as ProjectAgent;
 	}
 
 	function makeService() {
@@ -81,7 +81,7 @@ describe('AgentIntegrationManagementService', () => {
 	 * Mirrors what the real delta does to the entity: it corrects `activeVersionId`
 	 * to the row it read, which is what callers derive their response from.
 	 */
-	function deltaResult(agent: Agent, published: boolean, extra: object = {}) {
+	function deltaResult(agent: ProjectAgent, published: boolean, extra: object = {}) {
 		agent.activeVersionId = published ? 'version-1' : null;
 		return { agent, changed: true, published, ...extra };
 	}

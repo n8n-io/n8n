@@ -22,6 +22,7 @@ const { mockGit, simpleGitMock, GitPluginError } = vi.hoisted(() => {
 		checkIsRepo: vi.fn(),
 		listRemote: vi.fn(),
 		clone: vi.fn(),
+		addRemote: vi.fn(),
 		show: vi.fn(),
 		branch: vi.fn(),
 	};
@@ -309,14 +310,10 @@ describe('PromotionsGitService (git operations)', () => {
 				'--initial-branch=main',
 				paths.nextRepositoryFolder,
 			]);
-			expect(mockGit.raw).toHaveBeenCalledWith([
-				'-C',
-				paths.nextRepositoryFolder,
-				'remote',
-				'add',
-				'origin',
-				remoteUrl,
-			]);
+			expect(simpleGitMock).toHaveBeenCalledWith(
+				expect.objectContaining({ baseDir: paths.nextRepositoryFolder }),
+			);
+			expect(mockGit.addRemote).toHaveBeenCalledWith('origin', remoteUrl);
 			await expect(stat(paths.repositoryFolder)).resolves.toBeDefined();
 		});
 
@@ -345,7 +342,7 @@ describe('PromotionsGitService (git operations)', () => {
 				author: { name: 'Ada Lovelace', email: 'ada@example.com' },
 				commitMessage: 'sync',
 				force: false,
-				stagePathspec: 'n8n-export',
+				stagePathspec: 'n8n',
 				onCheckoutRestored,
 				...over,
 			});
@@ -530,7 +527,7 @@ describe('PromotionsGitService (git operations)', () => {
 			paths,
 			branchName: 'main',
 			configId,
-			pathspecs: ['n8n-export/manifest.json', 'n8n-export/projects/'],
+			pathspecs: ['n8n/manifest.json', 'n8n/projects/'],
 		});
 
 		beforeEach(() => {
@@ -539,7 +536,7 @@ describe('PromotionsGitService (git operations)', () => {
 		});
 
 		it('lists the tree at the fetched tip and returns that commit', async () => {
-			mockGit.raw.mockResolvedValueOnce('100644 blob b1\tn8n-export/manifest.json\0');
+			mockGit.raw.mockResolvedValueOnce('100644 blob b1\tn8n/manifest.json\0');
 
 			const result = await gitService.listBranchTree(operation());
 
@@ -555,12 +552,12 @@ describe('PromotionsGitService (git operations)', () => {
 				'-z',
 				commitSha,
 				'--',
-				'n8n-export/manifest.json',
-				'n8n-export/projects/',
+				'n8n/manifest.json',
+				'n8n/projects/',
 			]);
 			expect(result).toEqual({
 				commitSha,
-				lsTreeOutput: '100644 blob b1\tn8n-export/manifest.json\0',
+				lsTreeOutput: '100644 blob b1\tn8n/manifest.json\0',
 			});
 		});
 
@@ -595,10 +592,7 @@ describe('PromotionsGitService (git operations)', () => {
 
 	describe('readFilesAtCommit', () => {
 		const commitSha = 'c'.repeat(40);
-		const filePaths = [
-			'n8n-export/manifest.json',
-			'n8n-export/projects/a-p1/workflows/b-w1/workflow.json',
-		];
+		const filePaths = ['n8n/manifest.json', 'n8n/projects/a-p1/workflows/b-w1/workflow.json'];
 		const read = async (over: Record<string, unknown> = {}) =>
 			await gitService.readFilesAtCommit({
 				paths,
@@ -639,7 +633,7 @@ describe('PromotionsGitService (git operations)', () => {
 				paths,
 				branchName: 'main',
 				configId,
-				pathspecs: ['n8n-export/'],
+				pathspecs: ['n8n/'],
 			});
 			await vi.waitFor(() => expect(mockGit.fetch).toHaveBeenCalledTimes(1));
 
