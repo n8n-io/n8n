@@ -418,7 +418,8 @@ erDiagram
   integer id
   timestamp_3__with_time_zone lastUsedAt
   varchar_16_ slot
-  text token
+  varchar_64_ tokenHash
+  varchar_4_ tokenHint
 }
 "public.self_healing_result" {
   uuid backgroundUserId FK

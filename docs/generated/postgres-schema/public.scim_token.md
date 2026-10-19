@@ -9,7 +9,8 @@
 | id | integer |  | false |  |  |  |
 | lastUsedAt | timestamp(3) with time zone |  | true |  |  | Time of the last SCIM request that the token authenticated |
 | slot | varchar(16) | 'instance'::character varying | false |  |  | Always instance. The unique index on it allows one SCIM token for the instance |
-| token | text |  | false |  |  | Signed JWT that the identity provider sends as its bearer token |
+| tokenHash | varchar(64) |  | false |  |  | Hex SHA-256 hash of the signed JWT that the identity provider sends as its bearer token |
+| tokenHint | varchar(4) |  | false |  |  | Last four characters of the token, so that admins can identify it |
 
 ## Constraints
 
@@ -21,7 +22,8 @@
 | scim_token_createdAt_not_null | n | NOT NULL "createdAt" |
 | scim_token_id_not_null | n | NOT NULL id |
 | scim_token_slot_not_null | n | NOT NULL slot |
-| scim_token_token_not_null | n | NOT NULL token |
+| scim_token_tokenHash_not_null | n | NOT NULL "tokenHash" |
+| scim_token_tokenHint_not_null | n | NOT NULL "tokenHint" |
 
 ## Indexes
 
@@ -43,7 +45,8 @@ erDiagram
   integer id
   timestamp_3__with_time_zone lastUsedAt
   varchar_16_ slot
-  text token
+  varchar_64_ tokenHash
+  varchar_4_ tokenHint
 }
 "public.user" {
   timestamp_3__with_time_zone createdAt

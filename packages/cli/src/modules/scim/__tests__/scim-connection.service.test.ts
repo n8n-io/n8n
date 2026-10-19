@@ -51,7 +51,7 @@ describe('ScimConnectionService', () => {
 	let logger: Mocked<Logger>;
 	let service: ScimConnectionService;
 
-	const token = (value = 'token-a') => mock<ScimToken>({ token: value });
+	const token = (tokenHash = 'token-a') => mock<ScimToken>({ tokenHash });
 
 	beforeEach(() => {
 		vi.useFakeTimers({ toFake: ['Date'] });

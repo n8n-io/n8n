@@ -1,7 +1,7 @@
 import type { ScimAuthFailureReason, ScimTokenDetails } from '@n8n/api-types';
 import { type OperationContext, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { randomUUID } from 'crypto';
+import { createHash, randomUUID } from 'crypto';
 
 import { JwtService, UrlService } from '@n8n/backend-services';
 
@@ -17,6 +17,12 @@ const API_KEY_ISSUER = 'n8n';
  */
 const API_KEY_SUBJECT = 'scim-provisioning';
 const TOKEN_HINT_LENGTH = 4;
+
+/**
+ * The database keeps this hash, not the token. The token is a signed JWT
+ * with a random ID, so a fast hash without a salt is enough.
+ */
+export const hashScimToken = (token: string) => createHash('sha256').update(token).digest('hex');
 
 export type ScimTokenCheck =
 	| { valid: true; token: ScimToken }
@@ -56,7 +62,7 @@ export class ScimTokenService {
 
 		return {
 			hasToken: true,
-			lastFour: token.token.slice(-TOKEN_HINT_LENGTH),
+			lastFour: token.tokenHint,
 			details: {
 				createdAt: token.createdAt.toISOString(),
 				createdBy: createdBy
@@ -87,7 +93,7 @@ export class ScimTokenService {
 		// A database failure is not the caller's fault, so let it propagate.
 		// Reporting a database outage as an invalid token would tell the IdP to
 		// treat its credential as revoked.
-		const token = await this.scimTokenRepository.findByToken(apiKey, ctx);
+		const token = await this.scimTokenRepository.findByTokenHash(hashScimToken(apiKey), ctx);
 
 		// Only this instance signs tokens for the SCIM audience with its secret.
 		// Thus a signed token that is not the stored one is a token that an
@@ -99,20 +105,27 @@ export class ScimTokenService {
 
 	/**
 	 * Create the instance token, or replace the current one. The previous
-	 * token stops working at once.
+	 * token stops working at once. Returns the token value, which no other
+	 * call can return later.
 	 *
 	 * Throws `ScimTokenConflictError` when another request changed the token
 	 * after this one read it.
 	 */
-	async rotateToken(user: User, ctx: OperationContext = {}): Promise<ScimToken> {
+	async rotateToken(user: User, ctx: OperationContext = {}): Promise<string> {
 		const current = await this.scimTokenRepository.findInstanceToken(ctx);
+		const token = this.signToken();
 
-		return await this.scimTokenRepository.replace(
-			current?.token ?? null,
-			this.signToken(),
-			user.id,
+		await this.scimTokenRepository.replace(
+			current?.tokenHash ?? null,
+			{
+				tokenHash: hashScimToken(token),
+				tokenHint: token.slice(-TOKEN_HINT_LENGTH),
+				createdById: user.id,
+			},
 			ctx,
 		);
+
+		return token;
 	}
 
 	/** Revoke the instance token, whoever created it. */

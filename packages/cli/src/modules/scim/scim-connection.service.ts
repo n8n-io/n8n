@@ -48,8 +48,8 @@ export function deriveScimConnectionStatus(
  */
 @Service()
 export class ScimConnectionService {
-	/** Token value and time of the last `lastUsedAt` write on this main. */
-	private lastUseWrite?: { token: string; at: number };
+	/** Token hash and time of the last `lastUsedAt` write on this main. */
+	private lastUseWrite?: { tokenHash: string; at: number };
 
 	private lastFailureWriteAt?: number;
 
@@ -65,7 +65,7 @@ export class ScimConnectionService {
 	async recordAuthSuccess(token: ScimToken) {
 		const now = Date.now();
 		const wroteRecently =
-			this.lastUseWrite?.token === token.token &&
+			this.lastUseWrite?.tokenHash === token.tokenHash &&
 			now - this.lastUseWrite.at < SCIM_ACTIVITY_WRITE_INTERVAL_MS;
 
 		// After a failure write the status is `error`. Write the use at once, so
@@ -73,11 +73,11 @@ export class ScimConnectionService {
 		if (wroteRecently && !this.failureWrittenSinceUse) return;
 
 		// Update the state before the write, so that concurrent requests skip it.
-		this.lastUseWrite = { token: token.token, at: now };
+		this.lastUseWrite = { tokenHash: token.tokenHash, at: now };
 		this.failureWrittenSinceUse = false;
 
 		try {
-			await this.scimTokenRepository.markUsed(token.token, new Date(now), {});
+			await this.scimTokenRepository.markUsed(token.tokenHash, new Date(now), {});
 		} catch (error) {
 			this.logger.warn('SCIM: Failed to record the last use of the token', { error });
 		}

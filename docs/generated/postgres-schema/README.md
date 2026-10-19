@@ -129,7 +129,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.role_scope](public.role_scope.md) | 2 |  | BASE TABLE |
 | [public.scheduled_job](public.scheduled_job.md) | 25 |  | BASE TABLE |
 | [public.scheduled_task](public.scheduled_task.md) | 19 |  | BASE TABLE |
-| [public.scim_token](public.scim_token.md) | 6 |  | BASE TABLE |
+| [public.scim_token](public.scim_token.md) | 7 |  | BASE TABLE |
 | [public.scope](public.scope.md) | 3 |  | BASE TABLE |
 | [public.secrets_provider_connection](public.secrets_provider_connection.md) | 7 |  | BASE TABLE |
 | [public.self_healing_result](public.self_healing_result.md) | 15 |  | BASE TABLE |
@@ -1669,7 +1669,8 @@ erDiagram
   integer id
   timestamp_3__with_time_zone lastUsedAt
   varchar_16_ slot
-  text token
+  varchar_64_ tokenHash
+  varchar_4_ tokenHint
 }
 "public.scope" {
   text description

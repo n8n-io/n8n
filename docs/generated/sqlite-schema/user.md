@@ -423,7 +423,8 @@ erDiagram
   INTEGER id
   datetime_3_ lastUsedAt
   varchar_16_ slot
-  TEXT token
+  varchar_64_ tokenHash
+  varchar_4_ tokenHint
 }
 "self_healing_result" {
   varchar backgroundUserId FK

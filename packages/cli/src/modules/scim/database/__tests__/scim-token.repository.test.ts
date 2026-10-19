@@ -30,8 +30,10 @@ describe('ScimTokenRepository', () => {
 			(async (c: any, fn: any) => await fn(c)) as any,
 		);
 		repository = new ScimTokenRepository(mock<DataSource>({ manager }), transactionRunner);
-		manager.findOneByOrFail.mockResolvedValue(mock<ScimToken>({ token: 'new-token' }));
+		manager.findOneByOrFail.mockResolvedValue(mock<ScimToken>({ tokenHash: 'new-hash' }));
 	});
+
+	const newToken = { tokenHash: 'new-hash', tokenHint: 'wxyz', createdById: 'user-1' };
 
 	it('reads the one instance token', async () => {
 		await repository.findInstanceToken(ctx);
@@ -46,9 +48,16 @@ describe('ScimTokenRepository', () => {
 			where: { slot: 'instance' },
 			relations: { createdBy: true },
 			select: expect.objectContaining({
+				tokenHint: true,
 				createdBy: { id: true, firstName: true, lastName: true },
 			}),
 		});
+	});
+
+	it('finds the token by its hash', async () => {
+		await repository.findByTokenHash('a-hash', ctx);
+
+		expect(manager.findOneBy).toHaveBeenCalledWith(ScimToken, { tokenHash: 'a-hash' });
 	});
 
 	it('checks if the instance token row exists', async () => {
@@ -58,14 +67,14 @@ describe('ScimTokenRepository', () => {
 		expect(manager.existsBy).toHaveBeenCalledWith(ScimToken, { slot: 'instance' });
 	});
 
-	it('marks the token with the given value as used', async () => {
+	it('marks the token with the given hash as used', async () => {
 		const at = new Date();
 
-		await repository.markUsed('a-token', at, ctx);
+		await repository.markUsed('a-hash', at, ctx);
 
 		expect(manager.update).toHaveBeenCalledWith(
 			ScimToken,
-			{ token: 'a-token' },
+			{ tokenHash: 'a-hash' },
 			{ lastUsedAt: at },
 		);
 	});
@@ -80,18 +89,16 @@ describe('ScimTokenRepository', () => {
 		it('replaces the expected token in one transaction', async () => {
 			manager.delete.mockResolvedValue({ raw: [], affected: 1 });
 
-			await repository.replace('old-token', 'new-token', 'user-1', ctx);
+			await repository.replace('old-hash', newToken, ctx);
 
 			expect(transactionRunner.run).toHaveBeenCalledTimes(1);
-			expect(manager.delete).toHaveBeenCalledWith(ScimToken, { token: 'old-token' });
-			expect(manager.insert).toHaveBeenCalledWith(ScimToken, {
-				token: 'new-token',
-				createdById: 'user-1',
-			});
+			expect(manager.delete).toHaveBeenCalledWith(ScimToken, { tokenHash: 'old-hash' });
+			expect(manager.insert).toHaveBeenCalledWith(ScimToken, newToken);
+			expect(manager.findOneByOrFail).toHaveBeenCalledWith(ScimToken, { tokenHash: 'new-hash' });
 		});
 
 		it('creates the first token without a delete', async () => {
-			await repository.replace(null, 'new-token', 'user-1', ctx);
+			await repository.replace(null, newToken, ctx);
 
 			expect(manager.delete).not.toHaveBeenCalled();
 			expect(manager.insert).toHaveBeenCalled();
@@ -100,7 +107,7 @@ describe('ScimTokenRepository', () => {
 		it('fails with a conflict when another request replaced the expected token', async () => {
 			manager.delete.mockResolvedValue({ raw: [], affected: 0 });
 
-			await expect(repository.replace('old-token', 'new-token', 'user-1', ctx)).rejects.toThrow(
+			await expect(repository.replace('old-hash', newToken, ctx)).rejects.toThrow(
 				ScimTokenConflictError,
 			);
 			expect(manager.insert).not.toHaveBeenCalled();
@@ -109,15 +116,13 @@ describe('ScimTokenRepository', () => {
 		it('fails with a conflict when another request created a token first', async () => {
 			manager.insert.mockRejectedValue(uniqueViolation());
 
-			await expect(repository.replace(null, 'new-token', 'user-1', ctx)).rejects.toThrow(
-				ScimTokenConflictError,
-			);
+			await expect(repository.replace(null, newToken, ctx)).rejects.toThrow(ScimTokenConflictError);
 		});
 
 		it('propagates other insert failures', async () => {
 			manager.insert.mockRejectedValue(new Error('db down'));
 
-			await expect(repository.replace(null, 'new-token', 'user-1', ctx)).rejects.toThrow('db down');
+			await expect(repository.replace(null, newToken, ctx)).rejects.toThrow('db down');
 		});
 	});
 });

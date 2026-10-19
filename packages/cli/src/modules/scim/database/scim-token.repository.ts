@@ -32,7 +32,7 @@ export class ScimTokenRepository extends BaseRepository<ScimToken> {
 			relations: { createdBy: true },
 			select: {
 				id: true,
-				token: true,
+				tokenHint: true,
 				createdAt: true,
 				lastUsedAt: true,
 				createdById: true,
@@ -41,51 +41,50 @@ export class ScimTokenRepository extends BaseRepository<ScimToken> {
 		});
 	}
 
-	async findByToken(token: string, ctx: OperationContext) {
-		return await this.managerFor(ctx).findOneBy(ScimToken, { token });
+	async findByTokenHash(tokenHash: string, ctx: OperationContext) {
+		return await this.managerFor(ctx).findOneBy(ScimToken, { tokenHash });
 	}
 
 	/**
 	 * Sets the time of the last request that the token authenticated. The match
-	 * is on the token value, so a write after a rotation does not mark the new
+	 * is on the token hash, so a write after a rotation does not mark the new
 	 * token as used.
 	 */
-	async markUsed(token: string, at: Date, ctx: OperationContext) {
-		await this.managerFor(ctx).update(ScimToken, { token }, { lastUsedAt: at });
+	async markUsed(tokenHash: string, at: Date, ctx: OperationContext) {
+		await this.managerFor(ctx).update(ScimToken, { tokenHash }, { lastUsedAt: at });
 	}
 
 	/**
 	 * Replaces the token that the caller read with a new one, in one
-	 * transaction. `expectedToken` is null when the caller read no token.
+	 * transaction. `expectedTokenHash` is null when the caller read no token.
 	 *
 	 * Throws `ScimTokenConflictError` when another request replaced or deleted
 	 * the expected token first. Thus of two rotations from the same state, one
 	 * fails, and the instance never holds two tokens.
 	 *
-	 * The match is on the token value, not the id: SQLite gives the id of a
+	 * The match is on the token hash, not the id: SQLite gives the id of a
 	 * deleted last row to the next row.
 	 */
 	async replace(
-		expectedToken: string | null,
-		token: string,
-		createdById: string,
+		expectedTokenHash: string | null,
+		token: Pick<ScimToken, 'tokenHash' | 'tokenHint' | 'createdById'>,
 		ctx: OperationContext,
 	): Promise<ScimToken> {
 		return await this.runInTransaction(ctx, async (tx) => {
-			if (expectedToken !== null) {
-				const { affected } = await tx.delete(ScimToken, { token: expectedToken });
+			if (expectedTokenHash !== null) {
+				const { affected } = await tx.delete(ScimToken, { tokenHash: expectedTokenHash });
 				if (!affected) throw new ScimTokenConflictError();
 			}
 
 			try {
-				await tx.insert(ScimToken, { token, createdById });
+				await tx.insert(ScimToken, token);
 			} catch (error) {
 				// The unique index on `slot` rejects a second row.
 				if (isUniqueConstraintError(error)) throw new ScimTokenConflictError();
 				throw error;
 			}
 
-			return await tx.findOneByOrFail(ScimToken, { token });
+			return await tx.findOneByOrFail(ScimToken, { tokenHash: token.tokenHash });
 		});
 	}
 

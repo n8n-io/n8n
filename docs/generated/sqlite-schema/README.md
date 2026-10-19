@@ -129,7 +129,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [role_scope](role_scope.md) | 2 |  | table |
 | [scheduled_job](scheduled_job.md) | 25 |  | table |
 | [scheduled_task](scheduled_task.md) | 19 |  | table |
-| [scim_token](scim_token.md) | 6 |  | table |
+| [scim_token](scim_token.md) | 7 |  | table |
 | [scope](scope.md) | 3 |  | table |
 | [secrets_provider_connection](secrets_provider_connection.md) | 7 |  | table |
 | [self_healing_result](self_healing_result.md) | 15 |  | table |
@@ -1655,7 +1655,8 @@ erDiagram
   INTEGER id
   datetime_3_ lastUsedAt
   varchar_16_ slot
-  TEXT token
+  varchar_64_ tokenHash
+  varchar_4_ tokenHint
 }
 "scope" {
   TEXT description

@@ -23,7 +23,7 @@ describe('ScimAuthMiddleware', () => {
 	const requestWithAuth = (authorization?: string) =>
 		mock<AuthenticatedRequest>({ headers: { authorization } });
 
-	const storedToken = mock<ScimToken>({ token: 'valid-token' });
+	const storedToken = mock<ScimToken>({ tokenHash: 'valid-token-hash' });
 	const validCheck = { valid: true, token: storedToken } as const;
 
 	beforeEach(() => {
