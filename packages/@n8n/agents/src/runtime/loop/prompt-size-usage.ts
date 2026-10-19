@@ -3,8 +3,8 @@ import type { PromptSizeUsage, TokenUsage } from '../../types';
 /**
  * Prompt sizes above which providers charge more for a model call, for example
  * Claude Haiku 5.5 above 100k tokens or Gemini 2.5 Pro above 200k. Usage is
- * split at these points so that a billing service can price each part. Keep in
- * step with the context tiers that ai-assistant-service bills.
+ * split at these points so that the cost of each part can be priced correctly.
+ * When a provider adds a new price threshold, add it here.
  */
 export const PROMPT_SIZE_BUCKET_THRESHOLDS = [
 	32_000, 64_000, 100_000, 128_000, 200_000, 256_000, 272_000, 400_000, 512_000,
