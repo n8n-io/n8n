@@ -56,14 +56,17 @@ async function refreshTargetName(
 	context: OrchestrationContext,
 	delegate: InstanceAiBuilderDelegate,
 	target: AgentBuilderTarget,
+	options: { persist: boolean },
 ): Promise<AgentBuilderTarget> {
 	const domainContext = context.domainContext;
 	try {
 		const name = await delegate.resolveAgentName(target.agentId);
-		if (!name || name === target.name || !domainContext) return target;
+		if (!name || name === target.name) return target;
 		const renamed = { ...target, name };
-		domainContext.agentBuilderTarget = renamed;
-		await saveAgentBuilderTarget(domainContext, renamed);
+		if (options.persist && domainContext) {
+			domainContext.agentBuilderTarget = renamed;
+			await saveAgentBuilderTarget(domainContext, renamed);
+		}
 		return renamed;
 	} catch (error) {
 		context.logger.warn('Failed to refresh agent name after a builder config change', {
@@ -82,9 +85,18 @@ async function onAgentConfigMutated(
 	const domainContext = context.domainContext;
 	if (!domainContext) return {};
 	const bound = await resolveAgentBuilderTarget(domainContext);
-	if (bound?.agentId !== agentId) return {};
+	// A resumed call keeps the agent that suspended it, so the thread can be bound
+	// to another agent by now. Label the changed agent, but do not rebind the thread.
+	const isBound = bound?.agentId === agentId;
+	const projectId = isBound ? bound.projectId : domainContext.projectId;
+	if (!projectId) return {};
 
-	const target = await refreshTargetName(context, delegate, bound);
+	const target = await refreshTargetName(
+		context,
+		delegate,
+		isBound ? bound : { agentId, projectId },
+		{ persist: isBound },
+	);
 	await snapshotAgent(context, delegate, target, 'config-updated');
 	await domainContext.onArtifactChanged?.({
 		type: 'agent',

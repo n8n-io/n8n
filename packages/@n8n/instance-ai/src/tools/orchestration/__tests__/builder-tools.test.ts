@@ -82,12 +82,36 @@ describe('createAgentBuilderTools', () => {
 		expect(domainContext.agentBuilderTarget).toMatchObject({ name: 'Support Triage' });
 	});
 
-	it('ignores a config change stamped for an agent that is not selected', async () => {
-		const { run, onArtifactChanged } = setup({
+	it('labels a config change for an agent that is not selected without rebinding', async () => {
+		const { run, delegate, domainContext, onArtifactChanged } = setup({
 			ok: true,
 			configMutated: true,
 			agentId: 'agent-other',
 		});
+		delegate.resolveAgentName.mockResolvedValue('Billing');
+
+		await expect(run()).resolves.toEqual({
+			ok: true,
+			configMutated: true,
+			agentId: 'agent-other',
+			agentName: 'Billing',
+			projectId: 'project-1',
+		});
+		expect(delegate.resolveAgentName).toHaveBeenCalledWith('agent-other');
+		expect(onArtifactChanged).toHaveBeenCalledWith({
+			type: 'agent',
+			id: 'agent-other',
+			projectId: 'project-1',
+			name: 'Billing',
+		});
+		expect(domainContext.agentBuilderTarget).toEqual(BOUND);
+	});
+
+	it('leaves the result unchanged when the agent is not selected and the thread has no project', async () => {
+		const { run, onArtifactChanged } = setup(
+			{ ok: true, configMutated: true, agentId: 'agent-other' },
+			{ projectId: undefined },
+		);
 
 		await expect(run()).resolves.toEqual({
 			ok: true,
