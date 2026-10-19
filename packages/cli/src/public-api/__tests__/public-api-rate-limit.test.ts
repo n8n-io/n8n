@@ -16,7 +16,7 @@ import type { Controller } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import express from 'express';
 import type { Request, RequestHandler, Response } from 'express';
-import type { Redis } from 'ioredis';
+import type { Cluster, Redis } from 'ioredis';
 import RedisMock from 'ioredis-mock';
 import type { InstanceSettings } from 'n8n-core';
 import { createHash } from 'node:crypto';
@@ -52,7 +52,10 @@ const loadedScripts = new Map<string, string>();
  * A client for the shared `ioredis-mock` data. The mock has no `call` and no `SCRIPT LOAD`, so this
  * runs a loaded script with `EVAL`.
  */
-function redisClient(failsOn: (command: string) => boolean = () => false) {
+function redisClient(
+	failsOn: (command: string) => boolean = () => false,
+	scripts: Map<string, string> = loadedScripts,
+) {
 	const redis = new RedisMock() as unknown as Record<
 		string,
 		(...args: string[]) => Promise<unknown>
@@ -62,16 +65,34 @@ function redisClient(failsOn: (command: string) => boolean = () => false) {
 		if (command === 'SCRIPT') {
 			const script = args[1];
 			const sha = createHash('sha1').update(script).digest('hex');
-			loadedScripts.set(sha, script);
+			scripts.set(sha, script);
 			return sha;
 		}
 		if (command === 'EVALSHA') {
 			const [sha, ...rest] = args;
-			return await redis.eval(loadedScripts.get(sha) ?? '', ...rest);
+			const script = scripts.get(sha);
+			if (!script) throw new Error('NOSCRIPT No matching script');
+			return await redis.eval(script, ...rest);
 		}
 		return await redis[command.toLowerCase()](...args);
 	};
-	return mock<Redis>({ call: call as Redis['call'] }) as unknown as Redis;
+	return mock<Redis>({ isCluster: false, call: call as Redis['call'] }) as unknown as Redis;
+}
+
+/**
+ * A cluster of two nodes, each with its own scripts. Like ioredis, it sends a command without a key,
+ * such as `SCRIPT LOAD`, to any node. Here that is always the node that does not own the counters.
+ */
+function redisCluster() {
+	const nodeWithoutCounters = redisClient(undefined, new Map());
+	const nodeWithCounters = redisClient(undefined, new Map());
+	const call = async (command: string, ...args: string[]) =>
+		await (command === 'SCRIPT' ? nodeWithoutCounters : nodeWithCounters).call(command, ...args);
+	return mock<Cluster>({
+		isCluster: true,
+		nodes: () => [nodeWithoutCounters, nodeWithCounters],
+		call: call as Cluster['call'],
+	}) as unknown as Cluster;
 }
 
 function createStoreFactory(
@@ -80,7 +101,7 @@ function createStoreFactory(
 		createRedisClient = () => redisClient(),
 		logger = mock<Logger>(),
 		redisPrefix = 'n8n',
-	}: { createRedisClient?: () => Redis; logger?: Logger; redisPrefix?: string } = {},
+	}: { createRedisClient?: () => Redis | Cluster; logger?: Logger; redisPrefix?: string } = {},
 ) {
 	return new PublicApiRateLimitStoreFactory(
 		logger,
@@ -603,6 +624,15 @@ describe('Public API rate limiting across mains', () => {
 		const main = activateApp(
 			{ globalReadLimit: 1 },
 			multiMain({ createRedisClient: () => redisClient((command) => command === 'DECR') }),
+		);
+
+		expect(await sendTimes(main, 2, 'get', '/widgets')).toEqual([200, 429]);
+	});
+
+	it('loads the scripts on every Redis Cluster node', async () => {
+		const main = activateApp(
+			{ globalReadLimit: 1 },
+			multiMain({ createRedisClient: redisCluster }),
 		);
 
 		expect(await sendTimes(main, 2, 'get', '/widgets')).toEqual([200, 429]);

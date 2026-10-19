@@ -91,10 +91,23 @@ export class PublicApiRateLimitStoreFactory {
 			{
 				prefix: `${prefix}:rate-limit:public-api:${name}:`,
 				sendCommand: async (command: string, ...args: string[]) =>
-					(await this.getRedisClient().call(command, ...args)) as RedisReply,
+					await this.sendRedisCommand(command, args),
 			},
 			this.redisHealth,
 		);
+	}
+
+	private async sendRedisCommand(command: string, args: string[]): Promise<RedisReply> {
+		const client = this.getRedisClient();
+		// A cluster sends a command without a key, such as `SCRIPT LOAD`, to any one node. `EVALSHA`
+		// runs on the node that owns the counter, so load the scripts on every node.
+		if (client.isCluster && command === 'SCRIPT') {
+			const [sha] = await Promise.all(
+				(client as Cluster).nodes('master').map(async (node) => await node.call(command, ...args)),
+			);
+			return sha as RedisReply;
+		}
+		return (await client.call(command, ...args)) as RedisReply;
 	}
 
 	private getRedisClient() {
