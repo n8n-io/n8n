@@ -1487,6 +1487,7 @@ describe('AgentExecutionRepository', () => {
 				agentId,
 				toolAccessCheckedAt: Date.now(),
 				telemetryConfiguration: {
+					version_id: null,
 					model: 'mock',
 					channels: [],
 					tool_types: [],

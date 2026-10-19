@@ -61,7 +61,6 @@ const source: ResolvedSubAgentSource = {
 
 const runtimeSource: ResolvedSubAgentRuntimeSource = {
 	source,
-	telemetryVersionId: 'draft-version',
 	toolDescriptors: {
 		tool_1: {
 			name: 'lookup_customer',
@@ -266,9 +265,6 @@ describe('SubAgentRunner', () => {
 			expect.objectContaining({
 				threadId: result.threadId,
 				source: 'subagent',
-				telemetry: expect.objectContaining({
-					configuration: expect.objectContaining({ version_id: 'draft-version' }),
-				}),
 			}),
 			expect.any(Date),
 		);
@@ -380,17 +376,40 @@ describe('SubAgentRunner', () => {
 	});
 
 	it.each([
-		{ runType: 'test' as const, usePublishedVersion: false },
-		{ runType: 'production' as const, usePublishedVersion: true },
+		{
+			runType: 'test' as const,
+			usePublishedVersion: false,
+			resolvedSource: { ...runtimeSource, telemetryVersionId: 'draft-version' },
+			expectedVersionId: 'draft-version',
+		},
+		{
+			runType: 'production' as const,
+			usePublishedVersion: true,
+			resolvedSource: {
+				...runtimeSource,
+				source: { ...source, versionId: 'published-version' },
+			},
+			expectedVersionId: 'published-version',
+		},
 	])(
 		'resolves the child draft for test runs and the published version for production ($runType)',
-		async ({ runType, usePublishedVersion }) => {
+		async ({ runType, usePublishedVersion, resolvedSource, expectedVersionId }) => {
+			sourceResolver.resolveForRuntime.mockResolvedValue(resolvedSource);
+
 			await runner.run(spawnRequest, { parentAgentId, projectId, credentialProvider, runType });
 
 			expect(sourceResolver.resolveForRuntime).toHaveBeenCalledWith(spawnRequest.source, {
 				projectId,
 				usePublishedVersion,
 			});
+			expect(agentExecutionService.startExecutionRecording).toHaveBeenCalledWith(
+				expect.objectContaining({
+					telemetry: expect.objectContaining({
+						configuration: expect.objectContaining({ version_id: expectedVersionId }),
+					}),
+				}),
+				expect.any(Date),
+			);
 		},
 	);
 
