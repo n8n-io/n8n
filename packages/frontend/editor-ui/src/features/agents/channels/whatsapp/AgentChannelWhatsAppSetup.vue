@@ -503,6 +503,7 @@ defineExpose({ credentialId, currentSettings, validationError: null, afterSave }
 							<N8nCopyInput
 								id="whatsapp-webhook-url"
 								:value="webhookUrl"
+								:label="i18n.baseText('agents.builder.addTrigger.whatsapp.webhookUrl.label')"
 								size="large"
 								:class="$style.urlInput"
 								:copy-label="i18n.baseText('agents.builder.addTrigger.copy')"
@@ -527,6 +528,7 @@ defineExpose({ credentialId, currentSettings, validationError: null, afterSave }
 							<N8nCopyInput
 								id="whatsapp-verify-token"
 								:value="verifyToken"
+								:label="i18n.baseText('agents.builder.addTrigger.whatsapp.verifyToken.label')"
 								size="large"
 								:class="$style.urlInput"
 								:copy-label="i18n.baseText('agents.builder.addTrigger.copy')"
@@ -628,6 +630,7 @@ defineExpose({ credentialId, currentSettings, validationError: null, afterSave }
 				<N8nCopyInput
 					id="whatsapp-webhook-url"
 					:value="webhookUrl"
+					:label="i18n.baseText('agents.builder.addTrigger.whatsapp.webhookUrl.label')"
 					size="large"
 					:class="$style.urlInput"
 					:copy-label="i18n.baseText('agents.builder.addTrigger.copy')"
@@ -644,6 +647,7 @@ defineExpose({ credentialId, currentSettings, validationError: null, afterSave }
 				<N8nCopyInput
 					id="whatsapp-verify-token"
 					:value="verifyToken"
+					:label="i18n.baseText('agents.builder.addTrigger.whatsapp.verifyToken.label')"
 					size="large"
 					:class="$style.urlInput"
 					:copy-label="i18n.baseText('agents.builder.addTrigger.copy')"
