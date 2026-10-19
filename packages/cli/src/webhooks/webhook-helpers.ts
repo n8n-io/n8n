@@ -1156,6 +1156,28 @@ export async function executeWebhook(
 			responseHeaders.applyToResponse(res);
 		}
 
+		const respondOnReceived = (id: string) => {
+			// oxlint-disable-next-line typescript/no-deprecated
+			additionalKeys.$executionId = id;
+			additionalKeys.$execution = {
+				id,
+				mode: executionMode === 'manual' ? 'test' : 'production',
+				resumeUrl: `${additionalData.webhookWaitingBaseUrl}/${id}`,
+				resumeFormUrl: `${additionalData.formWaitingBaseUrl}/${id}`,
+			};
+			const evaluatedResponseData = context.evaluateComplexWebhookDescriptionExpression<string>(
+				'responseData',
+				undefined,
+				'firstEntryJson',
+			);
+
+			const responseBody = extractWebhookOnReceivedResponse(
+				evaluatedResponseData,
+				webhookResultData,
+			);
+			responder.respondWith(createStaticResponse(responseBody, responseCode, responseHeaders));
+		};
+
 		const shouldContinueWorkflowExecution = handleImmediateWebhookResponse({
 			webhookResultData,
 			responseCode,
@@ -1178,9 +1200,24 @@ export async function executeWebhook(
 		});
 		if (!shouldContinueAfterCredentialGate) return;
 
-		// For "onReceived" mode, we need to defer response sending until after the execution
-		// is created, so that `$execution.id` is available in response data expressions.
-		const shouldDeferOnReceivedResponse = responseMode === 'onReceived' && !responder.hasResponded;
+		// A resumed form already has an execution ID, so acknowledge the submission before
+		// restarting the workflow. Otherwise synchronous downstream work can delay the form
+		// response even though the user selected "Form Is Submitted".
+		const resumedWaitFormExecutionId =
+			responseMode === 'onReceived' &&
+			executionId !== undefined &&
+			workflowStartNode.type === WAIT_NODE_TYPE &&
+			workflowStartNode.parameters.resume === 'form' &&
+			!responder.hasResponded
+				? executionId
+				: undefined;
+
+		// New executions still need to defer the response until after the execution is
+		// created, so that `$execution.id` is available in response data expressions.
+		const shouldDeferOnReceivedResponse =
+			responseMode === 'onReceived' &&
+			resumedWaitFormExecutionId === undefined &&
+			!responder.hasResponded;
 
 		// Prepare execution data
 		const { runExecutionData: preparedRunExecutionData, pinData } = prepareExecutionData(
@@ -1310,6 +1347,10 @@ export async function executeWebhook(
 
 		if (executionId) options?.onResume?.();
 
+		if (resumedWaitFormExecutionId !== undefined && !responder.hasResponded) {
+			respondOnReceived(resumedWaitFormExecutionId);
+		}
+
 		// Start now to run the workflow
 		executionId = await Container.get(WorkflowRunner).run(
 			runData,
@@ -1334,26 +1375,7 @@ export async function executeWebhook(
 		}
 
 		if (shouldDeferOnReceivedResponse) {
-			// oxlint-disable-next-line typescript/no-deprecated
-			additionalKeys.$executionId = executionId;
-			additionalKeys.$execution = {
-				id: executionId,
-				mode: executionMode === 'manual' ? 'test' : 'production',
-				resumeUrl: `${additionalData.webhookWaitingBaseUrl}/${executionId}`,
-				resumeFormUrl: `${additionalData.formWaitingBaseUrl}/${executionId}`,
-			};
-			const evaluatedResponseData = context.evaluateComplexWebhookDescriptionExpression<string>(
-				'responseData',
-				undefined,
-				'firstEntryJson',
-			);
-
-			const responseBody = extractWebhookOnReceivedResponse(
-				evaluatedResponseData,
-				webhookResultData,
-			);
-			const webhookResponse = createStaticResponse(responseBody, responseCode, responseHeaders);
-			responder.respondWith(webhookResponse);
+			respondOnReceived(executionId);
 		}
 
 		Container.get(EventService).emit('workflow-executed', {

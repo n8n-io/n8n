@@ -64,7 +64,7 @@ import {
 	UnexpectedError,
 	UserError,
 } from 'n8n-workflow';
-import type { Readable } from 'stream';
+import { Readable } from 'stream';
 import { finished } from 'stream/promises';
 import { mock, type MockProxy } from 'vitest-mock-extended';
 
@@ -2440,6 +2440,94 @@ describe('executeWebhook response-mode callback contract', () => {
 
 		expect(responseCallback).toHaveBeenCalledTimes(1);
 		expect(responseCallback).toHaveBeenCalledWith(null, { noWebhookResponse: true });
+	});
+
+	it('responds to a resumed Wait form before restarting downstream execution', async () => {
+		vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
+			mock<IWorkflowExecuteAdditionalData>({
+				webhookWaitingBaseUrl: 'http://localhost:5678/webhook-waiting',
+				formWaitingBaseUrl: 'http://localhost:5678/form-waiting',
+			}),
+		);
+		ownershipService.getWorkflowProjectCached.mockResolvedValue(
+			mock<Project>({ id: 'project-1', name: 'Project 1' }),
+		);
+		webhookService.runWebhook.mockResolvedValue({
+			webhookResponse: { status: 200 },
+			workflowData: [[{ json: { submitted: true } }]],
+		});
+
+		const resumedRun = createDeferredPromise<string>();
+		workflowRunner.run.mockReturnValue(resumedRun.promise);
+
+		const waitNode = mock<INode>({
+			name: 'Wait for Form',
+			type: WAIT_NODE_TYPE,
+			typeVersion: 1.1,
+			parameters: { resume: 'form' },
+		});
+		const workflow = mock<Workflow>({
+			id: WORKFLOW_ID,
+			name: 'Test Workflow',
+			nodes: { [waitNode.name]: waitNode },
+			getChildNodes: vi.fn().mockReturnValue([]),
+			nodeTypes: {
+				getByNameAndVersion: vi
+					.fn()
+					.mockReturnValue(mock<INodeType>({ description: { name: 'form' } })),
+			},
+			expression: {
+				getSimpleParameterValue: vi.fn(
+					(...args: Parameters<Workflow['expression']['getSimpleParameterValue']>) =>
+						args[1] ?? args[5],
+				),
+				getComplexParameterValue: vi.fn(
+					(...args: Parameters<Workflow['expression']['getComplexParameterValue']>) => args[1],
+				),
+			},
+		});
+		const responseCallback = vi.fn();
+		const boundary = 'wait-form-boundary';
+		const requestBody = `--${boundary}--\r\n`;
+		const req = Readable.from([requestBody]) as WebhookRequest;
+		req.method = 'POST';
+		req.contentType = 'multipart/form-data';
+		req.headers = {
+			'content-type': `multipart/form-data; boundary=${boundary}`,
+			'content-length': String(Buffer.byteLength(requestBody)),
+		};
+
+		const execution = executeWebhook(
+			workflow,
+			{
+				webhookDescription: { name: 'default', responseMode: 'onReceived' },
+				workflowId: WORKFLOW_ID,
+			} as unknown as IWebhookData,
+			mock<IWorkflowBase>({ id: WORKFLOW_ID, name: 'Test Workflow' }),
+			waitNode,
+			'webhook',
+			undefined,
+			undefined,
+			EXECUTION_ID,
+			req,
+			mock<express.Response>({ headersSent: false }),
+			responseCallback,
+		);
+
+		await vi.waitFor(() =>
+			expect(responseCallback).toHaveBeenCalledWith(
+				null,
+				expect.objectContaining({ body: { status: 200 }, code: 200 }),
+			),
+		);
+		await vi.waitFor(() => expect(workflowRunner.run).toHaveBeenCalledOnce());
+		expect(responseCallback.mock.invocationCallOrder[0]).toBeLessThan(
+			workflowRunner.run.mock.invocationCallOrder[0],
+		);
+
+		resumedRun.resolve(EXECUTION_ID);
+		await execution;
+		expect(responseCallback).toHaveBeenCalledTimes(1);
 	});
 });
 
