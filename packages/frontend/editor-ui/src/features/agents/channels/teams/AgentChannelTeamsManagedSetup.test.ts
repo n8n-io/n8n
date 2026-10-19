@@ -142,10 +142,18 @@ describe('AgentChannelTeamsManagedSetup', () => {
 	 * one resource — so the single prompt covering both is the administrator
 	 * consent, offered here.
 	 */
-	it('offers one administrator prompt covering both Microsoft APIs', () => {
+	it('copies one administrator prompt covering both Microsoft APIs', async () => {
 		const { getByTestId } = render();
 
-		expect(getByTestId('teams-admin-consent').getAttribute('href')).toContain('adminconsent');
+		await fireEvent.click(getByTestId('teams-admin-consent'));
+
+		expect(copySpy).toHaveBeenCalledWith(expect.stringContaining('adminconsent'));
+		expect(showMessage).toHaveBeenCalledWith(
+			expect.objectContaining({
+				type: 'success',
+				title: 'agents.channels.teams.managed.fileAccess.copied',
+			}),
+		);
 	});
 
 	it('offers no administrator prompt where the setup cannot run', () => {
@@ -291,6 +299,19 @@ describe('AgentChannelTeamsManagedSetup', () => {
 				'agents.channels.teams.managed.connect.failed',
 			);
 		});
+	});
+
+	it('offers the admin link inside the error once a sign-in did not finish', async () => {
+		const { getByTestId, queryByTestId } = render({
+			runtime: buildRuntime({ connectManagerCredential: vi.fn().mockResolvedValue(false) }),
+		});
+
+		await fireEvent.click(getByTestId('teams-manager-connect'));
+		await waitFor(() => expect(getByTestId('teams-manager-error')).toBeVisible());
+
+		expect(queryByTestId('teams-admin-consent')).not.toBeInTheDocument();
+		await fireEvent.click(getByTestId('teams-manager-error-admin-consent'));
+		expect(copySpy).toHaveBeenCalledWith(expect.stringContaining('adminconsent'));
 	});
 
 	it('reports a sign-in that threw', async () => {
@@ -1074,6 +1095,7 @@ describe('AgentChannelTeamsManagedSetup', () => {
 			await fireEvent.click(getByTestId('teams-publish'));
 
 			await waitFor(() => expect(getByTestId('teams-install-progress')).toBeVisible());
+			expect(getByTestId('teams-install-menu')).toHaveAttribute('aria-busy', 'true');
 			expect(queryByTestId('teams-catalog-state')).not.toBeInTheDocument();
 
 			finishPublish();
@@ -1165,6 +1187,8 @@ describe('AgentChannelTeamsManagedSetup', () => {
 				expect(getByText('agents.channels.teams.managed.finish.published Acme Corp')).toBeVisible(),
 			);
 			expect(getByTestId('teams-finish-download-package')).toBeVisible();
+			expect(getByTestId('teams-install-menu')).toBeVisible();
+			expect(getByTestId('teams-publish')).toBeDisabled();
 			// Nothing was added to anyone's Teams, so nothing says it was.
 			expect(
 				queryByText('agents.channels.teams.setup.install.description'),

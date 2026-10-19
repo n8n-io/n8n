@@ -55,8 +55,9 @@ During an initial build:
   pending: the model choice and open decisions as \`questions\`, one
   \`credentialRequests\` entry per credential slot, and one \`channels\` entry
   per drafted channel integration — it configures or skips each channel itself,
-  always as the last cards in the flow. Resolve its results — \`resolve_llm\`
-  with the model answer, patch returned credential ids into the config,
+  always as the last cards in the flow. It writes each resolved credential
+  into the empty node-tool slots of its type; do not patch those again.
+  Resolve the rest of its results — \`resolve_llm\` with the model answer,
   verify MCP servers — and finish every build step that waited on that setup.
 - Do not call \`configure_channel\` again after \`finish_setup\` handles a channel card.
 - After \`finish_setup\`, end your reply with a short setup checklist for

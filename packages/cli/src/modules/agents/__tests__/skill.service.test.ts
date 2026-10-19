@@ -379,6 +379,30 @@ describe('SkillService', () => {
 			expect(skills.insertSavedVersion).not.toHaveBeenCalled();
 		});
 
+		it('trims a new name before it checks and stores it', async () => {
+			const baseSkillHash = givenLatest(versionRow(skill, 2));
+
+			const result = await service.save('skill_a', { baseSkillHash, name: '  Renamed  ' }, user.id);
+
+			expect(result.skill.name).toBe('Renamed');
+			expect(skills.insertSavedVersion).toHaveBeenCalledWith(
+				'skill_a',
+				3,
+				expect.objectContaining({ name: 'Renamed' }),
+				user.id,
+				expect.anything(),
+			);
+		});
+
+		it('refuses a new name of only spaces', async () => {
+			const baseSkillHash = givenLatest(versionRow(skill, 2));
+
+			await expect(
+				service.save('skill_a', { baseSkillHash, name: '   ' }, user.id),
+			).rejects.toThrow('Skill name is required.');
+			expect(skills.insertSavedVersion).not.toHaveBeenCalled();
+		});
+
 		it('does not check the name when the save keeps it', async () => {
 			const baseSkillHash = givenLatest(versionRow(skill, 2));
 
@@ -635,7 +659,7 @@ describe('SkillService', () => {
 				{ projectId: null, agentId: null },
 				undefined,
 				{},
-				'Fresh name',
+				{ nameAfterMove: 'Fresh name' },
 			);
 
 			expect(skills.findLatestSummaries).not.toHaveBeenCalled();
@@ -653,6 +677,43 @@ describe('SkillService', () => {
 				service.changeTarget('skill_a', { projectId: null, agentId: null }, undefined),
 			).rejects.toThrow('Agents use this skill.');
 			expect(skills.updateTarget).not.toHaveBeenCalled();
+		});
+
+		it('refuses the move when the skill left the scope that the permission check saw', async () => {
+			skills.findUsingAgentIds.mockResolvedValue([]);
+			// Another move put the skill in a project after `assertCanMove` checked the instance.
+			skills.findByIds.mockResolvedValue([mock<Skill>({ projectId: 'p2', agentId: null })]);
+
+			await expect(
+				service.changeTarget(
+					'skill_a',
+					{ projectId: null, agentId: 'agent-1' },
+					'agent-1',
+					{},
+					{
+						checkedSource: { projectId: null, agentId: null },
+					},
+				),
+			).rejects.toThrow('The skill was moved somewhere else.');
+			expect(skills.findByIds).toHaveBeenCalledWith(['skill_a'], TX_CTX);
+			expect(skills.updateTarget).not.toHaveBeenCalled();
+		});
+
+		it('moves the skill when it is still in the scope that the permission check saw', async () => {
+			skills.findUsingAgentIds.mockResolvedValue([]);
+			skills.findByIds.mockResolvedValue([mock<Skill>({ projectId: null, agentId: null })]);
+
+			await service.changeTarget(
+				'skill_a',
+				{ projectId: 'p1', agentId: null },
+				undefined,
+				{},
+				{
+					checkedSource: { projectId: null, agentId: null },
+				},
+			);
+
+			expect(skills.updateTarget).toHaveBeenCalled();
 		});
 
 		it('moves an unused skill when no agent is kept', async () => {

@@ -81,10 +81,12 @@ export class ModuleRegistry {
 		'runtime-credentials',
 		'mcp-registry',
 		'workflow-reviews',
+		'inbox',
 		'instance-ai',
 		'agents',
 		'agent-evals',
 		'scim',
+		'type-availability-policies',
 	];
 
 	private readonly activeModules: string[] = [];

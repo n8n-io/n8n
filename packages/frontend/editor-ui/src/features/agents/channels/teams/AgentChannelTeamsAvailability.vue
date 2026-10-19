@@ -117,7 +117,7 @@ const readsSharedConversations = computed(() => readsShared(value.value));
  * Files attached in a shared conversation live in SharePoint or OneDrive, which
  * only an app permission that an administrator grants can read. An app the
  * recommended setup made takes a one-step consent; one made by hand needs the
- * permission added first, so it gets the full instructions.
+ * permission added first, so it names the permission.
  */
 const fileAccess = computed(() => {
 	if (props.hideFileAccess || !readsSharedConversations.value) return null;
@@ -130,7 +130,7 @@ const fileAccess = computed(() => {
 		};
 	}
 	return {
-		hint: 'agents.channels.teams.setup.availability.fileAccessPermission' as const,
+		hint: 'agents.channels.teams.setup.availability.fileAccessNotApprovedOwnApp' as const,
 		url: props.appId ? entraApiPermissionsUrl(props.appId) : ENTRA_APP_REGISTRATIONS_URL,
 	};
 });

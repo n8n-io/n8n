@@ -3,6 +3,7 @@ import { ref } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import { mockedStore } from '@/__tests__/utils';
+import { VIEWS } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
 import { configure, fireEvent, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
@@ -75,6 +76,14 @@ vi.mock('@/features/shared/toolsConnection/ToolsConnectionModal.vue', () => ({
 	},
 }));
 
+const { resolveRoute } = vi.hoisted(() => ({
+	resolveRoute: vi.fn(() => ({ href: '/settings/context/skills' })),
+}));
+vi.mock('vue-router', async (importOriginal) => ({
+	...(await importOriginal<typeof import('vue-router')>()),
+	useRouter: () => ({ resolve: resolveRoute }),
+}));
+
 vi.mock('../composables/useAgentTelemetry', () => ({
 	useAgentTelemetry: () => ({ trackImportedSkill }),
 }));
@@ -108,6 +117,7 @@ function renderModal({
 	| 'onRemove'
 	| 'outdated'
 	| 'onUseLatestVersion'
+	| 'getDefaultName'
 > = {}) {
 	const renderComponent = createComponentRenderer(AgentSkillModal, {
 		global: {
@@ -404,6 +414,7 @@ describe('AgentSkillModal', () => {
 				description: 'Use for research',
 				instructions: 'Main instructions',
 			},
+			method: 'upload',
 		});
 		expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
 	});
@@ -440,6 +451,7 @@ describe('AgentSkillModal', () => {
 				instructions: 'Read the guide',
 				references: [{ path: 'references/guide.md', content: '# Guide' }],
 			},
+			method: 'manual',
 		});
 		expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
 	});
@@ -667,6 +679,40 @@ describe('AgentSkillModal', () => {
 			);
 		});
 
+		it('links to the skills settings page from the picker, in a new tab', async () => {
+			listAttachableSkills.mockResolvedValue([projectSkill]);
+			const open = vi.spyOn(window, 'open').mockReturnValue(null);
+			const { getByTestId, queryByTestId } = renderModal({
+				hubSkillsEnabled: true,
+				onAttach: vi.fn(),
+			});
+
+			expect(getByTestId('agent-skill-picker-manage')).toHaveTextContent(
+				'agents.builder.skills.picker.manage',
+			);
+			// The picker step has no Cancel and no Save.
+			expect(queryByTestId('agent-modal-cancel')).not.toBeInTheDocument();
+			expect(queryByTestId('agent-skill-create-save')).not.toBeInTheDocument();
+
+			await fireEvent.click(getByTestId('agent-skill-picker-manage'));
+
+			expect(resolveRoute).toHaveBeenCalledWith({ name: VIEWS.SETTINGS_CONTEXT_SKILLS });
+			expect(open).toHaveBeenCalledWith('/settings/context/skills', '_blank', 'noopener');
+			open.mockRestore();
+		});
+
+		it('shows the settings link only on the picker step', async () => {
+			listAttachableSkills.mockResolvedValue([projectSkill]);
+			const { getByTestId, queryByTestId } = renderModal({
+				hubSkillsEnabled: true,
+				onAttach: vi.fn(),
+			});
+
+			await fireEvent.click(getByTestId('agent-skill-picker-create'));
+
+			expect(queryByTestId('agent-skill-picker-manage')).not.toBeInTheDocument();
+		});
+
 		it('goes from the picker to the upload step and back', async () => {
 			listAttachableSkills.mockResolvedValue([projectSkill]);
 			const { getByTestId, queryByTestId } = renderModal({
@@ -680,6 +726,23 @@ describe('AgentSkillModal', () => {
 			await fireEvent.click(getByTestId('agent-modal-back'));
 			expect(queryByTestId('agent-skill-upload')).not.toBeInTheDocument();
 			expect(getByTestId('agent-skill-picker')).toBeVisible();
+		});
+
+		it('asks for a default name where "available to" puts the new skill', async () => {
+			listAttachableSkills.mockResolvedValue([]);
+			const getDefaultName = vi.fn().mockResolvedValue('New skill 3');
+			const { getByTestId } = renderModal({
+				hubSkillsEnabled: true,
+				onAttach: vi.fn(),
+				getDefaultName,
+			});
+
+			// "Create" from the "This agent" tab makes the skill available to this agent only.
+			await fireEvent.click(getByTestId('agent-skill-picker-create-this-agent'));
+			await fireEvent.click(getByTestId('agent-skill-add-manually'));
+
+			expect(getDefaultName).toHaveBeenCalledWith('agent');
+			await waitFor(() => expect(getTitleInput(document.body)).toHaveValue('New skill 3'));
 		});
 
 		it('opens a read-only preview from a row click and adds the skill from there', async () => {
@@ -781,7 +844,8 @@ describe('AgentSkillModal', () => {
 		});
 
 		it.each([
-			['project', 'agents.builder.skills.availableTo.project'],
+			// The project option names the project, which the modal hides behind it.
+			['project', 'Marketing'],
 			['instance', 'agents.builder.skills.availableTo.instance'],
 		] as const)(
 			'saves a new skill for the %s from the availability select',
@@ -815,6 +879,22 @@ describe('AgentSkillModal', () => {
 				);
 			},
 		);
+
+		it('falls back to "This project" when the project name is unknown', async () => {
+			listAttachableSkills.mockResolvedValue([]);
+			const { getByTestId, findByText } = renderModal({
+				hubSkillsEnabled: true,
+				onAttach: vi.fn(),
+			});
+
+			await fireEvent.click(getByTestId('agent-skill-picker-create'));
+			await fireEvent.click(getByTestId('agent-skill-add-manually'));
+			await fireEvent.click(
+				getByTestId('agent-skill-availability-select').querySelector('.select-trigger')!,
+			);
+
+			expect(await findByText('agents.builder.skills.availableTo.project')).toBeInTheDocument();
+		});
 
 		it.each([
 			['all', true, 'agent'],
@@ -1145,6 +1225,7 @@ describe('AgentSkillModal from Settings', () => {
 			id: undefined,
 			skill: { name: 'Research', description: 'Use it', instructions: 'Body' },
 			scope: 'project:personal-1',
+			method: 'upload',
 		});
 		// Settings has no agent, so the builder's import event is not sent.
 		expect(trackImportedSkill).not.toHaveBeenCalled();

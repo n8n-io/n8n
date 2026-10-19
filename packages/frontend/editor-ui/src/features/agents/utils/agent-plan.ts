@@ -170,7 +170,8 @@ export function buildAgentPlanDisplayGroups(messages: ChatMessage[]): DisplayGro
 			!group.finalMessage?.renderParts?.length &&
 			!group.thinkingSegments.length &&
 			!group.budgetNotices.length &&
-			!group.interactives.length
+			!group.interactives.length &&
+			!group.hostEvents?.length
 		) {
 			return [];
 		}

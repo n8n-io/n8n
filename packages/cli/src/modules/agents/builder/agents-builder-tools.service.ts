@@ -86,13 +86,20 @@ import {
 	buildFinishSetupTool,
 	buildResolveLlmTool,
 } from './interactive';
+import type {
+	NodeToolCredentialWriteResult,
+	ResolvedCredential,
+} from './interactive/finish-setup.tool';
 import type { ModelLookup } from './interactive/resolve-llm.tool';
 import { SKILL_BODY_GUIDANCE, SKILL_DESCRIPTION_RULE } from './skill-body-template';
 import { TASK_OBJECTIVE_GUIDANCE } from './task-objective-template';
 import { buildVerifyMcpServerTool, type McpCredentialApplyResult } from './verify-mcp-server.tool';
 import { AgentSkillRefsService } from '../agent-skill-refs.service';
 import { composeJsonConfig } from '../json-config/agent-config-composition';
-import { listAiGatewayManagedCredentialTypes } from '../json-config/reconcile-node-tool-gateway-credentials';
+import {
+	assignCredentialToNodeTools,
+	listAiGatewayManagedCredentialTypes,
+} from '../json-config/reconcile-node-tool-gateway-credentials';
 import { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import { getAgentConfigHash, isSameAgentConfig } from '../utils/agent-config-hash';
 import { SkillNameTakenError, skillNameTakenToolMessage } from '../skills/skill-name-taken.error';
@@ -559,7 +566,7 @@ export class AgentsBuilderToolsService {
 			),
 			this.withConfigMutationMarker(
 				this.withConfigSnapshotOnResume(
-					this.createFinishSetupTool(credentialService, agentId, projectId, track),
+					this.createFinishSetupTool(credentialService, agentId, projectId, user, track),
 					agentId,
 					projectId,
 					(result) => result.completed === true,
@@ -595,6 +602,7 @@ export class AgentsBuilderToolsService {
 		credentialService: InstanceAiCredentialService,
 		agentId: string,
 		projectId: string,
+		user: User,
 		track: BuilderTrackFn,
 	): BuiltTool {
 		return buildFinishSetupTool({
@@ -602,6 +610,8 @@ export class AgentsBuilderToolsService {
 			agentId,
 			projectId,
 			track,
+			writeCredentialsToNodeTools: async (credentials) =>
+				await this.writeCredentialsToNodeTools(agentId, projectId, user, credentials),
 			isCredentialTypeKnown: (credentialType) => this.credentialTypes.recognizes(credentialType),
 			listIntegrationCredentialIds: async () => {
 				const agent = await this.agentsService.findById(agentId, projectId);
@@ -1373,6 +1383,45 @@ export class AgentsBuilderToolsService {
 		);
 		// Based on a fresh read, so the saved config can hold edits the model has not seen.
 		return { applied: true, config: saved.config, configHash: saved.configHash };
+	}
+
+	private async writeCredentialsToNodeTools(
+		agentId: string,
+		projectId: string,
+		user: User,
+		credentials: ResolvedCredential[],
+	): Promise<NodeToolCredentialWriteResult> {
+		const failed = (errors: Array<{ message: string }>): NodeToolCredentialWriteResult => ({
+			credentialTypes: [],
+			error: errors.map((e) => e.message).join('; '),
+		});
+		const editorLock = await this.getEditorLockFailure(agentId);
+		if (editorLock) return failed(editorLock.errors);
+		const { config, configHash } = await this.getConfigSnapshot(agentId, projectId);
+		if (!config) return failed([{ message: 'Agent has no JSON config yet.' }]);
+
+		const tools = structuredClone(config.tools ?? []);
+		const credentialTypes: string[] = [];
+		for (const { credentialType, id, name } of credentials) {
+			if (assignCredentialToNodeTools(tools, this.nodeTypes, credentialType, { id, name }) > 0) {
+				credentialTypes.push(credentialType);
+			}
+		}
+		if (credentialTypes.length === 0) return { credentialTypes };
+
+		const next = { ...config, tools };
+		const validated = this.validateBuilderConfig(next, config);
+		if (!validated.ok) return failed(validated.errors);
+		const saved = await this.saveBuilderConfig(
+			agentId,
+			projectId,
+			user,
+			validated.config,
+			configHash,
+			next,
+		);
+		if (!saved.ok) return failed(saved.errors);
+		return { credentialTypes, configHash: saved.configHash };
 	}
 
 	private async getFreshConfigSnapshot(
