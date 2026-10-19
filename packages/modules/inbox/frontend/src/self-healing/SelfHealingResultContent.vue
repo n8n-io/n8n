@@ -340,6 +340,7 @@ function onTabChange(tab: string) {
 }
 
 .outcomeNotice {
+	margin-block: var(--spacing--4xs);
 	gap: var(--spacing--sm);
 	flex-wrap: wrap;
 }
@@ -379,9 +380,13 @@ function onTabChange(tab: string) {
 	h4,
 	h5,
 	h6 {
-		margin-block: var(--spacing--sm) var(--spacing--2xs);
+		margin-block: var(--spacing--sm) var(--spacing--5xs);
 		font-size: var(--font-size--sm);
 		line-height: var(--line-height--lg);
+
+		+ p {
+			margin-top: 0;
+		}
 	}
 
 	h1 {
