@@ -9,9 +9,9 @@
 | id | uuid |  | false | [public.promotion_environment_project](public.promotion_environment_project.md) [public.promotion_review](public.promotion_review.md) [public.promotion_run](public.promotion_run.md) |  | Also the name of the local checkout directory. |
 | name | varchar(128) |  | false |  |  |  |
 | providerId | varchar(36) |  | false |  | [public.promotion_provider](public.promotion_provider.md) | The provider whose credentials this environment uses. |
-| remote | json |  | false |  |  | Where to push and pull, with its own schemaVersion. Plain Git stores the full remote URL. |
+| remote | json |  | false |  |  | Where to push and pull. The provider type picks the shape: plain Git stores remoteUrl, a Git host stores repositoryPath. Has its own schemaVersion. |
 | scope | varchar(16) |  | false |  |  | PromotionEnvironmentScope enum: "instance", "projects". Cannot change after creation. |
-| settings | json |  | false |  |  | Branch settings for direction, with their own schemaVersion. Validated in code. |
+| settings | json |  | false |  |  | Settings of one direction. direction picks the shape: apply stores branchName, promote stores baseBranchName and createBranchOnPromotion. Has its own schemaVersion. Validated in code. |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 
 ## Constraints

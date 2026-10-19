@@ -69,6 +69,10 @@ export const promotionGitPromoteSettingsSchema = z
 	})
 	.strict();
 
+/**
+ * `direction` picks the shape. The create and summary DTOs discriminate on it,
+ * and the server checks it on update.
+ */
 export const promotionEnvironmentSettingsSchema = z.union([
 	promotionGitApplySettingsSchema,
 	promotionGitPromoteSettingsSchema,

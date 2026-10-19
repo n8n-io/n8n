@@ -20,6 +20,7 @@ const repositoryPathSchema = z.string().refine((value) => {
 	);
 });
 
+/** The provider type picks the shape. See `resolvePromotionRemote`. */
 export const promotionStoredEnvironmentRemoteSchema = z.union([
 	promotionEnvironmentRemoteSchema,
 	z.object({ schemaVersion: z.literal(1), repositoryPath: repositoryPathSchema }).strict(),

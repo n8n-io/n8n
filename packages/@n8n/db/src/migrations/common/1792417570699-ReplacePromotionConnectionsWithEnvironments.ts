@@ -80,10 +80,10 @@ export class ReplacePromotionConnectionsWithEnvironments1792417570699
 						'PromotionEnvironmentScope enum: "instance", "projects". Cannot change after creation.',
 					),
 				column('remote').json.notNull.comment(
-					'Where to push and pull, with its own schemaVersion. Plain Git stores the full remote URL.',
+					'Where to push and pull. The provider type picks the shape: plain Git stores remoteUrl, a Git host stores repositoryPath. Has its own schemaVersion.',
 				),
 				column('settings').json.notNull.comment(
-					'Branch settings for direction, with their own schemaVersion. Validated in code.',
+					'Settings of one direction. direction picks the shape: apply stores branchName, promote stores baseBranchName and createBranchOnPromotion. Has its own schemaVersion. Validated in code.',
 				),
 			)
 			// RESTRICT, not CASCADE: one provider can serve many environments, so deleting

@@ -23,6 +23,8 @@ import type { PromotionStoredEnvironmentRemote } from '../../git-hosts/git-host-
  * One direction against one remote, reached with one provider's credentials. The
  * provider, remote URL, and name are not unique, because a provider can serve
  * several environments. The `id` also names the local checkout directory.
+ * The provider type picks the shape of `remote`, and `direction` picks the
+ * shape of `settings`.
  */
 @Entity('promotion_environment')
 // One instance environment for each direction, but any number of project ones.
@@ -54,11 +56,18 @@ export class PromotionEnvironment extends WithTimestamps {
 	@Column({ type: 'varchar', length: 16 })
 	scope: PromotionEnvironmentScope;
 
-	/** Where to push and pull, with its own `schemaVersion`. */
+	/**
+	 * Where to push and pull. The provider type picks the shape: plain Git stores
+	 * remoteUrl, a Git host stores repositoryPath. Has its own schemaVersion.
+	 */
 	@JsonColumn()
 	remote: PromotionStoredEnvironmentRemote;
 
-	/** Branch settings for {@link direction}, with their own `schemaVersion`. */
+	/**
+	 * Settings of one direction. direction picks the shape: apply stores
+	 * branchName, promote stores baseBranchName and createBranchOnPromotion. Has
+	 * its own schemaVersion. Validated in code.
+	 */
 	@JsonColumn()
 	settings: PromotionEnvironmentSettings;
 
