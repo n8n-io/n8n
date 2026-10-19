@@ -98,11 +98,14 @@ export class AgentMessageQueueConsumer {
 		try {
 			const claim = await this.chatExecutionService.withTurnLock(threadId, async (signal) => {
 				signal.throwIfAborted();
+
 				const claimed = await this.queue.claimNext(threadId, async (item, thread, ctx) => {
 					if (this.stopped) return false;
 					if (item.payload.kind !== 'integration') return true;
+
 					const source = item.message.origin?.source;
 					if (!source) throw new UnexpectedError('Queued integration input has no source');
+
 					const connection = await this.repository.findPublishedConnection(
 						thread.agentId,
 						thread.projectId,
@@ -110,17 +113,23 @@ export class AgentMessageQueueConsumer {
 						item.payload.credentialId,
 						ctx,
 					);
+
 					if (this.stopped) return false;
+
 					// Removed connections fail the item. A missing or closing bridge leaves it pending.
 					if (!connection) return true;
+
 					lease = this.integrations.acquireQueueBridge(
 						thread.agentId,
 						source,
 						item.payload.credentialId,
 					);
+
 					return lease !== undefined;
 				});
+
 				if (!claimed) return null;
+
 				if (signal.aborted) {
 					// Finalize the claimed execution without starting it after the lock expires.
 					controller.abort(new OperationalError('Agent execution startup lock was lost'));
@@ -139,11 +148,14 @@ export class AgentMessageQueueConsumer {
 				}
 				return claimed;
 			});
+
 			if (!claim) return false;
+
 			await this.chatExecutionService.settle(
 				claim.admission.executionId,
 				async () => await this.consume(claim, controller, lease?.bridge),
 			);
+
 			return true;
 		} finally {
 			lease?.release();
@@ -163,6 +175,7 @@ export class AgentMessageQueueConsumer {
 		]);
 		const sender =
 			payload.kind === 'integration' ? undefined : this.previewStreams.createSender(item.id);
+
 		try {
 			if (sender) {
 				const user = await this.getThreadOwner(thread);
@@ -174,9 +187,12 @@ export class AgentMessageQueueConsumer {
 					message: payload.message,
 				});
 				signal.throwIfAborted();
-				if (payload.kind === 'n8n_chat')
+
+				if (payload.kind === 'n8n_chat') {
 					await this.consumeN8nChat(claim, user, signal, sender.send);
-				else await this.consumePreview(claim, user, signal, sender.send);
+				} else {
+					await this.consumePreview(claim, user, signal, sender.send);
+				}
 			} else {
 				signal.throwIfAborted();
 				await this.consumeIntegration(claim, signal, bridge);
@@ -184,6 +200,7 @@ export class AgentMessageQueueConsumer {
 		} catch (error) {
 			await this.queue.recordFailure(claim, error, controller.signal);
 			const { isAbortError } = await import('@n8n/agents');
+
 			if (
 				controller.signal.aborted &&
 				isAbortError(controller.signal.reason) &&
@@ -192,6 +209,7 @@ export class AgentMessageQueueConsumer {
 				sender?.send({ type: 'done', sessionId: thread.id, executionId: admission.executionId });
 				return;
 			}
+
 			sender?.send(toChatErrorEvent(error, 'Chat failed'));
 			this.logger.warn('Queued agent message failed', {
 				queueId: item.id,
@@ -226,6 +244,7 @@ export class AgentMessageQueueConsumer {
 		const { thread, admission, payload } = claim;
 		if (payload.kind !== 'preview') return;
 		signal.throwIfAborted();
+
 		const prepared = await this.testRunService.prepareDraftRun({
 			agentId: thread.agentId,
 			projectId: thread.projectId,
@@ -240,6 +259,7 @@ export class AgentMessageQueueConsumer {
 				thread.agentId,
 			),
 		});
+
 		if (prepared.status !== 'ready') {
 			const message =
 				prepared.status === 'agent_misconfigured'
@@ -255,6 +275,7 @@ export class AgentMessageQueueConsumer {
 			});
 			return;
 		}
+
 		const result = await this.testRunService.executePreparedDraftRun({
 			agentId: thread.agentId,
 			projectId: thread.projectId,
@@ -271,6 +292,7 @@ export class AgentMessageQueueConsumer {
 			onChunk: (chunk) => emitChunkEvents(chunk, send),
 			onBudgetNotice: (notice) => send({ type: 'budget-notice', ...notice }),
 		});
+
 		if (result.status === 'completed')
 			send({ type: 'done', sessionId: thread.id, executionId: admission.executionId });
 	}
