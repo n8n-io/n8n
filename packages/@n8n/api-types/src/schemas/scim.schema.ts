@@ -27,14 +27,6 @@ export const scimEmailSchema = z.object({
 	display: z.string().optional(),
 });
 
-// SCIM 2.0 Role schema (RFC 7643 section 4.1.2)
-export const scimRoleSchema = z.object({
-	value: z.string(),
-	display: z.string().optional(),
-	type: z.string().optional(),
-	primary: z.boolean().optional(),
-});
-
 // SCIM 2.0 User schema (core attributes)
 export const scimUserSchema = z.object({
 	schemas: z.array(z.string()).default(['urn:ietf:params:scim:schemas:core:2.0:User']),
@@ -44,7 +36,6 @@ export const scimUserSchema = z.object({
 	name: scimUserNameSchema.optional(),
 	displayName: z.string().optional(),
 	emails: z.array(scimEmailSchema).optional(),
-	roles: z.array(scimRoleSchema).optional(),
 	active: z.boolean().default(true),
 	meta: scimMetaSchema.optional(),
 });
@@ -91,4 +82,3 @@ export type ScimError = z.infer<typeof scimErrorSchema>;
 export type ScimMeta = z.infer<typeof scimMetaSchema>;
 export type ScimUserName = z.infer<typeof scimUserNameSchema>;
 export type ScimEmail = z.infer<typeof scimEmailSchema>;
-export type ScimRole = z.infer<typeof scimRoleSchema>;

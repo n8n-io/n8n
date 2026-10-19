@@ -68,6 +68,14 @@ describe('ScimDiscoveryController', () => {
 		]);
 	});
 
+	// SSO role mapping owns the instance role, so SCIM must not offer to set it.
+	it('does not advertise roles on the User schema', () => {
+		const { body } = call('getSchemas');
+		const attributeNames = body.Resources[0].attributes.map((a: { name: string }) => a.name);
+
+		expect(attributeNames).not.toContain('roles');
+	});
+
 	// Advertising a resource with no endpoint behind it turns every sync into a
 	// 404. Group is added by the PR that implements it.
 	it.each(['getResourceTypes', 'getSchemas'] as const)('%s does not mention Group', (handler) => {

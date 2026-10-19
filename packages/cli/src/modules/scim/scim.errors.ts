@@ -21,7 +21,7 @@ export class ScimInvalidFilterError extends UserError {
 	}
 }
 
-/** An attribute value is not acceptable (e.g. unknown role). Maps to HTTP 400 with scimType "invalidValue". */
+/** An attribute value is not acceptable (e.g. no usable email address). Maps to HTTP 400 with scimType "invalidValue". */
 export class ScimInvalidValueError extends UserError {
 	constructor(detail: string) {
 		super(detail);
