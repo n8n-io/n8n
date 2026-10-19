@@ -10,7 +10,8 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import { BadRequestError } from '@n8n/errors';
 
 import { adminConsentRedirectUri, adminConsentUrl } from './teams-admin-consent';
-import { graphErrorCode, TeamsGraphService } from './teams-graph.service';
+import { GRAPH_APP_ROLES } from './teams-graph-permissions';
+import { graphErrorCode, odataLiteral, TeamsGraphService } from './teams-graph.service';
 import { TEAMS_MANAGER_CREDENTIAL_TYPE } from './teams-managed-setup.service';
 import { GRAPH_RESOURCE, TeamsManagerTokenService } from './teams-manager-token.service';
 import { sanitiseAppName, stringProperty } from '../../integration-helpers';
@@ -33,17 +34,18 @@ function usableSecret(
 	return { value, expiresAt };
 }
 const GRAPH_APP_ID = '00000003-0000-0000-c000-000000000000';
-const FILES_READ_ALL_ROLE = { id: '01d4889c-1287-42c6-ac1f-5d1e02578ef6', type: 'Role' };
-
-function withFileAccess(requiredResourceAccess: unknown): unknown[] {
+function withGraphPermissions(requiredResourceAccess: unknown): unknown[] {
 	const entries: unknown[] = Array.isArray(requiredResourceAccess) ? requiredResourceAccess : [];
 	const graph = entries.find((entry) => isRecord(entry) && entry.resourceAppId === GRAPH_APP_ID);
 	const roles: unknown[] =
 		isRecord(graph) && Array.isArray(graph.resourceAccess) ? graph.resourceAccess : [];
-	if (roles.some((role) => isRecord(role) && role.id === FILES_READ_ALL_ROLE.id)) return entries;
+	const missing = GRAPH_APP_ROLES.filter(
+		({ id }) => !roles.some((role) => isRecord(role) && role.id === id),
+	).map(({ id }) => ({ id, type: 'Role' }));
+	if (missing.length === 0) return entries;
 	return [
 		...entries.filter((entry) => entry !== graph),
-		{ resourceAppId: GRAPH_APP_ID, resourceAccess: [...roles, FILES_READ_ALL_ROLE] },
+		{ resourceAppId: GRAPH_APP_ID, resourceAccess: [...roles, ...missing] },
 	];
 }
 
@@ -62,9 +64,6 @@ const SECRET_LIFETIMES_MONTHS = [24, 12, 6, 3] as const;
  * Entra rejects a tag containing any, and the same string is used for both.
  */
 const UNIQUE_NAME_PREFIX = 'n8n-agent-';
-
-/** OData closes a string literal on a quote, and escapes one by doubling it. */
-const odataLiteral = (value: string) => value.replace(/'/g, "''");
 
 /** Entra refuses a display name longer than this. */
 const APP_NAME_MAX = 120;
@@ -341,7 +340,7 @@ export class TeamsEntraProvisioningService {
 		const redirectUris: unknown[] = Array.isArray(web.redirectUris) ? web.redirectUris : [];
 
 		const response = await this.graph.request(token, 'PATCH', `/applications/${objectId}`, {
-			requiredResourceAccess: withFileAccess(app.requiredResourceAccess),
+			requiredResourceAccess: withGraphPermissions(app.requiredResourceAccess),
 			...(redirectUri && !redirectUris.includes(redirectUri)
 				? { web: { redirectUris: [...redirectUris, redirectUri] } }
 				: {}),
