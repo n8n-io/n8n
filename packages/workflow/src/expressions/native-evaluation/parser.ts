@@ -20,6 +20,7 @@ import {
 	type Literal,
 	type SimpleNode,
 } from './grammar';
+import { isExpressionExtension } from '../../extensions/expression-extension';
 import { isSafeObjectProperty } from '../../utils';
 
 // ── Parsing: esprima output → the subset grammar, or null. ────────────────
@@ -309,6 +310,60 @@ function parseChain(node: namedTypes.ChainExpression, parse: ParseChild): Simple
 	if (expression === null) return null;
 
 	return { kind: 'chain', expression };
+}
+
+/**
+ * Once a chunk holds an extension call, extendTransform rewrites every
+ * optional chain in it through its own polyfill, and that reprint drops the
+ * parentheses around a `??` operand mixed with `&&` or `||`: the engines
+ * then throw "invalid syntax" where this interpreter would evaluate. An
+ * extension call in any chunk sends every chunk through the rewrite, so an
+ * expression with both an optional chain and an extension call is theirs,
+ * even when the two are in different chunks. The rewrite matches by method
+ * name alone, so a node-ref call like `$input.first()` counts too.
+ */
+export function usesPolyfilledChain(roots: SimpleNode[]): boolean {
+	let chain = false;
+	let extension = false;
+	const visit = (node: SimpleNode): void => {
+		switch (node.kind) {
+			case 'chain':
+				chain = true;
+				visit(node.expression);
+				return;
+			case 'call':
+				if (isExpressionExtension(node.method)) {
+					extension = true;
+				}
+				visit(node.receiver);
+				node.args.forEach(visit);
+				return;
+			case 'iterate':
+				visit(node.receiver);
+				visit(node.body);
+				return;
+			case 'member':
+				visit(node.object);
+				return;
+			case 'unary':
+				visit(node.argument);
+				return;
+			case 'binary':
+			case 'logical':
+				visit(node.left);
+				visit(node.right);
+				return;
+			case 'conditional':
+				visit(node.test);
+				visit(node.consequent);
+				visit(node.alternate);
+				return;
+			default:
+				return;
+		}
+	};
+	roots.forEach(visit);
+	return chain && extension;
 }
 
 function parseBranches(
