@@ -848,8 +848,17 @@ describe('AiGatewayService', () => {
 							tagline: 'Read the web with Gateway credits',
 							version: '1.0.0',
 							updatedAt: '2026-09-17T10:00:00.000Z',
-							icons: [{ src: 'https://firecrawl.dev/icon.svg', mimeType: 'image/x-unknown' }],
-							tools: [{ name: 'firecrawl_scrape', readOnlyHint: true }],
+							websiteUrl: 'https://firecrawl.dev',
+							icons: [
+								{ src: 'https://firecrawl.dev/icon.svg', mimeType: 'image/x-unknown' },
+								{ src: 'https://firecrawl.dev/dark.png', mimeType: 'image/png', theme: 'dark' },
+							],
+							tags: ['web'],
+							tools: [
+								{ name: 'firecrawl_scrape', title: 'Scrape', readOnlyHint: true },
+								{ name: 'firecrawl_crawl', readOnlyHint: false },
+								{ name: 'firecrawl_map' },
+							],
 						},
 					],
 				}),
@@ -863,12 +872,26 @@ describe('AiGatewayService', () => {
 				authType: '__aiGatewayManaged',
 				remotes: [{ type: 'streamable-http', url: `${BASE_URL}/v1/gateway/mcp/firecrawl` }],
 				requiredCapabilities: ['n8n-connect'],
-				icons: [{ src: 'https://firecrawl.dev/icon.svg' }],
+				websiteUrl: 'https://firecrawl.dev',
+				tags: ['web'],
 			});
+			// An icon keeps a MIME type the registry accepts, and drops one it does not.
+			expect(row.icons).toEqual([
+				{ src: 'https://firecrawl.dev/icon.svg' },
+				{ src: 'https://firecrawl.dev/dark.png', mimeType: 'image/png', theme: 'dark' },
+			]);
+			expect(row.tools).toEqual([
+				{ name: 'firecrawl_scrape', title: 'Scrape', annotations: { readOnlyHint: true } },
+				{ name: 'firecrawl_crawl', annotations: { readOnlyHint: false } },
+				{ name: 'firecrawl_map' },
+			]);
 		});
 
-		it('rejects a response that does not match the contract', async () => {
-			requestMock.mockResolvedValueOnce(ok({ servers: [{ slug: 'firecrawl' }] }));
+		it.each([
+			{ case: 'does not match the contract', response: ok({ servers: [{ slug: 'firecrawl' }] }) },
+			{ case: 'has a non-2xx status', response: fail(502) },
+		])('rejects a response that $case', async ({ response }) => {
+			requestMock.mockResolvedValueOnce(response);
 
 			await expect(makeService().fetchAiGatewayMcpServers()).rejects.toThrow(UserError);
 		});

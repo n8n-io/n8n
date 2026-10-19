@@ -10,6 +10,7 @@ import { McpRegistryController } from '../mcp-registry.controller';
 import { pairAiGatewayServers } from '../registry/mcp-registry-ai-gateway';
 import type { McpRegistryService } from '../registry/mcp-registry.service';
 import {
+	braveSearchAiGatewayMockServer,
 	databricksGenieTemplatedMockServer,
 	firecrawlAiGatewayMockServer,
 	firecrawlMockServer,
@@ -63,14 +64,9 @@ describe('McpRegistryController', () => {
 		});
 
 		it('lists Gateway credits on a paired server, hides its AI Gateway row, and keeps a gateway-only row', async () => {
-			const braveSearchAiGatewayServer = {
-				...firecrawlAiGatewayMockServer,
-				slug: 'n8n-connect-brave-search',
-				title: 'Brave Search',
-			};
 			service.getAll.mockResolvedValue(
 				pairAiGatewayServers(
-					[firecrawlMockServer, firecrawlAiGatewayMockServer, braveSearchAiGatewayServer],
+					[firecrawlMockServer, firecrawlAiGatewayMockServer, braveSearchAiGatewayMockServer],
 					() => true,
 				),
 			);

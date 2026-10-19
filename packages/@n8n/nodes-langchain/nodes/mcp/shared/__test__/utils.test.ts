@@ -323,6 +323,23 @@ describe('utils', () => {
 			});
 		});
 
+		it.each([
+			{
+				case: 'the minted token',
+				credentials: { token: 'minted' },
+				headers: { Authorization: 'Bearer minted' },
+			},
+			{ case: 'no headers without a token', credentials: {}, headers: undefined },
+		])('should return $case for a Gateway credits credential', async ({ credentials, headers }) => {
+			const ctx = mockDeep<IExecuteFunctions>();
+			ctx.getCredentials.mockResolvedValue(credentials);
+
+			const result = await getAuthHeaders(ctx, 'n8nConnectFirecrawlMcpAiGatewayApi');
+
+			expect(ctx.getCredentials).toHaveBeenCalledWith('n8nConnectFirecrawlMcpAiGatewayApi');
+			expect(result).toEqual(headers ? { headers, credentials } : { credentials });
+		});
+
 		it('should return the headers and credentials for multipleHeadersAuth', async () => {
 			const ctx = mockDeep<IExecuteFunctions>();
 			const credentials = {

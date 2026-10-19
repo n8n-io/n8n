@@ -64,9 +64,15 @@ describe('shouldRefreshMcpOAuth2Token', () => {
 });
 
 describe('getMcpAuthHeaders', () => {
-	it('sends the minted Gateway credits token as a bearer token', () => {
-		expect(getMcpAuthHeaders('n8nConnectFirecrawlMcpAiGatewayApi', { token: 'minted' })).toEqual({
-			Authorization: 'Bearer minted',
-		});
+	it.each([
+		{
+			case: 'sends the minted token as a bearer token',
+			data: { token: 'minted' },
+			headers: { Authorization: 'Bearer minted' },
+		},
+		{ case: 'sends no header without a token', data: {}, headers: {} },
+		{ case: 'sends no header for an empty token', data: { token: '' }, headers: {} },
+	])('Gateway credits: $case', ({ data, headers }) => {
+		expect(getMcpAuthHeaders('n8nConnectFirecrawlMcpAiGatewayApi', data)).toEqual(headers);
 	});
 });

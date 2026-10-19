@@ -2,7 +2,11 @@ import { computed, effectScope } from 'vue';
 import { flushPromises } from '@vue/test-utils';
 import { createTestingPinia } from '@pinia/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { McpRegistryDiscoveryResponse, McpRegistryServerResponse } from '@n8n/api-types';
+import {
+	AI_GATEWAY_MANAGED_TAG,
+	type McpRegistryDiscoveryResponse,
+	type McpRegistryServerResponse,
+} from '@n8n/api-types';
 import type { McpToolSettings } from '@/features/shared/toolsConnection/types';
 import { useUIStore } from '@/app/stores/ui.store';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
@@ -83,7 +87,7 @@ describe('useAgentRegistryMcpConfig', () => {
 		});
 	});
 
-	it('discovers a Gateway credits draft without a credential, and switches to an own credential', async () => {
+	it('discovers a Gateway credits draft without a credential, and switches between Gateway credits and an own credential', async () => {
 		const modalData: AgentRegistryMcpModalData = {
 			kind: 'registryMcpServer',
 			projectId: 'project-1',
@@ -112,6 +116,14 @@ describe('useAgentRegistryMcpConfig', () => {
 			slug: 'github',
 			credentialId: 'credential-1',
 		});
+
+		await config.selectCredential('n8nConnectGithubMcpAiGatewayApi', AI_GATEWAY_MANAGED_TAG);
+
+		expect(discoverRegistry).toHaveBeenLastCalledWith({ slug: 'github', aiGateway: true });
+		// The draft no longer holds the own credential.
+		expect(config.item.value?.credentials).toEqual([
+			expect.objectContaining({ authType: 'githubMcpOAuth2Api', credentialId: undefined }),
+		]);
 		scope.stop();
 	});
 

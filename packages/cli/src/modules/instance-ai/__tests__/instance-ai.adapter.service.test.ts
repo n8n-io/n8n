@@ -88,6 +88,7 @@ import type { NodeTypes } from '@/node-types';
 import { pairAiGatewayServers } from '@/modules/mcp-registry/registry/mcp-registry-ai-gateway';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import {
+	braveSearchAiGatewayMockServer,
 	firecrawlAiGatewayMockServer,
 	firecrawlMockServer,
 } from '@/modules/mcp-registry/registry/mock-servers';
@@ -7681,10 +7682,6 @@ describe('MCP registry discovery', () => {
 		});
 
 		it('never offers Gateway credits in search results or slug lookups', async () => {
-			const braveSearchAiGatewayServer = {
-				...firecrawlAiGatewayMockServer,
-				slug: 'n8n-connect-brave-search',
-			};
 			stubContainer({
 				registrySearch: vi
 					.fn()
@@ -7696,7 +7693,7 @@ describe('MCP registry discovery', () => {
 					.fn()
 					.mockResolvedValue(
 						pairAiGatewayServers(
-							[firecrawlMockServer, firecrawlAiGatewayMockServer, braveSearchAiGatewayServer],
+							[firecrawlMockServer, firecrawlAiGatewayMockServer, braveSearchAiGatewayMockServer],
 							() => true,
 						),
 					),

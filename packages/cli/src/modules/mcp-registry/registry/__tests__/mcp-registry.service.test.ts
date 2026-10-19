@@ -19,6 +19,7 @@ import { McpRegistryService } from '../mcp-registry.service';
 import type { McpRegistryServer } from '../mcp-registry.types';
 import { toEntity } from '../mcp-registry.types';
 import {
+	braveSearchAiGatewayMockServer,
 	firecrawlAiGatewayMockServer,
 	firecrawlMockServer,
 	linearMockServer,
@@ -121,14 +122,41 @@ describe('McpRegistryService', () => {
 	});
 
 	describe('AI Gateway pairs', () => {
-		it('reads the pair partner of a requested row, and returns only the requested rows', async () => {
-			const { service, loadNodesAndCredentials } = createService({
-				storedServers: [firecrawlMockServer, linearMockServer, firecrawlAiGatewayMockServer],
-				aiGateway: { enabled: true },
-			});
+		function createPairingService(storedServers: McpRegistryServer[]) {
+			const created = createService({ storedServers, aiGateway: { enabled: true } });
 			const loader = Object.create(McpRegistryNodeLoader.prototype) as McpRegistryNodeLoader;
 			loader.isSupportedCredentialType = vi.fn().mockReturnValue(true);
-			loadNodesAndCredentials.loaders[MCP_REGISTRY_PACKAGE_NAME] = loader;
+			created.loadNodesAndCredentials.loaders[MCP_REGISTRY_PACKAGE_NAME] = loader;
+			return created;
+		}
+
+		it('pairs the rows that getAll returns, and keeps a gateway-only row', async () => {
+			const { service } = createPairingService([
+				firecrawlMockServer,
+				firecrawlAiGatewayMockServer,
+				braveSearchAiGatewayMockServer,
+			]);
+
+			const servers = await service.getAll();
+
+			expect(
+				servers.map(({ slug, aiGateway, pairedSlug }) => ({
+					slug,
+					pairedWith: aiGateway?.slug ?? pairedSlug,
+				})),
+			).toEqual([
+				{ slug: 'firecrawl', pairedWith: 'n8n-connect-firecrawl' },
+				{ slug: 'n8n-connect-firecrawl', pairedWith: 'firecrawl' },
+				{ slug: 'n8n-connect-brave-search', pairedWith: undefined },
+			]);
+		});
+
+		it('reads the pair partner of a requested row, and returns only the requested rows', async () => {
+			const { service } = createPairingService([
+				firecrawlMockServer,
+				linearMockServer,
+				firecrawlAiGatewayMockServer,
+			]);
 
 			const firecrawl = await service.get('firecrawl');
 			const bySlugs = await service.getBySlugs(['firecrawl']);
@@ -416,6 +444,15 @@ describe('McpRegistryService', () => {
 				stored: [notionMockServer, linearMockServer, firecrawlAiGatewayMockServer],
 				aiGateway: { enabled: true, servers: [firecrawlAiGatewayMockServer] },
 				saved: undefined,
+			},
+			{
+				case: 'saves a row whose content changed',
+				stored: [notionMockServer, linearMockServer, firecrawlAiGatewayMockServer],
+				aiGateway: {
+					enabled: true,
+					servers: [{ ...firecrawlAiGatewayMockServer, tools: [{ name: 'firecrawl_map' }] }],
+				},
+				saved: [{ slug: 'n8n-connect-firecrawl', status: 'active' }],
 			},
 			{
 				case: 'deprecates a row that the AI Gateway no longer lists',

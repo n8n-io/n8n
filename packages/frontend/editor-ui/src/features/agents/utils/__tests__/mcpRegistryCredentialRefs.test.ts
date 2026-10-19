@@ -65,4 +65,16 @@ describe('toMcpRegistryCredentialRefs', () => {
 
 		expect(refs).toEqual(expected.map((ref) => expect.objectContaining(ref)));
 	});
+
+	it('offers only Gateway credits for a gateway-only row', () => {
+		expect(toMcpRegistryCredentialRefs(server([aiGateway]))).toEqual([
+			{
+				authType: aiGateway.credentialType,
+				displayName: 'Gateway credits',
+				credentialId: undefined,
+				required: true,
+				aiGateway: true,
+			},
+		]);
+	});
 });

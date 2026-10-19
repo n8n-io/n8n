@@ -2,6 +2,7 @@ import { pairAiGatewayServers } from '../mcp-registry-ai-gateway';
 import { searchMcpRegistryServers } from '../mcp-registry-search';
 import type { McpRegistryServer } from '../mcp-registry.types';
 import {
+	braveSearchAiGatewayMockServer,
 	firecrawlAiGatewayMockServer,
 	firecrawlMockServer,
 	githubUsesCredentialsMockServer,
@@ -131,13 +132,8 @@ describe('searchMcpRegistryServers', () => {
 	});
 
 	it('returns a gateway-only row without a credential, and leaves out a paired AI Gateway row', () => {
-		const braveSearchAiGatewayServer = {
-			...firecrawlAiGatewayMockServer,
-			slug: 'n8n-connect-brave-search',
-			title: 'Brave Search',
-		};
 		const servers = pairAiGatewayServers(
-			[firecrawlMockServer, firecrawlAiGatewayMockServer, braveSearchAiGatewayServer],
+			[firecrawlMockServer, firecrawlAiGatewayMockServer, braveSearchAiGatewayMockServer],
 			() => true,
 		);
 

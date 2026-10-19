@@ -212,6 +212,21 @@ export const firecrawlAiGatewayMockServer = {
 	requiredCapabilities: [AI_GATEWAY_MCP_CAPABILITY],
 } satisfies McpRegistryServer;
 
+/** An AI Gateway row without a registry twin. */
+export const braveSearchAiGatewayMockServer = {
+	...firecrawlAiGatewayMockServer,
+	name: 'com.n8n/n8n-connect-brave-search-mcp',
+	slug: 'n8n-connect-brave-search',
+	title: 'Brave Search',
+	description: 'Search the web, billed to Gateway credits',
+	tagline: 'Search the web with Gateway credits',
+	icons: [{ src: 'https://brave.com/icon.svg', mimeType: 'image/svg+xml' }],
+	remotes: [
+		{ type: 'streamable-http', url: 'https://gateway.n8n.test/v1/gateway/mcp/brave-search' },
+	],
+	tools: [{ name: 'brave_web_search', title: 'Web search', annotations: { readOnlyHint: true } }],
+} satisfies McpRegistryServer;
+
 /** A registry server whose AI Gateway twin is `firecrawlAiGatewayMockServer`. */
 export const firecrawlMockServer = {
 	name: 'dev.firecrawl/mcp',

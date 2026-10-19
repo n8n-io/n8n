@@ -2401,21 +2401,76 @@ describe('NodeCredentials', () => {
 				expect(screen.getByTestId('credential-topup-button')).toBeInTheDocument();
 			});
 
-			it('keeps the picker when the node also offers its own credential', () => {
+			it('offers Gateway credits next to the own credential of a paired server', async () => {
+				const ownType = 'firecrawlMcpOAuth2Api';
+				const pairedType = 'n8nConnectFirecrawlMcpAiGatewayApi';
+				const ownCredential = {
+					id: 'cred-1',
+					name: 'My Firecrawl',
+					type: ownType,
+					isManaged: false,
+					createdAt: '2024-01-01',
+					updatedAt: '2024-01-01',
+				};
+				vi.mocked(useAiGateway).mockReturnValue({
+					...useAiGateway(),
+					isCredentialTypeSupported: vi.fn((credType: string) => credType === pairedType),
+				});
 				mockedStore(useNodeTypesStore).setNodeTypes([
 					{
 						...aiGatewayNodeType,
+						name: '@n8n/mcp-registry.firecrawl',
 						credentials: [
-							{ name: 'braveSearchMcpOAuth2Api', required: true },
-							...(aiGatewayNodeType.credentials ?? []),
+							{
+								name: ownType,
+								required: true,
+								displayOptions: { show: { authentication: ['oAuth2'] } },
+							},
+							{
+								name: pairedType,
+								required: true,
+								displayOptions: { show: { authentication: ['aiGateway'] } },
+							},
+						],
+						properties: [
+							{
+								displayName: 'Authentication',
+								name: 'authentication',
+								type: 'options',
+								options: [
+									{ name: 'Gateway credits', value: 'aiGateway' },
+									{ name: 'OAuth2', value: 'oAuth2' },
+								],
+								default: 'oAuth2',
+							},
 						],
 					},
 				]);
+				credentialsStore.state.credentialTypes = {
+					[ownType]: { name: ownType, displayName: 'Firecrawl OAuth2', properties: [] },
+					[pairedType]: {
+						name: pairedType,
+						displayName: 'Firecrawl Gateway credits',
+						properties: [],
+					},
+				};
+				credentialsStore.state.credentials = { 'cred-1': ownCredential };
+				credentialsStore.getCredentialById = vi.fn().mockReturnValue(ownCredential);
+				const pairedNode: INodeUi = {
+					...googleAiNode,
+					type: '@n8n/mcp-registry.firecrawl',
+					parameters: { authentication: 'oAuth2' },
+					credentials: { [ownType]: { id: 'cred-1', name: 'My Firecrawl' } },
+				};
+				ndvStore.activeNode = pairedNode;
 
-				renderComponent({ props: { node: aiGatewayNode, overrideCredType: aiGatewayType } });
+				// An NDV row: no credential type override.
+				renderComponent({ props: { node: pairedNode, overrideCredType: '' } });
+				await userEvent.click(screen.getByTestId('node-credentials-select'));
 
 				expect(screen.queryByTestId('node-credentials-ai-gateway-only')).not.toBeInTheDocument();
-				expect(screen.getByTestId('node-credentials-select')).toBeInTheDocument();
+				expect(screen.getByTestId('node-credentials-select-item-n8n-credits')).toBeInTheDocument();
+				expect(screen.getByTestId('node-credentials-select-item-cred-1')).toBeInTheDocument();
 			});
 		});
 
