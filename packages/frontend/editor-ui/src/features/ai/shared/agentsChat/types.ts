@@ -9,12 +9,13 @@ import {
 import type { N8nChatInteractionInput, N8nChatResumeValue } from './n8nChatInteraction';
 
 import type {
+	ChatMessageRole,
 	ChatMessageStatus,
 	INTERACTION_EXTENSION_TOOL_NAME,
 	ToolCallState,
 } from './constants';
 
-export type { ChatMessageStatus, ToolCallState };
+export type { ChatMessageRole, ChatMessageStatus, ToolCallState };
 
 export interface ThinkingSegment {
 	id: string;
@@ -141,10 +142,27 @@ export interface ChatMessageAttachment {
 	file?: File;
 }
 
+/**
+ * A custom typed event that the system-agent provider sends for the host of
+ * the chat. A keyed re-emit replaces the earlier event with the same `name`
+ * and `key` in place, in the same message or in the same tool run.
+ */
+export interface AgentsChatHostEvent {
+	/** Set by the chat for each event of a message. The server sends no id. */
+	id: string;
+	name: string;
+	payload: unknown;
+	/**
+	 * Set when the provider emits the event with a key, which makes the event
+	 * updatable. A later event with the same name and key replaces it.
+	 */
+	key?: string;
+}
+
 export interface AgentsChatMessage {
 	backgroundJobSignal?: AgentBackgroundJobSignal;
 	id: string;
-	role: 'user' | 'assistant';
+	role: ChatMessageRole;
 	content: string;
 	/** Chat platform user who wrote a user turn in a shared integration thread. */
 	author?: AgentMessageAuthor;
@@ -167,6 +185,8 @@ export interface AgentsChatMessage {
 		code: 'budget.monthly' | 'budget.session' | 'budget.alert';
 		agentId?: string;
 	}>;
+	/** Host events of this turn, in arrival order. Host extensions render them. */
+	hostEvents?: AgentsChatHostEvent[];
 }
 
 export type ChatMessage = AgentsChatMessage;

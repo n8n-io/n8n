@@ -61,7 +61,7 @@ const i18n = useI18n();
 				@click="emit('download')"
 			>
 				{{ i18n.baseText('agents.channels.teams.setup.install.button') }}
-				<N8nIcon icon="download" size="medium" />
+				<N8nIcon icon="arrow-circle-down" size="medium" />
 			</N8nButton>
 		</slot>
 	</div>
@@ -70,6 +70,8 @@ const i18n = useI18n();
 <style module lang="scss">
 .identity {
 	display: flex;
+	/* Narrow containers, like the Assistant chat, move the action below the text. */
+	flex-wrap: wrap;
 	align-items: center;
 	gap: var(--spacing--xs);
 	width: 100%;
@@ -103,7 +105,7 @@ const i18n = useI18n();
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--5xs);
-	flex: 1;
+	flex: 1 1 10rem;
 	min-width: 0;
 }
 

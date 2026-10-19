@@ -5,6 +5,8 @@ import type {
 	ShadowEvaluator,
 } from 'n8n-workflow';
 
+import { getResolvableState } from '@/app/utils/expressions';
+
 import { canonicalize, expressionSkeleton, isNonDeterministic, valueType } from './compare';
 
 export const LATENCY_BUCKET_BOUNDS_MS = [0.1, 0.5, 1, 2, 5, 10, 25, 50, 100];
@@ -21,7 +23,24 @@ export type ShadowOutcome =
 	| 'unchecked'
 	| 'legacy_ok_quickjs_error'
 	| 'legacy_error_quickjs_ok'
-	| 'both_error';
+	| 'both_error'
+	| 'legacy_missing_input';
+
+/**
+ * Before the previous nodes run, the legacy engine throws for the missing input
+ * data and the editor shows a "pending" hint, while QuickJS reads `undefined`.
+ * Users open nodes like this all the time, so these runs get their own count
+ * instead of filling the capped mismatch shapes. When QuickJS still returns a
+ * value (for example from `?? 'fallback'`), the user would see a difference, so
+ * that run stays a mismatch.
+ */
+function isMissingInput(
+	legacy: ExpressionEvaluationOutcome,
+	quickjs: ExpressionEvaluationOutcome,
+): boolean {
+	if (legacy.ok || getResolvableState(legacy.error) !== 'pending') return false;
+	return !quickjs.ok || quickjs.value === undefined;
+}
 
 type MismatchOutcome = Extract<
 	ShadowOutcome,
@@ -60,6 +79,7 @@ const emptyCounts = (): Record<ShadowOutcome, number> => ({
 	legacy_ok_quickjs_error: 0,
 	legacy_error_quickjs_ok: 0,
 	both_error: 0,
+	legacy_missing_input: 0,
 });
 
 const emptyBuckets = () => new Array<number>(LATENCY_BUCKET_BOUNDS_MS.length + 1).fill(0);
@@ -112,9 +132,20 @@ export class QuickJsExpressionShadow implements ExpressionShadowRunner {
 
 	private timeouts = 0;
 
+	// Every recorded run, so a report with only missing-input runs is still sent.
+	private runs = 0;
+
 	// The editor evaluates the same expression on every render and keystroke, so
 	// the outcome counts take each expression once per report.
 	private counted = new Set<string>();
+
+	// Kept apart from `counted`, so the same expression is still compared once
+	// its input data arrives in the same report window.
+	private countedMissingInput = new Set<string>();
+
+	// Every distinct expression in either set. The budget counts an expression
+	// once, also when it first had no input data and then was compared.
+	private tracked = new Set<string>();
 
 	private legacyLatency = emptyBuckets();
 
@@ -154,12 +185,13 @@ export class QuickJsExpressionShadow implements ExpressionShadowRunner {
 
 	/** The counts since the last report, or `undefined` when nothing ran. Resets the counts. */
 	takeReport(): ShadowReport | undefined {
-		const samples = this.legacyLatency.reduce((sum, count) => sum + count, 0);
-		if (samples === 0) return undefined;
+		if (this.runs === 0) return undefined;
 
+		const total = Object.values(this.counts).reduce((sum, count) => sum + count, 0);
 		const report: ShadowReport = {
 			...this.counts,
-			evaluations: Object.values(this.counts).reduce((sum, count) => sum + count, 0),
+			// Missing-input runs are not compared, so they stay out of `evaluations`.
+			evaluations: total - this.counts.legacy_missing_input,
 			quickjs_timeouts: this.timeouts,
 			legacy_latency_buckets: this.legacyLatency,
 			quickjs_latency_buckets: this.quickjsLatency,
@@ -167,7 +199,10 @@ export class QuickJsExpressionShadow implements ExpressionShadowRunner {
 		};
 		this.counts = emptyCounts();
 		this.timeouts = 0;
+		this.runs = 0;
 		this.counted = new Set();
+		this.countedMissingInput = new Set();
+		this.tracked = new Set();
 		this.legacyLatency = emptyBuckets();
 		this.quickjsLatency = emptyBuckets();
 		this.mismatches = new Map();
@@ -181,13 +216,28 @@ export class QuickJsExpressionShadow implements ExpressionShadowRunner {
 		legacyMs: number,
 		quickjsMs: number,
 	) {
-		this.legacyLatency[bucketIndex(legacyMs)] += 1;
-		this.quickjsLatency[bucketIndex(quickjsMs)] += 1;
-		// Like latency, a timeout depends on the run, so every run counts.
+		this.runs += 1;
+		// A timeout depends on the run, so every run counts.
 		if (!quickjs.ok && quickjs.errorClass === 'timeout') this.timeouts += 1;
 
-		if (this.counted.has(source) || this.counted.size >= MAX_TRACKED_EXPRESSIONS) return;
+		const overBudget = !this.tracked.has(source) && this.tracked.size >= MAX_TRACKED_EXPRESSIONS;
+		if (isMissingInput(legacyResult, quickjs)) {
+			// Not compared, so it stays out of the latency buckets too: the legacy
+			// engine fails at once, which would make it look faster.
+			if (this.countedMissingInput.has(source) || overBudget) return;
+			this.countedMissingInput.add(source);
+			this.tracked.add(source);
+			this.counts.legacy_missing_input += 1;
+			return;
+		}
+
+		// Like a timeout, latency depends on the run, so every compared run counts.
+		this.legacyLatency[bucketIndex(legacyMs)] += 1;
+		this.quickjsLatency[bucketIndex(quickjsMs)] += 1;
+
+		if (this.counted.has(source) || overBudget) return;
 		this.counted.add(source);
+		this.tracked.add(source);
 
 		// A function result reaches the user as an error ("please add ()"), and
 		// QuickJS cannot return a function, so it counts as an error on both sides.

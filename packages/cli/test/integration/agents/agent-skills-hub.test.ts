@@ -37,7 +37,8 @@ import {
 import { getAgentSkillHash } from '@/modules/agents/utils/agent-config-hash';
 import { Telemetry } from '@/telemetry';
 
-import { createMember, createOwner } from '../shared/db/users';
+import { createCustomRoleWithScopeSlugs } from '../shared/db/roles';
+import { createMember, createOwner, createUser } from '../shared/db/users';
 
 const config: AgentJsonConfig = { name: 'Agent', model: '', instructions: 'Help.' };
 
@@ -246,6 +247,32 @@ describe('Agent skills in the skills hub', () => {
 		).rejects.toThrow('This agent uses an older version of this skill.');
 	});
 
+	it('refuses a skill from the agent builder whose name a skill of its project has', async () => {
+		await createSkill(body('Triage'));
+		const agent = await createAgent([]);
+
+		await expect(
+			agentSkillsService.createAndAttachSkill(agent.id, project.id, body('TRIAGE'), {
+				user: editor,
+				modifiedBy: 'builder',
+			}),
+		).rejects.toThrow('That name is taken, choose another');
+	});
+
+	it('lets the agent builder use a name that only an instance skill has', async () => {
+		await createSkill(body('Triage'), { projectId: null });
+		const agent = await createAgent([]);
+
+		const created = await agentSkillsService.createAndAttachSkill(
+			agent.id,
+			project.id,
+			body('Triage'),
+			{ user: editor, modifiedBy: 'builder' },
+		);
+
+		expect(created.id).toBeDefined();
+	});
+
 	it('creates, updates and detaches a skill from the agent builder', async () => {
 		const agent = await createAgent([]);
 		const context = { user: editor, modifiedBy: 'builder' as const };
@@ -370,6 +397,86 @@ describe('Agent skills in the skills hub', () => {
 		expect(Object.values(skills)).toEqual([body('Private')]);
 	});
 
+	it('refuses to move a skill out of a scope where the user cannot delete it', async () => {
+		// A custom role that may create and edit instance skills but delete none.
+		const role = await createCustomRoleWithScopeSlugs(
+			['skill:create', 'skill:read', 'skill:update'],
+			{
+				roleType: 'global',
+			},
+		);
+		const noDelete = await createUser({ role });
+		await linkUserToProject(noDelete, project, 'project:editor');
+		const instanceSkill = await createSkill(body('Company glossary'), { projectId: null });
+		const agent = await createAgent([instanceSkill]);
+
+		await expect(
+			agentSkillsService.updateSkill(
+				agent.id,
+				project.id,
+				instanceSkill,
+				{},
+				{ user: noDelete, modifiedBy: 'user' },
+				undefined,
+				undefined,
+				'agent',
+			),
+		).rejects.toThrow('You are not allowed to move this skill out of its scope.');
+		expect((await Container.get(SkillRepository).findByIds([instanceSkill]))[0]).toMatchObject({
+			projectId: null,
+			agentId: null,
+		});
+	});
+
+	it('refuses to move a project skill for a project role without delete', async () => {
+		const role = await createCustomRoleWithScopeSlugs(
+			['projectSkill:create', 'projectSkill:read', 'projectSkill:update'],
+			{ roleType: 'project' },
+		);
+		const noDelete = await createMember();
+		await linkUserToProject(noDelete, project, role.slug as never);
+		const projectSkill = await createSkill(body('Tone of voice'));
+		const agent = await createAgent([projectSkill]);
+
+		await expect(
+			agentSkillsService.updateSkill(
+				agent.id,
+				project.id,
+				projectSkill,
+				{},
+				{ user: noDelete, modifiedBy: 'user' },
+				undefined,
+				undefined,
+				'agent',
+			),
+		).rejects.toThrow('You are not allowed to move this skill out of its scope.');
+		expect((await Container.get(SkillRepository).findByIds([projectSkill]))[0]).toMatchObject({
+			projectId: project.id,
+			agentId: null,
+		});
+	});
+
+	it('trims the name of a skill the agent page creates, and refuses a blank one', async () => {
+		const agent = await createAgent([]);
+		const context = { user: editor, modifiedBy: 'user' as const };
+
+		await expect(
+			agentSkillsService.createAndAttachSkill(agent.id, project.id, body('   '), context),
+		).rejects.toThrow('Skill name is required.');
+		const created = await agentSkillsService.createAndAttachSkill(
+			agent.id,
+			project.id,
+			body('  Summarize  '),
+			context,
+		);
+
+		// The answer and its hash match the stored skill, so the next edit passes the base check.
+		expect(created.skill.name).toBe('Summarize');
+		const { skills } = await skillRefs.readDraft(await reload(agent), {});
+		expect(skills[created.id]?.name).toBe('Summarize');
+		expect(created.skillHash).toBe(getAgentSkillHash(skills[created.id]!));
+	});
+
 	it('changes where a skill can be added only while no other agent uses it', async () => {
 		const agent = await createAgent([]);
 		const context = { user: editor, modifiedBy: 'user' as const };
@@ -409,6 +516,39 @@ describe('Agent skills in the skills hub', () => {
 		await skillRefs.replaceDraftRefs(await reload(other), [], {});
 		expect(await skillRefs.refsForDraft(await reload(other), {})).toEqual([]);
 		await expect(update('agent')).rejects.toThrow('Other agents use this skill.');
+	});
+
+	it('renames and moves a skill in one save to a name that only the old scope holds', async () => {
+		const agent = await createAgent([]);
+		const context = { user: editor, modifiedBy: 'user' as const };
+		const created = await agentSkillsService.createAndAttachSkill(
+			agent.id,
+			project.id,
+			body('Summarize'),
+			context,
+		);
+		const update = async (updates: Partial<AgentSkill>, availableTo: 'project' | 'agent') =>
+			await agentSkillsService.updateSkill(
+				agent.id,
+				project.id,
+				created.id,
+				updates,
+				context,
+				undefined,
+				undefined,
+				availableTo,
+			);
+		await update({}, 'agent');
+		await createSkill(body('summarize'));
+
+		await update({ name: 'Condense' }, 'project');
+
+		expect((await Container.get(SkillRepository).findByIds([created.id]))[0]).toMatchObject({
+			projectId: project.id,
+			agentId: null,
+		});
+		const { skills } = await skillRefs.readDraft(await reload(agent), {});
+		expect(skills[created.id]?.name).toBe('Condense');
 	});
 
 	it('shares the skills of a duplicated agent', async () => {

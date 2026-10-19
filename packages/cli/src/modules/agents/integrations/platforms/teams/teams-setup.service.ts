@@ -6,6 +6,7 @@ import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { UrlService } from '@n8n/backend-services';
 
 import { adminConsentRedirectUri, adminConsentUrl } from './teams-admin-consent';
+import { renderTeamsAppIcons } from './teams-app-icons';
 import { TeamsArmTemplateService } from './teams-arm-template.service';
 import { botResourceId } from './teams-bot-provisioning.service';
 import { TeamsManifestService } from './teams-manifest.service';
@@ -134,7 +135,13 @@ export class TeamsSetupService {
 			settings: selectedSettings ?? this.teamsSettingsOf(agent),
 		};
 		return {
-			archive: await this.manifestService.buildPackage(options),
+			archive: await this.manifestService.buildPackage({
+				...options,
+				// The draft, like the name: the setup shows the agent as it is being edited.
+				icons: await renderTeamsAppIcons(agent.schema?.personalisation),
+			}),
+			// Without the icons: `appOutdated` does not draw them, and the
+			// personalisation they come from is part of the fingerprint already.
 			fingerprint: this.manifestService.fingerprint(
 				this.manifestService.buildManifest(options),
 				agent.schema?.personalisation,

@@ -204,6 +204,30 @@ export class SkillRepository extends BaseRepository<Skill> {
 		);
 	}
 
+	/**
+	 * The name of the latest version of every skill in one target: the same agent, the
+	 * same project (its agent skills not included) or the instance. For the name check.
+	 */
+	async findLatestNamesInTarget(
+		target: SkillTarget,
+		ctx: OperationContext = {},
+	): Promise<Array<{ skillId: string; name: string }>> {
+		const query = highestVersionsQuery(this.managerFor(ctx))
+			.innerJoin(Skill, 'skill', 'skill.id = version.skillId')
+			.select(['version.skillId', 'version.name']);
+		if (target.agentId) {
+			query.andWhere('skill.agentId = :agentId', { agentId: target.agentId });
+		} else if (target.projectId) {
+			query
+				.andWhere('skill.projectId = :projectId', { projectId: target.projectId })
+				.andWhere('skill.agentId IS NULL');
+		} else {
+			query.andWhere('skill.projectId IS NULL').andWhere('skill.agentId IS NULL');
+		}
+		const versions = await query.getMany();
+		return versions.map(({ skillId, name }) => ({ skillId, name }));
+	}
+
 	/** Version rows by id, keyed by version id. A pinned ref reads them. */
 	async findVersionsByIds(
 		versionIds: string[],
@@ -648,17 +672,23 @@ export class SkillRepository extends BaseRepository<Skill> {
 		return new Map([...agentsBySkill].map(([skillId, agents]) => [skillId, agents.size]));
 	}
 
-	async findProjectNames(
+	/** Name and type of each project, keyed by project id. A missing project is absent. */
+	async findProjects(
 		projectIds: string[],
 		ctx: OperationContext = {},
-	): Promise<Map<string, string>> {
+	): Promise<Map<string, Pick<Project, 'name' | 'type'>>> {
 		const manager = this.managerFor(ctx);
 		const projects = await inChunks(
 			projectIds,
 			async (chunk) =>
-				await manager.find(Project, { where: { id: In(chunk) }, select: ['id', 'name'] }),
+				await manager.find(Project, {
+					where: { id: In(chunk) },
+					select: ['id', 'name', 'type'],
+				}),
 		);
-		return new Map(projects.map((project) => [project.id, project.name]));
+		return new Map(
+			projects.map((project) => [project.id, { name: project.name, type: project.type }]),
+		);
 	}
 
 	/** Name and project of each agent, keyed by agent id. An agent skill takes its project from them. */
@@ -784,20 +814,24 @@ async function inChunks<T>(ids: string[], read: (chunk: string[]) => Promise<T[]
 	return results;
 }
 
+/** The version rows that have the highest number of their skill. */
+function highestVersionsQuery(manager: EntityManager) {
+	return manager.createQueryBuilder(SkillVersion, 'version').where((qb) => {
+		const highest = qb
+			.subQuery()
+			.select('MAX(later.version)')
+			.from(SkillVersion, 'later')
+			.where('later.skillId = version.skillId')
+			.getQuery();
+		return `version.version = ${highest}`;
+	});
+}
+
 /** The version rows of these skills that have the highest number of their skill. */
 function latestVersionsQuery(manager: EntityManager, skillIds: string[]) {
-	return manager
-		.createQueryBuilder(SkillVersion, 'version')
-		.where('version.skillId IN (:...skillIds)', { skillIds })
-		.andWhere((qb) => {
-			const highest = qb
-				.subQuery()
-				.select('MAX(later.version)')
-				.from(SkillVersion, 'later')
-				.where('later.skillId = version.skillId')
-				.getQuery();
-			return `version.version = ${highest}`;
-		});
+	return highestVersionsQuery(manager).andWhere('version.skillId IN (:...skillIds)', {
+		skillIds,
+	});
 }
 
 async function insertVersion(
