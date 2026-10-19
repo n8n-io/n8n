@@ -31,6 +31,15 @@ export function areAgentToolsAvailable(
 	);
 }
 
+export function areSkillToolsAvailable(
+	globalConfig: GlobalConfig,
+	moduleRegistry: ModuleRegistry,
+): boolean {
+	return (
+		areAgentToolsAvailable(globalConfig, moduleRegistry) && globalConfig.agents.skillsHubEnabled
+	);
+}
+
 /**
  * Whether `install_community_node` should be registered for this caller.
  *

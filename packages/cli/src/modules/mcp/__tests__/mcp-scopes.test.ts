@@ -27,6 +27,7 @@ import {
 	COMMUNITY_PACKAGE_TOOLS,
 	getAllowedToolNames,
 	INSTANCE_CONTEXT_TOOLS,
+	SKILL_TOOLS,
 	TOOLS_BY_SCOPE,
 } from '../mcp-scopes';
 import { McpConfig } from '../mcp.config';
@@ -141,6 +142,16 @@ describe('getAllowedToolNames', () => {
 		expect(allowed).toContain('unpublish_agent');
 	});
 
+	it('grants only the read skill tools with skill:read', () => {
+		expect(getAllowedToolNames(['skill:read'])).toEqual(new Set(['search_skills', 'get_skill']));
+	});
+
+	it('grants the read skill tools with skill:write too', () => {
+		expect(getAllowedToolNames(['skill:write'])).toEqual(
+			new Set(['create_skill', 'update_skill', 'delete_skill', 'search_skills', 'get_skill']),
+		);
+	});
+
 	it('grants only call_agent with agent:execute', () => {
 		expect(getAllowedToolNames(['agent:execute'])).toEqual(new Set(['call_agent']));
 	});
@@ -243,7 +254,7 @@ describe('McpService scope enforcement', () => {
 		const server = await buildService().getServer(user, mcpFeatureFlags());
 		const registered = getRegisteredToolNames(server);
 
-		// Agent tools require the agents module (inactive here); their own
+		// Agent and skill tools require the agents module (inactive here); their own
 		// drift guard lives in agent-tools.service.test.ts. Community-package
 		// tools need that module, the verified catalog, and a scope-bearing
 		// caller; their registration guard lives in
@@ -253,6 +264,7 @@ describe('McpService scope enforcement', () => {
 			(name) =>
 				!registered.has(name) &&
 				!AGENT_TOOLS.has(name) &&
+				!SKILL_TOOLS.has(name) &&
 				!COMMUNITY_PACKAGE_TOOLS.has(name) &&
 				!INSTANCE_CONTEXT_TOOLS.has(name),
 		);

@@ -101,6 +101,9 @@ directly on that object — there is no \`value\` wrapper. For example:
   \`baseSkillHash\` from get_agent's \`skillHashes\` so a skill edited elsewhere in the meantime is
   not overwritten. Skills ignore \`allowedTools\`.
 - skill.delete: Set \`skillId\` to the skill to detach. The skill stays available to other Agents.
+- To attach a skill that already exists, find it with search_skills and \`attachableToAgentId\`.
+  Then attach it with config.patch:
+  \`{ "op": "add", "path": "/skills/-", "value": { "type": "skill", "id": "<skillId>" } }\`.
 - A skill ref with \`versionId\` pins that saved version of the skill. get_agent lists the pinned
   skills that have a newer version in \`outdatedSkillIds\`. To use the latest version, remove
   \`versionId\` from the ref with config.patch. Do not delete and add the skill again.
