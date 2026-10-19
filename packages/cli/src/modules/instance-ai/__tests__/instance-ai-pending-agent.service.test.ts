@@ -8,7 +8,7 @@ import { ForbiddenError, NotFoundError } from '@n8n/errors';
 import { AgentDefaultModelResolverService } from '@/modules/agents/agent-default-model-resolver.service';
 import { AgentRunnableStateService } from '@/modules/agents/agent-runnable-state.service';
 import { AgentsService } from '@/modules/agents/agents.service';
-import type { Agent } from '@/modules/agents/entities/agent.entity';
+import type { ProjectAgent } from '@/modules/agents/entities/agent.entity';
 import * as checkAccess from '@/permissions.ee/check-access';
 
 import type { InstanceAiMemoryService } from '../instance-ai-memory.service';
@@ -44,7 +44,7 @@ function setup() {
 
 	defaultModelResolver.resolve.mockResolvedValue(null);
 	agentsService.createOrAdopt.mockResolvedValue({
-		agent: mock<Agent>({ id: AGENT_ID, name: 'New Agent', versionId: 'v1' }),
+		agent: mock<ProjectAgent>({ id: AGENT_ID, name: 'New Agent', versionId: 'v1' }),
 		adopted: false,
 		config: null,
 		configHash: null,
@@ -93,7 +93,7 @@ describe('InstanceAiPendingAgentService', () => {
 			memoryService.getThreadMetadata.mockResolvedValue(pendingMetadata);
 			const config = { name: 'New Agent', model, instructions: 'Help users' };
 			agentsService.createOrAdopt.mockResolvedValue({
-				agent: mock<Agent>({ id: AGENT_ID, name: 'New Agent', versionId: 'v1' }),
+				agent: mock<ProjectAgent>({ id: AGENT_ID, name: 'New Agent', versionId: 'v1' }),
 				config,
 				configHash: 'saved-hash',
 				adopted: false,
@@ -147,7 +147,7 @@ describe('InstanceAiPendingAgentService', () => {
 	it('adopts an existing row without resolving a default model for it', async () => {
 		const { service, memoryService, agentsService, defaultModelResolver } = setup();
 		memoryService.getThreadMetadata.mockResolvedValue(pendingMetadata);
-		const existing = mock<Agent>({ id: AGENT_ID, name: 'Support Triage' });
+		const existing = mock<ProjectAgent>({ id: AGENT_ID, name: 'Support Triage' });
 		agentsService.findById.mockResolvedValue(existing);
 		const savedConfig = {
 			name: 'Support Triage',
@@ -183,7 +183,7 @@ describe('InstanceAiPendingAgentService', () => {
 		const { service, memoryService, agentsService } = setup();
 		memoryService.getThreadMetadata.mockResolvedValue(pendingMetadata);
 		agentsService.createOrAdopt.mockResolvedValue({
-			agent: mock<Agent>({ id: AGENT_ID, name: 'Support Triage', projectId: PROJECT_ID }),
+			agent: mock<ProjectAgent>({ id: AGENT_ID, name: 'Support Triage', projectId: PROJECT_ID }),
 			adopted: true,
 			config: null,
 			configHash: null,
@@ -229,7 +229,7 @@ describe('InstanceAiPendingAgentService', () => {
 	it.each(unattestedMetadata)('refuses to adopt an existing row with %s', async (_l, metadata) => {
 		const { service, memoryService, agentsService } = setup();
 		memoryService.getThreadMetadata.mockResolvedValue(metadata);
-		agentsService.findById.mockResolvedValue(mock<Agent>({ id: AGENT_ID }));
+		agentsService.findById.mockResolvedValue(mock<ProjectAgent>({ id: AGENT_ID }));
 
 		await expect(service.persistAndBind(user, THREAD_ID, payload)).rejects.toThrow(ForbiddenError);
 		expect(agentsService.createOrAdopt).not.toHaveBeenCalled();
@@ -287,7 +287,9 @@ describe('InstanceAiPendingAgentService', () => {
 		await expect(service.persistAndBind(user, THREAD_ID, payload)).rejects.toThrow(
 			'thread write failed',
 		);
-		agentsService.findById.mockResolvedValue(mock<Agent>({ id: AGENT_ID, name: 'New Agent' }));
+		agentsService.findById.mockResolvedValue(
+			mock<ProjectAgent>({ id: AGENT_ID, name: 'New Agent' }),
+		);
 
 		const result = await service.persistAndBind(user, THREAD_ID, payload);
 

@@ -95,13 +95,14 @@ describe('SkillsTelemetry', () => {
 	it('reports a delete from the skill read before the delete', async () => {
 		repository.findByIds.mockResolvedValue([]);
 
-		await service.deleted('user-1', skills[2]);
+		await service.deleted('user-1', skills[2], 'assistant');
 
 		expect(telemetry.track).toHaveBeenCalledWith(TELEMETRY_EVENT.CONTEXT.USER_DELETED_SKILL, {
 			user_id: 'user-1',
 			skill_id: 'skill_agent',
 			scope: 'agent',
 			project_id: 'project-2',
+			source: 'assistant',
 		});
 	});
 

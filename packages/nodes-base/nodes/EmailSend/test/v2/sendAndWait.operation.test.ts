@@ -71,6 +71,32 @@ describe('Test EmailSendV2, email => sendAndWait', () => {
 		});
 	});
 
+	it('should send to every recipient when recipient fields are arrays', async () => {
+		const items = [{ json: { data: 'test' } }];
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce(SEND_AND_WAIT_OPERATION);
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce(['from@mail.com']);
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce(['to1@mail.com', 'to2@mail.com']);
+		mockExecuteFunctions.getInstanceId.mockReturnValue('instanceId');
+		mockExecuteFunctions.getCredentials.mockResolvedValue({});
+		mockExecuteFunctions.putExecutionToWait.mockImplementation(async () => {});
+		mockExecuteFunctions.getInputData.mockReturnValue(items);
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('my message');
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('my subject');
+		mockExecuteFunctions.getSignedResumeUrl.mockReturnValue(
+			'http://localhost/waiting-webhook/nodeID?approved=true&signature=abc',
+		);
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({});
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({});
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('approval');
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({});
+
+		await emailSendV2.execute.call(mockExecuteFunctions);
+
+		expect(transporter.sendMail).toHaveBeenCalledWith(
+			expect.objectContaining({ from: 'from@mail.com', to: 'to1@mail.com, to2@mail.com' }),
+		);
+	});
+
 	it('should route SMTP errors to error output when continueOnFail is true', async () => {
 		const items = [{ json: { data: 'test' } }];
 		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce(SEND_AND_WAIT_OPERATION);

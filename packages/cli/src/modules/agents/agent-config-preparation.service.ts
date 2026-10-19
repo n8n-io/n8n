@@ -17,7 +17,7 @@ import type { PolicyActor } from '@/policy/policy-enforcement-backend';
 import { diffAgentConfigParts, type AgentConfigPart } from './agent-modification-telemetry.service';
 import { AgentPolicyService } from './agent-policy.service';
 import { AgentSkillRefsService } from './agent-skill-refs.service';
-import type { Agent } from './entities/agent.entity';
+import type { Agent, ProjectAgent } from './entities/agent.entity';
 import { decomposeJsonConfig } from './json-config/agent-config-composition';
 import { toAgentDocument, type AgentSkillRefs } from './json-config/agent-document';
 import { pruneMissingConfigReferences } from './json-config/prune-missing-config-references';
@@ -55,7 +55,7 @@ export class AgentConfigPreparationService {
 	) {}
 
 	async prepareForSave(
-		entity: Agent,
+		entity: ProjectAgent,
 		rawConfig: unknown,
 		user: User,
 		{
@@ -191,7 +191,7 @@ export class AgentConfigPreparationService {
 	}
 
 	private async buildConfigReplacement(
-		entity: Agent,
+		entity: ProjectAgent,
 		previousSchema: AgentJsonConfig | null,
 		validatedConfig: AgentJsonConfig,
 		rawConfig: unknown,
@@ -263,7 +263,7 @@ export class AgentConfigPreparationService {
 	}
 
 	private async reconcileConfigReferences(
-		entity: Agent,
+		entity: ProjectAgent,
 		previousSchema: AgentJsonConfig | null,
 		config: AgentJsonConfig,
 		clearOmitted: boolean,
@@ -282,7 +282,7 @@ export class AgentConfigPreparationService {
 
 	private async reconcileSubAgentReferences(
 		config: AgentJsonConfig,
-		entity: Agent,
+		entity: ProjectAgent,
 	): Promise<ResolvedSubAgentRef[]> {
 		if (config.subAgents?.agents !== undefined) {
 			const existingAgentIds = new Set(
@@ -302,7 +302,7 @@ export class AgentConfigPreparationService {
 		return [];
 	}
 
-	private validateSubAgentRefs(resolvedSubAgents: ResolvedSubAgentRef[], entity: Agent) {
+	private validateSubAgentRefs(resolvedSubAgents: ResolvedSubAgentRef[], entity: ProjectAgent) {
 		for (const { agentId } of resolvedSubAgents) {
 			if (agentId === entity.id) {
 				throw new UserError('Invalid agent config: An agent cannot use itself as a subagent');
