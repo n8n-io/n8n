@@ -47,7 +47,9 @@
     "@n8n/typeorm": "workspace:*",
     "n8n-core": "workspace:*",
     "tar": "catalog:",
-    "uuid": "catalog:",
+    "uuid": "catalog:"
+  },
+  "peerDependencies": {
     "zod": "catalog:"
   },
   "devDependencies": {
@@ -60,7 +62,8 @@
     "typescript": "catalog:typescript",
     "vite": "catalog:",
     "vitest": "catalog:",
-    "vitest-mock-extended": "catalog:"
+    "vitest-mock-extended": "catalog:",
+    "zod": "catalog:"
   },
   "license": "LicenseRef-n8n-sustainable-use"
 }
