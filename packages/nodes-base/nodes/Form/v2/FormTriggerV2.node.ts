@@ -21,6 +21,10 @@ import {
 	respondWithOptions,
 	webhookPath,
 } from '../common.descriptions';
+import {
+	DEFAULT_TRUSTED_SOURCE_ID,
+	listRedirectLoginTrustedSources,
+} from '../../../utils/trusted-source';
 import { cssVariables } from '../cssVariables';
 import { FORM_TRIGGER_AUTHENTICATION_PROPERTY } from '../interfaces';
 import { formWebhook } from '../utils/utils';
@@ -154,6 +158,18 @@ const descriptionV2: INodeTypeDescription = {
 			description:
 				'Whether the triggering user must also have permission to execute the workflow in the project it belongs to',
 		},
+		{
+			displayName: 'Trusted Source Name or ID',
+			name: 'trustedSource',
+			type: 'options',
+			typeOptions: { loadOptionsMethod: 'listTrustedSources' },
+			default: DEFAULT_TRUSTED_SOURCE_ID,
+			displayOptions: {
+				show: { authentication: ['n8nUserAuth'], '@version': [{ _cnd: { gte: 2.6 } }] },
+			},
+			description:
+				'The identity provider the user signs in with. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+		},
 		{ ...webhookPath, displayOptions: { show: { '@version': [{ _cnd: { lte: 2.1 } }] } } },
 		formTitle,
 		formDescription,
@@ -284,6 +300,12 @@ const descriptionV2: INodeTypeDescription = {
 
 export class FormTriggerV2 implements INodeType {
 	description: INodeTypeDescription;
+
+	methods = {
+		loadOptions: {
+			listTrustedSources: listRedirectLoginTrustedSources,
+		},
+	};
 
 	constructor(baseDescription: INodeTypeBaseDescription) {
 		this.description = {

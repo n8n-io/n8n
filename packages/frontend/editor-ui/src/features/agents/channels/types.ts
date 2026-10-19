@@ -122,6 +122,8 @@ export interface AgentChannelPlatform {
 	getConnectedDescription?: (context: AgentChannelPresentationContext) => string;
 	headerContent?: {
 		setupModal?: Component;
+		/** The Assistant's setup card. Separate from the modal, so each platform opts in. */
+		setupCard?: Component;
 		editModal?: Component;
 	};
 	disconnectConfirmationComponent?: Component;

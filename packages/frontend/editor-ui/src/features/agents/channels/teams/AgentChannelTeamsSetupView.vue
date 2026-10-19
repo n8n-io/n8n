@@ -151,7 +151,6 @@ defineExpose({
 			v-model="credentialId"
 			:mode="mode"
 			:connected="connected"
-			:is-published="isPublished"
 			:project-id="projectId"
 			:agent-id="agentId"
 			:integration="integration"
