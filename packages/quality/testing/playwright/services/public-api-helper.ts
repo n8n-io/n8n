@@ -111,6 +111,16 @@ export class PublicApiHelper {
 		return await this.api.request.get(`/api/v1/executions/${executionId}`, { headers, params });
 	}
 
+	/**
+	 * GET /api/v1/workflows with the given API key. Returns the raw response, so callers can
+	 * assert the status, for example a 429 from rate limiting on another main.
+	 */
+	async listWorkflowsRaw(apiKey: string): Promise<APIResponse> {
+		return await this.api.request.get('/api/v1/workflows', {
+			headers: { 'X-N8N-API-KEY': apiKey },
+		});
+	}
+
 	/** Invite a user and return the invite accept URL for completing registration. */
 	async inviteUser(
 		email: string,
