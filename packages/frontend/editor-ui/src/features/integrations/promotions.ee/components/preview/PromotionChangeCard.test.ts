@@ -61,7 +61,7 @@ const cases: Case[] = [
 			'Location',
 			'Payments',
 			'Reports',
-			"Apply can't move a folder that exists on this instance",
+			"Apply can't move a folder that already exists on this instance",
 		],
 	},
 	{
