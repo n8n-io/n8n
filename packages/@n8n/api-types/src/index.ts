@@ -979,3 +979,23 @@ export {
 	JwksResponseSchema,
 	type JwksResponse,
 } from './schemas/jwks.schema';
+
+export type {
+	ScimUser,
+	ScimUserCreate,
+	ScimPatchOp,
+	ScimPatchRequest,
+	ScimListResponse,
+	ScimError,
+	ScimMeta,
+	ScimUserName,
+	ScimEmail,
+	ScimRole,
+} from './schemas/scim.schema';
+export {
+	scimUserSchema,
+	scimUserCreateSchema,
+	scimPatchRequestSchema,
+	scimListResponseSchema,
+	scimErrorSchema,
+} from './schemas/scim.schema';

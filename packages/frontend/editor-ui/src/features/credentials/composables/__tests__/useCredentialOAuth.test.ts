@@ -854,7 +854,7 @@ describe('useCredentialOAuth', () => {
 			mockShowMessage.mockClear();
 			mockPopup = { closed: false, close: vi.fn(), focus: vi.fn(), location: { href: '' } };
 			MockBroadcastChannel.silent = false;
-			mockedStore(useCredentialsStore).deleteCredential.mockResolvedValue();
+			mockedStore(useCredentialsStore).deleteCredential.mockResolvedValue(true);
 			vi.stubGlobal('BroadcastChannel', MockBroadcastChannel);
 			vi.stubGlobal('open', vi.fn().mockReturnValue(mockPopup));
 		});

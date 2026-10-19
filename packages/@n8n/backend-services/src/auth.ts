@@ -15,7 +15,11 @@ export {
 	type OAuthTokenVerifier,
 	OAuthTokenVerifierProxy,
 } from './services/oauth-token-verifier-proxy.service';
-export { type N8nOAuth2Flow, OAuth2FlowProxy } from './services/oauth2-flow-proxy.service';
+export {
+	type N8nOAuth2Flow,
+	type OAuth2FlowRequest,
+	OAuth2FlowProxy,
+} from './services/oauth2-flow-proxy.service';
 export {
 	type RoleResolverContext,
 	type RoleMappingConfig,

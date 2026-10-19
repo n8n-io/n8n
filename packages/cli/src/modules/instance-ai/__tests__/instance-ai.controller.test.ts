@@ -75,6 +75,7 @@ import {
 	MAX_ATTACHMENT_BASE64_BYTES,
 	MAX_TOTAL_ATTACHMENT_BASE64_BYTES,
 } from '@n8n/api-types';
+import type { GlobalConfig } from '@n8n/config';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { ControllerRegistryMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
@@ -153,6 +154,7 @@ describe('InstanceAiController', () => {
 	const preferenceCardService = mock<InstanceAiPreferenceCardService>();
 	const onboarding = mock<InstanceAiOnboardingService>();
 	const threadTabsService = mock<InstanceAiThreadTabsService>();
+	const globalConfig = mock<GlobalConfig>({ instanceAi: { evalInstance: false } });
 
 	const controller = new InstanceAiController(
 		instanceAiService,
@@ -174,6 +176,7 @@ describe('InstanceAiController', () => {
 		instanceAiErrorReporter,
 		publisher,
 		preferenceCardService,
+		globalConfig,
 		threadTabsService,
 	);
 
@@ -2432,6 +2435,7 @@ describe('InstanceAiController — durable-log SSE replay', () => {
 		mock<InstanceAiErrorReporterService>(),
 		mock<Publisher>(),
 		mock<InstanceAiPreferenceCardService>(),
+		mock<GlobalConfig>(),
 		mock<InstanceAiThreadTabsService>(),
 	);
 
