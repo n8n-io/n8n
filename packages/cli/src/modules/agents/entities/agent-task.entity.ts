@@ -14,7 +14,7 @@ import { Agent } from './agent.entity';
 
 /** A scheduled, recurring objective an agent runs on its own cron. */
 @Entity({ name: 'agent_task_definition' })
-@Index(['agentId', 'sourceTaskId'])
+@Index('IDX_agent_task_definition_agentId_sourceTaskId', ['agentId', 'sourceTaskId'])
 export class AgentTask extends WithTimestamps {
 	@PrimaryColumn({
 		type: 'varchar',

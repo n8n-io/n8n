@@ -27,7 +27,7 @@ export function isProjectAgent<T extends Pick<Agent, 'projectId'>>(
 }
 
 @Entity({ name: 'agents' })
-@Index(['projectId', 'sourceAgentId'])
+@Index('IDX_agents_projectId_sourceAgentId', ['projectId', 'sourceAgentId'])
 export class Agent extends WithTimestampsAndStringId {
 	@Column({ type: 'varchar', length: 128 })
 	name: string;
