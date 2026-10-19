@@ -264,6 +264,10 @@ async function onAction(configuration: SelfHealingConfigurationDto, action: stri
 <style module lang="scss">
 .table {
 	margin-bottom: var(--spacing--sm);
+
+	:global(.table-scroll) {
+		scrollbar-gutter: auto;
+	}
 }
 
 .people {
