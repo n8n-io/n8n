@@ -1,0 +1,25 @@
+packages/nodes-base/nodes/Autopilot/Autopilot.node.ts
+  s_2e1fa95fc44f8f::t_c4bcd0231ade66 17,26-27,124,183,195,228,243
+packages/nodes-base/nodes/Autopilot/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_f54a7b5fb3902f 13,79-81
+packages/nodes-base/nodes/Autopilot/test/workflow/versions.workflow.json
+  s_2e1fa95fc44f8f::t_58d75bbe84f917 1-59
+packages/nodes-base/nodes/Autopilot/test/workflow/versions.workflow.test.ts
+  s_2e1fa95fc44f8f::t_a8d2917c1154dc 1-18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "208a0a56efbdf2e8397e69e378a1a8b3f8517280",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,27 @@
+packages/@n8n/expression-runtime/src/extensions/__tests__/function-extensions.test.ts
+  s_05aa02f175b005::t_f65b16bf6b212f 34-44
+packages/@n8n/expression-runtime/src/extensions/function-extensions.ts
+  s_05aa02f175b005::t_c73d34bd654bc3 46-47,54
+packages/workflow/src/url.ts
+  s_05aa02f175b005::t_a5fdc2b7648484 3-4,6-8,18
+packages/workflow/test/request-target.test.ts
+  s_05aa02f175b005::t_4ee8b31f256407 70-85,126-129
+packages/workflow/test/url.test.ts
+  s_05aa02f175b005::t_f583ee263d3693 18-34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "68bed0816975506cf34cbf80129ad41561e35043",
+  "prompts": {},
+  "sessions": {
+    "s_05aa02f175b005": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ad8f1bf8a43d1dd19",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

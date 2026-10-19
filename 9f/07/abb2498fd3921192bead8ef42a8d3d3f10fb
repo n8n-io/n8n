@@ -1,0 +1,23 @@
+packages/nodes-base/nodes/WhatsApp/MediaDescription.ts
+  s_2e1fa95fc44f8f::t_603aa76fbcd29f 52,86,134,157
+packages/nodes-base/nodes/WhatsApp/MessagesDescription.ts
+  s_2e1fa95fc44f8f::t_3847c7bccf0a38 88,125
+packages/nodes-base/nodes/WhatsApp/tests/WhatsApp.node.test.ts
+  s_2e1fa95fc44f8f::t_e466c112ac52b6 1-143
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9f07abb2498fd3921192bead8ef42a8d3d3f10fb",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}
