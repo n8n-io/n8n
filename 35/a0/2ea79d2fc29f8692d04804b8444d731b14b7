@@ -1,0 +1,20 @@
+packages/cli/src/workflows/workflow.service.ts
+  s_0ea06607e37c93::t_4ac5ec26b5c398 394-395
+  s_0ea06607e37c93::t_9086c92eb5d2c5 410-411
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "35a02ea79d2fc29f8692d04804b8444d731b14b7",
+  "prompts": {},
+  "sessions": {
+    "s_0ea06607e37c93": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1d19578d-6e39-4af6-860b-134625fd9a81",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}

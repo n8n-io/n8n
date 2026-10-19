@@ -1,0 +1,42 @@
+packages/core/src/execution-engine/node-execution-context/webhook-context.ts
+  s_bf7119d19eec82::t_d2531dd0d8edd8 178-181,185
+packages/cli/src/modules/oauth-server/__tests__/oauth-flow.service.api.test.ts
+  s_bf7119d19eec82::t_6afd5ba8cae297 158-170
+  s_bf7119d19eec82::t_026200685be5c2 70-75
+packages/cli/src/modules/oauth-server/oauth-flow.service.ts
+  s_bf7119d19eec82::t_a2386603581266 36-38,40,50
+  s_bf7119d19eec82::t_32e89ccfbe68e8 112
+  s_bf7119d19eec82::t_b3cc03f66658ea 19
+  s_bf7119d19eec82::t_6e8e83df048460 77
+packages/nodes-base/nodes/Form/utils/utils.ts
+  s_bf7119d19eec82::t_21dbfe795e4b63 836-842,846-849
+  s_bf7119d19eec82::t_0dc0ab8a584ec3 803-805
+packages/cli/src/services/oauth2-flow-proxy.service.ts
+  s_bf7119d19eec82::t_38961882547b86 17,19
+  s_bf7119d19eec82::t_240c7709bca58c 5
+packages/cli/src/webhooks/webhook-helpers.ts
+  s_bf7119d19eec82::t_8cd9fd2023645d 539-542
+packages/nodes-base/nodes/Form/test/utils.test.ts
+  s_bf7119d19eec82::t_13776170044e7d 1113,1148,1283
+  s_bf7119d19eec82::t_e01f6884de54f4 1183,1185,1193,1200-1202,1204-1219,1227,1236,1238,1248
+packages/workflow/src/interfaces.ts
+  s_bf7119d19eec82::t_5f3c703e3768f3 158
+  s_bf7119d19eec82::t_be6319ff8b2e21 3611
+  s_bf7119d19eec82::t_6071cb07902720 1486-1489,1491
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "d980db89168c96af6e4ee13413326f2b59b40aa7",
+  "prompts": {},
+  "sessions": {
+    "s_bf7119d19eec82": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "89b53837-12ab-487a-919a-10ed4bf7ab9d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

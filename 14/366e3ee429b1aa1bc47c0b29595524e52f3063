@@ -1,0 +1,27 @@
+packages/frontend/editor-ui/src/features/shared/editors/components/JsEditor/JsEditor.test.ts
+  s_f1acd94cf9c189::t_d745e2fd194dd6 6,11
+packages/frontend/editor-ui/src/features/shared/editors/components/JsEditor/JsEditor.vue
+  s_f1acd94cf9c189::t_c18ff4ac8a35e8 7,93
+packages/frontend/editor-ui/src/features/shared/editors/components/JsonEditor/JsonEditor.test.ts
+  s_f1acd94cf9c189::t_5b4b48044f46a2 8,13
+packages/frontend/editor-ui/src/features/shared/editors/components/JsonEditor/JsonEditor.vue
+  s_f1acd94cf9c189::t_cc5dce7db311f4 7,58
+packages/frontend/editor-ui/src/features/shared/editors/components/SqlEditor/SqlEditor.vue
+  s_f1acd94cf9c189::t_c31b98be3d08f2 107,133
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "14366e3ee429b1aa1bc47c0b29595524e52f3063",
+  "prompts": {},
+  "sessions": {
+    "s_f1acd94cf9c189": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "62b9946a-baf7-4a92-ae85-6b4f443c06f6",
+        "model": "unknown"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

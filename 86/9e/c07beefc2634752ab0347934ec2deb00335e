@@ -1,0 +1,23 @@
+packages/cli/src/workflows/workflow.service.ts
+  s_5d79801635cdac::t_ebf89316124f52 804-831,1351
+packages/cli/src/workflows/__tests__/workflow.service.test.ts
+  s_5d79801635cdac::t_f56ed01759e11d 21
+  s_5d79801635cdac::t_a2cf773d47dcbb 965,969,971,991,1019-1039
+  s_5d79801635cdac::t_d548964b9a296a 803,844,864
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "869ec07beefc2634752ab0347934ec2deb00335e",
+  "prompts": {},
+  "sessions": {
+    "s_5d79801635cdac": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019eb330-e1e0-7e40-a545-1a5d9785fb19",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

@@ -1,0 +1,29 @@
+packages/frontend/editor-ui/src/app/composables/useCanvasOperations.ts
+  s_b1a69ed75d6063::t_52683c3b24a1a9 3497-3498,3503-3504,3518-3519
+  s_8bfbf7a375b636::t_c0caba43004f8b 3502
+  s_8bfbf7a375b636::t_070bac7e7b2477 3523-3525
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "70a19f1d1df9b78e9930ce6098e3a0b0460de97a",
+  "prompts": {},
+  "sessions": {
+    "s_8bfbf7a375b636": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "71c3c153-cff6-4553-b48e-985f97aec971",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Olivier de Jong <olivier.dejong@n8n.io>"
+    },
+    "s_b1a69ed75d6063": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77ef5e06-1c4a-4ad6-ac34-da5435a74cdb",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Olivier de Jong <olivier.dejong@n8n.io>"
+    }
+  }
+}

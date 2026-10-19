@@ -1,0 +1,23 @@
+packages/cli/src/modules/instance-ai/instance-ai.controller.ts
+  s_b75353843041f1::t_c5ecaebe70bd1f 21
+  s_b75353843041f1::t_af5a8a4a044e29 371-399,402-410,415-439,452-454
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.controller.test.ts
+  s_b75353843041f1::t_c406cf3b779391 1746-1846
+  s_b75353843041f1::t_85d66258bfcb4c 1847-1851
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "774cd202619835dde53aadaa98dbc55945fabc24",
+  "prompts": {},
+  "sessions": {
+    "s_b75353843041f1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fd7024c5-2228-48df-be88-825fe78fa77b",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

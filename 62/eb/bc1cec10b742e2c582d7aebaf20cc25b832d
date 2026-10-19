@@ -1,0 +1,77 @@
+packages/cli/src/modules/source-control.ee/__tests__/source-control-import.service.ee.test.ts
+  s_a89c2af945b39a::t_67a5bf88509ea2 3990
+  s_a89c2af945b39a::t_cf72f956ee5356 268-276
+  s_a89c2af945b39a::t_f05e160ced9d73 33-39
+packages/cli/src/modules/source-control.ee/source-control-git.service.ee.ts
+  s_a89c2af945b39a::t_c024846f8f39f9 127-128
+  s_a89c2af945b39a::t_253d21851455b5 138
+packages/cli/src/modules/source-control.ee/__tests__/source-control-git.service.test.ts
+  s_a89c2af945b39a::t_a33297de5800eb 386
+  s_a89c2af945b39a::t_199cad4b55b2fb 339
+packages/cli/src/modules/source-control.ee/source-control-helper.ee.ts
+  s_a89c2af945b39a::t_613d7550690186 163-212
+  s_a89c2af945b39a::t_fc19bbbd4f7fb2 2-7
+  s_a89c2af945b39a::t_61c53a36bcda6f 432
+  s_a89c2af945b39a::t_1e3b414e346acf 22
+packages/cli/src/modules/source-control.ee/__tests__/source-control-git.service.integration.test.ts
+  s_a89c2af945b39a::t_fe62bb8d2367cc 1-4
+  s_a89c2af945b39a::t_2118da2a4a3cae 53-75,77-109
+  s_a89c2af945b39a::t_ecba169d4fa74e 76
+packages/@n8n/backend-common/src/utils/path-util.ts
+  s_a89c2af945b39a::t_ef8e9139f89822 94-95,97,102
+  s_a89c2af945b39a::t_d0f57d5c48fcc1 84-93,96,98-101,103-135,139-161
+  s_a89c2af945b39a::t_49c7de7e44ba03 136-138
+  s_a89c2af945b39a::t_edb7e96177dff7 2
+packages/cli/src/modules/source-control.ee/__tests__/source-control-export.service.test.ts
+  s_a89c2af945b39a::t_60aac8463c0a57 584-591
+  s_a89c2af945b39a::t_309bd94dbca20f 24-30
+packages/cli/src/modules/source-control.ee/__tests__/source-control-helper.ee.test.ts
+  s_a89c2af945b39a::t_d1c5e8d2141056 27
+  s_a89c2af945b39a::t_29b71cbb05c8a1 1893-1917
+packages/@n8n/backend-common/src/index.ts
+  s_a89c2af945b39a::t_a1553eaa02b89e 16
+packages/cli/src/modules/source-control.ee/source-control-export.service.ee.ts
+  s_a89c2af945b39a::t_d882a874fefaaf 19
+  s_a89c2af945b39a::t_dcc9f9efb38623 33,38,43,46
+  s_a89c2af945b39a::t_e5bb5857e61446 115-116,125-127
+  s_a89c2af945b39a::t_8c82f569f835b1 399
+  s_a89c2af945b39a::t_1c1ffb938759e0 175-179
+  s_a89c2af945b39a::t_023c0671d40232 417-418
+  s_a89c2af945b39a::t_a53714f27a3b18 478,486-487
+  s_a89c2af945b39a::t_53c522b5b4edce 547-551
+  s_a89c2af945b39a::t_48fa366752e824 246-250
+  s_a89c2af945b39a::t_fc3d32e25322af 446,451-455
+  s_a89c2af945b39a::t_99d7c39bf19f9c 643-647
+  s_a89c2af945b39a::t_3bbb5157e6c7d9 342-346
+packages/cli/src/modules/source-control.ee/source-control.service.ee.ts
+  s_a89c2af945b39a::t_919ef7fa0bf7d4 247-251
+  s_a89c2af945b39a::t_64635887540cc6 32
+packages/cli/src/modules/source-control.ee/source-control-import.service.ee.ts
+  s_a89c2af945b39a::t_74c978ce07159b 1293
+  s_a89c2af945b39a::t_426b93695ed4ab 195,344,477,501,605,658,702
+  s_a89c2af945b39a::t_74ac2189d539bd 353,482,513-515,611,663,710-712,979,1094,1190,1289,1418,1459,1745
+  s_a89c2af945b39a::t_f124e7356a0951 1462
+  s_a89c2af945b39a::t_5e2823edfd9f20 1194
+  s_a89c2af945b39a::t_8dacad2607a60f 1422
+  s_a89c2af945b39a::t_34d921e9212462 91,93
+packages/@n8n/backend-common/src/utils/__tests__/path-util.test.ts
+  s_a89c2af945b39a::t_4ff4f9e8267c08 1
+  s_a89c2af945b39a::t_4a450d4c9c6583 11
+  s_a89c2af945b39a::t_53599f4c0e865b 146-250
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "62ebbc1cec10b742e2c582d7aebaf20cc25b832d",
+  "prompts": {},
+  "sessions": {
+    "s_a89c2af945b39a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "be2b6537-55b1-41cd-abf1-bea078ee8bee",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

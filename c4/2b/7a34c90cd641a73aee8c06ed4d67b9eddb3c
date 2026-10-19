@@ -1,0 +1,34 @@
+packages/@n8n/module-cli/src/templates/frontend/README.md.template
+  s_450550c56efc53::t_3e3a0903946c15 6-7
+packages/@n8n/module-cli/README.md
+  s_450550c56efc53::t_14da8ba1daa673 5-7
+packages/@n8n/module-cli/frontend-module-guide.md
+  s_450550c56efc53::t_a79c094dee21b4 476-477
+  s_450550c56efc53::t_1129f67423cb32 110
+  s_450550c56efc53::t_eafbc3203e2073 453-454
+  s_450550c56efc53::t_42c06151dbb407 4
+  s_450550c56efc53::t_ef719605a8b936 25,34-35,38-41,46-47,53-59,62-65,71-72,74-85
+  s_450550c56efc53::t_6f438bae0efcd7 339,509,538-541,545
+  s_450550c56efc53::t_236e95a0d5f876 436
+  s_450550c56efc53::t_f06216062052bf 422-423
+  s_450550c56efc53::t_16a2326516f810 491-497
+  s_450550c56efc53::t_b37cc776783205 90
+packages/@n8n/module-cli/src/main.mjs
+  s_450550c56efc53::t_e090d0553cac15 99-100
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "c42b7a34c90cd641a73aee8c06ed4d67b9eddb3c",
+  "prompts": {},
+  "sessions": {
+    "s_450550c56efc53": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7a345125-a806-47a0-862d-6af3c6178bc3",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

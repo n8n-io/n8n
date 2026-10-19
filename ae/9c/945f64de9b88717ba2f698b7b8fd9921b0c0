@@ -1,0 +1,56 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAiProactive.ts
+  s_f076c670c90238::t_2668076820c848 59-66,216
+  s_f076c670c90238::t_569cbeed0693e6 74-75,79-81
+  s_f076c670c90238::t_f21a84854e67d2 217
+  s_f076c670c90238::t_adbceaed9199d1 88-91
+  s_f076c670c90238::t_cb1e20b0885e7a 86-87
+  s_f076c670c90238::t_f611b1e34a1c8a 215
+  s_f076c670c90238::t_0b5e8bda4d9c86 226
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useInstanceAiCredentialErrorOffer.ts
+  s_f076c670c90238::t_172d59a5f92bea 1-71
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/__tests__/useInstanceAiCredentialErrorOffer.test.ts
+  s_f076c670c90238::t_bac6c3253fdf37 1-210
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/instanceAiProactive.test.ts
+  s_f076c670c90238::t_3321c1e187f149 154-162
+  s_f076c670c90238::t_003bd400f82a8d 293,301-302,305,310,313,316,323
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiInput.vue
+  s_f076c670c90238::t_9a7a0a525bd6b6 272
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialConfig.vue
+  s_f076c670c90238::t_c38295fa5e9cae 438
+  s_f076c670c90238::t_5e6e3fbb450433 43-46
+  s_f076c670c90238::t_fba8db40d99838 431-434,436-437,439-448
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialConfig.test.ts
+  s_f076c670c90238::t_5b99b33c3f5b7a 1251-1255,1257,1260,1263,1265,1267-1273,1276,1286,1304,1307,1318,1321,1328,1331,1338,1341-1342,1346,1350
+  s_f076c670c90238::t_a7e1928a9c3af0 11
+  s_f076c670c90238::t_39591fadc3bd4f 1347
+  s_f076c670c90238::t_c5cd9a8e00f78f 43-48,50-51
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/__tests__/useInstanceAiProactiveOffer.test.ts
+  s_f076c670c90238::t_2f12cc66d7542c 170-217
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_f076c670c90238::t_d4a4c76eb970a8 6964
+  s_f076c670c90238::t_4441cefc8b6702 6979
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useInstanceAiProactiveOffer.ts
+  s_f076c670c90238::t_a5b3f55b87b6e5 68
+  s_f076c670c90238::t_d8ce29767104a1 143-152,158
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "ae9c945f64de9b88717ba2f698b7b8fd9921b0c0",
+  "prompts": {},
+  "humans": {
+    "h_21437a83314767": {
+      "author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_f076c670c90238": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ce50b67d-826e-4198-888d-724210193f70",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

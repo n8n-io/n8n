@@ -1,0 +1,47 @@
+packages/@n8n/agents/src/__tests__/integration/cassettes/workspace-agent/agent-uses-workspace-file-stat-to-get-file-metadata.json
+  s_97124842b89319::t_cfbfa06b7477fa 39,43,60,85,114,121,145,165,181,201,225,245,269,293,317,341,367,470,474,491,516,545,552,576,596,612,632,656,676,700,724,748,772,798
+packages/@n8n/agents/src/__tests__/integration/cassettes/workspace-agent/agent-uses-workspace-write-file-and-workspace-read-file-tools.json
+  s_97124842b89319::t_cfbfa06b7477fa 39,43,60,85,114,121,145,165,181,201,225,245,269,293,317,341,367,471,475,492,517,546,553,577,597,613,633,657,677,701,725,749,773,799,933,937,954,979,1008,1015,1039,1059,1075,1095,1119,1139,1163,1187,1211,1235,1261
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-runtime/does-not-suspend-a-tool-not-listed-in-config-requireapproval.json
+  s_97124842b89319::t_cfbfa06b7477fa 38,57,72,179,198,213
+packages/@n8n/agents/src/__tests__/integration/cassettes/workspace-agent/agent-handles-multi-step-workflow-mkdir-write-list-read.json
+  s_97124842b89319::t_cfbfa06b7477fa 39,43,60,85,114,121,145,165,181,201,225,245,269,293,317,341,367,491,495,512,537,566,573,597,617,633,653,677,697,721,745,769,793,819,989,993,1010,1035,1064,1071,1095,1115,1131,1151,1175,1195,1219,1243,1267,1291,1317
+packages/@n8n/agents/src/__tests__/integration/cassettes/workspace-agent/agent-applies-multiple-string-replacements.json
+  s_97124842b89319::t_cfbfa06b7477fa 39,43,60,85,114,121,145,165,181,201,225,245,269,293,317,341,367,484,488,505,530,559,566,590,610,626,646,670,690,714,738,762,786,812
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-runtime/streams-a-response-that-includes-an-mcp-tool-call.json
+  s_97124842b89319::t_cfbfa06b7477fa 38,57,72,179,198,213
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-runtime/suspends-all-mcp-tools-when-config-requireapproval-true.json
+  s_97124842b89319::t_cfbfa06b7477fa 38,57,72
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-runtime/suspends-only-the-listed-tool-when-config-requireapproval-is-a-string-array.json
+  s_97124842b89319::t_cfbfa06b7477fa 38,57,72
+packages/@n8n/agents/src/__tests__/integration/cassettes/workspace-agent/agent-edits-files-with-append-copy-move-delete-and-rmdir-tools.json
+  s_97124842b89319::t_cfbfa06b7477fa 39,43,60,85,114,121,145,165,181,201,225,245,269,293,317,341,367,471,475,492,517,546,553,577,597,613,633,657,677,701,725,749,773,799,935,939,956,981,1010,1017,1041,1061,1077,1097,1121,1141,1165,1189,1213,1237,1263,1431,1435,1452,1477,1506,1513,1537,1557,1573,1593,1617,1637,1661,1685,1709,1733,1759,1957,1961,1978,2003,2032,2039,2063,2083,2099,2119,2143,2163,2187,2211,2235,2259,2285,2515,2519,2536,2561,2590,2597,2621,2641,2657,2677,2701,2721,2745,2769,2793,2817,2843
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-runtime/mcp-connections-persist-across-multiple-generate-calls.json
+  s_97124842b89319::t_cfbfa06b7477fa 38,57,72,179,198,213,288,307,322,429,448,463
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-runtime/calls-an-mcp-tool-during-generation-and-returns-the-result.json
+  s_97124842b89319::t_cfbfa06b7477fa 38,57,72,178,197,212
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-runtime/merges-static-tools-and-mcp-tools-in-the-same-agent.json
+  s_97124842b89319::t_cfbfa06b7477fa 38,54,73,88,195,211,230,245
+packages/@n8n/agents/src/__tests__/integration/cassettes/workspace-agent/agent-uses-workspace-list-files-for-a-pre-existing-directory.json
+  s_97124842b89319::t_cfbfa06b7477fa 39,43,60,85,114,121,145,165,181,201,225,245,269,293,317,341,367,471,475,492,517,546,553,577,597,613,633,657,677,701,725,749,773,799
+packages/@n8n/agents/src/__tests__/integration/cassettes/workspace-agent/stream-agent-writes-a-file-and-streams-the-response.json
+  s_97124842b89319::t_cfbfa06b7477fa 39,43,60,85,114,121,145,165,181,201,225,245,269,293,317,341,367,477,481,498,523,552,559,583,603,619,639,663,683,707,731,755,779,805
+packages/@n8n/agents/src/__tests__/integration/cassettes/workspace-agent/agent-uses-workspace-execute-command-tool.json
+  s_97124842b89319::t_cc528994f3efeb 39,43,60,85,114,121,145,165,181,201,225,245,269,293,317,341,367,470,474,491,516,545,552,576,596,612,632,656,676,700,724,748,772,798
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "033d6ba80bbac6164d1306bb48a1d38fb2ae9e88",
+  "prompts": {},
+  "sessions": {
+    "s_97124842b89319": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e46c036b-ecd2-4706-953f-7e6eb59d5337",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

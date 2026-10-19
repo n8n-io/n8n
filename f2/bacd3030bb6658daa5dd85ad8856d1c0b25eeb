@@ -1,0 +1,80 @@
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-request.update.service.test.ts
+  s_5c78c9f770578f::t_97e2c2c515859e 229
+  s_83feff7457dd06::t_53577153d58b34 1-228,230-314
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-requests.env-gate.integration.test.ts
+  s_83feff7457dd06::t_51c1b0c02dcbd2 35-41
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-requests.controller.ts
+  s_83feff7457dd06::t_2b4958aebbf021 54-66
+  s_83feff7457dd06::t_273f1c2f5109d3 5,11
+  s_83feff7457dd06::t_6ff7c79c550c91 67-68
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-request.service.ts
+  s_d952e76b1ba7eb::t_d43a1aea8c1587 353-362
+  s_d952e76b1ba7eb::t_61113b6e68d518 254
+  s_83feff7457dd06::t_9b673c5e61823d 108
+  s_563a9e16fe5daf::t_250022e220d7dd 417-418,423
+  s_563a9e16fe5daf::t_3d8e545f8b889f 494,500-501
+  s_83feff7457dd06::t_4d1e1e828bce36 214
+  s_563a9e16fe5daf::t_a6511c9ba2c288 27
+  s_83feff7457dd06::t_7ff3cd30d0e9b6 5
+  s_83feff7457dd06::t_3307e28f3f7d53 256
+  s_83feff7457dd06::t_76bfb1b1c833d0 257-352,368-375,377-380,385
+  s_d952e76b1ba7eb::t_212b75b42c9035 255
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-request.list.service.test.ts
+  s_563a9e16fe5daf::t_bc0cfacb98c94d 103-104
+  s_563a9e16fe5daf::t_e0251bc3aa173b 118
+  s_563a9e16fe5daf::t_dc53ddab34cee7 130
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-requests.controller.integration.test.ts
+  s_83feff7457dd06::t_5e44e5f57a6115 363
+  s_563a9e16fe5daf::t_a05d6ff0a111fe 1110
+  s_83feff7457dd06::t_909b9904ac0f97 484-680
+  s_563a9e16fe5daf::t_956d260f6a2aa0 1033
+  s_83feff7457dd06::t_f1e769eec83252 860
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-request.service.test.ts
+  s_83feff7457dd06::t_5b65cca4dd6852 494,498,513
+  s_83feff7457dd06::t_f49d230433b7bb 16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "f2bacd3030bb6658daa5dd85ad8856d1c0b25eeb",
+  "prompts": {},
+  "humans": {
+    "h_9c8f56e3400786": {
+      "author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_563a9e16fe5daf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77cbd763-38ec-4ec6-89cd-4072897b7706",
+        "model": "claude-fable-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_5c78c9f770578f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "660c964f-b7b7-47c4-9531-a80c3e8ee8eb",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_83feff7457dd06": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec8a95a5-afe0-452d-847f-10d4068d465c",
+        "model": "claude-fable-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_d952e76b1ba7eb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "94c73f78-dd8b-454a-9e1e-fb82ff51e953",
+        "model": "claude-fable-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

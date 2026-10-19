@@ -1,0 +1,38 @@
+packages/@n8n/nodes-langchain/nodes/vector_store/VectorStoreMongoDBAtlas/VectorStoreMongoDBAtlas.node.ts
+  s_94a28f1ec66c13::t_a60e290151f88f 16-19,191-205
+packages/nodes-base/nodes/MongoDb/GenericFunctions.test.ts
+  s_94a28f1ec66c13::t_7eb537a3e1c1d3 3-8,13-116
+packages/@n8n/nodes-langchain/nodes/memory/MemoryMongoDbChat/test/MemoryMongoDbChat.node.test.ts
+  s_94a28f1ec66c13::t_c87fabdc91c6f8 1-90
+  s_94a28f1ec66c13::t_4103e23b64eb6d 91-92
+packages/@n8n/nodes-langchain/nodes/vector_store/VectorStoreMongoDBAtlas/VectorStoreMongoDBAtlas.node.test.ts
+  s_94a28f1ec66c13::t_a60e290151f88f 4,253-275
+  s_94a28f1ec66c13::t_f4d77951779dfc 276
+packages/nodes-base/nodes/MongoDb/MongoDb.node.ts
+  s_94a28f1ec66c13::t_e279b124912b29 6,9,28,67,95,111-118,160,190,251,290,339,388,436,471,497,530,558,567-571
+packages/@n8n/nodes-langchain/nodes/memory/MemoryMongoDbChat/MemoryMongoDbChat.node.ts
+  s_94a28f1ec66c13::t_fc51537d71de5e 4,99,106-107,110,122,162-165
+packages/nodes-base/nodes/MongoDb/GenericFunctions.ts
+  s_94a28f1ec66c13::t_f086214d42ec7d 20-31,38-40,42,44
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f010dc256f37ae8aafaea350d91bb64c4a565be3",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_94a28f1ec66c13": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a2ba6da5-c04b-4950-b362-bb0b894cc7f4",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

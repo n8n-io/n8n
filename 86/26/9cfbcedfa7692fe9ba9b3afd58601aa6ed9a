@@ -1,0 +1,33 @@
+packages/cli/src/modules/dynamic-credentials.ee/credential-resolvers.controller.ts
+  s_3366bcfee02760::t_ff98383e31ae7b 83-85
+packages/cli/src/modules/dynamic-credentials.ee/services/__tests__/credential-resolver.service.test.ts
+  s_3366bcfee02760::t_81ba3af39ea7fe 689-706,716-722
+packages/cli/src/modules/dynamic-credentials.ee/__tests__/credential-resolvers.controller.test.ts
+  s_3366bcfee02760::t_08096fc330a281 65-72
+packages/cli/src/modules/dynamic-credentials.ee/errors/system-resolver-modification.error.ts
+  s_3366bcfee02760::t_c7663a816b67ab 4-6,9
+packages/cli/src/modules/dynamic-credentials.ee/services/credential-resolver.service.ts
+  s_3366bcfee02760::t_a3f528f64880c9 63-65
+  s_3366bcfee02760::t_de7f9901833748 133-135
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.10",
+  "base_commit_sha": "86269cfbcedfa7692fe9ba9b3afd58601aa6ed9a",
+  "prompts": {},
+  "humans": {
+    "h_89e664b3be09ae": {
+      "author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_3366bcfee02760": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "969f6a0c-1fa9-40fa-92a6-99b9550d1f35",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

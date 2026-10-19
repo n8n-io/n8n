@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/core/projectFiles/ProjectFilesView.vue
+  s_9909321584e1c5::t_fc3b33cba0c502 19
+  s_9909321584e1c5::t_d363db1c4b2264 408
+  s_9909321584e1c5::t_8b63c8ca803391 294-297
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "9755db65e9650ff10b9893b031be4078a3b86598",
+  "prompts": {},
+  "sessions": {
+    "s_9909321584e1c5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "532cff4f-9b1c-4c43-b90f-d9f3c91f8ac3",
+        "model": "claude-opus-5"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

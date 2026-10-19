@@ -1,0 +1,20 @@
+packages/@n8n/workflow-sdk/src/validation/node-parameter-schema/schema-validator.test.ts
+  s_cf289f39ab832a::t_35110310b4f7ad 185-186
+  s_cf289f39ab832a::t_4634a926991f23 183-184,187
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8b515f7afe551c9091a81fd475b4d2adda20f875",
+  "prompts": {},
+  "sessions": {
+    "s_cf289f39ab832a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8f4f3bff-f837-4c80-b095-a4151f89c765",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

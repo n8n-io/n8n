@@ -1,0 +1,42 @@
+packages/@n8n/agents/src/sdk/tool.ts
+  s_7b16f513886b0b::t_2350997920486c 41
+packages/cli/src/modules/agents/execution-recorder.ts
+  s_7b16f513886b0b::t_cc979d6757b794 2,142-174,382-383,401,485-487,540-541,543
+  s_7b16f513886b0b::t_7a8196f8028851 175,177,394
+  s_7b16f513886b0b::t_59108baf2386d2 176,178-179,224,542
+packages/@n8n/agents/src/runtime/agent-runtime.ts
+  s_7b16f513886b0b::t_2350997920486c 2255
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_7b16f513886b0b::t_2350997920486c 2765-2766
+packages/@n8n/api-types/src/agents/index.ts
+  s_7b16f513886b0b::t_9524784d4acd08 13-15
+packages/cli/src/modules/agents/agents-tools.service.ts
+  s_7b16f513886b0b::t_4308cf6d833771 48-49
+  s_7b16f513886b0b::t_ce090b56fd2739 3-6,35-39,58-62,65
+packages/cli/src/modules/agents/__tests__/agents-tools.service.test.ts
+  s_7b16f513886b0b::t_81ddf35b47ba4e 3-6,180-189
+packages/@n8n/api-types/src/agent-builder-tool-node-types.ts
+  s_7b16f513886b0b::t_0423361873cba0 1-13
+packages/frontend/editor-ui/src/features/agents/components/AgentToolsModal.vue
+  s_7b16f513886b0b::t_c97262fc81a701 25-26,187-193
+packages/@n8n/agents/src/sdk/__tests__/tool.test.ts
+  s_7b16f513886b0b::t_2350997920486c 253,277,280
+packages/cli/src/modules/agents/__tests__/execution-recorder.test.ts
+  s_7b16f513886b0b::t_40c2da3941eea4 268-331,489-526
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "fdbaf4929a49e47b20bf7d3150a213d873ddd0c7",
+  "prompts": {},
+  "sessions": {
+    "s_7b16f513886b0b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e9304-76d7-74f1-b63c-5a944947c0e0",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

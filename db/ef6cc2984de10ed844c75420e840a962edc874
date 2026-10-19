@@ -1,0 +1,39 @@
+packages/@n8n/nodes-langchain/nodes/llms/LMOllama/test/LmOllama.node.test.ts
+  s_ac2d39a9997295::t_eeba37cc712bfe 109-138
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsOllama/test/EmbeddingsOllama.node.test.ts
+  s_ac2d39a9997295::t_6b890641d9cf7f 110-141
+packages/@n8n/nodes-langchain/nodes/llms/LMOllama/LmOllama.node.ts
+  s_ac2d39a9997295::t_e0f7007126aecd 85-89
+  s_ac2d39a9997295::t_d37f82210636b2 3-6,17
+  s_ac2d39a9997295::t_8e03743f4b398b 16
+  s_ac2d39a9997295::t_47758c0fcd1448 63
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsOllama/EmbeddingsOllama.node.ts
+  s_ac2d39a9997295::t_67ebadc8b4f8e8 2
+  s_ac2d39a9997295::t_13fa4b76bf7ac3 12
+  s_ac2d39a9997295::t_3919478465daec 72-76
+  s_ac2d39a9997295::t_faecb8f3c54d29 55
+packages/@n8n/nodes-langchain/nodes/llms/LMChatOllama/test/LmChatOllama.node.test.ts
+  s_ac2d39a9997295::t_043a01d760320a 109-168
+packages/@n8n/nodes-langchain/nodes/llms/LMChatOllama/LmChatOllama.node.ts
+  s_ac2d39a9997295::t_6ae0ab4eb84230 80-84
+  s_ac2d39a9997295::t_b63029852cad57 18
+  s_ac2d39a9997295::t_1625032b64ac88 65
+packages/@n8n/nodes-langchain/utils/credentialGuardedFetch.ts
+  s_ac2d39a9997295::t_1f14d932bbf401 1-34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "dbef6cc2984de10ed844c75420e840a962edc874",
+  "prompts": {},
+  "sessions": {
+    "s_ac2d39a9997295": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0c577bfa-f279-4d79-96b1-f69bf0a1ed08",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

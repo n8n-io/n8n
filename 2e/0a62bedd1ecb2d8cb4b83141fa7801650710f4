@@ -1,0 +1,21 @@
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  s_63d65c9c064c4c::t_9c32d37aae9d41 709-712
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_63d65c9c064c4c::t_5312546cfa306f 175-179
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "2e0a62bedd1ecb2d8cb4b83141fa7801650710f4",
+  "prompts": {},
+  "sessions": {
+    "s_63d65c9c064c4c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0d2c2-8dcf-7443-93f9-db1cf5f65c25",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

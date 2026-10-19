@@ -1,0 +1,22 @@
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectNavigation.vue
+  s_cca74db7ecfde7::t_60d38f5c5c2fa5 151-159
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectNavigation.test.ts
+  s_cca74db7ecfde7::t_9d30ee790a86e7 11-12,65-80,173-189
+  s_cca74db7ecfde7::t_550ad954d28f8a 190-191
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "ece7bd906be2aa6603f01514e72f4bb9e2c2d4b2",
+  "prompts": {},
+  "sessions": {
+    "s_cca74db7ecfde7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fbe8624a-38e5-4409-be7a-cb42c7136abc",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

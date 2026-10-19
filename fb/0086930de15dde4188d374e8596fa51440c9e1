@@ -1,0 +1,9 @@
+packages/frontend/editor-ui/src/features/agents/constants.ts
+  ai_agent 13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "fb0086930de15dde4188d374e8596fa51440c9e1",
+  "prompts": {}
+}

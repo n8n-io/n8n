@@ -1,0 +1,24 @@
+packages/@n8n/backend-common/src/modules/modules.config.ts
+  s_be6d12de03f718::t_35d725002ac974 42
+packages/@n8n/backend-common/src/modules/__tests__/module-registry.test.ts
+  s_be6d12de03f718::t_e13f9513b3a5ed 78
+  s_be6d12de03f718::t_2069f5320770b6 115
+packages/@n8n/backend-common/src/modules/module-registry.ts
+  s_be6d12de03f718::t_ccab6072ea8d50 76
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "3533e11ed6ad1964555127f5fd0ee40dc1f3e64c",
+  "prompts": {},
+  "sessions": {
+    "s_be6d12de03f718": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e840698b-e5eb-4103-8068-58943bcae715",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,33 @@
+packages/cli/src/events/__tests__/log-streaming-event-relay.test.ts
+  s_a5c113d3dab7cc::t_aefd2d4da405b9 116
+packages/cli/src/modules/n8n-packages/__tests__/import-package.integration.test.ts
+  s_a5c113d3dab7cc::t_c8928b69b8ac16 1292,1392,1462,1534
+packages/cli/src/modules/n8n-packages/engine/import-telemetry.ts
+  s_a5c113d3dab7cc::t_aefd2d4da405b9 71,158
+packages/cli/src/modules/n8n-packages/engine/__tests__/import-telemetry.test.ts
+  s_a5c113d3dab7cc::t_aefd2d4da405b9 264
+packages/cli/src/modules/n8n-packages/__tests__/import-data-tables.integration.test.ts
+  s_a5c113d3dab7cc::t_aefd2d4da405b9 200-205
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_a5c113d3dab7cc::t_aefd2d4da405b9 3161,3215
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  s_a5c113d3dab7cc::t_aefd2d4da405b9 1378
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_a5c113d3dab7cc::t_aefd2d4da405b9 413
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c1ad5c155eef0d24b9c2934589500fe20964f543",
+  "prompts": {},
+  "sessions": {
+    "s_a5c113d3dab7cc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8aff32f9-b97d-43bb-b0cd-f1499312b90b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

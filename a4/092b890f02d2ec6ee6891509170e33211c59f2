@@ -1,0 +1,45 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/AgentSection.test.ts
+  s_19c108ca02ed6d::t_280605b3ce363e 83-87
+  s_19c108ca02ed6d::t_73be7294472718 1-82,88-111
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentView.test.ts
+  s_19c108ca02ed6d::t_4f9910216e2d2b 7,38,98-118
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiMarkdown.test.ts
+  s_19c108ca02ed6d::t_2f21e92ac0b9ef 340-341,349-351
+packages/frontend/editor-ui/src/features/agents/agentReturnContext.store.ts
+  s_19c108ca02ed6d::t_dcb824581ed720 24-25
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiMarkdown.vue
+  s_19c108ca02ed6d::t_502988f0e028a7 282,289
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiWorkflowPreview.test.ts
+  s_19c108ca02ed6d::t_a6ecff5987f01a 16-19,23,25
+  s_19c108ca02ed6d::t_1c3f5814080fa2 125,152,219-238
+  s_19c108ca02ed6d::t_dfbc203986d740 239-240
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiWorkflowPreview.vue
+  s_19c108ca02ed6d::t_dcb824581ed720 19,39-40,46,118-125,127-134,211
+  s_19c108ca02ed6d::t_964ffbd5650bbe 50,126
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiThreadView.test.ts
+  s_19c108ca02ed6d::t_a90e425e5452e7 31-34,287,289,297,1998-2005,2011,2014
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiThreadView.vue
+  s_19c108ca02ed6d::t_964ffbd5650bbe 301-306,317-319,1449-1451,1455
+  s_19c108ca02ed6d::t_dcb824581ed720 109-112,310-314,1448,1452
+  s_19c108ca02ed6d::t_e1367a4722874f 320
+packages/frontend/editor-ui/src/features/agents/utils/agentPreviewUrl.ts
+  s_19c108ca02ed6d::t_502988f0e028a7 24-30
+packages/frontend/editor-ui/src/features/agents/views/AgentView.vue
+  s_19c108ca02ed6d::t_dcb824581ed720 8,47-50
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "a4092b890f02d2ec6ee6891509170e33211c59f2",
+  "prompts": {},
+  "sessions": {
+    "s_19c108ca02ed6d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06c92-b5f8-7720-8bf6-29b2466e189a",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

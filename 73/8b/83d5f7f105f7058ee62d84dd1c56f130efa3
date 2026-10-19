@@ -1,0 +1,40 @@
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_956432c475138b::t_4fee54f0c7d157 391-392
+  s_956432c475138b::t_baabda38cf837c 438-440
+  s_956432c475138b::t_2f827f95d76c74 422-426,441
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_956432c475138b::t_43b00020e548cc 1002-1005,1012,1014-1024
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_956432c475138b::t_4e6593fbcee248 1431,1444-1445,1451
+  s_956432c475138b::t_7f87e8cde241c4 1401-1430
+packages/cli/src/public-api/v1/controllers/promotions.public.controller.ts
+  s_806503e9a49181::t_188db8b1ab0dc5 632
+packages/@n8n/api-types/src/dto/promotions/promotable-resource.dto.ts
+  s_806503e9a49181::t_9c08a2d2593ce8 52-58
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/promoteProjectSelection.generated.yml
+  s_806503e9a49181::t_96152575e89f6f 5,35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "738b83d5f7f105f7058ee62d84dd1c56f130efa3",
+  "prompts": {},
+  "sessions": {
+    "s_806503e9a49181": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "df3c3428-5c54-428d-949f-4ed6c4218973",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_956432c475138b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3cb3e00e-4a45-4d67-a320-b051b046a67b",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+packages/cli/src/modules/instance-registry/__tests__/instance-registry.service.test.ts
+  s_df1c870b6f0f6f::t_1204b815c2f3a8 65,261,266,290
+packages/cli/src/modules/instance-registry/instance-registry.service.ts
+  s_df1c870b6f0f6f::t_bd193ab4ac40a6 130
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "38a393045739c708b7950e799ecccc4d77444dc0",
+  "prompts": {},
+  "sessions": {
+    "s_df1c870b6f0f6f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "96b45cda-ce37-49f0-b1db-dd51b5d25c75",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

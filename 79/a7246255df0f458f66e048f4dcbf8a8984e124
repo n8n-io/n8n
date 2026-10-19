@@ -1,0 +1,52 @@
+packages/cli/src/public-api/v1/controllers/n8n-packages.public.controller.ts
+  s_8631ec10eb1199::t_dd6ed6f9ff55ed 70-101
+  s_8631ec10eb1199::t_a9f20dcfa4c68c 1-6
+  s_8631ec10eb1199::t_b4716692061e3f 30
+  s_8631ec10eb1199::t_a6b8fd869b1450 176-182
+  s_8631ec10eb1199::t_fe2cbacf9b5f3c 151-175,183-205
+packages/cli/test/integration/public-api/n8n-packages-import-selection.test.ts
+  s_8631ec10eb1199::t_aadf0efe700c8e 305,311
+  s_8631ec10eb1199::t_462447200a2f79 295-304,306-310,312-352
+packages/cli/src/public-api/v1/handlers/n8n-packages/__tests__/n8n-packages.handler.test.ts
+  s_8631ec10eb1199::t_84d660b5ead573 10
+  s_8631ec10eb1199::t_1ae039eace5065 29
+packages/cli/src/modules/n8n-packages/utils/import-package-upload.ts
+  s_8631ec10eb1199::t_a1b8d76e27811f 34-39
+  s_8631ec10eb1199::t_d015d0f738d0d9 40
+packages/@n8n/api-types/src/dto/packages/__tests__/import-package-selection-request.dto.test.ts
+  s_8631ec10eb1199::t_392bd18864624e 6-18,20,23,29-38,49-58,63-68,86-95,106-108,123-127,130,178,188-189
+packages/@n8n/api-types/src/dto/packages/import-package-request.openapi.ts
+  s_8631ec10eb1199::t_9c5f95c6b0a833 225-227
+  s_8631ec10eb1199::t_de9d59548a66f4 261
+  s_8631ec10eb1199::t_3a4811c5946426 230-231
+  s_8631ec10eb1199::t_653c936f9be881 224,228-229,232-260,262-273
+packages/@n8n/api-types/src/dto/packages/import-package-request.dto.ts
+  s_8631ec10eb1199::t_52d14891eb2c24 3-6
+  s_8631ec10eb1199::t_05b2a273702fee 205,207-213,225-250
+packages/cli/src/public-api/v1/handlers/n8n-packages/n8n-packages.handler.ts
+  s_8631ec10eb1199::t_a028418688fea0 1
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/importPackage.generated.yml
+  s_8631ec10eb1199::t_723b2e7daa5fa3 174
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/importPackageSelection.generated.yml
+  s_8631ec10eb1199::t_4e00a4092e2b33 1-60,62-76,80,82-100,102-110
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  s_8631ec10eb1199::t_3cb33193cbb43d 180-182
+packages/cli/src/public-api/v1/shared/spec/schemas/importResultDto.generated.yml
+  s_8631ec10eb1199::t_a11f14fd8f441b 13-16,27,38,41,53,56,62,68-71,80-81,85-92,111,113,117-122,134-139,164,167,169-173,183,190-197,199-208,210-214,220,225,228-231,246-247,253,258,263,268,273,276,278-282,288,293,298,303,308,310-327
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "79a7246255df0f458f66e048f4dcbf8a8984e124",
+  "prompts": {},
+  "sessions": {
+    "s_8631ec10eb1199": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77132272-9e69-4c36-85e9-f1136efb4942",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

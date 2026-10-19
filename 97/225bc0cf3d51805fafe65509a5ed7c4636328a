@@ -1,0 +1,16 @@
+tasks/plan.md
+  ai_agent 37,40,43-44,47-49,52,55
+tasks/todo.md
+  ai_agent 13-15,18-19,44,46,49-50,72,74,78-79,92-94,106-108,111-112
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "97225bc0cf3d51805fafe65509a5ed7c4636328a",
+  "prompts": {},
+  "humans": {
+    "h_6ef4cecfee65a2": {
+      "author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}

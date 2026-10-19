@@ -1,0 +1,32 @@
+packages/frontend/@n8n/design-system/src/components/N8nChatActions/ChatActions.test.ts
+  s_6c8661b042527a::t_86d10a3f6cfe4a 39-40
+  s_6c8661b042527a::t_6dd493492c9695 202,227
+  s_6c8661b042527a::t_09939595179d26 16,31,61-62,119,125-126,132-144,199-201,228-245,251-257
+  s_6c8661b042527a::t_0dcd108c3ff526 110-118,127-128,131,145-146,168,170,174-198
+  s_6c8661b042527a::t_ef915377a45423 147-167,169,171-173
+  s_6c8661b042527a::t_0899257a4f491a 7
+  s_6c8661b042527a::t_05ca8c0214dc44 120-124,129-130,203-226,246-250
+  s_6c8661b042527a::t_c96d13b2acc2df 258
+packages/frontend/@n8n/design-system/src/components/N8nChatActions/component-chat-actions.md
+  s_6c8661b042527a::t_54bdddd1142bdc 61-70
+packages/frontend/@n8n/design-system/src/components/N8nChatActions/ChatActions.vue
+  s_6c8661b042527a::t_09939595179d26 84,92
+  s_6c8661b042527a::t_54bdddd1142bdc 22-28,85-88,90-91
+  s_6c8661b042527a::t_ef915377a45423 89,93-95
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "36f72160a1fd6a51ed99d2f862da918828e79f74",
+  "prompts": {},
+  "sessions": {
+    "s_6c8661b042527a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a11139-a62b-7f73-8b98-c87e4bff8f21",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

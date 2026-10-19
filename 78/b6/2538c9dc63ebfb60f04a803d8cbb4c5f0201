@@ -1,0 +1,20 @@
+packages/@n8n/engine/src/execution/__tests__/step-settled-handler.test.ts
+  ai_agent 504-510
+  s_a3125dfe40640a::t_ea1cab81ca4792 491,499-503,511,515-519,527-540,549-552,557
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "78b62538c9dc63ebfb60f04a803d8cbb4c5f0201",
+  "prompts": {},
+  "sessions": {
+    "s_a3125dfe40640a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "075b8cbd-4b8b-47a1-8eab-be2d73d8c62b",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

@@ -1,0 +1,73 @@
+packages/cli/src/public-api/v1/handlers/executions/spec/paths/getExecutionTags.generated.yml
+  ai_agent 1-18,22-30
+packages/@n8n/db/src/repositories/__tests__/workflow-upsert-imported-content.repository.test.ts
+  s_176da1aff184f0::t_3f1c4257314bbc 1-106
+packages/@n8n/api-types/src/dto/executions/execution-tags-public.dto.ts
+  s_176da1aff184f0::t_3f1c4257314bbc 1-7
+packages/cli/test/integration/policy/content-import.policy.test.ts
+  s_176da1aff184f0::t_3f1c4257314bbc 1-382
+packages/cli/src/services/__tests__/import.service.test.ts
+  s_176da1aff184f0::t_3f1c4257314bbc 8,59,76,78,137
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/deleteWorkflow.generated.yml
+  ai_agent 320-321,324,328,332
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/getWorkflows.generated.yml
+  ai_agent 347-348,351,355,359
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/updateWorkflow.generated.yml
+  ai_agent 881-882,885,889,893
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/updateWorkflowTags.generated.yml
+  ai_agent 27
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  ai_agent 17-21
+packages/@n8n/api-types/src/dto/tag/tag-public.dto.ts
+  s_176da1aff184f0::t_3f1c4257314bbc 1,7-10
+packages/@n8n/api-types/src/dto/workflows/workflow-tags-public.dto.ts
+  s_176da1aff184f0::t_3f1c4257314bbc 1,7-9
+packages/cli/src/public-api/v1/shared/spec/schemas/executionTagsPublicDto.generated.yml
+  ai_agent 7,9-24
+packages/cli/src/public-api/v1/shared/spec/schemas/workflowPublishPublicDto.generated.yml
+  ai_agent 299-300,303,307,311
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/createWorkflow.generated.yml
+  ai_agent 864-865,868,872,876
+packages/@n8n/decorators/src/policy-check/policy-cleared.ts
+  s_176da1aff184f0::t_3f1c4257314bbc 49
+packages/cli/test/integration/public-api/endpoints-with-scopes-enabled.test.ts
+  s_176da1aff184f0::t_3f1c4257314bbc 28-32,821-880
+packages/cli/test/integration/public-api/executions.test.ts
+  s_176da1aff184f0::t_3f1c4257314bbc 960-968,979-998,1019-1027,1088-1099
+packages/cli/src/public-api/v1/shared/spec/schemas/workflowTagsPublicDto.generated.yml
+  ai_agent 7-8,11,15,19
+packages/cli/src/public-api/v1/shared/spec/schemas/workflowPublicDto.generated.yml
+  ai_agent 299-300,303,307,311
+packages/cli/src/commands/import/workflow.ts
+  s_176da1aff184f0::t_3f1c4257314bbc 161,163-165,169,227-232
+packages/cli/src/services/import.service.ts
+  s_176da1aff184f0::t_3f1c4257314bbc 13,15,35,47-50,54,92,148-151,170,173-176,178-185,189,191,194-200,208,210,231-236
+packages/cli/test/integration/import.service.test.ts
+  s_176da1aff184f0::t_3f1c4257314bbc 22,29-30,68-73,87,497-499,501-503,506,512-513,517,523,531-534,544,547,550-573,590,600-607,610-612,614-615,618-626,628-630,632
+packages/cli/src/public-api/v1/handlers/tags/spec/paths/getTags.generated.yml
+  ai_agent 28-29,32,36,40
+packages/@n8n/db/src/repositories/workflow.repository.ts
+  s_176da1aff184f0::t_3f1c4257314bbc 2,16,45-51,203-228
+packages/cli/src/commands/import/__tests__/workflow.test.ts
+  s_176da1aff184f0::t_3f1c4257314bbc 82,91,96,99,104,108
+packages/nodes-base/nodes/N8n/n8n-api-coverage.json
+  s_176da1aff184f0::t_3f1c4257314bbc 131,134
+packages/cli/src/public-api/v1/handlers/executions/spec/paths/updateExecutionTags.generated.yml
+  ai_agent 1-47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ae75b59f8713f031b0a9746dbbda7500231878f6",
+  "prompts": {},
+  "sessions": {
+    "s_176da1aff184f0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3c8cc965-adbd-49e9-a63e-907c657a03a4",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Uddish Verma <uddish.verma@n8n.io>"
+    }
+  }
+}

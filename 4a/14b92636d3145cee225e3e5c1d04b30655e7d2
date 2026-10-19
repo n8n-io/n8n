@@ -1,0 +1,32 @@
+packages/@n8n/api-types/src/dto/index.ts
+  s_644fa653780ed3::t_30bc384de9da58 138
+packages/cli/src/public-api/v1/controllers/credentials.public.controller.ts
+  s_644fa653780ed3::t_cf39e92d62f781 435-481
+  s_644fa653780ed3::t_da9cdf728d13f6 3,7,35,42,50
+packages/cli/test/integration/public-api/credentials.test.ts
+  s_644fa653780ed3::t_cc19765c5767e6 644-660
+packages/nodes-base/nodes/N8n/n8n-api-coverage.json
+  s_644fa653780ed3::t_fe6750ffe9dcc9 68
+packages/@n8n/api-types/src/index.ts
+  s_644fa653780ed3::t_8e441d000c9811 138
+packages/@n8n/api-types/src/schemas/public-api-path-params.schema.ts
+  s_644fa653780ed3::t_8536ba41d0f3cb 35-37
+packages/@n8n/api-types/src/dto/credentials/credential-public.dto.ts
+  s_644fa653780ed3::t_af5b32dca4bf0b 113-117
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "4a14b92636d3145cee225e3e5c1d04b30655e7d2",
+  "prompts": {},
+  "sessions": {
+    "s_644fa653780ed3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5d77ebb3-11d2-4f3f-ba25-48171f0149f8",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

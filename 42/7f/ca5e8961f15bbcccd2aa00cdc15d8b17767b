@@ -1,0 +1,64 @@
+packages/cli/src/executions/__tests__/enqueued-execution-recovery.service.test.ts
+  ai_agent 87-90,113-116,130-133,154-157
+packages/cli/src/modules/otel/otel-lifecycle-handler.ts
+  ai_agent 13-15,52,55-61,177-189
+packages/cli/src/executions/enqueued-execution-recovery.service.ts
+  ai_agent 57,104
+packages/cli/src/executions/__tests__/execution-crash.service.test.ts
+  ai_agent 2,5,12-27,31-32,34,36-51,56,60,71,77-89,100-102,110-129,133,137,140-142,144,146-147,149,163-175,183
+packages/cli/src/executions/execution-recovery.service.ts
+  s_4f495571aef8fe::t_7033eb980c187e 239
+packages/cli/src/modules/otel/__tests__/execution-level-tracer.test.ts
+  ai_agent 3,322-390,393
+packages/cli/src/modules/otel/execution-level-tracer.types.ts
+  ai_agent 3-4,39-46
+packages/cli/src/events/maps/relay.event-map.ts
+  ai_agent 61-67,649-656
+packages/cli/src/modules/otel/otel.module.ts
+  ai_agent 12-13
+packages/@n8n/db/src/repositories/execution.repository.ts
+  ai_agent 80-81,453-459,466,471,473
+packages/cli/src/executions/__tests__/execution-recovery.service.integration.test.ts
+  s_4f495571aef8fe::t_7033eb980c187e 81
+packages/cli/src/modules/otel/__tests__/otel-lifecycle-handler.test.ts
+  ai_agent 12-13,114,431,599,658-756,810,825,1029,1122
+packages/cli/src/eventbus/message-event-bus/message-event-bus.ts
+  ai_agent 312
+packages/cli/src/executions/execution-crash.service.ts
+  ai_agent 4,6-7,12-13,20-21,24-28,32-33,35-38,41,45,55-67
+packages/cli/src/scaling/scaling.service.ts
+  ai_agent 783
+packages/cli/src/modules/otel/otel.constants.ts
+  ai_agent 45-46
+packages/cli/src/scaling/__tests__/scaling.service.test.ts
+  ai_agent 901,911
+packages/cli/src/workflows/__tests__/workflow-execution.service.test.ts
+  ai_agent 408
+packages/cli/src/workflows/workflow-execution.service.ts
+  ai_agent 329
+packages/cli/test/integration/database/repositories/execution.repository.test.ts
+  ai_agent 192,196,203,287,303-304
+packages/cli/test/integration/scaling/queue-recovery.test.ts
+  ai_agent 122
+packages/@n8n/db/src/repositories/__tests__/execution.repository.test.ts
+  ai_agent 252-253,259,297,308-309,359-366
+  s_4f495571aef8fe::t_3f75ce7ce9a3c5 255,261
+packages/cli/src/modules/otel/execution-level-tracer.ts
+  ai_agent 7-8,12,126-165,250-253,312,317
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "427fca5e8961f15bbcccd2aa00cdc15d8b17767b",
+  "prompts": {},
+  "sessions": {
+    "s_4f495571aef8fe": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c9742293-1385-4d08-b10f-038babe3a75c",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Olivier de Jong <olivier.dejong@n8n.io>"
+    }
+  }
+}

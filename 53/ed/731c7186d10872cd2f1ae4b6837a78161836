@@ -1,0 +1,24 @@
+.github/workflows/ci-terraform.yml
+  s_9d51feeee63e96::t_3c56424aba41e9 9-12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "53ed731c7186d10872cd2f1ae4b6837a78161836",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  },
+  "sessions": {
+    "s_9d51feeee63e96": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2c3e52ab-1a63-4097-afe8-9ee2abf5a7e0",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

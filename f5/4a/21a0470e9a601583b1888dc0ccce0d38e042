@@ -1,0 +1,14 @@
+packages/cli/src/scaling/__tests__/job-processor.service.test.ts
+  h_7555c3ee6524cf 1335,1345,1355,1368
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f54a21a0470e9a601583b1888dc0ccce0d38e042",
+  "prompts": {},
+  "humans": {
+    "h_7555c3ee6524cf": {
+      "author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

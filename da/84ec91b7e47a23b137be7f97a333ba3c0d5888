@@ -1,0 +1,30 @@
+packages/@n8n/instance-ai/src/tools/nodes.tool.ts
+  h_44f8d1c0f2f8c4 150,153-154
+  s_988a5e0f59cdb0::t_f4b1d5065a123d 151-152,155
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiConfirmationPanel.vue
+  s_988a5e0f59cdb0::t_d4ae81022c12f4 141
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiConfirmationPanel.test.ts
+  s_988a5e0f59cdb0::t_14164486dfaaeb 45,360-374
+  s_988a5e0f59cdb0::t_ff220143431d8c 375-376
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "da84ec91b7e47a23b137be7f97a333ba3c0d5888",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_988a5e0f59cdb0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bf349829-8374-4c71-9ec2-094de61ed6a4",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

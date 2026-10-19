@@ -1,0 +1,27 @@
+packages/@n8n/workflow-sdk/src/generate-types/generate-types.ts
+  s_be6d12de03f718::t_db955cbcb2def1 558-562,569
+  s_be6d12de03f718::t_b1bfeed3cb1ba6 625-628,630-638
+packages/@n8n/workflow-sdk/src/generate-types/generate-types.test.ts
+  s_be6d12de03f718::t_b55817b0af38ad 5322-5342
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "32e4d66ef6bcf132750f0278aa919c3b00665a19",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_be6d12de03f718": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e840698b-e5eb-4103-8068-58943bcae715",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

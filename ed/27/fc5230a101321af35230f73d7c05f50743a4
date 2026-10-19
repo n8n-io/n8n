@@ -1,0 +1,32 @@
+packages/cli/src/public-api/v1/handlers/workflows/workflows.handler.ts
+  h_ed1b2d65e81e8e 375
+packages/cli/src/workflows/workflow.service.ts
+  h_ed1b2d65e81e8e 58
+  s_05feaa3f901d51::t_2aeed14aeeccdd 1616,1618-1626
+packages/cli/src/workflows/__tests__/workflow.service.test.ts
+  s_05feaa3f901d51::t_5709f41679a5d2 6,12,17,26,39
+  s_05feaa3f901d51::t_6bc1ab31f07216 1998
+  h_ed1b2d65e81e8e 19-21,31,35-36,41,46,1965,1986
+  s_05feaa3f901d51::t_da7c345b9fa157 1913-1964,1966-1985,1987-1997,1999-2000
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "ed27fc5230a101321af35230f73d7c05f50743a4",
+  "prompts": {},
+  "humans": {
+    "h_ed1b2d65e81e8e": {
+      "author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_05feaa3f901d51": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "43c73b15-4e40-4fff-a453-a4f73057e7f1",
+        "model": "default"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

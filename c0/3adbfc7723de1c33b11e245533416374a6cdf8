@@ -1,0 +1,61 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentTriggersSection.vue
+  s_3ee4700369edb0::t_3f758fd65ffc7d 258-259
+  s_3ee4700369edb0::t_5a1140fd2b8cef 9,63-64,111,135,186
+  s_3ee4700369edb0::t_a41e1246b5042d 2
+  s_3ee4700369edb0::t_68bac1947f5293 108-110,112
+  s_3ee4700369edb0::t_1843f5a4d4c426 113-126
+  s_3ee4700369edb0::t_30e2626dd79ed6 32-35
+packages/frontend/editor-ui/src/features/agents/channels/n8nChat/useN8nChatChannel.ts
+  s_3ee4700369edb0::t_5a1140fd2b8cef 2-5,9-10,12-15,17,20-26
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_3ee4700369edb0::t_ed7123bb275ef1 2938-2939
+  s_3ee4700369edb0::t_0e85b9faba436c 2139,2143-2144,2161-2162
+  s_3ee4700369edb0::t_8535f02f77adb1 2145,2149-2150,2152-2158
+  s_3ee4700369edb0::t_5a1140fd2b8cef 65,731-732,1848,2140,2437
+  s_3ee4700369edb0::t_41640b5b168ffe 2141-2142,2146-2148,2151,2159-2160
+packages/frontend/editor-ui/src/features/agents/channels/n8nChat/__tests__/AgentChannelN8nChatView.test.ts
+  s_3ee4700369edb0::t_453d07befaba77 115-121
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_3ee4700369edb0::t_53d09753d8177f 810
+  s_3ee4700369edb0::t_66402534025fd8 4800-4823
+  s_3ee4700369edb0::t_dad1b3d5f292fc 4824-4838
+  s_3ee4700369edb0::t_42b9b7fc9f2b6d 4784-4799,4839-4856
+  s_3ee4700369edb0::t_3f1adef9b4fd3f 262-266
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderEditorColumn.vue
+  s_3ee4700369edb0::t_1acb5c5676f31c 180-181
+  s_3ee4700369edb0::t_fdcee863b80130 60-63
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_3ee4700369edb0::t_41640b5b168ffe 8936
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelModal.vue
+  s_3ee4700369edb0::t_5a1140fd2b8cef 14,112
+  s_3ee4700369edb0::t_41640b5b168ffe 40
+  s_3ee4700369edb0::t_09fc6272e99c5e 516
+  s_3ee4700369edb0::t_271c3f2145888c 2
+  s_3ee4700369edb0::t_8535f02f77adb1 477,494-497,504-505
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChannelModal.test.ts
+  s_3ee4700369edb0::t_c2f2e0ab97d036 1078
+  s_3ee4700369edb0::t_42bbf8fd276b71 1070-1071,1079
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentTriggersSection.test.ts
+  s_3ee4700369edb0::t_5e48425bdd20e8 57-58,69-73,77,79
+  s_3ee4700369edb0::t_55f5eb8e3236b0 116
+  s_3ee4700369edb0::t_8ed69c1ac4033e 236-290
+packages/frontend/editor-ui/src/features/agents/channels/n8nChat/AgentChannelN8nChatView.vue
+  s_3ee4700369edb0::t_052a83f7b5e310 2
+  s_3ee4700369edb0::t_3817418a624cea 46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c03adbfc7723de1c33b11e245533416374a6cdf8",
+  "prompts": {},
+  "sessions": {
+    "s_3ee4700369edb0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7da616ef-d7d8-46e7-b647-0d6f7197e3e7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}

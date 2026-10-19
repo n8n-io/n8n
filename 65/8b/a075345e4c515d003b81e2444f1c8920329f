@@ -1,0 +1,23 @@
+packages/@n8n/api-types/src/zod-class.ts
+  s_101038ccbc858a::t_f407ab32e45c3f 43,45
+packages/@n8n/api-types/src/dto/data-table/__tests__/data-table-public.dto.test.ts
+  s_101038ccbc858a::t_6c11e77d6069b3 1-29
+packages/@n8n/api-types/src/dto/data-table/data-table-public.dto.ts
+  s_101038ccbc858a::t_c7e114c358703f 81-83,86-113
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "658ba075345e4c515d003b81e2444f1c8920329f",
+  "prompts": {},
+  "sessions": {
+    "s_101038ccbc858a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "130a5205-9941-4829-b850-89ce897499f4",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

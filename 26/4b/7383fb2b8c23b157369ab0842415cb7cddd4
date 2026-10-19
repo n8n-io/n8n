@@ -1,0 +1,32 @@
+packages/frontend/editor-ui/src/features/settings/security/DataRedactionSection.vue
+  s_eb9295e8672673::t_2adaebdaae1aff 27-37,50,72-80,82-90,106,112,121-124,130-133,141-144,146,189
+  s_eb9295e8672673::t_f6202f95197850 92-96,99,109,113-115,119-120,125,128-129,134
+  s_eb9295e8672673::t_4732f029dbf4da 53
+  s_eb9295e8672673::t_9317b69ba309ba 177
+  s_eb9295e8672673::t_3c9491aecf799c 222
+  s_eb9295e8672673::t_dd249577e987d2 263
+  s_eb9295e8672673::t_21b382d6ae0943 154-155
+  s_eb9295e8672673::t_6bb54d4b9311a6 243,256
+  s_eb9295e8672673::t_de8697351d202a 1-26,38-49,51-52,54-71,81,91,97-98,100-105,107-108,110-111,116-118,126-127,135-140,145,147-153,156-176,178-188,190-221,223-242,244-255,257-262,264-307
+packages/frontend/editor-ui/src/features/settings/security/SecuritySettings.vue
+  s_eb9295e8672673::t_b2dbec79918454 240,242-244
+  s_eb9295e8672673::t_c398ee8ac42352 25
+  s_eb9295e8672673::t_95116bd577b16e 241
+  s_eb9295e8672673::t_d52e558729586a 80
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.11",
+  "base_commit_sha": "264b7383fb2b8c23b157369ab0842415cb7cddd4",
+  "prompts": {},
+  "sessions": {
+    "s_eb9295e8672673": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d5a13f8c-0337-46bf-976e-7e6f21af25ec",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

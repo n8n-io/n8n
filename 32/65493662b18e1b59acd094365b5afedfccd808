@@ -1,0 +1,26 @@
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/MCPAgentsSelect.vue
+  s_f423ff873a72a0::t_4443d724de04d5 5,39-51,119
+packages/frontend/@n8n/design-system/vite.config.mts
+  s_f423ff873a72a0::t_9f7fefdbe4f2cf 38-41,49
+packages/frontend/@n8n/design-system/src/components/ConditionalRouterLink/CondtionalRouterLink.vue
+  s_f423ff873a72a0::t_4443d724de04d5 23-29
+packages/frontend/@n8n/design-system/src/components/ConditionalRouterLink/ConditionalRouterLink.test.ts
+  s_f423ff873a72a0::t_4443d724de04d5 3,68-90
+  s_f423ff873a72a0::t_ab20dd4acd1d4b 91
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "3265493662b18e1b59acd094365b5afedfccd808",
+  "prompts": {},
+  "sessions": {
+    "s_f423ff873a72a0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "de2c137b-263a-410e-bb96-f3b048f5f0a8",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

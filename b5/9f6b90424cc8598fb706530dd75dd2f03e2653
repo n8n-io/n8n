@@ -1,0 +1,35 @@
+packages/cli/src/modules/agents/background/background-job-tools.ts
+  s_60dc2ad9ff7de2::t_cdb909af8162d1 60-61,75-78
+  s_60dc2ad9ff7de2::t_fe6f70b23845d6 2,4
+  s_60dc2ad9ff7de2::t_cfe6b6d055e28a 45-48
+  ai_agent 62-64
+  s_60dc2ad9ff7de2::t_3349faf58c0ee4 98-103,105,108,115,121-123
+packages/cli/src/modules/agents/__tests__/agents-service-reconstruct-gating.test.ts
+  s_60dc2ad9ff7de2::t_1bfba4fde2d3d5 905,915
+packages/cli/src/modules/agents/background/__tests__/sub-agent-background-runner.test.ts
+  s_60dc2ad9ff7de2::t_8a3fa88bbfd9de 111-119
+packages/cli/src/modules/agents/background/__tests__/background-job-tools.test.ts
+  s_60dc2ad9ff7de2::t_1b46c7a339aa2f 143-173
+packages/cli/src/modules/agents/background/sub-agent-background-runner.ts
+  s_60dc2ad9ff7de2::t_06011325d51940 129-131
+  s_60dc2ad9ff7de2::t_a0e5efe7dae36b 27-28
+  s_60dc2ad9ff7de2::t_8742989466850e 2
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_60dc2ad9ff7de2::t_5ce4e8f819f207 889-901
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b59f6b90424cc8598fb706530dd75dd2f03e2653",
+  "prompts": {},
+  "sessions": {
+    "s_60dc2ad9ff7de2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "469357ba-a39d-4452-ac53-8a787319ebd9",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+packages/testing/playwright/package.json
+  s_4d4515bb8fac55::t_720b4faba47171 53
+packages/testing/playwright/scripts/verify-lint-config.mjs
+  s_4d4515bb8fac55::t_93776b5f2f8485 6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cd008966ceb979cbcd88f871c9f4ec9b06e262c9",
+  "prompts": {},
+  "sessions": {
+    "s_4d4515bb8fac55": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f14552f87ffereMDSk0BMf7UFE",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewRequestsSidebar.test.ts
+  s_8635a69bfc93ec::t_9f4235f448d643 59
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ff0c9ce5f1f4b9a31da3bd4d65d433db30999fbc",
+  "prompts": {},
+  "sessions": {
+    "s_8635a69bfc93ec": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "ed4a5248-f62e-4979-8103-603675acf468",
+        "model": "auto-smart"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

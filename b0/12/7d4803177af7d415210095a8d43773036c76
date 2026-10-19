@@ -1,0 +1,95 @@
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_e4597ff75128e4::t_aa29e8b04bda12 2396,2409
+packages/cli/src/public-api/v1/handlers/n8n-packages/n8n-packages.handler.ts
+  s_e4597ff75128e4::t_318cb7ec884187 44
+  s_e4597ff75128e4::t_b0fd2a73ad7bfe 160
+packages/cli/src/modules/n8n-packages/spec/serialized/__tests__/credential.schema.test.ts
+  s_e4597ff75128e4::t_566945b520fedb 1-58
+packages/cli/src/modules/n8n-packages/entities/credential/__tests__/credential-export-policy.test.ts
+  ai_agent 67-70
+  s_e4597ff75128e4::t_c75e2136cad1af 1-2,5-66,71-97
+  s_e4597ff75128e4::t_67143f79fc833e 3-4
+packages/@n8n/cli/src/__tests__/client.test.ts
+  s_e4597ff75128e4::t_56f5665907ed9a 112-128
+packages/cli/src/modules/n8n-packages/entities/credential/credential-export-policy.ts
+  s_e4597ff75128e4::t_dc8d08d3a9a41f 1-62
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_e4597ff75128e4::t_b4648526758887 219
+  s_e4597ff75128e4::t_9c8cd202dcac15 34
+  s_e4597ff75128e4::t_81a43f090aaa13 302
+  s_e4597ff75128e4::t_c294db7a50c27d 85-86
+packages/cli/src/events/maps/relay.event-map.ts
+  s_e4597ff75128e4::t_6dc73e7cd082ce 18
+  s_e4597ff75128e4::t_0cf2a37b6c5121 122
+packages/@n8n/api-types/src/dto/packages/export-package-request.dto.ts
+  s_e4597ff75128e4::t_faf3e28ecadaf5 19-22
+packages/cli/src/modules/n8n-packages/entities/credential/credential.serializer.ts
+  s_e4597ff75128e4::t_42b030d6fd4e49 7,16
+  s_e4597ff75128e4::t_7dab1b1db6dd8e 35-38,44
+packages/cli/src/modules/n8n-packages/entities/credential/credential.exporter.ts
+  s_e4597ff75128e4::t_2e0c54f2653489 12
+  s_e4597ff75128e4::t_0241cac2ba02da 3,7
+  s_e4597ff75128e4::t_e0194ad84ef73b 75-83,89
+  s_e4597ff75128e4::t_8b74771a2bbcf4 26
+packages/@n8n/cli/src/client.ts
+  s_e4597ff75128e4::t_6e82c80ffe8bdf 521-522
+  s_e4597ff75128e4::t_aeef406234140e 42
+  s_e4597ff75128e4::t_14a0fda168be16 510
+packages/cli/src/events/relays/log-streaming.event-relay.ts
+  s_e4597ff75128e4::t_363634644c225e 162-167
+packages/cli/test/integration/public-api/n8n-packages-export.test.ts
+  s_e4597ff75128e4::t_d82e095b165b84 199-221
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  s_e4597ff75128e4::t_b1dbc57a0dcfe8 1106-1110,1119
+packages/@n8n/cli/docs/commands/package.md
+  s_e4597ff75128e4::t_319aa6fd0ab97a 33
+packages/cli/src/public-api/v1/handlers/n8n-packages/__tests__/n8n-packages.handler.test.ts
+  s_e4597ff75128e4::t_f73379084785aa 258,285,386,433,500,527,554,581
+  s_e4597ff75128e4::t_c690b59eef8c92 64
+  s_e4597ff75128e4::t_9d4e69ac028327 457-476
+packages/cli/src/modules/n8n-packages/entities/credential/__tests__/credential.serializer.test.ts
+  s_e4597ff75128e4::t_7ce06204e4cae1 39-49
+packages/cli/src/events/__tests__/log-streaming-event-relay.test.ts
+  s_e4597ff75128e4::t_c57438ffa451dd 189-190
+packages/cli/src/modules/n8n-packages/entities/credential/__tests__/credential.exporter.test.ts
+  s_e4597ff75128e4::t_10776bbd14429d 261-320
+  s_e4597ff75128e4::t_d7e95df0b5938b 2-3,15-17,19-26,32
+  s_e4597ff75128e4::t_24d15bde4625be 91,134,166,198,238
+  s_e4597ff75128e4::t_230ab7d6d0f0e5 67-72
+  s_e4597ff75128e4::t_b2883a4c05c349 18
+packages/@n8n/api-types/src/dto/packages/__tests__/export-package-request.dto.test.ts
+  s_e4597ff75128e4::t_9b511b770e35cd 210-238
+packages/cli/src/modules/n8n-packages/spec/serialized/credential.schema.ts
+  s_e4597ff75128e4::t_3b4edfb001d3ee 3-25,31
+packages/cli/src/modules/n8n-packages/__tests__/export-workflow-with-credentials.integration.test.ts
+  s_e4597ff75128e4::t_ce7f7ca4637bb8 104-167
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_e4597ff75128e4::t_5dfad2e14d133a 94-100
+  s_e4597ff75128e4::t_7def03e44f50e2 214
+  s_e4597ff75128e4::t_e39225439ec240 182-184
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/schemas/exportPackageRequest.yml
+  s_e4597ff75128e4::t_c7547f31761b61 85-98
+packages/@n8n/cli/src/commands/package/export.ts
+  s_e4597ff75128e4::t_6970adef235ce3 90-96
+  s_e4597ff75128e4::t_3afdda8438f500 108
+  s_e4597ff75128e4::t_1fa0ccd6d30c88 130,139
+packages/@n8n/cli/src/__tests__/package-export.test.ts
+  s_e4597ff75128e4::t_7c1b7b44c86ca5 21
+  s_e4597ff75128e4::t_1eaca987555ba7 176-212
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b0127d4803177af7d415210095a8d43773036c76",
+  "prompts": {},
+  "sessions": {
+    "s_e4597ff75128e4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2b818d24-38d5-406a-9362-5cd7ae48cc8f",
+        "model": "claude-fable-5"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}

@@ -1,0 +1,14 @@
+packages/cli/src/modules/n8n-packages/entities/workflow/references/caller-ids.reference.ts
+  h_6ef4cecfee65a2 7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "49d554b778a053e0794a9045659aef023fcbfc35",
+  "prompts": {},
+  "humans": {
+    "h_6ef4cecfee65a2": {
+      "author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}

@@ -1,0 +1,14 @@
+packages/cli/src/external-hooks.ts
+  h_32d8cd6a0d6aad 123
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4aa5e64ceaf5dfed026c8ab1631dc4bd4b19b837",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

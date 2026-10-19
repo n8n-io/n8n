@@ -1,0 +1,39 @@
+packages/@n8n/db/src/repositories/activity-event.repository.ts
+  s_088ff38dd5d51f::t_7d0fa1a516b3bd 109-110,118,132,146-148,153,175-177
+packages/cli/src/credentials/credentials.service.ts
+  s_088ff38dd5d51f::t_86b1a0ac5cdee6 1212-1214
+packages/@n8n/db/src/repositories/__tests__/activity-event.repository.test.ts
+  s_088ff38dd5d51f::t_2fbcbeb224ce3f 163-179
+packages/cli/src/events/relays/activity.event-relay.ts
+  s_088ff38dd5d51f::t_c0904e3734b62c 23-25,301-303,311-320,366-369,409-411
+  s_088ff38dd5d51f::t_3d74769d624260 29-33,90-97,99,108
+  s_088ff38dd5d51f::t_19e8d89d2dea50 227-229,341-342,345-349,351-353
+  s_088ff38dd5d51f::t_660d0b12d761e5 2,14,46,55,64-80,84-88,98,100-107
+packages/cli/src/events/relays/log-streaming.event-relay.ts
+  s_088ff38dd5d51f::t_86b1a0ac5cdee6 718-724,728-737
+  s_088ff38dd5d51f::t_1ff6f05ba30db4 649-650,655-664,668-680,687-688,692
+packages/cli/src/services/pruning/activity-pruning.task.ts
+  s_088ff38dd5d51f::t_5344961001ce10 41-45,47,55,58-59
+packages/cli/src/events/__tests__/activity-event-relay.test.ts
+  s_088ff38dd5d51f::t_6acfb10a78f0b4 2,48,408,416-418
+  s_088ff38dd5d51f::t_47d160532cd329 349-365,461-482
+packages/cli/src/services/pruning/__tests__/activity-pruning.task.test.ts
+  s_088ff38dd5d51f::t_8c27148d7f1217 42,45-46,73-80
+  s_088ff38dd5d51f::t_046f7a4e8fe703 35-38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "dc4ff732d1fd042af56b6976ccaf7ff0f576f964",
+  "prompts": {},
+  "sessions": {
+    "s_088ff38dd5d51f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "95b8e2c8-0712-4f25-a78d-8e30044b968c",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

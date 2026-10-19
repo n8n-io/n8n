@@ -1,0 +1,11 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatToolSteps.test.ts
+  ai_agent 28,63-64,118-236
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  ai_agent 191-199
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d4e6ffc3e5b6f1bc844a9fa56030dee2109fb4f9",
+  "prompts": {}
+}

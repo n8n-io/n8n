@@ -1,0 +1,27 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_8f364f7c5743a0::t_00d7573fb00f62 9031,9035-9037
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionSelectModal.vue
+  s_8f364f7c5743a0::t_d99f23c9a1f1bd 19
+  s_8f364f7c5743a0::t_086c147093184e 186-187,191-192,195-197,208-211
+  s_8f364f7c5743a0::t_dc370129c57318 421-423,425-429
+  s_8f364f7c5743a0::t_f5787ca5d2aa3c 442
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionSelectModal.test.ts
+  s_8f364f7c5743a0::t_603a362616ea12 330-334,337,342-347,349-354,363,365,367-372,376,381,383
+  s_8f364f7c5743a0::t_513eec2bf79076 386,388,408,426,428,455,457,478,480,489,495-496,514,522,524,540,545,547
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4ac7031537409d2e9fa352d5ffd29ab943e1b9eb",
+  "prompts": {},
+  "sessions": {
+    "s_8f364f7c5743a0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f77a805c-fda4-413a-87ea-7588e5f68260",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

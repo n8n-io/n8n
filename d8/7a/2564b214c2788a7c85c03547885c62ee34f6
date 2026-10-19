@@ -1,0 +1,74 @@
+packages/@n8n/db/src/migrations/common/1784654971796-AddAvailableInMcpToAgents.ts
+  s_2f4169d66c1827::t_d56f09b29f96b3 4-17
+packages/cli/src/modules/agents/agent-mcp-access.controller.ts
+  s_2f4169d66c1827::t_845b9c2c4650eb 1-38
+packages/@n8n/db/src/migrations/sqlite/1784654971796-AddAvailableInMcpToAgents.ts
+  s_2f4169d66c1827::t_9185a574ff5ccb 1-9
+packages/cli/src/modules/agents/entities/agent.entity.ts
+  s_2f4169d66c1827::t_415c5662683b41 38-41
+packages/@n8n/api-types/src/agents/dto.ts
+  s_2f4169d66c1827::t_5db55bde489f84 63-74
+  s_2f4169d66c1827::t_a97b1aaadd5daf 22
+packages/cli/src/modules/agents/agents.module.ts
+  s_2f4169d66c1827::t_1bb821f923a7a3 24
+packages/cli/src/modules/agents/__tests__/agent-mcp-access.service.test.ts
+  s_2f4169d66c1827::t_b141509c4fefe5 1-140
+packages/cli/src/modules/agents/agent-mcp-access.service.ts
+  s_2f4169d66c1827::t_f52b56d7d8c634 1-126
+packages/cli/src/modules/agents/agents.service.ts
+  s_2f4169d66c1827::t_16b25156b1ffde 39-43,57
+packages/cli/src/modules/mcp/__tests__/agent-tools.service.test.ts
+  s_2f4169d66c1827::t_03a5a7d9d92c86 69
+  s_2f4169d66c1827::t_f7065c8c8362d6 167-205
+  s_2f4169d66c1827::t_c44a4b9fbefaf8 262-290
+  s_2f4169d66c1827::t_adcb8af1074a40 654-656
+  s_2f4169d66c1827::t_2a4139dcdd7074 732
+  s_2f4169d66c1827::t_2625175f87f5ad 35
+  s_2f4169d66c1827::t_9dbd02a1a76051 122
+packages/cli/src/modules/agents/__tests__/agents.service.test.ts
+  s_2f4169d66c1827::t_f87d6fc86db80c 117
+packages/cli/src/modules/mcp/tools/agents/agent-tools.service.ts
+  s_2f4169d66c1827::t_014c8423724612 331
+  s_2f4169d66c1827::t_3c5a9fdcbb851a 524
+  s_2f4169d66c1827::t_c0b1ce1dc5f4a5 552
+  s_2f4169d66c1827::t_cb86964b820999 619
+  s_2f4169d66c1827::t_12e46ce4d1e4eb 383
+  s_2f4169d66c1827::t_317fe90e416082 478
+  s_2f4169d66c1827::t_cc0baf137f5da2 276-301
+  s_2f4169d66c1827::t_47476aa4ba9217 808-823
+  s_2f4169d66c1827::t_ac0189134ad9d1 357
+  s_2f4169d66c1827::t_c554bc803b106d 415-418
+  s_2f4169d66c1827::t_a2e0537925a9c9 1087
+  s_2f4169d66c1827::t_3789efb658e3da 589
+packages/cli/src/modules/mcp/mcp-scopes.ts
+  s_2f4169d66c1827::t_d536f9be1d869a 44-67
+  s_2f4169d66c1827::t_5348685e612acc 107-127
+packages/cli/src/modules/mcp/__tests__/mcp-scopes.test.ts
+  s_2f4169d66c1827::t_ec89c793b48224 142-146,150-155
+  s_2f4169d66c1827::t_38bc272e90e2c1 47
+packages/@n8n/db/src/migrations/sqlite/index.ts
+  s_2f4169d66c1827::t_7b97b97b1f5b44 221
+packages/cli/src/modules/agents/repositories/agent.repository.ts
+  s_2f4169d66c1827::t_ef965877c277a3 97-116
+  s_2f4169d66c1827::t_850ace9ebf01cf 46-50
+packages/@n8n/api-types/src/schemas/mcp.schema.ts
+  s_2f4169d66c1827::t_3a9cf0b6d84500 24-25
+packages/cli/src/modules/mcp/mcp.service.ts
+  s_2f4169d66c1827::t_2488aba3191ba8 435
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d87a2564b214c2788a7c85c03547885c62ee34f6",
+  "prompts": {},
+  "sessions": {
+    "s_2f4169d66c1827": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0b4eb8f0-e632-454c-b878-59fb88b7f734",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}

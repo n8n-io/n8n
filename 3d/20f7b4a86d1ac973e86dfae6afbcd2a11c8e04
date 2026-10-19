@@ -1,0 +1,25 @@
+packages/nodes-base/nodes/Slack/V2/MessageDescription.ts
+  s_558da949c3ee4b::t_03d8ccfe63d96b 1468-1515,1529-1542,1553-1557
+packages/nodes-base/nodes/Slack/test/v2/node/message/searchV27.workflow.json
+  s_558da949c3ee4b::t_1b5ac2ea492b09 18,20-24
+packages/nodes-base/nodes/Slack/V2/SlackV2.node.ts
+  s_558da949c3ee4b::t_b35417aa4f168b 1110-1111,1127-1138
+packages/nodes-base/nodes/Slack/test/v2/node/message/searchV27.test.ts
+  s_558da949c3ee4b::t_1b5ac2ea492b09 80,83-86
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "3d20f7b4a86d1ac973e86dfae6afbcd2a11c8e04",
+  "prompts": {},
+  "sessions": {
+    "s_558da949c3ee4b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7593febb-f1db-4d1b-b072-abcbeed8e6b8",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jonathan <jon@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,43 @@
+packages/cli/src/services/frontend.service.ts
+  s_d2c53940d73f52::t_d43c899c4eaf60 5,139,249-251
+  s_d2c53940d73f52::t_3e7ac529a6d10f 615-620,622-626,628-632
+  s_d2c53940d73f52::t_de1bc776584bd6 4,37-38,117-119,450-451,607-614,621,627
+packages/cli/src/services/__tests__/frontend.service.test.ts
+  s_d2c53940d73f52::t_3e7ac529a6d10f 265-281
+  s_d2c53940d73f52::t_652518b52b1f1d 226
+  s_d2c53940d73f52::t_dc28438fe60fb1 247
+  s_d2c53940d73f52::t_de1bc776584bd6 255-262
+  s_d2c53940d73f52::t_fa056d8cef1e82 3,46-49,186-189,217,245-246,248-254
+packages/@n8n/db/src/repositories/__tests__/workflow.repository.test.ts
+  s_d2c53940d73f52::t_de1bc776584bd6 2,588
+  s_d2c53940d73f52::t_fa056d8cef1e82 579-587,589-594
+packages/frontend/editor-ui/src/__tests__/defaults.ts
+  s_d2c53940d73f52::t_d43c899c4eaf60 188-190
+packages/@n8n/db/src/repositories/workflow.repository.ts
+  s_d2c53940d73f52::t_d43c899c4eaf60 102-107
+packages/frontend/editor-ui/src/features/shared/banners/banners.store.test.ts
+  s_d2c53940d73f52::t_fa056d8cef1e82 20-22,30-33,93-95,113-147
+packages/@n8n/api-types/src/frontend-settings.ts
+  s_d2c53940d73f52::t_d43c899c4eaf60 119-121
+packages/frontend/@n8n/rest-api-client/src/api/dynamic-banners.ts
+  s_d2c53940d73f52::t_d43c899c4eaf60 23
+packages/frontend/editor-ui/src/features/shared/banners/banners.store.ts
+  s_d2c53940d73f52::t_d43c899c4eaf60 54
+  s_d2c53940d73f52::t_de1bc776584bd6 55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.8",
+  "base_commit_sha": "d49f71a59b14416c80e2458b7de47619fa74869e",
+  "prompts": {},
+  "sessions": {
+    "s_d2c53940d73f52": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019edb75-2471-7e50-aa17-4c6333e509d1",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Romeo Balta <7095569+romeobalta@users.noreply.github.com>"
+    }
+  }
+}

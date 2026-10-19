@@ -1,0 +1,35 @@
+packages/cli/src/modules/agents/__tests__/agents-list.controller.test.ts
+  s_9a6001e67297f0::t_f3414b75ce0d49 132-147
+packages/@n8n/api-types/src/agents/dto.ts
+  s_9a6001e67297f0::t_7ea3855a28191c 121
+  s_9a6001e67297f0::t_9db3c524741937 120
+packages/cli/src/modules/agents/agents-list.controller.ts
+  s_9a6001e67297f0::t_d38c4c9d0a4664 66
+packages/cli/src/modules/agents/__tests__/agents.service.test.ts
+  s_9a6001e67297f0::t_6cb1dc54c9fc8a 894
+  s_9a6001e67297f0::t_e5b368757b805b 881-885,887-893,896-907,909-922
+  s_9a6001e67297f0::t_abb55d74029268 886,895,908
+packages/cli/src/modules/agents/agents.service.ts
+  s_9a6001e67297f0::t_97b3e2bfe34e0f 377
+  s_9a6001e67297f0::t_ef9b1bcec46ff2 380-382,391-399
+packages/@n8n/api-types/src/agents/__tests__/list-n8n-chat-threads-query.dto.test.ts
+  s_9a6001e67297f0::t_5c04bb9fd46206 18-22
+packages/cli/test/integration/agents/n8n-chat-page.api.test.ts
+  s_9a6001e67297f0::t_89a2c4a996f7be 143-160
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "19cf43b2ea4e057f85f6e605f68257b777f9e502",
+  "prompts": {},
+  "sessions": {
+    "s_9a6001e67297f0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f72ae404-381c-4905-9080-63d9e62dffe6",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

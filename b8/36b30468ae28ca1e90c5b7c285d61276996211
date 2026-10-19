@@ -1,0 +1,37 @@
+packages/@n8n/engine/src/execution/execution-start-handler.ts
+  ai_agent 36-41,43-48
+packages/@n8n/engine/src/runtime/__tests__/create-engine-runtime.test.ts
+  ai_agent 72-86,91-94,96-99,101-102
+packages/@n8n/engine/src/common/index.ts
+  ai_agent 2
+packages/@n8n/engine/src/execution/__tests__/execution-start-handler.test.ts
+  ai_agent 10,12-19,21,23-24,86,123,149,164,185,203,214,216-221,223-229,231-234,236-244,246-252,254-257
+packages/@n8n/engine/src/runtime/create-engine-runtime.ts
+  ai_agent 69-70,80-84,86,94,119-120
+packages/@n8n/engine/src/dependencies/external-dependencies.ts
+  ai_agent 66,74-77
+packages/@n8n/engine/src/execution/step-ready-handler.ts
+  ai_agent 58-64,66,107-112,114,117-118,323-330
+packages/@n8n/engine/src/server/routes/workflow-executions.ts
+  ai_agent 9
+packages/@n8n/engine/src/common/json.schema.ts
+  ai_agent 1-15
+packages/@n8n/engine/src/execution/__tests__/step-ready-handler.test.ts
+  ai_agent 40,42-50,52,54-55,128,170,205-207,242-244,273-275,296,319,340,365-367,401-403,427,446,467-469,483,497,519,535,562,609,667,684-693,695-700,702-705,708-711,713-719,721-725,727-730,732-740,744-759,761-768,770-774,776-779,781-783,785-789,791-794,796-803,805-809,811-814,816-821,879-881,923-925,943-945
+packages/@n8n/engine/src/execution/step-settled-handler.ts
+  ai_agent 44,55,69-85,87-91,182-188
+packages/@n8n/engine/src/execution/__tests__/step-execution.integration.test.ts
+  ai_agent 63-65,67-69,71,75,91-92,96-97,136-137,139-143,145-151,153-162,194-199,213-225,227-237,379-383,385
+packages/@n8n/engine/src/execution/__tests__/execution-start.integration.test.ts
+  ai_agent 65-69,71,125-128,130
+packages/@n8n/engine/src/execution/__tests__/step-settled-handler.test.ts
+  ai_agent 123,125-127,138-142,144,471,473-479,481-483,485-490,492-494,496-506,508-512,514-520,522-524,526-530,532-534
+packages/@n8n/engine/src/index.ts
+  ai_agent 5-7,9,12,14,25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b836b30468ae28ca1e90c5b7c285d61276996211",
+  "prompts": {}
+}

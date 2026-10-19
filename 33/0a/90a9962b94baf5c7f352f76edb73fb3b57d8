@@ -1,0 +1,23 @@
+packages/@n8n/api-types/src/dto/project/project-public.dto.ts
+  s_8b8539f38cce85::t_2d23bdd1a90007 68-69
+packages/cli/src/public-api/v1/controllers/projects.public.controller.ts
+  s_8b8539f38cce85::t_2ab01b91b0168b 107,110-113
+packages/cli/src/public-api/v1/handlers/projects/spec/paths/createProject.generated.yml
+  s_8b8539f38cce85::t_3e8535d71eef85 5,26,163
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "330a90a9962b94baf5c7f352f76edb73fb3b57d8",
+  "prompts": {},
+  "sessions": {
+    "s_8b8539f38cce85": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5ed314dc-3321-4afc-92b7-4050e667c23a",
+        "model": "claude-opus-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,32 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentSessionTimelinePanel.vue
+  s_a1f3204f753ed2::t_21e47202b5933a 25,94-96
+packages/frontend/@n8n/design-system/src/components/N8nAiActivityStepGroup/AiActivityStepGroup.test.ts
+  s_a1f3204f753ed2::t_48d70f1938eda2 25,33-37
+packages/frontend/editor-ui/src/features/agents/__tests__/SessionTimelineChart.spec.ts
+  s_a1f3204f753ed2::t_f259008001ffac 298-300
+packages/frontend/editor-ui/src/features/agents/utils/background-job-labels.ts
+  s_a1f3204f753ed2::t_277563f6863c4a 2,10-23
+packages/frontend/editor-ui/src/features/agents/components/SessionTimelineTable.vue
+  s_a1f3204f753ed2::t_21e47202b5933a 8,31-33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9826abfee65dc65d11e2ae49243d0ebba33f3fdc",
+  "prompts": {},
+  "humans": {
+    "h_7555c3ee6524cf": {
+      "author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_a1f3204f753ed2": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a09fc3-7946-7571-8e49-3446e00ed07d",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

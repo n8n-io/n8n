@@ -1,0 +1,38 @@
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_e3b4b05e7b3458::t_d5fabe3aae10a5 64
+  s_e3b4b05e7b3458::t_3eb37efb0a68d7 947,967
+  s_e3b4b05e7b3458::t_46edda63f3951e 972-977
+  s_e3b4b05e7b3458::t_a48bd89f1393c0 948-955
+  s_e3b4b05e7b3458::t_4758f99c0f75ab 131
+  s_e3b4b05e7b3458::t_ec645c18c95bae 3
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_e3b4b05e7b3458::t_22c7cc31c4f368 1344,1365-1366,1372-1395
+  s_e3b4b05e7b3458::t_97c433ad949b49 375-398
+  s_e3b4b05e7b3458::t_b1143b389e4392 174
+  s_e3b4b05e7b3458::t_7443fe71627e01 1367-1368
+  s_e3b4b05e7b3458::t_448f7fbad4fa55 1396-1399
+  s_e3b4b05e7b3458::t_7a9a66beb60af2 399-400
+  s_e3b4b05e7b3458::t_6b90cb64fd8301 1400-1401
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_e3b4b05e7b3458::t_c0f91ef2fe7478 380-381
+  s_e3b4b05e7b3458::t_8320ef77310b11 105
+  s_e3b4b05e7b3458::t_e3f3713a5e7bc3 413-415,438-440
+  s_e3b4b05e7b3458::t_08ac2b5fb9e37e 421-422,427,429,433
+  s_e3b4b05e7b3458::t_81aca2562de661 12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "baf294c2dfcaa79f00c3b83a2401df2cccd01a6f",
+  "prompts": {},
+  "sessions": {
+    "s_e3b4b05e7b3458": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "80d33234-81c6-47a4-956d-1a734128b0e9",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/Panel/NodesListPanel.test.ts
+  s_66b5f43a0aceeb::t_99f92ff95baade 47-53
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "1c09130db39a4fcfbb0dc0fcb833bb0bed226742",
+  "prompts": {},
+  "sessions": {
+    "s_66b5f43a0aceeb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "912770f3-ffc9-4790-a6ca-25a2dd3e1027",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

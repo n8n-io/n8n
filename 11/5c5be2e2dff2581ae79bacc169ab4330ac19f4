@@ -1,0 +1,25 @@
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_5ddf40544fde37::t_d371f86edeeff5 50
+  s_5ddf40544fde37::t_87157b9761b5ca 69
+  s_5ddf40544fde37::t_3435c1d384469e 127,131
+  s_5ddf40544fde37::t_82b2c4b16ff88e 360
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_5ddf40544fde37::t_3efe8aab2722d1 25
+  s_5ddf40544fde37::t_0d3554ad81e32d 428-435
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "115c5be2e2dff2581ae79bacc169ab4330ac19f4",
+  "prompts": {},
+  "sessions": {
+    "s_5ddf40544fde37": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a1dc9397-a2af-4555-bcd1-7cc4e923e0e5",
+        "model": "grok-4.6"
+      },
+      "human_author": null
+    }
+  }
+}

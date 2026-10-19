@@ -1,0 +1,28 @@
+packages/@n8n/db/src/repositories/workflow.repository.ts
+  s_f8bcded4ea5f7a::t_54a6cd3601ee16 47-49,595,612,617,684,771,793,845,903,937,967,984,989,1098,1110,1135,1162,1310,1335,1350,1363,1470,1486,1507,1520,1529,1550,1561,1738
+packages/@n8n/db/src/repositories/credentials.repository.ts
+  s_f8bcded4ea5f7a::t_ac6f9cf24d498f 56
+packages/@n8n/db/src/repositories/folder.repository.ts
+  s_f8bcded4ea5f7a::t_ac6f9cf24d498f 11-13,45,53,58,71-72,83,98,117-118,128,137-138,180,197,279
+  s_f8bcded4ea5f7a::t_da122ca7857089 280-282
+packages/@n8n/db/src/repositories/execution.repository.ts
+  s_f8bcded4ea5f7a::t_ac6f9cf24d498f 597
+packages/@n8n/db/src/repositories/workflow-published-version.repository.ts
+  s_f8bcded4ea5f7a::t_ac6f9cf24d498f 132
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d6c2cb6537d90f18c412c1c41af0dcb1c656b803",
+  "prompts": {},
+  "sessions": {
+    "s_f8bcded4ea5f7a": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f0403bfdbffegQkKvvwvumrkEY",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

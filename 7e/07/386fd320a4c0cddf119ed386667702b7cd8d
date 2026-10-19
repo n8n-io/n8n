@@ -1,0 +1,37 @@
+packages/cli/src/modules/agents/__tests__/n8n-harness-session-store.test.ts
+  s_e2504e875a073c::t_f75a4d923092e3 12,133-148
+  s_e2504e875a073c::t_f163ab18014830 150-164
+  s_e2504e875a073c::t_ff0504001308e1 149
+packages/cli/src/modules/agents/__tests__/n8n-harness-session-cleanup.service.test.ts
+  s_e2504e875a073c::t_f75a4d923092e3 9,88-106
+  s_e2504e875a073c::t_6bf254c0620537 29-30
+  s_e2504e875a073c::t_84aea9be89b306 107-108
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_e2504e875a073c::t_f75a4d923092e3 603
+packages/cli/src/modules/agents/integrations/n8n-harness-session-store.ts
+  s_e2504e875a073c::t_f75a4d923092e3 19-22,80-81,120-121,155-160,163-165,167,176,244,250-256
+packages/@n8n/agents/src/__tests__/harness-runtime-agent.test.ts
+  s_e2504e875a073c::t_f75a4d923092e3 78,107,123-124
+packages/cli/src/modules/agents/integrations/n8n-harness-session-cleanup.service.ts
+  s_e2504e875a073c::t_f75a4d923092e3 11-14,69-72
+packages/cli/src/modules/agents/utils/harness-sandbox-provider.ts
+  s_e2504e875a073c::t_f75a4d923092e3 2,5,18-32
+packages/@n8n/agents/src/harness/harness-runtime-agent.ts
+  s_e2504e875a073c::t_f75a4d923092e3 41,220-223
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "7e07386fd320a4c0cddf119ed386667702b7cd8d",
+  "prompts": {},
+  "sessions": {
+    "s_e2504e875a073c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ff50f-358b-7522-8664-26ba4394dffe",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

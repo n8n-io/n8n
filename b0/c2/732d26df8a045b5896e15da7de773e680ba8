@@ -1,0 +1,41 @@
+packages/frontend/@n8n/stores/package.json
+  s_65ef45bd984286::t_29673328360ef5 40
+packages/frontend/@n8n/stores/src/invitation.api.test.ts
+  s_65ef45bd984286::t_3f49a236de2d88 3-4,27
+packages/frontend/@n8n/stores/src/invitation.api.ts
+  s_65ef45bd984286::t_9cd2720f8f1566 1-2,5-17,28
+packages/frontend/@n8n/stores/src/modalOpeners.ts
+  s_65ef45bd984286::t_d05df27a23b4f2 1-13
+packages/frontend/@n8n/stores/src/onboarding.api.ts
+  s_65ef45bd984286::t_c68bac5156699c 2,13-15,21
+packages/frontend/@n8n/stores/src/users.store.test.ts
+  s_65ef45bd984286::t_ae49d804f97aff 2,5-8,15,23,30,189-190,230,238,240-241,244,251,256,262,292-293,309-373
+packages/frontend/@n8n/stores/src/users.store.ts
+  s_65ef45bd984286::t_3d9ece3b839d1a 12-14,16-17,21,23-24,27-47,87-102,151,167,186,229-232,378,390,401,423-425,528-529
+packages/frontend/editor-ui/src/Interface.ts
+  s_65ef45bd984286::t_1f0b57af410f19 656-658
+packages/frontend/editor-ui/src/app/init.test.ts
+  s_65ef45bd984286::t_4d08f18a819aea 38-39
+packages/frontend/editor-ui/src/app/init.ts
+  s_65ef45bd984286::t_02eeb9839eac64 27,137-143
+packages/frontend/editor-ui/src/features/settings/users/users.types.ts
+  s_65ef45bd984286::t_6e30e1f44634be 9-11
+pnpm-lock.yaml
+  s_65ef45bd984286::t_971a8aecca7294 5497-5499
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "b0c2732d26df8a045b5896e15da7de773e680ba8",
+  "prompts": {},
+  "sessions": {
+    "s_65ef45bd984286": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6bf14eab-a3f1-4625-a3fc-3465f0697e9a",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

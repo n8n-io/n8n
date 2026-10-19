@@ -1,0 +1,29 @@
+packages/@n8n/db/src/repositories/__tests__/scheduled-job.repository.test.ts
+  s_7460882e4002de::t_322a7ff936eb8d 4,15-16,19,67-68,72-85,88-90,95-96,99,101,112,116-119,128,133-145
+  s_7460882e4002de::t_77415974f426fc 325-326,329,331,338,343-379,381,384-386,388,390-393,395,397-402,404-409
+  s_7460882e4002de::t_426d6302dc0baf 380,382-383,387,389,394,396,403
+packages/@n8n/db/src/repositories/scheduled-job.repository.ts
+  s_7460882e4002de::t_92b8e35a62ee63 3-4,9,24-26,126-128,137-138,141,236,239-250,255-256,259,261
+  s_7460882e4002de::t_0bca1f6866e031 10,316-319,321-323,325-327,337-363,368,370-373,375-376,382,393,407,418-419
+  s_7460882e4002de::t_caaa61b86b85dd 304
+  s_7460882e4002de::t_dfe85c70a10a53 142-143,147-150,269-303,305-315,320,324,328-336,369,377-381,383-392,394-406,408-417,420-421,483-503
+  s_7460882e4002de::t_426d6302dc0baf 364-367,374
+packages/@n8n/db/src/repositories/workflow-published-version.repository.ts
+  s_7460882e4002de::t_968efd8642ce90 2,45-57
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "87f6933931d062cc7e6cc9543b63b84529896564",
+  "prompts": {},
+  "sessions": {
+    "s_7460882e4002de": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "822ef9d5-c335-4d18-bee0-aba1c28bdda0",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

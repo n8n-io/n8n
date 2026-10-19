@@ -1,0 +1,20 @@
+packages/cli/src/metrics/prometheus/workflow-publication-metrics.service.ts
+  s_7f46b323ae9603::t_e7c8a41f02a1af 107-110
+  s_7f46b323ae9603::t_fb9b87ec76bea1 136,160,191
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4fbdd0cd54e42d075593295bdf2b50f41875d28f",
+  "prompts": {},
+  "sessions": {
+    "s_7f46b323ae9603": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e0aefafd-9c05-46c0-a779-19feac254952",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

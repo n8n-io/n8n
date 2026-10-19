@@ -1,0 +1,25 @@
+packages/cli/src/modules/redaction/redaction-context-hook.ts
+  s_bad178d4852f6f::t_a72116b5091e82 53-58,65
+packages/cli/src/modules/redaction/__tests__/redaction-context-hook.integration.test.ts
+  s_bad178d4852f6f::t_1ec63e298234da 94,111,126
+packages/workflow/src/execution-context.ts
+  s_bad178d4852f6f::t_b132cb2ab7b22e 116-119,123
+packages/cli/src/modules/redaction/__tests__/redaction-context-hook.test.ts
+  s_bad178d4852f6f::t_425c9669734638 39,49,59,69,79,91,101,111
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1ad34ff4fa6ee9ba17454f336bf9929988e36a3b",
+  "prompts": {},
+  "sessions": {
+    "s_bad178d4852f6f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b1fc9f28-ab6a-4efa-b290-9ca1be50660e",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

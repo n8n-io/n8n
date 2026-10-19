@@ -1,0 +1,29 @@
+packages/frontend/editor-ui/src/app/components/WorkflowCard.vue
+  s_81dbdf4b8dba57::t_0ac1aa42b2231e 622-632
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialTypeSelector.vue
+  s_81dbdf4b8dba57::t_f235ecccce8171 3
+  s_81dbdf4b8dba57::t_e8f5f2f101cd4a 33
+  s_81dbdf4b8dba57::t_e9568900c2996a 66,91
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_81dbdf4b8dba57::t_56a74aa1c56ac8 1051
+  s_81dbdf4b8dba57::t_fff191e1c65e81 1048
+  s_81dbdf4b8dba57::t_61a9951995f983 1008
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialConfig.vue
+  s_81dbdf4b8dba57::t_3c62b352dd36c6 512-516
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "9b9aff0f5ac084e07fd5ba8a180958941dce9fcd",
+  "prompts": {},
+  "sessions": {
+    "s_81dbdf4b8dba57": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f97065b2-585a-443c-a648-66d255018dac",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

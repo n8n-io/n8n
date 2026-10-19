@@ -1,0 +1,28 @@
+packages/@n8n/nodes-langchain/nodes/llms/LmChatDatabricks/token-provider.ts
+  s_539503a60e53a4::t_a608051dcd5fe8 4
+  s_539503a60e53a4::t_2e1e9ef6a1130d 17
+packages/cli/src/modules/mcp-registry/mcp-registry-node-loader.ts
+  s_539503a60e53a4::t_d473950ced98db 6
+packages/cli/src/modules/mcp-registry/__tests__/mcp-registry-node-loader.test.ts
+  s_539503a60e53a4::t_38cfa3bec48af9 430-460
+packages/workflow/src/constants.ts
+  s_539503a60e53a4::t_3225a8a8ec586b 192-199
+packages/nodes-base/nodes/Databricks/constants.ts
+  s_539503a60e53a4::t_d1c634a8768aa8 1,5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "93bed519baf6da35d588bab1df387bfcbdc40044",
+  "prompts": {},
+  "sessions": {
+    "s_539503a60e53a4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3c669804-538c-47bf-b8bd-b332b350e5bd",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

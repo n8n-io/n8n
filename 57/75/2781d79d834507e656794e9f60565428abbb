@@ -1,0 +1,65 @@
+packages/cli/src/modules/agents/background/__tests__/background-job-tools.test.ts
+  s_ab136783d4b7cd::t_c6879fc95a7cec 17-22,121,137,143-144
+packages/cli/src/modules/agents/background/__tests__/sub-agent-background-runner.test.ts
+  s_ab136783d4b7cd::t_45ef20c70795ef 35
+packages/cli/src/modules/agents/__tests__/agent-runtime-cache.service.test.ts
+  s_ab136783d4b7cd::t_45ef20c70795ef 107-135,368-369,404-405,417-418,591
+packages/cli/test/integration/database/repositories/agent-background-job.repository.test.ts
+  s_ab136783d4b7cd::t_45ef20c70795ef 1-119
+packages/cli/src/modules/agents/tools/workflow-tool-factory.ts
+  s_ab136783d4b7cd::t_c6879fc95a7cec 49,764-774,782-783
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_ab136783d4b7cd::t_61ba855380d853 559,624
+docs/generated/postgres-schema/README.md
+  ai_agent 11,367,369-370
+packages/cli/src/modules/agents/agent-runtime-cache.service.ts
+  s_ab136783d4b7cd::t_45ef20c70795ef 45-46,126,345-353,382-383
+docs/generated/postgres-schema/public.agent_background_job.md
+  ai_agent 13,15-16,69,71-72
+docs/generated/sqlite-schema/agents.md
+  ai_agent 111,113-114
+packages/cli/src/modules/agents/__tests__/agents-service-reconstruct-gating.test.ts
+  s_ab136783d4b7cd::t_45ef20c70795ef 929-949
+packages/cli/src/modules/agents/entities/agent-background-job.entity.ts
+  s_ab136783d4b7cd::t_45ef20c70795ef 36-43,77-80
+docs/generated/sqlite-schema/agent_background_job.md
+  ai_agent 9,24,26-27,42-43,73,75-76
+docs/generated/sqlite-schema/README.md
+  ai_agent 11,354,356-357
+packages/cli/test/migration/1788332569510-add-wake-columns-to-agent-background-job.test.ts
+  s_ab136783d4b7cd::t_45ef20c70795ef 1-169
+packages/cli/src/modules/agents/background/__tests__/agent-background-job.service.test.ts
+  s_ab136783d4b7cd::t_c384bdd80ab121 43-44,54,92-93,346-347
+packages/cli/src/modules/agents/background/sub-agent-background-runner.ts
+  s_ab136783d4b7cd::t_45ef20c70795ef 31,74-75,115
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_ab136783d4b7cd::t_c6879fc95a7cec 222-223,277,448,471,473-476,501,574,726,745,878
+packages/cli/src/modules/agents/tools/__tests__/workflow-tool-factory.test.ts
+  s_ab136783d4b7cd::t_c6879fc95a7cec 21-24,35-36,869-876,905-906
+docs/generated/postgres-schema/public.agents.md
+  ai_agent 109,111-112
+packages/cli/src/modules/agents/background/background-job-tools.ts
+  s_ab136783d4b7cd::t_c6879fc95a7cec 114-119,133
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_ab136783d4b7cd::t_c6879fc95a7cec 654,698
+packages/@n8n/db/src/migrations/common/1788332569510-AddWakeColumnsToAgentBackgroundJob.ts
+  s_ab136783d4b7cd::t_45ef20c70795ef 1-27
+packages/cli/src/modules/agents/repositories/agent-background-job.repository.ts
+  s_ab136783d4b7cd::t_45ef20c70795ef 2,15-16,85-126
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "57752781d79d834507e656794e9f60565428abbb",
+  "prompts": {},
+  "sessions": {
+    "s_ab136783d4b7cd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dba9ea80-23c4-4773-97c9-b0c0d10f8293",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

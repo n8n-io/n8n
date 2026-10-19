@@ -1,0 +1,20 @@
+packages/cli/src/services/node-resource-explorer.service.ts
+  s_b3296a192fc157::t_d246cee4c0e6ba 94-104
+  s_b3296a192fc157::t_b6e5a1f4151cf0 1-93,105-187
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.8",
+  "base_commit_sha": "795500704d1d7a74a9764310bed59d78c40790ac",
+  "prompts": {},
+  "sessions": {
+    "s_b3296a192fc157": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019edf12-9f67-7b13-8a32-19426cfe12e3",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

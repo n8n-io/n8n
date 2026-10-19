@@ -1,0 +1,17 @@
+docs/generated/sqlite-schema/README.md
+  ai_agent 130,315
+docs/generated/postgres-schema/README.md
+  ai_agent 130
+docs/generated/sqlite-schema/workflow_review_activity.md
+  ai_agent 9,30
+docs/generated/sqlite-schema/workflow_entity.md
+  ai_agent 23
+docs/generated/postgres-schema/public.workflow_entity.md
+  ai_agent 12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "003f6651f06120b24de77c689aa2ca1c6b4a1bec",
+  "prompts": {}
+}

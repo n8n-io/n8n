@@ -1,0 +1,9 @@
+packages/cli/src/modules/instance-ai/instance-ai.module.ts
+  ai_agent 56-57
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "387bfae9ec6883a8b823ea8f4e2560444245144a",
+  "prompts": {}
+}

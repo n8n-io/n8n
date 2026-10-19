@@ -1,0 +1,41 @@
+.github/workflows/sec-sync-public-to-private.yml
+  s_b17f268f40d0da::t_63d23908373f1a 11-13
+.github/workflows/sec-sync-bundle-branches.yml
+  s_b17f268f40d0da::t_d12c690c927dcc 20-24
+.github/scripts/sync-bundle-branch.mjs
+  s_b17f268f40d0da::t_ae2fe9affd48a7 79-93,97-117
+  s_b17f268f40d0da::t_55df635a4b315f 59-66
+  s_b17f268f40d0da::t_d6f098af2dcccf 29-36,38-39
+  s_b17f268f40d0da::t_b5e3f47ed7a6b8 94-96
+  s_b17f268f40d0da::t_3094d1b46c668c 118-119
+  s_b17f268f40d0da::t_c11799bc4087e8 135-136
+  s_b17f268f40d0da::t_71bc0c9ff24ba3 139-142,146-156
+.github/scripts/sync-bundle-branch.test.mjs
+  s_b17f268f40d0da::t_b91fdb643fbe9a 229-232,259-262
+  s_b17f268f40d0da::t_91bd081b38a230 303-304,309-314,323-337,342-403,408-431
+  s_b17f268f40d0da::t_667f79e05d021e 54-66,69,71-74,80-83
+  s_b17f268f40d0da::t_9a4277fe0b006a 117,121,126-151
+  s_b17f268f40d0da::t_752b07ec467a14 6-7,13
+  s_b17f268f40d0da::t_7b594bcbae891e 32,35-37
+  s_b17f268f40d0da::t_23f359df0bce41 159-161
+  s_b17f268f40d0da::t_b7f19070a8f59d 305-308,315-322,338-341,404-407
+.github/WORKFLOWS.md
+  s_b17f268f40d0da::t_91448dec0d67a3 706
+  s_b17f268f40d0da::t_b2da3f4f1918f3 1004-1023
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "de6befb5c3503bd966849c9fa7bb861301b870e8",
+  "prompts": {},
+  "sessions": {
+    "s_b17f268f40d0da": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e36b37a7-0a61-49d3-bb68-6d0f7f24232d",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

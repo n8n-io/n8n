@@ -1,0 +1,98 @@
+packages/cli/src/modules/dynamic-credentials.ee/services/dynamic-credential.service.ts
+  s_0d8b5dc937377e::t_beefd1b843ae80 69,148,171-175
+packages/cli/src/credentials/credential-resolution-provider.interface.ts
+  s_0d8b5dc937377e::t_beefd1b843ae80 49
+packages/@n8n/nodes-langchain/nodes/mcp/McpTrigger/McpTrigger.node.ts
+  s_0d8b5dc937377e::t_beefd1b843ae80 253-255,257
+  s_8acbb276b18879::t_5e40f53b7592ce 256
+packages/cli/src/modules/dynamic-credentials.ee/services/__tests__/dynamic-credential.service.test.ts
+  s_8acbb276b18879::t_46e4bb204e4bfb 790
+  s_8acbb276b18879::t_64d03fb3363e89 696-704,706-707,746-755,868-877,1041-1050,1052-1053,1139-1150,1152-1153,1188-1197,1199-1200
+packages/core/src/execution-engine/__tests__/execution-context.test.ts
+  s_0d8b5dc937377e::t_a83b281d845dd5 780-782
+  s_0d8b5dc937377e::t_fff79788d95893 1385,1418
+  s_0d8b5dc937377e::t_76cd9c6538fec3 29-31
+  s_0d8b5dc937377e::t_3d41103cef172b 1,8,17-18,20
+  s_0d8b5dc937377e::t_90711bbd992c2f 1237-1239
+  s_0d8b5dc937377e::t_abd960d06ff76c 1320-1356,1358-1384,1386-1417,1419-1420
+  s_8acbb276b18879::t_d94267372a6391 1357
+packages/core/src/execution-engine/__tests__/execution-context.service.test.ts
+  s_0d8b5dc937377e::t_3f1032a0827550 525-557
+  s_8acbb276b18879::t_69f5255aa70a23 376,383,389-395,428-443,447,449-489,491-524
+  s_8acbb276b18879::t_fa891be89ecb97 382,420-421,427,448
+packages/core/src/execution-engine/execution-context.service.ts
+  s_8acbb276b18879::t_14c2786f989107 115-117
+  s_0d8b5dc937377e::t_6d31e14f7f00b3 7,9,104-114,118-129,136-138,140-141,142-143,144-146,154
+  s_8acbb276b18879::t_2350504ca2264d 131-134,147-149,153
+packages/cli/src/credentials/dynamic-credentials-proxy.ts
+  s_0d8b5dc937377e::t_beefd1b843ae80 69,85
+packages/cli/src/modules/dynamic-credentials.ee/credential-resolvers/identifiers/identifier-interface.ts
+  s_0d8b5dc937377e::t_beefd1b843ae80 25,29-33
+packages/core/src/execution-engine/node-execution-context/webhook-context.ts
+  s_0d8b5dc937377e::t_beefd1b843ae80 212,216
+packages/workflow/src/interfaces.ts
+  s_0d8b5dc937377e::t_beefd1b843ae80 1546,3699
+packages/core/src/execution-engine/__tests__/workflow-execute-node-error-reporting.test.ts
+  s_0d8b5dc937377e::t_35f88c7aebdc44 46-49
+  s_0d8b5dc937377e::t_07d3ea0613e2de 65-67
+packages/@n8n/decorators/src/credential-resolver/credential-resolver.ts
+  s_0d8b5dc937377e::t_beefd1b843ae80 53,65,77,100-104,119
+packages/core/src/execution-engine/execution-context.ts
+  s_0d8b5dc937377e::t_454fa34e122d03 114-116,118-126
+  s_0d8b5dc937377e::t_856643f2a1cf24 161-164,212-218
+  s_0d8b5dc937377e::t_9b7d0a5e30d592 141-146,165
+packages/workflow/src/execution-context.ts
+  s_8acbb276b18879::t_53828325f72b37 257-263,269-275,282-285
+  s_0d8b5dc937377e::t_35f2c5dd6ff610 256
+  s_8acbb276b18879::t_8e8c244426ff7d 264-268,276-281
+packages/cli/src/modules/dynamic-credentials.ee/credential-resolvers/identifiers/__tests__/n8n-identifier.test.ts
+  s_8acbb276b18879::t_48e155c27511e1 2,21,28-29,31
+  s_8acbb276b18879::t_ee88b0e610d411 421-504
+packages/cli/src/modules/dynamic-credentials.ee/credential-resolvers/identifiers/n8n-identifier.ts
+  s_0d8b5dc937377e::t_beefd1b843ae80 143,152-155
+  s_0d8b5dc937377e::t_5e1538792b1d7a 146-148
+  s_0d8b5dc937377e::t_5c41c4bf062528 140-142
+  s_0d8b5dc937377e::t_e050d6c1fde662 144-145
+  s_0d8b5dc937377e::t_108552f8203514 149-151
+  s_0d8b5dc937377e::t_4c1f705274ce72 8,106,113-117,134-139
+  s_8acbb276b18879::t_cbb89035c3ffc1 132-133,156-159
+  s_8acbb276b18879::t_a27a6929cb35af 44-51
+packages/cli/src/credentials-helper.ts
+  s_8acbb276b18879::t_b5cf6ac29e9825 565
+packages/cli/src/webhooks/webhook-helpers.ts
+  s_0d8b5dc937377e::t_beefd1b843ae80 626-630
+  s_8acbb276b18879::t_17558f6e564fbb 649
+packages/cli/src/modules/dynamic-credentials.ee/credential-resolvers/__tests__/n8n-credential-resolver.test.ts
+  s_8acbb276b18879::t_f6ee196561bd44 129,191,213
+packages/cli/src/modules/dynamic-credentials.ee/credential-resolvers/n8n-credential-resolver.ts
+  s_0d8b5dc937377e::t_beefd1b843ae80 44,46,74,76,94,96,116,118,128,130,136,138
+packages/cli/src/webhooks/__tests__/webhook-helpers.test.ts
+  s_8acbb276b18879::t_ea161bdd0f076f 1420
+  s_8acbb276b18879::t_682bc8603fa042 1431
+  s_8acbb276b18879::t_e89a0be2b56125 1320-1322
+  s_8acbb276b18879::t_ba179fc17c825b 1397
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "4d9f32fc6a4b3aa7fff5462a9b2af7199c0ebb76",
+  "prompts": {},
+  "sessions": {
+    "s_0d8b5dc937377e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a0463bb0-158e-49f4-8a50-4c81a6c8bfe9",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    },
+    "s_8acbb276b18879": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0a8ccd9d-aad1-4629-9b79-178d55723ff4",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

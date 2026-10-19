@@ -1,0 +1,19 @@
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/chatMessage/create.mentions.test.ts
+  s_14f52ab61740a5::t_b99c18ffb41e52 21-22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "941123ec4b46198982aeead38aa7892da74a2383",
+  "prompts": {},
+  "sessions": {
+    "s_14f52ab61740a5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3435d574-b67e-42e7-9ac5-77452c95f9ae",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

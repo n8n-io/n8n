@@ -1,0 +1,94 @@
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionCheckoutStatus.test.ts
+  s_92db02681d0e37::t_0eceddeb65710d 1-65
+packages/cli/src/modules/promotions.ee/promotions-git.utils.ts
+  s_92db02681d0e37::t_acaf72fe614073 99-109
+  s_92db02681d0e37::t_50d87323e23690 13-17
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_92db02681d0e37::t_957ae0b1ee6616 3809-3820
+  s_92db02681d0e37::t_73dbb3f7846073 3751
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_92db02681d0e37::t_58572d247a75ac 51
+  s_92db02681d0e37::t_f106f0f315fde5 466,471
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionsSettingsView.test.ts
+  s_92db02681d0e37::t_ad5ae0561c0d2a 78,86
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionsSettings.api.ts
+  s_92db02681d0e37::t_78767fa101cded 177-200
+  s_92db02681d0e37::t_1f287c07e958e8 5
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionCheckoutStatus.vue
+  s_92db02681d0e37::t_7030a0f1b5a303 1-48,50-74,76-118
+  s_92db02681d0e37::t_28410b1435012f 75
+  s_92db02681d0e37::t_0afe147b6bfec9 49
+packages/@n8n/api-types/src/dto/promotions/promotion-config.dto.ts
+  s_92db02681d0e37::t_bc3e134cdff0ef 81-93,103
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionConnectionForm.vue
+  s_92db02681d0e37::t_47d9d33898ea22 2
+  s_92db02681d0e37::t_ac4e247af9762e 145-151,159-224,227
+  s_92db02681d0e37::t_dd9dd6cc2afefd 377-380
+  s_92db02681d0e37::t_4b6a4c98021699 152-154,158
+  s_92db02681d0e37::t_d11a382f74df6a 155-157
+  s_92db02681d0e37::t_866b52257c5239 328-331
+  s_92db02681d0e37::t_aa49d1af5a580b 23,25,29
+  s_92db02681d0e37::t_161e97f0b27f03 225-226
+  s_92db02681d0e37::t_f5a346d9fe70e0 228
+  s_92db02681d0e37::t_5dad7a35a62bb6 332-334
+  s_92db02681d0e37::t_58242351a636e7 381-383
+  s_92db02681d0e37::t_9e13ef72abed43 335,384
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromoteInstanceSection.test.ts
+  s_92db02681d0e37::t_a9437d57f3ff5b 58,62-89
+  s_92db02681d0e37::t_92c7fa772bd41c 16-20,24
+  s_7dc813be174380::t_33bef55e53e5fd 90-92
+packages/cli/src/modules/promotions.ee/promotion-connections.service.ts
+  s_92db02681d0e37::t_1425b7710b6621 274,277,284,290-293,298,300,302,308-309,311,316,319-320,323-327,333,337-359
+  s_92db02681d0e37::t_ce1c44840438c0 203,215
+  s_92db02681d0e37::t_77ef2ae635d7fb 4
+  s_92db02681d0e37::t_be60db790c653f 39
+  s_92db02681d0e37::t_04d42d8922a733 116,122
+  s_92db02681d0e37::t_98f8a634d67b60 134-140
+  s_3aaf75d65cfa68::t_8a7c15f3b4f394 360-361
+packages/@n8n/api-types/src/dto/index.ts
+  s_92db02681d0e37::t_0ff81ebf1c9a20 575,583
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionsSettings.utils.test.ts
+  s_92db02681d0e37::t_2fa56f7324bb9a 61,74
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromoteInstanceSection.vue
+  s_92db02681d0e37::t_5d4df318633008 2,27-30,41,47-54
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionConnections.generated.yml
+  s_3aaf75d65cfa68::t_6cb704c79a13af 115-124,145,162-171,195
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/upsertPromotionApplyConfig.generated.yml
+  s_3aaf75d65cfa68::t_55f52bb16efb75 66-75,96
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/upsertPromotionPromoteConfig.generated.yml
+  s_3aaf75d65cfa68::t_4d48b7675856f8 69-78,102
+packages/cli/src/public-api/v1/shared/spec/schemas/promotionConnectionPublicDto.generated.yml
+  s_3aaf75d65cfa68::t_15b756dad02668 77-86,107,124-133,157
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4946cb1571e204c56265998caf74b425101afe00",
+  "prompts": {},
+  "sessions": {
+    "s_3aaf75d65cfa68": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8e485ec0-5fa8-4517-a43d-cd714b64b738",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_7dc813be174380": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c73cbcbc-a1d3-43b5-83b6-050f4fb3c41f",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_92db02681d0e37": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a3ebdfc7-4f88-4a00-96aa-f306252537ef",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

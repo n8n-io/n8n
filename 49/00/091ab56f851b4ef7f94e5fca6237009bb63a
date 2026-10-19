@@ -1,0 +1,34 @@
+packages/cli/src/scheduling/__tests__/durable-job-provisioner.test.ts
+  s_7aac81783d6c7a::t_501eeb4ad4a149 350-361
+packages/cli/src/__tests__/active-workflow-manager.test.ts
+  s_7aac81783d6c7a::t_94269acef34f2d 840,856-866
+  s_7aac81783d6c7a::t_2b8384bac7f01e 890
+packages/@n8n/db/src/repositories/scheduled-job.repository.ts
+  s_7aac81783d6c7a::t_a4a7581752abc9 181-192
+packages/cli/src/active-workflow-manager.ts
+  s_7aac81783d6c7a::t_cdf1257b1a9ea9 965-971
+packages/cli/src/scheduling/schedule-trigger-node/__tests__/schedule-trigger-job-registrar.test.ts
+  s_7aac81783d6c7a::t_4303f408b72492 335-354
+packages/cli/src/scheduling/schedule-trigger-node/schedule-trigger-job-registrar.ts
+  s_7aac81783d6c7a::t_430ced7cf2ad8d 249-263
+packages/cli/src/scheduling/durable-job-provisioner.ts
+  s_7aac81783d6c7a::t_98e240c1daf7ea 27-30
+  s_7aac81783d6c7a::t_a31f8fc4727062 95-103
+  s_7aac81783d6c7a::t_b9e9427d0d58ec 151,157-163
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4900091ab56f851b4ef7f94e5fca6237009bb63a",
+  "prompts": {},
+  "sessions": {
+    "s_7aac81783d6c7a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "68bbfcf4-ff78-4cdf-8ded-9874d32b1369",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

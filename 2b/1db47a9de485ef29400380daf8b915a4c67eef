@@ -1,0 +1,57 @@
+packages/cli/src/public-api/v1/handlers/roles/spec/paths/getAllRoles.generated.yml
+  ai_agent 6
+packages/@n8n/permissions/src/public-api-permissions.ee.ts
+  s_066c7b6a282811::t_e147cb573990dd 92
+packages/@n8n/permissions/src/roles/scopes/global-scopes.ee.ts
+  s_066c7b6a282811::t_7e9fda85d2b706 131
+packages/cli/test/integration/public-api/roles.test.ts
+  s_066c7b6a282811::t_02716cd2a8cd41 81-91
+  s_066c7b6a282811::t_52076c024f6942 102-105,107-118,122-123,125-127
+  s_066c7b6a282811::t_8a38279d8d4644 94-101,106,119
+  s_066c7b6a282811::t_f95f02f1b5effc 42,49-66
+  s_066c7b6a282811::t_4d98d8e1df7106 120-121
+  s_066c7b6a282811::t_04555478b1d85b 37,39-41,67-68,70-77,79-80,92-93,128-131,133-140
+  s_066c7b6a282811::t_a9b440abf2b742 38,43-48,69,78,124
+  s_066c7b6a282811::t_061754e39e0e3b 132
+packages/@n8n/api-types/src/dto/index.ts
+  s_066c7b6a282811::t_df4dce925cfbe7 186
+  s_066c7b6a282811::t_0b461d7451f345 183-185,187
+packages/nodes-base/nodes/N8n/n8n-api-coverage.json
+  s_066c7b6a282811::t_587868bd518529 8-10
+packages/@n8n/permissions/src/constants.ee.ts
+  s_066c7b6a282811::t_beb2b4d65d57f6 114
+  s_066c7b6a282811::t_4f259c7e1d9c17 75
+packages/cli/src/public-api/v1/controllers/roles.public.controller.ts
+  s_066c7b6a282811::t_91b310d9691fd3 68-84,87-90
+  s_066c7b6a282811::t_e69beb4680c49d 51,53-54,56-63,67,85-86,91-93
+  s_066c7b6a282811::t_c6d7aee100f45e 55,66
+  s_066c7b6a282811::t_a6e6f162675e9d 1-6,17,21
+  s_066c7b6a282811::t_cee72773337878 52
+  s_066c7b6a282811::t_c356b5e6ce3c19 64-65
+  s_066c7b6a282811::t_0c16e18c16e681 23,32
+  s_066c7b6a282811::t_694eb46a310e54 31,33-36
+packages/@n8n/api-types/src/dto/roles/role-public.dto.ts
+  s_066c7b6a282811::t_d7a6d395d1d779 33
+  s_066c7b6a282811::t_f193ebad439a90 3
+  s_066c7b6a282811::t_61888e1cf38734 18-23,26-29
+  s_066c7b6a282811::t_12cc3c721d7e0e 31-32,34
+  s_066c7b6a282811::t_23636df664bad5 17,24-25,30
+packages/@n8n/permissions/src/__tests__/__snapshots__/scope-information.test.ts.snap
+  ai_agent 147
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2b1db47a9de485ef29400380daf8b915a4c67eef",
+  "prompts": {},
+  "sessions": {
+    "s_066c7b6a282811": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3c819a29-594e-480c-8511-ff21dcfcc7b4",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}

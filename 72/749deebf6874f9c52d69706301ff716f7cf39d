@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionChangeCount.test.ts
+  s_8a6db5c4608ec7::t_ca114b2e68d0fd 21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "72749deebf6874f9c52d69706301ff716f7cf39d",
+  "prompts": {},
+  "sessions": {
+    "s_8a6db5c4608ec7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1e785f1d-45f0-4404-b37b-c78cdd3c45d1",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

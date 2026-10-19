@@ -1,0 +1,150 @@
+packages/@n8n/instance-ai/src/stream/__tests__/output-redaction.test.ts
+  s_1aa455648d1f9e::t_0a6f5160539343 222,225-226,265
+  s_1aa455648d1f9e::t_2a42c3efc40297 223-224,254-258,260-264
+  s_1aa455648d1f9e::t_9924e6bd01bcde 259
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_1aa455648d1f9e::t_f0dc2318d5309b 378-381
+  s_1aa455648d1f9e::t_df4a9e4cfeb12d 87-90,311-312,336-342,389,410,444
+  s_1aa455648d1f9e::t_7fae4f6dc9aa7c 371
+  s_1aa455648d1f9e::t_bd99e1adf0fb84 382
+  s_1aa455648d1f9e::t_02f9d00ed932fa 343
+packages/@n8n/instance-ai/src/stream/output-redaction.ts
+  s_1aa455648d1f9e::t_02b3191090da8e 214-221
+  s_1aa455648d1f9e::t_2ce91efc6f4851 178,210-213,222,233
+  s_1aa455648d1f9e::t_5a1c95446eef71 179
+packages/@n8n/instance-ai/docs/tools.md
+  s_1aa455648d1f9e::t_b821a9f0590ee5 688-689,716-718
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_1aa455648d1f9e::t_c804d809e847c2 465-471,483-485,1054
+packages/cli/src/modules/agents/agent-test-run.service.ts
+  s_1aa455648d1f9e::t_5771bc60b3c0a2 2,44-56,151-155,157-208,227,230,233-235
+  s_1aa455648d1f9e::t_f0dc2318d5309b 78
+  s_1aa455648d1f9e::t_406af2fe9092d6 156
+  s_1aa455648d1f9e::t_24c0399f3df9aa 79
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiConfirmationPanel.vue
+  s_1aa455648d1f9e::t_1aa5503ce8d628 603-604,606-609
+  s_1aa455648d1f9e::t_dc9c0d19a46400 605,651-653
+  s_1aa455648d1f9e::t_3dcc73dcfa3c55 135-137,160-165,179,204-213,250
+  s_1aa455648d1f9e::t_1c7a0fce35abc7 654-655
+packages/@n8n/api-types/src/index.ts
+  s_1aa455648d1f9e::t_6bc289d41cd135 314,397
+packages/cli/src/modules/agents/__tests__/agent-test-run.service.test.ts
+  s_1aa455648d1f9e::t_1a497a85e0af77 128,130-190,214-225,228
+  s_1aa455648d1f9e::t_4fed00d70d075f 129
+packages/@n8n/api-types/src/schemas/agent-run-reducer.ts
+  s_1aa455648d1f9e::t_117aa9c6119e41 478
+packages/@n8n/agents/src/index.ts
+  s_1aa455648d1f9e::t_09b56492f579ae 120-127
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/build-agent.tool.test.ts
+  s_7940f24e425612::t_c67a72663f5729 1289-1296
+  s_1aa455648d1f9e::t_03ab6d05b8afcb 182-190,1271
+packages/cli/src/modules/agents/__tests__/agents-builder-tools.service.test.ts
+  s_1aa455648d1f9e::t_0d3c9a553397db 2019
+  s_d0b81b114cdd5a::t_70cf69a403a04e 11
+  s_d0b81b114cdd5a::t_9bf50d54ba6282 62
+  s_d0b81b114cdd5a::t_afd465893ef1d0 1954
+  s_1aa455648d1f9e::t_860bf4773d70ef 1999,2012-2017,2020
+  s_d0b81b114cdd5a::t_ae3a9f27100d0c 63
+  s_1aa455648d1f9e::t_f0dc2318d5309b 2038
+  s_1aa455648d1f9e::t_56a585b6f03435 1786,1864-1868,1957,1963,1968,1970-1973,1996-1998,2004,2011,2026,2035
+  s_ad522dbd7213a8::t_6671e7b86b424c 3-10,25,1788-1863,1869-1953,1955-1956,1958-1962,1964-1967,1969,1974-1995
+  s_d0b81b114cdd5a::t_35e7db163740ca 2018
+  s_1aa455648d1f9e::t_e86071330050b1 1787
+packages/@n8n/instance-ai/src/stream/__tests__/map-chunk.test.ts
+  s_1aa455648d1f9e::t_73c14977e69f06 452,455-456,467-469,471-496
+  s_1aa455648d1f9e::t_e1c556356bc94a 435-451,453-454,457-466,470
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.threadRuntime.ts
+  s_1aa455648d1f9e::t_1922b05ad15cd0 596
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_1aa455648d1f9e::t_e123f34a9b000c 801-828
+  s_1aa455648d1f9e::t_e28f5f8853d542 1024-1031
+packages/@n8n/instance-ai/src/tools/orchestration/build-agent.tool.ts
+  s_1aa455648d1f9e::t_69e1a8f0cd3b19 7-11,911
+  s_1aa455648d1f9e::t_fb87144f5efaf7 25,244,251-254
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_1aa455648d1f9e::t_cf388b7f258fca 663-664,677-684,687-688,691-693,731-747,751-752,755-789,791-800,802-803,806-807,810-811
+  s_d0b81b114cdd5a::t_60d03a59342dd5 110,116-119
+  s_1aa455648d1f9e::t_d101dddbd4cea4 9-15
+  s_1aa455648d1f9e::t_2b165c2cf2e4b3 2-3,5-8,101-108
+  s_d0b81b114cdd5a::t_e1922eb71bd979 1,4
+  s_1aa455648d1f9e::t_2a524e430fda75 749-750,753-754
+  s_1aa455648d1f9e::t_94db3c0d91ac68 63-67,109,111-115,120-123
+  s_1aa455648d1f9e::t_fc56f58421f5c0 694-730
+  s_1aa455648d1f9e::t_b4856951602562 124
+  s_1aa455648d1f9e::t_0338aa83f0c6f3 748
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/build-agent.cascade-restart.test.ts
+  s_1aa455648d1f9e::t_dca44267495355 183-184
+  s_1aa455648d1f9e::t_01d00f27429ba0 361,465-469,477,499-546,555,557
+  s_1aa455648d1f9e::t_e9133b5dd97954 22-24
+  s_1aa455648d1f9e::t_9836d36a2e23d0 26-31,189,214,218-235,241,253
+  s_8a29199cb4a503::t_8e79e9e30a22f3 32-35
+packages/cli/src/modules/agents/builder/agents-builder-prompts.ts
+  s_1aa455648d1f9e::t_1e6f55429df2c2 46-48
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiConfirmationPanel.test.ts
+  s_1aa455648d1f9e::t_f0dc2318d5309b 384
+  s_1aa455648d1f9e::t_76877d8a3c5a0d 23-25,365-383,385-401
+  s_1aa455648d1f9e::t_1ee1665e1aaa85 402-406
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/instanceAi.threadRuntime.test.ts
+  s_1aa455648d1f9e::t_58c2b4e953fc6f 1671,1701,1763-1778
+  s_1aa455648d1f9e::t_f0dc2318d5309b 10
+  s_1aa455648d1f9e::t_66b762c5fddccd 1779-1781
+packages/@n8n/instance-ai/src/stream/map-chunk.ts
+  s_1aa455648d1f9e::t_59b40eda70caf0 351-358
+  s_1aa455648d1f9e::t_8ef1358b0b1044 1,373
+  s_1aa455648d1f9e::t_7a623bf59e17be 347-350
+packages/@n8n/api-types/src/schemas/__tests__/agent-run-reducer.test.ts
+  s_1aa455648d1f9e::t_1596aca4de46e4 138-142,723-727
+packages/@n8n/agents/src/sdk/tool.ts
+  s_1aa455648d1f9e::t_2d2712bd9b9fcc 11,18-20,24
+  s_1aa455648d1f9e::t_c806c1c1943e64 25
+packages/cli/src/modules/agents/instance-ai-builder-delegate.adapter.ts
+  s_1aa455648d1f9e::t_19797b10e5d653 27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "bb07a101248e33515f7d169a67624675c519e8e9",
+  "prompts": {},
+  "sessions": {
+    "s_1aa455648d1f9e": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "e0b83bf3-6b75-4a8f-aa7b-be1e39a00bf9",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_7940f24e425612": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "76461bcd-2aa1-4c05-b11e-f16baede9af1",
+        "model": "cursor-grok-4.5-high-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_8a29199cb4a503": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "053dd195-f66a-488b-97d2-ef0aaa4fbd86",
+        "model": "cursor-grok-4.5-high-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_ad522dbd7213a8": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "86423e38-83c0-4964-8e57-3bd4e5739be4",
+        "model": "gpt-5.6-sol-xhigh-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_d0b81b114cdd5a": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "ddbc7cf9-019e-4b2f-8b4f-dc326880ebdb",
+        "model": "cursor-grok-4.5-high-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,35 @@
+packages/cli/src/modules/agents/sub-agents/sub-agent-runner.ts
+  s_0a1a804042c15b::t_058dbac69984aa 397,407
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_0a1a804042c15b::t_48529338b0265b 649
+  s_0a1a804042c15b::t_22425ce6fda375 473,576-580,637-639,643-645,647-648,650-665,667
+packages/cli/src/modules/agents/sub-agents/__tests__/sub-agent-runner.test.ts
+  s_0a1a804042c15b::t_26de578d193252 807,818-833,876-894
+  s_0a1a804042c15b::t_3f2dccf6a33987 895-896
+packages/cli/src/modules/agents/background/__tests__/sub-agent-background-runner.test.ts
+  s_0a1a804042c15b::t_8319867c88d502 136,141,164-172,200-203,207,219-220,222-236
+  s_0a1a804042c15b::t_c4ed18f37d3928 98,175-177,197-199,204-206,208-218,221
+  s_0a1a804042c15b::t_d1794eca28c1b1 179-183
+packages/cli/src/modules/agents/background/__tests__/agent-wake.service.test.ts
+  s_0a1a804042c15b::t_7cdb07e99a5d3b 809,812-813,820-825,828,834,840,846
+  s_0a1a804042c15b::t_0c7faa32cf9c31 810
+packages/cli/src/modules/agents/background/sub-agent-background-runner.ts
+  s_0a1a804042c15b::t_058dbac69984aa 231
+  s_0a1a804042c15b::t_90b4877db1d3b8 328
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "46f2487aa5b2ad0687894c4d847d849c2d6ee114",
+  "prompts": {},
+  "sessions": {
+    "s_0a1a804042c15b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0f809-8653-78a0-a76c-4b8db92d8a2b",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

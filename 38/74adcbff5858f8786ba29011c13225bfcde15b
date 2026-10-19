@@ -1,0 +1,22 @@
+packages/cli/test/integration/public-api/ldap.test.ts
+  s_33452312e2f130::t_55f8b68b95ceff 103
+  s_33452312e2f130::t_8665f00a186f00 372,380-390
+packages/@n8n/api-types/src/dto/ldap/__tests__/ldap-configuration.dto.test.ts
+  s_33452312e2f130::t_ce8df15d51059d 30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3874adcbff5858f8786ba29011c13225bfcde15b",
+  "prompts": {},
+  "sessions": {
+    "s_33452312e2f130": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b77a3f83-b3d4-4657-90ac-96a737bf7981",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Dmitrii Kulikov <dmitrii.kulikov@n8n.io>"
+    }
+  }
+}

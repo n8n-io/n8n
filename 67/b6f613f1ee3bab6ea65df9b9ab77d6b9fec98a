@@ -1,0 +1,26 @@
+packages/frontend/@n8n/composables/package.json
+  s_0241aca425ded4::t_5a2f452ae1d504 32
+  s_0241aca425ded4::t_86bc6caf28ed56 43
+packages/frontend/editor-ui/src/app/composables/useDebounce.ts
+  s_0241aca425ded4::t_765cffbe2e0a9d 1-8
+packages/frontend/editor-ui/src/app/constants/durations.ts
+  s_0241aca425ded4::t_3b73f52d6b23f5 1-8
+pnpm-lock.yaml
+  s_0241aca425ded4::t_2ee4de505b62bd 4785-4787,4813-4815
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "67b6f613f1ee3bab6ea65df9b9ab77d6b9fec98a",
+  "prompts": {},
+  "sessions": {
+    "s_0241aca425ded4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "94e2fc6d-04e0-4ab1-b85a-8d7e2dd6f2d1",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Alex Grozav <alex@grozav.com>"
+    }
+  }
+}

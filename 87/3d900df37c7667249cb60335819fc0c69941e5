@@ -1,0 +1,115 @@
+packages/@n8n/config/src/configs/expression-engine.config.ts
+  s_8144f59967546c::t_19972799905e7f 64-71
+packages/@n8n/config/test/config.test.ts
+  s_8144f59967546c::t_60778b54e00c2c 635
+packages/cli/src/webhooks/__tests__/live-webhooks.test.ts
+  s_8144f59967546c::t_45e0a0d6c1af7e 2,9-10,13,18-25,52-54,60-61,70,622-798,803-808,810-881
+  s_464bfd2b40cb72::t_39788d9ed66204 799-802,809
+packages/cli/src/webhooks/__tests__/webhook-execution-context.test.ts
+  s_8144f59967546c::t_295adbf74bdfb6 1-107
+packages/cli/src/webhooks/live-webhooks.ts
+  s_8144f59967546c::t_d596518ab98b6a 2,6-12,50,141-146,149,198,203-222,223-231
+packages/cli/src/webhooks/webhook-execution-context.ts
+  s_8144f59967546c::t_ede66adb61497d 11,37-39,58-60,70-77,79-81,83-84
+  s_464bfd2b40cb72::t_22726de4b821b2 13-15,33,54,78,82
+packages/cli/src/webhooks/webhook.service.ts
+  s_8144f59967546c::t_b41e58f193ec56 10,19,343-344,346-347,349,365-366,368-369,372-373,375-376,387-388,390-391,427-452
+packages/core/src/execution-engine/node-execution-context/utils/webhook-helper-functions.ts
+  s_8144f59967546c::t_887164deede094 10,54-65,67-78
+packages/nodes-base/nodes/Webhook/description.ts
+  s_8144f59967546c::t_db92e1cf83927d 7,24-26,30-40
+packages/nodes-base/nodes/Webhook/test/description.test.ts
+  s_8144f59967546c::t_8d372e948d2f33 1-90,92-104
+  s_cd0320e3ea16e8::t_0274de46868a3f 91
+packages/testing/playwright/tests/e2e/api/webhook-isolate-skip.spec.ts
+  s_8144f59967546c::t_b8d2ce279dc32c 1-14,18,21-35,66-87,183-184
+  s_70a0146006f6ca::t_a74bbea6750a44 36-65,88-182
+  s_c5530269a9eb04::t_cbdec86a3b974e 15-17,19-20
+packages/testing/playwright/workflows/webhook-isolate-skip-expression.json
+  s_8144f59967546c::t_34cf2f0abe96b9 1-57
+packages/testing/playwright/workflows/webhook-isolate-skip-static.json
+  s_8144f59967546c::t_b45f19733f4505 1-45
+packages/workflow/src/interfaces.ts
+  s_8144f59967546c::t_8dc0cf71d6e755 2997,3002-3004,3011-3012,3017-3018,3021
+  s_464bfd2b40cb72::t_9d24e1a1759494 2998-3001
+  s_cd0320e3ea16e8::t_690927087e064c 3005-3010,3013-3016
+packages/workflow/src/webhook-description-fields.ts
+  s_8144f59967546c::t_e6454d0daaf0a3 1-27,29-69,71-82,86-96,107-112,117-128,130-154
+  s_cd0320e3ea16e8::t_b0e63d99614346 28,70,83-85,97-106,113-116,129
+packages/workflow/test/webhook-description-fields.test.ts
+  s_8144f59967546c::t_2c4a9cde11d02f 1-217,260-295
+  s_cd0320e3ea16e8::t_269c2f1b5af9ec 218-259
+packages/workflow/src/index.ts
+  s_464bfd2b40cb72::t_e0867d7e362e86 17-26
+packages/cli/src/webhooks/webhook-helpers.ts
+  s_f390f8e5699a64::t_e44b439282d72d 546,1133-1135,1139-1140,1143,1145-1146,1149,1154-1156,1163-1164,1166-1167,1169-1170
+packages/testing/playwright/services/api-helper.ts
+  s_c5530269a9eb04::t_cac831d04b69ae 73,94
+  s_200b5a760e287c::t_ca2425aac8b933 24
+packages/testing/playwright/services/metrics-api-helper.ts
+  s_c5530269a9eb04::t_330efd5b7c1966 1-14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "873d900df37c7667249cb60335819fc0c69941e5",
+  "prompts": {},
+  "sessions": {
+    "s_200b5a760e287c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_200b5a760e287c",
+        "model": "unknown"
+      },
+      "human_author": "Mike Repeć <mike.repec@n8n.io>"
+    },
+    "s_464bfd2b40cb72": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_464bfd2b40cb72",
+        "model": "unknown"
+      },
+      "human_author": "Mike Repeć <mike.repec@n8n.io>"
+    },
+    "s_70a0146006f6ca": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_70a0146006f6ca",
+        "model": "unknown"
+      },
+      "human_author": "Mike Repeć <mike.repec@n8n.io>"
+    },
+    "s_8144f59967546c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_8144f59967546c",
+        "model": "unknown"
+      },
+      "human_author": "Mike Repeć <mike.repec@n8n.io>"
+    },
+    "s_c5530269a9eb04": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_c5530269a9eb04",
+        "model": "unknown"
+      },
+      "human_author": "Mike Repeć <mike.repec@n8n.io>"
+    },
+    "s_cd0320e3ea16e8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_cd0320e3ea16e8",
+        "model": "unknown"
+      },
+      "human_author": "Mike Repeć <mike.repec@n8n.io>"
+    },
+    "s_f390f8e5699a64": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_f390f8e5699a64",
+        "model": "unknown"
+      },
+      "human_author": "Mike Repeć <mike.repec@n8n.io>"
+    }
+  }
+}

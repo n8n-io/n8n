@@ -1,0 +1,14 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPlan.vue
+  h_f8b427917eda26 227,245-249,298-299,334,339
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "32726dad08e8bf25bbadd75f7bc7980efcf20575",
+  "prompts": {},
+  "humans": {
+    "h_f8b427917eda26": {
+      "author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

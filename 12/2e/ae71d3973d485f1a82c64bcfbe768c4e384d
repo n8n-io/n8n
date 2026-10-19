@@ -1,0 +1,19 @@
+packages/cli/src/commands/start.ts
+  s_3e2de9c50fdafd::t_6b412dc99468c1 13,40,48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "122eae71d3973d485f1a82c64bcfbe768c4e384d",
+  "prompts": {},
+  "sessions": {
+    "s_3e2de9c50fdafd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "71471209-e89f-4d40-8aa6-c40750a3f307",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

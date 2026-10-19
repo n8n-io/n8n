@@ -1,0 +1,28 @@
+packages/workflow/test/trigger-identity.test.ts
+  s_ff953bd5fa5eff::t_bac5cba15900e2 42-52,62-72
+packages/workflow/src/constants.ts
+  s_ff953bd5fa5eff::t_c6106dce15a0e4 126-129
+packages/workflow/src/trigger-identity.ts
+  s_ff953bd5fa5eff::t_58e7f00baf3b49 96-98
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "a79cb9b66480db133cf39ace7622e031a03dbd99",
+  "prompts": {},
+  "humans": {
+    "h_89e664b3be09ae": {
+      "author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_ff953bd5fa5eff": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4a86677f-f714-4b73-9d32-32cecd91c41c",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

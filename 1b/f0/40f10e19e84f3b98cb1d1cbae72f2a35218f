@@ -1,0 +1,33 @@
+packages/cli/src/modules/agents/integrations/n8n-checkpoint-storage.ts
+  s_4d1c1f967ea87e::t_2d19b172422a1e 195-209
+packages/cli/src/modules/agents/repositories/agent-checkpoint.repository.ts
+  s_4d1c1f967ea87e::t_2d19b172422a1e 3,48-50
+  s_4d1c1f967ea87e::t_c6932a1793cf63 51-53
+  s_4d1c1f967ea87e::t_8ed77789e67a84 54
+packages/cli/src/modules/agents/integrations/__tests__/n8n-checkpoint-storage.test.ts
+  s_4d1c1f967ea87e::t_1a79345529bc30 258-259,263,291-297
+  s_4d1c1f967ea87e::t_fbd405a3b88a45 298-300
+  s_4d1c1f967ea87e::t_620442d9da3119 301
+packages/cli/test/integration/agents/agent-message-queue.test.ts
+  s_4d1c1f967ea87e::t_fbd405a3b88a45 1080
+  s_4d1c1f967ea87e::t_1a79345529bc30 343,1085
+  s_4d1c1f967ea87e::t_0fa1338527903b 1598,1609
+packages/cli/src/modules/agents/agent-message-queue.service.ts
+  s_4d1c1f967ea87e::t_fbd405a3b88a45 652-655
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "1bf040f10e19e84f3b98cb1d1cbae72f2a35218f",
+  "prompts": {},
+  "sessions": {
+    "s_4d1c1f967ea87e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0ae7e-c464-7c63-bd02-aef20e78543d",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

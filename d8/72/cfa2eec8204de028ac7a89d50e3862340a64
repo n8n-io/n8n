@@ -1,0 +1,34 @@
+packages/cli/src/public-api/v1/handlers/credentials/credentials.handler.ts
+  s_644fa653780ed3::t_7c0441032d9ddc 9
+packages/@n8n/api-types/src/dto/credentials/credential-public.dto.ts
+  s_644fa653780ed3::t_ac46f654678c48 25-30,106-111
+  s_644fa653780ed3::t_b6d32de857a77b 112
+packages/@n8n/api-types/src/dto/index.ts
+  s_644fa653780ed3::t_ac46f654678c48 131-132
+packages/cli/test/integration/public-api/credentials.test.ts
+  s_644fa653780ed3::t_ac46f654678c48 677-690,818-831,1743-1785
+packages/@n8n/api-types/src/dto/credentials/__tests__/transfer-credential-public.dto.test.ts
+  s_644fa653780ed3::t_ac46f654678c48 1-17
+packages/nodes-base/nodes/N8n/n8n-api-coverage.json
+  s_644fa653780ed3::t_ac46f654678c48 78,86
+packages/cli/src/public-api/v1/controllers/credentials.public.controller.ts
+  s_644fa653780ed3::t_ac46f654678c48 379-392,394-420,422-429
+  s_644fa653780ed3::t_95982e73472bd5 393,421
+  s_644fa653780ed3::t_8c542aa3034742 5,8,20,27,37,85-92,117
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "d872cfa2eec8204de028ac7a89d50e3862340a64",
+  "prompts": {},
+  "sessions": {
+    "s_644fa653780ed3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5d77ebb3-11d2-4f3f-ba25-48171f0149f8",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

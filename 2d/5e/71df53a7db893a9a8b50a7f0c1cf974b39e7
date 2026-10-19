@@ -1,0 +1,56 @@
+packages/@n8n/db/src/repositories/__tests__/workflow-review-request-workflow.repository.test.ts
+  s_83feff7457dd06::t_8a9a7bcfac57af 58-88
+  s_83feff7457dd06::t_3861d29a606dff 2,4
+  s_83feff7457dd06::t_e81390a06522da 89
+packages/@n8n/db/src/repositories/workflow-review-request-workflow.repository.ts
+  s_563a9e16fe5daf::t_04d75db603905b 68-70,80,82-86,88-93
+  s_83feff7457dd06::t_c5a6dca09c356a 40-57
+  s_563a9e16fe5daf::t_90d9cd1686a786 8-13
+  s_83feff7457dd06::t_1f1702fbdeefe1 58-59
+packages/@n8n/db/src/repositories/__tests__/workflow-review-request-author.repository.test.ts
+  s_83feff7457dd06::t_5701f24b22c91f 35-66
+packages/@n8n/db/src/repositories/index.ts
+  s_563a9e16fe5daf::t_96e6dad4e6c469 79-82
+  s_83feff7457dd06::t_51faaef0d12542 77
+packages/@n8n/db/src/repositories/workflow-review-request-author.repository.ts
+  s_83feff7457dd06::t_b29da0d458e884 29-46
+packages/@n8n/db/src/repositories/workflow-review-request.repository.ts
+  s_563a9e16fe5daf::t_f69b26c3b1abaa 31-38
+  s_83feff7457dd06::t_8f30e3e798d2f6 39-41
+  s_83feff7457dd06::t_03c02f4f34ffab 86-88,94,102,116-125,135
+  s_563a9e16fe5daf::t_af9e48ebc9ddf8 126-133
+  s_563a9e16fe5daf::t_4506091761068f 134
+packages/@n8n/db/src/repositories/__tests__/workflow-review-request.repository.test.ts
+  s_563a9e16fe5daf::t_b3a51f2481793d 133-134
+  s_83feff7457dd06::t_749208384a8280 89,95-96,120-124,144-180
+  s_83feff7457dd06::t_bcee2655349422 2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "2d5e71df53a7db893a9a8b50a7f0c1cf974b39e7",
+  "prompts": {},
+  "humans": {
+    "h_9c8f56e3400786": {
+      "author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_563a9e16fe5daf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77cbd763-38ec-4ec6-89cd-4072897b7706",
+        "model": "claude-fable-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_83feff7457dd06": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec8a95a5-afe0-452d-847f-10d4068d465c",
+        "model": "claude-fable-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

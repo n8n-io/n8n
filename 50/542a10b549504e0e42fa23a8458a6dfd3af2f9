@@ -1,0 +1,20 @@
+packages/@n8n/engine/src/auth/__tests__/identity-token.test.ts
+  s_c0aabdb659304f::t_e764ccaaeffa31 154
+  s_c0aabdb659304f::t_a27b5ec5bb656b 2,17-34,36-43,66-76,79-80,84-85,88-92,97-100,104-105,109-110,117-120,127-130,144
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "50542a10b549504e0e42fa23a8458a6dfd3af2f9",
+  "prompts": {},
+  "sessions": {
+    "s_c0aabdb659304f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "17309fe5-d4c8-4ebb-8853-75c403b35009",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

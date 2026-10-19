@@ -1,0 +1,38 @@
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  s_be8a76e757671c::t_01c39904531b84 78-79,6141,6156,6224,6236,6269-6276,6295,6313
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_be8a76e757671c::t_78c52773d6f6c4 21-22,642-643,681-682
+packages/@n8n/api-types/src/index.ts
+  s_be8a76e757671c::t_78c52773d6f6c4 436-437
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_be8a76e757671c::t_78c52773d6f6c4 2708-2715
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_be8a76e757671c::t_d762f76f1ef699 19
+  s_be8a76e757671c::t_9b9a0301dcbcf5 1183,1185-1197
+  s_be8a76e757671c::t_78808b01a81b7e 1198-1200,1298,1381,1384
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-temporary-workflow.service.test.ts
+  s_be8a76e757671c::t_13d1484bad92de 49
+packages/@n8n/instance-ai/docs/prompt-profiles.md
+  s_be8a76e757671c::t_78f370e191b3bc 26-28,39-43
+packages/@n8n/instance-ai/src/index.ts
+  s_be8a76e757671c::t_78c52773d6f6c4 332,455
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_be8a76e757671c::t_e6b9e1e56bf006 52,2527
+  s_be8a76e757671c::t_f3dfa005001f80 2542-2544,2547-2548,2552-2554
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "cf48e69f536b48449cdfe76a8880b2712ddac980",
+  "prompts": {},
+  "sessions": {
+    "s_be8a76e757671c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b25bc5b6-69af-4e2a-98c8-d908780a9106",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

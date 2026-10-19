@@ -1,0 +1,19 @@
+packages/@n8n/node-engine-compatibility/src/v1-execution-read.ts
+  s_77655ca8fe3a59::t_41486726cd8c43 35-37,39-44
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "6c5b55c9cf8f3d77e07c2bb42254223ad35a662d",
+  "prompts": {},
+  "sessions": {
+    "s_77655ca8fe3a59": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d2c5a11b-62c7-4839-ab99-8421196be4d4",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

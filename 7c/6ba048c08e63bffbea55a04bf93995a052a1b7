@@ -1,0 +1,24 @@
+packages/cli/src/modules/agents/agent-publish.service.ts
+  s_dc1bcc8544e6b1::t_2d0f0a01c863f1 338-339
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "7c6ba048c08e63bffbea55a04bf93995a052a1b7",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_dc1bcc8544e6b1": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "b230e043-4120-4803-80d6-26654a74875b",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

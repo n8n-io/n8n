@@ -1,0 +1,44 @@
+packages/extensions/insights/package.json
+  s_fb1d6935963fdc::t_a977a150ec526e 34-35,51,56-57
+packages/@n8n/codemirror-lang/oxlint.config.mts
+  s_fb1d6935963fdc::t_a977a150ec526e 1-9,12-13
+  s_fb1d6935963fdc::t_37d0983e90a454 10-11
+packages/@n8n/codemirror-lang-sql/oxlint.config.mts
+  s_fb1d6935963fdc::t_37d0983e90a454 10
+  s_fb1d6935963fdc::t_a977a150ec526e 1-2,4-7,9,11
+packages/@n8n/codemirror-lang/package.json
+  s_fb1d6935963fdc::t_a977a150ec526e 37-38,49,52-53
+packages/@n8n/utils/oxlint.config.mts
+  s_fb1d6935963fdc::t_37d0983e90a454 9
+  s_fb1d6935963fdc::t_a977a150ec526e 1-2,4-6,8
+packages/@n8n/codemirror-lang-sql/package.json
+  s_fb1d6935963fdc::t_a977a150ec526e 13-14,52,54-55
+packages/@n8n/codemirror-lang-sql/src/complete.ts
+  s_fb1d6935963fdc::t_df3c5c2f3bc2e6 38
+packages/@n8n/utils/package.json
+  s_fb1d6935963fdc::t_a977a150ec526e 37-38,47,52-53
+packages/extensions/insights/oxlint.config.mts
+  s_fb1d6935963fdc::t_37d0983e90a454 9
+  s_fb1d6935963fdc::t_a977a150ec526e 1-2,4-6
+  s_fb1d6935963fdc::t_df3c5c2f3bc2e6 7
+turbo.json
+  s_fb1d6935963fdc::t_a977a150ec526e 98-103,146-148,170-172
+pnpm-lock.yaml
+  s_fb1d6935963fdc::t_0d8591740e26e7 2138-2140,2147-2152,2248-2250,2257-2262,4490,4492,4505-4510,5466-5468,5481-5486
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "53be490c2698e7787b3d4ac58945304d3e5b6136",
+  "prompts": {},
+  "sessions": {
+    "s_fb1d6935963fdc": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f08aabc99ffe2W7cZ4P3vyrbP5",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

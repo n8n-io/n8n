@@ -1,0 +1,34 @@
+packages/@n8n/nodes-langchain/nodes/trigger/ChatTrigger/__test__/templates.test.ts
+  s_71557f57f2f73f::t_d6663bf923ba4c 751-774
+packages/@n8n/nodes-langchain/nodes/trigger/ChatTrigger/__test__/ChatTrigger.node.test.ts
+  s_71557f57f2f73f::t_d6546a236c893f 1237-1244
+packages/@n8n/nodes-langchain/nodes/trigger/ChatTrigger/ChatTrigger.node.ts
+  s_71557f57f2f73f::t_407a8da6f9647f 1018-1020
+  s_71557f57f2f73f::t_84ace31db68ba4 44
+packages/@n8n/nodes-langchain/nodes/trigger/ChatTrigger/__test__/frame-token.test.ts
+  s_71557f57f2f73f::t_5aa6bf83e6222b 4-9
+  s_71557f57f2f73f::t_b368fabe089aab 48-57,61
+packages/@n8n/nodes-langchain/nodes/trigger/ChatTrigger/frame-token.ts
+  s_71557f57f2f73f::t_704fbccaa87da2 16-21,23-25
+  s_71557f57f2f73f::t_61996d8cb88630 22
+packages/@n8n/nodes-langchain/nodes/trigger/ChatTrigger/templates.ts
+  s_71557f57f2f73f::t_e828aa13810216 3
+  s_71557f57f2f73f::t_4cc0d033425a3b 572
+  s_71557f57f2f73f::t_32a7708efadf10 257-334
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f0d621e616133421b9363cf0cbc1a5fc11e74eb5",
+  "prompts": {},
+  "sessions": {
+    "s_71557f57f2f73f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a4da6cab-0532-4889-81ff-a18c7b2865cf",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

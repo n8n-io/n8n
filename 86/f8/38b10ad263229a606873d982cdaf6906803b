@@ -1,0 +1,59 @@
+packages/cli/src/metrics/prometheus/cached-metric-query.ts
+  s_04ac28d9eefdf7::t_56b5a81cbbeb4b 6-10
+  s_04ac28d9eefdf7::t_e22750b7345f67 18-22,26-29
+  s_7f121e9d042d61::t_22a20dc81409b2 1-2,5,17
+  s_7f121e9d042d61::t_1cc873adfc98c9 25,40,44
+  s_04ac28d9eefdf7::t_dd29611e57bbf1 11,30
+packages/cli/src/metrics/prometheus/workflow-statistics-metrics.service.ts
+  s_04ac28d9eefdf7::t_a050ec8995d407 34-35,37-39
+  s_7f121e9d042d61::t_7788f1f6534cd7 36
+packages/cli/src/metrics/prometheus/active-workflow-metrics.service.ts
+  s_7f121e9d042d61::t_7788f1f6534cd7 33
+  s_04ac28d9eefdf7::t_d84ea73dffbebe 31-32,34-36
+packages/cli/src/metrics/prometheus/__tests__/active-workflow-metrics.service.test.ts
+  s_7f121e9d042d61::t_7788f1f6534cd7 72,87,104
+packages/cli/src/metrics/prometheus/__tests__/cached-metric-query.test.ts
+  ai_agent 17-22,32-37,47-52,65-70
+packages/cli/src/metrics/prometheus/workflow-publication-metrics.service.ts
+  s_04ac28d9eefdf7::t_616000218dfddf 70-73,81
+  s_7f121e9d042d61::t_7788f1f6534cd7 21
+  s_04ac28d9eefdf7::t_e95ccf56ac30ad 88
+  s_04ac28d9eefdf7::t_ecada00a47e6b1 69,76,78-79
+  s_04ac28d9eefdf7::t_fe7be2242f4e48 100
+  s_7f121e9d042d61::t_c66b755e0a7b80 25,75,77,90,103
+packages/cli/src/metrics/prometheus/__tests__/workflow-publication-metrics.service.test.ts
+  s_7f121e9d042d61::t_c66b755e0a7b80 230,237-240
+  s_7f121e9d042d61::t_7788f1f6534cd7 229
+packages/cli/src/metrics/prometheus/__tests__/workflow-statistics-metrics.service.test.ts
+  s_7f121e9d042d61::t_7788f1f6534cd7 212
+packages/cli/src/metrics/prometheus/workflow-info-metrics.service.ts
+  s_04ac28d9eefdf7::t_8614c03ec97740 32-33,35-37
+  s_7f121e9d042d61::t_7788f1f6534cd7 34
+packages/cli/src/metrics/prometheus/__tests__/workflow-info-metrics.service.test.ts
+  ai_agent 113-117
+  s_7f121e9d042d61::t_7788f1f6534cd7 90,150
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "86f838b10ad263229a606873d982cdaf6906803b",
+  "prompts": {},
+  "sessions": {
+    "s_04ac28d9eefdf7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7536abd2-6516-48fc-8107-23ad85753978",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_7f121e9d042d61": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f21ec-55d9-72a0-93c6-0f92253ac2fd",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

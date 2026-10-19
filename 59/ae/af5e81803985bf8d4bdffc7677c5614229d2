@@ -1,0 +1,36 @@
+packages/@n8n/db/src/migrations/sqlite/index.ts
+  s_cc18b3a8e9e1de::t_f9726c8f68ea43 234,469
+docs/generated/postgres-schema/README.md
+  s_cc18b3a8e9e1de::t_ea9ee1a620749e 133,336,1550
+docs/generated/postgres-schema/public.workflow_entity.md
+  s_cc18b3a8e9e1de::t_ea9ee1a620749e 305
+docs/generated/postgres-schema/public.workflow_review_request.md
+  s_cc18b3a8e9e1de::t_ea9ee1a620749e 109
+packages/@n8n/db/src/entities/workflow-review-request-workflow.ee.ts
+  s_cc18b3a8e9e1de::t_b21161c09db2a4 23-25
+packages/@n8n/db/src/migrations/postgresdb/index.ts
+  s_cc18b3a8e9e1de::t_f9726c8f68ea43 242,487
+docs/generated/postgres-schema/public.workflow_review_request_workflow.md
+  s_cc18b3a8e9e1de::t_ea9ee1a620749e 7,20,39,45,51-63
+docs/generated/postgres-schema/public.workflow_history.md
+  s_cc18b3a8e9e1de::t_ea9ee1a620749e 52,115
+packages/@n8n/db/src/migrations/common/1785923614352-AddBaselineVersionIdToWorkflowReviewRequestWorkflow.ts
+  s_cc18b3a8e9e1de::t_5e01f1892eb0d8 3-6,10-26,29-36
+  s_cc18b3a8e9e1de::t_f9726c8f68ea43 1-2,7-9,27-28,37-38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "59aeaf5e81803985bf8d4bdffc7677c5614229d2",
+  "prompts": {},
+  "sessions": {
+    "s_cc18b3a8e9e1de": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "fcc2b1b0-d1c8-445a-b611-e870d0582ea1",
+        "model": "auto-smart"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

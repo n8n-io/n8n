@@ -1,0 +1,20 @@
+packages/@n8n/workflow-sdk/src/workflow-builder.test.ts
+  s_0ea06607e37c93::t_9ada45991f7482 955-1057
+  s_0ea06607e37c93::t_b8597e5cc0198d 11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "86a34f20f2a238e2841a7c36e977b2d9d94789b8",
+  "prompts": {},
+  "sessions": {
+    "s_0ea06607e37c93": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1d19578d-6e39-4af6-860b-134625fd9a81",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}

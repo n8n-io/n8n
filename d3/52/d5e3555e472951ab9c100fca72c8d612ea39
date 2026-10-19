@@ -1,0 +1,11 @@
+packages/cli/src/modules/agents/tools/workflow-tool-factory.ts
+  ai_agent 33,385-388
+packages/cli/src/modules/agents/tools/__tests__/workflow-tool-factory.test.ts
+  ai_agent 3-9,13,107-157,159,163-172,175,178,184-185,195
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d352d5e3555e472951ab9c100fca72c8d612ea39",
+  "prompts": {}
+}

@@ -1,0 +1,25 @@
+packages/@n8n/engine/src/execution/execution-store.ts
+  s_77655ca8fe3a59::t_d92aef9247aee7 72-75
+packages/@n8n/engine/src/execution/execution.types.ts
+  s_77655ca8fe3a59::t_ccf2f26e55f288 5-8
+packages/@n8n/engine/src/execution/step-ready-handler.ts
+  s_77655ca8fe3a59::t_700b28dba62ce4 82-85,148-151
+packages/@n8n/engine/src/execution/step-settled-handler.ts
+  s_77655ca8fe3a59::t_4fbf4bce4a0b25 82-83
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "30d70e80551bd1140d200f1c22f1089cc255bcdd",
+  "prompts": {},
+  "sessions": {
+    "s_77655ca8fe3a59": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d2c5a11b-62c7-4839-ab99-8421196be4d4",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

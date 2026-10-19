@@ -1,0 +1,21 @@
+packages/nodes-base/package.json
+  s_467ede6818687a::t_ae9c97e22b1129 283
+packages/nodes-base/credentials/OAuth2OidcBearer.credentials.ts
+  s_467ede6818687a::t_1d67b20e78a38b 1-73
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "621e1c02556d5557213f4eaed21d82c0b841a569",
+  "prompts": {},
+  "sessions": {
+    "s_467ede6818687a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1ee96959-2d33-4d77-9268-45e16a4f8ac8",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

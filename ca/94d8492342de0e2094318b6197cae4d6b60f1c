@@ -1,0 +1,16 @@
+packages/cli/src/modules/git-connections.ee/__tests__/import-manifest-bridge.test.ts
+  ai_agent 1,139-235
+packages/cli/src/modules/git-connections.ee/import-manifest-bridge.ts
+  ai_agent 56,66,146-147,149-150,159-177,182,189,196,203,210,217,224,235,240-243
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ca94d8492342de0e2094318b6197cae4d6b60f1c",
+  "prompts": {},
+  "humans": {
+    "h_760178ed151f13": {
+      "author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

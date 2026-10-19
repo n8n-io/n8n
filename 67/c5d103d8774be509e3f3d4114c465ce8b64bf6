@@ -1,0 +1,24 @@
+packages/cli/src/modules/instance-ai/instance-context.service.ts
+  s_5be157f6e91b85::t_9fcf3b5f0705eb 155-158,186-203,351-352,533-534,555,560,603-605,611-615,627-634,636,641-645
+packages/cli/test/integration/instance-context.service.test.ts
+  s_5be157f6e91b85::t_5e79d220dcd051 12-13,15,763-770,772-780
+packages/cli/src/modules/instance-ai/__tests__/instance-context.service.test.ts
+  s_5be157f6e91b85::t_4a385aed73b0ac 348-359,366-370,374-376,410-415,422-423,435-438
+  s_5be157f6e91b85::t_5e79d220dcd051 360-365,371-373,377-409,416-421,424-434,677-679,681,1433-1434
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "67c5d103d8774be509e3f3d4114c465ce8b64bf6",
+  "prompts": {},
+  "sessions": {
+    "s_5be157f6e91b85": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0ae78-4d49-7f60-886d-eb5d6b02f635",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

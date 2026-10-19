@@ -1,0 +1,25 @@
+packages/@n8n/ai-workflow-builder.ee/src/tools/web/templates.ts
+  s_3c9225efd33cbd::t_8fc15f20c6d899 127
+packages/@n8n/ai-workflow-builder.ee/src/subgraphs/discovery.subgraph.ts
+  s_3c9225efd33cbd::t_4ac323e7740dda 310
+packages/@n8n/ai-workflow-builder.ee/evaluations/cli/argument-parser.ts
+  s_3c9225efd33cbd::t_e220fb284c0492 453,457
+packages/@n8n/ai-workflow-builder.ee/evaluations/support/constants.ts
+  s_3c9225efd33cbd::t_b70981cd70db5d 43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "07500dd4e624a44367ad6f03a54f4c5d3786df69",
+  "prompts": {},
+  "sessions": {
+    "s_3c9225efd33cbd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dfd214cb-25dc-4b1c-988d-c582a046f4a6",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

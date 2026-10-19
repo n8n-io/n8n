@@ -1,0 +1,38 @@
+packages/cli/src/workflows/workflow-execution.service.ts
+  s_60010117747385::t_e82eb54941a760 766-773
+  s_60010117747385::t_4cadf92fb5fa78 80
+  s_60010117747385::t_1c9efd889a8f51 284
+  s_60010117747385::t_ecfe0b7687195b 43,50
+  s_60010117747385::t_4005ba57f41bab 285
+packages/cli/src/workflows/__tests__/workflow-execution.service.test.ts
+  s_60010117747385::t_22a1db35631a45 187
+  s_60010117747385::t_d0b9b9e2c0c634 31,35
+  s_60010117747385::t_7b1ba4c80d6b77 132
+  s_60010117747385::t_2fa0636250ef13 800,875,1049,1208,1354,1461,1517
+  s_60010117747385::t_36e0f956ead10c 449-483
+  s_60010117747385::t_81eeccb138a946 157-186,188-194
+packages/frontend/editor-ui/src/app/views/NodeView.test.ts
+  s_60010117747385::t_a391ccc0bf56ad 76
+  s_60010117747385::t_26677e42ed1417 1,10,13
+  s_60010117747385::t_315bd4769d9e63 174-212
+packages/frontend/editor-ui/src/app/views/NodeView.vue
+  s_60010117747385::t_392f72a34c10cd 333
+packages/cli/test/integration/workflows/workflows.controller.test.ts
+  s_60010117747385::t_e4da5cee8a8b41 47,4909-4942
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c690b82dcf06bb9d3cafc78b7be3d338a96a5569",
+  "prompts": {},
+  "sessions": {
+    "s_60010117747385": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "0592fee5-3f07-426b-b790-b78db2262042",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Nour Alhadi Mahmoud <nour.mahmoud@n8n.io>"
+    }
+  }
+}

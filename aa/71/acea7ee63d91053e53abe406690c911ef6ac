@@ -1,0 +1,163 @@
+packages/frontend/editor-ui/src/features/workflows/templates/views/TemplatesWorkflowView.vue
+  s_1632f63e86b323::t_b0545748ef13a5 231
+  s_1632f63e86b323::t_75a411b5fef572 230
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/NodeCreator.vue
+  s_1632f63e86b323::t_75a411b5fef572 203
+  s_1632f63e86b323::t_b0545748ef13a5 204
+packages/frontend/editor-ui/src/app/css/plugins/_vueflow.scss
+  s_1632f63e86b323::t_b8600f7dac7d1e 1,62,152
+packages/frontend/editor-ui/src/features/core/dataTable/components/DataTableCard.vue
+  s_1632f63e86b323::t_b0545748ef13a5 152
+  s_1632f63e86b323::t_75a411b5fef572 151,205
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterInputList.vue
+  s_1632f63e86b323::t_75a411b5fef572 1071
+  s_1632f63e86b323::t_b0545748ef13a5 1072
+packages/frontend/editor-ui/src/features/ndv/agents/components/AgentNdvReferencedSummary.vue
+  s_1632f63e86b323::t_e4a40f08c2c47a 186,234
+packages/frontend/editor-ui/src/features/credentials/components/CredentialCard.vue
+  s_1632f63e86b323::t_b0545748ef13a5 314
+  s_1632f63e86b323::t_75a411b5fef572 313,358
+packages/frontend/editor-ui/src/features/workflows/components/WorkflowSettings/WorkflowSettings.vue
+  s_1632f63e86b323::t_b0545748ef13a5 1828
+  s_1632f63e86b323::t_75a411b5fef572 1827
+packages/frontend/editor-ui/src/features/core/folders/components/FolderCard.vue
+  s_1632f63e86b323::t_75a411b5fef572 374,433
+  s_1632f63e86b323::t_b0545748ef13a5 375
+packages/frontend/editor-ui/src/features/agents/components/SessionDetailPanel.vue
+  s_1632f63e86b323::t_e4a40f08c2c47a 463,585
+packages/frontend/editor-ui/src/features/shared/tags/components/TagsDropdown.vue
+  s_1632f63e86b323::t_75a411b5fef572 273
+  s_1632f63e86b323::t_b0545748ef13a5 274
+packages/frontend/editor-ui/src/app/components/WarningTooltip.vue
+  s_1632f63e86b323::t_75a411b5fef572 17
+  s_1632f63e86b323::t_b0545748ef13a5 18
+packages/frontend/editor-ui/src/app/components/MainSidebar.vue
+  s_1632f63e86b323::t_75a411b5fef572 410
+  s_1632f63e86b323::t_b0545748ef13a5 411
+packages/frontend/editor-ui/src/features/core/dataTable/components/DataTableBreadcrumbs.vue
+  s_1632f63e86b323::t_b0545748ef13a5 151
+  s_1632f63e86b323::t_75a411b5fef572 150
+packages/frontend/editor-ui/src/app/components/SettingsSidebar.vue
+  s_1632f63e86b323::t_b0545748ef13a5 54
+  s_1632f63e86b323::t_75a411b5fef572 53
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/ItemTypes/NodeItem.vue
+  s_1632f63e86b323::t_75a411b5fef572 276
+  s_1632f63e86b323::t_b0545748ef13a5 277
+packages/frontend/editor-ui/src/features/agents/components/AgentCard.vue
+  s_1632f63e86b323::t_b0545748ef13a5 237
+  s_1632f63e86b323::t_75a411b5fef572 236,287
+packages/frontend/editor-ui/src/features/agents/components/AgentMarkdownChunk.vue
+  s_1632f63e86b323::t_e4a40f08c2c47a 29,32
+packages/frontend/editor-ui/src/features/workflows/templates/views/TemplatesCollectionView.vue
+  s_1632f63e86b323::t_b0545748ef13a5 174
+  s_1632f63e86b323::t_75a411b5fef572 173
+packages/frontend/editor-ui/src/features/execution/executions/components/workflow/WorkflowExecutionsList.vue
+  s_1632f63e86b323::t_75a411b5fef572 111,123
+  s_1632f63e86b323::t_b0545748ef13a5 112
+packages/frontend/editor-ui/src/app/components/layouts/ResourcesListLayout.vue
+  s_1632f63e86b323::t_b0545748ef13a5 787
+  s_1632f63e86b323::t_75a411b5fef572 786,818,829,861
+packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowDetails.vue
+  s_1632f63e86b323::t_75a411b5fef572 407
+  s_1632f63e86b323::t_b0545748ef13a5 408
+packages/frontend/editor-ui/src/features/ai/chatHub/components/ChatStarter.vue
+  s_1632f63e86b323::t_75a411b5fef572 169,183,197,216,228
+  s_1632f63e86b323::t_b0545748ef13a5 170
+packages/frontend/editor-ui/src/app/components/VersionCard.vue
+  s_1632f63e86b323::t_b0545748ef13a5 75
+  s_1632f63e86b323::t_75a411b5fef572 74
+packages/frontend/editor-ui/src/features/core/dataTable/components/dataGrid/ColumnHeader.vue
+  s_1632f63e86b323::t_b0545748ef13a5 260
+  s_1632f63e86b323::t_75a411b5fef572 259,301
+packages/frontend/editor-ui/src/features/core/folders/components/ProjectBreadcrumb.vue
+  s_1632f63e86b323::t_b0545748ef13a5 109
+  s_1632f63e86b323::t_75a411b5fef572 108
+packages/frontend/editor-ui/src/app/components/UpdatesPanel.vue
+  s_1632f63e86b323::t_b0545748ef13a5 83
+  s_1632f63e86b323::t_75a411b5fef572 82
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectHeader.vue
+  s_1632f63e86b323::t_75a411b5fef572 626,693
+  s_1632f63e86b323::t_b0545748ef13a5 627
+packages/frontend/editor-ui/src/features/collaboration/projects/views/ProjectVariables.vue
+  s_1632f63e86b323::t_75a411b5fef572 476
+  s_1632f63e86b323::t_b0545748ef13a5 477
+packages/frontend/editor-ui/src/features/core/auth/views/SettingsPersonalView.vue
+  s_1632f63e86b323::t_b0545748ef13a5 509
+  s_1632f63e86b323::t_75a411b5fef572 508
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ExpressionEditModal.vue
+  s_1632f63e86b323::t_b0545748ef13a5 283
+  s_1632f63e86b323::t_75a411b5fef572 282
+packages/frontend/editor-ui/src/app/views/NodeView.vue
+  s_1632f63e86b323::t_75a411b5fef572 2168,2187
+packages/frontend/editor-ui/src/app/components/SaveButton.vue
+  s_1632f63e86b323::t_b0545748ef13a5 81
+  s_1632f63e86b323::t_75a411b5fef572 80
+packages/frontend/editor-ui/src/app/components/Badge.vue
+  s_1632f63e86b323::t_75a411b5fef572 31
+  s_1632f63e86b323::t_b0545748ef13a5 32
+packages/frontend/editor-ui/src/features/ai/chatHub/components/ChatSidebar.vue
+  s_1632f63e86b323::t_75a411b5fef572 111
+  s_1632f63e86b323::t_b0545748ef13a5 112
+packages/frontend/editor-ui/src/features/execution/executions/components/workflow/WorkflowExecutionAnnotationTags.ee.vue
+  s_1632f63e86b323::t_b0545748ef13a5 145
+  s_1632f63e86b323::t_75a411b5fef572 144
+packages/frontend/editor-ui/src/app/components/NpsSurvey.vue
+  s_1632f63e86b323::t_75a411b5fef572 193
+  s_1632f63e86b323::t_b0545748ef13a5 194
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/ItemTypes/ActionItem.vue
+  s_1632f63e86b323::t_b0545748ef13a5 125
+  s_1632f63e86b323::t_75a411b5fef572 124
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/ItemTypes/CategoryItem.vue
+  s_1632f63e86b323::t_75a411b5fef572 43
+  s_1632f63e86b323::t_b0545748ef13a5 44
+packages/frontend/editor-ui/src/app/components/layouts/PageViewLayout.vue
+  s_1632f63e86b323::t_75a411b5fef572 17,29
+  s_1632f63e86b323::t_b0545748ef13a5 18
+packages/frontend/editor-ui/src/app/components/WorkflowCard.vue
+  s_1632f63e86b323::t_b0545748ef13a5 795
+  s_1632f63e86b323::t_75a411b5fef572 794,883,903
+packages/frontend/editor-ui/src/features/workflows/templates/views/TemplatesSearchView.vue
+  s_1632f63e86b323::t_b0545748ef13a5 421
+  s_1632f63e86b323::t_75a411b5fef572 420
+packages/frontend/editor-ui/src/features/workflows/workflowHistory/components/WorkflowHistoryContent.vue
+  s_1632f63e86b323::t_b0545748ef13a5 185
+  s_1632f63e86b323::t_75a411b5fef572 184,227
+packages/frontend/editor-ui/src/features/ndv/settings/components/NodeWebhooks.vue
+  s_1632f63e86b323::t_75a411b5fef572 254
+  s_1632f63e86b323::t_b0545748ef13a5 255
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterInput.vue
+  s_1632f63e86b323::t_75a411b5fef572 2221
+  s_1632f63e86b323::t_b0545748ef13a5 2222
+packages/frontend/editor-ui/src/features/ndv/runData/components/RunDataBinary.vue
+  s_1632f63e86b323::t_75a411b5fef572 164
+  s_1632f63e86b323::t_b0545748ef13a5 165
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/Panel/SearchBar.vue
+  s_1632f63e86b323::t_75a411b5fef572 78
+  s_1632f63e86b323::t_b0545748ef13a5 79
+packages/frontend/editor-ui/src/app/views/WorkflowsView.vue
+  s_1632f63e86b323::t_b0545748ef13a5 2579
+  s_1632f63e86b323::t_75a411b5fef572 2578
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/Renderers/ItemsRenderer.vue
+  s_1632f63e86b323::t_b0545748ef13a5 238
+  s_1632f63e86b323::t_75a411b5fef572 237
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/Panel/NodesListPanel.vue
+  s_1632f63e86b323::t_84206c5e4a2604 470
+  s_1632f63e86b323::t_75a411b5fef572 342,469
+  s_1632f63e86b323::t_b0545748ef13a5 343
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "aa71acea7ee63d91053e53abe406690c911ef6ac",
+  "prompts": {},
+  "sessions": {
+    "s_1632f63e86b323": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4d6776a1-f0ba-465d-aee8-fbe9017fd08a",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,48 @@
+packages/frontend/editor-ui/src/features/agents/composables/useAgentInlineCreate.ts
+  s_fca2302987ca57::t_67317339833e39 2,8,12,16,18-25,31-32,40-42,46-47,54,57-75,80-94,96-101,103,111
+packages/frontend/editor-ui/src/features/agents/composables/useAgentInlineCreate.test.ts
+  s_fca2302987ca57::t_a0d4ba7346cd11 39
+  s_fca2302987ca57::t_6530e0be42af20 72-112
+  s_fca2302987ca57::t_6c8093f7dcf5a4 12-13,17-19,22-25
+packages/frontend/editor-ui/src/features/ndv/settings/components/NodeSettings.vue
+  s_fca2302987ca57::t_e6ce571ba10057 808
+packages/frontend/editor-ui/src/features/ndv/agents/components/AgentNdvBuilderBanner.vue
+  s_fca2302987ca57::t_06a174e1498a5d 5-8
+  s_fca2302987ca57::t_777ea6986ada83 38-40,44
+  s_fca2302987ca57::t_f8e0ca088acc27 22-23
+  s_fca2302987ca57::t_b14b15677734e4 67
+packages/frontend/editor-ui/src/app/composables/useWorkflowSaving.test.ts
+  s_fca2302987ca57::t_41fc0127dd82d4 766-802
+packages/frontend/editor-ui/src/features/ndv/agents/components/__tests__/AgentNdvBuilderBanner.test.ts
+  s_fca2302987ca57::t_aa3318e83e0d70 31
+  s_fca2302987ca57::t_3eb0df80477491 10,12
+  s_fca2302987ca57::t_df8cf325169f5b 48
+  s_fca2302987ca57::t_aa7948fde77fbf 80
+  s_fca2302987ca57::t_8f1e37e20f9422 83,89-90,96,100,104
+packages/frontend/editor-ui/src/features/agents/composables/useAgentNavigation.ts
+  ai_agent 12-15
+packages/frontend/editor-ui/src/app/composables/useWorkflowSaving.ts
+  s_fca2302987ca57::t_51a0308d471ba4 241-245
+  s_fca2302987ca57::t_965b22552b195d 542-544
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f3d78d957e70e6cac37a5f3f023376f5488ebf67",
+  "prompts": {},
+  "humans": {
+    "h_7555c3ee6524cf": {
+      "author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_fca2302987ca57": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a3ee84d5-1fd7-46c3-ba48-70e2c843ec51",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

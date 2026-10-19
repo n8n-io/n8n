@@ -1,0 +1,42 @@
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_0a1a804042c15b::t_aa8ad3693b122c 3541-3545,3547,3561,3566
+  s_0a1a804042c15b::t_6e06c7223a4125 7238
+  s_0a1a804042c15b::t_4a2fa51df93435 3580-3614
+  s_0a1a804042c15b::t_8f4c0898051898 7191,7193-7200,7205,7207-7235,7241-7242
+  s_0a1a804042c15b::t_c608908ccf8855 3615-3639
+packages/cli/test/migration/1790870286644-add-agent-background-job-pause.test.ts
+  s_0a1a804042c15b::t_9a8d939f72c642 35,94-96,102,108-110,114,116,120-124,126-148
+packages/cli/test/integration/database/repositories/agent-background-job.repository.test.ts
+  s_0a1a804042c15b::t_a82fb3d1fc3ade 156-157,181-186,189-190
+packages/@n8n/agents/src/runtime/loop/agent-runtime.ts
+  s_0a1a804042c15b::t_aa8ad3693b122c 409-411
+  s_0a1a804042c15b::t_4a2fa51df93435 782,793
+  s_0a1a804042c15b::t_689e835296b2e3 344,368,390-395
+packages/cli/src/modules/agents/repositories/agent-background-job.repository.ts
+  s_0a1a804042c15b::t_981f01cfc43201 127
+  s_0a1a804042c15b::t_a82fb3d1fc3ade 251
+packages/@n8n/db/src/migrations/common/1790870286644-AddAgentBackgroundJobPause.ts
+  s_0a1a804042c15b::t_9a8d939f72c642 1-2,39-47
+packages/@n8n/instance-ai/evaluations/discovery/__tests__/stream-status.test.ts
+  s_0a1a804042c15b::t_e82d44292bcecd 61-66
+packages/@n8n/instance-ai/evaluations/discovery/stream-status.ts
+  s_0a1a804042c15b::t_9bed9ddbc14fd2 24-25
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_0a1a804042c15b::t_12536cc6f96768 575
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "0589015d868fc6cc8d0b3f19140edff03e860d0a",
+  "prompts": {},
+  "sessions": {
+    "s_0a1a804042c15b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0f809-8653-78a0-a76c-4b8db92d8a2b",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,9 @@
+packages/cli/src/modules/breaking-changes/__tests__/migration-finding.repository.integration.test.ts
+  s_f6cb9d564dd95e::t_2123343fd38506 355
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "19a2c4a1b83de4d2df98492ea69a04754c375be6",
+  "prompts": {}
+}

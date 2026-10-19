@@ -1,0 +1,21 @@
+packages/@n8n/instance-ai/src/agent/sanitize-mcp-descriptions.ts
+  s_f7c2833ce88101::t_ecad0e6710c838 64-78,91-92,100-101
+packages/@n8n/instance-ai/src/agent/__tests__/sanitize-mcp-descriptions.test.ts
+  s_f7c2833ce88101::t_eb3c50a6eda666 43-67
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "72bb1cdd83671f915eb6f0a85fbb4a78ef7187a4",
+  "prompts": {},
+  "sessions": {
+    "s_f7c2833ce88101": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "16ffbeaa-edd2-458f-90fb-28b08e8b9b37",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,37 @@
+packages/frontend/@n8n/frontend-module-sdk/src/registries/modalRegistry.test.ts
+  s_0d2d14e22371df::t_5463a7a9e339d9 52,56,62,67-89
+  s_0d2d14e22371df::t_b07ae8c79f3279 90
+packages/frontend/editor-ui/src/app/moduleInitializer/moduleInitializer.test.ts
+  s_0d2d14e22371df::t_b14c1b10fdd0cc 37-52
+packages/frontend/@n8n/frontend-module-sdk/src/registries/pushHandlerRegistry.ts
+  s_0d2d14e22371df::t_b8ddedf97c867f 10-16
+packages/frontend/@n8n/frontend-module-sdk/src/registries/modalRegistry.ts
+  s_0d2d14e22371df::t_8834f4ae113fc2 25-32
+packages/frontend/@n8n/frontend-module-sdk/src/registries/commandRegistry.test.ts
+  s_0d2d14e22371df::t_332b566a31733c 33,37,42-55
+packages/frontend/@n8n/frontend-module-sdk/src/registries/pushHandlerRegistry.test.ts
+  s_0d2d14e22371df::t_deab9238ab699e 53-67
+packages/frontend/@n8n/frontend-module-sdk/src/registries/commandRegistry.ts
+  s_0d2d14e22371df::t_ca38ff5b8280e9 16-22
+packages/frontend/editor-ui/src/app/init/index.test.ts
+  s_0d2d14e22371df::t_5eae71a2530962 334-351,357-358
+  s_0d2d14e22371df::t_f4c98a88a2d45d 352-356
+  s_0d2d14e22371df::t_579f479710cbf8 25,30-53
+  s_0d2d14e22371df::t_685189408ec17b 54
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "669395cb828393650ce72c5f62e36182eb5e6ba3",
+  "prompts": {},
+  "sessions": {
+    "s_0d2d14e22371df": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6cee16c6-15cc-4cb4-b940-321c269359ec",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

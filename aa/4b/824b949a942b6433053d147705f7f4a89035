@@ -1,0 +1,46 @@
+packages/cli/src/modules/agents/__tests__/agent-active-chat-run.registry.test.ts
+  s_7992ce551c0761::t_f5957696151578 6-11,14,16-19,21-23,26-38,41,43-45,52,56,64-65,69,74-101,104
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  s_7992ce551c0761::t_ddcd3c8475063b 524-526,532,537
+packages/cli/src/modules/agents/__tests__/agent-chat.controller.test.ts
+  s_7992ce551c0761::t_107544cf1d8278 530-538,540-555,560-564
+  s_7992ce551c0761::t_4f7e54b72f34dc 235,436,464,496,556-559
+  s_7992ce551c0761::t_c004e7ed94a853 539
+  s_7992ce551c0761::t_75ce56d253822d 316-321,351-356,404-409
+  s_7992ce551c0761::t_16dffe6df3059f 196,226,340,393,487
+packages/cli/src/modules/agents/agent-chat.controller.ts
+  s_7992ce551c0761::t_38d1ace4e6aded 16,254,257-258,263,269,275-279
+  s_7992ce551c0761::t_088fdb1a4263eb 126-129,131,140,211,217
+packages/@n8n/api-types/src/agents/dto.ts
+  s_7992ce551c0761::t_bab0cf8e7d9d87 252-257
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_7992ce551c0761::t_13140e468561c2 204-206,208-210
+  s_7992ce551c0761::t_7c16e532e093b5 20
+  s_7992ce551c0761::t_80f4b9e4babbb1 217
+packages/cli/src/modules/agents/agent-active-chat-run.registry.ts
+  s_7992ce551c0761::t_210db0de14f226 12-18,27-30,41-43,45,48,51,55-61,83-84
+  s_7992ce551c0761::t_63909993adc400 1,4-11,67-79
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  s_7992ce551c0761::t_d66638cf4535a6 911,1013-1016,1021
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_7992ce551c0761::t_95a33f916420ed 17
+  s_7992ce551c0761::t_fb9b3ab09e7a4d 740-780
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  s_7992ce551c0761::t_bede2ef13e6d2e 2418,2425-2430,2441,2449-2454,2469
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "aa4b824b949a942b6433053d147705f7f4a89035",
+  "prompts": {},
+  "sessions": {
+    "s_7992ce551c0761": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "97b9d2e0-9d03-4d3f-aca8-b5997f18a690",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

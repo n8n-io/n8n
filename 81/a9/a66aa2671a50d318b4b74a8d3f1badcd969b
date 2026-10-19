@@ -1,0 +1,34 @@
+packages/cli/src/modules/n8n-packages/__tests__/blocking-issue-schema-contract.test.ts
+  s_8631ec10eb1199::t_60e58f6b634c72 10,13,18,21,24,29,32,35,38,43,48,51,54,57,60,63,66,69,75
+  s_8631ec10eb1199::t_a7f60a9be9c2e2 9
+  s_8631ec10eb1199::t_beed2af30a397c 73
+  s_8631ec10eb1199::t_ebb6f155276dbe 74
+  s_8631ec10eb1199::t_a28687d206cf5b 11-12,16-17,19-20,27-28,30-31,33-34,36-37,41-42,46-47,52-53,55-56,58-59,61-62,67-68,70-71
+  s_8631ec10eb1199::t_356874db5a2765 14-15
+  s_8631ec10eb1199::t_23e9aa0266b6a0 22-23
+  s_8631ec10eb1199::t_6b59f94824b9f7 25-26
+  s_8631ec10eb1199::t_915a11a36313a2 39-40
+  s_8631ec10eb1199::t_a90334ef53ad93 44-45
+  s_8631ec10eb1199::t_a33b99e00eaef0 49-50
+  s_8631ec10eb1199::t_5807bf6ca5031e 64-65
+  s_8631ec10eb1199::t_4a71f9d89c8197 72
+packages/@n8n/api-types/src/dto/packages/import-blocking-issue.schema.ts
+  s_8631ec10eb1199::t_34eaf018a966d9 7-8,12
+  s_8631ec10eb1199::t_8f45ad386acb9f 9-11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "81a9a66aa2671a50d318b4b74a8d3f1badcd969b",
+  "prompts": {},
+  "sessions": {
+    "s_8631ec10eb1199": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77132272-9e69-4c36-85e9-f1136efb4942",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

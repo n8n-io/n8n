@@ -1,0 +1,31 @@
+packages/frontend/@n8n/design-system/src/components/N8nActionDropdown/ActionDropdown.vue
+  s_687b6c06271385::t_60556b52f6c08c 126
+packages/frontend/editor-ui/src/app/components/MainHeader/ActionsDropdownMenu.vue
+  s_687b6c06271385::t_f315ae622fc009 495-496
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_687b6c06271385::t_fdffc4b63babc6 1881-1882
+  s_687b6c06271385::t_1bf3fbfb52834e 1877
+packages/frontend/@n8n/design-system/src/components/N8nActionDropdown/ActionDropdown.types.ts
+  s_687b6c06271385::t_202fb44dd084d1 10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "304cfcc2868c27093233883368faf04ac7039c90",
+  "prompts": {},
+  "humans": {
+    "h_a348dde7c02e89": {
+      "author": "r00gm <raul00gm@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_687b6c06271385": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0d84fd11-3ba3-44d6-b50f-62f1d56ace4f",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

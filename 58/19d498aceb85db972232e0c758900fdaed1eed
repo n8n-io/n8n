@@ -1,0 +1,42 @@
+packages/@n8n/config/src/configs/endpoints.config.ts
+  s_4b11bf3d703a7c::t_e01a3433d6f9dc 131
+packages/cli/src/metrics/prometheus/db-pool-metrics.service.ts
+  s_4b11bf3d703a7c::t_debdbd05423aa8 79
+  s_4b11bf3d703a7c::t_e01a3433d6f9dc 57-78,80
+packages/cli/src/metrics/prometheus/__tests__/db-pool-metrics.service.test.ts
+  s_c44b5f776d7214::t_7b983b096a08a4 36,43-44,62-68,217-244
+  s_4b11bf3d703a7c::t_6d91060963b62b 28-31,107,149-152,157-163
+  s_4b11bf3d703a7c::t_debdbd05423aa8 153-156
+packages/@n8n/db/src/connection/db-connection-monitor.ts
+  s_4b11bf3d703a7c::t_e01a3433d6f9dc 331,333,667,669-671,673,675,677,689
+  s_c44b5f776d7214::t_11683f1e146696 668,672,674,676,678-688
+packages/@n8n/db/src/connection/__tests__/db-connection-monitor.test.ts
+  s_4b11bf3d703a7c::t_debdbd05423aa8 602-604,737-742,892-894
+  s_4b11bf3d703a7c::t_6d91060963b62b 651,672-675,715-736,743-751,987,1637-1658
+packages/@n8n/db/src/connection/db-connection-metrics.ts
+  s_4b11bf3d703a7c::t_e01a3433d6f9dc 6-7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5819d498aceb85db972232e0c758900fdaed1eed",
+  "prompts": {},
+  "sessions": {
+    "s_4b11bf3d703a7c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0ecda-c1da-7ad1-9af7-10db94f32833",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    },
+    "s_c44b5f776d7214": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5f4c8fed-f6e2-42d5-a888-c6200480fd31",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

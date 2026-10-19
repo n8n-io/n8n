@@ -1,0 +1,24 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChannelModal.test.ts
+  s_ba69ba1c5b4f62::t_28c8d914181bdc 262
+  s_ba69ba1c5b4f62::t_83ab89f5a3f9e2 433-453,461-474
+  s_ba69ba1c5b4f62::t_4c712d76be2e99 199-209,211
+  s_ba69ba1c5b4f62::t_a9adf7ee0df0c0 454-460
+  s_ba69ba1c5b4f62::t_d898e44495a327 172
+  s_ba69ba1c5b4f62::t_f4e5b0621bbb7d 38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "745dd61036fa75d0765777da6736d6b50aba41f1",
+  "prompts": {},
+  "sessions": {
+    "s_ba69ba1c5b4f62": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3efc7b03-680d-4f33-a39b-aa29a80b9979",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

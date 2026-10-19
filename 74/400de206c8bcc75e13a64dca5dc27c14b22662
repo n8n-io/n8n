@@ -1,0 +1,39 @@
+packages/cli/src/modules/agents/background/agent-background-job.service.ts
+  s_1f7d8576c09ae3::t_37df3eb0a0dc2d 20,133-134,139-141
+  s_1f7d8576c09ae3::t_387f872272c64d 5,341-342,344-357,362,365,373,375,380
+packages/cli/src/modules/agents/tools/workflow-tool-factory.ts
+  s_1f7d8576c09ae3::t_6ba9e89592ae4b 1132-1137
+packages/cli/src/modules/agents/background/__tests__/agent-background-job.service.test.ts
+  s_1f7d8576c09ae3::t_911c16ea9357c4 110-112,590-592
+  s_1f7d8576c09ae3::t_37df3eb0a0dc2d 66,119-127,374
+  s_1f7d8576c09ae3::t_387f872272c64d 481-487,491-492,504,522-523,533,540-546,551-552,559-570,576
+packages/cli/src/executions/execution-persistence.ts
+  s_1f7d8576c09ae3::t_6ba9e89592ae4b 597-601
+packages/@n8n/db/src/repositories/execution.repository.ts
+  s_1f7d8576c09ae3::t_6ba9e89592ae4b 1144-1149
+packages/cli/src/modules/agents/tools/__tests__/workflow-tool-factory.test.ts
+  s_1f7d8576c09ae3::t_6ba9e89592ae4b 785,791,794,817,820,841,847,901-915
+packages/cli/src/modules/agents/repositories/agent-background-job.repository.ts
+  s_1f7d8576c09ae3::t_37df3eb0a0dc2d 72-74
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "74400de206c8bcc75e13a64dca5dc27c14b22662",
+  "prompts": {},
+  "humans": {
+    "h_7555c3ee6524cf": {
+      "author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_1f7d8576c09ae3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec17cc43-a699-45b4-9137-bfe54625493c",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

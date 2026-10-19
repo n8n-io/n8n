@@ -1,0 +1,23 @@
+packages/@n8n/db/src/entities/scheduled-task.ts
+  s_4ee530e0a1dff5::t_d59646aa64c81d 33-36
+packages/@n8n/scheduler/src/core/types/task.ts
+  s_4ee530e0a1dff5::t_f0a3611af6730d 6-14
+packages/@n8n/db/src/entities/execution-entity.ts
+  s_4ee530e0a1dff5::t_e8b92394d0903a 35-38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0adff70f10c9bba555dc915a30b2537e156b95f3",
+  "prompts": {},
+  "sessions": {
+    "s_4ee530e0a1dff5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4f28b5cb-2006-4bb1-8bdd-f25bc20db78d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

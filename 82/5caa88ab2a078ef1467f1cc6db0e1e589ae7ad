@@ -1,0 +1,46 @@
+packages/@n8n/decorators/src/multi-main/__tests__/on-multi-main-event.test.ts
+  s_02a0fcf06bb060::t_7a28feab163be8 174-195
+  s_02a0fcf06bb060::t_bc3d5b530ecebe 16
+  s_02a0fcf06bb060::t_53a7ef7ef3976f 14,19
+packages/cli/src/scaling/__tests__/multi-main-setup.ee.test.ts
+  s_02a0fcf06bb060::t_9a36c581101954 4
+  s_02a0fcf06bb060::t_54bfdd46c7b4e6 101-111,118-122,124-127,129-136
+  s_02a0fcf06bb060::t_f6b8e021a5f476 5
+  s_02a0fcf06bb060::t_bd30e938b25410 112-117,123,128
+packages/@n8n/decorators/src/multi-main/index.ts
+  s_02a0fcf06bb060::t_4e19e9cd81af49 2
+packages/cli/src/metrics/prometheus/instance-role-metrics.service.ts
+  s_02a0fcf06bb060::t_5a20920f1f109e 37,42
+  s_02a0fcf06bb060::t_7cbd28de6d2698 15
+packages/@n8n/decorators/src/multi-main/__tests__/multi-main-metadata.test.ts
+  s_02a0fcf06bb060::t_d630181a2bc3b4 22
+  s_02a0fcf06bb060::t_01e7081dc28bc7 8-13
+  s_02a0fcf06bb060::t_82df7694341bae 1-7,14,17-20,23-73
+  s_02a0fcf06bb060::t_473d0809d346e3 16
+  s_02a0fcf06bb060::t_609fc4cf902c91 15,21
+packages/@n8n/decorators/src/multi-main/multi-main-metadata.ts
+  s_02a0fcf06bb060::t_631386036f514f 10
+  s_02a0fcf06bb060::t_175053c885414e 16-17,20,23-31
+packages/cli/src/scaling/multi-main-setup.ee.ts
+  s_02a0fcf06bb060::t_1ea466fb22045a 90-91,93,97,99-100
+  s_02a0fcf06bb060::t_d9cd0255cb63ae 94-96
+  s_02a0fcf06bb060::t_d7fba20b58073b 5
+packages/cli/src/modules/agents/agents.module.ts
+  s_02a0fcf06bb060::t_caa588feb56512 45-46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "825caa88ab2a078ef1467f1cc6db0e1e589ae7ad",
+  "prompts": {},
+  "sessions": {
+    "s_02a0fcf06bb060": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bd6fc6b3-7d4c-4603-9882-0ee8a3a05fef",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

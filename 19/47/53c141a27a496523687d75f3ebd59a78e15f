@@ -1,0 +1,37 @@
+packages/cli/src/controllers/__tests__/security-settings.controller.test.ts
+  s_125503df4e1a2e::t_5568cdc23f2475 107-128
+  s_125503df4e1a2e::t_319aff8fd5b9ed 1-47,59-60,62-82,85-89,91-100,103-106,129-152
+  s_125503df4e1a2e::t_07f0daf538dd97 48-58
+  s_125503df4e1a2e::t_917a345845b174 61,83-84,90,101-102
+packages/cli/src/events/relays/log-streaming.event-relay.ts
+  s_125503df4e1a2e::t_16b0c974553a8c 1056-1057
+  s_125503df4e1a2e::t_6965f3a49a49f6 1058-1059
+packages/cli/src/controllers/security-settings.controller.ts
+  s_125503df4e1a2e::t_7af5822660fb5b 135
+  s_125503df4e1a2e::t_6ff7505763aa4c 122-123,126
+  s_125503df4e1a2e::t_2db73d63771380 119-121,124-125
+  s_125503df4e1a2e::t_8fb97683099825 136
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_125503df4e1a2e::t_db1d89951f9dd5 2755,2757-2758,2761-2766,2768-2769
+  s_125503df4e1a2e::t_a43cb762c998da 2756,2759-2760,2767
+packages/cli/src/events/maps/relay.event-map.ts
+  s_125503df4e1a2e::t_573e40e586f9c3 986-989
+  s_125503df4e1a2e::t_067cf792706f4f 5
+  s_125503df4e1a2e::t_41ada5363709fa 990-991
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "194753c141a27a496523687d75f3ebd59a78e15f",
+  "prompts": {},
+  "sessions": {
+    "s_125503df4e1a2e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "928867f7-8d4d-4264-8e86-ac3d893a1295",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}

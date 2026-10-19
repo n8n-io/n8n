@@ -1,0 +1,20 @@
+packages/@n8n/instance-ai/src/agent/baked-skills.prompt.ts
+  s_b554255274c910::t_aa901b30215696 34-41,46,50-52
+  s_b554255274c910::t_53618257d23a0d 9-13,23-26,30-32,43-45,47-49,53-55,57,65,68,72,76,78
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "777f05486aaa28f2a7c7fde20f0e127139cc194f",
+  "prompts": {},
+  "sessions": {
+    "s_b554255274c910": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3140306f-6570-4f4b-a3c4-fcb24e80b2f0",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

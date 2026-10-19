@@ -1,0 +1,26 @@
+packages/@n8n/config/test/config.test.ts
+  s_088ff38dd5d51f::t_add4d2250dba72 203
+packages/cli/src/events/relays/activity.event-relay.ts
+  s_088ff38dd5d51f::t_85d7b772d37b59 168-171,413-415
+packages/@n8n/config/src/configs/activity-log.config.ts
+  s_088ff38dd5d51f::t_add4d2250dba72 13-18,20
+packages/cli/src/events/__tests__/activity-event-relay.test.ts
+  s_088ff38dd5d51f::t_665a4570c780ee 5,133-138,141-146,266-292,298-304
+  s_088ff38dd5d51f::t_b656a9d4c92e6e 293-297
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "eb5a727e574fedce3f70b926496d3881d87cf999",
+  "prompts": {},
+  "sessions": {
+    "s_088ff38dd5d51f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "95b8e2c8-0712-4f25-a78d-8e30044b968c",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

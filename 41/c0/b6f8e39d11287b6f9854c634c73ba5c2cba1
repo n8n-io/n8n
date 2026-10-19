@@ -1,0 +1,16 @@
+packages/cli/src/workflows/__tests__/workflow.service.test.ts
+  h_ed1b2d65e81e8e 6,12,17,26,40,2031-2117
+packages/cli/src/workflows/workflow.service.ts
+  h_ed1b2d65e81e8e 1627,1629-1637
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "41c0b6f8e39d11287b6f9854c634c73ba5c2cba1",
+  "prompts": {},
+  "humans": {
+    "h_ed1b2d65e81e8e": {
+      "author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

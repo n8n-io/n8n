@@ -1,0 +1,31 @@
+packages/cli/src/oauth/oauth.service.ts
+  s_1084be12b30fd7::t_330bcc0bfb5ab1 891
+packages/cli/src/oauth/__tests__/oauth.service.test.ts
+  s_1084be12b30fd7::t_330bcc0bfb5ab1 5520,5522-5531,5542,5544-5546,5548-5550,5552
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/oauth.ts
+  s_1084be12b30fd7::t_330bcc0bfb5ab1 302-305
+packages/@n8n/backend-common/src/locking/single-flight-lease.ts
+  s_1084be12b30fd7::t_330bcc0bfb5ab1 32,35
+  s_1084be12b30fd7::t_ea7eabec3bc55f 12
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/__tests__/oauth.test.ts
+  s_1084be12b30fd7::t_330bcc0bfb5ab1 1,1301-1317
+  s_1084be12b30fd7::t_e92c880454a9ac 1318-1319
+packages/@n8n/backend-common/src/locking/__tests__/single-flight-lease.test.ts
+  s_1084be12b30fd7::t_330bcc0bfb5ab1 65,71,77,79-81,92
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "d31760b258ec998792cd4677cc7cf106ce25cef4",
+  "prompts": {},
+  "sessions": {
+    "s_1084be12b30fd7": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a067f0-aff3-7543-8805-a1d1f5e6c6e8",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

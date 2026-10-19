@@ -1,0 +1,26 @@
+packages/cli/src/modules/dynamic-credentials.ee/services/credential-resolver-workflow.service.ts
+  s_07f6cbee224442::t_88088b719c8089 153-156
+  s_07f6cbee224442::t_9efbfac51244fe 195-197
+  s_07f6cbee224442::t_79d238321dd926 82-87
+packages/nodes-base/nodes/Form/test/utils.test.ts
+  s_07f6cbee224442::t_54678e8f5c5e7c 1606-1624
+packages/cli/src/modules/dynamic-credentials.ee/services/__tests__/credential-resolver-workflow.service.test.ts
+  s_07f6cbee224442::t_93d392d6228931 737
+  s_07f6cbee224442::t_fe805cfdbd214f 712-736,738-767
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "1e33dcc1f96d709051d17a6d7d61d8d1f2b24d65",
+  "prompts": {},
+  "sessions": {
+    "s_07f6cbee224442": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "005d5905-da67-4b5b-a4ca-bd102a3b68b5",
+        "model": "grok-4.6"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

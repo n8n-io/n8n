@@ -1,0 +1,20 @@
+packages/@n8n/cli/src/client.ts
+  h_9b272a633435fb 217-221
+packages/@n8n/cli/src/commands/git-connections/push.ts
+  h_9b272a633435fb 9,11,13-14,16-20
+packages/@n8n/cli/src/index.ts
+  h_9b272a633435fb 25,96
+packages/@n8n/cli/package.json
+  h_9b272a633435fb 66-68
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "fe909a47e6c66eabe602387ef3d6e1ad98bb454f",
+  "prompts": {},
+  "humans": {
+    "h_9b272a633435fb": {
+      "author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,27 @@
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_36a80d7b4e1ce7::t_153b4d3f8407e7 370-373
+packages/cli/src/modules/n8n-packages/io/directory/directory-package-reader.ts
+  s_36a80d7b4e1ce7::t_798bc2640a9ae1 72-76
+  s_36a80d7b4e1ce7::t_a73f4966c41202 29-31
+packages/cli/src/modules/n8n-packages/__tests__/import-project-from-directory.integration.test.ts
+  s_36a80d7b4e1ce7::t_cd582eebbca9a7 122-142
+  s_36a80d7b4e1ce7::t_f66f3d53d891e9 20
+packages/cli/src/modules/n8n-packages/io/__tests__/directory-package-reader.test.ts
+  s_36a80d7b4e1ce7::t_dfe1c36df7bc1c 95-112
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0cebfc7406f6f2ac3b548b4b1d73db79d14eb3b1",
+  "prompts": {},
+  "sessions": {
+    "s_36a80d7b4e1ce7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "58da7293-0d11-4839-947b-e8a69a8cf135",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

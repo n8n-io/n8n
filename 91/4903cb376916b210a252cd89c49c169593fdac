@@ -1,0 +1,23 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderHeader.vue
+  s_87b9d838281452::t_2b646351006951 279,283-284
+  s_87b9d838281452::t_cc377e7f6141ac 305
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderPreviewHeader.vue
+  s_87b9d838281452::t_4931d602c3defd 184,188-189
+  s_87b9d838281452::t_9b03a572b1730f 210
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.13",
+  "base_commit_sha": "914903cb376916b210a252cd89c49c169593fdac",
+  "prompts": {},
+  "sessions": {
+    "s_87b9d838281452": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019efbde-29c3-71e0-8b84-aa536d808f9f",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

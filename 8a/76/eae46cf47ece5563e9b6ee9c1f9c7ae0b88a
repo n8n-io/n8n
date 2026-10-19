@@ -1,0 +1,39 @@
+packages/cli/src/modules/mcp/tools/workflow-builder/mcp-instructions.ts
+  s_0e08c7fce8146f::t_fe5e6c60f4304a 107
+packages/cli/src/modules/mcp/tools/schemas.ts
+  s_0e08c7fce8146f::t_8b30fc863d4b14 193-201
+  s_0e08c7fce8146f::t_9f6a1879053c13 166-168,172,181,183
+  s_0e08c7fce8146f::t_11e56721e2f83a 149
+packages/cli/src/modules/mcp/tools/get-workflow-details.tool.ts
+  s_0e08c7fce8146f::t_6341a280f6cc19 30,32,36
+  s_0e08c7fce8146f::t_f8586bcba79c76 163-173,175,178-179,188-207
+  s_0e08c7fce8146f::t_7be0c64851f338 141,143-145,151
+  s_0e08c7fce8146f::t_deb354aba7c177 229,232-242,248-255
+  s_0e08c7fce8146f::t_65097246137bbc 71-72,75,78
+  s_0e08c7fce8146f::t_3ec1fdaa2070e0 108
+  s_0e08c7fce8146f::t_407264d16eb43b 2
+  s_0e08c7fce8146f::t_c1b96912fa48ed 88
+packages/cli/src/modules/mcp/tools/list-credentials.tool.ts
+  s_0e08c7fce8146f::t_595d902a9973ef 121
+packages/cli/src/modules/mcp/__tests__/get-workflow-details.tool.test.ts
+  s_0e08c7fce8146f::t_412d0ec1021303 294
+  s_0e08c7fce8146f::t_7e06a7f038dd09 211-274,276-293
+  s_0e08c7fce8146f::t_dd00a8153a701d 275
+  s_0e08c7fce8146f::t_15dc6d3bb8d5f8 189,194
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8a76eae46cf47ece5563e9b6ee9c1f9c7ae0b88a",
+  "prompts": {},
+  "sessions": {
+    "s_0e08c7fce8146f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "567c8c0f-c773-4264-9398-d24b5e19af0f",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}

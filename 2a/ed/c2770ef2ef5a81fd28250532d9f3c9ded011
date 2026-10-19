@@ -1,0 +1,27 @@
+packages/cli/src/modules/provisioning.ee/__tests__/role-resolver.service.ee.test.ts
+  s_60f5633681e4e3::t_2b2af6cd6efe2b 67,272,305,324,347,367,390,410,453,471,475,503-504,525,529,550,557,717,743
+  s_60f5633681e4e3::t_9ec29974f1f277 341
+packages/cli/test/integration/inbound-auth-core/trusted-source-identity.service.integration.test.ts
+  s_60f5633681e4e3::t_fcdca6d6564bf9 488-514,1009-1012,1014,1016-1025,1027
+  s_60f5633681e4e3::t_415caea415063a 1013,1015,1026
+packages/@n8n/db/src/repositories/project.repository.ts
+  s_60f5633681e4e3::t_2b2af6cd6efe2b 110-114,118-128
+packages/cli/src/modules/provisioning.ee/role-resolver.service.ee.ts
+  s_60f5633681e4e3::t_2b2af6cd6efe2b 54,102
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2aedc2770ef2ef5a81fd28250532d9f3c9ded011",
+  "prompts": {},
+  "sessions": {
+    "s_60f5633681e4e3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "233f5aab-347d-4e5c-a26e-befd59b0253f",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

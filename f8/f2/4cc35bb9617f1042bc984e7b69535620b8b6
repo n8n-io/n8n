@@ -1,0 +1,36 @@
+packages/cli/src/modules/instance-ai/storage/db-snapshot-storage.ts
+  s_83994b641c4cd8::t_4a6ed88ffb4aca 176-180,187
+packages/cli/src/modules/instance-ai/repositories/instance-ai-event-log.repository.ts
+  s_83994b641c4cd8::t_4a6ed88ffb4aca 109-112,121,128
+packages/cli/src/modules/instance-ai/instance-ai-memory.service.ts
+  s_83994b641c4cd8::t_11c3a6fbe82960 87-89,92,103,105-114,116-121,123
+  s_83994b641c4cd8::t_c57f9f973d0ef7 434,438-440,444,447,479-490
+  s_83994b641c4cd8::t_39e26a09ad2031 471-474
+packages/cli/src/modules/instance-ai/storage/typeorm-agent-memory.ts
+  s_83994b641c4cd8::t_2c839c94e0f292 432-436,439-441,445-446,448-450,457
+packages/cli/src/modules/instance-ai/repositories/__tests__/instance-ai-run-snapshot.repository.test.ts
+  s_83994b641c4cd8::t_4baa0077245db9 17,28-30,33,35-41,55,57
+packages/cli/src/modules/instance-ai/repositories/instance-ai-run-snapshot.repository.ts
+  s_83994b641c4cd8::t_4a6ed88ffb4aca 2,13-16,20,22,24-25,28-29
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-memory.service.test.ts
+  s_83994b641c4cd8::t_bffd7c1aa76c4f 70,74,1148-1157,1163-1165,1168-1191,1193-1208,1216-1219,1249-1259
+packages/cli/src/modules/instance-ai/repositories/__tests__/instance-ai-event-log.repository.test.ts
+  s_83994b641c4cd8::t_f236323bdd01ce 91-107,109-128
+  s_83994b641c4cd8::t_839777934081f6 108
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f8f24cc35bb9617f1042bc984e7b69535620b8b6",
+  "prompts": {},
+  "sessions": {
+    "s_83994b641c4cd8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2e3324c0-2234-4e06-a772-7f89716ca439",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

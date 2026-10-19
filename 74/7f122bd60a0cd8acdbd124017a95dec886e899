@@ -1,0 +1,23 @@
+packages/@n8n/node-engine-compatibility/src/__tests__/v1-step-executor.test.ts
+  s_7d582b41f4f5d6::t_b384f434cdddb6 421-427,430
+packages/@n8n/node-engine-compatibility/src/errors.ts
+  s_7d582b41f4f5d6::t_ba8dbd2ec51617 91-93,96
+packages/@n8n/node-engine-compatibility/src/v1-step-executor.ts
+  s_7d582b41f4f5d6::t_a84341eae1371a 54-59,63-65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "747f122bd60a0cd8acdbd124017a95dec886e899",
+  "prompts": {},
+  "sessions": {
+    "s_7d582b41f4f5d6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "63bff858-2ef6-4f03-8a08-35f7ca19bbb0",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

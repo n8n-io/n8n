@@ -1,0 +1,77 @@
+packages/cli/src/credentials/executing-user-identifier.interface.ts
+  s_cab6267f4b831b::t_f82e73e65510c1 1-11
+packages/@n8n/db/src/repositories/credentials.repository.ts
+  s_cab6267f4b831b::t_96ba1d59744404 62-68
+packages/cli/test/integration/database/repositories/credentials.repository.test.ts
+  s_cab6267f4b831b::t_8a4e12d923a772 772-807
+packages/cli/src/modules/dynamic-credentials.ee/dynamic-credentials.module.ts
+  s_cab6267f4b831b::t_55a7913c47c17c 60-68
+packages/cli/src/modules/redaction/__tests__/dynamic-credentials-context-hook.test.ts
+  s_5cd1d59e405fc0::t_3045a54b627f88 89-102
+  s_cab6267f4b831b::t_2d85d8a4c9ba58 4,8-9,15,18,21,25-27,33,35-36,43-44,105,111-113,121,131,149,154
+  s_cab6267f4b831b::t_477851d99cf825 106-110,114-117,122-124,127-128,136,139-141,145,150,155
+  s_5cd1d59e405fc0::t_1b1567a18d3187 40,45-49
+  s_cab6267f4b831b::t_f1bcd7eec8929a 2-3,5-7,10-12,14,16-17,29-32,39,41,50-51,67-68,71,73,76,84,103-104,147-148,151,157-158
+  s_5cd1d59e405fc0::t_f30c9f1bcc58ca 1,13
+  s_cab6267f4b831b::t_54717757113893 23-24,28
+  s_cab6267f4b831b::t_db3c69118d7e9e 19-20,22,34,37-38,42,52-66,69-70,72,74-75,77-83,85-88,118-120,125-126,129-130,132-135,137-138,142-144,146,152-153,156
+  s_cab6267f4b831b::t_f6f1bc80bb97b1 159-161
+packages/cli/src/modules/redaction/dynamic-credentials-context-hook.ts
+  s_cab6267f4b831b::t_9af0cadd9a861f 10,12-13,21,23-25,43-47,78-81
+  s_5cd1d59e405fc0::t_2a10e4c7d33af1 22
+  s_cab6267f4b831b::t_bfe8db06bd3c6f 2-9,11,14-20,26-36,40,49-52,55-59,71,74,85-86
+  s_5cd1d59e405fc0::t_aa6461d5cd926e 61-70,72
+  s_5cd1d59e405fc0::t_21e51198b4e44c 1
+  s_cab6267f4b831b::t_baf4224c80414c 73,75-77,84
+  s_cab6267f4b831b::t_5ac9fda86a2d4e 37-39,41-42,48,53-54,60,82-83
+packages/cli/src/modules/redaction/executions/execution-redaction.service.ts
+  s_5cd1d59e405fc0::t_d640093399932a 122-130
+  s_cab6267f4b831b::t_d41cbabf590376 279-281,283-293,296-299
+packages/cli/src/modules/redaction/redaction.module.ts
+  s_cab6267f4b831b::t_78b31ec7c64421 18-21
+packages/cli/src/modules/dynamic-credentials.ee/credential-resolvers/identifiers/n8n-identifier.ts
+  s_cab6267f4b831b::t_a85295b7dce81f 205-241,247-249
+  s_5cd1d59e405fc0::t_5275b2c1881b3a 242-246
+  s_5cd1d59e405fc0::t_e641ca538e16a8 1
+  s_5cd1d59e405fc0::t_5c389f9d840bd7 105
+packages/cli/src/modules/dynamic-credentials.ee/credential-resolvers/identifiers/__tests__/n8n-identifier.test.ts
+  s_5cd1d59e405fc0::t_ab97a014d72f28 624-627
+  s_5cd1d59e405fc0::t_44a08e39842a11 2
+  s_5cd1d59e405fc0::t_3614ee1dd2815c 20,28,35-40
+  s_cab6267f4b831b::t_c40ab95caf9b0b 548-623,628-629
+  s_cab6267f4b831b::t_4142aa44aa824b 630-632
+packages/cli/src/credentials/executing-user-identifier-proxy.ts
+  s_cab6267f4b831b::t_c7df8e5b403787 1-24
+packages/cli/src/modules/redaction/executions/__tests__/execution-redaction.service.test.ts
+  s_5cd1d59e405fc0::t_4436a551714ecd 723-750
+  s_cab6267f4b831b::t_49809ad53de159 105-118
+  s_cab6267f4b831b::t_2f2785ada74456 904-964
+  s_cab6267f4b831b::t_376da05d2f4e02 61,73
+packages/workflow/src/execution-context.ts
+  s_cab6267f4b831b::t_881c816fa4e27c 232-239
+  s_cab6267f4b831b::t_f88c96b89b3b6b 242-252
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "a8776cd9fd2691ec06f772dc255e758b6da27c02",
+  "prompts": {},
+  "sessions": {
+    "s_5cd1d59e405fc0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ce6317ee-d05e-4821-a26a-fa9be537c80c",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    },
+    "s_cab6267f4b831b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0b3a91b6-1765-45a5-b515-627644e27f16",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

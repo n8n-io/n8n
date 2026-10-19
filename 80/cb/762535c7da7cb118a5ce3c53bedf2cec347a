@@ -1,0 +1,21 @@
+packages/cli/src/modules/source-control.ee/source-control-git.service.ee.ts
+  s_8934c3192be4fc::t_535f3cbb39d679 443
+  s_8934c3192be4fc::t_345d36c395a7d9 428
+  s_8934c3192be4fc::t_c292b809dbee3d 410
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "80cb762535c7da7cb118a5ce3c53bedf2cec347a",
+  "prompts": {},
+  "sessions": {
+    "s_8934c3192be4fc": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "341dab61-92d3-4c81-abdd-09b3b25b7d0d",
+        "model": "grok-4.6"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

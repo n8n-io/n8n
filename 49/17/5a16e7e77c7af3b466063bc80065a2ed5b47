@@ -1,0 +1,19 @@
+packages/testing/playwright/tests/infrastructure/agents/preview-chat-recovery.spec.ts
+  s_c4a4e9a494a612::t_e70252f1b9af2a 51-52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "49175a16e7e77c7af3b466063bc80065a2ed5b47",
+  "prompts": {},
+  "sessions": {
+    "s_c4a4e9a494a612": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0c931-0a24-7242-93f9-890df461d8e8",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

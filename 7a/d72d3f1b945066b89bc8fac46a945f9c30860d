@@ -1,0 +1,21 @@
+packages/cli/src/credentials/__tests__/credentials.controller.test.ts
+  s_4e3d3e4345da23::t_4df9c0fb75c1cd 106-109
+  s_4e3d3e4345da23::t_bf4a712fc7ec67 571
+  s_4e3d3e4345da23::t_8ef604b22e0f49 73
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "7ad72d3f1b945066b89bc8fac46a945f9c30860d",
+  "prompts": {},
+  "sessions": {
+    "s_4e3d3e4345da23": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "97a09d56-678f-4b6b-9440-b4810e176788",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

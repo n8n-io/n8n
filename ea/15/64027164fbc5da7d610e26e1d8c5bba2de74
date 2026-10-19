@@ -1,0 +1,11 @@
+packages/cli/src/scheduling/poll-trigger-node/__tests__/poll-trigger-task-handler.test.ts
+  ai_agent 315-328
+packages/cli/src/scheduling/poll-trigger-node/poll-trigger-task-handler.ts
+  ai_agent 231-235
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ea1564027164fbc5da7d610e26e1d8c5bba2de74",
+  "prompts": {}
+}

@@ -1,0 +1,31 @@
+packages/cli/src/modules/agents/agent-message-queue.service.ts
+  s_d27d09d94cc9ff::t_aa52c52ca01324 44,449,477,479-480,540,607
+  s_d27d09d94cc9ff::t_b9ebb014e5b639 1,409-412,450-453,493-498,516-519,570-573
+  s_d27d09d94cc9ff::t_0ce413e6eb86ac 679-686
+packages/cli/src/modules/agents/repositories/agent-message-queue.repository.ts
+  s_d27d09d94cc9ff::t_b9ebb014e5b639 136-139
+packages/cli/test/integration/agents/agent-message-queue.test.ts
+  s_d27d09d94cc9ff::t_c247ce7f3adbac 788-789,1098
+  s_d27d09d94cc9ff::t_ad67bc2cab28a9 1312
+  s_d27d09d94cc9ff::t_e368a71c9c5846 1128-1152,1164-1167,1175-1177,1180-1182
+  s_d27d09d94cc9ff::t_19d1377634a5ce 1123-1127,1153-1163,1168-1174,1178,1185-1190
+  s_d27d09d94cc9ff::t_26d2efb79fc207 1179,1183-1184
+  s_d27d09d94cc9ff::t_0ce413e6eb86ac 1263-1265,1267-1269
+  s_d27d09d94cc9ff::t_f89eb02b09df62 1294
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "40ca9bb4ae71ee64613ec45094a7492a7d09c5bc",
+  "prompts": {},
+  "sessions": {
+    "s_d27d09d94cc9ff": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0a974-d93e-7a81-998f-70beb9ade7da",
+        "model": "gpt-6-astra"
+      },
+      "human_author": null
+    }
+  }
+}

@@ -1,0 +1,30 @@
+packages/nodes-base/nodes/Google/Sheet/test/GoogleSheetsTrigger.test.ts
+  s_2e1fa95fc44f8f::t_55c22f86ff35c7 8
+  s_2e1fa95fc44f8f::t_bf7d2fbb023380 347-349,462-505
+packages/nodes-base/nodes/Google/Sheet/GoogleSheetsTrigger.node.ts
+  s_2e1fa95fc44f8f::t_7292a16e7427bc 648-652
+packages/nodes-base/nodes/Google/Sheet/GoogleSheetsTrigger.utils.ts
+  s_2e1fa95fc44f8f::t_4bc6fd153a0df4 4,19-37,44-45
+packages/nodes-base/nodes/Google/Sheet/test/GoogleSheetsTrigger.utils.test.ts
+  s_2e1fa95fc44f8f::t_99ba9c85028de8 3,42-46,48-49,51-55,62-63,77,80,83-97
+packages/nodes-base/nodes/Google/Sheet/test/v2/transport/index.test.ts
+  s_2e1fa95fc44f8f::t_d2acbe0b67c22f 63,75,82,105
+packages/nodes-base/nodes/Google/Sheet/v2/transport/index.ts
+  s_2e1fa95fc44f8f::t_6bd6026594cf28 25,27-31,49-52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a03042003f5edc8452bdeeb274cd2a07ffc201c9",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

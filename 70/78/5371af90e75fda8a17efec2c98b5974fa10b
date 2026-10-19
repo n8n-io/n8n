@@ -1,0 +1,24 @@
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_0558287d5e6974::t_0a9b5381703ad7 473
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "70785371af90e75fda8a17efec2c98b5974fa10b",
+  "prompts": {},
+  "humans": {
+    "h_760178ed151f13": {
+      "author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_0558287d5e6974": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "e95ff10e-29ad-434c-b48d-c8417a26b245",
+        "model": "grok-4.6"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

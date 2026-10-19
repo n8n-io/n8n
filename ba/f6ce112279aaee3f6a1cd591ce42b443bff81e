@@ -1,0 +1,24 @@
+packages/nodes-base/nodes/Google/Analytics/test/v1/request-urls.workflow.json
+  s_2e1fa95fc44f8f::t_58ea5e37bfb960 1-100
+packages/nodes-base/nodes/Google/Analytics/test/v2/loadOptions.test.ts
+  s_2e1fa95fc44f8f::t_c439cda0e982bc 7-10,17,19-21,23-28,32-36
+  s_2e1fa95fc44f8f::t_2aa54ce0aebf97 1-6,11-16,18,22,29-31,37-38
+packages/nodes-base/nodes/Google/Analytics/test/v1/GoogleAnalyticsV1.node.test.ts
+  s_2e1fa95fc44f8f::t_379338ad65004e 1-46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "baf6ce112279aaee3f6a1cd591ce42b443bff81e",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

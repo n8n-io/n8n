@@ -1,0 +1,98 @@
+packages/cli/src/modules/agents/integrations/agent-chat-integration.ts
+  s_5cff78ced0afbf::t_9243cb0a0d3e28 114-116,121-122,125,133,354-355,358,362
+  s_5cff78ced0afbf::t_31dc0f1a154bb6 402-403
+packages/cli/src/modules/agents/integrations/platforms/telegram-integration.ts
+  s_5cff78ced0afbf::t_44d7563006a578 20,100-105,111-116
+packages/cli/src/modules/agents/integrations/callback-store.ts
+  s_5cff78ced0afbf::t_52a80d80f6b26e 12
+  s_5cff78ced0afbf::t_f1de2bfd422d64 16,38
+  s_5cff78ced0afbf::t_da799504c17cdf 39-42
+packages/cli/src/modules/agents/builder/skills/external-services.skill.ts
+  s_5cff78ced0afbf::t_5c8a3e63b54e89 18,70-71
+packages/cli/src/modules/agents/integrations/platforms/discord-integration.ts
+  s_5cff78ced0afbf::t_8edaba5e851ae2 85,91,113
+  s_5cff78ced0afbf::t_5d221be5a65624 114,268-271
+  s_5cff78ced0afbf::t_d2f4a900a02b84 272-279,327-330
+  s_5cff78ced0afbf::t_d253dcded4a92a 16,22,40,140,238,243,246,357-362,364-369
+  s_5cff78ced0afbf::t_74e15d570377c3 27
+packages/cli/src/modules/agents/integrations/platforms/slack-integration.ts
+  s_5cff78ced0afbf::t_5835d98f7f6d55 21,29,85-91
+packages/cli/src/modules/agents/integrations/platforms/slack-operations.ts
+  s_5cff78ced0afbf::t_dfa116142353f7 5-6
+packages/cli/src/modules/agents/integrations/platforms/__tests__/telegram/recorded-integration.test.ts
+  s_5cff78ced0afbf::t_1aa87f1e693446 327,337-340,349-353,356-361
+packages/cli/src/modules/agents/integrations/integration-action-executor.ts
+  s_5cff78ced0afbf::t_bac2cd33afc164 384-388
+  s_5cff78ced0afbf::t_0cd7fde4c5b069 20,50-54,60-62,139-141,187-223,396-399,424-437
+  s_5cff78ced0afbf::t_f8dde902fd0f94 8,364-369,378
+  s_5cff78ced0afbf::t_5491ecdd7abbda 224-226
+  s_5cff78ced0afbf::t_4414bbecf9ff95 438
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_5cff78ced0afbf::t_00cba6d5b423ea 7827
+packages/cli/src/modules/agents/integrations/__tests__/discord-integration.test.ts
+  s_5cff78ced0afbf::t_66388e88bef135 130-167,169-172,175-183,185,189-191,195-196
+  s_5cff78ced0afbf::t_19b799df97e814 10-13,173-174,197
+  s_5cff78ced0afbf::t_d513193dd1c295 168
+  s_5cff78ced0afbf::t_f01223bd8430ce 184,186-188,192-194
+  s_5cff78ced0afbf::t_a7da2c784719b5 198-200
+packages/cli/src/modules/agents/integrations/__tests__/discord-operations.test.ts
+  s_5cff78ced0afbf::t_67af15e6ef0bdc 135,148
+  s_5cff78ced0afbf::t_b62cff134824f6 1
+packages/cli/src/modules/agents/integrations/__tests__/integration-action-executor.test.ts
+  s_5cff78ced0afbf::t_acc90f0d4e9f4e 79-83,331,564-569,683-718
+  s_5cff78ced0afbf::t_710dbdc2206079 374-378,382
+  s_5cff78ced0afbf::t_d85733825bea1a 719
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_5cff78ced0afbf::t_2d394d502bdfcd 142-144
+  s_5cff78ced0afbf::t_60cbd7c2570780 280-284,519-522
+packages/cli/src/modules/agents/integrations/agent-chat-hitl-resume-handler.ts
+  s_5cff78ced0afbf::t_2583cae8b0e618 7,10,37-38,90,138-143,154-159,166,182,190-191,202
+  s_5cff78ced0afbf::t_a4399823b3c72a 180-181,183-184
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-hitl-resume-handler.test.ts
+  s_5cff78ced0afbf::t_1bd0cf26aa253c 3-23,33,36-40,61,66,68
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelsSection.vue
+  s_5cff78ced0afbf::t_fe31db9cc5e27d 7-8,127-134
+  s_5cff78ced0afbf::t_e4d4bec10d3c55 135
+packages/cli/src/modules/agents/integrations/platforms/discord-operations.ts
+  s_5cff78ced0afbf::t_6440021329f237 155,159
+packages/frontend/editor-ui/src/features/ai/shared/components/ChannelSetupCard.vue
+  s_5cff78ced0afbf::t_725335a3ab26db 301
+packages/cli/src/modules/agents/integrations/platforms/__tests__/telegram/integration.test.ts
+  s_5cff78ced0afbf::t_9c36ac443f8e65 94
+packages/cli/src/modules/agents/integrations/__tests__/fixtures/telegram/recorded-session.json
+  s_5cff78ced0afbf::t_d84dca33826dee 4,7,20,28
+packages/cli/src/modules/agents/integrations/agent-chat-stream-consumer.ts
+  s_5cff78ced0afbf::t_3aa3a44265283f 7,333-338
+packages/cli/src/modules/agents/integrations/component-mapper.ts
+  s_5cff78ced0afbf::t_260b6b453c990a 64,121
+packages/cli/src/modules/agents/integrations/__tests__/callback-store.test.ts
+  s_5cff78ced0afbf::t_7b1fe9d9bab647 62
+packages/cli/src/modules/agents/integrations/integration-tool-definitions.ts
+  s_5cff78ced0afbf::t_f38e879e2cca0a 189-212,294-308,321
+packages/cli/src/modules/agents/integrations/chat-integration.service.ts
+  s_5cff78ced0afbf::t_ef887bb7ab889a 21,572,576
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  s_5cff78ced0afbf::t_d8380b2fafadff 621
+  s_5cff78ced0afbf::t_0cbb423779b8d5 619,623,628-629
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "bb1386b360a4039a84a124b3b350af62af7b1a38",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_5cff78ced0afbf": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "371811f4-d448-4155-b88e-2991c0c201de",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

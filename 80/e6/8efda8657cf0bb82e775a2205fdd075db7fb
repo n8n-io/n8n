@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/settings/security/SecuritySettings.test.ts
+  s_8ce68994e328bc::t_8f9695aef31774 485
+packages/frontend/editor-ui/src/app/components/WorkflowSettings/WorkflowSettings.test.ts
+  s_8ce68994e328bc::t_8f9695aef31774 1633,1657,1682,1699-1701,1703,1706-1707,1712,1730,1744,1764,1782,1812,1830,1849,1851,1868
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "80e68efda8657cf0bb82e775a2205fdd075db7fb",
+  "prompts": {},
+  "sessions": {
+    "s_8ce68994e328bc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "55d405f5-0eed-4fee-a11a-893b52a11ea3",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

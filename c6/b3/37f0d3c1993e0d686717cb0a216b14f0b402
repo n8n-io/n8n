@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/__tests__/setup.ts
+  s_4c2a890b05ad63::t_730d4400622e91 106-112
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "c6b337f0d3c1993e0d686717cb0a216b14f0b402",
+  "prompts": {},
+  "sessions": {
+    "s_4c2a890b05ad63": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ffb25-a196-7071-a876-be4854e86308",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

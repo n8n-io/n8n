@@ -1,0 +1,32 @@
+packages/cli/src/modules/instance-ai/event-bus/in-process-event-bus.ts
+  s_30fef7ad9a8352::t_9d74e93c77a318 4
+  s_30fef7ad9a8352::t_bf2488ba5e8656 181,187
+  s_30fef7ad9a8352::t_9759b74b58bbf1 139-152
+packages/cli/src/modules/instance-ai/event-bus/__tests__/in-process-event-bus.test.ts
+  s_30fef7ad9a8352::t_c50cdcb961d3ef 79
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.threadRuntime.ts
+  ai_agent 553-563
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/instanceAi.threadRuntime.test.ts
+  ai_agent 436-459
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "28db505b688d135bcad9f6cb8f54282649bb365b",
+  "prompts": {},
+  "humans": {
+    "h_2f80f0e06f710c": {
+      "author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_30fef7ad9a8352": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "749ac099-ea18-4261-96fc-8d5113ae7fba",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

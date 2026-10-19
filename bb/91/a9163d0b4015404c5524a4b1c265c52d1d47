@@ -1,0 +1,54 @@
+packages/cli/src/modules/dynamic-credentials.ee/credential-resolvers/identifiers/__tests__/scheduled-trigger-identity.test.ts
+  s_8a60b387177b0b::t_42a2fd1d17b116 30-35
+  s_8a60b387177b0b::t_50fcc507e42f85 2,10-28,36-55,57-83
+  s_8a60b387177b0b::t_43c01c6ff53a60 3-9
+  s_8a60b387177b0b::t_848c0562f438fb 29,56
+  s_8a60b387177b0b::t_55c925f65030e7 1
+  s_8a60b387177b0b::t_d2553b4aed83e0 84-86
+packages/core/src/execution-engine/__tests__/execution-context.test.ts
+  s_8a60b387177b0b::t_605de5f9f3b2d7 345-349,366-416
+  s_8a60b387177b0b::t_48c5ebb57455f9 350-357,359-365
+  s_8a60b387177b0b::t_985b22970dc030 358
+packages/core/src/execution-engine/execution-context.service.ts
+  s_8a60b387177b0b::t_8cc3becd3ec5de 70-90
+packages/cli/src/services/access.service.ts
+  s_8a60b387177b0b::t_fc48195df5d6b5 42-58
+packages/cli/src/modules/dynamic-credentials.ee/credential-resolvers/identifiers/__tests__/n8n-identifier.test.ts
+  s_8a60b387177b0b::t_b9a0ea04fcde00 2,8,12-13,19-22,29-41
+  s_8a60b387177b0b::t_ad769f8d8424a7 383-396,400-463
+  s_8a60b387177b0b::t_5ba571b642c41a 397-399
+packages/cli/src/modules/dynamic-credentials.ee/credential-resolvers/identifiers/scheduled-trigger-identity.ts
+  s_8a60b387177b0b::t_3c0175239acca3 1-61
+packages/cli/src/modules/dynamic-credentials.ee/credential-resolvers/identifiers/runner-binding.service.ts
+  s_8a60b387177b0b::t_2c55d32cf7d998 1-31
+packages/cli/src/modules/dynamic-credentials.ee/credential-resolvers/identifiers/n8n-identifier.ts
+  s_8a60b387177b0b::t_775cd7a8199c03 117-124,129-149
+  s_8a60b387177b0b::t_4892deb56b44b1 125-128
+  s_8a60b387177b0b::t_9dcc89c366ba1a 90
+  s_8a60b387177b0b::t_c24df2ed497523 150
+  s_8a60b387177b0b::t_aee8e34ecf2db1 1,9-12
+  s_8a60b387177b0b::t_a17ddd1fbff03f 66
+  s_8a60b387177b0b::t_9e2c1c0d06ef61 33
+  s_8a60b387177b0b::t_caca3dcd25ff5d 13-15
+  s_8a60b387177b0b::t_2b846fad7baee6 34-36
+  s_8a60b387177b0b::t_da5dcf80bec0c5 67-69
+  s_8a60b387177b0b::t_6700d733e0f034 91-93
+  s_8a60b387177b0b::t_bb89694bf974b4 151-152
+  s_8a60b387177b0b::t_1f7f1a1e9f3f0c 41,57-59
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "bb91a9163d0b4015404c5524a4b1c265c52d1d47",
+  "prompts": {},
+  "sessions": {
+    "s_8a60b387177b0b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6036dc6f-cbd9-4e33-aeb8-df572d6fed3b",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

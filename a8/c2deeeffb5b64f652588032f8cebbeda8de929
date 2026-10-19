@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/core/projectFiles/components/ProjectFilesTable.vue
+  s_3f0ffe6432fdce::t_9aae4995e081f4 243-245
+  s_3f0ffe6432fdce::t_a685ecf26e4dec 156
+  s_3f0ffe6432fdce::t_5bdd5e519f1494 228-232
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "a8c2deeeffb5b64f652588032f8cebbeda8de929",
+  "prompts": {},
+  "sessions": {
+    "s_3f0ffe6432fdce": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4cc14a12-99d6-4eca-9111-78c0e3bead04",
+        "model": "claude-opus-5"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

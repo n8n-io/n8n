@@ -1,0 +1,93 @@
+packages/nodes-base/nodes/Microsoft/Outlook/test/trigger/MicrosoftOutlookTrigger.transport.test.ts
+  s_8839eb8b0ca4cf::t_36209a28c8c11a 81,103,118,132
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/methods/listSearch.servicePrincipal.test.ts
+  s_8839eb8b0ca4cf::t_d0eea7e70524b7 55
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/node/calendar/create.test.ts
+  s_31cebdf9d3ffe1::t_4a63bbd2bccffe 7
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/node/calendar/delete.test.ts
+  s_31cebdf9d3ffe1::t_4b8d1abd776546 7
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/node/calendar/get.test.ts
+  s_31cebdf9d3ffe1::t_3f6a559ca10565 7
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/node/calendar/update.test.ts
+  s_31cebdf9d3ffe1::t_f9540b31eef918 7
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/node/contact/update.test.ts
+  s_31cebdf9d3ffe1::t_1268868882d20a 7
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/node/draft/send.test.ts
+  s_31cebdf9d3ffe1::t_5cb313da63360a 7,11
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/node/event/create.test.ts
+  s_31cebdf9d3ffe1::t_2bf1bbf153629b 7
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/node/event/getAll.test.ts
+  s_31cebdf9d3ffe1::t_2485d5fe8ccef5 7
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/node/event/getAllCalendarView.test.ts
+  s_31cebdf9d3ffe1::t_738002690208fb 7
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/node/folder/create.test.ts
+  s_31cebdf9d3ffe1::t_12c838f05c6db9 7
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/node/folderMessage/getAll.test.ts
+  s_31cebdf9d3ffe1::t_d6b20c862b0b3d 7
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/node/message/delete.test.ts
+  s_16204bc5c53227::t_6cc1ebb94701b9 23
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/node/message/get.test.ts
+  s_31cebdf9d3ffe1::t_d5aa061a4f0a49 17
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/node/message/move.test.ts
+  s_31cebdf9d3ffe1::t_87b7dabe7881da 7
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/node/message/reply.test.ts
+  s_31cebdf9d3ffe1::t_3be899238ef0b8 7,78
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/node/messageAttachment/add.test.ts
+  s_31cebdf9d3ffe1::t_f416de69525d28 92,142,228
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/node/servicePrincipal/addLargeAttachment.test.ts
+  s_8839eb8b0ca4cf::t_1a5bb3f48b51fc 97,108
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/node/servicePrincipal/contactCreate.test.ts
+  s_8839eb8b0ca4cf::t_dba9f84d069a7d 18
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/node/servicePrincipal/draftSend.test.ts
+  s_8839eb8b0ca4cf::t_25746868a93539 19,23
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/node/servicePrincipal/eventGetAll.test.ts
+  s_8839eb8b0ca4cf::t_c1e827a966c3bd 19
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/node/servicePrincipal/folderGetAll.test.ts
+  s_8839eb8b0ca4cf::t_160651749c0f01 18
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/node/servicePrincipal/folderGetAllPerItem.test.ts
+  s_8839eb8b0ca4cf::t_130b519003773d 24,34,42,50
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/node/servicePrincipal/getAll.test.ts
+  s_16204bc5c53227::t_34554ece319d93 6,28
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/node/servicePrincipal/move.test.ts
+  s_8839eb8b0ca4cf::t_34c28fc1e79069 20
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/node/servicePrincipal/send.test.ts
+  s_8839eb8b0ca4cf::t_7b449c366f82a9 19
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/node/servicePrincipal/sendPerItem.test.ts
+  s_8839eb8b0ca4cf::t_9157e05fa3f54f 31,36
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/node/servicePrincipal/sendPerItemContinueOnFail.test.ts
+  s_8839eb8b0ca4cf::t_67e71f93685ba0 23,28
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/transport/index.test.ts
+  s_16204bc5c53227::t_53b433ec068463 223,266,281,307,320,333,437,444,499-500,517
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b136ab6db42533204a43177346f6b5ec5ae50b24",
+  "prompts": {},
+  "sessions": {
+    "s_16204bc5c53227": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-aaf0bdea6f1d472d9",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_31cebdf9d3ffe1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a29c3b63139d7fbed",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_8839eb8b0ca4cf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-aecf76be95ea01af0",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

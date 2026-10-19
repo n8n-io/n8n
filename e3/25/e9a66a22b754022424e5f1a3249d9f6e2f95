@@ -1,0 +1,23 @@
+packages/cli/src/public-api/v1/controllers/users.public.controller.ts
+  s_e2203a10d11968::t_aad0bd0826293c 174
+  s_e2203a10d11968::t_7457941a8372dd 157
+packages/cli/test/integration/public-api/users.test.ts
+  s_e2203a10d11968::t_4837de44db0170 306-316
+  s_e2203a10d11968::t_ac3c20d7d06dfa 376-391
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "e325e9a66a22b754022424e5f1a3249d9f6e2f95",
+  "prompts": {},
+  "sessions": {
+    "s_e2203a10d11968": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ed3d6309-066a-42ef-9973-7caa9371790f",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

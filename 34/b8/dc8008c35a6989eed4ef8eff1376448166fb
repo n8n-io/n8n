@@ -1,0 +1,20 @@
+packages/nodes-base/nodes/Microsoft/Outlook/v2/actions/router.ts
+  s_622e6646e7b730::t_4d8c1f79ec8b3f 2,4
+  s_622e6646e7b730::t_7f0143c9694cf2 94-95
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "34b8dc8008c35a6989eed4ef8eff1376448166fb",
+  "prompts": {},
+  "sessions": {
+    "s_622e6646e7b730": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "98c75d55-55d1-42c2-8446-e3014a2c5488",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

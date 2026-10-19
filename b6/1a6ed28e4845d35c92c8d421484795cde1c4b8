@@ -1,0 +1,86 @@
+packages/@n8n/nodes-langchain/nodes/llms/LmChatGoogleVertex/LmChatGoogleVertex.node.ts
+  s_3fb9e438e2e368::t_4993b13d3e2bb8 109,137
+  s_3fb9e438e2e368::t_7d87b5263a6215 9
+packages/@n8n/nodes-langchain/package.json
+  s_3fb9e438e2e368::t_29acdb46efce03 283
+packages/nodes-base/nodes/Jwt/Jwt.node.ts
+  s_3fb9e438e2e368::t_4993b13d3e2bb8 408,445
+packages/@n8n/client-oauth2/package.json
+  s_3fb9e438e2e368::t_76cdf221026adf 26
+packages/nodes-base/nodes/Ssh/Ssh.node.ts
+  s_3fb9e438e2e368::t_4993b13d3e2bb8 303,356
+packages/@n8n/client-oauth2/test/client-assertion.test.ts
+  s_3fb9e438e2e368::t_361de76e50dcb2 1,40
+packages/@n8n/nodes-langchain/nodes/llms/LmChatGoogleVertex/test/LmChatGoogleVertex.test.ts
+  s_3fb9e438e2e368::t_74623c29ad7aae 11
+  s_3fb9e438e2e368::t_4993b13d3e2bb8 12
+packages/@n8n/utils/src/format-pem-block.ts
+  s_3fb9e438e2e368::t_7dbfddd70e19c7 3-60
+packages/nodes-base/nodes/RespondToWebhook/RespondToWebhook.node.ts
+  s_3fb9e438e2e368::t_6ce24f77e9ac99 28
+  s_3fb9e438e2e368::t_4993b13d3e2bb8 454
+packages/nodes-base/credentials/GithubAppApi.credentials.ts
+  s_3fb9e438e2e368::t_4993b13d3e2bb8 67
+packages/nodes-base/package.json
+  s_3fb9e438e2e368::t_67dfe24a87b892 927
+packages/nodes-base/credentials/test/SalesforceJwtApi.credentials.test.ts
+  s_3fb9e438e2e368::t_4993b13d3e2bb8 18
+  s_3fb9e438e2e368::t_d34af2c217cb00 17
+packages/@n8n/utils/src/index.ts
+  s_3fb9e438e2e368::t_80c0c833d3df11 15
+packages/nodes-base/credentials/test/GithubAppApi.credentials.test.ts
+  s_3fb9e438e2e368::t_27ccabea91a83e 11
+  s_3fb9e438e2e368::t_4993b13d3e2bb8 12
+packages/nodes-base/nodes/Snowflake/GenericFunctions.ts
+  s_3fb9e438e2e368::t_4993b13d3e2bb8 38
+packages/@n8n/utils/src/format-pem-block.test.ts
+  s_3fb9e438e2e368::t_e9b54c8b432263 3-119
+packages/nodes-base/credentials/test/SalesforceJwtApi.credentials.integration.test.ts
+  s_3fb9e438e2e368::t_ca91fb1783358a 12
+  s_3fb9e438e2e368::t_4993b13d3e2bb8 13
+packages/cli/src/__tests__/credentials-helper.test.ts
+  s_3fb9e438e2e368::t_47c842e51e1df3 33
+packages/nodes-base/nodes/MQTT/GenericFunctions.ts
+  s_3fb9e438e2e368::t_4993b13d3e2bb8 46-48
+packages/nodes-base/nodes/HttpRequest/GenericFunctions.ts
+  s_3fb9e438e2e368::t_4993b13d3e2bb8 287-289,291
+packages/@n8n/client-oauth2/src/client-assertion.ts
+  s_3fb9e438e2e368::t_aa39e4d76daad4 1,16
+packages/nodes-base/nodes/Crypto/v2/CryptoV2.node.ts
+  s_3fb9e438e2e368::t_4993b13d3e2bb8 606,629,639
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsGoogleVertex/EmbeddingsGoogleVertex.node.ts
+  s_3fb9e438e2e368::t_4993b13d3e2bb8 21,131
+  s_3fb9e438e2e368::t_7d87b5263a6215 4
+packages/nodes-base/credentials/SalesforceJwtApi.credentials.ts
+  s_3fb9e438e2e368::t_4993b13d3e2bb8 101
+packages/nodes-base/nodes/Ftp/Ftp.node.ts
+  s_3fb9e438e2e368::t_4993b13d3e2bb8 561,616
+packages/nodes-base/nodes/MongoDb/GenericFunctions.ts
+  s_3fb9e438e2e368::t_4993b13d3e2bb8 199-201
+packages/nodes-base/nodes/Webhook/utils.ts
+  s_3fb9e438e2e368::t_4993b13d3e2bb8 345
+packages/nodes-base/nodes/MySql/v2/transport/index.ts
+  s_3fb9e438e2e368::t_4993b13d3e2bb8 34,38-39,67
+packages/nodes-base/nodes/Postgres/transport/index.ts
+  s_3fb9e438e2e368::t_4993b13d3e2bb8 144
+packages/nodes-base/nodes/RabbitMQ/GenericFunctions.ts
+  s_3fb9e438e2e368::t_4993b13d3e2bb8 33,35
+packages/nodes-base/nodes/Google/GenericFunctions.ts
+  s_3fb9e438e2e368::t_4993b13d3e2bb8 89
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b61a6ed28e4845d35c92c8d421484795cde1c4b8",
+  "prompts": {},
+  "sessions": {
+    "s_3fb9e438e2e368": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a4029c5d-d005-4e47-a12d-661c855664ed",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,26 @@
+packages/cli/src/modules/instance-ai/__tests__/onboarding.test.ts
+  s_06dd563c35629a::t_c9c7c45ab6dd24 152
+packages/@n8n/instance-ai/skills/suggest-automations/SKILL.md
+  s_06dd563c35629a::t_f0f38cb3048a9d 114
+  s_06dd563c35629a::t_f22ad7155d907a 56-71,73
+  s_06dd563c35629a::t_a8c76f74187dba 33-34
+  s_06dd563c35629a::t_23efd595bdf81c 28-29
+packages/cli/src/modules/instance-ai/onboarding-opening.ts
+  s_06dd563c35629a::t_10a9397ee3e9eb 34-36,38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "ff94246167e2f601871250cd4008ac4c8ec5b5bc",
+  "prompts": {},
+  "sessions": {
+    "s_06dd563c35629a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "34b28e9d-c3ab-46a7-9811-231f354e02af",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

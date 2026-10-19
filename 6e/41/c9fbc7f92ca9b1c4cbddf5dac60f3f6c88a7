@@ -1,0 +1,35 @@
+packages/@n8n/api-types/src/dto/workflow-history/workflow-version-history-public.dto.ts
+  s_d8ed300529e078::t_8d5e8ea0ef29f4 6,8-14
+  h_5d40c27a8fdfd1 7
+packages/@n8n/api-types/src/dto/tag/tag-public.dto.ts
+  s_d8ed300529e078::t_8e0b2ae2a37189 8-9,15-16
+packages/cli/src/public-api/v1/controllers/tags.public.controller.ts
+  h_5d40c27a8fdfd1 54-58
+packages/cli/src/public-api/v1/controllers/workflows.public.controller.ts
+  s_d8ed300529e078::t_8da03988fb4aeb 71-75
+packages/cli/src/public-api/v1/handlers/tags/spec/paths/getTags.generated.yml
+  s_d8ed300529e078::t_90bca0e071d9bd 32,35
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/getWorkflowHistory.generated.yml
+  s_d8ed300529e078::t_7c16d5077f9a82 46-47,50-51
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "6e41c9fbc7f92ca9b1c4cbddf5dac60f3f6c88a7",
+  "prompts": {},
+  "humans": {
+    "h_5d40c27a8fdfd1": {
+      "author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_d8ed300529e078": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "eecbddea-2084-4432-846e-23aea5392cb3",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

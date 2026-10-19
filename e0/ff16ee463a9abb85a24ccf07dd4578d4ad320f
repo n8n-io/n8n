@@ -1,0 +1,21 @@
+packages/@n8n/backend-common/src/modules/__tests__/module-registry.test.ts
+  s_68173aa6ffcdbe::t_a962fc42be71a4 45-46,49-55,90,95,129
+packages/@n8n/backend-common/src/modules/module-registry.ts
+  s_68173aa6ffcdbe::t_a962fc42be71a4 80
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "e0ff16ee463a9abb85a24ccf07dd4578d4ad320f",
+  "prompts": {},
+  "sessions": {
+    "s_68173aa6ffcdbe": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0c33a-4899-75d0-a084-b9351b70f77c",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

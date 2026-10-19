@@ -1,0 +1,12 @@
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "7b336199262ff8e6e51d1c7e430c1dd190ba32f3",
+  "prompts": {},
+  "humans": {
+    "h_5d40c27a8fdfd1": {
+      "author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

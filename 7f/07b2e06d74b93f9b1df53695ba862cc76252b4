@@ -1,0 +1,19 @@
+packages/cli/src/modules/agents/integrations/__tests__/helpers/replay-test-helpers.ts
+  s_b04c58447561ba::t_27e9262d53f4b3 214-220,222-223
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "7f07b2e06d74b93f9b1df53695ba862cc76252b4",
+  "prompts": {},
+  "sessions": {
+    "s_b04c58447561ba": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "e3df8d2d-7a5d-4b4e-82c4-2e70a7479fe8",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

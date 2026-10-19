@@ -1,0 +1,503 @@
+packages/cli/src/executions/__tests__/execution-crash.service.test.ts
+  s_4f495571aef8fe::t_d629b92de0d7d4 1-2,10-29,33,37,40-42,44,46-47,49,63-75,83
+packages/cli/src/events/maps/relay.event-map.ts
+  ai_agent 54-60,634-641
+packages/cli/src/executions/__tests__/enqueued-execution-recovery.service.test.ts
+  ai_agent 87-89,112-115,129-131,153-156
+packages/cli/src/executions/__tests__/execution-recovery.service.integration.test.ts
+  s_4f495571aef8fe::t_e820c7f9afc75f 59,67-72,85,201-254,391,404,417-420
+  s_4f495571aef8fe::t_608beeaa581159 226-252
+packages/cli/src/executions/execution-recovery.service.ts
+  ai_agent 127-134,248-249
+  s_4f495571aef8fe::t_608beeaa581159 248-254
+packages/@n8n/db/src/repositories/__tests__/execution.repository.test.ts
+  s_4f495571aef8fe::t_ee2ad966eff74b 271-277
+packages/cli/src/__tests__/workflow-runner.test.ts
+  s_4f495571aef8fe::t_e64702776e84cb 153
+packages/cli/src/workflow-runner.ts
+  ai_agent 46,102,144-154,160,171
+packages/cli/src/executions/execution-crash.service.ts
+  ai_agent 2,12-24
+packages/@n8n/db/src/repositories/execution.repository.ts
+  ai_agent 393,398
+packages/cli/src/modules/otel/otel.module.ts
+  ai_agent 12-13
+packages/cli/src/modules/otel/otel-lifecycle-handler.ts
+  ai_agent 13-15,52,55-61,171-181
+  s_4f495571aef8fe::t_608beeaa581159 173-175
+packages/cli/src/modules/otel/__tests__/execution-level-tracer.test.ts
+  ai_agent 3,322-379
+  s_4f495571aef8fe::t_608beeaa581159 329-334,344-345,347,349-352
+packages/cli/src/eventbus/message-event-bus-writer/message-event-bus-log-writer.ts
+  ai_agent 313
+packages/cli/src/eventbus/event-message-classes/index.ts
+  ai_agent 67
+packages/cli/src/modules/otel/__tests__/otel-workflow-tracing.integration.test.ts
+  ai_agent 128-164
+packages/cli/src/events/relays/log-streaming.event-relay.ts
+  ai_agent 144,373-374,1035-1045
+packages/cli/src/modules/otel/execution-level-tracer.ts
+  ai_agent 7-8,12,126-163
+  s_4f495571aef8fe::t_608beeaa581159 139,250-253,312,317
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  ai_agent 190,1484-1495
+packages/cli/src/modules/otel/__tests__/otel-lifecycle-handler.test.ts
+  ai_agent 12-13,114,431,586,645-719,773,788,992,1085
+  s_4f495571aef8fe::t_608beeaa581159 12,671,680,685,689-709
+packages/cli/src/events/__tests__/log-streaming-event-relay.test.ts
+  ai_agent 2013-2058
+packages/cli/src/modules/otel/otel.constants.ts
+  ai_agent 45-46
+packages/cli/src/modules/otel/execution-level-tracer.types.ts
+  ai_agent 3-4,42-49
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  ai_agent 3196-3239
+packages/cli/test/integration/database/repositories/execution.repository.test.ts
+  s_4f495571aef8fe::t_608beeaa581159 191,195,201
+packages/frontend/editor-ui/src/features/shared/contextMenu/composables/__snapshots__/useContextMenu.test.ts.snap
+  ai_agent 61,168,315,462,569,728,887,1046,1205,1317
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_b1a69ed75d6063::t_fd81e1be45c7b0 2058-2060
+packages/frontend/editor-ui/src/features/shared/contextMenu/composables/useContextMenu.test.ts
+  s_b1a69ed75d6063::t_bbf8bf6287fe32 27,1030-1041,1043-1052,1054-1056,1058-1062,1064-1066,1068-1072
+  s_b1a69ed75d6063::t_6da7f6f219826c 1042,1053,1057,1063
+  s_b1a69ed75d6063::t_b09b3a59b17d6a 1067
+  s_326dd039c6d306::t_7147f2ad4aefa8 1037-1038
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/CanvasNodeDefault.test.ts
+  s_b1a69ed75d6063::t_f8f8bd5c703a94 9,78,93-97,151-162,164-217
+  s_b1a69ed75d6063::t_e92330dcedb244 163
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasNode.ts
+  s_b1a69ed75d6063::t_4693314f58e69d 38
+  s_b1a69ed75d6063::t_c4a5b542e2b2f2 74
+  s_326dd039c6d306::t_7147f2ad4aefa8 7,70
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/parts/CanvasNodeStatusIcons.vue
+  s_b1a69ed75d6063::t_2e62b6687d0ad4 5
+  s_b1a69ed75d6063::t_73dbf6710dd169 31
+  ai_agent 68-71
+  s_b1a69ed75d6063::t_d2ab768d295cce 72-75
+  s_b1a69ed75d6063::t_b4633bfbbfa738 76-78
+packages/frontend/editor-ui/src/app/composables/useCanvasOperations.test.ts
+  s_b1a69ed75d6063::t_52683c3b24a1a9 50,255,4544-4556
+  s_326dd039c6d306::t_7147f2ad4aefa8 255-257,4551-4552
+packages/frontend/editor-ui/src/app/composables/useNodeTypeRestriction.test.ts
+  s_b1a69ed75d6063::t_aecdc45762a98a 1-33,35-46,48-65
+  s_b1a69ed75d6063::t_44f83423c2fd10 34,47
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/CanvasNodeRenderer.test.ts
+  s_b1a69ed75d6063::t_e0d3576985e70e 7,9,26-28
+packages/frontend/editor-ui/src/features/shared/contextMenu/composables/useContextMenuItems.ts
+  s_b1a69ed75d6063::t_50da713a716ce0 25
+  s_b1a69ed75d6063::t_a9ae545efefb09 97
+  s_b1a69ed75d6063::t_8321ee74f2a31e 149,151-153,155-156
+  s_b1a69ed75d6063::t_0f23cde48dcda5 150
+  s_b1a69ed75d6063::t_52f1969c983ea5 488-491
+  s_b1a69ed75d6063::t_c447d925375ca8 497
+  ai_agent 573
+  s_326dd039c6d306::t_7147f2ad4aefa8 25,148
+packages/frontend/editor-ui/src/app/composables/useCanvasOperations.ts
+  s_b1a69ed75d6063::t_52683c3b24a1a9 70,238,3420-3431,3445-3446,3450-3452
+  s_8bfbf7a375b636::t_c0caba43004f8b 3422-3425
+  s_8bfbf7a375b636::t_070bac7e7b2477 3446-3448
+  s_326dd039c6d306::t_7147f2ad4aefa8 70,3421
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/CanvasNodeDefault.vue
+  s_b1a69ed75d6063::t_6293960cdf92ec 13
+  s_b1a69ed75d6063::t_6593811a838fb3 39
+  s_b1a69ed75d6063::t_ef904a17988a56 56
+  s_b1a69ed75d6063::t_654a25f5cf926d 91-92,94-96
+  s_b1a69ed75d6063::t_99e83c299747eb 236,243
+  s_b1a69ed75d6063::t_5def53a85143e2 255-258,262
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/parts/CanvasNodeStatusIcons.test.ts
+  s_b1a69ed75d6063::t_f8f8bd5c703a94 45,49-53,252-303
+packages/frontend/editor-ui/src/app/composables/useNodeTypeRestriction.ts
+  s_b1a69ed75d6063::t_fd81e1be45c7b0 1-22,24-29,31
+  s_b1a69ed75d6063::t_44f83423c2fd10 23,30
+packages/frontend/editor-ui/src/app/views/NodeView.vue
+  s_b1a69ed75d6063::t_af05514fcda77f 101
+  s_b1a69ed75d6063::t_b3ea4ca6df5ce6 204
+  s_b1a69ed75d6063::t_26ef90e5ec4d67 1735-1751
+  s_8bfbf7a375b636::t_c0caba43004f8b 1745-1747
+packages/modules/type-availability-policies/frontend/src/index.ts
+  s_326dd039c6d306::t_7147f2ad4aefa8 1-5
+packages/modules/type-availability-policies/frontend/src/composables/useNodeTypeRestriction.ts
+  s_326dd039c6d306::t_39bd925d46ff6b 1-7,9-25
+  s_326dd039c6d306::t_99040c74c40d12 8
+packages/modules/type-availability-policies/frontend/src/composables/useNodeTypeRestriction.test.ts
+  s_326dd039c6d306::t_4e492b669250e0 1-37
+packages/modules/type-availability-policies/frontend/README.md
+  s_326dd039c6d306::t_7147f2ad4aefa8 1-2
+packages/@n8n/engine/src/runtime/__tests__/create-engine-runtime.test.ts
+  s_794845deccc20b::t_cd754a091a395e 9-10,19,26,71,90,105
+packages/@n8n/engine/src/response-channel/__tests__/execution-response.schema.test.ts
+  s_794845deccc20b::t_cd754a091a395e 1-70
+  s_4c46dcfe1ba789::t_bb90bdbd5b7cc4 1-21,47-59,61-78,87-96
+  s_9a2a7a8eef9b2d::t_df6b21aba09276 22-38,43-46
+  ai_agent 39-42
+  s_9a2a7a8eef9b2d::t_6c772bb6b20afb 60
+  s_719e037cee4d57::t_31432b56d038f7 79-86
+packages/@n8n/engine/src/runtime/create-engine-runtime.ts
+  s_794845deccc20b::t_cd754a091a395e 23,34-39,75,102
+  s_4c46dcfe1ba789::t_d5b292306ede0a 23,36-37,39,75
+  s_71c6da2ee47cd3::t_613cff5051c1db 34-35,38,102
+  s_9a2a7a8eef9b2d::t_db25c8d811d6d2 113
+packages/@n8n/engine/src/execution/__tests__/step-settled-handler.test.ts
+  s_794845deccc20b::t_cd754a091a395e 6,130-134,142,152,158,490,498-510,514-518,526-539,548-551,556
+packages/cli/src/modules/engine-v2/__tests__/engine-v2.runtime.test.ts
+  s_794845deccc20b::t_cd754a091a395e 3,93,118-120,126,137,143,167,195,203,212,223,230,241,256,272,287
+packages/@n8n/engine/src/execution/step-settled-handler.ts
+  s_794845deccc20b::t_cd754a091a395e 2-8,10,14,39,47,52,63,74,77-81,91,165-169,201,205-244
+packages/@n8n/engine/src/execution/step-store.ts
+  s_794845deccc20b::t_cd754a091a395e 30-31
+packages/@n8n/engine/src/server/__tests__/workflow-executions.integration.test.ts
+  s_794845deccc20b::t_cd754a091a395e 13,15,327
+packages/@n8n/engine/src/response-channel/response-transport.ts
+  s_794845deccc20b::t_cd754a091a395e 1-30
+  h_8fb27e0cdf6d1e 5,7-9,11-12
+packages/@n8n/engine/src/response-channel/execution-response.types.ts
+  s_794845deccc20b::t_cd754a091a395e 1-23
+  h_8fb27e0cdf6d1e 6,8-9,11-16
+  s_4c46dcfe1ba789::t_c619cb6a6da3d5 1-2,2-5,4,10,11,19,23-31,24-32
+  s_71c6da2ee47cd3::t_d67313882bd806 5-6,7,8,17,18,20
+  s_9a2a7a8eef9b2d::t_ec7685c45b1413 20-22,21-23
+  s_9a2a7a8eef9b2d::t_db25c8d811d6d2 3,33-46
+packages/@n8n/engine/src/execution/execution.types.ts
+  s_794845deccc20b::t_cd754a091a395e 36-45,52-54,56-57
+packages/@n8n/node-engine-compatibility/src/__tests__/acceptance-fixtures.ts
+  s_794845deccc20b::t_cd754a091a395e 3,12-13,61-66,334-335
+packages/@n8n/engine/src/response-channel/execution-response.schema.ts
+  s_794845deccc20b::t_cd754a091a395e 1-27
+  s_71c6da2ee47cd3::t_d67313882bd806 1-3,10-13,10-14,22-29,28,31,33-34,34,36,39
+  s_4c46dcfe1ba789::t_c619cb6a6da3d5 4-5,7-9,29-30,32-33,32,35,37-38,40
+  s_719e037cee4d57::t_4893d08f7d8961 6
+  s_9a2a7a8eef9b2d::t_ec7685c45b1413 15-21
+  s_719e037cee4d57::t_421128ee5237f1 27,30,35
+packages/@n8n/engine/src/response-channel/execution-response-channel.ts
+  s_794845deccc20b::t_cd754a091a395e 1-68
+  h_8fb27e0cdf6d1e 7,9-10,12-13
+  s_9a2a7a8eef9b2d::t_ec7685c45b1413 1-2,5,8-10,13-15,25,29,30,34,55-84,67-96
+  s_71c6da2ee47cd3::t_4d94f6f753024f 3,4-5,6-7,11,20,21,23,25-26,26-27,28-29,30,35-51,36-52,53,54,55,63-64,66,93,95,105,107
+  s_4c46dcfe1ba789::t_1e1da3f2d7a8d1 4,12,13,16,18,21-22,24,27,28,31,32,33,35,52,53,54,65,87,99
+  s_4c46dcfe1ba789::t_e86cea15aea75d 31,32,33,34
+packages/@n8n/engine/src/index.ts
+  s_794845deccc20b::t_cd754a091a395e 32-43
+  s_71c6da2ee47cd3::t_613cff5051c1db 32-34,36-40,43,46
+  s_9a2a7a8eef9b2d::t_db25c8d811d6d2 35,41-42
+  s_4c46dcfe1ba789::t_eed36ddb86f263 44-45
+packages/@n8n/engine/src/execution/__tests__/step-execution.integration.test.ts
+  s_794845deccc20b::t_cd754a091a395e 20,22,85
+  s_4c46dcfe1ba789::t_b53aa9fadcf04f 20
+  s_4c46dcfe1ba789::t_64cd3bfaade0e7 22
+  s_4c46dcfe1ba789::t_6b43e18b8acd41 85
+  s_9a2a7a8eef9b2d::t_db25c8d811d6d2 393
+packages/@n8n/engine/src/response-channel/__tests__/execution-response-channel.test.ts
+  s_794845deccc20b::t_cd754a091a395e 1-133
+  s_71c6da2ee47cd3::t_4c8a66733e8771 1-6,8-15,17,19-29,31-34,36,45-49,51-53,56-57,60-64,88-90,101
+  s_4c46dcfe1ba789::t_bb90bdbd5b7cc4 7,16,18,30,35,38-44,50,54-55,58-59,65-67,72,74,77,80,82-83,85,96-99
+  s_ae088f5e88fc8b::t_685d3531daff92 37,71,73,75-76,81,84,86-87,161-172,207-218
+  s_1b8554cde45c62::t_16ec079be70cdf 68-70,78-79,91,100,146-147,192-193
+  s_719e037cee4d57::t_1fda68e550b269 93-95
+  s_9a2a7a8eef9b2d::t_df6b21aba09276 103-142
+  s_9a2a7a8eef9b2d::t_74e41d2d4e4515 143,151,153-156,160,169-176
+  s_9a2a7a8eef9b2d::t_db25c8d811d6d2 144-150,152,157-159,161-168,177-188
+packages/@n8n/engine/src/serve.ts
+  s_794845deccc20b::t_cd754a091a395e 8,35-37
+packages/cli/src/modules/engine-v2/engine-v2.runtime.ts
+  s_794845deccc20b::t_cd754a091a395e 4,45,49,78,88-90
+packages/@n8n/engine/src/response-channel/index.ts
+  s_794845deccc20b::t_cd754a091a395e 1-6
+  s_71c6da2ee47cd3::t_d67313882bd806 1-2,4-5,11-12
+  s_9a2a7a8eef9b2d::t_ec7685c45b1413 3
+  s_4c46dcfe1ba789::t_1e1da3f2d7a8d1 6,13
+packages/@n8n/engine/src/response-channel/in-memory-transport.ts
+  s_794845deccc20b::t_cd754a091a395e 1-33
+packages/cli/src/modules/engine-v2/engine-v2.module.ts
+  s_794845deccc20b::t_cd754a091a395e 1,6,22-23,40-50,52,66-72
+  s_794845deccc20b::t_9bbbf1f363a95f 43-45,52
+packages/@n8n/engine/src/execution/__tests__/execution-start.integration.test.ts
+  s_794845deccc20b::t_cd754a091a395e 17,24,79
+packages/cli/src/services/pending-webhook-response.ts
+  s_794845deccc20b::t_9bbbf1f363a95f 1-59
+  s_4c46dcfe1ba789::t_9317a33118b923 1-8,10-11,13-14,23-24,26,28,30-31,33,36,38,40,49-51,53-55,57-59
+  s_4c46dcfe1ba789::t_08563fce175542 9,15-22,25,27,29,32,34-35,37,41,44-46
+  s_9a2a7a8eef9b2d::t_ec7685c45b1413 12
+  s_4c46dcfe1ba789::t_da2277d78fbcda 39,47-48,52
+  s_4c46dcfe1ba789::t_137eda4ee8a1b2 42-43,56
+packages/cli/src/webhooks/__tests__/webhook-helpers.test.ts
+  s_794845deccc20b::t_9bbbf1f363a95f 6,60,62,1131,1825-1826,1917,1919-1929,1921,1924,1927,1932-1943,1932-1937,1939,1942,1972-2040,1972,1975,1983-1984,1986,1989,2000-2001,2003,2006-2007,2010-2011,2013-2015,2018-2019,2025-2026,2029-2030,2033,2036-2037,2039-2040,2112-2121
+  s_a3125dfe40640a::t_2e14f226a4206d 60
+  s_4c46dcfe1ba789::t_7dd7b48c8328c2 61-62,1919-1920,1922-1923,1925-1926,1928-1929
+  s_a3125dfe40640a::t_c1428fe219b94f 1131
+  s_a3125dfe40640a::t_cf1a46269dd29f 1917
+  s_a3125dfe40640a::t_98f95192499fa6 1938,1940-1941,1943,1978,1981-1982,1985,1987-1988,1991-1992,1998-1999,2002,2004-2005,2008-2009,2016-2017,2020-2024,2027-2028,2031-2032,2034,2038,2099-2101,2103-2112,2115-2118
+  s_4c46dcfe1ba789::t_e3cd4f920bebf0 1970,1973-1974,1976-1977
+  s_719e037cee4d57::t_0f7522dcd91215 1979-1980
+  s_4c46dcfe1ba789::t_1eddd524b8cecb 1990,1993-1997,2012,2035
+  ai_agent 2113-2114
+packages/cli/src/services/__tests__/engine-v2-webhook-responder.service.test.ts
+  s_794845deccc20b::t_9bbbf1f363a95f 1-180,19,53-54,142,144-147,154,180,182-185,192
+  s_71c6da2ee47cd3::t_d405134f94920e 1-5,1-2,6-7,11-17,14-21,24-25,25-26,28,32,35,37-54,46-52,55-67,58-72,82-84,92,98,99-100,102-103,109,113-115,116-118,118-123,120-128,128-137,130-131,133-140,140,143,149-151,153,159-160,176,178,181,183-184,187,187-189,191,197-198,200,210-214,221-228,232-233
+  s_4c46dcfe1ba789::t_ab1cf56a8e54a1 6,8,70-71,73,73-81,76-78,103,116,127,132,139,177,186,216
+  s_4c46dcfe1ba789::t_a519961dfa21ce 7-10,10-13,68-69,82-85,85-91,87-88,91-93,93-97,96,98,99-101
+  s_4c46dcfe1ba789::t_533d342b8bac27 18,20-24,22-23,26-27,27-31,30-34,33-45,55-57,72,74-75,79-81,86,89-90,94-95,97,104-106,108,112,117,124-126,138,141,152,176,177-179,179,185,188-195,190,215,217-218
+  s_719e037cee4d57::t_d73bc028dc08bb 101-102,104-108,107,109-111,110-115,119
+  s_4c46dcfe1ba789::t_6941e602868b24 148,155-158,180-182,186,193-196,219-220
+  s_9a2a7a8eef9b2d::t_df6b21aba09276 161-175,199,201-209
+  s_bfdc3c9bc21b40::t_3d0737ff1431aa 3,129
+  ai_agent 29,36,229-231
+  s_9a2a7a8eef9b2d::t_dda1f9d2f09e16 154-164
+packages/cli/src/services/engine-v2-webhook-responder.service.ts
+  s_794845deccc20b::t_9bbbf1f363a95f 1-117,5-7,82,116-117,125
+  s_71c6da2ee47cd3::t_11151294bf63cb 1-4,1-3,11,13,17,18,20-21,23-25,24,26-29,31-32,33-35,38-40,39-46,42-43,47-49,49-52,56,57,60,62,67-70,68-69,76,77,81,84,86,88-89,95,97-98,98,100-101,101-104,110-112,118,124,133,136,138-139,141-143,149-152,155-156
+  s_4c46dcfe1ba789::t_16f6ec4d91ae85 8-9,8,21,30,37,94,99,102
+  s_4c46dcfe1ba789::t_f9dae768d9a165 10,12,19-20,22,22-23,25,54-56,57-59,64-67,71-75
+  s_4c46dcfe1ba789::t_08563fce175542 12,14,15-16,18-19,27-29,30-32,35,38,50-52,53-55,58,70-76,77-82,78,80,83,85,87,93,96-97,99-100,103-104,106,109,113,122-123,137,140,146,153-154
+  s_4c46dcfe1ba789::t_9317a33118b923 13-14,15,17,26,33-34,36-37,36,44-46,47-48,53,59-61,63,66,105,107-108,114-115,119-121
+  s_71c6da2ee47cd3::t_c470b0a9f3961f 41,79
+  s_9a2a7a8eef9b2d::t_ec7685c45b1413 85-92
+  ai_agent 4-7,9
+  s_9a2a7a8eef9b2d::t_dda1f9d2f09e16 121
+  s_bfdc3c9bc21b40::t_3d0737ff1431aa 134-135,144-145,147-148
+packages/cli/src/webhooks/engine-v2-webhooks.ts
+  s_794845deccc20b::t_9bbbf1f363a95f 22,39-45,49,67,71,91-99,95-103,149
+  s_71c6da2ee47cd3::t_19b26356a490b4 38-43,115
+  s_9a2a7a8eef9b2d::t_db25c8d811d6d2 44-48
+packages/cli/src/webhooks/webhook-helpers.ts
+  s_794845deccc20b::t_9bbbf1f363a95f 30-31,61,74,84-87,359-406,405-406,760-761,1104-1112,1104,1107,1114-1115,1203-1223,1225-1229,1231-1236
+  s_4c46dcfe1ba789::t_eeeb14c5513318 30-31,386-387,1203-1233,1236
+  s_4c46dcfe1ba789::t_b486633a6977bd 61,84-87
+  s_4c46dcfe1ba789::t_db4bafbbb46980 74
+  s_4c46dcfe1ba789::t_d973a62943d7dd 358-385,388-404,446
+  s_4c46dcfe1ba789::t_3d863c978088db 1105-1106,1108,1113
+  s_9a2a7a8eef9b2d::t_db25c8d811d6d2 1109-1112
+  s_4c46dcfe1ba789::t_36c3453a753a08 1234-1235,1237-1239
+packages/cli/test/integration/engine-v2-webhooks.test.ts
+  s_794845deccc20b::t_9bbbf1f363a95f 9,15,23,75-80,142,152-154
+packages/workflow/src/interfaces.ts
+  s_794845deccc20b::t_9bbbf1f363a95f 3681-3686
+packages/@n8n/config/src/configs/engine.config.ts
+  s_794845deccc20b::t_9bbbf1f363a95f 4,66-73
+packages/cli/src/services/engine-v2-dispatcher.service.ts
+  s_794845deccc20b::t_9bbbf1f363a95f 11,13,86-91,107-109
+pnpm-lock.yaml
+  ai_agent 2273-2275
+packages/@n8n/engine/package.json
+  s_9a2a7a8eef9b2d::t_ec7685c45b1413 31
+packages/@n8n/node-engine-compatibility/src/__tests__/v1-response-hooks.test.ts
+  s_9a2a7a8eef9b2d::t_db25c8d811d6d2 1,3-50
+packages/@n8n/node-engine-compatibility/src/v1-response-hooks.ts
+  s_9a2a7a8eef9b2d::t_db25c8d811d6d2 1-43,45-49,53-83
+packages/@n8n/engine/src/dependencies/external-dependencies.ts
+  s_9a2a7a8eef9b2d::t_db25c8d811d6d2 4,46-51
+packages/@n8n/node-engine-compatibility/src/__tests__/fixtures.ts
+  s_9a2a7a8eef9b2d::t_db25c8d811d6d2 2,265
+packages/@n8n/engine/src/execution/step-ready-handler.ts
+  s_9a2a7a8eef9b2d::t_db25c8d811d6d2 11,45,139-141
+packages/@n8n/engine/src/execution/__tests__/step-ready-handler.test.ts
+  s_9a2a7a8eef9b2d::t_db25c8d811d6d2 6-7,62,65,161-162,164-165
+  s_6df29c531634b9::t_e346602fc8aaad 54-57
+packages/@n8n/node-engine-compatibility/src/v1-step-executor.ts
+  s_9a2a7a8eef9b2d::t_db25c8d811d6d2 20,65-66
+packages/frontend/editor-ui/src/app/components/common/SelectedItemsInfo.vue
+  s_9255fcc9290949::t_e8608d9ef6073f 1,5-7,9-14,16-17,23,26-37,43-50,52-58,60-87
+packages/cli/src/services/project.service.ee.ts
+  s_4f1e96349c8817::t_ab511a81af4c39 488,494
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  s_c4a4e9a494a612::t_3c6e81855b874e 1055
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_13d2093edecceb::t_9cfe45a1425512 596
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_c4a4e9a494a612::t_0fbde1efacdb46 515
+packages/cli/src/modules/agents/__tests__/agent-chat.controller.test.ts
+  s_c4a4e9a494a612::t_d46647e9315efc 201
+  s_c4a4e9a494a612::t_fff0499ccccc8f 216,218,272,274-284,285-286,288,290-295,298
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "45329dea7554f62dce2422619da72830832f8fcf",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "h_ce2c4b90496ac9": {
+      "author": "Nour Alhadi Mahmoud <nour.mahmoud@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_13d2093edecceb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0ca37-ecdf-7873-bb4a-4b31a09f7aab",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_14d6c74486cc9e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4a01fe19-c389-41e4-9183-7f318e77b406",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    },
+    "s_1b8554cde45c62": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "412d6818-efbe-45e8-bbc3-57789facf6a6",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_326dd039c6d306": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cd049455-bc63-41dc-808b-f75c96f484d1",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Olivier de Jong <olivier.dejong@n8n.io>"
+    },
+    "s_4c46dcfe1ba789": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c1251ab8-7233-47da-89f9-16babffdf579",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_4f1e96349c8817": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0c5ca-af0f-7170-83bd-9c53a08df798",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_4f495571aef8fe": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c9742293-1385-4d08-b10f-038babe3a75c",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Olivier de Jong <olivier.dejong@n8n.io>"
+    },
+    "s_6df29c531634b9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0b10b-86db-7ea1-a7e9-8ee96d396f23",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_719e037cee4d57": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "27f603bd-170c-453c-b9f6-0405967390f4",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_71c6da2ee47cd3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "34058f20-f9c0-4c61-a303-3490fd47e9b8",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_794845deccc20b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0b43d-9fd7-7372-ae87-3043b41ce227",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_8be9ee4c0632ab": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "eae95162-f0a9-4fc2-a78c-2cff399c9192",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    },
+    "s_8bfbf7a375b636": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "71c3c153-cff6-4553-b48e-985f97aec971",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Olivier de Jong <olivier.dejong@n8n.io>"
+    },
+    "s_9255fcc9290949": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b8f25eb8-5987-478d-9755-27ba3bd7da2a",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    },
+    "s_9a2a7a8eef9b2d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0b0a9-aea8-7a51-a10e-19a41029ada1",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_a3125dfe40640a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "075b8cbd-4b8b-47a1-8eab-be2d73d8c62b",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_ae088f5e88fc8b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "889b53f9-e9c3-4e3b-b556-d6d34bb1180e",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_b1a69ed75d6063": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77ef5e06-1c4a-4ad6-ac34-da5435a74cdb",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Olivier de Jong <olivier.dejong@n8n.io>"
+    },
+    "s_bfdc3c9bc21b40": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e768b0c7-e08a-400c-bc83-3cc0967415bb",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_c4a4e9a494a612": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0c931-0a24-7242-93f9-890df461d8e8",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_e144e5251a2cb8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a7753e94-3650-4565-9adb-98c5d6f2ddee",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    },
+    "s_eb2180847c08bb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "76142b24-1777-4700-a7dd-6a13e7cbd9a2",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

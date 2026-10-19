@@ -1,0 +1,31 @@
+packages/@n8n/db/src/entities/workflow-publication-trigger-status.ts
+  s_7e260be078ba21::t_9acd56e2731471 14-16
+packages/cli/src/workflows/triggers/__tests__/workflow-trigger-activator.test.ts
+  s_7e260be078ba21::t_f7c0624eaffa5a 166-185
+packages/cli/test/integration/workflows/workflow-publication-reconciler.test.ts
+  s_7e260be078ba21::t_5ef10187fd2c01 62-70
+  s_7e260be078ba21::t_4fbb0f93d72439 76
+  s_7e260be078ba21::t_c90211e868e897 17
+  s_7e260be078ba21::t_e12584d66b825d 354-389
+packages/cli/src/workflows/triggers/__tests__/trigger-test-utils.ts
+  s_7e260be078ba21::t_c9780703834d4a 43-52
+packages/cli/src/workflows/triggers/workflow-trigger-activator.ts
+  s_7e260be078ba21::t_da9d9897165a85 122-126
+  s_7e260be078ba21::t_3020355eeada77 21-27,138-145,147-149
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "18610134dee178b3f8e9484d6c71436dbdcd10b7",
+  "prompts": {},
+  "sessions": {
+    "s_7e260be078ba21": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "563ddd4e-d5e2-48ee-aac3-3b7c03d27616",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

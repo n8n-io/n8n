@@ -1,0 +1,24 @@
+packages/cli/src/workflows/triggers/__tests__/non-webhook-trigger-registrar.test.ts
+  s_b3cf8c080d509d::t_d3d03b3953395c 248,251-257
+  s_b3cf8c080d509d::t_0317edac7e84e7 249-250
+packages/cli/src/workflows/__tests__/workflow.service.test.ts
+  s_b3cf8c080d509d::t_23740f79635e9f 2091
+packages/cli/src/workflows/triggers/non-webhook-trigger-registrar.ts
+  s_b3cf8c080d509d::t_d3d03b3953395c 226-235
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ae1f8bb9221ef2fe1245d26614a33e7afc9863be",
+  "prompts": {},
+  "sessions": {
+    "s_b3cf8c080d509d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f86c5127-2cf8-408c-aa7b-1c3d6a71f43d",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,24 @@
+packages/frontend/editor-ui/src/app/composables/useWorkflowSaving.test.ts
+  s_3def8bf0320199::t_28ffa5094cfdc6 1415
+  s_3def8bf0320199::t_15db9c6d550f4e 1387-1392,1396
+  s_3def8bf0320199::t_ddf7550e24ff34 1394
+  s_3def8bf0320199::t_4210628d2786fb 1336-1352,1354-1357,1359-1386,1393,1395,1397-1414,1416-1474
+  s_3def8bf0320199::t_747f28287fb851 1-2,4-10
+  s_3def8bf0320199::t_409432719bf875 1353,1358
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "86cc5c01e80054826e3dac94f84248008d89237b",
+  "prompts": {},
+  "sessions": {
+    "s_3def8bf0320199": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3de6b9b1-9268-4d04-b9f6-b907567af81c",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

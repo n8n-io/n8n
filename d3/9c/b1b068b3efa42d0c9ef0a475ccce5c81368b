@@ -1,0 +1,24 @@
+packages/cli/test/integration/workflows/teams-trigger-subscription-refused.test.ts
+  s_ed1dfa7c0e210e::t_e44341cd444e7f 233
+  s_ed1dfa7c0e210e::t_bb9ff54d22aabc 94
+  s_ed1dfa7c0e210e::t_66c68db416fc91 131
+  s_ed1dfa7c0e210e::t_bdc2622ca776ab 2-39,41-42,52-62,64-79,81-85,89,91-93,95,97-127,129-130,132-134,136-172,175-178,180-181,183-184,186-187,189-197,203-205,222-223,228,234
+  s_ed1dfa7c0e210e::t_6a6c319533a710 40
+  s_ed1dfa7c0e210e::t_b77a8cc1a29ece 1,43-51,63,80,86-88,90,96,128,135,173-174,179,182,185,188,198-202,206-221,224-227,229-232
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d39cb1b068b3efa42d0c9ef0a475ccce5c81368b",
+  "prompts": {},
+  "sessions": {
+    "s_ed1dfa7c0e210e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f3bb903c-aab1-4326-9392-a3612892373e",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

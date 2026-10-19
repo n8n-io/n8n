@@ -1,0 +1,30 @@
+packages/cli/src/modules/agents/agent-knowledge-sandbox.service.ts
+  s_4d359b371e2a9d::t_5c69866b221d1c 934
+  s_28568c5425e9dc::t_a4a283a89c42f3 67,923-933,935,937
+packages/cli/src/modules/agents/__tests__/agent-knowledge-sandbox.service.test.ts
+  s_28568c5425e9dc::t_407f5833a4cf15 502-509,512
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "7dbacc065e9840240ece4ac50a6eabad4064f0a2",
+  "prompts": {},
+  "sessions": {
+    "s_28568c5425e9dc": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "74c740a7-af24-4619-b069-2424d2a7b24d",
+        "model": "gpt-5.6-sol-xhigh-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_4d359b371e2a9d": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "41b431ad-4a93-424f-9adf-1c06fcd9ffc5",
+        "model": "cursor-grok-4.5-high-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,49 @@
+packages/nodes-base/nodes/MessageAnAgent/__tests__/MessageAnAgent.node.test.ts
+  s_e370adc7569608::t_7520de299cdf36 484-502
+packages/cli/src/modules/agents/tools/input-data-tool.ts
+  ai_agent 6-11
+  s_e370adc7569608::t_219e0e6ae0fe29 40,47,50-54,56-59
+packages/core/src/execution-engine/node-execution-context/base-execute-context.ts
+  s_e370adc7569608::t_0dbfcb6cfdff3b 173-177,179-183
+packages/core/src/execution-engine/node-execution-context/__tests__/execute-context.test.ts
+  s_e370adc7569608::t_ce945f62d342cf 599-689
+packages/cli/src/modules/agents/tools/__tests__/agent-data-utils.test.ts
+  s_e370adc7569608::t_de572018765529 69-88
+  s_e370adc7569608::t_c7af3b5efe46a0 3,8-11
+packages/cli/src/modules/agents/__tests__/agents.service.test.ts
+  s_e370adc7569608::t_a3432a0cab6415 2070,2090
+  s_e370adc7569608::t_135cf63db876e0 2172-2196
+packages/cli/src/modules/agents/tools/__tests__/workflow-context-tool.test.ts
+  s_e370adc7569608::t_4a59896c567154 198,203,207,220-241
+packages/cli/src/modules/agents/tools/__tests__/input-data-tool.test.ts
+  s_e370adc7569608::t_0b382b0025bea6 69,74,76,89-102
+packages/cli/src/modules/agents/tools/workflow-context-tool.ts
+  s_e370adc7569608::t_f83b47c18db5a2 56,63,66-68,70-84,87-95,97-99,101,104-108,110-111
+  ai_agent 6-11
+packages/cli/src/modules/agents/agents.service.ts
+  s_e370adc7569608::t_9fdb610672375b 1393-1396,1399-1409,1411
+packages/cli/src/modules/agents/tools/agent-data-utils.ts
+  s_e370adc7569608::t_40ba1fbfc3110e 7-20
+  s_e370adc7569608::t_f532875d97101f 89-101
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "899e5d6e4042c4acbc5a271e0a8103b75fd0dbce",
+  "prompts": {},
+  "humans": {
+    "h_7555c3ee6524cf": {
+      "author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_e370adc7569608": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bd83840f-75fc-44e2-a789-c7753775ddcc",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

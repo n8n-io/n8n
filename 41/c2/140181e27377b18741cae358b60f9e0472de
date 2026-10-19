@@ -1,0 +1,46 @@
+packages/nodes-base/package.json
+  s_a37fc6c52c4513::t_6867b344d27755 14
+.github/workflows/ci-pull-requests.yml
+  s_a37fc6c52c4513::t_74b8e180bfa7d6 159-164
+  s_a37fc6c52c4513::t_f38611bcde9efc 30,388-395,432
+packages/nodes-base/scripts/credential-scopes.mjs
+  s_a37fc6c52c4513::t_0f53043fd3182d 108-116,121-129,135,141-158
+  s_a37fc6c52c4513::t_e8e341e58ce659 36,40-48,55-65,70
+  s_a37fc6c52c4513::t_98f37dfd9e8e1a 6-8,13-15,23,26,29,52,71-74,77-86
+  s_a37fc6c52c4513::t_1870da99af13b3 9-12,117-120,130-134,136-140
+  s_a37fc6c52c4513::t_79abdfed2ef07e 27
+.github/workflows/test-credential-scopes-reusable.yml
+  s_a37fc6c52c4513::t_6867b344d27755 16-18,31
+  s_a37fc6c52c4513::t_172953e35e7d65 1-15,19-30,32-41
+packages/nodes-base/scripts/check-released-scopes.mjs
+  s_a37fc6c52c4513::t_7bcecc7706bcd7 7,16-17,25,37,39-44,46-49,52-59,62-63,66,69,71,73-77,81,83,86,88-92,94,107,109,113,115-118,120,124-125,127,130-136,138,140,146-147,150,160-162,164,167,169,172,174,176-178
+  s_a37fc6c52c4513::t_7eb5175476ca9c 10-12,70,72,141,170
+  s_a37fc6c52c4513::t_e3ef91fb91ff36 60-61,93,126,139,168
+.github/WORKFLOWS.md
+  s_a37fc6c52c4513::t_6867b344d27755 184
+packages/nodes-base/scripts/credential-scopes.test.mjs
+  s_a37fc6c52c4513::t_a9e8daf599168d 6-8,10-24,33,37,42,45,50,53-56,60-61,64-65,68-70,72-85,90,96-103,118-145,150-151,153-166,183,230
+  s_a37fc6c52c4513::t_b03e7146907b5b 171-175
+  s_a37fc6c52c4513::t_742b5869bdc69b 3
+  s_a37fc6c52c4513::t_bdfcf3bbccbcdc 146-149,152
+  s_a37fc6c52c4513::t_3a3ff8396e7fed 167,182,184,187,190,192-217,222,224,231,236-238,244
+  s_a37fc6c52c4513::t_98e7cd155d10fd 168-170,176-181,185-186,188-189,191,218-221,223,225-229,232-235,239-243
+packages/nodes-base/credentials/scope-removals.json
+  s_a37fc6c52c4513::t_ffaa758f83f137 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "41c2140181e27377b18741cae358b60f9e0472de",
+  "prompts": {},
+  "sessions": {
+    "s_a37fc6c52c4513": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c39771d8-4c5d-4b56-ab4c-a2c8cb8676cd",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

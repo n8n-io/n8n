@@ -1,0 +1,28 @@
+packages/testing/playwright/tests/e2e/api/wait-form-resume.spec.ts
+  s_f02d31f56d88f1::t_f2de6e016e3f6d 95-98,105
+  s_f02d31f56d88f1::t_83f2747389d1ae 64-94,99-104,106-110
+packages/testing/playwright/services/webhook-api-helper.ts
+  s_f02d31f56d88f1::t_8da84fc678906a 34
+  s_f02d31f56d88f1::t_8c408760b0f7a3 15-16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6f31a7173a65b9be124fd9feb3fd6a0016369dd3",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_f02d31f56d88f1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d742171c-647a-4d0f-b289-c987489cb808",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

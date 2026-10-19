@@ -1,0 +1,31 @@
+packages/nodes-base/nodes/Google/Gmail/GmailTrigger.node.ts
+  s_6358c8cb4cd2a5::t_7ec50e65401673 490-492
+  s_6358c8cb4cd2a5::t_1a6b37a277652e 573-575
+  s_6358c8cb4cd2a5::t_b15e66097d4dd5 33-34,36-37
+  s_6358c8cb4cd2a5::t_2286062652cde4 481-483
+  s_6358c8cb4cd2a5::t_65cf2afc7f2764 399-401
+  s_6358c8cb4cd2a5::t_79e35db8b3b7fc 578-579
+  s_6358c8cb4cd2a5::t_20f81e7e7471c3 587-589
+packages/nodes-base/nodes/Google/Gmail/test/GmailTrigger.test.ts
+  s_6358c8cb4cd2a5::t_59ea577d9a54b4 1614-1617
+  s_6358c8cb4cd2a5::t_db05ea420863f2 1701-1703
+  s_6358c8cb4cd2a5::t_0c004181dd353d 1729-1731
+  s_6358c8cb4cd2a5::t_92ffdc3384d87d 1757-1758
+  s_6358c8cb4cd2a5::t_19192755e2c7ae 1785
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "61268bcb1d50dd4a7442b1a02ed7db2f9493b36e",
+  "prompts": {},
+  "sessions": {
+    "s_6358c8cb4cd2a5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c1f2839c-15c8-45f2-a3c3-ad2077007168",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

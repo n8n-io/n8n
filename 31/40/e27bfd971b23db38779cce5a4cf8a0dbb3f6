@@ -1,0 +1,43 @@
+packages/nodes-base/nodes/Vero/test/workflow/Vero.workflow.test.ts
+  s_2e1fa95fc44f8f::t_afa206eff57fa7 1-25
+packages/nodes-base/nodes/Uplead/test/workflow/Uplead.workflow.test.ts
+  s_2e1fa95fc44f8f::t_2c8572421c7638 1-23
+packages/nodes-base/nodes/UnleashedSoftware/test/UnleashedSoftware.node.test.ts
+  s_2e1fa95fc44f8f::t_0ea0cdd9b4a9da 1-50
+packages/nodes-base/nodes/UrlScanIo/test/workflow/UrlScanIo.workflow.test.ts
+  s_2e1fa95fc44f8f::t_93a2371711b225 1-25
+packages/nodes-base/nodes/UptimeRobot/test/workflow/UptimeRobot.workflow.test.ts
+  s_2e1fa95fc44f8f::t_727d7a045f63fa 1-49
+packages/nodes-base/nodes/Uplead/test/workflow/requests.workflow.json
+  s_0f34e61c0d2ecc::t_57186da5650f20 1-89
+packages/nodes-base/nodes/UptimeRobot/test/workflow/requests.workflow.json
+  s_0f34e61c0d2ecc::t_6aba00cf81205e 1-698
+packages/nodes-base/nodes/UrlScanIo/test/workflow/requests.workflow.json
+  s_0f34e61c0d2ecc::t_f203e2e3cf27dd 1-125
+packages/nodes-base/nodes/Vero/test/workflow/requests.workflow.json
+  s_0f34e61c0d2ecc::t_a75caba32d1b45 1-281
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3140e27bfd971b23db38779cce5a4cf8a0dbb3f6",
+  "prompts": {},
+  "sessions": {
+    "s_0f34e61c0d2ecc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ae6bbfaf0c713f71a",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

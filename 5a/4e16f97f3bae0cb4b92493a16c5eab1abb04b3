@@ -1,0 +1,26 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.threadRuntime.ts
+  s_a235dbe09d6bee::t_f6b861ab996502 234-239
+  s_a235dbe09d6bee::t_8eeae52349570d 941-943
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_a235dbe09d6bee::t_c4f367b16e5334 985-1005
+packages/@n8n/api-types/src/schemas/__tests__/instance-ai.schema.test.ts
+  s_a235dbe09d6bee::t_afad74fe816a26 120-140
+packages/@n8n/api-types/src/schemas/__tests__/agent-run-reducer.test.ts
+  s_a235dbe09d6bee::t_f96f421c947b48 873-876
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "5a4e16f97f3bae0cb4b92493a16c5eab1abb04b3",
+  "prompts": {},
+  "sessions": {
+    "s_a235dbe09d6bee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3f00e6df-fa03-417b-a459-c3a03b6bbe4f",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

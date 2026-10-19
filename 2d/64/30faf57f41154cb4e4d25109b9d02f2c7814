@@ -1,0 +1,21 @@
+packages/cli/src/scheduling/poll-trigger-node/poll-trigger-task-handler.ts
+  s_a3b9c396dd9cf8::t_df03399e42d51e 51-60,166,171,195
+packages/cli/src/scheduling/poll-trigger-node/__tests__/poll-trigger-task-handler.test.ts
+  s_a3b9c396dd9cf8::t_029cb47deb4b0a 531-549
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2d6430faf57f41154cb4e4d25109b9d02f2c7814",
+  "prompts": {},
+  "sessions": {
+    "s_a3b9c396dd9cf8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "36cc6a00-29eb-4129-980e-5345ea9ce01f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

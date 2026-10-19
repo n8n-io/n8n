@@ -1,0 +1,144 @@
+packages/@n8n/api-types/src/schemas/agent-run-reducer.ts
+  s_22e1224efb24cb::t_237510792a6bd4 417-418,435
+  s_22e1224efb24cb::t_bfe36bed678248 462
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/agentTimeline.utils.test.ts
+  s_22e1224efb24cb::t_4f23a9597a9781 91-99
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.agent-context.test.ts
+  s_22e1224efb24cb::t_544a52387b78a7 1,3-4,9,17,22-24,27-36,38,43-44,47,49-51,53,55-56
+packages/@n8n/instance-ai/src/index.ts
+  s_22e1224efb24cb::t_69abf951665545 28,113-114
+  s_22e1224efb24cb::t_a11f09e6ee07f4 368-369
+  s_22e1224efb24cb::t_5332f29db99578 370,746-747
+  s_22e1224efb24cb::t_92f5c1d5d67f15 115
+packages/cli/src/modules/agents/__tests__/agents-builder-tools.service.test.ts
+  s_22e1224efb24cb::t_e49138ba766bf5 1476
+  s_22e1224efb24cb::t_641829a1c36c80 2158,2184-2198
+  s_22e1224efb24cb::t_ec6d4415f0c121 2199-2200,2568-2588
+  s_22e1224efb24cb::t_f0fc0b0b8766ec 36,96-97,113,136
+  s_22e1224efb24cb::t_ae352c208be436 276-285
+  s_22e1224efb24cb::t_c02a519c1fe9d0 1457,1495-1497,1640-1641
+  s_22e1224efb24cb::t_bda6b800d9db74 2201
+packages/frontend/editor-ui/src/features/ai/instanceAi/useResourceRegistry.ts
+  s_22e1224efb24cb::t_237510792a6bd4 229-235,327-329
+packages/cli/src/modules/agents/agent-capabilities.ts
+  s_22e1224efb24cb::t_c191453f8fb961 5-6
+packages/frontend/editor-ui/src/features/ai/instanceAi/canvasPreview.utils.ts
+  s_22e1224efb24cb::t_237510792a6bd4 120,142-146,490-496,498,501
+packages/frontend/editor-ui/src/features/ai/instanceAi/builderAgents.ts
+  s_22e1224efb24cb::t_237510792a6bd4 2,10-19,21-22,56-59,61
+  s_22e1224efb24cb::t_e9ff2c6233f9ee 7-9,20
+packages/@n8n/instance-ai/src/tools/orchestration/build-agent.tool.ts
+  s_22e1224efb24cb::t_f6c629fae5785d 813,822-823
+  s_22e1224efb24cb::t_a11f09e6ee07f4 121-123,197-198,200
+  s_22e1224efb24cb::t_bfe36bed678248 450,456,461,473,478,643
+  s_22e1224efb24cb::t_c289f82e5fd26a 34,108-111,115-120,124,199,256,292-296
+  s_22e1224efb24cb::t_8338b14c6821a8 514-515,534-535,549-552,625,656,706-707
+  s_22e1224efb24cb::t_107f4c1896dc29 112-114
+  s_22e1224efb24cb::t_08a3fef76d20da 1144-1146,1148,1175-1176
+  s_22e1224efb24cb::t_cfd64cc9f1b0f9 358,369
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useResourceRegistry.test.ts
+  s_22e1224efb24cb::t_4f23a9597a9781 588-613
+packages/cli/src/modules/agents/instance-ai-builder-delegate.adapter.ts
+  s_22e1224efb24cb::t_335489cf87a562 39-40
+packages/frontend/editor-ui/src/features/ai/instanceAi/agentTimeline.utils.ts
+  s_22e1224efb24cb::t_bfe36bed678248 310-317
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_22e1224efb24cb::t_b2fe5190526929 143,243,2857-2858,2866-2870,4962
+packages/frontend/editor-ui/src/features/ai/instanceAi/toolLabels.ts
+  s_22e1224efb24cb::t_cf369d671bee1a 149-153
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/toolLabels.test.ts
+  s_22e1224efb24cb::t_b12b513be22341 11-12,151-152
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/builderAgents.test.ts
+  s_22e1224efb24cb::t_4f23a9597a9781 80-85
+packages/cli/src/modules/agents/__tests__/instance-ai-agent-context.adapter.test.ts
+  s_22e1224efb24cb::t_ee542a2c50e7e8 1,4-29,32-44,46-49,51-64,67-89,91-96,98-103,105
+packages/@n8n/instance-ai/src/tools/__tests__/agent-context.tool.test.ts
+  s_22e1224efb24cb::t_b085cbf4a6acfb 5-14,16,19-23,26-28,31-37,40,42-43,46-47,49-52,55-60,63-66,68-71,74-75,78-79,87,90-91
+  s_22e1224efb24cb::t_ce6484e0d727ec 73
+  s_22e1224efb24cb::t_9e02bfa3c4e6ac 80-83,86
+packages/@n8n/instance-ai/docs/streaming-protocol.md
+  s_22e1224efb24cb::t_ebdbc1a490f491 220,240-241,246-247
+packages/@n8n/instance-ai/src/tools/__tests__/index.test.ts
+  s_22e1224efb24cb::t_626d4611c78084 32-33,236,238,241,243-244,247-248
+packages/@n8n/instance-ai/skills/intent-recognition/SKILL.md
+  s_22e1224efb24cb::t_2ac7e929e537f0 284,399,441
+packages/cli/src/modules/agents/agent-custom-tools.service.ts
+  s_22e1224efb24cb::t_1a5d1d8df370af 50,63,101
+packages/@n8n/instance-ai/docs/tools.md
+  s_22e1224efb24cb::t_b182fcc9c7f6df 63,1191,1193-1195,1197-1201,1204-1206
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/build-agent.tool.test.ts
+  s_22e1224efb24cb::t_d66348a4409a17 445,1677,1711,1800,2112
+  s_22e1224efb24cb::t_ce6484e0d727ec 756,770
+  s_22e1224efb24cb::t_ce2f8e8f208463 2077
+  s_22e1224efb24cb::t_9e02bfa3c4e6ac 393,672-675,1577
+packages/frontend/editor-ui/src/features/ai/instanceAi/useCanvasPreview.ts
+  s_22e1224efb24cb::t_237510792a6bd4 390-395
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/canvasPreview.utils.test.ts
+  s_22e1224efb24cb::t_4f23a9597a9781 337-355
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiStatusBar.vue
+  s_22e1224efb24cb::t_237510792a6bd4 14,44,46-47
+packages/@n8n/instance-ai/src/types.ts
+  s_22e1224efb24cb::t_76739a89b389e9 1455-1480,1522-1523
+packages/cli/src/modules/agents/instance-ai-agent-context.adapter.ts
+  s_22e1224efb24cb::t_f0fc0b0b8766ec 157
+  s_22e1224efb24cb::t_446d0db9941810 198
+  s_22e1224efb24cb::t_d7d601a661aa9b 164-168
+  s_22e1224efb24cb::t_a7ca391761c347 1-11,17-156,158-163,169-197,199-241
+  s_22e1224efb24cb::t_a11f09e6ee07f4 12-16
+packages/@n8n/instance-ai/src/tools/agent-context.tool.ts
+  s_22e1224efb24cb::t_1e331e75510236 95-99,101-102,105-107
+  s_22e1224efb24cb::t_932d03575869d8 62-65,73
+  s_22e1224efb24cb::t_a11f09e6ee07f4 80-82,85-91
+  s_22e1224efb24cb::t_76739a89b389e9 6,11-58,61,67-70,74,76-77,79,83-84,94,108,110-111,113-118,122-130
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_22e1224efb24cb::t_237510792a6bd4 1700-1701
+  s_22e1224efb24cb::t_cc84898688cde4 342-350,353,361
+  s_22e1224efb24cb::t_bfe36bed678248 351-352,376,1702-1703
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/AgentSection.vue
+  s_22e1224efb24cb::t_237510792a6bd4 13,15,22,35-39
+  s_22e1224efb24cb::t_2df5ffe0675810 40-42
+packages/@n8n/api-types/src/index.ts
+  s_22e1224efb24cb::t_b60ffda91bdc92 376,545
+  s_22e1224efb24cb::t_bfe36bed678248 377,546
+packages/@n8n/instance-ai/src/agent/shared-prompts.ts
+  s_22e1224efb24cb::t_61bf6833d1d054 20
+packages/@n8n/instance-ai/skills/agent-builder/SKILL.md
+  s_22e1224efb24cb::t_61bf6833d1d054 36,49
+  s_22e1224efb24cb::t_9e9143bd38318a 12,26-30
+  s_22e1224efb24cb::t_39e45167ca7dd8 31
+packages/@n8n/instance-ai/src/tools/tool-ids.ts
+  s_22e1224efb24cb::t_76739a89b389e9 16,72-74
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_22e1224efb24cb::t_237510792a6bd4 7560-7565
+  s_22e1224efb24cb::t_cf369d671bee1a 7554-7559
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_22e1224efb24cb::t_1632c2fed7a569 673,690-691
+  s_22e1224efb24cb::t_5507e5f6c5e8d0 38,42,62,288,311,1391-1395
+  s_22e1224efb24cb::t_218f3b34cf6ca5 1200,1273
+  s_22e1224efb24cb::t_a11f09e6ee07f4 331-332
+  s_22e1224efb24cb::t_1a5d1d8df370af 1019,1396-1397
+  s_22e1224efb24cb::t_58e54067fa1918 674-675,688-689
+  s_22e1224efb24cb::t_c8d02dc9caad80 1196-1199,1201,1259-1261,1266-1272
+packages/@n8n/instance-ai/src/tools/index.ts
+  s_22e1224efb24cb::t_932d03575869d8 7,156
+  s_22e1224efb24cb::t_69abf951665545 43-44,150,152-155,157-158
+packages/cli/src/modules/agents/__tests__/agent-custom-tools.service.test.ts
+  s_22e1224efb24cb::t_86e0d156caae5b 108-125
+  s_22e1224efb24cb::t_c02a519c1fe9d0 90
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "d784dff4f54238bd2de27fc514b1e02517213635",
+  "prompts": {},
+  "sessions": {
+    "s_22e1224efb24cb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0aadb-6625-7102-88f4-ab5ed0c4f71f",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

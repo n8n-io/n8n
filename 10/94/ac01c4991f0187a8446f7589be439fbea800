@@ -1,0 +1,19 @@
+packages/nodes-base/nodes/Google/Gmail/v2/MessageDescription.ts
+  s_f4f3f37a98d31a::t_80238ed44e527f 52-55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "1094ac01c4991f0187a8446f7589be439fbea800",
+  "prompts": {},
+  "sessions": {
+    "s_f4f3f37a98d31a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5f0f3eae-3f41-4e57-9468-7c570d305e15",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    }
+  }
+}

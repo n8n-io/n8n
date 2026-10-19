@@ -1,0 +1,79 @@
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/actions/worksheet/readRows.operation.ts
+  s_d617b0cea1e757::t_2755c2773e2661 224-227
+  h_63d8ce7f01339b 8-9,220,228
+  s_d617b0cea1e757::t_fd4238be0497e6 200-202
+  s_d617b0cea1e757::t_4dcef30964c843 214-219
+  s_d617b0cea1e757::t_a7e31a67dfb673 135,137,139,141,143,145,147
+  s_d617b0cea1e757::t_067aba88fa5abc 134,136,138,140,142,144,146,148-179,191,193-195,199,205-206,212-213,222-223
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/readRows.sp.test.ts
+  s_d617b0cea1e757::t_700fb2126cf17d 1-36
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/readRows.sp.workflow.json
+  s_d617b0cea1e757::t_50f43c1291876c 1-74
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/helpers/utils.test.ts
+  s_d617b0cea1e757::t_24c5b9ecdf4330 3-6,8-54,59-121,143-155,159-177,181-210,214-221,225-235,387
+  s_d617b0cea1e757::t_c5bf7220c0761e 55-58,156-158,178-180,211-213,222-224
+  s_b0dff49d146f43::t_3144172f6522ec 122-142
+  s_b0dff49d146f43::t_350fdff005f01d 236-296,308,310,323-324,334,349,356,382-383,385-386
+  s_b0dff49d146f43::t_12397c0a330acd 297-307,309,311-322,325-333,335-348,350-355,357-380
+  s_b0dff49d146f43::t_d846f159294385 1-2,7
+  s_b0dff49d146f43::t_41e06b4a6b9dd3 381,384
+.boundaries-baseline.json
+  s_6f268c94c3a11b::t_5d8e82c589e573 2
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/MicrosoftExcelSharePoint.node.ts
+  s_b0dff49d146f43::t_6d5e3e0cb3943a 111-114
+  s_b0dff49d146f43::t_5471d2968541b6 10
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/methods/listSearch.ts
+  s_b0dff49d146f43::t_3656a49eabc588 94-99
+  s_b0dff49d146f43::t_b38d5d939563e6 9
+  s_b0dff49d146f43::t_ef94368cb405ae 1-8,10-93
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/methods/index.ts
+  s_b0dff49d146f43::t_983570d51c8aa1 1-6
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/methods/listSearch.test.ts
+  s_b0dff49d146f43::t_d833fc6f15db36 1-9,11-133,135-237
+  s_b0dff49d146f43::t_d9c825b1182df2 10
+  s_b0dff49d146f43::t_047b5841fca935 238-240
+  s_b0dff49d146f43::t_b0be357ba243ba 134
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/descriptions/common.descriptions.ts
+  s_b0dff49d146f43::t_0e08dbf0251e39 41,44-45,47-70,84,87-90,92-99
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/helpers/utils.ts
+  s_b0dff49d146f43::t_fa9555181d97a8 2,4,11-12
+  s_b0dff49d146f43::t_8bd9a6fc7517d3 13
+  s_b0dff49d146f43::t_d7464689d83ad7 90,102-163
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "1cbee2ebd018e0ef0d09141ec402f17aa37e2903",
+  "prompts": {},
+  "humans": {
+    "h_63d8ce7f01339b": {
+      "author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_6f268c94c3a11b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "08a45d53-e841-4699-a8be-08ab180887ef",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    },
+    "s_b0dff49d146f43": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "28763c9d-81fb-4290-8c04-449238bcc961",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": null
+    },
+    "s_d617b0cea1e757": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5b89a3ee-4aba-4b85-a778-80d03cbf21d4",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

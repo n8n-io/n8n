@@ -1,0 +1,56 @@
+packages/cli/src/workflows/__tests__/workflow-validation.service.test.ts
+  s_af62986d6ef75e::t_a0045f6caab8e7 1232,1293,1329,1375,1393-1431,1433,1435-1446
+  s_af62986d6ef75e::t_4fca3707132589 1432,1434
+  s_af62986d6ef75e::t_a4cf6677a3e9ec 1447
+packages/cli/src/workflows/workflow-validation.service.ts
+  s_af62986d6ef75e::t_e89befb6c1dea1 351-352,378-380,429,464,487
+packages/cli/src/modules/dynamic-credentials.ee/services/dynamic-credential.service.ts
+  s_af62986d6ef75e::t_3b9d163e19b791 54,202-219
+  s_af62986d6ef75e::t_cadea0a8569ddc 3,22
+  s_af62986d6ef75e::t_9bfc526bd04c63 220-221
+packages/cli/test/integration/workflows/workflow.service.test.ts
+  s_af62986d6ef75e::t_1ada71f7125712 22,30,48
+  s_af62986d6ef75e::t_619f963a36990a 127-129
+packages/cli/src/modules/dynamic-credentials.ee/services/__tests__/dynamic-credential.service.test.ts
+  s_af62986d6ef75e::t_e4b5cffab0a0d8 32
+  s_af62986d6ef75e::t_cf2d000d2347ee 46,58-60
+  s_af62986d6ef75e::t_f4b97dd9bf7516 237,1222,1255,1274,1311
+packages/cli/src/workflows/workflow.service.ts
+  s_af62986d6ef75e::t_69ba6630ad9cad 18,30-36,51,90-92,144-146,1004-1009,1080-1081,1140,1147,1458-1462,1842-1904,1999-2000,2010-2012,2037-2038,2087,2143-2147
+  s_af62986d6ef75e::t_dab59aba2425fa 41,2081-2086
+  s_af62986d6ef75e::t_4e053747f80da3 1141-1146
+packages/cli/src/errors/response-errors/workflow-validation.error.ts
+  s_af62986d6ef75e::t_a7fce16bc0ea25 7-8
+packages/cli/src/credentials/credential-resolution-provider.interface.ts
+  s_af62986d6ef75e::t_eff6ef47807e6f 1,3,60-68
+  s_af62986d6ef75e::t_4fca3707132589 69-71
+packages/cli/src/credentials/dynamic-credentials-proxy.ts
+  s_af62986d6ef75e::t_15297a901e313e 2,90-98,102-108
+  s_af62986d6ef75e::t_4fca3707132589 99-101
+  s_af62986d6ef75e::t_3185a710aa82a8 109-111
+packages/cli/src/workflows/__tests__/workflow.service.test.ts
+  s_af62986d6ef75e::t_773d7ac9feb054 2966-3300
+  s_af62986d6ef75e::t_46b06eaebdafd6 58-60
+  s_af62986d6ef75e::t_c70aee508e989d 19-20
+  s_af62986d6ef75e::t_b4836a7a800f03 13
+  s_af62986d6ef75e::t_cd7fa72730fcb5 139-141,510-512,1296-1298,2009-2011,2152-2154,2460-2462,2632-2634,2815-2817,2920-2922
+packages/cli/test/integration/workflows/workflows.controller.test.ts
+  s_af62986d6ef75e::t_178a66520f36bf 30,117,4753-4877
+  s_af62986d6ef75e::t_a7f5b43bed0e18 4878
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "693cec4c50110fbd4754c1c1c87d06b25af57823",
+  "prompts": {},
+  "sessions": {
+    "s_af62986d6ef75e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "137c8e00-b0af-4ad4-8af5-45842a28f12e",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

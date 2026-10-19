@@ -1,0 +1,20 @@
+packages/cli/src/modules/n8n-packages/__tests__/export-workflow-with-tags.integration.test.ts
+  s_81f9da72a79c26::t_0131cd5a54461f 2-10,12-18,21-24,26-251
+  s_81f9da72a79c26::t_8832729411fb62 1,11,19-20,25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "99734f9f3510e3a5ae19909e1fb19ca5702f013a",
+  "prompts": {},
+  "sessions": {
+    "s_81f9da72a79c26": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1a321b0c-ac1c-4e36-9f78-68ffe9f657a1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

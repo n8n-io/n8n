@@ -1,0 +1,21 @@
+packages/@n8n/api-types/src/index.ts
+  s_490a25cdb21830::t_3649fb911d86dc 6
+packages/@n8n/api-types/src/frontend-settings.ts
+  s_490a25cdb21830::t_7a91df4786cdb4 32-40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "5064d8e2a97152ffb408b464509910023bbb3d23",
+  "prompts": {},
+  "sessions": {
+    "s_490a25cdb21830": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "439c288f-b82b-40b7-88cf-32bc35ae8893",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Alex Grozav <alex@grozav.com>"
+    }
+  }
+}

@@ -1,0 +1,28 @@
+packages/@n8n/instance-ai/src/tools/workflows/summarize-workflow.ts
+  s_91c8cf7ca44c0b::t_7341e8208b9267 3
+  h_2f80f0e06f710c 34-35,38-39,53-54,57-58
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/summarize-workflow.test.ts
+  s_91c8cf7ca44c0b::t_6f5a5cc1d5e488 1,3-5,7-8,27,33-34,36-40,43-49,52-55,75-77
+  s_91c8cf7ca44c0b::t_aa38fdf89998c9 2,6,9-26,28-32,35,41-42,50-51,56-74
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2f75c10e23dbc5b81c59179b66688b7631c2039b",
+  "prompts": {},
+  "humans": {
+    "h_2f80f0e06f710c": {
+      "author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_91c8cf7ca44c0b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1f94df9c-82b8-475a-8f28-72134cce202b",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

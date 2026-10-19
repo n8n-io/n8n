@@ -1,0 +1,15 @@
+packages/cli/test/integration/public-api/role-mapping-rules.test.ts
+  h_5d40c27a8fdfd1 791,795,800,807-809,811,887
+  h_5d40c27a8fdfd1 812-814,822-823,828,835-838,840,856,860,866,870,876,881,894
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "3a2b2c0d83e05aa7523be0bbfc5ca6fe775b1d52",
+  "prompts": {},
+  "humans": {
+    "h_5d40c27a8fdfd1": {
+      "author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

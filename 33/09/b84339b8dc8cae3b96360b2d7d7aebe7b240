@@ -1,0 +1,33 @@
+packages/cli/src/scheduling/system-tasks/__tests__/main-system-tasks.test.ts
+  s_12d664be52403d::t_a597781ddb74ad 10
+  s_12d664be52403d::t_3829f8aa197d15 35
+packages/cli/src/services/pruning/__tests__/workflow-history-pruning.task.test.ts
+  s_12d664be52403d::t_6e16a3ec20e0c0 3,8-9,18,21
+  s_12d664be52403d::t_34dba31d7680d5 1-2,4-7,10-17,19-20,22-23
+packages/cli/test/integration/workflow-history-manager.test.ts
+  s_12d664be52403d::t_134deb1c4f2c60 18-21
+  s_12d664be52403d::t_f2512d577db926 217,230-234,236-240
+  s_12d664be52403d::t_baacd6b838b3ea 212-216,218-229,235,241
+packages/cli/src/scheduling/system-tasks/main-system-tasks.ts
+  s_12d664be52403d::t_96ccae4a5e12eb 18-20
+  s_12d664be52403d::t_874df72db58daa 30
+packages/cli/src/services/pruning/workflow-history-pruning.task.ts
+  s_12d664be52403d::t_4db2e744287ac2 5,18,21
+  s_12d664be52403d::t_4473585f7e6046 1-4,6-17,19-20,22-23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3309b84339b8dc8cae3b96360b2d7d7aebe7b240",
+  "prompts": {},
+  "sessions": {
+    "s_12d664be52403d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aa3f695d-d7e2-45b3-883c-0c3bafe2e39e",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}

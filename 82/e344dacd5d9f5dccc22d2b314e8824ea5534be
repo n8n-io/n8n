@@ -1,0 +1,25 @@
+packages/cli/src/modules/inbound-auth-core/identity/external-identity.ts
+  h_435b1d7d3e52c0 27,31-32,70
+  s_60f5633681e4e3::t_ca6c4cc3792381 33-34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "82e344dacd5d9f5dccc22d2b314e8824ea5534be",
+  "prompts": {},
+  "humans": {
+    "h_435b1d7d3e52c0": {
+      "author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_60f5633681e4e3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "233f5aab-347d-4e5c-a26e-befd59b0253f",
+        "model": "unknown"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

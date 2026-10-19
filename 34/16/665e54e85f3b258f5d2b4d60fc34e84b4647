@@ -1,0 +1,19 @@
+packages/cli/test/integration/scheduling/system-job.test.ts
+  s_2549f6c4ac3112::t_58db3dfc1a4ff7 1-153
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3416665e54e85f3b258f5d2b4d60fc34e84b4647",
+  "prompts": {},
+  "sessions": {
+    "s_2549f6c4ac3112": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ce38f411-be9f-4452-8d6c-9d25639723b9",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

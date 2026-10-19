@@ -1,0 +1,19 @@
+packages/cli/test/integration/scheduling/executor-repository.test.ts
+  s_a3b9c396dd9cf8::t_47fdd9b059bcb6 1184-1185
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d7b91e521f3676b2f3cfaa556122f636fbf743c6",
+  "prompts": {},
+  "sessions": {
+    "s_a3b9c396dd9cf8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "36cc6a00-29eb-4129-980e-5345ea9ce01f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

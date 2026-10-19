@@ -1,0 +1,21 @@
+packages/nodes-base/nodes/Google/Drive/test/GoogleDriveTrigger.node.test.ts
+  s_d6aa0b35ad7ed7::t_e64493226b2450 509-526
+packages/nodes-base/nodes/Google/Drive/GoogleDriveTrigger.node.ts
+  s_d6aa0b35ad7ed7::t_7f3b9a9fb1685c 551
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3920b98e5e55fe6ca492c33ce44ea2957e9cd095",
+  "prompts": {},
+  "sessions": {
+    "s_d6aa0b35ad7ed7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "86471ace-b1f9-44f1-af8b-546f74add5af",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

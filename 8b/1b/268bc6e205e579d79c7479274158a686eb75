@@ -1,0 +1,35 @@
+packages/cli/src/modules/agents/agent-task.service.ts
+  s_59804710ac246a::t_3d753ca77f55e1 627-630,632-635
+packages/cli/src/modules/agents/builder/skills/target-tasks.skill.ts
+  s_59804710ac246a::t_e50faf8e8d5b02 86-88
+packages/frontend/editor-ui/src/features/agents/components/AgentTaskModal.vue
+  s_59804710ac246a::t_d4c31e63513aa1 5
+  s_59804710ac246a::t_9c00da3a45afea 139-140
+  s_59804710ac246a::t_92443a1b704219 94-98
+  s_59804710ac246a::t_5ba0a08cb62ca4 370
+  s_59804710ac246a::t_9ef0f88d13af33 600
+  s_59804710ac246a::t_150069c43da00d 289-293
+  s_59804710ac246a::t_ac582cb6420821 110-115,117-118
+packages/cli/src/modules/agents/__tests__/agent-task.service.test.ts
+  s_59804710ac246a::t_78de1b3ee681da 941-961
+packages/cli/src/modules/mcp/tools/agents/agent-reference.ts
+  s_59804710ac246a::t_3eed6b462a1bd9 99-100
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentTaskModal.test.ts
+  s_59804710ac246a::t_405fc0b917f6b3 393-412
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8b1b268bc6e205e579d79c7479274158a686eb75",
+  "prompts": {},
+  "sessions": {
+    "s_59804710ac246a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "630a9d8b-7a73-4d8a-96ac-3588b471e46f",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

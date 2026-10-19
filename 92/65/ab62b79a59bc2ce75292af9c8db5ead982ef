@@ -1,0 +1,19 @@
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/schemas/importBlockingIssue.yml
+  s_7cdfcf2fda096d::t_2ce3aa27d4f9e6 205-209
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9265ab62b79a59bc2ce75292af9c8db5ead982ef",
+  "prompts": {},
+  "sessions": {
+    "s_7cdfcf2fda096d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6c82e4f0-2d7b-49bf-94d3-c15d9a865b61",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,38 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentCard.test.ts
+  s_7e8ab22823b2f0::t_89b7d617c285c3 306
+packages/frontend/editor-ui/src/features/ai/mcpAccess/SettingsMCPWorkflowsView.test.ts
+  s_7e8ab22823b2f0::t_89b7d617c285c3 222
+packages/frontend/editor-ui/src/experiments/exposeAllWorkflowsToMcp/components/ExposeAllWorkflowsToMcpModal.test.ts
+  s_7e8ab22823b2f0::t_89b7d617c285c3 78
+packages/frontend/@n8n/design-system/src/components/N8nSettingsLayout/Examples.stories.ts
+  s_7e8ab22823b2f0::t_a9b7ea935d14e2 1603,1981-1982,1988
+  s_7e8ab22823b2f0::t_0b3275fc9f8286 1609
+packages/@n8n/telemetry/src/events/mcp.ts
+  s_7e8ab22823b2f0::t_a9b7ea935d14e2 118
+packages/frontend/editor-ui/src/app/components/WorkflowCard.test.ts
+  s_7e8ab22823b2f0::t_846990816ff9eb 975
+packages/cli/src/modules/mcp/tools/get-instance-context.tool.ts
+  s_7e8ab22823b2f0::t_89b7d617c285c3 34-35,68
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_7e8ab22823b2f0::t_846990816ff9eb 5192
+  s_7e8ab22823b2f0::t_0b3275fc9f8286 3758,3764
+  s_7e8ab22823b2f0::t_89b7d617c285c3 1981,1985,3136,3546-3547,3549,3552,3603,3612,3702,3712,3755-3757,3760-3761,3763,3766,5126,8130
+packages/frontend/editor-ui/src/features/ai/mcpAccess/SettingsMCPAgentsView.test.ts
+  s_7e8ab22823b2f0::t_89b7d617c285c3 223
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1208d2d6d0d7a2c8c2f4e65023dde567c048a52d",
+  "prompts": {},
+  "sessions": {
+    "s_7e8ab22823b2f0": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0f74a-1de6-7b90-a5dd-3a1f7084d180",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

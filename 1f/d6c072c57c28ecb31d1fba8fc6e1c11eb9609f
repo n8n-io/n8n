@@ -1,0 +1,21 @@
+packages/cli/eslint.config.mjs
+  s_5b85161403cb3c::t_97374994c42011 227-229,236-237
+packages/cli/src/modules/inbound-auth-core/__tests__/authentication.service.test.ts
+  s_5b85161403cb3c::t_0cc5ca76d23bba 159
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1fd6c072c57c28ecb31d1fba8fc6e1c11eb9609f",
+  "prompts": {},
+  "sessions": {
+    "s_5b85161403cb3c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "10dcb3c0-c4f9-4155-9b96-4af4ab2eb20d",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

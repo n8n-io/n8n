@@ -1,0 +1,49 @@
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-request.service.ts
+  s_199eb4daa2d281::t_5196903e4880bd 280-281,283
+  s_199eb4daa2d281::t_15daeaea842d40 50-55
+  s_199eb4daa2d281::t_a6e1d6ddb80d76 364,366
+  s_199eb4daa2d281::t_ea6cda7d2d4664 372,446-448,452-455,457
+  s_199eb4daa2d281::t_b28358c195b41a 495-498
+  s_199eb4daa2d281::t_13980514bcf572 261,264-265
+  s_199eb4daa2d281::t_dfb6887c320774 520
+  s_199eb4daa2d281::t_9d64aeb97de099 367-371,445,458-463,499-504,521-526
+packages/@n8n/api-types/src/dto/workflow-reviews/__tests__/create-workflow-review-request.dto.test.ts
+  s_199eb4daa2d281::t_1a703df33b3b48 49-80
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-request.service.test.ts
+  s_199eb4daa2d281::t_692a740861bfa6 132,333,382,387
+  s_199eb4daa2d281::t_451f939d6126c8 334-367
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-request.update.service.test.ts
+  s_199eb4daa2d281::t_b24ec789366d6f 345-358
+  s_199eb4daa2d281::t_c8ebc9dcab9654 314-317,327
+  s_199eb4daa2d281::t_692a740861bfa6 115,339,361,376,390,469
+  s_199eb4daa2d281::t_72705796bcdf50 391-392,394-440
+  s_199eb4daa2d281::t_7b78bb6c37a67c 393
+packages/@n8n/api-types/src/dto/workflow-reviews/__tests__/update-workflow-review-request-version.dto.test.ts
+  s_199eb4daa2d281::t_a5153f962b3bf0 14-31
+  s_199eb4daa2d281::t_d02e313793eb11 104-113
+packages/@n8n/api-types/src/dto/workflow-reviews/update-workflow-review-request-version.dto.ts
+  s_199eb4daa2d281::t_ac7d7d3596f52f 2-5,12-13
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-requests.controller.integration.test.ts
+  s_199eb4daa2d281::t_ec6aa0377b27cf 1230-1275
+  s_199eb4daa2d281::t_e4d06e1c445824 716-762
+packages/@n8n/api-types/src/dto/workflow-reviews/create-workflow-review-request.dto.ts
+  s_199eb4daa2d281::t_e0d5788cf99071 4-7,19-20
+packages/@n8n/db/src/repositories/workflow-history.repository.ts
+  s_199eb4daa2d281::t_71bc6e59bad1b2 24-27,29-35,41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "f9e729e5e2721ba196a881be1b421fa8d88c45ab",
+  "prompts": {},
+  "sessions": {
+    "s_199eb4daa2d281": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c88d0f02-5f73-42f4-adf1-82bd532148c2",
+        "model": "claude-fable-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

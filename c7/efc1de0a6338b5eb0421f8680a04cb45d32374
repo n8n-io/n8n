@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/app/composables/useNodeHelpers.ts
+  s_9b0cd3319eda75::t_7262bb03888a51 420
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c7efc1de0a6338b5eb0421f8680a04cb45d32374",
+  "prompts": {},
+  "sessions": {
+    "s_9b0cd3319eda75": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "426df26e-4bd6-4a28-933c-ed188af1d124",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

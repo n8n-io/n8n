@@ -1,0 +1,74 @@
+packages/@n8n/ai-utilities/src/__tests__/utils/http-proxy-agent.test.ts
+  h_c63dce324dfc7b 2,4,435,482,495-498,604-671
+packages/@n8n/ai-utilities/src/utils/http-proxy-agent.ts
+  h_c63dce324dfc7b 124-127,131-142
+packages/@n8n/nodes-langchain/nodes/agents/Agent/agents/ToolsAgent/common.ts
+  h_c63dce324dfc7b 333,338,364-365,431-434
+packages/@n8n/nodes-langchain/nodes/agents/Agent/test/ToolsAgent/commons.test.ts
+  h_c63dce324dfc7b 1054-1096
+packages/@n8n/nodes-langchain/nodes/llms/LMChatAnthropic/LmChatAnthropic.node.ts
+  h_c63dce324dfc7b 442-443,604-608,646-647,729-732,743-756,759-761,770
+packages/@n8n/nodes-langchain/nodes/llms/LMChatAnthropic/test/LmChatAnthropic.test.ts
+  h_c63dce324dfc7b 665-697,836,854,1021,1033
+packages/@n8n/nodes-langchain/utils/output_parsers/N8nStructuredOutputParser.test.ts
+  h_c63dce324dfc7b 280
+packages/@n8n/nodes-langchain/utils/output_parsers/N8nStructuredOutputParser.ts
+  h_c63dce324dfc7b 87
+packages/cli/src/modules/agents/integrations/__tests__/slack-setup.types.test.ts
+  h_c63dce324dfc7b 1-15
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-managed-setup.service.ts
+  h_c63dce324dfc7b 28-35,386,499,732
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-methods.service.ts
+  h_c63dce324dfc7b 20-21,23,276-282
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-setup.types.ts
+  h_c63dce324dfc7b 4-7,49-59
+packages/cli/src/modules/instance-registry/__tests__/check.service.test.ts
+  h_c63dce324dfc7b 53,124,138-164
+packages/cli/src/modules/instance-registry/__tests__/instance-registry-reconciliation.task.test.ts
+  h_c63dce324dfc7b 1-41
+packages/cli/src/modules/instance-registry/__tests__/instance-registry.module.test.ts
+  h_c63dce324dfc7b 1-11
+packages/cli/src/modules/instance-registry/__tests__/stale-member-cleanup.task.test.ts
+  h_c63dce324dfc7b 5,8,10,14,17-22,25-27,29,31-32,35-36,38,40-42,45-47,49
+packages/cli/src/modules/instance-registry/checks/check.service.ts
+  h_c63dce324dfc7b 12,23-26,137-143
+packages/cli/src/modules/instance-registry/checks/instance-registry-reconciliation.task.ts
+  h_c63dce324dfc7b 1-33
+packages/cli/src/modules/instance-registry/instance-registry.module.ts
+  h_c63dce324dfc7b 32-39
+packages/cli/src/modules/instance-registry/stale-member-cleanup.task.ts
+  h_c63dce324dfc7b 2-4,9-15,17-24,35-38
+packages/frontend/editor-ui/src/app/composables/useWorkflowActivate.test.ts
+  h_c63dce324dfc7b 13-36,38-41,45,52,113,139-141,177-285
+packages/frontend/editor-ui/src/app/composables/useWorkflowActivate.ts
+  h_c63dce324dfc7b 111-117,139,207-209
+packages/frontend/editor-ui/src/features/workflows/components/WorkflowPublishModal.vue
+  h_c63dce324dfc7b 27
+packages/frontend/editor-ui/src/features/workflows/components/WorkflowSettings/WorkflowSettings.vue
+  h_c63dce324dfc7b 60
+packages/nodes-base/nodes/Freshservice/Freshservice.node.ts
+  h_c63dce324dfc7b 715-719,721-732
+packages/nodes-base/nodes/Freshservice/__tests__/workflow/apiResponses.ts
+  h_c63dce324dfc7b 1-46
+packages/nodes-base/nodes/Freshservice/__tests__/workflow/change/getAll.test.ts
+  h_c63dce324dfc7b 1-23
+packages/nodes-base/nodes/Freshservice/__tests__/workflow/change/getAll.workflow.json
+  h_c63dce324dfc7b 1-130
+packages/nodes-base/nodes/Freshservice/__tests__/workflow/credentials.ts
+  h_c63dce324dfc7b 1-6
+patches/@langchain__openai@1.4.4.patch
+  h_c63dce324dfc7b 1-30
+pnpm-lock.yaml
+  h_c63dce324dfc7b 862,1165,1274,3292,29872
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "d852314ed1cafc48c43686eb294714ded5355bd5",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

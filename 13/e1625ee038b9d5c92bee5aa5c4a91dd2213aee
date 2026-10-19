@@ -1,0 +1,50 @@
+packages/@n8n/instance-ai/evaluations/discovery/confirmation-policy.ts
+  s_fd6e130ca898c8::t_887e479cb2c158 30-32
+packages/@n8n/instance-ai/evaluations/routing/__tests__/route-rules.test.ts
+  s_fd6e130ca898c8::t_60b24ba958d96a 1-50
+packages/@n8n/instance-ai/evaluations/routing/__tests__/cases.test.ts
+  s_fd6e130ca898c8::t_60b24ba958d96a 1-71
+packages/@n8n/instance-ai/evaluations/routing/judge.ts
+  s_fd6e130ca898c8::t_80e0aaf464170c 1-114
+packages/@n8n/instance-ai/evaluations/routing/grade.ts
+  s_fd6e130ca898c8::t_c34945ae4f241c 19
+  s_fd6e130ca898c8::t_dfe1f17799c9cb 1-18,20-173,175-259
+  s_fd6e130ca898c8::t_a697988b54a369 174
+packages/@n8n/instance-ai/evaluations/routing/route-rules.ts
+  s_fd6e130ca898c8::t_c34945ae4f241c 12-14
+  s_fd6e130ca898c8::t_db9ebdac5aeb62 1-11,15-80
+packages/@n8n/instance-ai/evaluations/discovery/expected-tools-invoked.ts
+  s_fd6e130ca898c8::t_887e479cb2c158 245-246
+packages/@n8n/instance-ai/evaluations/discovery/types.ts
+  s_fd6e130ca898c8::t_887e479cb2c158 97-102,108-110
+packages/@n8n/instance-ai/evaluations/discovery/runner.ts
+  s_fd6e130ca898c8::t_c34945ae4f241c 73
+  s_fd6e130ca898c8::t_b411a6b6ac6b44 17-20,44-49,106-146,156,158,173-181,205-216,258,273,275-278,287,290,294-295,305,399
+packages/@n8n/instance-ai/evaluations/discovery/cli.ts
+  s_fd6e130ca898c8::t_f9d2b39acfdad8 9,15-18,21,23,25-33,51-53,110,147-152,158-162,166-175,205-215,291-355,357-365,367-368,384-388
+  s_fd6e130ca898c8::t_07a2d2ce325d41 366
+  s_fd6e130ca898c8::t_1827ede9b2bbab 356
+  s_fd6e130ca898c8::t_6a3f1cca64364f 369
+packages/@n8n/instance-ai/evaluations/routing/cases.ts
+  s_fd6e130ca898c8::t_07a2d2ce325d41 114-116
+  s_fd6e130ca898c8::t_0443603aca8b09 1-113,117-119
+packages/@n8n/instance-ai/evaluations/routing/__tests__/grade.test.ts
+  s_fd6e130ca898c8::t_de14f7566bada1 1-118,123-212,216-229
+  s_fd6e130ca898c8::t_2ebb603538afec 119-122,213-215
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "13e1625ee038b9d5c92bee5aa5c4a91dd2213aee",
+  "prompts": {},
+  "sessions": {
+    "s_fd6e130ca898c8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1ed1908b-631c-440c-bb45-2628551c070a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

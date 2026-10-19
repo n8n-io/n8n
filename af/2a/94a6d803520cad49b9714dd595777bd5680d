@@ -1,0 +1,24 @@
+packages/cli/src/modules/instance-ai/eval/thread-restore.service.ts
+  s_c128925404d6f5::t_e9c0ab35046441 11,73,267-270,272,276-277,281,296,304-313
+  s_c128925404d6f5::t_eea817b58c5d90 314-316
+packages/cli/src/modules/instance-ai/eval/__tests__/thread-restore.service.integration.test.ts
+  s_c128925404d6f5::t_e9c0ab35046441 3-8,51,134,230
+packages/cli/src/modules/instance-ai/eval/__tests__/thread-restore.service.test.ts
+  s_c128925404d6f5::t_e9c0ab35046441 10,44,53,212,228-243
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "af2a94a6d803520cad49b9714dd595777bd5680d",
+  "prompts": {},
+  "sessions": {
+    "s_c128925404d6f5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6a04e249-8370-4127-a752-60228b3ff214",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

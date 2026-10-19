@@ -1,0 +1,23 @@
+packages/@n8n/instance-ai/src/agent/sanitize-mcp-schemas.ts
+  ai_agent 512
+  s_f7c2833ce88101::t_c71c96ee729f63 427-428,450,460,511,513,560-566,571
+packages/@n8n/instance-ai/src/agent/__tests__/sanitize-mcp-schemas.test.ts
+  s_f7c2833ce88101::t_3f0992c68e8e21 6,855-876,878,880-881,884-896,898,900-901,903-913,915,917-918
+  s_f7c2833ce88101::t_303622882badc1 854,877,879,882-883,897,899,902,914,916,919
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5d59eb26d87676fda85ec7605ee17a00b08044fa",
+  "prompts": {},
+  "sessions": {
+    "s_f7c2833ce88101": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "16ffbeaa-edd2-458f-90fb-28b08e8b9b37",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

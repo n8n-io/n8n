@@ -1,0 +1,13 @@
+packages/core/src/binary-data/__tests__/blob.manager.fs.integration.test.ts
+  ai_agent 229,240-251
+packages/core/src/binary-data/__tests__/blob.manager.test.ts
+  ai_agent 119-135
+packages/core/src/binary-data/blob.manager.ts
+  ai_agent 21-23,81,83,85,88-89,92-94
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c9955f98488006034ea752e65f2be02a6b11d47b",
+  "prompts": {}
+}

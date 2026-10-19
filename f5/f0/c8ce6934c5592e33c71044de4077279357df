@@ -1,0 +1,26 @@
+packages/@n8n/instance-ai/skills/post-build-flow/SKILL.md
+  s_9d49dd46887fb7::t_c8fa9c471d8f3f 23-25
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/build-workflow.tool.test.ts
+  s_9d49dd46887fb7::t_fe8f85c7af1d6d 235-238
+packages/@n8n/instance-ai/src/agent/__tests__/system-prompt.test.ts
+  s_9d49dd46887fb7::t_1c9222061071d8 77
+  s_9d49dd46887fb7::t_b54b1dd3a69330 71-76,78-80
+packages/@n8n/instance-ai/src/agent/system-prompt.ts
+  s_9d49dd46887fb7::t_b117108da3024a 201
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "f5f0c8ce6934c5592e33c71044de4077279357df",
+  "prompts": {},
+  "sessions": {
+    "s_9d49dd46887fb7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "298a7c59-0292-44ab-b638-daa544672461",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

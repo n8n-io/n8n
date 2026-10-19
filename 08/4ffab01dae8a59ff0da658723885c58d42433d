@@ -1,0 +1,28 @@
+packages/nodes-base/nodes/Google/CloudStorage/BucketDescription.ts
+  s_2e1fa95fc44f8f::t_7b09d9f29776e0 139,152,227
+packages/nodes-base/nodes/Google/CloudStorage/test/path-segments/delete.workflow.test.ts
+  s_2e1fa95fc44f8f::t_257864a10ac2b7 1-9
+packages/nodes-base/nodes/Google/CloudStorage/test/path-segments/delete.workflow.json
+  s_2e1fa95fc44f8f::t_b7ffa73ece8b57 31-50,54,56-58,65-67
+  s_2e1fa95fc44f8f::t_a25954789682e7 1-30,51-53,55,59-64,68-70
+packages/nodes-base/nodes/Google/CloudStorage/ObjectDescription.ts
+  s_2e1fa95fc44f8f::t_174d3ae73f5f5b 364
+  s_2e1fa95fc44f8f::t_7820c898bce09f 401,414,542
+  s_2e1fa95fc44f8f::t_5da2ed9f8ede6a 160,478
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "084ffab01dae8a59ff0da658723885c58d42433d",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

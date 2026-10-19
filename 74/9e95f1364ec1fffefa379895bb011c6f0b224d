@@ -1,0 +1,31 @@
+packages/frontend/editor-ui/src/features/ndv/parameters/composables/useWorkflowResourcesLocator.test.ts
+  s_0c801c2720c261::t_519e078c3de145 305-308
+packages/frontend/editor-ui/src/app/stores/workflowsList.store.test.ts
+  s_0c801c2720c261::t_519e078c3de145 14,333-355,363-365,367
+  s_0c801c2720c261::t_b882107776a1fb 7,356-362,366,368-370
+packages/cli/test/integration/workflows/workflows.controller.test.ts
+  s_0c801c2720c261::t_8d192d45a39210 5575-5579,5588
+packages/frontend/editor-ui/src/app/api/workflows.test.ts
+  s_0c801c2720c261::t_5b3e03ef86706d 1-6,54-85
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "749e95f1364ec1fffefa379895bb011c6f0b224d",
+  "prompts": {},
+  "humans": {
+    "h_21437a83314767": {
+      "author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_0c801c2720c261": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7bda1e85-e6de-47ba-844d-e10169e167f2",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

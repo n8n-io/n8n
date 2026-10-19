@@ -1,0 +1,19 @@
+packages/frontend/@n8n/stores/src/types/pageRedirection.ts
+  s_d349d6681d8cb8::t_e0617fe35c3243 4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "8900e48f2ceb18c8b8888cac999afcf620e1e5d8",
+  "prompts": {},
+  "sessions": {
+    "s_d349d6681d8cb8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4f24e9e1-f129-4ee4-8f52-5d1da51fc07f",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

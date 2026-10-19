@@ -1,0 +1,22 @@
+packages/frontend/editor-ui/src/features/workflow-reviews/reviewStatus.store.test.ts
+  s_41e37076417c9b::t_38e208d5c222b6 87,102-103,107-108
+packages/frontend/editor-ui/src/features/workflow-reviews/reviewStatus.store.ts
+  s_41e37076417c9b::t_9019097aaf5e9b 29,31,34-35,55-57
+  s_41e37076417c9b::t_122387466133cf 17-18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "2215d68fcb6184f9318661dc6b43ad9a4bee7e80",
+  "prompts": {},
+  "sessions": {
+    "s_41e37076417c9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "480c8620-d708-419e-ac08-fca1f0d2cb0a",
+        "model": "claude-fable-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

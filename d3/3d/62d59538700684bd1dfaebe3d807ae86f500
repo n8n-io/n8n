@@ -1,0 +1,23 @@
+packages/frontend/@n8n/design-system/src/v2/components/Checkbox/Checkbox.test.ts
+  s_4e81021c6567f0::t_fb6522abac9807 8-32
+packages/frontend/@n8n/design-system/src/v2/components/Checkbox/Checkbox.vue
+  s_4e81021c6567f0::t_22f60e2232df74 23-27
+  s_4e81021c6567f0::t_065bbb7c1a1139 2
+  s_4e81021c6567f0::t_45e345a3fd9016 37,40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "d33d62d59538700684bd1dfaebe3d807ae86f500",
+  "prompts": {},
+  "sessions": {
+    "s_4e81021c6567f0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "013ede52-1858-4647-bc13-cff498ab7a24",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

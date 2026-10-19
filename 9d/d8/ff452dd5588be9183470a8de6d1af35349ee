@@ -1,0 +1,51 @@
+packages/cli/src/modules/n8n-packages/entities/credential/__tests__/credential-matcher.test.ts
+  s_2608ee6c90e916::t_e29e46a0ad89b6 50
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-importer.ts
+  s_2608ee6c90e916::t_93f1a4e8c05f4e 136,143,154
+packages/cli/src/modules/n8n-packages/entities/credential/id-based-credential-matcher.ts
+  s_2608ee6c90e916::t_c888d4f4366bb6 37
+  s_2608ee6c90e916::t_b760fd1d181e2d 53,58
+  s_2608ee6c90e916::t_ee36ca26d84dec 2
+packages/cli/src/modules/n8n-packages/entities/credential/credential-importer.ts
+  s_2608ee6c90e916::t_6d28d6b58c5e58 14
+  s_2608ee6c90e916::t_246feab85ef88d 28-31,35-36,48,60,86,88
+packages/cli/src/modules/n8n-packages/entities/credential/credential-matcher.ts
+  s_2608ee6c90e916::t_62756e9822fa10 15
+  s_2608ee6c90e916::t_500cd286e0bd40 1
+packages/cli/src/modules/n8n-packages/engine/import-pipeline.ts
+  s_2608ee6c90e916::t_2917294605cad2 75
+  s_2608ee6c90e916::t_eef877ad9f8b13 158
+  s_2608ee6c90e916::t_00d580bc0aa581 114
+  s_2608ee6c90e916::t_c06001cdfc5070 205,209
+  s_2608ee6c90e916::t_501a120d262092 98-102
+  s_2608ee6c90e916::t_15d76ffa5afe1b 59-60,77
+  s_2608ee6c90e916::t_d71eed3a1c5667 32
+packages/cli/src/modules/n8n-packages/entities/credential/__tests__/credential-importer.test.ts
+  s_2608ee6c90e916::t_ad56c54499e9c6 106,127
+  s_2608ee6c90e916::t_ef1c5358877b06 10
+  s_2608ee6c90e916::t_038cec1acba2a9 307-312,314
+  s_2608ee6c90e916::t_79da77223909a2 102,115,154,168,197
+  s_2608ee6c90e916::t_4f630bfc671070 268-282
+  s_2608ee6c90e916::t_2b09c288e6dfef 252
+  s_2608ee6c90e916::t_cbadc6e1b4494a 227
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_2608ee6c90e916::t_5edec3b256f1f2 63-65,67-75
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-import.types.ts
+  s_2608ee6c90e916::t_4ee2ca9de7f2a9 1,8,11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9dd8ff452dd5588be9183470a8de6d1af35349ee",
+  "prompts": {},
+  "sessions": {
+    "s_2608ee6c90e916": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "11455b82-f681-42f8-ba44-8f1255c82308",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}

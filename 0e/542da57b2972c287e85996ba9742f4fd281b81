@@ -1,0 +1,21 @@
+packages/cli/src/modules/agents/json-config/__tests__/mcp-client-factory.test.ts
+  s_95de11c49048b8::t_f647774f9e6a74 696-715
+packages/cli/src/modules/agents/json-config/mcp-client-factory.ts
+  s_95de11c49048b8::t_c7d4770db4b9ae 211-214,216-222,224
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "0e542da57b2972c287e85996ba9742f4fd281b81",
+  "prompts": {},
+  "sessions": {
+    "s_95de11c49048b8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "28dcfb2e-d83c-4b2d-9160-5bf3bcf6d168",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

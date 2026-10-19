@@ -1,0 +1,66 @@
+packages/workflow-test-spike/tsconfig.json
+  s_eacdc52767c0a6::t_4f67e8ede57cdf 1-19
+packages/workflow-test-spike/src/index.ts
+  s_eacdc52767c0a6::t_82fc76ff42ab36 1-4
+packages/workflow-test-spike/src/assert.ts
+  s_eacdc52767c0a6::t_475e6e58751161 1-51,58-86
+  ai_agent 52-57
+packages/workflow-test-spike/probes/p10-throughput.test.ts
+  s_eacdc52767c0a6::t_14b0345ba46526 1-48
+packages/workflow-test-spike/probes/p7-execution-mode.test.ts
+  s_eacdc52767c0a6::t_bcc132f28d8f23 1-70
+packages/workflow-test-spike/src/host-out-of-instance.ts
+  s_eacdc52767c0a6::t_285bc366e577d4 69,72
+  ai_agent 21
+  s_eacdc52767c0a6::t_ffa7bafda342e0 163-165,167-171,174,176-183
+  s_eacdc52767c0a6::t_c093aa8d01646d 1-20,22-33,36-68,70-71,73-162,166,172-173,175,184-187
+  s_eacdc52767c0a6::t_18f68cf78e19da 34-35
+packages/workflow-test-spike/probes/p4-instance-only-nodes.test.ts
+  s_eacdc52767c0a6::t_1b6d4cf57f63d8 1-72
+packages/workflow-test-spike/package.json
+  s_eacdc52767c0a6::t_abb78dc54ec64c 1-30
+packages/workflow-test-spike/probes/p9-poc-round-trip.test.ts
+  s_eacdc52767c0a6::t_99388c2dea7530 1-87
+pnpm-lock.yaml
+  ai_agent 7173-7203,22720-22721,29776,42488
+packages/workflow-test-spike/probes/p8-volatility.test.ts
+  s_eacdc52767c0a6::t_f0312c6533b3ef 1-62
+packages/workflow-test-spike/probes/setup.ts
+  s_eacdc52767c0a6::t_b9bbd80b030ceb 1-16
+docs/workflow-tests-poc-architecture.html
+  s_eacdc52767c0a6::t_1494a15fc71934 5007,5033,5035,5038-5053,5058-5060,5066-5067,5072-5074,5080-5082,5087-5089,5092-5093,5098-5100,5104-5106,5111-5113,5116-5118,5123-5125,5128-5130,5135-5137,5141-5142,5147-5149,5152-5154,5159-5161,5164-5166,5171-5173,5176-5177,5182-5184,5187-5188,5193-5195,5198-5199,5204-5206,5209-5210,5215-5217,5221-5222,5227-5229,5233-5234,5239-5241,5244-5245,5250-5251,5254-5255,5258-5259,5262-5263,5266-5267,5270-5271,5274-5275,5278-5279,5282-5283,5286-5287,5290-5291,5294-5295,5298-5299,5302-5303,5306-5307,5310-5311,5316-5317,5321-5322,5519-5520,5531-5532,5540,5543-5544
+  s_eacdc52767c0a6::t_cf4f224df2056c 5516,5521,5533,5545-5546
+  s_eacdc52767c0a6::t_f36984c18e1274 1-5006,5008-5032,5034,5036-5037,5054-5057,5061-5065,5068-5071,5075-5079,5083-5086,5090-5091,5094-5097,5101-5103,5107-5110,5114-5115,5119-5122,5126-5127,5131-5134,5138-5140,5143-5146,5150-5151,5155-5158,5162-5163,5167-5170,5174-5175,5178-5181,5185-5186,5189-5192,5196-5197,5200-5203,5207-5208,5211-5214,5218-5220,5223-5226,5230-5232,5235-5238,5242-5243,5246-5249,5252-5253,5256-5257,5260-5261,5264-5265,5268-5269,5272-5273,5276-5277,5280-5281,5284-5285,5288-5289,5292-5293,5296-5297,5300-5301,5304-5305,5308-5309,5312-5315,5318-5320,5323-5515,5517-5518,5522-5530,5534-5539,5541-5542,5547-14956
+packages/workflow-test-spike/vitest.config.ts
+  s_eacdc52767c0a6::t_3a18c969bb33b0 1-22
+packages/workflow-test-spike/src/workflows.ts
+  s_eacdc52767c0a6::t_eb61c49b04a755 1-187
+  s_eacdc52767c0a6::t_bf3f0366f5ff02 188-213
+packages/workflow-test-spike/probes/p6-loops.test.ts
+  s_eacdc52767c0a6::t_44aeb34c208976 1-64
+docs/workflow-test-spike.md
+  s_eacdc52767c0a6::t_54ca1ba9b1fc7e 1-116
+packages/workflow-test-spike/probes/p1-stub-seam.test.ts
+  s_eacdc52767c0a6::t_2cf49d0779ebb6 1-60,63-64
+  s_eacdc52767c0a6::t_520d43393c1127 61-62
+packages/workflow-test-spike/probes/p2-credentials.test.ts
+  s_eacdc52767c0a6::t_7e4714ec08b095 1-56
+packages/workflow-test-spike/src/test-case.ts
+  s_eacdc52767c0a6::t_3a970a3f76feed 1-111
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "bd38725ad8fc2595e74599b4ee8445c933d4bd40",
+  "prompts": {},
+  "sessions": {
+    "s_eacdc52767c0a6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "65b31ebd-7a46-4c17-b87d-bd447dae3f24",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

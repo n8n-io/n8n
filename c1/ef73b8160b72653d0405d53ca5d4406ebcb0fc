@@ -1,0 +1,124 @@
+packages/cli/src/public-api/v1/openapi-gen/__tests__/decorator-routes.test.ts
+  s_8631ec10eb1199::t_e5b2153c667179 263-289
+packages/cli/src/public-api/media-types/content-type.ts
+  s_8631ec10eb1199::t_4472739ee39d46 32-56
+  s_8631ec10eb1199::t_92e67a9e469872 1
+.agents/skills/public-api/SKILL.md
+  s_8631ec10eb1199::t_82dae0549a737b 115
+packages/cli/src/public-api/media-types/request-body/index.ts
+  s_8631ec10eb1199::t_8125d892fd836e 1-27
+packages/cli/src/public-api/v1/openapi-gen/__tests__/request-body-schema-parity.test.ts
+  s_8631ec10eb1199::t_6876e50105c3d2 5-8,15-16,29,37,41-46
+  s_8631ec10eb1199::t_bc85a5f194acdb 47-49
+packages/cli/src/public-api/public-api-route-resolver.ts
+  s_8631ec10eb1199::t_f6045d340eafa5 35
+  s_8631ec10eb1199::t_4c3d069008408e 10,20
+  s_8631ec10eb1199::t_c6c4fc7d77f9f0 263-265
+  s_8631ec10eb1199::t_fee2af3b061e78 280
+  s_8631ec10eb1199::t_d565a660d8df3a 138
+  s_8631ec10eb1199::t_c981b55130ab88 68-69
+  s_8631ec10eb1199::t_bc32211e8dd1ba 21
+packages/cli/src/public-api/media-types/request-body/__tests__/multipart-errors.test.ts
+  s_8631ec10eb1199::t_1192dd8671ed57 1-60
+  s_8631ec10eb1199::t_06664effa30b75 61-63
+.agents/skills/public-api/reference.md
+  s_8631ec10eb1199::t_5d0cfe6da9fdc7 106-148
+  s_8631ec10eb1199::t_5d526b9f6fb908 192-195
+packages/@n8n/decorators/src/controller/__tests__/args.test.ts
+  s_8631ec10eb1199::t_a98e56b5e82022 51-108
+  s_8631ec10eb1199::t_6de64aa56783b2 109-110
+packages/@n8n/api-types/src/schemas/public-api-uploaded-file.schema.ts
+  s_8631ec10eb1199::t_9859d5c4eeb79f 1-28
+packages/cli/src/public-api/media-types/request-body/__tests__/index.test.ts
+  s_8631ec10eb1199::t_384147f4aeae32 1-28
+packages/cli/src/public-api/v1/shared/spec/responses/_index.yml
+  s_8631ec10eb1199::t_8736d58985c44c 15-16
+packages/@n8n/api-types/src/index.ts
+  s_8631ec10eb1199::t_d88266d952ebbe 233-236
+packages/cli/src/public-api/media-types/request-body/__tests__/multipart.request-body.test.ts
+  s_8631ec10eb1199::t_e866bb7ca91f5b 142,152,164
+  s_8631ec10eb1199::t_8781cfcefe1894 5,7,9-10
+  s_8631ec10eb1199::t_e28d7085518cd3 177
+  s_8631ec10eb1199::t_e5d610e2d3c0d4 63-68
+  s_8631ec10eb1199::t_c59645c3f6a882 156
+  s_8631ec10eb1199::t_49192234a16121 131
+  s_8631ec10eb1199::t_d15b06c15d132c 157,178
+  s_8631ec10eb1199::t_4f7a768dfa65a4 1-4,6,8,11-62,69-130,132-141,143-151,153-155,158-163,165-176,179-188
+  s_8631ec10eb1199::t_f68e8e3d4bfff7 189-191
+packages/cli/src/public-api/v1/handlers/discover/discover.service.ts
+  s_8631ec10eb1199::t_c9b14f8b838dda 137-152
+  s_8631ec10eb1199::t_5f650003eff280 7
+packages/cli/src/public-api/media-types/request-body/__tests__/json.request-body.test.ts
+  s_8631ec10eb1199::t_563cc0483ccbf3 1-36,38-46,48-56,58-63
+  s_8631ec10eb1199::t_5eb3273ce27f2c 37,47,57
+  s_8631ec10eb1199::t_fb783eeb9b332b 64-65
+packages/cli/src/public-api/media-types/request-body/multipart.request-body.ts
+  s_8631ec10eb1199::t_22c21a12a9323d 67,85-92,94-99
+  s_8631ec10eb1199::t_826b975dab2056 93
+  s_8631ec10eb1199::t_a9523178baf01f 1-66,68-84,100-114
+packages/cli/src/public-api/media-types/request-body/multipart-parser.ts
+  s_8631ec10eb1199::t_3723c9962076e1 1-17
+packages/cli/src/public-api/media-types/request-body/__tests__/multipart-parser.test.ts
+  s_8631ec10eb1199::t_599a65a42a952a 3-24,26-27
+  s_8631ec10eb1199::t_e5191bf394a8db 25
+  s_8631ec10eb1199::t_bf86d0140cea78 1-2
+packages/cli/src/public-api/media-types/request-body/json.request-body.ts
+  s_8631ec10eb1199::t_e23f967d8e2d6c 1-38
+packages/@n8n/decorators/src/controller/index.ts
+  s_8631ec10eb1199::t_cda838768f9741 28-31
+packages/cli/src/public-api/media-types/request-body/request-body-handler.ts
+  s_8631ec10eb1199::t_e5d9faa874890e 1-31
+packages/cli/src/public-api/public-api-controller.registry.ts
+  s_8631ec10eb1199::t_c3b9ddc42286f2 17
+  s_8631ec10eb1199::t_dcec60326ffb01 167-168
+  s_8631ec10eb1199::t_d8e2df739acf3e 104-111,113
+  s_8631ec10eb1199::t_f39119d9fb5b3c 18-20
+  s_8631ec10eb1199::t_53c6bc22054d36 114-116
+  s_8631ec10eb1199::t_25846af7872ebd 169-171
+packages/cli/src/public-api/media-types/__tests__/content-type.test.ts
+  s_8631ec10eb1199::t_4fc653e9cc22ee 1-44
+packages/cli/src/controller.registry.ts
+  s_8631ec10eb1199::t_b50fcb78b2df2a 83-93
+packages/cli/src/public-api/__tests__/public-api-controller.registry.test.ts
+  s_8631ec10eb1199::t_7904bc1acc2c5a 610-615
+  s_8631ec10eb1199::t_383689017ccf89 1,13,19
+  s_8631ec10eb1199::t_9b5c63a8b748bc 468-609,616-631
+packages/@n8n/api-types/src/schemas/__tests__/public-api-uploaded-file.schema.test.ts
+  s_8631ec10eb1199::t_98a7a81bb2e5cd 1-65
+packages/cli/src/public-api/media-types/request-body/multipart-errors.ts
+  s_8631ec10eb1199::t_87d43d4b6d21d0 1-36
+packages/@n8n/decorators/src/controller/types.ts
+  s_8631ec10eb1199::t_c585782757ddba 27-44,46-55,57
+  s_8631ec10eb1199::t_ae0e08f8186a68 45
+packages/cli/src/public-api/v1/openapi-gen/decorator-routes.ts
+  s_8631ec10eb1199::t_bb49fb85e77b83 15
+  s_8631ec10eb1199::t_39206772bca8cc 165-166
+  s_8631ec10eb1199::t_b7c3aebf9eab58 244-252
+  s_8631ec10eb1199::t_39d6a677641555 16-18
+  s_8631ec10eb1199::t_5cc3e725f02e2c 167-169
+  s_8631ec10eb1199::t_9f9f07a057d354 253-255
+packages/cli/src/__tests__/controller.registry.body-media.test.ts
+  s_8631ec10eb1199::t_a6fcfb3b80808e 1-18,22,28-29,31-32,34-80
+  s_8631ec10eb1199::t_12d8cc8f8a7de8 19-21,23-27,30,33
+packages/@n8n/decorators/src/controller/args.ts
+  s_8631ec10eb1199::t_6fd0afeabd3d26 5,17,22,28
+  s_8631ec10eb1199::t_5fbaed18e3a127 18-21,23-27,29-34,54-55,57-62
+packages/cli/src/public-api/v1/shared/spec/responses/contentTooLarge.yml
+  s_8631ec10eb1199::t_cfcbcbd8dadee4 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "c1ef73b8160b72653d0405d53ca5d4406ebcb0fc",
+  "prompts": {},
+  "sessions": {
+    "s_8631ec10eb1199": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77132272-9e69-4c36-85e9-f1136efb4942",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

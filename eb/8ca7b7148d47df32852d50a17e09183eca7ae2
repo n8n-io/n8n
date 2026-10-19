@@ -1,0 +1,25 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/ToolIoView.spec.ts
+  s_507a325e00f1bf::t_9a96e1edf799de 151
+  s_507a325e00f1bf::t_eeb7afebfde7aa 3,10-11,13,20-32,34-35,37-39,105-110,118,127-128,131,138
+  s_507a325e00f1bf::t_0c852c242cec03 12,14-19,122-126,129-130,136-137
+  s_507a325e00f1bf::t_21014f904f3fcd 33,36,148-150
+packages/frontend/editor-ui/src/features/agents/components/ToolIoView.vue
+  s_507a325e00f1bf::t_0c852c242cec03 78-79
+  s_507a325e00f1bf::t_78fc781a3e323d 9-12,15,19-24,27,81-84,245,247,252-257
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "eb8ca7b7148d47df32852d50a17e09183eca7ae2",
+  "prompts": {},
+  "sessions": {
+    "s_507a325e00f1bf": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f808c-5b2e-7280-b902-d71cf66ccf06",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

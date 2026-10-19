@@ -1,0 +1,26 @@
+.claude/plugins/n8n/skills/change-story/SKILL.md
+  s_e7c7738802f275::t_c70c38c6379363 237
+  s_e7c7738802f275::t_5b98f7ea6d5e36 1-236,238-254
+.claude/plugins/n8n/README.md
+  s_e7c7738802f275::t_751a98952e2992 74-84
+.claude/plugins/n8n/skills/change-story/assets/story-template.html
+  s_e7c7738802f275::t_2b7f100d78df31 1-212
+.claude/plugins/n8n/skills/change-story/references/evidence-capture.md
+  s_e7c7738802f275::t_ea09e0f0a61e5d 1-62
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "20375b3467584533ef6950af75106264e49fe9c6",
+  "prompts": {},
+  "sessions": {
+    "s_e7c7738802f275": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "481d6f49-a4ea-4ba7-9962-1b6597a8b9cd",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

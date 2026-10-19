@@ -1,0 +1,26 @@
+packages/@n8n/workflow-sdk/src/validation/validate-workflow.ts
+  s_f4f3f37a98d31a::t_7a2634ed2902bc 51
+  s_f4f3f37a98d31a::t_9688b163cc6e66 649-651
+  s_f4f3f37a98d31a::t_cbb50a5aecb7d9 1229-1271
+  s_f4f3f37a98d31a::t_373d2a0c993269 1228
+packages/@n8n/workflow-sdk/src/validation/validate-workflow.test.ts
+  s_f4f3f37a98d31a::t_bb9436d0373272 3360-3435
+packages/@n8n/workflow-sdk/src/validation/validate-workflow-builder.ts
+  s_f4f3f37a98d31a::t_499dfec98b0a8e 67-69
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "925e97bfcad3fd6cbc068d76840ac6c123e0cc60",
+  "prompts": {},
+  "sessions": {
+    "s_f4f3f37a98d31a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5f0f3eae-3f41-4e57-9468-7c570d305e15",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    }
+  }
+}

@@ -1,0 +1,28 @@
+packages/cli/src/workflow-execute-additional-data.ts
+  s_ccec85ec2bb9da::t_88131a172721dd 480
+packages/cli/src/execution-lifecycle/__tests__/execution-lifecycle-hooks.test.ts
+  s_ccec85ec2bb9da::t_61906c6f7e8d27 1521
+  s_ccec85ec2bb9da::t_4a77598771ff03 1740
+  s_ccec85ec2bb9da::t_6b4e1e49600668 1609,1613,1615
+  s_ccec85ec2bb9da::t_c0891808050aaf 1800-1910
+packages/cli/src/execution-lifecycle/execution-lifecycle-hooks.ts
+  s_ccec85ec2bb9da::t_92d48bd5df1724 487-491,496-498,501,505,507,512-515,544,561,573,586
+  s_ccec85ec2bb9da::t_7a560e8d1a90bf 873-879,881
+  s_ccec85ec2bb9da::t_a4bc389d13f44f 14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "4ee79f734f9cd54abf9e18a82ab96cf191603a99",
+  "prompts": {},
+  "sessions": {
+    "s_ccec85ec2bb9da": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "69be5006-a611-47c9-ae9f-7c51c628fdce",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Guillaume Jacquart <jacquart.guillaume@gmail.com>"
+    }
+  }
+}

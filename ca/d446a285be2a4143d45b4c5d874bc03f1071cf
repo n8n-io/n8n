@@ -1,0 +1,21 @@
+packages/cli/src/modules/n8n-packages/spec/serialized/__tests__/folder.schema.test.ts
+  s_b9e402b75ca46c::t_a3081eea3291c1 1-38
+packages/cli/src/modules/n8n-packages/spec/serialized/folder.schema.ts
+  s_b9e402b75ca46c::t_1b7cfec0839ce3 1-14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "cad446a285be2a4143d45b4c5d874bc03f1071cf",
+  "prompts": {},
+  "sessions": {
+    "s_b9e402b75ca46c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0175b21f-7e7d-491e-a496-459c2da5cb60",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}

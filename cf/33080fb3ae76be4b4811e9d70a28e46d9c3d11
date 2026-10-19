@@ -1,0 +1,77 @@
+packages/@n8n/cli/src/client.ts
+  s_d837b9e3a40147::t_b0367887c37e1a 443-447,450,489,494
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_d837b9e3a40147::t_40aeae85c87ac5 80-81
+  s_cb44df0efad7de::t_2c0ad7f7b5e5de 94,632-633,638,948
+  s_d837b9e3a40147::t_d4139de4f6f835 461-466,492,552,602-604,608,628,635-637,658,703-705,709,724-728,731-737
+  s_cb44df0efad7de::t_9b7882709d3429 634
+packages/@n8n/cli/src/commands/promotion-connection/apply-selection-continue.ts
+  s_d837b9e3a40147::t_b0367887c37e1a 9,26-29,42
+packages/@n8n/api-types/src/dto/promotions/promotion-binding-preflight.dto.ts
+  s_cb44df0efad7de::t_f9c5cb93643431 5,102-130,162-167,169
+  s_d837b9e3a40147::t_225f23000aff07 131-134
+  s_cb44df0efad7de::t_a5b23e8f58a92f 168
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_d837b9e3a40147::t_53929d38429c0c 1-5
+  s_cb44df0efad7de::t_a9b41305349f98 35,446-490,1421-1431,1441-1442,1654-1668,1672-1689,1693-1710
+  s_d837b9e3a40147::t_74563dd86a5208 1432-1440
+  s_cb44df0efad7de::t_e141cea84421a0 1669-1671,1711-1712
+  s_cb44df0efad7de::t_b9e96354f3a7ff 1690-1692
+  s_cb44df0efad7de::t_af7dc2e5cf745c 1713
+  s_cb44df0efad7de::t_de2477e0fb5b4e 1714-1716,1773-1801,1804-1806
+  s_d837b9e3a40147::t_b2404fae5b8875 1718-1772
+packages/@n8n/cli/src/__tests__/client.test.ts
+  s_d837b9e3a40147::t_a67aca60af6eb0 106-111,144,147-150
+  s_d837b9e3a40147::t_bded99dec250fa 145-146
+packages/@n8n/cli/src/commands/promotion-connection/apply-command.ts
+  s_d837b9e3a40147::t_b0367887c37e1a 78-80
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/continueApplyPackage.generated.yml
+  ai_agent 5,42-44
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/continueApplyProjectSelection.generated.yml
+  ai_agent 5,49-51
+packages/cli/src/public-api/v1/controllers/promotions.public.controller.ts
+  s_d837b9e3a40147::t_8a48af0398566d 569,688
+packages/@n8n/api-types/src/dto/promotions/promotion-operations.dto.ts
+  s_d837b9e3a40147::t_225f23000aff07 1-2,142
+  s_cb44df0efad7de::t_2c0ad7f7b5e5de 72
+  s_d837b9e3a40147::t_bded99dec250fa 103-112,115-118
+packages/@n8n/cli/src/__tests__/promotion-connection-operations.test.ts
+  s_d837b9e3a40147::t_78abbad87e7a85 1,283-287,293-306,527-531,537-541,543,549-554
+  s_d837b9e3a40147::t_a67aca60af6eb0 200-219,280,493-498,502-524,526,542
+  s_d837b9e3a40147::t_01df6549146ce8 288-291,532-535
+  s_d837b9e3a40147::t_9440d0f7730726 292,536
+  s_d837b9e3a40147::t_c4bfbb1e402bc4 525
+packages/@n8n/cli/src/commands/promotion-connection/apply-continue.ts
+  s_d837b9e3a40147::t_b0367887c37e1a 1,9,20-23,32-36
+packages/@n8n/api-types/src/dto/promotions/__tests__/promotion-operations.dto.test.ts
+  s_d837b9e3a40147::t_2c2095d1c86631 43-47,90,151-157,164-171
+packages/@n8n/cli/docs/commands/promotions.md
+  s_d837b9e3a40147::t_fc1f27bb8f843b 297,322,326,398
+  s_d837b9e3a40147::t_40aeae85c87ac5 323-325,399-401
+packages/@n8n/cli/skills/n8n-cli/SKILL.md
+  s_d837b9e3a40147::t_fc1f27bb8f843b 237
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "cf33080fb3ae76be4b4811e9d70a28e46d9c3d11",
+  "prompts": {},
+  "sessions": {
+    "s_cb44df0efad7de": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8a4b6f70-b6af-4932-b51a-1514843c5fe1",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    },
+    "s_d837b9e3a40147": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5f6186ac-52ed-4735-bbb4-f6033d34dd42",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

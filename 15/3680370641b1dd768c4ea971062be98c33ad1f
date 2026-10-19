@@ -1,0 +1,19 @@
+packages/@n8n/api-types/src/dto/user/user-public.dto.ts
+  s_e2203a10d11968::t_ce9c2813a044dd 9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "153680370641b1dd768c4ea971062be98c33ad1f",
+  "prompts": {},
+  "sessions": {
+    "s_e2203a10d11968": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ed3d6309-066a-42ef-9973-7caa9371790f",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

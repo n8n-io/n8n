@@ -1,0 +1,71 @@
+packages/frontend/editor-ui/src/features/agents/composables/useAgentBuilderMainTabs.ts
+  s_c69c3ce673aa8b::t_10a73705d31c51 54
+  s_c69c3ce673aa8b::t_9c6f2eed682ba6 64-75
+packages/cli/src/modules/agents/agent-sandbox.controller.ts
+  s_c69c3ce673aa8b::t_5fd870ef99a672 8,19
+  s_c69c3ce673aa8b::t_8adfceda3ccc2a 39-42,44,54
+packages/@n8n/api-types/src/frontend-settings.ts
+  s_fff881fe30e6ca::t_71fcd0e9e1c982 362-365
+packages/cli/src/modules/agents/agent-knowledge-gate.ts
+  s_c69c3ce673aa8b::t_bae01416e63c8a 5,7
+packages/cli/src/modules/agents/__tests__/agents.module.test.ts
+  s_c69c3ce673aa8b::t_577fe573dc685e 1-66
+packages/cli/src/modules/agents/agent-knowledge-sandbox.service.ts
+  s_c69c3ce673aa8b::t_3ec92124e5790b 232
+  s_c69c3ce673aa8b::t_f2e703ebe8d38e 888-891,893
+packages/cli/src/modules/agents/agent-knowledge.controller.ts
+  s_c69c3ce673aa8b::t_4f3f72b602236a 10,29,32,34
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_c69c3ce673aa8b::t_390c0df0118f6c 105-108
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderEditorColumn.vue
+  s_c69c3ce673aa8b::t_1c29c9c6bd2d0b 146,150
+packages/cli/src/modules/agents/__tests__/agent-knowledge-sandbox.service.test.ts
+  s_c69c3ce673aa8b::t_7c76c5473194e6 334,346-350
+packages/cli/src/modules/agents/__tests__/agent-knowledge-gate.test.ts
+  s_c69c3ce673aa8b::t_011f0dc75a0765 1-33
+packages/cli/src/modules/agents/agents.module.ts
+  s_c69c3ce673aa8b::t_c1af9b874049ef 99-100,104
+packages/frontend/editor-ui/src/app/stores/settings.store.ts
+  s_fff881fe30e6ca::t_29d37cc066c093 186-188
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_c69c3ce673aa8b::t_fb8a82c32dc1de 523
+packages/cli/src/modules/agents/__tests__/agent-knowledge.controller.test.ts
+  s_c69c3ce673aa8b::t_a6c37755f149f6 8,25,30,37,41
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_c69c3ce673aa8b::t_9e9d9dd369a13c 665-666,670-678,686-688,692
+  s_c69c3ce673aa8b::t_abd7b0b7e3f521 689-691
+packages/cli/src/modules/agents/__tests__/agent-sandbox.controller.test.ts
+  s_c69c3ce673aa8b::t_927e957b1925a6 7-8,15-23
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderEditorColumn.spec.ts
+  s_c69c3ce673aa8b::t_257a9947b365d1 260-264,266-267
+  s_c69c3ce673aa8b::t_0ef701cd31eb86 265
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "174f37301540041eac17e85dd9be2142ed6e1069",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_c69c3ce673aa8b": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "3c237fa3-8c33-4d67-bc47-cb969066557f",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_fff881fe30e6ca": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "d4d30594-58d9-42c4-b11a-a84912047070",
+        "model": "claude-sonnet-5-thinking-high"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

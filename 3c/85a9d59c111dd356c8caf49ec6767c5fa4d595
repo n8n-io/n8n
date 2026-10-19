@@ -1,0 +1,32 @@
+packages/frontend/editor-ui/src/features/credentials/components/NodeCredentials.vue
+  s_fb30b1b6ca962d::t_67d07de3e67cc9 653
+  s_fb30b1b6ca962d::t_9afc6cab27c372 1116,1161-1177,1184-1185,1201-1202,1210,1218,1247-1250,1265,1269-1273,1280
+  s_fb30b1b6ca962d::t_5afd0f82f57906 792-793,797
+  s_fb30b1b6ca962d::t_50148c92dfa989 281-287,289-293,295,298-303,307-308,310,313,315
+  s_fb30b1b6ca962d::t_fe2b4501d6917e 1372,1384,1595,1675,1677,1680,1683-1687,1695,1812-1815
+  s_fb30b1b6ca962d::t_bf05b80b55e28e 1816-1817
+packages/frontend/editor-ui/src/features/credentials/components/NodeCredentials.test.ts
+  s_fb30b1b6ca962d::t_6618919cfb0748 3590,3594,3605,3629,3701-3719
+  s_fb30b1b6ca962d::t_596ed7fd737c29 3720-3721
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3c85a9d59c111dd356c8caf49ec6767c5fa4d595",
+  "prompts": {},
+  "humans": {
+    "h_21437a83314767": {
+      "author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_fb30b1b6ca962d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ab82555b-e176-4374-88ff-89b386ef524e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

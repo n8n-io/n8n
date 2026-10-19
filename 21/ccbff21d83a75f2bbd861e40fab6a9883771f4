@@ -1,0 +1,19 @@
+.github/actions/ci-filter/ci-filter.mjs
+  s_e61cec36903ae7::t_b6d9204a81d138 108,123-126,165-167
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "21ccbff21d83a75f2bbd861e40fab6a9883771f4",
+  "prompts": {},
+  "sessions": {
+    "s_e61cec36903ae7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a8dc114a-bfa9-4ec8-8109-a97a40763935",
+        "model": "claude-opus-5"
+      },
+      "human_author": null
+    }
+  }
+}

@@ -1,0 +1,27 @@
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowPublishChoiceDialog.vue
+  s_70e4a16a672757::t_f5a8056fa98720 2-8,44-46,51,72-76,86-91
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewSubmittedDialog.vue
+  s_70e4a16a672757::t_f5a8056fa98720 48,72-76
+  s_70e4a16a672757::t_f3edf241d49553 77
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "d7fb70c8dcb059221e22c3b4aa6cd784e3c311c0",
+  "prompts": {},
+  "humans": {
+    "h_9c8f56e3400786": {
+      "author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_70e4a16a672757": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f79e6-9f5d-7b91-b07b-a2c76974c292",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

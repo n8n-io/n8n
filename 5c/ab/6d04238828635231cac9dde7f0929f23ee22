@@ -1,0 +1,50 @@
+packages/cli/src/modules/git-connections.ee/__tests__/working-copy-updater.test.ts
+  s_5ddf40544fde37::t_472bf05a51816b 1,3-6,8-9,11,13,21-33,71-75,80-88,115-123,409-411,432,435-437,440-442,444-447,449-452,455-458,462,465-466,471-472,474-478,64,110,155,161-162,164,169-170,173,178-179,181,183-184,186,189-190,192,195-197,341,375,19-20,420,423-425,428-430
+  s_5ddf40544fde37::t_0d4acd4aa28bdd 2,12,34-52,54-55,65-70,89-93,98,106,114,124-148,198-199,201-202,204-208,210-211,213-214,216-219,228,231-232,238,244,248,250-251,256,259,262-263,266-267,269-271,278,284,293-296,303-315,344,347-348,354,361,370-372,377-381,383-385,387-394,400-408,412-418,320-321,324,330,333-334,339,364-365
+  s_5ddf40544fde37::t_25f2f4d7c1ea0f 221-222,224-227,200,220
+  s_5ddf40544fde37::t_5e315f512bf405 338,340,345,10,174,176,289,292,336,368,373-374,453,426
+  ai_agent 395-399
+  s_5ddf40544fde37::t_b6b340e1cb69ae 107,212,386
+  s_5ddf40544fde37::t_fbc3cf0188b6e1 448
+packages/cli/src/modules/n8n-packages/spec/constants.ts
+  ai_agent 2-31
+packages/cli/src/modules/git-connections.ee/__tests__/git-connections.service.test.ts
+  s_5ddf40544fde37::t_53cbdd157faed9 624-625,629-638
+  s_5ddf40544fde37::t_0265debc3bd427 639-641,627,38
+  s_5ddf40544fde37::t_563b82e9fbe260 587
+  s_5ddf40544fde37::t_51e46152984fc8 626
+  s_5ddf40544fde37::t_5fb1f352a67b94 37
+packages/cli/src/modules/git-connections.ee/__tests__/git-connections-push-pull.integration.test.ts
+  s_5ddf40544fde37::t_d618b21841b3ff 632-633,451-453,458,467,472-473,479-480,483,486,490-491
+  s_5ddf40544fde37::t_0c9227a7e55eb5 450,465,474-476
+packages/cli/src/modules/git-connections.ee/working-copy-updater.ts
+  s_5ddf40544fde37::t_204e952fdc2e93 25
+  s_5ddf40544fde37::t_a19faab5245ebc 128-130,88-90,104,121,123-127
+  s_5ddf40544fde37::t_262cb0d1094afa 151-155,91,119,144
+  s_5ddf40544fde37::t_7b9c60bce38b7b 174,194,197
+  s_5ddf40544fde37::t_c967473bcaf24d 190-192,195
+  s_5ddf40544fde37::t_5c22d6c3207fdd 253-260
+  s_5ddf40544fde37::t_0513fac1c93e94 276,282-311,92-93,103,112,120
+  s_5ddf40544fde37::t_c919584b375036 40
+  s_5ddf40544fde37::t_fee2a783465204 133,135,138
+  s_5ddf40544fde37::t_51edd279d1ee3d 165
+  s_5ddf40544fde37::t_2a7bdb44fcfe00 202
+  s_5ddf40544fde37::t_14c81f99812a6b 24
+  s_5ddf40544fde37::t_e7f254be620e13 122
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5cab6d04238828635231cac9dde7f0929f23ee22",
+  "prompts": {},
+  "sessions": {
+    "s_5ddf40544fde37": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a1dc9397-a2af-4555-bcd1-7cc4e923e0e5",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": null
+    }
+  }
+}

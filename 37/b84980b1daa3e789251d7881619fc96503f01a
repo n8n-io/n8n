@@ -1,0 +1,35 @@
+packages/cli/src/modules/instance-ai/instance-context.service.ts
+  s_5be157f6e91b85::t_ee37001cb19ded 47,50,61,63,252,369
+  s_5be157f6e91b85::t_1a114e9f646313 96,99,102,109,114,224,249,253,258-259,276,282,327-328,332,337-338,345,350-351,373,389,398,402,405-408,452,459,464,468
+packages/@n8n/db/src/repositories/__tests__/activity-event.repository.test.ts
+  s_5be157f6e91b85::t_6cf2e57f064927 88,102,116,132,145,169
+  s_5be157f6e91b85::t_3019ebd4ea04ed 103,117
+packages/cli/test/integration/instance-context.service.test.ts
+  s_5be157f6e91b85::t_6cf2e57f064927 121,152,212,335,443
+packages/cli/src/modules/instance-ai/__tests__/instance-context.service.test.ts
+  s_5be157f6e91b85::t_ca1cf72d00048c 578,583
+  s_5be157f6e91b85::t_3019ebd4ea04ed 797
+  s_5be157f6e91b85::t_6cf2e57f064927 391,406
+packages/cli/test/integration/activity-event-relay.test.ts
+  s_5be157f6e91b85::t_6cf2e57f064927 69
+packages/cli/test/integration/activity-event.repository.test.ts
+  s_5be157f6e91b85::t_6cf2e57f064927 36,66,83,105,117,122,128,138,146,153,160,182,189,209,216,221,285,293,315,328,379
+packages/@n8n/db/src/repositories/activity-event.repository.ts
+  s_5be157f6e91b85::t_1a114e9f646313 45-48,91-97,101,118,121,123,126,142,144,150
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "37b84980b1daa3e789251d7881619fc96503f01a",
+  "prompts": {},
+  "sessions": {
+    "s_5be157f6e91b85": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0ae78-4d49-7f60-886d-eb5d6b02f635",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

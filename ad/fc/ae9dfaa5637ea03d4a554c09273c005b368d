@@ -1,0 +1,20 @@
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/properties.ts
+  s_66620f30e3e553::t_bbff54f9a30ee1 52-58
+  s_66620f30e3e553::t_133a476fc0148f 59
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "adfcae9dfaa5637ea03d4a554c09273c005b368d",
+  "prompts": {},
+  "sessions": {
+    "s_66620f30e3e553": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f03b08cf-4f75-4bbc-8525-22ecc4d44d97",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

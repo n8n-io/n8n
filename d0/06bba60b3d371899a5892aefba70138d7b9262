@@ -1,0 +1,62 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/N8nChatActionCard.test.ts
+  s_6e06771097abf4::t_f1e8a8e6e9c25f 48-49
+  s_6e06771097abf4::t_2d3df91674e641 206-216
+  s_6e06771097abf4::t_e7c63978e6bd65 5,58,60-63
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/interactiveSummary.ts
+  s_6e06771097abf4::t_6d6f9bca657314 5,12-17,63-71
+packages/cli/src/modules/agents/integrations/__tests__/integration-action-executor.test.ts
+  s_6e06771097abf4::t_05f86507cbc3f2 46,72-77
+packages/frontend/editor-ui/src/features/agents/components/interactive/N8nChatActionCard.vue
+  s_6e06771097abf4::t_fa817380a7494d 281-283,285
+  s_6e06771097abf4::t_0168b0be961022 4,92-93,158,175-177,179-181,183-189
+  s_6e06771097abf4::t_66edd02fdff0b4 194,206
+packages/@n8n/api-types/src/agents/types.ts
+  s_6e06771097abf4::t_b30f55272f3fd2 208-232
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  s_6e06771097abf4::t_91bae87408968e 350-355
+  s_6e06771097abf4::t_f467e3c0696042 4
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  s_6e06771097abf4::t_d4bea29d0e4fbc 15,81,94,106
+packages/cli/src/modules/agents/integrations/platforms/telegram-integration.ts
+  s_6e06771097abf4::t_8b7124aa2c48db 2,61-66
+packages/cli/src/modules/agents/integrations/agent-chat-integration.ts
+  s_6e06771097abf4::t_2e4f1ac5bac32b 5
+  s_6e06771097abf4::t_18d8f301ed3e34 76-78,80
+packages/cli/src/modules/agents/integrations/platforms/n8n-chat-integration.ts
+  s_6e06771097abf4::t_5f3cd774fb128a 2,45
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/n8nChatInteraction.ts
+  s_6e06771097abf4::t_0168b0be961022 21
+  s_6e06771097abf4::t_630069a0960b41 1,19,24-25,105-106,140-160
+  s_6e06771097abf4::t_6d6f9bca657314 107-139
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  s_6e06771097abf4::t_1acc037f3a6563 737-778
+packages/frontend/editor-ui/src/features/agents/__tests__/interactive-summary.test.ts
+  s_6e06771097abf4::t_5058e3a79d6b9d 6,73-125
+packages/cli/src/modules/agents/integrations/platforms/slack-integration.ts
+  s_6e06771097abf4::t_5f3cd774fb128a 2,53
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatMessageList.test.ts
+  s_6e06771097abf4::t_5058e3a79d6b9d 204-230
+  s_6e06771097abf4::t_26f9f86debb450 36-39,176-189,191-203,231-253
+packages/cli/src/modules/agents/integrations/integration-tools.ts
+  s_6e06771097abf4::t_8273b6bcaf45d7 255-269
+  s_6e06771097abf4::t_92ededbae71386 4-8
+packages/frontend/editor-ui/src/features/agents/components/AgentChatMessageList.vue
+  s_6e06771097abf4::t_c71ac69ea0b48d 64,69-71,74-75,384,386,504
+  s_6e06771097abf4::t_fa817380a7494d 6,65-68,72-73
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "d006bba60b3d371899a5892aefba70138d7b9262",
+  "prompts": {},
+  "sessions": {
+    "s_6e06771097abf4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6b3c7bb4-2a4f-497e-966d-6b2a50495f9d",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

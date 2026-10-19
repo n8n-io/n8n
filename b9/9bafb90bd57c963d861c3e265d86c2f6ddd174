@@ -1,0 +1,15 @@
+packages/cli/src/modules/token-exchange/services/__tests__/jti-cleanup.task.test.ts
+  ai_agent 6,15-16,20-21,24-29,32-34,36,39,48,53-56,58,63-69,71,73,76-77,79,81,84-85,87
+packages/cli/src/modules/token-exchange/token-exchange.config.ts
+  ai_agent 34
+packages/cli/src/modules/token-exchange/token-exchange.module.ts
+  ai_agent 42-49
+packages/cli/src/modules/token-exchange/services/jti-cleanup.task.ts
+  ai_agent 2-3,8-14,16-23,35-36,38-45
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b99bafb90bd57c963d861c3e265d86c2f6ddd174",
+  "prompts": {}
+}

@@ -1,0 +1,14 @@
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectNavigation.test.ts
+  h_a348dde7c02e89 228,230-234
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "9104b394cc8e815b997f1a5e4be9a4526e20304c",
+  "prompts": {},
+  "humans": {
+    "h_a348dde7c02e89": {
+      "author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

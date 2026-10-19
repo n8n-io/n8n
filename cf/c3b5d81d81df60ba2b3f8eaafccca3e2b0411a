@@ -1,0 +1,77 @@
+packages/cli/src/public-api/v1/controllers/tags.public.controller.ts
+  s_fbe2845cd4e7aa::t_7413a639e24233 28
+packages/@n8n/decorators/src/controller/__tests__/api-response.test.ts
+  s_fbe2845cd4e7aa::t_7413a639e24233 29,43
+  s_fbe2845cd4e7aa::t_48788369a67620 39-42,44-68
+packages/cli/src/public-api/v1/openapi-gen/__tests__/decorator-routes.test.ts
+  s_fbe2845cd4e7aa::t_81495dc559a43d 215
+  s_fbe2845cd4e7aa::t_edc335c73840f1 87
+  s_fbe2845cd4e7aa::t_088b6d20de72c2 249
+  s_fbe2845cd4e7aa::t_7413a639e24233 153,183
+  s_fbe2845cd4e7aa::t_053c8a27265cfa 150-152,154-159,164,177-178,180-182,184-211
+  s_fbe2845cd4e7aa::t_9b08ab07758b41 149,160-163,165-176
+  s_fbe2845cd4e7aa::t_5f2a2ccab5b430 24
+  s_fbe2845cd4e7aa::t_7013ae4f29e9fc 179
+  s_fbe2845cd4e7aa::t_3d8c321bab151d 44,59,73,100,117,138,235,271
+  s_fbe2845cd4e7aa::t_2389279ae1b023 4,9
+packages/cli/src/public-api/v1/controllers/workflows.public.controller.ts
+  s_fbe2845cd4e7aa::t_7413a639e24233 36
+packages/@n8n/decorators/src/controller/index.ts
+  s_fbe2845cd4e7aa::t_6265035eed75dd 27
+packages/@n8n/decorators/src/controller/api-response.ts
+  s_fbe2845cd4e7aa::t_eb2c5c419a00b8 10-13
+  s_fbe2845cd4e7aa::t_4b0a1fb751530e 14,16,21,25
+  s_fbe2845cd4e7aa::t_5c4a1bb9daba31 4
+  s_fbe2845cd4e7aa::t_d69485267c96d2 15,22-23
+  s_fbe2845cd4e7aa::t_b7539dafa8572a 7-8
+packages/cli/src/public-api/v1/openapi-gen/decorator-routes.ts
+  s_fbe2845cd4e7aa::t_57822e4f4f86dc 163-164,175
+.agents/skills/public-api/SKILL.md
+  s_fbe2845cd4e7aa::t_54937689371456 70-73,75
+  s_fbe2845cd4e7aa::t_d8c1da8148f5e8 76-81,83-85
+  s_fbe2845cd4e7aa::t_65dd99a6deae92 82
+  s_fbe2845cd4e7aa::t_c26167225bf936 49-53,55
+  s_fbe2845cd4e7aa::t_e26be1a195ef74 47,54
+  h_5d40c27a8fdfd1 74
+packages/cli/src/public-api/__tests__/public-api-route-resolver.test.ts
+  s_fbe2845cd4e7aa::t_9ece5365a2e36b 219,235,249,318,322,329
+  s_fbe2845cd4e7aa::t_f7a91b9b0f4d25 299-312
+  s_fbe2845cd4e7aa::t_7413a639e24233 282
+packages/@n8n/decorators/src/controller/types.ts
+  s_fbe2845cd4e7aa::t_d83f69febf483c 59-60
+  s_fbe2845cd4e7aa::t_0e9c1242bc0674 16-18
+packages/cli/src/public-api/public-api-controller.registry.ts
+  s_fbe2845cd4e7aa::t_d7f62252b8853f 11
+  s_fbe2845cd4e7aa::t_8b672eed7ed412 94-97
+  s_fbe2845cd4e7aa::t_adf446bf33a987 63-64,66-72
+  s_fbe2845cd4e7aa::t_cddd05f04074fd 93,99,103
+packages/cli/src/public-api/public-api-route-resolver.ts
+  s_fbe2845cd4e7aa::t_b3ebe8f04fa822 120
+  s_fbe2845cd4e7aa::t_ac05d2178e3c2b 182
+  s_fbe2845cd4e7aa::t_f8bd38ae4a3ef6 109
+  s_fbe2845cd4e7aa::t_8b10b60ce87012 110-119,121-126
+  s_fbe2845cd4e7aa::t_de79bcd3cd7ff4 9
+  s_fbe2845cd4e7aa::t_78bbdeee3df406 37-38
+  s_fbe2845cd4e7aa::t_dc188d8e1717db 108
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "cfc3b5d81d81df60ba2b3f8eaafccca3e2b0411a",
+  "prompts": {},
+  "humans": {
+    "h_5d40c27a8fdfd1": {
+      "author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_fbe2845cd4e7aa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "641b7fac-100c-416d-9d4a-2fc7e359856a",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

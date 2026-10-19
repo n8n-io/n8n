@@ -1,0 +1,28 @@
+packages/@n8n/agents/src/runtime/state/run-state.ts
+  s_657a31a402f36f::t_a9ed464806699a 44-47
+packages/cli/src/modules/agents/integrations/n8n-checkpoint-storage.ts
+  s_657a31a402f36f::t_1035d170170f1b 87-101
+packages/cli/src/modules/agents/integrations/__tests__/n8n-checkpoint-storage.test.ts
+  s_657a31a402f36f::t_8d7a6a01d08353 19,22,28,30
+  s_657a31a402f36f::t_8070357e0cb0f5 1-18,20-21,23-27,29,31-61
+packages/cli/src/modules/agents/__tests__/agent-checkpoint.repository.test.ts
+  s_657a31a402f36f::t_4f5fa155e9d8ba 1-40
+packages/cli/src/modules/agents/repositories/agent-checkpoint.repository.ts
+  s_657a31a402f36f::t_9a3059183961b6 12-24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.5",
+  "base_commit_sha": "04cccca4faf2ab5d92b0e0bb5859c3c95b45c5a7",
+  "prompts": {},
+  "sessions": {
+    "s_657a31a402f36f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f13ea-d4c1-7d03-bc30-fcfd579f01c6",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

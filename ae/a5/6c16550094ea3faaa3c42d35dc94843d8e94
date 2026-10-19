@@ -1,0 +1,31 @@
+packages/nodes-base/nodes/Google/GSuiteAdmin/UserDescription.ts
+  s_544d8415a550c7::t_a07b1829fb3c29 3-14,503,1198
+packages/nodes-base/nodes/Google/GSuiteAdmin/GSuiteAdmin.node.ts
+  s_544d8415a550c7::t_de3b563a984f51 130
+  s_544d8415a550c7::t_4666d3bf5362ac 117-118
+packages/nodes-base/nodes/Google/GSuiteAdmin/test/user/create.test.ts
+  s_544d8415a550c7::t_e0fec1493cd711 16
+packages/nodes-base/nodes/Google/GSuiteAdmin/test/GSuiteAdmin.node.test.ts
+  s_544d8415a550c7::t_056aaf23eeca84 110-116
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "aea56c16550094ea3faaa3c42d35dc94843d8e94",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_544d8415a550c7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "01dd0599-24d0-4e99-80f3-1afbf8a5d089",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

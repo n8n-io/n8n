@@ -1,0 +1,47 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/ConfigureChannelCard.test.ts
+  s_dd8f226d4368c9::t_9de64cdb9666c9 2-12,17,19-20,24,26-28,53-55,57-60,63,66-68,71,74,76,79,82-84,86,89,97
+  s_dd8f226d4368c9::t_d423708602f62e 21-23,25,56,92-93
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiChannelSetup.test.ts
+  s_dd8f226d4368c9::t_6b48bb79ed9026 121-124
+  s_dd8f226d4368c9::t_776f9f0f573da9 134
+  s_dd8f226d4368c9::t_d39abe7d7548f1 69,71,81,83,96,108,126,143
+  s_dd8f226d4368c9::t_13d9525332473c 1
+  s_dd8f226d4368c9::t_7fff3647548c18 24-26,28
+  s_dd8f226d4368c9::t_3d9ba3acf383ba 11-20,22-23,27,29-31,57-58,63,72,75,77,84,115-120,125,127-133,135,137
+  s_dd8f226d4368c9::t_f724e853d35a76 136
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/messageMappers.ts
+  s_dd8f226d4368c9::t_12bb3f69a83588 239-244
+packages/frontend/editor-ui/src/features/ai/shared/components/ChannelSetupCard.test.ts
+  s_dd8f226d4368c9::t_474d1408b61036 140
+  s_dd8f226d4368c9::t_6583868379aafd 28
+  s_dd8f226d4368c9::t_3fd4752a8bd584 68
+  s_dd8f226d4368c9::t_8b2ab5ec76261a 1-27,29-67,69-74,88-99,101-139,141-230
+  s_dd8f226d4368c9::t_86b26182bb292a 75-87,100
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiChannelSetup.vue
+  s_dd8f226d4368c9::t_6618a5790af445 2-12,29-34,37-38,41,50-58
+packages/frontend/editor-ui/src/features/agents/components/interactive/ConfigureChannelCard.vue
+  s_dd8f226d4368c9::t_fbaa3ece0e2931 3-8,10,12-13,15,32,42-43,52-60
+packages/frontend/editor-ui/src/features/agents/__tests__/InteractiveCard.test.ts
+  s_dd8f226d4368c9::t_b36c6abc7b8923 229-234,236
+  s_dd8f226d4368c9::t_04b8bd0a370965 226-228,235,237-250
+packages/frontend/editor-ui/src/features/agents/components/interactive/InteractiveCard.vue
+  s_dd8f226d4368c9::t_a229eda91bc354 58-66,68-72,76-80,84
+packages/frontend/editor-ui/src/features/ai/shared/components/ChannelSetupCard.vue
+  s_dd8f226d4368c9::t_310368769c7fbc 1-327
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.11",
+  "base_commit_sha": "9df209ae0408c54cbfeb5ff54c6f32a790d7a020",
+  "prompts": {},
+  "sessions": {
+    "s_dd8f226d4368c9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f76700ff-f605-49d5-95e7-0bdc353261f8",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

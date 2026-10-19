@@ -1,0 +1,23 @@
+packages/cli/src/modules/instance-ai/extract-resolved-node-parameters.ts
+  s_10ad0c9ebfd991::t_8863d8c9d1df9f 368-374
+  s_10ad0c9ebfd991::t_bd1ed4cd676a5e 363-367
+packages/cli/src/modules/instance-ai/__tests__/extract-resolved-node-parameters.test.ts
+  s_10ad0c9ebfd991::t_980d439ae0c037 3-10,12
+  s_10ad0c9ebfd991::t_01548f6e566dac 547-583
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "14aa515ce23ff7a7cb06727901d47734f25132d9",
+  "prompts": {},
+  "sessions": {
+    "s_10ad0c9ebfd991": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "64382267-fe92-4223-8ffa-c2a782cd0a7d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

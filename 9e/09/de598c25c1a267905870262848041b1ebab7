@@ -1,0 +1,25 @@
+packages/core/src/utils/assertions.ts
+  s_af62986d6ef75e::t_78307074376a59 11
+packages/core/src/execution-engine/__tests__/execution-context.test.ts
+  s_af62986d6ef75e::t_3e94a771ad785d 149-153,157-206,213-230,237-240
+  s_af62986d6ef75e::t_dfd3056b3332d2 32-34
+  s_af62986d6ef75e::t_ca38b59aa18cb1 154-156,207-212,231-236
+packages/core/src/execution-engine/execution-context.ts
+  s_af62986d6ef75e::t_e1b010f315c120 143-156
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "9e09de598c25c1a267905870262848041b1ebab7",
+  "prompts": {},
+  "sessions": {
+    "s_af62986d6ef75e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "137c8e00-b0af-4ad4-8af5-45842a28f12e",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

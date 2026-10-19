@@ -1,0 +1,31 @@
+packages/frontend/@n8n/design-system/src/components/N8nSelect/Select.vue
+  s_f18086b4eb7297::t_743d4a29652bf8 11-25,27
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/MCPWorkflowsSelect.vue
+  s_f18086b4eb7297::t_0fcff78110e049 5
+  s_f18086b4eb7297::t_c7e6128c6ed03a 127
+  s_f18086b4eb7297::t_fb76e8bbe0c67c 39-51
+packages/frontend/@n8n/design-system/src/components/ConditionalRouterLink/CondtionalRouterLink.vue
+  s_f18086b4eb7297::t_be29f35c44cd70 7,17-23,26,29-36,38
+packages/frontend/@n8n/design-system/src/v2/components/Select/SelectItem.vue
+  s_f18086b4eb7297::t_44013ce4ee45a5 19
+  s_f18086b4eb7297::t_f2a444bcfcb6e3 37,57
+  s_f18086b4eb7297::t_c0c30c85d063a1 2-11,16
+packages/frontend/@n8n/design-system/src/v2/components/Select/Select.types.ts
+  s_f18086b4eb7297::t_4f751b8258d642 13-18,31-37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "15859bc9ab4f91f2a871f9cdf60ad53c442a45a4",
+  "prompts": {},
+  "sessions": {
+    "s_f18086b4eb7297": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f5874557-abdd-46f8-a039-f1029b939818",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

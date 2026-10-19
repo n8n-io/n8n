@@ -1,0 +1,23 @@
+packages/cli/src/workflows/workflow-finder.service.ts
+  s_05feaa3f901d51::t_4b6bbc6e438103 381
+packages/cli/test/integration/public-api/workflows.test.ts
+  s_05feaa3f901d51::t_db43ac7d8b8b64 710,715,727-729
+packages/cli/src/workflows/__tests__/workflow-finder.service.test.ts
+  s_05feaa3f901d51::t_ff5ffddd42647c 248,255
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "b503a8f3f3810d1d675b4f89009ebae0cbaf4267",
+  "prompts": {},
+  "sessions": {
+    "s_05feaa3f901d51": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "43c73b15-4e40-4fff-a453-a4f73057e7f1",
+        "model": "default"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

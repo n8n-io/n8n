@@ -1,0 +1,37 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentSetupTasks/AgentSetupTasks.vue
+  s_7602e61888cb73::t_3b59676c58fa85 2,20,68-70,168,175
+  s_7602e61888cb73::t_8cb3f0018aa771 166
+  s_d3d8c7d62fa1e7::t_86e93cce944ea5 3,27,83,90-91,93-94
+  s_7602e61888cb73::t_455ad4446cef87 71-72
+  s_7602e61888cb73::t_4371675fef2a29 165
+  s_d3d8c7d62fa1e7::t_a4ded8a44ea2bf 22,74-75,177,246
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSetupTasks.test.ts
+  s_7602e61888cb73::t_de80d632846f02 86,155
+  s_7602e61888cb73::t_d46280e5003961 74,85,87-92,94-98,101,103,106-110
+  s_7602e61888cb73::t_f3bfe1fee0a40d 117-150
+  s_7602e61888cb73::t_ce074a5b966c82 78
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8907c39a88263b49d73816306343a75b6da3679e",
+  "prompts": {},
+  "sessions": {
+    "s_7602e61888cb73": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1117d-3d0c-73ff-ba45-056ba2615cd5",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_d3d8c7d62fa1e7": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1118e-66cd-73ff-ba45-056de96ed1fe",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,24 @@
+packages/cli/src/modules/engine-v2/engine-control-plane-client.ts
+  s_eda1948fcdabb8::t_a0e3adc9091d47 9
+packages/cli/src/modules/engine-v2/engine-control-plane-server.ts
+  s_eda1948fcdabb8::t_a0e3adc9091d47 12,90-93,95,98
+packages/cli/src/modules/engine-v2/engine-v2.constants.ts
+  s_eda1948fcdabb8::t_5b73b0b9b176da 5
+  s_eda1948fcdabb8::t_a0e3adc9091d47 1-4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ab32282d16554801418028f4ec8040ff33f29807",
+  "prompts": {},
+  "sessions": {
+    "s_eda1948fcdabb8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f08a0677-fc8d-48bd-92e6-ce1c9bc1cd53",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

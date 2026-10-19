@@ -1,0 +1,24 @@
+packages/cli/src/modules/n8n-packages/__tests__/export-project.integration.test.ts
+  s_e83650916c02c5::t_8c488a84418a81 24-25,29,48-50,52-54,56,61,135,157,169,179,323,344,396
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e6fa2d817266fa1a5e7fe956b3e4f1d7876e3930",
+  "prompts": {},
+  "humans": {
+    "h_6ef4cecfee65a2": {
+      "author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  },
+  "sessions": {
+    "s_e83650916c02c5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d5c11f95-9a02-47c9-a983-04164e6440f4",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}

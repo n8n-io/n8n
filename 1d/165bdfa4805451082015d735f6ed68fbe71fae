@@ -1,0 +1,27 @@
+packages/cli/src/scheduling/system-tasks/__tests__/system-task-timer.test.ts
+  s_b196355858d0ac::t_734b22f41771e3 152-161
+packages/cli/src/scheduling/system-tasks/system-task-timer.ts
+  s_b196355858d0ac::t_c002f19153bdf6 6,71,81
+  s_b196355858d0ac::t_46119f044d8eb6 72-80
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1d165bdfa4805451082015d735f6ed68fbe71fae",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_b196355858d0ac": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "de7ec21f-5cb6-4c06-accd-0796b3bed7da",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

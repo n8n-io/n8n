@@ -1,0 +1,19 @@
+packages/cli/src/modules/git-connections.ee/__tests__/working-copy-updater.test.ts
+  s_5ddf40544fde37::t_54708c12e566b7 21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1711a53a90b1da4f741e3afe7cace255920bb17a",
+  "prompts": {},
+  "sessions": {
+    "s_5ddf40544fde37": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a1dc9397-a2af-4555-bcd1-7cc4e923e0e5",
+        "model": "grok-4.6"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,12 @@
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c469b0ad054102b4fc4fbc058d0815c2cb181314",
+  "prompts": {},
+  "humans": {
+    "h_4dd92f790825be": {
+      "author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

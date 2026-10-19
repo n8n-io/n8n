@@ -1,0 +1,21 @@
+packages/cli/src/modules/agents/builder/__tests__/builder-model-live-lookup.service.test.ts
+  s_70fb4223a7d1db::t_d8b0758edc7a3a 69-85
+packages/cli/src/modules/agents/builder/builder-model-live-lookup.service.ts
+  s_70fb4223a7d1db::t_8c1418919cf624 68-75
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "80b9583796421d8c3e420d0ef7f2c306fd9be158",
+  "prompts": {},
+  "sessions": {
+    "s_70fb4223a7d1db": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1bf21fcf-13a0-4245-8181-bb4439b4ca9f",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

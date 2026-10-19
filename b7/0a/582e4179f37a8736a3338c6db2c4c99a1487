@@ -1,0 +1,34 @@
+packages/nodes-base/nodes/Taiga/test/workflow/Taiga.workflow.test.ts
+  s_2e1fa95fc44f8f::t_d367592b77336c 1-79
+packages/nodes-base/nodes/Taiga/test/TaigaTrigger.node.test.ts
+  s_2e1fa95fc44f8f::t_6eac92cd1b2f52 1-2
+  s_2e1fa95fc44f8f::t_2058ab3769cd8b 99-127
+packages/nodes-base/nodes/Taiga/test/workflow/cloud.workflow.json
+  s_a1964e2e590dea::t_11a640cb58b790 1-55
+packages/nodes-base/nodes/Taiga/test/workflow/requests.workflow.json
+  s_a1964e2e590dea::t_c33047e3d3851c 1-699
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b70a582e4179f37a8736a3338c6db2c4c99a1487",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_a1964e2e590dea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ab678de8ad8e75b22",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

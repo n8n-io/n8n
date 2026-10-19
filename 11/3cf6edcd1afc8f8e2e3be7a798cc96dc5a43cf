@@ -1,0 +1,55 @@
+packages/@n8n/engine/src/database/__tests__/workflow-execution.integration.test.ts
+  s_9c30e64d236bdf::t_1a87f5a3ac9b27 7,181-272
+packages/@n8n/engine/src/database/migrations/1778529600000-CreateWorkflowExecution.ts
+  s_9c30e64d236bdf::t_27ffbd52691907 42-43
+packages/@n8n/engine/src/database/typeorm-execution-store.ts
+  s_9c30e64d236bdf::t_2533ade3f65d98 1,18-20,55-56,58,63-90
+packages/@n8n/engine/src/execution/__tests__/execution-start-handler.test.ts
+  s_9c30e64d236bdf::t_0adc195d792fab 31
+packages/@n8n/engine/src/execution/__tests__/start-execution.service.test.ts
+  s_9c30e64d236bdf::t_dbcf59e7e4f09f 32
+packages/@n8n/engine/src/execution/__tests__/step-execution.integration.test.ts
+  s_9c30e64d236bdf::t_fc2915f883f088 240,271-273
+packages/@n8n/engine/src/execution/__tests__/step-ready-handler.test.ts
+  s_9c30e64d236bdf::t_08233ee2251ca3 88,522-542,757-758,770-771
+packages/@n8n/engine/src/execution/__tests__/step-settled-handler.test.ts
+  s_9c30e64d236bdf::t_523b1ff7e7dadc 68,478-505
+packages/@n8n/engine/src/execution/execution-store.ts
+  s_9c30e64d236bdf::t_2a2517f532e709 58-59,62-76
+packages/@n8n/engine/src/execution/execution.types.ts
+  s_9c30e64d236bdf::t_fad6b2d33c402d 3-21
+packages/@n8n/engine/src/execution/step-ready-handler.ts
+  s_9c30e64d236bdf::t_7455987cd75d38 16,77-81,140-142,144-145
+packages/@n8n/engine/src/execution/step-settled-handler.ts
+  s_9c30e64d236bdf::t_7d955aaa6f5273 14-20,62-64,80,82-85
+packages/@n8n/engine/src/server/__tests__/workflow-executions.integration.test.ts
+  s_9c30e64d236bdf::t_94f63e65634b13 75-79
+packages/@n8n/engine/src/server/routes/workflow-executions.handlers.ts
+  s_9c30e64d236bdf::t_146a39e761c274 25-32
+packages/@n8n/node-engine-compatibility/src/__tests__/v1-execution-read.test.ts
+  s_9c30e64d236bdf::t_1df89eaf168dfa 60,67-69,79-97
+packages/@n8n/node-engine-compatibility/src/v1-execution-read.ts
+  s_9c30e64d236bdf::t_28d4d44523e104 35-41,47
+packages/cli/src/executions/__tests__/engine-v2-execution-reader.service.test.ts
+  s_9c30e64d236bdf::t_8e11ed90ad99c9 78,81-82,230
+packages/cli/src/executions/__tests__/execution-list-v2.service.test.ts
+  s_9c30e64d236bdf::t_681a1af12ac9c1 222-224,226
+packages/cli/src/executions/engine-v2-mapping.ts
+  s_9c30e64d236bdf::t_b5bd3ee9883d37 13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "113cf6edcd1afc8f8e2e3be7a798cc96dc5a43cf",
+  "prompts": {},
+  "sessions": {
+    "s_9c30e64d236bdf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f103e602-540f-4c9e-a1e6-ff3bee67124c",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

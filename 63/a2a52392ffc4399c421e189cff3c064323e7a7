@@ -1,0 +1,34 @@
+packages/@n8n/db/src/utils/chunk-ids.ts
+  s_0ad1308d603eea::t_d1b0f239439711 1-2,4-8
+  s_0ad1308d603eea::t_1ef73f792dbaa8 3
+packages/@n8n/db/src/repositories/folder.repository.ts
+  s_0ad1308d603eea::t_6117dd33afd206 8,20,31,424
+packages/@n8n/db/src/index.ts
+  s_0ad1308d603eea::t_e945a7a63390cd 14
+packages/cli/src/workflows/workflow-finder.service.ts
+  s_0ad1308d603eea::t_92bf09c851b9e7 2,166,202,230,327
+packages/@n8n/db/src/repositories/workflow.repository.ts
+  s_0ad1308d603eea::t_ddc50f5ded8c0b 36,244,305
+packages/@n8n/db/src/repositories/shared-workflow.repository.ts
+  s_0ad1308d603eea::t_c1866765bf6320 20,41,59
+packages/cli/src/services/folder-finder.service.ts
+  s_0ad1308d603eea::t_97436bc707597d 2,75
+packages/@n8n/db/src/utils/__tests__/chunk-ids.test.ts
+  s_0ad1308d603eea::t_8b50249eed3e52 1,3-5,7-10,12-16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "63a2a52392ffc4399c421e189cff3c064323e7a7",
+  "prompts": {},
+  "sessions": {
+    "s_0ad1308d603eea": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "ab80fb63-87f0-4dc2-a9ee-445ea8535700",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Nour Alhadi Mahmoud <nour.mahmoud@n8n.io>"
+    }
+  }
+}

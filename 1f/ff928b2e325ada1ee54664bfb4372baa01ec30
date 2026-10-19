@@ -1,0 +1,39 @@
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialEdit.vue
+  s_ebb9aa22fd04d6::t_444489a9f2d8a1 653
+  s_ebb9aa22fd04d6::t_6a27840b01ff4f 720-725
+  s_ebb9aa22fd04d6::t_483574650bd23a 5
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialEdit.test.ts
+  s_ed5eebacc93062::t_f45ccb382f2ab6 1545-1549
+  s_ed5eebacc93062::t_6ac4f6c32b28bd 1541-1544,1550,1561-1572,1574-1579
+  s_ed5eebacc93062::t_af17d40c7ebc78 1551-1560
+  s_ed5eebacc93062::t_fc2a95f89cce7a 1573
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "1fff928b2e325ada1ee54664bfb4372baa01ec30",
+  "prompts": {},
+  "humans": {
+    "h_89e664b3be09ae": {
+      "author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_ebb9aa22fd04d6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bf73258b-214d-4d90-a752-613b8541b5bd",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": null
+    },
+    "s_ed5eebacc93062": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "79048238-753c-4a8b-a709-f6e589dc0ee0",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

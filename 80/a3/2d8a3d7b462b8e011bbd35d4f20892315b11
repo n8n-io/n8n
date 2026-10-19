@@ -1,0 +1,36 @@
+packages/cli/src/modules/mcp/mcp.service.ts
+  s_6e3f52ff14ba6e::t_0e0e4e71f57f79 85-86,472-474,483-485,665-695
+packages/cli/src/modules/mcp/__tests__/get-instance-context.tool.test.ts
+  s_6e3f52ff14ba6e::t_dd31ec79711e64 21-25
+  s_6e3f52ff14ba6e::t_f7bae7cb81434a 1-20,26-119
+packages/cli/src/modules/instance-ai/instance-context.service.ts
+  s_6e3f52ff14ba6e::t_9afdddf64fb463 302-307,456-462,465,499-505,524
+packages/cli/src/modules/mcp/tools/workflow-builder/mcp-instructions.ts
+  s_6e3f52ff14ba6e::t_3909c1873b7d70 74-75,77
+  s_6e3f52ff14ba6e::t_bf1d0270ed118c 9,12
+packages/cli/test/integration/instance-context.service.test.ts
+  s_6e3f52ff14ba6e::t_644619354c4892 392-413
+packages/cli/src/modules/mcp/__tests__/mcp-scopes.test.ts
+  s_6e3f52ff14ba6e::t_fc9348c2fd37d1 15,63-67,270,280-295,297-299
+packages/cli/src/modules/mcp/mcp-protected-resource.ts
+  s_6e3f52ff14ba6e::t_25231825a269b8 77-80,91-92
+  s_6e3f52ff14ba6e::t_bf1d0270ed118c 11-16
+packages/cli/src/modules/mcp/tools/get-instance-context.tool.ts
+  s_6e3f52ff14ba6e::t_3fbc0168f05cd0 22-24,30-31,70-72,108-110,118
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "80a32d8a3d7b462b8e011bbd35d4f20892315b11",
+  "prompts": {},
+  "sessions": {
+    "s_6e3f52ff14ba6e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "62e55d43-3015-410a-8652-f8d8d66de8ef",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,54 @@
+.github/WORKFLOWS.md
+  s_c653ddc488e917::t_bdf105213db79b 419,574-576,580,583-584
+  s_c653ddc488e917::t_6efd6fdd00645b 882-888,892-900,902-945
+  s_c653ddc488e917::t_979ae8ead8edd7 901
+.github/workflows/sec-publish-fix-1x.yml
+  s_c653ddc488e917::t_bd00d55ddb6afb 8-10,75-76,90-117
+  s_c653ddc488e917::t_09ccc9cfdf71f5 13-18,51,56-62,67-68
+.github/scripts/restack-bundle-prs.mjs
+  s_c653ddc488e917::t_22f1156edd08bf 62-64,70-71,102-103,121-123
+  s_c653ddc488e917::t_40f39eedecfa13 1-55,59-61,65-69,72-81,88-94,96-101,104-120,124-141,143-184,193-234
+  s_c653ddc488e917::t_5b81223377668a 56-58
+  s_c653ddc488e917::t_6c8b58e28895ad 82-87,95,142,185-192
+.github/workflows/sec-restack-bundle-prs.yml
+  s_c653ddc488e917::t_8bc701d1be2dcc 18-105
+.github/scripts/restack-bundle-prs.test.mjs
+  s_c653ddc488e917::t_22f1156edd08bf 61,75-78,93-96,110-117,122-124,146-148,172-174,216-218
+  s_c653ddc488e917::t_07bde1c651463d 191,197,205,211
+  s_c653ddc488e917::t_9ca1f416d200ac 1-60,62-74,79-92,97-109,118-121,125-145,149-171,175-190,192-196,198-204,206-210,212-215,219-236
+.github/scripts/reset-bundle-after-cut.test.mjs
+  s_c653ddc488e917::t_cd5d791767112c 35-36,44,48-50,67,85-86,93-94,97-98,101-106,109,111,121,130,143,181-184,191,206,223
+  s_c653ddc488e917::t_5c22673041abea 1-34,37-43,45-47,51-59,64-66,68-84,87-92,95-96,99-100,107-108,110,112-115,119-120,122-129,131-142,144-145,148-151,168-180,185-190,192-205,207-222,224
+  s_c653ddc488e917::t_6c394e739f516a 146-147,152-167
+  s_c653ddc488e917::t_22f1156edd08bf 60-63,116-118
+.github/workflows/sec-sync-public-to-private.yml
+  s_c653ddc488e917::t_bfd2478b1c8929 11-15,30-31,39-43,116-153,171-172,175-186,220-247
+.github/scripts/branch-replay.mjs
+  s_c653ddc488e917::t_979ae8ead8edd7 12-15
+  s_c653ddc488e917::t_d0f2d4ab99c9f8 111-139
+.github/scripts/reset-bundle-after-cut.mjs
+  s_c653ddc488e917::t_ceece1351072d8 24-28,35,66-84,86-90,92,126-130,132,134,174,194,216-217,235-236
+  s_c653ddc488e917::t_0903133eb59ef8 36-38,95-105,138-143
+  s_c653ddc488e917::t_22f1156edd08bf 200-206
+  s_c653ddc488e917::t_f77091751a52b2 1-23,29-34,39-65,85,91,93-94,106-125,131,133,135-137,144-173,175-181,186-187,191-193,195-199,207-215,218-234,237-255
+  s_c653ddc488e917::t_6c394e739f516a 182-185,188-190
+.github/workflows/sec-publish-fix.yml
+  s_c653ddc488e917::t_09ccc9cfdf71f5 13-18,51,56-62,67-68
+  s_c653ddc488e917::t_bd00d55ddb6afb 8-10,78-105
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0b95c18e5da63b2ec6fc46d3406acd2ad557fb07",
+  "prompts": {},
+  "sessions": {
+    "s_c653ddc488e917": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "86ebd842-74ed-4030-a42f-f6ff58583416",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,22 @@
+packages/cli/src/modules/instance-ai/__tests__/internal-messages.test.ts
+  ai_agent 150-154,231-233,301-303,319-321,488-490,494-498,548-552,627-631,998-1000,1026-1028
+  s_dff57e7b253b23::t_577a28ee7e8cdb 351,479-485,487,501
+packages/cli/src/modules/instance-ai/internal-messages.ts
+  s_dff57e7b253b23::t_fc7e959905da82 270-275
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0f29614d9c5a9d773f0154676ed372ea6f5f921c",
+  "prompts": {},
+  "sessions": {
+    "s_dff57e7b253b23": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2a1b4b03-5790-4a03-a686-790045e59397",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

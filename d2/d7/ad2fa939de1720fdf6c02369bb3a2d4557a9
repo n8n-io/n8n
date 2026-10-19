@@ -1,0 +1,19 @@
+packages/@n8n/db/src/migrations/common/1784905879579-CreateAgentChatAttachmentsTable.ts
+  ai_agent 56-65,69-71
+packages/cli/test/migration/1784905879579-create-agent-chat-attachments-table.test.ts
+  ai_agent 141-152,187-191
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  ai_agent 37-41
+docs/generated/sqlite-schema/agent_chat_attachments.md
+  ai_agent 72
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  ai_agent 231-235
+docs/generated/postgres-schema/public.agent_chat_attachments.md
+  ai_agent 70
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d2d7ad2fa939de1720fdf6c02369bb3a2d4557a9",
+  "prompts": {}
+}

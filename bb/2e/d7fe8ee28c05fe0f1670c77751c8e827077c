@@ -1,0 +1,40 @@
+packages/nodes-base/nodes/Confluence/actions/router.ts
+  s_5b8c5abdc7edbe::t_96df0bd58f1842 27-29,36-37
+packages/nodes-base/nodes/Confluence/test/Confluence.node.test.ts
+  s_5b8c5abdc7edbe::t_2db98891554159 22,25
+packages/nodes-base/nodes/Confluence/test/actions/page/append.operation.test.ts
+  s_5b8c5abdc7edbe::t_425b61713ef931 183-185
+  s_5b8c5abdc7edbe::t_2d2917f3f19a2e 16
+packages/nodes-base/nodes/Confluence/actions/page/index.ts
+  s_5b8c5abdc7edbe::t_d155aceda159be 3,6,23-27,40-45,49,52
+packages/nodes-base/nodes/Confluence/actions/page/pageWrite.ts
+  s_5b8c5abdc7edbe::t_5387e010b0b26a 1
+packages/nodes-base/nodes/Confluence/actions/page/update.operation.ts
+  s_5b8c5abdc7edbe::t_7231878d2806b8 1-45,54
+  s_5b8c5abdc7edbe::t_7349b77fe1be5e 49
+packages/nodes-base/nodes/Confluence/test/actions/router.test.ts
+  s_5b8c5abdc7edbe::t_98eebb386cf547 95
+  s_5b8c5abdc7edbe::t_c66fb913a0d9d0 83-94,96-102
+packages/nodes-base/nodes/Confluence/actions/page/append.operation.ts
+  s_5b8c5abdc7edbe::t_a3ef5e7744dd4b 5-62,97
+  s_5b8c5abdc7edbe::t_610d2b72edccd2 65-75
+packages/nodes-base/nodes/Confluence/test/actions/page/update.operation.test.ts
+  s_5b8c5abdc7edbe::t_cbd20da456f81c 104-142
+  s_5b8c5abdc7edbe::t_945ba2ad9064e8 16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "bb2ed7fe8ee28c05fe0f1670c77751c8e827077c",
+  "prompts": {},
+  "sessions": {
+    "s_5b8c5abdc7edbe": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3d677c73-6143-4e48-b5a8-0b9a8953ccc4",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

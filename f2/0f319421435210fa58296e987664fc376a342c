@@ -1,0 +1,34 @@
+packages/frontend/editor-ui/src/features/credentials/composables/useCredentialOAuth.ts
+  s_7b2c22ada305f1::t_dc41c71ed48d0f 32
+  s_7b2c22ada305f1::t_5ba7b824b8ee63 214,217,221,223,225-226,229,240-252,254-259
+  s_7b2c22ada305f1::t_9f011fd228c8fc 21-22
+packages/testing/playwright/tests/e2e/credentials/oauth.spec.ts
+  s_7b2c22ada305f1::t_aa75a66ec7ef4b 41-74
+packages/cli/templates/oauth-error-callback.handlebars
+  s_7b2c22ada305f1::t_1caaac6f7e3a03 23-25
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialEdit.vue
+  s_7b2c22ada305f1::t_941ddb538da321 1354-1367,1410-1422
+packages/frontend/editor-ui/src/features/credentials/composables/oauthCallback.ts
+  s_7b2c22ada305f1::t_0a38d3b493f481 1-43
+packages/frontend/editor-ui/src/features/credentials/composables/__tests__/useCredentialOAuth.test.ts
+  s_7b2c22ada305f1::t_093d7c5b0c0abe 555-654
+  s_7b2c22ada305f1::t_8b25791203a9be 6
+packages/cli/templates/oauth-callback.handlebars
+  s_7b2c22ada305f1::t_3fae6ad07b71b0 93-95
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "f20f319421435210fa58296e987664fc376a342c",
+  "prompts": {},
+  "sessions": {
+    "s_7b2c22ada305f1": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "4a4ce648-609a-454c-93ff-389b7db4f1cc",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}

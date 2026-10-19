@@ -1,0 +1,21 @@
+packages/cli/src/modules/instance-reporting.ee/__tests__/instance-reporting.service.test.ts
+  s_a5b11613a54281::t_4ecc75d2bd2640 357-372
+packages/cli/src/modules/instance-reporting.ee/instance-reporting.service.ts
+  s_a5b11613a54281::t_4ecc75d2bd2640 135,419-421
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "935744b087009058682ac39ed3cd895452736b00",
+  "prompts": {},
+  "sessions": {
+    "s_a5b11613a54281": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "86a81412-17ea-4a20-a796-52294b5f3043",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

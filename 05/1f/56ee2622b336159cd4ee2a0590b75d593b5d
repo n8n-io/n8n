@@ -1,0 +1,14 @@
+packages/cli/src/modules/mcp/tools/get-workflow-details.tool.ts
+  h_df158766ffbd97 32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "051f56ee2622b336159cd4ee2a0590b75d593b5d",
+  "prompts": {},
+  "humans": {
+    "h_df158766ffbd97": {
+      "author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}

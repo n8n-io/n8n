@@ -1,0 +1,19 @@
+packages/testing/playwright/pages/WorkflowSettingsModal.ts
+  s_56bde62e56d3b1::t_0c277979a3425c 88-92
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "99b127febf3b3a056658c2b6b4f3279e3a783aac",
+  "prompts": {},
+  "sessions": {
+    "s_56bde62e56d3b1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "47f70e36-dfda-42d7-823e-0114e1b2de01",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

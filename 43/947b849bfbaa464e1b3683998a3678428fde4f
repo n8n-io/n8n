@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/agents/components/interactive/N8nChatActionCard.vue
+  s_8dc574772799b2::t_213bf874656199 52-57,104-105
+packages/frontend/editor-ui/src/features/agents/__tests__/N8nChatActionCard.test.ts
+  s_8dc574772799b2::t_fe21a98baf56cc 53-67
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.9",
+  "base_commit_sha": "43947b849bfbaa464e1b3683998a3678428fde4f",
+  "prompts": {},
+  "sessions": {
+    "s_8dc574772799b2": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ebad8-8ad9-7cf2-a034-cff73636a6b4",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,29 @@
+packages/nodes-base/nodes/Brevo/GenericFunctions.ts
+  s_097953de0a96e2::t_e60170e244f275 8,10,309,314-315,333,338,358,363
+packages/nodes-base/nodes/Brevo/test/GenericFunctions.test.ts
+  s_c950205db49b04::t_31ecd2485c2db7 1-6,8,268-280
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "18c89df9356986d89cacaeb29b8a3d25ddf592a7",
+  "prompts": {},
+  "sessions": {
+    "s_097953de0a96e2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-aac90f73f2622c71a",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_c950205db49b04": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a15040a5fa138d3ab",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,20 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiTestAgentPanel.vue
+  s_fe62292551adf8::t_443de7110489a9 28-29
+  s_fe62292551adf8::t_fbd2b786f5f938 66-68
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5809040e22ab9965193835a996bb25926726c244",
+  "prompts": {},
+  "sessions": {
+    "s_fe62292551adf8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dcdf49db-29c9-47f8-91d3-ac72251be9a6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

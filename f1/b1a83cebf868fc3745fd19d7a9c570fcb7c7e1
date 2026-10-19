@@ -1,0 +1,44 @@
+packages/cli/src/services/session-cookie-auth.strategy.ts
+  s_b91805a49c8a5d::t_c4378c39b9e4db 1-9,11-26,28-68
+  s_b91805a49c8a5d::t_3f5a4d9350e92f 10
+  s_b91805a49c8a5d::t_830b77c8d6b1ae 27
+packages/cli/src/modules/mcp/__tests__/mcp-api-key.service.integration.test.ts
+  s_b91805a49c8a5d::t_50f432ad94f02d 45,49
+  s_b91805a49c8a5d::t_ed67da2e4ad708 147-149
+  s_b91805a49c8a5d::t_4bbc032dcde034 13
+packages/cli/src/server.ts
+  s_b91805a49c8a5d::t_f0efe256b4d52c 187-189,194
+  s_b91805a49c8a5d::t_4045e25e9af7b7 80
+packages/cli/src/services/__tests__/session-cookie-auth.strategy.integration.test.ts
+  s_b91805a49c8a5d::t_7e45957620e4c6 1-103
+packages/cli/test/integration/shared/utils/test-server.ts
+  s_b91805a49c8a5d::t_831fa8eacf5c26 22
+  s_b91805a49c8a5d::t_821519ec9646dc 174-176,181
+packages/cli/src/public-api/public-api-controller.registry.ts
+  s_b91805a49c8a5d::t_43b3c3eed35d5c 122
+  s_b91805a49c8a5d::t_e8145390d49e69 17,24
+packages/cli/src/public-api/index.ts
+  s_b91805a49c8a5d::t_4fe03307a02f12 19
+  s_b91805a49c8a5d::t_4335eb9e4cef59 252,258
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "f1b1a83cebf868fc3745fd19d7a9c570fcb7c7e1",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_b91805a49c8a5d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "acb669f0-1396-4ff3-8a37-7b62d7e489f5",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

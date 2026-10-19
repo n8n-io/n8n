@@ -1,0 +1,26 @@
+packages/@n8n/scheduler/src/core/__tests__/factory.test.ts
+  s_a2c0d20cbf22fa::t_c36d595d716120 590-636
+packages/@n8n/scheduler/src/core/index.ts
+  s_a2c0d20cbf22fa::t_6671466be4db5e 2
+packages/@n8n/scheduler/src/core/factory.ts
+  s_a2c0d20cbf22fa::t_7a8e4c981206d9 243,247-254
+  s_a2c0d20cbf22fa::t_e668538a28d3df 141-142
+  s_a2c0d20cbf22fa::t_4c824980a35a81 80-86
+  s_a2c0d20cbf22fa::t_49f9c783e1224d 37-42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2a49fe84d46d44e195be42e9d0511f4363204194",
+  "prompts": {},
+  "sessions": {
+    "s_a2c0d20cbf22fa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "690c56b3-10ef-472e-ae89-2d9900990d66",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

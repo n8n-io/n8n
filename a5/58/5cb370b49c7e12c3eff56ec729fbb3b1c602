@@ -1,0 +1,21 @@
+packages/@n8n/agents/src/runtime/__tests__/tool-adapter.test.ts
+  s_60e43f07473cd0::t_0d5e2e3ea19222 178-195,218-232
+packages/@n8n/agents/src/runtime/tools/tool-adapter.ts
+  s_60e43f07473cd0::t_e4575033aacc15 76-77,83,90
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "a5585cb370b49c7e12c3eff56ec729fbb3b1c602",
+  "prompts": {},
+  "sessions": {
+    "s_60e43f07473cd0": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8fe1-c76f-71c3-8e47-b42265a08f6b",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

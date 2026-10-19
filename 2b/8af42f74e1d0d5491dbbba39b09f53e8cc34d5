@@ -1,0 +1,19 @@
+packages/@n8n/permissions/src/roles/all-roles.ts
+  s_daaf7502b5ecf5::t_9dd41b382a86fe 39-41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.8",
+  "base_commit_sha": "2b8af42f74e1d0d5491dbbba39b09f53e8cc34d5",
+  "prompts": {},
+  "sessions": {
+    "s_daaf7502b5ecf5": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "3c428ae8-f59a-432d-a662-e695b5873551",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

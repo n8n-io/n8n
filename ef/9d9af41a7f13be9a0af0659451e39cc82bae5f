@@ -1,0 +1,24 @@
+packages/cli/test/integration/access-control/instance-roles.test.ts
+  s_8f52ec7b6c500a::t_1e2bb104e35d95 280
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "ef9d9af41a7f13be9a0af0659451e39cc82bae5f",
+  "prompts": {},
+  "humans": {
+    "h_435b1d7d3e52c0": {
+      "author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_8f52ec7b6c500a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "423ca37e-9e4c-479c-b2d1-af1ced0a48f6",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

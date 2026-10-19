@@ -1,0 +1,19 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_78d96f7c8d922e::t_902269af2ba604 2846
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "c3aa61d9e2a484bd4e08c0bfa7cef8e7a5d0ede7",
+  "prompts": {},
+  "sessions": {
+    "s_78d96f7c8d922e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6542cf9a-f188-442b-84bc-fa44188df322",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

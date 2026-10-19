@@ -1,0 +1,72 @@
+packages/cli/test/integration/scheduling/durable-scheduler-lifecycle.test.ts
+  s_5e1597e8ea25b2::t_11cf447e62349d 12,80
+packages/cli/src/workflows/__tests__/catalog-subscription.service.test.ts
+  s_5e1597e8ea25b2::t_095a251fdcd729 1-8,10-25,27-106,123-274
+  s_5e1597e8ea25b2::t_d73d8b4aec7572 9,26
+  s_5e1597e8ea25b2::t_96e0123281d99b 107-122
+packages/cli/src/workflows/catalog-subscription-task-handler.ts
+  s_5e1597e8ea25b2::t_cb9fc2fa15fee6 1-59,63-175
+  s_5e1597e8ea25b2::t_95bd6167ae0de2 60-62
+packages/cli/src/workflows/__tests__/catalog-subscription-task-handler.test.ts
+  s_5e1597e8ea25b2::t_069dd97d1fe5c3 7,20
+  s_5e1597e8ea25b2::t_d73d8b4aec7572 25,162-164
+  s_5e1597e8ea25b2::t_592f326990df7b 22-23,96
+  s_5e1597e8ea25b2::t_9f7827be88e005 71,130
+  s_5e1597e8ea25b2::t_4b6c1c10e1aa92 1-6,8-19,21,24,26-31,35,37-42,44-70,72-95,97-129,131-161,165-166
+  s_5e1597e8ea25b2::t_4963197a3cfeed 32-34,36,43
+  s_5e1597e8ea25b2::t_04cd46934922ac 167-168
+packages/@n8n/api-types/src/dto/workflows/catalog-subscription.dto.ts
+  s_5e1597e8ea25b2::t_6353b458373821 1-22
+packages/cli/src/workflows/workflow-execution.service.ts
+  s_5e1597e8ea25b2::t_f14541ff3563a3 112
+  s_5e1597e8ea25b2::t_f42ad25aa1ed13 75-80
+packages/cli/src/modules/dynamic-credentials.ee/credential-resolvers/identifiers/runner-binding.service.ts
+  s_5e1597e8ea25b2::t_e734d820855a54 1,5,7-15,19,22
+packages/@n8n/api-types/src/dto/index.ts
+  s_5e1597e8ea25b2::t_b87b64a821b8d4 122
+packages/cli/src/workflows/catalog-subscription-task.ts
+  s_5e1597e8ea25b2::t_3db8ef085bcb86 1-30
+packages/cli/src/workflows/catalog.controller.ts
+  s_5e1597e8ea25b2::t_f6a1e2c1cc462a 37
+  s_5e1597e8ea25b2::t_c21d7c0bab87ff 80-149
+  s_5e1597e8ea25b2::t_d4fe5b16610cdb 1,3-12,17,22
+packages/cli/src/scheduling/__tests__/durable-scheduler.test.ts
+  s_5e1597e8ea25b2::t_11cf447e62349d 72
+  s_5e1597e8ea25b2::t_ef9fc7f5743c42 12-14
+packages/cli/src/workflows/catalog-run.service.ts
+  s_5e1597e8ea25b2::t_7749c1d6fd011e 50
+  s_5e1597e8ea25b2::t_d2acf45327d6d8 15-28
+  s_5e1597e8ea25b2::t_daf68dac35bcb9 84-86
+packages/cli/src/scheduling/durable-scheduler.ts
+  s_5e1597e8ea25b2::t_d4b46263600c40 16-17
+  s_5e1597e8ea25b2::t_d74c6d7f190ea4 42
+  s_5e1597e8ea25b2::t_12eccc16fece99 100-103
+packages/cli/src/workflows/catalog-subscription.service.ts
+  s_5e1597e8ea25b2::t_c536f2dc67fe7c 134-137
+  s_5e1597e8ea25b2::t_c5678a0aacc106 1-11,14-133,138-233,235-291,297-324,344-350
+  s_5e1597e8ea25b2::t_22095f8807467c 234
+  s_5e1597e8ea25b2::t_0c3af9c42074bb 292-296
+  s_5e1597e8ea25b2::t_3a84374e2fea9c 12-13
+  s_5e1597e8ea25b2::t_59b2c0a0ffb2ba 325-343
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "7afb35df89f4a96d7914c37bc983445e70830ea3",
+  "prompts": {},
+  "humans": {
+    "h_21437a83314767": {
+      "author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_5e1597e8ea25b2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3addddf2-b534-4e10-93c7-b150ce8b013e",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

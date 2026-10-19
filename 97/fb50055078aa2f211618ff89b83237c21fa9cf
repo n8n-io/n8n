@@ -1,0 +1,58 @@
+packages/frontend/@n8n/frontend-module-sdk/src/types/tabs.ts
+  s_ab22562da1f6f8::t_b2f9203e135db1 18-19
+  s_97f7e7f5a2c99e::t_ce6b926ab64f70 1-17,20-26,32
+packages/frontend/@n8n/frontend-module-sdk/src/types/designSystemCompat.test.ts
+  s_ab22562da1f6f8::t_7c94ac3212ad41 28,43
+  s_ab22562da1f6f8::t_82d9761396f56a 25-27
+  s_ab22562da1f6f8::t_abf56eee3cfdd9 29-31,40-42
+  s_ab22562da1f6f8::t_c86113c53093b1 44-46
+  s_ab22562da1f6f8::t_31171a2e817b53 1-24,32-39,47-69
+packages/frontend/@n8n/design-system/src/types/tabs.ts
+  s_97f7e7f5a2c99e::t_8b3583620e5487 8-13
+packages/frontend/@n8n/frontend-module-sdk/package.json
+  s_97f7e7f5a2c99e::t_3924ac879268b7 5-10,12-21,24-27,37-39,44,48,53-54
+packages/frontend/@n8n/frontend-module-sdk/src/types/descriptor.ts
+  s_97f7e7f5a2c99e::t_d7d967e9a67c71 9,34
+packages/frontend/@n8n/frontend-module-sdk/src/types/index.ts
+  s_97f7e7f5a2c99e::t_1bbe15f4c17237 4
+packages/frontend/@n8n/frontend-module-sdk/src/types/settingsPage.ts
+  s_97f7e7f5a2c99e::t_802eee5ade4af2 1-28
+packages/frontend/@n8n/frontend-module-sdk/tsconfig.json
+  s_97f7e7f5a2c99e::t_3e6f17c88c93fb 19
+packages/frontend/@n8n/frontend-module-sdk/tsdown.config.ts
+  s_97f7e7f5a2c99e::t_e9be779f082810 1-12
+pnpm-lock.yaml
+  s_796dd214c4c4c1::t_e0db4b61db6807 5350,5363-5365,5378-5383,22483-22484,29406,42054
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "97fb50055078aa2f211618ff89b83237c21fa9cf",
+  "prompts": {},
+  "sessions": {
+    "s_796dd214c4c4c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "92617b55-67a8-4bbd-8b2a-d88b16b383eb",
+        "model": "unknown"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    },
+    "s_97f7e7f5a2c99e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "838be7cb-0783-4a8c-8f4a-621664e76b6d",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    },
+    "s_ab22562da1f6f8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bd2b27a6-77c4-43dd-88ba-beef35097f39",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

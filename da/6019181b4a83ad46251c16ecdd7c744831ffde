@@ -1,0 +1,21 @@
+packages/cli/src/modules/agents/__tests__/agent-turn-queue.service.test.ts
+  s_b04c58447561ba::t_b8258018812b99 187-196
+packages/cli/src/modules/agents/agent-turn-queue.service.ts
+  s_b04c58447561ba::t_829dcebf382ba5 113-128
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "da6019181b4a83ad46251c16ecdd7c744831ffde",
+  "prompts": {},
+  "sessions": {
+    "s_b04c58447561ba": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "e3df8d2d-7a5d-4b4e-82c4-2e70a7479fe8",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

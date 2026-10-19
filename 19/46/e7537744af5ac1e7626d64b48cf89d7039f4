@@ -1,0 +1,26 @@
+packages/cli/src/modules/n8n-packages/entities/variable/variable.exporter.ts
+  s_a2f2604c6a0758::t_7f3c3356643092 1,4,48-51,57,62-63,135-138,143-144,147-149
+packages/workflow/test/resolve-variables.test.ts
+  s_a2f2604c6a0758::t_bb931f6442e7b6 55-78
+  s_a2f2604c6a0758::t_65845872fdd7e8 1
+packages/workflow/src/common/resolve-variables.ts
+  s_a2f2604c6a0758::t_91cc101f541b8d 43-66
+packages/cli/src/modules/n8n-packages/entities/variable/__tests__/variable.exporter.test.ts
+  s_a2f2604c6a0758::t_e13aae3d59c1e3 41,45-47,49-50,52-53,57-58,92-93,124-125,153-154,174,176-179,190,192-195,197,199-200,202-209,224,234-238,261-262,303-304,331-336,363-364,386-410,416-417,443-444,475-476,502-503,532-533,560-561,585-586
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1946e7537744af5ac1e7626d64b48cf89d7039f4",
+  "prompts": {},
+  "sessions": {
+    "s_a2f2604c6a0758": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "2eebeab3-c2f8-45bc-a543-37d531da2598",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Nour Alhadi Mahmoud <nour.mahmoud@n8n.io>"
+    }
+  }
+}

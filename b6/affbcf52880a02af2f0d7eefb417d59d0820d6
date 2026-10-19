@@ -1,0 +1,79 @@
+packages/@n8n/instance-ai/evaluations/clients/n8n-client.ts
+  s_db4e4ca9649dbd::t_e216e4359e498f 986-994,998-1000
+  s_db4e4ca9649dbd::t_d88b003812c577 946-970,979-985,1001-1007
+  ai_agent 976
+  s_db4e4ca9649dbd::t_3ecfa810d6a0b1 995-997
+  s_db4e4ca9649dbd::t_fdd4a525a6854c 971-975,977-978
+packages/@n8n/instance-ai/evaluations/harness/cleanup.ts
+  s_db4e4ca9649dbd::t_96ace125e9fbd0 167-177
+packages/@n8n/instance-ai/evaluations/__tests__/langtracer-to-exported.test.ts
+  s_db4e4ca9649dbd::t_fa4b4175108599 143-163
+  s_db4e4ca9649dbd::t_61ffc77134370c 136,179,224
+packages/@n8n/instance-ai/evaluations/__tests__/build-workflow-conversation-seed.test.ts
+  s_db4e4ca9649dbd::t_61ffc77134370c 82
+packages/@n8n/instance-ai/evaluations/__tests__/data-workflows-schema.test.ts
+  s_db4e4ca9649dbd::t_49683768a1887a 134-137,143-152
+packages/@n8n/instance-ai/evaluations/__tests__/conversation-text.test.ts
+  s_db4e4ca9649dbd::t_61ffc77134370c 141
+packages/@n8n/instance-ai/evaluations/__tests__/mcp-builder.test.ts
+  s_db4e4ca9649dbd::t_61ffc77134370c 163
+packages/@n8n/instance-ai/evaluations/harness/conversation-seed.ts
+  s_db4e4ca9649dbd::t_15ccd67890d3c7 142-149
+  s_db4e4ca9649dbd::t_ce6b2ae12d4911 167-180
+  s_db4e4ca9649dbd::t_13dfe480cad577 38-48
+  s_db4e4ca9649dbd::t_950acbb77c4bc5 34-37,49-50
+  s_db4e4ca9649dbd::t_38af5c64dcd61b 474-477,485
+packages/@n8n/instance-ai/evaluations/__tests__/conversation-seed.test.ts
+  s_db4e4ca9649dbd::t_a82d31fce47551 202-207
+  s_db4e4ca9649dbd::t_61ffc77134370c 45,311
+  s_db4e4ca9649dbd::t_d4586b9b5876c0 75
+  s_db4e4ca9649dbd::t_69446fc1974293 819-860
+  s_db4e4ca9649dbd::t_13dfe480cad577 861-880
+packages/@n8n/instance-ai/evaluations/harness/schema.ts
+  s_db4e4ca9649dbd::t_4d9743dc654522 102-104
+  s_db4e4ca9649dbd::t_28867a833844a5 229-245
+  s_db4e4ca9649dbd::t_063649bee27894 99-101,107
+  s_db4e4ca9649dbd::t_0f787feda71956 67-72,75
+packages/@n8n/instance-ai/evaluations/langtracer/to-exported.ts
+  s_db4e4ca9649dbd::t_4f9fe25fede88c 64-75
+packages/@n8n/instance-ai/evaluations/harness/langsmith-seed.ts
+  s_db4e4ca9649dbd::t_8adfd379430fc5 416-418
+packages/@n8n/instance-ai/evaluations/harness/build-workflow.ts
+  s_db4e4ca9649dbd::t_49eccf96ce65e2 228-232
+  ai_agent 1022,1081,1104
+  s_db4e4ca9649dbd::t_467dc59e5b629f 790-794,796
+  s_db4e4ca9649dbd::t_f6404500fdc47c 1211-1247
+  s_db4e4ca9649dbd::t_cb9c1e73c5f913 746-753,755-756
+  s_db4e4ca9649dbd::t_6c84badc475830 1041
+  s_db4e4ca9649dbd::t_77850c0a56f2b3 498-500
+  s_db4e4ca9649dbd::t_36cb7a2e0ef42f 743-745,754,757-775
+packages/@n8n/instance-ai/evaluations/__tests__/langtracer-push.test.ts
+  s_db4e4ca9649dbd::t_61ffc77134370c 34
+packages/@n8n/instance-ai/evaluations/data/workflows/refuses-cross-project-workflow-build.json
+  s_db4e4ca9649dbd::t_ce9b81ae07f1fa 33
+  s_db4e4ca9649dbd::t_ac81b72e67a878 2,30,34-35
+  s_db4e4ca9649dbd::t_7d11c8edfa0ee6 1,3-4,10-26,29,31-32,36-37
+  s_db4e4ca9649dbd::t_a9816102a53006 5-9
+  ai_agent 27-28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b6affbcf52880a02af2f0d7eefb417d59d0820d6",
+  "prompts": {},
+  "humans": {
+    "h_2f80f0e06f710c": {
+      "author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_db4e4ca9649dbd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6d2532f3-e59d-4759-b709-81da45ae514d",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,18 @@
+.github/workflows/ci-cla-check.yml
+  h_52a137d26d774c 72-73
+packages/@n8n/agents/src/runtime/memory/episodic-memory-defaults.ts
+  h_52a137d26d774c 81-82
+packages/cli/src/license/license.service.ts
+  h_52a137d26d774c 54-55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1110d7270ecfe26e9ce5ab6a067f5cbda67087d3",
+  "prompts": {},
+  "humans": {
+    "h_52a137d26d774c": {
+      "author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

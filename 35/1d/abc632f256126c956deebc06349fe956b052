@@ -1,0 +1,25 @@
+packages/cli/src/public-api/v1/controllers/ping-test.public.controller.ts
+  s_e6454ae550915c::t_4accfc4f59cfa3 1-16
+packages/cli/src/public-api/v1/controllers/index.ts
+  s_e6454ae550915c::t_3c82d681eca8f5 6
+packages/cli/src/public-api/v1/handlers/ping-test/spec/paths/ping.generated.yml
+  s_e6454ae550915c::t_f2105a22c95d7b 1-12
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  s_e6454ae550915c::t_d1371b1e450b1c 6-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "351dabc632f256126c956deebc06349fe956b052",
+  "prompts": {},
+  "sessions": {
+    "s_e6454ae550915c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9d50437f-80ab-427e-86b5-73792ecfdbf9",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

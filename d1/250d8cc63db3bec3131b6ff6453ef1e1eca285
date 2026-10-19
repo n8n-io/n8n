@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowUpdateReviewDialog.test.ts
+  s_285cbc731c20fc::t_14872f85188efb 280-283,290,293-294,298,300-312
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowSubmitForReviewDialog.test.ts
+  s_285cbc731c20fc::t_a14108f8445cb2 208-211,222-224,229-230,232-247
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "d1250d8cc63db3bec3131b6ff6453ef1e1eca285",
+  "prompts": {},
+  "sessions": {
+    "s_285cbc731c20fc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "91af607a-88fb-4199-bc7a-e43e4524c88f",
+        "model": "claude-opus-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

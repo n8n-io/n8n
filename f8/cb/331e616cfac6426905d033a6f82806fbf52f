@@ -1,0 +1,56 @@
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/channelMessage/reply.workflow.json
+  s_ebd7b9f2821ae5::t_8fa77ab67a2e77 1-129
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/channelMessage/index.ts
+  s_ebd7b9f2821ae5::t_4a881e3c0137d1 4,6,9,29-34,41-46,59,73,80,82
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/node.type.ts
+  s_ebd7b9f2821ae5::t_4a881e3c0137d1 5
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/channelMessage/get.workflow.json
+  s_ebd7b9f2821ae5::t_8fa77ab67a2e77 1-124
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/servicePrincipalDisplayOptions.test.ts
+  s_ebd7b9f2821ae5::t_94c4b024bc1f32 69-71,75,77-81,84,86-89,94,102
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/channelMessage/reply.test.ts
+  s_ebd7b9f2821ae5::t_67051959831273 12-44
+  s_ebd7b9f2821ae5::t_8fa77ab67a2e77 1-11,45-50
+packages/nodes-base/nodes/Microsoft/Teams/v2/descriptions/common.description.ts
+  s_ebd7b9f2821ae5::t_3a2d2caeada2c1 24-35
+  s_ebd7b9f2821ae5::t_058f230b426cf6 23
+  s_ebd7b9f2821ae5::t_68d03eb74c1fd0 36
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/channelMessage/create.operation.ts
+  s_ebd7b9f2821ae5::t_3a2d2caeada2c1 5,49
+  s_ebd7b9f2821ae5::t_edef7d5e3aef6c 1,7-8,84
+  s_ebd7b9f2821ae5::t_fc57e3e0f8c7e6 57
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/channelMessage/sharedGuard.ts
+  s_ebd7b9f2821ae5::t_c1a4aa06f28156 1-24
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/channelMessage/get.operation.ts
+  s_ebd7b9f2821ae5::t_c1a4aa06f28156 1-49
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/channelMessage/reply.operation.ts
+  s_ebd7b9f2821ae5::t_d8e3f5327485a7 89-91,97
+  s_ebd7b9f2821ae5::t_3a2d2caeada2c1 5,58
+  s_ebd7b9f2821ae5::t_c1a4aa06f28156 1-4,6-57,59-88,92-96,98-112
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/servicePrincipal.test.ts
+  s_ebd7b9f2821ae5::t_d2ee8f91431706 110-122
+  s_ebd7b9f2821ae5::t_cda1a80c85bf18 105-109
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/channelMessage/reply.workflowLink.test.ts
+  s_ebd7b9f2821ae5::t_e8aa91590aa33b 37-42
+  s_ebd7b9f2821ae5::t_ee0971557fd56f 1-5,10,13-36,43-85
+  s_ebd7b9f2821ae5::t_8b0071c26d2d62 6-9,11-12
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/channelMessage/get.test.ts
+  s_ebd7b9f2821ae5::t_8fa77ab67a2e77 1-9,43-48
+  s_ebd7b9f2821ae5::t_67051959831273 10-42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "f8cb331e616cfac6426905d033a6f82806fbf52f",
+  "prompts": {},
+  "sessions": {
+    "s_ebd7b9f2821ae5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "74f2c17b-04a6-4afc-bf2c-d5405449b36a",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

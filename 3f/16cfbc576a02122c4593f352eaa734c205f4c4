@@ -1,0 +1,23 @@
+packages/workflow/src/jmespath-query.ts
+  s_bb17b049fc2e2d::t_22d27bbaadcfc8 6-8
+  s_bb17b049fc2e2d::t_c83172420b1794 23
+packages/workflow/test/jmespath-query.test.ts
+  s_bb17b049fc2e2d::t_602976e12fd3a5 28,30
+  s_bb17b049fc2e2d::t_b2e1c6e133ceb8 17-22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3f16cfbc576a02122c4593f352eaa734c205f4c4",
+  "prompts": {},
+  "sessions": {
+    "s_bb17b049fc2e2d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7ce0c93e-11a0-4d60-b602-af5cd3c86750",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

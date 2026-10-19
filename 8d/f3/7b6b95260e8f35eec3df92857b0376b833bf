@@ -1,0 +1,19 @@
+packages/@n8n/cli/README.md
+  s_dd6e2d00011911::t_a029a4bc20635a 66
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8df37b6b95260e8f35eec3df92857b0376b833bf",
+  "prompts": {},
+  "sessions": {
+    "s_dd6e2d00011911": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "478872db-05f3-4102-934c-6972f168d379",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

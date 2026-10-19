@@ -1,0 +1,29 @@
+packages/@n8n/db/src/repositories/credentials.repository.ts
+  s_435e462c9c057d::t_df9a471d9d476f 612-632
+packages/cli/test/integration/database/repositories/credentials-project-access.test.ts
+  s_435e462c9c057d::t_5c45b35cdf331c 26-37,39-44,46,48-52,58,63-69,73-75
+  s_435e462c9c057d::t_f977edda4fbeb4 2-8,11-13,16-25,38,45,47,53-57,59-62,70-72,76-125
+  s_435e462c9c057d::t_0d9f9d87a4d8a1 1,9-10,14-15
+  s_435e462c9c057d::t_0baaefd93adfc2 126-128
+packages/cli/src/node-execution/ephemeral-node-executor.ts
+  s_435e462c9c057d::t_df9a471d9d476f 2,173,224-227,229-230,235,237,241,249-250
+packages/cli/src/node-execution/__tests__/ephemeral-node-executor.test.ts
+  s_435e462c9c057d::t_f977edda4fbeb4 4,311,327,382,398-426,443,445,456,461-465,467,498,910,929,956-960,962
+  s_435e462c9c057d::t_990cb6233aea47 344-370
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f3e99a584028ac00f844134ad737f37edba8f7a3",
+  "prompts": {},
+  "sessions": {
+    "s_435e462c9c057d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a12080-ba0c-7183-844d-8cd962884f7d",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

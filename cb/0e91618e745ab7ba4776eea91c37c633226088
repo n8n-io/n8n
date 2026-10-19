@@ -1,0 +1,35 @@
+packages/cli/src/modules/agent-evals/agent-evals.controller.ts
+  s_8d717fb7cdc18c::t_3d9af1eef6170f 2
+  s_8d717fb7cdc18c::t_9b426f432fa372 159
+packages/@n8n/api-types/src/schemas/agent-evals.schema.ts
+  s_8d717fb7cdc18c::t_fbb116b3aeefc0 5-9
+  s_8d717fb7cdc18c::t_25ad19a07d7e96 115-124
+packages/cli/src/modules/agent-evals/__tests__/agent-evals.controller.test.ts
+  s_8d717fb7cdc18c::t_b30fe3ead41c6b 4
+  s_8d717fb7cdc18c::t_6ef3e981f15100 252,266,274-293
+  s_8d717fb7cdc18c::t_7eeee9c32ec722 140
+  s_8d717fb7cdc18c::t_a495aa490a961e 24-26,28
+  s_8d717fb7cdc18c::t_87458cf8f39ef4 1-3,5-6
+packages/@n8n/api-types/src/dto/pagination/__tests__/pagination.dto.test.ts
+  s_8d717fb7cdc18c::t_03f77fe8ea929d 148-164
+packages/@n8n/api-types/src/dto/pagination/pagination.dto.ts
+  s_8d717fb7cdc18c::t_de8e79d9a850c0 18-27,31
+packages/@n8n/api-types/src/index.ts
+  s_8d717fb7cdc18c::t_3c1a9f0047a2aa 588-589
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "cb0e91618e745ab7ba4776eea91c37c633226088",
+  "prompts": {},
+  "sessions": {
+    "s_8d717fb7cdc18c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b31327a4-b04e-4d2b-b5bc-034852a82ac9",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

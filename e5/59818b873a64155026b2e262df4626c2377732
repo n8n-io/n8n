@@ -1,0 +1,25 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useOpenArtifactTabs.ts
+  s_dff57e7b253b23::t_d976e63dc76b69 177-180,182-184
+packages/frontend/editor-ui/src/features/ai/instanceAi/useCanvasPreview.ts
+  s_dff57e7b253b23::t_d976e63dc76b69 78-82
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useCanvasPreview.test.ts
+  s_dff57e7b253b23::t_40687e06a65beb 1485-1534
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useOpenArtifactTabs.test.ts
+  s_dff57e7b253b23::t_40687e06a65beb 159-173
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e559818b873a64155026b2e262df4626c2377732",
+  "prompts": {},
+  "sessions": {
+    "s_dff57e7b253b23": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2a1b4b03-5790-4a03-a686-790045e59397",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

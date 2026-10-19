@@ -1,0 +1,29 @@
+packages/cli/src/modules/breaking-changes/rules/v3/ai-transform-deprecated.rule.ts
+  s_9f53e0d0f6eff5::t_517e9a0fa3afbd 52,54-55
+packages/cli/src/modules/breaking-changes/rules/v3/get-paired-item.rule.ts
+  s_9f53e0d0f6eff5::t_517e9a0fa3afbd 55
+packages/cli/package.json
+  s_9f53e0d0f6eff5::t_af258357ff8566 4
+packages/cli/src/modules/breaking-changes/rules/v3/pre-execute-error-creates-execution.rule.ts
+  s_9f53e0d0f6eff5::t_1f585a8bd775d1 1,12-19,36
+.github/workflows/release-publish.yml
+  s_9f53e0d0f6eff5::t_1a32cbfcbb06b6 71,91
+packages/cli/src/modules/breaking-changes/rules/v3/__tests__/pre-execute-error-creates-execution.rule.test.ts
+  s_9f53e0d0f6eff5::t_89132598efa144 4,6-8,10-36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1f9589ce39f9583aac67f822a32e5821885a5cae",
+  "prompts": {},
+  "sessions": {
+    "s_9f53e0d0f6eff5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "25b435cb-bd9f-4f44-bae1-20466ce5e8e4",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,30 @@
+packages/frontend/@n8n/design-system/src/utils/dom.test.ts
+  s_a1db2f12a72076::t_e8c8caff0f10d4 3,9,16,24
+  s_a1db2f12a72076::t_0c99eaebd72514 2,4,15,17-18,23,25-26
+  s_a1db2f12a72076::t_0cec25a6f2b55f 1,5-8,10-14,19-22
+packages/frontend/@n8n/design-system/src/utils/dom.ts
+  s_a1db2f12a72076::t_984e421c8af97a 23-24,26-28
+  s_a1db2f12a72076::t_ba8e0f9516355a 1-21,25,29
+  s_a1db2f12a72076::t_eabf9777c3fb2f 22
+  s_a1db2f12a72076::t_a9f5777859b7ee 30
+packages/frontend/@n8n/design-system/src/components/N8nToolsConnection/ToolsConnectionModal.vue
+  s_a1db2f12a72076::t_0bbcad7102c423 16,347
+packages/frontend/@n8n/design-system/src/utils/index.ts
+  s_a1db2f12a72076::t_e060ca8296badb 2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "79f430b100cbcab1eb9f0829299ef2b4b59fbc33",
+  "prompts": {},
+  "sessions": {
+    "s_a1db2f12a72076": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0ab13-9249-775a-944f-5e77a5a1e81e",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

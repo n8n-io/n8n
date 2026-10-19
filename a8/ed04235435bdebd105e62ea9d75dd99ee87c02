@@ -1,0 +1,24 @@
+packages/cli/src/modules/data-table/data-table-aggregate.service.ts
+  s_633895c6f69b3b::t_b3e180f360a7ce 23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "a8ed04235435bdebd105e62ea9d75dd99ee87c02",
+  "prompts": {},
+  "humans": {
+    "h_ed1b2d65e81e8e": {
+      "author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_633895c6f69b3b": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "ba7ed6f1-43ce-4523-b65f-098c71251e9e",
+        "model": "grok-4.6"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

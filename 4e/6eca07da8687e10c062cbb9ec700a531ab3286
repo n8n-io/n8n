@@ -1,0 +1,40 @@
+packages/frontend/editor-ui/src/features/settings/security/SecuritySettings.vue
+  h_9c8f56e3400786 26,35
+packages/frontend/editor-ui/src/app/stores/settings.store.ts
+  s_b3f23ab76a494c::t_4f94f0493c2cfb 7,288-291,487
+packages/frontend/editor-ui/src/features/settings/security/SecuritySettings.test.ts
+  s_b3f23ab76a494c::t_68145028428e67 871,918
+  s_b3f23ab76a494c::t_2569c34f6a6ffd 38
+packages/cli/src/services/__tests__/frontend.service.test.ts
+  s_b3f23ab76a494c::t_68145028428e67 250-265
+packages/frontend/editor-ui/src/features/settings/security/WorkflowReviewsSection.vue
+  s_b3f23ab76a494c::t_1975825e8e11ab 9,18,46-47,49
+  s_b3f23ab76a494c::t_4f94f0493c2cfb 48
+  s_b3f23ab76a494c::t_2aaea655c4572c 53
+  h_9c8f56e3400786 41,43
+packages/frontend/editor-ui/src/features/workflow-reviews/composables/useWorkflowReviewsFeature.test.ts
+  s_b3f23ab76a494c::t_459f999ed5983a 1-96
+packages/frontend/editor-ui/src/features/workflow-reviews/composables/useWorkflowReviewsFeature.ts
+  s_b3f23ab76a494c::t_1c775261cdc57e 1-29
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "4e6eca07da8687e10c062cbb9ec700a531ab3286",
+  "prompts": {},
+  "humans": {
+    "h_9c8f56e3400786": {
+      "author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_b3f23ab76a494c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6fd0-bfb4-7092-a515-f61e09438476",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

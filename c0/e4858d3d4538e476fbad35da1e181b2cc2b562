@@ -1,0 +1,28 @@
+packages/cli/src/modules/external-secrets.ee/providers/vault.ts
+  s_3579f1192422e5::t_4429ac60414ac3 4,11,19
+  s_3579f1192422e5::t_ed59d8cc06151c 540,546-552,559
+  s_3579f1192422e5::t_32d4d0a97da5fa 586-588
+  s_3579f1192422e5::t_81bb589cdd67ee 585,589-600
+  s_3579f1192422e5::t_62ac7eff87cdeb 111-118
+  s_3579f1192422e5::t_25e5fe1a7c9228 507-511,517-519,521-523
+  s_3579f1192422e5::t_8296cf487fd48e 712,718
+packages/cli/src/modules/external-secrets.ee/providers/__tests__/vault.test.ts
+  s_3579f1192422e5::t_38b23eecd9ac9b 2,5
+  s_3579f1192422e5::t_6fb587a3e94c3f 314-395
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c0e4858d3d4538e476fbad35da1e181b2cc2b562",
+  "prompts": {},
+  "sessions": {
+    "s_3579f1192422e5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "450bc6c1-cc52-490f-afab-00726348353a",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

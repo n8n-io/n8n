@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/agents/composables/useAgentSessionLangSmithExport.ts
+  s_da4d91a9f02e61::t_1ceacd40a017e1 46
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_da4d91a9f02e61::t_aa7cd6d7ab2e9f 1453
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "7ce8ac4429f501b626433ea19a269b1a27c64429",
+  "prompts": {},
+  "sessions": {
+    "s_da4d91a9f02e61": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "853501a7-cf2e-4446-b937-6ebbcf5d6827",
+        "model": "gpt-5.6-sol-xhigh-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

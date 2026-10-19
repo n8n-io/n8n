@@ -1,0 +1,54 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiEmptyView.test.ts
+  s_e3560b551eac11::t_70c6d277173029 2
+  s_e3560b551eac11::t_8a0e61a94aaacb 36,88,272-273,1414,1427,1439-1449,334,1546,1549,1555,1563,1570-1571,1575,1580,1582
+  s_e3560b551eac11::t_18f22b995308cc 267,277-283
+  s_e3560b551eac11::t_20816cb48c3d70 268-271,274
+  s_e3560b551eac11::t_a76e81cb14f793 275-276
+  s_e3560b551eac11::t_b57bfe2897c60f 284-285
+  s_e3560b551eac11::t_0e8d80b587874c 325
+  s_71e25d45a5ee90::t_3c2f196bf4365d 326
+  s_e3560b551eac11::t_e57dccd7337aab 328-329
+  s_e3560b551eac11::t_10835c6533feac 346
+  s_e3560b551eac11::t_5d182132a48107 347
+  s_e3560b551eac11::t_ba0783fdd791b4 360-361,376,386-387,391
+  s_e3560b551eac11::t_6d634dc45f6ff7 467-469,485-486,499,501
+  s_71e25d45a5ee90::t_d615233b59a7c7 536
+  s_e3560b551eac11::t_b732e9079a571e 579-580
+  s_e3560b551eac11::t_8d845c9c2b79ef 1410-1411,1413,1415-1426,1428-1438,1548,1574
+  ai_agent 1412
+  s_e3560b551eac11::t_2411cd76711618 1450,1452,1584
+  s_e3560b551eac11::t_74b46c3001a67d 1451
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiEmptyView.vue
+  s_e3560b551eac11::t_5b7aac3cd66c65 94,96
+  s_e3560b551eac11::t_0877e7bf39c747 193,195
+  s_e3560b551eac11::t_e271aebc928041 419-420
+  s_e3560b551eac11::t_f8bf7ec1e8ecdc 421-422,531
+  ai_agent 513
+  s_e3560b551eac11::t_4a9c421e300dc4 514-516
+  s_e3560b551eac11::t_37d04bea73c03b 791
+  s_e3560b551eac11::t_1b42f8cd0fe4aa 884
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6a7709bbb9abfa07dd4c261b3a46188f1e829f22",
+  "prompts": {},
+  "sessions": {
+    "s_71e25d45a5ee90": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2ca6b762-f376-4a31-af78-4066f186c7bb",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    },
+    "s_e3560b551eac11": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a7b46ea8-2f97-424a-81d9-bb9c3745b1ba",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}

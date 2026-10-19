@@ -1,0 +1,22 @@
+packages/frontend/@n8n/frontend-constants/README.md
+  s_b7645babf66668::t_5500db21dca1e6 25-31
+  s_b7645babf66668::t_6191814a076d7b 32-33
+packages/frontend/@n8n/frontend-constants/vite.config.ts
+  s_b7645babf66668::t_688db0c2268512 5-12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "84dc75a1df516162df6b790aeff68f64fb5a4601",
+  "prompts": {},
+  "sessions": {
+    "s_b7645babf66668": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "57f1efb4-9536-4b49-a6b5-91f2daa62b58",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

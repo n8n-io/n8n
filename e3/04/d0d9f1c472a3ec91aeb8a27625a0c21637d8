@@ -1,0 +1,47 @@
+packages/@n8n/api-types/src/agent-sse.ts
+  s_82508c87469e04::t_3cfb15a4d253e0 86-93
+packages/cli/src/modules/agents/tool-registry.ts
+  s_82508c87469e04::t_3cfb15a4d253e0 18-19,57
+packages/cli/src/modules/agents/__tests__/execution-recorder.test.ts
+  s_82508c87469e04::t_3cfb15a4d253e0 671-714
+packages/cli/src/modules/agents/agent-chat.controller.ts
+  s_82508c87469e04::t_3cfb15a4d253e0 34,156,168-170,174,215,229-230,235
+  s_82508c87469e04::t_3f79ee56e4a6e5 231
+packages/cli/src/modules/agents/execution-recorder.ts
+  s_82508c87469e04::t_3cfb15a4d253e0 295-296,624,744
+packages/cli/src/modules/agents/agent-test-run.service.ts
+  s_82508c87469e04::t_3cfb15a4d253e0 25,49-50,196,211
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_82508c87469e04::t_3cfb15a4d253e0 68-73,121-126,178-179,365,427,552,594,757,764
+packages/cli/src/modules/agents/tools/__tests__/node-tool-factory.test.ts
+  s_82508c87469e04::t_3cfb15a4d253e0 299-307,313-429
+  ai_agent 308-312
+packages/cli/src/modules/agents/agent-sse-stream.ts
+  s_82508c87469e04::t_3cfb15a4d253e0 12-13,20-26,158-159,165,168,327,329
+packages/cli/src/modules/agents/tools/node-tool-factory.ts
+  s_82508c87469e04::t_3cfb15a4d253e0 10,17,29-36,105,129,135-142,170-172,188,190-202,229
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_82508c87469e04::t_3cfb15a4d253e0 403-405,564,576,604
+packages/cli/src/modules/agents/__tests__/agent-sse-stream.test.ts
+  s_82508c87469e04::t_31b61ef2ce52b2 493-496
+  s_82508c87469e04::t_3cfb15a4d253e0 1,7,445-467,472-492
+  ai_agent 468-471
+packages/cli/src/modules/agents/__tests__/tool-registry.test.ts
+  s_82508c87469e04::t_3cfb15a4d253e0 71-95
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e304d0d9f1c472a3ec91aeb8a27625a0c21637d8",
+  "prompts": {},
+  "sessions": {
+    "s_82508c87469e04": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a71432a2-03b0-4483-9061-b9d762e81bfb",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}
