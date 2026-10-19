@@ -65,6 +65,42 @@ const cases: Case[] = [
 		],
 	},
 	{
+		name: 'that Apply renames a tag in other projects too',
+		direction: 'apply',
+		resource: resource({
+			key: 'tag:g1',
+			name: 'finance',
+			previousName: 'fin',
+			change: 'modified',
+		}),
+		detail: {
+			key: 'tag:g1',
+			type: 'tag',
+			before: { id: 'g1', name: 'fin' },
+			after: { id: 'g1', name: 'finance' },
+			revision,
+		},
+		shows: [
+			'Renamed',
+			'fin',
+			'finance',
+			'All projects on this instance share tags, so Apply also renames this tag in other projects.',
+		],
+	},
+	{
+		name: 'that Apply links a local tag with the same name to the branch tag',
+		direction: 'apply',
+		resource: resource({ key: 'tag:g1', name: 'finance', previousId: 'local', change: 'modified' }),
+		detail: {
+			key: 'tag:g1',
+			type: 'tag',
+			before: { id: 'local', name: 'finance' },
+			after: { id: 'g1', name: 'finance' },
+			revision,
+		},
+		shows: ['Linked', 'Apply links it to the tag on the branch. The name stays the same.'],
+	},
+	{
 		name: 'the exported expressions of a new credential',
 		direction: 'promote',
 		resource: resource({ key: 'credential:c3', name: 'Slack', change: 'added' }),

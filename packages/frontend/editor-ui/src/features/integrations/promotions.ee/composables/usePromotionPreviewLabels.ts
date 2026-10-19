@@ -28,6 +28,9 @@ export function usePromotionPreviewLabels() {
 				if (resource.previousParentKey !== undefined) {
 					return i18n.baseText('promotions.preview.change.moved');
 				}
+				if (resource.previousId !== undefined) {
+					return i18n.baseText('promotions.preview.change.linked');
+				}
 				if (resource.previousName !== undefined) {
 					return i18n.baseText('promotions.preview.change.renamed');
 				}
