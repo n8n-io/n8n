@@ -4,7 +4,7 @@ import { LruCache } from '@n8n/utils/lru-cache';
 
 import { EngineFallbackError, Env, bounded, evalChunk } from './evaluator';
 import { MAX_RESULT_LENGTH, clone, isObj, type SimpleNode } from './grammar';
-import { parseSimple } from './parser';
+import { parseSimple, usesPolyfilledChain } from './parser';
 import type { IWorkflowDataProxyData } from '../../interfaces';
 
 export {
@@ -94,6 +94,7 @@ function compile(expression: string): CompiledExpression | null {
 	}
 
 	const chunks: CompiledChunk[] = [];
+	const nodes: SimpleNode[] = [];
 	for (const chunk of parsed) {
 		if (chunk.type === 'text') {
 			chunks.push(chunk);
@@ -104,7 +105,10 @@ function compile(expression: string): CompiledExpression | null {
 		if (node === null) return null;
 
 		chunks.push({ type: 'code', node });
+		nodes.push(node);
 	}
+
+	if (usesPolyfilledChain(nodes)) return null;
 
 	// Mirrors the branch condition in ExpressionBuilder.getExpressionCode.
 	const isWholeValue = chunks.length === 2 && chunks[0].type === 'text' && chunks[0].text === '';

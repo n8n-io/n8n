@@ -177,7 +177,6 @@ export const HANDLED_CORPUS: string[] = [
 	"={{ $('Source').all().length }}",
 	"={{ $('Source').all()[0].json.item.name }}",
 	"={{ $('Source').item.json.item.missing ?? 'fallback' }}",
-	"={{ $('Source').first()?.json.item.name }}",
 	"=Name: {{ $('Source').item.json.item.name }}",
 	'={{ $node["Source"].json["item"]["name"] }}',
 	"={{ $node['Source'].json.item.count }}",
@@ -428,6 +427,11 @@ export const DECLINED_CORPUS: string[] = [
 	'={{ $json.item. }}',
 	// Deep enough to overflow the recursive re-parse: declined, never thrown.
 	`={{ $json${'.a'.repeat(5000)} }}`,
+	// Once any chunk holds an extension call, `first()` included, the rewrite
+	// reprints every optional chain and drops the parentheses around `??`.
+	'={{ $json.item.names?.[9] ?? ($input.first() && 1) }}',
+	"={{ $('Source').first()?.json.item.name }}",
+	'={{ ($json.item.names[9] && $json.item.name) ?? $json.item.names?.[9] }} / {{ $input.first().json.item.name }}',
 ];
 
 // Both paths must throw the same error.
