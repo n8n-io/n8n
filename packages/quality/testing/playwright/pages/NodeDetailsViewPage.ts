@@ -265,7 +265,12 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getFromAiOverrideButton(parameterName: string) {
-		return this.getParameterInput(parameterName).getByTestId('from-ai-override-button');
+		const inlineButton =
+			this.getParameterInput(parameterName).getByTestId('from-ai-override-button');
+		const standaloneButton = this.container
+			.getByTestId(`${parameterName}-parameter-input-persistent-options-container`)
+			.getByTestId('from-ai-override-button');
+		return inlineButton.or(standaloneButton);
 	}
 
 	getParameterInputTextbox(parameterName: string, index?: number) {
