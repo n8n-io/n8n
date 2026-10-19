@@ -164,12 +164,20 @@ export class ChatHubController {
 			return;
 		}
 
+		// pipeline also rejects with ERR_STREAM_PREMATURE_CLOSE when the source closes early,
+		// so only treat it as a disconnect if the response closed while the source was open.
+		let clientDisconnected = false;
+		res.once('close', () => {
+			clientDisconnected = !res.writableFinished && !stream.destroyed;
+		});
+
 		// pipeline destroys the source when the client disconnects during the download,
 		// so aborted downloads don't leak file descriptors.
 		try {
 			await pipeline(stream, res);
 		} catch (error) {
 			if (
+				clientDisconnected &&
 				error instanceof Error &&
 				'code' in error &&
 				error.code === 'ERR_STREAM_PREMATURE_CLOSE'

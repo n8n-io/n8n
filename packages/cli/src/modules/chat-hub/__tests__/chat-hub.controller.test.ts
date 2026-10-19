@@ -297,6 +297,23 @@ describe('ChatHubController', () => {
 			expect(await handlerSettled).toEqual({ error: undefined });
 		});
 
+		it('should reject when the file stream closes before it ends', async () => {
+			const stream = await openFileStream();
+			chatAttachmentService.getAttachment.mockResolvedValue(attachmentResult(stream));
+			const { port, handlerSettled } = await startAttachmentServer();
+
+			const clientReq = request(port);
+			clientReq.on('response', (clientRes) => {
+				clientRes.once('data', () => stream.destroy());
+				clientRes.on('error', () => {});
+			});
+
+			expect(await handlerSettled).toEqual({
+				error: expect.objectContaining({ code: 'ERR_STREAM_PREMATURE_CLOSE' }),
+			});
+			await vi.waitFor(() => expect(stream.closed).toBe(true), { timeout: CLOSE_TIMEOUT_MS });
+		});
+
 		it('should close the file stream and settle when the client disconnects before the response starts', async () => {
 			const stream = await openFileStream();
 			const requestReceived = createDeferredPromise();
