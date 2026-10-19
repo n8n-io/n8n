@@ -366,6 +366,40 @@ describe('CommunityPackagesService', () => {
 
 			expect(communityPackagesService.withLoadStatus([pkg])[0].failedLoading).toBe(false);
 		});
+
+		test('should include the load error of a package that failed to load', () => {
+			const pkg = installedPackageWithNodeTypes(['node-a']);
+			loadNodesAndCredentials.isKnownNode.mockReturnValue(false);
+			loadNodesAndCredentials.getPackageLoadError.mockReturnValue('Credential types clash');
+
+			const [matched] = communityPackagesService.withLoadStatus([pkg]);
+
+			expect(matched.failedLoading).toBe(true);
+			expect(matched.failedLoadingReason).toBe('Credential types clash');
+			expect(loadNodesAndCredentials.getPackageLoadError).toHaveBeenCalledWith(pkg.packageName);
+		});
+
+		test('should omit the reason when the package failed without a recorded load error', () => {
+			const pkg = installedPackageWithNodeTypes(['node-a']);
+			loadNodesAndCredentials.isKnownNode.mockReturnValue(false);
+			loadNodesAndCredentials.getPackageLoadError.mockReturnValue(undefined);
+
+			const [matched] = communityPackagesService.withLoadStatus([pkg]);
+
+			expect(matched.failedLoading).toBe(true);
+			expect(matched).not.toHaveProperty('failedLoadingReason');
+		});
+
+		test('should not include a reason for a package that loaded', () => {
+			const pkg = installedPackageWithNodeTypes(['node-a']);
+			loadNodesAndCredentials.isKnownNode.mockReturnValue(true);
+			loadNodesAndCredentials.getPackageLoadError.mockReturnValue('stale error');
+
+			const [matched] = communityPackagesService.withLoadStatus([pkg]);
+
+			expect(matched.failedLoading).toBe(false);
+			expect(matched).not.toHaveProperty('failedLoadingReason');
+		});
 	});
 
 	describe('checkNpmPackageStatus()', () => {

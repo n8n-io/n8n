@@ -20,6 +20,7 @@ import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { CUSTOM_API_CALL_KEY, CUSTOM_API_CALL_NAME } from '@/constants';
+import { CredentialTypeConflictError } from '@/errors/response-errors/credential-type-conflict.error';
 
 import { LoadNodesAndCredentials } from '../load-nodes-and-credentials';
 
@@ -1213,6 +1214,112 @@ describe('LoadNodesAndCredentials', () => {
 
 			expect(types.nodes).toHaveLength(1);
 			expect(types.credentials).toHaveLength(1);
+		});
+	});
+
+	describe('credential type conflicts', () => {
+		const createLoader = (packageName: string, credentialTypes: string[]) =>
+			mock<NodeLoader>({
+				packageName,
+				known: {
+					nodes: {},
+					credentials: Object.fromEntries(
+						credentialTypes.map((name) => [
+							name,
+							{ className: name, sourcePath: `${name}.credentials.js` },
+						]),
+					),
+				},
+			});
+
+		let instance: LoadNodesAndCredentials;
+
+		beforeEach(() => {
+			instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock(), mock(), mock());
+			instance.loaders = {
+				'n8n-nodes-base': createLoader('n8n-nodes-base', ['awsAssumeRole', 'slackApi']),
+			};
+		});
+
+		it('should reject a package that reuses the credential type of a loaded package', () => {
+			const loader = createLoader('community-package', ['awsAssumeRole', 'uniqueApi']);
+
+			expect(() => instance['assertNoCredentialTypeConflicts'](loader)).toThrow(
+				CredentialTypeConflictError,
+			);
+			expect(() => instance['assertNoCredentialTypeConflicts'](loader)).toThrow(
+				'"awsAssumeRole" (provided by "n8n-nodes-base")',
+			);
+		});
+
+		it('should report every conflicting credential type', () => {
+			const loader = createLoader('community-package', ['awsAssumeRole', 'slackApi']);
+
+			expect(() => instance['assertNoCredentialTypeConflicts'](loader)).toThrow(
+				/"awsAssumeRole".*"slackApi"/,
+			);
+		});
+
+		it('should accept a package with unique credential types', () => {
+			const loader = createLoader('community-package', ['uniqueApi']);
+
+			expect(() => instance['assertNoCredentialTypeConflicts'](loader)).not.toThrow();
+		});
+
+		it('should not treat inherited object keys as credential types', () => {
+			const loader = createLoader('community-package', ['constructor', 'toString']);
+
+			expect(() => instance['assertNoCredentialTypeConflicts'](loader)).not.toThrow();
+		});
+
+		it('should ignore the loader itself, so a reload of the same package is accepted', () => {
+			const loader = createLoader('n8n-nodes-base', ['awsAssumeRole']);
+
+			expect(() => instance['assertNoCredentialTypeConflicts'](loader)).not.toThrow();
+		});
+
+		it('should record why a package was rejected, until it is unloaded', async () => {
+			const loader = createLoader('community-package', ['awsAssumeRole']);
+			expect(instance.getPackageLoadError('community-package')).toBeUndefined();
+
+			expect(() => instance['assertNoCredentialTypeConflicts'](loader)).toThrow();
+			expect(instance.getPackageLoadError('community-package')).toContain(
+				'"awsAssumeRole" (provided by "n8n-nodes-base")',
+			);
+
+			await instance.unloadPackage('community-package');
+			expect(instance.getPackageLoadError('community-package')).toBeUndefined();
+		});
+
+		it('should clear a recorded rejection once the package loads without conflicts', () => {
+			expect(() =>
+				instance['assertNoCredentialTypeConflicts'](
+					createLoader('community-package', ['awsAssumeRole']),
+				),
+			).toThrow();
+
+			instance['assertNoCredentialTypeConflicts'](createLoader('community-package', ['uniqueApi']));
+
+			expect(instance.getPackageLoadError('community-package')).toBeUndefined();
+		});
+
+		it('should reject a loader on load without registering it', async () => {
+			const conflicting = createLoader('community-package', ['awsAssumeRole']);
+			conflicting.loadAll.mockResolvedValue(undefined);
+
+			await expect(
+				instance['runDirectoryLoader'](
+					class {
+						constructor() {
+							return conflicting;
+						}
+					} as never,
+					'/downloads/community-package',
+					{ rejectCredentialTypeConflicts: true },
+				),
+			).rejects.toThrow(CredentialTypeConflictError);
+
+			expect(instance.loaders).not.toHaveProperty('community-package');
 		});
 	});
 });

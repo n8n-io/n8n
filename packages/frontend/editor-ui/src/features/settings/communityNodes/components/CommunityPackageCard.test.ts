@@ -95,6 +95,39 @@ describe('CommunityPackageCard', () => {
 		expect(nodeTypesStore.getCommunityNodeAttributes).not.toHaveBeenCalled();
 	});
 
+	describe('failed to load tooltip', () => {
+		const tooltipStub = {
+			N8nTooltip: { template: '<div><slot /><slot name="content" /></div>' },
+		};
+
+		it('shows the load error when n8n knows the reason', () => {
+			const { getByText, queryByText } = renderComponent({
+				props: {
+					communityPackage: {
+						...communityPackage,
+						failedLoading: true,
+						failedLoadingReason: 'Credential type "awsAssumeRole" already exists.',
+					},
+				},
+				global: { stubs: tooltipStub },
+			});
+
+			expect(
+				getByText('This package failed to load. Credential type "awsAssumeRole" already exists.'),
+			).toBeInTheDocument();
+			expect(queryByText(/may be corrupted/)).not.toBeInTheDocument();
+		});
+
+		it('falls back to the generic message without a reason', () => {
+			const { getByText } = renderComponent({
+				props: { communityPackage: { ...communityPackage, failedLoading: true } },
+				global: { stubs: tooltipStub },
+			});
+
+			expect(getByText(/may be corrupted/)).toBeInTheDocument();
+		});
+	});
+
 	describe('uninstall action visibility', () => {
 		it('shows the uninstall action when packages are not managed by env', () => {
 			setupPinia({ communityNodesManagedByEnv: false });

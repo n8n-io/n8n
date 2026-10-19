@@ -12,6 +12,7 @@ import {
 	UNKNOWN_FAILURE_REASON,
 } from '@/constants';
 import { BadRequestError, InternalServerError, NotFoundError } from '@n8n/errors';
+import { CredentialTypeConflictError } from '@/errors/response-errors/credential-type-conflict.error';
 import { IncompatibleNodesApiVersionError } from '@/errors/response-errors/incompatible-nodes-api-version.error';
 import type { UserLike } from '@/events/maps/relay.event-map';
 import { Push } from '@/push';
@@ -215,6 +216,7 @@ export class CommunityPackagesLifecycleService {
 
 			// Rethrow unwrapped: the actionable copy and its metadata must reach the UI.
 			if (error instanceof IncompatibleNodesApiVersionError) throw error;
+			if (error instanceof CredentialTypeConflictError) throw error;
 
 			let message = [`Error loading package "${name}" `, errorMessage].join(':');
 			if (error instanceof Error && error.cause instanceof Error) {
@@ -335,6 +337,7 @@ export class CommunityPackagesLifecycleService {
 			// Before the broadcast: the rejected version was never loaded, so the
 			// previous one is still working and must keep its node types.
 			if (error instanceof IncompatibleNodesApiVersionError) throw error;
+			if (error instanceof CredentialTypeConflictError) throw error;
 
 			previouslyInstalledPackage.installedNodes.forEach((node) => {
 				this.push.broadcast({

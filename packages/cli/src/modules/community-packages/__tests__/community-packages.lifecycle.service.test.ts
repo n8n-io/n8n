@@ -4,6 +4,7 @@ import type { EventService } from '@n8n/backend-services';
 import type { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { mock } from 'vitest-mock-extended';
 
+import { CredentialTypeConflictError } from '@/errors/response-errors/credential-type-conflict.error';
 import { IncompatibleNodesApiVersionError } from '@/errors/response-errors/incompatible-nodes-api-version.error';
 import { BadRequestError } from '@n8n/errors';
 import type { Push } from '@/push';
@@ -327,6 +328,20 @@ describe('CommunityPackagesLifecycleService', () => {
 			'community-package-installed',
 			expect.objectContaining({ success: false }),
 		);
+	});
+
+	it('should rethrow a credential type conflict unwrapped, keeping status and message', async () => {
+		mockInstallPath();
+		communityPackagesService.installPackage.mockRejectedValue(
+			new CredentialTypeConflictError('n8n-nodes-test', { awsAssumeRole: 'n8n-nodes-base' }),
+		);
+
+		const promise = lifecycle.install({ name: 'n8n-nodes-test' }, user, 'ui');
+		await expect(promise).rejects.toBeInstanceOf(CredentialTypeConflictError);
+		await expect(promise).rejects.toMatchObject({
+			httpStatusCode: 400,
+			message: expect.stringContaining('"awsAssumeRole" (provided by "n8n-nodes-base")'),
+		});
 	});
 
 	describe('uninstall', () => {
@@ -680,6 +695,17 @@ describe('CommunityPackagesLifecycleService', () => {
 				httpStatusCode: 400,
 				meta: { requiredNodesApiVersion: '3', supportedNodesApiVersion: '1' },
 			});
+		});
+
+		it('should rethrow a credential type conflict unwrapped on update', async () => {
+			communityPackagesService.findInstalledPackage.mockResolvedValue(mockPackage('1.0.0'));
+			communityPackagesService.updatePackage.mockRejectedValue(
+				new CredentialTypeConflictError('n8n-nodes-test', { awsAssumeRole: 'n8n-nodes-base' }),
+			);
+
+			await expect(
+				lifecycle.update({ name: 'n8n-nodes-test', version: '2.0.0' }, user, 'badRequest'),
+			).rejects.toBeInstanceOf(CredentialTypeConflictError);
 		});
 
 		it('should keep the still-loaded previous version on a compatibility rejection', async () => {

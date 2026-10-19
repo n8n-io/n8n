@@ -50,6 +50,7 @@ import path from 'path';
 import picocolors from 'picocolors';
 
 import { CUSTOM_API_CALL_KEY, CUSTOM_API_CALL_NAME, CLI_DIR, inE2ETests } from '@/constants';
+import { CredentialTypeConflictError } from '@/errors/response-errors/credential-type-conflict.error';
 import { getParameterDefaults } from '@/output-schema-parameter-defaults';
 import { createAiTools, createHitlTools } from '@/tool-generation';
 
@@ -65,6 +66,9 @@ export class LoadNodesAndCredentials {
 	types: Types = { nodes: [], credentials: [] };
 
 	loaders: Record<string, NodeLoader> = {};
+
+	/** Why a package was rejected at load time, by package name. Cleared on unload. */
+	private readonly packageLoadErrors = new Map<string, string>();
 
 	excludeNodes = this.globalConfig.nodes.exclude;
 
@@ -130,8 +134,14 @@ export class LoadNodesAndCredentials {
 			}
 			try {
 				await loader.loadAll();
+				this.assertNoCredentialTypeConflicts(loader);
 				this.loaders[loader.packageName] = loader;
 			} catch (error) {
+				// Expected, author-side problem: no stack trace and no error report needed.
+				if (error instanceof CredentialTypeConflictError) {
+					this.logger.error(error.message);
+					continue;
+				}
 				this.logger.error(`Failed to load package "${loader.packageName}"`, {
 					error: ensureError(error),
 				});
@@ -370,10 +380,18 @@ export class LoadNodesAndCredentials {
 			'node_modules',
 			packageName,
 		);
-		return await this.runDirectoryLoader(PackageDirectoryLoader, finalNodeUnpackedPath);
+		return await this.runDirectoryLoader(PackageDirectoryLoader, finalNodeUnpackedPath, {
+			rejectCredentialTypeConflicts: true,
+		});
+	}
+
+	/** The reason a package was rejected at load time, if it was. */
+	getPackageLoadError(packageName: string): string | undefined {
+		return this.packageLoadErrors.get(packageName);
 	}
 
 	async unloadPackage(packageName: string) {
+		this.packageLoadErrors.delete(packageName);
 		if (packageName in this.loaders) {
 			this.loaders[packageName].reset();
 			delete this.loaders[packageName];
@@ -586,6 +604,7 @@ export class LoadNodesAndCredentials {
 	private async runDirectoryLoader<T extends DirectoryLoader>(
 		constructor: Class<T, ConstructorParameters<typeof DirectoryLoader>>,
 		dir: string,
+		options: { rejectCredentialTypeConflicts?: boolean } = {},
 	) {
 		const loader = new constructor(dir, this.excludeNodes, this.includeNodes);
 		if (loader instanceof PackageDirectoryLoader && loader.packageName in this.loaders) {
@@ -596,8 +615,35 @@ export class LoadNodesAndCredentials {
 			);
 		}
 		await loader.loadAll();
+		if (options.rejectCredentialTypeConflicts) this.assertNoCredentialTypeConflicts(loader);
 		this.loaders[loader.packageName] = loader;
 		return loader;
+	}
+
+	/**
+	 * Credential types live in one flat namespace (unlike node types, which are
+	 * prefixed with the package name). A second definition would silently replace
+	 * the first, so reject the package that comes later.
+	 */
+	private assertNoCredentialTypeConflicts(loader: NodeLoader) {
+		const conflicts: Record<string, string> = {};
+
+		for (const credentialType of Object.keys(loader.known.credentials)) {
+			const owner = Object.values(this.loaders).find(
+				(other) =>
+					other.packageName !== loader.packageName &&
+					Object.hasOwn(other.known.credentials, credentialType),
+			);
+			if (owner) conflicts[credentialType] = owner.packageName;
+		}
+
+		if (Object.keys(conflicts).length > 0) {
+			const error = new CredentialTypeConflictError(loader.packageName, conflicts);
+			this.packageLoadErrors.set(loader.packageName, error.message);
+			throw error;
+		}
+
+		this.packageLoadErrors.delete(loader.packageName);
 	}
 
 	async postProcessLoaders() {
