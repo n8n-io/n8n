@@ -1,5 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
-import type { EventService } from '@n8n/backend-services';
+import type { EventService, RedisClientService } from '@n8n/backend-services';
 import type { AuthStrategyRegistry } from '@n8n/backend-services/auth';
 import type { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
@@ -16,6 +16,10 @@ import type { Controller } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import express from 'express';
 import type { Request, RequestHandler, Response } from 'express';
+import type { Redis } from 'ioredis';
+import RedisMock from 'ioredis-mock';
+import type { InstanceSettings } from 'n8n-core';
+import { createHash } from 'node:crypto';
 import { request as httpRequest } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import request from 'supertest';
@@ -24,143 +28,203 @@ import { mock } from 'vitest-mock-extended';
 import { markPublicApiController } from '@/public-api/__tests__/public-api-controller-test-utils';
 import type { IdempotencyKeyService } from '@/public-api/idempotency-key.service';
 import { PublicApiControllerRegistry } from '@/public-api/public-api-controller.registry';
+import { PublicApiRateLimitStoreFactory } from '@/public-api/public-api-rate-limit-store.factory';
 import { PublicApiRateLimitService } from '@/public-api/public-api-rate-limit.service';
 import { RateLimitService } from '@/services/rate-limit.service';
 import type { LastActiveAtService } from '@/services/last-active-at.service';
 
 type RateLimitConfig = GlobalConfig['publicApi']['rateLimit'];
 
+type Mode = 'single main' | 'multi-main';
+
 const API_KEY_HEADER = 'x-test-api-key-id';
 
-describe('Public API rate limiting', () => {
-	let slowHandlerRuns = 0;
-	let finishSlowHandler: (value?: unknown) => void = () => {};
+let slowHandlerRuns = 0;
+let finishSlowHandler: (value?: unknown) => void = () => {};
 
-	const authStrategyRegistry = mock<AuthStrategyRegistry>();
-	const lastActiveAtService = mock<LastActiveAtService>();
-	const authenticatedUser = mock<User>({ id: 'user-1' });
+const authStrategyRegistry = mock<AuthStrategyRegistry>();
+const lastActiveAtService = mock<LastActiveAtService>();
+const authenticatedUser = mock<User>({ id: 'user-1' });
 
-	function activate(rateLimit: Partial<RateLimitConfig> = {}): express.Express {
-		const globalConfig = mock<GlobalConfig>({
-			publicApi: {
-				rateLimit: {
-					enabled: true,
-					globalReadLimit: 100,
-					globalReadWindowSeconds: 60,
-					globalWriteLimit: 100,
-					globalWriteWindowSeconds: 60,
-					endpointReadLimit: 100,
-					endpointReadWindowSeconds: 60,
-					endpointWriteLimit: 100,
-					endpointWriteWindowSeconds: 60,
-					...rateLimit,
-				},
+const loadedScripts = new Map<string, string>();
+
+/**
+ * A client for the shared `ioredis-mock` data. The mock has no `call` and no `SCRIPT LOAD`, so this
+ * runs a loaded script with `EVAL`.
+ */
+function redisClient(failsOn: (command: string) => boolean = () => false) {
+	const redis = new RedisMock() as unknown as Record<
+		string,
+		(...args: string[]) => Promise<unknown>
+	>;
+	const call = async (command: string, ...args: string[]) => {
+		if (failsOn(command)) throw new Error('Redis is not reachable');
+		if (command === 'SCRIPT') {
+			const script = args[1];
+			const sha = createHash('sha1').update(script).digest('hex');
+			loadedScripts.set(sha, script);
+			return sha;
+		}
+		if (command === 'EVALSHA') {
+			const [sha, ...rest] = args;
+			return await redis.eval(loadedScripts.get(sha) ?? '', ...rest);
+		}
+		return await redis[command.toLowerCase()](...args);
+	};
+	return mock<Redis>({ call: call as Redis['call'] }) as unknown as Redis;
+}
+
+function createStoreFactory(
+	mode: Mode,
+	{
+		createRedisClient = () => redisClient(),
+		logger = mock<Logger>(),
+		redisPrefix = 'n8n',
+	}: { createRedisClient?: () => Redis; logger?: Logger; redisPrefix?: string } = {},
+) {
+	return new PublicApiRateLimitStoreFactory(
+		logger,
+		mock<GlobalConfig>({ redis: { prefix: redisPrefix } }),
+		mock<InstanceSettings>({ isMultiMain: mode === 'multi-main' }),
+		mock<RedisClientService>({
+			createClient: createRedisClient,
+			toValidPrefix: (prefix: string) => prefix,
+		}),
+	);
+}
+
+function activateApp(
+	rateLimit: Partial<RateLimitConfig>,
+	storeFactory: PublicApiRateLimitStoreFactory,
+): express.Express {
+	const globalConfig = mock<GlobalConfig>({
+		publicApi: {
+			rateLimit: {
+				enabled: true,
+				globalReadLimit: 100,
+				globalReadWindowSeconds: 60,
+				globalWriteLimit: 100,
+				globalWriteWindowSeconds: 60,
+				endpointReadLimit: 100,
+				endpointReadWindowSeconds: 60,
+				endpointWriteLimit: 100,
+				endpointWriteWindowSeconds: 60,
+				...rateLimit,
 			},
-		});
+		},
+	});
 
-		const app = express();
-		const router = express.Router({ mergeParams: true });
-		new PublicApiControllerRegistry(
-			Container.get(ControllerRegistryMetadata),
-			authStrategyRegistry,
-			lastActiveAtService,
-			mock<EventService>(),
-			new PublicApiRateLimitService(globalConfig, new RateLimitService()),
-			mock<IdempotencyKeyService>(),
-			mock<Logger>(),
-		).activate(router, 'v1');
-		app.use('/api/v1', router);
-		return app;
-	}
+	const app = express();
+	const router = express.Router({ mergeParams: true });
+	new PublicApiControllerRegistry(
+		Container.get(ControllerRegistryMetadata),
+		authStrategyRegistry,
+		lastActiveAtService,
+		mock<EventService>(),
+		new PublicApiRateLimitService(globalConfig, new RateLimitService(), storeFactory),
+		mock<IdempotencyKeyService>(),
+		mock<Logger>(),
+	).activate(router, 'v1');
+	app.use('/api/v1', router);
+	return app;
+}
 
-	function registerWidgets() {
-		@Service()
-		class WidgetsPublicController {
-			@Get('/')
-			@ApiResponse(200)
-			list() {
-				return { ok: true };
-			}
-
-			@Get('/other')
-			@ApiResponse(200)
-			other() {
-				return { ok: true };
-			}
-
-			@Get('/:id')
-			@ApiResponse(200)
-			get(_req: unknown, _res: unknown, @Param('id') id: string) {
-				return { id };
-			}
-
-			@Post('/')
-			@ApiResponse(200)
-			create() {
-				return { ok: true };
-			}
-
-			@Post('/slow')
-			@ApiResponse(200)
-			async slow() {
-				slowHandlerRuns++;
-				await new Promise((resolve) => {
-					finishSlowHandler = resolve;
-				});
-				return { ok: true };
-			}
-
-			@Post('/search')
-			@ApiResponse(200)
-			@RateLimitAccess('read')
-			search() {
-				return { ok: true };
-			}
+function registerWidgets() {
+	@Service()
+	class WidgetsPublicController {
+		@Get('/')
+		@ApiResponse(200)
+		list() {
+			return { ok: true };
 		}
 
-		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
-	}
-
-	async function send(
-		app: express.Express,
-		method: 'get' | 'head' | 'post',
-		path: string,
-		apiKeyId: string | null = 'key-1',
-	) {
-		const req = request(app)[method](`/api/v1${path}`);
-		return await (apiKeyId === null ? req : req.set(API_KEY_HEADER, apiKeyId));
-	}
-
-	async function sendTimes(
-		app: express.Express,
-		times: number,
-		method: 'get' | 'post',
-		path: string,
-	): Promise<number[]> {
-		const statuses: number[] = [];
-		for (let i = 0; i < times; i++) {
-			statuses.push((await send(app, method, path)).status);
+		@Get('/other')
+		@ApiResponse(200)
+		other() {
+			return { ok: true };
 		}
-		return statuses;
+
+		@Get('/:id')
+		@ApiResponse(200)
+		get(_req: unknown, _res: unknown, @Param('id') id: string) {
+			return { id };
+		}
+
+		@Post('/')
+		@ApiResponse(200)
+		create() {
+			return { ok: true };
+		}
+
+		@Post('/slow')
+		@ApiResponse(200)
+		async slow() {
+			slowHandlerRuns++;
+			await new Promise((resolve) => {
+				finishSlowHandler = resolve;
+			});
+			return { ok: true };
+		}
+
+		@Post('/search')
+		@ApiResponse(200)
+		@RateLimitAccess('read')
+		search() {
+			return { ok: true };
+		}
 	}
 
-	beforeEach(() => {
-		vi.resetAllMocks();
-		slowHandlerRuns = 0;
-		finishSlowHandler = () => {};
-		authStrategyRegistry.authenticate.mockImplementation(async (req: AuthenticatedRequest) => {
-			req.user = authenticatedUser;
-			const apiKeyId = req.headers[API_KEY_HEADER];
-			req.tokenGrant = {
-				scopes: [],
-				subject: authenticatedUser,
-				...(typeof apiKeyId === 'string' && { apiKeyId }),
-			};
-			return true;
-		});
-		lastActiveAtService.updateLastActiveIfStale.mockResolvedValue(undefined);
-		Container.set(ControllerRegistryMetadata, new ControllerRegistryMetadata());
-		registerWidgets();
+	markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+}
+
+async function send(
+	app: express.Express,
+	method: 'get' | 'head' | 'post',
+	path: string,
+	apiKeyId: string | null = 'key-1',
+) {
+	const req = request(app)[method](`/api/v1${path}`);
+	return await (apiKeyId === null ? req : req.set(API_KEY_HEADER, apiKeyId));
+}
+
+async function sendTimes(
+	app: express.Express,
+	times: number,
+	method: 'get' | 'post',
+	path: string,
+): Promise<number[]> {
+	const statuses: number[] = [];
+	for (let i = 0; i < times; i++) {
+		statuses.push((await send(app, method, path)).status);
+	}
+	return statuses;
+}
+
+beforeEach(() => {
+	vi.resetAllMocks();
+	slowHandlerRuns = 0;
+	finishSlowHandler = () => {};
+	authStrategyRegistry.authenticate.mockImplementation(async (req: AuthenticatedRequest) => {
+		req.user = authenticatedUser;
+		const apiKeyId = req.headers[API_KEY_HEADER];
+		req.tokenGrant = {
+			scopes: [],
+			subject: authenticatedUser,
+			...(typeof apiKeyId === 'string' && { apiKeyId }),
+		};
+		return true;
+	});
+	lastActiveAtService.updateLastActiveIfStale.mockResolvedValue(undefined);
+	Container.set(ControllerRegistryMetadata, new ControllerRegistryMetadata());
+	registerWidgets();
+});
+
+describe.each<Mode>(['single main', 'multi-main'])('Public API rate limiting on a %s', (mode) => {
+	const activate = (rateLimit: Partial<RateLimitConfig> = {}) =>
+		activateApp(rateLimit, createStoreFactory(mode));
+
+	beforeEach(async () => {
+		await new RedisMock().flushall();
 	});
 
 	it('does not limit requests when rate limiting is off', async () => {
@@ -329,9 +393,10 @@ describe('Public API rate limiting', () => {
 				},
 			}),
 			new RateLimitService(),
+			createStoreFactory(mode),
 		);
-		const widgets = service.createRouteLimiters('get');
-		const others = service.createRouteLimiters('get');
+		const widgets = service.createRouteLimiters('get', '/widgets');
+		const others = service.createRouteLimiters('get', '/others');
 
 		const runRoute = async (handlers: RequestHandler[]) => {
 			const req = { tokenGrant: { apiKeyId: 'key-1' }, ip: '127.0.0.1', headers: {} };
@@ -464,5 +529,90 @@ describe('Public API rate limiting', () => {
 
 		expect((await send(app, 'get', '/widgets')).status).toBe(429);
 		expect((await send(app, 'post', '/widgets')).status).toBe(200);
+	});
+});
+
+describe('Public API rate limiting across mains', () => {
+	const multiMain = (options?: Parameters<typeof createStoreFactory>[1]) =>
+		createStoreFactory('multi-main', options);
+
+	beforeEach(async () => {
+		await new RedisMock().flushall();
+	});
+
+	it('shares the counts of an API key between mains', async () => {
+		const main1 = activateApp({ globalReadLimit: 3 }, multiMain());
+		const main2 = activateApp({ globalReadLimit: 3 }, multiMain());
+
+		const statuses = [];
+		for (const main of [main1, main2, main1, main2]) {
+			statuses.push((await send(main, 'get', '/widgets')).status);
+		}
+
+		expect(statuses).toEqual([200, 200, 200, 429]);
+	});
+
+	it('takes back the count of a blocked request for every main', async () => {
+		const main1 = activateApp({ globalReadLimit: 2, endpointReadLimit: 1 }, multiMain());
+		const main2 = activateApp({ globalReadLimit: 2, endpointReadLimit: 1 }, multiMain());
+
+		expect((await send(main1, 'get', '/widgets')).status).toBe(200);
+		expect((await send(main2, 'get', '/widgets')).status).toBe(429);
+
+		expect((await send(main2, 'get', '/widgets/other')).status).toBe(200);
+		expect((await send(main1, 'get', '/widgets/1')).status).toBe(429);
+	});
+
+	it('keeps a Redis key for each layer, access and endpoint', async () => {
+		const main = activateApp({}, multiMain());
+
+		await send(main, 'get', '/widgets/1');
+		await send(main, 'post', '/widgets');
+
+		expect((await new RedisMock().keys('n8n:rate-limit:*')).sort()).toEqual([
+			'n8n:rate-limit:public-api:all:read:apiKey:key-1',
+			'n8n:rate-limit:public-api:all:write:apiKey:key-1',
+			'n8n:rate-limit:public-api:endpoint:read:GET /v1/widgets/:id:apiKey:key-1',
+			'n8n:rate-limit:public-api:endpoint:write:POST /v1/widgets:apiKey:key-1',
+		]);
+	});
+
+	it('does not share counts between instances with different Redis prefixes', async () => {
+		const instance1 = activateApp({ globalReadLimit: 1 }, multiMain({ redisPrefix: 'n8n-a' }));
+		const instance2 = activateApp({ globalReadLimit: 1 }, multiMain({ redisPrefix: 'n8n-b' }));
+
+		expect((await send(instance1, 'get', '/widgets')).status).toBe(200);
+		expect((await send(instance2, 'get', '/widgets')).status).toBe(200);
+	});
+
+	it('lets requests pass and logs one warning while Redis fails', async () => {
+		const logger = mock<Logger>();
+		const main = activateApp(
+			{ globalReadLimit: 1, endpointReadLimit: 1 },
+			multiMain({ createRedisClient: () => redisClient(() => true), logger }),
+		);
+
+		const responses = [await send(main, 'get', '/widgets'), await send(main, 'get', '/widgets')];
+
+		expect(responses.map((response) => response.status)).toEqual([200, 200]);
+		expect(responses[1].headers['x-ratelimit-limit']).toBeUndefined();
+		expect(logger.warn).toHaveBeenCalledTimes(1);
+	});
+
+	it('still blocks a request when Redis cannot take back its count', async () => {
+		const main = activateApp(
+			{ globalReadLimit: 1 },
+			multiMain({ createRedisClient: () => redisClient((command) => command === 'DECR') }),
+		);
+
+		expect(await sendTimes(main, 2, 'get', '/widgets')).toEqual([200, 429]);
+	});
+
+	it('does not connect to Redis on a single main', () => {
+		const createRedisClient = vi.fn();
+
+		activateApp({}, createStoreFactory('single main', { createRedisClient }));
+
+		expect(createRedisClient).not.toHaveBeenCalled();
 	});
 });

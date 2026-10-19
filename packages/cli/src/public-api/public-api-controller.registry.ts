@@ -80,6 +80,12 @@ function routePath(prefix: string, req: Request): string {
 	return path.length > 1 && path.endsWith('/') ? path.slice(0, -1) : path;
 }
 
+/** The route template with the API version, for example `/v1/workflows/:id`. */
+function toEndpointPath(apiVersion: string, prefix: string, routeTemplate: string): string {
+	const path = `/${apiVersion}${prefix === '/' ? '' : prefix}${routeTemplate}`;
+	return path.endsWith('/') ? path.slice(0, -1) : path;
+}
+
 @Service()
 export class PublicApiControllerRegistry {
 	constructor(
@@ -240,7 +246,11 @@ export class PublicApiControllerRegistry {
 
 			middlewares.push(this.createAuthMiddleware(apiVersion, prefix));
 			middlewares.push(
-				...this.rateLimitService.createRouteLimiters(route.method, route.rateLimitAccess),
+				...this.rateLimitService.createRouteLimiters(
+					route.method,
+					toEndpointPath(apiVersion, prefix, route.path),
+					route.rateLimitAccess,
+				),
 			);
 
 			// Path param validation must run before the scope checks, so that a malformed param always
