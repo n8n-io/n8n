@@ -62,7 +62,12 @@ if (process.env.NODEJS_PREFER_IPV4 === 'true') {
 require('net').setDefaultAutoSelectFamily?.(false);
 
 (async () => {
+	await require('../dist/error-reporting/error-reporting-boot').initErrorReporting();
+
 	const { Container } = await import('@n8n/di');
 	const { CommandRegistry } = await import('../dist/command-registry.js');
 	await Container.get(CommandRegistry).execute();
-})();
+})().catch((error) => {
+	console.error(error);
+	process.exit(1);
+});

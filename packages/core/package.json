@@ -74,6 +74,8 @@
     "@n8n/errors": "workspace:*",
     "@n8n/utils": "workspace:*",
     "@n8n/workflow-sdk": "workspace:*",
+    "@opentelemetry/api": "catalog:",
+    "@opentelemetry/core": "2.10.0",
     "@sentry/core": "catalog:sentry",
     "@sentry/node": "catalog:sentry",
     "@sentry/node-native": "catalog:sentry",
