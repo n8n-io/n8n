@@ -139,6 +139,27 @@ describe('AgentTimeline artifact cards', () => {
 			expect(names[0]).toContain('Support triage');
 		});
 
+		it('shows no card while the run is still building the Agent', () => {
+			const { container } = renderComponent({
+				props: { agentNode: { ...inThreadNode, status: 'active' } },
+			});
+
+			expect(cardNames(container)).toEqual([]);
+		});
+
+		it('shows a card for a created Agent when the run fails before it writes a config', () => {
+			const failedNode = {
+				...inThreadNode,
+				status: 'error',
+				toolCalls: inThreadNode.toolCalls.slice(0, 1),
+				timeline: inThreadNode.timeline.slice(0, 1),
+			} as InstanceAiAgentNode;
+
+			const { container } = renderComponent({ props: { agentNode: failedNode } });
+
+			expect(cardNames(container)).toHaveLength(1);
+		});
+
 		it('hides the card on the page of the Agent it built', () => {
 			const { container } = renderComponent({
 				props: { agentNode: inThreadNode },

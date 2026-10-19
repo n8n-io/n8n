@@ -181,12 +181,15 @@ function blockToolCalls(block: TimelineBlock): InstanceAiToolCallState[] {
  * Workflows and Agents built by this agent's own tool calls, keyed by the
  * thinking block that built them. A workflow card shows only in the embedded
  * panel, because the full view opens the built workflow in its preview panel.
- * An Agent card shows in both views, after the last block that changed it.
+ * An Agent card shows in both views, after the last block that changed it,
+ * once the run settles: mid-build the preview tab shows progress, and the
+ * block the card anchors to can still change.
  */
 const builtArtifactsByBlock = computed(() => {
 	const byBlock = new Map<string, ArtifactInfo[]>();
 	if (props.visibleEntries) return byBlock;
 
+	const showAgentCards = props.agentNode.status !== 'active';
 	const seenWorkflowIds = new Set<string>();
 	const latestAgents = new Map<string, { blockKey: string; artifact: ArtifactInfo }>();
 	for (const block of renderBlocks.value) {
@@ -201,6 +204,7 @@ const builtArtifactsByBlock = computed(() => {
 			if (workflows.length > 0) byBlock.set(block.key, workflows);
 		}
 
+		if (!showAgentCards) continue;
 		for (const artifact of visibleArtifacts(extractBuiltAgentArtifacts(toolCalls))) {
 			const previous = latestAgents.get(artifact.resourceId)?.artifact;
 			latestAgents.set(artifact.resourceId, {
