@@ -61,6 +61,7 @@ const source: ResolvedSubAgentSource = {
 
 const runtimeSource: ResolvedSubAgentRuntimeSource = {
 	source,
+	telemetryVersionId: 'draft-version',
 	toolDescriptors: {
 		tool_1: {
 			name: 'lookup_customer',
@@ -262,7 +263,13 @@ describe('SubAgentRunner', () => {
 		expect(childPrompt).toContain('CONTEXT:\nFocus on auth endpoints.');
 		expect(childPrompt).toContain('EXPECTED OUTPUT:\nA concise summary.');
 		expect(agentExecutionService.startExecutionRecording).toHaveBeenCalledWith(
-			expect.objectContaining({ threadId: result.threadId, source: 'subagent' }),
+			expect.objectContaining({
+				threadId: result.threadId,
+				source: 'subagent',
+				telemetry: expect.objectContaining({
+					configuration: expect.objectContaining({ version_id: 'draft-version' }),
+				}),
+			}),
 			expect.any(Date),
 		);
 		expect(agentExecutionService.recordTimelineSnapshot).toHaveBeenCalledWith(
@@ -885,6 +892,14 @@ describe('SubAgentRunner', () => {
 		};
 		const result = await runner.resumePaused(resumeRequest, runContext);
 
+		expect(agentExecutionService.startExecutionRecording).toHaveBeenCalledWith(
+			expect.objectContaining({
+				telemetry: expect.objectContaining({
+					configuration: expect.objectContaining({ version_id: 'version-7' }),
+				}),
+			}),
+			expect.any(Date),
+		);
 		expect(sourceResolver.resolveForRuntime).toHaveBeenCalledWith(
 			{ agentId: 'agent-1', versionId: 'version-7' },
 			{ projectId, usePublishedVersion: false, runtimeSnapshot },

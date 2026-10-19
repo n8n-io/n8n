@@ -7,16 +7,24 @@ export function createAgentExecutionCounter(
 	telemetry: Telemetry,
 	{
 		agentId,
+		versionId,
 		userId,
 		runType,
 		source,
-	}: { agentId: string; userId?: string; runType: AgentRunTelemetryType; source?: string },
+	}: {
+		agentId: string;
+		versionId: string | null;
+		userId?: string;
+		runType: AgentRunTelemetryType;
+		source?: string;
+	},
 ): AgentExecutionCounter {
 	const attribution = userId ? { user_id: userId } : {};
 	return {
 		incrementMessageCount: () =>
 			telemetry.trackAgentExecution({
 				agent_id: agentId,
+				version_id: versionId,
 				...attribution,
 				run_type: runType,
 				source,
@@ -25,6 +33,7 @@ export function createAgentExecutionCounter(
 		incrementTokenCount: (tokenCount) =>
 			telemetry.trackAgentExecution({
 				agent_id: agentId,
+				version_id: versionId,
 				...attribution,
 				run_type: runType,
 				source,
@@ -33,6 +42,7 @@ export function createAgentExecutionCounter(
 		incrementToolCallCount: () =>
 			telemetry.trackAgentExecution({
 				agent_id: agentId,
+				version_id: versionId,
 				...attribution,
 				run_type: runType,
 				source,

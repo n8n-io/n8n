@@ -15,6 +15,13 @@ const agentRunType = z
 	.enum(['test', 'production'])
 	.describe('production means the run executed the published snapshot; test means it ran a draft');
 
+const agentRuntimeVersion = z
+	.string()
+	.nullable()
+	.describe(
+		'Agent version selected for the runtime: the published AgentHistory version for production, or the mutable draft version for tests. Null for inline Agents or when the selected version is unavailable.',
+	);
+
 const agentRunSource = z
 	.string()
 	.describe(
@@ -32,7 +39,11 @@ const agentExecutionCounts = {
 };
 
 const agentSessionMetrics = {
-	session_count: z.number(),
+	session_count: z
+		.number()
+		.describe(
+			'Distinct sessions in this bucket. A session can contribute to several version buckets.',
+		),
 	turn_count: z.number(),
 	latency_ms_sum: z.number(),
 	cost_sum: z.number(),
@@ -45,6 +56,7 @@ const agentSessionMetrics = {
 
 // Spread into the session-metrics payload, matching `IAgentConfigurationTelemetryProperties`.
 const agentConfigurationTelemetry = {
+	version_id: agentRuntimeVersion,
 	model: z.string().nullable(),
 	channels: z.array(z.string()),
 	tool_types: z.array(z.string()),
@@ -269,10 +281,11 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 	AGENT_EXECUTION_COUNT: {
 		name: 'Agent execution count',
 		description:
-			'Six-hourly pulse of aggregate agent usage, bucketed by agent, run type and optional user. event_version 3 added first_message_at. event_version 2 added run_type; version 1 rows are a mix of test and production and must not be read as production. token_count is broader than "Agent session metrics".cost_sum: it also covers LLM calls belonging to no single turn (title generation, observational/episodic memory, embeddings).',
+			'Six-hourly pulse of aggregate agent usage, bucketed by agent, runtime version, run type and optional user. event_version 4 added version_id and separates versions within each buffer window. event_version 3 added first_message_at. event_version 2 added run_type; version 1 rows mix test and production runs. token_count also covers LLM calls outside recorded turns, including title generation, memory and embeddings.',
 		properties: z.object({
-			event_version: z.literal('3'),
+			event_version: z.literal('4'),
 			agent_id: z.string(),
+			version_id: agentRuntimeVersion,
 			user_id: z
 				.string()
 				.optional()
@@ -296,9 +309,9 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 	AGENT_SESSION_METRICS: {
 		name: 'Agent session metrics',
 		description:
-			'Six-hourly pulse of agent session and turn metrics, bucketed by agent, optional user, run type, turn status and configuration. Two token numbers exist across the agent events and they measure different things: token_count_sum here covers only the recorded turns, from the same usage as cost_sum so the two reconcile, while token_count on "Agent execution count" additionally covers LLM calls belonging to no turn (title generation, observational/episodic memory, embeddings) and so runs higher.',
+			'Six-hourly pulse of agent session and turn metrics, bucketed by agent, runtime version, optional user, run type, turn status and configuration. event_version 2 added version_id and separates versions within each buffer window. token_count_sum covers recorded turns and reconciles with cost_sum. Agent execution count also includes LLM calls outside recorded turns, so its token_count runs higher.',
 		properties: z.object({
-			event_version: z.literal('1'),
+			event_version: z.literal('2'),
 			agent_id: z.string(),
 			user_id: z.string().optional(),
 			agent_type: z.literal('inline').optional(),

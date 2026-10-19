@@ -1222,7 +1222,11 @@ export class AgentExecutionOrchestratorService {
 					telemetry: {
 						userId: params.attributionUserId ?? params.user?.id,
 						runType: params.usePublishedVersion ? ('production' as const) : ('test' as const),
-						configuration: buildAgentConfigurationTelemetry(selected),
+						configuration: {
+							...buildAgentConfigurationTelemetry(selected),
+							// Initialization failed before a runtime version could be captured.
+							version_id: null,
+						},
 					},
 				};
 				if (admittedExecution) {
@@ -1317,7 +1321,14 @@ export class AgentExecutionOrchestratorService {
 			type: 'resume',
 			resumeData: config.resumeData,
 			options: withBudgetGuardrail(
-				this.createResumeOptions(config, memoryScope, messageContext, executionSource, tracing),
+				this.createResumeOptions(
+					config,
+					memoryScope,
+					messageContext,
+					executionSource,
+					tracing,
+					runtime.telemetryConfiguration.version_id,
+				),
 				{
 					budget: runtime.budget,
 					sessionId: memoryScope.threadId,
@@ -1361,6 +1372,7 @@ export class AgentExecutionOrchestratorService {
 		selectedContext: IntegrationMessageContext | null,
 		source: string | undefined,
 		tracing: Awaited<ReturnType<AgentRunTracingService['build']>>,
+		versionId: string | null,
 	): Extract<AgentTurnRequest, { type: 'resume' }>['options'] {
 		const { runId, toolCallId, agentId, user, usePublishedVersion, abortSignal } = config;
 		const runType = usePublishedVersion ? 'production' : 'test';
@@ -1381,6 +1393,7 @@ export class AgentExecutionOrchestratorService {
 				: {}),
 			executionCounter: createAgentExecutionCounter(this.telemetry, {
 				agentId,
+				versionId,
 				userId: user?.id,
 				runType,
 				source,
@@ -1705,6 +1718,7 @@ export class AgentExecutionOrchestratorService {
 						: {}),
 					executionCounter: createAgentExecutionCounter(this.telemetry, {
 						agentId,
+						versionId: telemetry.configuration.version_id,
 						userId,
 						runType: telemetry.runType,
 						source,

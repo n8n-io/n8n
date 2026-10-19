@@ -301,7 +301,11 @@ export class SubAgentRunner {
 			telemetry: {
 				userId: context.user?.id,
 				runType: context.runType,
-				configuration: buildAgentConfigurationTelemetryFromConfig(runtimeSource.source.config),
+				configuration: buildAgentConfigurationTelemetryFromConfig(
+					runtimeSource.source.config,
+					undefined,
+					runtimeSource.source.versionId ?? runtimeSource.telemetryVersionId ?? null,
+				),
 			},
 		};
 		const recorder = this.turnExecutionService.createRecorder(

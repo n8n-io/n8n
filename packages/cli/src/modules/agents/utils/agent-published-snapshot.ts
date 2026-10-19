@@ -30,6 +30,7 @@ function getPublishedAgentSnapshot(agentEntity: Agent): Agent {
 	const activeVersion = getPublishedVersion(agentEntity);
 	return {
 		...agentEntity,
+		versionId: activeVersion.versionId,
 		schema: activeVersion.schema,
 		tools: activeVersion.tools ?? {},
 	} as Agent;

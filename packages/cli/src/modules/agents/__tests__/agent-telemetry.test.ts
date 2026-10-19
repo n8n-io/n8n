@@ -10,6 +10,7 @@ import { storedRunSource } from './test-utils/stored-agent-config';
 function makeAgent(schema: AgentJsonConfig | null, overrides: Partial<Agent> = {}): Agent {
 	return {
 		id: 'agent-1',
+		versionId: 'draft-version',
 		schema,
 		integrations: [],
 		tools: {},
@@ -61,6 +62,7 @@ describe('agent telemetry', () => {
 				),
 			),
 		).toEqual({
+			version_id: 'draft-version',
 			model: 'anthropic/claude-sonnet-4-5',
 			channels: ['linear', 'slack'],
 			tool_types: ['custom', 'mcp', 'provider', 'subagent', 'web_search', 'workflow'],
@@ -72,6 +74,7 @@ describe('agent telemetry', () => {
 
 	it('uses empty dimensions for missing optional config', () => {
 		expect(buildAgentConfigurationTelemetryFromConfig(null)).toEqual({
+			version_id: null,
 			model: null,
 			channels: [],
 			tool_types: [],

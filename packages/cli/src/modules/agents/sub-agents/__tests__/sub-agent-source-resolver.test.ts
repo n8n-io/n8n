@@ -90,6 +90,7 @@ describe('SubAgentSourceResolver', () => {
 		const draftConfig = { ...runnableConfig, instructions: 'Use the current draft.' };
 		agentRepository.findByIdAndProjectId.mockResolvedValue(
 			makeAgent({
+				versionId: 'draft-version',
 				schema: draftConfig,
 				activeVersion: makeAgentHistory({
 					schema: { ...runnableConfig, instructions: 'Use the published snapshot.' },
@@ -99,6 +100,7 @@ describe('SubAgentSourceResolver', () => {
 
 		const result = await resolver.resolveForRuntime({ agentId }, { projectId });
 
+		expect(result.telemetryVersionId).toBe('draft-version');
 		expect(result.source).toEqual({
 			sourceId: agentId,
 			config: draftConfig,
@@ -140,7 +142,11 @@ describe('SubAgentSourceResolver', () => {
 		);
 		const original = await resolver.resolveForRuntime({ agentId }, { projectId });
 		agentRepository.findByIdAndProjectId.mockResolvedValue(
-			makeAgent({ schema: { name: 'Incomplete draft', model: '', instructions: '' }, tools: {} }),
+			makeAgent({
+				versionId: 'newer-draft-version',
+				schema: { name: 'Incomplete draft', model: '', instructions: '' },
+				tools: {},
+			}),
 		);
 		const resumed = await resolver.resolveForRuntime(
 			{ agentId },

@@ -88,11 +88,13 @@ describe('AgentRuntimeCacheService', () => {
 		reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
 
 		const first = await service.getRuntime({ agentId, projectId });
+		agent.versionId = 'next-draft-version';
 		const second = await service.getRuntime({ agentId, projectId });
 
 		expect(first).toBe(second);
 		expect(first.telemetryConfiguration).toEqual(
 			expect.objectContaining({
+				version_id: 'draft-version',
 				model: 'openai:gpt-4o',
 				memory_type: 'none',
 			}),
@@ -584,6 +586,7 @@ describe('AgentRuntimeCacheService', () => {
 	it('loads published snapshot data when running a published runtime', async () => {
 		const { service, agentRepository, reconstructionService } = makeService();
 		const activeVersion = {
+			versionId: 'published-version',
 			schema: {
 				name: 'Published',
 				model: 'openai:gpt-4o',
@@ -601,16 +604,18 @@ describe('AgentRuntimeCacheService', () => {
 		);
 		reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
 
-		await service.getRuntime({
+		const selected = await service.getRuntime({
 			agentId,
 			projectId,
 			usePublishedVersion: true,
 			integrationType: 'slack',
 		});
 
+		expect(selected.telemetryConfiguration.version_id).toBe('published-version');
 		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenCalledWith(
 			{
 				agent: expect.objectContaining({
+					versionId: 'published-version',
 					schema: activeVersion.schema,
 					tools: activeVersion.tools,
 				}),

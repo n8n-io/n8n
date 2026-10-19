@@ -463,6 +463,7 @@ export class AgentWorkflowExecutionService {
 				},
 				executionCounter: createAgentExecutionCounter(this.telemetry, {
 					agentId: telemetryAgentId,
+					versionId: recordingParams?.telemetry?.configuration.version_id ?? null,
 					userId: telemetryUserId,
 					runType,
 					source: AGENT_WORKFLOW_TRIGGER_TYPE,

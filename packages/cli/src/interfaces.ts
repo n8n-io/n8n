@@ -215,6 +215,7 @@ export interface IExecutionTrackProperties extends ITelemetryTrackProperties {
 
 export interface IAgentExecutionTrackProperties extends ITelemetryTrackProperties {
 	agent_id: string;
+	version_id: string | null;
 	/**
 	 * n8n user ID, present only when the agent run has direct n8n user context —
 	 * so in-app chat and manual task runs, but never chat integrations or cron.
@@ -245,6 +246,8 @@ export type AgentTelemetryMemoryType =
 	| 'n8n_observational_episodic';
 
 export interface IAgentConfigurationTelemetryProperties {
+	/** Version selected for the runtime. Null when no stored version is available. */
+	version_id: string | null;
 	model: string | null;
 	channels: string[];
 	tool_types: string[];

@@ -31,6 +31,8 @@ export interface ResolveSubAgentSourceContext {
 
 export interface ResolvedSubAgentRuntimeSource extends AgentRuntimeAssets {
 	source: ResolvedSubAgentSource;
+	/** Keep draft telemetry separate from the published version pin used by resumes. */
+	telemetryVersionId?: string | null;
 }
 
 @Service()
@@ -129,6 +131,7 @@ export class SubAgentSourceResolver {
 
 		const { skillRefs, skills } = await this.agentSkillRefs.readDraft(agent, {});
 		return {
+			telemetryVersionId: agent.versionId,
 			source: {
 				sourceId: source.agentId,
 				config: this.toRunnableConfig(toAgentDocument(agent.schema, skillRefs)),

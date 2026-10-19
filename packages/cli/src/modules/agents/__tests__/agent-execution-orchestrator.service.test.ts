@@ -126,6 +126,7 @@ const telemetryContext = {
 		tool_types: [],
 		tool_count: 0,
 		num_skills: 0,
+		version_id: 'draft-version',
 		memory_type: 'none' as const,
 	},
 };
@@ -1964,6 +1965,7 @@ describe('AgentExecutionOrchestratorService', () => {
 		options.executionCounter?.incrementToolCallCount();
 		expect(telemetry.trackAgentExecution).toHaveBeenCalledWith({
 			agent_id: agentId,
+			version_id: 'draft-version',
 			user_id: userId,
 			run_type: 'test',
 			source: 'instance-ai',
@@ -1971,6 +1973,7 @@ describe('AgentExecutionOrchestratorService', () => {
 		});
 		expect(telemetry.trackAgentExecution).toHaveBeenCalledWith({
 			agent_id: agentId,
+			version_id: 'draft-version',
 			user_id: userId,
 			run_type: 'test',
 			source: 'instance-ai',
@@ -2312,6 +2315,7 @@ describe('AgentExecutionOrchestratorService', () => {
 			agentRepository.findByIdAndProjectId.mockResolvedValue({
 				id: agentId,
 				name: 'Support Agent',
+				versionId: 'newer-draft-version',
 				schema,
 				integrations: [],
 			} as unknown as Agent);
@@ -2340,7 +2344,12 @@ describe('AgentExecutionOrchestratorService', () => {
 				expect(onExecutionRecorded).not.toHaveBeenCalled();
 			}
 			expect(executionService.startExecutionRecording).toHaveBeenCalledWith(
-				expect.objectContaining({ access: { accessScope: 'user', ownerId: user.id } }),
+				expect.objectContaining({
+					access: { accessScope: 'user', ownerId: user.id },
+					telemetry: expect.objectContaining({
+						configuration: expect.objectContaining({ version_id: null }),
+					}),
+				}),
 				expect.any(Date),
 			);
 		},
@@ -3981,6 +3990,7 @@ describe('AgentExecutionOrchestratorService', () => {
 			options.executionCounter?.incrementTokenCount(15);
 			expect(telemetry.trackAgentExecution).toHaveBeenCalledExactlyOnceWith({
 				agent_id: agentId,
+				version_id: 'draft-version',
 				run_type: 'production',
 				source: 'telegram',
 				token_count: 15,

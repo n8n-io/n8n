@@ -80,6 +80,7 @@ interface IAgentExecutionCounts {
 interface IAgentExecutionCountsBuffer {
 	[bufferKey: string]: IAgentExecutionCounts & {
 		agent_id: string;
+		version_id: string | null;
 		user_id?: string;
 		run_type: AgentRunTelemetryType;
 		first_message_at?: string;
@@ -309,9 +310,10 @@ export class Telemetry {
 	private getAgentExecutionCountsBufferKey(
 		agentId: string,
 		runType: AgentRunTelemetryType,
+		versionId: string | null,
 		userId?: string,
 	) {
-		return userId ? `${agentId}:${runType}:${userId}` : `${agentId}:${runType}`;
+		return JSON.stringify([agentId, runType, versionId, userId]);
 	}
 
 	private flushAgentExecutionCounts() {
@@ -321,13 +323,13 @@ export class Telemetry {
 		});
 
 		for (const bufferKey of keysToReport) {
-			// Agent-level aggregate window keyed by persisted agent ID, run type and optional
-			// n8n user ID. A resume-only window may legitimately report tokens or tools with
-			// message_count = 0.
-			const { agent_id, user_id, run_type, ...counts } = this.agentExecutionCountsBuffer[bufferKey];
+			// Keep versions separate, including resume-only windows with no new messages.
+			const { agent_id, version_id, user_id, run_type, ...counts } =
+				this.agentExecutionCountsBuffer[bufferKey];
 			this.track(TELEMETRY_EVENT.AGENTS.AGENT_EXECUTION_COUNT, {
-				event_version: '3',
+				event_version: '4',
 				agent_id,
+				version_id,
 				...(user_id ? { user_id } : {}),
 				run_type,
 				...counts,
@@ -352,7 +354,7 @@ export class Telemetry {
 			if (Object.keys(bucket.sessions).length === 0) continue;
 
 			this.track(TELEMETRY_EVENT.AGENTS.AGENT_SESSION_METRICS, {
-				event_version: '1',
+				event_version: '2',
 				agent_id: bucket.agent_id,
 				...(bucket.user_id ? { user_id: bucket.user_id } : {}),
 				...(bucket.agent_type ? { agent_type: bucket.agent_type } : {}),
@@ -450,16 +452,23 @@ export class Telemetry {
 
 		const {
 			agent_id,
+			version_id,
 			user_id,
 			run_type,
 			message_count = 0,
 			token_count = 0,
 			tool_call_count = 0,
 		} = properties;
-		const bufferKey = this.getAgentExecutionCountsBufferKey(agent_id, run_type, user_id);
+		const bufferKey = this.getAgentExecutionCountsBufferKey(
+			agent_id,
+			run_type,
+			version_id,
+			user_id,
+		);
 
 		this.agentExecutionCountsBuffer[bufferKey] = this.agentExecutionCountsBuffer[bufferKey] ?? {
 			agent_id,
+			version_id,
 			...(user_id ? { user_id } : {}),
 			run_type,
 			message_count: 0,

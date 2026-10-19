@@ -62,8 +62,15 @@ function makeAgent(overrides: Partial<Agent> = {}): Agent {
 		name: 'Support Agent',
 		projectId,
 		schema,
+		versionId: 'draft-version',
 		activeVersionId: 'published-version',
-		activeVersion: { schema, tools: {}, skills: {}, publishedById: userId },
+		activeVersion: {
+			versionId: 'published-version',
+			schema,
+			tools: {},
+			skills: {},
+			publishedById: userId,
+		},
 		tools: {},
 		skills: {},
 		...overrides,
@@ -127,6 +134,7 @@ function makeRuntime(chunks: StreamChunk[] = [{ type: 'finish', finishReason: 's
 			tool_types: [],
 			tool_count: 0,
 			num_skills: 0,
+			version_id: 'draft-version',
 			memory_type: 'none' as const,
 		},
 	};
@@ -318,6 +326,7 @@ describe('AgentWorkflowExecutionService', () => {
 		streamOptions.executionCounter.incrementMessageCount();
 		expect(telemetry.trackAgentExecution).toHaveBeenCalledWith({
 			agent_id: agentId,
+			version_id: 'published-version',
 			user_id: userId,
 			run_type: 'production',
 			source: 'workflow',
@@ -337,6 +346,7 @@ describe('AgentWorkflowExecutionService', () => {
 				telemetry: expect.objectContaining({
 					runType: 'production',
 					configuration: expect.objectContaining({
+						version_id: 'published-version',
 						model: 'anthropic/claude-sonnet-4-5',
 					}),
 				}),
@@ -1034,7 +1044,10 @@ describe('AgentWorkflowExecutionService', () => {
 					run_type: 'production',
 					source: 'workflow',
 					turn_status: 'succeeded',
-					configuration: expect.objectContaining({ model: 'anthropic/claude-sonnet-4-5' }),
+					configuration: expect.objectContaining({
+						version_id: null,
+						model: 'anthropic/claude-sonnet-4-5',
+					}),
 				}),
 			);
 			// Inline workflow-invoked runs get the same 'workflow' tracing as

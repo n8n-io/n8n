@@ -39,12 +39,14 @@ export function buildAgentConfigurationTelemetry({
 	return buildAgentConfigurationTelemetryFromConfig(
 		agent.schema ? toAgentDocument(agent.schema, skillRefs) : null,
 		agent.integrations,
+		agent.versionId,
 	);
 }
 
 export function buildAgentConfigurationTelemetryFromConfig(
 	config: AgentJsonConfig | null,
 	integrations: AgentJsonConfig['integrations'] = [],
+	versionId: string | null = null,
 ): IAgentConfigurationTelemetryProperties {
 	const channels = uniqueSorted([
 		...(integrations ?? []).map((integration) => integration.type),
@@ -62,6 +64,7 @@ export function buildAgentConfigurationTelemetryFromConfig(
 	if (subAgentCount > 0) toolTypes.add('subagent');
 
 	return {
+		version_id: versionId,
 		model: config?.model || null,
 		channels,
 		tool_types: uniqueSorted([...toolTypes]),
