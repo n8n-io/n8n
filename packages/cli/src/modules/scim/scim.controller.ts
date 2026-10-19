@@ -18,6 +18,7 @@ import type { Response } from 'express';
 import { scimRoute } from './scim-route';
 import {
 	ScimConflictError,
+	ScimForbiddenError,
 	ScimInvalidFilterError,
 	ScimInvalidValueError,
 	ScimResourceNotFoundError,
@@ -57,6 +58,9 @@ export class ScimController {
 		}
 		if (error instanceof ScimConflictError) {
 			return this.scimError(res, 409, error.message, 'uniqueness');
+		}
+		if (error instanceof ScimForbiddenError) {
+			return this.scimError(res, 403, error.message);
 		}
 		if (error instanceof ScimInvalidFilterError) {
 			return this.scimError(res, 400, error.message, 'invalidFilter');

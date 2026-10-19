@@ -9,7 +9,7 @@ import { GlobalConfig } from '@n8n/config';
 import type { AuthProviderType } from '@n8n/db';
 import { User, UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { GLOBAL_MEMBER_ROLE_SLUG } from '@n8n/permissions';
+import { GLOBAL_MEMBER_ROLE_SLUG, GLOBAL_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import { randomString } from 'n8n-workflow';
 
 import { EventService, UrlService } from '@n8n/backend-services';
@@ -18,6 +18,7 @@ import { PasswordUtility } from '@/services/password.utility';
 import { ScimUserRepository } from './database/scim-user.repository';
 import {
 	ScimConflictError,
+	ScimForbiddenError,
 	ScimInvalidFilterError,
 	ScimInvalidValueError,
 	ScimResourceNotFoundError,
@@ -27,6 +28,9 @@ import {
 const SSO_PROVIDER_TYPES: AuthProviderType[] = ['saml', 'oidc'];
 
 type ParsedFilter = { attribute: 'userName' | 'externalId'; value: string };
+
+/** The user fields the owner guard compares before and after a write. */
+type OwnerGuardSnapshot = Pick<User, 'email' | 'disabled'>;
 
 @Service()
 export class ScimService {
@@ -232,6 +236,7 @@ export class ScimService {
 	 */
 	async patchUser(id: string, patchRequest: ScimPatchRequestDto): Promise<ScimUser> {
 		const user = await this.getUserEntity(id);
+		const before = this.snapshot(user);
 
 		const changes = new Set<string>();
 
@@ -248,6 +253,8 @@ export class ScimService {
 				}
 			}
 		}
+
+		this.assertOwnerUnchanged(user, before);
 
 		if (changes.size > 0) {
 			await this.saveUser(user);
@@ -332,6 +339,7 @@ export class ScimService {
 	 */
 	async updateUser(id: string, scimUser: ScimUserCreateDto): Promise<ScimUser> {
 		const user = await this.getUserEntity(id);
+		const before = this.snapshot(user);
 
 		const changes = new Set<string>();
 
@@ -353,6 +361,8 @@ export class ScimService {
 			changes.add('disabled');
 		}
 
+		this.assertOwnerUnchanged(user, before);
+
 		if (changes.size > 0) {
 			await this.saveUser(user);
 			this.eventService.emit('user-updated', { user, fieldsChanged: [...changes] });
@@ -372,6 +382,10 @@ export class ScimService {
 	async deleteUser(id: string): Promise<void> {
 		const user = await this.getUserEntity(id);
 
+		if (this.isOwner(user)) {
+			throw new ScimForbiddenError('The instance owner cannot be deleted via SCIM');
+		}
+
 		user.disabled = true;
 		await this.userRepository.save(user);
 		this.eventService.emit('user-updated', { user, fieldsChanged: ['disabled'] });
@@ -382,6 +396,32 @@ export class ScimService {
 		const user = await this.userRepository.findOne({ where: { id }, relations: ['role'] });
 		if (!user) throw new ScimResourceNotFoundError(id);
 		return user;
+	}
+
+	private isOwner(user: User): boolean {
+		return user.role?.slug === GLOBAL_OWNER_ROLE_SLUG;
+	}
+
+	private snapshot(user: User): OwnerGuardSnapshot {
+		return { email: user.email, disabled: user.disabled };
+	}
+
+	/**
+	 * The owner is the account of last resort for the instance. An IdP must
+	 * not take it over through its email or lock it out, so reject the whole
+	 * request. Other attributes, such as the name, can still change.
+	 */
+	private assertOwnerUnchanged(user: User, before: OwnerGuardSnapshot): void {
+		if (!this.isOwner(user)) return;
+
+		// A difference in case only is the same address, so allow it.
+		if (user.email.toLowerCase() !== before.email.toLowerCase()) {
+			throw new ScimForbiddenError('The email of the instance owner cannot be changed via SCIM');
+		}
+
+		if (user.disabled && !before.disabled) {
+			throw new ScimForbiddenError('The instance owner cannot be deactivated via SCIM');
+		}
 	}
 
 	/**
