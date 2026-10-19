@@ -4,6 +4,7 @@ import { mock } from 'vitest-mock-extended';
 import { AgentContextService } from '@/modules/agents/agent-context.service';
 import type {
 	AgentContextReader,
+	AgentContextResult,
 	AgentSessionDetail,
 } from '@/modules/agents/agent-context.contracts';
 
@@ -57,5 +58,9 @@ describe('InstanceAiAgentContextAdapterService', () => {
 			transcript: expect.stringContaining('Done'),
 		});
 		expect(await adapter.lookup({ ...input, executionId: 'missing' })).toEqual({ notFound: true });
+
+		const notFound: AgentContextResult = { notFound: true };
+		reader.lookup.mockResolvedValue(notFound);
+		expect(await adapter.lookup(input)).toEqual(notFound);
 	});
 });

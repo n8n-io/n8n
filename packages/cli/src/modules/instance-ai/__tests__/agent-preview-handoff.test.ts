@@ -20,7 +20,6 @@ function makeThread(overrides: Partial<AgentSessionThread> = {}): AgentSessionTh
 function makeExecution(overrides: Partial<AgentSessionTurn> = {}): AgentSessionTurn {
 	return {
 		id: 'exec-1',
-		threadId: 'preview-thread-1',
 		status: 'success',
 		userMessage: 'Hello agent',
 		model: 'gpt-test',
