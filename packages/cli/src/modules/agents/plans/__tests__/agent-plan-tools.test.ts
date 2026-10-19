@@ -580,6 +580,17 @@ describe('Agent plan tools', () => {
 	});
 });
 
+it.each(['execution-1', 42, undefined])(
+	'passes only string execution metadata to plan writes: %s',
+	async (id) => {
+		await call('update_plan', { ...write, document: { description: 'New detail' } }, {
+			persistence: { ...context.persistence!, hostMetadata: { n8nExecutionId: id } },
+		} as ToolContext);
+		expect(service.replacePlan).toHaveBeenCalledWith(expect.anything(), {
+			sourceExecutionId: typeof id === 'string' ? id : undefined,
+		});
+	},
+);
 it('uses the last task end time when all leaves finish before the plan closes', () => {
 	const first = {
 		...original.data.items[0],

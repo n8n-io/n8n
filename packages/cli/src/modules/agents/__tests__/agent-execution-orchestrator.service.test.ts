@@ -1,4 +1,3 @@
-import type { AgentMessageSteeringService } from '../agent-message-steering.service';
 import type {
 	Agent as RuntimeAgent,
 	CredentialProvider,
@@ -26,6 +25,8 @@ import { OperationalError, UserError } from 'n8n-workflow';
 import type { InstanceSettings } from 'n8n-core';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
+import { AgentTaskCancellationRepository } from '@/modules/agents/repositories/agent-task-cancellation.repository';
+import type { AgentMessageSteeringService } from '../agent-message-steering.service';
 import type { AgentsSettingsService } from '../agents-settings.service';
 
 import type { ExternalHooks } from '@/external-hooks';
@@ -270,12 +271,14 @@ function makeService(sandboxEnabled = false) {
 	}));
 	executionService.finalizeExecution.mockResolvedValue('execution-1');
 	agentRunTracingService.build.mockResolvedValue(undefined);
+	const cancellations = mock<AgentTaskCancellationRepository>();
 
 	const service = new AgentExecutionOrchestratorService(
 		mockLogger(),
 		checkpointStorage,
 		executionService,
 		new AgentTurnExecutionService(
+			cancellations,
 			mockLogger(),
 			executionService,
 			chatExecutionService,
@@ -300,6 +303,7 @@ function makeService(sandboxEnabled = false) {
 
 	return {
 		service,
+		cancellations,
 		settingsService,
 		backgroundJobRepository,
 		backgroundJobs,
@@ -990,6 +994,26 @@ describe('AgentExecutionOrchestratorService', () => {
 			expect(sdkStart.mock.calls[0].at(-1)).toMatchObject({ approvalContext });
 		});
 
+		it('marks task cancellation in the main model and tool checks', async () => {
+			const { stream, sdkStart, cancellations } = makeTurn({ previewChat: true });
+			await collect(stream);
+			cancellations.isCancelled.mockResolvedValue(true);
+			const options = sdkStart.mock.calls[0]?.[operation === 'start' ? 1 : 2] as
+				| (RunOptions & ExecutionOptions)
+				| undefined;
+			const hook = options?.guardrails?.hooks[0];
+			expect(await hook?.before?.(mock())).toEqual({
+				action: 'stop',
+				code: 'tasks-cancelled',
+				canceled: true,
+			});
+			expect(await hook?.beforeTool?.(mock())).toEqual({
+				action: 'stop',
+				code: 'tasks-cancelled',
+				canceled: true,
+			});
+		});
+
 		it.each([true, false])(
 			'wires onBudgetNotice into the budget guardrail only when previewChat is %s',
 			async (previewChat) => {
@@ -1004,7 +1028,7 @@ describe('AgentExecutionOrchestratorService', () => {
 				const options = sdkStart.mock.calls[0]?.[operation === 'start' ? 1 : 2] as
 					| (RunOptions & ExecutionOptions)
 					| undefined;
-				const hook = options?.guardrails?.hooks[0];
+				const hook = options?.guardrails?.hooks.find((candidate) => candidate.after);
 				if (!hook?.before || !hook.after) throw new Error('Expected a budget guardrail hook');
 
 				const ctx = {
@@ -1099,7 +1123,7 @@ describe('AgentExecutionOrchestratorService', () => {
 
 				await expect(resumeAgain()).rejects.toBeInstanceOf(AgentTurnAlreadyRunningError);
 
-				await chatExecutionService.handleCancel({
+				await chatExecutionService.handleForegroundCancel({
 					projectId,
 					agentId,
 					threadId: 'thread-1',
@@ -1129,7 +1153,7 @@ describe('AgentExecutionOrchestratorService', () => {
 			const { stream, onExecutionStarted, sdkStart, executionService, chatExecutionService } =
 				makeTurn({ previewChat: true });
 			onExecutionStarted.mockImplementation(() => {
-				void chatExecutionService.handleCancel({
+				void chatExecutionService.handleForegroundCancel({
 					projectId,
 					agentId,
 					threadId: 'thread-1',
@@ -1146,6 +1170,77 @@ describe('AgentExecutionOrchestratorService', () => {
 				}),
 			);
 		});
+
+		it.each(['chunk', 'rejection'] as const)(
+			'ends a stopped chat without an error when the runtime emits an abort %s',
+			async (failure) => {
+				const { stream, sdkStart, chatExecutionService, executionService } = makeTurn({
+					previewChat: true,
+				});
+				const runtimeStream = new TransformStream<StreamChunk, StreamChunk>();
+				const writer = runtimeStream.writable.getWriter();
+				sdkStart.mockResolvedValue({ runId: 'runtime-run-1', stream: runtimeStream.readable });
+				const result = collect(stream);
+				const settled = expect(result).resolves.not.toContainEqual(
+					expect.objectContaining({ type: 'error' }),
+				);
+				await writer.write({ type: 'text-delta', id: 'text-1', delta: 'Saved partial response.' });
+				await chatExecutionService.handleForegroundCancel({
+					projectId,
+					agentId,
+					threadId: 'thread-1',
+					executionId: 'execution-1',
+					userId,
+				});
+				const error = new Error('Agent run was aborted');
+				if (failure === 'chunk') {
+					await writer.write({ type: 'error', error });
+					await writer.write({
+						type: 'finish',
+						finishReason: 'error',
+						usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15 },
+					});
+					await writer.close();
+				} else {
+					await writer.abort(error);
+				}
+				await settled;
+				expect(executionService.finalizeExecution).toHaveBeenCalledWith(
+					'execution-1',
+					expect.objectContaining({
+						record: expect.objectContaining({
+							finishReason: 'cancelled',
+							error: null,
+							assistantResponse: 'Saved partial response.',
+							...(failure === 'chunk'
+								? { usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15 } }
+								: {}),
+						}),
+					}),
+				);
+			},
+		);
+
+		it.each([false, true])(
+			'keeps chat errors visible when execution ownership is lost: %s',
+			async (ownershipLost) => {
+				const { stream, sdkStart, executionService } = makeTurn({ previewChat: true });
+				const controller = new AbortController();
+				const error = new OperationalError('Execution failed');
+				executionService.getAbortSignal.mockReturnValue(controller.signal);
+				sdkStart.mockImplementation(async () => {
+					if (ownershipLost) controller.abort(error);
+					return {
+						runId: 'runtime-run-1',
+						stream: makeReadableStream([
+							{ type: 'error', error },
+							{ type: 'finish', finishReason: 'error' },
+						]),
+					};
+				});
+				await expect(collect(stream)).resolves.toContainEqual({ type: 'error', error });
+			},
+		);
 
 		it.each(['startExecutionRecording', 'finalizeExecution'] as const)(
 			'reports the recording phase when %s fails',
@@ -2242,7 +2337,9 @@ describe('AgentExecutionOrchestratorService', () => {
 			}),
 		);
 
-		expect(runtime.agent.stream.mock.calls[0][1]?.guardrails?.hooks).toHaveLength(1);
+		const options = runtime.agent.stream.mock.calls[0][1] as ExecutionOptions;
+		const hooks = options.guardrails?.hooks ?? [];
+		expect(hooks.filter((hook) => hook.after)).toHaveLength(1);
 	});
 
 	it('rejects a production turn with a foreign thread or memory scope', async () => {
@@ -2776,6 +2873,41 @@ describe('AgentExecutionOrchestratorService', () => {
 		).resolves.toEqual(expect.any(Array));
 	});
 
+	it.each([{ tasks: [] }, backgroundJobSignal])(
+		'records a stop acknowledgement without a results event for tasks %j',
+		async ({ tasks }) => {
+			const { service, runtimeCacheService, executionService } = makeService();
+			const runtime = makeRuntime([
+				{ type: 'text-delta', id: 'text-1', delta: 'The plan is stopped.' },
+				{ type: 'finish', finishReason: 'stop' },
+			]);
+			runtimeCacheService.getRuntime.mockResolvedValue(runtime);
+			await service.executeForWake({
+				backgroundJobSignal: { tasks },
+				pauseReport: true,
+				planStopId: 'plan-stop',
+				wakeJobIds: ['paused-job'],
+				agentId,
+				projectId,
+				message: 'Acknowledge the stopped plan.',
+				memory: { threadId: 'thread-1', resourceId: 'draft-chat:user-1' },
+				identity: { type: 'draft', user, principalHash: userPrincipalHash },
+				abortSignal: new AbortController().signal,
+			});
+			const recording = executionService.startExecutionRecording.mock.calls[0][0];
+			expect(recording.initialTimeline).toBeUndefined();
+			expect(recording.wake).toEqual({ jobIds: ['paused-job'], planStopId: 'plan-stop' });
+			expect(executionService.finalizeExecution).toHaveBeenCalledWith(
+				'execution-1',
+				expect.objectContaining({
+					record: expect.objectContaining({
+						timeline: [expect.objectContaining({ type: 'text', content: 'The plan is stopped.' })],
+					}),
+				}),
+			);
+		},
+	);
+
 	it('blocks tools and rejects a pause report interrupted by its guardrail', async () => {
 		const { service, runtimeCacheService } = makeService();
 		const runtime = makeRuntime([
@@ -2804,11 +2936,10 @@ describe('AgentExecutionOrchestratorService', () => {
 		});
 		const options = runtime.agent.stream.mock.calls[0][1] as ExecutionOptions;
 		expect(options.toolsEnabled).toBe(false);
-		const hook = options.guardrails?.hooks?.find((candidate) => candidate.beforeTool);
-		expect(await hook?.beforeTool?.(mock())).toMatchObject({
-			action: 'stop',
-			code: 'background-pause-report',
-		});
+		const decisions = await Promise.all(
+			(options.guardrails?.hooks ?? []).map(async (hook) => await hook.beforeTool?.(mock())),
+		);
+		expect(decisions).toContainEqual({ action: 'stop', code: 'background-pause-report' });
 	});
 
 	it('records a background continuation while Agents is disabled', async () => {

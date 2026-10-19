@@ -1,7 +1,8 @@
 import type { BuiltTool } from '@n8n/agents';
 import { Tool } from '@n8n/agents/tool';
 import { planLeaves } from './agent-plan-work-state';
-import type { OperationContext } from '@n8n/db';
+import { executionIdFromMetadata } from '../types/agent-queued-message';
+import type { AgentPlanOperationContext } from '../repositories/agent-plan.repository';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 
@@ -270,7 +271,7 @@ function scopedTool<Schema extends z.ZodType>(
 	handler: (
 		input: z.output<Schema>,
 		threadId: string,
-		ctx: OperationContext,
+		ctx: AgentPlanOperationContext,
 	) => Promise<AgentPlanSnapshot | null>,
 ) {
 	return new Tool(name)
@@ -286,7 +287,11 @@ function scopedTool<Schema extends z.ZodType>(
 			}
 
 			try {
-				return presentPlan(await handler(schema.parse(input), threadId, {}));
+				return presentPlan(
+					await handler(schema.parse(input), threadId, {
+						sourceExecutionId: executionIdFromMetadata(context.persistence?.hostMetadata),
+					}),
+				);
 			} catch (error) {
 				if (error instanceof AgentPlanWriteConflictError) {
 					return {
