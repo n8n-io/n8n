@@ -1,6 +1,6 @@
 import type { RoleChangeRequestDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { EventService, UrlService, RoleService } from '@n8n/backend-services';
+import { EventService, UrlService, RoleService, JwtService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type { PublicUser } from '@n8n/db';
 import {
@@ -30,7 +30,6 @@ import type { IUserSettings } from 'n8n-workflow';
 import { UserError } from 'n8n-workflow';
 import { validate as uuidValidate } from 'uuid';
 
-import { JwtService } from './jwt.service';
 import { OwnershipService } from './ownership.service';
 import { ProjectService } from './project.service.ee';
 import { PublicApiKeyService } from './public-api-key.service';
@@ -605,6 +604,11 @@ export class UserService {
 			transfereeId = transferee.id;
 
 			const ownershipTransferService = await this.getOwnershipTransferService();
+			await ownershipTransferService.enforceTransferPolicy(
+				personalProjectToDelete.id,
+				transfereeProject.id,
+				{ kind: 'user', user: actor },
+			);
 			await ownershipTransferService.transferAllResources(
 				[personalProjectToDelete.id],
 				transfereeProject.id,

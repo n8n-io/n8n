@@ -59,6 +59,7 @@ export const LICENSE_FEATURES = {
 	OTEL_CUSTOM_SPAN_ATTRIBUTES: 'feat:otel:customSpanAttributes',
 	WORKFLOW_REVIEWS: 'feat:workflowReviews',
 	WORKER_POOLS: 'feat:workerPools',
+	TRUSTED_SOURCE_MANAGE: 'feat:trustedSourceManage',
 } as const;
 
 export const LICENSE_QUOTAS = {

@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
 	getOrCreateRuntime: vi.fn(),
 	sendMessage: vi.fn(),
 	showError: vi.fn(),
+	captureException: vi.fn(),
 }));
 
 vi.mock('vue-router', async (importOriginal) => ({
@@ -20,6 +21,7 @@ vi.mock('vue-router', async (importOriginal) => ({
 	}),
 }));
 vi.mock('uuid', () => ({ v4: () => 'thread-1' }));
+vi.mock('@sentry/vue', () => ({ captureException: mocks.captureException }));
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({ restApiContext: {}, pushRef: 'push-ref' }),
 }));
@@ -353,6 +355,86 @@ describe('useInstanceAiHandoff', () => {
 			type: 'workflow',
 			id: 'wf-1',
 			name: 'My Workflow',
+		});
+	});
+
+	it('deletes the workflow thread when the navigation to it is aborted', async () => {
+		mocks.routerPush.mockResolvedValueOnce(new Error('Navigation aborted'));
+		const { openWorkflowThread } = useInstanceAiHandoff();
+
+		const opened = await openWorkflowThread(
+			'project-1',
+			{ type: 'workflow', id: 'wf-1', name: 'My Workflow' },
+			{ source: 'canvas_action_button', origin: 'internal' },
+		);
+
+		expect(opened).toBe(false);
+		expect(getPendingWorkflowAttachment('thread-1')).toBeNull();
+		expect(mocks.deleteThread).toHaveBeenCalledWith('thread-1', { silent: true });
+		expect(mocks.showError).toHaveBeenCalledOnce();
+	});
+
+	describe('startThread in the same tab', () => {
+		const start = async () =>
+			await useInstanceAiHandoff().startThread(
+				'project-1',
+				'The execution failed.',
+				{ kind: 'prefill', prefillType: 'handoff_execution_error' },
+				{ source: 'node_error_view', origin: 'internal' },
+			);
+
+		it('sends the opening message after the navigation lands', async () => {
+			const calls: string[] = [];
+			mocks.routerPush.mockImplementationOnce(async () => {
+				calls.push('push');
+			});
+			mocks.sendMessage.mockImplementationOnce(async () => {
+				calls.push('send');
+				return true;
+			});
+
+			await start();
+
+			expect(mocks.routerPush).toHaveBeenCalledWith({
+				name: 'InstanceAiThread',
+				params: { threadId: 'thread-1' },
+			});
+			expect(calls).toEqual(['push', 'send']);
+			expect(mocks.deleteThread).not.toHaveBeenCalled();
+		});
+
+		it('deletes the thread and does not send when the navigation is aborted', async () => {
+			const failure = new Error('Navigation aborted');
+			mocks.routerPush.mockResolvedValueOnce(failure);
+
+			await start();
+
+			expect(mocks.sendMessage).not.toHaveBeenCalled();
+			expect(mocks.deleteThread).toHaveBeenCalledWith('thread-1', { silent: true });
+			expect(mocks.showError).toHaveBeenCalledOnce();
+			expect(mocks.captureException).toHaveBeenCalledWith(failure, expect.anything());
+		});
+
+		it('deletes the thread and does not send when the navigation throws', async () => {
+			const error = new Error('Failed to fetch dynamically imported module');
+			mocks.routerPush.mockRejectedValueOnce(error);
+
+			await start();
+
+			expect(mocks.sendMessage).not.toHaveBeenCalled();
+			expect(mocks.deleteThread).toHaveBeenCalledWith('thread-1', { silent: true });
+			expect(mocks.showError).toHaveBeenCalledOnce();
+			expect(mocks.captureException).toHaveBeenCalledWith(error, expect.anything());
+		});
+
+		it('accepts a new hand-off after a failed navigation', async () => {
+			mocks.routerPush.mockRejectedValueOnce(new Error('Navigation failed'));
+			await start();
+
+			await start();
+
+			expect(mocks.syncThread).toHaveBeenCalledTimes(2);
+			expect(mocks.sendMessage).toHaveBeenCalledOnce();
 		});
 	});
 

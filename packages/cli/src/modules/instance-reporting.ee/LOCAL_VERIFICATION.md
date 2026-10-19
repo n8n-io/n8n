@@ -104,12 +104,16 @@ today do not appear in the daily point. Produce both parts:
    ```
 
    Then backdate those rows one day, so they fall inside the reported window
-   (`type` 2 = success, 3 = failure; the daily point is their sum):
+   (`type` 2 = success, 3 = failure, 4 = billable). The daily point is the
+   billable sum on days after the first day with billable rows. On that day
+   and before it, it is the sum of success and failure. On a fresh `~/.n8n`,
+   yesterday is the first day with billable rows, so expect the sum of success
+   and failure:
 
    ```bash
    sqlite3 "$N8N_DB" \
      "UPDATE insights_by_period
-      SET periodStart = datetime(periodStart, '-1 day');"
+      SET periodStart = strftime('%Y-%m-%d %H:%M:%f', periodStart, '-1 day');"
    ```
 
    Record the expected daily total:
@@ -124,6 +128,31 @@ today do not appear in the daily point. Produce both parts:
 
    Use two different counts (for example 5 production executions but only 3
    backdated) so a swap of the two data points is visible.
+
+   To get the billable sum instead, copy yesterday's rows to the day before
+   yesterday before you force the report. Do this on a fresh `~/.n8n` only:
+   rows that already exist on the day before yesterday make the insert fail.
+
+   ```bash
+   sqlite3 "$N8N_DB" \
+     "INSERT INTO insights_by_period (metaId, type, value, periodUnit, periodStart)
+      SELECT metaId, type, value, periodUnit, strftime('%Y-%m-%d %H:%M:%f', periodStart, '-1 day')
+      FROM insights_by_period
+      WHERE periodStart >= date('now', '-1 day')
+        AND periodStart <  date('now');"
+   ```
+
+   Then the report also carries a daily point for the day before yesterday,
+   with the sum of success and failure. The daily point for yesterday is the
+   billable sum:
+
+   ```bash
+   sqlite3 "$N8N_DB" \
+     "SELECT SUM(value) FROM insights_by_period
+      WHERE type = 4
+        AND periodStart >= date('now', '-1 day')
+        AND periodStart <  date('now');"
+   ```
 
 ## 3. Force the report now
 

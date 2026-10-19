@@ -174,6 +174,9 @@ export class WaitTracker {
 			projectId: project.id,
 			pushRef: fullExecutionData.data.pushRef,
 			startedAt: fullExecutionData.startedAt,
+			// Whatever awaited this run on main was answered when the run paused, so
+			// a resumed segment owes nothing and may be suspended again.
+			callerAwaitsOutcome: 'none',
 			// Not a stored field, so a resume has to derive it again — otherwise the
 			// run comes back without an identity and a credential only its publisher
 			// may use is refused halfway through.
@@ -184,6 +187,7 @@ export class WaitTracker {
 		await this.workflowRunner.run(data, false, false, {
 			executionId,
 			expectedStatus: 'waiting',
+			storedAt: fullExecutionData.storedAt,
 		});
 
 		const { parentExecution } = fullExecutionData.data;

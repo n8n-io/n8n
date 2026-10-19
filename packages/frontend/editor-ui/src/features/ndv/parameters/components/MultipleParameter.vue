@@ -184,7 +184,7 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 			</div>
 			<N8nButton
 				style="width: 100%"
-				variant="subtle"
+				variant="outline"
 				v-if="!isReadOnly"
 				:label="addButtonText"
 				@click="addItem()"

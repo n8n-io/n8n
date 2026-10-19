@@ -58,6 +58,8 @@ interface Collections {
 	origins: Map<string, ArtifactOrigin>;
 	/** Origin the current collection phase stamps on resources it records for the first time. */
 	intake: ArtifactOrigin;
+	/** Every name recorded for each agent id, to tell a stale metadata name from a user rename. */
+	agentNames: Map<string, Set<string>>;
 }
 
 /**
@@ -116,6 +118,11 @@ function recordProduced(
 			}
 		: entry;
 	col.produced.set(entry.id, merged);
+	if (merged.type === 'agent') {
+		const names = col.agentNames.get(merged.id) ?? new Set<string>();
+		names.add(merged.name);
+		col.agentNames.set(merged.id, names);
+	}
 	if (!col.origins.has(entry.id)) col.origins.set(entry.id, col.intake);
 	if (existing && existing.name.toLowerCase() !== merged.name.toLowerCase()) {
 		col.byName.delete(existing.name.toLowerCase());
@@ -370,9 +377,9 @@ function extractFromTargetResource(node: InstanceAiAgentNode, col: Collections):
 	const existing = col.produced.get(target.id);
 	const name = optionalString(target.name) ?? existing?.name ?? 'Untitled';
 	if (target.type === 'agent') {
-		// New events report the target before the result is known. Only the
-		// build-agent result can confirm that this Agent changed.
-		if (node.activity !== undefined && (!existing || existing.pending)) return;
+		// A read-only turn cannot confirm that this Agent changed. Wait for the
+		// build-agent result. A mutating build registers the Agent at spawn.
+		if (node.activity === 'exploring' && (!existing || existing.pending)) return;
 		const entry = entryFromAgentBuilderTarget(target, existing, name);
 		if (entry) recordProduced(col, entry);
 		return;
@@ -381,7 +388,7 @@ function extractFromTargetResource(node: InstanceAiAgentNode, col: Collections):
 }
 
 function collectFromAgentNode(node: InstanceAiAgentNode, col: Collections): void {
-	const deferAgentTarget = node.targetResource?.type === 'agent' && node.activity !== undefined;
+	const deferAgentTarget = node.targetResource?.type === 'agent' && node.activity === 'exploring';
 	// A sub-agent spawned onto a resource is there to work on it.
 	col.intake = 'built';
 	if (!deferAgentTarget) extractFromTargetResource(node, col);
@@ -442,17 +449,22 @@ function enrichAgentFromBuilderTarget(
 	if (!target) return;
 	const existing = col.produced.get(target.agentId);
 	if (existing && existing.type !== 'agent') return;
-	// Event-derived names are canonical; the persisted metadata name only fills
-	// in when no run event carried one (e.g. historical threads whose events
-	// aren't loaded). The 'Untitled' placeholder is not a real name.
+	// The metadata name lags behind the events during a run, so a name that an
+	// earlier event carried is stale. A name no event carried is a rename the
+	// user saved in the agent builder, which only the metadata records. The
+	// 'Untitled' placeholder is not a real name.
 	const eventName =
 		existing && !existing.pending && existing.name !== 'Untitled' ? existing.name : undefined;
+	const isUserRename =
+		target.name !== undefined &&
+		eventName !== undefined &&
+		!col.agentNames.get(target.agentId)?.has(target.name);
 	recordProduced(
 		col,
 		{
 			type: 'agent',
 			id: target.agentId,
-			name: eventName ?? target.name ?? 'Untitled',
+			name: (isUserRename ? target.name : eventName) ?? target.name ?? 'Untitled',
 			projectId: target.projectId,
 		},
 		{ linkable: existing !== undefined },
@@ -607,6 +619,7 @@ export function useResourceRegistry(
 				linkableByName: new Map<string, ResourceEntry>(),
 				origins: new Map<string, ArtifactOrigin>(),
 				intake: 'attached',
+				agentNames: new Map<string, Set<string>>(),
 			};
 
 			// Messages run in order, and within one turn the user's attachments

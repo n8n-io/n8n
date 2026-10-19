@@ -1,4 +1,4 @@
-import type { Locator } from '@playwright/test';
+import { expect, type Locator } from '@playwright/test';
 
 import { ManualChatModal } from './ManualChatModal';
 import { RunDataPanel } from './RunDataPanel';
@@ -124,8 +124,17 @@ export class LogsPanel {
 	 */
 	async getSessionId(clipboard: ClipboardHelper): Promise<string> {
 		await clipboard.grant();
+		// Clear the previous value so the read waits for this copy to finish.
+		await clipboard.writeText('');
 		await this.getSessionIdButton().click();
-		return await clipboard.readText();
+		let sessionId = '';
+		await expect
+			.poll(async () => {
+				sessionId = await clipboard.readText();
+				return sessionId;
+			})
+			.not.toBe('');
+		return sessionId;
 	}
 
 	/**

@@ -10,7 +10,7 @@
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | id | varchar(36) |  | false | [public.promotion_connection](public.promotion_connection.md) |  |  |
 | name | varchar(128) |  | false |  |  |  |
-| type | varchar(32) |  | false |  |  | PromotionProviderType enum: "git" |
+| type | varchar(32) |  | false |  |  | PromotionProviderType enum: "git", "gitlab" |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 
 ## Constraints
@@ -18,7 +18,7 @@
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
 | CHK_promotion_provider_authType | CHECK | CHECK ((("authType")::text = ANY ((ARRAY['ssh-key'::character varying, 'token'::character varying])::text[]))) |
-| CHK_promotion_provider_type | CHECK | CHECK (((type)::text = 'git'::text)) |
+| CHK_promotion_provider_type | CHECK | CHECK (((type)::text = ANY ((ARRAY['git'::character varying, 'gitlab'::character varying])::text[]))) |
 | PK_6e968555ff44699f59ad10be765 | PRIMARY KEY | PRIMARY KEY (id) |
 | promotion_provider_authType_not_null | n | NOT NULL "authType" |
 | promotion_provider_auth_not_null | n | NOT NULL auth |

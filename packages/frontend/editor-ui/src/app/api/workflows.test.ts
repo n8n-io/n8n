@@ -1,4 +1,9 @@
-import { getLastSuccessfulExecution, getNewWorkflowData, getWorkflows } from './workflows';
+import {
+	getCallableSubworkflows,
+	getLastSuccessfulExecution,
+	getNewWorkflowData,
+	getWorkflows,
+} from './workflows';
 import { DEFAULT_NEW_WORKFLOW_NAME, DEFAULT_SETTINGS } from '@/app/constants/workflows';
 import * as apiUtils from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
@@ -43,6 +48,38 @@ describe('API: workflows', () => {
 				sortBy: 'updatedAt:desc',
 				select: JSON.stringify(['id', 'name', 'updatedAt']),
 			});
+		});
+	});
+
+	describe('getCallableSubworkflows', () => {
+		const mockContext = {
+			baseUrl: 'http://test-base-url',
+			sessionId: 'test-session',
+			pushRef: 'test-ref',
+		} as IRestApiContext;
+
+		it('should call the parent-specific endpoint with the search and page params', async () => {
+			const response = {
+				count: 1,
+				data: [{ id: 'sub-1', name: 'Sub', active: false, isArchived: false }],
+			};
+			const makeRestApiRequestSpy = vi
+				.spyOn(apiUtils, 'makeRestApiRequest')
+				.mockResolvedValue(response);
+
+			const result = await getCallableSubworkflows(mockContext, 'parent-id', {
+				query: 'sub',
+				skip: 40,
+				take: 20,
+			});
+
+			expect(makeRestApiRequestSpy).toHaveBeenCalledWith(
+				mockContext,
+				'GET',
+				'/workflows/parent-id/callable-subworkflows',
+				{ query: 'sub', skip: 40, take: 20 },
+			);
+			expect(result).toEqual(response);
 		});
 	});
 

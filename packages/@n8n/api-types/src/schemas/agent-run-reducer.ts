@@ -110,6 +110,31 @@ function ensureAgent(state: AgentRunState, agentId: string): InstanceAiAgentNode
 	return state.agentsById[agentId];
 }
 
+/**
+ * Per-run orchestrator agent id. A follow-up run merged into an existing
+ * message group streams under this id, not under the group's root agent id.
+ */
+export function orchestratorAgentId(runId: string): string {
+	return `orchestrator-${runId}`;
+}
+
+/**
+ * Alias a follow-up run's orchestrator to the group's root agent.
+ *
+ * `run-start` creates this alias, but a state rebuilt from a snapshot tree
+ * (a `run-sync` frame or history hydration) only indexes the tree's own
+ * nodes. Without the alias, every later event of that run is dropped as an
+ * orphan, including the tool call that a confirmation attaches to.
+ */
+function aliasRunOrchestrator(state: AgentRunState, agentId: string, runId: string): void {
+	if (!isSafeObjectKey(agentId) || state.agentsById[agentId]) return;
+	if (agentId !== orchestratorAgentId(runId)) return;
+	const root = state.agentsById[state.rootAgentId];
+	// Same test as a follow-up `run-start`: a fresh state has no group to join.
+	if (!root || (Object.keys(state.agentsById).length <= 1 && !nodeHasContent(root))) return;
+	state.agentsById[agentId] = root;
+}
+
 /** When the event was published — falls back to "now" for live events and
  *  old persisted events that predate the `ts` envelope field. Replays must
  *  use the publish time or tool durations collapse to processing time. */
@@ -201,6 +226,13 @@ function nodeHasContent(node: InstanceAiAgentNode | undefined): boolean {
  * as the existing frontend reducer). Returns the same state reference.
  */
 export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): AgentRunState {
+	if (event.type !== 'run-start') {
+		aliasRunOrchestrator(state, event.agentId, event.runId);
+		if (event.type === 'agent-spawned') {
+			aliasRunOrchestrator(state, event.payload.parentId, event.runId);
+		}
+	}
+
 	switch (event.type) {
 		case 'run-start': {
 			const rootId = event.agentId;

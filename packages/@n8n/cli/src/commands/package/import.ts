@@ -76,7 +76,7 @@ export default class PackageImport extends BaseCommand {
 		credentialMissingMode: Flags.string({
 			description:
 				'What to do when a referenced credential cannot be resolved (default on the instance: create-stub)',
-			options: ['must-preexist', 'create-stub'],
+			options: ['must-preexist', 'create-stub', 'create-with-values'],
 			aliases: ['credential-missing-mode'],
 		}),
 		dataTableMatchingMode: Flags.string({
@@ -86,14 +86,14 @@ export default class PackageImport extends BaseCommand {
 		}),
 		dataTableMissingMode: Flags.string({
 			description:
-				'What to do when a referenced data table is absent in the target project (default on the instance: create). Matched tables are always schema-validated, even with do-nothing',
+				'What to do when a referenced data table is absent in the target project (default on the instance: create). Under the keep-existing and fail schema conflict policies, matched tables are schema-validated, even with do-nothing. Under overwrite-non-destructive, a matched table blocks the import only when a change removes or retypes a column. Matched tables change only under --data-table-schema-conflict-policy=overwrite or overwrite-non-destructive',
 			options: ['create', 'must-preexist', 'do-nothing'],
 			aliases: ['data-table-missing-mode'],
 		}),
 		dataTableSchemaConflictPolicy: Flags.string({
 			description:
-				'How strictly a matched target data table schema is compared: keep-existing (instance default) requires every package column but ignores additional columns the target table has of its own; fail rejects any difference. Neither policy alters the matched target table',
-			options: ['keep-existing', 'fail'],
+				'How strictly a matched target data table schema is compared: keep-existing (instance default) requires every package column but ignores additional columns the target table has of its own; fail rejects any difference. keep-existing and fail never alter the matched target table. overwrite changes the matched target table to match the package. It can remove or retype columns. The values in those columns are removed. Rows and other columns are kept. When the package has column ids, a column that is only renamed keeps its values. The changes apply to all workflows that use the table. overwrite-non-destructive makes the same changes as overwrite, but rejects the import and writes nothing when a change removes or retypes a column. A target-only column counts as removed. Needs dataTable:update when a table changes.',
+			options: ['keep-existing', 'fail', 'overwrite', 'overwrite-non-destructive'],
 			aliases: ['data-table-schema-conflict-policy'],
 		}),
 		variableMissingMode: Flags.string({

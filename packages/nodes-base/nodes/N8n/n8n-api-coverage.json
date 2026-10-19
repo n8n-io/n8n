@@ -244,6 +244,12 @@
 		"DELETE /promotions/providers/{promotionProviderId}": {
 			"status": "gap"
 		},
+		"GET /promotions/providers/{promotionProviderId}/repositories": {
+			"status": "gap"
+		},
+		"GET /promotions/providers/{promotionProviderId}/repositories/{repositoryId}/branches": {
+			"status": "gap"
+		},
 		"GET /promotions/connections": {
 			"status": "gap"
 		},
@@ -322,16 +328,16 @@
 		"POST /settings/log-streaming/destinations": {
 			"status": "gap"
 		},
-		"GET /settings/log-streaming/destinations/{id}": {
+		"GET /settings/log-streaming/destinations/{destinationId}": {
 			"status": "gap"
 		},
-		"PUT /settings/log-streaming/destinations/{id}": {
+		"PUT /settings/log-streaming/destinations/{destinationId}": {
 			"status": "gap"
 		},
-		"DELETE /settings/log-streaming/destinations/{id}": {
+		"DELETE /settings/log-streaming/destinations/{destinationId}": {
 			"status": "gap"
 		},
-		"POST /settings/log-streaming/destinations/{id}/test": {
+		"POST /settings/log-streaming/destinations/{destinationId}/test": {
 			"status": "gap"
 		},
 		"GET /settings/sso/oidc": {
@@ -478,6 +484,9 @@
 		"DELETE /node-type-policies/policies/{policyId}": {
 			"status": "gap"
 		},
+		"GET /node-type-policies/scopes/{scopeId}/attachments": {
+			"status": "gap"
+		},
 		"PUT /node-type-policies/scopes/{scopeId}/attachments": {
 			"status": "gap"
 		},
@@ -506,6 +515,9 @@
 			"status": "gap"
 		},
 		"DELETE /credential-type-policies/policies/{policyId}": {
+			"status": "gap"
+		},
+		"GET /credential-type-policies/scopes/{scopeId}/attachments": {
 			"status": "gap"
 		},
 		"PUT /credential-type-policies/scopes/{scopeId}/attachments": {

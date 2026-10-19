@@ -83,6 +83,18 @@ describe('DataTableDetailsView', () => {
 	});
 
 	describe('Loading states', () => {
+		it('shows the loading layout on the first render when opening a data table', () => {
+			const pinia = createTestingPinia({ stubActions: false });
+			const dataTableStore = useDataTableStore();
+			vi.spyOn(dataTableStore, 'fetchOrFindDataTable').mockImplementation(
+				async () => await new Promise(() => {}),
+			);
+
+			const { getByTestId } = renderComponent({ pinia });
+
+			expect(getByTestId('data-table-details-loading')).toBeInTheDocument();
+		});
+
 		it('should show loading state initially', async () => {
 			const pinia = createTestingPinia({ stubActions: false });
 			const dataTableStore = useDataTableStore();

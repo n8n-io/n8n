@@ -315,22 +315,15 @@ export class InvoiceNinja implements INodeType {
 			async getCurrencies(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 
-				const statics = await invoiceNinjaApiRequestAllItems.call(this, 'data', 'GET', '/statics');
+				const { currencies }: { currencies: Array<{ id: number; name: string; code: string }> } =
+					await invoiceNinjaApiRequest.call(this, 'GET', '/statics');
 
-				Object.entries(statics)
-					.filter(([key]) => key === 'currencies')
-					.forEach(([key, value]) => {
-						if (key === 'currencies' && Array.isArray(value)) {
-							for (const currency of value) {
-								const currencyName = [currency.number, currency.code].filter((e) => e).join(' - ');
-								const currencyId = currency.id as string;
-								returnData.push({
-									name: currencyName,
-									value: currencyId,
-								});
-							}
-						}
+				for (const currency of currencies) {
+					returnData.push({
+						name: `${currency.name} (${currency.code})`,
+						value: currency.id,
 					});
+				}
 				return returnData;
 			},
 		},
@@ -994,13 +987,13 @@ export class InvoiceNinja implements INodeType {
 						if (additionalFields.bankIntegrationId) {
 							body.bank_integration_id = additionalFields.bankIntegrationId as number;
 						}
-						if (additionalFields.client) {
+						if (additionalFields.date) {
 							body.date = additionalFields.date as string;
 						}
 						if (additionalFields.currencyId) {
 							body.currency_id = additionalFields.currencyId as number;
 						}
-						if (additionalFields.email) {
+						if (additionalFields.description) {
 							body.description = additionalFields.description as string;
 						}
 						responseData = await invoiceNinjaApiRequest.call(

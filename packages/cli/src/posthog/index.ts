@@ -58,7 +58,8 @@ export class PostHogClient {
 
 	async init() {
 		const { enabled, posthogConfig } = this.globalConfig.diagnostics;
-		if (!enabled) {
+		// Eval instances must not draw a fresh flag rollout per instance; env overrides still apply.
+		if (!enabled || this.globalConfig.instanceAi.evalInstance) {
 			return;
 		}
 

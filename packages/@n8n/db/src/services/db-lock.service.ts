@@ -1,6 +1,5 @@
 import { DatabaseConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { DataSource, QueryFailedError } from '@n8n/typeorm';
 import type { EntityManager } from '@n8n/typeorm';
 import { OperationalError } from 'n8n-workflow';

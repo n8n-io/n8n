@@ -15,7 +15,10 @@ import { DateTime } from 'luxon';
 import { UnexpectedError } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { getDateRangesCommonTableExpressionQuery } from './insights-by-period-query.helper';
+import {
+	getDateRangesCommonTableExpressionQuery,
+	getDateRangesSelectQuery,
+} from './insights-by-period-query.helper';
 import { InsightsByPeriod } from './insights-by-period.entity';
 import type { PeriodUnit, TypeUnitNumber, ByTimeInsightType } from './insights-shared';
 import { PeriodUnitToNumber, TypeToNumber } from './insights-shared';
@@ -88,6 +91,16 @@ const aggregatedInsightsByTimeParser = z
 		timeSaved: optionalNumberLike,
 	})
 	.array();
+
+const dailyBillableExecutionsParser = z
+	.object({
+		periodStart: periodStartParser,
+		billable: z.union([z.number(), z.string()]).transform((value) => Number(value)),
+	})
+	.transform(({ periodStart, billable }) => ({ day: periodStart.slice(0, 10), billable }))
+	.array();
+
+const UTC_TIME_ZONE = { name: 'UTC', offsetMinutes: 0 };
 
 /**
  * Identifies a caller whose insights must be limited to the workflows they can
@@ -562,6 +575,49 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		const rawRows = await rawRowsQuery.getRawMany();
 
 		return aggregatedInsightsByTimeParser.parse(rawRows);
+	}
+
+	async getDailyBillableExecutions({
+		startDate,
+		endDate,
+	}: {
+		startDate: Date;
+		endDate: Date;
+	}): Promise<Array<{ day: string; billable: number }>> {
+		const firstDay = DateTime.fromJSDate(startDate, { zone: 'utc' }).startOf('day');
+		const cte = getDateRangesSelectQuery({
+			dbType,
+			prevStartDateTime: firstDay,
+			startDateTime: firstDay,
+			endDateTime: DateTime.fromJSDate(endDate, { zone: 'utc' }).plus({ days: 1 }).startOf('day'),
+		});
+		const periodStartExpr = this.getPeriodStartExpr('day', UTC_TIME_ZONE);
+
+		const rawRows = await this.createQueryBuilder('insights')
+			.addCommonTableExpression(cte, 'date_ranges')
+			.select([`${periodStartExpr} as "periodStart"`, 'SUM(value) AS "billable"'])
+			.innerJoin('date_ranges', 'date_ranges', '1=1')
+			.where(`${this.escapeField('periodStart')} >= date_ranges.start_date`)
+			.andWhere(`${this.escapeField('periodStart')} < date_ranges.end_date`)
+			.andWhere(`insights.type = ${TypeToNumber.billable}`)
+			.groupBy(periodStartExpr)
+			.orderBy(periodStartExpr, 'ASC')
+			.getRawMany();
+
+		return dailyBillableExecutionsParser.parse(rawRows);
+	}
+
+	async getFirstBillableDay(): Promise<string | null> {
+		const result = await this.createQueryBuilder('insights')
+			.select(`MIN(${this.escapeField('periodStart')})`, 'first')
+			.where(`insights.type = ${TypeToNumber.billable}`)
+			.getRawOne<{ first: Date | string | null }>();
+
+		if (!result?.first) {
+			return null;
+		}
+
+		return periodStartParser.parse(result.first).slice(0, 10);
 	}
 
 	async pruneOldData(maxAgeInDays: number): Promise<{ affected: number | null | undefined }> {

@@ -1189,11 +1189,11 @@ async function handleSetupTestTrigger(
 			appliedCredentialIds: appliedCredentialIdList(resumeData.credentials, preTestApply.applied),
 		},
 	);
-	// Re-derived from scratch, so it has to be partitioned again: this is the second path that
-	// builds the panel, and without it a trigger test mid-session puts back the cards state 1
-	// left out.
+	// Re-derived from scratch, so it has to be scoped and partitioned again: this is the second
+	// path that builds the panel, and without it a trigger test mid-session puts back the cards
+	// state 1 left out. The destination check below still sees every node.
 	const { pending: refreshedPending } = partitionSkippedSetupRequests(
-		refreshedRequests,
+		await filterToSetupScope(context, input, refreshedRequests),
 		input.workflowId,
 		getSkippedSetupSubjects(context),
 	);
@@ -1319,12 +1319,17 @@ async function handleSetupApply(
 		// Filter by needsAction to distinguish "render this card" from
 		// "this still requires user intervention". Settled requests are kept so
 		// a just-applied credential whose test failed stays reportable below —
-		// a bound credential is settled for routing even when its test fails.
-		const remainingRequests = await analyzeWorkflow(context, input.workflowId, undefined, {
-			includeSettled: true,
-			...preferNewCredentialOptions(input, resumeData.credentials),
-			appliedCredentialIds: appliedCredentialIdList(resumeData.credentials, applyResult.applied),
-		});
+		// a bound credential is settled for routing even when its test fails. Scoped like the
+		// card: a node it left out is neither still pending nor skipped by the user.
+		const remainingRequests = await filterToSetupScope(
+			context,
+			input,
+			await analyzeWorkflow(context, input.workflowId, undefined, {
+				includeSettled: true,
+				...preferNewCredentialOptions(input, resumeData.credentials),
+				appliedCredentialIds: appliedCredentialIdList(resumeData.credentials, applyResult.applied),
+			}),
+		);
 		const completedNodes = buildCompletedReport(
 			resumeData.credentials,
 			resumeData.nodeParameters,
@@ -1442,6 +1447,23 @@ async function resolveSetupScopeNodeNames(
 		});
 		return undefined;
 	}
+}
+
+/**
+ * Narrow requests to the build-bound setup scope. Every path that builds or reports the setup
+ * card goes through here, so a node the card left out cannot come back through a trigger test,
+ * the apply report, or a skip the user never made.
+ */
+async function filterToSetupScope(
+	context: InstanceAiContext,
+	input: Extract<Input, { action: 'setup' }>,
+	requests: SetupRequest[],
+): Promise<SetupRequest[]> {
+	if (input.includeAllNodes) return requests;
+	const scopeNodeNames = await resolveSetupScopeNodeNames(context, input.workflowId);
+	return scopeNodeNames
+		? requests.filter((request) => scopeNodeNames.includes(request.node.name))
+		: requests;
 }
 
 /**
@@ -1689,12 +1711,7 @@ async function handleSetup(
 
 		// Setup after a build covers only the nodes that build changed —
 		// pre-existing, unrelated nodes must not surface in the setup card.
-		const scopeNodeNames = input.includeAllNodes
-			? undefined
-			: await resolveSetupScopeNodeNames(context, input.workflowId);
-		const scopedRequests = scopeNodeNames
-			? allSetupRequests.filter((request) => scopeNodeNames.includes(request.node.name))
-			: allSetupRequests;
+		const scopedRequests = await filterToSetupScope(context, input, allSetupRequests);
 
 		// Two reasons a card stays out, applied in order: this build never touched the node, or
 		// the user declined it. Partitioning the scoped list keeps them apart in the report —
@@ -1774,11 +1791,9 @@ async function handleSetup(
 			// the user declined, and pre-existing nodes this build never touched. Both can hold at
 			// once, so neither branch may swallow the other. Named "out of scope" rather than
 			// "skipped" because in this file a skip is specifically a user decision.
-			const outOfScopeNodeNames = scopeNodeNames
-				? allSetupRequests
-						.map((request) => request.node.name)
-						.filter((name) => !scopeNodeNames.includes(name))
-				: [];
+			const outOfScopeNodeNames = allSetupRequests
+				.filter((request) => !scopedRequests.includes(request))
+				.map((request) => request.node.name);
 			const outOfScopeReason =
 				outOfScopeNodeNames.length > 0
 					? `Pre-existing node(s) ${outOfScopeNodeNames
@@ -1837,10 +1852,11 @@ async function handleSetup(
 		}
 		// Re-analyze rather than remembering what was suspended: the closure state doesn't
 		// survive a resume in another process, and a skip that silently fails to persist is
-		// the whole bug. Everything still needing setup is what the user just dismissed.
-		const dismissed = (await analyzeWorkflow(context, input.workflowId)).filter(
-			(request) => request.needsAction,
-		);
+		// the whole bug. Everything in scope still needing setup is what the user just
+		// dismissed; a node the card left out was never offered, so it is not a skip.
+		const dismissed = (
+			await filterToSetupScope(context, input, await analyzeWorkflow(context, input.workflowId))
+		).filter((request) => request.needsAction);
 		await rememberSkippedSetup(context, dismissed, input.workflowId);
 		return {
 			success: true,

@@ -5,6 +5,7 @@ import type {
 	AiPreferenceProjectDto,
 	AiPreferenceRequestDto,
 	AiPreferenceScope,
+	AiPreferenceSortOption,
 	AiPreferenceSource,
 	AiPreferencesAppliedPayload,
 } from '@n8n/api-types';
@@ -184,7 +185,7 @@ export class AiPreferenceService {
 	/** The instance rows, the caller's rows, the rows of readable projects and, for admins, every user's rows. */
 	async list(
 		user: User,
-		page: { skip: number; take: number; ids?: string[] },
+		page: { skip: number; take: number; ids?: string[]; sortBy?: AiPreferenceSortOption },
 	): Promise<AiPreferenceListDto> {
 		const access = this.projectAccess(user);
 		const [rows, count] = await this.aiPreferenceRepository.findPageVisible({
@@ -192,6 +193,7 @@ export class AiPreferenceService {
 			skip: page.skip,
 			take: page.take,
 			...(page.ids ? { ids: page.ids } : {}),
+			...(page.sortBy ? { sortBy: page.sortBy } : {}),
 		});
 
 		return {
@@ -235,6 +237,7 @@ export class AiPreferenceService {
 		);
 		row.project = target.project;
 		row.user = target.user;
+		row.createdBy = user;
 
 		return this.toDto(row, await this.scopesFor(user, row, access));
 	}
@@ -556,6 +559,14 @@ export class AiPreferenceService {
 				: null,
 			projectId: row.projectId,
 			source: row.source,
+			createdBy: row.createdBy
+				? {
+						id: row.createdBy.id,
+						email: row.createdBy.email,
+						firstName: row.createdBy.firstName,
+						lastName: row.createdBy.lastName,
+					}
+				: null,
 			project: row.project
 				? {
 						id: row.project.id,

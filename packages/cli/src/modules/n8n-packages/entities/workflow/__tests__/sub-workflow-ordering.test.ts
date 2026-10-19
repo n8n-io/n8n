@@ -8,7 +8,7 @@ const wf = (sourceWorkflowId: string) => ({ sourceWorkflowId });
 const requiredBy = (id: string, ...parents: string[]): PackageWorkflowRequirement => ({
 	id,
 	name: id,
-	usedByWorkflows: parents,
+	usedBy: parents.map((id) => ({ kind: 'workflow', id })),
 });
 
 const idsOf = (workflows: Array<{ sourceWorkflowId: string }>) =>
@@ -26,7 +26,7 @@ describe('orderBySubWorkflowDependencies', () => {
 		// CHEDDAR (listed first) calls BRIE.
 		const ordered = orderBySubWorkflowDependencies(
 			[wf('CHEDDAR'), wf('BRIE')],
-			[requiredBy('BRIE', 'CHEDDAR')],
+			[requiredBy('BRIE', 'CHEDDAR'), { id: 'CHEDDAR', usedBy: [{ kind: 'agent', id: 'BRIE' }] }],
 		);
 
 		expect(idsOf(ordered)).toEqual(['BRIE', 'CHEDDAR']);

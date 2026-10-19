@@ -1,3 +1,4 @@
+import { isOpenAiCustomEndpoint } from '@n8n/ai-utilities/model-discovery';
 import { EventService, CredentialsFinderService } from '@n8n/backend-services';
 import { isDeepStrictEqual } from 'node:util';
 
@@ -54,6 +55,7 @@ import { UserService } from '@/services/user.service';
 
 export { INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY, INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY };
 
+import { withModelName } from './model-config-name';
 import {
 	N8N_SANDBOX_SERVICE_URL_REQUIRED_MESSAGE,
 	normalizeSandboxProvider,
@@ -1284,16 +1286,6 @@ export class InstanceAiSettingsService {
 		return this.config.browserUseEnabled;
 	}
 
-	/** Whether this instance is in the activation-capped trial cohort. */
-	isActivationCapped(): boolean {
-		return this.config.activationCapped;
-	}
-
-	/** How many assistant messages must precede the activation lock. `0` means activation alone. */
-	getActivationLockMessageThreshold(): number {
-		return this.config.activationLockMessageThreshold;
-	}
-
 	/** Whether workflow building can use the required sandbox workspace. */
 	getSandboxStatus(): InstanceAiSandboxStatus {
 		const provider = this.sandboxSettingsService.getProvider();
@@ -1357,6 +1349,11 @@ export class InstanceAiSettingsService {
 		return this.config.model.trim();
 	}
 
+	/** Model name for the Observer and Reflector memory tasks; empty when unset. */
+	getConfiguredMemoryModelName(): string {
+		return this.config.memoryModel.trim();
+	}
+
 	/** Resolve just the model name (e.g. 'claude-sonnet-4-20250514') for proxy routing. */
 	resolveModelName(user: User): string {
 		const prefs = this.readUserPreferences(user);
@@ -1403,18 +1400,7 @@ export class InstanceAiSettingsService {
 	async resolveModelConfigForVerification(user: User, modelName?: string): Promise<ModelConfig> {
 		const config = await this.resolveModelConfig(user);
 		if (!modelName) return config;
-		if (typeof config === 'string') {
-			const provider = config.includes('/') ? config.slice(0, config.indexOf('/')) : 'custom';
-			return `${provider}/${modelName}`;
-		}
-		if ('id' in config && typeof config.id === 'string' && 'url' in config) {
-			const provider = config.id.includes('/')
-				? config.id.slice(0, config.id.indexOf('/'))
-				: 'custom';
-			const id: `${string}/${string}` = `${provider}/${modelName}`;
-			return { ...config, id };
-		}
-		return config;
+		return withModelName(config, modelName) ?? config;
 	}
 
 	buildModelConfigForConnection(
@@ -1478,8 +1464,8 @@ export class InstanceAiSettingsService {
 		data: Record<string, unknown>,
 		modelName: string,
 	): ModelConfig | null {
-		const provider = CREDENTIAL_TO_MODEL_PROVIDER[credentialType];
-		if (!provider) {
+		const credentialProvider = CREDENTIAL_TO_MODEL_PROVIDER[credentialType];
+		if (!credentialProvider) {
 			return null;
 		}
 
@@ -1487,10 +1473,22 @@ export class InstanceAiSettingsService {
 		const urlField = URL_FIELD_MAP[credentialType];
 		const rawUrl = urlField ? data[urlField] : undefined;
 		const baseUrl = typeof rawUrl === 'string' ? rawUrl : '';
+		// The UI saves its self-hosted option as an OpenAI credential with a custom URL.
+		// These servers speak /chat/completions, so build them like an env `custom/` model.
+		const provider =
+			credentialType === 'openAiApi' && baseUrl && isOpenAiCustomEndpoint(baseUrl)
+				? 'custom'
+				: credentialProvider;
 		const id: `${string}/${string}` = `${provider}/${modelName}`;
 		if (!baseUrl && !apiKey) return null;
 		const headers = modelCredentialHeaders(credentialType, data);
-		return { id, url: baseUrl, ...(apiKey ? { apiKey } : {}), ...(headers ? { headers } : {}) };
+		return {
+			id,
+			url: baseUrl,
+			...(apiKey ? { apiKey } : {}),
+			...(headers ? { headers } : {}),
+			...this.customModelOptionsFor(id),
+		};
 	}
 
 	// ── Private helpers ───────────────────────────────────────────────────

@@ -19,6 +19,11 @@ type NewPolicyScope = {
 	updatedBy: string;
 };
 
+export type ProjectPolicyScope = TypeAvailabilityPolicyScope & { projectId: string };
+
+const isProjectScope = (scope: TypeAvailabilityPolicyScope): scope is ProjectPolicyScope =>
+	scope.projectId !== null;
+
 @Service()
 export class TypeAvailabilityPolicyScopeRepository extends BaseRepository<TypeAvailabilityPolicyScope> {
 	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
@@ -145,6 +150,15 @@ export class TypeAvailabilityPolicyScopeRepository extends BaseRepository<TypeAv
 		return keys;
 	}
 
+	async findProjectScopes(kind: string, ctx: OperationContext): Promise<ProjectPolicyScope[]> {
+		const scopes = await this.managerFor(ctx).findBy(TypeAvailabilityPolicyScope, {
+			kind,
+			projectId: Not(IsNull()),
+		});
+
+		return scopes.filter(isProjectScope);
+	}
+
 	/**
 	 * Whether any of the named scopes is a project scope (`projectId IS NOT NULL`). A policy
 	 * edit uses this to learn whether its document is attached to a project, where `delegate`
@@ -173,6 +187,8 @@ export class TypeAvailabilityPolicyScopeRepository extends BaseRepository<TypeAv
 	 *
 	 * Joins the caller's transaction when `ctx` carries one, so the read-back lock is held
 	 * for the rest of the caller's work; opens one otherwise, since the lock needs it.
+	 *
+	 * The new row starts at version 1, which is the first write's own bump.
 	 */
 	async createScopeIfAbsent(
 		input: NewPolicyScope,
@@ -228,6 +244,9 @@ export class TypeAvailabilityPolicyScopeRepository extends BaseRepository<TypeAv
 	 * Call this under the same `ctx` as whatever changed the scope's *effective* policy —
 	 * an attachment added, removed or reordered, or an attached policy's content edited —
 	 * so the version and the change commit together.
+	 *
+	 * One write moves the version once. Do not call this in a write that also ran
+	 * `createScopeIfAbsent` or `updateDefaultAction`: each of those sets the version itself.
 	 */
 	async bumpVersion(id: string, ctx: OperationContext): Promise<void> {
 		await this.managerFor(ctx).increment(TypeAvailabilityPolicyScope, { id }, 'version', 1);

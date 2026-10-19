@@ -39,6 +39,7 @@ export interface ScheduledTask {
 	status: ScheduledTaskStatus;
 	attempts: number;
 	maxAttempts: number;
+	timeoutSeconds: number;
 }
 
 /**

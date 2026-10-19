@@ -1,6 +1,12 @@
 import type { AgentSessionOrigin, AgentSessionQueryFilters } from '@n8n/api-types';
 import type { SerializableAgentState } from '@n8n/agents';
-import { BaseRepository, TransactionRunner, type OperationContext } from '@n8n/db';
+import {
+	BaseRepository,
+	escapeLike,
+	LIKE_ESCAPE_CLAUSE,
+	TransactionRunner,
+	type OperationContext,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, IsNull, Not, type EntityManager, type SelectQueryBuilder } from '@n8n/typeorm';
 import chunk from 'lodash/chunk';
@@ -33,6 +39,27 @@ export interface AgentExecutionThreadMetadata {
 export interface AgentExecutionThreadPage {
 	threads: AgentExecutionThread[];
 	nextCursor: string | null;
+}
+
+/** Position of the last thread on a keyset page: `updatedAt`, then `id` breaks ties. */
+export interface AgentExecutionThreadKeyset {
+	updatedAt: Date;
+	id: string;
+}
+
+export interface AgentExecutionThreadKeysetPage {
+	threads: AgentExecutionThread[];
+	hasMore: boolean;
+}
+
+function ownedSessionWhere(agentId: string, ownerId: string, threadId: string) {
+	return {
+		id: threadId,
+		agentId,
+		ownerId,
+		accessScope: 'user' as const,
+		parentThreadId: IsNull(),
+	};
 }
 
 interface AgentSessionDeletionRefs {
@@ -169,17 +196,19 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 	 * Selects only the columns the cross-agent thread list renders.
 	 * `activeVersion.schema` loads in full — it is read for the published
 	 * personalisation — but the draft schema, tools and skills never load.
+	 *
+	 * `options.search` matches the title case-insensitively. A thread without
+	 * a title never matches: `LOWER(NULL) LIKE ...` is `NULL`, not true.
 	 */
 	async findN8nChatThreadsForOwner(
 		userId: string,
 		agentIds: string[],
-		limit: number,
-		cursor?: string,
+		options: { limit: number; cursor?: string; search?: string },
 	): Promise<AgentExecutionThreadPage> {
-		const query = this.n8nChatThreadsQuery(userId, agentIds);
+		const query = this.n8nChatThreadsQuery(userId, agentIds, options.search);
 		if (!query) return { threads: [], nextCursor: null };
 
-		return await this.paginateByUpdatedAt(query, limit, cursor);
+		return await this.paginateByUpdatedAt(query, options.limit, options.cursor);
 	}
 
 	/**
@@ -204,6 +233,7 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 	private n8nChatThreadsQuery(
 		userId: string,
 		agentIds: string[],
+		search?: string,
 	): SelectQueryBuilder<AgentExecutionThread> | null {
 		if (agentIds.length === 0) return null;
 
@@ -223,6 +253,11 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 			.where('thread.ownerId = :userId', { userId })
 			.andWhere("thread.accessScope = 'user'")
 			.andWhere('thread.agentId IN (:...agentIds)', { agentIds });
+		if (search) {
+			query.andWhere(`LOWER(thread.title) LIKE :search ${LIKE_ESCAPE_CLAUSE}`, {
+				search: `%${escapeLike(search.toLowerCase())}%`,
+			});
+		}
 		// ponytail: the origin rule re-runs a correlated first-source subquery per
 		// thread row; fine for one user's threads, add a stored thread origin
 		// column if profiling shows it.
@@ -388,6 +423,125 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 				sessionOrigin: origin,
 			});
 		}
+	}
+
+	/** Top-level private sessions of one user with one agent, newest first. */
+	async findOwnedByAgent(
+		agentId: string,
+		ownerId: string,
+		options: { limit?: number } = {},
+	): Promise<AgentExecutionThread[]> {
+		return await this.find({
+			where: { agentId, ownerId, accessScope: 'user', parentThreadId: IsNull() },
+			order: { updatedAt: 'DESC', id: 'DESC' },
+			...(options.limit ? { take: options.limit } : {}),
+		});
+	}
+
+	/** One top-level private session of a user with an agent. */
+	async findOwnedById(
+		agentId: string,
+		ownerId: string,
+		threadId: string,
+	): Promise<AgentExecutionThread | null> {
+		return await this.findOneBy(ownedSessionWhere(agentId, ownerId, threadId));
+	}
+
+	/**
+	 * Rename a top-level private session of a user with an agent. Returns false
+	 * when no such session exists.
+	 */
+	async renameOwned(
+		agentId: string,
+		ownerId: string,
+		threadId: string,
+		title: string,
+		ctx: OperationContext,
+	): Promise<boolean> {
+		const result = await this.managerFor(ctx).update(
+			AgentExecutionThread,
+			ownedSessionWhere(agentId, ownerId, threadId),
+			{ title },
+		);
+		return result.affected === 1;
+	}
+
+	/**
+	 * Move a top-level private session of a user with an agent to another
+	 * project. Returns false when no such session exists. The caller must check
+	 * that the user can use the target project.
+	 */
+	async moveOwned(
+		agentId: string,
+		ownerId: string,
+		threadId: string,
+		projectId: string,
+		ctx: OperationContext,
+	): Promise<boolean> {
+		const result = await this.managerFor(ctx).update(
+			AgentExecutionThread,
+			ownedSessionWhere(agentId, ownerId, threadId),
+			{ projectId },
+		);
+		return result.affected === 1;
+	}
+
+	/**
+	 * One page of the top-level private sessions of a user with an agent,
+	 * newest first. `before` is the last session of the previous page. The
+	 * `id` breaks ties between sessions with the same `updatedAt`, so no
+	 * session is skipped or repeated across pages.
+	 */
+	async findOwnedHistoryPage(
+		agentId: string,
+		ownerId: string,
+		limit: number,
+		search?: string,
+		before?: AgentExecutionThreadKeyset,
+	): Promise<AgentExecutionThreadKeysetPage> {
+		const updatedAt = this.updatedAtExpression();
+		const query = this.createQueryBuilder('thread')
+			.where('thread.agentId = :agentId', { agentId })
+			.andWhere('thread.ownerId = :ownerId', { ownerId })
+			.andWhere("thread.accessScope = 'user'")
+			.andWhere('thread.parentThreadId IS NULL');
+		const term = search?.trim().toLowerCase();
+		if (term) {
+			query.andWhere(`LOWER(thread.title) LIKE :search ${LIKE_ESCAPE_CLAUSE}`, {
+				search: `%${escapeLike(term)}%`,
+			});
+		}
+		if (before) {
+			query.andWhere(
+				`(${updatedAt} < :beforeAt OR (${updatedAt} = :beforeAt AND thread.id < :beforeId))`,
+				{ beforeAt: before.updatedAt, beforeId: before.id },
+			);
+		}
+		// Order by the same expression as the keyset, so ties stored in another format stay together.
+		const threads = await query
+			.orderBy(updatedAt, 'DESC')
+			.addOrderBy('thread.id', 'DESC')
+			.limit(limit + 1)
+			.getMany();
+		const hasMore = threads.length > limit;
+		if (hasMore) threads.pop();
+		return { threads, hasMore };
+	}
+
+	/** Sessions of an agent last updated before `cutoff`, oldest first, for pruning. */
+	async findByAgentUpdatedBefore(
+		agentId: string,
+		cutoff: Date,
+		limit: number,
+	): Promise<AgentExecutionThread[]> {
+		const updatedAt = this.updatedAtExpression();
+		return await this.createQueryBuilder('thread')
+			.where('thread.agentId = :agentId', { agentId })
+			.andWhere(`${updatedAt} < :cutoff`, { cutoff })
+			.orderBy(updatedAt, 'ASC')
+			.addOrderBy('thread.id', 'ASC')
+			.limit(limit)
+			.getMany();
 	}
 
 	async findByParentThreadId(

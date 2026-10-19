@@ -69,7 +69,6 @@ describe('Agent conversation state', () => {
 				projectId: project.id,
 				integrations: [],
 				tools: {},
-				skills: {},
 			}),
 		);
 	});

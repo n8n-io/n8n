@@ -11,6 +11,7 @@ import {
 import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
+import { withExecutionIdentity } from '../execution-identity';
 import type { OtelSettingsService } from '../otel-settings.service';
 import type { OtelConfig } from '../otel.config';
 import { ATTR } from '../otel.constants';
@@ -53,6 +54,8 @@ const enabledSettings: OtelConfig = {
 	tracesSampleRate: 1,
 	startupConnectivityTimeoutMs: 2_000,
 	includeNodeSpans: true,
+	emitWorkflowStartSpan: false,
+	emitNodeStartSpan: false,
 	injectOutbound: true,
 	productionExecutionsOnly: true,
 };
@@ -191,6 +194,18 @@ describe('OtelService tracer provider', () => {
 			expect(headers.traceparent).toMatch(traceparentPattern);
 			expect(activeContextInside(markedContext)).toBe(markedContext);
 			expect(logger.info).not.toHaveBeenCalled();
+		});
+
+		it('adds the execution identity of an n8n context to exported spans', async () => {
+			await service.init();
+
+			const identity = { [ATTR.EXECUTION_ID]: 'exec-1', [ATTR.WORKFLOW_ID]: 'wf-1' };
+			service
+				.getTracer('n8n-workflow')
+				.startSpan('node.execute', {}, withExecutionIdentity(ROOT_CONTEXT, identity))
+				.end();
+
+			expect(exportedSpans[0].attributes).toMatchObject(identity);
 		});
 
 		it('swaps the registered provider on restart and keeps the context manager', async () => {

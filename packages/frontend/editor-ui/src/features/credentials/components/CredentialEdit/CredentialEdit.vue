@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useCredentialDescriptionsExperiment } from '@/experiments/credentialDescriptions/useCredentialDescriptionsExperiment';
+import { useAgentAssistantCredentialHelp } from '@/features/agents/composables/useAgentAssistantCredentialHelp';
 import { TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE } from '@/features/credentials/templatedAuth.utils';
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 
@@ -318,10 +319,9 @@ const hideAskAssistant = computed<boolean>(() => {
 	return modalOptions.value?.hideAskAssistant === true;
 });
 
-// The host's Instance AI credential-help behavior, stashed in the modal state by
-// whoever opened the modal (the editor capability or the credentials list).
+const { isAgentUi, getCredentialHelp } = useAgentAssistantCredentialHelp();
 const instanceAiCredentialHelp = computed(() => {
-	return modalOptions.value?.instanceAiCredentialHelp;
+	return isAgentUi.value ? getCredentialHelp() : modalOptions.value?.instanceAiCredentialHelp;
 });
 
 const closeOnSave = computed<boolean>(() => {
@@ -459,6 +459,7 @@ watch(showAiGatewayErrorNudge, (isVisible) => {
 
 onMounted(async () => {
 	loading.value = !!modalOptions.value?.createCredential;
+	if (modalOptions.value?.initialTab) activeTab.value = modalOptions.value.initialTab;
 	void aiGateway.fetchConfig();
 	void aiGateway.fetchWallet();
 
@@ -1669,7 +1670,7 @@ const { width } = useElementSize(credNameRef);
 									(!isNewCredential && !hasUnsavedChanges && !isTesting) ||
 									!requiredPropertiesFilled
 								"
-								:variant="hasUnsavedChanges || isTesting ? 'solid' : 'subtle'"
+								:variant="hasUnsavedChanges || isTesting ? 'solid' : 'outline'"
 								:is-saving="isSaving || isTesting"
 								:saved="!isNewCredential && isSaved && !hasUnsavedChanges && !isTesting"
 								:saving-label="
@@ -1681,7 +1682,7 @@ const { width } = useElementSize(credNameRef);
 								@click="saveCredential"
 							/>
 							<N8nIconButton
-								variant="subtle"
+								variant="outline"
 								v-if="
 									currentCredential &&
 									!modalOptions?.destination &&
@@ -1737,6 +1738,8 @@ const { width } = useElementSize(credNameRef);
 								:credential-properties="credentialProperties"
 								:credential-data="credentialData"
 								:credential-id="credentialId"
+								:n8n-project-id="homeProject?.id"
+								:is-instance-credential="isInstanceCredential"
 								:is-managed="isEditingManagedCredential"
 								:show-validation-warning="showValidationWarning"
 								:auth-error="authError"

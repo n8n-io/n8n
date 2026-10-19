@@ -3,7 +3,7 @@ import { Cipher } from 'n8n-core';
 import type { IDataObject, IRunExecutionData } from 'n8n-workflow';
 import { toSecureArtifacts } from 'n8n-workflow';
 
-import { RuntimeCredentialProvider } from '@/services/runtime-credential-proxy.service';
+import { RuntimeCredentialProvider } from '@n8n/backend-services';
 
 @Service()
 export class RuntimeCredentialsAccessService implements RuntimeCredentialProvider {

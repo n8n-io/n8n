@@ -33,7 +33,7 @@ async function handleClick() {
 <template>
 	<N8nButton
 		v-if="store.isTreatment && workflowId !== null"
-		variant="subtle"
+		variant="outline"
 		size="small"
 		:label="i18n.baseText('experiments.openWorkflowInAssistant.manualEditor')"
 		data-test-id="instance-ai-manual-editor-button"

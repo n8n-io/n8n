@@ -68,7 +68,7 @@ describe('WorkflowDependencyResolver', () => {
 		const requirements = await resolver.resolve({
 			user,
 			workflowIds: ['workflow-a'],
-			workflowVersionPolicy: 'latest',
+			versionPolicy: 'latest',
 		});
 
 		expect(requirements).toEqual([
@@ -86,7 +86,7 @@ describe('WorkflowDependencyResolver', () => {
 		const requirements = await resolver.resolve({
 			user,
 			workflowIds: ['workflow-a'],
-			workflowVersionPolicy: 'latest',
+			versionPolicy: 'latest',
 		});
 
 		expect(requirements).toEqual([
@@ -102,7 +102,7 @@ describe('WorkflowDependencyResolver', () => {
 		const requirements = await resolver.resolve({
 			user,
 			workflowIds: ['workflow-a'],
-			workflowVersionPolicy: 'latest',
+			versionPolicy: 'latest',
 		});
 
 		expect(requirements).toEqual([
@@ -130,7 +130,7 @@ describe('WorkflowDependencyResolver', () => {
 		const requirements = await resolver.resolve({
 			user,
 			workflowIds: ['workflow-a'],
-			workflowVersionPolicy: 'latest',
+			versionPolicy: 'latest',
 		});
 
 		expect(requirements).toEqual([
@@ -177,7 +177,7 @@ describe('WorkflowDependencyResolver', () => {
 				user,
 				workflowIds: ['workflow-a'],
 				traversal: 'direct',
-				workflowVersionPolicy: 'latest',
+				versionPolicy: 'latest',
 			});
 
 			expect(requirements).toEqual([
@@ -196,7 +196,7 @@ describe('WorkflowDependencyResolver', () => {
 				user,
 				workflowIds: ['workflow-a', 'workflow-b'],
 				traversal: 'direct',
-				workflowVersionPolicy: 'latest',
+				versionPolicy: 'latest',
 			});
 
 			expect(requirements).toEqual([
@@ -216,7 +216,7 @@ describe('WorkflowDependencyResolver', () => {
 			user,
 			workflowIds: ['workflow-a'],
 			traversal: 'direct',
-			workflowVersionPolicy: 'published-strict',
+			versionPolicy: 'published-strict',
 		});
 
 		expect(requirements).toEqual([

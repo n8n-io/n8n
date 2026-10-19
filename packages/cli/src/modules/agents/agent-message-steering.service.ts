@@ -14,16 +14,16 @@ import { AgentExecutionRepository } from './repositories/agent-execution.reposit
 import { AgentExecutionThreadRepository } from './repositories/agent-execution-thread.repository';
 import { AgentMessageQueueRepository } from './repositories/agent-message-queue.repository';
 import { AgentMessageRepository } from './repositories/agent-message.repository';
-import { checkpointExecutionId } from './types/agent-queued-message';
+import { acceptsSteering, checkpointExecutionId } from './types/agent-queued-message';
 import type { SteeringConsumption } from './types/agent-steering';
-import { draftChatMemoryResourceId } from './utils/agent-memory-scope';
 
 interface SteeringContext {
 	agentId: string;
 	projectId: string;
 	threadId: string;
 	executionId: string;
-	userId: string;
+	/** The running execution's own memory resource id; queued items under another one are skipped. */
+	resourceId: string;
 }
 
 @Service()
@@ -90,14 +90,20 @@ export class AgentMessageSteeringService {
 		signal: AbortSignal,
 	): Promise<SteeringConsumption> {
 		signal.throwIfAborted();
+		// This runs on every input boundary of a streaming chat run, and most have nothing to
+		// steer. Skip the locked transaction only when the unlocked reads show a running,
+		// steerable execution with nothing queued: a stop, cancel or lost ownership still
+		// reaches the locked checks below.
+		if (boundary.canContinue && !boundary.completing && (await this.isIdleSteerableRun(context))) {
+			return { messages: [], events: [], stopped: false };
+		}
 		const result = await this.executionService.withTimelineWritesPaused(
 			context.executionId,
 			async () => {
-				const timeline = structuredClone(recorder.getMessageRecord().timeline);
 				try {
 					const consumed = await this.txRunner.run(
 						{},
-						async (ctx) => await this.consumeLocked(context, boundary, timeline, signal, ctx),
+						async (ctx) => await this.consumeLocked(context, boundary, recorder, signal, ctx),
 					);
 					recorder.recordInputs(inputMarkers(consumed));
 					return consumed;
@@ -115,14 +121,24 @@ export class AgentMessageSteeringService {
 		return result;
 	}
 
+	private async isIdleSteerableRun({ threadId, executionId }: SteeringContext): Promise<boolean> {
+		const execution = await this.executions.findExecution(executionId);
+		return (
+			execution?.threadId === threadId &&
+			execution.status === 'running' &&
+			execution.acceptsSteering &&
+			!(await this.queue.hasSteeringFor(threadId, executionId))
+		);
+	}
+
 	private async consumeLocked(
 		context: SteeringContext,
 		boundary: AgentInputBoundary,
-		timeline: TimelineEvent[],
+		recorder: ExecutionRecorder,
 		signal: AbortSignal,
 		ctx: OperationContext,
 	): Promise<SteeringConsumption> {
-		const { threadId, executionId, userId } = context;
+		const { threadId, executionId, resourceId } = context;
 		const thread = await this.threads.lockById(threadId, ctx);
 		const execution = await this.executions.findExecution(executionId, ctx);
 		signal.throwIfAborted();
@@ -134,12 +150,15 @@ export class AgentMessageSteeringService {
 			await this.release(threadId, executionId, ctx);
 			return { messages: [], events: [], stopped: false };
 		}
-		const items = await this.queue.findSteering(threadId, executionId, ctx);
+		// Skip (don't link) a queued item saved under a different resource id than this
+		// execution's own — it cannot belong to this run's memory.
+		const items = (await this.queue.findSteering(threadId, executionId, ctx)).filter(
+			(item) => item.message.resourceId === resourceId,
+		);
 		if (items.length === 0) {
 			if (boundary.completing) await this.executions.closeSteering(threadId, executionId, ctx);
 			return { messages: [], events: [], stopped: false };
 		}
-		const resourceId = draftChatMemoryResourceId(userId);
 		const consumed = this.prepareInput(items, executionId, boundary.lastCreatedAt);
 		for (const { messageId } of items) {
 			await this.messages.linkExecutionInput(executionId, messageId, { threadId, resourceId }, ctx);
@@ -149,6 +168,9 @@ export class AgentMessageSteeringService {
 			ctx,
 		);
 		signal.throwIfAborted();
+		// Clone only now that there is something to merge — this runs on every input
+		// boundary of a streaming run, and most have no steered input to add.
+		const timeline = structuredClone(recorder.getMessageRecord().timeline);
 		if (
 			!(await this.executions.updateTimelineIfRunning(
 				executionId,
@@ -176,8 +198,8 @@ export class AgentMessageSteeringService {
 		const messages: AgentDbMessage[] = [];
 		const events: SteeringConsumption['events'] = [];
 		for (const item of items) {
-			if (item.payload.kind !== 'preview')
-				throw new UnexpectedError('Only Preview input can be steered');
+			if (!acceptsSteering(item.payload.kind))
+				throw new UnexpectedError('Only chat input can be steered');
 			const message: AgentDbMessage = {
 				...(item.message.modelContent ?? item.message.content),
 				id: item.messageId,

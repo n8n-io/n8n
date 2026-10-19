@@ -12,7 +12,7 @@ import { test, expect } from '../../../../../fixtures/base';
 test.describe(
 	'Canvas Actions',
 	{
-		annotation: [{ type: 'owner', description: 'Adore' }],
+		annotation: [{ type: 'owner', description: 'Catalysts' }],
 	},
 	() => {
 		test.beforeEach(async ({ n8n }) => {
