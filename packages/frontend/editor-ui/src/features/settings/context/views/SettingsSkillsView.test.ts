@@ -575,6 +575,53 @@ describe('SettingsSkillsView', () => {
 			expect(skillsStore.fetchSkill).toHaveBeenLastCalledWith('s2');
 		});
 
+		it('ignores a slow answer for a skill that the URL no longer names', async () => {
+			route.query = { skillId: 's1' };
+			let resolveFirst: (value: SkillDetail) => void = () => {};
+			skillsStore.fetchSkill.mockImplementation(async (id: string) =>
+				id === 's1'
+					? await new Promise<SkillDetail>((resolve) => {
+							resolveFirst = resolve;
+						})
+					: detail({ id }),
+			);
+			renderView();
+			await waitFor(() => expect(skillsStore.fetchSkill).toHaveBeenCalledWith('s1'));
+
+			route.query = { skillId: 's2' };
+			await waitFor(() => expect(lastModalData().skillId).toBe('s2'));
+
+			resolveFirst(detail({ id: 's1' }));
+			await new Promise(process.nextTick);
+
+			expect(uiStore.openModalWithData).toHaveBeenCalledTimes(1);
+			expect(lastModalData().skillId).toBe('s2');
+			expect(route.query).toEqual({ skillId: 's2' });
+			expect(trackMock).not.toHaveBeenCalledWith(
+				TELEMETRY_EVENT.CONTEXT.USER_OPENED_SKILL,
+				expect.objectContaining({ skill_id: 's1' }),
+			);
+		});
+
+		it('does not open the skill after the user leaves the page', async () => {
+			route.query = { skillId: 's1' };
+			let resolveFetch: (value: SkillDetail) => void = () => {};
+			skillsStore.fetchSkill.mockImplementation(
+				async () =>
+					await new Promise<SkillDetail>((resolve) => {
+						resolveFetch = resolve;
+					}),
+			);
+			const { unmount } = renderView();
+			await waitFor(() => expect(skillsStore.fetchSkill).toHaveBeenCalledWith('s1'));
+
+			unmount();
+			resolveFetch(detail({ id: 's1' }));
+			await new Promise(process.nextTick);
+
+			expect(uiStore.openModalWithData).not.toHaveBeenCalled();
+		});
+
 		it('shows the list with a message when the linked skill is missing or not visible', async () => {
 			route.query = { skillId: 'ghost' };
 			skillsStore.fetchSkill.mockRejectedValue(
@@ -608,14 +655,17 @@ describe('SettingsSkillsView', () => {
 			expect(route.query).toEqual({});
 		});
 
-		it('starts a new skill for ?create=true', async () => {
-			route.query = { create: 'true' };
+		it('starts a new skill for ?create=true and takes the link out of the URL', async () => {
+			route.query = { create: 'true', tab: 'x' };
 
 			renderView();
 			await waitFor(() => expect(uiStore.openModalWithData).toHaveBeenCalled());
 
 			expect(lastModalData().skillId).toBeUndefined();
 			expect(lastModalData().scopeOptions).not.toHaveLength(0);
+			// A refresh while the modal is open does not start another skill.
+			await waitFor(() => expect(route.query).toEqual({ tab: 'x' }));
+			expect(uiStore.openModalWithData).toHaveBeenCalledTimes(1);
 		});
 	});
 

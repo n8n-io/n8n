@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, nextTick, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useDebounceFn } from '@vueuse/core';
 import type {
@@ -311,11 +311,23 @@ function isSkillNotFoundError(error: unknown): boolean {
 	return error instanceof ResponseError && error.httpStatusCode === 404;
 }
 
+/**
+ * Counts the requests to open a skill. Only the latest one may open the modal: a slow
+ * answer for a skill that the user has left must not replace the current one.
+ */
+let openRequest = 0;
+
+function cancelPendingOpen() {
+	openRequest++;
+}
+
 async function openEditModal(item: Pick<SkillListItem, 'id'>) {
+	const request = ++openRequest;
 	let detail: SkillDetail;
 	try {
 		detail = await skillsStore.fetchSkill(item.id);
 	} catch (error) {
+		if (request !== openRequest) return;
 		// A link to a skill that is not there leaves the list, not a broken modal.
 		if (skillIdInUrl() === item.id) await setSkillIdInUrl(null);
 		if (isSkillNotFoundError(error)) {
@@ -328,6 +340,7 @@ async function openEditModal(item: Pick<SkillListItem, 'id'>) {
 		}
 		return;
 	}
+	if (request !== openRequest) return;
 	telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_OPENED_SKILL, {
 		skill_id: detail.id,
 		scope: detail.scope,
@@ -372,6 +385,8 @@ watch(
 	() => route.query.skillId,
 	async () => {
 		if (route.name !== VIEWS.SETTINGS_CONTEXT_SKILLS) return;
+		// The URL now names another skill, or none, so a pending open is out of date.
+		cancelPendingOpen();
 		const skillId = skillIdInUrl();
 		if (skillId === openSkillId.value) return;
 		if (isSkillModalOpen.value) {
@@ -458,8 +473,13 @@ onMounted(async () => {
 		await openEditModal({ id: skillId });
 	} else if (route.query.create === 'true') {
 		openCreateModal();
+		// The link is used once, so a refresh does not start another skill.
+		await setSkillIdInUrl(null);
 	}
 });
+
+// The modal is global, so a late answer must not open it on the next page.
+onBeforeUnmount(cancelPendingOpen);
 </script>
 
 <template>
