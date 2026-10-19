@@ -287,6 +287,10 @@ function createBuilderDelegate(
 			await store.delete(runId);
 		},
 
+		getBuilderTools: () => [],
+		getRuntimeSkills: () => [],
+		getBuilderSessionContext: async () => await Promise.resolve(''),
+
 		resolveAgentName: async () => await Promise.resolve(undefined),
 	};
 }

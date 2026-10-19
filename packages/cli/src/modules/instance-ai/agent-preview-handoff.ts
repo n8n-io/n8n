@@ -29,10 +29,10 @@ function escapeAgentPreviewContextDelimiters(value: string): string {
  * Resolve an agent-preview handoff reference into an LLM-facing context block.
  * The block is a reference only — it does NOT embed the transcript. The
  * orchestrator reads the transcript on demand via the `get-session` tool, and
- * only calls `agent_builder_build_agent` when the user explicitly asks to edit the agent.
+ * only changes the agent when the user explicitly asks to edit it.
  * Ownership is enforced by `getThreadDetail`.
- * On success, callers must bind `target` before streaming so `agent_builder_build_agent`
- * edits the shared agent. On throw, do not bind.
+ * On success, callers must bind `target` before streaming so the builder tools
+ * edit the shared agent. On throw, do not bind.
  */
 export async function resolveAgentPreviewHandoff(
 	context: InstanceAiAgentPreviewHandoffContext,
@@ -87,7 +87,7 @@ export async function resolveAgentPreviewHandoff(
 		`The user shared a real preview-chat transcript for agent \`${context.agentId}\` (${safeSessionLabel}).`,
 		'Call `get-session` to read the transcript before commenting on the agent.',
 		'For review/analysis requests (e.g. "review the tone", "assess behavior"), answer directly from the transcript — do NOT modify the agent.',
-		'Only call `agent_builder_build_agent` when the user explicitly asks to update, improve, or fix the agent. The builder sub-agent cannot see this chat — pass `agentId` and the relevant findings from the transcript in `message`.',
+		'Only change the agent when the user explicitly asks to update, improve, or fix it. Then load the `agent-builder` skill and call `agent_builder_select_agent` with this `agentId` before any other builder tool.',
 	].join('\n');
 
 	const block = [

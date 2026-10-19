@@ -10,10 +10,10 @@
 		],
 		"noneOfToolCalls": [
 			{
-				"toolName": "agent_builder_build_agent"
+				"toolName": "agent_builder_select_agent"
 			}
 		]
 	},
-	"rationale": "Regression gate for the agent-builder path into Instance AI. A plain workflow-building prompt must route through the workflow-builder skill and must never invoke the agent_builder_build_agent orchestration tool. Meaningful in both module modes; the strongest signal is a run with N8N_ENABLED_MODULES including 'agents', where agent_builder_build_agent is registered (it is always-loaded, not deferred) yet must still not be selected.",
+	"rationale": "Regression gate for the agent-builder path into Instance AI. A plain workflow-building prompt must route through the workflow-builder skill and must never invoke the agent_builder_select_agent orchestration tool. Meaningful in both module modes; the strongest signal is a run with N8N_ENABLED_MODULES including 'agents', where agent_builder_select_agent is registered (it is always-loaded, not deferred) yet must still not be selected.",
 	"timeoutMs": 120000
 }

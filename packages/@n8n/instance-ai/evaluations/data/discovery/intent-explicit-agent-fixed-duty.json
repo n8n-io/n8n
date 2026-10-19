@@ -8,7 +8,7 @@
 				"argsContainAny": ["agent-builder"]
 			},
 			{
-				"toolName": "agent_builder_build_agent"
+				"toolName": "agent_builder_select_agent"
 			}
 		],
 		"noneOfToolCalls": [

@@ -23,7 +23,9 @@ const mockMemoryBuilder = {
 
 const mockLogger = { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() };
 
-vi.mock('@n8n/agents', () => ({
+vi.mock('@n8n/agents', async (importOriginal) => ({
+	extendRuntimeSkillSource: (await importOriginal<typeof import('@n8n/agents')>())
+		.extendRuntimeSkillSource,
 	Agent: vi.fn().mockImplementation(function Agent(this: (typeof mockAgentInstances)[number]) {
 		this.model = vi.fn().mockReturnThis();
 		this.instructions = vi.fn().mockReturnThis();
@@ -500,6 +502,46 @@ describe('createInstanceAgent', () => {
 		} as never);
 
 		expect(mockAgentInstances[0]?.skills).toHaveBeenCalledWith(skills);
+	});
+
+	it('adds the builder delegate runtime skills to the orchestrator skills', async () => {
+		const { createRuntimeSkillSource } =
+			await vi.importActual<typeof import('@n8n/agents')>('@n8n/agents');
+		const baseSkills = createRuntimeSkillSource([
+			{ id: 'base_skill', name: 'Base skill', description: 'Base.', instructions: 'Base body.' },
+		]);
+		const builderSkill = {
+			id: 'builder_skill',
+			name: 'Builder skill',
+			description: 'Builder.',
+			instructions: 'Builder body.',
+		};
+
+		await createInstanceAgent({
+			modelId: 'test-model',
+			context: {
+				runLabel: 'builder-skills-test',
+				computerUseState: undefined,
+				licenseHints: undefined,
+				localMcpServer: undefined,
+				builderDelegate: { getRuntimeSkills: () => [builderSkill] },
+			},
+			orchestrationContext: {
+				runId: 'builder-skills-test',
+				skills: baseSkills,
+			},
+			memoryConfig: {},
+			mcpManager: createMcpManagerStub(),
+		} as never);
+
+		const attached = mockAgentInstances[0]?.skills.mock.calls[0]?.[0] as typeof baseSkills;
+		expect(attached.registry.skills.map((skill) => skill.id)).toEqual([
+			'base_skill',
+			'builder_skill',
+		]);
+		await expect(attached.loadSkill('builder_skill')).resolves.toMatchObject({
+			instructions: 'Builder body.',
+		});
 	});
 
 	it('exposes browser_connect and browser_navigate from localMcpServer in the agent toolset', async () => {

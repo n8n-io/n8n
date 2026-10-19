@@ -75,7 +75,7 @@ BOTH of these are true for it:
 
 Use \`agent_builder_ask_questions\` only when even a reasonable assumption is impossible —
 never during an initial build: add the open decision to the pending setup
-instead, per the Initial Build rules in your system prompt. Never create a
+instead, per the Initial Build rules in the \`agent-builder\` skill. Never create a
 placeholder or "refine-it-later" task.
 
 ## Workflow

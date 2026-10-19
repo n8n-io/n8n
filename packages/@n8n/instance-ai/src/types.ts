@@ -6,6 +6,7 @@ import type {
 	CheckpointStore,
 	ExecutionOptions,
 	MemoryTaskUsageReport,
+	RuntimeSkill,
 	RuntimeSkillSource,
 	ModelConfig as NativeModelConfig,
 	ScopedMemoryTaskEvent,
@@ -1371,7 +1372,13 @@ export interface InstanceAiWorkflowTemplateService {
 	): Promise<{ available: true; template: Record<string, unknown> } | { available: false }>;
 }
 
-// ── Builder delegate (sub-agent) ─────────────────────────────────────────────
+// ── Builder delegate ─────────────────────────────────────────────────────────
+
+/** Instance AI run that the builder tools belong to. Used for telemetry. */
+export interface BuilderToolsSession {
+	threadId: string;
+	runId: string;
+}
 
 /** Reference to a workflow the current instance-AI session built or touched. */
 export interface SessionWorkflowRef {
@@ -1427,13 +1434,9 @@ export interface BuilderOpenSuspension {
 }
 
 /**
- * Narrow delegate wrapping the agents-module builder for sub-agent use.
- * Provided by the host (cli) only when the agents module is active. Runs the
- * builder's full interactive toolset — `streamBuild`/`resumeBuild` may
- * suspend, which the caller cascades through its own suspend/resume so the
- * builder's questions survive a process restart.
+ * The agents-module builder, as the orchestrator uses it. The host (cli)
+ * supplies it only when the agents module is active.
  */
-
 export interface InstanceAiBuilderDelegate {
 	/**
 	 * `options.id` creates the agent under an id the frontend already minted for
@@ -1471,6 +1474,19 @@ export interface InstanceAiBuilderDelegate {
 	): Promise<BuilderOpenSuspension[]>;
 	/** Expire the builder checkpoint for `runId` so a failed cascade leaves no orphaned open suspension. */
 	cancelOpenSuspension(agentId: string, runId: string): Promise<void>;
+	/**
+	 * Builder tools that act on the agent `resolveTargetAgentId` returns. The
+	 * resolver runs on each tool call, so the target can change during a run.
+	 * A call without a resolved target fails.
+	 */
+	getBuilderTools(
+		resolveTargetAgentId: () => Promise<string | undefined>,
+		session: BuilderToolsSession,
+	): BuiltTool[];
+	/** Runtime skills that the builder tools rely on, such as `agent-builder-config`. */
+	getRuntimeSkills(): RuntimeSkill[];
+	/** Preview link and model recommendations for the target agent. */
+	getBuilderSessionContext(agentId: string): Promise<string>;
 	/** Current display name of the agent, or undefined when not found. */
 	resolveAgentName(agentId: string): Promise<string | undefined>;
 	/** Config + skills for the `agent-snapshot` trace event; `null` when the agent
@@ -1635,9 +1651,9 @@ export interface InstanceAiContext {
 	 *  agent is built, which is also when its MCP tools are attached, so it always
 	 *  matches what this agent can actually call. */
 	connectedMcpServices?: ConnectedMcpService[];
-	/** The target n8n Agent being built/edited via the agent_builder_build_agent sub-agent tool. */
+	/** The n8n Agent that the builder tools change. `agent_builder_select_agent` sets it. */
 	agentBuilderTarget?: { agentId: string; projectId: string; name?: string; ref?: string };
-	/** Narrow builder delegate for the agent_builder_build_agent sub-agent tool (agents module active only). */
+	/** Agent builder tools and helpers. Present only when the agents module is active. */
 	builderDelegate?: InstanceAiBuilderDelegate;
 	/**
 	 * The agent-preview session referenced by this thread, bound when a user sends

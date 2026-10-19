@@ -483,6 +483,60 @@ describe('getLatestAgentBuilderTarget', () => {
 });
 
 describe('getLatestAgentArtifactResult', () => {
+	test('reads a created agent from the select-agent result', () => {
+		const orchestrator = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolCallId: 'tc-select',
+					toolName: 'agent_builder_select_agent',
+					args: { name: 'Support' },
+					result: { ok: true, agentId: 'agent-9', projectId: 'project-1', agentChange: 'created' },
+				}),
+			],
+		});
+
+		expect(getLatestAgentArtifactResult(orchestrator)).toEqual({
+			agentId: 'agent-9',
+			projectId: 'project-1',
+			toolCallId: 'tc-select',
+			kind: 'created',
+		});
+	});
+
+	test('returns no artifact when select-agent only selects an existing agent', () => {
+		const orchestrator = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolName: 'agent_builder_select_agent',
+					args: { agentRef: 'support' },
+					result: { ok: true, agentId: 'agent-9', projectId: 'project-1', agentChange: 'none' },
+				}),
+			],
+		});
+
+		expect(getLatestAgentArtifactResult(orchestrator)).toBeUndefined();
+	});
+
+	test('reads a mutated agent from a builder tool result stamped configMutated', () => {
+		const orchestrator = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolCallId: 'tc-patch',
+					toolName: 'agent_builder_patch_config',
+					args: {},
+					result: { ok: true, configMutated: true, agentId: 'agent-9', projectId: 'project-1' },
+				}),
+			],
+		});
+
+		expect(getLatestAgentArtifactResult(orchestrator)).toEqual({
+			agentId: 'agent-9',
+			projectId: 'project-1',
+			toolCallId: 'tc-patch',
+			kind: 'mutated',
+		});
+	});
+
 	test('returns no artifact for an explicit unchanged result', () => {
 		const orchestrator = makeAgentNode({
 			toolCalls: [

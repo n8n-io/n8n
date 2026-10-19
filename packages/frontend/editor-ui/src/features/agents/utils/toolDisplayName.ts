@@ -83,7 +83,7 @@ export function getToolNameTranslationKey(
 }
 
 /** Drops the builder prefix so a fallback label reads like the tool action. */
-function stripBuilderToolPrefix(toolName: string | undefined): string | undefined {
+export function stripBuilderToolPrefix(toolName: string | undefined): string | undefined {
 	const trimmed = toolName?.trim();
 	if (!trimmed) return toolName;
 	const name = resolveBuilderToolName(trimmed);

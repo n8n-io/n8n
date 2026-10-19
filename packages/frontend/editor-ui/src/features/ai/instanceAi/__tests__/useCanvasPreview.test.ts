@@ -2,10 +2,11 @@ import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { ref, reactive, nextTick, type Ref } from 'vue';
 import { flushPromises } from '@vue/test-utils';
 import { DEBOUNCE_TIME } from '@/app/constants';
-import type {
-	InstanceAiMessage,
-	InstanceAiAgentNode,
-	InstanceAiToolCallState,
+import {
+	AGENT_BUILDER_TOOL_NAMES,
+	type InstanceAiMessage,
+	type InstanceAiAgentNode,
+	type InstanceAiToolCallState,
 } from '@n8n/api-types';
 import { useCanvasPreview } from '../useCanvasPreview';
 import type { ResourceEntry } from '../useResourceRegistry';
@@ -909,6 +910,60 @@ describe('useCanvasPreview', () => {
 
 			expect(ctx.activeTabId.value).toBe('agent-7');
 			expect(ctx.isPreviewVisible.value).toBe(true);
+		});
+
+		test.each([
+			{
+				label: 'creates an Agent',
+				toolName: AGENT_BUILDER_TOOL_NAMES.SELECT_AGENT,
+				result: { ok: true, agentId: 'agent-7', projectId: 'p1', agentChange: 'created' },
+			},
+			{
+				label: 'changes an Agent config',
+				toolName: AGENT_BUILDER_TOOL_NAMES.WRITE_CONFIG,
+				result: { ok: true, agentId: 'agent-7', projectId: 'p1', configMutated: true },
+			},
+		])(
+			'auto-opens preview when an orchestrator builder tool $label',
+			async ({ toolName, result }) => {
+				const ctx = setup();
+				registerAgent(ctx.thread, 'agent-7', 'Support Agent', 'p1');
+
+				ctx.thread.messages = [
+					makeMessage({
+						agentTree: makeAgentNode({
+							toolCalls: [makeToolCall({ toolCallId: 'tc-builder', toolName, result })],
+						}),
+					}),
+				];
+				await nextTick();
+
+				expect(ctx.activeTabId.value).toBe('agent-7');
+				expect(ctx.isPreviewVisible.value).toBe(true);
+			},
+		);
+
+		test('does not auto-open when the orchestrator selects an existing Agent', async () => {
+			const ctx = setup();
+			registerAgent(ctx.thread, 'agent-7', 'Support Agent', 'p1');
+
+			ctx.thread.messages = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolCallId: 'tc-select',
+								toolName: AGENT_BUILDER_TOOL_NAMES.SELECT_AGENT,
+								result: { ok: true, agentId: 'agent-7', projectId: 'p1', agentChange: 'none' },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(ctx.activeTabId.value).toBeUndefined();
+			expect(ctx.isPreviewVisible.value).toBe(false);
 		});
 	});
 

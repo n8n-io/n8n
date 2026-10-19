@@ -441,6 +441,34 @@ describe('extractOutcomeFromEvents', () => {
 		]);
 	});
 
+	it('captures agent refs from Agent Builder tool results', () => {
+		const call = (toolCallId: string, toolName: string): CapturedEvent => ({
+			timestamp: 1000,
+			type: 'tool-call',
+			data: { type: 'tool-call', payload: { toolCallId, toolName, args: {} } },
+		});
+		const resultEvent = (toolCallId: string, result: unknown): CapturedEvent => ({
+			timestamp: 1100,
+			type: 'tool-result',
+			data: { type: 'tool-result', payload: { toolCallId, result } },
+		});
+		const events: CapturedEvent[] = [
+			call('tc-1', 'agent_builder_select_agent'),
+			resultEvent('tc-1', { ok: true, agentId: 'agent-selected' }),
+			call('tc-2', 'agent_builder_write_config'),
+			resultEvent('tc-2', { ok: true, configMutated: true, agentId: 'agent-written' }),
+			call('tc-3', 'agent_builder_select_agent'),
+			resultEvent('tc-3', { ok: false, agentId: 'agent-rejected' }),
+			call('tc-4', 'agent_builder_patch_config'),
+			resultEvent('tc-4', { ok: true, configMutated: false, agentId: 'agent-unchanged' }),
+		];
+
+		expect(extractOutcomeFromEvents(events).artifactRefs).toEqual([
+			{ type: 'agent', id: 'agent-selected' },
+			{ type: 'agent', id: 'agent-written' },
+		]);
+	});
+
 	it('captures no config-eval ref when the create was denied (no config in the result)', () => {
 		const events: CapturedEvent[] = [
 			{

@@ -15,6 +15,7 @@ import { jsonParse } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 
+import { isAgentTargetingToolName } from '../../src/tools/orchestration/agent-target-binding';
 import { DOMAIN_TOOL_IDS, ORCHESTRATION_TOOL_IDS } from '../../src/tools/tool-ids';
 import {
 	extractAskUserAnswers,
@@ -674,7 +675,8 @@ function toTranscriptStep(block: Record<string, unknown>): TranscriptStep {
  * and so the one a case grades and executes.
  *
  * Mirrors the server's own binding rule (`seedAgentBuilderTargetMetadata`): the last
- * resolved `agent_builder_build_agent` call, ordered by `(createdAt, id)` because that is how the
+ * resolved targeting call (`agent_builder_build_agent` or `agent_builder_select_agent`), ordered
+ * by `(createdAt, id)` because that is how the
  * message store reads a thread back. Seed-ARRAY order is an authoring artifact, so a
  * parent/helper seed would otherwise have the harness grade one agent while the
  * thread continues the other.
@@ -694,11 +696,7 @@ export function activeSeedAgentId(seed: ConversationSeed): string | undefined {
 		if (!Array.isArray(message.content)) continue;
 		for (const block of message.content) {
 			if (!isRecord(block) || block.type !== 'tool-call') continue;
-			if (
-				typeof block.toolName !== 'string' ||
-				resolveBuilderToolName(block.toolName) !== ORCHESTRATION_TOOL_IDS.BUILD_AGENT
-			)
-				continue;
+			if (!isAgentTargetingToolName(block.toolName)) continue;
 			const output = isRecord(block.output) ? block.output : undefined;
 			if (typeof output?.agentId === 'string') active = output.agentId;
 		}
