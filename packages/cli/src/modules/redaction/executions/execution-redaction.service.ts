@@ -211,6 +211,7 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 				enforceDynCredRedaction,
 				enforceCredentialUsabilityRedaction,
 				inaccessibleCredentialIds,
+				redactedBySubWorkflow: this.isRedactedBySubWorkflow(execution),
 				memo: new Map(),
 			};
 			const pipeline = this.buildPipeline(execution, context, policyAllowsReveal);
@@ -408,11 +409,30 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 	 *     exempt from this policy, so the data is still accessible to all.
 	 */
 	private policyAllowsReveal(execution: RedactableExecution): boolean {
-		const policy = this.resolvePolicy(execution);
+		return this.policyAllowsMode(this.resolvePolicy(execution), execution.mode);
+	}
+
+	private policyAllowsMode(
+		policy: WorkflowSettings.RedactionPolicy,
+		mode: WorkflowExecuteMode,
+	): boolean {
 		return (
 			policy === 'none' ||
-			(policy === 'non-manual' && MANUAL_MODES.has(execution.mode)) ||
-			(policy === 'manual-only' && !MANUAL_MODES.has(execution.mode))
+			(policy === 'non-manual' && MANUAL_MODES.has(mode)) ||
+			(policy === 'manual-only' && !MANUAL_MODES.has(mode))
+		);
+	}
+
+	/**
+	 * Returns true when the execution's own policy does not redact its mode, but the
+	 * channels its sub-workflows reported do. Drives the `sub_workflow_redaction_policy`
+	 * reason, so the user can see why the data is redacted.
+	 */
+	private isRedactedBySubWorkflow(execution: RedactableExecution): boolean {
+		if (!this.licenseState.isDataRedactionLicensed()) return false;
+		return (
+			this.policyAllowsMode(this.resolveBasePolicy(execution), execution.mode) &&
+			!this.policyAllowsMode(this.resolvePolicy(execution), execution.mode)
 		);
 	}
 

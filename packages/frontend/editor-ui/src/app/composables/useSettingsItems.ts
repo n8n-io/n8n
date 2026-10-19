@@ -175,7 +175,7 @@ export function useSettingsItems() {
 			{
 				id: 'settings-ldap',
 				order: 150,
-				icon: 'network',
+				icon: 'ldap',
 				label: i18n.baseText('settings.ldap'),
 				position: 'top',
 				available: canUserAccessRouteByName(VIEWS.LDAP_SETTINGS),
