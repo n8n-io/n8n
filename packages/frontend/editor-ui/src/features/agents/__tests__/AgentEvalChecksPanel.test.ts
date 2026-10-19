@@ -411,6 +411,16 @@ describe('AgentEvalChecksPanel', () => {
 			);
 		});
 
+		it('keeps the full filters while more results are still to load', () => {
+			const { getByTestId } = render({
+				results: [result('pass-1', 'success'), result('pass-2', 'success')],
+				resultsCount: 5,
+			});
+
+			expect(getByTestId('agent-eval-checks-filter-all')).toBeInTheDocument();
+			expect(getByTestId('agent-eval-checks-filter-pass')).not.toHaveTextContent('All 2 passed');
+		});
+
 		it('shows all three pills once both statuses are present', () => {
 			const { getByTestId } = render({
 				results: [result('pass-1', 'success'), result('fail-1', 'error')],

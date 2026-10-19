@@ -162,9 +162,10 @@ const visibleStatusFilters = computed(() =>
 
 // Every check in one status: a status option and "All" would list the same rows,
 // so the control shows one option that reads as a summary ("All 9 passed").
+// Only when every result has loaded: a loaded page is not the whole run.
 const uniformStatus = computed<Exclude<StatusFilter, 'all'> | null>(() => {
 	const total = rows.value.length;
-	if (total === 0) return null;
+	if (total === 0 || hasMore.value) return null;
 	if (passedCount.value === total) return 'pass';
 	if (needsWorkCount.value === total) return 'needs-work';
 	return null;
