@@ -1,0 +1,22 @@
+packages/nodes-base/nodes/Xero/test/Xero.node.test.ts
+  s_2e1fa95fc44f8f::t_985edf7e1f3a69 12-25
+  s_2e1fa95fc44f8f::t_79a00231990825 133-143,145-148,150-163
+  s_2e1fa95fc44f8f::t_0c5f8e2455ec48 108,114
+  s_2e1fa95fc44f8f::t_0d3f0258e6417a 144,149
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8964d4236c6bc780e1fa9746557f738fdec8df26",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}
