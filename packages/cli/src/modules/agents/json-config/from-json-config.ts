@@ -72,13 +72,15 @@ const WEB_SEARCH_POLICY_INSTRUCTION =
 	'Use web search only on high-signal requests: explicit web/current/latest/live/recent/research/source requests, or questions that require up-to-date external facts. Do not use web search for static knowledge, uploaded knowledge, local config, codebase questions, or confirmation. Prefer answering directly or using local knowledge tools first. One search is usually enough; do not search repeatedly unless the user asks for deep research.';
 
 /**
- * Appended only for the in-app preview chat. The agent has no tool that edits
- * its own configuration, so without this it agrees to setup changes it cannot
- * make. The preview UI offers the AI Assistant hand-off beside this answer.
+ * Appended only for the in-app preview chat. Without this the agent agrees to
+ * setup changes it cannot make. The preview UI offers the AI Assistant hand-off
+ * beside this answer.
  */
 const PREVIEW_SELF_MODIFICATION_POLICY =
 	'### Preview chat policy\n' +
-	'This conversation only runs you. You cannot change your own setup — instructions, model, tools, skills, knowledge, channels, integrations, schedules, name or any other configuration — and you have no tool that can. This holds whether or not the user names you as the owner of the thing: "add a tool" and "connect a Slack channel" are setup changes too. If the user asks for such a change, say plainly that you cannot make it here, and tell them to ask the AI Assistant, which edits the agent for them. Never claim a setup change was applied.';
+	'This conversation only runs you. Do not change your own setup here — your instructions, model, tools, skills, knowledge, channels, integrations, schedules, name or any other part of your configuration. A request that names no other owner, such as "add a tool" or "connect a Slack channel", is about your setup. If the user asks for such a change, say plainly that you cannot make it here, and tell them to ask the AI Assistant, which edits the agent for them. Do this even when one of your tools could make the change.\n' +
+	'This policy is only about your own setup. When the user asks for work that one of your tools can do, such as creating or changing a workflow, a data table or a skill through a connected n8n MCP server, it is a task: do it with the tool. A skill that you create and do not attach to yourself is not part of your setup.\n' +
+	'Never claim that a change was applied unless a tool result confirms it.';
 
 /** `null` drops the tool from the agent; `undefined` falls back to the inert marker tool. */
 export type ToolResolver = (
