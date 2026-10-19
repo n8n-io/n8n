@@ -12,13 +12,16 @@ const i18n = useI18n();
 
 type ChangeText = { keypath: BaseTextKey; names: Record<string, string> };
 
+// The data table UI shows the stored type 'date' as 'datetime'.
+const typeLabel = (type: string) => (type === 'date' ? 'datetime' : type);
+
 // The names fill slots, so they can stand out from the sentence.
 function changeText(change: PromotionDataTableChange): ChangeText {
 	switch (change.kind) {
 		case 'add-column':
 			return {
 				keypath: 'promotions.preview.dataTable.addColumn',
-				names: { column: change.column, type: change.type },
+				names: { column: change.column, type: typeLabel(change.type) },
 			};
 		case 'remove-column':
 			return {
@@ -28,7 +31,7 @@ function changeText(change: PromotionDataTableChange): ChangeText {
 		case 'change-column-type':
 			return {
 				keypath: 'promotions.preview.dataTable.changeColumnType',
-				names: { column: change.column, from: change.from, to: change.to },
+				names: { column: change.column, from: typeLabel(change.from), to: typeLabel(change.to) },
 			};
 		case 'rename-column':
 			return {
@@ -60,7 +63,7 @@ function changeText(change: PromotionDataTableChange): ChangeText {
 					size="small"
 					:class="change.destructive ? $style.destructive : $style.marker"
 				/>
-				<N8nText step="xs">
+				<N8nText step="xs" :class="$style.wrap">
 					<I18nT :keypath="changeText(change).keypath" scope="global">
 						<template v-for="(name, slot) in changeText(change).names" :key="slot" #[slot]>
 							<span :class="$style.name">{{ name }}</span>
@@ -76,8 +79,8 @@ function changeText(change: PromotionDataTableChange): ChangeText {
 			</N8nText>
 			<ul :class="$style.list">
 				<li v-for="column in description.addedColumns" :key="column.name" :class="$style.change">
-					<N8nText step="xs">{{ column.name }}</N8nText>
-					<N8nText step="2xs" color="text-light">{{ column.type }}</N8nText>
+					<N8nText step="xs" :class="$style.wrap">{{ column.name }}</N8nText>
+					<N8nText step="2xs" color="text-light">{{ typeLabel(column.type) }}</N8nText>
 				</li>
 			</ul>
 			<!-- Only a new table raises the question. A changed table keeps its rows. -->
@@ -112,6 +115,12 @@ function changeText(change: PromotionDataTableChange): ChangeText {
 
 .name {
 	font-weight: var(--font-weight--bold);
+}
+
+/* Column names can be long words without spaces. */
+.wrap {
+	min-width: 0;
+	overflow-wrap: anywhere;
 }
 
 .marker {

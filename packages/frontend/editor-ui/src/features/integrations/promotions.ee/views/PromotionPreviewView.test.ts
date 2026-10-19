@@ -126,7 +126,7 @@ describe('PromotionPreviewView', () => {
 		vi.mocked(api.getPromotionPreview).mockRejectedValueOnce(new Error('offline'));
 
 		const { getByTestId, getByRole } = await render();
-		expect(getByTestId('promotion-preview-error')).toHaveTextContent("Couldn't load the changes.");
+		expect(getByTestId('promotion-preview-error')).toHaveTextContent("Couldn't load the changes");
 
 		await userEvent.click(getByRole('button', { name: 'Try again' }));
 		await waitFor(() => expect(getByTestId('promotion-preview-tree')).toBeInTheDocument());

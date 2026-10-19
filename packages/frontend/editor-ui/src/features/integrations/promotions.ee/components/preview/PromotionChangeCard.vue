@@ -1,6 +1,13 @@
 <script setup lang="ts">
 import type { PromotionDirection, PromotionResource } from '@n8n/api-types';
-import { N8nCallout, N8nIcon, N8nLink, N8nLoading, N8nText, N8nTooltip } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nCallout,
+	N8nIcon,
+	N8nLoading,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { CollapsibleContent, CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
 import { computed, ref, watch } from 'vue';
@@ -76,6 +83,13 @@ const footer = computed((): Footer | undefined => {
 	};
 });
 
+// The list format adds the separators and the "and" of the current language.
+const footerNames = computed(() =>
+	new Intl.ListFormat(i18n.locale, { style: 'long', type: 'conjunction' }).formatToParts(
+		footer.value?.resourceKeys ?? [],
+	),
+);
+
 const detail = computed(() => (props.entry?.status === 'loaded' ? props.entry.detail : undefined));
 const stale = computed(() => !!detail.value && isStaleDetail(detail.value, props.resource));
 const fieldChanges = computed(() => {
@@ -110,7 +124,9 @@ const isApplyMove = computed(
 		>
 			<CollapsibleTrigger :class="$style.header" data-test-id="promotion-preview-card-toggle">
 				<N8nIcon :icon="resourceIcon(resource.type)" size="small" :class="$style.icon" />
-				<N8nText bold size="medium" :class="$style.title">{{ resource.name }}</N8nText>
+				<N8nText bold size="medium" color="text-dark" :title="resource.name" :class="$style.title">
+					{{ resource.name }}
+				</N8nText>
 				<N8nText v-if="changeLabel(resource)" step="xs" color="text-light">
 					{{ changeLabel(resource) }}
 				</N8nText>
@@ -133,25 +149,25 @@ const isApplyMove = computed(
 					<N8nCallout v-if="entry?.status === 'missing'" theme="warning" slim>
 						{{ i18n.baseText('promotions.preview.card.missing') }}
 						<template #trailingContent>
-							<N8nLink size="small" @click="emit('refresh')">
+							<N8nButton variant="outline" size="small" @click="emit('refresh')">
 								{{ i18n.baseText('promotions.preview.refresh') }}
-							</N8nLink>
+							</N8nButton>
 						</template>
 					</N8nCallout>
 					<N8nCallout v-else-if="entry?.status === 'error'" theme="danger" slim>
 						{{ i18n.baseText('promotions.preview.card.loadFailed') }}
 						<template #trailingContent>
-							<N8nLink size="small" @click="emit('retry')">
+							<N8nButton variant="outline" size="small" @click="emit('retry')">
 								{{ i18n.baseText('promotions.preview.state.retry') }}
-							</N8nLink>
+							</N8nButton>
 						</template>
 					</N8nCallout>
 					<N8nCallout v-if="stale" theme="warning" slim data-test-id="promotion-preview-card-stale">
 						{{ i18n.baseText('promotions.preview.card.stale') }}
 						<template #trailingContent>
-							<N8nLink size="small" @click="emit('refresh')">
+							<N8nButton variant="outline" size="small" @click="emit('refresh')">
 								{{ i18n.baseText('promotions.preview.refresh') }}
-							</N8nLink>
+							</N8nButton>
 						</template>
 					</N8nCallout>
 					<N8nCallout v-if="detail && hasUnreadableSide(detail)" theme="info" slim>
@@ -198,16 +214,17 @@ const isApplyMove = computed(
 					<N8nText step="2xs" color="text-light" data-test-id="promotion-preview-card-inclusion">
 						<I18nT :keypath="footer.keypath" scope="global">
 							<template #names>
-								<template v-for="(key, index) in footer.resourceKeys" :key="key">
-									<template v-if="index > 0">, </template>
+								<template v-for="(part, index) in footerNames" :key="index">
 									<button
+										v-if="part.type === 'element'"
 										type="button"
 										:class="$style.nameLink"
 										data-test-id="promotion-preview-card-relation"
-										@click="emit('inspect', key)"
+										@click="emit('inspect', part.value)"
 									>
-										{{ nameOf(key) }}
+										{{ nameOf(part.value) }}
 									</button>
+									<template v-else>{{ part.value }}</template>
 								</template>
 							</template>
 						</I18nT>
@@ -219,6 +236,8 @@ const isApplyMove = computed(
 </template>
 
 <style module lang="scss">
+@use '@n8n/design-system/css/mixins/motion';
+
 .card {
 	display: flex;
 	flex-direction: column;
@@ -260,6 +279,7 @@ const isApplyMove = computed(
 	flex-shrink: 0;
 	color: var(--icon-color);
 	transition: transform var(--duration--snappy) var(--easing--ease-out);
+	@include motion.reduced-motion;
 
 	[data-state='closed'] > & {
 		transform: rotate(-90deg);
@@ -305,7 +325,7 @@ const isApplyMove = computed(
 }
 
 .footer > * + *::before {
-	content: '·';
+	content: '·' / '';
 	margin-right: var(--spacing--2xs);
 }
 

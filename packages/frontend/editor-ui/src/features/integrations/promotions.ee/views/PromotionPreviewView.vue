@@ -16,6 +16,7 @@ import {
 import { useI18n } from '@n8n/i18n';
 import { useRBACStore } from '@n8n/stores/rbac.store';
 import { computed, ref, toRef, watch } from 'vue';
+import { I18nT } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 
 import TimeAgo from '@/app/components/TimeAgo.vue';
@@ -153,8 +154,11 @@ const treeResizer = useResizablePanel({
 							}}
 						</N8nText>
 						<N8nText v-if="lastRefreshedAt" step="xs" color="text-light">
-							{{ i18n.baseText('promotions.preview.lastRefreshed') }}
-							<TimeAgo :date="lastRefreshedAt.toISOString()" />
+							<I18nT keypath="promotions.preview.lastRefreshed" scope="global">
+								<template #time>
+									<TimeAgo :date="lastRefreshedAt.toISOString()" live />
+								</template>
+							</I18nT>
 						</N8nText>
 					</div>
 					<N8nButton
@@ -237,7 +241,7 @@ const treeResizer = useResizablePanel({
 					@inspect="inspect"
 				/>
 			</N8nResizeWrapper>
-			<main :class="$style.cards">
+			<section :class="$style.cards">
 				<N8nCallout v-if="refreshFailed" theme="warning" slim>
 					{{ i18n.baseText('promotions.preview.refreshFailed') }}
 				</N8nCallout>
@@ -261,7 +265,7 @@ const treeResizer = useResizablePanel({
 					@refresh="refresh"
 					@inspect="inspect"
 				/>
-			</main>
+			</section>
 		</div>
 	</div>
 </template>
@@ -332,7 +336,7 @@ const treeResizer = useResizablePanel({
 }
 
 .details > * + *::before {
-	content: '·';
+	content: '·' / '';
 	margin-right: var(--spacing--2xs);
 }
 
