@@ -1,15 +1,16 @@
 import type { Logger, ModuleRegistry } from '@n8n/backend-common';
 import type { AuthenticatedRequest, User } from '@n8n/db';
-import type { ApiKey } from '@n8n/db';
 import { ControllerRegistryMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { Response } from 'express';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
+import type { ScimToken } from '../database/scim-token.entity';
 import type { ScimSettingsService } from '../scim-settings.service';
 import { ScimTokenController } from '../scim-token.controller';
 import type { ScimTokenService } from '../scim-token.service';
+import { ScimTokenConflictError } from '../scim.errors';
 
 describe('ScimTokenController', () => {
 	let scimTokenService: Mocked<ScimTokenService>;
@@ -66,9 +67,9 @@ describe('ScimTokenController', () => {
 	});
 
 	describe('GET /config', () => {
-		it('reports state without ever exposing the token', async () => {
+		it('reports the instance token state without ever exposing the token', async () => {
 			scimSettingsService.isEnabled.mockResolvedValue(true);
-			scimTokenService.getTokenInfoForUser.mockResolvedValue({ hasToken: true, lastFour: 'ab12' });
+			scimTokenService.getTokenInfo.mockResolvedValue({ hasToken: true, lastFour: 'ab12' });
 			const res = makeRes();
 
 			await controller.getConfig(req, res);
@@ -111,26 +112,61 @@ describe('ScimTokenController', () => {
 
 	describe('POST /token', () => {
 		it('returns 201 with the token and base URL', async () => {
-			scimTokenService.rotateScimApiKey.mockResolvedValue(mock<ApiKey>({ apiKey: 'the-token' }));
+			scimTokenService.rotateToken.mockResolvedValue(mock<ScimToken>({ token: 'the-token' }));
 			const res = makeRes();
 
 			await controller.generateToken(req, res);
 
-			expect(scimTokenService.rotateScimApiKey).toHaveBeenCalledWith(req.user);
+			expect(scimTokenService.rotateToken).toHaveBeenCalledWith(req.user);
+			expect(moduleRegistry.refreshModuleSettings).toHaveBeenCalledWith('scim');
 			expect(res.status).toHaveBeenCalledWith(201);
 			expect(res.json).toHaveBeenCalledWith({
 				data: { token: 'the-token', baseUrl: 'https://n8n.example.com/scim/v2' },
 			});
 		});
+
+		it('returns 409 when another request changed the token at the same time', async () => {
+			scimTokenService.rotateToken.mockRejectedValue(new ScimTokenConflictError());
+			const res = makeRes();
+
+			await controller.generateToken(req, res);
+
+			expect(res.status).toHaveBeenCalledWith(409);
+			expect(moduleRegistry.refreshModuleSettings).not.toHaveBeenCalled();
+		});
+
+		it('still returns the new token when the settings refresh fails', async () => {
+			scimTokenService.rotateToken.mockResolvedValue(mock<ScimToken>({ token: 'the-token' }));
+			moduleRegistry.refreshModuleSettings.mockRejectedValue(new Error('db down'));
+			const res = makeRes();
+
+			await controller.generateToken(req, res);
+
+			// The response is the only copy of the new token.
+			expect(res.status).toHaveBeenCalledWith(201);
+			expect(res.json).toHaveBeenCalledWith({
+				data: { token: 'the-token', baseUrl: 'https://n8n.example.com/scim/v2' },
+			});
+		});
+
+		it('returns 500 on any other failure', async () => {
+			scimTokenService.rotateToken.mockRejectedValue(new Error('db down'));
+			const res = makeRes();
+
+			await controller.generateToken(req, res);
+
+			expect(res.status).toHaveBeenCalledWith(500);
+		});
 	});
 
 	describe('DELETE /token', () => {
-		it('deletes only the calling user keys', async () => {
+		it('revokes the instance token and refreshes the settings', async () => {
 			const res = makeRes();
 
 			await controller.deleteToken(req, res);
 
-			expect(scimTokenService.deleteAllScimApiKeysForUser).toHaveBeenCalledWith(req.user);
+			expect(scimTokenService.revokeToken).toHaveBeenCalledWith();
+			expect(moduleRegistry.refreshModuleSettings).toHaveBeenCalledWith('scim');
 			expect(res.status).toHaveBeenCalledWith(200);
 		});
 	});

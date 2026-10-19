@@ -9,14 +9,16 @@ import { Container } from '@n8n/di';
  */
 @BackendModule({ name: 'scim', licenseFlag: 'feat:scim', instanceTypes: ['main'] })
 export class ScimModule implements ModuleInterface {
+	async entities() {
+		const { ScimToken } = await import('./database/scim-token.entity.js');
+		return [ScimToken] as never;
+	}
+
 	async init() {
 		// Import controllers to register routes
 		await import('./scim.controller.js');
 		await import('./scim-discovery.controller.js');
 		await import('./scim-token.controller.js');
-
-		const { ScimTokenRevocationListener } = await import('./scim-token-revocation.listener.js');
-		Container.get(ScimTokenRevocationListener);
 	}
 
 	/**

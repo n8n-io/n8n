@@ -6,10 +6,14 @@ import type { Response } from 'express';
 
 import { ScimSettingsService } from './scim-settings.service';
 import { ScimTokenService } from './scim-token.service';
+import { ScimTokenConflictError } from './scim.errors';
 
 /**
  * REST Controller for SCIM configuration and token management.
  * These endpoints require authentication and the `scim:manage` scope.
+ *
+ * The instance has one SCIM token. Every user with `scim:manage` sees,
+ * rotates and revokes that token, whoever created it.
  *
  * The token value is returned exactly once, by the POST endpoint that
  * creates it. The config endpoint only ever exposes whether a token
@@ -30,11 +34,11 @@ export class ScimTokenController {
 	 */
 	@Get('/config')
 	@GlobalScope('scim:manage')
-	async getConfig(req: AuthenticatedRequest, res: Response) {
+	async getConfig(_req: AuthenticatedRequest, res: Response) {
 		try {
 			const [enabled, tokenInfo] = await Promise.all([
 				this.scimSettingsService.isEnabled(),
-				this.scimTokenService.getTokenInfoForUser(req.user),
+				this.scimTokenService.getTokenInfo(),
 			]);
 
 			return res.status(200).json({
@@ -74,18 +78,24 @@ export class ScimTokenController {
 
 	/**
 	 * POST /rest/scim/token
-	 * Generate or rotate the SCIM token. This is the only place the full
-	 * token value is ever returned.
+	 * Generate the instance SCIM token, or rotate it. This is the only place
+	 * the full token value is ever returned. Returns 409 when another request
+	 * changed the token at the same time.
 	 */
 	@Post('/token')
 	@GlobalScope('scim:manage')
 	async generateToken(req: AuthenticatedRequest, res: Response) {
 		try {
-			const apiKey = await this.scimTokenService.rotateScimApiKey(req.user);
+			const scimToken = await this.scimTokenService.rotateToken(req.user);
 			const baseUrl = this.scimTokenService.getScimBaseUrl();
+			await this.refreshModuleSettings();
 
-			return res.status(201).json({ data: { token: apiKey.apiKey, baseUrl } });
+			return res.status(201).json({ data: { token: scimToken.token, baseUrl } });
 		} catch (error) {
+			if (error instanceof ScimTokenConflictError) {
+				return res.status(409).json({ message: error.message });
+			}
+
 			this.logger.error('Error generating SCIM token', { error });
 			return res.status(500).json({ message: 'Internal server error' });
 		}
@@ -93,18 +103,33 @@ export class ScimTokenController {
 
 	/**
 	 * DELETE /rest/scim/token
-	 * Delete SCIM token for the authenticated user
+	 * Revoke the instance SCIM token, whoever created it.
 	 */
 	@Delete('/token')
 	@GlobalScope('scim:manage')
-	async deleteToken(req: AuthenticatedRequest, res: Response) {
+	async deleteToken(_req: AuthenticatedRequest, res: Response) {
 		try {
-			await this.scimTokenService.deleteAllScimApiKeysForUser(req.user);
+			await this.scimTokenService.revokeToken();
+			await this.refreshModuleSettings();
 
 			return res.status(200).json({ data: { success: true } });
 		} catch (error) {
 			this.logger.error('Error deleting SCIM token', { error });
 			return res.status(500).json({ message: 'Internal server error' });
+		}
+	}
+
+	/**
+	 * `/rest/module-settings` serves a cached snapshot, so refresh it after a
+	 * token change. A failure only delays the new value. It must not fail the
+	 * request: the token change is already saved, and the response of a
+	 * rotation is the only copy of the new token.
+	 */
+	private async refreshModuleSettings() {
+		try {
+			await this.moduleRegistry.refreshModuleSettings('scim');
+		} catch (error) {
+			this.logger.warn('SCIM: Failed to refresh the module settings', { error });
 		}
 	}
 }
