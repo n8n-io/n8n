@@ -40,9 +40,6 @@ export const scimUserSchema = z.object({
 	meta: scimMetaSchema.optional(),
 });
 
-// SCIM 2.0 User creation/update schema (without id)
-export const scimUserCreateSchema = scimUserSchema.omit({ id: true, meta: true });
-
 // SCIM 2.0 User patch operation
 export const scimPatchOpSchema = z.object({
 	op: z.enum(['add', 'remove', 'replace']),
@@ -74,7 +71,6 @@ export const scimErrorSchema = z.object({
 
 // Type exports
 export type ScimUser = z.infer<typeof scimUserSchema>;
-export type ScimUserCreate = z.infer<typeof scimUserCreateSchema>;
 export type ScimPatchOp = z.infer<typeof scimPatchOpSchema>;
 export type ScimPatchRequest = z.infer<typeof scimPatchRequestSchema>;
 export type ScimListResponse = z.infer<typeof scimListResponseSchema>;
