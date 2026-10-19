@@ -141,6 +141,25 @@ describe('BreakingChangesController', () => {
 			expect(ownerAssignmentService.assign).not.toHaveBeenCalled();
 			expect(ownerAssignmentService.unassign).not.toHaveBeenCalled();
 		});
+
+		it('GET lists the owner candidates for a member who can edit the workflow', async () => {
+			req.user = member;
+			ownerAssignmentService.candidates.mockResolvedValue([owner]);
+
+			const result = await controller.listOwnerCandidates(req, res, 'wf-1');
+
+			expect(ownerAssignmentService.candidates).toHaveBeenCalledWith('wf-1');
+			expect(result).toEqual([owner]);
+		});
+
+		it('GET rejects a member on a workflow they cannot edit', async () => {
+			req.user = member;
+
+			await expect(controller.listOwnerCandidates(req, res, 'wf-3')).rejects.toBeInstanceOf(
+				NotFoundError,
+			);
+			expect(ownerAssignmentService.candidates).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('GET /report', () => {
@@ -466,6 +485,7 @@ describe('BreakingChangesController', () => {
 		'updateFindingStatus',
 		'assignOwner',
 		'unassignOwner',
+		'listOwnerCandidates',
 		'migrateWorkflow',
 	])('%s requires only the global breakingChanges:list scope', (route) => {
 		const metadata = Container.get(ControllerRegistryMetadata).getControllerMetadata(

@@ -5,6 +5,7 @@ import {
 	BreakingChangeRuleDetailResult,
 	BreakingChangeVersion,
 	MigrationNotifyResult,
+	MigrationOwnerCandidate,
 	MigrationWorkflowOwnerResponse,
 	NotifyMigrationOwnersRequestDto,
 	UpdateMigrationFindingStatusRequestDto,
@@ -212,6 +213,18 @@ export class BreakingChangesController {
 	): Promise<void> {
 		await this.assertCanEdit(req.user, workflowId);
 		await this.triageService.setStatus(ruleId, workflowId, body.status);
+	}
+
+	/** The users who can own the workflow's findings. */
+	@Get('/workflows/:workflowId/owner/candidates')
+	@GlobalScope('breakingChanges:list')
+	async listOwnerCandidates(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('workflowId') workflowId: string,
+	): Promise<MigrationOwnerCandidate[]> {
+		await this.assertCanEdit(req.user, workflowId);
+		return await this.ownerAssignmentService.candidates(workflowId);
 	}
 
 	/** Makes the given user the owner of the workflow's findings. */

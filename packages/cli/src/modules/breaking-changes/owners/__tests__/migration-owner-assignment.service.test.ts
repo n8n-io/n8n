@@ -91,6 +91,23 @@ describe('MigrationOwnerAssignmentService', () => {
 		});
 	});
 
+	describe('candidates', () => {
+		it('returns the users who can open the workflow, without a source', async () => {
+			const candidates = await service.candidates(WORKFLOW_ID);
+
+			expect(userRepository.findManyByIds).toHaveBeenCalledWith([alice.id]);
+			expect(candidates).toEqual([
+				{ id: alice.id, firstName: 'Alice', lastName: 'A', email: 'alice@example.com' },
+			]);
+		});
+
+		it('rejects an unknown workflow', async () => {
+			workflowRepository.findExistingIds.mockResolvedValue([]);
+
+			await expect(service.candidates(WORKFLOW_ID)).rejects.toBeInstanceOf(NotFoundError);
+		});
+	});
+
 	describe('unassign', () => {
 		it('replaces the owner with the suggestion in one step and returns it', async () => {
 			suggestionService.suggestOwners.mockResolvedValue([

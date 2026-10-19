@@ -10,7 +10,6 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '@/app/stores/ui.store';
-import * as usersApi from '@n8n/rest-api-client/api/users';
 import { MIGRATE_WORKFLOW_MODAL_KEY } from '@/app/constants';
 import MigrationRuleDetail from './MigrationRuleDetail.vue';
 import * as breakingChangesApi from '@n8n/rest-api-client/api/breaking-changes';
@@ -23,10 +22,8 @@ vi.mock('@n8n/rest-api-client/api/breaking-changes', () => ({
 	updateFindingStatuses: vi.fn(),
 	assignWorkflowOwner: vi.fn(),
 	unassignWorkflowOwner: vi.fn(),
+	getWorkflowOwnerCandidates: vi.fn(),
 	notifyFindingOwners: vi.fn(),
-}));
-vi.mock('@n8n/rest-api-client/api/users', () => ({
-	getUsers: vi.fn(),
 }));
 
 const grace = {
@@ -156,7 +153,7 @@ describe('MigrationRuleDetail', () => {
 		rbacStore = mockedStore(useRBACStore);
 		mockedStore(useSettingsStore).isSmtpSetup = true;
 		rbacStore.hasScope.mockImplementation((scope) => scope === 'breakingChanges:migrate');
-		vi.mocked(usersApi.getUsers).mockResolvedValue({ count: 1, items: [grace] });
+		vi.mocked(breakingChangesApi.getWorkflowOwnerCandidates).mockResolvedValue([grace]);
 
 		vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(mockRuleResult);
 	});
@@ -840,18 +837,18 @@ describe('MigrationRuleDetail', () => {
 			await waitFor(() => {
 				expect(screen.getAllByTestId('migration-owner-select')).toHaveLength(2);
 			});
-			// No picker was opened yet, so no member search ran.
-			expect(usersApi.getUsers).not.toHaveBeenCalled();
+			// No picker was opened yet, so no candidates were loaded.
+			expect(breakingChangesApi.getWorkflowOwnerCandidates).not.toHaveBeenCalled();
 			expect(screen.getByDisplayValue('Ada Lovelace')).toBeInTheDocument();
 		});
 
-		it("searches the members of the row's project, assigns the picked user and shows the returned owner", async () => {
+		it("lists the users who can open the row's workflow, assigns the picked user and shows the returned owner", async () => {
 			vi.mocked(breakingChangesApi.assignWorkflowOwner).mockResolvedValue({
 				owner: { ...grace, source: 'assigned' },
 			});
 			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
 				createMockRuleResult({
-					affectedWorkflows: [{ ...mockWorkflowWithMultipleNodes, homeProjectId: 'project-1' }],
+					affectedWorkflows: [mockWorkflowWithMultipleNodes],
 				}),
 			);
 			const { baseElement } = renderComponent({ props: { migrationRuleId: 'rule-1' } });
@@ -861,9 +858,9 @@ describe('MigrationRuleDetail', () => {
 				within(screen.getByTestId('migration-owner-select')).getByRole('combobox'),
 			);
 			await waitFor(() => {
-				expect(usersApi.getUsers).toHaveBeenCalledWith(
+				expect(breakingChangesApi.getWorkflowOwnerCandidates).toHaveBeenCalledWith(
 					expect.anything(),
-					expect.objectContaining({ filter: { projectId: 'project-1' } }),
+					'workflow-2',
 				);
 			});
 			await waitFor(() => expect(screen.getByRole('listbox')).toBeInTheDocument());
@@ -886,16 +883,16 @@ describe('MigrationRuleDetail', () => {
 			});
 		});
 
-		it('ignores a member search that answers after a newer one', async () => {
-			const slowSearch = Promise.withResolvers<{ count: number; items: Array<typeof grace> }>();
-			vi.mocked(usersApi.getUsers)
-				.mockReturnValueOnce(slowSearch.promise)
-				.mockResolvedValueOnce({ count: 1, items: [grace] });
+		it('ignores a candidate list that answers after a newer one', async () => {
+			const slowLoad = Promise.withResolvers<Array<typeof grace>>();
+			vi.mocked(breakingChangesApi.getWorkflowOwnerCandidates)
+				.mockReturnValueOnce(slowLoad.promise)
+				.mockResolvedValueOnce([grace]);
 			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
 				createMockRuleResult({
 					affectedWorkflows: [
-						{ ...mockWorkflowWithIssue, owner: undefined, homeProjectId: 'project-1' },
-						{ ...mockWorkflowWithMultipleNodes, homeProjectId: 'project-2' },
+						{ ...mockWorkflowWithIssue, owner: undefined },
+						mockWorkflowWithMultipleNodes,
 					],
 				}),
 			);
@@ -905,25 +902,22 @@ describe('MigrationRuleDetail', () => {
 				.getAllByTestId('migration-owner-select')
 				.map((picker) => within(picker).getByRole('combobox'));
 
-			// The first row's search hangs; the second row's answers at once.
+			// The first row's load hangs; the second row's answers at once.
 			await userEvent.click(pickers[0]);
 			await userEvent.click(pickers[1]);
-			// An open picker also runs its debounced remote search, so a slow run can see
-			// more calls. Wait for the second row's search instead of a call count.
 			await waitFor(() =>
-				expect(usersApi.getUsers).toHaveBeenCalledWith(
+				expect(breakingChangesApi.getWorkflowOwnerCandidates).toHaveBeenCalledWith(
 					expect.anything(),
-					expect.objectContaining({ filter: { projectId: 'project-2' } }),
+					'workflow-2',
 				),
 			);
 			await waitFor(() => {
 				expect(baseElement.querySelector('#user-select-option-id-user-2')).not.toBeNull();
 			});
 
-			slowSearch.resolve({
-				count: 1,
-				items: [{ id: 'user-9', firstName: 'Late', lastName: 'Answer', email: 'late@example.com' }],
-			});
+			slowLoad.resolve([
+				{ id: 'user-9', firstName: 'Late', lastName: 'Answer', email: 'late@example.com' },
+			]);
 			await new Promise((resolve) => setTimeout(resolve, 0));
 
 			expect(baseElement.querySelector('#user-select-option-id-user-9')).toBeNull();

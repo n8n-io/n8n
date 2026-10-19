@@ -1,4 +1,4 @@
-import type { BreakingChangeWorkflowOwner } from '@n8n/api-types';
+import type { BreakingChangeWorkflowOwner, MigrationOwnerCandidate } from '@n8n/api-types';
 import { WorkflowSharingService } from '@n8n/backend-services';
 import { UserRepository, WorkflowRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -37,6 +37,14 @@ export class MigrationOwnerAssignmentService {
 
 		await this.ownerRepository.assign(workflowId, userId, assignedBy.id, {});
 		return toWorkflowOwner(user, 'assigned');
+	}
+
+	/** The users who can be the owner: those who can open the workflow, as `assign` checks. */
+	async candidates(workflowId: string): Promise<MigrationOwnerCandidate[]> {
+		await this.ensureWorkflowExists(workflowId);
+		const userIds = await this.workflowSharingService.getUserIdsWithAccessToWorkflow(workflowId);
+		const users = await this.userRepository.findManyByIds(userIds);
+		return users.map(({ id, firstName, lastName, email }) => ({ id, firstName, lastName, email }));
 	}
 
 	/**
