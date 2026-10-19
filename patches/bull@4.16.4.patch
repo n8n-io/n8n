@@ -103,18 +103,21 @@ diff --git a/lib/commands/moveToFinished-9.lua b/lib/commands/moveToFinished-9.l
 index 2d63cf0a4c23e350bd7ed4c38c5cab77196b07ec..96b68580b5b8fefa2e6bf70eef83c6484992889c 100644
 --- a/lib/commands/moveToFinished-9.lua
 +++ b/lib/commands/moveToFinished-9.lua
-@@ -62,6 +62,16 @@ if rcall("EXISTS", KEYS[3]) == 1 then -- // Make sure job exists
+@@ -62,6 +62,19 @@ if rcall("EXISTS", KEYS[3]) == 1 then -- // Make sure job exists
      removeDebounceKeyIfNeeded(ARGV[9], debounceId)
  
      -- Remove job?
 +    local rootId = rcall("HGET", KEYS[3], "n8nRecoveryRoot") or ARGV[1]
 +    local recoveryKey = ARGV[9] .. "recovery:" .. rootId
 +    if rcall("EXISTS", recoveryKey) == 1 then
-+        if ARGV[3] == "failedReason" and rcall("HGET", recoveryKey, "cancelled") ~= "1" then
-+            rcall("HSET", recoveryKey, "failedReason", ARGV[4])
-+            rcall("EXPIRE", recoveryKey, 604800)
-+        else
++        if rcall("HGET", recoveryKey, "cancelled") == "1" then
 +            rcall("DEL", recoveryKey)
++        else
++            -- Main reads the latest job id here until it settles its wait and deletes the record
++            if ARGV[3] == "failedReason" then
++                rcall("HSET", recoveryKey, "failedReason", ARGV[4])
++            end
++            rcall("EXPIRE", recoveryKey, 604800)
 +        end
 +    end
      local keepJobs = cmsgpack.unpack(ARGV[6])
@@ -277,18 +280,21 @@ diff --git a/lib/scripts/moveToFinished-9.js b/lib/scripts/moveToFinished-9.js
 index 7a3d790def1ee8d0f2816c422344dae0cf055d02..b26caf3f5a993d93dd40445da1ba46b972f33e62 100644
 --- a/lib/scripts/moveToFinished-9.js
 +++ b/lib/scripts/moveToFinished-9.js
-@@ -130,6 +130,16 @@ if rcall("EXISTS", KEYS[3]) == 1 then -- // Make sure job exists
+@@ -130,6 +130,19 @@ if rcall("EXISTS", KEYS[3]) == 1 then -- // Make sure job exists
      local debounceId = rcall("HGET", KEYS[3], "deid")
      removeDebounceKeyIfNeeded(ARGV[9], debounceId)
      -- Remove job?
 +    local rootId = rcall("HGET", KEYS[3], "n8nRecoveryRoot") or ARGV[1]
 +    local recoveryKey = ARGV[9] .. "recovery:" .. rootId
 +    if rcall("EXISTS", recoveryKey) == 1 then
-+        if ARGV[3] == "failedReason" and rcall("HGET", recoveryKey, "cancelled") ~= "1" then
-+            rcall("HSET", recoveryKey, "failedReason", ARGV[4])
-+            rcall("EXPIRE", recoveryKey, 604800)
-+        else
++        if rcall("HGET", recoveryKey, "cancelled") == "1" then
 +            rcall("DEL", recoveryKey)
++        else
++            -- Main reads the latest job id here until it settles its wait and deletes the record
++            if ARGV[3] == "failedReason" then
++                rcall("HSET", recoveryKey, "failedReason", ARGV[4])
++            end
++            rcall("EXPIRE", recoveryKey, 604800)
 +        end
 +    end
      local keepJobs = cmsgpack.unpack(ARGV[6])

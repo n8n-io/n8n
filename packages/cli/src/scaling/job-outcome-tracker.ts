@@ -240,9 +240,13 @@ export class JobOutcomeTracker {
 		return result?.result;
 	}
 
-	/** Drop the wait without settling it, e.g. when the caller cancelled the execution. */
-	drop(job: Job) {
-		return this.dropByJobKey(toJobKey(job.queue.name, job.id));
+	/**
+	 * Drop the wait without settling it, e.g. when the caller cancelled the execution.
+	 * Found by execution, because the wait may still be filed under an older job ID.
+	 */
+	drop(executionId: string) {
+		const found = this.findWait(executionId);
+		if (found) this.dropByJobKey(found[0]);
 	}
 
 	private dropByJobKey(jobKey: string) {

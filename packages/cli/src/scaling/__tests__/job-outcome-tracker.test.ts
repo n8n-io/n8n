@@ -511,7 +511,7 @@ describe('JobOutcomeTracker', () => {
 			let settled = false;
 
 			void tracker.waitFor(job).finally(() => (settled = true));
-			tracker.drop(job);
+			tracker.drop(job.data.executionId);
 			await vi.advanceTimersByTimeAsync(JOB_WAIT_RECHECK_INTERVAL_MS * 2);
 
 			expect(executionRepository.findStatusesByIds).not.toHaveBeenCalled();

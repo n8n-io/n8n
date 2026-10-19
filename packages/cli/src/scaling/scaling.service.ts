@@ -482,19 +482,19 @@ export class ScalingService {
 		const { executionId } = job.data;
 		const props = { jobId: job.id, executionId };
 		const originalJob = job;
+		const trackedJobId = this.jobOutcomeTracker.currentJobId(executionId);
+
+		// A removed job emits no completion event, and the caller handles the cancellation
+		this.jobOutcomeTracker.drop(executionId);
 
 		try {
 			// Read Redis as well as the tracker, because the recovery event may have been missed
-			const currentJobId =
-				(await cancelJobRecovery(job)) ?? this.jobOutcomeTracker.currentJobId(executionId);
+			const currentJobId = (await cancelJobRecovery(job)) ?? trackedJobId;
 
 			if (currentJobId !== undefined && currentJobId !== job.id) {
 				job = (await job.queue.getJob(currentJobId)) ?? job;
 				props.jobId = job.id;
 			}
-
-			// A removed job emits no completion event, and the caller handles the cancellation
-			this.jobOutcomeTracker.drop(job);
 
 			if (await job.isActive()) {
 				await job.progress({ kind: 'abort-job' }); // being processed by worker

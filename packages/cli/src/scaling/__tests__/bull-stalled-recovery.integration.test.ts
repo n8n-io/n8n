@@ -14,7 +14,7 @@ import type { ActiveExecutions } from '@/active-executions';
 import { JobOutcomeTracker } from '../job-outcome-tracker';
 import { cancelJobRecovery, jobRecoveryKey, readJobRecovery } from '../job-recovery';
 import { ScalingService } from '../scaling.service';
-import type { JobData } from '../scaling.types';
+import type { JobData, JobFinishedProps } from '../scaling.types';
 
 const REDIS_HOST = process.env.N8N_TEST_REDIS_HOST;
 const REDIS_PORT = Number(process.env.N8N_TEST_REDIS_PORT);
@@ -174,7 +174,7 @@ describe.skipIf(!REDIS_HOST || !REDIS_PORT)('Bull stalled-job recovery (real Red
 			expect(String(third?.id)).toBe(String(same.id));
 			await third!.moveToCompleted('ok', false, true);
 			expect(String((await b.getNextJob())?.id)).toBe(String(lower.id));
-			expect(await redis.exists(jobRecoveryKey(original))).toBe(0);
+			expect(await redis.ttl(jobRecoveryKey(original))).toBeGreaterThan(0);
 		});
 
 		test('repeated never-activated recovery leaves stalledCounter unset', async () => {
@@ -457,6 +457,29 @@ describe.skipIf(!REDIS_HOST || !REDIS_PORT)('Bull stalled-job recovery (real Red
 			},
 		);
 
+		test('a result reported under the fresh id after completion reaches the original job', async () => {
+			const tracker = new JobOutcomeTracker(
+				mockLogger(),
+				mock<ActiveExecutions>({ has: () => true }),
+				mock<ExecutionRepository>(),
+				mock<EventService>(),
+			);
+			const original = await a.add(jobData('1'));
+			const wait = tracker.waitFor(original);
+			expect(await dequeueWithoutActivating()).toBe(String(original.id));
+			const freshId = await recover(String(original.id));
+			const picked = await b.getNextJob();
+			expect(String(picked?.id)).toBe(freshId);
+			await picked!.moveToCompleted('ok', false, true);
+
+			const result = mock<JobFinishedProps>({ success: true });
+			await tracker.recordFinished(QUEUE_NAME, freshId, '1', result);
+
+			await wait;
+			expect(tracker.popResult(original)).toBe(result);
+			await vi.waitFor(async () => expect(await redis.exists(jobRecoveryKey(original))).toBe(0));
+		});
+
 		test.each(['waiting', 'active', 'sweeping', 'first-sweep', 'original-active'])(
 			'cancellation targets the fresh job without events when %s',
 			async (state) => {
@@ -505,6 +528,7 @@ describe.skipIf(!REDIS_HOST || !REDIS_PORT)('Bull stalled-job recovery (real Red
 					}
 
 					expect(await scaling.stopJob(original)).toBe(true);
+					expect(tracker.currentJobId('1')).toBeUndefined();
 
 					if (picked) {
 						expect(await redis.hget(key(freshId), 'progress')).toBe(

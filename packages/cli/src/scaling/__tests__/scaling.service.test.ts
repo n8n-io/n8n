@@ -1060,6 +1060,18 @@ describe('ScalingService', () => {
 			expect(job.remove).not.toHaveBeenCalled();
 		});
 
+		it('should drop the wait even when Redis fails', async () => {
+			await scalingService.setupQueue();
+			const job = mock<Job>({
+				data: { executionId: 'exec-1' },
+				queue: { client: { eval: vi.fn().mockRejectedValue(new Error('connection lost')) } },
+			});
+
+			expect(await scalingService.stopJob(job)).toBe(false);
+
+			expect(jobOutcomeTracker.drop).toHaveBeenCalledWith('exec-1');
+		});
+
 		it('should report failure to stop a job', async () => {
 			await scalingService.setupQueue();
 			const job = mock<Job>({
