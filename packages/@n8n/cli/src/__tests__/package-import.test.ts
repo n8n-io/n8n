@@ -24,6 +24,7 @@ interface ImportFlags {
 	overwriteDeletionPolicy?: string;
 	credentialMatchingMode?: string;
 	credentialMissingMode?: string;
+	credentialConflictPolicy?: string;
 	dataTableMatchingMode?: string;
 	dataTableMissingMode?: string;
 	dataTableSchemaConflictPolicy?: string;
@@ -76,6 +77,7 @@ describe('package import command', () => {
 			overwriteDeletionPolicy: 'hard-delete',
 			credentialMatchingMode: 'id-only',
 			credentialMissingMode: 'create-stub',
+			credentialConflictPolicy: 'overwrite',
 			dataTableMatchingMode: 'by-id',
 			dataTableMissingMode: 'create',
 			dataTableSchemaConflictPolicy: 'keep-existing',
@@ -106,6 +108,7 @@ describe('package import command', () => {
 			overwriteDeletionPolicy: 'hard-delete',
 			credentialMatchingMode: 'id-only',
 			credentialMissingMode: 'create-stub',
+			credentialConflictPolicy: 'overwrite',
 			dataTableMatchingMode: 'by-id',
 			dataTableMissingMode: 'create',
 			dataTableSchemaConflictPolicy: 'keep-existing',
@@ -140,6 +143,13 @@ describe('package import command', () => {
 		expect(conflictPolicy.aliases).toEqual(['tag-conflict-policy']);
 		expect(conflictPolicy.options).toEqual(['skip', 'fail', 'rename']);
 		expect(conflictPolicy.default).toBeUndefined();
+	});
+
+	it('defines the credential conflict flag with a kebab alias, server option list, and no client-side default', () => {
+		const flag = PackageImport.flags.credentialConflictPolicy;
+		expect(flag.aliases).toEqual(['credential-conflict-policy']);
+		expect(flag.options).toEqual(['keep-existing', 'overwrite', 'fail']);
+		expect(flag.default).toBeUndefined();
 	});
 
 	// Real oclif parsing exercises the flag default and alias resolution, which
@@ -219,6 +229,37 @@ describe('package import command', () => {
 				expect.anything(),
 				expect.objectContaining({ projectConflictPolicy: 'merge' }),
 			);
+		});
+
+		it('resolves the --credential-conflict-policy alias', async () => {
+			const importPackage = await runWithArgv([
+				'--file=/tmp/export.n8np',
+				'--credential-conflict-policy=overwrite',
+			]);
+
+			expect(importPackage).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ credentialConflictPolicy: 'overwrite' }),
+			);
+		});
+
+		it('leaves credentialConflictPolicy unset when the flag is omitted', async () => {
+			const importPackage = await runWithArgv(['--file=/tmp/export.n8np']);
+
+			expect(importPackage).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ credentialConflictPolicy: undefined }),
+			);
+		});
+
+		it('rejects an unsupported --credential-conflict-policy value', async () => {
+			const config = await Config.load(packageRoot);
+			const command = new PackageImport(
+				['--file=/tmp/export.n8np', '--credential-conflict-policy=merge'],
+				config,
+			);
+
+			await expect(command.run()).rejects.toThrow(/Expected --credentialConflictPolicy=merge/);
 		});
 
 		it('rejects the removed --conflict-policy flag', async () => {

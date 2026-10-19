@@ -17,6 +17,7 @@ describe('ImportPackageRequestDto', () => {
 				withPackageFile({
 					credentialMatchingMode: 'id-only',
 					credentialMissingMode: 'create-stub',
+					credentialConflictPolicy: 'keep-existing',
 					bindings: {},
 					workflowConflictPolicy: 'fail',
 					workflowPublishingPolicy: 'preserve-published-state',
@@ -50,6 +51,7 @@ describe('ImportPackageRequestDto', () => {
 				withPackageFile({
 					credentialMatchingMode: 'id-only',
 					credentialMissingMode: 'create-stub',
+					credentialConflictPolicy: 'keep-existing',
 					bindings: {},
 					workflowConflictPolicy: 'fail',
 					workflowPublishingPolicy: 'preserve-published-state',
@@ -85,6 +87,7 @@ describe('ImportPackageRequestDto', () => {
 					folderId: 'fld-1',
 					credentialMatchingMode: 'id-only',
 					credentialMissingMode: 'create-stub',
+					credentialConflictPolicy: 'keep-existing',
 					bindings: {},
 					workflowConflictPolicy: 'new-version',
 					workflowPublishingPolicy: 'preserve-published-state',
@@ -523,6 +526,7 @@ describe('ImportPackageRequestDto', () => {
 		it.each([
 			{ field: 'credentialMatchingMode', expected: 'id-only' },
 			{ field: 'credentialMissingMode', expected: 'create-stub' },
+			{ field: 'credentialConflictPolicy', expected: 'keep-existing' },
 			{ field: 'workflowPublishingPolicy', expected: 'preserve-published-state' },
 			{ field: 'workflowIdPolicy', expected: 'source' },
 			{ field: 'missingNodeTypeMode', expected: 'fail' },
@@ -649,6 +653,51 @@ describe('ImportPackageRequestDto', () => {
 					}),
 				).success,
 			).toBe(false);
+		});
+	});
+
+	describe('credentialConflictPolicy', () => {
+		it('defaults credentialConflictPolicy to keep-existing when omitted', () => {
+			const result = ImportPackageRequestDto.safeParse(
+				withPackageFile({
+					workflowConflictPolicy: 'fail',
+				}),
+			);
+			expect(result.success).toBe(true);
+			if (result.success) {
+				expect(result.data.credentialConflictPolicy).toBe('keep-existing');
+			}
+		});
+
+		it.each(['keep-existing', 'overwrite', 'fail'] as const)(
+			'accepts %s as a credentialConflictPolicy value',
+			(credentialConflictPolicy) => {
+				const result = ImportPackageRequestDto.safeParse(
+					withPackageFile({
+						credentialConflictPolicy,
+						workflowConflictPolicy: 'fail',
+					}),
+				);
+				expect(result.success).toBe(true);
+				if (result.success) {
+					expect(result.data.credentialConflictPolicy).toBe(credentialConflictPolicy);
+				}
+			},
+		);
+
+		it('rejects unsupported credentialConflictPolicy values', () => {
+			expect(
+				ImportPackageRequestDto.safeParse(
+					withPackageFile({
+						credentialConflictPolicy: 'merge',
+						workflowConflictPolicy: 'fail',
+					}),
+				).success,
+			).toBe(false);
+		});
+
+		it('is accepted as a multipart form field', () => {
+			expect(IMPORT_PACKAGE_REQUEST_FORM_FIELDS).toContain('credentialConflictPolicy');
 		});
 	});
 

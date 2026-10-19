@@ -321,6 +321,8 @@ export type ImportSelectionRequest = {
 	workflowIdPolicy?: WorkflowIdPolicy;
 	overwriteDeletionPolicy?: OverwriteDeletionPolicy;
 	dataTableSchemaConflictPolicy?: DataTableSchemaConflictPolicy;
+	/** Omitted means `keep-existing`. */
+	credentialConflictPolicy?: CredentialConflictPolicy;
 };
 
 export type ImportPackageSelectionRequest = ImportSelectionRequest & {

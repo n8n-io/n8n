@@ -7,23 +7,34 @@ import {
 	testDb,
 } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import { WorkflowRepository, type User } from '@n8n/db';
+import { CredentialsRepository, WorkflowRepository, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 
+import { CredentialTypes } from '@/credential-types';
+import { CredentialsService } from '@/credentials/credentials.service';
 import {
 	buildEntityPackageBuffer,
+	credentialRequirementsFromWorkflows,
+	githubCredentialPayload,
+	serializedCredential,
 	serializedProject,
 	serializedWorkflow,
+	serializedWorkflowWithCredential,
 } from '@/modules/n8n-packages/__tests__/fixtures/package-fixtures';
 import { Telemetry } from '@/telemetry';
 
+import { saveCredential } from '../shared/db/credentials';
 import { createCustomRoleWithScopeSlugs } from '../shared/db/roles';
 import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 
 mockInstance(Telemetry);
+
+// Must run before `setupTestServer`, which constructs the controller with this mock.
+const credentialTypesMock = mockInstance(CredentialTypes);
+credentialTypesMock.recognizes.mockReturnValue(true);
 
 const testServer = utils.setupTestServer({ endpointGroups: ['publicApi'] });
 
@@ -62,6 +73,8 @@ beforeEach(async () => {
 		'Project',
 		'ProjectRelation',
 		'Folder',
+		'CredentialsEntity',
+		'SharedCredentials',
 	]);
 	testServer.license.enable('feat:projectRole:admin');
 	testServer.license.enable('feat:folders');
@@ -350,6 +363,73 @@ describe('POST /n8n-packages/import-selection', () => {
 
 		expect(response.statusCode).toBe(400);
 		expect(response.body).toStrictEqual({ message: 'Unexpected form field "projectId"' });
+	});
+
+	it('rejects credentialConflictPolicy as a form field', async () => {
+		const project = await createTeamProject('Target', owner);
+		const tarBuffer = await buildProjectPackage(project.id);
+
+		const response = await authOwnerAgent
+			.post('/n8n-packages/import-selection')
+			.field('selectedProjectId', project.id)
+			.field('selectedWorkflowIds', JSON.stringify(['WFA']))
+			.field('credentialConflictPolicy', 'overwrite')
+			.attach('package', tarBuffer, 'import.n8np');
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body).toStrictEqual({
+			message: 'Unexpected form field "credentialConflictPolicy"',
+		});
+	});
+
+	it('keeps a matched credential when the package has a different name and values for it', async () => {
+		const project = await createTeamProject('Target', owner);
+		const credential = await saveCredential(
+			githubCredentialPayload({ name: 'GitHub', data: { accessToken: 'stored-secret' } }),
+			{ project, role: 'credential:owner' },
+		);
+		const workflow = serializedWorkflowWithCredential({
+			id: 'WFC',
+			name: 'Uses credential',
+			credentialId: credential.id,
+			credentialName: credential.name,
+		});
+		const tarBuffer = await buildEntityPackageBuffer({
+			sourceId: 'http-selection-source',
+			projects: [
+				{ target: 'projects/p1', project: serializedProject({ id: project.id, name: 'P1' }) },
+			],
+			workflows: [{ target: 'projects/p1/workflows/wfc', workflow }],
+			credentials: [
+				{
+					target: 'projects/p1/credentials/github',
+					credential: serializedCredential({
+						id: credential.id,
+						name: 'Renamed',
+						data: { user: '={{ $vars.githubToken }}' },
+					}),
+				},
+			],
+			manifestExtras: {
+				requirements: { credentials: credentialRequirementsFromWorkflows([workflow]) },
+			},
+		});
+
+		const response = await authOwnerAgent
+			.post('/n8n-packages/import-selection')
+			.field('selectedProjectId', project.id)
+			.field('selectedWorkflowIds', JSON.stringify(['WFC']))
+			.attach('package', tarBuffer, 'import.n8np');
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.credentials).toMatchObject({ matched: [credential.id], updated: [] });
+		const stored = await Container.get(CredentialsRepository).findOneByOrFail({
+			id: credential.id,
+		});
+		expect(stored.name).toBe('GitHub');
+		expect(await Container.get(CredentialsService).decrypt(stored, true)).toEqual({
+			accessToken: 'stored-secret',
+		});
 	});
 
 	it('rejects a second file with 413', async () => {

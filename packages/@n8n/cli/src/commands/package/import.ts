@@ -12,6 +12,7 @@ export default class PackageImport extends BaseCommand {
 		'<%= config.bin %> package import --file=export.n8np',
 		'<%= config.bin %> package import --file=export.n8np --project-id=<id> --workflow-conflict-policy=skip',
 		'<%= config.bin %> package import --file=export.n8np --workflow-conflict-policy=fail --credential-missing-mode=must-preexist',
+		'<%= config.bin %> package import --file=export.n8np --project-id=<id> --credential-conflict-policy=overwrite',
 		'<%= config.bin %> package import --file=export.n8np --workflow-conflict-policy=fail --bindings=\'{"credentials":{"<sourceId>":"<targetId>"}}\'',
 	];
 
@@ -78,6 +79,12 @@ export default class PackageImport extends BaseCommand {
 				'What to do when a referenced credential cannot be resolved (default on the instance: create-stub)',
 			options: ['must-preexist', 'create-stub', 'create-with-values'],
 			aliases: ['credential-missing-mode'],
+		}),
+		credentialConflictPolicy: Flags.string({
+			description:
+				'What to do when a referenced credential matches an existing credential and the package has a different name or different values for it (default on the instance: keep-existing). keep-existing never changes a matched credential; overwrite writes the package name and expression values to a matched credential that a project of the import owns, keeps all other stored values (secrets, other fields, the OAuth connection, array fields), never changes a global credential owned by another project or a managed, end-user (resolvable) or instance-level credential, lists the changed credentials under credentials.updated, and needs credential:update when the import changes a credential; fail rejects the import when overwrite would change a matched credential. No policy writes a match that would not change. overwrite and fail compare stored values, so they need credential:update on each matched credential that a project of the import owns, also when it would not change',
+			options: ['keep-existing', 'overwrite', 'fail'],
+			aliases: ['credential-conflict-policy'],
 		}),
 		dataTableMatchingMode: Flags.string({
 			description: 'How referenced data tables are matched on the target instance',
@@ -158,6 +165,7 @@ export default class PackageImport extends BaseCommand {
 						overwriteDeletionPolicy: flags.overwriteDeletionPolicy,
 						credentialMatchingMode: flags.credentialMatchingMode,
 						credentialMissingMode: flags.credentialMissingMode,
+						credentialConflictPolicy: flags.credentialConflictPolicy,
 						dataTableMatchingMode: flags.dataTableMatchingMode,
 						dataTableMissingMode: flags.dataTableMissingMode,
 						dataTableSchemaConflictPolicy: flags.dataTableSchemaConflictPolicy,

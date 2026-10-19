@@ -61,6 +61,7 @@ Import a `.n8np` archive into a project.
 n8n-cli package import --file=export.n8np
 n8n-cli package import --file=export.n8np --project-id=<id> --workflow-conflict-policy=skip
 n8n-cli package import --file=export.n8np --workflow-conflict-policy=fail --credential-missing-mode=must-preexist
+n8n-cli package import --file=export.n8np --project-id=<id> --credential-conflict-policy=overwrite
 n8n-cli package import --file=export.n8np --workflow-conflict-policy=fail --bindings='{"credentials":{"<sourceId>":"<targetId>"}}'
 ```
 
@@ -78,6 +79,7 @@ n8n-cli package import --file=export.n8np --workflow-conflict-policy=fail --bind
 | `--overwrite-deletion-policy` | How `--folder-conflict-policy=overwrite` removes a workflow the package does not contain: `archive` (instance default) archives it, keeping it and its execution history recoverable; `hard-delete` archives it — the step that unpublishes it — then deletes the workflow and its executions permanently. Each entry in `removedWorkflows` reports what actually happened in its `deletion` field, so a `hard-delete` whose row cannot be dropped yet (unpublishing defers trigger teardown) shows as `archived` rather than failing the import. Ignored unless the folder conflict policy is `overwrite`. |
 | `--credential-matching-mode` | How credential references are matched on the target instance: `id-only` (default, match by id), `name-and-type` (match by exact name and type), or `type-only` (match by type). For `name-and-type` and `type-only`, candidates are ranked by scope — owned by the target project, then shared into it, then global — and ties within a scope use the most recently updated credential. |
 | `--credential-missing-mode` | What to do when a referenced credential cannot be resolved. `create-stub` (instance default) creates empty placeholder credentials in the target project; `create-with-values` also creates them, seeded from the expression data bundled in the package (a reference the package carries no data for falls back to an empty stub). A credential created with package data is listed under `credentials.seeded` when the package confirms that it carries all source data, and under `credentials.incomplete` otherwise. The import does not publish the imported version of a workflow that uses an incomplete credential (`incomplete-credential`). An active earlier version stays active. `must-preexist` requires every referenced credential to already exist. |
+| `--credential-conflict-policy` | What to do when a referenced credential matches an existing credential and the package has a different name or different values for it. `keep-existing` (instance default) never changes a matched credential. `overwrite` writes the package name and the expression values from the package to a matched credential that a project of the import owns, and lists it under `credentials.updated`. It keeps all other stored values: secrets, other fields, the OAuth connection, and array fields. It never changes a global credential that a different project owns, or a managed, end-user (resolvable) or instance-level credential. `fail` rejects the import when `overwrite` would change a matched credential. No policy writes a match that would not change. `overwrite` and `fail` compare stored values, so they need the `credential:update` permission on each matched credential that a project of the import owns, also when it would not change. |
 | `--data-table-matching-mode` | How data tables referenced by the package's workflows are matched on the target instance: `by-id` (default and only mode) matches the target-project table with the same id — imported tables keep their source id — and never falls back to name matching. |
 | `--data-table-missing-mode` | What to do when a referenced data table is absent in the target project. `create` (instance default) creates it from the package schema — keeping the source id, with no rows; `must-preexist` requires it to already exist; `do-nothing` skips creation. Under the `keep-existing` and `fail` schema conflict policies, matched tables are schema-validated (all package columns present with the same name and type), even under `do-nothing`. Under `overwrite-non-destructive`, a matched table blocks the import only when a change removes or retypes a column. The import never imports table rows. Matched tables change only under `--data-table-schema-conflict-policy=overwrite` or `overwrite-non-destructive`, which keep their rows. |
 | `--data-table-schema-conflict-policy` | How strictly a matched data table's schema is compared. Under `keep-existing` and `fail`, every package column must exist on the matched target table with the same name and type. A missing column or a type mismatch rejects the import. `keep-existing` (instance default) ignores additional columns the target table has of its own; `fail` is the strict drift-detection choice and rejects those too. `keep-existing` and `fail` never alter the matched target table. `overwrite` changes the matched target table to match the package. It can remove or retype columns. The values in those columns are removed. Rows and other columns are kept. When the package has column ids, a column that is only renamed keeps its values. The changes apply to all workflows that use the table. `overwrite-non-destructive` makes the same changes as `overwrite`, but rejects the import and writes nothing when a change removes or retypes a column. A target-only column counts as removed. |
@@ -97,6 +99,7 @@ Requires the API key to hold:
 - `variable:create` — when the import actually creates a variable, i.e. `--variable-missing-mode` is `create-with-value` (the default) or `create-stub` and at least one referenced variable does not already resolve. A package whose variables all resolve creates nothing and needs neither this scope nor a variables-enabled license.
 - `variable:update` — when the import would overwrite a variable, i.e. `--variable-conflict-policy=overwrite` and at least one resolved variable's value differs from the package's. `keep-existing` (the default) never overwrites and needs neither this scope nor a variables-enabled license.
 - `credential:create` — when `--credential-missing-mode=create-with-values` and the import creates at least one credential.
+- `credential:update` — when `--credential-conflict-policy=overwrite` and the import changes at least one matched credential.
 - `tag:create` — when the import would create a tag (under `--tag-missing-mode create`, the instance default; tags that match, are dropped, or belong only to skipped workflows need no scope)
 - `tag:update` — when the import would rename or reconcile a tag (under `--tag-conflict-policy rename`).
 
@@ -108,6 +111,9 @@ issues. Examples:
 - a workflow that `--folder-conflict-policy=overwrite` would remove but you lack
   `workflow:delete` on
 - an unresolved credential under `--credential-missing-mode=must-preexist`
+- a matched credential that the package would change under
+  `--credential-conflict-policy=fail`, or a matched credential that you cannot
+  update under `--credential-conflict-policy=overwrite` or `fail`
 - a schema-incompatible data table
 - a workflow using a node type this instance does not have under
   `--missing-node-type-mode=fail`
@@ -143,7 +149,7 @@ These policies are fixed:
 | Folders | Merge all packaged folders in the selected project, including folders with no selected workflows. |
 | Tags | Create missing tags referenced by imported workflows. Skip tag conflicts. |
 | Data tables | Match referenced tables by ID. Create missing tables. Reject incompatible schemas. |
-| Credentials | Match referenced credentials by ID. They must already exist. |
+| Credentials | Match referenced credentials by ID. They must already exist. Keep their current names and values. |
 | Variables | Referenced variables must already exist. Keep their current values. |
 
 An imported workflow's destination ID must not appear in `--deleted-workflow-ids`.
