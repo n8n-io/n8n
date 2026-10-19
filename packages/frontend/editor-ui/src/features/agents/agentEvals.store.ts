@@ -1235,6 +1235,14 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 		return stop;
 	};
 
+	// A 4xx means the server answered and refused this request, so it started
+	// nothing. Only a network error or a 5xx leaves the attempt unknown.
+	const isRejectedBeforeStart = (error: unknown) =>
+		error instanceof ResponseError &&
+		error.httpStatusCode !== undefined &&
+		error.httpStatusCode >= 400 &&
+		error.httpStatusCode < 500;
+
 	const recoverResult = async (
 		projectId: string,
 		agentId: string,
@@ -1252,12 +1260,7 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 		const current = findCachedResult(cached.result.id)?.result;
 		if (!isPendingStatus(current?.status)) {
 			stopRecovery();
-		} else if (
-			current?.runAt === cached.result.runAt &&
-			error instanceof ResponseError &&
-			(error.httpStatusCode === 401 || error.httpStatusCode === 403)
-		) {
-			// Authorization failures reject execution before the runner can claim it.
+		} else if (current?.runAt === cached.result.runAt && isRejectedBeforeStart(error)) {
 			stopRecovery();
 			replaceCachedResult(cached.runId, cached.result.id, cached.result);
 		}
