@@ -1,0 +1,181 @@
+packages/cli/src/utils/__tests__/model-stream-stall-options.test.ts
+  s_58620fba057bad::t_aca595935e946b 3
+  s_58620fba057bad::t_d7c0ef23295e5a 1-45
+packages/cli/src/modules/agents/builder/builder-session.ts
+  s_58620fba057bad::t_aca595935e946b 1-45
+  s_58620fba057bad::t_3cf9a7a516976e 1-4,6-10,12-14,24-45
+packages/cli/src/modules/agents/builder/interactive/ask-credential.tool.ts
+  s_58620fba057bad::t_aca595935e946b 17,50,62
+  s_58620fba057bad::t_3cf9a7a516976e 17,50,62
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_58620fba057bad::t_aca595935e946b 58
+packages/cli/src/modules/agents/builder/interactive/__tests__/finish-setup.tool.test.ts
+  s_58620fba057bad::t_aca595935e946b 2,24-25
+  s_58620fba057bad::t_205eb1297efb20 2,24-25
+packages/cli/src/modules/agents/sub-agents/sub-agent-runner.ts
+  s_58620fba057bad::t_aca595935e946b 59
+  s_58620fba057bad::t_d7c0ef23295e5a 59
+packages/cli/src/modules/instance-ai/instance-ai-agent-context.adapter.ts
+  s_58620fba057bad::t_aca595935e946b 7
+  s_58620fba057bad::t_138951cd615e90 7-8,15-27
+  s_58620fba057bad::t_f87a49814205d9 1-4,6,9-10,12-13,28-29
+packages/cli/src/modules/agents/json-config/model-config.ts
+  s_58620fba057bad::t_aca595935e946b 1-2,12
+packages/cli/src/modules/agents/repositories/agent-thread.repository.ts
+  s_58620fba057bad::t_aca595935e946b 4,20-25
+  s_58620fba057bad::t_7ffdd3afcdb3f6 26-27
+  s_58620fba057bad::t_d7c0ef23295e5a 4,20-25
+  s_58620fba057bad::t_e709aa3d6d514b 26-27
+packages/cli/src/modules/instance-ai/eval/scoped-credential-provider.ts
+  s_58620fba057bad::t_aca595935e946b 1,3
+packages/cli/src/modules/instance-ai/instance-ai-builder-delegate.adapter.ts
+  s_58620fba057bad::t_aca595935e946b 1-7,11,13-17,23,26-30,32-33,35,92-98,101-125,127-129,131,133-149,154-166,168-170,177,181-199,201-202,204-207,209,212-215,217,219-226,231
+  s_58620fba057bad::t_f87a49814205d9 1-4,6-25,30-91,93-96,99-111,113-183,185-196,198-201,203-204,206,208-212,214,216-219,221,223,225,227-230,232-233
+  s_58620fba057bad::t_d9685f68ad591d 5,112,184,197,207,215
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  s_58620fba057bad::t_aca595935e946b 1846-1848,7827-7830,7834,7837,7886,7906-7915,7919,7927-7933
+  s_58620fba057bad::t_43ff7629690b67 1846
+  s_58620fba057bad::t_d604cc6016da96 7827,7886,7906-7911,7913-7915,7919,7927-7928,7930-7933
+packages/cli/src/modules/agents/builder/interactive/finish-setup.tool.ts
+  s_58620fba057bad::t_aca595935e946b 12,30
+  s_58620fba057bad::t_3cf9a7a516976e 12,30
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-builder-delegate.adapter.test.ts
+  s_58620fba057bad::t_aca595935e946b 1-4,7-9,11-13,15-17,19-24,26-31,33-45,49-50,53,56-62,64-66,68-71,74-80,82-94,97-124,128-132,134,136-141,143-144,146,148-152,155-171,174-186,189-201,205-208
+  s_58620fba057bad::t_67f41e08913427 1-6,10-14,25-26,28-34,54-55,63,67,73-74,78-82,89-97,100,108-109,125-128,146-149,153-155,159-162,172-174,177-178,187-189,192,194-198,203-205,207,209-210
+  s_58620fba057bad::t_323ef95adee07c 35-36,114-124
+  s_58620fba057bad::t_fefa3310600a17 68-72
+  s_58620fba057bad::t_e74989c2aab3df 37,39-41,45-52,56-62,64-66,75-77,84-87,102-107,110-113,131-145,150-152,165-171,180-186,199-202
+  s_58620fba057bad::t_39a2a518b8ed4d 42
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_58620fba057bad::t_aca595935e946b 41,310,312,487,508,512-519,580,628,642
+  s_58620fba057bad::t_3cf9a7a516976e 41,310,312,487,508,512-519,580,628,642
+packages/cli/src/modules/instance-ai/__tests__/format-agent-session-context.test.ts
+  s_58620fba057bad::t_aca595935e946b 11
+  s_58620fba057bad::t_e74989c2aab3df 129
+  s_58620fba057bad::t_138951cd615e90 5-128,130-269
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_58620fba057bad::t_aca595935e946b 168,175,633-634,651,656-657,659
+  s_58620fba057bad::t_bdad1e0a16c11b 634
+  s_58620fba057bad::t_4d22957a15f9c6 175,651,656,659
+  s_58620fba057bad::t_17181980352ddc 633
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_58620fba057bad::t_aca595935e946b 158-160,274
+  s_58620fba057bad::t_4d22957a15f9c6 158-159,3065,4210
+  s_58620fba057bad::t_138951cd615e90 274
+  s_58620fba057bad::t_d7c0ef23295e5a 160
+  s_58620fba057bad::t_ef8fe845edee84 4204,4211
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_58620fba057bad::t_aca595935e946b 294
+  s_58620fba057bad::t_43ff7629690b67 294
+packages/cli/src/modules/agents/agent-workflow-execution.service.ts
+  s_58620fba057bad::t_aca595935e946b 59
+  s_58620fba057bad::t_185542894685ba 59
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_58620fba057bad::t_aca595935e946b 68
+  s_58620fba057bad::t_f1509e982f45c4 68
+packages/cli/src/modules/agents/builder/interactive/setup-tool.types.ts
+  s_58620fba057bad::t_aca595935e946b 1,12
+  s_58620fba057bad::t_3cf9a7a516976e 1,12
+packages/cli/src/modules/agents/json-config/__tests__/model-config.test.ts
+  s_58620fba057bad::t_aca595935e946b 5-6
+packages/cli/src/modules/agents/adapters/agents-credential-provider.ts
+  s_58620fba057bad::t_aca595935e946b 10
+packages/cli/src/modules/agents/agent-credential-provider.contracts.ts
+  s_58620fba057bad::t_aca595935e946b 1-14
+packages/cli/src/modules/agents/builder/agents-builder.service.ts
+  s_58620fba057bad::t_aca595935e946b 13-15,17,20-24,35-39,51-53,56-61,63-84,86-101,136-138,140-141,182-190,211,213,242,248,259,267,269,301,315,319-324,328,332-334
+  s_58620fba057bad::t_3cf9a7a516976e 24,211,213,242,248,259,267,269,301,315,319,321-322,324,328,332
+  s_58620fba057bad::t_40a525a32de556 320,323,333-334
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.agent-context.test.ts
+  s_58620fba057bad::t_aca595935e946b 11
+  s_58620fba057bad::t_43ff7629690b67 11
+  s_58620fba057bad::t_4e858fb01067be 20,64-70,72-96,98-124
+packages/cli/src/modules/agents/__tests__/agents-builder-tools.service.test.ts
+  s_58620fba057bad::t_aca595935e946b 52,265,283,296
+  s_58620fba057bad::t_205eb1297efb20 52,265
+  s_58620fba057bad::t_b812b0904e6e62 283,296
+packages/cli/src/modules/agents/builder/interactive/__tests__/ask-credential.tool.test.ts
+  s_58620fba057bad::t_aca595935e946b 2,23-24,31
+  s_58620fba057bad::t_205eb1297efb20 2,23-24,31
+packages/cli/src/modules/agents/builder/__tests__/agents-builder.service.session.test.ts
+  s_58620fba057bad::t_aca595935e946b 5,8-11,21-22,167,169,187-189,215-217,222,225-227,238,240-243,250-251,269-272,276-278,280-281,294-302,314,326,328-336,338,343-351,363,365-373,375,388-396,412-420,436,438-446,448,463-471,473,480-516,518-526,533-541,553-561,573-581,598-606,616,620,622-632,634,650,652-660,662,674,676-684,686,693-701,713,715-723,725,732-740,747-748,751-759,776-796,798-811,813-827
+  s_58620fba057bad::t_323ef95adee07c 480-490,492,503,505-516
+  s_58620fba057bad::t_205eb1297efb20 5,222,238,240-243,314,616,747-748,776-778
+  s_58620fba057bad::t_e6732741db7fdd 779
+packages/cli/src/modules/instance-ai/instance-ai-pending-agent.service.ts
+  s_58620fba057bad::t_4d22957a15f9c6 24,56,70-72,74-75
+  s_58620fba057bad::t_fb4579710a0f60 73,86
+packages/cli/src/modules/agents/__tests__/agent-context.service.test.ts
+  s_58620fba057bad::t_205eb1297efb20 1-10,12-36,38-49,51-63,65-402,433
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.controller.test.ts
+  s_58620fba057bad::t_43ff7629690b67 1594-1596,1598,1611-1613,1615,1634-1636,1638
+  s_58620fba057bad::t_b829985d525a37 1597
+  s_58620fba057bad::t_659f17bf93aeb8 1614
+  s_58620fba057bad::t_5d375ec4d2cd42 1637
+packages/cli/src/modules/instance-ai/__tests__/agent-preview-handoff.test.ts
+  s_58620fba057bad::t_43ff7629690b67 11,17,20,32
+packages/cli/src/modules/instance-ai/eval/__tests__/thread-restore.service.test.ts
+  s_58620fba057bad::t_43ff7629690b67 636-645,675,709,721,750,801,824,833,845,859,868,880-882,884,893
+  s_58620fba057bad::t_f9205fc32d195d 883
+packages/cli/src/modules/instance-ai/agent-preview-handoff.ts
+  s_58620fba057bad::t_4d22957a15f9c6 42-45,47
+  s_58620fba057bad::t_7f08bad045e435 46
+packages/cli/src/modules/instance-ai/eval/__tests__/agent-execution.service.test.ts
+  s_58620fba057bad::t_0f1c1e75d4f387 193
+packages/cli/src/modules/agents/agent-context.service.ts
+  s_58620fba057bad::t_138951cd615e90 9,34,172,309-310,312
+  s_58620fba057bad::t_d7c0ef23295e5a 1-8,11-26,28-33,35-93,95-96,146-171,173-308,313-316
+  s_58620fba057bad::t_caad84b22e2e98 311
+packages/cli/src/utils/model-stream-stall-options.ts
+  s_58620fba057bad::t_d7c0ef23295e5a 1-36
+packages/cli/src/modules/instance-ai/eval/agent-execution.service.ts
+  s_58620fba057bad::t_323ef95adee07c 194
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-pending-agent.service.test.ts
+  s_58620fba057bad::t_43ff7629690b67 4,17-18,27,32-35,37,40,45-47,49,54-64,66-69,71-75,77-82,85-93,95-98,100-101,103,105,107-108,112-136,138-139,141
+  s_58620fba057bad::t_ae88a5ca719e77 38-39
+  s_58620fba057bad::t_3d4a0b210aea4e 41-43
+  s_58620fba057bad::t_c6e87d5f1fe8e0 65
+  s_58620fba057bad::t_358b5a6a5a96da 70
+  s_58620fba057bad::t_d67a3b7ffb1adf 94
+  s_58620fba057bad::t_f61ad5a82edafe 99
+  s_58620fba057bad::t_4f942ee6a1f9ae 102
+  s_58620fba057bad::t_3da0806fcc8d29 106
+  s_58620fba057bad::t_1ea6812b825114 109
+  s_58620fba057bad::t_6be3fc80c404f7 111
+  s_58620fba057bad::t_9c3065df0aa137 137
+  s_58620fba057bad::t_ce18c480a484e3 140
+  s_58620fba057bad::t_ee5f3f6060f0b1 20,23
+packages/cli/src/modules/agents/agent-session-read.ts
+  s_58620fba057bad::t_2407a6a9359645 16-38
+  s_58620fba057bad::t_138951cd615e90 1-15,39-41
+packages/cli/src/modules/instance-ai/eval/thread-restore.service.ts
+  s_58620fba057bad::t_4d22957a15f9c6 315,318,323,381
+packages/cli/src/modules/instance-ai/instance-ai.controller.ts
+  s_58620fba057bad::t_4d22957a15f9c6 1401
+packages/cli/src/modules/agents/agent-context.contracts.ts
+  s_58620fba057bad::t_3cf9a7a516976e 7,9-10,14-31,33-34,39-54,64,77-81
+  s_58620fba057bad::t_138951cd615e90 1-6,8,32,35-38,55-63,65-76
+  s_58620fba057bad::t_e74989c2aab3df 11-13
+packages/cli/src/modules/agents/agent-draft.contracts.ts
+  s_58620fba057bad::t_4d22957a15f9c6 1,28-49
+packages/cli/src/modules/instance-ai/format-agent-session-context.ts
+  s_58620fba057bad::t_138951cd615e90 1-2,7-238
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-agent-context.adapter.test.ts
+  s_58620fba057bad::t_2a6e5b3deea956 1-3,9-11,15-17,19,21-61
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f4015b612673bfac312eae49dd0f193414fbe2a9",
+  "prompts": {},
+  "sessions": {
+    "s_58620fba057bad": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a13f8e-afeb-7511-82e8-d8246a12076c",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
