@@ -14,7 +14,7 @@ import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { AgentConfigService } from '@/modules/agents/agent-config.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
-import type { Agent } from '@/modules/agents/entities/agent.entity';
+import type { ProjectAgent } from '@/modules/agents/entities/agent.entity';
 import type { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 
 import type { AgentEvalCaseGenerationService } from '../agent-eval-case-generation.service';
@@ -130,7 +130,7 @@ describe('AgentEvalService', () => {
 		caseGenerationService = mock<AgentEvalCaseGenerationService>();
 		agentConfigService = mock<AgentConfigService>();
 
-		agentRepository.findByIdAndProjectId.mockResolvedValue(mock<Agent>({ id: AGENT_ID }));
+		agentRepository.findByIdAndProjectId.mockResolvedValue(mock<ProjectAgent>({ id: AGENT_ID }));
 		datasetRepository.findByIdAndAgentId.mockResolvedValue(makeDataset());
 		runRepository.findByIdAndAgentId.mockResolvedValue(makeRun());
 		runRepository.findAndCountByDatasetIdAndAgentId.mockResolvedValue([[], 0]);
