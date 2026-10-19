@@ -17,6 +17,8 @@ const mocks = vi.hoisted(() => ({
 	getWorkflow: vi.fn(),
 	activate: vi.fn(),
 	create: vi.fn(),
+	archive: vi.fn(),
+	delete: vi.fn(),
 	request: vi.fn(),
 }));
 vi.mock('@n8n/stores/useRootStore', () => ({
@@ -31,7 +33,10 @@ vi.mock('@n8n/stores/settings.store', () => ({
 	}),
 }));
 vi.mock('@/app/stores/workflows.store', () => ({
-	useWorkflowsStore: () => ({ createNewWorkflow: mocks.create }),
+	useWorkflowsStore: () => ({ createNewWorkflow: mocks.create, archiveWorkflow: mocks.archive }),
+}));
+vi.mock('@/app/stores/workflowsList.store', () => ({
+	useWorkflowsListStore: () => ({ deleteWorkflow: mocks.delete }),
 }));
 vi.mock('@/features/collaboration/projects/projects.store', () => ({
 	useProjectsStore: () => ({
@@ -72,6 +77,8 @@ beforeEach(() => {
 	mocks.getWorkflow.mockResolvedValue(workflow);
 	mocks.create.mockResolvedValue(workflow);
 	mocks.activate.mockResolvedValue(workflow);
+	mocks.archive.mockResolvedValue(undefined);
+	mocks.delete.mockResolvedValue(undefined);
 	mocks.request.mockResolvedValue({ results: [] });
 	fetchMock = vi
 		.fn()
@@ -84,6 +91,73 @@ afterEach(() => {
 });
 
 describe('SelfHealingPlaygroundView', () => {
+	it('does not delete test data when reset is canceled', async () => {
+		const screen = render();
+		const reset = screen.getByTestId('playground-reset');
+		await waitFor(() => expect(reset).toBeEnabled());
+		await userEvent.click(reset);
+		expect(await screen.findByText(/permanently delete 1 playground workflows/)).toHaveTextContent(
+			'Self-healing test',
+		);
+		await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+		expect(mocks.archive).not.toHaveBeenCalled();
+		expect(mocks.delete).not.toHaveBeenCalled();
+	});
+	it('archives and deletes only recognized playground workflows after confirmation', async () => {
+		const unrelated = { ...workflow, id: 'unrelated', nodes: [] };
+		mocks.getWorkflows.mockResolvedValue({ data: [workflow, unrelated], count: 2 });
+		mocks.getWorkflow.mockImplementation(async (_context, id) =>
+			id === 'unrelated' ? unrelated : workflow,
+		);
+		const screen = render();
+		const reset = screen.getByTestId('playground-reset');
+		await waitFor(() => expect(reset).toBeEnabled());
+		await userEvent.click(reset);
+		const confirm = await screen.findByTestId('playground-reset-confirm');
+		expect(mocks.delete).not.toHaveBeenCalled();
+		mocks.getWorkflows.mockResolvedValue({ data: [unrelated], count: 1 });
+		await userEvent.click(confirm);
+		await waitFor(() => expect(mocks.delete).toHaveBeenCalledExactlyOnceWith('workflow1'));
+		expect(mocks.archive).toHaveBeenCalledExactlyOnceWith('workflow1', undefined);
+		expect(mocks.archive.mock.invocationCallOrder[0]).toBeLessThan(
+			mocks.delete.mock.invocationCallOrder[0],
+		);
+		expect(
+			await screen.findByText(/Deleted 1 playground workflows and their test data/),
+		).toBeVisible();
+		expect(reset).toBeDisabled();
+	});
+	it('reports a partial reset and allows retrying a workflow that was already archived', async () => {
+		const archived = { ...workflow, id: 'archived', isArchived: true, activeVersionId: null };
+		mocks.getWorkflows.mockResolvedValue({ data: [workflow, archived], count: 2 });
+		mocks.getWorkflow.mockImplementation(async (_context, id) =>
+			id === 'archived' ? archived : workflow,
+		);
+		mocks.delete.mockRejectedValueOnce(new Error('Still unpublishing'));
+		const screen = render();
+		const reset = screen.getByTestId('playground-reset');
+		await waitFor(() => expect(reset).toBeEnabled());
+		await userEvent.click(reset);
+		await userEvent.click(await screen.findByTestId('playground-reset-confirm'));
+		expect(
+			await screen.findByText(/Deleted 1 playground workflows. Couldn't delete 1/),
+		).toBeVisible();
+		expect(mocks.archive).toHaveBeenCalledExactlyOnceWith('workflow1', undefined);
+		expect(mocks.delete).toHaveBeenCalledWith('archived');
+		expect(reset).toBeEnabled();
+	});
+	it('does not delete a workflow that no longer has the playground identity', async () => {
+		const screen = render();
+		const reset = screen.getByTestId('playground-reset');
+		await waitFor(() => expect(reset).toBeEnabled());
+		await userEvent.click(reset);
+		const confirm = await screen.findByTestId('playground-reset-confirm');
+		mocks.getWorkflow.mockResolvedValue({ ...workflow, name: 'Other workflow' });
+		await userEvent.click(confirm);
+		expect(await screen.findByText(/Couldn't delete 1/)).toBeVisible();
+		expect(mocks.archive).not.toHaveBeenCalled();
+		expect(mocks.delete).not.toHaveBeenCalled();
+	});
 	it('requires a team project before loading or creating workflows', async () => {
 		mocks.projects = [{ id: 'personal', name: 'Personal', type: 'personal' }];
 		const screen = render();

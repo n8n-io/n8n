@@ -1,12 +1,22 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref } from 'vue';
 import { RouterLink } from 'vue-router';
-import { N8nButton, N8nCallout, N8nCard, N8nIcon, N8nOption, N8nSelect } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nCallout,
+	N8nCard,
+	N8nDialog,
+	N8nDialogFooter,
+	N8nIcon,
+	N8nOption,
+	N8nSelect,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { getWorkflow, getWorkflows, activateWorkflow } from '@/app/api/workflows';
 import type { IWorkflowDb } from '@/Interface';
@@ -23,10 +33,12 @@ const i18n = useI18n();
 const root = useRootStore();
 const settings = useSettingsStore();
 const workflowsStore = useWorkflowsStore();
+const workflowsListStore = useWorkflowsListStore();
 const projectsStore = useProjectsStore();
 const scenarios = getScenarios(i18n);
 const projectId = ref('');
 const busy = ref(true);
+const resetOpen = ref(false);
 const workflowSection = ref<HTMLElement>();
 const activeAction = ref('');
 const message = ref('');
@@ -113,6 +125,46 @@ async function publish(workflow: IWorkflowDb) {
 	await activateWorkflow(root.restApiContext, workflow.id, { versionId: workflow.versionId });
 	message.value = i18n.baseText('selfHealingPlayground.published');
 	await refresh();
+}
+
+async function prepareReset() {
+	await refresh();
+	resetOpen.value = workflows.value.length > 0;
+}
+
+async function resetPlayground() {
+	const targets = [...workflows.value];
+	resetOpen.value = false;
+	let deleted = 0;
+	let failed = 0;
+	for (const target of targets) {
+		try {
+			const workflow = await getWorkflow(root.restApiContext, target.id);
+			if (!identifyWorkflow(workflow, scenarios)) {
+				failed++;
+				continue;
+			}
+			if (!workflow.isArchived) {
+				await workflowsStore.archiveWorkflow(workflow.id, workflow.checksum);
+			}
+			await workflowsListStore.deleteWorkflow(workflow.id);
+			delete executions.value[workflow.id];
+			delete responses.value[workflow.id];
+			deleted++;
+		} catch {
+			failed++;
+		}
+	}
+	await refresh();
+	if (failed) {
+		error.value = i18n.baseText('selfHealingPlayground.reset.partial', {
+			interpolate: { deleted, failed },
+		});
+	} else {
+		message.value = i18n.baseText('selfHealingPlayground.reset.done', {
+			interpolate: { count: deleted },
+		});
+	}
 }
 
 async function create(scenario: PlaygroundScenario) {
@@ -338,16 +390,27 @@ onMounted(async () => {
 							{{ i18n.baseText('selfHealingPlayground.workflows.description') }}
 						</p>
 					</div>
-					<N8nButton
-						:disabled="busy"
-						:loading="activeAction === 'refresh'"
-						variant="outline"
-						size="small"
-						@click="perform(refresh, 'refresh')"
-					>
-						<template #icon><N8nIcon icon="refresh-cw" size="small" /></template
-						>{{ i18n.baseText('selfHealingPlayground.refresh') }}
-					</N8nButton>
+					<div :class="$style.actions">
+						<N8nButton
+							variant="destructive"
+							size="small"
+							:disabled="busy || !workflows.length"
+							:loading="activeAction === 'reset'"
+							data-test-id="playground-reset"
+							@click="perform(prepareReset, 'reset')"
+							>{{ i18n.baseText('selfHealingPlayground.reset') }}</N8nButton
+						>
+						<N8nButton
+							:disabled="busy"
+							:loading="activeAction === 'refresh'"
+							variant="outline"
+							size="small"
+							@click="perform(refresh, 'refresh')"
+						>
+							<template #icon><N8nIcon icon="refresh-cw" size="small" /></template
+							>{{ i18n.baseText('selfHealingPlayground.refresh') }}
+						</N8nButton>
+					</div>
 				</div>
 				<div v-if="!workflows.length" :class="$style.empty">
 					<N8nIcon icon="flask-conical" size="large" />
@@ -483,6 +546,34 @@ onMounted(async () => {
 				</div>
 			</aside>
 		</div>
+		<N8nDialog
+			v-model:open="resetOpen"
+			:header="i18n.baseText('selfHealingPlayground.reset.title')"
+			size="small"
+		>
+			<p>
+				{{
+					i18n.baseText('selfHealingPlayground.reset.description', {
+						interpolate: {
+							count: workflows.length,
+							project: teamProjects.find((project) => project.id === projectId)?.name ?? projectId,
+						},
+					})
+				}}
+			</p>
+			<N8nDialogFooter>
+				<N8nButton variant="outline" @click="resetOpen = false">{{
+					i18n.baseText('generic.cancel')
+				}}</N8nButton>
+				<N8nButton
+					variant="destructive"
+					data-test-id="playground-reset-confirm"
+					:disabled="busy"
+					@click="perform(resetPlayground, 'reset')"
+					>{{ i18n.baseText('selfHealingPlayground.reset.confirm') }}</N8nButton
+				>
+			</N8nDialogFooter>
+		</N8nDialog>
 	</div>
 </template>
 
