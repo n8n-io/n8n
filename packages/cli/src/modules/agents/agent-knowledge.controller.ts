@@ -1,10 +1,14 @@
+import type { AgentFileDto } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { Delete, Get, Param, Post, ProjectScope, RestController } from '@n8n/decorators';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { Response } from 'express';
 import multer from 'multer';
 
 import { BadRequestError, NotFoundError } from '@n8n/errors';
+
+import { Telemetry } from '@/telemetry';
 
 import { AgentKnowledgeService } from './agent-knowledge.service';
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
@@ -23,6 +27,7 @@ export class AgentKnowledgeController {
 		private readonly agentKnowledgeService: AgentKnowledgeService,
 		private readonly agentSandboxRuntimeService: AgentSandboxRuntimeService,
 		private readonly runtimeCacheService: AgentRuntimeCacheService,
+		private readonly telemetry: Telemetry,
 	) {}
 
 	/** Knowledge base endpoints require an enabled Agent sandbox. */
@@ -74,6 +79,7 @@ export class AgentKnowledgeController {
 
 			const uploadedFiles = await this.agentKnowledgeService.uploadFiles(agentId, projectId, files);
 			this.runtimeCacheService.clearRuntimes(agentId);
+			this.trackUploadedFiles(req.user.id, projectId, agentId, uploadedFiles);
 			return uploadedFiles;
 		} catch (error) {
 			// Multer wrote temp files to disk before this handler ran. The success
@@ -97,5 +103,28 @@ export class AgentKnowledgeController {
 		await this.agentKnowledgeService.deleteFile(agentId, projectId, fileId);
 		this.runtimeCacheService.clearRuntimes(agentId);
 		return { success: true };
+	}
+
+	private trackUploadedFiles(
+		userId: string,
+		projectId: string,
+		agentId: string,
+		uploadedFiles: AgentFileDto[],
+	) {
+		const files = uploadedFiles.map((file) => ({
+			mime_type: file.mimeType,
+			size_bytes: file.fileSizeBytes,
+		}));
+
+		const totalBytes = files.reduce((sum, file) => sum + file.size_bytes, 0);
+
+		this.telemetry.track(TELEMETRY_EVENT.AGENTS.USER_UPLOADED_AGENT_KNOWLEDGE_FILES, {
+			agent_id: agentId,
+			project_id: projectId,
+			user_id: userId,
+			file_count: files.length,
+			total_bytes: totalBytes,
+			files,
+		});
 	}
 }
