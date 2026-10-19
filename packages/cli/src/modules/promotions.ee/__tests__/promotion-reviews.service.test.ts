@@ -6,10 +6,8 @@ import { ServiceUnavailableError } from '@n8n/errors';
 
 import type { PromotionReviewRepository } from '../database/repositories/promotion-review.repository';
 import type { PromotionRunRepository } from '../database/repositories/promotion-run.repository';
-import type {
-	GitLabMergeRequest,
-	GitLabMergeRequestClient,
-} from '../git-hosts/gitlab-merge-request.client';
+import type { GitLabMergeRequestClient } from '../git-hosts/gitlab-merge-request.client';
+import type { GitLabMergeRequest } from '../git-hosts/gitlab-merge-request.types';
 import type { PromotionReviewHostResolver } from '../promotion-review-host.resolver';
 import { PromotionReviewsService } from '../promotion-reviews.service';
 import type { PromotionOperationInput } from '../promotions.types';

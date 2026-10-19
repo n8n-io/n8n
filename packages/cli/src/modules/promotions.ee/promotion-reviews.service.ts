@@ -17,14 +17,12 @@ import {
 	GitLabMergeRequestClient,
 	toGitLabReviewId,
 } from './git-hosts/gitlab-merge-request.client';
+import { mergeRequestDescription } from './promotion-review.utils';
 import { PromotionReviewHostResolver } from './promotion-review-host.resolver';
 import type { PromotionOperationInput } from './promotions.types';
 
-/** What Promote pushed, as the hook needs it. */
 export type PromotionPush = Readonly<{
-	/** The promotion branch that was pushed; the merge request source. */
 	branchName: string;
-	/** The configured base branch; the merge request target. */
 	baseBranchName: string;
 	commitSha: string;
 	title: string;
@@ -73,7 +71,7 @@ export class PromotionReviewsService {
 					sourceBranch: branchName,
 					targetBranch: baseBranchName,
 					title,
-					description: this.mergeRequestDescription(actor, commitSha, body),
+					description: mergeRequestDescription(actor, commitSha, body),
 				}),
 		);
 		if (!mergeRequest.ok) {
@@ -115,16 +113,6 @@ export class PromotionReviewsService {
 
 		return { mergeRequest: { reviewId, iid, webUrl }, warnings: [] };
 	}
-
-	private mergeRequestDescription(actor: User, commitSha: string, body = '') {
-		const lead = body.replace(/^\n+/, '').replace(/\n+$/, '');
-		const attribution = [
-			`Opened by n8n for a promotion by ${displayName(actor)}.`,
-			'',
-			`Commit: ${commitSha}`,
-		];
-		return escapeGitLabQuickActions((lead ? [lead, '', ...attribution] : attribution).join('\n'));
-	}
 }
 
 /** Runs one step and returns a Result, so a failed step returns instead of throwing. */
@@ -135,16 +123,6 @@ const settle = async <T>(run: () => Promise<T>): Promise<Result<T, unknown>> => 
 		return createResultError(error);
 	}
 };
-
-const displayName = ({ firstName, lastName, id }: User) =>
-	[firstName, lastName].filter(Boolean).join(' ') || id;
-
-/** A line that starts with `/` would run as a GitLab quick action under the token. */
-const escapeGitLabQuickActions = (text: string) =>
-	text
-		.split('\n')
-		.map((line) => line.replace(/^(\s*)\//, '$1\\/'))
-		.join('\n');
 
 const mergeRequestWarning = (error: unknown): PromotionPromoteWarning => {
 	const prefix = 'No merge request was opened';

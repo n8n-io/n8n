@@ -19,6 +19,12 @@ import type { IDataObject, IHttpRequestMethods } from 'n8n-workflow';
 import { z } from 'zod';
 
 import type { GitHostAccess } from './git-host.types';
+import {
+	mergeRequestSchema,
+	type GitLabMergeRequest,
+	type MergeRequestInput,
+	type MergeRequestRef,
+} from './gitlab-merge-request.types';
 
 const requestTimeoutMs = 15_000;
 const maxResponseBodyBytes = 1024 * 1024;
@@ -33,7 +39,6 @@ const tlsErrorCodes = new Set([
 	'UNABLE_TO_GET_ISSUER_CERT_LOCALLY',
 	'UNABLE_TO_VERIFY_LEAF_SIGNATURE',
 ]);
-
 const knownErrorCodes = new Set([
 	...tlsErrorCodes,
 	'ECONNABORTED',
@@ -49,47 +54,19 @@ const knownErrorCodes = new Set([
 	'ERR_RESPONSE_TOO_LARGE',
 ]);
 
-/** The merge request fields n8n reads. GitLab returns many more. */
-const mergeRequestSchema = z.object({
-	iid: z.number().int(),
-	project_id: z.number().int(),
-	web_url: z.string().refine((value) => {
-		try {
-			const { protocol } = new URL(value);
-			return protocol === 'http:' || protocol === 'https:';
-		} catch {
-			return false;
-		}
-	}),
-	title: z.string(),
-	description: z.string().nullable(),
-	state: z.enum(['opened', 'locked', 'merged', 'closed']),
-	source_branch: z.string(),
-	target_branch: z.string(),
-	has_conflicts: z.boolean().optional().default(false),
-	merged_at: z.string().nullable().optional(),
-	closed_at: z.string().nullable().optional(),
-	detailed_merge_status: z.string().nullable().optional(),
-	author: z.object({ name: z.string() }).nullable().optional(),
-	diff_refs: z
-		.object({ base_sha: z.string().nullable(), head_sha: z.string().nullable() })
-		.nullable()
-		.optional(),
-});
-
 const stringOrList = z.union([z.string(), z.array(z.string())]);
-
-/** A string, a list of strings, or field names mapped to validation errors. */
 const errorBodySchema = z.object({
 	message: z.union([stringOrList, z.record(stringOrList)]),
 });
 
 const reviewIdPattern = /^(?<projectId>\d+)!(?<iid>\d+)$/;
 
-export type GitLabMergeRequest = z.infer<typeof mergeRequestSchema>;
-
-/** Identifies one merge request on one GitLab project. */
-export type MergeRequestRef = Readonly<{ projectId: number; iid: number }>;
+type ApiRequest = {
+	method: IHttpRequestMethods;
+	path: string;
+	qs?: IDataObject;
+	body?: IDataObject;
+};
 
 /** Stores one merge request as `<projectId>!<iid>`. The id stays valid after a rename. */
 export const toGitLabReviewId = ({ projectId, iid }: MergeRequestRef) => `${projectId}!${iid}`;
@@ -101,26 +78,6 @@ export const parseGitLabReviewId = (remoteReviewId: string): MergeRequestRef => 
 		throw new BadRequestError('This promotion review does not reference a GitLab merge request.');
 	}
 	return { projectId: Number(groups.projectId), iid: Number(groups.iid) };
-};
-
-type MergeRequestInput = {
-	projectPath: string;
-	sourceBranch: string;
-	targetBranch: string;
-	title: string;
-	description: string;
-};
-
-type ApiRequest = {
-	method: IHttpRequestMethods;
-	path: string;
-	qs?: IDataObject;
-	body?: IDataObject;
-};
-
-type TransportFailure = {
-	code: string;
-	error: BadRequestError | ServiceUnavailableError;
 };
 
 /** Opens GitLab merge requests. GitLab records each write as the token's bot user. */
@@ -153,11 +110,11 @@ export class GitLabMergeRequestClient {
 				remove_source_branch: false,
 			},
 		});
-		return this.parse(mergeRequestSchema, body);
+		return this.parse(body);
 	}
 
-	private parse<S extends z.ZodTypeAny>(schema: S, body: unknown): z.output<S> {
-		const parsed = schema.safeParse(body);
+	private parse(body: unknown): GitLabMergeRequest {
+		const parsed = mergeRequestSchema.safeParse(body);
 		if (parsed.success) return parsed.data;
 		this.logger.warn('GitLab merge request response did not match the expected shape', {
 			issues: parsed.error.issues.map(({ path }) => path.join('.')),
@@ -173,7 +130,10 @@ export class GitLabMergeRequestClient {
 		try {
 			response = await this.http.request<unknown>({
 				method,
-				url: apiUrl(access.baseUrl, path),
+				url: new URL(
+					`api/v4/${path}`,
+					access.baseUrl.endsWith('/') ? access.baseUrl : `${access.baseUrl}/`,
+				).toString(),
 				qs,
 				body,
 				headers: { 'PRIVATE-TOKEN': access.accessToken },
@@ -186,13 +146,52 @@ export class GitLabMergeRequestClient {
 				disableFollowRedirect: true,
 			});
 		} catch (error) {
-			const failure = classifyTransportError(error);
+			const chain = errorChain(error);
+			if (
+				chain.some(
+					(cause) =>
+						cause instanceof SsrfBlockedIpError || cause instanceof SsrfBlockedHostnameError,
+				)
+			) {
+				this.logger.warn('GitLab merge request call blocked by instance network policy', {
+					method,
+					path,
+				});
+				throw new BadRequestError(
+					'The instance network policy blocks this GitLab URL. Ask an administrator to allow the GitLab hostname or IP address.',
+				);
+			}
+			const codes = chain.flatMap(({ code }) => (typeof code === 'string' ? [code] : []));
+			const code =
+				codes.find((value) => tlsErrorCodes.has(value)) ??
+				codes.find((value) => knownErrorCodes.has(value)) ??
+				'UNKNOWN';
 			// Request errors can carry the token. Log the code, not the message.
-			this.logger.warn(`GitLab merge request call failed before a response (${failure.code})`, {
+			this.logger.warn(`GitLab merge request call failed before a response (${code})`, {
 				method,
 				path,
 			});
-			throw failure.error;
+			if (code === 'ERR_RESPONSE_TOO_LARGE') {
+				throw new BadRequestError('GitLab returned a response that is too large.');
+			}
+			if (tlsErrorCodes.has(code)) {
+				throw new BadRequestError(
+					'Could not verify the GitLab certificate. Check the certificate and configure a trusted certificate authority on the n8n server.',
+				);
+			}
+			if (['ETIMEDOUT', 'ECONNABORTED'].includes(code)) {
+				throw new ServiceUnavailableError(
+					'The GitLab request timed out. Check that GitLab is available and try again.',
+				);
+			}
+			if (code === 'ENOTFOUND') {
+				throw new BadRequestError(
+					'Could not resolve the GitLab hostname. Check the GitLab URL and the n8n server DNS settings.',
+				);
+			}
+			throw new ServiceUnavailableError(
+				'Could not reach GitLab. Check that GitLab is available and try again.',
+			);
 		}
 
 		if (response.statusCode >= 200 && response.statusCode < 300) return response;
@@ -206,102 +205,53 @@ export class GitLabMergeRequestClient {
 	}
 }
 
-/** Keeps a subpath in the base URL, such as `https://example.com/gitlab`. */
-const apiUrl = (baseUrl: string, path: string) =>
-	new URL(`api/v4/${path}`, baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`).toString();
-
-const classifyTransportError = (error: unknown): TransportFailure => {
-	const chain = errorChain(error);
-	if (
-		chain.some(
-			(cause) => cause instanceof SsrfBlockedIpError || cause instanceof SsrfBlockedHostnameError,
-		)
-	) {
-		return {
-			code: 'BLOCKED',
-			error: new BadRequestError(
-				'The instance network policy blocks this GitLab URL. Ask an administrator to allow the GitLab hostname or IP address.',
-			),
-		};
-	}
-	const codes = chain.flatMap(({ code }) => (typeof code === 'string' ? [code] : []));
-	const code =
-		codes.find((value) => tlsErrorCodes.has(value)) ??
-		codes.find((value) => knownErrorCodes.has(value)) ??
-		'UNKNOWN';
-	return { code, error: transportError(code) };
-};
-
-const transportError = (code: string) => {
-	if (tlsErrorCodes.has(code)) {
-		return new BadRequestError(
-			'Could not verify the GitLab certificate. Check the certificate and configure a trusted certificate authority on the n8n server.',
-		);
-	}
-	if (code === 'ERR_RESPONSE_TOO_LARGE') {
-		return new BadRequestError('GitLab returned a response that is too large.');
-	}
-	if (code === 'ETIMEDOUT' || code === 'ECONNABORTED') {
-		return new ServiceUnavailableError(
-			'The GitLab request timed out. Check that GitLab is available and try again.',
-		);
-	}
-	if (code === 'ENOTFOUND') {
-		return new BadRequestError(
-			'Could not resolve the GitLab hostname. Check the GitLab URL and the n8n server DNS settings.',
-		);
-	}
-	return new ServiceUnavailableError(
-		'Could not reach GitLab. Check that GitLab is available and try again.',
-	);
-};
-
-const statusError = (status: number, body: unknown) => {
+function statusError(status: number, body: unknown) {
 	if (status >= 300 && status < 400) {
 		return new BadRequestError('GitLab redirected the request. Use the final GitLab URL.');
 	}
 	// A GitLab 401 or 403 stays a 400, so it does not look like an n8n session failure.
-	switch (status) {
-		case 401:
-			return new BadRequestError(
-				'GitLab rejected the access token for this action. The token needs the api scope and the Developer role or higher.',
-			);
-		case 403:
-			return new BadRequestError(
-				'The access token may not perform this merge request action. Check the token scopes and role.',
-			);
-		case 404:
-			return new BadRequestError('GitLab could not find the project or merge request.');
-		case 408:
-			return new ServiceUnavailableError(
-				'The GitLab request timed out. Check that GitLab is available and try again.',
-			);
-		case 409:
-			return new ConflictError(
-				gitlabDetail(body) ??
-					'The merge request changed on GitLab. Reload the review and try again.',
-			);
-		case 429:
-			return new TooManyRequestsError(
-				gitlabDetail(body) ?? 'GitLab is limiting requests. Try again later.',
-			);
-		default:
-			if (status >= 500) {
-				return new ServiceUnavailableError(
-					gitlabDetail(body) ?? 'GitLab is not available. Try again later.',
-				);
-			}
-			return new BadRequestError(
-				gitlabDetail(body) ?? `GitLab answered with an unexpected status: ${status}`,
-			);
+	if (status === 401) {
+		return new BadRequestError(
+			'GitLab rejected the access token for this action. The token needs the api scope and the Developer role or higher.',
+		);
 	}
-};
+	if (status === 403) {
+		return new BadRequestError(
+			'The access token may not perform this merge request action. Check the token scopes and role.',
+		);
+	}
+	if (status === 404) {
+		return new BadRequestError('GitLab could not find the project or merge request.');
+	}
+	if (status === 408) {
+		return new ServiceUnavailableError(
+			'The GitLab request timed out. Check that GitLab is available and try again.',
+		);
+	}
+	if (status === 409) {
+		return new ConflictError(
+			gitlabDetail(body) ?? 'The merge request changed on GitLab. Reload the review and try again.',
+		);
+	}
+	if (status === 429) {
+		return new TooManyRequestsError(
+			gitlabDetail(body) ?? 'GitLab is limiting requests. Try again later.',
+		);
+	}
+	if (status >= 500) {
+		return new ServiceUnavailableError(
+			gitlabDetail(body) ?? 'GitLab is not available. Try again later.',
+		);
+	}
+	return new BadRequestError(
+		gitlabDetail(body) ?? `GitLab answered with an unexpected status: ${status}`,
+	);
+}
 
 const textList = (value: string | string[]) =>
 	(Array.isArray(value) ? value : [value]).filter(Boolean);
 
-/** Returns the GitLab `message` text, or undefined when the body has none. */
-const gitlabDetail = (body: unknown) => {
+function gitlabDetail(body: unknown) {
 	const parsed = errorBodySchema.safeParse(body);
 	if (!parsed.success) return undefined;
 	const { message } = parsed.data;
@@ -315,4 +265,4 @@ const gitlabDetail = (body: unknown) => {
 					})
 					.join('; ');
 	return text ? `GitLab: ${text}` : undefined;
-};
+}

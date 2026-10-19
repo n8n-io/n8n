@@ -117,8 +117,8 @@ describe('GitLabMergeRequestClient', () => {
 		expect(lastRequest()?.body).toMatchObject({ title: 'a'.repeat(255) });
 	});
 
-	const openMergeRequest = () =>
-		client.createMergeRequest(access, {
+	const openMergeRequest = async () =>
+		await client.createMergeRequest(access, {
 			projectPath: 'platform/api',
 			sourceBranch: 'n8n-promotion/x',
 			targetBranch: 'main',
