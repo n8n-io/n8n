@@ -114,11 +114,5 @@ declare module 'vue-router' {
 		readOnlyCanvas?: boolean;
 		layout?: 'default' | 'auth' | 'workflow' | 'settings' | 'demo' | 'chat' | 'instanceAi';
 		layoutProps?: Record<string, unknown>;
-		/**
-		 * Name of the shell route a module route nests under, for a module page that
-		 * belongs to a shell overview page. The overview's sidebar link then stays
-		 * active while the module page is open.
-		 */
-		parentRouteName?: string;
 	}
 }

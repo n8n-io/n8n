@@ -1,5 +1,6 @@
 import { VIEWS } from '@n8n/frontend-constants/views';
-import type { RouteRecordRaw } from 'vue-router';
+import { useRBACStore } from '@n8n/stores/rbac.store';
+import { createPinia, setActivePinia } from 'pinia';
 
 import { LOG_STREAM_MODAL_KEY } from './modals';
 import { LogStreamingModule } from './module.descriptor';
@@ -9,8 +10,30 @@ describe('LogStreamingModule', () => {
 		expect(LogStreamingModule.id).toBe('log-streaming');
 	});
 
-	it('should not register a settings sidebar item, because the Observability overview lists the page', () => {
-		expect(LogStreamingModule).not.toHaveProperty('settingsPages');
+	it('should register the settings sidebar item under Operations', () => {
+		expect(
+			LogStreamingModule.settingsPages?.map(({ id, order, section }) => ({ id, order, section })),
+		).toEqual([{ id: 'settings-log-streaming', order: 40, section: 'operations' }]);
+	});
+
+	describe('settings sidebar item', () => {
+		const item = () => LogStreamingModule.settingsPages![0];
+
+		beforeEach(() => {
+			setActivePinia(createPinia());
+		});
+
+		it('should be available to a user with the logStreaming:manage scope', () => {
+			useRBACStore().setGlobalScopes(['logStreaming:manage']);
+
+			expect(item().available).toBe(true);
+		});
+
+		it('should be hidden from a user without the logStreaming:manage scope', () => {
+			useRBACStore().setGlobalScopes(['workflow:read']);
+
+			expect(item().available).toBe(false);
+		});
 	});
 
 	it('should show the paywall only while log streaming is unlicensed', () => {
@@ -21,42 +44,28 @@ describe('LogStreamingModule', () => {
 	});
 
 	describe('routes', () => {
-		// Widened: `defineFrontendModule` keeps the literal tuple, whose members differ in shape.
-		const routes: RouteRecordRaw[] = LogStreamingModule.routes;
-		const pageRoute = () => routes.find((route) => route.name === VIEWS.LOG_STREAMING_SETTINGS);
-		const redirectRoute = () => routes.find((route) => 'redirect' in route);
+		const route = () => LogStreamingModule.routes?.[0];
 
 		it('should keep the route name and path', () => {
-			expect(pageRoute()).toMatchObject({
-				path: 'log-streaming',
-				name: VIEWS.LOG_STREAMING_SETTINGS,
-			});
-		});
-
-		it('should nest under the Observability overview, so its sidebar link stays active', () => {
-			expect(pageRoute()?.meta?.parentRouteName).toBe(VIEWS.OBSERVABILITY_SETTINGS_ROOT);
+			expect(LogStreamingModule.routes?.map(({ path, name }) => ({ path, name }))).toEqual([
+				{ path: 'log-streaming', name: VIEWS.LOG_STREAMING_SETTINGS },
+			]);
 		});
 
 		it('should check the logStreaming:manage scope', () => {
-			expect(pageRoute()?.meta?.middlewareOptions?.rbac).toEqual({
-				scope: 'logStreaming:manage',
-			});
+			expect(route()?.meta?.middlewareOptions?.rbac).toEqual({ scope: 'logStreaming:manage' });
 		});
 
 		it('should not list the module guard, because the shell adds it for a placeholder page', () => {
-			expect(pageRoute()?.meta?.middleware).toEqual(['authenticated', 'rbac']);
+			expect(route()?.meta?.middleware).toEqual(['authenticated', 'rbac']);
+		});
+
+		it('should register the route under the settings route', () => {
+			expect(route()?.meta?.telemetry?.pageCategory).toBe('settings');
 		});
 
 		it('should load the view lazily, so the shell does not pull it in at boot', () => {
-			expect(typeof pageRoute()?.component).toBe('function');
-		});
-
-		it('should redirect the old flat settings path to the nested page', () => {
-			expect(redirectRoute()).toMatchObject({
-				path: 'log-streaming',
-				redirect: { name: VIEWS.LOG_STREAMING_SETTINGS },
-				meta: { telemetry: { pageCategory: 'settings' } },
-			});
+			expect(typeof route()?.component).toBe('function');
 		});
 	});
 

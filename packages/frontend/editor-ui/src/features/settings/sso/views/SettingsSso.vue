@@ -1,7 +1,6 @@
 <script lang="ts" setup>
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
-import { VIEWS } from '@/app/constants';
 import { useSSOStore, SupportedProtocols, type SupportedProtocolType } from '../sso.store';
 import { useI18n } from '@n8n/i18n';
 import { computed, onMounted, ref, useTemplateRef } from 'vue';
@@ -17,7 +16,7 @@ import {
 	N8nSettingsPageHeader,
 	N8nText,
 } from '@n8n/design-system';
-import SettingsBackLink from '@/features/settings/components/SettingsBackLink.vue';
+import AuthenticationBackLink from '../components/AuthenticationBackLink.vue';
 import SamlSettingsForm from '../components/SamlSettingsForm.vue';
 import OidcSettingsForm from '../components/OidcSettingsForm.vue';
 import { useUserRoleProvisioningStore } from '../provisioning/composables/userRoleProvisioning.store';
@@ -113,10 +112,7 @@ onMounted(() => {
 
 <template>
 	<div class="pb-2xl">
-		<SettingsBackLink
-			:label="i18n.baseText('settings.authentication.back')"
-			:to="{ name: VIEWS.AUTHENTICATION_SETTINGS }"
-		/>
+		<AuthenticationBackLink />
 		<N8nSettingsPageHeader
 			:title="i18n.baseText('settings.sso.title')"
 			:description="i18n.baseText('settings.sso.info')"

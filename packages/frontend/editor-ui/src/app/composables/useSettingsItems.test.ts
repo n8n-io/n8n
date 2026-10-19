@@ -21,7 +21,6 @@ const activeModules = ref<string[]>([]);
 const promotionsFlag = ref('false');
 const canUserAccessRouteByName = vi.hoisted(() => vi.fn<(name: string) => boolean>(() => true));
 const contextEnabled = vi.hoisted(() => ({ value: true }));
-const observabilityPages = vi.hoisted(() => ({ logStreaming: true, openTelemetry: true }));
 const openTopUpMock = vi.hoisted(() => vi.fn());
 
 vi.mock('vue-router', () => ({ useRouter: vi.fn(() => ({})) }));
@@ -30,12 +29,6 @@ vi.mock('./useUserHelpers', () => ({
 }));
 vi.mock('@/features/settings/context/context.utils', () => ({
 	isContextEnabled: () => contextEnabled.value,
-}));
-vi.mock('@/features/settings/observability/useObservabilityPages', () => ({
-	useObservabilityPages: () => ({
-		canOpenLogStreaming: computed(() => observabilityPages.logStreaming),
-		canOpenOpenTelemetry: computed(() => observabilityPages.openTelemetry),
-	}),
 }));
 vi.mock('./useAiGateway', () => ({
 	useAiGateway: vi.fn(() => ({ balance: computed(() => balance.value) })),
@@ -94,16 +87,16 @@ describe('useSettingsItems', () => {
 		promotionsFlag.value = 'false';
 		canUserAccessRouteByName.mockReturnValue(true);
 		contextEnabled.value = true;
-		observabilityPages.logStreaming = true;
-		observabilityPages.openTelemetry = true;
 	});
 
 	// Module items in registration order, with the orders and sections the real modules set.
 	const realModuleItems = () => [
+		{ id: 'settings-log-streaming', available: true, order: 40, section: 'operations' as const },
 		{ id: 'settings-mcp', available: true, order: 10, section: 'ai' as const },
 		{ id: 'settings-chat-hub', available: true, order: 70, section: 'ai' as const },
 		{ id: 'settings-instance-ai', available: true, order: 20, section: 'ai' as const },
 		{ id: 'settings-agents', available: true, order: 30, section: 'ai' as const },
+		{ id: 'settings-opentelemetry', available: true, order: 50, section: 'operations' as const },
 	];
 
 	const makeEverythingAvailable = () => {
@@ -144,7 +137,8 @@ describe('useSettingsItems', () => {
 				'settings-source-control',
 				'settings-promotions',
 				'settings-workersview',
-				'settings-observability',
+				'settings-log-streaming',
+				'settings-opentelemetry',
 				'settings-migration-report',
 				'settings-usage-and-plan',
 			]);
@@ -208,7 +202,8 @@ describe('useSettingsItems', () => {
 						'settings-source-control',
 						'settings-promotions',
 						'settings-workersview',
-						'settings-observability',
+						'settings-log-streaming',
+						'settings-opentelemetry',
 						'settings-migration-report',
 					],
 				},
@@ -232,8 +227,6 @@ describe('useSettingsItems', () => {
 				(name) => name === VIEWS.USAGE || name === VIEWS.PERSONAL_SETTINGS,
 			);
 			isAiGatewayEnabled.value = false;
-			observabilityPages.logStreaming = false;
-			observabilityPages.openTelemetry = false;
 
 			expect(sectionsOf()).toEqual([
 				{
@@ -299,35 +292,6 @@ describe('useSettingsItems', () => {
 
 			expect(ids.indexOf('settings-second')).toBe(ids.indexOf('settings-first') + 1);
 			expect(ids.indexOf('settings-fourth')).toBe(ids.indexOf('settings-third') + 1);
-		});
-	});
-
-	describe('the Observability item', () => {
-		const item = () =>
-			useSettingsItems().settingsItems.value.find(({ id }) => id === 'settings-observability');
-
-		it('is shown when the user can open either page', () => {
-			observabilityPages.logStreaming = false;
-			observabilityPages.openTelemetry = true;
-			expect(item()).toBeDefined();
-
-			observabilityPages.logStreaming = true;
-			observabilityPages.openTelemetry = false;
-			expect(item()).toBeDefined();
-		});
-
-		it('is hidden when the user can open neither page', () => {
-			observabilityPages.logStreaming = false;
-			observabilityPages.openTelemetry = false;
-
-			expect(item()).toBeUndefined();
-		});
-
-		it('opens the Observability overview under Operations', () => {
-			expect(item()).toMatchObject({
-				section: 'operations',
-				route: { to: { name: VIEWS.OBSERVABILITY_SETTINGS } },
-			});
 		});
 	});
 

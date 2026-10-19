@@ -17,7 +17,6 @@ import {
 	registerModulePushHandlers,
 	registerModuleRoutes,
 } from '@/app/moduleInitializer/moduleInitializer';
-import { OTEL_SETTINGS_VIEW } from '@n8n/frontend-module-otel';
 import { AGENTS_LIST_VIEW, AGENTS_SETTINGS_VIEW } from '@/features/agents/constants';
 import {
 	ADD_DATA_TABLE_MODAL_KEY,
@@ -25,25 +24,6 @@ import {
 	IMPORT_CSV_MODAL_KEY,
 } from '@/features/core/dataTable/constants';
 import { defaultSettings } from '@n8n/frontend-test-utils';
-
-// The shell records a module route can nest under.
-const createShellStubRouter = () => {
-	const stub = { render: () => null };
-	return createRouter({
-		history: createMemoryHistory(),
-		routes: [
-			{
-				path: '/settings',
-				name: VIEWS.SETTINGS,
-				component: stub,
-				children: [
-					{ path: 'observability', name: VIEWS.OBSERVABILITY_SETTINGS_ROOT, component: stub },
-				],
-			},
-			{ path: '/projects/:projectId', name: VIEWS.PROJECT_DETAILS, component: stub },
-		],
-	});
-};
 
 it('keeps Agents settings reachable while the Agents routes are disabled', () => {
 	setActivePinia(createPinia());
@@ -55,7 +35,14 @@ it('keeps Agents settings reachable while the Agents routes are disabled', () =>
 		knowledgeBaseEnabled: false,
 		proxyEnabled: false,
 	};
-	const testRouter = createShellStubRouter();
+	const stub = { render: () => null };
+	const testRouter = createRouter({
+		history: createMemoryHistory(),
+		routes: [
+			{ path: '/settings', name: VIEWS.SETTINGS, component: stub },
+			{ path: '/projects/:projectId', name: VIEWS.PROJECT_DETAILS, component: stub },
+		],
+	});
 	registerModuleRoutes(testRouter);
 	const settingsRoute = testRouter.resolve({ name: AGENTS_SETTINGS_VIEW });
 	const agentsRoute = testRouter.resolve({ name: AGENTS_LIST_VIEW });
@@ -65,36 +52,6 @@ it('keeps Agents settings reachable while the Agents routes are disabled', () =>
 	const next = vi.fn();
 	expect(check?.({ to: { ...settingsRoute, name: AGENTS_SETTINGS_VIEW }, from, next })).toBe(true);
 	expect(check?.({ to: { ...agentsRoute, name: AGENTS_LIST_VIEW }, from, next })).toBe(false);
-});
-
-describe('registerModuleRoutes', () => {
-	beforeEach(() => {
-		setActivePinia(createPinia());
-	});
-
-	it('nests a route with `parentRouteName` under that shell route', () => {
-		const testRouter = createShellStubRouter();
-		registerModuleRoutes(testRouter);
-
-		expect(testRouter.resolve({ name: VIEWS.LOG_STREAMING_SETTINGS }).path).toBe(
-			'/settings/observability/log-streaming',
-		);
-		expect(testRouter.resolve({ name: OTEL_SETTINGS_VIEW }).path).toBe(
-			'/settings/observability/opentelemetry',
-		);
-	});
-
-	it('keeps the old flat settings paths of the nested pages as redirects', () => {
-		const testRouter = createShellStubRouter();
-		registerModuleRoutes(testRouter);
-
-		expect(testRouter.resolve('/settings/log-streaming').matched.at(-1)?.redirect).toEqual({
-			name: VIEWS.LOG_STREAMING_SETTINGS,
-		});
-		expect(testRouter.resolve('/settings/opentelemetry').matched.at(-1)?.redirect).toEqual({
-			name: OTEL_SETTINGS_VIEW,
-		});
-	});
 });
 
 describe('registerModuleModals', () => {

@@ -216,9 +216,7 @@ export const registerModuleRoutes = (router: Router) => {
 				},
 			};
 
-			if (route.meta?.parentRouteName) {
-				router.addRoute(route.meta.parentRouteName, enhancedRoute);
-			} else if (route.meta?.projectRoute) {
+			if (route.meta?.projectRoute) {
 				router.addRoute(VIEWS.PROJECT_DETAILS, enhancedRoute);
 			} else if (route.meta?.telemetry && route.meta.telemetry.pageCategory === 'settings') {
 				router.addRoute(VIEWS.SETTINGS, enhancedRoute);

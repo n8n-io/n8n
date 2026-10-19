@@ -8,7 +8,7 @@ import { useMessage } from '@/app/composables/useMessage';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import type { IFormInput, IFormInputs } from '@/Interface';
 import type { LdapConfig, LdapSyncData, LdapSyncTable } from '@n8n/rest-api-client/api/ldap';
-import { MODAL_CONFIRM, VIEWS } from '@/app/constants';
+import { MODAL_CONFIRM } from '@/app/constants';
 
 import humanizeDuration from 'humanize-duration';
 import type { Events } from 'v3-infinite-loading';
@@ -28,7 +28,7 @@ import {
 	N8nHeading,
 	N8nInfoTip,
 } from '@n8n/design-system';
-import SettingsBackLink from '@/features/settings/components/SettingsBackLink.vue';
+import AuthenticationBackLink from '../components/AuthenticationBackLink.vue';
 type TableRow = {
 	status: string;
 	startAt: string;
@@ -629,10 +629,7 @@ onMounted(async () => {
 
 <template>
 	<div v-if="!isLDAPFeatureEnabled">
-		<SettingsBackLink
-			:label="i18n.baseText('settings.authentication.back')"
-			:to="{ name: VIEWS.AUTHENTICATION_SETTINGS }"
-		/>
+		<AuthenticationBackLink />
 		<div :class="[$style.header, 'mb-2xl']">
 			<N8nHeading size="2xlarge">
 				{{ i18n.baseText('settings.ldap') }}
@@ -653,10 +650,7 @@ onMounted(async () => {
 		</N8nEmptyState>
 	</div>
 	<div v-else>
-		<SettingsBackLink
-			:label="i18n.baseText('settings.authentication.back')"
-			:to="{ name: VIEWS.AUTHENTICATION_SETTINGS }"
-		/>
+		<AuthenticationBackLink />
 		<div :class="$style.container">
 			<div :class="$style.header">
 				<N8nHeading size="2xlarge">

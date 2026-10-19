@@ -25,12 +25,10 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 let capturedRouteLeaveGuard:
 	| Parameters<typeof import('vue-router')['onBeforeRouteLeave']>[0]
 	| null = null;
-const routerPush = vi.fn();
 vi.mock('vue-router', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('vue-router')>();
 	return {
 		...actual,
-		useRouter: () => ({ push: routerPush }),
 		onBeforeRouteLeave: (guard: typeof capturedRouteLeaveGuard) => {
 			capturedRouteLeaveGuard = guard;
 		},
@@ -115,14 +113,6 @@ describe('SettingsOpenTelemetryView', () => {
 		const { getByTestId, queryByTestId } = render();
 		expect(getByTestId('otel-loading')).toBeInTheDocument();
 		expect(queryByTestId('otel-exporter-endpoint')).not.toBeInTheDocument();
-	});
-
-	it('goes back to the Observability overview, which lists this page', async () => {
-		const { getByTestId } = render();
-
-		await userEvent.click(getByTestId('settings-back-button'));
-
-		expect(routerPush).toHaveBeenCalledWith({ name: 'ObservabilitySettings' });
 	});
 
 	it('renders all settings fields after fetch completes', async () => {

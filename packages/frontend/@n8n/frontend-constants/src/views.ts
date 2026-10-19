@@ -59,9 +59,6 @@ export enum VIEWS {
 	LOG_STREAMING_SETTINGS = 'LogStreamingSettingsView',
 	SSO_SETTINGS = 'SSoSettings',
 	AUTHENTICATION_SETTINGS = 'AuthenticationSettings',
-	OBSERVABILITY_SETTINGS = 'ObservabilitySettings',
-	/** The parent record of the Observability pages. A module nests its page under it. */
-	OBSERVABILITY_SETTINGS_ROOT = 'ObservabilitySettingsRoot',
 	ENCRYPTION_KEYS_SETTINGS = 'EncryptionKeysSettings',
 	EXTERNAL_SECRETS_SETTINGS = 'ExternalSecretsSettings',
 	SAML_ONBOARDING = 'SamlOnboarding',
