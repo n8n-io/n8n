@@ -71,7 +71,7 @@ export const CHANNEL_MESSAGE_SUBSCRIPTION_FORBIDDEN = {
 	},
 } satisfies MicrosoftGraphForbiddenHint;
 
-// One hint for every chat path: each path getResourcePath posts contains `/chats`, and all
+// Chat paths: `/chats('<id>')/messages` and `/users('<id>')/chats` contain `/chats`, and all
 // chat events need the same delegated scope. The app-only copy is the single source for
 // throwChatTriggerUnsupported (helpers/utils-trigger.ts), which runs first under SP.
 export const CHAT_SUBSCRIPTION_FORBIDDEN = {
@@ -87,6 +87,14 @@ export const CHAT_SUBSCRIPTION_FORBIDDEN = {
 	},
 } satisfies MicrosoftGraphForbiddenHint;
 
+// `/me/chats/getAllMessages` (New Chat Message, watch all chats) has its own renderer, seen live
+// 2026-10-19: "Required permissions to access user-scoped chat message subscription ('Chat.Read,
+// Chat.ReadWrite') are missing." The text has no path, so the fragment is its own phrase.
+export const CHAT_ALL_MESSAGES_SUBSCRIPTION_FORBIDDEN = {
+	...CHAT_SUBSCRIPTION_FORBIDDEN,
+	match: 'user-scoped chat message subscription',
+} satisfies MicrosoftGraphForbiddenHint;
+
 export const TEAMS_FORBIDDEN_HINTS: readonly MicrosoftGraphForbiddenHint[] = Object.freeze([
 	COMPANION_APP_FORBIDDEN,
 	ACTIVITY_PERMISSION_FORBIDDEN,
@@ -94,4 +102,5 @@ export const TEAMS_FORBIDDEN_HINTS: readonly MicrosoftGraphForbiddenHint[] = Obj
 	CHANNEL_SUBSCRIPTION_FORBIDDEN,
 	CHANNEL_MESSAGE_SUBSCRIPTION_FORBIDDEN,
 	CHAT_SUBSCRIPTION_FORBIDDEN,
+	CHAT_ALL_MESSAGES_SUBSCRIPTION_FORBIDDEN,
 ]);

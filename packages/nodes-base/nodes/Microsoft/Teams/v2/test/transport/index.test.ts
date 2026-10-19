@@ -24,6 +24,7 @@ import {
 import {
 	CHANNEL_MESSAGE_SUBSCRIPTION_FORBIDDEN,
 	CHANNEL_SUBSCRIPTION_FORBIDDEN,
+	CHAT_ALL_MESSAGES_SUBSCRIPTION_FORBIDDEN,
 	CHAT_SUBSCRIPTION_FORBIDDEN,
 	TEAM_MEMBER_SUBSCRIPTION_FORBIDDEN,
 	TEAMS_FORBIDDEN_HINTS,
@@ -356,15 +357,17 @@ describe('Microsoft Teams Transport', () => {
 		const refused = (resource: string) =>
 			`Operation: Create; Exception: [Status Code: Forbidden; Reason: Caller does not have access to '${resource}' resource]`;
 
-		// Seen live (QA tenant, Cloud 2.41.4)
+		// Every shape below was seen live on the QA tenant on 2026-10-19 (n8n 2.44.0, delegated and
+		// app-only), with these ids replaced. Graph renders the posted slash-form path back in key form
+		// and upper-cases the user id in the `/users(...)` shape.
 		const MEMBERS_403 = refused(`/teams('${TEAM_ID}')/members`);
-		// Seen live (n8n issue #17260, delegated)
-		const CHANNEL_MESSAGES_403 = refused(`/teams('${TEAM_ID}')/channels('${CHANNEL_ID}')/messages`);
-		// Seen live (MS Q&A 5638761)
-		const CHAT_MESSAGES_403 = refused(`/chats('${CHAT_ID}')/messages`);
-		// Synthetic: same renderer, not yet seen live
 		const CHANNELS_403 = refused(`/teams('${TEAM_ID}')/channels`);
+		const CHANNEL_MESSAGES_403 = refused(`/teams('${TEAM_ID}')/channels('${CHANNEL_ID}')/messages`);
+		const CHAT_MESSAGES_403 = refused(`/chats('${CHAT_ID}')/messages`);
 		const USER_CHATS_403 = refused(`/users('${USER_ID}')/chats`);
+		// `/me/chats/getAllMessages` has its own renderer without a path
+		const CHAT_ALL_MESSAGES_403 =
+			"Operation: Create; Exception: [Status Code: Forbidden; Reason: Required permissions to access user-scoped chat message subscription ('Chat.Read, Chat.ReadWrite') are missing.]";
 		// Same renderer, a resource no hint covers: an over-broad match such as `' resource` would fire
 		const MAIL_403 = refused(`/users('${USER_ID}')/mailFolders('inbox')/messages`);
 		// Names the hinted permissions only as granted roles (a listing 403 on GET /v1.0/subscriptions
@@ -426,6 +429,12 @@ describe('Microsoft Teams Transport', () => {
 				label: 'user chats',
 				hint: CHAT_SUBSCRIPTION_FORBIDDEN,
 				graphText: USER_CHATS_403,
+				permission: 'Chat.Read',
+			},
+			{
+				label: 'all chat messages',
+				hint: CHAT_ALL_MESSAGES_SUBSCRIPTION_FORBIDDEN,
+				graphText: CHAT_ALL_MESSAGES_403,
 				permission: 'Chat.Read',
 			},
 		];
