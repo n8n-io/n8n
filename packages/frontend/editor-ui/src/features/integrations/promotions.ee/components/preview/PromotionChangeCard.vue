@@ -131,6 +131,16 @@ const isApplyMove = computed(
 		props.resource.type === 'folder' &&
 		props.resource.previousParentKey !== undefined,
 );
+// Tags belong to the whole instance, so Apply changes them outside this project too.
+const tagNote = computed(() => {
+	const { direction, resource } = props;
+	if (direction !== 'apply' || resource.type !== 'tag' || resource.change !== 'modified') {
+		return undefined;
+	}
+	if (resource.previousId !== undefined) return i18n.baseText('promotions.preview.tag.linked');
+	if (resource.previousName !== undefined) return i18n.baseText('promotions.preview.tag.renamed');
+	return undefined;
+});
 </script>
 
 <template>
@@ -224,6 +234,9 @@ const isApplyMove = computed(
 					</N8nText>
 					<N8nText v-if="isApplyMove" step="2xs" color="text-light" :class="$style.padded">
 						{{ i18n.baseText('promotions.preview.folder.moveConflict') }}
+					</N8nText>
+					<N8nText v-if="tagNote" step="2xs" color="text-light" :class="$style.padded">
+						{{ tagNote }}
 					</N8nText>
 				</template>
 
