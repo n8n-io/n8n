@@ -161,6 +161,8 @@ function details(detail: SkillDetail) {
 	};
 }
 
+const BLOCKED_RESULT = { success: false, denied: true, reason: 'Action blocked by admin' };
+
 async function withApproval<T>(
 	context: InstanceAiContext,
 	ctx: ConfirmationToolContext,
@@ -169,9 +171,7 @@ async function withApproval<T>(
 	run: () => Promise<T>,
 ) {
 	const permission = permissionFor(context, action);
-	if (permission === 'blocked') {
-		return { success: false, denied: true, reason: 'Action blocked by admin' };
-	}
+	if (permission === 'blocked') return BLOCKED_RESULT;
 
 	const { resumeData } = ctx;
 	const sessionGrantAllowed = action !== 'delete';
@@ -214,6 +214,9 @@ async function handleCreate(
 	ctx: ConfirmationToolContext,
 ) {
 	const service = requireSkillService(context);
+	if (input.scope === 'project' && !input.projectId) {
+		return { success: false, refused: true, reason: 'A project skill needs a projectId.' };
+	}
 	return await withApproval(
 		context,
 		ctx,
@@ -261,6 +264,7 @@ async function handleDelete(
 	ctx: ConfirmationToolContext,
 ) {
 	const service = requireSkillService(context);
+	if (permissionFor(context, 'delete') === 'blocked') return BLOCKED_RESULT;
 	const current = await service.get(input.skillId);
 	if (current.usedByAgents > 0) {
 		return {

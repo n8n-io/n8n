@@ -166,6 +166,25 @@ describe('skills tool', () => {
 			);
 		});
 
+		it('refuses a project skill without a project before it asks for approval', async () => {
+			const suspend = vi.fn();
+			const tool = createSkillsTool(createContext(service));
+
+			const result = await executeTool(
+				tool,
+				{ action: 'create', scope: 'project', skill },
+				suspendCtx(suspend),
+			);
+
+			expect(suspend).not.toHaveBeenCalled();
+			expect(service.create).not.toHaveBeenCalled();
+			expect(result).toEqual({
+				success: false,
+				refused: true,
+				reason: 'A project skill needs a projectId.',
+			});
+		});
+
 		it('says that every project can use an instance skill', async () => {
 			const suspend = vi.fn();
 			const tool = createSkillsTool(createContext(service));
@@ -305,6 +324,18 @@ describe('skills tool', () => {
 
 		beforeEach(() => {
 			service.get.mockResolvedValue({ ...detail, usedByAgents: 0 });
+		});
+
+		it('reports the admin block before it checks the agents that use the skill', async () => {
+			service.get.mockResolvedValue(detail);
+			const tool = createSkillsTool(
+				createContext(service, { permissions: { deleteSkill: 'blocked' } }),
+			);
+
+			const result = await executeTool(tool, input, resumeCtx(true));
+
+			expect(service.get).not.toHaveBeenCalled();
+			expect(result).toEqual({ success: false, denied: true, reason: 'Action blocked by admin' });
 		});
 
 		it('refuses a skill that agents use without asking for approval', async () => {
