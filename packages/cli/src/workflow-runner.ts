@@ -425,6 +425,7 @@ export class WorkflowRunner {
 				);
 			} catch (error) {
 				const executionId = await this.activeExecutions.add(data, existingExecution);
+				existingExecution?.onClaimed?.();
 				await this.failExecution(data, executionId, error, responsePromise);
 				return executionId;
 			}
@@ -441,6 +442,7 @@ export class WorkflowRunner {
 
 		// Register a new execution
 		const executionId = await this.activeExecutions.add(data, existingExecution);
+		existingExecution?.onClaimed?.();
 
 		if (establishContextError) {
 			await this.failExecution(data, executionId, establishContextError, responsePromise);

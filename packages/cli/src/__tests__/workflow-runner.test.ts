@@ -879,6 +879,62 @@ describe('run', () => {
 		expect(addSpy).toHaveBeenCalledWith(data, existingExecution);
 	});
 
+	it('notifies a resumed execution only after it has been claimed', async () => {
+		const callOrder: string[] = [];
+		const activeExecutions = Container.get(ActiveExecutions);
+		vi.spyOn(activeExecutions, 'add').mockImplementation(async () => {
+			callOrder.push('claimed');
+			return '42';
+		});
+		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
+		vi.spyOn(Container.get(CredentialsPermissionChecker), 'check').mockResolvedValueOnce();
+		vi.spyOn(WorkflowExecute.prototype, 'run').mockReturnValueOnce(
+			new PCancelable(() => mock<IRun>()),
+		);
+
+		const data = mock<IWorkflowExecutionDataProcess>({
+			triggerToStartFrom: undefined,
+			workflowData: { nodes: [], staticData: {} },
+			executionData: undefined,
+			startNodes: undefined,
+			destinationNode: undefined,
+			runData: undefined,
+		});
+
+		await runner.run(data, undefined, false, {
+			executionId: '42',
+			expectedStatus: 'waiting',
+			onClaimed: () => callOrder.push('notified'),
+		});
+
+		expect(callOrder).toEqual(['claimed', 'notified']);
+	});
+
+	it('does not notify a resumed execution when claiming it fails', async () => {
+		const onClaimed = vi.fn();
+		const claimError = new Error('Failed to claim execution');
+		vi.spyOn(Container.get(ActiveExecutions), 'add').mockRejectedValue(claimError);
+		vi.spyOn(Container.get(CredentialsPermissionChecker), 'check').mockResolvedValueOnce();
+
+		const data = mock<IWorkflowExecutionDataProcess>({
+			triggerToStartFrom: undefined,
+			workflowData: { nodes: [], staticData: {} },
+			executionData: undefined,
+			startNodes: undefined,
+			destinationNode: undefined,
+			runData: undefined,
+		});
+
+		await expect(
+			runner.run(data, undefined, false, {
+				executionId: '42',
+				expectedStatus: 'waiting',
+				onClaimed,
+			}),
+		).rejects.toBe(claimError);
+		expect(onClaimed).not.toHaveBeenCalled();
+	});
+
 	describe('storedAt', () => {
 		function arrangeRun() {
 			const activeExecutions = Container.get(ActiveExecutions);

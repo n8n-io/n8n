@@ -1200,9 +1200,10 @@ export async function executeWebhook(
 		});
 		if (!shouldContinueAfterCredentialGate) return;
 
-		// A resumed form already has an execution ID, so acknowledge the submission before
-		// restarting the workflow. Otherwise synchronous downstream work can delay the form
-		// response even though the user selected "Form Is Submitted".
+		// A resumed form already has an execution ID, so it can be acknowledged as soon as
+		// WorkflowRunner has claimed the persisted execution. Waiting for the complete run
+		// would let synchronous downstream work delay the response, while responding before
+		// the claim could report success for a concurrent or failed resume.
 		const resumedWaitFormExecutionId =
 			responseMode === 'onReceived' &&
 			executionId !== undefined &&
@@ -1347,10 +1348,6 @@ export async function executeWebhook(
 
 		if (executionId) options?.onResume?.();
 
-		if (resumedWaitFormExecutionId !== undefined && !responder.hasResponded) {
-			respondOnReceived(resumedWaitFormExecutionId);
-		}
-
 		// Start now to run the workflow
 		executionId = await Container.get(WorkflowRunner).run(
 			runData,
@@ -1358,7 +1355,17 @@ export async function executeWebhook(
 			!responder.hasResponded && !shouldDeferOnReceivedResponse,
 			// An execution id here means we are resuming one that is waiting on this webhook
 			executionId
-				? { executionId, expectedStatus: 'waiting', storedAt: options?.storedAt }
+				? {
+						executionId,
+						expectedStatus: 'waiting',
+						storedAt: options?.storedAt,
+						onClaimed:
+							resumedWaitFormExecutionId === undefined
+								? undefined
+								: () => {
+										if (!responder.hasResponded) respondOnReceived(resumedWaitFormExecutionId);
+									},
+					}
 				: undefined,
 			responsePromise,
 		);

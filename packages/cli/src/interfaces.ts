@@ -144,6 +144,8 @@ export interface ResumableExecution {
 	expectedStatus: Extract<ExecutionStatus, 'new' | 'waiting'>;
 	/** Store recorded on the row. A resume keeps writing there, whatever the configured mode. */
 	storedAt?: ExecutionStorageLocation;
+	/** Called after the persisted execution has been claimed successfully. */
+	onClaimed?: () => void;
 }
 
 export interface IExecutingWorkflowData {
