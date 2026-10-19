@@ -16,6 +16,7 @@ import Entra from './custom/entra.svg';
 import FilledSquare from './custom/filled-square.svg';
 import Form from './custom/form.svg';
 import GripLinesVertical from './custom/grip-lines-vertical.svg';
+import GroupFilled from './custom/brand/group--solid-16.svg';
 import HourglassFilled from './custom/brand/hourglass--solid-16.svg';
 import Linear from './custom/linear.svg';
 import Lovable from './custom/lovable.svg';
@@ -42,6 +43,7 @@ import RunOnce from './custom/run-once.svg';
 import Schema from './custom/brand/list-tree--outline-16.svg';
 import Slack from './custom/slack.svg';
 import SlashCircleFilled from './custom/brand/slash-circle--solid-16.svg';
+import SparklesFilled from './custom/brand/sparkle-rays--solid-16.svg';
 import Spinner from './custom/spinner.svg';
 import SpinnerFilled from './custom/brand/spinner--solid-16.svg';
 import StarFilled from './custom/brand/star--solid-16.svg';
@@ -60,12 +62,14 @@ import Triangle from './custom/triangle.svg';
 import VectorSquare from './custom/vector-square.svg';
 import Webhook from './custom/webhook.svg';
 import WhatsApp from './custom/whatsapp.svg';
+import WorkflowFilled12 from './custom/brand/workflow--solid-12.svg';
 import XCircleFilled from './custom/brand/x-circle--solid-16.svg';
 import { nodeIconNames, type NodeIconName } from './node-icon-names';
 import {
 	Archive as BrandArchive,
 	ArrowBlockDown as BrandArrowBlockDown,
 	ArrowBlockUp as BrandArrowBlockUp,
+	ArrowCircleDown as BrandArrowCircleDown,
 	ArrowDown as BrandArrowDown,
 	ArrowLeft as BrandArrowLeft,
 	ArrowRight as BrandArrowRight,
@@ -116,6 +120,7 @@ import {
 	ClipboardList as BrandClipboardList,
 	Clock as BrandClock,
 	Cloud as BrandCloud,
+	CloudArrowUp as BrandCloudArrowUp,
 	Code as BrandCode,
 	Cog as BrandCog,
 	Copy as BrandCopy,
@@ -166,6 +171,7 @@ import {
 	KeyRound as BrandKeyRound,
 	Layers as BrandLayers,
 	LayoutTemplate as BrandLayoutTemplate,
+	Ldap as BrandLdap,
 	Lightbulb as BrandLightbulb,
 	Link as BrandLink,
 	List as BrandList,
@@ -577,6 +583,10 @@ export const updatedIconSet = {
 	'slash-circle-filled': SlashCircleFilled,
 	'spinner-filled': SpinnerFilled,
 	'x-circle-filled': XCircleFilled,
+	'group-filled': GroupFilled,
+	'sparkles-filled': SparklesFilled,
+	'workflow-filled': NodeExtract,
+	'workflow-filled-12': WorkflowFilled12,
 	'star-filled': StarFilled,
 	'vector-square': VectorSquare,
 	'continue-on-error': Continue,
@@ -639,6 +649,7 @@ export const updatedIconSet = {
 	'archive-restore': IconLucideArchiveRestore,
 	'arrow-block-down': BrandArrowBlockDown,
 	'arrow-block-up': BrandArrowBlockUp,
+	'arrow-circle-down': BrandArrowCircleDown,
 	'arrow-down': BrandArrowDown,
 	'arrow-left': BrandArrowLeft,
 	'arrow-left-right': IconLucideArrowLeftRight,
@@ -692,6 +703,7 @@ export const updatedIconSet = {
 	'clipboard-list': BrandClipboardList,
 	clock: BrandClock,
 	cloud: BrandCloud,
+	'cloud-arrow-up': BrandCloudArrowUp,
 	'cloud-download': IconLucideCloudDownload,
 	code: BrandCode,
 	cog: BrandCog,
@@ -756,6 +768,7 @@ export const updatedIconSet = {
 	laptop: IconLucideLaptop,
 	layers: BrandLayers,
 	'layout-template': BrandLayoutTemplate,
+	ldap: BrandLdap,
 	'life-buoy': IconLucideLifeBuoy,
 	lightbulb: BrandLightbulb,
 	link: BrandLink,
