@@ -60,6 +60,7 @@ export function isNodeTypeRestricted(nodeType: string): boolean {
 }
 
 export type RestrictionVerdict = Pick<TypeRestriction, 'scope' | 'optInAvailable'>;
+export type OptionalVerdict = RestrictionVerdict | null | undefined;
 
 export function getViolationVerdict(violation: PolicyViolation): RestrictionVerdict {
 	return {
@@ -69,17 +70,17 @@ export function getViolationVerdict(violation: PolicyViolation): RestrictionVerd
 }
 
 export function resolveRestrictionContact(
-	verdict: RestrictionVerdict,
+	verdict: OptionalVerdict,
 	projectType: ProjectType | null,
 ): RestrictionContact {
-	if (projectType === ProjectTypes.Personal) return 'instance';
-	if (verdict.scope === 'project') return 'project';
-	if (verdict.optInAvailable && projectType === ProjectTypes.Team) return 'optIn';
+	if (projectType !== ProjectTypes.Team) return 'instance';
+	if (verdict?.scope === 'project') return 'project';
+	if (verdict?.optInAvailable) return 'optIn';
 	return 'instance';
 }
 
 export function getRestrictionContact(
-	verdict: RestrictionVerdict,
+	verdict: OptionalVerdict,
 	projectId?: string,
 ): RestrictionContact {
 	const project = useTypeAvailabilityPoliciesStore().policyProject;
@@ -88,10 +89,10 @@ export function getRestrictionContact(
 }
 
 export function useRestrictionContact(
-	verdict: MaybeRefOrGetter<RestrictionVerdict | null | undefined>,
+	verdict: MaybeRefOrGetter<OptionalVerdict>,
 	projectId?: MaybeRefOrGetter<string | undefined>,
 ) {
-	const contact = computed(() => getRestrictionContact(toValue(verdict) ?? {}, toValue(projectId)));
+	const contact = computed(() => getRestrictionContact(toValue(verdict), toValue(projectId)));
 	const copy = computed(() => RESTRICTION_CONTACT_COPY[contact.value]);
 	return { contact, copy };
 }
@@ -103,13 +104,13 @@ const DESCRIPTION_KEY: Record<NodeTypeAvailabilityScope, BaseTextKey> = {
 
 export function describeNodeTypeRestriction(
 	nodeTypeName: string,
-	verdict: RestrictionVerdict = {},
+	verdict: OptionalVerdict,
 	nextStep: 'contact' | 'replace' = 'contact',
 ): string {
 	const i18n = useI18n();
 	const nextStepKey = RESTRICTION_CONTACT_COPY[getRestrictionContact(verdict)].nextStep[nextStep];
 	return i18n.baseText(
-		verdict.scope
+		verdict?.scope
 			? DESCRIPTION_KEY[verdict.scope]
 			: 'typeAvailabilityPolicies.restrictedNode.description.generic',
 		{ interpolate: { nodeType: nodeTypeName, nextStep: i18n.baseText(nextStepKey) } },
@@ -159,17 +160,17 @@ const AGENT_TOOL_DESCRIPTION_KEY: Record<NodeTypeAvailabilityScope, BaseTextKey>
 	project: 'typeAvailabilityPolicies.restrictedNode.agentTool.project',
 };
 
-function agentToolDescriptionKey(verdict: RestrictionVerdict): BaseTextKey {
+function agentToolDescriptionKey(verdict: OptionalVerdict): BaseTextKey {
 	if (getRestrictionContact(verdict) === 'optIn') {
 		return 'typeAvailabilityPolicies.restrictedNode.agentTool.optIn';
 	}
-	if (verdict.scope) return AGENT_TOOL_DESCRIPTION_KEY[verdict.scope];
+	if (verdict?.scope) return AGENT_TOOL_DESCRIPTION_KEY[verdict.scope];
 	return 'typeAvailabilityPolicies.restrictedNode.agentTool.generic';
 }
 
 export function describeAgentToolRestriction(
 	nodeTypeName: string,
-	verdict: RestrictionVerdict = {},
+	verdict: OptionalVerdict,
 ): string {
 	return useI18n().baseText(agentToolDescriptionKey(verdict), {
 		interpolate: { nodeType: nodeTypeName },

@@ -7,12 +7,12 @@ import ContactAdminModal from './ContactAdminModal.vue';
 import {
 	describeAgentToolRestriction,
 	useRestrictionContact,
-	type RestrictionVerdict,
+	type OptionalVerdict,
 } from '../composables/useNodeTypeRestriction';
 
 const { nodeTypeName, restriction } = defineProps<{
 	nodeTypeName: string;
-	restriction?: RestrictionVerdict | null;
+	restriction?: OptionalVerdict;
 }>();
 
 const i18n = useI18n();
@@ -20,7 +20,7 @@ const i18n = useI18n();
 const isContactAdminOpen = ref(false);
 
 const { copy: contactCopy } = useRestrictionContact(() => restriction);
-const description = computed(() => describeAgentToolRestriction(nodeTypeName, restriction ?? {}));
+const description = computed(() => describeAgentToolRestriction(nodeTypeName, restriction));
 </script>
 
 <template>

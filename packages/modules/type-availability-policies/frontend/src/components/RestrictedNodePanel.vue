@@ -7,7 +7,7 @@ import ContactAdminModal from './ContactAdminModal.vue';
 import {
 	describeNodeTypeRestriction,
 	useRestrictionContact,
-	type RestrictionVerdict,
+	type OptionalVerdict,
 } from '../composables/useNodeTypeRestriction';
 
 const {
@@ -16,7 +16,7 @@ const {
 	showReplace = true,
 } = defineProps<{
 	nodeTypeName: string;
-	restriction?: RestrictionVerdict | null;
+	restriction?: OptionalVerdict;
 	showReplace?: boolean;
 }>();
 
@@ -28,7 +28,7 @@ const isContactAdminOpen = ref(false);
 
 const { copy: contactCopy } = useRestrictionContact(() => restriction);
 const description = computed(() =>
-	describeNodeTypeRestriction(nodeTypeName, restriction ?? {}, showReplace ? 'replace' : 'contact'),
+	describeNodeTypeRestriction(nodeTypeName, restriction, showReplace ? 'replace' : 'contact'),
 );
 </script>
 

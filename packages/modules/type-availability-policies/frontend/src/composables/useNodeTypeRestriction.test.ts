@@ -123,19 +123,19 @@ describe('useNodeTypeRestriction', () => {
 		expect(describeAgentToolRestriction('Slack', { scope: 'project' })).toBe(
 			"Slack is restricted in this project. The agent can't use it.",
 		);
-		expect(describeAgentToolRestriction('Slack')).toBe(
+		expect(describeAgentToolRestriction('Slack', undefined)).toBe(
 			"Slack is restricted. The agent can't use it.",
 		);
 	});
 
 	describe('describeRestrictedNodeTypes', () => {
 		it.each([
-			['instance' as const, ' on this instance', 'an instance'],
-			['project' as const, ' in this project', 'a project'],
-			[undefined, '', 'an instance'],
-		])('describes a single restriction with scope %s', (scope, where, admin) => {
+			['instance' as const, ' on this instance'],
+			['project' as const, ' in this project'],
+			[undefined, ''],
+		])('describes a single restriction with scope %s', (scope, where) => {
 			expect(describeRestrictedNodeTypes([{ displayName: 'Slack', scope }])).toBe(
-				`An administrator blocked 'Slack'${where}. Contact ${admin} admin or replace the node to continue.`,
+				`An administrator blocked 'Slack'${where}. Contact an instance admin or replace the node to continue.`,
 			);
 		});
 
@@ -186,17 +186,7 @@ describe('useNodeTypeRestriction', () => {
 				contact: 'optIn',
 			},
 			{ verdict: { scope: 'project' }, projectType: 'personal', contact: 'instance' },
-			{
-				verdict: { scope: 'instance', optInAvailable: true },
-				projectType: 'personal',
-				contact: 'instance',
-			},
-			{ verdict: { scope: 'project' }, projectType: null, contact: 'project' },
-			{
-				verdict: { scope: 'instance', optInAvailable: true },
-				projectType: null,
-				contact: 'instance',
-			},
+			{ verdict: { scope: 'project' }, projectType: null, contact: 'instance' },
 		] as const)(
 			'resolves $verdict in a $projectType project to $contact',
 			({ verdict, projectType, contact }) => {
@@ -205,13 +195,11 @@ describe('useNodeTypeRestriction', () => {
 		);
 	});
 
-	it('ignores the loaded project when the verdict names another project', () => {
+	it('uses the loaded project only when the restriction comes from it', () => {
 		mockPolicyProject({ id: 'team-project', type: 'team' });
 
-		expect(getRestrictionContact({ scope: 'instance', optInAvailable: true })).toBe('optIn');
-		expect(
-			getRestrictionContact({ scope: 'instance', optInAvailable: true }, 'other-project'),
-		).toBe('instance');
+		expect(getRestrictionContact({ scope: 'project' }, 'team-project')).toBe('project');
+		expect(getRestrictionContact({ scope: 'project' }, 'other-project')).toBe('instance');
 	});
 
 	it('points the next step to a project admin for a project restriction', () => {

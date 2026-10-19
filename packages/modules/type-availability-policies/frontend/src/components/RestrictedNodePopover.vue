@@ -5,10 +5,7 @@ import { unrefElement, useActiveElement, useElementHover, type MaybeElement } fr
 import { computed, getCurrentInstance, ref, watch } from 'vue';
 
 import { useExclusiveOpen } from '../composables/useExclusiveOpen';
-import {
-	useRestrictionContact,
-	type RestrictionVerdict,
-} from '../composables/useNodeTypeRestriction';
+import { useRestrictionContact, type OptionalVerdict } from '../composables/useNodeTypeRestriction';
 import {
 	RESTRICTED_TYPE_COPY,
 	SCOPE_LABEL_KEY,
@@ -19,7 +16,7 @@ import ContactAdminModal from './ContactAdminModal.vue';
 const props = withDefaults(
 	defineProps<{
 		nodeTypeName: string;
-		restriction?: RestrictionVerdict | null;
+		restriction?: OptionalVerdict;
 		kind?: RestrictedTypeKind;
 		/** The list row the popover explains. It opens beside this element, not beside the lock. */
 		anchor?: MaybeElement;
