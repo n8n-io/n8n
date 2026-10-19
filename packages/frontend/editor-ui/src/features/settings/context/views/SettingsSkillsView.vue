@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useDebounceFn } from '@vueuse/core';
 import type { AgentSkill, SkillCreateMethod, SkillListItem, SkillScope } from '@n8n/api-types';
@@ -28,6 +28,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { AGENT_SKILL_MODAL_KEY } from '@/features/agents/constants';
 import { isSkillNameTakenError } from '@/features/agents/utils/agentSkill';
+import { isNotFoundError } from '@/features/agents/utils/errors';
 import type {
 	AgentSkillConfirmFailure,
 	AgentSkillModalData,
@@ -278,9 +279,54 @@ function scopeLock(
 	return {};
 }
 
-async function openEditModal(item: Pick<SkillListItem, 'id'>) {
+/** The skill that `?skillId` names. The URL drives the edit modal, so a link opens one skill. */
+const routeSkillId = computed(() =>
+	typeof route.query.skillId === 'string' && route.query.skillId !== ''
+		? route.query.skillId
+		: undefined,
+);
+/** The skill that the edit modal shows, if this page opened it. */
+const openSkillId = ref<string>();
+const isSkillModalOpen = computed(() => uiStore.modalsById[AGENT_SKILL_MODAL_KEY]?.open === true);
+
+/** `replace`, not `push`: a closed modal must not come back with the browser's back button. */
+async function setRouteSkillId(skillId: string | undefined) {
+	if (routeSkillId.value === skillId) return;
+	const query = { ...route.query };
+	delete query.skillId;
+	await router.replace({ query: skillId ? { ...query, skillId } : query });
+}
+
+/** Opening a row puts the skill in the URL, so the user can copy and share the link. */
+async function onOpenSkill(item: Pick<SkillListItem, 'id'>) {
+	if (routeSkillId.value === item.id) {
+		await openEditModal(item.id);
+		return;
+	}
+	await setRouteSkillId(item.id);
+}
+
+function onOpenSkillFailed(error: unknown) {
+	// The API answers 404 both for a missing skill and for one the user cannot read.
+	if (isNotFoundError(error)) {
+		showMessage({
+			title: i18n.baseText('settings.context.skills.error.notFound.title'),
+			message: i18n.baseText('settings.context.skills.error.notFound.message'),
+			type: 'warning',
+		});
+	} else {
+		showError(error, i18n.baseText('settings.context.skills.error.loadOne'));
+	}
+}
+
+async function openEditModal(skillId: string) {
+	if (openSkillId.value === skillId && isSkillModalOpen.value) return;
+	// The modal reads its data once, so another skill needs a fresh modal.
+	if (openSkillId.value && isSkillModalOpen.value) uiStore.closeModal(AGENT_SKILL_MODAL_KEY);
 	try {
-		const detail = await skillsStore.fetchSkill(item.id);
+		const detail = await skillsStore.fetchSkill(skillId);
+		// The URL moved on while the skill loaded, so the user no longer wants it.
+		if (routeSkillId.value !== skillId) return;
 		telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_OPENED_SKILL, {
 			skill_id: detail.id,
 			scope: detail.scope,
@@ -293,6 +339,7 @@ async function openEditModal(item: Pick<SkillListItem, 'id'>) {
 		const options = scopeOptions.value.some((option) => option.value === currentValue)
 			? scopeOptions.value
 			: [{ value: currentValue, ...scopeDisplay(detail) }, ...scopeOptions.value];
+		openSkillId.value = detail.id;
 		openModal({
 			skill: detail.skill,
 			skillId: detail.id,
@@ -310,9 +357,28 @@ async function openEditModal(item: Pick<SkillListItem, 'id'>) {
 				),
 		});
 	} catch (error) {
-		showError(error, i18n.baseText('settings.context.skills.error.loadOne'));
+		onOpenSkillFailed(error);
+		// The list stays, without a link that would fail again on refresh.
+		if (routeSkillId.value === skillId) await setRouteSkillId(undefined);
 	}
 }
+
+watch(routeSkillId, async (skillId) => {
+	if (skillId) {
+		await openEditModal(skillId);
+	} else if (openSkillId.value && isSkillModalOpen.value) {
+		openSkillId.value = undefined;
+		uiStore.closeModal(AGENT_SKILL_MODAL_KEY);
+	}
+});
+
+// A closed modal takes its skill out of the URL, so a refresh shows the list only.
+watch(isSkillModalOpen, async (open) => {
+	if (open || !openSkillId.value) return;
+	const closedSkillId = openSkillId.value;
+	openSkillId.value = undefined;
+	if (routeSkillId.value === closedSkillId) await setRouteSkillId(undefined);
+});
 
 /** Saves the next version. There are no drafts: what the modal shows is what gets saved. */
 /** `newScope` is set when the user picked another scope: the save also moves the skill. */
@@ -385,10 +451,9 @@ onMounted(async () => {
 	}
 	// Deep links: one skill to open, or a new one to start. The skill may be on another
 	// page, so it is read by id rather than from the list.
-	const { skillId, create } = route.query;
-	if (typeof skillId === 'string') {
-		await openEditModal({ id: skillId });
-	} else if (create === 'true') {
+	if (routeSkillId.value) {
+		await openEditModal(routeSkillId.value);
+	} else if (route.query.create === 'true') {
 		openCreateModal();
 	}
 });
@@ -459,7 +524,7 @@ onMounted(async () => {
 			:items-length="skillsStore.count"
 			:loading="skillsStore.loading"
 			:show-empty="showEmptyState"
-			@open="openEditModal"
+			@open="onOpenSkill"
 			@delete="onDelete"
 			@update:options="onOptionsUpdate"
 		>
