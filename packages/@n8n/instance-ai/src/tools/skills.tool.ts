@@ -226,10 +226,10 @@ function movesSkill(
 
 async function handleCreate(
 	context: InstanceAiContext,
+	service: InstanceAiSkillService,
 	input: Extract<FullInput, { action: 'create' }>,
 	ctx: ConfirmationToolContext,
 ) {
-	const service = requireSkillService(context);
 	const refusal = scopeRefusal(input.scope, input.projectId);
 	if (refusal) return refusal;
 	return await withApproval(
@@ -248,10 +248,10 @@ async function handleCreate(
 
 async function handleUpdate(
 	context: InstanceAiContext,
+	service: InstanceAiSkillService,
 	input: Extract<FullInput, { action: 'update' }>,
 	ctx: ConfirmationToolContext,
 ) {
-	const service = requireSkillService(context);
 	const refusal = scopeRefusal(input.scope, input.projectId);
 	if (refusal) return refusal;
 	if (permissionFor(context, 'update') === 'blocked') return BLOCKED_RESULT;
@@ -289,10 +289,10 @@ async function handleUpdate(
 
 async function handleDelete(
 	context: InstanceAiContext,
+	service: InstanceAiSkillService,
 	input: Extract<FullInput, { action: 'delete' }>,
 	ctx: ConfirmationToolContext,
 ) {
-	const service = requireSkillService(context);
 	if (permissionFor(context, 'delete') === 'blocked') return BLOCKED_RESULT;
 	const current = await service.get(input.skillId);
 	if (!current.canDelete) {
@@ -355,11 +355,11 @@ export function createSkillsTool(context: InstanceAiContext) {
 				case 'get':
 					return details(await service.get(input.skillId));
 				case 'create':
-					return await handleCreate(context, input, ctx);
+					return await handleCreate(context, service, input, ctx);
 				case 'update':
-					return await handleUpdate(context, input, ctx);
+					return await handleUpdate(context, service, input, ctx);
 				case 'delete':
-					return await handleDelete(context, input, ctx);
+					return await handleDelete(context, service, input, ctx);
 			}
 		})
 		.build();

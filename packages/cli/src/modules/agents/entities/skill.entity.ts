@@ -1,11 +1,8 @@
+import type { SkillSource } from '@n8n/api-types';
 import { WithTimestamps } from '@n8n/db';
 import { Column, Entity, Index, PrimaryColumn } from '@n8n/typeorm';
 
-/**
- * How a skill was created: `ui` in the skills hub, `agent` from the agent builder or the
- * migration, `mcp` from an MCP client, `assistant` from n8n Assistant.
- */
-export type SkillSource = 'ui' | 'agent' | 'mcp' | 'assistant';
+export type { SkillSource };
 
 /**
  * A skill in the skills hub, identified by its id only. One target: `projectId` (a team

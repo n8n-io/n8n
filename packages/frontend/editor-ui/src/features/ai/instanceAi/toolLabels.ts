@@ -10,6 +10,7 @@ const SKILL_TOOLS = new Set([
 	'read_skill',
 	'update_skill',
 	'load_skill',
+	'skills',
 ]);
 const N8N_SKILL_DIR_TEMPLATE = '$' + '{N8N_SKILL_DIR}';
 type I18n = ReturnType<typeof useI18n>;
@@ -121,8 +122,7 @@ export function getToolIcon(toolName: string): IconName {
 	if (toolName === 'complete-checkpoint') return 'circle-check';
 	if (toolName.endsWith('-with-agent')) return 'share';
 	if (toolName === 'resolve_integration') return 'share';
-	if (SKILL_TOOLS.has(toolName) || toolName === 'n8n-docs' || toolName === 'skills')
-		return 'book-open';
+	if (SKILL_TOOLS.has(toolName) || toolName === 'n8n-docs') return 'book-open';
 	if (toolName === 'data-tables') return 'table';
 	if (toolName === 'activity') return 'history';
 	if (toolName === 'conversation-history') return 'message-square';
