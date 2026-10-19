@@ -142,6 +142,11 @@ export type EffectivePolicy = {
 	readonly attachments: readonly PolicyAttachment[];
 };
 
+export type ScopeAttachments = {
+	readonly attachments: readonly PolicyAttachment[];
+	readonly version: number;
+};
+
 /** The allow-all state of a scope with no row, for a composition with no project to read. */
 const UNCONFIGURED_PROJECT: Omit<EffectivePolicy, 'kind'> = {
 	scopeId: null,
@@ -643,6 +648,21 @@ export class TypeAvailabilityPolicyService {
 		return await this.policyRepository.findPageByKind(kind, offset, limit, {});
 	}
 
+	async getAttachments(
+		kind: string,
+		scopeId: string,
+		ctx: OperationContext = {},
+	): Promise<ScopeAttachments> {
+		const scope = await this.scopeRepository.findScopeByIdAndKind(scopeId, kind, ctx);
+		if (!scope) {
+			throw new NotFoundError(`Policy scope not found: ${scopeId}`);
+		}
+
+		const attachments = await this.attachmentRepository.listAttachmentsForScope(scopeId, ctx);
+
+		return { attachments: orderedAttachments(attachments), version: scope.version };
+	}
+
 	/**
 	 * Replaces every attachment on one scope, keyed by `scopeId` rather than `(kind,
 	 * projectId)` — a caller replacing attachments already holds a scope id from a prior
@@ -665,7 +685,7 @@ export class TypeAvailabilityPolicyService {
 		attachments: readonly AttachmentInput[],
 		expectedVersion: number,
 		updatedBy: string,
-	): Promise<{ attachments: readonly PolicyAttachment[]; version: number }> {
+	): Promise<ScopeAttachments> {
 		assertNoDuplicateAttachmentSlots(attachments);
 
 		const result = await this.transactionRunner.run({}, async (ctx) => {
@@ -734,7 +754,7 @@ export class TypeAvailabilityPolicyService {
 			after: { attachments: result.after, version: result.versionAfter },
 		});
 
-		return { attachments: result.after, version: result.versionAfter };
+		return { attachments: orderedAttachments(result.after), version: result.versionAfter };
 	}
 
 	/**

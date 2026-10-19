@@ -1580,8 +1580,6 @@ export interface InstanceAiContext {
 	 * that land on the active trace. Absent outside a traced run.
 	 */
 	tracing?: InstanceAiTraceContext;
-	/** Selected skill source for inline tool guidance. */
-	runtimeSkillCatalog?: RuntimeSkillSource;
 	projectId?: string;
 	/**
 	 * Per-run folder-exploration gate, resolved by the host before the context
@@ -2158,11 +2156,6 @@ export interface InstanceAiTraceContext {
 	 * for any agent (main or sub-agent) whose spans should join this trace.
 	 */
 	onMemoryTaskEvent?: (event: ScopedMemoryTaskEvent) => void;
-	/**
-	 * Keep the trace open until a background operation settles, so its spans
-	 * finish normally when it outlives the root run.
-	 */
-	keepOpenUntilSettled?: (operation: Promise<unknown>) => void;
 	/** Trace replay mode: 'record' captures tool I/O, 'replay' remaps IDs, 'off' disables. */
 	replayMode: TraceReplayMode;
 	/** Shared ID remapper instance — available in 'replay' mode. */
@@ -2253,16 +2246,8 @@ export interface OrchestrationContext {
 	localMcpServer?: LocalMcpServer;
 	/** Validated, approval-wrapped MCP tools available to Agent Builder. */
 	mcpTools?: InstanceAiToolRegistry;
-	/**
-	 * Runtime-loadable skills available to the agent. Workspace-backed agents may
-	 * replace this with a workspace-materialized source before attaching it.
-	 */
-	runtimeSkills?: RuntimeSkillSource;
-	/**
-	 * Raw bundled runtime skill source. Use this when materializing skills for a
-	 * concrete workspace target so already-materialized paths are not copied.
-	 */
-	runtimeSkillCatalog?: RuntimeSkillSource;
+	/** Skills that the agent can load. */
+	skills?: RuntimeSkillSource;
 	/** OAuth2 callback URL for the n8n instance (e.g. http://localhost:5678/rest/oauth2-credential/callback) */
 	oauth2CallbackUrl?: string;
 	/** Cancel a running background task by its ID */
