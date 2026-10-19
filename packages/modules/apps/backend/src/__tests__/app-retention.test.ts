@@ -1,3 +1,4 @@
+import { Logger } from '@n8n/backend-common';
 import { DbLock, DbLockService, type OperationContext } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
@@ -111,7 +112,7 @@ describe('AppStorageCleanupTask', () => {
 	it('reclaims artifacts once after pruning apps across all pages', async () => {
 		const { retention, ctx, apps, versions, sourceVersions } = createRetention();
 		const artifacts = mock<AppArtifactService>();
-		const task = new AppStorageCleanupTask(apps, retention, artifacts);
+		const task = new AppStorageCleanupTask(apps, retention, artifacts, mock<Logger>());
 		const signal = new AbortController().signal;
 		apps.listIdsAfter
 			.mockResolvedValueOnce(['app-1'])
@@ -134,5 +135,47 @@ describe('AppStorageCleanupTask', () => {
 			[['app-2-oldest'], ctx],
 		]);
 		expect(artifacts.cleanup).toHaveBeenCalledExactlyOnceWith(signal);
+	});
+
+	it('continues pruning apps and reclaims artifacts after a prune fails', async () => {
+		const apps = mock<AppRepository>();
+		const retention = mock<AppRetentionService>();
+		const artifacts = mock<AppArtifactService>();
+		const logger = mock<Logger>();
+		const task = new AppStorageCleanupTask(apps, retention, artifacts, logger);
+		const signal = new AbortController().signal;
+		const error = new Error('Prune failed');
+		apps.listIdsAfter.mockResolvedValueOnce(['app-1', 'app-2']).mockResolvedValueOnce([]);
+		retention.prune.mockRejectedValueOnce(error);
+
+		await task.run(signal);
+
+		expect(logger.warn).toHaveBeenCalledExactlyOnceWith('Could not prune app history.', {
+			appId: 'app-1',
+			error,
+		});
+		expect(retention.prune.mock.calls).toEqual([
+			['app-1', signal],
+			['app-2', signal],
+		]);
+		expect(artifacts.cleanup).toHaveBeenCalledExactlyOnceWith(signal);
+	});
+
+	it('stops cleanup when pruning is aborted', async () => {
+		const apps = mock<AppRepository>();
+		const retention = mock<AppRetentionService>();
+		const artifacts = mock<AppArtifactService>();
+		const task = new AppStorageCleanupTask(apps, retention, artifacts, mock<Logger>());
+		const controller = new AbortController();
+		apps.listIdsAfter.mockResolvedValueOnce(['app-1', 'app-2']);
+		retention.prune.mockImplementationOnce(async () => {
+			controller.abort();
+			controller.signal.throwIfAborted();
+		});
+
+		await expect(task.run(controller.signal)).rejects.toThrow('aborted');
+
+		expect(retention.prune).toHaveBeenCalledExactlyOnceWith('app-1', controller.signal);
+		expect(artifacts.cleanup).not.toHaveBeenCalled();
 	});
 });

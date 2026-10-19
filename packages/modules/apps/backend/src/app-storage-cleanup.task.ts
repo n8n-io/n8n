@@ -1,3 +1,4 @@
+import { Logger } from '@n8n/backend-common';
 import { clusterTarget, intervalFromSeconds, SystemTask } from '@n8n/decorators';
 import type { SystemTaskSchedule } from '@n8n/decorators';
 
@@ -18,6 +19,7 @@ export class AppStorageCleanupTask implements SystemTask {
 		private readonly apps: AppRepository,
 		private readonly retention: AppRetentionService,
 		private readonly artifacts: AppArtifactService,
+		private readonly logger: Logger,
 	) {}
 
 	async run(signal: AbortSignal): Promise<void> {
@@ -26,7 +28,13 @@ export class AppStorageCleanupTask implements SystemTask {
 			signal.throwIfAborted();
 			const ids = await this.apps.listIdsAfter(after);
 			if (!ids.length) break;
-			for (const id of ids) await this.retention.prune(id, signal);
+			for (const id of ids) {
+				try {
+					await this.retention.prune(id, signal);
+				} catch (error) {
+					this.logger.warn('Could not prune app history.', { appId: id, error });
+				}
+			}
 			after = ids.at(-1);
 		}
 		await this.artifacts.cleanup(signal);
