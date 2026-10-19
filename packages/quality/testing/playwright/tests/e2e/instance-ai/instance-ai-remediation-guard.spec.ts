@@ -1,3 +1,4 @@
+import { resolveBuilderToolName } from '@n8n/api-types';
 import type { TestInfo } from '@playwright/test';
 
 import { test, expect, instanceAiTestConfig, getInstanceAiTestSlug } from './fixtures';
@@ -43,7 +44,13 @@ type RemediationTraceSummary = {
 };
 
 async function getTraceEvents(api: ApiHelpers, testInfo: TestInfo): Promise<TraceEvent[]> {
-	return (await api.getInstanceAiToolTraceEvents(getInstanceAiTestSlug(testInfo))) as TraceEvent[];
+	const events = (await api.getInstanceAiToolTraceEvents(
+		getInstanceAiTestSlug(testInfo),
+	)) as TraceEvent[];
+	// Recorded traces keep the tool names from the time of recording.
+	return events.map((event) =>
+		event.toolName ? { ...event, toolName: resolveBuilderToolName(event.toolName) } : event,
+	);
 }
 
 function getToolCalls(events: TraceEvent[], toolName: string): TraceEvent[] {
@@ -152,7 +159,10 @@ function summarizeRemediationTrace(events: TraceEvent[]): RemediationTraceSummar
 			event.input.workflowId === firstSuccessfulBuild?.workflowId
 		);
 	});
-	const workflowSetupRequestsSlackCredential = getToolEvents(events, 'workflows').some(
+	const workflowSetupRequestsSlackCredential = getToolEvents(
+		events,
+		'workflow_builder_workflows',
+	).some(
 		(event) =>
 			event.input?.action === 'setup' &&
 			event.input.workflowId === firstSuccessfulBuild?.workflowId &&
@@ -262,7 +272,7 @@ test.describe(
 				const events = getLatestRecordingEvents(await getTraceEvents(api, testInfo));
 				const summary = summarizeRemediationTrace(events);
 				const buildCalls = getToolCalls(events, 'workflow_builder_build_workflow');
-				const setupCalls = getToolEvents(events, 'workflows').filter(
+				const setupCalls = getToolEvents(events, 'workflow_builder_workflows').filter(
 					(event) =>
 						event.input?.action === 'setup' && event.input.workflowId === summary.workflowId,
 				);
