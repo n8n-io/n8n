@@ -71,7 +71,7 @@ const bodyText = computed(() => {
 			});
 });
 
-const mergeRequestUrl = computed(() => httpUrl(result.value?.mergeRequest?.webUrl));
+const mergeRequestUrl = computed(() => httpUrl(result.value?.review?.webUrl));
 
 const reviewNotRecorded = computed(() => i18n.baseText('promotions.result.reviewNotRecorded'));
 

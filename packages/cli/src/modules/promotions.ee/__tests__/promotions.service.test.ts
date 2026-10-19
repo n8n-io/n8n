@@ -423,11 +423,11 @@ describe('PromotionsService', () => {
 					settings: { schemaVersion: 1, baseBranchName: 'staging', createBranchOnPromotion: true },
 				});
 
-			it('opens a review for the pushed promotion branch and returns the merge request', async () => {
+			it('opens a review for the pushed promotion branch and returns the review', async () => {
 				const input = branched();
 				resolver.resolveForConnection.mockResolvedValue(input);
 				reviewsService.openMergeRequest.mockResolvedValue({
-					mergeRequest: { reviewId: 'review1', iid: 3, webUrl: 'https://gitlab/mr/3' },
+					review: { reviewId: 'review1', number: 3, webUrl: 'https://gitlab/mr/3' },
 					warnings: [],
 				});
 
@@ -448,9 +448,9 @@ describe('PromotionsService', () => {
 					},
 					'run-1',
 				);
-				expect(result.mergeRequest).toEqual({
+				expect(result.review).toEqual({
 					reviewId: 'review1',
-					iid: 3,
+					number: 3,
 					webUrl: 'https://gitlab/mr/3',
 				});
 				expect(result.warnings).toBeUndefined();
@@ -471,7 +471,7 @@ describe('PromotionsService', () => {
 					details: { schemaVersion: 1, branchName: 'staging', commitSha: 'newsha' },
 					reviewId: null,
 				});
-				expect(result.mergeRequest).toBeUndefined();
+				expect(result.review).toBeUndefined();
 				expect(result.warnings).toBeUndefined();
 			});
 
@@ -485,7 +485,7 @@ describe('PromotionsService', () => {
 				});
 
 				expect(plain.git.commitSha).toBe('newsha');
-				expect(plain.mergeRequest).toBeUndefined();
+				expect(plain.review).toBeUndefined();
 				expect(reviewsService.openMergeRequest).not.toHaveBeenCalled();
 				expect(plain.warnings).toEqual([
 					{ message: 'The push succeeded, but n8n could not record the promotion run.' },

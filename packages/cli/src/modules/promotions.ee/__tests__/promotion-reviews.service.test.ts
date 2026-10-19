@@ -83,10 +83,10 @@ describe('PromotionReviewsService', () => {
 		const result = await service.openMergeRequest(input, actor, push, 'run-1');
 
 		expect(result).toEqual({
-			mergeRequest: { reviewId: expect.any(String), iid: 3, webUrl: mergeRequest.web_url },
+			review: { reviewId: expect.any(String), number: 3, webUrl: mergeRequest.web_url },
 			warnings: [],
 		});
-		const reviewId = result.mergeRequest?.reviewId;
+		const reviewId = result.review?.reviewId;
 		expect(mergeRequests.createMergeRequest).toHaveBeenCalledWith(host.access, {
 			projectPath: 'platform/api',
 			sourceBranch: push.branchName,

@@ -46,20 +46,20 @@ properties:
     required:
       - commitSha
       - branchName
-  mergeRequest:
+  review:
     type: object
     properties:
       reviewId:
         type: string
         minLength: 1
         maxLength: 36
-      iid:
+      number:
         type: integer
       webUrl:
         type: string
     required:
       - reviewId
-      - iid
+      - number
       - webUrl
   warnings:
     type: array

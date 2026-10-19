@@ -1,7 +1,7 @@
 import type { PromotePackageResultDto } from '@n8n/api-types';
 import { h, type VNode } from 'vue';
 
-type PromoteOutcome = Pick<PromotePackageResultDto, 'git' | 'mergeRequest' | 'warnings'>;
+type PromoteOutcome = Pick<PromotePackageResultDto, 'git' | 'review' | 'warnings'>;
 type PromoteWarning = NonNullable<PromoteOutcome['warnings']>[number];
 
 export type WarningSegment = { kind: 'text'; text: string } | { kind: 'link'; url: string };
@@ -41,7 +41,7 @@ export function promoteSuccessToast(
 	text: { pushed: string; viewMergeRequest: string; reviewNotRecorded: string },
 ): { message: string | VNode; duration?: 0 } {
 	const warnings = result.warnings ?? [];
-	const mergeRequestUrl = httpUrl(result.mergeRequest?.webUrl);
+	const mergeRequestUrl = httpUrl(result.review?.webUrl);
 	if (!mergeRequestUrl && warnings.length === 0) return { message: text.pushed };
 
 	const summary = mergeRequestUrl

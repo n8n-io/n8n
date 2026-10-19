@@ -87,7 +87,7 @@ describe('PromoteInstanceDialog', () => {
 	it('links the merge request n8n wrote and leaves URLs in GitLab warnings as text', async () => {
 		api.promotePackage.mockResolvedValue({
 			...promoteResult('n8n-promotion/2026-01-01T00-00-00-000Z'),
-			mergeRequest: { reviewId: 'review-1', iid: 3, webUrl: 'https://gitlab.example/mr/3' },
+			review: { reviewId: 'review-1', number: 3, webUrl: 'https://gitlab.example/mr/3' },
 			warnings: [
 				{
 					message:

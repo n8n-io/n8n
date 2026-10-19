@@ -224,9 +224,9 @@ describe('PromotionSelectModal', () => {
 	it('should keep the toast open and link the merge request', async () => {
 		api.promoteProjectSelection.mockResolvedValueOnce({
 			...promoteResult('n8n-promotion/2026-01-01T00-00-00-000Z'),
-			mergeRequest: {
+			review: {
 				reviewId: 'review-1',
-				iid: 3,
+				number: 3,
 				webUrl: 'https://gitlab.example/mr/3',
 			},
 		});

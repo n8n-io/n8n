@@ -274,7 +274,7 @@ export class PromotionsService {
 		input: PromotionOperationInput,
 		actor: User,
 		push: { promotionBranchName: string | undefined; commitSha: string; title: string },
-	): Promise<Pick<PromotePackageResultDto, 'mergeRequest' | 'warnings'>> {
+	): Promise<Pick<PromotePackageResultDto, 'review' | 'warnings'>> {
 		const recorded = await this.recordPromoteRun(input, actor, {
 			branchName: push.promotionBranchName ?? checkoutBranchName(input.config),
 			commitSha: push.commitSha,
@@ -304,7 +304,7 @@ export class PromotionsService {
 				],
 			};
 		}
-		const { mergeRequest, warnings } = await this.reviewsService.openMergeRequest(
+		const { review, warnings } = await this.reviewsService.openMergeRequest(
 			input,
 			actor,
 			{
@@ -317,7 +317,7 @@ export class PromotionsService {
 			recorded.runId,
 		);
 		return {
-			...(mergeRequest && { mergeRequest }),
+			...(review && { review }),
 			...(warnings.length > 0 && { warnings }),
 		};
 	}

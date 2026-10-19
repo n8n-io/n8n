@@ -1,7 +1,7 @@
 import {
 	parseRemoteReviewId,
 	promotionReviewTypeSchema,
-	type PromotionMergeRequestResult,
+	type PromotionReviewResult,
 	type PromotionPromoteWarning,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
@@ -31,7 +31,7 @@ export type PromotionPush = Readonly<{
 }>;
 
 export type OpenReviewResult = Readonly<{
-	mergeRequest?: PromotionMergeRequestResult;
+	review?: PromotionReviewResult;
 	warnings: PromotionPromoteWarning[];
 }>;
 
@@ -111,7 +111,7 @@ export class PromotionReviewsService {
 			};
 		}
 
-		return { mergeRequest: { reviewId, iid, webUrl }, warnings: [] };
+		return { review: { reviewId, ['number']: iid, webUrl }, warnings: [] };
 	}
 }
 
