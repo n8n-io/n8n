@@ -108,7 +108,13 @@ const publishedOptions = computed<Array<{ value: PublishedFilter; label: string 
 </script>
 
 <template>
-	<N8nPopover v-model:open="open" width="420px" align="end">
+	<!-- A short window cannot fit every filter, so the popover scrolls in the space below the trigger. -->
+	<N8nPopover
+		v-model:open="open"
+		width="420px"
+		max-height="var(--reka-popover-content-available-height)"
+		align="end"
+	>
 		<!-- The trigger matches the filter button of the Overview lists. -->
 		<template #trigger>
 			<span :class="$style.trigger">
