@@ -1476,6 +1476,56 @@ describe('useAgentEvalsStore', () => {
 			expect(vi.getTimerCount()).toBe(0);
 		});
 
+		it.each([400, 404, 409, 429])(
+			'restores the previous result immediately after a %i rejection',
+			async (httpStatusCode) => {
+				vi.useFakeTimers();
+				const old = result('c1');
+				mockRun({ results: [old], count: 1, ratings: [] });
+				const store = useAgentEvalsStore();
+				await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
+				(operation === 'rerun' ? rerunResult : applySuggestions).mockRejectedValue(
+					new ResponseError('Rejected', { httpStatusCode }),
+				);
+				const pending =
+					operation === 'rerun'
+						? store.rerunResult(PROJECT_ID, AGENT_ID, 'c1')
+						: store.applySuggestions(PROJECT_ID, AGENT_ID, ['c1']);
+				await expect(pending).rejects.toThrow('Rejected');
+				expect(store.getReview(RUN_ID).results[0]).toEqual(old);
+				expect(vi.getTimerCount()).toBe(0);
+			},
+		);
+
+		it('keeps showing the attempt that holds the row after an "already running" rejection', async () => {
+			vi.useFakeTimers();
+			const old = result('c1');
+			mockRun({ results: [old], count: 1, ratings: [] });
+			const store = useAgentEvalsStore();
+			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
+			const other = {
+				...old,
+				runAt: '2026-01-01T01:00:00.000Z',
+				status: 'running' as const,
+				output: null,
+			};
+			getRunDetail.mockResolvedValue(runDetail([other], 1));
+			(operation === 'rerun' ? rerunResult : applySuggestions).mockRejectedValue(
+				new ResponseError('Agent eval result c1 is already running.', { httpStatusCode: 400 }),
+			);
+			const pending =
+				operation === 'rerun'
+					? store.rerunResult(PROJECT_ID, AGENT_ID, 'c1')
+					: store.applySuggestions(PROJECT_ID, AGENT_ID, ['c1']);
+			await expect(pending).rejects.toThrow('already running');
+			expect(store.getReview(RUN_ID).results[0]).toEqual(other);
+			const final = { ...other, status: 'success' as const };
+			getRunDetail.mockResolvedValue(runDetail([final], 1));
+			await vi.advanceTimersByTimeAsync(35000);
+			expect(store.getReview(RUN_ID).results[0]).toEqual(final);
+			expect(vi.getTimerCount()).toBe(0);
+		});
+
 		it.each([false, true])(
 			'confirms a lost request before restoring an attempt not yet observed (read fails: %s)',
 			async (readFails) => {
