@@ -208,6 +208,7 @@ describe('AgentChatPlan', () => {
 		const trigger = wrapper.get('button');
 		const indicator = () => wrapper.findAllComponents(N8nIcon)[0];
 		expect(trigger.text()).toContain('Checking sources');
+		expect(wrapper.get('[role="status"]').text()).toBe('Checking sources');
 		expect(indicator().props()).toMatchObject({ icon: 'loader-circle', spin: true });
 		await trigger.trigger('click');
 		expect(wrapper.get('[data-testid="agent-chat-plan-details"]').attributes('aria-label')).toBe(
@@ -227,8 +228,10 @@ describe('AgentChatPlan', () => {
 			},
 		});
 		expect(trigger.text()).toContain('Stopped checking');
+		expect(wrapper.get('[role="status"]').text()).toBe('Stopped checking');
 		await wrapper.setProps({ plan: { ...wrapper.props('plan'), revision: 3, closed: true } });
 		expect(trigger.text()).toContain('One source remains unchecked.');
+		expect(wrapper.get('[role="status"]').text()).toBe('One source remains unchecked.');
 		expect(wrapper.getComponent(ChatCollapsibleContainer).attributes('title')).toBe(
 			'One source remains unchecked.',
 		);
