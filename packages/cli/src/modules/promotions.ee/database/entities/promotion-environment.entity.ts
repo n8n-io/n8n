@@ -17,7 +17,7 @@ import {
 import { v7 as uuidv7 } from 'uuid';
 
 import { PromotionProvider } from './promotion-provider.entity';
-import type { PromotionStoredConnectionTarget } from '../../git-hosts/git-host-target';
+import type { PromotionStoredEnvironmentTarget } from '../../git-hosts/git-host-target';
 
 /**
  * One direction against one remote, reached with one provider's credentials. The
@@ -36,7 +36,6 @@ export class PromotionEnvironment extends WithTimestamps {
 		if (!this.id) this.id = uuidv7();
 	}
 
-	/** Names are not unique. */
 	@Column({ type: 'varchar', length: 128 })
 	name: string;
 
@@ -57,7 +56,7 @@ export class PromotionEnvironment extends WithTimestamps {
 
 	/** Where to push and pull, with its own `schemaVersion`. */
 	@JsonColumn()
-	target: PromotionStoredConnectionTarget;
+	target: PromotionStoredEnvironmentTarget;
 
 	/** Branch settings for {@link direction}, with their own `schemaVersion`. */
 	@JsonColumn()

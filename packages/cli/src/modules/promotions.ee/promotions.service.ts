@@ -139,7 +139,7 @@ export class PromotionsService {
 			credentials: await this.credentialsFor(input),
 			paths: this.workingDirectory.paths(input.environmentId),
 			branchName,
-			configId: input.environmentId,
+			environmentId: input.environmentId,
 		});
 		// Only a finished clone gets a descriptor, so a failed one stays unusable.
 		await this.workingDirectory.writeDescriptor(this.descriptorFor(input));
@@ -224,7 +224,7 @@ export class PromotionsService {
 				paths: this.workingDirectory.paths(input.environmentId),
 				branchName,
 				targetBranchName,
-				configId: input.environmentId,
+				environmentId: input.environmentId,
 				author: this.commitAuthor(actor),
 				commitMessage: request.commitMessage,
 				// A promotion branch must be new, so force does not apply.
@@ -278,13 +278,13 @@ export class PromotionsService {
 			(await this.gitService.hasCommittedPath({
 				paths: this.workingDirectory.paths(input.environmentId),
 				branchName,
-				configId: input.environmentId,
+				environmentId: input.environmentId,
 				pathspec: `${PACKAGE_SUBFOLDER}/${MANIFEST_FILE}`,
 			}))
 		) {
 			// The commit holds a manifest the checkout lost. A push would drop branch content or metadata.
 			throw new BadRequestError(
-				'The local copy of the promote branch is incomplete. Disconnect and connect it again in the instance connection settings.',
+				'The local copy of the promote branch is incomplete. Disconnect and connect it again in the instance environment settings.',
 			);
 		}
 
@@ -341,7 +341,7 @@ export class PromotionsService {
 				paths: this.workingDirectory.paths(input.environmentId),
 				branchName,
 				targetBranchName,
-				configId: input.environmentId,
+				environmentId: input.environmentId,
 				author: this.commitAuthor(actor),
 				commitMessage: request.commitMessage,
 				// A promotion branch must be new, so force never applies.
@@ -578,7 +578,7 @@ export class PromotionsService {
 			credentials: await this.credentialsFor(input),
 			paths,
 			branchName,
-			configId: input.environmentId,
+			environmentId: input.environmentId,
 		});
 
 		const identity = {
@@ -685,7 +685,7 @@ export class PromotionsService {
 			credentials: await this.credentialsFor(input),
 			paths,
 			branchName,
-			configId: input.environmentId,
+			environmentId: input.environmentId,
 		});
 
 		const identity = {
@@ -783,7 +783,7 @@ export class PromotionsService {
 			credentials: await this.credentialsFor(input),
 			paths,
 			branchName,
-			configId: input.environmentId,
+			environmentId: input.environmentId,
 			pathspecs: BASE_BRANCH_DIRECTORIES.map((directory) => `${PACKAGE_SUBFOLDER}/${directory}/`),
 		});
 
@@ -801,7 +801,7 @@ export class PromotionsService {
 				return await this.gitService.readFilesAtCommit({
 					paths,
 					branchName,
-					configId: input.environmentId,
+					environmentId: input.environmentId,
 					commitSha,
 					filePaths,
 				});
@@ -830,7 +830,7 @@ export class PromotionsService {
 			credentials,
 			paths: this.workingDirectory.paths(input.environmentId),
 			branchName,
-			configId: input.environmentId,
+			environmentId: input.environmentId,
 		});
 		return targetBranchName;
 	}

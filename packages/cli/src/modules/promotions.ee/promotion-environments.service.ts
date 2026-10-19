@@ -1,6 +1,6 @@
 import type {
 	CreatePromotionEnvironmentDto,
-	PromotionConnectionTarget,
+	PromotionEnvironmentTarget,
 	PromotionDirection,
 	PromotionEnvironmentCheckout,
 	PromotionEnvironmentProjectListPublicDto,
@@ -118,7 +118,7 @@ export class PromotionEnvironmentsService {
 		const provider = input.providerId
 			? await this.providersService.getEntity(input.providerId)
 			: current.provider;
-		const requested: PromotionConnectionTarget =
+		const requested: PromotionEnvironmentTarget =
 			input.target ?? resolvePromotionTarget(current.provider, current.target);
 		this.gitService.validateRemoteUrl(requested.remoteUrl, provider.authType);
 		const changesTarget = input.target !== undefined || provider.id !== current.providerId;
@@ -249,7 +249,7 @@ export class PromotionEnvironmentsService {
 
 		// Read the target the same way an operation does, so the reported state and the
 		// enforced state cannot drift. A target this version cannot read is not usable.
-		let target: PromotionConnectionTarget;
+		let target: PromotionEnvironmentTarget;
 		try {
 			target = resolvePromotionGitTarget(environment.provider, environment.target);
 		} catch {

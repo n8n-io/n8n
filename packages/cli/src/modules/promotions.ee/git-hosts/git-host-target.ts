@@ -1,9 +1,9 @@
 import {
 	isPromotionGitHostType,
-	promotionConnectionTargetSchema,
+	promotionEnvironmentTargetSchema,
 	promotionGitHostBaseUrlSchema,
 	promotionGitHostConfigSchema,
-	type PromotionConnectionTarget,
+	type PromotionEnvironmentTarget,
 } from '@n8n/api-types';
 import { z } from 'zod';
 
@@ -20,12 +20,14 @@ const repositoryPathSchema = z.string().refine((value) => {
 	);
 });
 
-export const promotionStoredConnectionTargetSchema = z.union([
-	promotionConnectionTargetSchema,
+export const promotionStoredEnvironmentTargetSchema = z.union([
+	promotionEnvironmentTargetSchema,
 	z.object({ schemaVersion: z.literal(1), repositoryPath: repositoryPathSchema }).strict(),
 ]);
 
-export type PromotionStoredConnectionTarget = z.infer<typeof promotionStoredConnectionTargetSchema>;
+export type PromotionStoredEnvironmentTarget = z.infer<
+	typeof promotionStoredEnvironmentTargetSchema
+>;
 type GitHostProvider = Pick<PromotionProvider, 'type' | 'config'>;
 
 export function repositoryPathFromUrl(baseUrl: string, remoteUrl: string): string {
@@ -57,8 +59,8 @@ export function repositoryPathFromUrl(baseUrl: string, remoteUrl: string): strin
 
 export function storePromotionTarget(
 	provider: GitHostProvider,
-	target: PromotionConnectionTarget,
-): PromotionStoredConnectionTarget {
+	target: PromotionEnvironmentTarget,
+): PromotionStoredEnvironmentTarget {
 	if (!isPromotionGitHostType(provider.type)) return target;
 	return {
 		schemaVersion: 1,
@@ -69,8 +71,8 @@ export function storePromotionTarget(
 export function resolvePromotionTarget(
 	provider: GitHostProvider,
 	stored: unknown,
-): PromotionConnectionTarget {
-	const parsed = promotionStoredConnectionTargetSchema.safeParse(stored);
+): PromotionEnvironmentTarget {
+	const parsed = promotionStoredEnvironmentTargetSchema.safeParse(stored);
 	if (!parsed.success) throw new BadRequestError('The stored environment target cannot be read');
 	if ('remoteUrl' in parsed.data) return parsed.data;
 	if (!isPromotionGitHostType(provider.type)) {
@@ -87,7 +89,7 @@ export function resolvePromotionTarget(
 export function resolvePromotionGitTarget(
 	provider: GitHostProvider,
 	stored: unknown,
-): PromotionConnectionTarget {
+): PromotionEnvironmentTarget {
 	const target = resolvePromotionTarget(provider, stored);
 	if (!isPromotionGitHostType(provider.type)) return target;
 	const baseUrl = hostBaseUrl(provider);

@@ -162,7 +162,7 @@ describe('PromotionsService', () => {
 				expect.objectContaining({
 					remoteUrl: REMOTE_URL,
 					branchName: 'staging',
-					configId: ENVIRONMENT_ID,
+					environmentId: ENVIRONMENT_ID,
 					credentials: { authType: 'ssh-key', privateKey: 'PRIV' },
 				}),
 			);
@@ -302,7 +302,7 @@ describe('PromotionsService', () => {
 				expect.objectContaining({
 					remoteUrl: REMOTE_URL,
 					branchName: 'staging',
-					configId: ENVIRONMENT_ID,
+					environmentId: ENVIRONMENT_ID,
 					author: { name: 'Ada Lovelace', email: 'ada@example.com' },
 					commitMessage: 'sync projects',
 					force: false,
@@ -402,7 +402,7 @@ describe('PromotionsService', () => {
 				expect.objectContaining({
 					remoteUrl: REMOTE_URL,
 					branchName: 'staging',
-					configId: ENVIRONMENT_ID,
+					environmentId: ENVIRONMENT_ID,
 					credentials: { authType: 'ssh-key', privateKey: 'PRIV' },
 				}),
 			);
@@ -675,7 +675,7 @@ describe('PromotionsService', () => {
 			);
 			expect(gitService.validateBranchName).toHaveBeenCalledWith(targetBranchName);
 			expect(gitService.prepareCheckoutForPromotion).toHaveBeenCalledWith(
-				expect.objectContaining({ branchName: 'staging', configId: ENVIRONMENT_ID }),
+				expect.objectContaining({ branchName: 'staging', environmentId: ENVIRONMENT_ID }),
 			);
 			expect(invalidateDescriptor).toHaveBeenCalledWith(ENVIRONMENT_ID);
 			expect(gitService.commitAndPush).toHaveBeenCalledWith(
@@ -1108,7 +1108,7 @@ describe('PromotionsService', () => {
 				expect.objectContaining({
 					remoteUrl: REMOTE_URL,
 					branchName: 'dev',
-					configId: ENVIRONMENT_ID,
+					environmentId: ENVIRONMENT_ID,
 					credentials: { authType: 'ssh-key', privateKey: 'PRIV' },
 					pathspecs: [
 						'n8n/projects/',
@@ -1131,7 +1131,7 @@ describe('PromotionsService', () => {
 				expect.objectContaining({
 					commitSha,
 					branchName: 'dev',
-					configId: ENVIRONMENT_ID,
+					environmentId: ENVIRONMENT_ID,
 					filePaths: [workflowPath],
 				}),
 			);
@@ -1240,7 +1240,7 @@ describe('PromotionsService', () => {
 				expect.objectContaining({
 					remoteUrl: REMOTE_URL,
 					branchName: 'dev',
-					configId: ENVIRONMENT_ID,
+					environmentId: ENVIRONMENT_ID,
 					credentials: { authType: 'ssh-key', privateKey: 'PRIV' },
 				}),
 			);

@@ -1,5 +1,5 @@
 import type {
-	PromotionConnectionTarget,
+	PromotionEnvironmentTarget,
 	PromotionEnvironmentScope,
 	PromotionProviderAuthType,
 	PromotionProviderType,
@@ -60,7 +60,7 @@ export type PromotionOperationInput = Readonly<{
 	providerType: PromotionProviderType;
 	authType: PromotionProviderAuthType;
 	encryptedAuth: string;
-	target: PromotionConnectionTarget;
+	target: PromotionEnvironmentTarget;
 	config: ResolvedPromotionConfig;
 }>;
 

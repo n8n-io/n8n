@@ -1,4 +1,4 @@
-import type { PromotionConnectionTarget, PromotionSshKeyType } from '@n8n/api-types';
+import type { PromotionEnvironmentTarget, PromotionSshKeyType } from '@n8n/api-types';
 import { resolveProxyUrl } from '@n8n/backend-network';
 import { generateKeyPairSync } from 'node:crypto';
 
@@ -105,7 +105,7 @@ export function repositoryUrl(input: PromotionOperationInput): string {
  */
 export function buildCacheDescriptor(source: {
 	environmentId: string;
-	target: PromotionConnectionTarget;
+	target: PromotionEnvironmentTarget;
 	config: ResolvedPromotionConfig;
 }): PromotionCacheDescriptor {
 	return {

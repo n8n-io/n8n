@@ -582,7 +582,7 @@ export class PromotionsPublicController {
 	@ApiKeyScope({ anyOf: ['gitConnection:push', 'gitConnection:pull'] })
 	@ApiSummary('List the changes of a project in one direction')
 	@ApiDescription(
-		'Compares a team project on this instance with the branch of its promotion environment for that direction and lists the workflows that differ. For `promote` the rows are what a promotion sends to the branch, and the key needs the gitConnection:push scope. For `apply` the rows are what applying the branch changes on this instance, and the key needs the gitConnection:pull scope. `commitSha` is the commit the rows were read from. Requires the direction to be cloned first.',
+		'Compares a team project on this instance with the branch of its promotion environment for that direction and lists the workflows that differ. For `promote` the rows are what a promotion sends to the branch, and the key needs the gitConnection:push scope. For `apply` the rows are what applying the branch changes on this instance, and the key needs the gitConnection:pull scope. `commitSha` is the commit the rows were read from. Requires the environment to be cloned first.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, PromotionChangesDto)
@@ -672,7 +672,7 @@ export class PromotionsPublicController {
 	@GlobalScope('gitConnection:pull')
 	@ApiSummary('Continue applying a selection after binding setup')
 	@ApiDescription(
-		"Rechecks the project's Apply source and the current bindings for the selection. Resend the full selection in workflowIds. Send the required expectedSource with the environmentId, branchName, and full commitSha from the reviewed Apply result. Send `confirmDestructiveChanges: true` to also apply destructive data table changes. The server does not keep a session. Status `source-changed` requires a new Apply review. Status `blocked` returns fresh binding details before import writes. Status `applied` includes counts and warnings. Inspect status before reading counts. Unselected content stays unchanged. Requires the same cloned Apply direction and permissions as the initial selection apply. The API key needs the gitConnection:pull scope. The importer checks user write permissions.",
+		"Rechecks the project's Apply source and the current bindings for the selection. Resend the full selection in workflowIds. Send the required expectedSource with the environmentId, branchName, and full commitSha from the reviewed Apply result. Send `confirmDestructiveChanges: true` to also apply destructive data table changes. The server does not keep a session. Status `source-changed` requires a new Apply review. Status `blocked` returns fresh binding details before import writes. Status `applied` includes counts and warnings. Inspect status before reading counts. Unselected content stays unchanged. Requires the same cloned Apply environment and permissions as the initial selection apply. The API key needs the gitConnection:pull scope. The importer checks user write permissions.",
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, ApplyPackageResultDto)

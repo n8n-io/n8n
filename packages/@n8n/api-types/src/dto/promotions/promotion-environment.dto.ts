@@ -25,15 +25,15 @@ export type PromotionEnvironmentScope = z.infer<typeof promotionEnvironmentScope
 const remoteUrlSchema = z.string().trim().min(1);
 
 /** Git host targets store a path internally. The API exposes the resolved clone URL. */
-export const promotionConnectionTargetSchema = z
+export const promotionEnvironmentTargetSchema = z
 	.object({
 		schemaVersion: z.literal(1),
 		remoteUrl: remoteUrlSchema,
 	})
 	.strict();
-export type PromotionConnectionTarget = z.infer<typeof promotionConnectionTargetSchema>;
+export type PromotionEnvironmentTarget = z.infer<typeof promotionEnvironmentTargetSchema>;
 
-const promotionConnectionTargetPublicSchema = promotionConnectionTargetSchema.extend({
+const promotionEnvironmentTargetPublicSchema = promotionEnvironmentTargetSchema.extend({
 	repositoryPath: z.string().optional().openapi({
 		description:
 			'The stored repository path of a GitLab target. URL-encode it before you use it as repositoryId to list branches. Requests do not accept it.',
@@ -80,7 +80,7 @@ const createPromotionEnvironmentFields = {
 	scope: promotionEnvironmentScopeSchema,
 	/** Providers are created on their own route. An environment only picks one. */
 	providerId: n8nIdSchema,
-	target: promotionConnectionTargetSchema,
+	target: promotionEnvironmentTargetSchema,
 };
 
 const createPromotionEnvironmentSchema = z.discriminatedUnion('direction', [
@@ -122,7 +122,7 @@ const updatePromotionEnvironmentSchema = z
 	.object({
 		name: promotionDisplayNameSchema.optional(),
 		providerId: n8nIdSchema.optional(),
-		target: promotionConnectionTargetSchema.optional(),
+		target: promotionEnvironmentTargetSchema.optional(),
 		settings: promotionEnvironmentSettingsSchema.optional(),
 	})
 	.strict()
@@ -143,7 +143,7 @@ export class UpdatePromotionEnvironmentDto implements UpdatePromotionEnvironment
 
 	providerId?: string;
 
-	target?: PromotionConnectionTarget;
+	target?: PromotionEnvironmentTarget;
 
 	settings?: PromotionEnvironmentSettings;
 
@@ -197,7 +197,7 @@ const promotionEnvironmentFields = {
 	id: n8nIdSchema,
 	name: z.string(),
 	scope: promotionEnvironmentScopeSchema,
-	target: promotionConnectionTargetPublicSchema,
+	target: promotionEnvironmentTargetPublicSchema,
 	provider: promotionProviderSummarySchema,
 	createdAt: z.string().datetime(),
 	updatedAt: z.string().datetime(),
