@@ -102,8 +102,7 @@ export class McpSkillToolsService {
 		registerTool({
 			name: 'search_skills',
 			config: {
-				description:
-					'Search the skills hub. Skills are reusable instructions that n8n Agents can attach.',
+				description: 'Search the skills hub. Skills are reusable instructions.',
 				inputSchema: searchSkillsInput,
 				annotations: {
 					title: 'Search Skills',
@@ -153,8 +152,7 @@ export class McpSkillToolsService {
 		registerTool({
 			name: 'create_skill',
 			config: {
-				description:
-					'Create a skill in the skills hub. It is not attached to any Agent. Use mutate_agent to attach it.',
+				description: 'Create a skill in the skills hub.',
 				inputSchema: createSkillInput,
 				annotations: {
 					title: 'Create Skill',
@@ -239,7 +237,7 @@ export class McpSkillToolsService {
 			name: 'delete_skill',
 			config: {
 				description:
-					'Permanently delete a skill from the skills hub. Refused while an Agent uses it: detach it with mutate_agent skill.delete first.',
+					'Permanently delete a skill from the skills hub. Refused while an Agent uses it.',
 				inputSchema: skillIdInput,
 				annotations: {
 					title: 'Delete Skill',
