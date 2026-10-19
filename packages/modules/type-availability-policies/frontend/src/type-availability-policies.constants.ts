@@ -31,9 +31,11 @@ export const RESTRICTED_TYPE_COPY: Record<
 	},
 };
 
-export type ContactAudience = 'instance' | 'project';
+export type ContactAudience = NodeTypeAvailabilityScope;
 
 export type RestrictionContact = ContactAudience | 'optIn';
+
+export type RestrictionNextStep = 'contact' | 'replace';
 
 export const RESTRICTION_CONTACT_COPY: Record<
 	RestrictionContact,
@@ -41,7 +43,7 @@ export const RESTRICTION_CONTACT_COPY: Record<
 		audience: ContactAudience;
 		action: BaseTextKey;
 		popoverDescription: Record<RestrictedTypeKind, BaseTextKey>;
-		nextStep: Record<'contact' | 'replace', BaseTextKey>;
+		nextStep: Record<RestrictionNextStep, BaseTextKey>;
 	}
 > = {
 	instance: {

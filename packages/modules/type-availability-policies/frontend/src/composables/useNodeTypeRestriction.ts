@@ -18,6 +18,7 @@ import {
 	RESTRICTION_CONTACT_COPY,
 	SCOPE_LABEL_KEY,
 	type RestrictionContact,
+	type RestrictionNextStep,
 } from '../type-availability-policies.constants';
 import { useTypeAvailabilityPoliciesStore } from '../type-availability-policies.store';
 
@@ -105,7 +106,7 @@ const DESCRIPTION_KEY: Record<NodeTypeAvailabilityScope, BaseTextKey> = {
 export function describeNodeTypeRestriction(
 	nodeTypeName: string,
 	verdict: OptionalVerdict,
-	nextStep: 'contact' | 'replace' = 'contact',
+	nextStep: RestrictionNextStep = 'contact',
 ): string {
 	const i18n = useI18n();
 	const nextStepKey = RESTRICTION_CONTACT_COPY[getRestrictionContact(verdict)].nextStep[nextStep];
