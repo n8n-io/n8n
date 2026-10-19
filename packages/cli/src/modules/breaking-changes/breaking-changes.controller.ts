@@ -32,7 +32,10 @@ import { Response } from 'express';
 
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
-import { BreakingChangeMigrationService } from './breaking-changes.migration.service';
+import {
+	BreakingChangeMigrationService,
+	WORKFLOW_NOT_EDITABLE_MESSAGE,
+} from './breaking-changes.migration.service';
 import { RuleRegistry } from './breaking-changes.rule-registry.service';
 import { MigrationFindingNotificationService } from './notifications/migration-finding-notification.service';
 import { MigrationOwnerAssignmentService } from './owners/migration-owner-assignment.service';
@@ -84,14 +87,9 @@ export class BreakingChangesController {
 		return workflowIds.filter((workflowId) => editable.has(workflowId));
 	}
 
-	/** A 404, like the migrate service, so the response does not confirm that the workflow exists. */
 	private async assertCanEdit(user: User, workflowId: string): Promise<void> {
 		const [editable] = await this.editableWorkflowIds(user, [workflowId]);
-		if (!editable) {
-			throw new NotFoundError(
-				'You do not have permission to update this workflow. Ask the owner to share it with you.',
-			);
-		}
+		if (!editable) throw new NotFoundError(WORKFLOW_NOT_EDITABLE_MESSAGE);
 	}
 
 	/**

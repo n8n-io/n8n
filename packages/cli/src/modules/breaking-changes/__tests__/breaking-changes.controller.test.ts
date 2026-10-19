@@ -155,8 +155,10 @@ describe('BreakingChangesController', () => {
 		it('GET rejects a member on a workflow they cannot edit', async () => {
 			req.user = member;
 
-			await expect(controller.listOwnerCandidates(req, res, 'wf-3')).rejects.toBeInstanceOf(
-				NotFoundError,
+			const request = controller.listOwnerCandidates(req, res, 'wf-3');
+			await expect(request).rejects.toThrow(NotFoundError);
+			await expect(request).rejects.toThrow(
+				'Workflow not found, or you do not have permission to update it.',
 			);
 			expect(ownerAssignmentService.candidates).not.toHaveBeenCalled();
 		});
