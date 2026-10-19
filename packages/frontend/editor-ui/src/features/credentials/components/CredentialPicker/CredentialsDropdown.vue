@@ -124,7 +124,10 @@ const onCreateNewCredential = async () => {
 			:disabled="props.disabled"
 			:teleported="props.teleported ?? false"
 			fit-input-width
-			:class="{ [$style.selectWithBalance]: isManagedSelected && managedOption?.pill }"
+			:class="{
+				[$style.selectWithIcon]: !!selectedPrefixIcon,
+				[$style.selectWithBalance]: isManagedSelected && managedOption?.pill,
+			}"
 			:popper-class="$style.selectPopper"
 			@update:model-value="onCredentialSelected"
 			@visible-change="onVisibleChange"
@@ -257,7 +260,11 @@ const onCreateNewCredential = async () => {
 		left: var(--credential-select-side-padding);
 	}
 
-	:global(.el-select .el-input.el-input--prefix .el-input__inner) {
+	:global(.el-select .el-input .el-input__inner) {
+		padding-left: var(--credential-select-side-padding);
+	}
+
+	.selectWithIcon :global(.el-select .el-input .el-input__inner) {
 		padding-left: var(--credential-select-label-padding);
 	}
 }

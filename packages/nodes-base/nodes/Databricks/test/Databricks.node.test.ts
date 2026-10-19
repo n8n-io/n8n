@@ -274,6 +274,21 @@ describe('Databricks', () => {
 				expect(result?.toolAttribution).toBe(expected);
 			},
 		);
+
+		it('should keep the Lakebase locators scoped to the lakebase resource', () => {
+			const { description } = new Databricks();
+
+			const result = NodeHelpers.getNodeParameters(
+				description.properties,
+				{ resource: 'job', operation: 'run' },
+				true,
+				false,
+				node,
+				description,
+			);
+
+			expect(result).not.toHaveProperty('lakebaseProject');
+		});
 	});
 
 	describe('Model Serving -> Query Endpoint', () => {
