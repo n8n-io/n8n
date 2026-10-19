@@ -23,7 +23,8 @@ export interface ResourceData {
 }
 
 export interface LifecycleNotification {
-	subscriptionId: string;
+	// Graph sends a string; the handler checks the value before it uses it.
+	subscriptionId: unknown;
 	subscriptionExpirationDateTime?: string;
 	tenantId?: string;
 	clientState?: string;

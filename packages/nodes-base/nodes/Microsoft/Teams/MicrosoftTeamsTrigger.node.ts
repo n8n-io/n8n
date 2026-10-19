@@ -1,28 +1,31 @@
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { isRecord } from '@n8n/utils/is-record';
 import type {
-	IExecuteFunctions,
 	INodeType,
 	INodeTypeDescription,
 	IHookFunctions,
 	IWebhookFunctions,
 	IWebhookResponseData,
 	IDataObject,
-	JsonObject,
 	INodeExecutionData,
 } from 'n8n-workflow';
 import { NodeApiError, NodeConnectionTypes } from 'n8n-workflow';
 
-import type { LifecycleNotification, WebhookNotification } from './v2/helpers/types';
+import type { WebhookNotification } from './v2/helpers/types';
 import {
 	createSubscription,
+	deleteSubscription,
 	generateClientState,
 	getResourcePath,
+	getStoredSecret,
 	handleLifecycleNotifications,
 	isLifecycleNotification,
+	isLiveSubscription,
 	listOwnSubscriptions,
 	verifyWebhook,
 } from './v2/helpers/utils-trigger';
 import { listSearch } from './v2/methods';
-import { microsoftApiRequest, SERVICE_PRINCIPAL_AUTH, SP_HIDE } from './v2/transport';
+import { SERVICE_PRINCIPAL_AUTH, SP_HIDE } from './v2/transport';
 
 export class MicrosoftTeamsTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -356,13 +359,30 @@ export class MicrosoftTeamsTrigger implements INodeType {
 
 				try {
 					const matchingSubscriptions = await listOwnSubscriptions.call(this, webhookUrl);
+					const hasSecret = getStoredSecret(webhookData) !== undefined;
 
-					const now = new Date();
-					const thresholdMs = 5 * 60 * 1000;
-					const validSubscriptions = matchingSubscriptions.filter((subscription) => {
-						const expiration = new Date(subscription.expirationDateTime);
-						return expiration.getTime() - now.getTime() > thresholdMs;
-					});
+					// Without the secret the webhook cannot verify any of these subscriptions, for
+					// example after the static data was lost, so none of them counts. With it, the
+					// ones about to expire do not count. Partition once, before the awaited deletes.
+					const validSubscriptions = hasSecret
+						? matchingSubscriptions.filter((subscription) => isLiveSubscription(subscription))
+						: [];
+					const validIds = new Set(validSubscriptions.map((subscription) => subscription.id));
+					// What does not count is removed, so `create()` adds no duplicate next to it.
+					for (const { id } of matchingSubscriptions) {
+						if (validIds.has(id)) continue;
+						try {
+							await deleteSubscription.call(this, id);
+						} catch (error) {
+							this.logger.warn('Microsoft Teams Trigger: failed to remove a stale subscription', {
+								workflowId: this.getWorkflow().id,
+								nodeName: this.getNode().name,
+								subscriptionId: id,
+								error: ensureError(error).message,
+							});
+						}
+					}
+					if (!hasSecret) return false;
 
 					const resourcePaths = await getResourcePath.call(this, event);
 					const requiredResources = Array.isArray(resourcePaths) ? resourcePaths : [resourcePaths];
@@ -372,12 +392,10 @@ export class MicrosoftTeamsTrigger implements INodeType {
 						subscribedResources.includes(resource),
 					);
 
-					if (allResourcesSubscribed) {
-						webhookData.subscriptionIds = validSubscriptions.map((sub) => sub.id);
-						return true;
-					}
+					if (!allResourcesSubscribed) return false;
 
-					return false;
+					webhookData.subscriptionIds = validSubscriptions.map((sub) => sub.id);
+					return true;
 				} catch (error) {
 					return false;
 				}
@@ -438,19 +456,9 @@ export class MicrosoftTeamsTrigger implements INodeType {
 
 				try {
 					await Promise.all(
-						storedIds.map(async (subscriptionId) => {
-							try {
-								await microsoftApiRequest.call(
-									this as unknown as IExecuteFunctions,
-									'DELETE',
-									`/v1.0/subscriptions/${subscriptionId}`,
-								);
-							} catch (error) {
-								if ((error as JsonObject).httpStatusCode !== 404) {
-									throw error;
-								}
-							}
-						}),
+						storedIds.map(
+							async (subscriptionId) => await deleteSubscription.call(this, subscriptionId),
+						),
 					);
 
 					delete webhookData.subscriptionIds;
@@ -478,16 +486,13 @@ export class MicrosoftTeamsTrigger implements INodeType {
 			return { noWebhookResponse: true };
 		}
 
-		const notifications = req.body.value as Array<WebhookNotification | LifecycleNotification>;
-		const lifecycleNotifications: LifecycleNotification[] = [];
-		const changeNotifications: WebhookNotification[] = [];
-		for (const notification of notifications) {
-			if (isLifecycleNotification(notification)) {
-				lifecycleNotifications.push(notification);
-			} else {
-				changeNotifications.push(notification);
-			}
-		}
+		// `verifyWebhook` proved a non-empty array. Without a stored secret it accepts any
+		// item shape, so only records become workflow items.
+		const notifications: unknown[] = req.body.value;
+		const lifecycleNotifications = notifications.filter(isLifecycleNotification);
+		const changeNotifications = notifications.filter(
+			(item) => isRecord(item) && !isLifecycleNotification(item),
+		) as WebhookNotification[];
 		const workflowData = changeNotifications.map((event) => [
 			{
 				json: (event.resourceData as IDataObject) ?? event,
@@ -500,22 +505,15 @@ export class MicrosoftTeamsTrigger implements INodeType {
 
 		// Ack before any Graph call: a slow answer makes Graph re-deliver.
 		res.status(202).end();
-		if (this.getMode() === 'manual') {
-			// A test run would list by the production URL and write production ids into the
-			// test static data.
-			this.logger.debug(
-				'Microsoft Teams Trigger: ignored lifecycle notifications during a manual test run',
-				{ workflowId: this.getWorkflow().id, nodeName: this.getNode().name },
-			);
-		} else {
+		// A test run would list by the production URL and write production ids into the
+		// test static data.
+		if (this.getMode() !== 'manual') {
 			await handleLifecycleNotifications.call(this, lifecycleNotifications);
 		}
 
 		// A lifecycle-only batch must leave `workflowData` undefined: any value starts an execution.
-		const response: IWebhookResponseData = { noWebhookResponse: true };
-		if (changeNotifications.length > 0) {
-			response.workflowData = workflowData;
-		}
-		return response;
+		return changeNotifications.length > 0
+			? { noWebhookResponse: true, workflowData }
+			: { noWebhookResponse: true };
 	}
 }
