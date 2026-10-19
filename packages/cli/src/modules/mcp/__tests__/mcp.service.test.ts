@@ -1,4 +1,4 @@
-import { createMcpHandler, type McpServer } from '@modelcontextprotocol/server';
+import { createMcpHandler, McpServer } from '@modelcontextprotocol/server';
 import {
 	MCP_APPS_FLAG,
 	MCP_APPS_VARIANT_CONTROL,
@@ -30,11 +30,13 @@ import { InstanceSettings } from 'n8n-core';
 import type { IRun } from 'n8n-workflow';
 import { createEmptyRunExecutionData, ManualExecutionCancelledError } from 'n8n-workflow';
 import type { Mock, Mocked } from 'vitest';
+import { z } from 'zod';
 
 import { McpPostSaveMetricsService } from '../mcp-post-save-metrics.service';
 
 import { ActiveExecutions } from '@/active-executions';
 import { CollaborationService } from '@/collaboration/collaboration.service';
+import { N8N_VERSION } from '@/constants';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ExecutionListService } from '@/executions/execution-list.service';
 
@@ -652,6 +654,43 @@ describe('McpService', () => {
 	});
 
 	describe('getServer', () => {
+		it('keeps the tool revision stable and changes it for a different grant', async () => {
+			const user = Object.assign(new User(), { id: 'user-1', role: GLOBAL_MEMBER_ROLE });
+			const first = await mcpService.getServer(user, mcpFeatureFlags());
+			const second = await mcpService.getServer(user, mcpFeatureFlags());
+			const scoped = await mcpService.getServer(user, mcpFeatureFlags(), undefined, {
+				grantedScopes: ['execution:read'],
+			});
+			expect(mcpService.getToolListRevision(first)).toMatch(/^[a-f0-9]{64}$/);
+			expect(mcpService.getToolListRevision(second)).toBe(mcpService.getToolListRevision(first));
+			expect(mcpService.getToolListRevision(scoped)).not.toBe(
+				mcpService.getToolListRevision(first),
+			);
+		});
+
+		it('includes the published input and output schemas in revision observation', () => {
+			const observer = vi.fn();
+			const server = new McpServer({ name: 'test', version: '1' });
+			const user = Object.assign(new User(), { id: 'user-1', role: GLOBAL_MEMBER_ROLE });
+			const register = mcpService.createToolRegistrar(server, user, undefined, undefined, observer);
+			register({
+				name: 'test',
+				config: {
+					inputSchema: { query: z.string() },
+					outputSchema: { nextCursor: z.string().nullable() },
+				},
+				handler: async () => ({ content: [] }),
+			});
+			expect(observer).toHaveBeenCalledWith(
+				expect.objectContaining({
+					name: 'test',
+					inputSchema: expect.objectContaining({ properties: { query: { type: 'string' } } }),
+					outputSchema: expect.objectContaining({
+						properties: { nextCursor: { type: ['string', 'null'] } },
+					}),
+				}),
+			);
+		});
 		it('should create MCP server with registered tools', async () => {
 			const user = Object.assign(new User(), { id: 'user-1', role: GLOBAL_MEMBER_ROLE });
 
@@ -871,7 +910,7 @@ describe('McpService', () => {
 				const [message] = sseData(await res.text());
 				const result = (message as { result: Record<string, unknown> }).result;
 				expect(result.protocolVersion).toBe('2025-06-18');
-				expect(result.serverInfo).toMatchObject({ name: 'n8n MCP Server' });
+				expect(result.serverInfo).toMatchObject({ name: 'n8n MCP Server', version: N8N_VERSION });
 			});
 		});
 
@@ -1144,7 +1183,13 @@ describe('McpService', () => {
 
 			await mcpService.getServer(user, mcpFeatureFlags(), { name: 'Cursor' }, auth);
 
-			expect(registrarSpy).toHaveBeenCalledWith(expect.anything(), user, { name: 'Cursor' }, auth);
+			expect(registrarSpy).toHaveBeenCalledWith(
+				expect.anything(),
+				user,
+				{ name: 'Cursor' },
+				auth,
+				expect.any(Function),
+			);
 		});
 
 		it('should report an API-key call as such, with no OAuth client', async () => {

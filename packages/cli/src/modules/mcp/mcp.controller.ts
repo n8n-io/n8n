@@ -10,6 +10,7 @@ import { Telemetry } from '@/telemetry';
 
 import { McpProtectedResource } from './mcp-protected-resource';
 import { McpServerMiddlewareService } from './mcp-server-middleware.service';
+import { McpToolChangeService } from './mcp-tool-change.service';
 import { McpConfig } from './mcp.config';
 import {
 	USER_CONNECTED_TO_MCP_EVENT,
@@ -42,6 +43,7 @@ export class McpController {
 		private readonly telemetry: Telemetry,
 		private readonly logger: Logger,
 		private readonly mcpProtectedResource: McpProtectedResource,
+		private readonly toolChanges: McpToolChangeService,
 	) {}
 
 	// Add CORS headers helper
@@ -229,22 +231,36 @@ export class McpController {
 		};
 
 		let reportedError: string | undefined;
+		const clientInfo = getClientInfo(req);
+		const channel = this.toolChanges.getChannel(req.user.id, auth, clientInfo);
+		const bus = await this.toolChanges.getBus(channel);
 
 		// The handler builds a fresh server per request (complete isolation, no
 		// request-ID collisions across concurrent clients) and serves both the
 		// 2026-07-28 protocol and, via the stateless legacy fallback, 2025-era
 		// clients on this same endpoint.
 		const handler = createMcpHandler(
-			async () => await this.mcpService.getServer(req.user, featureFlags, getClientInfo(req), auth),
+			async () => {
+				const server = await this.mcpService.getServer(req.user, featureFlags, clientInfo, auth);
+				this.toolChanges.observe(channel, this.mcpService.getToolListRevision(server));
+				return server;
+			},
 			{
 				legacy: 'stateless',
+				bus,
 				onerror: (error) => {
 					reportedError ??= error.message;
 					this.errorReporter.error(error);
 				},
 			},
 		);
-		await toNodeHandler(handler)(req, res, body);
+		const untrack = this.toolChanges.track(handler);
+		try {
+			await toNodeHandler(handler)(req, res, body);
+		} finally {
+			untrack();
+			await handler.close();
+		}
 
 		return reportedError;
 	}
