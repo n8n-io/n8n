@@ -28,9 +28,9 @@ export const ACTIVITY_PERMISSION_FORBIDDEN = {
 
 // Teams Trigger subscriptions (POST /v1.0/subscriptions). Graph names the refused
 // resource in the 403 text, for example `'/teams('<id>')/members' resource`. Each
-// `match` is a fragment of that path, never a permission name, because the same 403
-// also lists the roles the caller already has (PR #38954). The fragments do not
-// overlap for the paths getResourcePath posts, so the array order is free today.
+// `match` is a fragment of that path, never a permission name: the same 403 also
+// lists the roles the caller already has (PR #38954). The fragments do not overlap
+// for the paths getResourcePath posts, so the array order does not matter.
 // `/channels('` is the channel-message path: a channel key follows `/channels` only there.
 export const TEAM_MEMBER_SUBSCRIPTION_FORBIDDEN = {
 	endpoint: SUBSCRIPTIONS_ENDPOINT,
@@ -41,7 +41,7 @@ export const TEAM_MEMBER_SUBSCRIPTION_FORBIDDEN = {
 	delegated: {
 		message: 'The credential is missing the TeamMember.Read.All permission',
 		description:
-			'Ask a tenant admin to grant consent for TeamMember.Read.All, then reconnect the credential so Microsoft asks for the permission. Without admin consent the sign-in fails. If the credential uses Custom Scopes, add TeamMember.Read.All to Enabled Scopes before you reconnect. On a generic Microsoft credential, add it to the Scope field.',
+			'Ask a tenant admin to grant consent for TeamMember.Read.All. Then reconnect the credential so Microsoft asks for the permission. Without admin consent the sign-in fails. If the credential uses Custom Scopes, add TeamMember.Read.All to Enabled Scopes before you reconnect. On a generic Microsoft credential, add it to the Scope field. If the credential already has the permission, check that the signed-in user is a member of the team.',
 	},
 } satisfies MicrosoftGraphForbiddenHint;
 
@@ -54,7 +54,7 @@ export const CHANNEL_SUBSCRIPTION_FORBIDDEN = {
 	delegated: {
 		message: 'The credential is missing the Channel.ReadBasic.All permission',
 		description:
-			'Reconnect the credential so Microsoft asks for the Channel.ReadBasic.All permission. If the credential uses Custom Scopes, add Channel.ReadBasic.All to Enabled Scopes first. On a generic Microsoft credential, add it to the Scope field. The default Group.ReadWrite.All scope also covers this event.',
+			'Reconnect the credential so Microsoft asks for the Channel.ReadBasic.All permission. If the credential uses Custom Scopes, add Channel.ReadBasic.All to Enabled Scopes first. On a generic Microsoft credential, add it to the Scope field. The default Group.ReadWrite.All scope also covers this event. If the credential already has either permission, check that the signed-in user is a member of the team.',
 	},
 } satisfies MicrosoftGraphForbiddenHint;
 
@@ -67,13 +67,13 @@ export const CHANNEL_MESSAGE_SUBSCRIPTION_FORBIDDEN = {
 	delegated: {
 		message: 'The credential is missing the ChannelMessage.Read.All permission',
 		description:
-			'Ask a tenant admin to grant consent for ChannelMessage.Read.All, then reconnect the credential so Microsoft asks for the permission. Without admin consent the sign-in fails. If the credential uses Custom Scopes, add ChannelMessage.Read.All to Enabled Scopes before you reconnect. On a generic Microsoft credential, add it to the Scope field.',
+			'Ask a tenant admin to grant consent for ChannelMessage.Read.All. Then reconnect the credential so Microsoft asks for the permission. Without admin consent the sign-in fails. If the credential uses Custom Scopes, add ChannelMessage.Read.All to Enabled Scopes before you reconnect. On a generic Microsoft credential, add it to the Scope field. If the credential already has the permission, check that the signed-in user is a member of the team.',
 	},
 } satisfies MicrosoftGraphForbiddenHint;
 
-// One hint for every chat resource (`/chats('<id>')/messages`, `/users('<id>')/chats`,
-// `/chats/getAllMessages`): all need the same delegated scope. The app-only copy repeats
-// throwChatTriggerUnsupported (helpers/utils-trigger.ts), which runs first. Keep them the same.
+// One hint for every chat path: each path getResourcePath posts contains `/chats`, and all
+// chat events need the same delegated scope. The app-only copy is the single source for
+// throwChatTriggerUnsupported (helpers/utils-trigger.ts), which runs first under SP.
 export const CHAT_SUBSCRIPTION_FORBIDDEN = {
 	endpoint: SUBSCRIPTIONS_ENDPOINT,
 	match: '/chats',
@@ -83,7 +83,7 @@ export const CHAT_SUBSCRIPTION_FORBIDDEN = {
 	delegated: {
 		message: 'The credential is missing the Chat.Read permission',
 		description:
-			'Reconnect the credential so Microsoft asks for the Chat.Read permission. If the credential uses Custom Scopes, add Chat.Read to Enabled Scopes first. On a generic Microsoft credential, add it to the Scope field. The default Chat.ReadWrite scope also covers chat triggers.',
+			'Reconnect the credential so Microsoft asks for the Chat.Read permission. If the credential uses Custom Scopes, add Chat.Read to Enabled Scopes first. On a generic Microsoft credential, add it to the Scope field. The default Chat.ReadWrite scope also covers chat triggers. If the credential already has either permission and the trigger watches one chat, check that the signed-in user is a member of that chat.',
 	},
 } satisfies MicrosoftGraphForbiddenHint;
 

@@ -5,12 +5,11 @@ import type {
 	INode,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 import type { Mock, Mocked } from 'vitest';
 import { mockDeep } from 'vitest-mock-extended';
 
 import { MicrosoftTeamsTrigger } from '../../../MicrosoftTeamsTrigger.node';
-import { getResourcePath } from '../../helpers/utils-trigger';
 import {
 	getBuckets,
 	getChannels,
@@ -27,6 +26,7 @@ import {
 	CHANNEL_SUBSCRIPTION_FORBIDDEN,
 	CHAT_SUBSCRIPTION_FORBIDDEN,
 	TEAM_MEMBER_SUBSCRIPTION_FORBIDDEN,
+	TEAMS_FORBIDDEN_HINTS,
 } from '../../transport/forbiddenHints';
 import {
 	joinedTeamsEndpoint,
@@ -344,8 +344,8 @@ describe('Microsoft Teams Transport', () => {
 	});
 
 	// Drives the real facade with the literal Graph 403 texts of a refused Trigger subscription.
-	// Resource paths are written per fixture, never built from `hint.match`, so a narrowed or
-	// permission-name `match` fails here.
+	// Each fixture spells out its own resource path and never derives it from `hint.match`, so a
+	// narrowed or permission-name `match` fails here.
 	describe('subscription 403 hints (POST /v1.0/subscriptions)', () => {
 		const TEAM_ID = '3b2d1c0a-1111-2222-3333-444444444444';
 		const CHANNEL_ID = '19:abc123def456@thread.tacv2';
@@ -382,9 +382,9 @@ describe('Microsoft Teams Transport', () => {
 		// `requestWithAuthentication` wraps the raw error in a NodeApiError before the kernel sees it
 		const wrapped = (message: string) =>
 			new NodeApiError(mockNode, graphError(message) as unknown as JsonObject);
-		const post = async () =>
+		const post = async (resource = '/v1.0/subscriptions') =>
 			(await microsoftApiRequest
-				.call(mockExecuteFunctions, 'POST', '/v1.0/subscriptions', {})
+				.call(mockExecuteFunctions, 'POST', resource, {})
 				.catch((e: Error) => e)) as NodeApiError;
 		// The kernel rebuilds the app-only error from static copy; pin that every surface the editor
 		// renders (message, description, messages, serialized form) carries no Graph id.
@@ -403,7 +403,7 @@ describe('Microsoft Teams Transport', () => {
 				permission: 'TeamMember.Read.All',
 			},
 			{
-				label: 'new channel (synthetic text)',
+				label: 'new channel',
 				hint: CHANNEL_SUBSCRIPTION_FORBIDDEN,
 				graphText: CHANNELS_403,
 				permission: 'Channel.ReadBasic.All',
@@ -423,20 +423,34 @@ describe('Microsoft Teams Transport', () => {
 				permission: 'Chat.Read',
 			},
 			{
-				label: 'user chats (synthetic text)',
+				label: 'user chats',
 				hint: CHAT_SUBSCRIPTION_FORBIDDEN,
 				graphText: USER_CHATS_403,
 				permission: 'Chat.Read',
 			},
 		];
-		const unhintedRows = [
+		const unhintedRows: Array<{ when: string; graphText: string; resource?: string }> = [
 			{ when: 'the hinted permissions appear only as granted roles', graphText: GRANTED_403 },
 			{ when: 'the refused resource has no hint', graphText: MAIL_403 },
+			// The endpoint gate: the members text on a path other than /subscriptions stays unhinted
+			{
+				when: 'the refused members path is not a subscription',
+				graphText: MEMBERS_403,
+				resource: `/v1.0/teams/${TEAM_ID}/members`,
+			},
 		];
 
 		beforeEach(() => {
 			mockExecuteFunctions.getCredentials.mockResolvedValue({ graphApiBaseUrl: '' });
 		});
+
+		// Pins the hint-table comment: each text contains exactly one fragment, so order does not matter
+		it.each([...teamRows, ...chatRows])(
+			'matches exactly one hint for a $label text',
+			({ hint, graphText }) => {
+				expect(TEAMS_FORBIDDEN_HINTS.filter((h) => graphText.includes(h.match))).toEqual([hint]);
+			},
+		);
 
 		describe('under the Service Principal credential', () => {
 			beforeEach(() => {
@@ -460,34 +474,34 @@ describe('Microsoft Teams Transport', () => {
 				},
 			);
 
-			// Under SP the trigger throws this guard before any request (getResourcePath), so the
-			// hint's app-only copy must stay identical to it: derive the expectation from the guard.
-			it('repeats the chat-trigger guard copy for a chat subscription', async () => {
-				const guard = (await getResourcePath
-					.call(mockExecuteFunctions as unknown as IHookFunctions, 'newChat')
-					.catch((e: unknown) => e)) as NodeOperationError;
-				expect(guard).toBeInstanceOf(NodeOperationError);
-				mockRequestWithAuthentication.mockRejectedValue(wrapped(CHAT_MESSAGES_403));
+			// The trigger's guard throws this copy before any request under SP; the hint carries
+			// the same copy for the kernel path.
+			it.each(chatRows)(
+				'keeps the chat-trigger guard copy for a $label subscription',
+				async ({ hint, graphText }) => {
+					mockRequestWithAuthentication.mockRejectedValue(wrapped(graphText));
 
-				const error = await post();
+					const error = await post();
 
-				expect(error).toBeInstanceOf(NodeApiError);
-				expect(error.httpCode).toBe('403');
-				expect(error.message).toBe(guard.message);
-				expect(error.description).toBe(guard.description);
-				expectNoGraphIds(error);
-			});
+					expect(error.message).toBe(hint.message);
+					expect(error.description).toBe(hint.description);
+					expectNoGraphIds(error);
+				},
+			);
 
-			it.each(unhintedRows)('keeps the generic copy when $when', async ({ graphText }) => {
-				mockRequestWithAuthentication.mockRejectedValue(wrapped(graphText));
+			it.each(unhintedRows)(
+				'keeps the generic copy when $when',
+				async ({ graphText, resource }) => {
+					mockRequestWithAuthentication.mockRejectedValue(wrapped(graphText));
 
-				const error = await post();
+					const error = await post(resource);
 
-				expect(error.message).toBe(GENERIC_APP_ONLY_403);
-				expect(error.description).toBeUndefined();
-				// The static copy is all that reaches the error details
-				expect(error.messages).toEqual([GENERIC_APP_ONLY_403]);
-			});
+					expect(error.message).toBe(GENERIC_APP_ONLY_403);
+					expect(error.description).toBeUndefined();
+					// The static copy is all that reaches the error details
+					expect(error.messages).toEqual([GENERIC_APP_ONLY_403]);
+				},
+			);
 		});
 
 		describe('under a delegated OAuth2 credential', () => {
@@ -513,12 +527,39 @@ describe('Microsoft Teams Transport', () => {
 				},
 			);
 
-			it.each(unhintedRows)('passes the raw text through when $when', async ({ graphText }) => {
-				mockRequestOAuth2.mockRejectedValue(graphError(graphText));
+			it.each(unhintedRows)(
+				'passes the raw text through when $when',
+				async ({ graphText, resource }) => {
+					mockRequestOAuth2.mockRejectedValue(graphError(graphText));
 
-				const error = await post();
+					const error = await post(resource);
 
-				expect(error.message).toBe(graphText);
+					expect(error.message).toBe(graphText);
+				},
+			);
+
+			// The create hook has no catch of its own. Pin that the hint copy reaches the publish
+			// surface unchanged through the real hook.
+			it('surfaces the hint copy through the Trigger create hook', async () => {
+				const hooks: Mocked<IHookFunctions> = mockDeep<IHookFunctions>();
+				hooks.helpers.requestOAuth2 = vi.fn().mockRejectedValue(graphError(MEMBERS_403));
+				hooks.getCredentials.mockResolvedValue({ graphApiBaseUrl: '' });
+				hooks.getNode.mockReturnValue(mockNode);
+				hooks.getNodeWebhookUrl.mockReturnValue('https://n8n.example.com/webhook/teams');
+				hooks.getWorkflowStaticData.mockReturnValue({});
+				const parameters: Partial<Record<string, string>> = {
+					authentication: 'microsoftTeamsOAuth2Api',
+					event: 'newTeamMember',
+					teamId: TEAM_ID,
+				};
+				hooks.getNodeParameter.mockImplementation((name) => parameters[name] ?? false);
+
+				await expect(
+					new MicrosoftTeamsTrigger().webhookMethods.default.create.call(hooks),
+				).rejects.toMatchObject({
+					message: TEAM_MEMBER_SUBSCRIPTION_FORBIDDEN.delegated.message,
+					description: TEAM_MEMBER_SUBSCRIPTION_FORBIDDEN.delegated.description,
+				});
 			});
 		});
 	});
