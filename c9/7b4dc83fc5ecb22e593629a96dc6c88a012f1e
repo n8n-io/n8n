@@ -1,0 +1,25 @@
+packages/nodes-base/nodes/Google/Firebase/RealtimeDatabase/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_90c4bc7a14b6f4 12,14,18-21,38,47
+packages/nodes-base/nodes/Google/Firebase/RealtimeDatabase/GoogleFirebaseRealtimeDatabase.node.ts
+  s_2e1fa95fc44f8f::t_323c121b1fd821 22-23
+packages/nodes-base/nodes/Google/Firebase/RealtimeDatabase/__test__/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_07f424a4d8b1b3 193-196,198-199,207-221
+packages/nodes-base/nodes/Google/Firebase/RealtimeDatabase/__test__/GoogleFirebaseRealtimeDatabase.node.test.ts
+  s_2e1fa95fc44f8f::t_32934e69c6100a 1-2,9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c97b4dc83fc5ecb22e593629a96dc6c88a012f1e",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

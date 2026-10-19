@@ -1,0 +1,21 @@
+packages/nodes-base/nodes/SeaTable/v2/actions/asset/getPublicURL.operation.ts
+  s_2e1fa95fc44f8f::t_8d57bfa9b38537 32-39,54
+packages/nodes-base/nodes/SeaTable/__tests__/v2/getPublicURL.test.ts
+  s_2e1fa95fc44f8f::t_8d57bfa9b38537 8,16,24-33,39
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "08974eaa3edad8a93c408edf4f9cd11eafd3a947",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}
