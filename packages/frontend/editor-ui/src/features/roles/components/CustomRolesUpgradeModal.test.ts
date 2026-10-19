@@ -22,23 +22,9 @@ vi.mock('vue-router', async () => {
 	};
 });
 
-const ElDialogStub = {
-	template: `
-		<div role="dialog">
-			<slot />
-			<slot name="footer" />
-		</div>
-	`,
-};
-
 const renderComponent = createComponentRenderer(CustomRolesUpgradeModal, {
 	props: {
 		modelValue: true,
-	},
-	global: {
-		stubs: {
-			ElDialog: ElDialogStub,
-		},
 	},
 });
 
@@ -49,26 +35,26 @@ describe('CustomRolesUpgradeModal', () => {
 	});
 
 	describe('Rendering', () => {
-		it('should render the modal content', () => {
-			const { getByText } = renderComponent();
+		it('should render the modal content', async () => {
+			const { findByText } = renderComponent();
 
-			expect(getByText('Documentation')).toBeInTheDocument();
+			expect(await findByText('Documentation')).toBeInTheDocument();
 		});
 
-		it('should show Cancel and View plans buttons', () => {
-			const { getByText } = renderComponent();
+		it('should show Cancel and View plans buttons', async () => {
+			const { findByText } = renderComponent();
 
-			expect(getByText('Cancel')).toBeInTheDocument();
-			expect(getByText('View plans')).toBeInTheDocument();
+			expect(await findByText('Cancel')).toBeInTheDocument();
+			expect(await findByText('View plans')).toBeInTheDocument();
 		});
 	});
 
 	describe('User interactions', () => {
 		it('should emit update:modelValue when Cancel is clicked', async () => {
 			const user = userEvent.setup();
-			const { getByText, emitted } = renderComponent();
+			const { findByText, emitted } = renderComponent();
 
-			await user.click(getByText('Cancel'));
+			await user.click(await findByText('Cancel'));
 
 			expect(emitted()['update:modelValue']).toBeTruthy();
 			expect(emitted()['update:modelValue'][0]).toEqual([false]);
@@ -76,18 +62,18 @@ describe('CustomRolesUpgradeModal', () => {
 
 		it('should call goToUpgrade when View plans is clicked', async () => {
 			const user = userEvent.setup();
-			const { getByText } = renderComponent();
+			const { findByText } = renderComponent();
 
-			await user.click(getByText('View plans'));
+			await user.click(await findByText('View plans'));
 
 			expect(mockGoToUpgrade).toHaveBeenCalledWith('custom-roles-selector', 'upgrade-custom-roles');
 		});
 
 		it('should close modal after View plans is clicked', async () => {
 			const user = userEvent.setup();
-			const { getByText, emitted } = renderComponent();
+			const { findByText, emitted } = renderComponent();
 
-			await user.click(getByText('View plans'));
+			await user.click(await findByText('View plans'));
 
 			expect(emitted()['update:modelValue']).toBeTruthy();
 			expect(emitted()['update:modelValue'][0]).toEqual([false]);
