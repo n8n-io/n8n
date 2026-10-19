@@ -198,6 +198,16 @@ function usedByMessage(detail: SkillDetail): string {
 	return `${detail.usedByAgents} agents use it.`;
 }
 
+async function createMessage(
+	context: InstanceAiContext,
+	input: Extract<FullInput, { action: 'create' }>,
+): Promise<string> {
+	if (input.scope === 'instance') return 'Create the skill for every project on this instance';
+	if (!input.projectId) return 'Create the skill in the project';
+	const project = await context.workspaceService?.getProject?.(input.projectId);
+	return `Create the skill in the project "${project?.name ?? input.projectId}"`;
+}
+
 async function handleCreate(
 	context: InstanceAiContext,
 	input: Extract<FullInput, { action: 'create' }>,
@@ -210,10 +220,7 @@ async function handleCreate(
 		'create',
 		async () => ({
 			requestId: nanoid(),
-			message:
-				input.scope === 'instance'
-					? 'Create the skill for every project on this instance'
-					: 'Create the skill in the project',
+			message: await createMessage(context, input),
 			resourceName: input.skill.name,
 			severity: 'info',
 		}),
@@ -254,6 +261,14 @@ async function handleDelete(
 	ctx: ConfirmationToolContext,
 ) {
 	const service = requireSkillService(context);
+	const current = await service.get(input.skillId);
+	if (current.usedByAgents > 0) {
+		return {
+			success: false,
+			refused: true,
+			reason: `The skill cannot be deleted: ${usedByMessage(current)} Detach it from every agent first.`,
+		};
+	}
 	return await withApproval(
 		context,
 		ctx,
@@ -261,7 +276,7 @@ async function handleDelete(
 		async () => ({
 			requestId: nanoid(),
 			message: 'Permanently delete the skill',
-			resourceName: (await service.get(input.skillId)).name,
+			resourceName: current.name,
 			severity: 'destructive',
 		}),
 		async () => {

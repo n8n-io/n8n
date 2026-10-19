@@ -28,7 +28,7 @@ export const skillScopeSchema = z.enum(['project', 'agent', 'instance']);
 
 export type SkillScope = z.infer<typeof skillScopeSchema>;
 
-export type SkillSource = 'ui' | 'agent';
+export type SkillSource = 'ui' | 'agent' | 'mcp' | 'assistant';
 
 /** The user who created a skill, as the settings list names them. */
 export type SkillUserDto = {

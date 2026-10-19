@@ -149,6 +149,36 @@ describe('skills tool', () => {
 			expect(service.create).not.toHaveBeenCalled();
 		});
 
+		it('names the project on the approval card', async () => {
+			const suspend = vi.fn();
+			const getProject = vi.fn().mockResolvedValue({ id: 'project-1', name: 'Marketing' });
+			const tool = createSkillsTool(
+				createContext(service, {
+					workspaceService: { getProject } as unknown as InstanceAiContext['workspaceService'],
+				}),
+			);
+
+			await executeTool(tool, input, suspendCtx(suspend));
+
+			expect(getProject).toHaveBeenCalledWith('project-1');
+			expect(suspend).toHaveBeenCalledWith(
+				expect.objectContaining({ message: 'Create the skill in the project "Marketing"' }),
+			);
+		});
+
+		it('says that every project can use an instance skill', async () => {
+			const suspend = vi.fn();
+			const tool = createSkillsTool(createContext(service));
+
+			await executeTool(tool, { action: 'create', scope: 'instance', skill }, suspendCtx(suspend));
+
+			expect(suspend).toHaveBeenCalledWith(
+				expect.objectContaining({
+					message: 'Create the skill for every project on this instance',
+				}),
+			);
+		});
+
 		it('creates the skill once the user approves', async () => {
 			const tool = createSkillsTool(createContext(service));
 
@@ -272,6 +302,26 @@ describe('skills tool', () => {
 
 	describe('delete', () => {
 		const input = { action: 'delete', skillId: 'skill_a' };
+
+		beforeEach(() => {
+			service.get.mockResolvedValue({ ...detail, usedByAgents: 0 });
+		});
+
+		it('refuses a skill that agents use without asking for approval', async () => {
+			service.get.mockResolvedValue(detail);
+			const suspend = vi.fn();
+			const tool = createSkillsTool(createContext(service));
+
+			const result = await executeTool(tool, input, suspendCtx(suspend));
+
+			expect(suspend).not.toHaveBeenCalled();
+			expect(service.delete).not.toHaveBeenCalled();
+			expect(result).toEqual({
+				success: false,
+				refused: true,
+				reason: 'The skill cannot be deleted: 3 agents use it. Detach it from every agent first.',
+			});
+		});
 
 		it('asks for approval as a destructive action', async () => {
 			const suspend = vi.fn();
