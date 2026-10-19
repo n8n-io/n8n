@@ -47,7 +47,7 @@ requestBody:
             enum:
               - source
             default: source
-            description: Controls IDs for newly created workflows. Only `source` is supported. It uses the package ID. An ID owned outside the destination project blocks the import. Matched workflows keep their destination ID.
+            description: Controls IDs for newly created workflows. Only `source` is supported. It uses the package ID. An ID already used by an unmatched workflow, in any project, blocks the import. Matched workflows keep their destination ID.
           overwriteDeletionPolicy:
             type: string
             enum:
