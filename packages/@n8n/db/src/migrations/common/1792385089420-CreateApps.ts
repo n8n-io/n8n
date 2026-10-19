@@ -1,6 +1,6 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
-export class CreateApps1791897793262 implements ReversibleMigration {
+export class CreateApps1792385089420 implements ReversibleMigration {
 	async up({ schemaBuilder: { createTable, column, addForeignKey }, isSqlite }: MigrationContext) {
 		await createTable('app')
 			.withColumns(
