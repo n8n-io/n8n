@@ -4,8 +4,6 @@ import { Service } from '@n8n/di';
 import type { IRunExecutionData, IWorkflowBase } from 'n8n-workflow';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 
-import { isCredSharingEnabled } from '@/constants/credential-sharing';
-
 /**
  * Resolves who a triggered execution should be attributed to.
  *
@@ -70,8 +68,6 @@ export class WorkflowPublisherService {
 		workflowId: string,
 		executedVersionId: string | null | undefined,
 	): Promise<string | undefined> {
-		if (!isCredSharingEnabled()) return undefined;
-
 		if (!executedVersionId) {
 			// Nothing to attribute to. The latest activation belongs to whichever
 			// version was published last, which is not the one running here, so

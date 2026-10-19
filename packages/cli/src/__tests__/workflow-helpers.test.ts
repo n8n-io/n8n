@@ -979,6 +979,11 @@ describe('getLastExecutedNodeRuns', () => {
 describe('updateParentExecutionWithChildResults', () => {
 	const PARENT_ID = 'parent-execution-id';
 
+	// A child with no credentials of its own, unless a test says otherwise.
+	beforeEach(() => {
+		mockInstance(CredentialsPermissionChecker).getCredentialIdsForNodes.mockReturnValue([]);
+	});
+
 	const waitingParent = (): IExecutionResponse =>
 		({
 			status: 'waiting',
@@ -1290,12 +1295,7 @@ describe('updateParentExecutionWithChildResults', () => {
 	});
 
 	describe('credentials the sub-workflows reference', () => {
-		afterEach(() => {
-			delete process.env.N8N_ENV_FEAT_CRED_SHARING;
-		});
-
 		it('stamps them on the waiting task and the resume stash, joining sibling children', async () => {
-			process.env.N8N_ENV_FEAT_CRED_SHARING = 'true';
 			const parent = waitingParent();
 			parent.data.resultData = {
 				runData: {
@@ -1332,7 +1332,6 @@ describe('updateParentExecutionWithChildResults', () => {
 		});
 
 		it('stamps them when the sub-workflow fails, next to the resume error', async () => {
-			process.env.N8N_ENV_FEAT_CRED_SHARING = 'true';
 			const parent = waitingParent();
 			parent.data.resultData = {
 				runData: {
@@ -1366,24 +1365,6 @@ describe('updateParentExecutionWithChildResults', () => {
 			const entry = parent.data.executionData!.nodeExecutionStack[0] as unknown as StackEntry;
 			expect(entry.metadata?.resumeError).toMatchObject({ message: 'ERROR' });
 			expect(entry.metadata?.dynamicCredentialsUsage?.usedCredentialIds).toEqual(['child-cred']);
-		});
-
-		it('reports nothing with credential sharing off', async () => {
-			const parent = waitingParent();
-			const executionPersistence = mockInstance(ExecutionPersistence);
-			executionPersistence.findSingleExecution.mockResolvedValue(parent);
-			const permissionChecker = mockInstance(CredentialsPermissionChecker);
-
-			await updateParentExecutionWithChildResults(
-				PARENT_ID,
-				childRun('success', 'Done', { data: { main: [[{ json: { out: 1 } }]] } }),
-				undefined,
-				mock<IWorkflowBase>({ nodes: [] }),
-			);
-
-			expect(permissionChecker.getCredentialIdsForNodes).not.toHaveBeenCalled();
-			const entry = parent.data.executionData!.nodeExecutionStack[0] as unknown as StackEntry;
-			expect(entry.metadata?.dynamicCredentialsUsage?.usedCredentialIds).toBeUndefined();
 		});
 	});
 
