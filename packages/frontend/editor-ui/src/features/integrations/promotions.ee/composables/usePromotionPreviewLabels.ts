@@ -70,25 +70,5 @@ export function usePromotionPreviewLabels() {
 		return i18n.baseText('promotions.preview.marker.conflict', options);
 	}
 
-	/** A short note under the name for warnings, which do not stop Apply. */
-	function warningNote(
-		resource: PromotionResource,
-		blockers: readonly Blocker[] = [],
-	): string | undefined {
-		const warnings = blockers.filter(({ kind }) => kind === 'warning');
-		if (warnings.length === 0) return undefined;
-		if (resource.type === 'workflow') {
-			return i18n.baseText('promotions.preview.marker.warnings', {
-				adjustToNumber: warnings.length,
-				interpolate: { count: String(warnings.length) },
-			});
-		}
-		const count = new Set(warnings.flatMap(({ workflowKeys }) => workflowKeys)).size;
-		return i18n.baseText('promotions.preview.marker.usedIn', {
-			adjustToNumber: count,
-			interpolate: { count: String(count) },
-		});
-	}
-
-	return { changeLabel, blockerMessage, warningNote };
+	return { changeLabel, blockerMessage };
 }

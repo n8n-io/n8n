@@ -189,7 +189,11 @@ function removedColumns(
 
 const warnings = computed(() => props.check.preflight.warnings);
 
-const open = ref({ blockers: true, dataTables: true, warnings: true });
+// Data table changes and variable warnings do not block Apply, so they share one section.
+const warningCount = computed(
+	() => bindings.destructiveChanges.value.length + warnings.value.length,
+);
+const open = ref({ blockers: true, warnings: true });
 
 async function create(key: string) {
 	await bindings.createBinding(key, creation.createBinding);
@@ -331,26 +335,29 @@ const isCreateDisabled = computed(() => props.busy || bindings.isBusy.value);
 			</div>
 		</section>
 
-		<section v-if="bindings.destructiveChanges.value.length > 0" :class="$style.section">
+		<section v-if="warningCount > 0" :class="$style.section">
 			<button
 				type="button"
 				:class="$style.sectionHeader"
-				:aria-expanded="open.dataTables"
-				@click="open.dataTables = !open.dataTables"
+				:aria-expanded="open.warnings"
+				@click="open.warnings = !open.warnings"
 			>
-				<N8nIcon :icon="open.dataTables ? 'chevron-down' : 'chevron-right'" size="small" />
+				<N8nIcon :icon="open.warnings ? 'chevron-down' : 'chevron-right'" size="small" />
 				<N8nHeading tag="h2" size="medium">
 					{{
-						i18n.baseText('promotions.preview.blockers.section.dataTables', {
-							adjustToNumber: bindings.destructiveChanges.value.length,
-							interpolate: { count: String(bindings.destructiveChanges.value.length) },
+						i18n.baseText('promotions.preview.blockers.section.warnings', {
+							adjustToNumber: warningCount,
+							interpolate: { count: String(warningCount) },
 						})
 					}}
 				</N8nHeading>
 			</button>
-			<div v-show="open.dataTables">
-				<div :class="$style.group">
+			<div v-show="open.warnings" :class="$style.groups">
+				<div v-if="bindings.destructiveChanges.value.length > 0" :class="$style.group">
 					<N8nCallout theme="warning" :class="$style.callout">
+						<N8nText bold tag="p">{{
+							i18n.baseText('promotions.preview.blockers.destructive.title')
+						}}</N8nText>
 						{{
 							i18n.baseText('promotions.bindings.destructive.confirmDescription', {
 								adjustToNumber: bindings.destructiveChanges.value.length,
@@ -402,28 +409,7 @@ const isCreateDisabled = computed(() => props.busy || bindings.isBusy.value);
 						</tbody>
 					</table>
 				</div>
-			</div>
-		</section>
-
-		<section v-if="warnings.length > 0" :class="$style.section">
-			<button
-				type="button"
-				:class="$style.sectionHeader"
-				:aria-expanded="open.warnings"
-				@click="open.warnings = !open.warnings"
-			>
-				<N8nIcon :icon="open.warnings ? 'chevron-down' : 'chevron-right'" size="small" />
-				<N8nHeading tag="h2" size="medium">
-					{{
-						i18n.baseText('promotions.preview.blockers.section.warnings', {
-							adjustToNumber: warnings.length,
-							interpolate: { count: String(warnings.length) },
-						})
-					}}
-				</N8nHeading>
-			</button>
-			<div v-show="open.warnings">
-				<div :class="$style.group">
+				<div v-if="warnings.length > 0" :class="$style.group">
 					<N8nCallout theme="info" :class="$style.callout">
 						<N8nText bold tag="p">{{
 							i18n.baseText('promotions.preview.blockers.shadowed.title')
@@ -520,6 +506,12 @@ const isCreateDisabled = computed(() => props.busy || bindings.isBusy.value);
 		outline: var(--focus--border-width) solid var(--focus--outline-color);
 		outline-offset: var(--spacing--4xs);
 	}
+}
+
+.groups {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--xs);
 }
 
 .group {
