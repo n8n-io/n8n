@@ -16,6 +16,7 @@ import {
 	N8nInput,
 	N8nText,
 	N8nTimeAgo,
+	N8nTooltip,
 	type TextColor,
 } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
@@ -270,44 +271,11 @@ watch(
 			:class="$style.sample"
 			:data-test-id="testId && `${testId}-placeholder`"
 		>
-			<div :class="$style.whatToCheck">
-				<div :class="$style.whatToCheckHeader">
-					<N8nText v-if="whatToCheck" bold color="text-dark" size="medium">{{
+			<div v-if="whatToCheck" :class="$style.whatToCheck">
+				<div :class="$style.whatToCheckBody">
+					<N8nText bold color="text-dark" size="medium">{{
 						i18n.baseText('instanceAi.testAgentPreview.rule')
 					}}</N8nText>
-					<div v-if="!editingWhatToCheck" :class="$style.whatToCheckActions">
-						<!-- Only the rule is editable; a case with no criteria column can still be deleted. -->
-						<N8nButton
-							v-if="whatToCheck"
-							variant="outline"
-							size="small"
-							icon-only
-							:disabled="disabled || runningCheck"
-							:aria-label="i18n.baseText('instanceAi.testAgentPreview.editRule')"
-							:data-test-id="testId && `${testId}-edit-rule`"
-							@click="onStartEditWhatToCheck"
-						>
-							<template #icon>
-								<N8nIcon icon="pencil" size="small" />
-							</template>
-						</N8nButton>
-						<N8nButton
-							variant="outline"
-							size="small"
-							icon-only
-							:disabled="disabled"
-							:aria-label="i18n.baseText('instanceAi.testAgentPreview.deleteCheck.label')"
-							:data-test-id="testId && `${testId}-delete-check`"
-							@click="onDeleteCheck"
-						>
-							<template #icon>
-								<N8nIcon icon="trash-2" size="small" />
-							</template>
-						</N8nButton>
-					</div>
-				</div>
-
-				<template v-if="whatToCheck">
 					<N8nText v-if="!editingWhatToCheck" color="text-dark" size="medium">{{
 						whatToCheck
 					}}</N8nText>
@@ -338,7 +306,21 @@ watch(
 							{{ i18n.baseText('generic.cancel') }}
 						</N8nButton>
 					</div>
-				</template>
+				</div>
+				<N8nButton
+					v-if="!editingWhatToCheck"
+					variant="outline"
+					size="small"
+					icon-only
+					:disabled="disabled || runningCheck"
+					:aria-label="i18n.baseText('instanceAi.testAgentPreview.editRule')"
+					:data-test-id="testId && `${testId}-edit-rule`"
+					@click="onStartEditWhatToCheck"
+				>
+					<template #icon>
+						<N8nIcon icon="pencil" size="small" />
+					</template>
+				</N8nButton>
 			</div>
 			<N8nText bold color="text-dark" size="medium">{{
 				i18n.baseText('instanceAi.testAgentPreview.conversation')
@@ -351,6 +333,7 @@ watch(
 					:status="status"
 					:tool-calls="toolCalls"
 					:project-id="projectId"
+					:joined-below="!practiceBannerDismissed"
 				/>
 				<div v-if="!practiceBannerDismissed" :class="$style.practiceBanner">
 					<N8nText size="small">
@@ -394,32 +377,33 @@ watch(
 						@keydown.ctrl.enter="onSaveCheck"
 					/>
 				</template>
-				<div :class="$style.correctionActions">
-					<N8nButton
-						v-if="!hideRevise"
-						variant="solid"
-						size="small"
-						:disabled="disabled || !suggestion.trim()"
-						:loading="savingCheck"
-						:data-test-id="testId && `${testId}-save-check`"
-						@click="onSaveCheck"
-					>
-						{{ i18n.baseText('instanceAi.testAgentPreview.saveCorrection') }}
-					</N8nButton>
-					<N8nButton
-						variant="ghost"
-						size="small"
-						:disabled="disabled || savingCheck"
-						:data-test-id="testId && `${testId}-actually-fine`"
-						@click="onActuallyFine"
-					>
-						{{ i18n.baseText('instanceAi.testAgentPreview.actuallyFine') }}
-					</N8nButton>
-				</div>
 			</template>
-			<template v-else>
-				<div :class="$style.correctionActions">
+			<div :class="$style.correctionActions">
+				<div :class="$style.primaryActions">
+					<template v-if="needsCorrection">
+						<N8nButton
+							v-if="!hideRevise"
+							variant="solid"
+							size="small"
+							:disabled="disabled || !suggestion.trim()"
+							:loading="savingCheck"
+							:data-test-id="testId && `${testId}-save-check`"
+							@click="onSaveCheck"
+						>
+							{{ i18n.baseText('instanceAi.testAgentPreview.saveCorrection') }}
+						</N8nButton>
+						<N8nButton
+							variant="ghost"
+							size="small"
+							:disabled="disabled || savingCheck"
+							:data-test-id="testId && `${testId}-actually-fine`"
+							@click="onActuallyFine"
+						>
+							{{ i18n.baseText('instanceAi.testAgentPreview.actuallyFine') }}
+						</N8nButton>
+					</template>
 					<N8nButton
+						v-else
 						size="small"
 						variant="outline"
 						:disabled="disabled"
@@ -430,7 +414,26 @@ watch(
 						{{ i18n.baseText('instanceAi.testAgentPreview.runCheck') }}
 					</N8nButton>
 				</div>
-			</template>
+				<!-- Ghost, so it never outranks Run check or Actually fine. -->
+				<N8nTooltip
+					:content="i18n.baseText('instanceAi.testAgentPreview.deleteCheck.label')"
+					placement="top-end"
+				>
+					<N8nButton
+						variant="ghost"
+						size="medium"
+						icon-only
+						:disabled="disabled"
+						:aria-label="i18n.baseText('instanceAi.testAgentPreview.deleteCheck.label')"
+						:data-test-id="testId && `${testId}-delete-check`"
+						@click="onDeleteCheck"
+					>
+						<template #icon>
+							<N8nIcon icon="trash-2" size="small" />
+						</template>
+					</N8nButton>
+				</N8nTooltip>
+			</div>
 		</div>
 	</div>
 </template>
@@ -471,23 +474,17 @@ watch(
 
 .whatToCheck {
 	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--5xs);
-	margin-bottom: var(--spacing--2xs);
-}
-
-.whatToCheckHeader {
-	display: flex;
-	align-items: center;
+	align-items: flex-start;
 	justify-content: space-between;
-	gap: var(--spacing--2xs);
+	gap: var(--spacing--sm);
+	padding-bottom: var(--spacing--lg);
 }
 
-.whatToCheckActions {
+.whatToCheckBody {
 	display: flex;
-	align-items: center;
-	gap: var(--spacing--3xs);
-	margin-left: auto;
+	flex-direction: column;
+	flex: 1;
+	min-width: 0;
 }
 
 .whatToCheckEdit {
@@ -513,7 +510,7 @@ watch(
 
 .sample {
 	border-left: var(--border);
-	padding: var(--spacing--2xs) var(--spacing--sm) var(--spacing--sm) 32px;
+	padding: var(--spacing--lg) var(--spacing--sm) var(--spacing--sm) 32px;
 	margin-left: var(--spacing--xs);
 }
 
@@ -530,8 +527,14 @@ watch(
 .correctionActions {
 	display: flex;
 	align-items: center;
+	justify-content: space-between;
+	padding-top: var(--spacing--xs);
+}
+
+.primaryActions {
+	display: flex;
+	align-items: center;
 	gap: var(--spacing--2xs);
-	margin-top: var(--spacing--2xs);
 }
 
 .practiceBanner {

@@ -99,5 +99,6 @@ export enum VIEWS {
 	RESOLVERS = 'Resolvers',
 	SETTINGS_CONTEXT = 'SettingsContext',
 	SETTINGS_CONTEXT_PREFERENCES = 'SettingsContextPreferences',
+	SETTINGS_CONTEXT_SKILLS = 'SettingsContextSkills',
 	RESOURCE_CENTER = 'ResourceCenter',
 }

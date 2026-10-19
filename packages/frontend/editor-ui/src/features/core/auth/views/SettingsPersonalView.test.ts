@@ -633,7 +633,7 @@ describe('SettingsPersonalView', () => {
 		['Member', ROLE.Member, false, 'Create and manage own workflows and credentials'],
 		['Admin', ROLE.Admin, false, 'Full access to manage workflows'],
 		['Owner', ROLE.Owner, false, 'Manage everything'],
-		['Owner', ROLE.Owner, true, 'Manage everything and access Cloud dashboard'],
+		['Owner', ROLE.Owner, true, 'Manage everything and access the Cloud console'],
 	])(
 		'should show %s user role information with tooltip',
 		async (label, role, hasCloudPlan, expectedTooltip) => {

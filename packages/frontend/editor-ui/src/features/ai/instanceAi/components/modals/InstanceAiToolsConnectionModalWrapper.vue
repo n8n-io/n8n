@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, provide, ref, watch, type Component } from 'vue';
+import isEqual from 'lodash/isEqual';
 import { MODAL_CONFIRM } from '@/app/constants';
+import { useLatestFetch } from '@/app/composables/useLatestFetch';
 import { useMessage } from '@/app/composables/useMessage';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useToast } from '@n8n/composables/useToast';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { i18n } from '@n8n/i18n';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
@@ -12,6 +14,7 @@ import McpToolSettingsContent from '@/features/shared/toolsConnection/McpToolSet
 import ToolsConnectionModal from '@/features/shared/toolsConnection/ToolsConnectionModal.vue';
 import McpRegistrySuggestionFooter from '@/app/components/McpRegistrySuggestionFooter.vue';
 import { iconForMcpRegistryServer } from '@/features/shared/toolsConnection/mcpRegistryIcon';
+import { discoverMcpConnection } from '@/features/shared/toolsConnection/mcpRegistry.api';
 import {
 	TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY,
 	type McpServerConnectionItem,
@@ -30,6 +33,7 @@ import { useInstanceAiSettingsStore } from '../../instanceAiSettings.store';
 import { useMcpServerConnect } from '../../composables/useMcpServerConnect';
 import type {
 	InstanceAiMcpConnectionToolResponse,
+	McpRegistryDiscoveryResponse,
 	McpRegistryServerResponse,
 } from '@n8n/api-types';
 import type { BaseTextKey } from '@n8n/i18n';
@@ -57,14 +61,27 @@ const props = defineProps<{
 }>();
 
 const uiStore = useUIStore();
+const rootStore = useRootStore();
 const credentialsStore = useCredentialsStore();
 const mcpStore = useInstanceAiMcpStore();
 const mcpTelemetry = useInstanceAiMcpTelemetry();
 const browserUseTelemetry = useInstanceAiBrowserUseTelemetry();
 const computerUseTelemetry = useInstanceAiComputerUseTelemetry();
 const settingsStore = useInstanceAiSettingsStore();
-const toast = useToast();
 const message = useMessage();
+
+interface McpConnectionDraft {
+	connectionId?: string;
+	serverSlug: string;
+	credentialType: string;
+	credentialId: string;
+	status: 'connecting' | 'connected' | 'disconnected';
+	failureReason?: 'authentication' | 'server_unavailable' | 'unknown';
+	tools: InstanceAiMcpConnectionToolResponse[];
+}
+
+const draftConnection = ref<McpConnectionDraft | null>(null);
+const { invalidate: invalidateDiscovery, next: nextDiscovery } = useLatestFetch();
 
 // The store owns Computer Use availability, so every entry point and the message
 // payload report the same thing.
@@ -107,10 +124,10 @@ const detailMode = computed<'detail' | 'settings'>(() =>
 
 const {
 	connectServer,
-	connectWithCredential,
 	createCredentialAdapter,
 	ignorePendingConnectResult,
 	isConnectLocked,
+	saveConnection,
 } = useMcpServerConnect();
 
 /** Reveals the settings view of the server the user just connected */
@@ -118,15 +135,57 @@ function showConnectedServer(connectionId: string | null): void {
 	if (connectionId) activeItemId.value = connectionId;
 }
 
+async function discoverDraft(
+	serverSlug: string,
+	credentialId: string,
+	credentialType: string,
+): Promise<string | null> {
+	const connection = mcpStore.connections.find((item) => item.serverSlug === serverSlug);
+	const isCurrent = nextDiscovery();
+	draftConnection.value = {
+		...(connection ? { connectionId: connection.id } : {}),
+		serverSlug,
+		credentialId,
+		credentialType,
+		status: 'connecting',
+		tools: [],
+	};
+	const itemId = connection?.id ?? serverSlug;
+	activeItemId.value = itemId;
+
+	const result = await discoverMcpConnection(rootStore.restApiContext, {
+		slug: serverSlug,
+		credentialId,
+	}).catch(
+		(): McpRegistryDiscoveryResponse => ({
+			status: 'disconnected',
+			failureReason: 'unknown',
+			tools: [],
+		}),
+	);
+	const currentDraft = draftConnection.value;
+	if (!isCurrent() || !currentDraft) return null;
+
+	draftConnection.value = {
+		...currentDraft,
+		status: result.status,
+		tools: result.tools,
+		...(result.status === 'disconnected' ? { failureReason: result.failureReason } : {}),
+	};
+	return itemId;
+}
+
 if (settingsStore.isMcpAvailable) {
 	void mcpStore.fetchCatalogLazy();
 	void mcpStore.fetchConnectionsLazy();
 	void credentialsStore.fetchAllCredentials();
+	void credentialsStore.fetchCredentialTypes(false);
 }
 
 // Clear the state on close so the next open starts
 // fresh without every caller needing to pass `data: {}`
 onBeforeUnmount(() => {
+	invalidateDiscovery();
 	const state = uiStore.modalsById[props.modalName];
 	if (state?.data && Object.keys(state.data).length > 0) {
 		// Through the store, not in place: what it resolves is derived state, so an
@@ -149,9 +208,22 @@ function settingsForConnection(connection: InstanceAiMcpConnection): McpToolSett
 	return connection.toolPermissions;
 }
 
+function draftForConnection(
+	serverSlug: string,
+	connection: InstanceAiMcpConnection | undefined,
+): McpConnectionDraft | null {
+	const draft = draftConnection.value;
+	return draft?.serverSlug === serverSlug && draft.connectionId === connection?.id ? draft : null;
+}
+
 function availableToolsForConnection(
+	serverSlug: string,
 	connection: InstanceAiMcpConnection | undefined,
 ): McpServerTool[] {
+	const draft = draftForConnection(serverSlug, connection);
+	if (draft) {
+		return draft.tools.map(toMcpServerTool);
+	}
 	const liveTools = connection ? mcpStore.connectionToolsById.get(connection.id) : undefined;
 	return liveTools?.map(toMcpServerTool) ?? [];
 }
@@ -160,6 +232,7 @@ function buildItem(
 	server: McpRegistryServerResponse,
 	connection: InstanceAiMcpConnection | undefined,
 ): McpServerConnectionItem {
+	const draft = draftForConnection(server.slug, connection);
 	return {
 		id: connection?.id ?? server.slug,
 		kind: 'mcp-server',
@@ -167,17 +240,23 @@ function buildItem(
 		title: server.title,
 		description: server.tagline,
 		longDescription: server.description,
-		status: isConnectLocked(server.slug) ? 'connecting' : (connection?.status ?? 'none'),
-		connectionFailureReason: connection?.failureReason,
+		status: isConnectLocked(server.slug)
+			? 'connecting'
+			: (draft?.status ?? connection?.status ?? 'none'),
+		connectionFailureReason: draft?.failureReason ?? connection?.failureReason,
 		iconSource: iconForMcpRegistryServer(server.icons, uiStore.appliedTheme),
 		credentials: server.credentials.map(({ credentialType, name }) => ({
 			authType: credentialType,
 			displayName: name,
 			credentialId:
-				connection?.credentialType === credentialType ? connection.credentialId : undefined,
+				draft?.credentialType === credentialType
+					? draft.credentialId
+					: connection?.credentialType === credentialType
+						? connection.credentialId
+						: undefined,
 			required: true,
 		})),
-		availableTools: availableToolsForConnection(connection),
+		availableTools: availableToolsForConnection(server.slug, connection),
 		isOfficial: server.isOfficial,
 		...(connection ? { settings: settingsForConnection(connection) } : {}),
 		publisher:
@@ -259,6 +338,7 @@ watch(
 	(id) => {
 		const item = detailItem.value;
 		if (!id || !item || item.kind !== 'mcp-server') return;
+		if (draftConnection.value?.serverSlug === serverSlugForItem(item)) return;
 		void mcpStore.fetchConnectionToolsLazy(id);
 	},
 	{ immediate: true },
@@ -276,11 +356,14 @@ provide(
 				return;
 			}
 			showConnectedServer(
-				await connectServer({
-					slug: server.slug,
-					credentialType: authType,
-					credentialTypes,
-				}),
+				await connectServer(
+					{
+						slug: server.slug,
+						credentialType: authType,
+						credentialTypes,
+					},
+					discoverDraft,
+				),
 			);
 		})();
 	}),
@@ -294,26 +377,6 @@ function serverSlugForItem(item: McpServerConnectionItem): string {
 function findServerForItem(item: McpServerConnectionItem): McpRegistryServerResponse | undefined {
 	const serverSlug = serverSlugForItem(item);
 	return mcpStore.catalog?.find((server) => server.slug === serverSlug);
-}
-
-function areToolPermissionsEqual(
-	left: ToolConnectionSettings,
-	right: ToolConnectionSettings,
-): boolean {
-	if (
-		left.categories.read !== right.categories.read ||
-		left.categories.write !== right.categories.write
-	) {
-		return false;
-	}
-
-	const leftTools = left.tools ?? {};
-	const rightTools = right.tools ?? {};
-	const leftToolNames = Object.keys(leftTools);
-	return (
-		leftToolNames.length === Object.keys(rightTools).length &&
-		leftToolNames.every((toolName) => leftTools[toolName] === rightTools[toolName])
-	);
 }
 
 function trackMcpCredentialInteraction(
@@ -346,7 +409,7 @@ function handleNewCredentialConnect(item: ToolConnectionItem): void {
 
 async function handleSelectCredential(
 	item: ToolConnectionItem,
-	_authType: string,
+	authType: string,
 	credentialId: string,
 ) {
 	if (item.kind !== 'mcp-server') return;
@@ -354,29 +417,33 @@ async function handleSelectCredential(
 	if (!server) return;
 	ignorePendingConnectResult(server.slug);
 	mcpTelemetry.trackExistingCredentialSelected(server.slug);
-	showConnectedServer(await connectWithCredential(server.slug, credentialId));
+	showConnectedServer(await discoverDraft(server.slug, credentialId, authType));
 }
 
 async function handleSave(item: ToolConnectionItem, settings?: ToolConnectionSettings) {
-	if (!settings) return;
-	const permissionsChanged =
-		item.kind === 'mcp-server' &&
-		(!item.settings || !areToolPermissionsEqual(item.settings, settings));
-	const updated = await mcpStore.updateConnection(item.id, {
-		toolPermissions: settings,
-	});
+	if (!settings || item.kind !== 'mcp-server') return;
+	// A draft of another server must not block or change the save of this item.
+	const draft =
+		draftConnection.value?.serverSlug === serverSlugForItem(item) ? draftConnection.value : null;
+	if (draft && draft.status !== 'connected') return;
+	// Without a draft, the item is a saved connection that keeps its credential.
+	// A draft of a new connection has no saved one.
+	const saved = mcpStore.connections.find((connection) => connection.id === item.id);
+	const serverSlug = draft?.serverSlug ?? saved?.serverSlug;
+	const credentialId = draft?.credentialId ?? saved?.credentialId;
+	if (!serverSlug || !credentialId) return;
+	const updated = await saveConnection({ serverSlug, credentialId, toolPermissions: settings });
 	if (!updated) return;
-	if (permissionsChanged) {
+	if (saved && !isEqual(item.settings, settings)) {
 		mcpTelemetry.trackToolPermissionsUpdated(updated.serverSlug, settings);
 	}
-	toast.showMessage({
-		type: 'success',
-		title: i18n.baseText('instanceAi.mcp.settings.saved'),
-	});
+	draftConnection.value = null;
 	uiStore.closeModal(props.modalName);
 }
 
 async function handleDisconnect(item: ToolConnectionItem) {
+	// Read before the disconnect: the slug comes from the saved connection.
+	const disconnectedSlug = item.kind === 'mcp-server' ? serverSlugForItem(item) : undefined;
 	if (item.kind === 'mcp-server') {
 		const confirmed = await message.confirm(
 			i18n.baseText('tools.connection.settings.removeConfirm.description', {
@@ -397,11 +464,19 @@ async function handleDisconnect(item: ToolConnectionItem) {
 	}
 	const disconnected = await mcpStore.disconnect(item.id);
 	if (!disconnected) return;
+	if (disconnectedSlug && draftConnection.value?.serverSlug === disconnectedSlug) {
+		invalidateDiscovery();
+		draftConnection.value = null;
+	}
 	activeItemId.value = null;
 }
 
 function handleDetailItemUpdate(item: ToolConnectionItem | null) {
 	if (item?.kind === 'mcp-server' && item.status === 'none') return;
+	if (!item) {
+		invalidateDiscovery();
+		draftConnection.value = null;
+	}
 	activeItemId.value = item?.id ?? null;
 	if (item?.kind !== 'service') return;
 
@@ -418,8 +493,24 @@ async function handleConnect(item: ToolConnectionItem) {
 	const server = findServerForItem(item);
 	const credentialType = item.credentials?.[0]?.authType;
 	if (server && credentialType) {
-		showConnectedServer(await connectServer({ slug: server.slug, credentialType }));
+		showConnectedServer(await connectServer({ slug: server.slug, credentialType }, discoverDraft));
 	}
+}
+
+function isNewDraft(item: McpServerConnectionItem): boolean {
+	return (
+		draftConnection.value?.serverSlug === serverSlugForItem(item) &&
+		draftConnection.value.connectionId === undefined
+	);
+}
+
+function retryConnection(item: McpServerConnectionItem): void {
+	const draft = draftConnection.value;
+	if (draft?.serverSlug === serverSlugForItem(item)) {
+		void discoverDraft(draft.serverSlug, draft.credentialId, draft.credentialType);
+		return;
+	}
+	void mcpStore.fetchConnectionTools(item.id);
 }
 </script>
 
@@ -462,11 +553,13 @@ async function handleConnect(item: ToolConnectionItem) {
 			<McpToolSettingsContent
 				v-if="item.kind === 'mcp-server'"
 				:item="item"
+				:show-remove="!isNewDraft(item)"
+				:save-label="isNewDraft(item) ? i18n.baseText('instanceAi.inputMenu.tools.add') : undefined"
 				@save="(settings: McpToolSettings) => onSave(settings)"
 				@disconnect="onDisconnect"
 				@cancel="onClose"
 				@reconnect="onReconnect"
-				@retry="mcpStore.fetchConnectionTools(item.id)"
+				@retry="retryConnection(item)"
 			/>
 		</template>
 	</ToolsConnectionModal>

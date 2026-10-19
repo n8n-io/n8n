@@ -1387,6 +1387,97 @@ describe('updateParentExecutionWithChildResults', () => {
 		});
 	});
 
+	describe('sub-workflow redaction', () => {
+		const parentWithContext = (subWorkflowRedaction?: {
+			production: boolean;
+			manual: boolean;
+		}): IExecutionResponse => {
+			const parent = waitingParent();
+			parent.data.executionData!.runtimeData = {
+				version: 1,
+				establishedAt: 0,
+				source: 'manual',
+				redaction: { version: 2, production: false, manual: false },
+				...(subWorkflowRedaction && { subWorkflowRedaction }),
+			};
+			return parent;
+		};
+
+		const childWithRedaction = (
+			redaction: { production: boolean; manual: boolean },
+			error?: ExecutionError,
+		): IRun =>
+			({
+				mode: 'integrated',
+				status: error ? 'error' : 'success',
+				data: {
+					resultData: {
+						lastNodeExecuted: 'Done',
+						error,
+						runData: { Done: [error ? { error } : { data: { main: [[{ json: { out: 1 } }]] } }] },
+					},
+					executionData: {
+						runtimeData: {
+							version: 1,
+							establishedAt: 0,
+							source: 'integrated',
+							redaction: { version: 2, ...redaction },
+						},
+					},
+				},
+			}) as unknown as IRun;
+
+		async function persistedContextAfter(parent: IExecutionResponse, child: IRun) {
+			const executionPersistence = mockInstance(ExecutionPersistence);
+			executionPersistence.findSingleExecution.mockResolvedValue(parent);
+
+			await updateParentExecutionWithChildResults(PARENT_ID, child);
+
+			const [, payload] = executionPersistence.updateExistingExecution.mock.calls[0];
+			return (payload as IExecutionResponse).data.executionData?.runtimeData;
+		}
+
+		// The resume keeps the saved context, so the escalation must be in it before it is saved.
+		it('escalates the parent context with the channels of the child final run', async () => {
+			const runtimeData = await persistedContextAfter(
+				parentWithContext(),
+				childWithRedaction({ production: true, manual: true }),
+			);
+
+			expect(runtimeData?.subWorkflowRedaction).toEqual({ production: true, manual: true });
+			// The start snapshot keeps its meaning.
+			expect(runtimeData?.redaction).toEqual({ version: 2, production: false, manual: false });
+		});
+
+		it('escalates the parent context when the child failed', async () => {
+			const error = { name: 'NodeOperationError', message: 'ERROR' } as unknown as ExecutionError;
+			const runtimeData = await persistedContextAfter(
+				parentWithContext(),
+				childWithRedaction({ production: true, manual: false }, error),
+			);
+
+			expect(runtimeData?.subWorkflowRedaction).toEqual({ production: true, manual: false });
+		});
+
+		it('never lowers a channel that an earlier child reported', async () => {
+			const runtimeData = await persistedContextAfter(
+				parentWithContext({ production: true, manual: true }),
+				childWithRedaction({ production: true, manual: false }),
+			);
+
+			expect(runtimeData?.subWorkflowRedaction).toEqual({ production: true, manual: true });
+		});
+
+		it('leaves the parent context alone when the child redacts no channel', async () => {
+			const runtimeData = await persistedContextAfter(
+				parentWithContext(),
+				childWithRedaction({ production: false, manual: false }),
+			);
+
+			expect(runtimeData).not.toHaveProperty('subWorkflowRedaction');
+		});
+	});
+
 	// In "run once for each item" mode multiple children update the same waiting
 	// parent. Contract: if any child errored before the parent resumed, the parent
 	// node fails — a later successful sibling must not mask the error.

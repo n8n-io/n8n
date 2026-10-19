@@ -415,7 +415,7 @@ async function readBranchEntities(
 		| 'projects'
 		| 'agents']['fileName'],
 ): Promise<Array<{ id: string; name: string; target: string }>> {
-	const exportRoot = path.join(inspectionDir, 'n8n-export');
+	const exportRoot = path.join(inspectionDir, 'n8n');
 	const found: Array<{ id: string; name: string; target: string }> = [];
 	const walk = async (dir: string): Promise<void> => {
 		const entries = await readdir(dir, { withFileTypes: true });
@@ -443,7 +443,7 @@ async function readBranchWorkflowArchived(
 	inspectionDir: string,
 	workflowId: string,
 ): Promise<boolean | undefined> {
-	const exportRoot = path.join(inspectionDir, 'n8n-export');
+	const exportRoot = path.join(inspectionDir, 'n8n');
 	let archived: boolean | undefined;
 	const walk = async (dir: string): Promise<void> => {
 		const entries = await readdir(dir, { withFileTypes: true });
@@ -647,7 +647,7 @@ describe('Promote and Apply', () => {
 		const remoteHead = (await inspectionGit.revparse(['HEAD'])).trim();
 		const pushedCommit = (await inspectionGit.log({ maxCount: 1 })).latest;
 		const manifest = packageManifestSchema.parse(
-			jsonParse(await readFile(path.join(inspectionDir, 'n8n-export', 'manifest.json'), 'utf-8')),
+			jsonParse(await readFile(path.join(inspectionDir, 'n8n', 'manifest.json'), 'utf-8')),
 		);
 		const projectEntry = manifest.projects?.find(({ id }) => id === project.id);
 		const workflowEntry = manifest.workflows?.find(({ id }) => id === workflow.id);
@@ -667,10 +667,10 @@ describe('Promote and Apply', () => {
 			'n8n promotions test',
 		);
 		await expect(
-			readFile(path.join(inspectionDir, 'n8n-export', projectEntry.target, 'project.json')),
+			readFile(path.join(inspectionDir, 'n8n', projectEntry.target, 'project.json')),
 		).resolves.toBeDefined();
 		await expect(
-			readFile(path.join(inspectionDir, 'n8n-export', workflowEntry.target, 'workflow.json')),
+			readFile(path.join(inspectionDir, 'n8n', workflowEntry.target, 'workflow.json')),
 		).resolves.toBeDefined();
 		expect(result.git).toEqual({ commitSha: remoteHead, branchName: 'main' });
 		expect(result.counts.workflows).toBe(1);
@@ -829,7 +829,7 @@ describe('Promote and Apply', () => {
 				dependencyPolicy: ExportDependencyPolicy.Fail,
 				versionPolicy: ExportVersionPolicy.Latest,
 			},
-			{ targetDir: path.join(remote.workingDir, 'n8n-export') },
+			{ targetDir: path.join(remote.workingDir, 'n8n') },
 		);
 		await remote.git.add(['--all']);
 		await remote.git.commit('Export orders');
@@ -889,7 +889,7 @@ describe('Promote and Apply', () => {
 		await service.clone(connection.id, 'apply');
 		const listed = await createTeamProject('Orders', owner);
 		const unlisted = await createTeamProject('Unlisted', owner);
-		const exportDir = path.join(remote.workingDir, 'n8n-export');
+		const exportDir = path.join(remote.workingDir, 'n8n');
 		await packagesService.exportPackageToDirectory(
 			{
 				user: owner,
@@ -941,7 +941,7 @@ describe('Promote and Apply', () => {
 				dependencyPolicy: ExportDependencyPolicy.Fail,
 				versionPolicy: ExportVersionPolicy.Latest,
 			},
-			{ targetDir: path.join(remote.workingDir, 'n8n-export') },
+			{ targetDir: path.join(remote.workingDir, 'n8n') },
 		);
 		await remote.git.add(['--all']);
 		await remote.git.commit('Export nested orders');
@@ -1174,7 +1174,7 @@ describe('Promote and Apply', () => {
 		const remote = await createRemote();
 		const connection = await createInstanceConnection(remote.bareDir);
 		await service.clone(connection.id, 'apply');
-		await writeRemoteFile(remote, 'n8n-export/.gitkeep', '');
+		await writeRemoteFile(remote, 'n8n/.gitkeep', '');
 		await commitAndPushRemote(remote, 'Add package directory');
 		const before = await snapshotApplyState();
 		await expect(service.apply(connection.id, owner)).rejects.toThrow(/manifest/i);
@@ -1259,9 +1259,7 @@ describe('Promote and Apply', () => {
 		// `main` never took part, so the packageless branch is untouched.
 		const inspectionDir = path.join(testRoot, 'main-inspection');
 		await simpleGit().clone(remote.bareDir, inspectionDir, ['--branch', 'main', '--single-branch']);
-		await expect(
-			readFile(path.join(inspectionDir, 'n8n-export', 'manifest.json')),
-		).rejects.toThrow();
+		await expect(readFile(path.join(inspectionDir, 'n8n', 'manifest.json'))).rejects.toThrow();
 	});
 });
 
@@ -2022,7 +2020,7 @@ describe('Promote a project selection — branch effects', () => {
 		);
 	});
 
-	it.each(['n8n-export', 'n8n-export/manifest.json'])(
+	it.each(['n8n', 'n8n/manifest.json'])(
 		'refuses a selection when the local copy lost committed %s, until it connects again',
 		async (lostPath) => {
 			const remote = await createRemote();
@@ -2075,7 +2073,7 @@ describe('Promote a project selection — branch effects', () => {
 		await expect(service.promoteProjectSelection(project.id, owner, request)).rejects.toThrow();
 
 		// The checkout is back to a branch with no commits and no package.
-		await expect(stat(path.join(repositoryFolder, 'n8n-export'))).rejects.toMatchObject({
+		await expect(stat(path.join(repositoryFolder, 'n8n'))).rejects.toMatchObject({
 			code: 'ENOENT',
 		});
 		expect(
@@ -2222,7 +2220,7 @@ describe('Promote a project selection — branch effects', () => {
 			(w) => w.id === workflows[0].id,
 		)!.target;
 		const w1FileBefore = await readFile(
-			path.join(before.dir, 'n8n-export', w1Target, 'workflow.json'),
+			path.join(before.dir, 'n8n', w1Target, 'workflow.json'),
 			'utf-8',
 		);
 
@@ -2256,7 +2254,7 @@ describe('Promote a project selection — branch effects', () => {
 
 		const w1Entry = onBranch.find((w) => w.id === workflows[0].id)!;
 		expect(w1Entry).toEqual({ id: workflows[0].id, name: 'w1', target: w1Target });
-		expect(await readFile(path.join(dir, 'n8n-export', w1Target, 'workflow.json'), 'utf-8')).toBe(
+		expect(await readFile(path.join(dir, 'n8n', w1Target, 'workflow.json'), 'utf-8')).toBe(
 			w1FileBefore,
 		);
 	});
@@ -2382,9 +2380,9 @@ describe('Promote a project selection — branch effects', () => {
 		expect(renamed.target).not.toBe(oldTarget);
 		expect(renamed.target).toMatch(new RegExp(`/workflows/renamed-${workflows[1].id}$`));
 		await expect(
-			stat(path.join(dir, 'n8n-export', renamed.target, 'workflow.json')),
+			stat(path.join(dir, 'n8n', renamed.target, 'workflow.json')),
 		).resolves.toBeDefined();
-		await expect(stat(path.join(dir, 'n8n-export', oldTarget))).rejects.toThrow();
+		await expect(stat(path.join(dir, 'n8n', oldTarget))).rejects.toThrow();
 		expect(onBranch).toHaveLength(2);
 	});
 
@@ -2432,7 +2430,7 @@ describe('Promote a project selection — branch effects', () => {
 		expect(selectedEntry.target).toBe(`${renamedTarget}/workflows/selected-${selected.id}`);
 		expect(unselectedEntry.target).toBe(`${renamedTarget}/workflows/unselected-${unselected.id}`);
 		expect(unselectedEntry).toMatchObject({ name: 'Unselected' });
-		await expect(stat(path.join(dir, 'n8n-export', folderBefore.target))).rejects.toThrow();
+		await expect(stat(path.join(dir, 'n8n', folderBefore.target))).rejects.toThrow();
 
 		const workflowRepository = Container.get(WorkflowRepository);
 		await workflowRepository.delete(unselected.id);
@@ -2661,7 +2659,7 @@ describe('Promotion base branch listing', () => {
 			commitMessage: 'Export projects',
 		});
 		const manifest = packageManifestSchema.parse(
-			jsonParse(await simpleGit(remote.bareDir).show(['main:n8n-export/manifest.json'])),
+			jsonParse(await simpleGit(remote.bareDir).show(['main:n8n/manifest.json'])),
 		);
 		const projectEntry = manifest.projects?.find(({ id }) => id === project.id);
 		assert(projectEntry);
@@ -2674,7 +2672,7 @@ describe('Promotion base branch listing', () => {
 						target === projectEntry.target ||
 						target.startsWith(`${projectEntry.target}/`),
 				)
-				.map(({ target }) => `n8n-export/${entityFilePath(collection, target)}`),
+				.map(({ target }) => `n8n/${entityFilePath(collection, target)}`),
 		);
 
 		const files = await listBaseBranchFiles(project.id);
@@ -2701,7 +2699,7 @@ describe('Promotion base branch listing', () => {
 
 	it('uses the project promote config instead of the instance or apply config', async () => {
 		const remote = await createRemote();
-		const projectPath = `n8n-export/projects/orders-${project.id}/project.json`;
+		const projectPath = `n8n/projects/orders-${project.id}/project.json`;
 		await writeRemoteFile(remote, projectPath, '{"name":"Main"}');
 		await commitAndPushRemote(remote, 'Export main project');
 		await remote.git.checkoutLocalBranch('production');
@@ -2756,8 +2754,8 @@ describe('Promotion base branch listing', () => {
 
 	it('reads remote updates without changing a dirty, detached checkout', async () => {
 		const remote = await createRemote();
-		const projectPath = `n8n-export/projects/ünïcode örders-${project.id}/project.json`;
-		const variablePath = 'n8n-export/variables/my "quoted" var-Va45zz67/variable.json';
+		const projectPath = `n8n/projects/ünïcode örders-${project.id}/project.json`;
+		const variablePath = 'n8n/variables/my "quoted" var-Va45zz67/variable.json';
 		await writeRemoteFile(remote, projectPath, '{"name":"Ünïcode örders"}');
 		await writeRemoteFile(remote, variablePath, '{"name":"my var"}');
 		await commitAndPushRemote(remote, 'Initial export');
@@ -2788,7 +2786,7 @@ describe('Promotion base branch listing', () => {
 			type: 'variable',
 		});
 
-		const workflowPath = `n8n-export/projects/ünïcode örders-${project.id}/workflows/my-hyphen-ated-slug-Wf99zz88/workflow.json`;
+		const workflowPath = `n8n/projects/ünïcode örders-${project.id}/workflows/my-hyphen-ated-slug-Wf99zz88/workflow.json`;
 		await writeRemoteFile(remote, workflowPath, '{"name":"My hyphen-ated workflow"}');
 		await commitAndPushRemote(remote, 'Add workflow');
 
@@ -2820,9 +2818,9 @@ describe('Promotion base branch listing', () => {
 
 	it('reads the package of the apply branch at one commit, contents included', async () => {
 		const remote = await createRemote();
-		const projectPath = `n8n-export/projects/orders-${project.id}/project.json`;
+		const projectPath = `n8n/projects/orders-${project.id}/project.json`;
 		await writeRemoteFile(remote, projectPath, '{"name":"Orders"}');
-		await writeRemoteFile(remote, 'n8n-export/manifest.json', '{"packageFormatVersion":"1"}');
+		await writeRemoteFile(remote, 'n8n/manifest.json', '{"packageFormatVersion":"1"}');
 		await commitAndPushRemote(remote, 'Export');
 		const connection = await createInstanceConnection(remote.bareDir);
 		await service.clone(connection.id, 'apply');
@@ -2833,10 +2831,10 @@ describe('Promotion base branch listing', () => {
 		expect(branch.files).toEqual([
 			expect.objectContaining({ entityId: project.id, path: projectPath }),
 		]);
-		await expect(branch.readFiles([projectPath, 'n8n-export/manifest.json'])).resolves.toEqual(
+		await expect(branch.readFiles([projectPath, 'n8n/manifest.json'])).resolves.toEqual(
 			new Map([
 				[projectPath, '{"name":"Orders"}'],
-				['n8n-export/manifest.json', '{"packageFormatVersion":"1"}'],
+				['n8n/manifest.json', '{"packageFormatVersion":"1"}'],
 			]),
 		);
 
@@ -2851,7 +2849,7 @@ describe('Promotion base branch listing', () => {
 
 	it('preserves files with matching IDs or variable slugs across collections and scopes', async () => {
 		const remote = await createRemote();
-		const projectRoot = `n8n-export/projects/orders-${project.id}`;
+		const projectRoot = `n8n/projects/orders-${project.id}`;
 		const entities = [
 			{
 				entityId: '42',
@@ -2891,15 +2889,15 @@ describe('Promotion base branch listing', () => {
 				projectId: null,
 				fileName: 'variable.json',
 				type: 'variable',
-				path: 'n8n-export/variables/apiurl-2/variable.json',
+				path: 'n8n/variables/apiurl-2/variable.json',
 			},
 		];
 		for (const entity of entities) {
 			await writeRemoteFile(remote, entity.path, '{}');
 		}
-		await writeRemoteFile(remote, 'n8n-export/manifest.json', 'Not used for this listing');
-		await writeRemoteFile(remote, 'n8n-export/workflows/standalone-Wf01/workflow.json', '{}');
-		await writeRemoteFile(remote, 'n8n-export/folders/standalone-Fo01/folder.json', '{}');
+		await writeRemoteFile(remote, 'n8n/manifest.json', 'Not used for this listing');
+		await writeRemoteFile(remote, 'n8n/workflows/standalone-Wf01/workflow.json', '{}');
+		await writeRemoteFile(remote, 'n8n/folders/standalone-Fo01/folder.json', '{}');
 		await writeRemoteFile(remote, `${projectRoot}/workflows/order-42/README.md`, 'Notes');
 		await commitAndPushRemote(remote, 'Export scoped entities');
 		const connection = await createInstanceConnection(remote.bareDir);
@@ -2926,7 +2924,7 @@ describe('Promotion base branch listing', () => {
 		const connection = await createInstanceConnection(remote.bareDir);
 		await service.clone(connection.id, 'promote');
 		await remote.git.checkoutLocalBranch('production');
-		const projectPath = `n8n-export/projects/orders-${project.id}/project.json`;
+		const projectPath = `n8n/projects/orders-${project.id}/project.json`;
 		await writeRemoteFile(remote, projectPath, '{}');
 		await remote.git.add(['--all']);
 		await remote.git.commit('Export production project');
