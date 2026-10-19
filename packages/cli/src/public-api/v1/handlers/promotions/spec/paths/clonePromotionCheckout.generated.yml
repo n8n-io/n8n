@@ -1,25 +1,17 @@
 operationId: clonePromotionCheckout
 tags:
   - Promotions
-summary: Clone one direction's repository
-description: Clones the configured branch into local storage on the instance that handles the request. Safe to call repeatedly. Cloning one direction does not make the other ready.
+summary: Clone an environment's repository
+description: Clones the configured branch into local storage on the instance that handles the request. Safe to call repeatedly. Cloning one environment does not make another ready.
 x-required-scope: gitConnection:clone
 parameters:
   - $ref: ../../../../shared/spec/parameters/idempotencyKey.yml
   - schema:
       type: string
+      format: uuid
     required: true
-    description: The ID of the promotion connection.
-    name: promotionConnectionId
-    in: path
-  - schema:
-      type: string
-      enum:
-        - apply
-        - promote
-    required: true
-    description: 'The direction of the promotion: apply or promote.'
-    name: direction
+    description: The ID of the promotion environment.
+    name: promotionEnvironmentId
     in: path
 responses:
   '200':

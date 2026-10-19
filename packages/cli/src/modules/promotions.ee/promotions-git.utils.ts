@@ -104,15 +104,13 @@ export function repositoryUrl(input: PromotionOperationInput): string {
  * enforcer, and the UI reader agree on the shape by construction.
  */
 export function buildCacheDescriptor(source: {
-	connectionId: string;
-	configId: string;
+	environmentId: string;
 	target: PromotionConnectionTarget;
 	config: ResolvedPromotionConfig;
 }): PromotionCacheDescriptor {
 	return {
 		schemaVersion: 1,
-		connectionId: source.connectionId,
-		configId: source.configId,
+		environmentId: source.environmentId,
 		remoteUrl: source.target.remoteUrl,
 		checkoutBranchName: checkoutBranchName(source.config),
 	};

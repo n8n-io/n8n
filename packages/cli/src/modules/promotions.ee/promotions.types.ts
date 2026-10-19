@@ -1,6 +1,6 @@
 import type {
-	PromotionConnectionScope,
 	PromotionConnectionTarget,
+	PromotionEnvironmentScope,
 	PromotionProviderAuthType,
 	PromotionProviderType,
 	promotionGitApplySettingsSchema,
@@ -54,9 +54,8 @@ export type ResolvedPromotionConfig =
  * the Git boundary, never held beyond it.
  */
 export type PromotionOperationInput = Readonly<{
-	connectionId: string;
-	connectionScope: PromotionConnectionScope;
-	configId: string;
+	environmentId: string;
+	scope: PromotionEnvironmentScope;
 	providerId: string;
 	providerType: PromotionProviderType;
 	authType: PromotionProviderAuthType;
@@ -71,7 +70,7 @@ export type PromotionOperationInput = Readonly<{
  * repository path, so the listing and the contents never describe two commits.
  */
 export type BranchPackage = Readonly<{
-	configId: string;
+	environmentId: string;
 	branchName: string;
 	commitSha: string | null;
 	files: PackageFile[];
@@ -85,8 +84,7 @@ export type BranchPackage = Readonly<{
  */
 export type PromotionCacheDescriptor = {
 	schemaVersion: 1;
-	configId: string;
-	connectionId: string;
+	environmentId: string;
 	remoteUrl: string;
 	checkoutBranchName: string;
 };

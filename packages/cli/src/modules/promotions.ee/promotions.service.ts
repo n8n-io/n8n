@@ -16,7 +16,6 @@ import { ProjectRepository, SharedWorkflowRepository, type User } from '@n8n/db'
 import { Service } from '@n8n/di';
 import { cp, mkdir, mkdtemp, rename, rm, stat } from 'node:fs/promises';
 import path from 'node:path';
-import { UnexpectedError } from 'n8n-workflow';
 
 import { BadRequestError, ConflictError, NotFoundError } from '@n8n/errors';
 
@@ -59,7 +58,7 @@ import {
 	PROMOTE_SELECTION_COMMIT_MESSAGE,
 } from './constants';
 import { PromotionBindingPreflightService } from './promotion-binding-preflight.service';
-import { PromotionConfigResolver } from './promotion-config.resolver';
+import { PromotionEnvironmentResolver } from './promotion-environment.resolver';
 import { PromotionProvidersService } from './promotion-providers.service';
 import { PromotionWorkingDirectoryService } from './promotion-working-directory.service';
 import { PromotionsGitService } from './promotions-git.service';
@@ -113,7 +112,7 @@ const IMPORT_POLICY: Omit<ImportRequest, 'user'> = {
 @Service()
 export class PromotionsService {
 	constructor(
-		private readonly resolver: PromotionConfigResolver,
+		private readonly resolver: PromotionEnvironmentResolver,
 		private readonly providersService: PromotionProvidersService,
 		private readonly workingDirectory: PromotionWorkingDirectoryService,
 		private readonly workingCopy: WorkingCopyUpdater,
@@ -130,20 +129,17 @@ export class PromotionsService {
 		this.logger = this.logger.scoped('promotions');
 	}
 
-	/** Clones one direction into local storage. Safe to call repeatedly. */
-	async clone(
-		connectionId: string,
-		direction: PromotionDirection,
-	): Promise<PromotionCheckoutPublicDto> {
-		const input = await this.resolver.resolveForConnection(connectionId, direction);
+	/** Clones the environment's branch into local storage. Safe to call repeatedly. */
+	async clone(environmentId: string): Promise<PromotionCheckoutPublicDto> {
+		const input = await this.resolver.resolveForEnvironment(environmentId);
 		const branchName = checkoutBranchName(input.config);
 
 		await this.gitService.clone({
 			remoteUrl: repositoryUrl(input),
 			credentials: await this.credentialsFor(input),
-			paths: this.workingDirectory.paths(input.configId),
+			paths: this.workingDirectory.paths(input.environmentId),
 			branchName,
-			configId: input.configId,
+			configId: input.environmentId,
 		});
 		// Only a finished clone gets a descriptor, so a failed one stays unusable.
 		await this.workingDirectory.writeDescriptor(this.descriptorFor(input));
@@ -152,15 +148,12 @@ export class PromotionsService {
 	}
 
 	/**
-	 * Removes this direction's local checkout. Keeps the pinned SSH host keys, and
+	 * Removes the environment's local checkout. Keeps the pinned SSH host keys, and
 	 * changes no branch, package, or instance content.
 	 */
-	async disconnect(
-		connectionId: string,
-		direction: PromotionDirection,
-	): Promise<PromotionCheckoutPublicDto> {
-		const input = await this.resolver.resolveForConnection(connectionId, direction);
-		await this.workingDirectory.resetCheckout(input.configId);
+	async disconnect(environmentId: string): Promise<PromotionCheckoutPublicDto> {
+		const input = await this.resolver.resolveForEnvironment(environmentId);
+		await this.workingDirectory.resetCheckout(input.environmentId);
 		return {
 			...this.checkoutIdentity(input),
 			branchName: checkoutBranchName(input.config),
@@ -170,30 +163,26 @@ export class PromotionsService {
 
 	/** Exports every team project and pushes the package to the configured branch. */
 	async promote(
-		connectionId: string,
+		environmentId: string,
 		actor: User,
 		request: PromotePackageDto & { canExportVariableValues: boolean },
 	): Promise<PromotePackageResultDto> {
-		const input = await this.resolver.resolveForConnection(connectionId, 'promote');
-		if (input.config.direction !== 'promote') {
-			throw new UnexpectedError('Resolved an invalid promotion direction');
-		}
+		const input = await this.resolver.resolveForEnvironment(environmentId, 'promote');
 		this.assertInstanceScope(input, 'Promote');
 		await this.assertCheckoutReady(input, 'promoting');
 
 		const branchName = checkoutBranchName(input.config);
 		const credentials = await this.credentialsFor(input);
 		const targetBranchName = await this.prepareTargetBranch(input, branchName, credentials);
-		const { repositoryFolder } = this.workingDirectory.paths(input.configId);
+		const { repositoryFolder } = this.workingDirectory.paths(input.environmentId);
 		const packageFolder = path.join(repositoryFolder, PACKAGE_SUBFOLDER);
 
-		// The instance connection covers every team project, including projects with
-		// their own connection. Personal projects stay out of scope.
+		// The instance environment covers every team project, including projects with
+		// their own environment. Personal projects stay out of scope.
 		const projectIds = await this.projectRepository.findTeamProjectIds();
 
 		this.logger.info('Exporting projects for a promotion', {
-			connectionId,
-			configId: input.configId,
+			environmentId,
 			projectCount: projectIds.length,
 		});
 
@@ -226,16 +215,16 @@ export class PromotionsService {
 			if (targetBranchName) {
 				// The commit moves the local base branch. Remove trust before it moves, and
 				// restore trust only after the base branch is back on its own commit.
-				await this.workingDirectory.invalidateDescriptor(input.configId);
+				await this.workingDirectory.invalidateDescriptor(input.environmentId);
 			}
 
 			const { commitSha } = await this.gitService.commitAndPush({
 				remoteUrl: repositoryUrl(input),
 				credentials,
-				paths: this.workingDirectory.paths(input.configId),
+				paths: this.workingDirectory.paths(input.environmentId),
 				branchName,
 				targetBranchName,
-				configId: input.configId,
+				configId: input.environmentId,
 				author: this.commitAuthor(actor),
 				commitMessage: request.commitMessage,
 				// A promotion branch must be new, so force does not apply.
@@ -246,8 +235,7 @@ export class PromotionsService {
 			});
 
 			return {
-				connectionId: input.connectionId,
-				configId: input.configId,
+				environmentId: input.environmentId,
 				counts: exportResult.counts,
 				git: { commitSha, branchName: targetBranchName ?? branchName },
 			};
@@ -257,7 +245,7 @@ export class PromotionsService {
 	}
 
 	/**
-	 * Selective promote against an already-resolved connection. Unselected workflows
+	 * Selective promote against an already-resolved environment. Unselected workflows
 	 * keep their content. A renamed project or folder moves its branch directory,
 	 * so the unselected workflows inside it move with it. A promotion branch is
 	 * always new, so force never applies.
@@ -277,20 +265,20 @@ export class PromotionsService {
 
 		const branchName = checkoutBranchName(input.config);
 		const credentials = await this.credentialsFor(input);
-		// A branched config resets the checkout to the latest base here, so the
+		// A branched environment resets the checkout to the latest base here, so the
 		// selection applies on top of it and pushes to a fresh promotion branch.
 		const targetBranchName = await this.prepareTargetBranch(input, branchName, credentials);
 
-		const { repositoryFolder } = this.workingDirectory.paths(input.configId);
+		const { repositoryFolder } = this.workingDirectory.paths(input.environmentId);
 		const packageFolder = path.join(repositoryFolder, PACKAGE_SUBFOLDER);
 		// No package yet means this selection becomes the first export.
 		const packageExisted = await pathExists(packageFolder);
 		if (
 			!(await pathExists(path.join(packageFolder, MANIFEST_FILE))) &&
 			(await this.gitService.hasCommittedPath({
-				paths: this.workingDirectory.paths(input.configId),
+				paths: this.workingDirectory.paths(input.environmentId),
 				branchName,
-				configId: input.configId,
+				configId: input.environmentId,
 				pathspec: `${PACKAGE_SUBFOLDER}/${MANIFEST_FILE}`,
 			}))
 		) {
@@ -344,16 +332,16 @@ export class PromotionsService {
 			if (targetBranchName) {
 				// The commit moves the local base branch. Remove trust before it moves, and
 				// restore trust only after the base branch is back on its own commit.
-				await this.workingDirectory.invalidateDescriptor(input.configId);
+				await this.workingDirectory.invalidateDescriptor(input.environmentId);
 			}
 
 			const { commitSha } = await this.gitService.commitAndPush({
 				remoteUrl: repositoryUrl(input),
 				credentials,
-				paths: this.workingDirectory.paths(input.configId),
+				paths: this.workingDirectory.paths(input.environmentId),
 				branchName,
 				targetBranchName,
-				configId: input.configId,
+				configId: input.environmentId,
 				author: this.commitAuthor(actor),
 				commitMessage: request.commitMessage,
 				// A promotion branch must be new, so force never applies.
@@ -365,8 +353,7 @@ export class PromotionsService {
 			});
 
 			return {
-				connectionId: input.connectionId,
-				configId: input.configId,
+				environmentId: input.environmentId,
 				counts,
 				git: { commitSha, branchName: targetBranchName ?? branchName },
 			};
@@ -424,8 +411,8 @@ export class PromotionsService {
 			throw new BadRequestError('workflowIds contains duplicates');
 		}
 
-		// Resolve like the change preview does, so the promote pushes to the connection
-		// the user previewed. resolveForProject validates the project and connection too.
+		// Resolve like the change preview does, so the promote pushes to the environment
+		// the user previewed. resolveForProject validates the project and environment too.
 		const input = await this.resolver.resolveForProject(projectId, 'promote');
 
 		const selection = await this.classifySelection(projectId, request.workflowIds);
@@ -476,20 +463,20 @@ export class PromotionsService {
 
 	/** Checks package bindings and imports only when no blocking issues remain. */
 	async apply(
-		connectionId: string,
+		environmentId: string,
 		actor: User,
 		expectedSource?: ApplyPackageDto['expectedSource'],
 	): Promise<ApplyPackageResultDto> {
-		return await this.applyFromSource(connectionId, actor, expectedSource);
+		return await this.applyFromSource(environmentId, actor, expectedSource);
 	}
 
 	async continueApply(
-		connectionId: string,
+		environmentId: string,
 		actor: User,
 		request: ContinueApplyPackageDto,
 	): Promise<ApplyPackageResultDto> {
 		return await this.applyFromSource(
-			connectionId,
+			environmentId,
 			actor,
 			request.expectedSource,
 			request.confirmDestructiveChanges === true,
@@ -585,23 +572,22 @@ export class PromotionsService {
 		await this.assertCheckoutReady(input, 'applying');
 
 		const branchName = checkoutBranchName(input.config);
-		const paths = this.workingDirectory.paths(input.configId);
+		const paths = this.workingDirectory.paths(input.environmentId);
 		const { commitSha } = await this.gitService.refreshCheckout({
 			remoteUrl: repositoryUrl(input),
 			credentials: await this.credentialsFor(input),
 			paths,
 			branchName,
-			configId: input.configId,
+			configId: input.environmentId,
 		});
 
 		const identity = {
-			connectionId: input.connectionId,
-			configId: input.configId,
+			environmentId: input.environmentId,
 			git: { commitSha, branchName },
 		};
 		if (
 			expectedSource &&
-			(expectedSource.configId !== input.configId ||
+			(expectedSource.environmentId !== input.environmentId ||
 				expectedSource.branchName !== branchName ||
 				expectedSource.commitSha !== commitSha)
 		) {
@@ -682,34 +668,33 @@ export class PromotionsService {
 	}
 
 	private async applyFromSource(
-		connectionId: string,
+		environmentId: string,
 		actor: User,
 		expectedSource?: ApplyPackageDto['expectedSource'],
 		confirmDestructiveChanges = false,
 	): Promise<ApplyPackageResultDto> {
-		const input = await this.resolver.resolveForConnection(connectionId, 'apply');
+		const input = await this.resolver.resolveForEnvironment(environmentId, 'apply');
 		this.assertInstanceScope(input, 'Apply');
 		await this.assertCheckoutReady(input, 'applying');
 
 		const branchName = checkoutBranchName(input.config);
-		const paths = this.workingDirectory.paths(input.configId);
+		const paths = this.workingDirectory.paths(input.environmentId);
 
 		const { commitSha } = await this.gitService.refreshCheckout({
 			remoteUrl: repositoryUrl(input),
 			credentials: await this.credentialsFor(input),
 			paths,
 			branchName,
-			configId: input.configId,
+			configId: input.environmentId,
 		});
 
 		const identity = {
-			connectionId: input.connectionId,
-			configId: input.configId,
+			environmentId: input.environmentId,
 			git: { commitSha, branchName },
 		};
 		if (
 			expectedSource &&
-			(expectedSource.configId !== input.configId ||
+			(expectedSource.environmentId !== input.environmentId ||
 				expectedSource.branchName !== branchName ||
 				expectedSource.commitSha !== commitSha)
 		) {
@@ -752,8 +737,7 @@ export class PromotionsService {
 		}
 
 		this.logger.info('Importing a package', {
-			connectionId,
-			configId: input.configId,
+			environmentId,
 			confirmDestructiveChanges,
 		});
 
@@ -792,19 +776,19 @@ export class PromotionsService {
 		const input = await this.resolver.resolveForProject(projectId, direction);
 		await this.assertCheckoutReady(input, 'listing branch files');
 
-		const paths = this.workingDirectory.paths(input.configId);
+		const paths = this.workingDirectory.paths(input.environmentId);
 		const branchName = checkoutBranchName(input.config);
 		const { commitSha, lsTreeOutput } = await this.gitService.listBranchTree({
 			remoteUrl: repositoryUrl(input),
 			credentials: await this.credentialsFor(input),
 			paths,
 			branchName,
-			configId: input.configId,
+			configId: input.environmentId,
 			pathspecs: BASE_BRANCH_DIRECTORIES.map((directory) => `${PACKAGE_SUBFOLDER}/${directory}/`),
 		});
 
 		return {
-			configId: input.configId,
+			environmentId: input.environmentId,
 			branchName,
 			commitSha,
 			files: parseBaseBranchFiles(lsTreeOutput, { exportRoot: PACKAGE_SUBFOLDER, projectId }),
@@ -817,7 +801,7 @@ export class PromotionsService {
 				return await this.gitService.readFilesAtCommit({
 					paths,
 					branchName,
-					configId: input.configId,
+					configId: input.environmentId,
 					commitSha,
 					filePaths,
 				});
@@ -826,8 +810,8 @@ export class PromotionsService {
 	}
 
 	/**
-	 * Resolves the branch one promotion pushes to, honoring the resolved config.
-	 * When the config creates a branch per promotion, this validates the new name
+	 * Resolves the branch one promotion pushes to, honoring the resolved environment.
+	 * When the environment creates a branch per promotion, this validates the new name
 	 * and resets the checkout to the latest base, so the promotion builds on it.
 	 * Otherwise the push targets the base branch and there is nothing to prepare.
 	 */
@@ -844,22 +828,22 @@ export class PromotionsService {
 		await this.gitService.prepareCheckoutForPromotion({
 			remoteUrl: repositoryUrl(input),
 			credentials,
-			paths: this.workingDirectory.paths(input.configId),
+			paths: this.workingDirectory.paths(input.environmentId),
 			branchName,
-			configId: input.configId,
+			configId: input.environmentId,
 		});
 		return targetBranchName;
 	}
 
 	/**
-	 * Project connections can be configured and resolved, but running a package
+	 * Project environments can be configured and resolved, but running a package
 	 * operation on one is not implemented. The current export and import cover the
 	 * whole instance, so this rejects before any export, import, or Git write.
 	 */
 	private assertInstanceScope(input: PromotionOperationInput, operation: string) {
-		if (input.connectionScope !== 'instance') {
+		if (input.scope !== 'instance') {
 			throw new BadRequestError(
-				`${operation} is only available on the instance connection. Project connections are not supported yet.`,
+				`${operation} is only available on an instance environment. Project environments are not supported yet.`,
 			);
 		}
 	}
@@ -868,17 +852,17 @@ export class PromotionsService {
 		const project = await this.projectRepository.findOneBy({ id: projectId });
 		if (!project) throw new NotFoundError('Project not found');
 		if (project.type !== 'team') {
-			throw new BadRequestError('Only team projects can use a promotion connection');
+			throw new BadRequestError('Only team projects can use a promotion environment');
 		}
 	}
 
 	/**
 	 * A checkout counts as ready only when it exists and was cloned from the
-	 * configuration we just resolved. Another process may have changed the remote or
+	 * environment we just resolved. Another process may have changed the remote or
 	 * the branch, which cannot invalidate this machine's cache.
 	 */
 	private async assertCheckoutReady(input: PromotionOperationInput, gerund: string) {
-		const { repositoryFolder } = this.workingDirectory.paths(input.configId);
+		const { repositoryFolder } = this.workingDirectory.paths(input.environmentId);
 		const cloned = await this.gitService.hasCheckout(repositoryFolder);
 		const current =
 			cloned && (await this.workingDirectory.matchesDescriptor(this.descriptorFor(input)));
@@ -891,8 +875,7 @@ export class PromotionsService {
 
 	private descriptorFor(input: PromotionOperationInput): PromotionCacheDescriptor {
 		return buildCacheDescriptor({
-			connectionId: input.connectionId,
-			configId: input.configId,
+			environmentId: input.environmentId,
 			target: input.target,
 			config: input.config,
 		});
@@ -900,8 +883,7 @@ export class PromotionsService {
 
 	private checkoutIdentity(input: PromotionOperationInput) {
 		return {
-			connectionId: input.connectionId,
-			configId: input.configId,
+			environmentId: input.environmentId,
 			direction: input.config.direction,
 		};
 	}

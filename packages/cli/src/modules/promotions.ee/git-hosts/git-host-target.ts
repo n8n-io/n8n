@@ -71,11 +71,11 @@ export function resolvePromotionTarget(
 	stored: unknown,
 ): PromotionConnectionTarget {
 	const parsed = promotionStoredConnectionTargetSchema.safeParse(stored);
-	if (!parsed.success) throw new BadRequestError('The stored connection target cannot be read');
+	if (!parsed.success) throw new BadRequestError('The stored environment target cannot be read');
 	if ('remoteUrl' in parsed.data) return parsed.data;
 	if (!isPromotionGitHostType(provider.type)) {
 		throw new BadRequestError(
-			'Plain Git connections need a remote URL. Update the connection target.',
+			'Plain Git environments need a remote URL. Update the environment target.',
 		);
 	}
 	return {
