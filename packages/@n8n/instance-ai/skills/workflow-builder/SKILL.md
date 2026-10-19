@@ -2,8 +2,8 @@
 name: workflow-builder
 description: >-
   Load before calling build-workflow. Use for single-workflow work: new
-  workflows, existing-workflow edits, verification repairs, and
-  workflow-local data tables. Write or edit a workspace source file, run
+  workflows (kept or one-off), existing-workflow edits, verification repairs,
+  and workflow-local data tables. Write or edit a workspace source file, run
   workflow-sdk validate via workspace_execute_command, then call build-workflow
   with filePath. When the workflow creates or writes Data Tables, load
   data-table-manager first, then this skill. Do not load planning or
