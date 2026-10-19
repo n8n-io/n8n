@@ -30,6 +30,24 @@ export const INSTANCE_TELEMETRY = defineTelemetryEvents({
 					speed: z.number().describe('Clock speed in MHz'),
 				}),
 				is_docker: z.boolean(),
+				runtime: z
+					.enum([
+						'kubernetes',
+						'ecs',
+						'cloud-run',
+						'azure-container-apps',
+						'azure-app-service',
+						'docker',
+						'other',
+					])
+					.optional()
+					.describe('Platform n8n runs on, read from well-known platform variables'),
+				kubernetes_provider: z
+					.enum(['aws', 'azure', 'gcp', 'other'])
+					.optional()
+					.describe(
+						'Cloud the node runs on, read from vendor tags in the kernel release. `other` also covers node images that do not name their cloud. Only for `kubernetes`',
+					),
 			}),
 			execution_variables: z.object({
 				executions_mode: z.enum(['regular', 'queue']),

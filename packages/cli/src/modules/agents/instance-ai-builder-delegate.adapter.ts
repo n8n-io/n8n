@@ -17,13 +17,17 @@ import { ForbiddenError } from '@n8n/errors';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
 import { AgentConfigService } from './agent-config.service';
+import { AgentSkillRefsService } from './agent-skill-refs.service';
 import { AgentSkillsService } from './agent-skills.service';
+import { AgentValidationService } from './agent-validation.service';
 import { AgentsService } from './agents.service';
 import { AgentsSettingsService } from './agents-settings.service';
 import { AgentsBuilderService } from './builder/agents-builder.service';
 import type { InstanceAiBuilderSessionOptions } from './builder/agents-builder.service';
 import { N8nMemory } from './integrations/n8n-memory';
+import { toAgentDocument } from './json-config/agent-document';
 import { AgentThreadRepository } from './repositories/agent-thread.repository';
+import { countAgentCapabilities, totalAgentCapabilities } from './utils/agent-capabilities';
 import { getAgentConfigHash } from './utils/agent-config-hash';
 
 /** Prompt addendum for sub-agent runs; exported for tests. */
@@ -102,6 +106,8 @@ export class InstanceAiBuilderDelegateAdapterService {
 		private readonly agentConfig: AgentConfigService,
 		private readonly agentSkills: AgentSkillsService,
 		private readonly agentsSettingsService: AgentsSettingsService,
+		private readonly agentValidation: AgentValidationService,
+		private readonly agentSkillRefs: AgentSkillRefsService,
 	) {}
 
 	/** Builder session options for the sub-agent surface: appends the sub-agent prompt rules. */
@@ -248,6 +254,29 @@ export class InstanceAiBuilderDelegateAdapterService {
 					skills: await this.agentSkills.listSkills(agentId, projectId),
 					// The same hash `agent-context` hands the model, so consumers can dedupe.
 					configHash: getAgentConfigHash(config),
+				};
+			},
+			validateAgent: async (agentId) => {
+				await assertProjectScope('agent:read');
+				const agent = await this.agentsService.findById(agentId, projectId);
+				if (!agent) return undefined;
+				// Same gate as `AgentSetupCompletionService`, without claiming the milestone.
+				const skillRefs = await this.agentSkillRefs.refsForDraft(agent, {});
+				const validation = await this.agentValidation.validateLoadedAgentConfiguration(
+					agent,
+					projectId,
+					credentialProviderFor(agentId),
+					'publish',
+					{ skillRefs },
+				);
+				const config = agent.schema ? toAgentDocument(agent.schema, skillRefs) : null;
+				return {
+					valid: validation.status === 'valid',
+					issueCodes: [...new Set(validation.issues.map((issue) => issue.code))].sort(),
+					issueCount: validation.issues.length,
+					capabilityCount: totalAgentCapabilities(
+						countAgentCapabilities(config, agent.integrations),
+					),
 				};
 			},
 		};

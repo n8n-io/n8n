@@ -48,7 +48,7 @@ export class N8nPdfLoader extends BufferLoader {
 			});
 
 			const pdfMeta = {
-				info: info?.info,
+				info: toPlainInfo(info?.info),
 				metadata: info?.metadata,
 				totalPages: result.total,
 			};
@@ -82,4 +82,11 @@ export class N8nPdfLoader extends BufferLoader {
 			await parser.destroy().catch(() => undefined);
 		}
 	}
+}
+
+/** pdfjs-dist returns custom info entries as a Map, which JSON serializes as an empty object. */
+function toPlainInfo(info: unknown): unknown {
+	if (typeof info !== 'object' || info === null || !('Custom' in info)) return info;
+	if (!(info.Custom instanceof Map)) return info;
+	return { ...info, Custom: Object.fromEntries(info.Custom) };
 }

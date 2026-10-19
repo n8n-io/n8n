@@ -4,9 +4,6 @@ tags:
 summary: Preview pending source control changes
 description: Previews the pending changes between the instance and the connected Git branch in either the `push` or `pull` direction.
 x-required-scope: sourceControl:read
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 parameters:
   - schema:
       type: string

@@ -51,6 +51,13 @@ const extractedFeatures = [
 	},
 ];
 
+const prettierImport = {
+	group: ['prettier', 'prettier/*'],
+	allowTypeImports: true,
+	message:
+		'Use loadPrettier() from @/features/shared/editors/utils/loadPrettier. A static import puts prettier back in the startup bundle.',
+};
+
 export default defineConfig(
 	frontendConfig,
 	{
@@ -272,7 +279,10 @@ export default defineConfig(
 			'@typescript-eslint/no-base-to-string': 'warn',
 			'vue/attribute-hyphenation': 'warn',
 			'@typescript-eslint/restrict-template-expressions': 'warn',
-			'@typescript-eslint/no-restricted-imports': ['error', { patterns: extractedFeatures }],
+			'@typescript-eslint/no-restricted-imports': [
+				'error',
+				{ patterns: [...extractedFeatures, prettierImport] },
+			],
 		},
 	},
 	{
@@ -335,6 +345,7 @@ export default defineConfig(
 				{
 					patterns: [
 						...extractedFeatures,
+						prettierImport,
 						{
 							group: ['**/ndv/runData/components/RunData.vue'],
 							message:

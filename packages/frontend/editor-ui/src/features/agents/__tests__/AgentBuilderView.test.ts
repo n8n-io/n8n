@@ -26,6 +26,7 @@ import {
 	NEW_SESSION_PARAM,
 	OPEN_PREVIEW_PARAM,
 	AGENT_TOOL_CONFIG_MODAL_KEY,
+	AGENT_UNPUBLISHED_WORKFLOWS_MODAL_KEY,
 } from '../constants';
 
 const routerPush = vi.fn();
@@ -478,12 +479,6 @@ vi.mock('@n8n/i18n', () => ({
 	i18n: { baseText: baseTextFn },
 }));
 
-// The first test in this file pays the one-time SFC transform cost for
-// AgentBuilderView.vue and its dependencies. A generous timeout gives that
-// first render enough headroom; subsequent tests hit the cached module and
-// finish well under the default budget.
-vi.setConfig({ testTimeout: 30_000 });
-
 /** Shared stubs used by both mount helpers. */
 async function renderView({
 	knowledgeBaseEnabled = false,
@@ -497,7 +492,6 @@ async function renderView({
 	/** Runs against the fresh pinia before mount, for state the view reads on setup. */
 	seedStores?: () => void;
 } = {}) {
-	const { default: AgentBuilderView } = await import('../views/AgentBuilderView.vue');
 	const pinia = createPinia();
 	setActivePinia(pinia);
 	const { useSettingsStore } = await import('@n8n/stores/settings.store');
@@ -856,7 +850,11 @@ function resetViewMocks() {
 		}),
 	);
 	repointConfigMock.mockReset();
-	getAgentMock.mockResolvedValue(makeAgentResponse());
+	// Clear unused one-shot responses before another test can consume them.
+	getAgentMock.mockReset();
+	getAgentMock.mockImplementation(async () => makeAgentResponse());
+	createAgentSkillMock.mockReset();
+	updateAgentSkillMock.mockReset();
 	createAgentMock.mockReset();
 	createAgentMock.mockResolvedValue(makeAgentResponse({ id: 'aBcDeFgHiJkLmNoP' }));
 	getIntegrationStatusMock.mockResolvedValue({ status: 'connected', integrations: [] });
@@ -882,16 +880,18 @@ function resetViewMocks() {
 	pushConnectMock.mockReset();
 	pushSendMock.mockReset();
 	pushListeners.clear();
-	fetchConfigMock.mockClear();
+	fetchConfigMock.mockReset();
 	builderTelemetryMock.fetchInitialTriggersBaseline.mockResolvedValue(null);
 	favoritesStoreMock.isFavorite.mockReturnValue(false);
 	instanceAiAvailableRef.value = true;
 	instanceAiReadyRef.value = true;
 }
 
-// First Vite transform of this SFC + design-system deps can exceed the default
-// 5s test timeout; Provide a hefty timeout for this block to evade flakes due to pressure on machine
-describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
+// Load the view after the shared mocks exist. Module loading must finish before
+// tests start, so a cold transform cannot outlive a test and mount in the next one.
+const { default: AgentBuilderView } = await import('../views/AgentBuilderView.vue');
+
+describe('AgentBuilderView — preview routing', () => {
 	beforeEach(() => {
 		resetViewMocks();
 		vi.restoreAllMocks();
@@ -3165,16 +3165,39 @@ describe('AgentBuilderView — configuration validation', () => {
 		expect(vm.configValidation?.status).toBe('valid');
 	});
 
-	it('allows publishing when revalidation finds only unpublished workflow tools', async () => {
+	it('surfaces unpublished workflow tools in a modal and aborts the publish', async () => {
 		const notPublished = {
 			code: 'incompatible_reference',
 			reason: 'not_published',
 			path: 'tools.0.workflowId',
-			capability: { kind: 'tool', toolType: 'workflow', id: 'lookup' },
+			capability: { kind: 'tool', toolType: 'workflow', id: 'Daily lookup', index: 0 },
 		};
 		getAgentConfigValidationMock
 			.mockResolvedValueOnce({ status: 'valid', issues: [] })
 			.mockResolvedValueOnce({ status: 'invalid', issues: [notPublished] });
+		intendedConfig = {
+			name: 'Agent One',
+			...defaultLlmConfig,
+			instructions: 'You are a helpful assistant.',
+			tools: [{ type: 'workflow', workflow: 'Daily lookup', workflowId: 'wf_1', name: 'lookup' }],
+		};
+
+		const wrapper = await renderView();
+		const vm = wrapper.vm as unknown as {
+			refreshValidationBeforePublish: () => Promise<boolean>;
+		};
+
+		await expect(vm.refreshValidationBeforePublish()).resolves.toBe(false);
+		expect(openModalWithDataMock).toHaveBeenCalledWith({
+			name: AGENT_UNPUBLISHED_WORKFLOWS_MODAL_KEY,
+			data: { workflows: [{ name: 'Daily lookup', workflowId: 'wf_1' }] },
+		});
+	});
+
+	it('proceeds to publish when revalidation finds no unpublished workflow tools', async () => {
+		getAgentConfigValidationMock
+			.mockResolvedValueOnce({ status: 'valid', issues: [] })
+			.mockResolvedValueOnce({ status: 'valid', issues: [] });
 
 		const wrapper = await renderView();
 		const vm = wrapper.vm as unknown as {
@@ -3182,6 +3205,39 @@ describe('AgentBuilderView — configuration validation', () => {
 		};
 
 		await expect(vm.refreshValidationBeforePublish()).resolves.toBe(true);
+		expect(openModalWithDataMock).not.toHaveBeenCalled();
+	});
+
+	it('aborts the publish without opening a modal when the target goes stale mid-flight', async () => {
+		const notPublished = {
+			code: 'incompatible_reference',
+			reason: 'not_published',
+			path: 'tools.0.workflowId',
+			capability: { kind: 'tool', toolType: 'workflow', id: 'Daily lookup', index: 0 },
+		};
+		const pendingValidation = Promise.withResolvers<{
+			status: 'valid' | 'invalid';
+			issues: (typeof notPublished)[];
+		}>();
+		getAgentConfigValidationMock
+			.mockResolvedValueOnce({ status: 'valid', issues: [] })
+			.mockReturnValueOnce(pendingValidation.promise);
+
+		const wrapper = await renderView();
+		const vm = wrapper.vm as unknown as {
+			refreshValidationBeforePublish: () => Promise<boolean>;
+		};
+
+		const publishResult = vm.refreshValidationBeforePublish();
+		// Let the flush and the validation request start before navigating away.
+		await flushPromises();
+
+		routeParams.agentId = 'a2';
+		pendingValidation.resolve({ status: 'invalid', issues: [notPublished] });
+		await flushPromises();
+
+		await expect(publishResult).resolves.toBe(false);
+		expect(openModalWithDataMock).not.toHaveBeenCalled();
 	});
 
 	it('flushes pending edits and revalidates before publishing, aborting when still invalid', async () => {
@@ -5512,17 +5568,18 @@ describe('AgentBuilderView — three-column shell', () => {
 		);
 
 		const modalData = openModalWithDataMock.mock.calls[0][0].data as {
-			onConfirm: (payload: { skill: typeof skill }) => void;
+			onConfirm: (payload: { skill: typeof skill }) => Promise<unknown>;
 		};
-		modalData.onConfirm({ skill });
-		await flushPromises();
-		await nextTick();
+		await modalData.onConfirm({ skill });
 
 		const vm = wrapper.vm as unknown as {
 			localConfig: { tools?: AgentJsonToolRef[]; skills?: AgentJsonSkillRef[] };
 		};
+		// The modal resolves before the agent refresh finishes.
+		await vi.waitFor(() =>
+			expect(vm.localConfig.skills).toEqual([{ type: 'skill', id: 'skill_0Ab9ZkLm3Pq7Xy2N' }]),
+		);
 		expect(vm.localConfig.tools).toEqual([{ type: 'custom', id: 'custom_tool' }]);
-		expect(vm.localConfig.skills).toEqual([{ type: 'skill', id: 'skill_0Ab9ZkLm3Pq7Xy2N' }]);
 		expect(wrapper.findComponent({ name: 'AgentSkillsSection' }).props('skills')).toEqual([
 			{ id: 'skill_0Ab9ZkLm3Pq7Xy2N', skill },
 		]);
@@ -5601,6 +5658,7 @@ describe('AgentBuilderView — three-column shell', () => {
 			'summarize_notes',
 			updatedSkill,
 			'skill-hash-1',
+			undefined,
 		);
 	});
 
@@ -5653,6 +5711,7 @@ describe('AgentBuilderView — three-column shell', () => {
 				instructions: skill.instructions,
 			},
 			'skill-hash-1',
+			undefined,
 		);
 	});
 
@@ -5691,10 +5750,7 @@ describe('AgentBuilderView — three-column shell', () => {
 	});
 });
 
-// Generous timeout for the same reason as the preview-routing block: mounting
-// this SFC plus its design-system deps is slow enough under parallel-suite
-// pressure to trip default timeouts.
-describe('AgentBuilderView — evals focus request', { timeout: 60_000 }, () => {
+describe('AgentBuilderView — evals focus request', () => {
 	beforeEach(() => {
 		resetViewMocks();
 		agentEvalsFlagMock.enabled = true;

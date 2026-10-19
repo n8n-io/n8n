@@ -15,8 +15,8 @@ import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { AuthError, ForbiddenError } from '@n8n/errors';
 import { License } from '@/license';
 import { MfaService } from '@/mfa/mfa.service';
-import { JwtService } from '@/services/jwt.service';
 import {
+	JwtService,
 	UrlService,
 	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 	EventService,

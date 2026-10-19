@@ -254,15 +254,18 @@ export {
 export {
 	WorkflowPublicDto,
 	CreatedWorkflowPublicDto,
+	RetrievedWorkflowPublicDto,
 	WorkflowListPublicDto,
 	WorkflowPublishPublicDto,
 	workflowPublicSchema,
 	createdWorkflowPublicSchema,
+	retrievedWorkflowPublicSchema,
 	workflowPublishPublicSchema,
 	workflowListItemPublicSchema,
 	sharedWorkflowPublicSchema,
 	activeWorkflowVersionPublicSchema,
 	workflowParentFolderPublicSchema,
+	workflowParentFolderRefPublicSchema,
 	DeletedWorkflowPublicDto,
 	UpdatedWorkflowPublicDto,
 } from './workflows/workflow-public.dto';
@@ -651,7 +654,8 @@ export {
 	type WorkflowReviewRequestList,
 } from './workflow-reviews/list-workflow-review-requests-query.dto';
 export { UpdateWorkflowReviewRequestVersionDto } from './workflow-reviews/update-workflow-review-request-version.dto';
-export * from './workflow-reviews/list-workflow-review-inbox.dto';
+export type { WorkflowReviewInboxItem } from './workflow-reviews/list-workflow-review-inbox.dto';
+export { ListInboxQueryDto } from './inbox/list-inbox.dto';
 export type * from './workflow-reviews/get-workflow-review-request-detail.dto';
 export {
 	ListWorkflowReviewActivityQueryDto,
@@ -738,6 +742,18 @@ export {
 	type PromotionSshKeyType,
 } from './promotions/promotion-provider.dto';
 export {
+	ListPromotionBranchesQueryDto,
+	ListPromotionRepositoriesQueryDto,
+	MAX_PROMOTION_DISCOVERY_ITEMS_PER_PAGE,
+	PromotionBranchListPublicDto,
+	PromotionRepositoryListPublicDto,
+	promotionBranchSchema,
+	promotionRepositoryIdParamSchema,
+	promotionRepositorySchema,
+	type PromotionBranch,
+	type PromotionRepository,
+} from './promotions/promotion-repository.dto';
+export {
 	PromotionApplyConfigPublicDto,
 	PromotionPromoteConfigPublicDto,
 	UpsertPromotionApplyConfigDto,
@@ -796,7 +812,48 @@ export {
 	promotePackageResultSchema,
 	promotionGitResultSchema,
 } from './promotions/promotion-operations.dto';
+export {
+	parsePromotionRunDetails,
+	promotionGitRunDetailsSchema,
+	promotionRunDetailsSchemas,
+	promotionRunTypeSchema,
+	type PromotionGitRunDetails,
+	type PromotionRunDetails,
+	type PromotionRunType,
+} from './promotions/promotion-run.dto';
+export {
+	ListPromotionReviewsQueryDto,
+	PromotionReviewDetailDto,
+	PromotionReviewListPublicDto,
+	PromotionReviewWorkflowDiffDto,
+	promotionMergeRequestResultSchema,
+	promotionReviewChangeKindSchema,
+	promotionReviewDetailSchema,
+	promotionReviewListPublicSchema,
+	gitLabRemoteReviewIdSchema,
+	parseRemoteReviewId,
+	promotionRemoteReviewIdSchemas,
+	promotionReviewStateSchema,
+	promotionReviewSummarySchema,
+	promotionReviewTabSchema,
+	promotionReviewTypeSchema,
+	promotionReviewWorkflowChangeSchema,
+	promotionReviewWorkflowDiffSchema,
+	type PromotionMergeRequestResult,
+	type PromotionReviewChangeKind,
+	type PromotionReviewRemote,
+	type PromotionReviewState,
+	type PromotionReviewSummary,
+	type PromotionReviewType,
+	type PromotionReviewTab,
+	type PromotionReviewWorkflowChange,
+} from './promotions/promotion-review.dto';
 
-export { ScimConfigPatchDto } from './scim';
+export {
+	ScimConfigPatchDto,
+	ScimPatchRequestDto,
+	ScimQueryDto,
+	ScimUserCreateDto,
+} from './scim';
 export { CreateTrustedSourceDto } from './trusted-source/create-trusted-source.dto';
 export { UpdateTrustedSourceDto } from './trusted-source/update-trusted-source.dto';

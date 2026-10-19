@@ -6,6 +6,7 @@ import {
 	UrlService,
 	CredentialsFinderService,
 } from '@n8n/backend-services';
+import { OAuthJweServiceProxy } from '@n8n/backend-services/auth';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { OAuth2CredentialData } from '@n8n/client-oauth2';
 import { AuthError as OAuth2AuthError } from '@n8n/client-oauth2';
@@ -16,7 +17,11 @@ import { CredentialsRepository } from '@n8n/db';
 import type { Request, Response } from 'express';
 import type { Cipher } from 'n8n-core';
 import { Credentials } from 'n8n-core';
-import type { IHttpRequestOptions, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
+import type {
+	IHttpRequestOptions,
+	INodeProperties,
+	IWorkflowExecuteAdditionalData,
+} from 'n8n-workflow';
 import { UnexpectedError, UserError } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
@@ -27,7 +32,6 @@ import { CredentialsHelper } from '@/credentials-helper';
 import { AuthError, BadRequestError, NotFoundError } from '@n8n/errors';
 import { ExternalHooks } from '@/external-hooks';
 import { OAuthBrowserBindingService } from '@/oauth/oauth-browser-binding.service';
-import { OAuthJweServiceProxy } from '@/oauth/oauth-jwe-service.proxy';
 import {
 	InvalidTargetError,
 	InvalidOAuthUrlError,
@@ -264,6 +268,68 @@ describe('OauthService', () => {
 
 		it('should return undefined when there is neither a body nor a cause', () => {
 			expect(service.extractCallbackErrorReason(new Error('boom'))).toBeUndefined();
+		});
+	});
+
+	describe('extractCallbackErrorMessage', () => {
+		const fixedMessage = 'The OAuth2 server rejected the token request';
+		const serverTextError = () =>
+			new OAuth2AuthError(
+				'Server text',
+				{ error: { message: 'Server text', code: 191 } },
+				undefined,
+				true,
+			);
+		const withTokenUrlProperty = (property: Partial<INodeProperties>) =>
+			credentialsHelper.getCredentialsProperties.mockReturnValue([
+				{ displayName: 'Access Token URL', name: 'accessTokenUrl', ...property } as INodeProperties,
+			]);
+
+		it('should return the server text when the credential type sets a static token URL', () => {
+			withTokenUrlProperty({ type: 'hidden', default: 'https://provider.example.com/token' });
+
+			expect(service.extractCallbackErrorMessage(serverTextError(), 'providerOAuth2Api')).toBe(
+				'Server text',
+			);
+			expect(credentialsHelper.getCredentialsProperties).toHaveBeenCalledWith('providerOAuth2Api');
+		});
+
+		it.each<[string, Partial<INodeProperties>]>([
+			[
+				'built from credential fields',
+				{ type: 'hidden', default: '=https://{{$self.host}}/token' },
+			],
+			['editable', { type: 'string', default: '' }],
+		])('should return a fixed message when the token URL is %s', (_, property) => {
+			withTokenUrlProperty(property);
+
+			expect(service.extractCallbackErrorMessage(serverTextError(), 'providerOAuth2Api')).toBe(
+				fixedMessage,
+			);
+		});
+
+		it('should return a fixed message when the credential type is unknown or missing', () => {
+			credentialsHelper.getCredentialsProperties.mockImplementation(() => {
+				throw new UnexpectedError('Unknown credential type');
+			});
+
+			expect(service.extractCallbackErrorMessage(serverTextError(), 'unknownType')).toBe(
+				fixedMessage,
+			);
+			expect(service.extractCallbackErrorMessage(serverTextError())).toBe(fixedMessage);
+		});
+
+		it.each([
+			['an OAuth2 error code', new OAuth2AuthError('Readable', { error: 'invalid_grant' })],
+			[
+				'an OAuth2 error whose message is not from an error object',
+				new OAuth2AuthError('Readable', { error: { message: 'Readable' } }),
+			],
+			['a non-OAuth2 error', new Error('Readable')],
+		])('should return the error message for %s', (_, error) => {
+			withTokenUrlProperty({ type: 'string', default: '' });
+
+			expect(service.extractCallbackErrorMessage(error, 'oAuth2Api')).toBe('Readable');
 		});
 	});
 

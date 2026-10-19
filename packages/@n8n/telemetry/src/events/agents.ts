@@ -422,6 +422,16 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 			event_version: z.literal('1'),
 		}),
 	},
+	USER_DISMISSED_AGENT_PUBLISHED_MODAL: {
+		name: 'User dismissed agent published modal',
+		description:
+			'The user closed the "Agent published" confirmation modal shown after a successful agent publish. `dont_show_again` reports the state of the "Don\'t show again" checkbox at dismissal; when checked, the modal is not shown on later publishes.',
+		properties: z.object({
+			agent_id: z.string(),
+			dont_show_again: z.boolean(),
+			session_id: sessionId.optional(),
+		}),
+	},
 	INSTANCE_AI_OPENED_FROM_AGENT_PREVIEW: {
 		name: 'Instance AI opened from agent preview',
 		description:

@@ -78,6 +78,8 @@ export default {
 	'codeBlock.expand': 'Expand code',
 	'codeBlock.collapse': 'Collapse code',
 	'previewBadge.preview': 'Preview',
+	'settingsPageHeader.docsLeadingText': 'Learn more in the ',
+	'settingsPageHeader.docsLabel': 'documentation',
 	'spinner.loading': 'Loading…',
 	'askAssistantButton.askAssistant': 'n8n AI',
 	'assistantChat.builder.name': 'AI Builder',

@@ -2,8 +2,8 @@ import type { Mocked } from 'vitest';
 import type { ApiKeyRepository, User, TokenGrant } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import type { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
-import type { JwtService } from '@/services/jwt.service';
+import type { AuthStrategyRegistry } from '@n8n/backend-services/auth';
+import type { JwtService } from '@n8n/backend-services';
 
 import { McpServerApiKeyService } from '../mcp-api-key.service';
 

@@ -46,6 +46,15 @@ import type { Telemetry } from '@/telemetry';
 
 const flushPromises = async () => await new Promise((resolve) => setImmediate(resolve));
 
+const PLATFORM_ENV_VARS = [
+	'ECS_CONTAINER_METADATA_URI_V4',
+	'ECS_CONTAINER_METADATA_URI',
+	'CONTAINER_APP_NAME',
+	'WEBSITE_SITE_NAME',
+	'K_SERVICE',
+	'KUBERNETES_SERVICE_HOST',
+];
+
 const getDefaultInstanceSettingsLoaderConfig = () => ({
 	ownerManagedByEnv: false,
 	ssoManagedByEnv: false,
@@ -758,7 +767,8 @@ describe('TelemetryEventRelay', () => {
 				after: { defaultAction: 'allow', version: 1 },
 				rulesBefore: null,
 				rulesAfter: [denyRule],
-				warningCount: 0,
+				shadowWarningCount: 0,
+				notLoadedWarningCount: 0,
 			});
 
 			expect(telemetry.track).toHaveBeenCalledWith(
@@ -780,7 +790,8 @@ describe('TelemetryEventRelay', () => {
 				after: { defaultAction: 'deny', version: 1 },
 				rulesBefore: null,
 				rulesAfter: [denyRule, allowPackageRule, delegateRule],
-				warningCount: 2,
+				shadowWarningCount: 2,
+				notLoadedWarningCount: 1,
 			};
 
 			eventService.emit('node-type-policy-saved', event);
@@ -810,6 +821,7 @@ describe('TelemetryEventRelay', () => {
 					allowed_types: ['n8n-nodes-base.code'],
 					previous_rule_count: null,
 					shadow_warning_count: 2,
+					not_loaded_warning_count: 1,
 					version: 1,
 				},
 			);
@@ -831,7 +843,8 @@ describe('TelemetryEventRelay', () => {
 				after: { defaultAction: 'allow', version: 1 },
 				rulesBefore: null,
 				rulesAfter: [credentialDenyRule],
-				warningCount: 0,
+				shadowWarningCount: 0,
+				notLoadedWarningCount: 0,
 			};
 
 			eventService.emit('node-type-policy-saved', event);
@@ -871,7 +884,8 @@ describe('TelemetryEventRelay', () => {
 				rulesAfter: [
 					{ id: 'rule-1', action: 'deny', selector: { kind: 'extends', value: 'oAuth2Api' } },
 				],
-				warningCount: 0,
+				shadowWarningCount: 0,
+				notLoadedWarningCount: 0,
 			});
 
 			expect(telemetry.track).toHaveBeenCalledWith(
@@ -900,7 +914,8 @@ describe('TelemetryEventRelay', () => {
 				after: { defaultAction: 'allow', version: 1 },
 				rulesBefore: null,
 				rulesAfter: [credentialPackageDenyRule],
-				warningCount: 0,
+				shadowWarningCount: 0,
+				notLoadedWarningCount: 0,
 			};
 
 			eventService.emit('node-type-policy-saved', event);
@@ -927,7 +942,8 @@ describe('TelemetryEventRelay', () => {
 				after: { defaultAction: 'deny', version: 1 },
 				rulesBefore: null,
 				rulesAfter: [],
-				warningCount: 0,
+				shadowWarningCount: 0,
+				notLoadedWarningCount: 0,
 			};
 
 			eventService.emit('node-type-policy-saved', event);
@@ -945,7 +961,8 @@ describe('TelemetryEventRelay', () => {
 				after: { defaultAction: 'deny', version: 5 },
 				rulesBefore: [denyRule],
 				rulesAfter: [allowPackageRule],
-				warningCount: 0,
+				shadowWarningCount: 0,
+				notLoadedWarningCount: 0,
 			};
 
 			eventService.emit('node-type-policy-saved', event);
@@ -975,7 +992,8 @@ describe('TelemetryEventRelay', () => {
 				after: { defaultAction: 'deny', version: 1 },
 				rulesBefore: null,
 				rulesAfter: [],
-				warningCount: 0,
+				shadowWarningCount: 0,
+				notLoadedWarningCount: 0,
 			};
 
 			eventService.emit('node-type-policy-saved', event);
@@ -1097,7 +1115,8 @@ describe('TelemetryEventRelay', () => {
 				after: { defaultAction: 'allow', version: 1 },
 				rulesBefore: null,
 				rulesAfter: [denyRule],
-				warningCount: 0,
+				shadowWarningCount: 0,
+				notLoadedWarningCount: 0,
 			});
 
 			expect(telemetry.track).toHaveBeenCalledWith(
@@ -1121,7 +1140,8 @@ describe('TelemetryEventRelay', () => {
 				after: { defaultAction: 'allow', version: 1 },
 				rulesBefore: null,
 				rulesAfter: [{ ...allowPackageRule, action: 'deny' }],
-				warningCount: 0,
+				shadowWarningCount: 0,
+				notLoadedWarningCount: 0,
 			});
 
 			expect(telemetry.track).toHaveBeenCalledWith(
@@ -1151,7 +1171,8 @@ describe('TelemetryEventRelay', () => {
 					action: 'allow' as const,
 					selector: { kind: 'name' as const, value: name },
 				})),
-				warningCount: 0,
+				shadowWarningCount: 0,
+				notLoadedWarningCount: 0,
 			});
 
 			const properties = vi.mocked(telemetry.track).mock.calls.at(-1)?.[1];
@@ -1174,7 +1195,8 @@ describe('TelemetryEventRelay', () => {
 				after: { defaultAction: 'deny', version: 1 },
 				rulesBefore: null,
 				rulesAfter: [],
-				warningCount: 0,
+				shadowWarningCount: 0,
+				notLoadedWarningCount: 0,
 			});
 
 			expect(telemetry.track).toHaveBeenCalledWith(
@@ -3434,6 +3456,7 @@ describe('TelemetryEventRelay', () => {
 					workflowIdPolicy: 'new',
 					credentialMatchingMode: 'id-only',
 					credentialMissingMode: 'must-preexist',
+					credentialConflictPolicy: 'fail',
 					workflowPublishingPolicy: 'preserve-published-state',
 					missingNodeTypeMode: 'fail',
 					projectConflictPolicy: 'merge',
@@ -3504,6 +3527,7 @@ describe('TelemetryEventRelay', () => {
 				workflow_id_policy: 'new',
 				credential_matching_mode: 'id-only',
 				credential_missing_mode: 'must-preexist',
+				credential_conflict_policy: 'fail',
 				workflow_publishing_policy: 'preserve-published-state',
 				missing_node_type_mode: 'fail',
 				project_conflict_policy: 'merge',
@@ -3829,6 +3853,41 @@ describe('TelemetryEventRelay', () => {
 		beforeEach(() => {
 			dbConnection.getDbVersion.mockResolvedValue(null);
 			license.getPlanName.mockReturnValue('Community');
+			// The runner may itself run on a platform that sets these.
+			for (const name of PLATFORM_ENV_VARS) vi.stubEnv(name, '');
+		});
+
+		afterEach(() => {
+			vi.unstubAllEnvs();
+		});
+
+		it('should report the runtime on `server-started`', async () => {
+			vi.stubEnv('KUBERNETES_SERVICE_HOST', '10.0.0.1');
+
+			eventService.emit('server-started');
+			await flushPromises();
+
+			expect(telemetry.identify).toHaveBeenCalledWith(
+				expect.objectContaining({
+					system_info: expect.objectContaining({
+						runtime: 'kubernetes',
+						kubernetes_provider: expect.any(String),
+					}),
+				}),
+			);
+		});
+
+		it('should leave out the Kubernetes kind outside Kubernetes', async () => {
+			vi.stubEnv('ECS_CONTAINER_METADATA_URI_V4', 'http://169.254.170.2/v4/abc');
+
+			eventService.emit('server-started');
+			await flushPromises();
+
+			expect(telemetry.identify).toHaveBeenCalledWith(
+				expect.objectContaining({
+					system_info: expect.objectContaining({ runtime: 'ecs', kubernetes_provider: undefined }),
+				}),
+			);
 		});
 
 		it('should track on `server-started` event', async () => {
@@ -3879,6 +3938,7 @@ describe('TelemetryEventRelay', () => {
 					smtp_set_up: true,
 					system_info: {
 						is_docker: false,
+						runtime: 'other',
 						cpus: expect.objectContaining({
 							count: expect.any(Number),
 							model: expect.any(String),
