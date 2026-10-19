@@ -1658,13 +1658,11 @@ function onOpenContextMenu(
 	});
 }
 
-// Flow position of the last empty-canvas right-click. Add node and add sticky use it.
 let paneContextMenuPosition: XYPosition | undefined;
 
 function onPaneContextMenu(event: MouseEvent) {
 	paneContextMenuPosition = getProjectedPosition(event);
 	emit('cursor:position', paneContextMenuPosition);
-	// Empty canvas is a fresh click: drop the selection and target no nodes.
 	clearSelectedNodes();
 	nodesSelectionActive.value = false;
 	lastSelectedNode.value = undefined;
