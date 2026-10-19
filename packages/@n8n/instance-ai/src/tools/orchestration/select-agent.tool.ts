@@ -11,6 +11,7 @@ import { Tool } from '@n8n/agents';
 import { agentChangeSchema } from '@n8n/api-types';
 import { z } from 'zod';
 
+import { recordAgentSelected } from './agent-build-metrics';
 import {
 	getSessionAgentByRef,
 	normalizeAgentRef,
@@ -353,6 +354,7 @@ export function createSelectAgentTool(context: OrchestrationContext) {
 			}
 			if (resolution.bind) await saveAgentBuilderTarget(domainContext, target);
 			domainContext.agentBuilderTarget = target;
+			recordAgentSelected(context, target.agentId, { created: resolution.mode === 'create' });
 
 			context.trackTelemetry?.('instance_ai_agent_build_route', {
 				thread_id: context.threadId,

@@ -67,6 +67,7 @@ import {
 	threadProvenanceMetadata,
 	createInternalOperationTraceContext,
 	emitAgentSnapshotTraceEvent,
+	recordAgentBuildRunOutcome,
 	createInstanceAiLivenessPolicyConfig,
 	InstanceAiLivenessPolicy,
 	McpClientManager,
@@ -4767,6 +4768,8 @@ export class InstanceAiService {
 				});
 			}
 			const finalStatus = result.status === 'errored' ? 'error' : result.status;
+			// Before the trace is finalized, so the detached metric spans still export.
+			recordAgentBuildRunOutcome(orchestrationContext, result.status);
 			await this.tracing.finalizeRunTracing(runId, tracing, {
 				status: finalStatus,
 				outputText,
@@ -6324,6 +6327,10 @@ export class InstanceAiService {
 				);
 			}
 			const finalStatus = result.status === 'errored' ? 'error' : result.status;
+			// Before the trace is finalized, so the detached metric spans still export.
+			if (opts.orchestrationContext) {
+				recordAgentBuildRunOutcome(opts.orchestrationContext, result.status);
+			}
 			await this.tracing.finalizeRunTracing(opts.runId, opts.tracing, {
 				status: finalStatus,
 				outputText,

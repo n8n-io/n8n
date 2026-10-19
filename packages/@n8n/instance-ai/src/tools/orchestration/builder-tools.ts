@@ -1,6 +1,11 @@
-import type { BuiltTool } from '@n8n/agents';
+import type { BuiltTool, InterruptibleToolContext, ToolContext } from '@n8n/agents';
 import { isRecord } from '@n8n/utils/is-record';
 
+import {
+	recordAgentBuilderResumed,
+	recordAgentBuilderSuspended,
+	recordAgentBuilderToolResult,
+} from './agent-build-metrics';
 import {
 	resolveAgentBuilderTarget,
 	saveAgentBuilderTarget,
@@ -11,6 +16,7 @@ import {
 	type AgentSnapshotArtifact,
 	type AgentSnapshotReason,
 } from '../../tracing/agent-snapshot-event';
+import { canEmitBuilderMetric } from '../../tracing/builder-metric-event';
 import type { InstanceAiBuilderDelegate, OrchestrationContext } from '../../types';
 
 /** Emit an `agent-snapshot` for the builder's target. Best-effort at both ends. */
@@ -130,11 +136,65 @@ export function createAgentBuilderTools(
 		return {
 			...tool,
 			handler: async (input, ctx) => {
-				const result = await handler(input, ctx);
+				if ('resumeData' in ctx && ctx.resumeData !== undefined) recordAgentBuilderResumed(context);
+				let suspended = false;
+				const trackedCtx: ToolContext | InterruptibleToolContext =
+					'suspend' in ctx
+						? {
+								...ctx,
+								suspend: async (payload, options) => {
+									suspended = true;
+									recordAgentBuilderSuspended(context);
+									return await ctx.suspend(payload, options);
+								},
+							}
+						: ctx;
+
+				let result: unknown;
+				try {
+					result = await handler(input, trackedCtx);
+				} catch (error) {
+					if (!suspended) await recordToolCall(context, tool.name, { isError: true });
+					throw error;
+				}
+				if (suspended) return result;
+
 				const agentId = mutatedAgentId(result);
+				await recordToolCall(context, tool.name, {
+					isError: false,
+					output: result,
+					mutatedAgentId: agentId,
+				});
 				if (!agentId || !isRecord(result)) return result;
 				return { ...result, ...(await onAgentConfigMutated(context, delegate, agentId)) };
 			},
 		};
 	});
+}
+
+/** Feed the agent build metrics. Best-effort: a metric must never fail the tool call. */
+async function recordToolCall(
+	context: OrchestrationContext,
+	toolName: string,
+	call: { isError: boolean; output?: unknown; mutatedAgentId?: string },
+): Promise<void> {
+	// No trace, no target read.
+	if (!canEmitBuilderMetric(context.tracing)) return;
+	try {
+		const domainContext = context.domainContext;
+		const agentId =
+			call.mutatedAgentId ??
+			(domainContext ? (await resolveAgentBuilderTarget(domainContext))?.agentId : undefined);
+		if (!agentId) return;
+		recordAgentBuilderToolResult(context, agentId, {
+			toolName,
+			isError: call.isError,
+			output: call.output,
+			configMutated: call.mutatedAgentId !== undefined,
+		});
+	} catch (error) {
+		context.logger.debug(
+			`[agent-build-metrics] recording ${toolName} failed: ${error instanceof Error ? error.message : String(error)}`,
+		);
+	}
 }

@@ -7,8 +7,11 @@ import type {
 	InstanceAiContext,
 	OrchestrationContext,
 } from '../../../types';
+import { recordAgentSelected } from '../agent-build-metrics';
 import { resolveAgentBuilderTarget } from '../agent-target-binding';
 import { createSelectAgentTool } from '../select-agent.tool';
+
+vi.mock('../agent-build-metrics', () => ({ recordAgentSelected: vi.fn() }));
 
 function createThreadMemory(initialMetadata: Record<string, unknown> = {}) {
 	const thread: ThreadRecord = {
@@ -58,6 +61,7 @@ function setup(domainOverrides: Partial<InstanceAiContext> = {}) {
 	} as unknown as OrchestrationContext;
 	return {
 		tool: createSelectAgentTool(context),
+		context,
 		delegate,
 		domainContext,
 		onArtifactChanged,
@@ -68,6 +72,10 @@ function setup(domainOverrides: Partial<InstanceAiContext> = {}) {
 const BOUND = { agentId: 'agent-1', projectId: 'project-1', name: 'Support', ref: 'support' };
 
 describe('agent_builder_select_agent', () => {
+	beforeEach(() => {
+		vi.mocked(recordAgentSelected).mockClear();
+	});
+
 	it('returns an error when agent building is not available', async () => {
 		const { tool } = setup({ builderDelegate: undefined });
 
@@ -78,7 +86,7 @@ describe('agent_builder_select_agent', () => {
 	});
 
 	it('creates a new agent, binds it, and returns the session context', async () => {
-		const { tool, delegate, domainContext, onArtifactChanged, trackTelemetry } = setup();
+		const { tool, context, delegate, domainContext, onArtifactChanged, trackTelemetry } = setup();
 		delegate.createAgent.mockResolvedValue({ agentId: 'agent-9', projectId: 'project-1' });
 
 		const result = await executeTool(tool, { name: 'Support Triage' });
@@ -104,6 +112,7 @@ describe('agent_builder_select_agent', () => {
 			'instance_ai_agent_build_route',
 			expect.objectContaining({ mode: 'create', agent_id: 'agent-9' }),
 		);
+		expect(recordAgentSelected).toHaveBeenCalledWith(context, 'agent-9', { created: true });
 
 		const nextTurn = { ...domainContext, agentBuilderTarget: undefined };
 		await expect(resolveAgentBuilderTarget(nextTurn)).resolves.toMatchObject({
@@ -113,7 +122,7 @@ describe('agent_builder_select_agent', () => {
 	});
 
 	it('adopts an existing agent by id after it confirms the agent exists', async () => {
-		const { tool, delegate, onArtifactChanged } = setup();
+		const { tool, context, delegate, onArtifactChanged } = setup();
 		delegate.resolveAgentName.mockResolvedValue('Existing Bot');
 
 		const result = await executeTool(tool, { agentId: 'agent-7' });
@@ -127,6 +136,7 @@ describe('agent_builder_select_agent', () => {
 		});
 		expect(delegate.createAgent).not.toHaveBeenCalled();
 		expect(onArtifactChanged).not.toHaveBeenCalled();
+		expect(recordAgentSelected).toHaveBeenCalledWith(context, 'agent-7', { created: false });
 	});
 
 	it('does not bind an agent id that does not exist', async () => {
@@ -138,6 +148,7 @@ describe('agent_builder_select_agent', () => {
 			error: 'Agent agent-missing was not found in this project.',
 		});
 		await expect(resolveAgentBuilderTarget(domainContext)).resolves.toBeUndefined();
+		expect(recordAgentSelected).not.toHaveBeenCalled();
 	});
 
 	it('continues the bound agent when a new name arrives without createNew', async () => {

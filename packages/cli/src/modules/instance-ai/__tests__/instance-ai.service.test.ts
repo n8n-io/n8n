@@ -56,6 +56,7 @@ vi.mock('@n8n/instance-ai', async () => {
 		},
 		createDomainAccessTracker: vi.fn(),
 		emitAgentSnapshotTraceEvent: vi.fn(async () => await Promise.resolve('emitted')),
+		recordAgentBuildRunOutcome: vi.fn(),
 		createSandbox: vi.fn(),
 		createWorkspace: vi.fn(),
 		createLazyRuntimeWorkspace: vi.fn(
@@ -271,6 +272,7 @@ import {
 	setupSandboxWorkspace,
 	shutdownProductTelemetryProviders,
 	emitAgentSnapshotTraceEvent,
+	recordAgentBuildRunOutcome,
 	threadProvenanceMetadata,
 	type BuilderUsageItem,
 	type WorkSummary,
@@ -278,6 +280,7 @@ import {
 	type ManagedBackgroundTask,
 	type InstanceAiTraceContext,
 	type ModelConfig,
+	type OrchestrationContext,
 	type TraceStatus,
 	type WorkflowVerificationObligation,
 } from '@n8n/instance-ai';
@@ -3388,6 +3391,57 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 			user_id: 'user-1',
 			model_id: 'anthropic/claude-sonnet-4-6',
 		});
+	});
+
+	it('records the agent build outcome of a resumed run before it finalizes the trace', async () => {
+		const service = createTerminalGuardOrderService();
+		const abortController = new AbortController();
+		const orchestrationContext = {} as OrchestrationContext;
+		mockClaimedResumeResult({
+			status: 'errored',
+			agentRunId: 'agent-run-1',
+			text: Promise.resolve(''),
+			workSummary: emptyWorkSummary(),
+		});
+
+		await service.processResumedStream(
+			{},
+			{},
+			{
+				runId: 'run-1',
+				agentRunId: 'agent-run-1',
+				threadId: 'thread-a',
+				user: fakeUser,
+				toolCallId: 'tool-call-1',
+				signal: abortController.signal,
+				abortController,
+				orchestrationContext,
+			},
+		);
+
+		expect(recordAgentBuildRunOutcome).toHaveBeenCalledWith(orchestrationContext, 'errored');
+		expect(vi.mocked(recordAgentBuildRunOutcome).mock.invocationCallOrder.at(-1)).toBeLessThan(
+			service.tracing.finalizeRunTracing.mock.invocationCallOrder.at(-1)!,
+		);
+	});
+
+	it('records the agent build outcome of a run that completes', async () => {
+		const service = createTerminalGuardOrderService();
+		const abortController = new AbortController();
+		stubInitialRunSurface(service);
+		vi.mocked(streamAgentRun).mockResolvedValueOnce({
+			status: 'completed',
+			agentRunId: 'agent-run-1',
+			text: Promise.resolve('done'),
+			workSummary: emptyWorkSummary(),
+		});
+
+		await service.executeRun(fakeUser, 'thread-a', 'run-1', 'Build an agent', abortController);
+
+		expect(recordAgentBuildRunOutcome).toHaveBeenCalledWith(expect.any(Object), 'completed');
+		expect(vi.mocked(recordAgentBuildRunOutcome).mock.invocationCallOrder.at(-1)).toBeLessThan(
+			service.tracing.finalizeRunTracing.mock.invocationCallOrder.at(-1)!,
+		);
 	});
 
 	it('terminates the run visibly when a resume fails before the claim', async () => {
