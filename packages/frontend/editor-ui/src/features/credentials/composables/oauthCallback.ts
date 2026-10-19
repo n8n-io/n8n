@@ -15,6 +15,19 @@ export const OAUTH_FLOW_TIMEOUT = 5 * 60 * 1000;
 const POPUP_CLOSED_POLL_INTERVAL = 500;
 const VERIFY_CONNECTED_INTERVAL = 2000;
 
+/** Call from the click handler before any request to keep user activation. */
+export function openOAuthPopup(signal?: AbortSignal): Window | null {
+	const params =
+		'scrollbars=no,resizable=yes,status=no,titlebar=no,location=no,toolbar=no,menubar=no,width=500,height=700';
+	const popup = window.open('about:blank', 'OAuth Authorization', params);
+
+	signal?.addEventListener('abort', () => {
+		popup?.close();
+	});
+
+	return popup;
+}
+
 /**
  * The OAuth callback page is served by the n8n backend and notifies the editor
  * UI that the flow finished. It signals completion over two channels:

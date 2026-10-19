@@ -8,6 +8,7 @@ import {
 import type { WorkflowExecutionStatus } from '@n8n/api-types';
 import {
 	getTrustedOAuthOrigins,
+	openOAuthPopup,
 	waitForOAuthCallback,
 } from '@/features/credentials/composables/oauthCallback';
 
@@ -110,10 +111,7 @@ export function useDynamicCredentialsStatus(workflowId: Ref<string | null>) {
 
 		let oauthPopup: Window | null = null;
 		try {
-			// Open before the request to keep the click's user activation.
-			const params =
-				'scrollbars=no,resizable=yes,status=no,titlebar=no,location=no,toolbar=no,menubar=no,width=500,height=700';
-			oauthPopup = window.open('about:blank', 'OAuth Authorization', params);
+			oauthPopup = openOAuthPopup();
 			if (!oauthPopup) {
 				updateCredentialState(credentialId, {
 					error: 'Failed to start authorization',
