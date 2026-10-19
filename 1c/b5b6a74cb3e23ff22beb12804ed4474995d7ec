@@ -1,0 +1,29 @@
+packages/nodes-base/nodes/Google/Books/GoogleBooks.node.ts
+  s_2e1fa95fc44f8f::t_31c7f000d13af7 32,101,365,381-382
+packages/nodes-base/nodes/Google/Books/test/requestUrlEncoding.test.ts
+  s_2e1fa95fc44f8f::t_f4f889c4e7bbb7 1,3,17,32-41,52,63
+packages/nodes-base/nodes/Google/Firebase/CloudFirestore/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_d7867582d6f020 13-19,91-93,98,104
+packages/nodes-base/nodes/Google/Firebase/CloudFirestore/GoogleFirebaseCloudFirestore.node.ts
+  s_2e1fa95fc44f8f::t_093f24e8c1e7e5 22,33,211,244,251,297
+packages/nodes-base/nodes/Google/Firebase/CloudFirestore/__test__/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_5188cf5fecb692 253-261
+packages/nodes-base/nodes/Google/Firebase/CloudFirestore/__test__/requestUrlEncoding.test.ts
+  s_2e1fa95fc44f8f::t_17c1681c8ae57e 31-71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1cb5b6a74cb3e23ff22beb12804ed4474995d7ec",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}
