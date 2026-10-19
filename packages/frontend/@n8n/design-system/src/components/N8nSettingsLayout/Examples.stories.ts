@@ -23,6 +23,7 @@ import {
 	N8nDialogTitle,
 } from '../N8nDialog';
 import { N8nDropdownMenu } from '../N8nDropdownMenu';
+import N8nExternalLink from '../N8nExternalLink';
 import N8nIcon from '../N8nIcon';
 import type { IconName } from '../N8nIcon/icons';
 import N8nInput from '../N8nInput';
@@ -534,7 +535,7 @@ const BrandButton = defineComponent({
 			:href="href"
 			target="_blank"
 			rel="noopener noreferrer"
-			style="display: inline-flex; align-items: center; gap: var(--spacing--2xs); width: fit-content; padding: var(--spacing--2xs) var(--spacing--sm); border-radius: var(--radius); font-size: var(--font-size--sm); font-weight: var(--font-weight--bold); line-height: var(--line-height--lg); text-decoration: none; cursor: pointer;"
+			style="display: inline-flex; align-items: center; gap: var(--spacing--2xs); width: fit-content; padding: var(--spacing--2xs) var(--spacing--sm); border-radius: var(--radius); font-size: var(--font-size--sm); font-weight: var(--font-weight--medium); line-height: var(--line-height--lg); text-decoration: none; cursor: pointer;"
 		>
 			<span class="mcp-brand-button__leading">
 				<slot name="leading" />
@@ -652,6 +653,7 @@ const components = {
 	N8nDialog,
 	N8nDialogClose,
 	N8nDialogFooter,
+	N8nExternalLink,
 	N8nInput,
 	N8nSelect,
 	N8nOption,
@@ -847,12 +849,9 @@ export const ThisInstance: Story = {
 						<N8nSettingsRow title="Updates" description="2.10.2 available · 3 versions behind">
 							<template #action>
 								<div style="display: flex; flex-direction: row; align-items: center; justify-content: flex-end; gap: var(--spacing--sm);">
-									<a
-										href="https://docs.n8n.io/release-notes"
-										target="_blank"
-										rel="noopener noreferrer"
-										style="color: var(--text-color--subtle); font-size: var(--font-size--sm); line-height: var(--line-height--lg); text-decoration: none; cursor: pointer;"
-									><span style="text-decoration: underline;">Release notes</span><span aria-hidden="true">↗</span></a>
+									<N8nText size="medium" color="text-base"
+										><N8nExternalLink inline size="small" href="https://docs.n8n.io/release-notes">Release notes</N8nExternalLink></N8nText
+									>
 									<N8nButton variant="outline" size="medium" label="Update" />
 								</div>
 							</template>
@@ -1359,7 +1358,7 @@ const ClientDetailsDialog = defineComponent({
 				'.mcp-client-details__access { display: flex; flex-direction: column; gap: var(--spacing--xs); min-width: 0; }' +
 				'.mcp-client-details__group { display: flex; flex-direction: column; gap: var(--spacing--5xs); }' +
 				// Same uppercase mini-heading treatment as the Connect picker's category headers.
-				'.mcp-client-details__group-title { font-size: var(--font-size--3xs); font-weight: var(--font-weight--bold); letter-spacing: var(--letter-spacing--wider); text-transform: uppercase; color: var(--text-color--subtle); }';
+				'.mcp-client-details__group-title { font-size: var(--font-size--3xs); font-weight: var(--font-weight--medium); letter-spacing: var(--letter-spacing--wider); text-transform: uppercase; color: var(--text-color--subtle); }';
 			document.head.appendChild(style);
 		}
 
@@ -2052,7 +2051,7 @@ export const ModelContextProtocol: Story = {
 										<template #item-label="{ item }">
 											<span
 												v-if="item.data.kind === 'header'"
-												style="display: block; padding-block: var(--spacing--5xs); font-size: var(--font-size--3xs); font-weight: var(--font-weight--bold); letter-spacing: var(--letter-spacing--wider); text-transform: uppercase; color: var(--text-color--subtle);"
+												style="display: block; padding-block: var(--spacing--5xs); font-size: var(--font-size--3xs); font-weight: var(--font-weight--medium); letter-spacing: var(--letter-spacing--wider); text-transform: uppercase; color: var(--text-color--subtle);"
 											>{{ item.label }}</span>
 											<N8nText v-else size="medium" color="text-dark">{{ item.label }}</N8nText>
 										</template>

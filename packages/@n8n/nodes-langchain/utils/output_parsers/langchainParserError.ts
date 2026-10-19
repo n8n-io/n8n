@@ -10,8 +10,7 @@ const LANGCHAIN_PARSER_ERROR_MESSAGES = ['Failed to parse. Text:', 'Unable to pa
 
 const AGENT_FAILURE_FALLBACK_MESSAGE = 'Agent execution failed';
 
-function getErrorProperty(error: unknown, property: 'message' | 'name') {
-	if (error instanceof Error) return error[property];
+function getErrorProperty(error: unknown, property: 'message' | 'name' | 'description') {
 	if (typeof error !== 'object' || error === null || !(property in error)) return undefined;
 
 	const value = (error as Record<string, unknown>)[property];
@@ -78,7 +77,9 @@ function wrapAsNodeOperationError(
 
 	const options = {
 		message,
-		description: className ? `Original error: ${className}` : undefined,
+		description:
+			getErrorProperty(error, 'description') ??
+			(className ? `Original error: ${className}` : undefined),
 		level: 'error' as const,
 		...(itemIndex !== undefined ? { itemIndex } : {}),
 	};

@@ -186,7 +186,7 @@ describe('AgentMessageQueueConsumer', () => {
 		repository.findThreadIds.mockResolvedValue(['session']);
 		queue.claimNext.mockResolvedValueOnce(item).mockResolvedValue(null);
 		testRuns.executePreparedDraftRun.mockImplementation(async (input) => {
-			input.onBudgetNotice?.();
+			input.onBudgetNotice?.({ code: 'budget.alert' });
 			return {
 				status: 'completed',
 				response: '',

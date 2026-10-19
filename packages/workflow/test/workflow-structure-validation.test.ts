@@ -1,3 +1,4 @@
+import { MAX_CONNECTION_INDEX } from '../src/common';
 import {
 	safeParseWorkflowStructure,
 	parseWorkflowStructure,
@@ -154,6 +155,40 @@ describe('workflow-structure-validation', () => {
 				path: ['connections', 'Start', 'main', 0, 0, 'index'],
 			}),
 		);
+	});
+
+	test('rejects connection with index above the maximum', () => {
+		const result = safeParseWorkflowStructure({
+			...validWorkflow,
+			connections: {
+				Start: {
+					main: [[{ node: 'Set', type: 'main', index: MAX_CONNECTION_INDEX + 1 }]],
+				},
+			},
+		});
+
+		expect(result.success).toBe(false);
+		if (result.success) return;
+
+		expect(result.issues).toContainEqual(
+			expect.objectContaining({
+				code: 'too_big',
+				path: ['connections', 'Start', 'main', 0, 0, 'index'],
+			}),
+		);
+	});
+
+	test('accepts connection with index at the maximum', () => {
+		const result = safeParseWorkflowStructure({
+			...validWorkflow,
+			connections: {
+				Start: {
+					main: [[{ node: 'Set', type: 'main', index: MAX_CONNECTION_INDEX }]],
+				},
+			},
+		});
+
+		expect(result.success).toBe(true);
 	});
 
 	test('rejects duplicate node names', () => {

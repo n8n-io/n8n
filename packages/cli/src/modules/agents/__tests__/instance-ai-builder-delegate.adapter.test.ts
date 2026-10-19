@@ -257,69 +257,66 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 	});
 
 	describe('resumeBuild', () => {
-		it.each([true, false])(
-			'resumes the saved builder call with Agents enabled %s',
-			async (enabled) => {
-				const {
-					delegate,
-					agentsBuilderService,
-					user,
-					credentialProvider,
-					credentialService,
-					settingsRepository,
-				} = setup();
-				vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
-				settingsRepository.findByKeyInContext.mockResolvedValue(
-					mock<Settings>({ value: String(enabled) }),
-				);
-				const mcpTools = fakeMcpTools();
+		it.each([true])('resumes the saved builder call with Agents enabled %s', async (enabled) => {
+			const {
+				delegate,
+				agentsBuilderService,
+				user,
+				credentialProvider,
+				credentialService,
+				settingsRepository,
+			} = setup();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			settingsRepository.findByKeyInContext.mockResolvedValue(
+				mock<Settings>({ value: String(enabled) }),
+			);
+			const mcpTools = fakeMcpTools();
 
-				const chunks: StreamChunk[] = [
-					{ type: 'text-delta', id: '1', delta: 'Using ' },
-					{ type: 'text-delta', id: '2', delta: 'Slack.' },
-				];
-				agentsBuilderService.resumeBuild.mockReturnValue(asAsyncGenerator(chunks));
+			const chunks: StreamChunk[] = [
+				{ type: 'text-delta', id: '1', delta: 'Using ' },
+				{ type: 'text-delta', id: '2', delta: 'Slack.' },
+			];
+			agentsBuilderService.resumeBuild.mockReturnValue(asAsyncGenerator(chunks));
 
-				const turn = await delegate.resumeBuild(
-					'agent-1',
-					{ runId: 'run-1', toolCallId: 'call-1', resumeData: { approved: true } },
-					{
-						threadId: 'ia-builder:t:agent-1',
-						hostThreadId: 'thread-1',
-						runId: 'run-1',
-						modelConfig: 'anthropic/claude-sonnet-host-resolved',
-						abortSignal,
-						mcpTools,
-					},
-				);
+			const turn = await delegate.resumeBuild(
+				'agent-1',
+				{ runId: 'run-1', toolCallId: 'call-1', resumeData: { approved: true } },
+				{
+					threadId: 'ia-builder:t:agent-1',
+					hostThreadId: 'thread-1',
+					runId: 'run-1',
+					modelConfig: 'anthropic/claude-sonnet-host-resolved',
+					abortSignal,
+					mcpTools,
+				},
+			);
 
-				const seen: unknown[] = [];
-				for await (const chunk of turn.fullStream) seen.push(chunk);
+			const seen: unknown[] = [];
+			for await (const chunk of turn.fullStream) seen.push(chunk);
 
-				expect(seen).toHaveLength(2);
-				await expect(turn.text).resolves.toBe('Using Slack.');
-				expect(agentsBuilderService.resumeBuild).toHaveBeenCalledWith(
-					'agent-1',
-					'project-1',
-					'run-1',
-					'call-1',
-					{ approved: true },
-					credentialProvider,
-					credentialService,
-					user,
-					{
-						threadId: 'ia-builder:t:agent-1',
-						hostThreadId: 'thread-1',
-						runId: 'run-1',
-						modelConfig: 'anthropic/claude-sonnet-host-resolved',
-						abortSignal,
-						instructionsAddendum: INSTANCE_AI_BUILDER_ADDENDUM,
-						mcpTools,
-						onRequiredArtifact: expect.any(Function),
-					},
-				);
-			},
-		);
+			expect(seen).toHaveLength(2);
+			await expect(turn.text).resolves.toBe('Using Slack.');
+			expect(agentsBuilderService.resumeBuild).toHaveBeenCalledWith(
+				'agent-1',
+				'project-1',
+				'run-1',
+				'call-1',
+				{ approved: true },
+				credentialProvider,
+				credentialService,
+				user,
+				{
+					threadId: 'ia-builder:t:agent-1',
+					hostThreadId: 'thread-1',
+					runId: 'run-1',
+					modelConfig: 'anthropic/claude-sonnet-host-resolved',
+					abortSignal,
+					instructionsAddendum: INSTANCE_AI_BUILDER_ADDENDUM,
+					mcpTools,
+					onRequiredArtifact: expect.any(Function),
+				},
+			);
+		});
 
 		it('enables deterministic model catalogs when an eval session resumes', async () => {
 			const { delegate, agentsBuilderService } = setup({ useEvalModelCatalog: true });
@@ -369,6 +366,52 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 				),
 			).rejects.toThrow(ForbiddenError);
 			expect(agentsBuilderService.resumeBuild).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('when Agents are turned off after the delegate was created', () => {
+		function disableAgents(settingsRepository: ReturnType<typeof setup>['settingsRepository']) {
+			settingsRepository.findByKeyInContext.mockResolvedValue(mock<Settings>({ value: 'false' }));
+		}
+
+		it('rejects a resumed build', async () => {
+			const { delegate, agentsBuilderService, settingsRepository } = setup();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			disableAgents(settingsRepository);
+
+			await expect(
+				delegate.resumeBuild(
+					'agent-1',
+					{ runId: 'run-1', toolCallId: 'call-1', resumeData: {} },
+					{
+						threadId: 'ia-builder:t:agent-1',
+						hostThreadId: 'thread-1',
+						runId: 'run-1',
+						modelConfig: 'anthropic/claude-sonnet-host-resolved',
+						abortSignal,
+					},
+				),
+			).rejects.toThrow(ForbiddenError);
+			expect(agentsBuilderService.resumeBuild).not.toHaveBeenCalled();
+		});
+
+		it('rejects Agent reads', async () => {
+			const { delegate, agentConfig, settingsRepository } = setup();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			disableAgents(settingsRepository);
+
+			await expect(delegate.readAgentArtifact?.('agent-1')).rejects.toThrow(ForbiddenError);
+			expect(agentConfig.getConfig).not.toHaveBeenCalled();
+		});
+
+		it('still cancels an open builder suspension', async () => {
+			const { delegate, agentsBuilderService, settingsRepository } = setup();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			disableAgents(settingsRepository);
+
+			await delegate.cancelOpenSuspension('agent-1', 'run-1');
+
+			expect(agentsBuilderService.cancelCheckpoint).toHaveBeenCalledWith('agent-1', 'run-1');
 		});
 	});
 

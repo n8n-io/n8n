@@ -30,6 +30,7 @@ function makeController({
 	credentialsService = mock<CredentialsService>(),
 	agentDefaultModelResolverService = mock<AgentDefaultModelResolverService>(),
 	collaborationService = mock<CollaborationService>(),
+	skillRefs = createAgentSkillRefsService(),
 }: {
 	agentsService?: Mocked<
 		Pick<
@@ -42,12 +43,13 @@ function makeController({
 	credentialsService?: Mocked<CredentialsService>;
 	agentDefaultModelResolverService?: Mocked<AgentDefaultModelResolverService>;
 	collaborationService?: Mocked<CollaborationService>;
+	skillRefs?: ReturnType<typeof createAgentSkillRefsService>;
 } = {}) {
 	const agentRunnableStateService = new AgentRunnableStateService(
 		credentialsService,
 		agentValidationService,
 		agentPublishService,
-		createAgentSkillRefsService(),
+		skillRefs,
 	);
 
 	return {
@@ -264,15 +266,19 @@ describe('AgentsController agent resource', () => {
 			mock<Pick<AgentsService, 'findById' | 'findByProjectId' | 'findByProjectIdPaginated'>>();
 		const agentPublishService = mock<AgentPublishService>();
 		const agentValidationService = mock<AgentValidationService>();
+		const triage = {
+			name: 'Triage',
+			description: 'Triage requests',
+			instructions: 'Route each request.',
+		};
 		agentsService.findById.mockResolvedValue({
 			id: 'agent-1',
 			projectId: 'project-1',
-			skills: {
-				triage: {
-					name: 'Triage',
-					description: 'Triage requests',
-					instructions: 'Route each request.',
-				},
+			schema: {
+				name: 'Agent',
+				model: '',
+				instructions: '',
+				skills: [{ type: 'skill', id: 'triage' }],
 			},
 		} as never);
 		agentValidationService.validateLoadedAgentConfiguration.mockResolvedValue({
@@ -285,6 +291,7 @@ describe('AgentsController agent resource', () => {
 			agentsService: agentsService as never,
 			agentPublishService,
 			agentValidationService,
+			skillRefs: createAgentSkillRefsService({ triage }),
 		});
 
 		const result = await controller.get(
@@ -302,6 +309,8 @@ describe('AgentsController agent resource', () => {
 				isRunnable: true,
 			}),
 		);
+		// The skill bodies come from the skills hub, not from the agent row.
+		expect(result.skills).toEqual({ triage });
 		expect(result.skillHashes.triage).toMatch(/^[a-f0-9]{64}$/);
 		expect(agentValidationService.validateLoadedAgentConfiguration).toHaveBeenCalledWith(
 			expect.objectContaining({ id: 'agent-1' }),

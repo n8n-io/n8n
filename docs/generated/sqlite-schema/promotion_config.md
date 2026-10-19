@@ -18,7 +18,7 @@ CREATE TABLE "promotion_config" ("id" varchar(36) PRIMARY KEY NOT NULL, "connect
 | connectionId | varchar(36) |  | false |  | [promotion_connection](promotion_connection.md) |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | direction | varchar(16) |  | false |  |  |  |
-| id | varchar(36) |  | false |  |  |  |
+| id | varchar(36) |  | false | [promotion_run](promotion_run.md) |  |  |
 | name | varchar(128) |  | false |  |  |  |
 | settings | TEXT |  | false |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
@@ -45,6 +45,7 @@ CREATE TABLE "promotion_config" ("id" varchar(36) PRIMARY KEY NOT NULL, "connect
 erDiagram
 
 "promotion_config" }o--|| "promotion_connection" : "FOREIGN KEY (connectionId) REFERENCES promotion_connection (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"promotion_run" }o--o| "promotion_config" : "FOREIGN KEY (configId) REFERENCES promotion_config (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 
 "promotion_config" {
   varchar_36_ connectionId FK
@@ -63,6 +64,16 @@ erDiagram
   varchar_16_ scope
   TEXT target
   datetime_3_ updatedAt
+}
+"promotion_run" {
+  varchar_36_ configId FK
+  datetime_3_ createdAt
+  varchar createdById FK
+  TEXT details
+  varchar_16_ direction
+  varchar id PK
+  varchar reviewId FK
+  varchar_16_ type
 }
 ```
 

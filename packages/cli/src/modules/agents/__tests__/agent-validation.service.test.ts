@@ -65,6 +65,7 @@ function makeCredentialProvider(
 }
 
 function makeService() {
+	const skillRefs = createAgentSkillRefsService();
 	const agentRepository = mock<AgentRepository>();
 	agentRepository.hasRevision.mockResolvedValue(true);
 	const agentSkillsService = mock<AgentSkillsService>();
@@ -87,14 +88,15 @@ function makeService() {
 				agentTaskSnapshotRepository,
 				agentRepository,
 				mock<TransactionRunner>(),
-				createAgentSkillRefsService(agentRepository),
+				skillRefs,
 			),
 			nodeTypes,
 			workflowRepository,
 			chatIntegrationRegistry,
 			aiGatewayService,
-			createAgentSkillRefsService(agentRepository),
+			skillRefs,
 		),
+		skillRefs,
 		agentRepository,
 		agentSkillsService,
 		agentTaskRepository,
@@ -167,7 +169,6 @@ describe('AgentValidationService — structured issues', () => {
 					},
 					{ type: 'custom', id: 'active_missing' },
 				],
-				skills: [{ type: 'skill', id: 'missing_skill', enabled: false }],
 				subAgents: { agents: [{ agentId: 'missing_subagent', enabled: false }] },
 			};
 			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent(config));
@@ -202,7 +203,8 @@ describe('AgentValidationService — structured issues', () => {
 			});
 
 			for (const ref of config.tools!) ref.enabled = true;
-			config.skills![0].enabled = true;
+			// A skill has no on/off state: an attached ref to a missing skill is an issue.
+			config.skills = [{ type: 'skill', id: 'missing_skill' }];
 			config.subAgents!.agents![0].enabled = true;
 			const reactivated = await service.validateAgentConfiguration(
 				agentId,
@@ -222,6 +224,39 @@ describe('AgentValidationService — structured issues', () => {
 			);
 		},
 	);
+
+	it('warns about skill names that are hard to tell apart without failing validation', async () => {
+		const { service, agentRepository, skillRefs } = makeService();
+		const body = { description: 'A skill', instructions: 'Do it.' };
+		skillRefs.bodies.brand = { ...body, name: 'Brand voice' };
+		skillRefs.bodies.brand_copy = { ...body, name: 'brand-voice' };
+		skillRefs.bodies.pricing = { ...body, name: 'Pricing' };
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent({
+				...runnableConfig,
+				skills: [
+					{ type: 'skill', id: 'brand' },
+					{ type: 'skill', id: 'pricing' },
+					{ type: 'skill', id: 'brand_copy' },
+				],
+			}),
+		);
+
+		const result = await service.validateAgentConfiguration(
+			agentId,
+			projectId,
+			makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),
+		);
+
+		expect(result.status).toBe('valid');
+		expect(result.warnings).toEqual([
+			{
+				code: 'similar_skill_names',
+				capability: { kind: 'skill' },
+				names: ['Brand voice', 'brand-voice'],
+			},
+		]);
+	});
 
 	it('flags a main model credential whose provider does not match the configured model, but not when the model itself is invalid', async () => {
 		const { service, agentRepository } = makeService();

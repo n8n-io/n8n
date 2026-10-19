@@ -6,6 +6,7 @@ import type {
 	SharedWorkflow,
 	User,
 	WorkflowEntity,
+	WorkflowHistoryRepository,
 	WorkflowPublishHistoryRepository,
 	WorkflowRepository,
 } from '@n8n/db';
@@ -15,14 +16,15 @@ import { WorkflowActivationError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { ActiveWorkflowManager } from '@/active-workflow-manager';
-import type { CredentialsFinderService } from '@n8n/backend-services';
+import type { CredentialsFinderService, WorkflowMutationHooksProxy } from '@n8n/backend-services';
 import type { CredentialsService } from '@/credentials/credentials.service';
+import type { NodeTypes } from '@/node-types';
 import type { CredentialsPermissionChecker } from '@/executions/pre-execution-checks/credentials-permission-checker';
 import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import type { OwnershipService } from '@/services/ownership.service';
 import type { ProjectService } from '@/services/project.service.ee';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-import type { WorkflowMutationHooksProxy } from '@/workflows/workflow-mutation-hooks-proxy.service';
+
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
 const flags = { credSharingEnabled: false };
@@ -44,10 +46,13 @@ describe('EnterpriseWorkflowService', () => {
 	const credentialsService = mock<CredentialsService>();
 	const ownershipService = mock<OwnershipService>();
 	const credentialsFinderService = mock<CredentialsFinderService>();
+	const nodeTypes = mock<NodeTypes>();
 	const credentialsPermissionChecker = mock<CredentialsPermissionChecker>();
+	const workflowHistoryRepository = mock<WorkflowHistoryRepository>();
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		nodeTypes.getByNameAndVersion.mockReset();
 		flags.credSharingEnabled = false;
 		service = new EnterpriseWorkflowService(
 			mock(), // logger
@@ -65,7 +70,9 @@ describe('EnterpriseWorkflowService', () => {
 			workflowPublishHistoryRepository,
 			workflowMutationHooks,
 			policyEnforcementService,
+			nodeTypes,
 			credentialsPermissionChecker,
+			workflowHistoryRepository,
 		);
 	});
 
@@ -401,6 +408,216 @@ describe('EnterpriseWorkflowService', () => {
 		});
 	});
 
+	describe('validateWorkflowCredentialUsage() - sub-workflow source', () => {
+		const URL_SOURCE = { source: 'url', workflowUrl: 'https://example.com/workflow.json' };
+		const subworkflowNode = (parameters: Record<string, unknown>, overrides: Partial<INode> = {}) =>
+			({
+				id: 'sub-1',
+				name: 'Sub',
+				type: 'n8n-nodes-base.executeWorkflow',
+				typeVersion: 1.2,
+				position: [0, 0],
+				parameters,
+				...overrides,
+			}) as unknown as INode;
+		const save = (
+			newNodes: INode[],
+			previousNodes: INode[] = [],
+			options?: { allowUninspectableSource?: boolean },
+		) =>
+			service.validateWorkflowCredentialUsage(
+				{ nodes: newNodes } as unknown as IWorkflowBase,
+				{ nodes: previousNodes } as unknown as IWorkflowBase,
+				[],
+				[],
+				options,
+			);
+
+		it.each([
+			['"url"', URL_SOURCE],
+			['"localFile"', { source: 'localFile', workflowPath: '/data/workflow.json' }],
+			['an expression', { source: '={{ $json.source }}' }],
+			['not a string', { source: 42 }],
+		])('rejects a new Execute Sub-workflow node whose source is %s', (_label, parameters) => {
+			expect(() => save([subworkflowNode(parameters)])).toThrow(/cannot be checked/);
+		});
+
+		it.each([
+			['absent', {}],
+			['"database"', { source: 'database', workflowId: { __rl: true, value: 'wf-1', mode: 'id' } }],
+			[
+				'"parameter"',
+				{ source: 'parameter', workflowJson: JSON.stringify({ nodes: [], connections: {} }) },
+			],
+		])('accepts a new Execute Sub-workflow node whose source is %s', (_label, parameters) => {
+			expect(() => save([subworkflowNode(parameters)])).not.toThrow();
+		});
+
+		it('rejects a Workflow Tool node whose source is neither "database" nor "parameter"', () => {
+			const node = subworkflowNode(URL_SOURCE, {
+				type: '@n8n/n8n-nodes-langchain.toolWorkflow',
+				typeVersion: 2,
+			});
+			expect(() => save([node])).toThrow(/cannot be checked/);
+		});
+
+		it('rejects the synthetic HITL tool variant of a url-sourced Execute Sub-workflow node', () => {
+			const node = subworkflowNode(URL_SOURCE, { type: 'n8n-nodes-base.executeWorkflowHitlTool' });
+			expect(() => save([node])).toThrow(/cannot be checked/);
+		});
+
+		it('rejects a url-sourced node nested inside an inline sub-workflow', () => {
+			const inner = subworkflowNode(URL_SOURCE, { id: 'inner', name: 'Inner' });
+			const outer = subworkflowNode({
+				source: 'parameter',
+				workflowJson: JSON.stringify({ nodes: [inner], connections: {} }),
+			});
+			expect(() => save([outer])).toThrow(/cannot be checked/);
+		});
+
+		it('rejects a url-sourced Execute Sub-workflow tool inside an inline agent parameter', () => {
+			const agent = {
+				id: 'agent-1',
+				name: 'Agent',
+				type: 'n8n-nodes-base.messageAnAgent',
+				typeVersion: 2,
+				position: [0, 0],
+				parameters: {
+					agentSource: 'inline',
+					inlineAgent: {
+						config: {
+							tools: [
+								{ nodeType: 'n8n-nodes-base.executeWorkflowTool', nodeParameters: URL_SOURCE },
+							],
+						},
+					},
+				},
+			} as unknown as INode;
+			expect(() => save([agent])).toThrow(/cannot be checked/);
+		});
+
+		it('rejects an existing editable node that is changed to a url source', () => {
+			const previous = subworkflowNode({ source: 'database', workflowId: 'wf-1' });
+			expect(() => save([subworkflowNode(URL_SOURCE)], [previous])).toThrow(/cannot be checked/);
+		});
+
+		it('allows renaming, moving and disabling a stored URL node', () => {
+			const previous = subworkflowNode(URL_SOURCE);
+			const edited = { ...previous, name: 'Renamed', position: [10, 10], disabled: true } as INode;
+
+			const result = save([edited], [previous]);
+
+			expect(result.nodes[0]).toEqual(edited);
+		});
+
+		it('rejects URL changes when the node description is unavailable', () => {
+			const previous = subworkflowNode(URL_SOURCE);
+			const changed = subworkflowNode({
+				source: 'url',
+				workflowUrl: 'https://example.com/other.json',
+			});
+			expect(() => save([changed], [previous])).toThrow(/cannot be checked/);
+		});
+
+		it('rejects retry setting changes on a stored URL node', () => {
+			const previous = subworkflowNode(URL_SOURCE);
+			const changed = { ...previous, retryOnFail: true } as INode;
+			expect(() => save([changed], [previous])).toThrow(/cannot be checked/);
+		});
+
+		describe('with the node type description available', () => {
+			beforeEach(() => {
+				nodeTypes.getByNameAndVersion.mockReturnValue({
+					description: {
+						properties: [
+							{ displayName: 'Source', name: 'source', type: 'options', default: 'database' },
+							{
+								displayName: 'Workflow',
+								name: 'workflowId',
+								type: 'string',
+								default: '',
+								displayOptions: { show: { source: ['database'] } },
+							},
+							{
+								displayName: 'URL',
+								name: 'workflowUrl',
+								type: 'string',
+								default: '',
+								displayOptions: { show: { source: ['url'] } },
+							},
+							{ displayName: 'Mode', name: 'mode', type: 'options', default: 'once' },
+						],
+					},
+				} as never);
+			});
+
+			it('accepts omitted parameter defaults', () => {
+				// A node stored through the API may carry a default the editor strips on save.
+				const stored = subworkflowNode({ ...URL_SOURCE, mode: 'once' });
+				const fromEditor = { ...subworkflowNode(URL_SOURCE), name: 'Renamed' } as INode;
+
+				const result = save([fromEditor], [stored]);
+
+				expect(result.nodes[0]).toEqual({ ...stored, name: 'Renamed' });
+			});
+
+			it('accepts omitted hidden parameters', () => {
+				// The editor drops the old database workflow ID when the source is URL.
+				const stored = subworkflowNode({ ...URL_SOURCE, workflowId: 'old-workflow' });
+				const fromEditor = { ...subworkflowNode(URL_SOURCE), name: 'Renamed' } as INode;
+
+				const result = save([fromEditor], [stored]);
+
+				expect(result.nodes[0]).toEqual({ ...stored, name: 'Renamed' });
+			});
+
+			it('rejects URL changes after parameter normalization', () => {
+				const stored = subworkflowNode({ ...URL_SOURCE, mode: 'once' });
+				const changed = subworkflowNode({
+					source: 'url',
+					workflowUrl: 'https://example.com/other.json',
+				});
+
+				expect(() => save([changed], [stored])).toThrow(/cannot be checked/);
+			});
+		});
+
+		it('accepts url-sourced nodes when the caller allows uninspectable sources', () => {
+			const previous = subworkflowNode(URL_SOURCE);
+			const changed = subworkflowNode({
+				source: 'url',
+				workflowUrl: 'https://example.com/other.json',
+			});
+			const options = { allowUninspectableSource: true };
+
+			expect(() => save([subworkflowNode(URL_SOURCE)], [], options)).not.toThrow();
+			expect(save([changed], [previous], options).nodes[0]).toEqual(changed);
+		});
+
+		it('checks source permissions when validating a new workflow', () => {
+			const workflow = { nodes: [subworkflowNode(URL_SOURCE)] } as unknown as IWorkflowBase;
+
+			expect(() => service.validateCredentialPermissionsToUser(workflow, [])).toThrow(
+				/cannot be checked/,
+			);
+			expect(() =>
+				service.validateCredentialPermissionsToUser(workflow, [], {
+					allowUninspectableSource: true,
+				}),
+			).not.toThrow();
+		});
+
+		it('reports runtime-loaded sources even when there are no credential IDs', () => {
+			const workflow = { nodes: [subworkflowNode(URL_SOURCE)] } as unknown as IWorkflowBase;
+
+			expect(service.collectCredentialReferences(workflow)).toEqual({
+				ids: new Set(),
+				hasUnresolved: false,
+				hasUninspectableSource: true,
+			});
+		});
+	});
+
 	describe('validateWorkflowCredentialUsage() - credential added to an existing node', () => {
 		const httpNode = (
 			credentials?: INode['credentials'],
@@ -505,12 +722,27 @@ describe('EnterpriseWorkflowService', () => {
 			expect(result.nodes[0]).toEqual(switched);
 		});
 
-		describe('restoring a history version', () => {
+		describe('a node as a history version stored it', () => {
 			const historyNode = () =>
 				httpNode(
 					{ httpHeaderAuth: { id: 'foreign-cred', name: 'Theirs' } },
 					{ url: 'https://v1.test' },
 				);
+
+			it('keeps a node renamed, moved and disabled since the version stored it', () => {
+				const previousVersion = { nodes: [] } as unknown as IWorkflowBase;
+				const edited = { ...historyNode(), name: 'Renamed', position: [10, 20], disabled: true };
+				const newVersion = { nodes: [edited] } as unknown as IWorkflowBase;
+
+				const result = service.validateWorkflowCredentialUsage(
+					newVersion,
+					previousVersion,
+					accessible,
+					[historyNode()],
+				);
+
+				expect(result.nodes[0]).toEqual(edited);
+			});
 
 			it('keeps a node exactly as the restored version stored it', () => {
 				// The current version dropped the node; the user cannot use its credential.
@@ -719,6 +951,160 @@ describe('EnterpriseWorkflowService', () => {
 			};
 
 			expect(() => save([agentNode('new-agent', remoteReference)])).not.toThrow();
+		});
+	});
+
+	describe('preventTampering() - a credential switched back from the workflow history', () => {
+		const user = mock<User>({ id: 'bob', role: { scopes: [] } });
+		const httpNode = (credentialId: string, url = 'https://v1.test') =>
+			({
+				id: 'node-1',
+				name: 'Call',
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 4.2,
+				position: [0, 0],
+				parameters: { url },
+				credentials: { httpHeaderAuth: { id: credentialId, name: credentialId } },
+			}) as unknown as INode;
+		const version = (versionId: string, nodes: INode[]) => ({ versionId, nodes });
+
+		beforeEach(() => {
+			workflowRepository.get.mockResolvedValue({
+				nodes: [httpNode('own-cred')],
+			} as unknown as WorkflowEntity);
+			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+				mock({ id: 'own-cred' }),
+			]);
+		});
+
+		it('saves a node switched back to a credential an earlier version stored, with its position', async () => {
+			workflowHistoryRepository.findNewestVersionNodes.mockResolvedValue([
+				version('v3', [httpNode('own-cred')]),
+				version('v2', [httpNode('foreign-cred')]),
+			]);
+			const submitted = { ...httpNode('foreign-cred'), position: [10, 20] };
+
+			const result = await service.preventTampering(
+				{ nodes: [submitted] } as IWorkflowBase,
+				'w1',
+				user,
+			);
+
+			expect(result.nodes[0]).toEqual(submitted);
+			expect(workflowHistoryRepository.findNewestVersionNodes).toHaveBeenCalledWith('w1', 20);
+		});
+
+		it('matches a stored node after its credential was renamed, also when disabled', async () => {
+			workflowHistoryRepository.findNewestVersionNodes.mockResolvedValue([
+				version('v2', [httpNode('foreign-cred')]),
+			]);
+			const submitted = { ...httpNode('foreign-cred'), disabled: true };
+			submitted.credentials!.httpHeaderAuth.name = 'Renamed';
+
+			const result = await service.preventTampering(
+				{ nodes: [submitted] } as IWorkflowBase,
+				'w1',
+				user,
+			);
+
+			expect(result.nodes[0]).toEqual(submitted);
+		});
+
+		it('rejects a node that no version stored with that credential', async () => {
+			workflowHistoryRepository.findNewestVersionNodes.mockResolvedValue([
+				version('v3', [httpNode('own-cred')]),
+			]);
+
+			await expect(
+				service.preventTampering(
+					{ nodes: [httpNode('foreign-cred')] } as IWorkflowBase,
+					'w1',
+					user,
+				),
+			).rejects.toThrow(/credentials in the 'Call' node/);
+		});
+
+		it('reads only the newest versions, so an older match does not count', async () => {
+			// The repository returns what it was asked for: the limit is the lookback.
+			workflowHistoryRepository.findNewestVersionNodes.mockImplementation(
+				async (_workflowId, limit) =>
+					Array.from({ length: limit }, (_, i) => version(`v${limit - i}`, [httpNode('own-cred')])),
+			);
+
+			await expect(
+				service.preventTampering(
+					{ nodes: [httpNode('foreign-cred')] } as IWorkflowBase,
+					'w1',
+					user,
+				),
+			).rejects.toThrow(/credentials in the 'Call' node/);
+			expect(workflowHistoryRepository.findNewestVersionNodes).toHaveBeenCalledTimes(1);
+			expect(workflowHistoryRepository.findNewestVersionNodes).toHaveBeenCalledWith('w1', 20);
+		});
+
+		it('rejects a node whose other parameters changed since the version stored it', async () => {
+			workflowHistoryRepository.findNewestVersionNodes.mockResolvedValue([
+				version('v2', [httpNode('foreign-cred')]),
+			]);
+
+			await expect(
+				service.preventTampering(
+					{ nodes: [httpNode('foreign-cred', 'https://changed.test')] } as IWorkflowBase,
+					'w1',
+					user,
+				),
+			).rejects.toThrow(/credentials in the 'Call' node/);
+		});
+
+		it('reads no history when the user can use every credential in the save', async () => {
+			const result = await service.preventTampering(
+				{ nodes: [httpNode('own-cred', 'https://changed.test')] } as IWorkflowBase,
+				'w1',
+				user,
+			);
+
+			expect(result.nodes[0].parameters).toEqual({ url: 'https://changed.test' });
+			expect(workflowHistoryRepository.findNewestVersionNodes).not.toHaveBeenCalled();
+		});
+
+		it('reads no history for a node without an id', async () => {
+			const { id: _, ...withoutId } = httpNode('foreign-cred');
+
+			await expect(
+				service.preventTampering({ nodes: [withoutId] } as IWorkflowBase, 'w1', user),
+			).rejects.toThrow(/credentials in the 'Call' node/);
+			expect(workflowHistoryRepository.findNewestVersionNodes).not.toHaveBeenCalled();
+		});
+
+		it('reads no history for a node blocked only by a sub-workflow source it cannot inspect', async () => {
+			const urlSourcedNode = {
+				id: 'sub-1',
+				name: 'Sub',
+				type: 'n8n-nodes-base.executeWorkflow',
+				typeVersion: 1.2,
+				position: [0, 0],
+				parameters: { source: 'url', workflowUrl: 'https://example.com/workflow.json' },
+			} as unknown as INode;
+
+			await expect(
+				service.preventTampering({ nodes: [urlSourcedNode] } as IWorkflowBase, 'w1', user),
+			).rejects.toThrow();
+			expect(workflowHistoryRepository.findNewestVersionNodes).not.toHaveBeenCalled();
+		});
+
+		it('reads no history for a node that is read only already', async () => {
+			workflowRepository.get.mockResolvedValue({
+				nodes: [httpNode('foreign-cred')],
+			} as unknown as WorkflowEntity);
+
+			const result = await service.preventTampering(
+				{ nodes: [httpNode('foreign-cred', 'https://changed.test')] } as IWorkflowBase,
+				'w1',
+				user,
+			);
+
+			expect(result.nodes[0]).toEqual(httpNode('foreign-cred'));
+			expect(workflowHistoryRepository.findNewestVersionNodes).not.toHaveBeenCalled();
 		});
 	});
 

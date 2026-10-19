@@ -212,6 +212,11 @@ describe('CreateWorkflowDto', () => {
 				request: { name: 'a'.repeat(129), nodes: [], connections: {} },
 				expectedErrorPath: ['name'],
 			},
+			...['__proto__', 'constructor', 'prototype'].map((id) => ({
+				name: `reserved id ${id}`,
+				request: { id, name: 'My Workflow', nodes: [], connections: {} },
+				expectedErrorPath: ['id'],
+			})),
 			{
 				name: 'missing nodes',
 				request: { name: 'Test', connections: {} },

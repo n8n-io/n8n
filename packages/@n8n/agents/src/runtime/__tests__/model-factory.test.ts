@@ -873,6 +873,19 @@ describe('createModel', () => {
 			expect(model.useDeploymentBasedUrls).toBeUndefined();
 		});
 
+		it('should use the deployment name on a Foundry endpoint when provided', () => {
+			// A Foundry deployment can be named differently from the model it
+			// serves, so the user's deployment name must reach the request path.
+			const model = createModel({
+				id: 'azure-openai/gpt-4.1-nano',
+				apiKey: 'az-key',
+				endpointType: 'foundry',
+				baseURL: 'https://my-resource.services.ai.azure.com/openai/v1',
+				deploymentName: 'my-chat-model',
+			}) as unknown as Record<string, unknown>;
+			expect(model.modelId).toBe('my-chat-model');
+		});
+
 		it('should treat a foundry endpoint without resourceName as valid', () => {
 			expect(() =>
 				createModel({
@@ -991,6 +1004,19 @@ describe('createModel', () => {
 			expect(capturedHeaders?.get('Authorization')).toBe('Bearer minted-bearer');
 			expect(capturedHeaders?.get('x-foo')).toBe('bar');
 			expect(mockClientOAuth2.credentials.getToken).toHaveBeenCalledTimes(1);
+		});
+
+		it('uses the deployment name on the Foundry Entra path when provided', () => {
+			// The deployment name can differ from the model it serves; it reaches
+			// the OpenAI-compatible path as the model id.
+			const model = createModel({
+				id: 'azure-openai/gpt-4.1-nano',
+				endpointType: 'foundry',
+				baseURL: 'https://my-resource.services.ai.azure.com/openai/v1',
+				deploymentName: 'my-chat-model',
+				...entraCreds,
+			}) as unknown as Record<string, unknown>;
+			expect(model.modelId).toBe('my-chat-model');
 		});
 
 		it('rejects credentials that supply both apiKey and Entra', () => {

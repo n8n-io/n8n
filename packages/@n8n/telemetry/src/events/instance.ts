@@ -44,7 +44,6 @@ export const INSTANCE_TELEMETRY = defineTelemetryEvents({
 			}),
 			workflow_history: z.object({
 				compaction_optimizing_time_window_hours: z.number(),
-				compaction_trim_on_start_up: z.boolean(),
 				compaction_trimming_time_window_days: z.number(),
 			}),
 			n8n_deployment_type: z.string(),

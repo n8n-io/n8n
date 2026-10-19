@@ -7,7 +7,7 @@ describe('useDataTableTypes', () => {
 
 	describe('getIconForType', () => {
 		it('should return correct icon for string type', () => {
-			expect(getIconForType('string')).toBe('type');
+			expect(getIconForType('string')).toBe('text-aa');
 		});
 
 		it('should return correct icon for number type', () => {
@@ -15,7 +15,7 @@ describe('useDataTableTypes', () => {
 		});
 
 		it('should return correct icon for boolean type', () => {
-			expect(getIconForType('boolean')).toBe('square-check');
+			expect(getIconForType('boolean')).toBe('toggles');
 		});
 
 		it('should return correct icon for date type', () => {

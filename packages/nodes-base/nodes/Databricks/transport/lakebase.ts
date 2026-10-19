@@ -4,9 +4,11 @@ import { sleep } from '@n8n/utils/sleep';
 import type { IExecuteFunctions, IHttpRequestOptions, JsonObject } from 'n8n-workflow';
 import { NodeApiError, NodeError, NodeOperationError } from 'n8n-workflow';
 
+import { makeLakebaseErrorLegible } from './lakebaseErrors';
 import {
 	databricksApiRequest,
 	getActiveCredentialType,
+	makePermissionErrorLegible,
 	type DatabricksContext,
 } from '../actions/helpers';
 
@@ -32,6 +34,21 @@ function isExpiredToken(error: unknown, body: Record<string, unknown> | undefine
 		.filter((part): part is string => typeof part === 'string')
 		.join(' ');
 	return /expired/i.test(text) && /jwt|token/i.test(text);
+}
+
+/**
+ * A dropdown shows only an error's message, so the hint `lakebaseApiRequest` already
+ * attached is not visible there. Mutates rather than re-wraps, because only a
+ * NodeApiError carries its description as far as the dropdown.
+ */
+export function explainLakebaseSchemaError(error: unknown, openApiMessage: string): never {
+	if (error instanceof NodeApiError && errorBody(error)?.code === 'PGRST205') {
+		error.message = openApiMessage;
+		throw error;
+	}
+
+	makePermissionErrorLegible(error);
+	throw error;
 }
 
 export function assertLakebaseOAuth(context: DatabricksContext): void {
@@ -86,6 +103,7 @@ export async function lakebaseApiRequest(
 				await sleep(SCHEMA_CACHE_RETRY_DELAY_MS, abortSignal);
 				continue;
 			}
+			makeLakebaseErrorLegible(error, options);
 			throw error;
 		}
 	}

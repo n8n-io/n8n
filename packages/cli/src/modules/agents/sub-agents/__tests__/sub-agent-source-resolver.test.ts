@@ -13,6 +13,7 @@ import {
 	type AgentFixtureOverrides,
 	type AgentHistoryFixtureOverrides,
 	createAgentSkillRefsService,
+	type FakeAgentSkillRefsService,
 } from '../../__tests__/test-utils/stored-agent-config';
 
 const projectId = 'project-1';
@@ -27,6 +28,7 @@ const runnableConfig: AgentJsonConfig = {
 	config: {
 		maxIterations: 5,
 	},
+	skills: [],
 };
 
 const customToolDescriptor: ToolDescriptor = {
@@ -51,7 +53,6 @@ function makeAgentHistory(overrides: AgentHistoryFixtureOverrides = {}): AgentHi
 		versionId,
 		schema: runnableConfig,
 		tools: {},
-		skills: {},
 		...overrides,
 	} as unknown as AgentHistory;
 }
@@ -65,7 +66,6 @@ function makeAgent(overrides: AgentFixtureOverrides = {}): Agent {
 		schema: runnableConfig,
 		integrations: [],
 		tools: {},
-		skills: {},
 		activeVersionId: versionId,
 		activeVersion: makeAgentHistory(),
 		...overrides,
@@ -75,17 +75,15 @@ function makeAgent(overrides: AgentFixtureOverrides = {}): Agent {
 describe('SubAgentSourceResolver', () => {
 	let agentRepository: Mocked<AgentRepository>;
 	let agentHistoryRepository: Mocked<AgentHistoryRepository>;
+	let skillRefs: FakeAgentSkillRefsService;
 	let resolver: SubAgentSourceResolver;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 		agentRepository = mock<AgentRepository>();
 		agentHistoryRepository = mock<AgentHistoryRepository>();
-		resolver = new SubAgentSourceResolver(
-			agentRepository,
-			agentHistoryRepository,
-			createAgentSkillRefsService(agentRepository),
-		);
+		skillRefs = createAgentSkillRefsService();
+		resolver = new SubAgentSourceResolver(agentRepository, agentHistoryRepository, skillRefs);
 	});
 
 	it('resolves the latest draft when no version is pinned', async () => {
@@ -123,17 +121,20 @@ describe('SubAgentSourceResolver', () => {
 	});
 
 	it('retains background configuration and tool bodies after a draft edit', async () => {
+		skillRefs.readDraft.mockResolvedValueOnce({
+			skillRefs: [{ type: 'skill', id: 'original_skill' }],
+			skills: {
+				original_skill: {
+					name: 'Original skill',
+					description: 'Original description',
+					instructions: 'Original skill body',
+				},
+			},
+		});
 		agentRepository.findByIdAndProjectId.mockResolvedValue(
 			makeAgent({
 				tools: {
 					lookup: { descriptor: customToolDescriptor, code: 'original tool body' },
-				},
-				skills: {
-					original_skill: {
-						name: 'Original skill',
-						description: 'Original description',
-						instructions: 'Original skill body',
-					},
 				},
 			}),
 		);
@@ -241,6 +242,26 @@ describe('SubAgentSourceResolver', () => {
 	});
 
 	it('resolves runtime assets from the draft, not the published version', async () => {
+		skillRefs.readDraft.mockResolvedValue({
+			skillRefs: [{ type: 'skill', id: 'draft_skill' }],
+			skills: {
+				draft_skill: {
+					name: 'Draft skill',
+					description: 'Draft description',
+					instructions: 'Draft body',
+				},
+			},
+		});
+		skillRefs.readVersion.mockResolvedValue({
+			skillRefs: [{ type: 'skill', id: 'published_skill' }],
+			skills: {
+				published_skill: {
+					name: 'Published skill',
+					description: 'Published description',
+					instructions: 'Published body',
+				},
+			},
+		});
 		agentRepository.findByIdAndProjectId.mockResolvedValue(
 			makeAgent({
 				tools: {
@@ -249,25 +270,11 @@ describe('SubAgentSourceResolver', () => {
 						descriptor: { ...customToolDescriptor, name: 'draft_only_tool' },
 					},
 				},
-				skills: {
-					draft_skill: {
-						name: 'Draft skill',
-						description: 'Draft description',
-						instructions: 'Draft body',
-					},
-				},
 				activeVersion: makeAgentHistory({
 					tools: {
 						published_tool: {
 							code: 'return "published";',
 							descriptor: { ...customToolDescriptor, name: 'published_tool' },
-						},
-					},
-					skills: {
-						published_skill: {
-							name: 'Published skill',
-							description: 'Published description',
-							instructions: 'Published body',
 						},
 					},
 				}),
@@ -332,13 +339,13 @@ describe('SubAgentSourceResolver', () => {
 	describe('skill refs round trip', () => {
 		const draftRefs = [
 			{ type: 'skill' as const, id: 'zeta' },
-			{ type: 'skill' as const, id: 'alpha', enabled: false },
+			{ type: 'skill' as const, id: 'alpha', versionId: '0b2c6f1e-7d3a-4c1b-9f2e-5a6b7c8d9e0f' },
 		];
 		const publishedRefs = [
-			{ type: 'skill' as const, id: 'mid', enabled: true },
+			{ type: 'skill' as const, id: 'mid' },
 			{ type: 'skill' as const, id: 'zeta' },
 		];
-		const pinnedRefs = [{ type: 'skill' as const, id: 'old', enabled: false }];
+		const pinnedRefs = [{ type: 'skill' as const, id: 'old' }];
 
 		beforeEach(() => {
 			agentRepository.findByIdAndProjectId.mockResolvedValue(

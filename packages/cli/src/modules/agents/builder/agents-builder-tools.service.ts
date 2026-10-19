@@ -86,15 +86,23 @@ import {
 	buildFinishSetupTool,
 	buildResolveLlmTool,
 } from './interactive';
+import type {
+	NodeToolCredentialWriteResult,
+	ResolvedCredential,
+} from './interactive/finish-setup.tool';
 import type { ModelLookup } from './interactive/resolve-llm.tool';
 import { SKILL_BODY_GUIDANCE, SKILL_DESCRIPTION_RULE } from './skill-body-template';
 import { TASK_OBJECTIVE_GUIDANCE } from './task-objective-template';
 import { buildVerifyMcpServerTool, type McpCredentialApplyResult } from './verify-mcp-server.tool';
 import { AgentSkillRefsService } from '../agent-skill-refs.service';
 import { composeJsonConfig } from '../json-config/agent-config-composition';
-import { listAiGatewayManagedCredentialTypes } from '../json-config/reconcile-node-tool-gateway-credentials';
+import {
+	assignCredentialToNodeTools,
+	listAiGatewayManagedCredentialTypes,
+} from '../json-config/reconcile-node-tool-gateway-credentials';
 import { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import { getAgentConfigHash, isSameAgentConfig } from '../utils/agent-config-hash';
+import { SkillNameTakenError, skillNameTakenToolMessage } from '../skills/skill-name-taken.error';
 
 const STALE_CONFIG_ERROR: ConfigValidationError = {
 	path: '(root)',
@@ -181,6 +189,12 @@ type EditorLockFailure = { ok: false; errors: ConfigValidationError[] };
 const STALE_SKILL_ERROR_MESSAGE =
 	'Skill changed. Call agent-context with type "skill", then retry with its skill and skillHash.';
 
+/** A taken name is a conflict too, but a retry with a fresh hash would fail the same way. */
+function updateSkillErrorMessage(error: unknown, message: string): string {
+	if (error instanceof SkillNameTakenError) return skillNameTakenToolMessage(error.skillName);
+	return error instanceof ConflictError ? STALE_SKILL_ERROR_MESSAGE : message;
+}
+
 /** LLM-facing follow-up guidance for this builder surface (CLI skill-based tools). */
 const CLI_AGENT_CONFIG_MESSAGES: AgentConfigValidationMessages = {
 	emptyInstructionsFollowUp: 'saving the config again.',
@@ -191,12 +205,12 @@ const CLI_AGENT_CONFIG_MESSAGES: AgentConfigValidationMessages = {
 
 const createSkillInputSchema = z
 	.object({
-		name: agentSkillSchema.shape.name.describe('Human-readable skill name'),
+		name: agentSkillSchema.shape.name.describe(
+			'Human-readable skill name. It must be unique in the project: no other skill of this ' +
+				'project may have a name like it (case, spaces, hyphens and underscores do not count).',
+		),
 		description: agentSkillSchema.shape.description.describe(SKILL_DESCRIPTION_RULE),
 		instructions: agentSkillSchema.shape.instructions.describe(SKILL_BODY_GUIDANCE),
-		allowedTools: agentSkillSchema.shape.allowedTools
-			.optional()
-			.describe('Exact target-agent tool names this skill is allowed to use.'),
 		references: agentSkillSchema.shape.references
 			.optional()
 			.describe(
@@ -235,7 +249,6 @@ const updateSkillFieldsSchema = z
 				'Targeted replacements in the current instructions, applied in order. Prefer this to ' +
 					'`instructions` for a partial change. Do not pass both.',
 			),
-		allowedTools: agentSkillSchema.shape.allowedTools.unwrap().min(1).nullable().optional(),
 		references: agentSkillSchema.shape.references
 			.unwrap()
 			.refine((references) => references.length > 0, 'Pass null to clear references.')
@@ -260,7 +273,7 @@ const updateSkillInputSchema = z
 				'skillHash from the immediately preceding agent-context with type "skill" result for this skill.',
 			),
 		updates: updateSkillFieldsSchema.describe(
-			'Only the fields to change. Pass null for allowedTools or references to remove that field; empty arrays are invalid.',
+			'Only the fields to change. Pass null for references to remove them; an empty array is invalid.',
 		),
 	})
 	.strict();
@@ -553,7 +566,7 @@ export class AgentsBuilderToolsService {
 			),
 			this.withConfigMutationMarker(
 				this.withConfigSnapshotOnResume(
-					this.createFinishSetupTool(credentialService, agentId, projectId, track),
+					this.createFinishSetupTool(credentialService, agentId, projectId, user, track),
 					agentId,
 					projectId,
 					(result) => result.completed === true,
@@ -589,6 +602,7 @@ export class AgentsBuilderToolsService {
 		credentialService: InstanceAiCredentialService,
 		agentId: string,
 		projectId: string,
+		user: User,
 		track: BuilderTrackFn,
 	): BuiltTool {
 		return buildFinishSetupTool({
@@ -596,6 +610,8 @@ export class AgentsBuilderToolsService {
 			agentId,
 			projectId,
 			track,
+			writeCredentialsToNodeTools: async (credentials) =>
+				await this.writeCredentialsToNodeTools(agentId, projectId, user, credentials),
 			isCredentialTypeKnown: (credentialType) => this.credentialTypes.recognizes(credentialType),
 			listIntegrationCredentialIds: async () => {
 				const agent = await this.agentsService.findById(agentId, projectId);
@@ -1146,8 +1162,10 @@ export class AgentsBuilderToolsService {
 				'Update selected fields of an existing target-agent skill in place, preserving its id and ' +
 					'agent config reference. Requires baseSkillHash from the immediately preceding agent-context with type "skill" ' +
 					'result. To change part of the body, pass instructionEdits with oldText/newText pairs ' +
-					'instead of rewriting instructions. Pass null for allowedTools to remove the tool restriction, ' +
-					'or null for references to remove all references; empty arrays are invalid. Returns ' +
+					'instead of rewriting instructions. Pass null for references to remove all references; an ' +
+					'empty array is invalid. The skill is shared: the update saves its next version, and every ' +
+					'agent draft that follows the latest version runs that version. Published versions keep ' +
+					'the version they pinned. Returns ' +
 					'{ ok: true, id, name, configMutated: true, agentId } or { ok: false, errors }. A failed edit ' +
 					'saves nothing: fix oldText so it matches exactly one place and retry with the same ' +
 					'baseSkillHash. On a stale skill error, ' +
@@ -1157,10 +1175,9 @@ export class AgentsBuilderToolsService {
 			.handler(async ({ skillId, baseSkillHash, updates }: UpdateSkillInput) => {
 				const editorLock = await this.getEditorLockFailure(agentId);
 				if (editorLock) return editorLock;
-				const { allowedTools, references, instructionEdits, ...requiredUpdates } = updates;
+				const { references, instructionEdits, ...requiredUpdates } = updates;
 				const normalizedUpdates = {
 					...requiredUpdates,
-					...(allowedTools !== undefined ? { allowedTools: allowedTools ?? undefined } : {}),
 					...(references !== undefined ? { references: references ?? undefined } : {}),
 				};
 
@@ -1182,10 +1199,7 @@ export class AgentsBuilderToolsService {
 					};
 				} catch (e) {
 					const message = e instanceof Error ? e.message : String(e);
-					return {
-						ok: false,
-						errors: [{ message: e instanceof ConflictError ? STALE_SKILL_ERROR_MESSAGE : message }],
-					};
+					return { ok: false, errors: [{ message: updateSkillErrorMessage(e, message) }] };
 				}
 			})
 			.build();
@@ -1211,7 +1225,7 @@ export class AgentsBuilderToolsService {
 					'applicable section filled in with concrete, specific content. If you do not have enough domain ' +
 					"detail to write a genuinely useful skill, derive it from the user's goal as stated assumptions " +
 					'listed in your summary; ask the user clarifying questions only when even a reasonable ' +
-					'assumption is impossible. Use allowedTools only with exact target-agent tool names. Use references ' +
+					'assumption is impossible. Use references ' +
 					'only for markdown supporting files under the references/ directory — references are not ' +
 					'automatically loaded, so instructions must say exactly when to load each one by path; scripts and ' +
 					'non-markdown linked files are not supported. Do not invent tool names or reference paths. Batch ' +
@@ -1244,10 +1258,13 @@ export class AgentsBuilderToolsService {
 						skills: created.skills.map(({ id, skill }) => ({ id, name: skill.name })),
 					};
 				} catch (e) {
-					return {
-						ok: false,
-						errors: [{ message: e instanceof Error ? e.message : String(e) }],
-					};
+					const message =
+						e instanceof SkillNameTakenError
+							? `${skillNameTakenToolMessage(e.skillName)} The batch is all-or-nothing, so send every skill again.`
+							: e instanceof Error
+								? e.message
+								: String(e);
+					return { ok: false, errors: [{ message }] };
 				}
 			})
 			.build();
@@ -1366,6 +1383,45 @@ export class AgentsBuilderToolsService {
 		);
 		// Based on a fresh read, so the saved config can hold edits the model has not seen.
 		return { applied: true, config: saved.config, configHash: saved.configHash };
+	}
+
+	private async writeCredentialsToNodeTools(
+		agentId: string,
+		projectId: string,
+		user: User,
+		credentials: ResolvedCredential[],
+	): Promise<NodeToolCredentialWriteResult> {
+		const failed = (errors: Array<{ message: string }>): NodeToolCredentialWriteResult => ({
+			credentialTypes: [],
+			error: errors.map((e) => e.message).join('; '),
+		});
+		const editorLock = await this.getEditorLockFailure(agentId);
+		if (editorLock) return failed(editorLock.errors);
+		const { config, configHash } = await this.getConfigSnapshot(agentId, projectId);
+		if (!config) return failed([{ message: 'Agent has no JSON config yet.' }]);
+
+		const tools = structuredClone(config.tools ?? []);
+		const credentialTypes: string[] = [];
+		for (const { credentialType, id, name } of credentials) {
+			if (assignCredentialToNodeTools(tools, this.nodeTypes, credentialType, { id, name }) > 0) {
+				credentialTypes.push(credentialType);
+			}
+		}
+		if (credentialTypes.length === 0) return { credentialTypes };
+
+		const next = { ...config, tools };
+		const validated = this.validateBuilderConfig(next, config);
+		if (!validated.ok) return failed(validated.errors);
+		const saved = await this.saveBuilderConfig(
+			agentId,
+			projectId,
+			user,
+			validated.config,
+			configHash,
+			next,
+		);
+		if (!saved.ok) return failed(saved.errors);
+		return { credentialTypes, configHash: saved.configHash };
 	}
 
 	private async getFreshConfigSnapshot(

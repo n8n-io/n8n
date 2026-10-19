@@ -1,3 +1,4 @@
+import type { AgentSkill } from '@n8n/api-types';
 import type { OperationContext } from '@n8n/db';
 import { OperationalError } from 'n8n-workflow';
 
@@ -11,6 +12,8 @@ export interface AgentRunSource {
 	/** The agent draft, or the agent with the content of its published version. */
 	agent: Agent;
 	skillRefs: AgentSkillRefs;
+	/** Skill bodies from the skills hub, keyed by skill id: the draft's or the pinned ones. */
+	skills: Record<string, AgentSkill>;
 }
 
 function getPublishedVersion(agentEntity: Agent): AgentHistory {
@@ -29,7 +32,6 @@ function getPublishedAgentSnapshot(agentEntity: Agent): Agent {
 		...agentEntity,
 		schema: activeVersion.schema,
 		tools: activeVersion.tools ?? {},
-		skills: activeVersion.skills ?? {},
 	} as Agent;
 }
 
@@ -44,11 +46,11 @@ export async function resolveAgentRunSource(
 	ctx: OperationContext,
 ): Promise<AgentRunSource> {
 	if (!usePublishedVersion) {
-		return { agent: agentEntity, skillRefs: await agentSkillRefs.refsForDraft(agentEntity, ctx) };
+		return { agent: agentEntity, ...(await agentSkillRefs.readDraft(agentEntity, ctx)) };
 	}
 	const activeVersion = getPublishedVersion(agentEntity);
 	return {
 		agent: getPublishedAgentSnapshot(agentEntity),
-		skillRefs: await agentSkillRefs.refsForVersion(activeVersion, ctx),
+		...(await agentSkillRefs.readVersion(activeVersion, ctx)),
 	};
 }

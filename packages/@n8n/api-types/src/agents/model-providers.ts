@@ -70,6 +70,8 @@ export interface AgentCatalogModel {
 	toolCall: boolean;
 	cost?: { input: number; output: number; cacheRead?: number; cacheWrite?: number };
 	limits?: { context?: number; output?: number };
+	/** Pickers list models with a priority first, highest first. Reported by the models API. */
+	priority?: number;
 }
 
 /** Response of `GET /agents/v2/catalog/models/:provider`. */

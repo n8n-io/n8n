@@ -60,7 +60,6 @@ import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstructi
 import type { AgentSandboxRuntimeService } from '../agent-sandbox-runtime.service';
 import { AgentSaveCompletionService } from '../agent-save-completion.service';
 import { AgentDefinitionService } from '../agent-definition.service';
-import { AgentSkillsService } from '../agent-skills.service';
 import type { AgentUpdateBroadcaster } from '../agent-update-broadcaster';
 
 import type { AgentTaskService } from '../agent-task.service';
@@ -153,6 +152,7 @@ function makeRuntimeReconstructionService(
 		mock<CredentialsFinderService>(),
 		mock<WorkflowFinderService>(),
 		mock<AgentChatAttachmentService>(),
+		mock<CredentialsService>(),
 	);
 }
 
@@ -211,7 +211,6 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 	let globalConfig: Mocked<GlobalConfig>;
 	let telemetry: Mocked<Telemetry>;
 	let runtimeCacheService: AgentRuntimeCacheService;
-	let agentSkillsService: AgentSkillsService;
 	let agentConfigService: AgentConfigService;
 	let agentCustomToolsService: AgentCustomToolsService;
 	let agentExecutionOrchestratorService: AgentExecutionOrchestratorService;
@@ -253,7 +252,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			isEnabled: () => false,
 		});
 
-		const skillRefs = createAgentSkillRefsService(agentRepository);
+		const skillRefs = createAgentSkillRefsService();
 		runtimeCacheService = new AgentRuntimeCacheService(
 			logger,
 			agentRepository,
@@ -281,18 +280,10 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			transactionRunner,
 			skillRefs,
 		);
-		agentSkillsService = new AgentSkillsService(
-			logger,
-			agentRepository,
-			saveCompletion,
-			skillRefs,
-			transactionRunner,
-		);
 		agentConfigService = new AgentConfigService(
 			logger,
 			agentRepository,
 			agentTaskRepository,
-			agentSkillsService,
 			new AgentConfigPreparationService(
 				credentialsService,
 				mock<WorkflowRepository>(),

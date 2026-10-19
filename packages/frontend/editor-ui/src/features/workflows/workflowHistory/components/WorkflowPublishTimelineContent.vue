@@ -375,7 +375,7 @@ onBeforeUnmount(() => {
 			<N8nLoading v-if="isLoadingMore" :rows="1" />
 			<N8nButton
 				v-if="hasLoadError"
-				variant="subtle"
+				variant="outline"
 				size="small"
 				:disabled="isLoading || isLoadingMore"
 				@click="retry"

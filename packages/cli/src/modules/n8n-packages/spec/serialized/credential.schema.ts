@@ -29,6 +29,7 @@ export const serializedCredentialSchema = z
 		name: z.string().min(1),
 		type: z.string().min(1),
 		data: serializedCredentialDataSchema.optional(),
+		dataIsComplete: z.boolean().optional(),
 	})
 	.strict();
 

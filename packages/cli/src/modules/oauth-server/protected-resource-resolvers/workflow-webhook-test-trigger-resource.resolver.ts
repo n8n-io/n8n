@@ -3,13 +3,10 @@ import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { WEBHOOK_NODE_TYPE } from 'n8n-workflow';
 
-import type {
-	ProtectedResource,
-	ProtectedResourceResolver,
-} from '@/services/protected-resource.registry';
+import { UrlService } from '@n8n/backend-services';
+import { type ProtectedResource, type ProtectedResourceResolver } from '@n8n/backend-services/auth';
 
 import { triggerResourceGate } from '../resource-gate';
-import { UrlService } from '@n8n/backend-services';
 import { TestWebhooks } from '@/webhooks/test-webhooks';
 import type { TestWebhookRegistration } from '@/webhooks/test-webhook-registrations.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';

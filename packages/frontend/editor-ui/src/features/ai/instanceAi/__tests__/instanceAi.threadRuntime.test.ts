@@ -13,6 +13,7 @@ import {
 	type InstanceAiTargetApproval,
 } from '@n8n/api-types';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import { deepCopy } from 'n8n-workflow';
 import { USER_TYPED_MESSAGE } from '../prefills';
 import {
 	createThreadRuntime,
@@ -3783,5 +3784,127 @@ describe('createThreadRuntime - onboarding exit', () => {
 		sse({ type: 'run-finish', runId: 'run-2', payload: { status: 'error' } });
 		expect(hooks.onOnboardingLeft).toHaveBeenCalledTimes(1);
 		expect(hooks.onOnboardingLeft).toHaveBeenCalledWith('thread-onboarding', 'run_failed');
+	});
+});
+
+describe('createThreadRuntime - follow-up run after a reconnect', () => {
+	let registry: RuntimeRegistry;
+
+	beforeEach(async () => {
+		setupRuntimePinia();
+		capturedOnMessage = null;
+		registry = createRuntimeRegistry();
+		activeThreadId = 'thread-follow-up';
+		activeRuntime(registry).connectSSE();
+		await vi.waitFor(() => {
+			expect(capturedOnMessage).not.toBeNull();
+		});
+	});
+
+	afterEach(() => {
+		activeRuntime(registry).closeSSE();
+		vi.clearAllMocks();
+	});
+
+	test('shows the next confirmation of a follow-up run after a run-sync rebuilt the tree', async () => {
+		const runtime = activeRuntime(registry);
+		const send = (event: Record<string, unknown>) => capturedOnMessage!(makeSSEEvent(event));
+
+		// Run 1 starts the message group. Run 2 is a follow-up in the same group
+		// and streams under its own orchestrator agent id.
+		send({
+			type: 'run-start',
+			runId: 'run-1',
+			agentId: 'orchestrator-run-1',
+			payload: { messageId: 'msg-1', messageGroupId: 'mg-1' },
+		});
+		send({
+			type: 'tool-call',
+			runId: 'run-1',
+			agentId: 'orchestrator-run-1',
+			payload: { toolCallId: 'tc-plan', toolName: 'create-tasks', args: {} },
+		});
+		send({
+			type: 'run-start',
+			runId: 'run-2',
+			agentId: 'orchestrator-run-2',
+			payload: { messageId: 'msg-2', messageGroupId: 'mg-1' },
+		});
+		send({
+			type: 'tool-call',
+			runId: 'run-2',
+			agentId: 'orchestrator-run-2',
+			payload: {
+				toolCallId: 'tc-folder',
+				toolName: 'workspace',
+				args: { action: 'create-folder' },
+			},
+		});
+		send({
+			type: 'confirmation-request',
+			runId: 'run-2',
+			agentId: 'orchestrator-run-2',
+			payload: {
+				requestId: 'req-folder',
+				toolCallId: 'tc-folder',
+				toolName: 'workspace',
+				args: { action: 'create-folder' },
+				severity: 'info',
+				message: 'Create folder?',
+			},
+		});
+
+		// A reconnect while the run waits: the run-sync frame replaces the tree
+		// with the server's fold, which is rooted at run 1's agent.
+		capturedInstance!.dispatchNamedEvent('run-sync', {
+			runId: 'run-2',
+			messageGroupId: 'mg-1',
+			runIds: ['run-1', 'run-2'],
+			agentTree: deepCopy(runtime.messages.at(-1)!.agentTree),
+			status: 'suspended',
+			backgroundTasks: [],
+		});
+
+		mockPostConfirmation.mockResolvedValueOnce({ ok: true, runId: 'run-2' });
+		await runtime.confirmAction('req-folder', { kind: 'approval', approved: true });
+		runtime.resolveConfirmation('req-folder', 'approved');
+
+		// The resumed segment: the approved tool's result, then a second tool call
+		// that asks for its own confirmation.
+		send({
+			type: 'tool-result',
+			runId: 'run-2',
+			agentId: 'orchestrator-run-2',
+			payload: { toolCallId: 'tc-folder', result: { id: 'folder-1' } },
+		});
+		send({
+			type: 'tool-call',
+			runId: 'run-2',
+			agentId: 'orchestrator-run-2',
+			payload: {
+				toolCallId: 'tc-move',
+				toolName: 'workspace',
+				args: { action: 'move-workflow-to-folder' },
+			},
+		});
+		send({
+			type: 'confirmation-request',
+			runId: 'run-2',
+			agentId: 'orchestrator-run-2',
+			payload: {
+				requestId: 'req-move',
+				toolCallId: 'tc-move',
+				toolName: 'workspace',
+				args: { action: 'move-workflow-to-folder' },
+				severity: 'info',
+				message: 'Move workflow?',
+			},
+		});
+		await nextTick();
+
+		expect(
+			runtime.pendingConfirmations.map((item) => item.toolCall.confirmation.requestId),
+		).toEqual(['req-move']);
+		expect(runtime.isAwaitingConfirmation).toBe(true);
 	});
 });

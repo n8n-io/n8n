@@ -1,4 +1,8 @@
-import { OperationalError, UserError } from 'n8n-workflow';
+import type { User } from '@n8n/db';
+import type { AgentIntegrationConfig } from '@n8n/api-types';
+import type { Thread } from 'chat';
+import { OperationalError, UserError, type Logger } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { deriveWhatsAppVerifyToken } from '../../../integration-helpers';
 import { encodeIntegrationMessageContext } from '../../../integration-message-context';
@@ -24,6 +28,7 @@ import {
 	whatsAppReplayFixtures,
 	whatsAppWebhook,
 } from '../../../__tests__/helpers/whatsapp/synthetic-fixtures';
+import type { WhatsAppWebhookVerificationStore } from '../../whatsapp/whatsapp-webhook-verification.store';
 
 // The chat SDK + adapters are ESM-only. Production loads them via esm-loader's
 // `new Function()` hack to dodge the CJS transform, which can't run under vitest;
@@ -352,6 +357,11 @@ describe('WhatsApp Cloud API integration scenarios', () => {
 	});
 
 	describe('24-hour customer service window', () => {
+		// The typing indicator goes out as a read receipt, which Meta allows
+		// outside the window, so only count the calls that send a message.
+		const sentMessages = (ctx: { apiCalls: Array<{ body: Record<string, unknown> }> }) =>
+			ctx.apiCalls.filter((call) => call.body.status !== 'read');
+
 		it('sends a reply while the customer service window is open', async () => {
 			const fixtures = whatsAppReplayFixtures();
 			const ctx = await createWhatsAppReplayContext(fixtures);
@@ -388,14 +398,14 @@ describe('WhatsApp Cloud API integration scenarios', () => {
 				);
 				// The bridge's own auto-reply to the message above is already
 				// blocked by the guard (its "last inbound" is the message it is
-				// replying to), so no send has succeeded yet.
-				expect(ctx.apiCalls).toHaveLength(0);
+				// replying to), so no message has been sent yet.
+				expect(sentMessages(ctx)).toHaveLength(0);
 
 				const threadId = whatsAppThreadId(fixtures);
 				await expect(
 					ctx.adapter.postMessage(threadId, { markdown: 'Still there?' }),
 				).rejects.toThrow(UserError);
-				expect(ctx.apiCalls).toHaveLength(0);
+				expect(sentMessages(ctx)).toHaveLength(0);
 			} finally {
 				await ctx.shutdown();
 			}
@@ -422,7 +432,7 @@ describe('WhatsApp Cloud API integration scenarios', () => {
 					yield 'Still there?';
 				})();
 				await expect(ctx.adapter.stream(threadId, textStream)).rejects.toThrow(UserError);
-				expect(ctx.apiCalls).toHaveLength(0);
+				expect(sentMessages(ctx)).toHaveLength(0);
 			} finally {
 				await ctx.shutdown();
 			}
@@ -1059,6 +1069,64 @@ describe('WhatsApp Cloud API integration scenarios', () => {
 		});
 	});
 
+	describe('onRemove', () => {
+		it('clears the recorded handshake for the agent', async () => {
+			const webhookVerification = mock<WhatsAppWebhookVerificationStore>();
+			const integration = createWhatsAppIntegration(undefined, webhookVerification);
+
+			const warning = await integration.onRemove({
+				agentId: 'agent-1',
+				projectId: 'project-1',
+				credentialId: 'cred-whatsapp',
+				user: mock<User>(),
+			});
+
+			expect(warning).toBeUndefined();
+			expect(webhookVerification.clear).toHaveBeenCalledExactlyOnceWith('agent-1');
+		});
+	});
+
+	describe('handshake answered by a connected channel', () => {
+		const expectedToken = deriveWhatsAppVerifyToken('test-hmac-signature-secret', 'agent-1');
+		const handshake = (token: string) =>
+			new Request(
+				`https://n8n.example.com/webhooks/whatsapp?hub.mode=subscribe&hub.verify_token=${token}&hub.challenge=12345`,
+			);
+
+		it('records the handshake when the token matches', async () => {
+			const webhookVerification = mock<WhatsAppWebhookVerificationStore>();
+			const ctx = await createWhatsAppReplayContext(whatsAppReplayFixtures(), {
+				webhookVerification,
+			});
+
+			try {
+				const response = await ctx.adapter.handleWebhook(handshake(expectedToken));
+
+				expect(response.status).toBe(200);
+				expect(await response.text()).toBe('12345');
+				expect(webhookVerification.markVerified).toHaveBeenCalledExactlyOnceWith('agent-1');
+			} finally {
+				await ctx.shutdown();
+			}
+		});
+
+		it('does not record a rejected handshake', async () => {
+			const webhookVerification = mock<WhatsAppWebhookVerificationStore>();
+			const ctx = await createWhatsAppReplayContext(whatsAppReplayFixtures(), {
+				webhookVerification,
+			});
+
+			try {
+				const response = await ctx.adapter.handleWebhook(handshake('wrong-token'));
+
+				expect(response.status).toBe(403);
+				expect(webhookVerification.markVerified).not.toHaveBeenCalled();
+			} finally {
+				await ctx.shutdown();
+			}
+		});
+	});
+
 	describe('handleUnauthenticatedWebhook', () => {
 		// createWhatsAppIntegration() wires a fixed 'test-hmac-signature-secret', so
 		// the expected token for 'agent-1' is derivable the same way the real
@@ -1066,7 +1134,8 @@ describe('WhatsApp Cloud API integration scenarios', () => {
 		const expectedToken = deriveWhatsAppVerifyToken('test-hmac-signature-secret', 'agent-1');
 
 		it("answers Meta's handshake with the raw challenge when the token matches", () => {
-			const integration = createWhatsAppIntegration();
+			const webhookVerification = mock<WhatsAppWebhookVerificationStore>();
+			const integration = createWhatsAppIntegration(undefined, webhookVerification);
 
 			const result = integration.handleUnauthenticatedWebhook({
 				agentId: 'agent-1',
@@ -1081,10 +1150,12 @@ describe('WhatsApp Cloud API integration scenarios', () => {
 			});
 
 			expect(result).toEqual({ status: 200, body: '12345', raw: true });
+			expect(webhookVerification.markVerified).toHaveBeenCalledExactlyOnceWith('agent-1');
 		});
 
 		it('rejects the handshake when the verify token does not match', () => {
-			const integration = createWhatsAppIntegration();
+			const webhookVerification = mock<WhatsAppWebhookVerificationStore>();
+			const integration = createWhatsAppIntegration(undefined, webhookVerification);
 
 			const result = integration.handleUnauthenticatedWebhook({
 				agentId: 'agent-1',
@@ -1099,6 +1170,7 @@ describe('WhatsApp Cloud API integration scenarios', () => {
 			});
 
 			expect(result).toEqual({ status: 403, body: 'Forbidden', raw: true });
+			expect(webhookVerification.markVerified).not.toHaveBeenCalled();
 		});
 
 		it('falls through for a non-GET request', () => {
@@ -1138,6 +1210,52 @@ describe('WhatsApp Cloud API integration scenarios', () => {
 			});
 
 			expect(result).toBeUndefined();
+		});
+	});
+
+	describe('channel settings', () => {
+		const whatsAppChannel = (settings?: Record<string, unknown>) =>
+			({ type: 'whatsapp', credentialId: 'cred-1', settings }) as AgentIntegrationConfig;
+
+		const resumeParams = (integration?: AgentIntegrationConfig) => {
+			const thread = mock<Thread<unknown, unknown>>({ id: 'whatsapp:phone-1:user-1' });
+			thread.startTyping.mockResolvedValue(undefined);
+			return { thread, logger: mock<Logger>(), agentId: 'agent-1', integration };
+		};
+
+		it.each([
+			['no channel is given', undefined],
+			['the setting is unset', whatsAppChannel()],
+			['the setting is on', whatsAppChannel({ typingIndicator: true })],
+		])('shows the typing indicator when %s', async (_label, channel) => {
+			const integration = createWhatsAppIntegration();
+			const params = resumeParams(channel);
+
+			const context = await integration.createResumeExecutionContext(params);
+
+			expect(context.statusHandle).toBeDefined();
+			expect(params.thread.startTyping).toHaveBeenCalledTimes(1);
+			await context.statusHandle?.clearBeforeResponse();
+		});
+
+		it('does not show the typing indicator when the setting is off', async () => {
+			const integration = createWhatsAppIntegration();
+			const params = resumeParams(whatsAppChannel({ typingIndicator: false }));
+
+			const context = await integration.createResumeExecutionContext(params);
+
+			expect(context).toEqual({});
+			expect(params.thread.startTyping).not.toHaveBeenCalled();
+		});
+
+		it.each([
+			['the setting is unset', whatsAppChannel(), true],
+			['the setting is on', whatsAppChannel({ downloadMedia: true }), true],
+			['the setting is off', whatsAppChannel({ downloadMedia: false }), false],
+		])('downloads attachments only when allowed (%s)', (_label, channel, expected) => {
+			const integration = createWhatsAppIntegration();
+
+			expect(integration.shouldDownloadAttachments(channel)).toBe(expected);
 		});
 	});
 });

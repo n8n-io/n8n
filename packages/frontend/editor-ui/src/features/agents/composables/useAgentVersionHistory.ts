@@ -6,6 +6,7 @@ import { useToast } from '@n8n/composables/useToast';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { listAgentVersions, publishAgent, revertAgentToVersion } from './useAgentApi';
 import { useAgentConfirmationModal } from './useAgentConfirmationModal';
+import { showAgentPublishedConfirmation } from './useAgentPublish';
 import type { AgentResource } from '../types';
 
 const PAGE_SIZE = 20;
@@ -131,6 +132,7 @@ export function useAgentVersionHistory() {
 				title: locale.baseText('agents.versionHistory.publish.toast.title'),
 				type: 'success',
 			});
+			showAgentPublishedConfirmation(agentId);
 			await refresh(projectId, agentId);
 			return updated;
 		} catch (error) {

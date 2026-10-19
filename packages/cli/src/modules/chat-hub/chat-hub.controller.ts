@@ -20,8 +20,7 @@ import {
 	type ChatSendMessageResponse,
 	type ChatReconnectResponse,
 	ChatReconnectRequest,
-	ALWAYS_BLOCKED_CHAT_HUB_TOOL_TYPES,
-	CHAT_USER_BLOCKED_CHAT_HUB_TOOL_TYPES,
+	isChatHubToolTypeAllowed,
 } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import { AuthenticatedRequest } from '@n8n/db';
@@ -518,13 +517,10 @@ export class ChatHubController {
 	}
 
 	private assertToolTypeAllowed(type: string, user: AuthenticatedRequest['user']) {
-		if (ALWAYS_BLOCKED_CHAT_HUB_TOOL_TYPES.includes(type)) {
+		if (!isChatHubToolTypeAllowed(type, { isChatUser: false })) {
 			throw new BadRequestError(`Tool type "${type}" is not supported in the Chat Hub`);
 		}
-		if (
-			user.role.slug === 'global:chatUser' &&
-			CHAT_USER_BLOCKED_CHAT_HUB_TOOL_TYPES.includes(type)
-		) {
+		if (!isChatHubToolTypeAllowed(type, { isChatUser: user.role.slug === 'global:chatUser' })) {
 			throw new BadRequestError(`Tool type "${type}" is not available for your role`);
 		}
 	}

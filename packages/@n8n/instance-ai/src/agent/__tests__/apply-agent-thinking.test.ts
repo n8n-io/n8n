@@ -157,6 +157,22 @@ describe('applyAgentThinking', () => {
 		}
 	});
 
+	it('prefers an explicit Anthropic effort over N8N_INSTANCE_AI_REASONING_EFFORT', () => {
+		const previous = process.env.N8N_INSTANCE_AI_REASONING_EFFORT;
+		process.env.N8N_INSTANCE_AI_REASONING_EFFORT = 'low';
+		try {
+			const agent = new Agent('test');
+			applyAgentThinking(agent, 'anthropic/claude-sonnet-5-5', 'high');
+			expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('anthropic', {
+				mode: 'adaptive',
+				effort: 'high',
+			});
+		} finally {
+			if (previous === undefined) delete process.env.N8N_INSTANCE_AI_REASONING_EFFORT;
+			else process.env.N8N_INSTANCE_AI_REASONING_EFFORT = previous;
+		}
+	});
+
 	it('skips providers without thinking support', () => {
 		const agent = new Agent('test');
 		applyAgentThinking(agent, 'google/gemini-2.5-pro');

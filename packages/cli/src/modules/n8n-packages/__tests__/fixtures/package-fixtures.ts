@@ -7,13 +7,14 @@ import { entityFilePath, workflowMetadataFilePath } from '../../io/manifest-entr
 import type { PackageWriter } from '../../io/package-writer';
 import { TarPackageWriter } from '../../io/tar/tar-package-writer';
 import { FORMAT_VERSION } from '../../spec/constants';
-import type { PackageManifest } from '../../spec/manifest.schema';
+import type { ManifestEntry, PackageManifest } from '../../spec/manifest.schema';
 import type {
 	PackageCredentialRequirement,
 	PackageDataTableRequirement,
 	PackageRequirementConsumer,
 	PackageWorkflowRequirement,
 } from '../../spec/requirements.schema';
+import type { SerializedCredential } from '../../spec/serialized/credential.schema';
 import type { SerializedDataTable } from '../../spec/serialized/data-table.schema';
 import type { SerializedFolder } from '../../spec/serialized/folder.schema';
 import type { SerializedProject } from '../../spec/serialized/project.schema';
@@ -228,6 +229,20 @@ export function credentialRequirementsFromWorkflows(
 	return [...byId.values()];
 }
 
+export function serializedCredential(
+	overrides: Partial<SerializedCredential> & Pick<SerializedCredential, 'id'>,
+): SerializedCredential {
+	return { name: 'GitHub', type: PACKAGE_GITHUB_CREDENTIAL_TYPE, ...overrides };
+}
+
+function credentialManifestEntry(credential: SerializedCredential): ManifestEntry {
+	return {
+		id: credential.id,
+		name: credential.name,
+		target: `credentials/credential-${credential.id}`,
+	};
+}
+
 export async function buildImportPackageBuffer(
 	workflows: PackageWorkflow[],
 	options: {
@@ -235,6 +250,8 @@ export async function buildImportPackageBuffer(
 		sourceId?: string;
 		/** Replaces every metadata file, or leaves it out, so tests can drive the rejections. */
 		workflowMetadata?: 'omit' | Record<string, unknown>;
+		/** Credential files, written at the top-level `credentials/` folder (simulates export). */
+		credentials?: SerializedCredential[];
 	} = {},
 ): Promise<Buffer> {
 	const writer = new TarPackageWriter();
@@ -250,6 +267,11 @@ export async function buildImportPackageBuffer(
 			name: w.name,
 			target: `workflows/wf-${idx}`,
 		})),
+		...(options.credentials?.length
+			? {
+					credentials: options.credentials.map((credential) => credentialManifestEntry(credential)),
+				}
+			: {}),
 		...options.manifestExtras,
 	};
 
@@ -277,6 +299,11 @@ export async function buildImportPackageBuffer(
 			);
 		}
 	});
+	for (const credential of options.credentials ?? []) {
+		const { target } = credentialManifestEntry(credential);
+		writer.writeDirectory(target);
+		writer.writeFile(entityFilePath('credentials', target), JSON.stringify(credential));
+	}
 
 	return await streamToBuffer(writer.finalize());
 }
@@ -365,8 +392,14 @@ export interface PackageVariableEntry {
 	variable: SerializedVariable;
 }
 
+export interface PackageCredentialEntry {
+	target: string;
+	credential: SerializedCredential;
+}
+
 export interface EntityPackageOptions {
 	workflows?: PackageWorkflowEntry[];
+	credentials?: PackageCredentialEntry[];
 	folders?: PackageFolderEntry[];
 	projects?: PackageProjectEntry[];
 	dataTables?: PackageDataTableEntry[];
@@ -384,6 +417,7 @@ async function writeEntityPackage(
 	const projects = options.projects ?? [];
 	const dataTables = options.dataTables ?? [];
 	const variables = options.variables ?? [];
+	const credentials = options.credentials ?? [];
 
 	const manifest: PackageManifest = {
 		packageFormatVersion: FORMAT_VERSION,
@@ -435,6 +469,15 @@ async function writeEntityPackage(
 					})),
 				}
 			: {}),
+		...(credentials.length > 0
+			? {
+					credentials: credentials.map(({ target, credential }) => ({
+						id: credential.id,
+						name: credential.name,
+						target,
+					})),
+				}
+			: {}),
 		...options.manifestExtras,
 	};
 
@@ -461,6 +504,10 @@ async function writeEntityPackage(
 	for (const { target, variable } of variables) {
 		await writer.writeDirectory(target);
 		await writer.writeFile(entityFilePath('variables', target), JSON.stringify(variable));
+	}
+	for (const { target, credential } of credentials) {
+		await writer.writeDirectory(target);
+		await writer.writeFile(entityFilePath('credentials', target), JSON.stringify(credential));
 	}
 }
 

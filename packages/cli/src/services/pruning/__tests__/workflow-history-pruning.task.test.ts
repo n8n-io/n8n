@@ -17,8 +17,11 @@ describe('WorkflowHistoryPruningTask', () => {
 	it('should declare an hourly idempotent durable cluster task that runs on takeover', () => {
 		expect(task.name).toBe('workflow-history-pruning');
 		expect(task.schedule).toEqual({ kind: 'interval', intervalSeconds: 3600 });
-		expect(task.effects).toBe('idempotent');
-		expect(task.placement).toEqual({ scope: 'cluster', durable: true, runOnTakeover: true });
+		expect(task.target).toEqual({
+			scope: 'cluster',
+			scheduler: { retryOnFailure: true, timeoutSeconds: 600 },
+			leaderTimer: { runOnTakeover: true },
+		});
 	});
 
 	it.each([
@@ -31,9 +34,10 @@ describe('WorkflowHistoryPruningTask', () => {
 		({ type, statementTimeoutMs, timeoutSeconds }) => {
 			const database = mock<DatabaseConfig>({ type, postgresdb: { statementTimeoutMs } });
 
-			expect(new WorkflowHistoryPruningTask(database, workflowHistoryManager).timeoutSeconds).toBe(
-				timeoutSeconds,
-			);
+			expect(
+				new WorkflowHistoryPruningTask(database, workflowHistoryManager).target.scheduler
+					.timeoutSeconds,
+			).toBe(timeoutSeconds);
 		},
 	);
 

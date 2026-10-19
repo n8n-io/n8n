@@ -93,12 +93,17 @@ export class TrustedSourceDbStore extends TrustedSourceStore {
 		});
 	}
 
-	async listBySurface(surface: SurfaceId): Promise<TrustedSource[]> {
-		const all =
+	async listAll(): Promise<TrustedSource[]> {
+		return (
 			(await this.cacheService.get(ALL_KEY, {
 				ttl: CACHE_TTL,
 				refreshFn: async () => await this.loadAll(),
-			})) ?? [];
+			})) ?? []
+		);
+	}
+
+	async listBySurface(surface: SurfaceId): Promise<TrustedSource[]> {
+		const all = await this.listAll();
 		return all.filter((source) => source.config.surfaces[surface] !== undefined);
 	}
 

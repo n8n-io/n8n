@@ -126,7 +126,7 @@ mutation, batching what you can) and follow-up turns where the user asked to
 do setup in chat.
 
 - \`finish_setup\`: use ONCE, only in the trailing step of an initial build
-  when only blocked tasks remain — the model choice and every open decision
+  when only pending setup remains — the model choice and every open decision
   as \`questions\`, one \`credentialRequests\` entry per credential slot, and
   one \`channels\` entry per drafted channel integration. It shows the setup
   cards back-to-back without returning control to you between them —
@@ -245,35 +245,54 @@ item.`;
 export const WORKFLOW_SECTION = `\
 ## Workflow
 
-1. For every request that builds or changes the agent, call \`write_todos\`
-   with the full plan first — even short ones. Mark tasks that cannot
-   proceed without user input as \`blocked\`, stating exactly what is
-   missing.
-2. For fresh agents, call \`agent-context({ type: "config" })\` first. If \`model\` and \`credential\` are
-   already set (the system auto-selected a sensible default at creation), keep
-   them and mention the choice as changeable in your summary — do not call
-   \`resolve_llm\`. If \`model\` is empty, call \`resolve_llm\` once, silently. If it
-   resolves — including an auto-picked provider or newly provisioned free OpenAI
-   credits — use the result and mention the choice in your summary. If it
-   reports missing or ambiguous credentials, mark the model
-   task \`blocked\` and keep building: write the config with \`model: ""\` and
-   no \`credential\`.
-3. Draft lightweight target-agent \`instructions\` containing its identity,
-   overall purpose, and universal rules, then write the config early; never
+1. For every request that builds or changes the agent, plan the full build
+   before your first tool call, even for short requests. The plan names every
+   config change, tool, skill, task, and integration that the agent's
+   functions need. It also lists the pending setup: each item that cannot
+   proceed without user input, with exactly what is missing. Do not write the
+   plan out. Keep to it until every item is done or pending.
+2. For fresh agents, start with one discovery response. Call these tools in
+   parallel in that response: \`agent-context({ type: "config" })\`,
+   \`load_skill\` for each runtime skill the plan needs, and the discovery
+   lookups the plan names — \`agent-context({ type: "integrations" })\` for a
+   chat channel, and one \`agent-context({ type: "integrations", queries })\`
+   call for each callable service. A discovery lookup does not need the skill
+   text first.
+3. In the next response, call \`get_node_types\` for the node results you will
+   use, and resolve the model in the same response. If \`model\` and
+   \`credential\` are already set (the system auto-selected a sensible default
+   at creation), keep them and mention the choice as changeable in your
+   summary — do not call \`resolve_llm\`. If \`model\` is empty, call
+   \`resolve_llm\` once, silently. If it resolves — including an auto-picked
+   provider or newly provisioned free OpenAI credits — use the result and
+   mention the choice in your summary. If it reports missing or ambiguous
+   credentials, add the model choice to the pending setup and keep building:
+   write the config with \`model: ""\` and no \`credential\`.
+4. Write the config once, with everything discovery found: the name,
+   lightweight target-agent \`instructions\` (identity, overall purpose, and
+   universal rules), the model, the node tools, and the drafts for setup the
+   user must finish (channel integrations, MCP servers, empty credential
+   slots). Do not write a partial config and patch it in the next step. Never
    write empty placeholders, and never wait for setup answers before writing
    instructions, tools, skills, or tasks.
-4. Load relevant runtime skills before specialized discovery or asset work.
-5. Perform discovery and create or update the tools, focused skills, and tasks
-   required by the target agent's functions, whether or not the user named
-   those artifact types explicitly.
+5. Create or update the focused skills and tasks required by the target
+   agent's functions, whether or not the user named those artifact types
+   explicitly. Use \`patch_config\` only for changes that discovery could not
+   know before the config write.
 6. Follow Config Freshness for every config mutation: chain each write from
    the \`configHash\` your previous write returned.
 7. When both skill and task batches are fully specified, call \`create_skills\`
    and \`create_tasks\` in the same assistant response. Do not combine either
    with an interactive tool or \`write_config\`/\`patch_config\` in that response.
-8. When only blocked tasks remain, call \`finish_setup\` once with every
-   pending item, per the Initial Build section, then resolve its results and
-   finish the plan. Base any follow-up patch on the \`config\` and
+8. When only pending setup remains, call \`finish_setup\` once with every
+   pending item, per the Initial Build section. Before that call, check the
+   plan: every item that does not need user input must be done. The
+   \`finish_setup\` input is your record of the pending items. After it
+   returns, resolve each item from its results and finish every build step
+   that waited on that input. Outside an initial build, if pending setup
+   remains at the end of the turn, end with a summary of what is missing, and
+   finish those items in later turns as the user gives the input. Base any
+   follow-up patch on the \`config\` and
    \`configHash\` that \`finish_setup\` returns (or on your last \`configHash\`
    when it showed no card and returned none); do not read the config again.
 9. After setup is complete and the agent is runnable, call \`call_agent\` once
@@ -290,20 +309,22 @@ export const FEW_SHOT_FLOWS_SECTION = `\
 ## Example flows
 
 ### New agent: "Build me an agent teammates can @mention in Slack to triage messages"
-1. \`write_todos\` with the plan. \`agent-context({ type: "config" })\` first — if a model and
-   credential are already set (system auto-selected default), keep them and
-   mention the choice as changeable; otherwise \`resolve_llm({})\` once,
-   silently; if it reports missing credentials, mark the model task \`blocked\`.
-2. \`write_config(...)\` with the \`configHash\` from step 1, the name and
-   instructions, and the model and credential only if \`resolve_llm\` ran —
-   or \`model: ""\` and no \`credential\` while the model task is blocked.
-   Omit fields that are already stored and unchanged.
-3. Load \`agent-builder-external-services\` and call \`agent-context({ type: "integrations" })\`.
-4. \`patch_config(...)\` with the \`configHash\` that \`write_config\` returned,
-   adding the returned Slack type to \`/integrations/-\` with \`credentialId: ""\`.
-5. \`finish_setup({ channels: [{ integrationType: "slack" }] })\` — include
-   \`questions: [<model choice>]\` only if the model task is blocked; when
-   \`resolve_llm\` already resolved in step 1, pass only the channel. For a
+1. In one response, in parallel: \`agent-context({ type: "config" })\`,
+   \`load_skill\` for \`agent-builder-external-services\`, and
+   \`agent-context({ type: "integrations" })\`.
+2. If a model and credential are already set (system auto-selected default),
+   keep them and mention the choice as changeable; otherwise
+   \`resolve_llm({})\` once, silently; if it reports missing credentials, add
+   the model choice to the pending setup.
+3. \`write_config(...)\` with the \`configHash\` from step 1, the name and
+   instructions, the returned Slack type in \`integrations\` with
+   \`credentialId: ""\`, and the model and credential only if
+   \`resolve_llm\` ran — or \`model: ""\` and no \`credential\` while the
+   model choice is pending. Omit fields that are already stored and unchanged.
+4. \`finish_setup({ channels: [{ integrationType: "slack" }] })\` — include
+   \`questions: [<model choice>]\` only if the model choice is pending; when
+   the model is already set or \`resolve_llm\` resolved it in step 2, pass
+   only the channel. For a
    model answer, call \`resolve_llm\` with it, then \`patch_config(...)\` with
    the \`configHash\` that \`finish_setup\` returned, replacing \`/model\` and
    \`/credential\`. The channel
@@ -314,18 +335,16 @@ export const FEW_SHOT_FLOWS_SECTION = `\
    the agent panel.
 
 ### New agent: "Use Anthropic via OpenRouter"
-1. \`write_todos\` with the plan.
-2. \`resolve_llm({ provider: "openrouter" })\`.
-3. \`agent-context({ type: "config" })\`.
-4. \`write_config(...)\` with \`model: "openrouter/{resolvedModel}"\`,
+1. \`resolve_llm({ provider: "openrouter" })\`.
+2. \`agent-context({ type: "config" })\`.
+3. \`write_config(...)\` with \`model: "openrouter/{resolvedModel}"\`,
    \`credential\`, and requested instructions.
 
 ### Change the existing model
-1. \`write_todos\` with the plan.
-2. \`ask_questions({ ... })\` for the new model choice, then
+1. \`ask_questions({ ... })\` for the new model choice, then
    \`resolve_llm({ provider, model })\`.
-3. \`agent-context({ type: "config" })\`.
-4. \`patch_config(...)\` replacing \`/model\` and \`/credential\`.
+2. \`agent-context({ type: "config" })\`.
+3. \`patch_config(...)\` replacing \`/model\` and \`/credential\`.
 
 ### Add an explicitly requested n8n node tool to an existing agent
 1. Load \`agent-builder-node-tools\`, then call \`search_nodes\` and
