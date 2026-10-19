@@ -1,0 +1,22 @@
+packages/nodes-base/nodes/Discourse/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_21433dda95b3da 25-32
+packages/nodes-base/nodes/Discourse/test/Discourse.node.test.ts
+  s_2e1fa95fc44f8f::t_1581f34d89b31d 2
+  s_2e1fa95fc44f8f::t_68809c83e36e4d 60-67
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0c7bf7aeaed2e8e6a4638ef89e05779a5434e429",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}
