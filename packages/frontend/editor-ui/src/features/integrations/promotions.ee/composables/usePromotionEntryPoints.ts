@@ -41,7 +41,9 @@ export const usePromotionEntryPoints = createSharedComposable(() => {
 			isTeamProject.value &&
 			isPromotionsEnabled.value &&
 			!!projectPermissions.value.export &&
+			// `list` loads the connection. `read` loads the preview, as on the preview page.
 			!!gitConnectionPermissions.value.list &&
+			!!gitConnectionPermissions.value.read &&
 			(!!gitConnectionPermissions.value.push || !!gitConnectionPermissions.value.pull),
 	);
 	const showPromote = computed(

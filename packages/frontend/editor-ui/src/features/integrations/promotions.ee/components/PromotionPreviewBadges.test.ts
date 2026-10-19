@@ -5,7 +5,7 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 
 import { createComponentRenderer } from '@/__tests__/render';
-import { mockedStore } from '@/__tests__/utils';
+import { mockedStore, waitAllPromises } from '@/__tests__/utils';
 import { createTestProject } from '@/features/collaboration/projects/__tests__/utils';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 
@@ -44,7 +44,12 @@ describe('PromotionPreviewBadges', () => {
 		const projectsStore = mockedStore(useProjectsStore);
 		projectsStore.currentProject = createTestProject({ id: 'p1', scopes: ['project:export'] });
 		mockedStore(useUsersStore).currentUser = mock<IUser>({
-			globalScopes: ['gitConnection:list', 'gitConnection:push', 'gitConnection:pull'],
+			globalScopes: [
+				'gitConnection:list',
+				'gitConnection:read',
+				'gitConnection:push',
+				'gitConnection:pull',
+			],
 		});
 		vi.mocked(settingsApi.fetchPromotionConnections).mockResolvedValue([
 			{
@@ -68,6 +73,8 @@ describe('PromotionPreviewBadges', () => {
 		expect(promote).toHaveTextContent('5');
 		expect(promote).toHaveAttribute('data-route', `${PROMOTION_PREVIEW_VIEWS.promote}:p1`);
 		expect(promote).toHaveAttribute('aria-label', '5 changes to promote');
+		// Wait for the apply preview too, so the check covers its loaded state.
+		await waitAllPromises();
 		expect(getByTestId('promotion-preview-badges').children).toHaveLength(1);
 	});
 
