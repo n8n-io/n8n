@@ -5,10 +5,10 @@ import {
 	N8nButton,
 	N8nDropdownMenu,
 	N8nEmptyState,
+	N8nEnterpriseReadinessBadge,
 	N8nIcon,
 	N8nLoading,
 	N8nOption,
-	N8nPreviewBadge,
 	N8nSelect,
 	N8nSettingsLayout,
 	N8nSettingsPageHeader,
@@ -464,11 +464,7 @@ function openAiUsageSettings() {
 			:description="i18n.baseText('settings.n8nAgent.description')"
 			:docs-url="DOCS_URL"
 			:docs-label="i18n.baseText('settings.n8nAgent.docsLabel')"
-		>
-			<template #titleTrailing>
-				<N8nPreviewBadge size="medium" />
-			</template>
-		</N8nSettingsPageHeader>
+		/>
 
 		<N8nLoading v-if="store.isLoading" :rows="3" :shrink-last="false" />
 
@@ -483,19 +479,36 @@ function openAiUsageSettings() {
 			@click:button="handleEnable"
 		>
 			<template v-if="isAdmin" #additionalContent>
-				<N8nText size="small" color="text-light">
-					{{ i18n.baseText('settings.n8nAgent.empty.footnote') }}
-				</N8nText>
+				<div :class="$style.emptyFooter">
+					<N8nEnterpriseReadinessBadge
+						size="medium"
+						data-test-id="n8n-agent-enterprise-readiness-badge"
+					/>
+					<N8nText size="small" color="text-light">
+						{{ i18n.baseText('settings.n8nAgent.empty.footnote') }}
+					</N8nText>
+				</div>
 			</template>
 		</N8nEmptyState>
 
 		<template v-else-if="isAdmin">
 			<N8nSettingsSection>
 				<N8nSettingsRowGroup>
-					<N8nSettingsRow
-						:title="i18n.baseText('settings.n8nAgent.enable.label')"
-						:description="i18n.baseText('settings.n8nAgent.enable.description')"
-					>
+					<N8nSettingsRow>
+						<template #info>
+							<span :class="$style.titleWithTag">
+								<N8nText bold size="medium" color="text-dark">
+									{{ i18n.baseText('settings.n8nAgent.enable.label') }}
+								</N8nText>
+								<N8nEnterpriseReadinessBadge
+									size="medium"
+									data-test-id="n8n-agent-enterprise-readiness-badge"
+								/>
+							</span>
+							<N8nText size="small" color="text-light">
+								{{ i18n.baseText('settings.n8nAgent.enable.description') }}
+							</N8nText>
+						</template>
 						<template #action>
 							<N8nButton
 								v-if="isOff"
@@ -835,6 +848,13 @@ function openAiUsageSettings() {
 
 .titleWithTag {
 	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+}
+
+.emptyFooter {
+	display: flex;
+	flex-direction: column;
 	align-items: center;
 	gap: var(--spacing--2xs);
 }

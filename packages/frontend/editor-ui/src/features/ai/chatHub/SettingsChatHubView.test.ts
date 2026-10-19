@@ -126,6 +126,23 @@ describe('SettingsChatHubView', () => {
 		expect(setChatEnabledMock).toHaveBeenCalledWith(true);
 	});
 
+	it('shows the Preview and limited enterprise support badges', () => {
+		const { getByTestId } = renderComponent();
+
+		expect(getByTestId('chat-hub-preview-badge')).toHaveTextContent('Preview');
+		expect(getByTestId('chat-hub-enterprise-readiness-badge')).toHaveTextContent(
+			'Limited enterprise support',
+		);
+	});
+
+	it('does not toggle Chat when the enterprise readiness badge is clicked', async () => {
+		const { getByTestId } = renderComponent();
+
+		await userEvent.click(getByTestId('chat-hub-enterprise-readiness-badge'));
+
+		expect(setChatEnabledMock).not.toHaveBeenCalled();
+	});
+
 	it('disables the toggle for users without chatHub:manage scope', () => {
 		hasPermissionMock.mockReturnValue(false);
 

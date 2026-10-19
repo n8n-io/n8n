@@ -302,6 +302,16 @@ describe('SettingsInstanceAiView', () => {
 	});
 
 	describe('status row', () => {
+		it('shows the limited enterprise support badge next to the enable control', () => {
+			const { getByTestId } = renderComponent();
+			expect(getByTestId('n8n-agent-enterprise-readiness-badge')).toBeVisible();
+		});
+
+		it('does not show a Preview badge', () => {
+			const { queryByText } = renderComponent();
+			expect(queryByText('Preview')).toBeNull();
+		});
+
 		it('renders the enabled status action', () => {
 			store.$patch({
 				settings: {
@@ -390,6 +400,14 @@ describe('SettingsInstanceAiView', () => {
 			const { getByText, queryByText } = renderComponent();
 			expect(getByText('settings.n8nAgent.empty.title')).toBeVisible();
 			expect(queryByText('settings.n8nAgent.permissions.title')).toBeNull();
+		});
+
+		it('shows the limited enterprise support badge in the empty state', () => {
+			store.$patch({ settings: { ...store.settings!, enabled: false } });
+			setModuleSettings(settingsStore, { ...defaultModuleSettings, enabled: false });
+
+			const { getByTestId } = renderComponent();
+			expect(getByTestId('n8n-agent-enterprise-readiness-badge')).toBeVisible();
 		});
 
 		it('hides content when disabled via moduleSettings fallback', () => {
