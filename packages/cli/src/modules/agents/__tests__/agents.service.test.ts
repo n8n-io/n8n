@@ -41,7 +41,11 @@ import type { CredentialsService } from '@/credentials/credentials.service';
 import type { AgentPolicyService } from '../agent-policy.service';
 import { createAgentSkillRefsService } from './test-utils/stored-agent-config';
 
-const agentId = 'agent-1';
+const agentId = vi.hoisted(() => 'agent-1');
+
+vi.mock('@n8n/utils/generate-nano-id', () => ({
+	generateNanoId: () => agentId,
+}));
 const user = mock<User>({ id: 'user-1' });
 const actor = { kind: 'user', user } as const;
 const projectId = 'project-1';
@@ -298,6 +302,7 @@ describe('AgentsService', () => {
 
 		await expect(service.create(projectId, 'Support Agent', { actor })).resolves.toBe(saved);
 		expect(agentRepository.create).toHaveBeenCalledWith({
+			id: agentId,
 			name: 'Support Agent',
 			projectId,
 			schema: {

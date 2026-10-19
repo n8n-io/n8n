@@ -197,8 +197,7 @@ const props = withDefaults(
 		 * already exists.
 		 */
 		artifactPersistAgent?: (
-			name: string,
-			config?: AgentJsonConfig,
+			request: Parameters<typeof persistPendingAgent>[2],
 		) => Promise<AgentCreationResource>;
 	}>(),
 	{
@@ -1415,7 +1414,11 @@ async function adoptExistingPendingRow(existing: AgentResource): Promise<void> {
 	// user moved on must not clear (or claim) the current target's retry state.
 	const ownsRetryState = () => existing.id === agentId.value;
 	try {
-		await props.artifactPersistAgent(existing.name);
+		await props.artifactPersistAgent({
+			projectId: existing.projectId,
+			agentId: existing.id,
+			name: existing.name,
+		});
 		if (ownsRetryState()) unboundExistingAgent.value = null;
 	} catch (error) {
 		// Queued rather than surfaced: the artifact already shows the persisted
@@ -1438,16 +1441,17 @@ async function createPendingAgent(
 	name: string,
 	initialConfig?: AgentJsonConfig,
 ): Promise<AgentCreationResource> {
+	const request = {
+		projectId: targetProjectId,
+		agentId: targetAgentId,
+		name,
+		config: initialConfig,
+	};
 	if (props.artifactPersistAgent) {
-		return await props.artifactPersistAgent(name, initialConfig);
+		return await props.artifactPersistAgent(request);
 	}
 	if (aiThreadId.value) {
-		const result = await persistPendingAgent(rootStore.restApiContext, aiThreadId.value, {
-			projectId: targetProjectId,
-			agentId: targetAgentId,
-			name,
-			config: initialConfig,
-		});
+		const result = await persistPendingAgent(rootStore.restApiContext, aiThreadId.value, request);
 		return result.agent;
 	}
 	return await createAgent(rootStore.restApiContext, targetProjectId, name, {

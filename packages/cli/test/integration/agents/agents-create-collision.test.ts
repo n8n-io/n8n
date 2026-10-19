@@ -16,6 +16,7 @@ import { AgentsSettingsService } from '@/modules/agents/agents-settings.service'
 import { AgentUpdateBroadcaster } from '@/modules/agents/agent-update-broadcaster';
 import { NodeToolAiGatewayService } from '@/modules/agents/json-config/node-tool-ai-gateway.service';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
+import { AgentTaskRepository } from '@/modules/agents/repositories/agent-task.repository';
 import { Telemetry } from '@/telemetry';
 
 import { createOwner } from '../shared/db/users';
@@ -53,6 +54,32 @@ describe('AgentsService.create — client-minted id', () => {
 			name: 'Fresh Agent',
 			projectId: project.id,
 		});
+	});
+
+	it('drops other agents task references when creating with a server-assigned id', async () => {
+		const project = await createTeamProject();
+		const user = await createOwner();
+		const source = await agentsService.create(project.id, 'Source Agent', { actor });
+		const taskRepository = Container.get(AgentTaskRepository);
+		const task = await taskRepository.save(
+			taskRepository.create({
+				id: `task_${nanoid(16)}`,
+				agentId: source.id,
+				name: 'Daily summary',
+				objective: 'Summarize the daily activity',
+				cronExpression: '0 9 * * *',
+				timezone: null,
+			}),
+		);
+
+		const { agent, config } = await agentsService.createOrAdopt(project.id, 'New Agent', {
+			actor: { kind: 'user', user },
+			user,
+			config: { tasks: [{ type: 'task', id: task.id, enabled: true }] },
+		});
+
+		expect(config?.tasks).toEqual([]);
+		expect((await agentRepo.findById(agent.id))?.schema?.tasks).toEqual([]);
 	});
 
 	it.each(['create', 'createOrAdopt'] as const)(

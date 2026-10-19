@@ -30,6 +30,7 @@ import {
 } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
+import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { v4 as uuid } from 'uuid';
 
 // `CredentialsService` reaches `workflow-execute-additional-data`, which
@@ -163,7 +164,7 @@ export class AgentsService {
 			options,
 		);
 		const agent = this.agentRepository.create({
-			...(options.id ? { id: options.id } : {}),
+			id: options.id || generateNanoId(),
 			name,
 			projectId,
 			schema: fromAgentDocument(schemaConfig).config,

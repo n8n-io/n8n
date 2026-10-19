@@ -5,6 +5,7 @@ import { nextTick, ref, computed, reactive } from 'vue';
 import { createPinia, setActivePinia } from 'pinia';
 import { MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES, type PushMessage } from '@n8n/api-types';
 import { ResponseError } from '@n8n/rest-api-client';
+import type { persistPendingAgent } from '@/features/ai/instanceAi/instanceAi.memory.api';
 import type {
 	AgentJsonConfig,
 	AgentJsonSkillRef,
@@ -358,6 +359,7 @@ let intendedConfig: TestAgentConfig | null = {
 function makeAgentResponse(overrides: Record<string, unknown> = {}) {
 	return {
 		id: 'a1',
+		projectId: 'p1',
 		name: 'Agent One',
 		tools: {},
 		skills: {},
@@ -4979,8 +4981,9 @@ describe('AgentBuilderView — three-column shell', () => {
 		// The host's persist call creates AND durably binds the agent, so it stands
 		// in for the plain create — and only its resolution retires the draft.
 		it('persists a hosted artifact through the host, not the strict create', async () => {
-			const artifactPersistAgent = vi.fn(async (_name: string, config?: TestAgentConfig) =>
-				makeCreationResponse(config, { id: 'aBcDeFgHiJkLmNoP' }),
+			const artifactPersistAgent = vi.fn(
+				async ({ config }: Parameters<typeof persistPendingAgent>[2]) =>
+					makeCreationResponse(config, { id: 'aBcDeFgHiJkLmNoP' }),
 			);
 			const wrapper = await renderView({
 				props: { ...pendingProps, artifactPersistAgent },
@@ -4991,13 +4994,60 @@ describe('AgentBuilderView — three-column shell', () => {
 			await vi.waitFor(() => expect(editor.props('agentUnsaved')).toBe(false));
 
 			expect(artifactPersistAgent).toHaveBeenCalledTimes(1);
-			expect(artifactPersistAgent).toHaveBeenCalledWith(
-				'Support Agent',
-				expect.objectContaining({ name: 'Support Agent' }),
-			);
+			expect(artifactPersistAgent).toHaveBeenCalledWith({
+				projectId: 'p1',
+				agentId: 'aBcDeFgHiJkLmNoP',
+				name: 'Support Agent',
+				config: expect.objectContaining({ name: 'Support Agent' }),
+			});
 			expect(createAgentMock).not.toHaveBeenCalled();
 			expect(updateConfigMock).not.toHaveBeenCalled();
 			expect(editor.props('agentUnsaved')).toBe(false);
+		});
+
+		it('keeps queued creation retries on their original artifact after switching targets', async () => {
+			const firstCreate = Promise.withResolvers<ReturnType<typeof makeCreationResponse>>();
+			const artifactPersistAgent = vi
+				.fn()
+				.mockReturnValueOnce(firstCreate.promise)
+				.mockResolvedValue(makeCreationResponse(undefined, { id: pendingProps.artifactAgentId }));
+			mockPendingAgentRow(pendingProps.artifactAgentId, 'otherPendingId12');
+			const wrapper = await renderView({
+				props: { ...pendingProps, artifactPersistAgent },
+			});
+			const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+
+			vi.useFakeTimers();
+			try {
+				editor.vm.$emit('update:config', { instructions: 'First edit' });
+				await nextTick();
+				await vi.advanceTimersByTimeAsync(500);
+				expect(artifactPersistAgent).toHaveBeenCalledTimes(1);
+
+				editor.vm.$emit('update:config', { instructions: 'Queued edit' });
+				await nextTick();
+				await vi.advanceTimersByTimeAsync(500);
+				expect(artifactPersistAgent).toHaveBeenCalledTimes(1);
+
+				await wrapper.setProps({ artifactAgentId: 'otherPendingId12' });
+				firstCreate.reject(new Error('Creation failed'));
+				await flushPromises();
+
+				expect(artifactPersistAgent).toHaveBeenCalledTimes(2);
+				expect(artifactPersistAgent).toHaveBeenLastCalledWith({
+					projectId: 'p1',
+					agentId: pendingProps.artifactAgentId,
+					name: expect.any(String),
+					config: expect.objectContaining({ instructions: 'Queued edit' }),
+				});
+				expect(
+					wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).props('agentUnsaved'),
+				).toBe(true);
+				expect(updateConfigMock).not.toHaveBeenCalled();
+			} finally {
+				vi.useRealTimers();
+				wrapper.unmount();
+			}
 		});
 
 		it('adopts and reloads after a binding retry without overwriting the committed configuration', async () => {

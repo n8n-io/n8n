@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { AgentJsonConfig } from '@n8n/api-types';
 import type { AgentCreationResource } from '@/features/agents/types';
 import { computed, onBeforeUnmount } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -99,14 +98,12 @@ async function syncAgentTarget(name: string) {
  * acknowledgement, so the binding is durable before it stops drafting.
  */
 async function persistAgent(
-	name: string,
-	config?: AgentJsonConfig,
+	target: Parameters<typeof persistPendingAgent>[2],
 ): Promise<AgentCreationResource> {
-	const target = { projectId: props.projectId, agentId: props.agentId };
 	const { agent, thread: updatedThread } = await persistPendingAgent(
 		rootStore.restApiContext,
 		thread.id,
-		{ ...target, name, ...(config ? { config } : {}) },
+		target,
 	);
 	// Authoritative: the server dropped the pending key, which a merge would keep.
 	// Skipped once this preview has been torn down or moved on, so a slow response
