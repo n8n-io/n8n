@@ -329,8 +329,34 @@ describe('PromotionPreviewView', () => {
 
 		expect(getByTestId('promotion-preview-submit')).toBeDisabled();
 		expect(getByTestId('promotion-preview-submit-blocked')).toHaveTextContent(
-			'Move the folder on this instance to match the branch, then refresh.',
+			'Apply is disabled. The folder "Payments" moved on the branch',
 		);
+	});
+
+	it('should leave out a workflow that the branch holds in another folder, because Apply cannot move it', async () => {
+		// The branch holds "Payment reminders" at the project root. This instance holds it in "Payments".
+		const preview = billingPreview();
+		vi.mocked(api.getPromotionPreview).mockResolvedValue({
+			...preview,
+			resources: preview.resources.map((resource) =>
+				resource.key === 'workflow:w2'
+					? { ...resource, parentKey: 'project:p1', previousParentKey: 'folder:f1' }
+					: resource,
+			),
+		});
+		vi.mocked(settingsApi.applyProjectSelection).mockResolvedValue(applied);
+
+		const { getAllByTestId, getByTestId } = await renderApply();
+		const moved = treeRow(getAllByTestId, 'workflow:w2').getByRole('checkbox');
+		expect(moved).not.toBeChecked();
+		expect(moved).toBeDisabled();
+
+		await userEvent.click(getByTestId('promotion-preview-submit'));
+
+		expect(settingsApi.applyProjectSelection).toHaveBeenCalledWith(expect.anything(), 'p1', {
+			workflowIds: ['w1', 'w3', 'w4'],
+			expectedSource,
+		});
 	});
 
 	it('should tell users whether to retry, resolve a conflict or check the changes after a failed apply', async () => {

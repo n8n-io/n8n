@@ -33,10 +33,10 @@ import { usePromotionPreview } from '../composables/usePromotionPreview';
 import { usePromotionSelection } from '../composables/usePromotionSelection';
 import { PROMOTIONS_SETTINGS_SCOPES, PROMOTIONS_SETTINGS_VIEW } from '../promotions.constants';
 import {
-	emptyBlockerIndex,
-	folderMoveConflicts,
 	indexBlockers,
 	listBlockers,
+	locationBlocker,
+	locationConflicts,
 	toOperationRequest,
 	scopeCheck,
 	touchesDestructiveChange,
@@ -72,24 +72,21 @@ const {
 const scopedCheck = computed(() =>
 	check.value && graph.value ? scopeCheck(check.value, graph.value) : null,
 );
-const blockers = computed(() =>
-	scopedCheck.value ? indexBlockers(listBlockers(scopedCheck.value)) : emptyBlockerIndex,
-);
-// A moved folder stops the whole apply, so it blocks every selection.
+// Apply cannot move a workflow or a folder to another folder. The check does not report this,
+// but the preview shows it. A moved folder stops the whole apply, so it blocks every selection.
 const folderConflicts = computed(() =>
-	props.direction === 'apply' && graph.value ? folderMoveConflicts(graph.value) : [],
+	props.direction === 'apply' && graph.value ? locationConflicts(graph.value, 'folder') : [],
 );
+const workflowLocationConflicts = computed(() =>
+	props.direction === 'apply' && graph.value ? locationConflicts(graph.value, 'workflow') : [],
+);
+const workflowBlockers = computed(() => [
+	...(scopedCheck.value ? listBlockers(scopedCheck.value) : []),
+	...workflowLocationConflicts.value.map(locationBlocker),
+]);
+const blockers = computed(() => indexBlockers(workflowBlockers.value));
 const markers = computed(() =>
-	folderConflicts.value.length === 0
-		? blockers.value
-		: indexBlockers([
-				...(scopedCheck.value ? listBlockers(scopedCheck.value) : []),
-				...folderConflicts.value.map(({ key }) => ({
-					kind: 'moved' as const,
-					resourceKey: key,
-					workflowKeys: [],
-				})),
-			]),
+	indexBlockers([...workflowBlockers.value, ...folderConflicts.value.map(locationBlocker)]),
 );
 const operation = usePromotionOperation(projectId, direction, { preview, check, refresh });
 const selection = usePromotionSelection(graph, {
@@ -161,6 +158,7 @@ const submitBlockedReason = computed(() => {
 	if (folderConflicts.value.length > 0) {
 		return i18n.baseText('promotions.preview.submit.folderMoved', {
 			adjustToNumber: folderConflicts.value.length,
+			interpolate: { folders: folderConflicts.value.map(({ name }) => `"${name}"`).join(', ') },
 		});
 	}
 	return hasSelectedBlocked.value ? i18n.baseText('promotions.preview.submit.blocked') : undefined;
@@ -186,10 +184,11 @@ const submitLabel = computed(() => {
 
 type PreviewTab = 'changes' | 'blockers';
 const activeTab = ref<PreviewTab>('changes');
-const blockerCount = computed(() =>
-	scopedCheck.value
-		? unresolvedBlockerCount(scopedCheck.value) + folderConflicts.value.length
-		: folderConflicts.value.length,
+const blockerCount = computed(
+	() =>
+		(scopedCheck.value ? unresolvedBlockerCount(scopedCheck.value) : 0) +
+		folderConflicts.value.length +
+		workflowLocationConflicts.value.length,
 );
 const showBlockersTab = computed(
 	() => props.direction === 'apply' && !!scopedCheck.value && state.value === 'ready',
@@ -344,24 +343,7 @@ const treeResizer = useResizablePanel({
 			data-test-id="promotion-preview-empty"
 		/>
 		<template v-else-if="graph">
-			<div
-				v-if="operation.error.value || operation.notice.value || submitBlockedReason"
-				:class="$style.operationNotices"
-			>
-				<!-- A disabled button cannot explain itself to keyboard users, so the reason shows here. -->
-				<N8nCallout
-					v-if="submitBlockedReason && !operation.error.value"
-					theme="warning"
-					slim
-					data-test-id="promotion-preview-submit-blocked"
-				>
-					{{ submitBlockedReason }}
-					<template v-if="showBlockersTab && activeTab !== 'blockers'" #trailingContent>
-						<N8nLink size="small" @click="activeTab = 'blockers'">
-							{{ i18n.baseText('promotions.preview.card.viewBlockers') }}
-						</N8nLink>
-					</template>
-				</N8nCallout>
+			<div v-if="operation.error.value || operation.notice.value" :class="$style.operationNotices">
 				<N8nCallout
 					v-if="operation.error.value"
 					theme="danger"
@@ -408,6 +390,20 @@ const treeResizer = useResizablePanel({
 					/>
 				</N8nResizeWrapper>
 				<section :class="$style.cards">
+					<!-- A disabled button cannot explain itself to keyboard users, so the reason shows here. -->
+					<N8nCallout
+						v-if="submitBlockedReason && !operation.error.value"
+						theme="warning"
+						slim
+						data-test-id="promotion-preview-submit-blocked"
+					>
+						{{ submitBlockedReason }}
+						<template v-if="showBlockersTab" #trailingContent>
+							<N8nLink size="small" @click="activeTab = 'blockers'">
+								{{ i18n.baseText('promotions.preview.card.viewBlockers') }}
+							</N8nLink>
+						</template>
+					</N8nCallout>
 					<N8nCallout v-if="refreshFailed" theme="warning" slim>
 						{{ i18n.baseText('promotions.preview.refreshFailed') }}
 					</N8nCallout>
@@ -440,11 +436,15 @@ const treeResizer = useResizablePanel({
 				:class="$style.blockers"
 				:project-id="projectId"
 				:check="scopedCheck"
-				:folders="folderConflicts"
+				:locations="[...folderConflicts, ...workflowLocationConflicts]"
 				:busy="operation.isBusy.value"
 				@refresh="refresh"
 				@inspect="inspectFromBlockers"
-			/>
+			>
+				<N8nCallout v-if="submitBlockedReason && !operation.error.value" theme="warning" slim>
+					{{ submitBlockedReason }}
+				</N8nCallout>
+			</PromotionBlockers>
 		</template>
 	</div>
 </template>

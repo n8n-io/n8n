@@ -26,8 +26,8 @@ const props = defineProps<{
 	projectId: string;
 	/** The Apply check, scoped to the workflows that the preview lists. */
 	check: ApplyCheckResult;
-	/** Folders that moved on the branch. Each one stops the whole apply. */
-	folders: PromotionResource[];
+	/** Folders and workflows that the branch holds in another folder. Apply cannot move them. */
+	locations: PromotionResource[];
 	busy: boolean;
 }>();
 
@@ -157,14 +157,18 @@ const blockerRows = computed<BlockerRow[]>(() => {
 				interpolate: { project: workflow.project.name },
 			}),
 		})),
-		...props.folders.map((folder) => ({
-			key: folder.key,
-			icon: resourceIcon('folder'),
-			name: folder.name,
-			type: 'folder' as const,
+		...props.locations.map((resource) => ({
+			key: resource.key,
+			icon: resourceIcon(resource.type),
+			name: resource.name,
+			type: resource.type,
 			usedBy: [],
 			status: status('moved'),
-			detail: i18n.baseText('promotions.preview.folder.moveConflict'),
+			detail: i18n.baseText(
+				resource.type === 'folder'
+					? 'promotions.preview.folder.moveConflict'
+					: 'promotions.preview.blockers.workflowLocation',
+			),
 		})),
 	];
 });
@@ -199,6 +203,7 @@ const isCreateDisabled = computed(() => props.busy || bindings.isBusy.value);
 
 <template>
 	<div :class="$style.blockers" data-test-id="promotion-preview-blockers">
+		<slot />
 		<N8nText tag="p" color="text-base">
 			{{ i18n.baseText('promotions.preview.blockers.intro') }}
 		</N8nText>
