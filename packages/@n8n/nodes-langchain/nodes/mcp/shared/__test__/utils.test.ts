@@ -4,6 +4,7 @@ import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/
 import { proxyFetch } from '@n8n/ai-utilities';
 import { createResultError, createResultOk } from '@n8n/utils/result';
 import type {
+	ICredentialDataDecryptedObject,
 	IExecuteFunctions,
 	INode,
 	LiteralMcpRegistryConnection,
@@ -323,7 +324,11 @@ describe('utils', () => {
 			});
 		});
 
-		it.each([
+		it.each<{
+			case: string;
+			credentials: ICredentialDataDecryptedObject;
+			headers?: Record<string, string>;
+		}>([
 			{
 				case: 'the minted token',
 				credentials: { token: 'minted' },

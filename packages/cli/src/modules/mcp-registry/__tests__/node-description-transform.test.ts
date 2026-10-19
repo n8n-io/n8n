@@ -907,6 +907,42 @@ describe('a server paired with its AI Gateway twin', () => {
 		});
 		expect(aiGatewayNode?.hidden).toBe(true);
 	});
+
+	it('keeps the supported own credential as the default when the first registry option is unknown', () => {
+		const [twin] = pairAiGatewayServers(
+			[
+				{
+					...firecrawlMockServer,
+					authType: 'usesCredentials',
+					usesCredentials: [
+						{ credentialType: 'unknownApi', name: 'Unknown', value: 'unknown' },
+						{ credentialType: 'firecrawlApi', name: 'API key', value: 'apiKey' },
+					],
+				},
+				firecrawlAiGatewayMockServer,
+			],
+			() => true,
+		);
+
+		const node = serverToNodeDescription(
+			twin,
+			deepCopy(baseDescription),
+			(name) => name !== 'unknownApi',
+		);
+
+		expect(node?.credentials?.[0]).toEqual({
+			name: 'firecrawlApi',
+			required: true,
+			displayOptions: { show: { authentication: ['apiKey'] } },
+		});
+		expect(node?.properties.find(({ name }) => name === 'authentication')).toMatchObject({
+			options: [
+				{ name: 'Gateway credits', value: 'aiGateway' },
+				{ name: 'API key', value: 'apiKey' },
+			],
+			default: 'apiKey',
+		});
+	});
 });
 
 describe('getMcpRegistryCredentialTypeName', () => {

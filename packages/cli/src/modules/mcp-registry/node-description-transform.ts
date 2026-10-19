@@ -335,7 +335,13 @@ function addAiGatewayChoice(
 	server: McpRegistryServer,
 	aiGateway: McpRegistryAiGatewayPair,
 ): void {
-	const [ownOption] = getMcpRegistryCredentialOptions({ ...server, aiGateway: undefined });
+	// The node drops registry credential types that n8n does not know. Use the first option that the
+	// node kept, so the default does not point at a credential that the node hides.
+	const declaredTypes = new Set((description.credentials ?? []).map(({ name }) => name));
+	const ownOption = getMcpRegistryCredentialOptions({ ...server, aiGateway: undefined }).find(
+		({ credentialType }) => declaredTypes.has(credentialType),
+	);
+	if (!ownOption) return;
 	const aiGatewayOption = { name: 'Gateway credits', value: 'aiGateway' };
 	description.credentials = [
 		// A single own credential has no selector yet, so it gets one.
