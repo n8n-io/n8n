@@ -591,6 +591,18 @@ it.each(['execution-1', 42, undefined])(
 		});
 	},
 );
+it('returns the runtime work state to the model', async () => {
+	const workState = {
+		stoppedTaskIds: [original.data.items[0].id],
+		stoppingTaskIds: [],
+		fullyStopped: true,
+		stoppedAt: new Date().toISOString(),
+		taskStateAvailable: true,
+	};
+	service.findActivePlan.mockResolvedValue({ ...original, workState });
+	expect(await call('read_plan', {})).toMatchObject({ workState });
+});
+
 it('uses the last task end time when all leaves finish before the plan closes', () => {
 	const first = {
 		...original.data.items[0],

@@ -1,3 +1,4 @@
+import { AgentPlanWorkRepository } from '../repositories/agent-plan-work.repository';
 import type { OperationContext, Transaction } from '@n8n/db';
 import { randomUUID } from 'node:crypto';
 import { mock } from 'vitest-mock-extended';
@@ -12,7 +13,8 @@ import {
 
 const repository = mock<AgentPlanRepository>();
 const ctx: OperationContext = { trx: mock<Transaction>() };
-const service = new AgentPlanService(repository);
+const work = mock<AgentPlanWorkRepository>();
+const service = new AgentPlanService(repository, work);
 const data: AgentPlanDocument = {
 	title: 'Plan',
 	description: 'Goal',
@@ -43,6 +45,8 @@ const write = { threadId: record.threadId, planId: record.id, expectedRevision: 
 
 beforeEach(() => {
 	vi.resetAllMocks();
+	work.stopForPlan.mockResolvedValue(null);
+	work.jobStatesForPlan.mockResolvedValue([]);
 	repository.findPlan.mockResolvedValue(record);
 	repository.createActivePlan.mockResolvedValue(record);
 	repository.replacePlan.mockImplementation(async (input) => ({
