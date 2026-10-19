@@ -2385,8 +2385,10 @@ export const DEFAULT_INSTANCE_AI_PERMISSIONS: InstanceAiPermissions = {
  * publish/unpublish, credential delete/update, and workflow update have no
  * hard backend lockout — only project-scope gates. branchReadOnly is a
  * UX-level nudge toward the source-control sync workflow, not a global write
- * block (only data-table mutations have a hard middleware lockout). Trimming
- * this set would make the AI stricter than human users on the same instance.
+ * block. Only data-table schema changes (create, rename or delete a table, and
+ * column changes) have a hard backend lockout. Row writes stay allowed because
+ * source control does not carry row data. Trimming this set would make the AI
+ * stricter than human users on the same instance.
  *
  * When changing this set, also update the read-only section in
  * `packages/@n8n/instance-ai/src/agent/system-prompt.ts` (`getReadOnlySection`).
@@ -2401,6 +2403,7 @@ const BRANCH_READ_ONLY_SAFE_PERMISSIONS: ReadonlySet<keyof InstanceAiPermissions
 	'createCredential',
 	'deleteCredential',
 	'restoreWorkflowVersion',
+	'mutateDataTableRows',
 ]);
 
 /** Returns a copy of permissions with all write operations set to 'blocked',
