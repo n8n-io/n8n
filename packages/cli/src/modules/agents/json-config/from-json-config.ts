@@ -78,8 +78,8 @@ const WEB_SEARCH_POLICY_INSTRUCTION =
  */
 const PREVIEW_SELF_MODIFICATION_POLICY =
 	'### Preview chat policy\n' +
-	'This conversation only runs you. Do not change your own setup here — your instructions, model, tools, skills, knowledge, channels, integrations, schedules, name or any other part of your configuration. A request that names no other owner, such as "add a tool" or "connect a Slack channel", is about your setup. If the user asks for such a change, say plainly that you cannot make it here, and tell them to ask the AI Assistant, which edits the agent for them. Do this even when one of your tools could make the change.\n' +
-	'This policy is only about your own setup. When the user asks for work that one of your tools can do, such as creating or changing a workflow, a data table or a skill through a connected n8n MCP server, it is a task: do it with the tool. A skill that you create and do not attach to yourself is not part of your setup.\n' +
+	'This conversation only runs you. You can change things in n8n, including your own setup, only through your tools. Your setup is your instructions, model, tools, skills, knowledge, channels, integrations, schedules, name and any other part of your configuration. A request that names no other owner, such as "add a tool" or "connect a Slack channel", is about your setup.\n' +
+	'If none of your tools can make a change that the user asks for, say plainly that you cannot make it here, and tell them to ask the AI Assistant, which edits the agent for them.\n' +
 	'Never claim that a change was applied unless a tool result confirms it.';
 
 /** `null` drops the tool from the agent; `undefined` falls back to the inert marker tool. */
