@@ -26,6 +26,7 @@ import {
 } from '../instance-ai-builder-delegate.adapter';
 import type { AgentConfigService } from '../agent-config.service';
 import { getAgentConfigHash } from '../utils/agent-config-hash';
+import type { AgentSkillRefsService } from '../agent-skill-refs.service';
 import type { AgentSkillsService } from '../agent-skills.service';
 import type { AgentValidationService } from '../agent-validation.service';
 import type { N8nMemory, N8nMemoryImpl } from '../integrations/n8n-memory';
@@ -39,6 +40,7 @@ function setup(options: { useEvalModelCatalog?: boolean } = {}) {
 	const agentConfig = mock<AgentConfigService>();
 	const agentSkills = mock<AgentSkillsService>();
 	const agentValidation = mock<AgentValidationService>();
+	const agentSkillRefs = mock<AgentSkillRefsService>();
 	const credentialService = mock<InstanceAiCredentialService>();
 	const settingsRepository = mock<SettingsRepository>();
 	const agentsSettingsService = new AgentsSettingsService(
@@ -61,6 +63,7 @@ function setup(options: { useEvalModelCatalog?: boolean } = {}) {
 		agentSkills,
 		agentsSettingsService,
 		agentValidation,
+		agentSkillRefs,
 	);
 
 	const user = mock<User>({ id: 'user-1' });
@@ -85,6 +88,7 @@ function setup(options: { useEvalModelCatalog?: boolean } = {}) {
 		agentConfig,
 		agentSkills,
 		agentValidation,
+		agentSkillRefs,
 		credentialProvider,
 		credentialProviderFor,
 		credentialService,
@@ -608,10 +612,13 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 		} as unknown as AgentJsonConfig;
 
 		it('summarizes the Publish validation and the capability count', async () => {
-			const { delegate, agentsService, agentValidation, credentialProvider } = setup();
+			const { delegate, agentsService, agentValidation, agentSkillRefs, credentialProvider } =
+				setup();
 			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
 			const agent = { id: 'agent-1', schema: CONFIG, integrations: [] } as unknown as Agent;
+			const skillRefs = [{ type: 'skill' as const, id: 'skill-1' }];
 			agentsService.findById.mockResolvedValue(agent);
+			agentSkillRefs.refsForDraft.mockResolvedValue(skillRefs);
 			agentValidation.validateLoadedAgentConfiguration.mockResolvedValue({
 				status: 'invalid',
 				issues: [
@@ -625,12 +632,14 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 				valid: false,
 				issueCodes: ['missing_credential', 'missing_required'],
 				issueCount: 3,
-				capabilityCount: 1,
+				capabilityCount: 2,
 			});
 			expect(agentValidation.validateLoadedAgentConfiguration).toHaveBeenCalledWith(
 				agent,
 				'project-1',
 				credentialProvider,
+				'publish',
+				{ skillRefs },
 			);
 		});
 
