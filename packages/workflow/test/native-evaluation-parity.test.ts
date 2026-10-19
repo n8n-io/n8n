@@ -349,9 +349,7 @@ describe('Expression - fast native evaluation parity', () => {
 			expect(evaluate(expr, true)).toStrictEqual(expected);
 
 			const viaEngine = evaluate(expr, false);
-			const skipsHoles =
-				Expression.getActiveImplementation() === 'legacy' || expected === undefined;
-			if (skipsHoles) {
+			if (expected === undefined) {
 				expect(viaEngine).toStrictEqual(expected);
 			} else {
 				expect(viaEngine).not.toStrictEqual(expected);
@@ -401,9 +399,6 @@ describe('Expression - fast native evaluation parity', () => {
 		const exoticRunData = runDataFor([exotic as never]);
 		const evaluateExotic = (expr: string, native: boolean) =>
 			evaluate(expr, native, exoticRunData, [exotic as never]);
-		// Read per test: the engine is only initialised once the suite runs.
-		const isLegacy = () => Expression.getActiveImplementation() === 'legacy';
-
 		test.each(ENGINE_DECIDED_CORPUS)('%s matches the engine, value or error', (expr) => {
 			const capture = (native: boolean) => {
 				try {
@@ -440,7 +435,7 @@ describe('Expression - fast native evaluation parity', () => {
 				handled: false,
 			});
 			expect(run(true)).toStrictEqual(run(false));
-			expect(Object.keys(run(true)).includes('__proto__')).toBe(isLegacy());
+			expect(Object.keys(run(true)).includes('__proto__')).toBe(false);
 		});
 	});
 

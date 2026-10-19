@@ -9,7 +9,7 @@ import { Workflow } from '../src/workflow';
 //
 // `$items()` was migrated to a typed-RPC under the VM engine in CAT-2982.
 // This file pins the behaviour of edge-case `runIndex` values across both
-// the legacy and VM engines so any divergence in how the runtime handles
+// the VM and QuickJS engines so any divergence in how the runtime handles
 // host-side errors fails exactly one project. See `vitest.config.ts` for
 // the dual-engine setup.
 

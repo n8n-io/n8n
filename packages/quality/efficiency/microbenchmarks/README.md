@@ -73,6 +73,8 @@ my operation    20,000   0.04   0.20   0.05   0.10  ±0.5%   10000
 | Expression Engine | `={{ }}` evaluation speed | Runs for every node parameter |
 | Workflow graph traversal | `getChildNodes` / `getParentNodes` on branching graphs | Runs on every execution (`checkReadyForExecution`) and across the editor; must stay linear in graph size |
 
+See the [expression-engine validation record](benchmarks/expression-engine/README.md) for the VM and legacy comparison used for CET-60.
+
 
 ## Tips
 

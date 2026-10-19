@@ -30,7 +30,7 @@ const { reporters, outputFile, ...sharedTestConfig } = createBaseInlineConfig({
 	setupFiles: ['./test/setup-vm-evaluator.ts'],
 });
 
-const engineProject = (engine: 'vm' | 'legacy' | 'quickjs') => ({
+const engineProject = (engine: 'vm' | 'quickjs') => ({
 	test: {
 		...sharedTestConfig,
 		include: ENGINE_TESTS,
@@ -50,12 +50,11 @@ export default defineConfig({
 					exclude: [...(sharedTestConfig.exclude ?? []), ...ENGINE_TESTS],
 					name: 'default',
 					// Explicitly no engine, so a shell N8N_EXPRESSION_ENGINE cannot turn
-					// this project into a fourth engine run and disable the guard.
+					// this project into a third engine run and disable the guard.
 					env: { N8N_EXPRESSION_ENGINE: '' },
 				},
 			},
 			engineProject('vm'),
-			engineProject('legacy'),
 			engineProject('quickjs'),
 		],
 	},

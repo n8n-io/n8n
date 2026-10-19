@@ -6,7 +6,7 @@ import { Workflow } from '../src/workflow';
 
 // Feature-parity regressions for `$json` access across nested data shapes.
 // This file lives in `packages/workflow/test/` so vitest runs it under both the
-// `legacy-engine` and `vm-engine` projects (see vitest.config.ts). Any divergence
+// `vm-engine` and `quickjs-engine` projects (see vitest.config.ts). Any divergence
 // between the two engines fails one project but not the other.
 
 describe('Expression — nested $json shapes (engine parity)', () => {

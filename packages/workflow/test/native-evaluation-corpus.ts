@@ -2,9 +2,8 @@
 //
 // Every expression in HANDLED_CORPUS must (a) fit the native subset and (b)
 // produce exactly the same value natively as through the regular pipeline.
-// The file runs once per engine project (legacy, vm, quickjs - see
-// vitest.config.ts), so native evaluation is pinned against all three
-// engines.
+// The file runs once per engine project (vm and quickjs - see
+// vitest.config.ts), so native evaluation is pinned against both engines.
 //
 // Every expression in DECLINED_CORPUS must be outside the subset so it takes
 // the engine untouched. Every expression in RUNTIME_BAILOUT_CORPUS fits the

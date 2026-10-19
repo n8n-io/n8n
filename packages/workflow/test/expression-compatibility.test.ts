@@ -251,8 +251,6 @@ describe('Expression — compatibility corpus', () => {
 		$pageCount: 2,
 	};
 
-	const ENGINE = process.env.N8N_EXPRESSION_ENGINE ?? 'vm';
-
 	const evaluate = (expr: string) =>
 		expression.getParameterValue(
 			expr,
@@ -389,6 +387,7 @@ describe('Expression — compatibility corpus', () => {
 		],
 		['isNotEmpty on array', '={{ $json.tags.isNotEmpty() }}', true],
 		['round', '={{ (1.2345).round(2) }}', 1.23],
+		['Number.format()', "={{ (1234.5678).format('0,0.00') }}", '1234.5678'],
 		['ceil / floor', '={{ (1.2).ceil() + (1.8).floor() }}', 3],
 		['isEven', '={{ (4).isEven() }}', true],
 		['JSON.parse then index', '={{ JSON.parse($json.jsonString).k[2] }}', 3],
@@ -880,14 +879,5 @@ describe('Expression — compatibility corpus', () => {
 
 	it.each(REJECTED)('rejects: %s', (_name, expr) => {
 		expect(() => evaluate(expr)).toThrow();
-	});
-
-	// ── known engine divergences ──────────────────────────────────────────
-	const ENGINE_DIVERGENCES: Array<[string, string, unknown, unknown]> = [
-		['Number.format()', "={{ (1234.5678).format('0,0.00') }}", undefined, '1234.5678'],
-	];
-
-	it.each(ENGINE_DIVERGENCES)('divergent: %s', (_name, expr, legacyWant, vmWant) => {
-		expect(evaluate(expr)).toStrictEqual(ENGINE === 'legacy' ? legacyWant : vmWant);
 	});
 });

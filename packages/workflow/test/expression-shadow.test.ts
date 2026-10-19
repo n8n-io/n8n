@@ -6,8 +6,19 @@ import { ExpressionExtensionError } from '../src/errors/expression-extension.err
 import { Expression } from '../src/expression';
 import type { ExpressionEvaluationOutcome, ExpressionShadowRunner } from '../src/expression';
 
-// The shadow run observes the legacy engine only, so these run in the legacy project.
-describe.runIf(process.env.N8N_EXPRESSION_ENGINE === 'legacy')('Expression shadow run', () => {
+// The shadow runner needs legacy, even when this suite runs in a VM or QuickJS project.
+describe('Expression shadow run', () => {
+	let originalEngine: ReturnType<typeof Expression.getActiveImplementation>;
+
+	beforeAll(() => {
+		originalEngine = Expression.getActiveImplementation();
+		Expression.setExpressionEngine('legacy');
+	});
+
+	afterAll(() => {
+		Expression.setExpressionEngine(originalEngine);
+	});
+
 	const data = () =>
 		({
 			$json: { name: 'n8n', list: [1, 2, 3] },

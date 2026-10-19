@@ -3,11 +3,7 @@ import { Expression } from '../src/expression';
 // The engine projects (vitest.config.ts) run the tests that evaluate
 // expressions once per engine and set N8N_EXPRESSION_ENGINE; the default
 // project runs everything else once and sets it to ''.
-const engine = (process.env.N8N_EXPRESSION_ENGINE || undefined) as
-	| 'vm'
-	| 'legacy'
-	| 'quickjs'
-	| undefined;
+const engine = process.env.N8N_EXPRESSION_ENGINE;
 
 // A test that evaluates an expression outside the engine projects would pass
 // against one engine only, so it fails here until it is added to ENGINE_TESTS.
