@@ -201,7 +201,7 @@ onMounted(async () => {
 		| ResourceMapperValue
 		| undefined;
 
-	if (nodeValues === undefined) {
+	if (!nodeValues) {
 		return;
 	}
 	let hasSchema = false;
