@@ -6,7 +6,7 @@ vi.mock('@/modules/community-packages/npm-utils', async () => ({
 	verifyIntegrity: vi.fn(),
 }));
 
-import type { CommunityNodeType } from '@n8n/api-types';
+import type { CommunityNodeType, PackagePolicyRestrictions } from '@n8n/api-types';
 import { InstalledTypeRestrictionsProxy } from '@n8n/backend-services';
 import { mockInstance, testDb } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
@@ -265,7 +265,7 @@ describe('Community packages (Public API)', () => {
 			const packageName = mockPackageName();
 			const node = mockNode(packageName);
 			const pkg = mockPackage({ packageName, installedNodes: [node] });
-			const policyRestrictions = {
+			const policyRestrictions: PackagePolicyRestrictions = {
 				nodeTypes: [
 					{ type: node.type, blockedOn: 'projects', optInAvailable: false, blockedProjectCount: 2 },
 				],

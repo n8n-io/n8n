@@ -18,7 +18,7 @@ import {
  */
 export function toRestrictedTypes(
 	withoutProjectPolicy: readonly ComposedTypeVerdict[],
-	byProject: ReadonlyArray<{ verdicts: readonly ComposedTypeVerdict[] }>,
+	byProject: ReadonlyArray<{ projectId: string; verdicts: readonly ComposedTypeVerdict[] }>,
 ): RestrictedPackageType[] {
 	return withoutProjectPolicy.flatMap((verdict): RestrictedPackageType[] => {
 		if (verdict.action === 'deny') {
