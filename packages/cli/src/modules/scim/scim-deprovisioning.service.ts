@@ -57,8 +57,6 @@ export function toScimTransferTarget(
 	};
 }
 
-type DeprovisioningPolicyChange = Partial<ScimDeprovisioningPolicy>;
-
 /**
  * Stores the SCIM deprovisioning policy and applies it when the identity
  * provider deletes a user. Only `DELETE /scim/v2/Users/:id` uses the policy.
@@ -117,31 +115,6 @@ export class ScimDeprovisioningService {
 	}
 
 	/**
-	 * Saves the fields that the change sets and keeps the other fields.
-	 * Throws `ScimInvalidTransferTargetError` before it saves anything when the
-	 * new transfer target is not valid.
-	 */
-	async updatePolicy(change: DeprovisioningPolicyChange): Promise<ScimDeprovisioningPolicy> {
-		const current = await this.getPolicy();
-		const { onDelete, dataAction, transferProjectId } = change;
-		if (onDelete === undefined && dataAction === undefined && transferProjectId === undefined) {
-			return current;
-		}
-
-		if (transferProjectId) await this.assertValidTransferTarget(transferProjectId);
-
-		const policy: ScimDeprovisioningPolicy = {
-			onDelete: onDelete ?? current.onDelete,
-			dataAction: dataAction ?? current.dataAction,
-			transferProjectId:
-				transferProjectId === undefined ? current.transferProjectId : transferProjectId,
-		};
-		await this.scimSettingsService.setDeprovisioningPolicy(policy);
-
-		return policy;
-	}
-
-	/**
 	 * Deletes the user. With `dataAction: transfer`, the work goes to the
 	 * transfer target first. Otherwise it is deleted with the personal project
 	 * of the user.
@@ -175,7 +148,12 @@ export class ScimDeprovisioningService {
 		});
 	}
 
-	private async assertValidTransferTarget(projectId: string) {
+	/**
+	 * Throws `ScimInvalidTransferTargetError` when the project cannot be the
+	 * transfer target. Call it before the policy is saved, so that a rejected
+	 * change saves nothing.
+	 */
+	async assertValidTransferTarget(projectId: string) {
 		const project = await this.transferTargetRepository.findWithCreator(projectId, {});
 
 		if (!project) {

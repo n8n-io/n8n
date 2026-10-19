@@ -1,4 +1,4 @@
-import type { SettingsRepository } from '@n8n/db';
+import type { OperationContext, Settings, SettingsRepository, TransactionRunner } from '@n8n/db';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -9,12 +9,18 @@ import { DEFAULT_SCIM_DEPROVISIONING_POLICY, ScimSettingsService } from '../scim
 describe('ScimSettingsService', () => {
 	let settingsRepository: Mocked<SettingsRepository>;
 	let cacheService: Mocked<CacheService>;
+	let transactionRunner: Mocked<TransactionRunner>;
 	let service: ScimSettingsService;
+
+	/** The context that the transaction gives to the repository calls. */
+	const trxCtx = mock<OperationContext>();
 
 	beforeEach(() => {
 		settingsRepository = mock<SettingsRepository>();
 		cacheService = mock<CacheService>();
-		service = new ScimSettingsService(settingsRepository, cacheService);
+		transactionRunner = mock<TransactionRunner>();
+		transactionRunner.run.mockImplementation(async (_ctx, fn) => await fn(trxCtx));
+		service = new ScimSettingsService(settingsRepository, cacheService, transactionRunner);
 	});
 
 	describe('isEnabled', () => {
@@ -166,14 +172,109 @@ describe('ScimSettingsService', () => {
 				DEFAULT_SCIM_DEPROVISIONING_POLICY,
 			);
 		});
+	});
 
-		it('stores all fields of the policy in one row', async () => {
-			await service.setDeprovisioningPolicy(policy);
+	describe('update', () => {
+		const ENABLED_KEY = 'scim.provisioning.enabled';
+		const POLICY_KEY = 'scim.provisioning.deprovisioningPolicy';
+		const stored = {
+			onDelete: 'disable',
+			dataAction: 'delete',
+			transferProjectId: 'team-1',
+		} as const;
 
-			expect(settingsRepository.upsert).toHaveBeenCalledExactlyOnceWith(
-				{ key: KEY, value: JSON.stringify(policy), loadOnStartup: false },
-				['key'],
+		const row = (key: string, value: string) => mock<Settings>({ key, value });
+
+		beforeEach(() => {
+			settingsRepository.getOrCreateWithWriteLock.mockResolvedValue(
+				row(POLICY_KEY, JSON.stringify(stored)),
 			);
+			settingsRepository.findByKeyInContext.mockImplementation(async (key) =>
+				key === ENABLED_KEY ? row(ENABLED_KEY, 'true') : row(POLICY_KEY, JSON.stringify(stored)),
+			);
+		});
+
+		it('merges the change into the policy that it reads with a write lock', async () => {
+			const result = await service.update({ policy: { onDelete: 'delete' } });
+
+			const merged = { ...stored, onDelete: 'delete' };
+			expect(settingsRepository.getOrCreateWithWriteLock).toHaveBeenCalledExactlyOnceWith(
+				POLICY_KEY,
+				JSON.stringify(DEFAULT_SCIM_DEPROVISIONING_POLICY),
+				false,
+				trxCtx,
+			);
+			expect(settingsRepository.upsertByKey).toHaveBeenCalledExactlyOnceWith(
+				POLICY_KEY,
+				JSON.stringify(merged),
+				false,
+				trxCtx,
+			);
+			expect(result).toEqual({ wasEnabled: true, enabled: true, policy: merged });
+		});
+
+		it('saves the switch and the policy in one transaction', async () => {
+			await service.update({ enabled: false, policy: { dataAction: 'transfer' } });
+
+			expect(transactionRunner.run).toHaveBeenCalledTimes(1);
+			expect(settingsRepository.upsertByKey).toHaveBeenCalledWith(
+				ENABLED_KEY,
+				'false',
+				true,
+				trxCtx,
+			);
+			expect(settingsRepository.upsertByKey).toHaveBeenCalledWith(
+				POLICY_KEY,
+				JSON.stringify({ ...stored, dataAction: 'transfer' }),
+				false,
+				trxCtx,
+			);
+		});
+
+		it('caches the switch only after the transaction', async () => {
+			transactionRunner.run.mockImplementation(async (_ctx, fn) => {
+				const result = await fn(trxCtx);
+				expect(cacheService.set).not.toHaveBeenCalled();
+				return result;
+			});
+
+			await service.update({ enabled: true });
+
+			expect(cacheService.set).toHaveBeenCalledExactlyOnceWith(ENABLED_KEY, 'true');
+		});
+
+		it('does not cache the switch when the transaction fails', async () => {
+			transactionRunner.run.mockRejectedValue(new Error('db down'));
+
+			await expect(service.update({ enabled: true })).rejects.toThrow('db down');
+			expect(cacheService.set).not.toHaveBeenCalled();
+		});
+
+		it('clears the transfer target with null', async () => {
+			const result = await service.update({ policy: { transferProjectId: null } });
+
+			expect(result.policy).toEqual({ ...stored, transferProjectId: null });
+		});
+
+		it('keeps the policy and does not lock it when the change has no policy field', async () => {
+			const result = await service.update({ enabled: false });
+
+			expect(settingsRepository.getOrCreateWithWriteLock).not.toHaveBeenCalled();
+			expect(settingsRepository.upsertByKey).toHaveBeenCalledExactlyOnceWith(
+				ENABLED_KEY,
+				'false',
+				true,
+				trxCtx,
+			);
+			expect(result).toEqual({ wasEnabled: true, enabled: false, policy: stored });
+		});
+
+		it('reports SCIM as off before the change when no switch is stored', async () => {
+			settingsRepository.findByKeyInContext.mockResolvedValue(null);
+
+			const result = await service.update({ enabled: true });
+
+			expect(result).toMatchObject({ wasEnabled: false, enabled: true });
 		});
 	});
 });

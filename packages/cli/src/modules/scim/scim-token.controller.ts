@@ -109,7 +109,8 @@ export class ScimTokenController {
 	 *
 	 * A transfer project must be a team project or the personal project of an
 	 * active user. The checks run before anything is saved, so a rejected
-	 * body changes nothing.
+	 * body changes nothing. The body is saved in one transaction, so a
+	 * request never saves only a part of it.
 	 */
 	@Patch('/config')
 	@GlobalScope('scim:manage')
@@ -123,18 +124,22 @@ export class ScimTokenController {
 		}
 
 		try {
-			const policy = await this.scimDeprovisioningService.updatePolicy({
-				onDelete,
-				dataAction,
-				transferProjectId,
+			if (transferProjectId) {
+				await this.scimDeprovisioningService.assertValidTransferTarget(transferProjectId);
+			}
+
+			const saved = await this.scimSettingsService.update({
+				enabled,
+				policy: { onDelete, dataAction, transferProjectId },
 			});
-			if (enabled !== undefined) await this.setEnabled(enabled);
+
+			// A failure that is stored when SCIM turns on is from before SCIM
+			// turned off, because a disabled SCIM records no failures.
+			if (saved.enabled && !saved.wasEnabled) await this.resetAuthFailure();
+			if (enabled !== undefined) await this.refreshModuleSettings();
 
 			return res.status(200).json({
-				data: {
-					enabled: enabled ?? (await this.scimSettingsService.isEnabled()),
-					...policy,
-				} satisfies ScimConfigPatchResponse,
+				data: { enabled: saved.enabled, ...saved.policy } satisfies ScimConfigPatchResponse,
 			});
 		} catch (error) {
 			if (error instanceof ScimInvalidTransferTargetError) {
@@ -190,17 +195,6 @@ export class ScimTokenController {
 		}
 	}
 
-	private async setEnabled(enabled: boolean) {
-		const wasEnabled = await this.scimSettingsService.isEnabled();
-		await this.scimSettingsService.setEnabled(enabled);
-		// A failure that is stored when SCIM turns on is from before SCIM
-		// turned off, because a disabled SCIM records no failures.
-		if (enabled && !wasEnabled) await this.resetAuthFailure();
-		// `/rest/module-settings` serves a cached snapshot, so refresh it or
-		// clients keep reading the previous value.
-		await this.moduleRegistry.refreshModuleSettings('scim');
-	}
-
 	/**
 	 * The connection status starts again for a new token or a new enable. A
 	 * failure must not fail the request, because the change is already saved.
@@ -216,9 +210,10 @@ export class ScimTokenController {
 
 	/**
 	 * `/rest/module-settings` serves a cached snapshot, so refresh it after a
-	 * token change. A failure only delays the new value. It must not fail the
-	 * request: the token change is already saved, and the response of a
-	 * rotation is the only copy of the new token.
+	 * token or switch change, or clients keep reading the previous value. A
+	 * failure only delays the new value. It must not fail the request: the
+	 * change is already saved, and the response of a rotation is the only
+	 * copy of the new token.
 	 */
 	private async refreshModuleSettings() {
 		try {

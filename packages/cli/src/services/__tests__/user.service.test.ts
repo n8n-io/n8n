@@ -1045,11 +1045,13 @@ describe('UserService', () => {
 				);
 			});
 
-			it('names the deleted user as the user of the event', async () => {
+			// The deleted user did not delete itself, so the event names no user.
+			it('names the system and no user as the actor of the event', async () => {
 				await userService.deleteUser(systemActor, userToDelete.id);
 
 				expect(eventService.emit).toHaveBeenCalledWith('user-deleted', {
-					user: userToDelete,
+					user: null,
+					source: 'scim',
 					publicApi: false,
 					targetUserOldStatus: 'active',
 					targetUserId: userToDelete.id,

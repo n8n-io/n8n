@@ -144,8 +144,8 @@ beforeEach(async () => {
 		'User',
 	]);
 	await scimTokenRepository().delete({});
-	await Container.get(ScimSettingsService).setDeprovisioningPolicy({
-		...DEFAULT_SCIM_DEPROVISIONING_POLICY,
+	await Container.get(ScimSettingsService).update({
+		policy: { ...DEFAULT_SCIM_DEPROVISIONING_POLICY },
 	});
 
 	// Every test except the opt-in ones runs with the opt-in on.
@@ -719,6 +719,27 @@ describe('SCIM deprovisioning policy', () => {
 			});
 		});
 
+		// The settings page saves each field when it changes, so two saves can
+		// overlap.
+		it('keeps both changes of two saves at the same time', async () => {
+			await Promise.all([
+				patchConfig({ onDelete: 'delete' }).expect(200),
+				patchConfig({ dataAction: 'delete' }).expect(200),
+			]);
+
+			expect(await getConfig()).toMatchObject({ onDelete: 'delete', dataAction: 'delete' });
+		});
+
+		it('saves the switch and the policy of one body together', async () => {
+			await Container.get(ScimSettingsService).setEnabled(false);
+
+			const response = await patchConfig({ enabled: true, onDelete: 'delete' }).expect(200);
+
+			expect(response.body.data).toMatchObject({ enabled: true, onDelete: 'delete' });
+			expect(await getConfig()).toMatchObject({ enabled: true, onDelete: 'delete' });
+			expect(await Container.get(ScimSettingsService).isEnabled()).toBe(true);
+		});
+
 		it('keeps SCIM off when the body changes only the policy', async () => {
 			await Container.get(ScimSettingsService).setEnabled(false);
 
@@ -860,7 +881,8 @@ describe('SCIM deprovisioning policy', () => {
 			expect(emit).toHaveBeenCalledWith(
 				'user-deleted',
 				expect.objectContaining({
-					user: expect.objectContaining({ id: member.id }),
+					user: null,
+					source: 'scim',
 					targetUserId: member.id,
 					migrationStrategy: 'transfer_data',
 					migrationUserId: undefined,

@@ -54,7 +54,7 @@ export const CHANGE_ROLE_ERROR_MESSAGES = {
 } as const;
 
 /** The system as the actor of a user deletion that no user asked for. */
-export type SystemDeletionActor = Extract<PolicyActor, { kind: 'system' }>;
+export type SystemDeletionActor = Extract<PolicyActor, { kind: 'system' }> & { reason: 'scim' };
 
 @Service()
 export class UserService {
@@ -569,6 +569,7 @@ export class UserService {
 	 * such as a SCIM deletion from the identity provider.
 	 */
 	async deleteUser(actor: User | SystemDeletionActor, idToDelete: string, transferId?: string) {
+		const systemActor = 'kind' in actor ? actor : null;
 		const actorUser = 'kind' in actor ? null : actor;
 		const policyActor: PolicyActor = 'kind' in actor ? actor : { kind: 'user', user: actor };
 
@@ -669,9 +670,9 @@ export class UserService {
 		});
 
 		this.eventService.emit('user-deleted', {
-			// No user acts in a system deletion. The deleted user takes that place,
-			// as in the event of a SCIM deactivation.
-			user: actorUser ?? userToDelete,
+			// No user acts in a system deletion, so the event names the system.
+			user: actorUser,
+			...(systemActor && { source: systemActor.reason }),
 			publicApi: false,
 			targetUserOldStatus: userToDelete.isPending ? 'invited' : 'active',
 			targetUserId: idToDelete,

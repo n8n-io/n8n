@@ -237,56 +237,25 @@ describe('ScimDeprovisioningService', () => {
 		});
 	});
 
-	describe('updatePolicy', () => {
-		it('changes only the fields that the change sets', async () => {
-			storePolicy({ dataAction: 'delete', transferProjectId: 'team-1' });
-
-			const policy = await service.updatePolicy({ onDelete: 'delete' });
-
-			const expected = { onDelete: 'delete', dataAction: 'delete', transferProjectId: 'team-1' };
-			expect(policy).toEqual(expected);
-			expect(scimSettingsService.setDeprovisioningPolicy).toHaveBeenCalledExactlyOnceWith(expected);
-		});
-
-		it('saves nothing for a change without fields', async () => {
-			await expect(service.updatePolicy({})).resolves.toEqual(DEFAULT_SCIM_DEPROVISIONING_POLICY);
-			expect(scimSettingsService.setDeprovisioningPolicy).not.toHaveBeenCalled();
-		});
-
-		it('clears the transfer target', async () => {
-			storePolicy({ transferProjectId: 'team-1' });
-
-			await service.updatePolicy({ transferProjectId: null });
-
-			expect(scimSettingsService.setDeprovisioningPolicy).toHaveBeenCalledWith(
-				expect.objectContaining({ transferProjectId: null }),
-			);
-			expect(transferTargetRepository.findWithCreator).not.toHaveBeenCalled();
-		});
-
+	describe('assertValidTransferTarget', () => {
 		it.each([
 			['a team project without members', teamProject()],
 			['the personal project of an active user', personalProject(makeUser())],
 		])('accepts %s as the target', async (_, project) => {
 			transferTargetRepository.findWithCreator.mockResolvedValue(project);
 
-			await service.updatePolicy({ transferProjectId: project.id });
-
-			expect(scimSettingsService.setDeprovisioningPolicy).toHaveBeenCalledWith(
-				expect.objectContaining({ transferProjectId: project.id }),
-			);
+			await expect(service.assertValidTransferTarget(project.id)).resolves.toBeUndefined();
 		});
 
 		it.each([
 			['a project that does not exist', null],
 			['the personal project of a deactivated user', personalProject(makeUser({ disabled: true }))],
-		])('rejects %s as the target and saves nothing', async (_, project) => {
+		])('rejects %s as the target', async (_, project) => {
 			transferTargetRepository.findWithCreator.mockResolvedValue(project);
 
-			await expect(
-				service.updatePolicy({ onDelete: 'delete', transferProjectId: 'target' }),
-			).rejects.toThrow(ScimInvalidTransferTargetError);
-			expect(scimSettingsService.setDeprovisioningPolicy).not.toHaveBeenCalled();
+			await expect(service.assertValidTransferTarget('target')).rejects.toThrow(
+				ScimInvalidTransferTargetError,
+			);
 		});
 	});
 

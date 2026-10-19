@@ -57,6 +57,34 @@ export class SettingsRepository extends BaseRepository<Settings> {
 		});
 	}
 
+	/**
+	 * Reads the row and holds a write lock on it until the transaction of
+	 * `ctx` ends, so that a read-merge-write of the value cannot lose a
+	 * parallel change. A missing row is created with `defaultValue` first,
+	 * because a lock needs a row. SQLite needs no row lock: each transaction
+	 * holds the one write connection, so transactions run one at a time.
+	 */
+	async getOrCreateWithWriteLock(
+		key: string,
+		defaultValue: string,
+		loadOnStartup: boolean,
+		ctx: OperationContext,
+	): Promise<Settings> {
+		const manager = this.managerFor(ctx);
+		await manager
+			.createQueryBuilder()
+			.insert()
+			.into(Settings)
+			.values({ key, value: defaultValue, loadOnStartup })
+			.orIgnore()
+			.execute();
+		return await manager.findOneOrFail(Settings, {
+			where: { key },
+			lock:
+				manager.connection.options.type === 'postgres' ? { mode: 'pessimistic_write' } : undefined,
+		});
+	}
+
 	async upsertByKey(
 		key: string,
 		value: string,
