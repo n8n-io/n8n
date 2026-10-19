@@ -82,6 +82,17 @@ describe('MetadataUtils', () => {
 				outputTokens: 125,
 			});
 		});
+
+		it('should preserve the prior total when adding a count would exceed Number.MAX_SAFE_INTEGER', () => {
+			const context = createMockContext({
+				tokenUsage: { inputTokens: Number.MAX_SAFE_INTEGER, outputTokens: 100 },
+			});
+			accumulateTokenUsage(context, 1, 25);
+			expect(context.getExecuteData().metadata?.tokenUsage).toEqual({
+				inputTokens: Number.MAX_SAFE_INTEGER,
+				outputTokens: 125,
+			});
+		});
 	});
 
 	describe('parseMetadataFromError', () => {

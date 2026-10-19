@@ -23,8 +23,14 @@ function parseErrorResponseWorkflowMetadata(response: unknown): ISubWorkflowMeta
 	};
 }
 
-const asTokenCount = (value: unknown): number | undefined =>
+export const asTokenCount = (value: unknown): number | undefined =>
 	typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : undefined;
+
+const addTokenCount = (prev: number, delta: number | undefined): number => {
+	if (delta === undefined) return prev;
+	const sum = prev + delta;
+	return Number.isSafeInteger(sum) ? sum : prev;
+};
 
 export function accumulateTokenUsage(
 	context: IExecuteFunctions,
@@ -36,10 +42,13 @@ export function accumulateTokenUsage(
 	if (validInput === undefined && validOutput === undefined) return;
 
 	const prev = context.getExecuteData()?.metadata?.tokenUsage;
+	const prevInput = asTokenCount(prev?.inputTokens) ?? 0;
+	const prevOutput = asTokenCount(prev?.outputTokens) ?? 0;
+
 	context.setMetadata({
 		tokenUsage: {
-			inputTokens: (asTokenCount(prev?.inputTokens) ?? 0) + (validInput ?? 0),
-			outputTokens: (asTokenCount(prev?.outputTokens) ?? 0) + (validOutput ?? 0),
+			inputTokens: addTokenCount(prevInput, validInput),
+			outputTokens: addTokenCount(prevOutput, validOutput),
 		},
 	});
 }
