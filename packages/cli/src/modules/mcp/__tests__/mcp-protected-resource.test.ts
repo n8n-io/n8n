@@ -101,11 +101,12 @@ describe('McpProtectedResource', () => {
 			expect(await hubOffResource.getScopeTools()).not.toHaveProperty('skill:read');
 		});
 
-		it('withholds skill scopes when Agents is disabled', () => {
+		it('keeps skill scopes when Agents is disabled', () => {
 			vi.mocked(moduleRegistry.settings.get).mockReturnValue({ enabled: false });
 
-			expect(resource.scopes).not.toContain('skill:read');
-			expect(resource.scopes).not.toContain('skill:write');
+			expect(resource.scopes).not.toContain('agent:read');
+			expect(resource.scopes).toContain('skill:read');
+			expect(resource.scopes).toContain('skill:write');
 		});
 
 		it('should expose the full tool mapping when all features are enabled', async () => {

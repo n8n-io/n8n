@@ -35,9 +35,7 @@ export function areSkillToolsAvailable(
 	globalConfig: GlobalConfig,
 	moduleRegistry: ModuleRegistry,
 ): boolean {
-	return (
-		areAgentToolsAvailable(globalConfig, moduleRegistry) && globalConfig.agents.skillsHubEnabled
-	);
+	return moduleRegistry.isActive('agents') && globalConfig.agents.skillsHubEnabled;
 }
 
 /**

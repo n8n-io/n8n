@@ -32,7 +32,6 @@ import {
 } from '../mcp-scopes';
 import { McpConfig } from '../mcp.config';
 import { McpService } from '../mcp.service';
-import { McpAgentToolsService } from '../tools/agents/agent-tools.service';
 import type { McpFeatureFlags } from '../mcp.service';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -286,14 +285,15 @@ describe('McpService scope enforcement', () => {
 	it.each([true, false])(
 		'registers the skill tools only when the skills hub is on: %s',
 		async (skillsHubEnabled) => {
-			mockInstance(McpAgentToolsService);
 			mockInstance(SkillsApiService);
-			const server = await buildService({ agentsActive: true, skillsHubEnabled }).getServer(
-				user,
-				mcpFeatureFlags(),
-			);
+			const server = await buildService({
+				builderEnabled: false,
+				agentsActive: true,
+				skillsHubEnabled,
+			}).getServer(user, mcpFeatureFlags());
 			const registered = getRegisteredToolNames(server);
 
+			expect(registered.has('mutate_agent')).toBe(false);
 			expect([...SKILL_TOOLS].filter((name) => registered.has(name))).toEqual(
 				skillsHubEnabled ? [...SKILL_TOOLS] : [],
 			);

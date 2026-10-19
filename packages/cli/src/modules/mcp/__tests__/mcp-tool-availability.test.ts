@@ -157,8 +157,16 @@ describe('areSkillToolsAvailable', () => {
 		vi.mocked(moduleRegistry.settings.get).mockReturnValue(undefined);
 	});
 
-	it('is available when the agent tools are available and the skills hub is on', () => {
+	it('is available when the agents module is active and the skills hub is on', () => {
 		expect(areSkillToolsAvailable(globalConfig(), moduleRegistry)).toBe(true);
+	});
+
+	it('does not depend on the agent tools', () => {
+		vi.mocked(moduleRegistry.settings.get).mockReturnValue({ enabled: false });
+
+		expect(areSkillToolsAvailable(globalConfig({ builderEnabled: false }), moduleRegistry)).toBe(
+			true,
+		);
 	});
 
 	it('is unavailable when the skills hub is off', () => {
@@ -167,7 +175,7 @@ describe('areSkillToolsAvailable', () => {
 		);
 	});
 
-	it('is unavailable when the agent tools are unavailable', () => {
+	it('is unavailable when the agents module is inactive', () => {
 		moduleRegistry.isActive.mockReturnValue(false);
 
 		expect(areSkillToolsAvailable(globalConfig(), moduleRegistry)).toBe(false);
