@@ -5,6 +5,7 @@ packages/cli/src/modules/instance-ai/__tests__/instance-ai-pending-agent.service
   s_58620fba057bad::t_af15416c3de6a8 17,128-129
   s_58620fba057bad::t_43ff7629690b67 17,128-129
   s_45c9c02db4924e::t_bda39959410314 60
+  s_45c9c02db4924e::t_04a21af9953368 46-57,89-92,94-100,102,104,106-107,110-111,113,120-127,138,152-158,160-163,165-171,181-186,188-190,202,231,244,253,273,278,281,286-292,303,308
 packages/cli/src/modules/agents/builder/agents-builder.service.ts
   s_58620fba057bad::t_5bee3019161cce 103,105
   s_58620fba057bad::t_aca595935e946b 103,105
@@ -42,6 +43,7 @@ packages/cli/src/modules/instance-ai/instance-ai.controller.ts
 packages/cli/src/modules/instance-ai/instance-ai-pending-agent.service.ts
   s_45c9c02db4924e::t_a6409156c3a730 63-64
   s_45c9c02db4924e::t_fb988709e5bb9d 1
+  s_45c9c02db4924e::t_60b01fff2ab7a3 89-91,102-105,117,119,122-124,126-127,130-131
 packages/cli/src/modules/agents/AGENTS.md
   s_45c9c02db4924e::t_a6409156c3a730 19
 packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
@@ -115,6 +117,7 @@ packages/cli/src/modules/agents/agents.service.ts
   s_45c9c02db4924e::t_41e78be555aca7 246-249
   s_45c9c02db4924e::t_c943946a206df8 7-8,42,45-50,61-62,82-86,99,103-104,125-127,142,156-157,159-162,164,166,169,171,173,175-176,178,180-186,189-200,202-204,206,208-211,213-223,225-245,250-292,294-295
   s_45c9c02db4924e::t_c0cbd2fc2edd9f 163,205,224,293
+  s_45c9c02db4924e::t_60b01fff2ab7a3 140
 packages/cli/src/modules/agents/__tests__/agent-config.service.test.ts
   s_45c9c02db4924e::t_36fd3810325bd0 117-120
   s_45c9c02db4924e::t_6c900711565c64 1374,1381,1389,1442,1459,1502
@@ -161,6 +164,10 @@ packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
   s_45c9c02db4924e::t_a5a2f5725697a8 71
   s_45c9c02db4924e::t_36fd3810325bd0 1529-1531,1560
   s_45c9c02db4924e::t_24961f0dd66840 201,1463,1473,1511
+packages/cli/src/modules/agents/__tests__/instance-ai-builder-delegate.adapter.test.ts
+  s_45c9c02db4924e::t_04a21af9953368 607-608,615-616,632-633,643-644,664-665
+packages/cli/src/modules/agents/instance-ai-builder-delegate.adapter.ts
+  s_45c9c02db4924e::t_60b01fff2ab7a3 166-167
 ---
 {
   "schema_version": "authorship/3.0.0",
