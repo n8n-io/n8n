@@ -242,7 +242,9 @@ function toObservationText(observation: unknown): string {
 	) {
 		return observation.content;
 	}
-	return JSON.stringify(observation);
+	// JSON.stringify returns undefined for undefined. Use placeholder text instead,
+	// so the saved turn still answers every tool call it declares.
+	return JSON.stringify(observation) ?? 'The tool did not return a result.';
 }
 
 function checkIsResponsesApi(model: BaseChatModel | null | undefined): boolean {
@@ -426,10 +428,12 @@ export async function toolsAgentExecute(
 							input,
 							response.output,
 							memory,
-							// Skip calls whose tool did not return a result
-							response.intermediateSteps
-								?.filter((step) => step.observation !== undefined)
-								.map((step) => ({ ...step, observation: toObservationText(step.observation) })),
+							// Keep steps without a result too. The shared AIMessage declares every
+							// call, so each one needs a matching tool message in memory.
+							response.intermediateSteps?.map((step) => ({
+								...step,
+								observation: toObservationText(step.observation),
+							})),
 							0,
 						);
 						memorySaves++;
