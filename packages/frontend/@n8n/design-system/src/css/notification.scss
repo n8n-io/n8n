@@ -38,7 +38,6 @@
 	}
 
 	@include mixins.e(title) {
-		// Matches the icon height, so the first title line is vertically centered with the icon.
 		line-height: var.$notification-icon-size;
 		font-weight: var(--font-weight--medium);
 		font-size: var.$notification-title-font-size;
