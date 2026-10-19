@@ -2,26 +2,20 @@ import { AGENT_SKILL_NAME_MAX_LENGTH, skillNameKey, type AgentSkill } from '@n8n
 import { Logger } from '@n8n/backend-common';
 import { ProjectScopeService } from '@n8n/backend-services';
 import { TransactionRunner, type OperationContext, type User } from '@n8n/db';
-import { Container, Service } from '@n8n/di';
+import { Service } from '@n8n/di';
 import { ConflictError, ForbiddenError, NotFoundError, UserError } from '@n8n/errors';
 import { hasGlobalScope } from '@n8n/permissions';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 
 import { userHasScopes } from '@/permissions.ee/check-access';
 
-import { AgentUpdateBroadcaster } from '../agent-update-broadcaster';
-import type { SkillFrontmatter } from '../entities/skill-version.entity';
-import type { Skill, SkillSource } from '../entities/skill.entity';
-import { AgentRepository } from '../repositories/agent.repository';
-import {
-	SkillRepository,
-	type ResolvedSkillRow,
-	type SkillTarget,
-} from '../repositories/skill.repository';
-import { getAgentSkillHash } from '../utils/agent-config-hash';
+import { SkillAgentsProxy } from './skill-agents-proxy.service';
 import { skillContentHash, type SkillContent } from './skill-content-hash';
+import { getSkillHash } from './skill-hash';
 import { SkillNameTakenError } from './skill-name-taken.error';
-import { findIntroducedNameClashes, renameIntroducesClash } from './skill-names';
+import type { SkillFrontmatter } from './skill-version.entity';
+import type { Skill, SkillSource } from './skill.entity';
+import { SkillRepository, type ResolvedSkillRow, type SkillTarget } from './skill.repository';
 
 /** A skill ref in an agent config. A ref with `versionId` runs that version. */
 export type SkillRef = { id: string; versionId?: string };
@@ -93,11 +87,6 @@ function toRecord(rows: Map<string, ResolvedSkillRow>): Record<string, AgentSkil
 	return Object.fromEntries([...rows].map(([refId, row]) => [refId, toAgentSkill(row)]));
 }
 
-/**
- * The rules of skills: which version an agent runs, save, publish pins, revert pins,
- * attach checks, edit permission and the delete guard. The runtime loads skills by id
- * with no permission check.
- */
 export type SkillMoveOptions = {
 	/** The name the skill has after this request, when the same request renames it. */
 	nameAfterMove?: string;
@@ -105,15 +94,20 @@ export type SkillMoveOptions = {
 	checkedSource?: SkillTarget;
 };
 
+/**
+ * The rules of skills: which version a skill ref runs, save, edit permission, moves and
+ * the delete guard. The runtime loads skills by id with no permission check. What
+ * depends on agents (who uses a skill, the project of an agent skill) comes from
+ * `SkillAgentsProxy`.
+ */
 @Service()
 export class SkillService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly skillRepository: SkillRepository,
-		private readonly agentRepository: AgentRepository,
 		private readonly txRunner: TransactionRunner,
-		private readonly agentUpdateBroadcaster: AgentUpdateBroadcaster,
 		private readonly projectScopeService: ProjectScopeService,
+		private readonly skillAgents: SkillAgentsProxy,
 	) {}
 
 	// ---------------------------------------------------------------- reads
@@ -127,14 +121,6 @@ export class SkillService {
 		ctx: OperationContext = {},
 	): Promise<Record<string, AgentSkill>> {
 		return toRecord(await this.resolveRows(refs, ctx));
-	}
-
-	/** The pinned versions of one published agent version, keyed by skill id. */
-	async resolvePinned(
-		agentVersionId: string,
-		ctx: OperationContext = {},
-	): Promise<Record<string, AgentSkill>> {
-		return toRecord(await this.skillRepository.findPinned(agentVersionId, ctx));
 	}
 
 	private async resolveRows(
@@ -166,7 +152,7 @@ export class SkillService {
 	 * The name each ref runs under: its pinned version's name, else the latest. Works per
 	 * ref, because one agent can pin a skill that another agent follows.
 	 */
-	private async runtimeNames(
+	async runtimeNames(
 		refs: Array<{ id: string; versionId?: string | null }>,
 		ctx: OperationContext,
 	): Promise<(ref: { id: string; versionId?: string | null }) => string | undefined> {
@@ -241,7 +227,7 @@ export class SkillService {
 			const { baseSkillHash, allowedTools: _ignored, ...changes } = update;
 			// Only a new name is trimmed, so a save never renames a skill it did not rename.
 			if (changes.name !== undefined) changes.name = trimmedName(changes.name);
-			if (baseSkillHash !== getAgentSkillHash(current)) {
+			if (baseSkillHash !== getSkillHash(current)) {
 				throw new ConflictError(
 					'The skill was changed somewhere else. Reload to get the latest version.',
 				);
@@ -259,7 +245,12 @@ export class SkillService {
 			// clash with nothing new. The legacy rule skipped it too.
 			if (skillNameKey(skill.name) !== skillNameKey(latest.version.name)) {
 				await this.assertNameFree(skill.name, latest.skill, skillId, txCtx);
-				await this.assertRenameKeepsNamesApart(skillId, latest.version.name, skill.name, txCtx);
+				await this.skillAgents.assertRenameKeepsNamesApart(
+					skillId,
+					latest.version.name,
+					skill.name,
+					txCtx,
+				);
 			}
 			const version = await this.skillRepository.nextVersionNumber(skillId, txCtx);
 			const versionId = await this.skillRepository.insertSavedVersion(
@@ -269,8 +260,7 @@ export class SkillService {
 				userId,
 				txCtx,
 			);
-			const followingIds = await this.skillRepository.findFollowingAgentIds([skillId], txCtx);
-			await this.agentRepository.markDraftChangedIfInSync(followingIds, txCtx);
+			const followingIds = await this.skillAgents.markFollowersChanged(skillId, txCtx);
 			const result = { versionId, version, created: true, skill, followingAgentIds: followingIds };
 			return { saved: result, following: followingIds };
 		});
@@ -289,17 +279,7 @@ export class SkillService {
 	 * reload, except the tab of `excludePushRef`.
 	 */
 	async refreshFollowingAgents(agentIds: string[], excludePushRef?: string): Promise<void> {
-		if (agentIds.length === 0) return;
-		// Imported on use: the runtime cache depends on services that will depend on this one.
-		const { AgentRuntimeCacheService } = await import('../agent-runtime-cache.service.js');
-		const cache = Container.get(AgentRuntimeCacheService);
-		for (const agentId of agentIds) cache.clearRuntimes(agentId);
-		for (const agent of await this.agentRepository.findProjectIdsByIds(agentIds)) {
-			this.agentUpdateBroadcaster.notify(
-				{ projectId: agent.projectId, agentId: agent.id, source: 'user' },
-				excludePushRef,
-			);
-		}
+		await this.skillAgents.refreshAgents(agentIds, excludePushRef);
 	}
 
 	/**
@@ -346,39 +326,7 @@ export class SkillService {
 		}
 	}
 
-	private async assertRenameKeepsNamesApart(
-		skillId: string,
-		oldName: string,
-		newName: string,
-		ctx: OperationContext,
-	): Promise<void> {
-		const agents = await this.skillRepository.findFollowingAgents(skillId, ctx);
-		const refs = await this.skillRepository.findDependencies(
-			agents.map((agent) => agent.id),
-			ctx,
-		);
-		const otherRefs = (agent: (typeof agents)[number]) =>
-			(refs.get(agent.id) ?? [])
-				.filter((ref) => ref.skillId !== skillId)
-				.map((ref) => ({ id: ref.skillId, versionId: ref.versionId }));
-		const nameOf = await this.runtimeNames(agents.flatMap(otherRefs), ctx);
-		const clashing = agents.filter((agent) =>
-			renameIntroducesClash(
-				otherRefs(agent).flatMap((ref) => nameOf(ref) ?? []),
-				oldName,
-				newName,
-			),
-		);
-		if (clashing.length > 0) {
-			throw new UserError(
-				`Cannot rename to "${newName}": ${clashing.map((agent) => agent.name).join(', ')} already ${
-					clashing.length > 1 ? 'use' : 'uses'
-				} a skill with a name like that.`,
-			);
-		}
-	}
-
-	// ---------------------------------------------------------------- publish and revert
+	// ---------------------------------------------------------------- publish
 
 	/**
 	 * Publish, step 1: the version each ref resolves to. Publish
@@ -395,113 +343,7 @@ export class SkillService {
 		return { skills: toRecord(rows), versionByRef };
 	}
 
-	/**
-	 * Publish, step 2: after the `agent_history` row exists. The pins keep the order of
-	 * `versionByRef`, which is the order of the draft refs.
-	 */
-	async pinForPublish(
-		agentVersionId: string,
-		versionByRef: Map<string, string>,
-		ctx: OperationContext,
-	): Promise<void> {
-		await this.skillRepository.insertPins(
-			[...versionByRef].map(([skillId, skillVersionId]) => ({
-				agentVersionId,
-				skillId,
-				skillVersionId,
-			})),
-			ctx,
-		);
-	}
-
-	/**
-	 * Revert: each ref gets a pin to the version that agent version used. No skill row is
-	 * written, so other agents are not affected and no skill permission is needed. A ref
-	 * with no pin follows the latest version.
-	 */
-	async restoreFromVersion(
-		agentVersionId: string,
-		refs: SkillRef[],
-		ctx: OperationContext = {},
-	): Promise<SkillRef[]> {
-		const pinned = await this.skillRepository.findPinned(agentVersionId, ctx);
-		return refs.map(({ versionId: _dropped, ...ref }) => {
-			const row = pinned.get(ref.id);
-			return row ? { ...ref, versionId: row.version.id } : ref;
-		});
-	}
-
-	// ---------------------------------------------------------------- attach
-
-	/** An agent can attach instance skills, the skills of its own project and its own agent skills. */
-	isAttachable(
-		skill: Pick<Skill, 'projectId' | 'agentId'>,
-		agent: { id: string; projectId: string | null },
-	): boolean {
-		if (skill.agentId !== null) return skill.agentId === agent.id;
-		return skill.projectId === null || skill.projectId === agent.projectId;
-	}
-
-	/**
-	 * The check an agent config save runs on the skill refs it gets. The agent's current
-	 * refs come from its dependency rows. Unknown ids are dropped unless already
-	 * attached. A ref keeps a pin only when the agent already had it. A new ref
-	 * must be attachable and must not clash by name.
-	 */
-	async checkRefs(
-		agent: { id: string; projectId: string | null },
-		refs: SkillRef[],
-		ctx: OperationContext = {},
-	): Promise<SkillRef[]> {
-		const current =
-			(await this.skillRepository.findDependencies([agent.id], ctx)).get(agent.id) ?? [];
-		const existingIds = new Set(current.map((ref) => ref.skillId));
-		const existingPins = new Map(current.map((ref) => [ref.skillId, ref.versionId]));
-		const found = new Map(
-			(
-				await this.skillRepository.findByIds(
-					refs.map((ref) => ref.id),
-					ctx,
-				)
-			).map((skill) => [skill.id, skill]),
-		);
-		const kept = refs
-			.filter((ref) => existingIds.has(ref.id) || found.has(ref.id))
-			.map(({ versionId, ...ref }) =>
-				versionId !== undefined && existingPins.get(ref.id) === versionId
-					? { ...ref, versionId }
-					: ref,
-			);
-		const newIds = [...new Set(kept.map((ref) => ref.id))].filter(
-			(id) => !existingIds.has(id) && found.has(id),
-		);
-		if (newIds.length === 0) return kept;
-		// Shared lock until the attach commits, so `changeTarget` cannot narrow a skill in between.
-		if (ctx.trx) await this.skillRepository.lockForPublish(newIds, ctx);
-
-		const keptExisting = kept.filter((ref) => existingIds.has(ref.id));
-		const newRefs = newIds.map((id) => ({ id }));
-		const nameOf = await this.runtimeNames([...keptExisting, ...newRefs], ctx);
-		for (const id of newIds) {
-			const skill = found.get(id);
-			if (skill && !this.isAttachable(skill, agent)) {
-				throw new UserError(
-					`Skill "${nameOf({ id }) ?? id}" (${id}) is not available to this agent. An agent can use the skills of its own project, its own skills and instance skills.`,
-				);
-			}
-		}
-		// A kept ref runs its pinned version, so compare the name of that version.
-		const clashes = findIntroducedNameClashes(
-			keptExisting.flatMap((ref) => nameOf(ref) ?? []),
-			newRefs.flatMap((ref) => nameOf(ref) ?? []),
-		);
-		if (clashes.length > 0) {
-			throw new UserError(
-				`This agent already has a skill with a name like "${clashes.join('", "')}". Rename one of them, or detach the other skill first.`,
-			);
-		}
-		return kept;
-	}
+	// ---------------------------------------------------------------- move
 
 	/**
 	 * Moves a skill to a project, one agent or the instance. Refused while an agent other
@@ -532,7 +374,7 @@ export class SkillService {
 					);
 				}
 			}
-			const others = (await this.skillRepository.findUsingAgentIds(skillId, txCtx)).filter(
+			const others = (await this.skillAgents.findUsingAgentIds(skillId, txCtx)).filter(
 				(id) => id !== keepAgentId,
 			);
 			if (others.length > 0) {
@@ -564,7 +406,7 @@ export class SkillService {
 	): Promise<string | null> {
 		if (skill.projectId) return skill.projectId;
 		if (!skill.agentId) return null;
-		const agent = (await this.skillRepository.findAgents([skill.agentId], ctx)).get(skill.agentId);
+		const agent = (await this.skillAgents.findAgents([skill.agentId], ctx)).get(skill.agentId);
 		return agent?.projectId ?? null;
 	}
 
@@ -667,7 +509,7 @@ export class SkillService {
 			const [skill] = await this.skillRepository.findByIds([skillId], txCtx);
 			if (!skill) throw new NotFoundError('Skill not found');
 			await this.skillRepository.lockForEdit([skillId], txCtx);
-			const usage = await this.skillRepository.findUsage(skillId, agentProjectIds, txCtx);
+			const usage = await this.skillAgents.findUsage(skillId, agentProjectIds, txCtx);
 			if (usage.drafts.length > 0 || usage.pins.length > 0 || usage.hiddenAgents > 0) {
 				const name = (await this.latestNames([skillId], txCtx)).get(skillId) ?? skillId;
 				const users = [

@@ -9,9 +9,10 @@ import { Container } from '@n8n/di';
 import { randomUUID } from 'node:crypto';
 
 import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
+import { AgentSkillRepository } from '@/modules/agents/repositories/agent-skill.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
-import { SkillRepository } from '@/modules/agents/repositories/skill.repository';
-import { skillContentHash, type SkillContent } from '@/modules/agents/skills/skill-content-hash';
+import { skillContentHash, type SkillContent } from '@/modules/skills/skill-content-hash';
+import { SkillRepository, type SkillVisibility } from '@/modules/skills/skill.repository';
 
 import { createUser } from '../shared/db/users';
 
@@ -29,6 +30,7 @@ const content = (overrides: Partial<SkillContent> = {}): SkillContent => ({
 
 describe('SkillRepository', () => {
 	let skills: SkillRepository;
+	let agentSkills: AgentSkillRepository;
 	let agents: AgentRepository;
 	let histories: AgentHistoryRepository;
 	let txRunner: TransactionRunner;
@@ -37,9 +39,10 @@ describe('SkillRepository', () => {
 	let otherProject: Project;
 
 	beforeAll(async () => {
-		await testModules.loadModules(['agents']);
+		await testModules.loadModules(['skills', 'agents']);
 		await testDb.init();
 		skills = Container.get(SkillRepository);
+		agentSkills = Container.get(AgentSkillRepository);
 		agents = Container.get(AgentRepository);
 		histories = Container.get(AgentHistoryRepository);
 		txRunner = Container.get(TransactionRunner);
@@ -99,6 +102,14 @@ describe('SkillRepository', () => {
 		const versionId = randomUUID();
 		await histories.save(histories.create({ versionId, agentId, author: 'Test' }));
 		return versionId;
+	}
+
+	/** What `SkillsApiService` passes: the projects, and the agents in them. */
+	async function visibleTo(projectIds: string[] | 'all'): Promise<SkillVisibility> {
+		return {
+			projectIds,
+			agentIds: projectIds === 'all' ? 'all' : await agentSkills.findAgentIdsInProjects(projectIds),
+		};
 	}
 
 	async function latestVersionId(skillId: string): Promise<string> {
@@ -217,7 +228,7 @@ describe('SkillRepository', () => {
 			});
 			await skills.insertSavedVersion(instance, 2, content({ instructions: 'touched' }), null);
 
-			const page = await skills.findVisiblePage({ projectIds: [project.id] }, firstPage);
+			const page = await skills.findVisiblePage(await visibleTo([project.id]), firstPage);
 
 			expect(ids(page)).toEqual(expect.arrayContaining([instance, team, agentSkill]));
 			expect(ids(page)).not.toContain(otherTeam);
@@ -232,7 +243,7 @@ describe('SkillRepository', () => {
 				agentId: (await createAgent('Sales', { projectId: otherProject.id })).id,
 			});
 
-			const page = await skills.findVisiblePage({ projectIds: 'all' }, firstPage);
+			const page = await skills.findVisiblePage(await visibleTo('all'), firstPage);
 
 			expect(ids(page)).toEqual(expect.arrayContaining([otherTeam, otherAgentSkill]));
 		});
@@ -241,7 +252,7 @@ describe('SkillRepository', () => {
 			await createSkill({ projectId: project.id });
 			await createSkill({ agentId: (await createAgent('Support')).id });
 
-			const visibility = { projectIds: [] };
+			const visibility = { projectIds: [], agentIds: [] };
 			const none = { skills: [], count: 0 };
 			expect(await skills.findVisiblePage(visibility, firstPage)).toEqual(none);
 			expect(await skills.findVisiblePage(visibility, { ...firstPage, scope: 'project' })).toEqual(
@@ -260,12 +271,27 @@ describe('SkillRepository', () => {
 			const otherAgentSkill = await createSkill({
 				agentId: (await createAgent('Sales', { projectId: otherProject.id })).id,
 			});
-			const everything = { projectIds: 'all' as const };
+			const everything = await visibleTo('all');
 
-			const page = async (filter: {
+			const page = async ({
+				projectId,
+				...filter
+			}: {
 				scope?: 'project' | 'agent' | 'instance';
 				projectId?: string;
-			}) => ids(await skills.findVisiblePage(everything, { ...firstPage, ...filter })).sort();
+			}) =>
+				ids(
+					await skills.findVisiblePage(everything, {
+						...firstPage,
+						...filter,
+						...(projectId && {
+							project: {
+								id: projectId,
+								agentIds: await agentSkills.findAgentIdsInProjects([projectId]),
+							},
+						}),
+					}),
+				).sort();
 
 			expect(await page({ scope: 'instance' })).toEqual([instance]);
 			expect(await page({ scope: 'project' })).toEqual([team, otherTeam].sort());
@@ -287,10 +313,10 @@ describe('SkillRepository', () => {
 
 			const attachable = async (projectIds: string[] | 'all') =>
 				ids(
-					await skills.findVisiblePage(
-						{ projectIds },
-						{ skip: 0, attachableTo: { agentId: support.id, projectId: project.id } },
-					),
+					await skills.findVisiblePage(await visibleTo(projectIds), {
+						skip: 0,
+						attachableTo: { agentId: support.id, projectId: project.id },
+					}),
 				).sort();
 
 			expect(await attachable([project.id])).toEqual([instance, team, own].sort());
@@ -307,7 +333,7 @@ describe('SkillRepository', () => {
 				content({ name: 'Other', description: 'rules for x' }),
 			);
 			await createSkill({}, content({ name: 'Unrelated' }));
-			const visibility = { projectIds: [] };
+			const visibility = { projectIds: [], agentIds: [] };
 
 			const byName = await skills.findVisiblePage(visibility, {
 				skip: 0,
@@ -326,7 +352,7 @@ describe('SkillRepository', () => {
 		it('treats LIKE wildcards in the search as plain text', async () => {
 			const percent = await createSkill({}, content({ name: '100% done' }));
 			await createSkill({}, content({ name: '100 done' }));
-			const visibility = { projectIds: [] };
+			const visibility = { projectIds: [], agentIds: [] };
 
 			const page = await skills.findVisiblePage(visibility, { skip: 0, search: '100%' });
 
@@ -335,7 +361,7 @@ describe('SkillRepository', () => {
 
 		it('cuts the page with skip and take, and answers past the end with the full count', async () => {
 			for (let i = 0; i < 3; i++) await createSkill();
-			const visibility = { projectIds: [] };
+			const visibility = { projectIds: [], agentIds: [] };
 
 			const all = await skills.findVisiblePage(visibility, { skip: 0 });
 			const second = await skills.findVisiblePage(visibility, { skip: 1, take: 1 });
@@ -373,7 +399,10 @@ describe('SkillRepository', () => {
 
 			await skills.insertSavedVersion(first, 2, content({ instructions: 'newer' }), null);
 
-			const { skills: page } = await skills.findVisiblePage({ projectIds: [] }, { skip: 0 });
+			const { skills: page } = await skills.findVisiblePage(
+				{ projectIds: [], agentIds: [] },
+				{ skip: 0 },
+			);
 			expect(page[0].id).toBe(first);
 		});
 
@@ -454,229 +483,62 @@ describe('SkillRepository', () => {
 		});
 	});
 
-	describe('pins', () => {
-		it('finds the pinned version of each skill of one published agent version', async () => {
-			const id = await createSkill();
-			const v1 = await latestVersionId(id);
-			await skills.insertSavedVersion(id, 2, content({ instructions: 'v2' }), null);
-			const agent = await createAgent('Support');
-			const agentVersionId = await publish(agent.id);
+	describe('reads for the agents module', () => {
+		it('tells whether an agent owns a skill', async () => {
+			const owner = await createAgent('Owner');
+			const other = await createAgent('Other');
+			await createSkill({ agentId: owner.id });
 
-			await skills.insertPins([{ agentVersionId, skillId: id, skillVersionId: v1 }]);
-
-			const pinned = await skills.findPinned(agentVersionId);
-			expect([...pinned.keys()]).toEqual([id]);
-			expect(pinned.get(id)?.version).toMatchObject({ id: v1, version: 1 });
+			expect(await skills.existsForAgent(owner.id)).toBe(true);
+			expect(await skills.existsForAgent(other.id)).toBe(false);
 		});
 
-		it('keeps the pins of one publish in the order they were given', async () => {
-			const zeta = await createSkill();
-			const alpha = await createSkill();
-			const agentVersionId = await publish((await createAgent('Support')).id);
-
-			await skills.insertPins([
-				{ agentVersionId, skillId: zeta, skillVersionId: await latestVersionId(zeta) },
-				{ agentVersionId, skillId: alpha, skillVersionId: await latestVersionId(alpha) },
-			]);
-
-			expect([...(await skills.findPinned(agentVersionId)).keys()]).toEqual([zeta, alpha]);
-			expect(await skills.findPinnedSkillIds(agentVersionId)).toEqual([zeta, alpha]);
-		});
-	});
-
-	describe('dependencies', () => {
-		it('replaces the rows of one agent and skips unknown skills', async () => {
-			const a = await createSkill();
-			const b = await createSkill();
-			const agent = await createAgent('Support');
-			await skills.replaceDependencies(agent.id, [{ skillId: a }]);
-
-			await skills.replaceDependencies(agent.id, [{ skillId: b }, { skillId: 'skill_unknown' }]);
-
-			expect(await skills.findFollowingAgentIds([a])).toEqual([]);
-			expect(await skills.findFollowingAgentIds([b])).toEqual([agent.id]);
-		});
-
-		it('leaves pinned refs out of the following agents', async () => {
-			const id = await createSkill();
-			const v1 = await latestVersionId(id);
-			const following = await createAgent('Following');
-			const pinned = await createAgent('Pinned');
-			await skills.replaceDependencies(following.id, [{ skillId: id }]);
-			await skills.replaceDependencies(pinned.id, [{ skillId: id, versionId: v1 }]);
-
-			expect(await skills.findFollowingAgentIds([id])).toEqual([following.id]);
-			expect(await skills.findFollowingAgents(id)).toEqual([
-				{ id: following.id, name: 'Following' },
-			]);
-		});
-
-		it('lets a following ref win over a pinned ref to the same skill', async () => {
-			const id = await createSkill();
-			const v1 = await latestVersionId(id);
-			const agent = await createAgent('Both');
-
-			await skills.replaceDependencies(agent.id, [{ skillId: id }, { skillId: id, versionId: v1 }]);
-			expect(await skills.findFollowingAgentIds([id])).toEqual([agent.id]);
-
-			await skills.replaceDependencies(agent.id, [{ skillId: id, versionId: v1 }, { skillId: id }]);
-			expect(await skills.findFollowingAgentIds([id])).toEqual([agent.id]);
-		});
-
-		it('returns the refs of each agent in the order they were attached', async () => {
-			const [a, b, c] = [await createSkill(), await createSkill(), await createSkill()];
-			const v1 = await latestVersionId(a);
-			const agent = await createAgent('Support');
-			const other = await createAgent('Sales');
-			await skills.replaceDependencies(agent.id, [{ skillId: b }, { skillId: a, versionId: v1 }]);
-			await skills.replaceDependencies(other.id, [{ skillId: c }]);
-
-			const byAgent = await skills.findDependencies([agent.id, other.id]);
-
-			expect(byAgent).toEqual(
-				new Map([
-					[
-						agent.id,
-						[
-							{ skillId: b, versionId: null },
-							{ skillId: a, versionId: v1 },
-						],
-					],
-					[other.id, [{ skillId: c, versionId: null }]],
-				]),
-			);
-		});
-
-		// The attach order of an agent's skills comes from `createdAt`, so a row that stays
-		// keeps its timestamp.
-		it('keeps the rows that stay, so a new skill sorts after them', async () => {
-			const [a, b, c] = [await createSkill(), await createSkill(), await createSkill()];
-			const agent = await createAgent('Support');
-			await skills.replaceDependencies(agent.id, [{ skillId: a }, { skillId: b }]);
-
-			await skills.replaceDependencies(agent.id, [{ skillId: c }, { skillId: b }, { skillId: a }]);
-
-			expect(
-				(await skills.findDependencies([agent.id])).get(agent.id)?.map((ref) => ref.skillId),
-			).toEqual([a, b, c]);
-		});
-
-		it('updates the pin of a row that stays', async () => {
-			const id = await createSkill();
-			const v1 = await latestVersionId(id);
-			const agent = await createAgent('Support');
-			await skills.replaceDependencies(agent.id, [{ skillId: id }]);
-
-			await skills.replaceDependencies(agent.id, [{ skillId: id, versionId: v1 }]);
-			expect(await skills.findFollowingAgentIds([id])).toEqual([]);
-
-			await skills.replaceDependencies(agent.id, [{ skillId: id }]);
-			expect(await skills.findFollowingAgentIds([id])).toEqual([agent.id]);
-		});
-	});
-
-	describe('usage', () => {
-		it('lists each agent once, with the version its current published version runs', async () => {
+		it('maps version ids to their number and content hash', async () => {
 			const id = await createSkill();
 			const v1 = await latestVersionId(id);
 			const v2 = await skills.insertSavedVersion(id, 2, content({ instructions: 'v2' }), null);
-			const drafting = await createAgent('Drafting');
-			await skills.replaceDependencies(drafting.id, [{ skillId: id }]);
-			const published = await createAgent('Published');
-			const old = await publish(published.id);
-			const current = await publish(published.id);
-			await agents.update({ id: published.id }, { activeVersionId: current });
-			const retired = await createAgent('Retired', { inSync: true });
-			await skills.insertPins([
-				{ agentVersionId: old, skillId: id, skillVersionId: v1 },
-				{ agentVersionId: current, skillId: id, skillVersionId: v2 },
-				{ agentVersionId: await publish(retired.id), skillId: id, skillVersionId: v1 },
-			]);
 
-			const usage = await skills.findUsage(id);
-
-			expect(usage.drafts).toEqual([
-				{ agentId: drafting.id, agentName: 'Drafting', projectId: project.id },
-			]);
-			expect(usage.pins).toHaveLength(2);
-			expect(usage.pins).toEqual(
-				expect.arrayContaining([
-					{ agentId: published.id, agentName: 'Published', projectId: project.id, version: 2 },
-					{ agentId: retired.id, agentName: 'Retired', projectId: project.id, version: null },
+			expect(await skills.findVersionNumbers([v1, v2, randomUUID()])).toEqual(
+				new Map([
+					[v1, 1],
+					[v2, 2],
 				]),
 			);
-			expect(usage.hiddenAgents).toBe(0);
+			expect(await skills.findContentHashes([v2])).toEqual(
+				new Map([[v2, skillContentHash(content({ instructions: 'v2' }))]]),
+			);
 		});
 
-		it('leaves out the agents of other projects and counts them', async () => {
+		it('maps skill ids to the content hash of their latest version', async () => {
 			const id = await createSkill();
-			const v1 = await latestVersionId(id);
-			const visible = await createAgent('Visible');
-			await skills.replaceDependencies(visible.id, [{ skillId: id }]);
-			const drafting = await createAgent('Elsewhere', { projectId: otherProject.id });
-			await skills.replaceDependencies(drafting.id, [{ skillId: id }]);
-			const published = await createAgent('Published elsewhere', { projectId: otherProject.id });
-			await skills.insertPins([
-				{ agentVersionId: await publish(published.id), skillId: id, skillVersionId: v1 },
-			]);
+			await skills.insertSavedVersion(id, 2, content({ instructions: 'v2' }), null);
 
-			const usage = await skills.findUsage(id, [project.id]);
-
-			expect(usage).toEqual({
-				drafts: [{ agentId: visible.id, agentName: 'Visible', projectId: project.id }],
-				pins: [],
-				hiddenAgents: 2,
-			});
+			expect(await skills.findLatestContentHashes([id, 'skill_gone'])).toEqual(
+				new Map([[id, skillContentHash(content({ instructions: 'v2' }))]]),
+			);
 		});
 
-		it('is empty for a skill nobody uses', async () => {
-			const id = await createSkill();
-
-			expect(await skills.findUsage(id)).toEqual({ drafts: [], pins: [], hiddenAgents: 0 });
-		});
-
-		it('counts distinct agents per skill across drafts and pins', async () => {
-			const id = await createSkill();
-			const unused = await createSkill();
-			const v1 = await latestVersionId(id);
+		it('lists every version of the skills an agent owns and of the skills it refers to', async () => {
 			const agent = await createAgent('Support');
-			await skills.replaceDependencies(agent.id, [{ skillId: id }]);
-			const other = await createAgent('Sales');
-			for (const agentId of [agent.id, other.id]) {
-				for (let i = 0; i < 3; i++) {
-					await skills.insertPins([
-						{ agentVersionId: await publish(agentId), skillId: id, skillVersionId: v1 },
-					]);
-				}
-			}
+			const own = await createSkill({ agentId: agent.id });
+			const referred = await createSkill({ projectId: project.id });
+			await createSkill({ projectId: project.id });
+			await skills.insertSavedVersion(own, 2, content({ instructions: 'v2' }), null);
 
-			const counts = await skills.countUsingAgents([id, unused, ...manyUnknownIds()]);
+			const versions = await skills.findVersionsOfAgentSkills(agent.id, [referred]);
 
-			expect(counts.get(id)).toBe(2);
-			expect(counts.get(unused)).toBeUndefined();
+			expect(versions.map(({ skillId, version }) => [skillId, version]).sort()).toEqual(
+				[
+					[own, 1],
+					[own, 2],
+					[referred, 1],
+				].sort(),
+			);
+			expect(versions.every((version) => version.contentHash.length === 64)).toBe(true);
 		});
 	});
 
-	describe('findUsingAgentIds and updateTarget', () => {
-		it('lists the agents with a draft ref or a published pin, once each', async () => {
-			const id = await createSkill({ projectId: project.id });
-			const drafting = await createAgent('Drafting');
-			await skills.replaceDependencies(drafting.id, [{ skillId: id }]);
-			const published = await createAgent('Published');
-			await skills.insertPins([
-				{
-					agentVersionId: await publish(published.id),
-					skillId: id,
-					skillVersionId: await latestVersionId(id),
-				},
-			]);
-			await skills.replaceDependencies(published.id, [{ skillId: id }]);
-
-			expect((await skills.findUsingAgentIds(id)).sort()).toEqual(
-				[drafting.id, published.id].sort(),
-			);
-		});
-
+	describe('updateTarget', () => {
 		it('moves a skill to one agent and back to the instance', async () => {
 			const id = await createSkill({ projectId: project.id });
 			const agent = await createAgent('Agent');
@@ -713,22 +575,6 @@ describe('SkillRepository', () => {
 		});
 	});
 
-	describe('findAgents', () => {
-		it('maps agent ids to their name and project, and skips unknown ids', async () => {
-			const support = await createAgent('Support');
-			const sales = await createAgent('Sales', { projectId: otherProject.id });
-
-			const agents = await skills.findAgents([support.id, support.id, sales.id, 'agent-gone']);
-
-			expect(agents).toEqual(
-				new Map([
-					[support.id, { name: 'Support', projectId: project.id }],
-					[sales.id, { name: 'Sales', projectId: otherProject.id }],
-				]),
-			);
-		});
-	});
-
 	describe('deleteSkill', () => {
 		it('removes the skill with its versions, files and dependency rows', async () => {
 			const id = await createSkill(
@@ -737,26 +583,26 @@ describe('SkillRepository', () => {
 			);
 			const v1 = await latestVersionId(id);
 			const agent = await createAgent('Support');
-			await skills.replaceDependencies(agent.id, [{ skillId: id }]);
+			await agentSkills.replaceDependencies(agent.id, [{ skillId: id }]);
 
 			await skills.deleteSkill(id);
 
 			expect(await skills.findByIds([id])).toEqual([]);
 			expect((await skills.findVersionsByIds([v1])).size).toBe(0);
-			expect(await skills.findFollowingAgentIds([id])).toEqual([]);
+			expect(await agentSkills.findFollowingAgentIds([id])).toEqual([]);
 		});
 
 		it('removes the pins of published agent versions with the skill', async () => {
 			const id = await createSkill();
 			const agent = await createAgent('Support');
 			const agentVersionId = await publish(agent.id);
-			await skills.insertPins([
+			await agentSkills.insertPins([
 				{ agentVersionId, skillId: id, skillVersionId: await latestVersionId(id) },
 			]);
 
 			await skills.deleteSkill(id);
 
-			expect(await skills.findPinned(agentVersionId)).toEqual(new Map());
+			expect(await agentSkills.findPinned(agentVersionId)).toEqual(new Map());
 		});
 	});
 
@@ -775,42 +621,6 @@ describe('SkillRepository', () => {
 				await skills.lockForEdit([id], ctx);
 				await skills.lockForPublish([id], ctx);
 			});
-		});
-	});
-
-	describe('AgentRepository.markDraftChangedIfInSync', () => {
-		it('gives an agent in sync with its published version a new draft version id', async () => {
-			const agent = await createAgent('Support', { inSync: true });
-
-			const changed = await agents.markDraftChangedIfInSync([agent.id]);
-
-			const reloaded = await agents.findOneByOrFail({ id: agent.id });
-			expect(changed).toEqual([agent.id]);
-			expect(reloaded.versionId).not.toBe(reloaded.activeVersionId);
-			expect(reloaded.revision).toBe(agent.revision);
-		});
-
-		it('leaves an agent that already has unpublished changes alone', async () => {
-			const agent = await createAgent('Support');
-
-			const changed = await agents.markDraftChangedIfInSync([agent.id]);
-
-			const reloaded = await agents.findOneByOrFail({ id: agent.id });
-			expect(changed).toEqual([]);
-			expect(reloaded.versionId).toBe(agent.versionId);
-		});
-
-		it('writes nothing for no agents', async () => {
-			expect(await agents.markDraftChangedIfInSync([])).toEqual([]);
-			expect(await agents.findProjectIdsByIds([])).toEqual([]);
-		});
-
-		it('returns the project of each agent', async () => {
-			const agent = await createAgent('Support');
-
-			expect(await agents.findProjectIdsByIds([agent.id])).toEqual([
-				{ id: agent.id, projectId: project.id },
-			]);
 		});
 	});
 });

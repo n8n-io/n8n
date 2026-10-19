@@ -1,7 +1,7 @@
 import { AgentsConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 
-import { SkillsHubRollout } from '../../skills/skills-hub-rollout';
+import { SkillsHubRollout } from '../../skills-hub-rollout';
 
 /**
  * Sets `N8N_AGENTS_SKILLS_HUB_ENABLED` and reads it again, as a restart does. Tests that

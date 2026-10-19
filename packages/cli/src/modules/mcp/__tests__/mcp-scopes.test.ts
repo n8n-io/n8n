@@ -40,7 +40,7 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import { ExecutionListService } from '@/executions/execution-list.service';
 
 import { ExecutionService } from '@/executions/execution.service';
-import { SkillsApiService } from '@/modules/agents/skills/skills-api.service';
+import { SkillsApiService } from '@/modules/skills/skills-api.service';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
 import { InstanceContextService } from '@/modules/instance-ai/instance-context.service';
 import {
@@ -172,6 +172,7 @@ describe('McpService scope enforcement', () => {
 		foldersLicensed = true,
 		instanceAiActive = false,
 		agentsActive = false,
+		skillsActive = true,
 		skillsHubEnabled = false,
 		postHogClient = mockInstance(PostHogClient),
 	}: {
@@ -179,6 +180,7 @@ describe('McpService scope enforcement', () => {
 		foldersLicensed?: boolean;
 		instanceAiActive?: boolean;
 		agentsActive?: boolean;
+		skillsActive?: boolean;
 		skillsHubEnabled?: boolean;
 		postHogClient?: PostHogClient;
 	} = {}) =>
@@ -237,7 +239,9 @@ describe('McpService scope enforcement', () => {
 					.fn()
 					.mockImplementation(
 						(name: string) =>
-							(instanceAiActive && name === 'instance-ai') || (agentsActive && name === 'agents'),
+							(instanceAiActive && name === 'instance-ai') ||
+							(agentsActive && name === 'agents') ||
+							(skillsActive && name === 'skills'),
 					),
 				settings: { get: () => undefined } as unknown as ModuleRegistry['settings'],
 			}),

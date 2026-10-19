@@ -31,11 +31,19 @@ export function areAgentToolsAvailable(
 	);
 }
 
+/**
+ * Skills live in the skills module. The agents module must be on too: the delete and move
+ * guards need it to see which agents use a skill.
+ */
 export function areSkillToolsAvailable(
 	globalConfig: GlobalConfig,
 	moduleRegistry: ModuleRegistry,
 ): boolean {
-	return moduleRegistry.isActive('agents') && globalConfig.agents.skillsHubEnabled;
+	return (
+		moduleRegistry.isActive('skills') &&
+		moduleRegistry.isActive('agents') &&
+		globalConfig.agents.skillsHubEnabled
+	);
 }
 
 /**

@@ -6,8 +6,9 @@ import { ensureError } from '@n8n/utils/errors/ensure-error';
 
 import { Telemetry } from '@/telemetry';
 
-import type { Skill } from '../entities/skill.entity';
-import { SkillRepository } from '../repositories/skill.repository';
+import { SkillAgentsProxy } from './skill-agents-proxy.service';
+import type { Skill } from './skill.entity';
+import { SkillRepository } from './skill.repository';
 
 /** The surface that wrote the skill. Not `skill.source`, which has no MCP value. */
 export type SkillTelemetrySource = 'ui' | 'agent' | 'mcp' | 'assistant';
@@ -35,6 +36,7 @@ export class SkillsTelemetry {
 		private readonly telemetry: Telemetry,
 		private readonly skillRepository: SkillRepository,
 		private readonly logger: Logger,
+		private readonly skillAgents: SkillAgentsProxy,
 	) {}
 
 	async created(
@@ -109,7 +111,7 @@ export class SkillsTelemetry {
 	private async placeResolver(
 		skills: SkillTelemetryTarget[],
 	): Promise<(skill: SkillTelemetryTarget) => SkillPlace> {
-		const agents = await this.skillRepository.findAgents(
+		const agents = await this.skillAgents.findAgents(
 			skills.flatMap((skill) => (skill.agentId ? [skill.agentId] : [])),
 		);
 		return (skill) => {

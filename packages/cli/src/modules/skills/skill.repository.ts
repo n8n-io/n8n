@@ -8,23 +8,14 @@ import {
 	type OperationContext,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { Brackets, DataSource, In, IsNull, type EntityManager } from '@n8n/typeorm';
-import type { SkillUsage } from '@n8n/api-types';
+import { Brackets, DataSource, In, type EntityManager } from '@n8n/typeorm';
 import { UnexpectedError } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
-import { AgentVersionSkillDependency } from '../entities/agent-version-skill-dependency.entity';
-import { AgentHistory } from '../entities/agent-history.entity';
-import { AgentSkillDependency } from '../entities/agent-skill-dependency.entity';
-import { Agent, isProjectAgent, type ProjectScoped } from '../entities/agent.entity';
-import { SkillFile } from '../entities/skill-file.entity';
-import { SkillVersion } from '../entities/skill-version.entity';
-import { Skill, type SkillSource } from '../entities/skill.entity';
-import {
-	compareSkillFilePaths,
-	skillContentHash,
-	type SkillContent,
-} from '../skills/skill-content-hash';
+import { compareSkillFilePaths, skillContentHash, type SkillContent } from './skill-content-hash';
+import { SkillFile } from './skill-file.entity';
+import { SkillVersion } from './skill-version.entity';
+import { Skill, type SkillSource } from './skill.entity';
 
 /**
  * Where a skill lives: a project, one agent, or the instance (both null). An agent skill
@@ -39,19 +30,20 @@ export type ResolvedSkillRow = {
 	files: SkillFile[];
 };
 
-/** A skill ref of an agent draft. A ref with `versionId` is pinned to that saved version. */
-export type SkillDependencyRef = { skillId: string; versionId?: string | null };
-
-/** Which skills one user may list: instance skills always, plus the skills of these projects and of their agents. */
+/**
+ * Which skills one user may list: instance skills always, plus the skills of these
+ * projects and of `agentIds`, the agents in these projects.
+ */
 export type SkillVisibility = {
 	projectIds: string[] | 'all';
+	agentIds: string[] | 'all';
 };
 
 /** Narrows the visible skills of `findVisiblePage` and cuts one page. */
 export type SkillListFilter = {
 	scope?: 'project' | 'agent' | 'instance';
 	/** The skills of this project and of its agents. */
-	projectId?: string;
+	project?: { id: string; agentIds: string[] };
 	/** What this agent may attach: instance skills, its project's skills and its own. */
 	attachableTo?: { agentId: string; projectId: string };
 	search?: string;
@@ -59,12 +51,10 @@ export type SkillListFilter = {
 	take?: number;
 };
 
-export type { SkillUsage } from '@n8n/api-types';
-
 /** Latest version of a skill without its content. */
 export type SkillSummary = { name: string; description: string; version: number };
 
-/** Persistence for skills, their versions and files, and the agent rows that use them. */
+/** Persistence for skills, their versions and their files. */
 @Service()
 export class SkillRepository extends BaseRepository<Skill> {
 	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
@@ -83,16 +73,8 @@ export class SkillRepository extends BaseRepository<Skill> {
 		ctx: OperationContext = {},
 	): Promise<{ skills: Skill[]; count: number }> {
 		const manager = this.managerFor(ctx);
-		// An agent skill has no projectId: its project comes from its agent.
-		const agentsOf = (projectCondition: string) =>
-			manager
-				.createQueryBuilder()
-				.subQuery()
-				.select('owner.id')
-				.from(Agent, 'owner')
-				.where(projectCondition)
-				.getQuery();
-		const { projectIds } = visibility;
+		// An agent skill has no projectId: it is visible through its agent, one of `agentIds`.
+		const { projectIds, agentIds } = visibility;
 		const branches: string[] = [];
 		if (!filter.scope || filter.scope === 'instance') {
 			branches.push('skill.projectId IS NULL AND skill.agentId IS NULL');
@@ -107,10 +89,8 @@ export class SkillRepository extends BaseRepository<Skill> {
 				else if (projectIds.length > 0) branches.push('skill.projectId IN (:...projectIds)');
 			}
 			if (!filter.scope || filter.scope === 'agent') {
-				if (projectIds === 'all') branches.push('skill.agentId IS NOT NULL');
-				else if (projectIds.length > 0) {
-					branches.push(`skill.agentId IN ${agentsOf('owner.projectId IN (:...projectIds)')}`);
-				}
+				if (agentIds === 'all') branches.push('skill.agentId IS NOT NULL');
+				else if (agentIds.length > 0) branches.push('skill.agentId IN (:...agentIds)');
 			}
 		}
 		if (branches.length === 0) return { skills: [], count: 0 };
@@ -120,19 +100,20 @@ export class SkillRepository extends BaseRepository<Skill> {
 			.where(new Brackets((qb) => branches.forEach((branch) => qb.orWhere(`(${branch})`))))
 			.setParameters({
 				projectIds,
+				agentIds,
 				...(filter.attachableTo !== undefined && {
 					attachProjectId: filter.attachableTo.projectId,
 					attachAgentId: filter.attachableTo.agentId,
 				}),
 			});
-		if (filter.projectId) {
+		if (filter.project) {
+			const { id, agentIds: projectAgentIds } = filter.project;
 			query.andWhere(
-				new Brackets((qb) =>
-					qb
-						.where('skill.projectId = :projectId')
-						.orWhere(`skill.agentId IN ${agentsOf('owner.projectId = :projectId')}`),
-				),
-				{ projectId: filter.projectId },
+				new Brackets((qb) => {
+					qb.where('skill.projectId = :projectId');
+					if (projectAgentIds.length > 0) qb.orWhere('skill.agentId IN (:...projectAgentIds)');
+				}),
+				{ projectId: id, projectAgentIds },
 			);
 		}
 		if (filter.search) {
@@ -241,43 +222,6 @@ export class SkillRepository extends BaseRepository<Skill> {
 		return new Map(rows.map((row) => [row.version.id, row]));
 	}
 
-	/**
-	 * The pinned version of each skill of one published agent version, keyed by skill id,
-	 * in the order of the draft refs at publish.
-	 */
-	async findPinned(
-		agentVersionId: string,
-		ctx: OperationContext = {},
-	): Promise<Map<string, ResolvedSkillRow>> {
-		const pins = await this.managerFor(ctx).find(AgentVersionSkillDependency, {
-			where: { agentVersionId },
-			order: { createdAt: 'ASC' },
-		});
-		const versions = await this.findVersionsByIds(
-			pins.map((pin) => pin.skillVersionId),
-			ctx,
-		);
-		const result = new Map<string, ResolvedSkillRow>();
-		for (const pin of pins) {
-			const row = versions.get(pin.skillVersionId);
-			if (row) result.set(pin.skillId, row);
-		}
-		return result;
-	}
-
-	/**
-	 * The skill ids one published agent version pins, in the order of the draft refs at
-	 * publish. Reads no version or file rows.
-	 */
-	async findPinnedSkillIds(agentVersionId: string, ctx: OperationContext = {}): Promise<string[]> {
-		const pins = await this.managerFor(ctx).find(AgentVersionSkillDependency, {
-			select: ['skillId'],
-			where: { agentVersionId },
-			order: { createdAt: 'ASC' },
-		});
-		return pins.map((pin) => pin.skillId);
-	}
-
 	/** The next version number of a skill: the highest version plus one, or 1. */
 	async nextVersionNumber(skillId: string, ctx: OperationContext = {}): Promise<number> {
 		const latest = await this.managerFor(ctx).findOne(SkillVersion, {
@@ -321,320 +265,84 @@ export class SkillRepository extends BaseRepository<Skill> {
 		});
 	}
 
-	/**
-	 * Inserts the pins of one publish in the given order. `createdAt` orders the skills of
-	 * a published version, so each pin gets its own timestamp, like `replaceDependencies`.
-	 */
-	async insertPins(
-		pins: Array<{ agentVersionId: string; skillId: string; skillVersionId: string }>,
-		ctx: OperationContext = {},
-	): Promise<void> {
-		if (pins.length === 0) return;
-		const first = Date.now();
-		await this.managerFor(ctx).insert(
-			AgentVersionSkillDependency,
-			pins.map((pin, index) => ({ ...pin, createdAt: new Date(first + index) })),
-		);
+	/** Whether a skill with this id exists. */
+	async existsById(skillId: string, ctx: OperationContext = {}): Promise<boolean> {
+		return await this.managerFor(ctx).exists(Skill, { where: { id: skillId } });
 	}
 
-	/**
-	 * Sets the dependency rows of one agent to these refs. Refs to unknown skills are
-	 * skipped. A row that stays keeps its `createdAt`, which orders an agent's skills, and
-	 * new rows sort after it in the given order. When one skill has a following ref and a
-	 * pinned ref, the following ref wins, because the draft then runs the latest version.
-	 */
-	async replaceDependencies(
-		agentId: string,
-		refs: SkillDependencyRef[],
-		ctx: OperationContext = {},
-	): Promise<void> {
-		const pinBySkill = new Map<string, string | null>();
-		for (const ref of refs) {
-			if (pinBySkill.get(ref.skillId) === null) continue;
-			pinBySkill.set(ref.skillId, ref.versionId ?? null);
-		}
-		await this.runInTransaction(ctx, async (manager, txCtx) => {
-			const known = new Set(
-				(await this.findByIds([...pinBySkill.keys()], txCtx)).map((skill) => skill.id),
-			);
-			const current = await manager.find(AgentSkillDependency, { where: { agentId } });
-			const removed = current.filter(
-				(row) => !known.has(row.skillId) || !pinBySkill.has(row.skillId),
-			);
-			if (removed.length > 0) {
-				await manager.delete(AgentSkillDependency, {
-					agentId,
-					skillId: In(removed.map((row) => row.skillId)),
-				});
-			}
-			const kept = new Map(current.map((row) => [row.skillId, row]));
-			for (const [skillId, skillVersionId] of pinBySkill) {
-				const row = kept.get(skillId);
-				if (row && row.skillVersionId !== skillVersionId) {
-					await manager.update(AgentSkillDependency, { agentId, skillId }, { skillVersionId });
-				}
-			}
-			const added = [...pinBySkill].filter(([skillId]) => known.has(skillId) && !kept.has(skillId));
-			if (added.length === 0) return;
-			// One insert gives every row the same timestamp, so each new row gets its own.
-			const newest = Math.max(Date.now(), ...current.map((row) => row.createdAt.getTime() + 1));
-			await manager.insert(
-				AgentSkillDependency,
-				added.map(([skillId, skillVersionId], index) => ({
-					agentId,
-					skillId,
-					skillVersionId,
-					createdAt: new Date(newest + index),
-				})),
-			);
-		});
+	/** Whether the agent owns a skill (an agent skill). */
+	async existsForAgent(agentId: string, ctx: OperationContext = {}): Promise<boolean> {
+		return await this.managerFor(ctx).exists(Skill, { where: { agentId } });
 	}
 
-	/** Agents whose draft follows the skill (no pin). */
-	async findFollowingAgents(
-		skillId: string,
+	/** The number of each version, keyed by version id. */
+	async findVersionNumbers(
+		versionIds: string[],
 		ctx: OperationContext = {},
-	): Promise<Array<Pick<Agent, 'id' | 'name'>>> {
-		const agentIds = await this.findFollowingAgentIds([skillId], ctx);
-		if (agentIds.length === 0) return [];
-		return await this.managerFor(ctx).find(Agent, {
-			where: { id: In(agentIds) },
-			select: ['id', 'name'],
-		});
-	}
-
-	/** The skill refs of each agent's draft, in the order they were attached. */
-	async findDependencies(
-		agentIds: string[],
-		ctx: OperationContext = {},
-	): Promise<Map<string, Array<{ skillId: string; versionId: string | null }>>> {
-		if (agentIds.length === 0) return new Map();
-		const rows = await this.managerFor(ctx).find(AgentSkillDependency, {
-			where: { agentId: In(unique(agentIds)) },
-			order: { createdAt: 'ASC' },
-		});
-		const result = new Map<string, Array<{ skillId: string; versionId: string | null }>>();
-		for (const row of rows) {
-			const refs = result.get(row.agentId) ?? [];
-			refs.push({ skillId: row.skillId, versionId: row.skillVersionId });
-			result.set(row.agentId, refs);
-		}
-		return result;
-	}
-
-	/** Ids of the agents whose draft follows any of these skills (no pin). */
-	async findFollowingAgentIds(skillIds: string[], ctx: OperationContext = {}): Promise<string[]> {
-		if (skillIds.length === 0) return [];
-		const rows = await this.managerFor(ctx).find(AgentSkillDependency, {
-			where: { skillId: In(unique(skillIds)), skillVersionId: IsNull() },
-		});
-		return unique(rows.map((row) => row.agentId));
-	}
-
-	/**
-	 * "Used by": each agent that uses the skill once, as a draft ref, as a published pin, or
-	 * both. A pin row shows the version the agent's current published version runs, or
-	 * null when only older published versions use the skill. Agents outside `projectIds`
-	 * are only counted. The read grows with the agents, not with their publishes.
-	 */
-	async findUsage(
-		skillId: string,
-		projectIds: string[] | 'all' = 'all',
-		ctx: OperationContext = {},
-	): Promise<SkillUsage> {
+	): Promise<Map<string, number>> {
 		const manager = this.managerFor(ctx);
-		const drafted = await manager
-			.createQueryBuilder(Agent, 'agent')
-			.innerJoin(AgentSkillDependency, 'dep', 'dep.agentId = agent.id')
-			.where('dep.skillId = :skillId', { skillId })
-			.select(['agent.id', 'agent.name', 'agent.projectId'])
-			.getMany()
-			.then((agents) => agents.filter(isProjectAgent));
-		const published = await manager
-			.createQueryBuilder(Agent, 'agent')
-			.where((qb) => {
-				const pinned = qb
-					.subQuery()
-					.select('history.agentId')
-					.from(AgentHistory, 'history')
-					.innerJoin(AgentVersionSkillDependency, 'pin', 'pin.agentVersionId = history.versionId')
-					.where('pin.skillId = :skillId')
-					.getQuery();
-				return `agent.id IN ${pinned}`;
-			})
-			.setParameter('skillId', skillId)
-			.select(['agent.id', 'agent.name', 'agent.projectId', 'agent.activeVersionId'])
-			.getMany()
-			.then((agents) => agents.filter(isProjectAgent));
-
-		const isVisible = (agent: ProjectScoped<Pick<Agent, 'projectId'>>) =>
-			projectIds === 'all' || projectIds.includes(agent.projectId);
-		const hidden = new Set(
-			[...drafted, ...published].filter((agent) => !isVisible(agent)).map((agent) => agent.id),
+		const versions = await inChunks(
+			versionIds,
+			async (chunk) =>
+				await manager.find(SkillVersion, {
+					select: ['id', 'version'],
+					where: { id: In(chunk) },
+				}),
 		);
-		const visiblePublished = published.filter(isVisible);
-		const activeVersions = await this.findActivePinVersions(
-			skillId,
-			visiblePublished.flatMap((agent) => (agent.activeVersionId ? [agent.activeVersionId] : [])),
-			manager,
-		);
-		return {
-			drafts: drafted.filter(isVisible).map((agent) => ({
-				agentId: agent.id,
-				agentName: agent.name,
-				projectId: agent.projectId,
-			})),
-			pins: visiblePublished.map((agent) => ({
-				agentId: agent.id,
-				agentName: agent.name,
-				projectId: agent.projectId,
-				version: activeVersions.get(agent.activeVersionId ?? '') ?? null,
-			})),
-			hiddenAgents: hidden.size,
-		};
+		return new Map(versions.map((version) => [version.id, version.version]));
 	}
 
-	/**
-	 * Whether the agent already has skills hub rows: a draft ref, an agent skill, or a pin
-	 * of one of its published versions. The startup copy leaves such an agent alone.
-	 */
-	async hasHubState(agentId: string, ctx: OperationContext = {}): Promise<boolean> {
+	/** The content hash of each version, keyed by version id. */
+	async findContentHashes(
+		versionIds: string[],
+		ctx: OperationContext = {},
+	): Promise<Map<string, string>> {
 		const manager = this.managerFor(ctx);
-		if (await manager.exists(AgentSkillDependency, { where: { agentId } })) return true;
-		if (await manager.exists(Skill, { where: { agentId } })) return true;
-		return await manager
-			.createQueryBuilder(AgentVersionSkillDependency, 'pin')
-			.innerJoin(AgentHistory, 'history', 'history.versionId = pin.agentVersionId')
-			.where('history.agentId = :agentId', { agentId })
-			.getExists();
-	}
-
-	/** The published versions of an agent that pin no skill, oldest first. */
-	async findUnpinnedVersions(
-		agentId: string,
-		ctx: OperationContext = {},
-	): Promise<Array<Pick<AgentHistory, 'versionId' | 'schema' | 'skills'>>> {
-		return await this.managerFor(ctx)
-			.createQueryBuilder(AgentHistory, 'history')
-			.select(['history.versionId', 'history.schema', 'history.skills'])
-			.where('history.agentId = :agentId', { agentId })
-			.andWhere((qb) => {
-				const pinned = qb
-					.subQuery()
-					.select('1')
-					.from(AgentVersionSkillDependency, 'pin')
-					.where('pin.agentVersionId = history.versionId')
-					.getQuery();
-				return `NOT EXISTS ${pinned}`;
-			})
-			.orderBy('history.createdAt', 'ASC')
-			.addOrderBy('history.versionId', 'ASC')
-			.getMany();
-	}
-
-	/**
-	 * Every version of the skills one agent owns or refers to: its agent skills and the
-	 * skills of its draft refs. The startup copy reuses a version with the same content.
-	 */
-	async findAgentSkillVersions(
-		agentId: string,
-		ctx: OperationContext = {},
-	): Promise<Array<Pick<SkillVersion, 'id' | 'skillId' | 'version' | 'contentHash'>>> {
-		return await this.managerFor(ctx)
-			.createQueryBuilder(SkillVersion, 'version')
-			.innerJoin(Skill, 'skill', 'skill.id = version.skillId')
-			.select(['version.id', 'version.skillId', 'version.version', 'version.contentHash'])
-			.where('skill.agentId = :agentId', { agentId })
-			.orWhere((qb) => {
-				const refs = qb
-					.subQuery()
-					.select('dep.skillId')
-					.from(AgentSkillDependency, 'dep')
-					.where('dep.agentId = :agentId')
-					.getQuery();
-				return `skill.id IN ${refs}`;
-			})
-			.orderBy('version.version', 'ASC')
-			.getMany();
-	}
-
-	/** Ids of the agents that have draft refs in the skills hub, in id order. */
-	async findAgentIdsWithDraftRefs(ctx: OperationContext = {}): Promise<string[]> {
-		// The primary key is (agentId, skillId), so one agent can have several rows.
-		const rows = await this.managerFor(ctx)
-			.createQueryBuilder(AgentSkillDependency, 'dep')
-			.select('dep.agentId', 'agentId')
-			.distinct(true)
-			.orderBy('dep.agentId', 'ASC')
-			.getRawMany<{ agentId: string }>();
-		return rows.map((row) => row.agentId);
-	}
-
-	/**
-	 * The content hash of each skill version a draft runs, by agent: the pinned version of
-	 * a ref, else the latest version of its skill.
-	 */
-	async findDraftContentHashes(
-		agentIds: string[],
-		ctx: OperationContext = {},
-	): Promise<Map<string, string[]>> {
-		const manager = this.managerFor(ctx);
-		const deps = await this.findDependencies(agentIds, ctx);
-		const refs = [...deps.values()].flat();
-		const pinnedIds = refs.flatMap((ref) => (ref.versionId ? [ref.versionId] : []));
-		const followedIds = refs.flatMap((ref) => (ref.versionId ? [] : [ref.skillId]));
-		const pinned = await inChunks(
-			pinnedIds,
+		const versions = await inChunks(
+			versionIds,
 			async (chunk) =>
 				await manager.find(SkillVersion, {
 					select: ['id', 'contentHash'],
 					where: { id: In(chunk) },
 				}),
 		);
-		const latest = await inChunks(
-			followedIds,
+		return new Map(versions.map((version) => [version.id, version.contentHash]));
+	}
+
+	/** The content hash of the latest version of each skill, keyed by skill id. */
+	async findLatestContentHashes(
+		skillIds: string[],
+		ctx: OperationContext = {},
+	): Promise<Map<string, string>> {
+		const manager = this.managerFor(ctx);
+		const versions = await inChunks(
+			skillIds,
 			async (chunk) =>
 				await latestVersionsQuery(manager, chunk)
 					.select(['version.skillId', 'version.contentHash'])
 					.getMany(),
 		);
-		const hashByVersion = new Map(pinned.map((version) => [version.id, version.contentHash]));
-		const hashBySkill = new Map(latest.map((version) => [version.skillId, version.contentHash]));
-		const result = new Map<string, string[]>();
-		for (const [agentId, agentRefs] of deps) {
-			result.set(
-				agentId,
-				agentRefs.flatMap((ref) => {
-					const hash = ref.versionId
-						? hashByVersion.get(ref.versionId)
-						: hashBySkill.get(ref.skillId);
-					return hash ? [hash] : [];
-				}),
-			);
+		return new Map(versions.map((version) => [version.skillId, version.contentHash]));
+	}
+
+	/**
+	 * Every version of the skills that one agent owns, and of `refSkillIds`, the skills its
+	 * draft refers to. The startup copy reuses a version with the same content.
+	 */
+	async findVersionsOfAgentSkills(
+		agentId: string,
+		refSkillIds: string[],
+		ctx: OperationContext = {},
+	): Promise<Array<Pick<SkillVersion, 'id' | 'skillId' | 'version' | 'contentHash'>>> {
+		const query = this.managerFor(ctx)
+			.createQueryBuilder(SkillVersion, 'version')
+			.innerJoin(Skill, 'skill', 'skill.id = version.skillId')
+			.select(['version.id', 'version.skillId', 'version.version', 'version.contentHash'])
+			.where('skill.agentId = :agentId', { agentId });
+		if (refSkillIds.length > 0) {
+			query.orWhere('skill.id IN (:...refSkillIds)', { refSkillIds: unique(refSkillIds) });
 		}
-		return result;
-	}
-
-	/** Whether a skill with this id exists. */
-	async existsById(skillId: string, ctx: OperationContext = {}): Promise<boolean> {
-		return await this.managerFor(ctx).exists(Skill, { where: { id: skillId } });
-	}
-
-	/** The agents that use the skill: a draft ref or a published pin. */
-	async findUsingAgentIds(skillId: string, ctx: OperationContext = {}): Promise<string[]> {
-		const manager = this.managerFor(ctx);
-		const drafts = await manager.find(AgentSkillDependency, {
-			select: ['agentId'],
-			where: { skillId },
-		});
-		const pins = await manager
-			.createQueryBuilder(AgentVersionSkillDependency, 'pin')
-			.innerJoin(AgentHistory, 'history', 'history.versionId = pin.agentVersionId')
-			.where('pin.skillId = :skillId', { skillId })
-			.select('history.agentId', 'agentId')
-			.distinct(true)
-			.getRawMany<{ agentId: string }>();
-		return unique([...drafts, ...pins].map((row) => row.agentId));
+		return await query.orderBy('version.version', 'ASC').getMany();
 	}
 
 	/** Moves a skill to a project, one agent or the instance. */
@@ -644,34 +352,6 @@ export class SkillRepository extends BaseRepository<Skill> {
 			{ id: skillId },
 			{ projectId: target.projectId, agentId: target.agentId, updatedAt: new Date() },
 		);
-	}
-
-	/** Distinct agents per skill, drafts and pins together. Skills nobody uses are left out. */
-	async countUsingAgents(
-		skillIds: string[],
-		ctx: OperationContext = {},
-	): Promise<Map<string, number>> {
-		const manager = this.managerFor(ctx);
-		const pairs = await inChunks(skillIds, async (chunk) => {
-			const drafts = await manager.find(AgentSkillDependency, {
-				select: ['skillId', 'agentId'],
-				where: { skillId: In(chunk) },
-			});
-			const pins = await manager
-				.createQueryBuilder(AgentVersionSkillDependency, 'pin')
-				.innerJoin(AgentHistory, 'history', 'history.versionId = pin.agentVersionId')
-				.where('pin.skillId IN (:...chunk)', { chunk })
-				.select('pin.skillId', 'skillId')
-				.addSelect('history.agentId', 'agentId')
-				.distinct(true)
-				.getRawMany<{ skillId: string; agentId: string }>();
-			return [...drafts, ...pins];
-		});
-		const agentsBySkill = new Map<string, Set<string>>();
-		for (const { skillId, agentId } of pairs) {
-			agentsBySkill.set(skillId, (agentsBySkill.get(skillId) ?? new Set()).add(agentId));
-		}
-		return new Map([...agentsBySkill].map(([skillId, agents]) => [skillId, agents.size]));
 	}
 
 	/** Name and type of each project, keyed by project id. A missing project is absent. */
@@ -690,25 +370,6 @@ export class SkillRepository extends BaseRepository<Skill> {
 		);
 		return new Map(
 			projects.map((project) => [project.id, { name: project.name, type: project.type }]),
-		);
-	}
-
-	/** Name and project of each agent, keyed by agent id. An agent skill takes its project from them. */
-	async findAgents(
-		agentIds: string[],
-		ctx: OperationContext = {},
-	): Promise<Map<string, ProjectScoped<Pick<Agent, 'name' | 'projectId'>>>> {
-		const manager = this.managerFor(ctx);
-		const agents = await inChunks(
-			agentIds,
-			async (chunk) =>
-				await manager.find(Agent, {
-					where: { id: In(chunk) },
-					select: ['id', 'name', 'projectId'],
-				}),
-		);
-		return new Map(
-			agents.filter(isProjectAgent).map(({ id, name, projectId }) => [id, { name, projectId }]),
 		);
 	}
 
@@ -746,27 +407,6 @@ export class SkillRepository extends BaseRepository<Skill> {
 			where: { id: In(unique(skillIds)) },
 			lock: { mode },
 		});
-	}
-
-	/** The skill version number each of these published agent versions pins. */
-	private async findActivePinVersions(
-		skillId: string,
-		agentVersionIds: string[],
-		manager: EntityManager,
-	): Promise<Map<string, number>> {
-		const rows = await inChunks(
-			agentVersionIds,
-			async (chunk) =>
-				await manager
-					.createQueryBuilder(AgentVersionSkillDependency, 'pin')
-					.innerJoin(SkillVersion, 'version', 'version.id = pin.skillVersionId')
-					.where('pin.skillId = :skillId', { skillId })
-					.andWhere('pin.agentVersionId IN (:...chunk)', { chunk })
-					.select('pin.agentVersionId', 'agentVersionId')
-					.addSelect('version.version', 'version')
-					.getRawMany<{ agentVersionId: string; version: number | string }>(),
-		);
-		return new Map(rows.map((row) => [row.agentVersionId, Number(row.version)]));
 	}
 
 	private async resolveBySkill(

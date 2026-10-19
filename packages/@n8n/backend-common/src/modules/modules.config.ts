@@ -43,6 +43,7 @@ export const MODULE_NAMES = [
 	'instance-reporting',
 	'inbound-auth-core',
 	'scim',
+	'skills',
 ] as const;
 
 export type ModuleName = (typeof MODULE_NAMES)[number];
