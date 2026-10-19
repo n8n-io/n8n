@@ -45,23 +45,19 @@ export const INSTANCE_TELEMETRY = defineTelemetryEvents({
 				memory_limit: z
 					.number()
 					.nullable()
-					.optional()
 					.describe('Memory limit n8n was given in KiB. Null when it has none'),
 				cpu_limit: z
 					.number()
 					.nullable()
-					.optional()
 					.describe('CPU quota n8n was given, in CPUs, for example 0.5. Null when it has none'),
 				cpu_limit_source: z
 					.enum(['cgroup_v2', 'cgroup_v1', 'unreadable'])
-					.optional()
 					.describe(
 						'Where cpu_limit was read from. Unreadable means n8n could not read it, so a null cpu_limit is unknown, not "no limit"',
 					),
 				cpu_weight: z
 					.number()
 					.nullable()
-					.optional()
 					.describe(
 						'Raw cgroup CPU weight (cgroup v2 cpu.weight) or shares (cgroup v1 cpu.shares). Kubernetes derives it from the CPU request. Null when unreadable',
 					),
