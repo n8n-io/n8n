@@ -63,7 +63,22 @@ export class EventBusController {
 		// And ZodClass doesn't support discriminated unions directly
 		const parseResult = CreateDestinationDto.safeParse(req.body);
 		if (!parseResult.success) {
-			throw new BadRequestError(parseResult.error.errors[0].message);
+			// The UI shows this message as is, so it must name every field that failed.
+			// One field can fail several checks at once: keep the first, drop the rest.
+			const reported = new Set<string>();
+			const message = parseResult.error.issues
+				.filter((issue) => {
+					const path = issue.path.join('.');
+					if (reported.has(path)) return false;
+					reported.add(path);
+					return true;
+				})
+				.map((issue) =>
+					issue.path.length > 0 ? `${issue.path.join('.')}: ${issue.message}` : issue.message,
+				)
+				.join('; ');
+
+			throw new BadRequestError(message);
 		}
 
 		const options = parseResult.data as MessageEventBusDestinationOptions;

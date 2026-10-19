@@ -27,6 +27,7 @@ import {
 	N8nLoading,
 	N8nSelectedItemsInfo,
 	N8nSettingsLayout,
+	N8nSettingsPageHeader,
 	N8nText,
 	N8nUserSelect,
 } from '@n8n/design-system';
@@ -214,6 +215,13 @@ function ownerLabel(workflow: AffectedWorkflow): string {
 
 // Migrate needs the same scope as a state change.
 const showMigrate = computed(() => state.value.migratable && canMigrate.value);
+
+/** Rule descriptions arrive with or without a trailing period; the header copy always ends in one. */
+const ruleDescription = computed(() => {
+	const description = state.value.ruleDescription;
+	if (!description) return '';
+	return description.endsWith('.') ? description : `${description}.`;
+});
 
 const tableHeaders = computed<Array<TableHeader<AffectedWorkflow>>>(() => {
 	const headers: Array<TableHeader<AffectedWorkflow>> = [
@@ -762,51 +770,34 @@ const sortedWorkflows = computed(() => {
 		:back-label="i18n.baseText('generic.back')"
 		@back="router.push({ name: VIEWS.MIGRATION_REPORT })"
 	>
-		<header>
-			<template v-if="isLoading">
-				<div class="mb-2xs">
-					<N8nLoading variant="h1" />
-				</div>
-				<div>
-					<N8nLoading variant="p" :rows="2" />
-				</div>
-			</template>
-			<template v-else>
-				<N8nText
-					tag="h2"
-					size="xlarge"
-					color="text-dark"
-					class="mb-2xs"
-					style="display: flex; align-items: center; gap: 4px"
-				>
-					{{ state.ruleTitle }}
-					<ImpactTag :impact="state.ruleImpact" />
-					<N8nBadge>
-						{{
-							i18n.baseText('settings.migrationReport.detail.affectedTag', {
-								interpolate: { count: String(openCount) },
-							})
-						}}
-					</N8nBadge>
-				</N8nText>
-				<N8nText tag="p" color="text-base">
-					{{ state.ruleDescription }}{{ state.ruleDescription.endsWith('.') ? '' : '.' }}
-					<N8nLink
-						v-if="state.ruleDocumentationUrl"
-						theme="text"
-						:href="state.ruleDocumentationUrl"
-						target="_blank"
-						rel="noopener noreferrer"
-						:class="$style.NoLineBreak"
-					>
-						<span :class="$style.UnderlinedText">{{
-							i18n.baseText('settings.migrationReport.documentation')
-						}}</span>
-						↗
-					</N8nLink>
-				</N8nText>
-			</template>
+		<header v-if="isLoading" :class="$style.pageHeader">
+			<div class="mb-2xs">
+				<N8nLoading variant="h1" />
+			</div>
+			<div>
+				<N8nLoading variant="p" :rows="2" />
+			</div>
 		</header>
+		<N8nSettingsPageHeader
+			v-else
+			:title="state.ruleTitle"
+			:description="ruleDescription"
+			:show-docs-link="Boolean(state.ruleDocumentationUrl)"
+			:docs-url="state.ruleDocumentationUrl"
+			:docs-label="i18n.baseText('settings.migrationReport.documentation')"
+			docs-leading-text=""
+		>
+			<template #titleTrailing>
+				<ImpactTag :impact="state.ruleImpact" />
+				<N8nBadge>
+					{{
+						i18n.baseText('settings.migrationReport.detail.affectedTag', {
+							interpolate: { count: String(openCount) },
+						})
+					}}
+				</N8nBadge>
+			</template>
+		</N8nSettingsPageHeader>
 
 		<div
 			v-if="!isLoading && canMigrate && unusedOpenWorkflows.length > 0"
@@ -1150,6 +1141,14 @@ const sortedWorkflows = computed(() => {
 </template>
 
 <style module>
+/* Loading placeholder for the header: mirrors N8nSettingsPageHeader's self-capping so the
+   skeleton column stays centered while the table below spans the full-width layout. */
+.pageHeader {
+	width: 100%;
+	max-width: var(--settings-content--max-width, 45rem);
+	margin-inline: auto;
+}
+
 .unusedCallout {
 	display: flex;
 	align-items: center;
@@ -1236,13 +1235,5 @@ const sortedWorkflows = computed(() => {
 
 .search {
 	flex: 0 1 20rem;
-}
-
-.NoLineBreak {
-	white-space: nowrap;
-}
-
-.UnderlinedText {
-	text-decoration: underline;
 }
 </style>

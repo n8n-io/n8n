@@ -28,6 +28,7 @@ import {
 	getAgentChannelPlatform,
 	isRegisteredAgentChannelPlatform,
 } from '@/features/agents/channels/registry';
+import { provideAgentPersonalisation } from '@/features/agents/channels/agentPersonalisation';
 import type { AgentChannelRuntime, AgentChannelViewExpose } from '@/features/agents/channels/types';
 import { getAgent } from '@/features/agents/composables/useAgentApi';
 import { useAgentChannelSetup } from '@/features/agents/composables/useAgentChannelSetup';
@@ -73,6 +74,8 @@ const {
 const submitted = ref(false);
 const connectionInFlight = ref(false);
 const agent = ref<AgentResource | null>(null);
+// This card is not under the builder, so it provides the agent's look itself.
+provideAgentPersonalisation(() => agent.value?.schema?.personalisation);
 const catalogLoading = ref(false);
 const catalogLoadFailed = ref(false);
 
@@ -139,6 +142,9 @@ const channelActionInFlight = computed(
 		channelViewRef.value?.loading === true,
 );
 const integrationLabel = computed(() => currentIntegration.value.label);
+const canFinish = computed(() => channelViewRef.value?.canFinish === true);
+/** Set once this card saved the channel, which skipping would then remove. */
+const savedHere = ref(false);
 
 const connectedDescription = computed(() => {
 	if (!isIntegrationConnected(props.integrationType)) return '';
@@ -200,10 +206,14 @@ async function skipSetup() {
 	}
 }
 
-async function saveChannelConfig() {
-	if (isBlocked() || channelActionInFlight.value) return;
+/**
+ * Saves without resolving: the recommended Teams flow binds its credential
+ * mid-flow and still has steps after it.
+ */
+async function writeChannelConfig(): Promise<boolean> {
+	if (isBlocked() || channelActionInFlight.value) return false;
 	const credentialId = currentChannelCredentialId.value;
-	if (!credentialId || channelViewRef.value?.validationError) return;
+	if (!credentialId || channelViewRef.value?.validationError) return false;
 
 	connectionInFlight.value = true;
 	try {
@@ -214,12 +224,25 @@ async function saveChannelConfig() {
 			...(approval ? { approval } : {}),
 		});
 		notifyAgentUpdated();
-		finish(true);
+		savedHere.value = true;
+		return true;
 	} catch {
 		// useAgentIntegrationStatus exposes the configuration error to the setup component.
+		return false;
 	} finally {
 		connectionInFlight.value = false;
 	}
+}
+
+async function saveChannelConfig() {
+	// A view with steps past the connect resolves the card itself, through `done`.
+	if ((await writeChannelConfig()) && !channelViewRef.value?.keepOpenAfterConnect) finish(true);
+}
+
+/** Done is also the save for a setup that reopened past the step that binds the credential. */
+async function finishSetup() {
+	if (!canFinish.value) return finish(true);
+	if (await writeChannelConfig()) finish(true);
 }
 
 function handlePlatformConnected() {
@@ -288,6 +311,12 @@ watch(
 			<N8nText :class="$style.title" size="medium" color="text-dark" bold>
 				{{ cardTitle }}
 			</N8nText>
+			<component
+				:is="currentPlatform.headerContent?.setupCard"
+				v-if="currentPlatform.headerContent?.setupCard && !catalogLoading"
+				:runtime="currentRuntime"
+				:disabled="channelActionInFlight"
+			/>
 		</header>
 
 		<div :class="$style.bodyWrapper">
@@ -344,10 +373,13 @@ watch(
 				@edit="editCredential"
 				@connect="saveChannelConfig"
 				@connected="handlePlatformConnected"
+				@persist="writeChannelConfig"
+				@done="finishSetup"
 			/>
 		</div>
 
-		<footer :class="$style.footer">
+		<!-- Skipping removes the channel, which would orphan the one this card saved. -->
+		<footer v-if="!savedHere" :class="$style.footer">
 			<N8nButton
 				variant="ghost"
 				size="medium"
@@ -377,10 +409,10 @@ watch(
 	align-items: center;
 	gap: var(--spacing--2xs);
 	padding: 0 var(--spacing--sm);
-	text-transform: capitalize;
 }
 
 .title {
+	text-transform: capitalize;
 	flex: 1;
 }
 

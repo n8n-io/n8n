@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 
 import { createComponentRenderer } from '@/__tests__/render';
@@ -74,12 +75,38 @@ describe('AgentEvalTryRow', () => {
 
 	it('says why Delete is disabled while the check runs', async () => {
 		const user = userEvent.setup();
-		const { getByTestId, findByText } = renderComponent({
+		const { getByTestId, findByTestId } = renderComponent({
 			props: { status: 'waiting', input: 'x', output: null, testId: 'row-1' },
 		});
 		await user.click(getByTestId('row-1-toggle'));
 		await user.hover(getByTestId('row-1-delete-check-hint'));
-		expect(await findByText('You can delete this check when it finishes')).toBeInTheDocument();
+		expect(await findByTestId('tooltip-content')).toHaveTextContent(
+			'You can delete this check when it finishes',
+		);
+	});
+
+	it('lets keyboard and screen-reader users reach why Delete is disabled', async () => {
+		const user = userEvent.setup();
+		const { getByTestId } = renderComponent({
+			props: { status: 'waiting', input: 'x', output: null, testId: 'row-1' },
+		});
+		await user.click(getByTestId('row-1-toggle'));
+		const hint = getByTestId('row-1-delete-check-hint');
+		expect(hint).toHaveAttribute('tabindex', '0');
+		hint.focus();
+		// Focus opens the tooltip, and the open tooltip becomes the hint's description.
+		await waitFor(() =>
+			expect(hint).toHaveAccessibleDescription('You can delete this check when it finishes'),
+		);
+	});
+
+	it('keeps the Delete hint out of the tab order when the check is not running', async () => {
+		const user = userEvent.setup();
+		const { getByTestId } = renderComponent({
+			props: { status: 'pass', input: 'x', output: 'y', testId: 'row-1' },
+		});
+		await user.click(getByTestId('row-1-toggle'));
+		expect(getByTestId('row-1-delete-check-hint')).not.toHaveAttribute('tabindex');
 	});
 
 	it.each(['complete', 'small'] as const)('names the %s view toggle by what it does', (view) => {

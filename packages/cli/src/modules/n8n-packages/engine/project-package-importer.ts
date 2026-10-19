@@ -226,6 +226,7 @@ export class ProjectPackageImporter {
 		let dataTablesCreated = 0;
 		let dataTablesUpdated = 0;
 		const seeded: string[] = [];
+		const incomplete: string[] = [];
 		const variablesMatched: string[] = [];
 		const variablesMissing: string[] = [];
 		const variablesCreated: string[] = [];
@@ -249,6 +250,7 @@ export class ProjectPackageImporter {
 			dataTablesCreated += content.dataTablePlan.creations.length;
 			dataTablesUpdated += content.dataTablePlan.updates.length;
 			seeded.push(...content.credentialResult.seeded);
+			incomplete.push(...content.credentialResult.incomplete);
 			variablesMatched.push(...content.variablePlan.matched);
 			variablesMissing.push(...content.variablePlan.missing.map(({ name }) => name));
 			variablesCreated.push(...content.variableResult.created);
@@ -274,7 +276,7 @@ export class ProjectPackageImporter {
 			folders,
 			projects: projectSummaries,
 			bindings: mergeBindings(...scopedBindings),
-			credentials: { matched, stubbed, seeded },
+			credentials: { matched, stubbed, seeded, incomplete },
 			dataTables: {
 				matched: dataTablesMatched,
 				created: dataTablesCreated,

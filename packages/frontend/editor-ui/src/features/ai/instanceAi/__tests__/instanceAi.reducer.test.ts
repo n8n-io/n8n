@@ -1,5 +1,6 @@
 import { describe, test, expect } from 'vitest';
 import { isReactive } from 'vue';
+import { deepCopy } from 'n8n-workflow';
 import {
 	handleEvent,
 	findMessageByRunId,
@@ -244,6 +245,70 @@ describe('instanceAi.reducer', () => {
 			expect(state.messages[0].agentTree!.status).toBe('cancelled');
 		});
 
+		test('ignores delayed errors and starts for a cancelled run', () => {
+			const state = stateWithRun('run-1', 'agent-root');
+			state.activeRunId = handleEvent(
+				state,
+				makeRunFinishEvent('run-1', 'agent-root', 'cancelled'),
+			);
+			const before = JSON.stringify(state.messages);
+			handleEvent(state, {
+				type: 'error',
+				runId: 'run-1',
+				agentId: 'agent-root',
+				payload: { content: 'late error' },
+			});
+			expect(handleEvent(state, makeRunStartEvent('run-1', 'agent-root'))).toBeNull();
+			expect(JSON.stringify(state.messages)).toBe(before);
+		});
+
+		test('uses the known group when a delayed start omits its group ID', () => {
+			const state = makeState();
+			const start = makeRunStartEvent('run-1', 'agent-root');
+			state.activeRunId = handleEvent(state, {
+				...start,
+				payload: { ...start.payload, messageGroupId: 'group-1' },
+			});
+			state.activeRunId = handleEvent(
+				state,
+				makeRunFinishEvent('run-1', 'agent-root', 'cancelled'),
+			);
+			const before = JSON.stringify(state.messages);
+			expect(handleEvent(state, start)).toBeNull();
+			expect(JSON.stringify(state.messages)).toBe(before);
+		});
+
+		test.each([false, true])(
+			'ignores delayed deltas after cancellation (restored: %s)',
+			(restore) => {
+				const state = stateWithRun('run-1', 'agent-root');
+				handleEvent(state, makeToolCallEvent('run-1', 'agent-root', 'tc-1', 'search-workflows'));
+				state.activeRunId = handleEvent(
+					state,
+					makeRunFinishEvent('run-1', 'agent-root', 'cancelled'),
+				);
+				if (restore) {
+					const tree = deepCopy(state.messages[0].agentTree!);
+					const runState = createRunStateFromTree(tree)!;
+					state.runStateByGroupId.set('run-1', runState);
+					state.messages[0].agentTree = runState.agentsById['agent-root'];
+				}
+				const before = JSON.stringify(state.messages);
+				const events: InstanceAiEvent[] = [
+					makeTextDeltaEvent('run-1', 'agent-root', 'late text'),
+					makeReasoningDeltaEvent('run-1', 'agent-root', 'late reasoning'),
+					{
+						type: 'status',
+						runId: 'run-1',
+						agentId: 'agent-root',
+						payload: { message: 'Still working' },
+					},
+				];
+				for (const event of events) expect(handleEvent(state, event)).toBeNull();
+				expect(JSON.stringify(state.messages)).toBe(before);
+			},
+		);
+
 		test('run-finish(error) sets agentTree status to error', () => {
 			const state = stateWithRun('run-1', 'agent-root');
 			handleEvent(state, makeRunFinishEvent('run-1', 'agent-root', 'error'));
@@ -317,6 +382,7 @@ describe('instanceAi.reducer', () => {
 
 		test('a live text-block with a fresh responseId renders as appended text (durable outcome lines)', () => {
 			const state = stateWithRun('run-1', 'agent-root');
+			handleEvent(state, makeRunFinishEvent('run-1', 'agent-root', 'completed'));
 			handleEvent(state, {
 				type: 'text-block',
 				runId: 'run-1',

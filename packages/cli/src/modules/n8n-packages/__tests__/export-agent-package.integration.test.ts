@@ -70,7 +70,7 @@ async function readSourceRecords() {
 }
 
 beforeAll(async () => {
-	await setSkillsHubFlag(true);
+	setSkillsHubFlag(true);
 	await testModules.loadModules(['agents']);
 	await testDb.init();
 	agentRepository = Container.get(AgentRepository);

@@ -28,7 +28,7 @@ import {
 } from './types';
 
 type PickerCreateAction = {
-	category: ToolCategoryKey;
+	category?: ToolCategoryKey;
 	label: string;
 	description?: string;
 	testId?: string;
@@ -62,6 +62,7 @@ const props = withDefaults(
 		connectLabel?: (item: ToolConnectionItem) => string;
 		connectAriaLabel?: (item: ToolConnectionItem) => string;
 		connectedLabel?: (item: ToolConnectionItem) => string;
+		categoryLabels?: Partial<Record<ToolCategoryKey, string>>;
 	}>(),
 	{
 		open: false,
@@ -92,7 +93,7 @@ const emit = defineEmits<{
 	'new-credential-connect': [item: ToolConnectionItem];
 	'open-detail': [item: ToolConnectionItem];
 	connect: [item: ToolConnectionItem];
-	create: [];
+	create: [category: ToolCategoryKey];
 }>();
 
 const i18n = useI18n();
@@ -278,11 +279,14 @@ const CATEGORY_I18N: Record<ToolCategoryKey, BaseTextKey> = {
 	community: 'tools.connection.categories.community',
 	workflows: 'tools.connection.categories.workflows',
 	agents: 'tools.connection.categories.agents',
+	project: 'tools.connection.categories.project',
+	'this-agent': 'tools.connection.categories.thisAgent',
+	global: 'tools.connection.categories.global',
 	data: 'tools.connection.categories.data',
 };
 
 function categoryLabel(category: ToolCategoryKey): string {
-	return i18n.baseText(CATEGORY_I18N[category]);
+	return props.categoryLabels?.[category] ?? i18n.baseText(CATEGORY_I18N[category]);
 }
 
 const groupedSearchRows = computed<ListRow[]>(() => {
@@ -336,7 +340,12 @@ const resolvedEmptyMessage = computed(() => {
 	}
 	return props.emptyMessage ?? i18n.baseText('tools.connection.empty.title');
 });
-const showCreateAction = computed(() => props.createAction?.category === activeCategory.value);
+const showCreateAction = computed(
+	() =>
+		props.createAction !== undefined &&
+		(props.createAction.category === undefined ||
+			props.createAction.category === activeCategory.value),
+);
 
 function openDetail(item: ToolConnectionItem) {
 	emit('open-detail', item);
@@ -434,7 +443,7 @@ function handleOpenChange(value: boolean) {
 					:disabled="createActionLoading"
 					:aria-busy="createActionLoading"
 					:data-test-id="createAction.testId ?? 'tools-connection-create'"
-					@click="emit('create')"
+					@click="emit('create', activeCategory)"
 				>
 					<span :class="$style.createIcon" aria-hidden="true">
 						<N8nIcon
@@ -489,6 +498,7 @@ function handleOpenChange(value: boolean) {
 								:connected-label="props.connectedLabel?.(row.item)"
 								@open-detail="openDetail($event)"
 								@connect="emit('connect', $event)"
+								@disconnect="emit('disconnect', $event)"
 								@select-credential="
 									(item, authType, credentialId) =>
 										emit('select-credential', item, authType, credentialId)
@@ -554,6 +564,7 @@ function handleOpenChange(value: boolean) {
 	gap: var(--spacing--xs);
 	width: 100%;
 	min-height: 58px;
+	margin-top: var(--spacing--sm);
 	padding: var(--spacing--2xs);
 	border: 0;
 	border-radius: var(--radius--2xs);
