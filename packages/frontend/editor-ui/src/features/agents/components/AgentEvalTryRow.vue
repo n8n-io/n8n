@@ -290,14 +290,19 @@ watch(
 								<N8nIcon icon="pencil" size="small" />
 							</template>
 						</N8nButton>
-						<!-- The backend refuses to delete a running result; the span keeps hover
-						     working on the disabled button. -->
-						<N8nTooltip
-							:content="i18n.baseText('instanceAi.testAgentPreview.deleteCheck.runningTooltip')"
-							:disabled="!isRunning"
-							placement="top"
-						>
-							<span :data-test-id="testId && `${testId}-delete-check-hint`">
+						<!-- The backend refuses to delete a running result. A disabled button gets
+						     no hover or focus, so while the check runs the span is the tooltip
+						     trigger and takes focus; the open tooltip becomes its description. -->
+						<N8nTooltip :disabled="!isRunning" placement="top" as-child>
+							<!-- Plain-text slot, not the `content` prop: Reka builds the screen-reader
+							     text from text nodes, and `content` renders as HTML with none. -->
+							<template #content>{{
+								i18n.baseText('instanceAi.testAgentPreview.deleteCheck.runningTooltip')
+							}}</template>
+							<span
+								:tabindex="isRunning ? 0 : undefined"
+								:data-test-id="testId && `${testId}-delete-check-hint`"
+							>
 								<N8nButton
 									variant="subtle"
 									size="small"
