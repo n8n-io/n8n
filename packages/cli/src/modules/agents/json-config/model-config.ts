@@ -1,24 +1,15 @@
-import type { CredentialProvider, ModelConfig, ResolvedCredential } from '@n8n/agents';
+import type { ModelConfig } from '@n8n/agents';
+import type { AgentCredentialProvider } from '../agent-credential-provider.contracts';
 import { splitModelId } from '@n8n/ai-utilities/agent-config';
 import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 import { UserError } from 'n8n-workflow';
 
 import { mapCredentialForProvider } from './credential-field-mapping';
 
-/**
- * A `CredentialProvider` that can also mint the n8n Connect (AI Gateway)
- * synthetic credential for a model slot, keyed by the model's provider prefix
- * (e.g. `openai`). `AgentsCredentialProvider` implements this; keeping the
- * capability on the provider avoids threading a resolver through the build path.
- */
-export interface AiGatewayModelCredentialResolver {
-	resolveAiGatewayModelCredential(provider: string): Promise<ResolvedCredential>;
-}
-
 export async function resolveCredentialAwareModelConfig(
 	model: string,
 	credential: string,
-	credentialProvider: CredentialProvider & Partial<AiGatewayModelCredentialResolver>,
+	credentialProvider: AgentCredentialProvider,
 	/**
 	 * Azure OpenAI deployments are user-named in Azure and surfaced in the URL
 	 * path on both endpoint types. The catalog model id is not the deployment

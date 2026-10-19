@@ -1,6 +1,6 @@
 import type { AiConfig } from '@n8n/config';
 
-import { modelStreamStallOptions } from '../model-stream-stall-options';
+import { modelStreamStallOptions } from '@/utils/model-stream-stall-options';
 
 function aiConfig(values: Partial<AiConfig>): AiConfig {
 	return values as AiConfig;

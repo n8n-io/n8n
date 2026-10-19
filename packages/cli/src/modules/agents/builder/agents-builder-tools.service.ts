@@ -39,11 +39,10 @@ import {
 	type ConfigValidationError,
 	getLegacyBuilderToolNames,
 } from '@n8n/api-types';
-import { Logger } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { createAgentContextTool, type InstanceAiCredentialService } from '@n8n/instance-ai';
+import type { BuilderCredentialService, BuilderToolsOptions } from './builder-session';
 import type { Operation } from 'fast-json-patch';
 import { z } from 'zod';
 
@@ -64,7 +63,6 @@ import { createAiMcpFetch } from '@/utils/ai-proxy-fetch';
 import { AgentConfigService } from '../agent-config.service';
 import { AgentCustomToolsService } from '../agent-custom-tools.service';
 import { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service';
-import { InstanceAiAgentContextAdapterService } from '../instance-ai-agent-context.adapter';
 import { AgentPublishService } from '../agent-publish.service';
 import { AgentSkillsService } from '../agent-skills.service';
 import { AgentTaskService } from '../agent-task.service';
@@ -334,13 +332,6 @@ interface AgentConfigSnapshot {
 	configHash: string | null;
 }
 
-/** Builder-session options from the Instance AI host. */
-interface BuilderToolsOptions {
-	threadId?: string;
-	runId?: string;
-	useEvalModelCatalog?: boolean;
-}
-
 /** Placeholder agent id for the tool set that only supplies tool definitions. */
 const UNRESOLVED_TARGET_AGENT_ID = '';
 
@@ -460,7 +451,6 @@ export interface BuilderTools {
 @Service()
 export class AgentsBuilderToolsService {
 	constructor(
-		private readonly logger: Logger,
 		private readonly agentsService: AgentsService,
 		private readonly agentConfigService: AgentConfigService,
 		private readonly agentCustomToolsService: AgentCustomToolsService,
@@ -482,7 +472,6 @@ export class AgentsBuilderToolsService {
 		private readonly nodeTypes: NodeTypes,
 		private readonly freeAiCreditsService: FreeAiCreditsService,
 		private readonly telemetry: Telemetry,
-		private readonly agentContextAdapter: InstanceAiAgentContextAdapterService,
 		private readonly collaborationService: CollaborationService,
 		private readonly agentSkillRefs: AgentSkillRefsService,
 	) {}
@@ -562,7 +551,7 @@ export class AgentsBuilderToolsService {
 		agentId: string,
 		projectId: string,
 		credentialProvider: CredentialProvider,
-		credentialService: InstanceAiCredentialService,
+		credentialService: BuilderCredentialService,
 		user: User,
 		options?: BuilderToolsOptions,
 	): BuilderTools {
@@ -592,16 +581,16 @@ export class AgentsBuilderToolsService {
 		resolveTargetAgentId: (pinnedAgentId?: string) => Promise<string>,
 		projectId: string,
 		credentialProviderFor: (agentId: string) => CredentialProvider,
-		credentialService: InstanceAiCredentialService,
+		credentialService: BuilderCredentialService,
 		user: User,
 		options: BuilderToolsOptions & { excludeToolNames?: string[] } = {},
 	): BuiltTool[] {
 		const excluded = new Set(options.excludeToolNames ?? []);
-		const buildToolSet = (agentId: string) => {
+		const buildToolSet = (agentId: string, credentialProvider: CredentialProvider) => {
 			const { json, shared } = this.getTools(
 				agentId,
 				projectId,
-				credentialProviderFor(agentId),
+				credentialProvider,
 				credentialService,
 				user,
 				options,
@@ -613,13 +602,22 @@ export class AgentsBuilderToolsService {
 		const toolFor = (agentId: string, toolName: string): BuiltTool | undefined => {
 			let toolSet = toolSetsByAgentId.get(agentId);
 			if (!toolSet) {
-				toolSet = new Map(buildToolSet(agentId).map((tool) => [tool.name, tool]));
+				toolSet = new Map(
+					buildToolSet(agentId, credentialProviderFor(agentId)).map((tool) => [tool.name, tool]),
+				);
 				toolSetsByAgentId.set(agentId, toolSet);
 			}
 			return toolSet.get(toolName);
 		};
 
-		return buildToolSet(UNRESOLVED_TARGET_AGENT_ID).map((template) => ({
+		const unresolvedTarget = async (): Promise<never> => {
+			throw new UnexpectedError('Builder credentials require a resolved target agent.');
+		};
+		const templates = buildToolSet(UNRESOLVED_TARGET_AGENT_ID, {
+			resolve: unresolvedTarget,
+			list: unresolvedTarget,
+		});
+		return templates.map((template) => ({
 			...template,
 			handler: async (input, ctx) => {
 				const pinned = isInterruptibleContext(ctx)
@@ -640,18 +638,22 @@ export class AgentsBuilderToolsService {
 		agentId: string,
 		projectId: string,
 		credentialProvider: CredentialProvider,
-		credentialService: InstanceAiCredentialService,
+		credentialService: BuilderCredentialService,
 		user: User,
 		options?: BuilderToolsOptions,
 	): BuiltTool[] {
-		const track: BuilderTrackFn = (entry, properties) =>
-			this.telemetry.track(entry, {
-				agent_id: agentId,
-				user_id: user.id,
-				...(options?.threadId ? { thread_id: options.threadId } : {}),
-				...(options?.runId ? { run_id: options.runId } : {}),
-				...properties,
-			});
+		const track: BuilderTrackFn = (entry, properties) => {
+			const enriched = {
+					agent_id: agentId,
+					user_id: user.id,
+					...properties,
+			};
+			if (options?.track) {
+				options.track(entry, enriched);
+				return;
+			}
+			this.telemetry.track(entry, enriched);
+		};
 		const writeConfigTool = this.buildWriteConfigTool(agentId, projectId, user);
 		const patchConfigTool = this.buildPatchConfigTool(agentId, projectId, user);
 		const publishAgentTool = this.buildPublishAgentTool(user, projectId, agentId);
@@ -712,7 +714,7 @@ export class AgentsBuilderToolsService {
 	}
 
 	private createFinishSetupTool(
-		credentialService: InstanceAiCredentialService,
+		credentialService: BuilderCredentialService,
 		agentId: string,
 		projectId: string,
 		user: User,
@@ -763,7 +765,7 @@ export class AgentsBuilderToolsService {
 	}
 
 	private createEmbeddingCredentialTool(
-		credentialService: InstanceAiCredentialService,
+		credentialService: BuilderCredentialService,
 		projectId: string,
 		track: BuilderTrackFn,
 	): BuiltTool {
@@ -777,7 +779,7 @@ export class AgentsBuilderToolsService {
 	}
 
 	private createCredentialTool(
-		credentialService: InstanceAiCredentialService,
+		credentialService: BuilderCredentialService,
 		projectId: string,
 		agentId: string,
 		track: BuilderTrackFn,
@@ -1125,11 +1127,6 @@ export class AgentsBuilderToolsService {
 		const createTasksTool = this.buildCreateTasksTool(agentId, projectId, user);
 
 		return [
-			createAgentContextTool({
-				reader: this.agentContextAdapter.createReader(user, projectId),
-				resolveDefaultAgentId: async () => agentId,
-				logger: this.logger,
-			}),
 			this.withConfigMutationMarker(buildCustomToolTool, agentId),
 			this.withConfigMutationMarker(createSkillsTool, agentId),
 			this.withConfigMutationMarker(updateSkillTool, agentId),
