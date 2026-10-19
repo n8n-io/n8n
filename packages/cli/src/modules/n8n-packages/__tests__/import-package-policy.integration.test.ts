@@ -516,7 +516,7 @@ describe('credentialSave and contentImport on a package import that updates a cr
 		expect(stored.name).toBe('GitHub');
 	});
 
-	it('refuses the package when contentImport refuses the update', async () => {
+	it('refuses the package before anything is written when contentImport refuses the update', async () => {
 		const { credential, params } = await setUp();
 		deniedImportedCredentialIds.add(credential.id);
 
@@ -531,6 +531,10 @@ describe('credentialSave and contentImport on a package import that updates a cr
 			}),
 		]);
 		await expect(Container.get(WorkflowRepository).count()).resolves.toBe(0);
+		const stored = await Container.get(CredentialsRepository).findOneByOrFail({
+			id: credential.id,
+		});
+		expect(stored.name).toBe('GitHub');
 	});
 
 	it('updates the credential when both checks admit it', async () => {
