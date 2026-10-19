@@ -55,6 +55,7 @@ import {
 } from './import-orchestrator';
 import {
 	buildImportResult,
+	credentialsUpdatedAcrossScopes,
 	identifyRequirements,
 	reconcileCredentialSummary,
 	reconcileVariableSummary,
@@ -228,7 +229,6 @@ export class ProjectPackageImporter {
 		let dataTablesUpdated = 0;
 		const seeded: string[] = [];
 		const incomplete: string[] = [];
-		const credentialsUpdated: string[] = [];
 		const variablesMatched: string[] = [];
 		const variablesMissing: string[] = [];
 		const variablesCreated: string[] = [];
@@ -253,7 +253,6 @@ export class ProjectPackageImporter {
 			dataTablesUpdated += content.dataTablePlan.updates.length;
 			seeded.push(...content.credentialResult.seeded);
 			incomplete.push(...content.credentialResult.incomplete);
-			credentialsUpdated.push(...content.credentialResult.updated);
 			variablesMatched.push(...content.variablePlan.matched);
 			variablesMissing.push(...content.variablePlan.missing.map(({ name }) => name));
 			variablesCreated.push(...content.variableResult.created);
@@ -284,7 +283,9 @@ export class ProjectPackageImporter {
 				stubbed,
 				seeded,
 				incomplete,
-				updated: credentialsUpdated,
+				updated: credentialsUpdatedAcrossScopes(
+					applied.map(({ content }) => content.credentialResult),
+				),
 			}),
 			dataTables: {
 				matched: dataTablesMatched,

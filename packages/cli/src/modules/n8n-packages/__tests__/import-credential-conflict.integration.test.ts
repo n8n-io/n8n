@@ -956,6 +956,65 @@ describe('credentialConflictPolicy=overwrite writes', () => {
 		update.mockRestore();
 	});
 
+	it('lists as updated two credentials of different projects that bind to one destination', async () => {
+		const secondProject = await createTeamProject('Second', owner);
+		const credential = await saveOwnedCredential(githubCredentialPayload({ name: 'GitHub' }), {
+			project,
+		});
+		await shareCredentialWithProjects(credential, [secondProject]);
+		const update = vi.spyOn(Container.get(CredentialsService), 'update');
+		const sourceIds = ['source-a', 'source-b'];
+		const workflows = sourceIds.map((sourceId, index) =>
+			serializedWorkflowWithCredential({
+				id: `wf-${index}`,
+				name: `Uses ${sourceId}`,
+				credentialId: sourceId,
+				credentialName: 'GitHub',
+			}),
+		);
+
+		const result = await importPackage({
+			user: owner,
+			credentialConflictPolicy: 'overwrite',
+			bindings: {
+				credentials: new Map(sourceIds.map((sourceId) => [sourceId, credential.id])),
+			},
+			packageBuffer: await buildEntityPackageBuffer({
+				projects: [project, secondProject].map((target, index) => ({
+					target: `projects/p${index}`,
+					project: serializedProject({ id: target.id, name: target.name }),
+				})),
+				workflows: workflows.map((workflow, index) => ({
+					target: `projects/p${index}/workflows/wf`,
+					workflow,
+				})),
+				credentials: sourceIds.map((sourceId, index) => ({
+					target: `projects/p${index}/credentials/github`,
+					credential: serializedCredential({
+						id: sourceId,
+						name: 'GitHub',
+						data: { accessToken: EXPRESSION },
+					}),
+				})),
+				manifestExtras: {
+					requirements: { credentials: credentialRequirementsFromWorkflows(workflows) },
+				},
+			}),
+		});
+
+		expect(result.credentials).toEqual({
+			matched: [],
+			stubbed: [],
+			seeded: [],
+			incomplete: [],
+			updated: sourceIds,
+		});
+		expect(update).toHaveBeenCalledTimes(1);
+		const stored = await storedCredential(credential.id);
+		expect(stored.data.accessToken).toBe(EXPRESSION);
+		update.mockRestore();
+	});
+
 	describe('API key scopes', () => {
 		let credential: CredentialsEntity;
 
