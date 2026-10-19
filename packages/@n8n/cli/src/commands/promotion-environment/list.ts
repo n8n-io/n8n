@@ -2,13 +2,13 @@ import { Flags } from '@oclif/core';
 
 import { BaseCommand } from '../../base-command';
 
-export default class PromotionConnectionList extends BaseCommand {
+export default class PromotionEnvironmentList extends BaseCommand {
 	static override description = 'List promotion connections';
 
 	static override examples = [
-		'<%= config.bin %> promotion-connection list',
-		'<%= config.bin %> promotion-connection list --scope=instance',
-		'<%= config.bin %> promotion-connection list --provider=prov-1',
+		'<%= config.bin %> promotion-environment list',
+		'<%= config.bin %> promotion-environment list --scope=instance',
+		'<%= config.bin %> promotion-environment list --provider=prov-1',
 	];
 
 	static override flags = {
@@ -25,7 +25,7 @@ export default class PromotionConnectionList extends BaseCommand {
 	};
 
 	async run() {
-		const { flags } = await this.parse(PromotionConnectionList);
+		const { flags } = await this.parse(PromotionEnvironmentList);
 		await this.execute(async () => {
 			const query: Record<string, string> = {};
 			if (flags.scope) query.scope = flags.scope;

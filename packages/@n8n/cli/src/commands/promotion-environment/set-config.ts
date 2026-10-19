@@ -3,14 +3,14 @@ import { Args, Flags } from '@oclif/core';
 import { directionArg, toDirection } from './direction';
 import { BaseCommand } from '../../base-command';
 
-export default class PromotionConnectionSetConfig extends BaseCommand {
+export default class PromotionEnvironmentSetConfig extends BaseCommand {
 	static override description =
 		'Create the configuration of one direction, or replace it, from JSON. The write replaces the whole configuration, so send every setting you want to keep. An omitted name resets it to the direction label.';
 
 	static override examples = [
-		'echo \'{"settings":{"schemaVersion":1,"branchName":"main"}}\' | <%= config.bin %> promotion-connection set-config conn-1 apply --stdin',
-		'echo \'{"settings":{"schemaVersion":1,"baseBranchName":"main","createBranchOnPromotion":false}}\' | <%= config.bin %> promotion-connection set-config conn-1 promote --stdin',
-		'<%= config.bin %> promotion-connection set-config conn-1 promote --file=promote-config.json',
+		'echo \'{"settings":{"schemaVersion":1,"branchName":"main"}}\' | <%= config.bin %> promotion-environment set-config conn-1 apply --stdin',
+		'echo \'{"settings":{"schemaVersion":1,"baseBranchName":"main","createBranchOnPromotion":false}}\' | <%= config.bin %> promotion-environment set-config conn-1 promote --stdin',
+		'<%= config.bin %> promotion-environment set-config conn-1 promote --file=promote-config.json',
 	];
 
 	static override args = {
@@ -25,7 +25,7 @@ export default class PromotionConnectionSetConfig extends BaseCommand {
 	};
 
 	async run() {
-		const { args, flags } = await this.parse(PromotionConnectionSetConfig);
+		const { args, flags } = await this.parse(PromotionEnvironmentSetConfig);
 		const direction = toDirection(args.direction);
 		await this.execute(async () => {
 			const body = JSON.parse(this.readInput(flags)) as unknown;

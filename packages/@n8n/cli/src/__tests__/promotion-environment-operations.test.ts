@@ -2,17 +2,17 @@ import { Config } from '@oclif/core';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 
 import type { N8nClient } from '../client';
-import PromotionConnectionApply from '../commands/promotion-connection/apply';
-import PromotionConnectionApplyContinue from '../commands/promotion-connection/apply-continue';
-import PromotionConnectionApplySelection from '../commands/promotion-connection/apply-selection';
-import PromotionConnectionApplySelectionContinue from '../commands/promotion-connection/apply-selection-continue';
+import PromotionEnvironmentApply from '../commands/promotion-environment/apply';
+import PromotionEnvironmentApplyContinue from '../commands/promotion-environment/apply-continue';
+import PromotionEnvironmentApplySelection from '../commands/promotion-environment/apply-selection';
+import PromotionEnvironmentApplySelectionContinue from '../commands/promotion-environment/apply-selection-continue';
 import {
 	parseCommitSha,
 	parseNonEmpty,
 	toExpectedSource,
-} from '../commands/promotion-connection/expected-source';
-import PromotionConnectionPromote from '../commands/promotion-connection/promote';
-import PromotionConnectionPromoteSelection from '../commands/promotion-connection/promote-selection';
+} from '../commands/promotion-environment/expected-source';
+import PromotionEnvironmentPromote from '../commands/promotion-environment/promote';
+import PromotionEnvironmentPromoteSelection from '../commands/promotion-environment/promote-selection';
 
 /** The command methods we stub to isolate behaviour from oclif/networking. */
 interface OperationInternals {
@@ -65,7 +65,10 @@ const PINNED_FLAGS = {
 const EXPECTED_SOURCE = { configId: 'cfg-2', branchName: 'release', commitSha: SHA };
 
 function stubCommand(
-	command: PromotionConnectionPromote | PromotionConnectionApply | PromotionConnectionApplyContinue,
+	command:
+		| PromotionEnvironmentPromote
+		| PromotionEnvironmentApply
+		| PromotionEnvironmentApplyContinue,
 	flags: Record<string, unknown>,
 	client: Partial<N8nClient>,
 ) {
@@ -80,7 +83,7 @@ function stubCommand(
 }
 
 function stubApplyCommand(
-	command: PromotionConnectionApply | PromotionConnectionApplyContinue,
+	command: PromotionEnvironmentApply | PromotionEnvironmentApplyContinue,
 	flags: Record<string, unknown>,
 	client: Partial<N8nClient>,
 ) {
@@ -92,13 +95,13 @@ function stubApplyCommand(
 	return { succeed, output, logToStderr, exit };
 }
 
-describe('promotion-connection promote command', () => {
+describe('promotion-environment promote command', () => {
 	afterEach(() => {
 		vi.restoreAllMocks();
 	});
 
 	it('sends the commit message and force flag, and names the branch it pushed to', async () => {
-		const command = new PromotionConnectionPromote([], {} as Config);
+		const command = new PromotionEnvironmentPromote([], {} as Config);
 		const promotePackage = vi.fn().mockResolvedValue(PROMOTE_RESULT);
 		const succeed = stubCommand(command, { message: 'Promote team projects', force: true }, {
 			promotePackage,
@@ -121,13 +124,13 @@ describe('promotion-connection promote command', () => {
 	});
 });
 
-describe('promotion-connection apply command', () => {
+describe('promotion-environment apply command', () => {
 	afterEach(() => {
 		vi.restoreAllMocks();
 	});
 
 	function runApply(result: unknown, flags: Record<string, unknown> = { format: 'table' }) {
-		const command = new PromotionConnectionApply([], {} as Config);
+		const command = new PromotionEnvironmentApply([], {} as Config);
 		const applyPackage = vi.fn().mockResolvedValue(result);
 		const stubs = stubApplyCommand(command, flags, {
 			applyPackage,
@@ -195,7 +198,7 @@ describe('promotion-connection apply command', () => {
 		expect(message).toContain('Access requirements: 0');
 		expect(message).toContain('Conflicts:           1');
 		expect(message).toContain(
-			`n8n-cli promotion-connection apply-continue conn-1 --expected-config-id=cfg-2 --expected-branch=release --expected-commit-sha=${SHA}`,
+			`n8n-cli promotion-environment apply-continue conn-1 --expected-config-id=cfg-2 --expected-branch=release --expected-commit-sha=${SHA}`,
 		);
 		expect(message).not.toContain('--confirm-destructive-changes');
 		expect(exit).toHaveBeenCalledWith(4);
@@ -214,7 +217,7 @@ describe('promotion-connection apply command', () => {
 
 		const message = logToStderr.mock.calls[0][0];
 		expect(message).toContain(
-			`n8n-cli promotion-connection apply-continue conn-1 --expected-config-id=cfg-2 --expected-branch=release --expected-commit-sha=${SHA}\n` +
+			`n8n-cli promotion-environment apply-continue conn-1 --expected-config-id=cfg-2 --expected-branch=release --expected-commit-sha=${SHA}\n` +
 				'To also apply data table changes that remove or retype columns, add --confirm-destructive-changes. The values in those columns are removed.',
 		);
 		expect(exit).toHaveBeenCalledWith(4);
@@ -290,13 +293,13 @@ describe('promotion-connection apply command', () => {
 	});
 });
 
-describe('promotion-connection apply-continue command', () => {
+describe('promotion-environment apply-continue command', () => {
 	afterEach(() => {
 		vi.restoreAllMocks();
 	});
 
 	it('continues with the reviewed source and reports the result like Apply', async () => {
-		const command = new PromotionConnectionApplyContinue([], {} as Config);
+		const command = new PromotionEnvironmentApplyContinue([], {} as Config);
 		const continueApplyPackage = vi.fn().mockResolvedValue(SOURCE_CHANGED_RESULT);
 		const { exit } = stubApplyCommand(command, { format: 'table', ...PINNED_FLAGS }, {
 			continueApplyPackage,
@@ -309,7 +312,7 @@ describe('promotion-connection apply-continue command', () => {
 	});
 
 	it('sends the confirmation of destructive data table changes', async () => {
-		const command = new PromotionConnectionApplyContinue(
+		const command = new PromotionEnvironmentApplyContinue(
 			[
 				'conn-1',
 				`--expected-config-id=${EXPECTED_SOURCE.configId}`,
@@ -370,13 +373,13 @@ describe('expected commit SHA flag', () => {
 	);
 });
 
-describe('promotion-connection promote-selection command', () => {
+describe('promotion-environment promote-selection command', () => {
 	afterEach(() => {
 		vi.restoreAllMocks();
 	});
 
 	it('sends the project id and workflow ids, and names the branch it pushed to', async () => {
-		const command = new PromotionConnectionPromoteSelection([], {} as Config);
+		const command = new PromotionEnvironmentPromoteSelection([], {} as Config);
 		const internals = command as unknown as OperationInternals & {
 			parse: () => Promise<{ args: { projectId: string }; flags: Record<string, unknown> }>;
 		};
@@ -405,7 +408,7 @@ describe('promotion-connection promote-selection command', () => {
 	});
 
 	it('passes the message flag as the commit message', async () => {
-		const command = new PromotionConnectionPromoteSelection([], {} as Config);
+		const command = new PromotionEnvironmentPromoteSelection([], {} as Config);
 		const internals = command as unknown as OperationInternals & {
 			parse: () => Promise<{ args: { projectId: string }; flags: Record<string, unknown> }>;
 		};
@@ -430,7 +433,7 @@ describe('promotion-connection promote-selection command', () => {
 	});
 });
 
-describe('promotion-connection apply-selection command', () => {
+describe('promotion-environment apply-selection command', () => {
 	afterEach(() => {
 		vi.restoreAllMocks();
 	});
@@ -439,7 +442,7 @@ describe('promotion-connection apply-selection command', () => {
 		result: unknown,
 		flags: Record<string, unknown> = { format: 'table', workflow: ['wf-1', 'wf-2'] },
 	) {
-		const command = new PromotionConnectionApplySelection([], {} as Config);
+		const command = new PromotionEnvironmentApplySelection([], {} as Config);
 		const applyProjectSelection = vi.fn().mockResolvedValue(result);
 		const internals = command as unknown as ApplyInternals & {
 			parse: () => Promise<{ args: { projectId: string }; flags: Record<string, unknown> }>;
@@ -510,19 +513,19 @@ describe('promotion-connection apply-selection command', () => {
 		await run();
 
 		expect(logToStderr.mock.calls[0][0]).toContain(
-			`n8n-cli promotion-connection apply-selection-continue proj-1 -w wf-1 -w wf-2 --expected-config-id=cfg-2 --expected-branch=release --expected-commit-sha=${SHA}`,
+			`n8n-cli promotion-environment apply-selection-continue proj-1 -w wf-1 -w wf-2 --expected-config-id=cfg-2 --expected-branch=release --expected-commit-sha=${SHA}`,
 		);
 		expect(exit).toHaveBeenCalledWith(4);
 	});
 });
 
-describe('promotion-connection apply-selection-continue command', () => {
+describe('promotion-environment apply-selection-continue command', () => {
 	afterEach(() => {
 		vi.restoreAllMocks();
 	});
 
 	it('continues with the reviewed source and the same workflow ids', async () => {
-		const command = new PromotionConnectionApplySelectionContinue([], {} as Config);
+		const command = new PromotionEnvironmentApplySelectionContinue([], {} as Config);
 		const continueApplyProjectSelection = vi.fn().mockResolvedValue(SOURCE_CHANGED_RESULT);
 		const internals = command as unknown as ApplyInternals & {
 			parse: () => Promise<{ args: { projectId: string }; flags: Record<string, unknown> }>;
@@ -551,7 +554,7 @@ describe('promotion-connection apply-selection-continue command', () => {
 	});
 
 	it('sends the confirmation of destructive data table changes', async () => {
-		const command = new PromotionConnectionApplySelectionContinue(
+		const command = new PromotionEnvironmentApplySelectionContinue(
 			[
 				'proj-1',
 				'-w',

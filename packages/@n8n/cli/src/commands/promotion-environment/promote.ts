@@ -2,12 +2,12 @@ import { Args, Flags } from '@oclif/core';
 
 import { BaseCommand } from '../../base-command';
 
-export default class PromotionConnectionPromote extends BaseCommand {
+export default class PromotionEnvironmentPromote extends BaseCommand {
 	static override description =
 		'Export all team projects, commit, and push to the configured branch. Requires the Promote direction to be cloned first.';
 
 	static override examples = [
-		'<%= config.bin %> promotion-connection promote conn-1 --message="Promote team projects"',
+		'<%= config.bin %> promotion-environment promote conn-1 --message="Promote team projects"',
 	];
 
 	static override args = { id: Args.string({ description: 'Connection ID', required: true }) };
@@ -26,7 +26,7 @@ export default class PromotionConnectionPromote extends BaseCommand {
 	};
 
 	async run() {
-		const { args, flags } = await this.parse(PromotionConnectionPromote);
+		const { args, flags } = await this.parse(PromotionEnvironmentPromote);
 		await this.execute(async () => {
 			const result = await this.getClient(flags).promotePackage(args.id, {
 				commitMessage: flags.message,

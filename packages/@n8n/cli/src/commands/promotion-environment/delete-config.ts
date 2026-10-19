@@ -3,11 +3,11 @@ import { Args } from '@oclif/core';
 import { directionArg, toDirection } from './direction';
 import { BaseCommand } from '../../base-command';
 
-export default class PromotionConnectionDeleteConfig extends BaseCommand {
+export default class PromotionEnvironmentDeleteConfig extends BaseCommand {
 	static override description =
 		'Delete the configuration of one direction and its local checkout. Nothing in Git changes.';
 
-	static override examples = ['<%= config.bin %> promotion-connection delete-config conn-1 apply'];
+	static override examples = ['<%= config.bin %> promotion-environment delete-config conn-1 apply'];
 
 	static override args = {
 		id: Args.string({ description: 'Connection ID', required: true }),
@@ -17,7 +17,7 @@ export default class PromotionConnectionDeleteConfig extends BaseCommand {
 	static override flags = { ...BaseCommand.baseFlags };
 
 	async run() {
-		const { args, flags } = await this.parse(PromotionConnectionDeleteConfig);
+		const { args, flags } = await this.parse(PromotionEnvironmentDeleteConfig);
 		const direction = toDirection(args.direction);
 		await this.execute(async () => {
 			await this.getClient(flags).deletePromotionConfig(args.id, direction);

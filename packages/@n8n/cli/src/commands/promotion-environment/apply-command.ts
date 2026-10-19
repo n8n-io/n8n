@@ -117,7 +117,7 @@ function expectedSourceArgs(result: BlockedResult): string {
 /** The command that resumes a blocked whole-connection Apply. */
 export function connectionContinueCommand(connectionId: string): ContinueCommand {
 	return (result) =>
-		`n8n-cli promotion-connection apply-continue ${shellQuote(connectionId)}` +
+		`n8n-cli promotion-environment apply-continue ${shellQuote(connectionId)}` +
 		expectedSourceArgs(result);
 }
 
@@ -127,7 +127,7 @@ export function selectionContinueCommand(
 	workflowIds: string[],
 ): ContinueCommand {
 	return (result) =>
-		`n8n-cli promotion-connection apply-selection-continue ${shellQuote(projectId)}` +
+		`n8n-cli promotion-environment apply-selection-continue ${shellQuote(projectId)}` +
 		workflowIds.map((id) => ` -w ${shellQuote(id)}`).join('') +
 		expectedSourceArgs(result);
 }

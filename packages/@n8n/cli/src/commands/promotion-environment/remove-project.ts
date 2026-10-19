@@ -2,11 +2,11 @@ import { Args } from '@oclif/core';
 
 import { BaseCommand } from '../../base-command';
 
-export default class PromotionConnectionRemoveProject extends BaseCommand {
+export default class PromotionEnvironmentRemoveProject extends BaseCommand {
 	static override description = 'Unlink a project from a promotion connection';
 
 	static override examples = [
-		'<%= config.bin %> promotion-connection remove-project conn-1 proj-abc',
+		'<%= config.bin %> promotion-environment remove-project conn-1 proj-abc',
 	];
 
 	static override args = {
@@ -17,7 +17,7 @@ export default class PromotionConnectionRemoveProject extends BaseCommand {
 	static override flags = { ...BaseCommand.baseFlags };
 
 	async run() {
-		const { args, flags } = await this.parse(PromotionConnectionRemoveProject);
+		const { args, flags } = await this.parse(PromotionEnvironmentRemoveProject);
 		await this.execute(async () => {
 			await this.getClient(flags).removeProjectFromPromotionConnection(args.id, args.projectId);
 			this.succeed(

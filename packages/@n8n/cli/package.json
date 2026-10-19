@@ -66,7 +66,7 @@
       "promotion-provider": {
         "description": "Create and manage the providers that hold promotion credentials"
       },
-      "promotion-connection": {
+      "promotion-environment": {
         "description": "Create and manage promotion connections, and promote or apply packages"
       },
       "source-control": {

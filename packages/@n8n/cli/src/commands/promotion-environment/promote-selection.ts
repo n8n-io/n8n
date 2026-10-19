@@ -2,12 +2,12 @@ import { Args, Flags } from '@oclif/core';
 
 import { BaseCommand } from '../../base-command';
 
-export default class PromotionConnectionPromoteSelection extends BaseCommand {
+export default class PromotionEnvironmentPromoteSelection extends BaseCommand {
 	static override description =
 		"Read a chosen set of a project's workflows now and push their current state to the instance connection's Promote branch. Archived workflows stay on the branch as archived. A selected workflow that was deleted or moved to another project leaves this project's branch. The request fails before any write if the branch does not hold that workflow under this project. Requires the Promote direction to be cloned first.";
 
 	static override examples = [
-		'<%= config.bin %> promotion-connection promote-selection proj-abc -w wf-1 -w wf-2',
+		'<%= config.bin %> promotion-environment promote-selection proj-abc -w wf-1 -w wf-2',
 	];
 
 	static override args = {
@@ -29,7 +29,7 @@ export default class PromotionConnectionPromoteSelection extends BaseCommand {
 	};
 
 	async run() {
-		const { args, flags } = await this.parse(PromotionConnectionPromoteSelection);
+		const { args, flags } = await this.parse(PromotionEnvironmentPromoteSelection);
 		await this.execute(async () => {
 			const result = await this.getClient(flags).promoteProjectSelection(
 				args.projectId,

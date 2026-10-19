@@ -4,13 +4,13 @@ import { PromotionApplyCommand, selectionContinueCommand } from './apply-command
 import { expectedSourceFlags, toExpectedSource } from './expected-source';
 import { BaseCommand } from '../../base-command';
 
-export default class PromotionConnectionApplySelection extends PromotionApplyCommand {
+export default class PromotionEnvironmentApplySelection extends PromotionApplyCommand {
 	static override description =
 		"Apply a chosen set of a project's workflow changes from its Apply branch. Selected IDs on the branch are imported, and instance workflows this project owns whose IDs are absent from the branch are removed. Unselected content stays unchanged. Pass the three --expected-* flags to apply only the reviewed commit. Exits 3 when the source changed since the review and 4 when bindings must be set up first; nothing is imported in either case. Requires the Apply direction to be cloned first.";
 
 	static override examples = [
-		'<%= config.bin %> promotion-connection apply-selection proj-abc -w wf-1 -w wf-2',
-		'<%= config.bin %> promotion-connection apply-selection proj-abc -w wf-1 --expected-config-id=cfg-1 --expected-branch=main --expected-commit-sha=<full sha>',
+		'<%= config.bin %> promotion-environment apply-selection proj-abc -w wf-1 -w wf-2',
+		'<%= config.bin %> promotion-environment apply-selection proj-abc -w wf-1 --expected-config-id=cfg-1 --expected-branch=main --expected-commit-sha=<full sha>',
 	];
 
 	static override args = { projectId: Args.string({ description: 'Project ID', required: true }) };
@@ -27,7 +27,7 @@ export default class PromotionConnectionApplySelection extends PromotionApplyCom
 	};
 
 	async run() {
-		const { args, flags } = await this.parse(PromotionConnectionApplySelection);
+		const { args, flags } = await this.parse(PromotionEnvironmentApplySelection);
 		await this.execute(async () => {
 			const result = await this.getClient(flags).applyProjectSelection(
 				args.projectId,

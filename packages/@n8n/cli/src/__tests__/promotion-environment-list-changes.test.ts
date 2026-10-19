@@ -2,7 +2,7 @@ import type { Config } from '@oclif/core';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 
 import type { N8nClient, ProjectPromotionChanges } from '../client';
-import PromotionConnectionListChanges from '../commands/promotion-connection/list-changes';
+import PromotionEnvironmentListChanges from '../commands/promotion-environment/list-changes';
 
 interface ListChangesFlags {
 	format?: string;
@@ -40,7 +40,7 @@ const CHANGES: ProjectPromotionChanges = {
 };
 
 function stubCommand(flags: ListChangesFlags) {
-	const command = new PromotionConnectionListChanges([], {} as Config);
+	const command = new PromotionEnvironmentListChanges([], {} as Config);
 	const internals = command as unknown as ListChangesInternals;
 	const listProjectPromotionChanges = vi.fn().mockResolvedValue(CHANGES);
 
@@ -57,7 +57,7 @@ function stubCommand(flags: ListChangesFlags) {
 	return { command, output, listProjectPromotionChanges };
 }
 
-describe('promotion-connection list-changes command', () => {
+describe('promotion-environment list-changes command', () => {
 	afterEach(() => {
 		vi.restoreAllMocks();
 	});

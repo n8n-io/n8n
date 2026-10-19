@@ -11,13 +11,13 @@ const SORT_FIELDS: ReadonlyArray<NonNullable<PromotionChangesQuery['sort']>> = [
 ];
 const SORT_ORDERS: ReadonlyArray<NonNullable<PromotionChangesQuery['order']>> = ['asc', 'desc'];
 
-export default class PromotionConnectionListChanges extends BaseCommand {
+export default class PromotionEnvironmentListChanges extends BaseCommand {
 	static override description =
 		"List the workflows that differ between a project and its promotion configuration's branch, in one direction.";
 
 	static override examples = [
-		'<%= config.bin %> promotion-connection list-changes proj-abc promote',
-		'<%= config.bin %> promotion-connection list-changes proj-abc apply --sort=updatedAt --order=desc',
+		'<%= config.bin %> promotion-environment list-changes proj-abc promote',
+		'<%= config.bin %> promotion-environment list-changes proj-abc apply --sort=updatedAt --order=desc',
 	];
 
 	static override args = {
@@ -39,7 +39,7 @@ export default class PromotionConnectionListChanges extends BaseCommand {
 	};
 
 	async run() {
-		const { args, flags } = await this.parse(PromotionConnectionListChanges);
+		const { args, flags } = await this.parse(PromotionEnvironmentListChanges);
 		await this.execute(async () => {
 			const result = await this.getClient(flags).listProjectPromotionChanges(
 				args.projectId,

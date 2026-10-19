@@ -2,18 +2,18 @@ import type { Config } from '@oclif/core';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 
 import type { N8nClient } from '../client';
-import PromotionConnectionAddProject from '../commands/promotion-connection/add-project';
-import PromotionConnectionClone from '../commands/promotion-connection/clone';
-import PromotionConnectionCreate from '../commands/promotion-connection/create';
-import PromotionConnectionDelete from '../commands/promotion-connection/delete';
-import PromotionConnectionDeleteConfig from '../commands/promotion-connection/delete-config';
-import PromotionConnectionDisconnect from '../commands/promotion-connection/disconnect';
-import PromotionConnectionGet from '../commands/promotion-connection/get';
-import PromotionConnectionListChanges from '../commands/promotion-connection/list-changes';
-import PromotionConnectionListProjects from '../commands/promotion-connection/list-projects';
-import PromotionConnectionRemoveProject from '../commands/promotion-connection/remove-project';
-import PromotionConnectionSetConfig from '../commands/promotion-connection/set-config';
-import PromotionConnectionUpdate from '../commands/promotion-connection/update';
+import PromotionEnvironmentAddProject from '../commands/promotion-environment/add-project';
+import PromotionEnvironmentClone from '../commands/promotion-environment/clone';
+import PromotionEnvironmentCreate from '../commands/promotion-environment/create';
+import PromotionEnvironmentDelete from '../commands/promotion-environment/delete';
+import PromotionEnvironmentDeleteConfig from '../commands/promotion-environment/delete-config';
+import PromotionEnvironmentDisconnect from '../commands/promotion-environment/disconnect';
+import PromotionEnvironmentGet from '../commands/promotion-environment/get';
+import PromotionEnvironmentListChanges from '../commands/promotion-environment/list-changes';
+import PromotionEnvironmentListProjects from '../commands/promotion-environment/list-projects';
+import PromotionEnvironmentRemoveProject from '../commands/promotion-environment/remove-project';
+import PromotionEnvironmentSetConfig from '../commands/promotion-environment/set-config';
+import PromotionEnvironmentUpdate from '../commands/promotion-environment/update';
 import PromotionProviderDelete from '../commands/promotion-provider/delete';
 import PromotionProviderGet from '../commands/promotion-provider/get';
 import PromotionProviderList from '../commands/promotion-provider/list';
@@ -77,84 +77,84 @@ const CASES: WiringCase[] = [
 		callArgs: ['prov-1'],
 	},
 	{
-		title: 'promotion-connection get',
-		commandClass: PromotionConnectionGet,
+		title: 'promotion-environment get',
+		commandClass: PromotionEnvironmentGet,
 		args: { id: 'conn-1' },
 		method: 'getPromotionConnection',
 		callArgs: ['conn-1'],
 	},
 	{
-		title: 'promotion-connection create',
-		commandClass: PromotionConnectionCreate,
+		title: 'promotion-environment create',
+		commandClass: PromotionEnvironmentCreate,
 		method: 'createPromotionConnection',
 		callArgs: [BODY],
 	},
 	{
-		title: 'promotion-connection update',
-		commandClass: PromotionConnectionUpdate,
+		title: 'promotion-environment update',
+		commandClass: PromotionEnvironmentUpdate,
 		args: { id: 'conn-1' },
 		method: 'updatePromotionConnection',
 		callArgs: ['conn-1', BODY],
 	},
 	{
-		title: 'promotion-connection delete',
-		commandClass: PromotionConnectionDelete,
+		title: 'promotion-environment delete',
+		commandClass: PromotionEnvironmentDelete,
 		args: { id: 'conn-1' },
 		method: 'deletePromotionConnection',
 		callArgs: ['conn-1'],
 	},
 	{
-		title: 'promotion-connection set-config',
-		commandClass: PromotionConnectionSetConfig,
+		title: 'promotion-environment set-config',
+		commandClass: PromotionEnvironmentSetConfig,
 		args: { id: 'conn-1', direction: 'promote' },
 		method: 'setPromotionConfig',
 		callArgs: ['conn-1', 'promote', BODY],
 	},
 	{
-		title: 'promotion-connection delete-config',
-		commandClass: PromotionConnectionDeleteConfig,
+		title: 'promotion-environment delete-config',
+		commandClass: PromotionEnvironmentDeleteConfig,
 		args: { id: 'conn-1', direction: 'apply' },
 		method: 'deletePromotionConfig',
 		callArgs: ['conn-1', 'apply'],
 	},
 	{
-		title: 'promotion-connection clone',
-		commandClass: PromotionConnectionClone,
+		title: 'promotion-environment clone',
+		commandClass: PromotionEnvironmentClone,
 		args: { id: 'conn-1', direction: 'promote' },
 		method: 'clonePromotionCheckout',
 		callArgs: ['conn-1', 'promote'],
 	},
 	{
-		title: 'promotion-connection disconnect',
-		commandClass: PromotionConnectionDisconnect,
+		title: 'promotion-environment disconnect',
+		commandClass: PromotionEnvironmentDisconnect,
 		args: { id: 'conn-1', direction: 'apply' },
 		method: 'disconnectPromotionCheckout',
 		callArgs: ['conn-1', 'apply'],
 	},
 	{
-		title: 'promotion-connection list-projects',
-		commandClass: PromotionConnectionListProjects,
+		title: 'promotion-environment list-projects',
+		commandClass: PromotionEnvironmentListProjects,
 		args: { id: 'conn-1' },
 		method: 'listPromotionConnectionProjects',
 		callArgs: ['conn-1'],
 	},
 	{
-		title: 'promotion-connection list-changes',
-		commandClass: PromotionConnectionListChanges,
+		title: 'promotion-environment list-changes',
+		commandClass: PromotionEnvironmentListChanges,
 		args: { projectId: 'proj-1', direction: 'promote' },
 		method: 'listProjectPromotionChanges',
 		callArgs: ['proj-1', 'promote', {}],
 	},
 	{
-		title: 'promotion-connection add-project',
-		commandClass: PromotionConnectionAddProject,
+		title: 'promotion-environment add-project',
+		commandClass: PromotionEnvironmentAddProject,
 		args: { id: 'conn-1', projectId: 'proj-1' },
 		method: 'addProjectToPromotionConnection',
 		callArgs: ['conn-1', 'proj-1'],
 	},
 	{
-		title: 'promotion-connection remove-project',
-		commandClass: PromotionConnectionRemoveProject,
+		title: 'promotion-environment remove-project',
+		commandClass: PromotionEnvironmentRemoveProject,
 		args: { id: 'conn-1', projectId: 'proj-1' },
 		method: 'removeProjectFromPromotionConnection',
 		callArgs: ['conn-1', 'proj-1'],
