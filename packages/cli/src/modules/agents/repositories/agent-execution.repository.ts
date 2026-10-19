@@ -371,18 +371,34 @@ export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
 	/**
 	 * Close task approvals whose checkpoint the TTL prune just expired.
 	 * Session status follows the latest execution, so this is the expiry notice.
+	 * A waiting run can already list failed tool calls. Keep those in the count.
 	 */
 	async failExpiredWaitingApprovals(threadIds: string[]): Promise<void> {
 		if (threadIds.length === 0) return;
 		const message = 'This approval expired.';
-		const failureSummary: AgentExecutionFailureSummary = {
-			count: 1,
-			latest: { kind: 'execution', name: null, message, occurredAt: Date.now() },
+		const expiry = {
+			kind: 'execution' as const,
+			name: null,
+			message,
+			occurredAt: Date.now(),
 		};
-		await this.update(
-			{ threadId: In(threadIds), status: 'waiting' },
-			{ status: 'error', error: message, failureSummary },
-		);
+		const waiting = await this.find({
+			select: ['id', 'failureSummary'],
+			where: { threadId: In(threadIds), status: 'waiting' },
+		});
+		for (const execution of waiting) {
+			const existing = execution.failureSummary;
+			const failureSummary: AgentExecutionFailureSummary = existing
+				? {
+						count: existing.count + 1,
+						latest: expiry.occurredAt >= existing.latest.occurredAt ? expiry : existing.latest,
+					}
+				: { count: 1, latest: expiry };
+			await this.update(
+				{ id: execution.id, status: 'waiting' },
+				{ status: 'error', error: message, failureSummary },
+			);
+		}
 	}
 
 	/** Delete every run in a thread. Caller must verify ownership first. */

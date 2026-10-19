@@ -1,4 +1,8 @@
-import { type Agent as RuntimeAgent, type SerializableAgentState } from '@n8n/agents';
+import {
+	type Agent as RuntimeAgent,
+	type JSONObject,
+	type SerializableAgentState,
+} from '@n8n/agents';
 import type {
 	AgentBackgroundJobSignal,
 	AgentMessageAuthor,
@@ -8,8 +12,9 @@ import type {
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { AiConfig } from '@n8n/config';
-import type { User } from '@n8n/db';
+import { UserRepository, type User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
+import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import { OperationalError, UserError } from 'n8n-workflow';
 
 import { ExternalHooks } from '@/external-hooks';
@@ -81,6 +86,14 @@ import { createAgentExecutionCounter } from './utils/agent-execution-counter';
 import { resolveAgentRunSource } from './utils/agent-published-snapshot';
 import { buildInboundUserMessage } from './utils/inbound-attachments';
 import { executionsToMessagesDto } from './utils/execution-to-message-mapper';
+
+/** Written on a manual task run so a later approval can rebuild that starter's runtime. */
+const TASK_RUN_STARTER_USER_KEY = 'n8nTaskRunStarterUserId';
+
+function taskRunStarterUserId(hostMetadata: JSONObject | undefined): string | undefined {
+	const value = hostMetadata?.[TASK_RUN_STARTER_USER_KEY];
+	return typeof value === 'string' && value.length > 0 ? value : undefined;
+}
 
 export interface AgentMemoryScope {
 	threadId: string;
@@ -350,6 +363,7 @@ export class AgentExecutionOrchestratorService {
 		private readonly backgroundJobService: AgentBackgroundJobService,
 		private readonly settingsService: AgentsSettingsService,
 		private readonly agentSkillRefs: AgentSkillRefsService,
+		private readonly userRepository: UserRepository,
 	) {}
 
 	async getSessionMode(threadId: string): Promise<AgentSessionMode> {
@@ -474,22 +488,53 @@ export class AgentExecutionOrchestratorService {
 		) {
 			throw notThisChat();
 		}
-		// A draft task run ("Run now") stays bound to the user who started it.
-		const owner = usePublishedVersion ? undefined : user;
+		// A Run now checkpoint keeps the member who started it. The caller may be
+		// another project member approving the action.
+		const taskRun = isTaskRunMemoryResourceId(memoryScope.resourceId);
+		const runtimeUser = usePublishedVersion
+			? undefined
+			: taskRun
+				? await this.starterForTaskRun(memoryScope)
+				: user;
 		const sandboxPrincipalHash = this.checkResumeSandbox(config, memoryScope, {
 			always: false,
-			owner: usePublishedVersion
-				? undefined
-				: {
-						principalHash: owner
-							? hashAgentSandboxPrincipal({ type: 'n8n-user', userId: owner.id })
-							: undefined,
-					},
+			owner:
+				usePublishedVersion || taskRun
+					? undefined
+					: {
+							principalHash: runtimeUser
+								? hashAgentSandboxPrincipal({ type: 'n8n-user', userId: runtimeUser.id })
+								: undefined,
+						},
 		});
 		return {
-			scope: { access: { accessScope: 'project', ownerId: null }, runtime: { user: owner } },
+			scope: {
+				access: { accessScope: 'project', ownerId: null },
+				runtime: { user: runtimeUser },
+			},
 			sandboxPrincipalHash,
 		};
+	}
+
+	/**
+	 * The Run now starter, when the checkpoint names one whose sandbox principal
+	 * still matches. A missing or disabled starter leaves the runtime unscoped.
+	 */
+	private async starterForTaskRun(
+		memoryScope: ResumeCheckpoint['memoryScope'],
+	): Promise<User | undefined> {
+		const userId = taskRunStarterUserId(memoryScope.hostMetadata);
+		const scope = decodeAgentSandboxHostMetadata(memoryScope.hostMetadata);
+		if (
+			!userId ||
+			!scope ||
+			hashAgentSandboxPrincipal({ type: 'n8n-user', userId }) !== scope.principalHash
+		) {
+			return undefined;
+		}
+		const starter = await this.userRepository.findByIdWithRole(userId);
+		if (!starter || starter.disabled) return undefined;
+		return starter;
 	}
 
 	private checkResumeSandbox(
@@ -579,10 +624,12 @@ export class AgentExecutionOrchestratorService {
 			usePublishedVersion,
 			resourceId: thread.taskId ? taskRunMemoryResourceId(thread.taskId) : undefined,
 		}).catch((error: unknown) => {
+			// Scrub before logging. A platform error can quote the credential it failed with.
+			const message = error instanceof Error ? error.message : String(error);
 			this.logger.error('Task approval resume failed', {
 				agentId,
 				threadId,
-				error: error instanceof Error ? error.message : String(error),
+				error: scrubSecretsInText(message),
 			});
 		});
 	}
@@ -604,6 +651,7 @@ export class AgentExecutionOrchestratorService {
 			runId: config.runId,
 			toolCallId: config.toolCallId,
 			resumeData: config.resumeData,
+			// The approver. A Run now runtime stays the starter named on the checkpoint.
 			user: config.user,
 			usePublishedVersion: config.usePublishedVersion,
 			source: 'task',
@@ -1759,6 +1807,9 @@ export class AgentExecutionOrchestratorService {
 				projectId,
 				principalHash: sandboxPrincipalHash,
 			}),
+			...(config.source === 'task' && config.userId
+				? { [TASK_RUN_STARTER_USER_KEY]: config.userId }
+				: {}),
 			...encodeIntegrationMessageContext(messageContext),
 			...(config.chatSurface !== undefined &&
 			!config.isWakeRun &&

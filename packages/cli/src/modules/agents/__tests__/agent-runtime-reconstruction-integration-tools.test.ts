@@ -13,6 +13,7 @@ import type { AiConfig, GlobalConfig } from '@n8n/config';
 import type {
 	TransactionRunner,
 	User,
+	UserRepository,
 	CredentialsEntity,
 	ProjectRelationRepository,
 	WorkflowRepository,
@@ -334,6 +335,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			mock<AgentBackgroundJobService>(),
 			mock<AgentsSettingsService>(),
 			skillRefs,
+			mock<UserRepository>(),
 		);
 		agentIntegrationPersistenceService = new AgentIntegrationPersistenceService(
 			agentRepository,

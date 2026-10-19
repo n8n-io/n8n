@@ -19,7 +19,7 @@ import {
 import { mockLogger } from '@n8n/backend-test-utils';
 import { LockService } from '@n8n/backend-common';
 import type { AiConfig } from '@n8n/config';
-import type { User } from '@n8n/db';
+import { UserRepository, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { OperationalError, UserError } from 'n8n-workflow';
@@ -271,8 +271,10 @@ function makeService(sandboxEnabled = false) {
 	executionService.finalizeExecution.mockResolvedValue('execution-1');
 	agentRunTracingService.build.mockResolvedValue(undefined);
 
+	const logger = mockLogger();
+	const userRepository = mock<UserRepository>();
 	const service = new AgentExecutionOrchestratorService(
-		mockLogger(),
+		logger,
 		checkpointStorage,
 		executionService,
 		new AgentTurnExecutionService(
@@ -296,10 +298,13 @@ function makeService(sandboxEnabled = false) {
 		backgroundJobs,
 		settingsService,
 		createAgentSkillRefsService(agentRepository),
+		userRepository,
 	);
 
 	return {
 		service,
+		logger,
+		userRepository,
 		settingsService,
 		backgroundJobRepository,
 		backgroundJobs,
@@ -2673,6 +2678,14 @@ describe('AgentExecutionOrchestratorService', () => {
 				allowBackgroundTasks: false,
 			}),
 		);
+		expect(runtime.agent.stream).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({
+				persistence: expect.objectContaining({
+					hostMetadata: expect.objectContaining({ n8nTaskRunStarterUserId: userId }),
+				}),
+			}),
+		);
 	});
 
 	it('requests pending job results after a chat turn and ignores request errors', async () => {
@@ -3597,6 +3610,53 @@ describe('AgentExecutionOrchestratorService', () => {
 		);
 	});
 
+	it('resumes a Run now approval as the starter when another member approves', async () => {
+		const { service, checkpointStorage, runtimeCacheService, userRepository } = makeService(true);
+		const approver = mock<User>({ id: 'user-2' });
+		const starter = mock<User>({ id: userId, disabled: false });
+		const runtime = makeRuntime();
+		userRepository.findByIdWithRole.mockResolvedValue(starter);
+		checkpointStorage.getStatus.mockResolvedValue({
+			status: 'active',
+			checkpoint: {
+				persistence: {
+					threadId: 'thread-1',
+					resourceId: 'task:task-1',
+					hostMetadata: {
+						...encodeAgentSandboxHostMetadata({
+							projectId,
+							principalHash: userPrincipalHash,
+						}),
+						n8nTaskRunStarterUserId: userId,
+					},
+				},
+			},
+		} as never);
+		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
+
+		await collect(
+			service.resumeForChat({
+				agentId,
+				projectId,
+				runId: 'run-1',
+				toolCallId: 'tc-1',
+				resumeData: { approved: true },
+				user: approver,
+				usePublishedVersion: false,
+				source: 'task',
+				expectedMemory: { threadId: 'thread-1', resourceId: 'task:task-1' },
+			}),
+		);
+
+		expect(userRepository.findByIdWithRole).toHaveBeenCalledWith(userId);
+		expect(runtimeCacheService.getRuntime).toHaveBeenCalledWith(
+			expect.objectContaining({
+				user: starter,
+				sandboxPrincipalHash: userPrincipalHash,
+			}),
+		);
+	});
+
 	it('rejects a draft resume when the checkpoint principal differs from the caller', async () => {
 		const { service, checkpointStorage, runtimeCacheService } = makeService(true);
 		checkpointStorage.getStatus.mockResolvedValue({
@@ -4155,6 +4215,45 @@ describe('task approval resume', () => {
 					resumeData: { approved: true },
 				}),
 			);
+		});
+	});
+
+	it('scrubs credential material out of a failed resume log', async () => {
+		const { service, executionService, checkpointStorage, logger } = makeService();
+		executionService.findThreadById.mockResolvedValue({
+			id: 'thread-1',
+			projectId,
+			agentId,
+			taskId: 'task-1',
+			taskVersionId: 'version-1',
+			accessScope: 'project',
+			ownerId: null,
+		} as never);
+		executionService.findLatestSuspendedRun.mockResolvedValue({
+			source: 'task',
+			status: 'waiting',
+		} as never);
+		checkpointStorage.findApprovalRunId.mockResolvedValue('run-1');
+		vi.spyOn(service, 'resumeForChat').mockImplementation(async function* () {
+			yield* [];
+			throw new Error(
+				'request to https://api.telegram.org/bot123456789:AAFakeTokenValueForTestingOnly12345/setWebhook failed',
+			);
+		});
+
+		await service.resumeTaskApproval({
+			agentId,
+			projectId,
+			threadId: 'thread-1',
+			user,
+			toolCallId: 'call-1',
+			resumeData: { approved: true },
+		});
+
+		await vi.waitFor(() => {
+			const logged = logger.error.mock.calls.at(-1)?.[1] as { error: string };
+			expect(logged.error).not.toContain('AAFakeTokenValueForTestingOnly12345');
+			expect(logged.error).toContain('setWebhook');
 		});
 	});
 
