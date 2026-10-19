@@ -24,7 +24,7 @@ describe('AppArchive', () => {
 	it('preserves nested files, empty files, and binary content', async () => {
 		const files = new Map([
 			['src/main.ts', Buffer.from('export const value = 1;')],
-			['public/image.png', randomBytes(256)],
+			['public/image.png', randomBytes(256 * 1024)],
 			['public/Image.png', randomBytes(256)],
 			['empty.txt', Buffer.alloc(0)],
 		]);
@@ -34,6 +34,18 @@ describe('AppArchive', () => {
 
 	it('stores an empty source snapshot', async () => {
 		expect(await archives.unpack(await archives.pack(new Map()))).toEqual(new Map());
+	});
+
+	it('rejects an invalid entry after a large file', async () => {
+		const body = archive([
+			{ path: 'data.bin', content: randomBytes(256 * 1024) },
+			{ path: '../outside', content: Buffer.from('text') },
+		]);
+
+		await expect(archives.unpack(body)).rejects.toMatchObject({
+			message: expect.stringContaining('invalid'),
+			cause: expect.objectContaining({ message: expect.stringContaining('invalid file path') }),
+		});
 	});
 
 	it.each([

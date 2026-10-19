@@ -1,9 +1,13 @@
 import { Service } from '@n8n/di';
 import { BadRequestError } from '@n8n/errors';
 import path from 'node:path';
+import { Readable } from 'node:stream';
+import { pipeline } from 'node:stream/promises';
 
 import type { AppFiles } from './app-version-stores';
 import { AppsConfig } from '../apps.config';
+
+const CHUNK_SIZE = 64 * 1024;
 
 @Service()
 export class AppArchive {
@@ -87,12 +91,22 @@ export class AppArchive {
 				entry.on('end', () => files.set(this.filePath(entry.path), Buffer.concat(chunks)));
 			},
 		});
+		let offset = 0;
+		const input = new Readable({
+			read() {
+				if (offset >= body.length) {
+					this.push(null);
+					return;
+				}
+				const chunk = body.subarray(offset, offset + CHUNK_SIZE);
+				offset += CHUNK_SIZE;
+				setImmediate(() => {
+					if (!this.destroyed) this.push(chunk);
+				});
+			},
+		});
 		try {
-			await new Promise<void>((resolve, reject) => {
-				parser.on('error', reject);
-				parser.on('end', resolve);
-				parser.end(body);
-			});
+			await pipeline(input, parser);
 		} catch (error) {
 			throw BadRequestError.wrap(
 				'App artifact is invalid or exceeds the archive limits. Check the files and configured limits.',
