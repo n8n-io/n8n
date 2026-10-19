@@ -123,9 +123,9 @@ export class AiGatewayService {
 		projectId,
 		workflowId,
 	}: {
-		userId: string | undefined;
-		projectId: string | undefined;
-		workflowId: string | undefined;
+		userId?: string;
+		projectId?: string;
+		workflowId?: string;
 	}): Promise<string | undefined> {
 		if (userId) return userId;
 		const resolvedProjectId = await this.resolveProjectId({ projectId, workflowId });
@@ -138,6 +138,20 @@ export class AiGatewayService {
 		} catch {
 			return undefined;
 		}
+	}
+
+	/**
+	 * Resolves the wallet owner for a Gateway credits run: the same attribution
+	 * user `getSyntheticCredential` mints for, so the wallet preflight reads the
+	 * wallet the run actually debits. Runs without a user (workflow executions)
+	 * fall back to the personal project owner, then the instance owner.
+	 */
+	async resolveWalletOwner(context: {
+		userId?: string;
+		projectId?: string;
+		workflowId?: string;
+	}): Promise<string | undefined> {
+		return await this.resolveUserId(context);
 	}
 
 	/**

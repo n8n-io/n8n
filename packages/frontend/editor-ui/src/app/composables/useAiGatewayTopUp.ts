@@ -7,7 +7,7 @@ import { AI_GATEWAY_TOP_UP_MODAL_KEY, CLOUD_N8N_CONNECT_TOP_UP_PATH } from '@/ap
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useUIStore } from '@/app/stores/ui.store';
 
-export type AiGatewayTopUpSource = 'settings_page' | 'credential_selector';
+export type AiGatewayTopUpSource = 'settings_page' | 'credential_selector' | 'agent_budget_card';
 
 export type AiGatewayTopUpVariant = 'member' | 'memberTrial' | 'ownerTrial';
 

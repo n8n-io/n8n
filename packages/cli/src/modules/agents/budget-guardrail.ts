@@ -2,6 +2,7 @@ import {
 	createBudgetGuardrail,
 	type ExecutionOptions,
 	type GuardrailsOptions,
+	type ModelGuardrail,
 	type RunOptions,
 	type SpendEntry,
 	type SpendLedger,
@@ -14,6 +15,8 @@ import {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Container, Service } from '@n8n/di';
+
+import { AiGatewayService } from '@/services/ai-gateway.service';
 
 import { AgentBudgetAlertService } from './agent-budget-alert.service';
 import {
@@ -121,6 +124,18 @@ export interface BudgetAttachInput {
 	budget?: BudgetGuardrailConfig;
 	sessionId?: string;
 	agentId?: string;
+	/**
+	 * Set when the run's model credential is Gateway credits: the wallet
+	 * preflight stops the next model call with `budget.credits` when the
+	 * owner's balance is empty. The context resolves the same attribution
+	 * user the gateway mint mints for, so the run checks the wallet it
+	 * actually debits.
+	 */
+	gatewayWallet?: {
+		userId?: string;
+		projectId?: string;
+		workflowId?: string;
+	};
 	/**
 	 * Saved agent to email when the month total crosses the alert.
 	 * A workflow run sets this to the agent the node targets. Inline workflow
@@ -271,7 +286,40 @@ function attachGuardrails<T extends RunOptions & ExecutionOptions>(
 }
 
 /**
- * Appends the budget hook when a bucket is on.
+ * Stops the next model call with `budget.credits` when the Gateway credits
+ * wallet the run debits is empty. The wallet is shared with every workflow
+ * and agent on the owner, so the check reads it fresh on every model turn and
+ * two runs can both pass before the balance hits zero — the gateway remains
+ * the hard stop. A gateway error never stops a turn: the call runs and the
+ * gateway itself rejects an empty wallet.
+ */
+function createWalletPreflightHook(
+	context: NonNullable<BudgetAttachInput['gatewayWallet']>,
+): ModelGuardrail {
+	return {
+		async before() {
+			try {
+				const gateway = Container.get(AiGatewayService);
+				const ownerId = await gateway.resolveWalletOwner(context);
+				if (!ownerId) return { action: 'allow' };
+				const wallet = await gateway.getWallet(ownerId);
+				return wallet.balance <= 0
+					? { action: 'stop' as const, code: 'budget.credits' }
+					: { action: 'allow' as const };
+			} catch (error) {
+				Container.get(Logger).warn('Gateway credits wallet check failed; letting the call run', {
+					error: error instanceof Error ? error.message : String(error),
+				});
+				return { action: 'allow' };
+			}
+		},
+	};
+}
+
+/**
+ * Appends the wallet preflight for a Gateway credits model and the budget hook
+ * when a bucket is on. The preflight also attaches with no budget configured:
+ * an empty wallet stops a run with no caps at all.
  */
 export function withBudgetGuardrail<T extends RunOptions & ExecutionOptions>(
 	options: T,
@@ -279,14 +327,20 @@ export function withBudgetGuardrail<T extends RunOptions & ExecutionOptions>(
 ): T {
 	const limits = resolveBudgetLimits(input);
 	const sink = toGuardrailNoticeSink(input);
-	if (!limits) return sink ? attachGuardrails(options, [], sink) : options;
 
-	const ledger = input.ledger ?? Container.get(AgentSpendLedger);
-	const onNotice = monthlyAlertNotice(input, limits.alertThresholdPercent);
-	const hook = createBudgetGuardrail({
-		ledger,
-		...limits,
-		...(onNotice ? { onNotice } : {}),
-	});
-	return attachGuardrails(options, [hook], sink);
+	const hooks: ModelGuardrail[] = [];
+	if (input.gatewayWallet) hooks.push(createWalletPreflightHook(input.gatewayWallet));
+	if (limits) {
+		const ledger = input.ledger ?? Container.get(AgentSpendLedger);
+		const onNotice = monthlyAlertNotice(input, limits.alertThresholdPercent);
+		hooks.push(
+			createBudgetGuardrail({
+				ledger,
+				...limits,
+				...(onNotice ? { onNotice } : {}),
+			}),
+		);
+	}
+	if (hooks.length === 0) return sink ? attachGuardrails(options, [], sink) : options;
+	return attachGuardrails(options, hooks, sink);
 }
