@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, nextTick, onMounted, ref } from 'vue';
 import { RouterLink } from 'vue-router';
-import { N8nButton, N8nCallout, N8nCard, N8nOption, N8nSelect } from '@n8n/design-system';
+import { N8nButton, N8nCallout, N8nCard, N8nIcon, N8nOption, N8nSelect } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@n8n/stores/settings.store';
@@ -26,12 +26,22 @@ const workflowsStore = useWorkflowsStore();
 const projectsStore = useProjectsStore();
 const scenarios = getScenarios(i18n);
 const projectId = ref('');
-const busy = ref(false);
+const busy = ref(true);
+const workflowSection = ref<HTMLElement>();
+const activeAction = ref('');
 const message = ref('');
+const messageTheme = ref<'success' | 'info'>('success');
 const error = ref('');
 const workflows = ref<IWorkflowDb[]>([]);
 const executions = ref<Record<string, IExecutionsListResponse['results']>>({});
 const responses = ref<Record<string, string>>({});
+const workflowCards = computed(() =>
+	workflows.value.map((workflow) => ({
+		workflow,
+		scenario: identifyWorkflow(workflow, scenarios)?.scenario,
+		latest: executions.value[workflow.id]?.[0],
+	})),
+);
 const enabled = computed(() => settings.moduleSettings['instance-ai']?.workflowSuggestionsEnabled);
 
 function published(workflow: IWorkflowDb) {
@@ -45,7 +55,7 @@ async function refresh() {
 	do {
 		const page = await getWorkflows(
 			root.restApiContext,
-			{ name: PREFIX },
+			{ name: PREFIX, projectId: projectId.value },
 			{ take: 100, skip, sortBy: 'createdAt:desc' },
 		);
 		collected.push(...page.data);
@@ -74,11 +84,13 @@ async function refresh() {
 	workflows.value = loaded;
 }
 
-async function perform(action: () => Promise<void>) {
+async function perform(action: () => Promise<void>, actionId = '') {
 	if (busy.value) return;
 	busy.value = true;
+	activeAction.value = actionId;
 	error.value = '';
 	message.value = '';
+	messageTheme.value = 'success';
 	try {
 		await action();
 	} catch (cause) {
@@ -86,6 +98,7 @@ async function perform(action: () => Promise<void>) {
 			cause instanceof Error ? cause.message : i18n.baseText('selfHealingPlayground.failed');
 	} finally {
 		busy.value = false;
+		activeAction.value = '';
 	}
 }
 
@@ -104,6 +117,8 @@ async function create(scenario: PlaygroundScenario) {
 		message.value = i18n.baseText('selfHealingPlayground.created');
 	} finally {
 		await refresh();
+		await nextTick();
+		workflowSection.value?.focus();
 	}
 }
 
@@ -119,6 +134,7 @@ async function sendInput(id: string, alternate: boolean) {
 		body: JSON.stringify(alternate ? identity.scenario.alternateInput : identity.scenario.input),
 		signal: AbortSignal.timeout(30000),
 	});
+	messageTheme.value = 'info';
 	responses.value[id] = `HTTP ${response.status}\n${(await response.text()).slice(0, 6000)}`;
 	if (response.status === 404) error.value = i18n.baseText('selfHealingPlayground.notRegistered');
 	else
@@ -128,193 +144,659 @@ async function sendInput(id: string, alternate: boolean) {
 	await refresh();
 }
 
-onMounted(
-	async () =>
-		await perform(async () => {
-			await projectsStore.getMyProjects();
-			await projectsStore.getPersonalProject();
-			projectId.value =
-				projectsStore.myProjects.find((project) => project.name === 'Self-healing test')?.id ??
-				projectsStore.personalProject?.id ??
-				projectsStore.myProjects[0]?.id ??
-				'';
-			await refresh();
-		}),
-);
+async function changeProject() {
+	workflows.value = [];
+	await perform(refresh);
+}
+
+onMounted(async () => {
+	busy.value = false;
+	await perform(async () => {
+		await projectsStore.getMyProjects();
+		await projectsStore.getPersonalProject();
+		projectId.value =
+			projectsStore.myProjects.find((project) => project.name === 'Self-healing test')?.id ??
+			projectsStore.personalProject?.id ??
+			projectsStore.myProjects[0]?.id ??
+			'';
+		await refresh();
+	});
+});
 </script>
 
 <template>
 	<div :class="$style.page" data-test-id="self-healing-playground">
-		<header :class="$style.row">
-			<h1>{{ i18n.baseText('selfHealingPlayground.title') }}</h1>
-			<RouterLink to="/inbox">{{ i18n.baseText('selfHealingPlayground.inbox') }}</RouterLink>
-		</header>
-		<p>{{ i18n.baseText('selfHealingPlayground.intro') }}</p>
-		<N8nCallout v-if="!enabled" theme="warning">{{
-			i18n.baseText('selfHealingPlayground.disabled')
-		}}</N8nCallout>
-		<N8nCallout v-if="error" theme="danger" data-test-id="playground-error">{{ error }}</N8nCallout>
-		<N8nCallout v-if="message" theme="success" data-test-id="playground-message">{{
-			message
-		}}</N8nCallout>
-		<div :class="$style.row">
-			<label :class="$style.project">
-				{{ i18n.baseText('selfHealingPlayground.project') }}
-				<N8nSelect v-model="projectId" :disabled="busy" data-test-id="playground-project">
-					<N8nOption
-						v-for="project in projectsStore.myProjects"
-						:key="project.id"
-						:value="project.id"
-						:label="project.name ?? project.id"
-					/>
-				</N8nSelect>
-			</label>
-			<RouterLink v-if="projectId" :to="`/projects/${projectId}/settings`">{{
-				i18n.baseText('selfHealingPlayground.settings')
-			}}</RouterLink>
-		</div>
-		<div :class="$style.scenarios">
-			<N8nCard v-for="scenario in scenarios" :key="scenario.id" :class="$style.card">
-				<h2>{{ scenario.name }}</h2>
-				<p>{{ scenario.description }}</p>
-				<small>{{ scenario.outcome }}</small>
-				<N8nButton
-					:disabled="busy || !projectId"
-					:data-test-id="`create-${scenario.id}`"
-					@click="perform(() => create(scenario))"
-					>{{ i18n.baseText('selfHealingPlayground.create') }}</N8nButton
-				>
+		<div :class="$style.content">
+			<header :class="$style.header">
+				<div :class="$style.titleGroup">
+					<span :class="$style.heroIcon"><N8nIcon icon="flask-conical" size="large" /></span>
+					<div>
+						<p :class="$style.eyebrow">{{ i18n.baseText('selfHealingPlayground.eyebrow') }}</p>
+						<h1>{{ i18n.baseText('selfHealingPlayground.title') }}</h1>
+					</div>
+				</div>
+				<RouterLink to="/inbox" :class="$style.inboxLink">
+					<N8nIcon icon="inbox" />{{ i18n.baseText('selfHealingPlayground.inbox') }}
+					<N8nIcon icon="arrow-right" />
+				</RouterLink>
+			</header>
+			<p :class="$style.intro">{{ i18n.baseText('selfHealingPlayground.intro') }}</p>
+
+			<ol :class="$style.guide" :aria-label="i18n.baseText('selfHealingPlayground.guide')">
+				<li v-for="step in ['configure', 'trigger', 'review'] as const" :key="step">
+					<span :class="$style.stepNumber" aria-hidden="true">{{
+						{ configure: 1, trigger: 2, review: 3 }[step]
+					}}</span>
+					<div>
+						<strong>{{ i18n.baseText(`selfHealingPlayground.guide.${step}.title`) }}</strong>
+						<p>{{ i18n.baseText(`selfHealingPlayground.guide.${step}.description`) }}</p>
+					</div>
+				</li>
+			</ol>
+
+			<N8nCallout v-if="!enabled" theme="warning">{{
+				i18n.baseText('selfHealingPlayground.disabled')
+			}}</N8nCallout>
+			<div role="alert">
+				<N8nCallout v-if="error" theme="danger" data-test-id="playground-error">{{
+					error
+				}}</N8nCallout>
+			</div>
+			<div role="status" aria-live="polite">
+				<N8nCallout v-if="message" :theme="messageTheme" data-test-id="playground-message">{{
+					message
+				}}</N8nCallout>
+			</div>
+
+			<N8nCard :class="$style.setup">
+				<div :class="$style.setupContent">
+					<div :class="$style.setupCopy">
+						<h2>{{ i18n.baseText('selfHealingPlayground.setup.title') }}</h2>
+						<p>{{ i18n.baseText('selfHealingPlayground.setup.description') }}</p>
+						<div :class="$style.links">
+							<RouterLink v-if="projectId" :to="`/projects/${projectId}/settings`">
+								<N8nIcon icon="settings" size="small" />{{
+									i18n.baseText('selfHealingPlayground.settings')
+								}}
+							</RouterLink>
+							<RouterLink to="/settings/assistant">{{
+								i18n.baseText('selfHealingPlayground.assistantSettings')
+							}}</RouterLink>
+						</div>
+					</div>
+					<div :class="$style.project">
+						<label for="playground-project">{{
+							i18n.baseText('selfHealingPlayground.project')
+						}}</label>
+						<N8nSelect
+							id="playground-project"
+							v-model="projectId"
+							:disabled="busy"
+							data-test-id="playground-project"
+							@update:model-value="changeProject"
+						>
+							<N8nOption
+								v-for="project in projectsStore.myProjects"
+								:key="project.id"
+								:value="project.id"
+								:label="project.name ?? project.id"
+							/>
+						</N8nSelect>
+						<RouterLink v-if="projectId" :to="`/projects/${projectId}`">{{
+							i18n.baseText('selfHealingPlayground.openProject')
+						}}</RouterLink>
+					</div>
+				</div>
 			</N8nCard>
-		</div>
-		<div :class="$style.row">
-			<h2>{{ i18n.baseText('selfHealingPlayground.workflows') }}</h2>
-			<N8nButton :disabled="busy" variant="outline" @click="perform(refresh)">{{
-				i18n.baseText('selfHealingPlayground.refresh')
-			}}</N8nButton>
-		</div>
-		<p>{{ i18n.baseText('selfHealingPlayground.blocked') }}</p>
-		<p v-if="!workflows.length">{{ i18n.baseText('selfHealingPlayground.empty') }}</p>
-		<N8nCard
-			v-for="workflow in workflows"
-			:key="workflow.id"
-			:class="$style.card"
-			data-test-id="playground-workflow"
-		>
-			<div :class="$style.row">
-				<h3>{{ workflow.name }}</h3>
-				<span>{{
-					i18n.baseText(
-						workflow.isArchived
-							? 'selfHealingPlayground.state.archived'
-							: published(workflow)
-								? 'selfHealingPlayground.state.published'
-								: 'selfHealingPlayground.state.draft',
-					)
-				}}</span>
-			</div>
-			<p>{{ identifyWorkflow(workflow, scenarios)?.scenario.expectation }}</p>
-			<div :class="$style.actions">
-				<N8nButton
-					:disabled="busy || !published(workflow) || workflow.isArchived"
-					@click="perform(() => sendInput(workflow.id, false))"
-					>{{ i18n.baseText('selfHealingPlayground.original') }}</N8nButton
-				>
-				<N8nButton
-					variant="outline"
-					:disabled="busy || !published(workflow) || workflow.isArchived"
-					@click="perform(() => sendInput(workflow.id, true))"
-					>{{ i18n.baseText('selfHealingPlayground.alternate') }}</N8nButton
-				>
-				<N8nButton
-					v-if="!published(workflow) && !workflow.isArchived"
-					:disabled="busy"
-					@click="perform(() => publish(workflow))"
-					>{{ i18n.baseText('selfHealingPlayground.publish') }}</N8nButton
-				>
-				<RouterLink :to="`/workflow/${workflow.id}`">{{
-					i18n.baseText('selfHealingPlayground.openWorkflow')
-				}}</RouterLink>
-				<RouterLink :to="`/workflow/${workflow.id}/executions`">{{
-					i18n.baseText('selfHealingPlayground.executions')
-				}}</RouterLink>
-			</div>
-			<div
-				v-for="execution in executions[workflow.id]"
-				:key="execution.id"
-				:class="$style.execution"
+
+			<section :class="$style.section" aria-labelledby="playground-scenarios">
+				<div>
+					<h2 id="playground-scenarios">
+						{{ i18n.baseText('selfHealingPlayground.scenarios.title') }}
+					</h2>
+					<p :class="$style.sectionDescription">
+						{{ i18n.baseText('selfHealingPlayground.scenarios.description') }}
+					</p>
+				</div>
+				<div :class="$style.scenarios">
+					<N8nCard
+						v-for="scenario in scenarios"
+						:key="scenario.id"
+						:class="[$style.scenario, { [$style.recommended]: scenario.id === 'wrong-field' }]"
+					>
+						<div :class="$style.scenarioBody">
+							<div :class="$style.row">
+								<span
+									:class="[
+										$style.outcome,
+										scenario.id === 'healthy'
+											? $style.success
+											: scenario.id === 'unavailable-service'
+												? $style.warning
+												: $style.info,
+									]"
+								>
+									<N8nIcon
+										:icon="
+											scenario.id === 'healthy'
+												? 'circle-check'
+												: scenario.id === 'unavailable-service'
+													? 'circle-help'
+													: 'sparkles'
+										"
+										size="small"
+									/>{{ scenario.outcome }}
+								</span>
+								<span v-if="scenario.id === 'wrong-field'" :class="$style.recommendedLabel">{{
+									i18n.baseText('selfHealingPlayground.recommended')
+								}}</span>
+							</div>
+							<h3>{{ scenario.name }}</h3>
+							<p>{{ scenario.description }}</p>
+							<div :class="$style.scenarioFooter">
+								<N8nButton
+									:variant="scenario.id === 'wrong-field' ? 'solid' : 'outline'"
+									size="small"
+									:disabled="busy || !projectId"
+									:loading="activeAction === `create-${scenario.id}`"
+									:data-test-id="`create-${scenario.id}`"
+									@click="perform(() => create(scenario), `create-${scenario.id}`)"
+								>
+									<template #icon><N8nIcon icon="plus" size="small" /></template>
+									{{ i18n.baseText('selfHealingPlayground.create') }}
+								</N8nButton>
+								<span>{{ i18n.baseText('selfHealingPlayground.autoPublish') }}</span>
+							</div>
+						</div>
+					</N8nCard>
+				</div>
+			</section>
+
+			<section
+				ref="workflowSection"
+				:class="$style.section"
+				tabindex="-1"
+				aria-labelledby="playground-workflows"
+				:aria-busy="busy"
 			>
-				<RouterLink :to="`/workflow/${workflow.id}/executions/${execution.id}`"
-					>#{{ execution.id }} · {{ execution.status }}</RouterLink
-				><span>{{ execution.mode }}</span
-				><span>{{
-					execution.startedAt ? new Date(execution.startedAt).toLocaleString() : ''
-				}}</span>
-			</div>
-			<p v-if="!executions[workflow.id]?.length">
-				{{ i18n.baseText('selfHealingPlayground.noExecutions') }}
-			</p>
-			<details>
-				<summary>{{ i18n.baseText('selfHealingPlayground.inputs') }}</summary>
-				<pre>{{
-					JSON.stringify(identifyWorkflow(workflow, scenarios)?.scenario.input, null, 2)
-				}}</pre>
-				<pre>{{
-					JSON.stringify(identifyWorkflow(workflow, scenarios)?.scenario.alternateInput, null, 2)
-				}}</pre>
-				<h4>{{ i18n.baseText('selfHealingPlayground.response') }}</h4>
-				<pre>{{ responses[workflow.id] ?? i18n.baseText('selfHealingPlayground.noResponse') }}</pre>
-			</details>
-		</N8nCard>
+				<div :class="$style.row">
+					<div>
+						<h2 id="playground-workflows">
+							{{ i18n.baseText('selfHealingPlayground.workflows') }}
+							<span :class="$style.count">{{ workflows.length }}</span>
+						</h2>
+						<p :class="$style.sectionDescription">
+							{{ i18n.baseText('selfHealingPlayground.workflows.description') }}
+						</p>
+					</div>
+					<N8nButton
+						:disabled="busy"
+						:loading="activeAction === 'refresh'"
+						variant="outline"
+						size="small"
+						@click="perform(refresh, 'refresh')"
+					>
+						<template #icon><N8nIcon icon="refresh-cw" size="small" /></template
+						>{{ i18n.baseText('selfHealingPlayground.refresh') }}
+					</N8nButton>
+				</div>
+				<div v-if="!workflows.length" :class="$style.empty">
+					<N8nIcon icon="flask-conical" size="large" />
+					<h3>
+						{{
+							i18n.baseText(
+								busy ? 'selfHealingPlayground.loading' : 'selfHealingPlayground.emptyTitle',
+							)
+						}}
+					</h3>
+					<p v-if="!busy">{{ i18n.baseText('selfHealingPlayground.empty') }}</p>
+				</div>
+				<N8nCard
+					v-for="{ workflow, scenario, latest } in workflowCards"
+					:key="workflow.id"
+					:class="$style.workflow"
+					data-test-id="playground-workflow"
+				>
+					<div :class="$style.workflowBody">
+						<div :class="$style.row">
+							<div>
+								<h3>{{ workflow.name.slice(PREFIX.length) }}</h3>
+								<span :class="$style.meta">{{
+									i18n.baseText(
+										workflow.isArchived
+											? 'selfHealingPlayground.state.archived'
+											: published(workflow)
+												? 'selfHealingPlayground.state.published'
+												: 'selfHealingPlayground.state.draft',
+									)
+								}}</span>
+							</div>
+							<div :class="$style.links">
+								<RouterLink :to="`/workflow/${workflow.id}`"
+									>{{ i18n.baseText('selfHealingPlayground.openWorkflow')
+									}}<N8nIcon icon="arrow-up-right" size="small"
+								/></RouterLink>
+							</div>
+						</div>
+						<p :class="$style.expectation">
+							<strong>{{ i18n.baseText('selfHealingPlayground.expectation') }}</strong>
+							{{ scenario?.expectation }}
+						</p>
+						<N8nCallout v-if="!published(workflow) && !workflow.isArchived" theme="info">{{
+							i18n.baseText('selfHealingPlayground.needsPublish')
+						}}</N8nCallout>
+						<div :class="$style.actions">
+							<N8nButton
+								:disabled="busy || !published(workflow) || workflow.isArchived"
+								:loading="activeAction === `run-${workflow.id}`"
+								@click="perform(() => sendInput(workflow.id, false), `run-${workflow.id}`)"
+							>
+								<template #icon><N8nIcon icon="play" size="small" /></template
+								>{{ i18n.baseText('selfHealingPlayground.original') }}
+							</N8nButton>
+							<N8nButton
+								variant="outline"
+								:disabled="busy || !published(workflow) || workflow.isArchived"
+								:loading="activeAction === `alternate-${workflow.id}`"
+								@click="perform(() => sendInput(workflow.id, true), `alternate-${workflow.id}`)"
+								>{{ i18n.baseText('selfHealingPlayground.alternate') }}</N8nButton
+							>
+							<N8nButton
+								v-if="!published(workflow) && !workflow.isArchived"
+								:disabled="busy"
+								@click="perform(() => publish(workflow))"
+								>{{ i18n.baseText('selfHealingPlayground.publish') }}</N8nButton
+							>
+						</div>
+						<div v-if="latest" :class="$style.latest">
+							<div :class="$style.links">
+								<span
+									:class="[
+										$style.outcome,
+										{
+											[$style.success]: latest.status === 'success',
+											[$style.warning]: latest.status === 'error' || latest.status === 'crashed',
+										},
+									]"
+									>{{ i18n.baseText('selfHealingPlayground.latest') }} ·
+									{{
+										i18n.baseText(
+											`executionsList.${latest.status === 'crashed' ? 'error' : latest.status}`,
+										)
+									}}</span
+								>
+								<RouterLink :to="`/workflow/${workflow.id}/executions/${latest.id}`"
+									>{{ i18n.baseText('selfHealingPlayground.execution') }} #{{ latest.id
+									}}<N8nIcon icon="arrow-up-right" size="small"
+								/></RouterLink>
+							</div>
+							<p v-if="latest.status === 'error' || latest.status === 'crashed'">
+								{{ i18n.baseText('selfHealingPlayground.afterFailure') }}
+								<RouterLink to="/inbox"
+									>{{ i18n.baseText('selfHealingPlayground.inbox') }} →</RouterLink
+								>
+							</p>
+							<p v-else-if="latest.status === 'success'">
+								{{ i18n.baseText('selfHealingPlayground.afterSuccess') }}
+							</p>
+						</div>
+						<p v-else :class="$style.meta">
+							{{ i18n.baseText('selfHealingPlayground.noExecutions') }}
+						</p>
+						<details :class="$style.details">
+							<summary>{{ i18n.baseText('selfHealingPlayground.inputs') }}</summary>
+							<div :class="$style.inputGrid">
+								<div>
+									<h4>{{ i18n.baseText('selfHealingPlayground.originalInput') }}</h4>
+									<pre>{{ JSON.stringify(scenario?.input, null, 2) }}</pre>
+								</div>
+								<div>
+									<h4>{{ i18n.baseText('selfHealingPlayground.alternateInput') }}</h4>
+									<pre>{{ JSON.stringify(scenario?.alternateInput, null, 2) }}</pre>
+								</div>
+							</div>
+							<h4>{{ i18n.baseText('selfHealingPlayground.response') }}</h4>
+							<pre>{{
+								responses[workflow.id] ?? i18n.baseText('selfHealingPlayground.noResponse')
+							}}</pre>
+							<RouterLink :to="`/workflow/${workflow.id}/executions`">{{
+								i18n.baseText('selfHealingPlayground.executions')
+							}}</RouterLink>
+						</details>
+					</div>
+				</N8nCard>
+			</section>
+			<aside :class="$style.troubleshooting">
+				<N8nIcon icon="circle-help" />
+				<div>
+					<h3>{{ i18n.baseText('selfHealingPlayground.troubleshooting.title') }}</h3>
+					<p>{{ i18n.baseText('selfHealingPlayground.blocked') }}</p>
+				</div>
+			</aside>
+		</div>
 	</div>
 </template>
 
 <style module lang="scss">
 .page {
-	padding: var(--spacing--lg);
+	width: 100%;
+	min-width: 0;
+	height: 100%;
 	overflow: auto;
+	background: var(--background--subtle);
+	color: var(--text-color);
+	padding: var(--spacing--xl);
+	container-type: inline-size;
+}
+.content {
+	// Keep instructions readable on wide screens; there is no page-width token.
+	max-width: 1080px;
+	margin: 0 auto;
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--lg);
+	font-size: var(--font-size--sm);
+	line-height: var(--line-height--xl);
+}
+.content :is(h1, h2, h3, h4, p) {
+	margin: 0;
+}
+.content h1 {
+	font-size: var(--font-size--2xl);
+	font-weight: var(--font-weight--bold);
+	line-height: var(--line-height--md);
+}
+.content h2 {
+	font-size: var(--font-size--lg);
+	font-weight: var(--font-weight--bold);
+}
+.content h3 {
+	font-size: var(--font-size--md);
+	font-weight: var(--font-weight--bold);
+}
+.content h4 {
+	font-size: var(--font-size--sm);
+	font-weight: var(--font-weight--bold);
+}
+.content a {
+	color: var(--text-color);
+}
+.content a:hover {
+	text-decoration: underline;
+}
+.content [role='alert']:empty,
+.content [role='status']:empty {
+	display: none;
+}
+.header,
+.row,
+.actions,
+.links,
+.titleGroup,
+.inboxLink,
+.scenarioFooter {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--sm);
+	flex-wrap: wrap;
+}
+.header,
+.row {
+	justify-content: space-between;
+}
+.titleGroup {
+	flex-wrap: nowrap;
+}
+.heroIcon {
+	display: grid;
+	place-items: center;
+	padding: var(--spacing--sm);
+	background: var(--background--surface);
+	border: var(--border);
+	border-radius: var(--radius--sm);
+}
+.eyebrow {
+	color: var(--text-color--subtle);
+	font-size: var(--font-size--2xs);
+	font-weight: var(--font-weight--bold);
+	margin-bottom: var(--spacing--4xs) !important;
+}
+.inboxLink {
+	gap: var(--spacing--2xs);
+	border: var(--border);
+	background: var(--background--surface);
+	padding: var(--spacing--2xs) var(--spacing--sm);
+	border-radius: var(--radius--xs);
+	font-weight: var(--font-weight--medium);
+}
+.intro {
+	color: var(--text-color--subtle);
+}
+.guide {
+	list-style: none;
+	margin: 0;
+	padding: var(--spacing--lg);
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: var(--spacing--lg);
+	border: var(--border);
+	border-radius: var(--radius--sm);
+	background: var(--background--surface);
+}
+.guide li {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--spacing--xs);
+}
+.guide p {
+	font-size: var(--font-size--xs);
+	color: var(--text-color--subtle);
+	margin-top: var(--spacing--4xs);
+}
+.stepNumber {
+	border: var(--border);
+	border-radius: var(--radius--full);
+	width: var(--spacing--xl);
+	height: var(--spacing--xl);
+	display: grid;
+	place-items: center;
+	flex-shrink: 0;
+	font-weight: var(--font-weight--bold);
+	background: var(--background--subtle);
+}
+.setup,
+.scenario,
+.workflow {
+	--card--padding: var(--spacing--lg);
+	box-shadow: none;
+	border-radius: var(--radius--sm);
+}
+.setupContent {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--xl);
+}
+.setupCopy {
+	flex: 1;
+}
+.setupCopy p {
+	color: var(--text-color--subtle);
+	margin: var(--spacing--2xs) 0 var(--spacing--sm);
+}
+.project {
+	flex: 0 0 30%;
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+}
+.project label {
+	font-weight: var(--font-weight--bold);
+}
+.project a,
+.links {
+	font-size: var(--font-size--xs);
+}
+.links a {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+}
+.section {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--sm);
+	scroll-margin-top: var(--spacing--lg);
+}
+.sectionDescription {
+	color: var(--text-color--subtle);
+	margin-top: var(--spacing--4xs) !important;
+}
+.scenarios,
+.inputGrid {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: var(--spacing--sm);
+}
+.scenario {
+	align-items: stretch;
+}
+.scenarioBody,
+.workflowBody {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--sm);
 	height: 100%;
 }
-.row,
-.actions,
-.execution {
-	display: flex;
+.scenarioBody > p {
+	color: var(--text-color--subtle);
+	flex: 1;
+}
+.recommended {
+	border-color: var(--border-color--strong);
+}
+.recommendedLabel {
+	color: var(--text-color--subtle);
+	font-size: var(--font-size--2xs);
+}
+.outcome {
+	display: inline-flex;
 	align-items: center;
-	flex-wrap: wrap;
-	gap: var(--spacing--sm);
+	gap: var(--spacing--3xs);
+	font-size: var(--font-size--2xs);
+	font-weight: var(--font-weight--medium);
+	padding: var(--spacing--4xs) var(--spacing--2xs);
+	border-radius: var(--radius--2xs);
+	background: var(--background--subtle);
 }
-.row {
-	justify-content: space-between;
+.info {
+	background: var(--background--info);
+	color: var(--text-color--info);
 }
-.project {
-	flex: 0 1 40%;
+.success {
+	background: var(--background--success);
+	color: var(--text-color--success);
 }
-.scenarios {
-	display: grid;
-	grid-template-columns: repeat(2, minmax(0, 1fr));
-	gap: var(--spacing--sm);
+.warning {
+	background: var(--background--warning);
+	color: var(--text-color--warning);
 }
-.card {
+.scenarioFooter {
+	gap: var(--spacing--xs);
+}
+.scenarioFooter > span {
+	color: var(--text-color--subtle);
+	font-size: var(--font-size--2xs);
+}
+.count {
+	color: var(--text-color--subtle);
+	font-size: var(--font-size--sm);
+	margin-left: var(--spacing--2xs);
+	font-weight: var(--font-weight--regular);
+}
+.empty {
+	border: var(--border);
+	border-style: dashed;
+	border-radius: var(--radius--sm);
+	padding: var(--spacing--xl);
+	text-align: center;
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--sm);
+	align-items: center;
+	gap: var(--spacing--2xs);
+	color: var(--text-color--subtle);
 }
-.execution {
-	font-size: var(--font-size--sm);
+.meta {
+	color: var(--text-color--subtle);
+	font-size: var(--font-size--xs);
 }
-.page pre {
-	white-space: pre-wrap;
-	overflow-wrap: anywhere;
+.expectation {
+	color: var(--text-color--subtle);
+}
+.expectation strong {
+	color: var(--text-color);
+}
+.latest {
 	padding: var(--spacing--sm);
 	background: var(--background--subtle);
 	border-radius: var(--radius--xs);
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
 }
-.page h1 {
-	font-size: var(--font-size--2xl);
+.latest p {
+	font-size: var(--font-size--xs);
+	color: var(--text-color--subtle);
 }
-.page h2 {
-	font-size: var(--font-size--lg);
+.details {
+	border-top: var(--border);
+	padding-top: var(--spacing--sm);
+	font-size: var(--font-size--xs);
+}
+.details summary {
+	cursor: pointer;
+	color: var(--text-color--subtle);
+}
+.details[open] summary {
+	margin-bottom: var(--spacing--sm);
+}
+.details pre {
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+	padding: var(--spacing--sm);
+	margin: var(--spacing--2xs) 0 var(--spacing--sm);
+	background: var(--background--subtle);
+	border-radius: var(--radius--xs);
+}
+.troubleshooting {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--spacing--xs);
+	padding: var(--spacing--sm) 0 var(--spacing--lg);
+	color: var(--text-color--subtle);
+}
+.troubleshooting h3 {
+	font-size: var(--font-size--sm);
+	margin-bottom: var(--spacing--4xs);
+}
+.troubleshooting p {
+	font-size: var(--font-size--xs);
+}
+// Collapse by available content width, including when the sidebar is open.
+@container (max-width: 700px) {
+	.guide {
+		grid-template-columns: 1fr;
+	}
+	.scenarios,
+	.inputGrid {
+		grid-template-columns: 1fr;
+	}
+	.setupContent {
+		flex-direction: column;
+		align-items: stretch;
+	}
+	.project {
+		flex-basis: auto;
+	}
 }
 </style>

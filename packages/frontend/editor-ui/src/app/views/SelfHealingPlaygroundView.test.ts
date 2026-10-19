@@ -91,10 +91,15 @@ describe('SelfHealingPlaygroundView', () => {
 		);
 		expect(mocks.create).toHaveBeenCalledWith(expect.objectContaining({ projectId: 'project1' }));
 		expect(fetchMock).not.toHaveBeenCalled();
+		expect(mocks.getWorkflows).toHaveBeenCalledWith(
+			mocks.context,
+			expect.objectContaining({ projectId: 'project1' }),
+			expect.any(Object),
+		);
 	});
 	it('sends the alternate input to the production webhook', async () => {
 		const screen = render();
-		const send = await screen.findByRole('button', { name: 'Send alternate input' });
+		const send = await screen.findByRole('button', { name: 'Run alternate input' });
 		await waitFor(() => expect(send).toBeEnabled());
 		await userEvent.click(send);
 		await waitFor(() => expect(fetchMock).toHaveBeenCalled());
@@ -109,7 +114,7 @@ describe('SelfHealingPlaygroundView', () => {
 	});
 	it('rechecks the published version before triggering', async () => {
 		const screen = render();
-		const send = await screen.findByRole('button', { name: 'Send original input' });
+		const send = await screen.findByRole('button', { name: 'Run original input' });
 		await waitFor(() => expect(send).toBeEnabled());
 		mocks.getWorkflow.mockResolvedValue({ ...workflow, versionId: 'new-draft' });
 		await userEvent.click(send);
@@ -117,5 +122,13 @@ describe('SelfHealingPlaygroundView', () => {
 			expect(screen.getByTestId('playground-error')).toHaveTextContent('Publish the current draft'),
 		);
 		expect(fetchMock).not.toHaveBeenCalled();
+	});
+	it.each([
+		['error', 'The workflow failed.'],
+		['success', 'The workflow completed.'],
+	])('shows the next step for a saved %s execution', async (status, guidance) => {
+		mocks.request.mockResolvedValue({ results: [{ id: 'execution1', status }] });
+		const screen = render();
+		expect(await screen.findByText(guidance, { exact: false })).toBeVisible();
 	});
 });
