@@ -18,7 +18,7 @@ import { promotePackage } from '../promotionsSettings.api';
 
 const props = defineProps<{
 	open: boolean;
-	connectionId: string;
+	environmentId: string;
 	baseBranchName: string;
 	createBranchOnPromotion: boolean;
 }>();
@@ -66,7 +66,7 @@ async function submit() {
 
 	isSubmitting.value = true;
 	try {
-		const result = await promotePackage(rootStore.publicApiContext, props.connectionId, {
+		const result = await promotePackage(rootStore.publicApiContext, props.environmentId, {
 			commitMessage: commitMessage.value.trim(),
 		});
 		toast.showMessage({

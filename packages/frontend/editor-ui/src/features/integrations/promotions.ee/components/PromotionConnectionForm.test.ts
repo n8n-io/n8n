@@ -12,7 +12,6 @@ import type { PromotionConnection, PromotionProviderSummary } from '../promotion
 import PromotionConnectionForm from './PromotionConnectionForm.vue';
 
 const api = vi.hoisted(() => ({
-	createPromotionConnection: vi.fn<typeof PromotionsApi.createPromotionConnection>(),
 	clonePromotionCheckout: vi.fn<typeof PromotionsApi.clonePromotionCheckout>(),
 	disconnectPromotionCheckout: vi.fn<typeof PromotionsApi.disconnectPromotionCheckout>(),
 }));
@@ -31,38 +30,34 @@ const timestamps = {
 	updatedAt: '2026-09-01T00:00:00.000Z',
 };
 
-const applyConfig = (checkout = { hasCheckout: false, matchesConfig: false }) => ({
-	id: 'config-apply',
-	name: 'Apply',
-	settings: { schemaVersion: 1 as const, branchName: 'main' },
-	checkout,
-	...timestamps,
-});
-
-const provider = {
+const provider: PromotionProviderSummary = {
 	id: 'provider-ssh',
 	name: 'Production key',
 	type: 'git',
 	authType: 'ssh-key',
 	...timestamps,
-} as PromotionProviderSummary;
+};
+
+const target = { schemaVersion: 1 as const, remoteUrl: 'git@github.com:acme/workflows.git' };
+
+const applyConfig = (checkout = { hasCheckout: false, matchesConfig: false }) => ({
+	id: 'environment-apply',
+	name: 'Production',
+	scope: 'instance' as const,
+	direction: 'apply' as const,
+	target,
+	provider,
+	settings: { schemaVersion: 1 as const, branchName: 'main' },
+	checkout,
+	...timestamps,
+});
 
 const connectionWith = (
 	configs: PromotionConnection['configs'] = { apply: applyConfig() },
-): PromotionConnection =>
-	({
-		id: 'connection-1',
-		name: 'Production',
-		scope: 'instance',
-		target: { schemaVersion: 1, remoteUrl: 'git@github.com:acme/workflows.git' },
-		provider,
-		configs,
-		...timestamps,
-	}) as PromotionConnection;
+): PromotionConnection => ({ name: 'Production', target, provider, configs });
 
 const checkoutResult = (hasCheckout: boolean) => ({
-	connectionId: 'connection-1',
-	configId: 'config-apply',
+	environmentId: 'environment-apply',
 	direction: 'apply' as const,
 	branchName: 'main',
 	hasCheckout,
@@ -142,8 +137,7 @@ describe('PromotionConnectionForm', () => {
 		await waitFor(() =>
 			expect(api.clonePromotionCheckout).toHaveBeenCalledWith(
 				expect.anything(),
-				'connection-1',
-				'apply',
+				'environment-apply',
 			),
 		);
 		expect(lastSaved(emitted).configs.apply?.checkout).toEqual({
@@ -169,8 +163,7 @@ describe('PromotionConnectionForm', () => {
 		await waitFor(() =>
 			expect(api.disconnectPromotionCheckout).toHaveBeenCalledWith(
 				expect.anything(),
-				'connection-1',
-				'apply',
+				'environment-apply',
 			),
 		);
 		expect(lastSaved(emitted).configs.apply?.checkout).toEqual({

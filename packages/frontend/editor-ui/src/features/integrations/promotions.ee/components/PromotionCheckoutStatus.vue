@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import type { PromotionConfigCheckout } from '@n8n/api-types';
+import type { PromotionEnvironmentCheckout } from '@n8n/api-types';
 import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 
 const props = defineProps<{
 	/** Undefined until the direction is saved on the server. */
-	checkout: PromotionConfigCheckout | undefined;
+	checkout: PromotionEnvironmentCheckout | undefined;
 	branchName: string;
 	/** Which action is in flight, so the spinner lands on the clicked button. */
 	busy: 'connect' | 'disconnect' | false;
