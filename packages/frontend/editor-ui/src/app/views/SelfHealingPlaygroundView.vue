@@ -15,6 +15,7 @@ import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
+import type { SelfHealingConfigurationDto } from '@n8n/api-types';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
@@ -39,6 +40,8 @@ const scenarios = getScenarios(i18n);
 const projectId = ref('');
 const busy = ref(true);
 const resetOpen = ref(false);
+const configurationState = ref<'unchecked' | 'configured' | 'missing' | 'error'>('unchecked');
+const configurations = ref<SelfHealingConfigurationDto[]>([]);
 const workflowSection = ref<HTMLElement>();
 const activeAction = ref('');
 const message = ref('');
@@ -55,6 +58,13 @@ const workflowCards = computed(() =>
 	})),
 );
 const enabled = computed(() => settings.moduleSettings['instance-ai']?.workflowSuggestionsEnabled);
+const configurationMessage = computed(() =>
+	i18n.baseText(
+		configurationState.value === 'error'
+			? 'selfHealingPlayground.configurationCheckFailed'
+			: 'selfHealingPlayground.configurationRequired',
+	),
+);
 const teamProjects = computed(() =>
 	projectsStore.myProjects.filter((project) => project.type === 'team'),
 );
@@ -63,7 +73,20 @@ function published(workflow: IWorkflowDb) {
 	return Boolean(workflow.activeVersionId && workflow.activeVersionId === workflow.versionId);
 }
 
+function canRun(workflowId: string) {
+	return Boolean(
+		enabled.value &&
+			configurationState.value === 'configured' &&
+			configurations.value.some(
+				(configuration) =>
+					configuration.enabled &&
+					(configuration.scope === 'all' || configuration.workflowIds.includes(workflowId)),
+			),
+	);
+}
+
 async function refresh() {
+	await checkConfiguration();
 	if (!projectId.value) {
 		workflows.value = [];
 		return;
@@ -101,6 +124,22 @@ async function refresh() {
 		executions.value[workflow.id] = result.results;
 	}
 	workflows.value = loaded;
+}
+
+async function checkConfiguration() {
+	configurationState.value = 'unchecked';
+	configurations.value = [];
+	if (!projectId.value || !enabled.value) return;
+	try {
+		configurations.value = await makeRestApiRequest<SelfHealingConfigurationDto[]>(
+			root.restApiContext,
+			'GET',
+			`/projects/${projectId.value}/self-healing-configurations`,
+		);
+		configurationState.value = configurations.value.length > 0 ? 'configured' : 'missing';
+	} catch {
+		configurationState.value = 'error';
+	}
 }
 
 async function perform(action: () => Promise<void>, actionId = '') {
@@ -182,6 +221,14 @@ async function create(scenario: PlaygroundScenario) {
 }
 
 async function sendInput(id: string, alternate: boolean) {
+	await checkConfiguration();
+	if (!canRun(id)) {
+		throw new Error(
+			configurationState.value === 'error'
+				? configurationMessage.value
+				: i18n.baseText('selfHealingPlayground.workflowConfigurationRequired'),
+		);
+	}
 	const workflow = await getWorkflow(root.restApiContext, id);
 	if (!published(workflow) || workflow.isArchived)
 		throw new Error(i18n.baseText('selfHealingPlayground.needsPublish'));
@@ -280,6 +327,15 @@ onMounted(async () => {
 							<RouterLink to="/settings/assistant">{{
 								i18n.baseText('selfHealingPlayground.assistantSettings')
 							}}</RouterLink>
+							<N8nButton
+								v-if="projectId && enabled"
+								variant="outline"
+								size="small"
+								:disabled="busy"
+								@click="perform(checkConfiguration)"
+							>
+								{{ i18n.baseText('selfHealingPlayground.checkSetup') }}
+							</N8nButton>
 						</div>
 					</div>
 					<div :class="$style.project">
@@ -308,6 +364,18 @@ onMounted(async () => {
 			</N8nCard>
 			<N8nCallout v-if="!busy && !teamProjects.length" theme="warning">
 				{{ i18n.baseText('selfHealingPlayground.noTeamProjects') }}
+			</N8nCallout>
+			<N8nCallout
+				v-if="!busy && projectId && enabled && configurationState !== 'configured'"
+				theme="warning"
+				data-test-id="playground-configuration-required"
+			>
+				<p>{{ configurationMessage }}</p>
+				<div :class="$style.links">
+					<RouterLink :to="`/projects/${projectId}/settings`">{{
+						i18n.baseText('selfHealingPlayground.settings')
+					}}</RouterLink>
+				</div>
 			</N8nCallout>
 
 			<section :class="$style.section" aria-labelledby="playground-scenarios">
@@ -457,9 +525,18 @@ onMounted(async () => {
 						<N8nCallout v-if="!published(workflow) && !workflow.isArchived" theme="info">{{
 							i18n.baseText('selfHealingPlayground.needsPublish')
 						}}</N8nCallout>
+						<N8nCallout
+							v-if="!busy && !canRun(workflow.id) && !workflow.isArchived"
+							theme="warning"
+							>{{
+								i18n.baseText('selfHealingPlayground.workflowConfigurationRequired')
+							}}</N8nCallout
+						>
 						<div :class="$style.actions">
 							<N8nButton
-								:disabled="busy || !published(workflow) || workflow.isArchived"
+								:disabled="
+									busy || !published(workflow) || workflow.isArchived || !canRun(workflow.id)
+								"
 								:loading="activeAction === `run-${workflow.id}`"
 								@click="perform(() => sendInput(workflow.id, false), `run-${workflow.id}`)"
 							>
@@ -468,7 +545,9 @@ onMounted(async () => {
 							</N8nButton>
 							<N8nButton
 								variant="outline"
-								:disabled="busy || !published(workflow) || workflow.isArchived"
+								:disabled="
+									busy || !published(workflow) || workflow.isArchived || !canRun(workflow.id)
+								"
 								:loading="activeAction === `alternate-${workflow.id}`"
 								@click="perform(() => sendInput(workflow.id, true), `alternate-${workflow.id}`)"
 								>{{ i18n.baseText('selfHealingPlayground.alternate') }}</N8nButton

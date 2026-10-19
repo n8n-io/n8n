@@ -20,6 +20,8 @@ const mocks = vi.hoisted(() => ({
 	archive: vi.fn(),
 	delete: vi.fn(),
 	request: vi.fn(),
+	configurations: vi.fn(),
+	executions: vi.fn(),
 }));
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({
@@ -79,7 +81,13 @@ beforeEach(() => {
 	mocks.activate.mockResolvedValue(workflow);
 	mocks.archive.mockResolvedValue(undefined);
 	mocks.delete.mockResolvedValue(undefined);
-	mocks.request.mockResolvedValue({ results: [] });
+	mocks.configurations.mockResolvedValue([{ id: 1, enabled: true, scope: 'all', workflowIds: [] }]);
+	mocks.executions.mockResolvedValue({ results: [] });
+	mocks.request.mockImplementation(async (_context, _method, path: string) =>
+		path.endsWith('/self-healing-configurations')
+			? await mocks.configurations(path)
+			: await mocks.executions(),
+	);
 	fetchMock = vi
 		.fn()
 		.mockResolvedValue(new Response('{"message":"Error in workflow"}', { status: 500 }));
@@ -91,6 +99,99 @@ afterEach(() => {
 });
 
 describe('SelfHealingPlaygroundView', () => {
+	it('allows creation but blocks execution until the project has an enabled configuration', async () => {
+		mocks.configurations.mockResolvedValue([]);
+		const screen = render();
+		expect(screen.getByTestId('create-wrong-field')).toBeDisabled();
+		expect(await screen.findByTestId('playground-configuration-required')).toHaveTextContent(
+			'You can create test workflows now',
+		);
+		for (const scenario of getScenarios(useI18n())) {
+			expect(screen.getByTestId(`create-${scenario.id}`)).toBeEnabled();
+		}
+		expect(mocks.configurations).toHaveBeenCalledWith(
+			'/projects/project1/self-healing-configurations',
+		);
+		expect(screen.getByRole('button', { name: 'Run original input' })).toBeDisabled();
+		expect(screen.getByRole('button', { name: 'Run alternate input' })).toBeDisabled();
+		await userEvent.click(screen.getByTestId('create-wrong-field'));
+		await waitFor(() => expect(mocks.create).toHaveBeenCalled());
+		await waitFor(() =>
+			expect(screen.getByRole('button', { name: 'Check setup again' })).toBeEnabled(),
+		);
+		expect(fetchMock).not.toHaveBeenCalled();
+		mocks.configurations.mockResolvedValue([
+			{ id: 1, enabled: true, scope: 'all', workflowIds: [] },
+		]);
+		await userEvent.click(screen.getByRole('button', { name: 'Check setup again' }));
+		await waitFor(() =>
+			expect(screen.getByRole('button', { name: 'Run original input' })).toBeEnabled(),
+		);
+	});
+	it('keeps execution blocked when configurations cannot be checked', async () => {
+		mocks.configurations.mockRejectedValue(new Error('Forbidden'));
+		const screen = render();
+		expect(await screen.findByTestId('playground-configuration-required')).toHaveTextContent(
+			"Couldn't check this project's self-healing configurations",
+		);
+		expect(screen.getByTestId('create-wrong-field')).toBeEnabled();
+		expect(screen.getByRole('button', { name: 'Run original input' })).toBeDisabled();
+		expect(screen.getByRole('button', { name: 'Run alternate input' })).toBeDisabled();
+		expect(mocks.create).not.toHaveBeenCalled();
+		expect(screen.getByTestId('playground-reset')).toBeEnabled();
+	});
+	it.each(['Run original input', 'Run alternate input'])(
+		'rechecks configurations before %s',
+		async (name) => {
+			const screen = render();
+			const run = await screen.findByRole('button', { name });
+			await waitFor(() => expect(run).toBeEnabled());
+			mocks.configurations.mockResolvedValue([]);
+			await userEvent.click(run);
+			expect(await screen.findByTestId('playground-configuration-required')).toBeVisible();
+			expect(run).toBeDisabled();
+			expect(fetchMock).not.toHaveBeenCalled();
+		},
+	);
+	it.each([
+		{ enabled: false, scope: 'all', workflowIds: [] },
+		{ enabled: true, scope: 'selected', workflowIds: ['other-workflow'] },
+	])(
+		'blocks execution when the configuration does not cover the workflow: %j',
+		async (configuration) => {
+			mocks.configurations.mockResolvedValue([{ id: 1, ...configuration }]);
+			const screen = render();
+			await waitFor(() => expect(screen.getByTestId('create-wrong-field')).toBeEnabled());
+			expect(screen.getByRole('button', { name: 'Run original input' })).toBeDisabled();
+			expect(screen.getByRole('button', { name: 'Run alternate input' })).toBeDisabled();
+		},
+	);
+	it('allows execution when an enabled configuration selects the workflow', async () => {
+		mocks.configurations.mockResolvedValue([
+			{ id: 1, enabled: true, scope: 'selected', workflowIds: ['workflow1'] },
+		]);
+		const screen = render();
+		const run = await screen.findByRole('button', { name: 'Run original input' });
+		await waitFor(() => expect(run).toBeEnabled());
+		await userEvent.click(run);
+		await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+	});
+	it('checks the newly selected project instead of reusing the previous configuration', async () => {
+		mocks.projects.push({ id: 'project2', name: 'Other team', type: 'team' });
+		mocks.configurations.mockImplementation(async (path: string) =>
+			path.includes('/project1/') ? [{ id: 1, enabled: true, scope: 'all', workflowIds: [] }] : [],
+		);
+		const screen = render();
+		await waitFor(() => expect(screen.getByTestId('create-wrong-field')).toBeEnabled());
+		await userEvent.click(screen.getByRole('combobox'));
+		await userEvent.click(await screen.findByRole('option', { name: 'Other team' }));
+		expect(await screen.findByTestId('playground-configuration-required')).toBeVisible();
+		expect(screen.getByTestId('create-wrong-field')).toBeEnabled();
+		expect(screen.getByRole('button', { name: 'Run original input' })).toBeDisabled();
+		expect(mocks.configurations).toHaveBeenCalledWith(
+			'/projects/project2/self-healing-configurations',
+		);
+	});
 	it('does not delete test data when reset is canceled', async () => {
 		const screen = render();
 		const reset = screen.getByTestId('playground-reset');
@@ -226,7 +327,7 @@ describe('SelfHealingPlaygroundView', () => {
 		['error', 'The workflow failed.'],
 		['success', 'The workflow completed.'],
 	])('shows the next step for a saved %s execution', async (status, guidance) => {
-		mocks.request.mockResolvedValue({ results: [{ id: 'execution1', status }] });
+		mocks.executions.mockResolvedValue({ results: [{ id: 'execution1', status }] });
 		const screen = render();
 		expect(await screen.findByText(guidance, { exact: false })).toBeVisible();
 	});
