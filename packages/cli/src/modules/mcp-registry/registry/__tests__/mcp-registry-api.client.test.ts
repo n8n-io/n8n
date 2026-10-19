@@ -143,7 +143,7 @@ describe('McpRegistryApiClient', () => {
 			expect(mockPaginatedRequest).toHaveBeenCalledWith(
 				PRODUCTION_URL,
 				{
-					version: 3,
+					version: 4,
 					pagination: { page: 1, pageSize: 25 },
 				},
 				{ throwOnError: true },
@@ -245,6 +245,30 @@ describe('McpRegistryApiClient', () => {
 			expect(result[0].tools[1].annotations).toBeUndefined();
 		});
 
+		it.each([
+			['a missing value', undefined, undefined],
+			['null', null, undefined],
+			['an empty array', [], []],
+			['a capability array', ['unsupported-capability'], ['unsupported-capability']],
+		])('should parse requiredCapabilities from %s', async (_, requiredCapabilities, expected) => {
+			mockPaginatedRequest.mockResolvedValue([{ ...notionMockServer, requiredCapabilities }]);
+
+			const result = await client.fetchAllServers();
+
+			expect(result[0].requiredCapabilities).toEqual(expected);
+		});
+
+		it('should skip a server with malformed requiredCapabilities', async () => {
+			mockPaginatedRequest.mockResolvedValue([
+				notionMockServer,
+				{ ...notionMockServer, slug: 'malformed', requiredCapabilities: [1] },
+			]);
+
+			const result = await client.fetchAllServers();
+
+			expect(result).toEqual([notionMockServer]);
+		});
+
 		it('should keep only OAuth2 credential options', async () => {
 			mockPaginatedRequest.mockResolvedValue([githubUsesCredentialsMockServer]);
 			vi.mocked(credentialTypes.getParentTypes).mockImplementation((credentialType) =>
@@ -296,7 +320,7 @@ describe('McpRegistryApiClient', () => {
 			expect(mockPaginatedRequest).toHaveBeenCalledWith(
 				PRODUCTION_URL,
 				{
-					version: 3,
+					version: 4,
 					fields: ['slug', 'version', 'updatedAt'],
 					pagination: { page: 1, pageSize: 500 },
 				},
@@ -338,7 +362,7 @@ describe('McpRegistryApiClient', () => {
 			expect(mockPaginatedRequest).toHaveBeenCalledWith(
 				PRODUCTION_URL,
 				{
-					version: 3,
+					version: 4,
 					filters: {
 						slug: {
 							$in: ['server-a', 'server-b', 'server-c'],
@@ -391,7 +415,7 @@ describe('McpRegistryApiClient', () => {
 				1,
 				PRODUCTION_URL,
 				{
-					version: 3,
+					version: 4,
 					filters: {
 						slug: {
 							$in: slugs.slice(0, 100),
@@ -407,7 +431,7 @@ describe('McpRegistryApiClient', () => {
 				2,
 				PRODUCTION_URL,
 				{
-					version: 3,
+					version: 4,
 					filters: {
 						slug: {
 							$in: slugs.slice(100, 200),
@@ -423,7 +447,7 @@ describe('McpRegistryApiClient', () => {
 				3,
 				PRODUCTION_URL,
 				{
-					version: 3,
+					version: 4,
 					filters: {
 						slug: {
 							$in: slugs.slice(200, 250),

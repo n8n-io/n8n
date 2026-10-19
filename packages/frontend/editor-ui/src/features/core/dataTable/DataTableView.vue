@@ -18,9 +18,10 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
 import type { DataTableResource } from '@/features/core/dataTable/types';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
+import { promotionEventBus } from '@/features/integrations/promotions.ee/promotions.eventBus';
 import type { BaseFilters, SortingAndPaginationUpdates } from '@/Interface';
 import { useI18n } from '@n8n/i18n';
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import ResourcesListLayout from '@/app/components/layouts/ResourcesListLayout.vue';
@@ -169,6 +170,11 @@ const onSearchUpdated = async (search: string) => {
 
 onMounted(() => {
 	documentTitle.set(i18n.baseText('dataTable.dataTables'));
+	promotionEventBus.on('applied', fetchDataTables);
+});
+
+onBeforeUnmount(() => {
+	promotionEventBus.off('applied', fetchDataTables);
 });
 
 watch(

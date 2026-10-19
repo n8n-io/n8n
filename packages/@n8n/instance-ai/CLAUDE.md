@@ -29,12 +29,12 @@ Read these docs before starting any implementation:
 
 ## E2E Testing
 
-Tests live in `packages/testing/playwright/tests/e2e/instance-ai/`.
+Tests live in `packages/quality/testing/playwright/tests/e2e/instance-ai/`.
 
 ### Local-build mode (no docker, no recording — hits real Anthropic API)
 
 ```bash
-cd packages/testing/playwright
+cd packages/quality/testing/playwright
 export ANTHROPIC_API_KEY=sk-ant-...
 pnpm test:local:instance-ai                  # full suite
 pnpm test:local:instance-ai --grep "preview" # single test
@@ -52,7 +52,7 @@ mode with a real key. This captures LLM traffic + tool traces into
 
 ```bash
 pnpm build:docker   # from repo root — build the local n8n image first
-cd packages/testing/playwright
+cd packages/quality/testing/playwright
 ANTHROPIC_API_KEY=sk-ant-... pnpm test:container:sqlite tests/e2e/instance-ai --workers 1
 ```
 

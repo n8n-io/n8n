@@ -1,6 +1,7 @@
 import { ExecutionsConfig } from '@n8n/config';
 import { BreakingChangeRule } from '@n8n/decorators';
 
+import { NOT_AFFECTED_INSTANCE } from '../../detection-report';
 import type {
 	BreakingChangeRuleMetadata,
 	IBreakingChangeInstanceRule,
@@ -21,13 +22,13 @@ export class PreExecuteErrorCreatesExecutionRule implements IBreakingChangeInsta
 			description:
 				'The N8N_PRE_EXECUTE_ERROR_CREATES_EXECUTION environment variable is removed. A throw from workflow.preExecute never creates an execution record.',
 			category: BreakingChangeCategory.instance,
-			severity: 'medium',
+			impact: 'capabilityRemoved',
 		};
 	}
 
 	async detect(): Promise<InstanceDetectionReport> {
 		if (!this.executionsConfig.preExecuteErrorCreatesExecution) {
-			return { isAffected: false, instanceIssues: [], recommendations: [] };
+			return NOT_AFFECTED_INSTANCE;
 		}
 
 		return {

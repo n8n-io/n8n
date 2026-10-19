@@ -2,8 +2,8 @@ import type { IHttpRequestMethods } from 'n8n-workflow';
 
 import * as search from '../../../../v2/actions/fileFolder/search.operation';
 import * as transport from '../../../../v2/transport';
-import { createMockExecuteFunction, driveNode } from '../helpers';
 import type * as _importType0 from '../../../../v2/transport';
+import { createMockExecuteFunction, driveNode } from '../helpers';
 
 vi.mock('../../../../v2/transport', async () => {
 	const originalModule = await vi.importActual<typeof _importType0>('../../../../v2/transport');
@@ -53,6 +53,31 @@ describe('test GoogleDriveV2: fileFolder search', () => {
 			spaces: 'appDataFolder, drive',
 			supportsAllDrives: true,
 		});
+	});
+
+	it('escapes every quote in the query string, not just the first', async () => {
+		const nodeParameters = {
+			searchMethod: 'name',
+			resource: 'fileFolder',
+			queryString: "a'b'c",
+			returnAll: false,
+			limit: 2,
+			filter: {},
+			options: {},
+		};
+
+		const fakeExecuteFunction = createMockExecuteFunction(nodeParameters, driveNode);
+
+		await search.execute.call(fakeExecuteFunction, 0);
+
+		expect(transport.googleApiRequest).toBeCalledWith(
+			'GET',
+			'/drive/v3/files',
+			undefined,
+			expect.objectContaining({
+				q: "name contains 'a\\'b\\'c'",
+			}),
+		);
 	});
 
 	it('returnAll = true', async () => {

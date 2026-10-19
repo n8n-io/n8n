@@ -2,7 +2,7 @@
 import LogsViewExecutionSummary from '@/features/execution/logs/components/LogsViewExecutionSummary.vue';
 import LogsPanelHeader from '@/features/execution/logs/components/LogsPanelHeader.vue';
 import LogsViewRunData from '@/features/execution/logs/components/LogsViewRunData.vue';
-import { useResizablePanel } from '@/app/composables/useResizablePanel';
+import { useResizablePanel } from '@n8n/design-system';
 import {
 	type LatestNodeInfo,
 	type LogEntry,
@@ -74,7 +74,15 @@ const nodeTypeStore = useNodeTypesStore();
 const ndvStore = injectNDVStore();
 const experimentalNdvStore = useExperimentalNdvStore();
 const uiStore = useUIStore();
-const { isRedacted, canReveal, isDynamicCredentials, revealData } = useExecutionRedaction();
+const {
+	isRedacted,
+	canReveal,
+	isDynamicCredentials,
+	isSubWorkflowRedaction,
+	revealData,
+	credentialToShare,
+	openCredentialSharing,
+} = useExecutionRedaction();
 
 const nodeEntry = computed(() => (isNodeLog(logEntry) ? logEntry : undefined));
 const groupEntry = computed(() => (isGroupLog(logEntry) ? logEntry : undefined));
@@ -103,13 +111,21 @@ const consumedTokens = computed(() => getSubtreeTotalConsumedTokens(logEntry, fa
 const isTriggerNode = computed(() => type.value?.group.includes('trigger'));
 const { link: messageAgentSessionLink } = useMessageAgentSessionLink(computed(() => logEntry));
 const container = useTemplateRef<HTMLElement>('container');
-const resizer = useResizablePanel('N8N_LOGS_INPUT_PANEL_WIDTH', {
+const resizer = useResizablePanel({
 	container,
-	defaultSize: (size) => size / 2,
-	minSize: MIN_IO_PANEL_WIDTH,
-	maxSize: (size) => size - MIN_IO_PANEL_WIDTH,
-	allowCollapse: true,
-	allowFullSize: true,
+	width: {
+		localStorageKey: 'N8N_LOGS_INPUT_PANEL_WIDTH',
+		defaultSize: function getDefaultWidth(size) {
+			return size / 2;
+		},
+		minSize: MIN_IO_PANEL_WIDTH,
+		maxSize: function getMaxWidth(size) {
+			return size - MIN_IO_PANEL_WIDTH;
+		},
+		allowCollapse: true,
+		allowFullSize: true,
+		snap: true,
+	},
 });
 const shouldResize = computed(() => panels === LOG_DETAILS_PANEL_STATE.BOTH);
 const searchShortcutPriorityPanel = computed(() =>
@@ -128,8 +144,6 @@ function handleResizeEnd() {
 	if (resizer.isFullSize.value) {
 		emit('toggleOutputOpen', false);
 	}
-
-	resizer.onResizeEnd();
 }
 </script>
 
@@ -158,7 +172,7 @@ function handleResizeEnd() {
 				<div v-if="isOpen && !isTriggerNode && !isPlaceholderLog(logEntry)" :class="$style.actions">
 					<N8nButton
 						v-if="messageAgentSessionLink"
-						variant="subtle"
+						variant="outline"
 						size="xsmall"
 						data-test-id="log-details-view-agent-session"
 						@click.stop="messageAgentSessionLink.open()"
@@ -171,7 +185,7 @@ function handleResizeEnd() {
 						:shortcut="{ keys: ['i'] }"
 					>
 						<N8nButton
-							variant="subtle"
+							variant="outline"
 							size="xsmall"
 							:class="panels === LOG_DETAILS_PANEL_STATE.OUTPUT ? '' : $style.pressed"
 							@click.stop="emit('toggleInputOpen')"
@@ -184,7 +198,7 @@ function handleResizeEnd() {
 						:shortcut="{ keys: ['o'] }"
 					>
 						<N8nButton
-							variant="subtle"
+							variant="outline"
 							size="xsmall"
 							:class="panels === LOG_DETAILS_PANEL_STATE.INPUT ? '' : $style.pressed"
 							@click.stop="emit('toggleOutputOpen')"
@@ -210,12 +224,11 @@ function handleResizeEnd() {
 						[$style.collapsed]: resizer.isCollapsed.value,
 						[$style.full]: resizer.isFullSize.value,
 					}"
-					:width="resizer.size.value"
-					:style="shouldResize ? { width: `${resizer.size.value ?? 0}px` } : undefined"
+					:resizer="resizer"
+					:style="shouldResize ? { width: `${resizer.width.value ?? 0}px` } : undefined"
 					:supported-directions="['right']"
 					:is-resizing-enabled="shouldResize"
 					:window="window"
-					@resize="resizer.onResize"
 					@resizeend="handleResizeEnd"
 				>
 					<LogsViewRunData
@@ -248,7 +261,10 @@ function handleResizeEnd() {
 					<RedactedDataState
 						:title="locale.baseText('ndv.output.redacted.title')"
 						:is-dynamic-credentials="isDynamicCredentials"
+						:is-sub-workflow-redaction="isSubWorkflowRedaction"
 						:can-reveal="canReveal"
+						:credential-to-share="credentialToShare"
+						@share-credential="openCredentialSharing"
 						wide
 						@open-settings="uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY)"
 						@reveal="revealData"
@@ -263,12 +279,11 @@ function handleResizeEnd() {
 						[$style.collapsed]: resizer.isCollapsed.value,
 						[$style.full]: resizer.isFullSize.value,
 					}"
-					:width="resizer.size.value"
-					:style="shouldResize ? { width: `${resizer.size.value ?? 0}px` } : undefined"
+					:resizer="resizer"
+					:style="shouldResize ? { width: `${resizer.width.value ?? 0}px` } : undefined"
 					:supported-directions="['right']"
 					:is-resizing-enabled="shouldResize"
 					:window="window"
-					@resize="resizer.onResize"
 					@resizeend="handleResizeEnd"
 				>
 					<div :class="$style.groupPane">
@@ -336,7 +351,10 @@ function handleResizeEnd() {
 					<RedactedDataState
 						:title="locale.baseText('ndv.output.redacted.title')"
 						:is-dynamic-credentials="isDynamicCredentials"
+						:is-sub-workflow-redaction="isSubWorkflowRedaction"
 						:can-reveal="canReveal"
+						:credential-to-share="credentialToShare"
+						@share-credential="openCredentialSharing"
 						wide
 						@open-settings="uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY)"
 						@reveal="revealData"

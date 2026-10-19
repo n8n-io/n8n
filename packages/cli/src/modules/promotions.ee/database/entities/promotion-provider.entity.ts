@@ -18,7 +18,7 @@ export class PromotionProvider extends WithTimestampsAndStringId {
 	@Column({ type: 'varchar', length: 32 })
 	type: PromotionProviderType;
 
-	/** `token` is an HTTP(S) username and password, not a Git host API token. */
+	/** A token authenticates Git over HTTP(S) and can also authenticate a host API. */
 	@Column({ type: 'varchar', length: 32 })
 	authType: PromotionProviderAuthType;
 

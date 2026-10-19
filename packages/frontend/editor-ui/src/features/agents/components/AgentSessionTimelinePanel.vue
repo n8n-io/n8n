@@ -31,7 +31,7 @@ import type {
 	TimelineStatusFilterKey,
 } from '@/features/agents/session-timeline.types';
 import { useI18n } from '@n8n/i18n';
-import { N8nIcon, N8nInput } from '@n8n/design-system';
+import { N8nIcon, N8nInput, type BadgeVariant } from '@n8n/design-system';
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 import { useActiveElement, useDocumentVisibility, useEventListener } from '@vueuse/core';
 
@@ -99,6 +99,8 @@ function labelForKey(key: string): string {
 			return i18n.baseText('agentSessions.timeline.user');
 		case 'agent':
 			return i18n.baseText('agentSessions.timeline.agent');
+		case 'skill':
+			return i18n.baseText('agentSessions.timeline.skill');
 		case 'tool':
 			return i18n.baseText('agentSessions.timeline.tool');
 		case 'workflow':
@@ -134,11 +136,11 @@ function labelForKey(key: string): string {
 
 const STATUS_FILTER_OPTIONS = [
 	{ key: 'approved', badgeTheme: 'success' },
-	{ key: 'declined', badgeTheme: 'default' },
+	{ key: 'declined', badgeTheme: 'outline' },
 	{ key: 'error', badgeTheme: 'danger' },
 ] satisfies Array<{
 	key: TimelineStatusFilterKey;
-	badgeTheme: 'default' | 'success' | 'danger';
+	badgeTheme: Extract<BadgeVariant, 'outline' | 'success' | 'danger'>;
 }>;
 
 const filterOptions = computed<FilterOption[]>(() => {
@@ -454,6 +456,10 @@ watch([() => props.projectId, () => props.agentId, () => props.threadId], loadTh
 	min-height: 0;
 	height: 100%;
 	overflow: hidden;
+	/* Keep the timeline's own stacking below the preview dock, which overlays
+	   this column as a sibling. Without it, a z-index inside the chart competes
+	   with the dock and paints over the chat. */
+	isolation: isolate;
 }
 .subHeader {
 	display: flex;

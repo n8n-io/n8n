@@ -22,7 +22,7 @@ import type { EngineCredentialsClient } from './engine-credentials-client';
 import type { ResolveCredentialRequest } from './engine-credentials.contract';
 
 /**
- * The `ICredentialsHelper` that the engine 2.0 data plane gives to v1 nodes.
+ * The `ICredentialsHelper` that the engine v2 data plane gives to v1 nodes.
  *
  * The data plane has no credential store and no encryption key. Reads go to
  * the control plane over HTTP. Methods that only need the credential type
@@ -68,7 +68,7 @@ export class RemoteCredentialsHelper extends ICredentialsHelper {
 	): Promise<ICredentialDataDecryptedObject> {
 		if (nodeCredentials.__aiGatewayManaged) {
 			throw new UnimplementedError(
-				`Gateway credits are not supported on Engine 2.0 yet (credential type "${type}")`,
+				`Gateway credits are not supported on Engine v2 yet (credential type "${type}")`,
 			);
 		}
 
@@ -94,7 +94,7 @@ export class RemoteCredentialsHelper extends ICredentialsHelper {
 
 		if (!consumerNode) {
 			throw new UnexpectedError(
-				'Engine 2.0 cannot resolve a credential without the node that uses it',
+				'Engine v2 cannot resolve a credential without the node that uses it',
 				{
 					tags: { credentialType: type },
 				},
@@ -129,7 +129,7 @@ export class RemoteCredentialsHelper extends ICredentialsHelper {
 	): Promise<ICredentialDataDecryptedObject | undefined> {
 		if (this.hasExpirableProperty(typeName)) {
 			throw new UnimplementedError(
-				`Engine 2.0 does not support credentials with an expirable property yet (credential type "${typeName}")`,
+				`Engine v2 does not support credentials with an expirable property yet (credential type "${typeName}")`,
 			);
 		}
 
@@ -161,7 +161,7 @@ export class RemoteCredentialsHelper extends ICredentialsHelper {
 
 	private oauthRefreshUnsupported(type: string): UnimplementedError {
 		return new UnimplementedError(
-			`Engine 2.0 does not support OAuth token refresh yet (credential type "${type}")`,
+			`Engine v2 does not support OAuth token refresh yet (credential type "${type}")`,
 		);
 	}
 
@@ -169,7 +169,7 @@ export class RemoteCredentialsHelper extends ICredentialsHelper {
 		_nodeCredentials: INodeCredentialsDetails,
 		type: string,
 	): Promise<ICredentials> {
-		throw new UnexpectedError('Engine 2.0 cannot read the credential store', {
+		throw new UnexpectedError('Engine v2 cannot read the credential store', {
 			tags: { credentialType: type },
 		});
 	}
@@ -179,7 +179,7 @@ export class RemoteCredentialsHelper extends ICredentialsHelper {
 		type: string,
 		_data: ICredentialDataDecryptedObject,
 	): Promise<void> {
-		throw new UnexpectedError('Engine 2.0 cannot write to the credential store', {
+		throw new UnexpectedError('Engine v2 cannot write to the credential store', {
 			tags: { credentialType: type },
 		});
 	}

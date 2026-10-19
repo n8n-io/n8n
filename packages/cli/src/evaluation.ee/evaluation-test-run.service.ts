@@ -4,7 +4,7 @@ import type { TestRun } from '@n8n/db';
 import { TestCaseExecutionRepository, TestRunRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import { PaymentRequiredError } from '@/errors/response-errors/payment-required.error';
+import { PaymentRequiredError } from '@n8n/errors';
 
 type Pagination = { offset: number; limit: number };
 

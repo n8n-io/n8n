@@ -10,6 +10,7 @@
  * This allows them to be loaded at runtime via require() without compilation.
  */
 
+// oxlint-disable import/no-cycle -- TODO: Refactor shared types/utils to break cycle
 import type {
 	NodeProperty,
 	NodeTypeDescription,
@@ -26,6 +27,7 @@ import {
 	extractAIInputTypesFromBuilderHint,
 	narrowDisplayOptionsByDisabled,
 } from './generate-types';
+// oxlint-enable import/no-cycle
 import { checkConditions } from '../validation/display-options';
 
 // =============================================================================

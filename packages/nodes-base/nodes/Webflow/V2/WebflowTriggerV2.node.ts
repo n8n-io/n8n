@@ -10,6 +10,7 @@ import type {
 import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { getSites, webflowApiRequest } from '../GenericFunctions';
+import { verifySignature } from '../WebflowTriggerHelpers';
 
 export class WebflowTriggerV2 implements INodeType {
 	description: INodeTypeDescription;
@@ -154,6 +155,9 @@ export class WebflowTriggerV2 implements INodeType {
 				let responseData;
 				const webhookData = this.getWorkflowStaticData('node');
 				const siteId = this.getNodeParameter('site') as string;
+				if (!webhookData.webhookId) {
+					return true;
+				}
 				const endpoint = `/sites/${siteId}/webhooks/${webhookData.webhookId}`;
 				try {
 					responseData = await webflowApiRequest.call(this, 'DELETE', endpoint);
@@ -171,6 +175,12 @@ export class WebflowTriggerV2 implements INodeType {
 	};
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
+		if (!(await verifySignature.call(this))) {
+			const res = this.getResponseObject();
+			res.status(401).send('Unauthorized').end();
+			return { noWebhookResponse: true };
+		}
+
 		const req = this.getRequestObject();
 		return {
 			workflowData: [this.helpers.returnJsonArray(req.body as IDataObject[])],

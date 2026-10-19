@@ -11,6 +11,16 @@ import { testOperations, testFields } from '../descriptions/TestDescription';
 import { testResultOperations, testResultFields } from '../descriptions/TestResultDescription';
 import { listSearch } from '../methods';
 
+function collectUrls(value: unknown): string[] {
+	if (Array.isArray(value)) return value.flatMap(collectUrls);
+	if (value === null || typeof value !== 'object') return [];
+
+	return Object.entries(value).flatMap(([key, child]) => {
+		if (key === 'url' && typeof child === 'string') return [child];
+		return collectUrls(child);
+	});
+}
+
 describe('Currents Node Structure', () => {
 	describe('Currents class', () => {
 		it('should be a valid node class', () => {
@@ -50,6 +60,25 @@ describe('Currents Node Structure', () => {
 			const defaults = node.description.requestDefaults as { arrayFormat?: string } | undefined;
 			expect(defaults).toBeDefined();
 			expect(defaults?.arrayFormat).toBe('brackets');
+		});
+
+		it('encodes every dynamic request URL path segment', () => {
+			const dynamicUrls = collectUrls(new Currents().description.properties).filter((url) =>
+				url.includes('$parameter'),
+			);
+
+			expect(dynamicUrls.length).toBeGreaterThan(0);
+			for (const url of dynamicUrls) {
+				const dynamicExpressions = [...url.matchAll(/{{\s*(.*?)\s*}}/g)]
+					.map((match) => match[1])
+					.filter((expression) => expression.includes('$parameter'));
+
+				expect(url.replace(/{{\s*(.*?)\s*}}/g, '')).not.toContain('$parameter');
+				expect(dynamicExpressions.length).toBeGreaterThan(0);
+				for (const expression of dynamicExpressions) {
+					expect(expression).toMatch(/^toPathSegment\(.+\)$/);
+				}
+			}
 		});
 	});
 

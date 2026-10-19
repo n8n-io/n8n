@@ -8,7 +8,7 @@ exclude:
     # Machine-generated instance-AI expectation traces. Contain ephemeral
     # credential reference IDs (nanoids) that re-trip the secrets scanner
     # on every regeneration. No secret material.
-    - packages/testing/playwright/expectations
+    - packages/quality/testing/playwright/expectations
 
     # Test code repo-wide. Fixtures routinely contain synthetic PEM blocks,
     # basic-auth strings, and deliberately fake keys (including the secret

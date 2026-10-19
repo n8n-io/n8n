@@ -1,5 +1,8 @@
 import { RuleTester } from '@typescript-eslint/rule-tester';
+import { Linter } from 'eslint';
+import { describe, expect, it } from 'vitest';
 
+import { configs } from '../plugin.js';
 import { ResourceOperationPatternRule } from './resource-operation-pattern.js';
 
 const ruleTester = new RuleTester();
@@ -214,4 +217,62 @@ ruleTester.run('resource-operation-pattern', ResourceOperationPatternRule, {
 			],
 		},
 	],
+});
+
+const resourceOperationRuleId = '@n8n/community-nodes/resource-operation-pattern';
+
+function nodeWithSixOperations(hasResource: boolean): string {
+	return `
+		class TestNode extends Node {
+			description = {
+				properties: [
+					${hasResource ? "{ name: 'resource', type: 'options', options: [{ name: 'User', value: 'user' }] }," : ''}
+					{
+						name: 'operation',
+						type: 'options',
+						options: [
+							{ name: 'Get', value: 'get' },
+							{ name: 'Create', value: 'create' },
+							{ name: 'Update', value: 'update' },
+							{ name: 'Delete', value: 'delete' },
+							{ name: 'List', value: 'list' },
+							{ name: 'Search', value: 'search' },
+						],
+					},
+				],
+			};
+		}
+	`;
+}
+
+describe.each([
+	['recommended', configs.recommended],
+	['recommendedWithoutN8nCloudSupport', configs.recommendedWithoutN8nCloudSupport],
+] as const)('%s config', (_name, config) => {
+	const linter = new Linter();
+	const lint = (code: string) =>
+		linter.verify(
+			code,
+			{
+				files: ['**/*.node.ts'],
+				plugins: config.plugins,
+				rules: { [resourceOperationRuleId]: config.rules[resourceOperationRuleId] },
+			},
+			{ filename: 'TestNode.node.ts' },
+		);
+
+	// CE-3284: The resource finding must fail lint even when it is the only finding.
+	it('reports missing resources as the only error', () => {
+		expect(lint(nodeWithSixOperations(false))).toEqual([
+			expect.objectContaining({
+				ruleId: resourceOperationRuleId,
+				messageId: 'tooManyOperationsWithoutResources',
+				severity: 2,
+			}),
+		]);
+	});
+
+	it('accepts operations organized by resource', () => {
+		expect(lint(nodeWithSixOperations(true))).toEqual([]);
+	});
 });

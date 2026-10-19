@@ -3,10 +3,10 @@ import type { INodeProperties, IExecuteFunctions, IDataObject } from 'n8n-workfl
 import { updateDisplayOptions } from '@utils/utilities';
 
 import {
+	channelMentionsField,
 	channelRLC,
 	includeLinkToWorkflowOption,
 	mentionPlacementOption,
-	mentionsField,
 	teamRLC,
 } from '../../descriptions';
 import { prepareMessage, resolveMentions } from '../../helpers/utils';
@@ -45,7 +45,7 @@ const properties: INodeProperties[] = [
 			rows: 2,
 		},
 	},
-	mentionsField,
+	channelMentionsField,
 	{
 		displayName: 'Options',
 		name: 'options',
@@ -103,7 +103,7 @@ export async function execute(
 	}
 
 	// Built before the mentions are resolved, so a malformed team, channel or reply ID fails
-	// without spending a Graph call on `GET /users/{id}` first.
+	// without spending a Graph call on the mention lookups first.
 	const endpoint = options.makeReply
 		? buildTeamsPath.call(this, [
 				'/beta/teams/',
@@ -122,7 +122,7 @@ export async function execute(
 				'/messages',
 			]);
 
-	const mentions = await resolveMentions.call(this, i);
+	const mentions = await resolveMentions.call(this, i, teamId);
 
 	const body: IDataObject = prepareMessage.call(
 		this,

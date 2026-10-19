@@ -66,7 +66,7 @@ const handleUseTemplate = async () => {
 		</div>
 		<div :class="[$style.actions, 'mt-m']">
 			<N8nButton
-				variant="subtle"
+				variant="outline"
 				:label="locale.baseText('workflows.templateRecoV2.useTemplate')"
 				size="xsmall"
 				@click="handleUseTemplate"

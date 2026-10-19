@@ -9,7 +9,7 @@ import { jsonParse, UnexpectedError } from 'n8n-workflow';
 import { readFile, writeFile } from 'node:fs/promises';
 import * as path from 'path';
 
-import { InstanceWriteAccessService } from '@/services/instance-write-access.service';
+import { InstanceWriteAccessService } from '@n8n/backend-services';
 
 import {
 	SOURCE_CONTROL_GIT_FOLDER,

@@ -43,7 +43,7 @@ export class AvailableTypesController {
 	) {}
 
 	@Get('/')
-	@Licensed(LICENSE_FEATURES.NODE_TYPE_POLICIES)
+	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
 	@ProjectScope('project:read')
 	async getAvailableTypes(
 		_req: Request,

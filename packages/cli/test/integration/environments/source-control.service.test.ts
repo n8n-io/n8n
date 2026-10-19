@@ -1,4 +1,5 @@
 import type { SourceControlledFile } from '@n8n/api-types';
+import { EventService } from '@n8n/backend-services';
 import { createTeamProject, createWorkflow, testDb, testModules } from '@n8n/backend-test-utils';
 import {
 	CredentialsEntity,
@@ -20,9 +21,7 @@ import { basename, isAbsolute } from 'node:path';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { EventService } from '@/events/event.service';
+import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import { DataTable } from '@/modules/data-table/data-table.entity';
 import {
 	SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER,
@@ -341,14 +340,14 @@ describe('SourceControlService', () => {
 		deletedInScopeCredential = Object.assign(new CredentialsEntity(), {
 			id: 'deletedInScope',
 			name: 'deletedInScope',
-			data: cipher.encrypt({}),
+			data: cipher.encryptWithInstanceKey({}),
 			type: '',
 		});
 
 		deletedOutOfScopeCredential = Object.assign(new CredentialsEntity(), {
 			id: 'deletedOutOfScope',
 			name: 'deletedOutOfScope',
-			data: cipher.encrypt({}),
+			data: cipher.encryptWithInstanceKey({}),
 			type: '',
 		});
 
@@ -361,7 +360,7 @@ describe('SourceControlService', () => {
 			await createCredentials(
 				{
 					name: 'OutOfScope',
-					data: cipher.encrypt({}),
+					data: cipher.encryptWithInstanceKey({}),
 					type: '',
 				},
 				projectB,
@@ -369,7 +368,7 @@ describe('SourceControlService', () => {
 			await createCredentials(
 				{
 					name: 'IntoScope',
-					data: cipher.encrypt({}),
+					data: cipher.encryptWithInstanceKey({}),
 					type: '',
 				},
 				projectA,
@@ -393,7 +392,7 @@ describe('SourceControlService', () => {
 				await createCredentials(
 					{
 						name: `${project.name}-CredA`,
-						data: cipher.encrypt({}),
+						data: cipher.encryptWithInstanceKey({}),
 						type: '',
 					},
 					project,
@@ -401,7 +400,7 @@ describe('SourceControlService', () => {
 				await createCredentials(
 					{
 						name: `${project.name}-CredB‚`,
-						data: cipher.encrypt({}),
+						data: cipher.encryptWithInstanceKey({}),
 						type: '',
 					},
 					project,
@@ -1468,7 +1467,7 @@ describe('SourceControlService', () => {
 				{
 					name: 'Test Credential isGlobal false->true',
 					type: 'testType',
-					data: cipher.encrypt({}),
+					data: cipher.encryptWithInstanceKey({}),
 					isGlobal: false,
 				},
 				testProject,
@@ -1499,7 +1498,7 @@ describe('SourceControlService', () => {
 				{
 					name: 'Test Credential isGlobal true->false',
 					type: 'testType',
-					data: cipher.encrypt({}),
+					data: cipher.encryptWithInstanceKey({}),
 					isGlobal: true,
 				},
 				testProject,
@@ -1527,7 +1526,7 @@ describe('SourceControlService', () => {
 				{
 					name: 'Test Credential isGlobal undefined vs false',
 					type: 'testType',
-					data: cipher.encrypt({}),
+					data: cipher.encryptWithInstanceKey({}),
 					isGlobal: false,
 				},
 				testProject,
@@ -1555,7 +1554,7 @@ describe('SourceControlService', () => {
 				{
 					name: 'Test Credential isGlobal undefined->true',
 					type: 'testType',
-					data: cipher.encrypt({}),
+					data: cipher.encryptWithInstanceKey({}),
 					isGlobal: false,
 				},
 				testProject,
@@ -1583,7 +1582,7 @@ describe('SourceControlService', () => {
 				{
 					name: 'Test Credential isGlobal same value',
 					type: 'testType',
-					data: cipher.encrypt({}),
+					data: cipher.encryptWithInstanceKey({}),
 					isGlobal: true,
 				},
 				testProject,

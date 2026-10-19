@@ -1,9 +1,21 @@
 import type { AgentBackgroundJobSignal } from '@n8n/api-types';
 
+import { CHAT_MESSAGE_ROLE } from './constants';
+import { appendHostEventSources, type AgentsChatHostEventSource } from './interactionRegistry';
 import { summariseToolCall } from './interactiveSummary';
 import { getMessageInteractives } from './messageMappers';
 import { getMessageThinkingSegments } from './thinking';
 import type { AgentsChatMessage, InteractivePayload, ThinkingSegment, ToolCall } from './types';
+
+/** Values of the `kind` tag that tells the `DisplayGroup` variants apart. */
+export const DISPLAY_GROUP_KIND = {
+	/** A notice about background jobs of the agent that came to an end. */
+	BACKGROUND_JOB_SIGNAL: 'backgroundJobSignal',
+	/** One user or assistant message that the list does not fold. */
+	MESSAGE: 'message',
+	/** Consecutive tool-only assistant messages folded into one block. */
+	TOOL_RUN: 'toolRun',
+} as const;
 
 /**
  * Presentation group for the message list. The builder persists one assistant
@@ -19,18 +31,18 @@ import type { AgentsChatMessage, InteractivePayload, ThinkingSegment, ToolCall }
  */
 export type DisplayGroup =
 	| {
-			kind: 'backgroundJobSignal';
+			kind: typeof DISPLAY_GROUP_KIND.BACKGROUND_JOB_SIGNAL;
 			id: string;
 			signal: AgentBackgroundJobSignal;
 	  }
 	| {
-			kind: 'message';
+			kind: typeof DISPLAY_GROUP_KIND.MESSAGE;
 			id: string;
 			message: AgentsChatMessage;
 			thinkingSegments: ThinkingSegment[];
 	  }
 	| {
-			kind: 'toolRun';
+			kind: typeof DISPLAY_GROUP_KIND.TOOL_RUN;
 			id: string;
 			thinkingSegments: ThinkingSegment[];
 			active: boolean;
@@ -38,6 +50,12 @@ export type DisplayGroup =
 			toolCalls: ToolCall[];
 			/** Interactive cards belonging to messages folded into this group. */
 			interactives: InteractivePayload[];
+			/**
+			 * Budget cards from every folded message, deduped by code. A stop
+			 * lands on the current message, which can be tool-only; without this
+			 * the card would fold away while Send stays blocked.
+			 */
+			budgetNotices: NonNullable<AgentsChatMessage['budgetNotices']>;
 			/**
 			 * Trailing assistant message in the turn that carries text content.
 			 * Folding it into the same group keeps a single bubble per turn
@@ -50,24 +68,38 @@ export type DisplayGroup =
 			 * (HITL resume history must not inherit the suspended turn's id).
 			 */
 			executionId?: string;
+			/**
+			 * Host events of every folded message, in arrival order, with the
+			 * message that carries each one. Set only when there are events.
+			 */
+			hostEvents?: AgentsChatHostEventSource[];
 	  };
 
-export type TurnDisplayGroup = Exclude<DisplayGroup, { kind: 'backgroundJobSignal' }>;
+export type TurnDisplayGroup = Exclude<
+	DisplayGroup,
+	{ kind: typeof DISPLAY_GROUP_KIND.BACKGROUND_JOB_SIGNAL }
+>;
 
 export function isGroupable(message: AgentsChatMessage): boolean {
-	return message.role === 'assistant' && !!message.toolCalls?.length && !message.content.trim();
+	return (
+		message.role === CHAT_MESSAGE_ROLE.ASSISTANT &&
+		!!message.toolCalls?.length &&
+		!message.content.trim()
+	);
 }
 
-type ToolRunGroup = Extract<DisplayGroup, { kind: 'toolRun' }>;
+type ToolRunGroup = Extract<DisplayGroup, { kind: typeof DISPLAY_GROUP_KIND.TOOL_RUN }>;
 
 export function isAssistantGroup(group: DisplayGroup): group is TurnDisplayGroup {
 	return (
-		group.kind === 'toolRun' || (group.kind === 'message' && group.message.role === 'assistant')
+		group.kind === DISPLAY_GROUP_KIND.TOOL_RUN ||
+		(group.kind === DISPLAY_GROUP_KIND.MESSAGE &&
+			group.message.role === CHAT_MESSAGE_ROLE.ASSISTANT)
 	);
 }
 
 function executionIdForGroup(group: TurnDisplayGroup): string | undefined {
-	return group.kind === 'toolRun' ? group.executionId : group.message.executionId;
+	return group.kind === DISPLAY_GROUP_KIND.TOOL_RUN ? group.executionId : group.message.executionId;
 }
 
 /** Keep one reasoning block at the tail of each assistant run, below its final output. */
@@ -166,6 +198,23 @@ function appendToolCalls(existing: ToolCall[], next: ToolCall[]): ToolCall[] {
 	return merged;
 }
 
+function appendBudgetNotices(
+	existing: NonNullable<AgentsChatMessage['budgetNotices']>,
+	next: AgentsChatMessage['budgetNotices'],
+): NonNullable<AgentsChatMessage['budgetNotices']> {
+	if (!next?.length) return existing;
+	const merged = [...existing];
+	for (const notice of next) {
+		if (!merged.some((item) => item.code === notice.code)) merged.push(notice);
+	}
+	return merged;
+}
+
+function appendHostEvents(group: ToolRunGroup, message: AgentsChatMessage): void {
+	if (!message.hostEvents?.length) return;
+	group.hostEvents = appendHostEventSources(group.hostEvents ?? [], message);
+}
+
 function appendInteractivePayloads(
 	existing: InteractivePayload[],
 	next: InteractivePayload[],
@@ -187,10 +236,10 @@ function appendInteractivePayloads(
 export function buildDisplayGroups(messages: AgentsChatMessage[]): DisplayGroup[] {
 	const groups: DisplayGroup[] = [];
 	for (const message of messages) {
-		if (message.role === 'assistant' && message.backgroundJobSignal) {
+		if (message.role === CHAT_MESSAGE_ROLE.ASSISTANT && message.backgroundJobSignal) {
 			// Keep the signal key stable when the same turn gains text or tool calls.
 			groups.push({
-				kind: 'backgroundJobSignal',
+				kind: DISPLAY_GROUP_KIND.BACKGROUND_JOB_SIGNAL,
 				id: `${message.executionId ?? message.id}:background-job-signal`,
 				signal: message.backgroundJobSignal,
 			});
@@ -199,13 +248,14 @@ export function buildDisplayGroups(messages: AgentsChatMessage[]): DisplayGroup[
 				!message.toolCalls?.length &&
 				!getMessageThinkingSegments(message).length &&
 				!getMessageInteractives(message).length &&
-				!message.attachments?.length
+				!message.attachments?.length &&
+				!message.hostEvents?.length
 			)
 				continue;
 		}
 		if (isGroupable(message)) {
 			const last = groups[groups.length - 1];
-			if (last?.kind === 'toolRun' && canAppendToToolRun(last, message)) {
+			if (last?.kind === DISPLAY_GROUP_KIND.TOOL_RUN && canAppendToToolRun(last, message)) {
 				last.toolCalls = appendToolCalls(last.toolCalls, message.toolCalls ?? []);
 				last.thinkingSegments.push(...getMessageThinkingSegments(message));
 				last.active ||= message.status === 'streaming';
@@ -213,26 +263,31 @@ export function buildDisplayGroups(messages: AgentsChatMessage[]): DisplayGroup[
 					last.interactives,
 					getMessageInteractives(message),
 				);
+				last.budgetNotices = appendBudgetNotices(last.budgetNotices, message.budgetNotices);
 				last.awaitingInput = last.interactives.some((payload) => payload.resolvedAt === undefined);
 				last.executionId ??= message.executionId;
+				appendHostEvents(last, message);
 				continue;
 			}
-			groups.push({
-				kind: 'toolRun',
+			const group: ToolRunGroup = {
+				kind: DISPLAY_GROUP_KIND.TOOL_RUN,
 				id: message.id,
 				thinkingSegments: getMessageThinkingSegments(message),
 				active: message.status === 'streaming',
 				awaitingInput: message.status === 'awaitingUser',
 				toolCalls: [...(message.toolCalls ?? [])],
 				interactives: getMessageInteractives(message),
+				budgetNotices: appendBudgetNotices([], message.budgetNotices),
 				...(message.executionId ? { executionId: message.executionId } : {}),
-			});
+			};
+			appendHostEvents(group, message);
+			groups.push(group);
 			continue;
 		}
 
-		if (message.role === 'assistant') {
+		if (message.role === CHAT_MESSAGE_ROLE.ASSISTANT) {
 			const last = groups[groups.length - 1];
-			if (last?.kind === 'toolRun' && canAppendToToolRun(last, message)) {
+			if (last?.kind === DISPLAY_GROUP_KIND.TOOL_RUN && canAppendToToolRun(last, message)) {
 				last.finalMessage = message;
 				last.executionId ??= message.executionId;
 				last.thinkingSegments.push(...getMessageThinkingSegments(message));
@@ -244,16 +299,19 @@ export function buildDisplayGroups(messages: AgentsChatMessage[]): DisplayGroup[
 					last.interactives,
 					getMessageInteractives(message),
 				);
+				last.budgetNotices = appendBudgetNotices(last.budgetNotices, message.budgetNotices);
 				last.awaitingInput = last.interactives.some((payload) => payload.resolvedAt === undefined);
+				appendHostEvents(last, message);
 				continue;
 			}
 		}
 
 		groups.push({
-			kind: 'message',
+			kind: DISPLAY_GROUP_KIND.MESSAGE,
 			id: message.id,
 			message,
-			thinkingSegments: message.role === 'assistant' ? getMessageThinkingSegments(message) : [],
+			thinkingSegments:
+				message.role === CHAT_MESSAGE_ROLE.ASSISTANT ? getMessageThinkingSegments(message) : [],
 		});
 	}
 	moveThinkingToRunTail(groups);

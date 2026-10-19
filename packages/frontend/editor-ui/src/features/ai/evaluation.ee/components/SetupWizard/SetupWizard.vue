@@ -11,6 +11,8 @@ import { I18nT } from 'vue-i18n';
 
 import { N8nButton, N8nCallout, N8nText } from '@n8n/design-system';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { EVALUATION_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import { useWorkflowEvaluationState } from '../../composables/useWorkflowEvaluationState';
 defineEmits<{
 	runTest: [];
@@ -20,6 +22,7 @@ const router = useRouter();
 const locale = useI18n();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const evaluationStore = useEvaluationStore();
+const nodeTypesStore = useNodeTypesStore();
 const evaluationState = useWorkflowEvaluationState();
 const usageStore = useUsageStore();
 const pageRedirectionHelper = usePageRedirectionHelper();
@@ -119,9 +122,12 @@ function onSeePlans() {
 						</li>
 					</ul>
 
-					<div :class="$style.actionButton">
+					<div
+						v-if="!nodeTypesStore.isNodeTypeUnavailable(EVALUATION_TRIGGER_NODE_TYPE)"
+						:class="$style.actionButton"
+					>
 						<N8nButton
-							variant="subtle"
+							variant="outline"
 							size="small"
 							@click="navigateToWorkflow('addEvaluationTrigger')"
 						>
@@ -150,7 +156,7 @@ function onSeePlans() {
 					</ul>
 					<div :class="$style.actionButton">
 						<N8nButton
-							variant="subtle"
+							variant="outline"
 							size="small"
 							@click="navigateToWorkflow('addEvaluationNode')"
 						>
@@ -188,7 +194,7 @@ function onSeePlans() {
 					</N8nCallout>
 					<div :class="$style.actionButton">
 						<N8nButton
-							variant="subtle"
+							variant="outline"
 							v-if="!evaluationsQuotaExceeded"
 							size="small"
 							@click="navigateToWorkflow('addEvaluationNode')"
@@ -235,7 +241,7 @@ function onSeePlans() {
 				>
 					<div :class="[$style.actionButton, $style.actionButtonInline]">
 						<N8nButton
-							variant="subtle"
+							variant="outline"
 							v-if="
 								evaluationState.evaluationSetMetricsNodeExist.value && !evaluationsQuotaExceeded
 							"
@@ -250,7 +256,7 @@ function onSeePlans() {
 							{{ locale.baseText('evaluations.setupWizard.step4.button') }}
 						</N8nButton>
 						<N8nButton
-							variant="subtle"
+							variant="outline"
 							v-else
 							size="medium"
 							:disabled="
@@ -303,7 +309,7 @@ function onSeePlans() {
 	gap: var(--spacing--sm);
 
 	button {
-		font-weight: var(--font-weight--bold);
+		font-weight: var(--font-weight--medium);
 	}
 }
 

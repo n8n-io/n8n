@@ -2,7 +2,11 @@ import { computed, effectScope, onScopeDispose, shallowReactive, type ComputedRe
 import isEqual from 'lodash/isEqual';
 import { structuralComputed } from '@n8n/composables/structuralComputed';
 import { useI18n } from '@n8n/i18n';
-import type { INodeParameterResourceLocator, INodeTypeDescription } from 'n8n-workflow';
+import {
+	isEmptyGroupAnchor,
+	type INodeParameterResourceLocator,
+	type INodeTypeDescription,
+} from 'n8n-workflow';
 import {
 	useWorkflowDocumentStore,
 	type WorkflowDocumentId,
@@ -293,6 +297,7 @@ export function useWorkflowDocumentRenderData(workflowDocumentId: WorkflowDocume
 	}
 
 	function createDefaultNodeRenderType(node: INodeUi): CanvasNodeDefaultRender {
+		const isEmptyGroupAnchorNode = isEmptyGroupAnchor(node);
 		const nodeType = nodeTypeDescriptionByNodeId.get(node.id)?.value ?? null;
 		const simulated = simulatedNodeTypeDescriptionByNodeId.get(node.id)?.value ?? null;
 		const iconSource = simulated ?? nodeType ?? node.type;
@@ -321,7 +326,7 @@ export function useWorkflowDocumentRenderData(workflowDocumentId: WorkflowDocume
 				tooltip,
 				dirtiness: dirtinessByNodeId.get(node.id)?.value,
 				icon,
-				placeholder: node.placeholder,
+				placeholder: node.placeholder === true || isEmptyGroupAnchorNode,
 			},
 		};
 	}

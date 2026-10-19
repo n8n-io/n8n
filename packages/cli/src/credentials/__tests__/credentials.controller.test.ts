@@ -1,3 +1,6 @@
+import type { Response } from 'express';
+import { CredentialDescriptionsService } from '@/credentials/credential-descriptions.service';
+import type { PostHogClient } from '@/posthog';
 import type { MockInstance } from 'vitest';
 vi.mock('@/generic-helpers', () => ({
 	validateEntity: vi.fn(),
@@ -17,15 +20,14 @@ import { GLOBAL_OWNER_ROLE, GLOBAL_MEMBER_ROLE } from '@n8n/db';
 import type { Scope } from '@n8n/permissions';
 import { mock } from 'vitest-mock-extended';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError, NotFoundError } from '@n8n/errors';
 import * as checkAccess from '@/permissions.ee/check-access';
 import type { CredentialRequest } from '@/requests';
 import type { CredentialTypes } from '@/credential-types';
 
 import { createNewCredentialsPayload, createdCredentialsWithScopes } from './credentials.test-data';
 import type { CredentialDependencyService } from '../credential-dependency.service';
-import type { CredentialsFinderService } from '../credentials-finder.service';
+import type { CredentialsFinderService } from '@n8n/backend-services';
 import { CredentialsController } from '../credentials.controller';
 import { CredentialsService } from '../credentials.service';
 import * as validation from '../validation';
@@ -43,6 +45,8 @@ describe('CredentialsController', () => {
 
 	// Mock the credentialsRepository with a working create method
 	const credentialsRepository = mock<CredentialsRepository>();
+	const postHogClient = mock<PostHogClient>();
+	const credentialDescriptions = new CredentialDescriptionsService(postHogClient);
 
 	// real CredentialsService instance with mocked dependencies
 	const credentialsService = new CredentialsService(
@@ -68,6 +72,9 @@ describe('CredentialsController', () => {
 		mock(), // instanceCredentialUseRegistry
 		mock(), // dbLockService
 		mock(), // eventService
+		mock(), // transactionRunner
+		mock(), // policyEnforcementService
+		credentialDescriptions,
 	);
 
 	// Spy on methods that need to be mocked in tests
@@ -99,6 +106,7 @@ describe('CredentialsController', () => {
 		mock(), // connectionStatusProxy
 		credentialsOverwrites,
 		credentialTypes,
+		credentialDescriptions,
 	);
 
 	let req: AuthenticatedRequest;
@@ -109,6 +117,7 @@ describe('CredentialsController', () => {
 
 	beforeEach(() => {
 		vi.resetAllMocks();
+		postHogClient.getFeatureFlagForInstance.mockResolvedValue(true);
 		decryptSpy = vi.spyOn(credentialsService, 'decrypt');
 		createEncryptedDataSpy = vi.spyOn(credentialsService, 'createEncryptedData');
 		prepareUpdateDataSpy = vi.spyOn(credentialsService, 'prepareUpdateData');
@@ -179,6 +188,28 @@ describe('CredentialsController', () => {
 
 			expect(newApiKey).toEqual(createdCredentials);
 		});
+
+		it.each([null, 'Production reports'])(
+			'emits the saved description length for %s',
+			async (description) => {
+				const payload = { ...createNewCredentialsPayload(), description: 'Draft description' };
+				const { data: _data, ...payloadWithoutData } = payload;
+				const created = { ...createdCredentialsWithScopes(payloadWithoutData), description };
+				createUnmanagedCredentialSpy.mockResolvedValue(created);
+				findCredentialOwningProjectSpy.mockResolvedValue(
+					mock<Project>({ id: 'project-1', type: 'team' }),
+				);
+
+				await credentialsController.createCredentials(req, res, payload);
+
+				const [, eventPayload] = emitSpy.mock.calls[0];
+				expect(eventPayload).toMatchObject({
+					credentialDescriptionLength: description?.length ?? 0,
+				});
+				expect(eventPayload).not.toHaveProperty('description');
+				expect(eventPayload).not.toHaveProperty('credentialDescription');
+			},
+		);
 
 		it('should emit "credentials-created" with jweEnabled true when payload enables JWE', async () => {
 			const newCredentialsPayload = createNewCredentialsPayload({
@@ -269,6 +300,7 @@ describe('CredentialsController', () => {
 		const existingCredential = mock<CredentialsEntity>({
 			id: credentialId,
 			name: 'Test Credential',
+			description: null,
 			type: 'apiKey',
 			isGlobal: false,
 			isManaged: false,
@@ -358,6 +390,7 @@ describe('CredentialsController', () => {
 				expect.objectContaining({
 					isGlobal: true,
 				}),
+				{ kind: 'user', user: ownerReq.user },
 				expect.any(Object),
 				expect.any(Object),
 			);
@@ -366,6 +399,7 @@ describe('CredentialsController', () => {
 				credentialType: existingCredential.type,
 				credentialId: existingCredential.id,
 				credentialName: 'Updated Credential',
+				credentialDescriptionLength: 0,
 				isDynamic: false,
 				usesExternalSecrets: false,
 				jweEnabled: false,
@@ -505,6 +539,69 @@ describe('CredentialsController', () => {
 			);
 		});
 
+		describe('description', () => {
+			const updateRequest = (body: Record<string, unknown>) =>
+				({
+					user: { id: 'owner-id', role: GLOBAL_OWNER_ROLE },
+					params: { credentialId },
+					body: {
+						name: 'Updated Credential',
+						type: 'apiKey',
+						data: { apiKey: 'updated-key' },
+						...body,
+					},
+				}) as unknown as CredentialRequest.Update;
+
+			beforeEach(() => {
+				credentialsFinderService.findCredentialForUser.mockResolvedValue(existingCredential);
+				updateSpy.mockResolvedValue({ ...existingCredential, name: 'Updated Credential' });
+			});
+
+			it.each([
+				[
+					'writes a description the payload sends',
+					'  Read-only reporting key.  ',
+					'Read-only reporting key.',
+				],
+				['clears a description the payload blanks out', '  ', null],
+			])('%s', async (_label, sent, prepared) => {
+				const req = updateRequest({ description: sent });
+				prepareUpdateDataSpy.mockResolvedValue({ ...req.body, description: prepared });
+				updateSpy.mockResolvedValue({ ...existingCredential, description: prepared });
+
+				await credentialsController.updateCredentials(req);
+
+				expect(updateSpy).toHaveBeenCalledWith(
+					credentialId,
+					expect.objectContaining({ description: prepared }),
+					{ kind: 'user', user: req.user },
+					expect.anything(),
+					expect.any(Object),
+				);
+				expect(emitSpy).toHaveBeenCalledWith(
+					'credentials-updated',
+					expect.objectContaining({ credentialDescriptionLength: prepared?.length ?? 0 }),
+				);
+				const event = emitSpy.mock.calls.find(([name]) => name === 'credentials-updated')?.[1];
+				expect(event).not.toHaveProperty('description');
+				expect(event).not.toHaveProperty('credentialDescription');
+			});
+
+			it('leaves the stored description alone when the payload omits the field', async () => {
+				const req = updateRequest({});
+				prepareUpdateDataSpy.mockResolvedValue({ ...req.body });
+				updateSpy.mockResolvedValue({ ...existingCredential, description: 'Production reports' });
+
+				await credentialsController.updateCredentials(req);
+
+				expect(updateSpy.mock.calls[0][1]).not.toHaveProperty('description');
+				expect(emitSpy).toHaveBeenCalledWith(
+					'credentials-updated',
+					expect.objectContaining({ credentialDescriptionLength: 18 }),
+				);
+			});
+		});
+
 		it('should emit "credentials-updated" with jweEnabled true when JWE is enabled in payload', async () => {
 			// ARRANGE
 			const ownerReq = {
@@ -594,6 +691,7 @@ describe('CredentialsController', () => {
 				expect.objectContaining({
 					isGlobal: false,
 				}),
+				{ kind: 'user', user: ownerReq.user },
 				expect.any(Object),
 				expect.any(Object),
 			);
@@ -681,6 +779,7 @@ describe('CredentialsController', () => {
 			expect(updateSpy).toHaveBeenCalledWith(
 				credentialId,
 				expect.any(Object),
+				{ kind: 'user', user: ownerReq.user },
 				expect.any(Object),
 				expect.any(Object),
 			);
@@ -728,6 +827,7 @@ describe('CredentialsController', () => {
 				expect.objectContaining({
 					isResolvable: true,
 				}),
+				{ kind: 'user', user: ownerReq.user },
 				expect.any(Object),
 				expect.any(Object),
 			);
@@ -805,6 +905,7 @@ describe('CredentialsController', () => {
 				expect.objectContaining({
 					isResolvable: true, // Should keep the existing value
 				}),
+				{ kind: 'user', user: ownerReq.user },
 				expect.any(Object),
 				expect.any(Object),
 			);
@@ -948,10 +1049,16 @@ describe('CredentialsController', () => {
 			await credentialsController.updateCredentials(ownerReq);
 
 			expect(getChangedSharedFieldsSpy).toHaveBeenCalled();
-			expect(updateSpy).toHaveBeenCalledWith(credentialId, expect.any(Object), expect.any(Object), {
-				deleteUserEntries: true,
-				user: ownerReq.user,
-			});
+			expect(updateSpy).toHaveBeenCalledWith(
+				credentialId,
+				expect.any(Object),
+				{ kind: 'user', user: ownerReq.user },
+				expect.any(Object),
+				{
+					deleteUserEntries: true,
+					user: ownerReq.user,
+				},
+			);
 			expect(emitSpy).toHaveBeenCalledWith('private-credential-connections-cleared', {
 				user: ownerReq.user,
 				credentialType: privateCredential.type,
@@ -978,10 +1085,16 @@ describe('CredentialsController', () => {
 
 			await credentialsController.updateCredentials(ownerReq);
 
-			expect(updateSpy).toHaveBeenCalledWith(credentialId, expect.any(Object), expect.any(Object), {
-				deleteUserEntries: false,
-				user: ownerReq.user,
-			});
+			expect(updateSpy).toHaveBeenCalledWith(
+				credentialId,
+				expect.any(Object),
+				{ kind: 'user', user: ownerReq.user },
+				expect.any(Object),
+				{
+					deleteUserEntries: false,
+					user: ownerReq.user,
+				},
+			);
 			const emittedEventNames = emitSpy.mock.calls.map((call) => call[0]);
 			expect(emittedEventNames).not.toContain('private-credential-connections-cleared');
 		});
@@ -1006,10 +1119,16 @@ describe('CredentialsController', () => {
 			await credentialsController.updateCredentials(ownerReq);
 
 			expect(getChangedSharedFieldsSpy).not.toHaveBeenCalled();
-			expect(updateSpy).toHaveBeenCalledWith(credentialId, expect.any(Object), expect.any(Object), {
-				deleteUserEntries: true,
-				user: ownerReq.user,
-			});
+			expect(updateSpy).toHaveBeenCalledWith(
+				credentialId,
+				expect.any(Object),
+				{ kind: 'user', user: ownerReq.user },
+				expect.any(Object),
+				{
+					deleteUserEntries: true,
+					user: ownerReq.user,
+				},
+			);
 		});
 
 		it('should not emit toggle events when resolvable state is unchanged', async () => {
@@ -1046,7 +1165,7 @@ describe('CredentialsController', () => {
 				isResolvable: true,
 			});
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(privateCredential);
-			const deleteSpy = vi.spyOn(credentialsService, 'delete').mockResolvedValue(undefined);
+			const deleteSpy = vi.spyOn(credentialsService, 'delete').mockResolvedValue(true);
 
 			const deleteReq = {
 				user: { id: 'u1' },
@@ -1083,7 +1202,7 @@ describe('CredentialsController', () => {
 				req.user,
 				['credential:update'],
 			);
-			expect(clearSpy).toHaveBeenCalledWith(credential);
+			expect(clearSpy).toHaveBeenCalledWith(credential, { kind: 'user', user: req.user });
 			expect(result).toEqual({ success: true });
 		});
 

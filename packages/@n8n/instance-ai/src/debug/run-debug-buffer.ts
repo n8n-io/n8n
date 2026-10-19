@@ -1,3 +1,4 @@
+import { isRecord } from '@n8n/utils/is-record';
 import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import type { GenerateTextStepEndEvent, GenerateTextStepStartEvent } from 'ai';
 
@@ -53,8 +54,55 @@ export interface RunDebugStepHookOptions {
 	threadId: string;
 }
 
+/**
+ * Step-start keys that repeat data captured elsewhere:
+ * - `tools` holds live Zod schemas; `stepTools` has the JSON Schema the model received.
+ * - `promptMessages` repeats `instructions` and `messages`.
+ * - `steps` repeats earlier steps, which the buffer records on their own.
+ */
+const DUPLICATE_STEP_START_KEYS = new Set(['tools', 'promptMessages', 'steps']);
+
+function isEmptyContainer(value: unknown): boolean {
+	if (Array.isArray(value)) return value.length === 0;
+	return isRecord(value) && Object.keys(value).length === 0;
+}
+
 function captureStepStartPayload(event: GenerateTextStepStartEvent): Record<string, unknown> {
-	return sanitizeDebugSnapshotRecord(event);
+	const hasStepTools = 'stepTools' in event && Array.isArray(event.stepTools);
+	const payload: Record<string, unknown> = {};
+	for (const [key, value] of Object.entries(event)) {
+		if (key === 'tools' && !hasStepTools) {
+			payload.tools = summarizeToolSet(value);
+			continue;
+		}
+		if (DUPLICATE_STEP_START_KEYS.has(key) || isEmptyContainer(value)) continue;
+		payload[key] = value;
+	}
+	return sanitizeDebugSnapshotRecord(payload);
+}
+
+/**
+ * Keeps tool descriptions and plain JSON schemas when the SDK does not report
+ * `stepTools`. Zod schemas are dropped: serialized, they are only method stubs.
+ */
+function summarizeToolSet(tools: unknown): unknown {
+	if (!isRecord(tools)) return undefined;
+	const summary: Record<string, { description?: string; inputSchema?: unknown }> = {};
+	for (const [name, tool] of Object.entries(tools)) {
+		if (!isRecord(tool)) continue;
+		summary[name] = {
+			...(typeof tool.description === 'string' ? { description: tool.description } : {}),
+			...(tool.inputSchema !== undefined && !isZodSchema(tool.inputSchema)
+				? { inputSchema: tool.inputSchema }
+				: {}),
+		};
+	}
+	return summary;
+}
+
+/** Matches Zod 3 (`_def`) and Zod 4 (`_zod`) schemas without depending on one Zod copy. */
+function isZodSchema(value: unknown): boolean {
+	return isRecord(value) && ('_def' in value || '_zod' in value);
 }
 
 function captureStepFinishPayload(event: GenerateTextStepEndEvent): Record<string, unknown> {

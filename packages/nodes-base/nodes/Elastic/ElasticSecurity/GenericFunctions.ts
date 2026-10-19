@@ -6,12 +6,15 @@ import type {
 	IRequestOptions,
 	IHttpRequestMethods,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { toPathSegment, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import { toPathSegment } from '@utils/url';
 import { removeTrailingSlash } from '@utils/utilities';
 
 import type { Connector, ElasticSecurityApiCredentials } from './types';
+
+export function buildDeleteCasesEndpoint(caseId: unknown): string {
+	return `/cases?ids=${encodeURIComponent(JSON.stringify([String(caseId)]))}`;
+}
 
 export async function elasticSecurityApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,

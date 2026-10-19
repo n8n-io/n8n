@@ -1,6 +1,7 @@
 import { CommaSeparatedStringArray, Config, Env } from '@n8n/config';
 import { BreakingChangeRule } from '@n8n/decorators';
 
+import { NOT_AFFECTED_INSTANCE } from '../../detection-report';
 import type {
 	BreakingChangeRuleMetadata,
 	IBreakingChangeInstanceRule,
@@ -41,7 +42,7 @@ export class UnverifiedPackagesRule implements IBreakingChangeInstanceRule {
 			description:
 				'The default of N8N_UNVERIFIED_PACKAGES_ENABLED changes to false. Installed community packages that are not verified by n8n will stop loading unless the variable is explicitly set to true.',
 			category: BreakingChangeCategory.environment,
-			severity: 'medium',
+			impact: 'behaviorChanges',
 		};
 	}
 
@@ -50,7 +51,7 @@ export class UnverifiedPackagesRule implements IBreakingChangeInstanceRule {
 			this.communityPackagesConfig.enabled &&
 			process.env.N8N_UNVERIFIED_PACKAGES_ENABLED === undefined;
 
-		if (!isAffected) return { isAffected: false, instanceIssues: [], recommendations: [] };
+		if (!isAffected) return NOT_AFFECTED_INSTANCE;
 
 		return {
 			isAffected: true,

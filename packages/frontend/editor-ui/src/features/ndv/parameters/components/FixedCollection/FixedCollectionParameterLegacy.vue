@@ -628,7 +628,7 @@ function getItemKey(_item: INodeParameters, index: number) {
 		<div v-if="parameterOptions.length > 0 && !isReadOnly" :class="$style.controls">
 			<N8nButton
 				style="width: 100%"
-				variant="subtle"
+				variant="outline"
 				v-if="parameter.options && parameter.options.length === 1"
 				size="small"
 				data-test-id="fixed-collection-add"

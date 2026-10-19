@@ -107,7 +107,7 @@ const resolvedAdditionalExpressionData = computed(() => {
 	return { $vars: environmentsStore.variablesAsObject };
 });
 
-const { resolvedExpressionString, isExpression } = useResolvedExpression({
+const { resolvedExpressionString, isExpression, isRedacted } = useResolvedExpression({
 	expression: value,
 	additionalData: resolvedAdditionalExpressionData,
 });
@@ -206,6 +206,7 @@ const onValueDrop = async (droppedExpression: string) => {
 					:class="[$style.hint]"
 					:highlight="highlightHint"
 					:hint="hint"
+					:redacted="isRedacted"
 					single-line
 				/>
 			</div>
@@ -264,6 +265,7 @@ const onValueDrop = async (droppedExpression: string) => {
 							:class="[$style.hint]"
 							:highlight="highlightHint"
 							:hint="hint"
+							:redacted="isRedacted"
 							single-line
 						/>
 					</div>

@@ -2,7 +2,9 @@ import { OutboundHttp } from '@n8n/backend-network';
 import type { HttpRequestClient } from '@n8n/backend-network';
 import { Container } from '@n8n/di';
 import { RoutingNode, UnrecognizedNodeTypeError } from 'n8n-core';
+import type { ExecuteContext } from 'n8n-core';
 import type {
+	ICredentialsHelper,
 	ICredentialTestFunctions,
 	ICredentialType,
 	INode,
@@ -42,6 +44,17 @@ describe('CredentialsTester', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 	});
+
+	function mockRoutingNodeResult(outcome: { reject?: unknown; resolve?: unknown }) {
+		// Regular function — RoutingNode is instantiated with `new`.
+		(RoutingNode as unknown as Mock).mockImplementation(function () {
+			return {
+				runNode: outcome.reject
+					? vi.fn().mockRejectedValue(outcome.reject)
+					: vi.fn().mockResolvedValue(outcome.resolve ?? [[{ json: {} }]]),
+			};
+		});
+	}
 
 	it('should find the OAuth2 credential test for a generic OAuth2 API credential', () => {
 		credentialTypes.getByName.mockReturnValue(mock<ICredentialType>({ test: undefined }));
@@ -290,6 +303,136 @@ describe('CredentialsTester', () => {
 			expect(redactedMessage.status).toBe('Error');
 			expect(redactedMessage.message).toBe('Test failed for apiKey se');
 		});
+
+		it('hands the routing engine a credentials helper that resolves the posted OAuth2 data, not the stored credential', async () => {
+			const posted = { grantType: 'clientCredentials', clientId: 'id', clientSecret: 'posted' };
+			const stored = { grantType: 'clientCredentials', clientId: 'id', clientSecret: 'stored' };
+			credentialTypes.getByName.mockReturnValue({
+				test: { request: { url: 'https://example.test/me' } },
+			} as unknown as ICredentialType);
+			credentialsHelper.applyDefaultsAndOverwrites.mockImplementation(async (_base, data) => data);
+			nodeTypes.getByNameAndVersion.mockReturnValue(
+				mock<INodeType>({
+					description: { name: 'n8n-nodes-base.noOp', version: 1, properties: [] },
+				}),
+			);
+			const storedGetDecrypted = vi.fn().mockResolvedValue(stored);
+			const storedHelper = {
+				getDecrypted: storedGetDecrypted,
+				getParentTypes: vi.fn().mockReturnValue([]),
+			} as unknown as ICredentialsHelper;
+			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue({
+				credentialsHelper: storedHelper,
+			} as unknown as IWorkflowExecuteAdditionalData);
+			mockRoutingNodeResult({ resolve: [[{ json: {} }]] });
+
+			const result = await credentialsTester.testCredentials('user-id', 'databricksOAuth2Api', {
+				id: 'credential-id',
+				name: 'Databricks',
+				type: 'databricksOAuth2Api',
+				data: posted,
+			});
+
+			expect(result).toEqual({ status: 'OK', message: 'Connection successful!' });
+			const ctx = (RoutingNode as unknown as Mock).mock.calls[0][0] as ExecuteContext;
+			await expect(
+				ctx.additionalData.credentialsHelper.getDecrypted(
+					ctx.additionalData,
+					{ id: 'credential-id', name: 'Databricks' },
+					'databricksOAuth2Api',
+					'internal',
+				),
+			).resolves.toEqual(posted);
+			expect(storedGetDecrypted).not.toHaveBeenCalled();
+			// the refresh race check reads raw and must still see the stored token
+			await expect(
+				ctx.additionalData.credentialsHelper.getDecrypted(
+					ctx.additionalData,
+					{ id: 'credential-id', name: 'Databricks' },
+					'databricksOAuth2Api',
+					'internal',
+					undefined,
+					true,
+				),
+			).resolves.toEqual(stored);
+			expect(storedGetDecrypted).toHaveBeenCalledTimes(1);
+			// shared singleton not mutated
+			expect(storedHelper.getDecrypted).toBe(storedGetDecrypted);
+			// everything else delegates to the real helper
+			ctx.additionalData.credentialsHelper.getParentTypes('databricksOAuth2Api');
+			expect(storedHelper.getParentTypes).toHaveBeenCalledWith('databricksOAuth2Api');
+		});
+
+		it('keeps the node type of a request test isolated from a concurrent one', async () => {
+			const urls: Record<string, string> = {
+				firstApi: 'https://example.test/first',
+				secondApi: 'https://example.test/second',
+			};
+			credentialTypes.getByName.mockImplementation(
+				(type) => ({ test: { request: { url: urls[type] } } }) as unknown as ICredentialType,
+			);
+			credentialsHelper.applyDefaultsAndOverwrites.mockImplementation(async (_base, data) => data);
+			nodeTypes.getByNameAndVersion.mockReturnValue(
+				mock<INodeType>({
+					description: { name: 'n8n-nodes-base.noOp', version: 1, properties: [] },
+				}),
+			);
+			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue({
+				credentialsHelper: {
+					getDecrypted: vi.fn(),
+					getParentTypes: vi.fn().mockReturnValue([]),
+				} as unknown as ICredentialsHelper,
+			} as unknown as IWorkflowExecuteAdditionalData);
+
+			// The first run stays inside the routing engine until the second run has finished.
+			let finishFirst!: () => void;
+			const firstMayFinish = new Promise<void>((resolve) => {
+				finishFirst = resolve;
+			});
+			(RoutingNode as unknown as Mock)
+				.mockImplementationOnce(function () {
+					return {
+						runNode: vi.fn().mockImplementation(async () => {
+							await firstMayFinish;
+							return [[{ json: {} }]];
+						}),
+					};
+				})
+				.mockImplementationOnce(function () {
+					return { runNode: vi.fn().mockResolvedValue([[{ json: {} }]]) };
+				});
+
+			const first = credentialsTester.testCredentials('user-id', 'firstApi', {
+				id: '1',
+				name: 'First',
+				type: 'firstApi',
+				data: {},
+			});
+			await vi.waitFor(() => expect(RoutingNode).toHaveBeenCalledTimes(1));
+
+			await expect(
+				credentialsTester.testCredentials('user-id', 'secondApi', {
+					id: '2',
+					name: 'Second',
+					type: 'secondApi',
+					data: {},
+				}),
+			).resolves.toEqual({ status: 'OK', message: 'Connection successful!' });
+
+			finishFirst();
+			await expect(first).resolves.toEqual({ status: 'OK', message: 'Connection successful!' });
+
+			// Both runs are over. Each engine context must still resolve its own node
+			// type copy; with one shared registry the second run deleted the first one's.
+			const [firstCtx, secondCtx] = (RoutingNode as unknown as Mock).mock.calls.map(
+				(call) => call[0] as ExecuteContext,
+			);
+			const requestUrl = (ctx: ExecuteContext) =>
+				ctx.workflow.nodeTypes.getByNameAndVersion('n8n-nodes-base.noOp', 1).description
+					.properties[0].routing?.request?.url;
+			expect(requestUrl(firstCtx)).toBe(urls.firstApi);
+			expect(requestUrl(secondCtx)).toBe(urls.secondApi);
+		});
 	});
 
 	describe('probeCredentialAuth', () => {
@@ -301,17 +444,6 @@ describe('CredentialsTester', () => {
 			data: { name: 'Authorization', value: 'Key abc' },
 		});
 
-		function mockRoutingNodeResult(outcome: { reject?: unknown; resolve?: unknown }) {
-			// Regular function — RoutingNode is instantiated with `new`.
-			(RoutingNode as unknown as Mock).mockImplementation(function () {
-				return {
-					runNode: outcome.reject
-						? vi.fn().mockRejectedValue(outcome.reject)
-						: vi.fn().mockResolvedValue(outcome.resolve ?? [[{ json: {} }]]),
-				};
-			});
-		}
-
 		function httpError(status: number) {
 			const error = new Error(`Request failed with status code ${status}`);
 			(error as Error & { cause: unknown }).cause = {
@@ -321,9 +453,9 @@ describe('CredentialsTester', () => {
 		}
 
 		beforeEach(() => {
-			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
-				{} as IWorkflowExecuteAdditionalData,
-			);
+			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue({
+				credentialsHelper: {},
+			} as unknown as IWorkflowExecuteAdditionalData);
 			credentialsHelper.applyDefaultsAndOverwrites.mockImplementation(async (_base, data) => data);
 			nodeTypes.getByNameAndVersion.mockReturnValue(
 				mock<INodeType>({

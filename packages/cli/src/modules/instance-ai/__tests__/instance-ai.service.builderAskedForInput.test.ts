@@ -12,17 +12,15 @@ vi.mock('@n8n/instance-ai', async () => {
 		createSandbox: vi.fn(),
 		createWorkspace: vi.fn(),
 		createLazyRuntimeWorkspace: vi.fn(),
-		createLazyWorkspaceRuntimeSkillSource: vi.fn(({ source }) => source),
 		setupSandboxWorkspace: vi.fn(),
-		loadInstanceAiRuntimeSkillSource: vi.fn(() => ({
-			registry: { skillsHash: 'runtime-skills-hash', skills: [] },
-			loadSkill: vi.fn(),
-		})),
-		disabledInstanceAiSkillIds: vi.fn(() => []),
 		workflowBuildOutcomeSchema: z.object({}),
 		handleBuildOutcome: vi.fn(),
 		handleVerificationVerdict: vi.fn(),
 		createInstanceAgent: vi.fn(),
+		setTracePromptVersion: vi.fn(),
+		setTraceModelId: vi.fn(),
+		modelConfigId: (config: unknown) =>
+			typeof config === 'string' && config.length > 0 ? config : undefined,
 	};
 });
 

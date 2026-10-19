@@ -1,0 +1,53 @@
+diff --git a/lib/commands/idle.js b/lib/commands/idle.js
+index 7c58d734288d5ca8d931abb9ae2bd4621a6b683b..6861354f586ec4cf806633c27549fdbddb9a96ac 100644
+--- a/lib/commands/idle.js
++++ b/lib/commands/idle.js
+@@ -18,11 +18,13 @@ function claimIdling(connection) {
+     let token = {};
+     connection._idleSession = token;
+     connection.idling = true;
++    connection._idleConfirmed = false;
+ 
+     return () => {
+         if (connection._idleSession === token) {
+             connection._idleSession = null;
+             connection.idling = false;
++            connection._idleConfirmed = false;
+         }
+     };
+ }
+@@ -121,6 +123,7 @@ async function runIdle(connection) {
+                     cid: connection.id
+                 });
+                 canEnd = true;
++                connection._idleConfirmed = true;
+                 if (doneRequested) {
+                     try {
+                         await preCheck();
+diff --git a/lib/imap-flow.js b/lib/imap-flow.js
+index b8705f9b3f7d45e4762cd5c5005766fa8be60872..77c50286f330dff6337ad723858c8ac26f909e39 100644
+--- a/lib/imap-flow.js
++++ b/lib/imap-flow.js
+@@ -1449,9 +1449,10 @@ class ImapFlow extends EventEmitter {
+          * whose owner is busy between commands are all expected to go quiet, so the handler keeps
+          * such a connection alive with a NOOP instead of tearing it down. An in-flight command is
+          * the opposite: its reply is overdue, a recovery NOOP would only queue up behind it and
+-         * never reach the wire, so the timeout is reported as an error. The IDLE command itself is
+-         * the one exception - it stays in flight for as long as idling lasts, and run() breaks it
+-         * through preCheck() before the NOOP is dispatched.
++         * never reach the wire, so the timeout is reported as an error. A confirmed IDLE is the
++         * one exception - it stays in flight for as long as idling lasts, and run() breaks it
++         * through preCheck() before the NOOP is dispatched. An IDLE the server has not
++         * acknowledged yet cannot be broken, so it counts as stuck like any other command.
+          *
+          * IDLE is not restarted here: run() re-arms auto-IDLE once the NOOP settles, and
+          * autoidle() knows whether the connection is actually free for IDLE - an open download or
+@@ -1468,7 +1469,7 @@ class ImapFlow extends EventEmitter {
+                 err.code = 'ETIMEOUT';
+ 
+                 const quietExpected = this.idling || this._openDownloads || this.currentLock;
+-                const commandStuck = this.currentRequest && !(this.idling && this.currentRequest.command === 'IDLE');
++                const commandStuck = this.currentRequest && !(this.idling && this._idleConfirmed && this.currentRequest.command === 'IDLE');
+ 
+                 if (quietExpected && !commandStuck) {
+                     if (!this.usable || !this.socket || this.socket.destroyed) {

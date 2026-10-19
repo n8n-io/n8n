@@ -5,19 +5,29 @@ import { screen } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 
 import {
+	ADD_EMPTY_GROUP_NODE_CREATOR_ITEM,
 	AI_CATEGORY_MCP_NODES,
 	AI_MCP_TOOL_NODE_TYPE,
 	AI_OTHERS_NODE_CREATOR_VIEW,
+	HTTP_REQUEST_NODE_TYPE,
 	MESSAGE_AN_AGENT_NODE_TYPE,
 	REGULAR_NODE_CREATOR_VIEW,
 	REQUEST_NODE_FORM_URL,
 	SUGGEST_SERVICE_FORM_URL_REMOTE_CONFIG_KEY,
+	TRIGGER_NODE_CREATOR_VIEW,
 } from '@/app/constants';
-import type { NodeCreateElement } from '@/Interface';
+import type { CommandCreateElement, NodeCreateElement } from '@/Interface';
 import { useViewStacks } from '@/features/shared/nodeCreator/composables/useViewStacks';
+import { useKeyboardNavigation } from '@/features/shared/nodeCreator/composables/useKeyboardNavigation';
+import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { createComponentRenderer } from '@/__tests__/render';
+import { waitAllPromises } from '@n8n/frontend-test-utils';
+import { mockRestrictedNodeTypes } from '@n8n/frontend-module-type-availability-policies/__tests__/mocks';
 import { mockSimplifiedNodeType } from '../../__tests__/utils';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import NodesMode from './NodesMode.vue';
+
+const mockIsFeatureEnabled = vi.hoisted(() => vi.fn(() => true));
 
 const mockDocumentStoreState = {
 	allNodes: [],
@@ -37,7 +47,7 @@ vi.mock('@/app/composables/useExternalHooks', () => ({
 
 vi.mock('@/app/stores/posthog.store', () => ({
 	usePostHog: () => ({
-		isFeatureEnabled: () => false,
+		isFeatureEnabled: mockIsFeatureEnabled,
 		getFeatureFlagPayload: (key: string) =>
 			key === SUGGEST_SERVICE_FORM_URL_REMOTE_CONFIG_KEY
 				? 'https://example.com/suggest-service'
@@ -79,13 +89,31 @@ function mcpClientElement(): NodeCreateElement {
 	};
 }
 
+function groupCommandElement(): CommandCreateElement {
+	return {
+		key: ADD_EMPTY_GROUP_NODE_CREATOR_ITEM,
+		type: 'command',
+		properties: {
+			title: 'Group',
+			description: 'Add an organisational container to your workflow',
+			icon: 'group',
+		},
+	};
+}
+
 describe('NodesMode', () => {
 	let pinia: Pinia;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		mockIsFeatureEnabled.mockReturnValue(true);
 		pinia = createPinia();
 		setActivePinia(pinia);
+		vi.spyOn(useNodeTypesStore(), 'isNodeTypeUnavailable').mockReturnValue(false);
+	});
+
+	afterEach(() => {
+		useKeyboardNavigation().detachKeydownEvent();
 	});
 
 	it('opens the agent picker sub-panel instead of adding the Message an Agent node', async () => {
@@ -138,6 +166,227 @@ describe('NodesMode', () => {
 
 		expect(emitted('nodeTypeSelected')).toEqual([[[{ type: 'n8n-nodes-base.set' }]]]);
 	});
+
+	describe('restricted node types', () => {
+		function setNodeElement(): NodeCreateElement {
+			return {
+				key: 'n8n-nodes-base.set',
+				type: 'node',
+				subcategory: '*',
+				properties: mockSimplifiedNodeType({
+					name: 'n8n-nodes-base.set',
+					displayName: 'Edit Fields',
+					group: ['transform'],
+				}),
+			};
+		}
+
+		// Browsing hides a restricted type, so the row is only there to click while searching.
+		function pushSearchStackWith(items: NodeCreateElement[]) {
+			useViewStacks().pushViewStack({
+				title: 'What happens next?',
+				mode: 'nodes',
+				rootView: REGULAR_NODE_CREATOR_VIEW,
+				hasSearch: true,
+				search: 'Edit Fields',
+				items,
+			});
+		}
+
+		async function pressEnterOnFirstItem() {
+			const keyboardNavigation = useKeyboardNavigation();
+			keyboardNavigation.attachKeydownEvent();
+			await keyboardNavigation.setActiveItemIndex(0);
+			document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+			// Keyboard navigation refreshes its selectable items on a zero-delay timer.
+			await waitAllPromises();
+			await nextTick();
+		}
+
+		it('does not add a restricted node on click', async () => {
+			mockRestrictedNodeTypes({ 'n8n-nodes-base.set': 'instance' });
+			pushSearchStackWith([setNodeElement()]);
+
+			const { emitted } = render({ pinia });
+			await nextTick();
+
+			await userEvent.click(screen.getByText('Edit Fields'));
+
+			expect(emitted('nodeTypeSelected')).toBeUndefined();
+		});
+
+		it('does not add a restricted node on Enter', async () => {
+			mockRestrictedNodeTypes({ 'n8n-nodes-base.set': 'instance' });
+			pushSearchStackWith([setNodeElement()]);
+
+			const { emitted } = render({ pinia });
+			await nextTick();
+
+			await pressEnterOnFirstItem();
+
+			expect(emitted('nodeTypeSelected')).toBeUndefined();
+		});
+
+		it('drops a restricted node from the empty-search suggestions', async () => {
+			mockRestrictedNodeTypes({ [HTTP_REQUEST_NODE_TYPE]: 'instance' });
+			useViewStacks().pushViewStack({
+				title: 'What triggers this workflow?',
+				mode: 'nodes',
+				rootView: TRIGGER_NODE_CREATOR_VIEW,
+				search: 'missing node',
+				items: [],
+			});
+
+			const { emitted } = render({ pinia });
+			await nextTick();
+
+			expect(screen.getByText('No results for "missing node"')).toBeInTheDocument();
+			expect(screen.queryByText('HTTP Request')).not.toBeInTheDocument();
+
+			await userEvent.click(screen.getByText('Webhook'));
+			expect(emitted('nodeTypeSelected')).toEqual([[[{ type: 'n8n-nodes-base.webhook' }]]]);
+		});
+
+		it('drops a node type that is not loaded from the empty-search suggestions', async () => {
+			vi.mocked(useNodeTypesStore().isNodeTypeUnavailable).mockImplementation(
+				(type) => type === HTTP_REQUEST_NODE_TYPE,
+			);
+			useViewStacks().pushViewStack({
+				title: 'What triggers this workflow?',
+				mode: 'nodes',
+				rootView: TRIGGER_NODE_CREATOR_VIEW,
+				search: 'missing node',
+				items: [],
+			});
+
+			render({ pinia });
+			await nextTick();
+
+			expect(screen.getByText('No results for "missing node"')).toBeInTheDocument();
+			expect(screen.queryByText('HTTP Request')).not.toBeInTheDocument();
+			expect(screen.getByText('Webhook')).toBeInTheDocument();
+		});
+
+		it('still adds an available node on Enter', async () => {
+			pushSearchStackWith([setNodeElement()]);
+
+			const { emitted } = render({ pinia });
+			await nextTick();
+
+			await pressEnterOnFirstItem();
+
+			expect(emitted('nodeTypeSelected')).toEqual([[[{ type: 'n8n-nodes-base.set' }]]]);
+		});
+	});
+
+	it('emits an empty-group selection for the Group item', async () => {
+		useViewStacks().pushViewStack({
+			title: 'What happens next?',
+			mode: 'nodes',
+			rootView: REGULAR_NODE_CREATOR_VIEW,
+			hasSearch: true,
+			items: [groupCommandElement()],
+		});
+
+		const { emitted } = render({ pinia });
+		await nextTick();
+
+		await userEvent.click(screen.getByText('Group'));
+
+		expect(emitted('emptyGroupSelected')).toEqual([[]]);
+		expect(emitted('nodeTypeSelected')).toBeUndefined();
+	});
+
+	it.each(['Enter', 'ArrowRight'])('activates the Group command with %s', async (key) => {
+		useViewStacks().pushViewStack({
+			title: 'What happens next?',
+			mode: 'nodes',
+			rootView: REGULAR_NODE_CREATOR_VIEW,
+			hasSearch: true,
+			items: [groupCommandElement()],
+		});
+
+		const { emitted } = render({ pinia });
+		await nextTick();
+
+		const keyboardNavigation = useKeyboardNavigation();
+		keyboardNavigation.attachKeydownEvent();
+		await keyboardNavigation.setActiveItemIndex(0);
+		document.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true }));
+		await waitAllPromises();
+		await nextTick();
+
+		expect(emitted('emptyGroupSelected')).toEqual([[]]);
+		expect(emitted('nodeTypeSelected')).toBeUndefined();
+	});
+
+	it.each([TRIGGER_NODE_CREATOR_VIEW, REGULAR_NODE_CREATOR_VIEW] as const)(
+		'does not render the Group item when empty groups are disabled in the %s view',
+		async (rootView) => {
+			mockIsFeatureEnabled.mockReturnValue(false);
+			useViewStacks().pushViewStack({
+				title: 'What happens next?',
+				mode: 'nodes',
+				rootView,
+				hasSearch: true,
+				items: [groupCommandElement()],
+			});
+
+			render({ pinia });
+			await nextTick();
+
+			expect(screen.queryByText('Group')).not.toBeInTheDocument();
+		},
+	);
+
+	it('does not render the Group item during node replacement', async () => {
+		useNodeCreatorStore().openingContext = 'replacement';
+		useViewStacks().pushViewStack({
+			title: 'Replace node',
+			mode: 'nodes',
+			rootView: REGULAR_NODE_CREATOR_VIEW,
+			hasSearch: true,
+			items: [groupCommandElement()],
+		});
+
+		render({ pinia });
+		await nextTick();
+
+		expect(screen.queryByText('Group')).not.toBeInTheDocument();
+	});
+
+	it.each(['group', 'organisational', 'container'])(
+		'shows the Group item when searching for %s',
+		async (search) => {
+			const groupItem = groupCommandElement();
+
+			useViewStacks().pushViewStack({
+				title: 'What happens next?',
+				mode: 'nodes',
+				rootView: REGULAR_NODE_CREATOR_VIEW,
+				hasSearch: true,
+				search,
+				items: [groupItem],
+				searchItems: [
+					{
+						key: 'n8n-nodes-base.set',
+						type: 'node',
+						subcategory: '*',
+						properties: mockSimplifiedNodeType({
+							name: 'n8n-nodes-base.set',
+							displayName: 'Edit Fields',
+						}),
+					},
+					groupItem,
+				],
+			});
+
+			render({ pinia });
+			await nextTick();
+
+			expect(screen.getByText('Group')).toBeInTheDocument();
+		},
+	);
 
 	it('keeps the MCP client pinned once and shows the MCP empty state for no results', async () => {
 		const mcpClient = mcpClientElement();

@@ -265,7 +265,7 @@ watch(
 							app-name=""
 							:credential-type="vectorStoreCredentialType ?? ''"
 							:selected-credential-id="settings.vectorStore.credentialId"
-							create-button-variant="subtle"
+							create-button-variant="outline"
 							@credential-selected="onVectorStoreCredentialSelected"
 							@credential-deleted="onVectorStoreCredentialSelected(null)"
 						/>
@@ -319,7 +319,7 @@ watch(
 									: ''
 							"
 							:selected-credential-id="settings.embeddingModel.credentialId"
-							create-button-variant="subtle"
+							create-button-variant="outline"
 							@credential-selected="onEmbeddingCredentialSelected"
 							@credential-deleted="onEmbeddingCredentialSelected(null)"
 						/>

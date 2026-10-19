@@ -64,14 +64,14 @@ export class EmbeddingsOllama implements INodeType {
 				}
 			: undefined;
 
-		const lookup = this.helpers.getSecureEgressFilter().createSecureLookup();
+		const egressFilter = this.helpers.getSecureEgressFilter();
 
 		const embeddings = new OllamaEmbeddings({
 			baseUrl,
 			model: modelName,
 			headers,
 			fetch: async (input: RequestInfo | URL, init?: RequestInit) =>
-				await proxyFetch({ input, init, lookup }),
+				await proxyFetch({ input, init, egressFilter }),
 		});
 
 		return {

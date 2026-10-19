@@ -4,9 +4,6 @@ tags:
 summary: Create or replace the Apply configuration
 description: Replaces the whole configuration, so an omitted name resets it to "Apply". Answers 200 whether it created or replaced.
 x-required-scope: gitConnection:update
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 parameters:
   - schema:
       type: string
@@ -63,6 +60,16 @@ responses:
             updatedAt:
               type: string
               format: date-time
+            checkout:
+              type: object
+              properties:
+                hasCheckout:
+                  type: boolean
+                matchesConfig:
+                  type: boolean
+              required:
+                - hasCheckout
+                - matchesConfig
             settings:
               type: object
               properties:
@@ -83,6 +90,7 @@ responses:
             - name
             - createdAt
             - updatedAt
+            - checkout
             - settings
   '400':
     $ref: ../../../../shared/spec/responses/badRequest.yml

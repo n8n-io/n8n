@@ -239,7 +239,7 @@ async function getMcpServerConfigsWithoutAudienceTokens(
 				MICROSOFT_TOOL_OPTIONS,
 			),
 		},
-		lookup: secureEgressFilter.createSecureLookup(),
+		egressFilter: secureEgressFilter,
 	});
 
 	if (!response.ok) {

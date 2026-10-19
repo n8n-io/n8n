@@ -1,12 +1,12 @@
 # Enforce proper resource/operation pattern for better UX in n8n nodes (`@n8n/community-nodes/resource-operation-pattern`)
 
-⚠️ This rule _warns_ in the following configs: ✅ `recommended`, ☑️ `recommendedWithoutN8nCloudSupport`.
+💼 This rule is enabled in the following configs: ✅ `recommended`, ☑️ `recommendedWithoutN8nCloudSupport`.
 
 <!-- end auto-generated rule header -->
 
 ## Rule Details
 
-Warns when a node has more than 5 operations without organizing them into resources. The resource/operation pattern improves user experience by grouping related operations together, making complex nodes easier to navigate.
+Reports an error when a node has more than 5 operations without resources. Use resources to group related operations. This pattern makes complex nodes easier to navigate.
 
 When you have many operations, users benefit from having them organized into logical resource groups (e.g., "User", "Project", "File") rather than seeing a long flat list of operations.
 

@@ -14,11 +14,15 @@ import { useTelemetryInitializer } from '@/app/composables/useTelemetryInitializ
 import { useWorkflowDiffRouting } from '@/app/composables/useWorkflowDiffRouting';
 import { useModulePushDispatcher } from '@/app/composables/useModulePushDispatcher';
 import { useTrialIntroModalAutoOpen } from '@/experiments/trialIntroModal/useTrialIntroModalAutoOpen';
+// Experiment cleanup (119_surface_assistant_on_workflow_error)
+import WorkflowErrorNudge from '@/experiments/surfaceAssistantOnWorkflowError/components/WorkflowErrorNudge.vue';
+// EOF Experiment cleanup
 import { CODEMIRROR_TOOLTIP_CONTAINER_ELEMENT_ID, HIRING_BANNER, VIEWS } from '@/app/constants';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import LoadingView from '@/app/views/LoadingView.vue';
 import { locale } from '@n8n/design-system';
+import { registerTimeAgoLocale } from '@/app/utils/timeAgoLocale';
 import { setLanguage } from '@n8n/i18n';
 // Note: no need to import en.json here; default 'en' is handled via setLanguage
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -112,6 +116,7 @@ watch(
 		axios.defaults.headers.common['Accept-Language'] = newLocale;
 
 		void locale.use(newLocale);
+		registerTimeAgoLocale(newLocale);
 	},
 	{ immediate: true },
 );
@@ -141,6 +146,9 @@ useExposeCssVar('--ask-assistant--floating-button--margin-bottom', askAiFloating
 		<template #overlays>
 			<div :id="CODEMIRROR_TOOLTIP_CONTAINER_ELEMENT_ID" />
 			<E2ETestModeMarker />
+			<!-- Experiment cleanup (119_surface_assistant_on_workflow_error) -->
+			<WorkflowErrorNudge />
+			<!-- EOF Experiment cleanup -->
 		</template>
 		<template #aside>
 			<AppChatPanel v-if="layoutRef" :layout-ref="layoutRef" />

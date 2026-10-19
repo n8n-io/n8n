@@ -12,6 +12,7 @@ export const APPROVAL_SUSPEND_SCHEMA = z.object({
 	type: z.literal('approval'),
 	toolName: z.string(),
 	displayName: z.string().optional(),
+	supportsSessionApproval: z.boolean().optional(),
 	args: z.unknown(),
 });
 
@@ -19,6 +20,7 @@ export type ApprovalSuspendPayload = z.infer<typeof APPROVAL_SUSPEND_SCHEMA>;
 
 export const APPROVAL_RESUME_SCHEMA = z.object({
 	approved: z.boolean(),
+	scope: z.enum(['once', 'session']).optional(),
 });
 
 export type ApprovalResumePayload = z.infer<typeof APPROVAL_RESUME_SCHEMA>;
@@ -84,7 +86,6 @@ function isApprovalGateContinuation(value: unknown): boolean {
  *
  * The wrapped tool has suspendSchema/resumeSchema set, making it an
  * interruptible tool that uses the existing suspend/resume mechanism.
- * No validation is done here — all schema validation happens in the runtime.
  */
 
 export function wrapToolForApproval(tool: BuiltTool, config: ApprovalConfig): BuiltTool {
@@ -120,7 +121,15 @@ export function wrapToolForApproval(tool: BuiltTool, config: ApprovalConfig): Bu
 			if (resumingInnerTool) {
 				return await originalHandler(input, interruptCtx);
 			}
+			const grantKey = JSON.stringify(['tool', currentTool.name]);
+			const approvalContext = interruptCtx.approvalContext;
 			if (interruptCtx.resumeData === undefined) {
+				if (approvalContext?.approvedKeys.has(grantKey)) {
+					if (config.requireApproval || hasConditionalApproval) {
+						emitToolExecutionStart(currentTool, input, interruptCtx);
+					}
+					return await originalHandler(input, interruptCtx);
+				}
 				let needs = config.requireApproval ?? false;
 				if (!needs && config.needsApprovalFn) {
 					needs = await config.needsApprovalFn(input);
@@ -131,8 +140,11 @@ export function wrapToolForApproval(tool: BuiltTool, config: ApprovalConfig): Bu
 						{
 							type: 'approval',
 							toolName: currentTool.name,
+							...(approvalContext ? { supportsSessionApproval: true } : {}),
 							...(displayName ? { displayName } : {}),
-							args: input,
+							args: approvalContext?.getDisplayArgs
+								? approvalContext.getDisplayArgs(currentTool.name, input)
+								: input,
 						},
 						{
 							resumeSchema: APPROVAL_RESUME_SCHEMA,
@@ -146,8 +158,13 @@ export function wrapToolForApproval(tool: BuiltTool, config: ApprovalConfig): Bu
 				return await originalHandler(input, interruptCtx);
 			}
 
-			const { approved } = interruptCtx.resumeData as z.infer<typeof APPROVAL_RESUME_SCHEMA>;
-			if (!approved) {
+			const decision = APPROVAL_RESUME_SCHEMA.parse(interruptCtx.resumeData);
+			if (decision.scope === 'session' && !approvalContext) {
+				throw new Error('Session approvals are not available for this tool.');
+			}
+			await approvalContext?.onDecision(grantKey, decision);
+			interruptCtx.abortSignal?.throwIfAborted();
+			if (!decision.approved) {
 				return { declined: true, message: `Tool "${currentTool.name}" was not approved` };
 			}
 			if (tool.suspendSchema === undefined) {
@@ -224,6 +241,8 @@ export class Tool<
 
 	private outputTrustValue?: BuiltTool['outputTrust'];
 
+	private endsTurnFn?: (output: OutputType<TOutput>) => boolean;
+
 	private providerOptionsValue?: Record<string, JSONObject>;
 
 	private handleCancellationValue?: boolean;
@@ -234,8 +253,19 @@ export class Tool<
 
 	private systemInstructionText?: string;
 
+	private legacyNamesValue?: string[];
+
 	constructor(name: string) {
 		this.name = name;
+	}
+
+	/**
+	 * Declare former names of this tool. Suspended calls and message history
+	 * persisted under a former name still resolve to this tool.
+	 */
+	legacyNames(...names: string[]): this {
+		this.legacyNamesValue = [...(this.legacyNamesValue ?? []), ...names];
+		return this;
 	}
 
 	/** Set the tool description. Required before building. */
@@ -317,6 +347,12 @@ export class Tool<
 		return this;
 	}
 
+	/** End the run, without another model call, when `fn` returns true for an output. */
+	endsTurnWhen(fn: (output: OutputType<TOutput>) => boolean): this {
+		this.endsTurnFn = fn;
+		return this;
+	}
+
 	/** Treat every model-facing result and error from this tool as external reference data. */
 	untrustedOutput(): this {
 		this.outputTrustValue = 'untrusted';
@@ -384,6 +420,9 @@ export class Tool<
 		if (hasResume && !hasSuspend) {
 			throw new Error(`Tool "${this.name}" has .resume() but missing .suspend()`);
 		}
+		if (this.endsTurnFn && this.toModelOutputFn) {
+			throw new Error(`Tool "${this.name}" cannot combine .endsTurnWhen() with .toModelOutput()`);
+		}
 
 		const hasApproval =
 			(this.requireApprovalValue ?? false) || this.needsApprovalFnValue !== undefined;
@@ -395,6 +434,7 @@ export class Tool<
 
 		const built: BuiltTool = {
 			name: this.name,
+			...(this.legacyNamesValue?.length ? { legacyNames: this.legacyNamesValue } : {}),
 			description: this.desc,
 			systemInstruction: this.systemInstructionText,
 			suspendSchema: this.suspendSchemaValue,
@@ -403,6 +443,7 @@ export class Tool<
 			toMessage: this.toMessageFn as (output: unknown) => AgentMessage | undefined,
 			toModelOutput: this.toModelOutputFn as ((output: unknown) => unknown) | undefined,
 			outputTrust: this.outputTrustValue,
+			endsTurn: this.endsTurnFn as ((output: unknown) => boolean) | undefined,
 			handler: this.handlerFn as (
 				input: unknown,
 				ctx: ToolContext | InterruptibleToolContext,

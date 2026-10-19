@@ -17,6 +17,7 @@ import { classifyNodesForSimulation } from './classify-node-destructiveness.serv
 import { isAiGatewayManagedCredential } from './credential-utils';
 import {
 	CREDENTIALLESS_AI_ROOT_SIMULATION_REASON,
+	DECLARED_OUTPUT_SIMULATION_REASON,
 	findCredentiallessAiRoots,
 	withWaitGateHaltVerdicts,
 } from './plan-verification-simulation';
@@ -126,14 +127,9 @@ export async function reconcileSimulationPlan(args: {
 	// pass never re-judges the rest of the workflow.
 	let freshVerdictByName = new Map<string, NodeSimulationVerdict>();
 	if (satisfiedNames.size > 0) {
-		const scopedWorkflow: WorkflowJSON = {
-			...workflow,
-			nodes: (workflow.nodes ?? []).filter(
-				(node) => typeof node.name === 'string' && satisfiedNames.has(node.name),
-			),
-		};
 		const freshVerdicts = await classifyNodesForSimulation({
-			workflow: scopedWorkflow,
+			workflow,
+			nodeNames: satisfiedNames,
 			mockedNodeNames: remainingMockedNames,
 			fallbackModelConfig,
 		});
@@ -145,6 +141,7 @@ export async function reconcileSimulationPlan(args: {
 	// simulation. Restored AI roots are deterministically safe by type, so
 	// flipping straight to execute matches what a rebuild would classify.
 	const reconciledPlan = buildOutcome.nodeSimulationPlan?.map((verdict) => {
+		if (verdict.reason === DECLARED_OUTPUT_SIMULATION_REASON) return verdict;
 		if (satisfiedNames.has(verdict.nodeName)) {
 			return freshVerdictByName.get(verdict.nodeName) ?? verdict;
 		}
@@ -164,7 +161,9 @@ export async function reconcileSimulationPlan(args: {
 
 	const retainedFixtureEntries = Object.entries(buildOutcome.simulationFixtures ?? {}).filter(
 		([nodeName]) =>
-			freshVerdictByName.get(nodeName)?.verdict !== 'execute' && !restoredAiRoots.has(nodeName),
+			nodeSimulationPlan?.some(
+				(verdict) => verdict.nodeName === nodeName && verdict.verdict === 'simulate',
+			),
 	);
 	const simulationFixtures =
 		retainedFixtureEntries.length > 0 ? Object.fromEntries(retainedFixtureEntries) : undefined;

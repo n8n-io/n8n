@@ -1,88 +1,206 @@
+import { onTestFinished } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
-import ConfirmPasswordModal from './ConfirmPasswordModal.vue';
-import type { createPinia } from 'pinia';
-import { createComponentRenderer } from '@/__tests__/render';
 import userEvent from '@testing-library/user-event';
-import { waitFor } from '@testing-library/vue';
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { CONFIRM_PASSWORD_MODAL_KEY } from '../auth.constants';
-import { confirmPasswordEventBus } from '../auth.eventBus';
+import { screen, waitFor } from '@testing-library/vue';
+import { ResponseError } from '@n8n/rest-api-client';
 import { STORES } from '@n8n/stores';
+import { createComponentRenderer } from '@/__tests__/render';
+import { useUIStore } from '@/app/stores/ui.store';
+import { CONFIRM_PASSWORD_MODAL_KEY, type ConfirmPasswordModalData } from '../auth.constants';
+import { confirmPasswordEventBus } from '../auth.eventBus';
+import ConfirmPasswordModal from './ConfirmPasswordModal.vue';
+
+const toast = vi.hoisted(() => ({
+	showMessage: vi.fn(),
+	showToast: vi.fn(),
+	showError: vi.fn(),
+}));
+
+vi.mock('@n8n/composables/useToast', () => ({ useToast: () => toast }));
+
+const PASSWORD = 'Old-password1';
+const WRONG_PASSWORD_MESSAGE =
+	'Unable to update profile. Please check your credentials and try again.';
 
 const renderModal = createComponentRenderer(ConfirmPasswordModal);
 
-const ModalStub = {
-	template: `
-		<div>
-			<slot name="header" />
-			<slot name="title" />
-			<slot name="content" />
-			<slot name="footer" />
-		</div>
-	`,
-};
-
-const initialState = {
-	[STORES.UI]: {
-		modalStateById: {
-			[CONFIRM_PASSWORD_MODAL_KEY]: {
-				open: true,
+async function renderOpenModal(
+	submit = vi.fn<ConfirmPasswordModalData['submit']>().mockResolvedValue(),
+) {
+	const pinia = createTestingPinia({
+		initialState: {
+			[STORES.UI]: {
+				modalStateById: { [CONFIRM_PASSWORD_MODAL_KEY]: { open: true } },
+				modalStack: [CONFIRM_PASSWORD_MODAL_KEY],
+			},
+			[STORES.USERS]: {
+				currentUserId: '1',
+				usersById: { '1': { id: '1', email: 'nathan@example.com' } },
 			},
 		},
-		modalStack: [CONFIRM_PASSWORD_MODAL_KEY],
-	},
-};
+	});
+	const onClosed = vi.fn();
+	confirmPasswordEventBus.on('closed', onClosed);
+	onTestFinished(() => confirmPasswordEventBus.off('closed', onClosed));
 
-const global = {
-	stubs: {
-		Modal: ModalStub,
-	},
-};
+	const result = renderModal({ pinia, props: { data: { submit } } });
+	await screen.findByRole('dialog');
+	return { ...result, submit, onClosed, uiStore: useUIStore(pinia) };
+}
+
+const rejectWith = (error: Error) =>
+	vi.fn<ConfirmPasswordModalData['submit']>().mockRejectedValue(error);
+
+const getPasswordInput = () => screen.getByLabelText('Password') as HTMLInputElement;
+const getChangeEmailButton = () => screen.getByRole('button', { name: 'Change email' });
+const getError = () => screen.queryByTestId('confirm-password-error');
 
 describe('ConfirmPasswordModal', () => {
-	let pinia: ReturnType<typeof createPinia>;
-
 	beforeEach(() => {
-		vi.restoreAllMocks();
-		pinia = createTestingPinia({ initialState });
+		vi.clearAllMocks();
 	});
 
-	it('should render correctly', () => {
-		const wrapper = renderModal({ pinia });
+	it('should ask for the password to change the email', async () => {
+		await renderOpenModal();
 
-		expect(wrapper.html()).toMatchSnapshot();
+		expect(screen.getByRole('heading', { name: 'Change email?' })).toBeInTheDocument();
+		expect(screen.getByRole('dialog')).toHaveAccessibleDescription(
+			'Enter your password to confirm the new email.',
+		);
+		expect(getPasswordInput()).toHaveAttribute('type', 'password');
+		expect(getPasswordInput()).toHaveAttribute('autocomplete', 'current-password');
+		expect(getChangeEmailButton()).toBeDisabled();
+		await waitFor(() => expect(getPasswordInput()).toHaveFocus());
 	});
 
-	it('should emit password entered by the user when submitting form', async () => {
-		const eventBusSpy = vi.spyOn(confirmPasswordEventBus, 'emit');
+	it('should send the password and close once it is accepted', async () => {
+		const { submit, onClosed, uiStore } = await renderOpenModal();
 
-		const { getByTestId } = renderModal({
-			global,
-			pinia,
-		});
+		await userEvent.type(getPasswordInput(), PASSWORD);
+		expect(getChangeEmailButton()).toBeEnabled();
+		await userEvent.click(getChangeEmailButton());
 
-		// Wait for the onMounted hook to complete and form inputs to render
-		const input = await waitFor(() => getByTestId('currentPassword').querySelector('input')!);
-
-		await userEvent.clear(input);
-		await userEvent.type(input, 'testpassword123');
-
-		await userEvent.click(getByTestId('confirm-password-button'));
-
-		expect(eventBusSpy).toHaveBeenCalledWith('close', {
-			currentPassword: 'testpassword123',
-		});
+		expect(submit).toHaveBeenCalledWith({ currentPassword: PASSWORD });
+		expect(uiStore.closeModal).toHaveBeenCalledWith(CONFIRM_PASSWORD_MODAL_KEY);
+		expect(onClosed).toHaveBeenCalledWith({ currentPassword: PASSWORD });
+		expect(toast.showError).not.toHaveBeenCalled();
 	});
 
-	it('should not submit form when password is empty', async () => {
-		const { getByTestId } = renderModal({
-			global,
-			pinia,
+	it('should send the password when pressing Enter', async () => {
+		const { submit } = await renderOpenModal();
+
+		await userEvent.type(getPasswordInput(), `${PASSWORD}{Enter}`);
+
+		expect(submit).toHaveBeenCalledWith({ currentPassword: PASSWORD });
+	});
+
+	it('should not send an empty password when pressing Enter', async () => {
+		const { submit } = await renderOpenModal();
+
+		await userEvent.type(getPasswordInput(), '{Enter}');
+
+		expect(submit).not.toHaveBeenCalled();
+	});
+
+	it('should stay open and explain a wrong password until it is changed', async () => {
+		const submit = rejectWith(new ResponseError(WRONG_PASSWORD_MESSAGE, { httpStatusCode: 400 }));
+		const { onClosed, uiStore } = await renderOpenModal(submit);
+
+		await userEvent.type(getPasswordInput(), `${PASSWORD}{Enter}`);
+
+		expect(getError()).toHaveTextContent(
+			'This password is wrong. Enter the password you use to sign in.',
+		);
+		expect(getPasswordInput()).toHaveAttribute('aria-invalid', 'true');
+		expect(getPasswordInput()).toHaveAccessibleDescription(
+			'This password is wrong. Enter the password you use to sign in.',
+		);
+		expect(getChangeEmailButton()).toBeDisabled();
+		const input = getPasswordInput();
+		expect(input).toHaveFocus();
+		expect([input.selectionStart, input.selectionEnd]).toEqual([0, PASSWORD.length]);
+		expect(uiStore.closeModal).not.toHaveBeenCalled();
+		expect(onClosed).not.toHaveBeenCalled();
+		expect(toast.showError).not.toHaveBeenCalled();
+
+		await userEvent.keyboard('{Enter}');
+		expect(submit).toHaveBeenCalledTimes(1);
+
+		await userEvent.keyboard('x');
+		expect(getError()).not.toBeInTheDocument();
+		expect(getChangeEmailButton()).toBeEnabled();
+	});
+
+	it('should ask to wait after too many attempts', async () => {
+		await renderOpenModal(
+			rejectWith(new ResponseError('Too many requests', { httpStatusCode: 429 })),
+		);
+
+		await userEvent.type(getPasswordInput(), `${PASSWORD}{Enter}`);
+
+		expect(getError()).toHaveTextContent('Too many attempts. Wait a few minutes, then try again.');
+		expect(getChangeEmailButton()).toBeDisabled();
+	});
+
+	it('should close with a toast when the change fails for another reason', async () => {
+		const error = new ResponseError('Internal server error', { httpStatusCode: 500 });
+		const { onClosed } = await renderOpenModal(rejectWith(error));
+
+		await userEvent.type(getPasswordInput(), `${PASSWORD}{Enter}`);
+
+		expect(getError()).not.toBeInTheDocument();
+		expect(toast.showError).toHaveBeenCalledWith(error, 'Problem updating your details');
+		expect(onClosed).toHaveBeenCalledWith({ currentPassword: PASSWORD });
+	});
+
+	it('should not mistake another 400 for a wrong password', async () => {
+		const error = new ResponseError('This email address is already in use', {
+			httpStatusCode: 400,
 		});
-		const eventBusSpy = vi.spyOn(confirmPasswordEventBus, 'emit');
+		await renderOpenModal(rejectWith(error));
 
-		await userEvent.click(getByTestId('confirm-password-button'));
+		await userEvent.type(getPasswordInput(), `${PASSWORD}{Enter}`);
 
-		expect(eventBusSpy).not.toHaveBeenCalled();
+		expect(getError()).not.toBeInTheDocument();
+		expect(toast.showError).toHaveBeenCalledWith(error, 'Problem updating your details');
+	});
+
+	it('should close without a password on Cancel', async () => {
+		const { submit, onClosed, uiStore } = await renderOpenModal();
+
+		await userEvent.type(getPasswordInput(), PASSWORD);
+		await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+		expect(submit).not.toHaveBeenCalled();
+		expect(uiStore.closeModal).toHaveBeenCalledWith(CONFIRM_PASSWORD_MODAL_KEY);
+		expect(onClosed).toHaveBeenCalledWith(undefined);
+	});
+
+	it('should close without a password with the close button', async () => {
+		const { onClosed } = await renderOpenModal();
+
+		await userEvent.click(screen.getByRole('button', { name: 'Close dialog' }));
+
+		expect(onClosed).toHaveBeenCalledWith(undefined);
+	});
+
+	it('should not close while the password is being checked', async () => {
+		let accept!: () => void;
+		const submit = vi
+			.fn<ConfirmPasswordModalData['submit']>()
+			.mockReturnValue(new Promise<void>((resolve) => (accept = resolve)));
+		const { onClosed, uiStore } = await renderOpenModal(submit);
+
+		await userEvent.type(getPasswordInput(), `${PASSWORD}{Enter}`);
+
+		expect(screen.getByRole('button', { name: 'Cancel' })).toBeDisabled();
+		await userEvent.keyboard('{Escape}');
+		await userEvent.click(screen.getByRole('button', { name: 'Close dialog' }));
+		expect(uiStore.closeModal).not.toHaveBeenCalled();
+		expect(onClosed).not.toHaveBeenCalled();
+
+		accept();
+		await waitFor(() => expect(onClosed).toHaveBeenCalledWith({ currentPassword: PASSWORD }));
+		expect(uiStore.closeModal).toHaveBeenCalledTimes(1);
 	});
 });

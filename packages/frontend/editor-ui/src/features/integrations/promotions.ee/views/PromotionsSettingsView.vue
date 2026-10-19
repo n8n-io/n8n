@@ -12,28 +12,36 @@ import {
 	N8nSettingsSection,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { ResponseError } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { nextTick, onMounted, ref, useTemplateRef } from 'vue';
 
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { useLatestFetch } from '@/app/composables/useLatestFetch';
+import PromoteApplyInstanceSection from '../components/PromoteApplyInstanceSection.vue';
 import PromotionConnectionForm from '../components/PromotionConnectionForm.vue';
 import PromotionProviderDialog from '../components/PromotionProviderDialog.vue';
+import { invalidateInstancePromotionConnection } from '../composables/useInstancePromotionConnection';
 import {
+	fetchPromotionConnection,
 	fetchPromotionConnections,
 	fetchPromotionProviders,
 	type PromotionConnection,
 	type PromotionProviderSummary,
 } from '../promotionsSettings.api';
+import type { PromotionProviderChange } from '../promotionsSettings.utils';
 
 const i18n = useI18n();
 const toast = useToast();
 const rootStore = useRootStore();
 const documentTitle = useDocumentTitle();
+const { next: nextLoad } = useLatestFetch();
 
 const providers = ref<PromotionProviderSummary[]>([]);
 const connection = ref<PromotionConnection | null>(null);
 const isInitialLoading = ref(true);
 const loadError = ref(false);
+const hasLoaded = ref(false);
 const dialogOpen = ref(false);
 const editingId = ref<string | undefined>(undefined);
 const providerToFocus = ref<string | undefined>(undefined);
@@ -45,29 +53,44 @@ const page = useTemplateRef<{ $el?: HTMLElement }>('page');
 const connectionForm =
 	useTemplateRef<InstanceType<typeof PromotionConnectionForm>>('connectionForm');
 
-let hasLoaded = false;
+let connectionRevision = 0;
 let pendingLoad: Promise<void> = Promise.resolve();
 
 async function load() {
+	const isLatestLoad = nextLoad();
+	const revision = connectionRevision;
 	// Keep the list mounted during refresh so focus can return to a row.
-	// A retry after an error must show loading, so the form mounts with loaded data.
-	isInitialLoading.value = !hasLoaded || loadError.value;
+	isInitialLoading.value = !hasLoaded.value;
 	loadError.value = false;
 	try {
 		const [loadedProviders, connections] = await Promise.all([
 			fetchPromotionProviders(rootStore.publicApiContext),
 			fetchPromotionConnections(rootStore.publicApiContext, { scope: 'instance' }),
 		]);
+		if (!isLatestLoad()) return;
+		const summary = connections[0];
+		const loadedConnection = summary
+			? await fetchPromotionConnection(rootStore.publicApiContext, summary.id)
+			: null;
+		if (!isLatestLoad()) return;
 		providers.value = loadedProviders;
-		connection.value = connections[0] ?? null;
+		// A save can finish while connection detail is loading.
+		if (revision === connectionRevision) connection.value = loadedConnection;
+		hasLoaded.value = true;
 	} catch (error) {
+		if (!isLatestLoad() || revision !== connectionRevision) return;
 		loadError.value = true;
-		providers.value = [];
-		connection.value = null;
+		if (
+			error instanceof ResponseError &&
+			(error.httpStatusCode === 401 || error.httpStatusCode === 403)
+		) {
+			hasLoaded.value = false;
+			providers.value = [];
+			connection.value = null;
+		}
 		toast.showError(error, i18n.baseText('settings.promotions.providers.error.title'));
 	} finally {
-		isInitialLoading.value = false;
-		hasLoaded = true;
+		if (isLatestLoad()) isInitialLoading.value = false;
 	}
 }
 
@@ -77,6 +100,7 @@ onMounted(async () => {
 });
 
 function authTypeLabel(provider: PromotionProviderSummary) {
+	if (provider.type === 'gitlab') return i18n.baseText('settings.promotions.providers.type.gitlab');
 	return i18n.baseText(
 		provider.authType === 'ssh-key'
 			? 'settings.promotions.providers.authType.sshKey'
@@ -98,11 +122,18 @@ function openEditDialog(id: string) {
 	dialogOpen.value = true;
 }
 
-function onProviderSaved(id: string) {
+function onProviderSaved(change: PromotionProviderChange) {
+	const { id } = change;
 	providerToFocus.value = id;
+	connectionForm.value?.applyProviderChange(change);
 	if (selectAfterCreate.value) {
-		connectionForm.value?.selectProvider(id);
 		selectAfterCreate.value = false;
+		pendingLoad = load().then(() => {
+			if (providers.value.some((provider) => provider.id === id)) {
+				connectionForm.value?.selectProvider(id);
+			}
+		});
+		return;
 	}
 	pendingLoad = load();
 }
@@ -110,6 +141,18 @@ function onProviderSaved(id: string) {
 function onProviderDeleted() {
 	providerToFocus.value = undefined;
 	pendingLoad = load();
+}
+
+function onConnectionSaved(saved: PromotionConnection) {
+	connectionRevision++;
+	connection.value = saved;
+	// The project header caches the instance connection per page load.
+	invalidateInstancePromotionConnection();
+}
+
+function onConnectionRefresh() {
+	invalidateInstancePromotionConnection();
+	void load();
 }
 
 async function focusProvider(id: string | undefined) {
@@ -136,6 +179,8 @@ async function onDialogOpenChange(open: boolean) {
 			:show-docs-link="false"
 		/>
 
+		<PromoteApplyInstanceSection :connection="connection" />
+
 		<N8nSettingsSection
 			:title="i18n.baseText('settings.promotions.providers.title')"
 			:description="i18n.baseText('settings.promotions.providers.description')"
@@ -149,7 +194,7 @@ async function onDialogOpenChange(open: boolean) {
 				data-test-id="promotion-providers-load-error"
 				@click:button="load"
 			/>
-			<template v-else>
+			<template v-if="!isInitialLoading && hasLoaded">
 				<div ref="list" :class="$style.list">
 					<N8nSettingsRowGroup v-for="provider in providers" :key="provider.id">
 						<N8nSettingsRow
@@ -196,11 +241,12 @@ async function onDialogOpenChange(open: boolean) {
 		>
 			<N8nLoading2 v-if="isInitialLoading" :rows="3" :shrink-last="false" />
 			<PromotionConnectionForm
-				v-else-if="!loadError"
+				v-else-if="hasLoaded"
 				ref="connectionForm"
 				:providers="providers"
 				:connection="connection"
-				@saved="connection = $event"
+				@saved="onConnectionSaved"
+				@refresh="onConnectionRefresh"
 				@add-provider="openCreateDialog(true)"
 			/>
 		</N8nSettingsSection>

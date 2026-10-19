@@ -1,5 +1,8 @@
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
+import { readFileSync } from 'fs';
+import { jsonParse, type IDataObject, type INode } from 'n8n-workflow';
 import nock from 'nock';
+import { join } from 'path';
 
 import { credentials } from '../../../credentials';
 
@@ -106,5 +109,22 @@ describe('Test MicrosoftTeamsV2, channelMessage => create with mentions', () => 
 		credentials,
 		workflowFiles: ['create.mentions.workflow.json'],
 		customAssertions: () => expect(nock.pendingMocks()).toEqual([]),
+	});
+
+	// The harness run above is what kills a wrong `mentionType` default. This guards its premise:
+	// the fixture is the on-disk shape of a workflow saved before the mention type existed, and
+	// adding a mention type here would silently make that run prove nothing.
+	it('keeps the harness fixture free of a mention type', () => {
+		const workflow = jsonParse<{ nodes: INode[] }>(
+			readFileSync(join(__dirname, 'create.mentions.workflow.json'), 'utf8'),
+		);
+		const teams = workflow.nodes.find((node) => node.type === 'n8n-nodes-base.microsoftTeams');
+		const rows = ((teams?.parameters.mentions as IDataObject)?.mention ?? []) as IDataObject[];
+
+		expect(rows).toHaveLength(2);
+		for (const row of rows) {
+			expect(row).toHaveProperty('userId');
+			expect(row).not.toHaveProperty('mentionType');
+		}
 	});
 });

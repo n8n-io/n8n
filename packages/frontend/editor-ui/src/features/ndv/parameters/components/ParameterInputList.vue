@@ -996,6 +996,7 @@ watch(
 			/>
 			<AssignmentCollection
 				v-else-if="item.parameter.type === 'assignmentCollection'"
+				class="parameter-item"
 				:parameter="item.parameter"
 				:value="getParameterValue<AssignmentCollectionValue>(item.parameter.name)"
 				:path="item.path"
@@ -1116,7 +1117,7 @@ watch(
 		padding: 0.7em;
 
 		a {
-			font-weight: var(--font-weight--bold);
+			font-weight: var(--font-weight--medium);
 		}
 	}
 

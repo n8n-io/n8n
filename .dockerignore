@@ -26,7 +26,7 @@
 !docker/images/runners
 !docker/images/runners/n8n-task-runners.json
 
-# === benchmark image (packages/@n8n/benchmark/Dockerfile) ===
+# === benchmark image (packages/quality/efficiency/scale/benchmark/Dockerfile) ===
 !package.json
 !pnpm-lock.yaml
 !pnpm-workspace.yaml
@@ -34,8 +34,10 @@
 !patches/**
 !scripts
 !scripts/**
-!packages/@n8n/benchmark
-!packages/@n8n/benchmark/**
+!packages/quality
+!packages/quality/efficiency
+!packages/quality/efficiency/scale
+!packages/quality/efficiency/scale/benchmark
+!packages/quality/efficiency/scale/benchmark/**
 !packages/@n8n/typescript-config
 !packages/@n8n/typescript-config/**
-

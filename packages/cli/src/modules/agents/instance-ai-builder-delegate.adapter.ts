@@ -13,18 +13,21 @@ import { type Scope } from '@n8n/permissions';
 import { Like } from '@n8n/typeorm';
 import { UserError } from 'n8n-workflow';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { ForbiddenError } from '@n8n/errors';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
 import { AgentConfigService } from './agent-config.service';
-import { AGENT_CAPABILITIES, AGENT_LIMITATIONS } from './agent-capabilities';
-import { AgentIntegrationPersistenceService } from './agent-integration-persistence.service';
+import { AgentSkillRefsService } from './agent-skill-refs.service';
 import { AgentSkillsService } from './agent-skills.service';
+import { AgentValidationService } from './agent-validation.service';
 import { AgentsService } from './agents.service';
+import { AgentsSettingsService } from './agents-settings.service';
 import { AgentsBuilderService } from './builder/agents-builder.service';
 import type { InstanceAiBuilderSessionOptions } from './builder/agents-builder.service';
 import { N8nMemory } from './integrations/n8n-memory';
+import { toAgentDocument } from './json-config/agent-document';
 import { AgentThreadRepository } from './repositories/agent-thread.repository';
+import { countAgentCapabilities, totalAgentCapabilities } from './utils/agent-capabilities';
 import { getAgentConfigHash } from './utils/agent-config-hash';
 
 /** Prompt addendum for sub-agent runs; exported for tests. */
@@ -32,9 +35,13 @@ export const INSTANCE_AI_BUILDER_ADDENDUM = `## Instance AI session rules
 
 You are running as a sub-agent inside n8n's instance AI chat; the user sees your questions as chat cards.
 
-Preview links work in this chat. Include a markdown Preview link after a successful build and when \`call_agent\` reports an unsupported interaction as \`approval_required\`, using the exact relative path from "When To Build vs When To Converse" (form: \`[Preview](<path>)\`). Do not invent absolute URLs. Do not omit the link and describe the path in plain text instead.
+Preview links work in this chat. Include a markdown Preview link after a successful build and when \`call_agent\` reports an unsupported interaction as \`approval_required\`, using the exact relative path from the "Session context" section (form: \`[Preview](<path>)\`). Do not invent absolute URLs. Do not omit the link and describe the path in plain text instead.
+
+When you mention the agent editor, say Sessions tab for history and Preview for live chat. Never say Runs, Executions, or Activity History for agents.
 
 You can publish and unpublish the target agent with \`publish_agent\` and \`unpublish_agent\`. Never tell the user to open the agent editor and click Publish.
+
+Use \`agent-context\` for read-only exploration of the target Agent and related project context. Use the legacy read tools only when a mutation flow specifically requires their freshness token.
 
 The Instance AI orchestrator can create workflows and data tables — never ask the user to create them manually. For each missing artifact, call \`report_required_artifact\` with its concrete requirements before your final reply; the orchestrator will provision them and call you again when the Agent needs the result.
 
@@ -98,7 +105,9 @@ export class InstanceAiBuilderDelegateAdapterService {
 		private readonly agentThreadRepository: AgentThreadRepository,
 		private readonly agentConfig: AgentConfigService,
 		private readonly agentSkills: AgentSkillsService,
-		private readonly agentIntegrationPersistenceService: AgentIntegrationPersistenceService,
+		private readonly agentsSettingsService: AgentsSettingsService,
+		private readonly agentValidation: AgentValidationService,
+		private readonly agentSkillRefs: AgentSkillRefsService,
 	) {}
 
 	/** Builder session options for the sub-agent surface: appends the sub-agent prompt rules. */
@@ -125,7 +134,11 @@ export class InstanceAiBuilderDelegateAdapterService {
 	createDelegate(
 		user: User,
 		projectId: string,
-		credentialProvider: CredentialProvider,
+		// Built per build/resume turn from the concrete target agent id, not once
+		// up front: in the build-new-agent flow the agent does not exist when the
+		// delegate is created, so a provider captured here would tag Gateway spend
+		// with an undefined agent id.
+		credentialProviderFor: (agentId: string) => CredentialProvider,
 		credentialService: InstanceAiCredentialService,
 		options: { useEvalModelCatalog?: boolean } = {},
 	): InstanceAiBuilderDelegate {
@@ -138,33 +151,38 @@ export class InstanceAiBuilderDelegateAdapterService {
 				throw new ForbiddenError('You do not have permission to access agents in this project.');
 			}
 		};
+		// Checked on every call, not when the delegate is created: a run that started
+		// before an admin turned Agents off must lose access at its next step.
+		const assertAccess = async (...scopes: Scope[]): Promise<void> => {
+			await this.agentsSettingsService.assertEnabled();
+			await assertProjectScope(...scopes);
+		};
 
 		return {
 			createAgent: async (name, options) => {
 				// Adopting also needs `agent:update` — see the port's `adoptOnCollision` docs.
-				await assertProjectScope(
+				await assertAccess(
 					...(options?.adoptOnCollision
 						? (['agent:create', 'agent:update'] as const)
 						: (['agent:create'] as const)),
 				);
-				const { agent, adopted } = await this.agentsService.createOrAdopt(
-					projectId,
-					name,
-					options ?? {},
-				);
+				const { agent, adopted } = await this.agentsService.createOrAdopt(projectId, name, {
+					...options,
+					actor: { kind: 'user', user },
+				});
 				// An adopted row keeps the winner's name, so report the persisted one.
 				return { agentId: agent.id, projectId, name: agent.name, adopted };
 			},
 
 			streamBuild: async (agentId, message, session) => {
-				await assertProjectScope('agent:update');
+				await assertAccess('agent:update');
 				const requiredArtifacts: BuilderRequiredArtifact[] = [];
 				return toBuilderTurnStream(
 					this.agentsBuilderService.buildAgent(
 						agentId,
 						projectId,
 						message,
-						credentialProvider,
+						credentialProviderFor(agentId),
 						credentialService,
 						user,
 						this.buildSubAgentSession(
@@ -178,7 +196,7 @@ export class InstanceAiBuilderDelegateAdapterService {
 			},
 
 			resumeBuild: async (agentId, resume, session) => {
-				await assertProjectScope('agent:update');
+				await assertAccess('agent:update');
 				const requiredArtifacts: BuilderRequiredArtifact[] = [];
 				return toBuilderTurnStream(
 					this.agentsBuilderService.resumeBuild(
@@ -187,7 +205,7 @@ export class InstanceAiBuilderDelegateAdapterService {
 						resume.runId,
 						resume.toolCallId,
 						resume.resumeData,
-						credentialProvider,
+						credentialProviderFor(agentId),
 						credentialService,
 						user,
 						this.buildSubAgentSession(
@@ -201,7 +219,7 @@ export class InstanceAiBuilderDelegateAdapterService {
 			},
 
 			findOpenSuspensions: async (agentId, session) => {
-				await assertProjectScope('agent:update');
+				await assertAccess('agent:update');
 				const checkpoint = await this.agentsBuilderService.findOpenCheckpointForThread(
 					agentId,
 					session.threadId,
@@ -217,38 +235,12 @@ export class InstanceAiBuilderDelegateAdapterService {
 				await this.agentsBuilderService.cancelCheckpoint(agentId, runId);
 			},
 
-			listAgents: async () => {
-				await assertProjectScope('agent:read');
-				const agents = await this.agentsService.findByProjectId(projectId);
-				return agents.map((agent) => ({
-					agentId: agent.id,
-					name: agent.name,
-					published: agent.activeVersionId !== null,
-					updatedAt: agent.updatedAt.toISOString(),
-				}));
-			},
-
-			listAgentCapabilities: async () => {
-				await assertProjectScope('agent:read');
-				// Channels come from the registry (same source the builder's
-				// `list_integration_types` projects); agent-level capabilities and
-				// limitations come from this module's constants, so the registry
-				// and the agent config schema stay the single sources of truth as
-				// channels, tools, or limits are added or removed.
-				const channels = this.agentIntegrationPersistenceService.listChatIntegrations();
-				return {
-					channels,
-					agentCapabilities: [...AGENT_CAPABILITIES],
-					limitations: [...AGENT_LIMITATIONS],
-				};
-			},
-
 			resolveAgentName: async (agentId) => {
-				await assertProjectScope('agent:read');
+				await assertAccess('agent:read');
 				return (await this.agentsService.findById(agentId, projectId))?.name;
 			},
 			readAgentArtifact: async (agentId) => {
-				await assertProjectScope('agent:read');
+				await assertAccess('agent:read');
 				// No JSON config yet (freshly created) is an empty snapshot, not an error.
 				// Anything else propagates: the callers already treat a throw as "no
 				// snapshot", and it gets logged there instead of vanishing here.
@@ -260,8 +252,31 @@ export class InstanceAiBuilderDelegateAdapterService {
 				return {
 					config,
 					skills: await this.agentSkills.listSkills(agentId, projectId),
-					// The same hash `read_config` hands the model, so consumers can dedupe.
+					// The same hash `agent-context` hands the model, so consumers can dedupe.
 					configHash: getAgentConfigHash(config),
+				};
+			},
+			validateAgent: async (agentId) => {
+				await assertProjectScope('agent:read');
+				const agent = await this.agentsService.findById(agentId, projectId);
+				if (!agent) return undefined;
+				// Same gate as `AgentSetupCompletionService`, without claiming the milestone.
+				const skillRefs = await this.agentSkillRefs.refsForDraft(agent, {});
+				const validation = await this.agentValidation.validateLoadedAgentConfiguration(
+					agent,
+					projectId,
+					credentialProviderFor(agentId),
+					'publish',
+					{ skillRefs },
+				);
+				const config = agent.schema ? toAgentDocument(agent.schema, skillRefs) : null;
+				return {
+					valid: validation.status === 'valid',
+					issueCodes: [...new Set(validation.issues.map((issue) => issue.code))].sort(),
+					issueCount: validation.issues.length,
+					capabilityCount: totalAgentCapabilities(
+						countAgentCapabilities(config, agent.integrations),
+					),
 				};
 			},
 		};
@@ -284,7 +299,6 @@ export class InstanceAiBuilderDelegateAdapterService {
 		for (const { id } of threads) {
 			// The target agent id is the suffix; memory impls are agent-scoped.
 			const memory = this.n8nMemory.getImplementation(id.slice(prefix.length));
-			await memory.deleteMessagesByThread(id);
 			await memory.deleteThread(id);
 		}
 	}

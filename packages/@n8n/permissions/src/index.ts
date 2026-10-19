@@ -1,5 +1,6 @@
 export * from './types.ee';
 export * from './constants.ee';
+export type * from './principal.ee';
 
 export * from './roles/scopes/global-scopes.ee';
 export * from './scope-information';

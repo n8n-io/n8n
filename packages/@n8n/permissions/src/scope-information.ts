@@ -22,6 +22,27 @@ export const ALL_SCOPES = buildResourceScopes();
 export const ALL_API_KEY_SCOPES = buildApiKeyScopes();
 
 export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
+	'aiPreference:read': {
+		displayName: 'Read AI Preferences',
+		description:
+			'Allows reading the AI preferences saved for the instance, the user, and their projects.',
+	},
+	'skill:read': {
+		displayName: 'Read Skills',
+		description: 'Allows reading instance skills.',
+	},
+	'skill:update': {
+		displayName: 'Update Skills',
+		description: 'Allows editing and saving instance skills.',
+	},
+	'projectSkill:read': {
+		displayName: 'Read Project Skills',
+		description: 'Allows reading the skills of a project.',
+	},
+	'projectSkill:update': {
+		displayName: 'Update Project Skills',
+		description: 'Allows editing and saving the skills of a project.',
+	},
 	'agent:create': {
 		displayName: 'Create Agent',
 		description: 'Allows creating new agents in a project.',
@@ -29,6 +50,10 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 	'agent:read': {
 		displayName: 'Read Agent',
 		description: 'Allows reading agent configuration and history.',
+	},
+	'agent:export': {
+		displayName: 'Export Agent',
+		description: 'Allows including agents in a portable package export.',
 	},
 	'agent:update': {
 		displayName: 'Update Agent',
@@ -58,9 +83,26 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 		displayName: 'Manage AI Usage',
 		description: 'Allows managing AI Usage settings.',
 	},
+	'execution:read': {
+		displayName: 'View Execution',
+		description: 'Allows viewing executions of workflows the role can view.',
+	},
+	'execution:list': {
+		displayName: 'List Executions',
+		description: 'Allows listing executions of workflows the role can view.',
+	},
+	'execution:delete': {
+		displayName: 'Delete Execution',
+		description: 'Allows deleting executions of workflows in the project.',
+	},
 	'nodeTypePolicy:manage': {
 		displayName: 'Manage Node Type Policies',
 		description: 'Allows managing which node types are available, on the instance or in a project.',
+	},
+	'credentialTypePolicy:manage': {
+		displayName: 'Manage Credential Type Policies',
+		description:
+			'Allows managing which credential types are available, on the instance or in a project.',
 	},
 	'encryptionKey:manage': {
 		displayName: 'Manage Encryption Keys',
@@ -112,6 +154,11 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 		description:
 			"Allows creating, deleting, and changing the type of end-user credentials, which resolve to each user's own connection.",
 	},
+	'credential:use': {
+		displayName: 'Use Credential',
+		description:
+			'Allows using any credential on the instance in a workflow, without being a member of its project. Without it, a role that can read credentials sees them but cannot select, test, or run them.',
+	},
 	'credential:manageInstance': {
 		displayName: 'Manage provider connections',
 		description:
@@ -156,6 +203,10 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 	'gitConnection:list': {
 		displayName: 'List Git Connections',
 		description: 'Allows listing Git connections.',
+	},
+	'gitConnection:discover': {
+		displayName: 'Discover Git repositories',
+		description: 'Allows listing remote repositories and branches with saved provider credentials.',
 	},
 	'gitConnection:clone': {
 		displayName: 'Clone Git Connection',
