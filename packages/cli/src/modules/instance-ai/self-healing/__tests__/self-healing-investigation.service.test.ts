@@ -302,7 +302,7 @@ describe('SelfHealingInvestigationService', () => {
 		},
 	);
 
-	it.each(['max-iterations', 'other'] as const)(
+	it.each(['error', 'max-iterations', 'other'] as const)(
 		'creates no result for termination reason %s',
 		async (finishReason) => {
 			run.finishReason = finishReason;

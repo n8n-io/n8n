@@ -628,6 +628,10 @@ type TerminalGuardOrderServiceInternals = {
 		message: string,
 		abortController: AbortController,
 	) => Promise<void>;
+	trackInFlightExecution: (
+		promise: Promise<unknown>,
+		context?: { threadId: string; runId: string },
+	) => void;
 	processResumedStream: (
 		agent: unknown,
 		resumeData: unknown,
@@ -1433,6 +1437,22 @@ describe('InstanceAiService — runtime workspace setup', () => {
 });
 
 describe('InstanceAiService — shutdown', () => {
+	it('logs an escaped execution rejection and clears tracking', async () => {
+		const service = createTerminalGuardOrderService();
+		service.inFlightExecutions = new Set();
+		const error = new Error('Execution failed');
+		const context = { threadId: 'thread-1', runId: 'run-1' };
+
+		service.trackInFlightExecution(Promise.reject(error), context);
+		await Promise.all(service.inFlightExecutions);
+
+		expect(service.logger.error).toHaveBeenCalledExactlyOnceWith(
+			'Unexpected Instance AI execution failure',
+			{ ...context, error },
+		);
+		expect(service.inFlightExecutions.size).toBe(0);
+	});
+
 	it('does not destroy thread-scoped sandboxes on service shutdown', async () => {
 		const service = Object.create(
 			InstanceAiService.prototype,

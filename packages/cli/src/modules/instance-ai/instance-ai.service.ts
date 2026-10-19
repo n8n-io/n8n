@@ -1587,6 +1587,7 @@ export class InstanceAiService {
 				this.liveness.clearThreadState(threadId);
 			});
 
+		// The investigation caller awaits this promise and reports failures.
 		this.trackInFlightExecution(execution);
 
 		return await execution;
@@ -2295,11 +2296,26 @@ export class InstanceAiService {
 	 * directly — they make tracking unmissable by binding the spawn and the
 	 * tracking together in one method.
 	 */
-	private trackInFlightExecution(promise: Promise<unknown>): void {
+	private trackInFlightExecution(
+		promise: Promise<unknown>,
+		failureContext?: { threadId: string; runId: string },
+	): void {
 		const clear = () => {
 			this.inFlightExecutions.delete(tracked);
 		};
-		const tracked = promise.then(clear, clear);
+		const tracked = promise.then(clear, (error: unknown) => {
+			try {
+				// Awaited callers report their own failures. Detached runs need this boundary.
+				if (failureContext) {
+					this.logger.error('Unexpected Instance AI execution failure', {
+						...failureContext,
+						error,
+					});
+				}
+			} finally {
+				clear();
+			}
+		});
 		this.inFlightExecutions.add(tracked);
 	}
 
@@ -2309,14 +2325,16 @@ export class InstanceAiService {
 	 * wrapper rather than invoking `executeRun` directly.
 	 */
 	private startExecuteRun(...args: Parameters<InstanceAiService['executeRun']>): void {
-		this.trackInFlightExecution(this.executeRun(...args));
+		const [, threadId, runId] = args;
+		this.trackInFlightExecution(this.executeRun(...args), { threadId, runId });
 	}
 
 	/** Same shutdown-drain contract as `startExecuteRun`, for the resume path. */
 	private startProcessResumedStream(
 		...args: Parameters<InstanceAiService['processResumedStream']>
 	): void {
-		this.trackInFlightExecution(this.processResumedStream(...args));
+		const { threadId, runId } = args[2];
+		this.trackInFlightExecution(this.processResumedStream(...args), { threadId, runId });
 	}
 
 	/**

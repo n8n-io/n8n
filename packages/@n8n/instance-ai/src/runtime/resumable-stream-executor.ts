@@ -565,7 +565,7 @@ export async function executeResumableStream(
 
 		if (pass.stopReason) {
 			return {
-				status: hasError || pass.finishReason === 'error' ? 'errored' : 'completed',
+				status: hasError ? 'errored' : 'completed',
 				agentRunId: activeAgentRunId,
 				text,
 				...(error !== undefined ? { error } : {}),
@@ -580,7 +580,7 @@ export async function executeResumableStream(
 
 		if (!suspension) {
 			return {
-				status: hasError || pass.finishReason === 'error' ? 'errored' : 'completed',
+				status: hasError ? 'errored' : 'completed',
 				agentRunId: activeAgentRunId,
 				text,
 				...(error !== undefined ? { error } : {}),

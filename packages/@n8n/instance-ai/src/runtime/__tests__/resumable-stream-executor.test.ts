@@ -133,7 +133,7 @@ describe('executeResumableStream', () => {
 	it.each([
 		{ finishReason: 'stop', status: 'completed' },
 		{ finishReason: 'max-iterations', status: 'completed' },
-		{ finishReason: 'error', status: 'errored' },
+		{ finishReason: 'error', status: 'completed' },
 	])('preserves SDK terminal details for $finishReason', async ({ finishReason, status }) => {
 		const structuredOutput = { summary: 'Finished checking the candidate.' };
 		const result = await executeResumableStream({
