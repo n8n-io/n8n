@@ -35,7 +35,7 @@ export type PersistedAgentOutcome =
 
 export interface AgentImportOutcome {
 	status: PersistedAgentOutcome['status'];
-	agent: Agent;
+	agent: ProjectAgent;
 	sourceAgentId: string;
 	publishing: PublishingOutcome;
 }
