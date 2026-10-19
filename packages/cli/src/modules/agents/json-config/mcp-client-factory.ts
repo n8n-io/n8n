@@ -153,6 +153,8 @@ export async function buildMcpClientForServer(
 		? resolveMcpAuthDomainPolicy(server.authentication, credentialData, mcpHostname)
 		: undefined;
 
+	let refreshHeaders: (() => Promise<Record<string, string> | null>) | undefined;
+
 	const registryNodeName = server.metadata?.nodeTypeName;
 	if (!registryNodeName && credentialType?.endsWith('McpOAuth2Api')) {
 		credentialError = new OperationalError(
@@ -167,6 +169,12 @@ export async function buildMcpClientForServer(
 				const minted = await mintAiGatewayCredential(connection, credentialProvider);
 				credentialType = minted.credentialType;
 				credentialData = minted.credentialData;
+				// The token expires while a cached runtime still uses this client, so mint again on a 401.
+				refreshHeaders = async () => {
+					const fresh = await mintAiGatewayCredential(connection, credentialProvider);
+					const prepared = prepareMcpRegistryConnection({ connection, ...fresh });
+					return prepared.ok ? prepared.value.headers : null;
+				};
 			}
 			if (
 				!connection ||
@@ -224,6 +232,7 @@ export async function buildMcpClientForServer(
 					oauthService,
 					projectId,
 					allowedDomains,
+					refreshHeaders,
 				}),
 			};
 

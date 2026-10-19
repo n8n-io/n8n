@@ -843,7 +843,7 @@ describe('buildMcpClientForServer — Gateway credits', () => {
 				oauthService: mock<OauthService>(),
 				projectId: 'proj-1',
 				proxyFetch,
-				resolveRegistryConnection: async () => connection,
+				resolveRegistryConnection: async () => connection ?? undefined,
 			},
 		);
 		const [configs] = mcpClientCtor.mock.calls[0] as [Array<{ url: string; fetch: typeof fetch }>];
@@ -867,6 +867,19 @@ describe('buildMcpClientForServer — Gateway credits', () => {
 		expect(config.url).toBe('https://gateway.n8n.test/v1/gateway/mcp/firecrawl');
 		const [, init] = proxyFetchMock.mock.calls[0] as [string, RequestInit];
 		expect(headersToCaseInsensitiveRecord(init.headers).Authorization).toBe('Bearer minted');
+	});
+
+	it('mints Gateway credits again after a 401, and retries with the new token', async () => {
+		const { config, credentialProvider } = await build({ authentication: 'none' });
+		credentialProvider.resolveAiGatewayMcpCredential.mockResolvedValue({ token: 'fresh' });
+		proxyFetchMock.mockResolvedValueOnce(make401());
+
+		const response = await config.fetch(config.url);
+
+		expect(response.status).toBe(200);
+		expect(credentialProvider.resolveAiGatewayMcpCredential).toHaveBeenCalledTimes(2);
+		const [, retryInit] = proxyFetchMock.mock.calls[1] as [string, RequestInit];
+		expect(headersToCaseInsensitiveRecord(retryInit.headers).Authorization).toBe('Bearer fresh');
 	});
 
 	it('does not mint Gateway credits for an OAuth2 entry without a credential', async () => {
