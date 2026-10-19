@@ -1,0 +1,59 @@
+packages/@n8n/config/src/configs/__tests__/instance-ai.config.test.ts
+  s_e5011bcb285def::t_f3b594ff071a67 53-69
+packages/@n8n/config/src/configs/instance-ai.config.ts
+  s_e5011bcb285def::t_c1cfe30fdadfa3 88-95
+packages/cli/src/modules/instance-ai/sandbox/instance-ai-sandbox.service.ts
+  s_e5011bcb285def::t_2d9282281c654a 236,265
+packages/@n8n/ai-utilities/package.json
+  s_e5011bcb285def::t_a0e7a53ef403dd 13-15,57-61,147-148,177-178
+packages/@n8n/ai-utilities/src/utils/tracing-suppression.ts
+  s_e5011bcb285def::t_40d612ee1ebe6c 1-48
+packages/cli/src/modules/agents/agent-sandbox-runtime.service.ts
+  s_e5011bcb285def::t_2d9282281c654a 14,137,418
+pnpm-lock.yaml
+  ai_agent 1403-1408,1446-1451
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-sandbox.service.test.ts
+  s_e5011bcb285def::t_4e0237bc2c9ecd 372-382
+packages/@n8n/agents/src/__tests__/workspace/sandbox/create-workspace-tracing.test.ts
+  s_e5011bcb285def::t_957d8f7059d9a8 1-6,17,36,39,44,48-54,58-82,86-90,92,94-130
+  s_e5011bcb285def::t_df8a90233ef76c 7-16,18-35,37-38,40-43,45-47,83-85
+  s_e5011bcb285def::t_0fd1f6b896d9ad 55-57
+  s_e5011bcb285def::t_3e25f639f4c186 91,93
+packages/@n8n/agents/src/workspace/sandbox/types.ts
+  s_e5011bcb285def::t_0af12ad30b4d21 91
+packages/@n8n/config/test/config.test.ts
+  s_e5011bcb285def::t_c1cfe30fdadfa3 379
+  s_9b4729ab9e7775::t_01adb55a49460d 702
+packages/@n8n/ai-utilities/src/__tests__/utils/tracing-suppression.test.ts
+  s_e5011bcb285def::t_891850f3fdc879 1-117,119-142,144-146
+  s_e5011bcb285def::t_025a69c3b61763 118
+  s_e5011bcb285def::t_2784e4aaf84f92 143
+packages/@n8n/agents/src/workspace/sandbox/create-workspace.ts
+  s_e5011bcb285def::t_0af12ad30b4d21 1-2,33,60
+packages/cli/src/modules/agents/__tests__/agent-sandbox-runtime.service.test.ts
+  s_e5011bcb285def::t_4e0237bc2c9ecd 8,105,113,129,196,356,364
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "58da496ff9345cd9bd71df1d8d779f78b940e415",
+  "prompts": {},
+  "sessions": {
+    "s_9b4729ab9e7775": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "612fcf24-e530-4b9c-99ef-c12a688ea88b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    },
+    "s_e5011bcb285def": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a2a94661-efbd-4c97-8dee-3e429a963594",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "sim <olivier.dejong@n8n.io>"
+    }
+  }
+}
