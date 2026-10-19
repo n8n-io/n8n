@@ -326,9 +326,13 @@ describe('McpServerMiddlewareService', () => {
 				);
 			});
 
-			it.each(['source-not-accepted', 'signature-invalid'] as const)(
+			it.each([
+				['source-not-accepted', 'invalid_token'],
+				['signature-invalid', 'invalid_token'],
+				['revoked', 'token_not_found_in_db'],
+			] as const)(
 				'answers a %s refusal with the admission challenge and the reason',
-				async (reason) => {
+				async (reason, telemetryReason) => {
 					const refused: Refused = {
 						ok: false,
 						reason,
@@ -346,7 +350,7 @@ describe('McpServerMiddlewareService', () => {
 					expect(telemetry.track).toHaveBeenCalledWith(
 						'User connected to MCP server',
 						expect.objectContaining({
-							reason: 'invalid_token',
+							reason: telemetryReason,
 							auth_type: 'oauth',
 							error_details: reason,
 						}),

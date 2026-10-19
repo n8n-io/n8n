@@ -23,6 +23,7 @@ import { McpServerApiKeyService } from '@/modules/mcp/mcp-api-key.service';
 import { McpProtectedResource } from '@/modules/mcp/mcp-protected-resource';
 import { McpService } from '@/modules/mcp/mcp.service';
 import { McpSettingsService } from '@/modules/mcp/mcp.settings.service';
+import { OAuthClientRepository } from '@/modules/oauth-server/database/repositories/oauth-client.repository';
 import { OAuthTokenService } from '@/modules/oauth-server/oauth-token.service';
 import { ScopedJwtStrategy } from '@/modules/token-exchange/services/scoped-jwt.strategy';
 import { TOKEN_EXCHANGE_ISSUER } from '@/modules/token-exchange/token-exchange.types';
@@ -102,10 +103,21 @@ async function seedSource(issuer: string, surface: SurfaceId, keys: unknown[]) {
 	);
 }
 
-const internalToken = () =>
-	Container.get(OAuthTokenService).generateTokenPair(member.id, CLIENT_ID, mcpResource, [
-		'workflow:read',
-	]).accessToken;
+/** An access token as the instance issues it: signed and recorded, so it stays active until revoked. */
+async function internalToken() {
+	const tokens = Container.get(OAuthTokenService);
+	const scopes = ['workflow:read'];
+	const pair = tokens.generateTokenPair(member.id, CLIENT_ID, mcpResource, scopes);
+	await tokens.saveTokenPair(
+		pair.accessToken,
+		pair.refreshToken,
+		CLIENT_ID,
+		member.id,
+		scopes,
+		pair.audience,
+	);
+	return pair.accessToken;
+}
 
 const probe = async (token?: string) => {
 	const request = testServer.restlessAgent.get('/mcp-server/http');
@@ -134,6 +146,14 @@ beforeAll(async () => {
 	Container.get(AuthStrategyRegistry).register(Container.get(ScopedJwtStrategy));
 	apiKey = (await Container.get(McpServerApiKeyService).createMcpServerApiKey(member)).apiKey;
 	await Container.get(McpSettingsService).setEnabled(true);
+	// The token rows of the local server need a registered client.
+	await Container.get(OAuthClientRepository).save({
+		id: CLIENT_ID,
+		name: 'MCP pipeline tests',
+		redirectUris: ['https://example.com/callback'],
+		grantTypes: ['authorization_code'],
+		tokenEndpointAuthMethod: 'none',
+	});
 
 	// The module seeded `n8n-internal` at init; discovery normally runs as a system task. Run it
 	// once here, reading the local authorization server in process, never over HTTP.
@@ -168,10 +188,20 @@ afterEach(() => {
 
 describe('Instance MCP authentication through the trusted-source pipeline', () => {
 	test('admits an access token from the instance itself', async () => {
-		const response = await probe(internalToken());
+		const response = await probe(await internalToken());
 
 		// GET answers 405 once the caller is authenticated.
 		expect(response.statusCode).toBe(405);
+	});
+
+	test('refuses an access token from the instance after it is revoked', async () => {
+		const token = await internalToken();
+		await Container.get(OAuthTokenService).revokeAllTokensForGrant(CLIENT_ID, member.id);
+
+		const response = await probe(token);
+
+		expect(response.statusCode).toBe(401);
+		expect(response.headers['www-authenticate']).toMatch(/error_description="revoked"$/);
 	});
 
 	test('admits a token from a trusted source that accepts instance-mcp, as an OAuth caller', async () => {
@@ -211,7 +241,7 @@ describe('Instance MCP authentication through the trusted-source pipeline', () =
 
 	test('refuses a source that does not accept instance-mcp, with a reason that differs from a bad token', async () => {
 		const notAccepted = await probe(await externalToken(PUBLIC_API_ISSUER));
-		const tampered = await probe(`${internalToken().slice(0, -2)}xx`);
+		const tampered = await probe(`${(await internalToken()).slice(0, -2)}xx`);
 
 		expect(notAccepted.statusCode).toBe(401);
 		expect(notAccepted.headers['www-authenticate']).toMatch(
@@ -268,7 +298,7 @@ describe('Instance MCP authentication through the trusted-source pipeline', () =
 		const logger = spyOnLogger();
 		const tokens = [
 			undefined,
-			internalToken(),
+			await internalToken(),
 			await externalToken(MCP_ISSUER),
 			apiKey,
 			await externalToken(PUBLIC_API_ISSUER),

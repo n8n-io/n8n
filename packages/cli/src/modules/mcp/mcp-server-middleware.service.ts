@@ -34,6 +34,7 @@ const TELEMETRY_REASONS: Partial<Record<RefusalReason, AuthFailureReason>> = {
 	'malformed-credential': 'invalid_bearer_format',
 	'unknown-subject': 'user_not_found',
 	insufficient_scope: 'insufficient_scope',
+	revoked: 'token_not_found_in_db',
 };
 
 /** The pipeline reason goes into `error_details`, so dashboards keep the detail. */
