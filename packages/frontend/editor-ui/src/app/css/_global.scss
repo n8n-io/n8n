@@ -26,47 +26,6 @@
 	position: absolute;
 }
 
-.el-dialog {
-	border: var(--border);
-	box-shadow: 0 6px 16px rgb(68 28 23 / 6%);
-	border-radius: 8px;
-
-	&.classic {
-		.el-dialog__header {
-			padding: 15px 20px;
-		}
-
-		.el-dialog__headerbtn {
-			position: absolute;
-			top: 0;
-			right: -50px;
-			color: var(--color--foreground--tint-2);
-			background-color: var(--color--background--shade-2);
-			border-radius: 0 18px 18px 0;
-			z-index: 110;
-			font-size: 1.7em;
-			text-align: center;
-			line-height: 30px;
-			height: 50px;
-			width: 50px;
-			.el-dialog__close {
-				color: var(--color--foreground--tint-2);
-				font-weight: var(--font-weight--regular);
-			}
-			.el-dialog__close:hover {
-				transform: scale(1.2);
-			}
-		}
-		.el-dialog__body {
-			color: var(--color--text--shade-1);
-			padding: 0 20px 20px;
-		}
-		.el-dialog__title {
-			color: var(--color--text--shade-1);
-		}
-	}
-}
-
 .el-message-box {
 	background-color: var(--dialog--color--background);
 	border: none;
