@@ -1,0 +1,23 @@
+packages/@n8n/api-types/src/dto/promotions/promotion-preview.dto.ts
+  s_2cc11fea2f54fd::t_2408c934faea8b 1-101
+packages/@n8n/api-types/src/dto/index.ts
+  s_2cc11fea2f54fd::t_5bc6b8cccc32be 784
+packages/@n8n/api-types/src/dto/promotions/promotion-binding-preflight.dto.ts
+  s_2cc11fea2f54fd::t_cd20252ce6209d 102,181,227
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7ec3ba72b3fd19e166f555a22340d8b374006990",
+  "prompts": {},
+  "sessions": {
+    "s_2cc11fea2f54fd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2424be1e-cf29-4877-a74e-de56398714d7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}
