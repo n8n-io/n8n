@@ -178,16 +178,32 @@ const createAgentSchema = z
 		message: 'Use config for initial configuration or schema for duplication, not both.',
 	});
 
-export class CreateAgentDto extends Z.class(createAgentShape) {
-	constructor(data: z.infer<typeof createAgentSchema>) {
-		super(createAgentSchema.parse(data));
+type CreateAgent = z.infer<typeof createAgentSchema>;
+
+export class CreateAgentDto implements CreateAgent {
+	declare name: CreateAgent['name'];
+
+	declare id?: CreateAgent['id'];
+
+	declare config?: CreateAgent['config'];
+
+	declare schema?: CreateAgent['schema'];
+
+	declare tools?: CreateAgent['tools'];
+
+	declare skills?: CreateAgent['skills'];
+
+	static schema = createAgentSchema;
+
+	constructor(data: CreateAgent) {
+		Object.assign(this, createAgentSchema.parse(data));
 	}
 
-	static override safeParse(data: unknown) {
+	static safeParse(data: unknown) {
 		return createAgentSchema.safeParse(data);
 	}
 
-	static override parse(data: unknown) {
+	static parse(data: unknown) {
 		return createAgentSchema.parse(data);
 	}
 }

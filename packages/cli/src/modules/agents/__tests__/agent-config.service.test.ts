@@ -1340,22 +1340,26 @@ describe('AgentConfigService', () => {
 		});
 
 		it('validates, saves and reports the effective refs, without the stale ids', async () => {
-			const { service, agentRepository, skillRefs: refsService } = makeService();
+			const { service, agentRepository, skillRefs: refsService, telemetry } = makeService();
 			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgentWithSkillRefs());
 			const config = await service.getConfig(agentId, projectId);
-			const kept = [skillRefs[2]];
+			const kept = skillRefs;
 			refsService.effectiveDraftRefs.mockResolvedValue(kept);
 
 			const result = await service.updateConfig(
 				agentId,
 				projectId,
-				{ ...config, skills: [skillRefs[2], { type: 'skill' as const, id: 'stale' }] },
+				{ ...config, skills: [...kept, { type: 'skill' as const, id: 'stale' }] },
 				user,
 				{ baseConfigHash: getAgentConfigHash(config), modifiedBy: 'user' },
 			);
 
 			expect(refsService.replaceDraftRefs).toHaveBeenCalledWith(expect.anything(), kept, {});
 			expect(result.config.skills).toEqual(kept);
+			expect(telemetry.track).not.toHaveBeenCalledWith(
+				TELEMETRY_EVENT.AGENTS.USER_MODIFIED_AGENT,
+				expect.anything(),
+			);
 		});
 	});
 

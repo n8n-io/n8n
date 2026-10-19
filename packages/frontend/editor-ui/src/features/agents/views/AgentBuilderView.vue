@@ -1551,7 +1551,7 @@ async function persistConfigSnapshot(
 
 async function saveConfig(snapshot: ConfigAutosaveSnapshot): Promise<AutosaveResult> {
 	if (isEditingLocked.value) return 'skipped';
-	let result;
+	let result: Awaited<ReturnType<typeof persistConfigSnapshot>>;
 	try {
 		result = await persistConfigSnapshot(snapshot);
 	} catch (error) {

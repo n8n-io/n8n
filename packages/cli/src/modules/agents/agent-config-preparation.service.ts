@@ -82,20 +82,13 @@ export class AgentConfigPreparationService {
 			validatedConfig,
 			clearOmitted,
 		);
-		const replacement = this.buildConfigReplacement(
+		const replacement = await this.buildConfigReplacement(
 			entity,
 			previousSchema,
 			validatedConfig,
 			rawConfig,
 			clearOmitted,
 		);
-		if (replacement.nextSchema.skills !== undefined) {
-			replacement.nextSchema.skills = await this.agentSkillRefs.effectiveDraftRefs(
-				entity,
-				replacement.nextSchema.skills,
-				{},
-			);
-		}
 		await this.agentPolicyService.enforceSave(
 			entity.projectId,
 			isNew ? null : entity.id,
@@ -197,13 +190,13 @@ export class AgentConfigPreparationService {
 		return { valid: true, config };
 	}
 
-	private buildConfigReplacement(
+	private async buildConfigReplacement(
 		entity: Agent,
 		previousSchema: AgentJsonConfig | null,
 		validatedConfig: AgentJsonConfig,
 		rawConfig: unknown,
 		clearOmitted: boolean,
-	): ConfigReplacement {
+	): Promise<ConfigReplacement> {
 		const previousIntegrations = entity.integrations ?? [];
 		const { schemaConfig, integrations } = decomposeJsonConfig(validatedConfig);
 		const nextIntegrations = writesField(validatedConfig, 'integrations', clearOmitted)
@@ -215,7 +208,13 @@ export class AgentConfigPreparationService {
 			rawConfig,
 			clearOmitted,
 		);
-		// Compare before the entity is changed.
+		if (nextSchema.skills !== undefined) {
+			nextSchema.skills = await this.agentSkillRefs.effectiveDraftRefs(
+				entity,
+				nextSchema.skills,
+				{},
+			);
+		}
 		const changedParts = diffAgentConfigParts(
 			previousSchema,
 			nextSchema,
