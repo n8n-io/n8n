@@ -61,7 +61,7 @@ import {
 	type AgentSandboxRuntime,
 } from './agent-sandbox-runtime.service';
 import { AgentWorkspaceService } from './agent-workspace.service';
-import type { AgentRuntimeInstrumentation } from './agent-runtime-instrumentation';
+import type { AgentRuntimeInstrumentation } from './evaluation/agent-evaluation.contracts';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import {
 	createIntegrationActionTool,

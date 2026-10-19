@@ -1,8 +1,33 @@
-import type { FetchFn, McpToolCallSettledEvent } from '@n8n/agents';
-import type { AgentJsonConfig } from '@n8n/api-types';
+import type { Agent, FetchFn, McpToolCallSettledEvent } from '@n8n/agents';
 import type { IWorkflowExecuteAdditionalData } from 'n8n-workflow';
+import type { AgentJsonConfig } from '@n8n/api-types';
 
-import type { ReferencedToolKind } from './tool-registry';
+import type { ReferencedToolKind } from '../tool-registry';
+
+export interface AgentEvaluationSkippedFeature {
+	feature: string;
+	reason: string;
+}
+
+export interface AgentEvaluationToolSummary {
+	name: string;
+	kind: 'node' | 'workflow' | 'custom' | 'mcp' | 'other';
+	description?: string;
+	nodeType?: string;
+}
+
+export interface AgentEvaluationPreparation {
+	config: AgentJsonConfig;
+	tools: AgentEvaluationToolSummary[];
+	skippedFeatures: AgentEvaluationSkippedFeature[];
+	buildRuntime(
+		instrumentation: Omit<AgentRuntimeInstrumentation, 'transformDelegatedAgentConfig'>,
+	): Promise<Agent>;
+}
+
+export type AgentEvaluationPreparationResult =
+	| { preparation: AgentEvaluationPreparation; error?: never }
+	| { error: string; preparation?: never };
 
 export interface AgentToolInstrumentationContext {
 	/** Sanitized tool name — the same identifier the model calls and `GenerateResult.toolCalls` reports. */

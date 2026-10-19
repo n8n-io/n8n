@@ -58,7 +58,7 @@ import {
 	summarizeSubWorkflowRedaction,
 } from 'n8n-workflow';
 
-import type { PrepareWorkflowAgentForEval } from './modules/agents/agent-runtime-instrumentation';
+import type { PrepareWorkflowAgentForEval } from './modules/agents/evaluation/agent-evaluation.contracts';
 import type { WorkflowAgentRunOptions } from './modules/agents/agent-workflow-execution.service';
 import { createWorkflowAgentStreamObserver } from './modules/agents/workflow-agent-stream';
 
