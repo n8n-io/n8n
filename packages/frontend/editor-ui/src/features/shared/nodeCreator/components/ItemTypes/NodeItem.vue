@@ -265,8 +265,7 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 		<template v-if="restriction" #trailing>
 			<RestrictedNodePopover
 				:node-type-name="displayName"
-				:scope="restriction.scope"
-				:opt-in-available="restriction.optInAvailable"
+				:restriction="restriction"
 				:anchor="rowRef"
 				:active="active"
 			/>

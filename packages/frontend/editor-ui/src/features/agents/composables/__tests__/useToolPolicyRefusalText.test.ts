@@ -1,11 +1,11 @@
 import type { PolicyViolation } from '@n8n/api-types';
 import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
-import type { Project } from '@n8n/rest-api-client';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { ToolPolicyRefusal } from '@/features/ai/shared/agentsChat/toolPolicyRefusal';
+import { createTestProject } from '@/features/collaboration/projects/__tests__/utils';
 
 import { useToolPolicyRefusalText } from '../useToolPolicyRefusalText';
 
@@ -111,10 +111,7 @@ describe('useToolPolicyRefusalText', () => {
 		});
 
 		it('says a delegated type needs approval in a team project', () => {
-			useTypeAvailabilityPoliciesStore().policyProject = {
-				id: 'project-1',
-				type: 'team',
-			} as Project;
+			useTypeAvailabilityPoliciesStore().policyProject = createTestProject({ id: 'project-1' });
 			const { reason } = useToolPolicyRefusalText();
 
 			expect(

@@ -326,6 +326,18 @@ describe('useTypeAvailabilityPoliciesStore', () => {
 			expect(store.policyProject).toEqual(TEAM_PROJECT);
 		});
 
+		it('keeps the loaded project on reload', async () => {
+			mocks.fetchAvailableTypes.mockResolvedValue(PROJECT_A_RESPONSE);
+			const store = useTypeAvailabilityPoliciesStore();
+
+			await store.fetchForProject('project-a');
+			await store.reload();
+
+			expect(mocks.fetchAvailableTypes).toHaveBeenCalledTimes(2);
+			expect(mocks.getProject).toHaveBeenCalledTimes(1);
+			expect(store.policyProject).toEqual(TEAM_PROJECT);
+		});
+
 		it('keeps the availability when the caller cannot read the project', async () => {
 			mocks.fetchAvailableTypes.mockResolvedValue(PROJECT_A_RESPONSE);
 			mocks.getProject.mockRejectedValue(new Error('Forbidden'));

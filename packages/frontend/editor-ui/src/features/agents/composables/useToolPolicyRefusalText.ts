@@ -2,7 +2,6 @@ import type { PolicyViolation } from '@n8n/api-types';
 import {
 	getRestrictionContact,
 	getViolationVerdict,
-	isOptInRestriction,
 } from '@n8n/frontend-module-type-availability-policies';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 
@@ -47,7 +46,7 @@ export function useToolPolicyRefusalText() {
 
 	function reasonKey(violation: PolicyViolation): BaseTextKey {
 		const verdict = getViolationVerdict(violation);
-		if (isOptInRestriction(verdict, getRestrictionContact(verdict, violation.projectId))) {
+		if (getRestrictionContact(verdict, violation.projectId) === 'optIn') {
 			return 'agents.chat.toolPolicyRefusal.reason.optIn';
 		}
 		return verdict.scope === 'project'

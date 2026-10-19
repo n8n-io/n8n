@@ -44,3 +44,10 @@ export function mockPolicyProject(project: Pick<Project, 'type'> & Partial<Proje
 		...project,
 	};
 }
+
+export const contactAdminModalStub = {
+	props: ['open', 'nodeTypeName', 'audience'],
+	emits: ['update:open'],
+	template:
+		'<div v-if="open" data-test-id="contact-admin-modal" :data-audience="audience">{{ nodeTypeName }}<button data-test-id="contact-admin-close" @click="$emit(\'update:open\', false)" /></div>',
+};

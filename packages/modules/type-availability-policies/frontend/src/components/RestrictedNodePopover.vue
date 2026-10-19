@@ -1,15 +1,15 @@
 <script setup lang="ts">
-import type { NodeTypeAvailabilityScope } from '@n8n/api-types';
 import { N8nButton, N8nIcon, N8nPopover, N8nText } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { unrefElement, useActiveElement, useElementHover, type MaybeElement } from '@vueuse/core';
 import { computed, getCurrentInstance, ref, watch } from 'vue';
 
 import { useExclusiveOpen } from '../composables/useExclusiveOpen';
-import { getRestrictionContact, isOptInRestriction } from '../composables/useNodeTypeRestriction';
 import {
-	CONTACT_ADMIN_COPY,
-	OPT_IN_POPOVER_DESCRIPTION,
+	useRestrictionContact,
+	type RestrictionVerdict,
+} from '../composables/useNodeTypeRestriction';
+import {
 	RESTRICTED_TYPE_COPY,
 	SCOPE_LABEL_KEY,
 	type RestrictedTypeKind,
@@ -19,8 +19,7 @@ import ContactAdminModal from './ContactAdminModal.vue';
 const props = withDefaults(
 	defineProps<{
 		nodeTypeName: string;
-		scope?: NodeTypeAvailabilityScope;
-		optInAvailable?: boolean;
+		restriction?: RestrictionVerdict | null;
 		kind?: RestrictedTypeKind;
 		/** The list row the popover explains. It opens beside this element, not beside the lock. */
 		anchor?: MaybeElement;
@@ -33,8 +32,7 @@ const props = withDefaults(
 	}>(),
 	{
 		kind: 'node',
-		scope: undefined,
-		optInAvailable: false,
+		restriction: undefined,
 		anchor: undefined,
 		active: false,
 		side: 'left',
@@ -79,17 +77,11 @@ const wantsOpen = computed(
 );
 const open = useExclusiveOpen(wantsOpen);
 
-const verdict = computed(() => ({ scope: props.scope, optInAvailable: props.optInAvailable }));
-const audience = computed(() => getRestrictionContact(verdict.value));
-const contactCopy = computed(() => CONTACT_ADMIN_COPY[audience.value]);
-const scopeKey = computed<BaseTextKey>(
-	() => (props.scope && SCOPE_LABEL_KEY[props.scope]) ?? RESTRICTED_TYPE_COPY[props.kind].title,
-);
-const descriptionKey = computed<BaseTextKey>(() =>
-	isOptInRestriction(verdict.value, audience.value)
-		? OPT_IN_POPOVER_DESCRIPTION[props.kind]
-		: contactCopy.value.popoverDescription[props.kind],
-);
+const { copy: contactCopy } = useRestrictionContact(() => props.restriction);
+const scopeKey = computed<BaseTextKey>(() => {
+	const scope = props.restriction?.scope;
+	return scope ? SCOPE_LABEL_KEY[scope] : RESTRICTED_TYPE_COPY[props.kind].title;
+});
 
 function requestContactAdmin() {
 	if (parentHandlesContactAdmin) emit('contactAdmin');
@@ -132,7 +124,7 @@ function requestContactAdmin() {
 					<N8nText tag="p" size="large" color="text-dark">{{ nodeTypeName }}</N8nText>
 					<N8nText tag="p" size="small" color="text-light">{{ i18n.baseText(scopeKey) }}</N8nText>
 					<N8nText tag="p" size="small" color="text-base" :class="$style.description">
-						{{ i18n.baseText(descriptionKey) }}
+						{{ i18n.baseText(contactCopy.popoverDescription[kind]) }}
 					</N8nText>
 					<N8nButton
 						variant="outline"
@@ -153,7 +145,7 @@ function requestContactAdmin() {
 			v-model:open="isContactAdminOpen"
 			:node-type-name="nodeTypeName"
 			:kind="kind"
-			:audience="audience"
+			:audience="contactCopy.audience"
 		/>
 	</span>
 </template>

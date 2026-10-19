@@ -15,8 +15,9 @@ import { computed, toValue, type MaybeRefOrGetter } from 'vue';
 
 import {
 	isRestrictionScope,
+	RESTRICTION_CONTACT_COPY,
 	SCOPE_LABEL_KEY,
-	type ContactAudience,
+	type RestrictionContact,
 } from '../type-availability-policies.constants';
 import { useTypeAvailabilityPoliciesStore } from '../type-availability-policies.store';
 
@@ -70,27 +71,29 @@ export function getViolationVerdict(violation: PolicyViolation): RestrictionVerd
 export function resolveRestrictionContact(
 	verdict: RestrictionVerdict,
 	projectType: ProjectType | null,
-): ContactAudience {
+): RestrictionContact {
 	if (projectType === ProjectTypes.Personal) return 'instance';
 	if (verdict.scope === 'project') return 'project';
-	if (verdict.optInAvailable && projectType === ProjectTypes.Team) return 'project';
+	if (verdict.optInAvailable && projectType === ProjectTypes.Team) return 'optIn';
 	return 'instance';
 }
 
 export function getRestrictionContact(
 	verdict: RestrictionVerdict,
 	projectId?: string,
-): ContactAudience {
+): RestrictionContact {
 	const project = useTypeAvailabilityPoliciesStore().policyProject;
 	const isPolicyProject = project !== null && (projectId === undefined || project.id === projectId);
 	return resolveRestrictionContact(verdict, isPolicyProject ? project.type : null);
 }
 
-export function isOptInRestriction(
-	verdict: RestrictionVerdict,
-	audience: ContactAudience,
-): boolean {
-	return audience === 'project' && verdict.optInAvailable === true;
+export function useRestrictionContact(
+	verdict: MaybeRefOrGetter<RestrictionVerdict | null | undefined>,
+	projectId?: MaybeRefOrGetter<string | undefined>,
+) {
+	const contact = computed(() => getRestrictionContact(toValue(verdict) ?? {}, toValue(projectId)));
+	const copy = computed(() => RESTRICTION_CONTACT_COPY[contact.value]);
+	return { contact, copy };
 }
 
 const DESCRIPTION_KEY: Record<NodeTypeAvailabilityScope, BaseTextKey> = {
@@ -98,36 +101,18 @@ const DESCRIPTION_KEY: Record<NodeTypeAvailabilityScope, BaseTextKey> = {
 	project: 'typeAvailabilityPolicies.restrictedNode.description.project',
 };
 
-type NextStep = 'contact' | 'replace';
-
-const NEXT_STEP_KEY: Record<ContactAudience | 'optIn', Record<NextStep, BaseTextKey>> = {
-	instance: {
-		contact: 'typeAvailabilityPolicies.restrictedNode.nextStep.contact',
-		replace: 'typeAvailabilityPolicies.restrictedNode.nextStep.replace',
-	},
-	project: {
-		contact: 'typeAvailabilityPolicies.restrictedNode.nextStep.project.contact',
-		replace: 'typeAvailabilityPolicies.restrictedNode.nextStep.project.replace',
-	},
-	optIn: {
-		contact: 'typeAvailabilityPolicies.restrictedNode.nextStep.optIn.contact',
-		replace: 'typeAvailabilityPolicies.restrictedNode.nextStep.optIn.replace',
-	},
-};
-
 export function describeNodeTypeRestriction(
 	nodeTypeName: string,
 	verdict: RestrictionVerdict = {},
-	nextStep: NextStep = 'contact',
+	nextStep: 'contact' | 'replace' = 'contact',
 ): string {
 	const i18n = useI18n();
-	const audience = getRestrictionContact(verdict);
-	const nextStepKey = NEXT_STEP_KEY[isOptInRestriction(verdict, audience) ? 'optIn' : audience];
+	const nextStepKey = RESTRICTION_CONTACT_COPY[getRestrictionContact(verdict)].nextStep[nextStep];
 	return i18n.baseText(
 		verdict.scope
 			? DESCRIPTION_KEY[verdict.scope]
 			: 'typeAvailabilityPolicies.restrictedNode.description.generic',
-		{ interpolate: { nodeType: nodeTypeName, nextStep: i18n.baseText(nextStepKey[nextStep]) } },
+		{ interpolate: { nodeType: nodeTypeName, nextStep: i18n.baseText(nextStepKey) } },
 	);
 }
 
@@ -174,16 +159,21 @@ const AGENT_TOOL_DESCRIPTION_KEY: Record<NodeTypeAvailabilityScope, BaseTextKey>
 	project: 'typeAvailabilityPolicies.restrictedNode.agentTool.project',
 };
 
+function agentToolDescriptionKey(verdict: RestrictionVerdict): BaseTextKey {
+	if (getRestrictionContact(verdict) === 'optIn') {
+		return 'typeAvailabilityPolicies.restrictedNode.agentTool.optIn';
+	}
+	if (verdict.scope) return AGENT_TOOL_DESCRIPTION_KEY[verdict.scope];
+	return 'typeAvailabilityPolicies.restrictedNode.agentTool.generic';
+}
+
 export function describeAgentToolRestriction(
 	nodeTypeName: string,
 	verdict: RestrictionVerdict = {},
 ): string {
-	const key: BaseTextKey = isOptInRestriction(verdict, getRestrictionContact(verdict))
-		? 'typeAvailabilityPolicies.restrictedNode.agentTool.optIn'
-		: verdict.scope
-			? AGENT_TOOL_DESCRIPTION_KEY[verdict.scope]
-			: 'typeAvailabilityPolicies.restrictedNode.agentTool.generic';
-	return useI18n().baseText(key, { interpolate: { nodeType: nodeTypeName } });
+	return useI18n().baseText(agentToolDescriptionKey(verdict), {
+		interpolate: { nodeType: nodeTypeName },
+	});
 }
 
 export function useNodeTypeRestriction(nodeType: MaybeRefOrGetter<string | null | undefined>) {
@@ -194,7 +184,6 @@ export function useNodeTypeRestriction(nodeType: MaybeRefOrGetter<string | null 
 
 	const isRestricted = computed(() => restriction.value !== null);
 	const restrictionScope = computed(() => restriction.value?.scope);
-	const optInAvailable = computed(() => restriction.value?.optInAvailable ?? false);
 
-	return { isRestricted, restrictionScope, optInAvailable };
+	return { restriction, isRestricted, restrictionScope };
 }

@@ -178,29 +178,29 @@ describe('useNodeTypeRestriction', () => {
 
 	describe('resolveRestrictionContact', () => {
 		it.each([
-			{ verdict: { scope: 'project' }, projectType: 'team', audience: 'project' },
-			{ verdict: { scope: 'instance' }, projectType: 'team', audience: 'instance' },
+			{ verdict: { scope: 'project' }, projectType: 'team', contact: 'project' },
+			{ verdict: { scope: 'instance' }, projectType: 'team', contact: 'instance' },
 			{
 				verdict: { scope: 'instance', optInAvailable: true },
 				projectType: 'team',
-				audience: 'project',
+				contact: 'optIn',
 			},
-			{ verdict: { scope: 'project' }, projectType: 'personal', audience: 'instance' },
+			{ verdict: { scope: 'project' }, projectType: 'personal', contact: 'instance' },
 			{
 				verdict: { scope: 'instance', optInAvailable: true },
 				projectType: 'personal',
-				audience: 'instance',
+				contact: 'instance',
 			},
-			{ verdict: { scope: 'project' }, projectType: null, audience: 'project' },
+			{ verdict: { scope: 'project' }, projectType: null, contact: 'project' },
 			{
 				verdict: { scope: 'instance', optInAvailable: true },
 				projectType: null,
-				audience: 'instance',
+				contact: 'instance',
 			},
 		] as const)(
-			'sends $verdict in a $projectType project to the $audience admin',
-			({ verdict, projectType, audience }) => {
-				expect(resolveRestrictionContact(verdict, projectType)).toBe(audience);
+			'resolves $verdict in a $projectType project to $contact',
+			({ verdict, projectType, contact }) => {
+				expect(resolveRestrictionContact(verdict, projectType)).toBe(contact);
 			},
 		);
 	});
@@ -208,7 +208,7 @@ describe('useNodeTypeRestriction', () => {
 	it('ignores the loaded project when the verdict names another project', () => {
 		mockPolicyProject({ id: 'team-project', type: 'team' });
 
-		expect(getRestrictionContact({ scope: 'instance', optInAvailable: true })).toBe('project');
+		expect(getRestrictionContact({ scope: 'instance', optInAvailable: true })).toBe('optIn');
 		expect(
 			getRestrictionContact({ scope: 'instance', optInAvailable: true }, 'other-project'),
 		).toBe('instance');
@@ -245,8 +245,8 @@ describe('useNodeTypeRestriction', () => {
 			optInAvailable: true,
 		});
 
-		const { optInAvailable } = useNodeTypeRestriction(ref('n8n-nodes-base.slack'));
+		const { restriction } = useNodeTypeRestriction(ref('n8n-nodes-base.slack'));
 
-		expect(optInAvailable.value).toBe(true);
+		expect(restriction.value?.optInAvailable).toBe(true);
 	});
 });

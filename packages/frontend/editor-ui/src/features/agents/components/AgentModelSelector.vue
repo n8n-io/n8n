@@ -18,10 +18,9 @@ import { useAiGateway } from '@/app/composables/useAiGateway';
 import { AI_GATEWAY_MANAGED_TAG, type CredentialTypeAvailability } from '@n8n/api-types';
 import {
 	ContactAdminModal,
-	getRestrictionContact,
+	useRestrictionContact,
 	SCOPE_LABEL_KEY,
 	useTypeAvailabilityPoliciesStore,
-	type ContactAudience,
 } from '@n8n/frontend-module-type-availability-policies';
 import ModelSelectorTriggerIcon from './model-selector/ModelSelectorTriggerIcon.vue';
 import ModelSelectorItemLeadingIcon from './model-selector/ModelSelectorItemLeadingIcon.vue';
@@ -105,8 +104,10 @@ const pendingDefaultCredential = ref<{
 	provider: AgentModelProvider;
 	credentialId: string;
 } | null>(null);
-const contactAdminSubject = ref<string | null>(null);
-const contactAdminAudience = ref<ContactAudience>('instance');
+const contactAdmin = ref<{ subject: string; restriction?: CredentialTypeAvailability } | null>(
+	null,
+);
+const { copy: contactAdminCopy } = useRestrictionContact(() => contactAdmin.value?.restriction);
 const forceModelOptionsDisabled = ref(false);
 const isResolvingDefaultModel = computed(
 	() => pendingDefaultCredential.value !== null || forceModelOptionsDisabled.value,
@@ -249,8 +250,7 @@ function restrictedCredentialsName(item: MenuItem): string {
 
 function requestContactAdmin(subject: string, restriction?: CredentialTypeAvailability) {
 	dropdownRef.value?.close();
-	contactAdminAudience.value = restriction ? getRestrictionContact(restriction) : 'instance';
-	contactAdminSubject.value = subject;
+	contactAdmin.value = { subject, restriction };
 }
 
 function providerToMenuItem(provider: AgentModelProvider): MenuItem {
@@ -756,8 +756,7 @@ defineExpose({
 			<template #item-restricted="{ item }">
 				<ModelSelectorRestrictedMarker
 					:name="restrictedCredentialsName(item)"
-					:scope="item.data?.restriction?.scope"
-					:opt-in-available="item.data?.restriction?.optInAvailable"
+					:restriction="item.data?.restriction"
 					@contact-admin="
 						requestContactAdmin(restrictedCredentialsName(item), item.data?.restriction)
 					"
@@ -766,10 +765,10 @@ defineExpose({
 		</N8nAiModelSelectorDropdown>
 		<ContactAdminModal
 			kind="credential"
-			:node-type-name="contactAdminSubject ?? ''"
-			:audience="contactAdminAudience"
-			:open="contactAdminSubject !== null"
-			@update:open="(isOpen) => !isOpen && (contactAdminSubject = null)"
+			:node-type-name="contactAdmin?.subject ?? ''"
+			:audience="contactAdminCopy.audience"
+			:open="contactAdmin !== null"
+			@update:open="(isOpen) => !isOpen && (contactAdmin = null)"
 		/>
 	</div>
 </template>

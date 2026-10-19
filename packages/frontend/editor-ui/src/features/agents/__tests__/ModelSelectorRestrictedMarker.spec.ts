@@ -7,7 +7,7 @@ import ModelSelectorRestrictedMarker from '../components/model-selector/ModelSel
 vi.mock('@n8n/frontend-module-type-availability-policies', () => ({
 	RestrictedNodePopover: {
 		name: 'RestrictedNodePopover',
-		props: ['nodeTypeName', 'scope', 'kind', 'anchor', 'side', 'markerSize'],
+		props: ['nodeTypeName', 'restriction', 'kind', 'anchor', 'side', 'markerSize'],
 		emits: ['contactAdmin'],
 		template: '<button @click="$emit(\'contactAdmin\')" />',
 	},
@@ -21,7 +21,7 @@ describe('ModelSelectorRestrictedMarker', () => {
 				h('div', { role: 'menuitem', 'data-test-id': 'row' }, [
 					h(ModelSelectorRestrictedMarker, {
 						name: 'Anthropic credentials',
-						scope: 'instance',
+						restriction: { name: 'anthropicApi', available: false, scope: 'instance' },
 						onContactAdmin,
 					}),
 				]),
@@ -35,7 +35,7 @@ describe('ModelSelectorRestrictedMarker', () => {
 			side: 'right',
 			markerSize: 'xsmall',
 			nodeTypeName: 'Anthropic credentials',
-			scope: 'instance',
+			restriction: { name: 'anthropicApi', available: false, scope: 'instance' },
 			anchor: wrapper.find('[data-test-id="row"]').element,
 		});
 

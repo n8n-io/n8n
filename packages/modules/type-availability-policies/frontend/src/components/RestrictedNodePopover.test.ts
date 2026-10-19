@@ -4,21 +4,16 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest';
 
 import RestrictedNodePopover from './RestrictedNodePopover.vue';
-import { mockPolicyProject } from '../__tests__/mocks';
+import { contactAdminModalStub, mockPolicyProject } from '../__tests__/mocks';
 
 const DESCRIPTION =
 	'An administrator blocked this node. To use it in your workflows, contact an instance administrator for access.';
 
 const renderComponent = createComponentRenderer(RestrictedNodePopover, {
-	props: { nodeTypeName: 'Gmail', scope: 'instance' },
+	props: { nodeTypeName: 'Gmail', restriction: { scope: 'instance' } },
 	global: {
 		stubs: {
-			ContactAdminModal: {
-				props: ['open', 'nodeTypeName', 'audience'],
-				emits: ['update:open'],
-				template:
-					'<div v-if="open" data-test-id="contact-admin-modal" :data-audience="audience">{{ nodeTypeName }}<button data-test-id="contact-admin-close" @click="$emit(\'update:open\', false)" /></div>',
-			},
+			ContactAdminModal: contactAdminModalStub,
 		},
 	},
 });
@@ -63,13 +58,13 @@ describe('RestrictedNodePopover', () => {
 	});
 
 	it('names the project scope', async () => {
-		renderPopover({ active: true, scope: 'project' });
+		renderPopover({ active: true, restriction: { scope: 'project' } });
 
 		expect(await screen.findByText('Restricted in this project')).toBeInTheDocument();
 	});
 
 	it('falls back to the generic title for an unknown scope', async () => {
-		renderPopover({ active: true, scope: undefined });
+		renderPopover({ active: true, restriction: undefined });
 
 		expect(await screen.findByText('This node is restricted')).toBeInTheDocument();
 	});
@@ -197,7 +192,7 @@ describe('RestrictedNodePopover', () => {
 	});
 
 	it('uses the credential type copy', async () => {
-		renderPopover({ active: true, kind: 'credential', scope: undefined });
+		renderPopover({ active: true, kind: 'credential', restriction: undefined });
 
 		expect(await screen.findByText('This credential type is restricted')).toBeInTheDocument();
 		expect(
@@ -232,7 +227,7 @@ describe('RestrictedNodePopover', () => {
 	});
 
 	it('sends a project restriction to the project admins', async () => {
-		renderPopover({ active: true, scope: 'project' });
+		renderPopover({ active: true, restriction: { scope: 'project' } });
 		mockPolicyProject({ type: 'team' });
 
 		expect(
@@ -246,7 +241,7 @@ describe('RestrictedNodePopover', () => {
 	});
 
 	it('says a project admin can allow a delegated node', async () => {
-		renderPopover({ active: true, scope: 'instance', optInAvailable: true });
+		renderPopover({ active: true, restriction: { scope: 'instance', optInAvailable: true } });
 		mockPolicyProject({ type: 'team' });
 
 		expect(

@@ -73,7 +73,9 @@ export const useTypeAvailabilityPoliciesStore = defineStore(
 				const [nodeTypes, credentialTypes, project] = await Promise.all([
 					fetchAvailableTypes(rootStore.restApiContext, projectId),
 					fetchAvailableCredentialTypes(rootStore.restApiContext, projectId),
-					getProject(rootStore.restApiContext, projectId).catch(() => null),
+					policyProject.value?.id === projectId
+						? policyProject.value
+						: getProject(rootStore.restApiContext, projectId).catch(() => null),
 				]);
 				if (request !== latestRequest) return;
 

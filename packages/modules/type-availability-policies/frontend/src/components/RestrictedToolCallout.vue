@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { NodeTypeAvailabilityScope } from '@n8n/api-types';
 import { N8nButton, N8nCallout } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, ref } from 'vue';
@@ -7,27 +6,21 @@ import { computed, ref } from 'vue';
 import ContactAdminModal from './ContactAdminModal.vue';
 import {
 	describeAgentToolRestriction,
-	getRestrictionContact,
+	useRestrictionContact,
+	type RestrictionVerdict,
 } from '../composables/useNodeTypeRestriction';
-import { CONTACT_ADMIN_COPY } from '../type-availability-policies.constants';
 
-const {
-	nodeTypeName,
-	scope,
-	optInAvailable = false,
-} = defineProps<{
+const { nodeTypeName, restriction } = defineProps<{
 	nodeTypeName: string;
-	scope?: NodeTypeAvailabilityScope;
-	optInAvailable?: boolean;
+	restriction?: RestrictionVerdict | null;
 }>();
 
 const i18n = useI18n();
 
 const isContactAdminOpen = ref(false);
 
-const verdict = computed(() => ({ scope, optInAvailable }));
-const audience = computed(() => getRestrictionContact(verdict.value));
-const description = computed(() => describeAgentToolRestriction(nodeTypeName, verdict.value));
+const { copy: contactCopy } = useRestrictionContact(() => restriction);
+const description = computed(() => describeAgentToolRestriction(nodeTypeName, restriction ?? {}));
 </script>
 
 <template>
@@ -41,14 +34,14 @@ const description = computed(() => describeAgentToolRestriction(nodeTypeName, ve
 					data-test-id="restricted-tool-contact-admin"
 					@click="isContactAdminOpen = true"
 				>
-					{{ i18n.baseText(CONTACT_ADMIN_COPY[audience].action) }}
+					{{ i18n.baseText(contactCopy.action) }}
 				</N8nButton>
 			</template>
 		</N8nCallout>
 		<ContactAdminModal
 			v-model:open="isContactAdminOpen"
 			:node-type-name="nodeTypeName"
-			:audience="audience"
+			:audience="contactCopy.audience"
 		/>
 	</div>
 </template>

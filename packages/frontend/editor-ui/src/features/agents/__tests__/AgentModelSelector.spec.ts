@@ -130,7 +130,7 @@ vi.mock('@n8n/frontend-module-type-availability-policies', async (importOriginal
 vi.mock('../components/model-selector/ModelSelectorRestrictedMarker.vue', () => ({
 	default: {
 		name: 'ModelSelectorRestrictedMarker',
-		props: ['name', 'scope', 'optInAvailable'],
+		props: ['name', 'restriction'],
 		emits: ['contactAdmin'],
 		template:
 			'<button data-testid="restricted-marker" @click="$emit(\'contactAdmin\')">{{ name }}</button>',
@@ -432,7 +432,10 @@ describe('AgentModelSelector', () => {
 		const wrapper = await mountSelector({ anthropic: null });
 		const marker = wrapper.findComponent({ name: 'ModelSelectorRestrictedMarker' });
 
-		expect(marker.props()).toEqual({ name: 'OpenAI credentials', scope: 'project' });
+		expect(marker.props()).toEqual({
+			name: 'OpenAI credentials',
+			restriction: { name: 'openAiApi', available: false, scope: 'project' },
+		});
 		expect(wrapper.findComponent({ name: 'ContactAdminModal' }).props('open')).toBe(false);
 
 		await marker.find('button').trigger('click');

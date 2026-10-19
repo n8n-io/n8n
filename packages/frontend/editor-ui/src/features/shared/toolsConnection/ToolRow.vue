@@ -239,8 +239,7 @@ function handleConnect() {
 			<RestrictedNodePopover
 				v-if="restriction"
 				:node-type-name="item.title"
-				:scope="restriction.scope"
-				:opt-in-available="restriction.optInAvailable"
+				:restriction="restriction"
 				:anchor="rowRef"
 				:side-offset="48"
 			/>

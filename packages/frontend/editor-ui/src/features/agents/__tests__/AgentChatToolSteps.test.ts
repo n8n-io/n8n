@@ -3,7 +3,8 @@ import { mount } from '@vue/test-utils';
 import { setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
-import type { Project } from '@n8n/rest-api-client';
+import type { PolicyViolation } from '@n8n/api-types';
+import { createTestProject } from '@/features/collaboration/projects/__tests__/utils';
 import AgentChatToolSteps from '../components/AgentChatToolSteps.vue';
 import type { ToolCall } from '@/features/ai/shared/agentsChat/types';
 import { TOOL_CALL_STATE } from '../constants';
@@ -832,7 +833,7 @@ describe('AgentChatToolSteps', () => {
 	});
 
 	describe('policy-refused tool calls', () => {
-		function refusedCall(overrides: Partial<ToolCall> = {}): ToolCall {
+		function refusedCall(violation: Partial<PolicyViolation> = {}): ToolCall {
 			return {
 				tool: 'search_nodes',
 				toolCallId: 'tc-refused',
@@ -847,35 +848,17 @@ describe('AgentChatToolSteps', () => {
 							message: 'Not allowed',
 							subject: 'slack',
 							scope: 'instance',
+							...violation,
 						},
 					],
 					instruction: 'Ask the user to pick another tool.',
 				},
-				...overrides,
 			};
 		}
 
 		it('names the project scope and sends the user to the project admins', async () => {
-			useTypeAvailabilityPoliciesStore().policyProject = {
-				id: 'project-1',
-				type: 'team',
-			} as Project;
-			const projectRefusal = refusedCall();
-			if (typeof projectRefusal.output === 'object' && projectRefusal.output) {
-				Object.assign(projectRefusal.output, {
-					violations: [
-						{
-							kind: 'node-type-unavailable',
-							checkId: 'check-1',
-							message: 'Not allowed',
-							subject: 'slack',
-							scope: 'project',
-							projectId: 'project-1',
-						},
-					],
-				});
-			}
-			const wrapper = mountSteps([projectRefusal]);
+			useTypeAvailabilityPoliciesStore().policyProject = createTestProject({ id: 'project-1' });
+			const wrapper = mountSteps([refusedCall({ scope: 'project', projectId: 'project-1' })]);
 			const callout = wrapper.get('[data-test-id="tool-step-error"]');
 
 			expect(wrapper.get('[data-testid="tool-step-warning"]').attributes('title')).toBe(

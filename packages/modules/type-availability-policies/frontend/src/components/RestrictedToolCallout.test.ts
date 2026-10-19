@@ -5,17 +5,13 @@ import { setActivePinia } from 'pinia';
 import { describe, it, expect, beforeEach } from 'vitest';
 
 import RestrictedToolCallout from './RestrictedToolCallout.vue';
-import { mockPolicyProject } from '../__tests__/mocks';
+import { contactAdminModalStub, mockPolicyProject } from '../__tests__/mocks';
 
 const renderComponent = createComponentRenderer(RestrictedToolCallout, {
 	props: { nodeTypeName: 'Slack' },
 	global: {
 		stubs: {
-			ContactAdminModal: {
-				props: ['open', 'nodeTypeName', 'audience'],
-				template:
-					'<div v-if="open" data-test-id="contact-admin-modal" :data-audience="audience">{{ nodeTypeName }}</div>',
-			},
+			ContactAdminModal: contactAdminModalStub,
 		},
 	},
 });
@@ -26,7 +22,7 @@ describe('RestrictedToolCallout', () => {
 	});
 
 	it('names the tool and the blocking scope', () => {
-		const { getByTestId } = renderComponent({ props: { scope: 'instance' } });
+		const { getByTestId } = renderComponent({ props: { restriction: { scope: 'instance' } } });
 
 		expect(getByTestId('restricted-tool-callout')).toHaveTextContent(
 			"Slack is restricted on this instance. The agent can't use it.",
@@ -52,7 +48,7 @@ describe('RestrictedToolCallout', () => {
 
 	it('sends a project restriction to the project admins', async () => {
 		mockPolicyProject({ type: 'team' });
-		const { getByTestId } = renderComponent({ props: { scope: 'project' } });
+		const { getByTestId } = renderComponent({ props: { restriction: { scope: 'project' } } });
 
 		expect(getByTestId('restricted-tool-contact-admin')).toHaveTextContent('Contact project admin');
 		await fireEvent.click(getByTestId('restricted-tool-contact-admin'));
@@ -62,7 +58,7 @@ describe('RestrictedToolCallout', () => {
 	it('says a project admin can allow a delegated tool', () => {
 		mockPolicyProject({ type: 'team' });
 		const { getByTestId } = renderComponent({
-			props: { scope: 'instance', optInAvailable: true },
+			props: { restriction: { scope: 'instance', optInAvailable: true } },
 		});
 
 		expect(getByTestId('restricted-tool-callout')).toHaveTextContent(
