@@ -86,11 +86,11 @@ export class ScimTokenController {
 	@GlobalScope('scim:manage')
 	async generateToken(req: AuthenticatedRequest, res: Response) {
 		try {
-			const scimToken = await this.scimTokenService.rotateToken(req.user);
+			const token = await this.scimTokenService.rotateToken(req.user);
 			const baseUrl = this.scimTokenService.getScimBaseUrl();
 			await this.refreshModuleSettings();
 
-			return res.status(201).json({ data: { token: scimToken.token, baseUrl } });
+			return res.status(201).json({ data: { token, baseUrl } });
 		} catch (error) {
 			if (error instanceof ScimTokenConflictError) {
 				return res.status(409).json({ message: error.message });

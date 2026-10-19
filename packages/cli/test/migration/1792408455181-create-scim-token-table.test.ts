@@ -9,12 +9,14 @@ import { DbConnection } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 
 const MIGRATION_NAME = 'CreateScimTokenTable1792408455181';
 const SCIM_LABEL = 'SCIM Provisioning API Key';
 
-type ScimTokenRow = { token: string; createdById: string | null };
+type ScimTokenRow = { tokenHash: string; tokenHint: string; createdById: string | null };
+
+const sha256 = (value: string) => createHash('sha256').update(value).digest('hex');
 type ApiKeyRow = { userId: string; apiKey: string; audience: string; label: string };
 
 describe('CreateScimTokenTable migration', () => {
@@ -110,7 +112,8 @@ describe('CreateScimTokenTable migration', () => {
 		const { escape, runQuery } = context;
 		const col = (name: string) => escape.columnName(name);
 		return await runQuery<ScimTokenRow[]>(
-			`SELECT ${col('token')} AS ${col('token')}, ${col('createdById')} AS ${col('createdById')} FROM ${escape.tableName('scim_token')}`,
+			`SELECT ${col('tokenHash')} AS ${col('tokenHash')}, ${col('tokenHint')} AS ${col('tokenHint')}, ${col('createdById')} AS ${col('createdById')}
+			 FROM ${escape.tableName('scim_token')}`,
 		);
 	}
 
@@ -165,8 +168,13 @@ describe('CreateScimTokenTable migration', () => {
 		await runSingleMigration(MIGRATION_NAME);
 
 		await withContext(async (context) => {
+			// The table keeps a hash and the last four characters, never the token.
 			expect(await getScimTokens(context)).toEqual([
-				{ token: 'newest-admin-token', createdById: newestAdmin },
+				{
+					tokenHash: sha256('newest-admin-token'),
+					tokenHint: 'oken',
+					createdById: newestAdmin,
+				},
 			]);
 			expect(await getApiKeys(context)).toEqual([
 				{ userId: olderAdmin, apiKey: 'public-api-token', audience: 'public-api', label: 'My key' },
@@ -197,15 +205,19 @@ describe('CreateScimTokenTable migration', () => {
 
 		await withContext(async (context) => {
 			const table = context.escape.tableName('scim_token');
-			const token = context.escape.columnName('token');
+			const columns = ['tokenHash', 'tokenHint']
+				.map((name) => context.escape.columnName(name))
+				.join(', ');
 			const slot = context.escape.columnName('slot');
 
-			await context.runQuery(`INSERT INTO ${table} (${token}) VALUES ('first')`);
+			await context.runQuery(`INSERT INTO ${table} (${columns}) VALUES ('first', 'irst')`);
 			await expect(
-				context.runQuery(`INSERT INTO ${table} (${token}) VALUES ('second')`),
+				context.runQuery(`INSERT INTO ${table} (${columns}) VALUES ('second', 'cond')`),
 			).rejects.toThrow(/unique/i);
 			await expect(
-				context.runQuery(`INSERT INTO ${table} (${token}, ${slot}) VALUES ('second', 'other')`),
+				context.runQuery(
+					`INSERT INTO ${table} (${columns}, ${slot}) VALUES ('second', 'cond', 'other')`,
+				),
 			).rejects.toThrow(/check constraint/i);
 		});
 	});
@@ -228,19 +240,20 @@ describe('CreateScimTokenTable migration', () => {
 				`DELETE FROM ${context.escape.tableName('user')} WHERE ${context.escape.columnName('id')} = :id`,
 				{ id: admin },
 			);
-			expect(await getScimTokens(context)).toEqual([{ token: 'admin-token', createdById: null }]);
+			expect(await getScimTokens(context)).toEqual([
+				{ tokenHash: sha256('admin-token'), tokenHint: 'oken', createdById: null },
+			]);
 		});
 	});
 
-	it('gives the token back to its creator on revert', async () => {
-		const admin = await withContext(async (context) => {
-			const id = await insertUser(context);
+	// Only the hash is stored, so a revert cannot give the token back.
+	it('drops the table on revert and leaves no SCIM key', async () => {
+		await withContext(async (context) => {
 			await insertApiKey(context, {
-				userId: id,
+				userId: await insertUser(context),
 				apiKey: 'admin-token',
 				createdAt: '2026-01-01T00:00:00.000Z',
 			});
-			return id;
 		});
 		await runSingleMigration(MIGRATION_NAME);
 
@@ -248,9 +261,7 @@ describe('CreateScimTokenTable migration', () => {
 		dataSource = Container.get(DataSource);
 
 		await withContext(async (context) => {
-			expect(await getApiKeys(context)).toEqual([
-				{ userId: admin, apiKey: 'admin-token', audience: 'scim-api', label: SCIM_LABEL },
-			]);
+			expect(await getApiKeys(context)).toEqual([]);
 			const table = context.escape.tableName('scim_token');
 			await expect(context.runQuery(`SELECT 1 FROM ${table}`)).rejects.toThrow();
 		});

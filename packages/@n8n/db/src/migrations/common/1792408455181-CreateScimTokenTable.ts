@@ -1,16 +1,18 @@
-import { generateNanoId } from '@n8n/utils/generate-nano-id';
+import { createHash } from 'node:crypto';
 
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
 const tableName = 'scim_token';
 
-/** The audience and label that SCIM keys had in `user_api_keys`. */
+/** The audience that SCIM keys had in `user_api_keys`. */
 const scimAudience = 'scim-api';
-const scimLabel = 'SCIM Provisioning API Key';
 
-type ScimTokenRow = {
-	token: string;
-	createdById: string;
+/** The settings page shows this many last characters of the token. */
+const tokenHintLength = 4;
+
+type ScimApiKeyRow = {
+	apiKey: string;
+	userId: string;
 	createdAt: Date | string;
 	lastUsedAt: Date | string | null;
 };
@@ -22,6 +24,10 @@ type ScimTokenRow = {
  * In `user_api_keys`, the key is deleted with its user, and its fixed label
  * collides with a public API key of the same name. Here, the token keeps
  * working when its creator is deleted.
+ *
+ * The table keeps only a SHA-256 hash of the token and its last four
+ * characters. The token is shown once, when it is created, so no code path
+ * needs the value again.
  */
 export class CreateScimTokenTable1792408455181 implements ReversibleMigration {
 	async up(context: MigrationContext) {
@@ -42,9 +48,14 @@ export class CreateScimTokenTable1792408455181 implements ReversibleMigration {
 					.comment(
 						'Always instance. The unique index on it allows one SCIM token for the instance',
 					),
-				column('token').text.notNull.comment(
-					'Signed JWT that the identity provider sends as its bearer token',
-				),
+				column('tokenHash')
+					.varchar(64)
+					.notNull.comment(
+						'Hex SHA-256 hash of the signed JWT that the identity provider sends as its bearer token',
+					),
+				column('tokenHint')
+					.varchar(tokenHintLength)
+					.notNull.comment('Last four characters of the token, so that admins can identify it'),
 				column('createdById').uuid.comment(
 					'User who generated the token. NULL after that user is deleted',
 				),
@@ -64,9 +75,16 @@ export class CreateScimTokenTable1792408455181 implements ReversibleMigration {
 		await this.deleteScimKeys(context);
 	}
 
-	async down(context: MigrationContext) {
-		await this.restoreTokenForCreator(context);
-		await context.schemaBuilder.dropTable(tableName);
+	/**
+	 * The table holds only a hash of the token, so the previous schema cannot
+	 * get the token back. After a revert, an admin generates a new SCIM token
+	 * and enters it in the identity provider.
+	 */
+	async down({ schemaBuilder: { dropTable }, logger, migrationName }: MigrationContext) {
+		await dropTable(tableName);
+		logger.warn(
+			`[${migrationName}] The SCIM token cannot be restored. Generate a new SCIM token and enter it in the identity provider.`,
+		);
 	}
 
 	/**
@@ -75,15 +93,14 @@ export class CreateScimTokenTable1792408455181 implements ReversibleMigration {
 	 * held `scim:manage`. An identity provider that uses this key keeps working.
 	 */
 	private async keepNewestWorkingScimKey({ escape, runQuery }: MigrationContext) {
-		const scimToken = escape.tableName(tableName);
 		const apiKey = escape.tableName('user_api_keys');
 		const user = escape.tableName('user');
 		const roleScope = escape.tableName('role_scope');
 		const col = (name: string) => escape.columnName(name);
 
-		await runQuery(
-			`INSERT INTO ${scimToken} (${col('token')}, ${col('createdById')}, ${col('createdAt')}, ${col('lastUsedAt')})
-			 SELECT k.${col('apiKey')}, k.${col('userId')}, k.${col('createdAt')}, k.${col('lastUsedAt')}
+		const [key] = await runQuery<ScimApiKeyRow[]>(
+			`SELECT k.${col('apiKey')} AS ${col('apiKey')}, k.${col('userId')} AS ${col('userId')},
+			        k.${col('createdAt')} AS ${col('createdAt')}, k.${col('lastUsedAt')} AS ${col('lastUsedAt')}
 			 FROM ${apiKey} k
 			 JOIN ${user} u ON u.${col('id')} = k.${col('userId')}
 			 WHERE k.${col('audience')} = '${scimAudience}'
@@ -95,51 +112,26 @@ export class CreateScimTokenTable1792408455181 implements ReversibleMigration {
 			 ORDER BY k.${col('createdAt')} DESC, k.${col('id')} DESC
 			 LIMIT 1`,
 		);
+
+		if (!key) return;
+
+		await runQuery(
+			`INSERT INTO ${escape.tableName(tableName)}
+			 (${col('tokenHash')}, ${col('tokenHint')}, ${col('createdById')}, ${col('createdAt')}, ${col('lastUsedAt')})
+			 VALUES (:tokenHash, :tokenHint, :createdById, :createdAt, :lastUsedAt)`,
+			{
+				tokenHash: createHash('sha256').update(key.apiKey).digest('hex'),
+				tokenHint: key.apiKey.slice(-tokenHintLength),
+				createdById: key.userId,
+				createdAt: key.createdAt,
+				lastUsedAt: key.lastUsedAt,
+			},
+		);
 	}
 
 	private async deleteScimKeys({ escape, runQuery }: MigrationContext) {
 		await runQuery(
 			`DELETE FROM ${escape.tableName('user_api_keys')} WHERE ${escape.columnName('audience')} = '${scimAudience}'`,
-		);
-	}
-
-	/**
-	 * The previous schema keeps SCIM keys per user. Give the instance token
-	 * back to its creator. The token is lost when the creator was deleted, or
-	 * when the creator now has a public API key with the SCIM label.
-	 */
-	private async restoreTokenForCreator({
-		escape,
-		runQuery,
-		logger,
-		migrationName,
-	}: MigrationContext) {
-		const col = (name: string) => escape.columnName(name);
-
-		const [row] = await runQuery<ScimTokenRow[]>(
-			`SELECT ${col('token')} AS ${col('token')}, ${col('createdById')} AS ${col('createdById')},
-			        ${col('createdAt')} AS ${col('createdAt')}, ${col('lastUsedAt')} AS ${col('lastUsedAt')}
-			 FROM ${escape.tableName(tableName)}
-			 WHERE ${col('createdById')} IS NOT NULL`,
-		);
-
-		if (!row) {
-			logger.info(`[${migrationName}] No SCIM token with a creator to restore`);
-			return;
-		}
-
-		await runQuery(
-			`INSERT INTO ${escape.tableName('user_api_keys')}
-			 (${col('id')}, ${col('userId')}, ${col('label')}, ${col('apiKey')}, ${col('scopes')}, ${col('audience')}, ${col('createdAt')}, ${col('updatedAt')}, ${col('lastUsedAt')})
-			 VALUES (:id, :userId, '${scimLabel}', :apiKey, '[]', '${scimAudience}', :createdAt, :createdAt, :lastUsedAt)
-			 ON CONFLICT DO NOTHING`,
-			{
-				id: generateNanoId(),
-				userId: row.createdById,
-				apiKey: row.token,
-				createdAt: row.createdAt,
-				lastUsedAt: row.lastUsedAt,
-			},
 		);
 	}
 }

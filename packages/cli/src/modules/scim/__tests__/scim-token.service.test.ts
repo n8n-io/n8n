@@ -6,7 +6,7 @@ import type { JwtService, UrlService } from '@n8n/backend-services';
 
 import type { ScimToken } from '../database/scim-token.entity';
 import type { ScimTokenRepository } from '../database/scim-token.repository';
-import { ScimTokenService } from '../scim-token.service';
+import { hashScimToken, ScimTokenService } from '../scim-token.service';
 import { ScimTokenConflictError } from '../scim.errors';
 
 describe('ScimTokenService', () => {
@@ -21,7 +21,8 @@ describe('ScimTokenService', () => {
 		({
 			id: 1,
 			slot: 'instance',
-			token: 'a-very-long-scim-token-value',
+			tokenHash: hashScimToken('a-very-long-scim-token-value'),
+			tokenHint: 'alue',
 			createdById: 'user-1',
 			lastUsedAt: null,
 			createdAt: new Date(),
@@ -38,16 +39,17 @@ describe('ScimTokenService', () => {
 
 	describe('verifyApiKey', () => {
 		it('accepts a valid token that is the stored instance token', async () => {
-			scimTokenRepository.findByToken.mockResolvedValue(createToken());
+			scimTokenRepository.findByTokenHash.mockResolvedValue(createToken());
 
 			await expect(service.verifyApiKey('token')).resolves.toBe(true);
 
 			expect(jwtService.verify).toHaveBeenCalledWith('scimApiKey', 'token', { issuer: 'n8n' });
-			expect(scimTokenRepository.findByToken).toHaveBeenCalledWith('token', {});
+			// The database keeps only the hash of the token.
+			expect(scimTokenRepository.findByTokenHash).toHaveBeenCalledWith(hashScimToken('token'), {});
 		});
 
 		it('accepts the token after its creator was deleted', async () => {
-			scimTokenRepository.findByToken.mockResolvedValue(createToken({ createdById: null }));
+			scimTokenRepository.findByTokenHash.mockResolvedValue(createToken({ createdById: null }));
 
 			await expect(service.verifyApiKey('token')).resolves.toBe(true);
 		});
@@ -58,17 +60,17 @@ describe('ScimTokenService', () => {
 			});
 
 			await expect(service.verifyApiKey('token')).resolves.toBe(false);
-			expect(scimTokenRepository.findByToken).not.toHaveBeenCalled();
+			expect(scimTokenRepository.findByTokenHash).not.toHaveBeenCalled();
 		});
 
 		it('rejects a token that is not the stored instance token', async () => {
-			scimTokenRepository.findByToken.mockResolvedValue(null);
+			scimTokenRepository.findByTokenHash.mockResolvedValue(null);
 
 			await expect(service.verifyApiKey('token')).resolves.toBe(false);
 		});
 
 		it('propagates a repository failure instead of reporting an invalid token', async () => {
-			scimTokenRepository.findByToken.mockRejectedValue(new Error('db down'));
+			scimTokenRepository.findByTokenHash.mockRejectedValue(new Error('db down'));
 
 			await expect(service.verifyApiKey('token')).rejects.toThrow('db down');
 		});
@@ -91,18 +93,28 @@ describe('ScimTokenService', () => {
 		});
 	});
 
+	it('stores no token value, only a hex SHA-256 hash', () => {
+		expect(hashScimToken('token')).toMatch(/^[0-9a-f]{64}$/);
+		expect(hashScimToken('token')).not.toContain('token');
+	});
+
 	describe('rotateToken', () => {
 		it('replaces the current token with a token whose subject names no user', async () => {
-			const created = createToken({ id: 2, token: 'signed-token' });
-			scimTokenRepository.findInstanceToken.mockResolvedValue(createToken({ token: 'old-token' }));
-			scimTokenRepository.replace.mockResolvedValue(created);
+			jwtService.sign.mockReturnValue('signed-token-wxyz');
+			scimTokenRepository.findInstanceToken.mockResolvedValue(
+				createToken({ tokenHash: hashScimToken('old-token') }),
+			);
 
-			await expect(service.rotateToken(user)).resolves.toBe(created);
+			// The value leaves the service only here, once.
+			await expect(service.rotateToken(user)).resolves.toBe('signed-token-wxyz');
 
 			expect(scimTokenRepository.replace).toHaveBeenCalledWith(
-				'old-token',
-				'signed-token',
-				'user-1',
+				hashScimToken('old-token'),
+				{
+					tokenHash: hashScimToken('signed-token-wxyz'),
+					tokenHint: 'wxyz',
+					createdById: 'user-1',
+				},
 				{},
 			);
 			const [purpose, payload] = jwtService.sign.mock.calls[0];
@@ -117,7 +129,11 @@ describe('ScimTokenService', () => {
 
 			await service.rotateToken(user);
 
-			expect(scimTokenRepository.replace).toHaveBeenCalledWith(null, 'signed-token', 'user-1', {});
+			expect(scimTokenRepository.replace).toHaveBeenCalledWith(
+				null,
+				expect.objectContaining({ tokenHash: hashScimToken('signed-token') }),
+				{},
+			);
 		});
 
 		it('propagates a conflict with a concurrent rotation', async () => {

@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "scim_token" ("id" integer PRIMARY KEY NOT NULL, "slot" varchar(16) NOT NULL DEFAULT ('instance'), "token" text NOT NULL, "createdById" varchar, "lastUsedAt" datetime(3), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_scim_token_slot" CHECK ("slot" IN ('instance')), CONSTRAINT "FK_scim_token_createdById" FOREIGN KEY ("createdById") REFERENCES "user" ("id") ON DELETE SET NULL)
+CREATE TABLE "scim_token" ("id" integer PRIMARY KEY NOT NULL, "slot" varchar(16) NOT NULL DEFAULT ('instance'), "tokenHash" varchar(64) NOT NULL, "tokenHint" varchar(4) NOT NULL, "createdById" varchar, "lastUsedAt" datetime(3), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_scim_token_slot" CHECK ("slot" IN ('instance')), CONSTRAINT "FK_scim_token_createdById" FOREIGN KEY ("createdById") REFERENCES "user" ("id") ON DELETE SET NULL)
 ```
 
 </details>
@@ -20,7 +20,8 @@ CREATE TABLE "scim_token" ("id" integer PRIMARY KEY NOT NULL, "slot" varchar(16)
 | id | INTEGER |  | false |  |  |  |
 | lastUsedAt | datetime(3) |  | true |  |  |  |
 | slot | varchar(16) | 'instance' | false |  |  |  |
-| token | TEXT |  | false |  |  |  |
+| tokenHash | varchar(64) |  | false |  |  |  |
+| tokenHint | varchar(4) |  | false |  |  |  |
 
 ## Constraints
 
@@ -49,7 +50,8 @@ erDiagram
   INTEGER id
   datetime_3_ lastUsedAt
   varchar_16_ slot
-  TEXT token
+  varchar_64_ tokenHash
+  varchar_4_ tokenHint
 }
 "user" {
   datetime_3_ createdAt

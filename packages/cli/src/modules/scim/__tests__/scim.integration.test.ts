@@ -9,6 +9,7 @@ import { createAdmin, createMember, createOwner } from '@test-integration/db/use
 import * as utils from '@test-integration/utils';
 
 import { ScimTokenRepository } from '../database/scim-token.repository';
+import { hashScimToken } from '../scim-token.service';
 import { ScimSettingsService } from '../scim-settings.service';
 
 const testServer = utils.setupTestServer({
@@ -210,9 +211,25 @@ describe('SCIM instance token', () => {
 			jti: 'legacy-token',
 		});
 		const current = await scimTokenRepository().findInstanceToken({});
-		await scimTokenRepository().replace(current?.token ?? null, legacyToken, admin.id, {});
+		await scimTokenRepository().replace(
+			current?.tokenHash ?? null,
+			{
+				tokenHash: hashScimToken(legacyToken),
+				tokenHint: legacyToken.slice(-4),
+				createdById: admin.id,
+			},
+			{},
+		);
 
 		expect((await scimRequest('get', '/Users', { bearer: legacyToken })).status).toBe(200);
+	});
+
+	// Show-once: no code path needs the value, so a database read must not give a working token.
+	it('stores only a hash and the last four characters of the token', async () => {
+		const stored = await scimTokenRepository().findInstanceToken({});
+
+		expect(stored).toMatchObject({ tokenHash: hashScimToken(token), tokenHint: token.slice(-4) });
+		expect(JSON.stringify(stored)).not.toContain(token);
 	});
 });
 

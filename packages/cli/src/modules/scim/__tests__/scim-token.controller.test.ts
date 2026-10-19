@@ -6,7 +6,6 @@ import type { Response } from 'express';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import type { ScimToken } from '../database/scim-token.entity';
 import type { ScimSettingsService } from '../scim-settings.service';
 import { ScimTokenController } from '../scim-token.controller';
 import type { ScimTokenService } from '../scim-token.service';
@@ -112,7 +111,7 @@ describe('ScimTokenController', () => {
 
 	describe('POST /token', () => {
 		it('returns 201 with the token and base URL', async () => {
-			scimTokenService.rotateToken.mockResolvedValue(mock<ScimToken>({ token: 'the-token' }));
+			scimTokenService.rotateToken.mockResolvedValue('the-token');
 			const res = makeRes();
 
 			await controller.generateToken(req, res);
@@ -136,7 +135,7 @@ describe('ScimTokenController', () => {
 		});
 
 		it('still returns the new token when the settings refresh fails', async () => {
-			scimTokenService.rotateToken.mockResolvedValue(mock<ScimToken>({ token: 'the-token' }));
+			scimTokenService.rotateToken.mockResolvedValue('the-token');
 			moduleRegistry.refreshModuleSettings.mockRejectedValue(new Error('db down'));
 			const res = makeRes();
 
