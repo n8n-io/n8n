@@ -1,3 +1,12 @@
+## [2.44.4](https://github.com/n8n-io/n8n/compare/n8n@2.44.3...n8n@2.44.4) (2026-10-19)
+
+
+### Bug Fixes
+
+* **core:** Reuse connections in the log streaming webhook destination ([#41281](https://github.com/n8n-io/n8n/issues/41281)) ([b79afe2](https://github.com/n8n-io/n8n/commit/b79afe23905e6b7212f4da6ccb65935c1bb29377))
+* **core:** Turn off expression spans by default ([#41309](https://github.com/n8n-io/n8n/issues/41309)) ([6965193](https://github.com/n8n-io/n8n/commit/69651932d6311454f62f8d7f4ea45d7879ab9e7e))
+
+
 ## [2.44.3](https://github.com/n8n-io/n8n/compare/n8n@2.44.2...n8n@2.44.3) (2026-10-16)
 
 
