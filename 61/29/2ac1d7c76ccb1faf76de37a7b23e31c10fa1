@@ -1,0 +1,23 @@
+packages/nodes-base/nodes/Microsoft/Storage/descriptions/BlobDescription.ts
+  s_2e1fa95fc44f8f::t_98623c8358bef0 22
+packages/nodes-base/nodes/Microsoft/Storage/test/blob/blobPath.test.ts
+  s_2e1fa95fc44f8f::t_039f6091ef1e59 28-46
+packages/nodes-base/nodes/Microsoft/Storage/test/blob/blob_delete_repeated_slash_name.workflow.json
+  s_2e1fa95fc44f8f::t_2c8a45ce6f4cb8 1-63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "61292ac1d7c76ccb1faf76de37a7b23e31c10fa1",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}
