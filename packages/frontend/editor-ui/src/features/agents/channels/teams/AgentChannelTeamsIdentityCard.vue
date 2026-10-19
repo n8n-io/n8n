@@ -13,8 +13,10 @@ withDefaults(
 		tooltip?: string;
 		ready: boolean;
 		loading?: boolean;
+		/** Teams holds an older version of what this card shows. */
+		outdated?: boolean;
 	}>(),
-	{ personalisation: null, tooltip: '', loading: false },
+	{ personalisation: null, tooltip: '', loading: false, outdated: false },
 );
 
 const emit = defineEmits<{ download: [] }>();
@@ -24,7 +26,11 @@ const i18n = useI18n();
 
 <template>
 	<div
-		:class="[$style.identity, ready ? $style.identityReady : $style.locked]"
+		:class="[
+			$style.identity,
+			ready ? $style.identityReady : $style.locked,
+			{ [$style.outdated]: outdated },
+		]"
 		data-testid="teams-identity"
 	>
 		<AgentPersonalisationIcon :personalisation="personalisation" :size="36" />
@@ -55,7 +61,7 @@ const i18n = useI18n();
 				@click="emit('download')"
 			>
 				{{ i18n.baseText('agents.channels.teams.setup.install.button') }}
-				<N8nIcon icon="download" size="medium" />
+				<N8nIcon icon="arrow-circle-down" size="medium" />
 			</N8nButton>
 		</slot>
 	</div>
@@ -64,6 +70,8 @@ const i18n = useI18n();
 <style module lang="scss">
 .identity {
 	display: flex;
+	/* Narrow containers, like the Assistant chat, move the action below the text. */
+	flex-wrap: wrap;
 	align-items: center;
 	gap: var(--spacing--xs);
 	width: 100%;
@@ -83,6 +91,11 @@ const i18n = useI18n();
 	border-color: light-dark(var(--border-color--subtle), var(--border-color));
 }
 
+.outdated.outdated {
+	background: var(--callout--color--background--warning);
+	border-color: var(--callout--border-color--warning);
+}
+
 .locked {
 	opacity: 0.45;
 	pointer-events: none;
@@ -92,7 +105,7 @@ const i18n = useI18n();
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--5xs);
-	flex: 1;
+	flex: 1 1 10rem;
 	min-width: 0;
 }
 

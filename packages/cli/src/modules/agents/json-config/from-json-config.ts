@@ -326,10 +326,10 @@ function buildFallbackWebSearchTool(
 		};
 	}
 	if (webSearchConfig.provider !== 'brave' && webSearchConfig.provider !== 'searxng') {
-		throw new Error('Web search is enabled but no fallback search provider is configured.');
+		throw new UserError('Web search is enabled but no fallback search provider is configured.');
 	}
 	if (!webSearchConfig.credential) {
-		throw new Error('Web search is enabled but no search credential is configured.');
+		throw new UserError('Web search is enabled but no search credential is configured.');
 	}
 	const credentialId = webSearchConfig.credential;
 

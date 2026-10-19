@@ -52,7 +52,9 @@ const cleanupTestExecutionsAction = z.object({
 	olderThanHours: z
 		.number()
 		.optional()
-		.describe('Only delete executions older than this many hours. Defaults to 1.'),
+		.describe(
+			'Only delete executions older than this many hours. Must be greater than 0. Defaults to 1.',
+		),
 });
 
 const listFoldersAction = z.object({
@@ -203,6 +205,15 @@ async function handleCleanupTestExecutions(
 
 	if (context.permissions?.cleanupTestExecutions === 'blocked') {
 		return { deletedCount: 0, denied: true, reason: 'Action blocked by admin' };
+	}
+
+	// Checked here, not in the schema: the flattened action schema would apply the bound to every
+	// action. OpenAI strict tool calls must fill this field, and 0 would delete every test execution.
+	if (input.olderThanHours !== undefined && !(input.olderThanHours > 0)) {
+		return {
+			error:
+				'Nothing was deleted: olderThanHours must be greater than 0. Pass 1 to delete executions older than 1 hour.',
+		};
 	}
 
 	const needsApproval = context.permissions?.cleanupTestExecutions !== 'always_allow';

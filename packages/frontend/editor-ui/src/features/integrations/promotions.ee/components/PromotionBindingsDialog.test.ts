@@ -161,7 +161,7 @@ it('asks to confirm data deletion when only destructive changes block apply', as
 	expect(
 		getByRole('heading', { level: 2, name: 'Review destructive changes' }),
 	).toBeInTheDocument();
-	expect(getByText('Check the column changes before you apply')).toBeInTheDocument();
+	expect(getByText('Check these changes before you apply')).toBeInTheDocument();
 	expect(
 		getByText(
 			"Changes to this data table remove or retype columns. The values in the changed columns can't be restored. Rows and other columns are kept.",

@@ -82,7 +82,7 @@ const publishedOptions = computed<Array<{ value: PublishedFilter; label: string 
 <template>
 	<N8nPopover v-model:open="open" width="420px" align="start">
 		<template #trigger>
-			<N8nButton variant="subtle" size="small" data-test-id="migration-rule-filters">
+			<N8nButton variant="outline" size="small" data-test-id="migration-rule-filters">
 				{{
 					activeCount
 						? i18n.baseText('settings.migrationReport.detail.filters.buttonWithCount', {

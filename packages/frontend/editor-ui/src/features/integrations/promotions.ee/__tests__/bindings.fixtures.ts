@@ -48,6 +48,12 @@ export const destructiveChange: Extract<PromotionBindingConflict, { code: 'destr
 		changes: [{ kind: 'remove-column', column: 'total', type: 'number', destructive: true }],
 	};
 
+export const projectDeletion: Extract<PromotionBindingConflict, { code: 'project-deletion' }> = {
+	kind: 'project',
+	code: 'project-deletion',
+	project: { id: 'team-b', name: 'Sales' },
+};
+
 export const savedCredential: Extract<CreatedPromotionBinding, { kind: 'credential' }> = {
 	kind: 'credential',
 	sourceId: credential.sourceId,

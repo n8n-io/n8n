@@ -167,6 +167,7 @@ describe('PromotionBindingPreflightService', () => {
 		credentialsRepository.findPromotionBindingAccess.mockResolvedValue([]);
 		variablesRepository.findKeysInProjectsOrGlobal.mockResolvedValue([]);
 		dataTableImporter.findDestructiveChanges.mockResolvedValue([]);
+		projectRepository.findTeamProjectIds.mockResolvedValue([]);
 		projectRepository.findTypesByIds.mockResolvedValue(
 			[PROJECT_A, PROJECT_B, PROJECT_C].map(({ id }) => ({ id, type: 'team' })),
 		);
