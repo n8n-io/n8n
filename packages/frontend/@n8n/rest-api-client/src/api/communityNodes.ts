@@ -3,7 +3,7 @@ import { NPM_COMMUNITY_NODE_SEARCH_API_URL } from '@n8n/constants';
 import type { PublicInstalledPackage } from 'n8n-workflow';
 
 import type { IRestApiContext } from '../types';
-import { get, post, makeRestApiRequest } from '../utils';
+import { get, makeRestApiRequest } from '../utils';
 
 export type InstalledPackageWithRestrictions = PublicInstalledPackage & {
 	policyRestrictions?: PackagePolicyRestrictions;
@@ -21,7 +21,7 @@ export async function installNewPackage(
 	name: string,
 	version?: string,
 ): Promise<InstalledPackageWithRestrictions> {
-	return await post(context.baseUrl, '/community-packages', { name, version });
+	return await makeRestApiRequest(context, 'POST', '/community-packages', { name, version });
 }
 
 export async function uninstallPackage(context: IRestApiContext, name: string): Promise<void> {

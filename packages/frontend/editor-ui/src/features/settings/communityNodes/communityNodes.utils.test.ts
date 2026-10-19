@@ -104,7 +104,7 @@ describe('describeInstallPolicyNote', () => {
 	});
 
 	it('counts one node restricted on the instance', () => {
-		expect(note([onInstance('a.a')], 1)).toBe('1 of 1 node is restricted on this instance.');
+		expect(note([onInstance('a.a')], 1)).toBe('1 of 1 nodes is restricted on this instance.');
 	});
 
 	it('counts several nodes restricted on the instance', () => {
@@ -115,7 +115,7 @@ describe('describeInstallPolicyNote', () => {
 
 	it('says when projects can allow a restricted node', () => {
 		expect(note([onInstance('a.a', true)])).toBe(
-			'1 of 5 node is restricted on this instance. Projects can allow some of these nodes.',
+			'1 of 5 nodes is restricted on this instance. Projects can allow some of these nodes.',
 		);
 	});
 
@@ -128,7 +128,7 @@ describe('describeInstallPolicyNote', () => {
 
 	it('reports instance and project restrictions together', () => {
 		expect(note([onInstance('a.a'), inProjects('a.b'), inProjects('a.c')])).toBe(
-			'1 of 5 node is restricted on this instance. 2 nodes are restricted in some projects.',
+			'1 of 5 nodes is restricted on this instance. 2 nodes are restricted in some projects.',
 		);
 	});
 });
