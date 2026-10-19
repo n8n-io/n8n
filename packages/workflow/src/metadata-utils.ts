@@ -23,16 +23,23 @@ function parseErrorResponseWorkflowMetadata(response: unknown): ISubWorkflowMeta
 	};
 }
 
+const asTokenCount = (value: unknown): number | undefined =>
+	typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : undefined;
+
 export function accumulateTokenUsage(
 	context: IExecuteFunctions,
-	inputTokens: number,
-	outputTokens: number,
+	inputTokens: number | undefined,
+	outputTokens: number | undefined,
 ): void {
+	const validInput = asTokenCount(inputTokens);
+	const validOutput = asTokenCount(outputTokens);
+	if (validInput === undefined && validOutput === undefined) return;
+
 	const prev = context.getExecuteData()?.metadata?.tokenUsage;
 	context.setMetadata({
 		tokenUsage: {
-			inputTokens: (prev?.inputTokens ?? 0) + inputTokens,
-			outputTokens: (prev?.outputTokens ?? 0) + outputTokens,
+			inputTokens: (asTokenCount(prev?.inputTokens) ?? 0) + (validInput ?? 0),
+			outputTokens: (asTokenCount(prev?.outputTokens) ?? 0) + (validOutput ?? 0),
 		},
 	});
 }
