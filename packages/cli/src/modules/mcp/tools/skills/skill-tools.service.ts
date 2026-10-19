@@ -22,6 +22,7 @@ import { Telemetry } from '@/telemetry';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { RegisterToolFn, UserCalledMCPToolEventPayload } from '../../mcp.types';
 import { trackAndReturnToolError } from '../tool-error.utils';
+import { toolResult } from '../tool-result.utils';
 
 const searchSkillsInput = {
 	query: z.string().trim().max(200).optional().describe('Filter by skill name or description'),
@@ -87,14 +88,6 @@ function details(detail: SkillDetail) {
 		skill: detail.skill,
 		skillHash: detail.skillHash,
 		usedBy: detail.usedBy,
-	};
-}
-
-function toolResult(data: Record<string, unknown>, isError = false) {
-	return {
-		content: [{ type: 'text' as const, text: JSON.stringify(data) }],
-		structuredContent: data,
-		...(isError ? { isError: true } : {}),
 	};
 }
 

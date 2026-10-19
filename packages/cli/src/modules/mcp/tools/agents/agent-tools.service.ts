@@ -86,6 +86,7 @@ import type {
 	ToolDefinition,
 	UserCalledMCPToolEventPayload,
 } from '../../mcp.types';
+import { toolResult } from '../tool-result.utils';
 
 const MCP_SERVER_DISCOVERY_LIMIT = 20;
 const MODEL_DISCOVERY_LIMIT = 50;
@@ -426,14 +427,6 @@ type MutationResource = {
 	type: 'skill' | 'task' | 'customTool';
 	id: string;
 };
-
-function toolResult(data: Record<string, unknown>, isError = false) {
-	return {
-		content: [{ type: 'text' as const, text: JSON.stringify(data) }],
-		structuredContent: data,
-		...(isError ? { isError: true } : {}),
-	};
-}
 
 @Service()
 export class McpAgentToolsService {
