@@ -1,0 +1,20 @@
+packages/frontend/@n8n/design-system/src/components/N8nBadge/Badge.test.ts
+  s_7a1986b2521465::t_32d20762c6464b 53-65
+  s_7a1986b2521465::t_1c9b281b4626ed 52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "80384f2edb1c048124c0cbbd8c273b1e781a3205",
+  "prompts": {},
+  "sessions": {
+    "s_7a1986b2521465": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a153c0-2808-769a-aac5-ddf22e40a96f",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}
