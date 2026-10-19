@@ -131,4 +131,28 @@ describe('PromotionPreviewView', () => {
 		await userEvent.click(getByRole('button', { name: 'Try again' }));
 		await waitFor(() => expect(getByTestId('promotion-preview-tree')).toBeInTheDocument());
 	});
+
+	it('should keep the changes and warn when a refresh fails', async () => {
+		const { getByTestId, getByText } = await render();
+		vi.mocked(api.getPromotionPreview).mockRejectedValueOnce(new Error('offline'));
+
+		await userEvent.click(getByTestId('promotion-preview-refresh'));
+		await waitAllPromises();
+
+		expect(getByText(/Couldn't refresh the preview/)).toBeInTheDocument();
+		expect(getByTestId('promotion-preview-tree')).toBeInTheDocument();
+	});
+
+	it('should show the error when the refresh of an empty preview fails', async () => {
+		vi.mocked(api.getPromotionPreview).mockResolvedValueOnce(billingPreview({ resources: [] }));
+		const { getByTestId } = await render();
+		expect(getByTestId('promotion-preview-empty')).toHaveTextContent('Nothing to promote');
+		vi.mocked(api.getPromotionPreview).mockRejectedValueOnce(new Error('offline'));
+
+		await userEvent.click(getByTestId('promotion-preview-refresh'));
+		await waitAllPromises();
+
+		// "Nothing to promote" could be out of date, so the page asks for a retry.
+		expect(getByTestId('promotion-preview-error')).toHaveTextContent("Couldn't load the changes");
+	});
 });
