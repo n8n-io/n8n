@@ -258,6 +258,13 @@ packages/nodes-base/nodes/Microsoft/OneDrive/                            @n8n-io
 packages/nodes-base/nodes/Microsoft/Outlook/                             @n8n-io/enterprise-nodes
 packages/nodes-base/nodes/Microsoft/SharePoint/                          @n8n-io/enterprise-nodes
 packages/nodes-base/nodes/Microsoft/Teams/                               @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/Microsoft/Sql/                                 @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/Microsoft/Storage/                             @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/Microsoft/ToDo/                                @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/Microsoft/Dataverse/                           @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/Oracle/                                        @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/Aws/S3/                                        @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/S3/                                            @n8n-io/enterprise-nodes
 packages/@n8n/nodes-langchain/nodes/vendors/Databricks/                  @n8n-io/enterprise-nodes
 packages/@n8n/nodes-langchain/nodes/llms/LmChatDatabricks/               @n8n-io/enterprise-nodes
 packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsDatabricks/     @n8n-io/enterprise-nodes
@@ -269,6 +276,9 @@ packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/              @n8n-io
 packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsAzureOpenAi/    @n8n-io/enterprise-nodes
 packages/@n8n/nodes-langchain/nodes/llms/LmChatGoogleVertex/             @n8n-io/enterprise-nodes
 packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsGoogleVertex/   @n8n-io/enterprise-nodes
+packages/@n8n/nodes-langchain/nodes/vector_store/VectorStoreOracleDB/    @n8n-io/enterprise-nodes
+packages/@n8n/nodes-langchain/nodes/llms/LmChatNvidia/                   @n8n-io/enterprise-nodes
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsNvidia/         @n8n-io/enterprise-nodes
 
 # Community engineering
 .agents/skills/create-community-node-lint-rule/         @n8n-io/community-engineering
