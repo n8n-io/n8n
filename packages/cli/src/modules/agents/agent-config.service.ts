@@ -99,7 +99,7 @@ export class AgentConfigService {
 			metadata?: AgentDefinitionMetadata;
 			plannedDestinations?: PlannedAgentDestinations;
 		},
-	): Promise<Agent> {
+	): Promise<ProjectAgent> {
 		await Container.get(AgentsSettingsService).assertEnabled();
 		await this.configPreparation.assertCanSaveDefinition(projectId, user, 'update');
 		const agent = await getAgentOrThrow(
