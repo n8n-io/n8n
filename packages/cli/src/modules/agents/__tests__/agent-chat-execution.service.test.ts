@@ -1,4 +1,3 @@
-import type { AgentMessageSteeringService } from '../agent-message-steering.service';
 import type { SerializableAgentState } from '@n8n/agents';
 import { LockService } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
@@ -7,9 +6,11 @@ import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
 import { NotFoundError } from '@n8n/errors';
+import type { AgentMessageSteeringService } from '../agent-message-steering.service';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import type { AgentBackgroundJobService } from '../background/agent-background-job.service';
+import { PARENT_TASK_CANCELLED_REASON } from '../background/sub-agent-background-state';
 import { AgentChatExecutionService } from '../agent-chat-execution.service';
 import type { AgentExecutionService } from '../agent-execution.service';
 import type { AgentExecutionUpdateBroadcaster } from '../agent-execution-update-broadcaster';
@@ -359,3 +360,115 @@ it('rejects preview and foreign executions on the production cancel route', asyn
 		service.requestCancel({ ...production, userId: 'other-user' }),
 	).rejects.toBeInstanceOf(NotFoundError);
 });
+
+it('foreground Stop leaves detached jobs running locally and on other mains', async () => {
+	const { service, backgroundJobs, publisher } = makeService();
+	const controller = new AbortController();
+	service.register(context, controller);
+	await service.requestCancel({ ...context, scope: 'foreground' });
+	expect(controller.signal.aborted).toBe(true);
+	expect(backgroundJobs.cancelForParent).not.toHaveBeenCalled();
+	await service.handleForegroundCancel(context);
+	expect(backgroundJobs.cancelForParent).not.toHaveBeenCalled();
+	expect(publisher.publishCommand).not.toHaveBeenCalled();
+});
+
+it('relays foreground scope before a remote execution registers', async () => {
+	const mainA = makeService();
+	const mainB = makeService();
+	await mainB.service.requestCancel({ ...context, scope: 'foreground' });
+	const { surface: _surface, ...wireContext } = context;
+	const payload = { ...wireContext, productionN8nChat: false };
+	expect(mainB.publisher.publishCommand).toHaveBeenCalledWith({
+		command: 'cancel-agent-chat-foreground',
+		payload,
+	});
+	await mainA.service.handleForegroundCancel(payload);
+	const controller = new AbortController();
+	mainA.service.register(context, controller);
+	expect(controller.signal.aborted).toBe(true);
+	expect(controller.signal.reason).toMatchObject({
+		name: 'AbortError',
+		message: 'Response stopped',
+	});
+	expect(mainA.backgroundJobs.cancelForParent).not.toHaveBeenCalled();
+	expect(mainB.backgroundJobs.cancelForParent).not.toHaveBeenCalled();
+});
+
+it('foreground Stop removes a suspended checkpoint without canceling detached jobs', async () => {
+	const { service, repository, checkpointStorage, backgroundJobs } = makeService();
+	const suspended = { ...running, status: 'success' as const, hitlStatus: 'suspended' as const };
+	repository.findOneBy.mockResolvedValue(suspended);
+	repository.findLatestByThreadId.mockResolvedValue(suspended);
+	await service.requestCancel({ ...context, scope: 'foreground' });
+	expect(checkpointStorage.delete).toHaveBeenCalledWith('run-1', 'agent-1');
+	expect(backgroundJobs.cancelForParent).not.toHaveBeenCalled();
+});
+
+it('cancels detached jobs on the owner before a relayed run registers', async () => {
+	const { service, backgroundJobs } = makeService();
+	await service.handleCancel(context);
+	expect(backgroundJobs.cancelForParent).toHaveBeenCalledWith(
+		context.agentId,
+		context.threadId,
+		'draft-chat:user-1',
+	);
+	const controller = new AbortController();
+	service.register(context, controller);
+	expect(controller.signal.aborted).toBe(true);
+});
+
+it('relays cancel-all after the foreground reply settles', async () => {
+	const mainA = makeService();
+	const mainB = makeService();
+	const controller = new AbortController();
+	mainA.service.register(context, controller);
+	await mainA.service.requestCancel({ ...context, scope: 'foreground' });
+	await mainA.service.settle(context.executionId, async () => {});
+	const cancelled = { ...running, status: 'cancelled' as const };
+	for (const main of [mainA, mainB]) {
+		main.repository.findOneBy.mockResolvedValue(cancelled);
+		main.repository.findLatestByThreadId.mockResolvedValue(cancelled);
+	}
+
+	await mainB.service.requestCancel({ ...context, scope: 'all' });
+	const { surface: _surface, ...wireContext } = context;
+	const payload = { ...wireContext, productionN8nChat: false };
+	expect(mainB.publisher.publishCommand).toHaveBeenCalledWith({
+		command: 'cancel-agent-chat-execution',
+		payload,
+	});
+	await mainA.service.handleCancel(payload);
+	expect(mainA.backgroundJobs.cancelForParent).toHaveBeenCalledWith(
+		context.agentId,
+		context.threadId,
+		'draft-chat:user-1',
+	);
+});
+
+it('ignores a delayed cancel-all relay after a later reply settles', async () => {
+	const { service, repository, backgroundJobs } = makeService();
+	repository.findOneBy.mockResolvedValue({ ...running, status: 'cancelled' });
+	repository.findLatestByThreadId.mockResolvedValue({
+		...running,
+		id: 'execution-2',
+		status: 'success',
+	});
+	await service.handleCancel(context);
+	expect(backgroundJobs.cancelForParent).not.toHaveBeenCalled();
+});
+
+it.each([
+	['foreground', 'all'],
+	['all', 'foreground'],
+] as const)(
+	'keeps the all scope before registration when requests arrive as %s then %s',
+	async (first, second) => {
+		const { service } = makeService();
+		await service.requestCancel({ ...context, scope: first });
+		await service.requestCancel({ ...context, scope: second });
+		const controller = new AbortController();
+		service.register(context, controller);
+		expect(controller.signal.reason).toBe(PARENT_TASK_CANCELLED_REASON);
+	},
+);

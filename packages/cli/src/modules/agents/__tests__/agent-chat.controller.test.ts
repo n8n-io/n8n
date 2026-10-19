@@ -825,30 +825,64 @@ describe('AgentChatController budget notice', () => {
 	});
 });
 
+describe('AgentChatController execution cancellation', () => {
+	it.each([undefined, 'all', 'foreground'] as const)(
+		'forwards scope %s for the current preview execution',
+		async (scope) => {
+			const { controller, chatExecutionService } = makeController();
+			chatExecutionService.requestCancel.mockResolvedValue(true);
+			await expect(
+				controller.cancelChatExecution(
+					{ params: { projectId: 'project-1' }, user: { id: 'user-1' } } as never,
+					{} as never,
+					'agent-1',
+					'thread-1',
+					'execution-1',
+					scope ? { scope } : undefined,
+				),
+			).resolves.toEqual({ cancelRequested: true });
+			expect(chatExecutionService.requestCancel).toHaveBeenCalledWith({
+				projectId: 'project-1',
+				agentId: 'agent-1',
+				threadId: 'thread-1',
+				executionId: 'execution-1',
+				userId: 'user-1',
+				surface: 'preview',
+				...(scope ? { scope } : {}),
+			});
+		},
+	);
+});
+
 describe('AgentChatController HITL cancellation', () => {
-	it('cancels a suspended run for the current preview user', async () => {
-		const { controller, agentExecutionOrchestratorService, agentsService } = makeController();
-		agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);
-		agentExecutionOrchestratorService.cancelChatRun.mockResolvedValue(true);
+	it.each([undefined, 'all', 'foreground'] as const)(
+		'cancels a suspended run for the current preview user with scope %s',
+		async (scope) => {
+			const { controller, agentExecutionOrchestratorService, agentsService } = makeController();
+			agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);
+			agentExecutionOrchestratorService.cancelChatRun.mockResolvedValue(true);
 
-		await expect(
-			controller.cancelChatRun(
-				{
-					params: { projectId: 'project-1' },
-					user: { id: 'user-1' },
-				} as never,
-				{} as never,
-				'agent-1',
-				'run-1',
-			),
-		).resolves.toEqual({ cancelled: true });
+			await expect(
+				controller.cancelChatRun(
+					{
+						params: { projectId: 'project-1' },
+						user: { id: 'user-1' },
+					} as never,
+					{} as never,
+					'agent-1',
+					'run-1',
+					scope ? { scope } : undefined,
+				),
+			).resolves.toEqual({ cancelled: true });
 
-		expect(agentExecutionOrchestratorService.cancelChatRun).toHaveBeenCalledWith({
-			agentId: 'agent-1',
-			runId: 'run-1',
-			resourceId: 'draft-chat:user-1',
-		});
-	});
+			expect(agentExecutionOrchestratorService.cancelChatRun).toHaveBeenCalledWith({
+				agentId: 'agent-1',
+				runId: 'run-1',
+				resourceId: 'draft-chat:user-1',
+				...(scope === 'foreground' ? { cancelBackgroundJobs: false } : {}),
+			});
+		},
+	);
 });
 
 describe('AgentChatController attachment cleanup on failed turns', () => {
