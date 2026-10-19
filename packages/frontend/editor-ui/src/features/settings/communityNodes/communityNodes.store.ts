@@ -1,4 +1,5 @@
 import * as communityNodesApi from '@n8n/rest-api-client/api/communityNodes';
+import type { InstalledPackageWithRestrictions } from '@n8n/rest-api-client/api/communityNodes';
 import { defineStore } from 'pinia';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type { PublicInstalledPackage } from 'n8n-workflow';
@@ -57,9 +58,17 @@ export const useCommunityNodesStore = defineStore(STORES.COMMUNITY_NODES, () => 
 		}, timeout);
 	};
 
-	const installPackage = async (packageName: string, version?: string): Promise<void> => {
-		await communityNodesApi.installNewPackage(rootStore.restApiContext, packageName, version);
+	const installPackage = async (
+		packageName: string,
+		version?: string,
+	): Promise<InstalledPackageWithRestrictions> => {
+		const installedPackage = await communityNodesApi.installNewPackage(
+			rootStore.restApiContext,
+			packageName,
+			version,
+		);
 		await fetchInstalledPackages();
+		return installedPackage;
 	};
 
 	const uninstallPackage = async (packageName: string): Promise<void> => {

@@ -1,4 +1,5 @@
-import type { CommunityNodeType } from '@n8n/api-types';
+import type { CommunityNodeType, PackagePolicyRestrictions } from '@n8n/api-types';
+import { i18n } from '@n8n/i18n';
 import semver from 'semver';
 
 export async function findVettedCommunityNodeAttributes(
@@ -56,3 +57,44 @@ export const isNodesApiVersionError = (
 	const e = error as IncompatibleNodesApiVersionErrorResponse | undefined;
 	return e?.httpStatusCode === 400 && 'requiredNodesApiVersion' in (e.meta ?? {});
 };
+
+/** The install toast message, or `undefined` when no policy blocks a node from the package. */
+export function describeInstallPolicyNote(
+	restrictions: PackagePolicyRestrictions | undefined,
+	totalNodes: number,
+): string | undefined {
+	const blocked = restrictions?.nodeTypes ?? [];
+	const onInstance = blocked.filter((node) => node.blockedOn === 'instance');
+	const inProjects = blocked.filter((node) => node.blockedOn === 'projects');
+
+	const sentences: string[] = [];
+	if (onInstance.length > 0) {
+		sentences.push(
+			i18n.baseText('settings.communityNodes.messages.install.policyNote.instance', {
+				adjustToNumber: onInstance.length,
+				interpolate: { count: String(onInstance.length), total: String(totalNodes) },
+			}),
+		);
+		if (onInstance.some((node) => node.optInAvailable)) {
+			sentences.push(i18n.baseText('settings.communityNodes.messages.install.policyNote.optIn'));
+		}
+	}
+	if (inProjects.length > 0) {
+		sentences.push(
+			i18n.baseText('settings.communityNodes.messages.install.policyNote.projects', {
+				adjustToNumber: inProjects.length,
+				interpolate: { count: String(inProjects.length) },
+			}),
+		);
+	}
+
+	return sentences.length > 0 ? sentences.join(' ') : undefined;
+}
+
+/** Pass the base node type name: the install response names base types, not Tool variants. */
+export function isBlockReportedOnInstall(
+	restrictions: PackagePolicyRestrictions | undefined,
+	baseNodeTypeName: string,
+): boolean {
+	return restrictions?.nodeTypes.some((node) => node.type === baseNodeTypeName) ?? false;
+}

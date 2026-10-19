@@ -10,11 +10,13 @@ import {
 } from '@/app/stores/workflowDocument.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
-import type { CommunityNodeType } from '@n8n/api-types';
+import type { CommunityNodeType, PackagePolicyRestrictions } from '@n8n/api-types';
+import type { InstalledPackageWithRestrictions } from '@n8n/rest-api-client/api/communityNodes';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { useInstallNode } from './useInstallNode';
+import { describeInstallPolicyNote } from '../communityNodes.utils';
 import { useToast } from '@n8n/composables/useToast';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { DEFAULT_SETTINGS } from '@/app/constants/workflows';
@@ -52,6 +54,13 @@ vi.mock('@n8n/i18n', () => ({
 	})),
 }));
 
+vi.mock('../communityNodes.utils', async (importOriginal) => ({
+	...(await importOriginal<typeof import('../communityNodes.utils')>()),
+	describeInstallPolicyNote: vi.fn((restrictions?: PackagePolicyRestrictions) =>
+		restrictions?.nodeTypes.length ? 'policy note' : undefined,
+	),
+}));
+
 vi.mock('@/features/shared/nodeCreator/nodeCreator.utils', () => ({
 	removePreviewToken: vi.fn((key: string) => key.replace('preview:', '')),
 }));
@@ -64,6 +73,23 @@ let usersStore: ReturnType<typeof useUsersStore>;
 let settingsStore: ReturnType<typeof useSettingsStore>;
 let toast: ReturnType<typeof useToast>;
 let canvasOperations: ReturnType<typeof useCanvasOperations>;
+
+const installedPackage = (
+	policyRestrictions?: PackagePolicyRestrictions,
+	nodeCount = 2,
+): InstalledPackageWithRestrictions =>
+	({
+		packageName: 'test-package',
+		installedVersion: '1.0.0',
+		installedNodes: Array.from({ length: nodeCount }, (_, index) => ({
+			name: `Node ${index}`,
+			type: `test-package.node${index}`,
+			latestVersion: 1,
+		})),
+		createdAt: new Date(),
+		updatedAt: new Date(),
+		...(policyRestrictions ? { policyRestrictions } : {}),
+	}) as InstalledPackageWithRestrictions;
 
 const initializeUnknownNodes = vi.fn();
 const showError = vi.fn();
@@ -106,7 +132,7 @@ beforeEach(() => {
 		writable: true,
 	});
 
-	vi.spyOn(communityNodesStore, 'installPackage').mockResolvedValue(undefined);
+	vi.spyOn(communityNodesStore, 'installPackage').mockResolvedValue(installedPackage());
 	vi.spyOn(nodeTypesStore, 'getNodeTypes').mockResolvedValue(undefined);
 	vi.spyOn(nodeTypesStore, 'fetchCommunityNodePreviews').mockResolvedValue(undefined);
 	vi.spyOn(credentialsStore, 'fetchCredentialTypes').mockResolvedValue(undefined);
@@ -486,10 +512,62 @@ describe('useInstallNode', () => {
 		});
 	});
 
+	describe('policy note', () => {
+		it('shows one success toast when no policy blocks a node', async () => {
+			vi.mocked(communityNodesStore.installPackage).mockResolvedValue(
+				installedPackage({ nodeTypes: [] }),
+			);
+			const { installNode } = useInstallNode();
+
+			const result = await installNode({ type: 'unverified', packageName: 'test-package' });
+
+			expect(result).toEqual({ success: true, policyRestrictions: { nodeTypes: [] } });
+			expect(showMessage).toHaveBeenCalledOnce();
+			expect(showMessage).toHaveBeenCalledWith({
+				title: 'settings.communityNodes.messages.install.success',
+				type: 'success',
+			});
+		});
+
+		it('shows one warning toast with the note when a policy blocks a node', async () => {
+			const policyRestrictions: PackagePolicyRestrictions = {
+				nodeTypes: [{ type: 'test-package.node0', blockedOn: 'instance', optInAvailable: false }],
+			};
+			vi.mocked(communityNodesStore.installPackage).mockResolvedValue(
+				installedPackage(policyRestrictions, 5),
+			);
+			const { installNode } = useInstallNode();
+
+			const result = await installNode({ type: 'unverified', packageName: 'test-package' });
+
+			expect(result).toEqual({ success: true, policyRestrictions });
+			expect(describeInstallPolicyNote).toHaveBeenCalledWith(policyRestrictions, 5);
+			expect(showMessage).toHaveBeenCalledOnce();
+			expect(showMessage).toHaveBeenCalledWith({
+				title: 'settings.communityNodes.messages.install.success',
+				type: 'warning',
+				message: 'policy note',
+			});
+		});
+
+		it('shows the success toast when the response has no policy information', async () => {
+			const { installNode } = useInstallNode();
+
+			const result = await installNode({ type: 'unverified', packageName: 'test-package' });
+
+			expect(result).toEqual({ success: true, policyRestrictions: undefined });
+			expect(showMessage).toHaveBeenCalledWith({
+				title: 'settings.communityNodes.messages.install.success',
+				type: 'success',
+			});
+		});
+	});
+
 	describe('loading state', () => {
 		it('should set loading to true during installation', async () => {
 			vi.mocked(communityNodesStore.installPackage).mockImplementation(async () => {
 				await new Promise((resolve) => setTimeout(resolve, 10));
+				return installedPackage();
 			});
 
 			const { installNode, loading } = useInstallNode();

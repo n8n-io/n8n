@@ -1497,7 +1497,7 @@ describe('AgentToolsConnectionModalWrapper', () => {
 			expect(multiStepAttrs['editable-title']).toBe(true);
 		});
 
-		it('adds nothing when the installed community tool turns out to be restricted', async () => {
+		it('adds nothing and warns once more when the install note did not name the restricted tool', async () => {
 			mockCommunityPreviewCatalog();
 			mockRestrictedNodeTypes();
 			// The install reloads the policy, which now covers the new node type.
@@ -1514,6 +1514,35 @@ describe('AgentToolsConnectionModalWrapper', () => {
 
 			expect(configFormData).toBeNull();
 			expect(showMessageMock).toHaveBeenCalledWith(expect.objectContaining({ type: 'warning' }));
+		});
+
+		it('adds nothing and shows no second warning when the install note named the restricted tool', async () => {
+			mockCommunityPreviewCatalog();
+			mockRestrictedNodeTypes();
+			installNodeMock.mockImplementation(async () => {
+				mockRestrictedNodeTypes({ [COMMUNITY_INSTALLED.name]: 'instance' });
+				return {
+					success: true,
+					policyRestrictions: {
+						nodeTypes: [
+							{
+								type: 'n8n-nodes-firecrawl.firecrawl',
+								blockedOn: 'instance',
+								optInAvailable: false,
+							},
+						],
+					},
+				};
+			});
+			render();
+			await flushPromises();
+
+			const preview = getItems().find((item) => item.id === `nodeType:${COMMUNITY_PREVIEW.name}`);
+			emitConnect(preview!);
+			await flushPromises();
+
+			expect(configFormData).toBeNull();
+			expect(showMessageMock).not.toHaveBeenCalled();
 		});
 
 		it('leaves the list untouched when nothing is restricted', async () => {

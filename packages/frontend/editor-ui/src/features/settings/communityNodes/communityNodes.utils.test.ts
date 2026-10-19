@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { isCommunityPackageUpdateAvailable, isNodesApiVersionError } from './communityNodes.utils';
+import type { PackagePolicyRestrictions, RestrictedPackageType } from '@n8n/api-types';
+import {
+	describeInstallPolicyNote,
+	isBlockReportedOnInstall,
+	isCommunityPackageUpdateAvailable,
+	isNodesApiVersionError,
+} from './communityNodes.utils';
 
 describe('isCommunityPackageUpdateAvailable', () => {
 	const defaults = {
@@ -72,5 +78,76 @@ describe('isNodesApiVersionError', () => {
 			),
 		).toBe(false);
 		expect(isNodesApiVersionError(undefined)).toBe(false);
+	});
+});
+
+describe('describeInstallPolicyNote', () => {
+	const onInstance = (type: string, optInAvailable = false): RestrictedPackageType => ({
+		type,
+		blockedOn: 'instance',
+		optInAvailable,
+	});
+	const inProjects = (type: string): RestrictedPackageType => ({
+		type,
+		blockedOn: 'projects',
+		optInAvailable: false,
+		blockedProjectCount: 1,
+	});
+	const note = (nodeTypes: RestrictedPackageType[], total = 5) =>
+		describeInstallPolicyNote({ nodeTypes }, total);
+
+	it('returns undefined without policy information', () => {
+		expect(describeInstallPolicyNote(undefined, 5)).toBeUndefined();
+	});
+
+	it('returns undefined when nothing is blocked', () => {
+		expect(note([])).toBeUndefined();
+	});
+
+	it('counts one node blocked on the instance', () => {
+		expect(note([onInstance('a.a')], 1)).toBe('1 of 1 node is blocked on this instance.');
+	});
+
+	it('counts several nodes blocked on the instance', () => {
+		expect(note([onInstance('a.a'), onInstance('a.b'), onInstance('a.c')])).toBe(
+			'3 of 5 nodes are blocked on this instance.',
+		);
+	});
+
+	it('says when projects can allow a blocked node', () => {
+		expect(note([onInstance('a.a', true)])).toBe(
+			'1 of 5 node is blocked on this instance. Projects can allow some of these nodes.',
+		);
+	});
+
+	it('counts nodes blocked only in projects', () => {
+		expect(note([inProjects('a.a')])).toBe('1 node is blocked in some projects.');
+		expect(note([inProjects('a.a'), inProjects('a.b')])).toBe(
+			'2 nodes are blocked in some projects.',
+		);
+	});
+
+	it('reports instance and project blocks together', () => {
+		expect(note([onInstance('a.a'), inProjects('a.b'), inProjects('a.c')])).toBe(
+			'1 of 5 node is blocked on this instance. 2 nodes are blocked in some projects.',
+		);
+	});
+});
+
+describe('isBlockReportedOnInstall', () => {
+	const restrictions: PackagePolicyRestrictions = {
+		nodeTypes: [{ type: 'n8n-nodes-a.alpha', blockedOn: 'instance', optInAvailable: false }],
+	};
+
+	it('is true for a node type the install response names', () => {
+		expect(isBlockReportedOnInstall(restrictions, 'n8n-nodes-a.alpha')).toBe(true);
+	});
+
+	it('is false for a node type the install response does not name', () => {
+		expect(isBlockReportedOnInstall(restrictions, 'n8n-nodes-a.beta')).toBe(false);
+	});
+
+	it('is false without policy information', () => {
+		expect(isBlockReportedOnInstall(undefined, 'n8n-nodes-a.alpha')).toBe(false);
 	});
 });

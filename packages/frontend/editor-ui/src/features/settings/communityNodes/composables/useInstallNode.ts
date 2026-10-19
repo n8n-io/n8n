@@ -1,4 +1,4 @@
-import { isNodesApiVersionError } from '../communityNodes.utils';
+import { describeInstallPolicyNote, isNodesApiVersionError } from '../communityNodes.utils';
 import { useCommunityNodesStore } from '../communityNodes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -12,6 +12,7 @@ import { removePreviewToken } from '@/features/shared/nodeCreator/nodeCreator.ut
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
+import type { PackagePolicyRestrictions } from '@n8n/api-types';
 
 type InstallNodeProps = {
 	type: 'verified' | 'unverified';
@@ -35,6 +36,8 @@ type InstallNodeProps = {
 type InstallNodeResult = {
 	success: boolean;
 	error?: Error;
+	/** What the install toast reported, so callers do not warn about the same blocks again. */
+	policyRestrictions?: PackagePolicyRestrictions;
 };
 
 export function useInstallNode() {
@@ -77,14 +80,13 @@ export function useInstallNode() {
 
 		try {
 			loading.value = true;
-			if (props.type === 'verified' && !settingsStore.isUnverifiedPackagesEnabled) {
-				await communityNodesStore.installPackage(
-					props.packageName,
-					await getNpmVersion(props.nodeType),
-				);
-			} else {
-				await communityNodesStore.installPackage(props.packageName);
-			}
+			const installedPackage =
+				props.type === 'verified' && !settingsStore.isUnverifiedPackagesEnabled
+					? await communityNodesStore.installPackage(
+							props.packageName,
+							await getNpmVersion(props.nodeType),
+						)
+					: await communityNodesStore.installPackage(props.packageName);
 
 			// refresh store information about installed nodes
 			await Promise.all([
@@ -103,11 +105,16 @@ export function useInstallNode() {
 				const nodesToUpdate = allNodes.filter((node) => node.type === removePreviewToken(nodeType));
 				canvasOperations.initializeUnknownNodes(nodesToUpdate);
 			}
+			const { policyRestrictions } = installedPackage;
+			const policyNote = describeInstallPolicyNote(
+				policyRestrictions,
+				installedPackage.installedNodes.length,
+			);
 			toast.showMessage({
 				title: i18n.baseText('settings.communityNodes.messages.install.success'),
-				type: 'success',
+				...(policyNote ? { type: 'warning', message: policyNote } : { type: 'success' }),
 			});
-			return { success: true };
+			return { success: true, policyRestrictions };
 		} catch (error) {
 			toast.showError(
 				error,

@@ -27,6 +27,7 @@ import { useMessage } from '@/app/composables/useMessage';
 import { hasRole } from '@/app/utils/rbac/checks/hasRole';
 import nodePopularity from 'virtual:node-popularity-data';
 import { useInstallNode } from '@/features/settings/communityNodes/composables/useInstallNode';
+import { isBlockReportedOnInstall } from '@/features/settings/communityNodes/communityNodes.utils';
 import { useUsersStore } from '@n8n/stores/users.store';
 import {
 	filterAndSearchNodes,
@@ -336,7 +337,12 @@ async function handleAddTool(nodeType: INodeTypeDescription) {
 
 			const installedName = removePreviewToken(nodeType.name);
 			const installed = nodeTypesStore.getNodeType(installedName) ?? nodeType;
-			if (warnIfRestricted(installed.name)) return;
+			if (isNodeItemRestricted(installed.name)) {
+				if (!isBlockReportedOnInstall(result.policyRestrictions, stripToolSuffix(installed.name))) {
+					warnIfRestricted(installed.name);
+				}
+				return;
+			}
 			openSettingsFor(installed);
 		} finally {
 			installingToolName.value = null;
