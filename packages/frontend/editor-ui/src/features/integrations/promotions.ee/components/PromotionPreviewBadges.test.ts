@@ -78,7 +78,7 @@ describe('PromotionPreviewBadges', () => {
 
 		expect(await findByTestId('promotion-preview-badge-apply')).toHaveAttribute(
 			'aria-label',
-			"Couldn't check for changes. Reload the page to try again.",
+			"Couldn't check for incoming changes. Reload the page to try again.",
 		);
 	});
 });
