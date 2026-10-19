@@ -17,6 +17,7 @@ import type {
 	RunOutputSink,
 	RunServices,
 } from '../../types/runtime/agent-loop';
+import { withPromptSizeBreakdown } from './prompt-size-usage';
 import { RuntimeContextBuilder, type StaticLoopContext } from './runtime-context';
 import {
 	extractSettledToolCalls,
@@ -70,6 +71,7 @@ import type { StreamWriterGuard } from '../streaming/stream-writer-guard';
 import { RuntimeTelemetry } from '../telemetry/runtime-telemetry';
 import { DeferredToolManager } from '../tools/deferred-tool-manager';
 import { fixToolCall } from '../tools/fix-tool-call';
+import { buildToolMap } from '../tools/tool-adapter';
 import { ToolCallExecutor } from '../tools/tool-call-executor';
 import type {
 	PendingResume,
@@ -542,7 +544,7 @@ export class AgentRuntime {
 		// A skill dependency loads a deferred tool without a `load_tool` record, and
 		// skills restore only when the loop starts. Accept any registered deferred tool.
 		const tool =
-			this.context.getCurrentTools(state.persistence).find((t) => t.name === toolCall.toolName) ??
+			buildToolMap(this.context.getCurrentTools(state.persistence)).get(toolCall.toolName) ??
 			this.deferredToolManager?.getTool(toolCall.toolName);
 		if (!tool) throw new Error(`Tool ${toolCall.toolName} not found`);
 
@@ -1137,7 +1139,7 @@ export class AgentRuntime {
 		state: LoopState,
 		turn: ModelTurnResult,
 	): void {
-		state.totalUsage = mergeUsage(state.totalUsage, turn.usage);
+		state.totalUsage = mergeUsage(state.totalUsage, withPromptSizeBreakdown(turn.usage));
 		incrementTokenCountFromUsage(ctx.options?.executionCounter, turn.usage);
 		sink.reportUsage(state.totalUsage);
 	}

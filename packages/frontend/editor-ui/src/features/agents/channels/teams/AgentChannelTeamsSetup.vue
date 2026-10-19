@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, inject, onBeforeUnmount, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { saveAs } from 'file-saver';
 import {
 	N8nActionDropdown,
@@ -11,7 +11,6 @@ import {
 	N8nText,
 } from '@n8n/design-system';
 import {
-	resolveAgentPersonalisation,
 	type AgentTeamsIntegrationSettings,
 	type ChatIntegrationDescriptor,
 	type TeamsAgentSetupState,
@@ -51,7 +50,6 @@ import {
 	fetchTeamsAppPackage,
 	getTeamsSetupState,
 } from './api';
-import { AGENT_PERSONALISATION_KEY } from '../types';
 
 const credentialId = defineModel<string>({ default: '' });
 
@@ -91,12 +89,6 @@ const props = withDefaults(
 		ensureAgentPersisted: undefined,
 		persistChannel: undefined,
 	},
-);
-
-// The builder provides it. The default keeps the card drawable when mounted on its own.
-const personalisation = inject(
-	AGENT_PERSONALISATION_KEY,
-	computed(() => resolveAgentPersonalisation(null)),
 );
 
 const emit = defineEmits<{
@@ -791,6 +783,7 @@ defineExpose({
 							<N8nCopyInput
 								id="teams-messaging-endpoint-url"
 								:value="messagingEndpointUrl"
+								:label="i18n.baseText('agents.channels.teams.messagingEndpointUrl.label')"
 								size="large"
 								:class="$style.urlInput"
 								:copy-label="i18n.baseText('agents.builder.addTrigger.copy')"
@@ -850,7 +843,6 @@ defineExpose({
 						<AgentChannelTeamsIdentityCard
 							:name="defaultDisplayName"
 							:description="defaultDescription"
-							:personalisation="personalisation"
 							:tooltip="i18n.baseText('agents.channels.teams.setup.install.identityTooltip')"
 							:ready="ready"
 							:loading="downloading || loading"
@@ -977,7 +969,6 @@ defineExpose({
 					<AgentChannelTeamsIdentityCard
 						:name="effectiveDisplayName"
 						:description="effectiveDescription"
-						:personalisation="personalisation"
 						:tooltip="
 							savedIdentityOverride
 								? ''
