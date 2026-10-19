@@ -39,6 +39,7 @@ import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import { initializeExpressionEngine } from '@/app/init/expressionEngine';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 
 export const state = {
 	initialized: false,
@@ -141,6 +142,7 @@ export async function initializeAuthenticatedFeatures(
 	const dataTableStore = useDataTableStore();
 	const favoritesStore = useFavoritesStore();
 	const uiStore = useUIStore();
+	const credentialsStore = useCredentialsStore();
 
 	// Provide the modal-open actions to the stores that were decoupled from `ui.store`,
 	// so they can open modals without importing it.
@@ -261,6 +263,10 @@ export async function initializeAuthenticatedFeatures(
 		await coordinator.initialize({ version: settingsStore.settings.versionCli });
 		await coordinator.loadNodeTypes(rootStore.baseUrl);
 	}
+	await Promise.all([
+		credentialsStore.fetchAllCredentials(),
+		credentialsStore.fetchCredentialTypes(false),
+	]);
 
 	authenticatedFeaturesInitialized = true;
 }
