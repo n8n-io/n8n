@@ -204,19 +204,6 @@ export function useAgentTelemetry() {
 		});
 	}
 
-	function trackSawWhatsAppReviewState(params: {
-		agentId: string;
-		state: InferTelemetryProps<
-			typeof TELEMETRY_EVENT.AGENTS.USER_SAW_WHATSAPP_REVIEW_STATE
-		>['state'];
-	}) {
-		safeTrack(TELEMETRY_EVENT.AGENTS.USER_SAW_WHATSAPP_REVIEW_STATE, {
-			agent_id: params.agentId,
-			state: params.state,
-			...common(),
-		});
-	}
-
 	function trackClickedDeployToAzure(params: { agentId: string }) {
 		safeTrack(TELEMETRY_EVENT.AGENTS.USER_CLICKED_DEPLOY_TO_AZURE_FOR_TEAMS_CHANNEL, {
 			agent_id: params.agentId,
@@ -313,7 +300,6 @@ export function useAgentTelemetry() {
 		trackCheckedTeamsCredential,
 		trackCheckedWhatsAppCredential,
 		trackClickedWhatsAppLink,
-		trackSawWhatsAppReviewState,
 		trackClickedDeployToAzure,
 		trackDownloadedTeamsAppPackage,
 		trackSelectedN8nChatAgent,

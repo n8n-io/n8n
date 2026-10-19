@@ -786,18 +786,6 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 			session_id: sessionId,
 		}),
 	},
-	USER_SAW_WHATSAPP_REVIEW_STATE: {
-		name: 'User saw WhatsApp review state',
-		description:
-			"The WhatsApp channel settings showed a callout about Meta's review of the phone number. Fires when the settings open with a review open or declined, and again when the state changes, never on every poll. Shows how often Meta declines or restricts a number.",
-		properties: z.object({
-			agent_id: z.string(),
-			state: z
-				.enum(['pending_verification', 'pending_name_review', 'name_declined', 'restricted'])
-				.describe('Which review state the callout described'),
-			session_id: sessionId,
-		}),
-	},
 	USER_CLICKED_DEPLOY_TO_AZURE_FOR_TEAMS_CHANNEL: {
 		name: 'User clicked Deploy to Azure for Teams channel',
 		description: 'The user clicked the Deploy to Azure button in the Teams channel setup.',
