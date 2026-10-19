@@ -106,7 +106,7 @@ export function useWorkflowUpdate() {
 	async function updateExistingNodes(
 		requestedUpdates: Array<{ existing: INodeUi; updated: INode }>,
 	): Promise<boolean> {
-		// The backend refuses any change to a deprecated node. Moving it to a type that is not deprecated is allowed.
+		// The editor freezes deprecated nodes whatever N8N_DEPRECATED_NODES_BLOCK says. Moving one to a type that is not deprecated is allowed.
 		const nodesToUpdate = requestedUpdates.filter(
 			({ updated }) => !nodeTypesStore.isNodeDeprecated(updated),
 		);
