@@ -14,8 +14,8 @@ Guidance for the agents module (`packages/cli/src/modules/agents`). See the [cli
 - The `agents-instance-ai-boundary` Code Health rule lists the supported import paths. Do not add an umbrella facade or a barrel of internals.
 - Do not import the Instance AI backend or `@n8n/instance-ai` here. This includes types and tests.
 - Keep Agent data access, availability checks, and project authorization in Agents. Keep Assistant tools, presentation, model policy, and billing in Instance AI.
-- Builder sessions accept resolved SDK options, host tools, and a memory usage callback. The persistence thread ID is opaque.
-- Builder operations own credential-provider construction and session cleanup. Authorized draft deletion and builder cancellation remain available when Agents are disabled.
+- Builder operations expose direct tools and runtime skills. The host owns model policy, billing, and run telemetry context.
+- Builder operations own credential-provider construction and legacy session cleanup. Authorized draft deletion and session cleanup remain available when Agents are disabled.
 - Evaluation preparation keeps a detached Agent snapshot private. Build evaluation runtimes without the production cache. Never save the pruned configuration.
 
 ## Skill refs

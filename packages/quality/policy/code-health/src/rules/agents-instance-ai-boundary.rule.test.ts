@@ -30,8 +30,14 @@ describe('AgentsInstanceAiBoundaryRule', () => {
 			JSON.stringify({
 				exports: {
 					'.': './dist/index.js',
+					'./package.json': './package.json',
 					'./tool': './dist/sdk/tool.js',
+					'./catalog': './dist/sdk/catalog.js',
 					'./sandbox': './dist/workspace/sandbox/index.js',
+					'./vector-stores/postgres': './dist/vector-stores/postgres.js',
+					'./vector-stores/pinecone': './dist/vector-stores/pinecone.js',
+					'./vector-stores/qdrant': './dist/vector-stores/qdrant.js',
+					'./vector-stores/supabase': './dist/vector-stores/supabase.js',
 				},
 			}),
 		);
@@ -90,7 +96,9 @@ export type { AgentEvaluationPreparation } from '../agents/evaluation/agent-eval
 export { pruneConfigForEval } from '../agents/evaluation/evaluation-config';
 import { Agent } from '@n8n/agents';
 import { Tool } from '@n8n/agents/tool';
-import { Sandbox } from '@n8n/agents/sandbox';`,
+import '@n8n/agents/catalog';
+import { Sandbox } from '@n8n/agents/sandbox';
+import '@n8n/agents/vector-stores/postgres';`,
 		);
 		write(`${modules}/agents/example.ts`, "import { internal } from './agents.service';");
 		expect(new AgentsInstanceAiBoundaryRule().analyze({ rootDir })).toEqual([]);
