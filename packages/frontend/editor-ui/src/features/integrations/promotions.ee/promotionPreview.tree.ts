@@ -95,7 +95,9 @@ function hierarchyItems(resources: PromotionResource[]): PreviewTreeItem[] {
 		// A parent outside the listed resources would hide the item, so it moves to the top level.
 		const parentKey =
 			resource.parentKey !== null && keys.has(resource.parentKey) ? resource.parentKey : null;
-		childrenOf.set(parentKey, [...(childrenOf.get(parentKey) ?? []), resource]);
+		const siblings = childrenOf.get(parentKey) ?? [];
+		siblings.push(resource);
+		childrenOf.set(parentKey, siblings);
 	}
 
 	const build = (parentKey: ResourceKey | null): PreviewTreeItem[] =>
@@ -114,7 +116,11 @@ export function buildPreviewTree(
 	for (const resource of preview.resources) {
 		const group = groupOf(resource);
 		if (group === null) hierarchy.push(resource);
-		else groups.set(group, [...(groups.get(group) ?? []), resource]);
+		else {
+			const members = groups.get(group) ?? [];
+			members.push(resource);
+			groups.set(group, members);
+		}
 	}
 
 	const sections: PreviewTreeItem[] = [];

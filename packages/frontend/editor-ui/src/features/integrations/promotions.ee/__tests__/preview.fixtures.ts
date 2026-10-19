@@ -5,7 +5,9 @@ export const COMMIT_SHA = 'c'.repeat(40);
 export const resource = (
 	overrides: Partial<PromotionResource> & Pick<PromotionResource, 'key' | 'name'>,
 ): PromotionResource => {
-	const [type, id] = overrides.key.split(':');
+	// Variable keys have more parts, such as `variable:global:API_URL`.
+	const [type, ...idParts] = overrides.key.split(':');
+	const id = idParts.join(':');
 	return {
 		type: type as PromotionResource['type'],
 		id,

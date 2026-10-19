@@ -69,6 +69,7 @@ describe('usePromotionResourceDetails', () => {
 
 		await request(['tag:g1', billingResources.reminders.key]);
 
+		expect(entries.value.get('tag:g1')).toEqual({ status: 'loaded', detail: tagDetail() });
 		expect(entries.value.get(billingResources.reminders.key)).toEqual({ status: 'missing' });
 	});
 
