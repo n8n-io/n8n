@@ -503,14 +503,18 @@ describe('SettingsSkillsView', () => {
 	describe('deep links', () => {
 		/** The stubbed store does not track modals, so these tests open and close it by hand. */
 		function trackSkillModal() {
-			uiStore.modalsById = { agentSkillModal: { open: false } };
+			uiStore.activeModals = [];
 			uiStore.openModalWithData.mockImplementation(() => {
-				uiStore.modalsById = { agentSkillModal: { open: true } };
+				uiStore.activeModals = ['agentSkillModal'];
+			});
+			uiStore.closeModal.mockImplementation(() => {
+				uiStore.activeModals = [];
 			});
 		}
 
+		/** The user closes the modal, as its close button does. */
 		function closeSkillModal() {
-			uiStore.modalsById = { agentSkillModal: { open: false } };
+			uiStore.activeModals = [];
 		}
 
 		beforeEach(() => {
@@ -655,7 +659,40 @@ describe('SettingsSkillsView', () => {
 			expect(route.query).toEqual({});
 		});
 
-		it('starts a new skill for ?create=true and takes the link out of the URL', async () => {
+		it('opens a skill clicked before the projects load only once, with its latest version', async () => {
+			skillsStore.skills = [skill()];
+			skillsStore.count = 1;
+			let resolveProjects: () => void = () => {};
+			mockedStore(useProjectsStore).getMyProjects.mockImplementation(
+				async () =>
+					await new Promise<void>((resolve) => {
+						resolveProjects = resolve;
+					}),
+			);
+			skillsStore.fetchSkill.mockResolvedValue(detail({ skillHash: 'hash-2' }));
+			const { getByText } = renderView();
+			await new Promise(process.nextTick);
+
+			await userEvent.click(getByText('research-search'));
+			await waitFor(() => expect(route.query).toEqual({ skillId: 's1' }));
+			// The modal waits for the projects, which give the scope options.
+			expect(uiStore.openModalWithData).not.toHaveBeenCalled();
+
+			resolveProjects();
+
+			await waitFor(() => expect(uiStore.openModalWithData).toHaveBeenCalled());
+			await new Promise(process.nextTick);
+			expect(skillsStore.fetchSkill).toHaveBeenCalledTimes(1);
+			expect(uiStore.openModalWithData).toHaveBeenCalledTimes(1);
+
+			await lastModalData().onConfirm({ skill: detail().skill });
+			expect(skillsStore.saveSkill).toHaveBeenCalledWith(
+				's1',
+				expect.objectContaining({ baseSkillHash: 'hash-2' }),
+			);
+		});
+
+		it('starts a new skill for ?create=true and takes the link out of the URL on close', async () => {
 			route.query = { create: 'true', tab: 'x' };
 
 			renderView();
@@ -663,9 +700,37 @@ describe('SettingsSkillsView', () => {
 
 			expect(lastModalData().skillId).toBeUndefined();
 			expect(lastModalData().scopeOptions).not.toHaveLength(0);
-			// A refresh while the modal is open does not start another skill.
+
+			closeSkillModal();
+
 			await waitFor(() => expect(route.query).toEqual({ tab: 'x' }));
+			// Taking the link out of the URL does not start another skill.
 			expect(uiStore.openModalWithData).toHaveBeenCalledTimes(1);
+		});
+
+		it('puts ?create=true in the URL when the user clicks "Create skill"', async () => {
+			skillsStore.skills = [skill()];
+			skillsStore.count = 1;
+			const { getByTestId } = renderView();
+			await new Promise(process.nextTick);
+
+			await userEvent.click(getByTestId('skills-create-button'));
+
+			await waitFor(() => expect(route.query).toEqual({ create: 'true' }));
+			await waitFor(() => expect(uiStore.openModalWithData).toHaveBeenCalledTimes(1));
+			expect(lastModalData().skillId).toBeUndefined();
+		});
+
+		it('takes ?create=true out of the URL when the user cannot create a skill', async () => {
+			setPermissions();
+			mockedStore(useProjectsStore).personalProject = null;
+			mockedStore(useProjectsStore).myProjects = [];
+			route.query = { create: 'true' };
+
+			renderView();
+
+			await waitFor(() => expect(route.query).toEqual({}));
+			expect(uiStore.openModalWithData).not.toHaveBeenCalled();
 		});
 	});
 
