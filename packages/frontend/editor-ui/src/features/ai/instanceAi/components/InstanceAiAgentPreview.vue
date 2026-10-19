@@ -1,8 +1,9 @@
 <script setup lang="ts">
+import type { AgentJsonConfig } from '@n8n/api-types';
+import type { AgentCreationResource } from '@/features/agents/types';
 import { computed, onBeforeUnmount } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import AgentBuilderView from '@/features/agents/views/AgentBuilderView.vue';
-import type { AgentResource } from '@/features/agents/types';
 import { persistPendingAgent } from '../instanceAi.memory.api';
 import { isAgentEditingAgent } from '../canvasPreview.utils';
 import {
@@ -97,12 +98,15 @@ async function syncAgentTarget(name: string) {
  * pending marker with the bound target. The builder treats resolution as the
  * acknowledgement, so the binding is durable before it stops drafting.
  */
-async function persistAgent(name: string): Promise<AgentResource> {
+async function persistAgent(
+	name: string,
+	config?: AgentJsonConfig,
+): Promise<AgentCreationResource> {
 	const target = { projectId: props.projectId, agentId: props.agentId };
 	const { agent, thread: updatedThread } = await persistPendingAgent(
 		rootStore.restApiContext,
 		thread.id,
-		{ ...target, name },
+		{ ...target, name, ...(config ? { config } : {}) },
 	);
 	// Authoritative: the server dropped the pending key, which a merge would keep.
 	// Skipped once this preview has been torn down or moved on, so a slow response

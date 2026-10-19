@@ -9,9 +9,6 @@ import { Telemetry } from '@/telemetry';
 import { buildAgentCapabilityTelemetryProperties } from './agent-telemetry';
 import type { Agent } from './entities/agent.entity';
 import { toAgentDocument, type AgentSkillRefs } from './json-config/agent-document';
-import { isUnconfiguredAgent } from './utils/agent-capabilities';
-
-export { isUnconfiguredAgent };
 
 export type { AgentActor } from '@n8n/api-types';
 
@@ -89,19 +86,14 @@ export interface AgentModificationEvent {
 	user: User;
 	by: AgentActor;
 	changedParts: AgentConfigPart[];
-	/**
-	 * Whether the agent was still unconfigured before this write. The write
-	 * that leaves it configured is what creates it as far as telemetry is
-	 * concerned, so it reports the creation event for `by` instead of the
-	 * modification one — a write is never counted as both.
-	 */
-	wasUnconfigured: boolean;
 }
+
+export type AgentCreationEvent = Omit<AgentModificationEvent, 'changedParts'>;
 
 export function captureAgentMutation(agent: Agent, skillRefs: AgentSkillRefs) {
 	const schema = agent.schema ? toAgentDocument(agent.schema, skillRefs) : null;
 	const integrations = agent.integrations ?? [];
-	return { schema, integrations, wasUnconfigured: isUnconfiguredAgent(schema, integrations) };
+	return { schema, integrations };
 }
 
 export type AgentMutationSnapshot = ReturnType<typeof captureAgentMutation>;
@@ -130,7 +122,6 @@ export function buildAgentMutationEvent(
 			agent.integrations ?? [],
 			sidecarChanges,
 		),
-		wasUnconfigured: previous.wasUnconfigured,
 	};
 }
 
@@ -151,12 +142,7 @@ function modificationProperties({
 	} as const;
 }
 
-/**
- * Single emitter for the six agent creation and modification events. Every
- * config write reports through here, so the only things that differ between
- * them are the surface that wrote and whether the write was the agent's first —
- * and a union across all six is complete.
- */
+/** Reports committed Agent creations and subsequent configuration changes. */
 @Service()
 export class AgentModificationTelemetryService {
 	constructor(private readonly telemetry: Telemetry) {}
@@ -164,27 +150,35 @@ export class AgentModificationTelemetryService {
 	record(event: AgentModificationEvent): void {
 		if (event.changedParts.length === 0) return;
 		try {
-			const { agent, config, by, wasUnconfigured } = event;
-			if (wasUnconfigured && isUnconfiguredAgent(config, agent.integrations)) return;
-
+			const { by } = event;
 			const properties = modificationProperties(event);
-			if (wasUnconfigured) {
-				this.recordCreation(by, properties);
-				return;
-			}
 
 			const entry = {
 				user: TELEMETRY_EVENT.AGENTS.USER_MODIFIED_AGENT,
 				builder: TELEMETRY_EVENT.AGENTS.BUILDER_MODIFIED_AGENT,
 				mcp: TELEMETRY_EVENT.AGENTS.MCP_MODIFIED_AGENT,
 			}[by];
-			this.telemetry.track(entry, { ...properties, event_version: '1' });
+			this.telemetry.track(entry, { ...properties, event_version: '2' });
 		} catch {
 			// Telemetry must never fail a write that already succeeded.
 		}
 	}
 
-	private recordCreation(
+	recordCreation(event: AgentCreationEvent): void {
+		try {
+			const changedParts = diffAgentConfigParts(
+				null,
+				event.config,
+				[],
+				event.agent.integrations ?? [],
+			);
+			this.trackCreation(event.by, modificationProperties({ ...event, changedParts }));
+		} catch {
+			// Telemetry must never fail a write that already succeeded.
+		}
+	}
+
+	private trackCreation(
 		by: AgentActor,
 		properties: ReturnType<typeof modificationProperties>,
 	): void {
@@ -193,19 +187,19 @@ export class AgentModificationTelemetryService {
 			case 'user':
 				this.telemetry.track(TELEMETRY_EVENT.AGENTS.USER_CREATED_AGENT, {
 					...properties,
-					event_version: '2',
+					event_version: '3',
 				});
 				return;
 			case 'builder':
 				this.telemetry.track(TELEMETRY_EVENT.AGENTS.BUILDER_CREATED_AGENT, {
 					...properties,
-					event_version: '2',
+					event_version: '3',
 				});
 				return;
 			case 'mcp':
 				this.telemetry.track(TELEMETRY_EVENT.AGENTS.MCP_CREATED_AGENT, {
 					...properties,
-					event_version: '1',
+					event_version: '2',
 				});
 				return;
 		}

@@ -159,9 +159,10 @@ export class UpdateAgentsMcpAvailabilityDto extends Z.class({
  */
 export const clientMintedAgentIdSchema = z.string().regex(/^[0-9A-Za-z]{16}$/);
 
-export class CreateAgentDto extends Z.class({
+const createAgentShape = {
 	name: z.string().min(1),
 	id: clientMintedAgentIdSchema.optional(),
+	config: z.record(z.unknown()).optional(),
 	schema: AgentJsonConfigSchema.optional(),
 	tools: z
 		.record(
@@ -169,7 +170,27 @@ export class CreateAgentDto extends Z.class({
 		)
 		.optional(),
 	skills: z.record(agentSkillSchema).optional(),
-}) {}
+};
+
+const createAgentSchema = z
+	.object(createAgentShape)
+	.refine(({ config, schema }) => config === undefined || schema === undefined, {
+		message: 'Use config for initial configuration or schema for duplication, not both.',
+	});
+
+export class CreateAgentDto extends Z.class(createAgentShape) {
+	constructor(data: z.infer<typeof createAgentSchema>) {
+		super(createAgentSchema.parse(data));
+	}
+
+	static override safeParse(data: unknown) {
+		return createAgentSchema.safeParse(data);
+	}
+
+	static override parse(data: unknown) {
+		return createAgentSchema.parse(data);
+	}
+}
 
 export class UpdateAgentConfigDto extends Z.class({
 	config: z.record(z.unknown()),

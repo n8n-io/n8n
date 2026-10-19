@@ -43,6 +43,18 @@ function setup() {
 	moduleRegistry.isActive.mockReturnValue(true);
 
 	defaultModelResolver.resolve.mockResolvedValue(null);
+	agentsService.createOrAdopt.mockResolvedValue({
+		agent: mock<Agent>({ id: AGENT_ID, name: 'New Agent', versionId: 'v1' }),
+		adopted: false,
+		config: null,
+		configHash: null,
+	});
+	agentsService.getCreationResult.mockImplementation(async (agent, adopted) => ({
+		agent,
+		adopted,
+		config: null,
+		configHash: null,
+	}));
 	runnableState.addRunnableState.mockImplementation(
 		async (agent) => ({ ...agent, isRunnable: true }) as never,
 	);
@@ -74,38 +86,56 @@ describe('InstanceAiPendingAgentService', () => {
 		vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
 	});
 
-	it('creates the agent under the client-minted id and binds it to the thread', async () => {
-		const { service, memoryService, agentsService } = setup();
-		memoryService.getThreadMetadata.mockResolvedValue(pendingMetadata);
-		agentsService.create.mockResolvedValue(
-			mock<Agent>({ id: AGENT_ID, name: 'New Agent', projectId: PROJECT_ID }),
-		);
+	it.each(['', 'anthropic/model'])(
+		'saves the initial config with explicit model "%s" and binds the client-minted id',
+		async (model) => {
+			const { service, memoryService, agentsService, defaultModelResolver } = setup();
+			memoryService.getThreadMetadata.mockResolvedValue(pendingMetadata);
+			const config = { name: 'New Agent', model, instructions: 'Help users' };
+			agentsService.createOrAdopt.mockResolvedValue({
+				agent: mock<Agent>({ id: AGENT_ID, name: 'New Agent', versionId: 'v1' }),
+				config,
+				configHash: 'saved-hash',
+				adopted: false,
+			});
 
-		const result = await service.persistAndBind(user, THREAD_ID, payload);
+			const result = await service.persistAndBind(user, THREAD_ID, { ...payload, config }, 'tab-1');
 
-		expect(agentsService.create).toHaveBeenCalledWith(PROJECT_ID, 'New Agent', {
-			actor: { kind: 'user', user },
-			id: AGENT_ID,
-			adoptOnCollision: true,
-		});
-		expect(memoryService.bindAgentBuilderTarget).toHaveBeenCalledWith(user.id, THREAD_ID, {
-			agentId: AGENT_ID,
-			projectId: PROJECT_ID,
-			name: 'New Agent',
-		});
-		expect(result.thread.metadata).toEqual(boundMetadata);
-		expect(result.agent).toEqual(expect.objectContaining({ id: AGENT_ID, isRunnable: true }));
-	});
+			expect(agentsService.createOrAdopt).toHaveBeenCalledWith(PROJECT_ID, 'New Agent', {
+				actor: { kind: 'user', user },
+				user,
+				createdBy: 'user',
+				id: AGENT_ID,
+				adoptOnCollision: true,
+				config,
+				pushRef: 'tab-1',
+			});
+			expect(defaultModelResolver.resolve).not.toHaveBeenCalled();
+			expect(memoryService.bindAgentBuilderTarget).toHaveBeenCalledWith(user.id, THREAD_ID, {
+				agentId: AGENT_ID,
+				projectId: PROJECT_ID,
+				name: 'New Agent',
+			});
+			expect(result.thread.metadata).toEqual(boundMetadata);
+			expect(result.agent).toMatchObject({
+				id: AGENT_ID,
+				isRunnable: true,
+				config,
+				configHash: 'saved-hash',
+				adopted: false,
+				versionId: 'v1',
+			});
+		},
+	);
 
 	it('seeds the project default model, like the strict create does', async () => {
 		const { service, memoryService, agentsService, defaultModelResolver } = setup();
 		memoryService.getThreadMetadata.mockResolvedValue(pendingMetadata);
 		defaultModelResolver.resolve.mockResolvedValue({ model: 'anthropic/x', credential: 'cred-1' });
-		agentsService.create.mockResolvedValue(mock<Agent>({ id: AGENT_ID, name: 'New Agent' }));
 
 		await service.persistAndBind(user, THREAD_ID, payload);
 
-		expect(agentsService.create).toHaveBeenCalledWith(
+		expect(agentsService.createOrAdopt).toHaveBeenCalledWith(
 			PROJECT_ID,
 			'New Agent',
 			expect.objectContaining({ defaultModel: { model: 'anthropic/x', credential: 'cred-1' } }),
@@ -119,11 +149,30 @@ describe('InstanceAiPendingAgentService', () => {
 		memoryService.getThreadMetadata.mockResolvedValue(pendingMetadata);
 		const existing = mock<Agent>({ id: AGENT_ID, name: 'Support Triage' });
 		agentsService.findById.mockResolvedValue(existing);
+		const savedConfig = {
+			name: 'Support Triage',
+			model: '',
+			instructions: 'Persisted instructions',
+		};
+		agentsService.getCreationResult.mockResolvedValue({
+			agent: existing,
+			adopted: true,
+			config: savedConfig,
+			configHash: 'winner-hash',
+		});
 
-		const result = await service.persistAndBind(user, THREAD_ID, payload);
+		const result = await service.persistAndBind(user, THREAD_ID, {
+			...payload,
+			config: { instructions: 'Do not overwrite the winner' },
+		});
 
-		expect(result.agent).toEqual(expect.objectContaining({ id: AGENT_ID }));
-		expect(agentsService.create).not.toHaveBeenCalled();
+		expect(result.agent).toMatchObject({
+			id: AGENT_ID,
+			adopted: true,
+			config: savedConfig,
+			configHash: 'winner-hash',
+		});
+		expect(agentsService.createOrAdopt).not.toHaveBeenCalled();
 		expect(defaultModelResolver.resolve).not.toHaveBeenCalled();
 		expect(memoryService.bindAgentBuilderTarget).toHaveBeenCalled();
 	});
@@ -133,11 +182,16 @@ describe('InstanceAiPendingAgentService', () => {
 	it('binds the adopted name, not the draft name it was called with', async () => {
 		const { service, memoryService, agentsService } = setup();
 		memoryService.getThreadMetadata.mockResolvedValue(pendingMetadata);
-		agentsService.create.mockResolvedValue(
-			mock<Agent>({ id: AGENT_ID, name: 'Support Triage', projectId: PROJECT_ID }),
-		);
+		agentsService.createOrAdopt.mockResolvedValue({
+			agent: mock<Agent>({ id: AGENT_ID, name: 'Support Triage', projectId: PROJECT_ID }),
+			adopted: true,
+			config: null,
+			configHash: null,
+		});
 
-		await service.persistAndBind(user, THREAD_ID, payload);
+		const result = await service.persistAndBind(user, THREAD_ID, payload);
+
+		expect(result.agent.adopted).toBe(true);
 
 		expect(memoryService.bindAgentBuilderTarget).toHaveBeenCalledWith(
 			user.id,
@@ -149,9 +203,8 @@ describe('InstanceAiPendingAgentService', () => {
 	// The winner's bind deletes the pending marker, so the loser can only prove
 	// itself by the active binding.
 	it('accepts the active bound target as proof once the pending marker is gone', async () => {
-		const { service, memoryService, agentsService } = setup();
+		const { service, memoryService } = setup();
 		memoryService.getThreadMetadata.mockResolvedValue(boundMetadata);
-		agentsService.create.mockResolvedValue(mock<Agent>({ id: AGENT_ID, name: 'Support Triage' }));
 
 		await expect(service.persistAndBind(user, THREAD_ID, payload)).resolves.toBeDefined();
 	});
@@ -179,7 +232,7 @@ describe('InstanceAiPendingAgentService', () => {
 		agentsService.findById.mockResolvedValue(mock<Agent>({ id: AGENT_ID }));
 
 		await expect(service.persistAndBind(user, THREAD_ID, payload)).rejects.toThrow(ForbiddenError);
-		expect(agentsService.create).not.toHaveBeenCalled();
+		expect(agentsService.createOrAdopt).not.toHaveBeenCalled();
 		expect(memoryService.bindAgentBuilderTarget).not.toHaveBeenCalled();
 	});
 
@@ -189,11 +242,10 @@ describe('InstanceAiPendingAgentService', () => {
 	it.each(unattestedMetadata)('still creates the draft with %s', async (_l, metadata) => {
 		const { service, memoryService, agentsService } = setup();
 		memoryService.getThreadMetadata.mockResolvedValue(metadata);
-		agentsService.create.mockResolvedValue(mock<Agent>({ id: AGENT_ID, name: 'New Agent' }));
 
 		await expect(service.persistAndBind(user, THREAD_ID, payload)).resolves.toBeDefined();
 		// Strict: an unattested create must not quietly adopt on a collision.
-		expect(agentsService.create).toHaveBeenCalledWith(
+		expect(agentsService.createOrAdopt).toHaveBeenCalledWith(
 			PROJECT_ID,
 			'New Agent',
 			expect.objectContaining({ id: AGENT_ID, adoptOnCollision: false }),
@@ -202,9 +254,8 @@ describe('InstanceAiPendingAgentService', () => {
 	});
 
 	it('needs only agent:create to create, not agent:update', async () => {
-		const { service, memoryService, agentsService } = setup();
+		const { service, memoryService } = setup();
 		memoryService.getThreadMetadata.mockResolvedValue({});
-		agentsService.create.mockResolvedValue(mock<Agent>({ id: AGENT_ID, name: 'New Agent' }));
 		const userHasScopes = vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
 
 		await service.persistAndBind(user, THREAD_ID, payload);
@@ -223,20 +274,26 @@ describe('InstanceAiPendingAgentService', () => {
 		expect(userHasScopes).toHaveBeenCalledWith(user, ['agent:create', 'agent:update'], false, {
 			projectId: PROJECT_ID,
 		});
-		expect(agentsService.create).not.toHaveBeenCalled();
+		expect(agentsService.createOrAdopt).not.toHaveBeenCalled();
 	});
 
 	// The row and the binding are separate writes; the caller retries, and the
 	// retry adopts the row the failed attempt left behind.
-	it('propagates a binding failure without swallowing it', async () => {
+	it('adopts the saved agent on retry after a binding failure', async () => {
 		const { service, memoryService, agentsService } = setup();
 		memoryService.getThreadMetadata.mockResolvedValue(pendingMetadata);
-		agentsService.create.mockResolvedValue(mock<Agent>({ id: AGENT_ID, name: 'New Agent' }));
-		memoryService.bindAgentBuilderTarget.mockRejectedValue(new Error('thread write failed'));
+		memoryService.bindAgentBuilderTarget.mockRejectedValueOnce(new Error('thread write failed'));
 
 		await expect(service.persistAndBind(user, THREAD_ID, payload)).rejects.toThrow(
 			'thread write failed',
 		);
+		agentsService.findById.mockResolvedValue(mock<Agent>({ id: AGENT_ID, name: 'New Agent' }));
+
+		const result = await service.persistAndBind(user, THREAD_ID, payload);
+
+		expect(result.agent.adopted).toBe(true);
+		expect(agentsService.createOrAdopt).toHaveBeenCalledTimes(1);
+		expect(memoryService.bindAgentBuilderTarget).toHaveBeenCalledTimes(2);
 	});
 
 	// A thread belongs to one project, and instance-ai ignores a pending marker
@@ -247,15 +304,14 @@ describe('InstanceAiPendingAgentService', () => {
 		memoryService.getThreadMetadata.mockResolvedValue(pendingMetadata);
 
 		await expect(service.persistAndBind(user, THREAD_ID, payload)).rejects.toThrow(ForbiddenError);
-		expect(agentsService.create).not.toHaveBeenCalled();
+		expect(agentsService.createOrAdopt).not.toHaveBeenCalled();
 		expect(agentsService.findById).not.toHaveBeenCalled();
 	});
 
 	it('allows a thread persisted before threads carried a project', async () => {
-		const { service, memoryService, agentsService } = setup();
+		const { service, memoryService } = setup();
 		memoryService.getThreadProjectId.mockResolvedValue(undefined);
 		memoryService.getThreadMetadata.mockResolvedValue(pendingMetadata);
-		agentsService.create.mockResolvedValue(mock<Agent>({ id: AGENT_ID, name: 'New Agent' }));
 
 		await expect(service.persistAndBind(user, THREAD_ID, payload)).resolves.toBeDefined();
 	});

@@ -371,6 +371,16 @@ function makeAgentResponse(overrides: Record<string, unknown> = {}) {
 	};
 }
 
+function makeCreationResponse(config?: TestAgentConfig, overrides: Record<string, unknown> = {}) {
+	return {
+		...makeAgentResponse(),
+		config: config ?? withDefaultLlm({ name: 'Agent One', instructions: '' }),
+		configHash: 'hash-1',
+		adopted: false,
+		...overrides,
+	};
+}
+
 vi.mock('../composables/useAgentConfig', () => ({
 	useAgentConfig: () => ({
 		config: mockConfig,
@@ -379,9 +389,18 @@ vi.mock('../composables/useAgentConfig', () => ({
 			// Mimic the real composable: re-publish the fetched config by touching
 			// the ref, which triggers watchers even when the shape is unchanged.
 			mockConfig.value = withDefaultLlm(intendedConfig);
+			mockConfigHash.value = 'hash-1';
 		}),
 		updateConfig: updateConfigMock,
 		repoint: repointConfigMock,
+		acceptCreation: (
+			_projectId: string,
+			_agentId: string,
+			created: { configHash: string | null },
+		) => {
+			mockConfigHash.value = created.configHash;
+			return false;
+		},
 	}),
 }));
 
@@ -857,9 +876,20 @@ function resetViewMocks() {
 		}),
 	);
 	repointConfigMock.mockReset();
+	repointConfigMock.mockImplementation(() => {
+		mockConfig.value = null;
+		mockConfigHash.value = undefined;
+	});
 	getAgentMock.mockResolvedValue(makeAgentResponse());
 	createAgentMock.mockReset();
-	createAgentMock.mockResolvedValue(makeAgentResponse({ id: 'aBcDeFgHiJkLmNoP' }));
+	createAgentMock.mockImplementation(async (_context, _projectId, name, options) =>
+		makeCreationResponse(options?.config, { id: options?.id, name }),
+	);
+	persistPendingAgentMock.mockReset();
+	persistPendingAgentMock.mockImplementation(async (_context, threadId, request) => ({
+		agent: makeCreationResponse(request.config, { id: request.agentId, name: request.name }),
+		thread: { id: threadId },
+	}));
 	getIntegrationStatusMock.mockResolvedValue({ status: 'connected', integrations: [] });
 	getAgentConfigValidationMock.mockReset();
 	getAgentConfigValidationMock.mockResolvedValue({ status: 'valid', issues: [] });
@@ -926,7 +956,6 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 
 	it('persists a route-backed agent only after its first configuration change', async () => {
 		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
-		createAgentMock.mockResolvedValueOnce(makeAgentResponse());
 		const wrapper = await renderView();
 		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
 
@@ -936,24 +965,22 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		expect(editor.props('agentUnsaved')).toBe(true);
 
 		editor.vm.$emit('update:config', { instructions: 'Answer support mail' });
-		await vi.waitFor(() => expect(updateConfigMock).toHaveBeenCalled());
+		await vi.waitFor(() => expect(editor.props('agentUnsaved')).toBe(false));
 
 		expect(createAgentMock).toHaveBeenCalledOnce();
 		expect(createAgentMock).toHaveBeenCalledWith(expect.anything(), 'p1', expect.any(String), {
 			id: 'a1',
+			config: expect.objectContaining({ instructions: 'Answer support mail' }),
 		});
 		expect(history.state.instanceAiPendingAgentId).toBeUndefined();
 		await vi.waitFor(() => expect(fetchConfigMock).toHaveBeenCalledWith('p1', 'a1'));
+		expect(updateConfigMock).not.toHaveBeenCalled();
 		expect(fetchSessionThreadsMock).toHaveBeenCalledWith('p1', 'a1');
 	});
 
 	it('does not persist a pending agent for an auto-applied default model', async () => {
 		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
 		routeQuery.assistantThread = 'thread-abc';
-		persistPendingAgentMock.mockResolvedValueOnce({
-			agent: makeAgentResponse(),
-			thread: { id: 'thread-abc' },
-		});
 		const wrapper = await renderView();
 		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
 
@@ -968,16 +995,18 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		);
 
 		editor.vm.$emit('update:config', { instructions: 'x' });
-		await vi.waitFor(() => expect(updateConfigMock).toHaveBeenCalled());
+		await vi.waitFor(() => expect(editor.props('agentUnsaved')).toBe(false));
 
 		expect(createAgentMock).not.toHaveBeenCalled();
 		expect(persistPendingAgentMock).toHaveBeenCalledOnce();
-		expect(updateConfigMock).toHaveBeenCalledWith(
-			'p1',
-			'a1',
-			expect.objectContaining({ model: 'openai/gpt-5-mini', instructions: 'x' }),
+		expect(persistPendingAgentMock).toHaveBeenCalledWith(
 			expect.anything(),
+			'thread-abc',
+			expect.objectContaining({
+				config: expect.objectContaining({ model: 'openai/gpt-5-mini', instructions: 'x' }),
+			}),
 		);
+		expect(updateConfigMock).not.toHaveBeenCalled();
 	});
 
 	it('merges a later auto-applied default model into an already-queued autosave snapshot', async () => {
@@ -992,19 +1021,17 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		// save without the model.
 		editor.vm.$emit('update:config', { model: 'openai/gpt-5-mini' }, { source: 'auto' });
 
-		await vi.waitFor(() => expect(updateConfigMock).toHaveBeenCalled());
+		await vi.waitFor(() => expect(editor.props('agentUnsaved')).toBe(false));
 
 		expect(createAgentMock).toHaveBeenCalledOnce();
-		expect(updateConfigMock).toHaveBeenCalledTimes(1);
-		expect(updateConfigMock).toHaveBeenCalledWith(
-			'p1',
-			'a1',
-			expect.objectContaining({
+		expect(createAgentMock).toHaveBeenCalledWith(expect.anything(), 'p1', expect.any(String), {
+			id: 'a1',
+			config: expect.objectContaining({
 				instructions: 'Answer support mail',
 				model: 'openai/gpt-5-mini',
 			}),
-			expect.anything(),
-		);
+		});
+		expect(updateConfigMock).not.toHaveBeenCalled();
 	});
 
 	it('chains a second save carrying a later auto-applied default model behind an in-flight save', async () => {
@@ -1025,8 +1052,13 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		editor.vm.$emit('update:config', { model: 'openai/gpt-5-mini' }, { source: 'auto' });
 		await flushPromises();
 
-		pendingCreate.resolve(makeAgentResponse({ id: 'a1' }));
-		await vi.waitFor(() => expect(updateConfigMock).toHaveBeenCalledTimes(2));
+		pendingCreate.resolve(
+			makeCreationResponse(createAgentMock.mock.calls[0]?.[3].config, {
+				id: 'a1',
+				configHash: 'created-hash',
+			}),
+		);
+		await vi.waitFor(() => expect(updateConfigMock).toHaveBeenCalledOnce());
 
 		expect(updateConfigMock).toHaveBeenLastCalledWith(
 			'p1',
@@ -1035,7 +1067,7 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 				instructions: 'Answer support mail',
 				model: 'openai/gpt-5-mini',
 			}),
-			expect.anything(),
+			'created-hash',
 		);
 	});
 
@@ -1046,21 +1078,29 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
 		routeQuery.assistantThread = 'thread-abc';
 		persistPendingAgentMock.mockResolvedValueOnce({
-			agent: makeAgentResponse(),
+			agent: makeCreationResponse(
+				{ name: 'Built by assistant', instructions: 'Keep this configuration' },
+				{ adopted: true },
+			),
 			thread: { id: 'thread-abc' },
 		});
 		const wrapper = await renderView();
 		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
 
 		editor.vm.$emit('update:config', { instructions: 'Answer support mail' });
-		await vi.waitFor(() => expect(updateConfigMock).toHaveBeenCalled());
+		await vi.waitFor(() =>
+			expect(showMessageMock).toHaveBeenCalledWith(expect.objectContaining({ type: 'warning' })),
+		);
 
 		expect(persistPendingAgentMock).toHaveBeenCalledWith(expect.anything(), 'thread-abc', {
 			projectId: 'p1',
 			agentId: 'a1',
 			name: expect.any(String),
+			config: expect.objectContaining({ instructions: 'Answer support mail' }),
 		});
 		expect(createAgentMock).not.toHaveBeenCalled();
+		expect(updateConfigMock).not.toHaveBeenCalled();
+		expect(fetchConfigMock).toHaveBeenCalledWith('p1', 'a1');
 		expect(history.state.instanceAiPendingAgentId).toBeUndefined();
 	});
 
@@ -1184,6 +1224,7 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		await vi.waitFor(() => expect(createAgentMock).toHaveBeenCalled());
 		expect(createAgentMock).toHaveBeenCalledWith(expect.anything(), 'p1', expect.any(String), {
 			id: 'a2',
+			config: expect.objectContaining({ instructions: 'Answer support mail' }),
 		});
 	});
 
@@ -1205,7 +1246,7 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		});
 		await vi.waitFor(() => expect(createAgentMock).toHaveBeenCalledOnce());
 
-		pendingCreate.resolve(makeAgentResponse({ id: 'a1' }));
+		pendingCreate.resolve(makeCreationResponse(undefined, { id: 'a1' }));
 		await navigation;
 		await flushPromises();
 
@@ -2312,12 +2353,6 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 
 	it('flushes edits and persists an unsaved artifact before a Preview message', async () => {
 		mockPendingAgentRow('a2');
-		// Nothing was fetched for an agent that does not exist yet; the first save
-		// must be fenced against the config the create call seeded.
-		mockConfigHash.value = undefined;
-		createAgentMock.mockResolvedValueOnce(
-			makeAgentResponse({ id: 'a2', configHash: 'seeded-hash' }),
-		);
 		const wrapper = await renderView({
 			props: {
 				artifactMode: true,
@@ -2342,14 +2377,9 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 			{ baseUrl: 'http://localhost:5678' },
 			'p2',
 			'Ready to chat',
-			{ id: 'a2' },
+			{ id: 'a2', config: expect.objectContaining({ name: 'Ready to chat' }) },
 		);
-		expect(updateConfigMock).toHaveBeenCalledWith(
-			'p2',
-			'a2',
-			expect.objectContaining({ name: 'Ready to chat' }),
-			'seeded-hash',
-		);
+		expect(updateConfigMock).not.toHaveBeenCalled();
 	});
 
 	it('shows an error when an unsaved artifact cannot be prepared for Preview', async () => {
@@ -2473,12 +2503,12 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		expect(createAgentMock.mock.calls[0]?.[3]).toEqual({ id: 'a2' });
 		expect(createAgentMock.mock.calls[1]?.[3]).toEqual({ id: 'a3' });
 
-		firstCreate.resolve(makeAgentResponse({ id: 'a2' }));
+		firstCreate.resolve(makeCreationResponse(undefined, { id: 'a2' }));
 		await firstSend;
 		// a2's create landing must not mark the a3 artifact saved.
 		expect(unsaved()).toBe(true);
 
-		secondCreate.resolve(makeAgentResponse({ id: 'a3' }));
+		secondCreate.resolve(makeCreationResponse(undefined, { id: 'a3' }));
 		await secondSend;
 		expect(unsaved()).toBe(false);
 	});
@@ -2510,8 +2540,8 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		const returnedSend = (await startArtifactPreviewSend(wrapper, 'ephemeral-a2-return')).pending;
 
 		expect(createAgentMock).toHaveBeenCalledTimes(2);
-		firstCreate.resolve(makeAgentResponse({ id: 'a2' }));
-		secondCreate.resolve(makeAgentResponse({ id: 'a3' }));
+		firstCreate.resolve(makeCreationResponse(undefined, { id: 'a2' }));
+		secondCreate.resolve(makeCreationResponse(undefined, { id: 'a3' }));
 		await Promise.all([firstSend, secondSend, returnedSend]);
 		// The returning send joined a2's existing flight instead of starting a third.
 		expect(createAgentMock).toHaveBeenCalledTimes(2);
@@ -2539,7 +2569,7 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		await vi.waitFor(() => expect(createAgentMock).toHaveBeenCalledOnce());
 		await wrapper.setProps({ artifactAgentId: 'a3' });
 		await flushPromises();
-		firstCreate.resolve(makeAgentResponse({ id: 'a2' }));
+		firstCreate.resolve(makeCreationResponse(undefined, { id: 'a2' }));
 		await firstSend;
 		expect(unsaved()).toBe(true);
 
@@ -3313,7 +3343,6 @@ describe('AgentBuilderView — three-column shell', () => {
 
 	it('keeps the AI panel open after a pending agent persists', async () => {
 		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
-		createAgentMock.mockResolvedValueOnce(makeAgentResponse());
 		const wrapper = await renderView();
 		expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(true);
 
@@ -3380,7 +3409,6 @@ describe('AgentBuilderView — three-column shell', () => {
 		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
 		intendedConfig = { name: 'New Agent', instructions: '' };
 		mockConfig.value = withDefaultLlm(intendedConfig);
-		createAgentMock.mockResolvedValueOnce(makeAgentResponse());
 		const wrapper = await renderView();
 		await vi.waitFor(() =>
 			expect(
@@ -3392,18 +3420,16 @@ describe('AgentBuilderView — three-column shell', () => {
 		(wrapper.vm as unknown as { onApplyTemplate: (t: unknown) => void }).onApplyTemplate(
 			AGENT_TEMPLATES.find((t) => t.id === 'morning-news-brief'),
 		);
-		await vi.waitFor(() => expect(updateConfigMock).toHaveBeenCalled());
+		await vi.waitFor(() => expect(createAgentMock).toHaveBeenCalledOnce());
 
-		expect(createAgentMock).toHaveBeenCalledOnce();
-		expect(updateConfigMock).toHaveBeenCalledWith(
-			'p1',
-			'a1',
-			expect.objectContaining({
+		expect(createAgentMock).toHaveBeenCalledWith(expect.anything(), 'p1', 'Morning News Brief', {
+			id: 'a1',
+			config: expect.objectContaining({
 				name: 'Morning News Brief',
 				instructions: expect.stringContaining('news brief'),
 			}),
-			expect.anything(),
-		);
+		});
+		expect(updateConfigMock).not.toHaveBeenCalled();
 		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
 		expect(editor.props('connectedTriggers')).toEqual([]);
 		// Tasks change the server config hash. The prompt waits until that
@@ -3509,17 +3535,16 @@ describe('AgentBuilderView — three-column shell', () => {
 		expect(settled).toBe(false);
 		expect(submitSuggestionMock).not.toHaveBeenCalled();
 
-		releaseCreate(makeAgentResponse());
+		releaseCreate(makeCreationResponse(createAgentMock.mock.calls[0]?.[3].config));
 		await pending;
 		expect(settled).toBe(true);
-		expect(updateConfigMock).toHaveBeenCalledWith(
-			'p1',
-			'a1',
-			expect.objectContaining({
+		expect(createAgentMock).toHaveBeenCalledWith(expect.anything(), 'p1', expect.any(String), {
+			id: 'a1',
+			config: expect.objectContaining({
 				instructions: expect.stringContaining('lead qualification'),
 			}),
-			expect.anything(),
-		);
+		});
+		expect(updateConfigMock).not.toHaveBeenCalled();
 
 		await wrapper.get('[data-testid="ai-panel-emit-thread-id"]').trigger('click');
 		const stashed = JSON.parse(
@@ -3539,7 +3564,6 @@ describe('AgentBuilderView — three-column shell', () => {
 		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
 		intendedConfig = { name: 'New Agent', instructions: '' };
 		mockConfig.value = withDefaultLlm(intendedConfig);
-		createAgentMock.mockResolvedValueOnce(makeAgentResponse());
 		const wrapper = await renderView();
 		await vi.waitFor(() =>
 			expect(
@@ -3568,7 +3592,6 @@ describe('AgentBuilderView — three-column shell', () => {
 		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
 		intendedConfig = { name: 'New Agent', instructions: '' };
 		mockConfig.value = withDefaultLlm(intendedConfig);
-		createAgentMock.mockResolvedValueOnce(makeAgentResponse());
 		const fetchImpl = fetchConfigMock.getMockImplementation();
 		createAgentTaskMock.mockImplementation(async () => {
 			fetchConfigMock.mockRejectedValue(new Error('refresh failed'));
@@ -3598,7 +3621,6 @@ describe('AgentBuilderView — three-column shell', () => {
 		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
 		intendedConfig = { name: 'New Agent', instructions: '' };
 		mockConfig.value = withDefaultLlm(intendedConfig);
-		createAgentMock.mockResolvedValueOnce(makeAgentResponse());
 		let release: (value: { id: string }) => void = () => {};
 		createAgentTaskMock.mockImplementation(
 			() =>
@@ -3629,7 +3651,6 @@ describe('AgentBuilderView — three-column shell', () => {
 		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
 		intendedConfig = { name: 'New Agent', instructions: '' };
 		mockConfig.value = withDefaultLlm(intendedConfig);
-		createAgentMock.mockResolvedValueOnce(makeAgentResponse());
 		const wrapper = await renderView();
 		await vi.waitFor(() =>
 			expect(
@@ -3646,14 +3667,12 @@ describe('AgentBuilderView — three-column shell', () => {
 		(wrapper.vm as unknown as { onApplyTemplate: (t: unknown) => void }).onApplyTemplate(
 			AGENT_TEMPLATES.find((t) => t.id === 'morning-news-brief'),
 		);
-		await vi.waitFor(() => expect(updateConfigMock).toHaveBeenCalled());
+		await vi.waitFor(() => expect(createAgentMock).toHaveBeenCalled());
 
-		expect(updateConfigMock).toHaveBeenCalledWith(
-			'p1',
-			'a1',
-			expect.objectContaining({ name: 'Ops bot' }),
-			expect.anything(),
-		);
+		expect(createAgentMock).toHaveBeenCalledWith(expect.anything(), 'p1', 'Ops bot', {
+			id: 'a1',
+			config: expect.objectContaining({ name: 'Ops bot' }),
+		});
 	});
 
 	it('refuses a template once the agent has content', async () => {
@@ -4912,17 +4931,6 @@ describe('AgentBuilderView — three-column shell', () => {
 		});
 
 		it('creates the pending agent once and refreshes validation after the first save', async () => {
-			let configTarget: string | undefined;
-			repointConfigMock.mockImplementation((projectId: string, agentId: string) => {
-				configTarget = `${projectId}:${agentId}`;
-			});
-			updateConfigMock.mockImplementation(
-				async (projectId: string, agentId: string, data: TestAgentConfig) => ({
-					config: data,
-					versionId: 'v1',
-					stale: configTarget !== `${projectId}:${agentId}`,
-				}),
-			);
 			const wrapper = await renderView({ props: pendingProps });
 			const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
 
@@ -4931,18 +4939,14 @@ describe('AgentBuilderView — three-column shell', () => {
 				instructions: 'Answer support mail',
 			});
 			editor.vm.$emit('update:config', { model: 'anthropic/claude-sonnet-4-5' });
-			await vi.waitFor(() => expect(updateConfigMock).toHaveBeenCalled());
+			await vi.waitFor(() => expect(editor.props('agentUnsaved')).toBe(false));
 
 			expect(createAgentMock).toHaveBeenCalledTimes(1);
 			expect(createAgentMock).toHaveBeenCalledWith(expect.anything(), 'p1', expect.any(String), {
 				id: 'aBcDeFgHiJkLmNoP',
+				config: expect.objectContaining({ instructions: 'Answer support mail' }),
 			});
-			expect(updateConfigMock).toHaveBeenCalledWith(
-				'p1',
-				'aBcDeFgHiJkLmNoP',
-				expect.objectContaining({ instructions: 'Answer support mail' }),
-				'hash-1',
-			);
+			expect(updateConfigMock).not.toHaveBeenCalled();
 			await vi.waitFor(() =>
 				expect(
 					wrapper
@@ -4959,42 +4963,45 @@ describe('AgentBuilderView — three-column shell', () => {
 			wrapper
 				.findComponent({ name: 'AgentBuilderEditorColumn' })
 				.vm.$emit('update:config', { instructions: 'Answer support mail' });
-			await vi.waitFor(() => expect(updateConfigMock).toHaveBeenCalled());
+			await vi.waitFor(() => expect(createAgentMock).toHaveBeenCalled());
 
-			expect(updateConfigMock).toHaveBeenCalledWith(
-				'p1',
-				'aBcDeFgHiJkLmNoP',
-				expect.objectContaining({
+			expect(createAgentMock).toHaveBeenCalledWith(expect.anything(), 'p1', expect.any(String), {
+				id: 'aBcDeFgHiJkLmNoP',
+				config: expect.objectContaining({
 					personalisation: expect.objectContaining({
 						icon: expect.any(String),
 						gradient: expect.objectContaining({ angle: expect.any(Number) }),
 					}),
 				}),
-				'hash-1',
-			);
+			});
 		});
 
 		// The host's persist call creates AND durably binds the agent, so it stands
 		// in for the plain create — and only its resolution retires the draft.
 		it('persists a hosted artifact through the host, not the strict create', async () => {
-			const persisted = makeAgentResponse({ id: 'aBcDeFgHiJkLmNoP' });
-			const artifactPersistAgent = vi.fn().mockResolvedValue(persisted);
+			const artifactPersistAgent = vi.fn(async (_name: string, config?: TestAgentConfig) =>
+				makeCreationResponse(config, { id: 'aBcDeFgHiJkLmNoP' }),
+			);
 			const wrapper = await renderView({
 				props: { ...pendingProps, artifactPersistAgent },
 			});
 			const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
 
 			editor.vm.$emit('update:config', { name: 'Support Agent' });
-			await vi.waitFor(() => expect(updateConfigMock).toHaveBeenCalled());
+			await vi.waitFor(() => expect(editor.props('agentUnsaved')).toBe(false));
 
 			expect(artifactPersistAgent).toHaveBeenCalledTimes(1);
-			expect(artifactPersistAgent).toHaveBeenCalledWith('Support Agent');
+			expect(artifactPersistAgent).toHaveBeenCalledWith(
+				'Support Agent',
+				expect.objectContaining({ name: 'Support Agent' }),
+			);
 			expect(createAgentMock).not.toHaveBeenCalled();
+			expect(updateConfigMock).not.toHaveBeenCalled();
 			expect(editor.props('agentUnsaved')).toBe(false);
 		});
 
-		it('keeps drafting when the host cannot bind the agent, and retries on the next edit', async () => {
-			const persisted = makeAgentResponse({ id: 'aBcDeFgHiJkLmNoP' });
+		it('adopts and reloads after a binding retry without overwriting the committed configuration', async () => {
+			const persisted = makeCreationResponse(undefined, { id: 'aBcDeFgHiJkLmNoP', adopted: true });
 			const artifactPersistAgent = vi
 				.fn()
 				.mockRejectedValueOnce(new Error('binding failed'))
@@ -5008,16 +5015,20 @@ describe('AgentBuilderView — three-column shell', () => {
 			await vi.waitFor(() => expect(artifactPersistAgent).toHaveBeenCalledTimes(1));
 			await flushPromises();
 
-			// An unbound agent must not have its config written, and the artifact
-			// stays a draft so the next edit retries.
+			// Creation committed, but the binding failed. The next edit retries the binding.
 			expect(updateConfigMock).not.toHaveBeenCalled();
 			expect(editor.props('agentUnsaved')).toBe(true);
+			getAgentMock.mockResolvedValue(persisted);
 
 			editor.vm.$emit('update:config', { instructions: 'Answer support mail, politely' });
-			await vi.waitFor(() => expect(updateConfigMock).toHaveBeenCalled());
+			await vi.waitFor(() =>
+				expect(showMessageMock).toHaveBeenCalledWith(expect.objectContaining({ type: 'warning' })),
+			);
 
 			expect(artifactPersistAgent).toHaveBeenCalledTimes(2);
 			expect(editor.props('agentUnsaved')).toBe(false);
+			expect(updateConfigMock).not.toHaveBeenCalled();
+			expect(fetchConfigMock).toHaveBeenCalledWith('p1', 'aBcDeFgHiJkLmNoP');
 		});
 
 		it('keeps the editor mounted while a newly persisted artifact hydrates', async () => {

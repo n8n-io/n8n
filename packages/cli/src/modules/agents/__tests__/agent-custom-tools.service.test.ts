@@ -271,7 +271,6 @@ describe('AgentCustomToolsService', () => {
 			expect.objectContaining({
 				by: 'user',
 				changedParts: ['tools'],
-				wasUnconfigured: false,
 			}),
 		);
 	});

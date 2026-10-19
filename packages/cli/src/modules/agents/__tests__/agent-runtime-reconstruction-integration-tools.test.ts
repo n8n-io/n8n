@@ -287,11 +287,14 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 				credentialsService,
 				mock<WorkflowRepository>(),
 				mock<NodeToolAiGatewayService>(),
+				agentRepository,
+				agentTaskRepository,
+				skillRefs,
+				new AgentPolicyService(new PolicyEnforcementService()),
 			),
 			mock<AgentSetupCompletionService>(),
 			transactionRunner,
 			saveCompletion,
-			new AgentPolicyService(new PolicyEnforcementService()),
 			skillRefs,
 		);
 		agentCustomToolsService = new AgentCustomToolsService(
@@ -384,6 +387,9 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			new AgentPolicyService(new PolicyEnforcementService()),
 			skillRefs,
 			transactionRunner,
+			mock<AgentConfigPreparationService>(),
+			saveCompletion,
+			mock<AgentSetupCompletionService>(),
 		);
 		service = agentExecutionOrchestratorService;
 		markSharedTestSetupAsUsed(

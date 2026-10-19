@@ -114,6 +114,10 @@ function makeService() {
 			credentialsService,
 			workflowRepository,
 			nodeToolAiGatewayService,
+			agentRepository,
+			agentTaskRepository,
+			skillRefs,
+			agentPolicyService,
 		),
 		new AgentSetupCompletionService(agentValidationService, telemetry, agentRepository),
 		transactionRunner,
@@ -122,7 +126,6 @@ function makeService() {
 			agentUpdateBroadcaster,
 			new AgentModificationTelemetryService(telemetry),
 		),
-		agentPolicyService,
 		skillRefs,
 	);
 
@@ -1368,14 +1371,14 @@ describe('AgentConfigService', () => {
 			instructions: '',
 		};
 
-		it('reports the write that first configures an agent as a creation, not a modification', async () => {
+		it('reports the first configuration of a saved draft as a modification', async () => {
 			const { service, agentRepository, telemetry } = makeService();
 			const agent = makeAgent({ schema: blankConfig });
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 
 			await service.updateConfig(agentId, projectId, { ...baseConfig }, user, fencedOn(agent));
 
-			expect(modifiedEvent(telemetry, TELEMETRY_EVENT.AGENTS.USER_CREATED_AGENT)).toMatchObject({
+			expect(modifiedEvent(telemetry, TELEMETRY_EVENT.AGENTS.USER_MODIFIED_AGENT)).toMatchObject({
 				agent_id: agentId,
 				project_id: projectId,
 				user_id: user.id,
@@ -1383,7 +1386,7 @@ describe('AgentConfigService', () => {
 				model: baseConfig.model,
 			});
 			expect(telemetry.track).not.toHaveBeenCalledWith(
-				TELEMETRY_EVENT.AGENTS.USER_MODIFIED_AGENT,
+				TELEMETRY_EVENT.AGENTS.USER_CREATED_AGENT,
 				expect.anything(),
 			);
 		});
@@ -1436,7 +1439,7 @@ describe('AgentConfigService', () => {
 			);
 		});
 
-		it('stays silent when a write leaves the agent unconfigured, so a creation is always its first event', async () => {
+		it('reports a rename of an incomplete saved Agent as a modification', async () => {
 			const { service, agentRepository, telemetry } = makeService();
 			const agent = makeAgent({ schema: blankConfig });
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
@@ -1453,7 +1456,7 @@ describe('AgentConfigService', () => {
 				TELEMETRY_EVENT.AGENTS.USER_CREATED_AGENT,
 				expect.anything(),
 			);
-			expect(telemetry.track).not.toHaveBeenCalledWith(
+			expect(telemetry.track).toHaveBeenCalledWith(
 				TELEMETRY_EVENT.AGENTS.USER_MODIFIED_AGENT,
 				expect.anything(),
 			);
@@ -1496,7 +1499,7 @@ describe('AgentConfigService', () => {
 					agent_id: agentId,
 					project_id: projectId,
 					user_id: user.id,
-					event_version: '1',
+					event_version: '2',
 					changed_parts: ['instructions'],
 					has_published_version: false,
 				}),

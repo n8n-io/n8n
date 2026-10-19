@@ -1928,6 +1928,7 @@ export class InstanceAiPersistPendingAgentRequest extends Z.class({
 	projectId: z.string().min(1),
 	agentId: clientMintedAgentIdSchema,
 	name: z.string().min(1),
+	config: z.record(z.unknown()).optional(),
 }) {}
 
 export const instanceAiGatewayKeySchema = z.string().min(1).max(256);

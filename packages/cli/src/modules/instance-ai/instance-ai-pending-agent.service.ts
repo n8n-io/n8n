@@ -1,3 +1,4 @@
+import type { InstanceAiPersistPendingAgentRequest } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
@@ -59,7 +60,8 @@ export class InstanceAiPendingAgentService {
 	async persistAndBind(
 		user: User,
 		threadId: string,
-		{ projectId, agentId, name }: { projectId: string; agentId: string; name: string },
+		{ projectId, agentId, name, config }: InstanceAiPersistPendingAgentRequest,
+		pushRef?: string,
 	) {
 		const { agents, runnableState } = this.agentsModule();
 		// A thread belongs to one project, and instance-ai already ignores a pending
@@ -84,8 +86,9 @@ export class InstanceAiPendingAgentService {
 		}
 		await this.assertMayWrite(user, projectId, { adopting: Boolean(existing) || adoptable });
 
-		const agent =
-			existing ?? (await this.createAgent(user, { projectId, agentId, name }, adoptable));
+		const { agent, ...creationState } = existing
+			? await agents.getCreationResult(existing, true)
+			: await this.createAgent(user, { projectId, agentId, name, config }, adoptable, pushRef);
 
 		// The name the caller sent describes a draft; an adopted row carries the
 		// winner's name, so label the binding with what is actually persisted.
@@ -96,7 +99,10 @@ export class InstanceAiPendingAgentService {
 		});
 
 		return {
-			agent: await runnableState.addRunnableState(agent, projectId, user),
+			agent: {
+				...(await runnableState.addRunnableState(agent, projectId, user)),
+				...creationState,
+			},
 			thread,
 		};
 	}
@@ -108,15 +114,21 @@ export class InstanceAiPendingAgentService {
 	 */
 	private async createAgent(
 		user: User,
-		{ projectId, agentId, name }: { projectId: string; agentId: string; name: string },
+		{ projectId, agentId, name, config }: InstanceAiPersistPendingAgentRequest,
 		adoptOnCollision: boolean,
+		pushRef?: string,
 	) {
 		const { agents, defaultModelResolver } = this.agentsModule();
-		const defaultModel = await defaultModelResolver.resolve(user, projectId);
-		return await agents.create(projectId, name, {
+		const defaultModel =
+			config?.model === undefined ? await defaultModelResolver.resolve(user, projectId) : undefined;
+		return await agents.createOrAdopt(projectId, name, {
 			actor: { kind: 'user', user },
+			user,
+			createdBy: 'user',
 			id: agentId,
 			adoptOnCollision,
+			config,
+			pushRef,
 			...(defaultModel ? { defaultModel } : {}),
 		});
 	}

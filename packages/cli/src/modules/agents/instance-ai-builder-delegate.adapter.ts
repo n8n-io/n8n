@@ -163,6 +163,8 @@ export class InstanceAiBuilderDelegateAdapterService {
 				const { agent, adopted } = await this.agentsService.createOrAdopt(projectId, name, {
 					...options,
 					actor: { kind: 'user', user },
+					user,
+					createdBy: 'builder',
 				});
 				// An adopted row keeps the winner's name, so report the persisted one.
 				return { agentId: agent.id, projectId, name: agent.name, adopted };

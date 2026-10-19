@@ -317,55 +317,55 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 	BUILDER_CREATED_AGENT: {
 		name: 'Builder created agent',
 		description:
-			'The Instance AI builder was the first surface to configure an agent. One of three same-shaped creation events ("User created agent", "MCP created agent") — union them for total agent creation, or read one for that surface alone. Emitted from `AgentConfigService.updateConfig` on the agent\'s first configuring write, so the builder minting an agent row emits nothing and a build that fails before writing config never counts. event_version 2 replaced thread_id with user_id, moved the emit from the frontend-facing delegate wrapper to the config-save path, and added the write profile.',
+			'The Instance AI builder persisted a new Agent. Emitted after the Agent and its initial configuration commit, including incomplete drafts. A later build failure does not undo creation. Union the user, builder, and MCP creation events to count all new Agents. Adoption of an existing Agent emits no creation event. Version 3 reports the committed insert instead of the first configuring update.',
 		properties: z.object({
 			...agentWrite,
-			event_version: z.literal('2'),
+			event_version: z.literal('3'),
 		}),
 	},
 	USER_CREATED_AGENT: {
 		name: 'User created agent',
 		description:
-			'A user was the first surface to configure an agent, from the editor. One of three same-shaped creation events ("Builder created agent", "MCP created agent") — union them for total agent creation, or read one for that surface alone. Emitted from `AgentConfigService.updateConfig` on the agent\'s first configuring write: agents are created lazily and the row alone emits nothing, so this fires when the agent gains a model, instructions or a capability rather than on the click, and an abandoned new-agent flow never counts. A rename or an icon change does not qualify. "User clicked new agent" carries the same agent_id, so the two join into a click-to-creation funnel whose gap is abandoned flows. event_version 2 dropped source (editor-only knowledge, still on the click event), added project_id, user_id and the write profile, and moved the emit to the backend.',
+			'A user persisted a new Agent from the editor, a template, or duplication. Emitted after the Agent and its initial configuration commit, regardless of its default model or setup readiness. Union the user, builder, and MCP creation events to count all new Agents. User clicked new agent joins through agent_id. User duplicated agent retains the source Agent context. Version 3 reports the committed insert instead of the first configuring update.',
 		properties: z.object({
 			...agentWrite,
-			event_version: z.literal('2'),
+			event_version: z.literal('3'),
 		}),
 	},
 	MCP_CREATED_AGENT: {
 		name: 'MCP created agent',
 		description:
-			'An MCP client was the first surface to configure an agent, through the `create_agent` or `mutate_agent` tool. One of three same-shaped creation events ("User created agent", "Builder created agent") — union them for total agent creation, or read one for that surface alone. Emitted from `AgentConfigService.updateConfig` on the agent\'s first configuring write, so a `create_agent` call carrying no initial config emits nothing until something configures the agent. The coarser "User called mcp tool" event also fires for the same call.',
+			'An MCP client persisted a new Agent through create_agent, with or without initial configuration. Emitted after the Agent and its configuration commit. Union the user, builder, and MCP creation events to count all new Agents. User called mcp tool also reports the tool call. Version 2 reports the committed insert instead of the first configuring update.',
 		properties: z.object({
 			...agentWrite,
-			event_version: z.literal('1'),
+			event_version: z.literal('2'),
 		}),
 	},
 	USER_MODIFIED_AGENT: {
 		name: 'User modified agent',
 		description:
-			'A user saved a change to an agent that was already configured, from the editor. One of three same-shaped modification events ("Builder modified agent", "MCP modified agent") — union them for total agent modification, or read one for that surface alone. Emitted once per save from `AgentConfigService.updateConfig`; a save that changed nothing emits nothing, and the agent\'s first configuring write emits the matching creation event instead — so a write is never counted as both, and this event is not inflated by every agent\'s birth. The capability counts mirror "Agent setup completed", so a profile at each modification lines up with the profile at setup completion. Replaces the per-part "User edited agent config" and the per-item "User added/removed tools/skills/tasks" and "User added/removed agent tool" events, which fired several times for a single save and never covered the builder or MCP.',
+			'A user saved a tracked configuration or resource change to an existing Agent. Emitted after the change commits. Incomplete Agents also count. No-op and cosmetic-only saves emit nothing. Creation emits User created agent instead. The profile describes the saved configuration. Version 2 removes the configured-state gate and creation inference.',
 		properties: z.object({
 			...agentWrite,
-			event_version: z.literal('1'),
+			event_version: z.literal('2'),
 		}),
 	},
 	BUILDER_MODIFIED_AGENT: {
 		name: 'Builder modified agent',
 		description:
-			'The Instance AI builder saved a change to an agent that was already configured. One of three same-shaped modification events ("User modified agent", "MCP modified agent") — union them for total agent modification, or read one for that surface alone. Emitted once per save from `AgentConfigService.updateConfig`; a save that changed nothing emits nothing, and the agent\'s first configuring write emits "Builder created agent" instead. The capability counts mirror "Agent setup completed", so a profile at each modification lines up with the profile at setup completion. Replaces the per-item "Builder added tools/skills to agent" and "Builder removed tasks from agent" events.',
+			'The Instance AI builder saved a tracked configuration or resource change to an existing Agent. Emitted after the change commits, including the first generated configuration of a saved draft. No-op and cosmetic-only saves emit nothing. Creation emits Builder created agent instead. The profile describes the saved configuration. Version 2 removes the configured-state gate and creation inference.',
 		properties: z.object({
 			...agentWrite,
-			event_version: z.literal('1'),
+			event_version: z.literal('2'),
 		}),
 	},
 	MCP_MODIFIED_AGENT: {
 		name: 'MCP modified agent',
 		description:
-			'An MCP client saved a change to an agent that was already configured, through the `create_agent` or `mutate_agent` tool. One of three same-shaped modification events ("User modified agent", "Builder modified agent") — union them for total agent modification, or read one for that surface alone. Emitted once per save from `AgentConfigService.updateConfig`; a save that changed nothing emits nothing, and the agent\'s first configuring write emits "MCP created agent" instead. The capability counts mirror "Agent setup completed", so a profile at each modification lines up with the profile at setup completion. This surface had no modification telemetry before. The coarser "User called mcp tool" event also fires for the same call.',
+			'An MCP client saved a tracked configuration or resource change to an existing Agent through mutate_agent. Emitted after the change commits. Incomplete Agents also count. No-op and cosmetic-only saves emit nothing. Creation emits MCP created agent instead. User called mcp tool also reports the tool call. Version 2 removes the configured-state gate and creation inference.',
 		properties: z.object({
 			...agentWrite,
-			event_version: z.literal('1'),
+			event_version: z.literal('2'),
 		}),
 	},
 	USER_PUBLISHED_AGENT: {

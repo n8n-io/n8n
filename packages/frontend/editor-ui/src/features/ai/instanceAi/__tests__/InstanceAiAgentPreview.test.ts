@@ -1,8 +1,8 @@
 import { flushPromises, mount } from '@vue/test-utils';
 import { reactive, ref } from 'vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { InstanceAiMessage } from '@n8n/api-types';
-import type { AgentResource } from '@/features/agents/types';
+import type { AgentJsonConfig, InstanceAiMessage } from '@n8n/api-types';
+import type { AgentCreationResource } from '@/features/agents/types';
 import InstanceAiAgentPreview from '../components/InstanceAiAgentPreview.vue';
 import {
 	getAgentBuilderTargetFromThreadMetadata,
@@ -46,7 +46,7 @@ vi.mock('../instanceAi.memory.api', () => ({
 const persistedAgent = {
 	id: 'agent-1',
 	name: 'Support Agent',
-} as AgentResource;
+} as AgentCreationResource;
 
 const AgentBuilderViewStub = {
 	name: 'AgentBuilderView',
@@ -223,14 +223,17 @@ describe('InstanceAiAgentPreview', () => {
 
 		const persist = builder.props('artifactPersistAgent') as (
 			name: string,
-		) => Promise<AgentResource>;
-		await expect(persist('Support Agent')).resolves.toBe(persistedAgent);
+			config?: AgentJsonConfig,
+		) => Promise<AgentCreationResource>;
+		const config = { name: 'Support Agent', model: '', instructions: 'Help users' };
+		await expect(persist('Support Agent', config)).resolves.toBe(persistedAgent);
 		await flushPromises();
 
 		expect(persistPendingAgentMock).toHaveBeenCalledWith(expect.anything(), 'thread-1', {
 			projectId: 'project-1',
 			agentId: 'agent-1',
 			name: 'Support Agent',
+			config,
 		});
 		expect(getPendingAgentTargetFromThreadMetadata(metadataState.value)).toBeUndefined();
 		expect(getAgentBuilderTargetFromThreadMetadata(metadataState.value)).toEqual({

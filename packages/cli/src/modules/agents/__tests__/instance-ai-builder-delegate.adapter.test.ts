@@ -604,12 +604,16 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 			agentsService.createOrAdopt.mockResolvedValue({
 				agent: mock<Agent>({ id: 'agent-9', name: 'New agent' }),
 				adopted: false,
+				config: null,
+				configHash: null,
 			});
 
 			const result = await delegate.createAgent('New agent');
 
 			expect(agentsService.createOrAdopt).toHaveBeenCalledWith('project-1', 'New agent', {
 				actor: { kind: 'user', user: expect.objectContaining({ id: 'user-1' }) },
+				user: expect.objectContaining({ id: 'user-1' }),
+				createdBy: 'builder',
 			});
 			expect(result).toEqual({
 				agentId: 'agent-9',
@@ -625,6 +629,8 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 			agentsService.createOrAdopt.mockResolvedValue({
 				agent: mock<Agent>({ id: 'aBcDeFgHiJkLmNoP', name: 'New agent' }),
 				adopted: false,
+				config: null,
+				configHash: null,
 			});
 
 			await delegate.createAgent('New agent', {
@@ -634,6 +640,8 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 
 			expect(agentsService.createOrAdopt).toHaveBeenCalledWith('project-1', 'New agent', {
 				actor: { kind: 'user', user: expect.objectContaining({ id: 'user-1' }) },
+				user: expect.objectContaining({ id: 'user-1' }),
+				createdBy: 'builder',
 				id: 'aBcDeFgHiJkLmNoP',
 				adoptOnCollision: true,
 			});
@@ -653,6 +661,8 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 			agentsService.createOrAdopt.mockResolvedValue({
 				agent: mock<Agent>({ id: 'aBcDeFgHiJkLmNoP', name: 'Support Triage' }),
 				adopted: true,
+				config: null,
+				configHash: null,
 			});
 
 			await expect(
