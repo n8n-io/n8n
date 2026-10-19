@@ -1,4 +1,4 @@
-import { OtelModule } from '@n8n/frontend-module-otel';
+import { MCPModule } from '@n8n/frontend-module-mcp/mcp.module';
 import { useRBACStore } from '@n8n/stores/rbac.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import type { IMenuSettingItem } from '@n8n/frontend-module-sdk';
@@ -12,42 +12,42 @@ import { useUIStore } from '@/app/stores/ui.store';
  *
  * Driven with a real module descriptor rather than a fixture, because the gate only
  * holds if the descriptor's `id` is the same id `/rest/module-settings` reports.
- * The scope half of the old gate lives in the descriptor's `available` getter and is
- * covered by `otel.module.test.ts` in the module package.
+ * The scope half of the gate lives in the descriptor's `available` getter and is
+ * covered by the module package's own tests.
  */
 describe('uiStore.settingsSidebarItems', () => {
-	const registerOtel = ({ moduleActive }: { moduleActive: boolean }) => {
+	const registerMcp = ({ moduleActive }: { moduleActive: boolean }) => {
 		const settingsStore = useSettingsStore();
 		settingsStore.settings = {
 			...settingsStore.settings,
-			activeModules: moduleActive ? [OtelModule.id] : [],
+			activeModules: moduleActive ? [MCPModule.id] : [],
 		};
 
-		useRBACStore().setGlobalScopes(['otel:manage']);
+		useRBACStore().setGlobalScopes(['mcp:manage']);
 
 		const uiStore = useUIStore();
-		uiStore.registerSettingsPages(OtelModule.id, OtelModule.settingsPages ?? []);
+		uiStore.registerSettingsPages(MCPModule.id, MCPModule.settingsPages ?? []);
 
 		return uiStore;
 	};
 
-	const otelItem = (uiStore: ReturnType<typeof useUIStore>) =>
-		uiStore.settingsSidebarItems.find((item) => item.id === 'settings-opentelemetry');
+	const mcpItem = (uiStore: ReturnType<typeof useUIStore>) =>
+		uiStore.settingsSidebarItems.find((item) => item.id === 'settings-mcp');
 
 	beforeEach(() => {
 		setActivePinia(createPinia());
 	});
 
 	it('should list the pages of an active module', () => {
-		const uiStore = registerOtel({ moduleActive: true });
+		const uiStore = registerMcp({ moduleActive: true });
 
-		expect(otelItem(uiStore)?.available).toBe(true);
+		expect(mcpItem(uiStore)?.available).toBe(true);
 	});
 
 	it('should drop the pages of an inactive module, even when the user holds the scope', () => {
-		const uiStore = registerOtel({ moduleActive: false });
+		const uiStore = registerMcp({ moduleActive: false });
 
-		expect(otelItem(uiStore)).toBeUndefined();
+		expect(mcpItem(uiStore)).toBeUndefined();
 	});
 });
 

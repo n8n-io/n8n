@@ -7,6 +7,7 @@ import type { IMenuSettingItem, SettingsSectionId } from '@n8n/frontend-module-s
 import { useI18n } from '@n8n/i18n';
 import { VIEWS } from '../constants';
 import { isContextEnabled } from '@/features/settings/context/context.utils';
+import { useObservabilityPages } from '@/features/settings/observability/useObservabilityPages';
 import { useUIStore } from '../stores/ui.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { hasPermission } from '../utils/rbac/permissions';
@@ -51,6 +52,7 @@ export function useSettingsItems() {
 	const { isEnabled: isPromotionsEnabled } = usePromotionsEnabled();
 	const { balance } = useAiGateway();
 	const { openTopUp } = useAiGatewayTopUp();
+	const { canOpenLogStreaming, canOpenOpenTelemetry } = useObservabilityPages();
 
 	const settingsItems = computed<IMenuSettingItem[]>(() => {
 		// `order` is the row inside the section, in steps of ten so a module can slot in between.
@@ -213,7 +215,7 @@ export function useSettingsItems() {
 					canUserAccessRouteByName(VIEWS.ENCRYPTION_KEYS_SETTINGS),
 				route: { to: { name: VIEWS.ENCRYPTION_KEYS_SETTINGS } },
 			},
-			// Operations (modules add Log streaming at 40 and OpenTelemetry at 50)
+			// Operations
 			{
 				id: 'settings-source-control',
 				order: 10,
@@ -246,6 +248,18 @@ export function useSettingsItems() {
 					settingsStore.isQueueModeEnabled &&
 					hasPermission(['rbac'], { rbac: { scope: 'workersView:manage' } }),
 				route: { to: { name: VIEWS.WORKER_VIEW } },
+			},
+			{
+				// One entry for where this instance sends its logs and traces; Log streaming
+				// and OpenTelemetry are rows on this page.
+				id: 'settings-observability',
+				order: 40,
+				section: 'operations',
+				icon: 'satellite-dish',
+				label: i18n.baseText('settings.observability'),
+				position: 'top',
+				available: canOpenLogStreaming.value || canOpenOpenTelemetry.value,
+				route: { to: { name: VIEWS.OBSERVABILITY_SETTINGS } },
 			},
 			{
 				id: 'settings-migration-report',

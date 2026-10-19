@@ -79,6 +79,8 @@ const SettingsUsageAndPlan = async () =>
 const SettingsSso = async () => await import('@/features/settings/sso/views/SettingsSso.vue');
 const SettingsAuthentication = async () =>
 	await import('@/features/settings/sso/views/SettingsAuthenticationView.vue');
+const SettingsObservability = async () =>
+	await import('@/features/settings/observability/views/SettingsObservabilityView.vue');
 const SettingsEncryptionKeys = async () =>
 	await import('@/features/settings/encryption-keys/views/SettingsEncryptionKeys.vue');
 const SignoutView = async () => await import('@/features/core/auth/views/SignoutView.vue');
@@ -1080,6 +1082,38 @@ export const routes: RouteRecordRaw[] = [
 			{
 				path: 'ldap',
 				redirect: { name: VIEWS.LDAP_SETTINGS },
+			},
+			{
+				// The Log streaming and OpenTelemetry modules nest their pages here through
+				// `meta.parentRouteName`, so the Observability sidebar link stays active while
+				// one of them is open. The modules redirect their old flat paths themselves.
+				path: 'observability',
+				name: VIEWS.OBSERVABILITY_SETTINGS_ROOT,
+				component: RouterView,
+				children: [
+					{
+						path: '',
+						name: VIEWS.OBSERVABILITY_SETTINGS,
+						component: SettingsObservability,
+						meta: {
+							middleware: ['authenticated', 'rbac'],
+							middlewareOptions: {
+								rbac: {
+									// Managing either export is enough to see the overview.
+									scope: ['logStreaming:manage', 'otel:manage'],
+								},
+							},
+							telemetry: {
+								pageCategory: 'settings',
+								getProperties() {
+									return {
+										feature: 'observability',
+									};
+								},
+							},
+						},
+					},
+				],
 			},
 			{
 				path: 'encryption-keys',

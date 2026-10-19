@@ -1,32 +1,36 @@
 <script lang="ts" setup>
-import { useRouter } from 'vue-router';
-import { useI18n } from '@n8n/i18n';
+import { useRouter, type RouteLocationRaw } from 'vue-router';
 import { N8nButton, N8nIcon } from '@n8n/design-system';
 
-import { VIEWS } from '@/app/constants';
+/**
+ * Back action for a settings page that predates `N8nSettingsLayout` and is listed on an
+ * overview page (Authentication, Observability). Mirrors the layout's own back action.
+ */
+const props = defineProps<{
+	label: string;
+	to: RouteLocationRaw;
+}>();
 
-const i18n = useI18n();
 const router = useRouter();
 
 async function goBack() {
-	await router.push({ name: VIEWS.AUTHENTICATION_SETTINGS });
+	await router.push(props.to);
 }
 </script>
 
 <template>
-	<!-- The SSO and LDAP pages predate N8nSettingsLayout; this mirrors its back action. -->
 	<div :class="$style.backRow">
 		<N8nButton
 			variant="ghost"
 			size="small"
 			:class="$style.backButton"
-			data-test-id="settings-authentication-back"
+			data-test-id="settings-back-link"
 			@click="goBack"
 		>
 			<template #icon>
 				<N8nIcon icon="arrow-left" />
 			</template>
-			{{ i18n.baseText('settings.authentication.back') }}
+			{{ label }}
 		</N8nButton>
 	</div>
 </template>

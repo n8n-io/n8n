@@ -19,10 +19,11 @@ import {
 	N8nSettingsSaveBar,
 	N8nSettingsSection,
 } from '@n8n/design-system';
+import { VIEWS } from '@n8n/frontend-constants/views';
 import { useI18n } from '@n8n/i18n';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { computed, ref, watch, onMounted } from 'vue';
-import { onBeforeRouteLeave, type NavigationGuardNext } from 'vue-router';
+import { onBeforeRouteLeave, useRouter, type NavigationGuardNext } from 'vue-router';
 
 import {
 	CREDENTIALS_BLANKING_VALUE,
@@ -37,6 +38,7 @@ import OtelStatusControl from './OtelStatusControl.vue';
 const OTEL_DOCS_URL = 'https://docs.n8n.io/hosting/logging-monitoring/opentelemetry/';
 
 const i18n = useI18n();
+const router = useRouter();
 const telemetry = useTelemetry();
 const toast = useToast();
 // The shell's wrapper adds a claim guard for `setDocumentTitle`, which only the
@@ -265,6 +267,11 @@ onBeforeRouteLeave((_to, _from, next) => {
 	showUnsavedChangesDialog.value = true;
 });
 
+// The route leave guard above still asks about unsaved changes.
+async function goToObservability() {
+	await router.push({ name: VIEWS.OBSERVABILITY_SETTINGS });
+}
+
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.opentelemetry.title'));
 	await otelStore.fetchSettings();
@@ -419,7 +426,12 @@ watch(
 </script>
 
 <template>
-	<N8nSettingsLayout :class="$style.layout">
+	<N8nSettingsLayout
+		:class="$style.layout"
+		show-back
+		:back-label="i18n.baseText('settings.observability.back')"
+		@back="goToObservability"
+	>
 		<N8nSettingsPageHeader
 			:title="i18n.baseText('settings.opentelemetry.title')"
 			:description="i18n.baseText('settings.opentelemetry.description')"

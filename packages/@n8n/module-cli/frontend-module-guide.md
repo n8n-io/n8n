@@ -205,6 +205,14 @@ two shell links of your section to put your link between them. A link without `o
 its section. Two links with the same `order` keep their registration order. A link without
 `section` is listed before the first heading. Neither field is part of `IMenuItem`.
 
+A module page can be a row on a shell overview page instead of a link of its own. Observability
+lists the Log streaming and OpenTelemetry module pages this way, in the same form as the SSO and
+LDAP shell pages under Authentication. Such a module declares no `settingsPages` entry. It sets `meta.parentRouteName` on its route to the name of the
+overview's parent record (for example `VIEWS.OBSERVABILITY_SETTINGS_ROOT`), so the route nests
+under the overview and the overview's sidebar link stays active while the page is open. The
+module keeps its old flat path as a redirect route, so bookmarks still resolve. The shell owns the
+overview page and the row that opens the module page.
+
 All the register functions are in `editor-ui/src/app/moduleInitializer/moduleInitializer.ts`.
 `main.ts` registers `routes` before the mount. `app/init/index.ts` registers the other surfaces
 after the login.

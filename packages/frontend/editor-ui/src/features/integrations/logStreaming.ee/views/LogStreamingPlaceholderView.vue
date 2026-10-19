@@ -3,7 +3,9 @@ import { onMounted } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { N8nHeading } from '@n8n/design-system';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { VIEWS } from '@/app/constants';
 import LogStreamingPaywall from '@/features/integrations/logStreaming.ee/components/LogStreamingPaywall.vue';
+import SettingsBackLink from '@/features/settings/components/SettingsBackLink.vue';
 
 const i18n = useI18n();
 const documentTitle = useDocumentTitle();
@@ -15,6 +17,10 @@ onMounted(() => {
 
 <template>
 	<div>
+		<SettingsBackLink
+			:label="i18n.baseText('settings.observability.back')"
+			:to="{ name: VIEWS.OBSERVABILITY_SETTINGS }"
+		/>
 		<div class="mb-2xl">
 			<N8nHeading size="2xlarge">
 				{{ i18n.baseText('settings.log-streaming.heading') }}

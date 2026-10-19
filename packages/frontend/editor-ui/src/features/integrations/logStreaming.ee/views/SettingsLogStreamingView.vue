@@ -6,12 +6,13 @@ import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useLogStreamingStore } from '../logStreaming.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { EnterpriseEditionFeature } from '@/app/constants';
+import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
 import { LOG_STREAM_MODAL_KEY } from '../modals';
 import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
 import { deepCopy, defaultMessageEventBusDestinationOptions } from 'n8n-workflow';
 import EventDestinationCard from '../components/EventDestinationCard.vue';
 import LogStreamingPaywall from '@/features/integrations/logStreaming.ee/components/LogStreamingPaywall.vue';
+import SettingsBackLink from '@/features/settings/components/SettingsBackLink.vue';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useI18n } from '@n8n/i18n';
@@ -171,6 +172,10 @@ async function onEdit(destinationId?: string) {
 
 <template>
 	<div>
+		<SettingsBackLink
+			:label="i18n.baseText('settings.observability.back')"
+			:to="{ name: VIEWS.OBSERVABILITY_SETTINGS }"
+		/>
 		<div :class="$style.header">
 			<div class="mb-2xl">
 				<N8nHeading size="2xlarge">

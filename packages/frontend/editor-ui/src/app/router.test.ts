@@ -139,6 +139,9 @@ describe('router', () => {
 		['/settings/authentication', VIEWS.AUTHENTICATION_SETTINGS, ['saml:manage']],
 		['/settings/authentication', VIEWS.AUTHENTICATION_SETTINGS, ['ldap:manage']],
 		['/settings/authentication/sso', VIEWS.SSO_SETTINGS, ['saml:manage']],
+		['/settings/observability', VIEWS.WORKFLOWS, []],
+		['/settings/observability', VIEWS.OBSERVABILITY_SETTINGS, ['logStreaming:manage']],
+		['/settings/observability', VIEWS.OBSERVABILITY_SETTINGS, ['otel:manage']],
 		// Old flat paths redirect to the nested method pages.
 		['/settings/sso', VIEWS.WORKFLOWS, []],
 		['/settings/sso', VIEWS.SSO_SETTINGS, ['saml:manage']],
