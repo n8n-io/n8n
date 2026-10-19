@@ -45,13 +45,16 @@ export function usePromotionPreviewLabels() {
 		const blocking = blockers.filter(isBlocking);
 		if (blocking.length === 0) return undefined;
 		if (resource.type === 'workflow') {
+			if (blocking.every(({ kind }) => kind === 'location')) {
+				return i18n.baseText('promotions.preview.blockers.workflowLocation');
+			}
 			return i18n.baseText('promotions.preview.marker.workflow', {
 				adjustToNumber: blocking.length,
 				interpolate: { count: String(blocking.length) },
 			});
 		}
 		const [first] = blocking;
-		if (first.kind === 'moved') return i18n.baseText('promotions.preview.folder.moveConflict');
+		if (first.kind === 'location') return i18n.baseText('promotions.preview.folder.moveConflict');
 		const count = new Set(blocking.flatMap(({ workflowKeys }) => workflowKeys)).size;
 		const options = { adjustToNumber: count, interpolate: { count: String(count) } };
 		if (first.kind === 'access') return i18n.baseText('promotions.preview.marker.access', options);

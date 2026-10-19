@@ -26,10 +26,18 @@ export function toOperationRequest(
 }
 
 /**
- * `missing`, `access`, `conflict` and `moved` stop the apply of their workflows.
- * A `destructive` data table change needs a confirmation. A `warning` only informs.
+ * `missing`, `access`, `conflict`, `moved` (to another project) and `location` (another folder
+ * in the project) stop the apply of their workflows. A `destructive` data table change needs a
+ * confirmation. A `warning` only informs.
  */
-export type BlockerKind = 'missing' | 'access' | 'conflict' | 'moved' | 'destructive' | 'warning';
+export type BlockerKind =
+	| 'missing'
+	| 'access'
+	| 'conflict'
+	| 'moved'
+	| 'location'
+	| 'destructive'
+	| 'warning';
 
 export type Blocker = {
 	kind: BlockerKind;
@@ -182,14 +190,20 @@ export function indexBlockers(blockers: Blocker[]): BlockerIndex {
 }
 
 /**
- * Folders that the branch holds under another parent. Apply cannot move a folder that exists on
- * this instance, so the import stops for every selection.
+ * Folders and workflows that the branch holds under another parent. Apply cannot move them on
+ * this instance. A folder stops the import for every selection. A workflow stops its own apply.
  */
-export function folderMoveConflicts(graph: SelectionGraph): PromotionResource[] {
+export function locationConflicts(graph: SelectionGraph, type: 'folder' | 'workflow') {
 	return [...graph.resources.values()].filter(
-		(resource) => resource.type === 'folder' && resource.previousParentKey !== undefined,
+		(resource) => resource.type === type && resource.previousParentKey !== undefined,
 	);
 }
+
+export const locationBlocker = ({ key, type }: PromotionResource): Blocker => ({
+	kind: 'location',
+	resourceKey: key,
+	workflowKeys: type === 'workflow' ? [key] : [],
+});
 
 /** The blockers that stop Apply until users resolve them. Folder conflicts come from the preview. */
 export function unresolvedBlockerCount({ preflight, movedWorkflows }: ApplyCheckResult) {
