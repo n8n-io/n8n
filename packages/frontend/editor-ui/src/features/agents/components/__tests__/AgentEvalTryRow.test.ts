@@ -72,6 +72,23 @@ describe('AgentEvalTryRow', () => {
 		expect(getByTestId('row-1-delete-check')).toBeDisabled();
 	});
 
+	it('says why Delete is disabled while the check runs', async () => {
+		const user = userEvent.setup();
+		const { getByTestId, findByText } = renderComponent({
+			props: { status: 'waiting', input: 'x', output: null, testId: 'row-1' },
+		});
+		await user.click(getByTestId('row-1-toggle'));
+		await user.hover(getByTestId('row-1-delete-check-hint'));
+		expect(await findByText('You can delete this check when it finishes')).toBeInTheDocument();
+	});
+
+	it.each(['complete', 'small'] as const)('names the %s view toggle by what it does', (view) => {
+		const { getByTestId } = renderComponent({
+			props: { status: 'pass', input: 'x', output: 'y', testId: 'row-1', view },
+		});
+		expect(getByTestId('row-1-toggle')).toHaveAccessibleName('Show check details');
+	});
+
 	it.each(['work', 'fail'] as const)(
 		'still expands to the correction form for a %s case with no output at all',
 		async (status) => {
