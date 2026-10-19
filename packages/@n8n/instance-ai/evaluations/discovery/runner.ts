@@ -115,7 +115,7 @@ export interface DiscoveryRunResult {
 export async function runDiscoveryScenario(
 	options: DiscoveryRunOptions,
 ): Promise<DiscoveryRunResult> {
-	const turn = await runOrchestratorTurn(options);
+	const turn = await runOrchestratorTurn({ ...options, stopBeforeTool: stopAtAgentBuild });
 	const outcome = extractOutcomeFromEvents(turn.events);
 	const check = evaluateDiscoveryTrial(options.scenario, outcome, {
 		streamStatus: turn.streamStatus,
@@ -390,11 +390,29 @@ function silentLogger(): Logger {
 	return { debug: () => {}, info: () => {}, warn: () => {}, error: () => {} };
 }
 
+const STUB_BUILDER_TOOL_NAMES: readonly string[] = AGENT_BUILDER_ORCHESTRATOR_TOOL_NAMES.filter(
+	(name) => name !== AGENT_BUILDER_TOOL_NAMES.SELECT_AGENT,
+);
+
+/**
+ * Ends the trial at the first builder call after `agent_builder_select_agent`. The route is
+ * settled by then, and the stubs report success, so the model otherwise builds until the budget.
+ */
+async function stopAtAgentBuild(
+	call: PendingToolCall,
+	events: readonly InstanceAiEvent[],
+): Promise<boolean> {
+	const agentSelected = events.some(
+		(event) =>
+			event.type === 'tool-call' &&
+			event.payload.toolName === AGENT_BUILDER_TOOL_NAMES.SELECT_AGENT,
+	);
+	return await Promise.resolve(agentSelected && STUB_BUILDER_TOOL_NAMES.includes(call.toolName));
+}
+
 /** Builder tools that accept any input and report success, so routing is all that is graded. */
 function createStubBuilderTools(): BuiltTool[] {
-	return AGENT_BUILDER_ORCHESTRATOR_TOOL_NAMES.filter(
-		(name) => name !== AGENT_BUILDER_TOOL_NAMES.SELECT_AGENT,
-	).map((name) =>
+	return STUB_BUILDER_TOOL_NAMES.map((name) =>
 		new Tool(name)
 			.description(`Discovery stub for ${name}.`)
 			.input(z.object({}).passthrough())

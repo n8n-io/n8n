@@ -478,7 +478,11 @@ describe('agent_builder_finish_setup tool', () => {
 				credentialTypes: [],
 				paths: ['/channels'],
 			});
-			const tool = buildFinishSetupTool({ ...BASE_DEPS, applySetupToConfig });
+			const tool = buildFinishSetupTool({
+				...BASE_DEPS,
+				credentialService: makeCredentialService([]),
+				applySetupToConfig,
+			});
 			const input = {
 				questions: [
 					{

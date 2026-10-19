@@ -21,7 +21,9 @@ import {
 	InstanceAiBuilderDelegateAdapterService,
 } from '../instance-ai-builder-delegate.adapter';
 import type { AgentConfigService } from '../agent-config.service';
+import type { AgentSkillRefsService } from '../agent-skill-refs.service';
 import type { AgentSkillsService } from '../agent-skills.service';
+import type { AgentValidationService } from '../agent-validation.service';
 import type { N8nMemory } from '../integrations/n8n-memory';
 import type { AgentThreadRepository } from '../repositories/agent-thread.repository';
 
@@ -54,6 +56,8 @@ function setup(options: { useEvalModelCatalog?: boolean } = {}) {
 		agentConfig,
 		agentSkills,
 		agentsSettingsService,
+		mock<AgentValidationService>(),
+		mock<AgentSkillRefsService>(),
 	);
 
 	const user = mock<User>({ id: 'user-1' });
