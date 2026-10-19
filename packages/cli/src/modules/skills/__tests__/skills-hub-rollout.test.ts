@@ -2,15 +2,19 @@ import type { Logger } from '@n8n/backend-common';
 import { AgentsConfig } from '@n8n/config';
 import { mock } from 'vitest-mock-extended';
 
+import { SkillAgentsProxy, type SkillAgentsProvider } from '../skill-agents-proxy.service';
 import { SkillsHubRollout } from '../skills-hub-rollout';
 
 describe('SkillsHubRollout', () => {
 	let config: AgentsConfig;
+	let skillAgents: SkillAgentsProxy;
 	let rollout: SkillsHubRollout;
 
 	beforeEach(() => {
 		config = new AgentsConfig();
-		rollout = new SkillsHubRollout(config, mock<Logger>());
+		skillAgents = new SkillAgentsProxy();
+		skillAgents.registerProvider(mock<SkillAgentsProvider>());
+		rollout = new SkillsHubRollout(config, mock<Logger>(), skillAgents);
 	});
 
 	it('is off by default', () => {
@@ -33,5 +37,14 @@ describe('SkillsHubRollout', () => {
 		config.skillsHubEnabled = false;
 
 		expect(rollout.isEnabled).toBe(true);
+	});
+
+	it('is off while the agents module has registered no provider', () => {
+		config.skillsHubEnabled = true;
+		const withoutAgents = new SkillsHubRollout(config, mock<Logger>(), new SkillAgentsProxy());
+
+		withoutAgents.init();
+
+		expect(withoutAgents.isEnabled).toBe(false);
 	});
 });

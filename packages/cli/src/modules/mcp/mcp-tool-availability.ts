@@ -5,6 +5,7 @@ import { hasGlobalScope, type AuthPrincipal } from '@n8n/permissions';
 import type { FeatureFlags } from 'n8n-workflow';
 
 import type { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
+import type { SkillsHubRollout } from '@/modules/skills/skills-hub-rollout';
 
 import type { McpConfig } from './mcp.config';
 
@@ -32,18 +33,11 @@ export function areAgentToolsAvailable(
 }
 
 /**
- * Skills live in the skills module. The agents module must be on too: the delete and move
- * guards need it to see which agents use a skill.
+ * The skill tools follow the skills hub gate, as the REST API and n8n Assistant do. Tool
+ * registration and the consent scopes both use this check, so they always agree.
  */
-export function areSkillToolsAvailable(
-	globalConfig: GlobalConfig,
-	moduleRegistry: ModuleRegistry,
-): boolean {
-	return (
-		moduleRegistry.isActive('skills') &&
-		moduleRegistry.isActive('agents') &&
-		globalConfig.agents.skillsHubEnabled
-	);
+export function areSkillToolsAvailable(skillsHub: Pick<SkillsHubRollout, 'isEnabled'>): boolean {
+	return skillsHub.isEnabled;
 }
 
 /**

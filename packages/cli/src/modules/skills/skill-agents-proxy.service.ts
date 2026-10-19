@@ -61,6 +61,11 @@ export class SkillAgentsProxy implements SkillAgentsProvider {
 		this.provider = provider;
 	}
 
+	/** Whether the agents module registered its provider. The skills hub needs it to be on. */
+	get hasProvider(): boolean {
+		return this.provider !== null;
+	}
+
 	async findAgents(agentIds: string[], ctx: OperationContext = {}) {
 		if (!this.provider || agentIds.length === 0) return new Map<string, SkillAgent>();
 		return await this.provider.findAgents(agentIds, ctx);

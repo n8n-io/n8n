@@ -24,6 +24,7 @@ import { AgentRepository } from '@/modules/agents/repositories/agent.repository'
 import { SkillRepository } from '@/modules/skills/skill.repository';
 import { AgentSkillRepository } from '@/modules/agents/repositories/agent-skill.repository';
 import { SkillService } from '@/modules/skills/skill.service';
+import { SkillAgentsProxy } from '@/modules/skills/skill-agents-proxy.service';
 import { SkillsHubRollout } from '@/modules/skills/skills-hub-rollout';
 import {
 	SKILLS_HUB_COPY_PROGRESS_KEY,
@@ -326,7 +327,11 @@ describe('SkillsHubStartupCopy', () => {
 		async function restart(skillsHubEnabled: boolean) {
 			const config = Container.get(AgentsConfig);
 			config.skillsHubEnabled = skillsHubEnabled;
-			const rollout = new SkillsHubRollout(config, Container.get(Logger));
+			const rollout = new SkillsHubRollout(
+				config,
+				Container.get(Logger),
+				Container.get(SkillAgentsProxy),
+			);
 			rollout.init();
 			// The services that read agent skills follow the same setting after the restart.
 			setSkillsHubFlag(skillsHubEnabled);
