@@ -151,6 +151,13 @@ describe('ContactAdminModal', () => {
 				relations: [projectEditor],
 				implicitMembers: [
 					{
+						id: 'global-owner-1',
+						firstName: 'Katherine',
+						lastName: 'Johnson',
+						email: 'katherine@example.com',
+						globalRole: { slug: 'global:owner', displayName: 'Owner' },
+					},
+					{
 						id: 'global-admin-1',
 						firstName: 'Margaret',
 						lastName: 'Hamilton',
@@ -165,6 +172,7 @@ describe('ContactAdminModal', () => {
 
 			const list = await findByTestId('contact-admin-list');
 
+			expect(list).toHaveTextContent('Katherine Johnson');
 			expect(list).toHaveTextContent('Margaret Hamilton');
 			expect(list).not.toHaveTextContent('Alan Turing');
 		});
