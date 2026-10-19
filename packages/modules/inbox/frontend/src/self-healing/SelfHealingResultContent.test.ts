@@ -310,7 +310,7 @@ describe('SelfHealingResultContent', () => {
 	});
 
 	it.each(['cloud', 'default'] as const)(
-		'keeps duration when saved usage differs from the %s deployment',
+		'shows saved usage and duration regardless of the %s deployment',
 		(deployment) => {
 			useSettingsStore().settings.deployment = { type: deployment };
 			const { getByTestId, queryByTestId } = renderContent({
@@ -326,8 +326,16 @@ describe('SelfHealingResultContent', () => {
 			});
 
 			expect(getByTestId('self-healing-usage-duration')).toBeInTheDocument();
-			for (const field of ['credits', 'promptTokens', 'completionTokens', 'totalTokens']) {
-				expect(queryByTestId(`self-healing-usage-${field}`)).not.toBeInTheDocument();
+			if (deployment === 'cloud') {
+				expect(getByTestId('self-healing-usage-promptTokens')).toHaveTextContent('100');
+				expect(getByTestId('self-healing-usage-completionTokens')).toHaveTextContent('50');
+				expect(getByTestId('self-healing-usage-totalTokens')).toHaveTextContent('150');
+				expect(queryByTestId('self-healing-usage-credits')).not.toBeInTheDocument();
+			} else {
+				expect(getByTestId('self-healing-usage-credits')).toHaveTextContent('1');
+				for (const field of ['promptTokens', 'completionTokens', 'totalTokens']) {
+					expect(queryByTestId(`self-healing-usage-${field}`)).not.toBeInTheDocument();
+				}
 			}
 		},
 	);

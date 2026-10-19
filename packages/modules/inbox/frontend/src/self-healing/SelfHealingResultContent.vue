@@ -300,11 +300,17 @@ function onTabChange(tab: string) {
 }
 
 .decisionActions {
+	/* Let taller buttons use the space around the row without moving the cards. */
+	margin-block: calc(-1 * var(--spacing--5xs));
 	display: flex;
 	align-items: center;
 	flex-wrap: wrap;
 	gap: var(--spacing--2xs);
 	max-width: 100%;
+
+	> button {
+		--button--height: var(--height--md);
+	}
 }
 
 .permissionHint {
@@ -340,6 +346,7 @@ function onTabChange(tab: string) {
 }
 
 .outcomeNotice {
+	margin-block: var(--spacing--4xs);
 	gap: var(--spacing--sm);
 	flex-wrap: wrap;
 }
@@ -379,9 +386,13 @@ function onTabChange(tab: string) {
 	h4,
 	h5,
 	h6 {
-		margin-block: var(--spacing--sm) var(--spacing--2xs);
+		margin-block: var(--spacing--sm) var(--spacing--5xs);
 		font-size: var(--font-size--sm);
 		line-height: var(--line-height--lg);
+
+		+ p {
+			margin-top: 0;
+		}
 	}
 
 	h1 {
