@@ -57,7 +57,7 @@ import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
 import { AgentSkillRefsService } from './agent-skill-refs.service';
 import { AgentTestChatService } from './agent-test-chat.service';
 import { AgentsSettingsService } from './agents-settings.service';
-import { Agent } from './entities/agent.entity';
+import { Agent, type ProjectAgent } from './entities/agent.entity';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { composeJsonConfig, decomposeJsonConfig } from './json-config/agent-config-composition';
 import { fromAgentDocument, type AgentSkillRefs } from './json-config/agent-document';
@@ -101,7 +101,7 @@ type CreateAgentOptions = {
 	user?: User;
 };
 
-export type AgentCreationResult = AgentCreationState & { agent: Agent };
+export type AgentCreationResult = AgentCreationState & { agent: ProjectAgent };
 
 @Service()
 export class AgentsService {
@@ -142,7 +142,11 @@ export class AgentsService {
 	 *
 	 * Reports creation after the insert and its skill references commit.
 	 */
-	async create(projectId: string, name: string, options: CreateAgentOptions): Promise<Agent> {
+	async create(
+		projectId: string,
+		name: string,
+		options: CreateAgentOptions,
+	): Promise<ProjectAgent> {
 		return (await this.createOrAdopt(projectId, name, options)).agent;
 	}
 
@@ -163,16 +167,20 @@ export class AgentsService {
 			name,
 			options,
 		);
-		const agent = this.agentRepository.create({
-			id: options.id || generateNanoId(),
-			name,
-			projectId,
-			schema: fromAgentDocument(schemaConfig).config,
-			...(integrations.length > 0 ? { integrations } : {}),
-			...(options.tools ? { tools: options.tools as Agent['tools'] } : {}),
-			versionId: uuid(),
-			availableInMCP: options.availableInMCP ?? false,
-		});
+		// Keep the non-null project type returned by this creation path.
+		const agent = Object.assign(
+			this.agentRepository.create({
+				id: options.id || generateNanoId(),
+				name,
+				projectId,
+				schema: fromAgentDocument(schemaConfig).config,
+				...(integrations.length > 0 ? { integrations } : {}),
+				...(options.tools ? { tools: options.tools as Agent['tools'] } : {}),
+				versionId: uuid(),
+				availableInMCP: options.availableInMCP ?? false,
+			}),
+			{ projectId },
+		);
 		const prepared = await this.prepareAgentCreation(agent, schemaConfig, options);
 		let savedRefs: AgentSkillRefs;
 		try {
@@ -195,7 +203,7 @@ export class AgentsService {
 	}
 
 	/** Compose the saved state when a pending artifact adopts an existing Agent. */
-	async getCreationResult(agent: Agent, adopted: boolean): Promise<AgentCreationResult> {
+	async getCreationResult(agent: ProjectAgent, adopted: boolean): Promise<AgentCreationResult> {
 		const config = composeJsonConfig(agent, await this.agentSkillRefs.refsForDraft(agent, {}));
 		return { agent, config, configHash: getAgentConfigHash(config), adopted };
 	}
@@ -212,7 +220,7 @@ export class AgentsService {
 	}
 
 	private async prepareAgentCreation(
-		agent: Agent,
+		agent: ProjectAgent,
 		initialSchema: AgentJsonConfig,
 		options: CreateAgentOptions,
 	): Promise<{ skillRefs: AgentSkillRefs; credentialProvider?: AgentsCredentialProvider }> {
@@ -335,7 +343,7 @@ export class AgentsService {
 		return await this.agentRepository.findByProjectIdsPaginated([projectId], options);
 	}
 
-	async findById(agentId: string, projectId: string): Promise<Agent | null> {
+	async findById(agentId: string, projectId: string): Promise<ProjectAgent | null> {
 		return await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 	}
 
@@ -420,7 +428,7 @@ export class AgentsService {
 	 * scopes (instance owners/admins) grant access without an explicit project
 	 * relation.
 	 */
-	async findByIdForUser(agentId: string, user: User): Promise<Agent | null> {
+	async findByIdForUser(agentId: string, user: User): Promise<ProjectAgent | null> {
 		if (hasGlobalScope(user, 'agent:read')) {
 			return await this.agentRepository.findById(agentId);
 		}
@@ -639,7 +647,7 @@ export class AgentsService {
 		projectId: string,
 		adoptOnCollision: boolean,
 		error: unknown,
-	): Promise<Agent> {
+	): Promise<ProjectAgent> {
 		if (!id || !isUniqueConstraintError(error)) throw error;
 		// Never disclose whether the id exists in another project.
 		const conflict = new ConflictError('An agent with this id already exists');
@@ -652,7 +660,7 @@ export class AgentsService {
 		return existing;
 	}
 
-	private getCapabilityTools(entity: Agent): AgentCapabilityTool[] {
+	private getCapabilityTools(entity: ProjectAgent): AgentCapabilityTool[] {
 		return (entity.schema?.tools ?? []).flatMap<AgentCapabilityTool>((tool) => {
 			switch (tool.type) {
 				case 'custom':
@@ -677,7 +685,7 @@ export class AgentsService {
 		});
 	}
 
-	private async getCapabilityTasks(entity: Agent): Promise<AgentCapabilitySummary['tasks']> {
+	private async getCapabilityTasks(entity: ProjectAgent): Promise<AgentCapabilitySummary['tasks']> {
 		const taskRefs = entity.schema?.tasks ?? [];
 		let taskNamesById: Record<string, string> = {};
 		if (taskRefs.length > 0) {
@@ -738,9 +746,10 @@ export class AgentsService {
 }
 
 /** Keeps the chat list to what the page renders: icon, blurb, and attachment support from the published snapshot. */
-function toChatListItem(agent: Agent): AgentChatListItem {
+function toChatListItem(agent: ProjectAgent): AgentChatListItem {
 	const schema = agent.activeVersion?.schema;
 	const description = schema?.description;
+	if (!agent.project) throw new UnexpectedError('Agent project relation is not loaded');
 	return {
 		...toAgentRef(agent),
 		...(description ? { description } : {}),

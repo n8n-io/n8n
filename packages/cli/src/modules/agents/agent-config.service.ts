@@ -19,7 +19,7 @@ import {
 import { AgentSaveCompletionService } from './agent-save-completion.service';
 import { AgentSetupCompletionService } from './agent-setup-completion.service';
 import { AgentSkillRefsService } from './agent-skill-refs.service';
-import type { Agent } from './entities/agent.entity';
+import type { ProjectAgent } from './entities/agent.entity';
 import { syncAgentIntegrations } from './integrations/integrations-sync';
 import { composeJsonConfig } from './json-config/agent-config-composition';
 import { fromAgentDocument, type AgentSkillRefs } from './json-config/agent-document';
@@ -130,7 +130,7 @@ export class AgentConfigService {
 	}
 
 	private async finishConfigUpdate(
-		saved: Agent,
+		saved: ProjectAgent,
 		validatedConfig: AgentJsonConfig,
 		replacement: ConfigReplacement,
 		clearOmitted: boolean,
@@ -155,7 +155,7 @@ export class AgentConfigService {
 	}
 
 	private async removeUnreferencedTasks(
-		agent: Agent,
+		agent: ProjectAgent,
 		existingTaskIds: string[],
 		ctx: OperationContext,
 	): Promise<void> {
@@ -167,7 +167,7 @@ export class AgentConfigService {
 	}
 
 	private async saveConfig(
-		entity: Agent,
+		entity: ProjectAgent,
 		skillRefs: AgentSkillRefs,
 		credentialProvider: AgentsCredentialProvider,
 		user: User,
@@ -211,7 +211,7 @@ export class AgentConfigService {
 	}
 
 	private removeUnreferencedResources(
-		entity: Agent,
+		entity: ProjectAgent,
 		config: AgentJsonConfig,
 		clearOmitted: boolean,
 	): void {
@@ -228,7 +228,7 @@ export class AgentConfigService {
 		}
 	}
 
-	private removeUnreferencedCustomTools(entity: Agent, config: AgentJsonConfig): void {
+	private removeUnreferencedCustomTools(entity: ProjectAgent, config: AgentJsonConfig): void {
 		const referencedIds = new Set(
 			(config.tools ?? [])
 				.filter(

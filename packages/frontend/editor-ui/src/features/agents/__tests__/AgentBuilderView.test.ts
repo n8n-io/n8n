@@ -500,12 +500,6 @@ vi.mock('@n8n/i18n', () => ({
 	i18n: { baseText: baseTextFn },
 }));
 
-// The first test in this file pays the one-time SFC transform cost for
-// AgentBuilderView.vue and its dependencies. A generous timeout gives that
-// first render enough headroom; subsequent tests hit the cached module and
-// finish well under the default budget.
-vi.setConfig({ testTimeout: 30_000 });
-
 /** Shared stubs used by both mount helpers. */
 async function renderView({
 	knowledgeBaseEnabled = false,
@@ -519,7 +513,6 @@ async function renderView({
 	/** Runs against the fresh pinia before mount, for state the view reads on setup. */
 	seedStores?: () => void;
 } = {}) {
-	const { default: AgentBuilderView } = await import('../views/AgentBuilderView.vue');
 	const pinia = createPinia();
 	setActivePinia(pinia);
 	const { useSettingsStore } = await import('@n8n/stores/settings.store');
@@ -882,7 +875,11 @@ function resetViewMocks() {
 		mockConfig.value = null;
 		mockConfigHash.value = undefined;
 	});
-	getAgentMock.mockResolvedValue(makeAgentResponse());
+	// Clear unused one-shot responses before another test can consume them.
+	getAgentMock.mockReset();
+	getAgentMock.mockImplementation(async () => makeAgentResponse());
+	createAgentSkillMock.mockReset();
+	updateAgentSkillMock.mockReset();
 	createAgentMock.mockReset();
 	createAgentMock.mockImplementation(async (_context, _projectId, name, options) =>
 		makeCreationResponse(options?.config, { id: options?.id, name }),
@@ -915,16 +912,18 @@ function resetViewMocks() {
 	pushConnectMock.mockReset();
 	pushSendMock.mockReset();
 	pushListeners.clear();
-	fetchConfigMock.mockClear();
+	fetchConfigMock.mockReset();
 	builderTelemetryMock.fetchInitialTriggersBaseline.mockResolvedValue(null);
 	favoritesStoreMock.isFavorite.mockReturnValue(false);
 	instanceAiAvailableRef.value = true;
 	instanceAiReadyRef.value = true;
 }
 
-// First Vite transform of this SFC + design-system deps can exceed the default
-// 5s test timeout; Provide a hefty timeout for this block to evade flakes due to pressure on machine
-describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
+// Load the view after the shared mocks exist. Module loading must finish before
+// tests start, so a cold transform cannot outlive a test and mount in the next one.
+const { default: AgentBuilderView } = await import('../views/AgentBuilderView.vue');
+
+describe('AgentBuilderView — preview routing', () => {
 	beforeEach(() => {
 		resetViewMocks();
 		vi.restoreAllMocks();
@@ -5630,17 +5629,18 @@ describe('AgentBuilderView — three-column shell', () => {
 		);
 
 		const modalData = openModalWithDataMock.mock.calls[0][0].data as {
-			onConfirm: (payload: { skill: typeof skill }) => void;
+			onConfirm: (payload: { skill: typeof skill }) => Promise<unknown>;
 		};
-		modalData.onConfirm({ skill });
-		await flushPromises();
-		await nextTick();
+		await modalData.onConfirm({ skill });
 
 		const vm = wrapper.vm as unknown as {
 			localConfig: { tools?: AgentJsonToolRef[]; skills?: AgentJsonSkillRef[] };
 		};
+		// The modal resolves before the agent refresh finishes.
+		await vi.waitFor(() =>
+			expect(vm.localConfig.skills).toEqual([{ type: 'skill', id: 'skill_0Ab9ZkLm3Pq7Xy2N' }]),
+		);
 		expect(vm.localConfig.tools).toEqual([{ type: 'custom', id: 'custom_tool' }]);
-		expect(vm.localConfig.skills).toEqual([{ type: 'skill', id: 'skill_0Ab9ZkLm3Pq7Xy2N' }]);
 		expect(wrapper.findComponent({ name: 'AgentSkillsSection' }).props('skills')).toEqual([
 			{ id: 'skill_0Ab9ZkLm3Pq7Xy2N', skill },
 		]);
@@ -5811,10 +5811,7 @@ describe('AgentBuilderView — three-column shell', () => {
 	});
 });
 
-// Generous timeout for the same reason as the preview-routing block: mounting
-// this SFC plus its design-system deps is slow enough under parallel-suite
-// pressure to trip default timeouts.
-describe('AgentBuilderView — evals focus request', { timeout: 60_000 }, () => {
+describe('AgentBuilderView — evals focus request', () => {
 	beforeEach(() => {
 		resetViewMocks();
 		agentEvalsFlagMock.enabled = true;
