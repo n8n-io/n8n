@@ -61,9 +61,12 @@ export class ControllerRegistry {
 		app.use(prefix === '' ? '/' : prefix, router);
 
 		const controller = Container.get(controllerClass) as Controller;
-		const controllerMiddlewares = metadata.middlewares.map(
-			(handlerName) => controller[handlerName].bind(controller) as RequestHandler,
-		);
+		const toHandler = (handlerName: string) =>
+			controller[handlerName].bind(controller) as RequestHandler;
+		const controllerMiddlewares = {
+			beforeAuth: metadata.preAuthMiddlewares.map(toHandler),
+			afterAuth: metadata.middlewares.map(toHandler),
+		};
 
 		const staticRouters = (controllerClass as any).routers as StaticRouterMetadata[] | undefined;
 
@@ -181,7 +184,7 @@ export class ControllerRegistry {
 			accessScope?: AccessScope;
 			middlewares?: RequestHandler[];
 		},
-		controllerMiddlewares: RequestHandler[],
+		controllerMiddlewares: { beforeAuth: RequestHandler[]; afterAuth: RequestHandler[] },
 		bodyDtoClass?: ZodClass,
 	): RequestHandler[] {
 		const middlewares: RequestHandler[] = [];
@@ -205,6 +208,11 @@ export class ControllerRegistry {
 				),
 			);
 		}
+
+		// Controller gates that must answer every caller the same, for example a
+		// 404 for routes that are off. They run before auth, so that a 401 or a
+		// 403 does not tell an unauthorized caller that the route exists.
+		middlewares.push(...controllerMiddlewares.beforeAuth);
 
 		if (!route.skipAuth) {
 			middlewares.push(
@@ -240,7 +248,7 @@ export class ControllerRegistry {
 			middlewares.push(this.createScopedMiddleware(route.accessScope));
 		}
 
-		middlewares.push(...controllerMiddlewares);
+		middlewares.push(...controllerMiddlewares.afterAuth);
 
 		if (route.middlewares) {
 			middlewares.push(...route.middlewares);

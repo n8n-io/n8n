@@ -14,6 +14,7 @@ import {
 	Post,
 	Body,
 	Licensed,
+	Middleware,
 	RestController,
 	RootLevelController,
 	createBodyKeyedRateLimiter,
@@ -316,6 +317,54 @@ describe('ControllerRegistry', () => {
 			});
 			await request(app).get('/rest/test/auth').expect(401);
 			expect(authMiddleware).toHaveBeenCalled();
+		});
+	});
+
+	describe('Controller middlewares', () => {
+		const calls: string[] = [];
+
+		@RestController('/gated')
+		// @ts-expect-error tsc complains about unused class
+		class GatedController {
+			@Middleware({ beforeAuth: true })
+			gate(req: express.Request, res: express.Response, next: express.NextFunction) {
+				calls.push('gate');
+				if (req.query.open === 'true') return next();
+				res.status(404).send();
+			}
+
+			@Middleware()
+			afterAuth(_req: express.Request, _res: express.Response, next: express.NextFunction) {
+				calls.push('afterAuth');
+				next();
+			}
+
+			@Get('/route')
+			route() {
+				return { ok: true };
+			}
+		}
+
+		beforeEach(() => {
+			calls.length = 0;
+			authMiddleware.mockImplementation(async (_req, _res, next) => {
+				calls.push('auth');
+				next();
+			});
+			lastActiveAtService.middleware.mockImplementation(async (_req, _res, next) => next());
+		});
+
+		it('runs a beforeAuth middleware before authentication', async () => {
+			await request(app).get('/rest/gated/route?open=true').expect(200);
+
+			expect(calls).toEqual(['gate', 'auth', 'afterAuth']);
+		});
+
+		it('lets a beforeAuth middleware answer before authentication runs', async () => {
+			await request(app).get('/rest/gated/route').expect(404);
+
+			expect(calls).toEqual(['gate']);
+			expect(authMiddleware).not.toHaveBeenCalled();
 		});
 	});
 

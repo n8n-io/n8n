@@ -18,11 +18,11 @@ export class ScimTransferTargetController {
 	) {}
 
 	/**
-	 * Every route answers 404 while the SCIM opt-in is off. Controller
-	 * middlewares run after authentication and the scope check, so a caller
-	 * without `scim:manage` still gets 403.
+	 * Every route answers 404 while the SCIM opt-in is off. The gate runs
+	 * before authentication and the scope check, so a caller without a
+	 * session or without `scim:manage` also gets 404.
 	 */
-	@Middleware()
+	@Middleware({ beforeAuth: true })
 	async requireOptIn(req: Request, res: Response, next: NextFunction) {
 		await this.scimOptInService.gate(req, res, next);
 	}

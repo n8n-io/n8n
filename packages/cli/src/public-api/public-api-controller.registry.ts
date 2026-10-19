@@ -159,9 +159,10 @@ export class PublicApiControllerRegistry {
 		parent.use(prefix === '' ? '/' : prefix, controllerRouter);
 
 		const controller = Container.get(controllerClass) as Controller;
-		const controllerMiddlewares = metadata.middlewares.map(
-			(handlerName) => controller[handlerName].bind(controller) as RequestHandler,
-		);
+		const toHandler = (handlerName: string) =>
+			controller[handlerName].bind(controller) as RequestHandler;
+		const preAuthControllerMiddlewares = metadata.preAuthMiddlewares.map(toHandler);
+		const controllerMiddlewares = metadata.middlewares.map(toHandler);
 
 		for (const [handlerName, route] of metadata.routes) {
 			const resolvedArgs = resolveRouteArgs(controllerClass, handlerName, route.args);
@@ -238,6 +239,7 @@ export class PublicApiControllerRegistry {
 				middlewares.push(this.createDeprecationMiddleware(route.deprecated));
 			}
 
+			middlewares.push(...preAuthControllerMiddlewares);
 			middlewares.push(this.createAuthMiddleware(apiVersion, prefix));
 			middlewares.push(
 				...this.rateLimitService.createRouteLimiters(route.method, route.rateLimitAccess),

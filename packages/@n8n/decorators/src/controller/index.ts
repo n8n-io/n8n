@@ -10,6 +10,7 @@ export { ApiTags } from './api-tags';
 export { ApiErrorResponse } from './api-error-response';
 export { Get, Post, Put, Patch, Delete, Head, Options } from './route';
 export { Middleware } from './middleware';
+export type { MiddlewareOptions } from './middleware';
 export { ControllerRegistryMetadata } from './controller-registry-metadata';
 export { Licensed } from './licensed';
 export { RequiresUserQuota } from './requires-user-quota';

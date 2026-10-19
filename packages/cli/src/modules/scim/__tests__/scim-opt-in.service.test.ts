@@ -16,12 +16,14 @@ describe('ScimOptInService', () => {
 	const postHogClient = mock<PostHogClient>();
 	const moduleRegistry = mock<ModuleRegistry>();
 
-	const service = new ScimOptInService(mock<Logger>(), scimConfig, postHogClient, moduleRegistry);
+	let service: ScimOptInService;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 		scimConfig.optIn = false;
 		postHogClient.getFeatureFlagForInstance.mockResolvedValue(undefined);
+		// A new service for each test, because the service caches the flag result.
+		service = new ScimOptInService(mock<Logger>(), scimConfig, postHogClient, moduleRegistry);
 	});
 
 	describe('evaluate', () => {
@@ -48,6 +50,57 @@ describe('ScimOptInService', () => {
 				await expect(service.evaluate()).resolves.toEqual({ available: false, source: null });
 			},
 		);
+	});
+
+	describe('flag cache', () => {
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		it.each([
+			['on', true],
+			['off', false],
+			['empty', undefined],
+		])('keeps an %s flag result for the refresh interval', async (_, flag) => {
+			postHogClient.getFeatureFlagForInstance.mockResolvedValue(flag);
+
+			const first = await service.evaluate();
+			const second = await service.evaluate();
+
+			expect(second).toEqual(first);
+			expect(postHogClient.getFeatureFlagForInstance).toHaveBeenCalledTimes(1);
+		});
+
+		it('calls PostHog once for many gate calls while PostHog fails', async () => {
+			postHogClient.getFeatureFlagForInstance.mockRejectedValue(new Error('PostHog unreachable'));
+			const res = { status: vi.fn().mockReturnThis(), send: vi.fn().mockReturnThis() };
+			const next: NextFunction = vi.fn();
+
+			await Promise.all(
+				Array.from(
+					{ length: 100 },
+					async () => await service.gate(mock<Request>(), res as unknown as Response, next),
+				),
+			);
+			await service.gate(mock<Request>(), res as unknown as Response, next);
+
+			expect(postHogClient.getFeatureFlagForInstance).toHaveBeenCalledTimes(1);
+			expect(res.status).toHaveBeenCalledTimes(101);
+			expect(res.status).toHaveBeenCalledWith(404);
+			expect(next).not.toHaveBeenCalled();
+		});
+
+		it('evaluates the flag again after the refresh interval', async () => {
+			vi.useFakeTimers();
+			postHogClient.getFeatureFlagForInstance.mockResolvedValue(false);
+			await expect(service.evaluate()).resolves.toEqual({ available: false, source: null });
+
+			postHogClient.getFeatureFlagForInstance.mockResolvedValue(true);
+			vi.advanceTimersByTime(SCIM_OPT_IN_REFRESH_INTERVAL_MS + 1);
+
+			await expect(service.evaluate()).resolves.toEqual({ available: true, source: 'flag' });
+			expect(postHogClient.getFeatureFlagForInstance).toHaveBeenCalledTimes(2);
+		});
 	});
 
 	describe('N8N_FEATURE_FLAG_OVERRIDES', () => {
@@ -137,6 +190,20 @@ describe('ScimOptInService', () => {
 			await vi.advanceTimersByTimeAsync(SCIM_OPT_IN_REFRESH_INTERVAL_MS);
 
 			expect(moduleRegistry.refreshModuleSettings).toHaveBeenCalledWith('scim');
+		});
+
+		it('evaluates the flag again for each refresh', async () => {
+			moduleRegistry.refreshModuleSettings.mockImplementation(async () => {
+				await service.evaluate();
+				return null;
+			});
+			service.startSettingsRefresh();
+			// The cached result is still fresh when the refresh runs.
+			await vi.advanceTimersByTimeAsync(SCIM_OPT_IN_REFRESH_INTERVAL_MS / 2);
+			await service.evaluate();
+			await vi.advanceTimersByTimeAsync(SCIM_OPT_IN_REFRESH_INTERVAL_MS / 2);
+
+			expect(postHogClient.getFeatureFlagForInstance).toHaveBeenCalledTimes(2);
 		});
 
 		it('does not refresh while the config switch is on', async () => {

@@ -63,6 +63,7 @@ import {
 	isValidScimTransferTarget,
 	ScimDeprovisioningService,
 } from '../scim-deprovisioning.service';
+import { ScimOptInService } from '../scim-opt-in.service';
 import { DEFAULT_SCIM_DEPROVISIONING_POLICY, ScimSettingsService } from '../scim-settings.service';
 import { ScimConfig } from '../scim.config';
 
@@ -150,6 +151,9 @@ beforeEach(async () => {
 	// Every test except the opt-in ones runs with the opt-in on.
 	Container.get(ScimConfig).optIn = true;
 	instanceFlag().mockResolvedValue(undefined);
+	// The opt-in keeps the flag result, so a test must not see the result of
+	// the test before it.
+	await Container.get(ScimOptInService).refreshSettings();
 
 	// SCIM provisioning works only while SAML or OIDC single sign-on is on.
 	await turnOnSso('saml');
@@ -1194,11 +1198,31 @@ describe('SCIM opt-in', () => {
 			expect((await scimRequest(method, path, { bearer: null })).status).toBe(404);
 		});
 
+		// The gate runs before the session and the scope checks, so no caller
+		// can tell that the routes exist.
 		it.each(restRoutes)('%s /rest%s returns 404 to an admin', async (method, path) => {
 			const response = await testServer
 				.authAgentFor(admin)
 				[method](path)
 				.send(method === 'patch' ? { enabled: true } : {});
+
+			expect(response.status).toBe(404);
+		});
+
+		it.each(restRoutes)('%s /rest%s returns 404 to a member', async (method, path) => {
+			const member = await createMember();
+			const response = await testServer
+				.authAgentFor(member)
+				[method](path)
+				.send(method === 'patch' ? { enabled: true } : {});
+
+			expect(response.status).toBe(404);
+		});
+
+		it.each(restRoutes)('%s /rest%s returns 404 without a session', async (method, path) => {
+			const response = await testServer.authlessAgent[method](path).send(
+				method === 'patch' ? { enabled: true } : {},
+			);
 
 			expect(response.status).toBe(404);
 		});
@@ -1247,6 +1271,9 @@ describe('SCIM opt-in', () => {
 		await scimRequest('get', '/Users').expect(200);
 
 		instanceFlag().mockResolvedValue(false);
+		// The new flag value applies at the next refresh.
+		await scimRequest('get', '/Users').expect(200);
+		await Container.get(ScimOptInService).refreshSettings();
 
 		const response = await scimRequest('get', '/Users');
 		expect(response.status).toBe(404);

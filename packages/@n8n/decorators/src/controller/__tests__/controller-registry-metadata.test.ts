@@ -28,6 +28,7 @@ describe('ControllerRegistryMetadata', () => {
 				basePath: '/',
 				registerOnRootPath: false,
 				middlewares: [],
+				preAuthMiddlewares: [],
 				routes: expect.any(Map),
 			});
 		});

@@ -167,6 +167,8 @@ export interface ControllerMetadata {
 	registerOnRootPath?: boolean;
 	isPublicApi?: boolean;
 	middlewares: HandlerName[];
+	/** Run before authentication. See `MiddlewareOptions.beforeAuth`. */
+	preAuthMiddlewares: HandlerName[];
 	routes: Map<HandlerName, RouteMetadata>;
 }
 

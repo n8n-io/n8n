@@ -13,6 +13,7 @@ export class ControllerRegistryMetadata {
 				basePath: '/',
 				registerOnRootPath: false,
 				middlewares: [],
+				preAuthMiddlewares: [],
 				routes: new Map(),
 			};
 			this.registry.set(controllerClass, metadata);

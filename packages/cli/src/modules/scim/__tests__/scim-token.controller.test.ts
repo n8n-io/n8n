@@ -83,7 +83,9 @@ describe('ScimTokenController', () => {
 
 			await controller.requireOptIn(gateReq, gateRes, next);
 
-			expect(metadata.middlewares).toEqual(['requireOptIn']);
+			// Before auth, so that a caller without a session or the scope also gets 404.
+			expect(metadata.preAuthMiddlewares).toEqual(['requireOptIn']);
+			expect(metadata.middlewares).toEqual([]);
 			expect(scimOptInService.gate).toHaveBeenCalledWith(gateReq, gateRes, next);
 		});
 	});
