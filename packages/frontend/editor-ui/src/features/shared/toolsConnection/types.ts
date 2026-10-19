@@ -11,7 +11,8 @@ export type ConnectionItemKind =
 	| 'mcp-server'
 	| 'agent'
 	| 'data-store'
-	| 'service';
+	| 'service'
+	| 'skill';
 
 export type ToolIconSource =
 	| { type: 'file'; src: string }
@@ -137,13 +138,21 @@ export interface ServiceConnectionItem extends BaseConnectionItem {
 	serviceId: string;
 }
 
+export interface SkillConnectionItem extends BaseConnectionItem {
+	kind: 'skill';
+	skillId: string;
+	attached: boolean;
+	attaching?: boolean;
+}
+
 export type ToolConnectionItem =
 	| NodeConnectionItem
 	| WorkflowConnectionItem
 	| McpServerConnectionItem
 	| AgentConnectionItem
 	| DataStoreConnectionItem
-	| ServiceConnectionItem;
+	| ServiceConnectionItem
+	| SkillConnectionItem;
 
 /**
  * One tab in the modal. Consumers declare the subset they support. `data` has
@@ -161,6 +170,9 @@ export type ToolCategoryKey =
 	| 'community'
 	| 'workflows'
 	| 'agents'
+	| 'project'
+	| 'this-agent'
+	| 'global'
 	| 'data';
 
 /** Used when an item carries no explicit `category`. */
@@ -171,6 +183,7 @@ export const CATEGORY_BY_KIND: Record<ConnectionItemKind, ToolCategoryKey> = {
 	service: 'built-in',
 	agent: 'agents',
 	'data-store': 'data',
+	skill: 'project',
 };
 
 /**

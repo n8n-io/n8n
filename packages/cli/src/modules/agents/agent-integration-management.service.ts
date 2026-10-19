@@ -21,14 +21,14 @@ import {
 } from './agent-integration-persistence.service';
 import type { AgentActor } from './agent-modification-telemetry.service';
 import { AgentUpdateBroadcaster } from './agent-update-broadcaster';
-import type { Agent } from './entities/agent.entity';
+import type { ProjectAgent } from './entities/agent.entity';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { AgentRepository } from './repositories/agent.repository';
 import type { IntegrationRef } from './utils/agent-channel';
 
 interface IntegrationChangeOptions extends IntegrationDelta {
-	agent: Agent;
+	agent: ProjectAgent;
 	user: User;
 	cleanupRemovedIntegration?: boolean;
 	deleteExternalResource?: boolean;
@@ -73,13 +73,13 @@ export class AgentIntegrationManagementService {
 	 * failure can leave the agent with two live channels or none.
 	 */
 	async connect(options: {
-		agent: Agent;
+		agent: ProjectAgent;
 		user: User;
 		integration: unknown;
 		replaces?: IntegrationRef;
 		modifiedBy?: AgentActor;
 		pushRef?: string;
-	}): Promise<{ integration: AgentIntegrationConfig; savedAgent: Agent }> {
+	}): Promise<{ integration: AgentIntegrationConfig; savedAgent: ProjectAgent }> {
 		const integration = await this.validateConfig(options.integration);
 		// n8n Chat has no credential to look up or claim.
 		if (isCredentialAgentIntegration(integration)) {
@@ -99,14 +99,14 @@ export class AgentIntegrationManagementService {
 	}
 
 	async disconnect(options: {
-		agent: Agent;
+		agent: ProjectAgent;
 		user: User;
 		type: string;
 		credentialId: string;
 		deleteExternalResource?: boolean;
 		modifiedBy?: AgentActor;
 		pushRef?: string;
-	}): Promise<{ savedAgent: Agent; warning?: AgentIntegrationDisconnectWarning }> {
+	}): Promise<{ savedAgent: ProjectAgent; warning?: AgentIntegrationDisconnectWarning }> {
 		const result = await this.applyChange({
 			agent: options.agent,
 			user: options.user,
@@ -275,7 +275,7 @@ export class AgentIntegrationManagementService {
 	 * `connect` broadcast — while unpublished, which must never receive events.
 	 */
 	private async reconcileRuntimeWithPublication(
-		agent: Agent,
+		agent: ProjectAgent,
 		add: AgentIntegrationConfig,
 		connected: boolean,
 		published: boolean,
@@ -316,7 +316,10 @@ export class AgentIntegrationManagementService {
 	 * Start a runtime for a channel that is already durable, so a failure must not
 	 * fail the request — the next publish or restart picks it up.
 	 */
-	private async startRuntimeQuietly(agent: Agent, add: AgentIntegrationConfig): Promise<boolean> {
+	private async startRuntimeQuietly(
+		agent: ProjectAgent,
+		add: AgentIntegrationConfig,
+	): Promise<boolean> {
 		try {
 			return await this.startRuntime(agent, add, true);
 		} catch (error) {
@@ -339,7 +342,7 @@ export class AgentIntegrationManagementService {
 	 * differs before and after the write.
 	 */
 	private async startRuntime(
-		agent: Agent,
+		agent: ProjectAgent,
 		add: AgentIntegrationConfig,
 		published: boolean,
 	): Promise<boolean> {
@@ -364,7 +367,7 @@ export class AgentIntegrationManagementService {
 	 * under it. Best-effort: the original failure is what the caller reports.
 	 */
 	private async restorePersistedRuntime(
-		agent: Agent,
+		agent: ProjectAgent,
 		persisted: AgentIntegrationConfig | undefined,
 	): Promise<void> {
 		if (!persisted) return;
@@ -387,7 +390,7 @@ export class AgentIntegrationManagementService {
 	 * connection to clear, so tear the runtime down either way.
 	 */
 	private async releaseRemoved(
-		agent: Agent,
+		agent: ProjectAgent,
 		remove: IntegrationRef,
 		result: IntegrationDeltaResult,
 	): Promise<void> {
@@ -420,7 +423,10 @@ export class AgentIntegrationManagementService {
 	 * A leader-routed teardown can time out, and neither caller can act on that —
 	 * reporting it would replace the failure that actually matters.
 	 */
-	private async releaseRuntimeQuietly(agent: Agent, integration: IntegrationRef): Promise<void> {
+	private async releaseRuntimeQuietly(
+		agent: ProjectAgent,
+		integration: IntegrationRef,
+	): Promise<void> {
 		try {
 			await this.chatService.disconnect(agent.id, integration);
 		} catch (error) {
@@ -436,7 +442,7 @@ export class AgentIntegrationManagementService {
 	}
 
 	private async assertUsableCredential(
-		agent: Agent,
+		agent: ProjectAgent,
 		user: User,
 		integration: AgentIntegrationConfig,
 	): Promise<void> {

@@ -717,8 +717,10 @@ export interface ImportPackageSummary {
 export interface ImportCredentialSummary {
 	matched: string[];
 	stubbed: string[];
-	/** Source ids of credentials created and seeded from the package's bundled expression data. */
+	/** Source ids of credentials created with all their source data from the package. */
 	seeded: string[];
+	/** Source ids of credentials created from package data that is not confirmed as complete. */
+	incomplete: string[];
 }
 
 export interface ImportVariableSummary {

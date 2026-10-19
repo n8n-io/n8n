@@ -1,4 +1,4 @@
-import { AgentEvent, createScopedWorkspace, filterRuntimeSkillSource } from '@n8n/agents';
+import { AgentEvent, createScopedWorkspace } from '@n8n/agents';
 import type {
 	AgentDbMessage,
 	Message,
@@ -55,15 +55,12 @@ import {
 	assertInstanceAiPromptVersion,
 	createInstanceAgent,
 	createLazyRuntimeWorkspace,
-	createLazyWorkspaceRuntimeSkillSource,
-	loadInstanceAiPromptSkills,
 	resolvePromptProfile,
 	describePromptProfile,
 	setTracePromptVersion,
 	setTraceModelId,
 	modelConfigId,
 	modelIdTraceMetadata,
-	disabledInstanceAiSkillIds,
 	createInstanceAiTraceContext,
 	threadProvenanceMetadata,
 	createInternalOperationTraceContext,
@@ -202,10 +199,18 @@ import { InstanceAiModelService } from './instance-ai-model.service';
 import { InstanceAiRunLimitError } from './instance-ai-run-limit.error';
 import { InstanceAiRunProbe } from './instance-ai-run-probe';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
+import {
+	InstanceAiSkillsService,
+	SKILLS,
+	type InstanceAiSkillScope,
+} from './instance-ai-skills.service';
 import { InstanceAiTemporaryWorkflowService } from './instance-ai-temporary-workflow.service';
 import { InstanceAiTerminalOutcomeService } from './instance-ai-terminal-outcome.service';
 import { InstanceAiThreadTabsService } from './instance-ai-thread-tabs.service';
-import { InstanceAiAdapterService } from './instance-ai.adapter.service';
+import {
+	InstanceAiAdapterService,
+	type InstanceAiFeatureFlags,
+} from './instance-ai.adapter.service';
 import {
 	AUTO_FOLLOW_UP_MESSAGE,
 	CREDENTIAL_CONTEXT_OPEN_TAG,
@@ -226,7 +231,6 @@ import {
 	WORKFLOW_SETUP_STATE_CLOSE_TAG,
 	WORKFLOW_SETUP_STATE_OPEN_TAG,
 } from './internal-messages';
-import { loadOnboardingSkill } from './onboarding';
 import { ONBOARDING_OPENING } from './onboarding-opening';
 import { INSTANCE_AI_RUN_TIMEOUT_REASON, InstanceAiLivenessService } from './liveness';
 import { InstanceAiMcpRegistryService } from './mcp';
@@ -251,7 +255,7 @@ import { InstanceAiObservationCursorRepository } from './repositories/instance-a
 import { InstanceAiObservationRepository } from './repositories/instance-ai-observation.repository';
 import { InstanceAiPendingConfirmationRepository } from './repositories/instance-ai-pending-confirmation.repository';
 import { InstanceAiThreadGrantRepository } from './repositories/instance-ai-thread-grant.repository';
-import { InstanceAiSandboxService, type RuntimeSandboxEntry } from './sandbox';
+import { InstanceAiSandboxService } from './sandbox';
 import { DbIterationLogStorage } from './storage/db-iteration-log-storage';
 import { TypeORMAgentCheckpointStore } from './storage/typeorm-agent-checkpoint-store';
 import { TypeORMAgentMemory } from './storage/typeorm-agent-memory';
@@ -871,6 +875,7 @@ export class InstanceAiService {
 		private readonly aiPreferenceService: AiPreferenceService,
 		private readonly aiUsageService: AiUsageService,
 		private readonly threadTabsService: InstanceAiThreadTabsService,
+		private readonly skillsService: InstanceAiSkillsService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		runProbe.registerActiveRunCountProvider(() => this.runState.activeRunCount());
@@ -2318,9 +2323,15 @@ export class InstanceAiService {
 		}
 	}
 
-	private createAgentMemoryOptions(user: User, threadId: string, runId: string) {
+	private createAgentMemoryOptions(
+		user: User,
+		threadId: string,
+		runId: string,
+		memoryModelId: ModelConfig | undefined,
+	) {
 		return {
 			observationalMemory: {
+				model: memoryModelId,
 				observerThresholdTokens:
 					this.runState.getObserverThresholdTokens(threadId) ??
 					this.instanceAiConfig.observerMessageTokens,
@@ -2590,7 +2601,7 @@ export class InstanceAiService {
 		pushRef?: string,
 		proxyRunConfig?: Awaited<ReturnType<InstanceAiService['createProxyRunConfig']>>,
 		instanceContextGates?: InstanceContextGates,
-		experimentGates?: Awaited<ReturnType<InstanceAiAdapterService['resolveExperimentGates']>>,
+		experimentGates?: InstanceAiFeatureFlags,
 	) {
 		const memory = this.agentMemory;
 		const boundProjectId = await memory.getThreadProjectId(threadId);
@@ -2621,6 +2632,11 @@ export class InstanceAiService {
 			proxyBaseUrl && tokenManager
 				? await this.modelService.resolveProxyModel(user, proxyBaseUrl, tokenManager, proxyContext)
 				: await this.modelService.resolveAgentModelConfig(user, proxyContext);
+		const memoryModelId = await this.modelService.resolveMemoryModelConfig(user, modelId, {
+			proxyBaseUrl,
+			tokenManager,
+			proxyContext,
+		});
 
 		const gates = experimentGates ?? (await this.adapterService.resolveExperimentGates(user));
 		const {
@@ -2830,22 +2846,15 @@ export class InstanceAiService {
 			setSchemaBaseDirs(nodeDefDirs);
 		}
 
-		// Hide disabled skills in each derived source. Keep the cached source unchanged.
-		const flagDisabledSkillIds = disabledInstanceAiSkillIds({
-			configEvalsEnabled,
-			instanceContextEnabled,
+		const skillScope: InstanceAiSkillScope = {
+			profile: selectedPrompt.profile,
+			flags: { configEvalsEnabled, instanceContextEnabled },
 			// The agent-building skills need the build-agent tool, which needs a builder delegate.
 			agentBuildingEnabled: context.builderDelegate !== undefined,
-		});
-		const selectedSkills = await loadInstanceAiPromptSkills(selectedPrompt.profile);
-		const selectedRuntimeSkills = selectedSkills.source;
-		const allRuntimeSkills =
-			flagDisabledSkillIds.length > 0
-				? filterRuntimeSkillSource(selectedRuntimeSkills, flagDisabledSkillIds)
-				: selectedRuntimeSkills;
-		const promptMetadata = describePromptProfile(selectedPrompt, allRuntimeSkills);
+		};
+		const skills = await this.skillsService.loadSkills(skillScope);
+		const promptMetadata = describePromptProfile(selectedPrompt, skills.source);
 		this.runState.setPromptConfiguration(threadId, promptMetadata);
-		let runtimeSkills = allRuntimeSkills;
 		let runtimeWorkspace: Workspace | undefined;
 		let workspaceRoot: string | undefined;
 
@@ -2859,21 +2868,6 @@ export class InstanceAiService {
 
 			if (sandboxConfig.enabled) {
 				workspaceRoot = getPromptWorkspaceRoot(sandboxConfig.provider);
-
-				let sandboxEntryPromise: Promise<RuntimeSandboxEntry | undefined> | undefined;
-				const getSandboxEntry = async () => {
-					sandboxEntryPromise ??= this.sandboxService
-						.getOrCreateWorkspaceEntry(threadId, user)
-						.catch((error: unknown) => {
-							sandboxEntryPromise = undefined;
-							throw error;
-						});
-
-					return await sandboxEntryPromise;
-				};
-				const getSetupSandboxEntry = async () => {
-					return await this.sandboxService.getOrCreateWorkspace(threadId, user, context);
-				};
 
 				const scopeWorkspaceForAgent = async (
 					workspace: Workspace | undefined,
@@ -2892,19 +2886,9 @@ export class InstanceAiService {
 					sandboxInstructions: '',
 					filesystemInstructions: '',
 					ensureWorkspace: async () =>
-						await scopeWorkspaceForAgent((await getSetupSandboxEntry())?.workspace),
-				});
-				const runtimeSkillWorkspace = createLazyRuntimeWorkspace({
-					id: 'instance-ai-runtime-skill-workspace',
-					name: 'Instance AI runtime skill workspace',
-					ensureWorkspace: async () =>
-						await scopeWorkspaceForAgent((await getSandboxEntry())?.workspace),
-				});
-				runtimeSkills = createLazyWorkspaceRuntimeSkillSource({
-					source: allRuntimeSkills,
-					workspace: runtimeSkillWorkspace,
-					resolveVerifiedBundles: async () => (await getSandboxEntry())?.verifiedBundles,
-					logger: this.logger,
+						await scopeWorkspaceForAgent(
+							(await this.sandboxService.getOrCreateWorkspace(threadId, user, context))?.workspace,
+						),
 				});
 			}
 		}
@@ -2926,7 +2910,7 @@ export class InstanceAiService {
 			userId: user.id,
 			projectId: boundProjectId,
 			promptConfiguration: promptMetadata,
-			disabledToolNames: new Set(selectedSkills.disabledTools),
+			disabledToolNames: new Set(skills.disabledTools),
 			setupPanelEnabled: isSetupPanelEnabled(context),
 			orchestratorAgentId: orchestratorAgentId(runId),
 			modelId,
@@ -2969,8 +2953,7 @@ export class InstanceAiService {
 			taskStorage,
 			timeZone: this.defaultTimeZone,
 			localMcpServer: context.localMcpServer,
-			runtimeSkills,
-			runtimeSkillCatalog: allRuntimeSkills,
+			skills: skills.source,
 			oauth2CallbackUrl: this.oauth2CallbackUrl,
 			cancelBackgroundTask: async (taskId) => this.cancelBackgroundTask(threadId, taskId),
 			touchRun: () => this.runState.touchActiveRun(threadId),
@@ -2995,12 +2978,14 @@ export class InstanceAiService {
 			workflowTasks,
 			plannedTaskService,
 			modelId,
+			memoryModelId,
 			orchestrationContext,
 			conversationHistory,
 			aiPreferencesEnabled,
 			// Reuse the gate results so a rollout change cannot split this turn.
 			instanceContextEnabled,
 			nodeUsageEnabled,
+			skillScope,
 		};
 	}
 
@@ -4097,6 +4082,7 @@ export class InstanceAiService {
 				aiPreferencesEnabled,
 				instanceContextEnabled,
 				nodeUsageEnabled,
+				skillScope,
 			} = environment;
 			modelId = resolvedModelId;
 			promptVersion = orchestrationContext.promptConfiguration?.version;
@@ -4239,7 +4225,9 @@ export class InstanceAiService {
 			const unopenedOnboarding =
 				thread?.metadata?.source === 'onboarding' && !thread.metadata.titleRefined;
 			const isOpeningTurn = Boolean(thread && (!thread.title || unopenedOnboarding));
-			const onboardingSkill = unopenedOnboarding ? await loadOnboardingSkill() : undefined;
+			const onboardingSkill = unopenedOnboarding
+				? (await this.skillsService.loadSkill(SKILLS.suggestAutomations, skillScope)).instructions
+				: undefined;
 
 			if (isOpeningTurn) {
 				const handoffTitle = unopenedOnboarding
@@ -5283,7 +5271,7 @@ export class InstanceAiService {
 			orchestrationContext: environment.orchestrationContext,
 			mcpServers,
 			mcpManager: this.mcpClientManager,
-			memoryConfig: this.createAgentMemoryOptions(user, threadId, runId),
+			memoryConfig: this.createAgentMemoryOptions(user, threadId, runId, environment.memoryModelId),
 			memory: environment.memory,
 			checkpointStore: this.checkpointStore,
 			onMemoryTaskEvent: this.memoryTaskObserverFor(threadId, tracing),

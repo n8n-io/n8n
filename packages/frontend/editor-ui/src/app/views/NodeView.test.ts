@@ -26,6 +26,7 @@ import {
 	NO_OP_NODE_TYPE,
 	SET_NODE_TYPE,
 	SPLIT_IN_BATCHES_NODE_TYPE,
+	STICKY_NODE_TYPE,
 	VIEWS,
 } from '../constants';
 import { WorkflowIdKey, WorkflowDocumentStoreKey } from '../constants/injectionKeys';
@@ -204,7 +205,14 @@ describe('NodeView', () => {
 					}),
 					LazySetupWorkflowCredentialsButton: { render: () => null },
 					WorkflowCanvas: defineComponent({
-						emits: ['copy:nodes', 'replace:node', 'viewport:change', 'run:workflow'],
+						emits: [
+							'copy:nodes',
+							'replace:node',
+							'viewport:change',
+							'run:workflow',
+							'cursor:position',
+							'create:sticky',
+						],
 						setup(_, { emit, expose }) {
 							const canvasStore = useCanvasStore();
 							expose({ ensureNodesAreVisible });
@@ -231,6 +239,10 @@ describe('NodeView', () => {
 							<button
 								data-test-id="canvas-stub-run-workflow"
 								@click="$emit('run:workflow')"
+							/>
+							<button
+								data-test-id="canvas-stub-add-sticky-at-click"
+								@click="$emit('cursor:position', { x: 48, y: 48 }); $emit('create:sticky', { x: 320, y: 160 })"
 							/>
 							<slot />
 						</div>`,
@@ -1143,6 +1155,28 @@ describe('NodeView', () => {
 			expect(copiedText[0]).toContain('"name": "Existing"');
 		});
 
+		it('copies a restricted node and confirms the copy', async () => {
+			vi.spyOn(useTypeAvailabilityPoliciesStore(), 'getNodeTypeAvailability').mockReturnValue({
+				name: MANUAL_TRIGGER_NODE_TYPE,
+				available: false,
+			});
+			mockShowMessage.mockClear();
+			const { findByTestId } = renderNodeView();
+
+			await userEvent.click(await findByTestId('canvas-stub-copy'));
+
+			await waitFor(() =>
+				expect(mockMcpJsonNudgeGate).toHaveBeenCalledWith('copy', expect.any(Function)),
+			);
+			await deferred?.();
+
+			expect(copiedText).toHaveLength(1);
+			expect(mockShowMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }));
+			expect(mockShowMessage).not.toHaveBeenCalledWith(
+				expect.objectContaining({ type: 'warning' }),
+			);
+		});
+
 		it('drops a deferred copy once NodeView has unmounted', async () => {
 			const { findByTestId, unmount } = renderNodeView();
 
@@ -1272,6 +1306,28 @@ describe('NodeView', () => {
 			await userEvent.click(await findByTestId('canvas-stub-run-workflow'));
 
 			expect(mockRunEntireWorkflow).toHaveBeenCalledWith('main');
+		});
+	});
+
+	it('places a sticky note at the right-click instead of the previous click', async () => {
+		routeMock.meta = { nodeView: true };
+		useWorkflowsListStore().addWorkflow(
+			createTestWorkflow({ id: 'w0', scopes: ['workflow:read', 'workflow:update'] }),
+		);
+		useNodeTypesStore().setNodeTypes([
+			mockNodeTypeDescription({
+				name: STICKY_NODE_TYPE,
+				displayName: 'Sticky Note',
+			}),
+		]);
+		const { findByTestId } = renderNodeView();
+
+		await userEvent.click(await findByTestId('canvas-stub-add-sticky-at-click'));
+
+		await waitFor(() => expect(workflowDocumentStore.allNodes).toHaveLength(1));
+		expect(workflowDocumentStore.allNodes[0]).toMatchObject({
+			type: STICKY_NODE_TYPE,
+			position: [320, 160],
 		});
 	});
 });

@@ -375,6 +375,33 @@ function toTelemetryReason(
 // process-global and safe to memoize across users.
 let httpCredentialHostsCache: CredentialHostInfo[] | undefined;
 
+/** Instance AI feature flags, resolved for one user. */
+export interface InstanceAiFeatureFlags {
+	/** Config-based evals: never create evals the user can't run. */
+	configEvalsEnabled: boolean;
+	/** Past-conversation recall: tool, prompt section and first-turn hint. */
+	conversationHistoryEnabled: boolean;
+	/** Progressive workflow policy and planning-tool selection. */
+	progressiveBuildingEnabled: boolean;
+	/** Concise reply style. Applies only when the default build mode is selected. */
+	conciseStyleEnabled: boolean;
+	setupPanelEnabled: boolean;
+	setupPanelVariant?: 'control' | 'variant';
+	/** Node-usage context surface: the `node-usage` action and the `nodeTypes` filter on `list`. */
+	nodeUsageEnabled: boolean;
+	/** Node attachments from either the canvas or Assistant mentions rollout. */
+	nodeContextEnabled: boolean;
+	/** Per-user folder-exploration gate, passed into `createContext`. Fails
+	 *  closed with every other gate: `getFeatureFlags` never throws, it
+	 *  returns `{}` on a PostHog outage. */
+	folderExplorationEnabled: boolean;
+	/** Saved AI preferences on every user turn. */
+	aiPreferencesEnabled: boolean;
+	credentialDescriptionsEnabled: boolean;
+	/** Shared activity recording and retrieval use the same instance gate. */
+	instanceContextEnabled: boolean;
+}
+
 @Service()
 export class InstanceAiAdapterService {
 	private readonly logger: Logger;
@@ -702,31 +729,7 @@ export class InstanceAiAdapterService {
 	}
 
 	/** Resolves experiment assignments. */
-	async resolveExperimentGates(user: User): Promise<{
-		/** Config-based evals: never create evals the user can't run. */
-		configEvalsEnabled: boolean;
-		/** Past-conversation recall: tool, prompt section and first-turn hint. */
-		conversationHistoryEnabled: boolean;
-		/** Progressive workflow policy and planning-tool selection. */
-		progressiveBuildingEnabled: boolean;
-		/** Concise reply style. Applies only when the default build mode is selected. */
-		conciseStyleEnabled: boolean;
-		setupPanelEnabled: boolean;
-		setupPanelVariant?: 'control' | 'variant';
-		/** Node-usage context surface: the `node-usage` action and the `nodeTypes` filter on `list`. */
-		nodeUsageEnabled: boolean;
-		/** Node attachments from either the canvas or Assistant mentions rollout. */
-		nodeContextEnabled: boolean;
-		/** Per-user folder-exploration gate, passed into `createContext`. Fails
-		 *  closed with every other gate: `getFeatureFlags` never throws, it
-		 *  returns `{}` on a PostHog outage. */
-		folderExplorationEnabled: boolean;
-		/** Saved AI preferences on every user turn. */
-		aiPreferencesEnabled: boolean;
-		credentialDescriptionsEnabled: boolean;
-		/** Shared activity recording and retrieval use the same instance gate. */
-		instanceContextEnabled: boolean;
-	}> {
+	async resolveExperimentGates(user: User): Promise<InstanceAiFeatureFlags> {
 		let flags: Awaited<ReturnType<PostHogClient['getFeatureFlags']>> = {};
 		let instanceContextEnabled = false;
 		try {

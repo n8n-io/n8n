@@ -6,7 +6,13 @@ import type {
 	WorkflowListPublicationStatus,
 } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
-import { EventService, RoleService } from '@n8n/backend-services';
+import {
+	EventService,
+	RoleService,
+	RestrictedNodeTypesProviderProxy,
+	WorkflowMutationHooksProxy,
+	WorkflowPublishGuardProxy,
+} from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type {
 	User,
@@ -61,13 +67,12 @@ import { DeprecatedNodesValidationService } from './deprecated-nodes-validation.
 import { WorkflowPublicationNotifier } from './publication/workflow-publication-notifier';
 import { WorkflowPublicationStatusService } from './publication/workflow-publication-status.service';
 import { NodeGroupRulesFlagGate } from './node-group-rules-flag-gate';
-import { RestrictedNodeTypesProviderProxy } from './restricted-node-types-provider-proxy.service';
+
 import { getEnabledTriggerNodes } from './triggers/enabled-trigger-nodes';
 import { getErrorDescription, getErrorNodeId, getRequiredRedactionScopes } from './utils';
 import { WorkflowFinderService } from './workflow-finder.service';
 import { WorkflowHistoryService } from './workflow-history/workflow-history.service';
-import { WorkflowMutationHooksProxy } from './workflow-mutation-hooks-proxy.service';
-import { WorkflowPublishGuardProxy } from './workflow-publish-guard-proxy.service';
+
 import { WorkflowValidationService } from './workflow-validation.service';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';

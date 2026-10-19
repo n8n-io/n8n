@@ -30,6 +30,43 @@ export const INSTANCE_TELEMETRY = defineTelemetryEvents({
 					speed: z.number().describe('Clock speed in MHz'),
 				}),
 				is_docker: z.boolean(),
+				runtime: z
+					.enum([
+						'kubernetes',
+						'ecs',
+						'cloud-run',
+						'azure-container-apps',
+						'azure-app-service',
+						'docker',
+						'other',
+					])
+					.optional()
+					.describe('Platform n8n runs on, read from well-known platform variables'),
+				memory_limit: z
+					.number()
+					.nullable()
+					.describe('Memory limit n8n was given in KiB. Null when it has none'),
+				cpu_limit: z
+					.number()
+					.nullable()
+					.describe('CPU quota n8n was given, in CPUs, for example 0.5. Null when it has none'),
+				cpu_limit_source: z
+					.enum(['cgroup_v2', 'cgroup_v1', 'unreadable'])
+					.describe(
+						'Where cpu_limit was read from. Unreadable means n8n could not read it, so a null cpu_limit is unknown, not "no limit"',
+					),
+				cpu_weight: z
+					.number()
+					.nullable()
+					.describe(
+						'Raw cgroup CPU weight (cgroup v2 cpu.weight) or shares (cgroup v1 cpu.shares). Kubernetes derives it from the CPU request. Null when unreadable',
+					),
+				kubernetes_provider: z
+					.enum(['aws', 'azure', 'gcp', 'other'])
+					.optional()
+					.describe(
+						'Cloud the node runs on, read from vendor tags in the kernel release. `other` also covers node images that do not name their cloud. Only for `kubernetes`',
+					),
 			}),
 			execution_variables: z.object({
 				executions_mode: z.enum(['regular', 'queue']),

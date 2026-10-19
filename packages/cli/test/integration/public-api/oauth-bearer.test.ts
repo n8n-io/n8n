@@ -1,7 +1,11 @@
 import { testDb } from '@n8n/backend-test-utils';
 import { principalFromUser, TagRepository, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { AuthenticationPipeline, AuthenticationService } from '@n8n/inbound-auth';
+import {
+	AuthenticationPipeline,
+	AuthenticationService,
+	ResourceAdmission,
+} from '@n8n/inbound-auth';
 import { sign } from 'jsonwebtoken';
 import { mock } from 'vitest-mock-extended';
 
@@ -26,12 +30,17 @@ describe('Public API with OAuth2 bearer tokens', () => {
 		Container.set(AuthenticationPipeline, pipeline);
 		Container.set(AuthenticationService, authenticationService);
 
-		// `InboundAuthCoreModule.init()` registers the strategy on main; the test server loads no
-		// modules, so register it by hand after the API key and session-cookie strategies.
+		// `InboundAuthCoreModule.init()` binds the admission and registers the strategy on main; the
+		// test server loads no modules, so do both by hand, the strategy after the API key and
+		// session-cookie strategies.
+		const { InboundResourceAdmission } = await import(
+			'@/modules/inbound-auth-core/resource-admission.js'
+		);
+		Container.set(ResourceAdmission, Container.get(InboundResourceAdmission));
 		const { PublicApiOAuthStrategy } = await import(
 			'@/modules/inbound-auth-core/public-api-oauth.strategy.js'
 		);
-		const { AuthStrategyRegistry } = await import('@/services/auth-strategy.registry.js');
+		const { AuthStrategyRegistry } = await import('@n8n/backend-services/auth');
 		Container.get(AuthStrategyRegistry).register(Container.get(PublicApiOAuthStrategy));
 	});
 
