@@ -1,8 +1,16 @@
-import type { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions, INode } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	IHookFunctions,
+	ILoadOptionsFunctions,
+	INode,
+	JsonObject,
+} from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 import type { Mock, Mocked } from 'vitest';
 import { mockDeep } from 'vitest-mock-extended';
 
 import { MicrosoftTeamsTrigger } from '../../../MicrosoftTeamsTrigger.node';
+import { getResourcePath } from '../../helpers/utils-trigger';
 import {
 	getBuckets,
 	getChannels,
@@ -14,7 +22,17 @@ import {
 	getTeams,
 	getUsers,
 } from '../../methods/listSearch';
-import { joinedTeamsEndpoint, SERVICE_PRINCIPAL_AUTH } from '../../transport/index';
+import {
+	CHANNEL_MESSAGE_SUBSCRIPTION_FORBIDDEN,
+	CHANNEL_SUBSCRIPTION_FORBIDDEN,
+	CHAT_SUBSCRIPTION_FORBIDDEN,
+	TEAM_MEMBER_SUBSCRIPTION_FORBIDDEN,
+} from '../../transport/forbiddenHints';
+import {
+	joinedTeamsEndpoint,
+	microsoftApiRequest,
+	SERVICE_PRINCIPAL_AUTH,
+} from '../../transport/index';
 
 describe('Microsoft Teams Transport', () => {
 	let mockExecuteFunctions: Mocked<IExecuteFunctions>;
@@ -322,6 +340,186 @@ describe('Microsoft Teams Transport', () => {
 				'microsoftTeamsOAuth2Api',
 				expect.objectContaining({ method: 'DELETE' }),
 			);
+		});
+	});
+
+	// Drives the real facade with the literal Graph 403 texts of a refused Trigger subscription.
+	// Resource paths are written per fixture, never built from `hint.match`, so a narrowed or
+	// permission-name `match` fails here.
+	describe('subscription 403 hints (POST /v1.0/subscriptions)', () => {
+		const TEAM_ID = '3b2d1c0a-1111-2222-3333-444444444444';
+		const CHANNEL_ID = '19:abc123def456@thread.tacv2';
+		const CHAT_ID = '19:0123456789abcdef0123456789abcdef@thread.v2';
+		const USER_ID = '7f1e2d3c-5555-6666-7777-888888888888';
+		const GENERIC_APP_ONLY_403 =
+			'The app registration is missing a consented application permission for this operation. Grant the required Graph application permission and admin consent, then retry.';
+		const refused = (resource: string) =>
+			`Operation: Create; Exception: [Status Code: Forbidden; Reason: Caller does not have access to '${resource}' resource]`;
+
+		// Seen live (QA tenant, Cloud 2.41.4)
+		const MEMBERS_403 = refused(`/teams('${TEAM_ID}')/members`);
+		// Seen live (n8n issue #17260, delegated)
+		const CHANNEL_MESSAGES_403 = refused(`/teams('${TEAM_ID}')/channels('${CHANNEL_ID}')/messages`);
+		// Seen live (MS Q&A 5638761)
+		const CHAT_MESSAGES_403 = refused(`/chats('${CHAT_ID}')/messages`);
+		// Synthetic: same renderer, not yet seen live
+		const CHANNELS_403 = refused(`/teams('${TEAM_ID}')/channels`);
+		const USER_CHATS_403 = refused(`/users('${USER_ID}')/chats`);
+		// Same renderer, a resource no hint covers: an over-broad match such as `' resource` would fire
+		const MAIL_403 = refused(`/users('${USER_ID}')/mailFolders('inbox')/messages`);
+		// Names the hinted permissions only as granted roles (a listing 403 on GET /v1.0/subscriptions
+		// has this shape too): no hint may fire on it
+		const GRANTED_403 =
+			"Missing role permissions on the request. API requires one of 'Subscription.Read.All'. Roles on the request 'TeamMember.Read.All, Channel.ReadBasic.All, ChannelMessage.Read.All, Chat.Read.All'. Resource specific consent grants on the request ''.";
+
+		// Raw request-library shape: `<status> - <json body>` message, `statusCode`, and the
+		// Graph body under `error`. Same construction as the kernel tests.
+		const graphError = (message: string) =>
+			Object.assign(
+				new Error(`403 - ${JSON.stringify({ error: { code: 'ExtensionError', message } })}`),
+				{ statusCode: 403, error: { error: { code: 'ExtensionError', message } } },
+			);
+		// `requestWithAuthentication` wraps the raw error in a NodeApiError before the kernel sees it
+		const wrapped = (message: string) =>
+			new NodeApiError(mockNode, graphError(message) as unknown as JsonObject);
+		const post = async () =>
+			(await microsoftApiRequest
+				.call(mockExecuteFunctions, 'POST', '/v1.0/subscriptions', {})
+				.catch((e: Error) => e)) as NodeApiError;
+		// The kernel rebuilds the app-only error from static copy; pin that every surface the editor
+		// renders (message, description, messages, serialized form) carries no Graph id.
+		const expectNoGraphIds = (error: NodeApiError) => {
+			const rendered = [error.message, error.description, ...error.messages, JSON.stringify(error)];
+			for (const id of [TEAM_ID, CHANNEL_ID, CHAT_ID, USER_ID]) {
+				expect(rendered.join('\n')).not.toContain(id);
+			}
+		};
+
+		const teamRows = [
+			{
+				label: 'team member',
+				hint: TEAM_MEMBER_SUBSCRIPTION_FORBIDDEN,
+				graphText: MEMBERS_403,
+				permission: 'TeamMember.Read.All',
+			},
+			{
+				label: 'new channel (synthetic text)',
+				hint: CHANNEL_SUBSCRIPTION_FORBIDDEN,
+				graphText: CHANNELS_403,
+				permission: 'Channel.ReadBasic.All',
+			},
+			{
+				label: 'channel message',
+				hint: CHANNEL_MESSAGE_SUBSCRIPTION_FORBIDDEN,
+				graphText: CHANNEL_MESSAGES_403,
+				permission: 'ChannelMessage.Read.All',
+			},
+		];
+		const chatRows = [
+			{
+				label: 'chat message',
+				hint: CHAT_SUBSCRIPTION_FORBIDDEN,
+				graphText: CHAT_MESSAGES_403,
+				permission: 'Chat.Read',
+			},
+			{
+				label: 'user chats (synthetic text)',
+				hint: CHAT_SUBSCRIPTION_FORBIDDEN,
+				graphText: USER_CHATS_403,
+				permission: 'Chat.Read',
+			},
+		];
+		const unhintedRows = [
+			{ when: 'the hinted permissions appear only as granted roles', graphText: GRANTED_403 },
+			{ when: 'the refused resource has no hint', graphText: MAIL_403 },
+		];
+
+		beforeEach(() => {
+			mockExecuteFunctions.getCredentials.mockResolvedValue({ graphApiBaseUrl: '' });
+		});
+
+		describe('under the Service Principal credential', () => {
+			beforeEach(() => {
+				mockExecuteFunctions.getNodeParameter.mockReturnValue(SERVICE_PRINCIPAL_AUTH);
+			});
+
+			it.each(teamRows)(
+				'names the $permission application permission for a $label subscription',
+				async ({ hint, graphText, permission }) => {
+					mockRequestWithAuthentication.mockRejectedValue(wrapped(graphText));
+
+					const error = await post();
+
+					expect(error).toBeInstanceOf(NodeApiError);
+					expect(error.httpCode).toBe('403');
+					expect(error.message).toBe(hint.message);
+					expect(error.description).toBe(hint.description);
+					expect(error.message).toContain(`${permission} application permission`);
+					expect(error.description).toContain(permission);
+					expectNoGraphIds(error);
+				},
+			);
+
+			// Under SP the trigger throws this guard before any request (getResourcePath), so the
+			// hint's app-only copy must stay identical to it: derive the expectation from the guard.
+			it('repeats the chat-trigger guard copy for a chat subscription', async () => {
+				const guard = (await getResourcePath
+					.call(mockExecuteFunctions as unknown as IHookFunctions, 'newChat')
+					.catch((e: unknown) => e)) as NodeOperationError;
+				expect(guard).toBeInstanceOf(NodeOperationError);
+				mockRequestWithAuthentication.mockRejectedValue(wrapped(CHAT_MESSAGES_403));
+
+				const error = await post();
+
+				expect(error).toBeInstanceOf(NodeApiError);
+				expect(error.httpCode).toBe('403');
+				expect(error.message).toBe(guard.message);
+				expect(error.description).toBe(guard.description);
+				expectNoGraphIds(error);
+			});
+
+			it.each(unhintedRows)('keeps the generic copy when $when', async ({ graphText }) => {
+				mockRequestWithAuthentication.mockRejectedValue(wrapped(graphText));
+
+				const error = await post();
+
+				expect(error.message).toBe(GENERIC_APP_ONLY_403);
+				expect(error.description).toBeUndefined();
+				// The static copy is all that reaches the error details
+				expect(error.messages).toEqual([GENERIC_APP_ONLY_403]);
+			});
+		});
+
+		describe('under a delegated OAuth2 credential', () => {
+			beforeEach(() => {
+				mockExecuteFunctions.getNodeParameter.mockReturnValue('microsoftTeamsOAuth2Api');
+			});
+
+			it.each([...teamRows, ...chatRows])(
+				'names the $permission permission for a $label subscription',
+				async ({ hint, graphText, permission }) => {
+					mockRequestOAuth2.mockRejectedValue(graphError(graphText));
+
+					const error = await post();
+
+					expect(error).toBeInstanceOf(NodeApiError);
+					expect(error.httpCode).toBe('403');
+					expect(error.message).toBe(hint.delegated.message);
+					expect(error.description).toBe(hint.delegated.description);
+					expect(error.message).toContain(`the ${permission} permission`);
+					expect(error.description).toContain(permission);
+					// The raw Graph text stays in the error details
+					expect(error.messages).toContain(graphText);
+				},
+			);
+
+			it.each(unhintedRows)('passes the raw text through when $when', async ({ graphText }) => {
+				mockRequestOAuth2.mockRejectedValue(graphError(graphText));
+
+				const error = await post();
+
+				expect(error.message).toBe(graphText);
+			});
 		});
 	});
 });
