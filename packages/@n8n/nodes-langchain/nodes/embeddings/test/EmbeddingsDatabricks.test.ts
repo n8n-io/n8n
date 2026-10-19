@@ -94,12 +94,12 @@ describe('EmbeddingsDatabricks', () => {
 				name: 'embeddingsDatabricks',
 				group: ['transform'],
 				version: 1,
-				hidden: true,
 				credentials: [{ name: 'databricksOAuth2Api', required: true }],
 				inputs: [],
 				outputs: ['ai_embedding'],
 				outputNames: ['Embeddings'],
 			});
+			expect(node.description.hidden).toBeUndefined();
 		});
 	});
 
