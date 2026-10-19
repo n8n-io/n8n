@@ -1,10 +1,20 @@
-import { resolveBuilderToolName } from '@n8n/api-types';
+import type { WorkflowBuilderToolName } from '@n8n/api-types';
 import type { TestInfo } from '@playwright/test';
 
 import { test, expect, instanceAiTestConfig, getInstanceAiTestSlug } from './fixtures';
 import type { ApiHelpers } from '../../../services/api-helper';
 
 const TERMINAL_FALLBACK_TEXT = 'I finished the run, but I did not generate a final response';
+
+// Replayed traces keep the tool names from the time of recording.
+// Use only type imports from `@n8n/api-types`: the E2E shard job does not build it.
+const CURRENT_TOOL_NAMES = new Map<string, WorkflowBuilderToolName>([
+	['workflows', 'workflow_builder_workflows'],
+	['build-workflow', 'workflow_builder_build_workflow'],
+	['verify-built-workflow', 'workflow_builder_verify_built_workflow'],
+	['report-verification-verdict', 'workflow_builder_report_verification_verdict'],
+	['complete-checkpoint', 'workflow_builder_complete_checkpoint'],
+]);
 
 test.use({
 	...instanceAiTestConfig,
@@ -47,9 +57,10 @@ async function getTraceEvents(api: ApiHelpers, testInfo: TestInfo): Promise<Trac
 	const events = (await api.getInstanceAiToolTraceEvents(
 		getInstanceAiTestSlug(testInfo),
 	)) as TraceEvent[];
-	// Recorded traces keep the tool names from the time of recording.
 	return events.map((event) =>
-		event.toolName ? { ...event, toolName: resolveBuilderToolName(event.toolName) } : event,
+		event.toolName
+			? { ...event, toolName: CURRENT_TOOL_NAMES.get(event.toolName) ?? event.toolName }
+			: event,
 	);
 }
 
