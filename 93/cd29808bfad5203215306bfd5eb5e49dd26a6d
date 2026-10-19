@@ -754,6 +754,7 @@ packages/cli/src/modules/agents/agents.service.ts
   s_71ad2034164515::t_fc38a38d64fbbb 72-73,85-86,172,174-178,189,250-252,254-258,264-267,271,277,295-301,309-310,327-328,330-331
   s_71ad2034164515::t_b92e8c660afc36 74,332-333
   s_71ad2034164515::t_73eb1bad26ab5b 268-270,302,313
+  s_d3c0f6f6f7d41c::t_e5dce06fac2774 173,253,278-294
 packages/cli/src/modules/agents/agent-task.service.ts
   s_71ad2034164515::t_1eb2704e9ceed4 42-45,98-107
   s_c9a35d8cddcbb4::t_3f98b077b9ab12 108
