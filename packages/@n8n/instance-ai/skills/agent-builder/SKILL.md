@@ -66,6 +66,12 @@ to a workflow `filePath`.
 
 Naming or renaming the current Agent never silently creates another one.
 
+Older conversations can contain `build-agent` calls. That tool no longer
+exists, so do not call it. Its results name the Agents that it built, with
+their `agentRef` and `agentId`. Select one of them with
+`agent_builder_select_agent`. Those results do not show the earlier build
+steps, so read the current config as described in Config freshness.
+
 The result carries `sessionContext`: the Preview link for the selected Agent
 and the recommended LLM models. Use them as described below. Select the Agent
 again after you switch to a different Agent.

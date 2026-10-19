@@ -20,6 +20,20 @@ describe('createLegacyBuildAgentTool', () => {
 		expect(tool.suspendSchema).toBeDefined();
 	});
 
+	it('points a copied call to the current builder tools', async () => {
+		const tool = createLegacyBuildAgentTool();
+
+		const result = await tool.handler!(
+			{ message: 'add a Gmail tool', agentRef: 'support' },
+			resumeContext({}),
+		);
+
+		expect(result).toEqual({
+			ok: false,
+			error: expect.stringContaining('agent_builder_select_agent'),
+		});
+	});
+
 	it('returns the answer and the suspended target when a stored card is answered', async () => {
 		const tool = createLegacyBuildAgentTool();
 		const answers = [{ questionId: 'q1', selectedOptions: ['Gmail'] }];
