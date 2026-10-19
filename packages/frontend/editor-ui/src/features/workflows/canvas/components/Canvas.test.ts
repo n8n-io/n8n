@@ -249,9 +249,7 @@ describe('Canvas', () => {
 		expect(pane).not.toBeNull();
 		await fireEvent.contextMenu(pane!, { clientX: 80, clientY: 64 });
 
-		const cursorPosition = emitted()['cursor:position']?.at(-1)?.[0] as
-			| { x: number; y: number }
-			| undefined;
+		const cursorPosition = emitted<[{ x: number; y: number }]>()['cursor:position']?.at(-1)?.[0];
 		expect(cursorPosition?.x).toBeLessThan(0);
 
 		await waitFor(() => expect(getByTestId('context-menu-item-add_sticky')).toBeInTheDocument());
