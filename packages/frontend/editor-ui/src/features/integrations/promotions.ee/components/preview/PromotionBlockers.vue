@@ -21,6 +21,7 @@ import { usePromotionBindingCreation } from '../../composables/usePromotionBindi
 import { usePromotionBindings } from '../../composables/usePromotionBindings';
 import type { BlockedApplyResult } from '../../promotions.types';
 import { resourceIcon } from '../../promotionPreview.tree';
+import PromotionWorkflowLinks from './PromotionWorkflowLinks.vue';
 
 const props = defineProps<{
 	projectId: string;
@@ -77,7 +78,8 @@ type BlockerRow = {
 	status: { label: string; tone: 'warning' | 'success' };
 	/** The next step for blockers that users resolve outside this page. */
 	detail?: string;
-	create?: { key: string; label: string };
+	/** The button that adds a missing binding. */
+	createLabel?: string;
 };
 
 const usedBy = (consumers: PromotionBindingConsumer[]) =>
@@ -131,9 +133,9 @@ const blockerRows = computed<BlockerRow[]>(() => {
 			type: binding.kind,
 			usedBy: usedBy(binding.consumers),
 			status: status(bindingStatus === 'resolved' ? 'resolved' : 'missing'),
-			create:
+			createLabel:
 				bindingStatus === 'missing'
-					? { key, label: i18n.baseText(`promotions.preview.blockers.create.${binding.kind}`) }
+					? i18n.baseText(`promotions.preview.blockers.create.${binding.kind}`)
 					: undefined,
 		})),
 		...preflight.accessRequirements.map((access) => ({
@@ -291,16 +293,10 @@ const isCreateDisabled = computed(() => props.busy || bindings.isBusy.value);
 							</td>
 							<td>
 								<N8nText step="2xs" color="text-light">
-									<template v-for="(workflow, index) in row.usedBy" :key="workflow.key"
-										><template v-if="index > 0">, </template
-										><button
-											type="button"
-											:class="$style.link"
-											@click="emit('inspect', workflow.key)"
-										>
-											{{ workflow.name }}
-										</button></template
-									>
+									<PromotionWorkflowLinks
+										:workflows="row.usedBy"
+										@inspect="emit('inspect', $event)"
+									/>
 								</N8nText>
 							</td>
 							<td>
@@ -319,14 +315,14 @@ const isCreateDisabled = computed(() => props.busy || bindings.isBusy.value);
 							</td>
 							<td :class="$style.action">
 								<N8nButton
-									v-if="row.create"
+									v-if="row.createLabel"
 									variant="outline"
 									size="small"
 									:disabled="isCreateDisabled"
 									data-test-id="promotion-preview-blocker-create"
-									@click="create(row.create.key)"
+									@click="create(row.key)"
 								>
-									{{ row.create.label }}
+									{{ row.createLabel }}
 								</N8nButton>
 							</td>
 						</tr>
@@ -388,18 +384,10 @@ const isCreateDisabled = computed(() => props.busy || bindings.isBusy.value);
 								</td>
 								<td>
 									<N8nText step="2xs" color="text-light">
-										<template
-											v-for="(workflow, index) in usedBy(table.consumers)"
-											:key="workflow.key"
-											><template v-if="index > 0">, </template
-											><button
-												type="button"
-												:class="$style.link"
-												@click="emit('inspect', workflow.key)"
-											>
-												{{ workflow.name }}
-											</button></template
-										>
+										<PromotionWorkflowLinks
+											:workflows="usedBy(table.consumers)"
+											@inspect="emit('inspect', $event)"
+										/>
 									</N8nText>
 								</td>
 								<td>
@@ -437,18 +425,10 @@ const isCreateDisabled = computed(() => props.busy || bindings.isBusy.value);
 								</td>
 								<td>
 									<N8nText step="2xs" color="text-light">
-										<template
-											v-for="(workflow, index) in usedBy(warning.consumers)"
-											:key="workflow.key"
-											><template v-if="index > 0">, </template
-											><button
-												type="button"
-												:class="$style.link"
-												@click="emit('inspect', workflow.key)"
-											>
-												{{ workflow.name }}
-											</button></template
-										>
+										<PromotionWorkflowLinks
+											:workflows="usedBy(warning.consumers)"
+											@inspect="emit('inspect', $event)"
+										/>
 									</N8nText>
 								</td>
 							</tr>
@@ -591,25 +571,6 @@ const isCreateDisabled = computed(() => props.busy || bindings.isBusy.value);
 
 .detail {
 	margin-top: var(--spacing--4xs);
-}
-
-/* The same links as the "Used by" names on the change cards. */
-.link {
-	padding: 0;
-	border: none;
-	background: none;
-	color: inherit;
-	font: inherit;
-	text-decoration: underline;
-	cursor: pointer;
-
-	&:hover {
-		color: var(--text-color);
-	}
-
-	&:focus-visible {
-		outline: var(--focus--border-width) solid var(--focus--outline-color);
-	}
 }
 
 .status {

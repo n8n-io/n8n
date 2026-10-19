@@ -29,6 +29,7 @@ import type { ResourceKey, SelectionGraph } from '../../promotionPreview.selecti
 import { isContainer, resourceIcon } from '../../promotionPreview.tree';
 import DataTableChangeDetails from './DataTableChangeDetails.vue';
 import PromotionFieldChanges from './PromotionFieldChanges.vue';
+import PromotionWorkflowLinks from './PromotionWorkflowLinks.vue';
 
 const props = defineProps<{
 	resource: PromotionResource;
@@ -87,26 +88,21 @@ const scope = computed(() =>
 		: undefined,
 );
 
-type Footer = { keypath: BaseTextKey; resourceKeys: readonly ResourceKey[] };
+type Footer = { keypath: BaseTextKey; workflows: Array<{ key: ResourceKey; name: string }> };
 
 // Resources that users cannot select name the workflows that use or call them.
 const footer = computed((): Footer | undefined => {
 	const { resource, graph } = props;
 	if (resource.selectable || isContainer(resource)) return undefined;
 	const users = graph.requiredBy.get(resource.key) ?? [];
-	if (users.length > 0) return { keypath: 'promotions.preview.card.usedBy', resourceKeys: users };
+	const named = (keys: readonly ResourceKey[]) => keys.map((key) => ({ key, name: nameOf(key) }));
+	if (users.length > 0)
+		return { keypath: 'promotions.preview.card.usedBy', workflows: named(users) };
 	return {
 		keypath: 'promotions.preview.card.calledBy',
-		resourceKeys: graph.calledBy.get(resource.key) ?? [],
+		workflows: named(graph.calledBy.get(resource.key) ?? []),
 	};
 });
-
-// The list format adds the separators and the "and" of the current language.
-const footerNames = computed(() =>
-	new Intl.ListFormat(i18n.locale, { style: 'long', type: 'conjunction' }).formatToParts(
-		footer.value?.resourceKeys ?? [],
-	),
-);
 
 const detail = computed(() => (props.entry?.status === 'loaded' ? props.entry.detail : undefined));
 const stale = computed(() => !!detail.value && isStaleDetail(detail.value, props.resource));
@@ -255,18 +251,10 @@ const tagNote = computed(() => {
 					<N8nText step="2xs" color="text-light" data-test-id="promotion-preview-card-inclusion">
 						<I18nT :keypath="footer.keypath" scope="global">
 							<template #names>
-								<template v-for="(part, index) in footerNames" :key="index">
-									<button
-										v-if="part.type === 'element'"
-										type="button"
-										:class="$style.nameLink"
-										data-test-id="promotion-preview-card-relation"
-										@click="emit('inspect', part.value)"
-									>
-										{{ nameOf(part.value) }}
-									</button>
-									<template v-else>{{ part.value }}</template>
-								</template>
+								<PromotionWorkflowLinks
+									:workflows="footer.workflows"
+									@inspect="emit('inspect', $event)"
+								/>
 							</template>
 						</I18nT>
 					</N8nText>
@@ -375,25 +363,6 @@ const tagNote = computed(() => {
 .footer > * + *::before {
 	content: '·' / '';
 	margin-right: var(--spacing--2xs);
-}
-
-/* N8nLink has no light theme, so the names use the footer text color. */
-.nameLink {
-	padding: 0;
-	border: none;
-	background: none;
-	color: inherit;
-	font: inherit;
-	text-decoration: underline;
-	cursor: pointer;
-
-	&:hover {
-		color: var(--text-color);
-	}
-
-	&:focus-visible {
-		outline: var(--focus--border-width) solid var(--focus--outline-color);
-	}
 }
 
 .status {

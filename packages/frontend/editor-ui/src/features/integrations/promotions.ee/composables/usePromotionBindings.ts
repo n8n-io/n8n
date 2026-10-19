@@ -133,7 +133,6 @@ export function usePromotionBindings() {
 			key,
 			binding,
 			status: statusOf(key, binding.consumers[0].project.id),
-			created: createdBindings.value.get(key),
 		})),
 	);
 
