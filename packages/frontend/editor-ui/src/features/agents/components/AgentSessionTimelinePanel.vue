@@ -187,7 +187,11 @@ const selectedItem = computed<TimelineItem | null>(() =>
 	selectedIndex.value !== null ? (items.value[selectedIndex.value] ?? null) : null,
 );
 
-const approving = ref(false);
+// The resume route returns once the run is started. Keep this thread's card
+// disabled until a refresh shows the session is no longer waiting.
+const pendingApprovalIdentity = ref<string | null>(null);
+
+const approvalDisabled = computed(() => pendingApprovalIdentity.value === threadIdentity());
 
 const sessionApproval = computed((): ApprovalInput | undefined => {
 	const item = selectedItem.value;
@@ -199,21 +203,29 @@ const sessionApproval = computed((): ApprovalInput | undefined => {
 	return parseApprovalInput(item.hitlRequest);
 });
 
+function releasePendingApproval(identity: string) {
+	if (pendingApprovalIdentity.value === identity) pendingApprovalIdentity.value = null;
+}
+
 async function submitSessionApproval(resumeData: ApprovalResume) {
 	const toolCallId = selectedItem.value?.toolCallId;
-	if (!toolCallId || approving.value) return;
-	approving.value = true;
+	const identity = threadIdentity();
+	const { projectId, agentId, threadId } = props;
+	if (!toolCallId || pendingApprovalIdentity.value === identity) return;
+	pendingApprovalIdentity.value = identity;
 	try {
-		await sessionsStore.resumeTaskApproval(props.projectId, props.agentId, props.threadId, {
+		await sessionsStore.resumeTaskApproval(projectId, agentId, threadId, {
 			toolCallId,
 			resumeData,
 		});
-		refreshThreadDetail();
 	} catch (error) {
+		releasePendingApproval(identity);
+		if (threadIdentity() !== identity) return;
 		toast.showError(error, i18n.baseText('agentSessions.approval.failed'));
-	} finally {
-		approving.value = false;
+		return;
 	}
+	if (threadIdentity() !== identity) return;
+	refreshThreadDetail();
 }
 
 const visibleItemIndexes = computed(() =>
@@ -330,6 +342,12 @@ async function fetchThreadDetail(initial: boolean) {
 		}
 		const selectedKey = !initial && selectedItem.value ? timelineItemKey(selectedItem.value) : null;
 		executions.value = result.executions;
+		if (
+			pendingApprovalIdentity.value === identity &&
+			result.executions.at(-1)?.status !== 'waiting'
+		) {
+			pendingApprovalIdentity.value = null;
+		}
 		if (selectedKey) {
 			const nextIndex = items.value.findIndex((item) => timelineItemKey(item) === selectedKey);
 			selectTimelineItem(nextIndex >= 0 ? nextIndex : null);
@@ -460,7 +478,7 @@ watch([() => props.projectId, () => props.agentId, () => props.threadId], loadTh
 						:project-id="props.projectId"
 						:agent-id="props.agentId"
 						:approval="sessionApproval"
-						:approval-disabled="approving"
+						:approval-disabled="approvalDisabled"
 						@close="selectTimelineItem(null)"
 						@approve="submitSessionApproval"
 					/>
