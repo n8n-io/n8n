@@ -4,6 +4,7 @@ import { EventService } from '@n8n/backend-services';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
+import { ScimSwitchReader } from '@/sso.ee/scim-switch-reader';
 import * as ssoHelpers from '@/sso.ee/sso-helpers';
 
 import type { ScimSettingsService } from '../scim-settings.service';
@@ -14,6 +15,7 @@ describe('ScimSsoService', () => {
 	let scimSettingsService: Mocked<ScimSettingsService>;
 	let moduleRegistry: Mocked<ModuleRegistry>;
 	let logger: ReturnType<typeof mockLogger>;
+	let scimSwitchReader: ScimSwitchReader;
 	let service: ScimSsoService;
 
 	const ssoOn = (on: boolean) =>
@@ -36,7 +38,14 @@ describe('ScimSsoService', () => {
 		scimSettingsService = mock<ScimSettingsService>();
 		moduleRegistry = mock<ModuleRegistry>();
 		logger = mockLogger();
-		service = new ScimSsoService(logger, eventService, scimSettingsService, moduleRegistry);
+		scimSwitchReader = new ScimSwitchReader();
+		service = new ScimSsoService(
+			logger,
+			eventService,
+			scimSettingsService,
+			moduleRegistry,
+			scimSwitchReader,
+		);
 	});
 
 	it.each([true, false])('reports single sign-on as %s from the shared helper', (on) => {
@@ -49,6 +58,14 @@ describe('ScimSsoService', () => {
 		beforeEach(async () => {
 			ssoOn(true);
 			await service.init();
+		});
+
+		// SSO code reads the switch through the reader, without an import of
+		// the SCIM module.
+		it.each([true, false])('lets SSO code read the SCIM switch as %s', async (enabled) => {
+			scimSettingsService.isEnabled.mockResolvedValue(enabled);
+
+			expect(await scimSwitchReader.isEnabled()).toBe(enabled);
 		});
 
 		it.each(['saml', 'oidc'] as const)(

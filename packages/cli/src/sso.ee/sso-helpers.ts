@@ -7,6 +7,8 @@ import { Container } from '@n8n/di';
 import config from '@/config';
 import { BadRequestError } from '@n8n/errors';
 
+import { ScimSwitchReader } from './scim-switch-reader';
+
 /**
  * Only one authentication method can be active at a time. This function sets
  * the current authentication method and saves it to the database.
@@ -107,14 +109,12 @@ export async function emitSsoLoginDisabled(protocol: SamlOrOidc): Promise<void> 
 
 /**
  * The SCIM module turns SCIM off when it gets `sso-login-disabled`, so read
- * the switch before the event. The import is lazy, so that SSO code has no
- * static dependency on the SCIM module. The SSO change is already saved, so
- * a read failure must not fail it.
+ * the switch before the event. The SSO change is already saved, so a read
+ * failure must not fail it.
  */
 async function isScimProvisioningEnabled(): Promise<boolean> {
 	try {
-		const { ScimSettingsService } = await import('@/modules/scim/scim-settings.service.js');
-		return await Container.get(ScimSettingsService).isEnabled();
+		return await Container.get(ScimSwitchReader).isEnabled();
 	} catch (error) {
 		Container.get(Logger).warn('Failed to read the SCIM provisioning state', { error });
 		return false;
