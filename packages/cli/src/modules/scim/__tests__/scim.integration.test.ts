@@ -1,19 +1,22 @@
 import { SCIM_OPT_IN_FLAG } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
+import { JwtService } from '@n8n/backend-services';
 import { testDb } from '@n8n/backend-test-utils';
-import { GLOBAL_MEMBER_ROLE, UserRepository, type User } from '@n8n/db';
+import { UserRepository, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { getApiKeyScopesForRole } from '@n8n/permissions';
 
 import { PostHogClient } from '@/posthog';
+import { PublicApiKeyService } from '@/services/public-api-key.service';
 import { createAdmin, createMember, createOwner } from '@test-integration/db/users';
 import * as utils from '@test-integration/utils';
 
-import { ScimApiKeyRepository } from '../database/scim-api-key.repository';
+import { ScimTokenRepository } from '../database/scim-token.repository';
 import { ScimSettingsService } from '../scim-settings.service';
 import { ScimConfig } from '../scim.config';
 
 const testServer = utils.setupTestServer({
-	// `users` serves the role change that must revoke a SCIM token.
+	// `users` serves the role change and the deletion of the token creator.
 	endpointGroups: ['users', 'module-settings'],
 	enabledFeatures: ['feat:scim', 'feat:advancedPermissions'],
 	modules: ['scim'],
@@ -64,8 +67,11 @@ const scimRoutes = [
 
 const instanceFlag = () => vi.mocked(Container.get(PostHogClient).getFeatureFlagForInstance);
 
+const scimTokenRepository = () => Container.get(ScimTokenRepository);
+
 beforeEach(async () => {
 	await testDb.truncate(['ApiKey', 'AuthIdentity', 'ProjectRelation', 'Project', 'User']);
+	await scimTokenRepository().delete({});
 
 	// Every test except the opt-in ones runs with the opt-in on.
 	Container.get(ScimConfig).optIn = true;
@@ -102,27 +108,121 @@ describe('SCIM /scim/v2 authentication', () => {
 		expect(response.status).toBe(403);
 		expect(response.body).toMatchObject({ schemas: [ERROR_SCHEMA], status: '403' });
 	});
+});
 
-	it('returns 401 once the token user lost scim:manage through any role change', async () => {
-		// A direct write emits no event, so only the request-time check can catch it.
-		await Container.get(UserRepository).update({ id: admin.id }, { role: GLOBAL_MEMBER_ROLE });
+describe('SCIM instance token', () => {
+	const tokenRequest = (user: User) => testServer.authAgentFor(user).post('/scim/token');
 
-		const response = await scimRequest('get', '/Users');
-
-		expect(response.status).toBe(401);
+	afterEach(() => {
+		vi.restoreAllMocks();
 	});
 
-	it('deletes the token when an admin removes scim:manage from its user', async () => {
+	it('shows every user with scim:manage the same token', async () => {
+		const otherAdmin = await createAdmin();
+
+		for (const user of [otherAdmin, owner]) {
+			const response = await testServer.authAgentFor(user).get('/scim/config').expect(200);
+
+			expect(response.body.data).toMatchObject({ hasToken: true, tokenHint: token.slice(-4) });
+			expect(response.body.data).not.toHaveProperty('token');
+		}
+	});
+
+	it('returns 403 to a member on every token route', async () => {
+		const member = await createMember();
+		const agent = testServer.authAgentFor(member);
+
+		await agent.get('/scim/config').expect(403);
+		await agent.post('/scim/token').expect(403);
+		await agent.delete('/scim/token').expect(403);
+		expect((await scimRequest('get', '/Users')).status).toBe(200);
+	});
+
+	it('keeps the token working after its creator is disabled', async () => {
+		await Container.get(UserRepository).update({ id: admin.id }, { disabled: true });
+
+		expect((await scimRequest('get', '/Users')).status).toBe(200);
+	});
+
+	it('keeps the token working after its creator loses scim:manage', async () => {
 		await testServer
 			.authAgentFor(owner)
 			.patch(`/users/${admin.id}/role`)
 			.send({ newRoleName: 'global:member' })
 			.expect(200);
 
-		await vi.waitFor(async () => {
-			expect(await Container.get(ScimApiKeyRepository).findByUserId(admin.id, {})).toBeNull();
+		expect((await scimRequest('get', '/Users')).status).toBe(200);
+	});
+
+	it('keeps the token working after its creator is deleted', async () => {
+		await testServer.authAgentFor(owner).delete(`/users/${admin.id}`).expect(200);
+
+		expect((await scimRequest('get', '/Users')).status).toBe(200);
+		expect(await scimTokenRepository().findInstanceToken({})).toMatchObject({
+			createdById: null,
 		});
+	});
+
+	it('lets another admin rotate the token', async () => {
+		const otherAdmin = await createAdmin();
+
+		const response = await tokenRequest(otherAdmin).expect(201);
+		const newToken: string = response.body.data.token;
+
+		expect(newToken).not.toBe(token);
 		expect((await scimRequest('get', '/Users')).status).toBe(401);
+		expect((await scimRequest('get', '/Users', { bearer: newToken })).status).toBe(200);
+		expect(await scimTokenRepository().count()).toBe(1);
+	});
+
+	it('lets another admin revoke the token', async () => {
+		await testServer.authAgentFor(owner).delete('/scim/token').expect(200);
+
+		expect((await scimRequest('get', '/Users')).status).toBe(401);
+		const response = await testServer.authAgentFor(admin).get('/scim/config').expect(200);
+		expect(response.body.data).toMatchObject({ hasToken: false, tokenHint: null });
+	});
+
+	it.each([
+		['replace the same token', true],
+		['create the first token', false],
+	])('accepts one of two rotations that %s and returns 409 to the other', async (_, withToken) => {
+		if (!withToken) await testServer.authAgentFor(admin).delete('/scim/token').expect(200);
+		// Both requests read the token state before either one writes it.
+		const seen = await scimTokenRepository().findInstanceToken({});
+		vi.spyOn(scimTokenRepository(), 'findInstanceToken').mockResolvedValue(seen);
+
+		const responses = await Promise.all([tokenRequest(admin), tokenRequest(owner)]);
+
+		expect(responses.map(({ status }) => status).sort()).toEqual([201, 409]);
+		expect(await scimTokenRepository().count()).toBe(1);
+		const winner = responses.find(({ status }) => status === 201);
+		const bearer: string = winner?.body.data.token;
+		expect((await scimRequest('get', '/Users', { bearer })).status).toBe(200);
+	});
+
+	it('creates the token for a user with a public API key of the former SCIM label', async () => {
+		await testServer.authAgentFor(admin).delete('/scim/token').expect(200);
+		await Container.get(PublicApiKeyService).createPublicApiKeyForUser(admin, {
+			label: 'SCIM Provisioning API Key',
+			expiresAt: null,
+			scopes: getApiKeyScopesForRole(admin),
+		});
+
+		await tokenRequest(admin).expect(201);
+	});
+
+	it('accepts a stored token that has a user as its subject', async () => {
+		// Tokens from before the instance token name their creator as subject.
+		const legacyToken = Container.get(JwtService).sign('scimApiKey', {
+			sub: admin.id,
+			iss: 'n8n',
+			jti: 'legacy-token',
+		});
+		const current = await scimTokenRepository().findInstanceToken({});
+		await scimTokenRepository().replace(current?.token ?? null, legacyToken, admin.id, {});
+
+		expect((await scimRequest('get', '/Users', { bearer: legacyToken })).status).toBe(200);
 	});
 });
 
@@ -315,7 +415,7 @@ describe('SCIM opt-in', () => {
 			await testServer.authAgentFor(admin).patch('/scim/config').send({ enabled: false });
 
 			expect(await Container.get(ScimSettingsService).isEnabled()).toBe(true);
-			expect(await Container.get(ScimApiKeyRepository).findByUserId(admin.id, {})).not.toBeNull();
+			expect(await scimTokenRepository().findInstanceToken({})).not.toBeNull();
 		});
 
 		it('shows the opt-in as off in the module settings', async () => {
