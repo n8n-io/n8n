@@ -1,4 +1,5 @@
 import { InviteUsersRequestDto } from '@n8n/api-types';
+import type { ModuleRegistry } from '@n8n/backend-common';
 import { type EventService, UrlService, type RoleService, JwtService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
@@ -26,6 +27,7 @@ import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import type { ExternalHooks } from '@/external-hooks';
 import type { License } from '@/license';
 import type { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
+import { ScimSsoService } from '@/modules/scim/scim-sso.service';
 import { UserService } from '@/services/user.service';
 import * as ssoHelpers from '@/sso.ee/sso-helpers';
 import type { UserManagementMailer } from '@/user-management/email';
@@ -66,6 +68,7 @@ describe('UserService', () => {
 	});
 	const sharedCredentialsRepository = mock<SharedCredentialsRepository>();
 	const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
+	const moduleRegistry = mock<ModuleRegistry>();
 	const userService = new UserService(
 		mock(),
 		userRepository,
@@ -83,6 +86,7 @@ describe('UserService', () => {
 		externalHooks,
 		sharedCredentialsRepository,
 		sharedWorkflowRepository,
+		moduleRegistry,
 	);
 
 	const commonMockUser = Object.assign(new User(), {
@@ -835,6 +839,55 @@ describe('UserService', () => {
 			await expect(userService.inviteUser(inviter, payload)).rejects.toThrow(
 				'SSO is enabled, so users are managed by the Identity Provider and cannot be added through invites',
 			);
+		});
+
+		describe('with SCIM provisioning', () => {
+			const scimSsoService = mockInstance(ScimSsoService);
+			const inviteUsersResult = { usersInvited: [], usersCreated: [] };
+
+			beforeEach(() => {
+				vi.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(true);
+				vi.spyOn(userService, 'inviteUsers').mockResolvedValue(inviteUsersResult);
+				moduleRegistry.isActive.mockReturnValue(true);
+			});
+
+			afterEach(() => {
+				vi.mocked(userService.inviteUsers).mockRestore();
+			});
+
+			it('invites users under SSO while SCIM provisioning is on', async () => {
+				scimSsoService.isProvisioningOn.mockResolvedValue(true);
+
+				await expect(userService.inviteUser(inviter, payload)).resolves.toEqual([]);
+				expect(moduleRegistry.isActive).toHaveBeenCalledWith('scim');
+				expect(userService.inviteUsers).toHaveBeenCalledWith(inviter, [
+					{ email: 'valid@email.com', role: 'global:member' },
+				]);
+			});
+
+			it('throws a BadRequestError under SSO while SCIM provisioning is off', async () => {
+				scimSsoService.isProvisioningOn.mockResolvedValue(false);
+
+				await expect(userService.inviteUser(inviter, payload)).rejects.toThrow(BadRequestError);
+				expect(userService.inviteUsers).not.toHaveBeenCalled();
+			});
+
+			it('throws a BadRequestError under SSO while the SCIM module is not active', async () => {
+				moduleRegistry.isActive.mockReturnValue(false);
+				scimSsoService.isProvisioningOn.mockResolvedValue(true);
+
+				await expect(userService.inviteUser(inviter, payload)).rejects.toThrow(BadRequestError);
+				expect(scimSsoService.isProvisioningOn).not.toHaveBeenCalled();
+			});
+
+			it('does not read the SCIM state without SSO', async () => {
+				vi.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(false);
+
+				await userService.inviteUser(inviter, payload);
+
+				expect(moduleRegistry.isActive).not.toHaveBeenCalled();
+				expect(scimSsoService.isProvisioningOn).not.toHaveBeenCalled();
+			});
 		});
 
 		it('throws a ForbiddenError if the user limit quota has been reached', async () => {

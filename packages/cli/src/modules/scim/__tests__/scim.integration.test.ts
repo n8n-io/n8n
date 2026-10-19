@@ -1,4 +1,16 @@
-import { SCIM_OPT_IN_FLAG } from '@n8n/api-types';
+// The OIDC sign-in test replaces the calls to the identity provider.
+const openidClient = vi.hoisted(() => ({
+	discovery: vi.fn(),
+	authorizationCodeGrant: vi.fn(),
+	fetchUserInfo: vi.fn(),
+}));
+
+vi.mock('openid-client', async () => ({
+	...(await vi.importActual<typeof import('openid-client')>('openid-client')),
+	...openidClient,
+}));
+
+import { SCIM_OPT_IN_FLAG, type OidcConfigDto } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import { EventService, JwtService } from '@n8n/backend-services';
 import {
@@ -12,6 +24,7 @@ import {
 } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import {
+	AuthIdentityRepository,
 	CredentialsRepository,
 	GLOBAL_MEMBER_ROLE,
 	ProjectRepository,
@@ -24,13 +37,17 @@ import {
 import { Container } from '@n8n/di';
 import { getApiKeyScopesForRole } from '@n8n/permissions';
 import { DataSource } from '@n8n/typeorm';
+import type express from 'express';
 
+import { OidcService } from '@/modules/sso-oidc/oidc.service.ee';
 import { setSamlLoginEnabled } from '@/modules/sso-saml/saml-helpers';
+import { SamlService } from '@/modules/sso-saml/saml.service.ee';
 import { PostHogClient } from '@/posthog';
 import { PublicApiKeyService } from '@/services/public-api-key.service';
 import { setCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
 import { saveCredential } from '@test-integration/db/credentials';
 import {
+	addApiKey,
 	createAdmin,
 	createChatUser,
 	createManyUsers,
@@ -51,8 +68,9 @@ import { ScimConfig } from '../scim.config';
 
 const testServer = utils.setupTestServer({
 	// `users` serves the role change and the deletion of the token creator.
-	// `saml` serves the SAML login toggle.
-	endpointGroups: ['users', 'module-settings', 'saml'],
+	// `saml` serves the SAML login toggle. `invitations` and `publicApi` serve
+	// the manual invites.
+	endpointGroups: ['users', 'module-settings', 'saml', 'invitations', 'publicApi'],
 	enabledFeatures: ['feat:scim', 'feat:advancedPermissions', 'feat:saml', 'feat:oidc'],
 	modules: ['scim'],
 });
@@ -1360,5 +1378,237 @@ describe('SCIM and single sign-on', () => {
 		});
 		expect(await scimSettings().isEnabled()).toBe(true);
 		expect(await scimSettings().getLastAuthFailure()).toBeNull();
+	});
+});
+
+describe('SCIM and manual invites', () => {
+	const inviteeEmail = 'invitee@example.com';
+
+	const invite = async (user: User = admin) =>
+		await testServer
+			.authAgentFor(user)
+			.post('/invitations')
+			.send([{ email: inviteeEmail, role: 'global:member' }]);
+
+	const invitedUser = async () =>
+		await Container.get(UserRepository).findOne({
+			where: { email: inviteeEmail },
+			relations: ['authIdentities', 'role'],
+		});
+
+	/** Invites through the REST API and returns the user shell. */
+	const inviteShell = async () => {
+		const response = await invite();
+		expect(response.status).toBe(200);
+		const [{ user }] = response.body.data;
+		return user as { id: string; email: string };
+	};
+
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
+	it.each(['saml', 'oidc'] as const)(
+		'creates the invite while %s is on and SCIM is enabled',
+		async (protocol) => {
+			await turnOnSso(protocol);
+
+			const response = await invite();
+
+			expect(response.status).toBe(200);
+			expect(response.body.data).toEqual([
+				expect.objectContaining({
+					user: expect.objectContaining({ email: inviteeEmail, role: 'global:member' }),
+					error: '',
+				}),
+			]);
+			expect(await invitedUser()).toMatchObject({ isPending: true, password: null });
+		},
+	);
+
+	it('returns 400 as on master while SAML is on and SCIM is off', async () => {
+		await Container.get(ScimSettingsService).setEnabled(false);
+
+		const response = await invite();
+
+		expect(response.status).toBe(400);
+		expect(response.body.message).toBe(
+			'SSO is enabled, so users are managed by the Identity Provider and cannot be added through invites',
+		);
+		expect(await invitedUser()).toBeNull();
+	});
+
+	it('returns 400 as on master while LDAP is the authentication method', async () => {
+		await setCurrentAuthenticationMethod('ldap');
+
+		const response = await invite();
+
+		expect(response.status).toBe(400);
+		expect(await invitedUser()).toBeNull();
+	});
+
+	it('returns 400 as on master while the SCIM opt-in is off', async () => {
+		Container.get(ScimConfig).optIn = false;
+
+		const response = await invite();
+
+		expect(response.status).toBe(400);
+		expect(await invitedUser()).toBeNull();
+	});
+
+	it('returns 400 as on master while SAML is not licensed', async () => {
+		testServer.license.disable('feat:saml');
+
+		expect((await invite()).status).toBe(400);
+	});
+
+	describe('through the public API', () => {
+		const publicInvite = async () => {
+			const { apiKey } = await addApiKey(owner, { scopes: ['user:create'] });
+			return await testServer
+				.publicApiAgentWithApiKey(apiKey)
+				.post('/users')
+				.send([{ email: inviteeEmail, role: 'global:member' }]);
+		};
+
+		it('creates the invite while SAML is on and SCIM is enabled', async () => {
+			const response = await publicInvite();
+
+			expect(response.status).toBe(201);
+			expect(response.body).toEqual([
+				expect.objectContaining({
+					user: expect.objectContaining({ email: inviteeEmail }),
+					error: '',
+				}),
+			]);
+			expect(await invitedUser()).toMatchObject({ isPending: true });
+		});
+
+		it('returns 400 while SAML is on and SCIM is off', async () => {
+			await Container.get(ScimSettingsService).setEnabled(false);
+
+			const response = await publicInvite();
+
+			expect(response.status).toBe(400);
+			expect(await invitedUser()).toBeNull();
+		});
+	});
+
+	it('links the invite to the SAML identity when the invitee signs in through SAML', async () => {
+		const shell = await inviteShell();
+		const samlService = Container.get(SamlService);
+		vi.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
+			mapped: {
+				email: inviteeEmail,
+				firstName: 'Ivy',
+				lastName: 'Invitee',
+				userPrincipalName: 'saml-invitee',
+			},
+			raw: {},
+		});
+
+		const result = await samlService.handleSamlLogin({} as express.Request, 'post');
+
+		expect(result.authenticatedUser?.id).toBe(shell.id);
+		expect(result.onboardingRequired).toBe(false);
+		expect(
+			await Container.get(AuthIdentityRepository).findOneBy({
+				providerId: 'saml-invitee',
+				providerType: 'saml',
+			}),
+		).toMatchObject({ userId: shell.id });
+		expect(await invitedUser()).toMatchObject({
+			id: shell.id,
+			firstName: 'Ivy',
+			lastName: 'Invitee',
+			isPending: false,
+			role: { slug: GLOBAL_MEMBER_ROLE.slug },
+		});
+		expect(await Container.get(UserRepository).countBy({ email: inviteeEmail })).toBe(1);
+	});
+
+	describe('with OIDC', () => {
+		const oidcConfig: Omit<OidcConfigDto, 'loginEnabled'> = {
+			clientId: 'scim-test-client',
+			clientSecret: 'scim-test-secret',
+			discoveryEndpoint: 'https://idp.example.com/.well-known/openid-configuration',
+			prompt: 'select_account',
+			authenticationContextClassReference: [],
+			additionalScopes: '',
+			rpInitiatedLogoutEnabled: false,
+		};
+
+		const oidcService = () => Container.get(OidcService);
+
+		beforeEach(async () => {
+			const { Configuration } =
+				await vi.importActual<typeof import('openid-client')>('openid-client');
+			openidClient.discovery.mockResolvedValue(
+				new Configuration(
+					{
+						issuer: 'https://idp.example.com',
+						authorization_endpoint: 'https://idp.example.com/auth',
+						userinfo_endpoint: 'https://idp.example.com/userinfo',
+					},
+					oidcConfig.clientId,
+				),
+			);
+
+			// OIDC can turn on only from the email method.
+			await setCurrentAuthenticationMethod('email');
+			await oidcService().updateConfig({ ...oidcConfig, loginEnabled: true });
+		});
+
+		afterEach(async () => {
+			// From the email method, OIDC turns off without the SCIM cascade, so
+			// no listener runs into the next test.
+			await setCurrentAuthenticationMethod('email');
+			await oidcService().updateConfig({ ...oidcConfig, loginEnabled: false });
+		});
+
+		it('links the invite to the OIDC identity when the invitee signs in through OIDC', async () => {
+			const shell = await inviteShell();
+			const state = oidcService().generateState();
+			const nonce = oidcService().generateNonce();
+			const now = Math.floor(Date.now() / 1000);
+			openidClient.authorizationCodeGrant.mockResolvedValueOnce({
+				access_token: 'access-token',
+				id_token: 'id-token',
+				token_type: 'bearer',
+				claims: () => ({
+					sub: 'oidc-invitee',
+					iss: 'https://idp.example.com',
+					aud: oidcConfig.clientId,
+					iat: now,
+					exp: now + 3600,
+				}),
+				expiresIn: () => 3600,
+			});
+			openidClient.fetchUserInfo.mockResolvedValueOnce({
+				sub: 'oidc-invitee',
+				email: inviteeEmail,
+				email_verified: true,
+			});
+
+			const { user } = await oidcService().loginUser(
+				new URL(`http://localhost:5678/rest/sso/oidc/callback?code=code&state=${state.plaintext}`),
+				state.signed,
+				nonce.signed,
+			);
+
+			expect(user.id).toBe(shell.id);
+			expect(
+				await Container.get(AuthIdentityRepository).findOneBy({
+					providerId: 'oidc-invitee',
+					providerType: 'oidc',
+				}),
+			).toMatchObject({ userId: shell.id });
+			expect(await invitedUser()).toMatchObject({
+				id: shell.id,
+				isPending: false,
+				role: { slug: GLOBAL_MEMBER_ROLE.slug },
+			});
+			expect(await Container.get(UserRepository).countBy({ email: inviteeEmail })).toBe(1);
+		});
 	});
 });

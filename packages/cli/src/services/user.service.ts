@@ -1,5 +1,5 @@
 import type { RoleChangeRequestDto } from '@n8n/api-types';
-import { Logger } from '@n8n/backend-common';
+import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { EventService, UrlService, RoleService, JwtService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type { PublicUser } from '@n8n/db';
@@ -75,6 +75,7 @@ export class UserService {
 		private readonly externalHooks: ExternalHooks,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
+		private readonly moduleRegistry: ModuleRegistry,
 	) {}
 
 	async update(userId: string, data: Partial<User>) {
@@ -519,7 +520,7 @@ export class UserService {
 	async inviteUser(inviter: User, invitations: Invitation[]) {
 		if (invitations.length === 0) return [];
 
-		if (isSsoCurrentAuthenticationMethod()) {
+		if (isSsoCurrentAuthenticationMethod() && !(await this.isScimProvisioningOn())) {
 			this.logger.debug(
 				'SSO is enabled, so users are managed by the Identity Provider and cannot be added through invites',
 			);
@@ -723,6 +724,23 @@ export class UserService {
 		});
 
 		return { success: true };
+	}
+
+	/**
+	 * While SCIM provisioning is on, admins can invite by hand the people that
+	 * the identity provider does not provision. The invitee signs in through
+	 * SAML or OIDC, which links the invite by email. SCIM needs SAML or OIDC,
+	 * so LDAP keeps the block.
+	 *
+	 * Lazy: SCIM is an optional module, so core code has no static dependency
+	 * on it. The SCIM module reads the stored setting, because the
+	 * `/rest/module-settings` snapshot can be stale on another main.
+	 */
+	private async isScimProvisioningOn(): Promise<boolean> {
+		if (!this.moduleRegistry.isActive('scim')) return false;
+
+		const { ScimSsoService } = await import('@/modules/scim/scim-sso.service.js');
+		return await Container.get(ScimSsoService).isProvisioningOn();
 	}
 
 	/** Lazy: these services import `UserService`, so a static import would be a value-import cycle. */

@@ -4,6 +4,7 @@ import { Service } from '@n8n/di';
 
 import { isSamlOrOidcLoginEnabled } from '@/sso.ee/sso-helpers';
 
+import { ScimOptInService } from './scim-opt-in.service';
 import { ScimSettingsService } from './scim-settings.service';
 
 /**
@@ -24,10 +25,25 @@ export class ScimSsoService {
 		private readonly eventService: EventService,
 		private readonly scimSettingsService: ScimSettingsService,
 		private readonly moduleRegistry: ModuleRegistry,
+		private readonly scimOptInService: ScimOptInService,
 	) {}
 
 	isSsoEnabled(): boolean {
 		return isSamlOrOidcLoginEnabled();
+	}
+
+	/**
+	 * Tells if SCIM provisioning is on. It is on while SAML or OIDC single
+	 * sign-on is on, an admin enabled SCIM and the opt-in is on. On these
+	 * conditions, the `/scim/v2` routes accept requests from the identity
+	 * provider. Core code reads this value to change its behaviour for SCIM,
+	 * for example to allow manual invites.
+	 */
+	async isProvisioningOn(): Promise<boolean> {
+		if (!this.isSsoEnabled()) return false;
+		if (!(await this.scimSettingsService.isEnabled())) return false;
+
+		return (await this.scimOptInService.evaluate()).available;
 	}
 
 	/**
