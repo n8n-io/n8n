@@ -49,6 +49,7 @@ import type {
 	ITaskData,
 	IWebhookData,
 	IWorkflowExecuteAdditionalData,
+	IWorkflowExecutionDataProcess,
 	CredentialCheckResult,
 	IRun,
 	IExecuteResponsePromiseData,
@@ -1784,6 +1785,45 @@ describe('executeWebhook credential-status gate', () => {
 
 		afterEach(() => {
 			executionsConfig.mode = 'regular';
+		});
+
+		it.each<NonNullable<IWorkflowExecutionDataProcess['mcpToolCall']>>([
+			{ toolName: 'search', arguments: {} },
+			{
+				toolName: 'search',
+				arguments: { query: 'example', filters: { enabled: true }, tags: ['docs'] },
+				sourceNodeName: 'Search Tool',
+			},
+		])('forwards the MCP tool-call payload unchanged: %j', async (mcpToolCall) => {
+			await runGate({
+				authentication: 'none',
+				startNodeType: MCP_TRIGGER_NODE_TYPE,
+				webhookResult: { workflowData: [[{ json: { mcpToolCall } }]] },
+			});
+
+			expect(workflowRunner.run).toHaveBeenCalledOnce();
+			const [runData] = workflowRunner.run.mock.calls[0];
+			expect(runData.mcpToolCall).toBe(mcpToolCall);
+		});
+
+		it.each([
+			undefined,
+			null,
+			'search',
+			{},
+			{ toolName: 42, arguments: {} },
+			{ toolName: 'search' },
+			{ toolName: 'search', arguments: 'query' },
+		])('does not forward an invalid MCP tool-call payload: %j', async (mcpToolCall) => {
+			await runGate({
+				authentication: 'none',
+				startNodeType: MCP_TRIGGER_NODE_TYPE,
+				webhookResult: { workflowData: [[{ json: { mcpToolCall } }]] },
+			});
+
+			expect(workflowRunner.run).toHaveBeenCalledOnce();
+			const [runData] = workflowRunner.run.mock.calls[0];
+			expect(runData.mcpToolCall).toBeUndefined();
 		});
 
 		it('marks an MCP Trigger run as awaited to completion, since the worker relays the MCP response', async () => {
