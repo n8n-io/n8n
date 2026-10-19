@@ -5,6 +5,7 @@ summary: Cancel a test run
 description: Cancel a running evaluation test run of a workflow. Requires the `workflow:execute` project scope in addition to the `testRun:cancel` API key scope.
 x-required-scope: testRun:cancel
 parameters:
+  - $ref: ../../../../shared/spec/parameters/idempotencyKey.yml
   - schema:
       type: string
     required: true
@@ -35,6 +36,8 @@ responses:
           required:
             - id
             - status
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
   '401':
     $ref: ../../../../shared/spec/responses/unauthorized.yml
   '403':
@@ -43,3 +46,5 @@ responses:
     $ref: ../../../../shared/spec/responses/notFound.yml
   '409':
     $ref: ../../../../shared/spec/responses/conflict.yml
+  '422':
+    $ref: ../../../../shared/spec/responses/unprocessableEntity.yml

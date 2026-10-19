@@ -1,12 +1,7 @@
 import type { AuthenticatedRequest, TokenGrant } from '@n8n/db';
 import { UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import {
-	AuthenticationPipeline,
-	AuthenticationService,
-	extractBearer,
-	inboundFrom,
-} from '@n8n/inbound-auth';
+import { extractBearer, inboundFrom, inboundRequestOf, ResourceAdmission } from '@n8n/inbound-auth';
 import {
 	getApiKeyScopesForRole,
 	isApiKeyScope,
@@ -14,7 +9,7 @@ import {
 	type Scope,
 } from '@n8n/permissions';
 
-import type { AuthStrategy } from '@/services/auth-strategy.types';
+import type { AuthStrategy } from '@n8n/backend-services/auth';
 import { JwtService } from '@n8n/backend-services';
 
 import { PublicApiProtectedResource } from './public-api-protected-resource';
@@ -31,8 +26,7 @@ const isApiKeyScopeName = (scope: string): scope is ApiKeyScope =>
 export class PublicApiOAuthStrategy implements AuthStrategy {
 	constructor(
 		private readonly resource: PublicApiProtectedResource,
-		private readonly pipeline: AuthenticationPipeline,
-		private readonly authenticationService: AuthenticationService,
+		private readonly admission: ResourceAdmission,
 		private readonly jwtService: JwtService,
 		private readonly userRepository: UserRepository,
 	) {}
@@ -52,29 +46,19 @@ export class PublicApiOAuthStrategy implements AuthStrategy {
 			return null;
 		}
 
-		const inbound = inboundFrom(this.resource, {
-			method: req.method,
-			url: req.originalUrl,
-			headers: req.headers,
-			ip: req.ip ?? '',
-		});
-		const extracted = extractBearer(inbound);
+		// Routing, not verification: a bearer another strategy owns is left to it.
+		const extracted = extractBearer(inboundFrom(this.resource, inboundRequestOf(req)));
 		if (!extracted.ok || !this.isOAuthIssuer(extracted.value.credential.token)) {
 			return null;
 		}
 
-		const result = await this.pipeline.run(extracted.value);
-		if (!result.ok) {
-			const { challenges } = await this.authenticationService.advertise(inbound);
-
-			req.res?.setHeader(
-				'WWW-Authenticate',
-				`${challenges[0] ?? 'Bearer'}, error="invalid_token", error_description="${result.reason}"`,
-			);
+		const admitted = await this.admission.admit(this.resource, extracted.value);
+		if (!admitted.ok) {
+			req.res?.setHeader('WWW-Authenticate', await this.admission.challenge(admitted));
 			return false;
 		}
 
-		const user = await this.userRepository.findByIdWithRole(result.value.subject.id);
+		const user = await this.userRepository.findByIdWithRole(admitted.context.subject.id);
 		if (!user) {
 			return false;
 		}
@@ -82,7 +66,7 @@ export class PublicApiOAuthStrategy implements AuthStrategy {
 		// Only API key scopes narrow the grant. An external IdP's own scopes (`openid`, ...) are
 		// ignored, so its users keep the role set until a source can map scopes itself.
 		const roleScopes = getApiKeyScopesForRole(user);
-		const requested = (result.value.tokenScopes ?? []).filter(isApiKeyScopeName);
+		const requested = (admitted.context.tokenScopes ?? []).filter(isApiKeyScopeName);
 		req.user = user;
 		req.tokenGrant = {
 			scopes: user.role.scopes.map((scope) => scope.slug),
@@ -91,7 +75,7 @@ export class PublicApiOAuthStrategy implements AuthStrategy {
 			subject: user,
 		};
 		req.ctx = {
-			security: result.value,
+			security: admitted.context,
 		};
 		return true;
 	}

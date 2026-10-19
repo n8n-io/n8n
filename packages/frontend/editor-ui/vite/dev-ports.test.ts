@@ -66,7 +66,7 @@ describe('devServerPlugin', () => {
 	it('binds the editor port and proxies backend routes to N8N_PORT', () => {
 		expect(runConfigHook({ N8N_PORT: '5699', N8N_EDITOR_PORT: '8082' }, DEV)).toEqual({
 			server: {
-				host: '0.0.0.0',
+				host: true,
 				port: 8082,
 				strictPort: true,
 				proxy: { [BACKEND_PROXY_PATTERN]: { target: 'http://localhost:5699', ws: true } },

@@ -4,6 +4,8 @@ tags:
 summary: Create a custom role
 description: Creates a custom role. Set `roleType` to `global` for an instance-wide role or `project` for a project role.
 x-required-scope: role:manage,role:manageProject
+parameters:
+  - $ref: ../../../../shared/spec/parameters/idempotencyKey.yml
 requestBody:
   required: true
   content:
@@ -44,5 +46,9 @@ responses:
     $ref: ../../../../shared/spec/responses/unauthorized.yml
   '403':
     $ref: ../../../../shared/spec/responses/forbidden.yml
+  '409':
+    $ref: ../../../../shared/spec/responses/conflict.yml
   '415':
     $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml
+  '422':
+    $ref: ../../../../shared/spec/responses/unprocessableEntity.yml

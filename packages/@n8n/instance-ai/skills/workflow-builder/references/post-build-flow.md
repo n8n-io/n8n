@@ -28,10 +28,9 @@ in context for a one-off build, the one-off flow wins.
 These instructions are in English, but user-visible text you write while
 following them stays in the user's conversation language.
 
-For trigger `inputData` shapes, read
-`${N8N_WORKSPACE_DIR}/knowledge-base/reference/trigger-input-data-shapes.md` in
-the sandbox workspace when available, or load the `trigger-input-data-shapes`
-reference.
+For trigger `inputData` shapes, read the workspace file
+`knowledge-base/reference/trigger-input-data-shapes.md` when a sandbox
+workspace is available, or load the `trigger-input-data-shapes` reference.
 
 ## Setup panel
 

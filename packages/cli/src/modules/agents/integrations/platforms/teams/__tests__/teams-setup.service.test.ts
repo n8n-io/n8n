@@ -1,5 +1,7 @@
 import { mock } from 'vitest-mock-extended';
 import { unzipSync } from 'fflate';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import type { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import type { InstanceSettings } from 'n8n-core';
@@ -8,7 +10,7 @@ import { JwtService, type UrlService } from '@n8n/backend-services';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 
-import type { Agent } from '../../../../entities/agent.entity';
+import type { Agent, ProjectAgent } from '../../../../entities/agent.entity';
 import { AgentCredentialLookupService } from '../../../agent-credential-lookup.service';
 import type { AgentRepository } from '../../../../repositories/agent.repository';
 import { TeamsArmTemplateService } from '../teams-arm-template.service';
@@ -37,19 +39,19 @@ describe('TeamsSetupService', () => {
 	let service: TeamsSetupService;
 
 	/**
-	 * `integrations` is assigned rather than passed to `mock`, which proxies
-	 * nested objects: the integration's `settings` would come back as mock
-	 * functions, so an absent `displayName` would read as present.
+	 * `integrations` and `schema` are assigned rather than passed to `mock`,
+	 * which proxies nested objects: the integration's `settings` would come back
+	 * as mock functions, so an absent `displayName` would read as present.
 	 */
-	const agentWith = (integrations: Agent['integrations']) =>
+	const agentWith = (integrations: Agent['integrations'], schema: Agent['schema'] = null) =>
 		Object.assign(
-			mock<Agent>({
+			mock<ProjectAgent>({
 				id: AGENT_ID,
 				projectId: PROJECT_ID,
 				name: 'Support Bot',
 				updatedAt: new Date('2026-09-15T10:00:00.000Z'),
 			}),
-			{ integrations },
+			{ integrations, schema },
 		);
 
 	const connectTeamsCredential = (type = 'microsoftEntraServicePrincipalApi') => {
@@ -263,6 +265,23 @@ describe('TeamsSetupService', () => {
 			expect((await service.getSetupState(user, scope)).appOutdated).toBe(false);
 		});
 
+		// The package carries the agent's accent colour, which the check does not draw.
+		it("matches an app drawn with the agent's own icon", async () => {
+			connectTeamsCredential();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(
+				agentWith([{ type: 'teams', credentialId: CREDENTIAL_ID, settings: {} }], {
+					personalisation: {
+						icon: 'heart',
+						gradient: { from: '#2563EB', to: '#7C3AED', angle: 135, fromStop: 0, toStop: 100 },
+					},
+				} as Agent['schema']),
+			);
+			const { fingerprint } = await service.buildPackage(user, scope);
+			recorded(fingerprint);
+
+			expect((await service.getSetupState(user, scope)).appOutdated).toBe(false);
+		});
+
 		it('flags an agent renamed since then', async () => {
 			connectTeamsCredential();
 			const { fingerprint } = await service.buildPackage(user, scope);
@@ -297,7 +316,7 @@ describe('TeamsSetupService', () => {
 	describe('a credential another agent already uses', () => {
 		const claimedByOtherAgent = () => {
 			agentRepository.findByIntegrationCredentialAnyProject.mockResolvedValue([
-				mock<Agent>({ name: 'Sales Bot' }),
+				mock<ProjectAgent>({ name: 'Sales Bot' }),
 			]);
 		};
 
@@ -503,6 +522,47 @@ describe('TeamsSetupService', () => {
 			// The agent's own timestamp does not move when unsaved settings change,
 			// and Teams ignores a package whose version it has already seen.
 			expect(chosen).not.toBe(stored);
+		});
+
+		describe('app icons', () => {
+			const bundled = (name: string) => readFileSync(join(__dirname, '..', 'assets', name));
+			const packageFor = async (icon: string) => {
+				connectTeamsCredential();
+				agentRepository.findByIdAndProjectId.mockResolvedValue(
+					agentWith([{ type: 'teams', credentialId: CREDENTIAL_ID, settings: {} }], {
+						name: 'Support Bot',
+						model: 'anthropic/claude-sonnet-4-5',
+						instructions: '',
+						personalisation: {
+							icon,
+							gradient: { from: '#2563EB', to: '#2563EB', angle: 90, fromStop: 0, toStop: 100 },
+						},
+					}),
+				);
+				const { archive } = await service.buildPackage(user, {
+					projectId: PROJECT_ID,
+					agentId: AGENT_ID,
+				});
+				return unzipSync(archive);
+			};
+
+			it("draws the agent's icon and colour into the package", async () => {
+				const entries = await packageFor('heart');
+				const manifest = JSON.parse(Buffer.from(entries['manifest.json']).toString('utf8'));
+
+				expect(Buffer.from(entries['color.png']).equals(bundled('color.png'))).toBe(false);
+				expect(Buffer.from(entries['outline.png']).equals(bundled('outline.png'))).toBe(false);
+				expect(manifest.accentColor).toBe('#2563EB');
+			});
+
+			it('keeps the n8n icons for an icon name Lucide does not have', async () => {
+				const entries = await packageFor('not-a-lucide-icon');
+				const manifest = JSON.parse(Buffer.from(entries['manifest.json']).toString('utf8'));
+
+				expect(Buffer.from(entries['color.png']).equals(bundled('color.png'))).toBe(true);
+				expect(Buffer.from(entries['outline.png']).equals(bundled('outline.png'))).toBe(true);
+				expect(manifest.accentColor).toBe('#EA4B71');
+			});
 		});
 
 		it('falls back to the stored settings when none are given', async () => {

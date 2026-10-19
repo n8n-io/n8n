@@ -42,6 +42,8 @@ import {
 	createEnvProviderState,
 	applyDynamicCredentialsUsage,
 	takeAttachedDynamicCredentialsUsage,
+	escalateSubWorkflowRedaction,
+	takeAttachedSubWorkflowRedaction,
 	shouldRedactConsoleOutput,
 	CONSOLE_OUTPUT_REDACTED_MESSAGE,
 } from 'n8n-workflow';
@@ -196,6 +198,11 @@ export class BaseExecuteContext extends NodeExecutionContext {
 			// still inherits the flags.
 			const usage = takeAttachedDynamicCredentialsUsage(error);
 			if (usage) applyDynamicCredentialsUsage(this.additionalData, usage);
+			// A failed sub-workflow may have produced output before it failed.
+			escalateSubWorkflowRedaction(
+				this.runExecutionData.executionData?.runtimeData,
+				takeAttachedSubWorkflowRedaction(error),
+			);
 			throw error;
 		}
 
@@ -203,6 +210,12 @@ export class BaseExecuteContext extends NodeExecutionContext {
 		// usage onto this parent node so its task inherits the flag and redaction covers the
 		// embedded output.
 		applyDynamicCredentialsUsage(this.additionalData, result);
+		// This execution keeps a copy of the sub-workflow's output, so it redacts at least
+		// the channels the sub-workflow redacts.
+		escalateSubWorkflowRedaction(
+			this.runExecutionData.executionData?.runtimeData,
+			result.subWorkflowRedaction,
+		);
 
 		// If a sub-workflow execution goes into the waiting state
 		if (result.waitTill) {
@@ -380,10 +393,12 @@ export class BaseExecuteContext extends NodeExecutionContext {
 	 */
 	isConsoleOutputRedacted(): boolean {
 		try {
+			const runtimeData = this.runExecutionData.executionData?.runtimeData;
 			return shouldRedactConsoleOutput(
-				this.runExecutionData.executionData?.runtimeData?.redaction,
+				runtimeData?.redaction,
 				this.workflow.settings,
 				this.mode,
+				runtimeData?.subWorkflowRedaction,
 			);
 		} catch {
 			return true;

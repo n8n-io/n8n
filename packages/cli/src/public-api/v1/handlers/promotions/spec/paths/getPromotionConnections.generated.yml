@@ -56,6 +56,9 @@ responses:
                       remoteUrl:
                         type: string
                         minLength: 1
+                      repositoryPath:
+                        type: string
+                        description: The stored repository path of a GitLab target. URL-encode it before you use it as repositoryId to list branches. Requests do not accept it.
                     required:
                       - schemaVersion
                       - remoteUrl

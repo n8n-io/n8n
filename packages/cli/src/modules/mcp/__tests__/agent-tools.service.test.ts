@@ -30,6 +30,8 @@ vi.mock('@/modules/agents/json-config/mcp-client-factory', () => ({
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ConflictError } from '@n8n/errors';
+
+import { SkillNameTakenError } from '@/modules/agents/skills/skill-name-taken.error';
 import { AgentConfigPreparationService } from '@/modules/agents/agent-config-preparation.service';
 import { AgentConfigService } from '@/modules/agents/agent-config.service';
 import { AgentCustomToolsService } from '@/modules/agents/agent-custom-tools.service';
@@ -51,7 +53,7 @@ import {
 import { AgentValidationService } from '@/modules/agents/agent-validation.service';
 import { AgentsService } from '@/modules/agents/agents.service';
 import { AttachableWorkflowsService } from '@/modules/agents/attachable-workflows.service';
-import type { Agent } from '@/modules/agents/entities/agent.entity';
+import type { ProjectAgent } from '@/modules/agents/entities/agent.entity';
 import { SlackManagedSetupService } from '@/modules/agents/integrations/platforms/slack/slack-managed-setup.service';
 import { SlackManualSetupService } from '@/modules/agents/integrations/platforms/slack/slack-manual-setup.service';
 import type { NodeToolAiGatewayService } from '@/modules/agents/json-config/node-tool-ai-gateway.service';
@@ -117,7 +119,7 @@ const approvalSuspension = (
 	resumeSchema: standardApprovalResumeSchema,
 });
 
-const agentEntity = (overrides: Record<string, unknown> = {}): Agent =>
+const agentEntity = (overrides: Record<string, unknown> = {}): ProjectAgent =>
 	({
 		id: 'agent-1',
 		name: 'My Agent',
@@ -130,7 +132,7 @@ const agentEntity = (overrides: Record<string, unknown> = {}): Agent =>
 		schema: baseConfig,
 		integrations: [],
 		...overrides,
-	}) as unknown as Agent;
+	}) as unknown as ProjectAgent;
 
 describe('McpAgentToolsService', () => {
 	// One fake skill refs seam for the MCP service and the services it writes through.
@@ -224,7 +226,7 @@ describe('McpAgentToolsService', () => {
 		return await tool.handler(input, { signal });
 	};
 
-	const useRealCustomToolPersistence = (agent: Agent) => {
+	const useRealCustomToolPersistence = (agent: ProjectAgent) => {
 		const agentRepository = mock<AgentRepository>();
 		const runtimeCacheService = mock<AgentRuntimeCacheService>();
 		const lifecycleTelemetry = mock<Telemetry>();
@@ -722,6 +724,26 @@ describe('McpAgentToolsService', () => {
 			expect(result.structuredContent).toMatchObject({
 				ok: true,
 				resource: { type: 'skill', id: 'skill-1' },
+			});
+		});
+
+		it('names a taken skill name instead of reporting a stale config', async () => {
+			agentSkillsService.createAndAttachSkill.mockRejectedValue(new SkillNameTakenError('Skill'));
+			// Another edit changed the agent while the rejected create ran.
+			const latestConfig = { ...composedConfig, instructions: 'Newer work' };
+			agentConfigService.getConfig.mockResolvedValue(latestConfig);
+
+			const result = await callTool(
+				'mutate_agent',
+				mutateInput({ type: 'skill.upsert', skill: { name: 'Skill', body: 'do it' } }),
+			);
+
+			expect(result.structuredContent).toMatchObject({
+				ok: false,
+				code: 'skill_name_taken',
+				agentId: 'agent-1',
+				configHash: getAgentConfigHash(latestConfig),
+				message: expect.stringContaining('The skill name "Skill" is taken'),
 			});
 		});
 

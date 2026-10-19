@@ -8,7 +8,10 @@ import {
 	CreatePromotionProviderDto,
 	ListPromotionConnectionsQueryDto,
 	ListPromotionProvidersQueryDto,
+	ListPromotionRepositoriesQueryDto,
+	ListPromotionBranchesQueryDto,
 	MAX_ITEMS_PER_PAGE,
+	MAX_PROMOTION_DISCOVERY_ITEMS_PER_PAGE,
 	PromotePackageDto,
 	PromotePackageResultDto,
 	PromoteSelectionRequestDto,
@@ -24,6 +27,8 @@ import {
 	PromotionProviderListPublicDto,
 	PromotionProviderPublicDto,
 	PromotionPromoteConfigPublicDto,
+	PromotionRepositoryListPublicDto,
+	PromotionBranchListPublicDto,
 	UpdatePromotionConnectionDto,
 	UpdatePromotionProviderDto,
 	UpsertPromotionApplyConfigDto,
@@ -33,6 +38,7 @@ import {
 	promotionDirectionParamSchema,
 	promotionDirectionSchema,
 	promotionProviderIdParamSchema,
+	promotionRepositoryIdParamSchema,
 	type PromotionDirection,
 } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
@@ -189,6 +195,70 @@ export class PromotionsPublicController {
 		await (await this.providersService()).delete(promotionProviderId);
 	}
 
+	@Get('/providers/:promotionProviderId/repositories')
+	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
+	@ApiKeyScope('gitConnection:discover')
+	@GlobalScope('gitConnection:discover')
+	@ApiSummary('List repositories of a promotion provider')
+	@ApiDescription(
+		'Lists repositories where the GitLab token identity has at least the Developer role. The token also needs Git write scope for promotions. Protected branches can restrict pushes. Use remoteUrl as a connection target. Search matches names and namespaces in similarity order. Unfiltered results use ascending repository ID order. The limit is an upper bound. GitLab returns at most 100 items per page. Follow nextCursor even when a page has fewer items than the requested limit. A saved connection is not required. Invalid credentials return an error, not an empty list. If a response is too large, restart the list with a smaller limit and no cursor.',
+	)
+	@ApiTags(tags)
+	@ApiResponse(200, PromotionRepositoryListPublicDto)
+	@ApiErrorResponse(404)
+	@ApiErrorResponse(503)
+	async getPromotionProviderRepositories(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('promotionProviderId', promotionProviderIdParamSchema) promotionProviderId: string,
+		@Query query: ListPromotionRepositoriesQueryDto,
+	): Promise<PromotionRepositoryListPublicDto> {
+		const { offset, limit } = this.resolveDiscoveryPage(query);
+		const { data, hasNextPage } = await (await this.providersService()).listRepositories(
+			promotionProviderId,
+			{ offset, limit, search: query.search },
+		);
+		return {
+			data,
+			nextCursor: hasNextPage
+				? encodeNextCursor({ offset, limit, numberOfTotalRecords: offset + limit + 1 })
+				: null,
+		};
+	}
+
+	@Get('/providers/:promotionProviderId/repositories/:repositoryId/branches')
+	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
+	@ApiKeyScope('gitConnection:discover')
+	@GlobalScope('gitConnection:discover')
+	@ApiSummary('List branches of a promotion repository')
+	@ApiDescription(
+		'Lists branches of the selected GitLab repository and identifies its default branch. Pass the URL-encoded fullPath from repository discovery, or the repositoryPath of a saved GitLab connection, as repositoryId. GitLab project IDs are also accepted, but connections do not store them. Supports branch search and cursor pagination. The limit is an upper bound. GitLab returns at most 100 items per page. Follow nextCursor even when a page has fewer items than the requested limit. A saved connection is not required. Invalid credentials and inaccessible repositories return errors, not empty lists. If a response is too large, restart the list with a smaller limit and no cursor.',
+	)
+	@ApiTags(tags)
+	@ApiResponse(200, PromotionBranchListPublicDto)
+	@ApiErrorResponse(404)
+	@ApiErrorResponse(503)
+	async getPromotionProviderRepositoryBranches(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('promotionProviderId', promotionProviderIdParamSchema) promotionProviderId: string,
+		@Param('repositoryId', promotionRepositoryIdParamSchema) repositoryId: string,
+		@Query query: ListPromotionBranchesQueryDto,
+	): Promise<PromotionBranchListPublicDto> {
+		const { offset, limit } = this.resolveDiscoveryPage(query);
+		const { data, hasNextPage } = await (await this.providersService()).listBranches(
+			promotionProviderId,
+			repositoryId,
+			{ offset, limit, search: query.search },
+		);
+		return {
+			data,
+			nextCursor: hasNextPage
+				? encodeNextCursor({ offset, limit, numberOfTotalRecords: offset + limit + 1 })
+				: null,
+		};
+	}
+
 	// -- Connections ---------------------------------------------------------
 
 	@Post('/connections')
@@ -197,7 +267,7 @@ export class PromotionsPublicController {
 	@GlobalScope('gitConnection:create')
 	@ApiSummary('Create a promotion connection')
 	@ApiDescription(
-		'Creates a connection on an existing provider, with up to one initial configuration for each direction. Only one instance connection can exist.',
+		'Creates a connection on an existing provider, with up to one initial configuration for each direction. A GitLab target URL must belong to the saved provider. The connection stores only the repository path and derives remoteUrl from the current provider base URL. Plain Git connections keep the full remote URL. Only one instance connection can exist.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(201, PromotionConnectionPublicDto)
@@ -265,11 +335,12 @@ export class PromotionsPublicController {
 	@GlobalScope('gitConnection:update')
 	@ApiSummary('Update a promotion connection')
 	@ApiDescription(
-		'Updates the name, target, or provider. Scope cannot change, and configurations have their own routes.',
+		'Updates the name, target, or provider. A target replaces the whole saved target. GitLab connections store a repository path and derive remoteUrl from the provider. Plain Git connections keep the full remote URL. If the provider changes during a target or provider update, the update returns 409. Reload the connection and try again. Scope cannot change, and configurations have their own routes.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, PromotionConnectionPublicDto)
 	@ApiErrorResponse(404)
+	@ApiErrorResponse(409)
 	@ApiErrorResponse(503)
 	async updatePromotionConnection(
 		_req: AuthenticatedRequest,
@@ -761,6 +832,20 @@ export class PromotionsPublicController {
 			throw new BadRequestError('An invalid cursor was provided');
 		}
 		return { offset: page.offset, limit: Math.min(page.limit, MAX_ITEMS_PER_PAGE) };
+	}
+
+	private resolveDiscoveryPage(query: { cursor?: string; limit: number }) {
+		const page = this.resolvePage(query);
+		const limit = Math.min(page.limit, MAX_PROMOTION_DISCOVERY_ITEMS_PER_PAGE);
+		// GitLab uses page numbers, so the offset must start a complete page.
+		if (
+			!Number.isSafeInteger(page.offset) ||
+			(query.cursor && page.limit > MAX_PROMOTION_DISCOVERY_ITEMS_PER_PAGE) ||
+			page.offset % limit !== 0
+		) {
+			throw new BadRequestError('An invalid cursor was provided');
+		}
+		return { offset: page.offset, limit };
 	}
 }
 

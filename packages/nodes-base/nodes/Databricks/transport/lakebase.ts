@@ -4,6 +4,7 @@ import { sleep } from '@n8n/utils/sleep';
 import type { IExecuteFunctions, IHttpRequestOptions, JsonObject } from 'n8n-workflow';
 import { NodeApiError, NodeError, NodeOperationError } from 'n8n-workflow';
 
+import { makeLakebaseErrorLegible } from './lakebaseErrors';
 import {
 	databricksApiRequest,
 	getActiveCredentialType,
@@ -15,7 +16,8 @@ import {
 // to take more than 1 s.
 const SCHEMA_CACHE_RETRY_DELAY_MS = 1_000;
 
-function errorBody(error: unknown): Record<string, unknown> | undefined {
+/** The JSON body of a failed Data API call, which carries the PostgREST or Postgres code */
+export function lakebaseErrorBody(error: unknown): Record<string, unknown> | undefined {
 	return error instanceof NodeApiError && isRecord(error.context.data)
 		? error.context.data
 		: undefined;
@@ -35,18 +37,14 @@ function isExpiredToken(error: unknown, body: Record<string, unknown> | undefine
 	return /expired/i.test(text) && /jwt|token/i.test(text);
 }
 
-const OPENAPI_SETTING_PATH =
-	'In Databricks open the project, then Data API > API > Advanced settings, and enable OpenAPI specification.';
-
 /**
- * A dropdown shows only an error's message, so a raw PostgREST code leaves the user
- * with nothing to act on. Mutates rather than re-wraps, because only a NodeApiError
- * carries its description as far as the dropdown.
+ * A dropdown shows only an error's message, so the hint `lakebaseApiRequest` already
+ * attached is not visible there. Mutates rather than re-wraps, because only a
+ * NodeApiError carries its description as far as the dropdown.
  */
 export function explainLakebaseSchemaError(error: unknown, openApiMessage: string): never {
-	if (error instanceof NodeApiError && errorBody(error)?.code === 'PGRST205') {
+	if (error instanceof NodeApiError && lakebaseErrorBody(error)?.code === 'PGRST205') {
 		error.message = openApiMessage;
-		error.description = OPENAPI_SETTING_PATH;
 		throw error;
 	}
 
@@ -85,7 +83,7 @@ export async function lakebaseApiRequest(
 				oauth2: { skipRefreshWhileTokenIsFresh: true },
 			});
 		} catch (error) {
-			const body = errorBody(error);
+			const body = lakebaseErrorBody(error);
 			// Core refreshes only on the credential's tokenExpiredStatusCode (403);
 			// Lakebase signals expiry with 400 or 401.
 			if (!refreshed && isExpiredToken(error, body)) {
@@ -106,6 +104,7 @@ export async function lakebaseApiRequest(
 				await sleep(SCHEMA_CACHE_RETRY_DELAY_MS, abortSignal);
 				continue;
 			}
+			makeLakebaseErrorLegible(error, options);
 			throw error;
 		}
 	}

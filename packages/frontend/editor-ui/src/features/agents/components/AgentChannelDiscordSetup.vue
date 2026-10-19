@@ -121,6 +121,7 @@ defineExpose({ credentialId, validationError: null });
 						<N8nCopyInput
 							id="discord-interactions-url"
 							:value="interactionsUrl"
+							:label="i18n.baseText('agents.builder.addTrigger.discord.interactionsUrl.label')"
 							size="large"
 							:class="$style.urlInput"
 							:copy-label="i18n.baseText('agents.builder.addTrigger.copy')"
@@ -174,6 +175,7 @@ defineExpose({ credentialId, validationError: null });
 				<N8nCopyInput
 					id="discord-interactions-url"
 					:value="interactionsUrl"
+					:label="i18n.baseText('agents.builder.addTrigger.discord.interactionsUrl.label')"
 					size="small"
 					:class="$style.urlInput"
 					:copy-label="i18n.baseText('agents.builder.addTrigger.copy')"
