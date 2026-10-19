@@ -389,9 +389,9 @@ const treeResizer = useResizablePanel({
 					>
 						{{ submitBlockedReason }}
 						<template v-if="showBlockersTab" #trailingContent>
-							<N8nLink size="small" @click="activeTab = 'blockers'">
+							<N8nButton variant="outline" size="small" @click="activeTab = 'blockers'">
 								{{ i18n.baseText('promotions.preview.card.viewBlockers') }}
-							</N8nLink>
+							</N8nButton>
 						</template>
 					</N8nCallout>
 					<N8nCallout v-if="refreshFailed" theme="warning" slim>
