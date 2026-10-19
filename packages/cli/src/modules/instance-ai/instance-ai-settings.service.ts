@@ -18,7 +18,6 @@ import type {
 	InstanceAiUserPreferencesUpdateRequest,
 	InstanceAiProviderConnection,
 	InstanceAiPermissions,
-	McpToolPermissions,
 	InstanceAiSandboxProvider,
 	InstanceAiSetupState,
 } from '@n8n/api-types';
@@ -1249,15 +1248,6 @@ export class InstanceAiSettingsService {
 		return { ...this.permissions };
 	}
 
-	getMcpToolPermissions(): McpToolPermissions {
-		return {
-			categories: {
-				read: this.permissions.mcpRead,
-				write: this.permissions.mcpWrite,
-			},
-		};
-	}
-
 	/** Whether users may connect the n8n Assistant to MCP servers from the registry. */
 	isMcpAccessEnabled(): boolean {
 		return this.mcpAccessEnabled;
@@ -1858,9 +1848,7 @@ export class InstanceAiSettingsService {
 			this.eventService.emit('instance-ai-settings-updated', {
 				mcpSettingsChanged:
 					current.mcpServers !== previous.mcpServers ||
-					current.mcpAccessEnabled !== previous.mcpAccessEnabled ||
-					current.permissions?.mcpRead !== previous.permissions?.mcpRead ||
-					current.permissions?.mcpWrite !== previous.permissions?.mcpWrite,
+					current.mcpAccessEnabled !== previous.mcpAccessEnabled,
 				credentialSelections,
 			});
 		} catch (error) {

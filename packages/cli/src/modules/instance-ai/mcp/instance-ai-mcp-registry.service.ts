@@ -1,11 +1,12 @@
 import { type BuiltTool, McpClient } from '@n8n/agents';
 import { classifyMcpTool } from '@n8n/ai-utilities/agent-config';
-import type {
-	InstanceAiMcpConnectionFailureReason,
-	InstanceAiMcpConnectionToolResponse,
-	InstanceAiMcpConnectionToolsResponse,
-	InstanceAiMcpCreateConnectionRequestDto,
-	InstanceAiMcpUpdateConnectionRequestDto,
+import {
+	DEFAULT_MCP_TOOL_PERMISSIONS,
+	type InstanceAiMcpConnectionFailureReason,
+	type InstanceAiMcpConnectionToolResponse,
+	type InstanceAiMcpConnectionToolsResponse,
+	type InstanceAiMcpCreateConnectionRequestDto,
+	type InstanceAiMcpUpdateConnectionRequestDto,
 } from '@n8n/api-types';
 import { isObjectLiteral, Logger } from '@n8n/backend-common';
 import type { CustomFetch } from '@n8n/backend-network';
@@ -33,7 +34,6 @@ import { OauthService } from '@/oauth/oauth.service';
 import { createAiMcpFetch } from '@/utils/ai-proxy-fetch';
 
 import type { InstanceAiMcpRegistryConnection } from '../entities/instance-ai-mcp-registry-connection.entity';
-import { InstanceAiSettingsService } from '../instance-ai-settings.service';
 import { InstanceAiMcpRegistryConnectionRepository } from '../repositories/instance-ai-mcp-registry-connection.repository';
 
 interface ResolvedRegistryServer {
@@ -95,7 +95,6 @@ export class InstanceAiMcpRegistryService {
 		private readonly oauthService: OauthService,
 		private readonly eventService: EventService,
 		private readonly outboundHttp: OutboundHttp,
-		private readonly instanceAiSettingsService: InstanceAiSettingsService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 	}
@@ -155,8 +154,7 @@ export class InstanceAiMcpRegistryService {
 			userId: user.id,
 			serverSlug: input.serverSlug,
 			credentialId: input.credentialId,
-			toolPermissions:
-				input.toolPermissions ?? this.instanceAiSettingsService.getMcpToolPermissions(),
+			toolPermissions: input.toolPermissions ?? structuredClone(DEFAULT_MCP_TOOL_PERMISSIONS),
 		});
 
 		try {
