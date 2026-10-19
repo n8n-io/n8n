@@ -1,8 +1,9 @@
 import { CredentialsFinderService, EventService } from '@n8n/backend-services';
 import type { CredentialsEntity, User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { NotFoundError } from '@n8n/errors';
+import { NotFoundError, UnprocessableRequestError } from '@n8n/errors';
 import { isRecord } from '@n8n/utils/is-record';
+import { CredentialDataError } from 'n8n-core';
 import { UnexpectedError, type ICredentialDataDecryptedObject } from 'n8n-workflow';
 
 import { CredentialDescriptionsService } from '@/credentials/credential-descriptions.service';
@@ -153,7 +154,7 @@ export class CredentialImporter {
 			candidates.push(candidate);
 
 			const differs = credentialDiffers(
-				{ name: destination.name, data: await this.credentialsService.decrypt(destination, true) },
+				{ name: destination.name, data: await this.readStoredData(destination) },
 				packageCredential,
 			);
 			if (differs) updates.push(candidate);
@@ -341,7 +342,7 @@ export class CredentialImporter {
 		});
 		if (!credential) throw credentialNotFound(update);
 
-		const stored = await this.credentialsService.decrypt(credential, true);
+		const stored = await this.readStoredData(credential);
 		if (!credentialDiffers({ name: credential.name, data: stored }, update)) return null;
 
 		const merged = mergeIntoStored(stored, update.data ?? {});
@@ -362,6 +363,24 @@ export class CredentialImporter {
 		}
 
 		return { name: prepared.name, type: credential.type, data: prepared.data };
+	}
+
+	/**
+	 * The stored data, decrypted. Unreadable data blocks the import: read as empty, it would
+	 * compare as different, and the merge would replace the stored values.
+	 */
+	private async readStoredData(
+		credential: CredentialsEntity,
+	): Promise<ICredentialDataDecryptedObject> {
+		try {
+			return await this.credentialsService.decryptOrFail(credential);
+		} catch (error) {
+			if (!(error instanceof CredentialDataError)) throw error;
+			throw new UnprocessableRequestError(
+				`n8n cannot read the stored data of credential "${credential.name}" (${credential.id}). The import cannot compare or update it.`,
+				'Fix or recreate the credential in this instance, or import with the "keep-existing" conflict policy.',
+			);
+		}
 	}
 }
 

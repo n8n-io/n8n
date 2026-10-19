@@ -1019,4 +1019,24 @@ describe('credentialConflictPolicy=overwrite writes', () => {
 		).rejects.toBeInstanceOf(BadRequestError);
 		await expectNothingWritten(credential);
 	});
+
+	it('blocks and keeps the stored data when n8n cannot read it', async () => {
+		const credential = await saveOwnedCredential(githubCredentialPayload({ name: 'GitHub' }), {
+			project,
+		});
+		await Container.get(CredentialsRepository).update(credential.id, { data: 'unreadable' });
+
+		await expect(
+			importPackage({
+				user: owner,
+				projectId: project.id,
+				credentialConflictPolicy: 'overwrite',
+				packageBuffer: await workflowPackage(credential, {
+					name: 'GitHub',
+					data: { accessToken: EXPRESSION },
+				}),
+			}),
+		).rejects.toBeInstanceOf(UnprocessableRequestError);
+		await expectNothingWritten({ ...credential, data: 'unreadable' } as CredentialsEntity);
+	});
 });

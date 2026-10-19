@@ -3,7 +3,8 @@ import type { CredentialsEntity, ICredentialsDb, Project, SharedCredentials, Use
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
-import { ForbiddenError, NotFoundError } from '@n8n/errors';
+import { ForbiddenError, NotFoundError, UnprocessableRequestError } from '@n8n/errors';
+import { CredentialDataError, Credentials } from 'n8n-core';
 import type { CredentialTypes } from '@/credential-types';
 import type { CredentialDescriptionsService } from '@/credentials/credential-descriptions.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
@@ -30,6 +31,12 @@ type CredentialRequirement = NonNullable<CredentialBindingRequest['requirements'
 
 const usable = (id: string, type = 'githubApi'): UsableCredential =>
 	({ id, type }) as UsableCredential;
+
+const unreadable = () =>
+	new CredentialDataError(
+		new Credentials({ id: 'cred-1', name: 'GitHub' }, 'githubApi'),
+		'Credentials could not be decrypted.',
+	);
 
 describe('CredentialImporter', () => {
 	const credentialsService = mock<CredentialsService>();
@@ -464,12 +471,12 @@ describe('CredentialImporter', () => {
 			expect(result.forbidden).toEqual([]);
 			expect(credentialsFinder.findById).not.toHaveBeenCalled();
 			expect(credentialsFinder.findCredentialIdsWithScopeForUser).not.toHaveBeenCalled();
-			expect(credentialsService.decrypt).not.toHaveBeenCalled();
+			expect(credentialsService.decryptOrFail).not.toHaveBeenCalled();
 		});
 
 		it('plans an update when the package value differs from the stored value', async () => {
 			credentialsFinder.findById.mockResolvedValue(destination());
-			credentialsService.decrypt.mockResolvedValue({ accessToken: 'stored-secret' });
+			credentialsService.decryptOrFail.mockResolvedValue({ accessToken: 'stored-secret' });
 
 			const result = await importer.plan(
 				context,
@@ -497,12 +504,30 @@ describe('CredentialImporter', () => {
 			expect(credentialsFinder.findById).toHaveBeenCalledWith('cred-1', {
 				includeSharedProject: true,
 			});
-			expect(credentialsService.decrypt).toHaveBeenCalledWith(expect.anything(), true);
+			expect(credentialsService.decryptOrFail).toHaveBeenCalledWith(expect.anything());
+		});
+
+		it('blocks when the stored data of a candidate is unreadable', async () => {
+			credentialsFinder.findById.mockResolvedValue(destination());
+			credentialsService.decryptOrFail.mockRejectedValue(unreadable());
+
+			await expect(
+				importer.plan(
+					context,
+					bindingRequest([requirement], {
+						conflictPolicy: 'overwrite',
+						packageCredentials: new Map([['cred-1', packageFile()]]),
+					}),
+				),
+			).rejects.toThrow(UnprocessableRequestError);
 		});
 
 		it('keeps an equal candidate out of the updates', async () => {
 			credentialsFinder.findById.mockResolvedValue(destination());
-			credentialsService.decrypt.mockResolvedValue({ accessToken: EXPRESSION, other: 'secret' });
+			credentialsService.decryptOrFail.mockResolvedValue({
+				accessToken: EXPRESSION,
+				other: 'secret',
+			});
 
 			const result = await importer.plan(
 				context,
@@ -540,7 +565,7 @@ describe('CredentialImporter', () => {
 
 			expect(result.candidates).toEqual([]);
 			expect(result.updates).toEqual([]);
-			expect(credentialsService.decrypt).not.toHaveBeenCalled();
+			expect(credentialsService.decryptOrFail).not.toHaveBeenCalled();
 		});
 
 		it('reports a match in scope that the user cannot update as forbidden, and decrypts nothing', async () => {
@@ -574,7 +599,7 @@ describe('CredentialImporter', () => {
 				user,
 				['credential:update'],
 			);
-			expect(credentialsService.decrypt).not.toHaveBeenCalled();
+			expect(credentialsService.decryptOrFail).not.toHaveBeenCalled();
 		});
 
 		it('only binds a match out of scope, and checks no permission for it', async () => {
@@ -597,7 +622,7 @@ describe('CredentialImporter', () => {
 			expect(result.candidates).toEqual([]);
 			expect(result.forbidden).toEqual([]);
 			expect(credentialsFinder.findCredentialIdsWithScopeForUser).not.toHaveBeenCalled();
-			expect(credentialsService.decrypt).not.toHaveBeenCalled();
+			expect(credentialsService.decryptOrFail).not.toHaveBeenCalled();
 		});
 
 		it('only binds a match the finder does not return (an instance credential)', async () => {
@@ -619,7 +644,7 @@ describe('CredentialImporter', () => {
 				usable('cred-target'),
 			]);
 			credentialsFinder.findById.mockResolvedValue(destination({ id: 'cred-target' }));
-			credentialsService.decrypt.mockResolvedValue({ accessToken: 'stored-secret' });
+			credentialsService.decryptOrFail.mockResolvedValue({ accessToken: 'stored-secret' });
 			const other = packageCredential({ id: 'cred-2' });
 
 			const result = await importer.plan(
@@ -678,7 +703,7 @@ describe('CredentialImporter', () => {
 
 		beforeEach(() => {
 			credentialsFinder.findById.mockResolvedValue(stored());
-			credentialsService.decrypt.mockResolvedValue(storedData);
+			credentialsService.decryptOrFail.mockResolvedValue(storedData);
 			// Plain objects: a mock would report every property as present.
 			credentialsService.prepareUpdateData.mockImplementation(
 				async (_user, data) => await Promise.resolve({ ...data } as unknown as CredentialsEntity),
@@ -701,7 +726,7 @@ describe('CredentialImporter', () => {
 				expect(credentialsFinder.findById).toHaveBeenCalledWith('cred-1', {
 					includeSharedProject: true,
 				});
-				expect(credentialsService.decrypt).toHaveBeenCalledWith(expect.anything(), true);
+				expect(credentialsService.decryptOrFail).toHaveBeenCalledWith(expect.anything());
 				expect(credentialsService.prepareUpdateData).toHaveBeenCalledWith(
 					user,
 					{
@@ -737,6 +762,19 @@ describe('CredentialImporter', () => {
 						plan([update()]),
 					),
 				).rejects.toBe(error);
+			});
+
+			it('fails before it prepares an update when the stored data is unreadable', async () => {
+				credentialsService.decryptOrFail.mockRejectedValue(unreadable());
+
+				await expect(
+					importer.assertCanUpdate(
+						context,
+						bindingRequest([], { conflictPolicy: 'overwrite' }),
+						plan([update()]),
+					),
+				).rejects.toThrow(UnprocessableRequestError);
+				expect(credentialsService.prepareUpdateData).not.toHaveBeenCalled();
 			});
 
 			it('prepares a destination once when two package credentials resolve to it', async () => {
@@ -825,7 +863,7 @@ describe('CredentialImporter', () => {
 			});
 
 			it('reports external secrets in the written data', async () => {
-				credentialsService.decrypt.mockResolvedValue({ accessToken: 'stored-secret' });
+				credentialsService.decryptOrFail.mockResolvedValue({ accessToken: 'stored-secret' });
 
 				await importer.applyUpdates(
 					context,
@@ -853,7 +891,7 @@ describe('CredentialImporter', () => {
 
 			it('skips a destination that no longer differs', async () => {
 				credentialsFinder.findById.mockResolvedValue(stored({ name: 'Renamed' }));
-				credentialsService.decrypt.mockResolvedValue({ accessToken: EXPRESSION });
+				credentialsService.decryptOrFail.mockResolvedValue({ accessToken: EXPRESSION });
 
 				const updated = await importer.applyUpdates(
 					context,
@@ -872,7 +910,10 @@ describe('CredentialImporter', () => {
 				const first = await importer.applyUpdates(context, request, plan([update()]));
 				// The second scope reads what the first one wrote.
 				credentialsFinder.findById.mockResolvedValue(stored({ name: 'Renamed' }));
-				credentialsService.decrypt.mockResolvedValue({ ...storedData, accessToken: EXPRESSION });
+				credentialsService.decryptOrFail.mockResolvedValue({
+					...storedData,
+					accessToken: EXPRESSION,
+				});
 				const second = await importer.applyUpdates(context, request, plan([update()]));
 
 				expect(first).toEqual(['cred-1']);
