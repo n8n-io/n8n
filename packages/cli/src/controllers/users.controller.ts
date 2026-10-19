@@ -35,6 +35,12 @@ import { UserRequest } from '@/requests';
 import { JwtService, UrlService } from '@n8n/backend-services';
 import { UserService } from '@/services/user.service';
 
+/**
+ * The details a caller without `user:create` sees for its own user. The
+ * account status fields stay hidden, as for every other user.
+ */
+const ownUserDetailSchema = userDetailSchema.omit({ disabled: true, isScimManaged: true });
+
 @RestController('/users')
 export class UsersController {
 	constructor(
@@ -70,8 +76,9 @@ export class UsersController {
 
 		const usersSeesAllDetails = hasGlobalScope(currentUser, 'user:create');
 		return publicUsers.map((user) => {
-			return usersSeesAllDetails || user.id === currentUser.id
-				? userDetailSchema.parse(user)
+			if (usersSeesAllDetails) return userDetailSchema.parse(user);
+			return user.id === currentUser.id
+				? ownUserDetailSchema.parse(user)
 				: userBaseSchema.parse(user);
 		});
 	}
@@ -85,10 +92,19 @@ export class UsersController {
 	) {
 		await this.userService.assertGetUsersAccess(req.user, listQueryOptions.filter?.projectId);
 
-		const userQuery = this.userRepository.buildUserQuery(listQueryOptions);
-		const response = await userQuery.getManyAndCount();
+		// The account status of a user is visible only to callers that can
+		// create users, so only they can filter or count by it.
+		const { filter, includeStatusCounts } = listQueryOptions;
+		const usesAccountStatus = filter?.status !== undefined || includeStatusCounts === true;
+		if (usesAccountStatus && !hasGlobalScope(req.user, 'user:create')) {
+			throw new ForbiddenError('You cannot filter or count users by status');
+		}
 
-		const [users, count] = response;
+		const userQuery = this.userRepository.buildUserQuery(listQueryOptions);
+		const [[users, count], statusCounts] = await Promise.all([
+			userQuery.getManyAndCount(),
+			includeStatusCounts ? this.userRepository.countUsersListStatuses(filter) : undefined,
+		]);
 
 		const publicUsers = await Promise.all(
 			users.map(async (u) => {
@@ -111,6 +127,7 @@ export class UsersController {
 		return usersListSchema.parse({
 			count,
 			items: this.removeSupplementaryFields(publicUsers, listQueryOptions, req.user),
+			statusCounts,
 		});
 	}
 

@@ -420,7 +420,9 @@ export {
 export {
 	UsersListFilterDto,
 	type UsersListSortOptions,
+	type UsersListStatus,
 	USERS_LIST_SORT_OPTIONS,
+	USERS_LIST_STATUSES,
 } from './user/users-list-filter.dto';
 
 export { UpdateRoleDto } from './roles/update-role.dto';

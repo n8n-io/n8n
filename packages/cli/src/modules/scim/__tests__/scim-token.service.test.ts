@@ -165,4 +165,11 @@ describe('ScimTokenService', () => {
 
 		expect(scimTokenRepository.deleteInstanceToken).toHaveBeenCalledWith({});
 	});
+
+	it.each([true, false])('reports hasToken=%s from the instance token row', async (exists) => {
+		scimTokenRepository.hasInstanceToken.mockResolvedValue(exists);
+
+		await expect(service.hasToken()).resolves.toBe(exists);
+		expect(scimTokenRepository.hasInstanceToken).toHaveBeenCalledWith({});
+	});
 });

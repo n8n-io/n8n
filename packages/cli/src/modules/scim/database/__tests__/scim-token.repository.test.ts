@@ -51,6 +51,13 @@ describe('ScimTokenRepository', () => {
 		});
 	});
 
+	it('checks if the instance token row exists', async () => {
+		manager.existsBy.mockResolvedValue(true);
+
+		await expect(repository.hasInstanceToken(ctx)).resolves.toBe(true);
+		expect(manager.existsBy).toHaveBeenCalledWith(ScimToken, { slot: 'instance' });
+	});
+
 	it('marks the token with the given value as used', async () => {
 		const at = new Date();
 

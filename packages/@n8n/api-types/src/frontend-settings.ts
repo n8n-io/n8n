@@ -387,6 +387,8 @@ export type FrontendModuleSettings = {
 	scim?: {
 		/** Whether SCIM provisioning is enabled in the instance. */
 		scimEnabled: boolean;
+		/** Whether the instance has a SCIM token. */
+		hasToken: boolean;
 		/**
 		 * Whether the SCIM opt-in is on for the instance. While it is off, every
 		 * SCIM route answers 404. The backend evaluates it once for the instance,

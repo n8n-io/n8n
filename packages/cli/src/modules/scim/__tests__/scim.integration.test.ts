@@ -518,6 +518,91 @@ describe('SCIM /scim/v2/Users', () => {
 	});
 });
 
+describe('SCIM-managed users', () => {
+	const listUsers = async () => {
+		const response = await testServer.authAgentFor(admin).get('/users').expect(200);
+		return response.body.data.items as Array<{
+			id: string;
+			disabled: boolean;
+			isScimManaged: boolean;
+		}>;
+	};
+
+	const listedUser = async (id: string) => (await listUsers()).find((user) => user.id === id);
+
+	const provision = async (userName: string, active = true) => {
+		const response = await scimRequest('post', '/Users', {
+			body: { schemas: [USER_SCHEMA], userName, active },
+		}).expect(201);
+		return response.body.id as string;
+	};
+
+	const setActive = async (id: string, active: boolean) =>
+		await scimRequest('patch', `/Users/${id}`, {
+			body: patchOps({ op: 'replace', path: 'active', value: active }),
+		}).expect(200);
+
+	const moduleSettings = async () => {
+		const response = await testServer.authAgentFor(admin).get('/module-settings').expect(200);
+		return response.body.data.scim;
+	};
+
+	const config = async () => {
+		const response = await testServer.authAgentFor(owner).get('/scim/config').expect(200);
+		return response.body.data;
+	};
+
+	it('marks a user that SCIM creates and no other user', async () => {
+		const member = await createMember();
+
+		const id = await provision('provisioned@example.com');
+
+		const users = await listUsers();
+		expect(users.find((user) => user.id === id)).toMatchObject({ isScimManaged: true });
+		for (const other of [owner, admin, member]) {
+			expect(users.find((user) => user.id === other.id)).toMatchObject({ isScimManaged: false });
+		}
+	});
+
+	it('keeps the marker false for a user that SCIM updates but did not create', async () => {
+		const member = await createMember();
+
+		await setActive(member.id, false);
+
+		expect(await listedUser(member.id)).toMatchObject({ isScimManaged: false, disabled: true });
+	});
+
+	it('shows the deactivation and the reactivation from the identity provider', async () => {
+		const id = await provision('deactivated@example.com');
+
+		await setActive(id, false);
+		expect(await listedUser(id)).toMatchObject({ disabled: true, isScimManaged: true });
+
+		await setActive(id, true);
+		expect(await listedUser(id)).toMatchObject({ disabled: false, isScimManaged: true });
+	});
+
+	it('returns the number of provisioned and deactivated users in the SCIM config', async () => {
+		await createMember();
+		await provision('first@example.com');
+		await provision('second@example.com');
+		await provision('inactive@example.com', false);
+
+		expect(await config()).toMatchObject({ provisionedCount: 3, deactivatedCount: 1 });
+	});
+
+	it('shows SCIM enabled and the token in the module settings until the token is revoked', async () => {
+		await Container.get(ModuleRegistry).refreshModuleSettings('scim');
+		expect(await moduleSettings()).toMatchObject({ scimEnabled: true, hasToken: true });
+
+		await testServer.authAgentFor(admin).delete('/scim/token').expect(200);
+		expect(await moduleSettings()).toMatchObject({ scimEnabled: true, hasToken: false });
+
+		await testServer.authAgentFor(admin).post('/scim/token').expect(201);
+		expect(await moduleSettings()).toMatchObject({ hasToken: true });
+	});
+});
+
 describe('SCIM /scim/v2/Schemas', () => {
 	it('lists the User schema without roles and with the Schema schema id', async () => {
 		const response = await scimRequest('get', '/Schemas').expect(200);
@@ -581,6 +666,7 @@ describe('SCIM opt-in', () => {
 		it('shows the opt-in as off in the module settings', async () => {
 			expect(await moduleSettings()).toEqual({
 				scimEnabled: true,
+				hasToken: true,
 				available: false,
 				optInSource: null,
 			});

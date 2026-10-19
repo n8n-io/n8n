@@ -16,6 +16,15 @@ import { ApiKey, Project, ProjectRelation, User } from '../entities';
 import { type OperationContext, TransactionRunner } from '../services/transaction';
 import { isUniqueConstraintError } from '../utils/is-unique-constraint-error';
 
+/**
+ * SQL condition for a user in the `deactivated` status of the users list.
+ * Open question Q21 (IAM-1552) decides if the status covers every disabled
+ * user or only the users that SCIM manages. Change the scope only here: the
+ * status filter and the status counts both use this condition.
+ */
+const DEACTIVATED_USER_CONDITION = 'user.disabled = :userListDeactivated';
+const DEACTIVATED_USER_PARAMETERS = { userListDeactivated: true };
+
 @Service()
 export class UserRepository extends BaseRepository<User> {
 	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
@@ -451,7 +460,42 @@ export class UserRepository extends BaseRepository<User> {
 			);
 		}
 
+		if (filter?.status !== undefined) {
+			queryBuilder.andWhere(
+				filter.status === 'deactivated'
+					? DEACTIVATED_USER_CONDITION
+					: `NOT (${DEACTIVATED_USER_CONDITION})`,
+				DEACTIVATED_USER_PARAMETERS,
+			);
+		}
+
 		return queryBuilder;
+	}
+
+	/**
+	 * Number of users in each status of the users list. The counts use every
+	 * list filter except the status filter, so the tab labels of the list do
+	 * not change when the client switches tabs.
+	 */
+	async countUsersListStatuses(
+		filter: UsersListFilterDto['filter'],
+	): Promise<{ all: number; active: number; deactivated: number }> {
+		const queryBuilder = this.createQueryBuilder('user')
+			.select('COUNT(*)', 'total')
+			.addSelect(`SUM(CASE WHEN ${DEACTIVATED_USER_CONDITION} THEN 1 ELSE 0 END)`, 'deactivated')
+			.setParameters(DEACTIVATED_USER_PARAMETERS);
+		this.applyUserListFilter(queryBuilder, filter && { ...filter, status: undefined });
+
+		const counts = await queryBuilder.getRawOne<{
+			total: number | string;
+			deactivated: number | string | null;
+		}>();
+
+		// PostgreSQL returns COUNT and SUM as strings, and SUM of no rows as null.
+		const all = Number(counts?.total ?? 0);
+		const deactivated = Number(counts?.deactivated ?? 0);
+
+		return { all, active: all - deactivated, deactivated };
 	}
 
 	private applyUserListExpand(

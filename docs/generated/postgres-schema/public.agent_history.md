@@ -80,6 +80,7 @@ erDiagram
   varchar_255_ email
   varchar_32_ firstName
   uuid id
+  boolean isScimManaged
   date lastActiveAt
   varchar_32_ lastName
   boolean mfaEnabled

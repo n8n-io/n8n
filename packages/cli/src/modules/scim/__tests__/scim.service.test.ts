@@ -115,6 +115,18 @@ describe('ScimService', () => {
 		});
 	});
 
+	describe('getProvisioningCounts', () => {
+		it('returns the counts of SCIM-created users from the repository', async () => {
+			scimUserRepository.countProvisioned.mockResolvedValue({ provisioned: 5, deactivated: 2 });
+
+			await expect(service.getProvisioningCounts()).resolves.toEqual({
+				provisioned: 5,
+				deactivated: 2,
+			});
+			expect(scimUserRepository.countProvisioned).toHaveBeenCalledWith({});
+		});
+	});
+
 	describe('getUsers', () => {
 		const pageOf = (users: User[], total = users.length) =>
 			scimUserRepository.findPage.mockResolvedValue([users, total]);

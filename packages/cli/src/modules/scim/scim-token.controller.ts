@@ -19,6 +19,7 @@ import { ScimSettingsService } from './scim-settings.service';
 import { ScimSsoService } from './scim-sso.service';
 import { ScimTokenService } from './scim-token.service';
 import { ScimTokenConflictError } from './scim.errors';
+import { ScimService } from './scim.service';
 
 /**
  * REST Controller for SCIM configuration and token management.
@@ -41,6 +42,7 @@ export class ScimTokenController {
 		private readonly scimOptInService: ScimOptInService,
 		private readonly scimConnectionService: ScimConnectionService,
 		private readonly scimSsoService: ScimSsoService,
+		private readonly scimService: ScimService,
 	) {}
 
 	/**
@@ -55,16 +57,18 @@ export class ScimTokenController {
 
 	/**
 	 * GET /rest/scim/config
-	 * Current provisioning state and connection status for the settings screen.
+	 * Current provisioning state, connection status and the number of
+	 * provisioned users for the settings screen.
 	 */
 	@Get('/config')
 	@GlobalScope('scim:manage')
 	async getConfig(_req: AuthenticatedRequest, res: Response) {
 		try {
-			const [enabled, tokenInfo, lastAuthFailure] = await Promise.all([
+			const [enabled, tokenInfo, lastAuthFailure, counts] = await Promise.all([
 				this.scimSettingsService.isEnabled(),
 				this.scimTokenService.getTokenInfo(),
 				this.scimSettingsService.getLastAuthFailure(),
+				this.scimService.getProvisioningCounts(),
 			]);
 
 			return res.status(200).json({
@@ -76,6 +80,8 @@ export class ScimTokenController {
 					token: tokenInfo.details,
 					lastAuthFailure,
 					status: deriveScimConnectionStatus(tokenInfo.details, lastAuthFailure),
+					provisionedCount: counts.provisioned,
+					deactivatedCount: counts.deactivated,
 				} satisfies ScimConfigResponse,
 			});
 		} catch (error) {

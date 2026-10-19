@@ -14,6 +14,7 @@ import type { ScimSsoService } from '../scim-sso.service';
 import { ScimTokenController } from '../scim-token.controller';
 import type { ScimTokenService } from '../scim-token.service';
 import { ScimTokenConflictError } from '../scim.errors';
+import type { ScimService } from '../scim.service';
 
 describe('ScimTokenController', () => {
 	let scimTokenService: Mocked<ScimTokenService>;
@@ -22,6 +23,7 @@ describe('ScimTokenController', () => {
 	let scimOptInService: Mocked<ScimOptInService>;
 	let scimConnectionService: Mocked<ScimConnectionService>;
 	let scimSsoService: Mocked<ScimSsoService>;
+	let scimService: Mocked<ScimService>;
 	let controller: ScimTokenController;
 
 	const req = mock<AuthenticatedRequest>({ user: mock<User>({ id: 'user-1' }) });
@@ -40,6 +42,8 @@ describe('ScimTokenController', () => {
 		scimConnectionService = mock<ScimConnectionService>();
 		scimSsoService = mock<ScimSsoService>();
 		scimSsoService.isSsoEnabled.mockReturnValue(true);
+		scimService = mock<ScimService>();
+		scimService.getProvisioningCounts.mockResolvedValue({ provisioned: 0, deactivated: 0 });
 		scimTokenService.getScimBaseUrl.mockReturnValue('https://n8n.example.com/scim/v2');
 		controller = new ScimTokenController(
 			mock<Logger>(),
@@ -49,6 +53,7 @@ describe('ScimTokenController', () => {
 			scimOptInService,
 			scimConnectionService,
 			scimSsoService,
+			scimService,
 		);
 	});
 
@@ -123,6 +128,27 @@ describe('ScimTokenController', () => {
 				token: details,
 				lastAuthFailure: null,
 				status: 'connected',
+				provisionedCount: 0,
+				deactivatedCount: 0,
+			});
+		});
+
+		it('returns the number of provisioned and deactivated SCIM users', async () => {
+			scimSettingsService.isEnabled.mockResolvedValue(true);
+			scimSettingsService.getLastAuthFailure.mockResolvedValue(null);
+			scimTokenService.getTokenInfo.mockResolvedValue({
+				hasToken: true,
+				lastFour: 'ab12',
+				details,
+			});
+			scimService.getProvisioningCounts.mockResolvedValue({ provisioned: 42, deactivated: 3 });
+			const res = makeRes();
+
+			await controller.getConfig(req, res);
+
+			expect(res.json.mock.calls[0][0].data).toMatchObject({
+				provisionedCount: 42,
+				deactivatedCount: 3,
 			});
 		});
 

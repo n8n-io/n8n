@@ -10,6 +10,7 @@ import { mock } from 'vitest-mock-extended';
 import { ScimOptInService } from '../scim-opt-in.service';
 import { ScimSettingsService } from '../scim-settings.service';
 import { ScimSsoService } from '../scim-sso.service';
+import { ScimTokenService } from '../scim-token.service';
 import { ScimModule } from '../scim.module';
 import { ScimConfig } from '../scim.config';
 
@@ -24,11 +25,13 @@ const MODULE_NAME = 'scim' satisfies keyof FrontendModuleSettings;
 describe('ScimModule', () => {
 	const scimSettingsService = mock<ScimSettingsService>();
 	const scimOptInService = mock<ScimOptInService>();
+	const scimTokenService = mock<ScimTokenService>();
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 		Container.set(ScimSettingsService, scimSettingsService);
 		Container.set(ScimOptInService, scimOptInService);
+		Container.set(ScimTokenService, scimTokenService);
 	});
 
 	describe('init()', () => {
@@ -52,12 +55,25 @@ describe('ScimModule', () => {
 			[{ available: false, source: null }],
 		] as const)('exposes the instance opt-in %j', async (optIn) => {
 			scimSettingsService.isEnabled.mockResolvedValue(true);
+			scimTokenService.hasToken.mockResolvedValue(true);
 			scimOptInService.evaluate.mockResolvedValue(optIn);
 
 			await expect(new ScimModule().settings()).resolves.toEqual({
 				scimEnabled: true,
+				hasToken: true,
 				available: optIn.available,
 				optInSource: optIn.source,
+			});
+		});
+
+		it.each([true, false])('exposes hasToken=%s', async (hasToken) => {
+			scimSettingsService.isEnabled.mockResolvedValue(true);
+			scimTokenService.hasToken.mockResolvedValue(hasToken);
+			scimOptInService.evaluate.mockResolvedValue({ available: true, source: 'config' });
+
+			await expect(new ScimModule().settings()).resolves.toMatchObject({
+				scimEnabled: true,
+				hasToken,
 			});
 		});
 	});

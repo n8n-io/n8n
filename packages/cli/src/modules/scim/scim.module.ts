@@ -38,18 +38,23 @@ export class ScimModule implements ModuleInterface {
 	 * Settings exposed to the frontend under `/rest/module-settings`.
 	 * The frontend reads the opt-in here, because the routes use one value
 	 * for the whole instance and the frontend flag client evaluates per user.
+	 * The Users page shows SCIM indicators only while SCIM is enabled and a
+	 * token exists, so the token routes refresh these settings.
 	 */
 	async settings() {
 		const { ScimSettingsService } = await import('./scim-settings.service.js');
 		const { ScimOptInService } = await import('./scim-opt-in.service.js');
+		const { ScimTokenService } = await import('./scim-token.service.js');
 
-		const [scimEnabled, optIn] = await Promise.all([
+		const [scimEnabled, hasToken, optIn] = await Promise.all([
 			Container.get(ScimSettingsService).isEnabled(),
+			Container.get(ScimTokenService).hasToken(),
 			Container.get(ScimOptInService).evaluate(),
 		]);
 
 		return {
 			scimEnabled,
+			hasToken,
 			available: optIn.available,
 			optInSource: optIn.source,
 		} satisfies FrontendModuleSettings['scim'];

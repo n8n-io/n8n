@@ -67,6 +67,11 @@ export class ScimTokenService {
 		};
 	}
 
+	/** Whether the instance has a SCIM token. */
+	async hasToken(ctx: OperationContext = {}): Promise<boolean> {
+		return await this.scimTokenRepository.hasInstanceToken(ctx);
+	}
+
 	/**
 	 * Check a SCIM token. The token must be a valid JWT and be the stored
 	 * instance token. Its creator does not matter.

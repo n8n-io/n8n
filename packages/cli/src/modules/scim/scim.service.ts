@@ -142,6 +142,11 @@ export class ScimService {
 		};
 	}
 
+	/** Number of users that SCIM created, and how many of them are deactivated. */
+	async getProvisioningCounts(): Promise<{ provisioned: number; deactivated: number }> {
+		return await this.scimUserRepository.countProvisioned({});
+	}
+
 	/**
 	 * Get a single user by ID
 	 */

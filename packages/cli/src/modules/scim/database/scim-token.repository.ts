@@ -21,6 +21,10 @@ export class ScimTokenRepository extends BaseRepository<ScimToken> {
 		return await this.managerFor(ctx).findOneBy(ScimToken, { slot: 'instance' });
 	}
 
+	async hasInstanceToken(ctx: OperationContext) {
+		return await this.managerFor(ctx).existsBy(ScimToken, { slot: 'instance' });
+	}
+
 	/** The instance token with the ID and name of its creator, for display. */
 	async findInstanceTokenWithCreator(ctx: OperationContext) {
 		return await this.managerFor(ctx).findOne(ScimToken, {

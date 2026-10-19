@@ -60,7 +60,8 @@ export class ScimUserRepository extends BaseRepository<User> {
 	/**
 	 * Create the user, their personal project and the identity that links them
 	 * to the IdP as one unit, so a provisioned user is never left without the
-	 * identity that lets them sign in.
+	 * identity that lets them sign in. The user is marked as SCIM-managed.
+	 * Only this path sets the marker.
 	 */
 	async createProvisioned(
 		user: DeepPartial<User>,
@@ -68,7 +69,10 @@ export class ScimUserRepository extends BaseRepository<User> {
 		ctx: OperationContext,
 	): Promise<User> {
 		return await this.runInTransaction(ctx, async (tx) => {
-			const { user: created } = await this.userRepository.createUserWithProject(user, tx);
+			const { user: created } = await this.userRepository.createUserWithProject(
+				{ ...user, isScimManaged: true },
+				tx,
+			);
 
 			if (identity) {
 				await tx.save(tx.create(AuthIdentity, { ...identity, userId: created.id }));
@@ -76,5 +80,24 @@ export class ScimUserRepository extends BaseRepository<User> {
 
 			return created;
 		});
+	}
+
+	/** Number of users that SCIM created, and how many of them are deactivated. */
+	async countProvisioned(
+		ctx: OperationContext,
+	): Promise<{ provisioned: number; deactivated: number }> {
+		const counts = await this.managerFor(ctx)
+			.createQueryBuilder(User, 'user')
+			.select('COUNT(*)', 'provisioned')
+			.addSelect('SUM(CASE WHEN user.disabled = :disabled THEN 1 ELSE 0 END)', 'deactivated')
+			.where('user.isScimManaged = :isScimManaged', { isScimManaged: true })
+			.setParameter('disabled', true)
+			.getRawOne<{ provisioned: number | string; deactivated: number | string | null }>();
+
+		// PostgreSQL returns COUNT and SUM as strings, and SUM of no rows as null.
+		return {
+			provisioned: Number(counts?.provisioned ?? 0),
+			deactivated: Number(counts?.deactivated ?? 0),
+		};
 	}
 }

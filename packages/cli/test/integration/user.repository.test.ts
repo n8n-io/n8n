@@ -202,6 +202,80 @@ describe('UserRepository', () => {
 		});
 	});
 
+	describe('users list status', () => {
+		let disabledIds: string[];
+
+		beforeAll(async () => {
+			await testDb.truncate(['ProjectRelation', 'Project', 'User']);
+			await createOwner();
+			const users = await Promise.all(Array.from({ length: 9 }, async () => await createMember()));
+			disabledIds = users.slice(0, 2).map(({ id }) => id);
+			await userRepository.update(disabledIds, { disabled: true });
+		});
+
+		test('should return only deactivated users with the deactivated status filter', async () => {
+			const [users, count] = await userRepository
+				.buildUserQuery({ filter: { status: 'deactivated' }, take: 50, skip: 0 })
+				.getManyAndCount();
+
+			expect(count).toBe(2);
+			expect(users.map(({ id }) => id).sort()).toEqual([...disabledIds].sort());
+		});
+
+		test('should return only active users with the active status filter', async () => {
+			const [users, count] = await userRepository
+				.buildUserQuery({ filter: { status: 'active' }, take: 50, skip: 0 })
+				.getManyAndCount();
+
+			expect(count).toBe(8);
+			expect(users.every(({ disabled }) => !disabled)).toBe(true);
+		});
+
+		test('should count every status and ignore the status filter', async () => {
+			for (const status of [undefined, 'active', 'deactivated'] as const) {
+				await expect(userRepository.countUsersListStatuses({ status })).resolves.toEqual({
+					all: 10,
+					active: 8,
+					deactivated: 2,
+				});
+			}
+			await expect(userRepository.countUsersListStatuses(undefined)).resolves.toEqual({
+				all: 10,
+				active: 8,
+				deactivated: 2,
+			});
+		});
+
+		test('should apply the other filters to the counts', async () => {
+			await expect(
+				userRepository.countUsersListStatuses({ ids: [disabledIds[0], disabledIds[1]] }),
+			).resolves.toEqual({ all: 2, active: 0, deactivated: 2 });
+			await expect(userRepository.countUsersListStatuses({ isOwner: true })).resolves.toEqual({
+				all: 1,
+				active: 1,
+				deactivated: 0,
+			});
+		});
+
+		test('should count users in a project once each', async () => {
+			const project = await createTeamProject();
+			const [disabledUser] = await userRepository.findBy({ id: disabledIds[0] });
+			const owner = await userRepository.findOneByOrFail({ role: { slug: 'global:owner' } });
+			await linkUserToProject(disabledUser, project, 'project:viewer');
+			await linkUserToProject(owner, project, 'project:admin');
+
+			await expect(
+				userRepository.countUsersListStatuses({ projectId: project.id }),
+			).resolves.toEqual({ all: 2, active: 1, deactivated: 1 });
+		});
+
+		test('should count zero users without matches', async () => {
+			await expect(
+				userRepository.countUsersListStatuses({ email: 'nobody@example.com' }),
+			).resolves.toEqual({ all: 0, active: 0, deactivated: 0 });
+		});
+	});
+
 	describe('changeEmail()', () => {
 		beforeEach(async () => {
 			await testDb.truncate(['User']);

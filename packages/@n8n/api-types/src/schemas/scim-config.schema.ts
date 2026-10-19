@@ -58,4 +58,8 @@ export type ScimConfigResponse = {
 	/** Null when no request failed the bearer check since the last reset. */
 	lastAuthFailure: ScimAuthFailure | null;
 	status: ScimConnectionStatus;
+	/** Number of users that SCIM provisioning created, deactivated users included. */
+	provisionedCount: number;
+	/** Number of users that SCIM provisioning created and that are deactivated. */
+	deactivatedCount: number;
 };
