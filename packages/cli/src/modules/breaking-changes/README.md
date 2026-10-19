@@ -153,7 +153,7 @@ Sets the status of the finding of one workflow rule on one workflow. A user can 
 - The rule detail lists `open`, `notified` and `wont_fix` findings, each with its `status` and, once notified, its `notifiedAt`.
 - Setting a `notified` finding to `open` clears its `notifiedAt`, so the next notification is not a reminder.
 - When a scan no longer detects a `wont_fix` or `notified` finding, the sync marks it `fixed`.
-- The route returns 403 when the user cannot edit the workflow.
+- The route returns 404 when the user cannot edit the workflow, as for a workflow that does not exist.
 - The route returns 404 when the rule is unknown or is not a workflow rule.
 - The route returns 404 when the finding does not exist or is in a status that only the scan sets, for example `fixed`. This is also true when a sync marks the finding `fixed` during the request.
 

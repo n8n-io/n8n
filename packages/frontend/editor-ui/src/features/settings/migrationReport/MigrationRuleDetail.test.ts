@@ -834,7 +834,7 @@ describe('MigrationRuleDetail', () => {
 			});
 		});
 
-		it('should offer an owner picker per row to a user with the migrate scope, showing the current owner', async () => {
+		it('should offer an owner picker per row, showing the current owner', async () => {
 			renderComponent({ props: { migrationRuleId: 'rule-1' } });
 
 			await waitFor(() => {

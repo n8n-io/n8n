@@ -86,6 +86,9 @@ describe('BreakingChangesController', () => {
 		notificationService = mock<MigrationFindingNotificationService>();
 		workflowFinderService = mock<WorkflowFinderService>();
 		workflowFinderService.findAllWorkflowIdsForUser.mockResolvedValue(['wf-1', 'wf-2']);
+		workflowFinderService.findWorkflowIdsWithScopeForUser.mockImplementation(
+			async (workflowIds) => new Set(workflowIds.filter((id) => ['wf-1', 'wf-2'].includes(id))),
+		);
 		controller = new BreakingChangesController(
 			migrationService,
 			syncService,
@@ -131,9 +134,9 @@ describe('BreakingChangesController', () => {
 
 			await expect(
 				controller.assignOwner(req, res, 'wf-3', { userId: 'alice' }),
-			).rejects.toBeInstanceOf(ForbiddenError);
+			).rejects.toBeInstanceOf(NotFoundError);
 			await expect(controller.unassignOwner(req, res, 'wf-3')).rejects.toBeInstanceOf(
-				ForbiddenError,
+				NotFoundError,
 			);
 			expect(ownerAssignmentService.assign).not.toHaveBeenCalled();
 			expect(ownerAssignmentService.unassign).not.toHaveBeenCalled();
@@ -351,6 +354,7 @@ describe('BreakingChangesController', () => {
 				'wont_fix',
 			);
 			expect(syncService.syncIfStale).not.toHaveBeenCalled();
+			expect(workflowFinderService.findWorkflowIdsWithScopeForUser).not.toHaveBeenCalled();
 		});
 
 		it('changes only the workflows that a member can edit', async () => {
@@ -365,6 +369,11 @@ describe('BreakingChangesController', () => {
 				'removed-nodes-v3',
 				['wf-1'],
 				'wont_fix',
+			);
+			expect(workflowFinderService.findWorkflowIdsWithScopeForUser).toHaveBeenCalledWith(
+				['wf-1', 'wf-3'],
+				member,
+				['workflow:update'],
 			);
 		});
 
@@ -445,7 +454,7 @@ describe('BreakingChangesController', () => {
 
 			await expect(
 				controller.updateFindingStatus(req, res, 'removed-nodes-v3', 'wf-3', { status: 'open' }),
-			).rejects.toBeInstanceOf(ForbiddenError);
+			).rejects.toBeInstanceOf(NotFoundError);
 			expect(triageService.setStatus).not.toHaveBeenCalled();
 		});
 	});

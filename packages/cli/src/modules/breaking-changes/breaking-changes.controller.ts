@@ -74,15 +74,23 @@ export class BreakingChangesController {
 
 	/** The given workflows that the user can edit. Editing a workflow allows triaging its findings. */
 	private async editableWorkflowIds(user: User, workflowIds: string[]): Promise<string[]> {
-		const scope = await this.scopeFor(user);
-		if (scope.kind === 'instance') return workflowIds;
-		const editable = new Set(scope.workflowIds);
+		if (hasGlobalScope(user, 'workflow:update')) return workflowIds;
+		const editable = await this.workflowFinderService.findWorkflowIdsWithScopeForUser(
+			workflowIds,
+			user,
+			['workflow:update'],
+		);
 		return workflowIds.filter((workflowId) => editable.has(workflowId));
 	}
 
+	/** A 404, like the migrate service, so the response does not confirm that the workflow exists. */
 	private async assertCanEdit(user: User, workflowId: string): Promise<void> {
 		const [editable] = await this.editableWorkflowIds(user, [workflowId]);
-		if (!editable) throw new ForbiddenError('You do not have permission to update this workflow');
+		if (!editable) {
+			throw new NotFoundError(
+				'You do not have permission to update this workflow. Ask the owner to share it with you.',
+			);
+		}
 	}
 
 	/**
