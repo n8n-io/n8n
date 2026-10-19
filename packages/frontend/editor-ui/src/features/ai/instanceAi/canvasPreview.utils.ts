@@ -59,7 +59,8 @@ export interface AgentArtifactResult {
 	projectId?: string;
 	/** Unique per operation — changes even when the same agent is modified again. */
 	toolCallId: string;
-	kind: 'created' | 'mutated';
+	/** `selected` is an existing Agent that the build is about to change. */
+	kind: 'created' | 'selected' | 'mutated';
 }
 
 type AgentArtifactTarget = Pick<AgentArtifactResult, 'agentId' | 'projectId'>;
@@ -599,9 +600,12 @@ function matchAgentArtifactToolCall(
 			...(typeof result.projectId === 'string' ? { projectId: result.projectId } : {}),
 		};
 		if (tc.toolName === AGENT_BUILDER_TOOL_NAMES.SELECT_AGENT) {
-			return result.ok === true && result.agentChange === 'created'
-				? { ...ownTarget, toolCallId: tc.toolCallId, kind: 'created' }
-				: undefined;
+			if (result.ok !== true) return undefined;
+			return {
+				...ownTarget,
+				toolCallId: tc.toolCallId,
+				kind: result.agentChange === 'created' ? 'created' : 'selected',
+			};
 		}
 		if (result.configMutated === true) {
 			return { ...ownTarget, toolCallId: tc.toolCallId, kind: 'mutated' };

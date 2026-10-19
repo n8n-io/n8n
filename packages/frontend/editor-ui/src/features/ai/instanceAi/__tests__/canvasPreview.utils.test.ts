@@ -504,13 +504,33 @@ describe('getLatestAgentArtifactResult', () => {
 		});
 	});
 
-	test('returns no artifact when select-agent only selects an existing agent', () => {
+	test('reads a selected agent when select-agent selects an existing agent', () => {
+		const orchestrator = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolCallId: 'tc-select',
+					toolName: 'agent_builder_select_agent',
+					args: { agentRef: 'support' },
+					result: { ok: true, agentId: 'agent-9', projectId: 'project-1', agentChange: 'none' },
+				}),
+			],
+		});
+
+		expect(getLatestAgentArtifactResult(orchestrator)).toEqual({
+			agentId: 'agent-9',
+			projectId: 'project-1',
+			toolCallId: 'tc-select',
+			kind: 'selected',
+		});
+	});
+
+	test('returns no artifact when select-agent fails', () => {
 		const orchestrator = makeAgentNode({
 			toolCalls: [
 				makeToolCall({
 					toolName: 'agent_builder_select_agent',
-					args: { agentRef: 'support' },
-					result: { ok: true, agentId: 'agent-9', projectId: 'project-1', agentChange: 'none' },
+					args: { agentId: 'agent-9' },
+					result: { ok: false, agentId: 'agent-9', error: 'Agent agent-9 was not found.' },
 				}),
 			],
 		});

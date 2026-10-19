@@ -943,7 +943,7 @@ describe('useCanvasPreview', () => {
 			},
 		);
 
-		test('does not auto-open when the orchestrator selects an existing Agent', async () => {
+		test('auto-opens when the orchestrator selects an existing Agent', async () => {
 			const ctx = setup();
 			registerAgent(ctx.thread, 'agent-7', 'Support Agent', 'p1');
 
@@ -962,8 +962,8 @@ describe('useCanvasPreview', () => {
 			];
 			await nextTick();
 
-			expect(ctx.activeTabId.value).toBeUndefined();
-			expect(ctx.isPreviewVisible.value).toBe(false);
+			expect(ctx.activeTabId.value).toBe('agent-7');
+			expect(ctx.isPreviewVisible.value).toBe(true);
 		});
 	});
 
