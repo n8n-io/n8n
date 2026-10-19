@@ -11,6 +11,7 @@ import type { UrlService } from '@n8n/backend-services';
 
 import {
 	ScimConflictError,
+	ScimForbiddenError,
 	ScimInvalidFilterError,
 	ScimInvalidValueError,
 	ScimResourceNotFoundError,
@@ -518,6 +519,75 @@ describe('ScimService', () => {
 
 			expect(user.role).toBe(memberRole);
 			expect(userRepository.save).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('owner guard', () => {
+		const ownerRole = { slug: 'global:owner', roleType: 'global' } as Role;
+		const createOwner = () =>
+			createTestUser({ id: 'owner-1', email: 'owner@example.com', role: ownerRole });
+		const patchRequest = (operations: Array<{ op: string; path?: string; value?: unknown }>) =>
+			({
+				schemas: ['urn:ietf:params:scim:api:messages:2.0:PatchOp'],
+				Operations: operations,
+			}) as Parameters<ScimService['patchUser']>[1];
+		const putBody = (over: Partial<ScimUserCreateDto> = {}): ScimUserCreateDto => ({
+			schemas: ['urn:ietf:params:scim:schemas:core:2.0:User'],
+			userName: 'owner@example.com',
+			...over,
+		});
+
+		it.each([
+			['userName', [{ op: 'replace', path: 'userName', value: 'new@example.com' }]],
+			[
+				'a work email',
+				[{ op: 'replace', path: 'emails[type eq "work"].value', value: 'new@example.com' }],
+			],
+			['active', [{ op: 'replace', path: 'active', value: false }]],
+			['a path-less active', [{ op: 'replace', value: { active: false } }]],
+		])('should reject a PATCH of %s on the owner', async (_, operations) => {
+			userRepository.findOne.mockResolvedValue(createOwner());
+
+			await expect(service.patchUser('owner-1', patchRequest(operations))).rejects.toThrow(
+				ScimForbiddenError,
+			);
+			expect(userRepository.save).not.toHaveBeenCalled();
+		});
+
+		it.each([
+			['a new userName', putBody({ userName: 'new@example.com' })],
+			['active false', putBody({ active: false })],
+		])('should reject a PUT with %s on the owner', async (_, body) => {
+			userRepository.findOne.mockResolvedValue(createOwner());
+
+			await expect(service.updateUser('owner-1', body)).rejects.toThrow(ScimForbiddenError);
+			expect(userRepository.save).not.toHaveBeenCalled();
+		});
+
+		it('should reject a DELETE of the owner', async () => {
+			userRepository.findOne.mockResolvedValue(createOwner());
+
+			await expect(service.deleteUser('owner-1')).rejects.toThrow(ScimForbiddenError);
+			expect(userRepository.save).not.toHaveBeenCalled();
+		});
+
+		it('should allow a name change and an unchanged email on the owner', async () => {
+			const owner = createOwner();
+			userRepository.findOne.mockResolvedValue(owner);
+
+			await service.patchUser(
+				'owner-1',
+				patchRequest([
+					{ op: 'replace', path: 'userName', value: 'Owner@Example.com' },
+					{ op: 'replace', path: 'name.givenName', value: 'Renamed' },
+					{ op: 'replace', path: 'active', value: true },
+				]),
+			);
+
+			expect(owner.firstName).toBe('Renamed');
+			expect(owner.email).toBe('owner@example.com');
+			expect(owner.disabled).toBe(false);
+			expect(userRepository.save).toHaveBeenCalledWith(owner);
 		});
 	});
 

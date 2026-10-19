@@ -14,6 +14,13 @@ export class ScimConflictError extends UserError {
 	}
 }
 
+/** The operation is not allowed on this resource (e.g. deactivating the instance owner). Maps to HTTP 403. */
+export class ScimForbiddenError extends UserError {
+	constructor(detail: string) {
+		super(detail);
+	}
+}
+
 /** Filter expression is not supported. Maps to HTTP 400 with scimType "invalidFilter". */
 export class ScimInvalidFilterError extends UserError {
 	constructor(filter: string) {
