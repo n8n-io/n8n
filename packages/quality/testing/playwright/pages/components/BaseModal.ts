@@ -27,7 +27,7 @@ export class BaseModal extends FloatingUiHelper {
 		await this.container.waitFor({ state: 'visible' });
 	}
 
-	/** Close the modal via its Element Plus close (X) icon, if it's currently visible. */
+	/** Close the dialog via its close button, if it is currently visible. */
 	async close(): Promise<void> {
 		await closeDialogIfOpen(this.container);
 	}
