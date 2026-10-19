@@ -126,7 +126,7 @@ function onExtractWorkflowClick() {
 				<N8nIconButton
 					size="small"
 					variant="ghost"
-					icon="group"
+					icon="group-filled"
 					icon-size="large"
 					data-test-id="canvas-selection-toolbar-group"
 					:aria-label="i18n.baseText('canvas.selection.toolbar.group')"
@@ -142,8 +142,8 @@ function onExtractWorkflowClick() {
 				<N8nIconButton
 					size="small"
 					variant="ghost"
-					icon="workflow"
-					icon-size="large"
+					icon="workflow-filled-12"
+					icon-size="small"
 					data-test-id="canvas-selection-toolbar-extract"
 					:aria-label="extractWorkflowLabel"
 					@click.stop="onExtractWorkflowClick"
@@ -153,7 +153,7 @@ function onExtractWorkflowClick() {
 				<N8nIconButton
 					size="small"
 					variant="ghost"
-					icon="sparkles"
+					icon="sparkles-filled"
 					icon-size="large"
 					data-test-id="canvas-selection-toolbar-add-to-chat"
 					:aria-label="addToChatLabel"

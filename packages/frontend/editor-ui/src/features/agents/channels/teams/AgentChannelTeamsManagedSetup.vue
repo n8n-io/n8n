@@ -30,7 +30,7 @@ import AgentChannelTeamsAvailability from './AgentChannelTeamsAvailability.vue';
 import {
 	availabilityFrom,
 	entraApiPermissionsUrl,
-	readsSharedConversations as readsShared,
+	permissionUseFor,
 	TEAMS_PACKAGE_FILENAME,
 	type TeamsAvailability,
 } from './constants';
@@ -203,8 +203,6 @@ const installProgress = computed(() => {
  */
 const installDone = computed(() => published.value);
 
-const readsSharedConversations = computed(() => readsShared(availability.value));
-
 /** Without a consent link the instance has no address Entra accepts to return to. */
 const fileAccessUrl = computed(() => {
 	const app = provisionedApp.value;
@@ -323,15 +321,13 @@ const steps = computed(() => [
 		title: i18n.baseText('agents.channels.teams.managed.install.title'),
 		description: i18n.baseText('agents.channels.teams.managed.install.description'),
 	},
-	...(readsSharedConversations.value
-		? [
-				{
-					id: 'file-access',
-					title: i18n.baseText('agents.channels.teams.managed.fileAccess.title'),
-					description: i18n.baseText('agents.channels.teams.managed.fileAccess.description'),
-				},
-			]
-		: []),
+	{
+		id: 'file-access',
+		title: i18n.baseText('agents.channels.teams.managed.fileAccess.title'),
+		description: i18n.baseText(
+			`agents.channels.teams.managed.fileAccess.description.${permissionUseFor(availability.value)}`,
+		),
+	},
 	{
 		id: 'finish',
 		title: i18n.baseText('agents.channels.teams.managed.finish.title'),
