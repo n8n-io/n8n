@@ -1,0 +1,22 @@
+packages/nodes-base/nodes/SentryIo/__tests__/workflow/SentryIo.workflow.test.ts
+  s_2e1fa95fc44f8f::t_ec54d3381dc611 1-80
+  s_2e1fa95fc44f8f::t_2469b4d40343f0 81-82
+packages/nodes-base/nodes/SentryIo/__tests__/workflow/requests.workflow.json
+  s_2e1fa95fc44f8f::t_272bd63e9da041 1-715
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "311ecda716822e19d62dc6f1be07f09c4107b3da",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

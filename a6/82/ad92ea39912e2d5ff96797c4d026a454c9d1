@@ -1,0 +1,26 @@
+packages/cli/src/modules/oauth-server/dto/approve-consent-request.dto.ts
+  s_4326108884f490::t_4f3df9c2a98f09 6-13
+packages/cli/src/modules/oauth-server/__tests__/oauth-consent.controller.api.test.ts
+  s_4326108884f490::t_4f3df9c2a98f09 315-324
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a682ad92ea39912e2d5ff96797c4d026a454c9d1",
+  "prompts": {},
+  "humans": {
+    "h_435b1d7d3e52c0": {
+      "author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_4326108884f490": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "096da2e0-d58a-4276-98bc-ddfa6e32bc5f",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

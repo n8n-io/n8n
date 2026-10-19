@@ -1,0 +1,29 @@
+packages/nodes-base/nodes/NocoDB/test/v1/workflow/requests.workflow.test.ts
+  s_2e1fa95fc44f8f::t_cbe9f23ce51f2e 1-79
+packages/nodes-base/nodes/NocoDB/test/v1/workflow/requests.workflow.json
+  s_07471f89218761::t_f28c7077619525 1-585
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ea210112e55104f32ca1a7527e44f06ca8b81294",
+  "prompts": {},
+  "sessions": {
+    "s_07471f89218761": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a6bf88bb756ab931c",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

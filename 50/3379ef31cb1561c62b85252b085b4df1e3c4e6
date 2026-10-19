@@ -1,0 +1,319 @@
+packages/cli/src/modules/otel/__tests__/support/otel-integration-utils.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 21-23,129-168,170
+packages/frontend/editor-ui/src/features/shared/toolsConnection/ToolRow.vue
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 231
+packages/cli/src/modules/agents/integrations/n8n-memory.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 168-190,202-231
+  s_3ef284ec4e912a::t_d04561cdb14413 232-233
+packages/@n8n/nodes-langchain/credentials/icons/google.svg
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 1
+packages/cli/src/services/ownership.service.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 3,32,72,76,131,140
+packages/cli/src/modules/agents/integrations/__tests__/n8n-memory.test.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 2,4,287-300,305,307,310,314-316,322,338,345,354,359-491
+packages/cli/src/modules/otel/tracing-context.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 5-9
+packages/cli/src/modules/otel/__tests__/otel-workflow-tracing.integration.test.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 2,16,28-29,161-205,224-282
+  s_3ef284ec4e912a::t_b145f4d042148d 283-284
+packages/frontend/editor-ui/src/features/settings/migrationReport/MigrationRuleDetail.test.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 9,834-841,1255-1283,1286,1288-1293,1296-1338,1341-1342,1345-1347,1350-1351,1355-1372,1375-1377,1379-1380,1382-1394,1397-1398,1400-1401,1403-1409,1412-1413,1415-1416,1420
+  s_3ef284ec4e912a::t_421e1b2db28a5d 610,614-617,622,627-635,638
+packages/modules/type-availability-policies/frontend/src/components/ContactInstanceAdminModal.vue
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 8-13,15,27,32,68
+packages/modules/type-availability-policies/frontend/src/components/RestrictedNodePopover.vue
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 5-6,8-13,16-44,55-57,59-66,75,77,79,81-85,93-95,109,113-119,123,130,139-144
+packages/nodes-base/nodes/Databricks/methods/listSearch.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 575,615
+packages/@n8n/nodes-langchain/utils/google-vertex.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 1-116
+packages/@n8n/nodes-langchain/nodes/llms/LmChatGoogleVertex/test/LmChatGoogleVertex.test.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 41,82-84,105-130,151-184,188-189
+packages/@n8n/api-types/src/dto/otel/otel-settings-public.openapi.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 6-7,67-81
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderEditorColumn.vue
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 2,17,78-86,456-457,474-479
+  s_3ef284ec4e912a::t_150d5ebe7a8573 480-481
+packages/cli/src/modules/favorites/__tests__/favorites.service.test.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 2-4
+  s_3ef284ec4e912a::t_107806b40b8880 1
+packages/frontend/editor-ui/src/features/settings/migrationReport/MigrationRuleDetail.vue
+  s_3ef284ec4e912a::t_78017268108dab 403-407,409-411,413,415-417,419,423-424
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 19,29,34,44-50,56,293,439-475,479-480,492-495,497-501,503-505,507,509-513,515-524,526-528,530-541,543-547,549-557,568-578,583,676-728,730,734,742,744-749,751-754,756-757,986,988,991-1004,1007-1008
+packages/cli/src/modules/data-table/register-favorite-resolver.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 2
+packages/frontend/editor-ui/src/features/settings/migrationReport/workflowFilters.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 1-70
+packages/frontend/@n8n/design-system/src/components/N8nAiModelSelectorDropdown/AiModelSelectorDropdown.test.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 124-193
+packages/modules/type-availability-policies/frontend/src/index.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 3,14
+packages/modules/type-availability-policies/frontend/src/composables/useExclusiveOpen.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 1-23
+packages/frontend/editor-ui/src/features/workflows/workflowHistory/workflowHistory.store.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 114-115
+packages/modules/type-availability-policies/frontend/src/type-availability-policies.constants.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 17-41
+packages/nodes-base/credentials/common/google/utils.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 1-19
+packages/@n8n/backend-services/src/services/workflow-project.service.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 1-64
+packages/@n8n/nodes-langchain/utils/tests/google-vertex.test.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 1-153
+packages/frontend/editor-ui/src/features/ai/instanceAi/workflowSetup/components/WorkflowSetupWizardFooter.vue
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 133-134,137,142-143
+packages/cli/src/modules/otel/__tests__/execution-identity.test.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 1-99
+packages/cli/src/modules/otel/__tests__/otel.service.test.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 165-166
+packages/@n8n/api-types/src/dto/workflows/update-workflow.dto.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 6,8-11
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 2545-2546,2550-2551,3560-3563,4662-4686,5776-5777
+packages/cli/src/modules/otel/__tests__/otel.service.provider.test.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 14,57-58,199-208
+  s_3ef284ec4e912a::t_7c33743764eb2e 209-210
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderEditorColumn.spec.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 2,241-244
+  s_3ef284ec4e912a::t_dabfefdb65e437 245-246
+packages/frontend/editor-ui/src/features/agents/components/AgentSubAgentsPanel.vue
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 321-322,341,347-348,359,374,377,385
+packages/cli/src/modules/otel/__tests__/otel-settings.controller.test.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 30-31
+packages/frontend/editor-ui/src/features/settings/migrationReport/workflowFilters.test.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 1-95
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 67,3539,3562,3622-3634
+  s_3ef284ec4e912a::t_6b3ebed8e5732f 3635-3636
+packages/cli/src/modules/chat-hub/chat-hub-execution.service.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 662
+packages/frontend/editor-ui/src/features/agents/components/AgentWebSearchSection.vue
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 37,337-338,347-363,373,375,389,402,404,415,428,430,443,449-450,458-472,502-509
+packages/cli/src/modules/inbound-auth-core/identity/external-identity.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 1-104
+packages/frontend/@n8n/design-system/src/components/N8nAiModelSelectorDropdown/AiModelSelectorDropdown.types.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 19-20
+packages/@n8n/inbound-auth/src/inbound.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 7,12
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsGoogleVertex/test/EmbeddingsGoogleVertex.test.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 32,42,46,61-64,66,68-76,78-81,83,85-89
+packages/@n8n/nodes-langchain/package.json
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 60
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useResourceRegistry.test.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 1022,1026,1035-1040,1057-1081
+  s_3ef284ec4e912a::t_f8aafd40eca963 1082
+packages/cli/src/modules/agents/register-favorite-resolver.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 2
+packages/nodes-base/credentials/common/google/regions.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 1-207
+packages/modules/type-availability-policies/frontend/src/components/ContactInstanceAdminModal.test.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 64-78
+packages/frontend/editor-ui/src/features/agents/components/AgentMemoryModelSetting.vue
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 170-171,179
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsGoogleVertex/EmbeddingsGoogleVertex.node.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 2,14-15,17-21,25,32,65,86,98,132-135,143
+packages/@n8n/api-types/src/dto/otel/__tests__/update-otel-settings.dto.test.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 43-62
+packages/frontend/@n8n/design-system/src/components/N8nAiModelSelectorDropdown/AiModelSelectorDropdown.vue
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 37,56-57,82,110,142-151,159,234-246,248,360-361,369-370
+  s_3ef284ec4e912a::t_d5a083876f99c7 371-372
+packages/nodes-base/nodes/Databricks/resources/lakebase/parameters.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 38-40,69-71,100-106,135-142
+packages/cli/src/modules/otel/__tests__/otel-lifecycle-handler.test.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 3,30,50-51,116,138-165,260-302,322-337,379-410,553,686-759,796,893,1052,1068,1084-1098,1287,1381
+packages/cli/src/modules/inbound-auth-core/__tests__/external-identity.test.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 1-218
+packages/cli/src/public-api/v1/shared/otel.mapper.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 16-17
+packages/frontend/editor-ui/src/features/agents/components/AgentBudgetPanel.vue
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 250,252-257,282,291,326,329
+packages/modules/otel/frontend/src/otel.store.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 40-41
+packages/@n8n/nodes-langchain/nodes/llms/LmChatGoogleVertex/LmChatGoogleVertex.node.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 2,27-28,30-34,75,77,82,122,129,149-152,187
+packages/@n8n/config/src/configs/deployment.config.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 8-14
+packages/nodes-base/nodes/Databricks/test/lakebasePickers.test.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 113-117,232,275,291-292,330-375,405,407-410,412,414-417,461
+packages/cli/src/modules/otel/execution-level-tracer.types.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 5,11,28,31,63
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/components/N8nChatPageLayout.vue
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 30-33,81-84
+  s_3ef284ec4e912a::t_7c08c58b95fc1b 85-86
+packages/@n8n/backend-services/src/index.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 20-25
+  s_3ef284ec4e912a::t_4a73b1a3ec89a3 19
+packages/cli/src/modules/otel/__tests__/support/otel-test-provider.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 11,79
+packages/cli/src/modules/otel/execution-identity.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 1-65
+packages/cli/src/modules/agents/__tests__/agent-thread.repository.integration.test.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 1-96
+packages/cli/src/services/__tests__/ownership.service.test.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 2,39,48
+packages/cli/src/workflows/workflows.controller.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 312-320,342
+packages/@n8n/api-types/src/dto/otel/update-otel-settings.dto.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 28-30
+packages/frontend/editor-ui/src/features/agents/components/AgentModelSelector.vue
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 17-22,25,47,97,104,225-249,252-267,503-510,709-750,752-758
+packages/frontend/@n8n/rest-api-client/src/api/__tests__/breaking-changes.test.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 1-27
+packages/cli/src/modules/otel/__tests__/otel-settings.service.test.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 91-92,313-314
+packages/@n8n/backend-services/src/services/favorite-resource-resolver.registry.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 1-27
+packages/cli/src/modules/otel/otel.constants.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 16-17,34
+packages/nodes-base/google-service-account.js
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 1
+packages/cli/src/modules/favorites/favorites.service.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 3-6
+  s_3ef284ec4e912a::t_3795489cc67116 2
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 1821,1898
+packages/cli/src/modules/otel/README.md
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 39,43-89,122
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentModelSelector.spec.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 5,33,50-52,54,88-91,107-132,149,155-160,310-311,384-460
+  s_3ef284ec4e912a::t_356291fb77f3ca 461
+packages/cli/test/integration/workflows/workflows.controller.ee.test.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 8,29,1362-1469
+  s_3ef284ec4e912a::t_ca127373ead137 1470
+packages/@n8n/db/src/entities/execution-entity.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 97-101
+packages/cli/src/modules/otel/otel-lifecycle-handler.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 3,13,17,19,52,102-106,110-112,115-117,154-156,159,219,265-294
+  s_3ef284ec4e912a::t_688199664371b5 295
+packages/cli/src/modules/agents/integrations/__tests__/n8n-memory.integration.test.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 1-79
+packages/@n8n/inbound-auth/src/__tests__/inbound.test.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 59-74
+packages/@n8n/nodes-langchain/credentials/GoogleVertexAiApi.credentials.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 1-68
+packages/cli/src/modules/agents/__tests__/agents.module.test.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 10
+packages/cli/src/modules/chat-hub/__tests__/chat-hub-execution.service.test.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 2-3,5,13,32,341-366
+  s_3ef284ec4e912a::t_ecc957c5f10d46 367-368
+packages/cli/src/public-api/v1/controllers/otel.public.controller.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 66
+packages/@n8n/api-types/src/dto/otel/otel-settings-public.dto.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 23-24,48-49
+packages/frontend/editor-ui/src/features/settings/migrationReport/components/WorkflowFiltersPopover.vue
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 1-215
+packages/@n8n/db/src/repositories/execution.repository.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 86
+packages/cli/src/modules/otel/__tests__/execution-level-tracer.test.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 2,5,8,10,13,1074-1467
+packages/cli/src/modules/otel/otel-settings.service.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 210-211
+packages/modules/otel/frontend/src/otel.api.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 16-17
+packages/frontend/editor-ui/src/features/agents/components/model-selector/ModelSelectorRestrictedMarker.vue
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 1-36
+packages/frontend/editor-ui/src/features/agents/styles/agent-panel.module.scss
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 17-100
+packages/nodes-base/credentials/GoogleApi.credentials.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 11
+packages/@n8n/backend-services/src/services/__tests__/favorite-resource-resolver.registry.test.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 1-23
+packages/frontend/@n8n/rest-api-client/src/api/workflows.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 53-54
+AGENTS.md
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 72,74-80,322-335
+packages/nodes-base/credentials/common/google/index.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 1-2
+packages/modules/type-availability-policies/frontend/src/composables/useExclusiveOpen.test.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 1-78
+packages/frontend/editor-ui/src/features/agents/components/AgentMcpPanel.vue
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 20-21,32
+packages/cli/src/workflows/workflow.service.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 129-130,561,611-630,636
+packages/cli/src/modules/otel/otel.service.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 33,172
+packages/frontend/editor-ui/src/features/workflows/workflowHistory/workflowHistory.store.test.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 188-211
+packages/@n8n/inbound-auth/src/pipeline.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 1,12-13,52,58-68
+  s_3ef284ec4e912a::t_410314e7d4a426 69
+packages/cli/src/modules/agents/repositories/agent-thread.repository.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 2,8-13,19-52
+  s_3ef284ec4e912a::t_a3a1af3ef9bbfc 53
+packages/frontend/editor-ui/src/features/agents/components/AgentMemoryPanel.vue
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 106-107,131
+packages/frontend/editor-ui/src/features/agents/components/AgentTriggersSection.vue
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 164,166-188,247,249-250,287,292,297
+packages/nodes-base/package.json
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 10-12,36-37
+packages/cli/test/integration/public-api/otel-settings.test.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 24-25,106-107,255-270
+  s_3ef284ec4e912a::t_e97410ffb326a0 271-272
+packages/cli/src/workflows/workflow.service.ee.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 23,201-209,222-227,242,285-289,299-302
+  s_3ef284ec4e912a::t_8be1aa18810993 303
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 28-35,108-112,114-115,204-205,207-211
+packages/cli/src/modules/otel/execution-level-tracer.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 3,12,17-22,46-49,68-72,74-76,79-107,181,194,197,213-230,317-334,385-405,417,420-426
+packages/nodes-base/nodes/Databricks/transport/lakebaseEndpoint.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 76,86-89
+packages/cli/src/workflows/__tests__/workflow.service.ee.test.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 508-572
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentTriggersSection.test.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 433-436,438,444-477
+  s_3ef284ec4e912a::t_4fa1d7dc099a56 478
+packages/@n8n/db/src/entities/types-db.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 69-73
+packages/cli/test/integration/database/repositories/execution.repository.test.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 325
+packages/frontend/editor-ui/src/features/workflows/workflowHistory/views/WorkflowHistory.test.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 6,89-92,95-98,148-162
+  s_3ef284ec4e912a::t_83703ae7b31025 163-164
+packages/modules/otel/frontend/src/SettingsOpenTelemetryView.test.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 62-63,243-255,458-459,478-479
+packages/@n8n/telemetry/src/events/instance.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 51-56
+packages/modules/otel/frontend/src/otel.store.test.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 33-34
+packages/modules/otel/frontend/src/SettingsOpenTelemetryView.vue
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 706-737
+packages/@n8n/backend-services/src/services/__tests__/workflow-project.service.test.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 1-70
+packages/modules/type-availability-policies/frontend/src/components/RestrictedNodePopover.test.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 4,17,19,56-63,87-148,197-231
+packages/modules/otel/frontend/src/otel.constants.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 36-37
+packages/cli/src/modules/otel/otel.config.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 36-41
+packages/@n8n/config/test/config.test.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 68
+packages/frontend/editor-ui/src/features/agents/__tests__/ModelSelectorRestrictedMarker.spec.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 1-47
+packages/frontend/editor-ui/src/features/agents/components/AgentAdvancedPanel.vue
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 249-250,265,276-281,286,302-303,315,329-330,345,351-352,367
+packages/modules/otel/frontend/src/otel.api.test.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 25-26
+packages/frontend/editor-ui/src/features/ai/instanceAi/useResourceRegistry.ts
+  s_3ef284ec4e912a::t_a1b62d7b37d4a1 61-62,121-125,452-455,458-461,467,622
+packages/cli/src/public-api/v1/handlers/settings/spec/paths/updateOtelSettings.generated.yml
+  s_3ef284ec4e912a::t_8740f8099a24f6 5,63-72,93
+packages/cli/src/public-api/v1/shared/spec/schemas/otelSettingsPublicDto.generated.yml
+  s_3ef284ec4e912a::t_fe7807c369a590 48-55,74-75,79
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "503379ef31cb1561c62b85252b085b4df1e3c4e6",
+  "prompts": {},
+  "sessions": {
+    "s_3ef284ec4e912a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b138e788-474c-4896-a1e4-df3d332d4d7e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,40 @@
+packages/cli/test/integration/workflows/workflow-finder.service.test.ts
+  s_4278dbfca6d1ae::t_f3ca98e8466b2a 146
+  s_4278dbfca6d1ae::t_b60fdc93ba1b88 151
+  s_4278dbfca6d1ae::t_1cb9968c330107 168
+  s_4278dbfca6d1ae::t_573c1c3a760449 173
+  s_4278dbfca6d1ae::t_50c6bdb13f1b25 188
+  s_4278dbfca6d1ae::t_44934cef1188b6 158,174-177,180-183
+  s_4278dbfca6d1ae::t_f630d0954ffdac 142-143,152-154
+  s_4278dbfca6d1ae::t_05679e477e3296 167
+  s_4278dbfca6d1ae::t_c13fe3eacb6c33 155
+  s_4278dbfca6d1ae::t_cd5513ec72a5f0 178-179
+  s_4278dbfca6d1ae::t_703e3fd2da2055 186
+  s_4278dbfca6d1ae::t_0f96292bf9452c 147-149,156
+  s_4278dbfca6d1ae::t_692856bbbe0042 140-141,144,157,159-163,171,184,190-191
+  s_4278dbfca6d1ae::t_6705a727139889 145
+  s_4278dbfca6d1ae::t_0e5a371e3cd708 150
+  s_4278dbfca6d1ae::t_e28e90af21fc59 164-166
+  s_4278dbfca6d1ae::t_ffd3c3c493c7f0 169-170
+  s_4278dbfca6d1ae::t_ed72b1c8445486 172
+  s_4278dbfca6d1ae::t_5f9f5cadc9c58e 185
+  s_4278dbfca6d1ae::t_71e88a9db89c78 187
+  s_4278dbfca6d1ae::t_82ad371a7231e3 189
+  s_4278dbfca6d1ae::t_b1c071a25a6a32 192-194
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bb9fe222bbb4c7b7be0e4b2858c2cc8f8e8b8154",
+  "prompts": {},
+  "sessions": {
+    "s_4278dbfca6d1ae": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "406792df-803a-4699-9e40-be3371112120",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

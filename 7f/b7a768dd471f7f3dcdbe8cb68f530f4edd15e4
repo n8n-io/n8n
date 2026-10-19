@@ -1,0 +1,19 @@
+packages/nodes-base/nodes/Mailchimp/__tests__/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_dcdab1a4bb596c 22-43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7fb7a768dd471f7f3dcdbe8cb68f530f4edd15e4",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,34 @@
+packages/cli/src/modules/promotions.ee/git-hosts/gitlab-merge-request.client.ts
+  s_5ef8864054ee6b::t_30151cecba3338 133-136
+  s_5ef8864054ee6b::t_5526de9de31284 113,116
+  s_5ef8864054ee6b::t_35b26e9373dce5 64-69,117,149-168,170,174-194,208-210,212-213,215,218-224,226,231-233,236-239,241-244,246-249,254
+  s_5ef8864054ee6b::t_ccc597157e5528 22-27
+  s_5ef8864054ee6b::t_51696790deeca0 268
+packages/cli/src/modules/promotions.ee/promotion-review.utils.ts
+  s_5ef8864054ee6b::t_8255747688ac02 1-21
+packages/cli/src/modules/promotions.ee/__tests__/promotion-reviews.service.test.ts
+  s_5ef8864054ee6b::t_548ee1a6886d41 9-10
+packages/cli/src/modules/promotions.ee/git-hosts/gitlab-merge-request.types.ts
+  s_5ef8864054ee6b::t_fe178f4a56bea0 1-40
+packages/cli/src/modules/promotions.ee/promotion-reviews.service.ts
+  s_5ef8864054ee6b::t_12bee091123871 20
+  s_5ef8864054ee6b::t_dd5c4b3de9a43c 74
+packages/cli/src/modules/promotions.ee/git-hosts/__tests__/gitlab-merge-request.client.test.ts
+  s_5ef8864054ee6b::t_80025f66dfa466 120-121
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3652977e16e0d035c2550d6b2f6ccb399dd381c4",
+  "prompts": {},
+  "sessions": {
+    "s_5ef8864054ee6b": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "c63a640e-618d-456a-b511-501d52ce31b1",
+        "model": "auto-smart"
+      },
+      "human_author": null
+    }
+  }
+}

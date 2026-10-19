@@ -1,0 +1,9 @@
+packages/cli/src/scheduling/system-tasks/README.md
+  ai_agent 1-98
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b887be4841c7e170c2b51b5ce2d7b3c277abb6cd",
+  "prompts": {}
+}

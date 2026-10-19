@@ -1,0 +1,34 @@
+packages/nodes-base/nodes/Drift/test/workflow/Drift.workflow.test.ts
+  s_2e1fa95fc44f8f::t_93aba871201d40 1-32
+packages/nodes-base/nodes/Disqus/test/workflow/requests.workflow.json
+  s_2e1fa95fc44f8f::t_e64e72d1b3fab0 1-98
+packages/nodes-base/nodes/Dropcontact/test/workflow/requests.workflow.json
+  s_2e1fa95fc44f8f::t_9a4fa689953412 1-76
+packages/nodes-base/nodes/Dropbox/test/workflow/requests.workflow.json
+  s_2e1fa95fc44f8f::t_f069bf9463ae6c 1-155
+packages/nodes-base/nodes/Drift/test/workflow/requests.workflow.json
+  s_2e1fa95fc44f8f::t_b85800c348e34a 1-99
+packages/nodes-base/nodes/Dropbox/test/workflow/Dropbox.workflow.test.ts
+  s_2e1fa95fc44f8f::t_3b258ddf77e160 1-85
+  s_2e1fa95fc44f8f::t_740fb121cf09d0 86
+packages/nodes-base/nodes/Disqus/test/workflow/Disqus.workflow.test.ts
+  s_2e1fa95fc44f8f::t_b7f8dfa598959a 1-58
+packages/nodes-base/nodes/Dropcontact/test/workflow/Dropcontact.workflow.test.ts
+  s_2e1fa95fc44f8f::t_262f07d7af7c87 1-32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "21a51e388a234aceefa8e5ed7d10d36960fdfad8",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

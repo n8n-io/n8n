@@ -1,0 +1,67 @@
+packages/nodes-base/nodes/Brandfetch/test/v1/BrandfetchV1.node.test.ts
+  s_2e1fa95fc44f8f::t_eff790f9993e16 53-64,73-74,76
+  s_2e1fa95fc44f8f::t_b1a3e01e6c6560 75
+  s_c7efece433dc7c::t_f8165db34dc967 2
+packages/nodes-base/nodes/Brandfetch/test/v1/GenericFunctions.test.ts
+  s_29fe1f61565b6f::t_b9930f2537c23c 9,47,53,62,69,84,107-109,115-117
+packages/nodes-base/nodes/Brandfetch/test/v2/BrandfetchV2.node.test.ts
+  s_26d94a031e8eff::t_4449e3b801bfc7 2,66,79,91,107,284,305,321,350
+packages/nodes-base/nodes/Brandfetch/test/v2/GenericFunctions.test.ts
+  s_c7efece433dc7c::t_51b0e5ee1677d7 9,47-51,54,58,67,74,85,96,104
+packages/nodes-base/nodes/Brandfetch/v1/BrandfetchV1.node.ts
+  s_26d94a031e8eff::t_9c8acb520527a4 9,163-167,224-228,236-240,248-252,260-264
+packages/nodes-base/nodes/Brandfetch/v1/GenericFunctions.ts
+  s_c7efece433dc7c::t_25215a7472240c 10-11,13,53,57,60,64,107
+packages/nodes-base/nodes/Brandfetch/v2/BrandfetchV2.node.ts
+  s_c7efece433dc7c::t_aadf8bbe7d3291 9,207,215,241
+packages/nodes-base/nodes/Brandfetch/v2/GenericFunctions.ts
+  s_19150bf5812493::t_31441f4025a226 10-11,13,53,56,59,63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "94132c37d9024ae8923518a7b8d3efd4287981cf",
+  "prompts": {},
+  "sessions": {
+    "s_19150bf5812493": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-aaeb313a3a4da81b4",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_26d94a031e8eff": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a12a0900bfd13cfc5",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_29fe1f61565b6f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ad2b09f5b20b4c7e5",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_c7efece433dc7c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a7721a4c2917990d3",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

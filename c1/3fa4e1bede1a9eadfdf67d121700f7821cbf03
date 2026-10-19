@@ -1,0 +1,31 @@
+scripts/minimal-instance/run.sh
+  s_15cdc903e8c5c7::t_a6c0ad47d9cd18 47-49,85-86
+  s_500a601df8e54f::t_17e177ada06c52 13-15,134-140
+scripts/minimal-instance/README.md
+  s_500a601df8e54f::t_085e0cafa94172 55-65
+  s_15cdc903e8c5c7::t_a6c0ad47d9cd18 26-30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c13fa4e1bede1a9eadfdf67d121700f7821cbf03",
+  "prompts": {},
+  "sessions": {
+    "s_15cdc903e8c5c7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5c1ee01b-84a2-487e-b246-a6eaa58657ee",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_500a601df8e54f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e6130741-9dd4-44ac-b1bb-607f4caa4fdc",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

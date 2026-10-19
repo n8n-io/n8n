@@ -1,0 +1,70 @@
+packages/cli/src/modules/agents/system-agents/__tests__/system-agent-execution.service.test.ts
+  s_ca670fa39858e8::t_537a3e86bd5558 46,158,192,197,237,257,372,399,625,686
+packages/cli/src/scaling/pubsub/pubsub.event-map.ts
+  s_ca670fa39858e8::t_9d3ba590582ec2 153-154
+packages/cli/src/modules/agents/utils/agent-thread-access.ts
+  s_ca670fa39858e8::t_6c14e28bf0ebd6 2-6,12-13,15-19,23-30,73-81
+packages/cli/src/modules/agents/__tests__/agent-chat-execution.service.test.ts
+  s_ca670fa39858e8::t_537a3e86bd5558 168,200,213-243
+packages/cli/src/modules/agents/__tests__/agent-message-queue-consumer.service.test.ts
+  s_ca670fa39858e8::t_88a22e3f5bc9df 467,496-498
+packages/cli/src/modules/agents/system-agents/__tests__/system-agent-chat.controller.test.ts
+  s_ca670fa39858e8::t_537a3e86bd5558 31,141,149,165,248
+packages/cli/src/modules/agents/agent-message-queue.service.ts
+  s_ca670fa39858e8::t_6158a0533003d1 37
+  s_ca670fa39858e8::t_f404c5f802b81d 349,511-525
+packages/cli/src/modules/agents/utils/agent-memory-scope.ts
+  s_ca670fa39858e8::t_6c14e28bf0ebd6 4,32-40
+packages/cli/src/modules/agents/system-agents/system-agent-chat.controller.ts
+  s_ca670fa39858e8::t_f404c5f802b81d 79,129,146,165,187
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_09ebfe5a5b97ab::t_4acf1331787bfd 2681-2682
+  s_ca670fa39858e8::t_f2bc161baec4a5 2796,2834,2835-2837
+  s_ca670fa39858e8::t_88a22e3f5bc9df 2819,2659-2660
+  s_ca670fa39858e8::t_a867e6c2ae9f02 2824,2870
+  s_ca670fa39858e8::t_3d33e39169214c 2848
+  s_9ff4262de30095::t_042ad8baa1a3c8 2867-2869,2825,2871
+packages/cli/src/modules/agents/agent-message-queue-consumer.service.ts
+  s_ca670fa39858e8::t_898a238813c149 26,321-323
+  s_ca670fa39858e8::t_3588946574773c 27
+  s_ca670fa39858e8::t_f404c5f802b81d 155,320
+packages/cli/src/modules/agents/agent-chat-execution.service.ts
+  s_ca670fa39858e8::t_2fca42beb39138 15
+  s_ca670fa39858e8::t_9d3ba590582ec2 21,24,35,37,143,159,162,218,222-240,272-275
+packages/cli/src/modules/agents/system-agents/system-agent-execution.service.ts
+  s_09ebfe5a5b97ab::t_933a278e8bb670 152-154,186-188
+  s_ca670fa39858e8::t_f404c5f802b81d 256,403,475,526,549,50-52,82
+  s_ca670fa39858e8::t_3588946574773c 26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "78e320db9b62550939f901114e11e23bd48c4412",
+  "prompts": {},
+  "sessions": {
+    "s_09ebfe5a5b97ab": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "26e89b9d-8656-45aa-98cc-1e020586a4fd",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    },
+    "s_9ff4262de30095": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9868a5dd-91a6-459c-9b56-a6c634304b2f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    },
+    "s_ca670fa39858e8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3e15b4e0-3527-473c-a3bf-0e02b3a8a92f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

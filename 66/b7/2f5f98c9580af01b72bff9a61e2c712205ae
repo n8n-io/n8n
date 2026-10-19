@@ -1,0 +1,51 @@
+packages/nodes-base/nodes/GetResponse/test/GetResponseTrigger.node.test.ts
+  s_2e1fa95fc44f8f::t_2d5c4fd7b71bdf 1-53
+packages/nodes-base/nodes/Gitlab/__tests__/Gitlab.release.test.ts
+  s_2e1fa95fc44f8f::t_98a820937066b5 127-141
+packages/nodes-base/nodes/Gitlab/__tests__/GitlabTrigger.test.ts
+  s_2e1fa95fc44f8f::t_ba4ff768ef9c34 1-7
+  s_2e1fa95fc44f8f::t_51f46797634739 94-136
+  s_2e1fa95fc44f8f::t_8feb9d473cd262 137
+packages/nodes-base/nodes/Gitlab/__tests__/release.get.encodedProject.workflow.json
+  s_6c2f994c65d6b1::t_6e58f53640d8e1 1-81
+packages/nodes-base/nodes/Freshservice/__tests__/workflow/requests/requests.test.ts
+  s_2e1fa95fc44f8f::t_b5882e1609c227 1-196
+packages/nodes-base/nodes/Freshservice/__tests__/workflow/requests/requests.workflow.json
+  s_2e1fa95fc44f8f::t_80626bb5119f02 1-2315
+packages/nodes-base/nodes/FreshworksCrm/test/workflow/FreshworksCrm.workflow.test.ts
+  s_2e1fa95fc44f8f::t_20a19be176d0c9 1-132
+packages/nodes-base/nodes/FreshworksCrm/test/workflow/requests.workflow.json
+  s_2e1fa95fc44f8f::t_10087c309c9e31 1-1157
+packages/nodes-base/nodes/GetResponse/test/workflow/GetResponse.workflow.test.ts
+  s_2e1fa95fc44f8f::t_fee9a2e82f297b 1-35
+packages/nodes-base/nodes/GetResponse/test/workflow/requests.workflow.json
+  s_2e1fa95fc44f8f::t_781eb255101f24 1-215
+packages/nodes-base/nodes/Ghost/test/workflow/Ghost.workflow.test.ts
+  s_2e1fa95fc44f8f::t_b06f9e84332339 1-158
+packages/nodes-base/nodes/Ghost/test/workflow/requests.workflow.json
+  s_2e1fa95fc44f8f::t_29c483e1c38c19 1-372
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "66b72f5f98c9580af01b72bff9a61e2c712205ae",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_6c2f994c65d6b1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ac0b08f80058e92ec",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

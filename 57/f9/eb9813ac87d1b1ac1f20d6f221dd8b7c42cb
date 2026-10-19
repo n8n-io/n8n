@@ -1,0 +1,31 @@
+packages/nodes-base/nodes/Microsoft/Outlook/test/v1/MessageDelete.test.ts
+  s_2e1fa95fc44f8f::t_f28b8da1e293e1 1-39
+packages/nodes-base/nodes/Microsoft/Outlook/v1/GenericFunctions.ts
+  s_280c98212f067a::t_dbb53f64b9f8df 9-11,13,18,24,28,31,34,41,54-58,68,101,202,209
+packages/nodes-base/nodes/Microsoft/Outlook/v1/MicrosoftOutlookV1.node.ts
+  s_280c98212f067a::t_eb9903fd495e50 13,125,153-157,187,230,294-300,324,333,374,411,419-423,445,504,558,633-639,704,746,773,787,840,872,909,912,943,972,1006,1012-1018,1052,1060,1090,1121
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "57f9eb9813ac87d1b1ac1f20d6f221dd8b7c42cb",
+  "prompts": {},
+  "sessions": {
+    "s_280c98212f067a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ab9c6c0730810a6f5",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

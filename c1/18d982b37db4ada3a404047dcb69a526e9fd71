@@ -1,0 +1,28 @@
+packages/nodes-base/nodes/MailerLite/v1/MailerLiteTriggerV1.node.ts
+  s_2e1fa95fc44f8f::t_2ae6672c72ae84 160
+packages/nodes-base/nodes/MailerLite/tests/v2/MailerLiteTriggerV2.test.ts
+  s_2e1fa95fc44f8f::t_67f25fbbbcdcf3 80-141
+  s_2e1fa95fc44f8f::t_5504002f97532c 1-2
+packages/nodes-base/nodes/Mailjet/test/MailjetTrigger.node.test.ts
+  s_2e1fa95fc44f8f::t_3157d3e88680cf 1-17
+packages/nodes-base/nodes/Mailjet/MailjetTrigger.node.ts
+  s_2e1fa95fc44f8f::t_edc724ee25d04a 116
+packages/nodes-base/nodes/MailerLite/v2/MailerLiteTriggerV2.node.ts
+  s_2e1fa95fc44f8f::t_193e3b4f95c186 166
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c118d982b37db4ada3a404047dcb69a526e9fd71",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

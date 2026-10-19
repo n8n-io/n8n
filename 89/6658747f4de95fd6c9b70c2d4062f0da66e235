@@ -1,0 +1,77 @@
+packages/@n8n/nodes-langchain/nodes/vendors/GoogleGemini/transport/index.ts
+  s_2e1fa95fc44f8f::t_4f1b20c7cb57e3 6,8,25,32
+  s_2e1fa95fc44f8f::t_c72038878eaf97 33-37
+packages/@n8n/nodes-langchain/nodes/vendors/GoogleGemini/actions/image/edit.operation.test.ts
+  s_2e1fa95fc44f8f::t_9011ded68aba98 25-27
+packages/@n8n/nodes-langchain/nodes/vendors/GoogleGemini/methods/listSearch.ts
+  s_2e1fa95fc44f8f::t_6119fe61fda973 2
+  s_2e1fa95fc44f8f::t_daff6be9374298 11
+packages/@n8n/nodes-langchain/nodes/vendors/GoogleGemini/helpers/utils.test.ts
+  s_2e1fa95fc44f8f::t_d76da8f18248b9 2,201,409,642,1038,1058,1079,1099
+packages/@n8n/nodes-langchain/nodes/vendors/AlibabaCloud/actions/image/analyze.operation.ts
+  s_110005f762b90a::t_112eaac70f9353 2,201
+packages/@n8n/nodes-langchain/nodes/vendors/AlibabaCloud/actions/text/message.operation.ts
+  s_110005f762b90a::t_72a6fe796adff3 8-13,353-354
+packages/@n8n/nodes-langchain/nodes/vendors/AlibabaCloud/actions/video/generate.i2v.operation.ts
+  s_110005f762b90a::t_0ccba89de344e0 7,300
+packages/@n8n/nodes-langchain/nodes/vendors/AlibabaCloud/actions/video/generate.t2v.operation.ts
+  s_110005f762b90a::t_a208406548861f 7,238
+packages/@n8n/nodes-langchain/nodes/vendors/AlibabaCloud/helpers/wanImage.ts
+  s_110005f762b90a::t_209597d6e4928c 1-6,12
+packages/@n8n/nodes-langchain/nodes/vendors/AlibabaCloud/methods/listSearch.ts
+  s_110005f762b90a::t_54152537e799ac 2,11
+packages/@n8n/nodes-langchain/nodes/vendors/AlibabaCloud/test/listSearch.test.ts
+  s_bb49e97b6425bd::t_34df8bfad12813 2,155
+packages/@n8n/nodes-langchain/nodes/vendors/AlibabaCloud/test/operations.test.ts
+  s_bb49e97b6425bd::t_cc1d408e135de0 2,90,123,164,274,365,480,555,616,665,703,746,799,907,1008
+packages/@n8n/nodes-langchain/nodes/vendors/AlibabaCloud/test/transport.test.ts
+  s_768442b837c256::t_d3b98b97a4949b 2,18,42,50,58,61,69,75-88,95,103,107,112,120,124,129,137,141,146,155,160
+packages/@n8n/nodes-langchain/nodes/vendors/AlibabaCloud/test/wanImage.test.ts
+  s_bb49e97b6425bd::t_aca8e13c0b0aef 1-2,5-8
+packages/@n8n/nodes-langchain/nodes/vendors/AlibabaCloud/transport/index.ts
+  s_110005f762b90a::t_0236c7b64b1d6a 5,7-8,11,26,29,35,40,70
+packages/@n8n/nodes-langchain/nodes/vendors/GoogleGemini/helpers/utils.ts
+  s_768442b837c256::t_19f2cba01cc3e5 2-3,31,91-105,107,251,272,349-351
+packages/@n8n/nodes-langchain/nodes/vendors/GoogleGemini/transport/index.test.ts
+  s_768442b837c256::t_e8e5b62a6143f7 2,19,35,53,59,85-100
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "896658747f4de95fd6c9b70c2d4062f0da66e235",
+  "prompts": {},
+  "sessions": {
+    "s_110005f762b90a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a004a1c7a9419a27f",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_768442b837c256": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a37cacb013e37b4c4",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_bb49e97b6425bd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-aacedbc09e7955e72",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+packages/nodes-base/nodes/InvoiceNinja/__tests__/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_b71e045a7b03ab 8,10-11,14-17,19-20,24-37,39
+  s_2e1fa95fc44f8f::t_b3dee90678e05e 38
+  s_2e1fa95fc44f8f::t_ed7afe76f986ae 40-42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7985ef154fe56312c081c00c7f3ebab980aee20e",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}
