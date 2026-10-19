@@ -566,6 +566,7 @@ export class DurableEventLog {
 		lifecycle: object,
 	): Promise<PersistedBatch> {
 		let lastError: unknown;
+		let attemptedFirstSeq: number | undefined;
 		let admitted = entries;
 		let events = entries
 			.filter((entry) => entry.persistIndex !== undefined)
@@ -586,6 +587,16 @@ export class DurableEventLog {
 			// consume an attempt and retry, not reject the (unawaited) drain.
 			let firstSeq: number | undefined;
 			try {
+				// Confirm a lost response before terminal facts can filter our own committed batch.
+				if (attemptedFirstSeq !== undefined) {
+					const payload = await this.repo.payloadAt(threadId, attemptedFirstSeq);
+					if (payload === JSON.stringify(events[0])) {
+						this.lastSeq.set(threadId, attemptedFirstSeq + events.length - 1);
+						this.metrics.recordDrainBatch(events.length, serializedBytes(events));
+						return { firstSeq: attemptedFirstSeq, entries: admitted };
+					}
+					attemptedFirstSeq = undefined;
+				}
 				// Seed seq before the read. A concurrent terminal write then forces an append conflict.
 				firstSeq = (await this.currentSeq(threadId)) + 1;
 				const activity = createInstanceAiEventLifecycle();
@@ -612,6 +623,7 @@ export class DurableEventLog {
 					}
 				}
 				if (events.length === 0) return { entries: admitted };
+				attemptedFirstSeq = firstSeq;
 				const bytes = await this.repo.appendBatch(threadId, firstSeq, events);
 				this.lastSeq.set(threadId, firstSeq + events.length - 1);
 				this.metrics.recordDrainBatch(events.length, bytes);
@@ -619,6 +631,7 @@ export class DurableEventLog {
 			} catch (error) {
 				lastError = error;
 				if (isUniqueConstraintError(error)) {
+					attemptedFirstSeq = undefined;
 					// (threadId, seq) collision: another main won the range — re-seed
 					// from the DB and try again.
 					this.lastSeq.delete(threadId);

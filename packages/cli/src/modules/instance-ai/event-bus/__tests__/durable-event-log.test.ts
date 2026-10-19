@@ -31,6 +31,7 @@ class FakeRepo {
 	/** Fail the next N maxSeq reads (seq seeding hits a transient DB error). */
 	failNextMaxSeq = 0;
 	failNextTerminalReads = 0;
+	failNextPayloadReads = 0;
 
 	/** Hold the next append until released — models an in-flight DB round trip. */
 	gateNextAppend: Promise<void> | undefined;
@@ -51,6 +52,10 @@ class FakeRepo {
 	}
 
 	async payloadAt(_threadId: string, seq: number): Promise<string | null> {
+		if (this.failNextPayloadReads > 0) {
+			this.failNextPayloadReads--;
+			throw new Error('connect ETIMEDOUT');
+		}
 		const row = this.rows.find((r) => r.seq === seq);
 		return row ? JSON.stringify(row.event) : null;
 	}
@@ -351,6 +356,43 @@ describe('DurableEventLog', () => {
 		await publishAll(log, [textDelta('late')]);
 		expect(log.getOpenSegments(THREAD)).toEqual([]);
 		expect(repo.rows).toHaveLength(2);
+		log.clear();
+	});
+
+	it('keeps cancellation last when another writer still emits deltas', async () => {
+		const repo = new FakeRepo();
+		const { log: writer } = buildLog(repo);
+		const { log: canceller } = buildLog(repo);
+		await publishAll(writer, [toolCall('first')]);
+		const cancelled: InstanceAiEvent = {
+			type: 'run-finish',
+			runId: RUN,
+			agentId: AGENT,
+			payload: { status: 'cancelled' },
+		};
+		await publishAll(canceller, [cancelled]);
+		await publishAll(writer, [textDelta('late'), reasoningDelta('late')]);
+		expect(repo.rows.map((row) => row.event)).toEqual([toolCall('first'), cancelled]);
+		expect(writer.getOpenSegments(THREAD)).toEqual([]);
+		expect(await publishAll(writer, [toolInputStart('late')])).toEqual([]);
+		writer.clear();
+		canceller.clear();
+	});
+
+	it('delivers committed cancellation when the append response and first read fail', async () => {
+		const repo = new FakeRepo();
+		repo.commitThenFailNextAppends = 1;
+		repo.failNextPayloadReads = 1;
+		const { log, metrics } = buildLog(repo);
+		const cancelled: InstanceAiEvent = {
+			type: 'run-finish',
+			runId: RUN,
+			agentId: AGENT,
+			payload: { status: 'cancelled' },
+		};
+		expect(await publishAll(log, [cancelled])).toEqual([{ event: cancelled, id: 1, live: true }]);
+		expect(repo.rows).toEqual([{ seq: 1, event: cancelled }]);
+		expect(metrics.drain.rowsWritten).toBe(1);
 		log.clear();
 	});
 
