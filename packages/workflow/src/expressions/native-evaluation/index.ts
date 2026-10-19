@@ -159,9 +159,10 @@ export function evaluateNatively(
 // The engines hand back a copy of any object they return; a whole-value read
 // like `{{ $json.body }}` here would hand back the live execution data, which
 // callers then mutate in place (cleanupParameterData). Match the engines with
-// a JSON copy. Everything else is the engine's: a data proxy (the `$parameter`
-// get trap resolves nested expressions), a non-plain object (Date, DateTime),
-// a non-JSON leaf, data deeper than MAX_DEPTH, and an own `__proto__` key,
+// a plain-data copy. Everything else is the engine's: a data proxy (the
+// `$parameter` get trap resolves nested expressions), a non-plain object or
+// array (Date, DateTime), a function, symbol or bigint, data deeper than
+// MAX_DEPTH, and an own `__proto__` key,
 // which the vm and quickjs serialiser drops and legacy keeps.
 function copyResult(value: unknown): unknown {
 	// A shared object is copied once per reference, so shared or cyclic data
@@ -176,6 +177,8 @@ function copyResult(value: unknown): unknown {
 		if (depth > MAX_DEPTH || value.isProxy === true) throw new EngineFallbackError();
 
 		if (isArray(value)) {
+			if (getPrototypeOf(value) !== Array.prototype) throw new EngineFallbackError();
+
 			visits += value.length;
 			if (visits > MAX_RESULT_LENGTH) throw new EngineFallbackError();
 

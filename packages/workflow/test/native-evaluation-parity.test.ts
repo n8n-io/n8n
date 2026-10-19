@@ -407,7 +407,6 @@ describe('Expression - fast native evaluation parity', () => {
 			const data = runDataFor([payload as never]);
 			const run = (native: boolean) =>
 				evaluate('={{ $json.item }}', native, data, [payload as never]) as object;
-			Expression.setNativeEvaluation(true);
 			expect(evaluateNatively('{{ $json.item }}', { $json: payload.json } as never)).toEqual({
 				handled: false,
 			});
@@ -417,7 +416,7 @@ describe('Expression - fast native evaluation parity', () => {
 	});
 
 	describe('structural guards', () => {
-		test('a whole-value read of shared, cyclic or long sparse data hands off to the engine', () => {
+		test('a whole-value read of shared, cyclic, long sparse or non-plain array data hands off to the engine', () => {
 			const shared: Record<string, unknown> = { leaf: 1 };
 			let fanOut = shared;
 			for (let level = 0; level < 30; level++) fanOut = { a: fanOut, b: fanOut };
@@ -426,8 +425,10 @@ describe('Expression - fast native evaluation parity', () => {
 			cyclic.b = cyclic;
 			const sparse: unknown[] = [];
 			sparse[MAX_RESULT_LENGTH] = 1;
+			class SubArray extends Array<number> {}
+			const subclassed = SubArray.from([1]);
 
-			for (const item of [fanOut, cyclic, sparse]) {
+			for (const item of [fanOut, cyclic, sparse, subclassed]) {
 				expect(evaluateNatively('{{ $json.item }}', { $json: { item } } as never)).toEqual({
 					handled: false,
 				});
