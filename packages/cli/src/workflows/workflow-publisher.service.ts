@@ -28,9 +28,6 @@ export class WorkflowPublisherService {
 	 * behaves exactly as it does today, so callers need no fallback: this only
 	 * ever adds attribution where there was none.
 	 *
-	 * Returns `undefined` while the feature flag is off, which is the single
-	 * gate for this behaviour — call sites stay unconditional.
-	 *
 	 * @param executedVersionId - the version whose nodes the run executes, which
 	 * every caller already holds. Deliberately not the workflow row's
 	 * `activeVersionId`: publication writes that row before it swaps the

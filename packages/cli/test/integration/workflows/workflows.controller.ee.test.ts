@@ -1366,6 +1366,11 @@ describe('PATCH /workflows/:workflowId', () => {
 			});
 
 			expect(response.statusCode).toBe(200);
+
+			const saved = await authMemberAgent.get(`/workflows/${workflow.id}`).expect(200);
+			expect(saved.body.data.usedCredentials).toMatchObject([
+				{ id: credential.id, name: credential.name, currentUserCanUse: true },
+			]);
 		});
 
 		describe('sub-workflow loaded from a URL or file', () => {
