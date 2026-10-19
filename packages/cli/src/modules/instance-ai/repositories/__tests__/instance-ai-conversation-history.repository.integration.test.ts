@@ -197,6 +197,22 @@ describe('InstanceAiConversationHistoryRepository', () => {
 			expect(rows.map((row) => row.id)).toEqual([answered]);
 		});
 
+		it('matches ask-user answers stored under the former tool name', async () => {
+			const answered = await createThread({ title: 'Timezone setup' });
+			await createMessage({
+				threadId: answered,
+				role: 'assistant',
+				content: askUserContent(
+					[{ question: 'Which timezone?', selectedOptions: ['Europe/Berlin'] }],
+					{ toolName: 'ask-user' },
+				),
+			});
+
+			const rows = await search('berlin');
+
+			expect(rows.map((row) => row.id)).toEqual([answered]);
+		});
+
 		it('treats wildcards in the query as literal characters', async () => {
 			const literal = await createThread({ title: 'Discount 50% off campaign' });
 			await createThread({ title: 'Discount 5012 off campaign' });
@@ -656,6 +672,26 @@ describe('InstanceAiConversationHistoryRepository', () => {
 				threadId,
 				role: 'assistant',
 				content: askUserContent([{ question: 'Which channel?', selectedOptions: ['#alerts'] }]),
+				createdAt: at(5000),
+			});
+
+			const window = await repository.getConversationWindow({
+				threadId,
+				before: 2,
+				after: 0,
+				project: (row) => row,
+			});
+
+			expect(window.rows.map((row) => row.id)).toEqual([messageIds.e, askUserId]);
+		});
+
+		it('keeps ask-user rows stored under the former tool name visible in windows', async () => {
+			const askUserId = await createMessage({
+				threadId,
+				role: 'assistant',
+				content: askUserContent([{ question: 'Which channel?', selectedOptions: ['#alerts'] }], {
+					toolName: 'ask-user',
+				}),
 				createdAt: at(5000),
 			});
 

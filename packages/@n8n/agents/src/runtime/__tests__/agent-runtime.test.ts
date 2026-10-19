@@ -1238,6 +1238,28 @@ describe('AgentRuntime — execution counters', () => {
 		expect(counter.incrementTokenCount).toHaveBeenCalledTimes(2);
 	});
 
+	it('resumes a suspended call persisted under a legacy tool name', async () => {
+		const suspendTool = makeInterruptibleTool();
+		const { runtime } = createRuntimeWithTools([suspendTool], 1);
+
+		generateText.mockResolvedValueOnce(
+			makeGenerateWithToolCalls([
+				{ toolCallId: 'tc-1', toolName: 'approve', args: { question: 'continue?' } },
+			]),
+		);
+
+		const first = await runtime.generate('needs approval');
+		const { runId, toolCallId } = first.pendingSuspend![0];
+
+		Object.assign(suspendTool, { name: 'approve_v2', legacyNames: ['approve'] });
+
+		generateText.mockResolvedValueOnce(makeGenerateSuccess('approved'));
+		const resumed = await runtime.resume('generate', { approved: true }, { runId, toolCallId });
+
+		expect(resumed.error).toBeUndefined();
+		expect(resumed.finishReason).not.toBe('error');
+	});
+
 	it('exposes the checkpointed suspend payload to a resumed tool handler via ctx.suspendPayload', async () => {
 		const suspendPayload = { question: 'approve?', marker: 'xyz' };
 		let observedCtx: InterruptibleToolContext | undefined;
@@ -2688,6 +2710,69 @@ describe('AgentRuntime.stream() — fallback error observability', () => {
 });
 
 // ---------------------------------------------------------------------------
+// stream() — prompt-size split of usage
+// ---------------------------------------------------------------------------
+
+describe('AgentRuntime.stream() — prompt-size split of usage', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it('splits the finish usage by the prompt size of each model call', async () => {
+		const tool = makeMockTool('lookup', async () => await Promise.resolve({ ok: true }));
+		const { runtime } = createRuntimeWithTools([tool], 1);
+
+		streamText
+			.mockReturnValueOnce({
+				stream: makeChunkStream([]),
+				finishReason: Promise.resolve('tool-calls'),
+				usage: Promise.resolve({ inputTokens: 40_000, outputTokens: 5, totalTokens: 40_005 }),
+				response: Promise.resolve({
+					messages: [
+						{
+							role: 'assistant',
+							content: [
+								{ type: 'tool-call', toolCallId: 'tc-1', toolName: 'lookup', args: { value: 'x' } },
+							],
+						},
+					],
+				}),
+				toolCalls: Promise.resolve([
+					{ toolCallId: 'tc-1', toolName: 'lookup', input: { value: 'x' } },
+				]),
+			})
+			.mockReturnValueOnce({
+				...makeStreamSuccess('done'),
+				usage: Promise.resolve({ inputTokens: 150_000, outputTokens: 7, totalTokens: 150_007 }),
+			});
+
+		const { stream } = await runtime.stream('hello');
+		const chunks = await collectChunks(stream);
+
+		const finish = chunks.filter((c) => c.type === 'finish').at(-1) as
+			| (StreamChunk & { type: 'finish' })
+			| undefined;
+
+		expect(finish?.usage).toMatchObject({
+			promptTokens: 190_000,
+			completionTokens: 12,
+			byPromptSize: [
+				{
+					promptTokensOver: 32_000,
+					maxPromptTokens: 40_000,
+					usage: { promptTokens: 40_000, completionTokens: 5 },
+				},
+				{
+					promptTokensOver: 128_000,
+					maxPromptTokens: 150_000,
+					usage: { promptTokens: 150_000, completionTokens: 7 },
+				},
+			],
+		});
+	});
+});
+
+// ---------------------------------------------------------------------------
 // stream() — usage billing on abort
 // ---------------------------------------------------------------------------
 
@@ -2928,6 +3013,14 @@ describe('AgentRuntime.stream() — usage billing on abort', () => {
 			totalTokens: 38,
 			inputTokenDetails: { noCache: 20 },
 		});
+		// The in-flight turn is in the prompt-size split too.
+		expect(finish?.usage?.byPromptSize).toEqual([
+			expect.objectContaining({
+				promptTokensOver: 0,
+				maxPromptTokens: 20,
+				usage: expect.objectContaining({ promptTokens: 30, completionTokens: 8 }),
+			}),
+		]);
 		expect(runtime.getState().status).toBe('cancelled');
 	});
 

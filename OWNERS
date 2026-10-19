@@ -116,16 +116,14 @@ packages/cli/src/posthog/                               @n8n-io/growth
 packages/cli/src/modules/data-table/                    @n8n-io/knowledge
 
 packages/cli/src/evaluation.ee/                         @n8n-io/ai-trust
-packages/cli/src/chat/                                  @n8n-io/ai
+packages/cli/src/chat/                                  @n8n-io/ai-agents
+packages/cli/src/modules/agents/                        @n8n-io/ai-agents
 packages/cli/src/tool-generation/                       @n8n-io/ai
 packages/modules/workflow-builder/                     @n8n-io/ai-assistant
 packages/cli/src/modules/mcp/                           @n8n-io/context
-packages/modules/quick-connect/                        @n8n-io/ai
 packages/cli/src/modules/chat-hub/                      @n8n-io/ai-assistant
 packages/cli/src/modules/instance-ai/                   @n8n-io/ai-assistant
 packages/modules/inbox/                                @n8n-io/ligo
-
-packages/cli/src/modules/community-packages/            @n8n-io/nodes
 
 # CLI controllers
 packages/cli/src/controllers/auth.controller.ts         						@n8n-io/iam
@@ -196,15 +194,42 @@ packages/frontend/@n8n/storybook/                       @n8n-io/design-engineeri
 packages/frontend/@n8n/i18n/                            @n8n-io/frontend
 packages/@n8n/stylelint-config/                         @n8n-io/qa-dx
 
+packages/frontend/editor-ui/src/features/ai/gateway/    @n8n-io/relay
+packages/frontend/editor-ui/src/app/composables/useAiGatewayTopUp.ts @n8n-io/relay
+packages/frontend/editor-ui/src/app/composables/useFreeAiCredits.ts @n8n-io/relay
+
+packages/frontend/editor-ui/src/features/settings/communityNodes/ @n8n-io/nodes
+packages/frontend/editor-ui/src/features/credentials/quickConnect/ @n8n-io/nodes required
+packages/frontend/editor-ui/src/features/ndv/runData/schemaPreview.api.ts @n8n-io/nodes
+packages/frontend/editor-ui/src/features/ndv/runData/schemaPreview.store.ts @n8n-io/nodes
+packages/frontend/editor-ui/src/features/agents/channels/ @n8n-io/nodes
+
 # AI
 
 packages/@n8n/instance-ai/                              @n8n-io/ai-assistant
 packages/@n8n/nodes-langchain/                          @n8n-io/ai
-packages/@n8n/ai-utilities/                             @n8n-io/ai
-packages/@n8n/ai-node-sdk/                              @n8n-io/ai
+packages/@n8n/nodes-langchain/nodes/agents/             @n8n-io/ai-agents
+packages/@n8n/nodes-langchain/nodes/chains/             @n8n-io/ai-agents
+packages/@n8n/nodes-langchain/nodes/code/               @n8n-io/ai-agents
+packages/@n8n/nodes-langchain/nodes/output_parser/      @n8n-io/ai-agents
+packages/@n8n/nodes-langchain/nodes/llms/               @n8n-io/ai-agents
+packages/@n8n/nodes-langchain/nodes/vendors/            @n8n-io/ai-agents
+packages/@n8n/nodes-langchain/nodes/ModelSelector/      @n8n-io/ai-agents
+packages/@n8n/nodes-langchain/nodes/embeddings/        @n8n-io/ai-agents
+packages/@n8n/nodes-langchain/nodes/vector_store/       @n8n-io/ai-agents
+packages/@n8n/nodes-langchain/nodes/document_loaders/   @n8n-io/ai-agents
+packages/@n8n/nodes-langchain/nodes/text_splitters/     @n8n-io/ai-agents
+packages/@n8n/nodes-langchain/nodes/retrievers/         @n8n-io/ai-agents
+packages/@n8n/nodes-langchain/nodes/rerankers/          @n8n-io/ai-agents
+packages/@n8n/nodes-langchain/nodes/memory/             @n8n-io/ai-agents
+packages/@n8n/nodes-langchain/nodes/tools/              @n8n-io/ai-agents
+packages/@n8n/nodes-langchain/nodes/ToolExecutor/       @n8n-io/ai-agents
+packages/@n8n/nodes-langchain/nodes/trigger/            @n8n-io/ai-agents
+packages/@n8n/ai-utilities/                             @n8n-io/ai-agents
 packages/@n8n/ai-workflow-builder.ee/                   @n8n-io/ai-assistant
-packages/@n8n/agents/                                   @n8n-io/ai
-packages/frontend/@n8n/chat/                            @n8n-io/ai
+packages/@n8n/agents/                                   @n8n-io/ai-agents
+packages/frontend/@n8n/chat/                            @n8n-io/ai-agents
+packages/frontend/editor-ui/src/features/agents/        @n8n-io/ai-agents
 
 # Chat Hub
 
@@ -219,6 +244,7 @@ packages/@n8n/nodes-langchain/nodes/vector_store/shared/chatHub.ts @n8n-io/ai-as
 packages/@n8n/nodes-langchain/credentials/ChatHubVectorStorePGVectorApi.credentials.ts @n8n-io/ai-assistant
 packages/@n8n/nodes-langchain/credentials/ChatHubVectorStorePineconeApi.credentials.ts @n8n-io/ai-assistant
 packages/@n8n/nodes-langchain/credentials/ChatHubVectorStoreQdrantApi.credentials.ts @n8n-io/ai-assistant
+packages/@n8n/nodes-langchain/nodes/mcp/                @n8n-io/nodes required
 packages/frontend/editor-ui/src/features/shared/commandBar/composables/useChatHubCommands.ts @n8n-io/ai-assistant
 packages/cli/src/modules/breaking-changes/rules/v3/chat-hub-deprecated.rule.ts @n8n-io/ai-assistant
 
@@ -228,28 +254,63 @@ packages/@n8n/codemirror-lang/                          @n8n-io/nodes
 packages/@n8n/codemirror-lang-html/                     @n8n-io/nodes
 packages/@n8n/codemirror-lang-sql/                      @n8n-io/nodes
 packages/nodes-base/                                    @n8n-io/nodes
+packages/nodes-base/nodes/Code/                         @n8n-io/nodes required
+packages/nodes-base/nodes/ExecuteCommand/               @n8n-io/nodes required
+packages/nodes-base/nodes/Ssh/                          @n8n-io/nodes required
+packages/nodes-base/nodes/HttpRequest/                  @n8n-io/nodes required
+packages/nodes-base/nodes/Webhook/                      @n8n-io/nodes required
+packages/nodes-base/nodes/RespondToWebhook/             @n8n-io/nodes required
+packages/nodes-base/nodes/Form/                         @n8n-io/nodes required
+packages/nodes-base/nodes/Wait/                         @n8n-io/nodes required
+packages/nodes-base/utils/sendAndWait/                  @n8n-io/nodes required
+packages/nodes-base/nodes/Git/                          @n8n-io/nodes required
 packages/@n8n/decorators/                               @n8n-io/catalysts
 packages/node-dev/                                      @n8n-io/nodes
-packages/@n8n/create-node/                              @n8n-io/nodes
-packages/@n8n/node-cli/                                 @n8n-io/community-engineering
-packages/@n8n/imap/                                     @n8n-io/iam
-packages/@n8n/syslog-client/                            @n8n-io/iam
-packages/@n8n/scan-community-package/                   @n8n-io/community-engineering
-packages/@n8n/eslint-plugin-community-nodes/            @n8n-io/community-engineering
-packages/@n8n/computer-use/                             @n8n-io/nodes
-packages/@n8n/local-gateway/                            @n8n-io/nodes
-packages/@n8n/mcp-browser/                              @n8n-io/nodes
-packages/@n8n/mcp-browser-extension/                    @n8n-io/nodes
+packages/@n8n/imap/                                     @n8n-io/nodes
+packages/@n8n/computer-use/                             @n8n-io/nodes required
+packages/@n8n/local-gateway/                            @n8n-io/nodes required
+packages/@n8n/mcp-browser/                              @n8n-io/nodes required
+packages/@n8n/mcp-browser-extension/                    @n8n-io/nodes required
+packages/modules/quick-connect/                         @n8n-io/nodes required
+packages/@n8n/api-types/src/dto/quick-connect/          @n8n-io/nodes required
+packages/@n8n/api-types/src/quick-connect.ts            @n8n-io/nodes required
+packages/cli/src/modules/community-packages/            @n8n-io/nodes
+packages/cli/src/modules/mcp-registry/                  @n8n-io/nodes required
+packages/cli/src/modules/agents/integrations/           @n8n-io/nodes
+packages/@n8n/api-types/src/schemas/mcp-registry.schema.ts @n8n-io/nodes required
+packages/cli/templates/send-and-wait-no-action-required.handlebars @n8n-io/nodes required
+packages/@n8n/ai-node-sdk/                              @n8n-io/nodes required
+
+# Relay (AI gateway & credits)
+packages/cli/src/services/ai-gateway.service.ts         @n8n-io/relay required
+packages/cli/src/services/ai-gateway-eligibility.ts     @n8n-io/relay required
+packages/cli/src/services/free-ai-credits.service.ts    @n8n-io/relay required
+packages/@n8n/config/src/configs/ai-gateway.config.ts   @n8n-io/relay
+packages/@n8n/api-types/src/dto/ai/ai-gateway-config-response.dto.ts @n8n-io/relay
+packages/@n8n/api-types/src/dto/ai/ai-gateway-usage-response.dto.ts @n8n-io/relay
+packages/@n8n/api-types/src/dto/ai/ai-gateway-wallet-response.dto.ts @n8n-io/relay
+packages/cli/src/modules/instance-ai/instance-ai-gateway.service.ts @n8n-io/relay
+packages/cli/src/modules/mcp/mcp-ai-gateway.helper.ts   @n8n-io/relay
+packages/cli/src/modules/agents/json-config/node-tool-ai-gateway.service.ts @n8n-io/relay
+packages/frontend/editor-ui/src/app/stores/aiGateway.store.ts @n8n-io/relay
+packages/frontend/editor-ui/src/app/composables/useAiGateway.ts @n8n-io/relay
+packages/frontend/editor-ui/src/features/credentials/gatewayCreditsPromotion/ @n8n-io/relay
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/SectionHeaderCreditsTag.vue @n8n-io/relay
 
 # Community engineering
 .agents/skills/create-community-node-lint-rule/         @n8n-io/community-engineering
 .agents/skills/community-pr-readiness-check/            @n8n-io/community-engineering
+packages/@n8n/scan-community-package/                   @n8n-io/community-engineering
+packages/@n8n/eslint-plugin-community-nodes/            @n8n-io/community-engineering
+packages/@n8n/node-cli/                                 @n8n-io/community-engineering
+packages/@n8n/create-node/                              @n8n-io/community-engineering
 
 # IAM
 
 packages/@n8n/permissions/                              @n8n-io/iam
 packages/@n8n/client-oauth2/                            @n8n-io/iam
 packages/@n8n/inbound-auth/                             @n8n-io/iam
+packages/@n8n/syslog-client/                            @n8n-io/iam
 
 # Governance & Observability
 
