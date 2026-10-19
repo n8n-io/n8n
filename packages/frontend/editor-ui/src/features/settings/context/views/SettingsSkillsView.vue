@@ -357,9 +357,11 @@ async function openEditModal(skillId: string) {
 				),
 		});
 	} catch (error) {
+		// Only the skill that the URL still names reports a failure.
+		if (routeSkillId.value !== skillId) return;
 		onOpenSkillFailed(error);
 		// The list stays, without a link that would fail again on refresh.
-		if (routeSkillId.value === skillId) await setRouteSkillId(undefined);
+		await setRouteSkillId(undefined);
 	}
 }
 

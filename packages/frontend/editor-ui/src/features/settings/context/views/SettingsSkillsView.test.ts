@@ -572,6 +572,49 @@ describe('SettingsSkillsView', () => {
 			expect(lastModalData().skillId).toBe('s10');
 		});
 
+		it('ignores a skill that loads after ?skillId moved to another skill', async () => {
+			let resolveStale: (value: SkillDetail) => void = () => {};
+			route.query = { skillId: 's9' };
+			skillsStore.fetchSkill.mockImplementation(async (id: string) =>
+				id === 's9'
+					? await new Promise<SkillDetail>((resolve) => (resolveStale = resolve))
+					: detail({ id }),
+			);
+			renderView();
+			await waitFor(() => expect(skillsStore.fetchSkill).toHaveBeenCalledWith('s9'));
+
+			route.query = { skillId: 's10' };
+			await waitFor(() => expect(uiStore.openModalWithData).toHaveBeenCalledTimes(1));
+			resolveStale(detail({ id: 's9' }));
+			await new Promise(process.nextTick);
+
+			expect(uiStore.openModalWithData).toHaveBeenCalledTimes(1);
+			expect(lastModalData().skillId).toBe('s10');
+			expect(route.query).toEqual({ skillId: 's10' });
+		});
+
+		it('ignores a failure for a skill after ?skillId moved to another skill', async () => {
+			let rejectStale: (error: Error) => void = () => {};
+			route.query = { skillId: 's9' };
+			skillsStore.fetchSkill.mockImplementation(async (id: string) =>
+				id === 's9'
+					? await new Promise<SkillDetail>((_, reject) => (rejectStale = reject))
+					: detail({ id }),
+			);
+			renderView();
+			await waitFor(() => expect(skillsStore.fetchSkill).toHaveBeenCalledWith('s9'));
+
+			route.query = { skillId: 's10' };
+			await waitFor(() => expect(uiStore.openModalWithData).toHaveBeenCalledTimes(1));
+			rejectStale(new ResponseError('Skill not found', { httpStatusCode: 404 }));
+			await new Promise(process.nextTick);
+
+			expect(showMessageMock).not.toHaveBeenCalled();
+			expect(showErrorMock).not.toHaveBeenCalled();
+			expect(lastModalData().skillId).toBe('s10');
+			expect(route.query).toEqual({ skillId: 's10' });
+		});
+
 		it('shows the list with a "not found" message for a skill the user cannot open', async () => {
 			route.query = { skillId: 'missing', search: 'kept' };
 			skillsStore.fetchSkill.mockRejectedValue(
