@@ -10,7 +10,7 @@ import {
 } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { CollapsibleContent, CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
-import { computed, ref, watch } from 'vue';
+import { computed, watch } from 'vue';
 import { I18nT } from 'vue-i18n';
 
 import type { DetailEntry } from '../../composables/usePromotionResourceDetails';
@@ -29,6 +29,7 @@ import type { ResourceKey, SelectionGraph } from '../../promotionPreview.selecti
 import { isContainer, resourceIcon } from '../../promotionPreview.tree';
 import DataTableChangeDetails from './DataTableChangeDetails.vue';
 import PromotionFieldChanges from './PromotionFieldChanges.vue';
+import PromotionWorkflowDiff from './PromotionWorkflowDiff.vue';
 import PromotionWorkflowLinks from './PromotionWorkflowLinks.vue';
 
 const props = defineProps<{
@@ -39,6 +40,7 @@ const props = defineProps<{
 	entry?: DetailEntry;
 	inspected: boolean;
 	blockers?: Blocker[];
+	branchName?: string;
 }>();
 
 const emit = defineEmits<{
@@ -56,7 +58,7 @@ const blocker = computed(() =>
 );
 
 // Cards start open. Inspecting a resource from the tree opens its card again.
-const open = ref(true);
+const open = defineModel<boolean>('open', { default: true });
 watch(
 	() => props.inspected,
 	(inspected) => {
@@ -111,6 +113,9 @@ const fieldChanges = computed(() => {
 	if (props.resource.type === 'workflow') return describeWorkflowFieldChanges(context);
 	return detail.value ? describeFieldChanges(detail.value, context) : [];
 });
+const workflowDetail = computed(() =>
+	detail.value?.type === 'workflow' && !hasUnreadableSide(detail.value) ? detail.value : undefined,
+);
 const dataTable = computed(() =>
 	detail.value?.type === 'dataTable' ? describeDataTable(detail.value, props.resource) : undefined,
 );
@@ -227,6 +232,14 @@ const tagNote = computed(() => {
 						:changes="fieldChanges"
 						:direction="direction"
 						:absent-sides="absentSides"
+					/>
+					<PromotionWorkflowDiff
+						v-if="workflowDetail"
+						:detail="workflowDetail"
+						:resource-key="resource.key"
+						:direction="direction"
+						:branch-name="branchName"
+						:graph="graph"
 					/>
 					<N8nText
 						v-if="detail?.type === 'variable' && detail.valueHidden"

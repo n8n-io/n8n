@@ -42,7 +42,12 @@ import {
 	scopeCheck,
 	touchesDestructiveChange,
 } from '../promotionOperation';
-import { includedChangeCount, totalChangeCount } from '../promotionPreview.selection';
+import {
+	includedChangeCount,
+	totalChangeCount,
+	type ResourceKey,
+} from '../promotionPreview.selection';
+import { defaultOpenWorkflow, hasWorkflowDiff } from '../promotionPreview.workflow';
 import { buildPreviewTree, cardOrder } from '../promotionPreview.tree';
 
 const props = defineProps<{ projectId: string; direction: PromotionDirection }>();
@@ -88,7 +93,8 @@ const selection = usePromotionSelection(graph, {
 	disabled: computed(() => blockers.value.blocked),
 	locked: operation.isBusy,
 });
-const details = usePromotionResourceDetails(projectId, direction, preview, graph);
+const openWorkflowKey = ref<ResourceKey>();
+const details = usePromotionResourceDetails(projectId, direction, preview, graph, openWorkflowKey);
 
 const title = computed(() => i18n.baseText(`promotions.preview.title.${props.direction}`));
 watch(title, (value) => documentTitle.set(value), { immediate: true });
@@ -109,7 +115,28 @@ const inspectedKey = computed(() =>
 	typeof route.query.resource === 'string' ? route.query.resource : undefined,
 );
 const cards = ref<InstanceType<typeof PromotionChangeCards> | null>(null);
+
+const hasDiff = (key: ResourceKey) => {
+	const resource = graph.value?.resources.get(key);
+	return !!resource && hasWorkflowDiff(resource);
+};
+
+// One workflow diff is open at a time. A new preview keeps it open while the workflow still has
+// changes. The first preview opens the inspected or the first changed workflow.
+watch(
+	order,
+	(keys, previous = []) => {
+		const key = openWorkflowKey.value;
+		if (key ? keys.includes(key) && hasDiff(key) : previous.length > 0) return;
+		openWorkflowKey.value = graph.value
+			? defaultOpenWorkflow(keys, graph.value.resources, inspectedKey.value)
+			: undefined;
+	},
+	{ immediate: true },
+);
 async function inspect(key: string) {
+	// The inspected workflow can be closed since, because another diff opened.
+	if (hasDiff(key)) openWorkflowKey.value = key;
 	// The URL does not change for the same item, so scroll to its card again directly.
 	if (key === inspectedKey.value) {
 		await cards.value?.scrollToCard(key);
@@ -407,6 +434,7 @@ const treeResizer = useResizablePanel({
 					</N8nCallout>
 					<PromotionChangeCards
 						ref="cards"
+						v-model:open-workflow="openWorkflowKey"
 						:order="order"
 						:graph="graph"
 						:direction="direction"
@@ -414,6 +442,7 @@ const treeResizer = useResizablePanel({
 						:entries="details.entries.value"
 						:inspected-key="inspectedKey"
 						:blockers="blockers"
+						:branch-name="preview?.source.branchName"
 						@retry="details.retry"
 						@refresh="refresh"
 						@inspect="inspect"
