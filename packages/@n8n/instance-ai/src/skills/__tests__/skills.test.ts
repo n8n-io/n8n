@@ -390,6 +390,7 @@ describe('Instance AI skills', () => {
 		]);
 		expect(skill?.description).toContain('Load before calling build-workflow');
 		expect(skill?.description).not.toContain('Default path');
+		expect(skill?.description).toContain('new workflows (kept or one-off)');
 		expect(skill?.description).toContain('workflow-sdk validate');
 		expect(skill?.description).toContain('load data-table-manager first');
 		expect(skill?.description).toContain('Do not load planning or create-tasks first');
