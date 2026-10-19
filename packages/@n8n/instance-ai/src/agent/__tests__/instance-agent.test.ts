@@ -418,8 +418,8 @@ describe('createInstanceAgent', () => {
 		});
 	});
 
-	it('attaches runtime skills to the orchestrator when provided by the context', async () => {
-		const runtimeSkills = {
+	it('attaches skills to the orchestrator when provided by the context', async () => {
+		const skills = {
 			registry: {
 				schemaVersion: 1,
 				skillsHash: 'skills-hash',
@@ -453,96 +453,13 @@ describe('createInstanceAgent', () => {
 			},
 			orchestrationContext: {
 				runId: 'skills-test',
-				runtimeSkills,
+				skills,
 			},
 			memoryConfig: {},
 			mcpManager: createMcpManagerStub(),
 		} as never);
 
-		expect(mockAgentInstances[0]?.skills).toHaveBeenCalledWith(runtimeSkills);
-		expect(createOrchestratorDomainTools).toHaveBeenLastCalledWith(
-			expect.objectContaining({ runtimeSkillCatalog: runtimeSkills }),
-		);
-	});
-
-	it('starts preparing runtime skills in the background without waiting for them', async () => {
-		let finishPrepare: () => void = () => {};
-		const prepare = vi.fn(
-			async () =>
-				await new Promise<void>((resolve) => {
-					finishPrepare = resolve;
-				}),
-		);
-		const runtimeSkills = {
-			registry: {
-				schemaVersion: 1,
-				skillsHash: 'skills-hash',
-				skills: [{ id: 'data-table-manager', name: 'data-table-manager', description: 'x' }],
-			},
-			prepare,
-			loadSkill: vi.fn(),
-		};
-
-		await createInstanceAgent({
-			modelId: 'test-model',
-			context: {},
-			orchestrationContext: { runId: 'skills-test', runtimeSkills },
-			memoryConfig: {},
-			mcpManager: createMcpManagerStub(),
-		} as never);
-
-		expect(prepare).toHaveBeenCalledTimes(1);
-		finishPrepare();
-	});
-
-	it('logs a background skill preparation failure instead of rejecting', async () => {
-		const logger = { warn: vi.fn(), info: vi.fn(), error: vi.fn(), debug: vi.fn() };
-		const runtimeSkills = {
-			registry: {
-				schemaVersion: 1,
-				skillsHash: 'skills-hash',
-				skills: [{ id: 'data-table-manager', name: 'data-table-manager', description: 'x' }],
-			},
-			prepare: vi.fn(async () => await Promise.reject(new Error('sandbox unavailable'))),
-			loadSkill: vi.fn(),
-		};
-
-		await createInstanceAgent({
-			modelId: 'test-model',
-			context: {},
-			orchestrationContext: { runId: 'skills-test', runtimeSkills, logger },
-			memoryConfig: {},
-			mcpManager: createMcpManagerStub(),
-		} as never);
-
-		await vi.waitFor(() =>
-			expect(logger.warn).toHaveBeenCalledWith('Failed to warm runtime skills in the background', {
-				error: 'sandbox unavailable',
-			}),
-		);
-	});
-
-	it('passes the selected catalog to domain tools before workspace materialization', async () => {
-		const runtimeSkillCatalog = {
-			registry: { schemaVersion: 1, skillsHash: 'selected-skills', skills: [] },
-			loadSkill: vi.fn(),
-		};
-		const runtimeSkills = {
-			registry: { schemaVersion: 1, skillsHash: 'workspace-skills', skills: [] },
-			loadSkill: vi.fn(),
-		};
-
-		await createInstanceAgent({
-			modelId: 'test-model',
-			context: {},
-			orchestrationContext: { runId: 'skills-test', runtimeSkillCatalog, runtimeSkills },
-			memoryConfig: {},
-			mcpManager: createMcpManagerStub(),
-		} as never);
-
-		expect(createOrchestratorDomainTools).toHaveBeenLastCalledWith(
-			expect.objectContaining({ runtimeSkillCatalog }),
-		);
+		expect(mockAgentInstances[0]?.skills).toHaveBeenCalledWith(skills);
 	});
 
 	it('exposes browser_connect and browser_navigate from localMcpServer in the agent toolset', async () => {

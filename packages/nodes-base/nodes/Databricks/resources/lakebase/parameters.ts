@@ -2,6 +2,7 @@ import type { INodeProperties } from 'n8n-workflow';
 
 const showForLakebase = { resource: ['lakebase'] };
 const showForGetAll = { resource: ['lakebase'], operation: ['getAll'] };
+const showForFilter = { resource: ['lakebase'], operation: ['getAll', 'deleteRows'] };
 
 export const lakebaseParameters: INodeProperties[] = [
 	{
@@ -200,9 +201,10 @@ export const lakebaseParameters: INodeProperties[] = [
 		},
 		placeholder: 'Add Condition',
 		default: {},
-		description: 'If not set, the node returns all rows',
+		description:
+			'Which rows to act on. Get Many returns rows from the full table if you set no conditions. Delete needs at least one condition.',
 		displayOptions: {
-			show: showForGetAll,
+			show: showForFilter,
 		},
 		options: [
 			{
@@ -280,7 +282,7 @@ export const lakebaseParameters: INodeProperties[] = [
 		],
 		default: 'AND',
 		displayOptions: {
-			show: showForGetAll,
+			show: showForFilter,
 		},
 	},
 	{
@@ -379,6 +381,7 @@ export const lakebaseParameters: INodeProperties[] = [
 				'lakebaseDatabase.value',
 				'lakebaseSchema.value',
 				'lakebaseTable.value',
+				'operation',
 			],
 			resourceMapper: {
 				resourceMapperMethod: 'getLakebaseMappingColumns',
@@ -395,6 +398,80 @@ export const lakebaseParameters: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: { resource: ['lakebase'], operation: ['insert'] },
+		},
+	},
+	{
+		displayName: 'Columns',
+		name: 'columns',
+		type: 'resourceMapper',
+		noDataExpression: true,
+		required: true,
+		default: {
+			mappingMode: 'defineBelow',
+			value: null,
+		},
+		typeOptions: {
+			loadOptionsDependsOn: [
+				'lakebaseProject.value',
+				'lakebaseBranch.value',
+				'lakebaseDatabase.value',
+				'lakebaseSchema.value',
+				'lakebaseTable.value',
+				'operation',
+			],
+			resourceMapper: {
+				resourceMapperMethod: 'getLakebaseMappingColumns',
+				mode: 'update',
+				fieldWords: {
+					singular: 'column',
+					plural: 'columns',
+				},
+				addAllFields: true,
+				// A composite primary key needs every component selected, or the filter
+				// picks up more rows than the one the user means
+				multiKeyMatch: true,
+				refreshStaleSchemaOnOpen: true,
+			},
+		},
+		displayOptions: {
+			show: { resource: ['lakebase'], operation: ['update'] },
+		},
+	},
+	{
+		displayName: 'Columns',
+		name: 'columns',
+		type: 'resourceMapper',
+		noDataExpression: true,
+		required: true,
+		default: {
+			mappingMode: 'defineBelow',
+			value: null,
+		},
+		typeOptions: {
+			loadOptionsDependsOn: [
+				'lakebaseProject.value',
+				'lakebaseBranch.value',
+				'lakebaseDatabase.value',
+				'lakebaseSchema.value',
+				'lakebaseTable.value',
+				'operation',
+			],
+			resourceMapper: {
+				resourceMapperMethod: 'getLakebaseMappingColumns',
+				mode: 'upsert',
+				fieldWords: {
+					singular: 'column',
+					plural: 'columns',
+				},
+				addAllFields: true,
+				// ON CONFLICT takes the whole key, so a table with a composite primary
+				// key needs every part of it selected
+				multiKeyMatch: true,
+				refreshStaleSchemaOnOpen: true,
+			},
+		},
+		displayOptions: {
+			show: { resource: ['lakebase'], operation: ['upsert'] },
 		},
 	},
 ];
