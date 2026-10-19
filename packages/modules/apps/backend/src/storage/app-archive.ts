@@ -24,7 +24,7 @@ export class AppArchive {
 			size += content.length;
 			this.checkLimits(size, normalized.size + 1);
 		}
-		this.checkFilePaths(normalized);
+		this.checkFilePaths(new Set(normalized.keys()));
 		this.checkBundle(normalized, bundle);
 		const { Header, Pack, ReadEntry } = await import('tar');
 		const archive = new Pack({ gzip: { portable: true }, portable: true, noMtime: true });
@@ -50,6 +50,22 @@ export class AppArchive {
 	}
 
 	async unpack(body: Buffer, bundle = false): Promise<Map<string, Buffer>> {
+		const { files } = await this.parse(body, () => true);
+		this.checkBundle(files, bundle);
+		return files;
+	}
+
+	async listFiles(body: Buffer): Promise<string[]> {
+		const { fileNames } = await this.parse(body, () => false);
+		return [...fileNames].sort();
+	}
+
+	async readFile(body: Buffer, filePath: string): Promise<Buffer | null> {
+		const { files } = await this.parse(body, (name) => name === filePath);
+		return files.get(filePath) ?? null;
+	}
+
+	private async parse(body: Buffer, includeFile: (name: string) => boolean) {
 		this.checkCompressedSize(body.length);
 		if (body.length < 2 || body[0] !== 0x1f || body[1] !== 0x8b) {
 			throw new BadRequestError(
@@ -58,6 +74,7 @@ export class AppArchive {
 		}
 		const { Parser } = await import('tar');
 		const files = new Map<string, Buffer>();
+		const fileNames = new Set<string>();
 		const paths = new Set<string>();
 		let size = 0;
 		let entries = 0;
@@ -79,7 +96,9 @@ export class AppArchive {
 					}
 					size += entry.size;
 					this.checkLimits(size, entries);
-					return entry.type === 'File';
+					if (entry.type !== 'File') return false;
+					fileNames.add(name);
+					return includeFile(name);
 				} catch (error) {
 					parser.abort(error instanceof Error ? error : new Error(String(error)));
 					return false;
@@ -113,9 +132,8 @@ export class AppArchive {
 				error,
 			);
 		}
-		this.checkBundle(files, bundle);
-		this.checkFilePaths(files);
-		return files;
+		this.checkFilePaths(fileNames);
+		return { files, fileNames };
 	}
 
 	private filePath(value: string): string {
@@ -135,11 +153,11 @@ export class AppArchive {
 		return relative;
 	}
 
-	private checkFilePaths(files: AppFiles) {
-		for (const name of files.keys()) {
+	private checkFilePaths(fileNames: ReadonlySet<string>) {
+		for (const name of fileNames) {
 			let parent = path.posix.dirname(name);
 			while (parent !== '.') {
-				if (files.has(parent))
+				if (fileNames.has(parent))
 					throw new BadRequestError('App artifact contains conflicting file paths.');
 				parent = path.posix.dirname(parent);
 			}

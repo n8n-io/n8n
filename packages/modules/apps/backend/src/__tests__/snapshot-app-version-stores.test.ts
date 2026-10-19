@@ -41,6 +41,7 @@ function createStores() {
 	return {
 		source: new SnapshotAppSourceVersionStore(archives, artifacts, versions, apps, locks),
 		builds: new SnapshotAppBuildResultStore(archives, artifacts, versions, locks),
+		archives,
 		artifacts,
 		versions,
 		apps,
@@ -98,14 +99,44 @@ describe('SnapshotAppSourceVersionStore', () => {
 		expect(artifacts.discard).toHaveBeenCalledWith(artifact);
 	});
 
-	it('returns not found when reading a missing version', async () => {
-		const { source, artifacts, versions } = createStores();
-		versions.findVersionById.mockResolvedValue(null);
+	it('lists source files without unpacking file content', async () => {
+		const { source, archives, artifacts, versions } = createStores();
+		const body = Buffer.from('archive');
+		versions.findVersionById.mockResolvedValue(mock<AppVersion>({ sourceArtifactId: 7 }));
+		artifacts.read.mockResolvedValue(body);
+		archives.listFiles.mockResolvedValue(['index.html']);
 
-		await expect(source.readSource(version.id)).rejects.toThrow(NotFoundError);
-
-		expect(artifacts.read).not.toHaveBeenCalled();
+		expect(await source.listSourceFiles(version.id)).toEqual(['index.html']);
+		expect(artifacts.read).toHaveBeenCalledWith(7);
+		expect(archives.listFiles).toHaveBeenCalledWith(body);
+		expect(archives.unpack).not.toHaveBeenCalled();
 	});
+
+	it('reads a source file without unpacking all file content', async () => {
+		const { source, archives, artifacts, versions } = createStores();
+		const body = Buffer.from('archive');
+		const content = Buffer.from('<html/>');
+		versions.findVersionById.mockResolvedValue(mock<AppVersion>({ sourceArtifactId: 7 }));
+		artifacts.read.mockResolvedValue(body);
+		archives.readFile.mockResolvedValue(content);
+
+		expect(await source.readSourceFile(version.id, 'index.html')).toBe(content);
+		expect(artifacts.read).toHaveBeenCalledWith(7);
+		expect(archives.readFile).toHaveBeenCalledWith(body, 'index.html');
+		expect(archives.unpack).not.toHaveBeenCalled();
+	});
+
+	it.each(['readSource', 'listSourceFiles', 'readSourceFile'] as const)(
+		'returns not found for a missing version in %s',
+		async (operation) => {
+			const { source, artifacts, versions } = createStores();
+			versions.findVersionById.mockResolvedValue(null);
+
+			await expect(source[operation](version.id, 'index.html')).rejects.toThrow(NotFoundError);
+
+			expect(artifacts.read).not.toHaveBeenCalled();
+		},
+	);
 });
 
 describe('SnapshotAppBuildResultStore', () => {

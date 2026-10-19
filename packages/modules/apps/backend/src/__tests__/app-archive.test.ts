@@ -36,6 +36,92 @@ describe('AppArchive', () => {
 		expect(await archives.unpack(await archives.pack(new Map()))).toEqual(new Map());
 	});
 
+	it('lists sorted file names without directory entries', async () => {
+		const body = archive([
+			{ path: './', type: 'Directory' },
+			{ path: './src/', type: 'Directory' },
+			{ path: './src/main.ts', content: randomBytes(256 * 1024) },
+			{ path: 'empty.txt' },
+		]);
+
+		expect(await archives.listFiles(body)).toEqual(['empty.txt', 'src/main.ts']);
+	});
+
+	it('reads one file by its normalized name', async () => {
+		const content = randomBytes(256 * 1024);
+		const body = archive([
+			{ path: 'other.bin', content: randomBytes(256 * 1024) },
+			{ path: './src/data.bin', content },
+			{ path: 'empty.txt' },
+		]);
+
+		expect(await archives.readFile(body, 'src/data.bin')).toEqual(content);
+		expect(await archives.readFile(body, 'empty.txt')).toEqual(Buffer.alloc(0));
+		expect(await archives.readFile(body, 'missing.txt')).toBeNull();
+	});
+
+	it('lists no files and returns null for an empty snapshot', async () => {
+		const body = await archives.pack(new Map());
+
+		expect(await archives.listFiles(body)).toEqual([]);
+		expect(await archives.readFile(body, 'missing.txt')).toBeNull();
+	});
+
+	describe.each(['listFiles', 'readFile'] as const)('%s validation', (operation) => {
+		const read = async (body: Buffer) =>
+			operation === 'listFiles'
+				? await archives.listFiles(body)
+				: await archives.readFile(body, 'selected.txt');
+
+		it.each<[string, HeaderData[]]>([
+			['invalid paths', [{ path: '../outside' }]],
+			['unsupported entries', [{ path: 'link', type: 'SymbolicLink', linkpath: 'target' }]],
+			['duplicate paths', [{ path: 'other.txt' }, { path: './other.txt' }]],
+			['conflicting paths', [{ path: 'src/main.ts' }, { path: 'src' }]],
+		])('rejects %s in skipped entries', async (_name, entries) => {
+			const body = archive([
+				{ path: 'selected.txt', content: randomBytes(256 * 1024) },
+				...entries,
+			]);
+
+			await expect(read(body)).rejects.toThrow();
+		});
+
+		it('counts skipped file sizes toward the unpacked limit', async () => {
+			config.maxArtifactUnpackedSizeBytes = 10;
+			const body = archive([
+				{ path: 'selected.txt', content: Buffer.alloc(5) },
+				{ path: 'other.txt', content: Buffer.alloc(6) },
+			]);
+
+			await expect(read(body)).rejects.toMatchObject({
+				cause: expect.objectContaining({ message: expect.stringContaining('unpacked size') }),
+			});
+		});
+
+		it('counts skipped directories and files toward the entry limit', async () => {
+			config.maxArtifactEntries = 2;
+			const body = archive([
+				{ path: 'selected.txt' },
+				{ path: 'src/', type: 'Directory' },
+				{ path: 'src/main.ts' },
+			]);
+
+			await expect(read(body)).rejects.toMatchObject({
+				cause: expect.objectContaining({ message: expect.stringContaining('entry limit') }),
+			});
+		});
+
+		it('rejects a truncated archive after the selected file', async () => {
+			const body = archive([
+				{ path: 'selected.txt', content: Buffer.from('text') },
+				{ path: 'other.bin', content: randomBytes(256 * 1024) },
+			]);
+
+			await expect(read(body.subarray(0, body.length - 100))).rejects.toThrow('invalid');
+		});
+	});
+
 	it('rejects an invalid entry after a large file', async () => {
 		const body = archive([
 			{ path: 'data.bin', content: randomBytes(256 * 1024) },

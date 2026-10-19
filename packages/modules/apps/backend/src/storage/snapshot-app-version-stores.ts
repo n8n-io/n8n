@@ -60,17 +60,21 @@ export class SnapshotAppSourceVersionStore extends AppSourceVersionStore {
 	}
 
 	async readSource(versionId: string): Promise<AppFiles> {
-		const version = await this.versions.findVersionById(versionId);
-		if (!version) throw new NotFoundError('App version not found.');
-		return await this.archives.unpack(await this.artifacts.read(version.sourceArtifactId));
+		return await this.archives.unpack(await this.readSourceArchive(versionId));
 	}
 
 	async listSourceFiles(versionId: string): Promise<string[]> {
-		return [...(await this.readSource(versionId)).keys()].sort();
+		return await this.archives.listFiles(await this.readSourceArchive(versionId));
 	}
 
 	async readSourceFile(versionId: string, filePath: string): Promise<Buffer | null> {
-		return (await this.readSource(versionId)).get(filePath) ?? null;
+		return await this.archives.readFile(await this.readSourceArchive(versionId), filePath);
+	}
+
+	private async readSourceArchive(versionId: string): Promise<Buffer> {
+		const version = await this.versions.findVersionById(versionId);
+		if (!version) throw new NotFoundError('App version not found.');
+		return await this.artifacts.read(version.sourceArtifactId);
 	}
 
 	async removeVersions(versionIds: string[], ctx: OperationContext): Promise<void> {
