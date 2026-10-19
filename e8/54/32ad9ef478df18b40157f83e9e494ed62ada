@@ -1,0 +1,31 @@
+packages/@n8n/decorators/src/controller/__tests__/rate-limit-access.test.ts
+  s_925dcfedebf0c9::t_18533d113b3332 1-45
+packages/cli/src/public-api/public-api-rate-limit.service.ts
+  s_925dcfedebf0c9::t_18533d113b3332 3,15-18,22-25,37,40,47,51,61,63
+packages/cli/src/public-api/public-api-controller.registry.ts
+  s_925dcfedebf0c9::t_18533d113b3332 224-226
+packages/cli/src/public-api/__tests__/public-api-rate-limit.test.ts
+  s_925dcfedebf0c9::t_18533d113b3332 6-13,92-98,280-287
+packages/@n8n/decorators/src/controller/index.ts
+  s_925dcfedebf0c9::t_18533d113b3332 16,32
+packages/@n8n/decorators/src/controller/rate-limit-access.ts
+  s_925dcfedebf0c9::t_18533d113b3332 1-19
+packages/@n8n/decorators/src/controller/types.ts
+  s_925dcfedebf0c9::t_18533d113b3332 46-47,120-121
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e85432ad9ef478df18b40157f83e9e494ed62ada",
+  "prompts": {},
+  "sessions": {
+    "s_925dcfedebf0c9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4e954afe-0aa2-4cb1-89bb-81545b98a90a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Uddish Verma <uddish.verma@n8n.io>"
+    }
+  }
+}
