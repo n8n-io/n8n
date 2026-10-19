@@ -481,6 +481,29 @@ describe('removeDefaultValues', () => {
 		});
 	});
 
+	it('should remove redactCallerExecutions when true', () => {
+		const settings: IWorkflowSettings = {
+			redactCallerExecutions: true,
+			timezone: 'America/New_York',
+		};
+		const result = removeDefaultValues(settings, DEFAULT_EXECUTION_TIMEOUT);
+		expect(result).toEqual({
+			timezone: 'America/New_York',
+		});
+	});
+
+	it('should keep redactCallerExecutions when false', () => {
+		const settings: IWorkflowSettings = {
+			redactCallerExecutions: false,
+			timezone: 'America/New_York',
+		};
+		const result = removeDefaultValues(settings, DEFAULT_EXECUTION_TIMEOUT);
+		expect(result).toEqual({
+			redactCallerExecutions: false,
+			timezone: 'America/New_York',
+		});
+	});
+
 	it('should not mutate the original settings object', () => {
 		const settings = {
 			errorWorkflow: DEFAULT,

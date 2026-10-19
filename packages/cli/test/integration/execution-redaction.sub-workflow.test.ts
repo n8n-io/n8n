@@ -16,7 +16,11 @@ import { createOwner } from './shared/db/users';
 import type { SuperAgentTest } from './shared/types';
 import * as utils from './shared/utils/';
 import { loadNodesFromDist } from './shared/utils/node-types-data';
-import { createParentWorkflowFixture, createSubWorkflowFixture } from './shared/workflow-fixtures';
+import {
+	createMiddleWorkflowFixture,
+	createParentWorkflowFixture,
+	createSubWorkflowFixture,
+} from './shared/workflow-fixtures';
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['workflows', 'executions'],
@@ -68,18 +72,6 @@ async function createChild(name: string, redactionPolicy?: WorkflowSettings.Reda
 		} as unknown as IWorkflowDb,
 		owner,
 	);
-}
-
-/** Execute Workflow Trigger → Execute Workflow (grandchild). */
-function createMiddleChildFixture(grandchildId: string) {
-	const {
-		nodes: [, callNode],
-		connections,
-	} = createParentWorkflowFixture(grandchildId);
-	const {
-		nodes: [triggerNode],
-	} = createSubWorkflowFixture();
-	return { nodes: [triggerNode, callNode], connections, pinData: {} };
 }
 
 /** Manual Trigger → Execute Workflow (first child) → Execute Workflow (second child). */
@@ -279,7 +271,7 @@ test('redacts the calling execution when a sub-workflow that opts out passes up 
 	const child = await createWorkflow(
 		{
 			name: 'Library child',
-			...createMiddleChildFixture(grandchild.id),
+			...createMiddleWorkflowFixture(grandchild.id),
 			settings: { redactionPolicy: 'all', redactCallerExecutions: false },
 		} as unknown as IWorkflowDb,
 		owner,

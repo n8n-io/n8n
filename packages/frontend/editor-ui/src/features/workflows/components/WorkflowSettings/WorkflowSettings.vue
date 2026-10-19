@@ -1636,6 +1636,7 @@ onBeforeUnmount(() => {
 								</template>
 								<ElSwitch
 									:disabled="!isDataRedactionLicensed || readOnlyEnv || isCallerRedactionLocked"
+									:label="i18n.baseText('workflowSettings.redactCallerExecutions')"
 									:model-value="workflowSettings.redactCallerExecutions !== false"
 									data-test-id="workflow-settings-redact-caller-executions"
 									@update:model-value="toggleRedactCallerExecutions"

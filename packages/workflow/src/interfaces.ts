@@ -4124,8 +4124,9 @@ export interface IWorkflowSettings {
 	redactionPolicy?: WorkflowSettings.RedactionPolicy;
 	/**
 	 * Whether this workflow, when it runs as a sub-workflow, makes the calling
-	 * execution redact the channels it redacts. The caller keeps a copy of its
-	 * output. When the setting is not set, it is on.
+	 * execution redact the channels this workflow redacts itself. The caller keeps a
+	 * copy of its output. Redaction that it received from its own sub-workflows
+	 * always passes to the caller. When the setting is not set, it is on.
 	 */
 	redactCallerExecutions?: boolean;
 	customTelemetryTags?: ICustomTelemetryTag[];

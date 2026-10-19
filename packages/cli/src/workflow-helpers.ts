@@ -258,6 +258,11 @@ export function removeDefaultValues(
 		delete cleanedSettings.credentialResolverId;
 	}
 
+	// Remove redactCallerExecutions if it is on, because an unset value is on
+	if (cleanedSettings.redactCallerExecutions === true) {
+		delete cleanedSettings.redactCallerExecutions;
+	}
+
 	return cleanedSettings;
 }
 

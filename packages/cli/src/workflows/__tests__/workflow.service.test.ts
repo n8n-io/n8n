@@ -1444,6 +1444,14 @@ describe('WorkflowService', () => {
 		});
 
 		describe('redactCallerExecutions', () => {
+			beforeEach(async () => {
+				// Use the real default removal, which drops `redactCallerExecutions: true`.
+				const actual = await vi.importActual<typeof WorkflowHelpers>('@/workflow-helpers');
+				vi.mocked(WorkflowHelpers.removeDefaultValues).mockImplementation(
+					actual.removeDefaultValues,
+				);
+			});
+
 			// `mock()` does not keep `false` values in nested objects, so set the stored
 			// settings on the mock after it is made.
 			function setupStoredCallerRedaction(redactCallerExecutions?: boolean) {
@@ -1473,7 +1481,7 @@ describe('WorkflowService', () => {
 			});
 
 			test('strips the setting when the user cannot turn it off', async () => {
-				setupStoredCallerRedaction(true);
+				setupStoredCallerRedaction(undefined);
 				userHasScopesMock.mockResolvedValue(false);
 
 				await workflowService.update(
@@ -1483,7 +1491,7 @@ describe('WorkflowService', () => {
 					{ forceSave: true },
 				);
 
-				expect(savedSettings()).toEqual(expect.objectContaining({ redactCallerExecutions: true }));
+				expect(savedSettings()).not.toHaveProperty('redactCallerExecutions');
 			});
 
 			test('requires enableRedaction to turn the setting back on', async () => {
@@ -1527,7 +1535,7 @@ describe('WorkflowService', () => {
 				expect(savedSettings()).toEqual(expect.objectContaining({ redactCallerExecutions: false }));
 			});
 
-			test('stores a non-boolean value that turns the setting on as `true`', async () => {
+			test('clears the stored value for a non-boolean value that turns the setting on', async () => {
 				setupStoredCallerRedaction(false);
 				userHasScopesMock.mockResolvedValue(true);
 
@@ -1538,14 +1546,14 @@ describe('WorkflowService', () => {
 					{ forceSave: true },
 				);
 
-				expect(savedSettings()).toEqual(expect.objectContaining({ redactCallerExecutions: true }));
+				expect(savedSettings()).not.toHaveProperty('redactCallerExecutions');
 			});
 
-			test('does not check scopes when the effective value does not change', async () => {
+			test('does not check scopes or change settings when the effective value does not change', async () => {
 				// Not set means on, so sending `true` changes nothing.
 				setupStoredCallerRedaction(undefined);
 
-				await workflowService.update(
+				const prepared = await workflowService.prepareUpdate(
 					mock<User>(),
 					createUpdateData({ redactCallerExecutions: true }),
 					'workflow-1',
@@ -1553,7 +1561,8 @@ describe('WorkflowService', () => {
 				);
 
 				expect(userHasScopesMock).not.toHaveBeenCalled();
-				expect(savedSettings()).toEqual(expect.objectContaining({ redactCallerExecutions: true }));
+				expect(prepared.changes.settings).not.toHaveProperty('redactCallerExecutions');
+				expect(prepared.settingsChanged).toBe(false);
 			});
 
 			test('strips a change when the instance lacks the data-redaction license', async () => {
