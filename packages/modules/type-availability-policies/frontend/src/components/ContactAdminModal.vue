@@ -70,11 +70,13 @@ const instanceAdmins = computed<Admin[]>(() =>
 		.filter(hasEmail),
 );
 
-const projectAdmins = computed<Admin[]>(() =>
-	(policiesStore.policyProject?.relations ?? [])
+const projectAdmins = computed<Admin[]>(() => {
+	const project = policiesStore.policyProject;
+	const explicitAdmins = (project?.relations ?? [])
 		.filter((relation) => relation.role === PROJECT_ADMIN_ROLE_SLUG)
-		.filter(hasEmail),
-);
+		.filter(hasEmail);
+	return explicitAdmins.length ? explicitAdmins : (project?.implicitMembers ?? []).filter(hasEmail);
+});
 
 const admins = computed(() =>
 	audience === 'project' ? projectAdmins.value : instanceAdmins.value,

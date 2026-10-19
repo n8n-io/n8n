@@ -144,6 +144,31 @@ describe('ContactAdminModal', () => {
 			);
 		});
 
+		it('lists the instance owners and admins when the project has no admin of its own', async () => {
+			setup([owner]);
+			mockPolicyProject({
+				type: 'team',
+				relations: [projectEditor],
+				implicitMembers: [
+					{
+						id: 'global-admin-1',
+						firstName: 'Margaret',
+						lastName: 'Hamilton',
+						email: 'margaret@example.com',
+						globalRole: { slug: 'global:admin', displayName: 'Admin' },
+					},
+				],
+			});
+			const { findByTestId } = renderComponent({
+				props: { open: true, nodeTypeName: 'Slack', audience: 'project' },
+			});
+
+			const list = await findByTestId('contact-admin-list');
+
+			expect(list).toHaveTextContent('Margaret Hamilton');
+			expect(list).not.toHaveTextContent('Alan Turing');
+		});
+
 		it('falls back to a project hint when the project has no admin to list', async () => {
 			setup([owner]);
 			mockPolicyProject({ type: 'team', relations: [projectEditor] });
