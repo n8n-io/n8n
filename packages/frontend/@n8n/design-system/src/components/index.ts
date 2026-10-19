@@ -76,7 +76,7 @@ export { default as N8nCollapsiblePanel } from './N8nCollapsiblePanel';
 export { default as N8nColorPicker } from './N8nColorPicker';
 export { default as N8nCopyInput } from './N8nCopyInput';
 export { default as N8nDatatable } from './N8nDatatable';
-export { default as N8nEmptyState } from './N8nEmptyState';
+export { default as N8nEmptyState, N8nEmptyStateIconCards } from './N8nEmptyState';
 export type { EmptyStateCardIcon, EmptyStateIconCards } from './N8nEmptyState';
 export { default as N8nExternalLink } from './N8nExternalLink';
 export { default as N8nFloatingWindow } from './N8nFloatingWindow';
@@ -209,7 +209,13 @@ export { default as N8nInlineTextEdit } from './N8nInlineTextEdit';
 export { default as N8nScrollArea } from './N8nScrollArea';
 export * from './DateRangePicker';
 export { default as N8nCommandBar } from './N8nCommandBar';
-export type { CommandBarItem } from './N8nCommandBar/types';
+export type {
+	CommandBarItem,
+	CommandBarItemIcon,
+	CommandBarSection,
+	CommandBarSelectOptions,
+	CommandBarTab,
+} from './N8nCommandBar/types';
 export * from './N8nDialog';
 export * from './N8nAlertDialog';
 export { default as N8nVisuallyHidden } from './N8nVisuallyHidden';

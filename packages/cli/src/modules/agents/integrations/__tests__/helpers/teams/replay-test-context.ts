@@ -1,4 +1,5 @@
 import type { StreamChunk } from '@n8n/agents';
+import type { AgentTeamsIntegrationSettings } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import type { Logger as BackendLogger } from '@n8n/backend-common';
 import { generateKeyPairSync, randomUUID } from 'crypto';
@@ -48,6 +49,7 @@ export interface TeamsReplayContext extends Omit<ReplayContextSetup, 'chat'> {
 	/** Every edit of an already-posted message, in order. */
 	edits: () => ReplayApiCall[];
 	lastDelete: () => ReplayApiCall | undefined;
+	reactions: () => ReplayApiCall[];
 	lastPostedMessageId: () => string | undefined;
 }
 
@@ -146,6 +148,15 @@ function installTeamsApiStub(jwks: object, accessToken: string, succeedingEdits?
 			return [200, {}];
 		});
 
+	// Registered before the edit stub, whose pattern would also match it.
+	nock(serviceUrl.origin)
+		.persist()
+		.put(/\/v3\/conversations\/.+\/activities\/.+\/reactions\/.+/)
+		.reply(function (uri) {
+			apiCalls.push({ method: 'addReaction', body: { uri } });
+			return [200, {}];
+		});
+
 	nock(serviceUrl.origin)
 		.persist()
 		.put(/\/v3\/conversations\/.+\/activities\/.+/)
@@ -169,6 +180,7 @@ export async function createTeamsReplayContext(
 		streamGapMs?: number;
 		/** Reject every edit past this many, so a rejection can be provoked. */
 		succeedingEdits?: number;
+		settings?: AgentTeamsIntegrationSettings;
 	} = {},
 ): Promise<TeamsReplayContext> {
 	const signer = createBotFrameworkSigner();
@@ -201,7 +213,7 @@ export async function createTeamsReplayContext(
 		chat: chat as never,
 		integrationImpl,
 		streamGapMs: options.streamGapMs,
-		integration: { type: 'teams', credentialId: 'cred-teams', settings: undefined },
+		integration: { type: 'teams', credentialId: 'cred-teams', settings: options.settings },
 		componentMapper: new ComponentMapper(),
 		stream: options.stream,
 	});
@@ -238,6 +250,7 @@ export async function createTeamsReplayContext(
 		activities: () => stub.apiCalls.filter((call) => call.method === 'sendActivity'),
 		edits: () => stub.apiCalls.filter((call) => call.method === 'updateActivity'),
 		lastDelete: () => lastCall('deleteActivity'),
+		reactions: () => stub.apiCalls.filter((call) => call.method === 'addReaction'),
 		lastPostedMessageId: () => stub.postedMessageIds.at(-1),
 		shutdown: async () => {
 			stub.restore();

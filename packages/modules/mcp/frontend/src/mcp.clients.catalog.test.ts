@@ -11,8 +11,25 @@ describe('getMcpClientCatalog', () => {
 		expect(catalog.map((group) => group.clients.map((client) => client.id))).toEqual([
 			['claude-code', 'codex', 'gemini-cli'],
 			['claude-ai', 'chatgpt', 'mistral-vibe'],
-			['cursor', 'vscode', 'windsurf'],
+			['antigravity', 'cursor', 'devin', 'vscode'],
 		]);
+	});
+
+	it('should give Antigravity an HTTP server entry and keep Gemini CLI available', () => {
+		const antigravity = clients.find((client) => client.id === 'antigravity');
+		expect(JSON.parse(antigravity!.configSnippet!)).toEqual({
+			mcpServers: { n8n: { serverUrl: SERVER_URL } },
+		});
+		expect(clients.find((client) => client.id === 'gemini-cli')?.installCommand).toContain(
+			'gemini mcp add',
+		);
+	});
+
+	it('should give Devin a streamable HTTP server entry', () => {
+		const devin = clients.find((client) => client.id === 'devin');
+		expect(JSON.parse(devin!.configSnippet!)).toEqual({
+			mcpServers: { n8n: { url: SERVER_URL, transport: 'http' } },
+		});
 	});
 
 	it('should embed the server URL in every install command and config snippet', () => {

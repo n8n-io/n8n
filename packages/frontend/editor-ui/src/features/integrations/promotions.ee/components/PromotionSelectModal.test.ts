@@ -64,8 +64,11 @@ const mockChanges = [
 	},
 ];
 
-/** The endpoint wraps the rows with the commit they were read from. */
-const changesBody = (changes: unknown[]) => ({ commitSha: 'a'.repeat(40), changes });
+/** The endpoint wraps the rows with the source and commit they were read from. */
+const changesBody = (
+	changes: unknown[],
+	source = { configId: 'config-1', branchName: 'main' },
+) => ({ commitSha: 'a'.repeat(40), source, changes });
 
 const promoteResult = (branchName = 'main'): PromotePackageResultDto =>
 	({
@@ -82,21 +85,19 @@ const promoteResult = (branchName = 'main'): PromotePackageResultDto =>
 		git: { commitSha: 'abc123', branchName },
 	}) satisfies PromotePackageResultDto;
 
-const renderComponent = createComponentRenderer(PromotionSelectModal, {
-	global: {
-		stubs: {
-			N8nDialog: { props: ['open'], template: '<div v-if="open"><slot /></div>' },
-			Modal: {
-				template: `
-					<div>
-						<slot name="content" />
-						<slot name="footer" />
-					</div>
-				`,
-			},
-		},
+const stubs = {
+	N8nDialog: { props: ['open'], template: '<div v-if="open"><slot /></div>' },
+	Modal: {
+		template: `
+			<div>
+				<slot name="content" />
+				<slot name="footer" />
+			</div>
+		`,
 	},
-});
+};
+
+const renderComponent = createComponentRenderer(PromotionSelectModal, { global: { stubs } });
 
 describe('PromotionSelectModal', () => {
 	let pinia: ReturnType<typeof createTestingPinia>;
@@ -424,7 +425,6 @@ describe('PromotionSelectModal', () => {
 			data: {
 				projectId: 'project-1',
 				direction: 'apply' as const,
-				apply: { connectionId: 'connection-1', configId: 'config-1', branchName: 'main' },
 			},
 		};
 		const applyChanges = vi.fn(() => ({ data: changesBody(mockChanges) }));
@@ -441,43 +441,96 @@ describe('PromotionSelectModal', () => {
 
 		let applied: ReturnType<typeof vi.spyOn>;
 
+		// The DTO needs at least one workflow, so every apply test starts from a full selection.
+		async function selectAll(findByTestId: (id: string) => Promise<HTMLElement>) {
+			await userEvent.click(await findByTestId('promotion-select-all'));
+		}
+
 		beforeEach(() => {
 			server.get('/rest/promotions/project-1/changes/apply', applyChanges);
-			server.post('/api/v1/promotions/connections/connection-1/apply', applyPackage);
+			server.post('/api/v1/promotions/projects/project-1/apply', applyPackage);
 			confirm.mockResolvedValue(MODAL_CONFIRM);
 			applied = vi.spyOn(promotionEventBus, 'emit');
 		});
 
-		it('should offer to apply all changes instead of promoting', async () => {
-			const { findByTestId, queryByTestId } = renderComponent({ pinia, props: applyProps });
+		it('should offer to apply the selection instead of promoting', async () => {
+			const { findByTestId, findByText, queryByTestId } = renderComponent({
+				pinia,
+				props: applyProps,
+			});
+			await findByText('Payment Handler');
 
-			expect(await findByTestId('promotion-apply-all')).toHaveTextContent('Apply all changes');
+			const applyButton = await findByTestId('promotion-apply-selected');
+			// Nothing is selected yet, so the additive apply stays disabled.
+			expect(applyButton).toBeDisabled();
+			await selectAll(findByTestId);
+			expect(applyButton).toBeEnabled();
+			expect(applyButton).toHaveTextContent('Apply 2 changes');
 			expect(queryByTestId('promotion-submit')).not.toBeInTheDocument();
 			expect(applyChanges).toHaveBeenCalledTimes(1);
+		});
+
+		it('should use the singular apply label when one change is selected', async () => {
+			const { findAllByTestId, findByTestId } = renderComponent({ pinia, props: applyProps });
+
+			const rows = await findAllByTestId('promotion-change-row');
+			await userEvent.click(rows[0]);
+
+			expect(await findByTestId('promotion-apply-selected')).toHaveTextContent('Apply 1 change');
+		});
+
+		it('should pin the source the preview resolved for the project', async () => {
+			// A project with its own connection previews against that connection's config.
+			server.get('/rest/promotions/project-1/changes/apply', () => ({
+				data: changesBody(mockChanges, { configId: 'config-project', branchName: 'production' }),
+			}));
+			mockedStore(useProjectsStore).fetchProject.mockResolvedValue(
+				createTestProject({ id: 'project-1' }),
+			);
+			const { findByTestId, findByText } = renderComponent({ pinia, props: applyProps });
+			await findByText('Payment Handler');
+			await selectAll(findByTestId);
+
+			await userEvent.click(await findByTestId('promotion-apply-selected'));
+
+			await waitFor(() => expect(applyPackage).toHaveBeenCalledTimes(1));
+			expect(applyPackage.mock.results[0].value.receivedBody.expectedSource).toEqual({
+				configId: 'config-project',
+				branchName: 'production',
+				commitSha: 'a'.repeat(40),
+			});
 		});
 
 		it('should not apply when the user cancels the confirmation', async () => {
 			confirm.mockResolvedValue(MODAL_CANCEL);
 			const { findByTestId, findByText } = renderComponent({ pinia, props: applyProps });
 			await findByText('Payment Handler');
+			await selectAll(findByTestId);
 
-			await userEvent.click(await findByTestId('promotion-apply-all'));
+			await userEvent.click(await findByTestId('promotion-apply-selected'));
 
-			expect(confirm).toHaveBeenCalledTimes(1);
+			// The confirmation names the additive copy, not the destructive whole-branch copy.
+			expect(confirm).toHaveBeenCalledWith(
+				'This applies only the selected workflows to this project. It does not change or remove anything else.',
+				'Apply the selected workflows?',
+				expect.objectContaining({ confirmButtonText: 'Apply' }),
+			);
 			expect(applyPackage).not.toHaveBeenCalled();
 		});
 
-		it('should apply the branch, report the counts and close the modal', async () => {
+		it('should apply the selection, report the counts and close the modal', async () => {
 			const project = createTestProject({ id: 'project-1', name: 'Renamed' });
 			mockedStore(useProjectsStore).fetchProject.mockResolvedValue(project);
 			const { findByTestId, findByText } = renderComponent({ pinia, props: applyProps });
 			await findByText('Payment Handler');
+			await selectAll(findByTestId);
 
-			await userEvent.click(await findByTestId('promotion-apply-all'));
+			await userEvent.click(await findByTestId('promotion-apply-selected'));
 
 			await waitFor(() => expect(applyPackage).toHaveBeenCalledTimes(1));
-			// The reviewed commit travels with the request, so a moved branch is not applied blindly.
+			// Only the selected workflows travel, pinned to the reviewed commit.
 			expect(applyPackage.mock.results[0].value.receivedBody).toEqual({
+				workflowIds: ['wf-001', 'wf-002'],
 				expectedSource: { configId: 'config-1', branchName: 'main', commitSha: 'a'.repeat(40) },
 			});
 			await waitFor(() =>
@@ -497,7 +550,7 @@ describe('PromotionSelectModal', () => {
 		});
 
 		it('should warn when applied workflows could not be published', async () => {
-			server.post('/api/v1/promotions/connections/connection-1/apply', () => ({
+			server.post('/api/v1/promotions/projects/project-1/apply', () => ({
 				connectionId: 'connection-1',
 				configId: 'config-1',
 				status: 'applied',
@@ -515,8 +568,9 @@ describe('PromotionSelectModal', () => {
 			}));
 			const { findByTestId, findByText } = renderComponent({ pinia, props: applyProps });
 			await findByText('Payment Handler');
+			await selectAll(findByTestId);
 
-			await userEvent.click(await findByTestId('promotion-apply-all'));
+			await userEvent.click(await findByTestId('promotion-apply-selected'));
 
 			await waitFor(() =>
 				expect(showMessage).toHaveBeenCalledWith(
@@ -543,8 +597,9 @@ describe('PromotionSelectModal', () => {
 			);
 			const { findByTestId, findByText } = renderComponent({ pinia, props: applyProps });
 			await findByText('Payment Handler');
+			await selectAll(findByTestId);
 
-			await userEvent.click(await findByTestId('promotion-apply-all'));
+			await userEvent.click(await findByTestId('promotion-apply-selected'));
 
 			await waitFor(() =>
 				expect(applied).toHaveBeenCalledWith('projectRemoved', { projectId: 'project-1' }),
@@ -565,8 +620,9 @@ describe('PromotionSelectModal', () => {
 			mockedStore(useProjectsStore).fetchProject.mockRejectedValue(new Error('offline'));
 			const { findByTestId, findByText } = renderComponent({ pinia, props: applyProps });
 			await findByText('Payment Handler');
+			await selectAll(findByTestId);
 
-			await userEvent.click(await findByTestId('promotion-apply-all'));
+			await userEvent.click(await findByTestId('promotion-apply-selected'));
 
 			await waitFor(() =>
 				expect(applied).toHaveBeenCalledWith('applied', { projectId: 'project-1' }),
@@ -575,13 +631,14 @@ describe('PromotionSelectModal', () => {
 
 		it('opens all blocked bindings and keeps Apply paused', async () => {
 			const result = blocked({ missingBindings: [credential, variable] });
-			server.post('/api/v1/promotions/connections/connection-1/apply', () => result);
+			server.post('/api/v1/promotions/projects/project-1/apply', () => result);
 			const { findByTestId, findAllByText, findByText } = renderComponent({
 				pinia,
 				props: applyProps,
 			});
 			await findByText('Payment Handler');
-			await userEvent.click(await findByTestId('promotion-apply-all'));
+			await selectAll(findByTestId);
+			await userEvent.click(await findByTestId('promotion-apply-selected'));
 			await findByText('Resolve bindings');
 			await findAllByText(credential.name);
 			await findAllByText(variable.name);
@@ -589,6 +646,43 @@ describe('PromotionSelectModal', () => {
 			expect(useUIStore().closeModal).not.toHaveBeenCalled();
 			expect(applied).not.toHaveBeenCalled();
 			expect(showMessage).not.toHaveBeenCalled();
+		});
+
+		it('should lock the selection during apply and continue with the submitted one', async () => {
+			let resolveApply: (value: unknown) => void = () => {};
+			server.post(
+				'/api/v1/promotions/projects/project-1/apply',
+				async () => await new Promise((resolve) => (resolveApply = resolve)),
+			);
+			const { findAllByTestId, findByTestId } = renderComponent({
+				pinia,
+				props: applyProps,
+				global: {
+					stubs: {
+						...stubs,
+						PromotionBindingsFlow: {
+							props: ['continueWith'],
+							template:
+								'<div data-test-id="continue-with">{{ continueWith.kind }}:{{ continueWith.workflowIds.join(",") }}</div>',
+						},
+					},
+				},
+			});
+			const rows = await findAllByTestId('promotion-change-row');
+			await userEvent.click(rows[0]);
+			const applyButton = await findByTestId('promotion-apply-selected');
+
+			await userEvent.click(applyButton);
+			await waitFor(() => expect(applyButton).toHaveAttribute('aria-busy', 'true'));
+			await userEvent.click(rows[1]);
+			await userEvent.click(await findByTestId('promotion-select-all'));
+
+			// Clicks during the request do not change what is applied.
+			expect(applyButton).toHaveTextContent('Apply 1 change');
+			resolveApply(blocked({ missingBindings: [credential] }));
+
+			expect(await findByTestId('continue-with')).toHaveTextContent('selection:wf-001');
+			expect(await findByTestId('continue-with')).not.toHaveTextContent('wf-002');
 		});
 
 		it.each([
@@ -599,7 +693,7 @@ describe('PromotionSelectModal', () => {
 		])(
 			'should warn and keep the modal open when apply pauses with $result.status',
 			async ({ result, message }) => {
-				server.post('/api/v1/promotions/connections/connection-1/apply', () => ({
+				server.post('/api/v1/promotions/projects/project-1/apply', () => ({
 					connectionId: 'connection-1',
 					configId: 'config-1',
 					git: { commitSha: 'a'.repeat(40), branchName: 'main' },
@@ -607,8 +701,9 @@ describe('PromotionSelectModal', () => {
 				}));
 				const { findByTestId, findByText } = renderComponent({ pinia, props: applyProps });
 				await findByText('Payment Handler');
+				await selectAll(findByTestId);
 
-				await userEvent.click(await findByTestId('promotion-apply-all'));
+				await userEvent.click(await findByTestId('promotion-apply-selected'));
 
 				await waitFor(() =>
 					expect(showMessage).toHaveBeenCalledWith(
@@ -624,13 +719,14 @@ describe('PromotionSelectModal', () => {
 
 		it('should show the error and still refetch the changes when apply fails', async () => {
 			server.post(
-				'/api/v1/promotions/connections/connection-1/apply',
+				'/api/v1/promotions/projects/project-1/apply',
 				() => new Response(409, {}, { message: 'Bindings unresolved' }),
 			);
 			const { findByTestId, findByText } = renderComponent({ pinia, props: applyProps });
 			await findByText('Payment Handler');
+			await selectAll(findByTestId);
 
-			await userEvent.click(await findByTestId('promotion-apply-all'));
+			await userEvent.click(await findByTestId('promotion-apply-selected'));
 
 			await waitFor(() =>
 				expect(showError).toHaveBeenCalledWith(expect.anything(), 'Could not apply the changes'),

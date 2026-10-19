@@ -13,6 +13,7 @@ const ENGINE_TESTS = [
 	'test/expression-item-accessor-engine-parity.test.ts',
 	'test/expression-items-engine-parity.test.ts',
 	'test/expression-nested-data.test.ts',
+	'test/expression-shadow.test.ts',
 	'test/expression-vm-errors.test.ts',
 	'test/expression-with-isolate.test.ts',
 	'test/ExpressionExtensions/*.test.ts',

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, nextTick, onBeforeUnmount, useTemplateRef } from 'vue';
+import { ref, computed, watch, nextTick, onBeforeUnmount, provide, useTemplateRef } from 'vue';
 import {
 	StorageSerializers,
 	useElementSize,
@@ -27,6 +27,7 @@ import {
 	MAX_AGENT_KNOWLEDGE_BASE_SIZE_GB,
 	addMissingAgentPersonalisation,
 	type AgentFileDto,
+	type AgentSkillAvailability,
 	type InstanceAiHandoffContext,
 	type PushMessage,
 	type PushPayload,
@@ -34,6 +35,7 @@ import {
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { ResponseError } from '@n8n/rest-api-client';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useAgentProjectBreadcrumb } from '@/features/agents/composables/useAgentProjectBreadcrumb';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
@@ -42,6 +44,7 @@ import { useToast } from '@n8n/composables/useToast';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
@@ -99,12 +102,14 @@ import {
 	AGENT_SESSION_DETAIL_VIEW,
 	AGENT_JSON_IMPORT_MODAL_KEY,
 	AGENT_DESCRIPTION_MODAL_KEY,
+	AGENT_UNPUBLISHED_WORKFLOWS_MODAL_KEY,
 	AGENT_VECTOR_STORES_MODAL_KEY,
 	ASSISTANT_THREAD_PARAM,
 	CONTINUE_SESSION_ID_PARAM,
 	NEW_SESSION_PARAM,
 	OPEN_PREVIEW_PARAM,
 	PENDING_AGENT_ID_STATE,
+	PENDING_AGENT_STARTER_STATE,
 } from '../constants';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
 import {
@@ -118,8 +123,14 @@ import {
 	AGENT_TEMPLATE_SUGGESTIONS_VERSION,
 	applyAgentTemplate,
 	isAgentConfigBlank,
+	isAgentStarter,
+	type AgentStarter,
 	type AgentTemplate,
 } from '../agentTemplates';
+import {
+	AGENT_CONFIG_WRITE_KEY,
+	type AgentConfigWrite,
+} from '../components/agentBuilderInjectionKeys';
 import AgentBuilderHeader from '../components/AgentBuilderHeader.vue';
 import AgentCollaborationBanner from '../components/AgentCollaborationBanner.vue';
 import AgentBuilderEditorColumn from '../components/AgentBuilderEditorColumn.vue';
@@ -131,11 +142,14 @@ import AgentPreviewDock from '../components/AgentPreviewDock.vue';
 import AgentVersionHistoryPanel from '../components/VersionHistory/AgentVersionHistoryPanel.vue';
 import {
 	buildInstanceAiAgentPreviewHandoffContext,
+	stashPendingFirstMessage,
 	buildInstanceAiCredentialHandoffContext,
 	buildInstanceAiCredentialQuestion,
 	type InstanceAiThreadLaunch,
 	type PendingComposerDraft,
+	type PendingFirstMessage,
 } from '@/features/ai/instanceAi/composables/useInstanceAiHandoff';
+import { USER_TYPED_MESSAGE } from '@/features/ai/instanceAi/prefills';
 import {
 	useInstanceAiAvailable,
 	useInstanceAiReady,
@@ -156,7 +170,7 @@ import {
 	raisedBudgetCaps,
 	type BudgetAmountField,
 } from '../utils/budget-config';
-import { hasBlockingIssues } from '../utils/validationIssues';
+import { hasBlockingIssues, unpublishedWorkflowTools } from '../utils/validationIssues';
 import { isNotFoundError } from '../utils/errors';
 
 const props = withDefaults(
@@ -216,6 +230,7 @@ const agentEvalsStore = useAgentEvalsStore();
 const credentialsStore = useCredentialsStore();
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
+const nodeTypesStore = useNodeTypesStore();
 const favoritesStore = useFavoritesStore();
 const mcpStore = useMCPStore();
 const mcp = useMcp();
@@ -259,11 +274,50 @@ function readPendingAgentIdFromHistory(): string | null {
 	const pendingAgentId = (history.state as Record<string, unknown>)[PENDING_AGENT_ID_STATE];
 	return typeof pendingAgentId === 'string' ? pendingAgentId : null;
 }
+function readPendingStarterFromHistory(): AgentStarter | null {
+	const starter = (history.state as Record<string, unknown>)[PENDING_AGENT_STARTER_STATE];
+	return isAgentStarter(starter) ? starter : null;
+}
 const routePendingAgentId = ref(readPendingAgentIdFromHistory());
+const routePendingStarter = ref<AgentStarter | null>(readPendingStarterFromHistory());
+const pendingStarterMessage = ref<PendingFirstMessage | null>(null);
+let starterReady: ReturnType<typeof createDeferredPromise> | undefined;
+let starterSettled = false;
+let starterInFlight = false;
 const isRouteAgentPending = computed(() => {
 	if (isArtifactMode.value) return false;
 	return routePendingAgentId.value === agentId.value;
 });
+function currentStarter(): AgentStarter | null {
+	if (!isRouteAgentPending.value) return null;
+	return routePendingStarter.value;
+}
+function armStarterGate() {
+	starterReady?.resolve(undefined);
+	starterSettled = false;
+	starterInFlight = false;
+	pendingStarterMessage.value = null;
+	if (!currentStarter()) {
+		starterReady = undefined;
+		starterSettled = true;
+		return;
+	}
+	starterReady = createDeferredPromise();
+}
+function settleStarter() {
+	if (starterSettled) return;
+	starterSettled = true;
+	starterReady?.resolve(undefined);
+}
+function clearPendingStarterFromHistory() {
+	const historyState = history.state as Record<string, unknown>;
+	if (PENDING_AGENT_STARTER_STATE in historyState) {
+		const { [PENDING_AGENT_STARTER_STATE]: _starter, ...state } = historyState;
+		history.replaceState(state, '');
+	}
+	routePendingStarter.value = null;
+}
+armStarterGate();
 const isAgentPending = computed(() => props.artifactAgentPending || isRouteAgentPending.value);
 const previewOpenStorageKey = computed(function getPreviewOpenStorageKey() {
 	return `N8N_AGENT_PREVIEW_OPEN:${projectId.value}:${agentId.value}`;
@@ -312,8 +366,10 @@ watch(agentId, () => {
 	// must be re-read here, before `isRouteAgentPending` (read below, and by the
 	// `initialize()` watcher) reflects the new agent instead of the mounted one.
 	routePendingAgentId.value = readPendingAgentIdFromHistory();
+	routePendingStarter.value = readPendingStarterFromHistory();
 	openedForPendingAgent.value = isRouteAgentPending.value;
 	templateApplied.value = false;
+	armStarterGate();
 });
 const isAiPanelOpen = computed({
 	get: () => storedAiPanelOpen.value ?? (openedForPendingAgent.value && instanceAiReady.value),
@@ -334,11 +390,16 @@ const aiThreadId = computed(() =>
 		: undefined,
 );
 function onAiThreadIdChange(threadId: string) {
+	const message = pendingStarterMessage.value;
+	if (message) {
+		stashPendingFirstMessage(threadId, message);
+		pendingStarterMessage.value = null;
+		clearPendingStarterFromHistory();
+	}
 	void router.replace({ query: { ...route.query, [ASSISTANT_THREAD_PARAM]: threadId } });
 }
 /** True while the embedded assistant is actively mutating this agent. */
 const embeddedAiBuilding = ref(false);
-const embeddedAiProcessing = ref(false);
 const aiPanelRef = useTemplateRef<InstanceType<typeof InstanceAiChatPanel>>('aiPanelRef');
 // The standalone preview route doesn't render the AI dock (`showAiPanel`
 // requires the builder route), so a hand-off requested from there has nowhere
@@ -539,15 +600,19 @@ const {
 	canDelete: canDeleteAgent,
 	canExecute: canExecuteAgent,
 } = useAgentPermissions(projectId);
+// True while an eval suggestion is being applied, see `runConfigWrite`.
+const configWriteInFlight = ref(false);
 // True while writes from this tab must not reach the backend: the AI is
-// mutating this agent (artifact build lock or the embedded assistant), or
-// another client holds the collaboration write lock (multi-tab / multi-user).
+// mutating this agent (artifact build lock or the embedded assistant), an eval
+// suggestion is being applied to the saved config, or another client holds the
+// collaboration write lock (multi-tab / multi-user).
 // Every write path — the editor, the header actions, and the autosave loops —
 // keys off this.
 const isEditingLocked = computed(
 	() =>
 		props.artifactEditingLocked ||
 		embeddedAiBuilding.value ||
+		configWriteInFlight.value ||
 		agentCollaborationStore.shouldBeReadOnly,
 );
 // Combines permission with the lock: while locked, editing is disabled even
@@ -1260,6 +1325,7 @@ interface SkillAutosaveSnapshot {
 	skillId: string;
 	skill: AgentSkill;
 	baseSkillHash: string | undefined;
+	availableTo?: AgentSkillAvailability;
 }
 
 interface McpAvailabilitySnapshot {
@@ -1492,6 +1558,7 @@ async function saveSkill(snapshot: SkillAutosaveSnapshot): Promise<AutosaveResul
 			snapshot.skillId,
 			snapshot.skill,
 			snapshot.baseSkillHash,
+			snapshot.availableTo,
 		);
 	} catch (error) {
 		if (error instanceof ResponseError && error.httpStatusCode === 409) {
@@ -1661,6 +1728,29 @@ async function flushAutosaveLoops(isolateSideSaveErrors = false): Promise<Autosa
 	return configResult;
 }
 
+// Evals can rewrite the agent's instructions on the server. That reads the saved config, so
+// pending local edits land first. Editing stays locked until the write is done and the config
+// is reloaded; an edit made in between would be saved against the old config hash and hit a
+// conflict. The reload runs even when the write threw, since the server may have saved first.
+// A locked editor has nothing of its own to save: the server rejects the write on its own
+// lock check.
+const runConfigWrite: AgentConfigWrite = async (write) => {
+	if (!isEditingLocked.value) await flushAutosaveLoops();
+	configWriteInFlight.value = true;
+	try {
+		return await write();
+	} finally {
+		try {
+			await onConfigUpdated();
+		} catch (error) {
+			handleArtifactRefreshError(error);
+		} finally {
+			configWriteInFlight.value = false;
+		}
+	}
+};
+provide(AGENT_CONFIG_WRITE_KEY, runConfigWrite);
+
 async function flushAutosave(): Promise<AutosaveResult> {
 	return await flushAutosaveLoops();
 }
@@ -1677,6 +1767,13 @@ async function flushConfigAutosave(): Promise<AutosaveResult> {
 /** Flush variant for callers that await completion but not the save outcome. */
 async function flushAutosaveIgnoringResult(): Promise<void> {
 	await flushAutosave();
+}
+
+/** The embedded assistant waits to mint its thread until a list-view starter is applied. */
+async function beforeAiNewThread(): Promise<void> {
+	const gate = starterReady;
+	await gate?.promise;
+	await flushAutosaveIgnoringResult();
 }
 
 useEventListener(document, 'keydown', (event) => {
@@ -1795,6 +1892,11 @@ watch(isEditingLocked, (locked) => {
  * re-validates independently, so this is a UX affordance, not the only guard.
  */
 async function refreshValidationBeforePublish(): Promise<boolean> {
+	// Capture the target before the awaits: when the autosave flush or the
+	// validation refresh resolves, the user may have switched to another
+	// agent, and the continuation must not act on the stale one.
+	const targetProjectId = projectId.value;
+	const targetAgentId = agentId.value;
 	// Acquire the write lock before publishing — the lock is lazy.
 	agentCollaborationStore.requestWriteAccess();
 	try {
@@ -1802,8 +1904,26 @@ async function refreshValidationBeforePublish(): Promise<boolean> {
 	} catch {
 		return false;
 	}
-	await refreshConfigValidation(projectId.value, agentId.value);
-	return configValidation.value !== null && !hasBlockingIssues(configValidation.value.issues);
+	if (isStaleAgentTarget(targetProjectId, targetAgentId)) return false;
+	await refreshConfigValidation(targetProjectId, targetAgentId);
+	if (isStaleAgentTarget(targetProjectId, targetAgentId)) return false;
+	if (configValidation.value === null) return false;
+	if (hasBlockingIssues(configValidation.value.issues)) return false;
+	// Unpublished workflow tools do not disable the Publish button, but the
+	// backend rejects the publish — surface them here instead of failing the
+	// request (AGENT-1001).
+	const unpublishedWorkflows = unpublishedWorkflowTools(
+		configValidation.value.issues,
+		localConfig.value?.tools ?? [],
+	);
+	if (unpublishedWorkflows.length > 0) {
+		uiStore.openModalWithData({
+			name: AGENT_UNPUBLISHED_WORKFLOWS_MODAL_KEY,
+			data: { workflows: unpublishedWorkflows },
+		});
+		return false;
+	}
+	return true;
 }
 
 function normalizeAgentMemoryConfig(config: AgentJsonConfig): AgentJsonConfig {
@@ -1864,11 +1984,12 @@ const caps = useAgentCapabilitiesActions({
 	agentId,
 	connectedTriggers,
 	ensureAgentPersisted,
+	flushConfigSave: flushConfigAutosave,
 	beforeAgentMutation: flushAutosaveIgnoringResult,
 	refreshAgentAfterMutation: onConfigUpdated,
 	validationIssues: computed(() => configValidation.value?.issues ?? []),
 	scheduleConfigUpdate: onConfigFieldUpdate,
-	scheduleSkillSave: ({ skillId, skill }) => {
+	scheduleSkillSave: ({ skillId, skill, availableTo }) => {
 		// Acquire the write lock before persisting any change.
 		agentCollaborationStore.requestWriteAccess();
 		// The persisted validation result no longer reflects the working copy —
@@ -1881,6 +2002,7 @@ const caps = useAgentCapabilitiesActions({
 			skillId,
 			skill,
 			baseSkillHash: agent.value?.skillHashes?.[skillId],
+			...(availableTo ? { availableTo } : {}),
 		});
 	},
 	telemetry: {
@@ -1909,12 +2031,28 @@ function replaceConfigAndScheduleSave(nextConfig: AgentJsonConfig) {
 	});
 }
 
+function templateStarterMessage(template: AgentTemplate): PendingFirstMessage {
+	return {
+		message: locale.baseText('agents.builder.templates.prompt', {
+			interpolate: {
+				name: locale.baseText(template.labelKey),
+				description: locale.baseText(template.descriptionKey),
+			},
+		}),
+		authorship: {
+			kind: 'prefill',
+			prefillType: 'template_adjustment',
+			prefillId: template.id,
+		},
+	};
+}
+
 // Apply a starter template to a blank agent: writes instructions and tools,
-// pre-connects any channel triggers, creates scheduled tasks, and sends the
-// template prompt to the assistant so it starts building right away. Refuses
+// pre-connects any channel triggers, and creates scheduled tasks. Refuses
 // (with a toast) once the agent already has content — the intro is for a first build.
-async function onApplyTemplate(template: AgentTemplate) {
-	if (!localConfig.value) return;
+// Returns false when the prompt must not be sent.
+async function applyTemplateConfig(template: AgentTemplate): Promise<boolean> {
+	if (!localConfig.value) return false;
 	const next = applyAgentTemplate(
 		localConfig.value,
 		template,
@@ -1926,7 +2064,7 @@ async function onApplyTemplate(template: AgentTemplate) {
 			message: locale.baseText('agents.builder.templates.notBlank.message'),
 			type: 'warning',
 		});
-		return;
+		return false;
 	}
 	replaceConfigAndScheduleSave(next);
 	// Derive trigger chips from the template's draft integrations so the two
@@ -1950,7 +2088,7 @@ async function onApplyTemplate(template: AgentTemplate) {
 	}
 	// The user may have opened another agent while the save was in flight.
 	// The panel ref now belongs to that agent, so this prompt must not follow.
-	if (isStaleAgentTarget(targetProjectId, targetAgentId)) return;
+	if (isStaleAgentTarget(targetProjectId, targetAgentId)) return false;
 	// Task creation writes the task ref into the server config and changes its
 	// hash. Reload that config before the assistant prompt: the tasks counter
 	// only refreshes task bodies, and the update push skips this tab. A later
@@ -1961,7 +2099,7 @@ async function onApplyTemplate(template: AgentTemplate) {
 		try {
 			await ensureAgentPersisted();
 			for (const task of template.tasks) {
-				if (isStaleAgentTarget(targetProjectId, targetAgentId)) return;
+				if (isStaleAgentTarget(targetProjectId, targetAgentId)) return false;
 				await createAgentTask(rootStore.restApiContext, targetProjectId, targetAgentId, {
 					...task,
 					enabled: true,
@@ -1973,26 +2111,49 @@ async function onApplyTemplate(template: AgentTemplate) {
 				showError(error, locale.baseText('agents.builder.tasks.saveError'));
 			}
 		}
-		if (isStaleAgentTarget(targetProjectId, targetAgentId)) return;
+		if (isStaleAgentTarget(targetProjectId, targetAgentId)) return false;
 		// A created task already changed the hash. Do not prompt the assistant
 		// until this tab has reloaded that config.
 		if (tasksCreated) {
 			const refreshed = await refreshConfigAfterTemplateTasks(targetProjectId, targetAgentId);
-			if (!refreshed || isStaleAgentTarget(targetProjectId, targetAgentId)) return;
+			if (!refreshed || isStaleAgentTarget(targetProjectId, targetAgentId)) return false;
 		}
 	}
-	if (isStaleAgentTarget(targetProjectId, targetAgentId)) return;
+	return !isStaleAgentTarget(targetProjectId, targetAgentId);
+}
+
+async function settlePendingStarter() {
+	const gate = starterReady;
+	starterInFlight = true;
+	try {
+		const starter = currentStarter();
+		if (!starter) return;
+		if (starter.kind === 'prompt') {
+			const text = starter.text.trim();
+			if (text) {
+				pendingStarterMessage.value = { message: text, authorship: USER_TYPED_MESSAGE };
+			}
+			return;
+		}
+		const template = AGENT_TEMPLATES.find((entry) => entry.id === starter.templateId);
+		if (!template) return;
+		if (await applyTemplateConfig(template)) {
+			pendingStarterMessage.value = templateStarterMessage(template);
+		}
+	} finally {
+		starterInFlight = false;
+		if (starterReady === gate) settleStarter();
+	}
+}
+
+async function onApplyTemplate(template: AgentTemplate) {
+	if (!(await applyTemplateConfig(template))) return;
 	const templateIndex = AGENT_TEMPLATES.findIndex((entry) => entry.id === template.id);
 	// Send the template prompt to the assistant right away so it starts
 	// building. The prompt format is "Build {name} agent to {description}".
 	// Catalog positions are one-based, matching the home-screen suggestion list.
 	aiPanelRef.value?.submitSuggestion({
-		prompt: locale.baseText('agents.builder.templates.prompt', {
-			interpolate: {
-				name: locale.baseText(template.labelKey),
-				description: locale.baseText(template.descriptionKey),
-			},
-		}),
+		prompt: templateStarterMessage(template).message,
 		suggestionId: template.id,
 		suggestionKind: 'prompt',
 		position: templateIndex >= 0 ? templateIndex + 1 : 0,
@@ -2252,7 +2413,7 @@ const headerActions = computed(() => {
 	actions.push({
 		id: 'export-json',
 		label: locale.baseText('agents.builder.exportJson' as BaseTextKey),
-		icon: 'download',
+		icon: 'arrow-block-up',
 		divided: actions.length > 0,
 	});
 
@@ -2260,7 +2421,7 @@ const headerActions = computed(() => {
 		actions.push({
 			id: 'import-json',
 			label: locale.baseText('agents.builder.importJson' as BaseTextKey),
-			icon: 'upload',
+			icon: 'arrow-block-down',
 		});
 	}
 
@@ -2595,6 +2756,9 @@ async function initialize({ preserveState = false }: { preserveState?: boolean }
 			localConfig.value = addMissingAgentPersonalisation(draftConfig) ?? draftConfig;
 			agent.value = draftAgentResource(localConfig.value.personalisation);
 			agentName.value = agent.value.name;
+			if (currentStarter() && isCurrentInitialization()) {
+				await settlePendingStarter();
+			}
 		} else {
 			await Promise.all([
 				fetchAgent(targetProjectId, targetAgentId, probedAgent ?? undefined),
@@ -2609,11 +2773,15 @@ async function initialize({ preserveState = false }: { preserveState?: boolean }
 			if (probedAgent) void adoptExistingPendingRow(probedAgent);
 		}
 		if (!isCurrentInitialization()) return;
+		// The tools picker and tool icons read the node types store, which stays
+		// empty when this page is the first one loaded. Not awaited: the page does
+		// not need it to render.
+		void nodeTypesStore.loadNodeTypesIfNotLoaded().catch(() => undefined);
 		// Keep agent credential pickers aligned with the workflow editor: load only
 		// credentials the current user can use in this project context.
 		credentialsStore.setCredentials([]);
 		await Promise.all([
-			credentialsStore.fetchUsableCredentials({ projectId: targetProjectId }),
+			credentialsStore.fetchUsableCredentials({ projectId: targetProjectId, forAgent: true }),
 			credentialsStore.fetchCredentialTypes(false),
 		]).catch(() => undefined);
 		if (!isCurrentInitialization()) return;
@@ -2672,6 +2840,7 @@ async function initialize({ preserveState = false }: { preserveState?: boolean }
 		}
 	} finally {
 		if (isCurrentInitialization()) {
+			if (!starterInFlight) settleStarter();
 			initialized.value = true;
 			void replayPendingExternalRefresh().catch(handleArtifactRefreshError);
 			warmAgentKnowledgeSandboxForPage();
@@ -2998,7 +3167,7 @@ useKeybindings({
 				:shortcut="{ metaKey: true, keys: ['J'] }"
 			>
 				<N8nButton
-					variant="subtle"
+					variant="outline"
 					size="medium"
 					icon-only
 					:aria-label="locale.baseText('agents.builder.header.editWithAi')"
@@ -3068,12 +3237,11 @@ useKeybindings({
 						:subject="instanceAiEmbedSubject"
 						:launch="instanceAiEmbedLaunch"
 						:thread-id="aiThreadId"
-						:before-new-thread="flushAutosaveIgnoringResult"
+						:before-new-thread="beforeAiNewThread"
 						:before-send="flushAutosaveIgnoringResult"
 						data-testid="agent-ai-chat-panel"
 						@update:thread-id="onAiThreadIdChange"
 						@update:building="embeddedAiBuilding = $event"
-						@update:processing="embeddedAiProcessing = $event"
 						@close="isAiPanelOpen = false"
 					>
 						<template v-if="showAgentIntro" #empty>
@@ -3083,7 +3251,7 @@ useKeybindings({
 				</N8nResizeWrapper>
 			</aside>
 			<div
-				v-if="embeddedAiProcessing || embeddedAiBuilding"
+				v-if="embeddedAiBuilding"
 				:class="$style.activityArea"
 				:style="{
 					left: showAiPanel ? `${renderedSidePanelWidths.ai}px` : undefined,
@@ -3124,6 +3292,7 @@ useKeybindings({
 					v-else
 					v-model:active-main-tab="activeMainTab"
 					:class="$style.editorColumn"
+					:embedded-ai-building="embeddedAiBuilding"
 					:local-config="localConfig"
 					:agent="agent"
 					:project-id="projectId"
@@ -3163,7 +3332,6 @@ useKeybindings({
 					@remove-vector-store="onRemoveVectorStore"
 					@remove-tool="caps.onRemoveTool"
 					@remove-skill="caps.onRemoveSkill"
-					@toggle-skill="caps.onToggleSkill"
 					@update:connected-triggers="caps.onConnectedTriggersUpdate"
 					@trigger-added="caps.onTriggerAdded"
 					@toggle-task="caps.onToggleTask"

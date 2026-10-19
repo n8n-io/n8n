@@ -40,6 +40,7 @@ import {
 	type AgentThreadAccess,
 } from './entities/agent-execution-thread.entity';
 import { AgentExecution, type AgentExecutionHitlStatus } from './entities/agent-execution.entity';
+import { isProjectAgent } from './entities/agent.entity';
 import type { MessageRecord, TimelineEvent } from './execution-recorder';
 import {
 	AgentExecutionLogStore,
@@ -105,6 +106,8 @@ export interface StartExecutionParams extends Omit<RecordMessageParams, 'record'
 	hideUserMessageFromTranscript?: boolean;
 	access: AgentThreadAccess;
 	previewChat?: boolean;
+	/** Whether the execution accepts mid-turn steering. See `acceptsSteering` in `types/agent-queued-message`. */
+	acceptsSteering?: boolean;
 	sessionMode?: AgentSessionMode;
 	initialTimeline?: TimelineEvent[];
 	/** Internal admission data. These fields are not stored on the execution. */
@@ -226,7 +229,7 @@ export class AgentExecutionService {
 		const execution = this.agentExecutionRepository.create({
 			threadId: params.threadId,
 			status: 'running',
-			acceptsSteering: params.previewChat === true,
+			acceptsSteering: params.acceptsSteering === true,
 			startedAt,
 			stoppedAt: null,
 			duration: 0,
@@ -746,15 +749,13 @@ export class AgentExecutionService {
 	async findN8nChatThreadsForAgents(
 		userId: string,
 		agentIds: string[],
-		limit: number,
-		cursor?: string,
+		options: { limit: number; cursor?: string; search?: string },
 	): Promise<AgentN8nChatThreadsResponse> {
 		const { threads, nextCursor } =
 			await this.agentExecutionThreadRepository.findN8nChatThreadsForOwner(
 				userId,
 				agentIds,
-				limit,
-				cursor,
+				options,
 			);
 		return { data: threads.map(toN8nChatThreadSummary), nextCursor };
 	}
@@ -1265,6 +1266,7 @@ export class AgentExecutionService {
 				user_id: params.telemetry.userId,
 				thread_id: threadId,
 				run_type: params.telemetry.runType,
+				source: params.source,
 				turn_status: status === 'success' ? 'succeeded' : 'failed',
 				configuration: params.telemetry.configuration,
 				...buildAgentTurnMetrics(record),
@@ -1305,6 +1307,10 @@ function executionStatus(record: MessageRecord): AgentExecution['status'] {
 /** Maps a thread (with `agent` and `agent.activeVersion` loaded) to the
  *  cross-agent n8n Chat thread list shape. */
 function toN8nChatThreadSummary(thread: AgentExecutionThread): AgentN8nChatThreadSummary {
+	// The callers narrow `agentIds` to chat-reachable project agents.
+	if (!isProjectAgent(thread.agent)) {
+		throw new UnexpectedError(`Thread ${thread.id} does not belong to a project agent`);
+	}
 	return {
 		id: thread.id,
 		title: thread.title,

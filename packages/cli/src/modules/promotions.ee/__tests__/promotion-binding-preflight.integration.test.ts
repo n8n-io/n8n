@@ -355,6 +355,11 @@ describe('PromotionBindingPreflightService (directory + database)', () => {
 					},
 				]),
 			}),
+			{
+				kind: 'project',
+				code: 'project-deletion',
+				project: { id: projectB.id, name: 'Beta' },
+			},
 		]);
 		expect(
 			result.conflicts.find((conflict) => conflict.code === 'missing-definition')?.consumers,
@@ -451,7 +456,13 @@ describe('PromotionBindingPreflightService (directory + database)', () => {
 		const expected = {
 			missingProjects: [],
 			missingBindings: [],
-			conflicts: [],
+			conflicts: [
+				{
+					kind: 'project',
+					code: 'project-deletion',
+					project: { id: unrelated.id, name: 'Unrelated' },
+				},
+			],
 			warnings: [],
 			accessRequirements: [
 				{
@@ -597,6 +608,30 @@ describe('PromotionBindingPreflightService (directory + database)', () => {
 			await Container.get(VariablesRepository).findKeysInProjectsOrGlobal(['REGION'], []),
 		).toEqual([{ key: 'REGION', projectId: null }]);
 		expect(await snapshot()).toEqual(before);
+	});
+
+	it('reports no data table conflict when the data table module is disabled', async () => {
+		const project = projectFile(await createTeamProject('Alpha', owner));
+		const table = { id: 'dt1', name: 'Orders' };
+		await writePackage({
+			'projects/alpha/project.json': project,
+			'projects/alpha/workflows/w1/workflow.json': workflowFile('w1', [
+				{
+					id: 'node-table',
+					name: 'Orders',
+					type: 'n8n-nodes-base.dataTable',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: { dataTableId: { __rl: true, mode: 'id', value: table.id } },
+				},
+			]),
+			'projects/alpha/data-tables/orders/data-table.json': {
+				...table,
+				columns: [{ name: 'email', type: 'string', index: 0 }],
+			},
+		});
+
+		expect(await service.checkDirectory({ sourceDir })).toMatchObject({ conflicts: [] });
 	});
 
 	it('fails on a malformed workflow file and changes nothing', async () => {

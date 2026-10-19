@@ -21,8 +21,11 @@ describe('WorkflowStatisticsRollupTask', () => {
 
 		expect(task.name).toBe('workflow-statistics-rollup');
 		expect(task.schedule).toEqual({ kind: 'interval', intervalSeconds: 5 });
-		expect(task.effects).toBe('idempotent');
-		expect(task.placement).toEqual({ scope: 'cluster', durable: true, runOnTakeover: true });
+		expect(task.target).toEqual({
+			scope: 'cluster',
+			scheduler: { retryOnFailure: true },
+			leaderTimer: { runOnTakeover: true },
+		});
 	});
 
 	it.each([
@@ -31,23 +34,14 @@ describe('WorkflowStatisticsRollupTask', () => {
 		{ leaseDurationSeconds: 2, runBudgetMs: 1000 },
 		{ leaseDurationSeconds: 1, runBudgetMs: 0 },
 	])(
-		'should pass the signal and a $runBudgetMs ms budget to a durable run with a $leaseDurationSeconds second lease',
+		'should pass the signal and a $runBudgetMs ms budget with a $leaseDurationSeconds second lease',
 		async ({ leaseDurationSeconds, runBudgetMs }) => {
 			const task = makeTask({ leaseDurationSeconds });
 			const signal = new AbortController().signal;
 
-			await task.run(signal, { durable: true });
+			await task.run(signal);
 
 			expect(rollupService.rollup).toHaveBeenCalledExactlyOnceWith(signal, runBudgetMs);
 		},
 	);
-
-	it('should pass a budget below the interval to an in-memory run, whatever the lease', async () => {
-		const task = makeTask({ leaseDurationSeconds: 1 });
-		const signal = new AbortController().signal;
-
-		await task.run(signal, { durable: false });
-
-		expect(rollupService.rollup).toHaveBeenCalledExactlyOnceWith(signal, 4000);
-	});
 });

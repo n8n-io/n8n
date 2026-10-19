@@ -99,6 +99,7 @@ describe('createJobProvisioner', () => {
 					nextRunAt: new Date(now.getTime() + 10_000),
 					lastFiredAt: null,
 					maxAttempts: 1,
+					timeoutSeconds: 300,
 					concurrencyLimit: null,
 					misfirePolicy: ScheduledJobMisfirePolicy.Skip,
 					misfireGraceSeconds: 60,

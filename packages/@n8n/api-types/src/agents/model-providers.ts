@@ -2,6 +2,7 @@ export const AGENT_MODEL_PROVIDERS = [
 	'openai',
 	'anthropic',
 	'google',
+	'google-vertex',
 	'azure-openai',
 	'aws-bedrock',
 	'xai',
@@ -39,6 +40,7 @@ export const AGENT_MODEL_PROVIDER_CREDENTIAL_TYPES = {
 	openai: ['openAiApi'],
 	anthropic: ['anthropicApi'],
 	google: ['googlePalmApi'],
+	'google-vertex': ['googleVertexAiApi'],
 	'azure-openai': ['azureOpenAiApi', 'azureEntraCognitiveServicesOAuth2Api'],
 	'aws-bedrock': ['aws'],
 	xai: ['xAiApi'],
@@ -68,6 +70,8 @@ export interface AgentCatalogModel {
 	toolCall: boolean;
 	cost?: { input: number; output: number; cacheRead?: number; cacheWrite?: number };
 	limits?: { context?: number; output?: number };
+	/** Pickers list models with a priority first, highest first. Reported by the models API. */
+	priority?: number;
 }
 
 /** Response of `GET /agents/v2/catalog/models/:provider`. */

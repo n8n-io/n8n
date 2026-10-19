@@ -25,6 +25,7 @@ import {
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { mockRestrictedNodeTypes } from '@n8n/frontend-module-type-availability-policies/__tests__/mocks';
 import { nodeViewEventBus } from '@/app/event-bus';
 import { useReviewRequiredStore } from '@/features/workflow-reviews/reviewRequired.store';
 import { useWorkflowReviewStatusStore } from '@/features/workflow-reviews/reviewStatus.store';
@@ -46,8 +47,8 @@ import { ResponseError } from '@n8n/rest-api-client';
 // Hoisted: the vue-router mock factory runs before module-level consts initialize
 const { mockRouterPush, mockRouterResolve } = vi.hoisted(() => ({
 	mockRouterPush: vi.fn(),
-	mockRouterResolve: vi.fn(({ params }: { params: { reviewRequestId: string } }) => ({
-		href: `/reviews/${params.reviewRequestId}`,
+	mockRouterResolve: vi.fn(({ params }: { params: { reviewId: string } }) => ({
+		href: `/inbox/reviews/${params.reviewId}`,
 	})),
 }));
 
@@ -711,7 +712,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			expect(mockShowToast).toHaveBeenCalledWith({
 				type: 'success',
 				title: 'Latest changes submitted to the existing review',
-				message: '<a href="/reviews/req-1">Open review</a>',
+				message: '<a href="/inbox/reviews/req-1">Open review</a>',
 				onClick: expect.any(Function),
 			});
 			const toastConfig = mockShowToast.mock.calls.at(-1)?.[0];
@@ -724,7 +725,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			expect(preventDefault).toHaveBeenCalledOnce();
 			expect(mockRouterPush).toHaveBeenCalledWith({
 				name: WORKFLOW_REVIEW_REQUESTS_VIEW,
-				params: { reviewRequestId: 'req-1' },
+				params: { reviewId: 'req-1' },
 			});
 		});
 
@@ -818,7 +819,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			expect(mockShowToast).toHaveBeenCalledWith({
 				type: 'success',
 				title: 'Workflow version submitted for review',
-				message: '<a href="/reviews/review-1">Open review</a>',
+				message: '<a href="/inbox/reviews/review-1">Open review</a>',
 				onClick: expect.any(Function),
 			});
 		});
@@ -844,7 +845,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 				expect(mockShowToast).toHaveBeenCalledWith({
 					type: 'success',
 					title: 'Workflow version submitted for review',
-					message: '<a href="/reviews/review-1">Open review</a>',
+					message: '<a href="/inbox/reviews/review-1">Open review</a>',
 					onClick: expect.any(Function),
 				});
 			});
@@ -897,6 +898,34 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			const { getByTestId } = renderComponent();
 
 			expect(getByTestId('workflow-open-publish-modal-button')).toBeDisabled();
+		});
+
+		it('should name the restricted node before its parameter issues', () => {
+			const restrictedNodeWithIssues: INodeUi = {
+				id: 'http-1',
+				name: 'HTTP Request',
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 4.2,
+				position: [200, 0],
+				parameters: {},
+				disabled: false,
+				issues: { parameters: { url: ['Parameter "URL" is required.'] } },
+			};
+			workflowDocumentStore.setNodes([triggerNode, restrictedNodeWithIssues]);
+			workflowDocumentStore.setConnections({
+				[triggerNode.name]: {
+					main: [[{ node: restrictedNodeWithIssues.name, type: 'main', index: 0 }]],
+				},
+			});
+			mockRestrictedNodeTypes({ [restrictedNodeWithIssues.type]: 'instance' });
+
+			const { getByTestId, getByText, queryByText } = renderComponent();
+
+			expect(getByTestId('workflow-open-publish-modal-button')).toBeDisabled();
+			expect(
+				getByText(/An administrator blocked 'HTTP Request' on this instance/),
+			).toBeInTheDocument();
+			expect(queryByText(/node has issues/)).not.toBeInTheDocument();
 		});
 
 		it('should show publish button enabled when there are unpublished changes (versionId mismatch)', () => {
@@ -1601,7 +1630,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 
 			expect(mockRouterPush).toHaveBeenCalledWith({
 				name: WORKFLOW_REVIEW_REQUESTS_VIEW,
-				params: { reviewRequestId: 'req-1' },
+				params: { reviewId: 'req-1' },
 				query: undefined,
 			});
 		});

@@ -29,6 +29,7 @@ function makeExecutionStore(overrides: Partial<ExecutionStore> = {}): ExecutionS
 		transitionStatus: vi.fn().mockResolvedValue(true),
 		finishExecution: vi.fn().mockResolvedValue(null),
 		cancelExecution: vi.fn().mockResolvedValue(null),
+		loadSeededOutputs: vi.fn().mockResolvedValue(new Map()),
 		refreshLiveStatus: vi.fn(),
 		...overrides,
 	};
@@ -67,7 +68,7 @@ function record(graph: WorkflowGraph, overrides: Partial<ExecutionRecord> = {}):
 		workflowId: 'wf-1',
 		status: 'running',
 		mode: 'production',
-		graph,
+		graph: { ...graph, seeded: [] },
 		workflow: {},
 		triggerOutputs: null,
 		callerContext: { hostMode: 'trigger' },

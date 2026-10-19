@@ -1,0 +1,45 @@
+[
+	{
+		"scope": "https://ai-gateway.vercel.sh:443",
+		"method": "POST",
+		"path": "/v1/language-model",
+		"body": {
+			"toolChoice": {
+				"type": "auto"
+			},
+			"prompt": [
+				{
+					"role": "system",
+					"content": "Reply with exactly OK."
+				},
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "Acknowledge."
+						}
+					]
+				}
+			],
+			"includeRawChunks": true
+		},
+		"status": 404,
+		"response": "{\"error\":{\"message\":\"The requested resource was not found: /v1/language-model\",\"type\":\"not_found_error\",\"param\":null,\"code\":\"not_found_error\"}}",
+		"rawHeaders": {
+			"access-control-allow-headers": "Content-Type, Authorization, ai-gateway-auth-method, ai-gateway-protocol-version, ai-model-id, ai-language-model-id, ai-language-model-specification-version, ai-image-model-specification-version, ai-embedding-model-specification-version, ai-decision-model-specification-version, ai-evaluation-model-specification-version, ai-language-model-streaming, ai-reporting-tags, ai-reporting-user, http-referer, x-title, x-ai-gateway-api-key, x-api-key, anthropic-beta, anthropic-version, idempotency-key, x-vercel-ai-gateway-team, x-vercel-gateway-extended-time, x-session-id, x-session-affinity",
+			"access-control-allow-methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+			"access-control-allow-origin": "*",
+			"access-control-expose-headers": "retry-after, x-should-retry",
+			"cache-control": "public, max-age=0, must-revalidate",
+			"content-type": "application/json",
+			"date": "Tue, 06 Oct 2026 16:28:28 GMT",
+			"server": "Vercel",
+			"strict-transport-security": "max-age=63072000; includeSubDomains; preload",
+			"x-matched-path": "/v1/[...slug]",
+			"x-vercel-cache": "MISS",
+			"x-vercel-id": "lhr1::cdg1::6kq9z-1791304108394-566e8b2ab215"
+		},
+		"responseIsBinary": false
+	}
+]

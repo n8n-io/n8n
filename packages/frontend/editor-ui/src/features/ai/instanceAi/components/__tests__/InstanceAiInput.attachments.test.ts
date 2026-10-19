@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
-import { defineComponent, h } from 'vue';
+import { defineComponent, h, nextTick } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import InstanceAiInput from '../InstanceAiInput.vue';
 import AttachmentPreview from '../AttachmentPreview.vue';
@@ -20,6 +20,11 @@ const telemetryTrack = vi.hoisted(() => vi.fn());
 vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal<typeof import('vue-router')>()),
 	useRouter: () => ({ push: vi.fn() }),
+}));
+
+const showMessageMock = vi.fn();
+vi.mock('@n8n/composables/useToast', () => ({
+	useToast: () => ({ showMessage: showMessageMock, showError: vi.fn() }),
 }));
 
 vi.mock('@n8n/composables/useTelemetry', () => ({
@@ -52,10 +57,11 @@ describe('InstanceAiInput — staged node attachments', () => {
 		telemetryTrack.mockClear();
 	});
 
-	it('keeps the existing input menu enabled outside the mentions rollout', () => {
-		const { getByTestId } = renderComponent();
+	it('keeps the existing input menu enabled outside the mentions rollout, with no paperclip', () => {
+		const { getByTestId, queryByTestId } = renderComponent();
 
 		expect(getByTestId('instance-ai-input-menu')).toBeEnabled();
+		expect(queryByTestId('chat-input-attach-button')).not.toBeInTheDocument();
 	});
 
 	it('consumes staged attachments into the draft without touching already-typed text', async () => {
@@ -153,6 +159,52 @@ describe('InstanceAiInput — staged node attachments', () => {
 		expect(restoreDraft).toBeTypeOf('function');
 		expect(restoreDraft()).toBe(true);
 		await waitFor(() => expect(textbox).toHaveValue('Drop the third workflow'));
+	});
+});
+
+describe('attach-only composer', () => {
+	beforeEach(() => {
+		setActivePinia(createTestingPinia({ stubActions: false }));
+	});
+
+	it('replaces the "+" menu with a paperclip restricted to the agent\'s file types', () => {
+		const { getByTestId, queryByTestId, container } = renderComponent({
+			props: { attachOnlyMimeTypes: 'image/*,application/pdf' },
+		});
+
+		expect(queryByTestId('instance-ai-input-menu')).not.toBeInTheDocument();
+		expect(getByTestId('chat-input-attach-button')).toBeInTheDocument();
+		const fileInput = container.querySelector('input[type="file"]');
+		expect(fileInput).toHaveAttribute('accept', 'image/*,application/pdf');
+	});
+
+	it('tells the user when a dropped file type is not accepted', async () => {
+		const { getByRole } = renderComponent({
+			props: { attachOnlyMimeTypes: 'image/*' },
+		});
+		const file = new File(['%PDF'], 'report.pdf', { type: 'application/pdf' });
+		const drop = new Event('drop', { bubbles: true, cancelable: true });
+		Object.defineProperty(drop, 'dataTransfer', {
+			value: { files: [file], types: ['Files'], items: [{ kind: 'file', type: file.type }] },
+		});
+
+		getByRole('textbox').dispatchEvent(drop);
+		await nextTick();
+
+		expect(showMessageMock).toHaveBeenCalledWith({
+			type: 'error',
+			title: 'report.pdf is not a supported file type',
+		});
+	});
+
+	it('hides attaching entirely when the agent accepts no file types', () => {
+		const { queryByTestId, container } = renderComponent({
+			props: { attachOnlyMimeTypes: '' },
+		});
+
+		expect(queryByTestId('instance-ai-input-menu')).not.toBeInTheDocument();
+		expect(queryByTestId('chat-input-attach-button')).not.toBeInTheDocument();
+		expect(container.querySelector('input[type="file"]')).not.toBeInTheDocument();
 	});
 });
 

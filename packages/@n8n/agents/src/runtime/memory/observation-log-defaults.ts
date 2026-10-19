@@ -42,6 +42,8 @@ A valid response has exactly one of these forms:
 
 Use only one indentation level. A child attaches to the preceding top-level bullet in this response. Never omit the \`*\` prefix.
 
+Every line is one observation with its own marker. To add details to an observation, write each detail as a marked child, or put the details on the same line separated by semicolons. Never write a plain sub-list, a numbered list, or any line without a marker.
+
 2. Exactly this marker when there is nothing durable to record:
 
 NO_OBSERVATIONS
@@ -89,6 +91,16 @@ BAD:
 GOOD:
 * CRITICAL (14:30) User approved the data migration. Deployment requires separate approval.
   * IMPORTANT (14:31) Agent plans to start the migration; completion is not verified.
+
+Details go on marked lines
+
+BAD:
+* CRITICAL (15:09) User's invoice rules:
+  * Count only invoices with status paid or pending.
+    - Status void means cancelled.
+
+GOOD:
+* CRITICAL (15:09) User's invoice rules: count only invoices with status paid or pending; status void means cancelled.
 
 Keep verification evidence together
 
@@ -156,8 +168,7 @@ export function createObservationLogObserveFn(
 	options: CreateObservationLogObserveFnOptions = {},
 ): ObservationLogObserveFn {
 	return async (input) => {
-		// oxlint-disable-next-line typescript/no-deprecated
-		const { text, usage, providerMetadata } = await loadAi().generateText({
+		const { text, usage, finalStep } = await loadAi().generateText({
 			model: createModel(model),
 			instructions: options.observerPrompt ?? DEFAULT_OBSERVATION_LOG_OBSERVER_PROMPT,
 			prompt: buildObservationLogObserverPrompt(input),
@@ -166,7 +177,7 @@ export function createObservationLogObserveFn(
 		});
 		incrementTokenCountFromUsage(input.executionCounter, usage);
 
-		const tokenUsage = toTokenUsage(usage, providerMetadata);
+		const tokenUsage = toTokenUsage(usage, finalStep.providerMetadata);
 		const modelId = getModelIdString(model);
 		if (options.onUsage && tokenUsage) {
 			await options.onUsage({
@@ -325,8 +336,7 @@ export function createObservationLogReflectFn(
 				parentId: entry.parentId ? (referenceById.get(entry.parentId) ?? null) : null,
 			})),
 		);
-		// oxlint-disable-next-line typescript/no-deprecated
-		const { text, usage, providerMetadata } = await loadAi().generateText({
+		const { text, usage, finalStep } = await loadAi().generateText({
 			model: createModel(model),
 			instructions: options.reflectorPrompt ?? DEFAULT_OBSERVATION_LOG_REFLECTOR_PROMPT,
 			prompt: buildObservationLogReflectorPrompt({ ...input, renderedObservationLog }),
@@ -334,7 +344,7 @@ export function createObservationLogReflectFn(
 		});
 		incrementTokenCountFromUsage(input.executionCounter, usage);
 
-		const tokenUsage = toTokenUsage(usage, providerMetadata);
+		const tokenUsage = toTokenUsage(usage, finalStep.providerMetadata);
 		const modelId = getModelIdString(model);
 		if (options.onUsage && tokenUsage) {
 			await options.onUsage({

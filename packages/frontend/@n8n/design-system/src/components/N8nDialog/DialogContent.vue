@@ -165,10 +165,10 @@ function handleInteractOutside(e: Event) {
 	width: 100%;
 	padding: var(--n8n-dialog-content--padding, var(--spacing--lg));
 	border-radius: var(--radius--lg);
-	background-color: light-dark(var(--color--neutral-white), var(--color--neutral-800));
+	background-color: light-dark(var(--background--surface), var(--background--subtle));
+	outline: 1px solid var(--border-color);
 	box-shadow:
-		inset 0 1.5px 0 light-dark(transparent, var(--border-color)),
-		0 0 0 0.5px light-dark(var(--border-color), var(--color--black-alpha-300)),
+		0 0 0 0.5px light-dark(transparent, var(--color--black-alpha-500)),
 		0 8px 8px light-dark(var(--color--black-alpha-100), var(--color--black-alpha-300)),
 		0 32px 32px light-dark(var(--color--black-alpha-100), var(--color--black-alpha-200)),
 		0 64px 64px light-dark(rgba(0, 0, 0, 0.06), var(--color--black-alpha-100));

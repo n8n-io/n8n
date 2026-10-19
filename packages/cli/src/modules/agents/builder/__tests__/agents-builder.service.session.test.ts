@@ -9,7 +9,7 @@ import type { NodeCatalogService } from '@/node-catalog';
 
 import type { InstanceAiCreditService } from '../../../instance-ai/instance-ai-credit.service';
 import type { AgentsService } from '../../agents.service';
-import type { Agent as AgentEntity } from '../../entities/agent.entity';
+import type { ProjectAgent } from '../../entities/agent.entity';
 import type { N8NCheckpointStorage } from '../../integrations/n8n-checkpoint-storage';
 import type { N8nMemory, N8nMemoryImpl } from '../../integrations/n8n-memory';
 import type { AgentsBuilderToolsService } from '../agents-builder-tools.service';
@@ -125,11 +125,6 @@ const agentsSdkMocks = vi.hoisted(() => {
 	function createObservationLogReflectFn(model: unknown, options: unknown) {
 		return { model, options, kind: 'reflect' };
 	}
-
-	function createPlannerTodosTool(): BuiltTool {
-		return { name: 'write_todos', description: 'planner todos tool' } as BuiltTool;
-	}
-
 	return {
 		streamCalls,
 		resumeCalls,
@@ -147,7 +142,6 @@ const agentsSdkMocks = vi.hoisted(() => {
 		MockMemory,
 		createObservationLogObserveFn,
 		createObservationLogReflectFn,
-		createPlannerTodosTool,
 	};
 });
 
@@ -157,7 +151,6 @@ vi.mock('@n8n/agents', async (importOriginal) => ({
 	Memory: agentsSdkMocks.MockMemory,
 	createObservationLogObserveFn: agentsSdkMocks.createObservationLogObserveFn,
 	createObservationLogReflectFn: agentsSdkMocks.createObservationLogReflectFn,
-	createPlannerTodosTool: agentsSdkMocks.createPlannerTodosTool,
 }));
 
 // Avoid a real `models.dev` catalog fetch — irrelevant to thread isolation and
@@ -195,7 +188,7 @@ function setup(
 	memoryImplementation.getMessages.mockResolvedValue([]);
 	n8nMemory.getImplementation.mockReturnValue(memoryImplementation);
 
-	const agent = mock<AgentEntity>({
+	const agent = mock<ProjectAgent>({
 		id: 'agent-1',
 		schema: null,
 		integrations: [],
@@ -406,6 +399,7 @@ describe('AgentsBuilderService session isolation', () => {
 		expect(agentsSdkMocks.registeredToolNames).toEqual(
 			expect.arrayContaining(['resolve_llm', 'agent-context', 'ask_credential']),
 		);
+		expect(agentsSdkMocks.registeredToolNames).not.toContain('write_todos');
 	});
 
 	it('registers the parent MCP tools for an initial builder turn', async () => {

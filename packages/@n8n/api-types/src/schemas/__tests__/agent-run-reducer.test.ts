@@ -467,6 +467,115 @@ describe('agent-run-reducer', () => {
 			expect(state.toolCallsById['tc-1'].isLoading).toBe(false);
 		});
 
+		it.each(['tool-call', 'tool-input-start'] as const)(
+			'ignores a late %s after cancellation',
+			(type) => {
+				const state = stateWithRun('run-1', 'root');
+				reduceEvent(state, makeRunFinish('run-1', 'root', 'cancelled'));
+				reduceEvent(state, { ...makeToolCall('run-1', 'root', 'late', 'read-agent'), type });
+				expect(toAgentTree(state).toolCalls).toEqual([]);
+				expect(state.status).toBe('cancelled');
+			},
+		);
+
+		it('settles nested children and ignores late child activity after cancellation', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeAgentSpawned('run-1', 'child', 'root'));
+			reduceEvent(state, makeAgentSpawned('run-1', 'nested', 'child'));
+			reduceEvent(state, makeToolCall('run-1', 'nested', 'tc-1', 'read-agent'));
+			reduceEvent(state, makeRunFinish('run-1', 'root', 'cancelled'));
+			reduceEvent(state, makeToolCall('run-1', 'nested', 'late', 'read-agent'));
+			reduceEvent(state, makeTextDelta('run-1', 'nested', 'late text'));
+			reduceEvent(state, makeAgentSpawned('run-1', 'late-child', 'root'));
+			reduceEvent(state, makeAgentCompleted('run-1', 'nested', 'late result'));
+			expect(state.agentsById.child.status).toBe('cancelled');
+			expect(state.agentsById.nested.status).toBe('cancelled');
+			expect(state.agentsById.nested.textContent).toBe('');
+			expect(state.agentsById['late-child']).toBeUndefined();
+			expect(state.toolCallsById['tc-1'].isLoading).toBe(false);
+			expect(state.toolCallsById.late).toBeUndefined();
+		});
+
+		it('ignores late tools from an ended child while its sibling continues', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeAgentSpawned('run-1', 'child', 'root'));
+			reduceEvent(state, makeAgentSpawned('run-1', 'sibling', 'root'));
+			reduceEvent(state, makeAgentCompleted('run-1', 'child', 'done'));
+			reduceEvent(state, makeToolCall('run-1', 'child', 'late', 'read-agent'));
+			reduceEvent(state, makeToolCall('run-1', 'sibling', 'live', 'read-agent'));
+			expect(state.toolCallsById.late).toBeUndefined();
+			expect(state.toolCallsById.live.isLoading).toBe(true);
+		});
+
+		it('keeps a new turn active when cancelled-turn events arrive later', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeAgentSpawned('run-1', 'child', 'root'));
+			reduceEvent(state, makeRunFinish('run-1', 'root', 'cancelled'));
+			reduceEvent(state, makeRunStart('run-2', 'root-2'));
+			reduceEvent(state, makeToolCall('run-2', 'root-2', 'live', 'read-agent'));
+			reduceEvent(state, makeToolCall('run-1', 'root', 'late', 'read-agent'));
+			reduceEvent(state, makeRunFinish('run-1', 'root', 'cancelled'));
+			expect(state.status).toBe('active');
+			expect(toAgentTree(state).status).toBe('active');
+			expect(state.toolCallsById.live.isLoading).toBe(true);
+			expect(state.toolCallsById.late).toBeUndefined();
+		});
+
+		it('restores cancellation guards while a follow-up is active', () => {
+			const original = stateWithRun('run-1', 'root');
+			reduceEvent(original, makeAgentSpawned('run-1', 'child', 'root'));
+			reduceEvent(original, makeRunFinish('run-1', 'root', 'cancelled'));
+			reduceEvent(original, makeRunStart('run-2', 'root'));
+			const state = stateFromAgentTree(deepCopy(toAgentTree(original)))!;
+			reduceEvent(state, makeToolCall('run-1', 'root', 'late', 'read-agent'));
+			reduceEvent(state, makeToolCall('run-2', 'root', 'live', 'read-agent'));
+			expect(state.toolCallsById.late).toBeUndefined();
+			expect(state.toolCallsById.live.isLoading).toBe(true);
+			expect(state.status).toBe('active');
+		});
+
+		it('reactivates a reused builder for a new run and ignores the old run', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeAgentSpawned('run-1', 'builder', 'root'));
+			reduceEvent(state, makeAgentCompleted('run-1', 'builder', 'done'));
+			reduceEvent(state, makeRunFinish('run-1', 'root', 'completed'));
+			reduceEvent(state, makeRunStart('run-2', 'root-2'));
+			reduceEvent(state, makeAgentSpawned('run-2', 'builder', 'root-2'));
+			reduceEvent(state, makeToolCall('run-1', 'builder', 'late', 'read-agent'));
+			reduceEvent(state, makeToolCall('run-2', 'builder', 'live', 'read-agent'));
+			expect(state.agentsById.builder.status).toBe('active');
+			expect(state.toolCallsById.late).toBeUndefined();
+			expect(state.toolCallsById.live.isLoading).toBe(true);
+		});
+
+		it('settles an older run without changing a newer turn in the same group', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeAgentSpawned('run-1', 'child', 'root'));
+			reduceEvent(state, makeToolCall('run-1', 'child', 'old', 'read-agent'));
+			reduceEvent(state, makeRunStart('run-2', 'root-2'));
+			reduceEvent(state, makeToolCall('run-2', 'root-2', 'live', 'read-agent'));
+			reduceEvent(state, makeRunFinish('run-1', 'root', 'cancelled'));
+			expect(toAgentTree(state).status).toBe('active');
+			expect(state.agentsById.child.status).toBe('cancelled');
+			expect(state.toolCallsById.old.isLoading).toBe(false);
+			expect(state.toolCallsById.live.isLoading).toBe(true);
+		});
+
+		it('settles stale cancelled snapshots and preserves the guard after a new turn', () => {
+			const original = stateWithRun('run-1', 'root');
+			reduceEvent(original, makeAgentSpawned('run-1', 'child', 'root'));
+			reduceEvent(original, makeToolCall('run-1', 'child', 'old', 'read-agent'));
+			const tree = toAgentTree(original);
+			tree.status = 'cancelled';
+			const state = stateFromAgentTree(tree)!;
+			expect(state.agentsById.child.status).toBe('cancelled');
+			expect(state.toolCallsById.old.isLoading).toBe(false);
+			reduceEvent(state, makeRunStart('run-2', 'root-2'));
+			reduceEvent(state, makeToolCall('run-1', 'root', 'late', 'read-agent'));
+			expect(state.toolCallsById.late).toBeUndefined();
+			expect(state.status).toBe('active');
+		});
+
 		it('run-finish(error) clears isLoading on all tool calls', () => {
 			const state = stateWithRun('run-1', 'root');
 			reduceEvent(state, makeToolCall('run-1', 'root', 'tc-1', 'some-tool'));
@@ -540,6 +649,70 @@ describe('agent-run-reducer', () => {
 			expect(root.agentId).toBe('orchestrator-run-1');
 			expect(root.toolCalls.map((tc) => tc.toolCallId)).toContain('tc-setup');
 			expectStateMapsNotPolluted(state);
+		});
+
+		it('routes a follow-up run to the tree after the state is rebuilt from a snapshot', () => {
+			// A two-run group, as a run-sync frame or history hydration delivers it.
+			const original = stateWithRun('run-1', 'orchestrator-run-1');
+			reduceEvent(original, makeToolCall('run-1', 'orchestrator-run-1', 'tc-plan', 'create-tasks'));
+			reduceEvent(original, makeRunStart('run-2', 'orchestrator-run-2'));
+			reduceEvent(original, makeToolCall('run-2', 'orchestrator-run-2', 'tc-folder', 'workspace'));
+			const state = stateFromAgentTree(deepCopy(toAgentTree(original)))!;
+
+			// The snapshot holds no alias for run-2, and its run-start is not replayed.
+			expect(findAgent(state, 'orchestrator-run-2')).toBeUndefined();
+
+			reduceEvent(
+				state,
+				makeToolResult('run-2', 'orchestrator-run-2', 'tc-folder', { id: 'folder-1' }),
+			);
+			reduceEvent(state, makeToolCall('run-2', 'orchestrator-run-2', 'tc-move', 'workspace'));
+			reduceEvent(state, makeConfirmationRequest('run-2', 'orchestrator-run-2', 'tc-move'));
+
+			const moveTc = state.toolCallsById['tc-move'];
+			expect(moveTc?.isLoading).toBe(true);
+			expect(moveTc?.confirmation?.requestId).toBe('req-1');
+			const root = toAgentTree(state);
+			expect(root.agentId).toBe('orchestrator-run-1');
+			expect(root.timeline.at(-1)).toEqual(
+				expect.objectContaining({ type: 'tool-call', toolCallId: 'tc-move' }),
+			);
+			expectStateMapsNotPolluted(state);
+		});
+
+		it('attaches a sub-agent spawned by a follow-up run after a snapshot rebuild', () => {
+			const original = stateWithRun('run-1', 'orchestrator-run-1');
+			reduceEvent(original, makeToolCall('run-1', 'orchestrator-run-1', 'tc-plan', 'create-tasks'));
+			const state = stateFromAgentTree(deepCopy(toAgentTree(original)))!;
+
+			reduceEvent(
+				state,
+				makeAgentSpawned('run-2', 'builder-1', 'orchestrator-run-2', 'workflow-builder'),
+			);
+
+			expect(toAgentTree(state).children.map((child) => child.agentId)).toEqual(['builder-1']);
+		});
+
+		it('does not alias an agent whose id is not the orchestrator id of its run', () => {
+			const original = stateWithRun('run-1', 'orchestrator-run-1');
+			reduceEvent(original, makeToolCall('run-1', 'orchestrator-run-1', 'tc-plan', 'create-tasks'));
+			const state = stateFromAgentTree(deepCopy(toAgentTree(original)))!;
+
+			reduceEvent(state, makeToolCall('run-2', 'orchestrator-run-3', 'tc-stray', 'workspace'));
+			reduceEvent(state, makeToolCall('run-2', 'unknown-agent', 'tc-unknown', 'workspace'));
+
+			expect(state.toolCallsById['tc-stray']).toBeUndefined();
+			expect(state.toolCallsById['tc-unknown']).toBeUndefined();
+		});
+
+		it('does not alias into a fresh state before its run-start', () => {
+			const state = createInitialState();
+
+			reduceEvent(state, makeToolCall('run-1', 'orchestrator-run-1', 'tc-early', 'workspace'));
+			reduceEvent(state, makeRunStart('run-1', 'orchestrator-run-1'));
+
+			expect(state.rootAgentId).toBe('orchestrator-run-1');
+			expect(state.toolCallsById['tc-early']).toBeUndefined();
 		});
 
 		it('run-start with unsafe agentId is ignored', () => {

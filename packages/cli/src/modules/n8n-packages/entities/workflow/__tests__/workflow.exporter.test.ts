@@ -69,7 +69,7 @@ describe('WorkflowExporter', () => {
 			workflowIds: [workflow.id],
 			writer,
 			includeTags: true,
-			workflowVersionPolicy: 'latest',
+			versionPolicy: 'latest',
 		});
 
 		expect(finder.findWorkflowsByIdsForUser).toHaveBeenCalledWith(
@@ -91,7 +91,7 @@ describe('WorkflowExporter', () => {
 				workflowIds: ['present_1', 'missing-or-denied'],
 				writer,
 				includeTags: true,
-				workflowVersionPolicy: 'latest',
+				versionPolicy: 'latest',
 			}),
 		).rejects.toThrow('1 workflow(s) not found or not accessible. Export aborted.');
 	});
@@ -108,7 +108,7 @@ describe('WorkflowExporter', () => {
 				workflowIds: ['present_1', 'missing'],
 				writer,
 				includeTags: true,
-				workflowVersionPolicy: 'latest',
+				versionPolicy: 'latest',
 			}),
 		).rejects.toBeInstanceOf(PackageEntityNotFoundError);
 	});
@@ -125,7 +125,7 @@ describe('WorkflowExporter', () => {
 				workflowIds: ['present_1', 'denied-1'],
 				writer,
 				includeTags: true,
-				workflowVersionPolicy: 'latest',
+				versionPolicy: 'latest',
 			}),
 		).rejects.toBeInstanceOf(PackageEntityAccessDeniedError);
 	});
@@ -141,7 +141,7 @@ describe('WorkflowExporter', () => {
 				workflowIds: ['present_1', 'missing'],
 				writer,
 				includeTags: true,
-				workflowVersionPolicy: 'latest',
+				versionPolicy: 'latest',
 			}),
 		).rejects.toThrow();
 
@@ -158,7 +158,7 @@ describe('WorkflowExporter', () => {
 			workflowIds: [workflow.id, workflow.id],
 			writer,
 			includeTags: true,
-			workflowVersionPolicy: 'latest',
+			versionPolicy: 'latest',
 		});
 
 		expect(entries).toEqual([
@@ -180,7 +180,7 @@ describe('WorkflowExporter', () => {
 			workflowIds: [a.id, b.id],
 			writer,
 			includeTags: true,
-			workflowVersionPolicy: 'latest',
+			versionPolicy: 'latest',
 		});
 
 		expect(entries.map(({ id }) => id)).toEqual([a.id, b.id]);
@@ -216,7 +216,7 @@ describe('WorkflowExporter', () => {
 			workflowIds: [workflow.id],
 			writer,
 			includeTags: true,
-			workflowVersionPolicy: 'latest',
+			versionPolicy: 'latest',
 		});
 
 		const workflowFile = writer.files.find(
@@ -248,7 +248,7 @@ describe('WorkflowExporter', () => {
 			workflowIds: [workflow.id],
 			writer,
 			includeTags: true,
-			workflowVersionPolicy: 'latest',
+			versionPolicy: 'latest',
 		});
 
 		const workflowFile = writer.files.find(
@@ -271,7 +271,7 @@ describe('WorkflowExporter', () => {
 			workflowIds: [workflow.id],
 			writer,
 			includeTags: true,
-			workflowVersionPolicy: 'latest',
+			versionPolicy: 'latest',
 		});
 
 		const workflowFile = writer.files.find(
@@ -292,7 +292,7 @@ describe('WorkflowExporter', () => {
 			workflowIds: [workflow.id],
 			writer,
 			includeTags: true,
-			workflowVersionPolicy: 'latest',
+			versionPolicy: 'latest',
 			basePrefix: 'folders/in_progress',
 		});
 
@@ -313,7 +313,7 @@ describe('WorkflowExporter', () => {
 			workflowIds: [a.id, b.id],
 			writer,
 			includeTags: true,
-			workflowVersionPolicy: 'latest',
+			versionPolicy: 'latest',
 		});
 
 		const targets = entries.map((e) => e.target);
@@ -330,7 +330,7 @@ describe('WorkflowExporter', () => {
 		const a = makeWorkflow({ id: 'wf_a' });
 		const b = makeWorkflow({ id: 'wf_b' });
 		const extractor = mock<CredentialRequirementsExtractor>();
-		extractor.extract.mockImplementation((workflow) => [
+		extractor.extractFromWorkflow.mockImplementation((workflow) => [
 			{
 				workflowId: workflow.id,
 				credentialId: `cred-from-${workflow.id}`,
@@ -346,10 +346,10 @@ describe('WorkflowExporter', () => {
 			workflowIds: [a.id, b.id],
 			writer,
 			includeTags: true,
-			workflowVersionPolicy: 'latest',
+			versionPolicy: 'latest',
 		});
 
-		expect(extractor.extract).toHaveBeenCalledTimes(2);
+		expect(extractor.extractFromWorkflow).toHaveBeenCalledTimes(2);
 		expect(requirements.credentials).toEqual<WorkflowCredentialRequirement[]>([
 			{
 				workflowId: 'wf_a',
@@ -381,7 +381,7 @@ describe('WorkflowExporter', () => {
 			workflowIds: [a.id, b.id],
 			writer,
 			includeTags: true,
-			workflowVersionPolicy: 'latest',
+			versionPolicy: 'latest',
 		});
 
 		expect(extractor.extract).toHaveBeenCalledTimes(2);
@@ -406,7 +406,7 @@ describe('WorkflowExporter', () => {
 			workflowIds: [a.id, b.id],
 			writer,
 			includeTags: true,
-			workflowVersionPolicy: 'latest',
+			versionPolicy: 'latest',
 		});
 
 		expect(extractor.extract).toHaveBeenCalledTimes(2);
@@ -435,7 +435,7 @@ describe('WorkflowExporter', () => {
 			workflowIds: [a.id, b.id],
 			writer,
 			includeTags: true,
-			workflowVersionPolicy: 'latest',
+			versionPolicy: 'latest',
 		});
 
 		expect(requirements.nodeTypes).toEqual([

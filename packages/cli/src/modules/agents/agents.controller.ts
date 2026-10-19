@@ -43,6 +43,7 @@ export class AgentsController {
 			: await this.agentDefaultModelResolverService.resolve(req.user, projectId);
 
 		const agent = await this.agentsService.create(projectId, payload.name, {
+			actor: { kind: 'user', user: req.user },
 			id: payload.id,
 			...(defaultModel ? { defaultModel } : {}),
 			// Keep the config name in sync with the entity name so the list and

@@ -18,12 +18,18 @@ import {
 	type AgentActor,
 } from './agent-modification-telemetry.service';
 import { AgentConfigPreparationService } from './agent-config-preparation.service';
+import { AgentPolicyService } from './agent-policy.service';
 import { AgentSaveCompletionService } from './agent-save-completion.service';
 import { AgentSetupCompletionService } from './agent-setup-completion.service';
-import { AgentSkillsService } from './agent-skills.service';
-import type { Agent } from './entities/agent.entity';
+import { AgentSkillRefsService } from './agent-skill-refs.service';
+import type { Agent, ProjectAgent } from './entities/agent.entity';
 import { syncAgentIntegrations } from './integrations/integrations-sync';
 import { composeJsonConfig, decomposeJsonConfig } from './json-config/agent-config-composition';
+import {
+	fromAgentDocument,
+	toAgentDocument,
+	type AgentSkillRefs,
+} from './json-config/agent-document';
 import { pruneMissingConfigReferences } from './json-config/prune-missing-config-references';
 import { AgentTaskRepository } from './repositories/agent-task.repository';
 import { AgentRepository } from './repositories/agent.repository';
@@ -56,11 +62,12 @@ export class AgentConfigService {
 		private readonly logger: Logger,
 		private readonly agentRepository: AgentRepository,
 		private readonly agentTaskRepository: AgentTaskRepository,
-		private readonly agentSkillsService: AgentSkillsService,
 		private readonly configPreparation: AgentConfigPreparationService,
 		private readonly setupCompletionService: AgentSetupCompletionService,
 		private readonly transactionRunner: TransactionRunner,
 		private readonly saveCompletion: AgentSaveCompletionService,
+		private readonly agentPolicyService: AgentPolicyService,
+		private readonly agentSkillRefs: AgentSkillRefsService,
 	) {}
 
 	/**
@@ -73,7 +80,7 @@ export class AgentConfigService {
 			projectId,
 			'Agent not found',
 		);
-		const config = composeJsonConfig(entity);
+		const config = composeJsonConfig(entity, await this.agentSkillRefs.refsForDraft(entity, {}));
 		if (!config) {
 			throw new UserError('Agent has no JSON config yet.');
 		}
@@ -106,7 +113,10 @@ export class AgentConfigService {
 			projectId,
 			'Agent not found',
 		);
-		if (options.baseConfigHash !== getAgentConfigHash(composeJsonConfig(entity))) {
+		const previousSkillRefs = await this.agentSkillRefs.refsForDraft(entity, {});
+		if (
+			options.baseConfigHash !== getAgentConfigHash(composeJsonConfig(entity, previousSkillRefs))
+		) {
 			throw new ConflictError(
 				'Agent config was changed elsewhere; reload to get the latest version',
 			);
@@ -118,13 +128,37 @@ export class AgentConfigService {
 			projectId,
 			user,
 		);
+		const previousSchema = entity.schema ? toAgentDocument(entity.schema, previousSkillRefs) : null;
 		const existingTaskIds = await this.reconcileConfigReferences(
 			entity,
+			previousSchema,
 			validatedConfig,
 			clearOmitted,
 		);
-		const replacement = this.buildConfigReplacement(entity, validatedConfig, config, clearOmitted);
-		entity.schema = replacement.nextSchema;
+		const replacement = this.buildConfigReplacement(
+			entity,
+			previousSchema,
+			validatedConfig,
+			config,
+			clearOmitted,
+		);
+		if (replacement.nextSchema.skills !== undefined) {
+			// Validate, store and report the refs that are saved, not the submitted ones.
+			replacement.nextSchema.skills = await this.agentSkillRefs.effectiveDraftRefs(
+				entity,
+				replacement.nextSchema.skills,
+				{},
+			);
+		}
+		await this.agentPolicyService.enforceSave(
+			projectId,
+			agentId,
+			replacement.nextSchema,
+			replacement.previousSchema,
+			{ kind: 'user', user },
+		);
+		const next = fromAgentDocument(replacement.nextSchema);
+		entity.schema = next.config;
 		entity.name = validatedConfig.name;
 		entity.integrations = replacement.nextIntegrations;
 		markAgentDraftDirty(entity);
@@ -132,6 +166,7 @@ export class AgentConfigService {
 
 		const saved = await this.saveConfig(
 			entity,
+			next.skillRefs,
 			credentialProvider,
 			user,
 			options,
@@ -142,7 +177,7 @@ export class AgentConfigService {
 	}
 
 	private async finishConfigUpdate(
-		saved: Agent,
+		saved: ProjectAgent,
 		validatedConfig: AgentJsonConfig,
 		replacement: ConfigReplacement,
 		clearOmitted: boolean,
@@ -155,7 +190,9 @@ export class AgentConfigService {
 				this.logger,
 			);
 		}
-		const savedConfig = composeJsonConfig(saved) ?? validatedConfig;
+		const savedConfig =
+			composeJsonConfig(saved, await this.agentSkillRefs.refsForDraft(saved, {})) ??
+			validatedConfig;
 		return {
 			config: savedConfig,
 			configHash: getAgentConfigHash(savedConfig),
@@ -165,7 +202,7 @@ export class AgentConfigService {
 	}
 
 	private async removeUnreferencedTasks(
-		agent: Agent,
+		agent: ProjectAgent,
 		existingTaskIds: string[],
 		ctx: OperationContext,
 	): Promise<void> {
@@ -177,7 +214,8 @@ export class AgentConfigService {
 	}
 
 	private async saveConfig(
-		entity: Agent,
+		entity: ProjectAgent,
+		skillRefs: AgentSkillRefs,
 		credentialProvider: AgentsCredentialProvider,
 		user: User,
 		options: AgentConfigUpdateOptions,
@@ -191,6 +229,7 @@ export class AgentConfigService {
 		// claimed and reported only once that write succeeded.
 		const emitSetupCompleted = await this.setupCompletionService.recordIfSetupComplete(
 			entity,
+			skillRefs,
 			projectId,
 			credentialProvider,
 			user,
@@ -198,12 +237,14 @@ export class AgentConfigService {
 
 		const saved = await this.transactionRunner.run({}, async (ctx) => {
 			await saveAgentDraftFenced(this.agentRepository, entity, ctx);
+			await this.agentSkillRefs.replaceDraftRefs(entity, skillRefs, ctx);
 			await this.removeUnreferencedTasks(entity, existingTaskIds, ctx);
 			return entity;
 		});
 		await this.saveCompletion.configurationSaved(
 			{
 				agent: saved,
+				config: replacement.nextSchema,
 				projectId,
 				user,
 				by: options.modifiedBy,
@@ -218,19 +259,24 @@ export class AgentConfigService {
 	}
 
 	private removeUnreferencedResources(
-		entity: Agent,
+		entity: ProjectAgent,
 		config: AgentJsonConfig,
 		clearOmitted: boolean,
 	): void {
 		if (writesField(config, 'tools', clearOmitted)) {
 			this.removeUnreferencedCustomTools(entity, config);
 		}
-		if (writesField(config, 'skills', clearOmitted)) {
-			this.agentSkillsService.removeUnreferencedSkills(entity, config);
+		// With the hub off, bodies live on the agent row: drop the ones no ref keeps, as on
+		// master. With the hub on, a detached skill stays in the hub.
+		if (!this.agentSkillRefs.usesSkillsHub && writesField(config, 'skills', clearOmitted)) {
+			const referenced = new Set((config.skills ?? []).map((ref) => ref.id));
+			entity.skills = Object.fromEntries(
+				Object.entries(entity.skills ?? {}).filter(([id]) => referenced.has(id)),
+			);
 		}
 	}
 
-	private removeUnreferencedCustomTools(entity: Agent, config: AgentJsonConfig): void {
+	private removeUnreferencedCustomTools(entity: ProjectAgent, config: AgentJsonConfig): void {
 		const referencedIds = new Set(
 			(config.tools ?? [])
 				.filter(
@@ -247,13 +293,13 @@ export class AgentConfigService {
 	}
 
 	private buildConfigReplacement(
-		entity: Agent,
+		entity: ProjectAgent,
+		previousSchema: AgentJsonConfig | null,
 		validatedConfig: AgentJsonConfig,
 		rawConfig: unknown,
 		clearOmitted: boolean,
 	): ConfigReplacement {
 		const previousIntegrations = entity.integrations ?? [];
-		const previousSchema = entity.schema ?? null;
 		const { schemaConfig, integrations } = decomposeJsonConfig(validatedConfig);
 		const nextIntegrations = writesField(validatedConfig, 'integrations', clearOmitted)
 			? integrations
@@ -314,16 +360,16 @@ export class AgentConfigService {
 	}
 
 	private async reconcileConfigReferences(
-		entity: Agent,
+		entity: ProjectAgent,
+		previousSchema: AgentJsonConfig | null,
 		config: AgentJsonConfig,
 		clearOmitted: boolean,
 	) {
 		const existingTaskIds = writesField(config, 'tasks', clearOmitted)
 			? (await this.agentTaskRepository.findByAgentId(entity.id)).map((task) => task.id)
 			: [];
-		pruneMissingConfigReferences(config, entity.schema, {
+		pruneMissingConfigReferences(config, previousSchema, {
 			tools: entity.tools ?? {},
-			skills: entity.skills ?? {},
 			taskIds: new Set(existingTaskIds),
 		});
 		const resolvedSubAgents = await this.reconcileSubAgentReferences(config, entity);
@@ -333,7 +379,7 @@ export class AgentConfigService {
 
 	private async reconcileSubAgentReferences(
 		config: AgentJsonConfig,
-		entity: Agent,
+		entity: ProjectAgent,
 	): Promise<ResolvedSubAgentRef[]> {
 		if (config.subAgents?.agents !== undefined) {
 			const existingAgentIds = new Set(
@@ -353,7 +399,7 @@ export class AgentConfigService {
 		return [];
 	}
 
-	private validateSubAgentRefs(resolvedSubAgents: ResolvedSubAgentRef[], entity: Agent) {
+	private validateSubAgentRefs(resolvedSubAgents: ResolvedSubAgentRef[], entity: ProjectAgent) {
 		for (const { agentId } of resolvedSubAgents) {
 			if (agentId === entity.id) {
 				throw new UserError('Invalid agent config: An agent cannot use itself as a subagent');

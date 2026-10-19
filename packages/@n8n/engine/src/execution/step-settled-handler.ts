@@ -17,6 +17,7 @@ import {
 	stepKeyId,
 	type StepKey,
 	type StepKeyId,
+	type StepSlots,
 } from './execution.types';
 import { exitSourcesInto, loadTerminalIterations } from './loop-ledger';
 import { decideSuccessors, decisionKeys } from './settlement';
@@ -119,14 +120,19 @@ export class StepSettledHandler {
 			execution.id,
 			decisionKeys(execution.graph, loops, step, terminalIterations),
 		);
-		const { toQueue, toSkip } = decideSuccessors(
+		const { toQueue, toSeed, toSkip } = decideSuccessors(
 			execution.graph,
 			loops,
 			step,
 			steps,
 			terminalIterations,
 		);
-		if (toQueue.length === 0 && toSkip.length === 0) return 0;
+		if (toQueue.length === 0 && toSeed.length === 0 && toSkip.length === 0) return 0;
+
+		// Seeded steps had their outputs passed in at execution start, so we just
+		// write them to the step store and announce completion rather than
+		// enqueueing them to run.
+		const seededOutputs = await this.executionStore.loadSeededOutputs(execution.id, toSeed);
 
 		// One batch, so a settlement's consequence lands atomically and a fan-out
 		// costs one round trip. A row another planner got to first isn't
@@ -136,6 +142,11 @@ export class StepSettledHandler {
 		// settled steps whose decidable successors have no rows.
 		const created = await this.stepStore.createSteps(execution.id, [
 			...toQueue.map((key) => ({ ...key, status: 'queued' as const })),
+			...toSeed.map((key) => ({
+				...key,
+				status: 'completed' as const,
+				outputs: seededOutputsFor(execution.id, key, seededOutputs),
+			})),
 			...toSkip.map((key) => ({ ...key, status: 'skipped' as const })),
 		]);
 
@@ -144,8 +155,9 @@ export class StepSettledHandler {
 
 	/**
 	 * Announces the created rows — `step:ready` for queued ones, `step:settled`
-	 * for skips, which settle at birth — and returns how many were queued.
-	 * Published only after the rows exist, so a consumer can always load them.
+	 * for skips and seeded steps, which settle at birth — and returns how many
+	 * were queued. Published only after the rows exist, so a consumer can always
+	 * load them.
 	 */
 	private async announceCreatedSteps(
 		executionId: string,
@@ -265,4 +277,23 @@ export class StepSettledHandler {
 		}
 		return new Set([trigger.id, ...getDescendantNodeIds(execution.graph, trigger.id)]);
 	}
+}
+
+/**
+ * The start boundary stores outputs for every pass of every node it marks, so
+ * a marked node without outputs for a pass the run reaches is a bug, not a
+ * node to run instead.
+ */
+function seededOutputsFor(
+	executionId: string,
+	key: StepKey,
+	seededOutputs: Map<StepKeyId, StepSlots>,
+): StepSlots {
+	const outputs = seededOutputs.get(stepKeyId(key));
+	if (outputs === undefined) {
+		throw new UnexpectedError(
+			`Execution ${executionId} marks node ${key.nodeId} as seeded but holds no outputs for iteration ${key.iteration}`,
+		);
+	}
+	return outputs;
 }

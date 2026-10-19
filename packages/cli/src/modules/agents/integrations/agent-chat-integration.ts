@@ -5,11 +5,13 @@ import {
 } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import type { Thread, Author, Message } from 'chat';
-import type { Logger } from 'n8n-workflow';
+import type { Attachment, Thread, Author, Message } from 'chat';
+import { UserError, type Logger } from 'n8n-workflow';
 
 import type { ChatInstance } from './chat-integration.service';
 import type { NormalizeComponentsContext, SuspendComponent } from './component-mapper';
+import type { IntegrationErrorCode } from './integration-error-codes';
+import { normalizePlatformId } from './integration-helpers';
 import type { SlackThreadContext } from './platforms/slack/slack-bridge-behavior';
 import {
 	resolveIntegrationActionDefinitions,
@@ -26,6 +28,12 @@ import type {
 	IntegrationPlatformMessageContext,
 	ReplyExpectation,
 } from './integration-tools';
+
+/**
+ * The platform refused an attachment download for a reason the user can fix.
+ * The message reaches the agent, so it can tell the user what to do.
+ */
+export class InboundAttachmentAccessError extends UserError {}
 
 /**
  * Channel identity, without the decrypted credential. Enough for checks that
@@ -153,9 +161,9 @@ export interface BridgeExecutionContext {
 	forceBuffered?: boolean;
 	statusHandle?: BridgeStatusHandle;
 	/**
-	 * Platform-fetched conversation context (e.g. prior Slack thread messages)
-	 * that the bridge prepends to the agent input message. Undefined when the
-	 * platform did not surface any context for this message.
+	 * Platform context that the bridge prepends to the agent input message,
+	 * such as prior Slack thread messages or a Teams note that the reply is
+	 * optional. Undefined when the platform has none for this message.
 	 */
 	historyContext?: string;
 }
@@ -182,6 +190,8 @@ export interface BridgeMessageContextParams {
 	 * thread context that the agent has never seen.
 	 */
 	isNewMention: boolean;
+	/** True when the message arrived in a thread the agent already joined. */
+	inSubscribedThread?: boolean;
 	/**
 	 * The turn's reply policy ('required' when the platform has none).
 	 * Platforms use 'optional' to skip reply-signalling side effects
@@ -457,6 +467,24 @@ export abstract class AgentChatIntegration {
 	): Promise<void>;
 
 	/**
+	 * Converts a channel ID the model passes to `send_channel_message` into a
+	 * Chat SDK channel ID. By default a bare ID gets the `<platform>:` prefix.
+	 */
+	normalizeChannelId(channelId: string, _adapter: unknown): string {
+		return normalizePlatformId(this.type, channelId);
+	}
+
+	/**
+	 * Explains a failed send in words the agent can act on, for errors where the
+	 * platform message alone gives the model nothing to do next. Return
+	 * undefined to keep the default error.
+	 */
+	describeActionError?(
+		action: IntegrationAction,
+		error: unknown,
+	): { code: IntegrationErrorCode; message: string } | undefined;
+
+	/**
 	 * Optional hook run on EVERY main once the connection is live, regardless
 	 * of `skipExternalHooks`. Unlike `onAfterConnect`, this is for local runtime
 	 * state each main owns independently — e.g. Discord's leader-gated Gateway
@@ -533,6 +561,15 @@ export abstract class AgentChatIntegration {
 	prepareInboundText?(text: string, context: PlatformAgentContext): string;
 
 	/**
+	 * Files the webhook leaves out but the platform API has. They join the
+	 * message's own attachments.
+	 */
+	fetchInboundAttachments?(params: {
+		thread: Thread<unknown, unknown>;
+		message: Message<unknown>;
+	}): Promise<Attachment[]>;
+
+	/**
 	 * Optional per-message reply policy (see `ReplyExpectation`).
 	 * Default (no implementation): 'required'.
 	 */
@@ -564,6 +601,18 @@ export abstract class AgentChatIntegration {
 	}): boolean;
 
 	/**
+	 * Whether a message that does not mention the bot should run the agent,
+	 * in a subscribed thread or not. Only platforms that deliver every message
+	 * implement this (Teams with read-all permissions). Without it the bridge
+	 * runs every subscribed follow-up and never listens for other messages.
+	 */
+	shouldHandleUnmentionedMessage?(params: {
+		thread: Thread<unknown, unknown>;
+		message: Message<unknown>;
+		integration: AgentIntegrationConfig;
+	}): boolean;
+
+	/**
 	 * Optional per-message execution policy for platform-specific bridge behavior,
 	 * such as status indicators or forcing buffered output for a specific thread.
 	 */
@@ -578,7 +627,15 @@ export abstract class AgentChatIntegration {
 		logger: Logger;
 		agentId: string;
 		slackThreadContext?: BridgeExecutionContext['slackThreadContext'];
+		/** The channel as stored, for platforms whose status depends on a setting. */
+		integration?: AgentIntegrationConfig;
 	}): Promise<BridgeResumeExecutionContext>;
+
+	/**
+	 * Whether the bridge downloads and stores the files in an inbound message.
+	 * Without it, every platform downloads them.
+	 */
+	shouldDownloadAttachments?(integration: AgentIntegrationConfig): boolean;
 
 	/**
 	 * Execute a context query that this platform owns (e.g. Linear `get_issue`,

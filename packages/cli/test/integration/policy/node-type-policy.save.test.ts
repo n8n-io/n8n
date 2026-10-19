@@ -7,7 +7,13 @@
  * to be an integration test: it depends on the stored workflow the host loads, which no unit
  * test supplies for real.
  */
-import { createTeamProject, createWorkflow, mockInstance, testDb } from '@n8n/backend-test-utils';
+import {
+	createTeamProject,
+	createWorkflow,
+	getPersonalProject,
+	mockInstance,
+	testDb,
+} from '@n8n/backend-test-utils';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import { WorkflowRepository, type Project, type User } from '@n8n/db';
 import { PolicyCheckMetadata } from '@n8n/decorators';
@@ -29,6 +35,7 @@ const SET = 'n8n-nodes-base.set';
 const GMAIL = 'n8n-nodes-base.gmail';
 const GMAIL_TOOL = 'n8n-nodes-base.gmailTool';
 const SCHEDULE_TRIGGER = 'n8n-nodes-base.scheduleTrigger';
+const DATE_TIME = 'n8n-nodes-base.dateTime';
 
 // `endpointGroups` is load-bearing beyond the routes it mounts: `setupTestServer` only reaches
 // `ModuleRegistry.initModules` when it is set, and that init is what registers both the
@@ -93,14 +100,21 @@ async function putProjectPolicy(
 	return response.body as { version: number };
 }
 
-const violationFor = (typeName: string, scope: 'instance' | 'project', matchedRuleId: string) => ({
+const violationFor = (
+	typeName: string,
+	scope: 'instance' | 'project',
+	matchedRuleId: string,
+	{ projectId, optInAvailable = false }: { projectId?: string; optInAvailable?: boolean } = {},
+) => ({
 	kind: 'node-type-unavailable',
 	checkId: CHECK_ID,
-	message: `Node type "${typeName}" is blocked by ${scope === 'instance' ? 'an instance policy' : "this project's policy"}`,
+	message: `Node type "${typeName}" is blocked by ${scope === 'instance' ? 'an instance policy' : 'a project policy'}`,
 	subject: typeName,
 	subjectType: 'nodeType',
 	scope,
 	matchedRuleId,
+	...(projectId !== undefined && { projectId }),
+	optInAvailable,
 });
 
 beforeAll(async () => {
@@ -207,6 +221,62 @@ describe('PATCH /workflows/:workflowId', () => {
 	});
 });
 
+describe('inline agents', () => {
+	const inlineAgentNode = (): INode => ({
+		...node('n8n-nodes-base.messageAnAgent', 'Message an Agent'),
+		parameters: {
+			agentSource: 'inline',
+			inlineAgent: {
+				config: {
+					tools: [
+						{
+							type: 'node',
+							name: 'Current date',
+							node: { nodeType: DATE_TIME, nodeTypeVersion: 2, nodeParameters: {} },
+						},
+					],
+				},
+			},
+		},
+	});
+
+	test('blocks a create whose inline agent has a blocked node tool', async () => {
+		await putInstancePolicy({ rules: [rule('deny-date-time', 'deny', DATE_TIME)] });
+
+		const response = await ownerAgent
+			.post('/workflows')
+			.send({
+				name: 'New workflow',
+				nodes: [node(MANUAL_TRIGGER), inlineAgentNode()],
+				connections: {},
+			})
+			.expect(403);
+
+		expect(response.body).toMatchObject({
+			code: 403,
+			meta: { violations: [violationFor(DATE_TIME, 'instance', 'deny-date-time')] },
+		});
+		await expect(workflowRepository.count()).resolves.toBe(0);
+	});
+
+	test('grandfathers an inline agent tool the stored workflow already had', async () => {
+		const workflow = await createWorkflow(
+			{
+				name: 'Stored workflow',
+				nodes: [node(MANUAL_TRIGGER), inlineAgentNode()],
+				connections: {},
+			},
+			owner,
+		);
+		await putInstancePolicy({ rules: [rule('deny-date-time', 'deny', DATE_TIME)] });
+
+		await ownerAgent
+			.patch(`/workflows/${workflow.id}`)
+			.send({ name: 'Renamed', nodes: [node(MANUAL_TRIGGER), inlineAgentNode()], connections: {} })
+			.expect(200);
+	});
+});
+
 describe('POST /workflows', () => {
 	test('blocks a create that carries a blocked type and writes nothing', async () => {
 		await putInstancePolicy({ rules: [rule('deny-set', 'deny', SET)] });
@@ -259,9 +329,10 @@ describe('POST /workflows', () => {
 			})
 			.expect(403);
 
+		const { id: projectId } = await getPersonalProject(owner);
 		expect(response.body.meta.violations).toEqual([
-			violationFor(SET, 'instance', 'deny-set'),
-			violationFor(SCHEDULE_TRIGGER, 'instance', 'deny-schedule'),
+			violationFor(SET, 'instance', 'deny-set', { projectId }),
+			violationFor(SCHEDULE_TRIGGER, 'instance', 'deny-schedule', { projectId }),
 		]);
 	});
 });
@@ -281,7 +352,7 @@ describe('PUT /workflows/:workflowId/transfer', () => {
 
 		expect(response.body).toMatchObject({
 			code: 403,
-			meta: { violations: [violationFor(SET, 'project', 'deny-set')] },
+			meta: { violations: [violationFor(SET, 'project', 'deny-set', { projectId: project.id })] },
 		});
 	});
 
@@ -325,7 +396,12 @@ describe('instance and project scope composition', () => {
 
 		const response = await saveWithSet().expect(403);
 
-		expect(response.body.meta.violations).toEqual([violationFor(SET, 'instance', 'delegate-set')]);
+		expect(response.body.meta.violations).toEqual([
+			violationFor(SET, 'instance', 'delegate-set', {
+				projectId: project.id,
+				optInAvailable: true,
+			}),
+		]);
 	});
 
 	test('keeps an instance deny in force over a project allow', async () => {
@@ -334,6 +410,8 @@ describe('instance and project scope composition', () => {
 
 		const response = await saveWithSet().expect(403);
 
-		expect(response.body.meta.violations).toEqual([violationFor(SET, 'instance', 'deny-set')]);
+		expect(response.body.meta.violations).toEqual([
+			violationFor(SET, 'instance', 'deny-set', { projectId: project.id }),
+		]);
 	});
 });

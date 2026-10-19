@@ -55,12 +55,14 @@ const mockChanges = [
 ];
 
 const COMMIT_SHA = 'a'.repeat(40);
+const SOURCE = { configId: 'config-1', branchName: 'main' };
 
 describe('usePromotionChanges', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		vi.mocked(promotionsApi.getPromotableChanges).mockResolvedValue({
 			commitSha: COMMIT_SHA,
+			source: SOURCE,
 			changes: mockChanges,
 		});
 	});
@@ -75,6 +77,7 @@ describe('usePromotionChanges', () => {
 
 		vi.mocked(promotionsApi.getPromotableChanges).mockResolvedValueOnce({
 			commitSha: COMMIT_SHA,
+			source: SOURCE,
 			changes: mockChanges.filter((change) => change.id !== 'wf-001'),
 		});
 		await fetchChanges();
@@ -83,9 +86,10 @@ describe('usePromotionChanges', () => {
 		expect(selectedCount.value).toBe(1);
 	});
 
-	it('should request the given direction and keep the commit the rows came from', async () => {
-		const { fetchChanges, commitSha } = usePromotionChanges('project-1', 'apply');
+	it('should request the given direction and keep the source the rows came from', async () => {
+		const { fetchChanges, commitSha, source } = usePromotionChanges('project-1', 'apply');
 		expect(commitSha.value).toBeNull();
+		expect(source.value).toBeNull();
 
 		await fetchChanges();
 
@@ -95,6 +99,7 @@ describe('usePromotionChanges', () => {
 			'apply',
 		);
 		expect(commitSha.value).toBe(COMMIT_SHA);
+		expect(source.value).toEqual(SOURCE);
 	});
 
 	it('should handle fetch errors', async () => {

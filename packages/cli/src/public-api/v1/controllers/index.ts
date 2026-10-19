@@ -15,6 +15,7 @@ import './folders.public.controller';
 import './insights.public.controller';
 import './ldap.public.controller';
 import './log-streaming.public.controller';
+import './n8n-packages.public.controller';
 import './node-type-policies.public.controller';
 import './otel.public.controller';
 import './projects.public.controller';

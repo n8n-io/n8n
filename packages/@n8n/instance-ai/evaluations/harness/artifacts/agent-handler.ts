@@ -17,8 +17,8 @@ export const agentHandler: ArtifactHandler<AgentArtifact> = {
 		return ctx.artifactRefs.filter((ref) => ref.type === 'agent');
 	},
 	async fetch(ref, client) {
-		// Agent routes are project-scoped; the harness builds in the user's personal project.
-		const projectId = await client.getPersonalProjectId();
+		// Agent routes are project-scoped.
+		const projectId = ref.projectId ?? (await client.getPersonalProjectId());
 		const [config, skills] = await Promise.all([
 			client.getAgentConfig(projectId, ref.id),
 			client.getAgentSkills(projectId, ref.id),

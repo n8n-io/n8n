@@ -148,7 +148,7 @@ function onHeightTransitionEnd(event: TransitionEvent) {
 					:icon="expandButtonIcon"
 					icon-only
 					icon-size="medium"
-					variant="subtle"
+					variant="outline"
 					:class="$style.expandButton"
 					:aria-label="expandButtonLabel"
 					@click="toggleCollapsed"

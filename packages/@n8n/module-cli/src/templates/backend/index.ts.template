@@ -1,0 +1,2 @@
+// Export the public API here. Do not export {{PascalName}}Module from this file.
+export {};

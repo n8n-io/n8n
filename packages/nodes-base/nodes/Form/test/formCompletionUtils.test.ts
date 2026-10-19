@@ -491,7 +491,35 @@ describe('formCompletionUtils', () => {
 			expect(mockResponse.render).toHaveBeenCalled();
 		});
 
-		it('should NOT set Content-Security-Policy header when respondWith is redirect', async () => {
+		it.each(['', 'ws://example.com'])(
+			'should keep the Content-Security-Policy header when the redirect URL is not valid (case %#)',
+			async (invalidRedirectUrl) => {
+				mockWebhookFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
+					const params: { [key: string]: any } = {
+						completionTitle: 'Form Completion',
+						completionMessage: 'Form has been submitted successfully',
+						options: { formTitle: 'Form Title' },
+						respondWith: 'redirect',
+						redirectUrl: invalidRedirectUrl,
+					};
+					return params[parameterName];
+				});
+
+				await renderFormCompletion(mockWebhookFunctions, mockResponse, trigger);
+
+				expect(mockResponse.setHeader).toHaveBeenCalledWith(
+					'Content-Security-Policy',
+					expect.stringContaining('sandbox'),
+				);
+				expect(mockResponse.removeHeader).not.toHaveBeenCalled();
+				expect(mockResponse.render).toHaveBeenCalledWith(
+					'form-trigger-completion',
+					expect.objectContaining({ redirectUrl: undefined }),
+				);
+			},
+		);
+
+		it('should remove the Content-Security-Policy header when respondWith is redirect', async () => {
 			mockWebhookFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
 				const params: { [key: string]: any } = {
 					completionTitle: 'Form Completion',
@@ -510,6 +538,7 @@ describe('formCompletionUtils', () => {
 				'Content-Security-Policy',
 				expect.any(String),
 			);
+			expect(mockResponse.removeHeader).toHaveBeenCalledWith('Content-Security-Policy');
 			expect(mockResponse.render).toHaveBeenCalledWith(
 				'form-trigger-completion',
 				expect.objectContaining({
@@ -596,7 +625,7 @@ describe('formCompletionUtils', () => {
 			});
 		});
 
-		it('should NOT set Content-Security-Policy header when form HTML sandboxing is disabled', async () => {
+		it('should remove the Content-Security-Policy header when form HTML sandboxing is disabled', async () => {
 			vi.mocked(isFormHtmlSandboxingDisabled).mockReturnValueOnce(true);
 
 			mockWebhookFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
@@ -614,6 +643,7 @@ describe('formCompletionUtils', () => {
 				'Content-Security-Policy',
 				expect.any(String),
 			);
+			expect(mockResponse.removeHeader).toHaveBeenCalledWith('Content-Security-Policy');
 			expect(mockResponse.render).toHaveBeenCalled();
 		});
 	});

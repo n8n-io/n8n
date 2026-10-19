@@ -4,9 +4,6 @@ tags:
 summary: Get a data table
 description: Retrieve a specific data table by ID.
 x-required-scope: dataTable:read
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 parameters:
   - schema:
       type: string
