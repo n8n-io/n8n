@@ -1,0 +1,35 @@
+packages/cli/src/modules/agents/agent-draft.contracts.ts
+  s_58620fba057bad::t_af15416c3de6a8 1-49
+packages/cli/src/modules/agents/__tests__/agent-draft.service.test.ts
+  s_58620fba057bad::t_af15416c3de6a8 1-133
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-pending-agent.service.test.ts
+  s_58620fba057bad::t_af15416c3de6a8 4,7-8,13-15,17-18,20,23,27-28,32-35,37-43,45-47,49,54-75,77-82,85-103,105-109,111-141
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.controller.test.ts
+  s_58620fba057bad::t_af15416c3de6a8 1594-1598,1611-1615,1634-1638
+packages/cli/src/modules/instance-ai/instance-ai.controller.ts
+  s_58620fba057bad::t_af15416c3de6a8 1401
+packages/cli/src/modules/agents/agent-draft.service.ts
+  s_58620fba057bad::t_af15416c3de6a8 1-87
+packages/cli/src/modules/instance-ai/instance-ai-pending-agent.service.ts
+  s_58620fba057bad::t_af15416c3de6a8 7,23-24,42,56,70-75,86,94
+packages/cli/src/modules/instance-ai/eval/__tests__/thread-restore.service.test.ts
+  s_58620fba057bad::t_af15416c3de6a8 19,609,636-645,675,709,721,750,801,824,833,845,859,868,880-884,893
+packages/cli/src/modules/instance-ai/eval/thread-restore.service.ts
+  s_58620fba057bad::t_af15416c3de6a8 34,294,315,318,323,381,384,393,397
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b36f5632f330498b1ddd8597d21a59901d2bd3ce",
+  "prompts": {},
+  "sessions": {
+    "s_58620fba057bad": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a13f8e-afeb-7511-82e8-d8246a12076c",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
