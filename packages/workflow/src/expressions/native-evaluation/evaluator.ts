@@ -366,11 +366,7 @@ function evalCall(node: Extract<SimpleNode, { kind: 'call' }>, env: Env): unknow
 	const receiver = evalReceiver(node, env);
 
 	if (node.receiver.kind === 'nodeRef') {
-<<<<<<< HEAD
-		return evalNodeRefCall(receiver, node.method);
-=======
-		return evalNodeRefCall(evalReceiver(node, env), node.method, env);
->>>>>>> b270d486 (fix(core): Charge node reference calls against the native evaluation work budget (no-changelog) (#41080))
+		return evalNodeRefCall(receiver, node.method, env);
 	}
 
 	if (node.receiver.kind === 'timeRoot') {
