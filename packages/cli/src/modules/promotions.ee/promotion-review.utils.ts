@@ -7,13 +7,16 @@ const escapeGitLabQuickActions = (text: string) =>
 		.map((line) => line.replace(/^(\s*)\//, '$1\\/'))
 		.join('\n');
 
-const displayName = ({ firstName, lastName, id }: User) =>
-	[firstName, lastName].filter(Boolean).join(' ') || id;
+const displayName = ({ firstName, lastName }: User) =>
+	[firstName, lastName].filter(Boolean).join(' ') || null;
 
 export const mergeRequestDescription = (actor: User, commitSha: string, body = '') => {
 	const lead = body.replace(/^\n+/, '').replace(/\n+$/, '');
+	const name = displayName(actor);
 	const attribution = [
-		`Opened by n8n for a promotion by ${displayName(actor)}.`,
+		name
+			? `Opened by n8n for a promotion of changes by ${name}.`
+			: 'Opened by n8n for a promotion of changes.',
 		'',
 		`Commit: ${commitSha}`,
 	];

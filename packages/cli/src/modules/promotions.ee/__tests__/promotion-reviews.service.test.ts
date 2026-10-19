@@ -93,7 +93,7 @@ describe('PromotionReviewsService', () => {
 			targetBranch: 'staging',
 			title: 'Promote the thing',
 			description: [
-				'Opened by n8n for a promotion by Ada Lovelace.',
+				'Opened by n8n for a promotion of changes by Ada Lovelace.',
 				'',
 				`Commit: ${push.commitSha}`,
 			].join('\n'),
@@ -126,7 +126,7 @@ describe('PromotionReviewsService', () => {
 				'\\/merge',
 				'Details',
 				'',
-				'Opened by n8n for a promotion by actor.',
+				'Opened by n8n for a promotion of changes.',
 				'',
 				`Commit: ${push.commitSha}`,
 			].join('\n'),
