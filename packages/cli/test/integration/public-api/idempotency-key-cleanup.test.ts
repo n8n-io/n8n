@@ -1,5 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
 import { testDb } from '@n8n/backend-test-utils';
+import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { IDEMPOTENCY_KEY_TTL_MS, IdempotencyKeyRepository, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -22,6 +23,8 @@ describe('IdempotencyKey cleanup', () => {
 	let user: User;
 
 	beforeAll(async () => {
+		// One connection per run, so the runs delete at the same time.
+		Container.get(GlobalConfig).database.postgresdb.poolSize = OVERLAPPING_RUNS;
 		await testDb.init();
 		repository = Container.get(IdempotencyKeyRepository);
 		task = new IdempotencyKeyCleanupTask(logger, new IdempotencyKeyService(repository));
