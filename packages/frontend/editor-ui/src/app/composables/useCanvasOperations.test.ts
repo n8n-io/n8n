@@ -728,6 +728,62 @@ describe('useCanvasOperations', () => {
 			]);
 		});
 
+		it.each([368, 592])(
+			'keeps an edge-inserted node between an AI Agent and a target at x=%s',
+			(targetX) => {
+				const uiStore = mockedStore(useUIStore);
+				const nodeTypesStore = mockedStore(useNodeTypesStore);
+				const agent = createTestNode({
+					id: 'agent',
+					name: 'AI Agent',
+					type: AGENT_NODE_TYPE,
+					position: [0, 112],
+				});
+				const target = createTestNode({
+					id: 'target',
+					name: 'Target',
+					position: [targetX, 112],
+				});
+				const node = createTestNode({ id: 'inserted', type: NO_OP_NODE_TYPE });
+				const nodeTypeDescription = mockNodeTypeDescription({ name: NO_OP_NODE_TYPE });
+				const agentTypeDescription = mockNodeTypeDescription({
+					name: AGENT_NODE_TYPE,
+					inputs: [NodeConnectionTypes.Main, NodeConnectionTypes.AiLanguageModel],
+				});
+				nodeTypesStore.getNodeType = vi.fn().mockReturnValue(agentTypeDescription);
+				workflowDocumentStoreInstance.allNodes = [agent, target];
+				vi.spyOn(workflowDocumentStoreInstance, 'getExpressionHandler').mockReturnValue(
+					createTestWorkflowObject().expression,
+				);
+				vi.spyOn(workflowDocumentStoreInstance, 'getNodeById').mockImplementation((id) =>
+					workflowDocumentStoreInstance.allNodes.find((item) => item.id === id),
+				);
+				vi.spyOn(workflowDocumentStoreInstance, 'getNodeByName').mockImplementation(
+					(name) =>
+						workflowDocumentStoreInstance.allNodes.find((item) => item.name === name) ?? null,
+				);
+				vi.spyOn(workflowDocumentStoreInstance, 'setNodePositionById').mockImplementation(
+					(id, position) => {
+						const existing = workflowDocumentStoreInstance.allNodes.find((item) => item.id === id);
+						if (existing) existing.position = position;
+					},
+				);
+				uiStore.lastInteractedWithNodeId = agent.id;
+				uiStore.lastInteractedWithNodeConnection = {
+					source: agent.id,
+					target: target.id,
+					sourceHandle: 'outputs/main/0',
+					targetHandle: 'inputs/main/0',
+				};
+
+				const { resolveNodePosition } = useCanvasOperations();
+				const position = resolveNodePosition({ ...node, position: undefined }, nodeTypeDescription);
+
+				expect(position).toEqual([368, 112]);
+				expect(workflowDocumentStoreInstance.getNodeById(target.id)?.position).toEqual([592, 112]);
+			},
+		);
+
 		it.each([
 			['measured', 206, 96],
 			['unmeasured', undefined, 64],
