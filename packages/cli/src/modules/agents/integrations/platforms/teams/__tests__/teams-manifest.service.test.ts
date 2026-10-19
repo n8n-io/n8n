@@ -376,6 +376,16 @@ describe('TeamsManifestService', () => {
 			expect(ajv.validate(schema, manifest)).toBe(true);
 		});
 
+		it('packs the given colour icon with the bundled outline when no outline is given', async () => {
+			const icons = { color: Buffer.from('color-bytes'), accentColor: '#2563EB' };
+			const entries = unzipSync(await service.buildPackage(options({ icons })));
+
+			expect(Buffer.from(entries['color.png'])).toEqual(icons.color);
+			expect(Buffer.from(entries['outline.png'])).toEqual(
+				readFileSync(join(__dirname, '..', 'assets', 'outline.png')),
+			);
+		});
+
 		it('bundles an outline icon made only of white and transparent pixels', async () => {
 			const entries = unzipSync(await service.buildPackage(options()));
 			const pixels = readRgbaPixels(Buffer.from(entries['outline.png']));
