@@ -91,7 +91,6 @@ describe('describeInstallPolicyNote', () => {
 		type,
 		blockedOn: 'projects',
 		optInAvailable: false,
-		blockedProjectCount: 1,
 	});
 	const note = (nodeTypes: RestrictedPackageType[], total = 5) =>
 		describeInstallPolicyNote({ nodeTypes }, total);
@@ -100,36 +99,36 @@ describe('describeInstallPolicyNote', () => {
 		expect(describeInstallPolicyNote(undefined, 5)).toBeUndefined();
 	});
 
-	it('returns undefined when nothing is blocked', () => {
+	it('returns undefined when nothing is restricted', () => {
 		expect(note([])).toBeUndefined();
 	});
 
-	it('counts one node blocked on the instance', () => {
-		expect(note([onInstance('a.a')], 1)).toBe('1 of 1 node is blocked on this instance.');
+	it('counts one node restricted on the instance', () => {
+		expect(note([onInstance('a.a')], 1)).toBe('1 of 1 node is restricted on this instance.');
 	});
 
-	it('counts several nodes blocked on the instance', () => {
+	it('counts several nodes restricted on the instance', () => {
 		expect(note([onInstance('a.a'), onInstance('a.b'), onInstance('a.c')])).toBe(
-			'3 of 5 nodes are blocked on this instance.',
+			'3 of 5 nodes are restricted on this instance.',
 		);
 	});
 
-	it('says when projects can allow a blocked node', () => {
+	it('says when projects can allow a restricted node', () => {
 		expect(note([onInstance('a.a', true)])).toBe(
-			'1 of 5 node is blocked on this instance. Projects can allow some of these nodes.',
+			'1 of 5 node is restricted on this instance. Projects can allow some of these nodes.',
 		);
 	});
 
-	it('counts nodes blocked only in projects', () => {
-		expect(note([inProjects('a.a')])).toBe('1 node is blocked in some projects.');
+	it('counts nodes restricted only in projects', () => {
+		expect(note([inProjects('a.a')])).toBe('1 node is restricted in some projects.');
 		expect(note([inProjects('a.a'), inProjects('a.b')])).toBe(
-			'2 nodes are blocked in some projects.',
+			'2 nodes are restricted in some projects.',
 		);
 	});
 
-	it('reports instance and project blocks together', () => {
+	it('reports instance and project restrictions together', () => {
 		expect(note([onInstance('a.a'), inProjects('a.b'), inProjects('a.c')])).toBe(
-			'1 of 5 node is blocked on this instance. 2 nodes are blocked in some projects.',
+			'1 of 5 node is restricted on this instance. 2 nodes are restricted in some projects.',
 		);
 	});
 });
