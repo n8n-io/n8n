@@ -1,16 +1,20 @@
+import { SCIM_OPT_IN_FLAG } from '@n8n/api-types';
+import { ModuleRegistry } from '@n8n/backend-common';
 import { testDb } from '@n8n/backend-test-utils';
 import { GLOBAL_MEMBER_ROLE, UserRepository, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
+import { PostHogClient } from '@/posthog';
 import { createAdmin, createMember, createOwner } from '@test-integration/db/users';
 import * as utils from '@test-integration/utils';
 
 import { ScimApiKeyRepository } from '../database/scim-api-key.repository';
 import { ScimSettingsService } from '../scim-settings.service';
+import { ScimConfig } from '../scim.config';
 
 const testServer = utils.setupTestServer({
 	// `users` serves the role change that must revoke a SCIM token.
-	endpointGroups: ['users'],
+	endpointGroups: ['users', 'module-settings'],
 	enabledFeatures: ['feat:scim', 'feat:advancedPermissions'],
 	modules: ['scim'],
 });
@@ -46,8 +50,26 @@ const patchOps = (...Operations: Array<{ op: string; path?: string; value?: unkn
 const reload = async (id: string) =>
 	await Container.get(UserRepository).findOneOrFail({ where: { id }, relations: ['role'] });
 
+const scimRoutes = [
+	['get', '/Users'],
+	['get', '/Users/some-id'],
+	['post', '/Users'],
+	['put', '/Users/some-id'],
+	['patch', '/Users/some-id'],
+	['delete', '/Users/some-id'],
+	['get', '/ServiceProviderConfig'],
+	['get', '/ResourceTypes'],
+	['get', '/Schemas'],
+] as const;
+
+const instanceFlag = () => vi.mocked(Container.get(PostHogClient).getFeatureFlagForInstance);
+
 beforeEach(async () => {
 	await testDb.truncate(['ApiKey', 'AuthIdentity', 'ProjectRelation', 'Project', 'User']);
+
+	// Every test except the opt-in ones runs with the opt-in on.
+	Container.get(ScimConfig).optIn = true;
+	instanceFlag().mockResolvedValue(undefined);
 
 	owner = await createOwner();
 	admin = await createAdmin();
@@ -59,32 +81,20 @@ beforeEach(async () => {
 });
 
 describe('SCIM /scim/v2 authentication', () => {
-	const routes = [
-		['get', '/Users'],
-		['get', '/Users/some-id'],
-		['post', '/Users'],
-		['put', '/Users/some-id'],
-		['patch', '/Users/some-id'],
-		['delete', '/Users/some-id'],
-		['get', '/ServiceProviderConfig'],
-		['get', '/ResourceTypes'],
-		['get', '/Schemas'],
-	] as const;
-
-	it.each(routes)('%s %s returns 401 without a token', async (method, path) => {
+	it.each(scimRoutes)('%s %s returns 401 without a token', async (method, path) => {
 		const response = await scimRequest(method, path, { bearer: null });
 
 		expect(response.status).toBe(401);
 		expect(response.body).toMatchObject({ schemas: [ERROR_SCHEMA], status: '401' });
 	});
 
-	it.each(routes)('%s %s returns 401 with an unknown token', async (method, path) => {
+	it.each(scimRoutes)('%s %s returns 401 with an unknown token', async (method, path) => {
 		const response = await scimRequest(method, path, { bearer: 'not-a-scim-token' });
 
 		expect(response.status).toBe(401);
 	});
 
-	it.each(routes)('%s %s returns 403 when SCIM is disabled', async (method, path) => {
+	it.each(scimRoutes)('%s %s returns 403 when SCIM is disabled', async (method, path) => {
 		await Container.get(ScimSettingsService).setEnabled(false);
 
 		const response = await scimRequest(method, path);
@@ -257,5 +267,96 @@ describe('SCIM /scim/v2/Schemas', () => {
 		expect(user.attributes.map((attribute: { name: string }) => attribute.name)).not.toContain(
 			'roles',
 		);
+	});
+});
+
+describe('SCIM opt-in', () => {
+	const restRoutes = [
+		['get', '/scim/config'],
+		['patch', '/scim/config'],
+		['post', '/scim/token'],
+		['delete', '/scim/token'],
+	] as const;
+
+	const moduleSettings = async () => {
+		// Production reads the switch at startup. These tests change it after
+		// module init, so make the settings snapshot again.
+		await Container.get(ModuleRegistry).refreshModuleSettings('scim');
+		const response = await testServer.authAgentFor(admin).get('/module-settings').expect(200);
+		return response.body.data.scim;
+	};
+
+	const turnOnFlag = () =>
+		instanceFlag().mockImplementation(async (flag) => flag === SCIM_OPT_IN_FLAG);
+
+	describe('while the opt-in is off', () => {
+		beforeEach(() => {
+			Container.get(ScimConfig).optIn = false;
+		});
+
+		it.each(scimRoutes)('%s /scim/v2%s returns 404 with a valid token', async (method, path) => {
+			expect((await scimRequest(method, path)).status).toBe(404);
+		});
+
+		it.each(scimRoutes)('%s /scim/v2%s returns 404 without a token', async (method, path) => {
+			expect((await scimRequest(method, path, { bearer: null })).status).toBe(404);
+		});
+
+		it.each(restRoutes)('%s /rest%s returns 404 to an admin', async (method, path) => {
+			const response = await testServer
+				.authAgentFor(admin)
+				[method](path)
+				.send(method === 'patch' ? { enabled: true } : {});
+
+			expect(response.status).toBe(404);
+		});
+
+		it('keeps the SCIM setting and the token', async () => {
+			await testServer.authAgentFor(admin).patch('/scim/config').send({ enabled: false });
+
+			expect(await Container.get(ScimSettingsService).isEnabled()).toBe(true);
+			expect(await Container.get(ScimApiKeyRepository).findByUserId(admin.id, {})).not.toBeNull();
+		});
+
+		it('shows the opt-in as off in the module settings', async () => {
+			expect(await moduleSettings()).toEqual({
+				scimEnabled: true,
+				available: false,
+				optInSource: null,
+			});
+		});
+	});
+
+	it('answers with the config switch on and shows the source config', async () => {
+		await scimRequest('get', '/ServiceProviderConfig').expect(200);
+		await scimRequest('get', '/Users').expect(200);
+		await testServer.authAgentFor(admin).get('/scim/config').expect(200);
+
+		expect(await moduleSettings()).toMatchObject({ available: true, optInSource: 'config' });
+		expect(instanceFlag()).not.toHaveBeenCalled();
+	});
+
+	it('answers with the instance flag on and shows the source flag', async () => {
+		Container.get(ScimConfig).optIn = false;
+		turnOnFlag();
+
+		await scimRequest('get', '/ServiceProviderConfig').expect(200);
+		await scimRequest('get', '/Users').expect(200);
+		await testServer.authAgentFor(admin).get('/scim/config').expect(200);
+
+		expect(await moduleSettings()).toMatchObject({ available: true, optInSource: 'flag' });
+		expect(instanceFlag()).toHaveBeenCalledWith(SCIM_OPT_IN_FLAG);
+	});
+
+	it('returns 404 to the identity provider once the opt-in turns off', async () => {
+		Container.get(ScimConfig).optIn = false;
+		turnOnFlag();
+		await scimRequest('get', '/Users').expect(200);
+
+		instanceFlag().mockResolvedValue(false);
+
+		const response = await scimRequest('get', '/Users');
+		expect(response.status).toBe(404);
+		expect(await Container.get(ScimSettingsService).isEnabled()).toBe(true);
 	});
 });

@@ -3,10 +3,11 @@ import type { AuthenticatedRequest, User } from '@n8n/db';
 import type { ApiKey } from '@n8n/db';
 import { ControllerRegistryMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import type { Response } from 'express';
+import type { NextFunction, Request, Response } from 'express';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
+import type { ScimOptInService } from '../scim-opt-in.service';
 import type { ScimSettingsService } from '../scim-settings.service';
 import { ScimTokenController } from '../scim-token.controller';
 import type { ScimTokenService } from '../scim-token.service';
@@ -15,6 +16,7 @@ describe('ScimTokenController', () => {
 	let scimTokenService: Mocked<ScimTokenService>;
 	let scimSettingsService: Mocked<ScimSettingsService>;
 	let moduleRegistry: Mocked<ModuleRegistry>;
+	let scimOptInService: Mocked<ScimOptInService>;
 	let controller: ScimTokenController;
 
 	const req = mock<AuthenticatedRequest>({ user: mock<User>({ id: 'user-1' }) });
@@ -29,13 +31,30 @@ describe('ScimTokenController', () => {
 		scimTokenService = mock<ScimTokenService>();
 		scimSettingsService = mock<ScimSettingsService>();
 		moduleRegistry = mock<ModuleRegistry>();
+		scimOptInService = mock<ScimOptInService>();
 		scimTokenService.getScimBaseUrl.mockReturnValue('https://n8n.example.com/scim/v2');
 		controller = new ScimTokenController(
 			mock<Logger>(),
 			scimTokenService,
 			scimSettingsService,
 			moduleRegistry,
+			scimOptInService,
 		);
+	});
+
+	describe('opt-in gate', () => {
+		it('runs the opt-in gate before every route', async () => {
+			const metadata = Container.get(ControllerRegistryMetadata).getControllerMetadata(
+				ScimTokenController as never,
+			);
+			const [gateReq, gateRes] = [mock<Request>(), mock<Response>()];
+			const next: NextFunction = vi.fn();
+
+			await controller.requireOptIn(gateReq, gateRes, next);
+
+			expect(metadata.middlewares).toEqual(['requireOptIn']);
+			expect(scimOptInService.gate).toHaveBeenCalledWith(gateReq, gateRes, next);
+		});
 	});
 
 	// Every one of these routes administers the credential an IdP uses to
