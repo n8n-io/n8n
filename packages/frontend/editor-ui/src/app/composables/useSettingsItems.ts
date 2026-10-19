@@ -60,7 +60,8 @@ export function useSettingsItems() {
 				id: 'settings-personal',
 				order: 10,
 				section: 'personal',
-				icon: 'user',
+				// The circled person reads as "your account"; the bare person is the generic user glyph.
+				icon: 'circle-user-round',
 				label: i18n.baseText('settings.personal.personalSettings'),
 				position: 'top',
 				available: canUserAccessRouteByName(VIEWS.PERSONAL_SETTINGS),
