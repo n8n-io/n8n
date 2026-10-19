@@ -35,7 +35,7 @@ function clampChannel(value: number): number {
 }
 
 function wrapChannel(value: number): number {
-	return ((Math.round(value) % CHANNEL_VALUE_COUNT) + CHANNEL_VALUE_COUNT) % CHANNEL_VALUE_COUNT;
+	return (Math.round(value) + CHANNEL_VALUE_COUNT) % CHANNEL_VALUE_COUNT;
 }
 
 function legacyLuminance(red: number, green: number, blue: number): number {
