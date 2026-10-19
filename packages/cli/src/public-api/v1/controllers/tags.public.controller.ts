@@ -27,6 +27,7 @@ import {
 import type { Response } from 'express';
 
 import { ConflictError, NotFoundError } from '@n8n/errors';
+import { toPublicTag } from '@/public-api/v1/handlers/tags/tags.mapper';
 import {
 	encodeNextCursor,
 	resolveOffsetPagination,
@@ -34,13 +35,6 @@ import {
 import { TagService } from '@/services/tag.service';
 
 const tags = ['Tags'];
-
-const toTagPublicDto = (tag: TagEntity): TagPublicDto => ({
-	id: tag.id,
-	name: tag.name,
-	createdAt: tag.createdAt.toISOString(),
-	updatedAt: tag.updatedAt.toISOString(),
-});
 
 @PublicApiController('/tags')
 export class TagsPublicController {
@@ -62,7 +56,7 @@ export class TagsPublicController {
 		const { data, count } = await this.tagService.getPaginated({ offset, limit });
 
 		return {
-			data: data.map(toTagPublicDto),
+			data: data.map(toPublicTag),
 			nextCursor: encodeNextCursor({
 				offset,
 				limit,
@@ -86,7 +80,7 @@ export class TagsPublicController {
 		const newTag = this.tagService.toEntity({ name: body.name });
 
 		try {
-			return toTagPublicDto(await this.tagService.save(newTag, 'create'));
+			return toPublicTag(await this.tagService.save(newTag, 'create'));
 		} catch {
 			throw new ConflictError('Tag already exists');
 		}
@@ -112,7 +106,7 @@ export class TagsPublicController {
 			throw new NotFoundError('Not Found');
 		}
 
-		return toTagPublicDto(tag);
+		return toPublicTag(tag);
 	}
 
 	@Put('/:tagId')
@@ -174,6 +168,6 @@ export class TagsPublicController {
 
 		await this.tagService.delete(tagId);
 
-		return toTagPublicDto(tag);
+		return toPublicTag(tag);
 	}
 }
