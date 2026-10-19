@@ -53,8 +53,8 @@ with `capabilities`, `useIntegrationWhen`, and `useNodeToolWhen`. It is the
 authoritative source the orchestrator can read before building; a channel
 absent from its result is unsupported for agents.
 
-When the user asks for a channel that is not supported (e.g. WhatsApp,
-Microsoft Teams), do not forward it to the builder as a channel to configure
+When the user asks for a channel that is not supported (e.g. Instagram,
+Facebook Messenger), do not forward it to the builder as a channel to configure
 and do not fake it by adding the platform as an agent tool. Explain the channel
 is unsupported for agents, offer the supported alternatives, and ask which to
 use — or whether the user explicitly wants that unsupported platform as the

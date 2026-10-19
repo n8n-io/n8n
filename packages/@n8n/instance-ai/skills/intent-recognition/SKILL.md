@@ -280,7 +280,7 @@ assume the workflow. Once the user names the target, follow context
 continuity for that primitive.
 
 **Unsupported capabilities**: when the user names a specific channel or
-capability for an agent (e.g. "WhatsApp", "Teams"), call
+capability for an agent (e.g. "Instagram", "Messenger"), call
 `agent-context` with `type: "capabilities"` before classifying. If the named channel is
 absent, it is unsupported for agents — do not classify the request as a
 workflow substitute, do not improvise workflow nodes to fake the channel,
@@ -394,13 +394,13 @@ valid, apply the growth tiebreaker instead of asking a theoretical preference.
 - "Ingest each cybersecurity alert, analyze it, and take actions depending on
   the finding." -> **needs-clarification**: ask whether fixed rules select the
   actions or whether an investigator must choose and adapt them.
-- "Build me an agent my team can @mention on WhatsApp to triage customer
-  messages." -> **agent-anchored** (explicit agent artifact + chat
-  interaction), but call `agent-context` with `type: "capabilities"` first: WhatsApp is absent,
-  so do not build. Explain WhatsApp is unsupported for agents, offer the
+- "Build me an agent that triages our customers' Instagram messages." ->
+  **agent-anchored** (explicit agent artifact + chat
+  interaction), but call `agent-context` with `type: "capabilities"` first: Instagram is absent,
+  so do not build. Explain Instagram is unsupported for agents, offer the
   supported chat channels the tool returned, with their
   `capabilities`, and ask which to use — or whether the user wants a
-  workflow path instead. Do not improvise a workflow with a WhatsApp node
+  workflow path instead. Do not improvise a workflow with an Instagram node
   and do not claim the channel is configured.
 - (An existing agent is open in the editor.) "Make it also file a Linear
   ticket when it can't resolve an issue." -> **agent-anchored**: the open

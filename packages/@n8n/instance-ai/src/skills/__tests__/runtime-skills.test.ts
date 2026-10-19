@@ -429,7 +429,8 @@ describe('Instance AI runtime skills', () => {
 			'executions',
 		]);
 		expect(skill?.description).toContain('Load before calling build-workflow');
-		expect(skill?.description).toContain('Default path for all single-workflow work');
+		expect(skill?.description).not.toContain('Default path');
+		expect(skill?.description).toContain('load intent-recognition first');
 		expect(skill?.description).toContain('workflow-sdk validate');
 		expect(skill?.description).toContain('load data-table-manager first');
 		expect(skill?.description).toContain('Do not load planning or create-tasks first');
