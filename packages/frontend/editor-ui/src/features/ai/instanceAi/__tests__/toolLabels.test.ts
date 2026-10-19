@@ -233,9 +233,16 @@ describe('useToolLabel', () => {
 		expect(getToolLabel('list_credentials')).toBe('Inspecting credentials');
 	});
 
-	test('getToolLabel falls back to raw tool name when not found', () => {
+	test('getToolLabel formats the tool name when no label exists', () => {
 		const { getToolLabel } = useToolLabel();
-		expect(getToolLabel('unknown-tool')).toBe('unknown-tool');
+		expect(getToolLabel('unknown-tool')).toBe('Unknown tool');
+		expect(getToolLabel('browser_navigate')).toBe('Browser navigate');
+	});
+
+	test('getToolLabel drops the builder prefix when no label exists', () => {
+		const { getToolLabel } = useToolLabel();
+		expect(getToolLabel('workflow_builder_search_models')).toBe('Search models');
+		expect(getToolLabel('finish_setup')).toBe('Finish setup');
 	});
 
 	test('getToolLabel returns action-specific n8n docs labels', () => {

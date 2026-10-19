@@ -9,6 +9,10 @@ import {
 	resolveBuilderToolName,
 } from '@n8n/api-types';
 import type { InstanceAiToolCallState } from '@n8n/api-types';
+import {
+	formatToolNameForDisplay,
+	stripBuilderToolPrefix,
+} from '@/features/agents/utils/toolDisplayName';
 
 const NO_TOGGLE_TOOLS = new Set<string>([
 	'updateWorkingMemory',
@@ -170,7 +174,8 @@ export function getToolIcon(rawToolName: string): IconName {
 
 /**
  * Returns a human-readable display label for an instance AI tool name.
- * Falls back to the raw tool name if no mapping exists in i18n.
+ * Without an i18n mapping, it formats the tool name without its builder prefix.
+ * MCP tools have dynamic names, so they always use this fallback.
  */
 export function useToolLabel() {
 	const i18n = useI18n();
@@ -226,7 +231,9 @@ export function useToolLabel() {
 		}
 		const key = `instanceAi.tools.${toolName}` as BaseTextKey;
 		const translated = i18n.baseText(key);
-		return translated === key ? rawToolName : translated;
+		return translated === key
+			? formatToolNameForDisplay(stripBuilderToolPrefix(rawToolName)) || rawToolName
+			: translated;
 	}
 
 	function getToggleLabel(toolCall: InstanceAiToolCallState): string | undefined {
