@@ -398,16 +398,15 @@ export class N8NCheckpointStorage {
 	}
 
 	/**
-	 * Marks checkpoints past their TTL as expired. Returns the thread ids those
-	 * checkpoints belonged to. A failure propagates to the caller.
+	 * Marks checkpoints past their TTL as expired. Returns the thread ids of the
+	 * checkpoints this pass expired. A failure propagates to the caller.
 	 */
 	async pruneStaleSuspensions(): Promise<string[]> {
 		const ttlMs = this.agentsConfig.checkpointTtlSeconds * Time.seconds.toMilliseconds;
 		const cutoffDate = new Date(Date.now() - ttlMs);
-		const threadIds = await this.agentCheckpointRepository.findStaleThreadIds(cutoffDate);
-		const count = await this.agentCheckpointRepository.markExpired(cutoffDate);
-		if (count > 0) {
-			this.logger.info('Marked stale agent checkpoints as expired', { count });
+		const { affected, threadIds } = await this.agentCheckpointRepository.expireStale(cutoffDate);
+		if (affected > 0) {
+			this.logger.info('Marked stale agent checkpoints as expired', { count: affected });
 		} else {
 			this.logger.debug('No stale agent checkpoints to expire');
 		}

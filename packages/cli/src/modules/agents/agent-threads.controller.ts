@@ -74,6 +74,9 @@ export class AgentThreadsController {
 	@ProjectScope('agent:execute')
 	async resumeTaskApproval(
 		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
+		// The route registry calls the handler as (req, res, body). This unused
+		// response argument keeps the parsed body in the third position.
+		_res: Response,
 		@Body payload: AgentTaskApprovalDto,
 	) {
 		const { projectId, agentId, threadId } = req.params;
