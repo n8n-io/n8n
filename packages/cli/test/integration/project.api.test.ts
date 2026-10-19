@@ -295,12 +295,7 @@ describe('GET /projects/sharing-candidates', () => {
 		expect(resp.status).toBe(403);
 	});
 
-	// The owner reads through the admin path, the member through the
-	// relation path. Both must apply the flag.
-	describe.each([
-		['owner', createOwner],
-		['member', createMember],
-	])('excludeDeactivatedUsers for the %s', (_, createCaller) => {
+	describe('excludeDeactivatedUsers', () => {
 		const candidateIds = async (caller: User, query: Record<string, string | number>) => {
 			const resp = await testServer
 				.authAgentFor(caller)
@@ -310,7 +305,7 @@ describe('GET /projects/sharing-candidates', () => {
 			return (resp.body.data as Project[]).map(({ id }) => id);
 		};
 
-		const setUp = async () => {
+		const setUp = async (createCaller: () => Promise<User>) => {
 			const caller = await createCaller();
 			const [active, deactivated] = await Promise.all([createMember(), createMember()]);
 			await Container.get(UserRepository).update({ id: deactivated.id }, { disabled: true });
@@ -322,35 +317,77 @@ describe('GET /projects/sharing-candidates', () => {
 			return { caller, team, activeProject, deactivatedProject };
 		};
 
-		test('leaves out the personal project of a deactivated user with the flag', async () => {
-			const { caller, team, activeProject, deactivatedProject } = await setUp();
+		describe.each([
+			['owner', createOwner],
+			['admin', createAdmin],
+		])('for the %s', (_, createCaller) => {
+			test('leaves out the personal project of a deactivated user with the flag', async () => {
+				const { caller, team, activeProject, deactivatedProject } = await setUp(createCaller);
 
-			const ids = await candidateIds(caller, { excludeDeactivatedUsers: 'true' });
+				const ids = await candidateIds(caller, { excludeDeactivatedUsers: 'true' });
 
-			expect(ids).toEqual(expect.arrayContaining([team.id, activeProject.id]));
-			expect(ids).not.toContain(deactivatedProject.id);
-		});
-
-		test('combines the flag with activated', async () => {
-			const { caller, team, activeProject, deactivatedProject } = await setUp();
-
-			const ids = await candidateIds(caller, {
-				excludeDeactivatedUsers: 'true',
-				activated: 'true',
+				expect(ids).toEqual(expect.arrayContaining([team.id, activeProject.id]));
+				expect(ids).not.toContain(deactivatedProject.id);
 			});
 
-			expect(ids).toEqual(expect.arrayContaining([team.id, activeProject.id]));
-			expect(ids).not.toContain(deactivatedProject.id);
+			test('combines the flag with activated', async () => {
+				const { caller, team, activeProject, deactivatedProject } = await setUp(createCaller);
+
+				const ids = await candidateIds(caller, {
+					excludeDeactivatedUsers: 'true',
+					activated: 'true',
+				});
+
+				expect(ids).toEqual(expect.arrayContaining([team.id, activeProject.id]));
+				expect(ids).not.toContain(deactivatedProject.id);
+			});
+
+			test.each<Record<string, string>>([{}, { excludeDeactivatedUsers: 'false' }])(
+				'keeps the personal project of a deactivated user for %j',
+				async (query) => {
+					const { caller, deactivatedProject } = await setUp(createCaller);
+
+					expect(await candidateIds(caller, query)).toContain(deactivatedProject.id);
+				},
+			);
 		});
 
-		test.each<Record<string, string>>([{}, { excludeDeactivatedUsers: 'false' }])(
-			'keeps the personal project of a deactivated user for %j',
-			async (query) => {
-				const { caller, deactivatedProject } = await setUp();
+		// A member cannot see the account status of other users, so the flag
+		// must not tell it which users are deactivated.
+		describe('for a member', () => {
+			test('returns 403 with the flag', async () => {
+				const { caller } = await setUp(createMember);
 
-				expect(await candidateIds(caller, query)).toContain(deactivatedProject.id);
-			},
-		);
+				await testServer
+					.authAgentFor(caller)
+					.get('/projects/sharing-candidates')
+					.query({ take: 50, skip: 0, excludeDeactivatedUsers: 'true' })
+					.expect(403);
+			});
+
+			test.each<Record<string, string>>([{}, { excludeDeactivatedUsers: 'false' }])(
+				'keeps the personal project of a deactivated user for %j',
+				async (query) => {
+					const { caller, deactivatedProject } = await setUp(createMember);
+
+					expect(await candidateIds(caller, query)).toContain(deactivatedProject.id);
+				},
+			);
+
+			// Callers without `project:read` read through the relation query.
+			test('leaves out the personal project of a deactivated user in the relation query', async () => {
+				const { caller, team, activeProject, deactivatedProject } = await setUp(createMember);
+
+				const [projects] = await Container.get(ProjectRepository).getShareableProjectsAndCount(
+					caller.id,
+					{ skip: 0, take: 50, excludeDeactivatedUsers: true },
+				);
+				const ids = projects.map(({ id }) => id);
+
+				expect(ids).toEqual(expect.arrayContaining([team.id, activeProject.id]));
+				expect(ids).not.toContain(deactivatedProject.id);
+			});
+		});
 	});
 });
 

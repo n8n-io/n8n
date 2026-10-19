@@ -20,7 +20,7 @@ import {
 	Param,
 	Query,
 } from '@n8n/decorators';
-import { combineScopes, getAuthPrincipalScopes } from '@n8n/permissions';
+import { combineScopes, getAuthPrincipalScopes, hasGlobalScope } from '@n8n/permissions';
 import { Response } from 'express';
 
 import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
@@ -77,6 +77,13 @@ export class ProjectController {
 		res: Response,
 		@Query payload: ListProjectsQueryDto,
 	) {
+		// The account status of a user is visible only to callers that can
+		// create users, as in `GET /rest/users`. Otherwise a caller can compare
+		// the lists with and without the flag to find deactivated users.
+		if (payload.excludeDeactivatedUsers === true && !hasGlobalScope(req.user, 'user:create')) {
+			throw new ForbiddenError('You cannot filter sharing candidates by user status');
+		}
+
 		const { projects, count } = await this.projectsService.getShareableProjectsAndCount(
 			req.user,
 			payload,
