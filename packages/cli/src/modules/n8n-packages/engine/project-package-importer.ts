@@ -382,6 +382,7 @@ export class ProjectPackageImporter {
 			// sub-workflow, or it would archive a dependency and leave its packaged parent unpublishable.
 			subWorkflowRequirements: identifyRequirements(manifest.requirements?.workflows, workflows),
 			explicitDeleteWorkflowIds: deletesForProject(request.selection, project.id),
+			packageSetsLayout: true,
 		};
 	}
 
