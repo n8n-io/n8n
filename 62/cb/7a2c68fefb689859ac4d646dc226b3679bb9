@@ -1,0 +1,51 @@
+packages/cli/src/modules/instance-ai/model-config-name.ts
+  s_0f5f60c3bc9888::t_9ba69483238cba 23-30
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_0f5f60c3bc9888::t_62abd5a1e1e1bf 6472
+packages/cli/src/modules/instance-ai/instance-ai-settings.service.ts
+  s_0f5f60c3bc9888::t_8a920aadc7a606 1486,1673,1683,1719
+packages/cli/src/modules/instance-ai/instance-ai-model.service.ts
+  s_0f5f60c3bc9888::t_a5087fc5e89b3d 12
+  s_0f5f60c3bc9888::t_e5798b5830e3ab 180-182
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  s_0f5f60c3bc9888::t_62abd5a1e1e1bf 7963
+packages/@n8n/instance-ai/src/index.ts
+  s_0f5f60c3bc9888::t_2b3bc5e35fb8ad 714
+packages/cli/src/modules/instance-ai/__tests__/observability.test.ts
+  s_0f5f60c3bc9888::t_62abd5a1e1e1bf 71
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-model.service.test.ts
+  s_0f5f60c3bc9888::t_62abd5a1e1e1bf 274-279
+  s_0f5f60c3bc9888::t_f3458f5dab2929 283
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-settings.service.test.ts
+  s_0f5f60c3bc9888::t_0729e2aa1e7172 1405,1474,1502,1537,1569,1603,1630,1974,1976,1979,1981,1984-1989,1991-1996,2031,2053,2061,2084,2106
+  s_0f5f60c3bc9888::t_c60117f0e463f8 1454
+packages/@n8n/instance-ai/src/utils/modal-session.ts
+  s_0f5f60c3bc9888::t_f9ac3f9732e122 1,5
+  s_0f5f60c3bc9888::t_052457d10cf992 6
+packages/@n8n/instance-ai/src/utils/__tests__/modal-session.test.ts
+  s_0f5f60c3bc9888::t_73dce9acd690e6 22,56
+packages/cli/src/modules/instance-ai/__tests__/model-config-name.test.ts
+  s_0f5f60c3bc9888::t_62abd5a1e1e1bf 25-27,32-34,67
+  s_0f5f60c3bc9888::t_0729e2aa1e7172 10-15,17-22,28-30,35-37
+packages/@n8n/instance-ai/src/types.ts
+  ai_agent 2052
+  s_0f5f60c3bc9888::t_538b15cc32d44d 2030-2039,2042,2056
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-verification.service.test.ts
+  s_0f5f60c3bc9888::t_62abd5a1e1e1bf 91-96
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "62cb7a2c68fefb689859ac4d646dc226b3679bb9",
+  "prompts": {},
+  "sessions": {
+    "s_0f5f60c3bc9888": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c08284c8-4f84-461b-aa97-4c9b8b376644",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

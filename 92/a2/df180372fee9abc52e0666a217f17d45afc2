@@ -1,0 +1,53 @@
+packages/frontend/@n8n/design-system/src/components/N8nLink/Link.vue
+  s_c1fc9371670142::t_5907c78f55791d 25
+packages/frontend/@n8n/design-system/src/components/N8nMarkdown/Markdown.test.ts
+  s_7cc682617b3041::t_a37b9c15251751 8-63
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/buttons/CanvasControlButtons.vue
+  s_8257e6dfc3fd72::t_9dc385103cf03d 138
+packages/frontend/@n8n/design-system/src/components/N8nMarkdown/Markdown.vue
+  s_7cc682617b3041::t_8599c9e756e183 2,20-28,39,41-42,53,83-103
+packages/frontend/@n8n/design-system/src/types/button.ts
+  s_7d4bbeeb9314f0::t_4f3db0d230d217 9
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/DitherTrailGrid.vue
+  s_c1fc9371670142::t_74e525392b05db 597
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "92a2df180372fee9abc52e0666a217f17d45afc2",
+  "prompts": {},
+  "sessions": {
+    "s_7cc682617b3041": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a13484-8e49-72b6-ae15-8666761bd36a",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_7d4bbeeb9314f0": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a13486-c6ae-72b6-ae15-86694469cae1",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_8257e6dfc3fd72": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a13487-3859-72b6-ae15-866a318f3d88",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_c1fc9371670142": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a13467-8083-72b6-ae15-865eaf3ac823",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

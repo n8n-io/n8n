@@ -1,0 +1,57 @@
+packages/cli/src/modules/promotions.ee/git-hosts/gitlab-merge-request.client.ts
+  s_5ef8864054ee6b::t_51696790deeca0 1-349
+packages/@n8n/api-types/src/dto/promotions/promotion-operations.dto.ts
+  ai_agent 11,50-53
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromoteInstanceDialog.vue
+  s_5ef8864054ee6b::t_51696790deeca0 2,12,19,27,40,47-67,71-79,101,116,123,127,169-200,205
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_5ef8864054ee6b::t_51696790deeca0 1-14,66-67,132-133,209,254-270,272-288,290-294,296-351,406,463,501-512
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionConnectionForm.vue
+  s_5ef8864054ee6b::t_51696790deeca0 87-91,564,568
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_5ef8864054ee6b::t_51696790deeca0 4018,4020,4024,4114-4117,9683-9684
+packages/cli/src/modules/promotions.ee/promotion-reviews.service.ts
+  s_5ef8864054ee6b::t_51696790deeca0 1-150
+packages/cli/src/modules/promotions.ee/git-hosts/__tests__/gitlab-merge-request.client.test.ts
+  ai_agent 1-321
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_5ef8864054ee6b::t_51696790deeca0 29-31,77-78,147-148,151-152,418-545,561,831-870
+packages/cli/src/public-api/v1/shared/spec/schemas/promotePackageResultDto.generated.yml
+  ai_agent 49-67
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionSelectModal.test.ts
+  s_5ef8864054ee6b::t_51696790deeca0 16,18,215,224-232,247-249,253-258
+packages/cli/src/modules/promotions.ee/__tests__/promotion-review-host.resolver.test.ts
+  ai_agent 1-89
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionSelectModal.vue
+  s_5ef8864054ee6b::t_51696790deeca0 21,178-183
+packages/cli/src/modules/promotions.ee/git-hosts/README.md
+  ai_agent 22-24
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  ai_agent 78,87,145,205-206
+packages/cli/src/modules/promotions.ee/promotion-review-host.resolver.ts
+  ai_agent 1-53
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromoteApplyInstanceSection.vue
+  s_5ef8864054ee6b::t_51696790deeca0 125
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionResult.ts
+  s_5ef8864054ee6b::t_51696790deeca0 1-54
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromoteInstanceDialog.test.ts
+  s_5ef8864054ee6b::t_51696790deeca0 44,67,69,79-140
+packages/cli/src/modules/promotions.ee/__tests__/promotion-reviews.service.test.ts
+  s_5ef8864054ee6b::t_51696790deeca0 1-183
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1bc17194995da77d5c83420db84146d60d621e63",
+  "prompts": {},
+  "sessions": {
+    "s_5ef8864054ee6b": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "c63a640e-618d-456a-b511-501d52ce31b1",
+        "model": "auto-smart"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}
