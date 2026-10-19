@@ -331,6 +331,14 @@ describe('CreateDestinationDto', () => {
 				expectedErrorPaths: ['url'],
 			},
 			{
+				name: 'webhook URL without a domain',
+				request: {
+					__type: '$$MessageEventBusDestinationWebhook',
+					url: 'https://',
+				},
+				expectedErrorPaths: ['url'],
+			},
+			{
 				name: 'webhook with invalid authentication type',
 				request: {
 					__type: '$$MessageEventBusDestinationWebhook',
@@ -351,6 +359,14 @@ describe('CreateDestinationDto', () => {
 				request: {
 					__type: '$$MessageEventBusDestinationSentry',
 					dsn: 'not-a-url',
+				},
+				expectedErrorPaths: ['dsn'],
+			},
+			{
+				name: 'sentry DSN without a domain',
+				request: {
+					__type: '$$MessageEventBusDestinationSentry',
+					dsn: 'https://',
 				},
 				expectedErrorPaths: ['dsn'],
 			},
@@ -386,6 +402,23 @@ describe('CreateDestinationDto', () => {
 					host: '',
 				},
 				expectedErrorPaths: ['host'],
+			},
+			{
+				name: 'syslog with numeric shorthand host',
+				request: {
+					__type: '$$MessageEventBusDestinationSyslog',
+					host: '1',
+				},
+				expectedErrorPaths: ['host'],
+			},
+			{
+				name: 'syslog with invalid host and port',
+				request: {
+					__type: '$$MessageEventBusDestinationSyslog',
+					host: '',
+					port: 0,
+				},
+				expectedErrorPaths: ['host', 'port'],
 			},
 			{
 				name: 'syslog with invalid port (negative)',
@@ -479,6 +512,74 @@ describe('CreateDestinationDto', () => {
 			for (const expectedPath of expectedErrorPaths) {
 				expect(issuesPaths.some((path) => path.includes(expectedPath))).toBe(true);
 			}
+		});
+	});
+});
+
+describe('Destination host validation', () => {
+	test.each([
+		'localhost',
+		'otel-collector',
+		'log_collector',
+		'123.example.com',
+		'example.com.',
+		'127.0.0.1',
+		'::1',
+		'2001:db8:85a3:0000:0000:8a2e:0370:7334',
+	])('accepts syslog host %s', (host) => {
+		expect(
+			CreateDestinationDto.safeParse({ __type: '$$MessageEventBusDestinationSyslog', host })
+				.success,
+		).toBe(true);
+	});
+
+	test.each([
+		'1',
+		'127.1',
+		'256.0.0.1',
+		'foo..com',
+		'-host',
+		'host-',
+		'::1]/x',
+		'::1]?x',
+		'::1]#x',
+		'[::1]',
+		'not:a:host',
+	])('rejects syslog host %s', (host) => {
+		const result = CreateDestinationDto.safeParse({
+			__type: '$$MessageEventBusDestinationSyslog',
+			host,
+		});
+		expect(result.success).toBe(false);
+		expect(result.error?.issues.map((issue) => issue.path)).toContainEqual(['host']);
+	});
+
+	describe.each([
+		{ __type: '$$MessageEventBusDestinationWebhook', field: 'url' },
+		{ __type: '$$MessageEventBusDestinationSentry', field: 'dsn' },
+	])('$field', ({ __type, field }) => {
+		test.each([
+			'http://otel-collector:4318/1',
+			'https://123.example.com/1',
+			'http://localhost:8080/1',
+			'https://example.com./1',
+			'http://127.0.0.1/1',
+			'http://[::1]/1',
+			'https://public@sentry-internal/1',
+			'http://log_collector:8080/1',
+		])('accepts %s', (value) => {
+			expect(CreateDestinationDto.safeParse({ __type, [field]: value }).success).toBe(true);
+		});
+		test.each([
+			'https://',
+			'https://foo..com/1',
+			'https://-host.com/1',
+			'https://host-.com/1',
+			'ftp://example.com/1',
+		])('rejects %s', (value) => {
+			const result = CreateDestinationDto.safeParse({ __type, [field]: value });
+			expect(result.success).toBe(false);
+			expect(result.error?.issues.map((issue) => issue.path)).toContainEqual([field]);
 		});
 	});
 });

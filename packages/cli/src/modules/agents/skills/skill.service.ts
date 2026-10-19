@@ -71,6 +71,24 @@ function assertHasInstructions(skill: AgentSkill): void {
 	if (!skill.instructions.trim()) throw new UserError('Skill instructions are required.');
 }
 
+/**
+ * Builder and MCP tools write here without the REST DTOs, so the name is trimmed here
+ * too. A name of only spaces is refused.
+ */
+function trimmedName(name: string): string {
+	const trimmed = name.trim();
+	if (!trimmed) throw new UserError('Skill name is required.');
+	return trimmed;
+}
+
+/**
+ * The skill with the name that `create` stores. A caller that answers with the body or
+ * its hash uses this, so the answer matches the stored skill.
+ */
+export function withTrimmedName<T extends { name: string }>(skill: T): T {
+	return { ...skill, name: trimmedName(skill.name) };
+}
+
 function toRecord(rows: Map<string, ResolvedSkillRow>): Record<string, AgentSkill> {
 	return Object.fromEntries([...rows].map(([refId, row]) => [refId, toAgentSkill(row)]));
 }
@@ -80,6 +98,13 @@ function toRecord(rows: Map<string, ResolvedSkillRow>): Record<string, AgentSkil
  * attach checks, edit permission and the delete guard. The runtime loads skills by id
  * with no permission check.
  */
+export type SkillMoveOptions = {
+	/** The name the skill has after this request, when the same request renames it. */
+	nameAfterMove?: string;
+	/** The scope `assertCanMove` checked. The move is refused if the skill left it since. */
+	checkedSource?: SkillTarget;
+};
+
 @Service()
 export class SkillService {
 	constructor(
@@ -176,14 +201,15 @@ export class SkillService {
 		},
 		ctx: OperationContext = {},
 	): Promise<string> {
-		assertHasInstructions(input.skill);
+		const skill = withTrimmedName(input.skill);
+		assertHasInstructions(skill);
 		if (input.checkNameTaken) {
-			await this.assertNameFree(input.skill.name, input.target, undefined, ctx);
+			await this.assertNameFree(skill.name, input.target, undefined, ctx);
 		}
 		const id = `skill_${generateNanoId()}`;
 		await this.skillRepository.createSkill(
 			{ id, target: input.target, source: input.source, createdById: input.createdById },
-			toSkillContent(input.skill),
+			toSkillContent(skill),
 			ctx,
 		);
 		this.logger.debug('Created skill', { skillId: id });
@@ -213,6 +239,8 @@ export class SkillService {
 			if (!latest) throw new NotFoundError('Skill not found');
 			const current = toAgentSkill(latest);
 			const { baseSkillHash, allowedTools: _ignored, ...changes } = update;
+			// Only a new name is trimmed, so a save never renames a skill it did not rename.
+			if (changes.name !== undefined) changes.name = trimmedName(changes.name);
 			if (baseSkillHash !== getAgentSkillHash(current)) {
 				throw new ConflictError(
 					'The skill was changed somewhere else. Reload to get the latest version.',
@@ -486,11 +514,24 @@ export class SkillService {
 		target: SkillTarget,
 		keepAgentId: string | undefined,
 		ctx: OperationContext = {},
-		/** The name the skill has after this request, when the same request renames it. */
-		nameAfterMove?: string,
+		{ nameAfterMove, checkedSource }: SkillMoveOptions = {},
 	): Promise<void> {
 		await this.txRunner.run(ctx, async (txCtx) => {
 			await this.skillRepository.lockForEdit([skillId], txCtx);
+			// `assertCanMove` ran before the lock. If another move changed the scope since,
+			// the permission was checked on the wrong scope.
+			if (checkedSource) {
+				const [locked] = await this.skillRepository.findByIds([skillId], txCtx);
+				if (!locked) throw new NotFoundError('Skill not found');
+				if (
+					locked.projectId !== checkedSource.projectId ||
+					locked.agentId !== checkedSource.agentId
+				) {
+					throw new ConflictError(
+						'The skill was moved somewhere else. Reload to see where it is now.',
+					);
+				}
+			}
 			const others = (await this.skillRepository.findUsingAgentIds(skillId, txCtx)).filter(
 				(id) => id !== keepAgentId,
 			);
@@ -574,6 +615,20 @@ export class SkillService {
 
 	async canEdit(user: User, skill: Pick<Skill, 'projectId' | 'agentId'>): Promise<boolean> {
 		return await this.canAccess(user, skill, 'update');
+	}
+
+	/**
+	 * A move takes the skill out of its scope, as a delete does, so it needs the delete
+	 * permission there. A custom role can grant update without delete.
+	 */
+	async assertCanMove(user: User, skillId: string): Promise<SkillTarget> {
+		const [skill] = await this.skillRepository.findByIds([skillId]);
+		if (!skill) throw new NotFoundError('Skill not found');
+		if (!(await this.canAccess(user, skill, 'delete'))) {
+			throw new ForbiddenError('You are not allowed to move this skill out of its scope.');
+		}
+		// Pass this to `changeTarget` as `checkedSource`, so the move fails if the scope changed.
+		return { projectId: skill.projectId, agentId: skill.agentId };
 	}
 
 	async assertCanEdit(user: User, skillIds: string[], ctx: OperationContext = {}): Promise<void> {

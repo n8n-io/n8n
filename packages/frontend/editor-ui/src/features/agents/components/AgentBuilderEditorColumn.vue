@@ -1,8 +1,12 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, provide, ref, watch } from 'vue';
 import { N8nCard, N8nIcon, N8nTabs, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import type { AgentConfigValidationIssue, AgentFileDto } from '@n8n/api-types';
+import {
+	resolveAgentPersonalisation,
+	type AgentConfigValidationIssue,
+	type AgentFileDto,
+} from '@n8n/api-types';
 
 import type { AgentBuilderMainTab } from '../composables/useAgentBuilderMainTabs';
 import type { SetupTask } from './AgentSetupTasks/agentSetupTasks.registry';
@@ -20,6 +24,7 @@ import AgentAdvancedPanel from './AgentAdvancedPanel.vue';
 import AgentBudgetPanel from './AgentBudgetPanel.vue';
 import AgentCapabilitiesSection from './AgentCapabilitiesSection.vue';
 import AgentTriggersSection from './AgentTriggersSection.vue';
+import { AGENT_PERSONALISATION_KEY } from '../channels/types';
 import AgentIdentityHeader from './AgentIdentityHeader.vue';
 import AgentInfoPanel from './AgentInfoPanel.vue';
 import AgentFilesPanel from './AgentFilesPanel.vue';
@@ -68,6 +73,14 @@ const props = defineProps<{
 }>();
 
 const childrenDisabled = computed(() => !props.canEditAgent);
+provide(
+	AGENT_PERSONALISATION_KEY,
+	computed(() =>
+		resolveAgentPersonalisation(
+			props.localConfig?.personalisation ?? props.agent?.schema?.personalisation,
+		),
+	),
+);
 const isKnowledgeAdvancedExpanded = ref(false);
 
 const settingsStore = useSettingsStore();
@@ -231,7 +244,6 @@ defineExpose({ onSetupTaskAction });
 							:saved-description="savedDescription"
 							:save-description="saveDescription"
 							:task-refs="localConfig?.tasks ?? []"
-							:personalisation="localConfig?.personalisation ?? agent?.schema?.personalisation"
 							:reload-key="tasksReloadKey"
 							@update:connected-triggers="emit('update:connected-triggers', $event)"
 							@trigger-added="emit('trigger-added', $event)"

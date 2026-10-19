@@ -13,7 +13,12 @@ import type { Agent } from './entities/agent.entity';
 import { withoutLegacySkillRefs, type AgentSkillRefs } from './json-config/agent-document';
 import { AgentRepository } from './repositories/agent.repository';
 import { SkillRepository } from './repositories/skill.repository';
-import { SkillService, toAgentSkill, type SkillRef } from './skills/skill.service';
+import {
+	SkillService,
+	toAgentSkill,
+	type SkillMoveOptions,
+	type SkillRef,
+} from './skills/skill.service';
 import { SkillsHubRollout } from './skills/skills-hub-rollout';
 import { getAgentSkillHash } from './utils/agent-config-hash';
 import { getMissingSkillIds } from './utils/agent-missing-skill-ids';
@@ -447,15 +452,14 @@ export class AgentSkillRefsService {
 		skillId: string,
 		availableTo: AgentSkillAvailability,
 		ctx: OperationContext,
-		/** The name the skill has after this request, when the same request renames it. */
-		nameAfterMove?: string,
+		options: SkillMoveOptions = {},
 	): Promise<void> {
 		await this.skillService.changeTarget(
 			skillId,
 			targetFor(agent, availableTo),
 			agent.id,
 			ctx,
-			nameAfterMove,
+			options,
 		);
 	}
 

@@ -8,13 +8,15 @@ import {
 	skillNameKey,
 	type AgentConfigValidationIssue,
 	type AgentSkillAvailability,
+	type SkillCreateMethod,
 	type SkillDetail,
 	type SkillListItem,
+	type SkillNewNameQueryDto,
 } from '@n8n/api-types';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { AI_MCP_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
-import { createAgentSkill, getHubSkill } from './useAgentApi';
+import { createAgentSkill, getHubSkill, getNewSkillName } from './useAgentApi';
 import { useAgentProjectBreadcrumb } from './useAgentProjectBreadcrumb';
 import { mcpServerToNode } from './useMcpServerAdapter';
 import {
@@ -22,8 +24,9 @@ import {
 	AGENT_TOOL_CONFIG_MODAL_KEY,
 	AGENT_SKILL_MODAL_KEY,
 } from '../constants';
-import { normalizeAgentSkillForSave } from '../utils/agentSkill';
+import { isSkillNameTakenError, normalizeAgentSkillForSave } from '../utils/agentSkill';
 import type { ToolOpenTarget, ToolPickerMode } from '../components/AgentCapabilitiesSection.types';
+import type { AgentSkillConfirmResult } from '../components/AgentSkillModal.vue';
 import type {
 	AgentResource,
 	AgentJsonConfig,
@@ -351,6 +354,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 				existingSkillNames: appliedSkillNames(id),
 				hubSkillsEnabled: hubSkillsEnabled.value,
 				outdated: hubSkillsEnabled.value && (agent.value?.outdatedSkillIds ?? []).includes(id),
+				projectLabel: projectName.value ?? undefined,
 				canCreateInstanceSkills: rbacStore.hasScope('skill:create'),
 				onUseLatestVersion: (skillId: string) => {
 					if (agentId.value !== targetAgentId) return;
@@ -409,6 +413,17 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 	 * Authoring-time mirror of the backend's `assertSkillNameIsUnique` for
 	 * local-skill hosts. The modal validates against `existingSkillNames` before closing
 	 */
+	/** The scope of the new-name lookup for an "available to" choice. */
+	function newNameTarget(
+		availableTo: string,
+		targetProjectId: string,
+		targetAgentId: string,
+	): Pick<SkillNewNameQueryDto, 'scope' | 'projectId' | 'agentId'> {
+		if (availableTo === 'instance') return { scope: 'instance' };
+		if (availableTo === 'agent') return { scope: 'agent', agentId: targetAgentId };
+		return { scope: 'project', projectId: targetProjectId };
+	}
+
 	function hasDuplicateSkillName(name: string, excludeId?: string): boolean {
 		const key = skillNameKey(name);
 		return appliedSkillNames(excludeId).some((existing) => skillNameKey(existing) === key);
@@ -483,6 +498,17 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 					appliedSkills.value.map(({ id, skill }) => ({ id, name: skill.name })),
 				projectLabel: projectName.value ?? undefined,
 				canCreateInstanceSkills: rbacStore.hasScope('skill:create'),
+				// The hub refuses a name that the skill's scope already has, so the default
+				// name comes from the server, for the "available to" choice.
+				...(hubSkillsEnabled.value
+					? {
+							getDefaultName: async (availableTo: string) =>
+								await getNewSkillName(rootStore.restApiContext, {
+									...newNameTarget(availableTo, targetProjectId, targetAgentId),
+									name: locale.baseText('agents.builder.skills.defaultName'),
+								}),
+						}
+					: {}),
 				onRemove: (skillId: string) => {
 					if (!isCurrentTarget()) return;
 					onRemoveSkill(skillId);
@@ -492,59 +518,66 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 						isCurrentTarget,
 						async () => await getHubSkill(rootStore.restApiContext, librarySkill.id),
 					),
-				onConfirm: ({
+				// The modal stays open until the skill is created, and stays open when the create
+				// fails, so the user keeps what they typed. A taken name shows on the name field.
+				onConfirm: async ({
 					skill,
 					availableTo,
+					method,
 				}: {
 					id?: string;
 					skill: AgentSkill;
 					availableTo?: AgentSkillAvailability;
-				}) => {
+					method?: SkillCreateMethod;
+				}): Promise<AgentSkillConfirmResult> => {
 					if (localSkills) {
-						if (!isCurrentTarget()) return;
+						if (!isCurrentTarget()) return undefined;
 						const sanitizedSkill = normalizeAgentSkillForSave(skill);
 						if (hasDuplicateSkillName(sanitizedSkill.name)) {
 							showDuplicateSkillNameError(sanitizedSkill.name);
-							return;
+							return undefined;
 						}
 
 						// The host mints the skill id and writes body + ref together.
 						localSkills.createSkill(sanitizedSkill);
-						return;
+						return undefined;
 					}
 
+					const sanitizedSkill = normalizeAgentSkillForSave(skill);
+					try {
+						await beforeAgentMutation?.();
+					} catch {
+						// The host owns the autosave error message. Do not also report
+						// this as a skill-creation failure.
+						return { saved: false };
+					}
+					if (!isCurrentTarget()) return undefined;
+					let result: Awaited<ReturnType<typeof createAgentSkill>>;
+					try {
+						await ensureAgentPersisted?.();
+						if (!isCurrentTarget()) return undefined;
+						result = await createAgentSkill(
+							rootStore.restApiContext,
+							targetProjectId,
+							targetAgentId,
+							sanitizedSkill,
+							hubSkillsEnabled.value ? availableTo : undefined,
+							method,
+						);
+					} catch (error) {
+						if (isSkillNameTakenError(error)) {
+							return {
+								saved: false,
+								nameError: locale.baseText('settings.context.skills.error.nameTaken'),
+							};
+						}
+						showError(error, locale.baseText('agents.builder.skills.create.error'));
+						return { saved: false };
+					}
+
+					// The skill exists now, so the modal can close while the agent catches up.
 					void (async () => {
-						const sanitizedSkill = normalizeAgentSkillForSave(skill);
-						let created: AgentSkill;
-						let skillHash: string;
-						let versionId: string | null;
-						let skillId: string;
-						try {
-							await beforeAgentMutation?.();
-						} catch {
-							// The host owns the autosave error message. Do not also report
-							// this as a skill-creation failure.
-							return;
-						}
-						if (!isCurrentTarget()) return;
-						try {
-							await ensureAgentPersisted?.();
-							if (!isCurrentTarget()) return;
-							const result = await createAgentSkill(
-								rootStore.restApiContext,
-								targetProjectId,
-								targetAgentId,
-								sanitizedSkill,
-								hubSkillsEnabled.value ? availableTo : undefined,
-							);
-							skillId = result.id;
-							created = result.skill;
-							skillHash = result.skillHash;
-							versionId = result.versionId;
-						} catch (error) {
-							showError(error, locale.baseText('agents.builder.skills.create.error'));
-							return;
-						}
+						const { id: skillId, skill: created, skillHash, versionId } = result;
 						if (!isCurrentTarget() || agent.value?.id !== targetAgentId) return;
 						agent.value = {
 							...agent.value,
@@ -576,6 +609,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 							};
 						}
 					})();
+					return undefined;
 				},
 			},
 		});

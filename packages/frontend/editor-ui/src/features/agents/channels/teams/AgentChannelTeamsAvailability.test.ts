@@ -73,9 +73,10 @@ describe('AgentChannelTeamsAvailability', () => {
 			props: { modelValue: availabilityFrom({ groupChats: true }), appId: 'app-1' },
 		});
 
-		expect(getByTestId('teams-file-access')).toHaveTextContent('Files.Read.All');
 		// The portal opens on Delegated permissions, which the agent cannot use.
-		expect(getByTestId('teams-file-access')).toHaveTextContent('Application permissions');
+		expect(getByTestId('teams-file-access')).toHaveTextContent(
+			'Files.Read.All application permission',
+		);
 		expect(await openedUrl({ getByTestId })).toContain('/CallAnAPI/appId/app-1');
 	});
 
