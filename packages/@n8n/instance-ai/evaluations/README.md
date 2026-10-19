@@ -587,10 +587,13 @@ an Agent, build a workflow, do the task once, debug, answer, ask a question,
 do many tasks, or decline. Before each tool call that is not read-only, a judge
 reads what the Assistant did so far and stops the trial when it has picked a
 route. Read-only calls (loading a skill, reading nodes, credentials or docs,
-searching the web) skip the judge. A trial takes seconds, not minutes.
+searching the web) skip the judge. Each turn has 180 s by default (`--timeout`
+sets another limit in ms). A workflow route shows only when a call makes it
+clear that the user keeps the workflow, for example the build call. This is
+often 70 to 150 s into the turn.
 
 ```bash
-pnpm eval:discovery --cases-dir <dir> --timeout 120000
+pnpm eval:discovery --cases-dir <dir>
 ```
 
 The runner reads each `route-<slug>.json` file in `<dir>`. A case is in the
