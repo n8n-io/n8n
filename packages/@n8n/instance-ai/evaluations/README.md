@@ -588,8 +588,9 @@ do many tasks, or decline. Before each tool call that is not read-only, a judge
 reads what the Assistant did so far and stops the trial when it has picked a
 route. Read-only calls (loading a skill, reading nodes, credentials or docs,
 searching the web) skip the judge. Each turn has 180 s by default (`--timeout`
-sets another limit in ms). A workflow route shows only when the Assistant
-writes the workflow code or starts the build, often 70 to 150 s into the turn.
+sets another limit in ms). A workflow route shows only when a call makes it
+clear that the user keeps the workflow, for example the build call. This is
+often 70 to 150 s into the turn.
 
 ```bash
 pnpm eval:discovery --cases-dir <dir>

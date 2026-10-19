@@ -317,8 +317,9 @@ function printSummary(aggregates: ScenarioAggregate[], args: CliArgs): void {
 // ---------------------------------------------------------------------------
 
 /**
- * A workflow route shows only at the code write or the build call, often 70 to 150 s into the
- * turn. With 60 s, such a turn ends before the judge sees a route, and its retry times out again.
+ * A workflow route shows only when a call makes it clear that the user keeps the workflow, for
+ * example the build call. This is often 70 to 150 s into the turn. With 60 s, such a turn ends
+ * before the judge sees a route, and its retry times out again.
  */
 const ROUTING_TURN_TIMEOUT_MS = 180_000;
 
