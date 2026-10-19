@@ -19,6 +19,7 @@ import type { Agent } from '../entities/agent.entity';
 import { composeJsonConfig } from '../json-config/agent-config-composition';
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { SkillSaveResult, SkillService } from '../skills/skill.service';
+import type { SkillsTelemetry } from '../skills/skills-telemetry';
 import { getAgentConfigHash, getAgentSkillHash } from '../utils/agent-config-hash';
 import {
 	type AgentFixtureOverrides,
@@ -80,6 +81,7 @@ describe('AgentSkillsService', () => {
 	let runtimeCacheService: Mocked<AgentRuntimeCacheService>;
 	let modificationTelemetry: Mocked<AgentModificationTelemetryService>;
 	let agentUpdateBroadcaster: Mocked<AgentUpdateBroadcaster>;
+	let skillsTelemetry: Mocked<SkillsTelemetry>;
 
 	function givenAgent(overrides: AgentFixtureOverrides = {}) {
 		const agent = makeAgent(overrides);
@@ -102,6 +104,7 @@ describe('AgentSkillsService', () => {
 		transactionRunner = mock<TransactionRunner>();
 		transactionRunner.run.mockImplementation(async (ctx, fn) => await fn(ctx));
 		vi.mocked(userHasScopes).mockResolvedValue(true);
+		skillsTelemetry = mock<SkillsTelemetry>();
 		service = new AgentSkillsService(
 			mockLogger(),
 			agentRepository,
@@ -113,6 +116,7 @@ describe('AgentSkillsService', () => {
 			skillRefs,
 			skillService,
 			transactionRunner,
+			skillsTelemetry,
 		);
 	});
 
@@ -162,6 +166,39 @@ describe('AgentSkillsService', () => {
 			expect(agentRepository.saveDraftFenced).toHaveBeenCalledTimes(1);
 			expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledTimes(1);
 			expect(result.configHash).toBe(getAgentConfigHash(composeJsonConfig(agent, refs)));
+		});
+
+		it('reports a skill that a person made in the agent builder, with the method sent', async () => {
+			givenAgent({ schema: baseConfig });
+
+			await service.createAndAttachSkill(agentId, projectId, skill, context, 'project', 'upload');
+
+			expect(skillsTelemetry.created).toHaveBeenCalledWith(
+				'user-1',
+				['skill_new1'],
+				'agent',
+				'upload',
+			);
+		});
+
+		it.each([
+			['builder', 'agent'],
+			['mcp', 'mcp'],
+		] as const)('reports a skill that %s wrote as written with AI', async (modifiedBy, source) => {
+			givenAgent({ schema: baseConfig });
+
+			await service.createAndAttachSkills(agentId, projectId, [skill], { user, modifiedBy });
+
+			expect(skillsTelemetry.created).toHaveBeenCalledWith('user-1', ['skill_new1'], source, 'ai');
+		});
+
+		it('reports nothing with the skills hub off', async () => {
+			Object.assign(skillRefs, { usesSkillsHub: false });
+			givenAgent({ schema: baseConfig });
+
+			await service.createAndAttachSkill(agentId, projectId, skill, context);
+
+			expect(skillsTelemetry.created).not.toHaveBeenCalled();
 		});
 
 		it('keeps allowed tools on the agent row when the skills hub is off', async () => {
@@ -364,6 +401,7 @@ describe('AgentSkillsService', () => {
 				skills: { skill_a: skill },
 			});
 			skillRefs.availabilityOf.mockResolvedValue('project');
+			skillService.assertCanMove.mockResolvedValue({ projectId, agentId: null });
 
 			await service.updateSkill(
 				agentId,
@@ -377,7 +415,40 @@ describe('AgentSkillsService', () => {
 			);
 
 			expect(skillService.assertCanEdit).toHaveBeenCalledWith(user, ['skill_a']);
-			expect(skillRefs.setAvailability).toHaveBeenCalledWith(agent, 'skill_a', 'agent', {});
+			expect(skillService.assertCanMove).toHaveBeenCalledWith(user, 'skill_a');
+			expect(skillRefs.setAvailability).toHaveBeenCalledWith(
+				agent,
+				'skill_a',
+				'agent',
+				{},
+				{ checkedSource: { projectId, agentId: null } },
+			);
+			expect(skillService.save).not.toHaveBeenCalled();
+		});
+
+		it('refuses to change where the skill can be added without the delete permission', async () => {
+			givenAgent({
+				schema: { ...baseConfig, skills: [{ type: 'skill', id: 'skill_a' }] },
+				skills: { skill_a: skill },
+			});
+			skillRefs.availabilityOf.mockResolvedValue('project');
+			skillService.assertCanMove.mockRejectedValue(
+				new ForbiddenError('You are not allowed to move this skill out of its scope.'),
+			);
+
+			await expect(
+				service.updateSkill(
+					agentId,
+					projectId,
+					'skill_a',
+					{},
+					context,
+					undefined,
+					undefined,
+					'agent',
+				),
+			).rejects.toThrow('You are not allowed to move this skill out of its scope.');
+			expect(skillRefs.setAvailability).not.toHaveBeenCalled();
 			expect(skillService.save).not.toHaveBeenCalled();
 		});
 
@@ -465,6 +536,7 @@ describe('AgentSkillsService', () => {
 			);
 
 			expect(skillService.assertCanEdit).toHaveBeenCalledWith(user, ['skill_a']);
+			expect(skillsTelemetry.updated).toHaveBeenCalledWith('user-1', 'skill_a', 'agent', 2, false);
 			expect(skillService.save).toHaveBeenCalledWith(
 				'skill_a',
 				{
@@ -491,6 +563,24 @@ describe('AgentSkillsService', () => {
 				skillHash: getAgentSkillHash({ ...skill, instructions: 'New instructions.' }),
 				versionId: 'v2',
 			});
+		});
+
+		it('reports nothing for a save that stored no new version', async () => {
+			givenAgent({
+				schema: { ...baseConfig, skills: [{ type: 'skill', id: 'skill_a' }] },
+				skills: { skill_a: skill },
+			});
+			skillService.save.mockResolvedValue(saveResult({ created: false }));
+
+			await service.updateSkill(
+				agentId,
+				projectId,
+				'skill_a',
+				{ instructions: 'New instructions.' },
+				{ user, modifiedBy: 'mcp' },
+			);
+
+			expect(skillsTelemetry.updated).not.toHaveBeenCalled();
 		});
 
 		it('clears the pin of this agent when the pin is the latest version', async () => {

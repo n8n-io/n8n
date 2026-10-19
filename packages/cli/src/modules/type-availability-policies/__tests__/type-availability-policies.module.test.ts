@@ -3,7 +3,7 @@ import { ControllerRegistryMetadata, ModuleMetadata, PolicyCheckMetadata } from 
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
-import { RestrictedNodeTypesProviderProxy } from '@/workflows/restricted-node-types-provider-proxy.service';
+import { RestrictedNodeTypesProviderProxy } from '@n8n/backend-services';
 
 import { NodeTypePolicyRestrictedTypesProvider } from '../restricted-node-types.provider';
 // Importing the module runs the @BackendModule decorator, registering its metadata.

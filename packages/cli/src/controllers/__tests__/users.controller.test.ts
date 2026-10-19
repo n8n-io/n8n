@@ -4,8 +4,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { NotFoundError } from '@n8n/errors';
 import type { UserRequest } from '@/requests';
-import type { JwtService } from '@/services/jwt.service';
-import type { UrlService } from '@n8n/backend-services';
+import type { JwtService, UrlService } from '@n8n/backend-services';
 import type { UserService } from '@/services/user.service';
 
 import { UsersController } from '../users.controller';

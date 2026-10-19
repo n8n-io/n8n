@@ -4,7 +4,7 @@ import { LruCache } from '@n8n/utils/lru-cache';
 
 import { EngineFallbackError, Env, bounded, evalChunk } from './evaluator';
 import { MAX_RESULT_LENGTH, clone, isObj, type SimpleNode } from './grammar';
-import { parseSimple } from './parser';
+import { parseSimple, usesPolyfilledChain } from './parser';
 import type { IWorkflowDataProxyData } from '../../interfaces';
 
 export {
@@ -78,7 +78,8 @@ function compileChunk(chunk: ParsedCode): SimpleNode | null {
 	if (statement.type !== 'ExpressionStatement') return null;
 
 	try {
-		return parseSimple(statement.expression);
+		const node = parseSimple(statement.expression);
+		return node !== null && usesPolyfilledChain(node) ? null : node;
 	} catch {
 		return null;
 	}

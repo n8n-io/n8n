@@ -75,9 +75,10 @@ export const PROVIDER_CREDENTIAL_SCHEMAS = {
 			 */
 			endpointType: z.enum(['classic', 'foundry']).optional(),
 			/**
-			 * User-defined Azure deployment name for classic endpoints. The catalog
-			 * model id is not the deployment id, so the agent flow must carry this
-			 * separately. Only used by the classic branch.
+			 * User-defined Azure deployment name. The catalog model id is not the
+			 * deployment id, so the agent flow must carry this separately. Used by
+			 * both the classic and Foundry branches; on Foundry it overrides the
+			 * model id in the request path.
 			 */
 			deploymentName: z.string().optional(),
 			/**
