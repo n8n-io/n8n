@@ -154,12 +154,20 @@ const tagNote = computed(() => {
 		>
 			<CollapsibleTrigger :class="$style.header" data-test-id="promotion-preview-card-toggle">
 				<N8nIcon :icon="resourceIcon(resource.type)" size="small" :class="$style.icon" />
-				<N8nText bold size="medium" color="text-dark" :title="resource.name" :class="$style.title">
-					{{ resource.name }}
-				</N8nText>
-				<N8nText v-if="changeLabel(resource, direction)" step="xs" color="text-light">
-					{{ changeLabel(resource, direction) }}
-				</N8nText>
+				<span :class="$style.heading">
+					<N8nText
+						bold
+						size="medium"
+						color="text-dark"
+						:title="resource.name"
+						:class="$style.title"
+					>
+						{{ resource.name }}
+					</N8nText>
+					<N8nText v-if="changeLabel(resource, direction)" step="xs" color="text-light">
+						{{ changeLabel(resource, direction) }}
+					</N8nText>
+				</span>
 				<N8nIcon icon="chevron-down" size="small" :class="$style.chevron" />
 				<N8nTooltip :content="status.label" as-child>
 					<span
@@ -322,6 +330,13 @@ const tagNote = computed(() => {
 .icon {
 	flex-shrink: 0;
 	color: var(--icon-color);
+}
+
+.heading {
+	display: flex;
+	align-items: baseline;
+	gap: var(--spacing--2xs);
+	min-width: 0;
 }
 
 .title {

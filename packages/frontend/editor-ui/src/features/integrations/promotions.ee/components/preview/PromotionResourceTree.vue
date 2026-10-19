@@ -43,7 +43,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
-const { changeLabel, blockerMessage, warningNote } = usePromotionPreviewLabels();
+const { changeLabel, blockerMessage } = usePromotionPreviewLabels();
 
 // A workflow shows the blockers that stop it. A dependency shows the blockers about itself.
 function markers(resource: PromotionResource) {
@@ -52,13 +52,12 @@ function markers(resource: PromotionResource) {
 			? props.blockers.byWorkflow.get(resource.key)
 			: props.blockers.byResource.get(resource.key);
 	const blocked = blockerMessage(resource, blockers);
-	const note = warningNote(resource, blockers);
 	// A variable warning replaces the change label, as the variable itself does not change.
 	const meta =
-		note && resource.type !== 'workflow'
+		resource.type !== 'workflow' && blockers?.some(({ kind }) => kind === 'warning')
 			? i18n.baseText('promotions.preview.marker.warning')
 			: changeLabel(resource, props.direction);
-	return { blocked, note, meta: blocked ? undefined : meta };
+	return { blocked, meta: blocked ? undefined : meta };
 }
 
 const rows = computed(() =>
@@ -180,19 +179,10 @@ function onToggle(resource: PromotionResource) {
 						<N8nIcon v-if="item.icon" :icon="item.icon" size="small" :class="$style.icon" />
 						<span :class="$style.text">
 							<N8nText step="xs" color="text-dark" :class="$style.label">{{ item.label }}</N8nText>
-							<N8nText
-								v-if="marker.note"
-								step="2xs"
-								color="text-light"
-								:class="$style.label"
-								data-test-id="promotion-preview-tree-note"
-							>
-								{{ marker.note }}
+							<N8nText v-if="marker.meta" step="2xs" color="text-light" :class="$style.meta">
+								{{ marker.meta }}
 							</N8nText>
 						</span>
-						<N8nText v-if="marker.meta" step="2xs" color="text-light" :class="$style.meta">
-							{{ marker.meta }}
-						</N8nText>
 					</button>
 					<N8nTooltip v-if="marker.blocked" :content="marker.blocked" placement="right">
 						<N8nButton
@@ -287,9 +277,9 @@ function onToggle(resource: PromotionResource) {
 
 .text {
 	display: flex;
-	flex-direction: column;
+	align-items: baseline;
+	gap: var(--spacing--3xs);
 	min-width: 0;
-	padding: var(--spacing--4xs) 0;
 }
 
 .label {
