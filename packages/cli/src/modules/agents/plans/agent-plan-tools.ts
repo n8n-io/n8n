@@ -16,6 +16,7 @@ import {
 	type AgentPlanDocument,
 	type AgentPlanItem,
 } from './agent-plan.schema';
+import { isFinal } from './agent-plan.validation';
 
 const itemId = z.union([
 	z.string().uuid().toLowerCase(),
@@ -236,7 +237,7 @@ export function presentPlan(plan: AgentPlanSnapshot | null) {
 
 	const leaves = planLeaves(plan.data);
 	const finishedAt =
-		leaves.length > 0 && leaves.every((item) => !['pending', 'in_progress'].includes(item.status))
+		leaves.length > 0 && leaves.every((item) => isFinal(item.status))
 			? (leaves
 					.map((item) => item.endedAt)
 					.filter((timestamp): timestamp is string => timestamp !== null)
