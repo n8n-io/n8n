@@ -7,6 +7,7 @@ import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { ScimSettingsService } from '../scim-settings.service';
+import type { ScimSsoService } from '../scim-sso.service';
 import { ScimTokenController } from '../scim-token.controller';
 import type { ScimTokenService } from '../scim-token.service';
 import { ScimTokenConflictError } from '../scim.errors';
@@ -15,6 +16,7 @@ describe('ScimTokenController', () => {
 	let scimTokenService: Mocked<ScimTokenService>;
 	let scimSettingsService: Mocked<ScimSettingsService>;
 	let moduleRegistry: Mocked<ModuleRegistry>;
+	let scimSsoService: Mocked<ScimSsoService>;
 	let controller: ScimTokenController;
 
 	const req = mock<AuthenticatedRequest>({ user: mock<User>({ id: 'user-1' }) });
@@ -29,12 +31,15 @@ describe('ScimTokenController', () => {
 		scimTokenService = mock<ScimTokenService>();
 		scimSettingsService = mock<ScimSettingsService>();
 		moduleRegistry = mock<ModuleRegistry>();
+		scimSsoService = mock<ScimSsoService>();
+		scimSsoService.isSsoEnabled.mockReturnValue(true);
 		scimTokenService.getScimBaseUrl.mockReturnValue('https://n8n.example.com/scim/v2');
 		controller = new ScimTokenController(
 			mock<Logger>(),
 			scimTokenService,
 			scimSettingsService,
 			moduleRegistry,
+			scimSsoService,
 		);
 	});
 
@@ -106,6 +111,45 @@ describe('ScimTokenController', () => {
 			expect(moduleRegistry.refreshModuleSettings).toHaveBeenCalledWith('scim');
 			expect(res.status).toHaveBeenCalledWith(200);
 			expect(res.json).toHaveBeenCalledWith({ data: { enabled } });
+		});
+
+		it('returns 400 and keeps SCIM off when single sign-on is off', async () => {
+			scimSsoService.isSsoEnabled.mockReturnValue(false);
+			const res = makeRes();
+
+			await controller.updateConfig(req, res, { enabled: true });
+
+			expect(res.status).toHaveBeenCalledWith(400);
+			expect(res.json).toHaveBeenCalledWith({
+				message: 'Turn on SAML or OIDC single sign-on before you enable SCIM provisioning.',
+			});
+			expect(scimSettingsService.setEnabled).not.toHaveBeenCalled();
+			expect(moduleRegistry.refreshModuleSettings).not.toHaveBeenCalled();
+		});
+
+		it('turns SCIM off when single sign-on is off', async () => {
+			scimSsoService.isSsoEnabled.mockReturnValue(false);
+			const res = makeRes();
+
+			await controller.updateConfig(req, res, { enabled: false });
+
+			expect(scimSettingsService.setEnabled).toHaveBeenCalledWith(false);
+			expect(res.status).toHaveBeenCalledWith(200);
+		});
+
+		// Single sign-on on never turns SCIM on. The admin enables it again, and
+		// the stored token works with no change.
+		it('turns SCIM on again after single sign-on is back on', async () => {
+			scimSettingsService.isEnabled.mockResolvedValue(false);
+			const res = makeRes();
+
+			await controller.updateConfig(req, res, { enabled: true });
+
+			expect(scimSsoService.isSsoEnabled).toHaveBeenCalled();
+			expect(scimSettingsService.setEnabled).toHaveBeenCalledWith(true);
+			expect(scimTokenService.rotateToken).not.toHaveBeenCalled();
+			expect(scimTokenService.revokeToken).not.toHaveBeenCalled();
+			expect(res.status).toHaveBeenCalledWith(200);
 		});
 	});
 

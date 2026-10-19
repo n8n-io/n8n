@@ -1,8 +1,13 @@
+import { ModuleRegistry } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { testDb } from '@n8n/backend-test-utils';
+import { GlobalConfig } from '@n8n/config';
 import { SettingsRepository, UserRepository, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { jsonParse } from 'n8n-workflow';
 
+import { setSamlLoginEnabled } from '@/modules/sso-saml/saml-helpers';
+import { setCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
 import { createAdmin, createMember, createOwner } from '@test-integration/db/users';
 import * as utils from '@test-integration/utils';
 
@@ -12,8 +17,9 @@ import { ScimSettingsService } from '../scim-settings.service';
 
 const testServer = utils.setupTestServer({
 	// `users` serves the role change and the deletion of the token creator.
-	endpointGroups: ['users'],
-	enabledFeatures: ['feat:scim', 'feat:advancedPermissions'],
+	// `saml` serves the SAML login toggle.
+	endpointGroups: ['users', 'module-settings', 'saml'],
+	enabledFeatures: ['feat:scim', 'feat:advancedPermissions', 'feat:saml', 'feat:oidc'],
 	modules: ['scim'],
 });
 
@@ -50,9 +56,20 @@ const reload = async (id: string) =>
 
 const scimTokenRepository = () => Container.get(ScimTokenRepository);
 
+/** Turns on single sign-on the way a saved SAML or OIDC configuration does. */
+const turnOnSso = async (protocol: 'saml' | 'oidc') => {
+	const { sso } = Container.get(GlobalConfig);
+	sso.saml.loginEnabled = protocol === 'saml';
+	sso.oidc.loginEnabled = protocol === 'oidc';
+	await setCurrentAuthenticationMethod(protocol);
+};
+
 beforeEach(async () => {
 	await testDb.truncate(['ApiKey', 'AuthIdentity', 'ProjectRelation', 'Project', 'User']);
 	await Container.get(SettingsRepository).delete({ key: SCIM_TOKEN_SETTINGS_KEY });
+
+	// SCIM provisioning works only while SAML or OIDC single sign-on is on.
+	await turnOnSso('saml');
 
 	owner = await createOwner();
 	admin = await createAdmin();
@@ -365,5 +382,123 @@ describe('SCIM /scim/v2/Schemas', () => {
 		expect(user.attributes.map((attribute: { name: string }) => attribute.name)).not.toContain(
 			'roles',
 		);
+	});
+});
+
+describe('SCIM and single sign-on', () => {
+	const scimSettings = () => Container.get(ScimSettingsService);
+
+	const moduleSettings = async () => {
+		const response = await testServer.authAgentFor(admin).get('/module-settings').expect(200);
+		return response.body.data.scim;
+	};
+
+	const toggleSamlLogin = async (loginEnabled: boolean) =>
+		await testServer
+			.authAgentFor(owner)
+			.post('/sso/saml/config/toggle')
+			.send({ loginEnabled })
+			.expect(200);
+
+	// The SCIM module turns SCIM off in an event listener, after the toggle
+	// returns.
+	const waitForScimOff = async () =>
+		await vi.waitFor(async () => expect(await scimSettings().isEnabled()).toBe(false));
+
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
+	it('returns 400 and keeps SCIM off when an admin enables SCIM without single sign-on', async () => {
+		await scimSettings().setEnabled(false);
+		await setCurrentAuthenticationMethod('email');
+
+		const response = await testServer
+			.authAgentFor(admin)
+			.patch('/scim/config')
+			.send({ enabled: true });
+
+		expect(response.status).toBe(400);
+		expect(await scimSettings().isEnabled()).toBe(false);
+	});
+
+	it('returns 400 while LDAP is the authentication method', async () => {
+		await scimSettings().setEnabled(false);
+		await setCurrentAuthenticationMethod('ldap');
+
+		await testServer.authAgentFor(admin).patch('/scim/config').send({ enabled: true }).expect(400);
+	});
+
+	it('lets an admin turn SCIM off without single sign-on', async () => {
+		await setCurrentAuthenticationMethod('email');
+
+		await testServer.authAgentFor(admin).patch('/scim/config').send({ enabled: false }).expect(200);
+
+		expect(await scimSettings().isEnabled()).toBe(false);
+	});
+
+	it.each(['saml', 'oidc'] as const)(
+		'enables SCIM while %s is on and shows it in the module settings',
+		async (protocol) => {
+			await scimSettings().setEnabled(false);
+			await Container.get(ModuleRegistry).refreshModuleSettings('scim');
+			await turnOnSso(protocol);
+
+			await testServer
+				.authAgentFor(admin)
+				.patch('/scim/config')
+				.send({ enabled: true })
+				.expect(200);
+
+			expect(await moduleSettings()).toMatchObject({ scimEnabled: true });
+		},
+	);
+
+	it('turns SCIM off and keeps the token when an admin turns SAML login off', async () => {
+		const emit = vi.spyOn(Container.get(EventService), 'emit');
+
+		await toggleSamlLogin(false);
+
+		await waitForScimOff();
+		expect(emit).toHaveBeenCalledWith('sso-login-disabled', {
+			protocol: 'saml',
+			scimWasEnabled: true,
+		});
+		expect(await scimTokenRepository().findInstanceToken({})).toMatchObject({
+			tokenHash: hashScimToken(token),
+		});
+		await vi.waitFor(async () =>
+			expect(await moduleSettings()).toMatchObject({ scimEnabled: false }),
+		);
+		const response = await testServer.authAgentFor(admin).get('/scim/config').expect(200);
+		expect(response.body.data).toMatchObject({ enabled: false, hasToken: true });
+	});
+
+	it('keeps SCIM off when SAML turns on again, and the old token works once an admin enables SCIM', async () => {
+		await toggleSamlLogin(false);
+		await waitForScimOff();
+
+		await setSamlLoginEnabled(true);
+
+		expect(await scimSettings().isEnabled()).toBe(false);
+		await scimRequest('get', '/Users').expect(403);
+
+		await testServer.authAgentFor(admin).patch('/scim/config').send({ enabled: true }).expect(200);
+
+		await scimRequest('get', '/Users').expect(200);
+	});
+
+	it('returns a SCIM 403 when single sign-on turns off without the cascade', async () => {
+		testServer.license.disable('feat:saml');
+
+		const response = await scimRequest('get', '/Users');
+
+		expect(response.status).toBe(403);
+		expect(response.body).toMatchObject({
+			schemas: [ERROR_SCHEMA],
+			status: '403',
+			detail: 'SCIM provisioning requires SAML or OIDC single sign-on',
+		});
+		expect(await scimSettings().isEnabled()).toBe(true);
 	});
 });
