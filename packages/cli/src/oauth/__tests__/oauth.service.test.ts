@@ -5065,9 +5065,6 @@ describe('OauthService', () => {
 				expect(persisted.scope).toBe('openid profile');
 			});
 
-			// Real-world shape captured from the StackOne MCP server: the resource
-			// document advertises only the resource's own scope, while the authorization
-			// server also offers offline_access.
 			const mockAuthServerWithScopes = (scopes: string[]) => {
 				vi.mocked(httpClientMock.get).mockResolvedValueOnce({
 					data: {
@@ -5085,8 +5082,6 @@ describe('OauthService', () => {
 				});
 			};
 
-			// Without this the credential is issued no refresh token, isMcpOAuthRefreshable
-			// reports it as not refreshable, and the connection dies at the first expiry.
 			it('adds offline_access when the auth server offers it and the resource omits it', async () => {
 				mockProtectedResourceDiscovery(['mcp']);
 				mockAuthServerWithScopes(['mcp', 'offline_access']);
@@ -5114,6 +5109,15 @@ describe('OauthService', () => {
 			it('leaves the scopes alone when the auth server does not offer offline_access', async () => {
 				mockProtectedResourceDiscovery(['mcp']);
 				mockAuthServerWithScopes(['mcp']);
+
+				const { persisted } = await runAtlassianFlow();
+
+				expect(persisted.scope).toBe('mcp');
+			});
+
+			it('leaves the scopes alone when the auth server advertises no scopes', async () => {
+				mockProtectedResourceDiscovery(['mcp']);
+				mockAuthServerWithoutScopes();
 
 				const { persisted } = await runAtlassianFlow();
 
