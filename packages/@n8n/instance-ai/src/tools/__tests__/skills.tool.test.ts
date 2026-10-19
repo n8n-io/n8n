@@ -306,6 +306,86 @@ describe('skills tool', () => {
 			});
 		});
 
+		it('names the new place on the card when the update moves the skill', async () => {
+			const suspend = vi.fn();
+			const tool = createSkillsTool(createContext(service));
+
+			await executeTool(tool, { ...input, scope: 'instance' }, suspendCtx(suspend));
+
+			expect(suspend).toHaveBeenCalledWith(
+				expect.objectContaining({
+					message:
+						'Save a new version of the skill. Move it, so it is available for every project on this instance. 3 agents use it.',
+				}),
+			);
+		});
+
+		it('does not mention a move when the skill stays in its project', async () => {
+			const suspend = vi.fn();
+			const tool = createSkillsTool(createContext(service));
+
+			await executeTool(
+				tool,
+				{ ...input, scope: 'project', projectId: 'project-1' },
+				suspendCtx(suspend),
+			);
+
+			expect(suspend).toHaveBeenCalledWith(
+				expect.objectContaining({ message: 'Save a new version of the skill. 3 agents use it.' }),
+			);
+		});
+
+		it('sends the new scope once the user approves the move', async () => {
+			const tool = createSkillsTool(createContext(service));
+
+			await executeTool(
+				tool,
+				{ ...input, scope: 'project', projectId: 'project-2' },
+				resumeCtx(true),
+			);
+
+			expect(service.update).toHaveBeenCalledWith('skill_a', {
+				baseSkillHash: 'hash-2',
+				instructions: 'Be kinder.',
+				scope: 'project',
+				projectId: 'project-2',
+			});
+		});
+
+		it('refuses a projectId without a scope before it asks for approval', async () => {
+			const suspend = vi.fn();
+			const tool = createSkillsTool(createContext(service));
+
+			const result = await executeTool(
+				tool,
+				{ ...input, projectId: 'project-2' },
+				suspendCtx(suspend),
+			);
+
+			expect(suspend).not.toHaveBeenCalled();
+			expect(service.update).not.toHaveBeenCalled();
+			expect(result).toEqual({
+				success: false,
+				refused: true,
+				reason: 'Pass scope together with projectId.',
+			});
+		});
+
+		it('refuses a skill the user cannot edit before it asks for approval', async () => {
+			service.get.mockResolvedValue({ ...detail, canEdit: false });
+			const suspend = vi.fn();
+			const tool = createSkillsTool(createContext(service));
+
+			const result = await executeTool(tool, input, suspendCtx(suspend));
+
+			expect(suspend).not.toHaveBeenCalled();
+			expect(result).toEqual({
+				success: false,
+				refused: true,
+				reason: 'You do not have permission to edit this skill.',
+			});
+		});
+
 		it('uses the update permission', async () => {
 			const tool = createSkillsTool(
 				createContext(service, {
@@ -336,6 +416,21 @@ describe('skills tool', () => {
 
 			expect(service.get).not.toHaveBeenCalled();
 			expect(result).toEqual({ success: false, denied: true, reason: 'Action blocked by admin' });
+		});
+
+		it('refuses a skill the user cannot delete before it asks for approval', async () => {
+			service.get.mockResolvedValue({ ...detail, usedByAgents: 0, canDelete: false });
+			const suspend = vi.fn();
+			const tool = createSkillsTool(createContext(service));
+
+			const result = await executeTool(tool, input, suspendCtx(suspend));
+
+			expect(suspend).not.toHaveBeenCalled();
+			expect(result).toEqual({
+				success: false,
+				refused: true,
+				reason: 'You do not have permission to delete this skill.',
+			});
 		});
 
 		it('refuses a skill that agents use without asking for approval', async () => {
@@ -396,6 +491,10 @@ describe('skills tool', () => {
 			expect(service.delete).toHaveBeenCalledWith('skill_a');
 			expect(result).toEqual({ success: true, skillId: 'skill_a' });
 		});
+	});
+
+	it('marks its output as untrusted data', () => {
+		expect(createSkillsTool(createContext(service)).outputTrust).toBe('untrusted');
 	});
 
 	it('fails when the skills hub is not available', async () => {

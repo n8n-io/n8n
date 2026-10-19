@@ -202,6 +202,7 @@ The following operations remain available:
 - Listing, searching, and reading all resources
 - Publishing/unpublishing (activating/deactivating) workflows
 - Setting up, editing, and deleting credentials
+- Creating, editing, and deleting skills in the skills hub
 - Restoring workflow versions
 - Browsing the filesystem, fetching URLs, and searching the web
 

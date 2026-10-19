@@ -1510,11 +1510,15 @@ permission checks and name rules apply. It reports telemetry with the
 
 The actions are `list`, `get`, `create`, `update` and `delete`. `create`,
 `update` and `delete` ask for approval. The `createSkill`, `updateSkill` and
-`deleteSkill` permissions control them. The `update` approval says how many
-Agents use the skill. `list` pages with `limit` and `skip`. `delete` is destructive, so the user cannot allow
-it for the whole session. For `update`, pass the `skillHash` that `get` returns as
-`baseSkillHash`. The tool
-does not attach a skill to an Agent.
+`deleteSkill` permissions control them. These permissions stay available on a
+read-only instance, because source control does not sync skills. The `update`
+approval says how many Agents use the skill, and where the skill moves when the
+scope changes. `list` pages with `limit` and `skip`. `delete` is destructive, so
+the user cannot allow it for the whole session. The tool refuses an `update` or
+a `delete` that the user has no permission for, before it asks for approval.
+For `update`, pass the `skillHash` that `get` returns as `baseSkillHash`. The
+tool marks its output as untrusted data, because other users can write skill
+content. The tool does not attach a skill to an Agent.
 
 ## MCP Registry Tool
 

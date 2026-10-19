@@ -2400,6 +2400,9 @@ const BRANCH_READ_ONLY_SAFE_PERMISSIONS: ReadonlySet<keyof InstanceAiPermissions
 	'createCredential',
 	'deleteCredential',
 	'restoreWorkflowVersion',
+	'createSkill',
+	'updateSkill',
+	'deleteSkill',
 ]);
 
 /** Returns a copy of permissions with all write operations set to 'blocked',
