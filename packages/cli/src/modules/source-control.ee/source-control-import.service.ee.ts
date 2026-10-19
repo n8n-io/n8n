@@ -305,7 +305,8 @@ export class SourceControlImportService {
 				versionId: true,
 				name: true,
 				description: true,
-				settings: true,
+				// TypeORM selects this JSON column as a whole.
+				settings: {},
 				updatedAt: true,
 				parentFolder: {
 					id: true,
