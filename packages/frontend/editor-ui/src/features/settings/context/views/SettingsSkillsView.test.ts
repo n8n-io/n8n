@@ -9,6 +9,7 @@ import { useUsersStore } from '@n8n/stores/users.store';
 import userEvent from '@testing-library/user-event';
 import { waitFor, within } from '@testing-library/vue';
 import { mock } from 'vitest-mock-extended';
+import { reactive } from 'vue';
 
 import { useUIStore } from '@/app/stores/ui.store';
 import type { AgentSkillModalData } from '@/features/agents/components/AgentSkillModal.vue';
@@ -19,7 +20,15 @@ import SettingsSkillsView from './SettingsSkillsView.vue';
 import { useSkillsStore } from '../skills.store';
 
 const push = vi.fn();
-const routeQuery: Record<string, string> = {};
+const route = reactive<{ name: string; params: object; query: Record<string, string> }>({
+	name: 'SettingsContextSkills',
+	params: {},
+	query: {},
+});
+// The router writes the query back to the route, as the real one does.
+const replace = vi.fn(async ({ query }: { query: Record<string, string> }) => {
+	route.query = query;
+});
 const confirmMock = vi.fn().mockResolvedValue('confirm');
 const showMessageMock = vi.fn();
 const showErrorMock = vi.fn();
@@ -38,8 +47,8 @@ vi.mock('@n8n/composables/useToast', () => ({
 }));
 
 vi.mock('vue-router', () => ({
-	useRouter: () => ({ push }),
-	useRoute: () => ({ params: {}, query: routeQuery }),
+	useRouter: () => ({ push, replace }),
+	useRoute: () => route,
 	RouterLink: vi.fn(),
 }));
 
@@ -123,8 +132,10 @@ describe('SettingsSkillsView', () => {
 		skillsStore.count = 0;
 		uiStore = mockedStore(useUIStore);
 		setPermissions();
-		for (const key of Object.keys(routeQuery)) delete routeQuery[key];
+		route.name = 'SettingsContextSkills';
+		route.query = {};
 		push.mockClear();
+		replace.mockClear();
 		confirmMock.mockClear();
 		confirmMock.mockResolvedValue('confirm');
 		showMessageMock.mockClear();
@@ -490,8 +501,24 @@ describe('SettingsSkillsView', () => {
 	});
 
 	describe('deep links', () => {
+		/** The stubbed store does not track modals, so these tests open and close it by hand. */
+		function trackSkillModal() {
+			uiStore.modalsById = { agentSkillModal: { open: false } };
+			uiStore.openModalWithData.mockImplementation(() => {
+				uiStore.modalsById = { agentSkillModal: { open: true } };
+			});
+		}
+
+		function closeSkillModal() {
+			uiStore.modalsById = { agentSkillModal: { open: false } };
+		}
+
+		beforeEach(() => {
+			trackSkillModal();
+		});
+
 		it('opens the skill named by ?skillId', async () => {
-			routeQuery.skillId = 's9';
+			route.query = { skillId: 's9' };
 			skillsStore.fetchSkill.mockResolvedValue(detail({ id: 's9' }));
 
 			renderView();
@@ -499,10 +526,90 @@ describe('SettingsSkillsView', () => {
 
 			expect(skillsStore.fetchSkill).toHaveBeenCalledWith('s9');
 			expect(lastModalData().skillId).toBe('s9');
+			// The URL already names the skill.
+			expect(replace).not.toHaveBeenCalled();
+		});
+
+		it('takes the skill out of the URL when the modal closes', async () => {
+			route.query = { skillId: 's9', tab: 'x' };
+			skillsStore.fetchSkill.mockResolvedValue(detail({ id: 's9' }));
+			renderView();
+			await waitFor(() => expect(uiStore.openModalWithData).toHaveBeenCalled());
+
+			closeSkillModal();
+
+			await waitFor(() => expect(replace).toHaveBeenCalledWith({ query: { tab: 'x' } }));
+			expect(route.query).toEqual({ tab: 'x' });
+			// Taking the skill out of the URL does not open anything again.
+			expect(skillsStore.fetchSkill).toHaveBeenCalledTimes(1);
+		});
+
+		it('puts the skill in the URL when the user opens it from the list', async () => {
+			skillsStore.skills = [skill()];
+			skillsStore.count = 1;
+			skillsStore.fetchSkill.mockResolvedValue(detail());
+			const { getByText } = renderView();
+			await new Promise(process.nextTick);
+
+			await userEvent.click(getByText('research-search'));
+
+			await waitFor(() => expect(replace).toHaveBeenCalledWith({ query: { skillId: 's1' } }));
+			// The page does not open the skill a second time when the URL catches up.
+			expect(skillsStore.fetchSkill).toHaveBeenCalledTimes(1);
+
+			closeSkillModal();
+
+			await waitFor(() => expect(route.query).toEqual({}));
+		});
+
+		it('opens another skill when the URL changes while the page is open', async () => {
+			route.query = { skillId: 's1' };
+			skillsStore.fetchSkill.mockImplementation(async (id: string) => detail({ id }));
+			renderView();
+			await waitFor(() => expect(lastModalData().skillId).toBe('s1'));
+
+			route.query = { skillId: 's2' };
+
+			await waitFor(() => expect(lastModalData().skillId).toBe('s2'));
+			expect(uiStore.closeModal).toHaveBeenCalledWith('agentSkillModal');
+			expect(skillsStore.fetchSkill).toHaveBeenLastCalledWith('s2');
+		});
+
+		it('shows the list with a message when the linked skill is missing or not visible', async () => {
+			route.query = { skillId: 'ghost' };
+			skillsStore.fetchSkill.mockRejectedValue(
+				new ResponseError('Skill not found', { httpStatusCode: 404 }),
+			);
+
+			renderView();
+
+			await waitFor(() =>
+				expect(showMessageMock).toHaveBeenCalledWith({
+					title: 'This skill does not exist, or you do not have access to it',
+					type: 'warning',
+				}),
+			);
+			expect(uiStore.openModalWithData).not.toHaveBeenCalled();
+			expect(showErrorMock).not.toHaveBeenCalled();
+			// A refresh shows the list, not the same message again.
+			expect(route.query).toEqual({});
+		});
+
+		it('shows a load error when the linked skill fails for another reason', async () => {
+			route.query = { skillId: 's9' };
+			skillsStore.fetchSkill.mockRejectedValue(new Error('offline'));
+
+			renderView();
+
+			await waitFor(() =>
+				expect(showErrorMock).toHaveBeenCalledWith(expect.any(Error), 'Could not load the skill'),
+			);
+			expect(uiStore.openModalWithData).not.toHaveBeenCalled();
+			expect(route.query).toEqual({});
 		});
 
 		it('starts a new skill for ?create=true', async () => {
-			routeQuery.create = 'true';
+			route.query = { create: 'true' };
 
 			renderView();
 			await waitFor(() => expect(uiStore.openModalWithData).toHaveBeenCalled());

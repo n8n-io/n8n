@@ -1,8 +1,15 @@
 <script lang="ts" setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useDebounceFn } from '@vueuse/core';
-import type { AgentSkill, SkillCreateMethod, SkillListItem, SkillScope } from '@n8n/api-types';
+import type {
+	AgentSkill,
+	SkillCreateMethod,
+	SkillDetail,
+	SkillListItem,
+	SkillScope,
+} from '@n8n/api-types';
+import { ResponseError } from '@n8n/rest-api-client';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
@@ -278,41 +285,102 @@ function scopeLock(
 	return {};
 }
 
-async function openEditModal(item: Pick<SkillListItem, 'id'>) {
-	try {
-		const detail = await skillsStore.fetchSkill(item.id);
-		telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_OPENED_SKILL, {
-			skill_id: detail.id,
-			scope: detail.scope,
-			...(detail.projectId ? { project_id: detail.projectId } : {}),
-			read_only: !detail.canEdit,
-		});
-		const currentValue = scopeValueOf(detail);
-		// The current scope is listed even when the user could not create a skill there,
-		// such as an agent skill, which is only made from inside its agent.
-		const options = scopeOptions.value.some((option) => option.value === currentValue)
-			? scopeOptions.value
-			: [{ value: currentValue, ...scopeDisplay(detail) }, ...scopeOptions.value];
-		openModal({
-			skill: detail.skill,
-			skillId: detail.id,
-			readOnly: !detail.canEdit,
-			scopeOptions: options,
-			initialScope: currentValue,
-			...scopeLock(detail),
-			existingSkillNames: [],
-			onConfirm: async ({ skill, scope }) =>
-				await onSave(
-					detail.id,
-					skill,
-					detail.skillHash,
-					scope !== currentValue ? scope : undefined,
-				),
-		});
-	} catch (error) {
-		showError(error, i18n.baseText('settings.context.skills.error.loadOne'));
-	}
+/** The skill that the open modal shows, so the URL and the modal stay in step. */
+const openSkillId = ref<string | null>(null);
+
+function skillIdInUrl(): string | null {
+	const { skillId } = route.query;
+	return typeof skillId === 'string' && skillId !== '' ? skillId : null;
 }
+
+/**
+ * Puts the open skill in the URL, so the user can copy and share it, or takes it out
+ * when the modal closes, so a refresh does not open it again. A `create` deep link
+ * has done its work by then, so it goes too.
+ */
+async function setSkillIdInUrl(skillId: string | null) {
+	// A late call after the user left the page must not change the next page's URL.
+	if (route.name !== VIEWS.SETTINGS_CONTEXT_SKILLS) return;
+	const { skillId: _skillId, create, ...query } = route.query;
+	if (skillIdInUrl() === skillId && create === undefined) return;
+	await router.replace({ query: skillId ? { ...query, skillId } : query });
+}
+
+/** The API answers 404 for a missing skill and for one the user cannot see. */
+function isSkillNotFoundError(error: unknown): boolean {
+	return error instanceof ResponseError && error.httpStatusCode === 404;
+}
+
+async function openEditModal(item: Pick<SkillListItem, 'id'>) {
+	let detail: SkillDetail;
+	try {
+		detail = await skillsStore.fetchSkill(item.id);
+	} catch (error) {
+		// A link to a skill that is not there leaves the list, not a broken modal.
+		if (skillIdInUrl() === item.id) await setSkillIdInUrl(null);
+		if (isSkillNotFoundError(error)) {
+			showMessage({
+				title: i18n.baseText('settings.context.skills.error.notFound'),
+				type: 'warning',
+			});
+		} else {
+			showError(error, i18n.baseText('settings.context.skills.error.loadOne'));
+		}
+		return;
+	}
+	telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_OPENED_SKILL, {
+		skill_id: detail.id,
+		scope: detail.scope,
+		...(detail.projectId ? { project_id: detail.projectId } : {}),
+		read_only: !detail.canEdit,
+	});
+	const currentValue = scopeValueOf(detail);
+	// The current scope is listed even when the user could not create a skill there,
+	// such as an agent skill, which is only made from inside its agent.
+	const options = scopeOptions.value.some((option) => option.value === currentValue)
+		? scopeOptions.value
+		: [{ value: currentValue, ...scopeDisplay(detail) }, ...scopeOptions.value];
+	openModal({
+		skill: detail.skill,
+		skillId: detail.id,
+		readOnly: !detail.canEdit,
+		scopeOptions: options,
+		initialScope: currentValue,
+		...scopeLock(detail),
+		existingSkillNames: [],
+		onConfirm: async ({ skill, scope }) =>
+			await onSave(detail.id, skill, detail.skillHash, scope !== currentValue ? scope : undefined),
+	});
+	openSkillId.value = detail.id;
+	await setSkillIdInUrl(detail.id);
+}
+
+const isSkillModalOpen = computed(() => uiStore.modalsById[AGENT_SKILL_MODAL_KEY]?.open === true);
+
+// The modal closes itself, so the page follows it to take the skill out of the URL.
+watch(isSkillModalOpen, async (open) => {
+	if (open) return;
+	const shownSkillId = openSkillId.value;
+	openSkillId.value = null;
+	// The URL may already name another skill, which the page opens next.
+	if (skillIdInUrl() !== shownSkillId) return;
+	await setSkillIdInUrl(null);
+});
+
+// A link to another skill can arrive while the page is open.
+watch(
+	() => route.query.skillId,
+	async () => {
+		if (route.name !== VIEWS.SETTINGS_CONTEXT_SKILLS) return;
+		const skillId = skillIdInUrl();
+		if (skillId === openSkillId.value) return;
+		if (isSkillModalOpen.value) {
+			uiStore.closeModal(AGENT_SKILL_MODAL_KEY);
+			await nextTick();
+		}
+		if (skillId) await openEditModal({ id: skillId });
+	},
+);
 
 /** Saves the next version. There are no drafts: what the modal shows is what gets saved. */
 /** `newScope` is set when the user picked another scope: the save also moves the skill. */
@@ -385,10 +453,10 @@ onMounted(async () => {
 	}
 	// Deep links: one skill to open, or a new one to start. The skill may be on another
 	// page, so it is read by id rather than from the list.
-	const { skillId, create } = route.query;
-	if (typeof skillId === 'string') {
+	const skillId = skillIdInUrl();
+	if (skillId) {
 		await openEditModal({ id: skillId });
-	} else if (create === 'true') {
+	} else if (route.query.create === 'true') {
 		openCreateModal();
 	}
 });
