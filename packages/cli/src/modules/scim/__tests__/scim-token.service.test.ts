@@ -1,4 +1,4 @@
-import type { ApiKey, User } from '@n8n/db';
+import type { ApiKey, Role, User } from '@n8n/db';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -13,13 +13,19 @@ describe('ScimTokenService', () => {
 	let urlService: Mocked<UrlService>;
 	let service: ScimTokenService;
 
+	const roleWithScopes = (...scopes: string[]) =>
+		({ slug: 'global:admin', scopes: scopes.map((slug) => ({ slug })) }) as Role;
+
+	const createUser = (overrides: Partial<User> = {}) =>
+		({ id: 'user-1', disabled: false, role: roleWithScopes('scim:manage'), ...overrides }) as User;
+
 	const createApiKey = (overrides: Partial<ApiKey> = {}): ApiKey =>
 		({
 			id: 'key-1',
 			userId: 'user-1',
 			apiKey: 'a-very-long-scim-token-value',
 			audience: 'scim-api',
-			user: { id: 'user-1', disabled: false } as User,
+			user: createUser(),
 			...overrides,
 		}) as ApiKey;
 
@@ -63,7 +69,15 @@ describe('ScimTokenService', () => {
 
 		it('should reject a token whose owner is disabled', async () => {
 			apiKeyRepository.findByKey.mockResolvedValue(
-				createApiKey({ user: { id: 'user-1', disabled: true } as User }),
+				createApiKey({ user: createUser({ disabled: true }) }),
+			);
+
+			await expect(service.verifyApiKey('token')).resolves.toBe(false);
+		});
+
+		it('should reject a token whose owner no longer has scim:manage', async () => {
+			apiKeyRepository.findByKey.mockResolvedValue(
+				createApiKey({ user: createUser({ role: roleWithScopes('workflow:read') }) }),
 			);
 
 			await expect(service.verifyApiKey('token')).resolves.toBe(false);
