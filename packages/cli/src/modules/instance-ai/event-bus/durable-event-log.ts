@@ -590,6 +590,7 @@ export class DurableEventLog {
 				// Confirm a lost response before terminal facts can filter our own committed batch.
 				if (attemptedFirstSeq !== undefined) {
 					const payload = await this.repo.payloadAt(threadId, attemptedFirstSeq);
+					if (this.lifecycles.get(threadId) !== lifecycle) return { entries: [] };
 					if (payload === JSON.stringify(events[0])) {
 						this.lastSeq.set(threadId, attemptedFirstSeq + events.length - 1);
 						this.metrics.recordDrainBatch(events.length, serializedBytes(events));

@@ -396,6 +396,41 @@ describe('DurableEventLog', () => {
 		log.clear();
 	});
 
+	it('does not reuse a cleared thread sequence after a delayed commit check', async () => {
+		const repo = new FakeRepo();
+		repo.commitThenFailNextAppends = 1;
+		const payloadAt = repo.payloadAt.bind(repo);
+		let release!: () => void;
+		const gate = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		let entered!: () => void;
+		const probing = new Promise<void>((resolve) => {
+			entered = resolve;
+		});
+		vi.spyOn(repo, 'payloadAt')
+			.mockRejectedValueOnce(new Error('connect ETIMEDOUT'))
+			.mockImplementationOnce(async (threadId, seq) => {
+				const payload = await payloadAt(threadId, seq);
+				entered();
+				await gate;
+				return payload;
+			});
+		const { log } = buildLog(repo);
+		const previous = publishAll(log, [
+			{ ...runFinish(), payload: { status: 'cancelled' } } as InstanceAiEvent,
+		]);
+		await probing;
+		log.clearThread(THREAD);
+		repo.rows = [];
+		const next = publishAll(log, [{ ...toolCall('new'), runId: 'new-run' }]);
+		release();
+		expect(await previous).toEqual([]);
+		expect((await next).find((entry) => entry.live)?.id).toBe(1);
+		expect(repo.rows.map((row) => row.seq)).toEqual([1]);
+		log.clear();
+	});
+
 	it('drops activity from an ended child and preserves its live sibling', async () => {
 		const repo = new FakeRepo();
 		const { log } = buildLog(repo);
