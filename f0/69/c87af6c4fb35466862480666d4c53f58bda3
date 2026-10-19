@@ -1,0 +1,39 @@
+packages/cli/src/modules/n8n-packages/engine/project-package-importer.ts
+  s_13fdf695fc0ff1::t_3f090d45fa690c 385
+packages/@n8n/api-types/src/dto/packages/import-blocking-issue.schema.ts
+  s_13fdf695fc0ff1::t_38d8adb971b8c4 111
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-importer.ts
+  s_13fdf695fc0ff1::t_648e63de946f15 118-119,121
+  s_13fdf695fc0ff1::t_d0ead865f6df3f 67
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-import.types.ts
+  s_13fdf695fc0ff1::t_6800de651ffc6c 82
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow-importer.test.ts
+  s_13fdf695fc0ff1::t_48a1e5962f30dd 418,460
+packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
+  s_13fdf695fc0ff1::t_bf8e539350f33e 301-303
+  s_13fdf695fc0ff1::t_5a68902a8e661f 109-110
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_13fdf695fc0ff1::t_ddaf5fe64eaa8d 1449
+  s_13fdf695fc0ff1::t_1b2084cbc466dd 1486-1520
+packages/@n8n/api-types/src/dto/packages/import-blocking-issue.openapi.ts
+  s_13fdf695fc0ff1::t_669017475b0a2d 38,42,47
+  s_13fdf695fc0ff1::t_c9931755e58825 39-41,48-49
+packages/cli/src/public-api/v1/shared/spec/schemas/importBlockingIssue.generated.yml
+  s_13fdf695fc0ff1::t_efc2ee6b64e5e4 94-95,105
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f069c87af6c4fb35466862480666d4c53f58bda3",
+  "prompts": {},
+  "sessions": {
+    "s_13fdf695fc0ff1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2d68ad11-e5a3-42cc-a4cf-9389fb57dfde",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

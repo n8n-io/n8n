@@ -1,0 +1,21 @@
+packages/cli/src/public-api/public-api-controller.registry.ts
+  s_209d3652df9edf::t_e1e91013992375 240,248-251
+packages/cli/src/public-api/__tests__/public-api-controller.registry.test.ts
+  s_209d3652df9edf::t_1a1bf36b1689c5 1070-1093
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "298ea859f5ae3b71e5af8f92a2e326ebb45547d5",
+  "prompts": {},
+  "sessions": {
+    "s_209d3652df9edf": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "2b430ae3-90b8-4e4f-a650-99bf71711d23",
+        "model": "grok-4.7"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}
