@@ -18,6 +18,8 @@ import {
 } from './agent-knowledge-retrieval';
 import { assertKnowledgePathSegment, type AgentKnowledgePaths } from './agent-knowledge-storage';
 
+import { quoteShellArg } from '@/utils/quote-shell-arg';
+
 const COMMAND_TIMEOUT_SECONDS = 20;
 export const MIRROR_SYNC_TIMEOUT_SECONDS = 120;
 const SEARCH_OUTPUT_TRUNCATED_MARKER = '__N8N_SEARCH_OUTPUT_TRUNCATED__';
@@ -483,10 +485,6 @@ function sanitizeKnowledgeOutputText(
 	maxLength: number,
 ): { text: string; truncated: boolean } {
 	return truncateKnowledgeText(redactText(stripTrailingNewline(text)).text, maxLength);
-}
-
-function quoteShellArg(value: string): string {
-	return `'${value.replaceAll("'", "'\\''")}'`;
 }
 
 function buildJsonMatchLimitedPipeline(

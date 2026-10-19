@@ -16,13 +16,12 @@ import type {
 	ResolvedPromotionConfig,
 } from './promotions.types';
 
+import { quoteShellArg } from '@/utils/quote-shell-arg';
+
 /** Build a valid Git branch name for one promotion. */
 export function buildPromotionBranchName(now: Date): string {
 	return `${PROMOTION_BRANCH_PREFIX}${now.toISOString().replace(/[:.]/g, '-')}`;
 }
-
-/** Quote a value for use as one POSIX shell argument. */
-const quoteShellArg = (value: string) => `'${value.replace(/'/g, "'\"'\"'")}'`;
 
 /**
  * Build the Git configuration for an HTTP(S) remote.
