@@ -1,0 +1,101 @@
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/PromotionChangeCard.vue
+  s_983eea3c47ac98::t_94cf370560a4ca 1-2,11-20,22-85,93-94,100-126,130-151,153,155-159,161,163-167,169,171-186,188-191,192-199,201-216,218,220-222,224,226,228-238,241-281,283-312,315-327,329-360
+  s_983eea3c47ac98::t_ebf8ef6d2496dc 187
+  s_983eea3c47ac98::t_308d3b8b73f36a 95-99
+  s_983eea3c47ac98::t_33aabd25c964a6 313-314
+  s_983eea3c47ac98::t_3c6b7a84008b5b 21
+  s_983eea3c47ac98::t_cdb177aca70695 200
+  s_983eea3c47ac98::t_0fff4dffec67bb 3-10,127
+  s_983eea3c47ac98::t_3a025cc49f7c12 86-92,128-129,152,154,160,162,168,170,217,219,223,225,227,239-240,282,328
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/DataTableChangeDetails.vue
+  s_983eea3c47ac98::t_94cf370560a4ca 1,6-8,10-12,20-21,26,31,36,41,43,48-53,54-65,73-81,84-85,90,91-115,126-133
+  s_983eea3c47ac98::t_48fae84474c0cd 2-3,9,86-89
+  s_983eea3c47ac98::t_81b7ebfa5d117a 4-5,13-14,18-19,22-23,25,27-30,32-33,35,37-40,42,44-47
+  s_983eea3c47ac98::t_197eb62ac6b624 116-119
+  s_983eea3c47ac98::t_da5c1ec165a28f 67-72
+  s_983eea3c47ac98::t_3bb1127fa09c00 15-17,24,34,66,82-83,120-123
+  s_983eea3c47ac98::t_f9d08c77995e4e 124-125
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/PromotionResourceTree.vue
+  s_983eea3c47ac98::t_94cf370560a4ca 1-225
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionPreviewView.test.ts
+  s_983eea3c47ac98::t_94cf370560a4ca 1-121,123-128,130-133,158
+  s_983eea3c47ac98::t_34a4172f86d546 122
+  s_983eea3c47ac98::t_29855c34cabd49 129
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/PromotionResourceTree.test.ts
+  s_983eea3c47ac98::t_94cf370560a4ca 1-59
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotions.constants.ts
+  s_983eea3c47ac98::t_94cf370560a4ca 5-18
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_983eea3c47ac98::t_94cf370560a4ca 9823-9828,9830,9833-9834,9840,9843-9859,9861-9879,9881-9887,9888-9890
+  s_983eea3c47ac98::t_10b965f75bb9ed 9835-9839
+  s_983eea3c47ac98::t_2f6be5a4ed42d2 9891-9893
+  s_983eea3c47ac98::t_358f73a715b596 9829,9831-9832,9841-9842,9860,9880
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/PromotionChangeCard.test.ts
+  s_983eea3c47ac98::t_94cf370560a4ca 1-63,65-94,96-108,110-213
+  s_983eea3c47ac98::t_56b8df8f970433 95,109
+  s_983eea3c47ac98::t_6597f683065dcb 64
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/PromotionChangeCards.vue
+  s_983eea3c47ac98::t_94cf370560a4ca 1-70
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/__tests__/module.descriptor.test.ts
+  s_983eea3c47ac98::t_94cf370560a4ca 1-2,9,17-18,25-26,30-33,39-40,62-92,94-95
+  s_983eea3c47ac98::t_d6abb501d03d0e 93,96
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/module.descriptor.ts
+  s_983eea3c47ac98::t_94cf370560a4ca 1,3-4,9-13,16,18-44,60,67,69-70
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionPreviewView.vue
+  s_983eea3c47ac98::t_94cf370560a4ca 1-18,20-156,162-184,186-243,245-267,269-338,340-343,346-371
+  s_983eea3c47ac98::t_682f077e71ff39 344-345
+  s_983eea3c47ac98::t_a19b66aa98c473 185
+  s_983eea3c47ac98::t_d77b6f00611a26 19,157-161,244,268,339
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/PromotionFieldChanges.vue
+  s_983eea3c47ac98::t_94cf370560a4ca 1-117
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionPreviewLabels.ts
+  s_983eea3c47ac98::t_94cf370560a4ca 1-30
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionPreview.content.ts
+  s_983eea3c47ac98::t_ce36176526649d 123-137
+  s_983eea3c47ac98::t_48fae84474c0cd 155
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionPreview.content.test.ts
+  s_983eea3c47ac98::t_a689a3a106eaf6 120-122
+  s_983eea3c47ac98::t_da43db2d25d49d 7
+  s_983eea3c47ac98::t_bf1ab254eb3b14 109-119,123-127
+  s_983eea3c47ac98::t_48fae84474c0cd 128
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectHeader.vue
+  s_983eea3c47ac98::t_247467cc20bff4 26,474-484,606-611
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionBanners.test.ts
+  s_983eea3c47ac98::t_ee9d5a0d15c2b8 38-43,140-142
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionBanners.vue
+  s_983eea3c47ac98::t_75e51a39b75639 2,11,19-28
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionPreviewBadges.test.ts
+  s_983eea3c47ac98::t_abd616a0c8825d 1-84
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionPreviewBadges.vue
+  s_983eea3c47ac98::t_7c98356934ccf1 1-77
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionChangeCount.test.ts
+  s_983eea3c47ac98::t_b4f90348e2c874 3,15,19,22-23,42,44,52,58,60,62,65,68
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionChangeCount.ts
+  s_983eea3c47ac98::t_8aef96472200c5 5-6,8,16-19,28-29,35,40-42,50
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionEntryPoints.ts
+  s_983eea3c47ac98::t_f1fccb847341ce 1-70
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3d054eb61f552cc06e02b18189ff6f3c0ee81bf4",
+  "prompts": {},
+  "sessions": {
+    "s_7f7a4dee511a6b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ed162b42-c275-4534-848a-37f52720dc22",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_983eea3c47ac98": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6afe657c-702d-4003-8734-85a65b043c95",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}
