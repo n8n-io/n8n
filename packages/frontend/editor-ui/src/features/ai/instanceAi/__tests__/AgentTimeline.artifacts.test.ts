@@ -88,4 +88,72 @@ describe('AgentTimeline artifact cards', () => {
 		expect(names).toHaveLength(1);
 		expect(names[0]).toContain('Current Agent');
 	});
+
+	describe('Agents the orchestrator builds itself', () => {
+		const inThreadNode = {
+			agentId: 'root',
+			role: 'orchestrator',
+			status: 'completed',
+			textContent: '',
+			reasoning: '',
+			toolCalls: [
+				{
+					toolCallId: 'tc-select',
+					toolName: 'agent_builder_select_agent',
+					args: {},
+					isLoading: false,
+					result: {
+						ok: true,
+						agentId: 'agent-new',
+						projectId: 'project-1',
+						agentChange: 'created',
+					},
+				},
+				{
+					toolCallId: 'tc-write',
+					toolName: 'agent_builder_write_config',
+					args: {},
+					isLoading: false,
+					result: {
+						ok: true,
+						configMutated: true,
+						agentId: 'agent-new',
+						agentName: 'Support triage',
+						projectId: 'project-1',
+					},
+				},
+			],
+			children: [],
+			timeline: [
+				{ type: 'tool-call', responseId: 'r1', toolCallId: 'tc-select' },
+				{ type: 'tool-call', responseId: 'r1', toolCallId: 'tc-write' },
+				{ type: 'text', responseId: 'r1', content: 'Done.' },
+			],
+		} as unknown as InstanceAiAgentNode;
+
+		it('shows one card for the built Agent in the full view', () => {
+			const { container } = renderComponent({ props: { agentNode: inThreadNode } });
+
+			const names = cardNames(container);
+			expect(names).toHaveLength(1);
+			expect(names[0]).toContain('Support triage');
+		});
+
+		it('hides the card on the page of the Agent it built', () => {
+			const { container } = renderComponent({
+				props: { agentNode: inThreadNode },
+				global: {
+					provide: {
+						[INSTANCE_AI_EMBED_SUBJECT_KEY]: computed(() => ({
+							type: 'agent' as const,
+							id: 'agent-new',
+							projectId: 'project-1',
+						})),
+					},
+				},
+			});
+
+			expect(cardNames(container)).toEqual([]);
+		});
+	});
 });
