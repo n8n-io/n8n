@@ -75,6 +75,9 @@ export function createAskUserTool(context?: InstanceAiContext) {
 				'Before the first build-workflow call, use only for choices that change workflow intent or topology ' +
 				'(e.g. destination service) — setup values (recipients, accounts, resources, channels, credentials, ' +
 				'timezone) use placeholders or unresolved newCredential() calls instead. ' +
+				'When the request does not yet say what to build (no trigger, no steps, no named workflow or Agent), ' +
+				'ask about the goal: the result the user wants, whether it happens once now or keeps running, and ' +
+				'whether people chat with it. Do not call it a workflow or an Agent yet, and do not ask about triggers or nodes. ' +
 				'The UI adds a built-in "Something else" free-text input to every select question: NEVER include ' +
 				'catch-all options ("Something else", "Other", "None of the above") in the options array, and NEVER ' +
 				'add a follow-up question elaborating a previous "other" answer. Keep questions concise and independent ' +
