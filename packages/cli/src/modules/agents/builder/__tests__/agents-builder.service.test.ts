@@ -65,21 +65,24 @@ function setup() {
 describe('AgentsBuilderService', () => {
 	beforeEach(() => vi.mocked(userHasScopes).mockReset().mockResolvedValue(true));
 
-	it.each([undefined, 'agent-pinned'])('checks access before resolving target %s', async (pinned) => {
-		const { service, tools, providerFor, credentials } = setup();
-		const target = vi.fn(async () => 'agent-selected');
-		service.getTools(user, 'project-1', target, providerFor, credentials);
-		const [resolve] = tools.getToolsForResolvedTarget.mock.calls[0];
+	it.each([undefined, 'agent-pinned'])(
+		'checks access before resolving target %s',
+		async (pinned) => {
+			const { service, tools, providerFor, credentials } = setup();
+			const target = vi.fn(async () => 'agent-selected');
+			service.getTools(user, 'project-1', target, providerFor, credentials);
+			const [resolve] = tools.getToolsForResolvedTarget.mock.calls[0];
 
-		await expect(resolve(pinned)).resolves.toBe(pinned ?? 'agent-selected');
-		expect(userHasScopes).toHaveBeenCalledWith(user, ['agent:update'], false, {
-			projectId: 'project-1',
-		});
-		if (pinned) expect(target).not.toHaveBeenCalled();
+			await expect(resolve(pinned)).resolves.toBe(pinned ?? 'agent-selected');
+			expect(userHasScopes).toHaveBeenCalledWith(user, ['agent:update'], false, {
+				projectId: 'project-1',
+			});
+			if (pinned) expect(target).not.toHaveBeenCalled();
 
-		vi.mocked(userHasScopes).mockResolvedValue(false);
-		await expect(resolve(pinned)).rejects.toThrow(ForbiddenError);
-	});
+			vi.mocked(userHasScopes).mockResolvedValue(false);
+			await expect(resolve(pinned)).rejects.toThrow(ForbiddenError);
+		},
+	);
 
 	it('rejects the next tool call when Agents are disabled', async () => {
 		const { service, tools, settings, providerFor, credentials } = setup();
@@ -121,12 +124,14 @@ describe('AgentsBuilderService', () => {
 			],
 		});
 
-		await expect(service.validateAgent(user, 'project-1', 'agent-1', providerFor)).resolves.toEqual({
-			valid: false,
-			issueCodes: ['missing_credential', 'missing_required'],
-			issueCount: 3,
-			capabilityCount: 2,
-		});
+		await expect(service.validateAgent(user, 'project-1', 'agent-1', providerFor)).resolves.toEqual(
+			{
+				valid: false,
+				issueCodes: ['missing_credential', 'missing_required'],
+				issueCount: 3,
+				capabilityCount: 2,
+			},
+		);
 		expect(validation.validateLoadedAgentConfiguration).toHaveBeenCalledWith(
 			agent,
 			'project-1',

@@ -3308,13 +3308,7 @@ describe('AgentsBuilderToolsService', () => {
 			providerFor = () => credentialProvider,
 		) {
 			return service
-				.getToolsForResolvedTarget(
-					resolve,
-					projectId,
-					providerFor,
-					credentialService,
-					user,
-				)
+				.getToolsForResolvedTarget(resolve, projectId, providerFor, credentialService, user)
 				.find((tool) => tool.name === 'probe')!;
 		}
 

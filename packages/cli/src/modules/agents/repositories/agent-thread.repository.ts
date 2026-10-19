@@ -22,7 +22,7 @@ export class AgentThreadRepository extends BaseRepository<AgentThreadEntity> {
 			select: { id: true },
 			where: { id: Like(`${prefix}%`) },
 		});
-		return threads.map(({ id }) => id);
+		return threads.map(({ id }) => id).filter((id) => id.startsWith(prefix));
 	}
 
 	/**

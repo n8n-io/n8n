@@ -84,7 +84,11 @@ export class AgentsBuilderService {
 		return await buildBuilderSessionContext(projectId, agentId);
 	}
 
-	createCredentialProvider(user: User, projectId: string, agentId: string): AgentCredentialProvider {
+	createCredentialProvider(
+		user: User,
+		projectId: string,
+		agentId: string,
+	): AgentCredentialProvider {
 		return createAgentCredentialProvider(this.credentials, projectId, user, agentId);
 	}
 

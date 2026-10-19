@@ -7939,7 +7939,7 @@ describe('createContext — builder delegate wiring', () => {
 		service.createContext(mockUser, {
 			threadId: 'thread-1',
 			projectId: 'proj-1',
-			getCredentialIdAllowlist: () => [],
+			getCredentialIdAllowlist: () => ['eval-credential'],
 		});
 
 		expect(builderDelegateAdapter.createDelegate).toHaveBeenCalledWith(
@@ -7952,11 +7952,14 @@ describe('createContext — builder delegate wiring', () => {
 		const providerFor = builderDelegateAdapter.createDelegate.mock.calls[0][2] as (
 			agentId: string,
 		) => AgentCredentialProvider;
-		const provider = await providerFor('agent-42');
+		const provider = providerFor('agent-42');
 		builderDelegateAdapter.credentialProvider.list.mockResolvedValue([
+			{ id: 'eval-credential', name: 'Eval', type: 'openAiApi' },
 			{ id: 'other-eval-credential', name: 'Other eval', type: 'openAiApi' },
 		]);
-		expect(await provider.list()).toEqual([]);
+		expect(await provider.list()).toEqual([
+			{ id: 'eval-credential', name: 'Eval', type: 'openAiApi' },
+		]);
 		expect(builderDelegateAdapter.builderService.createCredentialProvider).toHaveBeenCalledWith(
 			mockUser,
 			'proj-1',
@@ -7964,7 +7967,7 @@ describe('createContext — builder delegate wiring', () => {
 		);
 	});
 
-	it('hands production threads the raw provider, built per target agent id', async () => {
+	it('hands production threads the raw provider, built per target agent id', () => {
 		const service = createAdapterWithGatewayMock(vi.fn(), { telemetry: { track: vi.fn() } });
 		const builderDelegateAdapter = mockBuilderModuleActive(mock<InstanceAiBuilderDelegate>());
 
@@ -7973,7 +7976,7 @@ describe('createContext — builder delegate wiring', () => {
 		const providerFor = builderDelegateAdapter.createDelegate.mock.calls[0][2] as (
 			agentId: string,
 		) => AgentCredentialProvider;
-		expect(await providerFor('agent-42')).toBe(builderDelegateAdapter.credentialProvider);
+		expect(providerFor('agent-42')).toBe(builderDelegateAdapter.credentialProvider);
 		expect(builderDelegateAdapter.builderService.createCredentialProvider).toHaveBeenCalledWith(
 			mockUser,
 			'proj-1',

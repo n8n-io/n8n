@@ -644,9 +644,9 @@ export class AgentsBuilderToolsService {
 	): BuiltTool[] {
 		const track: BuilderTrackFn = (entry, properties) => {
 			const enriched = {
-					agent_id: agentId,
-					user_id: user.id,
-					...properties,
+				agent_id: agentId,
+				user_id: user.id,
+				...properties,
 			};
 			if (options?.track) {
 				options.track(entry, enriched);
