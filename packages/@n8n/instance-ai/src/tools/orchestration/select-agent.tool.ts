@@ -105,6 +105,8 @@ const NO_TARGET_INPUT_ERROR =
 	'Pass `name` (and optionally `agentRef`) to create a new agent, `agentId` to adopt an existing one, or `agentRef` to select an agent from this conversation.';
 const UNKNOWN_REF_ERROR =
 	'Unknown `agentRef`. Pass `name` to create a new agent under that key, or `agentId` to adopt an existing agent.';
+const EMPTY_KEY_ERROR =
+	'`agentRef` or `name` must contain at least one letter or number, because the addressing key is built from it.';
 const AGENT_ID_NEEDS_PROJECT_ERROR =
 	'Cannot bind to agentId without an active project context. Start this conversation from within a project.';
 
@@ -150,7 +152,10 @@ async function resolveTarget(
 ): Promise<TargetResolution> {
 	const keySource = input.agentRef ?? input.name;
 	const key = keySource ? normalizeAgentRef(keySource) : undefined;
+	if (keySource?.trim() && !key) return { ok: false, error: EMPTY_KEY_ERROR };
 
+	// `name` is applied only when this call creates the agent. Selecting an existing agent does
+	// not rename it, so applying `name` there would report a name that the agent does not have.
 	if (key) {
 		const sessionAgent = await getSessionAgentByRef(domainContext, key);
 		if (sessionAgent) {
@@ -160,11 +165,7 @@ async function resolveTarget(
 					error: agentRefConflictError(key, sessionAgent.agentId, input.agentId),
 				};
 			}
-			const target: AgentBuilderTarget = {
-				...sessionAgent,
-				ref: key,
-				...(input.name ? { name: input.name } : {}),
-			};
+			const target: AgentBuilderTarget = { ...sessionAgent, ref: key };
 			if (boundTarget?.agentId === target.agentId) {
 				return {
 					ok: true,
@@ -191,7 +192,7 @@ async function resolveTarget(
 			}
 			return {
 				ok: true,
-				target: { ...boundTarget, ref: key, ...(input.name ? { name: input.name } : {}) },
+				target: { ...boundTarget, ref: key },
 				mode: 'edit',
 				bind: true,
 				verify: false,
@@ -202,7 +203,7 @@ async function resolveTarget(
 			if (input.agentId === boundTarget?.agentId) {
 				return {
 					ok: true,
-					target: { ...boundTarget, ref: key, ...(input.name ? { name: input.name } : {}) },
+					target: { ...boundTarget, ref: key },
 					mode: 'edit',
 					bind: true,
 					verify: false,
@@ -211,12 +212,7 @@ async function resolveTarget(
 			if (!domainContext.projectId) return { ok: false, error: AGENT_ID_NEEDS_PROJECT_ERROR };
 			return {
 				ok: true,
-				target: {
-					agentId: input.agentId,
-					projectId: domainContext.projectId,
-					ref: key,
-					...(input.name ? { name: input.name } : {}),
-				},
+				target: { agentId: input.agentId, projectId: domainContext.projectId, ref: key },
 				mode: 'edit',
 				bind: true,
 				verify: true,

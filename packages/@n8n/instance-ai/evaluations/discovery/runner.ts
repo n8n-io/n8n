@@ -7,10 +7,13 @@
 // Docker, no n8n server — the orchestrator runs in-process against
 // stubbed services.
 //
-// What's tested: the orchestrator's first dispatch decision. Tools are NOT
-// stubbed — when the orchestrator loads a skill or reaches for a
+// What's tested: the orchestrator's first dispatch decision. Most tools are
+// NOT stubbed — when the orchestrator loads a skill or reaches for a
 // Computer Use browser tool, the tool-call event fires before any downstream
-// failure, so the discovery check still sees the dispatch intent. The wall-clock
+// failure, so the discovery check still sees the dispatch intent. The Agent
+// Builder tools are the exception: they accept any input and report success,
+// and `agent_builder_select_agent` runs against a stub builder delegate. Only
+// the routing to them is graded, not the Agent build itself. The wall-clock
 // timeout bounds the trial, not the run: at the budget the trial stops and fails,
 // and the abandoned stream is left to unwind on its own. Scenarios or --max-steps
 // can additionally opt into an iteration cap.

@@ -174,11 +174,9 @@ Agent should receive. Omit `sessionId` to start a new test conversation. To
 continue one, pass the exact `sessionId` from an earlier
 `agent_builder_call_agent` result. Never make one up.
 
-When setup is finished and the target Agent is runnable, call
-`agent_builder_call_agent` once with a representative message to verify that it
-works as intended. If the user skipped a required credential or the model,
-do not call it. The test cannot pass until that setup is done. If the test exposes errors, tell the user what failed and
-ask whether you should fix the problems before you change the Agent.
+After a build, verify the target Agent once, as Build workflow step 10 says.
+`agent_builder_call_agent` runs the configured tools and can have external side
+effects, so do not call it twice for the same verification.
 
 Use `agent_builder_call_agent` to verify the Agent's behavior, not its channel
 integrations. After you configure a channel, tell the user to publish the
@@ -317,8 +315,10 @@ confirm those selections before you finish the build.
    showed no card and returned none). Do not read the config again.
 10. After setup is complete and the Agent is runnable, call
     `agent_builder_call_agent` once with a representative message before your
-    final response. If the test exposes errors, report them and ask whether you
-    should fix them. Do not claim the Agent is ready without this test, or
+    final response. If the user asked for a test in this turn, use their message
+    for this call. That call is the verification, so do not make a second call.
+    If the test exposes errors, report them and ask whether you should fix them
+    before you change the Agent. Do not claim the Agent is ready without this test, or
     without an explanation of why it could not run. The Agent is not runnable
     when `agent_builder_finish_setup` returned a required credential or model
     as skipped or dismissed. Then do not call `agent_builder_call_agent`. Say

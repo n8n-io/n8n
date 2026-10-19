@@ -159,6 +159,30 @@ describe('agent_builder_select_agent', () => {
 		expect(result).toMatchObject({ ok: true, agentId: 'agent-2', agentChange: 'created' });
 	});
 
+	it('keeps the stored name when it selects an existing agent with a different name', async () => {
+		const { tool, delegate, onArtifactChanged } = setup({ agentBuilderTarget: BOUND });
+
+		const result = await executeTool(tool, { agentRef: 'support', name: 'Support Bot' });
+
+		expect(delegate.createAgent).not.toHaveBeenCalled();
+		expect(result).toMatchObject({ ok: true, agentId: 'agent-1', agentName: 'Support' });
+		expect(onArtifactChanged).not.toHaveBeenCalledWith(
+			expect.objectContaining({ name: 'Support Bot' }),
+		);
+	});
+
+	it('returns an error when the name has no letters or numbers', async () => {
+		const { tool, delegate } = setup();
+
+		const result = await executeTool(tool, { name: '!!!' });
+
+		expect(delegate.createAgent).not.toHaveBeenCalled();
+		expect(result).toMatchObject({
+			ok: false,
+			error: expect.stringContaining('at least one letter or number'),
+		});
+	});
+
 	it('keeps the bound agent when called without arguments', async () => {
 		const { tool, delegate } = setup({ agentBuilderTarget: BOUND });
 

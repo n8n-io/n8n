@@ -196,6 +196,10 @@ function updateSkillErrorMessage(error: unknown, message: string): string {
 	return error instanceof ConflictError ? STALE_SKILL_ERROR_MESSAGE : message;
 }
 
+function isEmptyConfigValue(value: unknown): boolean {
+	return value === undefined || value === null || (typeof value === 'string' && !value.trim());
+}
+
 /** LLM-facing follow-up guidance for this builder surface (CLI skill-based tools). */
 const CLI_AGENT_CONFIG_MESSAGES: AgentConfigValidationMessages = {
 	emptyInstructionsFollowUp: 'saving the config again.',
@@ -1490,6 +1494,14 @@ export class AgentsBuilderToolsService {
 			const invalid = jsonpatch.validate([op], next);
 			if (invalid) {
 				errors.push({ path, message: invalid.message ?? 'Config path does not resolve' });
+				continue;
+			}
+			// A JSON Patch `add` replaces an existing value, and a setup answer must only fill an empty field.
+			if (!isEmptyConfigValue(jsonpatch.getValueByPointer(next, path))) {
+				errors.push({
+					path,
+					message: 'Config path already has a value. Patch it explicitly if it must change.',
+				});
 				continue;
 			}
 			next = jsonpatch.applyPatch(next, [op]).newDocument;

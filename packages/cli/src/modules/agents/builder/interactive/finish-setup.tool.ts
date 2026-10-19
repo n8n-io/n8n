@@ -194,9 +194,17 @@ function toCardQuestions(
 	return questions?.map(({ configPath: _configPath, ...question }) => question);
 }
 
-function answerValue(answer: QuestionAnswer): string | undefined {
+/** Matches how the questions card combines a multi-select answer with its custom text. */
+function answerValue(
+	answer: QuestionAnswer,
+	type: FinishSetupQuestionInput['type'],
+): string | undefined {
 	if (answer.skipped) return undefined;
-	const value = answer.customText?.trim() || answer.selectedOptions.join(', ');
+	const customText = answer.customText?.trim();
+	const value =
+		type === 'multi'
+			? [...answer.selectedOptions, ...(customText ? [customText] : [])].join(', ')
+			: customText || answer.selectedOptions.join(', ');
 	return value || undefined;
 }
 
@@ -217,7 +225,7 @@ function collectConfigWrites(
 	for (const question of input.questions ?? []) {
 		if (!question.configPath) continue;
 		const answer = collected.answers?.find((a) => a.questionId === question.id);
-		const value = answer ? answerValue(answer) : undefined;
+		const value = answer ? answerValue(answer, question.type) : undefined;
 		if (value !== undefined) values.push({ path: question.configPath, value });
 	}
 

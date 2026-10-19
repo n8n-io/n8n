@@ -723,6 +723,55 @@ describe('AgentsBuilderToolsService', () => {
 			);
 		});
 
+		it('agent_builder_finish_setup does not overwrite a config field that already has a value', async () => {
+			const { service, agentsService } = makeService();
+			agentsService.listChatIntegrations.mockReturnValue([]);
+			agentsService.findById.mockResolvedValue(makeAgent(baseConfig));
+
+			const tool = getJsonTool(service, BUILDER_TOOLS.FINISH_SETUP);
+			const input = {
+				questions: [
+					{
+						id: 'escalation_email',
+						question: 'Which address receives escalations?',
+						type: 'text',
+						configPath: '/instructions',
+					},
+				],
+			};
+			const suspendPayload = await tool.handler!(input, {
+				...ctx,
+				suspend: vi.fn(async (payload: unknown) => payload),
+			} as never);
+			const result = await tool.handler!(input, {
+				...ctx,
+				suspendPayload,
+				resumeData: {
+					answers: [
+						{
+							questionId: 'escalation_email',
+							selectedOptions: [],
+							customText: 'support@acme.test',
+						},
+					],
+				},
+			} as never);
+
+			expect(agentsService.updateConfig).not.toHaveBeenCalled();
+			expect(result).toEqual(
+				expect.objectContaining({
+					completed: true,
+					configApplyErrors: [
+						expect.objectContaining({
+							path: '/instructions',
+							message: expect.stringContaining('already has a value'),
+						}),
+					],
+				}),
+			);
+			expect(result).not.toHaveProperty('appliedToConfig');
+		});
+
 		it('agent_builder_patch_config saves a removed top-level field as removed', async () => {
 			const { service, agentsService } = makeService();
 			const telegram: AgentIntegrationConfig = {

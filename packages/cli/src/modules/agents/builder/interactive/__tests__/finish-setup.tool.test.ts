@@ -473,6 +473,47 @@ describe('agent_builder_finish_setup tool', () => {
 			});
 		});
 
+		it('writes both selected options and custom text for a multi-select answer', async () => {
+			const applySetupToConfig = vi.fn().mockResolvedValue({
+				credentialTypes: [],
+				paths: ['/channels'],
+			});
+			const tool = buildFinishSetupTool({ ...BASE_DEPS, applySetupToConfig });
+			const input = {
+				questions: [
+					{
+						id: 'channels',
+						question: 'Which channels?',
+						type: 'multi' as const,
+						options: ['#alerts', '#ops'],
+						configPath: '/channels',
+					},
+				],
+			};
+
+			const questionsPayload = await tool.handler!(input, makeCtx() as never);
+			await tool.handler!(
+				input,
+				makeCtx({
+					resumeData: {
+						answers: [
+							{
+								questionId: 'channels',
+								selectedOptions: ['#alerts', '#ops'],
+								customText: ' #support ',
+							},
+						],
+					},
+					suspendPayload: questionsPayload,
+				}) as never,
+			);
+
+			expect(applySetupToConfig).toHaveBeenCalledWith({
+				credentials: [],
+				values: [{ path: '/channels', value: '#alerts, #ops, #support' }],
+			});
+		});
+
 		it('does not write skipped answers or skipped credentials', async () => {
 			const applySetupToConfig = vi.fn();
 			const tool = buildFinishSetupTool({

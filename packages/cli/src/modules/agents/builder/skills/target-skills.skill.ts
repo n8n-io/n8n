@@ -42,8 +42,9 @@ instructions.
   for example creating tickets, reviewing images, and generating reports.
   Create one skill per job; infer this split without asking the user to label
   anything a skill.
-- One procedure is long or conditional enough that it would bury the general
-  rules in the main instructions.
+- The target agent has two or more jobs, and one job's procedure is long or
+  conditional enough that it would bury the general rules in the main
+  instructions.
 - The user asks to change how the target agent performs a function that an
   attached skill already owns.
 

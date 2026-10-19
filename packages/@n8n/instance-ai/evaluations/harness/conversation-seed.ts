@@ -675,7 +675,8 @@ function toTranscriptStep(block: Record<string, unknown>): TranscriptStep {
  * and so the one a case grades and executes.
  *
  * Mirrors the server's own binding rule (`seedAgentBuilderTargetMetadata`): the last
- * resolved `agent_builder_build_agent` call, ordered by `(createdAt, id)` because that is how the
+ * resolved targeting call (`agent_builder_build_agent` or `agent_builder_select_agent`), ordered
+ * by `(createdAt, id)` because that is how the
  * message store reads a thread back. Seed-ARRAY order is an authoring artifact, so a
  * parent/helper seed would otherwise have the harness grade one agent while the
  * thread continues the other.
