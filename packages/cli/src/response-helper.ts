@@ -11,10 +11,20 @@ import type { Request, Response } from 'express';
 import { ErrorReporter } from 'n8n-core';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { FORM_TRIGGER_PATH_IDENTIFIER, NodeApiError } from 'n8n-workflow';
-import { Readable } from 'node:stream';
+import { finished, Readable } from 'node:stream';
 import picocolors from 'picocolors';
 
 import { applySandboxCSP } from './webhooks/webhook-response-headers';
+
+/**
+ * Pipes `stream` into `res`, and destroys `stream` when `res` closes, also when
+ * `res` closed before this call. `pipe` alone keeps the source open when the
+ * client disconnects, so a file stream holds its file handle until garbage collection.
+ */
+export function pipeStreamToResponse(stream: Readable, res: Response, options?: { end?: boolean }) {
+	finished(res, () => stream.destroy());
+	stream.pipe(res, options);
+}
 
 export function sendSuccessResponse(
 	res: Response,
@@ -32,7 +42,7 @@ export function sendSuccessResponse(
 	}
 
 	if (data instanceof Readable) {
-		data.pipe(res);
+		pipeStreamToResponse(data, res);
 		return;
 	}
 
