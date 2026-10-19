@@ -1010,7 +1010,6 @@ export type {
 	ScimMeta,
 	ScimUserName,
 	ScimEmail,
-	ScimRole,
 } from './schemas/scim.schema';
 export {
 	scimUserSchema,
