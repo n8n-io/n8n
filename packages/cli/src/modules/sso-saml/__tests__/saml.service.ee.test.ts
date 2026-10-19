@@ -234,6 +234,9 @@ describe('SamlService', () => {
 			async () => await Promise.resolve(),
 		);
 		vi.spyOn(ssoHelpers, 'isSamlLoginEnabled').mockReturnValue(true);
+		// The tests share the authentication method, so a test can turn SAML
+		// off. The event reads other services from the container.
+		vi.spyOn(ssoHelpers, 'emitSsoLoginDisabled').mockResolvedValue();
 
 		samlService = new SamlService(
 			logger,

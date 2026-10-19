@@ -9,7 +9,8 @@ import { Container } from '@n8n/di';
  * automated user lifecycle management.
  *
  * `feat:scim` activates the module. Before GA, its routes answer only while
- * the opt-in is on (`ScimOptInService`).
+ * the opt-in is on (`ScimOptInService`). SCIM provisioning works only while
+ * SAML or OIDC single sign-on is on (`ScimSsoService`).
  */
 @BackendModule({ name: 'scim', licenseFlag: 'feat:scim', instanceTypes: ['main'] })
 export class ScimModule implements ModuleInterface {
@@ -26,6 +27,11 @@ export class ScimModule implements ModuleInterface {
 
 		const { ScimOptInService } = await import('./scim-opt-in.service.js');
 		Container.get(ScimOptInService).startSettingsRefresh();
+
+		// The SAML and OIDC modules init before this module, so the single
+		// sign-on state is loaded here.
+		const { ScimSsoService } = await import('./scim-sso.service.js');
+		await Container.get(ScimSsoService).init();
 	}
 
 	/**

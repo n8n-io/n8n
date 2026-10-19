@@ -1,4 +1,5 @@
 import { LicenseState, Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import { isAuthProviderType, SettingsRepository, type AuthProviderType } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -70,6 +71,54 @@ export function isSamlLicensed(): boolean {
 
 export function isSamlLicensedAndEnabled(): boolean {
 	return isSamlLoginEnabled() && isSamlLicensed() && isSamlCurrentAuthenticationMethod();
+}
+
+export function isOidcLicensedAndEnabled(): boolean {
+	return (
+		Container.get(GlobalConfig).sso.oidc.loginEnabled &&
+		Container.get(LicenseState).isOidcLicensed() &&
+		isOidcCurrentAuthenticationMethod()
+	);
+}
+
+/**
+ * Tells if SAML or OIDC single sign-on is on. LDAP does not count, because
+ * features such as SCIM provisioning need an identity provider that signs
+ * users in.
+ */
+export function isSamlOrOidcLoginEnabled(): boolean {
+	return isSamlLicensedAndEnabled() || isOidcLicensedAndEnabled();
+}
+
+export type SamlOrOidc = Extract<AuthProviderType, 'saml' | 'oidc'>;
+
+/**
+ * Emits `sso-login-disabled`, the contract for every path that turns SAML or
+ * OIDC sign-in off. Call it only when the authentication method changes from
+ * `protocol` to email. A switch from one protocol to the other keeps single
+ * sign-on on, so it must not call this.
+ */
+export async function emitSsoLoginDisabled(protocol: SamlOrOidc): Promise<void> {
+	Container.get(EventService).emit('sso-login-disabled', {
+		protocol,
+		scimWasEnabled: await isScimProvisioningEnabled(),
+	});
+}
+
+/**
+ * The SCIM module turns SCIM off when it gets `sso-login-disabled`, so read
+ * the switch before the event. The import is lazy, so that SSO code has no
+ * static dependency on the SCIM module. The SSO change is already saved, so
+ * a read failure must not fail it.
+ */
+async function isScimProvisioningEnabled(): Promise<boolean> {
+	try {
+		const { ScimSettingsService } = await import('@/modules/scim/scim-settings.service.js');
+		return await Container.get(ScimSettingsService).isEnabled();
+	} catch (error) {
+		Container.get(Logger).warn('Failed to read the SCIM provisioning state', { error });
+		return false;
+	}
 }
 
 export function isLdapCurrentAuthenticationMethod(): boolean {

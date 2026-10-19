@@ -16,6 +16,7 @@ import type { NextFunction, Request, Response } from 'express';
 import { deriveScimConnectionStatus, ScimConnectionService } from './scim-connection.service';
 import { ScimOptInService } from './scim-opt-in.service';
 import { ScimSettingsService } from './scim-settings.service';
+import { ScimSsoService } from './scim-sso.service';
 import { ScimTokenService } from './scim-token.service';
 import { ScimTokenConflictError } from './scim.errors';
 
@@ -39,6 +40,7 @@ export class ScimTokenController {
 		private readonly moduleRegistry: ModuleRegistry,
 		private readonly scimOptInService: ScimOptInService,
 		private readonly scimConnectionService: ScimConnectionService,
+		private readonly scimSsoService: ScimSsoService,
 	) {}
 
 	/**
@@ -85,11 +87,19 @@ export class ScimTokenController {
 	/**
 	 * PATCH /rest/scim/config
 	 * Enable or disable SCIM provisioning. The stored token is kept when
-	 * provisioning is turned off.
+	 * provisioning is turned off. Enabling needs SAML or OIDC single sign-on,
+	 * because SCIM users can sign in only through the identity provider.
+	 * Disabling is always allowed.
 	 */
 	@Patch('/config')
 	@GlobalScope('scim:manage')
 	async updateConfig(_req: AuthenticatedRequest, res: Response, @Body body: ScimConfigPatchDto) {
+		if (body.enabled && !this.scimSsoService.isSsoEnabled()) {
+			return res.status(400).json({
+				message: 'Turn on SAML or OIDC single sign-on before you enable SCIM provisioning.',
+			});
+		}
+
 		try {
 			const wasEnabled = await this.scimSettingsService.isEnabled();
 			await this.scimSettingsService.setEnabled(body.enabled);

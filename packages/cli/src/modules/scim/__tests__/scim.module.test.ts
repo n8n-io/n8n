@@ -9,8 +9,14 @@ import { mock } from 'vitest-mock-extended';
 
 import { ScimOptInService } from '../scim-opt-in.service';
 import { ScimSettingsService } from '../scim-settings.service';
+import { ScimSsoService } from '../scim-sso.service';
 import { ScimModule } from '../scim.module';
 import { ScimConfig } from '../scim.config';
+
+// The controllers resolve database services when they load.
+vi.mock('../scim.controller', () => ({}));
+vi.mock('../scim-discovery.controller', () => ({}));
+vi.mock('../scim-token.controller', () => ({}));
 
 // Compile-time pin: the frontend reads these settings under this exact key.
 const MODULE_NAME = 'scim' satisfies keyof FrontendModuleSettings;
@@ -23,6 +29,20 @@ describe('ScimModule', () => {
 		vi.clearAllMocks();
 		Container.set(ScimSettingsService, scimSettingsService);
 		Container.set(ScimOptInService, scimOptInService);
+	});
+
+	describe('init()', () => {
+		// A license or an env change can turn single sign-on off while the
+		// instance is down.
+		it('checks single sign-on at startup and listens for it turning off', async () => {
+			const scimSsoService = mock<ScimSsoService>();
+			Container.set(ScimSsoService, scimSsoService);
+
+			await new ScimModule().init();
+
+			expect(scimOptInService.startSettingsRefresh).toHaveBeenCalledTimes(1);
+			expect(scimSsoService.init).toHaveBeenCalledTimes(1);
+		});
 	});
 
 	describe('settings()', () => {

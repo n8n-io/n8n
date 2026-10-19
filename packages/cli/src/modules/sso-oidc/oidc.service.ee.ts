@@ -25,6 +25,7 @@ import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.serv
 import { JwtService, UrlService } from '@n8n/backend-services';
 import {
 	assertAuthenticationMethodCanBeEnabled,
+	emitSsoLoginDisabled,
 	getCurrentAuthenticationMethod,
 	isOidcCurrentAuthenticationMethod,
 	reloadAuthenticationMethod,
@@ -779,6 +780,8 @@ export class OidcService {
 
 		Container.get(GlobalConfig).sso.oidc.loginEnabled = enabled;
 		await setCurrentAuthenticationMethod(enabled ? 'oidc' : targetAuthenticationMethod);
+
+		if (!enabled && currentAuthenticationMethod === 'oidc') await emitSsoLoginDisabled('oidc');
 	}
 
 	private cachedOidcConfiguration:

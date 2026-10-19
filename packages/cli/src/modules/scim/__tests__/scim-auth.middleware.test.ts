@@ -8,12 +8,14 @@ import type { ScimToken } from '../database/scim-token.entity';
 import { ScimAuthMiddleware } from '../scim-auth.middleware';
 import type { ScimConnectionService } from '../scim-connection.service';
 import type { ScimSettingsService } from '../scim-settings.service';
+import type { ScimSsoService } from '../scim-sso.service';
 import type { ScimTokenService } from '../scim-token.service';
 
 describe('ScimAuthMiddleware', () => {
 	let scimTokenService: Mocked<ScimTokenService>;
 	let scimSettingsService: Mocked<ScimSettingsService>;
 	let scimConnectionService: Mocked<ScimConnectionService>;
+	let scimSsoService: Mocked<ScimSsoService>;
 	let middleware: ScimAuthMiddleware;
 	let res: Mocked<Response>;
 	let next: NextFunction;
@@ -29,11 +31,14 @@ describe('ScimAuthMiddleware', () => {
 		scimSettingsService = mock<ScimSettingsService>();
 		scimSettingsService.isEnabled.mockResolvedValue(true);
 		scimConnectionService = mock<ScimConnectionService>();
+		scimSsoService = mock<ScimSsoService>();
+		scimSsoService.isSsoEnabled.mockReturnValue(true);
 		middleware = new ScimAuthMiddleware(
 			mock<Logger>(),
 			scimTokenService,
 			scimSettingsService,
 			scimConnectionService,
+			scimSsoService,
 		);
 		res = mock<Response>();
 		res.status.mockReturnValue(res);
@@ -51,6 +56,27 @@ describe('ScimAuthMiddleware', () => {
 		expect(scimTokenService.verifyToken).not.toHaveBeenCalled();
 		expect(next).not.toHaveBeenCalled();
 		// A request while SCIM is disabled does not tell if the IdP has the token.
+		expect(scimConnectionService.recordAuthFailure).not.toHaveBeenCalled();
+		expect(scimConnectionService.recordAuthSuccess).not.toHaveBeenCalled();
+	});
+
+	// Single sign-on can turn off without the cascade, for example when the
+	// SSO license expires.
+	it('should reject all requests with a SCIM error while single sign-on is off', async () => {
+		scimSsoService.isSsoEnabled.mockReturnValue(false);
+		scimTokenService.verifyToken.mockResolvedValue(validCheck);
+
+		await middleware.authenticate(requestWithAuth('Bearer valid-token'), res, next);
+
+		expect(res.status).toHaveBeenCalledWith(403);
+		expect(res.header).toHaveBeenCalledWith('Content-Type', 'application/scim+json');
+		expect(res.json).toHaveBeenCalledWith({
+			schemas: ['urn:ietf:params:scim:api:messages:2.0:Error'],
+			status: '403',
+			detail: 'SCIM provisioning requires SAML or OIDC single sign-on',
+		});
+		expect(scimTokenService.verifyToken).not.toHaveBeenCalled();
+		expect(next).not.toHaveBeenCalled();
 		expect(scimConnectionService.recordAuthFailure).not.toHaveBeenCalled();
 		expect(scimConnectionService.recordAuthSuccess).not.toHaveBeenCalled();
 	});

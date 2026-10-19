@@ -10,6 +10,7 @@ import { AuthError } from '@n8n/errors';
 import { PasswordUtility } from '@/services/password.utility';
 import {
 	assertAuthenticationMethodCanBeEnabled,
+	emitSsoLoginDisabled,
 	getCurrentAuthenticationMethod,
 	setCurrentAuthenticationMethod,
 } from '@/sso.ee/sso-helpers';
@@ -29,6 +30,8 @@ export async function setSamlLoginEnabled(enabled: boolean): Promise<void> {
 
 	Container.get(GlobalConfig).sso.saml.loginEnabled = enabled;
 	await setCurrentAuthenticationMethod(enabled ? 'saml' : targetAuthenticationMethod);
+
+	if (!enabled && currentAuthenticationMethod === 'saml') await emitSsoLoginDisabled('saml');
 }
 
 export function setSamlLoginLabel(label: string): void {
