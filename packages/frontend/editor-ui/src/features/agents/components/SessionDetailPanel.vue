@@ -19,11 +19,16 @@ import type { IconName } from '@n8n/design-system';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { VIEWS } from '@/app/constants/navigation';
 import { parseIntegrationActionCard } from '@/features/ai/shared/agentsChat/n8nChatInteraction';
-import type { ChatMessageAttachment } from '@/features/ai/shared/agentsChat/types';
+import type {
+	ApprovalInput,
+	ApprovalResume,
+	ChatMessageAttachment,
+} from '@/features/ai/shared/agentsChat/types';
 import { getThinkingDurationSec } from '@/features/ai/shared/agentsChat/thinking';
 import AiThinkingBlock from '@/features/ai/shared/components/AiThinkingBlock.vue';
 import AiReasoningBlock from '@/features/ai/shared/components/AiReasoningBlock.vue';
 import AgentChatMessageAttachments from './AgentChatMessageAttachments.vue';
+import ApprovalCard from './interactive/ApprovalCard.vue';
 import RichInteractionCard from './RichInteractionCard.vue';
 import WorkflowExecutionLogViewer from './WorkflowExecutionLogViewer.vue';
 import ToolIoView from './ToolIoView.vue';
@@ -52,6 +57,9 @@ const props = defineProps<{
 	/** Scope for the attachment download URLs on user items. */
 	projectId?: string;
 	agentId?: string;
+	/** Set while this suspension is the open task approval. */
+	approval?: ApprovalInput;
+	approvalDisabled?: boolean;
 }>();
 
 const userAttachments = computed((): ChatMessageAttachment[] => {
@@ -85,7 +93,10 @@ function openFullExecution(): void {
 		window.open(fullExecutionHref.value, '_blank', 'noopener');
 	}
 }
-const emit = defineEmits<{ close: [] }>();
+const emit = defineEmits<{
+	close: [];
+	approve: [resumeData: ApprovalResume];
+}>();
 
 function formatTimestamp(ts: number): string {
 	if (!ts) return '';
@@ -352,6 +363,12 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 					</template>
 
 					<template v-else-if="item.kind === 'suspension'">
+						<ApprovalCard
+							v-if="approval"
+							:input="approval"
+							:disabled="approvalDisabled"
+							@submit="emit('approve', $event)"
+						/>
 						<div data-test-id="hitl-request-details">
 							<div :class="$style.label">
 								{{ i18n.baseText('agentSessions.timeline.requestDetails') }}

@@ -1,6 +1,7 @@
 import type { AuthenticatedRequest, User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
+import type { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
 import type { AgentExecutionService } from '../agent-execution.service';
 import type { AgentSessionLangSmithExportService } from '../agent-session-langsmith-export.service';
 import { AgentThreadsController } from '../agent-threads.controller';
@@ -26,6 +27,7 @@ describe('AgentThreadsController route access scopes', () => {
 	it.each([
 		['listThreads', 'get', '/:agentId/threads'],
 		['getThread', 'get', '/:agentId/threads/:threadId'],
+		['resumeTaskApproval', 'post', '/:agentId/threads/:threadId/approval'],
 		['exportThreadToLangSmith', 'post', '/:agentId/threads/:threadId/langsmith-export'],
 		['deleteThread', 'delete', '/:agentId/threads/:threadId'],
 	])('%s uses %s %s', (handlerName, method, path) => {
@@ -35,6 +37,7 @@ describe('AgentThreadsController route access scopes', () => {
 	it.each([
 		['listThreads', 'agent:read'],
 		['getThread', 'agent:read'],
+		['resumeTaskApproval', 'agent:execute'],
 		['exportThreadToLangSmith', 'agent:read'],
 		['deleteThread', 'agent:update'],
 	])('%s uses %s', (handlerName, scope) => {
@@ -46,6 +49,7 @@ describe('AgentThreadsController route access scopes', () => {
 		const controller = new AgentThreadsController(
 			agentExecutionService,
 			mock<AgentSessionLangSmithExportService>(),
+			mock<AgentExecutionOrchestratorService>(),
 		);
 		agentExecutionService.getThreadDetail.mockResolvedValue({
 			thread: mock<AgentExecutionThread>({
@@ -85,6 +89,7 @@ describe('AgentThreadsController session details', () => {
 			const controller = new AgentThreadsController(
 				service,
 				mock<AgentSessionLangSmithExportService>(),
+				mock<AgentExecutionOrchestratorService>(),
 			);
 			service.getThreadDetail.mockResolvedValue({
 				thread: mock<AgentExecutionThread>({

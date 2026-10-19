@@ -1,10 +1,15 @@
-import { ListAgentSessionsQueryDto, type AgentSessionPreviewAccess } from '@n8n/api-types';
+import {
+	AgentTaskApprovalDto,
+	ListAgentSessionsQueryDto,
+	type AgentSessionPreviewAccess,
+} from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
-import { Delete, Get, Post, ProjectScope, Query, RestController } from '@n8n/decorators';
+import { Body, Delete, Get, Post, ProjectScope, Query, RestController } from '@n8n/decorators';
 import type { Response } from 'express';
 
 import { NotFoundError } from '@n8n/errors';
 
+import { AgentExecutionOrchestratorService } from './agent-execution-orchestrator.service';
 import { AgentExecutionService } from './agent-execution.service';
 import { AgentSessionLangSmithExportService } from './agent-session-langsmith-export.service';
 import { canContinueThreadInPreview } from './utils/agent-thread-access';
@@ -15,6 +20,7 @@ export class AgentThreadsController {
 	constructor(
 		private readonly agentExecutionService: AgentExecutionService,
 		private readonly langsmithExportService: AgentSessionLangSmithExportService,
+		private readonly agentExecutionOrchestratorService: AgentExecutionOrchestratorService,
 	) {}
 
 	@Get('/:agentId/threads')
@@ -62,6 +68,24 @@ export class AgentThreadsController {
 			canContinueInPreview: canContinueThreadInPreview(result.thread, req.user.id, source),
 		};
 		return { ...result, thread: { ...thread, ...access, source: source ?? null } };
+	}
+
+	@Post('/:agentId/threads/:threadId/approval')
+	@ProjectScope('agent:execute')
+	async resumeTaskApproval(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
+		@Body payload: AgentTaskApprovalDto,
+	) {
+		const { projectId, agentId, threadId } = req.params;
+		await this.agentExecutionOrchestratorService.resumeTaskApproval({
+			projectId,
+			agentId,
+			threadId,
+			user: req.user,
+			toolCallId: payload.toolCallId,
+			resumeData: payload.resumeData,
+		});
+		return { success: true };
 	}
 
 	@Post('/:agentId/threads/:threadId/langsmith-export')

@@ -39,7 +39,16 @@ function makeRouter(): Router {
 
 function mountIt(
 	item: TimelineItem | null,
-	extraProps: { projectId?: string; agentId?: string } = {},
+	extraProps: {
+		projectId?: string;
+		agentId?: string;
+		approval?: {
+			type: 'approval';
+			toolName: string;
+			displayName?: string;
+			args: unknown;
+		};
+	} = {},
 ) {
 	return mount(SessionDetailPanel, {
 		props: { item, ...extraProps },
@@ -297,6 +306,36 @@ describe('SessionDetailPanel — HITL sequence', () => {
 		expect(w.text()).toContain('Approval request for Check ledger');
 		expect(w.text()).toContain('Check ledger');
 		expect(w.get('[data-test-id="hitl-request-details"]').text()).toContain('returnAll');
+		expect(w.find('[data-testid="agent-approval-card"]').exists()).toBe(false);
+	});
+
+	it('shows the approval card only when the session passes one in', async () => {
+		const item = {
+			kind: 'suspension' as const,
+			executionId: 'e1',
+			timestamp: 100,
+			toolName: 'send_channel_message',
+			hitlRequestType: 'approval' as const,
+			hitlToolDisplayName: 'Send channel message',
+			hitlRequest: {
+				type: 'approval',
+				toolName: 'send_channel_message',
+				displayName: 'Send channel message',
+				args: { text: 'hello' },
+			},
+		};
+		const hidden = mountIt(item);
+		expect(hidden.find('[data-testid="agent-approval-card"]').exists()).toBe(false);
+
+		const shown = mountIt(item, {
+			approval: {
+				type: 'approval',
+				toolName: 'send_channel_message',
+				displayName: 'Send channel message',
+				args: { text: 'hello' },
+			},
+		});
+		expect(shown.find('[data-testid="agent-approval-card"]').exists()).toBe(true);
 	});
 
 	it.each([

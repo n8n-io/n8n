@@ -7,7 +7,10 @@ import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPar
 import { AgentExecution } from '../entities/agent-execution.entity';
 import { AgentExecutionMessageLink } from '../entities/agent-execution-message-link.entity';
 import { AgentMessageEntity } from '../entities/agent-message.entity';
-import type { ThreadFailureSummary } from '../utils/execution-failure-summary';
+import type {
+	AgentExecutionFailureSummary,
+	ThreadFailureSummary,
+} from '../utils/execution-failure-summary';
 
 export type RunningAgentExecution = Pick<
 	AgentExecution,
@@ -363,6 +366,23 @@ export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
 			.where('id = :executionId', { executionId })
 			.setParameters({ cost })
 			.execute();
+	}
+
+	/**
+	 * Close task approvals whose checkpoint the TTL prune just expired.
+	 * Session status follows the latest execution, so this is the expiry notice.
+	 */
+	async failExpiredWaitingApprovals(threadIds: string[]): Promise<void> {
+		if (threadIds.length === 0) return;
+		const message = 'This approval expired.';
+		const failureSummary: AgentExecutionFailureSummary = {
+			count: 1,
+			latest: { kind: 'execution', name: null, message, occurredAt: Date.now() },
+		};
+		await this.update(
+			{ threadId: In(threadIds), status: 'waiting' },
+			{ status: 'error', error: message, failureSummary },
+		);
 	}
 
 	/** Delete every run in a thread. Caller must verify ownership first. */

@@ -11,6 +11,7 @@ import { Logger } from '@n8n/backend-common';
 import type { StorageLocation } from '@n8n/blob-storage';
 import { TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { isRecord } from '@n8n/utils/is-record';
 import chunk from 'lodash/chunk';
 import { ErrorReporter, StorageConfig } from 'n8n-core';
 import { OperationalError, UnexpectedError } from 'n8n-workflow';
@@ -399,7 +400,7 @@ export class AgentExecutionService {
 		this.pendingTimelineSnapshots.delete(executionId);
 		const record = applyFatalSessionOutcome(params.record);
 		const settled = record === params.record ? params : { ...params, record };
-		const status = executionStatus(record);
+		const status = executionStatus(settled);
 		const stoppedAt = new Date(record.startTime + record.duration);
 		const failureSummary = computeExecutionFailureSummary({
 			timeline: record.timeline,
@@ -1257,7 +1258,8 @@ export class AgentExecutionService {
 	}
 
 	private trackFinishedTurn(params: RecordMessageParams, status: AgentExecutionStatus): void {
-		if (!params.telemetry) return;
+		// A parked approval is neither a success nor a failure.
+		if (status === 'waiting' || !params.telemetry) return;
 		const { agentId, threadId, record } = params;
 		try {
 			this.telemetry.trackAgentTurnFinished({
@@ -1297,10 +1299,28 @@ function cleanUserMessage(message: string | null, agentName: string): string | n
 	return cleaned.length > 0 ? cleaned : null;
 }
 
-function executionStatus(record: MessageRecord): AgentExecution['status'] {
+function executionStatus(
+	params: Pick<RecordMessageParams, 'record' | 'hitlStatus' | 'source'>,
+): AgentExecution['status'] {
+	const { record } = params;
 	if (record.error !== null || record.finishReason === 'error') return 'error';
 	if (record.finishReason === 'cancelled') return 'cancelled';
+	if (
+		params.hitlStatus === 'suspended' &&
+		params.source === 'task' &&
+		record.timeline.some(isApprovalSuspension)
+	) {
+		return 'waiting';
+	}
 	return 'success';
+}
+
+function isApprovalSuspension(event: TimelineEvent): boolean {
+	return (
+		event.type === 'suspension' &&
+		isRecord(event.suspendPayload) &&
+		event.suspendPayload.type === 'approval'
+	);
 }
 
 /** Maps a thread (with `agent` and `agent.activeVersion` loaded) to the

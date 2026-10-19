@@ -1,6 +1,6 @@
 import { BaseRepository, TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, MoreThan } from '@n8n/typeorm';
+import { DataSource, IsNull, LessThan, MoreThan, Not } from '@n8n/typeorm';
 
 import { AgentCheckpoint } from '../entities/agent-checkpoint.entity';
 
@@ -104,6 +104,14 @@ export class AgentCheckpointRepository extends BaseRepository<AgentCheckpoint> {
 			{ runId, agentId },
 			{ expired: true, state: null },
 		);
+	}
+
+	async findStaleThreadIds(olderThan: Date): Promise<string[]> {
+		const rows = await this.find({
+			select: { runId: true, threadId: true },
+			where: { updatedAt: LessThan(olderThan), state: Not(IsNull()) },
+		});
+		return [...new Set(rows.flatMap((row) => (row.threadId === null ? [] : [row.threadId])))];
 	}
 
 	async markExpired(olderThan: Date): Promise<number> {

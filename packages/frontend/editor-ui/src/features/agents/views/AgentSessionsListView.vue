@@ -127,6 +127,8 @@ function statusLabel(status: AgentSessionStatus): string {
 			return i18n.baseText('agentSessions.status.cancelled');
 		case 'interrupted':
 			return i18n.baseText('agentSessions.status.interrupted');
+		case 'waiting':
+			return i18n.baseText('agentSessions.status.waiting');
 	}
 }
 
@@ -569,7 +571,8 @@ async function onFiltersChange(value: AgentSessionFilters) {
 	}
 
 	&[data-status='cancelled'] .titleCell,
-	&[data-status='interrupted'] .titleCell {
+	&[data-status='interrupted'] .titleCell,
+	&[data-status='waiting'] .titleCell {
 		border-left-color: var(--border-color--warning);
 	}
 
@@ -642,7 +645,8 @@ async function onFiltersChange(value: AgentSessionFilters) {
 		}
 
 		&[data-status='cancelled'],
-		&[data-status='interrupted'] {
+		&[data-status='interrupted'],
+		&[data-status='waiting'] {
 			border-left-color: var(--border-color--warning);
 		}
 

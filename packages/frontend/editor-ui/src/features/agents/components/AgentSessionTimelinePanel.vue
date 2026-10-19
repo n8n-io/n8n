@@ -30,6 +30,8 @@ import type {
 	TimelineItem,
 	TimelineStatusFilterKey,
 } from '@/features/agents/session-timeline.types';
+import { parseApprovalInput } from '@/features/ai/shared/agentsChat/messageMappers';
+import type { ApprovalInput, ApprovalResume } from '@/features/ai/shared/agentsChat/types';
 import { useI18n } from '@n8n/i18n';
 import { N8nIcon, N8nInput, type BadgeVariant } from '@n8n/design-system';
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
@@ -184,6 +186,35 @@ const filterOptions = computed<FilterOption[]>(() => {
 const selectedItem = computed<TimelineItem | null>(() =>
 	selectedIndex.value !== null ? (items.value[selectedIndex.value] ?? null) : null,
 );
+
+const approving = ref(false);
+
+const sessionApproval = computed((): ApprovalInput | undefined => {
+	const item = selectedItem.value;
+	const latest = executions.value.at(-1);
+	if (!item || !latest || latest.status !== 'waiting' || latest.id !== item.executionId) {
+		return undefined;
+	}
+	if (item.kind !== 'suspension' || item.hitlRequestType !== 'approval') return undefined;
+	return parseApprovalInput(item.hitlRequest);
+});
+
+async function submitSessionApproval(resumeData: ApprovalResume) {
+	const toolCallId = selectedItem.value?.toolCallId;
+	if (!toolCallId || approving.value) return;
+	approving.value = true;
+	try {
+		await sessionsStore.resumeTaskApproval(props.projectId, props.agentId, props.threadId, {
+			toolCallId,
+			resumeData,
+		});
+		refreshThreadDetail();
+	} catch (error) {
+		toast.showError(error, i18n.baseText('agentSessions.approval.failed'));
+	} finally {
+		approving.value = false;
+	}
+}
 
 const visibleItemIndexes = computed(() =>
 	filteredTimelineItemIndexes(items.value, selectedFilters.value, searchQuery.value, labelForKey),
@@ -428,7 +459,10 @@ watch([() => props.projectId, () => props.agentId, () => props.threadId], loadTh
 						:item="selectedItem"
 						:project-id="props.projectId"
 						:agent-id="props.agentId"
+						:approval="sessionApproval"
+						:approval-disabled="approving"
 						@close="selectTimelineItem(null)"
+						@approve="submitSessionApproval"
 					/>
 				</div>
 			</Transition>

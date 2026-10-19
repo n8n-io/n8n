@@ -4113,3 +4113,68 @@ describe('AgentExecutionOrchestratorService', () => {
 		expect(runtimeCacheService.releaseRuntimeLease).toHaveBeenCalledExactlyOnceWith(runtime.agent);
 	});
 });
+
+describe('task approval resume', () => {
+	it('resumes a waiting task thread through the published runtime', async () => {
+		const { service, executionService, checkpointStorage } = makeService();
+		executionService.findThreadById.mockResolvedValue({
+			id: 'thread-1',
+			projectId,
+			agentId,
+			taskId: 'task-1',
+			taskVersionId: 'version-1',
+			accessScope: 'project',
+			ownerId: null,
+		} as never);
+		executionService.findLatestSuspendedRun.mockResolvedValue({
+			source: 'task',
+			status: 'waiting',
+		} as never);
+		checkpointStorage.findApprovalRunId.mockResolvedValue('run-1');
+		const resumeForChat = vi
+			.spyOn(service, 'resumeForChat')
+			.mockImplementation(async function* () {});
+
+		await service.resumeTaskApproval({
+			agentId,
+			projectId,
+			threadId: 'thread-1',
+			user,
+			toolCallId: 'call-1',
+			resumeData: { approved: true },
+		});
+		await vi.waitFor(() => {
+			expect(resumeForChat).toHaveBeenCalledWith(
+				expect.objectContaining({
+					runId: 'run-1',
+					toolCallId: 'call-1',
+					source: 'task',
+					usePublishedVersion: true,
+					integrationType: 'task',
+					expectedMemory: { threadId: 'thread-1', resourceId: 'task:task-1' },
+					resumeData: { approved: true },
+				}),
+			);
+		});
+	});
+
+	it('rejects a session that is not a waiting task run', async () => {
+		const { service, executionService, checkpointStorage } = makeService();
+		executionService.findLatestSuspendedRun.mockResolvedValue({
+			source: 'slack',
+			status: 'success',
+		} as never);
+
+		await expect(
+			service.resumeTaskApproval({
+				agentId,
+				projectId,
+				threadId: 'thread-1',
+				user,
+				toolCallId: 'call-1',
+				resumeData: { approved: false },
+			}),
+		).rejects.toThrow('This session has no approval to resume');
+		expect(checkpointStorage.findApprovalRunId).not.toHaveBeenCalled();
+	});
+});
