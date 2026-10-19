@@ -491,7 +491,7 @@ describe('N8nClient packages', () => {
 					selectedWorkflowIds: ['workflow-1', 'workflow-2'],
 					deletedWorkflowIds: ['workflow-3', 'workflow-4'],
 					conflictPolicy: 'skip',
-					idPolicy: 'new',
+					idPolicy: 'source',
 					overwriteDeletionPolicy: 'hard-delete',
 				},
 			);
@@ -507,7 +507,7 @@ describe('N8nClient packages', () => {
 			expect(form.get('selectedWorkflowIds')).toBe('["workflow-1","workflow-2"]');
 			expect(form.get('deletedWorkflowIds')).toBe('["workflow-3","workflow-4"]');
 			expect(form.get('conflictPolicy')).toBe('skip');
-			expect(form.get('idPolicy')).toBe('new');
+			expect(form.get('idPolicy')).toBe('source');
 			expect(form.get('overwriteDeletionPolicy')).toBe('hard-delete');
 
 			const pkg = form.get('package') as File;
@@ -563,7 +563,7 @@ describe('N8nClient packages', () => {
 					conflictPolicy: 'fail',
 					projectId: 'proj-1',
 					folderId: '',
-					idPolicy: 'new',
+					idPolicy: 'source',
 					publishingPolicy: 'match-source',
 					bindings: '{"credentials":{"source":"target"}}',
 					credentialMatchingMode: undefined,
@@ -578,7 +578,7 @@ describe('N8nClient packages', () => {
 			const form = init.body as FormData;
 			expect(form.get('conflictPolicy')).toBe('fail');
 			expect(form.get('projectId')).toBe('proj-1');
-			expect(form.get('idPolicy')).toBe('new');
+			expect(form.get('idPolicy')).toBe('source');
 			expect(form.get('publishingPolicy')).toBe('match-source');
 			expect(form.get('bindings')).toBe('{"credentials":{"source":"target"}}');
 			for (const oldField of [

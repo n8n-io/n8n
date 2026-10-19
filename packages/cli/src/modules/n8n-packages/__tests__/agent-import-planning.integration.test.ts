@@ -319,7 +319,7 @@ it('plans cycles, typed bindings and task IDs without changing definitions or de
 	const [a, b] = plan.agentPlan!.items;
 	const workflowId =
 		plan.workflowPlan.items[0].action === 'create' ? plan.workflowPlan.items[0].decidedId : '';
-	expect(a.targetAgentId).not.toBe(workflowId);
+	expect(a.targetAgentId).toBe(workflowId);
 	expect(a.config?.subAgents?.agents?.[0].agentId).toBe(b.targetAgentId);
 	expect(b.config?.subAgents?.agents?.[0].agentId).toBe(a.targetAgentId);
 	expect(a.config?.tools?.[0]).toMatchObject({

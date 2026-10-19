@@ -54,7 +54,7 @@ describe('package import-selection command', () => {
 			selectedWorkflowIds: ['w-1', 'w-2'],
 			deletedWorkflowIds: ['w-3'],
 			conflictPolicy: 'skip',
-			idPolicy: 'new',
+			idPolicy: 'source',
 			overwriteDeletionPolicy: 'hard-delete',
 		});
 
@@ -70,7 +70,7 @@ describe('package import-selection command', () => {
 			selectedWorkflowIds: ['w-1', 'w-2'],
 			deletedWorkflowIds: ['w-3'],
 			conflictPolicy: 'skip',
-			idPolicy: 'new',
+			idPolicy: 'source',
 			overwriteDeletionPolicy: 'hard-delete',
 		});
 	});
@@ -102,7 +102,7 @@ describe('package import-selection command', () => {
 
 		const idPolicy = PackageImportSelection.flags.idPolicy;
 		expect(idPolicy.aliases).toEqual(['id-policy']);
-		expect(idPolicy.options).toEqual(['new', 'source']);
+		expect(idPolicy.options).toEqual(['source']);
 		expect(idPolicy.default).toBeUndefined();
 
 		const deletionPolicy = PackageImportSelection.flags.overwriteDeletionPolicy;
@@ -154,7 +154,7 @@ describe('package import-selection command', () => {
 				'--selected-workflow-ids=w-1',
 				'--selected-workflow-ids=w-2',
 				'--conflict-policy=skip',
-				'--id-policy=new',
+				'--id-policy=source',
 			]);
 
 			expect(importPackageSelection).toHaveBeenCalledWith(
@@ -162,7 +162,7 @@ describe('package import-selection command', () => {
 				expect.objectContaining({
 					selectedWorkflowIds: ['w-1', 'w-2'],
 					conflictPolicy: 'skip',
-					idPolicy: 'new',
+					idPolicy: 'source',
 				}),
 			);
 		});

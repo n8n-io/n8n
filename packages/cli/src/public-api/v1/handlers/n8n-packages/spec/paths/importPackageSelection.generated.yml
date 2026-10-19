@@ -45,10 +45,9 @@ requestBody:
           idPolicy:
             type: string
             enum:
-              - new
               - source
             default: source
-            description: Controls the id each newly created workflow receives. `source` (default) reuses the package's own workflow id on the target instance; `new` mints a fresh id and records the package id as `sourceWorkflowId`. Workflows matched to an existing workflow keep that workflow's current id, regardless of policy.
+            description: Controls IDs for newly created workflows. Only `source` is supported. It uses the package ID. An ID owned outside the destination project blocks the import. Matched workflows keep their destination ID.
           overwriteDeletionPolicy:
             type: string
             enum:
