@@ -10,7 +10,6 @@ import {
 } from '@n8n/design-system';
 import { VIEWS } from '@n8n/frontend-constants/views';
 import { useI18n } from '@n8n/i18n';
-import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed } from 'vue';
 
@@ -21,35 +20,35 @@ const props = defineProps<{
 }>();
 const i18n = useI18n();
 const rootStore = useRootStore();
-const settingsStore = useSettingsStore();
 
 const usageRows = computed(() => {
 	const usage = props.detail.usage;
-	const measurements = settingsStore.isCloudDeployment
-		? [
-				{
-					key: 'credits',
-					label: i18n.baseText('inbox.selfHealing.usage.credits'),
-					value: 'credits' in usage ? usage.credits : null,
-				},
-			]
-		: [
-				{
-					key: 'promptTokens',
-					label: i18n.baseText('inbox.selfHealing.usage.promptTokens'),
-					value: 'promptTokens' in usage ? usage.promptTokens : null,
-				},
-				{
-					key: 'completionTokens',
-					label: i18n.baseText('inbox.selfHealing.usage.completionTokens'),
-					value: 'completionTokens' in usage ? usage.completionTokens : null,
-				},
-				{
-					key: 'totalTokens',
-					label: i18n.baseText('inbox.selfHealing.usage.totalTokens'),
-					value: 'totalTokens' in usage ? usage.totalTokens : null,
-				},
-			];
+	const measurements =
+		'credits' in usage
+			? [
+					{
+						key: 'credits',
+						label: i18n.baseText('inbox.selfHealing.usage.credits'),
+						value: usage.credits,
+					},
+				]
+			: [
+					{
+						key: 'promptTokens',
+						label: i18n.baseText('inbox.selfHealing.usage.promptTokens'),
+						value: usage.promptTokens,
+					},
+					{
+						key: 'completionTokens',
+						label: i18n.baseText('inbox.selfHealing.usage.completionTokens'),
+						value: usage.completionTokens,
+					},
+					{
+						key: 'totalTokens',
+						label: i18n.baseText('inbox.selfHealing.usage.totalTokens'),
+						value: usage.totalTokens,
+					},
+				];
 
 	const rows = measurements.flatMap((row) => {
 		if (row.value === null) return [];

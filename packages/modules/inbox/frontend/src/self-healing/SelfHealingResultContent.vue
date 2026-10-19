@@ -300,11 +300,17 @@ function onTabChange(tab: string) {
 }
 
 .decisionActions {
+	/* Let taller buttons use the space around the row without moving the cards. */
+	margin-block: calc(-1 * var(--spacing--5xs));
 	display: flex;
 	align-items: center;
 	flex-wrap: wrap;
 	gap: var(--spacing--2xs);
 	max-width: 100%;
+
+	> button {
+		--button--height: var(--height--md);
+	}
 }
 
 .permissionHint {
