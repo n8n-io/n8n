@@ -1,0 +1,28 @@
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/__tests__/review.fixtures.ts
+  s_983eea3c47ac98::t_962fca65832d90 1-93
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionReview.selection.test.ts
+  s_983eea3c47ac98::t_d796f2ea60a364 1-37,42-76,89-102,106-121
+  s_983eea3c47ac98::t_93f2184b70afd3 103-105
+  s_983eea3c47ac98::t_53a718b1416aca 77-88
+  s_983eea3c47ac98::t_d466d18ed91f80 38-41
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionReview.selection.ts
+  s_983eea3c47ac98::t_ffb8d478c82816 1-102,105-133,136-156,159-196
+  s_983eea3c47ac98::t_0bd80a7a671f25 103-104
+  s_983eea3c47ac98::t_d466d18ed91f80 134-135,157-158
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "674a5140d182b66289e773ac3f306277148fb855",
+  "prompts": {},
+  "sessions": {
+    "s_983eea3c47ac98": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6afe657c-702d-4003-8734-85a65b043c95",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

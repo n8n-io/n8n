@@ -1,0 +1,28 @@
+packages/@n8n/config/test/config.test.ts
+  s_e5011bcb285def::t_c1cfe30fdadfa3 379
+  s_9b4729ab9e7775::t_01adb55a49460d 703
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8989565b494fd297c8e47d99a3185b6d220038d4",
+  "prompts": {},
+  "sessions": {
+    "s_9b4729ab9e7775": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "612fcf24-e530-4b9c-99ef-c12a688ea88b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    },
+    "s_e5011bcb285def": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a2a94661-efbd-4c97-8dee-3e429a963594",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "sim <olivier.dejong@n8n.io>"
+    }
+  }
+}

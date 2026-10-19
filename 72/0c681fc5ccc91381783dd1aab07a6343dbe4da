@@ -1,0 +1,34 @@
+packages/@n8n/engine/oxlint.config.mts
+  s_eddc51d5b77149::t_aa0745fd494995 13
+packages/@n8n/engine/src/server/__tests__/workflow-executions.integration.test.ts
+  s_eddc51d5b77149::t_fc2f645aaadf19 206-238
+packages/@n8n/engine/.vitest/json/output.json
+  s_eddc51d5b77149::t_e7918235c489ef 1-631
+packages/@n8n/engine/src/database/migrations/index.ts
+  s_eddc51d5b77149::t_7b9c077325219b 3,8
+packages/@n8n/engine/src/database/migrations/1792108800000-IndexWorkflowExecutionListOrder.ts
+  s_eddc51d5b77149::t_7d931fbc3d23de 1-41
+packages/@n8n/engine/src/database/typeorm-execution-view-store.ts
+  s_eddc51d5b77149::t_21fdc13bcde5e6 90-91,93,97-101
+  s_eddc51d5b77149::t_8f08a721c9a829 50-79
+packages/@n8n/engine/src/database/entities/workflow-execution.entity.ts
+  s_eddc51d5b77149::t_7b9c077325219b 21-23
+packages/@n8n/engine/src/database/typeorm-step-store.ts
+  s_eddc51d5b77149::t_bd2b4fdae7279f 347-360
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "720c681fc5ccc91381783dd1aab07a6343dbe4da",
+  "prompts": {},
+  "sessions": {
+    "s_eddc51d5b77149": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fadd9142-47a7-493a-bafe-10f6254173a4",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}
