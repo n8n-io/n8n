@@ -95,7 +95,7 @@ describe('PromotionBanners', () => {
 			oneChange('Changed workflow', 'modified'),
 		);
 		usersStore.currentUser = mock<IUser>({
-			globalScopes: ['gitConnection:list', 'gitConnection:push'],
+			globalScopes: ['gitConnection:list', 'gitConnection:read', 'gitConnection:push'],
 		});
 		const { findByTestId, queryByTestId } = renderComponent();
 
@@ -115,7 +115,9 @@ describe('PromotionBanners', () => {
 		});
 		expect(await findByTestId('promotion-banner')).toHaveTextContent('1 change');
 		// Listing environments alone is not enough, the direction needs its own scope.
-		usersStore.currentUser = mock<IUser>({ globalScopes: ['gitConnection:list'] });
+		usersStore.currentUser = mock<IUser>({
+			globalScopes: ['gitConnection:list', 'gitConnection:read'],
+		});
 		await waitFor(() => expect(queryByTestId('promotion-banner')).not.toBeInTheDocument());
 	});
 
@@ -124,7 +126,12 @@ describe('PromotionBanners', () => {
 		server.get('/api/v1/promotions/environments', environmentsRequest);
 		settingsStore.settings = { ...settingsStore.settings, envFeatureFlags: {} };
 		usersStore.currentUser = mock<IUser>({
-			globalScopes: ['gitConnection:list', 'gitConnection:push', 'gitConnection:pull'],
+			globalScopes: [
+				'gitConnection:list',
+				'gitConnection:read',
+				'gitConnection:push',
+				'gitConnection:pull',
+			],
 		});
 		const { queryByTestId } = renderComponent();
 
@@ -143,7 +150,7 @@ describe('PromotionBanners', () => {
 			oneChange('Incoming workflow', 'new'),
 		);
 		usersStore.currentUser = mock<IUser>({
-			globalScopes: ['gitConnection:list', 'gitConnection:pull'],
+			globalScopes: ['gitConnection:list', 'gitConnection:read', 'gitConnection:pull'],
 		});
 		const { findByTestId, queryByTestId } = renderComponent();
 
@@ -158,7 +165,9 @@ describe('PromotionBanners', () => {
 			data: { projectId: 'project-1', direction: 'apply' },
 		});
 
-		usersStore.currentUser = mock<IUser>({ globalScopes: ['gitConnection:list'] });
+		usersStore.currentUser = mock<IUser>({
+			globalScopes: ['gitConnection:list', 'gitConnection:read'],
+		});
 		await waitFor(() => expect(queryByTestId('promotion-incoming-banner')).not.toBeInTheDocument());
 	});
 
@@ -169,7 +178,12 @@ describe('PromotionBanners', () => {
 		server.get('/rest/promotions/project-1/changes/promote', promoteChanges);
 		server.get('/rest/promotions/project-1/changes/apply', applyChanges);
 		usersStore.currentUser = mock<IUser>({
-			globalScopes: ['gitConnection:list', 'gitConnection:push', 'gitConnection:pull'],
+			globalScopes: [
+				'gitConnection:list',
+				'gitConnection:read',
+				'gitConnection:push',
+				'gitConnection:pull',
+			],
 		});
 		const { findByTestId } = renderComponent();
 		await findByTestId('promotion-banner');
@@ -189,7 +203,12 @@ describe('PromotionBanners', () => {
 		server.get('/rest/promotions/project-1/changes/promote', promoteChanges);
 		server.get('/rest/promotions/project-1/changes/apply', applyChanges);
 		usersStore.currentUser = mock<IUser>({
-			globalScopes: ['gitConnection:list', 'gitConnection:push', 'gitConnection:pull'],
+			globalScopes: [
+				'gitConnection:list',
+				'gitConnection:read',
+				'gitConnection:push',
+				'gitConnection:pull',
+			],
 		});
 		const { findByTestId } = renderComponent();
 		await findByTestId('promotion-banner');
@@ -210,7 +229,7 @@ describe('PromotionBanners', () => {
 			oneChange('Incoming workflow', 'new'),
 		);
 		usersStore.currentUser = mock<IUser>({
-			globalScopes: ['gitConnection:list', 'gitConnection:pull'],
+			globalScopes: ['gitConnection:list', 'gitConnection:read', 'gitConnection:pull'],
 		});
 		const { findByTestId } = renderComponent();
 		await findByTestId('promotion-incoming-banner');
@@ -226,7 +245,7 @@ describe('PromotionBanners', () => {
 			oneChange('Incoming workflow', 'new'),
 		);
 		usersStore.currentUser = mock<IUser>({
-			globalScopes: ['gitConnection:list', 'gitConnection:pull'],
+			globalScopes: ['gitConnection:list', 'gitConnection:read', 'gitConnection:pull'],
 		});
 		const { findByTestId } = renderComponent();
 		await findByTestId('promotion-incoming-banner');
@@ -255,7 +274,7 @@ describe('PromotionBanners', () => {
 			oneChange('Incoming workflow', 'new'),
 		);
 		usersStore.currentUser = mock<IUser>({
-			globalScopes: ['gitConnection:list', 'gitConnection:pull'],
+			globalScopes: ['gitConnection:list', 'gitConnection:read', 'gitConnection:pull'],
 		});
 		const { findByTestId, queryByTestId } = renderComponent();
 		await waitFor(() => expect(lookup).toHaveBeenCalledTimes(1));
@@ -280,7 +299,7 @@ describe('PromotionBanners', () => {
 			() => new Response(400, {}, { message: 'The apply direction is not connected' }),
 		);
 		usersStore.currentUser = mock<IUser>({
-			globalScopes: ['gitConnection:list', 'gitConnection:pull'],
+			globalScopes: ['gitConnection:list', 'gitConnection:read', 'gitConnection:pull'],
 		});
 		const { findByTestId } = renderComponent();
 
