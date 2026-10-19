@@ -44,16 +44,19 @@ const telemetryOf = (reason: RefusalReason, urlIssuer: boolean): TelemetryAuthCo
 	error_details: reason,
 });
 
-/** The telemetry for a request whose header carries no bearer, as it was before the pipeline. */
-function headerDenial(reason: RefusalReason, header: string | undefined): TelemetryAuthContext {
-	if (reason === 'no-credential') {
+/**
+ * The telemetry for a request whose header carries no bearer, as it was before the pipeline.
+ * `extractBearer` reports a missing header as `no-credential` and any other header as malformed.
+ */
+function headerDenial(header: string | undefined): TelemetryAuthContext {
+	if (header === undefined) {
 		return {
 			reason: 'missing_authorization_header',
 			auth_type: 'unknown',
 			error_details: 'Authorization header not sent',
 		};
 	}
-	const problem = /^bearer(\s|$)/i.test(header ?? '')
+	const problem = /^bearer(\s|$)/i.test(header)
 		? 'Malformed Bearer token'
 		: 'Missing Bearer prefix';
 	return {
@@ -113,12 +116,7 @@ export class McpServerMiddlewareService {
 			const extracted = extractBearer(inbound);
 			if (!extracted.ok) {
 				const refused = this.admission.refuse(inbound, extracted.reason);
-				await this.deny(
-					req,
-					res,
-					refused,
-					headerDenial(refused.reason, req.header('authorization')),
-				);
+				await this.deny(req, res, refused, headerDenial(req.header('authorization')));
 				return;
 			}
 
