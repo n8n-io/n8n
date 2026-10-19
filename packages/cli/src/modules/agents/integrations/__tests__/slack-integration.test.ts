@@ -68,6 +68,7 @@ describe('SlackIntegration', () => {
 		expect(createSlackAdapter).toHaveBeenCalledWith({
 			botToken: 'xoxb-token',
 			signingSecret: 'signing-secret',
+			nativeStreaming: false,
 			agentView: false,
 		});
 	});
@@ -84,6 +85,7 @@ describe('SlackIntegration', () => {
 		expect(createSlackAdapter).toHaveBeenCalledWith({
 			botToken: 'xoxb-token',
 			signingSecret: 'signing-secret',
+			nativeStreaming: false,
 			agentView: true,
 		});
 	});
@@ -211,7 +213,7 @@ describe('SlackIntegration', () => {
 		});
 	});
 
-	it('sets a thinking status and buffers resume responses for Slack actions', async () => {
+	it('sets a thinking status and streams resume responses for Slack actions', async () => {
 		const thread = {
 			startTyping: vi.fn().mockResolvedValue(undefined),
 		};
@@ -225,7 +227,7 @@ describe('SlackIntegration', () => {
 			agentId: 'agent-1',
 		});
 
-		expect(context.forceBuffered).toBe(true);
+		expect(context.forceBuffered).toBe(false);
 		expect(context.statusHandle).toBeUndefined();
 		expect(thread.startTyping).toHaveBeenCalledWith('Thinking...');
 	});

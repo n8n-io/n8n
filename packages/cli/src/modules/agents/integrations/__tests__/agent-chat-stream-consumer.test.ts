@@ -174,6 +174,36 @@ function makeStreamingConsumer(
 	});
 }
 
+describe('AgentChatStreamConsumer — stream delivery failure', () => {
+	it('does not wait for a failed post to consume text before starting a tool', async () => {
+		const localThread = mock<Thread<unknown, unknown>>();
+		const error = new Error('Slack delivery failed');
+		localThread.post.mockRejectedValue(error);
+		const postErrorToThread = vi.fn().mockResolvedValue(undefined);
+		const consumer = makeStreamingConsumer({ postErrorToThread });
+
+		await consumer.consume(
+			makeStream([
+				{ type: 'text-delta', id: 't-1', delta: 'Saving the reply.' },
+				{ type: 'text-end', id: 't-1' },
+				{ type: 'tool-call', toolCallId: 'save', toolName: 'save_reply', input: {} },
+				{ type: 'finish', finishReason: 'stop' },
+			]),
+			localThread,
+			{
+				statusHandle: {
+					keepDuringResponse: true,
+					clearBeforeResponse: vi.fn().mockResolvedValue(undefined),
+					resumeAfterResponse: vi.fn().mockResolvedValue(undefined),
+				},
+			},
+		);
+
+		expect(postErrorToThread).toHaveBeenCalledOnce();
+		expect(postErrorToThread).toHaveBeenCalledWith(localThread, error, undefined);
+	});
+});
+
 describe.each([
 	['streaming', false],
 	['buffered', true],
