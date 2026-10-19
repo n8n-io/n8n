@@ -555,6 +555,92 @@ describe('AST Interpreter', () => {
 		});
 	});
 
+	describe('Security - built-in members', () => {
+		let sdkFunctions: SDKFunctions;
+
+		beforeEach(() => {
+			sdkFunctions = createMockSDKFunctions();
+		});
+
+		it('should reject copying an inherited built-in method onto an allowed method name', () => {
+			const code = 'const x = {}; x.validate = x.hasOwnProperty; export default x;';
+			expect(() => interpretSDKCode(code, sdkFunctions)).toThrow(SecurityError);
+		});
+
+		it('should reject built-in methods used as object literal values', () => {
+			const code = 'const x = []; export default { toJSON: x.toString };';
+			expect(() => interpretSDKCode(code, sdkFunctions)).toThrow(SecurityError);
+		});
+
+		it('should reject property assignment on built-in prototypes', () => {
+			const originalEvery = Array.prototype.every;
+			sdkFunctions.node = vi.fn(() => Array.prototype);
+			const code = 'const p = node({}); p.every = 1; export default p;';
+
+			try {
+				expect(() => interpretSDKCode(code, sdkFunctions)).toThrow(SecurityError);
+				expect(Array.prototype.every).toBe(originalEvery);
+			} finally {
+				Array.prototype.every = originalEvery;
+			}
+		});
+
+		it('should reject calling a built-in method stored under an allowed method name', () => {
+			sdkFunctions.node = vi.fn(() => ({ validate: Object.prototype.hasOwnProperty }));
+			const code = 'const n = node({}); export default n.validate("a");';
+			expect(() => interpretSDKCode(code, sdkFunctions)).toThrow(SecurityError);
+		});
+
+		it('should reject members that built-in prototypes gain after load', () => {
+			Object.defineProperty(Object.prototype, 'addedAfterLoad', {
+				value: () => undefined,
+				configurable: true,
+			});
+			const code = 'const x = {}; const y = x.addedAfterLoad; export default x;';
+
+			try {
+				expect(() => interpretSDKCode(code, sdkFunctions)).toThrow(SecurityError);
+			} finally {
+				Reflect.deleteProperty(Object.prototype, 'addedAfterLoad');
+			}
+		});
+
+		it('should reject typed array methods', () => {
+			sdkFunctions.node = vi.fn(() => new Uint8Array(1));
+			const code = 'const n = node({}); export default { fill: n.fill };';
+			expect(() => interpretSDKCode(code, sdkFunctions)).toThrow(SecurityError);
+		});
+
+		it('should reject property assignment on less common built-in prototypes', () => {
+			sdkFunctions.node = vi.fn(() => DataView.prototype);
+			const code = 'const p = node({}); p.marker = 1; export default p;';
+
+			try {
+				expect(() => interpretSDKCode(code, sdkFunctions)).toThrow(SecurityError);
+				expect(Object.hasOwn(DataView.prototype, 'marker')).toBe(false);
+			} finally {
+				Reflect.deleteProperty(DataView.prototype, 'marker');
+			}
+		});
+
+		it('should reject property assignment on SDK functions', () => {
+			const code = 'workflow.validate = 1; export default workflow;';
+			expect(() => interpretSDKCode(code, sdkFunctions)).toThrow(SecurityError);
+		});
+
+		it('should still allow SDK method calls and assignment on user objects', () => {
+			const code = `
+				const wf = workflow('id', 'name');
+				const n = node({ type: 'n8n-nodes-base.set', version: 3, config: {} });
+				const settings = { a: 1 };
+				settings.b = 2;
+				export default wf.add(n);
+			`;
+			const result = interpretSDKCode(code, sdkFunctions) as { nodes: unknown[] };
+			expect(result.nodes).toHaveLength(1);
+		});
+	});
+
 	describe('Security - reserved SDK names', () => {
 		let sdkFunctions: SDKFunctions;
 

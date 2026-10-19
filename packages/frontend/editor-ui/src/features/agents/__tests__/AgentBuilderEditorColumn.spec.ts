@@ -1,4 +1,5 @@
 import { createTestingPinia } from '@pinia/testing';
+import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
 import { useAgentEvalsStore } from '../agentEvals.store';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { flushPromises, mount } from '@vue/test-utils';
@@ -110,6 +111,15 @@ vi.mock('../components/AgentPanelHeader.vue', () => ({
 	default: {
 		name: 'AgentPanelHeader',
 		template: '<header data-testid="agent-panel-header"><slot name="actions" /></header>',
+	},
+}));
+
+vi.mock('../components/AgentBudgetPanel.vue', () => ({
+	default: {
+		name: 'AgentBudgetPanel',
+		template: '<div data-testid="agent-budget-panel-stub" />',
+		props: ['config', 'disabled', 'projectId', 'agentId'],
+		emits: ['update:config'],
 	},
 }));
 
@@ -228,6 +238,12 @@ describe('AgentBuilderEditorColumn', () => {
 		expect(tabs.text()).not.toContain('Raw');
 	});
 
+	it('loads the type availability policies for the project', async () => {
+		await mountColumn();
+
+		expect(useTypeAvailabilityPoliciesStore().fetchForProject).toHaveBeenCalledWith('project-1');
+	});
+
 	it('does not render per-tab headings or descriptions for Sessions and Settings', async () => {
 		const sessionsWrapper = await mountColumn({ activeMainTab: 'sessions' });
 		const settingsWrapper = await mountColumn({ activeMainTab: 'settings' });
@@ -307,6 +323,14 @@ describe('AgentBuilderEditorColumn', () => {
 			.vm.$emit('update:config', { instructions: 'x' });
 
 		expect(wrapper.emitted('update:config')?.[0]).toEqual([{ instructions: 'x' }, undefined]);
+	});
+
+	it('forwards draft input before the config update', async () => {
+		const wrapper = await mountColumn();
+
+		wrapper.getComponent({ name: 'AgentInfoPanel' }).vm.$emit('draft:config');
+
+		expect(wrapper.emitted('draft:config')).toHaveLength(1);
 	});
 
 	it('disables the evals CTA for a read-only agent', async () => {
@@ -414,6 +438,15 @@ describe('AgentBuilderEditorColumn', () => {
 		const wrapper = await mountColumn({ activeMainTab: 'settings' });
 		await flushPromises();
 
+		const budgetPanel = wrapper.findComponent({ name: 'AgentBudgetPanel' });
+		expect(budgetPanel.exists()).toBe(true);
+		expect(budgetPanel.props('config')).toMatchObject({
+			name: 'Agent',
+			model: 'anthropic/claude-sonnet-4-5',
+		});
+		expect(budgetPanel.props('disabled')).toBe(false);
+		expect(budgetPanel.props('projectId')).toBe('project-1');
+		expect(budgetPanel.props('agentId')).toBe('agent-1');
 		const subAgentsPanel = wrapper.findComponent({ name: 'AgentSubAgentsPanel' });
 		expect(subAgentsPanel.exists()).toBe(true);
 		expect(subAgentsPanel.props('config')).toMatchObject({
@@ -423,10 +456,26 @@ describe('AgentBuilderEditorColumn', () => {
 		expect(subAgentsPanel.props('disabled')).toBe(false);
 		expect(subAgentsPanel.props('projectId')).toBe('project-1');
 		expect(subAgentsPanel.props('agentId')).toBe('agent-1');
+		// Usage and limits sits above sub-agents.
+		expect(
+			budgetPanel.element.compareDocumentPosition(subAgentsPanel.element) &
+				Node.DOCUMENT_POSITION_FOLLOWING,
+		).toBeTruthy();
 		expect(wrapper.findComponent({ name: 'AgentMemoryPanel' }).exists()).toBe(false);
 		const advancedPanel = wrapper.findComponent({ name: 'AgentAdvancedPanel' });
 		expect(advancedPanel.exists()).toBe(true);
 		expect(advancedPanel.props('projectId')).toBe('project-1');
+	});
+
+	it('forwards a budget panel config update to the host as a budget save', async () => {
+		const wrapper = await mountColumn({ activeMainTab: 'settings' });
+		await flushPromises();
+
+		const changes = { config: { guardrails: { budget: { enabled: true, sessionCostCapUsd: 5 } } } };
+		wrapper.findComponent({ name: 'AgentBudgetPanel' }).vm.$emit('update:config', changes);
+
+		expect(wrapper.emitted('update:budget-config')?.[0]).toEqual([changes]);
+		expect(wrapper.emitted('update:config')).toBeUndefined();
 	});
 
 	it('keeps core setup and attached capabilities on the Agent tab', async () => {

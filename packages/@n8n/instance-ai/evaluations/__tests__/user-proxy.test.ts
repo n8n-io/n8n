@@ -869,6 +869,60 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		expect(logger.warn).toHaveBeenCalled();
 	});
 
+	it("workflows(action='setup'): fills a wizard credential slot when the model picks the standalone manual action", async () => {
+		const agent = new FakeAgent();
+		agent.enqueue({
+			action: 'choose_credential_setup_option',
+			option: 'manual',
+			credentialType: 'httpTemplatedCustomAuth',
+		});
+		const { client, createCredential, setThreadCredentialAllowlist } =
+			fakeCredentialClient('cred-resend');
+		const proxy = new UserProxyLlm({
+			conversation: [
+				{ role: 'user', text: 'Count our verified Resend domains every morning.' },
+				{ role: 'user', text: '[Set up the Resend credential now.]' },
+			],
+			agent,
+			credentialCreation: { client, threadId: 'thread-1', allowlistedCredentialIds: [] },
+		});
+
+		const response = await proxy.respondToConfirmation(
+			setupWizardEvent('req-sw-templated', [
+				{
+					nodeId: 'n1',
+					nodeName: 'Get Resend Domains',
+					credentialType: 'httpTemplatedCustomAuth',
+					existingCredentials: [],
+					setupHint: {
+						template: { headers: { Authorization: 'Bearer {{api_key}}' } },
+						placeholders: [{ name: 'api_key', title: 'Resend API key', optional: false }],
+					},
+				},
+			]),
+		);
+
+		expect(createCredential).toHaveBeenCalledWith(
+			expect.any(String),
+			'httpTemplatedCustomAuth',
+			expect.objectContaining({ template: expect.stringContaining('Bearer') }),
+			undefined,
+			undefined,
+		);
+		// Filling the slot means the credential works, so its test is bypassed.
+		expect(setThreadCredentialAllowlist).toHaveBeenCalledWith(
+			'thread-1',
+			['cred-resend'],
+			['cred-resend'],
+		);
+		expect(response.kind).toBe('setupWorkflowApply');
+		if (response.kind === 'setupWorkflowApply') {
+			expect(response.nodeCredentials).toEqual({
+				'Get Resend Domains': { httpTemplatedCustomAuth: 'cred-resend' },
+			});
+		}
+	});
+
 	it("workflows(action='setup'): creates a real credential when the resolved slot has zero existing candidates", async () => {
 		const agent = new FakeAgent();
 		agent.enqueue({
@@ -902,6 +956,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 			expect.any(String),
 			'slackApi',
 			expect.any(Object),
+			undefined,
 			undefined,
 		);
 		// The allowlist call must include the pre-existing id, not just the new
@@ -1082,6 +1137,42 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		// An empty bypass list, which the client drops from the request body.
 		expect(setThreadCredentialAllowlist).toHaveBeenCalledWith('thread-1', ['cred-fresh'], []);
 		expect(proxy.getDecisionStats()['credential-test-bypassed']).toBeUndefined();
+	});
+
+	it("workflows(action='setup'): creates the credential in the build's project", async () => {
+		const agent = new FakeAgent();
+		agent.enqueue({
+			action: 'apply_setup_wizard',
+			nodeParametersJson: '{}',
+			nodeCredentialsJson: JSON.stringify({ 'Post To Slack': { slackApi: 'new' } }),
+		});
+		const { client, createCredential } = fakeCredentialClient('cred-fresh');
+		const proxy = new UserProxyLlm({
+			conversation: [
+				{ role: 'user', text: 'Post to Slack every morning.' },
+				{ role: 'user', text: '[Set up the Slack credential now.]' },
+			],
+			agent,
+			credentialCreation: {
+				client,
+				threadId: 'thread-1',
+				allowlistedCredentialIds: [],
+				projectId: 'build-project',
+			},
+		});
+
+		await proxy.respondToConfirmation(
+			setupWizardEvent('req-sw-build-project', [
+				{
+					nodeId: 'n1',
+					nodeName: 'Post To Slack',
+					credentialType: 'slackApi',
+					existingCredentials: [],
+				},
+			]),
+		);
+
+		expect(createCredential.mock.calls[0]?.[4]).toBe('build-project');
 	});
 
 	it("workflows(action='setup'): keeps the seeded credentials bypassed when it creates another", async () => {
@@ -1474,6 +1565,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 			'slackApi',
 			expect.any(Object),
 			undefined,
+			undefined,
 		);
 		expect(setThreadCredentialAllowlist).toHaveBeenCalledWith('thread-1', ['cred-fresh'], []);
 		expect(response.kind).toBe('credentialSelection');
@@ -1632,6 +1724,44 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 			}
 		},
 	);
+
+	it('approves a credential-destination review deterministically without consulting the agent', async () => {
+		const agent = new FakeAgent();
+		const proxy = new UserProxyLlm({
+			conversation: [
+				{ role: 'user', text: 'Count our verified Resend domains every morning.' },
+				{ role: 'user', text: '[Set up the Resend credential now.]' },
+			],
+			agent,
+		});
+
+		const response = await proxy.respondToConfirmation({
+			timestamp: 100,
+			type: 'confirmation-request',
+			data: {
+				type: 'confirmation-request',
+				payload: {
+					requestId: 'req-dest',
+					toolCallId: 'tc-x',
+					toolName: 'workflows',
+					args: {},
+					severity: 'warning',
+					message: 'Review where this credential will be used',
+					credentialDestination: {
+						origin: 'https://api.resend.com',
+						nodeNames: ['Get Resend Domains'],
+					},
+				},
+			},
+		} as CapturedEvent);
+
+		expect(response).toEqual({
+			kind: 'credentialDestination',
+			origin: 'https://api.resend.com',
+			approved: true,
+		});
+		expect(agent.prompts).toHaveLength(0);
+	});
 
 	it('handles domain-access events deterministically with allow_all', async () => {
 		const agent = new FakeAgent();

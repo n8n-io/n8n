@@ -210,6 +210,26 @@ describe('findMockQuirks (real registry)', () => {
 			expect(guidance.length).toBeGreaterThan(0);
 			expect(guidance.join('\n')).toMatch(/replies/);
 		});
+
+		it('returns Google Sheets guidance keeping the header row on values.get', () => {
+			const guidance = findMockQuirks(
+				'Sheets',
+				'GET',
+				'/v4/spreadsheets/abc123/values/%27Sheet1%27',
+				'sheets.googleapis.com',
+			);
+			expect(guidance.length).toBeGreaterThan(0);
+			expect(guidance.join('\n')).toMatch(/HEADER row/);
+			// An append writes rows, so it gets no read guidance.
+			expect(
+				findMockQuirks(
+					'Sheets',
+					'POST',
+					'/v4/spreadsheets/abc123/values/%27Sheet1%27:append',
+					'sheets.googleapis.com',
+				),
+			).toEqual([]);
+		});
 	});
 
 	it('is case-sensitive on service name (extractServiceName produces capitalized form)', () => {

@@ -5,7 +5,7 @@ import type { DistributiveOmit } from '@n8n/utils/types';
 import { InstanceSettings } from 'n8n-core';
 import { nanoid } from 'nanoid';
 
-import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
+import { ServiceUnavailableError } from '@n8n/errors';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
 

@@ -4,7 +4,7 @@ import { ExecutionsConfig, GlobalConfig } from '@n8n/config';
 import type { Redis as SingleNodeClient } from 'ioredis';
 import { mock } from 'vitest-mock-extended';
 
-import type { RedisClientService } from '@/services/redis-client.service';
+import type { RedisClientService } from '@n8n/backend-services';
 
 import type { PubSubEventBus } from '../pubsub.eventbus';
 import type { McpRelayMessage } from '../subscriber.service';

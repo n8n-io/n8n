@@ -1,8 +1,9 @@
 import { isSensitiveKey } from '@n8n/utils/redaction/sensitive-key';
 
 import { renderObservationLog } from './observation-log-renderer';
+import { reportSideCallUsage } from './forward-usage';
 import { redactText } from '../../sdk/guardrails';
-import type { AgentExecutionCounter } from '../../types/sdk/agent';
+import type { AgentExecutionCounter, TokenUsage } from '../../types/sdk/agent';
 import type { BuiltMemory } from '../../types/sdk/memory';
 import type { AgentDbMessage, ContentToolCall, Message } from '../../types/sdk/message';
 import type { ObservationCursor } from '../../types/sdk/observation';
@@ -15,6 +16,7 @@ import type {
 } from '../../types/sdk/observation-log';
 import type { BuiltTelemetry } from '../../types/telemetry';
 import { estimateObservationTokens, type TokenCounter } from '../model/model-token-counter';
+import { guardToolResultForModel } from '../tools/tool-result-guard';
 
 export type { ObservationLogObserveFn, ObservationLogObserverInput };
 
@@ -27,6 +29,12 @@ const MARKER_BY_TOKEN: Record<string, ObservationLogMarker> = {
 
 const BULLET_PATTERN =
 	/^(\s*)[*-]\s+(CRITICAL|IMPORTANT|INFO|COMPLETION)(?:\s+\(\d{2}:\d{2}\))?\s+(.+)$/iu;
+/**
+ * Indented lines that are malformed structure, not detail: a fence, the sentinel, a timed
+ * unknown marker, or a misspelled marker. Other uppercase words (API, GET) stay detail.
+ */
+const NON_DETAIL_PATTERN =
+	/^(?:```|NO_OBSERVATIONS$|(?:[*-]\s+)?(?:[A-Z_]+\s+\(\d{2}:\d{2}\)|(?:COMPLET|CRITIC|IMPORTAN|INFO)[A-Z]*\b))/u;
 const DEFAULT_MAX_SERIALIZED_CHARS = 2_000;
 const DEFAULT_MAX_STRING_CHARS = 500;
 const DEFAULT_MAX_ARRAY_ITEMS = 20;
@@ -83,6 +91,13 @@ export interface RunObservationLogObserverOpts {
 	onMalformedLine?: (line: string) => void;
 	executionCounter?: AgentExecutionCounter;
 	telemetry?: BuiltTelemetry;
+	/**
+	 * Receives the observer model call's usage the moment it resolves, before
+	 * any parsing or persistence. Forwarding it here (rather than only on the
+	 * success return) keeps a billed observer call priced even when later
+	 * post-processing throws. Fire-and-forget from the caller's perspective.
+	 */
+	onUsage?: (model: string | undefined, usage: TokenUsage | undefined) => void | Promise<void>;
 }
 
 export type RunObservationLogObserverResult =
@@ -93,6 +108,10 @@ export type RunObservationLogObserverResult =
 			cursorAdvanced: boolean;
 			tokenCount: number;
 			skippedLines: string[];
+			/** Normalized token usage from the observer LLM call, when the provider reports it. */
+			usage?: TokenUsage;
+			/** Stable model id string of the model that produced the observations. */
+			model?: string;
 	  };
 
 export function parseObservationLogMarkdown(markdown: string): ParseObservationLogMarkdownResult {
@@ -106,6 +125,13 @@ export function parseObservationLogMarkdown(markdown: string): ParseObservationL
 
 		const match = BULLET_PATTERN.exec(rawLine);
 		if (!match) {
+			// Models often add an indented detail list under an observation. Keep
+			// that detail on the entry above instead of rejecting the response.
+			const previous = entries.at(-1);
+			if (previous && /^\s/.test(rawLine) && !NON_DETAIL_PATTERN.test(trimmed)) {
+				previous.text = appendObservationDetail(previous.text, trimmed);
+				continue;
+			}
 			skippedLines.push(rawLine);
 			continue;
 		}
@@ -126,6 +152,12 @@ export function parseObservationLogMarkdown(markdown: string): ParseObservationL
 	}
 
 	return { entries, skippedLines };
+}
+
+/** Joins a detail line onto one line, so the rendered log keeps one entry per line. */
+function appendObservationDetail(text: string, detailLine: string): string {
+	const detail = detailLine.replace(/^[*-]\s+/, '');
+	return /[:;.!?]$/.test(text) ? `${text} ${detail}` : `${text}; ${detail}`;
 }
 
 export function renderObserverTranscript(
@@ -163,7 +195,7 @@ export function renderObserverTranscript(
 			);
 			if (toolCall.state === 'resolved') {
 				lines.push(
-					`[${timestamp}] tool_result ${toolCall.toolName} output=${wrapUntrustedObserverData(serializeForObserver(toolCall.output, options), toolCall.toolName)}`,
+					`[${timestamp}] tool_result ${toolCall.toolName} output=${wrapUntrustedObserverData(serializeForObserver(toolCall.output, options, true), toolCall.toolName)}`,
 				);
 			} else if (toolCall.state === 'rejected') {
 				lines.push(
@@ -205,7 +237,10 @@ export async function runObservationLogObserver(
 	if (observable.length === 0) return { status: 'skipped', reason: 'pending-tool-call' };
 
 	const tokenCounter = opts.tokenCounter ?? estimateObservationTokens;
-	const transcript = renderObserverTranscript(observable);
+	const guardedMessages = await Promise.all(
+		observable.map(async (message) => await guardObserverToolResults(message, tokenCounter)),
+	);
+	const transcript = renderObserverTranscript(guardedMessages);
 	const tokenCount = await tokenCounter(transcript);
 
 	const observationLogTail = (
@@ -217,7 +252,7 @@ export async function runObservationLogObserver(
 	).reverse();
 	const now = opts.now ?? new Date();
 	const renderedObservationLogTail = renderObservationLog(observationLogTail);
-	const markdown = await opts.observe({
+	const observeResult = await opts.observe({
 		observationScopeId,
 		now,
 		deltaMessages: observable,
@@ -228,6 +263,14 @@ export async function runObservationLogObserver(
 		executionCounter: opts.executionCounter,
 		telemetry: opts.telemetry,
 	});
+	const markdown = typeof observeResult === 'string' ? observeResult : observeResult.text;
+	const observeUsage = typeof observeResult === 'string' ? undefined : observeResult.usage;
+	const observeModel = typeof observeResult === 'string' ? undefined : observeResult.model;
+	// Forward usage immediately after the model call, before parsing or
+	// persistence, so a billed observer turn is priced even when the
+	// post-processing below throws. Fire-and-forget: never block on pricing,
+	// and never let a callback throw or rejection abort observation.
+	reportSideCallUsage(opts.onUsage, observeModel, observeUsage);
 
 	const noObservations = markdown.trim() === 'NO_OBSERVATIONS';
 	const parsed = noObservations
@@ -248,6 +291,8 @@ export async function runObservationLogObserver(
 			cursorAdvanced: false,
 			tokenCount,
 			skippedLines: parsed.skippedLines,
+			usage: observeUsage,
+			model: observeModel,
 		};
 	}
 
@@ -298,6 +343,8 @@ export async function runObservationLogObserver(
 		cursorAdvanced,
 		tokenCount,
 		skippedLines: parsed.skippedLines,
+		usage: observeUsage,
+		model: observeModel,
 	};
 }
 
@@ -314,12 +361,34 @@ function isToolCallContent(content: Message['content'][number]): content is Cont
 	return content.type === 'tool-call';
 }
 
-function serializeForObserver(value: unknown, options: RenderObserverTranscriptOptions): string {
-	const compacted = compactForObserver(value, options);
+async function guardObserverToolResults(
+	message: AgentDbMessage,
+	tokenCounter: TokenCounter,
+): Promise<AgentDbMessage> {
+	if (!isLlmMessage(message)) return message;
+	const content = await Promise.all(
+		message.content.map(async (block) => {
+			if (block.type !== 'tool-call' || block.state !== 'resolved') return block;
+			// Bound the serialized result so rich media metadata cannot bypass the guard.
+			const serialized = serializeForObserver(block.output, {}, true);
+			const guarded = await guardToolResultForModel(serialized, tokenCounter);
+			if (!guarded.truncated) return block;
+			return { ...block, output: guarded.historyOutput };
+		}),
+	);
+	return { ...message, content };
+}
+
+function serializeForObserver(
+	value: unknown,
+	options: RenderObserverTranscriptOptions,
+	isToolResult = false,
+): string {
+	const compacted = compactForObserver(value, options, isToolResult);
 	const serialized = safeJsonStringify(compacted);
 	return truncateString(
 		serialized,
-		options.maxSerializedChars ?? DEFAULT_MAX_SERIALIZED_CHARS,
+		options.maxSerializedChars ?? (isToolResult ? Infinity : DEFAULT_MAX_SERIALIZED_CHARS),
 		'serialized',
 	);
 }
@@ -335,10 +404,17 @@ function serializeErrorForObserver(
 	);
 }
 
-function compactForObserver(value: unknown, options: RenderObserverTranscriptOptions): unknown {
-	const maxStringChars = options.maxStringChars ?? DEFAULT_MAX_STRING_CHARS;
-	const maxArrayItems = options.maxArrayItems ?? DEFAULT_MAX_ARRAY_ITEMS;
-	const maxObjectKeys = options.maxObjectKeys ?? DEFAULT_MAX_OBJECT_KEYS;
+function compactForObserver(
+	value: unknown,
+	options: RenderObserverTranscriptOptions,
+	isToolResult: boolean,
+): unknown {
+	const maxStringChars =
+		options.maxStringChars ?? (isToolResult ? Infinity : DEFAULT_MAX_STRING_CHARS);
+	const maxArrayItems =
+		options.maxArrayItems ?? (isToolResult ? Infinity : DEFAULT_MAX_ARRAY_ITEMS);
+	const maxObjectKeys =
+		options.maxObjectKeys ?? (isToolResult ? Infinity : DEFAULT_MAX_OBJECT_KEYS);
 
 	if (typeof value === 'string') {
 		return truncateString(redactText(value).text, maxStringChars, 'string');
@@ -348,7 +424,7 @@ function compactForObserver(value: unknown, options: RenderObserverTranscriptOpt
 	if (Array.isArray(value)) {
 		const compacted = value
 			.slice(0, maxArrayItems)
-			.map((item) => compactForObserver(item, options));
+			.map((item) => compactForObserver(item, options, isToolResult));
 		if (value.length > maxArrayItems) {
 			compacted.push({ __truncatedItems: value.length - maxArrayItems });
 		}
@@ -360,10 +436,10 @@ function compactForObserver(value: unknown, options: RenderObserverTranscriptOpt
 	for (const [key, entryValue] of entries.slice(0, maxObjectKeys)) {
 		if (isSensitiveKey(key)) {
 			result[key] = REDACTED_VALUE;
-		} else if (shouldStripBlob(key, entryValue, maxStringChars)) {
+		} else if (shouldStripBlob(key, entryValue, maxStringChars, isToolResult ? value : undefined)) {
 			result[key] = '[omitted large blob]';
 		} else {
-			result[key] = compactForObserver(entryValue, options);
+			result[key] = compactForObserver(entryValue, options, isToolResult);
 		}
 	}
 	if (entries.length > maxObjectKeys) {
@@ -372,8 +448,26 @@ function compactForObserver(value: unknown, options: RenderObserverTranscriptOpt
 	return result;
 }
 
-function shouldStripBlob(key: string, value: unknown, maxStringChars: number): boolean {
+function shouldStripBlob(
+	key: string,
+	value: unknown,
+	maxStringChars: number,
+	toolResult?: object,
+): boolean {
 	if (typeof value !== 'string') return false;
+	if (
+		toolResult &&
+		key === 'data' &&
+		'type' in toolResult &&
+		(toolResult.type === 'image-data' ||
+			toolResult.type === 'file-data' ||
+			toolResult.type === 'data')
+	) {
+		return true;
+	}
+	if (toolResult) {
+		return /blob|base64/i.test(key) || /^data:[^,]*;base64,/i.test(value);
+	}
 	if (value.length <= maxStringChars) return false;
 	return /blob|base64|data|file|image/i.test(key);
 }

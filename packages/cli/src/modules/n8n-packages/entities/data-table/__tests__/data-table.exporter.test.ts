@@ -18,7 +18,7 @@ function makeDataTable(overrides: Partial<DataTable> = {}): DataTable {
 		id: 'dt1',
 		name: 'Customers',
 		projectId: 'proj-1',
-		columns: [{ id: 'col-1', name: 'email', type: 'string', index: 0 }],
+		columns: [{ id: 'col1', name: 'email', type: 'string', index: 0 }],
 		createdAt: new Date(),
 		updatedAt: new Date(),
 		...overrides,
@@ -48,6 +48,28 @@ function makeExporter() {
 }
 
 describe('DataTableExporter', () => {
+	it('keeps Agent and workflow consumers separate when their IDs match', async () => {
+		const { exporter, dataTableService } = makeExporter();
+		dataTableService.findDataTablesByIdsForUser.mockResolvedValue([makeDataTable()]);
+		const agent = { agentId: 'wf-1', projectId: 'proj-1', dataTableId: 'dt1' };
+		const result = await exporter.export({
+			user,
+			writer: new CapturingWriter(),
+			requirements: [agent, makeRequirement(), agent],
+		});
+		expect(result.entries).toHaveLength(1);
+		expect(result.requirements).toEqual([
+			{
+				id: 'dt1',
+				name: 'Customers',
+				usedBy: [
+					{ kind: 'agent', id: 'wf-1' },
+					{ kind: 'workflow', id: 'wf-1' },
+				],
+			},
+		]);
+	});
+
 	describe('empty input', () => {
 		it('returns empty result and writes nothing when given no requirements', async () => {
 			const { exporter, dataTableService } = makeExporter();
@@ -100,7 +122,7 @@ describe('DataTableExporter', () => {
 				{
 					id: 'dt1',
 					name: 'Customers',
-					usedByWorkflows: ['wf-1'],
+					usedBy: [{ kind: 'workflow', id: 'wf-1' }],
 				},
 			]);
 
@@ -112,11 +134,11 @@ describe('DataTableExporter', () => {
 			expect(parsed).toEqual({
 				id: 'dt1',
 				name: 'Customers',
-				columns: [{ name: 'email', type: 'string', index: 0 }],
+				columns: [{ id: 'col1', name: 'email', type: 'string', index: 0 }],
 			});
 		});
 
-		it('dedupes by table id and aggregates usedByWorkflows when requirements come from multiple workflows', async () => {
+		it('dedupes by table id and aggregates workflow consumers when requirements come from multiple workflows', async () => {
 			const { exporter, dataTableService } = makeExporter();
 			dataTableService.findDataTablesByIdsForUser.mockResolvedValue([makeDataTable()]);
 			const writer = new CapturingWriter();
@@ -126,6 +148,7 @@ describe('DataTableExporter', () => {
 				requirements: [
 					makeRequirement({ workflowId: 'wf-a' }),
 					makeRequirement({ workflowId: 'wf-b' }),
+					makeRequirement({ workflowId: 'wf-a' }),
 				],
 				writer,
 			});
@@ -140,7 +163,10 @@ describe('DataTableExporter', () => {
 				{
 					id: 'dt1',
 					name: 'Customers',
-					usedByWorkflows: ['wf-a', 'wf-b'],
+					usedBy: [
+						{ kind: 'workflow', id: 'wf-a' },
+						{ kind: 'workflow', id: 'wf-b' },
+					],
 				},
 			]);
 			expect(writer.files).toHaveLength(1);

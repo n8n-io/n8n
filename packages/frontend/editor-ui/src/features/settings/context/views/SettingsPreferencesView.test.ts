@@ -36,6 +36,7 @@ function preference(overrides: Partial<Preference> = {}): Preference {
 		projectId: null,
 		project: null,
 		source: 'ui',
+		createdBy: null,
 		scopes: ['aiPreference:read', 'aiPreference:update', 'aiPreference:delete'],
 		createdAt: '2026-09-08T00:00:00.000Z',
 		updatedAt: '2026-09-08T00:00:00.000Z',
@@ -107,7 +108,35 @@ describe('SettingsPreferencesView', () => {
 		renderView();
 		await new Promise(process.nextTick);
 
-		expect(contextStore.fetchPreferences).toHaveBeenCalledWith({ skip: 0, take: 50 });
+		expect(contextStore.fetchPreferences).toHaveBeenCalledWith({
+			skip: 0,
+			take: 50,
+			sortBy: 'updatedAt:desc',
+		});
+	});
+
+	it('reverses the last updated order on each header click', async () => {
+		contextStore.preferences = [preference()];
+		contextStore.count = 1;
+
+		const { getByText } = renderView();
+		await new Promise(process.nextTick);
+
+		await userEvent.click(getByText(/^Last updated/));
+		await new Promise(process.nextTick);
+		expect(contextStore.fetchPreferences).toHaveBeenLastCalledWith({
+			skip: 0,
+			take: 50,
+			sortBy: 'updatedAt:asc',
+		});
+
+		await userEvent.click(getByText(/^Last updated/));
+		await new Promise(process.nextTick);
+		expect(contextStore.fetchPreferences).toHaveBeenLastCalledWith({
+			skip: 0,
+			take: 50,
+			sortBy: 'updatedAt:desc',
+		});
 	});
 
 	it('opens the create modal from the toolbar', async () => {
@@ -220,7 +249,11 @@ describe('SettingsPreferencesView', () => {
 		await new Promise(process.nextTick);
 
 		expect(contextStore.deletePreference).not.toHaveBeenCalled();
-		expect(trackMock).not.toHaveBeenCalled();
+		// The visit still reports; the delete does not.
+		expect(trackMock).not.toHaveBeenCalledWith(
+			TELEMETRY_EVENT.CONTEXT.USER_DELETED_PREFERENCES,
+			expect.anything(),
+		);
 	});
 
 	it('reloads the page it is showing after a write', async () => {
@@ -235,6 +268,41 @@ describe('SettingsPreferencesView', () => {
 		await new Promise(process.nextTick);
 
 		expect(contextStore.fetchPreferences).toHaveBeenCalledTimes(2);
+	});
+
+	it('reports the visit once, with what the list held', async () => {
+		contextStore.preferences = [
+			preference(),
+			preference({ id: 'p2', userId: null, projectId: 'p-1' }),
+		];
+		contextStore.count = 2;
+
+		renderView();
+		await new Promise(process.nextTick);
+
+		expect(trackMock).toHaveBeenCalledWith(TELEMETRY_EVENT.CONTEXT.USER_VIEWED_PREFERENCES, {
+			count: 2,
+			scope_types: ['user', 'project'],
+		});
+		expect(
+			trackMock.mock.calls.filter(
+				([event]) => event === TELEMETRY_EVENT.CONTEXT.USER_VIEWED_PREFERENCES,
+			),
+		).toHaveLength(1);
+	});
+
+	it('reports no visit when the load failed, so a zero never means a broken page', async () => {
+		contextStore.preferences = [];
+		contextStore.count = 0;
+		contextStore.fetchPreferences.mockRejectedValueOnce(new Error('offline'));
+
+		renderView();
+		await new Promise(process.nextTick);
+
+		expect(trackMock).not.toHaveBeenCalledWith(
+			TELEMETRY_EVENT.CONTEXT.USER_VIEWED_PREFERENCES,
+			expect.anything(),
+		);
 	});
 
 	it('hides the empty state when the load failed', async () => {
@@ -273,14 +341,22 @@ describe('SettingsPreferencesView', () => {
 
 		await userEvent.click(getByTestId('pagination-next'));
 		await new Promise(process.nextTick);
-		expect(contextStore.fetchPreferences).toHaveBeenLastCalledWith({ skip: 50, take: 50 });
+		expect(contextStore.fetchPreferences).toHaveBeenLastCalledWith({
+			skip: 50,
+			take: 50,
+			sortBy: 'updatedAt:desc',
+		});
 
 		// Everything on the second page goes; page 1 no longer exists.
 		contextStore.count = 5;
 		await userEvent.click(getByTestId('preference-modal-stub-saved'));
 		await new Promise(process.nextTick);
 
-		expect(contextStore.fetchPreferences).toHaveBeenLastCalledWith({ skip: 0, take: 50 });
+		expect(contextStore.fetchPreferences).toHaveBeenLastCalledWith({
+			skip: 0,
+			take: 50,
+			sortBy: 'updatedAt:desc',
+		});
 	});
 
 	it('returns to the Context landing page', async () => {

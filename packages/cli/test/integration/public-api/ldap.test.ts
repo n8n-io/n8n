@@ -1,4 +1,3 @@
-import type { LdapConfigurationResponse } from '@n8n/api-types';
 import { testDb } from '@n8n/backend-test-utils';
 import { LDAP_DEFAULT_CONFIGURATION, LDAP_FEATURE_NAME } from '@n8n/constants';
 import { SettingsRepository, type User } from '@n8n/db';
@@ -7,27 +6,13 @@ import { CREDENTIAL_BLANKING_VALUE } from 'n8n-workflow';
 
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { getLdapUsers, saveLdapSynchronization } from '@/modules/ldap.ee/helpers.ee';
+import { LdapConnectionError, LdapRejectionError } from '@/modules/ldap.ee/ldap.errors';
 import { LdapService } from '@/modules/ldap.ee/ldap.service.ee';
 import { setCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
 import { createOwnerWithApiKey } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 
 import { defaultLdapConfig } from '../shared/ldap';
-
-type LdapSyncEntry = {
-	id: number;
-	runMode: string;
-	status: string;
-	startedAt: string;
-	endedAt: string;
-	scanned: number;
-	created: number;
-	updated: number;
-	disabled: number;
-	error: string;
-};
-type SyncListBody = { data: LdapSyncEntry[]; nextCursor: string | null };
-type ErrorBody = { message: string };
 
 describe('LDAP configuration in Public API', () => {
 	let owner: User;
@@ -65,9 +50,7 @@ describe('LDAP configuration in Public API', () => {
 			const response = await testServer.publicApiAgentFor(owner).get('/settings/ldap');
 
 			expect(response.status).toBe(200);
-			// beforeEach resets the config to the defaults, so the response is exactly the
-			// default configuration with the (unset) admin password reported as "".
-			expect(response.body).toEqual({
+			expect(response.body).toStrictEqual({
 				...LDAP_DEFAULT_CONFIGURATION,
 				bindingAdminPassword: '',
 			});
@@ -76,29 +59,27 @@ describe('LDAP configuration in Public API', () => {
 		it('redacts bindingAdminPassword on read when set', async () => {
 			testServer.license.enable('feat:ldap');
 
-			// First PUT to set a real password
-			await testServer
-				.publicApiAgentFor(owner)
-				.put('/settings/ldap')
-				.send({
-					...defaultLdapConfig,
-					bindingAdminPassword: 'secretPassword123',
-					loginEnabled: true,
-				});
+			const configuration = {
+				...defaultLdapConfig,
+				bindingAdminPassword: 'secretPassword123',
+				loginEnabled: true,
+			};
+			await testServer.publicApiAgentFor(owner).put('/settings/ldap').send(configuration);
 
-			// Then GET to verify it's redacted
 			const response = await testServer.publicApiAgentFor(owner).get('/settings/ldap');
-			const body = response.body as LdapConfigurationResponse;
 
 			expect(response.status).toBe(200);
-			expect(body.bindingAdminPassword).toBe(CREDENTIAL_BLANKING_VALUE);
+			expect(response.body).toStrictEqual({
+				...configuration,
+				bindingAdminPassword: CREDENTIAL_BLANKING_VALUE,
+			});
 		});
 
 		it('rejects with 403 when not licensed', async () => {
 			const response = await testServer.publicApiAgentFor(owner).get('/settings/ldap');
 
 			expect(response.status).toBe(403);
-			expect(response.body).toHaveProperty('message', licenseErrorMessage);
+			expect(response.body).toStrictEqual({ message: licenseErrorMessage });
 		});
 
 		it('rejects with 403 when the API key lacks the ldap:manage scope', async () => {
@@ -108,6 +89,7 @@ describe('LDAP configuration in Public API', () => {
 			const response = await testServer.publicApiAgentFor(scopedOwner).get('/settings/ldap');
 
 			expect(response.status).toBe(403);
+			expect(response.body).toStrictEqual({ message: 'Forbidden' });
 		});
 
 		it('rejects with 401 without a valid API key', async () => {
@@ -116,6 +98,7 @@ describe('LDAP configuration in Public API', () => {
 			const response = await testServer.publicApiAgentWithoutApiKey().get('/settings/ldap');
 
 			expect(response.status).toBe(401);
+			expect(response.body).toStrictEqual({ message: 'Unauthorized' });
 		});
 	});
 
@@ -123,68 +106,85 @@ describe('LDAP configuration in Public API', () => {
 		it('sets the LDAP configuration with a full valid body and returns updated values', async () => {
 			testServer.license.enable('feat:ldap');
 
+			const configuration = {
+				...defaultLdapConfig,
+				loginLabel: 'Updated LDAP Label',
+				loginEnabled: true,
+				bindingAdminPassword: 'mySecretPassword',
+			};
 			const response = await testServer
 				.publicApiAgentFor(owner)
 				.put('/settings/ldap')
-				.send({
-					...defaultLdapConfig,
-					loginLabel: 'Updated LDAP Label',
-					loginEnabled: true,
-					bindingAdminPassword: 'mySecretPassword',
-				});
+				.send(configuration);
 
 			expect(response.status).toBe(200);
-			expect(response.body).toMatchObject({
-				loginLabel: 'Updated LDAP Label',
-				loginEnabled: true,
+			expect(response.body).toStrictEqual({
+				...configuration,
 				bindingAdminPassword: CREDENTIAL_BLANKING_VALUE,
 			});
 
-			// Verify persistence via GET
 			const readResponse = await testServer.publicApiAgentFor(owner).get('/settings/ldap');
-			const readBody = readResponse.body as LdapConfigurationResponse;
-			expect(readBody.loginLabel).toBe('Updated LDAP Label');
-			expect(readBody.loginEnabled).toBe(true);
+			expect(readResponse.body).toStrictEqual({
+				...configuration,
+				bindingAdminPassword: CREDENTIAL_BLANKING_VALUE,
+			});
 		});
 
 		it('accepts a GET response body as a PUT body and preserves redacted secrets', async () => {
 			testServer.license.enable('feat:ldap');
 
-			// PUT with a real password
-			await testServer
-				.publicApiAgentFor(owner)
-				.put('/settings/ldap')
-				.send({
-					...defaultLdapConfig,
-					loginLabel: 'Original Label',
-					loginEnabled: true,
-					bindingAdminPassword: 'secretPassword123',
-				});
+			const configuration = {
+				...defaultLdapConfig,
+				loginLabel: 'Original Label',
+				loginEnabled: true,
+				bindingAdminPassword: 'secretPassword123',
+			};
+			await testServer.publicApiAgentFor(owner).put('/settings/ldap').send(configuration);
 
-			// GET to read (password will be redacted)
 			const getResponse = await testServer.publicApiAgentFor(owner).get('/settings/ldap');
-			const getBody = getResponse.body as LdapConfigurationResponse;
+			const redacted = {
+				...configuration,
+				bindingAdminPassword: CREDENTIAL_BLANKING_VALUE,
+			};
 			expect(getResponse.status).toBe(200);
-			expect(getBody.bindingAdminPassword).toBe(CREDENTIAL_BLANKING_VALUE);
+			expect(getResponse.body).toStrictEqual(redacted);
 
-			// PUT the GET response back with only loginLabel changed
 			const putResponse = await testServer
 				.publicApiAgentFor(owner)
 				.put('/settings/ldap')
 				.send({
-					...getBody,
+					...getResponse.body,
 					loginLabel: 'Round-tripped Label',
 				});
-			const putBody = putResponse.body as LdapConfigurationResponse;
 
 			expect(putResponse.status).toBe(200);
-			expect(putBody.loginLabel).toBe('Round-tripped Label');
-			expect(putBody.bindingAdminPassword).toBe(CREDENTIAL_BLANKING_VALUE);
+			expect(putResponse.body).toStrictEqual({
+				...redacted,
+				loginLabel: 'Round-tripped Label',
+			});
 
-			// Verify the redacted round-trip left the ORIGINAL password intact (not blanked/overwritten)
-			const ldapService = Container.get(LdapService);
-			const storedConfig = await ldapService.loadConfig();
-			expect(storedConfig.bindingAdminPassword).toBe('secretPassword123');
+			const storedConfig = await Container.get(LdapService).loadConfig();
+			expect(storedConfig).toStrictEqual({
+				...configuration,
+				loginLabel: 'Round-tripped Label',
+			});
+		});
+
+		it('rejects unknown properties with 400', async () => {
+			testServer.license.enable('feat:ldap');
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.put('/settings/ldap')
+				.send({
+					...defaultLdapConfig,
+					unknownField: 'nope',
+				});
+
+			expect(response.status).toBe(400);
+			expect(response.body).toStrictEqual({
+				message: "request/body Unrecognized key(s) in object: 'unknownField'",
+			});
 		});
 
 		it('rejects a partial request body with 400', async () => {
@@ -196,7 +196,9 @@ describe('LDAP configuration in Public API', () => {
 				.send({ loginLabel: 'LDAP' });
 
 			expect(response.status).toBe(400);
-			expect((response.body as ErrorBody).message).toMatch(/required property/i);
+			expect(response.body).toStrictEqual({
+				message: "request/body must have required property 'loginEnabled'",
+			});
 		});
 
 		it('rejects malformed types with 400', async () => {
@@ -212,7 +214,9 @@ describe('LDAP configuration in Public API', () => {
 				});
 
 			expect(response.status).toBe(400);
-			expect((response.body as ErrorBody).message).toMatch(/connectionPort/i);
+			expect(response.body).toStrictEqual({
+				message: 'request/body/connectionPort Expected number, received string',
+			});
 		});
 
 		it('rejects with 403 when not licensed', async () => {
@@ -222,7 +226,7 @@ describe('LDAP configuration in Public API', () => {
 				.send(defaultLdapConfig);
 
 			expect(response.status).toBe(403);
-			expect(response.body).toHaveProperty('message', licenseErrorMessage);
+			expect(response.body).toStrictEqual({ message: licenseErrorMessage });
 		});
 
 		it('rejects with 403 when the API key lacks the ldap:manage scope', async () => {
@@ -235,6 +239,7 @@ describe('LDAP configuration in Public API', () => {
 				.send(defaultLdapConfig);
 
 			expect(response.status).toBe(403);
+			expect(response.body).toStrictEqual({ message: 'Forbidden' });
 		});
 
 		it('rejects with 401 without a valid API key', async () => {
@@ -246,6 +251,7 @@ describe('LDAP configuration in Public API', () => {
 				.send(defaultLdapConfig);
 
 			expect(response.status).toBe(401);
+			expect(response.body).toStrictEqual({ message: 'Unauthorized' });
 		});
 
 		it.each(['saml', 'oidc', 'token-exchange'] as const)(
@@ -264,9 +270,9 @@ describe('LDAP configuration in Public API', () => {
 					});
 
 				expect(response.status).toBe(400);
-				expect((response.body as ErrorBody).message).toContain(
-					'Cannot switch ldap login enabled state when an authentication method other than email or ldap is active',
-				);
+				expect(response.body).toStrictEqual({
+					message: `Cannot switch ldap login enabled state when an authentication method other than email or ldap is active (current: ${currentMethod})`,
+				});
 			},
 		);
 	});
@@ -302,24 +308,36 @@ describe('LDAP configuration in Public API', () => {
 
 			const response = await testServer.publicApiAgentFor(owner).get('/settings/ldap/sync');
 
-			const body = response.body as SyncListBody;
 			expect(response.status).toBe(200);
-			expect(body.data).toHaveLength(2);
-			// Only 2 rows and the default limit is 100, so there is no next page.
-			expect(body.nextCursor).toBeNull();
-
-			// Newest first (ordered by id DESC), so the 'live' run seeded last comes first,
-			// carrying its exact seeded counts. providerType is omitted from the response.
-			expect(body.data[0]).toMatchObject({
-				runMode: 'live',
-				status: 'success',
-				scanned: 8,
-				created: 3,
-				updated: 1,
-				disabled: 0,
+			expect(response.body).toStrictEqual({
+				data: [
+					{
+						id: expect.any(Number),
+						runMode: 'live',
+						status: 'success',
+						startedAt: new Date('2025-01-02').toISOString(),
+						endedAt: new Date('2025-01-02T00:00:20').toISOString(),
+						scanned: 8,
+						created: 3,
+						updated: 1,
+						disabled: 0,
+						error: '',
+					},
+					{
+						id: expect.any(Number),
+						runMode: 'dry',
+						status: 'success',
+						startedAt: new Date('2025-01-01').toISOString(),
+						endedAt: new Date('2025-01-01T00:00:30').toISOString(),
+						scanned: 10,
+						created: 5,
+						updated: 2,
+						disabled: 0,
+						error: '',
+					},
+				],
+				nextCursor: null,
 			});
-			expect(body.data[1]).toMatchObject({ runMode: 'dry', scanned: 10, created: 5, updated: 2 });
-			expect(body.data[0]).not.toHaveProperty('providerType');
 		});
 
 		it('paginates the history with limit and cursor', async () => {
@@ -340,42 +358,63 @@ describe('LDAP configuration in Public API', () => {
 				});
 			}
 
-			// First page: newest row (created:2), with a cursor pointing at the next page.
+			const syncPageEntry = (created: number) => ({
+				id: expect.any(Number),
+				runMode: 'dry',
+				status: 'success',
+				startedAt: expect.any(String),
+				endedAt: expect.any(String),
+				scanned: 10,
+				created,
+				updated: 0,
+				disabled: 0,
+				error: '',
+			});
+
 			const firstResponse = await testServer
 				.publicApiAgentFor(owner)
 				.get('/settings/ldap/sync?limit=1');
-			const firstPage = firstResponse.body as SyncListBody;
 			expect(firstResponse.status).toBe(200);
-			expect(firstPage.data).toHaveLength(1);
-			expect(firstPage.data[0].created).toBe(2);
-			expect(firstPage.nextCursor).not.toBeNull();
+			expect(firstResponse.body).toStrictEqual({
+				data: [syncPageEntry(2)],
+				nextCursor: expect.any(String),
+			});
 
-			// Second page: follow the cursor, expect the next row (created:1) with more still to come.
 			const secondResponse = await testServer
 				.publicApiAgentFor(owner)
-				.get(`/settings/ldap/sync?cursor=${firstPage.nextCursor}`);
-			const secondPage = secondResponse.body as SyncListBody;
+				.get(`/settings/ldap/sync?cursor=${firstResponse.body.nextCursor}`);
 			expect(secondResponse.status).toBe(200);
-			expect(secondPage.data).toHaveLength(1);
-			expect(secondPage.data[0].created).toBe(1);
-			expect(secondPage.nextCursor).not.toBeNull();
+			expect(secondResponse.body).toStrictEqual({
+				data: [syncPageEntry(1)],
+				nextCursor: expect.any(String),
+			});
 
-			// Last page: the final row (created:0) and a null cursor signalling no more pages.
 			const lastResponse = await testServer
 				.publicApiAgentFor(owner)
-				.get(`/settings/ldap/sync?cursor=${secondPage.nextCursor}`);
-			const lastPage = lastResponse.body as SyncListBody;
+				.get(`/settings/ldap/sync?cursor=${secondResponse.body.nextCursor}`);
 			expect(lastResponse.status).toBe(200);
-			expect(lastPage.data).toHaveLength(1);
-			expect(lastPage.data[0].created).toBe(0);
-			expect(lastPage.nextCursor).toBeNull();
+			expect(lastResponse.body).toStrictEqual({
+				data: [syncPageEntry(0)],
+				nextCursor: null,
+			});
+		});
+
+		it('rejects an invalid cursor with 400', async () => {
+			testServer.license.enable('feat:ldap');
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.get('/settings/ldap/sync?cursor=not-a-cursor');
+
+			expect(response.status).toBe(400);
+			expect(response.body).toStrictEqual({ message: 'An invalid cursor was provided' });
 		});
 
 		it('rejects with 403 when not licensed', async () => {
 			const response = await testServer.publicApiAgentFor(owner).get('/settings/ldap/sync');
 
 			expect(response.status).toBe(403);
-			expect(response.body).toHaveProperty('message', licenseErrorMessage);
+			expect(response.body).toStrictEqual({ message: licenseErrorMessage });
 		});
 
 		it('rejects with 403 when the API key lacks the ldap:sync scope', async () => {
@@ -385,6 +424,7 @@ describe('LDAP configuration in Public API', () => {
 			const response = await testServer.publicApiAgentFor(scopedOwner).get('/settings/ldap/sync');
 
 			expect(response.status).toBe(403);
+			expect(response.body).toStrictEqual({ message: 'Forbidden' });
 		});
 
 		it('rejects with 401 without a valid API key', async () => {
@@ -393,6 +433,7 @@ describe('LDAP configuration in Public API', () => {
 			const response = await testServer.publicApiAgentWithoutApiKey().get('/settings/ldap/sync');
 
 			expect(response.status).toBe(401);
+			expect(response.body).toStrictEqual({ message: 'Unauthorized' });
 		});
 	});
 
@@ -416,9 +457,22 @@ describe('LDAP configuration in Public API', () => {
 				.post('/settings/ldap/sync')
 				.send({ type: 'dry' });
 
+			const syncResult = (runMode: 'dry' | 'live') => ({
+				id: expect.any(Number),
+				runMode,
+				status: 'success',
+				startedAt: expect.any(String),
+				endedAt: expect.any(String),
+				scanned: 1,
+				created: 1,
+				updated: 0,
+				disabled: 0,
+				error: '',
+			});
+
 			expect(dryResponse.status).toBe(200);
-			expect(dryResponse.body).toMatchObject({ runMode: 'dry', created: 1 });
-			expect(await getLdapUsers()).toHaveLength(0);
+			expect(dryResponse.body).toStrictEqual(syncResult('dry'));
+			expect(await getLdapUsers()).toStrictEqual([]);
 
 			const liveResponse = await testServer
 				.publicApiAgentFor(owner)
@@ -426,7 +480,7 @@ describe('LDAP configuration in Public API', () => {
 				.send({ type: 'live' });
 
 			expect(liveResponse.status).toBe(200);
-			expect(liveResponse.body).toMatchObject({ runMode: 'live', created: 1 });
+			expect(liveResponse.body).toStrictEqual(syncResult('live'));
 			const users = await getLdapUsers();
 			expect(users).toHaveLength(1);
 			expect(users[0].email).toBe('newuser@example.com');
@@ -441,6 +495,9 @@ describe('LDAP configuration in Public API', () => {
 				.send({});
 
 			expect(response.status).toBe(400);
+			expect(response.body).toStrictEqual({
+				message: "request/body must have required property 'type'",
+			});
 		});
 
 		it('rejects with 400 when type has invalid value', async () => {
@@ -452,6 +509,41 @@ describe('LDAP configuration in Public API', () => {
 				.send({ type: 'invalid-mode' });
 
 			expect(response.status).toBe(400);
+			expect(response.body).toStrictEqual({
+				message:
+					"request/body/type Invalid enum value. Expected 'live' | 'dry', received 'invalid-mode'",
+			});
+		});
+
+		it('rejects unknown properties with 400', async () => {
+			testServer.license.enable('feat:ldap');
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.post('/settings/ldap/sync')
+				.send({ type: 'dry', unknownField: 'nope' });
+
+			expect(response.status).toBe(400);
+			expect(response.body).toStrictEqual({
+				message: "request/body Unrecognized key(s) in object: 'unknownField'",
+			});
+		});
+
+		it.each([
+			['rejects the bind', new LdapRejectionError('Invalid credentials')],
+			['cannot be reached', new LdapConnectionError('connect ECONNREFUSED')],
+		] as const)('returns 400 when the LDAP server %s', async (_label, error) => {
+			testServer.license.enable('feat:ldap');
+			await testServer.publicApiAgentFor(owner).put('/settings/ldap').send(defaultLdapConfig);
+			vi.spyOn(Container.get(LdapService), 'searchWithAdminBinding').mockRejectedValue(error);
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.post('/settings/ldap/sync')
+				.send({ type: 'dry' });
+
+			expect(response.status).toBe(400);
+			expect(response.body).toStrictEqual({ message: error.message });
 		});
 
 		it('rejects with 403 when not licensed', async () => {
@@ -461,7 +553,7 @@ describe('LDAP configuration in Public API', () => {
 				.send({ type: 'dry' });
 
 			expect(response.status).toBe(403);
-			expect(response.body).toHaveProperty('message', licenseErrorMessage);
+			expect(response.body).toStrictEqual({ message: licenseErrorMessage });
 		});
 
 		it('rejects with 403 when the API key lacks the ldap:sync scope', async () => {
@@ -474,6 +566,7 @@ describe('LDAP configuration in Public API', () => {
 				.send({ type: 'dry' });
 
 			expect(response.status).toBe(403);
+			expect(response.body).toStrictEqual({ message: 'Forbidden' });
 		});
 
 		it('rejects with 401 without a valid API key', async () => {
@@ -485,6 +578,7 @@ describe('LDAP configuration in Public API', () => {
 				.send({ type: 'dry' });
 
 			expect(response.status).toBe(401);
+			expect(response.body).toStrictEqual({ message: 'Unauthorized' });
 		});
 	});
 });

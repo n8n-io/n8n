@@ -74,7 +74,7 @@ jobs:
       # to `base-ref`, but only to diff it: `git diff --name-only --no-renames` reads trees, so the
       # blobs can stay on the server. Nothing after this step reads an object outside the working
       # tree, which the checkout materializes in full.
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.base-branch }}
           fetch-depth: ${{ inputs.base-branch != '' && 1 || 0 }}
@@ -90,13 +90,13 @@ jobs:
         env:
           BASE_BRANCH: ${{ inputs.base-branch }}
         run: |
-          if [ -f packages/testing/code-health/package.json ]; then
+          if [ -f packages/quality/policy/code-health/package.json ]; then
             echo 'present=true' >> "$GITHUB_OUTPUT"
           elif [ -n "$BASE_BRANCH" ]; then
             echo 'present=false' >> "$GITHUB_OUTPUT"
-            echo "::notice::packages/testing/code-health is absent on \"$BASE_BRANCH\"; nothing to verify."
+            echo "::notice::packages/quality/policy/code-health is absent on \"$BASE_BRANCH\"; nothing to verify."
           else
-            echo '::error::packages/testing/code-health is missing (moved or renamed?).'
+            echo '::error::packages/quality/policy/code-health is missing (moved or renamed?).'
             exit 1
           fi
 
@@ -119,10 +119,10 @@ jobs:
           # REPORT_ONLY is a single flag or empty. Quoting it would pass an empty argument, which
           # the CLI reads as an (unknown) package name and rejects.
           # shellcheck disable=SC2086
-          pnpm --dir packages/testing/code-health exec tsx src/cli.ts verify-npm-install --changed="$BASE_REF" $REPORT_ONLY
+          pnpm --dir packages/quality/policy/code-health exec tsx src/cli.ts verify-npm-install --changed="$BASE_REF" $REPORT_ONLY
 
       - name: Verify npm-install closure (all packages)
         if: steps.verifier.outputs.present == 'true' && inputs.scope == 'all'
         run: |
           # shellcheck disable=SC2086 # see the scoped step above
-          pnpm --dir packages/testing/code-health exec tsx src/cli.ts verify-npm-install --all $REPORT_ONLY
+          pnpm --dir packages/quality/policy/code-health exec tsx src/cli.ts verify-npm-install --all $REPORT_ONLY

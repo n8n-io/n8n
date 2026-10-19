@@ -10,6 +10,8 @@ describe('permissions', () => {
 			aiAssistant: {},
 			aiPreference: {},
 			projectAiPreference: {},
+			skill: {},
+			projectSkill: {},
 			annotationTag: {},
 			auditLogs: {},
 			banner: {},
@@ -57,6 +59,8 @@ describe('permissions', () => {
 			instanceAi: {},
 			roleMappingRule: {},
 			otel: {},
+			scim: {},
+			trustedSource: {},
 		});
 	});
 	it('getResourcePermissions', () => {
@@ -100,6 +104,8 @@ describe('permissions', () => {
 			aiAssistant: {},
 			aiPreference: {},
 			projectAiPreference: {},
+			skill: {},
+			projectSkill: {},
 			annotationTag: {},
 			auditLogs: {},
 			banner: {},
@@ -191,6 +197,8 @@ describe('permissions', () => {
 			instanceAi: {},
 			roleMappingRule: {},
 			otel: {},
+			scim: {},
+			trustedSource: {},
 		};
 
 		expect(getResourcePermissions(scopes)).toEqual(permissionRecord);

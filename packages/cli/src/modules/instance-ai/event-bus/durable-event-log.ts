@@ -262,6 +262,15 @@ export class DurableEventLog {
 	}
 
 	/**
+	 * What the thread's latest turn reported as applied (see repository). No flush: the
+	 * caller reads the SSE cursor first, so a fact still queued here replays over SSE,
+	 * and a flush would cut an open text segment in two on every thread open.
+	 */
+	async getLastAppliedPreferences(threadId: string) {
+		return await this.repo.getLastAppliedPreferences(threadId);
+	}
+
+	/**
 	 * The thread's still-open streamed segments, read from the coalesce buffers.
 	 * SYNCHRONOUS on purpose: the SSE bootstrap serves these in its synchronous
 	 * tail, where "no delta lands between this read and live delivery taking

@@ -1,11 +1,21 @@
 import { LICENSE_FEATURES } from '@n8n/constants';
 import { ControllerRegistryMetadata, ModuleMetadata, PolicyCheckMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import { mock } from 'vitest-mock-extended';
 
+import { RestrictedNodeTypesProviderProxy } from '@n8n/backend-services';
+
+import { NodeTypePolicyRestrictedTypesProvider } from '../restricted-node-types.provider';
 // Importing the module runs the @BackendModule decorator, registering its metadata.
 import { TypeAvailabilityPoliciesModule } from '../type-availability-policies.module';
 
 describe('TypeAvailabilityPoliciesModule', () => {
+	const provider = mock<NodeTypePolicyRestrictedTypesProvider>();
+
+	beforeEach(() => {
+		Container.set(NodeTypePolicyRestrictedTypesProvider, provider);
+	});
+
 	it('registers itself under the correct module name', () => {
 		const entry = Container.get(ModuleMetadata).get('type-availability-policies');
 
@@ -45,6 +55,7 @@ describe('TypeAvailabilityPoliciesModule', () => {
 			'CredentialTypePolicyInstanceController',
 			'CredentialTypePolicyProjectController',
 			'AvailableTypesController',
+			'AvailableCredentialTypesController',
 		]) {
 			expect(routeCountByName.get(name)).toBeGreaterThan(0);
 		}
@@ -56,7 +67,7 @@ describe('TypeAvailabilityPoliciesModule', () => {
 	// Asserted by class name, because importing the check to compare identities would run
 	// `@PolicyCheck()` here and register it, and reading `id` off an instance would construct
 	// its repositories. Either one would make this pass with `init()` no longer importing it.
-	it('registers the node type policy check on init', async () => {
+	it('registers both policy checks on init', async () => {
 		const module = new TypeAvailabilityPoliciesModule();
 
 		await module.init();
@@ -66,6 +77,19 @@ describe('TypeAvailabilityPoliciesModule', () => {
 			.map((checkClass) => checkClass.name);
 
 		expect(registered).toContain('NodeTypePolicyCheck');
+		expect(registered).toContain('CredentialTypePolicyCheck');
+	}, 30_000);
+
+	it('answers the workflow list proxy from its restricted node types provider on init', async () => {
+		const restricted = { query: 'SELECT 1', parameters: {} };
+		provider.findRestrictedWorkflowIds.mockResolvedValue(restricted);
+		const module = new TypeAvailabilityPoliciesModule();
+
+		await module.init();
+
+		await expect(
+			Container.get(RestrictedNodeTypesProviderProxy).findRestrictedWorkflowIds(),
+		).resolves.toEqual(restricted);
 	}, 30_000);
 
 	it('exposes its entities so the datasource picks them up', async () => {

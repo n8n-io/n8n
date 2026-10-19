@@ -1,5 +1,6 @@
 import { render } from '@testing-library/vue';
 import { register } from 'timeago.js';
+import { nextTick } from 'vue';
 
 import N8nTimeAgo from './TimeAgo.vue';
 
@@ -53,5 +54,39 @@ describe('N8nTimeAgo', () => {
 		expect(container.querySelector('span')?.getAttribute('title')).toContain(
 			'22 September, 2026 @ 11:57',
 		);
+	});
+
+	it('ages a live label once per interval', async () => {
+		const { container } = render(N8nTimeAgo, { props: { date: NOW.toISOString(), live: true } });
+		expect(container.textContent?.trim()).toBe('just now');
+
+		vi.advanceTimersByTime(29 * 1000);
+		await nextTick();
+		expect(container.textContent?.trim()).toBe('just now');
+
+		vi.advanceTimersByTime(5 * 60 * 1000);
+		await nextTick();
+		expect(container.textContent?.trim()).toBe('5 minutes ago');
+	});
+
+	it('keeps a static label at its first value', async () => {
+		const { container } = render(N8nTimeAgo, { props: { date: NOW.toISOString() } });
+
+		vi.advanceTimersByTime(5 * 60 * 1000);
+		await nextTick();
+
+		expect(container.textContent?.trim()).toBe('just now');
+	});
+
+	it('reads a date set between two ticks as the past', async () => {
+		const { container, rerender } = render(N8nTimeAgo, {
+			props: { date: NOW.toISOString(), live: true },
+		});
+
+		// The reference date trails the clock by up to one tick, so a newer date must not read as the future.
+		vi.advanceTimersByTime(10 * 1000);
+		await rerender({ date: new Date().toISOString(), live: true });
+
+		expect(container.textContent?.trim()).toBe('just now');
 	});
 });

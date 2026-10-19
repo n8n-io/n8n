@@ -149,6 +149,8 @@ export class GatewayClient {
 	/** Start the client: upload capabilities, connect SSE, handle requests. */
 	async start(): Promise<void> {
 		await this.uploadCapabilities();
+		// Only after the instance accepts the pairing: a declined or failed connect must not claim them.
+		this.options.session.claimUnscopedRules();
 		this.connectSSE();
 	}
 

@@ -387,5 +387,28 @@ describe('workspace tool', () => {
 			});
 			expect(result).toEqual({ deletedCount: 5 });
 		});
+
+		it.each([
+			[0, 'always_allow'],
+			[-1, 'always_allow'],
+			[0, 'require_approval'],
+		] as const)(
+			'should refuse olderThanHours %d with %s before asking or deleting',
+			async (olderThanHours, cleanupTestExecutions) => {
+				const context = createMockContext({ permissions: { cleanupTestExecutions } });
+				const suspend = vi.fn();
+
+				const tool = createWorkspaceTool(context);
+				const result = await executeTool(
+					tool,
+					{ action: 'cleanup-test-executions', workflowId: 'wf1', olderThanHours },
+					{ resumeData: undefined, suspend } as never,
+				);
+
+				expect(context.workspaceService!.cleanupTestExecutions).not.toHaveBeenCalled();
+				expect(suspend).not.toHaveBeenCalled();
+				expect(result).toEqual({ error: expect.stringContaining('greater than 0') });
+			},
+		);
 	});
 });

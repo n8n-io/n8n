@@ -4,7 +4,9 @@ description: >-
   Debug failed or wrong-output workflow executions using executions tools. Load
   when the user reports execution failures, unexpected node output, empty
   parameter values after a successful run, or a node showing a red or failed
-  expression error.
+  expression error. Also load when a live run you started for the user fails
+  with an error from a node or an external service (for example a 401), before
+  you explain the cause to the user.
 recommended_tools:
   - executions
   - workflows
@@ -26,6 +28,37 @@ signals as real: an execution error, partial coverage (`nodesNotReached`), an
 empty node, or a missing node is a real defect to investigate, not something to
 explain away. If you genuinely cannot re-run the failing path, say so plainly and
 name what is unconfirmed instead of repeating a success claim.
+
+## Before you name a cause
+
+Say what you checked before you say why it failed. Do not lead with a cause
+that you did not check. A plausible guess presented first reads as a finding,
+and the user acts on it.
+
+Check what you can see on the n8n side first. These checks are read-only, so
+run them unprompted:
+
+- **Auth errors (401, 403, "unauthorized", "invalid key").** Confirm that the
+  credential exists (`credentials(action="list")` or `get`), that the node uses
+  it (the node's `credentials` in `workflows(action="get")`; resolved
+  parameters show only the auth type, not which credential is bound), and what
+  `credentials(action="test")` reports. A generic credential, such as Header
+  Auth, can pass its test without a call to the service, so a pass does not
+  show that the service accepts it. Say so when you report the check.
+- **Other node errors.** Start from `executions(action="debug")` and the
+  resolved parameters of the failed node.
+
+Then report the checks and their results, and only after that give a cause.
+You cannot read a stored secret, so a cause about its format or value is a
+hypothesis: label it as one, and say which check would confirm it. Do not blame
+the user's account, billing, credit, plan, or quota unless the error says so.
+
+A cause outside the workflow does not mean that the workflow is correct. Before
+you say that the workflow is wired or configured correctly, read the expression
+parameters of every node on the failing path, not only the node that failed. An
+expression that reads the wrong field, or a literal placeholder where an
+expression belongs, is a defect even when a different error stopped the run.
+Report each defect separately from the cause of the failed run.
 
 ## Draft versus live
 
@@ -55,8 +88,8 @@ the fix — an earlier execution ran the old version.
 
 Use `executions(action="run")` with `inputData` matching the trigger's output
 shape — do not rebuild the workflow with a Manual Trigger. For trigger
-`inputData` shapes, read
-`${N8N_WORKSPACE_DIR}/knowledge-base/reference/trigger-input-data-shapes.md`
+`inputData` shapes, read the workspace file
+`knowledge-base/reference/trigger-input-data-shapes.md`
 when a sandbox workspace is available.
 
 ## Failed execution
@@ -85,6 +118,10 @@ that node, so the fix meets the same input that broke it. This is the right
 first move whenever the user is debugging a **read** node that already failed a
 real execution: the node ran for real once already, and a mock-only check is
 what sends the user back for a second session.
+
+The action refuses a replay that would re-run a node above the target: an
+unpinned one the execution never reached, one that failed there, or a loop
+that did not finish. Pick another execution, or tell the user which node would run again.
 
 ### Decide whether the node is safe to run first
 
@@ -142,12 +179,61 @@ Mocked input does **not** make a write node safe. The node still runs for real
 against the user's systems; only its input is invented, which makes the effect
 less predictable, not more.
 
+### Running a tool
+
+A tool never runs on its own. n8n runs it through the node that owns it —
+usually the Agent. A step run on a tool therefore behaves like a step run on
+that Agent:
+
+- `mockInput` feeds the **Agent's** input, not the tool's arguments.
+- `reuseExecutionId` replays the nodes above the **Agent**.
+- A chain run (neither option) runs every node above the Agent for real. Give
+  one of the two options when a node up there writes.
+- `ranThroughNodeNames` lists **every** node that can run the tool, not the one
+  that ran it. A tool on several agents lists them all: the engine picks one,
+  and it does not report which. Do not name a single Agent to the user when
+  this field holds more than one.
+- A tool on two Agents where one runs above the other is refused. Run the
+  upper Agent, then read the tool with `executions(action="get-node-output")`.
+
+The tool's own arguments come from `toolArguments` — the values the agent would
+normally decide:
+
+```
+executions(action="run-step", workflowId, nodeName="Search Tickets Tool",
+           reuseExecutionId=<the failed execution>,
+           toolArguments={"query": "login fails", "status": "open"})
+```
+
+The example targets a **read** tool on purpose. The write rule above holds here
+too, and a tool hides the write behind a friendly name: a step run on a "Create
+Ticket" tool creates the ticket again, and `toolArguments` does not change that.
+Only run one when the user has accepted a second write.
+
+Use the argument names from the node's `$fromAI` calls, which
+`workflows(action="get-as-code")` shows. Pass a plain string instead for a tool
+that takes one free-text input (Wikipedia, Code Tool, a vector store used as a
+tool).
+
+A tool that declares `$fromAI` arguments is refused without them: it would
+otherwise fail for a reason that has nothing to do with the user's problem, and
+you would report that as the defect. A node that holds several tools is refused
+outright, because nothing here can name one of its tools the way the agent
+does: the "MCP Client Tool" node, and every node the MCP registry added, whose
+type is `@n8n/mcp-registry.<server slug>`. Run the Agent for those, and read
+the node's output from that execution.
+
+A sub-node that is not a tool — a model, memory, embeddings — cannot be run this
+way at all. Run the Agent, and read the sub-node with
+`executions(action="get-node-output")` on **that** execution: n8n records every
+call a sub-node made while the Agent ran.
+
 ## Successful execution with wrong or empty value
 
 When `debug` doesn't apply because nothing errored, call
 `executions(action="get-resolved-node-parameters", executionId, nodeName)` on the
-node whose output looks off — **do this unprompted**, don't ask the user for
-permission first. It's a cheap read-only inspection and the only reliable way to
-confirm whether an empty value came from an expression silently resolving to
-nullish. Check `emptyResolutions` first; most "this parameter is empty" cases are
+node whose output looks off and on the nodes that feed it —
+**do this unprompted**, don't ask the user for permission first. It's a cheap
+read-only inspection and the only reliable way to confirm whether an empty value came
+from an expression silently resolving to nullish. Check `emptyResolutions` first; most "this parameter is empty" cases are
 expressions resolving to `null`/`undefined`/`""`, not thrown errors.

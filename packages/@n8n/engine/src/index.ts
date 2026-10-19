@@ -15,7 +15,12 @@ export {
 } from './auth';
 export type { AuthenticatedCaller, ActionScope, IdentityVerifier } from './auth';
 
-export type { EngineErrorResponse, ExecutionSnapshot, StepDetail } from './server';
+export type {
+	CancelExecutionResponse,
+	EngineErrorResponse,
+	ExecutionSnapshot,
+	StepDetail,
+} from './server';
 export type {
 	SearchExecutionsRequest,
 	SearchExecutionsResponse,
@@ -35,10 +40,24 @@ export type {
 } from './lifecycle-events';
 
 export {
+	createResponseEmitter,
 	executionResponseSchema,
 	noopExecutionResponseSender,
+	noopResponseEmitter,
+	RESPONSE_EXPECTATION_KINDS,
+	responseExpectationSchema,
 } from './response-channel';
-export type { EndedMessage, ExecutionResponse, ExecutionResponseSender } from './response-channel';
+export type {
+	ChunkMessage,
+	EndedMessage,
+	ExecutionResponse,
+	ExecutionResponseSender,
+	ResponseEmitter,
+	ResponseExpectation,
+	ResponseExpectationKind,
+	ResponseMessage,
+	UndeliverableMessage,
+} from './response-channel';
 
 export { UnimplementedError } from './common';
 export type { JsonObject, JsonValue } from './common';
@@ -50,11 +69,14 @@ export type {
 	GraphNode,
 	StepConfig,
 	StepType,
+	StoredWorkflowGraph,
 	WorkflowGraph,
 	WorkflowLoop,
 } from './graph';
 
 export type {
+	ExecutionFilesDeleter,
+	ExecutionLocation,
 	ExternalDependencies,
 	IStepExecutor,
 	StepExecutionContext,
@@ -85,6 +107,7 @@ export type {
 	ExecutionViewStore,
 	ExecutionRecord,
 	ExecutionStatus,
+	DueStep,
 	ExecutionStore,
 	ExecutionView,
 	NewExecutionRecord,
@@ -95,11 +118,14 @@ export type {
 	StepKey,
 	StepKeyId,
 	StepRecord,
+	ResumeCause,
 	StepSlots,
 	StepStatus,
 	StepStore,
 	StepView,
+	SeededSteps,
 	TriggerOutputs,
+	WaitDeclaration,
 	WorkflowDocument,
 } from './execution';
 

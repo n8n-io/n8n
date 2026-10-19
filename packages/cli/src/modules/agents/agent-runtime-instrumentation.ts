@@ -2,10 +2,12 @@ import type { FetchFn, McpToolCallSettledEvent } from '@n8n/agents';
 import type { AgentJsonConfig } from '@n8n/api-types';
 import type { IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 
+import type { ReferencedToolKind } from './tool-registry';
+
 export interface AgentToolInstrumentationContext {
 	/** Sanitized tool name — the same identifier the model calls and `GenerateResult.toolCalls` reports. */
 	toolName: string;
-	toolKind: 'node' | 'workflow';
+	toolKind: ReferencedToolKind;
 }
 
 export interface AgentMcpToolCallSettledContext extends McpToolCallSettledEvent {
@@ -63,3 +65,12 @@ export interface AgentRuntimeInstrumentation {
 export type InstrumentToolAdditionalData = NonNullable<
 	AgentRuntimeInstrumentation['configureToolAdditionalData']
 >;
+
+/**
+ * Set by the Instance AI workflow eval when a workflow calls an agent. Returns
+ * the config to run (features only removed) and the seams that fake its I/O.
+ */
+export type PrepareWorkflowAgentForEval = (
+	config: AgentJsonConfig,
+	context?: { hasChatIntegrations?: boolean },
+) => Promise<{ config: AgentJsonConfig; instrumentation: AgentRuntimeInstrumentation }>;

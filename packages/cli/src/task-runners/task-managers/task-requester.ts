@@ -1,3 +1,4 @@
+import { EventService } from '@n8n/backend-services';
 import { GlobalConfig, TaskRunnersConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type { TaskResultData, RequesterMessage, BrokerMessage, TaskData } from '@n8n/task-runner';
@@ -20,7 +21,6 @@ import type {
 } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
-import { EventService } from '@/events/event.service';
 import { NodeTypes } from '@/node-types';
 import { TaskCancelledError } from '@/task-runners/errors/task-cancelled.error';
 import { TaskRequestTimeoutError } from '@/task-runners/errors/task-request-timeout.error';

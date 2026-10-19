@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { executionResponseSchema } from '../execution-response.schema';
+import { executionResponseSchema, responseExpectationSchema } from '../execution-response.schema';
 
 const ended = (overrides: Record<string, unknown> = {}) => ({
 	type: 'ended',
@@ -19,6 +19,53 @@ describe('executionResponseSchema', () => {
 		});
 	});
 
+	it('accepts a cancelled run, which no step settled', () => {
+		const response = ended({ status: 'cancelled', lastStep: null });
+
+		expect(executionResponseSchema.parse(response)).toEqual(response);
+	});
+
+	it('accepts an undeliverable response', () => {
+		expect(
+			executionResponseSchema.parse({
+				type: 'undeliverable',
+				executionId: 'exec-1',
+				error: { code: 'RESPONSE_TOO_LARGE', message: 'The response is too large.' },
+			}),
+		).toEqual({
+			type: 'undeliverable',
+			executionId: 'exec-1',
+			error: { code: 'RESPONSE_TOO_LARGE', message: 'The response is too large.' },
+		});
+	});
+
+	it('accepts a chunk response', () => {
+		const chunk = {
+			type: 'chunk',
+			executionId: 'exec-1',
+			payload: { type: 'item', content: 'hi' },
+		};
+
+		expect(executionResponseSchema.parse(chunk)).toEqual(chunk);
+	});
+
+	it.each([
+		[
+			'execution id',
+			{ type: 'undeliverable', executionId: '', error: { code: 'CODE', message: 'Bad' } },
+		],
+		[
+			'error code',
+			{ type: 'undeliverable', executionId: 'exec-1', error: { code: '', message: 'Bad' } },
+		],
+		[
+			'error message',
+			{ type: 'undeliverable', executionId: 'exec-1', error: { code: 'CODE', message: '' } },
+		],
+	])('rejects an undeliverable response without an %s', (_field, response) => {
+		expect(executionResponseSchema.safeParse(response).success).toBe(false);
+	});
+
 	it('accepts a step that produced nothing', () => {
 		const parsed = executionResponseSchema.parse(
 			ended({
@@ -32,6 +79,7 @@ describe('executionResponseSchema', () => {
 				},
 			}),
 		);
+		if (parsed.type !== 'ended') throw new Error('Expected an ended response');
 
 		expect(parsed.lastStep).toEqual({
 			nodeId: 'a',
@@ -46,6 +94,9 @@ describe('executionResponseSchema', () => {
 		['an unknown type', { ...ended(), type: 'started' }],
 		['a missing execution id', ended({ executionId: '' })],
 		['a run status no caller can act on', ended({ status: 'running' })],
+		['a settled run without its last step', ended({ lastStep: null })],
+		['a failed run without its last step', ended({ status: 'failed', lastStep: null })],
+		['a cancelled run that names a last step', ended({ status: 'cancelled' })],
 		[
 			'a step status the engine does not use',
 			ended({ lastStep: { nodeId: 'a', nodeName: 'A', status: 'paused', outputs: null } }),
@@ -67,4 +118,17 @@ describe('executionResponseSchema', () => {
 
 		expect(parsed).not.toHaveProperty('extra');
 	});
+});
+
+describe('responseExpectationSchema', () => {
+	it.each(['none', 'runEnd', 'stepResponse', 'stream'])('accepts the kind %s', (kind) => {
+		expect(responseExpectationSchema.parse({ kind })).toEqual({ kind });
+	});
+
+	it.each([{ kind: 'chunks' }, { kind: 'none', extra: true }, {}, 'none'])(
+		'rejects %j',
+		(value) => {
+			expect(responseExpectationSchema.safeParse(value).success).toBe(false);
+		},
+	);
 });

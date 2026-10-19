@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { ExecutionsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type { CreateExecutionPayload, IExecutionDb } from '@n8n/db';
@@ -37,7 +38,6 @@ import { EXECUTION_ENDED_WITHOUT_RESPONSE } from '@/webhooks/constants';
 
 import { ConcurrencyCapacityReservation } from './concurrency/concurrency-capacity-reservation';
 import { ConcurrencyControlService } from './concurrency/concurrency-control.service';
-import { EventService } from './events/event.service';
 
 const DEFAULT_CANCEL_WRITE_TIMEOUT_MS = 3 * Time.seconds.toMilliseconds;
 
@@ -193,7 +193,7 @@ export class ActiveExecutions {
 				if (execution.status === 'waiting' && !releaseWaitingSubExecution) {
 					// Do not hold on a reference to the previous WorkflowExecute instance, since a resuming execution will use a new instance
 					delete execution.workflowExecution;
-				} else {
+				} else if (this.activeExecutions[executionId] === execution) {
 					delete this.activeExecutions[executionId];
 					this.responseModes.delete(executionId);
 					this.logger.debug('Execution removed', { executionId });
@@ -209,8 +209,14 @@ export class ActiveExecutions {
 	 * Attaches an execution
 	 */
 
-	attachWorkflowExecution(executionId: string, workflowExecution: PCancelable<IRun>) {
-		this.getExecutionOrFail(executionId).workflowExecution = workflowExecution;
+	attachWorkflowExecution(
+		executionId: string,
+		workflowExecution: PCancelable<IRun>,
+		options?: { isQueueJob?: boolean },
+	) {
+		const execution = this.getExecutionOrFail(executionId);
+		execution.workflowExecution = workflowExecution;
+		execution.isQueueJob = options?.isQueueJob;
 	}
 
 	attachResponsePromise(
@@ -333,9 +339,20 @@ export class ActiveExecutions {
 	}
 
 	getRunningExecutionIds(): string[] {
+		// An enqueued execution runs as a Bull job, which the queue drain tracks, so this only returns executions this process runs outside the queue.
 		return Object.keys(this.activeExecutions).filter(
-			(executionId) => this.activeExecutions[executionId].status === 'running',
+			(executionId) =>
+				this.activeExecutions[executionId].status === 'running' &&
+				!this.activeExecutions[executionId].isQueueJob,
 		);
+	}
+
+	/** Sizes of the in-memory collections, for diagnostics and tests. */
+	getDiagnosticCounts() {
+		return {
+			executions: Object.keys(this.activeExecutions).length,
+			responseModes: this.responseModes.size,
+		};
 	}
 
 	/**
@@ -413,15 +430,16 @@ export class ActiveExecutions {
 			this.concurrencyControl.disable();
 		}
 
+		const isWorker = this.instanceSettings.instanceType === 'worker';
 		let executionIds = Object.keys(this.activeExecutions);
 		const toCancel: string[] = [];
 		for (const executionId of executionIds) {
-			const { status } = this.activeExecutions[executionId];
+			const { status, isQueueJob } = this.activeExecutions[executionId];
 			if (isRegularMode && cancelAll) {
 				this.stopExecution(executionId, new SystemShutdownExecutionCancelledError(executionId));
 				toCancel.push(executionId);
-			} else if (status === 'waiting' || status === 'new') {
-				// Remove waiting and new executions to not block shutdown
+			} else if (status === 'waiting' || status === 'new' || (isWorker && isQueueJob)) {
+				// Remove waiting, new and, on a worker, enqueued executions: these run as Bull jobs that this draining worker never picks up
 				delete this.activeExecutions[executionId];
 			}
 		}
@@ -436,6 +454,11 @@ export class ActiveExecutions {
 			}
 
 			await sleep(500);
+			if (isWorker) {
+				for (const [executionId, { isQueueJob }] of Object.entries(this.activeExecutions)) {
+					if (isQueueJob) delete this.activeExecutions[executionId];
+				}
+			}
 			executionIds = Object.keys(this.activeExecutions);
 		}
 	}

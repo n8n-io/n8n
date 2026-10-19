@@ -98,8 +98,7 @@ Full documentation: https://docs.n8n.io/integrations/creating-nodes/deploy/submi
 			await runCommand(
 				'release-it',
 				[
-					'-n',
-					'--git.requireBranch main',
+					'--git.requireBranch=main',
 					'--git.requireCleanWorkingDir',
 					'--git.requireUpstream',
 					'--git.requireCommits',

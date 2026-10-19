@@ -4,6 +4,7 @@ import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@n8n/composables/useToast';
 import { registerToastNotifier } from '@/app/init/toastNotifier';
+import { registerExperimentModals } from '@/app/modals.manifest';
 import { isDataWorkerEnabled } from '@/app/workers/isDataWorkerEnabled';
 import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
 
@@ -38,6 +39,11 @@ import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import { initializeExpressionEngine } from '@/app/init/expressionEngine';
+import {
+	initializeQuickJsExpressionShadow,
+	stopQuickJsExpressionShadow,
+} from '@/experiments/quickjsExpressionShadow/init';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 
 export const state = {
 	initialized: false,
@@ -140,6 +146,7 @@ export async function initializeAuthenticatedFeatures(
 	const dataTableStore = useDataTableStore();
 	const favoritesStore = useFavoritesStore();
 	const uiStore = useUIStore();
+	const credentialsStore = useCredentialsStore();
 
 	// Provide the modal-open actions to the stores that were decoupled from `ui.store`,
 	// so they can open modals without importing it.
@@ -248,6 +255,7 @@ export async function initializeAuthenticatedFeatures(
 	registerModuleResources();
 	registerModuleProjectTabs();
 	registerModuleModals();
+	registerExperimentModals();
 	registerModuleSettingsPages();
 	registerModulePushHandlers();
 	registerModuleCommands();
@@ -259,6 +267,11 @@ export async function initializeAuthenticatedFeatures(
 		await coordinator.initialize({ version: settingsStore.settings.versionCli });
 		await coordinator.loadNodeTypes(rootStore.baseUrl);
 	}
+	await Promise.all([
+		nodeTypesStore.loadNodeTypesIfNotLoaded(),
+		credentialsStore.fetchAllCredentials(),
+		credentialsStore.fetchCredentialTypes(false),
+	]);
 
 	authenticatedFeaturesInitialized = true;
 }
@@ -317,12 +330,16 @@ function registerAuthenticationHooks() {
 			// don't let posthog failing prevent further function calls
 			console.error(e);
 		}
+		// Not awaited: the shadow run waits for flags and loads WASM, and the editor must not wait for it.
+		void initializeQuickJsExpressionShadow().catch(() => {});
 		npsSurveyStore.setupNpsSurveyOnLogin(user.id, user.settings);
 		await settingsStore.getModuleSettings();
 		void bannersStore.loadDynamicBanners();
 	});
 
 	usersStore.registerLogoutHook(() => {
+		// Before telemetry.reset(), so the last shadow report keeps its user.
+		stopQuickJsExpressionShadow();
 		bannersStore.clearBannerStack();
 		npsSurveyStore.resetNpsSurveyOnLogOut();
 		postHogStore.reset();

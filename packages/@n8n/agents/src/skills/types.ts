@@ -62,13 +62,32 @@ export interface RuntimeSkillMcpServerDependency {
 }
 
 export interface RuntimeSkillDependenciesContract {
-	/** Activate matching deferred tools while the skill is active. Tools must be registered on the agent. */
+	/** Keep matching deferred tools active for the whole run, so activating the skill never changes the tool list. Tools must be registered on the agent. */
 	tools?: string[];
 	secrets?: string[];
 	mcpServers?: RuntimeSkillMcpServerDependency[];
 }
 
-export interface RuntimeSkill extends RuntimeSkillIndexEntry {
+/** Where a reference skill's file lives: a path relative to the owning skill's directory. */
+export interface RuntimeSkillReferenceLocation {
+	owner: string;
+	path: string;
+}
+
+/**
+ * A reference skill is a `references/*.md` file with skill frontmatter. It is
+ * hidden from the catalog and listed, with its description, when a parent
+ * skill loads. It activates like any other skill.
+ */
+export interface RuntimeSkillReferenceContract {
+	/** Skills that list this reference. The owner comes first. */
+	parents?: string[];
+	reference?: RuntimeSkillReferenceLocation;
+	/** Ids of references owned by other skills that this skill also lists. */
+	sharedReferences?: string[];
+}
+
+export interface RuntimeSkill extends RuntimeSkillIndexEntry, RuntimeSkillReferenceContract {
 	id: string;
 	instructions: string;
 	sourceName?: string;
@@ -89,7 +108,9 @@ export interface RuntimeSkill extends RuntimeSkillIndexEntry {
 	linkedFiles?: RuntimeSkillLinkedFiles;
 }
 
-export interface RuntimeSkillRegistryEntry extends RuntimeSkillIndexEntry {
+export interface RuntimeSkillRegistryEntry
+	extends RuntimeSkillIndexEntry,
+		RuntimeSkillReferenceContract {
 	id: string;
 	hash: string;
 	sourceName?: string;
@@ -116,7 +137,7 @@ export interface RuntimeSkillRegistry {
 	skills: RuntimeSkillRegistryEntry[];
 }
 
-export interface RuntimeSkillContent extends RuntimeSkillIndexEntry {
+export interface RuntimeSkillContent extends RuntimeSkillIndexEntry, RuntimeSkillReferenceContract {
 	id: string;
 	instructions: string;
 	sourceName?: string;
@@ -162,6 +183,12 @@ export type RuntimeSkillFileLoader = (
 
 export interface RuntimeSkillSource {
 	registry: RuntimeSkillRegistry;
+	/**
+	 * Lazy setup that runs before a skill is loaded, not when the agent is built.
+	 * It must not change catalog fields (id, name, description, category,
+	 * recommendedTools), because the catalog is rendered before it runs.
+	 * Only load_skill calls it, so loadSkill and loadFile must not depend on it.
+	 */
 	prepare?: () => Promise<void>;
 	loadSkill: RuntimeSkillLoader;
 	loadFile?: RuntimeSkillFileLoader;

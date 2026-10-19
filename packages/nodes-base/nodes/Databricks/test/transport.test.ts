@@ -309,6 +309,15 @@ describe('listPipelineEvents', () => {
 		expect(page).toEqual({ items: [event('e1')], nextPageToken: 'p2' });
 	});
 
+	it('never asks for more than 250 events per page, the limit Databricks enforces', async () => {
+		const context = createPollContext();
+		apiMock(context).mockResolvedValue({});
+
+		await listPipelineEvents(context, 'databricksApi', { pipelineId: PIPELINE_ID, pageSize: 1000 });
+
+		expect(requestQuery(context, 0)).toEqual({ max_results: 250, order_by: 'timestamp asc' });
+	});
+
 	const queryCases: Array<
 		[string, Omit<ListPipelineEventsParams, 'pipelineId'>, Record<string, unknown>]
 	> = [

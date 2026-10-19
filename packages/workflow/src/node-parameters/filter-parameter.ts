@@ -1,7 +1,7 @@
 import type { Result } from '@n8n/utils/result';
 import type { DateTime } from 'luxon';
 
-import { UserError } from '../errors/base/user.error';
+import { UserError } from '@n8n/errors';
 import type {
 	FilterConditionValue,
 	FilterOperatorType,
@@ -247,21 +247,37 @@ function evaluateExistsOperation(
 	return undefined;
 }
 
+function isRegexOperation(condition: FilterConditionValue): boolean {
+	return condition.operator.operation === 'regex' || condition.operator.operation === 'notRegex';
+}
+
+// v4+ applies the `i` flag to the compiled RegExp instead of lowercasing the left operand,
+// so uppercase-only patterns (e.g. `[A-Z]`) can still match against lowercase input.
+function usesRegexIgnoreCaseFlag(
+	condition: FilterConditionValue,
+	filterOptions: FilterOptionsValue,
+): boolean {
+	return (
+		!filterOptions.caseSensitive && (filterOptions.version ?? 1) >= 4 && isRegexOperation(condition)
+	);
+}
+
 function prepareStringFilterValues(
 	condition: FilterConditionValue,
 	prepared: PreparedFilterCondition,
+	useRegexIgnoreCase = false,
 ): { left: string; right: string } {
 	let { leftValue, rightValue } = prepared;
 
 	if (prepared.ignoreCase) {
-		if (typeof leftValue === 'string') {
+		if (typeof leftValue === 'string' && !useRegexIgnoreCase) {
 			leftValue = leftValue.toLocaleLowerCase();
 		}
 
-		if (
-			typeof rightValue === 'string' &&
-			!(condition.operator.operation === 'regex' || condition.operator.operation === 'notRegex')
-		) {
+		// Regex operands (any version) must never be lowercased — that would mangle
+		// character-class patterns like `[A-Z]`. v1–v3 kept this guard on the right side;
+		// v4 additionally skips lowercasing the left and applies the `i` flag instead.
+		if (typeof rightValue === 'string' && !isRegexOperation(condition)) {
 			rightValue = rightValue.toLocaleLowerCase();
 		}
 	}
@@ -280,6 +296,7 @@ function executeFilterConditionWithRegexTest(
 	regexTest: RegexTest,
 ): boolean {
 	const { operator } = condition;
+	const useRegexIgnoreCase = usesRegexIgnoreCaseFlag(condition, filterOptions);
 	const prepared = prepareFilterCondition(condition, filterOptions, metadata);
 	const { leftValue, rightValue, exists, ignoreCase } = prepared;
 
@@ -288,7 +305,7 @@ function executeFilterConditionWithRegexTest(
 
 	switch (operator.type) {
 		case 'string': {
-			const { left, right } = prepareStringFilterValues(condition, prepared);
+			const { left, right } = prepareStringFilterValues(condition, prepared, useRegexIgnoreCase);
 
 			switch (condition.operator.operation) {
 				case 'empty':
@@ -312,11 +329,11 @@ function executeFilterConditionWithRegexTest(
 				case 'notEndsWith':
 					return !left.endsWith(right);
 				case 'regex': {
-					const { source, flags } = parseRegexLiteral(right);
+					const { source, flags } = parseRegexLiteral(right, useRegexIgnoreCase);
 					return regexTest(source, left, flags);
 				}
 				case 'notRegex': {
-					const { source, flags } = parseRegexLiteral(right);
+					const { source, flags } = parseRegexLiteral(right, useRegexIgnoreCase);
 					return !regexTest(source, left, flags);
 				}
 			}
@@ -492,15 +509,16 @@ export async function executeFilterConditionAsync(
 		);
 	}
 
-	const { left, right } = prepareStringFilterValues(condition, prepared);
+	const useRegexIgnoreCase = usesRegexIgnoreCaseFlag(condition, filterOptions);
+	const { left, right } = prepareStringFilterValues(condition, prepared, useRegexIgnoreCase);
 
 	switch (condition.operator.operation) {
 		case 'regex': {
-			const { source, flags } = parseRegexLiteral(right);
+			const { source, flags } = parseRegexLiteral(right, useRegexIgnoreCase);
 			return await regexTest(source, left, flags);
 		}
 		case 'notRegex': {
-			const { source, flags } = parseRegexLiteral(right);
+			const { source, flags } = parseRegexLiteral(right, useRegexIgnoreCase);
 			return !(await regexTest(source, left, flags));
 		}
 		default:

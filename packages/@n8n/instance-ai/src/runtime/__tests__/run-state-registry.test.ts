@@ -341,6 +341,35 @@ describe('RunStateRegistry', () => {
 				expect(registry.getThreadUser('unknown')).toBeUndefined();
 			});
 		});
+
+		describe('listLiveThreadIdsForUser', () => {
+			it('lists active threads before suspended threads and skips duplicates', () => {
+				registry.startRun({
+					threadId: 'thread-active',
+					user: { id: 'user-1', name: 'Alice' },
+				});
+				registry.startRun({
+					threadId: 'thread-other',
+					user: { id: 'user-2', name: 'Bob' },
+				});
+				registry.startRun({
+					threadId: 'thread-suspended',
+					user: { id: 'user-1', name: 'Alice' },
+				});
+				registry.suspendRun(
+					'thread-suspended',
+					createSuspendedRunState({
+						threadId: 'thread-suspended',
+						user: { id: 'user-1', name: 'Alice' },
+					}),
+				);
+
+				expect(registry.listLiveThreadIdsForUser('user-1')).toEqual([
+					'thread-active',
+					'thread-suspended',
+				]);
+			});
+		});
 	});
 
 	// ── getThreadStatus ───────────────────────────────────────────────────────
@@ -1046,7 +1075,11 @@ describe('RunStateRegistry', () => {
 				createdAt: Date.now(),
 			});
 
+			registry.setSetupPanelEnabled('thread-1', true);
+			expect(registry.isSetupPanelEnabled('thread-1')).toBe(true);
+			expect(registry.isSetupPanelEnabled('thread-2')).toBe(false);
 			const result = registry.clearThread('thread-1');
+			expect(registry.isSetupPanelEnabled('thread-1')).toBe(false);
 
 			// Confirmations resolved
 			expect(resolve).toHaveBeenCalledWith({ approved: false });

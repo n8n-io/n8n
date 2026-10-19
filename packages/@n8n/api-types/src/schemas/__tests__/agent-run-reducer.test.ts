@@ -119,12 +119,16 @@ function makeAgentSpawned(
 	role = 'sub-agent',
 	tools = ['tool-a'],
 	targetResource?: Extract<InstanceAiEvent, { type: 'agent-spawned' }>['payload']['targetResource'],
+	display?: Pick<
+		Extract<InstanceAiEvent, { type: 'agent-spawned' }>['payload'],
+		'activity' | 'title'
+	>,
 ): Extract<InstanceAiEvent, { type: 'agent-spawned' }> {
 	return {
 		type: 'agent-spawned',
 		runId,
 		agentId,
-		payload: { parentId, role, tools, targetResource },
+		payload: { parentId, role, tools, targetResource, ...display },
 	};
 }
 
@@ -538,6 +542,70 @@ describe('agent-run-reducer', () => {
 			expectStateMapsNotPolluted(state);
 		});
 
+		it('routes a follow-up run to the tree after the state is rebuilt from a snapshot', () => {
+			// A two-run group, as a run-sync frame or history hydration delivers it.
+			const original = stateWithRun('run-1', 'orchestrator-run-1');
+			reduceEvent(original, makeToolCall('run-1', 'orchestrator-run-1', 'tc-plan', 'create-tasks'));
+			reduceEvent(original, makeRunStart('run-2', 'orchestrator-run-2'));
+			reduceEvent(original, makeToolCall('run-2', 'orchestrator-run-2', 'tc-folder', 'workspace'));
+			const state = stateFromAgentTree(deepCopy(toAgentTree(original)))!;
+
+			// The snapshot holds no alias for run-2, and its run-start is not replayed.
+			expect(findAgent(state, 'orchestrator-run-2')).toBeUndefined();
+
+			reduceEvent(
+				state,
+				makeToolResult('run-2', 'orchestrator-run-2', 'tc-folder', { id: 'folder-1' }),
+			);
+			reduceEvent(state, makeToolCall('run-2', 'orchestrator-run-2', 'tc-move', 'workspace'));
+			reduceEvent(state, makeConfirmationRequest('run-2', 'orchestrator-run-2', 'tc-move'));
+
+			const moveTc = state.toolCallsById['tc-move'];
+			expect(moveTc?.isLoading).toBe(true);
+			expect(moveTc?.confirmation?.requestId).toBe('req-1');
+			const root = toAgentTree(state);
+			expect(root.agentId).toBe('orchestrator-run-1');
+			expect(root.timeline.at(-1)).toEqual(
+				expect.objectContaining({ type: 'tool-call', toolCallId: 'tc-move' }),
+			);
+			expectStateMapsNotPolluted(state);
+		});
+
+		it('attaches a sub-agent spawned by a follow-up run after a snapshot rebuild', () => {
+			const original = stateWithRun('run-1', 'orchestrator-run-1');
+			reduceEvent(original, makeToolCall('run-1', 'orchestrator-run-1', 'tc-plan', 'create-tasks'));
+			const state = stateFromAgentTree(deepCopy(toAgentTree(original)))!;
+
+			reduceEvent(
+				state,
+				makeAgentSpawned('run-2', 'builder-1', 'orchestrator-run-2', 'workflow-builder'),
+			);
+
+			expect(toAgentTree(state).children.map((child) => child.agentId)).toEqual(['builder-1']);
+		});
+
+		it('does not alias an agent whose id is not the orchestrator id of its run', () => {
+			const original = stateWithRun('run-1', 'orchestrator-run-1');
+			reduceEvent(original, makeToolCall('run-1', 'orchestrator-run-1', 'tc-plan', 'create-tasks'));
+			const state = stateFromAgentTree(deepCopy(toAgentTree(original)))!;
+
+			reduceEvent(state, makeToolCall('run-2', 'orchestrator-run-3', 'tc-stray', 'workspace'));
+			reduceEvent(state, makeToolCall('run-2', 'unknown-agent', 'tc-unknown', 'workspace'));
+
+			expect(state.toolCallsById['tc-stray']).toBeUndefined();
+			expect(state.toolCallsById['tc-unknown']).toBeUndefined();
+		});
+
+		it('does not alias into a fresh state before its run-start', () => {
+			const state = createInitialState();
+
+			reduceEvent(state, makeToolCall('run-1', 'orchestrator-run-1', 'tc-early', 'workspace'));
+			reduceEvent(state, makeRunStart('run-1', 'orchestrator-run-1'));
+
+			expect(state.rootAgentId).toBe('orchestrator-run-1');
+			expect(state.toolCallsById['tc-early']).toBeUndefined();
+		});
+
 		it('run-start with unsafe agentId is ignored', () => {
 			const state = createInitialState();
 
@@ -813,6 +881,46 @@ describe('agent-run-reducer', () => {
 			expect(state.agentsById['legacy-eval'].kind).toBe('eval-setup');
 		});
 
+		it('hydrates activity and title from an agent-spawned event', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(
+				state,
+				makeAgentSpawned('run-1', 'sub-1', 'root', 'agent-builder', [], undefined, {
+					activity: 'exploring',
+					title: 'Exploring agent',
+				}),
+			);
+
+			expect(state.agentsById['sub-1']).toMatchObject({
+				activity: 'exploring',
+				title: 'Exploring agent',
+			});
+		});
+
+		it('updates repeated display metadata and preserves omitted values', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(
+				state,
+				makeAgentSpawned('run-1', 'sub-1', 'root', 'agent-builder', [], undefined, {
+					activity: 'exploring',
+					title: 'Exploring agent',
+				}),
+			);
+			reduceEvent(
+				state,
+				makeAgentSpawned('run-1', 'sub-1', 'root', 'agent-builder', [], undefined, {
+					activity: 'editing',
+					title: 'Editing agent',
+				}),
+			);
+			reduceEvent(state, makeAgentSpawned('run-1', 'sub-1', 'root'));
+
+			expect(state.agentsById['sub-1']).toMatchObject({
+				activity: 'editing',
+				title: 'Editing agent',
+			});
+		});
+
 		it('agent-spawned with unknown parent is silently dropped', () => {
 			const state = stateWithRun('run-1', 'root');
 			reduceEvent(state, makeAgentSpawned('run-1', 'orphan', 'unknown-parent'));
@@ -828,6 +936,23 @@ describe('agent-run-reducer', () => {
 			expect(state.agentsById['sub-1'].status).toBe('completed');
 			expect(state.agentsById['sub-1'].result).toBe('done');
 			expect(state.agentsById['sub-1'].error).toBeUndefined();
+		});
+
+		it('agent-completed stores the Agent change outcome', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeAgentSpawned('run-1', 'sub-1', 'root'));
+			reduceEvent(state, {
+				type: 'agent-completed',
+				runId: 'run-1',
+				agentId: 'sub-1',
+				payload: {
+					role: 'agent-builder',
+					result: 'No changes needed.',
+					agentChange: 'none',
+				},
+			});
+
+			expect(state.agentsById['sub-1'].agentChange).toBe('none');
 		});
 
 		it('agent-completed with error sets error status', () => {
@@ -1123,6 +1248,216 @@ describe('agent-run-reducer', () => {
 
 			expect(state.agentsById['root'].setupItemsByWorkflowId).toBeUndefined();
 			expectStateMapsNotPolluted(state);
+		});
+	});
+
+	describe('preference-card', () => {
+		function savedPreferenceState(): AgentRunState {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeToolCall('run-1', 'root', 'tc-1', 'save_user_preference'));
+			reduceEvent(
+				state,
+				makeToolResult('run-1', 'root', 'tc-1', {
+					ok: true,
+					preference: { id: 'pref-1', content: 'Keep replies short.', scope: 'user' },
+				}),
+			);
+			return state;
+		}
+
+		it('folds an edit and an undo onto the tool call that saved the preference', () => {
+			const state = savedPreferenceState();
+
+			reduceEvent(state, {
+				type: 'preference-card',
+				runId: 'run-1',
+				agentId: 'root',
+				payload: {
+					toolCallId: 'tc-1',
+					preferenceId: 'pref-1',
+					state: 'edited',
+					content: 'Keep replies brief.',
+				},
+			});
+			expect(state.toolCallsById['tc-1'].preferenceCard).toEqual({
+				state: 'edited',
+				content: 'Keep replies brief.',
+			});
+
+			// The undo fact carries no content, so the edited text must survive it. Without
+			// that, the resolver falls back to the tool result and strikes out the text the
+			// user replaced rather than the one they removed.
+			reduceEvent(state, {
+				type: 'preference-card',
+				runId: 'run-1',
+				agentId: 'root',
+				payload: { toolCallId: 'tc-1', preferenceId: 'pref-1', state: 'undone' },
+			});
+			expect(state.toolCallsById['tc-1'].preferenceCard).toEqual({
+				state: 'undone',
+				content: 'Keep replies brief.',
+			});
+		});
+
+		it('leaves the content unset on an undo with no edit before it', () => {
+			const state = savedPreferenceState();
+
+			reduceEvent(state, {
+				type: 'preference-card',
+				runId: 'run-1',
+				agentId: 'root',
+				payload: { toolCallId: 'tc-1', preferenceId: 'pref-1', state: 'undone' },
+			});
+
+			// Nothing replaced the saved text, so the resolver reads the tool result.
+			expect(state.toolCallsById['tc-1'].preferenceCard).toEqual({
+				state: 'undone',
+				content: undefined,
+			});
+		});
+
+		it('keeps the scope and project an edit fact names, through a later undo', () => {
+			// Review focus 3: a move to the instance must survive a reload and a later undo.
+			const state = savedPreferenceState();
+
+			reduceEvent(state, {
+				type: 'preference-card',
+				runId: 'run-1',
+				agentId: 'root',
+				payload: {
+					toolCallId: 'tc-1',
+					preferenceId: 'pref-1',
+					state: 'edited',
+					content: 'Keep replies short.',
+					scope: 'instance',
+					projectId: null,
+				},
+			});
+			expect(state.toolCallsById['tc-1'].preferenceCard).toEqual({
+				state: 'edited',
+				content: 'Keep replies short.',
+				scope: 'instance',
+				projectId: null,
+			});
+
+			reduceEvent(state, {
+				type: 'preference-card',
+				runId: 'run-1',
+				agentId: 'root',
+				payload: { toolCallId: 'tc-1', preferenceId: 'pref-1', state: 'undone' },
+			});
+			expect(state.toolCallsById['tc-1'].preferenceCard).toEqual({
+				state: 'undone',
+				content: 'Keep replies short.',
+				scope: 'instance',
+				projectId: null,
+			});
+		});
+
+		it('names a project on a move into one', () => {
+			const state = savedPreferenceState();
+
+			reduceEvent(state, {
+				type: 'preference-card',
+				runId: 'run-1',
+				agentId: 'root',
+				payload: {
+					toolCallId: 'tc-1',
+					preferenceId: 'pref-1',
+					state: 'edited',
+					content: 'Keep replies short.',
+					scope: 'project',
+					projectId: 'p-1',
+				},
+			});
+
+			expect(state.toolCallsById['tc-1'].preferenceCard).toEqual({
+				state: 'edited',
+				content: 'Keep replies short.',
+				scope: 'project',
+				projectId: 'p-1',
+			});
+		});
+
+		it('clears the project when a later edit moves the row out of it', () => {
+			// The `??` the other fields use is wrong here: `null` must beat the last project.
+			const state = savedPreferenceState();
+
+			reduceEvent(state, {
+				type: 'preference-card',
+				runId: 'run-1',
+				agentId: 'root',
+				payload: {
+					toolCallId: 'tc-1',
+					preferenceId: 'pref-1',
+					state: 'edited',
+					content: 'Keep replies short.',
+					scope: 'project',
+					projectId: 'p-1',
+				},
+			});
+
+			reduceEvent(state, {
+				type: 'preference-card',
+				runId: 'run-1',
+				agentId: 'root',
+				payload: {
+					toolCallId: 'tc-1',
+					preferenceId: 'pref-1',
+					state: 'edited',
+					content: 'Keep replies short.',
+					scope: 'user',
+					projectId: null,
+				},
+			});
+
+			expect(state.toolCallsById['tc-1'].preferenceCard).toEqual({
+				state: 'edited',
+				content: 'Keep replies short.',
+				scope: 'user',
+				projectId: null,
+			});
+		});
+
+		it('ignores a card fact for an unknown tool call', () => {
+			const state = stateWithRun('run-1', 'root');
+
+			reduceEvent(state, {
+				type: 'preference-card',
+				runId: 'run-1',
+				agentId: 'root',
+				payload: { toolCallId: 'nope', preferenceId: 'pref-1', state: 'undone' },
+			});
+
+			expect(Object.keys(state.toolCallsById)).toHaveLength(0);
+		});
+
+		it('ignores an unsafe toolCallId key', () => {
+			const state = stateWithRun('run-1', 'root');
+
+			reduceEvent(state, {
+				type: 'preference-card',
+				runId: 'run-1',
+				agentId: 'root',
+				payload: { toolCallId: '__proto__', preferenceId: 'pref-1', state: 'undone' },
+			});
+
+			expectStateMapsNotPolluted(state);
+		});
+
+		it('ignores a toolCallId that names an inherited property', () => {
+			const state = savedPreferenceState();
+
+			reduceEvent(state, {
+				type: 'preference-card',
+				runId: 'run-1',
+				agentId: 'root',
+				payload: { toolCallId: 'toString', preferenceId: 'pref-1', state: 'undone' },
+			});
+
+			expect(Object.hasOwn(state.toolCallsById, 'toString')).toBe(false);
+			expect('preferenceCard' in Object.prototype.toString).toBe(false);
+			expect(state.toolCallsById['tc-1'].preferenceCard).toBeUndefined();
 		});
 	});
 
@@ -2019,6 +2354,7 @@ describe('agent-run-reducer', () => {
 			const tc = state.toolCallsById['tc-1'];
 			expect(tc.isLoading).toBe(false);
 			expect(tc.error).toContain('Interrupted');
+			expect(tc.interrupted).toBe(true);
 			expect(state.status).toBe('cancelled');
 			const agent = findAgent(state, AGENT)!;
 			expect(agent.cancellationReason).toBe('interrupted');

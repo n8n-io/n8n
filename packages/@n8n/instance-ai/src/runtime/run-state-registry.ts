@@ -160,6 +160,7 @@ export class RunStateRegistry<TUser = unknown> {
 
 	/** Build mode captured at user-run entry and reused by follow-up runs. */
 	private readonly threadBuildModes = new Map<string, InstanceAiBuildMode>();
+	private readonly threadSetupPanelEnabled = new Map<string, boolean>();
 
 	private readonly threadObserverThresholds = new Map<string, number>();
 	private readonly threadPromptSelections = new Map<
@@ -498,6 +499,29 @@ export class RunStateRegistry<TUser = unknown> {
 		return this.threadUsers.get(threadId);
 	}
 
+	/**
+	 * Threads with a live run for this user. Active runs come first, then
+	 * suspended runs. A thread that is both is listed once.
+	 */
+	listLiveThreadIdsForUser(userId: string): string[] {
+		const seen = new Set<string>();
+		const threadIds: string[] = [];
+		const add = (threadId: string) => {
+			if (seen.has(threadId)) return;
+			seen.add(threadId);
+			threadIds.push(threadId);
+		};
+
+		for (const run of this.activeRuns.values()) {
+			if (run.userId === userId) add(run.threadId);
+		}
+		for (const run of this.suspendedRuns.values()) {
+			const ownerId = run.userId ?? this.getUserId(run.user);
+			if (ownerId === userId) add(run.threadId);
+		}
+		return threadIds;
+	}
+
 	setTimeZone(threadId: string, timeZone: string): void {
 		this.threadTimeZones.set(threadId, timeZone);
 	}
@@ -524,6 +548,14 @@ export class RunStateRegistry<TUser = unknown> {
 
 	getBuildMode(threadId: string): InstanceAiBuildMode | undefined {
 		return this.threadBuildModes.get(threadId);
+	}
+
+	setSetupPanelEnabled(threadId: string, enabled: boolean): void {
+		this.threadSetupPanelEnabled.set(threadId, enabled);
+	}
+
+	isSetupPanelEnabled(threadId: string): boolean {
+		return this.threadSetupPanelEnabled.get(threadId) === true;
 	}
 
 	/** Per-thread observer threshold; an omitted value clears it. */
@@ -705,6 +737,7 @@ export class RunStateRegistry<TUser = unknown> {
 		this.threadTimeZones.delete(threadId);
 		this.threadComputerUseChannels.delete(threadId);
 		this.threadBuildModes.delete(threadId);
+		this.threadSetupPanelEnabled.delete(threadId);
 		this.threadObserverThresholds.delete(threadId);
 		this.threadPromptSelections.delete(threadId);
 
@@ -757,6 +790,7 @@ export class RunStateRegistry<TUser = unknown> {
 		this.threadTimeZones.clear();
 		this.threadComputerUseChannels.clear();
 		this.threadBuildModes.clear();
+		this.threadSetupPanelEnabled.clear();
 		this.threadObserverThresholds.clear();
 		this.threadPromptSelections.clear();
 		this.threadMessageGroupId.clear();

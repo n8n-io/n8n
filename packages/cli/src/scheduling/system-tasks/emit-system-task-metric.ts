@@ -1,4 +1,5 @@
-import type { EventMap, EventService } from '@/events/event.service';
+import type { EventMap, EventService } from '@n8n/backend-services';
+
 import type { SystemTaskMetricsEventMap } from '@/events/maps/system-task-metrics.event-map';
 
 /**

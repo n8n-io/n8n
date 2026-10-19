@@ -10,6 +10,7 @@ import {
 	UnexpectedError,
 	UserError,
 	type IRun,
+	type IWorkflowBase,
 	type IWorkflowExecutionDataProcess,
 	type RelatedExecution,
 } from 'n8n-workflow';
@@ -18,6 +19,7 @@ import { ActiveExecutions } from '@/active-executions';
 import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { OwnershipService } from '@/services/ownership.service';
+import { WorkflowPublisherService } from '@/workflows/workflow-publisher.service';
 import { WorkflowRunner } from '@/workflow-runner';
 
 import {
@@ -54,6 +56,7 @@ export class WaitTracker {
 		private readonly executionRepository: ExecutionRepository,
 		private readonly executionPersistence: ExecutionPersistence,
 		private readonly ownershipService: OwnershipService,
+		private readonly workflowPublisherService: WorkflowPublisherService,
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly workflowRunner: WorkflowRunner,
 		private readonly instanceSettings: InstanceSettings,
@@ -63,6 +66,11 @@ export class WaitTracker {
 
 	has(executionId: string) {
 		return this.waitingExecutions[executionId] !== undefined;
+	}
+
+	/** Sizes of the in-memory collections, for diagnostics and tests. */
+	getDiagnosticCounts() {
+		return { waitingExecutions: Object.keys(this.waitingExecutions).length };
 	}
 
 	init() {
@@ -147,12 +155,25 @@ export class WaitTracker {
 		if (!fullExecutionData) {
 			throw new UnexpectedError('Execution does not exist.', { extra: { executionId } });
 		}
+		// oxlint-disable-next-line typescript/no-deprecated
 		if (fullExecutionData.finished) {
 			throw new UnexpectedError('The execution did succeed and can so not be started again.');
 		}
 
 		if (!fullExecutionData.workflowData.id) {
 			throw new UnexpectedError('Only saved workflows can be resumed.');
+		}
+
+		// Wait for the old segment to settle before replacement on the same main.
+		// JobOutcomeTracker keys separate completion reports across mains.
+		if (fullExecutionData.data.waitReason === 'suspended') {
+			// A running row is another attempt's live segment, not this suspension.
+			if (fullExecutionData.status !== 'waiting') {
+				throw new ExecutionAlreadyResumingError(executionId);
+			}
+			if (this.activeExecutions.has(executionId)) {
+				await this.activeExecutions.getPostExecutePromise(executionId);
+			}
 		}
 
 		const workflowId = fullExecutionData.workflowData.id;
@@ -165,12 +186,20 @@ export class WaitTracker {
 			projectId: project.id,
 			pushRef: fullExecutionData.data.pushRef,
 			startedAt: fullExecutionData.startedAt,
+			// Whatever awaited this run on main was answered when the run paused, so
+			// a resumed segment owes nothing and may be suspended again.
+			callerAwaitsOutcome: 'none',
+			// Not a stored field, so a resume has to derive it again — otherwise the
+			// run comes back without an identity and a credential only its publisher
+			// may use is refused halfway through.
+			userId: await this.workflowPublisherService.findActingUserIdForRestart(fullExecutionData),
 		};
 
 		// Start the execution again
 		await this.workflowRunner.run(data, false, false, {
 			executionId,
 			expectedStatus: 'waiting',
+			storedAt: fullExecutionData.storedAt,
 		});
 
 		const { parentExecution } = fullExecutionData.data;
@@ -180,6 +209,7 @@ export class WaitTracker {
 				parentExecution,
 				this.activeExecutions.getPostExecutePromise(executionId),
 				{ executionId, workflowId },
+				fullExecutionData.workflowData,
 			);
 		}
 	}
@@ -198,6 +228,7 @@ export class WaitTracker {
 		parentExecution: RelatedExecution,
 		executePromise: Promise<IRun | undefined>,
 		childExecution?: RelatedExecution,
+		childWorkflowData?: IWorkflowBase,
 	): Promise<void> {
 		try {
 			const subworkflowResults = await executePromise;
@@ -208,6 +239,7 @@ export class WaitTracker {
 				parentExecution.executionId,
 				subworkflowResults,
 				childExecution,
+				childWorkflowData,
 			);
 
 			// An unpatched parent has nothing of this child's to resume on: it is parked on a
@@ -235,6 +267,7 @@ export class WaitTracker {
 		parentExecutionId: string,
 		subworkflowResults: IRun,
 		childExecution?: RelatedExecution,
+		childWorkflowData?: IWorkflowBase,
 	): Promise<boolean> {
 		let patched = false;
 
@@ -244,6 +277,7 @@ export class WaitTracker {
 					parentExecutionId,
 					subworkflowResults,
 					childExecution,
+					childWorkflowData,
 				);
 			},
 			MAX_PARENT_RESUME_ATTEMPTS,
@@ -361,6 +395,7 @@ export class WaitTracker {
 			startedAt: child.startedAt,
 			stoppedAt: child.stoppedAt,
 			status: child.status,
+			// oxlint-disable-next-line typescript/no-deprecated
 			finished: child.finished,
 			storedAt: child.storedAt,
 		};
@@ -370,7 +405,7 @@ export class WaitTracker {
 		// A crashed or cancelled child is terminal but often carries neither an error nor node
 		// output. Resuming on it would re-run the parent's node disabled, passing the parent's
 		// own input off as the sub-workflow's result, so leave the parent parked instead.
-		if (!(await this.patchParent(parentId, childRun, childExecution))) {
+		if (!(await this.patchParent(parentId, childRun, childExecution, child.workflowData))) {
 			this.logger.warn('Parent not patched with the sub-execution result, leaving it parked', {
 				parentExecutionId: parentId,
 				childExecutionId: child.id,

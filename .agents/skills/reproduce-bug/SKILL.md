@@ -32,7 +32,7 @@ Based on the affected area, pick the test layer and pattern:
 | CLI / API | Vitest integration | setupTestServer + supertest | `packages/cli/test/integration/` |
 | Config | Vitest unit | GlobalConfig + Container | `packages/@n8n/config/src/configs/__tests__/` |
 | Editor UI | Vitest | Vue Test Utils + Pinia | `packages/frontend/editor-ui/src/**/__tests__/` |
-| E2E / Canvas | Playwright | Test containers + composables | `packages/testing/playwright/` |
+| E2E / Canvas | Playwright | Test containers + composables | `packages/quality/testing/playwright/` |
 
 ## Step 3: Locate Source Files
 

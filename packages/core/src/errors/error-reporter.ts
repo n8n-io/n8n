@@ -361,6 +361,7 @@ export class ErrorReporter {
 			return null;
 		}
 
+		// oxlint-disable-next-line typescript/no-deprecated
 		if (isAxiosError(originalException)) return null;
 
 		if (originalException instanceof BaseError) {

@@ -28,6 +28,7 @@ const agentsSdkMocks = vi.hoisted(() => {
 	}> = [];
 	const resumeCalls: Array<{ options: Record<string, unknown> }> = [];
 	const instructionsCalls: string[] = [];
+	const volatileInstructionsProviders: Array<() => Promise<string | undefined>> = [];
 	const registeredToolNames: string[] = [];
 	const modelCalls: unknown[] = [];
 	const configurationCalls: Array<{ maxIterations?: number }> = [];
@@ -64,6 +65,10 @@ const agentsSdkMocks = vi.hoisted(() => {
 		}
 		instructions(text: string) {
 			instructionsCalls.push(text);
+			return this;
+		}
+		volatileInstructionsProvider(provider: () => Promise<string | undefined>) {
+			volatileInstructionsProviders.push(provider);
 			return this;
 		}
 		skills(_skills: unknown) {
@@ -120,15 +125,11 @@ const agentsSdkMocks = vi.hoisted(() => {
 	function createObservationLogReflectFn(model: unknown, options: unknown) {
 		return { model, options, kind: 'reflect' };
 	}
-
-	function createPlannerTodosTool(): BuiltTool {
-		return { name: 'write_todos', description: 'planner todos tool' } as BuiltTool;
-	}
-
 	return {
 		streamCalls,
 		resumeCalls,
 		instructionsCalls,
+		volatileInstructionsProviders,
 		registeredToolNames,
 		modelCalls,
 		configurationCalls,
@@ -141,7 +142,6 @@ const agentsSdkMocks = vi.hoisted(() => {
 		MockMemory,
 		createObservationLogObserveFn,
 		createObservationLogReflectFn,
-		createPlannerTodosTool,
 	};
 });
 
@@ -151,7 +151,6 @@ vi.mock('@n8n/agents', async (importOriginal) => ({
 	Memory: agentsSdkMocks.MockMemory,
 	createObservationLogObserveFn: agentsSdkMocks.createObservationLogObserveFn,
 	createObservationLogReflectFn: agentsSdkMocks.createObservationLogReflectFn,
-	createPlannerTodosTool: agentsSdkMocks.createPlannerTodosTool,
 }));
 
 // Avoid a real `models.dev` catalog fetch — irrelevant to thread isolation and
@@ -238,6 +237,7 @@ describe('AgentsBuilderService session isolation', () => {
 		agentsSdkMocks.streamCalls.length = 0;
 		agentsSdkMocks.resumeCalls.length = 0;
 		agentsSdkMocks.instructionsCalls.length = 0;
+		agentsSdkMocks.volatileInstructionsProviders.length = 0;
 		agentsSdkMocks.registeredToolNames.length = 0;
 		agentsSdkMocks.modelCalls.length = 0;
 		agentsSdkMocks.configurationCalls.length = 0;
@@ -380,8 +380,8 @@ describe('AgentsBuilderService session isolation', () => {
 
 	it('registers all standard tools returned by the tools service', async () => {
 		const { service, user, credentialProvider, credentialService } = setup({
-			json: [fakeTool('resolve_llm'), fakeTool('read_config')],
-			shared: [fakeTool('ask_credential')],
+			json: [fakeTool('resolve_llm')],
+			shared: [fakeTool('agent-context'), fakeTool('ask_credential')],
 		});
 
 		await drain(
@@ -397,8 +397,9 @@ describe('AgentsBuilderService session isolation', () => {
 		);
 
 		expect(agentsSdkMocks.registeredToolNames).toEqual(
-			expect.arrayContaining(['resolve_llm', 'read_config', 'ask_credential']),
+			expect.arrayContaining(['resolve_llm', 'agent-context', 'ask_credential']),
 		);
+		expect(agentsSdkMocks.registeredToolNames).not.toContain('write_todos');
 	});
 
 	it('registers the parent MCP tools for an initial builder turn', async () => {
@@ -449,11 +450,11 @@ describe('AgentsBuilderService session isolation', () => {
 	});
 
 	it('does not let an MCP tool replace a native builder tool', async () => {
-		const nativeReadConfig = fakeTool('read_config');
-		const mcpReadConfig = fakeTool('read_config');
+		const nativeAgentContext = fakeTool('agent-context');
+		const mcpAgentContext = fakeTool('agent-context');
 		const { service, logger, user, credentialProvider, credentialService } = setup({
-			json: [nativeReadConfig],
-			shared: [],
+			json: [],
+			shared: [nativeAgentContext],
 		});
 
 		await drain(
@@ -466,17 +467,17 @@ describe('AgentsBuilderService session isolation', () => {
 				user,
 				{
 					...baseSession,
-					mcpTools: new Map([[mcpReadConfig.name, mcpReadConfig]]),
+					mcpTools: new Map([[mcpAgentContext.name, mcpAgentContext]]),
 				},
 			),
 		);
 
-		expect(agentsSdkMocks.registeredToolNames.filter((name) => name === 'read_config')).toEqual([
-			'read_config',
+		expect(agentsSdkMocks.registeredToolNames.filter((name) => name === 'agent-context')).toEqual([
+			'agent-context',
 		]);
 		expect(logger.warn).toHaveBeenCalledWith(
 			'Skipped MCP tool that conflicts with an agent builder tool',
-			{ toolName: 'read_config', agentId: 'agent-1' },
+			{ toolName: 'agent-context', agentId: 'agent-1' },
 		);
 	});
 
@@ -522,6 +523,29 @@ describe('AgentsBuilderService session isolation', () => {
 		);
 
 		expect(agentsSdkMocks.configurationCalls).toEqual([{ maxIterations: 100 }]);
+	});
+
+	it('keeps the per-agent Preview path out of the cached instructions', async () => {
+		const { service, user, credentialProvider, credentialService } = setup();
+
+		await drain(
+			service.buildAgent(
+				'agent-1',
+				'project-1',
+				'hi',
+				credentialProvider,
+				credentialService,
+				user,
+				baseSession,
+			),
+		);
+
+		expect(agentsSdkMocks.instructionsCalls[0]).not.toContain('/projects/project-1/agents/agent-1');
+		expect(agentsSdkMocks.volatileInstructionsProviders).toHaveLength(1);
+		const sessionContext = await agentsSdkMocks.volatileInstructionsProviders[0]?.();
+		expect(sessionContext).toContain(
+			'[Preview](/projects/project-1/agents/agent-1?openPreview=true)',
+		);
 	});
 
 	it('enables prompt caching with a 5m Anthropic TTL for the builder agent', async () => {

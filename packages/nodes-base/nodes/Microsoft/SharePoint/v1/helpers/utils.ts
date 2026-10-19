@@ -137,8 +137,8 @@ export async function itemColumnsPreSend(
 				{},
 				{
 					$filter: mapperValue.matchingColumns
-						.map((x) => `fields/${x} eq '${mapperValue.value![x]}'`)
-						.join(' and'),
+						.map((x) => `fields/${x} eq '${escapeFilterValue(mapperValue.value![x])}'`)
+						.join(' and '),
 				},
 				{
 					Prefer: 'HonorNonIndexedQueriesWarningMayFailRandomly',

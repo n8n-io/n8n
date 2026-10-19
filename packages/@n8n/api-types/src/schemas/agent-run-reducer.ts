@@ -110,6 +110,31 @@ function ensureAgent(state: AgentRunState, agentId: string): InstanceAiAgentNode
 	return state.agentsById[agentId];
 }
 
+/**
+ * Per-run orchestrator agent id. A follow-up run merged into an existing
+ * message group streams under this id, not under the group's root agent id.
+ */
+export function orchestratorAgentId(runId: string): string {
+	return `orchestrator-${runId}`;
+}
+
+/**
+ * Alias a follow-up run's orchestrator to the group's root agent.
+ *
+ * `run-start` creates this alias, but a state rebuilt from a snapshot tree
+ * (a `run-sync` frame or history hydration) only indexes the tree's own
+ * nodes. Without the alias, every later event of that run is dropped as an
+ * orphan, including the tool call that a confirmation attaches to.
+ */
+function aliasRunOrchestrator(state: AgentRunState, agentId: string, runId: string): void {
+	if (!isSafeObjectKey(agentId) || state.agentsById[agentId]) return;
+	if (agentId !== orchestratorAgentId(runId)) return;
+	const root = state.agentsById[state.rootAgentId];
+	// Same test as a follow-up `run-start`: a fresh state has no group to join.
+	if (!root || (Object.keys(state.agentsById).length <= 1 && !nodeHasContent(root))) return;
+	state.agentsById[agentId] = root;
+}
+
 /** When the event was published — falls back to "now" for live events and
  *  old persisted events that predate the `ts` envelope field. Replays must
  *  use the publish time or tool durations collapse to processing time. */
@@ -201,6 +226,13 @@ function nodeHasContent(node: InstanceAiAgentNode | undefined): boolean {
  * as the existing frontend reducer). Returns the same state reference.
  */
 export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): AgentRunState {
+	if (event.type !== 'run-start') {
+		aliasRunOrchestrator(state, event.agentId, event.runId);
+		if (event.type === 'agent-spawned') {
+			aliasRunOrchestrator(state, event.payload.parentId, event.runId);
+		}
+	}
+
 	switch (event.type) {
 		case 'run-start': {
 			const rootId = event.agentId;
@@ -399,6 +431,7 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			const tc = state.toolCallsById[event.payload.toolCallId];
 			if (tc) {
 				tc.error = event.payload.error;
+				tc.interrupted = true;
 				tc.isLoading = false;
 				tc.completedAt = eventTimestamp(event);
 			}
@@ -414,6 +447,8 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			// unnamed replay.
 			const existingNode = state.agentsById[event.agentId];
 			if (existingNode) {
+				existingNode.activity = event.payload.activity ?? existingNode.activity;
+				existingNode.title = event.payload.title ?? existingNode.title;
 				const incoming = event.payload.targetResource;
 				if (incoming && incoming.id === existingNode.targetResource?.id) {
 					existingNode.targetResource = {
@@ -430,6 +465,7 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 					tools: event.payload.tools,
 					taskId: event.payload.taskId,
 					kind: event.payload.kind,
+					activity: event.payload.activity,
 					title: event.payload.title,
 					subtitle: event.payload.subtitle,
 					goal: event.payload.goal,
@@ -456,6 +492,7 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 				agent.status = event.payload.status ?? (event.payload.error ? 'error' : 'completed');
 				agent.result = event.payload.result;
 				agent.error = event.payload.error;
+				agent.agentChange = event.payload.agentChange;
 				// A completed/errored agent can't have tool calls still in-flight.
 				// Clear isLoading so folded history trees don't show stale confirmations.
 				for (const tc of agent.toolCalls) {
@@ -525,6 +562,32 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 				root.setupItemsByWorkflowId = {
 					...root.setupItemsByWorkflowId,
 					[event.payload.workflowId]: event.payload.items,
+				};
+			}
+			break;
+		}
+
+		// A later fact about a preference the `save_user_preference` tool saved: the user
+		// edited it or undid it from the card. It folds onto the tool call so the card
+		// renders the current state after a reload, without asking the database.
+		case 'preference-card': {
+			// The id comes from a request body, so an inherited name like `toString`
+			// must not resolve to a function on the prototype.
+			if (!Object.hasOwn(state.toolCallsById, event.payload.toolCallId)) break;
+			const tc = state.toolCallsById[event.payload.toolCallId];
+			if (tc) {
+				// An edit fact names a scope; an undo fact names none.
+				const namesScope = event.payload.scope !== undefined;
+				tc.preferenceCard = {
+					state: event.payload.state,
+					// An undo fact carries no content, scope or project, so keep the last ones a
+					// fact named. An edit then an undo must strike out the edited text, not the
+					// text the tool result still holds, and must still name where the row was.
+					content: event.payload.content ?? tc.preferenceCard?.content,
+					scope: event.payload.scope ?? tc.preferenceCard?.scope,
+					// A fact that names a scope also decides the project: `null` on a move out of
+					// a project must win over the project the last fact named, so `??` is wrong here.
+					projectId: namesScope ? (event.payload.projectId ?? null) : tc.preferenceCard?.projectId,
 				};
 			}
 			break;

@@ -9,7 +9,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { PolicyViolationError } from '@/policy/policy-violation.error';
 import { OwnershipService } from '@/services/ownership.service';
-import { UrlService } from '@/services/url.service';
+import { UrlService } from '@n8n/backend-services';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 
 import { executeErrorWorkflow } from '../execute-error-workflow';
@@ -206,6 +206,75 @@ describe('executeErrorWorkflow', () => {
 			await new Promise(process.nextTick);
 
 			expect(workflowExecutionService.executeErrorWorkflow).toHaveBeenCalled();
+		});
+	});
+
+	describe('execution context handed to the error workflow', () => {
+		const runtimeData = {
+			version: 1 as const,
+			establishedAt: 2000000000,
+			source: 'webhook' as const,
+			credentials: 'sealed-identity-carrier',
+			secureArtifacts: 'stripped-trigger-values',
+			redaction: { version: 2 as const, production: true, manual: false },
+			executedByUserId: 'user-who-ran-the-failed-workflow',
+			usesDynamicCredentials: true,
+		};
+
+		const runFailedWorkflow = async () => {
+			const workflowData = mock<IWorkflowBase>({
+				id: 'workflow-123',
+				name: 'Failing workflow',
+				settings: { errorWorkflow: 'error-workflow-456' },
+				nodes: [],
+			});
+			const data = createRunExecutionData({
+				resultData: {
+					error: new NodeOperationError(
+						mockNode,
+						'Test error',
+					) as IRun['data']['resultData']['error'],
+					lastNodeExecuted: 'TestNode',
+					runData: {},
+				},
+				executionData: { nodeExecutionStack: [] },
+			});
+			data.executionData!.runtimeData = runtimeData;
+
+			ownershipService.getWorkflowProjectCached.mockResolvedValue({ id: 'project-1' } as never);
+
+			executeErrorWorkflow(
+				workflowData,
+				{ data, mode: 'trigger', startedAt: new Date(), storedAt: 'db', status: 'error' },
+				'trigger',
+				'execution-1',
+			);
+			await new Promise(process.nextTick);
+
+			const [, workflowErrorData] =
+				workflowExecutionService.executeErrorWorkflow.mock.calls.at(0) ?? [];
+			return workflowErrorData!.execution!.executionContext;
+		};
+
+		it('omits the identity carrier and the secure artifacts', async () => {
+			const executionContext = await runFailedWorkflow();
+
+			expect(executionContext).toBeDefined();
+			expect(executionContext).not.toHaveProperty('credentials');
+			expect(executionContext).not.toHaveProperty('secureArtifacts');
+		});
+
+		// This same payload becomes the error workflow's start-item `$json`, so a
+		// carrier left on it would be readable workflow data, not just inherited state.
+		it('passes only the non-identity fields', async () => {
+			expect(await runFailedWorkflow()).toEqual({
+				version: 1,
+				establishedAt: 2000000000,
+				source: 'webhook',
+				redaction: { version: 2, production: true, manual: false },
+				executedByUserId: 'user-who-ran-the-failed-workflow',
+				usesDynamicCredentials: true,
+			});
 		});
 	});
 });

@@ -1,5 +1,6 @@
 import { computed, onBeforeUnmount, ref, toValue, watch, type MaybeRefOrGetter } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 
 import type { INodeUi } from '@/Interface';
 
@@ -21,7 +22,11 @@ import type { AgentResource, AgentSkill } from '@/features/agents/types';
  */
 export function useReferencedAgentSummary(activeNode: MaybeRefOrGetter<INodeUi | null>) {
 	const rootStore = useRootStore();
+	const settingsStore = useSettingsStore();
 	const nav = useAgentNavigation();
+
+	// The agents API is not registered while agents are off, so a load would read as a deleted agent.
+	const agentsDisabled = computed(() => !settingsStore.isAgentsEnabled);
 
 	// The rich NDV agent experience targets the v2 node only.
 	const isAgentNode = computed(() => isAgentNodeV2(toValue(activeNode)));
@@ -112,7 +117,7 @@ export function useReferencedAgentSummary(activeNode: MaybeRefOrGetter<INodeUi |
 				repoint(pId, id);
 			}
 
-			if (id && pId && isAgentNode.value) {
+			if (id && pId && isAgentNode.value && !agentsDisabled.value) {
 				await load(pId, id);
 			}
 			// `id && !pId`: project scope not resolved yet — skip the load instead
@@ -125,7 +130,7 @@ export function useReferencedAgentSummary(activeNode: MaybeRefOrGetter<INodeUi |
 	// refetch so this read-only view doesn't silently go stale.
 	function onAgentUpdated(event?: AgentUpdatedEvent) {
 		if (event?.agentId && event.agentId !== agentId.value) return;
-		if (!agentId.value) return;
+		if (!agentId.value || agentsDisabled.value) return;
 		void load(projectId.value, agentId.value);
 	}
 
@@ -152,10 +157,11 @@ export function useReferencedAgentSummary(activeNode: MaybeRefOrGetter<INodeUi |
 		loading,
 		loadError,
 		isUnavailable,
+		agentsDisabled,
 		isPublished,
 		openBuilder,
 		reload: async () => {
-			if (agentId.value) await load(projectId.value, agentId.value);
+			if (agentId.value && !agentsDisabled.value) await load(projectId.value, agentId.value);
 		},
 	};
 }

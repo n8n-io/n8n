@@ -1,5 +1,7 @@
 import type { ScheduleDefinition } from '@n8n/constants';
 
+import type { ScheduledJob } from '../types';
+
 // Re-exported so a caller of the provisioning API needs one import for a job and
 // its schedule.
 export type {
@@ -60,4 +62,10 @@ export interface ProvisionSummary {
 	unchanged: ProvisionedJob[];
 	/** Jobs deleted (their tasks cascaded away). */
 	removed: ProvisionedJob[];
+}
+
+/** Stored jobs read back inside a provision, with the database time of the read. */
+export interface StoredJobs {
+	now: Date;
+	jobs: Array<ScheduledJob & { enabled: boolean }>;
 }

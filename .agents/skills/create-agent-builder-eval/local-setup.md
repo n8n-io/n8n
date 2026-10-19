@@ -4,7 +4,7 @@
 
 Generate a key on the
 [LangTracer API keys page](https://lang-tracer.n8n-maintenance.workers.dev/account?section=api).
-Add it to `.env.local` at the repository root:
+Add it to `.env.eval` at the repository root:
 
 ```env
 LANGTRACER_URL=https://lang-tracer.n8n-maintenance.workers.dev
@@ -16,7 +16,7 @@ that both variables exist before it creates an eval.
 
 ## Remaining environment
 
-Create `.env.local` at the repository root. Use one Instance AI model provider
+Create `.env.eval` at the repository root. Use one Instance AI model provider
 and one sandbox provider.
 
 ```env
@@ -76,7 +76,7 @@ N8N_USER_FOLDER=<printed-temp-directory> \
 E2E_TESTS=true \
 N8N_ENABLED_MODULES=instance-ai,agents \
 N8N_AI_ENABLED=true \
-pnpm exec dotenvx run -f ../../.env.local -- pnpm start
+pnpm exec dotenvx run -f ../../.env.eval -- pnpm start
 ```
 
 Use different ports when 5680 or 5681 is busy.
@@ -96,7 +96,7 @@ curl -sf -X POST http://localhost:5680/rest/e2e/reset \
 From `packages/@n8n/instance-ai`:
 
 ```bash
-pnpm exec dotenvx run -f ../../../.env.local -- \
+pnpm exec dotenvx run -f ../../../.env.eval -- \
   env -u LANGSMITH_API_KEY -u LANGSMITH_TRACING \
   pnpm eval:instance-ai \
   --base-url http://localhost:5680 \

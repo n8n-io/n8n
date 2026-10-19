@@ -90,6 +90,7 @@ describe('scheduled repositories', () => {
 		name,
 		misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 		misfireGraceSeconds: 60,
+		concurrencyLimit: null,
 		...selfOwned(name),
 		taskType: 'scheduleTrigger',
 		payload: {},
@@ -102,6 +103,7 @@ describe('scheduled repositories', () => {
 		fireAt: null,
 		nextRunAt: secondsFromNow(-60),
 		maxAttempts: 1,
+		timeoutSeconds: 300,
 		...overrides,
 	});
 
@@ -143,6 +145,7 @@ describe('scheduled repositories', () => {
 						scheduledFor,
 						runAt: scheduledFor,
 						maxAttempts: 1,
+						timeoutSeconds: 300,
 					},
 				]);
 			});
@@ -167,6 +170,7 @@ describe('scheduled repositories', () => {
 							scheduledFor,
 							runAt: scheduledFor,
 							maxAttempts: 1,
+							timeoutSeconds: 300,
 						},
 					]);
 					await jobRepository.advanceMany(trx, [
@@ -198,6 +202,7 @@ describe('scheduled repositories', () => {
 						scheduledFor,
 						runAt: scheduledFor,
 						maxAttempts: 1,
+						timeoutSeconds: 300,
 					},
 				]),
 			).rejects.toThrow('insertIgnoringDuplicates must run within a transaction');
@@ -459,6 +464,17 @@ describe('scheduled repositories', () => {
 			expect(ids).toEqual([idByName.get('wf:node:0'), idByName.get('wf:node:1')]);
 		});
 
+		it('stores a concurrency limit, and leaves an omitted one unlimited', async () => {
+			const jobs = [newJobRow('wf:node:0'), newJobRow('wf:node:1', { concurrencyLimit: 2 })];
+
+			await dataSource.transaction(async (trx) => await jobRepository.insertMany(trx, jobs));
+
+			const unlimited = await jobRepository.findOneByOrFail({ name: 'wf:node:0' });
+			const limited = await jobRepository.findOneByOrFail({ name: 'wf:node:1' });
+			expect(unlimited.concurrencyLimit).toBeNull();
+			expect(limited.concurrencyLimit).toBe(2);
+		});
+
 		it('returns the existing id for a name already taken, without duplicating the row', async () => {
 			// A prior writer already holds `wf:node:0`; a second provisioning run inserts it
 			// again alongside a fresh name. orIgnore skips the taken row, and the read-back by
@@ -572,8 +588,10 @@ describe('scheduled repositories', () => {
 				async (trx) =>
 					await jobRepository.updateRunOptions(trx, [updated.id], {
 						maxAttempts: 5,
+						timeoutSeconds: 300,
 						misfirePolicy: ScheduledJobMisfirePolicy.Skip,
 						misfireGraceSeconds: 120,
+						concurrencyLimit: null,
 					}),
 			);
 
@@ -590,6 +608,24 @@ describe('scheduled repositories', () => {
 			expect(other.misfireGraceSeconds).toBe(60);
 		});
 
+		it('rewrites the concurrency limit of the given jobs', async () => {
+			const job = await createJob({ concurrencyLimit: null });
+
+			await dataSource.transaction(
+				async (trx) =>
+					await jobRepository.updateRunOptions(trx, [job.id], {
+						maxAttempts: job.maxAttempts,
+						timeoutSeconds: 300,
+						misfirePolicy: job.misfirePolicy,
+						misfireGraceSeconds: job.misfireGraceSeconds,
+						concurrencyLimit: 3,
+					}),
+			);
+
+			const after = await jobRepository.findOneByOrFail({ id: job.id });
+			expect(after.concurrencyLimit).toBe(3);
+		});
+
 		it('leaves the queued occurrences of an updated job in place', async () => {
 			const job = await createJob();
 			await createTask(job.id);
@@ -598,8 +634,10 @@ describe('scheduled repositories', () => {
 				async (trx) =>
 					await jobRepository.updateRunOptions(trx, [job.id], {
 						maxAttempts: job.maxAttempts,
+						timeoutSeconds: 300,
 						misfirePolicy: ScheduledJobMisfirePolicy.Skip,
 						misfireGraceSeconds: 60,
+						concurrencyLimit: null,
 					}),
 			);
 
@@ -613,8 +651,10 @@ describe('scheduled repositories', () => {
 				async (trx) =>
 					await jobRepository.updateRunOptions(trx, [], {
 						maxAttempts: job.maxAttempts,
+						timeoutSeconds: 300,
 						misfirePolicy: ScheduledJobMisfirePolicy.Skip,
 						misfireGraceSeconds: 120,
+						concurrencyLimit: null,
 					}),
 			);
 
@@ -736,6 +776,7 @@ describe('scheduled repositories', () => {
 							scheduledFor,
 							runAt: scheduledFor,
 							maxAttempts: 1,
+							timeoutSeconds: 300,
 						},
 					]),
 			);
@@ -762,6 +803,7 @@ describe('scheduled repositories', () => {
 							scheduledFor,
 							runAt: scheduledFor,
 							maxAttempts: 1,
+							timeoutSeconds: 300,
 						},
 					]),
 			);
@@ -785,6 +827,7 @@ describe('scheduled repositories', () => {
 				scheduledFor,
 				runAt: scheduledFor,
 				maxAttempts: 1,
+				timeoutSeconds: 300,
 			};
 
 			const first = await dataSource.transaction(
@@ -812,6 +855,7 @@ describe('scheduled repositories', () => {
 					scheduledFor: when,
 					runAt: when,
 					maxAttempts: 1,
+					timeoutSeconds: 300,
 				};
 			});
 
@@ -837,6 +881,7 @@ describe('scheduled repositories', () => {
 					scheduledFor,
 					runAt: scheduledFor,
 					maxAttempts: 1,
+					timeoutSeconds: 300,
 				};
 
 				const [first, second] = await Promise.all([
@@ -1096,6 +1141,21 @@ describe('scheduled repositories', () => {
 			expect(snapshot.due).toBe(0);
 			expect(snapshot.running).toBe(1);
 			expect(snapshot.oldestPendingAgeMs).toBeNull();
+		});
+
+		it('counts a task held back by its concurrencyLimit as due', async () => {
+			const job = await createJob({ concurrencyLimit: 1 });
+			await createTask(job.id, {
+				status: 'running',
+				claimedBy: 'main-1',
+				leaseExpiresAt: secondsFromNow(60),
+			});
+			await createTask(job.id, { status: 'pending', runAt: secondsFromNow(-30) });
+
+			const snapshot = await taskRepository.getMetricSnapshot();
+
+			expect(snapshot.due).toBe(1);
+			expect(snapshot.oldestPendingAgeMs).not.toBeNull();
 		});
 
 		it('reports all-zero counts and a null age on an empty queue', async () => {

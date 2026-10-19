@@ -123,14 +123,12 @@ export class InstanceAiConversationHistoryRepository {
 		if (maxRowsPerThread <= 0) return byThread;
 
 		for (const threadId of threadIds) {
-			const rows = await this.messages()
+			const rows = await this.orderMessages(this.messages(), 'DESC')
 				.where('m.threadId = :threadId', { threadId })
 				.andWhere(buildMessageMatchCondition('m'), {
 					pattern: buildSearchLikePattern(query),
 					askUserMarker: ASK_USER_CONTENT_MARKER,
 				})
-				.orderBy('m.createdAt', 'DESC')
-				.addOrderBy('m.id', 'DESC')
 				.take(maxRowsPerThread)
 				.getMany();
 			byThread.set(threadId, rows);
@@ -146,11 +144,9 @@ export class InstanceAiConversationHistoryRepository {
 	async findFirstUserMessages(threadIds: string[]): Promise<Map<string, InstanceAiMessage>> {
 		const byThread = new Map<string, InstanceAiMessage>();
 		for (const threadId of threadIds) {
-			const row = await this.messages()
+			const row = await this.orderMessages(this.messages(), 'ASC')
 				.where('m.threadId = :threadId', { threadId })
 				.andWhere("m.role = 'user'")
-				.orderBy('m.createdAt', 'ASC')
-				.addOrderBy('m.id', 'ASC')
 				.take(1)
 				.getOne();
 			if (row) byThread.set(threadId, row);
@@ -309,11 +305,7 @@ export class InstanceAiConversationHistoryRepository {
 
 		const sqlOrder = direction === 'older' ? 'DESC' : 'ASC';
 		const fetchLimit = limit * WINDOW_OVERFETCH_FACTOR + 1;
-		const fetched = await qb
-			.orderBy('m.createdAt', sqlOrder)
-			.addOrderBy('m.id', sqlOrder)
-			.take(fetchLimit)
-			.getMany();
+		const fetched = await this.orderMessages(qb, sqlOrder).take(fetchLimit).getMany();
 
 		const rows: T[] = [];
 		let moreVisibleFetched = false;
@@ -339,6 +331,10 @@ export class InstanceAiConversationHistoryRepository {
 			.where('m.threadId = :threadId', { threadId })
 			.andWhere('m.role IN (:...roles)', { roles: CONVERSATION_ROLES })
 			.andWhere(buildVisibleRowCondition('m'), VISIBLE_ROW_MARKERS);
+	}
+
+	private orderMessages(qb: SelectQueryBuilder<InstanceAiMessage>, order: 'ASC' | 'DESC') {
+		return qb.orderBy('m.createdAt', order).addOrderBy('m.id', order);
 	}
 
 	private threads(): SelectQueryBuilder<InstanceAiThread> {

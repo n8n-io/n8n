@@ -2,8 +2,11 @@ import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { usePromotionChanges } from './usePromotionChanges';
 import * as promotionsApi from '../promotions.api';
 
+const publicApiContext = { baseUrl: 'https://example.test/public-api' };
+const restApiContext = { baseUrl: 'https://example.test/rest' };
+
 vi.mock('@n8n/stores/useRootStore', () => ({
-	useRootStore: () => ({ restApiContext: {} }),
+	useRootStore: () => ({ restApiContext, publicApiContext }),
 }));
 
 vi.mock('../promotions.api');
@@ -52,12 +55,14 @@ const mockChanges = [
 ];
 
 const COMMIT_SHA = 'a'.repeat(40);
+const SOURCE = { configId: 'config-1', branchName: 'main' };
 
 describe('usePromotionChanges', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		vi.mocked(promotionsApi.getPromotableChanges).mockResolvedValue({
 			commitSha: COMMIT_SHA,
+			source: SOURCE,
 			changes: mockChanges,
 		});
 	});
@@ -72,6 +77,7 @@ describe('usePromotionChanges', () => {
 
 		vi.mocked(promotionsApi.getPromotableChanges).mockResolvedValueOnce({
 			commitSha: COMMIT_SHA,
+			source: SOURCE,
 			changes: mockChanges.filter((change) => change.id !== 'wf-001'),
 		});
 		await fetchChanges();
@@ -80,14 +86,20 @@ describe('usePromotionChanges', () => {
 		expect(selectedCount.value).toBe(1);
 	});
 
-	it('should request the given direction and keep the commit the rows came from', async () => {
-		const { fetchChanges, commitSha } = usePromotionChanges('project-1', 'apply');
+	it('should request the given direction and keep the source the rows came from', async () => {
+		const { fetchChanges, commitSha, source } = usePromotionChanges('project-1', 'apply');
 		expect(commitSha.value).toBeNull();
+		expect(source.value).toBeNull();
 
 		await fetchChanges();
 
-		expect(promotionsApi.getPromotableChanges).toHaveBeenCalledWith({}, 'project-1', 'apply');
+		expect(promotionsApi.getPromotableChanges).toHaveBeenCalledWith(
+			restApiContext,
+			'project-1',
+			'apply',
+		);
 		expect(commitSha.value).toBe(COMMIT_SHA);
+		expect(source.value).toEqual(SOURCE);
 	});
 
 	it('should handle fetch errors', async () => {
@@ -99,6 +111,67 @@ describe('usePromotionChanges', () => {
 		expect(error.value).toBeInstanceOf(Error);
 		expect(error.value?.message).toBe('Network error');
 		expect(isLoading.value).toBe(false);
+	});
+
+	it('should stamp the last refresh on success only', async () => {
+		vi.useFakeTimers();
+		try {
+			const { fetchChanges, lastRefreshedAt } = usePromotionChanges('project-1');
+			expect(lastRefreshedAt.value).toBeNull();
+
+			await fetchChanges();
+			const firstRefresh = lastRefreshedAt.value;
+			expect(firstRefresh).not.toBeNull();
+
+			vi.mocked(promotionsApi.getPromotableChanges).mockRejectedValueOnce(
+				new Error('Network error'),
+			);
+			await fetchChanges();
+			expect(lastRefreshedAt.value).toBe(firstRefresh);
+
+			// Two stamps in the same millisecond would compare equal, so move the clock first.
+			vi.advanceTimersByTime(60_000);
+			await fetchChanges();
+			expect(lastRefreshedAt.value).not.toBe(firstRefresh);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it('should return null when submit is called with no selection', async () => {
+		const { submitSelection } = usePromotionChanges('project-1');
+		await expect(submitSelection()).resolves.toBeNull();
+		expect(promotionsApi.promoteProjectSelection).not.toHaveBeenCalled();
+	});
+
+	it('should post selected workflow ids to the promote endpoint', async () => {
+		vi.mocked(promotionsApi.promoteProjectSelection).mockResolvedValue({
+			connectionId: 'c1',
+			configId: 'cfg1',
+			counts: {
+				workflows: 1,
+				folders: 0,
+				credentials: 0,
+				dataTables: 0,
+				variables: 0,
+				tags: 0,
+			},
+			git: { commitSha: 'a'.repeat(40), branchName: 'main' },
+		});
+
+		const { fetchChanges, toggleSelected, submitSelection } = usePromotionChanges('project-1');
+		await fetchChanges();
+		toggleSelected('wf-001');
+
+		await submitSelection();
+
+		expect(promotionsApi.promoteProjectSelection).toHaveBeenCalledWith(
+			publicApiContext,
+			'project-1',
+			{
+				workflowIds: ['wf-001'],
+			},
+		);
 	});
 
 	it('should select only the visible rows when a search filter is active', async () => {

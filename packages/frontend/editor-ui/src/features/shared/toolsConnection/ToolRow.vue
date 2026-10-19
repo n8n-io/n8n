@@ -1,14 +1,16 @@
 <script setup lang="ts">
-import { computed, inject } from 'vue';
+import { computed, inject, ref } from 'vue';
 import {
-	N8nActionPill,
+	N8nBadge,
 	N8nButton,
 	N8nIcon,
 	N8nSpinner,
+	N8nSwitch2,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { RestrictedNodePopover } from '@n8n/frontend-module-type-availability-policies';
 import ToolCredentialPicker from './ToolCredentialPicker.vue';
 import ToolIcon from './ToolIcon.vue';
 import {
@@ -21,11 +23,16 @@ import { resolveToolItemIcon } from './toolItemIcon';
 
 const props = defineProps<{
 	item: ToolConnectionItem;
+	showConnectAction?: boolean;
+	connectLabel?: string;
+	connectAriaLabel?: string;
+	connectedLabel?: string;
 }>();
 
 const emit = defineEmits<{
 	'open-detail': [item: ToolConnectionItem];
 	connect: [item: ToolConnectionItem];
+	disconnect: [item: ToolConnectionItem];
 	'select-credential': [item: ToolConnectionItem, authType: string, credentialId: string];
 	'credential-dropdown-open': [item: ToolConnectionItem];
 	'first-credential-connect': [item: ToolConnectionItem];
@@ -85,21 +92,35 @@ const placeholderIcon = computed(() => {
 
 const resolvedIcon = computed(() => resolveToolItemIcon(props.item));
 
-const actionLabel = computed(() =>
-	props.item.communityPreview
-		? i18n.baseText('communityNodeDetails.install')
-		: i18n.baseText(
-				props.item.status === 'disconnected'
-					? 'tools.connection.action.reconnect'
-					: 'tools.connection.action.connect',
-			),
+const serviceActionLabel = computed(() =>
+	i18n.baseText(
+		props.item.status === 'connected' ? 'generic.settings' : 'tools.connection.action.setup',
+	),
 );
+
+const actionLabel = computed(() => {
+	if (props.item.communityPreview) return i18n.baseText('communityNodeDetails.install');
+	if (props.item.status === 'disconnected') {
+		return i18n.baseText('tools.connection.action.reconnect');
+	}
+	return props.connectLabel ?? i18n.baseText('tools.connection.action.connect');
+});
 
 const installBlocked = computed(
 	() => Boolean(props.item.communityPreview) && Boolean(props.item.installDisabled),
 );
 
 const isDisabled = computed(() => Boolean(props.item.disabled));
+const isRowNavigable = computed(() => props.item.kind !== 'service');
+
+const restriction = computed(() =>
+	props.item.kind === 'node' ? props.item.restriction : undefined,
+);
+const isActivationBlocked = computed(
+	() => Boolean(restriction.value) && !hasToolConnection(props.item.status),
+);
+
+const rowRef = ref<HTMLElement | null>(null);
 
 /**
  * For most rows the button only repeated what clicking the row already does.
@@ -108,11 +129,15 @@ const isDisabled = computed(() => Boolean(props.item.disabled));
  * its detail view.
  */
 const hasDirectAction = computed(
-	() => Boolean(props.item.communityPreview) || props.item.kind === 'mcp-server',
+	() =>
+		props.showConnectAction ||
+		Boolean(props.item.communityPreview) ||
+		props.item.kind === 'mcp-server',
 );
 
 function handleRowClick() {
 	if (props.item.disabled) return;
+	if (isActivationBlocked.value) return;
 	if (props.item.status === 'connecting') return;
 	emit('open-detail', props.item);
 }
@@ -127,16 +152,27 @@ function handleConnect() {
 
 <template>
 	<div
-		:class="[$style.row, $style[`row--${item.kind}`], { [$style.rowDisabled]: isDisabled }]"
+		ref="rowRef"
+		:class="[
+			$style.row,
+			$style[`row--${item.kind}`],
+			{
+				[$style.rowDisabled]: isDisabled,
+				[$style.rowRestricted]: !!restriction,
+				[$style.rowBlocked]: isActivationBlocked,
+			},
+		]"
 		:data-test-id="`tools-connection-row`"
 		:data-row-kind="item.kind"
 	>
-		<button
-			type="button"
-			:class="$style.mainAction"
-			:disabled="isDisabled || item.status === 'connecting'"
+		<component
+			:is="isRowNavigable ? 'button' : 'div'"
+			:type="isRowNavigable ? 'button' : undefined"
+			:class="[$style.mainAction, { [$style.mainActionStatic]: !isRowNavigable }]"
+			:disabled="isRowNavigable ? isDisabled || item.status === 'connecting' : undefined"
+			:aria-disabled="isActivationBlocked || undefined"
 			data-test-id="tools-connection-row-main"
-			@click="handleRowClick"
+			@click="isRowNavigable && handleRowClick()"
 		>
 			<template v-if="item.kind === 'workflow'">
 				<span :class="$style.workflowIcon" aria-hidden="true">
@@ -156,7 +192,11 @@ function handleConnect() {
 			</template>
 
 			<template v-else>
-				<ToolIcon :source="resolvedIcon" :fallback-icon="placeholderIcon" />
+				<ToolIcon
+					v-if="item.kind !== 'skill'"
+					:source="resolvedIcon"
+					:fallback-icon="placeholderIcon"
+				/>
 				<span :class="$style.text">
 					<span :class="$style.titleRow">
 						<N8nText :class="$style.title" tag="span" bold>{{ item.title }}</N8nText>
@@ -173,14 +213,14 @@ function handleConnect() {
 								data-test-id="tools-connection-row-verified-badge"
 							/>
 						</N8nTooltip>
-						<N8nActionPill
+						<N8nBadge
 							v-if="item.freeCredits"
-							size="small"
-							:type="creditsPill.type"
+							size="xxsmall"
+							:variant="creditsPill.type === 'info' ? 'info' : 'success'"
 							data-test-id="tools-connection-row-free-credits"
 						>
 							{{ creditsPill.text }}
-						</N8nActionPill>
+						</N8nBadge>
 					</span>
 					<N8nText
 						v-if="item.description"
@@ -193,15 +233,17 @@ function handleConnect() {
 					</N8nText>
 				</span>
 			</template>
-		</button>
+		</component>
 
 		<div :class="$style.action">
-			<N8nTooltip
-				v-if="isDisabled"
-				:content="item.disabledReason ?? ''"
-				:disabled="!item.disabledReason"
-				placement="top"
-			>
+			<RestrictedNodePopover
+				v-if="restriction"
+				:node-type-name="item.title"
+				:scope="restriction.scope"
+				:anchor="rowRef"
+				:side-offset="48"
+			/>
+			<N8nTooltip v-else-if="isDisabled" :disabled="!item.disabledReason" placement="top">
 				<span
 					:class="$style.disabledMarker"
 					role="img"
@@ -211,7 +253,28 @@ function handleConnect() {
 				>
 					<N8nIcon icon="info" :size="14" color="text-light" />
 				</span>
+				<template #content>{{ item.disabledReason }}</template>
 			</N8nTooltip>
+			<N8nSwitch2
+				v-else-if="item.kind === 'skill'"
+				:model-value="item.attached"
+				:disabled="item.attaching"
+				:label="
+					i18n.baseText(
+						item.attached ? 'tools.connection.action.attached' : 'tools.connection.action.detached',
+					)
+				"
+				data-test-id="tools-connection-row-attach"
+				@update:model-value="$event ? emit('connect', item) : emit('disconnect', item)"
+			/>
+			<N8nButton
+				v-else-if="item.kind === 'service'"
+				variant="outline"
+				size="small"
+				:label="serviceActionLabel"
+				data-test-id="tools-connection-row-service-action"
+				@click="handleRowClick"
+			/>
 			<ToolCredentialPicker
 				v-else-if="shouldShowCredentialPicker"
 				:item="item"
@@ -231,7 +294,7 @@ function handleConnect() {
 				data-test-id="tools-connection-row-connected"
 			>
 				<N8nIcon icon="check" :size="14" :class="$style.statusIconConnected" aria-hidden="true" />
-				{{ i18n.baseText('tools.connection.action.connected') }}
+				{{ connectedLabel ?? i18n.baseText('tools.connection.action.connected') }}
 			</span>
 			<span
 				v-else-if="item.status === 'connecting'"
@@ -262,6 +325,7 @@ function handleConnect() {
 					variant="outline"
 					size="small"
 					:loading="item.installing"
+					:aria-label="connectAriaLabel"
 					:data-test-id="
 						item.communityPreview ? 'tools-connection-row-install' : 'tools-connection-row-connect'
 					"
@@ -320,6 +384,22 @@ function handleConnect() {
 	}
 }
 
+.rowRestricted {
+	.mainAction > * {
+		opacity: 0.45;
+	}
+}
+
+.rowBlocked {
+	.mainAction {
+		cursor: not-allowed;
+	}
+
+	&:hover {
+		background: transparent;
+	}
+}
+
 .mainAction {
 	display: flex;
 	align-items: center;
@@ -342,6 +422,10 @@ function handleConnect() {
 		outline: var(--focus--border-width) solid var(--focus--border-color);
 		outline-offset: 2px;
 	}
+}
+
+.mainActionStatic {
+	cursor: default;
 }
 
 .row--workflow {

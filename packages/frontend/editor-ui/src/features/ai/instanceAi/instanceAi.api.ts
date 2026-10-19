@@ -1,6 +1,7 @@
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import type {
+	AiPreferenceScope,
 	ComputerUseChannel,
 	InstanceAiAttachment,
 	InstanceAiBrowserCreateLinkResponse,
@@ -14,6 +15,8 @@ import type {
 	InstanceAiThreadOrigin,
 	InstanceAiThreadSource,
 	InstanceAiThreadArtifactsContext,
+	InstanceAiPreferenceCardEditResponse,
+	InstanceAiPreferenceCardUndoResponse,
 } from '@n8n/api-types';
 
 export interface InstanceAiThreadLaunchInput {
@@ -125,9 +128,8 @@ export async function postConfirmation(
 }
 
 /**
- * GET /instance-ai/credits -> { creditsQuota, creditsClaimed, quotaLocked }
- * Returns -1 quota when the proxy is disabled, and also for the activation-capped trial cohort,
- * whose balance is never shown — for them `quotaLocked` is the only usage signal.
+ * GET /instance-ai/credits -> { creditsQuota, creditsClaimed }
+ * Returns -1 quota when proxy is disabled.
  */
 export async function getInstanceAiCredits(context: IRestApiContext): Promise<InstanceAiCredits> {
 	return await makeRestApiRequest<InstanceAiCredits>(context, 'GET', '/instance-ai/credits');
@@ -216,4 +218,52 @@ export async function getGatewayStatus(context: IRestApiContext): Promise<{
 		hostIdentifier: string | null;
 		toolCategories: Array<{ name: string; enabled: boolean; writeAccess?: boolean }>;
 	}>(context, 'GET', '/instance-ai/gateway/status');
+}
+
+/**
+ * POST /instance-ai/threads/:threadId/preferences/:preferenceId/undo -> { ok, event }
+ * Deletes a preference the assistant saved in this run. The server appends a
+ * `preference-card` fact to the run and returns it, so the card renders the
+ * undone state without waiting for the stream to deliver the same fact.
+ */
+export async function undoPreferenceCard(
+	context: IRestApiContext,
+	threadId: string,
+	preferenceId: string,
+	body: { runId: string; toolCallId: string },
+): Promise<InstanceAiPreferenceCardUndoResponse> {
+	return await makeRestApiRequest<InstanceAiPreferenceCardUndoResponse>(
+		context,
+		'POST',
+		`/instance-ai/threads/${threadId}/preferences/${preferenceId}/undo`,
+		body,
+	);
+}
+
+/**
+ * POST /instance-ai/threads/:threadId/preferences/:preferenceId/edit -> { preference, event }
+ * Rewrites a preference the assistant saved in this run. The server appends a
+ * `preference-card` fact to the run and returns it, so the card renders the
+ * edited state without waiting for the stream to deliver the same fact.
+ */
+export async function editPreferenceCard(
+	context: IRestApiContext,
+	threadId: string,
+	preferenceId: string,
+	body: {
+		runId: string;
+		toolCallId: string;
+		content: string;
+		/** Absent on a text-only edit, which leaves the row in the scope it holds now. */
+		scope?: AiPreferenceScope;
+		projectId?: string | null;
+		userId?: string | null;
+	},
+): Promise<InstanceAiPreferenceCardEditResponse> {
+	return await makeRestApiRequest<InstanceAiPreferenceCardEditResponse>(
+		context,
+		'POST',
+		`/instance-ai/threads/${threadId}/preferences/${preferenceId}/edit`,
+		body,
+	);
 }
