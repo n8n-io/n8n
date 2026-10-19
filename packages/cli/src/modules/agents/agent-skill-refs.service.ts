@@ -10,6 +10,7 @@ import { deepCopy, UnexpectedError, UserError } from 'n8n-workflow';
 
 import type { AgentHistory } from './entities/agent-history.entity';
 import type { Agent } from './entities/agent.entity';
+import type { SkillSource } from './entities/skill.entity';
 import { withoutLegacySkillRefs, type AgentSkillRefs } from './json-config/agent-document';
 import { AgentRepository } from './repositories/agent.repository';
 import { SkillRepository } from './repositories/skill.repository';
@@ -342,6 +343,7 @@ export class AgentSkillRefsService {
 		skills: AgentSkill[],
 		creatorId: string,
 		availableTo: AgentSkillAvailability,
+		source: SkillSource,
 		ctx: OperationContext,
 	): Promise<string[]> {
 		if (!this.usesSkillsHub) {
@@ -362,7 +364,7 @@ export class AgentSkillRefsService {
 					{
 						target: targetFor(agent, availableTo),
 						skill,
-						source: 'agent',
+						source,
 						createdById: creatorId,
 						checkNameTaken: true,
 					},
