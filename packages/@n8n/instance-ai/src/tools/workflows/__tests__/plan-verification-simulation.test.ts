@@ -65,6 +65,7 @@ describe('planVerificationSimulation — simulated trigger verdicts', () => {
 
 	it('forwards the fallback model config to classification and fixture generation', async () => {
 		const fallbackModelConfig = {
+			kind: 'endpoint' as const,
 			id: 'anthropic/claude-opus-4-8' as const,
 			url: 'https://proxy.example.com/anthropic/v1',
 			apiKey: 'proxy-token',
