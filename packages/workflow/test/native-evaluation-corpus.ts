@@ -473,6 +473,9 @@ export const DECLINED_CORPUS: string[] = [
 	'={{ $json.item.names?.[9] ?? ($input.first() && 1) }}',
 	"={{ $('Source').first()?.json.item.name }}",
 	'={{ $json.item.my_object?.addresses ?? $json.item.name.toTitleCase() }}',
+	// The extension call in one chunk sends the other chunks through it too.
+	'={{ $json.item.names?.[0] }} {{ $json.item.names.last() }}',
+	'={{ ($json.item.names[9] && $json.item.name) ?? $json.item.names?.[9] }} / {{ $json.item.names.last() }}',
 	// A comment hides the call from the extendSyntax regex.
 	'={{ $json.item.names.first /* c */ () }}',
 	'={{ $json.item.names.first // c\n () }}',
