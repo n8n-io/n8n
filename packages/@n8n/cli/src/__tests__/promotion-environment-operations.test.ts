@@ -28,16 +28,14 @@ interface ApplyInternals extends OperationInternals {
 }
 
 const PROMOTE_RESULT = {
-	connectionId: 'conn-1',
-	configId: 'cfg-1',
+	environmentId: 'env-1',
 	counts: { workflows: 3, folders: 1, credentials: 0, dataTables: 0, variables: 2, tags: 1 },
 	git: { commitSha: 'abc1234', branchName: 'main' },
 };
 
 const SHA = 'd'.repeat(40);
 const IDENTITY = {
-	connectionId: 'conn-1',
-	configId: 'cfg-2',
+	environmentId: 'env-1',
 	git: { commitSha: SHA, branchName: 'release' },
 };
 const APPLY_RESULT = { ...IDENTITY, status: 'applied', counts: {}, warnings: [] };
@@ -58,11 +56,11 @@ const BLOCKED_RESULT = {
 	},
 };
 const PINNED_FLAGS = {
-	expectedConfigId: 'cfg-2',
+	expectedEnvironmentId: 'env-1',
 	expectedBranch: 'release',
 	expectedCommitSha: SHA,
 };
-const EXPECTED_SOURCE = { configId: 'cfg-2', branchName: 'release', commitSha: SHA };
+const EXPECTED_SOURCE = { environmentId: 'env-1', branchName: 'release', commitSha: SHA };
 
 function stubCommand(
 	command:
@@ -75,7 +73,7 @@ function stubCommand(
 	const internals = command as unknown as OperationInternals;
 
 	// Bypass oclif arg parsing, connection setup, and the success/exit path.
-	vi.spyOn(internals, 'parse').mockResolvedValue({ args: { id: 'conn-1' }, flags });
+	vi.spyOn(internals, 'parse').mockResolvedValue({ args: { id: 'env-1' }, flags });
 	vi.spyOn(internals, 'getClient').mockReturnValue(client as N8nClient);
 	const succeed = vi.spyOn(internals, 'succeed').mockImplementation(() => {});
 
@@ -110,7 +108,7 @@ describe('promotion-environment promote command', () => {
 		await command.run();
 
 		// `-m` travels as `commitMessage`.
-		expect(promotePackage).toHaveBeenCalledWith('conn-1', {
+		expect(promotePackage).toHaveBeenCalledWith('env-1', {
 			commitMessage: 'Promote team projects',
 			force: true,
 		});
@@ -143,7 +141,7 @@ describe('promotion-environment apply command', () => {
 
 		await run();
 
-		expect(applyPackage).toHaveBeenCalledWith('conn-1', EXPECTED_SOURCE);
+		expect(applyPackage).toHaveBeenCalledWith('env-1', EXPECTED_SOURCE);
 	});
 
 	it('names the branch and commit it applied, and exits through succeed', async () => {
@@ -180,7 +178,7 @@ describe('promotion-environment apply command', () => {
 		expect(succeed).not.toHaveBeenCalled();
 		expect(logToStderr).toHaveBeenCalledWith(expect.stringContaining('Nothing was imported.'));
 		expect(logToStderr).toHaveBeenCalledWith(
-			expect.stringContaining(`config cfg-2, branch release, commit ${SHA}`),
+			expect.stringContaining(`environment env-1, branch release, commit ${SHA}`),
 		);
 		expect(exit).toHaveBeenCalledWith(3);
 	});
@@ -198,7 +196,7 @@ describe('promotion-environment apply command', () => {
 		expect(message).toContain('Access requirements: 0');
 		expect(message).toContain('Conflicts:           1');
 		expect(message).toContain(
-			`n8n-cli promotion-environment apply-continue conn-1 --expected-config-id=cfg-2 --expected-branch=release --expected-commit-sha=${SHA}`,
+			`n8n-cli promotion-environment apply-continue env-1 --expected-environment-id=env-1 --expected-branch=release --expected-commit-sha=${SHA}`,
 		);
 		expect(message).not.toContain('--confirm-destructive-changes');
 		expect(exit).toHaveBeenCalledWith(4);
@@ -217,7 +215,7 @@ describe('promotion-environment apply command', () => {
 
 		const message = logToStderr.mock.calls[0][0];
 		expect(message).toContain(
-			`n8n-cli promotion-environment apply-continue conn-1 --expected-config-id=cfg-2 --expected-branch=release --expected-commit-sha=${SHA}\n` +
+			`n8n-cli promotion-environment apply-continue env-1 --expected-environment-id=env-1 --expected-branch=release --expected-commit-sha=${SHA}\n` +
 				'To also apply data table changes that remove or retype columns, add --confirm-destructive-changes. The values in those columns are removed.',
 		);
 		expect(exit).toHaveBeenCalledWith(4);
@@ -307,15 +305,15 @@ describe('promotion-environment apply-continue command', () => {
 
 		await command.run();
 
-		expect(continueApplyPackage).toHaveBeenCalledWith('conn-1', EXPECTED_SOURCE, undefined);
+		expect(continueApplyPackage).toHaveBeenCalledWith('env-1', EXPECTED_SOURCE, undefined);
 		expect(exit).toHaveBeenCalledWith(3);
 	});
 
 	it('sends the confirmation of destructive data table changes', async () => {
 		const command = new PromotionEnvironmentApplyContinue(
 			[
-				'conn-1',
-				`--expected-config-id=${EXPECTED_SOURCE.configId}`,
+				'env-1',
+				`--expected-environment-id=${EXPECTED_SOURCE.environmentId}`,
 				`--expected-branch=${EXPECTED_SOURCE.branchName}`,
 				`--expected-commit-sha=${SHA}`,
 				'--confirm-destructive-changes',
@@ -332,11 +330,11 @@ describe('promotion-environment apply-continue command', () => {
 
 		await command.run();
 
-		expect(continueApplyPackage).toHaveBeenCalledWith('conn-1', EXPECTED_SOURCE, true);
+		expect(continueApplyPackage).toHaveBeenCalledWith('env-1', EXPECTED_SOURCE, true);
 	});
 });
 
-describe('expected config ID and branch flags', () => {
+describe('expected environment ID and branch flags', () => {
 	it('reject a value that is empty after trimming', async () => {
 		await expect(parseNonEmpty('branch name')('   ')).rejects.toThrow(
 			'Expected a non-empty branch name',
@@ -355,8 +353,12 @@ describe('expected source from flags', () => {
 
 	it('keeps an empty value so the request fails instead of applying the branch tip', () => {
 		expect(
-			toExpectedSource({ expectedConfigId: 'cfg-2', expectedBranch: '', expectedCommitSha: SHA }),
-		).toEqual({ configId: 'cfg-2', branchName: '', commitSha: SHA });
+			toExpectedSource({
+				expectedEnvironmentId: 'env-1',
+				expectedBranch: '',
+				expectedCommitSha: SHA,
+			}),
+		).toEqual({ environmentId: 'env-1', branchName: '', commitSha: SHA });
 	});
 });
 
@@ -513,7 +515,7 @@ describe('promotion-environment apply-selection command', () => {
 		await run();
 
 		expect(logToStderr.mock.calls[0][0]).toContain(
-			`n8n-cli promotion-environment apply-selection-continue proj-1 -w wf-1 -w wf-2 --expected-config-id=cfg-2 --expected-branch=release --expected-commit-sha=${SHA}`,
+			`n8n-cli promotion-environment apply-selection-continue proj-1 -w wf-1 -w wf-2 --expected-environment-id=env-1 --expected-branch=release --expected-commit-sha=${SHA}`,
 		);
 		expect(exit).toHaveBeenCalledWith(4);
 	});
@@ -559,7 +561,7 @@ describe('promotion-environment apply-selection-continue command', () => {
 				'proj-1',
 				'-w',
 				'wf-1',
-				`--expected-config-id=${EXPECTED_SOURCE.configId}`,
+				`--expected-environment-id=${EXPECTED_SOURCE.environmentId}`,
 				`--expected-branch=${EXPECTED_SOURCE.branchName}`,
 				`--expected-commit-sha=${SHA}`,
 				'--confirm-destructive-changes',

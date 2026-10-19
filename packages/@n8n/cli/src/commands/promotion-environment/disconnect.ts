@@ -1,27 +1,21 @@
 import { Args } from '@oclif/core';
 
-import { directionArg, toDirection } from './direction';
 import { BaseCommand } from '../../base-command';
 
 export default class PromotionEnvironmentDisconnect extends BaseCommand {
 	static override description =
-		'Remove the local checkout of one direction. The configuration and its credentials are kept.';
+		'Remove the local checkout of an environment. The environment and its credentials are kept.';
 
-	static override examples = ['<%= config.bin %> promotion-environment disconnect conn-1 promote'];
+	static override examples = ['<%= config.bin %> promotion-environment disconnect env-1'];
 
-	static override args = {
-		id: Args.string({ description: 'Connection ID', required: true }),
-		direction: directionArg,
-	};
+	static override args = { id: Args.string({ description: 'Environment ID', required: true }) };
 
 	static override flags = { ...BaseCommand.baseFlags };
 
 	async run() {
 		const { args, flags } = await this.parse(PromotionEnvironmentDisconnect);
-		const direction = toDirection(args.direction);
 		await this.execute(async () => {
-			const checkout = await this.getClient(flags).disconnectPromotionCheckout(args.id, direction);
-			this.output(checkout, flags);
+			this.output(await this.getClient(flags).disconnectPromotionCheckout(args.id), flags);
 		});
 	}
 }

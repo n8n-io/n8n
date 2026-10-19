@@ -67,7 +67,7 @@
         "description": "Create and manage the providers that hold promotion credentials"
       },
       "promotion-environment": {
-        "description": "Create and manage promotion connections, and promote or apply packages"
+        "description": "Create and manage promotion environments, and promote or apply packages"
       },
       "source-control": {
         "description": "Pull changes from the configured source control provider"

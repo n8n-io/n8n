@@ -13,7 +13,7 @@ const SORT_ORDERS: ReadonlyArray<NonNullable<PromotionChangesQuery['order']>> = 
 
 export default class PromotionEnvironmentListChanges extends BaseCommand {
 	static override description =
-		"List the workflows that differ between a project and its promotion configuration's branch, in one direction.";
+		'List the workflows that differ between a project and the branch of its promotion environment for one direction.';
 
 	static override examples = [
 		'<%= config.bin %> promotion-environment list-changes proj-abc promote',

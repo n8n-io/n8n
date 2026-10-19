@@ -6,6 +6,7 @@ import PromotionEnvironmentList from '../commands/promotion-environment/list';
 
 interface ListFlags {
 	scope?: string;
+	direction?: string;
 	provider?: string;
 	limit?: number;
 }
@@ -20,16 +21,16 @@ interface ListInternals {
 function stubCommand(flags: ListFlags) {
 	const command = new PromotionEnvironmentList([], {} as Config);
 	const internals = command as unknown as ListInternals;
-	const listPromotionConnections = vi.fn().mockResolvedValue([]);
+	const listPromotionEnvironments = vi.fn().mockResolvedValue([]);
 
 	// Bypass oclif arg parsing, connection setup, and rendering.
 	vi.spyOn(internals, 'parse').mockResolvedValue({ flags });
 	vi.spyOn(internals, 'getClient').mockReturnValue({
-		listPromotionConnections,
+		listPromotionEnvironments,
 	} as unknown as N8nClient);
 	vi.spyOn(internals, 'output').mockImplementation(() => {});
 
-	return { command, listPromotionConnections };
+	return { command, listPromotionEnvironments };
 }
 
 describe('promotion-environment list command', () => {
@@ -37,9 +38,10 @@ describe('promotion-environment list command', () => {
 		vi.restoreAllMocks();
 	});
 
-	it('sends the provider filter under the name the API expects', async () => {
-		const { command, listPromotionConnections } = stubCommand({
+	it('sends the direction and provider filters under the names the API expects', async () => {
+		const { command, listPromotionEnvironments } = stubCommand({
 			scope: 'instance',
+			direction: 'promote',
 			provider: 'prov-1',
 			limit: 10,
 		});
@@ -47,18 +49,18 @@ describe('promotion-environment list command', () => {
 		await command.run();
 
 		// `--provider` travels as `providerId`. The API drops an unknown name and
-		// answers with every connection, so a wrong name here fails silently.
-		expect(listPromotionConnections).toHaveBeenCalledWith(
-			{ scope: 'instance', providerId: 'prov-1' },
+		// answers with every environment, so a wrong name here fails silently.
+		expect(listPromotionEnvironments).toHaveBeenCalledWith(
+			{ scope: 'instance', direction: 'promote', providerId: 'prov-1' },
 			10,
 		);
 	});
 
-	it('asks for every connection when no filter is set', async () => {
-		const { command, listPromotionConnections } = stubCommand({});
+	it('asks for every environment when no filter is set', async () => {
+		const { command, listPromotionEnvironments } = stubCommand({});
 
 		await command.run();
 
-		expect(listPromotionConnections).toHaveBeenCalledWith({}, undefined);
+		expect(listPromotionEnvironments).toHaveBeenCalledWith({}, undefined);
 	});
 });

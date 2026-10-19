@@ -1,27 +1,21 @@
 import { Args } from '@oclif/core';
 
-import { directionArg, toDirection } from './direction';
 import { BaseCommand } from '../../base-command';
 
 export default class PromotionEnvironmentClone extends BaseCommand {
 	static override description =
-		'Clone the configured branch of one direction into local storage. Safe to run again, and cloning one direction does not make the other ready.';
+		'Clone the configured branch of an environment into local storage. Safe to run again, and cloning one environment does not make another ready.';
 
-	static override examples = ['<%= config.bin %> promotion-environment clone conn-1 promote'];
+	static override examples = ['<%= config.bin %> promotion-environment clone env-1'];
 
-	static override args = {
-		id: Args.string({ description: 'Connection ID', required: true }),
-		direction: directionArg,
-	};
+	static override args = { id: Args.string({ description: 'Environment ID', required: true }) };
 
 	static override flags = { ...BaseCommand.baseFlags };
 
 	async run() {
 		const { args, flags } = await this.parse(PromotionEnvironmentClone);
-		const direction = toDirection(args.direction);
 		await this.execute(async () => {
-			const checkout = await this.getClient(flags).clonePromotionCheckout(args.id, direction);
-			this.output(checkout, flags);
+			this.output(await this.getClient(flags).clonePromotionCheckout(args.id), flags);
 		});
 	}
 }

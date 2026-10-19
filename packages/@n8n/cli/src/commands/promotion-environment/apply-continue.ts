@@ -1,18 +1,18 @@
 import { Args, Flags } from '@oclif/core';
 
-import { PromotionApplyCommand, connectionContinueCommand } from './apply-command';
+import { PromotionApplyCommand, environmentContinueCommand } from './apply-command';
 import { expectedSourceFlags, toExpectedSource } from './expected-source';
 import { BaseCommand } from '../../base-command';
 
 export default class PromotionEnvironmentApplyContinue extends PromotionApplyCommand {
 	static override description =
-		'Continue a blocked Apply after you resolve its bindings, access requirements, or conflicts. Pass the config ID, branch, and commit SHA that the blocked Apply reported. Exits 3 when the source changed since then and 4 when bindings are still missing or a destructive data table change or project deletion is not confirmed with --confirm-destructive-changes; nothing is imported in either case.';
+		'Continue a blocked Apply after you resolve its bindings, access requirements, or conflicts. Pass the environment ID, branch, and commit SHA that the blocked Apply reported. Exits 3 when the source changed since then and 4 when bindings are still missing or a destructive data table change or project deletion is not confirmed with --confirm-destructive-changes; nothing is imported in either case.';
 
 	static override examples = [
-		'<%= config.bin %> promotion-environment apply-continue conn-1 --expected-config-id=cfg-1 --expected-branch=main --expected-commit-sha=<full sha>',
+		'<%= config.bin %> promotion-environment apply-continue env-1 --expected-environment-id=env-1 --expected-branch=main --expected-commit-sha=<full sha>',
 	];
 
-	static override args = { id: Args.string({ description: 'Connection ID', required: true }) };
+	static override args = { id: Args.string({ description: 'Environment ID', required: true }) };
 
 	static override flags = {
 		...BaseCommand.baseFlags,
@@ -35,7 +35,7 @@ export default class PromotionEnvironmentApplyContinue extends PromotionApplyCom
 				expectedSource,
 				flags.confirmDestructiveChanges,
 			);
-			this.reportApplyResult(result, flags, connectionContinueCommand(args.id));
+			this.reportApplyResult(result, flags, environmentContinueCommand(args.id));
 		});
 	}
 }

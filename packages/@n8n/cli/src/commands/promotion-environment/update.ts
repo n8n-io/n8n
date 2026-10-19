@@ -4,26 +4,27 @@ import { BaseCommand } from '../../base-command';
 
 export default class PromotionEnvironmentUpdate extends BaseCommand {
 	static override description =
-		'Update the name, target, or provider of a promotion connection, from JSON. Configurations have their own commands.';
+		'Update the name, provider, target, or settings of a promotion environment, from JSON. Settings replace the whole saved settings and must match the direction. Direction and scope cannot change.';
 
 	static override examples = [
-		'echo \'{"name":"Production (EU)"}\' | <%= config.bin %> promotion-environment update conn-1 --stdin',
-		'<%= config.bin %> promotion-environment update conn-1 --file=connection.json',
+		'echo \'{"name":"Production (EU)"}\' | <%= config.bin %> promotion-environment update env-1 --stdin',
+		'echo \'{"settings":{"schemaVersion":1,"baseBranchName":"main","createBranchOnPromotion":true}}\' | <%= config.bin %> promotion-environment update env-1 --stdin',
+		'<%= config.bin %> promotion-environment update env-1 --file=environment.json',
 	];
 
-	static override args = { id: Args.string({ description: 'Connection ID', required: true }) };
+	static override args = { id: Args.string({ description: 'Environment ID', required: true }) };
 
 	static override flags = {
 		...BaseCommand.baseFlags,
-		file: Flags.string({ description: 'Path to connection JSON file' }),
-		stdin: Flags.boolean({ description: 'Read connection JSON from stdin', default: false }),
+		file: Flags.string({ description: 'Path to environment JSON file' }),
+		stdin: Flags.boolean({ description: 'Read environment JSON from stdin', default: false }),
 	};
 
 	async run() {
 		const { args, flags } = await this.parse(PromotionEnvironmentUpdate);
 		await this.execute(async () => {
 			const body = JSON.parse(this.readInput(flags)) as unknown;
-			this.output(await this.getClient(flags).updatePromotionConnection(args.id, body), flags);
+			this.output(await this.getClient(flags).updatePromotionEnvironment(args.id, body), flags);
 		});
 	}
 }

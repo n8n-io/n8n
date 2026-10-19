@@ -43,7 +43,6 @@ import PromotionEnvironmentApplySelectionContinue from './commands/promotion-env
 import PromotionEnvironmentClone from './commands/promotion-environment/clone';
 import PromotionEnvironmentCreate from './commands/promotion-environment/create';
 import PromotionEnvironmentDelete from './commands/promotion-environment/delete';
-import PromotionEnvironmentDeleteConfig from './commands/promotion-environment/delete-config';
 import PromotionEnvironmentDisconnect from './commands/promotion-environment/disconnect';
 import PromotionEnvironmentGet from './commands/promotion-environment/get';
 import PromotionEnvironmentList from './commands/promotion-environment/list';
@@ -52,7 +51,6 @@ import PromotionEnvironmentListProjects from './commands/promotion-environment/l
 import PromotionEnvironmentPromote from './commands/promotion-environment/promote';
 import PromotionEnvironmentPromoteSelection from './commands/promotion-environment/promote-selection';
 import PromotionEnvironmentRemoveProject from './commands/promotion-environment/remove-project';
-import PromotionEnvironmentSetConfig from './commands/promotion-environment/set-config';
 import PromotionEnvironmentUpdate from './commands/promotion-environment/update';
 import PromotionProviderCreate from './commands/promotion-provider/create';
 import PromotionProviderDelete from './commands/promotion-provider/delete';
@@ -116,8 +114,6 @@ export const commands = {
 	'promotion-environment:create': PromotionEnvironmentCreate,
 	'promotion-environment:update': PromotionEnvironmentUpdate,
 	'promotion-environment:delete': PromotionEnvironmentDelete,
-	'promotion-environment:set-config': PromotionEnvironmentSetConfig,
-	'promotion-environment:delete-config': PromotionEnvironmentDeleteConfig,
 	'promotion-environment:clone': PromotionEnvironmentClone,
 	'promotion-environment:disconnect': PromotionEnvironmentDisconnect,
 	'promotion-environment:list-projects': PromotionEnvironmentListProjects,
