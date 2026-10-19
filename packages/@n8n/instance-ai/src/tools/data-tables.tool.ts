@@ -1,5 +1,5 @@
 /**
- * Consolidated workflow_builder_data_tables tool — list, schema, query, create, delete,
+ * Consolidated data_tables tool — list, schema, query, create, delete,
  * add-column, delete-column, rename-column, insert-rows, update-rows, delete-rows.
  */
 import {
@@ -499,7 +499,7 @@ async function handleQuery(
 	}
 	if (remaining > 0) {
 		hints.push(
-			`${remaining} more rows available. Use additional paginated workflow_builder_data_tables queries for bulk operations.`,
+			`${remaining} more rows available. Use additional paginated data_tables queries for bulk operations.`,
 		);
 	}
 
@@ -562,7 +562,7 @@ async function handleCreate(
 		if (isNameConflictError(error)) {
 			return {
 				denied: true,
-				reason: `Table "${input.name}" already exists. Use workflow_builder_data_tables(action="list") to find it and workflow_builder_data_tables(action="schema") to check its columns.`,
+				reason: `Table "${input.name}" already exists. Use data_tables(action="list") to find it and data_tables(action="schema") to check its columns.`,
 			};
 		}
 		throw error;

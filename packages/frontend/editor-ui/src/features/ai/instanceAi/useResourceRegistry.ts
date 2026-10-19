@@ -1,5 +1,9 @@
 import { reactive, watch } from 'vue';
-import { AGENT_BUILDER_TOOL_NAMES, WORKFLOW_BUILDER_TOOL_NAMES } from '@n8n/api-types';
+import {
+	AGENT_BUILDER_TOOL_NAMES,
+	SHARED_BUILDER_TOOL_NAMES,
+	WORKFLOW_BUILDER_TOOL_NAMES,
+} from '@n8n/api-types';
 import type {
 	InstanceAiMessage,
 	InstanceAiAgentNode,
@@ -161,7 +165,7 @@ const ARTIFACT_TOOLS = new Set<string>([
 	WORKFLOW_BUILDER_TOOL_NAMES.APPLY_WORKFLOW_CREDENTIALS,
 	WORKFLOW_BUILDER_TOOL_NAMES.WORKFLOWS,
 	WORKFLOW_BUILDER_TOOL_NAMES.CREDENTIALS,
-	WORKFLOW_BUILDER_TOOL_NAMES.DATA_TABLES,
+	SHARED_BUILDER_TOOL_NAMES.DATA_TABLES,
 	'insert-data-table-rows',
 	'update-data-table-rows',
 	'delete-data-table-rows',
@@ -185,10 +189,7 @@ function toolCallOrigin(tc: InstanceAiToolCallState): ArtifactOrigin {
 	if (!action) return 'built';
 	if (tc.toolName === WORKFLOW_BUILDER_TOOL_NAMES.WORKFLOWS && WORKFLOW_READ_ACTIONS.has(action))
 		return 'fetched';
-	if (
-		tc.toolName === WORKFLOW_BUILDER_TOOL_NAMES.DATA_TABLES &&
-		DATA_TABLE_READ_ACTIONS.has(action)
-	)
+	if (tc.toolName === SHARED_BUILDER_TOOL_NAMES.DATA_TABLES && DATA_TABLE_READ_ACTIONS.has(action))
 		return 'fetched';
 	return 'built';
 }
@@ -352,7 +353,7 @@ function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): voi
 			result.dataTableId;
 		const dataTableAction = optionalString(tc.args?.action);
 		const isReadOnlyLookup =
-			tc.toolName === WORKFLOW_BUILDER_TOOL_NAMES.DATA_TABLES &&
+			tc.toolName === SHARED_BUILDER_TOOL_NAMES.DATA_TABLES &&
 			dataTableAction !== undefined &&
 			DATA_TABLE_READ_ACTIONS.has(dataTableAction);
 		recordProduced(

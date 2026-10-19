@@ -1,6 +1,10 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
-import { WORKFLOW_BUILDER_TOOL_NAMES, resolveBuilderToolName } from '@n8n/api-types';
+import {
+	SHARED_BUILDER_TOOL_NAMES,
+	WORKFLOW_BUILDER_TOOL_NAMES,
+	resolveBuilderToolName,
+} from '@n8n/api-types';
 import type { McpToolCallResult } from '@n8n/api-types';
 import { N8nAiActivityStepResultSection } from '@n8n/design-system';
 import { isRecord } from '@n8n/utils/is-record';
@@ -103,13 +107,13 @@ function isCodeTool(): boolean {
 
 function isTableTool(): boolean {
 	return (
-		isAction(WORKFLOW_BUILDER_TOOL_NAMES.DATA_TABLES, 'query') ||
+		isAction(SHARED_BUILDER_TOOL_NAMES.DATA_TABLES, 'query') ||
 		isAction(WORKFLOW_BUILDER_TOOL_NAMES.WORKFLOWS, 'list') ||
 		isAction(WORKFLOW_BUILDER_TOOL_NAMES.EXECUTIONS, 'list') ||
 		isAction(WORKFLOW_BUILDER_TOOL_NAMES.CREDENTIALS, 'list') ||
 		isAction(WORKFLOW_BUILDER_TOOL_NAMES.NODES, 'search') ||
 		isAction(WORKFLOW_BUILDER_TOOL_NAMES.NODES, 'list') ||
-		isAction(WORKFLOW_BUILDER_TOOL_NAMES.DATA_TABLES, 'list')
+		isAction(SHARED_BUILDER_TOOL_NAMES.DATA_TABLES, 'list')
 	);
 }
 

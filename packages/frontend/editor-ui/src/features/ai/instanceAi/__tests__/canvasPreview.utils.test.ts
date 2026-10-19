@@ -718,7 +718,7 @@ describe('getLatestDataTableResult', () => {
 		const node = makeAgentNode({
 			toolCalls: [
 				makeToolCall({
-					toolName: 'workflow_builder_data_tables',
+					toolName: 'data_tables',
 					args: { action: 'create' },
 					isLoading: true,
 				}),
@@ -732,7 +732,7 @@ describe('getLatestDataTableResult', () => {
 			toolCalls: [
 				makeToolCall({
 					toolCallId: 'tc-create',
-					toolName: 'workflow_builder_data_tables',
+					toolName: 'data_tables',
 					args: { action: 'create' },
 					result: { table: { id: 'dt-1', name: 'My Table' } },
 				}),
@@ -748,7 +748,7 @@ describe('getLatestDataTableResult', () => {
 		const node = makeAgentNode({
 			toolCalls: [
 				makeToolCall({
-					toolName: 'workflow_builder_data_tables',
+					toolName: 'data_tables',
 					args: { action: 'create' },
 					result: { table: { name: 'No ID' } },
 				}),
@@ -762,7 +762,7 @@ describe('getLatestDataTableResult', () => {
 			toolCalls: [
 				makeToolCall({
 					toolCallId: 'tc-schema',
-					toolName: 'workflow_builder_data_tables',
+					toolName: 'data_tables',
 					args: { action: 'schema', dataTableId: 'Table Name' },
 					result: { dataTableId: 'dt-schema', columns: [] },
 				}),
@@ -779,7 +779,7 @@ describe('getLatestDataTableResult', () => {
 			toolCalls: [
 				makeToolCall({
 					toolCallId: 'tc-query',
-					toolName: 'workflow_builder_data_tables',
+					toolName: 'data_tables',
 					args: { action: 'query', dataTableId: 'dt-query' },
 					result: { dataTableId: 'dt-query', count: 1, data: [{ id: 1 }] },
 				}),
@@ -796,7 +796,7 @@ describe('getLatestDataTableResult', () => {
 			toolCalls: [
 				makeToolCall({
 					toolCallId: 'tc-insert',
-					toolName: 'workflow_builder_data_tables',
+					toolName: 'data_tables',
 					args: { action: 'insert-rows', dataTableId: 'dt-2' },
 					result: { insertedCount: 5 },
 				}),
@@ -812,7 +812,7 @@ describe('getLatestDataTableResult', () => {
 		const node = makeAgentNode({
 			toolCalls: [
 				makeToolCall({
-					toolName: 'workflow_builder_data_tables',
+					toolName: 'data_tables',
 					args: { action: 'insert-rows' },
 					result: { insertedCount: 5 },
 				}),
@@ -826,7 +826,7 @@ describe('getLatestDataTableResult', () => {
 			toolCalls: [
 				makeToolCall({
 					toolCallId: 'tc-update',
-					toolName: 'workflow_builder_data_tables',
+					toolName: 'data_tables',
 					args: { action: 'update-rows', dataTableId: 'dt-3' },
 					result: { updatedCount: 2 },
 				}),
@@ -843,7 +843,7 @@ describe('getLatestDataTableResult', () => {
 			toolCalls: [
 				makeToolCall({
 					toolCallId: 'tc-add-col',
-					toolName: 'workflow_builder_data_tables',
+					toolName: 'data_tables',
 					args: { action: 'add-column', dataTableId: 'dt-4' },
 					result: { column: { name: 'Status', type: 'string' } },
 				}),
@@ -862,7 +862,7 @@ describe('getLatestDataTableResult', () => {
 				toolCalls: [
 					makeToolCall({
 						toolCallId: `tc-${action}`,
-						toolName: 'workflow_builder_data_tables',
+						toolName: 'data_tables',
 						args: { action, dataTableId: 'dt-5' },
 						result: { success: true },
 					}),
@@ -880,13 +880,13 @@ describe('getLatestDataTableResult', () => {
 			toolCalls: [
 				makeToolCall({
 					toolCallId: 'tc-1',
-					toolName: 'workflow_builder_data_tables',
+					toolName: 'data_tables',
 					args: { action: 'create' },
 					result: { table: { id: 'dt-old' } },
 				}),
 				makeToolCall({
 					toolCallId: 'tc-2',
-					toolName: 'workflow_builder_data_tables',
+					toolName: 'data_tables',
 					args: { action: 'insert-rows', dataTableId: 'dt-new' },
 					result: { insertedCount: 3 },
 				}),
@@ -904,7 +904,7 @@ describe('getLatestDataTableResult', () => {
 			toolCalls: [
 				makeToolCall({
 					toolCallId: 'tc-child',
-					toolName: 'workflow_builder_data_tables',
+					toolName: 'data_tables',
 					args: { action: 'create' },
 					result: { table: { id: 'dt-child' } },
 				}),
@@ -927,7 +927,7 @@ describe('getLatestDeletedDataTableId', () => {
 		const node = makeAgentNode({
 			toolCalls: [
 				makeToolCall({
-					toolName: 'workflow_builder_data_tables',
+					toolName: 'data_tables',
 					args: { action: 'create' },
 					result: { table: { id: 'dt-1' } },
 				}),
@@ -940,7 +940,7 @@ describe('getLatestDeletedDataTableId', () => {
 		const node = makeAgentNode({
 			toolCalls: [
 				makeToolCall({
-					toolName: 'workflow_builder_data_tables',
+					toolName: 'data_tables',
 					args: { action: 'delete' },
 					isLoading: true,
 				}),
@@ -953,7 +953,7 @@ describe('getLatestDeletedDataTableId', () => {
 		const node = makeAgentNode({
 			toolCalls: [
 				makeToolCall({
-					toolName: 'workflow_builder_data_tables',
+					toolName: 'data_tables',
 					args: { action: 'delete', dataTableId: 'dt-1' },
 					result: { success: false },
 				}),
@@ -966,7 +966,7 @@ describe('getLatestDeletedDataTableId', () => {
 		const node = makeAgentNode({
 			toolCalls: [
 				makeToolCall({
-					toolName: 'workflow_builder_data_tables',
+					toolName: 'data_tables',
 					args: { action: 'delete' },
 					result: { success: true },
 				}),
@@ -979,7 +979,7 @@ describe('getLatestDeletedDataTableId', () => {
 		const node = makeAgentNode({
 			toolCalls: [
 				makeToolCall({
-					toolName: 'workflow_builder_data_tables',
+					toolName: 'data_tables',
 					args: { action: 'delete', dataTableId: 'dt-deleted' },
 					result: { success: true },
 				}),
@@ -993,13 +993,13 @@ describe('getLatestDeletedDataTableId', () => {
 			toolCalls: [
 				makeToolCall({
 					toolCallId: 'tc-1',
-					toolName: 'workflow_builder_data_tables',
+					toolName: 'data_tables',
 					args: { action: 'delete', dataTableId: 'dt-old' },
 					result: { success: true },
 				}),
 				makeToolCall({
 					toolCallId: 'tc-2',
-					toolName: 'workflow_builder_data_tables',
+					toolName: 'data_tables',
 					args: { action: 'delete', dataTableId: 'dt-new' },
 					result: { success: true },
 				}),
@@ -1013,7 +1013,7 @@ describe('getLatestDeletedDataTableId', () => {
 			agentId: 'dt-agent',
 			toolCalls: [
 				makeToolCall({
-					toolName: 'workflow_builder_data_tables',
+					toolName: 'data_tables',
 					args: { action: 'delete', dataTableId: 'dt-child' },
 					result: { success: true },
 				}),

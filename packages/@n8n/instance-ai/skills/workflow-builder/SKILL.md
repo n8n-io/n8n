@@ -23,7 +23,7 @@ recommended_tools:
   - workflow_builder_build_workflow
   - workflow_builder_workflows
   - workflow_builder_nodes
-  - workflow_builder_data_tables
+  - data_tables
   - workflow_builder_credentials
   - workflow_builder_verify_built_workflow
   - workflow_builder_executions
@@ -584,15 +584,15 @@ workflows stay in one workflow. Before writing multi-workflow code, load the
 ## Data Tables
 
 n8n normalizes Data Table column names to snake_case, for example `dayName`
-becomes `day_name`. Always call `workflow_builder_data_tables(action="schema")` before using a
+becomes `day_name`. Always call `data_tables(action="schema")` before using a
 Data Table in workflow code so you use real column names.
 
 When building workflows that create or use tables, load `data-table-manager`
 via `load_skill` first (if not already loaded this turn), then follow that
 skill for schema/row guidance. Create or inspect tables directly with
-`workflow_builder_data_tables`; do not invent table IDs, table names, or column names.
+`data_tables`; do not invent table IDs, table names, or column names.
 
-When diagnosing why a workflow's table lookup misses, keep every `workflow_builder_data_tables`
+When diagnosing why a workflow's table lookup misses, keep every `data_tables`
 query targeted: filter on the column under investigation (`ilike` for
 case-insensitive partial matches; `like` is case-sensitive) with `limit` of 5
 or fewer. Never pull a table unfiltered — rows can carry very large values

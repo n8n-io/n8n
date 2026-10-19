@@ -138,7 +138,7 @@ describe('extractArtifacts', () => {
 		const node = makeAgentNode({
 			toolCalls: [
 				makeToolCall({
-					toolName: 'workflow_builder_data_tables',
+					toolName: 'data_tables',
 					result: { tableId: 'dt-1', name: '  ' },
 				}),
 			],

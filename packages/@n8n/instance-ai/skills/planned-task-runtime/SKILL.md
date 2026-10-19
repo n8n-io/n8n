@@ -77,7 +77,7 @@ create another plan.
 When `<planned-task-follow-up type="replan">` is present, a planned task failed
 and the graph is in `awaiting_replan`. You MUST take action in this same turn —
 handle a single simple task directly (matching tool: `workflow_builder_build_workflow`,
-`workflow_builder_data_tables`, etc.), load `workflow_builder_create_tasks` via `load_tool` if needed and call
+`data_tables`, etc.), load `workflow_builder_create_tasks` via `load_tool` if needed and call
 `workflow_builder_create_tasks` with
 `planningContext.source: "replan"` for multiple dependent tasks, or explain the
 blocker to the user if nothing sensible remains. Do NOT reply with an

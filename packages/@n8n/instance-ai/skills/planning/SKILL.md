@@ -15,7 +15,7 @@ recommended_tools:
   - workflow_builder_workflows
   - workflow_builder_nodes
   - workflow_builder_credentials
-  - workflow_builder_data_tables
+  - data_tables
   - parse-file
   - research
   - workflow_builder_ask_user
@@ -57,7 +57,7 @@ If shared data tables are involved, load `data-table-manager` before this skill
 and carry the relevant table guidance into workflow task specs. Clear
 single-workflow builds and existing-workflow edits use `workflow-builder` with
 `workflow_builder_build_workflow` directly. Standalone data-table work uses `data-table-manager`
-with direct `workflow_builder_data_tables` and `parse-file` calls.
+with direct `data_tables` and `parse-file` calls.
 
 ## Knowledge Base
 
@@ -78,7 +78,7 @@ Skip only for trivial mechanical edits you have already reviewed in this thread.
    whether a workflow is new.
 2. Discover what materially affects the plan with normal tools:
    `workflow_builder_nodes(action="suggested")`, `workflow_builder_credentials(action="list")`,
-   `workflow_builder_data_tables(action="list")`, `parse-file`, `workflow_builder_workflows`, and `research`
+   `data_tables(action="list")`, `parse-file`, `workflow_builder_workflows`, and `research`
    when relevant.
 
 3. Prefer reasonable assumptions over questions. Ask the user only when the

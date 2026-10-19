@@ -340,7 +340,7 @@ describe('runExpectedToolsInvokedCheck', () => {
 			expectedToolInvocations: {
 				allOfToolCalls: [
 					{ toolName: 'load_skill', argsContainAny: ['data-table-manager'] },
-					{ toolName: 'workflow_builder_data_tables', argsContainAny: ['list'] },
+					{ toolName: 'data_tables', argsContainAny: ['list'] },
 				],
 			},
 		};
@@ -351,7 +351,7 @@ describe('runExpectedToolsInvokedCheck', () => {
 				makeOutcome({
 					toolCalls: [
 						{ toolName: 'load_skill', args: { skillId: 'data-table-manager' } },
-						{ toolName: 'workflow_builder_data_tables', args: { action: 'list' } },
+						{ toolName: 'data_tables', args: { action: 'list' } },
 					],
 				}),
 			);
@@ -364,13 +364,13 @@ describe('runExpectedToolsInvokedCheck', () => {
 				dataTableScenario,
 				makeOutcome({
 					toolCalls: [{ toolName: 'load_skill', args: { skillId: 'data-table-manager' } }],
-					agents: [{ role: 'workflow-builder', tools: ['workflow_builder_data_tables'] }],
+					agents: [{ role: 'workflow-builder', tools: ['data_tables'] }],
 				}),
 			);
 
 			expect(result.pass).toBe(false);
 			expect(result.comment).toContain('Expected actual tool call matching');
-			expect(result.comment).toContain('workflow_builder_data_tables');
+			expect(result.comment).toContain('data_tables');
 		});
 
 		it('fails when the tool call args do not match the expectation', () => {
@@ -379,7 +379,7 @@ describe('runExpectedToolsInvokedCheck', () => {
 				makeOutcome({
 					toolCalls: [
 						{ toolName: 'load_skill', args: { skillId: 'data-table-manager' } },
-						{ toolName: 'workflow_builder_data_tables', args: { action: 'schema' } },
+						{ toolName: 'data_tables', args: { action: 'schema' } },
 					],
 				}),
 			);

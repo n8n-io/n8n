@@ -13,7 +13,7 @@ recommended_tools:
   - agent_builder_build_agent
   - agent-context
   - workflow_builder_build_workflow
-  - workflow_builder_data_tables
+  - data_tables
 ---
 
 # Agent Builder
@@ -117,7 +117,7 @@ create when they must be attached to or used by the Agent:
   reusable, manually callable, or usable outside the Agent. Follow
   `workflow-builder`, then pass the built workflow in `workflowContext`.
 - When the Agent will store or query tabular data, follow `data-table-manager`
-  and create the required tables via `workflow_builder_data_tables`. The builder cannot create
+  and create the required tables via `data_tables`. The builder cannot create
   tables.
 
 List prerequisite names and schemas in `message`. Let the builder gather the

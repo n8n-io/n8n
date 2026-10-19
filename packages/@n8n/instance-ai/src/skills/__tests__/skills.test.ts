@@ -208,10 +208,10 @@ describe('Instance AI skills', () => {
 		expect(dataTableManager).toMatchObject({
 			name: 'data-table-manager',
 			platforms: ['daytona'],
-			recommendedTools: ['workflow_builder_data_tables', 'parse-file'],
+			recommendedTools: ['data_tables', 'parse-file'],
 		});
 		expect(dataTableManager?.description).toContain(
-			'Load before calling workflow_builder_data_tables or parse-file',
+			'Load before calling data_tables or parse-file',
 		);
 		expect(dataTableManager?.description).toContain('what data tables do I have?');
 		expect(dataTableManager?.description).toContain(
@@ -246,7 +246,7 @@ describe('Instance AI skills', () => {
 		expect(configEvals).toMatchObject({
 			name: 'config-evals',
 			platforms: ['daytona'],
-			recommendedTools: ['eval-config', 'workflow_builder_data_tables'],
+			recommendedTools: ['eval-config', 'data_tables'],
 			parents: ['workflow-builder'],
 		});
 
@@ -383,7 +383,7 @@ describe('Instance AI skills', () => {
 			'workflow_builder_build_workflow',
 			'workflow_builder_workflows',
 			'workflow_builder_nodes',
-			'workflow_builder_data_tables',
+			'data_tables',
 			'workflow_builder_credentials',
 			'workflow_builder_verify_built_workflow',
 			'workflow_builder_executions',
@@ -467,7 +467,7 @@ describe('Instance AI skills', () => {
 			'workflow_builder_workflows',
 			'workflow_builder_nodes',
 			'workflow_builder_credentials',
-			'workflow_builder_data_tables',
+			'data_tables',
 			'parse-file',
 			'research',
 			'workflow_builder_ask_user',

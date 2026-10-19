@@ -12,7 +12,6 @@ export const WORKFLOW_BUILDER_TOOL_NAMES = {
 	NODES: 'workflow_builder_nodes',
 	CREDENTIALS: 'workflow_builder_credentials',
 	EXECUTIONS: 'workflow_builder_executions',
-	DATA_TABLES: 'workflow_builder_data_tables',
 	ASK_USER: 'workflow_builder_ask_user',
 	SEARCH_MODELS: 'workflow_builder_search_models',
 	BUILD_WORKFLOW: 'workflow_builder_build_workflow',
@@ -50,6 +49,11 @@ export const AGENT_BUILDER_TOOL_NAMES = {
 	CONFIGURE_CHANNEL: 'agent_builder_configure_channel',
 } as const;
 
+/** Orchestrator tools that both builders use. These names have no builder prefix. */
+export const SHARED_BUILDER_TOOL_NAMES = {
+	DATA_TABLES: 'data_tables',
+} as const;
+
 export type WorkflowBuilderToolName =
 	(typeof WORKFLOW_BUILDER_TOOL_NAMES)[keyof typeof WORKFLOW_BUILDER_TOOL_NAMES];
 export type AgentBuilderToolName =
@@ -61,7 +65,7 @@ export const LEGACY_BUILDER_TOOL_NAMES: Readonly<Record<string, string>> = {
 	nodes: WORKFLOW_BUILDER_TOOL_NAMES.NODES,
 	credentials: WORKFLOW_BUILDER_TOOL_NAMES.CREDENTIALS,
 	executions: WORKFLOW_BUILDER_TOOL_NAMES.EXECUTIONS,
-	'data-tables': WORKFLOW_BUILDER_TOOL_NAMES.DATA_TABLES,
+	'data-tables': SHARED_BUILDER_TOOL_NAMES.DATA_TABLES,
 	'ask-user': WORKFLOW_BUILDER_TOOL_NAMES.ASK_USER,
 	searchModels: WORKFLOW_BUILDER_TOOL_NAMES.SEARCH_MODELS,
 	'build-workflow': WORKFLOW_BUILDER_TOOL_NAMES.BUILD_WORKFLOW,

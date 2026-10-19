@@ -405,7 +405,7 @@ For a repair on a published workflow:
    the listed nodes — including any planned simulations — never ran.
    - Most common cause: a lookup/query node returned zero items (n8n stops
      downstream nodes on empty item lists). If the dead-end is a Data Table
-     lookup, insert a matching test row with `workflow_builder_data_tables(action="insert-rows")`,
+     lookup, insert a matching test row with `data_tables(action="insert-rows")`,
      re-run `workflow_builder_verify_built_workflow`, and delete the test row afterwards. The same
      holds for data you seed anywhere else to unblock a run — it is yours to
      remove once the run is done (see "Cleaning up after a live test").

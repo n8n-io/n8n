@@ -577,7 +577,7 @@ pnpm eval:discovery --filter data-table-skill-loading --trials 3 --verbose --fai
 
 Verbose output lists each trial's completed tool calls with argument previews.
 For data-table routing, look for `load_skill(skillId="data-table-manager")`
-and `workflow_builder_data_tables(action="list")`, and verify there are no planning,
+and `data_tables(action="list")`, and verify there are no planning,
 workflow-builder, or spawned-agent entries in the spawned-agent section.
 
 ### Routing mode
@@ -751,7 +751,7 @@ from this assumption — investigate any non-zero count:
 
 - `askUserCount` — `workflow_builder_ask_user` tool was invoked (eval responds with `{ approved: false }`)
 - `planToolCount` — `workflow_builder_create_tasks` was invoked (single-prompt dataset shouldn't trigger planning)
-- `autoApprovedSuspensions` — HITL-gated tool fired (e.g., `workflow_builder_data_tables` create); auto-approved
+- `autoApprovedSuspensions` — HITL-gated tool fired (e.g., `data_tables` create); auto-approved
 - `mockedCredentialTypes` — credential types the agent referenced (auto-mocked since `credentialService.list()` returns `[]`)
 
 ### Comparison report

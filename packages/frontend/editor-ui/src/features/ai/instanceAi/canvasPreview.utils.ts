@@ -1,4 +1,8 @@
-import { AGENT_BUILDER_TOOL_NAMES, WORKFLOW_BUILDER_TOOL_NAMES } from '@n8n/api-types';
+import {
+	AGENT_BUILDER_TOOL_NAMES,
+	SHARED_BUILDER_TOOL_NAMES,
+	WORKFLOW_BUILDER_TOOL_NAMES,
+} from '@n8n/api-types';
 import type { InstanceAiAgentNode, InstanceAiToolCallState } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 
@@ -451,7 +455,7 @@ export function getLatestDeletedDataTableId(node: InstanceAiAgentNode): string |
 		const tc = node.toolCalls[i];
 		const args = tc.args as Record<string, unknown> | undefined;
 		if (
-			tc.toolName === WORKFLOW_BUILDER_TOOL_NAMES.DATA_TABLES &&
+			tc.toolName === SHARED_BUILDER_TOOL_NAMES.DATA_TABLES &&
 			args?.action === 'delete' &&
 			!tc.isLoading &&
 			tc.result &&
@@ -476,7 +480,7 @@ export function getLatestDataTableResult(node: InstanceAiAgentNode): DataTableRe
 		const args = tc.args as Record<string, unknown> | undefined;
 		const action = typeof args?.action === 'string' ? args.action : '';
 		if (
-			tc.toolName === WORKFLOW_BUILDER_TOOL_NAMES.DATA_TABLES &&
+			tc.toolName === SHARED_BUILDER_TOOL_NAMES.DATA_TABLES &&
 			DATA_TABLE_PREVIEW_ACTIONS.has(action) &&
 			!tc.isLoading &&
 			tc.result &&

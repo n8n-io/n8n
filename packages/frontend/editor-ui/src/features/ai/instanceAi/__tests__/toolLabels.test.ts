@@ -80,7 +80,7 @@ describe('getToolIcon', () => {
 	});
 
 	test('returns table for data-table tools', () => {
-		expect(getToolIcon('workflow_builder_data_tables')).toBe('table');
+		expect(getToolIcon('data_tables')).toBe('table');
 	});
 
 	test('returns workflow for workflow-related tools', () => {

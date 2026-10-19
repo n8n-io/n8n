@@ -13,6 +13,7 @@ import {
 	instanceAiEventSchema,
 	isSafeObjectKey,
 	resolveBuilderToolName,
+	SHARED_BUILDER_TOOL_NAMES,
 	WORKFLOW_BUILDER_TOOL_NAMES,
 	type InstanceAiConfirmation,
 	type InstanceAiConfirmRequest,
@@ -1029,7 +1030,7 @@ export function createThreadRuntime(
 			if (!workflowId) return null;
 			return buildUpdateWorkflowSessionGrantKey(workflowId);
 		}
-		if (toolName === WORKFLOW_BUILDER_TOOL_NAMES.DATA_TABLES) {
+		if (toolName === SHARED_BUILDER_TOOL_NAMES.DATA_TABLES) {
 			return buildDataTablesSessionGrantKey(action);
 		}
 		// Executing a node grants "always allow" per node type + resource + operation,

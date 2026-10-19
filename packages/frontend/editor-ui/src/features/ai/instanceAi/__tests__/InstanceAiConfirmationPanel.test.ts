@@ -44,9 +44,8 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 				'instanceAi.tools.workflow_builder_workflows.delete.imperativeWithResource': 'archive',
 				'instanceAi.tools.workflow_builder_build_workflow.imperative': 'edit workflow',
 				'instanceAi.tools.workflow_builder_build_workflow.imperativeWithResource': 'edit',
-				'instanceAi.tools.workflow_builder_data_tables.add-column.imperative': 'add column',
-				'instanceAi.tools.workflow_builder_data_tables.add-column.imperativeWithResource':
-					'add a column to',
+				'instanceAi.tools.data_tables.add-column.imperative': 'add column',
+				'instanceAi.tools.data_tables.add-column.imperativeWithResource': 'add a column to',
 				'instanceAi.tools.workflow_builder_nodes.execute.imperativeWithResource': 'execute the',
 			};
 			if (key === 'agents.chat.approval.description') {
@@ -289,7 +288,7 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 					resourceName: 'Contacts',
 				},
 				{ action: 'add-column', dataTableId: 'dt-1' },
-				'workflow_builder_data_tables',
+				'data_tables',
 			);
 			const { getByText } = renderComponent({ props: { kind: 'floating' } });
 
@@ -307,7 +306,7 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 					resourceName: 'Contacts',
 				},
 				{ action: 'delete', dataTableId: 'dt-1' },
-				'workflow_builder_data_tables',
+				'data_tables',
 			);
 			const { getByRole } = renderComponent({ props: { kind: 'floating' } });
 			expect(getByRole('region', { name: 'Approval details' }).textContent).toBe(
@@ -321,7 +320,7 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 				thread,
 				{ requestId: 'long-summary', severity: 'warning', message, resourceName: 'Contacts' },
 				{ action: 'add-column', dataTableId: 'dt-1' },
-				'workflow_builder_data_tables',
+				'data_tables',
 			);
 			const { getByRole, getByTestId } = renderComponent({ props: { kind: 'floating' } });
 			const description = getByRole('region', {

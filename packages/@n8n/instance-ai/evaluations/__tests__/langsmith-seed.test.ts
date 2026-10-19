@@ -171,7 +171,7 @@ describe('reconstructSeedFromThread', () => {
 		const createTable: FakeRun = {
 			id: 'dt-create',
 			run_type: 'tool',
-			name: 'workflow_builder_data_tables[create]',
+			name: 'data_tables[create]',
 			start_time: t(4),
 			inputs: { action: 'create' },
 			outputs: {
@@ -191,7 +191,7 @@ describe('reconstructSeedFromThread', () => {
 		const insertRows: FakeRun = {
 			id: 'dt-insert',
 			run_type: 'tool',
-			name: 'workflow_builder_data_tables[insert-rows]',
+			name: 'data_tables[insert-rows]',
 			start_time: t(5),
 			inputs: {
 				action: 'insert-rows',
@@ -225,7 +225,7 @@ describe('reconstructSeedFromThread', () => {
 		// eval instance and shown to the judge.
 		const assistant = result.seed.messages.find((m) => m.role === 'assistant')!;
 		const insertBlock = (assistant.content as Array<Record<string, unknown>>).find(
-			(b) => b.toolName === 'workflow_builder_data_tables[insert-rows]',
+			(b) => b.toolName === 'data_tables[insert-rows]',
 		)!;
 		expect((insertBlock.input as Record<string, unknown>).rows).toBe('<1 row(s) omitted>');
 		// Non-row fields are preserved.
@@ -257,7 +257,7 @@ describe('reconstructSeedFromThread', () => {
 		const toolNames = (assistant.content as Array<Record<string, unknown>>)
 			.filter((b) => b.type === 'tool-call')
 			.map((b) => b.toolName);
-		expect(toolNames).toEqual(['workflow_builder_data_tables[insert-rows]']);
+		expect(toolNames).toEqual(['data_tables[insert-rows]']);
 		const insertBlock = (assistant.content as Array<Record<string, unknown>>).find(
 			(b) => b.type === 'tool-call',
 		)!;
@@ -987,7 +987,7 @@ describe('reconstructSeedFromThread — workflow deletes', () => {
 			),
 			// Same delete-shaped input + success as a real workflow delete, but a different
 			// tool — the match is gated to `workflows`, so it must not evict the seed workflow.
-			tool('d1', 5, 'workflow_builder_data_tables[delete-rows]', {
+			tool('d1', 5, 'data_tables[delete-rows]', {
 				action: 'delete',
 				workflowId: 'WF1',
 			}),

@@ -8,7 +8,7 @@
 				"argsContainAny": ["data-table-manager"]
 			},
 			{
-				"toolName": "workflow_builder_data_tables",
+				"toolName": "data_tables",
 				"argsContainAny": ["list"]
 			}
 		],
@@ -18,5 +18,5 @@
 			"spawn_sub_agent:workflow-builder"
 		]
 	},
-	"rationale": "Regression coverage for runtime skill loading. Standalone data-table work must load the data-table-manager skill and call workflow_builder_data_tables directly, without routing through planning, workflow-building, or task creation."
+	"rationale": "Regression coverage for runtime skill loading. Standalone data-table work must load the data-table-manager skill and call data_tables directly, without routing through planning, workflow-building, or task creation."
 }

@@ -49,7 +49,7 @@ keep their explicit pattern. `like` matches case; `ilike` ignores case.
 | Tool | Actions |
 |------|---------|
 | `workflow_builder_workflows` | 12 |
-| `workflow_builder_data_tables` | 11 |
+| `data_tables` | 11 |
 | `workspace` | 8 |
 | `workflow_builder_executions` | 8 |
 | `workflow_builder_credentials` | 6 |
@@ -114,7 +114,7 @@ The plan is shown to the user for approval before execution starts.
 - `checkpoint` → exceptional orchestrator-executed semantic or cross-workflow check
 
 Standalone data-table work is handled directly by the orchestrator with the
-`data-table-manager` skill and the `workflow_builder_data_tables` / `parse-file` tools. Single
+`data-table-manager` skill and the `data_tables` / `parse-file` tools. Single
 workflow-local table requirements belong in the builder task spec; plan only
 when the table schema is shared, independently durable, or creates real
 dependency coordination.
@@ -1175,7 +1175,7 @@ one caller stops its wait without cancelling a refresh shared with other callers
 
 ---
 
-## `workflow_builder_data_tables` (11 actions)
+## `data_tables` (11 actions)
 
 Full CRUD suite for n8n data tables. System columns (`id`, `createdAt`,
 `updatedAt`) are reserved and auto-managed.

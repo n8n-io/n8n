@@ -3,6 +3,7 @@ import type { BaseTextKey } from '@n8n/i18n';
 import type { IconName } from '@n8n/design-system';
 import {
 	AGENT_BUILDER_TOOL_NAMES,
+	SHARED_BUILDER_TOOL_NAMES,
 	WORKFLOW_BUILDER_TOOL_NAMES,
 	resolveBuilderToolName,
 } from '@n8n/api-types';
@@ -132,7 +133,7 @@ export function getToolIcon(rawToolName: string): IconName {
 	if (toolName.endsWith('-with-agent')) return 'share';
 	if (toolName === 'resolve_integration') return 'share';
 	if (SKILL_TOOLS.has(toolName) || toolName === 'n8n-docs') return 'book-open';
-	if (toolName === WORKFLOW_BUILDER_TOOL_NAMES.DATA_TABLES) return 'table';
+	if (toolName === SHARED_BUILDER_TOOL_NAMES.DATA_TABLES) return 'table';
 	if (toolName === 'activity') return 'history';
 	if (toolName === 'conversation-history') return 'message-square';
 	if (toolName === 'mcp-servers') return 'plug';

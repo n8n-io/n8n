@@ -1,7 +1,7 @@
 ---
 name: data-table-manager
 description: >-
-  Load before calling workflow_builder_data_tables or parse-file. Use for natural standalone
+  Load before calling data_tables or parse-file. Use for natural standalone
   requests like "what data tables do I have?", "show/list my tables", or "what
   columns are in this table?", and whenever the user asks to list, show,
   create, inspect, import, seed, query, update, clean up, rename columns in, or
@@ -9,7 +9,7 @@ description: >-
   load before building or planning workflows that create or write to Data
   Tables (then load workflow-builder before workflow_builder_build_workflow).
 recommended_tools:
-  - workflow_builder_data_tables
+  - data_tables
   - parse-file
 platforms:
   - daytona
@@ -23,7 +23,7 @@ For workflow builds that create or write Data Tables, load this skill, then
 `workflow-builder`, before `workflow_builder_build_workflow`.
 
 Use this skill to build and maintain n8n Data Tables in the current turn with
-`workflow_builder_data_tables` and, for attachments, `parse-file`. Do not spawn another agent or
+`data_tables` and, for attachments, `parse-file`. Do not spawn another agent or
 create a background plan for data-table-only work.
 
 Also load this skill before planning or building a workflow whose trigger,
@@ -38,7 +38,7 @@ can target rows with narrow filters.
 
 1. Classify the job: inspect, design/create, import, seed, query, schema
    change, row mutation, row delete, table delete, or cleanup.
-2. Resolve the target first. Call `workflow_builder_data_tables(action="list")` before creating
+2. Resolve the target first. Call `data_tables(action="list")` before creating
    a table, acting on a table name, or choosing a project. If there is more
    than one plausible match, ask one concise clarification.
 3. Use table IDs after discovery. Include `projectId` whenever list results or

@@ -60,7 +60,7 @@ describe('confirmation payload → tool resume schema contract', () => {
 	 *  (approve, deny, approve-with-comment, always-allow) can target them. */
 	const approvalEnvelopeSchemas: Array<[string, ZodType]> = [
 		[
-			'shared approval envelope (workflow_builder_build_workflow, workflow_builder_data_tables, workspace, executions)',
+			'shared approval envelope (workflow_builder_build_workflow, data_tables, workspace, executions)',
 			instanceAiApprovalResumeSchema,
 		],
 		['plan', planResumeSchema],

@@ -924,7 +924,7 @@ describe('useCanvasPreview', () => {
 						toolCalls: [
 							makeToolCall({
 								toolCallId: 'tc-create-dt',
-								toolName: 'workflow_builder_data_tables',
+								toolName: 'data_tables',
 								args: { action: 'create' },
 								result: { table: { id: 'dt-1', name: 'Test Table' } },
 							}),
@@ -951,7 +951,7 @@ describe('useCanvasPreview', () => {
 							toolCalls: [
 								makeToolCall({
 									toolCallId: `tc-${action}-dt`,
-									toolName: 'workflow_builder_data_tables',
+									toolName: 'data_tables',
 									args: { action, dataTableId: 'Inspect Table' },
 									result: {
 										dataTableId: 'dt-inspect',
@@ -982,7 +982,7 @@ describe('useCanvasPreview', () => {
 						toolCalls: [
 							makeToolCall({
 								toolCallId: 'tc-create-dt',
-								toolName: 'workflow_builder_data_tables',
+								toolName: 'data_tables',
 								args: { action: 'create' },
 								result: { table: { id: 'dt-1', name: 'Test Table' } },
 							}),
@@ -1006,7 +1006,7 @@ describe('useCanvasPreview', () => {
 						toolCalls: [
 							makeToolCall({
 								toolCallId: 'tc-create-dt',
-								toolName: 'workflow_builder_data_tables',
+								toolName: 'data_tables',
 								args: { action: 'create' },
 								result: { table: { id: 'dt-1', name: 'Test Table' } },
 							}),
@@ -1030,7 +1030,7 @@ describe('useCanvasPreview', () => {
 						toolCalls: [
 							makeToolCall({
 								toolCallId: 'tc-create-dt',
-								toolName: 'workflow_builder_data_tables',
+								toolName: 'data_tables',
 								args: { action: 'create' },
 								result: { table: { id: 'dt-1' } },
 							}),
@@ -1056,7 +1056,7 @@ describe('useCanvasPreview', () => {
 					agentTree: makeAgentNode({
 						toolCalls: [
 							makeToolCall({
-								toolName: 'workflow_builder_data_tables',
+								toolName: 'data_tables',
 								args: { action: 'delete', dataTableId: 'dt-1' },
 								result: { success: true },
 							}),
@@ -1079,7 +1079,7 @@ describe('useCanvasPreview', () => {
 					agentTree: makeAgentNode({
 						toolCalls: [
 							makeToolCall({
-								toolName: 'workflow_builder_data_tables',
+								toolName: 'data_tables',
 								args: { action: 'delete', dataTableId: 'dt-other' },
 								result: { success: true },
 							}),
@@ -1103,7 +1103,7 @@ describe('useCanvasPreview', () => {
 					agentTree: makeAgentNode({
 						toolCalls: [
 							makeToolCall({
-								toolName: 'workflow_builder_data_tables',
+								toolName: 'data_tables',
 								args: { action: 'delete', dataTableId: 'dt-1' },
 								result: { success: true },
 							}),
@@ -1778,7 +1778,7 @@ describe('useCanvasPreview', () => {
 					toolCalls: [
 						makeToolCall({
 							toolCallId: 'tc-delete',
-							toolName: 'workflow_builder_data_tables',
+							toolName: 'data_tables',
 							args: { action: 'delete', dataTableId: 'dt-1' },
 							result: { success: true },
 						}),

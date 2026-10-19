@@ -23,9 +23,9 @@ vi.mock('../credentials.tool', () => ({
 }));
 
 vi.mock('../data-tables.tool', () => ({
-	DATA_TABLES_TOOL_ID: 'workflow_builder_data_tables',
+	DATA_TABLES_TOOL_ID: 'data_tables',
 	createDataTablesTool: vi.fn((_context: unknown, scope?: string) => ({
-		id: scope ? `workflow_builder_data_tables-${scope}` : 'workflow_builder_data_tables',
+		id: scope ? `data_tables-${scope}` : 'data_tables',
 	})),
 }));
 
@@ -138,7 +138,7 @@ describe('domain tool construction', () => {
 			workflow_builder_workflows: { id: 'workflow_builder_workflows' },
 			workflow_builder_executions: { id: 'workflow_builder_executions' },
 			workflow_builder_credentials: { id: 'workflow_builder_credentials' },
-			workflow_builder_data_tables: { id: 'workflow_builder_data_tables' },
+			data_tables: { id: 'data_tables' },
 			workspace: { id: 'workspace' },
 			research: { id: 'research' },
 			'n8n-docs': { id: 'n8n-docs' },

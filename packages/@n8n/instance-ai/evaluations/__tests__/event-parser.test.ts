@@ -216,7 +216,7 @@ describe('extractOutcomeFromEvents', () => {
 			type: 'tool-call',
 			data: {
 				type: 'tool-call',
-				payload: { toolCallId: 'tc-1', toolName: 'workflow_builder_data_tables', args },
+				payload: { toolCallId: 'tc-1', toolName: 'data_tables', args },
 			},
 		},
 		{
@@ -224,12 +224,12 @@ describe('extractOutcomeFromEvents', () => {
 			type: 'tool-result',
 			data: {
 				type: 'tool-result',
-				payload: { toolCallId: 'tc-1', toolName: 'workflow_builder_data_tables', result },
+				payload: { toolCallId: 'tc-1', toolName: 'data_tables', result },
 			},
 		},
 	];
 
-	it('extracts the nested table id from consolidated workflow_builder_data_tables create results', () => {
+	it('extracts the nested table id from consolidated data_tables create results', () => {
 		const events = dataTablesToolEvents(
 			{ action: 'create', name: 'posted_leads' },
 			{ table: { id: 'dt-777', name: 'posted_leads' } },
@@ -239,7 +239,7 @@ describe('extractOutcomeFromEvents', () => {
 		expect(result.dataTableIds).toEqual(['dt-777']);
 	});
 
-	it('extracts the table id from stringified workflow_builder_data_tables create results', () => {
+	it('extracts the table id from stringified data_tables create results', () => {
 		const events = dataTablesToolEvents(
 			{ action: 'create', name: 'posted_leads' },
 			JSON.stringify({ table: { id: 'dt-999' } }),
@@ -249,7 +249,7 @@ describe('extractOutcomeFromEvents', () => {
 		expect(result.dataTableIds).toEqual(['dt-999']);
 	});
 
-	it('does not track workflow_builder_data_tables schema results even though they carry a top-level id', () => {
+	it('does not track data_tables schema results even though they carry a top-level id', () => {
 		const events = dataTablesToolEvents(
 			{ action: 'schema', tableName: 'posted_leads' },
 			{ id: 'dt-888', name: 'posted_leads', columns: [] },
@@ -259,7 +259,7 @@ describe('extractOutcomeFromEvents', () => {
 		expect(result.dataTableIds).toEqual([]);
 	});
 
-	it('does not track denied workflow_builder_data_tables create results', () => {
+	it('does not track denied data_tables create results', () => {
 		const events = dataTablesToolEvents(
 			{ action: 'create', name: 'posted_leads' },
 			{ denied: true, reason: 'User denied the action' },

@@ -137,7 +137,7 @@ real. The `IdRemapper` translates IDs in both directions.
 | `workflow_builder_nodes(action="type-definition")` | Reads the local node catalog |
 | `workflow_builder_executions(action="get")` | Reads execution results |
 | `workflow_builder_credentials` | Reads or changes credential metadata through the local n8n services |
-| `workflow_builder_data_tables` | Creates real data tables |
+| `data_tables` | Creates real data tables |
 | `workflow_builder_ask_user` | May contain IDs in response |
 
 The wrapping flow:

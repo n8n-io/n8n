@@ -58,13 +58,13 @@ resolved output. Only omit `=` for a genuinely fixed constant string.
 1. Ensure a dataset exists with an input column and a ground-truth column:
 
    ```
-   workflow_builder_data_tables(action="list")
+   data_tables(action="list")
    // if none fits:
-   workflow_builder_data_tables(action="create", name="Support agent eval dataset",
+   data_tables(action="create", name="Support agent eval dataset",
      columns=[{ name: "input", type: "string" },
               { name: "expected_output", type: "string" }])
    // then seed rows:
-   workflow_builder_data_tables(action="insert-rows", dataTableId="<id>",
+   data_tables(action="insert-rows", dataTableId="<id>",
      rows=[{ input: "...", expected_output: "..." }])
    ```
 
@@ -127,4 +127,4 @@ eval-config(
 
 This tool never touches the canvas. Do not add EvaluationTrigger or Evaluation
 nodes; config evals are attached through the evaluation-config API only. Build
-and seed datasets exclusively through the `workflow_builder_data_tables` tool.
+and seed datasets exclusively through the `data_tables` tool.

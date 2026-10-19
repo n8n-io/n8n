@@ -123,7 +123,7 @@ graph TD
     O -->|direct| T1[workflows]
     O -->|direct| T2[executions]
     O -->|direct| T3[credentials]
-    O -->|direct| T5[workflow_builder_data_tables]
+    O -->|direct| T5[data_tables]
 
     S3 -->|kind: build-workflow| S4[Orchestrator Follow-Up]
     S3 -->|kind: checkpoint| S6[Orchestrator Follow-Up]
@@ -144,7 +144,7 @@ graph TD
 - Planning (`planning` skill + deferred `workflow_builder_create_tasks`)
 - Workflow building (`workflow-builder` skill + workspace files + `workflow_builder_build_workflow`)
 - Verification and credential application (workflow_builder_verify_built_workflow, workflow_builder_apply_workflow_credentials)
-- Data-table work (`data-table-manager` skill + `workflow_builder_data_tables` / `parse-file`)
+- Data-table work (`data-table-manager` skill + `data_tables` / `parse-file`)
 - Config-based evaluations (`config-evals` skill + `eval-config`)
 
 **Planned tasks** (`planning` skill + `workflow_builder_create_tasks`):
@@ -331,7 +331,7 @@ determines its executor:
 | `checkpoint` | Orchestrator follow-up | Semantic or cross-workflow validation that standard runtime verification cannot cover |
 
 Standalone data-table work bypasses planned tasks: the orchestrator loads the
-`data-table-manager` skill and uses `workflow_builder_data_tables` / `parse-file` directly. A
+`data-table-manager` skill and uses `data_tables` / `parse-file` directly. A
 single workflow with a workflow-local table can use the direct builder path;
 planning is reserved for shared schema work or real dependency coordination.
 
@@ -373,7 +373,7 @@ To keep the orchestrator's context lean, tools are stratified into two tiers:
 
 - **Core tools** (always-loaded when registered, as selected by
   `ALWAYS_LOADED_TOOL_NAMES` in `tools/tool-ids.ts`): `workflow_builder_ask_user`, `workflow_builder_workflows`,
-  `workflow_builder_executions`, `workflow_builder_credentials`, `workflow_builder_data_tables`, `workflow_builder_nodes`, `workflow_builder_build_workflow`,
+  `workflow_builder_executions`, `workflow_builder_credentials`, `data_tables`, `workflow_builder_nodes`, `workflow_builder_build_workflow`,
   `research`, and `n8n-docs`. `workflow_builder_verify_built_workflow`, `parse-file`, `agents`,
   `agent_builder_build_agent`, and `mcp-servers` are also direct when their required runtime
   context or feature is available.
