@@ -166,6 +166,7 @@ function onInputBlur() {
 		:aria-busy="loading || undefined"
 		readonly
 		:class="containerClasses"
+		:append-class="$style.append"
 		@focus="onInputFocus"
 		@blur="onInputBlur"
 		@click="selectValue"
@@ -248,31 +249,63 @@ function onInputBlur() {
 		text-overflow: ellipsis;
 	}
 
-	// Actions and the copy button form one flush segment behind the divider.
-	> span {
+	.append {
+		display: flex;
 		align-self: stretch;
-		margin: 0;
-		padding: 0;
 		background-color: transparent;
-		border-left: var(--border-width) var(--border-style) var(--input--border-color);
 
 		> * {
 			border-radius: 0;
+			position: relative;
+
+			&:hover:not(:disabled),
+			&:active:not(:disabled) {
+				z-index: 1;
+				background-color: var(--input--color--background);
+				background-repeat: no-repeat;
+				background-position: center;
+				background-size: calc(100% - (2 * var(--input--border-width, var(--border-width))))
+					calc(100% - (2 * var(--input--border-width, var(--border-width))));
+				box-shadow: inset var(--input--border--shadow--hover);
+
+				&:before {
+					background-color: transparent;
+				}
+			}
+
+			&:hover:not(:disabled) {
+				background-image: linear-gradient(
+					var(--button--color--background-hover),
+					var(--button--color--background-hover)
+				);
+			}
+
+			&:active:not(:disabled) {
+				background-image: linear-gradient(
+					var(--button--color--background-active),
+					var(--button--color--background-active)
+				);
+			}
+
+			&:before {
+				content: '';
+				position: absolute;
+				left: 0;
+				top: var(--input--border-width, var(--border-width));
+				height: calc(100% - (2 * var(--input--border-width, var(--border-width))));
+				width: var(--input--border-width, var(--border-width));
+				background-color: var(--input--border-color);
+			}
 		}
 
+		// Adjacent controls share one edge. The hovered shadow covers that divider.
 		> * + * {
-			border-left: var(--border-width) var(--border-style) var(--input--border-color);
+			margin-left: calc(-1 * var(--input--border-width, var(--border-width)));
 		}
 
 		> :last-child {
 			border-radius: 0 var(--input--radius) var(--input--radius) 0;
 		}
-	}
-
-	// The container fades the whole field once; the inner parts must not fade again.
-	&.disabled > div,
-	&.disabled button {
-		opacity: 1;
 	}
 
 	// Loading: the prefix slot carries the skeleton, laid over the (empty) value.

@@ -6,6 +6,7 @@ import N8nButton from '../N8nButton';
 import N8nIcon from '../N8nIcon';
 import N8nInputLabel from '../N8nInputLabel';
 import N8nText from '../N8nText';
+import N8nTooltip from '../N8nTooltip';
 
 export default {
 	title: 'Core/CopyInput',
@@ -120,8 +121,12 @@ export const WithActions: StoryFn = (args) => ({
 	setup: () => {
 		const token = ref(INITIAL_TOKEN);
 		const rotating = ref(false);
-		const displayValue = computed(() => truncateToken(token.value));
+		const revealed = ref(false);
+		const displayValue = computed(() =>
+			revealed.value ? token.value : truncateToken(token.value),
+		);
 		const isLoading = computed(() => rotating.value || Boolean(args.loading));
+		const revealLabel = computed(() => (revealed.value ? 'Hide token' : 'Show token'));
 		let nextToken = 0;
 		let rotateTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -139,9 +144,14 @@ export const WithActions: StoryFn = (args) => ({
 			}, ROTATE_DELAY_MS);
 		}
 
-		return { args, token, displayValue, isLoading, rotate };
+		function toggleReveal() {
+			if (isLoading.value || args.disabled) return;
+			revealed.value = !revealed.value;
+		}
+
+		return { args, token, displayValue, isLoading, revealLabel, revealed, rotate, toggleReveal };
 	},
-	components: { N8nCopyInput, N8nButton, N8nIcon },
+	components: { N8nCopyInput, N8nButton, N8nIcon, N8nTooltip },
 	template: `
 		<div style="max-width: 420px;">
 			<n8n-copy-input
@@ -151,18 +161,34 @@ export const WithActions: StoryFn = (args) => ({
 				:loading="isLoading"
 			>
 				<template #actions>
-					<n8n-button
-						variant="ghost"
-						icon-only
-						:size="args.size"
-						:disabled="isLoading || args.disabled"
-						aria-label="Rotate token"
-						@click="rotate"
-					>
-						<template #icon>
-							<n8n-icon icon="refresh-cw" size="medium" />
-						</template>
-					</n8n-button>
+					<n8n-tooltip content="Rotate token" as-child>
+						<n8n-button
+							variant="ghost"
+							icon-only
+							:size="args.size"
+							:disabled="isLoading || args.disabled"
+							aria-label="Rotate token"
+							@click="rotate"
+						>
+							<template #icon>
+								<n8n-icon icon="refresh-cw" size="medium" />
+							</template>
+						</n8n-button>
+					</n8n-tooltip>
+					<n8n-tooltip :content="revealLabel" as-child>
+						<n8n-button
+							variant="ghost"
+							icon-only
+							:size="args.size"
+							:disabled="isLoading || args.disabled"
+							:aria-label="revealLabel"
+							@click="toggleReveal"
+						>
+							<template #icon>
+								<n8n-icon :icon="revealed ? 'eye-off' : 'eye'" size="medium" />
+							</template>
+						</n8n-button>
+					</n8n-tooltip>
 				</template>
 			</n8n-copy-input>
 		</div>
@@ -177,8 +203,10 @@ WithActions.parameters = {
 	docs: {
 		description: {
 			story:
-				'Extra controls go in the `actions` slot, before the copy button. Rotate token stands in ' +
-				'for a key rotation: the field shows its loading skeleton, then the value is replaced.',
+				'Extra controls go in the `actions` slot, before the copy button. Each one has a tooltip. ' +
+				'The field draws the divider on each control. Do not set a border on the slotted control. ' +
+				'Rotate token stands in for a key rotation: the field shows its loading skeleton, then the ' +
+				'value is replaced. Show token reveals the full value.',
 		},
 	},
 };
