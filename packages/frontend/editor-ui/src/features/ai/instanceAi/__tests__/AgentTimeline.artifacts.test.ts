@@ -160,6 +160,38 @@ describe('AgentTimeline artifact cards', () => {
 			expect(cardNames(container)).toHaveLength(1);
 		});
 
+		it('shows a card for an Agent that a questions-only finish setup changed', () => {
+			const finishSetupNode = {
+				...inThreadNode,
+				toolCalls: [
+					{
+						toolCallId: 'tc-finish',
+						toolName: 'agent_builder_finish_setup',
+						args: {},
+						isLoading: false,
+						confirmation: { requestId: 'req-1', inputType: 'questions', questions: [] },
+						result: {
+							completed: true,
+							configMutated: true,
+							agentId: 'agent-new',
+							agentName: 'Support triage',
+							projectId: 'project-1',
+						},
+					},
+				],
+				timeline: [
+					{ type: 'tool-call', responseId: 'r1', toolCallId: 'tc-finish' },
+					{ type: 'text', responseId: 'r2', content: 'Done.' },
+				],
+			} as unknown as InstanceAiAgentNode;
+
+			const { container } = renderComponent({ props: { agentNode: finishSetupNode } });
+
+			const names = cardNames(container);
+			expect(names).toHaveLength(1);
+			expect(names[0]).toContain('Support triage');
+		});
+
 		it('hides the card on the page of the Agent it built', () => {
 			const { container } = renderComponent({
 				props: { agentNode: inThreadNode },
