@@ -140,9 +140,13 @@ export class TaskBrokerServer {
 			}
 		});
 
-		await new Promise<void>((resolve) => {
+		await new Promise<void>((resolve, reject) => {
 			a.ok(this.server);
-			this.server.listen(port, address, () => resolve());
+			this.server.once('error', reject);
+			this.server.listen(port, address, () => {
+				this.server?.removeListener('error', reject);
+				resolve();
+			});
 		});
 
 		this.logger.info(`n8n Task Broker ready on ${address}, port ${port}`);

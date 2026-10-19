@@ -108,6 +108,7 @@ export class TaskRunnerModule {
 		this.taskBrokerWsServer = Container.get(TaskBrokerWsServer);
 
 		await this.taskBrokerHttpServer.start();
+		this.runnerConfig.port = this.taskBrokerHttpServer.port;
 	}
 
 	private async startInternalTaskRunners() {

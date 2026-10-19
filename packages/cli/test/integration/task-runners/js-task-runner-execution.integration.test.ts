@@ -41,7 +41,6 @@ afterAll(() => {
 describe('JS TaskRunner execution on internal mode', () => {
 	const runnerConfig = Container.get(TaskRunnersConfig);
 	runnerConfig.mode = 'internal';
-	runnerConfig.port = 45678;
 
 	const taskRunnerModule = Container.get(TaskRunnerModule);
 	const taskRequester = Container.get(LocalTaskRequester);
@@ -195,6 +194,7 @@ describe('JS TaskRunner execution on internal mode', () => {
 
 	describe('Basic code execution', () => {
 		beforeAll(async () => {
+			runnerConfig.port = 0;
 			await taskRunnerModule.start();
 		});
 
@@ -273,6 +273,7 @@ describe('JS TaskRunner execution on internal mode', () => {
 			process.env.NODE_FUNCTION_ALLOW_EXTERNAL = 'moment';
 			const { TaskBroker } = await import('@/task-runners/task-broker/task-broker.service.js');
 			Container.get(TaskBroker).stopDraining();
+			runnerConfig.port = 0;
 			await taskRunnerModule.start();
 		});
 
