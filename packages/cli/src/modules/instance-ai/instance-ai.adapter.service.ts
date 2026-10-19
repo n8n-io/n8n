@@ -95,6 +95,7 @@ import type {
 	UpsertEvaluationConfigInput,
 	InstanceAiActivityService,
 	InstanceAiPreferenceService,
+	InstanceAiSkillService,
 	InstanceAiMcpService,
 	InstanceAiExecuteNodeService,
 	ExecuteNodeResult as InstanceAiExecuteNodeResult,
@@ -173,6 +174,8 @@ import {
 } from './eval/scoped-credential-provider';
 import type { EvalCredentialTestTarget } from './eval/thread-credential-allowlist.service';
 import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instance-ai-builder-delegate.adapter';
+import { InstanceAiSkillsAdapterService } from '@/modules/agents/skills/instance-ai-skills.adapter';
+import { SkillsHubRollout } from '@/modules/agents/skills/skills-hub-rollout';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import {
@@ -635,6 +638,7 @@ export class InstanceAiAdapterService {
 				? { activityService: this.createActivityAdapter(user, projectId) }
 				: {}),
 			...(aiPreferencesEnabled ? { aiPreferenceService: this.createPreferenceAdapter(user) } : {}),
+			skillService: this.getSkillService(user),
 			webResearchService: this.createWebResearchAdapter(user, searchProxyConfig),
 			workspaceService: this.createWorkspaceAdapter(user, projectId),
 			templatesService: this.getTemplatesService(),
@@ -700,6 +704,19 @@ export class InstanceAiAdapterService {
 	 * (and the build-agent sub-agent tool it powers) is simply absent from the
 	 * context.
 	 */
+	private getSkillService(user: User): InstanceAiSkillService | undefined {
+		try {
+			if (!Container.get(ModuleRegistry).isActive('agents')) return undefined;
+			if (!Container.get(SkillsHubRollout).isEnabled) return undefined;
+			return Container.get(InstanceAiSkillsAdapterService).createService(user);
+		} catch (error) {
+			this.logger.warn('Failed to resolve the skills adapter; skill tools disabled', {
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return undefined;
+		}
+	}
+
 	private getBuilderDelegateAdapter(): InstanceAiBuilderDelegateAdapterService | null {
 		if (!isAgentsAccessEnabled()) return null;
 		try {

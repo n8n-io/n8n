@@ -18,6 +18,7 @@ export const DOMAIN_TOOL_IDS = {
 	CONVERSATION_HISTORY: 'conversation-history',
 	ACTIVITY: 'activity',
 	SAVE_USER_PREFERENCE: 'save_user_preference',
+	SKILLS: 'skills',
 } as const;
 
 /** Trace-only chain-typed child run emitted by `build-workflow` with the

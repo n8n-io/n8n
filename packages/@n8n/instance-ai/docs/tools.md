@@ -61,6 +61,7 @@ keep their explicit pattern. `like` matches case; `ilike` ignores case.
 | `eval-config` | 6 |
 | `n8n-docs` | 3 |
 | `agent-context` | 13 lookup types |
+| `skills` | 5 |
 | `build-workflow`, `ask-user`, `parse-file`, `searchModels` | single-purpose |
 
 ## Orchestration Tools
@@ -1498,6 +1499,21 @@ The Agent id is optional when the conversation has a bound Agent target. Use
 `type: "agents"` to resolve the id in other conversations. The tool labels the
 returned config as the current draft. It wraps all returned context as untrusted
 data before it returns it to the model.
+
+### `skills` *(domain tool — requires the `agents` backend module and the skills hub)*
+
+Manages skills in the skills hub without an Agent. The host wires the tool only
+when the `agents` module is active and `N8N_AGENTS_SKILLS_HUB_ENABLED` is on.
+The tool calls the same service as the Skills settings page, so the same
+permission checks and name rules apply. It reports telemetry with the
+`assistant` source.
+
+The actions are `list`, `get`, `create`, `update` and `delete`. `create`,
+`update` and `delete` ask for approval. The `createSkill`, `updateSkill` and
+`deleteSkill` permissions control them. The `update` approval says how many
+Agents use the skill. `list` pages with `limit` and `skip`. `delete` is destructive, so the user cannot allow
+it for the whole session. `update` needs the `skillHash` from `get`. The tool
+does not attach a skill to an Agent.
 
 ## MCP Registry Tool
 

@@ -737,6 +737,7 @@ export type {
 	AgentSessionSummary,
 	AgentContextLookup,
 	InstanceAiAgentContextReader,
+	InstanceAiSkillService,
 	ComputerUseChannel,
 	ComputerUseChannelState,
 	ComputerUseState,
