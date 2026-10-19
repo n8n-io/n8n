@@ -68,6 +68,18 @@ describe('generateValidatedJson', () => {
 		if (!result.ok) expect(result.issues?.length).toBeGreaterThan(0);
 	});
 
+	it('still calls the model, without telemetry, when tracing fails', async () => {
+		vi.mocked(getCurrentHelperTelemetry).mockImplementationOnce(() => {
+			throw new Error('tracing unavailable');
+		});
+		setupAgentMock('{"ok": true}');
+		expect(await generate()).toEqual({ ok: true, data: { ok: true } });
+		expect(mockCreateEvalAgent).toHaveBeenCalledWith(
+			'test-agent',
+			expect.objectContaining({ telemetry: undefined }),
+		);
+	});
+
 	it('reports generation_failed when the LLM call throws', async () => {
 		const generateMock = vi.fn().mockRejectedValue(new Error('boom'));
 		mockCreateEvalAgent.mockReturnValue({ generate: generateMock } as unknown as ReturnType<
