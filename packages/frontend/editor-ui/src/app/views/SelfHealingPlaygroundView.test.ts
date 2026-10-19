@@ -8,6 +8,10 @@ import { createWorkflow, getScenarios } from './selfHealingPlayground';
 import SelfHealingPlaygroundView from './SelfHealingPlaygroundView.vue';
 
 const mocks = vi.hoisted(() => ({
+	projects: [
+		{ id: 'personal', name: 'Personal', type: 'personal' },
+		{ id: 'project1', name: 'Self-healing test', type: 'team' },
+	],
 	context: { baseUrl: '/rest', pushRef: 'playground' },
 	getWorkflows: vi.fn(),
 	getWorkflow: vi.fn(),
@@ -32,12 +36,7 @@ vi.mock('@/app/stores/workflows.store', () => ({
 vi.mock('@/features/collaboration/projects/projects.store', () => ({
 	useProjectsStore: () => ({
 		getMyProjects: vi.fn(),
-		getPersonalProject: vi.fn(),
-		personalProject: { id: 'personal' },
-		myProjects: [
-			{ id: 'personal', name: 'Personal' },
-			{ id: 'project1', name: 'Self-healing test' },
-		],
+		myProjects: mocks.projects,
 	}),
 }));
 vi.mock('@/app/api/workflows', () => ({
@@ -58,6 +57,10 @@ let fetchMock: ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
 	vi.clearAllMocks();
+	mocks.projects = [
+		{ id: 'personal', name: 'Personal', type: 'personal' },
+		{ id: 'project1', name: 'Self-healing test', type: 'team' },
+	];
 	workflow = {
 		...createWorkflow(getScenarios(useI18n())[0], 'project1'),
 		id: 'workflow1',
@@ -81,6 +84,28 @@ afterEach(() => {
 });
 
 describe('SelfHealingPlaygroundView', () => {
+	it('requires a team project before loading or creating workflows', async () => {
+		mocks.projects = [{ id: 'personal', name: 'Personal', type: 'personal' }];
+		const screen = render();
+		expect(await screen.findByText(/Create a team project from the/)).toBeVisible();
+		expect(screen.getByTestId('create-wrong-field')).toBeDisabled();
+		expect(screen.queryByText('Self-healing settings')).not.toBeInTheDocument();
+		expect(mocks.getWorkflows).not.toHaveBeenCalled();
+		expect(mocks.create).not.toHaveBeenCalled();
+	});
+	it('selects a team project even when the personal project has the default name', async () => {
+		mocks.projects = [
+			{ id: 'personal', name: 'Self-healing test', type: 'personal' },
+			{ id: 'project1', name: 'My team', type: 'team' },
+		];
+		const screen = render();
+		await waitFor(() => expect(screen.getByTestId('create-wrong-field')).toBeEnabled());
+		expect(mocks.getWorkflows).toHaveBeenCalledWith(
+			mocks.context,
+			expect.objectContaining({ projectId: 'project1' }),
+			expect.any(Object),
+		);
+	});
 	it('creates and publishes through the signed-in session without triggering an execution', async () => {
 		const screen = render();
 		const create = screen.getByTestId('create-wrong-field');

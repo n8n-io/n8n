@@ -43,12 +43,19 @@ const workflowCards = computed(() =>
 	})),
 );
 const enabled = computed(() => settings.moduleSettings['instance-ai']?.workflowSuggestionsEnabled);
+const teamProjects = computed(() =>
+	projectsStore.myProjects.filter((project) => project.type === 'team'),
+);
 
 function published(workflow: IWorkflowDb) {
 	return Boolean(workflow.activeVersionId && workflow.activeVersionId === workflow.versionId);
 }
 
 async function refresh() {
+	if (!projectId.value) {
+		workflows.value = [];
+		return;
+	}
 	const collected: IWorkflowDb[] = [];
 	let skip = 0;
 	let count = 0;
@@ -153,11 +160,9 @@ onMounted(async () => {
 	busy.value = false;
 	await perform(async () => {
 		await projectsStore.getMyProjects();
-		await projectsStore.getPersonalProject();
 		projectId.value =
-			projectsStore.myProjects.find((project) => project.name === 'Self-healing test')?.id ??
-			projectsStore.personalProject?.id ??
-			projectsStore.myProjects[0]?.id ??
+			teamProjects.value.find((project) => project.name === 'Self-healing test')?.id ??
+			teamProjects.value[0]?.id ??
 			'';
 		await refresh();
 	});
@@ -212,6 +217,7 @@ onMounted(async () => {
 				<div :class="$style.setupContent">
 					<div :class="$style.setupCopy">
 						<h2>{{ i18n.baseText('selfHealingPlayground.setup.title') }}</h2>
+						<p>{{ i18n.baseText('selfHealingPlayground.teamProjectsOnly') }}</p>
 						<p>{{ i18n.baseText('selfHealingPlayground.setup.description') }}</p>
 						<div :class="$style.links">
 							<RouterLink v-if="projectId" :to="`/projects/${projectId}/settings`">
@@ -236,7 +242,7 @@ onMounted(async () => {
 							@update:model-value="changeProject"
 						>
 							<N8nOption
-								v-for="project in projectsStore.myProjects"
+								v-for="project in teamProjects"
 								:key="project.id"
 								:value="project.id"
 								:label="project.name ?? project.id"
@@ -248,6 +254,9 @@ onMounted(async () => {
 					</div>
 				</div>
 			</N8nCard>
+			<N8nCallout v-if="!busy && !teamProjects.length" theme="warning">
+				{{ i18n.baseText('selfHealingPlayground.noTeamProjects') }}
+			</N8nCallout>
 
 			<section :class="$style.section" aria-labelledby="playground-scenarios">
 				<div>
