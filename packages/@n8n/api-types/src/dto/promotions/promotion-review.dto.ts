@@ -50,6 +50,18 @@ const promotionReviewRemoteSchema = z.object({
 export type PromotionReviewRemote = z.infer<typeof promotionReviewRemoteSchema>;
 
 /**
+ * Why the host data of a review is missing. Computed for each request and never stored.
+ * `no_connection` means the connection was deleted or its provider no longer matches.
+ */
+export const promotionReviewRemoteErrorSchema = z.enum([
+	'not_found',
+	'auth',
+	'unreachable',
+	'no_connection',
+]);
+export type PromotionReviewRemoteError = z.infer<typeof promotionReviewRemoteErrorSchema>;
+
+/**
  * One inbox row. The branch and commit stay off this row. They live on the newest
  * run, and the list query does not load runs.
  */

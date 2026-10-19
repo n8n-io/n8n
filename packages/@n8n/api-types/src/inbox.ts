@@ -1,9 +1,17 @@
 import { z } from 'zod';
 
+import type {
+	PromotionReviewRemoteError,
+	PromotionReviewState,
+} from './dto/promotions/promotion-review.dto';
 import type { WorkflowReviewInboxItem } from './dto/workflow-reviews/list-workflow-review-inbox.dto';
 import type { SelfHealingResultDetail } from './self-healing-results';
 
-export const inboxSourceTypeSchema = z.enum(['workflow_review', 'self_healing_result']);
+export const inboxSourceTypeSchema = z.enum([
+	'workflow_review',
+	'self_healing_result',
+	'promotion_review',
+]);
 export type InboxSourceType = z.infer<typeof inboxSourceTypeSchema>;
 
 export const inboxStateSchema = z.enum(['open', 'closed']);
@@ -26,7 +34,19 @@ export type InboxSelfHealingItem = Pick<
 	workflowName: string;
 };
 
-export type InboxItem = InboxWorkflowReviewItem | InboxSelfHealingItem;
+export type InboxPromotionReviewItem = {
+	type: 'promotion_review';
+	id: string;
+	state: InboxState;
+	reviewState: PromotionReviewState;
+	title: string | null;
+	branchName: string | null;
+	remoteError: PromotionReviewRemoteError | null;
+	createdAt: string;
+	updatedAt: string;
+};
+
+export type InboxItem = InboxWorkflowReviewItem | InboxSelfHealingItem | InboxPromotionReviewItem;
 
 export type InboxCounts = { open: number; closed: number };
 

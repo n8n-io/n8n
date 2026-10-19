@@ -15,6 +15,7 @@ import { INBOX_VIEW, type InboxItemChange } from '../inbox.constants';
 import { inboxItemLocation, isInboxRoute, selectionFromRoute } from '../inbox.routes';
 import { useInboxStore } from '../inbox.store';
 import WorkflowReviewDetail from '../reviews/WorkflowReviewDetail.vue';
+import PromotionReviewDetail from '../promotions/PromotionReviewDetail.vue';
 import SelfHealingResultDetail from '../self-healing/SelfHealingResultDetail.vue';
 
 const store = useInboxStore();
@@ -194,6 +195,13 @@ onBeforeUnmount(() => {
 								!store.disabledSources.includes(selection.type)
 							"
 							:selection="selection"
+						/>
+						<PromotionReviewDetail
+							v-else-if="
+								selection?.type === 'promotion_review' &&
+								!store.disabledSources.includes(selection.type)
+							"
+							:review-id="selection.id"
 						/>
 						<InboxEmptyState v-else />
 					</div>

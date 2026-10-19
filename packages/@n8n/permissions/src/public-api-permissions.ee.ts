@@ -26,6 +26,7 @@ export const OWNER_API_KEY_SCOPES: ApiKeyScope[] = [
 	'gitConnection:push',
 	'gitConnection:manageProjects',
 	'gitConnection:pull',
+	'gitConnection:readReviews',
 	'securityAudit:generate',
 	'securitySettings:manage',
 	'saml:manage',

@@ -85,6 +85,10 @@ const renderOptions = {
 				props: ['selection'],
 				template: '<div data-test-id="result-detail" :data-id="selection.id" />',
 			},
+			PromotionReviewDetail: {
+				props: ['reviewId'],
+				template: '<div data-test-id="promotion-detail" :data-id="reviewId" />',
+			},
 		},
 	},
 };
@@ -164,6 +168,17 @@ it('clears source context and keeps the current state and tab', async () => {
 	getByTestId('clear-review').click();
 	await waitAllPromises();
 	expect(router.currentRoute.value.fullPath).toBe('/inbox?state=closed&tab=changes');
+});
+
+it('renders a promotion review deep link until its source becomes disabled', async () => {
+	await router.replace('/inbox/promotion-reviews/rev-1');
+	const { getByTestId, queryByTestId } = renderComponent();
+	expect(getByTestId('promotion-detail')).toHaveAttribute('data-id', 'rev-1');
+
+	store.disabledSources = ['promotion_review'];
+	await waitAllPromises();
+	expect(router.currentRoute.value.fullPath).toBe('/inbox');
+	expect(queryByTestId('promotion-detail')).not.toBeInTheDocument();
 });
 
 it('clears a disabled-source deep link without mounting its detail entry', async () => {
