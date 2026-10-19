@@ -462,6 +462,7 @@ describe('Source Control Helper', () => {
 				{ local: { timezone: 'Europe/Berlin' }, remote: { timezone: 'UTC' } },
 				{ local: {}, remote: { timezone: 'UTC' } },
 				{ local: { timezone: 'UTC' }, remote: {} },
+				{ local: { timezone: 'UTC', credentialResolverId: 'local-resolver' }, remote: null },
 				{
 					local: { timezone: 'UTC', credentialResolverId: 'local-resolver' },
 					remote: { timezone: 'Europe/Berlin', credentialResolverId: 'remote-resolver' },
@@ -479,6 +480,9 @@ describe('Source Control Helper', () => {
 			test.each([
 				{ local: undefined, remote: {} },
 				{ local: {}, remote: undefined },
+				{ local: undefined, remote: null },
+				{ local: null, remote: {} },
+				{ local: { credentialResolverId: 'local-resolver' }, remote: null },
 				{
 					local: { credentialResolverId: 'local-resolver' },
 					remote: { credentialResolverId: 'remote-resolver' },

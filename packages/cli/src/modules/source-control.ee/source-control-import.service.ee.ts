@@ -888,7 +888,8 @@ export class SourceControlImportService {
 		const existingWorkflow = existingWorkflows.find((e) => e.id === id);
 
 		// Resolver IDs are local to each instance and have no source-control mapping.
-		if (importedWorkflow.settings) {
+		if (importedWorkflow.settings !== undefined) {
+			importedWorkflow.settings ??= {};
 			delete importedWorkflow.settings.credentialResolverId;
 			const localResolverId = existingWorkflow?.settings?.credentialResolverId;
 			if (localResolverId !== undefined) {

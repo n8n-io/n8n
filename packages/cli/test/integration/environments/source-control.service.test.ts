@@ -661,7 +661,7 @@ describe('SourceControlService', () => {
 		const cases: Array<{
 			name: string;
 			localSettings: IWorkflowSettings;
-			remoteSettings?: IWorkflowSettings;
+			remoteSettings?: IWorkflowSettings | null;
 			expectedSettings: IWorkflowSettings;
 			changeVersion?: boolean;
 		}> = [
@@ -701,6 +701,18 @@ describe('SourceControlService', () => {
 				remoteSettings: {},
 				expectedSettings: { credentialResolverId: 'local-resolver' },
 			},
+			{
+				name: 'clears ordinary settings but keeps the local resolver for null remote settings',
+				localSettings: { timezone: 'UTC', credentialResolverId: 'local-resolver' },
+				remoteSettings: null,
+				expectedSettings: { credentialResolverId: 'local-resolver' },
+			},
+			{
+				name: 'normalizes null remote settings without a local resolver',
+				localSettings: { timezone: 'UTC' },
+				remoteSettings: null,
+				expectedSettings: {},
+			},
 		];
 
 		test.each(cases)(
@@ -712,7 +724,7 @@ describe('SourceControlService', () => {
 				gitFiles[fileName] = {
 					...toExportableWorkflow(workflow, projectA),
 					versionId: changeVersion ? 'remote-version' : workflow.versionId,
-					...(remoteSettings && { settings: remoteSettings }),
+					...(remoteSettings !== undefined && { settings: remoteSettings }),
 				};
 				const floorSpy = vi
 					.spyOn(Container.get(InstanceRedactionEnforcementService), 'get')

@@ -9,7 +9,7 @@ export interface SourceControlWorkflowVersionId {
 	name?: string;
 	/** `undefined` when the remote file predates description syncing. */
 	description?: string | null;
-	settings?: IWorkflowSettings;
+	settings?: IWorkflowSettings | null;
 	localId?: string;
 	remoteId?: string;
 	parentFolderId: string | null;
