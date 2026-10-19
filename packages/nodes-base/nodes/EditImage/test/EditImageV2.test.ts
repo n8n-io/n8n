@@ -843,10 +843,7 @@ describe('Edit Image v2', () => {
 		expect(outputBuffer(result).length).toBeGreaterThan(0);
 	});
 
-	it.each([
-		['west', 'north'],
-		['east', 'south'],
-	])(
+	it.each([['west', 'north'] as const, ['east', 'south'] as const])(
 		'positions %s and %s text from the font baseline',
 		async (horizontalAlignment, verticalAlignment) => {
 			const fonts = await getSystemFonts();
