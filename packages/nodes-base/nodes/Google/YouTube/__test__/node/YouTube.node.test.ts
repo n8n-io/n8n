@@ -79,6 +79,16 @@ describe('Test YouTube Node', () => {
 				.query({ part: 'snippet, status' })
 				.reply(200, playlists[0]);
 			youtubeNock
+				.post('/v3/playlists', {
+					snippet: { title: 'Playlist 2' },
+				})
+				.query({ part: 'snippet' })
+				.reply(200, {
+					kind: 'youtube#playlist',
+					id: 'playlist_id_2',
+					snippet: { title: 'Playlist 2' },
+				});
+			youtubeNock
 				.put('/v3/playlists', {
 					id: 'playlist_id_1',
 					snippet: { title: 'Test Updated', description: 'This description is updated' },

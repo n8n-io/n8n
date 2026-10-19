@@ -111,6 +111,25 @@
 			}
 		},
 		{
+			"parameters": {
+				"resource": "playlist",
+				"operation": "create",
+				"title": "Playlist 2",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.youTube",
+			"typeVersion": 1,
+			"position": [800, 2060],
+			"id": "3b0e6f0a-7c2d-4e51-9a8b-2f6d1c4e5a70",
+			"name": "YouTube5",
+			"credentials": {
+				"youTubeOAuth2Api": {
+					"id": "62",
+					"name": "YouTube OAuth2 creds"
+				}
+			}
+		},
+		{
 			"parameters": {},
 			"type": "n8n-nodes-base.noOp",
 			"typeVersion": 1,
@@ -149,6 +168,14 @@
 			"position": [1020, 1860],
 			"id": "f2091eb1-cc41-468d-9c3b-6217a9124c85",
 			"name": "Playlist Delete"
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [1020, 2060],
+			"id": "8d4c2a1e-5f7b-4c39-b6e0-9a1f3d2c7b84",
+			"name": "Playlist Create Without Options"
 		}
 	],
 	"connections": {
@@ -177,6 +204,11 @@
 					},
 					{
 						"node": "YouTube4",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "YouTube5",
 						"type": "main",
 						"index": 0
 					}
@@ -232,6 +264,17 @@
 				[
 					{
 						"node": "Playlist Delete",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"YouTube5": {
+			"main": [
+				[
+					{
+						"node": "Playlist Create Without Options",
 						"type": "main",
 						"index": 0
 					}
@@ -526,6 +569,17 @@
 			{
 				"json": {
 					"success": true
+				}
+			}
+		],
+		"Playlist Create Without Options": [
+			{
+				"json": {
+					"kind": "youtube#playlist",
+					"id": "playlist_id_2",
+					"snippet": {
+						"title": "Playlist 2"
+					}
 				}
 			}
 		]
