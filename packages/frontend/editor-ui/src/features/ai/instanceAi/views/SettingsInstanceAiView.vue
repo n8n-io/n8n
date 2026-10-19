@@ -464,7 +464,14 @@ function openAiUsageSettings() {
 			:description="i18n.baseText('settings.n8nAgent.description')"
 			:docs-url="DOCS_URL"
 			:docs-label="i18n.baseText('settings.n8nAgent.docsLabel')"
-		/>
+		>
+			<template #titleTrailing>
+				<N8nEnterpriseReadinessBadge
+					size="medium"
+					data-test-id="n8n-agent-enterprise-readiness-badge"
+				/>
+			</template>
+		</N8nSettingsPageHeader>
 
 		<N8nLoading v-if="store.isLoading" :rows="3" :shrink-last="false" />
 
@@ -479,36 +486,19 @@ function openAiUsageSettings() {
 			@click:button="handleEnable"
 		>
 			<template v-if="isAdmin" #additionalContent>
-				<div :class="$style.emptyFooter">
-					<N8nEnterpriseReadinessBadge
-						size="medium"
-						data-test-id="n8n-agent-enterprise-readiness-badge"
-					/>
-					<N8nText size="small" color="text-light">
-						{{ i18n.baseText('settings.n8nAgent.empty.footnote') }}
-					</N8nText>
-				</div>
+				<N8nText size="small" color="text-light">
+					{{ i18n.baseText('settings.n8nAgent.empty.footnote') }}
+				</N8nText>
 			</template>
 		</N8nEmptyState>
 
 		<template v-else-if="isAdmin">
 			<N8nSettingsSection>
 				<N8nSettingsRowGroup>
-					<N8nSettingsRow>
-						<template #info>
-							<span :class="$style.titleWithTag">
-								<N8nText bold size="medium" color="text-dark">
-									{{ i18n.baseText('settings.n8nAgent.enable.label') }}
-								</N8nText>
-								<N8nEnterpriseReadinessBadge
-									size="medium"
-									data-test-id="n8n-agent-enterprise-readiness-badge"
-								/>
-							</span>
-							<N8nText size="small" color="text-light">
-								{{ i18n.baseText('settings.n8nAgent.enable.description') }}
-							</N8nText>
-						</template>
+					<N8nSettingsRow
+						:title="i18n.baseText('settings.n8nAgent.enable.label')"
+						:description="i18n.baseText('settings.n8nAgent.enable.description')"
+					>
 						<template #action>
 							<N8nButton
 								v-if="isOff"
@@ -848,13 +838,6 @@ function openAiUsageSettings() {
 
 .titleWithTag {
 	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-}
-
-.emptyFooter {
-	display: flex;
-	flex-direction: column;
 	align-items: center;
 	gap: var(--spacing--2xs);
 }

@@ -302,7 +302,7 @@ describe('SettingsInstanceAiView', () => {
 	});
 
 	describe('status row', () => {
-		it('shows the limited enterprise support badge next to the enable control', () => {
+		it('shows the limited enterprise support badge in the page header', () => {
 			const { getByTestId } = renderComponent();
 			expect(getByTestId('n8n-agent-enterprise-readiness-badge')).toBeVisible();
 		});

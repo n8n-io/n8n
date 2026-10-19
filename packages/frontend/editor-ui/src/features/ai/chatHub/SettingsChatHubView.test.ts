@@ -135,14 +135,6 @@ describe('SettingsChatHubView', () => {
 		);
 	});
 
-	it('does not toggle Chat when the enterprise readiness badge is clicked', async () => {
-		const { getByTestId } = renderComponent();
-
-		await userEvent.click(getByTestId('chat-hub-enterprise-readiness-badge'));
-
-		expect(setChatEnabledMock).not.toHaveBeenCalled();
-	});
-
 	it('disables the toggle for users without chatHub:manage scope', () => {
 		hasPermissionMock.mockReturnValue(false);
 

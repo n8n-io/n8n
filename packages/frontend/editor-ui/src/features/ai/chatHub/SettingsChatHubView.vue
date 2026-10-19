@@ -134,20 +134,15 @@ onMounted(async () => {
 				{{ i18n.baseText('settings.chatHub') }}
 			</N8nHeading>
 			<N8nPreviewBadge size="medium" data-test-id="chat-hub-preview-badge" />
+			<N8nEnterpriseReadinessBadge
+				size="medium"
+				data-test-id="chat-hub-enterprise-readiness-badge"
+			/>
 		</div>
 
 		<label :class="$style.enabledRow">
 			<div :class="$style.enabledText">
-				<span :class="$style.titleWithTag">
-					<N8nText bold>{{ i18n.baseText('settings.chatHub.enabled.label') }}</N8nText>
-					<!-- Prevent the click from reaching the label, which would toggle the switch. -->
-					<span @click.prevent>
-						<N8nEnterpriseReadinessBadge
-							size="small"
-							data-test-id="chat-hub-enterprise-readiness-badge"
-						/>
-					</span>
-				</span>
+				<N8nText bold>{{ i18n.baseText('settings.chatHub.enabled.label') }}</N8nText>
 				<N8nText size="small" color="text-light">
 					{{ i18n.baseText('settings.chatHub.enabled.description') }}
 				</N8nText>
