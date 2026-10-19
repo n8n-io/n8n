@@ -74,6 +74,7 @@ import {
 } from '@n8n/errors';
 import { createExecutionIdV2, type ExecutionIdV2 } from '@/executions/execution-id';
 import { parseBody } from '@/middlewares';
+import * as ResponseHelper from '@/response-helper';
 import { WebhookResponseRelay } from '@/scaling/webhook-response-relay';
 import { EngineV2PayloadFiles } from '@/services/engine-v2-payload-files.service';
 import {
@@ -425,6 +426,10 @@ export const handleFormRedirectionCase = <T extends IWebhookResponseCallbackData
 const { formDataFileSizeMax } = Container.get(GlobalConfig).endpoints;
 const parseFormData = createMultiFormDataParser(formDataFileSizeMax);
 
+function isPrematureClose(error: unknown) {
+	return error instanceof Error && 'code' in error && error.code === 'ERR_STREAM_PREMATURE_CLOSE';
+}
+
 function isHttpFullResponse(response: unknown): response is IN8nHttpFullResponse {
 	// A missing body means that the response has an empty body.
 	return (
@@ -450,15 +455,12 @@ async function sendResponseNodeResponse(
 			applySandboxCSP(res);
 			try {
 				const stream = await Container.get(BinaryDataService).getAsStream(binaryData.id);
-				// The client can disconnect before the stream exists. Then 'close' does not fire again.
-				if (res.destroyed) stream.destroy();
-				else res.once('close', () => stream.destroy());
-				stream.pipe(res, { end: false });
+				ResponseHelper.pipeStreamToResponse(stream, res, { end: false });
 				try {
 					await finished(stream);
 				} catch (error) {
-					if (!res.destroyed) throw error;
-					// The client disconnected. This is not an error, and the response is gone.
+					// When the client disconnects, the stream is destroyed without an error.
+					if (!res.destroyed || !isPrematureClose(error)) throw error;
 					responder.respondWithNoResponse();
 					return;
 				}
@@ -500,7 +502,9 @@ async function sendResponseNodeResponse(
 			`Error with Webhook-Response for execution "${executionId}": "${error.message}"`,
 			{ executionId, workflowId: workflow.id },
 		);
-		responder.respondWithError(error);
+		// The client disconnected, so there is no response left to send the error on.
+		if (res.destroyed) responder.respondWithNoResponse();
+		else responder.respondWithError(error);
 	}
 }
 

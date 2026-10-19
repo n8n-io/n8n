@@ -59,12 +59,6 @@ import {
 	UnexpectedError,
 	UserError,
 } from 'n8n-workflow';
-import { once } from 'node:events';
-import { mkdtemp, open, rm, writeFile, type FileHandle } from 'node:fs/promises';
-import http, { type Server } from 'node:http';
-import type { AddressInfo } from 'node:net';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
 import { Readable } from 'stream';
 import { finished } from 'stream/promises';
 import { mock, type MockProxy } from 'vitest-mock-extended';
@@ -83,6 +77,14 @@ import { ProtectedResourceRegistry } from '@/services/protected-resource.registr
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowRunner } from '@/workflow-runner';
+import {
+	createLargeTempFile,
+	disconnectBeforeResponse,
+	readFirstChunkAndDisconnect,
+	readWholeBody,
+	startServer,
+	waitForClose,
+} from '@test/file-stream-server';
 
 import { EXECUTION_ENDED_WITHOUT_RESPONSE } from '../constants';
 import {
@@ -402,37 +404,6 @@ describe('setupResponseNodePromise', () => {
 		});
 	});
 
-	test('should destroy the stream when the client goes away, so delivery settles', async () => {
-		const stream = mock<Readable>();
-		binaryDataService.getAsStream.mockResolvedValue(stream);
-
-		setupResponseNodePromise(
-			responsePromise,
-			res,
-			new WebhookResponder(responseCallback),
-			workflowStartNode,
-			executionId,
-			workflow,
-		);
-
-		responsePromise.resolve({
-			body: { binaryData: { id: 'binary-123' } },
-			headers: {},
-			statusCode: 200,
-		} as unknown as IN8nHttpFullResponse);
-		await new Promise(process.nextTick);
-
-		const closeHandler = res.once.mock.calls.find(([event]) => event === 'close')?.[1] as
-			| (() => void)
-			| undefined;
-		expect(closeHandler).toBeDefined();
-		expect(stream.destroy).not.toHaveBeenCalled();
-
-		closeHandler!();
-
-		expect(stream.destroy).toHaveBeenCalled();
-	});
-
 	test('should reclaim an offloaded body even when streaming fails', async () => {
 		binaryDataService.getAsStream.mockRejectedValue(new Error('store is down'));
 
@@ -638,66 +609,47 @@ describe('setupResponseNodePromise', () => {
 	});
 
 	describe('binary data responses over a real connection', () => {
-		const fileSize = 8 * 1024 * 1024;
 		const binaryDataResponse = {
 			body: { binaryData: { id: 'binary-123' } },
 			headers: {},
 			statusCode: 200,
 		} as unknown as IN8nHttpFullResponse;
 
-		let tempDir: string;
-		let filePath: string;
-		let server: Server;
-		let url: string;
-		let onRequest: (res: express.Response) => void;
-		let sourceStreams: Readable[];
+		let file: Awaited<ReturnType<typeof createLargeTempFile>>;
+		let server: Awaited<ReturnType<typeof startServer>> | undefined;
+		let streams: Readable[];
 
-		const openSourceFile = async () => {
-			const handle = await open(filePath);
-			const stream = handle.createReadStream();
-			sourceStreams.push(stream);
-			return { handle, stream };
+		const openStream = async () => {
+			const stream = await file.openStream();
+			streams.push(stream);
+			return stream;
 		};
 
-		const respondWithBinaryData = (res: express.Response) => {
-			const deferred = createDeferredPromise<IN8nHttpFullResponse>();
-			setupResponseNodePromise(
-				deferred,
-				res,
-				new WebhookResponder(responseCallback),
-				workflowStartNode,
-				executionId,
-				workflow,
-			);
-			deferred.resolve(binaryDataResponse);
+		/** Serves a Respond to Webhook binary response. `beforeRespond` runs first on each response. */
+		const serveBinaryData = async (beforeRespond?: (res: express.Response) => void) => {
+			const app = express();
+			app.get('/', (_req, res) => {
+				beforeRespond?.(res);
+				const deferred = createDeferredPromise<IN8nHttpFullResponse>();
+				setupResponseNodePromise(
+					deferred,
+					res,
+					new WebhookResponder(responseCallback),
+					workflowStartNode,
+					executionId,
+					workflow,
+				);
+				deferred.resolve(binaryDataResponse);
+			});
+			server = await startServer(app);
+			return server.url;
 		};
 
-		const waitUntilClosed = async (handle: FileHandle) =>
-			await vi.waitFor(() => expect(handle.fd).toBe(-1), { timeout: 2000 });
-
-		const readWholeBody = async () =>
-			await new Promise<Buffer>((resolve, reject) => {
-				http
-					.get(url, (response) => {
-						const chunks: Buffer[] = [];
-						response.on('data', (chunk: Buffer) => chunks.push(chunk));
-						response.on('end', () => resolve(Buffer.concat(chunks)));
-						response.on('error', reject);
-					})
-					.on('error', reject);
+		const endWithStatus500OnError = (res: express.Response) => {
+			responseCallback.mockImplementation((error: Error | null) => {
+				if (error) res.status(500).end();
 			});
-
-		const readFirstChunkAndDisconnect = async () =>
-			await new Promise<void>((resolve, reject) => {
-				const request = http.get(url, (response) => {
-					response.on('error', () => {});
-					response.once('data', () => {
-						request.destroy();
-						resolve();
-					});
-				});
-				request.on('error', reject);
-			});
+		};
 
 		const expectDisconnectHandledQuietly = async () => {
 			await vi.waitFor(() => expect(responseCallback).toHaveBeenCalled());
@@ -712,60 +664,51 @@ describe('setupResponseNodePromise', () => {
 		};
 
 		beforeAll(async () => {
-			tempDir = await mkdtemp(join(tmpdir(), 'n8n-respond-node-'));
-			filePath = join(tempDir, 'binary.bin');
-			await writeFile(filePath, Buffer.alloc(fileSize, 'a'));
-
-			const app = express();
-			app.get('/', (_req, res) => onRequest(res));
-			server = app.listen(0, '127.0.0.1');
-			await once(server, 'listening');
-			url = `http://127.0.0.1:${(server.address() as AddressInfo).port}/`;
+			file = await createLargeTempFile();
 		});
 
 		afterAll(async () => {
-			server.closeAllConnections();
-			await new Promise((resolve) => server.close(resolve));
-			await rm(tempDir, { recursive: true, force: true });
+			await file.remove();
 		});
 
 		beforeEach(async () => {
-			sourceStreams = [];
+			streams = [];
 			const actual = await vi.importActual<typeof import('stream/promises')>('stream/promises');
 			vi.mocked(finished).mockImplementation(actual.finished);
 		});
 
-		afterEach(() => {
-			for (const stream of sourceStreams) stream.destroy();
+		afterEach(async () => {
+			vi.mocked(finished).mockReset();
+			for (const stream of streams) stream.destroy();
+			await server?.close();
+			server = undefined;
 		});
 
 		test('should send the whole file and close the source file', async () => {
-			const { handle, stream } = await openSourceFile();
+			const stream = await openStream();
 			binaryDataService.getAsStream.mockResolvedValue(stream);
-			onRequest = respondWithBinaryData;
+			const url = await serveBinaryData();
 
-			const body = await readWholeBody();
-
-			expect(body.length).toBe(fileSize);
-			await waitUntilClosed(handle);
+			expect(await readWholeBody(url)).toBe(file.sizeInBytes);
+			expect(await waitForClose(stream)).toBe(true);
 			expect(responseCallback).toHaveBeenCalledTimes(1);
 			expect(responseCallback).toHaveBeenCalledWith(null, { noWebhookResponse: true });
 			expect(errorReporter.error).not.toHaveBeenCalled();
 		});
 
 		test('should close the source file without an error when the client disconnects mid-download', async () => {
-			const { handle, stream } = await openSourceFile();
+			const stream = await openStream();
 			binaryDataService.getAsStream.mockResolvedValue(stream);
-			onRequest = respondWithBinaryData;
+			const url = await serveBinaryData();
 
-			await readFirstChunkAndDisconnect();
+			await readFirstChunkAndDisconnect(url);
 
-			await waitUntilClosed(handle);
+			expect(await waitForClose(stream)).toBe(true);
 			await expectDisconnectHandledQuietly();
 		});
 
 		test('should close the source file without an error when the client disconnects before the stream opens', async () => {
-			const { handle, stream } = await openSourceFile();
+			const stream = await openStream();
 			const streamRequested = createDeferredPromise();
 			const releaseStream = createDeferredPromise();
 			binaryDataService.getAsStream.mockImplementation(async () => {
@@ -773,38 +716,42 @@ describe('setupResponseNodePromise', () => {
 				await releaseStream.promise;
 				return stream;
 			});
-			const serverResponseClosed = createDeferredPromise();
-			onRequest = (res) => {
-				res.once('close', () => serverResponseClosed.resolve());
-				respondWithBinaryData(res);
-			};
+			const responseClosed = createDeferredPromise();
+			const url = await serveBinaryData((res) => res.once('close', () => responseClosed.resolve()));
 
-			const request = http.get(url);
-			request.on('error', () => {});
-			await streamRequested.promise;
-			request.destroy();
-			await serverResponseClosed.promise;
+			await disconnectBeforeResponse(url, streamRequested.promise);
+			await responseClosed.promise;
 			releaseStream.resolve();
 
-			await waitUntilClosed(handle);
+			expect(await waitForClose(stream)).toBe(true);
 			await expectDisconnectHandledQuietly();
+		});
+
+		test('should report a stream error that happens when the client disconnects', async () => {
+			const stream = await openStream();
+			binaryDataService.getAsStream.mockResolvedValue(stream);
+			const url = await serveBinaryData((res) =>
+				res.once('close', () => stream.destroy(new Error('read failed'))),
+			);
+
+			await readFirstChunkAndDisconnect(url);
+
+			expect(await waitForClose(stream)).toBe(true);
+			await vi.waitFor(() => expect(responseCallback).toHaveBeenCalled());
+			expect(responseCallback).toHaveBeenCalledTimes(1);
+			expect(responseCallback).toHaveBeenCalledWith(null, { noWebhookResponse: true });
+			expect(errorReporter.error).toHaveBeenCalledWith(
+				expect.objectContaining({ message: 'read failed' }),
+			);
 		});
 
 		test('should report a failure to open the stream while the client is connected', async () => {
 			binaryDataService.getAsStream.mockRejectedValue(new Error('store is down'));
-			onRequest = (res) => {
-				responseCallback.mockImplementation((error: Error | null) => {
-					if (error) res.status(500).end();
-				});
-				respondWithBinaryData(res);
-			};
+			const url = await serveBinaryData(endWithStatus500OnError);
 
-			const response = await new Promise<http.IncomingMessage>((resolve, reject) => {
-				http.get(url, resolve).on('error', reject);
-			});
-			response.resume();
+			const response = await fetch(url);
 
-			expect(response.statusCode).toBe(500);
+			expect(response.status).toBe(500);
 			expect(errorReporter.error).toHaveBeenCalledWith(
 				expect.objectContaining({ message: 'store is down' }),
 			);
@@ -818,19 +765,11 @@ describe('setupResponseNodePromise', () => {
 				},
 			});
 			binaryDataService.getAsStream.mockResolvedValue(failingStream);
-			onRequest = (res) => {
-				responseCallback.mockImplementation((error: Error | null) => {
-					if (error) res.status(500).end();
-				});
-				respondWithBinaryData(res);
-			};
+			const url = await serveBinaryData(endWithStatus500OnError);
 
-			const response = await new Promise<http.IncomingMessage>((resolve, reject) => {
-				http.get(url, resolve).on('error', reject);
-			});
-			response.resume();
+			const response = await fetch(url);
 
-			expect(response.statusCode).toBe(500);
+			expect(response.status).toBe(500);
 			expect(errorReporter.error).toHaveBeenCalledWith(
 				expect.objectContaining({ message: 'read failed' }),
 			);
