@@ -4,6 +4,7 @@ packages/frontend/editor-ui/src/features/agents/__tests__/AgentEvalExamplesSlide
   h_f8b427917eda26 36-47
 packages/frontend/editor-ui/src/features/agents/components/AgentEvalExamplesSlider.vue
   h_f8b427917eda26 9,127-131,161-164,166-168,171,275-276,278
+  s_a70135a9ee0bd4::t_358d593e51bd9c 153
 packages/frontend/editor-ui/src/features/agents/components/BudgetAlertSlider.vue
   h_f8b427917eda26 2,6,15-16,21-23,25-27,29,38
 packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/ConcurrencySlider/ConcurrencySlider.vue
@@ -19,6 +20,16 @@ packages/frontend/editor-ui/src/features/ai/evaluation.ee/views/EvaluationsView.
   "humans": {
     "h_f8b427917eda26": {
       "author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_a70135a9ee0bd4": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1545c-a589-759e-a080-f4c921a84c04",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
     }
   }
 }
