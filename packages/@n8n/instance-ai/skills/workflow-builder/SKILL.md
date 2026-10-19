@@ -3,11 +3,7 @@ name: workflow-builder
 description: >-
   Load before calling build-workflow. Use for single-workflow work: new
   workflows, existing-workflow edits, verification repairs, and
-  workflow-local data tables. Before you build a new workflow, load
-  intent-recognition first if the catalog has it and the request could be an
-  Agent: people chat with it, it acts in a role such as an assistant or a sales
-  rep, or it decides its own next steps. Skip it when the request gives a
-  trigger and fixed steps. Write or edit a workspace source file, run
+  workflow-local data tables. Write or edit a workspace source file, run
   workflow-sdk validate via workspace_execute_command, then call build-workflow
   with filePath. When the workflow creates or writes Data Tables, load
   data-table-manager first, then this skill. Do not load planning or
