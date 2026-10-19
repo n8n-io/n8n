@@ -1,9 +1,10 @@
 ---
 name: intent-recognition
 description: >-
-  Load before you build anything new when the request could be an Agent:
-  people chat with it, it acts in a role such as an assistant or a sales rep,
-  or it decides its own next steps. Skip it when the request gives a trigger
+  Load before you build anything new when it is not clear whether the request
+  needs an Agent or a workflow, for example when people chat with it, it acts
+  in a role such as an assistant or a sales rep, or it decides its own next
+  steps. Skip it when the request gives a trigger
   and fixed steps and does not ask for an Agent. Classifies automation
   requests using two decisions:
   anchor (which primitive owns the top-level control flow — workflow-anchored, agent-anchored,
