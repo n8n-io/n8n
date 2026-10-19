@@ -1,0 +1,21 @@
+packages/@n8n/api-types/src/dto/packages/import-package-request.openapi.ts
+  s_41745b25382e0c::t_cbacf529f3414c 32-33
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/importPackage.generated.yml
+  ai_agent 46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "006c4218e8860c63927b462c3add75f6d398353b",
+  "prompts": {},
+  "sessions": {
+    "s_41745b25382e0c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b21ef5eb-49ab-4da6-a997-5a2ed3747872",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

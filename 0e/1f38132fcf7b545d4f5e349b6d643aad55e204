@@ -1,0 +1,19 @@
+pnpm-lock.yaml
+  s_9d6e86e783864c::t_572649f0568a85 1622-1624
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0e1f38132fcf7b545d4f5e349b6d643aad55e204",
+  "prompts": {},
+  "sessions": {
+    "s_9d6e86e783864c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "82991bb8-d868-4063-a38b-36762cccb4c7",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

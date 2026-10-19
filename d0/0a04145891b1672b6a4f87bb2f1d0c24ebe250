@@ -1,0 +1,21 @@
+packages/core/src/execution-engine/node-execution-context/utils/validate-value-against-schema.ts
+  s_e2f5e357bbba65::t_41dcffc4571afd 222-225
+packages/core/src/execution-engine/node-execution-context/utils/__tests__/validate-value-against-schema.test.ts
+  s_e2f5e357bbba65::t_107a3e0a0ede96 705-713
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d00a04145891b1672b6a4f87bb2f1d0c24ebe250",
+  "prompts": {},
+  "sessions": {
+    "s_e2f5e357bbba65": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "736d8c76-cf56-4740-b93d-6a7428751426",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}
