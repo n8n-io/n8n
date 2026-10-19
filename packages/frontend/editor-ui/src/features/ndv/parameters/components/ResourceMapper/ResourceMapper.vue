@@ -195,12 +195,13 @@ onMounted(async () => {
 		}
 	}
 	const params = state.parameterValues.parameters as INodeParameters;
-	// Read by path, not by name: the mapper can sit inside a collection or fixedCollection
+	// Read by path, the same address emitValueChanged writes to. The name only works at the top level.
+	// 'parameters.entries.entry[1].attributes' -> params.entries.entry[1].attributes
 	const nodeValues = get(params, props.path.replace(/^parameters\./, '')) as
 		| ResourceMapperValue
 		| undefined;
 
-	if (!nodeValues) {
+	if (nodeValues === undefined) {
 		return;
 	}
 	let hasSchema = false;

@@ -404,32 +404,62 @@ describe('ResourceMapper.vue', () => {
 		expect(fetchFieldsSpy).not.toHaveBeenCalled();
 	});
 
-	it('reads its saved value from the parameter path when nested in a fixedCollection', async () => {
-		const { getByTestId } = renderComponent({
-			props: {
-				path: 'parameters.options.entries.entry[0].columns',
-				node: createTestNode({
-					parameters: {
-						options: {
-							entries: { entry: [{ recordType: 'a', columns: { schema: UPDATED_SCHEMA } }] },
-						},
-					},
-				}),
-				parameter: createTestNodeProperties({
-					name: 'columns',
-					typeOptions: {
-						resourceMapper: {
-							mode: 'add',
-						} as ResourceMapperTypeOptions,
-					},
-				}),
-			},
+	describe('reading the saved value', () => {
+		const parameter = createTestNodeProperties({
+			name: 'columns',
+			typeOptions: { resourceMapper: { mode: 'add' } as ResourceMapperTypeOptions },
 		});
-		await waitAllPromises();
-		expect(fetchFieldsSpy).not.toHaveBeenCalled();
-		expect(
-			getByTestId('mapping-fields-container').querySelectorAll('.parameter-input').length,
-		).toBe(4);
+		const savedValue = (firstName: string) => ({
+			mappingMode: 'defineBelow',
+			value: { 'First name': firstName },
+			schema: UPDATED_SCHEMA,
+		});
+
+		it('reads a top-level mapper', async () => {
+			const { getByDisplayValue } = renderComponent({
+				props: {
+					parameter,
+					path: 'parameters.columns',
+					node: createTestNode({ parameters: { columns: savedValue('Ana') } }),
+				},
+			});
+			await waitAllPromises();
+
+			expect(getByDisplayValue('Ana')).toBeInTheDocument();
+		});
+
+		it('reads a top-level mapper when the path has no parameters prefix', async () => {
+			const { getByDisplayValue } = renderComponent({
+				props: {
+					parameter,
+					path: 'columns',
+					node: createTestNode({ parameters: { columns: savedValue('Ana') } }),
+				},
+			});
+			await waitAllPromises();
+
+			expect(getByDisplayValue('Ana')).toBeInTheDocument();
+		});
+
+		it('reads a mapper inside a fixedCollection entry', async () => {
+			const { getByDisplayValue, queryByDisplayValue } = renderComponent({
+				props: {
+					parameter,
+					path: 'parameters.entries.entry[1].columns',
+					node: createTestNode({
+						parameters: {
+							entries: {
+								entry: [{ columns: savedValue('Bob') }, { columns: savedValue('Ana') }],
+							},
+						},
+					}),
+				},
+			});
+			await waitAllPromises();
+
+			expect(getByDisplayValue('Ana')).toBeInTheDocument();
+			expect(queryByDisplayValue('Bob')).not.toBeInTheDocument();
+		});
 	});
 
 	it('reconciles an incomplete cached schema by default when refreshIncompleteSchemaOnOpen is set', async () => {
