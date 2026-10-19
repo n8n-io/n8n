@@ -25,12 +25,8 @@ const renderComponent = createComponentRenderer(WorkflowVersionFormModal, {
 	}),
 	global: {
 		stubs: {
-			Modal: {
-				template: '<div><slot name="header" /><slot name="content" /><slot name="footer" /></div>',
-				props: ['name', 'eventBus'],
-				mounted() {
-					this.eventBus?.emit('opened');
-				},
+			Dialog: {
+				template: '<div role="dialog"><slot /></div>',
 			},
 			WorkflowVersionForm: {
 				template: `
