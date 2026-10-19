@@ -8,8 +8,7 @@ import { mock, mockDeep } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
 import { JwtService } from '@n8n/backend-services';
-import type { McpCallerAuth } from '@/services/oauth-token-verifier-proxy.service';
-import { OAuthTokenVerifierProxy } from '@/services/oauth-token-verifier-proxy.service';
+import { type McpCallerAuth, OAuthTokenVerifierProxy } from '@n8n/backend-services/auth';
 import { Telemetry } from '@/telemetry';
 
 import { McpServerApiKeyService } from '../mcp-api-key.service';

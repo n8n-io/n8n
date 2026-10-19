@@ -45,6 +45,23 @@ export interface FinishSetupToolDeps extends CredentialSetupDeps, ChannelSetupDe
 	 * empty on any tool is excluded, so an uncovered node/operation keeps prompting.
 	 */
 	listAiGatewayManagedCredentialTypes?: () => Promise<string[]>;
+	/** Writes each credential into the empty node-tool slots of its type. */
+	writeCredentialsToNodeTools?: (
+		credentials: ResolvedCredential[],
+	) => Promise<NodeToolCredentialWriteResult>;
+}
+
+export interface ResolvedCredential {
+	credentialType: string;
+	id: string;
+	name: string;
+}
+
+export interface NodeToolCredentialWriteResult {
+	/** Credential types written to at least one node-tool slot. */
+	credentialTypes: string[];
+	configHash?: string;
+	error?: string;
 }
 
 const finishSetupCredentialRequestInputSchema = z.object({
@@ -151,6 +168,43 @@ type FinishSetupCtx = InterruptibleToolContext<FinishSetupSuspendPayload, Finish
 
 interface FinishSetupToolResult extends Collected {
 	completed: true;
+	credentialsWrittenToTools?: string[];
+	configHash?: string;
+	credentialWriteError?: string;
+}
+
+/** Collected credential outcomes keyed by slot, mapped back to their credential types. */
+function resolvedCredentials(input: FinishSetupInput, collected: Collected): ResolvedCredential[] {
+	return Object.entries(collected.credentials ?? {}).flatMap(([slotKey, outcome]) => {
+		if (outcome === 'skipped') return [];
+		const request = input.credentialRequests?.find(
+			(slot) => (slot.credentialSlot ?? slot.credentialType) === slotKey,
+		);
+		return [{ credentialType: request?.credentialType ?? slotKey, ...outcome }];
+	});
+}
+
+/** Complete the flow and write the resolved credentials into the empty node-tool slots. */
+async function complete(
+	input: FinishSetupInput,
+	collected: Collected,
+	deps: FinishSetupToolDeps,
+): Promise<FinishSetupToolResult> {
+	const result: FinishSetupToolResult = { completed: true, ...collected };
+	const credentials = resolvedCredentials(input, collected);
+	if (!deps.writeCredentialsToNodeTools || credentials.length === 0) return result;
+
+	try {
+		const written = await deps.writeCredentialsToNodeTools(credentials);
+		if (written.credentialTypes.length > 0) {
+			result.credentialsWrittenToTools = written.credentialTypes;
+		}
+		if (written.configHash) result.configHash = written.configHash;
+		if (written.error) result.credentialWriteError = written.error;
+	} catch (error) {
+		result.credentialWriteError = error instanceof Error ? error.message : String(error);
+	}
+	return result;
 }
 
 /** Normalize checkpoint-only legacy outcomes before they enter the current setup flow. */
@@ -386,7 +440,7 @@ async function startPlan(
 ): Promise<FinishSetupToolResult> {
 	const { phases, collected } = await computeInitialPlan(input, deps);
 	if (phases.length === 0) {
-		return { completed: true, ...collected };
+		return await complete(input, collected, deps);
 	}
 
 	const [currentPhase, ...remainingPhases] = phases;
@@ -417,7 +471,7 @@ async function resumePlan(
 	);
 
 	if (chain.remainingPhases.length === 0) {
-		return { completed: true, ...collected };
+		return await complete(input, collected, deps);
 	}
 
 	const [nextPhase, ...restPhases] = chain.remainingPhases;
@@ -447,11 +501,14 @@ export function buildFinishSetupTool(deps: FinishSetupToolDeps): BuiltTool {
 				'to configure; do not infer channel names. Each channel card persists the configuration ' +
 				'or skips it, so channel outcomes are `"configured"` or `"skipped"`. Do not call ' +
 				'configure_channel again for a channel handled by ' +
-				'this flow. Returns { completed, answers, credentials, ' +
-				'channels } (plus configMutated/agentId refresh metadata when completed): resolve the ' +
-				'model answer with resolve_llm, copy returned credential ids into the config, and verify ' +
-				'MCP servers with them. Auto-resolves credential slots that match an existing single ' +
-				'credential or configured channel credential.',
+				'this flow. Returns { completed, answers, credentials, channels, ' +
+				'credentialsWrittenToTools } (plus configMutated/agentId refresh metadata when ' +
+				'completed). The tool writes each resolved credential into every empty node-tool slot ' +
+				'of its type and lists those types in `credentialsWrittenToTools`; do not patch them ' +
+				'again. Resolve the model answer with resolve_llm, verify MCP servers with the returned ' +
+				'credential ids, and patch a credential yourself only if `credentialWriteError` is set. ' +
+				'Auto-resolves credential slots that match an existing single credential or configured ' +
+				'channel credential.',
 		)
 		.input(finishSetupInputSchema)
 		.suspend(finishSetupSuspendSchema)

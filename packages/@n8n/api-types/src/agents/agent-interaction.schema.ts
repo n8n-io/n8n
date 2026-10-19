@@ -48,6 +48,9 @@ export const CONFIG_MUTATION_TOOL_NAMES = [
 	'unpublish_agent',
 ] as const;
 
+/** Agent-builder tool that runs the draft agent through Preview chat. */
+export const AGENT_BUILDER_TEST_TOOL_NAME = 'call_agent' as const;
+
 // ---------------------------------------------------------------------------
 // ask_questions
 // ---------------------------------------------------------------------------

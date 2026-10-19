@@ -56,7 +56,22 @@ export type TokenUsage<T extends Record<string, unknown> = Record<string, unknow
 	outputTokenDetails?: {
 		reasoning?: number;
 	};
+	/**
+	 * The same usage split by the prompt size of each model call. Some providers
+	 * charge more for a call with a long prompt, so a sum over many calls is not
+	 * enough to price it. Present only when every summed call is in the split.
+	 */
+	byPromptSize?: PromptSizeUsage[];
 	additionalMetadata?: T;
+};
+
+/** Token counts of the model calls whose prompt size falls in one bucket. */
+export type PromptSizeUsage = {
+	/** Lower bound of the bucket: every call had a prompt of more than this many tokens. */
+	promptTokensOver: number;
+	/** Largest prompt among the calls, in tokens, cache reads and writes included. */
+	maxPromptTokens: number;
+	usage: Omit<TokenUsage, 'byPromptSize' | 'cost' | 'additionalMetadata'>;
 };
 
 /**

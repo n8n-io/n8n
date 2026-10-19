@@ -1,4 +1,5 @@
 import { N8N_CHAT_INTEGRATION_TYPE, type AgentIntegrationDisconnectWarning } from '@n8n/api-types';
+import { N8nButton } from '@n8n/design-system';
 import { h, readonly, ref } from 'vue';
 
 import AgentChannelDiscordSetup from '../components/AgentChannelDiscordSetup.vue';
@@ -138,6 +139,7 @@ const platforms = {
 		editComponent: AgentChannelTeamsEditView,
 		headerContent: {
 			setupModal: AgentChannelTeamsSetupKindSelector,
+			setupCard: AgentChannelTeamsSetupKindSelector,
 		},
 		disconnectConfirmationComponent: AgentChannelTeamsRemoveConfirmation,
 		shouldConfirmDisconnect: () => true,
@@ -149,19 +151,30 @@ const platforms = {
 			}
 			return {
 				title: text('agents.channels.modal.teamsResourcesNotDeleted.title'),
-				message: h('span', [
-					text('agents.channels.modal.teamsResourcesNotDeleted.message'),
-					' ',
-					h(
-						'a',
-						{
-							href: warning.action.url,
-							target: '_blank',
-							rel: 'noopener noreferrer',
+				message: h(
+					'div',
+					{
+						style: {
+							display: 'flex',
+							flexDirection: 'column',
+							alignItems: 'flex-start',
+							gap: 'var(--spacing--xs)',
 						},
-						text('agents.channels.modal.teamsResourcesNotDeleted.link'),
-					),
-				]),
+					},
+					[
+						h('span', text('agents.channels.modal.teamsResourcesNotDeleted.message')),
+						h(
+							N8nButton,
+							{
+								href: warning.action.url,
+								target: '_blank',
+								variant: 'outline',
+								size: 'small',
+							},
+							() => text('agents.channels.modal.teamsResourcesNotDeleted.link'),
+						),
+					],
+				),
 			};
 		},
 	},

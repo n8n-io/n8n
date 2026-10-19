@@ -14,6 +14,7 @@ import type {
 } from '@n8n/agents';
 import type { AiGatewayNodeMeta } from '@n8n/ai-utilities/node-catalog';
 import type {
+	AgentConfigValidationIssueCode,
 	AgentJsonConfig,
 	AgentSessionStatus,
 	AgentSkill,
@@ -1481,6 +1482,18 @@ export interface InstanceAiBuilderDelegate {
 		skills: Record<string, AgentSkill>;
 		configHash: string | null;
 	} | null>;
+	/** Read-only Publish validation of the agent's draft, for the `agent_verification`
+	 *  trace metric. Resolves to `undefined` when the agent does not exist. Optional
+	 *  for the same reason as `readAgentArtifact`. */
+	validateAgent?(agentId: string): Promise<AgentValidationSummary | undefined>;
+}
+
+export interface AgentValidationSummary {
+	valid: boolean;
+	/** Distinct validation issue codes, sorted. */
+	issueCodes: AgentConfigValidationIssueCode[];
+	issueCount: number;
+	capabilityCount: number;
 }
 
 // ── Computer Use state ──────────────────────────────────────────────────────
@@ -1580,8 +1593,6 @@ export interface InstanceAiContext {
 	 * that land on the active trace. Absent outside a traced run.
 	 */
 	tracing?: InstanceAiTraceContext;
-	/** Selected skill source for inline tool guidance. */
-	runtimeSkillCatalog?: RuntimeSkillSource;
 	projectId?: string;
 	/**
 	 * Per-run folder-exploration gate, resolved by the host before the context
@@ -2016,6 +2027,8 @@ export interface InstanceAiMemoryConfig {
 		reflectorThresholdTokens: number;
 		/** Run the Observer inside a turn. Default `true`; `false` limits it to the post-turn path. */
 		midRunObservation?: boolean;
+		/** Model for the Observer and Reflector. Defaults to the agent's model. */
+		model?: ModelConfig;
 		/** Called with token usage after each observer/reflector LLM call, so the host can meter it. */
 		onTaskUsage?: (report: MemoryTaskUsageReport) => void | Promise<void>;
 	};
@@ -2251,16 +2264,8 @@ export interface OrchestrationContext {
 	localMcpServer?: LocalMcpServer;
 	/** Validated, approval-wrapped MCP tools available to Agent Builder. */
 	mcpTools?: InstanceAiToolRegistry;
-	/**
-	 * Runtime-loadable skills available to the agent. Workspace-backed agents may
-	 * replace this with a workspace-materialized source before attaching it.
-	 */
-	runtimeSkills?: RuntimeSkillSource;
-	/**
-	 * Raw bundled runtime skill source. Use this when materializing skills for a
-	 * concrete workspace target so already-materialized paths are not copied.
-	 */
-	runtimeSkillCatalog?: RuntimeSkillSource;
+	/** Skills that the agent can load. */
+	skills?: RuntimeSkillSource;
 	/** OAuth2 callback URL for the n8n instance (e.g. http://localhost:5678/rest/oauth2-credential/callback) */
 	oauth2CallbackUrl?: string;
 	/** Cancel a running background task by its ID */

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { AgentApproval, AgentJsonConfig } from '@n8n/api-types';
+import type { AgentApproval } from '@n8n/api-types';
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
 import { N8nButton, N8nIcon, N8nText, type DropdownMenuItemProps } from '@n8n/design-system';
@@ -37,7 +37,6 @@ interface Props {
 	isPublished?: boolean;
 	simpleSetup?: boolean;
 	ensureAgentPersisted?: () => Promise<void>;
-	personalisation?: AgentJsonConfig['personalisation'] | null;
 	/** n8n Chat's saved description, seeded into its view when opened. */
 	savedDescription?: string;
 	/** Persists n8n Chat's description. It skips the request when nothing changed. */
@@ -49,7 +48,6 @@ const props = withDefaults(defineProps<Props>(), {
 	isPublished: false,
 	simpleSetup: false,
 	ensureAgentPersisted: undefined,
-	personalisation: null,
 });
 
 const emit = defineEmits<{
@@ -321,17 +319,13 @@ watch(
 
 // n8n Chat's setup view also needs a footer ("Make available"), unlike every
 // other channel's setup, which connects straight from its own view.
-/**
- * A setup that outlives its connect gets the footer too, so its Done button
- * sits where every other dialog's does rather than at the end of the scroll.
- */
 const setupCanFinish = computed(
 	() => isSetupMode.value && channelViewRef.value?.canFinish === true,
 );
 const showFooterActions = computed(
 	() =>
 		selectedChannelType.value !== null &&
-		(isEditMode.value || (isSetupMode.value && isN8nChatSelected.value) || setupCanFinish.value),
+		(isEditMode.value || (isSetupMode.value && isN8nChatSelected.value)),
 );
 
 const currentChannelCredentialId = computed(() =>
@@ -419,6 +413,7 @@ function completeAndClose() {
  * from the agent. Staying open on a failure keeps the reason on screen.
  */
 async function finishSetup() {
+	if (!setupCanFinish.value) return completeAndClose();
 	if (await writeChannelConfig()) completeAndClose();
 }
 
@@ -712,7 +707,6 @@ watch(
 					:agent-name="agentId"
 					:project-id="projectId"
 					:agent-id="agentId"
-					:personalisation="personalisation"
 					:ensure-agent-persisted="ensureAgentPersisted"
 					:persist-channel="writeChannelConfig"
 					:force-new-credential="false"
@@ -724,7 +718,7 @@ watch(
 					@connect="saveChannelConfig"
 					@persist="writeChannelConfig"
 					@connected="handlePlatformConnected"
-					@done="completeAndClose"
+					@done="finishSetup"
 				/>
 				<N8nText
 					v-if="saveAttempted && !currentChannelCredentialId"
@@ -758,17 +752,7 @@ watch(
 			</N8nButton>
 		</template>
 		<template v-if="showFooterActions" #footerActions>
-			<N8nButton
-				v-if="setupCanFinish"
-				variant="solid"
-				size="medium"
-				:loading="actionInFlight"
-				data-testid="agent-channel-setup-done"
-				@click="finishSetup"
-			>
-				{{ i18n.baseText('generic.done') }}
-			</N8nButton>
-			<template v-else-if="isN8nChatSelected">
+			<template v-if="isN8nChatSelected">
 				<N8nButton
 					variant="ghost"
 					size="medium"

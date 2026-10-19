@@ -430,6 +430,33 @@ describe('WorkflowsView', () => {
 			await waitFor(() => expect(router.currentRoute.value.query).toStrictEqual({}));
 		});
 
+		it('should not replace the route when the query does not change', async () => {
+			await router.replace({ query: { search: 'one' } });
+			const replaceSpy = vi.spyOn(router, 'replace');
+			renderComponent({ pinia });
+			await waitAllPromises();
+
+			expect(replaceSpy).not.toHaveBeenCalled();
+			replaceSpy.mockRestore();
+		});
+
+		it('should not replace the route when the route changes while tags load', async () => {
+			await router.replace({ query: { tags: 'non-existing-tag' } });
+			workflowsListStore.fetchWorkflowsPage.mockResolvedValue([]);
+			const tagStore = mockedStore(useTagsStore);
+			tagStore.fetchAll.mockImplementation(async () => {
+				await router.push({ query: { search: 'new' } });
+				return [];
+			});
+			const replaceSpy = vi.spyOn(router, 'replace');
+			renderComponent({ pinia });
+			await waitAllPromises();
+
+			expect(replaceSpy).not.toHaveBeenCalled();
+			expect(router.currentRoute.value.query).toStrictEqual({ search: 'new' });
+			replaceSpy.mockRestore();
+		});
+
 		it('should show archived only hint', async () => {
 			foldersStore.totalWorkflowCount = 1;
 			workflowsListStore.fetchWorkflowsPage.mockResolvedValue([]);

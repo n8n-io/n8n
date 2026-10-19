@@ -19,6 +19,18 @@
   "main": "dist/index.js",
   "module": "src/index.ts",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "module": "./src/index.ts",
+      "default": "./dist/index.js"
+    },
+    "./auth": {
+      "types": "./dist/auth.d.ts",
+      "module": "./src/auth.ts",
+      "default": "./dist/auth.js"
+    }
+  },
   "files": [
     "dist/**/*"
   ],
@@ -32,10 +44,12 @@
     "@n8n/decorators": "workspace:*",
     "@n8n/di": "workspace:*",
     "@n8n/errors": "workspace:*",
+    "@n8n/inbound-auth": "workspace:*",
     "@n8n/permissions": "workspace:*",
     "@n8n/utils": "workspace:*",
     "cache-manager": "catalog:",
     "ioredis": "5.3.2",
+    "jose": "^6.2.9",
     "jsonwebtoken": "catalog:",
     "n8n-core": "workspace:*",
     "n8n-workflow": "workspace:*"

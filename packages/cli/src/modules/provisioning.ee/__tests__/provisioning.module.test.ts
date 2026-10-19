@@ -3,7 +3,7 @@ import { Container } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import { RoleMappingProxyService } from '@/services/role-mapping-proxy.service';
+import { RoleMappingProxyService } from '@n8n/backend-services/auth';
 
 // Importing the module runs the @BackendModule decorator, registering its metadata.
 import { ProvisioningModule } from '../provisioning.module';

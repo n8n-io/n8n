@@ -13,7 +13,7 @@ import { fromEmailProperty, toEmailProperty } from './descriptions';
 import { configureTransport, type EmailSendOptions } from './utils';
 import { appendAttributionOption } from '../../../utils/descriptions';
 import { prepareBinariesDataList } from '../../../utils/binary';
-import { toMailString } from '../utils';
+import { toMailAddressString, toMailString } from '../utils';
 
 const properties: INodeProperties[] = [
 	// TODO: Add choice for text as text or html  (maybe also from name)
@@ -196,15 +196,15 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 		try {
 			item = items[itemIndex];
 
-			const fromEmail = toMailString(this.getNodeParameter('fromEmail', itemIndex));
-			const toEmail = toMailString(this.getNodeParameter('toEmail', itemIndex));
+			const fromEmail = toMailAddressString(this.getNodeParameter('fromEmail', itemIndex));
+			const toEmail = toMailAddressString(this.getNodeParameter('toEmail', itemIndex));
 			const subject = toMailString(this.getNodeParameter('subject', itemIndex));
 			const emailFormat = this.getNodeParameter('emailFormat', itemIndex) as string;
 			const options = this.getNodeParameter('options', itemIndex, {}) as EmailSendOptions;
 
-			const ccEmail = toMailString(options.ccEmail);
-			const bccEmail = toMailString(options.bccEmail);
-			const replyTo = toMailString(options.replyTo);
+			const ccEmail = toMailAddressString(options.ccEmail);
+			const bccEmail = toMailAddressString(options.bccEmail);
+			const replyTo = toMailAddressString(options.replyTo);
 
 			const transporter = configureTransport(credentials, options);
 

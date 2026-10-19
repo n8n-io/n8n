@@ -1,5 +1,9 @@
 import { createComponentRenderer } from '@/__tests__/render';
-import type { TeamsCatalogState, TeamsManagedSetupState } from '@n8n/api-types';
+import type {
+	TeamsAgentSetupState,
+	TeamsCatalogState,
+	TeamsManagedSetupState,
+} from '@n8n/api-types';
 import { createTestingPinia } from '@pinia/testing';
 import { configure, fireEvent, waitFor, within } from '@testing-library/vue';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -11,6 +15,7 @@ import AgentChannelTeamsManagedSetup from './AgentChannelTeamsManagedSetup.vue';
 import type { TeamsChannelRuntime } from './useTeamsChannelRuntime';
 import { entraApiPermissionsUrl } from './constants';
 import { ActionDropdownTestStub } from '../../__tests__/utils/ActionDropdownTestStub';
+import { AGENT_PERSONALISATION_KEY } from '../agentPersonalisation';
 
 vi.mock('file-saver', () => ({ saveAs: vi.fn() }));
 
@@ -101,8 +106,12 @@ const stubs = {
 	ActionDropdown: ActionDropdownTestStub,
 };
 
-const render = (overrides: Record<string, unknown> = {}) =>
-	renderComponent({ props: props(overrides), pinia: createTestingPinia(), global: { stubs } });
+const render = (overrides: Record<string, unknown> = {}, provide: Record<symbol, unknown> = {}) =>
+	renderComponent({
+		props: props(overrides),
+		pinia: createTestingPinia(),
+		global: { stubs, provide },
+	});
 
 describe('AgentChannelTeamsManagedSetup', () => {
 	beforeEach(() => {
@@ -138,10 +147,18 @@ describe('AgentChannelTeamsManagedSetup', () => {
 	 * one resource — so the single prompt covering both is the administrator
 	 * consent, offered here.
 	 */
-	it('offers one administrator prompt covering both Microsoft APIs', () => {
+	it('copies one administrator prompt covering both Microsoft APIs', async () => {
 		const { getByTestId } = render();
 
-		expect(getByTestId('teams-admin-consent').getAttribute('href')).toContain('adminconsent');
+		await fireEvent.click(getByTestId('teams-admin-consent'));
+
+		expect(copySpy).toHaveBeenCalledWith(expect.stringContaining('adminconsent'));
+		expect(showMessage).toHaveBeenCalledWith(
+			expect.objectContaining({
+				type: 'success',
+				title: 'agents.channels.teams.managed.fileAccess.copied',
+			}),
+		);
 	});
 
 	it('offers no administrator prompt where the setup cannot run', () => {
@@ -150,28 +167,41 @@ describe('AgentChannelTeamsManagedSetup', () => {
 		expect(queryByTestId('teams-admin-consent')).not.toBeInTheDocument();
 	});
 
-	it('tells the user what to do first on every step after Connect', () => {
-		const { getByTestId } = render();
+	it('previews the steps after Connect, greyed out, until signed in', async () => {
+		const { getByTestId, getByText, queryByTestId } = render({
+			runtime: buildRuntime({
+				botSetupState: ref<TeamsAgentSetupState | null>({
+					defaultDisplayName: 'Support Agent',
+					defaultDescription: 'Chat with Support Agent, an agent powered by n8n.',
+				} as TeamsAgentSetupState),
+			}),
+		});
 
-		expect(getByTestId('teams-managed-locked-create-app')).toHaveTextContent(
-			'agents.channels.teams.managed.createApp.locked',
+		expect(queryByTestId('teams-create-app')).not.toBeInTheDocument();
+		expect(queryByTestId('teams-install-menu')).not.toBeInTheDocument();
+		for (const id of ['create-app', 'create-bot', 'availability', 'install']) {
+			expect(getByTestId(`teams-managed-preview-${id}`).querySelector('[inert]')).not.toBeNull();
+		}
+		await waitFor(() =>
+			expect(getByTestId('teams-managed-preview-install')).toHaveTextContent('Support Agent'),
 		);
-		expect(getByTestId('teams-managed-locked-create-bot')).toBeVisible();
-		expect(getByTestId('teams-managed-locked-availability')).toBeVisible();
-		expect(getByTestId('teams-managed-locked-install')).toBeVisible();
-		expect(getByTestId('teams-managed-locked-finish')).toBeVisible();
+		expect(
+			within(getByTestId('teams-managed-preview-create-app')).getByRole('button', {
+				name: 'agents.channels.teams.managed.createApp.button',
+			}),
+		).toBeDisabled();
+		expect(getByText('agents.channels.teams.managed.finish.locked')).toBeVisible();
+		expect(getByTestId('teams-managed-done')).toBeDisabled();
 	});
 
-	it('collapses the Connect step to the organisation once signed in', async () => {
+	it('collapses the Connect step to the sign-in once signed in', async () => {
 		const { getByTestId, queryByTestId } = render({
 			modelValue: 'cred-1',
 			setup: setupState({ managerCredentials: [connectedCredential] }),
 		});
 
 		await waitFor(() => {
-			expect(getByTestId('teams-manager-organization')).toHaveTextContent(
-				'agents.channels.teams.managed.connect.summary Acme Corp',
-			);
+			expect(getByTestId('teams-manager-credential-edit')).toBeVisible();
 		});
 		expect(queryByTestId('teams-manager-connect')).not.toBeInTheDocument();
 	});
@@ -183,10 +213,10 @@ describe('AgentChannelTeamsManagedSetup', () => {
 		});
 
 		await waitFor(() => {
-			expect(queryByTestId('teams-managed-locked-create-app')).not.toBeInTheDocument();
+			expect(queryByTestId('teams-create-app')).toBeInTheDocument();
 		});
 		// The steps after it stay blocked until their own work is done.
-		expect(queryByTestId('teams-managed-locked-create-bot')).toBeInTheDocument();
+		expect(queryByTestId('teams-create-bot')).not.toBeInTheDocument();
 	});
 
 	it('offers a picker when the project already has a sign-in', () => {
@@ -274,6 +304,19 @@ describe('AgentChannelTeamsManagedSetup', () => {
 				'agents.channels.teams.managed.connect.failed',
 			);
 		});
+	});
+
+	it('offers the admin link inside the error once a sign-in did not finish', async () => {
+		const { getByTestId, queryByTestId } = render({
+			runtime: buildRuntime({ connectManagerCredential: vi.fn().mockResolvedValue(false) }),
+		});
+
+		await fireEvent.click(getByTestId('teams-manager-connect'));
+		await waitFor(() => expect(getByTestId('teams-manager-error')).toBeVisible());
+
+		expect(queryByTestId('teams-admin-consent')).not.toBeInTheDocument();
+		await fireEvent.click(getByTestId('teams-manager-error-admin-consent'));
+		expect(copySpy).toHaveBeenCalledWith(expect.stringContaining('adminconsent'));
 	});
 
 	it('reports a sign-in that threw', async () => {
@@ -673,7 +716,7 @@ describe('AgentChannelTeamsManagedSetup', () => {
 		 * user saying they are finished -- not a claim that it worked.
 		 */
 		it('moves the upload instructions to the last step once the package is out', async () => {
-			const { getByTestId, queryByTestId } = render(
+			const { getByTestId, getByText, queryByText, emitted } = render(
 				signedIn({
 					provisionedApp: ref({
 						credentialId: 'bot-cred-1',
@@ -693,13 +736,20 @@ describe('AgentChannelTeamsManagedSetup', () => {
 			);
 
 			// Locked until there is something to upload.
-			await waitFor(() => expect(getByTestId('teams-managed-locked-finish')).toBeVisible());
-			expect(queryByTestId('teams-finish-instructions')).not.toBeInTheDocument();
+			await waitFor(() => expect(getByTestId('teams-managed-done')).toBeDisabled());
+			expect(
+				queryByText('agents.channels.teams.setup.install.description'),
+			).not.toBeInTheDocument();
 
 			await fireEvent.click(getByTestId('teams-install-download-package'));
 
-			await waitFor(() => expect(getByTestId('teams-finish-instructions')).toBeVisible());
-			expect(getByTestId('teams-finish-upload-blocked')).toBeVisible();
+			await waitFor(() =>
+				expect(getByText('agents.channels.teams.setup.install.description')).toBeVisible(),
+			);
+			expect(getByTestId('teams-finish-upload-hint')).toBeVisible();
+
+			await fireEvent.click(getByTestId('teams-managed-done'));
+			expect(emitted().done).toHaveLength(1);
 		});
 
 		/**
@@ -708,7 +758,7 @@ describe('AgentChannelTeamsManagedSetup', () => {
 		 * not only in the session that downloaded.
 		 */
 		it('shows the upload instructions again on a setup reopened over a saved channel', async () => {
-			const { getByTestId, queryByTestId } = render({
+			const { getByTestId, getByText } = render({
 				...signedIn({
 					provisionedApp: ref({
 						credentialId: 'bot-cred-1',
@@ -728,13 +778,15 @@ describe('AgentChannelTeamsManagedSetup', () => {
 				channelConnected: true,
 			});
 
-			await waitFor(() => expect(getByTestId('teams-finish-instructions')).toBeVisible());
-			expect(queryByTestId('teams-managed-locked-finish')).not.toBeInTheDocument();
+			await waitFor(() =>
+				expect(getByText('agents.channels.teams.setup.install.description')).toBeVisible(),
+			);
+			expect(getByTestId('teams-managed-done')).toBeEnabled();
 		});
 
 		/** A sign-in that has to be redone locks the steps above it, and this one. */
 		it('locks the last step behind a sign-in that has to be redone', async () => {
-			const { getByTestId } = render({
+			const { getByTestId, getAllByText, queryByText } = render({
 				modelValue: 'cred-1',
 				setup: setupState({
 					managerCredentials: [{ ...connectedCredential, reconnectRequired: true }],
@@ -742,10 +794,15 @@ describe('AgentChannelTeamsManagedSetup', () => {
 				channelConnected: true,
 			});
 
-			await waitFor(() => expect(getByTestId('teams-managed-locked-finish')).toBeVisible());
+			await waitFor(() => expect(getByTestId('teams-managed-done')).toBeDisabled());
+			// The step says why it is locked once, and not that the app is missing.
+			expect(
+				getAllByText('agents.channels.teams.managed.connect.lockedBySignIn').length,
+			).toBeGreaterThan(0);
+			expect(queryByText('agents.channels.teams.managed.finish.locked')).not.toBeInTheDocument();
 		});
 
-		it('warns that an administrator may have blocked custom uploads', async () => {
+		it('says what to do when Teams has no Upload an app option', async () => {
 			const { getByTestId } = render(
 				signedIn({
 					provisionedApp: ref({
@@ -770,7 +827,7 @@ describe('AgentChannelTeamsManagedSetup', () => {
 			await waitFor(() => expect(getByTestId('teams-install-download-package')).toBeVisible());
 			await fireEvent.click(getByTestId('teams-install-download-package'));
 
-			await waitFor(() => expect(getByTestId('teams-finish-upload-blocked')).toBeVisible());
+			await waitFor(() => expect(getByTestId('teams-finish-upload-hint')).toBeVisible());
 		});
 
 		/** Nothing else asserts the button actually provisions what was chosen. */
@@ -798,25 +855,26 @@ describe('AgentChannelTeamsManagedSetup', () => {
 			await waitFor(() => expect(provisionBot).toHaveBeenCalledWith('sub-1'));
 		});
 
-		it('keeps the availability panel editable once the bot is up', async () => {
-			const { getByTestId } = render(
-				signedIn({
-					provisionedApp: ref({
-						credentialId: 'bot-cred-1',
-						appId: 'app-1',
-						appName: 'Support Bot (n8n)',
-						organizationName: 'Acme Corp',
-						entraAppUrl: 'https://entra.microsoft.com/app-1',
-						fileAccessConsentUrl: null,
-						secretExpiresAt: '2028-09-17T00:00:00Z',
-					}),
-					provisionedBot: ref({
-						botName: 'support-bot-1',
-						resourceGroup: 'n8n-agents',
-						subscriptionId: 'sub-1',
-					}),
+		const botUp = () =>
+			signedIn({
+				provisionedApp: ref({
+					credentialId: 'bot-cred-1',
+					appId: 'app-1',
+					appName: 'Support Bot (n8n)',
+					organizationName: 'Acme Corp',
+					entraAppUrl: 'https://entra.microsoft.com/app-1',
+					fileAccessConsentUrl: null,
+					secretExpiresAt: '2028-09-17T00:00:00Z',
 				}),
-			);
+				provisionedBot: ref({
+					botName: 'support-bot-1',
+					resourceGroup: 'n8n-agents',
+					subscriptionId: 'sub-1',
+				}),
+			});
+
+		it('keeps the availability panel editable once the bot is up', async () => {
+			const { getByTestId } = render(botUp());
 
 			// Settings stay editable once the bot is up, and the install step opens
 			// beside them rather than behind a gate.
@@ -824,10 +882,25 @@ describe('AgentChannelTeamsManagedSetup', () => {
 			expect(getByTestId('teams-install-download-package')).toBeVisible();
 		});
 
+		it("shows the agent's own icon on the install card", async () => {
+			const personalisation = computed(() => ({
+				icon: 'zap',
+				gradient: { from: '#2563EB', to: '#7C3AED', angle: 135, fromStop: 0, toStop: 100 },
+			}));
+			const { getByTestId } = render(botUp(), { [AGENT_PERSONALISATION_KEY]: personalisation });
+
+			await waitFor(() => expect(getByTestId('teams-identity')).toBeVisible());
+			const tile = getByTestId('teams-identity').querySelector<HTMLElement>(
+				'[data-test-id="agent-personalisation-icon-tile"]',
+			);
+			expect(tile?.style.getPropertyValue('--agent-personalisation-gradient-from')).toBe('#2563EB');
+			expect(tile?.querySelector('[data-icon="zap"]')).toBeInTheDocument();
+		});
+
 		// The secret's expiry belongs to the connected channel's settings, not here:
 		// at this point it is years away and says nothing about whether setup worked.
-		it('names the app and links to it in Entra once created', async () => {
-			const { getByTestId } = render(
+		it('names the organization the app is registered in once created', async () => {
+			const { getByText, queryByText } = render(
 				signedIn({
 					provisionedApp: ref({
 						credentialId: 'bot-cred-1',
@@ -842,20 +915,17 @@ describe('AgentChannelTeamsManagedSetup', () => {
 			);
 
 			await waitFor(() =>
-				expect(getByTestId('teams-app-summary')).toHaveTextContent(
-					'agents.channels.teams.managed.createApp.summary Acme Corp',
-				),
+				expect(
+					getByText('agents.channels.teams.managed.createApp.summary Acme Corp'),
+				).toBeVisible(),
 			);
-			const link = getByTestId('teams-app-entra-link');
-			expect(link).toHaveAttribute('href', 'https://entra.microsoft.com/app-1');
-			// Carries the design system's own small size, so it matches the line it
-			// sits beside instead of shouting over it.
-			expect(link.tagName).toBe('A');
-			expect(link.className).toMatch(/size-small/);
+			expect(
+				queryByText('agents.channels.teams.managed.createApp.description'),
+			).not.toBeInTheDocument();
 		});
 
 		it('names the bot once Azure has created it', async () => {
-			const { getByTestId } = render(
+			const { getByText, queryByText } = render(
 				signedIn({
 					provisionedApp: ref({
 						credentialId: 'bot-cred-1',
@@ -875,8 +945,13 @@ describe('AgentChannelTeamsManagedSetup', () => {
 			);
 
 			await waitFor(() =>
-				expect(getByTestId('teams-bot-summary')).toHaveTextContent('support-bot-1'),
+				expect(
+					getByText('agents.channels.teams.managed.createBot.summary support-bot-1'),
+				).toBeVisible(),
 			);
+			expect(
+				queryByText('agents.channels.teams.managed.createBot.description'),
+			).not.toBeInTheDocument();
 		});
 
 		it('offers the same availability controls as the manual setup', async () => {
@@ -1041,6 +1116,7 @@ describe('AgentChannelTeamsManagedSetup', () => {
 			await fireEvent.click(getByTestId('teams-publish'));
 
 			await waitFor(() => expect(getByTestId('teams-install-progress')).toBeVisible());
+			expect(getByTestId('teams-install-menu')).toHaveAttribute('aria-busy', 'true');
 			expect(queryByTestId('teams-catalog-state')).not.toBeInTheDocument();
 
 			finishPublish();
@@ -1100,7 +1176,7 @@ describe('AgentChannelTeamsManagedSetup', () => {
 
 		it('moves to the last step on a publish, and keeps the package reachable', async () => {
 			const catalogState = ref<TeamsCatalogState | null>({ status: 'unknown', teamsAppId: null });
-			const { getByTestId, queryByTestId } = render(
+			const { getByTestId, getByText, queryByText } = render(
 				signedIn({
 					provisionedApp: ref({
 						credentialId: 'bot-cred-1',
@@ -1129,13 +1205,15 @@ describe('AgentChannelTeamsManagedSetup', () => {
 			// The last step says where the app stands, and keeps the package on
 			// offer: a published app is in nobody's Teams until Microsoft lists it.
 			await waitFor(() =>
-				expect(getByTestId('teams-finish-published')).toHaveTextContent(
-					'agents.channels.teams.managed.finish.published',
-				),
+				expect(getByText('agents.channels.teams.managed.finish.published Acme Corp')).toBeVisible(),
 			);
 			expect(getByTestId('teams-finish-download-package')).toBeVisible();
+			expect(getByTestId('teams-install-menu')).toBeVisible();
+			expect(getByTestId('teams-publish')).toBeDisabled();
 			// Nothing was added to anyone's Teams, so nothing says it was.
-			expect(queryByTestId('teams-finish-instructions')).not.toBeInTheDocument();
+			expect(
+				queryByText('agents.channels.teams.setup.install.description'),
+			).not.toBeInTheDocument();
 		});
 
 		it('copies an approval request once the app is in for review', async () => {
@@ -1238,10 +1316,21 @@ describe('AgentChannelTeamsManagedSetup', () => {
 		const renderWith = (overrides: Record<string, unknown>) =>
 			renderComponent({ props: props(overrides), pinia: createTestingPinia(), global: { stubs } });
 
-		it('leaves the step out when the agent works only in direct chats', () => {
-			const { queryByText } = renderWith(deployed(CONSENT_URL, { teamChannels: false }));
+		it('keeps the step when the agent works only in direct chats, to find people by email', () => {
+			const { getByText } = renderWith(deployed(CONSENT_URL, { teamChannels: false }));
 
-			expect(queryByText('agents.channels.teams.managed.fileAccess.title')).not.toBeInTheDocument();
+			expect(getByText('agents.channels.teams.managed.fileAccess.title')).toBeInTheDocument();
+			expect(
+				getByText('agents.channels.teams.managed.fileAccess.description.directOnly'),
+			).toBeInTheDocument();
+		});
+
+		it('describes what the approval unlocks for the surfaces that are on', () => {
+			const { getByText } = renderWith(deployed(CONSENT_URL));
+
+			expect(
+				getByText('agents.channels.teams.managed.fileAccess.description.teamChannels'),
+			).toBeInTheDocument();
 		});
 
 		it('asks for file access in its own step, before the last one', async () => {

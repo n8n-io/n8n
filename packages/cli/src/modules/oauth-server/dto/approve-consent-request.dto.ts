@@ -11,4 +11,6 @@ export class ApproveConsentRequestDto extends Z.class({
 			message: 'scopes must not contain duplicates',
 		})
 		.optional(),
+	/** Id of the pending authorization request to decide, from the /authorize redirect. */
+	flow: z.string().max(64),
 }) {}
