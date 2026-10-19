@@ -304,11 +304,20 @@ export {
 	CommunityPackageListPublicDto,
 	CommunityPackagePublicDto,
 	InstallCommunityPackagePublicDto,
+	InstallCommunityPackageResponsePublicDto,
 	ListCommunityPackagesQueryDto,
 	UpdateCommunityPackagePublicDto,
 	communityPackagePublicSchema,
+	installCommunityPackageResponsePublicSchema,
 	type CommunityPackagePublic,
+	type InstallCommunityPackageResponsePublic,
 } from './community-packages/community-package-public.dto';
+export {
+	packagePolicyRestrictionsSchema,
+	restrictedPackageTypeSchema,
+	type PackagePolicyRestrictions,
+	type RestrictedPackageType,
+} from './community-packages/package-policy-restrictions';
 
 export { UpdateApiKeyRequestDto } from './api-keys/update-api-key-request.dto';
 export { CreateApiKeyRequestDto } from './api-keys/create-api-key-request.dto';
