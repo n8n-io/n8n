@@ -88,7 +88,7 @@ export class PromotionEnvironmentResolver {
 
 		const resolved = resolveStoredConfig(environment);
 		if (!resolved) {
-			throw new BadRequestError('The stored promotion configuration cannot be read');
+			throw new BadRequestError('The stored promotion environment cannot be read');
 		}
 
 		return Object.freeze({
