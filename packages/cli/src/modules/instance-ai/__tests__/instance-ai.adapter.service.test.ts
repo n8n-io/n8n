@@ -723,6 +723,42 @@ describe('redactExecuteNodeResult', () => {
 	const successResult = (items: Array<{ json: Record<string, unknown> }>) =>
 		({ status: 'success', output: [items] }) as Parameters<typeof redactExecuteNodeResult>[0];
 
+	it('reports a redacted successful run without output', () => {
+		const result = redactExecuteNodeResult(
+			{ status: 'redacted', failed: false, reason: 'workflow_redaction_policy' },
+			true,
+		);
+
+		expect(result).toEqual({
+			status: 'success',
+			output: '',
+			outputSuppressed:
+				'The node executed successfully, but n8n redacted its output for this user (workflow_redaction_policy).',
+			redaction: { reason: 'workflow_redaction_policy' },
+		});
+	});
+
+	it('reports a redacted failed run with only the error type', () => {
+		const result = redactExecuteNodeResult(
+			{
+				status: 'redacted',
+				failed: true,
+				reason: 'credential_inaccessible',
+				error: { type: 'NodeApiError', httpCode: '401' },
+			},
+			true,
+		);
+
+		expect(result).toEqual({
+			status: 'error',
+			error: {
+				message: 'NodeApiError error (401) (details hidden by n8n)',
+				nodeErrorType: 'NodeApiError',
+			},
+			redaction: { reason: 'credential_inaccessible' },
+		});
+	});
+
 	it('returns the items inside the untrusted-data boundary when sending values is allowed', () => {
 		const result = redactExecuteNodeResult(successResult([{ json: { id: 1 } }]), true);
 

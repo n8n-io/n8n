@@ -5083,6 +5083,26 @@ export function redactExecuteNodeResult(
 	result: ExecuteNodeResult,
 	allowSendingParameterValues: boolean,
 ): InstanceAiExecuteNodeResult {
+	if (result.status === 'redacted') {
+		const redaction = { reason: result.reason };
+		if (result.failed) {
+			return {
+				status: 'error',
+				error: {
+					message: formatRedactedError(result.error ?? { type: '' }),
+					...(result.error?.type ? { nodeErrorType: result.error.type } : {}),
+				},
+				redaction,
+			};
+		}
+		return {
+			status: 'success',
+			output: '',
+			outputSuppressed: `The node executed successfully, but n8n redacted its output for this user (${result.reason}).`,
+			redaction,
+		};
+	}
+
 	if (result.status === 'error') {
 		const { message, description, nodeErrorType } = result.error;
 		const cappedDescription =

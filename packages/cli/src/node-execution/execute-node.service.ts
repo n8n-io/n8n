@@ -13,13 +13,15 @@ import type {
 	INodeExecutionData,
 	INodeParameters,
 	INodeType,
+	IRedactedErrorInfo,
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { ActiveExecutions } from '@/active-executions';
-import { CredentialsFinderService } from '@n8n/backend-services';
+import { CredentialsFinderService, ExecutionRedactionServiceProxy } from '@n8n/backend-services';
 import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
+import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import { NodeTypes } from '@/node-types';
 import { WorkflowRunner } from '@/workflow-runner';
 import { DeprecatedNodesValidationService } from '@/workflows/deprecated-nodes-validation.service';
@@ -57,7 +59,12 @@ export interface ExecuteNodeError {
 
 export type ExecuteNodeResult =
 	| { status: 'success'; output: ExecuteNodeOutputItem[][] }
-	| { status: 'error'; error: ExecuteNodeError };
+	| { status: 'error'; error: ExecuteNodeError }
+	/**
+	 * n8n redacted the run's data for the user, the same way the executions API
+	 * does. Only the outcome, the redaction reason and the error type remain.
+	 */
+	| { status: 'redacted'; failed: boolean; reason: string; error?: IRedactedErrorInfo };
 
 /**
  * Executes a single node standalone with real credentials and caller-supplied
@@ -88,6 +95,8 @@ export class ExecuteNodeService {
 		private readonly executionPersistence: ExecutionPersistence,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly deprecatedNodesValidationService: DeprecatedNodesValidationService,
+		private readonly executionRedactionServiceProxy: ExecutionRedactionServiceProxy,
+		private readonly credentialsPermissionChecker: CredentialsPermissionChecker,
 	) {}
 
 	async run(user: User, request: ExecuteNodeRequest): Promise<ExecuteNodeResult> {
@@ -109,6 +118,10 @@ export class ExecuteNodeService {
 
 		const workflow = await this.createTemporaryWorkflow(request.projectId, node, timeoutMs);
 		try {
+			// The check `WorkflowRunner.run` makes, made first for its message: the
+			// runner saves a refused run as a failed execution, and redaction hides
+			// the reason from a user who cannot use the credential.
+			await this.credentialsPermissionChecker.check(workflow.id, [node], user.id);
 			return await this.execute(user, workflow, node, inputItems, timeoutMs);
 		} catch (error) {
 			return { status: 'error', error: this.toErrorResponse(error) };
@@ -270,7 +283,7 @@ export class ExecuteNodeService {
 			};
 		}
 
-		return await this.extractResult(executionId, node.type);
+		return await this.extractResult(executionId, node.type, user);
 	}
 
 	private async waitForCompletion(executionId: string, timeoutMs: number): Promise<boolean> {
@@ -329,6 +342,7 @@ export class ExecuteNodeService {
 	private async extractResult(
 		executionId: string,
 		nodeTypeName: string,
+		user: User,
 	): Promise<ExecuteNodeResult> {
 		const execution = await this.executionPersistence.findSingleExecution(executionId, {
 			includeData: true,
@@ -344,6 +358,23 @@ export class ExecuteNodeService {
 					message: `Node type "${nodeTypeName}" entered a wait state; standalone node execution does not support waiting or resuming (e.g. Wait nodes or send-and-wait operations)`,
 				},
 			};
+		}
+
+		if (execution) {
+			// Redacts in place. Never reveals: a reveal is an audited user action in the editor.
+			await this.executionRedactionServiceProxy.processExecution(execution, { user });
+			const redactionInfo = execution.data?.redactionInfo;
+			if (redactionInfo?.isRedacted) {
+				const nodeRuns = execution.data.resultData.runData?.[NODE_NAME];
+				const error = execution.data.resultData.redactedError ?? nodeRuns?.at(-1)?.redactedError;
+				return {
+					status: 'redacted',
+					failed:
+						error !== undefined || execution.status === 'error' || execution.status === 'crashed',
+					reason: redactionInfo.reason,
+					...(error ? { error } : {}),
+				};
+			}
 		}
 
 		const executionError = execution?.data?.resultData?.error;
@@ -396,7 +427,11 @@ export class ExecuteNodeService {
 		}
 		if (error instanceof Error) {
 			this.logger.debug('Execute node failed', { error: error.message });
-			return { message: error.message };
+			const description: unknown = Reflect.get(error, 'description');
+			return {
+				message: error.message,
+				...(typeof description === 'string' && description ? { description } : {}),
+			};
 		}
 		// Errors read back from a persisted execution are revived as plain
 		// objects, not Error instances.
