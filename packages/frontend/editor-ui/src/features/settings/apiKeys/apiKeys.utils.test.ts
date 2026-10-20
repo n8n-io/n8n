@@ -16,6 +16,9 @@ const availableScopes: ApiKeyScope[] = [
 	'folder:read',
 	'tag:read',
 	'user:list',
+	'sourceControl:read',
+	'sourceControl:pull',
+	'sourceControl:push',
 	'securityAudit:generate',
 ];
 
@@ -53,6 +56,7 @@ describe('getReadOnlyScopes', () => {
 			'folder:read',
 			'tag:read',
 			'user:list',
+			'sourceControl:read',
 		]);
 	});
 });
@@ -68,6 +72,7 @@ describe('groupScopes', () => {
 			'projects',
 			'foldersTags',
 			'members',
+			'environments',
 			'instanceOperations',
 		]);
 
@@ -80,24 +85,12 @@ describe('groupScopes', () => {
 			'execution:read',
 		]);
 		expect(groups[4].scopes).toEqual(['folder:read', 'tag:read']);
-	});
-
-	it('puts source control scopes in the environments group, not instance operations', () => {
-		const groups = groupScopes([
+		expect(groups[6].scopes).toEqual([
 			'sourceControl:read',
 			'sourceControl:pull',
 			'sourceControl:push',
-			'securityAudit:generate',
 		]);
-
-		expect(groups).toEqual([
-			{
-				key: 'environments',
-				isFallback: false,
-				scopes: ['sourceControl:read', 'sourceControl:pull', 'sourceControl:push'],
-			},
-			{ key: 'instanceOperations', isFallback: false, scopes: ['securityAudit:generate'] },
-		]);
+		expect(groups[7].scopes).toEqual(['securityAudit:generate']);
 	});
 
 	it('omits groups without available scopes', () => {
