@@ -399,12 +399,12 @@ describe('reconstructSeedFromThread', () => {
 		expect(result.liveTurn).toBe('Real follow-up');
 	});
 
-	it('collapses an workflow_builder_ask_user suspend+resume pair to one block carrying the answer', async () => {
+	it('collapses an ask_user suspend+resume pair to one block carrying the answer', async () => {
 		const questions = [{ id: 'q1', question: 'Which channel?', options: ['#a', '#b'] }];
 		const suspend: FakeRun = {
 			id: 'tool-suspend',
 			run_type: 'tool',
-			name: 'workflow_builder_ask_user',
+			name: 'ask_user',
 			start_time: t(3),
 			inputs: { questions },
 			// Suspend: a re-statement of the pending request, no answer.
@@ -414,7 +414,7 @@ describe('reconstructSeedFromThread', () => {
 		const resume: FakeRun = {
 			id: 'tool-resume',
 			run_type: 'tool',
-			name: 'workflow_builder_ask_user',
+			name: 'ask_user',
 			start_time: t(6),
 			inputs: { questions },
 			outputs: { answered: true, answers: [{ questionId: 'q1', selectedOptions: ['#a'] }] },
@@ -431,7 +431,7 @@ describe('reconstructSeedFromThread', () => {
 		const askBlocks = result.seed.messages
 			.filter((m) => Array.isArray(m.content))
 			.flatMap((m) => m.content as Array<Record<string, unknown>>)
-			.filter((b) => b.type === 'tool-call' && b.toolName === 'workflow_builder_ask_user');
+			.filter((b) => b.type === 'tool-call' && b.toolName === 'ask_user');
 		expect(askBlocks).toHaveLength(1); // suspend dropped, resume kept — no duplication
 		expect(askBlocks[0]).toMatchObject({
 			output: { answers: [{ questionId: 'q1', selectedOptions: ['#a'] }] },
@@ -478,7 +478,7 @@ describe('reconstructSeedFromThread', () => {
 		const resume: FakeRun = {
 			id: 'tool-resume',
 			run_type: 'tool',
-			name: 'workflow_builder_ask_user',
+			name: 'ask_user',
 			start_time: t(4),
 			inputs: { questions },
 			outputs: { answered: true, answers: [{ questionId: 'q1', selectedOptions: ['#a'] }] },
@@ -489,7 +489,7 @@ describe('reconstructSeedFromThread', () => {
 		const lateSuspend: FakeRun = {
 			id: 'tool-suspend-late',
 			run_type: 'tool',
-			name: 'workflow_builder_ask_user',
+			name: 'ask_user',
 			start_time: t(7),
 			inputs: { questions },
 			outputs: { payload: { inputType: 'questions', requestId: 'req1', questions } },
@@ -505,7 +505,7 @@ describe('reconstructSeedFromThread', () => {
 		const askBlocks = result.seed.messages
 			.filter((m) => Array.isArray(m.content))
 			.flatMap((m) => m.content as Array<Record<string, unknown>>)
-			.filter((b) => b.type === 'tool-call' && b.toolName === 'workflow_builder_ask_user');
+			.filter((b) => b.type === 'tool-call' && b.toolName === 'ask_user');
 		expect(askBlocks).toHaveLength(1);
 		expect(askBlocks[0]).toMatchObject({
 			output: { answers: [{ questionId: 'q1', selectedOptions: ['#a'] }] },

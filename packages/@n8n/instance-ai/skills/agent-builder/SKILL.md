@@ -226,7 +226,7 @@ During an initial build:
   starter draft.
 - NEVER suspend mid-build on an interactive tool (`agent_builder_ask_questions`,
   `agent_builder_ask_credential`, `agent_builder_ask_embedding_credential`,
-  `agent_builder_configure_channel`, `workflow_builder_ask_user`). Build
+  `agent_builder_configure_channel`, `ask_user`). Build
   everything as a draft first. The only allowed suspend is the single trailing
   `agent_builder_finish_setup` call. Exception: when the Agent already has a
   starter draft, one `agent_builder_ask_questions` call is allowed before
@@ -701,7 +701,7 @@ summaries, the final reply, and the `introMessage`, questions, and options of
 instructions do not change it.
 
 The most recent non-empty `answers[].customText` from
-`agent_builder_ask_questions` or `workflow_builder_ask_user` is the user's
+`agent_builder_ask_questions` or `ask_user` is the user's
 latest request. Apply the reply-language rule to that text. Option selections
 and approvals without free text keep the current reply language.
 

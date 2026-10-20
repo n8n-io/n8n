@@ -7,7 +7,7 @@
 //   - Did it use (or avoid) a specific tool when it should have?
 // ---------------------------------------------------------------------------
 
-import { WORKFLOW_BUILDER_TOOL_NAMES } from '@n8n/api-types';
+import { SHARED_BUILDER_TOOL_NAMES } from '@n8n/api-types';
 
 import type {
 	GraderResult,
@@ -27,7 +27,7 @@ import { isComputerUseTool } from './tool-set';
 const DEFAULT_MAX_REPEATED_CALL = 3;
 const DEFAULT_TOOLS_MUST_NOT_ERROR_PREFIX = 'browser';
 const DEFAULT_TOOLS_MUST_NOT_ERROR_IGNORE: readonly string[] = [
-	WORKFLOW_BUILDER_TOOL_NAMES.ASK_USER,
+	SHARED_BUILDER_TOOL_NAMES.ASK_USER,
 	'pause-for-user',
 ];
 const DEFAULT_MUST_REACH_URL_PREFIX = 'browser';

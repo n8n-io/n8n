@@ -12,7 +12,6 @@ export const WORKFLOW_BUILDER_TOOL_NAMES = {
 	NODES: 'workflow_builder_nodes',
 	CREDENTIALS: 'workflow_builder_credentials',
 	EXECUTIONS: 'workflow_builder_executions',
-	ASK_USER: 'workflow_builder_ask_user',
 	SEARCH_MODELS: 'workflow_builder_search_models',
 	BUILD_WORKFLOW: 'workflow_builder_build_workflow',
 	VERIFY_BUILT_WORKFLOW: 'workflow_builder_verify_built_workflow',
@@ -54,6 +53,7 @@ export const AGENT_BUILDER_TOOL_NAMES = {
 /** Orchestrator tools that both builders use. These names have no builder prefix. */
 export const SHARED_BUILDER_TOOL_NAMES = {
 	DATA_TABLES: 'data_tables',
+	ASK_USER: 'ask_user',
 } as const;
 
 export type WorkflowBuilderToolName =
@@ -80,7 +80,7 @@ export const LEGACY_BUILDER_TOOL_NAMES: Readonly<Record<string, string>> = {
 	credentials: WORKFLOW_BUILDER_TOOL_NAMES.CREDENTIALS,
 	executions: WORKFLOW_BUILDER_TOOL_NAMES.EXECUTIONS,
 	'data-tables': SHARED_BUILDER_TOOL_NAMES.DATA_TABLES,
-	'ask-user': WORKFLOW_BUILDER_TOOL_NAMES.ASK_USER,
+	'ask-user': SHARED_BUILDER_TOOL_NAMES.ASK_USER,
 	searchModels: WORKFLOW_BUILDER_TOOL_NAMES.SEARCH_MODELS,
 	'build-workflow': WORKFLOW_BUILDER_TOOL_NAMES.BUILD_WORKFLOW,
 	'verify-built-workflow': WORKFLOW_BUILDER_TOOL_NAMES.VERIFY_BUILT_WORKFLOW,
@@ -111,6 +111,7 @@ export const LEGACY_BUILDER_TOOL_NAMES: Readonly<Record<string, string>> = {
 	ask_embedding_credential: AGENT_BUILDER_TOOL_NAMES.ASK_EMBEDDING_CREDENTIAL,
 	ask_questions: AGENT_BUILDER_TOOL_NAMES.ASK_QUESTIONS,
 	configure_channel: AGENT_BUILDER_TOOL_NAMES.CONFIGURE_CHANNEL,
+	workflow_builder_ask_user: SHARED_BUILDER_TOOL_NAMES.ASK_USER,
 };
 
 /** Returns the current name for a former builder tool name, or the name unchanged. */

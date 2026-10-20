@@ -321,7 +321,7 @@ describe('Instance AI skills', () => {
 		expect(skill?.name).toBe('credential-setup-with-computer-use');
 		for (const tool of [
 			'research',
-			'workflow_builder_ask_user',
+			'ask_user',
 			'browser_connect',
 			'browser_snapshot',
 			'browser_capture_secret',
@@ -472,7 +472,7 @@ describe('Instance AI skills', () => {
 			'data_tables',
 			'parse-file',
 			'research',
-			'workflow_builder_ask_user',
+			'ask_user',
 		]);
 		expect(skill?.description).toContain(
 			'If workflow_builder_create_tasks is not visible, load it via load_tool',

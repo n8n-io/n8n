@@ -9,6 +9,11 @@ const QUESTION = {
 };
 
 describe('createAskUserTool', () => {
+	it('resolves calls stored under its former names', () => {
+		expect(createAskUserTool().name).toBe('ask_user');
+		expect(createAskUserTool().legacyNames).toEqual(['ask-user', 'workflow_builder_ask_user']);
+	});
+
 	it('suspends on the first call', async () => {
 		const suspend = vi.fn().mockResolvedValue({ suspended: true });
 		const tool = createAskUserTool();

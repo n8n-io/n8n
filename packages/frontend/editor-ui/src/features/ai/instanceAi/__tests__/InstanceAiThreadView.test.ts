@@ -1741,7 +1741,7 @@ describe('InstanceAiThreadView', () => {
 				agentNode: { agentId: 'agent-1', role: 'orchestrator' },
 				toolCall: {
 					toolCallId: 'tc-q',
-					toolName: 'workflow_builder_ask_user',
+					toolName: 'ask_user',
 					args: {},
 					isLoading: true,
 					confirmationStatus: 'pending',

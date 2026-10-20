@@ -2099,7 +2099,7 @@ export class InstanceAiService {
 		const threadsWithPendingHitl = new Set(pendingThreadIds);
 		for (const run of activeRuns) {
 			// Runs holding an inline HITL confirmation (`workflow_builder_create_tasks`,
-			// sub-agent `workflow_builder_ask_user`) sit in `activeRuns` because the orchestrator
+			// sub-agent `ask_user`) sit in `activeRuns` because the orchestrator
 			// is alive — it's just awaiting the in-process Promise. Their
 			// `instance_ai_pending_confirmations` row survives the restart and
 			// `handleOrphanedConfirmation` will issue the user-visible
