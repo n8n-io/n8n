@@ -34,6 +34,8 @@ live. It then builds one page that shows, for each run:
 The page uses the light mode of the
 [n8n brand guidelines](https://guidelines.n8n.design/).
 
+![An example comparison page](assets/comparison-page.png)
+
 All scripts are in `scripts/` next to this file. They use only the Python
 standard library and the Playwright copy in the repository.
 

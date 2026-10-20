@@ -121,4 +121,3 @@ def load_token():
 
 def is_full_token(value):
 	return isinstance(value, str) and value.count('.') == 2 and '*' not in value
-
