@@ -350,7 +350,6 @@ onMounted(async () => {
 		:open="modalOpen"
 		size="xlarge"
 		:header="title"
-		container-class="promotion-modal"
 		:show-close-button="!isApplying && !isSubmitting"
 		@update:open="onDialogOpenUpdate"
 		@interact-outside="onDismissBlocked"
@@ -509,40 +508,35 @@ onMounted(async () => {
 			</div>
 		</N8nDialogBody>
 		<N8nDialogFooter>
-			<div :class="$style.footer">
-				<div :class="$style.footerLeft">
-					<N8nText v-if="selectedCount > 0" size="small" color="text-light">
-						{{
-							i18n.baseText('promotions.modal.incoming.selected', {
-								interpolate: { count: String(selectedCount) },
-							})
-						}}
-					</N8nText>
-				</div>
-				<div :class="$style.footerRight">
-					<N8nButton variant="outline" :disabled="isSubmitting" @click="onClose">
-						{{ i18n.baseText('promotions.modal.close') }}
-					</N8nButton>
-					<N8nButton
-						v-if="isIncoming"
-						:loading="isApplying"
-						:disabled="isLoading || !!error || selectedCount === 0"
-						data-test-id="promotion-apply-selected"
-						@click="onApplySelected"
-					>
-						{{ getApplySelectedButtonLabel() }}
-					</N8nButton>
-					<N8nButton
-						v-else
-						data-test-id="promotion-submit"
-						:disabled="isPromoteDisabled"
-						:loading="isSubmitting"
-						@click="onPromote"
-					>
-						{{ getPromoteButtonLabel() }}
-					</N8nButton>
-				</div>
-			</div>
+			<N8nText v-if="selectedCount > 0" size="small" color="text-light">
+				{{
+					i18n.baseText('promotions.modal.incoming.selected', {
+						interpolate: { count: String(selectedCount) },
+					})
+				}}
+			</N8nText>
+
+			<N8nButton variant="outline" :disabled="isSubmitting" @click="onClose">
+				{{ i18n.baseText('promotions.modal.close') }}
+			</N8nButton>
+			<N8nButton
+				v-if="isIncoming"
+				:loading="isApplying"
+				:disabled="isLoading || !!error || selectedCount === 0"
+				data-test-id="promotion-apply-selected"
+				@click="onApplySelected"
+			>
+				{{ getApplySelectedButtonLabel() }}
+			</N8nButton>
+			<N8nButton
+				v-else
+				data-test-id="promotion-submit"
+				:disabled="isPromoteDisabled"
+				:loading="isSubmitting"
+				@click="onPromote"
+			>
+				{{ getPromoteButtonLabel() }}
+			</N8nButton>
 		</N8nDialogFooter>
 	</N8nDialog>
 	<PromotionBindingsFlow
@@ -563,30 +557,6 @@ onMounted(async () => {
 		@source-changed="onSourceChanged"
 	/>
 </template>
-
-<style lang="scss">
-.promotion-modal {
-	/* Previous dialog max-height. No spacing token for 680px. */
-	height: 80vh;
-	max-height: 680px;
-	display: flex;
-	flex-direction: column;
-	overflow: hidden;
-	padding: 0;
-	--n8n-dialog-content--padding: 0;
-
-	header {
-		padding: var(--spacing--lg) var(--spacing--lg) 0;
-	}
-
-	footer {
-		display: block;
-		margin-top: 0;
-		border-top: var(--border);
-		padding: var(--spacing--sm) var(--spacing--md);
-	}
-}
-</style>
 
 <style lang="scss" module>
 :global(body) {
