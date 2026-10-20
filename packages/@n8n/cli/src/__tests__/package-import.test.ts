@@ -135,7 +135,7 @@ describe('package import command', () => {
 			agents: [
 				{
 					sourceAgentId: 'source',
-					localId: 'target',
+					localId: 'source',
 					name: 'Reviewer',
 					projectId: 'project',
 					activeVersionId: null,
@@ -144,11 +144,11 @@ describe('package import command', () => {
 				},
 			],
 			workflows: [],
-			bindings: { agents: { source: 'target' }, workflows: {}, credentials: {} },
+			bindings: { agents: { source: 'source' }, workflows: {}, credentials: {} },
 			counts: { agents: { created: 1, updated: 0, skipped: 0 } },
 		};
 		const { command, internals } = stubCommand(
-			{ file: '/tmp/agent.n8np', conflictPolicy: 'new-version' },
+			{ file: '/tmp/agent.n8np', conflictPolicy: 'new-version', publishingPolicy: 'publish-all' },
 			vi.fn().mockResolvedValue(result),
 		);
 		await expect(command.run()).resolves.toBeUndefined();
