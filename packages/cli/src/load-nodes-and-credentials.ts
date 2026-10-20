@@ -705,9 +705,16 @@ export class LoadNodesAndCredentials {
 	 * Helper method to cleanly split a full node type into its NPM package name
 	 * and internal node type identifier by checking registered loaders first.
 	 */
+	/**
+	 * Helper method to cleanly split a full node type into its NPM package name
+	 * and internal node type identifier by checking registered loaders first.
+	 */
 	private splitNodeType(fullNodeType: string): { packageName: string; nodeType: string } {
+		// Sort keys by length descending to match the longest/most specific package name first (e.g., 'foo.bar' before 'foo')
+		const sortedLoaderKeys = Object.keys(this.loaders).sort((a, b) => b.length - a.length);
+
 		// 1. Check if the string starts with any of the registered loader names
-		for (const packageName of Object.keys(this.loaders)) {
+		for (const packageName of sortedLoaderKeys) {
 			if (fullNodeType.startsWith(packageName + '.')) {
 				return {
 					packageName,
@@ -717,15 +724,18 @@ export class LoadNodesAndCredentials {
 		}
 
 		// 2. Fallback: Split from right-to-left at the final dot if the loader isn't matched
+		const isScoped = fullNodeType.startsWith('@');
+		const scopeEndIndex = isScoped ? fullNodeType.indexOf('/') : 0;
 		const lastDotIndex = fullNodeType.lastIndexOf('.');
-		if (lastDotIndex !== -1) {
+
+		if (lastDotIndex !== -1 && lastDotIndex > scopeEndIndex) {
 			return {
 				packageName: fullNodeType.substring(0, lastDotIndex),
 				nodeType: fullNodeType.substring(lastDotIndex + 1),
 			};
 		}
 
-		// 3. Fallback for edge cases where no dot is present at all
+		// 3. Fallback for edge cases where no valid dot is present at all
 		return { packageName: fullNodeType, nodeType: '' };
 	}
 
