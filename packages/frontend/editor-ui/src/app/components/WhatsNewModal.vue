@@ -151,115 +151,106 @@ function onDialogOpenUpdate(open: boolean) {
 				/>
 			</N8nTooltip>
 		</N8nDialogHeader>
-		<N8nDialogBody>
-			<div :class="$style.scrollBody">
-				<div :class="$style.container">
-					<N8nCallout
-						v-if="versionsStore.hasSignificantUpdates"
-						:class="$style.callout"
-						theme="warning"
-					>
-						<slot name="callout-message">
-							<N8nText size="small">
-								{{
-									i18n.baseText('whatsNew.updateAvailable', {
-										interpolate: {
-											currentVersion: versionsStore.currentVersion?.name ?? 'unknown',
-											latestVersion: versionsStore.latestVersion?.name,
-											count: nextVersions.length,
-										},
-									})
-								}}
-								<N8nLink
-									:size="'small'"
-									:underline="true"
-									theme="primary"
-									:to="RELEASE_NOTES_URL"
-									target="_blank"
-								>
-									{{ i18n.baseText('whatsNew.updateAvailable.changelogLink') }}
-								</N8nLink>
-							</N8nText>
-						</slot>
-					</N8nCallout>
-					<div
-						v-for="item in versionsStore.whatsNewArticles"
-						:ref="
-							(el: any) => {
-								if (el) articleRefs[item.id] = el as HTMLElement;
-							}
-						"
-						:key="item.id"
-						:class="$style.article"
-						:data-test-id="`whats-new-item-${item.id}`"
-					>
-						<N8nHeading bold tag="h2" size="xlarge">
-							{{ item.title }}
-						</N8nHeading>
-						<N8nMarkdown
-							:content="item.content"
-							:class="$style.markdown"
-							:options="{
-								markdown: {
-									html: true,
-									linkify: true,
-									typographer: true,
-									breaks: true,
+		<N8nDialogBody :class="$style.container">
+			<N8nCallout
+				v-if="versionsStore.hasSignificantUpdates"
+				:class="$style.callout"
+				theme="warning"
+			>
+				<slot name="callout-message">
+					<N8nText size="small">
+						{{
+							i18n.baseText('whatsNew.updateAvailable', {
+								interpolate: {
+									currentVersion: versionsStore.currentVersion?.name ?? 'unknown',
+									latestVersion: versionsStore.latestVersion?.name,
+									count: nextVersions.length,
 								},
-								tasklists: {
-									enabled: false,
-								},
-								linkAttributes: {
-									attrs: {
-										target: '_blank',
-										rel: 'noopener',
-									},
-								},
-								youtube: {
-									width: '100%',
-									height: '315',
-								},
-							}"
-						/>
-					</div>
-					<N8nMarkdown
-						v-if="versionsStore.whatsNew.footer"
-						:content="versionsStore.whatsNew.footer"
-						:class="$style.markdown"
-						:options="{
-							markdown: {
-								html: true,
-								linkify: true,
-								typographer: true,
-								breaks: true,
+							})
+						}}
+						<N8nLink
+							:size="'small'"
+							:underline="true"
+							theme="primary"
+							:to="RELEASE_NOTES_URL"
+							target="_blank"
+						>
+							{{ i18n.baseText('whatsNew.updateAvailable.changelogLink') }}
+						</N8nLink>
+					</N8nText>
+				</slot>
+			</N8nCallout>
+			<div
+				v-for="item in versionsStore.whatsNewArticles"
+				:ref="
+					(el: any) => {
+						if (el) articleRefs[item.id] = el as HTMLElement;
+					}
+				"
+				:key="item.id"
+				:class="$style.article"
+				:data-test-id="`whats-new-item-${item.id}`"
+			>
+				<N8nHeading bold tag="h2" size="xlarge">
+					{{ item.title }}
+				</N8nHeading>
+				<N8nMarkdown
+					:content="item.content"
+					:class="$style.markdown"
+					:options="{
+						markdown: {
+							html: true,
+							linkify: true,
+							typographer: true,
+							breaks: true,
+						},
+						tasklists: {
+							enabled: false,
+						},
+						linkAttributes: {
+							attrs: {
+								target: '_blank',
+								rel: 'noopener',
 							},
-							tasklists: {
-								enabled: false,
-							},
-							linkAttributes: {
-								attrs: {
-									target: '_blank',
-									rel: 'noopener',
-								},
-							},
-							youtube: {
-								width: '100%',
-								height: '315',
-							},
-						}"
-					/>
-				</div>
+						},
+						youtube: {
+							width: '100%',
+							height: '315',
+						},
+					}"
+				/>
 			</div>
+			<N8nMarkdown
+				v-if="versionsStore.whatsNew.footer"
+				:content="versionsStore.whatsNew.footer"
+				:class="$style.markdown"
+				:options="{
+					markdown: {
+						html: true,
+						linkify: true,
+						typographer: true,
+						breaks: true,
+					},
+					tasklists: {
+						enabled: false,
+					},
+					linkAttributes: {
+						attrs: {
+							target: '_blank',
+							rel: 'noopener',
+						},
+					},
+					youtube: {
+						width: '100%',
+						height: '315',
+					},
+				}"
+			/>
 		</N8nDialogBody>
 	</N8nDialog>
 </template>
 
 <style lang="scss" module>
-.scrollBody {
-	overflow: auto;
-	max-height: calc(85vh - var(--spacing--3xl));
-}
-
 .column {
 	display: flex;
 	flex-direction: column;
@@ -274,8 +265,6 @@ function onDialogOpenUpdate(open: boolean) {
 }
 
 .container {
-	margin-bottom: 0;
-
 	// Collapse the trailing spacing of the last block (article or footer) and its innermost element
 	> :last-child {
 		margin-bottom: 0;
@@ -288,7 +277,9 @@ function onDialogOpenUpdate(open: boolean) {
 }
 
 .article {
-	padding: var(--spacing--sm) 0;
+	&:not(:first-child) {
+		padding: var(--spacing--sm) 0;
+	}
 }
 
 .markdown {
