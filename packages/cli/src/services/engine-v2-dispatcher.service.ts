@@ -111,11 +111,11 @@ export class EngineV2Dispatcher {
 	 * The files the trigger stored belong to the control plane until the data
 	 * plane accepts the run. A run that does not start leaves them to no one, so
 	 * a failure deletes them, but only when no run can exist: a run that uses
-	 * deleted files fails, while a kept file is deleted with its execution.
+	 * deleted files fails, while a kept file is deleted with its execution. Only
+	 * the fired trigger's payload is deleted: a planned run may root at reused
+	 * run data instead, whose files belong to the execution that produced them.
 	 */
 	async start(data: IWorkflowExecutionDataProcess): Promise<string> {
-		// The run owns only the payload its trigger just produced. A plan may root
-		// the run at reused run data instead, whose files belong to that execution.
 		const fired = this.resolveFiredTrigger(data);
 
 		let prepared: PreparedStart;
