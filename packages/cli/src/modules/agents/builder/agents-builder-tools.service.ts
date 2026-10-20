@@ -583,9 +583,8 @@ export class AgentsBuilderToolsService {
 		credentialProviderFor: (agentId: string) => CredentialProvider,
 		credentialService: BuilderCredentialService,
 		user: User,
-		options: BuilderToolsOptions & { excludeToolNames?: string[] } = {},
+		options: BuilderToolsOptions = {},
 	): BuiltTool[] {
-		const excluded = new Set(options.excludeToolNames ?? []);
 		const buildToolSet = (agentId: string, credentialProvider: CredentialProvider) => {
 			const { json, shared } = this.getTools(
 				agentId,
@@ -595,7 +594,7 @@ export class AgentsBuilderToolsService {
 				user,
 				options,
 			);
-			return [...json, ...shared].filter((tool) => !excluded.has(tool.name));
+			return [...json, ...shared];
 		};
 
 		const toolSetsByAgentId = new Map<string, Map<string, BuiltTool>>();

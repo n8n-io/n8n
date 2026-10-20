@@ -12,8 +12,6 @@ import { AgentDraftService } from '@/modules/agents/agent-draft.service';
 import { AgentsBuilderService } from '@/modules/agents/builder/agents-builder.service';
 import { Telemetry } from '@/telemetry';
 
-const TOOLS_PROVIDED_BY_INSTANCE_AI = ['agent-context'];
-
 @Service()
 export class InstanceAiBuilderDelegateAdapterService {
 	constructor(
@@ -41,7 +39,6 @@ export class InstanceAiBuilderDelegateAdapterService {
 					credentialProviderFor,
 					credentialService,
 					{
-						excludeToolNames: TOOLS_PROVIDED_BY_INSTANCE_AI,
 						...(options.useEvalModelCatalog ? { useEvalModelCatalog: true } : {}),
 						track: (entry, properties) =>
 							this.telemetry.track(entry, {
