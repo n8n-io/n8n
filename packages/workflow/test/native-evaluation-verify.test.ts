@@ -126,6 +126,28 @@ describe('Expression - native evaluation verify mode', () => {
 			expect(report).toHaveBeenCalledTimes(1);
 		});
 
+		test('warns once when the report limit is reached', () => {
+			const shapes = (modules.Expression as unknown as { reportedVerifyShapes: Set<string> })
+				.reportedVerifyShapes;
+			for (let i = 0; shapes.size < 999; i++) {
+				shapes.add(`filler-${i}`);
+			}
+			try {
+				evaluateNatively
+					.mockReturnValueOnce({ handled: true, value: 'native' })
+					.mockReturnValueOnce({ handled: true, value: 'native' });
+
+				evaluate('={{ $json.name.startsWith(1) }}');
+				evaluate('={{ $json.name.endsWith(1) }}');
+
+				expect(report).toHaveBeenCalledTimes(1);
+				expect(warn).toHaveBeenCalledTimes(1);
+				expect(warn.mock.calls[0][0]).toContain('report limit');
+			} finally {
+				shapes.clear();
+			}
+		});
+
 		test('compares errors', () => {
 			evaluateNatively.mockImplementationOnce(() => {
 				throw new Error('native failed');

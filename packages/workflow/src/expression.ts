@@ -982,6 +982,11 @@ export class Expression {
 			if (this.reportedVerifyShapes.has(key)) return;
 			if (this.reportedVerifyShapes.size >= MAX_REPORTED_VERIFY_SHAPES) return;
 			this.reportedVerifyShapes.add(key);
+			if (this.reportedVerifyShapes.size === MAX_REPORTED_VERIFY_SHAPES) {
+				LoggerProxy.warn(
+					'Native evaluation verify mode reached its report limit and stops reporting new differences',
+				);
+			}
 
 			report({ ...shape, workflowId: workflowIdOf(data) });
 		} catch {
