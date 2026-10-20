@@ -22,8 +22,8 @@ import { AgentResourceRepository } from '../../../repositories/agent-resource.re
 import type { AgentMessageQueueService } from '../../../agent-message-queue.service';
 import type { AgentMessageQueue } from '../../../entities/agent-message-queue.entity';
 import type {
-	AgentQueuedMessage,
 	QueuedIntegrationMessage,
+	QueuedUserChatMessage,
 } from '../../../types/agent-queued-message';
 
 export type ReplayWebhookOptions = { waitUntil?: (task: Promise<unknown>) => void };
@@ -240,7 +240,7 @@ export interface ReplayContextSetup<TChat extends ChatInstance = ChatInstance> {
 	integration: AgentIntegrationConfig;
 	messageContextStore: MemoryMessageContextStore;
 	/** Messages the bridge queued for a chat session, which need no consumer in these tests. */
-	chatQueued: Array<Extract<AgentQueuedMessage, { kind: 'preview' | 'n8n_chat' }>>;
+	chatQueued: QueuedUserChatMessage[];
 	attachmentService?: AgentChatAttachmentService;
 	latestContext: () => IntegrationMessageContext | undefined;
 	latestThreadId: () => string | undefined;
@@ -300,7 +300,7 @@ export function createReplayContextSetup<TChat extends ChatInstance>(params: {
 	const { attachmentService } = params;
 	const pending: Array<{ payload: QueuedIntegrationMessage; threadId: string }> = [];
 	const queue = mock<AgentMessageQueueService>();
-	const chatQueued: ReplayContextSetup['chatQueued'] = [];
+	const chatQueued: QueuedUserChatMessage[] = [];
 	queue.enqueue.mockImplementation(async ({ payload, threadId }) => {
 		if (payload.kind !== 'integration') {
 			chatQueued.push(payload);
