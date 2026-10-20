@@ -1184,6 +1184,7 @@ describe('UserService', () => {
 
 		beforeEach(() => {
 			provisioningService.isInstanceRoleManaged.mockResolvedValue(false);
+			provisioningService.isInstanceRoleOwnedByScim.mockResolvedValue(false);
 			containerGetSpy = vi.spyOn(Container, 'get').mockReturnValue(provisioningService);
 			changeUserRoleSpy = vi.spyOn(userService, 'changeUserRole').mockResolvedValue();
 		});
@@ -1206,6 +1207,20 @@ describe('UserService', () => {
 				targetUserNewRole: 'global:member',
 				publicApi: false,
 			});
+		});
+
+		it('rejects a change while the identity provider owns the role through SCIM', async () => {
+			const actor = mock<User>({ id: '123', role: { slug: GLOBAL_OWNER_ROLE.slug } });
+			const target = mock<User>({ id: '456', role: GLOBAL_MEMBER_ROLE, isScimManaged: true });
+			userRepository.findByIdWithRole.mockResolvedValue(target);
+			provisioningService.isInstanceRoleOwnedByScim.mockResolvedValue(true);
+
+			await expect(
+				userService.changeGlobalRole(actor, '456', { newRoleName: 'global:admin' }),
+			).rejects.toThrow(ForbiddenError);
+
+			expect(provisioningService.isInstanceRoleOwnedByScim).toHaveBeenCalledWith(target);
+			expect(changeUserRoleSpy).not.toHaveBeenCalled();
 		});
 
 		it('rejects an owner changing another owner, protecting the last owner', async () => {

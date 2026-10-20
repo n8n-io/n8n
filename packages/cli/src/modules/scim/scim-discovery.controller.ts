@@ -1,8 +1,13 @@
+import { SCIM_N8N_USER_SCHEMA } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
+import { RoleRepository } from '@n8n/db';
 import { Get, RootLevelController } from '@n8n/decorators';
+import { GLOBAL_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import type { Response } from 'express';
 
 import { scimRoute } from './scim-route';
+
+const CORE_USER_SCHEMA = 'urn:ietf:params:scim:schemas:core:2.0:User';
 
 /**
  * SCIM 2.0 discovery endpoints (RFC 7644 section 4).
@@ -17,6 +22,20 @@ import { scimRoute } from './scim-route';
  */
 @RootLevelController('/scim/v2')
 export class ScimDiscoveryController {
+	constructor(private readonly roleRepository: RoleRepository) {}
+
+	/**
+	 * The instance roles a provider may assign, as `canonicalValues`. Read on
+	 * each request so custom global roles show up as soon as they exist. The
+	 * owner role is never assignable, so it is not advertised.
+	 */
+	private async assignableInstanceRoles(): Promise<string[]> {
+		const roles = await this.roleRepository.find({ where: { roleType: 'global' } });
+		return roles
+			.map((role) => role.slug)
+			.filter((slug) => slug !== GLOBAL_OWNER_ROLE_SLUG)
+			.sort();
+	}
 	/**
 	 * GET /scim/v2/ServiceProviderConfig
 	 * Return service provider configuration
@@ -76,7 +95,8 @@ export class ScimDiscoveryController {
 					name: 'User',
 					endpoint: '/Users',
 					description: 'User Account',
-					schema: 'urn:ietf:params:scim:schemas:core:2.0:User',
+					schema: CORE_USER_SCHEMA,
+					schemaExtensions: [{ schema: SCIM_N8N_USER_SCHEMA, required: false }],
 				},
 			],
 		});
@@ -84,18 +104,21 @@ export class ScimDiscoveryController {
 
 	/**
 	 * GET /scim/v2/Schemas
-	 * Return supported schemas. User has no `roles`: SSO role mapping owns
-	 * the instance role, and SCIM ignores it.
+	 * Return the core User schema and the n8n extension. The instance role is
+	 * advertised in both, with the assignable roles as `canonicalValues`, so a
+	 * provider that discovers the schema offers a list instead of a text field.
 	 */
 	@Get('/Schemas', scimRoute)
-	getSchemas(_req: AuthenticatedRequest, res: Response) {
+	async getSchemas(_req: AuthenticatedRequest, res: Response) {
+		const canonicalValues = await this.assignableInstanceRoles();
+
 		return res.header('Content-Type', 'application/scim+json').json({
 			schemas: ['urn:ietf:params:scim:api:messages:2.0:ListResponse'],
-			totalResults: 1,
+			totalResults: 2,
 			Resources: [
 				{
 					schemas: ['urn:ietf:params:scim:schemas:core:2.0:Schema'],
-					id: 'urn:ietf:params:scim:schemas:core:2.0:User',
+					id: CORE_USER_SCHEMA,
 					name: 'User',
 					description: 'User Account',
 					attributes: [
@@ -150,6 +173,57 @@ export class ScimDiscoveryController {
 							required: false,
 							mutability: 'readWrite',
 							returned: 'default',
+						},
+						{
+							name: 'roles',
+							type: 'complex',
+							multiValued: true,
+							required: false,
+							mutability: 'readWrite',
+							returned: 'default',
+							description:
+								'The instance role of the user. At most one entry, whose value is a global role.',
+							subAttributes: [
+								{
+									name: 'value',
+									type: 'string',
+									multiValued: false,
+									required: true,
+									caseExact: true,
+									mutability: 'readWrite',
+									returned: 'default',
+									canonicalValues,
+								},
+								{
+									name: 'primary',
+									type: 'boolean',
+									multiValued: false,
+									required: false,
+									mutability: 'readWrite',
+									returned: 'default',
+								},
+							],
+						},
+					],
+				},
+				{
+					schemas: ['urn:ietf:params:scim:schemas:core:2.0:Schema'],
+					id: SCIM_N8N_USER_SCHEMA,
+					name: 'n8n User',
+					description: 'n8n extension to the User resource',
+					attributes: [
+						{
+							name: 'instanceRole',
+							type: 'string',
+							multiValued: false,
+							required: false,
+							caseExact: true,
+							mutability: 'readWrite',
+							returned: 'default',
+							uniqueness: 'none',
+							description:
+								'The instance role of the user, as a global role slug. Omit it to keep the current role; a new user without it is a member.',
+							canonicalValues,
 						},
 					],
 				},

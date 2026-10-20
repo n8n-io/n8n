@@ -3,7 +3,7 @@ import {
 	ProvisioningConfigDto,
 	ProvisioningConfigPatchDto,
 } from '@n8n/api-types';
-import { Logger } from '@n8n/backend-common';
+import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import {
@@ -18,7 +18,7 @@ import {
 	ProjectRelation,
 } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import { GLOBAL_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import { Not, In } from '@n8n/typeorm';
 import { InstanceSettings } from 'n8n-core';
@@ -514,6 +514,24 @@ export class ProvisioningService {
 		return isSamlCurrentAuthenticationMethod() || isOidcCurrentAuthenticationMethod();
 	}
 
+	/**
+	 * While SCIM provisioning is on, the identity provider sets the instance
+	 * role of the users it created through the SCIM `roles` attribute or the
+	 * n8n extension. Login-time mapping must not overwrite it, or every sign-in
+	 * would undo the provider's push. Users the provider did not create keep
+	 * the login-time mapping.
+	 *
+	 * Lazy: SCIM is an optional module, so this service has no static
+	 * dependency on it.
+	 */
+	async isInstanceRoleOwnedByScim(user: Pick<User, 'isScimManaged'>): Promise<boolean> {
+		if (!user.isScimManaged) return false;
+		if (!Container.get(ModuleRegistry).isActive('scim')) return false;
+
+		const { ScimSsoService } = await import('@/modules/scim/scim-sso.service.js');
+		return await Container.get(ScimSsoService).isProvisioningOn();
+	}
+
 	async isInstanceRoleManaged(): Promise<boolean> {
 		if (!this.isSamlOrOidcCurrentAuthenticationMethod()) return false;
 		if (await this.isInstanceRoleProvisioningEnabled()) return true;
@@ -816,10 +834,12 @@ export class ProvisioningService {
 		const resolved = await this.roleResolverService.resolveRoles(config, context);
 
 		// Only reconcile a scope whose mapping rules exist, matching the manual-management guards.
-		const [instanceRolesManaged, projectRolesManaged] = await Promise.all([
+		const [instanceRulesExist, projectRolesManaged, scimOwnsInstanceRole] = await Promise.all([
 			this.hasRoleMappingRulesOfType('instance'),
 			this.hasRoleMappingRulesOfType('project'),
+			this.isInstanceRoleOwnedByScim(user),
 		]);
+		const instanceRolesManaged = instanceRulesExist && !scimOwnsInstanceRole;
 
 		this.logger.debug('SSO role resolution complete', {
 			userId: user.id,

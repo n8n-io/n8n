@@ -205,7 +205,7 @@ export {
 } from './schemas/credential-description.schema';
 export { CREDENTIAL_DESCRIPTIONS_FLAG } from './constants/credential-descriptions';
 export { EMPTY_CANVAS_GROUPS_FLAG } from './constants/empty-canvas-groups';
-export { SCIM_OPT_IN_FLAG, type ScimOptInSource } from './constants/scim';
+export { SCIM_OPT_IN_FLAG, SCIM_N8N_USER_SCHEMA, type ScimOptInSource } from './constants/scim';
 export type {
 	DependencyType,
 	DependencyResourceType,
@@ -1012,8 +1012,11 @@ export type {
 	ScimMeta,
 	ScimUserName,
 	ScimEmail,
+	ScimRole,
+	ScimUserExtension,
 } from './schemas/scim.schema';
 export {
+	scimRoleValue,
 	scimUserSchema,
 	scimPatchRequestSchema,
 	scimListResponseSchema,

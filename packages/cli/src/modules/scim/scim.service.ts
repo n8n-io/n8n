@@ -1,13 +1,15 @@
 import type {
+	ScimRole,
 	ScimUser,
 	ScimUserCreateDto,
 	ScimListResponse,
 	ScimPatchRequestDto,
 } from '@n8n/api-types';
+import { SCIM_N8N_USER_SCHEMA, scimRoleValue } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import type { AuthProviderType } from '@n8n/db';
-import { User, UserRepository } from '@n8n/db';
+import type { AuthProviderType, Role } from '@n8n/db';
+import { RoleRepository, User, UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { GLOBAL_MEMBER_ROLE_SLUG, GLOBAL_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import { randomString } from 'n8n-workflow';
@@ -31,13 +33,17 @@ const SSO_PROVIDER_TYPES: AuthProviderType[] = ['saml', 'oidc'];
 type ParsedFilter = { attribute: 'userName' | 'externalId'; value: string };
 
 /** The user fields the owner guard compares before and after a write. */
-type OwnerGuardSnapshot = Pick<User, 'email' | 'disabled'>;
+type OwnerGuardSnapshot = Pick<User, 'email' | 'disabled'> & { roleSlug: string | undefined };
+
+/** The PATCH path of the extension's instance role, `urn:...:User:instanceRole`. */
+const INSTANCE_ROLE_PATH = `${SCIM_N8N_USER_SCHEMA}:instanceRole`;
 
 @Service()
 export class ScimService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly userRepository: UserRepository,
+		private readonly roleRepository: RoleRepository,
 		private readonly scimUserRepository: ScimUserRepository,
 		private readonly urlService: UrlService,
 		private readonly globalConfig: GlobalConfig,
@@ -57,8 +63,9 @@ export class ScimService {
 			SSO_PROVIDER_TYPES.includes(identity.providerType),
 		)?.providerId;
 
+		const roleSlug = user.role?.slug;
 		const scimUser: ScimUser = {
-			schemas: ['urn:ietf:params:scim:schemas:core:2.0:User'],
+			schemas: ['urn:ietf:params:scim:schemas:core:2.0:User', SCIM_N8N_USER_SCHEMA],
 			id: user.id,
 			userName: user.email,
 			externalId,
@@ -76,6 +83,9 @@ export class ScimService {
 					]
 				: undefined,
 			active: !user.disabled,
+			// The instance role, in both places a provider may read it.
+			roles: roleSlug ? [{ value: roleSlug, primary: true }] : undefined,
+			[SCIM_N8N_USER_SCHEMA]: roleSlug ? { instanceRole: roleSlug } : undefined,
 			meta: {
 				resourceType: 'User',
 				created: user.createdAt.toISOString(),
@@ -155,7 +165,7 @@ export class ScimService {
 	async getUserById(id: string): Promise<ScimUser | null> {
 		const user = await this.userRepository.findOne({
 			where: { id },
-			relations: ['authIdentities'],
+			relations: ['authIdentities', 'role'],
 		});
 
 		if (!user) return null;
@@ -187,11 +197,58 @@ export class ScimService {
 	}
 
 	/**
-	 * Create a new user from SCIM data. The user gets the `global:member`
-	 * role and a personal project, mirroring the SSO signup flows. SCIM does
-	 * not set roles: SSO role mapping or an admin does. A random unusable
-	 * password is set so the user is not treated as "pending" — they are
-	 * expected to sign in via SSO.
+	 * The instance role a provider asks for, as a slug, or undefined when the
+	 * request carries none. The n8n extension wins over the core `roles`
+	 * attribute when a provider sends both.
+	 */
+	private requestedRoleSlug(scimUser: {
+		roles?: ScimRole[];
+		[SCIM_N8N_USER_SCHEMA]?: { instanceRole?: string };
+	}): string | undefined {
+		const fromExtension = scimUser[SCIM_N8N_USER_SCHEMA]?.instanceRole;
+		if (fromExtension !== undefined) return fromExtension;
+
+		const roles = scimUser.roles;
+		if (!roles?.length) return undefined;
+		if (roles.length > 1) {
+			throw new ScimInvalidValueError(
+				'n8n users have a single instance role; the roles attribute must contain exactly one entry',
+			);
+		}
+		return scimRoleValue(roles[0]);
+	}
+
+	/**
+	 * Resolve a requested slug to a global role. The owner role is never
+	 * assignable, and an unknown slug is a 400 rather than a silent member, so
+	 * a typo in the provider's mapping shows up at once.
+	 */
+	private async resolveRole(slug: string): Promise<Role> {
+		if (slug === GLOBAL_OWNER_ROLE_SLUG) {
+			throw new ScimInvalidValueError('The owner role cannot be assigned via SCIM');
+		}
+		const role = await this.roleRepository.findOne({ where: { slug, roleType: 'global' } });
+		if (!role) {
+			throw new ScimInvalidValueError(`Unknown instance role: ${slug}`);
+		}
+		return role;
+	}
+
+	/** Apply a requested instance role to a user entity, when it differs. */
+	private async applyRole(user: User, slug: string | undefined, changes: Set<string>) {
+		if (slug === undefined) return;
+		const role = await this.resolveRole(slug);
+		if (role.slug === user.role?.slug) return;
+		user.role = role;
+		changes.add('role');
+	}
+
+	/**
+	 * Create a new user from SCIM data. The user gets the requested instance
+	 * role, or `global:member` when the provider sends none, and a personal
+	 * project, mirroring the SSO signup flows. A random unusable password is
+	 * set so the user is not treated as "pending" — they are expected to sign
+	 * in via SSO.
 	 */
 	async createUser(scimUser: ScimUserCreateDto): Promise<ScimUser> {
 		const email = this.resolveEmail(scimUser);
@@ -205,6 +262,8 @@ export class ScimService {
 			throw new ScimConflictError('User with this userName already exists');
 		}
 
+		const requestedSlug = this.requestedRoleSlug(scimUser);
+		const role = requestedSlug ? await this.resolveRole(requestedSlug) : undefined;
 		const providerType = this.getSsoProviderType();
 
 		const createdUser = await this.scimUserRepository.createProvisioned(
@@ -212,7 +271,7 @@ export class ScimService {
 				email,
 				firstName,
 				lastName,
-				role: { slug: GLOBAL_MEMBER_ROLE_SLUG },
+				role: { slug: role?.slug ?? GLOBAL_MEMBER_ROLE_SLUG },
 				// generates a password that is not used or known to the user
 				password: await this.passwordUtility.hash(randomString(18)),
 				disabled: !active,
@@ -238,14 +297,17 @@ export class ScimService {
 	/**
 	 * Update a user via SCIM PATCH operation.
 	 * Supports `add`/`replace` operations for `active`, `userName`,
-	 * `name.givenName`, `name.familyName` and work-email values, both with
-	 * explicit paths and with path-less object values (as sent by Entra ID).
+	 * `name.givenName`, `name.familyName`, work-email values and the instance
+	 * role, both with explicit paths and with path-less object values (as
+	 * sent by Entra ID).
 	 */
 	async patchUser(id: string, patchRequest: ScimPatchRequestDto): Promise<ScimUser> {
 		const user = await this.getUserEntity(id);
 		const before = this.snapshot(user);
 
 		const changes = new Set<string>();
+		// The role lookup is async, so the ops loop records the request and it is applied after.
+		const pending: { roleSlug?: string } = {};
 
 		for (const operation of patchRequest.Operations) {
 			const { op, path, value } = operation;
@@ -253,14 +315,15 @@ export class ScimService {
 			if (op !== 'add' && op !== 'replace') continue;
 
 			if (path) {
-				this.applyPathOperation(user, path, value, changes);
+				this.applyPathOperation(user, path, value, changes, pending);
 			} else if (typeof value === 'object' && value !== null) {
 				for (const [attribute, attributeValue] of Object.entries(value)) {
-					this.applyPathOperation(user, attribute, attributeValue, changes);
+					this.applyPathOperation(user, attribute, attributeValue, changes, pending);
 				}
 			}
 		}
 
+		await this.applyRole(user, pending.roleSlug, changes);
 		this.assertOwnerUnchanged(user, before);
 
 		if (changes.size > 0) {
@@ -278,10 +341,29 @@ export class ScimService {
 	 * Unknown attributes are ignored, per RFC 7644 the server only applies
 	 * the attributes it understands.
 	 */
-	private applyPathOperation(user: User, path: string, value: unknown, changes: Set<string>) {
+	private applyPathOperation(
+		user: User,
+		path: string,
+		value: unknown,
+		changes: Set<string>,
+		pending: { roleSlug?: string },
+	) {
 		switch (path) {
 			case 'roles':
-				// SSO role mapping owns the instance role, so SCIM roles are ignored.
+				if (Array.isArray(value)) {
+					pending.roleSlug = this.requestedRoleSlug({ roles: this.toScimRoles(value) });
+				}
+				return;
+			case INSTANCE_ROLE_PATH:
+				if (typeof value === 'string') pending.roleSlug = value;
+				return;
+			case SCIM_N8N_USER_SCHEMA:
+				if (typeof value === 'object' && value !== null) {
+					const extension = value as { instanceRole?: unknown };
+					if (typeof extension.instanceRole === 'string') {
+						pending.roleSlug = extension.instanceRole;
+					}
+				}
 				return;
 			case 'active':
 				if (typeof value === 'boolean') {
@@ -341,6 +423,17 @@ export class ScimService {
 		}
 	}
 
+	/** Narrow an unknown PATCH value to the SCIM roles shape. Malformed entries are dropped. */
+	private toScimRoles(value: unknown[]): ScimRole[] {
+		return value.filter(
+			(role): role is ScimRole =>
+				typeof role === 'string' ||
+				(typeof role === 'object' &&
+					role !== null &&
+					typeof (role as { value?: unknown }).value === 'string'),
+		);
+	}
+
 	/**
 	 * Update a user via SCIM PUT operation
 	 */
@@ -367,6 +460,7 @@ export class ScimService {
 			user.disabled = !scimUser.active;
 			changes.add('disabled');
 		}
+		await this.applyRole(user, this.requestedRoleSlug(scimUser), changes);
 
 		this.assertOwnerUnchanged(user, before);
 
@@ -419,7 +513,7 @@ export class ScimService {
 	}
 
 	private snapshot(user: User): OwnerGuardSnapshot {
-		return { email: user.email, disabled: user.disabled };
+		return { email: user.email, disabled: user.disabled, roleSlug: user.role?.slug };
 	}
 
 	/**
@@ -428,6 +522,10 @@ export class ScimService {
 	 * request. Other attributes, such as the name, can still change.
 	 */
 	private assertOwnerUnchanged(user: User, before: OwnerGuardSnapshot): void {
+		if (before.roleSlug === GLOBAL_OWNER_ROLE_SLUG && !this.isOwner(user)) {
+			throw new ScimForbiddenError('The role of the instance owner cannot be changed via SCIM');
+		}
+
 		if (!this.isOwner(user)) return;
 
 		// A difference in case only is the same address, so allow it.
