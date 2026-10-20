@@ -1,5 +1,6 @@
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
+import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { v4 as uuid } from 'uuid';
 
 import { AgentFileRepository } from '@/modules/agents/repositories/agent-file.repository';
@@ -43,7 +44,7 @@ describe('AgentFileRepository knowledge totals', () => {
 	}
 
 	async function addFile(agentId: string, fileName: string, fileSizeBytes: number) {
-		const fileId = uuid();
+		const fileId = generateNanoId();
 		await fileRepo.insert({
 			id: fileId,
 			agentId,
