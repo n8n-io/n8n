@@ -255,69 +255,69 @@ onMounted(async () => {
 	<N8nDialog
 		v-if="providerTypes.length"
 		:open="modalOpen"
-		size="full"
+		size="2xlarge"
 		:container-class="$style.secretsProviderConnectionModal"
 		@update:open="onDialogOpenUpdate"
 	>
-		<N8nDialogHeader>
-			<div :class="$style.header" :data-test-id="`${SECRETS_PROVIDER_CONNECTION_MODAL_KEY}-modal`">
-				<div :class="$style.info">
-					<div :class="$style.icon">
-						<SecretsProviderImage
-							v-if="modal.selectedProviderType.value"
-							:provider="modal.selectedProviderType.value"
-							:class="$style.headerIcon"
-						/><N8nIcon v-else icon="vault" width="24" height="24" />
-					</div>
-					<div :class="$style.name">
-						<N8nDialogTitle
-							v-if="modal.providerKey.value"
-							:class="$style.providerName"
-							:title="modal.providerKey.value"
-						>
-							{{ modal.providerKey.value }}
-						</N8nDialogTitle>
-						<N8nDialogTitle v-else>
-							{{
-								modal.selectedProviderType.value?.displayName ??
-								i18n.baseText('settings.secretsProviderConnections.modal.providerType.placeholder')
-							}}
-						</N8nDialogTitle>
-						<N8nText v-if="modal.providerKey.value" size="small" color="text-light">
-							{{
-								modal.selectedProviderType.value?.displayName ??
-								i18n.baseText('settings.secretsProviderConnections.modal.providerType.placeholder')
-							}}
-						</N8nText>
-					</div>
+		<N8nDialogHeader
+			:class="$style.dialogHeader"
+			:data-test-id="`${SECRETS_PROVIDER_CONNECTION_MODAL_KEY}-modal`"
+		>
+			<div :class="$style.info">
+				<div :class="$style.icon">
+					<SecretsProviderImage
+						v-if="modal.selectedProviderType.value"
+						:provider="modal.selectedProviderType.value"
+						:class="$style.headerIcon"
+					/><N8nIcon v-else icon="vault" width="24" height="24" />
 				</div>
-				<div v-if="!modal.isReadOnly.value" :class="$style.actions">
-					<N8nTooltip placement="left">
-						<N8nIconButton
-							v-if="modal.isEditMode.value && modal.canDelete.value"
-							:title="i18n.baseText('generic.delete')"
-							icon="trash-2"
-							variant="ghost"
-							:disabled="modal.isSaving.value"
-							data-test-id="secrets-provider-delete-button"
-							@click="handleDelete"
-						/>
-						<template #content> {{ i18n.baseText('generic.delete') }}</template>
-					</N8nTooltip>
-					<SaveButton
-						:saved="!modal.hasUnsavedChanges.value && modal.isEditMode.value"
-						:is-saving="modal.isSaving.value"
-						:disabled="!modal.canSave.value"
-						:saving-label="i18n.baseText('settings.secretsProviderConnections.modal.saving')"
-						data-test-id="secrets-provider-connection-save-button"
-						@click="handleSave"
-					/>
+				<div :class="$style.name">
+					<N8nDialogTitle
+						v-if="modal.providerKey.value"
+						:class="$style.providerName"
+						:title="modal.providerKey.value"
+					>
+						{{ modal.providerKey.value }}
+					</N8nDialogTitle>
+					<N8nDialogTitle v-else>
+						{{
+							modal.selectedProviderType.value?.displayName ??
+							i18n.baseText('settings.secretsProviderConnections.modal.providerType.placeholder')
+						}}
+					</N8nDialogTitle>
+					<N8nText v-if="modal.providerKey.value" size="small" color="text-light">
+						{{
+							modal.selectedProviderType.value?.displayName ??
+							i18n.baseText('settings.secretsProviderConnections.modal.providerType.placeholder')
+						}}
+					</N8nText>
 				</div>
 			</div>
+			<div v-if="!modal.isReadOnly.value" :class="$style.actions">
+				<N8nTooltip placement="left">
+					<N8nIconButton
+						v-if="modal.isEditMode.value && modal.canDelete.value"
+						:title="i18n.baseText('generic.delete')"
+						icon="trash-2"
+						variant="ghost"
+						:disabled="modal.isSaving.value"
+						data-test-id="secrets-provider-delete-button"
+						@click="handleDelete"
+					/>
+					<template #content> {{ i18n.baseText('generic.delete') }}</template>
+				</N8nTooltip>
+				<SaveButton
+					:saved="!modal.hasUnsavedChanges.value && modal.isEditMode.value"
+					:is-saving="modal.isSaving.value"
+					:disabled="!modal.canSave.value"
+					:saving-label="i18n.baseText('settings.secretsProviderConnections.modal.saving')"
+					data-test-id="secrets-provider-connection-save-button"
+					@click="handleSave"
+				/>
+			</div>
 		</N8nDialogHeader>
-		<N8nDialogBody>
-			<div :class="$style.container">
-				<!-- Left sidebar menu -->
+		<N8nDialogBody :class="$style.body">
+			<div :class="$style.modalLayout">
 				<nav v-if="tabNavigationEnabled" :class="$style.sidebar">
 					<N8nMenuItem
 						v-for="item in sidebarItems"
@@ -545,33 +545,6 @@ onMounted(async () => {
 </template>
 
 <style module lang="scss">
-.secretsProviderConnectionModal {
-	/* Previous dialog cap. No spacing token for 1200px. */
-	max-width: min(1200px, 70vw);
-	/* Keep the dialog fixed. A relative position drops it out of the viewport. */
-	height: 80dvh;
-	max-height: 80dvh;
-	display: flex;
-	flex-direction: column;
-	overflow: hidden;
-
-	header {
-		padding-bottom: 0;
-	}
-
-	/* Let the body shrink inside the cap. The connection form scrolls inside it. */
-	:global([data-slot='dialog-body']) {
-		min-height: 0;
-		overflow: hidden;
-	}
-}
-
-.mainContent {
-	flex: 1;
-	padding-bottom: 60px;
-	padding-inline: var(--spacing--xs);
-}
-
 .icon {
 	width: 1.5rem;
 	height: 1.5rem;
@@ -598,31 +571,47 @@ onMounted(async () => {
 	display: block;
 }
 
+.secretsProviderConnectionModal {
+	min-height: 600px;
+	max-height: 600px;
+}
+
+.dialogHeader {
+	align-items: center;
+}
+
+.body {
+	&.body {
+		flex: 1 1 auto;
+		min-height: 0;
+		padding: 0;
+		overflow: hidden;
+		border-block: var(--border);
+	}
+}
+
 .modalLayout {
 	display: flex;
-	gap: var(--spacing--lg);
-	min-height: 400px;
+	flex: 1 1 auto;
+	flex-direction: row;
+	align-items: stretch;
+	min-width: 0;
+	min-height: 0;
+	overflow: hidden;
 }
 
 .sidebar {
-	max-width: 170px;
-	min-width: 170px;
-	margin-right: var(--spacing--lg);
-	flex-grow: 1;
+	display: flex;
+	flex: 0 0 calc(var(--spacing--4xl) + var(--spacing--3xl));
+	flex-direction: column;
+	min-height: 0;
+	overflow: auto;
+	padding: var(--spacing--xs);
+	border-inline-end: var(--border);
 
 	ul {
 		padding: 0 !important;
 	}
-}
-
-.header {
-	display: flex;
-}
-
-.container {
-	display: flex;
-	flex: 1;
-	min-height: 0;
 }
 
 .info {
@@ -631,26 +620,20 @@ onMounted(async () => {
 	flex-direction: row;
 	flex-grow: 1;
 	min-width: 0;
-	margin-bottom: var(--spacing--lg);
 }
 
 .actions {
 	display: flex;
-	flex-direction: row;
 	align-items: center;
-	margin-right: var(--spacing--xl);
-	margin-bottom: var(--spacing--lg);
-
-	> * {
-		margin-left: var(--spacing--2xs);
-	}
+	gap: var(--spacing--2xs);
 }
 
 .contentArea {
-	flex: 1;
+	flex: 1 1 auto;
+	min-width: 0;
 	min-height: 0;
-	overflow-y: auto;
-	padding-top: var(--spacing--2xs);
+	overflow: auto;
+	padding: var(--n8n-dialog-region--padding, var(--spacing--md));
 }
 
 .expressionExample {
