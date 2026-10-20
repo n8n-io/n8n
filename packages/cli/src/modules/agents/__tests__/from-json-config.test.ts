@@ -810,6 +810,7 @@ describe('buildFromJson()', () => {
 				{
 					toolExecutor: makeMockToolExecutor(),
 					credentialProvider: makeMockCredentialProvider(model),
+					memoryFactory: makeMockMemoryFactory(),
 				},
 			);
 

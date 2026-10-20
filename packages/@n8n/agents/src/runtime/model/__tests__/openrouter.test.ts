@@ -239,9 +239,9 @@ describe('OpenRouter reasoning options', () => {
 			reasoning: 'high',
 			providerOptions,
 		});
-		expect(JSON.parse(fetch.mock.calls[0][1]?.body as string)).toMatchObject(
-			providerOptions.openrouter,
-		);
+		const body = JSON.parse(fetch.mock.calls[0][1]?.body as string);
+		expect(body).toMatchObject(providerOptions.openrouter);
+		expect(body.reasoning).not.toHaveProperty('effort');
 		expect(providerOptions.openrouter.reasoning).not.toHaveProperty('effort');
 	});
 });

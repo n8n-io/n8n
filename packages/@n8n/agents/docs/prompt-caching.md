@@ -157,9 +157,9 @@ exists.
 The block is not part of the base instructions. `buildSystemMessages` sends it
 as its own system message, after the base instructions and before the volatile
 message. The tools and base instructions in front of it stay byte-identical, so
-they stay cached when a skill moves into the block. On the native Anthropic API,
-the block reuses the instruction cache options. It gets its own breakpoint and
-stays cached when memory compacts again later.
+they stay cached when a skill moves into the block. On the native Anthropic API
+and for Claude on Vertex, the block reuses the instruction cache options. It gets
+its own breakpoint and stays cached when memory compacts again later.
 `buildSkillInstructionCacheOptions` drops that breakpoint when it would leave
 no slot for the conversation breakpoint next to caller breakpoints on tools,
 history messages, and their content parts.

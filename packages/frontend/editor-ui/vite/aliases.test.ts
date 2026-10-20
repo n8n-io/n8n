@@ -146,6 +146,12 @@ describe('editor-ui vite aliases', () => {
 		expect(offenders).toEqual([]);
 	});
 
+	it('resolves model cache capabilities from source', () => {
+		expect(resolveSpecifier('@n8n/ai-utilities/agent-config/model-capabilities', aliases)).toBe(
+			'packages/@n8n/ai-utilities/src/agent-config/model-capabilities.ts',
+		);
+	});
+
 	it('resolves @n8n/tournament from source', () => {
 		// `n8n-workflow` brings in this package. Nothing declares it, so it is not in
 		// `sourcePackages`. Its `dist` is CJS. The dev server gives a parse error for a named export.
