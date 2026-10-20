@@ -1,11 +1,19 @@
 import { render, fireEvent, waitFor } from '@testing-library/vue';
 import type { SelfHealingConfigurationDto } from '@n8n/api-types';
+import { waitAllPromises } from '@n8n/frontend-test-utils';
 import { createMemoryHistory, createRouter, RouterView, type Router } from 'vue-router';
 
 import { useSelfHealingStore } from '../self-healing.store';
 import SelfHealingConfigView from './SelfHealingConfigView.vue';
 
-const { confirm } = vi.hoisted(() => ({ confirm: vi.fn() }));
+const { confirm, showError, showMessage } = vi.hoisted(() => ({
+	confirm: vi.fn(),
+	showError: vi.fn(),
+	showMessage: vi.fn(),
+}));
+vi.mock('@n8n/composables/useToast', () => ({
+	useToast: () => ({ showError, showMessage }),
+}));
 vi.mock('@n8n/design-system', async (importOriginal) => ({
 	...(await importOriginal<typeof import('@n8n/design-system')>()),
 	useMessage: () => ({ confirm }),
@@ -95,6 +103,66 @@ it('loads an existing configuration without offering to save unchanged values', 
 	const view = await renderView('1');
 	expect(await view.findByRole('button', { name: 'Save changes' })).toBeDisabled();
 });
+
+it.each(['resolves', 'rejects'])(
+	'keeps newer form edits when an obsolete load %s',
+	async (outcome) => {
+		const store = useSelfHealingStore();
+		store.configurations.project = [
+			configuration,
+			{ ...configuration, id: 2, scope: 'selected', workflowIds: ['workflow'] },
+		];
+		const pending = Promise.withResolvers<undefined>();
+		vi.mocked(store.load).mockReturnValueOnce(pending.promise).mockResolvedValueOnce();
+		const view = await renderView('1');
+		await router.push('/projects/project/settings/self-healing/2');
+		await fireEvent.click(await view.findByRole('button', { name: 'Remove reviewer' }));
+
+		if (outcome === 'rejects') {
+			pending.reject(new Error('Could not load the previous configuration'));
+		} else {
+			pending.resolve(undefined);
+		}
+		await waitAllPromises();
+
+		expect(view.queryByTestId('self-healing-selected-reviewer')).not.toBeInTheDocument();
+		expect(view.getByRole('button', { name: 'Discard changes' })).toBeEnabled();
+		expect(view.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument();
+		expect(showError).not.toHaveBeenCalled();
+		confirm.mockResolvedValueOnce('cancel');
+		await router.push('/projects/project/settings');
+		expect(confirm).toHaveBeenCalledOnce();
+		expect(router.currentRoute.value.params.configurationId).toBe('2');
+	},
+);
+
+it.each(['resolves', 'rejects'])(
+	'keeps loading the current configuration when an obsolete load %s',
+	async (outcome) => {
+		const store = useSelfHealingStore();
+		store.configurations.project = [configuration, { ...configuration, id: 2 }];
+		const previous = Promise.withResolvers<undefined>();
+		const current = Promise.withResolvers<undefined>();
+		vi.mocked(store.load)
+			.mockReturnValueOnce(previous.promise)
+			.mockReturnValueOnce(current.promise);
+		const view = await renderView('1');
+		await router.push('/projects/project/settings/self-healing/2');
+
+		if (outcome === 'rejects') {
+			previous.reject(new Error('Could not load the previous configuration'));
+		} else {
+			previous.resolve(undefined);
+		}
+		await waitAllPromises();
+
+		expect(view.getByText('Loading configurations…')).toBeVisible();
+		expect(view.queryByRole('button', { name: 'Save changes' })).not.toBeInTheDocument();
+		expect(showError).not.toHaveBeenCalled();
+		current.resolve(undefined);
+		expect(await view.findByRole('button', { name: 'Save changes' })).toBeDisabled();
+	},
+);
 
 it.each([false, true])(
 	'preserves enabled=%s when saving edits and blocks changes during save',

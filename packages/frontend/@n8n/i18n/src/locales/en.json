@@ -9907,7 +9907,7 @@
 	"selfHealing.config.active": "Active",
 	"selfHealing.config.noActivity": "No failures yet",
 	"selfHealing.config.removeTitle": "Delete self-healing configuration",
-	"selfHealing.config.removeMessage": "Delete this configuration? Workflows it enrolled will no longer be fixed automatically.",
+	"selfHealing.config.removeMessage": "Delete this configuration and its investigation history and results? Other configurations can still cover these workflows.",
 	"selfHealing.config.loadError": "Couldn't load configurations. Try again.",
 	"selfHealing.config.saveError": "Couldn't save the configuration. Review the details and try again.",
 	"selfHealing.config.removeError": "Couldn't remove the configuration. Try again.",

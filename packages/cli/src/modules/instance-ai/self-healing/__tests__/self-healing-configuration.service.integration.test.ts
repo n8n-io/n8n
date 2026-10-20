@@ -191,6 +191,35 @@ it('keeps selections when a workflow moves between folders in the same project',
 	expect((await configurations.get(project.id, selected.id)).workflowIds).toEqual([workflow.id]);
 });
 
+it('keeps destination selections saved before transfer cleanup', async () => {
+	const { user, project, workflow, input } = await fixture();
+	const selected = await configurations.save(user, project.id, input);
+	const destination = await createTeamProject(undefined, user);
+	const removeWorkflowSelections = repository.removeWorkflowSelections.bind(repository);
+	const cleanup = vi
+		.spyOn(repository, 'removeWorkflowSelections')
+		.mockImplementationOnce(async (workflowIds) => {
+			await configurations.save(user, destination.id, input);
+			await removeWorkflowSelections(workflowIds);
+		});
+
+	try {
+		await Container.get(EnterpriseWorkflowService).transferWorkflow(
+			user,
+			workflow.id,
+			destination.id,
+		);
+
+		expect(cleanup).toHaveBeenCalledWith([workflow.id]);
+		expect((await configurations.get(project.id, selected.id)).workflowIds).toEqual([]);
+		expect(await configurations.list(destination.id)).toEqual([
+			expect.objectContaining({ workflowIds: [workflow.id] }),
+		]);
+	} finally {
+		cleanup.mockRestore();
+	}
+});
+
 it('removes selected workflows from a transferred folder and its subfolders', async () => {
 	const { user, project, workflow, input } = await fixture();
 	const folder = await createFolder(project);

@@ -154,13 +154,18 @@ const title = computed(() =>
 	i18n.baseText(isNew.value ? 'selfHealing.config.new' : 'selfHealing.config.edit'),
 );
 
+let pendingLoad: symbol | undefined;
+
 async function load() {
+	const request = Symbol();
+	pendingLoad = request;
 	loading.value = true;
 	loadError.value = false;
 	savedForm.value = '';
 
 	try {
 		await store.load(props.projectId);
+		if (pendingLoad !== request) return;
 
 		const configuration = store.configurations[props.projectId]?.find(
 			({ id }) => String(id) === props.configurationId,
@@ -187,10 +192,14 @@ async function load() {
 
 		savedForm.value = JSON.stringify(form.value);
 	} catch (error) {
+		if (pendingLoad !== request) return;
+
 		loadError.value = true;
 		toast.showError(error, i18n.baseText('selfHealing.config.loadError'));
 	} finally {
-		loading.value = false;
+		if (pendingLoad === request) {
+			loading.value = false;
+		}
 	}
 }
 

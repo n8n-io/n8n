@@ -162,7 +162,23 @@ export class SelfHealingConfigurationRepository extends BaseRepository<SelfHeali
 	}
 
 	async removeWorkflowSelections(workflowIds: string[]) {
-		await this.manager.delete(SelfHealingConfigurationWorkflow, { workflowId: In(workflowIds) });
+		if (workflowIds.length === 0) return;
+
+		const owners = this.manager
+			.createQueryBuilder(SharedWorkflow, 'owner')
+			.select(['owner.workflowId', 'owner.projectId'])
+			.where('owner.role = :role', { role: 'workflow:owner' })
+			.andWhere('owner.workflowId IN (:...workflowIds)', { workflowIds });
+
+		// A destination selection can be saved after ownership changes but before cleanup.
+		await this.manager
+			.createQueryBuilder()
+			.delete()
+			.from(SelfHealingConfigurationWorkflow)
+			.where('workflowId IN (:...workflowIds)')
+			.andWhere(`("workflowId", "projectId") NOT IN (${owners.getQuery()})`)
+			.setParameters(owners.getParameters())
+			.execute();
 	}
 
 	async deleteConfiguration(id: number, ctx: OperationContext) {
