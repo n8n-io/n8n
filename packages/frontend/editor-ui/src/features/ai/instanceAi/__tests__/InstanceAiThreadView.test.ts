@@ -6,7 +6,6 @@ import { fireEvent, within } from '@testing-library/vue';
 import { flushPromises } from '@vue/test-utils';
 import { createTestingPinia } from '@pinia/testing';
 import type {
-	AgentEvalVerdict,
 	InstanceAiAgentNode,
 	InstanceAiHandoffContext,
 	InstanceAiMessage,
@@ -2478,31 +2477,24 @@ describe('InstanceAiThreadView', () => {
 			});
 		}
 
-		const PASS_VERDICT: AgentEvalVerdict = {
-			status: 'completed',
-			outcome: 'pass',
-			reasoning: 'It answered the question.',
-		};
-
-		function seedPreviewRun(verdict: AgentEvalVerdict = PASS_VERDICT) {
+		// The panel drafts its checks before it offers to run them.
+		function seedDraftCases() {
 			const evalsStore = mockedStore(useAgentEvalsStore);
-			evalsStore.previewRun.mockResolvedValueOnce({
-				status: 'completed',
-				input: 'Summarize the thread',
-				whatToCheck: 'mentions the outage',
-				scenario: 'Vague',
-				response: 'Done.',
-				verdict,
-			});
+			evalsStore.generateDraftCases.mockResolvedValue({
+				cases: [1, 2, 3].map((n) => ({
+					input: `Sample message ${n}`,
+					whatToCheck: `Rule ${n}`,
+					scenario: 'Vague',
+				})),
+			} as never);
 			return evalsStore;
 		}
 
-		// The panel shows the run's steps in turn before its next steps appear.
-		const PLAYBACK_TIMEOUT = { timeout: 5000 };
+		const OFFER_TIMEOUT = { timeout: 5000 };
 
 		it('renders the preview panel instead of the generic offer when the main eval flag is on', async () => {
 			seedReadyAgent();
-			seedPreviewRun();
+			seedDraftCases();
 
 			const { queryByTestId, findByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
@@ -2510,67 +2502,28 @@ describe('InstanceAiThreadView', () => {
 			expect(queryByTestId('instance-ai-test-agent-panel')).not.toBeInTheDocument();
 		});
 
-		// The builder's `call_agent` result has no rule and no judge verdict, so it
-		// cannot be reported as a first check. The panel runs and judges its own.
-		it("does not reuse the builder's own test call, since it has no rule or verdict", async () => {
+		it('offers three drafted checks and runs nothing on its own', async () => {
 			seedReadyAgent();
-			const evalsStore = seedPreviewRun();
-			thread.messages.push({
-				id: 'msg-builder',
-				role: 'assistant',
-				content: '',
-				reasoning: '',
-				isStreaming: false,
-				createdAt: '2026-04-01T00:00:00.000Z',
-				agentTree: {
-					agentId: 'agent-builder',
-					role: 'orchestrator',
-					status: 'completed',
-					textContent: '',
-					reasoning: '',
-					timeline: [],
-					children: [],
-					// Identifies which real agent this tree's tool calls target — the
-					// preview panel must only reuse a `call_agent` result from the
-					// agent it is actually offering to test.
-					targetResource: { type: 'agent', id: 'agent-1', projectId: 'project-1' },
-					toolCalls: [
-						{
-							toolCallId: 'tc-call-1',
-							toolName: 'agent_builder_call_agent',
-							args: { message: 'Summarize the thread about the outage' },
-							isLoading: false,
-							result: {
-								status: 'completed',
-								response: 'Ticket #48219 is a P1 SSO outage.',
-								executionId: 'exec-1',
-								sessionId: 'session-1',
-							},
-						},
-					],
-				},
+			const evalsStore = seedDraftCases();
+
+			const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+			expect(await findByTestId('instance-ai-first-checks-run', {}, OFFER_TIMEOUT)).toBeEnabled();
+			expect(evalsStore.generateDraftCases).toHaveBeenCalledWith('project-1', 'agent-1', {
+				count: 3,
+				save: false,
 			});
-
-			const { findByTestId, queryByText } = renderView({ props: { threadId: 'thread-1' } });
-
-			expect(
-				await findByTestId('instance-ai-test-agent-preview-practice-more', {}, PLAYBACK_TIMEOUT),
-			).toBeEnabled();
-			expect(evalsStore.previewRun).toHaveBeenCalledTimes(1);
-			expect(queryByText(/Summarize the thread about the outage/)).not.toBeInTheDocument();
-			expect(evalsStore.generateDraftCases).not.toHaveBeenCalled();
+			expect(evalsStore.previewRun).not.toHaveBeenCalled();
 			expect(evalsStore.startRun).not.toHaveBeenCalled();
 		});
 
-		it('persists the dismissal on "Try it for real" without requesting the evals focus', async () => {
+		it('persists the dismissal on "Try it yourself" without requesting the evals focus', async () => {
 			seedReadyAgent();
-			const evalsStore = seedPreviewRun();
+			const evalsStore = seedDraftCases();
 			const user = userEvent.setup();
 			const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
-			await user.click(
-				await findByTestId('instance-ai-test-agent-preview-try-for-real', {}, PLAYBACK_TIMEOUT),
-			);
+			await user.click(await findByTestId('instance-ai-first-checks-try', {}, OFFER_TIMEOUT));
 
 			expect(store.updateThreadMetadata).toHaveBeenCalledWith('thread-1', {
 				dismissedContextKeys: ['test-agent:agent-1'],
@@ -2578,30 +2531,9 @@ describe('InstanceAiThreadView', () => {
 			expect(evalsStore.requestEvalsFocus).not.toHaveBeenCalled();
 		});
 
-		it('persists the dismissal on "Practice more" and opens the Checks tab without generating', async () => {
-			seedReadyAgent();
-			const evalsStore = seedPreviewRun();
-			// The agent already has checks, so nothing is saved before the tab opens.
-			evalsStore.fetchDatasets.mockResolvedValueOnce([{ id: 'dataset-1' } as never]);
-			const user = userEvent.setup();
-			const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
-
-			await user.click(
-				await findByTestId('instance-ai-test-agent-preview-practice-more', {}, PLAYBACK_TIMEOUT),
-			);
-
-			await vi.waitFor(() =>
-				expect(evalsStore.requestEvalsFocus).toHaveBeenCalledWith('agent-1', false),
-			);
-			expect(store.updateThreadMetadata).toHaveBeenCalledWith('thread-1', {
-				dismissedContextKeys: ['test-agent:agent-1'],
-			});
-			expect(evalsStore.requestAddCheckOpen).toHaveBeenCalledWith('agent-1');
-		});
-
 		it('drops the preview panel if the dataset cache populates from elsewhere before the user commits', async () => {
 			seedReadyAgent();
-			const evalsStore = seedPreviewRun();
+			const evalsStore = seedDraftCases();
 
 			// `isLoaded`/`getDatasets` are automocked vi.fn()s, so a plain
 			// `mockReturnValue` change is invisible to Vue's reactivity system —
@@ -2731,15 +2663,7 @@ describe('InstanceAiThreadView', () => {
 
 		it('offers the preview when forced, with no PostHog override at all', async () => {
 			seedReadyAgent();
-			const evalsStore = mockedStore(useAgentEvalsStore);
-			evalsStore.previewRun.mockResolvedValueOnce({
-				status: 'completed',
-				input: 'Summarize the thread',
-				whatToCheck: 'mentions the outage',
-				scenario: 'Vague',
-				response: 'Done.',
-				verdict: PASS_VERDICT,
-			});
+			seedDraftCases();
 			useSettingsStore().settings.evaluation = {
 				...useSettingsStore().settings.evaluation,
 				forceAgentWorthTesting: true,
@@ -2776,18 +2700,6 @@ describe('InstanceAiThreadView', () => {
 			expect(await findByTestId('instance-ai-test-agent-preview-panel')).toBeInTheDocument();
 		});
 
-		it('runs the initial preview without automatically starting saved checks', async () => {
-			seedReadyAgent();
-			const evalsStore = seedPreviewRun();
-			const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
-
-			await findByTestId('instance-ai-test-agent-preview-practice-more', {}, PLAYBACK_TIMEOUT);
-
-			expect(evalsStore.previewRun).toHaveBeenCalledTimes(1);
-			expect(evalsStore.startRun).not.toHaveBeenCalled();
-			expect(evalsStore.requestEvalsFocus).not.toHaveBeenCalled();
-		});
-
 		it('still suggests when a finished run left a confirmation unresolved', async () => {
 			// A lingering confirmation is not "still working" — suppressing on it
 			// would hide the suggestion for the rest of the thread's life.
@@ -2820,137 +2732,13 @@ describe('InstanceAiThreadView', () => {
 			expect(evalsStore.clearEvalsFocus).not.toHaveBeenCalled();
 		});
 
-		it("does not reuse another agent's call_agent result when the offer's own target has no agent id", async () => {
-			// A thread metadata edge case (e.g. corrupted/partial persistence): the
-			// builder target resolves to a truthy object, but with an empty agent
-			// id. `latestCallAgentResult` must treat that the same as "no target"
-			// rather than falling through to the loop below and matching some
-			// unrelated agent's result.
-			testAgentOfferState.evalsFlagEnabled = true;
-			testAgentOfferState.capabilitySummary = {
-				id: 'agent-1',
-				name: 'Trip Planner',
-				model: { provider: 'anthropic', model: 'claude-sonnet-4-5' },
-				channels: [],
-				tools: [{ type: 'custom', name: 'search' }],
-				mcpServers: [],
-				skills: [],
-				tasks: [],
-			};
-			store.getThreadMetadata.mockReturnValue({
-				instanceAiAgentBuilderTarget: { agentId: '', projectId: 'project-1' },
-			});
-			useSettingsStore().settings.evaluation = {
-				...useSettingsStore().settings.evaluation,
-				forceAgentWorthTesting: true,
-			};
-			thread.messages.push({
-				id: 'msg-builder',
-				role: 'assistant',
-				content: '',
-				reasoning: '',
-				isStreaming: false,
-				createdAt: '2026-04-01T00:00:00.000Z',
-				agentTree: {
-					agentId: 'agent-builder',
-					role: 'orchestrator',
-					status: 'completed',
-					textContent: '',
-					reasoning: '',
-					timeline: [],
-					children: [],
-					targetResource: { type: 'agent', id: 'agent-1', projectId: 'project-1' },
-					toolCalls: [
-						{
-							toolCallId: 'tc-call-1',
-							toolName: 'agent_builder_call_agent',
-							args: { message: 'Summarize the thread about the outage' },
-							isLoading: false,
-							result: {
-								status: 'completed',
-								response: 'Ticket #48219 is a P1 SSO outage.',
-								executionId: 'exec-1',
-								sessionId: 'session-1',
-							},
-						},
-					],
-				},
-			});
-			const evalsStore = mockedStore(useAgentEvalsStore);
-			evalsStore.previewRun.mockResolvedValueOnce({
-				status: 'completed',
-				input: 'A different question',
-				whatToCheck: 'something else',
-				scenario: 'Vague',
-				response: 'A freshly generated answer.',
-				verdict: PASS_VERDICT,
-			});
-
-			const user = userEvent.setup();
-			const { findByTestId, findByText, queryByText } = renderView({
-				props: { threadId: 'thread-1' },
-			});
-
-			// Falls back to generating its own case instead of reusing the
-			// unrelated `call_agent` result — proof the offer never got that
-			// result as its `initialCase`.
-			expect(await findByTestId('instance-ai-test-agent-preview-panel')).toBeInTheDocument();
-			expect(evalsStore.previewRun).toHaveBeenCalled();
-			await user.click(await findByTestId('instance-ai-test-agent-preview-first-check'));
-			expect(await findByText('A different question', {}, PLAYBACK_TIMEOUT)).toBeInTheDocument();
-			expect(queryByText(/Ticket #48219 is a P1 SSO outage\./)).not.toBeInTheDocument();
-		});
-
-		it('opens the Checks tab from "Practice more" and keeps the first check in the thread', async () => {
-			seedReadyAgent();
-			const evalsStore = seedPreviewRun();
-			const user = userEvent.setup();
-			const { findByTestId, queryByTestId } = renderView({
-				props: { threadId: 'thread-1' },
-				global: {
-					stubs: {
-						...defaultViewStubs,
-						InstanceAiTestAgentPreviewPanel: defineComponent({
-							name: 'InstanceAiTestAgentPreviewPanelStub',
-							emits: ['confirm', 'dismiss', 'practice-more', 'try-agent'],
-							setup(_, { emit }) {
-								return () =>
-									h(
-										'button',
-										{
-											'data-test-id': 'instance-ai-test-agent-preview-practice-more-stub',
-											onClick: () => emit('practice-more'),
-										},
-										'Practice more',
-									);
-							},
-						}),
-					},
-				},
-			});
-
-			await user.click(await findByTestId('instance-ai-test-agent-preview-practice-more-stub'));
-
-			expect(evalsStore.requestEvalsFocus).toHaveBeenCalledWith('agent-1', false);
-			// The stub only renders once `preview.activeAgentId`/`activeAgentProjectId`
-			// resolve to this agent — its presence with the right id is proof
-			// `preview.openAgentPreview` switched the canvas to it.
-			const agentPreview = await findByTestId('instance-ai-agent-preview-stub');
-			expect(agentPreview).toHaveAttribute('data-agent-id', 'agent-1');
-			expect(agentPreview).toHaveAttribute('data-project-id', 'project-1');
-			// The latch stays, so the first check stays in the thread.
-			expect(
-				queryByTestId('instance-ai-test-agent-preview-practice-more-stub'),
-			).toBeInTheDocument();
-		});
-
 		describe('the offer latch', () => {
 			// Exposes the target it was given and a way to fire `confirm`, which is
 			// what commits the latch in the real panel.
 			const PreviewPanelStub = defineComponent({
 				name: 'InstanceAiTestAgentPreviewPanelStub',
 				props: { target: { type: Object as PropType<{ agentId: string }>, required: true } },
-				emits: ['confirm', 'dismiss', 'practice-more', 'try-agent'],
+				emits: ['confirm', 'dismiss', 'try-agent'],
 				setup(props, { emit }) {
 					return () =>
 						h('div', { 'data-test-id': 'preview-stub', 'data-agent-id': props.target.agentId }, [
@@ -2972,7 +2760,7 @@ describe('InstanceAiThreadView', () => {
 
 			it('drops the card when the agent starts working again before the user commits', async () => {
 				seedReadyAgent();
-				seedPreviewRun();
+				seedDraftCases();
 				const { findByTestId, queryByTestId } = renderWithStub();
 				await findByTestId('preview-stub');
 
@@ -2983,7 +2771,7 @@ describe('InstanceAiThreadView', () => {
 
 			it('keeps the card once the user has committed, even though the live offer is gone', async () => {
 				seedReadyAgent();
-				seedPreviewRun();
+				seedDraftCases();
 				const user = userEvent.setup();
 				const { findByTestId, queryByTestId } = renderWithStub();
 				await user.click(await findByTestId('preview-stub-confirm'));
@@ -2996,7 +2784,7 @@ describe('InstanceAiThreadView', () => {
 
 			it('retargets to another agent built in the same thread, instead of staying on the first', async () => {
 				seedReadyAgent();
-				seedPreviewRun();
+				seedDraftCases();
 				const metadata = ref<Record<string, unknown>>({
 					instanceAiAgentBuilderTarget: AGENT_TARGET,
 				});
@@ -3032,7 +2820,7 @@ describe('InstanceAiThreadView', () => {
 
 		it('opens the offered agent’s chat preview from "Try agent yourself", keeping the panel and not touching evals', async () => {
 			seedReadyAgent();
-			const evalsStore = seedPreviewRun();
+			const evalsStore = seedDraftCases();
 			const user = userEvent.setup();
 			const { findByTestId, queryByTestId } = renderView({
 				props: { threadId: 'thread-1' },
@@ -3041,7 +2829,7 @@ describe('InstanceAiThreadView', () => {
 						...defaultViewStubs,
 						InstanceAiTestAgentPreviewPanel: defineComponent({
 							name: 'InstanceAiTestAgentPreviewPanelStub',
-							emits: ['confirm', 'dismiss', 'practice-more', 'try-agent'],
+							emits: ['confirm', 'dismiss', 'try-agent'],
 							setup(_, { emit }) {
 								return () =>
 									h(

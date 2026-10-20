@@ -1370,6 +1370,7 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 		isStartingRun,
 		resolveLatestRunId,
 		openRun,
+		refreshResults,
 		loadMoreResults,
 		getDraft,
 		beginVote,
