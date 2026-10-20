@@ -13,6 +13,7 @@ import {
 	N8nDialogBody,
 	N8nDialogFooter,
 	N8nDialogHeader,
+	N8nDialogDescription,
 	N8nDialogTitle,
 	N8nHeading,
 	N8nIcon,
@@ -211,7 +212,7 @@ async function onUpgradeClick() {
 				<N8nText tag="p" size="small" color="text-base" :class="$style.welcomeLabel">
 					{{ i18n.baseText('experiments.trialIntroModal.eyebrow') }}
 				</N8nText>
-				<N8nDialogTitle :class="$style.trialLead">
+				<N8nDialogTitle>
 					<I18nT keypath="experiments.trialIntroModal.title" tag="span" scope="global">
 						<template #highlight>
 							<span :class="$style.titleHighlight">{{
@@ -220,9 +221,9 @@ async function onUpgradeClick() {
 						</template>
 					</I18nT>
 				</N8nDialogTitle>
-				<N8nText tag="p" size="small" color="text-base" :class="$style.subtitle">
+				<N8nDialogDescription>
 					{{ i18n.baseText('experiments.trialIntroModal.subtitle') }}
-				</N8nText>
+				</N8nDialogDescription>
 				<div :class="$style.statCards">
 					<div
 						v-if="aiCredits !== undefined"
@@ -283,9 +284,9 @@ async function onUpgradeClick() {
 				<N8nDialogTitle>
 					{{ i18n.baseText('experiments.trialIntroModal.step2.title') }}
 				</N8nDialogTitle>
-				<N8nText tag="p" size="small" color="text-base" :class="$style.subtitle">
+				<N8nDialogDescription>
 					{{ i18n.baseText('experiments.trialIntroModal.step2.subtitle') }}
-				</N8nText>
+				</N8nDialogDescription>
 				<div v-if="starterOffer" :class="$style.comparisonRows">
 					<div
 						v-if="executionsLimit !== undefined"
@@ -476,17 +477,8 @@ async function onUpgradeClick() {
 	align-items: center;
 }
 
-.trialLead {
-	margin: 0;
-}
-
 .titleHighlight {
 	color: var(--color--primary);
-}
-
-.subtitle {
-	margin-top: var(--spacing--2xs);
-	margin-bottom: var(--spacing--md);
 }
 
 .statCards {
