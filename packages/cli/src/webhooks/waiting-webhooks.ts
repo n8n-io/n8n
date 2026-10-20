@@ -9,6 +9,7 @@ import {
 	FORM_NODE_TYPE,
 	type INode,
 	type INodes,
+	type IWebhookData,
 	type IWorkflowBase,
 	NodeConnectionTypes,
 	SEND_AND_WAIT_OPERATION,
@@ -74,11 +75,7 @@ export class WaitingWebhooks implements IWebhookManager {
 		try {
 			return this.webhookService
 				.getNodeWebhooks(workflow, workflowStartNode, additionalData)
-				.filter(
-					(webhook) =>
-						webhook.webhookDescription.restartWebhook === true &&
-						(webhook.webhookDescription.nodeType === 'form' || false) === this.includeForms,
-				)
+				.filter((webhook) => this.isOwnRestartWebhook(webhook))
 				.map((webhook) => webhook.httpMethod);
 		} finally {
 			await workflow.expression.releaseIsolate();
@@ -108,6 +105,14 @@ export class WaitingWebhooks implements IWebhookManager {
 				(node) =>
 					nodes[node].id === suffix && nodes[node].parameters.operation === SEND_AND_WAIT_OPERATION,
 			)
+		);
+	}
+
+	/** Form restart webhooks resume through `form-waiting`, all other restart webhooks through `webhook-waiting`. */
+	private isOwnRestartWebhook(webhook: IWebhookData): boolean {
+		return (
+			webhook.webhookDescription.restartWebhook === true &&
+			(webhook.webhookDescription.nodeType === 'form') === this.includeForms
 		);
 	}
 
@@ -413,8 +418,7 @@ export class WaitingWebhooks implements IWebhookManager {
 					(webhook) =>
 						webhook.httpMethod === req.method &&
 						webhook.path === (suffix ?? '') &&
-						webhook.webhookDescription.restartWebhook === true &&
-						(webhook.webhookDescription.nodeType === 'form' || false) === this.includeForms,
+						this.isOwnRestartWebhook(webhook),
 				);
 
 			if (webhookData === undefined) {
