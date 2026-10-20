@@ -1565,7 +1565,6 @@ describe('InstanceAiService — self-healing launcher', () => {
 				startSelfHealingRun: InstanceAiService['startSelfHealingRun'];
 				shutdown: InstanceAiService['shutdown'];
 				stopRunsForQuotaExhaustion: (user: User) => void;
-				drainInFlightExecutions: (timeoutMs: number) => Promise<void>;
 			},
 			{
 				selfHealingAgent: {
@@ -1706,7 +1705,7 @@ describe('InstanceAiService — self-healing launcher', () => {
 		await expect(service.startSelfHealingRun(input, lifecycle)).rejects.toThrow(
 			'Storage unavailable',
 		);
-		await service.drainInFlightExecutions(1000);
+		await service.shutdown();
 
 		expect(service.runState.activeRunCount()).toBe(0);
 		expect(service.inFlightExecutions.size).toBe(0);
@@ -1726,18 +1725,17 @@ describe('InstanceAiService — self-healing launcher', () => {
 				return { ...completedRun(options), status: 'cancelled', reason: options.getAbortReason() };
 			});
 			const run = service.startSelfHealingRun(input, lifecycle);
-			const { activeRuns } = service.runState.shutdown();
-			for (const active of activeRuns) active.abortController.abort('service_shutdown');
-			let drained = false;
-			const drain = service.drainInFlightExecutions(1000).then(() => {
-				drained = true;
+			let shutDown = false;
+			const shutdown = service.shutdown().then(() => {
+				shutDown = true;
 			});
-			await Promise.resolve();
-			expect(drained).toBe(false);
+			await new Promise<void>((resolve) => setImmediate(resolve));
+			expect(service.selfHealingAgent.execute.mock.calls[0][1].signal.aborted).toBe(true);
+			expect(shutDown).toBe(false);
 
 			cleanup.resolve(undefined);
 			expect(await run).toMatchObject({ status: 'cancelled', reason: 'service_shutdown' });
-			await drain;
+			await shutdown;
 			expect(service.inFlightExecutions.size).toBe(0);
 		},
 	);
@@ -1854,34 +1852,41 @@ describe('InstanceAiService — self-healing launcher', () => {
 	});
 
 	it('rejects an actor who tries to use a producer thread as ordinary chat', async () => {
-		const service = Object.assign(
-			Object.create(InstanceAiService.prototype) as {
-				createExecutionEnvironment: (
-					user: User,
-					threadId: string,
-					runId: string,
-					signal: AbortSignal,
-				) => Promise<unknown>;
+		const service = Object.assign(createTerminalGuardOrderService(), {
+			startRun: InstanceAiService.prototype.startRun,
+			agentMemory: {
+				getThread: vi.fn(async () => ({ resourceId: `ia-self-healing:${fakeUser.id}` })),
+				getThreadProjectId: vi.fn(),
 			},
-			{
-				agentMemory: {
-					getThread: vi.fn(async () => ({ resourceId: `ia-self-healing:${fakeUser.id}` })),
-					getThreadProjectId: vi.fn(),
-				},
-				adapterService: { createContext: vi.fn() },
-			},
+			inFlightExecutions: new Set<Promise<unknown>>(),
+			instanceAiConfig: { maxConcurrentRuns: 5, maxConcurrentRunsPerUser: 3 },
+			adapterService: { resolveExperimentGates: vi.fn(), createContext: vi.fn() },
+			publishRunFinish: vi.fn(),
+		});
+		Object.assign(service.runState, createStartRunService().runState);
+		Object.assign(service.liveness, { clearThreadState: vi.fn() });
+		stubInitialRunSurface(service);
+		Reflect.deleteProperty(service, 'createExecutionEnvironment');
+		const createContext = vi.fn();
+		Object.assign(service.adapterService, { createContext });
+
+		const runId = service.startRun(fakeUser, 'internal-thread', 'hello');
+		await Promise.all(service.inFlightExecutions);
+
+		expect(service.instanceAiErrorReporter.report).toHaveBeenCalledWith(
+			expect.any(ForbiddenError),
+			expect.objectContaining({ threadId: 'internal-thread', runId }),
 		);
-
-		await expect(
-			service.createExecutionEnvironment(
-				fakeUser,
-				'internal-thread',
-				'run-1',
-				new AbortController().signal,
-			),
-		).rejects.toThrow(ForbiddenError);
-
-		expect(service.adapterService.createContext).not.toHaveBeenCalled();
+		expect(service.publishRunFinish).toHaveBeenCalledWith(
+			'internal-thread',
+			runId,
+			'errored',
+			expect.any(String),
+			[],
+			fakeUser.id,
+			expect.objectContaining({ errorMessage: 'Not authorized for this thread' }),
+		);
+		expect(createContext).not.toHaveBeenCalled();
 		expect(service.agentMemory.getThreadProjectId).not.toHaveBeenCalled();
 	});
 });
