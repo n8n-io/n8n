@@ -259,7 +259,7 @@ watch(
 }
 
 .http-field {
-	flex-shrink: 0;
+	flex: 0 0 var(--spacing--3xl);
 }
 
 .http-method {
