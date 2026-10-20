@@ -2,19 +2,16 @@
 import type { PromotionDirection, PromotionResourceDetail } from '@n8n/api-types';
 import { N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { computed, defineAsyncComponent, onMounted } from 'vue';
+import { computed, onMounted } from 'vue';
 
 import { useTagsStore } from '@/features/shared/tags/tags.store';
+import WorkflowDiffView from '@/features/workflows/workflowDiff/WorkflowDiffView.vue';
 import { toDiffWorkflow } from '@/features/workflows/workflowDiff/workflowDiff.utils';
 
 import type { DetailSide } from '../../promotionPreview.content';
 import type { ResourceKey, SelectionGraph } from '../../promotionPreview.selection';
-import { toPromotionDiffSide } from '../../promotionPreview.workflow';
-
-// The canvas code loads only when a diff opens.
-const WorkflowDiffView = defineAsyncComponent(
-	async () => await import('@/features/workflows/workflowDiff/WorkflowDiffView.vue'),
-);
+import { isBranchSide, toPromotionDiffSide } from '../../promotionPreview.workflow';
+import PromotionWorkflowSideLabel from './PromotionWorkflowSideLabel.vue';
 
 const props = defineProps<{
 	detail: Extract<PromotionResourceDetail, { type: 'workflow' }>;
@@ -52,20 +49,9 @@ function workflowOf(side: DetailSide) {
 const source = computed(() => workflowOf('before'));
 const target = computed(() => workflowOf('after'));
 
-// Promote changes the branch to match this instance. Apply does the opposite.
-const branchSide = computed((): DetailSide => (props.direction === 'promote' ? 'before' : 'after'));
-
-function labelOf(side: DetailSide) {
-	return side === branchSide.value
-		? i18n.baseText(`promotions.preview.branch.${props.direction}`, {
-				interpolate: { branch: props.branchName ?? '' },
-			})
-		: i18n.baseText('promotions.preview.side.instance');
-}
-
 function emptyTextOf(side: DetailSide) {
 	return i18n.baseText(
-		side === branchSide.value
+		isBranchSide(side, props.direction)
 			? 'promotions.preview.side.notOnBranch'
 			: 'promotions.preview.side.notOnInstance',
 	);
@@ -77,23 +63,19 @@ function emptyTextOf(side: DetailSide) {
 		<WorkflowDiffView
 			:source-workflow="source"
 			:target-workflow="target"
-			:source-label="labelOf('before')"
-			:target-label="labelOf('after')"
 			:canvas-id-prefix="resourceKey"
 			show-fullscreen-button
 			hide-title
 		>
 			<template #sourceLabel>
-				<span :class="$style.badge">
-					<span :class="[$style.dot, $style.before]" />
-					<N8nText color="text-dark" size="small" compact>{{ labelOf('before') }}</N8nText>
-				</span>
+				<PromotionWorkflowSideLabel
+					side="before"
+					:direction="direction"
+					:branch-name="branchName"
+				/>
 			</template>
 			<template #targetLabel>
-				<span :class="$style.badge">
-					<span :class="[$style.dot, $style.after]" />
-					<N8nText color="text-dark" size="small" compact>{{ labelOf('after') }}</N8nText>
-				</span>
+				<PromotionWorkflowSideLabel side="after" :direction="direction" :branch-name="branchName" />
 			</template>
 			<template #sourceEmptyText>
 				<N8nText size="small" color="text-base">{{ emptyTextOf('before') }}</N8nText>
@@ -107,27 +89,6 @@ function emptyTextOf(side: DetailSide) {
 
 <style module lang="scss">
 .diff {
-	/* The canvases size themselves to this height. No token fits, so 28rem matches the review diff. */
-	height: max(28rem, 70vh);
-	border-top: var(--border);
-}
-
-.badge {
-	composes: sourceBadge from '../../../../workflows/workflowDiff/workflowDiff.module.scss';
-}
-
-.dot {
-	width: var(--spacing--2xs);
-	height: var(--spacing--2xs);
-	border-radius: var(--radius--full);
-	flex-shrink: 0;
-}
-
-.before {
-	background-color: var(--color--mint-600);
-}
-
-.after {
-	background-color: var(--color--yellow-500);
+	height: 100%;
 }
 </style>

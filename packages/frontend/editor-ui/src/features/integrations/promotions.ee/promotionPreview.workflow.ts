@@ -1,4 +1,8 @@
-import type { PromotionResource, PromotionResourceDetail } from '@n8n/api-types';
+import type {
+	PromotionDirection,
+	PromotionResource,
+	PromotionResourceDetail,
+} from '@n8n/api-types';
 import type { IConnections, INode, IWorkflowSettings } from 'n8n-workflow';
 
 import type { DiffWorkflowInput } from '@/features/workflows/workflowDiff/workflowDiff.utils';
@@ -39,13 +43,21 @@ export function toPromotionDiffSide(
 	};
 }
 
-/** Only changed workflows have a diff. The page opens one of them at a time. */
+/** Only changed workflows have a diff. */
 export function hasWorkflowDiff(resource: PromotionResource): boolean {
 	return resource.type === 'workflow' && resource.change !== 'unchanged';
 }
 
+/** What the diff area shows while the real diff is not on screen. */
+export type WorkflowShellStatus = 'idle' | 'loading' | 'error' | 'missing' | 'unreadable';
+
+/** Promote changes the branch to match this instance. Apply does the opposite. */
+export function isBranchSide(side: DetailSide, direction: PromotionDirection): boolean {
+	return side === (direction === 'promote' ? 'before' : 'after');
+}
+
 /** The inspected workflow, otherwise the first workflow with a diff. */
-export function defaultOpenWorkflow(
+export function defaultActiveWorkflow(
 	order: readonly ResourceKey[],
 	resources: ReadonlyMap<ResourceKey, PromotionResource>,
 	inspectedKey: ResourceKey | undefined,
