@@ -1,5 +1,6 @@
 import {
 	createWriteTodosTool,
+	CORE_WORKSPACE_TOOL_NAMES,
 	type Agent as RuntimeAgent,
 	type CreateDelegateSubAgentToolOptions,
 	BuiltTool,
@@ -60,7 +61,7 @@ import {
 	type AgentSandboxRuntime,
 } from './agent-sandbox-runtime.service';
 import { AgentWorkspaceService } from './agent-workspace.service';
-import type { AgentRuntimeInstrumentation } from './agent-runtime-instrumentation';
+import type { AgentRuntimeInstrumentation } from './evaluation/agent-evaluation.contracts';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import {
 	createIntegrationActionTool,
@@ -904,6 +905,9 @@ export class AgentRuntimeReconstructionService {
 
 	private async injectRuntimeDependencies(params: RuntimeDependencies): Promise<void> {
 		const { agent, agentId, projectId, runtimeProfile, config } = params;
+		agent.nativeToolDeferral({
+			eagerToolNames: [...CORE_WORKSPACE_TOOL_NAMES, 'load_skill', 'mark_session_failed'],
+		});
 		agent.tool(createGetEnvironmentTool());
 		const parentWorkspaceHandle = await this.attachWorkspaceAndKnowledge(params);
 		if (runtimeProfile === 'top-level') {

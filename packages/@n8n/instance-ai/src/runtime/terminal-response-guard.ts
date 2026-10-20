@@ -240,7 +240,7 @@ export class InstanceAiTerminalResponseGuard {
 				(event, index) =>
 					index > lastRootToolCall && event.agentId === this.options.rootAgentId && hasText(event),
 			),
-			// Any agent's text this run. Tool calls don't count — internal calls (e.g. complete-checkpoint) aren't a visible answer.
+			// Any agent's text this run. Tool calls don't count — internal calls (e.g. workflow_builder_complete_checkpoint) aren't a visible answer.
 			hasAgentText: currentRunEvents.some((event) => hasText(event)),
 			hasRootError: currentRunEvents.some(
 				(event) => event.agentId === this.options.rootAgentId && event.type === 'error',

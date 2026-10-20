@@ -1,6 +1,7 @@
 import type { BaseResource } from '@/Interface';
 import type {
 	AgentJsonToolConfig,
+	AgentCreationState,
 	AgentReasoningLevel,
 	AgentSkill,
 	AgentSkillReference,
@@ -43,6 +44,8 @@ export type AgentResource = BaseResource &
 	Agent & {
 		resourceType: 'agent';
 	};
+
+export type AgentCreationResource = AgentResource & AgentCreationState;
 
 // Extend the ModuleResources interface to include Agent
 declare module '@/Interface' {

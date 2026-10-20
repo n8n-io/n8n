@@ -488,7 +488,6 @@ export class AgentPublishService {
 						(!this.agentSkillRefs.usesSkillsHub && !isEqual(previousSkills, agent.skills ?? {})),
 					tasks: tasksChanged,
 				}),
-				wasUnconfigured: false,
 			},
 			context.pushRef,
 			null,
