@@ -1843,8 +1843,9 @@ import { ModuleRegistry } from '@n8n/backend-common';
 import type { InstanceAiBuilderDelegate, OrchestrationContext } from '@n8n/instance-ai';
 
 import { InstanceAiAdapterService } from '../instance-ai.adapter.service';
-import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instance-ai-builder-delegate.adapter';
-import { AgentsCredentialProvider } from '@/modules/agents/adapters/agents-credential-provider';
+import { InstanceAiBuilderDelegateAdapterService } from '../instance-ai-builder-delegate.adapter';
+import { AgentsBuilderService } from '@/modules/agents/builder/agents-builder.service';
+import type { AgentCredentialProvider } from '@/modules/agents/agent-credential-provider.contracts';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
 const mockedUserHasScopes = vi.mocked(userHasScopes);
@@ -7870,12 +7871,17 @@ describe('createContext — builder delegate wiring', () => {
 	function mockBuilderModuleActive(delegate: InstanceAiBuilderDelegate) {
 		const moduleRegistry = { isActive: vi.fn().mockReturnValue(true), settings: new Map() };
 		const builderDelegateAdapter = { createDelegate: vi.fn().mockReturnValue(delegate) };
+		const credentialProvider = mock<AgentCredentialProvider>();
+		const builderService = {
+			createCredentialProvider: vi.fn().mockReturnValue(credentialProvider),
+		};
 		vi.spyOn(Container, 'get').mockImplementation((token: unknown) => {
 			if (token === ModuleRegistry) return moduleRegistry;
 			if (token === InstanceAiBuilderDelegateAdapterService) return builderDelegateAdapter;
+			if (token === AgentsBuilderService) return builderService;
 			throw new Error(`Unexpected Container.get call in test: ${String(token)}`);
 		});
-		return builderDelegateAdapter;
+		return { ...builderDelegateAdapter, builderService, credentialProvider };
 	}
 
 	it.each([
@@ -7925,7 +7931,7 @@ describe('createContext — builder delegate wiring', () => {
 		expect(tools.has('agent_builder_select_agent')).toBe(expected);
 	});
 
-	it('enables deterministic Agent Builder model catalogs for eval threads', () => {
+	it('enables deterministic Agent Builder model catalogs for eval threads', async () => {
 		const service = createAdapterWithGatewayMock(vi.fn(), { telemetry: { track: vi.fn() } });
 		const delegate = mock<InstanceAiBuilderDelegate>();
 		const builderDelegateAdapter = mockBuilderModuleActive(delegate);
@@ -7933,7 +7939,7 @@ describe('createContext — builder delegate wiring', () => {
 		service.createContext(mockUser, {
 			threadId: 'thread-1',
 			projectId: 'proj-1',
-			getCredentialIdAllowlist: () => [],
+			getCredentialIdAllowlist: () => ['eval-credential'],
 		});
 
 		expect(builderDelegateAdapter.createDelegate).toHaveBeenCalledWith(
@@ -7943,17 +7949,21 @@ describe('createContext — builder delegate wiring', () => {
 			expect.anything(),
 			{ useEvalModelCatalog: true },
 		);
-		// The third argument is a provider factory, not a pre-built provider: it
-		// is called per turn with the concrete target agent id so Gateway spend
-		// carries the right id even when the agent is created mid-build.
-		// An eval thread gets the allowlist-scoped wrapper, not the raw provider.
 		const providerFor = builderDelegateAdapter.createDelegate.mock.calls[0][2] as (
 			agentId: string,
-		) => AgentsCredentialProvider;
+		) => AgentCredentialProvider;
 		const provider = providerFor('agent-42');
-		expect(provider).not.toBeInstanceOf(AgentsCredentialProvider);
-		expect(provider).toEqual(
-			expect.objectContaining({ list: expect.any(Function), resolve: expect.any(Function) }),
+		builderDelegateAdapter.credentialProvider.list.mockResolvedValue([
+			{ id: 'eval-credential', name: 'Eval', type: 'openAiApi' },
+			{ id: 'other-eval-credential', name: 'Other eval', type: 'openAiApi' },
+		]);
+		expect(await provider.list()).toEqual([
+			{ id: 'eval-credential', name: 'Eval', type: 'openAiApi' },
+		]);
+		expect(builderDelegateAdapter.builderService.createCredentialProvider).toHaveBeenCalledWith(
+			mockUser,
+			'proj-1',
+			'agent-42',
 		);
 	});
 
@@ -7965,8 +7975,13 @@ describe('createContext — builder delegate wiring', () => {
 
 		const providerFor = builderDelegateAdapter.createDelegate.mock.calls[0][2] as (
 			agentId: string,
-		) => AgentsCredentialProvider;
-		expect(providerFor('agent-42')).toBeInstanceOf(AgentsCredentialProvider);
+		) => AgentCredentialProvider;
+		expect(providerFor('agent-42')).toBe(builderDelegateAdapter.credentialProvider);
+		expect(builderDelegateAdapter.builderService.createCredentialProvider).toHaveBeenCalledWith(
+			mockUser,
+			'proj-1',
+			'agent-42',
+		);
 	});
 
 	it('exposes the delegate unwrapped, so creation telemetry stays in AgentsService', async () => {
