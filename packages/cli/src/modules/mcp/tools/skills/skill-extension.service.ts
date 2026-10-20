@@ -5,16 +5,23 @@ import {
 	ResourceNotFoundError,
 	ResourceTemplate,
 } from '@modelcontextprotocol/server';
-import { type AgentSkill, ListSkillsQueryDto, SKILLS_MAX_PAGE_SIZE } from '@n8n/api-types';
+import {
+	type AgentSkill,
+	ListSkillsQueryDto,
+	type SkillDetail,
+	SKILLS_MAX_PAGE_SIZE,
+} from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { NotFoundError } from '@n8n/errors';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
 
 import { SkillRepository } from '@/modules/agents/repositories/skill.repository';
 import { toAgentSkill } from '@/modules/agents/skills/skill.service';
 import { SkillsApiService } from '@/modules/agents/skills/skills-api.service';
+import { Telemetry } from '@/telemetry';
 
 export const SKILLS_EXTENSION_ID = 'io.modelcontextprotocol/skills';
 
@@ -67,6 +74,7 @@ export class McpSkillExtensionService {
 	constructor(
 		private readonly skillsApi: SkillsApiService,
 		private readonly skillRepository: SkillRepository,
+		private readonly telemetry: Telemetry,
 	) {}
 
 	register(server: McpServer, user: User): void {
@@ -83,11 +91,16 @@ export class McpSkillExtensionService {
 
 		server.server.setRequestHandler('skills/get', { params: getParams }, async ({ uri }) => {
 			const [, skillId = '', name] = SKILL_MD_URI_PATTERN.exec(uri) ?? [];
-			const skill = await this.readableSkill(user, skillId);
-			if (!skill || toSkillName(skill.name) !== name) {
+			const detail = await this.readableSkill(user, skillId);
+			if (!detail || toSkillName(detail.skill.name) !== name) {
 				throw new ProtocolError(ProtocolErrorCode.InvalidParams, `Unknown skill: ${uri}`);
 			}
-			return { skill: toSkillEntry(skillId, skill) };
+			this.telemetry.track(TELEMETRY_EVENT.CONTEXT.MCP_LISTED_SKILLS, {
+				user_id: user.id,
+				method: 'skills/get',
+				count: 1,
+			});
+			return { skill: toSkillEntry(skillId, detail.skill) };
 		});
 
 		server.registerResource(
@@ -95,13 +108,20 @@ export class McpSkillExtensionService {
 			new ResourceTemplate('skill://{skillId}/{name}/{+path}', { list: undefined }),
 			{ description: 'A file of a skills hub skill' },
 			async (uri, { skillId, name, path }) => {
-				const skill = typeof skillId === 'string' ? await this.readableSkill(user, skillId) : null;
-				const skillName = skill ? toSkillName(skill.name) : undefined;
+				const detail = typeof skillId === 'string' ? await this.readableSkill(user, skillId) : null;
+				const skillName = detail ? toSkillName(detail.skill.name) : undefined;
 				const file =
-					skill && skillName === name
-						? skillFiles(skill, skillName).find((candidate) => candidate.path === path)
+					detail && skillName === name
+						? skillFiles(detail.skill, skillName).find((candidate) => candidate.path === path)
 						: undefined;
-				if (!file) throw new ResourceNotFoundError(uri.href);
+				if (!detail || !file) throw new ResourceNotFoundError(uri.href);
+				this.telemetry.track(TELEMETRY_EVENT.CONTEXT.MCP_READ_SKILL_FILE, {
+					user_id: user.id,
+					skill_id: detail.id,
+					scope: detail.scope,
+					project_id: detail.projectId ?? undefined,
+					file: file.path === SKILL_MD_PATH ? 'skill_md' : 'reference',
+				});
 				return {
 					contents: [{ uri: uri.href, mimeType: 'text/markdown', text: file.content }],
 				};
@@ -120,14 +140,19 @@ export class McpSkillExtensionService {
 			const row = rows.get(id);
 			return row ? [toSkillEntry(id, toAgentSkill(row))] : [];
 		});
+		this.telemetry.track(TELEMETRY_EVENT.CONTEXT.MCP_LISTED_SKILLS, {
+			user_id: user.id,
+			method: 'skills/list',
+			count: skills.length,
+		});
 		const next = skip + data.length;
 		return { skills, ...(next < count ? { nextCursor: String(next) } : {}) };
 	}
 
-	private async readableSkill(user: User, skillId: string): Promise<AgentSkill | null> {
+	private async readableSkill(user: User, skillId: string): Promise<SkillDetail | null> {
 		try {
 			const detail = await this.skillsApi.get(user, skillId);
-			return detail.scope === 'agent' ? null : detail.skill;
+			return detail.scope === 'agent' ? null : detail;
 		} catch (error) {
 			if (error instanceof NotFoundError) return null;
 			throw error;

@@ -2,6 +2,7 @@ import { createMcpHandler, McpServer } from '@modelcontextprotocol/server';
 import type { AgentSkill, SkillDetail, SkillListItem } from '@n8n/api-types';
 import { User } from '@n8n/db';
 import { NotFoundError } from '@n8n/errors';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { createHash } from 'node:crypto';
 import { mock } from 'vitest-mock-extended';
 import { parse as parseYaml } from 'yaml';
@@ -11,6 +12,7 @@ import type {
 	SkillRepository,
 } from '@/modules/agents/repositories/skill.repository';
 import type { SkillsApiService } from '@/modules/agents/skills/skills-api.service';
+import type { Telemetry } from '@/telemetry';
 
 import {
 	McpSkillExtensionService,
@@ -60,7 +62,7 @@ describe('toSkillEntry', () => {
 	it('gives frontmatter equal to the frontmatter of the served SKILL.md', async () => {
 		const skillsApi = mock<SkillsApiService>();
 		skillsApi.get.mockResolvedValue(mock<SkillDetail>({ scope: 'instance', skill: releaseNotes }));
-		const client = await connect(new McpSkillExtensionService(skillsApi, mock()));
+		const client = await connect(new McpSkillExtensionService(skillsApi, mock(), mock()));
 
 		const read = await client.request('resources/read', { uri: entry.uri });
 
@@ -137,7 +139,8 @@ async function connect(extension: McpSkillExtensionService) {
 describe('McpSkillExtensionService', () => {
 	const skillsApi = mock<SkillsApiService>();
 	const skillRepository = mock<SkillRepository>();
-	const service = new McpSkillExtensionService(skillsApi, skillRepository);
+	const telemetry = mock<Telemetry>();
+	const service = new McpSkillExtensionService(skillsApi, skillRepository, telemetry);
 
 	const item = (id: string, scope: SkillListItem['scope']) => mock<SkillListItem>({ id, scope });
 	const row = (skill: AgentSkill) =>
@@ -154,7 +157,12 @@ describe('McpSkillExtensionService', () => {
 		vi.clearAllMocks();
 		skillsApi.get.mockImplementation(async (_user, skillId) => {
 			if (skillId !== 'skill_a1') throw new NotFoundError('Skill not found');
-			return mock<SkillDetail>({ scope: 'instance', skill: releaseNotes });
+			return mock<SkillDetail>({
+				id: 'skill_a1',
+				scope: 'instance',
+				projectId: null,
+				skill: releaseNotes,
+			});
 		});
 	});
 
@@ -171,6 +179,11 @@ describe('McpSkillExtensionService', () => {
 
 			expect(skillRepository.findLatestSaved).toHaveBeenCalledWith(['skill_a1']);
 			expect(result.skills).toEqual([toSkillEntry('skill_a1', releaseNotes)]);
+			expect(telemetry.track).toHaveBeenCalledWith(TELEMETRY_EVENT.CONTEXT.MCP_LISTED_SKILLS, {
+				user_id: 'user-1',
+				method: 'skills/list',
+				count: 1,
+			});
 			expect(result.nextCursor).toBeUndefined();
 		});
 
@@ -198,6 +211,11 @@ describe('McpSkillExtensionService', () => {
 			});
 
 			expect(result.skill).toEqual(toSkillEntry('skill_a1', releaseNotes));
+			expect(telemetry.track).toHaveBeenCalledWith(TELEMETRY_EVENT.CONTEXT.MCP_LISTED_SKILLS, {
+				user_id: 'user-1',
+				method: 'skills/get',
+				count: 1,
+			});
 		});
 
 		it.each([
@@ -222,6 +240,26 @@ describe('McpSkillExtensionService', () => {
 			});
 
 			expect(result.contents[0].text).toBe('# Style\n\nUse the active voice. ✓');
+			expect(telemetry.track).toHaveBeenCalledWith(TELEMETRY_EVENT.CONTEXT.MCP_READ_SKILL_FILE, {
+				user_id: 'user-1',
+				skill_id: 'skill_a1',
+				scope: 'instance',
+				project_id: undefined,
+				file: 'reference',
+			});
+		});
+
+		it('reports a SKILL.md read as skill_md', async () => {
+			const client = await connect(service);
+
+			await client.request('resources/read', {
+				uri: 'skill://skill_a1/release-notes-writer/SKILL.md',
+			});
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.CONTEXT.MCP_READ_SKILL_FILE,
+				expect.objectContaining({ file: 'skill_md' }),
+			);
 		});
 
 		it('does not read a skill the user cannot read', async () => {
@@ -233,6 +271,7 @@ describe('McpSkillExtensionService', () => {
 
 			expect(skillsApi.get).toHaveBeenCalledWith(expect.anything(), 'skill_hidden');
 			expect(error).toBeDefined();
+			expect(telemetry.track).not.toHaveBeenCalled();
 		});
 
 		it('does not read an agent skill', async () => {
