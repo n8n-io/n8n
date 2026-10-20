@@ -625,7 +625,11 @@ describe('SelfHealingAgentService', () => {
 		const result = await service.execute(input, options);
 		expect(result).toMatchObject({ status: 'cancelled', reason: 'shutdown' });
 		expect(createSelfHealingAgent).not.toHaveBeenCalled();
-		expect(options.sandbox.destroySandbox).toHaveBeenCalledWith('internal-thread', 'actor');
+		expect(options.sandbox.destroySandbox).toHaveBeenCalledWith(
+			'internal-thread',
+			'thread_cleanup',
+			'actor',
+		);
 	});
 
 	it('finalizes a stream read failure and releases its incomplete workspace', async () => {
@@ -658,6 +662,7 @@ describe('SelfHealingAgentService', () => {
 		);
 		expect(options.sandbox.destroySandbox).toHaveBeenCalledExactlyOnceWith(
 			options.threadId,
+			'thread_cleanup',
 			user.id,
 		);
 	});

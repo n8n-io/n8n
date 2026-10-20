@@ -320,12 +320,14 @@ export class SelfHealingAgentService {
 			// A successful completion has committed. A later abort cannot undo that result.
 			await this.finish(result, stream, tracing, modelId, options);
 			if (!stream) {
-				await options.sandbox.destroySandbox(threadId, user.id).catch((error: unknown) => {
-					this.logger.warn('Could not clear the incomplete self-healing workspace.', {
-						runId,
-						error: getErrorMessage(error),
+				await options.sandbox
+					.destroySandbox(threadId, 'thread_cleanup', user.id)
+					.catch((error: unknown) => {
+						this.logger.warn('Could not clear the incomplete self-healing workspace.', {
+							runId,
+							error: getErrorMessage(error),
+						});
 					});
-				});
 			}
 		}
 		return result;
