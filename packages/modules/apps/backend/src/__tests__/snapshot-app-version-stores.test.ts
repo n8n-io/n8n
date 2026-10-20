@@ -56,10 +56,11 @@ function createStores() {
 
 describe('SnapshotAppSourceVersionStore', () => {
 	it('creates a source-backed version and advances the expected draft', async () => {
-		const { source, artifacts, versions, apps, artifact, ctx, locks } = createStores();
+		const { source, archives, artifacts, versions, apps, artifact, ctx, locks } = createStores();
 
 		await source.createVersion(version, files);
 
+		expect(archives.pack).toHaveBeenCalledWith(files);
 		expect(artifacts.upload).toHaveBeenCalledWith(version.appId, Buffer.from('archive'));
 		expect(locks.withLockContext).toHaveBeenCalledWith(DbLock.APPS_STORAGE, expect.any(Function), {
 			subKey: appStorageLockSubKey(version.appId),
@@ -107,6 +108,18 @@ describe('SnapshotAppSourceVersionStore', () => {
 		expect(artifacts.discard).toHaveBeenCalledWith(artifact);
 	});
 
+	it('reads source files in the default archive mode', async () => {
+		const { source, archives, artifacts, versions } = createStores();
+		const body = Buffer.from('archive');
+		versions.findVersionById.mockResolvedValue(mock<AppVersion>({ sourceArtifactId: 7 }));
+		artifacts.read.mockResolvedValue(body);
+		archives.unpack.mockResolvedValue(files);
+
+		expect(await source.readSource(version.id)).toEqual(files);
+		expect(artifacts.read).toHaveBeenCalledWith(7);
+		expect(archives.unpack).toHaveBeenCalledWith(body);
+	});
+
 	it('lists source files without unpacking file content', async () => {
 		const { source, archives, artifacts, versions } = createStores();
 		const body = Buffer.from('archive');
@@ -149,10 +162,11 @@ describe('SnapshotAppSourceVersionStore', () => {
 
 describe('SnapshotAppBuildResultStore', () => {
 	it('attaches the uploaded bundle in the upload-completion transaction', async () => {
-		const { builds, artifacts, versions, artifact, ctx, locks } = createStores();
+		const { builds, archives, artifacts, versions, artifact, ctx, locks } = createStores();
 
 		await builds.recordSuccess(version.appId, version.id, files);
 
+		expect(archives.pack).toHaveBeenCalledWith(files, true);
 		expect(artifacts.upload).toHaveBeenCalledWith(version.appId, Buffer.from('archive'));
 		expect(locks.withLockContext).toHaveBeenCalledWith(DbLock.APPS_STORAGE, expect.any(Function), {
 			subKey: appStorageLockSubKey(version.appId),
@@ -197,6 +211,18 @@ describe('SnapshotAppBuildResultStore', () => {
 
 		expect(versions.attachBundle).not.toHaveBeenCalled();
 		expect(artifacts.discard).toHaveBeenCalledWith(artifact);
+	});
+
+	it('reads bundle files in bundle archive mode', async () => {
+		const { builds, archives, artifacts, versions } = createStores();
+		const body = Buffer.from('archive');
+		versions.findVersionById.mockResolvedValue(mock<AppVersion>({ bundleArtifactId: 8 }));
+		artifacts.read.mockResolvedValue(body);
+		archives.unpack.mockResolvedValue(files);
+
+		expect(await builds.readBundle(version.id)).toEqual(files);
+		expect(artifacts.read).toHaveBeenCalledWith(8);
+		expect(archives.unpack).toHaveBeenCalledWith(body, true);
 	});
 
 	it('returns not found when the version has no bundle', async () => {
