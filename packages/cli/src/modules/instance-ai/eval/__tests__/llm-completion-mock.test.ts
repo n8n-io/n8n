@@ -3,6 +3,7 @@ interface CompletionStep {
 	toolName?: string;
 	toolArguments?: Record<string, unknown>;
 	content?: string;
+	structuredContent?: Record<string, unknown>;
 }
 
 // Hoisted so the module mock factories below can resolve them.
@@ -290,6 +291,22 @@ describe('createLlmCompletionMockHandler', () => {
 		);
 
 		expect(res?.body).toEqual({ content: '{"category":"bug"}' });
+	});
+
+	it('serializes a structured final answer, so quotes inside its values stay valid JSON', async () => {
+		submitQueue.push({
+			kind: 'final',
+			structuredContent: { output: { html: '<p>Say <em>"just arrived"</em></p>' } },
+		});
+		const handler = createLlmCompletionMockHandler();
+
+		const res = await handler(
+			chatRequest({ messages: [{ role: 'user', content: 'write' }] }),
+			node,
+		);
+
+		const content = (res?.body as { content: string }).content;
+		expect(JSON.parse(content)).toEqual({ output: { html: '<p>Say <em>"just arrived"</em></p>' } });
 	});
 
 	it('injects the declared structured-output schema into the mock prompt', async () => {
