@@ -108,7 +108,9 @@ export function renderJudgePrompt({ steps, endStatus }: JudgeInput): string {
 	const lines = steps.map((step) => {
 		if (step.kind === 'text') return `Assistant text: ${clip(step.text)}`;
 		if (step.kind === 'answer') return `User answer: ${clip(JSON.stringify(step.result))}`;
-		return `Tool call ${String(++callNumber)}: ${step.toolName} ${clip(JSON.stringify(step.args))}`;
+		// Eval branch only: show the judge the baseline name, so only the Assistant's behavior changes.
+		const toolName = step.toolName === 'ask_user' ? 'workflow_builder_ask_user' : step.toolName;
+		return `Tool call ${String(++callNumber)}: ${toolName} ${clip(JSON.stringify(step.args))}`;
 	});
 	const footer = endStatus
 		? `The turn has ended (status: ${endStatus}). Stop and pick the route.`
