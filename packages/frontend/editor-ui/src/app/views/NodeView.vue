@@ -1127,8 +1127,20 @@ function closeNodeCreator() {
 	}
 }
 
-function onCreateSticky() {
-	void onAddNodesAndConnections({ nodes: [{ type: STICKY_NODE_TYPE }], connections: [] });
+function onCursorPosition(position: VueFlowXYPosition) {
+	lastClickPosition.value = [position.x, position.y];
+}
+
+function onCreateSticky(position?: VueFlowXYPosition) {
+	const stickyPosition: XYPosition | undefined = position ? [position.x, position.y] : undefined;
+	if (stickyPosition) {
+		lastClickPosition.value = stickyPosition;
+	}
+	void onAddNodesAndConnections(
+		{ nodes: [{ type: STICKY_NODE_TYPE }], connections: [] },
+		false,
+		stickyPosition,
+	);
 }
 
 function onClickConnectionAdd(connection: Connection) {
@@ -2155,6 +2167,7 @@ onBeforeUnmount(() => {
 			@delete:connection="onDeleteConnection"
 			@click:connection:add="onClickConnectionAdd"
 			@click:pane="onClickPane"
+			@cursor:position="onCursorPosition"
 			@create:node="onOpenNodeCreatorFromCanvas"
 			@create:sticky="onCreateSticky"
 			@delete:nodes="onDeleteNodes"

@@ -33,4 +33,6 @@ export type SlotWorkflowDiffProps = {
 	sourceLabel?: string;
 	targetLabel?: string;
 	showFullscreenButton?: boolean;
+	canvasIdPrefix?: string;
+	hideTitle?: boolean;
 };

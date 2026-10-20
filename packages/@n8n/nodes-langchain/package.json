@@ -143,6 +143,11 @@
       "dist/nodes/mcp/McpRegistryClientTool/McpRegistryClientTool.node.js",
       "dist/nodes/mcp/McpTrigger/McpTrigger.node.js",
       "dist/nodes/memory/MemoryBufferWindow/MemoryBufferWindow.node.js",
+<<<<<<< HEAD
+=======
+      "dist/nodes/memory/MemoryLakebaseChat/MemoryLakebaseChat.node.js",
+      "dist/nodes/memory/MemoryMotorhead/MemoryMotorhead.node.js",
+>>>>>>> 373c57797e811bd2d10a95e4562ee291a39c0f32
       "dist/nodes/memory/MemoryPostgresChat/MemoryPostgresChat.node.js",
       "dist/nodes/memory/MemoryMongoDbChat/MemoryMongoDbChat.node.js",
       "dist/nodes/memory/MemoryRedisChat/MemoryRedisChat.node.js",

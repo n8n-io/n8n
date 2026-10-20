@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { AGENT_BUILDER_TOOL_NAMES } from './builder-tool-names';
+
 /**
  * Canonical names of the interactive agent-builder tools.
  *
@@ -8,8 +10,8 @@ import { z } from 'zod';
  * by it. There is no separate `interactionType` field — the tool name IS the
  * interaction kind.
  */
-export const ASK_CREDENTIAL_TOOL_NAME = 'ask_credential' as const;
-export const ASK_EMBEDDING_CREDENTIAL_TOOL_NAME = 'ask_embedding_credential' as const;
+export const ASK_CREDENTIAL_TOOL_NAME = AGENT_BUILDER_TOOL_NAMES.ASK_CREDENTIAL;
+export const ASK_EMBEDDING_CREDENTIAL_TOOL_NAME = AGENT_BUILDER_TOOL_NAMES.ASK_EMBEDDING_CREDENTIAL;
 /**
  * Frontend-only discriminator for generic approval cards.
  *
@@ -19,7 +21,7 @@ export const ASK_EMBEDDING_CREDENTIAL_TOOL_NAME = 'ask_embedding_credential' as 
 export const APPROVAL_TOOL_NAME = 'approval' as const;
 
 // ---------------------------------------------------------------------------
-// ask_credential
+// agent_builder_ask_credential
 // ---------------------------------------------------------------------------
 
 export const askCredentialInputSchema = z.object({
@@ -38,7 +40,7 @@ export const askCredentialInputSchema = z.object({
 export type AskCredentialInput = z.infer<typeof askCredentialInputSchema>;
 
 /**
- * Suspend/resume for `ask_credential` and `ask_embedding_credential` now use
+ * Suspend/resume for `agent_builder_ask_credential` and `agent_builder_ask_embedding_credential` now use
  * the shared instance-AI-compatible contract (`agents/agent-interaction.schema.ts`)
  * instead of a builder-only shape — see that module for the full suspend
  * payload (`credentialSuspendPayloadSchema`).

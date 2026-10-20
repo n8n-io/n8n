@@ -96,10 +96,9 @@ directly on that object — there is no \`value\` wrapper. For example:
 - config.patch: Set \`patch\` to an array of RFC 6902 operations (add, remove, replace, move, copy,
   test). Paths under /integrations are rejected; use update_agent_integration for those.
 - skill.upsert: Set \`skill\` to the complete skill body. Omit \`skillId\` to create a new skill in
-  the Agent's project and attach it, or pass it to save the next version of an attached skill. A
-  skill can be shared: every Agent that uses it runs the new version. When replacing, also pass
-  \`baseSkillHash\` from get_agent's \`skillHashes\` so a skill edited elsewhere in the meantime is
-  not overwritten. Skills ignore \`allowedTools\`.
+  the Agent's project and attach it, or pass it to save a new version of an attached skill. When
+  replacing, also pass \`baseSkillHash\` from get_agent's \`skillHashes\` so a skill edited elsewhere
+  in the meantime is not overwritten. Skills ignore \`allowedTools\`.
 - skill.delete: Set \`skillId\` to the skill to detach. The skill stays available to other Agents.
 - A skill ref with \`versionId\` pins that saved version of the skill. get_agent lists the pinned
   skills that have a newer version in \`outdatedSkillIds\`. To use the latest version, remove

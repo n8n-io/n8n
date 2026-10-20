@@ -160,7 +160,7 @@ test('redacts the calling execution when the sub-workflow redacts its channel', 
 	const data = await readExecution(parentExecutionId);
 	expect(data.redactionInfo).toEqual({
 		isRedacted: true,
-		reason: 'workflow_redaction_policy',
+		reason: 'sub_workflow_redaction_policy',
 		canReveal: true,
 	});
 	for (const nodeName of ['Trigger', 'Execute Workflow']) {
@@ -169,7 +169,7 @@ test('redacts the calling execution when the sub-workflow redacts its channel', 
 				expect(item.json).toEqual({});
 				expect(item.redaction).toEqual({
 					redacted: true,
-					reason: 'workflow_redaction_policy',
+					reason: 'sub_workflow_redaction_policy',
 				});
 			}
 		}
@@ -205,11 +205,14 @@ test('redacts a later sibling sub-workflow that receives the redacted output', a
 
 	const parentExecutionId = await runManually(parent.id);
 	expect((await readExecution(parentExecutionId)).redactionInfo?.reason).toBe(
-		'workflow_redaction_policy',
+		'sub_workflow_redaction_policy',
 	);
 
 	const plainChildData = await readExecution(await findChildExecutionId(plainChild.id));
-	expect(plainChildData.redactionInfo).toMatchObject({ isRedacted: true });
+	expect(plainChildData.redactionInfo).toMatchObject({
+		isRedacted: true,
+		reason: 'sub_workflow_redaction_policy',
+	});
 	// The sibling inherits the escalation with the parent's context. Its own snapshot keeps its own policy.
 	expect(plainChildData.executionData?.runtimeData).toMatchObject({
 		redaction: { production: false, manual: false },

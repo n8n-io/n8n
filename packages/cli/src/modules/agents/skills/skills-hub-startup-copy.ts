@@ -1,9 +1,10 @@
 import type { AgentSkill } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { TransactionRunner, type OperationContext } from '@n8n/db';
+import { SettingsRepository, TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { InstanceSettings } from 'n8n-core';
+import { jsonParse } from 'n8n-workflow';
 
 import type { Agent } from '../entities/agent.entity';
 import type { AgentHistory } from '../entities/agent-history.entity';
@@ -20,6 +21,18 @@ const BATCH_SIZE = 100;
 
 /** How many agent ids the flag-off warning names. It counts all of them. */
 const WARN_AGENT_IDS = 20;
+
+/** Settings key of the copy progress (`CopyProgress`). */
+export const SKILLS_HUB_COPY_PROGRESS_KEY = 'agents.skillsHubCopy';
+
+/**
+ * How far the copy got. `through` is the last agent that a finished run checked, in
+ * (`createdAt`, `id`) order. `retryAgentIds` are agents whose draft copy failed.
+ */
+type CopyProgress = {
+	through: { createdAt: string; id: string } | null;
+	retryAgentIds: string[];
+};
 
 type CopyCounts = {
 	/** Agents checked, whether or not they needed a copy. */
@@ -73,6 +86,11 @@ type AgentCopyState = {
  *   and it pins them.
  * - A draft is copied only while the agent has no hub rows at all. Its refs become
  *   dependency rows, and its current text becomes the newest version of each skill.
+ * - A draft gets one copy. After a run, a settings row (`SKILLS_HUB_COPY_PROGRESS_KEY`)
+ *   records the last agent it checked, and later runs copy only the drafts of newer
+ *   agents, such as agents that an older main creates during a rolling upgrade. So a
+ *   skill that a user detached and deleted after the copy stays deleted, although the
+ *   legacy columns still hold it. A draft whose copy failed is tried again.
  * - Content that a skill of the agent already holds is reused, found by content hash.
  * - Refs that were switched off are not copied.
  */
@@ -85,6 +103,7 @@ export class SkillsHubStartupCopy {
 		private readonly agentRepository: AgentRepository,
 		private readonly skillRepository: SkillRepository,
 		private readonly txRunner: TransactionRunner,
+		private readonly settingsRepository: SettingsRepository,
 	) {}
 
 	/** Called when the agents module starts, after the rollout flag is read. */
@@ -108,13 +127,22 @@ export class SkillsHubStartupCopy {
 		// A start line without a summary line shows that the copy stopped halfway.
 		this.logger.info('Started copying inline agent skills into the skills hub');
 		const startedAt = Date.now();
+		const read = await this.readProgress();
+		// An unreadable row copies no draft in this run; saving the progress repairs it.
+		const progress = read ?? { through: null, retryAgentIds: [] };
+		const retry = new Set(progress.retryAgentIds);
+		const failedDrafts: string[] = [];
+		const copiedDrafts: string[] = [];
 		let after: Pick<Agent, 'createdAt' | 'id'> | null = null;
 		for (;;) {
 			const agents = await this.agentRepository.findPageForSkillCopy(after, BATCH_SIZE);
 			for (const agent of agents) {
 				counts.scanned++;
+				const draftAllowed =
+					read !== null && (isAfter(agent, progress.through) || retry.has(agent.id));
 				try {
-					const copied = await this.copyAgentWithRetry(agent.id);
+					const copied = await this.copyAgentWithRetry(agent.id, draftAllowed);
+					if (draftAllowed) copiedDrafts.push(agent.id);
 					if (!copied) counts.skipped++;
 					else {
 						// Logged after the commit, so a rolled-back copy never shows up here.
@@ -131,6 +159,7 @@ export class SkillsHubStartupCopy {
 					// One broken agent must not stop the others. Its copy rolls back, so the
 					// next start tries it again.
 					counts.failed++;
+					if (draftAllowed) failedDrafts.push(agent.id);
 					this.logger.error('Failed to copy the skills of an agent into the skills hub', {
 						agentId: agent.id,
 						errorName: error instanceof Error ? error.name : undefined,
@@ -144,9 +173,10 @@ export class SkillsHubStartupCopy {
 					}
 				}
 			}
+			if (agents.length > 0) after = agents[agents.length - 1];
 			if (agents.length < BATCH_SIZE) break;
-			after = agents[agents.length - 1];
 		}
+		await this.saveProgress(after, copiedDrafts, failedDrafts);
 		this.logger.info('Copied inline agent skills into the skills hub', {
 			...counts,
 			durationMs: Date.now() - startedAt,
@@ -187,18 +217,82 @@ export class SkillsHubStartupCopy {
 	 * time, so one of them fails on the primary key. A second try picks another id. A
 	 * failed try rolls back, so only the counts of the try that commits are kept.
 	 */
-	private async copyAgentWithRetry(agentId: string): Promise<AgentCopyResult | null> {
+	private async copyAgentWithRetry(
+		agentId: string,
+		draftAllowed: boolean,
+	): Promise<AgentCopyResult | null> {
 		// Most agents have nothing left to copy after the first start. Check that without
 		// a transaction and a row lock, and check again under the lock.
-		if (!(await this.findWork(agentId, {}))) return null;
+		if (!(await this.findWork(agentId, draftAllowed, {}))) return null;
 		try {
-			return await this.copyAgent(agentId);
+			return await this.copyAgent(agentId, draftAllowed);
 		} catch (error) {
 			this.logger.warn('Retrying the skills hub copy of an agent after a failed try', {
 				agentId,
 				error: error instanceof Error ? error.message : String(error),
 			});
-			return await this.copyAgent(agentId);
+			return await this.copyAgent(agentId, draftAllowed);
+		}
+	}
+
+	/** The saved progress, empty before the first run, or null when the row is unreadable. */
+	private async readProgress(): Promise<CopyProgress | null> {
+		const row = await this.settingsRepository.findByKey(SKILLS_HUB_COPY_PROGRESS_KEY);
+		if (!row) return { through: null, retryAgentIds: [] };
+		const progress = parseProgress(row.value);
+		if (!progress) {
+			// Reopening every draft could bring back deleted skills, so copy no draft this run.
+			this.logger.error(
+				'Unreadable skills hub copy progress: no agent draft is copied in this run',
+				{ key: SKILLS_HUB_COPY_PROGRESS_KEY },
+			);
+		}
+		return progress;
+	}
+
+	/**
+	 * Records the last agent this run checked, and the drafts to try again. Written even
+	 * when some agents failed, so one broken agent does not reopen every draft. Another
+	 * main can save while this run works, so the save merges into the stored progress:
+	 * `through` only moves forward, and the retry list keeps the other main's failures.
+	 */
+	private async saveProgress(
+		last: Pick<Agent, 'createdAt' | 'id'> | null,
+		copiedDrafts: string[],
+		failedDrafts: string[],
+	): Promise<void> {
+		const mine = last ? { createdAt: last.createdAt.toISOString(), id: last.id } : null;
+		const retryAgentIds = await this.txRunner.run({}, async (ctx) => {
+			const row = await this.settingsRepository.findByKeyForUpdate(
+				SKILLS_HUB_COPY_PROGRESS_KEY,
+				ctx,
+			);
+			const stored = row ? parseProgress(row.value) : null;
+			const handled = new Set([...copiedDrafts, ...failedDrafts]);
+			const next: CopyProgress = {
+				through: furthest(stored?.through ?? null, mine),
+				retryAgentIds: [
+					...(stored?.retryAgentIds ?? []).filter((id) => !handled.has(id)),
+					...failedDrafts,
+				],
+			};
+			if (row && JSON.stringify(next) === row.value) return next.retryAgentIds;
+			await this.settingsRepository.upsertByKey(
+				SKILLS_HUB_COPY_PROGRESS_KEY,
+				JSON.stringify(next),
+				false,
+				ctx,
+			);
+			return next.retryAgentIds;
+		});
+		if (retryAgentIds.length > 0) {
+			this.logger.error(
+				'These agent drafts are copied into the skills hub again at the next start',
+				{
+					agentIds: retryAgentIds.slice(0, WARN_AGENT_IDS),
+					agents: retryAgentIds.length,
+				},
+			);
 		}
 	}
 
@@ -206,26 +300,32 @@ export class SkillsHubStartupCopy {
 	 * What one agent still needs: the published versions that pin nothing and have inline
 	 * skills, and its draft while it has no hub rows. Null when nothing is left.
 	 */
-	private async findWork(agentId: string, ctx: OperationContext): Promise<AgentWork | null> {
+	private async findWork(
+		agentId: string,
+		draftAllowed: boolean,
+		ctx: OperationContext,
+	): Promise<AgentWork | null> {
 		const agent = await this.agentRepository.findForSkillCopy(agentId, ctx);
 		if (!agent) return null;
 		const versions = (await this.skillRepository.findUnpinnedVersions(agentId, ctx)).filter(
 			(version) => inlineSkills(version).length > 0,
 		);
 		const copyDraft =
-			inlineSkills(agent).length > 0 && !(await this.skillRepository.hasHubState(agentId, ctx));
+			draftAllowed &&
+			inlineSkills(agent).length > 0 &&
+			!(await this.skillRepository.hasHubState(agentId, ctx));
 		if (versions.length === 0 && !copyDraft) return null;
 		return { agent, versions, copyDraft };
 	}
 
 	/** Copies one agent in one transaction. Returns null when it wrote nothing. */
-	private async copyAgent(agentId: string): Promise<AgentCopyResult | null> {
+	private async copyAgent(agentId: string, draftAllowed: boolean): Promise<AgentCopyResult | null> {
 		return await this.txRunner.run({}, async (ctx) => {
 			// A draft write to this agent waits until the copy commits. The agent row and the
 			// hub-row check are read under the lock, so the copy never uses stale inline
 			// content or replaces refs written meanwhile.
 			await this.agentRepository.lockForSkillCopy(agentId, ctx);
-			const work = await this.findWork(agentId, ctx);
+			const work = await this.findWork(agentId, draftAllowed, ctx);
 			if (!work) return null;
 			const { agent, versions, copyDraft } = work;
 			const counts: AgentCounts = { skills: 0, versions: 0, pins: 0 };
@@ -282,8 +382,10 @@ export class SkillsHubStartupCopy {
 
 	/**
 	 * The hub version that holds this inline body. A ref seen before uses its own skill: a
-	 * version with the same content, else a new version. A new ref reuses a skill with the
-	 * same content that no other ref claimed, else creates an agent skill. With
+	 * version with the same content, else a new version. A new ref uses the agent's own
+	 * skill with the ref's id, which an earlier run created from this ref, so a version
+	 * that an older main publishes later becomes its next version. Else it reuses a skill
+	 * with the same content that no other ref claimed, else creates an agent skill. With
 	 * `mustBeLatest`, a match that is not the newest version of its skill gets the body
 	 * again as the newest one.
 	 */
@@ -301,6 +403,7 @@ export class SkillsHubStartupCopy {
 		const matches = state.byHash.get(hash) ?? [];
 		const skillId =
 			state.skillByRef.get(refId) ??
+			(await this.ownSkillOfRef(agent, refId, state, ctx)) ??
 			matches.find((version) => !state.refBySkill.has(version.skillId))?.skillId;
 		if (skillId) {
 			claim(state, refId, skillId);
@@ -339,6 +442,18 @@ export class SkillsHubStartupCopy {
 		state.latest.set(skillId, { versionId: id, hash, version: next });
 		counts.versions++;
 		return version;
+	}
+
+	/** The agent's own skill with the ref's id, while no other ref of this copy claimed it. */
+	private async ownSkillOfRef(
+		agent: Pick<Agent, 'id'>,
+		refId: string,
+		state: AgentCopyState,
+		ctx: OperationContext,
+	): Promise<string | undefined> {
+		if (!state.latest.has(refId) || state.refBySkill.has(refId)) return undefined;
+		const [skill] = await this.skillRepository.findByIds([refId], ctx);
+		return skill?.agentId === agent.id ? refId : undefined;
 	}
 
 	/** Keeps the inline ref id when it is free and short enough, else a new one. */
@@ -428,4 +543,45 @@ function toInlineBody(raw: unknown): AgentSkill | null {
 		instructions,
 		...(files.size > 0 ? { references: [...files.values()] } : {}),
 	};
+}
+
+/** The stored progress, or null when the value is not a progress object. */
+function parseProgress(raw: string): CopyProgress | null {
+	const value = jsonParse<unknown>(raw, { fallbackValue: null });
+	if (!isRecord(value) || !Array.isArray(value.retryAgentIds)) return null;
+	const through = isRecord(value.through) ? value.through : null;
+	if (
+		value.through !== null &&
+		(typeof through?.createdAt !== 'string' || typeof through.id !== 'string')
+	) {
+		return null;
+	}
+	return {
+		through: through ? { createdAt: String(through.createdAt), id: String(through.id) } : null,
+		retryAgentIds: value.retryAgentIds.filter((id): id is string => typeof id === 'string'),
+	};
+}
+
+/** The later of two positions in (`createdAt`, `id`) order. */
+function furthest(
+	left: CopyProgress['through'],
+	right: CopyProgress['through'],
+): CopyProgress['through'] {
+	if (!left) return right;
+	if (!right) return left;
+	const leftTime = new Date(left.createdAt).getTime();
+	const rightTime = new Date(right.createdAt).getTime();
+	if (leftTime !== rightTime) return leftTime > rightTime ? left : right;
+	return left.id >= right.id ? left : right;
+}
+
+/** Whether the agent comes after `through` in (`createdAt`, `id`) order, or nothing was checked yet. */
+function isAfter(
+	agent: Pick<Agent, 'createdAt' | 'id'>,
+	through: CopyProgress['through'],
+): boolean {
+	if (!through) return true;
+	const time = agent.createdAt.getTime();
+	const throughTime = new Date(through.createdAt).getTime();
+	return time > throughTime || (time === throughTime && agent.id > through.id);
 }

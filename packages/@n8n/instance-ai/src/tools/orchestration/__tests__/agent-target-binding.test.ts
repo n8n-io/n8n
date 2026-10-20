@@ -280,7 +280,7 @@ describe('agentBuilderTargetMetadata', () => {
 });
 
 describe('seedAgentBuilderTargetMetadata', () => {
-	/** One resolved `build-agent` call in a seeded assistant turn.
+	/** One resolved `agent_builder_build_agent` call in a seeded assistant turn.
 	 *
 	 *  Each call stamps a LATER `createdAt` than the last, because real seeded
 	 *  messages carry distinct ascending stamps and the scan orders by them. A
@@ -298,7 +298,7 @@ describe('seedAgentBuilderTargetMetadata', () => {
 				{
 					type: 'tool-call',
 					toolCallId: `tc-${agentId}`,
-					toolName: 'build-agent',
+					toolName: 'agent_builder_build_agent',
 					state: 'resolved',
 					output: { ok: true, agentId, agentRef },
 				},
@@ -313,7 +313,7 @@ describe('seedAgentBuilderTargetMetadata', () => {
 
 	it('uses the ref the model authored, not the display name', () => {
 		// The live turn addresses the agent with the ref its own history carries; a
-		// name-derived ref means the first `build-agent` call misses the registry.
+		// name-derived ref means the first `agent_builder_build_agent` call misses the registry.
 		const metadata = seedAgentBuilderTargetMetadata(AGENTS, [
 			buildAgentTurn('agent-1', 'triage'),
 			buildAgentTurn('agent-2', 'billing'),
@@ -347,7 +347,7 @@ describe('seedAgentBuilderTargetMetadata', () => {
 	});
 
 	it('falls back to the display name for an agent the history never targeted', () => {
-		// A hand-authored seed may carry an agent with no build-agent record at all.
+		// A hand-authored seed may carry an agent with no agent_builder_build_agent record at all.
 		const metadata = seedAgentBuilderTargetMetadata(AGENTS, [buildAgentTurn('agent-2', 'billing')]);
 
 		expect(metadata.instanceAiAgentBuilderTargets).toMatchObject({
@@ -388,7 +388,7 @@ describe('seedAgentBuilderTargetMetadata', () => {
 		expect(metadata.instanceAiAgentBuilderTarget).toMatchObject({ agentId: 'agent-1' });
 	});
 
-	it('ignores a build-agent call whose output carries no agent id', () => {
+	it('ignores a agent_builder_build_agent call whose output carries no agent id', () => {
 		// A failed call ("agent builder is not configured") records no identity.
 		const metadata = seedAgentBuilderTargetMetadata(AGENTS.slice(0, 1), [
 			{
@@ -397,7 +397,12 @@ describe('seedAgentBuilderTargetMetadata', () => {
 				role: 'assistant',
 				createdAt: '2026-01-01T00:00:00.000Z',
 				content: [
-					{ type: 'tool-call', toolName: 'build-agent', state: 'resolved', output: { ok: false } },
+					{
+						type: 'tool-call',
+						toolName: 'agent_builder_build_agent',
+						state: 'resolved',
+						output: { ok: false },
+					},
 				],
 			},
 		]);
