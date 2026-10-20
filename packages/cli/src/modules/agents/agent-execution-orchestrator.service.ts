@@ -65,7 +65,7 @@ import type {
 } from './integrations/integration-tool-types';
 import { IntegrationMessageContextService } from './integrations/integration-message-context.service';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
-import { modelStreamStallOptions } from './model-stream-stall-options';
+import { modelStreamStallOptions } from '@/utils/model-stream-stall-options';
 import { AgentRepository } from './repositories/agent.repository';
 import { AgentBackgroundJobRepository } from './repositories/agent-background-job.repository';
 import { AgentBackgroundJobService } from './background/agent-background-job.service';

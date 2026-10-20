@@ -42,6 +42,7 @@ export class AgentDraftService {
 		const { agent, adopted } = await this.agents.createOrAdopt(projectId, name, {
 			...options,
 			actor: { kind: 'user', user },
+			...(options.createdBy ? { user } : {}),
 			...(options.skills ? { skillCreator: user } : {}),
 		});
 		return { agentId: agent.id, projectId, name: agent.name, adopted };

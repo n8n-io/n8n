@@ -165,14 +165,14 @@ import { LlmJudgeProviderRegistry } from '@/evaluation.ee/llm-judge-provider-reg
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { AgentsCredentialProvider } from '@/modules/agents/adapters/agents-credential-provider';
+import { AgentsBuilderService } from '@/modules/agents/builder/agents-builder.service';
 
 import {
 	scopeCredentialProvider,
 	type AgentCredentialProvider,
 } from './eval/scoped-credential-provider';
 import type { EvalCredentialTestTarget } from './eval/thread-credential-allowlist.service';
-import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instance-ai-builder-delegate.adapter';
+import { InstanceAiBuilderDelegateAdapterService } from './instance-ai-builder-delegate.adapter';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import {
@@ -681,10 +681,9 @@ export class InstanceAiAdapterService {
 		agentId: string,
 		getCredentialIdAllowlist?: () => string[] | undefined,
 	): AgentCredentialProvider {
-		const provider = new AgentsCredentialProvider(
-			this.credentialsService,
-			projectId,
+		const provider = Container.get(AgentsBuilderService).createCredentialProvider(
 			user,
+			projectId,
 			agentId,
 		);
 		return getCredentialIdAllowlist

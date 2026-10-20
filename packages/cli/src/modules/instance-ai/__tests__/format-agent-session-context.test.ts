@@ -8,7 +8,7 @@ import {
 	formatPreviewSessionContext,
 	PREVIEW_CONTEXT_CLOSE_TAG,
 	PREVIEW_CONTEXT_OPEN_TAG,
-} from '../format-preview-context';
+} from '../format-agent-session-context';
 
 function makeThread(overrides: Partial<AgentSessionThread> = {}): AgentSessionThread {
 	return {

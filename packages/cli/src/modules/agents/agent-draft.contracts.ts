@@ -1,5 +1,6 @@
 import type { ToolDescriptor } from '@n8n/agents';
 import type {
+	AgentActor,
 	AgentCreationState,
 	AgentIntegrationConfig,
 	AgentJsonConfig,
@@ -12,6 +13,8 @@ export interface CreateAgentDraftOptions {
 	adoptOnCollision?: boolean;
 	schema?: AgentJsonConfig;
 	skills?: Record<string, AgentSkill>;
+	/** Internal seeds omit this field to keep creation telemetry silent. */
+	createdBy?: AgentActor;
 }
 
 export interface AgentDraftReference {

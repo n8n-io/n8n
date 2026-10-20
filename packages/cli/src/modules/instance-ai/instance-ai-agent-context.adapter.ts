@@ -4,7 +4,7 @@ import type { InstanceAiAgentContextReader } from '@n8n/instance-ai';
 
 import { AgentContextService } from '@/modules/agents/agent-context.service';
 
-import { formatPreviewSessionContext } from './builder/format-preview-context';
+import { formatPreviewSessionContext } from './format-agent-session-context';
 
 @Service()
 export class InstanceAiAgentContextAdapterService {

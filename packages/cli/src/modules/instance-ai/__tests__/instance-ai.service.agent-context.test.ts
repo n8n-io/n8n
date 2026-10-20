@@ -8,7 +8,7 @@ import { AgentContextService } from '@/modules/agents/agent-context.service';
 import type { AgentSessionDetail } from '@/modules/agents/agent-context.contracts';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
-import { InstanceAiAgentContextAdapterService } from '../../agents/instance-ai-agent-context.adapter';
+import { InstanceAiAgentContextAdapterService } from '../instance-ai-agent-context.adapter';
 import { InstanceAiService } from '../instance-ai.service';
 
 vi.mock('@/permissions.ee/check-access', () => ({
