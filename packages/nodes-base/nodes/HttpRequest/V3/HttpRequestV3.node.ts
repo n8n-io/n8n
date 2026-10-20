@@ -179,6 +179,8 @@ export class HttpRequestV3 implements INodeType {
 
 		const updadeQueryParameter = updadeQueryParameterConfig(nodeVersion);
 
+		const abortSignal = this.getExecutionCancelSignal();
+
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			try {
 				let allowedDomains: string | undefined;
@@ -342,9 +344,12 @@ export class HttpRequestV3 implements INodeType {
 				const batchSize = batching?.batch?.batchSize > 0 ? batching?.batch?.batchSize : 1;
 				const batchInterval = batching?.batch.batchInterval;
 
+				// Stop sending requests when the execution is cancelled
+				abortSignal?.throwIfAborted();
+
 				if (itemIndex > 0 && batchSize >= 0 && batchInterval > 0) {
 					if (itemIndex % batchSize === 0) {
-						await sleep(batchInterval);
+						await sleep(batchInterval, abortSignal);
 					}
 				}
 
@@ -806,7 +811,8 @@ export class HttpRequestV3 implements INodeType {
 					requestPromises.push(requestWithAuthentication);
 				}
 			} catch (error) {
-				if (!this.continueOnFail()) throw error;
+				// A cancelled execution must not continue with the next items
+				if (abortSignal?.aborted || !this.continueOnFail()) throw error;
 
 				requestPromises.push(Promise.reject(error).catch(() => {}));
 
