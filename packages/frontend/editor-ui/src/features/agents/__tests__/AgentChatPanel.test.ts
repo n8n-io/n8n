@@ -3148,6 +3148,42 @@ describe('AgentChatPanel', () => {
 		wrapper.unmount();
 	});
 
+	it('re-checks the wallet when the tab becomes visible again with a credits stop showing', async () => {
+		const visibilitySpy = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden');
+		try {
+			aiGatewayIsEnabledMock.value = true;
+			aiGatewayBalanceMock.value = 0;
+			aiGatewayFetchWalletMock.mockResolvedValue(undefined);
+			messagesMock.value = [
+				{
+					id: 'assistant-1',
+					role: 'assistant',
+					content: '',
+					status: 'success',
+					budgetNotices: [{ id: 'notice-1', code: 'budget.credits' }],
+				},
+			];
+			const wrapper = mountPanel();
+			await flushPromises();
+			expect(clearBudgetNoticesMock).not.toHaveBeenCalled();
+			aiGatewayFetchWalletMock.mockClear();
+
+			// The user topped up in another tab and comes back.
+			aiGatewayFetchWalletMock.mockImplementation(async () => {
+				aiGatewayBalanceMock.value = 5;
+			});
+			visibilitySpy.mockReturnValue('visible');
+			document.dispatchEvent(new Event('visibilitychange'));
+			await flushPromises();
+
+			expect(aiGatewayFetchWalletMock).toHaveBeenCalledWith({ force: true });
+			expect(clearBudgetNoticesMock).toHaveBeenCalledWith(new Set(['budget.credits']));
+			wrapper.unmount();
+		} finally {
+			visibilitySpy.mockRestore();
+		}
+	});
+
 	it('enables chat input while an interactive card is unresolved (cancel-and-steer mode)', () => {
 		messagesMock.value = [openInteractiveMessage()];
 

@@ -26,6 +26,7 @@ import type { AgentMessageQueueService } from '../../agent-message-queue.service
 import type { AgentChatExecutionService } from '../../agent-chat-execution.service';
 import { AgentTurnExecutionService } from '../../agent-turn-execution.service';
 import type { AgentToolApprovalService } from '../../agent-tool-approval.service';
+import { AiGatewayService } from '@/services/ai-gateway.service';
 import { AgentRuntimeReconstructionService } from '../../agent-runtime-reconstruction.service';
 import {
 	encodeAgentSandboxHostMetadata,
@@ -753,6 +754,62 @@ describe('SubAgentRunner', () => {
 		// The wallet is a shared scope: no child owns it, so the notice carries
 		// no agentId — the preview chat cards it without pointing at the child.
 		expect(onBudgetNotice).toHaveBeenCalledWith({ code: 'budget.credits' });
+	});
+
+	it('attaches the wallet preflight to a gateway-managed child', async () => {
+		reconstructionService.reconstructFromResolvedSource.mockResolvedValue({
+			agent: childAgent as never,
+			toolRegistry: new Map(),
+			mcpServerAttributions: new Map(),
+			modelCredentialGatewayManaged: true,
+		});
+		const aiGatewayService = mock<AiGatewayService>();
+		aiGatewayService.resolveWalletOwner.mockResolvedValue('user-1');
+		aiGatewayService.getWallet.mockResolvedValue({
+			budget: 10,
+			balance: 0,
+			hasEverToppedUp: true,
+		});
+		Container.set(AiGatewayService, aiGatewayService);
+
+		await runner.run(spawnRequest, {
+			parentAgentId,
+			projectId,
+			credentialProvider,
+			runType: 'production',
+			user: mock<User>({ id: 'user-1' }),
+		});
+
+		const options = childAgent.stream.mock.calls[0]?.[1] as
+			| { guardrails?: { hooks: Array<{ before?: (ctx: unknown) => Promise<unknown> }> } }
+			| undefined;
+		const hook = options?.guardrails?.hooks[0];
+		if (!hook?.before) throw new Error('Expected a wallet preflight hook on the child');
+		await expect(
+			hook.before({ callId: 'call-1', model: 'openai/gpt-5', source: 'turn' }),
+		).resolves.toEqual({ action: 'stop', code: 'budget.credits' });
+		expect(aiGatewayService.resolveWalletOwner).toHaveBeenCalledWith({
+			userId: 'user-1',
+			projectId,
+		});
+	});
+
+	it('attaches no wallet preflight to an own-key child', async () => {
+		const aiGatewayService = mock<AiGatewayService>();
+		Container.set(AiGatewayService, aiGatewayService);
+
+		await runner.run(spawnRequest, {
+			parentAgentId,
+			projectId,
+			credentialProvider,
+			runType: 'production',
+			user: mock<User>({ id: 'user-1' }),
+		});
+
+		const options = childAgent.stream.mock.calls[0]?.[1] as
+			| { guardrails?: { hooks: unknown[] } }
+			| undefined;
+		expect(options?.guardrails?.hooks ?? []).toHaveLength(0);
 	});
 
 	it('does not emit a budget notice for a non-budget guardrail stop', async () => {

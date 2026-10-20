@@ -30,7 +30,7 @@ vi.mock('@n8n/i18n', () => ({
 				'agents.chat.budget.credits.message':
 					'This agent stopped because the shared Gateway credits balance is empty. Top up to keep it running.',
 				'agents.chat.budget.credits.dismissed':
-					'The chat resumes as soon as the balance is topped up.',
+					'The chat resumes once the new balance is detected.',
 				'agents.chat.budget.credits.topUp': 'Top up',
 			})[key] ?? key,
 	}),
@@ -124,12 +124,15 @@ describe('AgentBudgetNoticeCard', () => {
 		expect(wrapper.find('[data-testid="agent-budget-notice-top-up"]').exists()).toBe(true);
 	});
 
-	it('opens the top-up flow from the credits card and shows the follow-up sentence', async () => {
+	it('opens the top-up flow from the credits card and stays actionable', async () => {
 		openTopUpMock.mockResolvedValue(undefined);
 		const wrapper = mountCard('budget.credits');
 		await wrapper.get('[data-testid="agent-budget-notice-top-up"]').trigger('click');
 		expect(openTopUpMock).toHaveBeenCalledWith({ source: 'agent_budget_card' });
-		expect(wrapper.text()).toContain('The chat resumes as soon as the balance is topped up.');
+		// The click only requests the top-up — the card keeps its action until
+		// the wallet refresh confirms the balance changed.
+		expect(wrapper.find('[data-testid="agent-budget-notice-top-up"]').exists()).toBe(true);
+		expect(wrapper.find('[data-testid="agent-budget-notice-dismissed"]').exists()).toBe(false);
 		expect(wrapper.emitted('increase')).toBeUndefined();
 	});
 });

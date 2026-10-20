@@ -926,25 +926,25 @@ const hasCreditsStop = computed(() =>
 // flow. While the stop shows, re-check the wallet; a refill clears the notice
 // and unblocks Send. Stays blocked on a fetch error: the next run would stop
 // again against the same empty wallet.
-const creditsWalletRecheck = useIntervalFn(
-	async () => {
-		await aiGateway.fetchWallet({ force: true });
-		if ((aiGateway.balance.value ?? 0) > 0) {
-			clearBudgetNotices(new Set(['budget.credits']));
-		}
-	},
-	30 * TIME.SECOND,
-	{ immediate: false },
-);
+async function refreshWalletAndMaybeClearCredits() {
+	await aiGateway.fetchWallet({ force: true });
+	if ((aiGateway.balance.value ?? 0) > 0) {
+		clearBudgetNotices(new Set(['budget.credits']));
+	}
+}
+const creditsWalletRecheck = useIntervalFn(refreshWalletAndMaybeClearCredits, 30 * TIME.SECOND, {
+	immediate: false,
+});
 watchEffect((onCleanup) => {
 	if (!hasCreditsStop.value || !aiGateway.isEnabled.value) return;
 	creditsWalletRecheck.resume();
-	void aiGateway.fetchWallet({ force: true }).then(() => {
-		if ((aiGateway.balance.value ?? 0) > 0) {
-			clearBudgetNotices(new Set(['budget.credits']));
-		}
-	});
+	void refreshWalletAndMaybeClearCredits();
 	onCleanup(() => creditsWalletRecheck.pause());
+});
+watch(documentVisibility, (visibility) => {
+	if (visibility === 'visible' && hasCreditsStop.value && aiGateway.isEnabled.value) {
+		void refreshWalletAndMaybeClearCredits();
+	}
 });
 const canIncreaseBudget = computed(() => props.increaseBudget !== undefined);
 const budgetIncreasePending = ref(false);

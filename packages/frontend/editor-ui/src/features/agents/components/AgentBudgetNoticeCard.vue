@@ -78,7 +78,6 @@ function increase() {
 
 function topUp() {
 	void openTopUp({ source: 'agent_budget_card' });
-	dismissed.value = true;
 }
 </script>
 
