@@ -178,7 +178,7 @@ export class LmChatGoogleGemini implements INodeType {
 		icon: 'file:google.svg',
 		group: ['transform'],
 		version: [1, 1.1, 1.2],
-		description: 'Chat Model Google Gemini',
+		description: 'Run Gemini models, with optional adjustable safety filters',
 		defaults: {
 			name: 'Google Gemini Chat Model',
 		},
