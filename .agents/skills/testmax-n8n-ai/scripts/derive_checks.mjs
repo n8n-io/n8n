@@ -239,6 +239,8 @@ function checkNamedRefs(workflow, g, refs) {
 
 const DEFINITIVE = new Set(['executed', 'fixture', 'case', 'output-parser']);
 const INDICATIVE = new Set(['node-schema', 'prompt-example', 'ai-root']);
+// Outputs with the real number of array items. The other provenances are schema samples.
+const REAL_OUTPUT = new Set(['executed', 'fixture', 'case']);
 
 /** The output items of a node across all scenarios, with their provenance. */
 function outputsOf(name, g, exec) {
@@ -279,7 +281,7 @@ function checkFieldPaths(g, refs, exec) {
 				anyUnknown = true;
 				continue;
 			}
-			const results = items.map((item) => lookup(item, ref.path));
+			const results = items.map((item) => lookup(item, ref.path, { sample: !REAL_OUTPUT.has(provenance) }));
 			if (results.includes('found')) found = true;
 			else if (results.includes('unknown')) anyUnknown = true;
 			else misses.push({ source, provenance });

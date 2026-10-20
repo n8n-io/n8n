@@ -263,16 +263,17 @@ export function workflowReferences(g) {
 
 /**
  * Look up a path in a value. Returns 'found', 'missing' or 'unknown'.
- * 'unknown' means that a null or an opaque value hides the rest of the path. An index past the
- * end of a sample array is also 'unknown': the sample shows the shape of one item, not the count.
+ * 'unknown' means that a null or an opaque value hides the rest of the path. With sample, the
+ * value comes from a schema, which shows the shape of one array item and not the count, so an
+ * index past the end of an array is 'unknown'. In real output, that index is 'missing'.
  */
-export function lookup(value, path) {
+export function lookup(value, path, { sample = false } = {}) {
 	let current = value;
 	for (const key of path) {
 		if (current === null || current === undefined) return current === null ? 'unknown' : 'missing';
 		if (Array.isArray(current)) {
 			if (typeof key === 'number') {
-				if (key >= current.length) return 'unknown';
+				if (key >= current.length) return sample ? 'unknown' : 'missing';
 				current = current[key];
 			} else if (key === 'length') return 'found';
 			else return 'missing';
