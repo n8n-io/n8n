@@ -1,6 +1,6 @@
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { AgentsConfig } from '@n8n/config';
+import { AgentsConfig, GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
@@ -120,11 +120,23 @@ describe('AgentsModule', () => {
 
 	describe('systemTasks()', () => {
 		it('registers the pruning, sweep, media retention and knowledge snapshot tasks', async () => {
+			Container.set(GlobalConfig, mock<GlobalConfig>({ diagnostics: { enabled: true } }));
+
 			await expect(module.systemTasks()).resolves.toEqual([
 				AgentCheckpointPruningTask,
 				AgentInterruptedExecutionSweepTask,
 				AgentChannelMediaRetentionTask,
 				AgentKnowledgeSnapshotTask,
+			]);
+		});
+
+		it('leaves out the knowledge snapshot task when telemetry is off', async () => {
+			Container.set(GlobalConfig, mock<GlobalConfig>({ diagnostics: { enabled: false } }));
+
+			await expect(module.systemTasks()).resolves.toEqual([
+				AgentCheckpointPruningTask,
+				AgentInterruptedExecutionSweepTask,
+				AgentChannelMediaRetentionTask,
 			]);
 		});
 	});

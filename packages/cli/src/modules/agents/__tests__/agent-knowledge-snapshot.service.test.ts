@@ -107,4 +107,23 @@ describe('AgentKnowledgeSnapshotService', () => {
 
 		expect(agentRepository.findPublishedVectorStoreProvidersPage).toHaveBeenCalledTimes(2);
 	});
+
+	it('stops reading pages once the signal aborts', async () => {
+		const fullPage = Array.from({ length: 500 }, (_, index) => ({
+			agentId: `agent-${String(index).padStart(3, '0')}`,
+			vectorStoreProviders: [],
+		}));
+
+		const { service, agentRepository } = makeService([]);
+
+		const abortController = new AbortController();
+		agentRepository.findPublishedVectorStoreProvidersPage.mockImplementationOnce(async () => {
+			abortController.abort();
+			return fullPage;
+		});
+
+		await service.collect(abortController.signal);
+
+		expect(agentRepository.findPublishedVectorStoreProvidersPage).toHaveBeenCalledTimes(1);
+	});
 });

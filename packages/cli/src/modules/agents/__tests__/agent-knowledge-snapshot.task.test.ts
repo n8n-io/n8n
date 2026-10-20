@@ -1,4 +1,3 @@
-import type { GlobalConfig } from '@n8n/config';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { mock } from 'vitest-mock-extended';
 
@@ -22,14 +21,13 @@ describe('AgentKnowledgeSnapshotTask', () => {
 		vector_store_providers: { pinecone: 2, qdrant: 1 },
 	};
 
-	function makeTask(diagnosticsEnabled: boolean) {
-		const globalConfig = mock<GlobalConfig>({ diagnostics: { enabled: diagnosticsEnabled } });
+	function makeTask() {
 		const snapshotService = mock<AgentKnowledgeSnapshotService>();
 		const telemetry = mock<Telemetry>();
 		snapshotService.collect.mockResolvedValue(snapshot);
 
 		return {
-			task: new AgentKnowledgeSnapshotTask(globalConfig, snapshotService, telemetry),
+			task: new AgentKnowledgeSnapshotTask(snapshotService, telemetry),
 			snapshotService,
 			telemetry,
 		};
@@ -39,7 +37,7 @@ describe('AgentKnowledgeSnapshotTask', () => {
 		const SIX_HOURS_SECONDS = 6 * 60 * 60;
 		const ONE_HOUR_SECONDS = 60 * 60;
 
-		const { task } = makeTask(true);
+		const { task } = makeTask();
 
 		expect(task.name).toBe('agent-knowledge-snapshot');
 		expect(task.schedule).toEqual({ kind: 'interval', intervalSeconds: SIX_HOURS_SECONDS });
@@ -51,11 +49,13 @@ describe('AgentKnowledgeSnapshotTask', () => {
 		);
 	});
 
-	it('sends the snapshot when diagnostics are enabled', async () => {
-		const { task, telemetry } = makeTask(true);
+	it('sends the snapshot', async () => {
+		const { task, snapshotService, telemetry } = makeTask();
+		const { signal } = new AbortController();
 
-		await task.run();
+		await task.run(signal);
 
+		expect(snapshotService.collect).toHaveBeenCalledWith(signal);
 		expect(telemetry.track).toHaveBeenCalledTimes(1);
 		expect(telemetry.track).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.AGENTS.AGENT_KNOWLEDGE_SNAPSHOT,
@@ -63,12 +63,16 @@ describe('AgentKnowledgeSnapshotTask', () => {
 		);
 	});
 
-	it('does not read the database when diagnostics are disabled', async () => {
-		const { task, snapshotService, telemetry } = makeTask(false);
+	it('does not send partial counts when the run aborts during the collection', async () => {
+		const { task, snapshotService, telemetry } = makeTask();
+		const abortController = new AbortController();
+		snapshotService.collect.mockImplementation(async () => {
+			abortController.abort();
+			return snapshot;
+		});
 
-		await task.run();
+		await task.run(abortController.signal);
 
-		expect(snapshotService.collect).not.toHaveBeenCalled();
 		expect(telemetry.track).not.toHaveBeenCalled();
 	});
 });

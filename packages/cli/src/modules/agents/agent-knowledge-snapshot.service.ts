@@ -27,10 +27,11 @@ export class AgentKnowledgeSnapshotService {
 		private readonly agentFileRepository: AgentFileRepository,
 	) {}
 
-	async collect(): Promise<AgentKnowledgeSnapshot> {
+	/** Stops reading pages once `signal` aborts. The counts are then incomplete. */
+	async collect(signal?: AbortSignal): Promise<AgentKnowledgeSnapshot> {
 		const snapshot = emptySnapshot();
 
-		for await (const page of this.publishedAgentPages()) {
+		for await (const page of this.publishedAgentPages(signal)) {
 			const agentIds = page.map((agent) => agent.agentId);
 			const totalsByAgentId = await this.agentFileRepository.getKnowledgeTotalsByAgentIds(agentIds);
 
@@ -44,7 +45,9 @@ export class AgentKnowledgeSnapshotService {
 	}
 
 	/** A page with fewer than PAGE_SIZE agents is the last one. */
-	private async *publishedAgentPages(): AsyncGenerator<PublishedAgentVectorStores[]> {
+	private async *publishedAgentPages(
+		signal?: AbortSignal,
+	): AsyncGenerator<PublishedAgentVectorStores[]> {
 		let afterId: string | null = null;
 		let page: PublishedAgentVectorStores[];
 
@@ -55,7 +58,7 @@ export class AgentKnowledgeSnapshotService {
 				yield page;
 				afterId = page[page.length - 1].agentId;
 			}
-		} while (page.length === PAGE_SIZE);
+		} while (page.length === PAGE_SIZE && !signal?.aborted);
 	}
 }
 

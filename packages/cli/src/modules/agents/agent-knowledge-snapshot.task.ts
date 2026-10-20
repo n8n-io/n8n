@@ -1,4 +1,3 @@
-import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { clusterTarget, intervalFromSeconds, SystemTask } from '@n8n/decorators';
 import type { SystemTaskSchedule } from '@n8n/decorators';
@@ -10,7 +9,8 @@ import { AgentKnowledgeSnapshotService } from './agent-knowledge-snapshot.servic
 
 /**
  * Sends the "Agent knowledge snapshot" telemetry event: how many published
- * agents use knowledge files or vector stores.
+ * agents use knowledge files or vector stores. The agents module registers
+ * this task only when telemetry is on.
  */
 @SystemTask()
 export class AgentKnowledgeSnapshotTask implements SystemTask {
@@ -31,18 +31,18 @@ export class AgentKnowledgeSnapshotTask implements SystemTask {
 	});
 
 	constructor(
-		private readonly globalConfig: GlobalConfig,
 		private readonly snapshotService: AgentKnowledgeSnapshotService,
 		private readonly telemetry: Telemetry,
 	) {}
 
-	async run(): Promise<void> {
-		// Make sure the database is not queried when nothing would be sent.
-		if (!this.globalConfig.diagnostics.enabled) {
+	async run(signal: AbortSignal): Promise<void> {
+		const snapshot = await this.snapshotService.collect(signal);
+
+		// Make sure an aborted run sends no partial counts, so it cannot overlap with the next run.
+		if (signal.aborted) {
 			return;
 		}
 
-		const snapshot = await this.snapshotService.collect();
 		this.telemetry.track(TELEMETRY_EVENT.AGENTS.AGENT_KNOWLEDGE_SNAPSHOT, snapshot);
 	}
 }
