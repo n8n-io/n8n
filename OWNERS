@@ -45,6 +45,10 @@ packages/core/src/execution-engine/poll-trigger-executor.ts          @n8n-io/cor
 packages/core/src/execution-engine/poll-cursor-hooks.ts              @n8n-io/core-application
 packages/core/src/execution-engine/scheduled-task-manager.ts         @n8n-io/core-application
 packages/core/src/execution-engine/workflow-active-triggers-state.ts @n8n-io/core-application
+packages/core/src/execution-engine/__tests__/active-workflow-triggers.test.ts @n8n-io/core-application
+packages/core/src/execution-engine/__tests__/triggers-and-pollers.test.ts     @n8n-io/core-application
+packages/core/src/execution-engine/__tests__/poll-trigger-executor.test.ts    @n8n-io/core-application
+packages/core/src/execution-engine/__tests__/scheduled-task-manager.test.ts   @n8n-io/core-application
 packages/@n8n/scheduler/                                @n8n-io/core-application
 packages/@n8n/config/                                   @n8n-io/core-application
 packages/@n8n/backend-common/                           @n8n-io/core-application
