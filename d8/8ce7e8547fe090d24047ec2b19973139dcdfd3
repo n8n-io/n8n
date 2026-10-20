@@ -1,0 +1,53 @@
+packages/@n8n/telemetry/src/events/agents.ts
+  s_ae841d0360228f::t_bd83976b6268dd 667-760
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderEditorColumn.spec.ts
+  s_ae841d0360228f::t_8a779638212b0e 6,11-18,68,70,115,240-269,407-409
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentFilesPanel.test.ts
+  s_ae841d0360228f::t_57f20ceb413b58 1,5,9-16,45,69-70,86-142
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentHeaders.test.ts
+  s_ae841d0360228f::t_3a014baf2316a8 2,4,9-18,170,194-205
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentPreviewDock.test.ts
+  s_ae841d0360228f::t_53abe9c5360b39 4,11-18,305-308,397,412-415
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentPreviewMoreMenu.test.ts
+  s_ae841d0360228f::t_4e78e850df0363 8,30-39,226-229,243-246,257-260,276-282,290-295,312-315,325-328,358-361,370,381,392-394,406-409,418,425,439-444,540,565-571
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSessionTimelinePanel.spec.ts
+  s_ae841d0360228f::t_341ee62937f127 6,13,25-31,58-62,66,75-79,190,193-213,310,324-333,344-349,503-507
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSessionsListView.spec.ts
+  s_ae841d0360228f::t_dc59ae50453a5c 5,19,27,36,42-48,184,187-199,315-339,341-389
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentTelemetry.test.ts
+  s_ae841d0360228f::t_010d65d7ce4a10 22-108
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderEditorColumn.vue
+  s_ae841d0360228f::t_27f61acf3167b7 8,123,128-137,189,303
+packages/frontend/editor-ui/src/features/agents/components/AgentFilesPanel.vue
+  s_ae841d0360228f::t_ab921f93e17a63 17,21,44,125
+packages/frontend/editor-ui/src/features/agents/components/AgentPreviewDock.vue
+  s_ae841d0360228f::t_6df180c7b62ad4 12-15,89,130-131,191,258
+packages/frontend/editor-ui/src/features/agents/components/AgentPreviewHeader.vue
+  s_ae841d0360228f::t_ca0e68fdb934b3 7,20,41,56-60,119
+packages/frontend/editor-ui/src/features/agents/components/AgentPreviewMoreMenu.vue
+  s_ae841d0360228f::t_55b7961d158cbf 21,63,69,106,118,211-218,239,242,271-273
+packages/frontend/editor-ui/src/features/agents/components/AgentSessionTimelinePanel.vue
+  s_ae841d0360228f::t_1ec0ee908b22d5 24,54,220-227,274,416,432
+packages/frontend/editor-ui/src/features/agents/composables/useAgentTelemetry.ts
+  s_ae841d0360228f::t_858c4256c67a31 19-27,53-122,337-343
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_ae841d0360228f::t_d90cacad515be4 3171
+packages/frontend/editor-ui/src/features/agents/views/AgentSessionsListView.vue
+  s_ae841d0360228f::t_313f87eaf12db2 9-12,37-43,66,272-279
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d88ce7e8547fe090d24047ec2b19973139dcdfd3",
+  "prompts": {},
+  "sessions": {
+    "s_ae841d0360228f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1590f-b880-74e1-b9be-d0d8c9eab0b3",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
