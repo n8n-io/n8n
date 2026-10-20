@@ -113,13 +113,9 @@ const statusIconColors: Record<AgentPlanItemStatus, IconColor> = {
 					aria-hidden="true"
 					data-testid="agent-chat-plan-indicator"
 				/>
-				<N8nText
-					bold
-					step="xs"
-					role="status"
-					:class="[$style.label, { [$style.inProgress]: isRunning }]"
-					>{{ label }}</N8nText
-				>
+				<N8nText bold step="xs" :class="[$style.label, { [$style.inProgress]: isRunning }]">{{
+					label
+				}}</N8nText>
 			</template>
 			<template v-if="elapsed !== null" #header-trailing>
 				<N8nText

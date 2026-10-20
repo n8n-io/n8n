@@ -154,6 +154,8 @@ vi.mock('@n8n/design-system', async (importOriginal) => ({
 	useDropdownSearch: (await importOriginal<typeof import('@n8n/design-system')>())
 		.useDropdownSearch,
 	N8nInput: (await importOriginal<typeof import('@n8n/design-system')>()).N8nInput,
+	N8nVisuallyHidden: (await importOriginal<typeof import('@n8n/design-system')>())
+		.N8nVisuallyHidden,
 	N8nButton: { template: '<button><slot name="icon" /><slot /></button>' },
 	N8nCallout: { template: '<div><slot /><slot name="trailingContent" /></div>' },
 	N8nCard: { template: '<div><slot /></div>' },

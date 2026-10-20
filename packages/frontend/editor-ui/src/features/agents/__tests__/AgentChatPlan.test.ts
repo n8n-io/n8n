@@ -208,6 +208,8 @@ describe('AgentChatPlan', () => {
 		const trigger = wrapper.get('button');
 		const indicator = () => wrapper.findAllComponents(N8nIcon)[0];
 		expect(trigger.text()).toContain('Checking sources');
+		expect(wrapper.findAll('[role="status"]')).toHaveLength(1);
+		expect(trigger.find('[role="status"]').exists()).toBe(false);
 		expect(wrapper.get('[role="status"]').text()).toBe('Checking sources');
 		expect(indicator().props()).toMatchObject({ icon: 'loader-circle', spin: true });
 		await trigger.trigger('click');
@@ -238,7 +240,10 @@ describe('AgentChatPlan', () => {
 		expect(wrapper.text()).not.toContain('Plan closed');
 		expect(trigger.text()).not.toContain('Stopped checking');
 		expect(indicator().props()).toMatchObject({ icon: 'list-checks', spin: false });
-		expect(wrapper.text().match(/One source remains unchecked\./g)).toHaveLength(1);
+		expect(trigger.text().match(/One source remains unchecked\./g)).toHaveLength(1);
+		expect(wrapper.get('[data-testid="agent-chat-plan-details"]').text()).not.toContain(
+			'One source remains unchecked.',
+		);
 		expect(wrapper.findAll('[data-status]').map((row) => row.attributes('data-status'))).toEqual([
 			'in_progress',
 			'failed',
