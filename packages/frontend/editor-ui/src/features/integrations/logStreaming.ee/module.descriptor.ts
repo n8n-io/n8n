@@ -16,7 +16,7 @@ export const LogStreamingModule = defineFrontendModule({
 	id: 'log-streaming',
 	name: 'Log streaming',
 	description: 'Send n8n events to external destinations',
-	icon: 'log-in',
+	icon: 'satellite-dish',
 	modals: LOG_STREAMING_MODALS,
 	placeholderPage: {
 		licenseFlag: EnterpriseEditionFeature.LogStreaming,
@@ -27,7 +27,7 @@ export const LogStreamingModule = defineFrontendModule({
 			id: 'settings-log-streaming',
 			order: 40,
 			section: 'operations',
-			icon: 'log-in',
+			icon: 'satellite-dish',
 			get label() {
 				return i18n.baseText('settings.log-streaming');
 			},
