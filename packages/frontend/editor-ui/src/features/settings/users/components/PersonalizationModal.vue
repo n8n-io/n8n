@@ -629,45 +629,36 @@ const onSubmit = async (values: object) => {
 		size="medium"
 		:header="i18n.baseText('personalizationModal.customizeN8n')"
 		:description="i18n.baseText('personalizationModal.theseQuestionsHelpUs')"
-		:container-class="$style.centeredTitle"
 		:show-close-button="false"
 		:close-on-overlay-click="false"
 		:close-on-escape="false"
 		@update:open="onDialogOpenUpdate"
 	>
-		<N8nDialogBody>
-			<div :data-test-id="`${PERSONALIZATION_MODAL_KEY}-modal`">
-				<div :class="$style.container" data-test-id="personalization-form">
-					<N8nFormInputs
-						v-model="formValues"
-						:inputs="survey"
-						:column-view="true"
-						:event-bus="formBus"
-						:teleported="false"
-						tag-size="small"
-						@submit="onSubmit"
-					/>
-				</div>
+		<N8nDialogBody :data-test-id="`${PERSONALIZATION_MODAL_KEY}-modal`">
+			<div :class="$style.container" data-test-id="personalization-form">
+				<N8nFormInputs
+					v-model="formValues"
+					:inputs="survey"
+					:column-view="true"
+					:event-bus="formBus"
+					:teleported="false"
+					tag-size="small"
+					@submit="onSubmit"
+				/>
 			</div>
 		</N8nDialogBody>
 		<N8nDialogFooter>
-			<div>
-				<N8nButton
-					:loading="isSaving"
-					:label="i18n.baseText('personalizationModal.getStarted')"
-					float="right"
-					@click="onSave"
-				/>
-			</div>
+			<N8nButton
+				:loading="isSaving"
+				:label="i18n.baseText('personalizationModal.getStarted')"
+				float="right"
+				@click="onSave"
+			/>
 		</N8nDialogFooter>
 	</N8nDialog>
 </template>
 
 <style lang="scss" module>
-.centeredTitle header {
-	text-align: center;
-}
-
 .container {
 	> div,
 	section > div:not(:last-child) {
