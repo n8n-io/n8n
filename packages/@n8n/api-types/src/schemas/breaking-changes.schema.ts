@@ -108,6 +108,9 @@ export type BreakingChangeWorkflowOwner = z.infer<typeof workflowOwnerSchema>;
 /** The owner of a workflow after a change to it. `null` when nobody owns it. */
 export type MigrationWorkflowOwnerResponse = { owner: BreakingChangeWorkflowOwner | null };
 
+/** A user who can read the workflow, so they can be its owner. */
+export type MigrationOwnerCandidate = Omit<BreakingChangeWorkflowOwner, 'source'>;
+
 const affectedWorkflowSchema = z.object({
 	id: z.string(),
 	name: z.string(),
