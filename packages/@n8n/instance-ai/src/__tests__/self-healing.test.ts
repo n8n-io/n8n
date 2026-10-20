@@ -23,7 +23,6 @@ describe('self-healing output', () => {
 		{ outcome: 'could_not_fix', candidateFilePath: 'candidate.ts' },
 		{ outcome: 'needs_you', candidateFilePath: '' },
 		{ outcome: 'needs_you', summary: ' ' },
-		{ outcome: 'needs_you', summary: 'x'.repeat(81) },
 		{ outcome: 'needs_you', report: ' ' },
 		{ outcome: 'needs_you', report: 'x'.repeat(50_001) },
 		{ outcome: 'failed' },
@@ -34,14 +33,14 @@ describe('self-healing output', () => {
 		).toBe(false);
 	});
 
-	it('accepts a title at the character limit and preserves report formatting', () => {
+	it.each([80, 81])('caps a %i-character title and preserves report formatting', (length) => {
 		const output = {
 			...report,
 			outcome: 'needs_you',
-			summary: 'x'.repeat(80),
+			summary: 'x'.repeat(length),
 			candidateFilePath: null,
 		};
-		expect(selfHealingOutputSchema.parse(output)).toEqual(output);
+		expect(selfHealingOutputSchema.parse(output)).toEqual({ ...output, summary: 'x'.repeat(80) });
 	});
 
 	it('rejects missing and malformed output', () => {

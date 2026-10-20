@@ -97,7 +97,7 @@ describe('createSelfHealingAgent', () => {
 		});
 		const output = {
 			outcome: 'fix_ready',
-			summary: 'Correct the field mapping',
+			summary: 'Correct the field mapping'.repeat(4),
 			report:
 				'**What happened**\n\nThe node used the wrong field.\n\n' +
 				'**What changed**\n\nThe proposed mapping passed verification. Nothing has been applied.',
@@ -161,7 +161,7 @@ describe('createSelfHealingAgent', () => {
 		);
 
 		expect(result.status).toBe('completed');
-		expect(result.structuredOutput).toEqual(output);
+		expect(result.structuredOutput).toEqual({ ...output, summary: output.summary.slice(0, 80) });
 		expect(result.finishReason).toBe('stop');
 		expect(context.executionService.getStatus).toHaveBeenCalledWith('execution');
 		expect(verifyCandidate).toHaveBeenCalledTimes(1);

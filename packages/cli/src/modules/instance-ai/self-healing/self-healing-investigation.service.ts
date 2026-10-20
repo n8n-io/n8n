@@ -198,10 +198,7 @@ export class SelfHealingInvestigationService {
 		const outputFields = selfHealingOutputSchema.innerType().shape;
 		result.output = {
 			...result.output,
-			summary: scrubSecretsInText(result.output.summary).slice(
-				0,
-				outputFields.summary.maxLength ?? undefined,
-			),
+			summary: outputFields.summary.parse(scrubSecretsInText(result.output.summary)),
 			report: scrubSecretsInText(result.output.report).slice(
 				0,
 				outputFields.report.maxLength ?? undefined,
