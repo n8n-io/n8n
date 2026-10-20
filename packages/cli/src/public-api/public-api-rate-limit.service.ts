@@ -69,9 +69,10 @@ export class PublicApiRateLimitService {
 		if (!this.config.enabled) return [];
 
 		const access = resolveAccess(method, accessFromDecorator);
+		const endpoint = `${method.toUpperCase()} ${path}`;
 
 		const limiters = [
-			this.createPerEndpointLimiter(access, `${method.toUpperCase()} ${path}`),
+			this.createPerEndpointLimiter(access, endpoint),
 			this.getAllEndpointsLimiter(access),
 		].filter((limiter) => limiter !== undefined);
 		if (limiters.length === 0) return [];

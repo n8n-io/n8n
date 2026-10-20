@@ -97,8 +97,9 @@ export class PublicApiRateLimitStoreFactory {
 
 	private sendRedisCommand = async (command: string, ...args: string[]): Promise<RedisReply> => {
 		const client = this.getRedisClient();
-		// A cluster sends `SCRIPT LOAD` to any one node, but `EVALSHA` runs on the node that owns
-		// the counter. So load the scripts on every node.
+		// The store saves its counting script in Redis with `SCRIPT LOAD`. In a cluster, the script
+		// must be on the node that holds the counter, but the cluster sends it to a random node. So
+		// save it on every node.
 		if (client.isCluster && command === 'SCRIPT') {
 			const [sha] = await Promise.all(
 				(client as Cluster).nodes('master').map(async (node) => await node.call(command, ...args)),
@@ -109,8 +110,7 @@ export class PublicApiRateLimitStoreFactory {
 	};
 
 	private getRedisClient() {
-		// A slow or unreachable Redis must not hold a request open. The command fails fast and
-		// `passOnStoreError` lets the request pass.
+		// Fail fast while Redis is slow or down. The request then passes without a limit.
 		this.redisClient ??= this.redisClientService.createClient({
 			type: 'rate-limit(n8n)',
 			extraOptions: { commandTimeout: 500, enableOfflineQueue: false },
