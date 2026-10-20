@@ -1,23 +1,13 @@
 import { Container } from '@n8n/di';
 
-import { TypeAvailabilityPolicyService } from '@/modules/type-availability-policies/type-availability-policy.service';
-import { CacheService } from '@n8n/backend-services';
+import { TypeAvailabilityPolicySnapshot } from '@/modules/type-availability-policies/type-availability-policy-snapshot';
 
 /**
- * Drops the policy read-through cache, both layers: the shared `CacheService` entries and the
- * service's own in-process memo.
+ * Reloads the in-process policy snapshot from the database.
  *
- * Call this wherever a test truncates the policy tables: truncating writes behind the service,
- * so the cache keeps serving rows that no longer exist. Nothing in production edits those
- * tables without going through the service, which is why the service has no defence for it.
- *
- * `init` first, because `reset` has no lazy init of its own and a test may not have touched
- * the cache yet.
+ * Call this wherever a test writes behind the service, such as truncating the policy tables.
+ * Production writes go through the service, which reloads the snapshot itself.
  */
 export async function clearPolicyCache(): Promise<void> {
-	const cache = Container.get(CacheService);
-	await cache.init();
-	await cache.reset();
-
-	Container.get(TypeAvailabilityPolicyService).resetLocalCaches();
+	await Container.get(TypeAvailabilityPolicySnapshot).reload();
 }

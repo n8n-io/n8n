@@ -9,7 +9,7 @@ import { Service } from '@n8n/di';
 import { DataSource, In, IsNull, Not, type EntityManager } from '@n8n/typeorm';
 import { UnexpectedError } from 'n8n-workflow';
 
-import type { PolicyAction, PolicyScopeKey } from '../../policy-rule.types';
+import type { PolicyAction } from '../../policy-rule.types';
 import { TypeAvailabilityPolicyScope } from '../entities/type-availability-policy-scope.entity';
 
 type NewPolicyScope = {
@@ -20,6 +20,8 @@ type NewPolicyScope = {
 };
 
 export type ProjectPolicyScope = TypeAvailabilityPolicyScope & { projectId: string };
+
+export type ScopeFingerprint = { count: number; versionSum: number };
 
 const isProjectScope = (scope: TypeAvailabilityPolicyScope): scope is ProjectPolicyScope =>
 	scope.projectId !== null;
@@ -130,24 +132,24 @@ export class TypeAvailabilityPolicyScopeRepository extends BaseRepository<TypeAv
 		return found;
 	}
 
+	/** Every scope of every kind, for loading the in-process snapshot in one read. */
+	async findAllScopes(ctx: OperationContext): Promise<TypeAvailabilityPolicyScope[]> {
+		return await this.managerFor(ctx).find(TypeAvailabilityPolicyScope);
+	}
+
 	/**
-	 * The reader-facing identity of each named scope. A policy edit fans out over scope ids,
-	 * but a reader addresses a scope by `(kind, projectId)`, so this translates between the
-	 * two. Chunked like `lockScopesByIds`, for the same reason.
+	 * Changes whenever a scope is written: every write bumps a version or adds a row. A
+	 * process compares it with the value it last loaded to find a reload it missed.
 	 */
-	async findScopeKeysByIds(ids: string[], ctx: OperationContext): Promise<PolicyScopeKey[]> {
-		const manager = this.managerFor(ctx);
-		const keys: PolicyScopeKey[] = [];
+	async readFingerprint(ctx: OperationContext): Promise<ScopeFingerprint> {
+		const row = await this.managerFor(ctx)
+			.createQueryBuilder(TypeAvailabilityPolicyScope, 'scope')
+			.select('COUNT(*)', 'count')
+			.addSelect('COALESCE(SUM(scope.version), 0)', 'versionSum')
+			.getRawOne<{ count: string | number; versionSum: string | number }>();
 
-		for (const batch of chunkIds(ids)) {
-			const rows = await manager.find(TypeAvailabilityPolicyScope, {
-				select: { kind: true, projectId: true },
-				where: { id: In(batch) },
-			});
-			keys.push(...rows.map(({ kind, projectId }) => ({ kind, projectId })));
-		}
-
-		return keys;
+		// Postgres returns both aggregates as strings.
+		return { count: Number(row?.count ?? 0), versionSum: Number(row?.versionSum ?? 0) };
 	}
 
 	async findProjectScopes(kind: string, ctx: OperationContext): Promise<ProjectPolicyScope[]> {
