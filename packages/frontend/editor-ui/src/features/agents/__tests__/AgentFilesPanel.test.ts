@@ -98,6 +98,10 @@ describe('AgentFilesPanel', () => {
 				} else {
 					wrapper.findComponent({ name: 'N8nEmptyState' }).vm.$emit('click:button');
 				}
+				expect(track).toHaveBeenCalledExactlyOnceWith(
+					TELEMETRY_EVENT.AGENTS.USER_CLICKED_KNOWLEDGE_UPLOAD,
+					{ agent_id: 'agent-1', session_id: 'session-xyz' },
+				);
 				const input = wrapper.get('input[type="file"]');
 				Object.defineProperty(input.element, 'files', { value: selection });
 				await input.trigger('change');
