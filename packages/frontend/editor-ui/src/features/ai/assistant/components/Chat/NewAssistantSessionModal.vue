@@ -66,13 +66,7 @@ const startNewSession = async () => {
 </script>
 
 <template>
-	<N8nDialog
-		:open="modalOpen"
-		size="medium"
-		stacked
-		:container-class="$style.dialog"
-		@update:open="onDialogOpenUpdate"
-	>
+	<N8nDialog :open="modalOpen" size="medium" stacked @update:open="onDialogOpenUpdate">
 		<N8nDialogHeader data-test-id="new-assistant-session-modal">
 			<N8nDialogTitle>
 				{{ i18n.baseText('aiAssistant.newSessionModal.title.part1') }}
@@ -81,34 +75,25 @@ const startNewSession = async () => {
 				{{ i18n.baseText('aiAssistant.newSessionModal.title.part2') }}
 			</N8nDialogTitle>
 		</N8nDialogHeader>
-		<N8nDialogBody>
-			<div :class="$style.container">
-				<p>
-					<N8nText>{{ i18n.baseText('aiAssistant.newSessionModal.message') }}</N8nText>
-				</p>
-				<p>
-					<N8nText>{{ i18n.baseText('aiAssistant.newSessionModal.question') }}</N8nText>
-				</p>
-			</div>
+		<N8nDialogBody :class="$style.container">
+			<p>
+				<N8nText>{{ i18n.baseText('aiAssistant.newSessionModal.message') }}</N8nText>
+			</p>
+			<p>
+				<N8nText>{{ i18n.baseText('aiAssistant.newSessionModal.question') }}</N8nText>
+			</p>
 		</N8nDialogBody>
 		<N8nDialogFooter>
-			<div :class="$style.footer">
-				<N8nButton variant="outline" :label="i18n.baseText('generic.cancel')" @click="close" />
-				<N8nButton
-					:label="i18n.baseText('aiAssistant.newSessionModal.confirm')"
-					@click="startNewSession"
-				/>
-			</div>
+			<N8nButton variant="outline" :label="i18n.baseText('generic.cancel')" @click="close" />
+			<N8nButton
+				:label="i18n.baseText('aiAssistant.newSessionModal.confirm')"
+				@click="startNewSession"
+			/>
 		</N8nDialogFooter>
 	</N8nDialog>
 </template>
 
 <style lang="scss" module>
-.dialog {
-	/* No height token matches the previous 250px dialog height. */
-	min-height: 250px;
-}
-
 .container {
 	p {
 		line-height: normal;
@@ -121,11 +106,5 @@ const startNewSession = async () => {
 
 .assistantIcon {
 	margin-right: var(--spacing--4xs);
-}
-
-.footer {
-	display: flex;
-	gap: 10px;
-	justify-content: flex-end;
 }
 </style>
