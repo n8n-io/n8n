@@ -7780,9 +7780,6 @@ importers:
       '@n8n/i18n':
         specifier: workspace:*
         version: link:../../../frontend/@n8n/i18n
-      '@n8n/permissions':
-        specifier: workspace:*
-        version: link:../../../@n8n/permissions
       '@n8n/rest-api-client':
         specifier: workspace:*
         version: link:../../../frontend/@n8n/rest-api-client
@@ -7792,9 +7789,6 @@ importers:
       '@n8n/telemetry':
         specifier: workspace:*
         version: link:../../../@n8n/telemetry
-      n8n-workflow:
-        specifier: workspace:*
-        version: link:../../../workflow
       pinia:
         specifier: catalog:frontend
         version: 2.2.4(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2))
