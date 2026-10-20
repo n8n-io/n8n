@@ -45,7 +45,7 @@ describe('ApplyInstanceDialog', () => {
 		await fireEvent.submit(form!);
 
 		await waitFor(() =>
-			expect(api.applyPromotion).toHaveBeenCalledWith(expect.anything(), 'connection-1'),
+			expect(api.applyPromotion).toHaveBeenCalledWith(expect.anything(), 'environment-1'),
 		);
 	});
 
