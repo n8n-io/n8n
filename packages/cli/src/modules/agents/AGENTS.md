@@ -7,6 +7,17 @@ Guidance for the agents module (`packages/cli/src/modules/agents`). See the [cli
 - [BUILT_IN_TOOLS.md](./BUILT_IN_TOOLS.md) — the built-in tools that the runtime attaches to an agent, with the attach condition for each. Read it before you add a built-in tool. Update it when you add, remove, or change a built-in tool.
 - [PREVIEW_CHAT_RECOVERY.md](./PREVIEW_CHAT_RECOVERY.md) — the preview chat recovery contract.
 
+## Backend boundary
+
+- Instance AI calls `AgentsBuilderService`, `AgentContextService`, `AgentDraftService`, and `AgentEvaluationService` directly. These services own their operations and access checks. Keep repositories, entities, and runtime reconstruction services private.
+- Keep contracts beside their owner: `agent-context.contracts.ts`, `agent-draft.contracts.ts`, `agent-credential-provider.contracts.ts`, `builder/builder-session.ts`, and `evaluation/agent-evaluation.contracts.ts`. Evaluation callers can also use `pruneConfigForEval` from `evaluation/evaluation-config.ts`.
+- The `agents-instance-ai-boundary` Code Health rule lists the supported import paths. Do not add an umbrella facade or a barrel of internals.
+- Do not import the Instance AI backend or `@n8n/instance-ai` here. This includes types and tests.
+- Keep Agent data access, availability checks, and project authorization in Agents. Keep Assistant tools, presentation, model policy, and billing in Instance AI.
+- Builder operations expose direct tools and runtime skills. The host owns model policy, billing, and run telemetry context.
+- Builder operations own credential-provider construction and legacy session cleanup. Authorized draft deletion and session cleanup remain available when Agents are disabled.
+- Evaluation preparation keeps a detached Agent snapshot private. Build evaluation runtimes without the production cache. Never save the pruned configuration.
+
 ## Skill refs
 
 - The environment variable `N8N_AGENTS_SKILLS_HUB_ENABLED` (`AgentsConfig.skillsHubEnabled`, default `false`) selects where skills live. `SkillsHubRollout` reads it once, when the agents module starts, and keeps the value for the life of the process; a change needs a restart. Set the same value on every main and worker. `AgentSkillRefsService.usesSkillsHub` and the `/skills` routes read `SkillsHubRollout`. There are no double writes: data written with one setting is not visible with the other.

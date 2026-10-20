@@ -8,6 +8,7 @@ import {
 	type QuestionAnswer,
 	type QuestionsResumeData,
 	type QuestionsSuspendPayload,
+	getLegacyBuilderToolNames,
 } from '@n8n/api-types';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { nanoid } from 'nanoid';
@@ -49,7 +50,7 @@ function withDefaultIds(
 ): InteractionQuestion[] {
 	const explicitIds = questions.map((q) => q.id).filter((id): id is string => id !== undefined);
 	if (new Set(explicitIds).size !== explicitIds.length) {
-		throw new UserError('ask_questions: question ids must be unique');
+		throw new UserError('agent_builder_ask_questions: question ids must be unique');
 	}
 
 	const usedIds = new Set(explicitIds);
@@ -92,6 +93,7 @@ function usableAnswers(resumeData: QuestionsResumeData): QuestionAnswer[] | unde
 
 export function buildAskQuestionsTool(deps: { track: BuilderTrackFn }): BuiltTool {
 	return new Tool(ASK_QUESTIONS_TOOL_NAME)
+		.legacyNames(...getLegacyBuilderToolNames(ASK_QUESTIONS_TOOL_NAME))
 		.description(
 			'Ask the user one or more questions in a single batched card; the run suspends until ' +
 				'they respond. ALWAYS use this instead of calling it multiple times when you have more ' +

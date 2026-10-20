@@ -44,7 +44,7 @@ const DEFAULT_DATA_TABLE: DataTableResource = {
 const renderComponent = createComponentRenderer(DataTableCard, {
 	props: {
 		dataTable: DEFAULT_DATA_TABLE,
-		readOnly: false,
+		schemaReadOnly: false,
 		showOwnershipBadge: false,
 	},
 	global: {
@@ -100,18 +100,13 @@ describe('DataTableCard', () => {
 		expect(getByTestId('data-table-card-created')).toHaveTextContent('Created');
 	});
 
-	it('should not render readonly badge when not readonly', () => {
-		const { queryByText } = renderComponent();
-		expect(queryByText('Read only')).not.toBeInTheDocument();
-	});
-
-	it('should render readonly badge when readonly', () => {
-		const { getByText } = renderComponent({
+	it('should not render a read-only badge when the table structure is locked', () => {
+		const { queryByText } = renderComponent({
 			props: {
-				readOnly: true,
+				schemaReadOnly: true,
 			},
 		});
-		expect(getByText('Read only')).toBeInTheDocument();
+		expect(queryByText('Read only')).not.toBeInTheDocument();
 	});
 
 	it('should render correct route to data table details', () => {

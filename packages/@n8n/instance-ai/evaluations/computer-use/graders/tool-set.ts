@@ -3,8 +3,10 @@
 //
 // The agent sees these tool names verbatim — they're what shows up in the SSE
 // trace `toolName` field for tool-call/tool-result events. Native instance-ai
-// tools use hyphenated names (build-workflow, run-workflow); computer-use
-// tools use snake_case, which is what the daemon advertises over MCP.
+// tool names mix snake_case and hyphens (workflow_builder_build_workflow,
+// run-workflow), so this grader matches computer-use tools by exact name or
+// prefix, not by casing. Computer-use tools use the snake_case names that the
+// daemon advertises over MCP.
 // ---------------------------------------------------------------------------
 
 const FILESYSTEM_TOOLS = [

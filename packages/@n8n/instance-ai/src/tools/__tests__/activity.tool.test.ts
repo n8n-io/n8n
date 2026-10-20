@@ -72,7 +72,7 @@ describe('activity tool', () => {
 			expand: vi.fn().mockResolvedValue({
 				entry: savedEntry,
 				resourceHistory: [older],
-				liveRecordHint: 'workflows(action="get", workflowId="wf1")',
+				liveRecordHint: 'workflow_builder_workflows(action="get", workflowId="wf1")',
 			}),
 		});
 		const tool = createActivityTool(makeContext(service));
@@ -86,7 +86,9 @@ describe('activity tool', () => {
 		expect(service.expand).toHaveBeenCalledWith(20);
 		expect(output.entry.id).toBe(20);
 		expect(output.resourceHistory).toEqual([older]);
-		expect(output.liveRecordHint).toBe('workflows(action="get", workflowId="wf1")');
+		expect(output.liveRecordHint).toBe(
+			'workflow_builder_workflows(action="get", workflowId="wf1")',
+		);
 	});
 
 	/** An id outside the conversation's scope answers the same way, so the tool cannot probe. */
