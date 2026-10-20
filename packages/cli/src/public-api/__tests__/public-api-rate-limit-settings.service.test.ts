@@ -78,8 +78,8 @@ describe('PublicApiRateLimitSettingsService', () => {
 			expect((await service.getSettings()).envManagedFields).toEqual(['enabled']);
 		});
 
-		it('does not lock a field whose env var is blank', async () => {
-			vi.stubEnv('N8N_PUBLIC_API_RATE_LIMIT_GLOBAL_READ_LIMIT', ' ');
+		it.each([' ', '""', "' '"])('does not lock a field whose env var is %j', async (value) => {
+			vi.stubEnv('N8N_PUBLIC_API_RATE_LIMIT_GLOBAL_READ_LIMIT', value);
 
 			expect((await service.getSettings()).envManagedFields).toEqual([]);
 		});
