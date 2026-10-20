@@ -16,7 +16,8 @@ import { AgentKnowledgeSnapshotService } from './agent-knowledge-snapshot.servic
 export class AgentKnowledgeSnapshotTask implements SystemTask {
 	readonly name = 'agent-knowledge-snapshot';
 
-	readonly schedule: SystemTaskSchedule = intervalFromSeconds(6 * Time.hours.toSeconds);
+	// The data is read weekly, so one snapshot a day is enough.
+	readonly schedule: SystemTaskSchedule = intervalFromSeconds(Time.days.toSeconds);
 
 	// Same delivery rules as `telemetry-pulse`: the event describes the whole instance.
 	readonly target = clusterTarget({
@@ -40,6 +41,11 @@ export class AgentKnowledgeSnapshotTask implements SystemTask {
 
 		// Make sure an aborted run sends no partial counts, so it cannot overlap with the next run.
 		if (signal.aborted) {
+			return;
+		}
+
+		// An instance without published agents adds nothing to the ratio, so it sends no row.
+		if (snapshot.published_agent_count === 0) {
 			return;
 		}
 

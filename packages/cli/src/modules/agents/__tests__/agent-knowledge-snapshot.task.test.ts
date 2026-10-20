@@ -33,14 +33,14 @@ describe('AgentKnowledgeSnapshotTask', () => {
 		};
 	}
 
-	it('runs every six hours on one main instance, without retries', () => {
-		const SIX_HOURS_SECONDS = 6 * 60 * 60;
+	it('runs once a day on one main instance, without retries', () => {
+		const ONE_DAY_SECONDS = 24 * 60 * 60;
 		const ONE_HOUR_SECONDS = 60 * 60;
 
 		const { task } = makeTask();
 
 		expect(task.name).toBe('agent-knowledge-snapshot');
-		expect(task.schedule).toEqual({ kind: 'interval', intervalSeconds: SIX_HOURS_SECONDS });
+		expect(task.schedule).toEqual({ kind: 'interval', intervalSeconds: ONE_DAY_SECONDS });
 		expect(task.target).toEqual(
 			expect.objectContaining({
 				scope: 'cluster',
@@ -72,6 +72,25 @@ describe('AgentKnowledgeSnapshotTask', () => {
 		});
 
 		await task.run(abortController.signal);
+
+		expect(telemetry.track).not.toHaveBeenCalled();
+	});
+
+	it('sends nothing when the instance has no published agents', async () => {
+		const { task, snapshotService, telemetry } = makeTask();
+		snapshotService.collect.mockResolvedValue({
+			...snapshot,
+			published_agent_count: 0,
+			published_with_files_count: 0,
+			published_with_vector_stores_count: 0,
+			published_with_both_count: 0,
+			knowledge_file_count: 0,
+			knowledge_total_bytes: 0,
+			vector_store_count: 0,
+			vector_store_providers: {},
+		});
+
+		await task.run(new AbortController().signal);
 
 		expect(telemetry.track).not.toHaveBeenCalled();
 	});
