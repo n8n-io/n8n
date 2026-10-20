@@ -198,6 +198,14 @@ export async function configurePostgres(
 				);
 			});
 
+			if (dbConfig.ssl) {
+				const ssl = {
+					...(typeof dbConfig.ssl === 'object' ? dbConfig.ssl : {}),
+					servername: credentials.host,
+				};
+				dbConfig.ssl = ssl;
+			}
+
 			const db = pgp({
 				...dbConfig,
 				port: proxyPort,

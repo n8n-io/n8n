@@ -1,10 +1,16 @@
 import type { ICredentialTestFunctions } from 'n8n-workflow';
+import { createServer, type Server } from 'node:net';
 import { mockDeep } from 'vitest-mock-extended';
 
 import { ConnectionPoolManager } from '@utils/connection-pool-manager';
 
 import { configurePostgres } from '../../transport';
 import type { PgpDatabase, PostgresNodeCredentials } from '../../v2/helpers/interfaces';
+
+vi.mock('node:net', async (importOriginal) => ({
+	...(await importOriginal<typeof import('node:net')>()),
+	createServer: vi.fn(),
+}));
 
 describe('configurePostgres SSL options', () => {
 	const context = mockDeep<ICredentialTestFunctions>();
@@ -113,5 +119,85 @@ describe('configurePostgres SSL options', () => {
 			cert: formattedCertificate,
 		});
 		expect(db.$pool.options.ssl).toHaveProperty('key', formattedPrivateKey);
+	});
+
+	describe('SSH tunnel', () => {
+		const sshCredentials: PostgresNodeCredentials = {
+			...credentials,
+			host: 'db.example.com',
+			sshTunnel: true,
+			sshHost: 'ssh.example.com',
+			sshPort: 22,
+			sshUser: 'test',
+			sshAuthenticateWith: 'password',
+			sshPassword: '',
+		};
+
+		beforeEach(() => {
+			const proxy = mockDeep<Server>();
+			proxy.address.mockReturnValue({ address: '127.0.0.1', family: 'IPv4', port: 15432 });
+			proxy.listen.mockImplementation((...args) => {
+				const listener = args[args.length - 1];
+				if (typeof listener === 'function') listener();
+				return proxy;
+			});
+			vi.mocked(createServer).mockReturnValue(proxy);
+			context.helpers.getSSHClient.mockResolvedValue(
+				mockDeep<Awaited<ReturnType<ICredentialTestFunctions['helpers']['getSSHClient']>>>(),
+			);
+		});
+
+		it.each(['allow', 'require'] as const)(
+			'should verify the database hostname with a custom CA and SSL %s',
+			async (ssl) => {
+				({ db } = await configurePostgres.call(context, {
+					...sshCredentials,
+					ssl,
+					caCertificate: certificate,
+					clientCertificate: certificate,
+					clientPrivateKey: privateKey,
+				}));
+
+				expect(db.$pool.options.host).toBe('127.0.0.1');
+				expect(db.$pool.options.port).toBe(15432);
+				expect(db.$pool.options.ssl).toEqual({
+					servername: 'db.example.com',
+					ca: formattedCertificate,
+					cert: formattedCertificate,
+				});
+				expect(db.$pool.options.ssl).toHaveProperty('key', formattedPrivateKey);
+			},
+		);
+
+		it('should verify the database hostname without a custom certificate', async () => {
+			({ db } = await configurePostgres.call(context, { ...sshCredentials, ssl: 'require' }));
+
+			expect(db.$pool.options.ssl).toEqual({ servername: 'db.example.com' });
+		});
+
+		it('should retain the certificate validation setting', async () => {
+			({ db } = await configurePostgres.call(context, {
+				...sshCredentials,
+				ssl: 'require',
+				allowUnauthorizedCerts: true,
+				caCertificate: certificate,
+			}));
+
+			expect(db.$pool.options.ssl).toEqual({
+				servername: 'db.example.com',
+				rejectUnauthorized: false,
+				ca: formattedCertificate,
+			});
+		});
+
+		it('should keep SSL disabled when certificates are stored', async () => {
+			({ db } = await configurePostgres.call(context, {
+				...sshCredentials,
+				ssl: 'disable',
+				caCertificate: certificate,
+			}));
+
+			expect(db.$pool.options.ssl).toBe(false);
+		});
 	});
 });

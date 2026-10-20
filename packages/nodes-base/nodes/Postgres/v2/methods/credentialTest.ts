@@ -35,6 +35,7 @@ export async function postgresConnectionTest(
 		}
 
 		if (
+			!credentials.caCertificate &&
 			[
 				'DEPTH_ZERO_SELF_SIGNED_CERT',
 				'SELF_SIGNED_CERT_IN_CHAIN',
