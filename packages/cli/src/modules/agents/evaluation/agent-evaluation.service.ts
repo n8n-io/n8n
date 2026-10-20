@@ -1,3 +1,4 @@
+import { raceWithAbort, throwIfAborted } from '@n8n/agents';
 import { Service } from '@n8n/di';
 import { ExecutionsConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
@@ -34,14 +35,23 @@ export class AgentEvaluationService {
 		private readonly credentials: CredentialsService,
 	) {}
 
-	private async accessError(user: User, projectId: string, agentId: string) {
+	private async accessError(
+		user: User,
+		projectId: string,
+		agentId: string,
+		abortSignal?: AbortSignal,
+	) {
 		if (this.executionsConfig.mode === 'queue') {
 			return 'Agent eval execution requires main process mode — queue mode is not supported.';
 		}
-		if (!(await this.settings.getEnabled())) {
+		if (!(await raceWithAbort(async () => await this.settings.getEnabled(), abortSignal))) {
 			return 'Agents are disabled. Ask an instance admin to enable them in Settings > Agents.';
 		}
-		if (!(await userHasScopes(user, ['agent:execute'], false, { projectId }))) {
+		const canExecute = await raceWithAbort(
+			async () => await userHasScopes(user, ['agent:execute'], false, { projectId }),
+			abortSignal,
+		);
+		if (!canExecute) {
 			return `Agent ${agentId} not found or not accessible`;
 		}
 		return undefined;
@@ -76,13 +86,14 @@ export class AgentEvaluationService {
 				config: structuredClone(config),
 				tools: summarizeTools(config, saved.tools ?? {}, sanitizeToolName),
 				skippedFeatures,
-				buildRuntime: async (instrumentation) =>
+				buildRuntime: async (instrumentation, abortSignal) =>
 					await this.buildRuntime(
 						user,
 						projectId,
 						{ agent: detached, skillRefs: pruned.skillRefs },
 						skippedFeatures,
 						instrumentation,
+						abortSignal,
 					),
 			},
 		};
@@ -94,32 +105,48 @@ export class AgentEvaluationService {
 		snapshot: { agent: ProjectAgent; skillRefs: AgentSkillRefs },
 		skippedFeatures: AgentEvaluationSkippedFeature[],
 		instrumentation: Omit<AgentRuntimeInstrumentation, 'transformDelegatedAgentConfig'>,
+		abortSignal?: AbortSignal,
 	) {
-		const error = await this.accessError(user, projectId, snapshot.agent.id);
+		const error = await this.accessError(user, projectId, snapshot.agent.id, abortSignal);
 		if (error) throw new UserError(error);
-		const skills = await this.skillRefs.skillsForRefs(snapshot.agent, snapshot.skillRefs, {});
-		const { agent } = await this.reconstruction.reconstructFromAgentEntity(
-			{ ...snapshot, skills },
-			createAgentCredentialProvider(this.credentials, projectId, user, snapshot.agent.id),
-			'test',
-			undefined,
-			user,
-			{
-				...instrumentation,
-				transformDelegatedAgentConfig: (childConfig, context) => {
-					const child = pruneConfigForEval(childConfig);
-					skippedFeatures.push(
-						...child.skippedFeatures.map((skip) => ({
-							...skip,
-							feature: `subAgent ${context.subAgentId}: ${skip.feature}`,
-						})),
-					);
-					return child.config;
-				},
-			},
-			'manual',
-			hashAgentSandboxPrincipal({ type: 'n8n-user', userId: user.id }),
+		const skills = await raceWithAbort(
+			async () => await this.skillRefs.skillsForRefs(snapshot.agent, snapshot.skillRefs, {}),
+			abortSignal,
 		);
-		return agent;
+		return await raceWithAbort(async () => {
+			const { agent } = await this.reconstruction.reconstructFromAgentEntity(
+				{ ...snapshot, skills },
+				createAgentCredentialProvider(this.credentials, projectId, user, snapshot.agent.id),
+				'test',
+				undefined,
+				user,
+				this.runtimeInstrumentation(instrumentation, skippedFeatures),
+				'manual',
+				hashAgentSandboxPrincipal({ type: 'n8n-user', userId: user.id }),
+				{ abortSignal },
+			);
+			if (abortSignal?.aborted) await agent.close();
+			throwIfAborted(abortSignal);
+			return agent;
+		}, abortSignal);
+	}
+
+	private runtimeInstrumentation(
+		instrumentation: Omit<AgentRuntimeInstrumentation, 'transformDelegatedAgentConfig'>,
+		skippedFeatures: AgentEvaluationSkippedFeature[],
+	): AgentRuntimeInstrumentation {
+		return {
+			...instrumentation,
+			transformDelegatedAgentConfig: (childConfig, context) => {
+				const child = pruneConfigForEval(childConfig);
+				skippedFeatures.push(
+					...child.skippedFeatures.map((skip) => ({
+						...skip,
+						feature: `subAgent ${context.subAgentId}: ${skip.feature}`,
+					})),
+				);
+				return child.config;
+			},
+		};
 	}
 }
