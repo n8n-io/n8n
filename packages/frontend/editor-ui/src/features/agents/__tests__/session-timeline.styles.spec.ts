@@ -17,6 +17,7 @@ describe('timelineColors', () => {
 		['suspension', 'neutral', 'yellow'],
 		['hitl-response', 'neutral', 'blue'],
 		['background-task-signal', 'neutral', 'mint'],
+		['background-task', 'neutral', 'mint'],
 	] satisfies Array<[EventKind, string, string]>)(
 		'uses the chart policy and keeps the pill palette for %s',
 		(kind, chartFamily, pillFamily) => {

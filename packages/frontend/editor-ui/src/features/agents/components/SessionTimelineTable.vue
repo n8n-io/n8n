@@ -14,6 +14,9 @@ const VIRTUALIZE_AFTER_ROWS = 100;
 const props = defineProps<{
 	items: TimelineItem[];
 	agentName?: string;
+	projectId?: string;
+	agentId?: string;
+	threadId?: string;
 	personalisation?: AgentJsonConfig['personalisation'] | null;
 	selectedIndex: number | null;
 	visibleKinds: Set<string>;
@@ -82,12 +85,13 @@ const rows = computed<Row[]>(function getRows() {
 		props.searchQuery ?? '',
 		labelForKey,
 	).map(function toEventRow(index) {
+		const item = props.items[index];
 		return {
-			id: `event-${index}`,
+			id: item.backgroundTask ? `background-task-${item.backgroundTask.id}` : `event-${index}`,
 			kind: 'event',
-			item: props.items[index],
+			item,
 			index,
-			sortKey: props.items[index].timestamp,
+			sortKey: item.timestamp,
 		};
 	});
 
@@ -125,8 +129,8 @@ function bindScrollContainer() {
 function scrollSelectedIntoView(): void {
 	const selectedIndex = props.selectedIndex;
 	if (selectedIndex === null) return;
-	const rowId = `event-${selectedIndex}`;
-	if (!rows.value.some((row) => row.id === rowId)) return;
+	const rowId = rows.value.find((row) => row.index === selectedIndex)?.id;
+	if (!rowId) return;
 
 	const behavior = window.matchMedia('(prefers-reduced-motion: reduce)').matches
 		? 'auto'
@@ -203,6 +207,9 @@ onBeforeUnmount(() => {
 					:aria-selected="props.selectedIndex === row.index"
 				>
 					<SessionTimelineRow
+						:project-id="props.projectId"
+						:agent-id="props.agentId"
+						:thread-id="props.threadId"
 						:item="row.item"
 						:agent-name="props.agentName"
 						:selected="props.selectedIndex === row.index"
@@ -230,6 +237,9 @@ onBeforeUnmount(() => {
 					:aria-selected="props.selectedIndex === row.index"
 				>
 					<SessionTimelineRow
+						:project-id="props.projectId"
+						:agent-id="props.agentId"
+						:thread-id="props.threadId"
 						:item="row.item"
 						:agent-name="props.agentName"
 						:selected="props.selectedIndex === row.index"
