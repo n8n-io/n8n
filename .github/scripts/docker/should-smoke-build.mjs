@@ -13,6 +13,8 @@ import { execFileSync } from 'node:child_process';
 import { appendFileSync, readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
+import { copiedNativePackageNames } from '../../../scripts/copied-native-modules.mjs';
+
 const WORKSPACE_FILE = 'pnpm-workspace.yaml';
 const ROOT_MANIFEST = 'package.json';
 
@@ -54,7 +56,7 @@ function pinsFor(text, deps) {
 export function nativePinsChanged(baseText, headText) {
 	const baseDeps = buildableDeps(baseText);
 	const headDeps = buildableDeps(headText);
-	const union = new Set([...baseDeps, ...headDeps]);
+	const union = new Set([...baseDeps, ...headDeps, ...copiedNativePackageNames]);
 
 	if (
 		baseDeps.size !== headDeps.size ||

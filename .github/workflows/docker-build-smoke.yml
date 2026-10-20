@@ -29,6 +29,7 @@ on:
       - 'docker/images/n8n-base/**'
       - 'docker/images/runners/**'
       - 'scripts/build-n8n.mjs'
+      - 'scripts/copied-native-modules.mjs'
       - 'scripts/dockerize-n8n.mjs'
       - 'scripts/smoke-n8n-image.mjs'
       - 'package.json'

@@ -38,6 +38,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { isFirstParty, applyOverride, qualifiedName } from './render-licenses-md.mjs';
 import { loadSpdxIds } from './check-sbom-licenses.mjs';
+import { copiedNativeBindingNames } from '../copied-native-modules.mjs';
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const OVERRIDES_PATH = path.join(scriptDir, 'license-overrides.json');
@@ -216,6 +217,17 @@ export function mergeNestedSboms(sbom, nestedSboms) {
 
 	for (const { source, sbom: nested } of nestedSboms) {
 		const packageLicenses = nested.metadata?.component?.licenses ?? [];
+		const packageComponent = nested.metadata?.component;
+		if (packageComponent && packageComponent.type !== 'file') {
+			const component = withNestedSource({ ...packageComponent, type: 'library' }, source);
+			const key = componentKey(component);
+			if (!seen.has(key)) {
+				seen.add(key);
+				components.push(component);
+				mergedComponents++;
+			}
+		}
+
 		for (const rawComponent of nested.components ?? []) {
 			if (rawComponent.type === 'file') continue;
 
@@ -243,14 +255,72 @@ export function mergeNestedSboms(sbom, nestedSboms) {
 	};
 }
 
+function npmComponentFromManifest(manifest) {
+	if (typeof manifest.name !== 'string' || typeof manifest.version !== 'string') {
+		return null;
+	}
+
+	const purl = `pkg:npm/${manifest.name.replace('@', '%40')}@${manifest.version}`;
+	return {
+		type: 'library',
+		'bom-ref': purl,
+		name: manifest.name,
+		version: manifest.version,
+		purl,
+		...(typeof manifest.license === 'string'
+			? { licenses: [{ license: { id: manifest.license } }] }
+			: {}),
+	};
+}
+
+async function synthesizeNativePackageSbomsFromManifests(
+	nodeModulesRoot,
+	existingPackagePurls,
+) {
+	const synthesizedSboms = [];
+	const seenPurls = new Set(existingPackagePurls);
+	const manifestPatterns = [...copiedNativeBindingNames].flatMap((binding) => [
+		`${binding}/package.json`,
+		`.pnpm/*/node_modules/${binding}/package.json`,
+	]);
+
+	for (const pattern of manifestPatterns) {
+		for await (const relativePath of glob(pattern, { cwd: nodeModulesRoot })) {
+			const manifestPath = path.resolve(nodeModulesRoot, relativePath);
+			try {
+				const manifest = JSON.parse(await readFile(manifestPath, 'utf-8'));
+				const component = npmComponentFromManifest(manifest);
+				if (
+					!component ||
+					!copiedNativeBindingNames.has(component.name) ||
+					seenPurls.has(component.purl)
+				) {
+					continue;
+				}
+
+				seenPurls.add(component.purl);
+				const source = path.relative(nodeModulesRoot, manifestPath).split(path.sep).join('/');
+				synthesizedSboms.push({ source, sbom: { metadata: { component }, components: [] } });
+			} catch (error) {
+				throw new Error(
+					`Could not read native package manifest at ${manifestPath}: ${error.message}`,
+				);
+			}
+		}
+	}
+
+	return synthesizedSboms;
+}
+
 /**
- * Find CycloneDX files in a deployed node_modules tree. pnpm keeps optional
- * native packages in its .pnpm virtual store, so package-root traversal alone
- * misses the SBOMs that describe the shipped binaries.
+ * Find CycloneDX files and NAPI platform manifests in a deployed node_modules
+ * tree. Some native packages ship a nested SBOM, while others only ship their
+ * npm manifest. Both forms must inventory the outer package.
  */
 export async function loadNestedSboms(nodeModulesRoot) {
 	const nestedSboms = [];
 	const visited = new Set();
+	const packagePurls = new Set();
 	const patterns = [
 		'*/sbom.cdx.json',
 		'@*/*/sbom.cdx.json',
@@ -278,11 +348,18 @@ export async function loadNestedSboms(nodeModulesRoot) {
 				const nested = JSON.parse(await readFile(sbomPath, 'utf-8'));
 				const source = path.relative(nodeModulesRoot, sbomPath).split(path.sep).join('/');
 				nestedSboms.push({ source, sbom: nested });
+				const packagePurl = nested.metadata?.component?.purl;
+				if (typeof packagePurl === 'string') packagePurls.add(packagePurl);
 			} catch (error) {
 				throw new Error(`Could not read nested SBOM at ${sbomPath}: ${error.message}`);
 			}
 		}
 	}
+
+	// synthesize SBOMs from npm manifests if we fail to find a nested SBOM
+	nestedSboms.push(
+		...(await synthesizeNativePackageSbomsFromManifests(nodeModulesRoot, packagePurls)),
+	);
 
 	return nestedSboms;
 }

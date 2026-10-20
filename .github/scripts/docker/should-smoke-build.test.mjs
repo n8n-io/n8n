@@ -8,9 +8,16 @@ import {
 	packageManagerChanged,
 } from './should-smoke-build.mjs';
 
-const workspace = ({ kafka = '1.9.1', vm = '^7.0.0', sentry = '10.70.0', allowVm = true } = {}) => `
+const workspace = ({
+	canvas = '1.0.11',
+	kafka = '1.9.1',
+	vm = '^7.0.0',
+	sentry = '10.70.0',
+	allowVm = true,
+} = {}) => `
 catalog:
   '@confluentinc/kafka-javascript': ${kafka}
+  '@napi-rs/canvas': ${canvas}
   '@sentry/core': ${sentry}
   isolated-vm: ${vm}
 
@@ -72,6 +79,11 @@ describe('nativePinsChanged', () => {
 
 	it('catches a native version bump', () => {
 		const { changed } = nativePinsChanged(workspace(), workspace({ vm: '^8.0.0' }));
+		assert.equal(changed, true);
+	});
+
+	it('catches a copied native dependency bump', () => {
+		const { changed } = nativePinsChanged(workspace(), workspace({ canvas: '1.0.12' }));
 		assert.equal(changed, true);
 	});
 

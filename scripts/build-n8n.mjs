@@ -12,6 +12,8 @@ import { $, echo, fs, chalk } from 'zx';
 import path from 'path';
 import os from 'os';
 
+import { copiedNativeModulesConfig } from './copied-native-modules.mjs';
+
 // Check if running in a CI environment
 const isCI = process.env.CI === 'true';
 
@@ -33,27 +35,6 @@ const config = {
 	compiledTaskRunnerDir: path.join(rootDir, 'dist', 'task-runner-javascript'),
 	cliDir: path.join(rootDir, 'packages', 'cli'),
 	rootDir: rootDir,
-};
-
-const nativeModulesConfig = {
-	modulesDirectory: path.join('node_modules', '.pnpm', 'node_modules', '@napi-rs'),
-	target: {
-		os: 'linux',
-		cpu: ['x64', 'arm64'],
-		libc: 'musl',
-	},
-	modules: [
-		{
-			packageName: '@napi-rs/canvas',
-			directoryName: 'canvas',
-			bindings: ['@napi-rs/canvas-linux-x64-musl', '@napi-rs/canvas-linux-arm64-musl'],
-		},
-		{
-			packageName: '@napi-rs/image',
-			directoryName: 'image',
-			bindings: ['@napi-rs/image-linux-x64-musl', '@napi-rs/image-linux-arm64-musl'],
-		},
-	],
 };
 
 // #endregion ===== Configuration =====
@@ -96,9 +77,27 @@ async function installNativeModules(compiledAppDir, nativeConfig) {
 		const dependencies = {};
 		const moduleDirs = new Map();
 		for (const nativeModule of nativeConfig.modules) {
-			const moduleDir = await fs.realpath(
-				path.join(compiledAppDir, nativeConfig.modulesDirectory, nativeModule.directoryName),
-			);
+			const moduleCandidates = [
+				path.join(compiledAppDir, 'node_modules', nativeModule.packageName),
+				path.join(
+					compiledAppDir,
+					'node_modules',
+					'.pnpm',
+					'node_modules',
+					nativeModule.packageName,
+				),
+			];
+			const modulePath = (
+				await Promise.all(
+					moduleCandidates.map(async (candidate) =>
+						(await fs.pathExists(candidate)) ? candidate : null,
+					),
+				)
+			).find(Boolean);
+			if (!modulePath) {
+				throw new Error(`Could not resolve ${nativeModule.packageName} in the deployed closure`);
+			}
+			const moduleDir = await fs.realpath(modulePath);
 			moduleDirs.set(nativeModule.packageName, moduleDir);
 			const manifest = await fs.readJson(path.join(moduleDir, 'package.json'));
 			for (const binding of nativeModule.bindings) {
@@ -305,7 +304,7 @@ try {
 
 	// The app deploy excludes optional dependencies, but these packages contain the
 	// native bindings that Edit Image loads at runtime.
-	await installNativeModules(config.compiledAppDir, nativeModulesConfig);
+	await installNativeModules(config.compiledAppDir, copiedNativeModulesConfig);
 
 	// Strip test/example/benchmark dirs shipped inside production deps that lack a
 	// `files` field in their package.json. These are valid runtime deps but their
@@ -480,6 +479,12 @@ try {
 
 	echo(chalk.green('✅ Strips verified'));
 
+	const copiedNativeAssetGlobs = copiedNativeModulesConfig.modules.flatMap(
+		({ packageName, bindings }) =>
+			bindings.map(
+				(binding) => `*${packageName.replace('/', '+')}@*/node_modules/${binding}/*.node`,
+			),
+	);
 	const runtimeAssetGlobs = [
 		'*/@n8n/instance-ai/skills/*',
 		'*/@n8n/instance-ai/knowledge-base/*',
@@ -490,12 +495,7 @@ try {
 		'*agent-browser/bin/*linux-musl*',
 		// The launcher that package.json's `bin` resolves to.
 		'*agent-browser/bin/agent-browser.js',
-		// Edit Image v2 loads these native packages at runtime. The Docker build context
-		// serves both supported architectures, so the deploy must keep both musl bindings.
-		'*@napi-rs+canvas@*/node_modules/@napi-rs/canvas-linux-x64-musl/*.node',
-		'*@napi-rs+canvas@*/node_modules/@napi-rs/canvas-linux-arm64-musl/*.node',
-		'*@napi-rs+image@*/node_modules/@napi-rs/image-linux-x64-musl/*.node',
-		'*@napi-rs+image@*/node_modules/@napi-rs/image-linux-arm64-musl/*.node',
+		...copiedNativeAssetGlobs,
 	];
 
 	echo(chalk.yellow('INFO: Verifying Runtime assets'));
