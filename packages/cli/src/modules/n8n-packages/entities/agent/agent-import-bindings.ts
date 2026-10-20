@@ -120,13 +120,8 @@ export class AgentImportBindings {
 			context,
 			ids.filter((id) => !planned.has(id)),
 		);
-		const ambiguous = new Set(external.lineageConflicts.map(({ sourceAgentId }) => sourceAgentId));
 		const resolved = new Map<string, DependencyTarget>();
 		for (const id of ids) {
-			if (ambiguous.has(id)) {
-				resolved.set(id, { reason: 'ambiguous' });
-				continue;
-			}
 			const target = planned.get(id) ?? external.matches.get(id);
 			resolved.set(
 				id,

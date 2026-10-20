@@ -400,7 +400,7 @@ export const importBlockingIssueSchema = z
 	.discriminatedUnion('type', [
 		z.object({
 			type: z.literal('agent-conflict'),
-			kind: z.enum(['existing', 'lineage', 'id', 'task-lineage', 'task-id']),
+			kind: z.enum(['existing', 'id', 'task-id']),
 			sourceAgentId: z.string(),
 			projectId: z.string(),
 			sourceTaskId: z.string().optional(),
