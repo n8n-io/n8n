@@ -537,6 +537,7 @@ describe('Public API rate limiting across mains', () => {
 	});
 
 	it('lets requests pass and logs one warning while Redis fails', async () => {
+		const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
 		const logger = mock<Logger>();
 		const main = activateApp(
 			{ globalReadLimit: 1, endpointReadLimit: 1 },
@@ -548,6 +549,7 @@ describe('Public API rate limiting across mains', () => {
 		expect(responses.map((response) => response.status)).toEqual([200, 200]);
 		expect(responses[1].headers['x-ratelimit-limit']).toBeUndefined();
 		expect(logger.warn).toHaveBeenCalledTimes(1);
+		expect(consoleError).not.toHaveBeenCalled();
 	});
 
 	it('still blocks a request when Redis cannot take back its count', async () => {
