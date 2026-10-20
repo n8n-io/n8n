@@ -2,9 +2,11 @@ import type { InstanceAiWorkflowAttachment, SelfHealingResultDetail } from '@n8n
 import {
 	createWorkflowWithHistory,
 	mockInstance,
+	createTeamProject,
+	linkUserToProject,
 	shareWorkflowWithUsers,
 } from '@n8n/backend-test-utils';
-import { ProjectRepository, WorkflowRepository } from '@n8n/db';
+import { WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { randomUUID } from 'node:crypto';
 
@@ -25,6 +27,8 @@ import { TypeORMAgentMemory } from '../../storage/typeorm-agent-memory';
 import { SelfHealingResultRepository } from '../database/self-healing-result.repository';
 import { createConfiguration, addReviewer } from './support/configuration';
 
+vi.mock('../../instance-ai.service', () => ({ InstanceAiService: vi.fn() }));
+
 mockInstance(ActiveWorkflowManager);
 mockInstance(WorkflowPublicationNotifier);
 const assistant = mockInstance(InstanceAiService);
@@ -40,7 +44,7 @@ const settings = mockInstance(InstanceAiSettingsService, {
 const testServer = setupTestServer({
 	modules: ['instance-ai'],
 	endpointGroups: ['instance-ai'],
-	setupTimeout: 30_000,
+	setupTimeout: 60_000,
 });
 
 beforeAll(async () => {
@@ -59,10 +63,8 @@ beforeEach(() => {
 
 async function savedResult() {
 	const backgroundUser = await createUser();
-	const workflow = await createWorkflowWithHistory({}, backgroundUser);
-	const ownerProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
-		backgroundUser.id,
-	);
+	const ownerProject = await createTeamProject(undefined, backgroundUser);
+	const workflow = await createWorkflowWithHistory({}, ownerProject);
 	const execution = await createExecution({ status: 'error' }, workflow);
 	const configuration = await createConfiguration(ownerProject.id, backgroundUser.id);
 	const result = await Container.get(SelfHealingResultRepository).createResult(
@@ -89,17 +91,15 @@ async function savedResult() {
 	return { backgroundUser, workflow, ownerProject, execution, result, url };
 }
 
-it('continues a saved report in a new private chat owned by the current editor', async () => {
+it('closes a report and starts a private conversation through normal chat APIs', async () => {
 	testServer.license.enable('feat:sharing');
 	const { backgroundUser, workflow, ownerProject, execution, result, url } = await savedResult();
 	const editor = await createUser();
 	const otherEditor = await createUser();
-	await shareWorkflowWithUsers(workflow, [editor, otherEditor]);
+	await linkUserToProject(editor, ownerProject, 'project:editor');
+	await linkUserToProject(otherEditor, ownerProject, 'project:editor');
 	await addReviewer(result.configurationId, editor.id);
 	await addReviewer(result.configurationId, otherEditor.id);
-	const editorProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
-		editor.id,
-	);
 	const memory = Container.get(InstanceAiMemoryService);
 	const storedMemory = Container.get(TypeORMAgentMemory);
 	const threads = Container.get(InstanceAiThreadRepository);
@@ -114,9 +114,6 @@ it('continues a saved report in a new private chat owned by the current editor',
 	const backgroundMessages = await storedMemory.getMessages(backgroundThreadId);
 	const originalWorkflow = await Container.get(WorkflowRepository).findOneByOrFail({
 		id: workflow.id,
-	});
-	const originalResult = await Container.get(SelfHealingResultRepository).findOneByOrFail({
-		id: result.id,
 	});
 	const editorAgent = testServer.authAgentFor(editor);
 
@@ -134,21 +131,40 @@ it('continues a saved report in a new private chat owned by the current editor',
 	};
 	expect(assistant.startRun).not.toHaveBeenCalled();
 
+	const closeResponse = await editorAgent.post(`${url}/dismiss`).expect(200);
+	expect(closeResponse.body.data).toMatchObject({
+		reviewState: 'dismissed',
+		dismissedById: editor.id,
+	});
 	const threadId = randomUUID();
 	await editorAgent
 		.post('/instance-ai/threads')
-		.send({ threadId, projectId: editorProject.id, source: 'assistant_page', origin: 'internal' })
+		.send({
+			threadId,
+			projectId: detail.projectId,
+			source: 'self_healing_result',
+			origin: 'internal',
+			sourceContext: { resultId: result.id, outcome: result.outcome },
+		})
 		.expect(200);
 	expect(await threads.findOneByOrFail({ id: threadId })).toMatchObject({
 		resourceId: editor.id,
-		projectId: editorProject.id,
+		projectId: ownerProject.id,
+		metadata: {
+			source: 'self_healing_result',
+			origin: 'internal',
+			sourceContext: { resultId: result.id, outcome: result.outcome },
+		},
 	});
-	expect(await storedMemory.getMessages(threadId)).toEqual([]);
-	expect(assistant.startRun).not.toHaveBeenCalled();
 
 	const response = await editorAgent
 		.post(`/instance-ai/chat/${threadId}`)
-		.send({ message: detail.report, attachments: [attachment], timeZone: 'UTC' })
+		.send({
+			message: result.report,
+			attachments: [attachment],
+			authorship: { kind: 'prefill', prefillType: 'handoff_self_healing_report' },
+			timeZone: 'UTC',
+		})
 		.expect(200);
 	expect(response.body.data).toEqual({ runId: 'controlled-run' });
 	expect(assistant.startRun).toHaveBeenCalledTimes(1);
@@ -161,7 +177,12 @@ it('continues a saved report in a new private chat owned by the current editor',
 	await editorAgent.get(`/instance-ai/threads/${threadId}`).expect(200);
 	for (const user of [backgroundUser, otherEditor]) {
 		const agent = testServer.authAgentFor(user);
-		await agent.get(url).expect(200);
+		const sharedResult = await agent.get(url).expect(200);
+		expect(sharedResult.body.data).toMatchObject({
+			reviewState: 'dismissed',
+			dismissedById: editor.id,
+		});
+		await agent.post(`${url}/dismiss`).expect(409);
 		await agent.get(`/instance-ai/threads/${threadId}`).expect(403);
 		await agent.post(`/instance-ai/chat/${threadId}`).send({ message: 'Continue.' }).expect(403);
 	}
@@ -176,5 +197,29 @@ it('continues a saved report in a new private chat owned by the current editor',
 	);
 	expect(
 		await Container.get(SelfHealingResultRepository).findOneByOrFail({ id: result.id }),
-	).toEqual(originalResult);
+	).toMatchObject({ dismissedAt: expect.any(Date), dismissedById: editor.id });
+});
+
+it('rejects normal chat creation when the reviewer cannot read the result project', async () => {
+	const { workflow, result, url } = await savedResult();
+	const reviewer = await createUser();
+	await shareWorkflowWithUsers(workflow, [reviewer]);
+	await addReviewer(result.configurationId, reviewer.id);
+	const agent = testServer.authAgentFor(reviewer);
+	await agent.post(`${url}/dismiss`).expect(200);
+	const threadId = randomUUID();
+
+	await agent
+		.post('/instance-ai/threads')
+		.send({
+			threadId,
+			projectId: result.projectId,
+			source: 'self_healing_result',
+		})
+		.expect(403);
+
+	expect(await Container.get(InstanceAiThreadRepository).findOneBy({ id: threadId })).toBeNull();
+	expect(
+		await Container.get(SelfHealingResultRepository).findOneByOrFail({ id: result.id }),
+	).toMatchObject({ dismissedById: reviewer.id });
 });

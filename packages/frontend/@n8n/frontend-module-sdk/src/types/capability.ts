@@ -1,3 +1,6 @@
+import type { SelfHealingResultDetail } from '@n8n/api-types';
+import type { ComputedRef } from 'vue';
+
 /**
  * A typed key for a capability. `declareCapability()` is the only way to make
  * one, and the token is the only way to read or write its slot in the registry.
@@ -29,4 +32,15 @@ export interface McpExposeAllOffer {
 	 * when the modal opened. `onExposed` runs after the user exposes everything.
 	 */
 	offer(onExposed: () => Promise<void> | void): Promise<boolean>;
+}
+
+export type SelfHealingChatInput = Pick<
+	SelfHealingResultDetail,
+	'resultId' | 'projectId' | 'workflowId' | 'report' | 'outcome' | 'reviewState' | 'execution'
+>;
+
+export interface SelfHealingChatHandoff {
+	available: ComputedRef<boolean>;
+	/** Opens a chat and sends the report through the normal Assistant handoff. */
+	start(input: SelfHealingChatInput): Promise<void>;
 }

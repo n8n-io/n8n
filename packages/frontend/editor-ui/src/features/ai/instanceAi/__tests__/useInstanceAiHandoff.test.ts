@@ -403,6 +403,17 @@ describe('useInstanceAiHandoff', () => {
 			expect(mocks.deleteThread).not.toHaveBeenCalled();
 		});
 
+		it('reports thread creation errors without navigating or sending', async () => {
+			mocks.syncThread.mockRejectedValueOnce(new Error('Project access denied'));
+
+			await start();
+
+			expect(mocks.showError).toHaveBeenCalledOnce();
+			expect(mocks.routerPush).not.toHaveBeenCalled();
+			expect(mocks.sendMessage).not.toHaveBeenCalled();
+			expect(mocks.syncThread).toHaveBeenCalledOnce();
+		});
+
 		it('deletes the thread and does not send when the navigation is aborted', async () => {
 			const failure = new Error('Navigation aborted');
 			mocks.routerPush.mockResolvedValueOnce(failure);

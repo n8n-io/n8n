@@ -118,12 +118,13 @@ Admission uses the same Open and Closed states as Inbox. An undismissed result s
 when it has no suggestion or its suggestion is pending. This includes Fix ready,
 Needs attention, and Could not fix reports.
 
-Dismissal, discard, or outdated reconciliation permits another eligible production failure
-on the same published version. Apply saves a draft. Another investigation requires successful
-publication and a new eligible failure. Closing a result, opening the editor, changing a
-configuration, and publishing do not start an investigation.
+Dismissal, report-only chat, discard, or outdated reconciliation permits another eligible
+production failure on the same published version. Apply saves a draft. Another investigation
+requires successful publication and a new eligible failure. Closing a result, opening the editor,
+changing a configuration, and publishing do not start an investigation.
 
-A report without a suggestion stays open until dismissed, even after a new publication.
+A report without a suggestion stays open until closed through dismissal or chat,
+even after a new publication.
 Pause, resume, and configuration edits do not clear this block. Configuration deletion removes
 its history and resets the block. Results from a previous owning project do not block the new project.
 
@@ -207,11 +208,11 @@ The investigation instructions must keep sensitive values out of reports, summar
 suggestion explanations, and error context. The text filter handles recognized patterns.
 It does not remove arbitrary private information.
 
-| Outcome         | Suggestion | Actions                                      |
-| --------------- | ---------- | -------------------------------------------- |
-| `fix_ready`     | Required   | Approve and publish, Open in editor, Discard |
-| `needs_you`     | Optional   | Continue in chat, Dismiss                    |
-| `could_not_fix` | None       | Continue in chat, Dismiss                    |
+| Outcome         | Suggestion | Actions                                                                    |
+| --------------- | ---------- | -------------------------------------------------------------------------- |
+| `fix_ready`     | Required   | Apply and publish, Apply and open in editor, Discard                       |
+| `needs_you`     | Optional   | Apply and open in chat when changes exist; otherwise Open in chat, Discard |
+| `could_not_fix` | None       | Open in chat, Discard                                                      |
 
 The summary is a plain-language title with at most 80 characters.
 The agent writes the report as one Markdown string with two sections: **What happened**
@@ -252,38 +253,48 @@ Assigned reviewers with current workflow edit access can review results. Approva
 publish access. Reviewer filtering applies to Inbox lists, counts, details, and actions.
 Each action resolves its suggestion from the result and returns the updated review.
 Send the editor client ID in `push-ref` for Apply actions.
-Read the returned review state before navigating. A competing action can close the suggestion first.
-Apply saves the proposed fix without publishing; the UI opens the editor when `reviewState` is `applied`.
+The first successful action closes the result. Later actions return a conflict.
+Publish accepts only `fix_ready` suggestions. Apply accepts both `fix_ready` and `needs_you`
+suggestions. The UI opens ready fixes in the editor and other reports in chat.
 Detail reads do not change suggestion state. Workflow events reconcile stale suggestions, and actions
 check the current workflow before writing. If Apply fails, keep the review open and show the error.
 
-Both Discard and Dismiss buttons call `POST /:resultId/dismiss`.
+The Discard button calls `POST /:resultId/dismiss` for all outcomes.
 Dismissal discards an attached pending suggestion. Fix-ready results derive their discarded state
 from the suggestion; informational results also record dismissal in the same transaction.
-Already applied, discarded, or outdated suggestions keep their existing closure.
 Apply uses the existing suggestion action service. An applied result stays applied if publication
 returns an error. `publishError` describes that request only. The response includes the workflow
 ID and the suggestion's recorded applied version. Open the normal editor for publication status
-and recovery. Repeating a review action does not save or publish again.
+and recovery.
 
-For Continue in chat, fetch the result detail again to check current access.
-Pass `report` to the normal Assistant handoff. Build a workflow attachment from `workflowId`.
-Include `execution.id` only when `execution.status` is `available`.
-Offer this action for `needs_you` and `could_not_fix` results.
-The normal handoff opens a new chat in the clicking user's personal project.
-Normal chat ownership and tool permissions apply. Do not copy the background conversation or grants.
+The editor uses Apply, then opens the workflow. Open in chat also uses Apply when the result has
+suggested changes. For a report without a suggestion, it uses Dismiss to close the result.
+Neither action publishes the workflow.
+
+After the action succeeds, the frontend uses the normal Assistant handoff. It creates a private
+chat in the result's project and sends the full report with the workflow attachment. The attachment
+includes the execution ID only when the reviewer can read it. The opening message starts an
+Assistant run. If changes were applied, the message states that they are already in the draft.
+
+Normal chat setup, ownership, project access, and tool permissions apply. The background
+conversation and grants stay separate. Chat creation or navigation errors use normal chat error
+handling. They do not undo the workflow changes or reopen the result. Closed results remain
+readable, but they have no action buttons.
 
 ## Availability
 
 Set `N8N_INSTANCE_AI_WORKFLOW_SUGGESTIONS_ENABLED=true` before startup to enable investigations
 and load review routes. The flag defaults to `false`. Restart n8n after changing it.
 The `instance-ai` module must be loaded. Entities and migrations do not depend on this rollout flag.
-Saved review services do not require Assistant model availability. Recovery of existing
-investigations remains available when the flag is off.
+Saved review services do not require an enabled configuration or Assistant model availability.
+The frontend enables Chat only when Assistant access, enablement, and setup are ready.
+Normal chat endpoints enforce their own access and model requirements.
+Recovery of existing investigations remains available when the flag is off.
 
 The shared Inbox reads result rows through `SelfHealingResultService.listForInbox()`.
 It reads counts through `countForInbox()`. Both use current reviewer membership, editor access, and original-project ownership.
 The source selects rows before applying the shared pagination boundary and limit.
 The shared API uses `GET /inbox` and `GET /inbox/summary`.
-Open and Closed derive from result dismissal and suggestion closure. Inbox reads do not change either state.
-The review UI will provide review screens and chat and editor navigation.
+Open and Closed derive from result dismissal and suggestion closure.
+Inbox reads do not change these states.
+The review UI provides review screens and chat and editor navigation.

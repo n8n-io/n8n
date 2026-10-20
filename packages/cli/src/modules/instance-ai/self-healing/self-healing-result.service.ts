@@ -51,7 +51,10 @@ export function getSelfHealingReviewState(
 	result: Pick<SelfHealingResult, 'dismissedAt'>,
 	suggestion: Pick<WorkflowSuggestionProposalDetail, 'closedReason'> | null,
 ): SelfHealingResultDetail['reviewState'] {
-	return result.dismissedAt ? 'dismissed' : (suggestion?.closedReason ?? 'open');
+	if (suggestion?.closedReason === 'applied') return 'applied';
+	if (result.dismissedAt) return 'dismissed';
+	if (suggestion?.closedReason) return suggestion.closedReason;
+	return 'open';
 }
 
 @Service()
@@ -307,10 +310,15 @@ export class SelfHealingResultService {
 			resultId,
 		);
 		const suggestionId = result.suggestionId;
-		if (result.outcome !== 'fix_ready' || !suggestionId) {
-			throw new ConflictError("This fix isn't ready to apply. Review the report for next steps.");
+
+		if (result.dismissedAt) {
+			throw new ConflictError('This result is already closed.');
+		}
+		if (!suggestionId || (action === 'approve-and-publish' && result.outcome !== 'fix_ready')) {
+			throw new ConflictError("This action isn't available for this result.");
 		}
 
+		const options = { requirePending: true };
 		let actionResult: WorkflowSuggestionActionResult;
 		if (action === 'approve-and-publish') {
 			actionResult = await this.actions.approveAndPublish(
@@ -319,6 +327,7 @@ export class SelfHealingResultService {
 				workflowId,
 				suggestionId,
 				clientId,
+				options,
 			);
 		} else {
 			actionResult = await this.actions.apply(
@@ -327,23 +336,21 @@ export class SelfHealingResultService {
 				workflowId,
 				suggestionId,
 				clientId,
+				options,
 			);
 		}
 
-		const { publishError, ...suggestion } = actionResult;
-		const execution = await this.executionReferences.getReference(
-			reviewer,
-			workflowId,
-			result.executionId,
-		);
+		const updatedResult = await this.getDetail(reviewer, projectId, workflowId, resultId);
 		return {
-			...this.toDetail(result, suggestion, execution),
-			...(publishError !== undefined ? { publishError } : {}),
+			...updatedResult,
+			...(actionResult.publishError !== undefined
+				? { publishError: actionResult.publishError }
+				: {}),
 		};
 	}
 
 	async dismiss(user: User, projectId: string, workflowId: string, resultId: string) {
-		const found = await this.txRunner.run({}, async (ctx) => {
+		const outcome = await this.txRunner.run({}, async (ctx) => {
 			const { result, reviewer } = await this.getResultForEditor(
 				user,
 				projectId,
@@ -351,35 +358,40 @@ export class SelfHealingResultService {
 				resultId,
 				ctx,
 			);
-			if (result.dismissedAt) return true;
+
+			if (result.dismissedAt) return 'already_closed';
 
 			const suggestionId = result.suggestionId;
 			if (suggestionId) {
-				const outcome = await this.actions.discardPending(
+				const discardOutcome = await this.actions.discardPending(
 					reviewer,
 					projectId,
 					workflowId,
 					suggestionId,
 					ctx,
 				);
-				if (outcome === 'unavailable') return false;
-				if (outcome === 'already_closed') return true;
+
+				if (discardOutcome !== 'discarded') return discardOutcome;
 			} else {
 				await this.requireCurrentProject(workflowId, projectId, ctx);
 			}
 
 			if (result.outcome !== 'fix_ready') {
-				await this.results.dismissResult(result.id, user.id, ctx);
+				const dismissed = await this.results.dismissResult(result.id, user.id, ctx);
+				if (!dismissed) return 'already_closed';
 			}
-			return true;
+
+			return 'discarded';
 		});
 
 		// Commit outdated reconciliation before rejecting a stale project route.
-		if (!found) {
-			throw new NotFoundError(
-				'This result is no longer available in this project. Refresh the page.',
-			);
+		if (outcome === 'unavailable') {
+			throw new NotFoundError('This result is no longer available in this project.');
 		}
+		if (outcome === 'already_closed') {
+			throw new ConflictError('This result is already closed.');
+		}
+
 		return await this.getDetail(user, projectId, workflowId, resultId);
 	}
 
@@ -406,9 +418,7 @@ export class SelfHealingResultService {
 	) {
 		const owner = await this.ownership.getWorkflowOwningProject(workflowId, ctx);
 		if (owner?.id !== projectId) {
-			throw new NotFoundError(
-				'This result is no longer available in this project. Refresh the page.',
-			);
+			throw new NotFoundError('This result is no longer available in this project.');
 		}
 	}
 }
