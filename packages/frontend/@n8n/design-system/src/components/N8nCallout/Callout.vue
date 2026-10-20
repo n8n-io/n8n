@@ -23,6 +23,11 @@ interface CalloutProps {
 	slim?: boolean;
 	roundCorners?: boolean;
 	onlyBottomBorder?: boolean;
+	/**
+	 * Colour links with the theme text colour instead of the secondary link colour.
+	 * Applies to `info`, `success`, `warning`, and `danger`.
+	 */
+	themedLinks?: boolean;
 }
 
 defineOptions({ name: 'N8nCallout' });
@@ -30,6 +35,7 @@ const props = withDefaults(defineProps<CalloutProps>(), {
 	iconTooltip: undefined,
 	iconSize: 'medium',
 	roundCorners: true,
+	themedLinks: false,
 });
 
 const $style = useCssModule();
@@ -40,6 +46,7 @@ const classes = computed(() => [
 	props.slim ? $style.slim : '',
 	props.roundCorners ? $style.round : '',
 	props.onlyBottomBorder ? $style.onlyBottomBorder : '',
+	props.themedLinks ? $style.themedLinks : '',
 ]);
 
 const getIcon = computed(
@@ -181,6 +188,43 @@ const getIconSize = computed<IconSize>(() => {
 
 	.icon {
 		color: var(--callout--icon-color--secondary);
+	}
+}
+
+// Opt-in. `secondary` and `custom` keep the default link colours.
+// N8nLink colours its inner span, so the span needs the override too.
+.themedLinks {
+	--callout--link--color: var(--link--color--secondary);
+	--callout--link--color--hover: var(--link--color--secondary--hover);
+
+	&.info {
+		--callout--link--color: var(--callout--color--text--info);
+		--callout--link--color--hover: var(--callout--color--text--info--hover);
+	}
+
+	&.success {
+		--callout--link--color: var(--callout--color--text--success);
+		--callout--link--color--hover: var(--callout--color--text--success--hover);
+	}
+
+	&.warning {
+		--callout--link--color: var(--callout--color--text--warning);
+		--callout--link--color--hover: var(--callout--color--text--warning--hover);
+	}
+
+	&.danger {
+		--callout--link--color: var(--callout--color--text--danger);
+		--callout--link--color--hover: var(--callout--color--text--danger--hover);
+	}
+
+	a,
+	a > span {
+		color: var(--callout--link--color);
+	}
+
+	a:hover,
+	a:hover > span {
+		color: var(--callout--link--color--hover);
 	}
 }
 </style>

@@ -103,6 +103,8 @@ packages/cli/src/modules/dynamic-credentials.ee/        @n8n-io/iam
 packages/cli/src/modules/redaction/                     @n8n-io/iam
 packages/cli/src/modules/instance-registry/             @n8n-io/iam
 packages/cli/src/modules/token-exchange/                @n8n-io/iam
+packages/cli/src/modules/scim/                          @n8n-io/iam
+packages/modules/scim/                                  @n8n-io/iam
 
 packages/cli/src/environments.ee/                       @n8n-io/ligo
 packages/cli/src/public-api/                            @n8n-io/ligo

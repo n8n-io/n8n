@@ -11,6 +11,7 @@ import { useMessage } from '@/app/composables/useMessage';
 import { useUserRoleProvisioningForm } from '../provisioning/composables/useUserRoleProvisioningForm';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { type OidcConfigDto } from '@n8n/api-types';
 import ConfirmProvisioningDialog from '../provisioning/components/ConfirmProvisioningDialog.vue';
 import RoleMappingRuleEditor from '../provisioning/components/RoleMappingRuleEditor.vue';
@@ -156,8 +157,12 @@ async function onOidcSettingsSave(provisioningChangesConfirmed: boolean = false)
 	const isLoginEnabledChanged = ssoStore.oidcConfig?.loginEnabled !== ssoStore.isOidcLoginEnabled;
 	const isDisablingOidcLogin = isLoginEnabledChanged && ssoStore.oidcConfig?.loginEnabled === true;
 	if (isDisablingOidcLogin) {
+		// Turning SSO off also turns SCIM off on the backend. The admin reads that before they confirm.
+		const messageKey = useSettingsStore().moduleSettings.scim?.scimEnabled
+			? 'settings.sso.confirmMessage.beforeSaveForm.scim.message'
+			: 'settings.sso.confirmMessage.beforeSaveForm.message';
 		const confirmAction = await message.confirm(
-			i18n.baseText('settings.sso.confirmMessage.beforeSaveForm.message', {
+			i18n.baseText(messageKey, {
 				interpolate: { protocol: 'OIDC' },
 			}),
 			i18n.baseText('settings.sso.confirmMessage.beforeSaveForm.headline', {

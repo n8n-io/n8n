@@ -9,6 +9,11 @@ function options(...labels: string[]) {
 	return labels.map((label) => ({ label, value: label }));
 }
 
+const groupedItems: ComboboxItem[] = [
+	{ type: 'group', label: 'Fruits', items: options('Apple', 'Banana') },
+	{ type: 'group', label: 'More Fruits', items: options('Mango', 'Papaya') },
+];
+
 const sizeCases: Array<[ComboboxSizes | undefined, string]> = [
 	[undefined, 'large'],
 	['mini', 'mini'],
@@ -318,6 +323,41 @@ describe('v2/components/Combobox', () => {
 			expect(groupElements).toHaveLength(2);
 			expect(groupElements[0]).toHaveAttribute('aria-labelledby', fruits.id);
 			expect(groupElements[1]).toHaveAttribute('aria-labelledby', moreFruits.id);
+		});
+
+		it('should render plain group labels and viewport by default', async () => {
+			render(Combobox, {
+				props: { items: groupedItems, defaultOpen: true },
+			});
+
+			const { popover } = await getPopoverContainer();
+
+			expect(popover.querySelector('.comboboxViewport')).not.toHaveClass('scrollMask');
+			expect(within(popover).getByText('Fruits')).not.toHaveClass('stickyLabel');
+			expect(within(popover).getByText('More Fruits')).not.toHaveClass('stickyLabel');
+		});
+
+		it('should mark group labels sticky when stickyGroupLabels is set', async () => {
+			render(Combobox, {
+				props: { items: groupedItems, defaultOpen: true, stickyGroupLabels: true },
+			});
+
+			const { popover } = await getPopoverContainer();
+
+			expect(within(popover).getByText('Fruits')).toHaveClass('stickyLabel');
+			expect(within(popover).getByText('More Fruits')).toHaveClass('stickyLabel');
+			expect(popover.querySelector('.comboboxViewport')).not.toHaveClass('scrollMask');
+		});
+
+		it('should mask the viewport when scrollMask is set', async () => {
+			render(Combobox, {
+				props: { items: groupedItems, defaultOpen: true, scrollMask: true },
+			});
+
+			const { popover } = await getPopoverContainer();
+
+			expect(popover.querySelector('.comboboxViewport')).toHaveClass('scrollMask');
+			expect(within(popover).getByText('Fruits')).not.toHaveClass('stickyLabel');
 		});
 
 		it('should render unlabeled groups without a heading', async () => {
@@ -1019,6 +1059,47 @@ describe('v2/components/Combobox', () => {
 
 			expect(getComboboxInput(wrapper)).toHaveFocus();
 		});
+
+		it.each([
+			['single', false],
+			['multiple', true],
+		])(
+			'should clear the search, emit update:searchTerm, and keep focus when clearSearch is called in %s mode',
+			async (_mode, multiple) => {
+				const comboboxRef = ref<{ clearSearch: () => void } | null>(null);
+				const onSearchTerm = vi.fn();
+				const items = options('Apple', 'Banana');
+				const wrapper = render({
+					components: { Combobox },
+					setup() {
+						return { items, comboboxRef, multiple, onSearchTerm };
+					},
+					template:
+						'<Combobox ref="comboboxRef" :items="items" :multiple="multiple" @update:search-term="onSearchTerm" />',
+				});
+
+				const input = getComboboxInput(wrapper);
+				await userEvent.type(input, 'ap');
+				const { popover } = await getPopoverContainer();
+				await waitFor(() => {
+					expect(within(popover).queryByRole('option', { name: 'Banana' })).toBeNull();
+				});
+
+				onSearchTerm.mockClear();
+				comboboxRef.value?.clearSearch();
+
+				await waitFor(() => {
+					expect(input).toHaveValue('');
+				});
+				await waitFor(() => {
+					expect(onSearchTerm).toHaveBeenCalledWith('');
+				});
+				expect(input).toHaveFocus();
+				await waitFor(() => {
+					expect(within(popover).getByRole('option', { name: 'Banana' })).toBeVisible();
+				});
+			},
+		);
 
 		it('should open on focus, close after selection, and emit update:open', async () => {
 			const wrapper = render(Combobox, {

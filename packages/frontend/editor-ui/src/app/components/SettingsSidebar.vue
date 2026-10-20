@@ -1,8 +1,16 @@
 <script lang="ts" setup>
 import { onMounted } from 'vue';
+import { useRoute } from 'vue-router';
 import { ABOUT_MODAL_KEY } from '@/app/constants';
 
-import { N8nIcon, N8nLink, N8nMenuItem, N8nText } from '@n8n/design-system';
+import {
+	N8nIcon,
+	N8nLink,
+	N8nMenuItem,
+	N8nText,
+	doesMenuItemMatchCurrentRoute,
+} from '@n8n/design-system';
+import type { IMenuSettingItem } from '@n8n/frontend-module-sdk';
 import { useSettingsItems } from '../composables/useSettingsItems';
 import { useAiGateway } from '../composables/useAiGateway';
 import { useI18n } from '@n8n/i18n';
@@ -14,11 +22,21 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const route = useRoute();
 const rootStore = useRootStore();
 const uiStore = useUIStore();
 
 const { settingsItems, handleSettingsItemSelect } = useSettingsItems();
 const { fetchWallet, isEnabled } = useAiGateway();
+
+/**
+ * Only items that declare explicit route matches get the `active` prop.
+ * All other items keep the `router-link-active` highlight from vue-router.
+ */
+function isItemActive(item: IMenuSettingItem): boolean | undefined {
+	if (!item.activateOnRouteNames && !item.activateOnRoutePaths) return undefined;
+	return doesMenuItemMatchCurrentRoute(item, route);
+}
 
 onMounted(() => {
 	if (isEnabled.value) void fetchWallet();
@@ -38,6 +56,7 @@ onMounted(() => {
 				v-for="item in settingsItems"
 				:key="item.id"
 				:item="item"
+				:active="isItemActive(item)"
 				@click="handleSettingsItemSelect(item.id)"
 			/>
 		</div>

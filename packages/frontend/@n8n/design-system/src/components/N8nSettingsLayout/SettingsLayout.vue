@@ -30,7 +30,8 @@ const emit = defineEmits<{ back: [] }>();
 
 <template>
 	<component :is="tag" :class="$style.layout">
-		<div v-if="showBack || $slots.back" :class="$style.backRow">
+		<!-- The global class is a stable hook. The settings shell uses it to pin the row. -->
+		<div v-if="showBack || $slots.back" :class="['n8n-settings-layout-back-row', $style.backRow]">
 			<slot name="back">
 				<N8nButton
 					variant="ghost"

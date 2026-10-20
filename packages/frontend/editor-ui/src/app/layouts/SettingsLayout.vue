@@ -62,4 +62,13 @@ onMounted(() => {
 	max-width: 1600px;
 	padding: 0 var(--spacing--2xl);
 }
+
+/* Pin the back action of a settings sub-page to the top-left of the content container.
+   The page header then stays on the same line as on hub pages. */
+.contentContainer :global(.n8n-settings-layout-back-row) {
+	position: absolute;
+	top: var(--spacing--lg);
+	left: var(--spacing--lg);
+	width: auto;
+}
 </style>

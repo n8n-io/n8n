@@ -7,6 +7,8 @@ import userEvent from '@testing-library/user-event';
 import { useSSOStore, SupportedProtocols } from '../sso.store';
 import { createComponentRenderer } from '@/__tests__/render';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useRBACStore } from '@n8n/stores/rbac.store';
 import type { SamlPreferencesExtractedData } from '@n8n/rest-api-client/api/sso';
 
 const renderView = createComponentRenderer(SettingsSso);
@@ -45,6 +47,15 @@ vi.mock('@/app/composables/useMessage', () => ({
 		confirm: confirmMessage,
 	}),
 }));
+
+const routerPush = vi.fn();
+vi.mock('vue-router', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('vue-router')>();
+	return {
+		...actual,
+		useRouter: () => ({ push: routerPush }),
+	};
+});
 
 vi.mock('@/app/composables/usePageRedirectionHelper', () => {
 	const goToUpgrade = vi.fn();
@@ -873,6 +884,130 @@ describe('SettingsSso View', () => {
 
 			// Verify store still has SAML (unchanged)
 			expect(ssoStore.selectedAuthProtocol).toBe(SupportedProtocols.SAML);
+		});
+	});
+
+	describe('SCIM provisioning', () => {
+		const scimSettings = (
+			overrides: Partial<{ scimEnabled: boolean; available: boolean }> = {},
+		) => ({
+			scimEnabled: false,
+			hasToken: false,
+			available: true,
+			optInSource: 'config' as const,
+			...overrides,
+		});
+
+		const setupScim = (options: {
+			active?: boolean;
+			scim?: ReturnType<typeof scimSettings>;
+			scope?: boolean;
+		}) => {
+			// The testing pinia stubs store functions, so the two checks are mocked, not derived.
+			const settingsStore = mockedStore(useSettingsStore);
+			settingsStore.isModuleActive.mockImplementation(
+				(name: string) => options.active !== false && name === 'scim',
+			);
+			settingsStore.moduleSettings = options.scim ? { scim: options.scim } : {};
+			mockedStore(useRBACStore).hasScope.mockReturnValue(options.scope !== false);
+		};
+
+		beforeEach(() => {
+			routerPush.mockReset();
+			ssoStore.isEnterpriseSamlEnabled = true;
+			ssoStore.isEnterpriseOidcEnabled = true;
+			ssoStore.getSamlConfig.mockResolvedValue(samlConfig);
+		});
+
+		it('shows the SCIM row and opens the SCIM page on click', async () => {
+			setupScim({ scim: scimSettings({ scimEnabled: true }) });
+
+			const { getByTestId } = renderView();
+
+			const row = getByTestId('sso-scim-row');
+			expect(row).toHaveTextContent('Enabled');
+			await userEvent.click(row);
+
+			expect(routerPush).toHaveBeenCalledWith({ name: 'ScimSettings' });
+		});
+
+		it('describes the row as disabled while SCIM is off', () => {
+			setupScim({ scim: scimSettings({ scimEnabled: false }) });
+
+			const { getByTestId } = renderView();
+
+			expect(getByTestId('sso-scim-row')).toHaveTextContent('Disabled');
+		});
+
+		it.each([
+			['the module is inactive', { active: false, scim: scimSettings() }],
+			['the opt-in is off', { scim: scimSettings({ available: false }) }],
+			['the module settings are missing', {}],
+			['the user lacks scim:manage', { scim: scimSettings(), scope: false }],
+		])('shows no Provisioning section when %s', (_case, options) => {
+			setupScim(options);
+
+			const { queryByTestId } = renderView();
+
+			expect(queryByTestId('sso-provisioning-section')).not.toBeInTheDocument();
+		});
+
+		it('warns that SCIM turns off too when disabling SAML login while SCIM is enabled', async () => {
+			setupScim({ scim: scimSettings({ scimEnabled: true }) });
+			confirmMessage.mockResolvedValue('cancel');
+			ssoStore.isSamlLoginEnabled = true;
+			ssoStore.samlConfig = { ...samlConfig, loginEnabled: true };
+			ssoStore.getSamlConfig.mockResolvedValue({ ...samlConfig, loginEnabled: true });
+
+			const { getByTestId } = renderView();
+			await waitFor(() => expect(ssoStore.getSamlConfig).toHaveBeenCalled());
+
+			await userEvent.click(within(getByTestId('sso-toggle')).getByRole('combobox'));
+			// Several selects keep their dropdown mounted; pick the item by its text across all of them.
+			const disabledItem = await waitFor(() => {
+				const item = Array.from(document.querySelectorAll('.el-select-dropdown__item')).find(
+					(candidate) => candidate.textContent?.trim() === 'Disabled',
+				);
+				expect(item).toBeDefined();
+				return item!;
+			});
+			await userEvent.click(disabledItem);
+			await waitFor(() => expect(getByTestId('sso-save')).not.toBeDisabled());
+			await userEvent.click(getByTestId('sso-save'));
+
+			await waitFor(() => expect(confirmMessage).toHaveBeenCalledTimes(1));
+			expect(confirmMessage.mock.calls[0][0]).toContain('SCIM provisioning turns off too');
+			expect(confirmMessage.mock.calls[0][0]).toContain('n8n keeps the SCIM token');
+			expect(ssoStore.saveSamlConfig).not.toHaveBeenCalled();
+		});
+
+		it('keeps the master confirm text while SCIM is disabled', async () => {
+			setupScim({ scim: scimSettings({ scimEnabled: false }) });
+			confirmMessage.mockResolvedValue('cancel');
+			ssoStore.isSamlLoginEnabled = true;
+			ssoStore.samlConfig = { ...samlConfig, loginEnabled: true };
+			ssoStore.getSamlConfig.mockResolvedValue({ ...samlConfig, loginEnabled: true });
+
+			const { getByTestId } = renderView();
+			await waitFor(() => expect(ssoStore.getSamlConfig).toHaveBeenCalled());
+
+			await userEvent.click(within(getByTestId('sso-toggle')).getByRole('combobox'));
+			// Several selects keep their dropdown mounted; pick the item by its text across all of them.
+			const disabledItem = await waitFor(() => {
+				const item = Array.from(document.querySelectorAll('.el-select-dropdown__item')).find(
+					(candidate) => candidate.textContent?.trim() === 'Disabled',
+				);
+				expect(item).toBeDefined();
+				return item!;
+			});
+			await userEvent.click(disabledItem);
+			await waitFor(() => expect(getByTestId('sso-save')).not.toBeDisabled());
+			await userEvent.click(getByTestId('sso-save'));
+
+			await waitFor(() => expect(confirmMessage).toHaveBeenCalledTimes(1));
+			expect(confirmMessage.mock.calls[0][0]).toBe(
+				'If you do so, all SAML users will be converted to email users.',
+			);
 		});
 	});
 });

@@ -129,6 +129,41 @@ describe('components', () => {
 			});
 			expect(wrapper.container.querySelector('n8n-tooltip-stub')).toBeFalsy();
 		});
+		it.each(['info', 'success', 'warning', 'danger', 'secondary', 'custom'] as const)(
+			'should render %s theme with themed links correctly',
+			(theme) => {
+				const wrapper = render(N8nCallout, {
+					props: {
+						theme,
+						themedLinks: true,
+					},
+					global: {
+						stubs: ['N8nIcon', 'N8nText'],
+					},
+					slots: {
+						default: '<n8n-text size="small">Callout with a themed link.</n8n-text>',
+						actions: '<a href="https://n8n.io"><span>Learn more</span></a>',
+					},
+				});
+				expect(wrapper.container.firstElementChild).toHaveClass('themedLinks');
+				expect(wrapper.html()).toMatchSnapshot();
+			},
+		);
+		it('should not add the themed links class by default', () => {
+			const wrapper = render(N8nCallout, {
+				props: {
+					theme: 'info',
+				},
+				global: {
+					stubs: ['N8nIcon', 'N8nText'],
+				},
+				slots: {
+					default: '<n8n-text size="small">This is an info callout.</n8n-text>',
+					actions: '<a href="https://n8n.io"><span>Learn more</span></a>',
+				},
+			});
+			expect(wrapper.container.firstElementChild).not.toHaveClass('themedLinks');
+		});
 		it('should render additional slots correctly', () => {
 			const wrapper = render(N8nCallout, {
 				props: {

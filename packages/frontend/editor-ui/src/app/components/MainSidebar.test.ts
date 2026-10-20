@@ -19,6 +19,7 @@ const openTopUpMock = vi.hoisted(() => vi.fn());
 vi.mock('vue-router', () => ({
 	useRouter: () => ({
 		resolve: vi.fn(() => ({ meta: {} })),
+		getRoutes: vi.fn(() => []),
 	}),
 	useRoute: () => reactive({ params: {} }),
 	RouterLink: vi.fn(),
