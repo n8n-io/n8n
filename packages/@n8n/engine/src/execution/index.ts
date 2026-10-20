@@ -10,6 +10,7 @@ export type {
 	CallerContext,
 	ExecutionMode,
 	ExecutionStatus,
+	ParentLink,
 	StepError,
 	StepKey,
 	StepKeyId,

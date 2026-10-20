@@ -640,6 +640,7 @@ describe('step execution (integration)', () => {
 			triggerOutputs: null,
 			callerContext: { hostMode: 'trigger' },
 			responseExpectation: { kind: 'none' },
+			parent: null,
 		});
 		const created = await stepStore.createSteps(executionId, [
 			// completed steps always carry outputs, as the start handler writes them
