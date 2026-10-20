@@ -19,7 +19,7 @@ import { v4 as uuid } from 'uuid';
 
 import { ActiveExecutions } from '@/active-executions';
 import { CredentialsFinderService } from '@n8n/backend-services';
-import { BadRequestError, ForbiddenError } from '@n8n/errors';
+import { BadRequestError, BaseError, ForbiddenError } from '@n8n/errors';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import {
 	getExecutionRedaction,
@@ -428,7 +428,9 @@ export class ExecuteNodeService {
 		}
 		if (error instanceof Error) {
 			this.logger.debug('Execute node failed', { error: error.message });
-			return { message: error.message };
+			// n8n errors carry their advice in `description`.
+			const description = error instanceof BaseError ? error.description : undefined;
+			return { message: error.message, ...(description ? { description } : {}) };
 		}
 		// Errors read back from a persisted execution are revived as plain
 		// objects, not Error instances.

@@ -470,6 +470,19 @@ describe('ExecuteNodeService', () => {
 			expect(workflowRepository.delete).toHaveBeenCalledWith('temp-wf-1');
 		});
 
+		it('keeps the description of an n8n error that stops the launch', async () => {
+			workflowRunner.run.mockRejectedValueOnce(
+				new UserError('Workflow cannot run', { description: 'Enable the node first.' }),
+			);
+
+			const result = await service.run(user, baseRequest());
+
+			expect(result).toEqual({
+				status: 'error',
+				error: { message: 'Workflow cannot run', description: 'Enable the node first.' },
+			});
+		});
+
 		it('cancels the execution and reports a timeout when it never settles', async () => {
 			vi.useFakeTimers();
 			try {
