@@ -21,7 +21,7 @@ import type { StoredAgentTaskStop } from '../types/agent-task-stop';
  */
 @Entity({ name: 'agent_execution_threads' })
 export class AgentExecutionThread extends WithTimestampsAndStringId {
-	@JsonColumn({ nullable: true, comment: 'Latest task stop boundary and unresolved stop errors' })
+	@JsonColumn({ nullable: true, comment: 'Latest task stop boundary' })
 	taskStop: StoredAgentTaskStop | null;
 
 	@ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
