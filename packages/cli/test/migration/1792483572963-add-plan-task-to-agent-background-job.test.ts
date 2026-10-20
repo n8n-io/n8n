@@ -10,7 +10,7 @@ import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 
-const migrationName = 'AddPlanTaskToAgentBackgroundJob1792083059654';
+const migrationName = 'AddPlanTaskToAgentBackgroundJob1792483572963';
 
 describe('Agent background job plan task migration', () => {
 	const threadId = randomUUID();

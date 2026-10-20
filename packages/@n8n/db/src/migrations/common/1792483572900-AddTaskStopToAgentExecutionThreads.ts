@@ -1,12 +1,13 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
-export class AddTaskStopToAgentExecutionThreads1792083059437 implements ReversibleMigration {
+export class AddTaskStopToAgentExecutionThreads1792483572900 implements ReversibleMigration {
 	async up({
 		schemaBuilder: { addColumns, column },
 		isSqlite,
 		escape,
 		runQuery,
 	}: MigrationContext) {
+		// Recreating the table on SQLite would cascade-delete its agent_execution rows.
 		if (isSqlite) {
 			await runQuery(
 				`ALTER TABLE ${escape.tableName('agent_execution_threads')} ADD COLUMN ${escape.columnName('taskStop')} TEXT`,
