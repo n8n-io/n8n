@@ -11,6 +11,7 @@ import { setSkillsHubFlag } from '@/modules/agents/__tests__/test-utils/skills-h
 import type { CredentialsService } from '@/credentials/credentials.service';
 import { AgentConfigPreparationService } from '@/modules/agents/agent-config-preparation.service';
 import { AgentConfigService } from '@/modules/agents/agent-config.service';
+import { AgentsService } from '@/modules/agents/agents.service';
 import { AgentDefinitionService } from '@/modules/agents/agent-definition.service';
 import type { AgentPolicyService } from '@/modules/agents/agent-policy.service';
 import type { AgentSaveCompletionService } from '@/modules/agents/agent-save-completion.service';
@@ -160,6 +161,103 @@ describe('AgentRepository', () => {
 			timezone: null,
 		};
 
+		it('rolls back Agent creation with its skill references, then commits one creation on retry', async () => {
+			setSkillsHubFlag(true);
+			const skillRepo = Container.get(SkillRepository);
+			const skillRefs = Container.get(AgentSkillRefsService);
+			const skillId = uuid();
+			await skillRepo.createSkill(
+				{ id: skillId, target: { projectId, agentId: null }, source: 'ui', createdById: null },
+				{
+					name: 'Writing',
+					description: 'Write notes',
+					instructions: 'Use short sentences',
+					frontmatter: null,
+					files: [],
+				},
+			);
+			const credentials = mock<CredentialsService>();
+			credentials.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([]);
+			const policy = mock<AgentPolicyService>();
+			const completion = mock<AgentSaveCompletionService>();
+			const service = new AgentsService(
+				mockLogger(),
+				agentRepo,
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+				taskRepo,
+				mock(),
+				mock(),
+				mock(),
+				credentials,
+				mock(),
+				mock(),
+				policy,
+				skillRefs,
+				transactionRunner,
+				new AgentConfigPreparationService(
+					credentials,
+					mock<WorkflowRepository>(),
+					mock<NodeToolAiGatewayService>(),
+					agentRepo,
+					taskRepo,
+					skillRefs,
+					policy,
+				),
+				completion,
+				mock<AgentSetupCompletionService>(),
+			);
+			const user = mock<User>();
+			const id = uuid();
+			const options = {
+				id,
+				user,
+				actor: { kind: 'user', user },
+				createdBy: 'user',
+				adoptOnCollision: true,
+				config: { instructions: 'Help users', skills: [{ type: 'skill', id: skillId }] },
+			} as const;
+			const replaceRefs = skillRefs.replaceDraftRefs.bind(skillRefs);
+			vi.spyOn(skillRefs, 'replaceDraftRefs').mockImplementationOnce(async (agent, refs, ctx) => {
+				await replaceRefs(agent, refs, ctx);
+				throw new Error('Skill reference write failed');
+			});
+
+			await expect(service.createOrAdopt(projectId, 'Support Agent', options)).rejects.toThrow(
+				'Skill reference write failed',
+			);
+			expect(await agentRepo.findById(id)).toBeNull();
+			expect((await skillRepo.findDependencies([id])).get(id) ?? []).toEqual([]);
+			expect(completion.configurationCreated).not.toHaveBeenCalled();
+
+			const created = await service.createOrAdopt(projectId, 'Support Agent', options);
+			expect(created).toMatchObject({
+				adopted: false,
+				config: { instructions: 'Help users', skills: [{ type: 'skill', id: skillId }] },
+			});
+			expect(created.configHash).toBe(getAgentConfigHash(created.config));
+			expect(await agentRepo.findById(id)).toMatchObject({
+				schema: { instructions: 'Help users' },
+			});
+			expect((await skillRepo.findDependencies([id])).get(id)).toMatchObject([{ skillId }]);
+			expect(completion.configurationCreated).toHaveBeenCalledOnce();
+
+			const adopted = await service.createOrAdopt(projectId, 'Losing request', {
+				...options,
+				createdBy: 'builder',
+				config: { instructions: 'Do not overwrite the winner' },
+			});
+			expect(adopted).toMatchObject({
+				adopted: true,
+				config: created.config,
+				configHash: created.configHash,
+			});
+			expect(completion.configurationCreated).toHaveBeenCalledOnce();
+		});
+
 		it('rolls back a config save when task cleanup fails and can retry the complete write', async () => {
 			const schema: AgentJsonConfig = {
 				name: 'Agent',
@@ -184,11 +282,14 @@ describe('AgentRepository', () => {
 					credentials,
 					mock<WorkflowRepository>(),
 					mock<NodeToolAiGatewayService>(),
+					agentRepo,
+					taskRepo,
+					Container.get(AgentSkillRefsService),
+					mock<AgentPolicyService>(),
 				),
 				setup,
 				transactionRunner,
 				completion,
-				mock<AgentPolicyService>(),
 				Container.get(AgentSkillRefsService),
 			);
 			const deleteTasks = taskRepo.deleteForAgent.bind(taskRepo);

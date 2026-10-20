@@ -5,8 +5,10 @@ import { Service } from '@n8n/di';
 import type {
 	AgentContextLookup,
 	AgentSessionSummary,
-	InstanceAiAgentContextReader,
-} from '@n8n/instance-ai';
+	AgentContextReader,
+	AgentContextResult,
+	AgentSessionDetail,
+} from './agent-context.contracts';
 import { UserError } from 'n8n-workflow';
 
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
@@ -22,13 +24,14 @@ import {
 import { listAgentTasks, readAgentSkill } from './agent-context-readers';
 import { AgentIntegrationPersistenceService } from './agent-integration-persistence.service';
 import { AgentSkillsService } from './agent-skills.service';
+import { AgentConfigService } from './agent-config.service';
 import { AgentTaskService } from './agent-task.service';
 import { AgentsSettingsService } from './agents-settings.service';
 import { AgentsToolsService } from './agents-tools.service';
 import { AgentsService } from './agents.service';
 import { AttachableWorkflowsService } from './attachable-workflows.service';
 import { AGENT_CAPABILITIES, AGENT_LIMITATIONS } from './agent-capabilities';
-import { formatPreviewSessionContext } from './builder/format-preview-context';
+import { toAgentSessionDetail } from './agent-session-read';
 import { AgentSkillRefsService } from './agent-skill-refs.service';
 import { composeJsonConfig } from './json-config/agent-config-composition';
 import { jsonSchemaToCompactText } from './json-config/schema-text-serializer';
@@ -76,7 +79,7 @@ const toSessionDetailSummary = (detail: ThreadDetail): AgentSessionSummary => {
 };
 
 @Service()
-export class InstanceAiAgentContextAdapterService {
+export class AgentContextService {
 	constructor(
 		private readonly agentsService: AgentsService,
 		private readonly agentSkillsService: AgentSkillsService,
@@ -88,18 +91,66 @@ export class InstanceAiAgentContextAdapterService {
 		private readonly agentsToolsService: AgentsToolsService,
 		private readonly agentSkillRefs: AgentSkillRefsService,
 		private readonly agentsSettingsService: AgentsSettingsService,
+		private readonly agentConfigService: AgentConfigService,
 	) {}
 
-	createReader(user: User, projectId: string): InstanceAiAgentContextReader {
-		let canReadAgents: Promise<boolean> | undefined;
+	private async assertReadAccess(user: User, projectId: string): Promise<void> {
+		await this.agentsSettingsService.assertEnabled();
+		if (!(await userHasScopes(user, ['agent:read'], false, { projectId }))) {
+			throw new ForbiddenError('You do not have permission to access agents in this project.');
+		}
+	}
+
+	async resolveAgentName(
+		user: User,
+		projectId: string,
+		agentId: string,
+	): Promise<string | undefined> {
+		await this.assertReadAccess(user, projectId);
+		return (await this.agentsService.findById(agentId, projectId))?.name;
+	}
+
+	async readArtifact(user: User, projectId: string, agentId: string) {
+		await this.assertReadAccess(user, projectId);
+		const config = await this.agentConfigService
+			.getConfig(agentId, projectId)
+			.catch((error: unknown) => {
+				if (error instanceof UserError) return null;
+				throw error;
+			});
+		if (!config) return null;
+		return {
+			config,
+			skills: await this.agentSkillsService.listSkills(agentId, projectId),
+			configHash: getAgentConfigHash(config),
+		};
+	}
+
+	async readSession(
+		user: User,
+		projectId: string,
+		agentId: string,
+		threadId: string,
+	): Promise<AgentSessionDetail | null> {
+		await this.assertReadAccess(user, projectId);
+		const detail = await this.agentExecutionService.getThreadDetail(
+			threadId,
+			projectId,
+			agentId,
+			user.id,
+		);
+		if (!detail) return null;
+		return toAgentSessionDetail(detail);
+	}
+
+	createReader(user: User, projectId: string): AgentContextReader {
 		return {
 			lookup: async (input) => {
 				// Checked on every lookup, so a run loses access as soon as Agents are turned off.
 				await this.agentsSettingsService.assertEnabled().catch((error: unknown) => {
 					throw error instanceof ForbiddenError ? new UserError(error.message) : error;
 				});
-				canReadAgents ??= userHasScopes(user, ['agent:read'], false, { projectId });
-				if (!(await canReadAgents)) {
+				if (!(await userHasScopes(user, ['agent:read'], false, { projectId }))) {
 					throw new UserError("You don't have permission to read Agents in this project.");
 				}
 				try {
@@ -118,7 +169,7 @@ export class InstanceAiAgentContextAdapterService {
 		user: User,
 		projectId: string,
 		input: AgentContextLookup,
-	): Promise<Record<string, unknown>> {
+	): Promise<AgentContextResult> {
 		if (input.type === 'agents') {
 			const agents = await this.agentsService.findByProjectId(projectId);
 			return {
@@ -255,13 +306,10 @@ export class InstanceAiAgentContextAdapterService {
 					user.id,
 				);
 				if (!detail) return { notFound: true };
-				const transcript = formatPreviewSessionContext(
-					detail.thread,
-					detail.executions,
-					input.executionId,
-				);
-				if (transcript === null) return { notFound: true };
-				return { session: toSessionDetailSummary(detail), transcript };
+				return {
+					session: toSessionDetailSummary(detail),
+					sessionDetail: toAgentSessionDetail(detail),
+				};
 			}
 		}
 	}

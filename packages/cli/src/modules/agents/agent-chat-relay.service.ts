@@ -32,24 +32,15 @@ export class AgentChatRelayService {
 		private readonly agentChatAttachmentService: AgentChatAttachmentService,
 	) {}
 
-	createChatExecution(res: FlushableResponse) {
+	createChatStream(res: FlushableResponse) {
 		const delivery = initSseStream(res);
-		const requestController = new AbortController();
-		const abandon = () => requestController.abort();
-		delivery.abortSignal.addEventListener('abort', abandon, { once: true });
-		if (delivery.abortSignal.aborted) abandon();
 		return {
 			send: delivery.send,
-			abortSignal: requestController.signal,
 			onExecutionStarted: (id: string, sessionId: string, inputMessageIds: string[]) => {
-				delivery.abortSignal.removeEventListener('abort', abandon);
 				delivery.send({ type: 'execution-started', executionId: id, sessionId, inputMessageIds });
 			},
 			onChunk: delivery.onChunk,
-			close: () => {
-				delivery.abortSignal.removeEventListener('abort', abandon);
-				delivery.close();
-			},
+			close: delivery.close,
 		};
 	}
 

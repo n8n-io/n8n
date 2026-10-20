@@ -33,6 +33,7 @@ export const FINISH_REASONS = [
 	'error',
 	'other',
 	'paused',
+	'cancelled',
 ] as const;
 
 export type FinishReason = (typeof FINISH_REASONS)[number];
@@ -309,6 +310,11 @@ export interface PersistedExecutionOptions {
 	maxIterations?: number;
 }
 
+export interface NativeToolDeferralConfig {
+	/** Local tools that stay available without provider tool search. */
+	eagerToolNames: readonly string[];
+}
+
 export interface AnthropicPromptCachingConfig {
 	/**
 	 * Cache breakpoint residency. Default `'1h'`: agent workloads pause (HITL,
@@ -340,7 +346,7 @@ export interface OpenAIPromptCachingConfig {
 export interface PromptCachingConfig {
 	/** Master switch. Defaults to `true` when this config is set. */
 	enabled?: boolean;
-	/** Anthropic-specific config, or `false` to disable for Anthropic models. */
+	/** Claude cache settings, including OpenRouter and Vertex. Set `false` to disable. */
 	anthropic?: false | AnthropicPromptCachingConfig;
 	/** OpenAI-specific config, or `false` to disable for OpenAI models. */
 	openai?: false | OpenAIPromptCachingConfig;
