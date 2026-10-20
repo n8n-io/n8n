@@ -75,60 +75,44 @@ watchEffect(async () => {
 </script>
 
 <template>
-	<N8nDialog
-		:open="modalOpen"
-		size="2xlarge"
-		:container-class="$style.modal"
-		@update:open="onDialogOpenUpdate"
-	>
+	<N8nDialog :open="modalOpen" size="2xlarge" @update:open="onDialogOpenUpdate">
 		<N8nDialogHeader>
 			<N8nDialogTitle>
 				{{ locale.baseText('experiments.personalizedTemplatesV3.recommendedForYou') }}
 			</N8nDialogTitle>
 		</N8nDialogHeader>
 		<N8nDialogBody>
-			<div :class="$style.scrollBody">
-				<div v-if="isLoadingTemplates" :class="$style.loading">
-					<N8nSpinner size="small" />
-					<N8nText size="small">{{
-						locale.baseText('experiments.personalizedTemplatesV3.loadingTemplates')
-					}}</N8nText>
+			<div v-if="isLoadingTemplates" :class="$style.loading">
+				<N8nSpinner size="small" />
+				<N8nText size="small">{{
+					locale.baseText('experiments.personalizedTemplatesV3.loadingTemplates')
+				}}</N8nText>
+			</div>
+			<div v-else>
+				<div :class="$style.templates">
+					<TemplateCard v-for="template in templates" :key="template.id" :template="template" />
 				</div>
-				<div v-else>
-					<div :class="$style.templates">
-						<TemplateCard v-for="template in templates" :key="template.id" :template="template" />
-					</div>
-					<N8nCard :class="[$style.footerCard]" @click="openTemplateRepository">
-						<div :class="$style.footerContent">
-							<div :class="$style.footerText">
-								<N8nText size="medium" :bold="true" class="mr-s" color="text-light">
-									{{ locale.baseText('experiments.personalizedTemplatesV3.couldntFind') }}
-								</N8nText>
-								<N8nText size="small" :class="'mt-2xs'">
-									{{ locale.baseText('experiments.personalizedTemplatesV3.browseAllTemplates') }}
-								</N8nText>
-							</div>
-							<div :class="$style.footerIcon">
-								<N8nIcon icon="external-link" size="medium" />
-							</div>
+				<N8nCard :class="[$style.footerCard]" @click="openTemplateRepository">
+					<div :class="$style.footerContent">
+						<div :class="$style.footerText">
+							<N8nText size="medium" :bold="true" class="mr-s" color="text-light">
+								{{ locale.baseText('experiments.personalizedTemplatesV3.couldntFind') }}
+							</N8nText>
+							<N8nText size="small" :class="'mt-2xs'">
+								{{ locale.baseText('experiments.personalizedTemplatesV3.browseAllTemplates') }}
+							</N8nText>
 						</div>
-					</N8nCard>
-				</div>
+						<div :class="$style.footerIcon">
+							<N8nIcon icon="external-link" size="medium" />
+						</div>
+					</div>
+				</N8nCard>
 			</div>
 		</N8nDialogBody>
 	</N8nDialog>
 </template>
 
 <style lang="scss" module>
-.modal.modal {
-	background-color: var(--color--background--light-3);
-}
-
-.scrollBody {
-	overflow: auto;
-	max-height: calc(90vh - var(--spacing--3xl));
-}
-
 .templates {
 	display: grid;
 	grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));

@@ -160,75 +160,76 @@ watchEffect(async () => {
 				</template>
 			</N8nSegmentControl>
 		</N8nDialogHeader>
-		<N8nDialogBody>
-			<div :class="$style.scrollBody">
-				<div :class="[$style.title, 'mb-m']">
-					<N8nText tag="h2" size="large" :bold="true">{{
-						locale.baseText('workflows.templateRecoV2.starterTemplates')
-					}}</N8nText>
-					<N8nLink :href="starterLink" @click="trackSeeMoreClick('starter')">
-						{{ locale.baseText('workflows.templateRecoV2.seeMoreStarterTemplates') }}
-					</N8nLink>
-				</div>
-				<div :class="$style.suggestions">
-					<div v-if="isLoadingTemplates" :class="$style.loading">
-						<N8nSpinner size="small" />
-						<N8nText size="small">{{
-							locale.baseText('workflows.templateRecoV2.loadingTemplates')
-						}}</N8nText>
-					</div>
-					<TemplateCard
-						v-for="template in starterTemplates"
-						v-else
-						:key="template.id"
-						:template="template"
-						:current-node-name="selectedNode"
-					/>
-				</div>
-				<div :class="[$style.title, 'mb-m mt-m']">
-					<N8nText tag="h2" size="large" :bold="true">{{
-						locale.baseText('workflows.templateRecoV2.popularTemplates')
-					}}</N8nText>
-					<N8nLink :href="popularLink" @click="trackSeeMoreClick('popular')">
-						{{ locale.baseText('workflows.templateRecoV2.seeMorePopularTemplates') }}</N8nLink
-					>
-				</div>
-				<div :class="$style.suggestions">
-					<div v-if="isLoadingTemplates" :class="$style.loading">
-						<N8nSpinner size="small" />
-						<N8nText size="small">{{
-							locale.baseText('workflows.templateRecoV2.loadingTemplates')
-						}}</N8nText>
-					</div>
-					<TemplateCard
-						v-for="template in popularTemplates"
-						v-else
-						:key="template.id"
-						:template="template"
-						:current-node-name="selectedNode"
-					/>
-				</div>
-				<N8nText tag="h2" size="large" :bold="true" class="mb-m mt-m">{{
-					locale.baseText('workflows.templateRecoV2.tutorials')
+		<N8nDialogBody :class="$style.body">
+			<div :class="[$style.title, 'mb-m']">
+				<N8nText tag="h2" size="large" :bold="true">{{
+					locale.baseText('workflows.templateRecoV2.starterTemplates')
 				}}</N8nText>
-				<div :class="$style.videos">
-					<YoutubeCard
-						v-for="video in youtubeVideos"
-						:key="video.id"
-						:video-id="video.id"
-						:title="video.title"
-						:description="video.description"
-					/>
+				<N8nLink :href="starterLink" @click="trackSeeMoreClick('starter')">
+					{{ locale.baseText('workflows.templateRecoV2.seeMoreStarterTemplates') }}
+				</N8nLink>
+			</div>
+			<div :class="$style.suggestions">
+				<div v-if="isLoadingTemplates" :class="$style.loading">
+					<N8nSpinner size="small" />
+					<N8nText size="small">{{
+						locale.baseText('workflows.templateRecoV2.loadingTemplates')
+					}}</N8nText>
 				</div>
+				<TemplateCard
+					v-for="template in starterTemplates"
+					v-else
+					:key="template.id"
+					:template="template"
+					:current-node-name="selectedNode"
+				/>
+			</div>
+			<div :class="[$style.title, 'mb-m mt-m']">
+				<N8nText tag="h2" size="large" :bold="true">{{
+					locale.baseText('workflows.templateRecoV2.popularTemplates')
+				}}</N8nText>
+				<N8nLink :href="popularLink" @click="trackSeeMoreClick('popular')">
+					{{ locale.baseText('workflows.templateRecoV2.seeMorePopularTemplates') }}</N8nLink
+				>
+			</div>
+			<div :class="$style.suggestions">
+				<div v-if="isLoadingTemplates" :class="$style.loading">
+					<N8nSpinner size="small" />
+					<N8nText size="small">{{
+						locale.baseText('workflows.templateRecoV2.loadingTemplates')
+					}}</N8nText>
+				</div>
+				<TemplateCard
+					v-for="template in popularTemplates"
+					v-else
+					:key="template.id"
+					:template="template"
+					:current-node-name="selectedNode"
+				/>
+			</div>
+			<N8nText tag="h2" size="large" :bold="true" class="mb-m mt-m">{{
+				locale.baseText('workflows.templateRecoV2.tutorials')
+			}}</N8nText>
+			<div :class="$style.videos">
+				<YoutubeCard
+					v-for="video in youtubeVideos"
+					:key="video.id"
+					:video-id="video.id"
+					:title="video.title"
+					:description="video.description"
+				/>
 			</div>
 		</N8nDialogBody>
 	</N8nDialog>
 </template>
 
 <style lang="scss" module>
-.scrollBody {
-	overflow: auto;
-	max-height: calc(90vh - var(--spacing--3xl));
+.body {
+	&.body {
+		/* Keep vertical scroll on the dialog body. The card rows must not become scrollports. */
+		min-width: 0;
+		overflow-x: hidden;
+	}
 }
 
 .tab {
@@ -239,7 +240,11 @@ watchEffect(async () => {
 	display: flex;
 	flex-direction: row;
 	gap: var(--spacing--md);
+	min-width: 0;
+	max-width: 100%;
+	/* Set overflow-y as well. overflow-x: auto alone computes overflow-y to auto. */
 	overflow-x: auto;
+	overflow-y: hidden;
 	min-height: 182px;
 }
 
@@ -254,7 +259,10 @@ watchEffect(async () => {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--md);
+	min-width: 0;
+	max-width: 100%;
 	overflow-x: auto;
+	overflow-y: hidden;
 }
 
 .loading {
