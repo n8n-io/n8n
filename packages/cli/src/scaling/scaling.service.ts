@@ -21,7 +21,7 @@ import { assertNever } from '@/utils';
 import { JOB_TYPE_NAME } from './constants';
 import { JobOutcomeTracker } from './job-outcome-tracker';
 import { JobProcessor } from './job-processor';
-import { cancelJobRecovery, clearJobRecovery } from './job-recovery';
+import { cancelJobRecovery, clearJobRecovery, readRecoveryRoot } from './job-recovery';
 import { throwJobBackToQueue } from './job-return';
 import { DEFAULT_QUEUE_NAME, resolveQueueName, resolveWorkerPoolName } from './queue-name';
 import type {
@@ -482,10 +482,10 @@ export class ScalingService {
 		const { executionId } = job.data;
 		const props = { jobId: job.id, executionId };
 		const originalJob = job;
-		const trackedJobId = this.jobOutcomeTracker.currentJobId(executionId);
+		const trackedJobId = this.jobOutcomeTracker.currentJobId(job);
 
 		// A removed job emits no completion event, and the caller handles the cancellation
-		this.jobOutcomeTracker.drop(executionId);
+		this.jobOutcomeTracker.drop(job);
 
 		try {
 			// Read Redis as well as the tracker, because the recovery event may have been missed
@@ -723,10 +723,9 @@ export class ScalingService {
 		});
 		// The stall sweep returns a never-started job to the queue under a fresh job ID
 		queue.on('global:stalled', (jobId: JobId) => {
-			queue
-				.getJob(jobId)
-				.then((job) => {
-					if (job) this.jobOutcomeTracker.rebind(queue.name, job);
+			readRecoveryRoot(queue, jobId)
+				.then((rootId) => {
+					if (rootId) this.jobOutcomeTracker.rebind(queue.name, rootId, jobId);
 				})
 				.catch((error: Error) => {
 					this.logger.warn('Failed to load a job the stall sweep returned to the queue', {

@@ -504,7 +504,7 @@ describe.skipIf(!REDIS_HOST || !REDIS_PORT)('Bull stalled-job recovery (real Red
 					expect(await dequeueWithoutActivating()).toBe(String(original.id));
 					const hasRecovery = state !== 'first-sweep' && state !== 'original-active';
 					const freshId = hasRecovery ? await recover(String(original.id)) : String(original.id);
-					expect(tracker.currentJobId('1')).toBe(original.id);
+					expect(tracker.currentJobId(original)).toBe(original.id);
 					let picked: Job<JobData> | null | undefined;
 					if (state === 'original-active') {
 						picked = await b.moveToActive(freshId);
@@ -528,7 +528,7 @@ describe.skipIf(!REDIS_HOST || !REDIS_PORT)('Bull stalled-job recovery (real Red
 					}
 
 					expect(await scaling.stopJob(original)).toBe(true);
-					expect(tracker.currentJobId('1')).toBeUndefined();
+					expect(tracker.currentJobId(original)).toBeUndefined();
 
 					if (picked) {
 						expect(await redis.hget(key(freshId), 'progress')).toBe(
@@ -566,7 +566,7 @@ describe.skipIf(!REDIS_HOST || !REDIS_PORT)('Bull stalled-job recovery (real Red
 
 		expect(await dequeueWithoutActivating()).toBe(oldId);
 		const newId = await recover(oldId);
-		tracker.rebind(QUEUE_NAME, (await a.getJob(newId))!);
+		tracker.rebind(QUEUE_NAME, oldId, newId);
 		const picked = await b.getNextJob();
 		expect(String(picked?.id)).toBe(newId);
 		expect(settled).toBe(false);

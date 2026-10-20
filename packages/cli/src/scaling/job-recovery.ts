@@ -1,7 +1,13 @@
-import type { Job } from './scaling.types';
+import type { Job, JobId } from './scaling.types';
 
 /** The sweep keeps this record under the original ID, including after repeated recovery. */
 export const jobRecoveryKey = (job: Job) => job.queue.toKey(`recovery:${job.id}`);
+
+/** The ID that the caller enqueued, which the sweep copies onto each fresh job it creates. */
+export async function readRecoveryRoot(queue: Job['queue'], jobId: JobId) {
+	const rootId = await queue.client.hget(queue.toKey(jobId.toString()), 'n8nRecoveryRoot');
+	return rootId ?? undefined;
+}
 
 export async function readJobRecovery(job: Job) {
 	const recovery = await job.queue.client.hgetall(jobRecoveryKey(job));

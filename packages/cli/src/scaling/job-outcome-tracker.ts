@@ -99,7 +99,7 @@ export class JobOutcomeTracker {
 	) {
 		const jobKey = toJobKey(queueName, jobId);
 		// Stay synchronous for a bound wait, so a completion event in the same tick cannot settle it before the result is stored
-		if (!this.pendingWaits.has(jobKey)) await this.rebindFromRecovery(jobKey, executionId);
+		if (!this.pendingWaits.has(jobKey)) await this.rebindFromRecovery(jobKey, jobId, executionId);
 		if (result && this.acceptsReport(jobKey, executionId)) {
 			this.results.set(this.toOriginalKey(jobKey), { executionId, result });
 		}
@@ -110,7 +110,7 @@ export class JobOutcomeTracker {
 	/** Record a failure the worker reported, or reject the wait for it at once. */
 	async recordFailed(queueName: string, jobId: JobId, executionId: string, error: Error) {
 		const jobKey = toJobKey(queueName, jobId);
-		await this.rebindFromRecovery(jobKey, executionId);
+		await this.rebindFromRecovery(jobKey, jobId, executionId);
 		const settled = this.settle(jobKey, { error, succeeded: false });
 		if (settled) return;
 
@@ -137,7 +137,7 @@ export class JobOutcomeTracker {
 	/** Settle the wait for a job from a Bull event, which carries only the job ID. */
 	async settleByJobKey(queueName: string, jobId: JobId, error?: Error) {
 		const jobKey = toJobKey(queueName, jobId);
-		if (error) await this.rebindFromRecovery(jobKey, undefined);
+		if (error) await this.rebindFromRecovery(jobKey, jobId, undefined);
 		this.settle(jobKey, { error, succeeded: !error });
 	}
 
@@ -145,41 +145,57 @@ export class JobOutcomeTracker {
 	 * The stall sweep may move a job to a fresh ID before its `global:stalled` event reaches this
 	 * process. Until the rebind, a report under the fresh ID finds no wait, and a failure under the
 	 * old ID can come from a worker that woke up with the moved job. Rebind from the record first.
+	 * Waits of several segments of one execution can be pending at once, so only the wait whose
+	 * record names this job is rebound.
 	 */
-	private async rebindFromRecovery(jobKey: string, executionId: string | undefined) {
+	private async rebindFromRecovery(
+		jobKey: string,
+		reportedJobId: JobId,
+		executionId: string | undefined,
+	) {
 		const bound = this.pendingWaits.get(jobKey);
-		const wait = bound ?? (executionId === undefined ? undefined : this.findWait(executionId)?.[1]);
-		if (!wait) return;
+		const candidates = bound
+			? [bound]
+			: [...this.pendingWaits.values()].filter((wait) => wait.executionId === executionId);
 
-		const { originalJob } = wait;
-		const boundJobId = wait.jobId;
-		try {
-			const { jobId } = await readJobRecovery(originalJob);
-			const fromKey = toJobKey(originalJob.queue.name, boundJobId);
-			if (!jobId || jobId === boundJobId) return;
-			if (this.pendingWaits.get(fromKey) !== wait || wait.jobId !== boundJobId) return;
-			this.moveWait(fromKey, wait, toJobKey(originalJob.queue.name, jobId), jobId);
-		} catch (error) {
-			this.logger.warn('Failed to read job recovery before applying a job report', {
-				executionId: wait.executionId,
-				error,
-			});
+		for (const wait of candidates) {
+			const { originalJob } = wait;
+			const boundJobId = wait.jobId;
+			try {
+				const { jobId } = await readJobRecovery(originalJob);
+				const fromKey = toJobKey(originalJob.queue.name, boundJobId);
+				if (!jobId || jobId === boundJobId) continue;
+				if (!bound && jobId !== reportedJobId.toString()) continue;
+				if (this.pendingWaits.get(fromKey) !== wait || wait.jobId !== boundJobId) continue;
+				this.moveWait(fromKey, wait, toJobKey(originalJob.queue.name, jobId), jobId);
+				return;
+			} catch (error) {
+				this.logger.warn('Failed to read job recovery before applying a job report', {
+					executionId: wait.executionId,
+					error,
+				});
+			}
 		}
 	}
 
 	/** Re-key the wait for a job that the stall sweep returned to the queue under a fresh job ID. */
-	rebind(queueName: string, job: Job) {
-		const found = this.findWait(job.data.executionId);
-		if (found) this.moveWait(found[0], found[1], toJobKey(queueName, job.id), job.id);
+	rebind(queueName: string, originalJobId: JobId, jobId: JobId) {
+		const found = this.findWaitByOriginal(queueName, originalJobId);
+		if (found) this.moveWait(found[0], found[1], toJobKey(queueName, jobId), jobId);
 	}
 
-	/** The job ID the wait for this execution is bound to right now, if a wait is pending. */
-	currentJobId(executionId: string): JobId | undefined {
-		return this.findWait(executionId)?.[1].jobId;
+	/** The job ID that the wait for this enqueued job is bound to right now, if a wait is pending. */
+	currentJobId(originalJob: Job): JobId | undefined {
+		return this.findWaitByOriginal(originalJob.queue.name, originalJob.id)?.[1].jobId;
 	}
 
-	private findWait(executionId: string) {
-		return [...this.pendingWaits].find(([, wait]) => wait.executionId === executionId);
+	/** A rebound wait keeps its original job, so this finds it under any later job ID. */
+	private findWaitByOriginal(queueName: string, originalJobId: JobId) {
+		return [...this.pendingWaits].find(
+			([, { originalJob }]) =>
+				originalJob.queue.name === queueName &&
+				originalJob.id.toString() === originalJobId.toString(),
+		);
 	}
 
 	private moveWait(fromKey: string, wait: PendingJobWait, toKey: string, jobId: JobId) {
@@ -236,12 +252,9 @@ export class JobOutcomeTracker {
 		return result?.result;
 	}
 
-	/**
-	 * Drop the wait without settling it, e.g. when the caller cancelled the execution.
-	 * Found by execution, because the wait may still be filed under an older job ID.
-	 */
-	drop(executionId: string) {
-		const found = this.findWait(executionId);
+	/** Drop the wait for this enqueued job without settling it, e.g. when the caller cancelled the execution. */
+	drop(originalJob: Job) {
+		const found = this.findWaitByOriginal(originalJob.queue.name, originalJob.id);
 		if (found) this.dropByJobKey(found[0]);
 	}
 

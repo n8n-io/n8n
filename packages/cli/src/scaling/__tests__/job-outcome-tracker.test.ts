@@ -228,7 +228,7 @@ describe('JobOutcomeTracker', () => {
 			await tracker.recheckAll();
 
 			expect(original.queue.client.hgetall).toHaveBeenCalledWith('bull:jobs:recovery:job-1');
-			expect(tracker.currentJobId('exec-1')).toBe('job-3');
+			expect(tracker.currentJobId(original)).toBe('job-3');
 			await tracker.settleByJobKey('jobs', 'job-3');
 			await expect(wait).resolves.toBeUndefined();
 		});
@@ -275,7 +275,7 @@ describe('JobOutcomeTracker', () => {
 			const wait = tracker.waitFor(original);
 
 			await tracker.recheckAll();
-			expect(tracker.currentJobId('exec-1')).toBe('job-1');
+			expect(tracker.currentJobId(original)).toBe('job-1');
 			await tracker.recheckAll();
 			await tracker.settleByJobKey('jobs', 'job-2');
 
@@ -314,7 +314,7 @@ describe('JobOutcomeTracker', () => {
 
 			await tracker.settleByJobKey('jobs', 'job-1', new Error('Worker received invalid job'));
 
-			expect(tracker.currentJobId('exec-1')).toBe('job-2');
+			expect(tracker.currentJobId(original)).toBe('job-2');
 			await tracker.settleByJobKey('jobs', 'job-2');
 			await expect(wait).resolves.toBeUndefined();
 		});
@@ -336,11 +336,11 @@ describe('JobOutcomeTracker', () => {
 
 			const recheck = tracker.recheckAll();
 			await vi.waitFor(() => expect(read).toHaveBeenCalled());
-			tracker.rebind('jobs', mock<Job>({ id: 'job-3', data: { executionId: 'exec-1' } }));
+			tracker.rebind('jobs', 'job-1', 'job-3');
 			resolveRead({ jobId: 'job-2' });
 			await recheck;
 
-			expect(tracker.currentJobId('exec-1')).toBe('job-3');
+			expect(tracker.currentJobId(original)).toBe('job-3');
 			await tracker.settleByJobKey('jobs', 'job-3');
 			await expect(wait).resolves.toBeUndefined();
 		});
@@ -482,9 +482,8 @@ describe('JobOutcomeTracker', () => {
 	describe('rebind', () => {
 		it('should settle the wait from the fresh job ID, not the old one', async () => {
 			const wait = tracker.waitFor(job);
-			const recovered = mock<Job>({ id: 'job-2', data: { executionId: 'exec-1' } });
 
-			tracker.rebind('jobs', recovered);
+			tracker.rebind('jobs', 'job-1', 'job-2');
 
 			await tracker.settleByJobKey('jobs', 'job-1');
 			expect(activeExecutions.resolveResponsePromise).not.toHaveBeenCalled();
@@ -495,21 +494,69 @@ describe('JobOutcomeTracker', () => {
 
 		it('should report the fresh job ID as the current one', () => {
 			void tracker.waitFor(job);
-			expect(tracker.currentJobId('exec-1')).toBe('job-1');
+			expect(tracker.currentJobId(job)).toBe('job-1');
 
-			tracker.rebind('jobs', mock<Job>({ id: 'job-2', data: { executionId: 'exec-1' } }));
+			tracker.rebind('jobs', 'job-1', 'job-2');
 
-			expect(tracker.currentJobId('exec-1')).toBe('job-2');
-			expect(tracker.currentJobId('exec-9')).toBeUndefined();
+			expect(tracker.currentJobId(job)).toBe('job-2');
+			expect(
+				tracker.currentJobId(mock<Job>({ id: 'job-9', queue: { name: 'jobs' } })),
+			).toBeUndefined();
 		});
 
-		it('should do nothing without a pending wait for the execution', async () => {
-			const recovered = mock<Job>({ id: 'job-2', data: { executionId: 'exec-9' } });
-
-			tracker.rebind('jobs', recovered);
+		it('should do nothing without a pending wait for the original job', async () => {
+			tracker.rebind('jobs', 'job-9', 'job-2');
 
 			await tracker.settleByJobKey('jobs', 'job-2');
 			expect(activeExecutions.resolveResponsePromise).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('overlapping segments of one execution', () => {
+		// A Wait node resumed on this process can enqueue a new segment before the old wait settles
+		const segment2 = mock<Job>({
+			id: 'job-2',
+			data: { executionId: 'exec-1' },
+			queue: {
+				name: 'jobs',
+				toKey,
+				client: { hgetall: vi.fn().mockResolvedValue({ jobId: 'job-3' }), del: vi.fn() },
+			},
+		});
+
+		it('should rebind only the wait of the recovered job', async () => {
+			let olderSettled = false;
+			void tracker.waitFor(job).then(() => (olderSettled = true));
+			const newer = tracker.waitFor(segment2);
+
+			tracker.rebind('jobs', 'job-2', 'job-3');
+			await tracker.settleByJobKey('jobs', 'job-3');
+
+			await expect(newer).resolves.toBeUndefined();
+			expect(olderSettled).toBe(false);
+			expect(tracker.currentJobId(job)).toBe('job-1');
+		});
+
+		it('should drop only the wait of the cancelled job', () => {
+			void tracker.waitFor(job);
+			void tracker.waitFor(segment2);
+
+			tracker.drop(segment2);
+
+			expect(tracker.currentJobId(segment2)).toBeUndefined();
+			expect(tracker.currentJobId(job)).toBe('job-1');
+		});
+
+		it('should give a result under a fresh ID to the wait whose record names it', async () => {
+			let olderSettled = false;
+			void tracker.waitFor(job).then(() => (olderSettled = true));
+			const newer = tracker.waitFor(segment2);
+
+			await tracker.recordFinished('jobs', 'job-3', 'exec-1', result);
+
+			await expect(newer).resolves.toBeUndefined();
+			expect(tracker.popResult(segment2)).toBe(result);
+			expect(olderSettled).toBe(false);
 		});
 	});
 
@@ -519,7 +566,7 @@ describe('JobOutcomeTracker', () => {
 			let settled = false;
 
 			void tracker.waitFor(job).finally(() => (settled = true));
-			tracker.drop(job.data.executionId);
+			tracker.drop(job);
 			await vi.advanceTimersByTimeAsync(JOB_WAIT_RECHECK_INTERVAL_MS * 2);
 
 			expect(executionRepository.findStatusesByIds).not.toHaveBeenCalled();
