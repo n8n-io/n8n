@@ -9,7 +9,12 @@ import { mock } from 'vitest-mock-extended';
 import { ConflictError, ForbiddenError, InternalServerError, NotFoundError } from '@n8n/errors';
 import { LicenseEulaRequiredError } from '@/errors/response-errors/license-eula-required.error';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
-import { reportError, sendErrorResponse, sendSuccessResponse } from '@/response-helper';
+import {
+	reportError,
+	sendErrorResponse,
+	sendStreamToResponse,
+	sendSuccessResponse,
+} from '@/response-helper';
 import { setRouteSandboxSetting } from '@/webhooks/webhook-response-headers';
 import {
 	createLargeTempFile,
@@ -213,6 +218,19 @@ describe('sendSuccessResponse', () => {
 
 			await expect(readWholeBody(server.url)).rejects.toThrow();
 			expect(stream.destroyed).toBe(true);
+		});
+
+		it('should reject with the file error when the file fails as the client disconnects', async () => {
+			const stream = await file.openStream();
+			let sending: Promise<void> | undefined;
+			server = await startServer((_req, res) => {
+				res.once('close', () => stream.destroy(new Error('read failed')));
+				sending = sendStreamToResponse(res as unknown as Response, stream);
+			});
+
+			await readFirstChunkAndDisconnect(server.url);
+
+			await expect(sending).rejects.toThrow('read failed');
 		});
 
 		it('should send an error response when the file fails before the first chunk', async () => {

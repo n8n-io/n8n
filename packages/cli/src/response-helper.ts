@@ -58,7 +58,8 @@ export async function sendStreamToResponse(
 		await pipeline(Readable.from(body()), res);
 	} catch (error) {
 		if (clientDisconnected) return;
-		throw error;
+		// pipeline can reject with the response's premature close instead of the stream's own error.
+		throw stream.errored ?? error;
 	} finally {
 		res.off('close', onClose);
 		stream.destroy();
