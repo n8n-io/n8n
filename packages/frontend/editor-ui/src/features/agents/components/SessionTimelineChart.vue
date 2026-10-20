@@ -350,7 +350,6 @@ onBeforeUnmount(() => {
 						<SessionTimelinePill
 							:kind="popoverPillKind(activePopover.segment.item)"
 							:label="popoverLabel(activePopover.segment.item)"
-							show-label
 						/>
 						<span :class="$style.popoverName">{{ popoverName(activePopover.segment.item) }}</span>
 						<N8nBadge

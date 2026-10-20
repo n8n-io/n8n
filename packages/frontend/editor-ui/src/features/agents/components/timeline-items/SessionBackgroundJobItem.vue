@@ -71,7 +71,7 @@ const { isOpen } = useTimelineItemExpansion({
 								placement="top"
 							>
 								<span :class="$style.iconContainer">
-									<SessionTimelinePill :kind="item.kind" />
+									<SessionTimelinePill :kind="item.kind" :label="label" />
 								</span>
 							</N8nTooltip>
 						</template>
