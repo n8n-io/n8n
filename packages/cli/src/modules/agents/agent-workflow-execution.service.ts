@@ -36,7 +36,7 @@ import { AgentRunTracingService } from './agent-run-tracing.service';
 import type {
 	AgentRuntimeInstrumentation,
 	PrepareWorkflowAgentForEval,
-} from './agent-runtime-instrumentation';
+} from './evaluation/agent-evaluation.contracts';
 import { AgentRuntimeReconstructionService } from './agent-runtime-reconstruction.service';
 import { AgentsSettingsService } from './agents-settings.service';
 import { AgentSkillRefsService } from './agent-skill-refs.service';
@@ -56,7 +56,7 @@ import { encodeIntegrationMessageContext } from './integrations/integration-mess
 import { IntegrationMessageContextService } from './integrations/integration-message-context.service';
 import { fromAgentDocument, toAgentDocument } from './json-config/agent-document';
 import { NodeToolAiGatewayService } from './json-config/node-tool-ai-gateway.service';
-import { modelStreamStallOptions } from './model-stream-stall-options';
+import { modelStreamStallOptions } from '@/utils/model-stream-stall-options';
 import { AgentRepository } from './repositories/agent.repository';
 import { createInputDataTool } from './tools/input-data-tool';
 import { createWorkflowContextTool } from './tools/workflow-context-tool';

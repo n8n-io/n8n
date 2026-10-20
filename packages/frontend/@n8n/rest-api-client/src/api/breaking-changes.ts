@@ -4,6 +4,7 @@ import type {
 	BreakingChangeVersion,
 	MigrationFindingTriageStatus,
 	MigrationNotifyResult,
+	MigrationOwnerCandidate,
 	MigrationWorkflowOwnerResponse,
 	WorkflowMigrationResult,
 } from '@n8n/api-types';
@@ -38,6 +39,17 @@ export async function getReportForRule(
 	ruleId: string,
 ): Promise<BreakingChangeRuleDetailResult> {
 	return (await get(context.baseUrl, `/breaking-changes/report/${ruleId}`)).data;
+}
+
+export async function getWorkflowOwnerCandidates(
+	context: IRestApiContext,
+	workflowId: string,
+): Promise<MigrationOwnerCandidate[]> {
+	return await makeRestApiRequest(
+		context,
+		'GET',
+		`/breaking-changes/workflows/${workflowId}/owner/candidates`,
+	);
 }
 
 export async function assignWorkflowOwner(

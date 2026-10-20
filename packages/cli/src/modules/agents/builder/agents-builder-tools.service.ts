@@ -4,6 +4,9 @@ import {
 	type BuiltTool,
 	type CredentialProvider,
 	type InterruptibleToolContext,
+	type JSONValue,
+	type ToolContext,
+	type ToolSuspendOptions,
 } from '@n8n/agents';
 import {
 	APPROVAL_RESUME_SCHEMA,
@@ -14,7 +17,7 @@ import {
 } from '@n8n/agents/tool';
 import {
 	applyNativeWebSearchDefaultOn,
-	getProviderPrefix,
+	getModelPromptCachingCapability,
 	rejectIfDynamicSelectorUsesFromAi,
 	rejectIfEmptyInstructions,
 	rejectIfUnsupportedNativeWebSearch,
@@ -24,7 +27,6 @@ import {
 	agentSkillSchema,
 	agentTaskSchema,
 	formatZodErrors,
-	PROVIDER_CAPABILITIES,
 	resolvePromptCaching,
 	AgentJsonConfigSchema,
 	isDraftAgentConfig,
@@ -36,11 +38,10 @@ import {
 	type ConfigValidationError,
 	getLegacyBuilderToolNames,
 } from '@n8n/api-types';
-import { Logger } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { createAgentContextTool, type InstanceAiCredentialService } from '@n8n/instance-ai';
+import type { BuilderCredentialService, BuilderToolsOptions } from './builder-session';
 import type { Operation } from 'fast-json-patch';
 import { z } from 'zod';
 
@@ -61,7 +62,6 @@ import { createAiMcpFetch } from '@/utils/ai-proxy-fetch';
 import { AgentConfigService } from '../agent-config.service';
 import { AgentCustomToolsService } from '../agent-custom-tools.service';
 import { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service';
-import { InstanceAiAgentContextAdapterService } from '../instance-ai-agent-context.adapter';
 import { AgentPublishService } from '../agent-publish.service';
 import { AgentSkillsService } from '../agent-skills.service';
 import { AgentTaskService } from '../agent-task.service';
@@ -331,15 +331,53 @@ interface AgentConfigSnapshot {
 	configHash: string | null;
 }
 
-/** Builder-session options from the Instance AI host. */
-interface BuilderToolsOptions {
-	threadId?: string;
-	runId?: string;
-	useEvalModelCatalog?: boolean;
-}
-
 /** Placeholder agent id for the tool set that only supplies tool definitions. */
 const UNRESOLVED_TARGET_AGENT_ID = '';
+
+/**
+ * Continuation of a builder tool that suspended for a per-call target. It pins
+ * the agent the call started on, and wraps the tool's own continuation.
+ */
+const pinnedTargetContinuationSchema = z
+	.object({
+		builderTargetAgentId: z.string().min(1),
+		inner: z.custom<JSONValue>().optional(),
+	})
+	.strict();
+
+function isInterruptibleContext(
+	ctx: ToolContext | InterruptibleToolContext,
+): ctx is InterruptibleToolContext {
+	return 'suspend' in ctx && typeof ctx.suspend === 'function';
+}
+
+/**
+ * Pin `agentId` on every suspension of the call, so its resume targets the same
+ * agent. The tool sees only its own continuation.
+ */
+function withPinnedTarget(
+	ctx: InterruptibleToolContext,
+	agentId: string,
+	innerContinuation: JSONValue | undefined,
+): InterruptibleToolContext {
+	return {
+		...ctx,
+		continuation: innerContinuation,
+		suspend: async (payload: unknown, options?: ToolSuspendOptions) => {
+			const inner =
+				options && Object.prototype.hasOwnProperty.call(options, 'continuation')
+					? options.continuation
+					: innerContinuation;
+			return await ctx.suspend(payload, {
+				...options,
+				continuation: {
+					builderTargetAgentId: agentId,
+					...(inner !== undefined ? { inner } : {}),
+				},
+			});
+		},
+	};
+}
 
 function snapshotFromConfig(config: AgentJsonConfig | null): AgentConfigSnapshot {
 	return {
@@ -373,17 +411,9 @@ function parseBuilderWriteConfig(incoming: unknown, currentConfig: AgentJsonConf
 	return AgentJsonConfigSchema.safeParse(sanitized);
 }
 
-/**
- * Prompt caching is mandatory for OpenAI/Anthropic: this write-path
- * normalizer guarantees `config.promptCaching` is force-enabled for those
- * providers (the user cannot disable it, even if the LLM wrote
- * `{ enabled: false }`), preserves an explicit Anthropic TTL, and strips the
- * field entirely for every other provider — regardless of what the builder
- * LLM wrote.
- */
+/** Enable caching for supported models and preserve an explicit cache TTL. */
 function applyPromptCachingBuilderDefaults(config: AgentJsonConfig): AgentJsonConfig {
-	const providerPrefix = getProviderPrefix(config.model);
-	const capability = PROVIDER_CAPABILITIES[providerPrefix]?.promptCaching ?? false;
+	const capability = getModelPromptCachingCapability(config.model);
 	const resolved = resolvePromptCaching(config.config?.promptCaching, capability);
 
 	if (!resolved) {
@@ -412,7 +442,6 @@ export interface BuilderTools {
 @Service()
 export class AgentsBuilderToolsService {
 	constructor(
-		private readonly logger: Logger,
 		private readonly agentsService: AgentsService,
 		private readonly agentConfigService: AgentConfigService,
 		private readonly agentCustomToolsService: AgentCustomToolsService,
@@ -434,7 +463,6 @@ export class AgentsBuilderToolsService {
 		private readonly nodeTypes: NodeTypes,
 		private readonly freeAiCreditsService: FreeAiCreditsService,
 		private readonly telemetry: Telemetry,
-		private readonly agentContextAdapter: InstanceAiAgentContextAdapterService,
 		private readonly collaborationService: CollaborationService,
 		private readonly agentSkillRefs: AgentSkillRefsService,
 	) {}
@@ -514,7 +542,7 @@ export class AgentsBuilderToolsService {
 		agentId: string,
 		projectId: string,
 		credentialProvider: CredentialProvider,
-		credentialService: InstanceAiCredentialService,
+		credentialService: BuilderCredentialService,
 		user: User,
 		options?: BuilderToolsOptions,
 	): BuilderTools {
@@ -536,45 +564,62 @@ export class AgentsBuilderToolsService {
 	 * handler resolves the target when it runs, then delegates to the tool built
 	 * for that agent. Tool names, schemas, and descriptions do not depend on the
 	 * agent, so a tool set built for a placeholder id supplies them.
+	 *
+	 * A suspended call keeps its agent: the host can select another agent while
+	 * the call waits, so the resume passes the pinned id to the resolver.
 	 */
 	getToolsForResolvedTarget(
-		resolveTargetAgentId: () => Promise<string>,
+		resolveTargetAgentId: (pinnedAgentId?: string) => Promise<string>,
 		projectId: string,
 		credentialProviderFor: (agentId: string) => CredentialProvider,
-		credentialService: InstanceAiCredentialService,
+		credentialService: BuilderCredentialService,
 		user: User,
-		options: BuilderToolsOptions & { excludeToolNames?: string[] } = {},
+		options: BuilderToolsOptions = {},
 	): BuiltTool[] {
-		const excluded = new Set(options.excludeToolNames ?? []);
-		const buildToolSet = (agentId: string) => {
+		const buildToolSet = (agentId: string, credentialProvider: CredentialProvider) => {
 			const { json, shared } = this.getTools(
 				agentId,
 				projectId,
-				credentialProviderFor(agentId),
+				credentialProvider,
 				credentialService,
 				user,
 				options,
 			);
-			return [...json, ...shared].filter((tool) => !excluded.has(tool.name));
+			return [...json, ...shared];
 		};
 
 		const toolSetsByAgentId = new Map<string, Map<string, BuiltTool>>();
 		const toolFor = (agentId: string, toolName: string): BuiltTool | undefined => {
 			let toolSet = toolSetsByAgentId.get(agentId);
 			if (!toolSet) {
-				toolSet = new Map(buildToolSet(agentId).map((tool) => [tool.name, tool]));
+				toolSet = new Map(
+					buildToolSet(agentId, credentialProviderFor(agentId)).map((tool) => [tool.name, tool]),
+				);
 				toolSetsByAgentId.set(agentId, toolSet);
 			}
 			return toolSet.get(toolName);
 		};
 
-		return buildToolSet(UNRESOLVED_TARGET_AGENT_ID).map((template) => ({
+		const unresolvedTarget = async (): Promise<never> => {
+			throw new UnexpectedError('Builder credentials require a resolved target agent.');
+		};
+		const templates = buildToolSet(UNRESOLVED_TARGET_AGENT_ID, {
+			resolve: unresolvedTarget,
+			list: unresolvedTarget,
+		});
+		return templates.map((template) => ({
 			...template,
 			handler: async (input, ctx) => {
-				const agentId = await resolveTargetAgentId();
+				const pinned = isInterruptibleContext(ctx)
+					? pinnedTargetContinuationSchema.safeParse(ctx.continuation)
+					: undefined;
+				const pinnedTarget = pinned?.success ? pinned.data : undefined;
+				const agentId = await resolveTargetAgentId(pinnedTarget?.builderTargetAgentId);
 				const handler = toolFor(agentId, template.name)?.handler;
 				if (!handler) throw new UnexpectedError(`Builder tool "${template.name}" has no handler`);
-				return await handler(input, ctx);
+				if (!isInterruptibleContext(ctx)) return await handler(input, ctx);
+				const innerContinuation = pinnedTarget ? pinnedTarget.inner : ctx.continuation;
+				return await handler(input, withPinnedTarget(ctx, agentId, innerContinuation));
 			},
 		}));
 	}
@@ -583,18 +628,22 @@ export class AgentsBuilderToolsService {
 		agentId: string,
 		projectId: string,
 		credentialProvider: CredentialProvider,
-		credentialService: InstanceAiCredentialService,
+		credentialService: BuilderCredentialService,
 		user: User,
 		options?: BuilderToolsOptions,
 	): BuiltTool[] {
-		const track: BuilderTrackFn = (entry, properties) =>
-			this.telemetry.track(entry, {
+		const track: BuilderTrackFn = (entry, properties) => {
+			const enriched = {
 				agent_id: agentId,
 				user_id: user.id,
-				...(options?.threadId ? { thread_id: options.threadId } : {}),
-				...(options?.runId ? { run_id: options.runId } : {}),
 				...properties,
-			});
+			};
+			if (options?.track) {
+				options.track(entry, enriched);
+				return;
+			}
+			this.telemetry.track(entry, enriched);
+		};
 		const writeConfigTool = this.buildWriteConfigTool(agentId, projectId, user);
 		const patchConfigTool = this.buildPatchConfigTool(agentId, projectId, user);
 		const publishAgentTool = this.buildPublishAgentTool(user, projectId, agentId);
@@ -655,7 +704,7 @@ export class AgentsBuilderToolsService {
 	}
 
 	private createFinishSetupTool(
-		credentialService: InstanceAiCredentialService,
+		credentialService: BuilderCredentialService,
 		agentId: string,
 		projectId: string,
 		user: User,
@@ -706,7 +755,7 @@ export class AgentsBuilderToolsService {
 	}
 
 	private createEmbeddingCredentialTool(
-		credentialService: InstanceAiCredentialService,
+		credentialService: BuilderCredentialService,
 		projectId: string,
 		track: BuilderTrackFn,
 	): BuiltTool {
@@ -720,7 +769,7 @@ export class AgentsBuilderToolsService {
 	}
 
 	private createCredentialTool(
-		credentialService: InstanceAiCredentialService,
+		credentialService: BuilderCredentialService,
 		projectId: string,
 		agentId: string,
 		track: BuilderTrackFn,
@@ -1068,11 +1117,6 @@ export class AgentsBuilderToolsService {
 		const createTasksTool = this.buildCreateTasksTool(agentId, projectId, user);
 
 		return [
-			createAgentContextTool({
-				reader: this.agentContextAdapter.createReader(user, projectId),
-				resolveDefaultAgentId: async () => agentId,
-				logger: this.logger,
-			}),
 			this.withConfigMutationMarker(buildCustomToolTool, agentId),
 			this.withConfigMutationMarker(createSkillsTool, agentId),
 			this.withConfigMutationMarker(updateSkillTool, agentId),

@@ -49,7 +49,7 @@ const { t } = useI18n();
 				<span :class="$style.name" data-test-id="node-creator-item-name" v-text="title" />
 				<PreviewBadge
 					v-if="tag?.preview"
-					size="small"
+					size="xxsmall"
 					:class="$style.previewBadge"
 					:text="tag.text"
 				/>

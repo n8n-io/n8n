@@ -1,25 +1,27 @@
-import type { AgentExecutionThread } from '../../entities/agent-execution-thread.entity';
-import type { AgentExecution } from '../../entities/agent-execution.entity';
-import type { TimelineEvent } from '../../execution-recorder';
+import type {
+	AgentSessionThread,
+	AgentSessionTurn,
+} from '@/modules/agents/agent-context.contracts';
+
+type TimelineEvent = NonNullable<AgentSessionTurn['timeline']>[number];
 import {
 	formatPreviewSessionContext,
 	PREVIEW_CONTEXT_CLOSE_TAG,
 	PREVIEW_CONTEXT_OPEN_TAG,
-} from '../format-preview-context';
+} from '../format-agent-session-context';
 
-function makeThread(overrides: Partial<AgentExecutionThread> = {}): AgentExecutionThread {
+function makeThread(overrides: Partial<AgentSessionThread> = {}): AgentSessionThread {
 	return {
 		id: 'thread-1',
 		title: 'Support triage test',
 		sessionNumber: 3,
 		...overrides,
-	} as AgentExecutionThread;
+	} as AgentSessionThread;
 }
 
-function makeExecution(overrides: Partial<AgentExecution> = {}): AgentExecution {
+function makeExecution(overrides: Partial<AgentSessionTurn> = {}): AgentSessionTurn {
 	return {
 		id: 'exec-1',
-		threadId: 'thread-1',
 		status: 'success',
 		userMessage: 'Hello agent',
 		model: 'gpt-test',
@@ -28,7 +30,7 @@ function makeExecution(overrides: Partial<AgentExecution> = {}): AgentExecution 
 		error: null,
 		timeline: [],
 		...overrides,
-	} as AgentExecution;
+	} as AgentSessionTurn;
 }
 
 function toolCallEvent(overrides: Partial<Extract<TimelineEvent, { type: 'tool-call' }>> = {}) {
@@ -124,7 +126,7 @@ describe('formatPreviewSessionContext', () => {
 	it('scopes a single turn to the anchor plus trailing resume continuations', () => {
 		const executions = [
 			makeExecution({ id: 'exec-1', userMessage: 'Turn one' }),
-			makeExecution({ id: 'exec-2', userMessage: null, hitlStatus: 'resumed' }),
+			makeExecution({ id: 'exec-2', userMessage: null }),
 			makeExecution({ id: 'exec-3', userMessage: 'Turn two' }),
 		];
 
@@ -171,7 +173,6 @@ describe('formatPreviewSessionContext', () => {
 			makeExecution({
 				id: 'exec-2',
 				userMessage: null,
-				hitlStatus: 'resumed',
 				timeline: [
 					{
 						type: 'hitl-response',
