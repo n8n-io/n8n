@@ -364,7 +364,7 @@ describe('Microsoft Teams Transport', () => {
 		const CHANNELS_403 = refused(`/teams('${TEAM_ID}')/channels`);
 		const CHANNEL_MESSAGES_403 = refused(`/teams('${TEAM_ID}')/channels('${CHANNEL_ID}')/messages`);
 		const CHAT_MESSAGES_403 = refused(`/chats('${CHAT_ID}')/messages`);
-		const USER_CHATS_403 = refused(`/users('${USER_ID}')/chats`);
+		const USER_CHATS_403 = refused(`/users('${USER_ID.toUpperCase()}')/chats`);
 		// `/me/chats/getAllMessages` has its own renderer without a path
 		const CHAT_ALL_MESSAGES_403 =
 			"Operation: Create; Exception: [Status Code: Forbidden; Reason: Required permissions to access user-scoped chat message subscription ('Chat.Read, Chat.ReadWrite') are missing.]";
@@ -390,11 +390,13 @@ describe('Microsoft Teams Transport', () => {
 				.call(mockExecuteFunctions, 'POST', resource, {})
 				.catch((e: Error) => e)) as NodeApiError;
 		// The kernel rebuilds the app-only error from static copy; pin that every surface the editor
-		// renders (message, description, messages, serialized form) carries no Graph id.
+		// renders (message, description, messages, serialized form) carries no Graph id, in any case.
 		const expectNoGraphIds = (error: NodeApiError) => {
-			const rendered = [error.message, error.description, ...error.messages, JSON.stringify(error)];
+			const rendered = [error.message, error.description, ...error.messages, JSON.stringify(error)]
+				.join('\n')
+				.toLowerCase();
 			for (const id of [TEAM_ID, CHANNEL_ID, CHAT_ID, USER_ID]) {
-				expect(rendered.join('\n')).not.toContain(id);
+				expect(rendered).not.toContain(id.toLowerCase());
 			}
 		};
 
