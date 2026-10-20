@@ -1198,9 +1198,13 @@ describe('workflow_step_execution table (integration)', () => {
 
 	it('TypeOrmExecutionViewStore.loadLatestExecutionWithStepsView returns the newest match with its steps', async () => {
 		const workflowId = generateId();
-		// Separate rows, so created_at decides which is newest.
 		const older = await createExecution({ workflowId, status: 'completed' });
 		const newest = await createExecution({ workflowId, status: 'completed' });
+		// Two inserts can share a millisecond, so make created_at decide explicitly.
+		await dataSource.query(
+			"UPDATE workflow_execution SET created_at = created_at - interval '1 minute' WHERE id = $1",
+			[older],
+		);
 		await createExecution({ workflowId, status: 'failed' });
 		await createExecution({ workflowId: generateId(), status: 'completed' });
 		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));

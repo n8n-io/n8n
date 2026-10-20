@@ -16,7 +16,7 @@ import type {
 /** The execution row, with its steps aggregated into one column. */
 type ExecutionWithStepsRow = ExecutionView & { steps: StepView[] };
 
-const HOST_MODE = "execution.caller_context->>'hostMode'";
+const hostMode = (alias: string) => `${alias}.caller_context->>'hostMode'`;
 
 /**
  * The cursor compares `(created_at, id)`, so it only walks that order. A
@@ -53,7 +53,7 @@ export class TypeOrmExecutionViewStore implements ExecutionViewStore {
 			.addSelect('execution.workflow_id', 'workflowId')
 			.addSelect('execution.status', 'status')
 			.addSelect('execution.mode', 'mode')
-			.addSelect(HOST_MODE, 'hostMode')
+			.addSelect(hostMode('execution'), 'hostMode')
 			.addSelect('execution.created_at', 'createdAt')
 			.addSelect('execution.updated_at', 'updatedAt')
 			.addSelect('execution.finished_at', 'finishedAt');
@@ -75,18 +75,25 @@ export class TypeOrmExecutionViewStore implements ExecutionViewStore {
 	}
 
 	private buildListQuery(query: ExecutionListFilter): SelectQueryBuilder<WorkflowExecution> {
-		const qb = this.executions.createQueryBuilder('execution');
+		return this.applyFilter(this.executions.createQueryBuilder('execution'), 'execution', query);
+	}
+
+	private applyFilter<T extends SelectQueryBuilder<WorkflowExecution>>(
+		qb: T,
+		alias: string,
+		query: ExecutionListFilter,
+	): T {
 		if (query.workflowIds !== 'all') {
-			qb.andWhere('execution.workflow_id = ANY(:workflowIds)', { workflowIds: query.workflowIds });
+			qb.andWhere(`${alias}.workflow_id = ANY(:workflowIds)`, { workflowIds: query.workflowIds });
 		}
-		if (query.status) qb.andWhere('execution.status = ANY(:statuses)', { statuses: query.status });
+		if (query.status) qb.andWhere(`${alias}.status = ANY(:statuses)`, { statuses: query.status });
 		if (query.hostMode) {
-			qb.andWhere(`${HOST_MODE} = :hostMode`, { hostMode: query.hostMode });
+			qb.andWhere(`${hostMode(alias)} = :hostMode`, { hostMode: query.hostMode });
 		}
 		if (query.createdAfter)
-			qb.andWhere('execution.created_at >= :createdAfter', { createdAfter: query.createdAfter });
+			qb.andWhere(`${alias}.created_at >= :createdAfter`, { createdAfter: query.createdAfter });
 		if (query.createdBefore)
-			qb.andWhere('execution.created_at <= :createdBefore', { createdBefore: query.createdBefore });
+			qb.andWhere(`${alias}.created_at <= :createdBefore`, { createdBefore: query.createdBefore });
 		return qb;
 	}
 
@@ -104,16 +111,26 @@ export class TypeOrmExecutionViewStore implements ExecutionViewStore {
 		return row;
 	}
 
+	/**
+	 * Picks the newest id in a subquery and aggregates only that execution's
+	 * steps. Grouping every match and taking one afterwards would cost as much
+	 * as the workflow's whole history.
+	 */
 	async loadLatestExecutionWithStepsView(
 		filter: ExecutionListFilter,
 	): Promise<ExecutionWithStepsView | undefined> {
-		const row: ExecutionWithStepsRow | undefined = await this.withSteps(
-			this.selectExecutionColumns(this.buildListQuery(filter)),
+		const qb = this.selectExecutionColumns(this.executions.createQueryBuilder('execution'));
+		const newest = this.applyFilter(
+			qb.subQuery().select('newest.id').from(this.executions.target, 'newest'),
+			'newest',
+			filter,
 		)
-			.orderBy('execution.created_at', 'DESC')
-			.addOrderBy('execution.id', 'DESC')
-			.limit(1)
-			.getRawOne();
+			.orderBy('newest.created_at', 'DESC')
+			.addOrderBy('newest.id', 'DESC')
+			.limit(1);
+		const row: ExecutionWithStepsRow | undefined = await this.withSteps(
+			qb.where(`execution.id = ${newest.getQuery()}`),
+		).getRawOne();
 		return row;
 	}
 
@@ -132,7 +149,7 @@ export class TypeOrmExecutionViewStore implements ExecutionViewStore {
 			.addSelect('execution.workflow_id', 'workflowId')
 			.addSelect('execution.status', 'status')
 			.addSelect('execution.mode', 'mode')
-			.addSelect(HOST_MODE, 'hostMode')
+			.addSelect(hostMode('execution'), 'hostMode')
 			.addSelect('execution.graph', 'graph')
 			.addSelect('execution.workflow', 'workflow')
 			.addSelect('execution.created_at', 'createdAt')
