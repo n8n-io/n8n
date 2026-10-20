@@ -2,7 +2,7 @@
 
 Guidance for the knowledge module (`packages/cli/src/modules/knowledge`). See the [cli package AGENTS.md](../../../AGENTS.md) and the [root AGENTS.md](../../../../../AGENTS.md) for repo-wide conventions.
 
-> Note: This module is currently WIP. P0 moves the implementation here from `packages/cli/src/modules/agents/` with no user-facing change. P1 adds collections that several agents share. See `WIP Note` comments in it's files for more info.
+> Note: This module is currently WIP. P0 moves the implementation here from `packages/cli/src/modules/agents/` with no user-facing change. P1 adds collections that several agents share. See `WIP Note` comments in its files for more info.
 
 ## Purpose
 
