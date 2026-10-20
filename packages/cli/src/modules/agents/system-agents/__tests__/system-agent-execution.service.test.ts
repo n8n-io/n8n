@@ -23,6 +23,7 @@ import type { AgentExecutionRepository } from '../../repositories/agent-executio
 import type { AgentExecutionThreadRepository } from '../../repositories/agent-execution-thread.repository';
 import type { AgentRepository } from '../../repositories/agent.repository';
 import type { AgentExecutionStreamChunk } from '../../types/agent-steering';
+import type { AgentTurnFinalizeOutcome } from '../../types/agent-turn-outcome';
 import { SystemAgentExecutionService } from '../system-agent-execution.service';
 import { SystemAgentRegistry } from '../system-agent-registry';
 import type {
@@ -69,7 +70,14 @@ function suspendedCheckpoint(resourceId = 'system-chat:user-1') {
 	};
 }
 
-function setup(chunks: AgentExecutionStreamChunk[] = []) {
+/**
+ * `outcome` is what the runtime reports through `onBeforeFinalize` after the
+ * chunks. `null` means the turn has no execution record, so no report.
+ */
+function setup(
+	chunks: AgentExecutionStreamChunk[] = [],
+	outcome: Omit<AgentTurnFinalizeOutcome, 'executionId'> | null = { status: 'completed' },
+) {
 	const registry = new SystemAgentRegistry();
 	const threadRepository = mock<AgentExecutionThreadRepository>();
 	const executionRepository = mock<AgentExecutionRepository>();
@@ -110,6 +118,7 @@ function setup(chunks: AgentExecutionStreamChunk[] = []) {
 	turnExecutionService.execute.mockImplementation(async function* (config) {
 		prepared.push(await config.prepare());
 		yield* chunks;
+		if (outcome) await config.onBeforeFinalize?.({ executionId: 'exec-1', ...outcome });
 	});
 
 	const txRunner = mock<TransactionRunner>();
@@ -279,11 +288,8 @@ describe('SystemAgentExecutionService', () => {
 
 			expect(onChunk).toHaveBeenCalledWith(textChunk);
 			expect(send).toHaveBeenCalledWith(expect.objectContaining({ type: 'text-delta' }));
-			expect(onSettled).toHaveBeenCalledWith({
-				status: 'completed',
-				executionId: 'exec-1',
-				error: undefined,
-			});
+			expect(onSettled).toHaveBeenCalledTimes(1);
+			expect(onSettled).toHaveBeenCalledWith({ status: 'completed', executionId: 'exec-1' });
 			expect(send).toHaveBeenLastCalledWith({
 				type: 'done',
 				sessionId: 'thread-1',
@@ -292,7 +298,7 @@ describe('SystemAgentExecutionService', () => {
 		});
 
 		it('settles as suspended after a tool suspends, without a done event', async () => {
-			const { service, onSettled } = setup([suspendedChunk]);
+			const { service, onSettled } = setup([suspendedChunk], { status: 'suspended' });
 			const send = vi.fn();
 
 			await service.consume(claimFor(), user, new AbortController().signal, send);
@@ -301,11 +307,12 @@ describe('SystemAgentExecutionService', () => {
 			expect(send).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'done' }));
 		});
 
-		it('settles as errored with the error of an error chunk', async () => {
+		it('settles as errored with the error that the runtime reports', async () => {
 			const failure = new Error('model failed');
-			const { service, onSettled } = setup([
-				{ type: 'error', error: failure } as AgentExecutionStreamChunk,
-			]);
+			const { service, onSettled } = setup(
+				[{ type: 'error', error: failure } as AgentExecutionStreamChunk],
+				{ status: 'errored', error: failure },
+			);
 			const send = vi.fn();
 
 			await service.consume(claimFor(), user, new AbortController().signal, send);
@@ -319,13 +326,31 @@ describe('SystemAgentExecutionService', () => {
 			expect(send).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'done' }));
 		});
 
-		it('settles as cancelled when the recorded execution was cancelled', async () => {
-			const { service, onSettled, executionRepository } = setup([textChunk]);
-			executionRepository.findExecution.mockResolvedValue({ status: 'cancelled' } as never);
+		it('settles as cancelled when the runtime reports a cancelled turn, without a done event', async () => {
+			const { service, onSettled, executionRepository } = setup([textChunk], {
+				status: 'cancelled',
+			});
+			const send = vi.fn();
+
+			await service.consume(claimFor(), user, new AbortController().signal, send);
+
+			expect(onSettled).toHaveBeenCalledWith({ status: 'cancelled', executionId: 'exec-1' });
+			expect(send).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'done' }));
+			// The outcome comes from the runtime, not from a read of the stored execution.
+			expect(executionRepository.findExecution).not.toHaveBeenCalled();
+		});
+
+		it('settles as cancelled when the turn stops before it has an execution record', async () => {
+			const { service, onSettled, turnExecutionService } = setup([], null);
+			// eslint-disable-next-line require-yield
+			turnExecutionService.execute.mockImplementation(async function* (config) {
+				config.chatController?.abort();
+			});
 
 			await service.consume(claimFor(), user, new AbortController().signal, vi.fn());
 
-			expect(onSettled).toHaveBeenCalledWith(expect.objectContaining({ status: 'cancelled' }));
+			expect(onSettled).toHaveBeenCalledTimes(1);
+			expect(onSettled).toHaveBeenCalledWith({ status: 'cancelled', executionId: 'exec-1' });
 		});
 
 		it('settles as errored and rethrows when the turn throws', async () => {

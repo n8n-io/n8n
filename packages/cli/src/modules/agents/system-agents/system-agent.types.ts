@@ -2,16 +2,17 @@ import type {
 	Agent as RuntimeAgent,
 	ExecutionOptions,
 	JSONObject,
-	Message,
 	ResumeOptions,
 	RunOptions,
 } from '@n8n/agents';
 import type { User } from '@n8n/db';
 
+import type { AgentTurnRequest } from '../agent-turn-execution.service';
 import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
 import type { ToolRegistry } from '../tool-registry';
 import type { StoredAttachmentRef } from '../types/agent-chat-attachment';
 import type { AgentExecutionStreamChunk } from '../types/agent-steering';
+import type { AgentTurnFinalizeOutcome, AgentTurnStatus } from '../types/agent-turn-outcome';
 
 /** Provider-defined, JSON-safe turn options. The queue stores them with the message. */
 export type SystemAgentTurnOptions = Record<string, unknown>;
@@ -34,10 +35,10 @@ export interface SystemAgentStartTurn extends SystemAgentTurnBase {
 	options: SystemAgentTurnOptions;
 }
 
-export interface SystemAgentResumeTurn extends SystemAgentTurnBase {
+export interface SystemAgentResumeTurn
+	extends SystemAgentTurnBase,
+		Pick<ResumeOptions, 'runId' | 'toolCallId'> {
 	type: 'resume';
-	runId: string;
-	toolCallId: string;
 	/** Host metadata the suspended run stored in its checkpoint. */
 	checkpointHostMetadata: JSONObject;
 	resumeData: unknown;
@@ -45,20 +46,22 @@ export interface SystemAgentResumeTurn extends SystemAgentTurnBase {
 
 export type SystemAgentTurn = SystemAgentStartTurn | SystemAgentResumeTurn;
 
-export type SystemAgentTurnStatus = 'completed' | 'suspended' | 'errored' | 'cancelled';
+export type SystemAgentTurnStatus = AgentTurnStatus;
 
-export interface SystemAgentTurnOutcome {
-	status: SystemAgentTurnStatus;
+/**
+ * The outcome that the runtime stores for the turn. A turn that failed
+ * before it had an execution record has no `executionId`.
+ */
+export type SystemAgentTurnOutcome = Omit<AgentTurnFinalizeOutcome, 'executionId'> & {
 	executionId?: string;
-	error?: unknown;
-}
+};
 
 /** A built runtime for one turn, plus the hooks the host calls while the turn runs. */
 export interface SystemAgentTurnHandle {
 	agent: RuntimeAgent;
 	toolRegistry?: ToolRegistry;
 	/** Model input for a start turn. Defaults to the stored message. */
-	input?: string | Message[];
+	input?: Extract<AgentTurnRequest, { type: 'start' }>['input'];
 	/** Stored on the checkpoint. A resume receives it back. */
 	hostMetadata?: JSONObject;
 	/**
@@ -67,6 +70,10 @@ export interface SystemAgentTurnHandle {
 	 */
 	runOptions?: Omit<Partial<RunOptions & ExecutionOptions> & Partial<ResumeOptions>, 'persistence'>;
 	onChunk?: (chunk: AgentExecutionStreamChunk) => void;
+	/**
+	 * Called once per turn with its outcome, before the runtime stores the
+	 * turn record. A turn without an execution record settles after it fails.
+	 */
 	onSettled?: (outcome: SystemAgentTurnOutcome) => Promise<void>;
 }
 

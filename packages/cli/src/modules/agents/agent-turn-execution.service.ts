@@ -18,6 +18,7 @@ import { AgentChatExecutionService } from './agent-chat-execution.service';
 import { AgentMessageQueueService } from './agent-message-queue.service';
 import { AgentMessageSteeringService } from './agent-message-steering.service';
 import type { AgentExecutionStreamChunk, SteeredMessageEvent } from './types/agent-steering';
+import type { AgentTurnFinalizeOutcome } from './types/agent-turn-outcome';
 import { AgentToolApprovalService } from './agent-tool-approval.service';
 import { EXECUTION_METADATA_KEY, type AgentExecutionAdmission } from './types/agent-queued-message';
 import {
@@ -68,6 +69,12 @@ interface ExecuteTurnConfig {
 	onExecutionStarted?: (executionId: string, sessionId: string, inputMessageIds: string[]) => void;
 	onExecutionRecorded?: (executionId: string) => void;
 	onSettled?: (suspended: boolean) => Promise<void>;
+	/**
+	 * Called once when the outcome of the turn is known, before the runtime
+	 * stores the turn record. The runtime does not call it when the turn has
+	 * no execution record.
+	 */
+	onBeforeFinalize?: (outcome: AgentTurnFinalizeOutcome) => Promise<void>;
 }
 
 interface TurnExecutionState {
@@ -307,10 +314,9 @@ export class AgentTurnExecutionService {
 		executionId: string,
 		state: TurnExecutionState,
 	): Promise<void> {
+		const cancelled = this.isCancelled(turn, recorder, state);
+		await this.runBeforeFinalize(config, recorder, executionId, state, cancelled);
 		const record = recorder.getMessageRecord();
-		const cancelled =
-			turn.options.abortSignal?.aborted ||
-			(!state.receivedFinish && !recorder.suspended && record.error === null);
 		let hitlStatus: RecordMessageParams['hitlStatus'];
 		if (recorder.suspended) hitlStatus = 'suspended';
 		else if (turn.type === 'resume' && state.executionStarted) hitlStatus = 'resumed';
@@ -326,6 +332,49 @@ export class AgentTurnExecutionService {
 				hitlStatus,
 			},
 		});
+	}
+
+	private isCancelled(
+		turn: AgentTurnRequest,
+		recorder: ExecutionRecorder,
+		state: TurnExecutionState,
+	): boolean {
+		return (
+			turn.options.abortSignal?.aborted === true ||
+			(!state.receivedFinish && !recorder.suspended && recorder.getMessageRecord().error === null)
+		);
+	}
+
+	/** Give the host the outcome of the turn before the record is final. */
+	private async runBeforeFinalize(
+		config: ExecuteTurnConfig,
+		recorder: ExecutionRecorder,
+		executionId: string,
+		state: TurnExecutionState,
+		cancelled: boolean,
+	): Promise<void> {
+		if (!config.onBeforeFinalize) return;
+		const record = recorder.getMessageRecord();
+		let status: AgentTurnFinalizeOutcome['status'] = 'completed';
+		if (cancelled) status = 'cancelled';
+		else if (recorder.suspended) status = 'suspended';
+		else if (record.error !== null || record.finishReason === 'error') status = 'errored';
+		// A thrown error, or the error that the model stream reported.
+		const error = state.executionError ?? record.error ?? undefined;
+		try {
+			await config.onBeforeFinalize({
+				executionId,
+				status,
+				...(status === 'errored' && error !== undefined ? { error } : {}),
+			});
+		} catch (hookError) {
+			// The turn record must be stored even when the host hook fails.
+			this.logger.warn('Agent turn before-finalize hook failed', {
+				threadId: config.context.threadId,
+				executionId,
+				error: hookError,
+			});
+		}
 	}
 
 	createRecorder(

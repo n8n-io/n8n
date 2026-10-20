@@ -30,7 +30,7 @@ import type {
 	SystemAgentProvider,
 	SystemAgentTurnHandle,
 	SystemAgentTurnOptions,
-	SystemAgentTurnStatus,
+	SystemAgentTurnOutcome,
 } from './system-agent.types';
 
 type SuspendedToolCall = Extract<
@@ -624,9 +624,21 @@ export class SystemAgentExecutionService {
 		admission?: AgentExecutionAdmission;
 		prepare: () => Promise<AgentTurnRequest>;
 	}): Promise<void> {
-		let status: SystemAgentTurnStatus = 'completed';
 		let executionId = admission?.executionId;
-		let error: unknown;
+		let failure: unknown;
+		/** Holds the outcome once the turn settled. */
+		const settled: { outcome?: SystemAgentTurnOutcome } = {};
+		const settle = async (outcome: SystemAgentTurnOutcome) => {
+			settled.outcome = outcome;
+			try {
+				await handle.onSettled?.(outcome);
+			} catch (settleError) {
+				this.logger.warn('System agent turn settle hook failed', {
+					threadId: thread.id,
+					error: settleError,
+				});
+			}
+		};
 		const providerSignal = handle.runOptions?.abortSignal;
 		const stopTurn = () => controller.abort(providerSignal?.reason);
 		if (providerSignal?.aborted) stopTurn();
@@ -643,37 +655,29 @@ export class SystemAgentExecutionService {
 				onExecutionStarted: (id) => {
 					executionId = id;
 				},
+				onBeforeFinalize: settle,
 				prepare,
 			});
 			for await (const chunk of stream) {
 				emitChunkEvents(chunk, send);
-				if (chunk.type === 'tool-call-suspended') status = 'suspended';
-				if (chunk.type === 'error' && status !== 'suspended') {
-					status = 'errored';
-					error = chunk.error;
-				}
 				handle.onChunk?.(chunk);
 			}
 		} catch (caught) {
-			error = caught;
-			status = controller.signal.aborted ? 'cancelled' : 'errored';
+			failure = caught;
 			throw caught;
 		} finally {
 			providerSignal?.removeEventListener('abort', stopTurn);
-			const execution = executionId
-				? await this.executionRepository.findExecution(executionId)
-				: null;
-			if (execution?.status === 'cancelled') status = 'cancelled';
-			try {
-				await handle.onSettled?.({ status, executionId, error });
-			} catch (settleError) {
-				this.logger.warn('System agent turn settle hook failed', {
-					threadId: thread.id,
-					error: settleError,
+			// The runtime settles every turn that has an execution record. A turn
+			// that failed or stopped before it had one settles here.
+			if (!settled.outcome) {
+				await settle({
+					status: controller.signal.aborted ? 'cancelled' : 'errored',
+					executionId,
+					...(failure !== undefined ? { error: failure } : {}),
 				});
 			}
 			// Like Preview, only a completed turn sends `done`. An error has its own event.
-			if (status === 'completed') {
+			if (settled.outcome?.status === 'completed') {
 				send({ type: 'done', sessionId: thread.id, executionId: executionId ?? '' });
 			}
 		}
