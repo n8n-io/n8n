@@ -1,6 +1,8 @@
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import {
@@ -206,6 +208,107 @@ describe('analyzePackage', () => {
 			fs.rmSync(fixtureDir, { recursive: true, force: true });
 			fixtureDir = undefined;
 		}
+	});
+
+	describe('credential names for approval', () => {
+		// The external plugin uses test-only filename helpers when NODE_ENV is test.
+		async function scanFixture() {
+			const { stdout } = await promisify(execFile)(
+				process.execPath,
+				[
+					'--input-type=module',
+					'--eval',
+					`import { analyzePackage, SOURCE_FILE_PATTERNS } from ${JSON.stringify(new URL('./scanner.mjs', import.meta.url).href)};
+console.log(JSON.stringify(await analyzePackage(process.argv[1], SOURCE_FILE_PATTERNS)));`,
+					fixtureDir,
+				],
+				{ env: { ...process.env, NODE_ENV: 'production' } },
+			);
+			return JSON.parse(stdout);
+		}
+
+		beforeEach(() => {
+			fixtureDir = makeFixturePackage({
+				'package.json': {
+					name: 'n8n-nodes-fixture',
+					version: '1.0.0',
+					description: 'A fixture community node package',
+					license: 'MIT',
+					author: { name: 'Test Author', email: 'test@example.com' },
+					keywords: ['n8n-community-node-package'],
+					peerDependencies: { 'n8n-workflow': '*' },
+					n8n: {
+						n8nNodesApiVersion: 1,
+						nodes: ['dist/nodes/Foo/Foo.node.js'],
+						credentials: ['dist/credentials/GithubApi.credentials.js'],
+					},
+				},
+				'credentials/GithubApi.credentials.ts': `
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
+
+export class GithubApi implements ICredentialType {
+	name = 'githubApi';
+	displayName = 'Community API';
+	documentationUrl = 'https://example.com/credentials';
+	icon = 'file:fixture.svg';
+	properties: INodeProperties[] = [
+		{
+			displayName: 'API Key',
+			name: 'apiKey',
+			type: 'string',
+			typeOptions: { password: true },
+			default: '',
+		},
+	];
+	authenticate = {
+		type: 'generic',
+		properties: { headers: { Authorization: '={{$credentials.apiKey}}' } },
+	};
+	test = { request: { baseURL: 'https://example.com', url: '/' } };
+}
+`,
+				'nodes/Foo/Foo.node.ts': `
+import { NodeConnectionTypes } from 'n8n-workflow';
+import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
+
+export class Foo implements INodeType {
+	description: INodeTypeDescription = {
+		displayName: 'Foo',
+		name: 'foo',
+		group: ['transform'],
+		version: 1,
+		description: 'Get fixture data',
+		subtitle: 'Get data',
+		icon: 'file:fixture.svg',
+		defaults: { name: 'Foo' },
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
+		usableAsTool: true,
+		credentials: [{ name: 'githubApi', required: true }],
+		requestDefaults: { baseURL: 'https://example.com', url: '/' },
+		properties: [],
+	};
+}
+`,
+				'credentials/fixture.svg': '<svg xmlns="http://www.w3.org/2000/svg"/>',
+				'nodes/Foo/fixture.svg': '<svg xmlns="http://www.w3.org/2000/svg"/>',
+			});
+		});
+
+		it('passes lint for a registered credential that its node references', async () => {
+			const result = await scanFixture();
+
+			expect(result.passed, result.details ?? result.message).toBe(true);
+			expect(result.details).toBeUndefined();
+		});
+
+		// CE-3457: githubApi matches a built-in type. Strapi needs this name to check uniqueness.
+		it('reports a built-in-colliding internal credential name for approval checks', async () => {
+			const result = await scanFixture();
+
+			expect(result.passed, result.details ?? result.message).toBe(true);
+			expect(result.credentialNames).toEqual(['githubApi']);
+		});
 	});
 
 	it('lints package.json and flags forbidden `overrides` field (regression for CE-1023)', async () => {
