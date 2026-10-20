@@ -1,7 +1,7 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { SecurityConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
-import type { Request, Response } from 'express';
+import express, { type Request, type Response } from 'express';
 import { ErrorReporter } from 'n8n-core';
 import { UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
@@ -14,6 +14,7 @@ import { setRouteSandboxSetting } from '@/webhooks/webhook-response-headers';
 import {
 	createLargeTempFile,
 	disconnectBeforeResponse,
+	failingStream,
 	readFirstChunkAndDisconnect,
 	readWholeBody,
 	startServer,
@@ -202,6 +203,27 @@ describe('sendSuccessResponse', () => {
 			await readFirstChunkAndDisconnect(server.url);
 
 			expect(await waitForClose(stream)).toBe(true);
+		});
+
+		it('should end the response when the file fails during the download', async () => {
+			const stream = failingStream(3);
+			server = await startServer((_req, res) => {
+				sendSuccessResponse(res as unknown as Response, stream);
+			});
+
+			await expect(readWholeBody(server.url)).rejects.toThrow();
+			expect(stream.destroyed).toBe(true);
+		});
+
+		it('should send an error response when the file fails before the first chunk', async () => {
+			const app = express();
+			app.get('/', (_req, res) => sendSuccessResponse(res, failingStream(0)));
+			server = await startServer(app);
+
+			const response = await fetch(server.url);
+
+			expect(response.status).toBe(500);
+			expect(await response.json()).toMatchObject({ message: 'read failed' });
 		});
 
 		it('should close the file when the client disconnected before the response started', async () => {

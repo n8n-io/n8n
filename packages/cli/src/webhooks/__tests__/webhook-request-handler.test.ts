@@ -22,6 +22,7 @@ import type {
 } from '@/webhooks/webhook.types';
 import {
 	createLargeTempFile,
+	failingStream,
 	readFirstChunkAndDisconnect,
 	readWholeBody,
 	startServer,
@@ -208,7 +209,7 @@ describe('WebhookRequestHandler', () => {
 				params: { path: 'test' },
 			});
 
-			const res = mock<Response>();
+			const res = mock<Response>({ headersSent: false });
 			res.status.mockReturnValue(res);
 
 			webhookManager.executeWebhook.mockRejectedValueOnce(
@@ -394,7 +395,7 @@ describe('WebhookRequestHandler', () => {
 
 			it('should set the sandbox header before an error response is sent', async () => {
 				const req = mock<WebhookRequest>({ path: '/', method: 'GET', params: { path: 'test' } });
-				const res = mock<Response>();
+				const res = mock<Response>({ headersSent: false });
 				res.status.mockReturnValue(res);
 				webhookManager.executeWebhook.mockRejectedValueOnce(new OperationalError('Test error'));
 
@@ -585,6 +586,17 @@ describe('WebhookRequestHandler', () => {
 
 				expect(await readWholeBody(url)).toBe(file.sizeInBytes);
 				expect(await waitForClose(stream)).toBe(true);
+			});
+
+			it('should end the response when the file fails during the download', async () => {
+				const stream = failingStream(3);
+				webhookManager.executeWebhook.mockResolvedValueOnce(toResponse(stream));
+				const { url, handled } = await serveWebhook();
+
+				await expect(readWholeBody(url)).rejects.toThrow();
+				await handled[0];
+				expect(stream.destroyed).toBe(true);
+				expect(logger.error).toHaveBeenCalledTimes(1);
 			});
 
 			it('should close the file when the client disconnects during the download', async () => {
