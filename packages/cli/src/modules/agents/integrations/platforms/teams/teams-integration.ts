@@ -20,16 +20,23 @@ import {
 	type BridgeExecutionContext,
 	type BridgeMessageContextParams,
 	type BridgeResumeExecutionContext,
+	type PlatformContextQueryParams,
 } from '../../agent-chat-integration';
 import { expandSelectsToButtons, type SuspendComponent } from '../../component-mapper';
 import { assertCredentialNotClaimed } from '../../credential-claim';
 import { loadTeamsAdapter } from '../../esm-loader';
-import { resolveIntegrationActionDefinitions } from '../../integration-tool-definitions';
-import type { ReplyExpectation } from '../../integration-tool-types';
+import {
+	resolveIntegrationActionDefinitions,
+	resolveIntegrationContextQueryDefinitions,
+} from '../../integration-tool-definitions';
+import { INTEGRATION_ERROR_CODES } from '../../integration-error-codes';
+import { connectionUnavailable } from '../../integration-helpers';
+import type { IntegrationAction, ReplyExpectation } from '../../integration-tool-types';
 import { startTypingIndicator } from '../typing-indicator';
 import { TeamsCleanupService } from './teams-cleanup.service';
 import { READ_PERMISSIONS } from './teams-manifest.service';
 import { fetchTeamsMessageFiles, graphHttpOf } from './teams-message-files';
+import { executeTeamsContextQuery } from './teams-operations';
 
 /** Pinned so a stray TEAMS_API_URL env var cannot redirect proactive sends. */
 const TEAMS_API_URL = 'https://smba.trafficmanager.net/teams';
@@ -76,6 +83,19 @@ function isFromBot(activity: unknown): boolean {
 	if (!isRecord(activity) || !isRecord(activity.from)) return false;
 	const { id, role } = activity.from;
 	return role === 'bot' || (typeof id === 'string' && id.startsWith('28:'));
+}
+
+const SEND_DENIED: Partial<Record<IntegrationAction, string>> = {
+	send_dm:
+		'Teams did not allow this direct message. The person must have the app installed in Teams first. Ask them, or a Teams admin, to add the app, then try again.',
+	send_channel_message:
+		'Teams did not allow this post. The app must be added to the team or group chat first. Ask a team owner to add the app, then try again.',
+};
+
+function canEncodeThreadId(adapter: unknown): adapter is {
+	encodeThreadId(data: { conversationId: string; serviceUrl: string }): string;
+} {
+	return isRecord(adapter) && typeof adapter.encodeThreadId === 'function';
 }
 
 /** Interval picked to match Discord's; Teams does not document the expiry. */
@@ -144,6 +164,7 @@ export class TeamsIntegration extends AgentChatIntegration {
 		capabilities: [
 			'Receive Microsoft Teams direct messages, team channel messages and group chat messages as agent triggers.',
 			'Respond in the same Microsoft Teams conversation, and in the same channel thread.',
+			'Send direct messages to people and post new messages to team channels and group chats, including from scheduled tasks with no inbound message.',
 			'In a team channel or group chat, run when @-mentioned. When the setup turns on reading all messages there, run on every message and decide whether to reply, or stay silent.',
 			'Add emoji reactions to messages.',
 			'Render Adaptive Cards with buttons.',
@@ -152,6 +173,7 @@ export class TeamsIntegration extends AgentChatIntegration {
 			'The agent should be chatted with from Microsoft Teams or act as a Teams bot.',
 			'The agent needs to reply to Teams users in the same conversation context.',
 			'The agent should take part in a Microsoft Teams channel or group chat.',
+			'A scheduled Agent task should proactively send a Teams direct message or channel message through the connected bot.',
 		],
 		useNodeToolWhen: [
 			'Microsoft Teams is only a backend API step and the agent does not need to be connected as a Teams chat surface.',
@@ -167,14 +189,33 @@ export class TeamsIntegration extends AgentChatIntegration {
 		'image',
 	];
 
+	readonly contextToolDefinitions = resolveIntegrationContextQueryDefinitions([
+		'get_current_message_context',
+		'get_current_subject',
+		'get_current_user',
+		'get_user',
+		'search_users',
+		'search_channels',
+	]);
+
+	readonly contextToolGuidance = [
+		'For search_users, pass input.email to find a person by email address. The returned userId works with send_dm.',
+		'search_channels matches team and channel names, for example "Marketing General". The returned channelId works with send_channel_message.',
+	];
+
 	readonly actionToolDefinitions = resolveIntegrationActionDefinitions([
 		'respond',
+		'send_dm',
+		'send_channel_message',
 		'edit_message',
 		'add_reaction',
 		'do_not_respond',
 	]);
 
 	readonly actionToolGuidance = [
+		'respond works only in reply to an inbound Teams message. In a scheduled task, or to reach another person or conversation, use send_dm or send_channel_message.',
+		'For send_dm, userId is a Teams user ID (29:...) or the Microsoft Entra object ID of the person, never an email or a name. To reach someone by email, call search_users first.',
+		'For send_channel_message, channelId is a Teams conversation ID such as 19:...@thread.tacv2 for a team channel or 19:...@thread.v2 for a group chat, a channelId from search_channels, or one from get_current_message_context. Each call starts a new post.',
 		'For edit_message, pass the messageId returned by a previous Teams action or get_current_message_context. The current Teams conversation is selected automatically.',
 		'For add_reaction, use one of thumbs_up, eyes, check, x, rocket, thinking or pin, or a Teams reaction type such as like, heart or laugh.',
 		'A channel or group chat message that does not mention you needs no reply. Use do_not_respond unless you have something useful to add.',
@@ -239,6 +280,33 @@ export class TeamsIntegration extends AgentChatIntegration {
 	}): ReplyExpectation {
 		if (isNewMention || message.isMention === true) return 'required';
 		return conversationTypeOf(message.raw) === 'personal' ? 'required' : 'optional';
+	}
+
+	/**
+	 * People copy a raw `19:` conversation ID out of Teams, but the adapter only
+	 * reads its own encoded form, which also carries the service URL.
+	 */
+	normalizeChannelId(channelId: string, adapter: unknown): string {
+		if (!channelId.startsWith('19:') || !canEncodeThreadId(adapter)) {
+			return super.normalizeChannelId(channelId, adapter);
+		}
+		return adapter.encodeThreadId({ conversationId: channelId, serviceUrl: `${TEAMS_API_URL}/` });
+	}
+
+	/** Teams refuses a proactive send until the app is added where it posts. */
+	describeActionError(action: IntegrationAction, error: unknown) {
+		const message = SEND_DENIED[action];
+		if (!message || !isRecord(error) || error.code !== 'PERMISSION_DENIED') return undefined;
+		return { code: INTEGRATION_ERROR_CODES.PERMISSION_NOT_GRANTED, message };
+	}
+
+	async executeContextQuery(params: PlatformContextQueryParams): Promise<unknown> {
+		if (!params.chat) return connectionUnavailable();
+		return await executeTeamsContextQuery({
+			chat: params.chat,
+			query: params.query,
+			input: params.input,
+		});
 	}
 
 	async fetchInboundAttachments({
