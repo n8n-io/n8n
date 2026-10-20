@@ -30,7 +30,10 @@ export class InstanceAiBuilderDelegateAdapterService {
 	): InstanceAiBuilderDelegate {
 		return {
 			createAgent: async (name, createOptions) =>
-				await this.drafts.createDraft(user, projectId, name, createOptions),
+				await this.drafts.createDraft(user, projectId, name, {
+					...createOptions,
+					createdBy: 'builder',
+				}),
 			getBuilderTools: (resolveTargetAgentId, session) =>
 				this.builder.getTools(
 					user,

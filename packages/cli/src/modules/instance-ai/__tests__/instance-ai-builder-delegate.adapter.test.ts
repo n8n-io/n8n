@@ -66,24 +66,25 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 		);
 	});
 
-	it('forwards draft attestation and the persisted name', async () => {
-		const { delegate, drafts, user } = setup();
-		const saved = {
-			agentId: 'agent-1',
-			projectId: 'project-1',
-			name: 'Saved name',
-			adopted: true,
-		};
-		drafts.createDraft.mockResolvedValue(saved);
+	it.each([undefined, { id: 'agent-1', adoptOnCollision: true }])(
+		'forwards creation attribution, draft attestation, and the persisted name: %j',
+		async (createOptions) => {
+			const { delegate, drafts, user } = setup();
+			const saved = {
+				agentId: 'agent-1',
+				projectId: 'project-1',
+				name: 'Saved name',
+				adopted: createOptions?.adoptOnCollision ?? false,
+			};
+			drafts.createDraft.mockResolvedValue(saved);
 
-		await expect(
-			delegate.createAgent('Draft name', { id: 'agent-1', adoptOnCollision: true }),
-		).resolves.toEqual(saved);
-		expect(drafts.createDraft).toHaveBeenCalledWith(user, 'project-1', 'Draft name', {
-			id: 'agent-1',
-			adoptOnCollision: true,
-		});
-	});
+			await expect(delegate.createAgent('Draft name', createOptions)).resolves.toEqual(saved);
+			expect(drafts.createDraft).toHaveBeenCalledWith(user, 'project-1', 'Draft name', {
+				...createOptions,
+				createdBy: 'builder',
+			});
+		},
+	);
 
 	it('keeps the Assistant thread prefix out of the Agent-owned cleanup operation', async () => {
 		const { builder, service } = setup();
