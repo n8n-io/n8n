@@ -8,7 +8,7 @@
  * objective supplies run-specific context beneath the target-agent instructions,
  * and must say where the result is delivered because nobody is watching the run.
  *
- * Shared by the `create_tasks` builder tool, the `agent-builder-target-tasks`
+ * Shared by the `agent_builder_create_tasks` builder tool, the `agent-builder-target-tasks`
  * skill, and the builder prompt so the guidance is identical everywhere.
  */
 export const TASK_OBJECTIVE_TEMPLATE = `## Objective

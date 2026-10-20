@@ -1,4 +1,8 @@
-import type { InstanceAiRunDebugResponse } from '@n8n/api-types';
+import {
+	resolveBuilderToolName,
+	WORKFLOW_BUILDER_TOOL_NAMES,
+	type InstanceAiRunDebugResponse,
+} from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 
 import type { CaseSeed } from '../harness/schema';
@@ -250,9 +254,9 @@ export function lastAgentText(transcript: TranscriptTurn[]): string {
 }
 
 /** Tool id the builder calls to create or modify the workflow graph. */
-export const BUILD_WORKFLOW_TOOL_NAME = 'build-workflow';
+export const BUILD_WORKFLOW_TOOL_NAME = WORKFLOW_BUILDER_TOOL_NAMES.BUILD_WORKFLOW;
 
-// Per-turn, per-tool call counts the judge can cite verbatim ("Turn 33: build-workflow×6") —
+// Per-turn, per-tool call counts the judge can cite verbatim ("Turn 33: workflow_builder_build_workflow×6") —
 // every tool, every turn; lets it reason from the counts instead of recounting prose.
 export function perTurnToolCallCounts(transcript: TranscriptTurn[]): string {
 	const lines: string[] = [];
@@ -270,13 +274,16 @@ export function perTurnToolCallCounts(transcript: TranscriptTurn[]): string {
 	return lines.length > 0 ? lines.join('\n') : '(no tool calls in any turn)';
 }
 
-// build-workflow calls per turn that FAILED (errored, or success:false / non-empty errors) —
+// workflow_builder_build_workflow calls per turn that FAILED (errored, or success:false / non-empty errors) —
 // error-forced rebuilds, which generalise across prompts better than the raw call count.
 export function failedBuildsPerTurn(transcript: TranscriptTurn[]): number[] {
 	return transcript.map(
 		(turn) =>
 			turn.steps.filter((step) => {
-				if (step.kind !== 'tool-call' || step.toolName !== BUILD_WORKFLOW_TOOL_NAME) {
+				if (
+					step.kind !== 'tool-call' ||
+					resolveBuilderToolName(step.toolName) !== BUILD_WORKFLOW_TOOL_NAME
+				) {
 					return false;
 				}
 				// step.error = the call threw; step.result.errors = it ran but returned errors — both are failed builds.

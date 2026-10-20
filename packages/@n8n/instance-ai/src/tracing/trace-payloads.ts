@@ -1114,44 +1114,53 @@ function classifyToolSource(name: string, toolRecord: Record<string, unknown>): 
 	return 'domain';
 }
 
+/** Keyword checks must not match the builder prefix (`workflow_builder_` contains "workflow" and "build"). */
+function unprefixedToolName(name: string): string {
+	return name.replace(/^(workflow|agent)_builder_/, '');
+}
+
 function classifyToolCategory(name: string): string {
-	if (name.includes('credential')) return 'credential';
-	if (name.includes('browser')) return 'browser';
-	if (name.includes('data-table')) return 'data-table';
-	if (name.includes('workflow')) {
-		return 'workflow';
-	}
+	if (name === DOMAIN_TOOL_IDS.DATA_TABLES) return 'data-table';
 	if (name === DOMAIN_TOOL_IDS.NODES || name === 'materialize-node-type') return 'node';
 	if (name === DOMAIN_TOOL_IDS.EXECUTIONS) return 'execution';
-	if (name.includes('research')) return 'research';
-	if (name.includes('plan') || name === ORCHESTRATION_TOOL_IDS.CREATE_TASKS) {
-		return 'planning';
+	if (name === ORCHESTRATION_TOOL_IDS.CREATE_TASKS) return 'planning';
+	const baseName = unprefixedToolName(name);
+	if (baseName.includes('credential')) return 'credential';
+	if (baseName.includes('browser')) return 'browser';
+	if (baseName.includes('data-table')) return 'data-table';
+	if (baseName.includes('workflow')) {
+		return 'workflow';
 	}
-	if (name.startsWith('workspace_')) return 'workspace';
-	if (name.includes('file') || name.includes('filesystem')) return 'filesystem';
+	if (baseName.includes('research')) return 'research';
+	if (baseName.includes('plan')) return 'planning';
+	if (baseName.startsWith('workspace_')) return 'workspace';
+	if (baseName.includes('file') || baseName.includes('filesystem')) return 'filesystem';
 	return 'other';
 }
 
 function classifyToolSideEffect(name: string): string {
-	if (name.includes('browser')) return 'browser';
-	if (name.includes('research')) return 'network';
-	if (name === DOMAIN_TOOL_IDS.EXECUTIONS || name.includes('execute') || name.includes('run')) {
+	if (name === DOMAIN_TOOL_IDS.EXECUTIONS) return 'execute';
+	if (name === DOMAIN_TOOL_IDS.ASK_USER) return 'none';
+	const baseName = unprefixedToolName(name);
+	if (baseName.includes('browser')) return 'browser';
+	if (baseName.includes('research')) return 'network';
+	if (baseName.includes('execute') || baseName.includes('run')) {
 		return 'execute';
 	}
 	if (
-		name.includes('write') ||
-		name.includes('submit') ||
-		name.includes('apply') ||
-		name.includes('build') ||
-		name.includes('create') ||
-		name.includes('update') ||
-		name.includes('delete') ||
-		name.includes('remove') ||
-		name.includes('complete')
+		baseName.includes('write') ||
+		baseName.includes('submit') ||
+		baseName.includes('apply') ||
+		baseName.includes('build') ||
+		baseName.includes('create') ||
+		baseName.includes('update') ||
+		baseName.includes('delete') ||
+		baseName.includes('remove') ||
+		baseName.includes('complete')
 	) {
 		return 'write';
 	}
-	if (name.includes(DOMAIN_TOOL_IDS.ASK_USER) || name.includes('pause-for-user')) return 'none';
+	if (baseName.includes('pause-for-user')) return 'none';
 	return 'read';
 }
 

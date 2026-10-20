@@ -700,7 +700,7 @@ describe('AgentIntegrationPersistenceService', () => {
 	});
 
 	describe('modification telemetry', () => {
-		it('reports the first channel on a blank agent as a creation', async () => {
+		it('reports the first channel on a saved draft as a modification', async () => {
 			const { service, agent, telemetry } = setup({ schema: blankConfig });
 
 			await service.applyIntegrationDelta(
@@ -710,7 +710,7 @@ describe('AgentIntegrationPersistenceService', () => {
 			);
 
 			expect(telemetry.track).toHaveBeenCalledWith(
-				TELEMETRY_EVENT.AGENTS.USER_CREATED_AGENT,
+				TELEMETRY_EVENT.AGENTS.USER_MODIFIED_AGENT,
 				expect.objectContaining({
 					agent_id: agentId,
 					project_id: projectId,
@@ -721,7 +721,7 @@ describe('AgentIntegrationPersistenceService', () => {
 				}),
 			);
 			expect(telemetry.track).not.toHaveBeenCalledWith(
-				TELEMETRY_EVENT.AGENTS.USER_MODIFIED_AGENT,
+				TELEMETRY_EVENT.AGENTS.USER_CREATED_AGENT,
 				expect.anything(),
 			);
 		});
@@ -743,7 +743,7 @@ describe('AgentIntegrationPersistenceService', () => {
 					agent_id: agentId,
 					changed_parts: ['triggers'],
 					trigger_count: 2,
-					event_version: '1',
+					event_version: '2',
 				}),
 			);
 			expect(telemetry.track).not.toHaveBeenCalledWith(
