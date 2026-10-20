@@ -961,6 +961,7 @@ packages/@n8n/api-types/src/dto/packages/import-package-request.openapi.ts
   s_71ad2034164515::t_87f57b02bb38e3 47,253
   s_71ad2034164515::t_fd7099debe6b33 57-67,74-75,82
   s_71ad2034164515::t_734ba3dd007431 55,69,260
+  s_d3c0f6f6f7d41c::t_2fc52023346201 71-73,262-263
 packages/@n8n/cli/src/commands/package/import.ts
   s_71ad2034164515::t_e46cf7d0c73fdf 49,55
   s_d3c0f6f6f7d41c::t_bca7c775644af6 32
@@ -1107,6 +1108,7 @@ packages/@n8n/api-types/src/dto/packages/import-package-request.dto.ts
   s_71ad2034164515::t_c6ebad08ea0e0a 21,118,120,174,238-239
   s_71ad2034164515::t_87f57b02bb38e3 21,118,120,174,238-239
   s_71ad2034164515::t_734ba3dd007431 22-23,121,124,175,242
+  s_d3c0f6f6f7d41c::t_2fc52023346201 125,241
 packages/@n8n/api-types/src/dto/packages/__tests__/import-result.dto.test.ts
   s_d3c0f6f6f7d41c::t_bca7c775644af6 11-26,70,81-91,101-102,123
   s_71ad2034164515::t_ac5bf659ac6833 11-26,70,81-91,101-102,123
@@ -1133,6 +1135,7 @@ packages/cli/test/integration/public-api/n8n-packages-import-agents.test.ts
   s_71ad2034164515::t_e7cc98515ae14b 280,294-295,299,309-310,315
   s_71ad2034164515::t_734ba3dd007431 286,298,349,376,378
   s_71ad2034164515::t_708c3eb90c66a1 304-307,363
+  s_d3c0f6f6f7d41c::t_2fc52023346201 150,215,220,263,272,442
 packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow-importer.test.ts
   s_d3c0f6f6f7d41c::t_bca7c775644af6 31,415,456
   s_71ad2034164515::t_c32e78b2899554 31,415,456
@@ -1167,6 +1170,7 @@ packages/@n8n/api-types/src/dto/packages/__tests__/import-package-request.dto.te
   s_71ad2034164515::t_aec977eaf7bdb2 322
   s_71ad2034164515::t_734ba3dd007431 22-23,55-56,90-91,326,500-501,530
   s_71ad2034164515::t_e7cc98515ae14b 116-122,128
+  s_d3c0f6f6f7d41c::t_2fc52023346201 324
 packages/@n8n/cli/src/__tests__/package-import-selection.test.ts
   s_d3c0f6f6f7d41c::t_bca7c775644af6 72,91,181
   s_71ad2034164515::t_d947a4e8bd3115 72,91,181
@@ -1186,6 +1190,7 @@ packages/cli/src/public-api/v1/controllers/openapi/n8n-packages.openapi.ts
   s_71ad2034164515::t_734ba3dd007431 102
   s_71ad2034164515::t_fd7099debe6b33 66
   s_71ad2034164515::t_e03336e901e0df 46-47,106-108
+  s_d3c0f6f6f7d41c::t_2fc52023346201 65
 packages/cli/test/integration/public-api/n8n-packages-import-selection.test.ts
   s_d3c0f6f6f7d41c::t_bca7c775644af6 173,189
   s_71ad2034164515::t_8cb49cec990395 173,189
@@ -1195,6 +1200,7 @@ packages/@n8n/api-types/src/dto/packages/import-result.dto.ts
   s_71ad2034164515::t_1ec6813c3cd6fe 14,18,71,79-82,85-96,261-263,281-288
   s_71ad2034164515::t_5605a7e11b9efe 14,71,79-82,85-96,261-263,281-288
   s_71ad2034164515::t_56486576c7f38e 18
+  s_d3c0f6f6f7d41c::t_2fc52023346201 53
 packages/@n8n/api-types/src/dto/packages/__tests__/import-package-selection-request.dto.test.ts
   s_d3c0f6f6f7d41c::t_bca7c775644af6 22,42,128,134,143,149,156-157,159,161,191
   s_71ad2034164515::t_45aca1f1ca0eeb 22,42,128,134,143,149,156-157,159,161,191
