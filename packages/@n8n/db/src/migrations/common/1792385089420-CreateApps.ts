@@ -1,7 +1,18 @@
+import { UserError } from 'n8n-workflow';
+
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
+const sourceTypesBefore = [
+	'execution',
+	'chat_message_attachment',
+	'agent_file',
+	'agent_chat_attachment',
+];
+
 export class CreateApps1792385089420 implements ReversibleMigration {
-	async up({ schemaBuilder: { createTable, column, addForeignKey } }: MigrationContext) {
+	async up(ctx: MigrationContext) {
+		const { createTable, column, addForeignKey } = ctx.schemaBuilder;
+
 		await createTable('app')
 			.withColumns(
 				column('id').uuid.primary,
@@ -91,9 +102,20 @@ export class CreateApps1792385089420 implements ReversibleMigration {
 			'app_publishedVersionId_foreign',
 			'SET NULL',
 		);
+
+		await this.replaceSourceTypeCheck(ctx, [...sourceTypesBefore, 'app_artifact']);
 	}
 
-	async down({ schemaBuilder: { dropForeignKey, dropTable } }: MigrationContext) {
+	async down(ctx: MigrationContext) {
+		const { dropForeignKey, dropTable } = ctx.schemaBuilder;
+		const [row] = await ctx.runQuery<Array<{ count: number | string }>>(
+			`SELECT COUNT(*) AS count FROM ${ctx.escape.tableName('binary_data')} WHERE ${ctx.escape.columnName('sourceType')} = 'app_artifact'`,
+		);
+		if (Number(row.count) > 0) {
+			throw new UserError('Remove database-backed app artifacts before reverting this migration.');
+		}
+		await this.replaceSourceTypeCheck(ctx, sourceTypesBefore);
+
 		await dropForeignKey(
 			'app',
 			'publishedVersionId',
@@ -109,5 +131,13 @@ export class CreateApps1792385089420 implements ReversibleMigration {
 		await dropTable('app_version');
 		await dropTable('app_artifact');
 		await dropTable('app');
+	}
+
+	private async replaceSourceTypeCheck(
+		{ schemaBuilder: { dropEnumCheck, addEnumCheck } }: MigrationContext,
+		values: string[],
+	) {
+		await dropEnumCheck('binary_data', 'sourceType', { recreatesOnSqlite: true });
+		await addEnumCheck('binary_data', 'sourceType', values, { recreatesOnSqlite: true });
 	}
 }
