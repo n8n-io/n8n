@@ -4,10 +4,11 @@ import multer from 'multer';
 
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 
+import type { AgentKnowledgeGate } from '../agent-knowledge-gate';
 import { AgentKnowledgeController } from '../agent-knowledge.controller';
 import type { AgentKnowledgeService } from '../agent-knowledge.service';
 import type { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
-import type { AgentSandboxRuntimeService } from '../agent-sandbox-runtime.service';
+import { makeAgentKnowledgeGate } from './test-utils/agent-knowledge-gate';
 import {
 	expectProjectScopedAgentRoutes,
 	getRoutesByHandlerName,
@@ -15,19 +16,17 @@ import {
 
 function makeController({
 	agentKnowledgeService = mock<AgentKnowledgeService>(),
-	agentSandboxRuntimeService = mock<AgentSandboxRuntimeService>({
-		isEnabled: () => true,
-	}),
+	agentKnowledgeGate = makeAgentKnowledgeGate(),
 	runtimeCacheService = mock<AgentRuntimeCacheService>(),
 }: {
 	agentKnowledgeService?: Mocked<AgentKnowledgeService>;
-	agentSandboxRuntimeService?: Mocked<AgentSandboxRuntimeService>;
+	agentKnowledgeGate?: AgentKnowledgeGate;
 	runtimeCacheService?: Mocked<AgentRuntimeCacheService>;
 } = {}) {
 	return {
 		controller: new AgentKnowledgeController(
 			agentKnowledgeService,
-			agentSandboxRuntimeService,
+			agentKnowledgeGate,
 			runtimeCacheService,
 		),
 		agentKnowledgeService,
@@ -126,11 +125,12 @@ describe('AgentKnowledgeController file deletion', () => {
 });
 
 describe('AgentKnowledgeController knowledge base gating', () => {
-	it('returns not found for file endpoints when the knowledge base is disabled', async () => {
-		const { controller } = makeController({
-			agentSandboxRuntimeService: mock<AgentSandboxRuntimeService>({
-				isEnabled: () => false,
-			}),
+	it.each([
+		{ reason: 'the sandbox is disabled', gate: { sandboxEnabled: false } },
+		{ reason: 'the knowledge module is inactive', gate: { knowledgeActive: false } },
+	])('returns not found for file endpoints when $reason', async ({ gate }) => {
+		const { controller, agentKnowledgeService } = makeController({
+			agentKnowledgeGate: makeAgentKnowledgeGate(gate),
 		});
 
 		await expect(
@@ -158,5 +158,8 @@ describe('AgentKnowledgeController knowledge base gating', () => {
 				'file-1',
 			),
 		).rejects.toThrow(NotFoundError);
+		expect(agentKnowledgeService.listFiles).not.toHaveBeenCalled();
+		expect(agentKnowledgeService.uploadFiles).not.toHaveBeenCalled();
+		expect(agentKnowledgeService.deleteFile).not.toHaveBeenCalled();
 	});
 });

@@ -48,6 +48,7 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 import { AiService } from '@/services/ai.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
 import { createAiMcpFetch, createAiProxyFetch, createWebSearchFetch } from '@/utils/ai-proxy-fetch';
+import { KnowledgeAvailability } from '@/modules/knowledge/knowledge-availability';
 import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -291,6 +292,7 @@ export class AgentRuntimeReconstructionService {
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly agentChatAttachmentService: AgentChatAttachmentService,
 		private readonly credentialsService: CredentialsService,
+		private readonly knowledgeAvailability: KnowledgeAvailability,
 	) {}
 
 	async reconstructFromAgentEntity(
@@ -928,7 +930,11 @@ export class AgentRuntimeReconstructionService {
 			return undefined;
 		const parentWorkspaceHandle = await this.attachWorkspace(params);
 		const { agent, agentId, projectId } = params;
-		if (await this.agentFileRepository.hasFilesForAgent(agentId)) {
+		// The module check comes first: with the module off, the file repository has no entity.
+		if (
+			this.knowledgeAvailability.isModuleActive() &&
+			(await this.agentFileRepository.hasFilesForAgent(agentId))
+		) {
 			const { createKnowledgeRetrievalTools } = await import(
 				'./tools/knowledge/search-knowledge.tool.js'
 			);

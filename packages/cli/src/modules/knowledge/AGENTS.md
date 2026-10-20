@@ -28,6 +28,7 @@ knowledge.config.ts            upload limits as env vars; defaults equal the api
 knowledge-consumer-scope.ts    the scope
 knowledge-retriever.ts         offered to consumers
 knowledge-sandbox-provider.ts  required from a consumer
+knowledge-availability.ts      whether knowledge is available; consumers derive their flags from it
 entities/                      knowledge-file.entity.ts (table agent_files, unchanged)
 repositories/                  knowledge-file.repository.ts
 files/                         file service, file store, storage naming, pdf text, upload middleware
@@ -44,3 +45,18 @@ vector-stores/                 connection test, factory, embedding credential, e
 - Tool names, descriptions, inputs and outputs stay byte-identical through P0. Sandbox ids stay unchanged.
 - The JSDoc on every `@Env` property in `knowledge.config.ts` is public documentation. Follow the `n8n:env-var-docs` skill.
 - Log with `logger.scoped('knowledge')`.
+
+## Disabled module
+
+`N8N_DISABLED_MODULES=knowledge` skips the module's `init()` and `entities()`. Its entities are then not registered with TypeORM while the `agent_files` table still exists, so a repository call fails. This is the only kill switch P0 has.
+
+`knowledge-availability.ts` (`KnowledgeAvailability`) is the one place that answers whether knowledge is available: `isModuleActive()` and `isFileKnowledgeEnabled()` (module active and sandbox on). Every consumer asks it before a knowledge call and derives its own flags from it. The agents module adds only its 404 in `AgentKnowledgeGate` (`packages/cli/src/modules/agents/agent-knowledge-gate.ts`). With the module off:
+
+- `agents.knowledgeBaseEnabled` is false, so the editor hides the files panel in the agent's Knowledge tab.
+- The file routes and the knowledge warm-up route return the same 404 as the sandbox gate: `Agent knowledge base is not enabled`.
+- The `AgentKnowledgeService` facade rejects every file operation before it touches the repository. `destroyKnowledgeSandbox` still runs: it needs no entity.
+- Runtime reconstruction attaches the workspace but not the knowledge tools, and does not query the file repository.
+- Agent and project deletion catch the facade error, log a warning and continue. The `agent_files` rows go with the agent through the foreign key; the stored bytes stay behind while the module is off.
+- Vector stores keep working. They are plain code, not an entity.
+
+Each guard has a test. A new consumer or a new knowledge call in the agents module asks `KnowledgeAvailability` and gets a test.

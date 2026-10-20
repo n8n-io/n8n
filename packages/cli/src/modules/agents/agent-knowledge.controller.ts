@@ -4,11 +4,11 @@ import { Delete, Get, Param, Post, ProjectScope, RestController } from '@n8n/dec
 import type { Response } from 'express';
 import multer from 'multer';
 
-import { BadRequestError, NotFoundError } from '@n8n/errors';
+import { BadRequestError } from '@n8n/errors';
 
+import { AgentKnowledgeGate } from './agent-knowledge-gate';
 import { AgentKnowledgeService } from './agent-knowledge.service';
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
-import { AgentSandboxRuntimeService } from './agent-sandbox-runtime.service';
 import {
 	AgentUploadMiddleware,
 	cleanupUploadedTempFiles,
@@ -21,16 +21,9 @@ const agentUploadMiddleware = Container.get(AgentUploadMiddleware);
 export class AgentKnowledgeController {
 	constructor(
 		private readonly agentKnowledgeService: AgentKnowledgeService,
-		private readonly agentSandboxRuntimeService: AgentSandboxRuntimeService,
+		private readonly agentKnowledgeGate: AgentKnowledgeGate,
 		private readonly runtimeCacheService: AgentRuntimeCacheService,
 	) {}
-
-	/** Knowledge base endpoints require an enabled Agent sandbox. */
-	private assertKnowledgeBaseEnabled() {
-		if (!this.agentSandboxRuntimeService.isEnabled()) {
-			throw new NotFoundError('Agent knowledge base is not enabled');
-		}
-	}
 
 	@Get('/:agentId/files')
 	@ProjectScope('agent:read')
@@ -40,7 +33,7 @@ export class AgentKnowledgeController {
 		@Param('projectId') projectId: string,
 		@Param('agentId') agentId: string,
 	) {
-		this.assertKnowledgeBaseEnabled();
+		this.agentKnowledgeGate.assertEnabled();
 		return await this.agentKnowledgeService.listFiles(agentId, projectId);
 	}
 
@@ -59,7 +52,7 @@ export class AgentKnowledgeController {
 	) {
 		const files = req.files ?? [];
 		try {
-			this.assertKnowledgeBaseEnabled();
+			this.agentKnowledgeGate.assertEnabled();
 			if (req.fileUploadError) {
 				const error = req.fileUploadError;
 				if (error instanceof multer.MulterError) {
@@ -93,7 +86,7 @@ export class AgentKnowledgeController {
 		@Param('agentId') agentId: string,
 		@Param('fileId') fileId: string,
 	) {
-		this.assertKnowledgeBaseEnabled();
+		this.agentKnowledgeGate.assertEnabled();
 		await this.agentKnowledgeService.deleteFile(agentId, projectId, fileId);
 		this.runtimeCacheService.clearRuntimes(agentId);
 		return { success: true };

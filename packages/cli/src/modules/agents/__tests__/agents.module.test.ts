@@ -39,6 +39,8 @@ import { SkillsHubRollout } from '../skills/skills-hub-rollout';
 import { SkillsHubStartupCopy } from '../skills/skills-hub-startup-copy';
 import { AgentRepository } from '../repositories/agent.repository';
 import { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
+import { AgentKnowledgeGate } from '../agent-knowledge-gate';
+import { makeAgentKnowledgeGate } from './test-utils/agent-knowledge-gate';
 
 /**
  * Stubs every dependency `AgentsModule.init()` resolves via `Container.get`,
@@ -129,21 +131,37 @@ describe('AgentsModule', () => {
 
 	describe('settings()', () => {
 		it.each([
-			{ sandboxEnabled: true, proxyEnabled: false },
-			{ sandboxEnabled: false, proxyEnabled: true },
+			{
+				sandboxEnabled: true,
+				knowledgeActive: true,
+				proxyEnabled: false,
+				knowledgeBaseEnabled: true,
+			},
+			{
+				sandboxEnabled: false,
+				knowledgeActive: true,
+				proxyEnabled: true,
+				knowledgeBaseEnabled: false,
+			},
+			{
+				sandboxEnabled: true,
+				knowledgeActive: false,
+				proxyEnabled: true,
+				knowledgeBaseEnabled: false,
+			},
 		])(
-			'keeps knowledge base ($sandboxEnabled) and proxy ($proxyEnabled) availability independent',
-			async ({ sandboxEnabled, proxyEnabled }) => {
+			'reports knowledgeBaseEnabled=$knowledgeBaseEnabled for sandbox=$sandboxEnabled and knowledge module=$knowledgeActive, independent of proxy=$proxyEnabled',
+			async ({ sandboxEnabled, knowledgeActive, proxyEnabled, knowledgeBaseEnabled }) => {
 				Container.set(AgentsConfig, mock<AgentsConfig>({ modules: [] }));
 				Container.set(
-					SandboxSettingsService,
-					mock<SandboxSettingsService>({ isAgentSandboxEnabled: () => sandboxEnabled }),
+					AgentKnowledgeGate,
+					makeAgentKnowledgeGate({ sandboxEnabled, knowledgeActive }),
 				);
 				Container.set(AiService, mock<AiService>({ isProxyEnabled: () => proxyEnabled }));
 
 				const settings = await module.settings();
 
-				expect(settings.knowledgeBaseEnabled).toBe(sandboxEnabled);
+				expect(settings.knowledgeBaseEnabled).toBe(knowledgeBaseEnabled);
 				expect(settings.proxyEnabled).toBe(proxyEnabled);
 			},
 		);

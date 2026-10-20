@@ -14,6 +14,8 @@ import path from 'node:path';
 import type { Readable } from 'node:stream';
 import { BadRequestError } from '@n8n/errors';
 
+import { KnowledgeAvailability } from '@/modules/knowledge/knowledge-availability';
+
 import { getAgentOrThrow } from './utils/get-agent-or-throw';
 import {
 	AgentKnowledgeFileStore,
@@ -37,6 +39,7 @@ export class AgentKnowledgeService {
 		private readonly agentKnowledgeMirrorService: AgentKnowledgeMirrorService,
 		private readonly agentKnowledgeFileStore: AgentKnowledgeFileStore,
 		private readonly logger: Logger,
+		private readonly knowledgeAvailability: KnowledgeAvailability,
 	) {}
 
 	async uploadFiles(
@@ -45,6 +48,7 @@ export class AgentKnowledgeService {
 		files: Express.Multer.File[],
 	): Promise<AgentFileDto[]> {
 		try {
+			this.knowledgeAvailability.assertModuleActive();
 			await getAgentOrThrow(this.agentRepository, agentId, projectId);
 			this.validateUploadMetadata(files);
 			await this.validateUploadBatch(agentId, files);
@@ -68,12 +72,14 @@ export class AgentKnowledgeService {
 	}
 
 	async listFiles(agentId: string, projectId: string): Promise<AgentFileDto[]> {
+		this.knowledgeAvailability.assertModuleActive();
 		await getAgentOrThrow(this.agentRepository, agentId, projectId);
 		const files = await this.agentFileRepository.findByAgentId(agentId);
 		return files.map((file) => toAgentFileDto(file));
 	}
 
 	async warmKnowledgeSandbox(agentId: string, projectId: string): Promise<void> {
+		this.knowledgeAvailability.assertModuleActive();
 		await getAgentOrThrow(this.agentRepository, agentId, projectId);
 		if (!(await this.agentFileRepository.hasFilesForAgent(agentId))) return;
 
@@ -81,6 +87,7 @@ export class AgentKnowledgeService {
 	}
 
 	async deleteFile(agentId: string, projectId: string, fileId: string): Promise<void> {
+		this.knowledgeAvailability.assertModuleActive();
 		await getAgentOrThrow(this.agentRepository, agentId, projectId);
 
 		const file = await this.agentFileRepository.findByIdAndAgentId(fileId, agentId);
@@ -105,7 +112,13 @@ export class AgentKnowledgeService {
 		}
 	}
 
+	/**
+	 * Called from the agent and project deletion cascades, which catch and log a
+	 * failure. With the knowledge module off, the rows still go with the agent
+	 * through the foreign key; only the stored bytes stay behind.
+	 */
 	async deleteAllFilesForAgent(_projectId: string, agentId: string): Promise<void> {
+		this.knowledgeAvailability.assertModuleActive();
 		const files = await this.agentFileRepository.findByAgentId(agentId);
 		await this.agentFileRepository.delete({ agentId });
 		if (files.length > 0) {

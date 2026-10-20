@@ -29,6 +29,9 @@ import type { AiService } from '@/services/ai.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
+import type { KnowledgeAvailability } from '@/modules/knowledge/knowledge-availability';
+import { makeKnowledgeAvailability } from '@/modules/knowledge/__tests__/test-utils/knowledge-availability';
+
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import type { AgentKnowledgeMirrorService } from '../agent-knowledge-mirror.service';
 import { AgentPlanService } from '../agent-plan.service';
@@ -108,6 +111,7 @@ function makeReconstructionService(
 		agentFileRepository?: AgentFileRepository;
 		agentWorkspaceService?: AgentWorkspaceService;
 		agentKnowledgeMirrorService?: AgentKnowledgeMirrorService;
+		knowledgeAvailability?: KnowledgeAvailability;
 	} = {},
 ): AgentRuntimeReconstructionService {
 	const secureRuntime = mock<AgentSecureRuntime>();
@@ -143,6 +147,7 @@ function makeReconstructionService(
 		mock<WorkflowFinderService>(),
 		mock<AgentChatAttachmentService>(),
 		mock<CredentialsService>(),
+		overrides.knowledgeAvailability ?? makeKnowledgeAvailability(),
 	);
 }
 
@@ -385,6 +390,35 @@ describe('AgentRuntimeReconstructionService — workspace attachment', () => {
 		expect(getInjectedToolNames()).toEqual(
 			expect.arrayContaining(['find_file', 'search_text', 'read_file']),
 		);
+	});
+
+	it('keeps the workspace but skips knowledge tools when the knowledge module is inactive', async () => {
+		const agentFileRepository = mock<AgentFileRepository>();
+		const agentSandboxRuntimeService = mock<AgentSandboxRuntimeService>({
+			isEnabled: () => true,
+		});
+		const agentWorkspaceService = mock<AgentWorkspaceService>();
+		const workspace = new Workspace({});
+		agentFileRepository.hasFilesForAgent.mockResolvedValue(true);
+		agentWorkspaceService.getAgentWorkspace.mockResolvedValue({
+			workspace,
+			handle: mock<AgentSandboxRuntime>(),
+		});
+		const service = makeReconstructionService({
+			agentSandboxRuntimeService,
+			agentFileRepository,
+			agentWorkspaceService,
+			knowledgeAvailability: makeKnowledgeAvailability({ knowledgeActive: false }),
+		});
+
+		await reconstructWithWorkspace(service);
+
+		expect(builtAgent.workspace).toHaveBeenCalledWith(workspace);
+		// The file repository is never asked: with the module off it has no entity.
+		expect(agentFileRepository.hasFilesForAgent).not.toHaveBeenCalled();
+		for (const toolName of ['find_file', 'search_text', 'read_file']) {
+			expect(getInjectedToolNames()).not.toContain(toolName);
+		}
 	});
 
 	it('does not attach a workspace to inline runtimes', async () => {
