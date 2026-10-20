@@ -230,7 +230,12 @@ describe('McpAgentToolsService', () => {
 		const agentRepository = mock<AgentRepository>();
 		const runtimeCacheService = mock<AgentRuntimeCacheService>();
 		const lifecycleTelemetry = mock<Telemetry>();
-		const modificationTelemetry = new AgentModificationTelemetryService(lifecycleTelemetry);
+		const modificationTelemetry = new AgentModificationTelemetryService(
+			lifecycleTelemetry,
+			// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+			mock<EventService>(),
+			// EOF Experiment cleanup
+		);
 		const localCredentialsService = mock<CredentialsService>();
 		const workflowRepository = mock<WorkflowRepository>();
 		const agentTaskRepository = mock<AgentTaskRepository>();

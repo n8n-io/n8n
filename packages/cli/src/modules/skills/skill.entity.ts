@@ -1,8 +1,8 @@
+import type { SkillSource } from '@n8n/api-types';
 import { WithTimestamps } from '@n8n/db';
 import { Column, Entity, Index, PrimaryColumn } from '@n8n/typeorm';
 
-/** How a skill was created: `ui` on the Skills settings page, `agent` from the agent builder or the migration. */
-export type SkillSource = 'ui' | 'agent';
+export type { SkillSource };
 
 /**
  * A skill, identified by its id only. One target: `projectId` (a team

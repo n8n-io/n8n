@@ -115,6 +115,32 @@ describe('useAgentTelemetry', () => {
 		});
 	});
 
+	it.each([
+		{
+			method: 'trackRevertedChangesOnAgent',
+			event: TELEMETRY_EVENT.AGENTS.USER_REVERTED_CHANGES_ON_AGENT,
+		},
+		{
+			method: 'trackClickedTraceDetailsFromTestPanel',
+			event: TELEMETRY_EVENT.AGENTS.USER_CLICKED_TRACE_DETAILS_FROM_TEST_PANEL,
+		},
+	] as const)(
+		'$method sends only agent and editor session ids and stays best-effort',
+		({ method, event }) => {
+			const track = useAgentTelemetry()[method];
+			track({ agentId: 'agent-1' });
+
+			expect(trackMock).toHaveBeenCalledExactlyOnceWith(event, {
+				agent_id: 'agent-1',
+				session_id: 'session-xyz',
+			});
+			trackMock.mockImplementationOnce(() => {
+				throw new Error('telemetry unavailable');
+			});
+			expect(() => track({ agentId: 'agent-1' })).not.toThrow();
+		},
+	);
+
 	it('trackClickedNewAgent tracks card source', () => {
 		useAgentTelemetry().trackClickedNewAgent('card', 'aBcDeFgHiJkLmNoP');
 		expect(trackMock).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.USER_CLICKED_NEW_AGENT, {
