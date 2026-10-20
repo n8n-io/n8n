@@ -537,7 +537,7 @@ describe('AgentSessionTimelinePanel', () => {
 		});
 	});
 
-	function openAwaitingApproval(wrapper: ReturnType<typeof mountPanel>) {
+	async function openAwaitingApproval(wrapper: ReturnType<typeof mountPanel>) {
 		return flushPromises().then(() => wrapper.getComponent({ name: 'SessionTimelineTable' }));
 	}
 
