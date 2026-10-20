@@ -1,3 +1,4 @@
+import { NODE_ID_MAX_LENGTH } from '@n8n/constants';
 import { z } from 'zod';
 
 import { MAX_CONNECTION_INDEX } from './common/map-connections-by-destination';
@@ -22,6 +23,7 @@ import { MAX_CONNECTION_INDEX } from './common/map-connections-by-destination';
  *   - Connection entries have valid node/type/index
  *   - No duplicate node names
  *   - No duplicate node ids, where present
+ *   - Node ids, where present, fit NODE_ID_MAX_LENGTH
  *   - Connection source/target keys reference existing nodes
  *
  * Does NOT validate:
@@ -71,6 +73,7 @@ type WorkflowStructureData = z.infer<typeof workflowStructureSchema>;
 type WorkflowStructureGraphIssueCode =
 	| 'duplicate_node_name'
 	| 'duplicate_node_id'
+	| 'node_id_too_long'
 	| 'unknown_connection_source'
 	| 'unknown_connection_target';
 
@@ -141,6 +144,13 @@ export function safeParseWorkflowStructure(input: unknown): WorkflowStructureVal
 		// save. A supplied id must be unique: it identifies a node independently of its name, and
 		// per-node state keyed on it would otherwise be shared between two nodes.
 		if (node.id !== undefined && node.id !== '') {
+			if (node.id.length > NODE_ID_MAX_LENGTH)
+				issues.push({
+					path: ['nodes', index, 'id'],
+					message: `Node "${node.name}" has an ID longer than ${NODE_ID_MAX_LENGTH} characters`,
+					code: 'node_id_too_long',
+				});
+
 			const firstNodeName = nodeNameById.get(node.id);
 
 			if (firstNodeName === undefined) nodeNameById.set(node.id, node.name);

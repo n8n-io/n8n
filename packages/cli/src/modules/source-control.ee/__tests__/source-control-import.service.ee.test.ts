@@ -1,5 +1,6 @@
 import type { SourceControlledFile } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
+import { NODE_ID_MAX_LENGTH } from '@n8n/constants';
 import type { PolicyCleared, PolicyViolation } from '@n8n/decorators';
 import {
 	type Variables,
@@ -1707,6 +1708,59 @@ describe('SourceControlImportService', () => {
 					'1',
 				);
 				expect(deprecatedNodesValidationService.validateOnCreate).not.toHaveBeenCalled();
+				expect(workflowRepository.upsertImportedContent).toHaveBeenCalled();
+			});
+		});
+
+		describe('node id length', () => {
+			const mockUserId = 'user-id-123';
+			const workflowFile = (nodeId: string) =>
+				JSON.stringify({
+					id: '1',
+					name: 'Workflow 1',
+					active: false,
+					nodes: [
+						{
+							id: nodeId,
+							name: 'Webhook',
+							type: 'n8n-nodes-base.webhook',
+							typeVersion: 2,
+							position: [0, 0],
+							parameters: {},
+						},
+					],
+					connections: {},
+					versionId: 'v1',
+					parentFolderId: null,
+				});
+
+			beforeEach(() => {
+				projectRepository.getPersonalProjectForUserOrFail.mockResolvedValue(
+					Object.assign(new Project(), { id: 'personal-project-id-123', type: 'personal' }),
+				);
+				folderRepository.find.mockResolvedValue([]);
+				sharedWorkflowRepository.findWithFields.mockResolvedValue([]);
+				workflowRepository.findByIds.mockResolvedValue([]);
+				workflowRepository.upsertImportedContent.mockResolvedValue('1');
+			});
+
+			it('rejects a workflow with a node id longer than NODE_ID_MAX_LENGTH before writing it', async () => {
+				fsReadFile.mockResolvedValueOnce(workflowFile('n'.repeat(NODE_ID_MAX_LENGTH + 1)));
+				const candidates = [mock<SourceControlledFile>({ file: '/mock/workflow1.json', id: '1' })];
+
+				await expect(service.importWorkflowFromWorkFolder(candidates, mockUserId)).rejects.toThrow(
+					'Workflow "Workflow 1" (/mock/workflow1.json): node "Webhook" has an ID longer than 64 characters',
+				);
+
+				expect(workflowRepository.upsertImportedContent).not.toHaveBeenCalled();
+			});
+
+			it('imports a workflow with a node id of exactly NODE_ID_MAX_LENGTH characters', async () => {
+				fsReadFile.mockResolvedValueOnce(workflowFile('n'.repeat(NODE_ID_MAX_LENGTH)));
+				const candidates = [mock<SourceControlledFile>({ file: '/mock/workflow1.json', id: '1' })];
+
+				await service.importWorkflowFromWorkFolder(candidates, mockUserId);
+
 				expect(workflowRepository.upsertImportedContent).toHaveBeenCalled();
 			});
 		});

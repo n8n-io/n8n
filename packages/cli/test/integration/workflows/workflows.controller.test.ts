@@ -14,7 +14,7 @@ import {
 	testDb,
 	mockInstance,
 } from '@n8n/backend-test-utils';
-import { UUID_V7_PATTERN } from '@n8n/constants';
+import { NODE_ID_MAX_LENGTH, UUID_V7_PATTERN } from '@n8n/constants';
 import { WorkflowsConfig } from '@n8n/config';
 import type {
 	User,
@@ -231,6 +231,30 @@ describe('POST /workflows', () => {
 
 		expect(response.statusCode).toBe(400);
 		expect(response.body.message).toContain('share the node ID "uuid-1234"');
+	});
+
+	test('should reject a workflow with a node id longer than NODE_ID_MAX_LENGTH', async () => {
+		const payload = {
+			name: 'long node id',
+			nodes: [
+				{
+					id: 'n'.repeat(NODE_ID_MAX_LENGTH + 1),
+					parameters: {},
+					name: 'Start',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [240, 300],
+				},
+			],
+			connections: {},
+			settings: {},
+			active: false,
+		};
+
+		const response = await authOwnerAgent.post('/workflows').send(payload);
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toContain('Node "Start" has an ID longer than 64 characters');
 	});
 
 	test('should retain accept `workflow.id`', async () => {
@@ -3435,6 +3459,44 @@ describe('PATCH /workflows/:workflowId', () => {
 
 		expect(response.statusCode).toBe(400);
 		expect(response.body.message).toContain('share the node ID "uuid-1234"');
+	});
+
+	describe('node id length', () => {
+		const nodeWithId = (id: string) => ({
+			id,
+			parameters: {},
+			name: 'Start',
+			type: 'n8n-nodes-base.manualTrigger',
+			typeVersion: 1,
+			position: [240, 300] as [number, number],
+		});
+
+		test('should allow a metadata-only update of a workflow whose stored node id is too long', async () => {
+			const workflow = await createWorkflow(
+				{ nodes: [nodeWithId('n'.repeat(NODE_ID_MAX_LENGTH + 1))], connections: {} },
+				owner,
+			);
+
+			const response = await authOwnerAgent
+				.patch(`/workflows/${workflow.id}`)
+				.send({ name: 'name updated' });
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body.data.name).toBe('name updated');
+		});
+
+		test('should reject an update that sends a node id longer than NODE_ID_MAX_LENGTH', async () => {
+			const workflow = await createWorkflow({}, owner);
+
+			const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send({
+				versionId: workflow.versionId,
+				nodes: [nodeWithId('n'.repeat(NODE_ID_MAX_LENGTH + 1))],
+				connections: {},
+			});
+
+			expect(response.statusCode).toBe(400);
+			expect(response.body.message).toContain('Node "Start" has an ID longer than 64 characters');
+		});
 	});
 
 	test('should broadcast workflow update to collaborators', async () => {
