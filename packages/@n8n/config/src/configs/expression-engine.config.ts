@@ -139,7 +139,10 @@ export class ExpressionEngineConfig {
 	@Env('N8N_EXPRESSION_ENGINE_NATIVE_EVALUATION', nativeEvaluationSchema)
 	nativeEvaluation: 'off' | 'on' | 'verify' = 'off';
 
-	/** Experimental: share of simple expressions, from 0 to 1, that `verify` mode compares. */
+	/**
+	 * Experimental: share of simple expressions, from 0 to 1, that `verify` mode compares.
+	 * n8n evaluates each compared expression twice, so keep this value low on busy instances.
+	 */
 	@Env(
 		'N8N_EXPRESSION_ENGINE_NATIVE_EVALUATION_VERIFY_SAMPLE',
 		z.number({ coerce: true }).min(0).max(1),
