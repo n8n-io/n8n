@@ -38,7 +38,6 @@ import type { Telemetry } from '@/telemetry';
 import type { AgentConfigService } from '../agent-config.service';
 import type { AgentCustomToolsService } from '../agent-custom-tools.service';
 import type { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service';
-import type { InstanceAiAgentContextAdapterService } from '../instance-ai-agent-context.adapter';
 import type { AgentPublishService } from '../agent-publish.service';
 import type { AgentSkillsService } from '../agent-skills.service';
 import type { AgentTaskService } from '../agent-task.service';
@@ -53,7 +52,7 @@ import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import { getAgentConfigHash } from '../utils/agent-config-hash';
 import { SkillNameTakenError } from '../skills/skill-name-taken.error';
 import * as checkAccess from '@/permissions.ee/check-access';
-import type { InstanceAiCredentialService } from '@n8n/instance-ai';
+import type { BuilderCredentialService } from '../builder/builder-session';
 import { createAgentSkillRefsService } from './test-utils/stored-agent-config';
 
 const ctx = {
@@ -106,8 +105,6 @@ function makeService() {
 	const agentPublishService = mock<AgentPublishService>();
 	const agentTestRunService = mock<AgentTestRunService>();
 	const telemetry = mock<Telemetry>();
-	const agentContextAdapter = mock<InstanceAiAgentContextAdapterService>();
-	agentContextAdapter.createReader.mockReturnValue({ lookup: vi.fn() });
 	const aiService = mock<AiService>();
 	aiService.isProxyEnabled.mockReturnValue(false);
 	const dynamicNodeParametersService = mock<DynamicNodeParametersService>();
@@ -124,7 +121,6 @@ function makeService() {
 	const collaborationService = mock<CollaborationService>();
 
 	const service = new AgentsBuilderToolsService(
-		mock(),
 		agentsService as unknown as AgentsService,
 		agentConfigService as unknown as AgentConfigService,
 		agentCustomToolsService as unknown as AgentCustomToolsService,
@@ -146,7 +142,6 @@ function makeService() {
 		nodeTypes,
 		mock<FreeAiCreditsService>(),
 		telemetry,
-		agentContextAdapter,
 		collaborationService,
 		createAgentSkillRefsService(),
 	);
@@ -270,7 +265,7 @@ describe('AgentsBuilderToolsService', () => {
 	const agentId = 'agent-1';
 	const projectId = 'project-1';
 	const credentialProvider = mock<CredentialProvider>();
-	const credentialService = mock<InstanceAiCredentialService>();
+	const credentialService = mock<BuilderCredentialService>();
 	const user = mock<User>({ id: 'user-1' });
 
 	beforeEach(() => {
@@ -288,7 +283,7 @@ describe('AgentsBuilderToolsService', () => {
 				.json.find((tool) => tool.name === name)!;
 		}
 
-		it('uses Agent context instead of duplicate read tools', () => {
+		it('leaves context reads to host tools instead of duplicate read tools', () => {
 			const { service } = makeService();
 
 			const tools = service.getTools(
@@ -300,8 +295,8 @@ describe('AgentsBuilderToolsService', () => {
 			);
 			const toolNames = [...tools.json, ...tools.shared].map((tool) => tool.name);
 
-			expect(toolNames.filter((name) => name === 'agent-context')).toHaveLength(1);
 			for (const duplicate of [
+				'agent-context',
 				'read_config',
 				'read_skill',
 				'list_skills',
@@ -3310,15 +3305,10 @@ describe('AgentsBuilderToolsService', () => {
 		function getProbe(
 			service: AgentsBuilderToolsService,
 			resolve: (pinnedAgentId?: string) => Promise<string>,
+			providerFor = () => credentialProvider,
 		) {
 			return service
-				.getToolsForResolvedTarget(
-					resolve,
-					projectId,
-					() => credentialProvider,
-					credentialService,
-					user,
-				)
+				.getToolsForResolvedTarget(resolve, projectId, providerFor, credentialService, user)
 				.find((tool) => tool.name === 'probe')!;
 		}
 
@@ -3327,10 +3317,13 @@ describe('AgentsBuilderToolsService', () => {
 			makeTargetedTools(service);
 			let boundAgentId = 'agent-a';
 			const resolve = vi.fn(async (pinnedAgentId?: string) => pinnedAgentId ?? boundAgentId);
-			const probe = getProbe(service, resolve);
+			const providerFor = vi.fn(() => credentialProvider);
+			const probe = getProbe(service, resolve, providerFor);
 			const suspend = vi.fn().mockResolvedValue(undefined as never);
+			expect(providerFor).not.toHaveBeenCalled();
 
 			await probe.handler!({}, { ...ctx, suspend });
+			expect(providerFor).toHaveBeenCalledExactlyOnceWith('agent-a');
 
 			expect(suspend).toHaveBeenCalledWith(
 				{ ask: true },
