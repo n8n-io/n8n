@@ -1,4 +1,3 @@
-import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type { Method, RateLimitAccessName } from '@n8n/decorators';
 import { Service } from '@n8n/di';
@@ -7,6 +6,8 @@ import { MemoryStore } from 'express-rate-limit';
 import type { AugmentedRequest, RateLimitInfo } from 'express-rate-limit';
 
 import { RateLimitService } from '@/services/rate-limit.service';
+
+import { PublicApiRateLimitSettingsService } from './public-api-rate-limit-settings.service';
 
 type RequestLimit = { maxRequests: number; windowSeconds: number };
 
@@ -47,12 +48,12 @@ export class PublicApiRateLimitService {
 	>();
 
 	constructor(
-		private readonly globalConfig: GlobalConfig,
+		private readonly rateLimitSettingsService: PublicApiRateLimitSettingsService,
 		private readonly rateLimitService: RateLimitService,
 	) {}
 
 	private get config() {
-		return this.globalConfig.publicApi.rateLimit;
+		return this.rateLimitSettingsService.settings;
 	}
 
 	/** Call once for each route, when the route is registered. */

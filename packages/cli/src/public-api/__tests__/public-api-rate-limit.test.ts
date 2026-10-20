@@ -24,6 +24,7 @@ import { mock } from 'vitest-mock-extended';
 import { markPublicApiController } from '@/public-api/__tests__/public-api-controller-test-utils';
 import type { IdempotencyKeyService } from '@/public-api/idempotency-key.service';
 import { PublicApiControllerRegistry } from '@/public-api/public-api-controller.registry';
+import type { PublicApiRateLimitSettingsService } from '@/public-api/public-api-rate-limit-settings.service';
 import { PublicApiRateLimitService } from '@/public-api/public-api-rate-limit.service';
 import { RateLimitService } from '@/services/rate-limit.service';
 import type { LastActiveAtService } from '@/services/last-active-at.service';
@@ -65,7 +66,10 @@ describe('Public API rate limiting', () => {
 			authStrategyRegistry,
 			lastActiveAtService,
 			mock<EventService>(),
-			new PublicApiRateLimitService(globalConfig, new RateLimitService()),
+			new PublicApiRateLimitService(
+				mock<PublicApiRateLimitSettingsService>({ settings: globalConfig.publicApi.rateLimit }),
+				new RateLimitService(),
+			),
 			mock<IdempotencyKeyService>(),
 			mock<Logger>(),
 		).activate(router, 'v1');
@@ -317,15 +321,13 @@ describe('Public API rate limiting', () => {
 		// The response never ends, so this fails if the count comes back only when it does. Until
 		// then, parallel requests would see the blocked request in the all-endpoints count.
 		const service = new PublicApiRateLimitService(
-			mock<GlobalConfig>({
-				publicApi: {
-					rateLimit: {
-						enabled: true,
-						globalReadLimit: 2,
-						globalReadWindowSeconds: 60,
-						endpointReadLimit: 1,
-						endpointReadWindowSeconds: 60,
-					},
+			mock<PublicApiRateLimitSettingsService>({
+				settings: {
+					enabled: true,
+					globalReadLimit: 2,
+					globalReadWindowSeconds: 60,
+					endpointReadLimit: 1,
+					endpointReadWindowSeconds: 60,
 				},
 			}),
 			new RateLimitService(),
