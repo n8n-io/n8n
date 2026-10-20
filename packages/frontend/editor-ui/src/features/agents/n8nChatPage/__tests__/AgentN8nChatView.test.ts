@@ -1,9 +1,9 @@
 /* eslint-disable import-x/no-extraneous-dependencies -- test-only pattern: @vue/test-utils and @pinia/testing are transitive devDeps */
-import { reactive } from 'vue';
+import { inject, reactive } from 'vue';
 import { mount, flushPromises } from '@vue/test-utils';
 import { createTestingPinia } from '@pinia/testing';
 import { i18nInstance } from '@n8n/i18n';
-import type { AgentChatListItem } from '@n8n/api-types';
+import type { AgentN8nChatAgentDetails } from '@n8n/api-types';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
@@ -16,6 +16,7 @@ import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
 
 import { AGENT_N8N_CHAT_VIEW } from '../../constants';
+import { AGENT_SUB_AGENT_NAMES_KEY } from '../../components/agentChatInjectionKeys';
 import { useAgentN8nChatThreadsStore } from '../n8nChatThreads.store';
 import { consumePendingN8nChatMessage, stashPendingN8nChatMessage } from '../pendingN8nChatMessage';
 import AgentN8nChatView from '../AgentN8nChatView.vue';
@@ -104,13 +105,15 @@ function renderView(
 						'continueSessionId',
 						'newSession',
 						'agentConfig',
+						'attachmentCapabilities',
 						'agentStatus',
 						'connectedTriggers',
 						'channel',
 						'backgroundJobsActive',
 						'centerEmptyState',
 					],
-					emits: ['session-created', 'update:streaming', 'first-user-message'],
+					emits: ['session-created', 'update:streaming', 'first-user-message', 'agent-unavailable'],
+					setup: () => ({ subAgentNames: inject(AGENT_SUB_AGENT_NAMES_KEY) }),
 					methods: { sendMessageFromOutside: sendMessageFromOutsideMock },
 				},
 			},
@@ -118,7 +121,7 @@ function renderView(
 	});
 }
 
-const agentItem: AgentChatListItem = {
+const agentItem: AgentN8nChatAgentDetails = {
 	id: 'agent-1',
 	name: 'Support Agent',
 	description: 'Answers billing questions.',
@@ -127,6 +130,8 @@ const agentItem: AgentChatListItem = {
 		gradient: { from: '#000000', to: '#FFFFFF', angle: 0, fromStop: 0, toStop: 100 },
 	},
 	project: { id: 'project-1', name: 'Marketing' },
+	attachments: { image: true, pdf: true, audio: false },
+	subAgents: [],
 };
 
 describe('AgentN8nChatView', () => {
@@ -137,7 +142,7 @@ describe('AgentN8nChatView', () => {
 	});
 
 	it('shows the chat history button only once the agent has loaded', async () => {
-		let resolveAgent: (value: AgentChatListItem) => void = () => {};
+		let resolveAgent: (value: AgentN8nChatAgentDetails) => void = () => {};
 		getN8nChatAgentMock.mockReturnValueOnce(
 			new Promise((resolve) => {
 				resolveAgent = resolve;
@@ -247,6 +252,38 @@ describe('AgentN8nChatView', () => {
 		expect(panel.props('backgroundJobsActive')).toBe(true);
 	});
 
+	it('provides the agent sub-agents as an id → name map', async () => {
+		getN8nChatAgentMock.mockResolvedValue({
+			...agentItem,
+			subAgents: [
+				{ id: 'sub-1', name: 'Research Agent' },
+				{ id: 'sub-2', name: 'Writer Agent' },
+			],
+		});
+		const wrapper = renderView();
+		await flushPromises();
+
+		const panel = wrapper.findComponent({ name: 'AgentChatPanel' });
+		expect([
+			...(panel.vm as unknown as { subAgentNames: Map<string, string> }).subAgentNames,
+		]).toEqual([
+			['sub-1', 'Research Agent'],
+			['sub-2', 'Writer Agent'],
+		]);
+	});
+
+	it('passes the attachment capabilities the route resolved for this agent', async () => {
+		const wrapper = renderView();
+		await flushPromises();
+
+		const panel = wrapper.findComponent({ name: 'AgentChatPanel' });
+		expect(panel.props('attachmentCapabilities')).toEqual({
+			image: true,
+			pdf: true,
+			audio: false,
+		});
+	});
+
 	it('shows "Personal" with a project icon for the personal project', async () => {
 		const personalProject = createTestProject({ id: 'project-1', type: ProjectTypes.Personal });
 		const wrapper = renderView({}, (store) => {
@@ -293,7 +330,7 @@ describe('AgentN8nChatView', () => {
 	});
 
 	it('drops a load failure that settles after unmount — no toast', async () => {
-		const response = createDeferredPromise<AgentChatListItem>();
+		const response = createDeferredPromise<AgentN8nChatAgentDetails>();
 		getN8nChatAgentMock.mockReturnValueOnce(response.promise);
 		const wrapper = renderView();
 		await flushPromises();
@@ -318,6 +355,19 @@ describe('AgentN8nChatView', () => {
 		expect(getN8nChatAgentMock).toHaveBeenLastCalledWith(expect.anything(), 'agent-2');
 		expect(wrapper.find('[data-testid="agent-n8n-chat-unavailable"]').exists()).toBe(false);
 		expect(wrapper.text()).toContain('Other Agent');
+	});
+
+	it('switches to the unavailable empty state when the panel reports the agent is no longer available', async () => {
+		const wrapper = renderView();
+		await flushPromises();
+
+		expect(wrapper.find('[data-testid="chat-panel-stub"]').exists()).toBe(true);
+		const panel = wrapper.findComponent({ name: 'AgentChatPanel' });
+		await panel.vm.$emit('agent-unavailable');
+		await flushPromises();
+
+		expect(wrapper.find('[data-testid="agent-n8n-chat-unavailable"]').exists()).toBe(true);
+		expect(wrapper.find('[data-testid="chat-panel-stub"]').exists()).toBe(false);
 	});
 
 	it('toasts on a non-404 load failure instead of showing the unavailable state', async () => {
@@ -466,8 +516,8 @@ describe('AgentN8nChatView', () => {
 		it('discards a hand-off for an agent abandoned before its panel ever mounts', async () => {
 			// `RouterView` isn't keyed on `agentId`: this same view instance is reused
 			// for agent-2 while agent-1 is still loading, so agent-1's panel never mounts.
-			const agentOneLoad = createDeferredPromise<AgentChatListItem>();
-			const agentTwoLoad = createDeferredPromise<AgentChatListItem>();
+			const agentOneLoad = createDeferredPromise<AgentN8nChatAgentDetails>();
+			const agentTwoLoad = createDeferredPromise<AgentN8nChatAgentDetails>();
 			getN8nChatAgentMock.mockReturnValueOnce(agentOneLoad.promise);
 			getN8nChatAgentMock.mockReturnValueOnce(agentTwoLoad.promise);
 			stashPendingN8nChatMessage({ agentId: 'agent-1', text: 'hello agent one', files: [] });

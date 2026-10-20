@@ -3,9 +3,13 @@ import type { InstanceAiEvent } from '@n8n/api-types';
 import { ORCHESTRATOR_AGENT_ID } from '../../discovery/types';
 import type { RoutingCase } from '../cases';
 import {
+	afterQuestion,
+	answeredQuestions,
+	canReplyTo,
 	casePasses,
 	createRouteWatcher,
 	type RouteResolution,
+	routeLabel,
 	traceSteps,
 	trialPasses,
 } from '../grade';
@@ -25,15 +29,46 @@ function callEvent(
 	return { type: 'tool-call', ...base, agentId, payload: { toolCallId: toolName, toolName, args } };
 }
 
+/** The card of an workflow_builder_ask_user call and the user's answer to it. */
+function answerEvents(
+	toolCallId = 'workflow_builder_ask_user',
+	result: unknown = { answered: true },
+): InstanceAiEvent[] {
+	return [
+		{
+			type: 'confirmation-request',
+			...base,
+			payload: {
+				requestId: 'request-1',
+				toolCallId,
+				toolName: 'workflow_builder_ask_user',
+				args: {},
+				severity: 'info',
+				message: 'Two questions',
+				inputType: 'questions',
+			},
+		},
+		{ type: 'tool-result', ...base, payload: { toolCallId, result } },
+	];
+}
+
 function pending(toolName: string, args: Record<string, unknown> = {}) {
 	return { toolCallId: toolName, toolName, args };
 }
 
+/** A question card call with its own call id. */
+const card = (toolCallId: string) => ({
+	toolCallId,
+	toolName: 'workflow_builder_ask_user',
+	args: {},
+});
+
 function routingCase(
 	bucket: RoutingCase['bucket'],
 	accepts: RoutingCase['accepts'] = [],
+	after: RoutingCase['after'] = [],
 ): RoutingCase {
-	return { id: `route-${bucket}-x`, bucket, userMessage: 'Do the thing.', accepts };
+	return { id: `route-${bucket}-x`, bucket, userMessage: 'Do the thing.', accepts, after };
 }
 
 const go: JudgeVerdict = {
@@ -57,10 +92,13 @@ function judgeReturning(...verdicts: Array<JudgeVerdict | Error>) {
 	});
 }
 
+/** The user proxy replies to questions only, as `canReplyTo` does. */
+const isQuestion = ({ route }: RouteResolution) => route === 'clarify';
+
 const clarify = (steer: RouteResolution['steer']): RouteResolution => ({
 	route: 'clarify',
 	steer,
-	evidence: 'ask-user call',
+	evidence: 'workflow_builder_ask_user call',
 });
 
 describe('traceSteps', () => {
@@ -82,18 +120,46 @@ describe('traceSteps', () => {
 	});
 
 	it('adds the pending call last when it has no event yet', () => {
-		const steps = traceSteps([textEvent('A question first.')], pending('ask-user'));
+		const steps = traceSteps(
+			[textEvent('A question first.')],
+			pending('workflow_builder_ask_user'),
+		);
 
 		expect(steps).toEqual([
 			{ kind: 'text', text: 'A question first.' },
-			{ kind: 'call', toolName: 'ask-user', args: {} },
+			{ kind: 'call', toolName: 'workflow_builder_ask_user', args: {} },
 		]);
 	});
 
-	it('does not add the pending call twice when its event is already in', () => {
-		const steps = traceSteps([callEvent('ask-user')], pending('ask-user'));
+	it('adds the user answer after a question card and no other tool result', () => {
+		const steps = traceSteps([
+			callEvent('workflow_builder_ask_user'),
+			...answerEvents(),
+			{ type: 'tool-result', ...base, payload: { toolCallId: 'search-nodes', result: [] } },
+		]);
 
-		expect(steps).toEqual([{ kind: 'call', toolName: 'ask-user', args: {} }]);
+		expect(steps).toEqual([
+			{ kind: 'call', toolName: 'workflow_builder_ask_user', args: {} },
+			{ kind: 'answer', result: { answered: true } },
+		]);
+	});
+
+	it('adds no user answer when the user skips the question card', () => {
+		const steps = traceSteps([
+			callEvent('workflow_builder_ask_user'),
+			...answerEvents('workflow_builder_ask_user', { answered: false }),
+		]);
+
+		expect(steps).toEqual([{ kind: 'call', toolName: 'workflow_builder_ask_user', args: {} }]);
+	});
+
+	it('does not add the pending call twice when its event is already in', () => {
+		const steps = traceSteps(
+			[callEvent('workflow_builder_ask_user')],
+			pending('workflow_builder_ask_user'),
+		);
+
+		expect(steps).toEqual([{ kind: 'call', toolName: 'workflow_builder_ask_user', args: {} }]);
 	});
 });
 
@@ -104,7 +170,9 @@ describe('createRouteWatcher', () => {
 
 		expect(await watcher.beforeToolCall(pending('search-nodes'), [])).toBe(false);
 		expect(
-			await watcher.beforeToolCall(pending('build-workflow'), [callEvent('search-nodes')]),
+			await watcher.beforeToolCall(pending('workflow_builder_build_workflow'), [
+				callEvent('search-nodes'),
+			]),
 		).toBe(true);
 		const resolution = await watcher.resolve({
 			instanceEvents: [],
@@ -114,14 +182,14 @@ describe('createRouteWatcher', () => {
 		expect(resolution).toEqual({
 			route: 'workflow',
 			steer: 'workflow',
-			evidence: 'build-workflow call',
+			evidence: 'workflow_builder_build_workflow call',
 			judgeReason: 'Picks workflow.',
 		});
 		expect(judge).toHaveBeenCalledTimes(2);
 		expect(judge).toHaveBeenLastCalledWith({
 			steps: [
 				{ kind: 'call', toolName: 'search-nodes', args: {} },
-				{ kind: 'call', toolName: 'build-workflow', args: {} },
+				{ kind: 'call', toolName: 'workflow_builder_build_workflow', args: {} },
 			],
 		});
 	});
@@ -137,9 +205,13 @@ describe('createRouteWatcher', () => {
 		const watcher = createRouteWatcher(judge);
 
 		expect(await watcher.beforeToolCall(pending('load_skill'), [])).toBe(false);
-		expect(await watcher.beforeToolCall(pending('nodes', { action: 'search' }), [])).toBe(false);
+		expect(
+			await watcher.beforeToolCall(pending('workflow_builder_nodes', { action: 'search' }), []),
+		).toBe(false);
 		expect(judge).not.toHaveBeenCalled();
-		expect(await watcher.beforeToolCall(pending('nodes', { action: 'execute' }), [])).toBe(true);
+		expect(
+			await watcher.beforeToolCall(pending('workflow_builder_nodes', { action: 'execute' }), []),
+		).toBe(true);
 		expect(await watcher.beforeToolCall(pending('load_skill'), [])).toBe(true);
 		expect(judge).toHaveBeenCalledTimes(1);
 	});
@@ -149,7 +221,7 @@ describe('createRouteWatcher', () => {
 		const watcher = createRouteWatcher(judge);
 
 		const results = await Promise.all([
-			watcher.beforeToolCall(pending('create-tasks'), []),
+			watcher.beforeToolCall(pending('workflow_builder_create_tasks'), []),
 			watcher.beforeToolCall(pending('search-nodes'), []),
 		]);
 
@@ -181,14 +253,101 @@ describe('createRouteWatcher', () => {
 		const judge = judgeReturning(new Error('Routing judge failed: 529'), stop('debug'));
 		const watcher = createRouteWatcher(judge);
 
-		expect(await watcher.beforeToolCall(pending('executions'), [])).toBe(false);
-		expect(await watcher.beforeToolCall(pending('executions'), [])).toBe(true);
+		expect(await watcher.beforeToolCall(pending('workflow_builder_executions'), [])).toBe(false);
+		expect(await watcher.beforeToolCall(pending('workflow_builder_executions'), [])).toBe(true);
 		const resolution = await watcher.resolve({
 			instanceEvents: [],
 			streamStatus: 'stopped-on-route',
 		});
 
 		expect(resolution).toMatchObject({ route: 'debug', judgeError: 'Routing judge failed: 529' });
+	});
+
+	it('lets a question run when the user can reply, then stops on the route after the answer', async () => {
+		const judge = judgeReturning(stop('clarify', 'agent'), stop('agent', 'agent'));
+		const watcher = createRouteWatcher(judge, isQuestion);
+		const answered = [callEvent('workflow_builder_ask_user'), ...answerEvents()];
+
+		expect(await watcher.beforeToolCall(pending('workflow_builder_ask_user'), [])).toBe(false);
+		expect(await watcher.beforeToolCall(pending('agent_builder_build_agent'), answered)).toBe(true);
+		const resolution = await watcher.resolve({
+			instanceEvents: answered,
+			streamStatus: 'stopped-on-route',
+		});
+
+		expect(resolution).toMatchObject({
+			route: 'agent',
+			evidence: 'agent_builder_build_agent call',
+			questions: [{ route: 'clarify', steer: 'agent', evidence: 'workflow_builder_ask_user call' }],
+		});
+	});
+
+	it('lets a second question run, then stops on a third with both questions in order', async () => {
+		const judge = judgeReturning(stop('clarify'), stop('clarify', 'agent'), stop('clarify'));
+		const watcher = createRouteWatcher(judge, isQuestion);
+		const once = [callEvent('workflow_builder_ask_user'), ...answerEvents()];
+		const twice = [...once, callEvent('ask-user-2'), ...answerEvents('ask-user-2')];
+
+		expect(await watcher.beforeToolCall(pending('workflow_builder_ask_user'), [])).toBe(false);
+		expect(await watcher.beforeToolCall(card('ask-user-2'), once)).toBe(false);
+		expect(await watcher.beforeToolCall(card('ask-user-3'), twice)).toBe(true);
+		const resolution = await watcher.resolve({
+			instanceEvents: twice,
+			streamStatus: 'stopped-on-route',
+		});
+
+		expect(routeLabel(resolution)).toBe('clarify:none>clarify:agent>clarify:none');
+		expect(answeredQuestions(resolution)).toBe(2);
+	});
+
+	it('ties the answer to the question it replies to when the user skipped an earlier card', async () => {
+		const judge = judgeReturning(stop('clarify'), stop('clarify', 'agent'), stop('agent', 'agent'));
+		const watcher = createRouteWatcher(judge, isQuestion);
+		const skipped = [
+			callEvent('workflow_builder_ask_user'),
+			...answerEvents('workflow_builder_ask_user', { answered: false }),
+		];
+		const answered = [...skipped, callEvent('ask-user-2'), ...answerEvents('ask-user-2')];
+
+		expect(await watcher.beforeToolCall(pending('workflow_builder_ask_user'), [])).toBe(false);
+		expect(await watcher.beforeToolCall(card('ask-user-2'), skipped)).toBe(false);
+		expect(await watcher.beforeToolCall(pending('agent_builder_build_agent'), answered)).toBe(true);
+		const resolution = await watcher.resolve({
+			instanceEvents: answered,
+			streamStatus: 'stopped-on-route',
+		});
+
+		expect(routeLabel(resolution)).toBe('clarify:agent>agent');
+	});
+
+	it('stops before a call that is not a question card, even when the user can reply', async () => {
+		const watcher = createRouteWatcher(judgeReturning(stop('clarify', 'agent')), isQuestion);
+
+		expect(await watcher.beforeToolCall(pending('workflow_builder_build_workflow'), [])).toBe(true);
+	});
+
+	it('stops on a second question when the turn has one answer left', async () => {
+		const watcher = createRouteWatcher(judgeReturning(stop('clarify')), isQuestion, 1);
+		const answered = [callEvent('workflow_builder_ask_user'), ...answerEvents()];
+
+		expect(await watcher.beforeToolCall(pending('workflow_builder_ask_user'), [])).toBe(false);
+		expect(await watcher.beforeToolCall(card('ask-user-2'), answered)).toBe(true);
+	});
+
+	it('drops the question when no answer reached the run', async () => {
+		const watcher = createRouteWatcher(
+			judgeReturning(stop('clarify'), stop('clarify')),
+			isQuestion,
+		);
+		await watcher.beforeToolCall(pending('workflow_builder_ask_user'), []);
+
+		const resolution = await watcher.resolve({
+			instanceEvents: [callEvent('workflow_builder_ask_user')],
+			streamStatus: 'timed-out',
+		});
+
+		expect(resolution.questions).toBeUndefined();
+		expect(resolution.route).toBe('clarify');
 	});
 
 	it('returns none with the error when the end-of-turn judge fails', async () => {
@@ -206,11 +365,16 @@ describe('createRouteWatcher', () => {
 
 describe('trialPasses', () => {
 	it.each<[RoutingCase['accepts'], RouteResolution, boolean]>([
-		[['workflow'], { route: 'workflow', evidence: 'build-workflow' }, true],
-		[['workflow'], { route: 'one-off', evidence: 'build-workflow' }, false],
+		[['workflow'], { route: 'workflow', evidence: 'workflow_builder_build_workflow' }, true],
+		[['workflow'], { route: 'one-off', evidence: 'workflow_builder_build_workflow' }, false],
 		[['clarify'], clarify('workflow'), true],
 		[['clarify:agent'], clarify('both'), true],
 		[['clarify:agent'], clarify('none'), false],
+		[['clarify:workflow'], clarify('workflow'), true],
+		[['clarify:workflow'], clarify('both'), true],
+		[['clarify:workflow'], clarify('agent'), false],
+		[['clarify:workflow'], clarify('none'), false],
+		[['clarify:workflow'], clarify(undefined), false],
 		[['clarify:open'], clarify('none'), true],
 		[['clarify:open'], clarify('workflow'), false],
 		[['answer:agent'], { route: 'answer', steer: 'both', evidence: 'end of turn' }, true],
@@ -223,16 +387,88 @@ describe('trialPasses', () => {
 	it('fails a question toward the bucket artifact when the case accepts no question', () => {
 		expect(trialPasses(routingCase('workflow', ['workflow']), clarify('workflow'))).toBe(false);
 	});
+
+	it('replies to a workflow question in a workflow case, then passes only a workflow build', () => {
+		const workflowCase = routingCase('workflow', ['workflow', 'clarify:workflow'], ['workflow']);
+		const answered = (route: RouteResolution) => ({ ...route, questions: [clarify('workflow')] });
+
+		expect(canReplyTo(workflowCase, clarify('workflow'))).toBe(true);
+		expect(trialPasses(workflowCase, answered({ route: 'workflow', evidence: 'build' }))).toBe(
+			true,
+		);
+		expect(trialPasses(workflowCase, answered({ route: 'agent', evidence: 'build-agent' }))).toBe(
+			false,
+		);
+	});
+
+	it('grades the route after an answer against the after routes only', () => {
+		const openCase = routingCase('clarify', ['clarify:open'], ['agent']);
+		const answered = (route: RouteResolution) => ({ ...route, questions: [clarify('none')] });
+
+		expect(
+			trialPasses(openCase, answered({ route: 'agent', evidence: 'agent_builder_build_agent' })),
+		).toBe(true);
+		expect(trialPasses(openCase, answered({ route: 'workflow', evidence: 'build' }))).toBe(false);
+		expect(trialPasses(openCase, answered(clarify('none')))).toBe(false);
+		expect(trialPasses(openCase, answered(clarify('agent')))).toBe(true);
+	});
+});
+
+describe('canReplyTo', () => {
+	it('replies only to a question that the case accepts', () => {
+		const agentCase = routingCase('agent', ['agent', 'clarify:agent'], ['agent']);
+
+		expect(canReplyTo(agentCase, clarify('agent'))).toBe(true);
+		expect(canReplyTo(agentCase, { ...clarify('agent'), questions: [clarify('agent')] })).toBe(
+			true,
+		);
+		expect(canReplyTo(agentCase, clarify('workflow'))).toBe(false);
+		expect(canReplyTo(agentCase, { route: 'agent', evidence: 'agent_builder_build_agent' })).toBe(
+			false,
+		);
+	});
+});
+
+describe('routeLabel', () => {
+	it('shows the answered question before the route', () => {
+		expect(routeLabel({ route: 'agent', evidence: 'x', questions: [clarify('both')] })).toBe(
+			'clarify:both>agent',
+		);
+	});
+
+	it('shows a question from an earlier turn first', () => {
+		const route = { route: 'agent' as const, evidence: 'x', questions: [clarify('agent')] };
+
+		expect(routeLabel(afterQuestion(route, clarify('none')))).toBe(
+			'clarify:none>clarify:agent>agent',
+		);
+	});
+});
+
+describe('afterQuestion', () => {
+	it('keeps the judge error of an earlier turn on the route', () => {
+		const earlier = { ...clarify('none'), judgeError: 'timeout' };
+
+		expect(afterQuestion({ route: 'agent', evidence: 'x' }, earlier).judgeError).toBe('timeout');
+	});
 });
 
 describe('casePasses', () => {
+	const trial = (outcome: 'pass' | 'fail' | 'none') => ({
+		resolution: { route: outcome === 'none' ? 'none' : 'agent', evidence: 'test' } as const,
+		passed: outcome === 'pass',
+	});
+
 	it.each([
-		[2, 3, true],
-		[1, 3, false],
-		[4, 6, true],
-		[3, 6, false],
-		[0, 0, false],
-	])('%i of %i trials: %s', (passed, total, expected) => {
-		expect(casePasses(passed, total)).toBe(expected);
+		[['pass', 'pass', 'fail'], true],
+		[['pass', 'fail', 'fail'], false],
+		[['pass', 'pass', 'pass', 'fail', 'fail'], true],
+		[['pass', 'pass', 'fail', 'fail'], false],
+		[['pass', 'none', 'none'], true],
+		[['pass', 'fail', 'none'], false],
+		[['none', 'none', 'none'], false],
+		[[], false],
+	] as const)('%j: %s', (outcomes, expected) => {
+		expect(casePasses(outcomes.map(trial))).toBe(expected);
 	});
 });

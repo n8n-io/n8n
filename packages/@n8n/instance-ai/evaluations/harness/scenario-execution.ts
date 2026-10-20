@@ -16,6 +16,7 @@ import { attributionForScenario } from './attribution';
 import type { EvalLogger } from './logger';
 import { reseedScenarioTables, type ScenarioSeedContext } from './seed-tables';
 import {
+	throwIfFrameworkIssue,
 	throwIfServerBudgetStop,
 	isTransientExecutionAbort,
 	MAX_EXEC_ATTEMPTS,
@@ -57,6 +58,8 @@ export async function writeScenarioVerificationSnapshot(input: {
 	result: ChecklistResult | undefined;
 	verificationResults: ChecklistResult[];
 	verifierAttempts: VerifierAttemptDebug[];
+	/** The verifier's exact input, for a replay on another judge model. */
+	verifierInput: { checklist: ChecklistItem[]; artifact: VerificationArtifact };
 	buildTrace?: BuildTrace;
 	logger: EvalLogger;
 	/** --output-dir; falls back to EVAL_DATA_DIR. Concurrent eval children share
@@ -82,6 +85,7 @@ export async function writeScenarioVerificationSnapshot(input: {
 					result: input.result ?? null,
 					verificationResults: input.verificationResults,
 					verifierAttempts: input.verifierAttempts,
+					verifierInput: input.verifierInput,
 					buildTrace: input.buildTrace ?? null,
 				},
 				null,
@@ -318,6 +322,7 @@ async function runScenario(
 	}
 	// Killed for time, not by the builder — throw so the timeout path classifies it.
 	throwIfServerBudgetStop(evalResult);
+	throwIfFrameworkIssue(evalResult);
 
 	const execMs = Date.now() - execStart;
 
@@ -358,6 +363,7 @@ async function runScenario(
 		result,
 		verificationResults,
 		verifierAttempts: verification.attempts,
+		verifierInput: { checklist: scenarioChecklist, artifact },
 		buildTrace,
 		logger,
 		outputDir,

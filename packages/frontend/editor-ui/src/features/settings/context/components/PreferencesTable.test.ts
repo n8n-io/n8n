@@ -24,6 +24,7 @@ function preference(overrides: Partial<Preference> = {}): Preference {
 		projectId: null,
 		project: null,
 		source: 'ui',
+		createdBy: null,
 		scopes: WRITABLE,
 		createdAt: '2026-09-08T00:00:00.000Z',
 		updatedAt: '2026-09-08T00:00:00.000Z',
@@ -113,17 +114,38 @@ describe('PreferencesTable', () => {
 	});
 
 	// Undo rests on the person recognising what a connected tool wrote on their behalf.
-	it('names the surface that wrote each row', () => {
+	it('names the author of each row and the surface that wrote it', () => {
+		const jane = { id: 'user-2', email: 'jane@acme.com', firstName: 'Jane', lastName: 'Doe' };
 		const { getAllByTestId } = render([
-			preference({ id: 'a', source: 'ui' }),
-			preference({ id: 'b', source: 'aia' }),
-			preference({ id: 'c', source: 'mcp' }),
+			preference({ id: 'a', source: 'ui', createdBy: jane }),
+			preference({ id: 'b', source: 'aia', createdBy: jane }),
+			preference({ id: 'c', source: 'mcp', createdBy: jane }),
 		]);
 
-		const sources = getAllByTestId('preference-source');
-		expect(sources[0]).toHaveTextContent('Settings');
-		expect(sources[1]).toHaveTextContent('n8n assistant');
-		expect(sources[2]).toHaveTextContent('Connected AI tool');
+		const authors = getAllByTestId('preference-created-by');
+		expect(authors[0]).toHaveTextContent(/^Jane Doe$/);
+		expect(authors[1]).toHaveTextContent('Jane Doe (n8n assistant)');
+		expect(authors[2]).toHaveTextContent('Jane Doe (MCP)');
+	});
+
+	it('names only the surface when the author no longer exists', () => {
+		const { getAllByTestId } = render([
+			preference({ id: 'a', source: 'ui', createdBy: null }),
+			preference({ id: 'b', source: 'aia', createdBy: null }),
+			preference({ id: 'c', source: 'mcp', createdBy: null }),
+		]);
+
+		const authors = getAllByTestId('preference-created-by');
+		expect(authors[0]).toHaveTextContent('Settings');
+		expect(authors[1]).toHaveTextContent('n8n assistant');
+		expect(authors[2]).toHaveTextContent('MCP');
+	});
+
+	it('shows when each row was last updated', () => {
+		const { getByText, getByTestId } = render([preference()]);
+
+		expect(getByText('Last updated')).toBeInTheDocument();
+		expect(getByTestId('preference-updated-at')).not.toBeEmptyDOMElement();
 	});
 
 	it('enables both actions when the row carries write scopes', () => {

@@ -3,7 +3,14 @@ import type { AgentSseEvent } from '@n8n/api-types';
 import { LoggerProxy } from 'n8n-workflow';
 import { EventEmitter } from 'node:events';
 
-import { emitChunkEvents, initSseStream, type FlushableResponse } from '../agent-sse-stream';
+import {
+	emitChunkEvents,
+	initSseStream,
+	toChatErrorEvent,
+	type FlushableResponse,
+} from '../agent-sse-stream';
+import { AgentN8nChatUnavailableError } from '../agent-n8n-chat-unavailable.error';
+import { AgentTurnAlreadyRunningError } from '../agent-turn-already-running.error';
 import type { SteeredMessageEvent } from '../types/agent-steering';
 
 // ---------------------------------------------------------------------------
@@ -168,11 +175,10 @@ describe('agent-sse-stream — connection setup', () => {
 // stringifyError — tested through emitChunkEvents
 // ---------------------------------------------------------------------------
 
-vi.mock('n8n-workflow', () => ({
-	LoggerProxy: {
-		warn: vi.fn(),
-	},
-}));
+vi.mock(import('n8n-workflow'), async (importOriginal) => {
+	const actual = await importOriginal();
+	return { ...actual, LoggerProxy: { ...actual.LoggerProxy, warn: vi.fn() } };
+});
 
 describe('agent-sse-stream — stringifyError (via error chunk)', () => {
 	it('extracts .message from an Error instance', async () => {
@@ -298,14 +304,14 @@ describe('agent-sse-stream — stream completion', () => {
 				type: 'tool-call-suspended',
 				runId: 'run-1',
 				toolCallId: 'tc-1',
-				toolName: 'ask_questions',
+				toolName: 'agent_builder_ask_questions',
 				suspendPayload: { question: 'First question' },
 			},
 			{
 				type: 'tool-call-suspended',
 				runId: 'run-1',
 				toolCallId: 'tc-2',
-				toolName: 'ask_questions',
+				toolName: 'agent_builder_ask_questions',
 				suspendPayload: { question: 'Second question' },
 			},
 			{ type: 'finish', finishReason: 'other' },
@@ -318,7 +324,7 @@ describe('agent-sse-stream — stream completion', () => {
 				payload: {
 					toolCallId: 'tc-1',
 					runId: 'run-1',
-					toolName: 'ask_questions',
+					toolName: 'agent_builder_ask_questions',
 					input: { question: 'First question' },
 				},
 			},
@@ -327,7 +333,7 @@ describe('agent-sse-stream — stream completion', () => {
 				payload: {
 					toolCallId: 'tc-2',
 					runId: 'run-1',
-					toolName: 'ask_questions',
+					toolName: 'agent_builder_ask_questions',
 					input: { question: 'Second question' },
 				},
 			},
@@ -515,6 +521,30 @@ describe('agent-sse-stream — tool execution lifecycle chunks', () => {
 			},
 		]);
 	});
+});
+
+describe('agent-sse-stream — toChatErrorEvent', () => {
+	it.each([
+		[new AgentTurnAlreadyRunningError(), 'turn_already_running'],
+		[new AgentN8nChatUnavailableError(), 'agent_unavailable'],
+		[new Error('boom'), undefined],
+	] as const)('maps %s to errorCode %s', (error, errorCode) => {
+		expect(toChatErrorEvent(error, 'fallback')).toEqual({
+			type: 'error',
+			message: error.message,
+			...(errorCode && { errorCode }),
+		});
+	});
+});
+
+it('scrubs secrets from the error message it sends to the client', () => {
+	const event = toChatErrorEvent(
+		new Error('Request failed: Authorization: Bearer sk-abcdef1234567890abcdef1234567890'),
+		'fallback',
+	);
+	expect(event.type === 'error' && event.message).not.toContain(
+		'sk-abcdef1234567890abcdef1234567890',
+	);
 });
 
 describe('agent-sse-stream — subagent-chunk', () => {

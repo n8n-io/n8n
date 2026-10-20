@@ -7,6 +7,7 @@
 //   pnpm eval:discovery --filter slack-oauth --verbose
 //   pnpm eval:discovery --trials 5
 //   pnpm eval:discovery --cases-dir <dir>              # routing mode
+//   pnpm eval:discovery --cases-dir <dir> --output-dir <dir>
 //
 // Loads scenarios from evaluations/data/discovery/, runs each scenario × N
 // trials via the in-process runner, reports per-scenario pass-rates, exits
@@ -15,17 +16,41 @@
 //
 // Routing mode (`--cases-dir`) loads `route-*.json` cases from that folder, in
 // the format LangTracer exports. A judge ends each trial as soon as the
-// Assistant picks a route. The CLI prints a pass rate per bucket.
-// It always exits 0: it measures routing and does not gate a merge.
+// Assistant picks a route. When a case has stage directions, the user proxy
+// answers up to 2 accepted questions: on the card in the same run, or in a
+// reply turn of the same thread after a question in text. The CLI prints a pass rate per bucket,
+// and per clarity level in each bucket. `--output-dir` also writes `eval-results.json` for
+// LangTracer (see ../routing/eval-results.ts). It always exits 0: it measures routing and does
+// not gate a merge.
 // ---------------------------------------------------------------------------
 
 import { runDiscoveryScenario, runOrchestratorTurn, type DiscoveryRunResult } from './runner';
+import { createSeededThread } from './seeded-turn';
 import type { DiscoveryTestCase } from './types';
-import { isAgentFeatureEnabled } from '../../src/utils/agent-feature-enabled';
+import { buildResumeData, toConfirmationData } from '../../src/runtime/confirmation-payload';
 import { loadDiscoveryTestCasesWithFiles } from '../data/discovery';
-import { loadRoutingCases, ROUTING_BUCKETS, type RoutingBucket } from '../routing/cases';
-import { casePasses, createRouteWatcher, routeLabel, trialPasses } from '../routing/grade';
+import { defaultNodesJsonPath, missingEvalNodeData } from '../harness/stub-services';
+import {
+	loadRoutingCases,
+	ROUTING_BUCKETS,
+	ROUTING_CLARITIES,
+	type RoutingCase,
+} from '../routing/cases';
+import { writeRoutingEvalResults, type RoutingCaseResult } from '../routing/eval-results';
+import {
+	afterQuestion,
+	answeredQuestions,
+	canReplyTo,
+	casePasses,
+	createRouteWatcher,
+	MAX_ANSWERS,
+	routeLabel,
+	trialPasses,
+	type RouteResolution,
+} from '../routing/grade';
 import { judgeRoute } from '../routing/judge';
+import type { CapturedEvent } from '../types';
+import { UserProxyLlm } from '../utils/user-proxy';
 
 // ---------------------------------------------------------------------------
 // Args
@@ -45,6 +70,8 @@ interface CliArgs {
 	failOnZeroPass: boolean;
 	/** Folder of routing cases. Set switches the CLI to routing mode. */
 	casesDir?: string;
+	/** Routing mode writes `eval-results.json` here. */
+	outputDir?: string;
 }
 
 const DEFAULT_MODEL = process.env.N8N_INSTANCE_AI_EVAL_MODEL ?? 'anthropic/claude-sonnet-4-6';
@@ -142,6 +169,13 @@ function parseArgs(argv: string[]): CliArgs {
 				// Without a directory the CLI would fall back to the full discovery suite.
 				if (!args.casesDir) {
 					console.error('--cases-dir needs a directory of routing cases.');
+					process.exit(1);
+				}
+				break;
+			case '--output-dir':
+				args.outputDir = argv[++i];
+				if (!args.outputDir) {
+					console.error('--output-dir needs a directory for eval-results.json.');
 					process.exit(1);
 				}
 				break;
@@ -282,6 +316,82 @@ function printSummary(aggregates: ScenarioAggregate[], args: CliArgs): void {
 // Routing mode
 // ---------------------------------------------------------------------------
 
+/**
+ * One routing trial. A question in text ends the turn, so the user proxy
+ * replies in a new turn of the same thread.
+ */
+async function runRoutingTrial(args: CliArgs, routingCase: RoutingCase) {
+	const proxy = routingCase.direction
+		? new UserProxyLlm({
+				conversation: [
+					{ role: 'user', text: routingCase.userMessage },
+					{ role: 'user', text: routingCase.direction },
+				],
+			})
+		: undefined;
+	// A reply turn reads the earlier turns from the thread, with their question cards and answers.
+	const thread = proxy ? await createSeededThread(routingCase.seed?.messages) : undefined;
+	let scenario = routingCase;
+	// The text question that the last reply answered, with the questions before it.
+	let earlier: RouteResolution | undefined;
+	let durationMs = 0;
+	// The proxy reads only the events past the ones it has seen, so it gets the events of all turns.
+	const events: CapturedEvent[] = [];
+	for (;;) {
+		const used = earlier ? answeredQuestions(earlier) + 1 : 0;
+		const watcher = createRouteWatcher(
+			judgeRoute,
+			proxy ? (question) => canReplyTo(routingCase, question) : undefined,
+			MAX_ANSWERS - used,
+		);
+		const turn = await runOrchestratorTurn({
+			scenario,
+			modelId: args.modelId,
+			maxSteps: args.maxSteps,
+			timeoutMs: args.timeoutMs,
+			stopBeforeTool: watcher.beforeToolCall,
+			...(proxy
+				? {
+						thread,
+						answerQuestions: async (suspension, turnEvents) => {
+							proxy.ingestEvents([...events, ...turnEvents]);
+							const answer = await proxy.respondToConfirmation({
+								timestamp: Date.now(),
+								type: 'confirmation-request',
+								data: { payload: suspension.suspendPayload },
+							});
+							return buildResumeData(toConfirmationData(answer));
+						},
+					}
+				: {}),
+			...(args.nodesJsonPath ? { nodesJsonPath: args.nodesJsonPath } : {}),
+		});
+		const turnResolution = await watcher.resolve(turn);
+		durationMs += turn.durationMs;
+		const resolution = earlier ? afterQuestion(turnResolution, earlier) : turnResolution;
+		const result = {
+			turn: { ...turn, durationMs },
+			resolution,
+			passed: trialPasses(routingCase, resolution),
+		};
+		if (
+			!proxy ||
+			answeredQuestions(resolution) >= MAX_ANSWERS ||
+			turn.streamStatus !== 'completed' ||
+			!canReplyTo(routingCase, turnResolution)
+		) {
+			return result;
+		}
+		events.push(...turn.events);
+		proxy.ingestEvents(events);
+		const reply = await proxy.decideFollowUp();
+		// ponytail: a proxy that sees nothing to answer leaves the trial graded on the question.
+		if (reply.kind !== 'followUp') return result;
+		scenario = { ...routingCase, userMessage: reply.message, attach: undefined };
+		earlier = resolution;
+	}
+}
+
 function percent(passed: number, total: number): string {
 	return `${String(passed)}/${String(total)} (${total > 0 ? ((passed / total) * 100).toFixed(0) : '0'}%)`;
 }
@@ -290,46 +400,35 @@ async function runRoutingMode(args: CliArgs, casesDir: string): Promise<void> {
 	const { cases, needsSetup } = loadRoutingCases(casesDir, args.filter);
 	if (needsSetup.length > 0) {
 		console.log(
-			`Skipping ${String(needsSetup.length)} case(s) that need setup (earlier messages, an open workflow or Agent, or accounts): ${needsSetup.join(', ')}`,
+			`Skipping ${String(needsSetup.length)} case(s) that need setup the stub instance cannot do (thread replay, browser sign-in, folders, or projects): ${needsSetup.join(', ')}`,
 		);
 	}
 	if (cases.length === 0) {
 		console.log(`No routing cases found in ${casesDir}.`);
 		return;
 	}
-	if (!isAgentFeatureEnabled()) {
-		console.warn(
-			'Warning: the Agents module is off, so the Assistant cannot build an Agent and agent cases fail. Set N8N_ENABLED_MODULES=agents,instance-ai.',
-		);
-	}
 
 	console.log(
 		`Running ${String(cases.length)} routing case(s) × ${String(args.trials)} trial(s) (model: ${args.modelId}, concurrency: ${String(args.concurrency)}).\n`,
 	);
 
-	const results: Array<{ bucket: RoutingBucket; passed: boolean }> = [];
+	const startedAt = Date.now();
+	const results: Array<RoutingCaseResult & { passed: boolean }> = [];
 	let runErrors = 0;
 	let judgeErrors = 0;
 
 	for (const routingCase of cases) {
 		process.stdout.write(`▸ ${routingCase.id} ... `);
 		const trials = await runTrials(args, async () => {
-			const watcher = createRouteWatcher(judgeRoute);
-			const turn = await runOrchestratorTurn({
-				scenario: routingCase,
-				modelId: args.modelId,
-				maxSteps: args.maxSteps,
-				timeoutMs: args.timeoutMs,
-				stopBeforeTool: watcher.beforeToolCall,
-				...(args.nodesJsonPath ? { nodesJsonPath: args.nodesJsonPath } : {}),
-			});
-			const resolution = await watcher.resolve(turn);
-			return { turn, resolution, passed: trialPasses(routingCase, resolution) };
+			const trial = await runRoutingTrial(args, routingCase);
+			// No route (a timeout, an error, or an empty turn) says nothing about routing, so the trial runs once more.
+			return trial.resolution.route === 'none' ? await runRoutingTrial(args, routingCase) : trial;
 		});
 
-		const passed = casePasses(trials.filter((t) => t.passed).length, trials.length);
+		const passed = casePasses(trials);
+		const after = routingCase.direction ? `; after a reply ${routingCase.after.join(' | ')}` : '';
 		console.log(
-			`${passed ? '✓' : '✗'} ${trials.map((t) => routeLabel(t.resolution)).join(', ')} (accepts ${routingCase.accepts.join(' | ')})`,
+			`${passed ? '✓' : '✗'} ${trials.map((t) => routeLabel(t.resolution)).join(', ')} (accepts ${routingCase.accepts.join(' | ')}${after})`,
 		);
 		for (const [idx, { turn, resolution, passed: trialPassed }] of trials.entries()) {
 			if (turn.runError) runErrors++;
@@ -343,19 +442,35 @@ async function runRoutingMode(args: CliArgs, casesDir: string): Promise<void> {
 			if (turn.runError) console.log(`     run error: ${turn.runError}`);
 		}
 
-		results.push({ bucket: routingCase.bucket, passed });
+		results.push({ routingCase, trials, passed });
 	}
 
-	console.log('\n=== Routing summary (a case passes when 2/3 of its trials pass) ===');
+	console.log(
+		'\n=== Routing summary (a case passes when more than half of its graded trials pass) ===',
+	);
 	const summaryLine = (name: string, rows: typeof results) =>
 		console.log(`  ${name.padEnd(8)} ${percent(rows.filter((r) => r.passed).length, rows.length)}`);
 	for (const name of ROUTING_BUCKETS) {
-		const rows = results.filter((r) => r.bucket === name);
-		if (rows.length > 0) summaryLine(name, rows);
+		const rows = results.filter((r) => r.routingCase.bucket === name);
+		if (rows.length === 0) continue;
+		summaryLine(name, rows);
+		for (const clarity of ROUTING_CLARITIES) {
+			const cell = rows.filter((r) => r.routingCase.clarity === clarity);
+			if (cell.length > 0) summaryLine(`  ${clarity}`, cell);
+		}
 	}
 	summaryLine('total', results);
 	if (runErrors > 0 || judgeErrors > 0) {
 		console.log(`Errored trials: ${String(runErrors)} run, ${String(judgeErrors)} judge.`);
+	}
+	if (args.outputDir) {
+		const jsonPath = writeRoutingEvalResults(
+			args.outputDir,
+			results,
+			args.trials,
+			Date.now() - startedAt,
+		);
+		console.log(`Results: ${jsonPath}`);
 	}
 }
 
@@ -369,6 +484,21 @@ async function main(): Promise<void> {
 	if (!process.env.ANTHROPIC_API_KEY) {
 		console.error(
 			'Error: ANTHROPIC_API_KEY is required to run discovery evaluations (the runner calls Anthropic in-process).',
+		);
+		process.exit(1);
+	}
+
+	// The stubs read node data from build outputs. Stop here, because without it
+	// every trial runs with no node types and shows no error.
+	const missing = missingEvalNodeData(args.nodesJsonPath ?? defaultNodesJsonPath());
+	if (missing.length > 0) {
+		console.error(
+			[
+				'Error: node data for the eval stubs is missing:',
+				...missing.map((p) => `  - ${p}`),
+				'Build the node packages: pnpm --filter n8n-nodes-base --filter @n8n/n8n-nodes-langchain build',
+				'Then generate nodes.json: run `pnpm export:nodes` in packages/@n8n/ai-workflow-builder.ee.',
+			].join('\n'),
 		);
 		process.exit(1);
 	}

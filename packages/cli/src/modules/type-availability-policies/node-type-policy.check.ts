@@ -5,7 +5,6 @@ import type {
 	CredentialDecryptContext,
 	PolicedWorkflow,
 	PolicyCheckResult,
-	PolicyViolation,
 	RegisteredPolicyCheck,
 	WorkflowPublishContext,
 	WorkflowSaveContext,
@@ -15,10 +14,8 @@ import type {
 import { PolicyCheck } from '@n8n/decorators';
 
 import { NODE_TYPES_KIND } from './constants';
-import {
-	TypeAvailabilityPolicyService,
-	type ComposedTypeVerdict,
-} from './type-availability-policy.service';
+import { TypeAvailabilityPolicyService } from './type-availability-policy.service';
+import { NODE_TYPE_SUBJECT, toTypeViolation } from './type-violation';
 
 const NO_VIOLATIONS: PolicyCheckResult = { violations: [] };
 
@@ -28,21 +25,6 @@ const NOTHING_GRANDFATHERED: ReadonlySet<string> = new Set();
 function distinctTypes(nodes: PolicedWorkflow['nodes']): string[] {
 	// A Set keeps first-encounter order, so violations and audit lines stay deterministic.
 	return [...new Set(nodes.map((node) => node.type))];
-}
-
-function toViolation(checkId: string, verdict: ComposedTypeVerdict): PolicyViolation {
-	const by = verdict.scope === 'instance' ? 'an instance policy' : "this project's policy";
-
-	return {
-		kind: 'node-type-unavailable',
-		checkId,
-		message: `Node type "${verdict.name}" is blocked by ${by}`,
-		subject: verdict.name,
-		subjectType: 'nodeType',
-		scope: verdict.scope,
-		// The scope's default action decided when no rule matched, and there is no id to report.
-		...(verdict.matchedRuleId !== null && { matchedRuleId: verdict.matchedRuleId }),
-	};
 }
 
 /**
@@ -157,7 +139,7 @@ export class NodeTypePolicyCheck implements RegisteredPolicyCheck {
 		return {
 			violations: verdicts
 				.filter((verdict) => verdict.action === 'deny')
-				.map((verdict) => toViolation(this.id, verdict)),
+				.map((verdict) => toTypeViolation(this.id, NODE_TYPE_SUBJECT, verdict, projectId)),
 			// Reported even when nothing is denied: the audit line records what a partial run read.
 			policyVersions: versions,
 		};

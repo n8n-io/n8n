@@ -20,9 +20,11 @@ import type {
 	AgentIntegrationStatusResponse,
 	AgentWhatsAppVerifyTokenResponse,
 	AgentJsonVectorStoreConfig,
+	AgentN8nChatAgentDetails,
 	AgentN8nChatThreadSummary,
 	AgentN8nChatThreadsResponse,
 	AgentSkill,
+	AgentSkillAvailability,
 	AgentsSettingsDto,
 	AgentSkillMutationResponse,
 	AgentTaskConfig,
@@ -32,6 +34,12 @@ import type {
 	AgentProviderModelsResponse,
 	AgentVersionListItemDto,
 	ChatIntegrationDescriptor,
+	SkillDetail,
+	SkillListItem,
+	SkillListResponse,
+	SkillCreateMethod,
+	SkillNewNameQueryDto,
+	SkillNewNameResponse,
 	VectorStoreTestResult,
 } from '@n8n/api-types';
 import { getFullApiResponse, makeRestApiRequest, request } from '@n8n/rest-api-client';
@@ -97,6 +105,7 @@ export type ListAgentsOptions = {
 	sortBy?: ListAgentsSortBy;
 	filter?: {
 		query?: string;
+		ids?: string[];
 		availableInMCP?: boolean;
 	};
 };
@@ -127,8 +136,8 @@ export const listAgentsPageGlobal = async (
 export const getN8nChatAgent = async (
 	context: IRestApiContext,
 	agentId: string,
-): Promise<AgentChatListItem> => {
-	return await makeRestApiRequest<AgentChatListItem>(
+): Promise<AgentN8nChatAgentDetails> => {
+	return await makeRestApiRequest<AgentN8nChatAgentDetails>(
 		context,
 		'GET',
 		`/agents/v2/n8n-chat/agents/${encodeURIComponent(agentId)}`,
@@ -170,6 +179,8 @@ export type ListN8nChatThreadsOptions = {
 	cursor?: string;
 	/** Filters threads to one agent. */
 	agentId?: string;
+	/** Case-insensitive title search. */
+	search?: string;
 };
 
 /** Narrows the raw response body — `request` returns `unknown`, and this avoids an `as` cast. */
@@ -196,7 +207,12 @@ export const listN8nChatThreads = async (
 		baseURL: context.baseUrl,
 		endpoint: '/agents/v2/n8n-chat/threads',
 		headers: { 'push-ref': context.pushRef },
-		data: { limit: options.limit, cursor: options.cursor, agentId: options.agentId },
+		data: {
+			limit: options.limit,
+			cursor: options.cursor,
+			agentId: options.agentId,
+			search: options.search,
+		},
 	});
 	if (!isN8nChatThreadsResponse(response)) {
 		throw new UnexpectedError('Unexpected n8n Chat threads response shape');
@@ -213,6 +229,20 @@ export const getN8nChatThread = async (
 		context,
 		'GET',
 		`/agents/v2/n8n-chat/threads/${encodeURIComponent(threadId)}`,
+	);
+};
+
+/** Deletes one of the user's own n8n Chat threads. */
+export const deleteN8nChatThread = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	threadId: string,
+): Promise<{ success: true }> => {
+	return await makeRestApiRequest<{ success: true }>(
+		context,
+		'DELETE',
+		`${agentChatPath(projectId, agentId, 'n8n-chat')}/${encodeURIComponent(threadId)}`,
 	);
 };
 
@@ -680,12 +710,14 @@ export const createAgentSkill = async (
 	projectId: string,
 	agentId: string,
 	skill: AgentSkill,
+	availableTo?: AgentSkillAvailability,
+	method?: SkillCreateMethod,
 ): Promise<AgentSkillMutationResponse> => {
 	return await makeRestApiRequest<AgentSkillMutationResponse>(
 		context,
 		'POST',
 		`/projects/${projectId}/agents/v2/${agentId}/skills`,
-		skill,
+		{ ...skill, ...(availableTo ? { availableTo } : {}), ...(method ? { method } : {}) },
 	);
 };
 
@@ -696,13 +728,49 @@ export const updateAgentSkill = async (
 	skillId: string,
 	updates: Partial<AgentSkill>,
 	baseSkillHash?: string,
+	availableTo?: AgentSkillAvailability,
 ): Promise<AgentSkillMutationResponse> => {
 	return await makeRestApiRequest<AgentSkillMutationResponse>(
 		context,
 		'PATCH',
 		`/projects/${projectId}/agents/v2/${agentId}/skills/${skillId}`,
-		{ ...updates, baseSkillHash },
+		{ ...updates, baseSkillHash, ...(availableTo ? { availableTo } : {}) },
 	);
+};
+
+export const listAttachableSkills = async (
+	context: IRestApiContext,
+	agentId: string,
+): Promise<SkillListItem[]> => {
+	const { data } = await makeRestApiRequest<SkillListResponse>(context, 'GET', '/skills', {
+		attachableTo: agentId,
+	});
+	const targetRank = (skill: SkillListItem) =>
+		skill.scope === 'instance' ? 2 : skill.agentId ? 1 : 0;
+	const byTargetThenName = (left: SkillListItem, right: SkillListItem) =>
+		targetRank(left) - targetRank(right) || left.name.localeCompare(right.name);
+	return data.sort(byTargetThenName);
+};
+
+export const getHubSkill = async (
+	context: IRestApiContext,
+	skillId: string,
+): Promise<SkillDetail> => {
+	return await makeRestApiRequest<SkillDetail>(context, 'GET', `/skills/${skillId}`);
+};
+
+/** A name like `name` that no skill in the scope has yet, such as "New skill 2". */
+export const getNewSkillName = async (
+	context: IRestApiContext,
+	query: SkillNewNameQueryDto,
+): Promise<string> => {
+	const { name } = await makeRestApiRequest<SkillNewNameResponse>(
+		context,
+		'GET',
+		'/skills/new-name',
+		query,
+	);
+	return name;
 };
 
 export const getAgentBackgroundJobs = async (

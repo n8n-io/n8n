@@ -1,17 +1,15 @@
 import { PrometheusMetricsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
-import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import promClient from 'prom-client';
 
 import type { PrometheusMetricsCollector } from './base';
-import { CachedMetricQueryFactory } from './cached-metric-query';
+import { DatabaseMetricQueryService } from './database-metric-query.service';
 
 type WorkflowInfoGaugeParams = {
 	name: string;
 	help: string;
-	cacheKey: string;
 	activeOnly: boolean;
 };
 
@@ -28,8 +26,7 @@ type WorkflowInfoGaugeParams = {
 export class PrometheusWorkflowInfoMetricsService implements PrometheusMetricsCollector {
 	constructor(
 		private readonly config: PrometheusMetricsConfig,
-		private readonly workflowRepository: WorkflowRepository,
-		private readonly cachedMetricQueries: CachedMetricQueryFactory,
+		private readonly databaseQueries: DatabaseMetricQueryService,
 		private readonly instanceSettings: InstanceSettings,
 	) {}
 
@@ -41,25 +38,19 @@ export class PrometheusWorkflowInfoMetricsService implements PrometheusMetricsCo
 		this.initGauge({
 			name: 'workflow_info',
 			help: 'Map of workflow ID to name. Reported by the leader main only.',
-			cacheKey: 'metrics:workflow-info:v2',
 			activeOnly: false,
 		});
 		this.initGauge({
 			name: 'active_workflow_info',
 			help: 'Map of active workflow ID to name. Reported by the leader main only.',
-			cacheKey: 'metrics:active-workflow-info:v1',
 			activeOnly: true,
 		});
 	}
 
-	private initGauge({ name, help, cacheKey, activeOnly }: WorkflowInfoGaugeParams) {
+	private initGauge({ name, help, activeOnly }: WorkflowInfoGaugeParams) {
 		const { instanceSettings } = this;
 		const cacheTtl = this.config.workflowInfoMetricInterval * Time.seconds.toMilliseconds;
-		const query = this.cachedMetricQueries.create<Array<{ id: string; name: string }>>({
-			cacheKey,
-			ttlMs: cacheTtl,
-			query: async () => await this.workflowRepository.getWorkflowInfo({ activeOnly }),
-		});
+		const query = this.databaseQueries.workflowInfo(cacheTtl, activeOnly);
 
 		new promClient.Gauge({
 			name: `${this.config.prefix}${name}`,

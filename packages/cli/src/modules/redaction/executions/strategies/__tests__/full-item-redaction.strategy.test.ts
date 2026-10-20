@@ -1,7 +1,7 @@
 import type { IRunExecutionData } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import type { RedactableExecution } from '@/executions/execution-redaction';
+import type { RedactableExecution } from '@n8n/backend-services';
 
 import type { RedactionContext } from '../../execution-redaction.interfaces';
 import { FullItemRedactionStrategy } from '../full-item-redaction.strategy';
@@ -12,6 +12,8 @@ const makeContext = (overrides: Partial<RedactionContext> = {}): RedactionContex
 	userCanReveal: false,
 	enforceDynCredRedaction: false,
 	enforceCredentialUsabilityRedaction: false,
+	inaccessibleCredentialIds: [],
+	redactedBySubWorkflow: false,
 	memo: new Map(),
 	...overrides,
 });
@@ -235,11 +237,19 @@ describe('FullItemRedactionStrategy', () => {
 				],
 			});
 
-			await strategy.apply(execution, makeContext({ enforceCredentialUsabilityRedaction: true }));
+			await strategy.apply(
+				execution,
+				makeContext({
+					enforceCredentialUsabilityRedaction: true,
+					inaccessibleCredentialIds: ['alice-gmail'],
+				}),
+			);
 
 			const item = execution.data.resultData.runData.NodeA[0].data!.main[0]![0];
 			expect(item.redaction?.reason).toBe('credential_inaccessible');
 			expect(execution.data.redactionInfo?.reason).toBe('credential_inaccessible');
+			// Names the credentials, so the editor can link to where access is granted.
+			expect(execution.data.redactionInfo?.credentialIds).toEqual(['alice-gmail']);
 		});
 
 		it('prefers "dynamic_credentials" over "credential_inaccessible" when both are set', async () => {
@@ -262,6 +272,54 @@ describe('FullItemRedactionStrategy', () => {
 			);
 
 			expect(execution.data.redactionInfo?.reason).toBe('dynamic_credentials');
+		});
+
+		describe('sub-workflow redaction', () => {
+			const execution = () =>
+				makeExecution({
+					NodeA: [
+						{
+							startTime: 0,
+							executionIndex: 0,
+							executionTime: 0,
+							executionStatus: 'success',
+							source: [],
+							data: { main: [[{ json: { x: 1 } }]] },
+						},
+					],
+				});
+
+			it('sets reason "sub_workflow_redaction_policy" when redactedBySubWorkflow is true', async () => {
+				const target = execution();
+
+				await strategy.apply(target, makeContext({ redactedBySubWorkflow: true }));
+
+				const item = target.data.resultData.runData.NodeA[0].data!.main[0]![0];
+				expect(item.redaction?.reason).toBe('sub_workflow_redaction_policy');
+				expect(target.data.redactionInfo?.reason).toBe('sub_workflow_redaction_policy');
+			});
+
+			it('prefers "user_requested" over "sub_workflow_redaction_policy"', async () => {
+				const target = execution();
+
+				await strategy.apply(
+					target,
+					makeContext({ redactedBySubWorkflow: true, redactExecutionData: true }),
+				);
+
+				expect(target.data.redactionInfo?.reason).toBe('user_requested');
+			});
+
+			it('prefers "dynamic_credentials" over "sub_workflow_redaction_policy"', async () => {
+				const target = execution();
+
+				await strategy.apply(
+					target,
+					makeContext({ redactedBySubWorkflow: true, enforceDynCredRedaction: true }),
+				);
+
+				expect(target.data.redactionInfo?.reason).toBe('dynamic_credentials');
+			});
 		});
 	});
 

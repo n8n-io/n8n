@@ -10,7 +10,6 @@ import {
 	FROM_AI_PARAMETERS_MODAL_KEY,
 	IMPORT_CURL_MODAL_KEY,
 	IMPORT_WORKFLOW_URL_MODAL_KEY,
-	LOG_STREAM_MODAL_KEY,
 	VERSIONS_MODAL_KEY,
 	NEW_ASSISTANT_SESSION_MODAL,
 	NPS_SURVEY_MODAL_KEY,
@@ -97,7 +96,6 @@ import ModalRoot from '@/app/components/ModalRoot.vue';
 import NpsSurvey from '@/app/components/NpsSurvey.vue';
 import PersonalizationModal from '@/features/settings/users/components/PersonalizationModal.vue';
 import ProjectMoveResourceModal from '@/features/collaboration/projects/components/ProjectMoveResourceModal.vue';
-import EventDestinationSettingsModal from '@/features/integrations/logStreaming.ee/components/EventDestinationSettingsModal.vue';
 import SetupWorkflowCredentialsModal from '@/features/workflows/templates/components/SetupWorkflowCredentialsModal.vue';
 import SourceControlPullModal from '@/features/integrations/sourceControl.ee/components/SourceControlPullModal.vue';
 import SourceControlPullResultModal from '@/features/integrations/sourceControl.ee/components/SourceControlPullResultModal.vue';
@@ -114,7 +112,6 @@ import WorkflowVersionFormModal, {
 import WorkflowSettings from '@/features/workflows/components/WorkflowSettings/WorkflowSettings.vue';
 import WorkflowShareModal from '@/features/workflows/components/WorkflowShareModal.ee.vue';
 import WorkflowDiffModal from '@/features/workflows/workflowDiff/WorkflowDiffModal.vue';
-import type { EventBus } from '@n8n/utils/event-bus';
 import DynamicModalLoader from './DynamicModalLoader.vue';
 import NodeRecommendationModalV2 from '@/experiments/templateRecoV2/components/NodeRecommendationModal.vue';
 import NodeRecommendationModalV3 from '@/experiments/personalizedTemplatesV3/components/NodeRecommendationModal.vue';
@@ -251,25 +248,6 @@ const TrialIntroModal = defineAsyncComponent(
 					:modal-name="modalName"
 					:active-package-name="activeId"
 					:mode="mode"
-				/>
-			</template>
-		</ModalRoot>
-
-		<ModalRoot :name="LOG_STREAM_MODAL_KEY">
-			<template
-				#default="{
-					modalName,
-					data,
-				}: {
-					modalName: string;
-					data: { destination: Object; isNew: boolean; eventBus: EventBus };
-				}"
-			>
-				<EventDestinationSettingsModal
-					:modal-name="modalName"
-					:destination="data.destination"
-					:is-new="data.isNew"
-					:event-bus="data.eventBus"
 				/>
 			</template>
 		</ModalRoot>

@@ -352,3 +352,4 @@ oneOf:
       - dsn
       - id
 description: 'A log streaming destination. The `type` field selects the variant and its type-specific fields: `webhook`, `syslog`, or `sentry`.'
+type: object

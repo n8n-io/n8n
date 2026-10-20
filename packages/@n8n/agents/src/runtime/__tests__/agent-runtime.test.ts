@@ -100,12 +100,56 @@ type AiImport = typeof import('ai');
 // Mock generateText and streamText from the 'ai' package
 vi.mock('ai', async () => {
 	const actual = await vi.importActual<AiImport>('ai');
+	// Keep existing model fixtures in one place while exercising the current SDK result shape.
+	const generateMock = vi.fn();
+	const streamMock = vi.fn();
 	return {
 		...actual,
 		embed: vi.fn(),
 		embedMany: vi.fn(),
-		generateText: vi.fn(),
-		streamText: vi.fn(),
+		generateText: new Proxy(generateMock, {
+			apply: async (target, thisArg, args) => {
+				const result: unknown = await Reflect.apply(target, thisArg, args);
+				if (!result || typeof result !== 'object') return result;
+				const legacy = result as {
+					response?: { messages: unknown[] };
+					responseMessages?: unknown[];
+					providerMetadata?: unknown;
+					finalStep?: unknown;
+				};
+				return {
+					...legacy,
+					responseMessages: legacy.responseMessages ?? legacy.response?.messages,
+					finalStep: legacy.finalStep ?? { providerMetadata: legacy.providerMetadata },
+				};
+			},
+		}),
+		streamText: new Proxy(streamMock, {
+			apply: (target, thisArg, args) => {
+				const result: unknown = Reflect.apply(target, thisArg, args);
+				if (!result || typeof result !== 'object') return result;
+				const legacy = result as {
+					response?: PromiseLike<{ messages: unknown[] }>;
+					responseMessages?: PromiseLike<unknown[]>;
+					providerMetadata?: PromiseLike<unknown>;
+					finalStep?: PromiseLike<unknown>;
+				};
+				const responseMessages =
+					legacy.responseMessages ??
+					Promise.resolve(legacy.response).then((response) => response?.messages);
+				// Aborted streams need no result. Mark the derived promise as handled.
+				void Promise.resolve(responseMessages).catch(() => {});
+				return {
+					...legacy,
+					responseMessages,
+					finalStep:
+						legacy.finalStep ??
+						Promise.resolve(legacy.providerMetadata).then((providerMetadata) => ({
+							providerMetadata,
+						})),
+				};
+			},
+		}),
 		tool: vi.fn((config: unknown) => config),
 		jsonSchema: vi.fn((schema: unknown) => ({ _type: 'jsonSchema', schema })),
 		Output: {
@@ -1053,6 +1097,47 @@ describe('AgentRuntime — execution counters', () => {
 		}
 	});
 
+	it('preserves messages and final-step metadata in generate and stream results', async () => {
+		const usage = { inputTokens: 10, outputTokens: 5, totalTokens: 15 };
+		const providerMetadata = { openai: { cachedPromptTokens: 3 } };
+		const responseMessages = [{ role: 'assistant', content: [{ type: 'text', text: 'Hello' }] }];
+		generateText.mockResolvedValue({
+			finishReason: 'stop',
+			usage,
+			responseMessages,
+			finalStep: { providerMetadata },
+			toolCalls: [],
+		});
+		streamText.mockReturnValue({
+			stream: makeChunkStream([{ type: 'text-delta', id: 'text-1', text: 'Hello' }]),
+			finishReason: Promise.resolve('stop'),
+			usage: Promise.resolve(usage),
+			responseMessages: Promise.resolve(responseMessages),
+			finalStep: Promise.resolve({ providerMetadata }),
+			toolCalls: Promise.resolve([]),
+		});
+		const { runtime } = createRuntime();
+		const generated = await runtime.generate('hi');
+		const streamed = await collectChunks((await runtime.stream('hi')).stream);
+		const expectedUsage = {
+			promptTokens: 10,
+			completionTokens: 5,
+			totalTokens: 15,
+			inputTokenDetails: { noCache: 7, cacheRead: 3 },
+		};
+		expect(generated.messages).toMatchObject(responseMessages);
+		expect(generated.finishReason).toBe('stop');
+		expect(generated.usage).toMatchObject(expectedUsage);
+		expect(streamed).toContainEqual(
+			expect.objectContaining({ type: 'text-delta', delta: 'Hello' }),
+		);
+		expect(streamed.at(-1)).toMatchObject({
+			type: 'finish',
+			finishReason: 'stop',
+			usage: expectedUsage,
+		});
+	});
+
 	it('allows system-role messages in generateText and streamText history', async () => {
 		generateText.mockResolvedValue(makeGenerateSuccess());
 		streamText.mockReturnValue(makeStreamSuccess());
@@ -1153,6 +1238,28 @@ describe('AgentRuntime — execution counters', () => {
 		expect(counter.incrementMessageCount).toHaveBeenCalledTimes(1);
 		expect(counter.incrementToolCallCount).toHaveBeenCalledTimes(1);
 		expect(counter.incrementTokenCount).toHaveBeenCalledTimes(2);
+	});
+
+	it('resumes a suspended call persisted under a legacy tool name', async () => {
+		const suspendTool = makeInterruptibleTool();
+		const { runtime } = createRuntimeWithTools([suspendTool], 1);
+
+		generateText.mockResolvedValueOnce(
+			makeGenerateWithToolCalls([
+				{ toolCallId: 'tc-1', toolName: 'approve', args: { question: 'continue?' } },
+			]),
+		);
+
+		const first = await runtime.generate('needs approval');
+		const { runId, toolCallId } = first.pendingSuspend![0];
+
+		Object.assign(suspendTool, { name: 'approve_v2', legacyNames: ['approve'] });
+
+		generateText.mockResolvedValueOnce(makeGenerateSuccess('approved'));
+		const resumed = await runtime.resume('generate', { approved: true }, { runId, toolCallId });
+
+		expect(resumed.error).toBeUndefined();
+		expect(resumed.finishReason).not.toBe('error');
 	});
 
 	it('exposes the checkpointed suspend payload to a resumed tool handler via ctx.suspendPayload', async () => {
@@ -2607,6 +2714,69 @@ describe('AgentRuntime.stream() — fallback error observability', () => {
 });
 
 // ---------------------------------------------------------------------------
+// stream() — prompt-size split of usage
+// ---------------------------------------------------------------------------
+
+describe('AgentRuntime.stream() — prompt-size split of usage', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it('splits the finish usage by the prompt size of each model call', async () => {
+		const tool = makeMockTool('lookup', async () => await Promise.resolve({ ok: true }));
+		const { runtime } = createRuntimeWithTools([tool], 1);
+
+		streamText
+			.mockReturnValueOnce({
+				stream: makeChunkStream([]),
+				finishReason: Promise.resolve('tool-calls'),
+				usage: Promise.resolve({ inputTokens: 40_000, outputTokens: 5, totalTokens: 40_005 }),
+				response: Promise.resolve({
+					messages: [
+						{
+							role: 'assistant',
+							content: [
+								{ type: 'tool-call', toolCallId: 'tc-1', toolName: 'lookup', args: { value: 'x' } },
+							],
+						},
+					],
+				}),
+				toolCalls: Promise.resolve([
+					{ toolCallId: 'tc-1', toolName: 'lookup', input: { value: 'x' } },
+				]),
+			})
+			.mockReturnValueOnce({
+				...makeStreamSuccess('done'),
+				usage: Promise.resolve({ inputTokens: 150_000, outputTokens: 7, totalTokens: 150_007 }),
+			});
+
+		const { stream } = await runtime.stream('hello');
+		const chunks = await collectChunks(stream);
+
+		const finish = chunks.filter((c) => c.type === 'finish').at(-1) as
+			| (StreamChunk & { type: 'finish' })
+			| undefined;
+
+		expect(finish?.usage).toMatchObject({
+			promptTokens: 190_000,
+			completionTokens: 12,
+			byPromptSize: [
+				{
+					promptTokensOver: 32_000,
+					maxPromptTokens: 40_000,
+					usage: { promptTokens: 40_000, completionTokens: 5 },
+				},
+				{
+					promptTokensOver: 128_000,
+					maxPromptTokens: 150_000,
+					usage: { promptTokens: 150_000, completionTokens: 7 },
+				},
+			],
+		});
+	});
+});
+
+// ---------------------------------------------------------------------------
 // stream() — usage billing on abort
 // ---------------------------------------------------------------------------
 
@@ -2847,6 +3017,14 @@ describe('AgentRuntime.stream() — usage billing on abort', () => {
 			totalTokens: 38,
 			inputTokenDetails: { noCache: 20 },
 		});
+		// The in-flight turn is in the prompt-size split too.
+		expect(finish?.usage?.byPromptSize).toEqual([
+			expect.objectContaining({
+				promptTokensOver: 0,
+				maxPromptTokens: 20,
+				usage: expect.objectContaining({ promptTokens: 30, completionTokens: 8 }),
+			}),
+		]);
 		expect(runtime.getState().status).toBe('cancelled');
 	});
 
@@ -8836,6 +9014,55 @@ describe('AgentRuntime — mid-run observation', () => {
 		expect(JSON.stringify(capturedCall(2))).not.toContain('Old workflow policy.');
 	});
 
+	it('resumes a deferred tool that a skill dependency loaded', async () => {
+		const source = createRuntimeSkillSource([
+			{
+				id: 'planning',
+				name: 'planning',
+				description: 'Plan multi-step work.',
+				instructions: 'Ask the user to approve the plan.',
+				dependencies: { tools: ['approve'] },
+			},
+		]);
+		const checkpointStore = makeClaimingCheckpointStore();
+		const memory = new InMemoryMemory();
+		const options = {
+			skillSource: source,
+			tools: createRuntimeSkillTools(source),
+			deferredTools: [makeInterruptibleTool()],
+			checkpointStorage: checkpointStore,
+		};
+		const first = buildMidRunRuntime(memory, options);
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCall('load-planning', 'load_skill', { skillId: 'planning' }),
+			)
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCall('confirm', 'approve', { question: 'Run the plan?' }),
+			);
+		const result = await first.generate('Plan it', { persistence: PERSISTENCE });
+		await first.dispose();
+		const suspension = result.pendingSuspend?.[0];
+		if (!suspension) throw new Error('Expected a plan confirmation');
+
+		const resumed = buildMidRunRuntime(memory, options);
+		generateText.mockResolvedValueOnce(makeGenerateSuccess('Plan approved.'));
+		const resumeResult = await resumed.resume(
+			'generate',
+			{ approved: true },
+			{ runId: suspension.runId, toolCallId: suspension.toolCallId },
+		);
+		await resumed.dispose();
+
+		expect(resumeResult.error).toBeUndefined();
+		expect(resumeResult.toolCalls).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ tool: 'approve', output: { approved: true } }),
+			]),
+		);
+		expect(capturedCall(2).tools).toHaveProperty('approve');
+	});
+
 	it('merges system messages after compaction for custom OpenAI-compatible endpoints', async () => {
 		const memory = new InMemoryMemory();
 		const runtime = buildMidRunRuntime(memory, {
@@ -10310,8 +10537,11 @@ describe('AgentRuntime — oversized tool results', () => {
 			type: 'content' as const,
 			value: [
 				{
-					type: 'file-data' as const,
-					data: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'.repeat(8_000),
+					type: 'file' as const,
+					data: {
+						type: 'data' as const,
+						data: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'.repeat(8_000),
+					},
 					mediaType: 'application/pdf',
 				},
 			],
@@ -10696,8 +10926,8 @@ describe('AgentRuntime — oversized tool results', () => {
 				},
 			];
 			const filePart = {
-				type: 'file-data' as const,
-				data: 'base64-pdf',
+				type: 'file' as const,
+				data: { type: 'data' as const, data: 'base64-pdf' },
 				mediaType: 'application/pdf',
 			};
 			const tool: BuiltTool = {

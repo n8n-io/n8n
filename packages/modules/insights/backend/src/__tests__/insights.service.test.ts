@@ -1173,4 +1173,39 @@ describe('InsightsService', () => {
 			);
 		});
 	});
+
+	describe('getDailyBillableExecutions', () => {
+		const startDate = new Date('2026-03-20T00:00:00.000Z');
+		const endDate = new Date('2026-03-22T00:00:00.000Z');
+
+		it('returns the billable executions keyed by UTC day', async () => {
+			mockInsightsByPeriodRepository.getDailyBillableExecutions.mockResolvedValue([
+				{ day: '2026-03-20', billable: 4 },
+				{ day: '2026-03-22', billable: 0 },
+			]);
+
+			const result = await insightsService.getDailyBillableExecutions({ startDate, endDate });
+
+			expect(Object.fromEntries(result)).toEqual({ '2026-03-20': 4, '2026-03-22': 0 });
+		});
+
+		it('reads the billable executions from the start to the end date', async () => {
+			mockInsightsByPeriodRepository.getDailyBillableExecutions.mockResolvedValue([]);
+
+			await insightsService.getDailyBillableExecutions({ startDate, endDate });
+
+			expect(mockInsightsByPeriodRepository.getDailyBillableExecutions).toHaveBeenCalledWith({
+				startDate,
+				endDate,
+			});
+		});
+	});
+
+	describe('getFirstBillableDay', () => {
+		it('returns the first billable day from the repository', async () => {
+			mockInsightsByPeriodRepository.getFirstBillableDay.mockResolvedValue('2026-03-21');
+
+			await expect(insightsService.getFirstBillableDay()).resolves.toBe('2026-03-21');
+		});
+	});
 });

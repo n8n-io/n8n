@@ -93,6 +93,9 @@ test.describe(
 				);
 
 				await n8n.goHome();
+				// Wait for the Overview list to load. A click on the sidebar before that
+				// can be dropped when the initial page load finishes.
+				await expect(n8n.workflows.cards.getWorkflows()).toHaveCount(1);
 
 				await n8n.sideBar.clickPersonalMenuItem();
 				await n8n.sideBar.clickWorkflowsLink();

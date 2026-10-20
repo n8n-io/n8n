@@ -8,6 +8,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { CachedMetricQueryFactory } from '../cached-metric-query';
 import { LAG_BUCKETS_SECONDS } from '../constant';
+import { DatabaseMetricQueryService } from '../database-metric-query.service';
 import { PrometheusSystemTaskMetricsService } from '../system-task-metrics.service';
 
 vi.mock('prom-client');
@@ -88,8 +89,14 @@ describe('PrometheusSystemTaskMetricsService', () => {
 		service = new PrometheusSystemTaskMetricsService(
 			config,
 			eventService,
-			new CachedMetricQueryFactory(cacheService, dbConnection),
-			scheduledJobRepository,
+			new DatabaseMetricQueryService(
+				new CachedMetricQueryFactory(cacheService, dbConnection),
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+				scheduledJobRepository,
+			),
 		);
 	});
 

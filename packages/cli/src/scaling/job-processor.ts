@@ -4,6 +4,7 @@ import { Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import { ExecutionsConfig } from '@n8n/config';
 import { MAX_INTEGER_32BITS_SIGNED } from '@n8n/constants';
+import type { IExecutionResponse } from '@n8n/db';
 import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { InstanceSettings, WorkflowExecute, SupplyDataContext, StructuredToolkit } from 'n8n-core';
@@ -14,12 +15,14 @@ import {
 	TimeoutExecutionCancelledError,
 	Workflow,
 	UnexpectedError,
+	CHAT_TRIGGER_NODE_TYPE,
 	runDataAttemptedDynamicCredentials,
 	runDataUsedDynamicCredentials,
 } from 'n8n-workflow';
 import type {
 	CancellationReason,
 	ExecutionStatus,
+	WorkflowExecuteMode,
 	IDataObject,
 	IExecuteData,
 	IExecuteFunctions,
@@ -86,6 +89,9 @@ function scheduleAt(timestamp: number, fn: () => void): () => void {
 	return () => clearTimeout(timer);
 }
 
+/** Production runs that may be parked at worker shutdown and resumed elsewhere. */
+const SUSPENDABLE_EXECUTION_MODES = new Set<WorkflowExecuteMode>(['webhook', 'trigger', 'retry']);
+
 /**
  * Responsible for processing jobs from the queue, i.e. running enqueued executions.
  */
@@ -98,6 +104,9 @@ export class JobProcessor {
 
 	/** Cause of the cancellation of each job cancelled so far, kept until its run settles. */
 	private readonly cancellationReasons: Record<JobId, CancellationReason> = {};
+
+	/** Set once at shutdown; jobs that register afterwards suspend right away. */
+	private suspensionRequested = false;
 
 	constructor(
 		private readonly logger: Logger,
@@ -239,6 +248,10 @@ export class JobProcessor {
 			});
 		}
 
+		// An older main sends no value. Assume the strictest, so nothing is parked
+		// until every main is upgraded.
+		let callerAwaitsOutcome = job.data.callerAwaitsOutcome ?? 'completion';
+
 		lifecycleHooks.addHandler('sendResponse', async (response): Promise<void> => {
 			// An MCP Service call takes its result from the execution's stored data, so a
 			// response relayed to main has no reader. Relaying one would also reach main
@@ -277,6 +290,11 @@ export class JobProcessor {
 			};
 
 			await job.progress(msg);
+
+			// Only a webhook caller is satisfied by a relayed response; a done promise waits for the end.
+			if (callerAwaitsOutcome !== 'response') return;
+			callerAwaitsOutcome = 'none';
+			if (this.suspensionRequested) this.runningJobs[job.id]?.suspend?.();
 		});
 
 		lifecycleHooks.addHandler('sendChunk', async (chunk: StructuredChunk): Promise<void> => {
@@ -307,7 +325,7 @@ export class JobProcessor {
 			);
 		};
 
-		let workflowExecute: WorkflowExecute;
+		let workflowExecute: WorkflowExecute | undefined;
 		let workflowRun: PCancelable<IRun>;
 
 		const { startData, resultData, manualData } = execution.data;
@@ -354,6 +372,18 @@ export class JobProcessor {
 			retryOf: execution.retryOf ?? undefined,
 			status: execution.status,
 		};
+
+		if (workflowExecute && this.isJobSuspendable(job, execution)) {
+			const suspendable = workflowExecute;
+			runningJob.suspend = () => {
+				if (callerAwaitsOutcome !== 'none') return false;
+				suspendable.suspend();
+				return true;
+			};
+			// A job that was still in its preflight reads when shutdown asked the
+			// running jobs to suspend would otherwise run to completion unasked.
+			if (this.suspensionRequested) runningJob.suspend();
+		}
 
 		this.runningJobs[job.id] = runningJob;
 
@@ -580,6 +610,45 @@ export class JobProcessor {
 			.map(([jobId, executionId]) => ({ jobId, executionId }));
 	}
 
+	/**
+	 * Whether a job may be suspended at worker shutdown. Only production
+	 * executions qualify: manual and evaluation runs are tied to a session,
+	 * streaming responses cannot migrate mid-stream, and MCP executions are
+	 * pinned to their session, and so is a chat conversation, whose client polls
+	 * the waiting state and would mistake a parked run for a reply. A pending
+	 * webhook response is checked at suspend time, since the run may still send it.
+	 */
+	private isJobSuspendable(job: Job, execution: IExecutionResponse): boolean {
+		const hasChatTrigger = execution.workflowData.nodes.some(
+			(node) => node.type === CHAT_TRIGGER_NODE_TYPE && !node.disabled,
+		);
+
+		return (
+			SUSPENDABLE_EXECUTION_MODES.has(execution.mode) &&
+			!job.data.streamingEnabled &&
+			!job.data.isMcpExecution &&
+			!hasChatTrigger &&
+			execution.data.executionData !== undefined
+		);
+	}
+
+	/** Ask every suspendable running job to stop at its next node boundary. */
+	suspendRunningJobs() {
+		this.suspensionRequested = true;
+		const executionIds: string[] = [];
+
+		for (const runningJob of Object.values(this.runningJobs)) {
+			if (!runningJob.suspend?.()) continue;
+			executionIds.push(runningJob.executionId);
+		}
+
+		if (executionIds.length > 0) {
+			this.logger.info(
+				`Requested suspension of ${executionIds.length} execution(s) at the next node boundary (execution IDs: ${executionIds.join(', ')})`,
+			);
+		}
+	}
+
 	getRunningJobsSummary(): RunningJobSummary[] {
 		return Object.values(this.runningJobs).map(({ run, ...summary }) => summary);
 	}
@@ -697,8 +766,26 @@ export class JobProcessor {
 			}
 
 			if (nodeType.execute && nodeType.description.outputs.includes(NodeConnectionTypes.AiTool)) {
-				// oxlint-disable-next-line typescript/no-deprecated
-				context.addInputData(NodeConnectionTypes.AiTool, [
+				const toolRunIndex = context.getNextRunIndex();
+				const recordToolData = async (
+					type: 'input' | 'output',
+					data: INodeExecutionData[][] | NodeOperationError,
+				) => {
+					try {
+						await context.addExecutionDataFunctions(
+							type,
+							data,
+							NodeConnectionTypes.AiTool,
+							toolNode.name,
+							toolRunIndex,
+						);
+					} catch (error) {
+						this.logger.warn(
+							`There was a problem logging ${type} data of node "${toolNode.name}": ${error instanceof Error ? error.message : String(error)}`,
+						);
+					}
+				};
+				await recordToolData('input', [
 					[{ json: validatedToolArgs as INodeExecutionData['json'] }],
 				]);
 
@@ -708,10 +795,8 @@ export class JobProcessor {
 				} catch (error) {
 					// Record the failure so the tool node shows as errored, not stuck
 					// "running"; rethrow so the caller returns an error to the client.
-					// oxlint-disable-next-line typescript/no-deprecated
-					context.addOutputData(
-						NodeConnectionTypes.AiTool,
-						0,
+					await recordToolData(
+						'output',
 						error instanceof NodeOperationError
 							? error
 							: new NodeOperationError(toolNode, error as Error),
@@ -724,8 +809,7 @@ export class JobProcessor {
 					response = result?.[0]?.flatMap((item: INodeExecutionData) => item.json);
 				}
 
-				// oxlint-disable-next-line typescript/no-deprecated
-				context.addOutputData(NodeConnectionTypes.AiTool, 0, [[{ json: { response } }]]);
+				await recordToolData('output', [[{ json: { response } }]]);
 
 				return response;
 			}

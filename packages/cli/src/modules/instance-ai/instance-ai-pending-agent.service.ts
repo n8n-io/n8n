@@ -10,6 +10,7 @@ import { AgentRunnableStateService } from '@/modules/agents/agent-runnable-state
 import { AgentsService } from '@/modules/agents/agents.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
+import { isAgentsAccessEnabled } from './agents-access';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
 
 /**
@@ -17,7 +18,7 @@ import { InstanceAiMemoryService } from './instance-ai-memory.service';
  *
  * The frontend mints the agent id before anything is saved, so two writers can
  * reach the same id: this path (the user configuring the artifact by hand) and
- * the chat's `build-agent` tool. Whichever inserts first may configure the row
+ * the chat's `agent_builder_build_agent` tool. Whichever inserts first may configure the row
  * before the other collides, so the loser has to converge on it rather than
  * fail — hence create-or-adopt rather than create.
  *
@@ -39,7 +40,7 @@ export class InstanceAiPendingAgentService {
 	 *  whether or not the agents module is active, and injecting would construct
 	 *  its services (and their repositories) regardless. */
 	private agentsModule() {
-		if (!this.moduleRegistry.isActive('agents')) {
+		if (!isAgentsAccessEnabled(this.moduleRegistry)) {
 			throw new NotFoundError('Agents are not enabled on this instance');
 		}
 		return {

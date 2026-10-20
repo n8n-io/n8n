@@ -8,13 +8,18 @@ import type {
 	IHttpRequestOptions,
 	ILoadOptionsFunctions,
 	IPollFunctions,
+	ISupplyDataFunctions,
 } from 'n8n-workflow';
 
 import { DATABRICKS_PARTNER_USER_AGENT } from '../constants';
 
 import type { DatabricksCredentials, OpenAPISchema } from './interfaces';
 
-export type DatabricksContext = IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions;
+export type DatabricksContext =
+	| IExecuteFunctions
+	| ILoadOptionsFunctions
+	| IPollFunctions
+	| ISupplyDataFunctions;
 export type DatabricksCredentialType = 'databricksApi' | 'databricksOAuth2Api';
 
 const RATE_LIMIT_MAX_RETRIES = 3;
@@ -79,6 +84,28 @@ export async function getHost(
 ): Promise<string> {
 	const credentials = await context.getCredentials<DatabricksCredentials>(credentialType);
 	return credentials.host.replace(/\/$/, '');
+}
+
+export type GenieApiResponse = { body: IDataObject; headers: IDataObject };
+
+/**
+ * Adds the Genie UI link for a space or a conversation. `?o=` carries the workspace id;
+ * Azure workspaces need it.
+ */
+export function withGenieDeepLink(
+	response: GenieApiResponse,
+	host: string,
+	spaceId: string,
+	conversationId?: string,
+): IDataObject {
+	const workspaceId = response.headers['x-databricks-org-id'];
+	const query =
+		typeof workspaceId === 'string' && /^\d+$/.test(workspaceId) ? `?o=${workspaceId}` : '';
+	const chat = conversationId ? `/chats/${encodeURIComponent(conversationId)}` : '';
+	return {
+		...response.body,
+		deep_link: `${host}/genie/rooms/${encodeURIComponent(spaceId)}${chat}${query}`,
+	};
 }
 
 // Body text comes from whatever server `host` points at

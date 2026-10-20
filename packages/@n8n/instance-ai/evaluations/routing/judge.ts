@@ -44,7 +44,8 @@ export type Steer = JudgeVerdict['steer'];
 
 export type TraceStep =
 	| { kind: 'text'; text: string }
-	| { kind: 'call'; toolName: string; args: Record<string, unknown> };
+	| { kind: 'call'; toolName: string; args: Record<string, unknown> }
+	| { kind: 'answer'; result: unknown };
 
 export interface JudgeInput {
 	/** The orchestrator's text and tool calls, in order. */
@@ -82,6 +83,7 @@ decision:
 - continue: The latest call starts work that can still end as more than one route. For example, it writes workflow code, but no call shows yet if the workflow runs once or stays.
 - stop: The latest call picks a route. It starts a build, does a task with an effect, plans tasks, looks for why a run failed or gave a wrong result, or asks the user. Stop as soon as the route is clear. Do not wait for the work to finish.
 - continue: The latest call only asks the user to confirm a build that the Assistant already proposed (for example, "Should I build this now?" with yes and no options). The build that follows decides the route. When the turn ends on this confirmation, pick the route of the proposed build.
+- A user answer in the trace means that the user answered a question of the Assistant. Then pick the route only from what the Assistant does after the latest answer. The question before the answer does not decide the route.
 - When the turn has ended, stop and pick the route from all that the Assistant did and wrote. If the turn did not complete, its last text is not a reply to the user. Then pick the route only from the calls. What the Assistant said that it will build or do does not pick a route. When no call picked a route, pick none.
 
 steer is the artifact that the Assistant pushes the user toward. An answer has the steer of what it explains or recommends: an answer that explains only how to build a workflow, also one with an AI Agent node, is workflow.
@@ -103,11 +105,11 @@ function clip(text: string): string {
 
 export function renderJudgePrompt({ steps, endStatus }: JudgeInput): string {
 	let callNumber = 0;
-	const lines = steps.map((step) =>
-		step.kind === 'text'
-			? `Assistant text: ${clip(step.text)}`
-			: `Tool call ${String(++callNumber)}: ${step.toolName} ${clip(JSON.stringify(step.args))}`,
-	);
+	const lines = steps.map((step) => {
+		if (step.kind === 'text') return `Assistant text: ${clip(step.text)}`;
+		if (step.kind === 'answer') return `User answer: ${clip(JSON.stringify(step.result))}`;
+		return `Tool call ${String(++callNumber)}: ${step.toolName} ${clip(JSON.stringify(step.args))}`;
+	});
 	const footer = endStatus
 		? `The turn has ended (status: ${endStatus}). Stop and pick the route.`
 		: 'The turn is still running. The last tool call has not run yet. Decide: stop or continue.';

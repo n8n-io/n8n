@@ -20,7 +20,7 @@ import {
 	getVersionedSystemPrompt,
 	resolvePromptProfile,
 } from '../src/prompts/prompt-profiles';
-import { loadInstanceAiPromptSkills } from '../src/skills/runtime-skills';
+import { loadInstanceAiPromptSkills } from '../src/skills/skills';
 
 interface Variant {
 	/** File name (without extension) inside the agent's folder. */

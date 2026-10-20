@@ -40,6 +40,7 @@ import {
 	type AgentThreadAccess,
 } from './entities/agent-execution-thread.entity';
 import { AgentExecution, type AgentExecutionHitlStatus } from './entities/agent-execution.entity';
+import { isProjectAgent } from './entities/agent.entity';
 import type { MessageRecord, TimelineEvent } from './execution-recorder';
 import {
 	AgentExecutionLogStore,
@@ -748,15 +749,13 @@ export class AgentExecutionService {
 	async findN8nChatThreadsForAgents(
 		userId: string,
 		agentIds: string[],
-		limit: number,
-		cursor?: string,
+		options: { limit: number; cursor?: string; search?: string },
 	): Promise<AgentN8nChatThreadsResponse> {
 		const { threads, nextCursor } =
 			await this.agentExecutionThreadRepository.findN8nChatThreadsForOwner(
 				userId,
 				agentIds,
-				limit,
-				cursor,
+				options,
 			);
 		return { data: threads.map(toN8nChatThreadSummary), nextCursor };
 	}
@@ -1267,6 +1266,7 @@ export class AgentExecutionService {
 				user_id: params.telemetry.userId,
 				thread_id: threadId,
 				run_type: params.telemetry.runType,
+				source: params.source,
 				turn_status: status === 'success' ? 'succeeded' : 'failed',
 				configuration: params.telemetry.configuration,
 				...buildAgentTurnMetrics(record),
@@ -1307,6 +1307,10 @@ function executionStatus(record: MessageRecord): AgentExecution['status'] {
 /** Maps a thread (with `agent` and `agent.activeVersion` loaded) to the
  *  cross-agent n8n Chat thread list shape. */
 function toN8nChatThreadSummary(thread: AgentExecutionThread): AgentN8nChatThreadSummary {
+	// The callers narrow `agentIds` to chat-reachable project agents.
+	if (!isProjectAgent(thread.agent)) {
+		throw new UnexpectedError(`Thread ${thread.id} does not belong to a project agent`);
+	}
 	return {
 		id: thread.id,
 		title: thread.title,

@@ -1,7 +1,7 @@
-import { ModuleRegistry } from '@n8n/backend-common';
-import { EventService, UrlService } from '@n8n/backend-services';
+import { Logger, ModuleRegistry } from '@n8n/backend-common';
+import { EventService, UrlService, WorkflowPublishedDataService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
-import { ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
+import { ExecutionsConfig, GlobalConfig, type NodesConfig, WorkflowsConfig } from '@n8n/config';
 import type { WorkflowEntity, Project, WorkflowHistory } from '@n8n/db';
 import {
 	ExecutionRepository,
@@ -23,6 +23,7 @@ import type {
 	ITaskData,
 	WorkflowExecuteMode,
 	ExecuteAgentWorkflowContext,
+	IExecutionContext,
 	IRunExecutionData,
 	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
@@ -62,7 +63,9 @@ import {
 } from '@/workflow-execute-additional-data';
 import * as WorkflowHelpers from '@/workflow-helpers';
 import { WorkflowHookContextService } from '@/workflow-hook-context.service';
-import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
+import { DeprecatedNodesError } from '@/errors/response-errors/deprecated-nodes.error';
+import { DeprecatedNodesValidationService } from '@/workflows/deprecated-nodes-validation.service';
+
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
 const EXECUTION_ID = '123';
@@ -141,6 +144,20 @@ describe('WorkflowExecuteAdditionalData', () => {
 	mockInstance(DataTableProxyService);
 	mockInstance(WorkflowHookContextService);
 	const workflowPublishedDataService = mockInstance(WorkflowPublishedDataService);
+	const deprecatedNodeTypes = mock<NodeTypes>();
+	deprecatedNodeTypes.getByNameAndVersion.mockImplementation((type) =>
+		type === 'n8n-nodes-base.function'
+			? mock<INodeType>({ description: { deprecated: true } })
+			: mock<INodeType>(),
+	);
+	Container.set(
+		DeprecatedNodesValidationService,
+		new DeprecatedNodesValidationService(
+			mock<Logger>(),
+			mock<NodesConfig>({ blockDeprecated: true }),
+			deprecatedNodeTypes,
+		),
+	);
 	const workflowsConfig = Container.get(WorkflowsConfig);
 	afterEach(() => {
 		// Keep the default (flag off) for every test; flag-on tests opt in.
@@ -363,15 +380,16 @@ describe('WorkflowExecuteAdditionalData', () => {
 					parameters: {},
 				},
 			];
-			const subWorkflowData = () =>
-				mock<IWorkflowBase>({
+			// Plain object: inline code is structure-validated, which a deep mock fails.
+			const subWorkflowData = (): IWorkflowBase =>
+				({
 					id: 'sub-id',
 					name: 'Sub Workflow',
 					nodes: structuredClone(nodes),
 					connections: {},
 					staticData: {},
 					settings: {},
-				});
+				}) as IWorkflowBase;
 
 			beforeEach(() => {
 				nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
@@ -382,7 +400,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 
 			it('checks credentials against the triggering user for an inline sub-workflow', async () => {
 				await executeWorkflow(
-					mock<IExecuteWorkflowInfo>({ id: undefined, code: subWorkflowData() }),
+					{ code: subWorkflowData() },
 					// `rootExecutionMode` explicit: a deep mock auto-stubs every
 					// property, so leaving it out would hand `??` a truthy proxy.
 					mock<IWorkflowExecuteAdditionalData>({
@@ -399,11 +417,24 @@ describe('WorkflowExecuteAdditionalData', () => {
 				expect(credentialsPermissionChecker.check).not.toHaveBeenCalled();
 			});
 
+			it('rejects an inline sub-workflow with a non-boolean disabled flag', async () => {
+				const code = subWorkflowData();
+				code.nodes = code.nodes.map((n) => ({ ...n, disabled: 1 as unknown as boolean }));
+
+				await expect(
+					executeWorkflow({ code }, mock<IWorkflowExecuteAdditionalData>({ userId: 'user-1' }), {
+						parentWorkflowId: 'parent-1',
+						executionMode: 'manual',
+					}),
+				).rejects.toThrow('Workflow structure is invalid');
+				expect(credentialsPermissionChecker.checkForUser).not.toHaveBeenCalled();
+			});
+
 			// A sub-workflow's own WorkflowExecute runs as 'integrated', so the
 			// original mode has to come from the root.
 			it('checks against the triggering user through a nested inline sub-workflow', async () => {
 				await executeWorkflow(
-					mock<IExecuteWorkflowInfo>({ id: undefined, code: subWorkflowData() }),
+					{ code: subWorkflowData() },
 					mock<IWorkflowExecuteAdditionalData>({
 						userId: 'user-1',
 						rootExecutionMode: 'manual',
@@ -426,7 +457,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 			// access to it has since changed.
 			it('keeps the project check for an inline sub-workflow in a triggered run', async () => {
 				await executeWorkflow(
-					mock<IExecuteWorkflowInfo>({ id: undefined, code: subWorkflowData() }),
+					{ code: subWorkflowData() },
 					mock<IWorkflowExecuteAdditionalData>({
 						userId: 'publisher-1',
 						rootExecutionMode: undefined,
@@ -451,7 +482,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				'checks against the acting user for an inline sub-workflow in a %s run',
 				async (executionMode) => {
 					await executeWorkflow(
-						mock<IExecuteWorkflowInfo>({ id: undefined, code: subWorkflowData() }),
+						{ code: subWorkflowData() },
 						mock<IWorkflowExecuteAdditionalData>({
 							userId: 'user-1',
 							rootExecutionMode: undefined,
@@ -486,7 +517,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 			it('falls back to the project check for an inline sub-workflow without a triggering user', async () => {
 				const workflowData = subWorkflowData();
 				await executeWorkflow(
-					mock<IExecuteWorkflowInfo>({ id: undefined, code: workflowData }),
+					{ code: workflowData },
 					mock<IWorkflowExecuteAdditionalData>({ userId: undefined }),
 					{ parentWorkflowId: 'parent-1', executionMode: 'webhook' },
 				);
@@ -539,7 +570,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 
 			it('preserves parent static-data persistence for inline definitions without an id', async () => {
 				await executeWorkflow(
-					{ code: mock<IWorkflowBase>({ ...subWorkflowData(), id: undefined }) },
+					{ code: { ...subWorkflowData(), id: undefined } as unknown as IWorkflowBase },
 					mock<IWorkflowExecuteAdditionalData>({ userId: undefined }),
 					{ parentWorkflowId: 'parent-1', executionMode: 'webhook' },
 				);
@@ -563,7 +594,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 
 			it('preserves the triggering user in the sub-workflow additional data for inline sub-workflows so nested inline calls stay scoped to that user', async () => {
 				await executeWorkflow(
-					mock<IExecuteWorkflowInfo>({ id: undefined, code: subWorkflowData() }),
+					{ code: subWorkflowData() },
 					mock<IWorkflowExecuteAdditionalData>({ userId: 'user-1' }),
 					mock<ExecuteWorkflowOptions>({
 						loadedWorkflowData: subWorkflowData(),
@@ -705,6 +736,75 @@ describe('WorkflowExecuteAdditionalData', () => {
 				expect(response.dynamicCredentialsResolvedUserId).toBeUndefined();
 			});
 
+			describe('credentials the sub-workflow references', () => {
+				beforeEach(() => {
+					credentialsPermissionChecker.getCredentialIdsForNodes.mockReturnValue(['child-cred']);
+				});
+
+				afterEach(() => {
+					delete process.env.N8N_ENV_FEAT_CRED_SHARING;
+				});
+
+				const runSubWorkflow = async () =>
+					await executeWorkflow(
+						mock<IExecuteWorkflowInfo>(),
+						mock<IWorkflowExecuteAdditionalData>(),
+						mock<ExecuteWorkflowOptions>({
+							loadedWorkflowData: undefined,
+							doNotWaitToFinish: false,
+						}),
+					);
+
+				it('reports them to the caller with credential sharing on', async () => {
+					process.env.N8N_ENV_FEAT_CRED_SHARING = 'true';
+					processRunExecutionData.mockReturnValue(
+						getCancelablePromise(getMockRunWithCredentialFlags({})),
+					);
+
+					const response = await runSubWorkflow();
+
+					expect(response.usedCredentialIds).toEqual(['child-cred']);
+				});
+
+				it('rides them on the error when the sub-workflow fails', async () => {
+					process.env.N8N_ENV_FEAT_CRED_SHARING = 'true';
+					processRunExecutionData.mockReturnValue(
+						getCancelablePromise(
+							mock<IRun>({
+								data: {
+									subWorkflowOutput: undefined,
+									resultData: {
+										runData: { [LAST_NODE_EXECUTED]: [{ startTime: 100 }] },
+										lastNodeExecuted: LAST_NODE_EXECUTED,
+										error: { message: 'child failed', name: 'NodeOperationError' },
+									},
+									executionData: { runtimeData: {} },
+								},
+								finished: false,
+								mode: 'manual',
+								startedAt: new Date(),
+								status: 'error',
+								waitTill: undefined,
+							}),
+						),
+					);
+
+					await expect(runSubWorkflow()).rejects.toMatchObject({
+						dynamicCredentialsUsage: { usedCredentialIds: ['child-cred'] },
+					});
+				});
+
+				it('reports nothing with credential sharing off', async () => {
+					processRunExecutionData.mockReturnValue(
+						getCancelablePromise(getMockRunWithCredentialFlags({})),
+					);
+
+					const response = await runSubWorkflow();
+
+					expect(response.usedCredentialIds).toBeUndefined();
+				});
+			});
+
 			describe('failed sub-workflow', () => {
 				const getMockFailedRunWithCredentialFlags = (
 					task: Partial<ITaskData>,
@@ -795,6 +895,144 @@ describe('WorkflowExecuteAdditionalData', () => {
 					);
 					await expect(promise).rejects.toThrow('child failed');
 					await expect(promise).rejects.not.toHaveProperty('dynamicCredentialsUsage');
+				});
+			});
+		});
+
+		describe('sub-workflow redaction reporting', () => {
+			const childContext = (fields: Partial<IExecutionContext>): IExecutionContext => ({
+				version: 1,
+				establishedAt: 0,
+				source: 'integrated',
+				...fields,
+			});
+
+			// A plain object: `mock()` does not keep `false` values in nested objects.
+			const getMockRunWithContext = (runtimeData: IExecutionContext, failed = false) =>
+				({
+					data: {
+						subWorkflowOutput: undefined,
+						resultData: {
+							runData: {
+								[LAST_NODE_EXECUTED]: [
+									{ startTime: 100, data: { main: [[{ json: { test: 1 } }]] } },
+								],
+							},
+							lastNodeExecuted: LAST_NODE_EXECUTED,
+							...(failed && { error: { message: 'child failed', name: 'NodeOperationError' } }),
+						},
+						executionData: { runtimeData },
+					},
+					finished: !failed,
+					mode: 'integrated',
+					startedAt: new Date(),
+					status: failed ? 'error' : 'success',
+					waitTill: undefined,
+				}) as unknown as IRun;
+
+			const run = async (doNotWaitToFinish = false) =>
+				await executeWorkflow(
+					mock<IExecuteWorkflowInfo>(),
+					mock<IWorkflowExecuteAdditionalData>(),
+					mock<ExecuteWorkflowOptions>({ loadedWorkflowData: undefined, doNotWaitToFinish }),
+				);
+
+			it('reports the channels the sub-workflow redacts', async () => {
+				processRunExecutionData.mockReturnValue(
+					getCancelablePromise(
+						getMockRunWithContext(
+							childContext({ redaction: { version: 2, production: true, manual: false } }),
+						),
+					),
+				);
+
+				const response = await run();
+
+				expect(response.subWorkflowRedaction).toEqual({ production: true, manual: false });
+			});
+
+			it('also reports the channels its own sub-workflows reported to it', async () => {
+				processRunExecutionData.mockReturnValue(
+					getCancelablePromise(
+						getMockRunWithContext(
+							childContext({
+								redaction: { version: 2, production: false, manual: false },
+								subWorkflowRedaction: { production: true, manual: true },
+							}),
+						),
+					),
+				);
+
+				const response = await run();
+
+				expect(response.subWorkflowRedaction).toEqual({ production: true, manual: true });
+			});
+
+			it('reports nothing when the sub-workflow redacts no channel', async () => {
+				processRunExecutionData.mockReturnValue(
+					getCancelablePromise(
+						getMockRunWithContext(
+							childContext({ redaction: { version: 2, production: false, manual: false } }),
+						),
+					),
+				);
+
+				const response = await run();
+
+				expect(response.subWorkflowRedaction).toBeUndefined();
+			});
+
+			it('reports nothing for detached sub-workflows (no embedded output)', async () => {
+				processRunExecutionData.mockReturnValue(
+					getCancelablePromise(
+						getMockRunWithContext(
+							childContext({ redaction: { version: 2, production: true, manual: true } }),
+						),
+					),
+				);
+
+				const response = await run(true);
+
+				expect(response.subWorkflowRedaction).toBeUndefined();
+			});
+
+			it('attaches the channels to the error of a failed sub-workflow', async () => {
+				processRunExecutionData.mockReturnValue(
+					getCancelablePromise(
+						getMockRunWithContext(
+							childContext({ redaction: { version: 2, production: true, manual: false } }),
+							true,
+						),
+					),
+				);
+
+				await expect(run()).rejects.toMatchObject({
+					message: 'child failed',
+					subWorkflowRedaction: { production: true, manual: false },
+				});
+			});
+
+			it('attaches the channels to the error when the engine throws mid-run', async () => {
+				const executionData = createRunExecutionData();
+				// The engine mutates the run data in place, so the context it established
+				// before the crash is still readable.
+				processRunExecutionData.mockImplementationOnce(async () => {
+					executionData.executionData!.runtimeData = childContext({
+						redaction: { version: 2, production: true, manual: true },
+					});
+					throw new Error('engine crashed');
+				});
+
+				await expect(
+					executeWorkflow(mock<IExecuteWorkflowInfo>(), mock<IWorkflowExecuteAdditionalData>(), {
+						...mock<ExecuteWorkflowOptions>(),
+						loadedWorkflowData: undefined,
+						loadedRunData: { ...mock<IWorkflowExecutionDataProcess>(), executionData },
+						doNotWaitToFinish: false,
+					}),
+				).rejects.toMatchObject({
+					message: 'engine crashed',
+					subWorkflowRedaction: { production: true, manual: true },
 				});
 			});
 		});
@@ -1196,6 +1434,15 @@ describe('WorkflowExecuteAdditionalData', () => {
 				expect(result.id).toBe('parent-workflow-id');
 			},
 		);
+
+		it('refuses inline nodes of a deprecated type', async () => {
+			const nodes = [mock<INode>({ type: 'n8n-nodes-base.function', typeVersion: 1 })];
+			const workflowCode = mock<IWorkflowBase>({ nodes, connections: {} });
+
+			await expect(loadWorkflow({ code: workflowCode }, 'parent-workflow-id')).rejects.toThrow(
+				DeprecatedNodesError,
+			);
+		});
 	});
 
 	describe('getPublishedWorkflowData', () => {
@@ -1327,22 +1574,22 @@ describe('WorkflowExecuteAdditionalData', () => {
 		});
 
 		it('should use provided workflow code when id is not provided', async () => {
-			const workflowCode = mock<IWorkflowBase>({
+			const workflowCode = {
 				id: 'code-workflow',
 				name: 'Code Workflow',
 				active: false,
 				nodes: [
-					mock<INode>({
+					{
 						id: 'node1',
 						type: 'n8n-nodes-base.set',
 						name: 'Node 1',
 						typeVersion: 1,
 						parameters: {},
 						position: [250, 300],
-					}),
+					} as INode,
 				],
 				connections: {},
-			});
+			} as IWorkflowBase;
 
 			const result = await getPublishedWorkflowData({ code: workflowCode }, 'parent-workflow-id');
 
@@ -1423,6 +1670,17 @@ describe('WorkflowExecuteAdditionalData', () => {
 	describe('getDraftWorkflowData', () => {
 		beforeEach(() => {
 			workflowRepository.get.mockClear();
+		});
+
+		it('loads a stored workflow that contains a deprecated node', async () => {
+			const nodes = [mock<INode>({ type: 'n8n-nodes-base.function', typeVersion: 1 })];
+			workflowRepository.get.mockResolvedValue(
+				mock<WorkflowEntity>({ id: 'workflow-123', nodes, connections: {} }),
+			);
+
+			const result = await getDraftWorkflowData({ id: 'workflow-123' }, 'parent-workflow-id');
+
+			expect(result.nodes).toEqual(nodes);
 		});
 
 		it('should use draft version', async () => {
@@ -1781,6 +2039,102 @@ describe('WorkflowExecuteAdditionalData', () => {
 			);
 		});
 
+		describe('eval runs', () => {
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({
+				userId: 'user-1',
+				projectId: 'project-1',
+				workflowId: 'workflow-1',
+			});
+
+			it('runs the draft of a stored agent with the eval hook', async () => {
+				const prepareForEval = vi.fn();
+
+				await executeAgent(
+					{ agentId: AGENT_ID },
+					MESSAGE,
+					EXEC_ID,
+					THREAD_ID,
+					additionalData,
+					'evaluation',
+					undefined,
+					undefined,
+					undefined,
+					prepareForEval,
+				);
+
+				expect(agentWorkflowExecutionService.executeForWorkflow).toHaveBeenCalledWith(
+					AGENT_ID,
+					MESSAGE,
+					EXEC_ID,
+					PROJECT_THREAD_ID,
+					'project-1',
+					'user-1',
+					true,
+					undefined,
+					undefined,
+					executionSandboxScope,
+					{ streamObserver: undefined, prepareForEval },
+				);
+			});
+
+			it('runs an inline agent as a test run with the eval hook', async () => {
+				const prepareForEval = vi.fn();
+				const inlineAgent = {
+					config: { name: 'Inline', model: 'openai/gpt-5', credential: 'c1', instructions: '' },
+				};
+
+				await executeAgent(
+					{ inlineAgent },
+					MESSAGE,
+					EXEC_ID,
+					THREAD_ID,
+					additionalData,
+					'evaluation',
+					undefined,
+					undefined,
+					undefined,
+					prepareForEval,
+				);
+
+				expect(agentWorkflowExecutionService.executeInlineForWorkflow).toHaveBeenCalledWith(
+					inlineAgent,
+					MESSAGE,
+					EXEC_ID,
+					PROJECT_THREAD_ID,
+					'project-1',
+					'user-1',
+					'test',
+					undefined,
+					undefined,
+					{ streamObserver: undefined, prepareForEval },
+				);
+			});
+
+			it('keeps the published version for evaluation runs without the eval hook', async () => {
+				await executeAgent(
+					{ agentId: AGENT_ID },
+					MESSAGE,
+					EXEC_ID,
+					THREAD_ID,
+					additionalData,
+					'evaluation',
+				);
+
+				expect(agentWorkflowExecutionService.executeForWorkflow).toHaveBeenCalledWith(
+					AGENT_ID,
+					MESSAGE,
+					EXEC_ID,
+					PROJECT_THREAD_ID,
+					'project-1',
+					'user-1',
+					false,
+					undefined,
+					undefined,
+					executionSandboxScope,
+				);
+			});
+		});
+
 		it('uses projectId from additionalData when present', async () => {
 			const additionalData = mock<IWorkflowExecuteAdditionalData>({
 				userId: 'user-1',
@@ -2031,7 +2385,8 @@ describe('WorkflowExecuteAdditionalData', () => {
 			expect(agentWorkflowExecutionService.executeForWorkflow.mock.calls[0]?.[9]).toEqual(
 				executionSandboxScope,
 			);
-			const streamObserver = agentWorkflowExecutionService.executeForWorkflow.mock.calls[0]?.[10];
+			const streamObserver =
+				agentWorkflowExecutionService.executeForWorkflow.mock.calls[0]?.[10]?.streamObserver;
 			expect(streamObserver).toEqual(expect.any(Function));
 
 			await streamObserver?.({ type: 'response-delta', delta: 'hello' });

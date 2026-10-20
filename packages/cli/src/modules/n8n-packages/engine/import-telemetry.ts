@@ -1,5 +1,6 @@
 import type { EventService } from '@n8n/backend-services';
 
+import { resolveCredentialConflictPolicy } from '../entities/credential/credential-conflict-policy';
 import type { CredentialBindingRequest } from '../entities/credential/credential.types';
 import type { DataTableImportRequest } from '../entities/data-table/data-table.types';
 import type { TagImportPlan, TagImportRequest } from '../entities/tag/tag.types';
@@ -54,8 +55,9 @@ export function emitPackageImportedEvent(
 	const matchedCredentialIds = credentialResults.flatMap(({ matched, bindings }) =>
 		matched.map((sourceId) => bindings.get(sourceId)!),
 	);
-	const createdCredentialIds = credentialResults.flatMap(({ stubbed, bindings }) =>
-		stubbed.map((sourceId) => bindings.get(sourceId)!),
+	const createdCredentialIds = credentialResults.flatMap(
+		({ stubbed, seeded, incomplete, bindings }) =>
+			[...stubbed, ...seeded, ...incomplete].map((sourceId) => bindings.get(sourceId)!),
 	);
 
 	const dataTablePlans = scopes.map(({ imported }) => imported.dataTablePlan);
@@ -110,6 +112,7 @@ export function emitPackageImportedEvent(
 			workflowIdPolicy: request.workflowIdPolicy,
 			credentialMatchingMode: request.credentialMatchingMode,
 			credentialMissingMode: request.credentialMissingMode,
+			credentialConflictPolicy: resolveCredentialConflictPolicy(request.credentialConflictPolicy),
 			workflowPublishingPolicy: request.workflowPublishingPolicy,
 			missingNodeTypeMode: request.missingNodeTypeMode,
 			projectConflictPolicy: request.projectConflictPolicy,

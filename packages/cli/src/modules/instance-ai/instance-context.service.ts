@@ -899,7 +899,7 @@ const toolNames = {
 	conversation: {
 		expand: '`activity(action="expand", id=N)`',
 		list: '`activity(action="list")`',
-		workflows: '`workflows(action="list")`',
+		workflows: '`workflow_builder_workflows(action="list")`',
 	},
 	mcp: {
 		expand: '`expand_instance_activity(id=N)`',
@@ -915,9 +915,8 @@ const initialPreamble = (tools: SurfaceToolNames) => [
 	'and act on it rather than asking them to choose from a list they can already see.',
 	'Do not narrate this back to them — unless they asked what has been happening, let it change',
 	'what you do rather than what you say.',
-	`Call ${tools.expand} on a bracketed id to see that entry in full along with`,
-	`everything else that happened to the same resource, or ${tools.list} to look`,
-	'further back than this window. An entry may name a resource that no longer exists.',
+	`Call ${tools.expand} to read an entry and its resource history.`,
+	`Use ${tools.list} to look further back. An entry may name a resource that no longer exists.`,
 ];
 
 /**
@@ -928,7 +927,7 @@ const updatePreamble = (tools: SurfaceToolNames) => [
 	'What has happened since the list earlier in this conversation. Those earlier entries still',
 	'stand — these are additions, not a replacement. Read them the same way: context on what the',
 	'user has been doing, not a task list or something to comment on unprompted.',
-	`${tools.expand} and ${tools.list} work on these ids too.`,
+	`Use ${tools.expand} for details or ${tools.list} for older entries.`,
 ];
 
 /** Named so the agent can act on one without a lookup: the id is what every tool takes. */
@@ -976,7 +975,7 @@ function renderRuns(runs: RunSummary[], isUpdate: boolean, now: Date): string[] 
 				? `ran ${run.total}×, all succeeded`
 				: `ran ${run.total}×, ${run.failed} failed`;
 		// The failure itself, not the newest run, which on a schedule that has since recovered is a
-		// success. `executions` fetches the live record from this id.
+		// success. `workflow_builder_executions` fetches the live record from this id.
 		const failure = run.lastFailedExecutionId
 			? `last failure execution:${run.lastFailedExecutionId}`
 			: '';
@@ -1057,7 +1056,7 @@ function toActivityEntry(row: ActivityEvent, currentUserId: string): InstanceAiA
  * exist, they carry their own permission checks, and duplicating them would drift from them.
  *
  * Named in the caller's own vocabulary,
- * because the two surfaces do not share tool names. An MCP client handed `workflows(action="get")`
+ * because the two surfaces do not share tool names. An MCP client handed `workflow_builder_workflows(action="get")`
  * would be told to call a tool its server does not expose.
  */
 function liveRecordHint(
@@ -1070,9 +1069,9 @@ function liveRecordHint(
 	> = {
 		conversation: {
 			workflow: row.resourceId
-				? `workflows(action="get", workflowId="${row.resourceId}")`
+				? `workflow_builder_workflows(action="get", workflowId="${row.resourceId}")`
 				: undefined,
-			credential: 'credentials(action="list")',
+			credential: 'workflow_builder_credentials(action="list")',
 		},
 		mcp: {
 			workflow: row.resourceId ? `get_workflow_details(workflowId="${row.resourceId}")` : undefined,
@@ -1085,7 +1084,7 @@ function liveRecordHint(
 
 function toFeedEntry(row: ActivityEvent, currentUserId: string, now: Date): string {
 	return [
-		`[${row.id}]`,
+		`[id:${row.id}]`,
 		formatAge(row.createdAt, now),
 		row.category,
 		row.action,

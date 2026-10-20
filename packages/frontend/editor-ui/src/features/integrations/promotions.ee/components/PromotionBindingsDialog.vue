@@ -44,6 +44,8 @@ const {
 	preflight,
 	groups,
 	destructiveChanges,
+	projectDeletions,
+	needsConfirmation,
 	hardConflicts,
 	mode,
 	unresolvedCount,
@@ -115,6 +117,20 @@ function destructiveColumns(
 			})
 		: i18n.baseText('promotions.bindings.destructive.columns', { interpolate: { list } });
 }
+
+const submitLabel = computed(() => {
+	if (projectDeletions.value.length) {
+		return i18n.baseText('promotions.bindings.deleteProjectsAndApply', {
+			adjustToNumber: projectDeletions.value.length,
+			interpolate: { count: String(projectDeletions.value.length) },
+		});
+	}
+	return i18n.baseText(
+		destructiveChanges.value.length
+			? 'promotions.bindings.applyDataTableChanges'
+			: 'promotions.bindings.continue',
+	);
+});
 
 const errorDetail = computed(() =>
 	error.value?.kind === 'continue' && error.value.cause instanceof Error
@@ -264,8 +280,26 @@ async function continueApply() {
 				<p v-if="mode === 'blocked'">
 					{{ i18n.baseText('promotions.bindings.restart') }}
 				</p>
+				<section v-if="projectDeletions.length" :class="$style.notices">
+					<h3>{{ i18n.baseText('promotions.bindings.projectDeletion.title') }}</h3>
+					<p>
+						{{
+							i18n.baseText('promotions.bindings.projectDeletion.description', {
+								adjustToNumber: projectDeletions.length,
+							})
+						}}
+					</p>
+					<N8nCallout
+						v-for="item in projectDeletions"
+						:key="item.project.id"
+						theme="warning"
+						iconless
+					>
+						<strong>{{ item.project.name }}</strong>
+					</N8nCallout>
+				</section>
 				<section v-if="destructiveChanges.length" :class="$style.notices">
-					<h3 v-if="mode !== 'review'">
+					<h3 v-if="mode !== 'review' || projectDeletions.length">
 						{{ i18n.baseText('promotions.bindings.destructive.title') }}
 					</h3>
 					<p>{{ destructiveSummary }}</p>
@@ -275,7 +309,7 @@ async function continueApply() {
 					</N8nCallout>
 				</section>
 				<div v-if="mode === 'bindings'" :class="$style.notices">
-					<h3 v-if="destructiveChanges.length">
+					<h3 v-if="needsConfirmation">
 						{{ i18n.baseText('promotions.bindings.bindingsSection.title') }}
 					</h3>
 					<p :class="$style.description">
@@ -413,17 +447,11 @@ async function continueApply() {
 						v-if="mode !== 'blocked'"
 						type="submit"
 						size="small"
-						:variant="destructiveChanges.length ? 'destructive' : 'solid'"
+						:variant="needsConfirmation ? 'destructive' : 'solid'"
 						:disabled="!canContinue"
 						:loading="isSubmitting"
 					>
-						{{
-							i18n.baseText(
-								destructiveChanges.length
-									? 'promotions.bindings.applyDataTableChanges'
-									: 'promotions.bindings.continue',
-							)
-						}}
+						{{ submitLabel }}
 					</N8nButton>
 				</N8nDialogFooter>
 			</div>

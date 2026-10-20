@@ -16,6 +16,7 @@ import {
 	preferenceUserName,
 	preferenceWriteRejectionReason,
 	toPreferencePermissions,
+	toPreferenceSortOption,
 } from './context.utils';
 
 function preference(overrides: Partial<Preference> = {}): Preference {
@@ -27,6 +28,7 @@ function preference(overrides: Partial<Preference> = {}): Preference {
 		projectId: null,
 		project: null,
 		source: 'ui',
+		createdBy: null,
 		scopes: [],
 		createdAt: '2026-09-08T00:00:00.000Z',
 		updatedAt: '2026-09-08T00:00:00.000Z',
@@ -140,6 +142,16 @@ describe('context.utils', () => {
 		it('lets projectId win, matching how the prompt renderer groups rows', () => {
 			// A CHECK constraint forbids both, so this only guards against a bad row.
 			expect(preferenceScope(preference({ userId: 'user-1', projectId: 'proj' }))).toBe('project');
+		});
+	});
+
+	describe('toPreferenceSortOption', () => {
+		it('turns the table sort into the API sort', () => {
+			expect(toPreferenceSortOption([{ id: 'updatedAt', desc: false }])).toBe('updatedAt:asc');
+		});
+
+		it('falls back to the last updated rows first when the table has no sort', () => {
+			expect(toPreferenceSortOption([])).toBe('updatedAt:desc');
 		});
 	});
 

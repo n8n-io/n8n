@@ -6,6 +6,7 @@ import type {
 	ContinueApplySelectionDto,
 	PromotePackageDto,
 	PromotePackageResultDto,
+	PromotionBindingConflict,
 	PromoteRequest,
 	PromotionCheckoutPublicDto,
 	PromotionDirection,
@@ -28,11 +29,13 @@ import { PackageImportConfig } from '@/modules/n8n-packages/n8n-packages.config'
 import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
 import { MANIFEST_FILE } from '@/modules/n8n-packages/spec/constants';
 import {
+	CredentialConflictPolicy,
 	DataTableMissingMode,
 	DataTableSchemaConflictPolicy,
+	ExportDependencyPolicy,
+	ExportVersionPolicy,
 	FolderConflictPolicy,
 	MissingNodeTypeMode,
-	MissingWorkflowDependencyPolicy,
 	OverwriteDeletionPolicy,
 	ProjectConflictPolicy,
 	TagConflictPolicy,
@@ -42,7 +45,6 @@ import {
 	WorkflowConflictPolicy,
 	WorkflowIdPolicy,
 	WorkflowPublishingPolicy,
-	WorkflowVersionPolicy,
 	type ImportRequest,
 	type ImportResult,
 	type ImportSelection,
@@ -77,7 +79,13 @@ import { WorkingCopyUpdater, type SelectivePushOptions } from './working-copy-up
 
 type ProjectReconciliationResult = { deletedProjectIds: string[] };
 
-// Apply treats the package as source of truth; callers cannot override this policy.
+/** Conflicts that `confirmDestructiveChanges` lets the apply continue past. */
+function isConfirmableConflict(code: PromotionBindingConflict['code']): boolean {
+	return code === 'destructive-change' || code === 'project-deletion';
+}
+
+// Apply treats the package as source of truth. Callers cannot override this policy,
+// but a confirmed Continue uses `overwrite` for data tables.
 const IMPORT_POLICY: Omit<ImportRequest, 'user'> = {
 	projectConflictPolicy: ProjectConflictPolicy.Overwrite,
 	workflowConflictPolicy: WorkflowConflictPolicy.NewVersion,
@@ -86,6 +94,7 @@ const IMPORT_POLICY: Omit<ImportRequest, 'user'> = {
 	missingNodeTypeMode: MissingNodeTypeMode.Fail,
 	credentialMatchingMode: 'id-only',
 	credentialMissingMode: 'must-preexist',
+	credentialConflictPolicy: CredentialConflictPolicy.KeepExisting,
 	folderConflictPolicy: FolderConflictPolicy.Overwrite,
 	overwriteDeletionPolicy: OverwriteDeletionPolicy.HardDelete,
 	dataTableMatchingMode: 'by-id',
@@ -196,6 +205,7 @@ export class PromotionsService {
 				{
 					user: actor,
 					projectIds,
+					includeAgents: false,
 					includeVariableValues: true,
 					canExportVariableValues: request.canExportVariableValues,
 					includeTags: true,
@@ -203,8 +213,8 @@ export class PromotionsService {
 					includeArchivedWorkflows: true,
 					// personal projects are excluded, so a team workflow calling a personal
 					// sub-workflow blocks the whole promotion; intended for now, see LIGO-1089
-					missingWorkflowDependencyPolicy: MissingWorkflowDependencyPolicy.Fail,
-					workflowVersionPolicy: WorkflowVersionPolicy.Latest,
+					dependencyPolicy: ExportDependencyPolicy.Fail,
+					versionPolicy: ExportVersionPolicy.Latest,
 				},
 				{ targetDir: stagingFolder },
 			);
@@ -248,9 +258,9 @@ export class PromotionsService {
 
 	/**
 	 * Selective promote against an already-resolved connection. Unselected workflows
-	 * stay as-is, and so do the projects and folders the branch already holds: a
-	 * selection creates a container, never renames one, so nothing moves that the
-	 * user did not select. A promotion branch is always new, so force never applies.
+	 * keep their content. A renamed project or folder moves its branch directory,
+	 * so the unselected workflows inside it move with it. A promotion branch is
+	 * always new, so force never applies.
 	 */
 	private async promoteSelectionResolved(
 		input: PromotionOperationInput,
@@ -273,9 +283,20 @@ export class PromotionsService {
 
 		const { repositoryFolder } = this.workingDirectory.paths(input.configId);
 		const packageFolder = path.join(repositoryFolder, PACKAGE_SUBFOLDER);
-		if (!(await this.hasExportedPackage(packageFolder))) {
+		// No package yet means this selection becomes the first export.
+		const packageExisted = await pathExists(packageFolder);
+		if (
+			!(await pathExists(path.join(packageFolder, MANIFEST_FILE))) &&
+			(await this.gitService.hasCommittedPath({
+				paths: this.workingDirectory.paths(input.configId),
+				branchName,
+				configId: input.configId,
+				pathspec: `${PACKAGE_SUBFOLDER}/${MANIFEST_FILE}`,
+			}))
+		) {
+			// The commit holds a manifest the checkout lost. A push would drop branch content or metadata.
 			throw new BadRequestError(
-				'The local checkout has no exported package. Promote the instance first, then promote a selection.',
+				'The local copy of the promote branch is incomplete. Disconnect and connect it again in the instance connection settings.',
 			);
 		}
 
@@ -287,9 +308,11 @@ export class PromotionsService {
 		let keepPrePushBackup = false;
 
 		try {
-			await rm(prePushBackup, { recursive: true, force: true });
-			await cp(packageFolder, prePushBackup, { recursive: true, verbatimSymlinks: true });
-			backedUp = true;
+			if (packageExisted) {
+				await rm(prePushBackup, { recursive: true, force: true });
+				await cp(packageFolder, prePushBackup, { recursive: true, verbatimSymlinks: true });
+				backedUp = true;
+			}
 
 			// The exporter does the selecting: it writes the selected workflows and
 			// what they need, so nothing has to be filtered out afterwards.
@@ -304,8 +327,8 @@ export class PromotionsService {
 					includeArchivedWorkflows: true,
 					// A sub-workflow nobody selected stays a reference. Failing here would
 					// block a promote whose sub-workflow the branch already holds.
-					missingWorkflowDependencyPolicy: MissingWorkflowDependencyPolicy.ReferenceOnly,
-					workflowVersionPolicy: WorkflowVersionPolicy.Latest,
+					dependencyPolicy: ExportDependencyPolicy.ReferenceOnly,
+					versionPolicy: ExportVersionPolicy.Latest,
 				},
 				{ targetDir: stagingFolder },
 			);
@@ -364,10 +387,18 @@ export class PromotionsService {
 						{ packageFolder, backupFolder: prePushBackup, error: restoreError },
 					);
 				}
+			} else if (!packageExisted) {
+				await rm(packageFolder, { recursive: true, force: true }).catch((cleanupError: unknown) => {
+					this.logger.warn('Failed to remove the first selection after a failed promote', {
+						packageFolder,
+						error: cleanupError,
+					});
+				});
 			}
 			throw error;
 		} finally {
-			if (!keepPrePushBackup) {
+			// A first push has no backup of its own. Keep any backup left by an earlier failure.
+			if (packageExisted && !keepPrePushBackup) {
 				await rm(prePushBackup, { recursive: true, force: true }).catch((error: unknown) => {
 					this.logger.warn('Failed to remove the selection backup', { prePushBackup, error });
 				});
@@ -457,7 +488,12 @@ export class PromotionsService {
 		actor: User,
 		request: ContinueApplyPackageDto,
 	): Promise<ApplyPackageResultDto> {
-		return await this.applyFromSource(connectionId, actor, request.expectedSource);
+		return await this.applyFromSource(
+			connectionId,
+			actor,
+			request.expectedSource,
+			request.confirmDestructiveChanges === true,
+		);
 	}
 
 	async applyProjectSelection(
@@ -483,6 +519,7 @@ export class PromotionsService {
 			actor,
 			request.workflowIds,
 			request.expectedSource,
+			request.confirmDestructiveChanges === true,
 		);
 	}
 
@@ -542,6 +579,7 @@ export class PromotionsService {
 		actor: User,
 		workflowIds: string[],
 		expectedSource?: ApplySelectionDto['expectedSource'],
+		confirmDestructiveChanges = false,
 	): Promise<ApplyPackageResultDto> {
 		const input = await this.resolver.resolveForProject(projectId, 'apply');
 		await this.assertCheckoutReady(input, 'applying');
@@ -591,10 +629,13 @@ export class PromotionsService {
 				selectedWorkflowIds: selection.selectedWorkflowIds,
 			},
 		});
+		const blockingConflicts = confirmDestructiveChanges
+			? preflight.conflicts.filter(({ code }) => !isConfirmableConflict(code))
+			: preflight.conflicts;
 		if (
 			preflight.missingBindings.length > 0 ||
 			preflight.accessRequirements.length > 0 ||
-			preflight.conflicts.length > 0
+			blockingConflicts.length > 0
 		) {
 			this.logger.info('Apply blocked by unresolved bindings', {
 				status: 'blocked',
@@ -614,13 +655,16 @@ export class PromotionsService {
 			projectId,
 			selectedCount: selection.selectedWorkflowIds.length,
 			deletedCount: selection.deletedWorkflowIds?.length ?? 0,
+			confirmDestructiveChanges,
 		});
 
 		const result = await this.n8nPackagesService.importPackageSelectionFromDirectory(
 			{
 				user: actor,
 				overwriteDeletionPolicy: OverwriteDeletionPolicy.HardDelete,
-				dataTableSchemaConflictPolicy: IMPORT_POLICY.dataTableSchemaConflictPolicy,
+				dataTableSchemaConflictPolicy: confirmDestructiveChanges
+					? DataTableSchemaConflictPolicy.Overwrite
+					: IMPORT_POLICY.dataTableSchemaConflictPolicy,
 			},
 			{ sourceDir: packageFolder },
 			selection,
@@ -641,6 +685,7 @@ export class PromotionsService {
 		connectionId: string,
 		actor: User,
 		expectedSource?: ApplyPackageDto['expectedSource'],
+		confirmDestructiveChanges = false,
 	): Promise<ApplyPackageResultDto> {
 		const input = await this.resolver.resolveForConnection(connectionId, 'apply');
 		this.assertInstanceScope(input, 'Apply');
@@ -685,10 +730,13 @@ export class PromotionsService {
 		const preflight = await this.bindingPreflight.checkDirectory({
 			sourceDir: packageFolder,
 		});
+		const blockingConflicts = confirmDestructiveChanges
+			? preflight.conflicts.filter(({ code }) => !isConfirmableConflict(code))
+			: preflight.conflicts;
 		if (
 			preflight.missingBindings.length > 0 ||
 			preflight.accessRequirements.length > 0 ||
-			preflight.conflicts.length > 0
+			blockingConflicts.length > 0
 		) {
 			this.logger.info('Apply blocked by unresolved bindings', {
 				status: 'blocked',
@@ -703,14 +751,31 @@ export class PromotionsService {
 			return { status: 'blocked', ...identity, preflight };
 		}
 
-		this.logger.info('Importing a package', { connectionId, configId: input.configId });
+		this.logger.info('Importing a package', {
+			connectionId,
+			configId: input.configId,
+			confirmDestructiveChanges,
+		});
 
 		const result = await this.n8nPackagesService.importPackageFromDirectory(
-			{ user: actor, ...IMPORT_POLICY },
+			{
+				user: actor,
+				...IMPORT_POLICY,
+				dataTableSchemaConflictPolicy: confirmDestructiveChanges
+					? DataTableSchemaConflictPolicy.Overwrite
+					: IMPORT_POLICY.dataTableSchemaConflictPolicy,
+			},
 			{ sourceDir: packageFolder },
 		);
 		const importedProjectIds = result.projects.map((project) => project.localId);
-		const projectReconciliation = await this.reconcileTeamProjects(actor, importedProjectIds);
+		const confirmedProjectIds = preflight.conflicts.flatMap((conflict) =>
+			conflict.code === 'project-deletion' ? conflict.project.id : [],
+		);
+		const projectReconciliation = await this.reconcileTeamProjects(
+			actor,
+			importedProjectIds,
+			confirmedProjectIds,
+		);
 
 		return {
 			status: 'applied',
@@ -807,14 +872,6 @@ export class PromotionsService {
 		}
 	}
 
-	private async hasExportedPackage(packageFolder: string): Promise<boolean> {
-		try {
-			return (await stat(path.join(packageFolder, MANIFEST_FILE))).isFile();
-		} catch {
-			return false;
-		}
-	}
-
 	/**
 	 * A checkout counts as ready only when it exists and was cloned from the
 	 * configuration we just resolved. Another process may have changed the remote or
@@ -857,13 +914,18 @@ export class PromotionsService {
 		});
 	}
 
+	/** Deletes only the projects that the user confirmed and that the import did not keep. */
 	private async reconcileTeamProjects(
 		actor: User,
 		importedProjectIds: string[],
+		confirmedProjectIds: string[],
 	): Promise<ProjectReconciliationResult> {
 		const imported = new Set(importedProjectIds);
+		const confirmed = new Set(confirmedProjectIds);
 		const teamProjectIds = await this.projectRepository.findTeamProjectIds();
-		const removedProjectIds = teamProjectIds.filter((projectId) => !imported.has(projectId));
+		const removedProjectIds = teamProjectIds.filter(
+			(projectId) => confirmed.has(projectId) && !imported.has(projectId),
+		);
 
 		for (const projectId of removedProjectIds) {
 			await this.projectService.deleteProject(actor, projectId);
@@ -936,6 +998,17 @@ export class PromotionsService {
 				skipped: importResult.tags.skipped.length,
 			},
 		};
+	}
+}
+
+/** Throws on any error except a missing path, so an unreadable package never looks empty. */
+async function pathExists(target: string): Promise<boolean> {
+	try {
+		await stat(target);
+		return true;
+	} catch (error) {
+		if (error instanceof Error && 'code' in error && error.code === 'ENOENT') return false;
+		throw error;
 	}
 }
 

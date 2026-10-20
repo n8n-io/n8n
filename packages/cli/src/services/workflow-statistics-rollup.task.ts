@@ -1,19 +1,11 @@
 import { SchedulerConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
-import { intervalFromSeconds, SystemTask } from '@n8n/decorators';
-import type {
-	SystemTaskEffects,
-	SystemTaskPlacement,
-	SystemTaskRunContext,
-	SystemTaskSchedule,
-} from '@n8n/decorators';
+import { clusterTarget, intervalFromSeconds, SystemTask } from '@n8n/decorators';
+import type { SystemTaskSchedule } from '@n8n/decorators';
 
 import { WorkflowStatisticsRollupService } from './workflow-statistics-rollup.service';
 
 const ROLLUP_INTERVAL_SECONDS = 5;
-
-/** Ends a run before the next occurrence, so a backlog does not cause overlap skips. */
-const IN_MEMORY_RUN_BUDGET_MS = (ROLLUP_INTERVAL_SECONDS - 1) * Time.seconds.toMilliseconds;
 
 /**
  * Folds the pending workflow statistics increments into the counters, and
@@ -25,31 +17,28 @@ export class WorkflowStatisticsRollupTask implements SystemTask {
 
 	readonly schedule: SystemTaskSchedule = intervalFromSeconds(ROLLUP_INTERVAL_SECONDS);
 
-	readonly effects: SystemTaskEffects = 'idempotent';
+	readonly target = clusterTarget({
+		scheduler: { retryOnFailure: true },
+		leaderTimer: {
+			/** Increments pile up while no instance is the leader, so a backlog is waiting. */
+			runOnTakeover: true,
+		},
+	});
 
-	readonly placement: SystemTaskPlacement = {
-		scope: 'cluster',
-		durable: true,
-		/** Increments pile up while no instance is the leader, so a backlog is waiting. */
-		runOnTakeover: true,
-	};
-
-	private readonly durableRunBudgetMs: number;
+	private readonly runBudgetMs: number;
 
 	constructor(
 		private readonly rollupService: WorkflowStatisticsRollupService,
 		schedulerConfig: SchedulerConfig,
 	) {
-		// Leave one second for a slower batch. The durable lease is not renewed during a run.
-		this.durableRunBudgetMs =
+		// Ends a run before the next occurrence, so a backlog does not cause overlap skips.
+		// It also ends before a lease too short for the heartbeat to renew in time.
+		this.runBudgetMs =
 			(Math.min(ROLLUP_INTERVAL_SECONDS, schedulerConfig.leaseDurationSeconds) - 1) *
 			Time.seconds.toMilliseconds;
 	}
 
-	async run(signal: AbortSignal, { durable }: SystemTaskRunContext): Promise<void> {
-		await this.rollupService.rollup(
-			signal,
-			durable ? this.durableRunBudgetMs : IN_MEMORY_RUN_BUDGET_MS,
-		);
+	async run(signal: AbortSignal): Promise<void> {
+		await this.rollupService.rollup(signal, this.runBudgetMs);
 	}
 }

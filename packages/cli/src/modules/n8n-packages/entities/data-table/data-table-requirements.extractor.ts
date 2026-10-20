@@ -9,9 +9,15 @@ export class DataTableRequirementsExtractor
 	implements RequirementsExtractor<WorkflowDataTableRequirement>
 {
 	extract(workflow: { id: string; nodes?: INode[] }): WorkflowDataTableRequirement[] {
-		const byId = new Map<string, WorkflowDataTableRequirement>();
+		return this.extractIds(workflow.nodes ?? []).map((dataTableId) => ({
+			workflowId: workflow.id,
+			dataTableId,
+		}));
+	}
 
-		for (const node of workflow.nodes ?? []) {
+	extractIds(nodes: Array<{ type: string; parameters?: Record<string, unknown> }>): string[] {
+		const ids = new Set<string>();
+		for (const node of nodes) {
 			if (!DATA_TABLE_NODE_TYPES.includes(node.type)) continue;
 
 			const resourceLocator = node.parameters?.dataTableId as
@@ -25,17 +31,14 @@ export class DataTableRequirementsExtractor
 				typeof resourceLocator.value !== 'string' ||
 				resourceLocator.mode === 'name' ||
 				resourceLocator.value.includes('{') ||
-				byId.has(resourceLocator.value)
+				ids.has(resourceLocator.value)
 			) {
 				continue;
 			}
 
-			byId.set(resourceLocator.value, {
-				workflowId: workflow.id,
-				dataTableId: resourceLocator.value,
-			});
+			ids.add(resourceLocator.value);
 		}
 
-		return [...byId.values()];
+		return [...ids];
 	}
 }

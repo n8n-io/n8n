@@ -7,6 +7,7 @@
 	"references": [
 		{ "path": "../../workflow/tsconfig.build.esm.json" },
 		{ "path": "../config/tsconfig.build.json" },
-		{ "path": "../permissions/tsconfig.build.json" }
+		{ "path": "../permissions/tsconfig.build.json" },
+		{ "path": "../inbound-auth/tsconfig.build.json" }
 	]
 }

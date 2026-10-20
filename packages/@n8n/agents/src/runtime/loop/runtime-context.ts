@@ -1,5 +1,5 @@
 import type { ProviderOptions } from '@ai-sdk/provider-utils';
-import { getProviderPrefix } from '@n8n/ai-utilities/agent-config';
+import { splitModelId } from '@n8n/ai-utilities/agent-config';
 import type { LanguageModel, Output } from 'ai';
 
 import type { AgentRuntimeConfig } from '../../types/runtime/agent-runtime';
@@ -21,6 +21,7 @@ import {
 	FLAG_MEMORY_TOOL_NAME,
 	resolveEpisodicMemoryCapture,
 } from '../memory/episodic-memory-capture';
+import { getGoogleVertexQuirksProvider } from '../model/google-vertex';
 import { loadAi } from '../model/lazy-ai';
 import type { AgentMessageList } from '../model/message-list';
 import {
@@ -92,7 +93,11 @@ export class RuntimeContextBuilder {
 	): StaticLoopContext {
 		const ai = loadAi();
 		const aiProviderTools = toAiSdkProviderTools(this.config.providerTools);
-		const model = createModel(this.config.model, this.config.modelFetch);
+		const model = createModel(
+			this.config.model,
+			this.config.modelFetch,
+			this.config.telemetry ?? execOptions?.telemetry,
+		);
 		this.nativeToolDeferral = this.config.nativeToolDeferral
 			? resolveNativeToolDeferral(this.config.model)
 			: undefined;
@@ -393,7 +398,15 @@ export class RuntimeContextBuilder {
 	private buildThinkingProviderOptions(): Record<string, Record<string, unknown>> | undefined {
 		if (!this.config.thinking) return undefined;
 
-		const quirks = getProviderQuirks(getProviderPrefix(this.modelId));
+		const { provider, model } = splitModelId(this.modelId);
+		const modelConfig = this.config.model;
+		const sdk =
+			typeof modelConfig === 'object' && 'sdk' in modelConfig && typeof modelConfig.sdk === 'string'
+				? modelConfig.sdk
+				: undefined;
+		const quirksProvider =
+			provider === 'google-vertex' ? getGoogleVertexQuirksProvider(model, sdk) : provider;
+		const quirks = getProviderQuirks(quirksProvider);
 		return quirks.thinkingToProviderOptions?.(this.config.thinking, this.modelId);
 	}
 

@@ -16,6 +16,7 @@ const {
 	deleteDataset,
 	deleteDraftDataset,
 	previewRun,
+	applyPreviewSuggestion,
 	listRuns,
 	getRunDetail,
 	getRunSummary,
@@ -23,6 +24,7 @@ const {
 	rateResult,
 	startRun,
 	rerunResult,
+	applySuggestions,
 	acceptResult,
 	deleteResult,
 } = vi.hoisted(() => ({
@@ -32,6 +34,7 @@ const {
 	deleteDataset: vi.fn(),
 	deleteDraftDataset: vi.fn(),
 	previewRun: vi.fn(),
+	applyPreviewSuggestion: vi.fn(),
 	listRuns: vi.fn(),
 	getRunDetail: vi.fn(),
 	getRunSummary: vi.fn(),
@@ -39,6 +42,7 @@ const {
 	rateResult: vi.fn(),
 	startRun: vi.fn(),
 	rerunResult: vi.fn(),
+	applySuggestions: vi.fn(),
 	acceptResult: vi.fn(),
 	deleteResult: vi.fn(),
 }));
@@ -50,6 +54,7 @@ vi.mock('../agentEvals.api', () => ({
 	deleteDataset,
 	deleteDraftDataset,
 	previewRun,
+	applyPreviewSuggestion,
 	listRuns,
 	getRunDetail,
 	getRunSummary,
@@ -57,6 +62,7 @@ vi.mock('../agentEvals.api', () => ({
 	rateResult,
 	startRun,
 	rerunResult,
+	applySuggestions,
 	acceptResult,
 	deleteResult,
 }));
@@ -363,6 +369,25 @@ describe('useAgentEvalsStore', () => {
 				{ suggestion: 'be nicer' },
 			);
 			expect(result).toEqual({ status: 'failed' });
+		});
+	});
+
+	describe('applyPreviewSuggestion', () => {
+		it('forwards the REST context, project id, agent id and the case to the API', async () => {
+			const applied = { configHash: 'h', preview: { status: 'failed' } };
+			applyPreviewSuggestion.mockResolvedValue(applied);
+			const store = useAgentEvalsStore();
+			const options = { input: 'Q', whatToCheck: 'Rule', suggestion: 'Do X.' };
+
+			const result = await store.applyPreviewSuggestion(PROJECT_ID, AGENT_ID, options);
+
+			expect(applyPreviewSuggestion).toHaveBeenCalledWith(
+				{ instanceId: 'test-instance-id' },
+				PROJECT_ID,
+				AGENT_ID,
+				options,
+			);
+			expect(result).toBe(applied);
 		});
 	});
 
@@ -1340,6 +1365,93 @@ describe('useAgentEvalsStore', () => {
 			await expect(store.acceptResult(PROJECT_ID, AGENT_ID, 'c1')).rejects.toThrow('boom');
 
 			expect(store.getReview(RUN_ID).results[0].verdict).toEqual(failVerdict);
+		});
+	});
+
+	describe('applySuggestions', () => {
+		const failing = (id: string): AgentEvalResultRecord => ({
+			...result(id),
+			verdict: { status: 'completed', outcome: 'fail', reasoning: 'No.', suggestion: 'Decline.' },
+		});
+
+		it('patches the results to running before the request lands, then to the reran results', async () => {
+			mockRun({ results: [failing('c1'), failing('c2')], count: 2, ratings: [] });
+			const store = useAgentEvalsStore();
+			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
+
+			let resolveApply!: (value: unknown) => void;
+			applySuggestions.mockImplementation(
+				async () => await new Promise((resolve) => (resolveApply = resolve)),
+			);
+
+			const pending = store.applySuggestions(PROJECT_ID, AGENT_ID, ['c1']);
+			expect(store.getReview(RUN_ID).results.map((r) => r.status)).toEqual(['running', 'success']);
+
+			const reran = { ...result('c1'), verdict: { status: 'completed', outcome: 'pass' } };
+			resolveApply({ configHash: 'hash-2', results: [reran] });
+			const applied = await pending;
+
+			expect(applySuggestions).toHaveBeenCalledWith(REST_CONTEXT, PROJECT_ID, AGENT_ID, {
+				resultIds: ['c1'],
+			});
+			expect(applied?.configHash).toBe('hash-2');
+			expect(store.getReview(RUN_ID).results[0]).toEqual(reran);
+			expect(store.getReview(RUN_ID).results[1]).toEqual(failing('c2'));
+		});
+
+		it('sends each result once and skips the ones already running', async () => {
+			mockRun({
+				results: [failing('c1'), { ...failing('c2'), status: 'running' }],
+				count: 2,
+				ratings: [],
+			});
+			const store = useAgentEvalsStore();
+			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
+			applySuggestions.mockResolvedValue({ configHash: 'h', results: [result('c1')] });
+
+			await store.applySuggestions(PROJECT_ID, AGENT_ID, ['c1', 'c1', 'c2']);
+
+			expect(applySuggestions).toHaveBeenCalledWith(REST_CONTEXT, PROJECT_ID, AGENT_ID, {
+				resultIds: ['c1'],
+			});
+		});
+
+		it('sends nothing when every result is already running', async () => {
+			mockRun({ results: [{ ...failing('c1'), status: 'running' }], count: 1, ratings: [] });
+			const store = useAgentEvalsStore();
+			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
+
+			await expect(store.applySuggestions(PROJECT_ID, AGENT_ID, ['c1'])).resolves.toBeNull();
+
+			expect(applySuggestions).not.toHaveBeenCalled();
+		});
+
+		it('reads the results back when the request fails', async () => {
+			mockRun({ results: [failing('c1')], count: 1, ratings: [] });
+			const store = useAgentEvalsStore();
+			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
+			applySuggestions.mockRejectedValue(new Error('conflict'));
+			getRunDetail.mockResolvedValue(runDetail([failing('c1')], 1));
+
+			await expect(store.applySuggestions(PROJECT_ID, AGENT_ID, ['c1'])).rejects.toThrow(
+				'conflict',
+			);
+
+			expect(store.getReview(RUN_ID).results[0]).toEqual(failing('c1'));
+		});
+
+		it('restores the previous rows when reading them back also fails', async () => {
+			mockRun({ results: [failing('c1')], count: 1, ratings: [] });
+			const store = useAgentEvalsStore();
+			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
+			applySuggestions.mockRejectedValue(new Error('conflict'));
+			getRunDetail.mockRejectedValue(new Error('offline'));
+
+			await expect(store.applySuggestions(PROJECT_ID, AGENT_ID, ['c1'])).rejects.toThrow(
+				'conflict',
+			);
+
+			expect(store.getReview(RUN_ID).results[0]).toEqual(failing('c1'));
 		});
 	});
 

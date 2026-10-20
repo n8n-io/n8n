@@ -17,6 +17,8 @@ import { HttpHeaderAuth } from 'n8n-nodes-base/credentials/HttpHeaderAuth.creden
 import { OpenAiApi } from 'n8n-nodes-base/credentials/OpenAiApi.credentials';
 import { Cron } from 'n8n-nodes-base/nodes/Cron/Cron.node';
 import { FormTrigger } from 'n8n-nodes-base/nodes/Form/FormTrigger.node';
+import { Function as FunctionNode } from 'n8n-nodes-base/nodes/Function/Function.node';
+import { FunctionItem } from 'n8n-nodes-base/nodes/FunctionItem/FunctionItem.node';
 import { ManualTrigger } from 'n8n-nodes-base/nodes/ManualTrigger/ManualTrigger.node';
 import { ScheduleTrigger } from 'n8n-nodes-base/nodes/Schedule/ScheduleTrigger.node';
 import { Set } from 'n8n-nodes-base/nodes/Set/Set.node';
@@ -110,7 +112,7 @@ function minimalNodeType(name: string, properties: INodeProperties[] = []): INod
 	};
 }
 
-function buildDefaultNodes(): INodeTypeData {
+export function buildDefaultNodes(): INodeTypeData {
 	ScheduleTrigger.prototype.trigger = async () => ({});
 	return {
 		'n8n-nodes-base.manualTrigger': {
@@ -137,6 +139,14 @@ function buildDefaultNodes(): INodeTypeData {
 			// The real node: publishing resolves a webhook node's parameters against its
 			// description, which a mock-wrapped description does not survive.
 			type: new WebhookNode() as unknown as INodeType,
+			sourcePath: '',
+		},
+		'n8n-nodes-base.function': {
+			type: new FunctionNode(),
+			sourcePath: '',
+		},
+		'n8n-nodes-base.functionItem': {
+			type: new FunctionItem(),
 			sourcePath: '',
 		},
 		// Minimal mocks for node types the package-import fixtures reference at typeVersion 1.

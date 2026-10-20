@@ -10,6 +10,8 @@
 
 import type { DiscoveryMcpState } from './stub-mcp-registry';
 import type { ComputerUseState } from '../../src/types';
+import type { CaseSeed } from '../harness/schema';
+import type { ConversationTurn, TestCaseCredential } from '../types';
 
 /**
  * Pass condition for tool invocations.
@@ -98,7 +100,14 @@ export interface DiscoveryTestCase {
 export type DiscoveryScenario = Pick<
 	DiscoveryTestCase,
 	'userMessage' | 'instanceState' | 'confirmations' | 'maxSteps' | 'timeoutMs'
->;
+> & {
+	/** Routing cases: state the stub instance holds before the turn. */
+	seed?: Extract<CaseSeed, { mode: 'inline' }>;
+	/** Routing cases: the seeded workflow or Agent the user has open. */
+	attach?: ConversationTurn['attach'];
+	/** Routing cases: accounts the stub instance holds. */
+	credentials?: TestCaseCredential[];
+};
 
 export type DiscoveryStreamStatus =
 	| 'completed'

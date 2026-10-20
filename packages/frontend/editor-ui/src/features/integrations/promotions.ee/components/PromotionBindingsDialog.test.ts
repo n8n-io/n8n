@@ -132,7 +132,7 @@ it('lists destructive changes after the blocking conflicts and keeps apply block
 	expect(getByText(/destination project is not a team project/)).toBeInTheDocument();
 	expect(
 		getByText(
-			'Changes to these data tables remove, rename or retype columns. The values in those columns are removed. Rows and other columns are kept.',
+			'Changes to these data tables remove or retype columns. The values in those columns are removed. Rows and other columns are kept.',
 		),
 	).toBeInTheDocument();
 	expect(getByText('Orders')).toBeInTheDocument();
@@ -161,10 +161,10 @@ it('asks to confirm data deletion when only destructive changes block apply', as
 	expect(
 		getByRole('heading', { level: 2, name: 'Review destructive changes' }),
 	).toBeInTheDocument();
-	expect(getByText('Check the column changes before you apply')).toBeInTheDocument();
+	expect(getByText('Check these changes before you apply')).toBeInTheDocument();
 	expect(
 		getByText(
-			"Changes to this data table remove, rename or retype columns. The values in the changed columns can't be restored. Rows and other columns are kept.",
+			"Changes to this data table remove or retype columns. The values in the changed columns can't be restored. Rows and other columns are kept.",
 		),
 	).toBeInTheDocument();
 	expect(getByText('Orders')).toBeInTheDocument();
@@ -178,6 +178,11 @@ it('asks to confirm data deletion when only destructive changes block apply', as
 	expect(apply).toBeEnabled();
 	await userEvent.click(apply);
 	expect(continueApplyPromotion).toHaveBeenCalledTimes(1);
+	expect(continueApplyPromotion).toHaveBeenCalledWith(
+		expect.anything(),
+		expect.any(String),
+		expect.objectContaining({ confirmDestructiveChanges: true }),
+	);
 	expect(emitted('applied')).toEqual([[applied]]);
 });
 
@@ -214,6 +219,11 @@ it('shows destructive changes above the bindings and continues with data deletio
 	await userEvent.click(getByRole('button', { name: 'Apply data table changes' }));
 
 	expect(continueApplyPromotion).toHaveBeenCalledTimes(1);
+	expect(continueApplyPromotion).toHaveBeenCalledWith(
+		expect.anything(),
+		expect.any(String),
+		expect.objectContaining({ confirmDestructiveChanges: true }),
+	);
 	expect(emitted('applied')).toBeUndefined();
 	expect(getByRole('heading', { level: 2, name: 'Resolve bindings' })).toBeInTheDocument();
 	expect(getByRole('heading', { name: 'Destructive changes' })).toBeInTheDocument();
@@ -279,6 +289,24 @@ it('forwards continueWith so Continue resumes the selection', async () => {
 	);
 	expect(continueApplyPromotion).not.toHaveBeenCalled();
 	expect(emitted('applied')).toEqual([[applied]]);
+});
+
+it('confirms destructive changes when it resumes a selection', async () => {
+	vi.mocked(continueApplyProjectSelection).mockResolvedValue(applied);
+	const { getByRole } = await renderDialog({
+		props: {
+			open: true,
+			blockedResult: blocked({ missingBindings: [], conflicts: [destructiveChange] }),
+			createBinding: vi.fn(),
+			continueWith: { kind: 'selection', projectId: 'team-a', workflowIds: ['wf-a'] },
+		},
+	});
+	await userEvent.click(getByRole('button', { name: 'Apply data table changes' }));
+	expect(continueApplyProjectSelection).toHaveBeenCalledWith(
+		expect.anything(),
+		'team-a',
+		expect.objectContaining({ confirmDestructiveChanges: true }),
+	);
 });
 
 it.each(['Close', 'Close dialog', 'Back', 'Escape'] as const)(

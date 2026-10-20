@@ -43,6 +43,7 @@ export type {
 	StreamChunk,
 	FinishReason,
 	TokenUsage,
+	PromptSizeUsage,
 	ModelConfig,
 	RunOptions,
 	ExecutionOptions,

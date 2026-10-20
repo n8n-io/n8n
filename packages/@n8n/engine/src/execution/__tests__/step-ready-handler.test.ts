@@ -71,19 +71,21 @@ function makeHandler(
 	);
 }
 
-function makeExecutionStore(overrides: Partial<ExecutionRecord> = {}): ExecutionStore {
+function makeExecutionStore(
+	overrides: Partial<Omit<ExecutionRecord, 'graph'>> & { graph?: WorkflowGraph } = {},
+): ExecutionStore {
 	const execution: ExecutionRecord = {
 		id: 'exec-1',
 		workflowId: 'wf-1',
 		status: 'running',
 		mode: 'production',
-		graph,
 		workflow: {},
 		triggerOutputs: null,
 		callerContext: { hostMode: 'trigger' },
 		responseExpectation: { kind: 'none' },
 		finishedAt: null,
 		...overrides,
+		graph: { seeded: [], ...(overrides.graph ?? graph) },
 	};
 	return {
 		createExecution: vi.fn(),
@@ -91,6 +93,7 @@ function makeExecutionStore(overrides: Partial<ExecutionRecord> = {}): Execution
 		transitionStatus: vi.fn().mockResolvedValue(true),
 		finishExecution: vi.fn().mockResolvedValue(null),
 		cancelExecution: vi.fn().mockResolvedValue(null),
+		loadSeededOutputs: vi.fn().mockResolvedValue(new Map()),
 		refreshLiveStatus: vi.fn(),
 	};
 }
