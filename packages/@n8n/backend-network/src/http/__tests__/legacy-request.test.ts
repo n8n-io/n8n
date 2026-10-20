@@ -489,6 +489,8 @@ describe('OutboundHttp.requests requestLegacy', () => {
 
 	describe('stream request bodies', () => {
 		let refusedUrl: string;
+		let okServer: Server;
+		let okUrl: string;
 
 		beforeAll(async () => {
 			nock.enableNetConnect('127.0.0.1');
@@ -496,10 +498,17 @@ describe('OutboundHttp.requests requestLegacy', () => {
 			await new Promise<void>((resolve) => closed.listen(0, '127.0.0.1', resolve));
 			refusedUrl = `http://127.0.0.1:${(closed.address() as AddressInfo).port}/upload`;
 			await new Promise<void>((resolve) => closed.close(() => resolve()));
+
+			// Answers before it reads the whole body, so the body is still open after the request.
+			okServer = createServer((_req, res) => res.end('ok'));
+			await new Promise<void>((resolve) => okServer.listen(0, '127.0.0.1', resolve));
+			okUrl = `http://127.0.0.1:${(okServer.address() as AddressInfo).port}/upload`;
 		});
 
-		afterAll(() => {
+		afterAll(async () => {
 			nock.disableNetConnect();
+			okServer.closeAllConnections();
+			await new Promise<void>((resolve) => okServer.close(() => resolve()));
 		});
 
 		/** Sends one chunk and then waits, like a large file that is still being read when the request fails. */
@@ -603,6 +612,26 @@ describe('OutboundHttp.requests requestLegacy', () => {
 			await expect(send(stream)).rejects.toThrow(error);
 
 			expect(stream.destroyed).toBe(true);
+		});
+
+		it.each([
+			{
+				name: 'requestLegacy',
+				send: async (stream: Readable) =>
+					await sendLegacy({ url: okUrl, method: 'POST', body: stream }),
+			},
+			{
+				name: 'request',
+				send: async (stream: Readable) =>
+					await sendHttpRequest({ url: okUrl, method: 'POST', body: stream }),
+			},
+		])('should not destroy the stream when $name succeeds', async ({ send }) => {
+			const stream = pendingStream();
+
+			await expect(send(stream)).resolves.toBe('ok');
+
+			expect(stream.destroyed).toBe(false);
+			stream.destroy();
 		});
 	});
 });
