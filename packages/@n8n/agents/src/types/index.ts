@@ -43,6 +43,7 @@ export type {
 	StreamChunk,
 	FinishReason,
 	TokenUsage,
+	PromptSizeUsage,
 	ModelConfig,
 	RunOptions,
 	ExecutionOptions,
@@ -63,6 +64,7 @@ export type {
 	AnthropicPromptCachingConfig,
 	OpenAIPromptCachingConfig,
 	PromptCachingConfig,
+	NativeToolDeferralConfig,
 } from './sdk/agent';
 export { FINISH_REASONS, isFinishReason } from './sdk/agent';
 

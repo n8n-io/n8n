@@ -150,17 +150,12 @@ export type PubSubCommandMap = {
 		threadId: string;
 		executionId: string;
 		userId: string;
+		/** Older mains read only `productionN8nChat`, so senders set both. */
+		surface?: 'preview' | 'n8n-chat' | 'system';
 		productionN8nChat?: boolean;
 	};
 
-	'cancel-agent-chat-foreground': {
-		projectId: string;
-		agentId: string;
-		threadId: string;
-		executionId: string;
-		userId: string;
-		productionN8nChat?: boolean;
-	};
+	'cancel-agent-chat-foreground': PubSubCommandMap['cancel-agent-chat-execution'];
 
 	'relay-agent-message-queue-update': {
 		data: PushPayload<'agentMessageQueueUpdated'>;

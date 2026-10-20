@@ -49,7 +49,7 @@ const checkpoint = mock<SerializableAgentState>({
 	pendingToolCalls: {
 		question: {
 			toolCallId: 'question',
-			toolName: 'ask_questions',
+			toolName: 'agent_builder_ask_questions',
 			input: {},
 			suspended: true,
 			suspendPayload: {},
@@ -182,7 +182,7 @@ it('relays Stop to the owning main and leaves other and later executions running
 	const { surface: _surface, ...wireContext } = context;
 	expect(mainB.publisher.publishCommand).toHaveBeenCalledExactlyOnceWith({
 		command: 'cancel-agent-chat-execution',
-		payload: { ...wireContext, productionN8nChat: false },
+		payload: { ...wireContext, surface: 'preview', productionN8nChat: false },
 	});
 	await mainA.service.onCancelExecution(context);
 	expect(mainA.backgroundJobs.cancelForParent).toHaveBeenCalledWith(
@@ -214,7 +214,7 @@ it('keeps pubsub wire compatibility with a main still on the old productionN8nCh
 	const { surface: _surface, ...wireContext } = production;
 	expect(mainB.publisher.publishCommand).toHaveBeenCalledExactlyOnceWith({
 		command: 'cancel-agent-chat-execution',
-		payload: { ...wireContext, productionN8nChat: true },
+		payload: { ...wireContext, surface: 'n8n-chat', productionN8nChat: true },
 	});
 
 	// An old main on the previous version relays this shape, with no `surface` field.
@@ -225,6 +225,58 @@ it('keeps pubsub wire compatibility with a main still on the old productionN8nCh
 		'thread-1',
 		'n8n-chat-production:user-1',
 	);
+});
+
+it.each(['foreground', 'all'] as const)(
+	'relays %s Stop of a system-agent turn with its own surface and memory scope',
+	async (scope) => {
+		const mainA = makeService();
+		const mainB = makeService();
+		const controller = new AbortController();
+		const system = { ...context, surface: 'system' as const };
+		mainA.service.register(system, controller);
+		const systemExecution = { ...running, source: 'system_chat' };
+		mainA.repository.findOneBy.mockResolvedValue(systemExecution);
+		mainB.repository.findOneBy.mockResolvedValue(systemExecution);
+
+		expect(await mainB.service.requestCancel({ ...system, scope })).toBe(true);
+		const { surface: _surface, ...wireContext } = system;
+		expect(mainB.publisher.publishCommand).toHaveBeenCalledExactlyOnceWith({
+			command:
+				scope === 'foreground' ? 'cancel-agent-chat-foreground' : 'cancel-agent-chat-execution',
+			payload: { ...wireContext, surface: 'system', productionN8nChat: false },
+		});
+
+		const payload = {
+			...wireContext,
+			surface: 'system' as const,
+			productionN8nChat: false,
+		};
+		if (scope === 'foreground') {
+			await mainA.service.onCancelForegroundExecution(payload);
+		} else {
+			await mainA.service.onCancelExecution(payload);
+		}
+		expect(controller.signal.aborted).toBe(true);
+		for (const main of [mainA, mainB]) {
+			if (scope === 'foreground') {
+				expect(main.backgroundJobs.cancelForParent).not.toHaveBeenCalled();
+			} else {
+				expect(main.backgroundJobs.cancelForParent).toHaveBeenCalledWith(
+					'agent-1',
+					'thread-1',
+					'system-chat:user-1',
+				);
+			}
+		}
+	},
+);
+
+it('does not let the Preview surface stop a system-agent turn', async () => {
+	const { service, repository } = makeService(false);
+	repository.findOneBy.mockResolvedValue({ ...running, source: 'system_chat' });
+
+	await expect(service.requestCancel(context)).rejects.toThrow('Execution not found');
 });
 
 describe.each(['foreground', 'all'] as const)('%s Stop during startup', (scope) => {
@@ -277,7 +329,7 @@ describe.each(['foreground', 'all'] as const)('%s Stop during startup', (scope) 
 				expect(caller.publisher.publishCommand).toHaveBeenCalledExactlyOnceWith({
 					command:
 						scope === 'foreground' ? 'cancel-agent-chat-foreground' : 'cancel-agent-chat-execution',
-					payload: { ...wireContext, productionN8nChat: false },
+					payload: { ...wireContext, surface: 'preview', productionN8nChat: false },
 				});
 			}
 			await owner.service.settle(context.executionId, async () => {});
@@ -450,7 +502,7 @@ it('relays cancel-all after the foreground reply settles', async () => {
 
 	await mainB.service.requestCancel({ ...context, scope: 'all' });
 	const { surface: _surface, ...wireContext } = context;
-	const payload = { ...wireContext, productionN8nChat: false };
+	const payload = { ...wireContext, surface: 'preview' as const, productionN8nChat: false };
 	expect(mainB.publisher.publishCommand).toHaveBeenCalledWith({
 		command: 'cancel-agent-chat-execution',
 		payload,
