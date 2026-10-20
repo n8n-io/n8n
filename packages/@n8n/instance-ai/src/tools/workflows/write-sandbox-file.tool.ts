@@ -17,14 +17,14 @@ export const writeSandboxFileInputSchema = z.object({
 	filePath: z
 		.string()
 		.describe('Absolute path or path relative to ~/workspace/ (e.g. "src/workflow.ts")'),
-	content: z.string().describe('The file content to write'),
+	content: z.string().describe('File content to write'),
 });
 
 export function createWriteSandboxFileTool(workspace: SandboxWorkspace) {
 	return new Tool('write-file')
 		.description(
-			'Write content to a file in the sandbox workspace. Creates parent directories automatically. ' +
-				'Use this to write workflow code to ~/workspace/src/workflow.ts.',
+			'Write content to a file in sandbox workspace. Creates parent directories automatically. ' +
+				'Use to write workflow code to ~/workspace/src/workflow.ts.',
 		)
 		.input(writeSandboxFileInputSchema)
 		.output(

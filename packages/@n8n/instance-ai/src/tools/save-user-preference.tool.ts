@@ -16,13 +16,11 @@ const inputSchema = z.object({
 	content: z
 		.string()
 		.describe(
-			`The preference in the user's own terms, one or two sentences, at most ${AI_PREFERENCE_CONTENT_MAX_LENGTH} characters.`,
+			`Preference in user's own terms, one or two sentences, at most ${AI_PREFERENCE_CONTENT_MAX_LENGTH} characters.`,
 		),
 	scope: z
 		.literal('user')
-		.describe(
-			'Who the preference applies to. Only `user` (this user, in every project) exists yet.',
-		),
+		.describe('Who preference applies to. Only `user` (this user, every project) exists yet.'),
 });
 
 const outputSchema = z.object({
@@ -40,19 +38,19 @@ const outputSchema = z.object({
 		.enum(['too_long', 'scope_full', 'duplicate', 'not_permitted', 'blocked_by_admin', 'failed'])
 		.optional()
 		.describe(
-			'Why the write was refused. On `too_long`, shorten the text to fit `limit` and call once more. On every other reason, tell the user and do not call again.',
+			'Why write was refused. On `too_long`, shorten text to fit `limit`, call once more. On every other reason, tell user; do not call again.',
 		),
 	message: z.string().optional(),
 	limit: z
 		.number()
 		.int()
 		.optional()
-		.describe('The cap the write broke: characters for `too_long`, rows for `scope_full`.'),
+		.describe('Cap the write broke: characters for `too_long`, rows for `scope_full`.'),
 	actual: z
 		.number()
 		.int()
 		.optional()
-		.describe('The value measured against `limit`: the text length, or the rows already saved.'),
+		.describe('Value measured against `limit`: text length, or rows already saved.'),
 });
 
 export function createSaveUserPreferenceTool(context: InstanceAiContext) {

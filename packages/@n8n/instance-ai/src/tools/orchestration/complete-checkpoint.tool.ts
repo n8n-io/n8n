@@ -23,14 +23,11 @@ import { analyzeWorkflow } from '../workflows/setup-workflow.service';
 import { ORCHESTRATION_TOOL_IDS } from '../tool-ids';
 
 const inputSchema = z.object({
-	taskId: z.string().describe('The checkpoint task ID from the <planned-task-follow-up> payload'),
+	taskId: z.string().describe('Checkpoint task ID from <planned-task-follow-up> payload'),
 	status: z
 		.enum(['succeeded', 'failed'])
-		.describe('Whether the verification passed (succeeded) or failed (failed)'),
-	result: z
-		.string()
-		.optional()
-		.describe('Short user-visible note describing the verification outcome'),
+		.describe('Whether verification passed (succeeded) or failed (failed)'),
+	result: z.string().optional().describe('Short user-visible note on verification outcome'),
 	error: z.string().optional().describe('Error message when status=failed'),
 	outcome: z
 		.record(z.unknown())
@@ -167,10 +164,10 @@ export function createCompleteCheckpointTool(context: OrchestrationContext) {
 	return new Tool(ORCHESTRATION_TOOL_IDS.COMPLETE_CHECKPOINT)
 		.legacyNames(...getLegacyBuilderToolNames(ORCHESTRATION_TOOL_IDS.COMPLETE_CHECKPOINT))
 		.description(
-			'Report the outcome of a planned-task checkpoint you just executed. Only call in checkpoint follow-up turns. ' +
-				'Call this exactly once per <planned-task-follow-up type="checkpoint"> block. ' +
-				'Only valid for tasks of kind "checkpoint" that are currently running; ' +
-				'calling with any other taskId returns an error and does not modify the graph.',
+			'Report outcome of planned-task checkpoint just executed. Only call in checkpoint follow-up turns. ' +
+				'Call exactly once per <planned-task-follow-up type="checkpoint"> block. ' +
+				'Only valid for tasks of kind "checkpoint" currently running; ' +
+				'any other taskId returns error and does not modify graph.',
 		)
 		.input(inputSchema)
 		.output(outputSchema)

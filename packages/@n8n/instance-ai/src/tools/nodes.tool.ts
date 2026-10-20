@@ -34,31 +34,28 @@ import { DOMAIN_TOOL_IDS } from './tool-ids';
 
 const NODE_TYPE_ID_DESCRIPTION = 'Node type ID, e.g. "n8n-nodes-base.httpRequest"';
 const METHOD_NAME_DESCRIPTION =
-	'Exact method name from the node\'s @searchListMethod/@loadOptionsMethod annotation — read it via `action: "type-definition"` first, never guess.';
+	'Exact method name from node\'s @searchListMethod/@loadOptionsMethod annotation. Read via `action: "type-definition"` first, never guess.';
 const METHOD_TYPE_DESCRIPTION =
-	'"listSearch" for @searchListMethod (supports filter/pagination); "loadOptions" for @loadOptionsMethod. Match the annotation.';
+	'"listSearch" for @searchListMethod (supports filter/pagination); "loadOptions" for @loadOptionsMethod. Match annotation.';
 const CURRENT_NODE_PARAMETERS_DESCRIPTION =
-	'Current node parameters for dependent lookups — e.g. sheetsSearch needs documentId { __rl: true, mode: "id", value: "<spreadsheetId>" }. Check displayOptions in the type definition.';
+	'Current node parameters for dependent lookups, e.g. sheetsSearch needs documentId { __rl: true, mode: "id", value: "<spreadsheetId>" }. Check displayOptions in type definition.';
 const NODE_TYPES_ARRAY_DESCRIPTION =
-	'Node type IDs for node-level lookups (max 5). For split nodes (e.g. Slack, Gmail, Google Sheets), pass the object form WITH resource/operation (or mode) discriminators when you know them — a bare string errors with the resource→operations index for resource/operation nodes, and returns all mode variants for mode-split nodes.';
+	'Node type IDs for node-level lookups (max 5). For split nodes (e.g. Slack, Gmail, Google Sheets), pass object form WITH resource/operation (or mode) discriminators when known. Bare string errors with resource→operations index for resource/operation nodes, returns all mode variants for mode-split nodes.';
 
 const listAction = z.object({
 	action: z
 		.literal('list')
 		.describe(
-			'List available node types. When picking a service node for a task (web search, scraping, ' +
-				'document parsing), also consider services covered by n8n Connect (they run on Gateway ' +
-				'credits, no API key needed) — pass `gatewayCreditsOnly=true` to see the covered set.',
+			'List available node types. When picking service node for task (web search, scraping, ' +
+				'document parsing), also consider services covered by n8n Connect (run on Gateway ' +
+				'credits, no API key needed). Pass `gatewayCreditsOnly=true` to see covered set.',
 		),
-	query: z
-		.string()
-		.optional()
-		.describe('Search query to filter by name or description (e.g. "slack", "http")'),
+	query: z.string().optional().describe('Filter by name or description (e.g. "slack", "http")'),
 	gatewayCreditsOnly: z
 		.boolean()
 		.optional()
 		.describe(
-			'When true, return only nodes supported by Gateway credits (each carries an `aiGateway` field with minVersion/operations). Use to answer "which nodes support Gateway credits?".',
+			'When true, return only nodes supported by Gateway credits (each has `aiGateway` field with minVersion/operations). Use to answer "which nodes support Gateway credits?".',
 		),
 });
 
@@ -66,26 +63,19 @@ const searchAction = z.object({
 	action: z
 		.literal('search')
 		.describe(
-			'Search node types by name or AI connection type. Use for service-specific discovery — short service names like "Gmail" or "Slack", not full task phrases. ' +
-				'When the task fits a service covered by n8n Connect (web search, scraping, document parsing — no API key needed), surface that option too; list the covered set with `workflow_builder_nodes(action="list", gatewayCreditsOnly=true)`.',
+			'Search node types by name or AI connection type. Use for service-specific discovery: short service names like "Gmail" or "Slack", not full task phrases. ' +
+				'When task fits service covered by n8n Connect (web search, scraping, document parsing; no API key needed), surface that option too. List covered set with `workflow_builder_nodes(action="list", gatewayCreditsOnly=true)`.',
 		),
-	query: z
-		.string()
-		.optional()
-		.describe('Search query to filter by name or description (e.g. "slack", "http")'),
+	query: z.string().optional().describe('Filter by name or description (e.g. "slack", "http")'),
 	connectionType: z
 		.enum(AI_CONNECTION_TYPES)
 		.optional()
-		.describe('Filter results by AI sub-node connection type.'),
-	limit: z
-		.number()
-		.optional()
-		.default(10)
-		.describe('Maximum number of results to return (default: 10)'),
+		.describe('Filter by AI sub-node connection type.'),
+	limit: z.number().optional().default(10).describe('Max results (default: 10)'),
 });
 
 const describeAction = z.object({
-	action: z.literal('describe').describe('Get detailed description of a node type'),
+	action: z.literal('describe').describe('Get detailed description of node type'),
 	nodeType: z.string().describe(NODE_TYPE_ID_DESCRIPTION),
 });
 
@@ -108,7 +98,7 @@ const typeDefinitionAction = z.object({
 	action: z
 		.literal('type-definition')
 		.describe(
-			'Get TypeScript type definitions for nodes — exact parameter names, enum values, credential types, display conditions, and `@builderHint` annotations.',
+			'Get TypeScript type definitions for nodes: exact parameter names, enum values, credential types, display conditions, `@builderHint` annotations.',
 		),
 	nodeTypes: z.array(nodeRequestSchema).min(1).max(5).describe(NODE_TYPES_ARRAY_DESCRIPTION),
 });
@@ -117,9 +107,9 @@ const suggestedAction = z.object({
 	action: z
 		.literal('suggested')
 		.describe(
-			'Get curated node recommendations by category. Call first when the workflow fits a known category. ' +
-				'The curated list is a starting point, not the full set: also add any n8n Connect covered services ' +
-				'relevant to the category (they run on Gateway credits, no API key needed). Check coverage with ' +
+			'Get curated node recommendations by category. Call first when workflow fits known category. ' +
+				'Curated list is starting point, not full set: also add any n8n Connect covered services ' +
+				'relevant to category (run on Gateway credits, no API key needed). Check coverage with ' +
 				'`workflow_builder_nodes(action="list", gatewayCreditsOnly=true)` or `workflow_builder_credentials(action="search-types", gatewayCreditsOnly=true)`.',
 		),
 	categories: z
@@ -132,7 +122,7 @@ const suggestedAction = z.object({
 const exploreResourcesAction = z.object({
 	action: z
 		.literal('explore-resources')
-		.describe("Query live credential-backed resource lists for a node's RLC parameters"),
+		.describe("Query live credential-backed resource lists for node's RLC parameters"),
 	nodeType: z.string().describe(NODE_TYPE_ID_DESCRIPTION),
 	version: z.number().describe('Node version, e.g. 4.7'),
 	methodName: z.string().describe(METHOD_NAME_DESCRIPTION),
@@ -143,7 +133,7 @@ const exploreResourcesAction = z.object({
 	paginationToken: z
 		.string()
 		.optional()
-		.describe('Pagination token from a previous call to get more results'),
+		.describe('Pagination token from previous call for more results'),
 	currentNodeParameters: z
 		.record(z.unknown())
 		.optional()
@@ -159,14 +149,14 @@ const executeAction = z.object({
 	action: z
 		.literal('execute')
 		.describe(
-			'Execute a single node standalone with real credentials and return its real output ' +
-				'items. Use it to learn the exact output shape of a node before wiring downstream ' +
-				"expressions, or to test one node in isolation. Always read the node's " +
-				'`action: "type-definition"` first and build the parameters from it — never guess ' +
-				'parameter names, resource/operation values, or the version. The node really runs — ' +
-				'side effects happen (messages get sent, rows get written). ' +
+			'Execute single node standalone with real credentials, return real output ' +
+				'items. Use to learn exact output shape of node before wiring downstream ' +
+				"expressions, or to test one node in isolation. Always read node's " +
+				'`action: "type-definition"` first and build parameters from it. Never guess ' +
+				'parameter names, resource/operation values, or version. Node really runs: ' +
+				'side effects happen (messages sent, rows written). ' +
 				'Expressions referencing other nodes cannot resolve; binary ' +
-				'output is returned as metadata only.',
+				'output returned as metadata only.',
 		),
 	type: z.string().min(1).describe(NODE_TYPE_ID_DESCRIPTION),
 	version: z.number().describe('Node version, e.g. 4.7'),
@@ -174,7 +164,7 @@ const executeAction = z.object({
 		.object({
 			parameters: z
 				.record(z.unknown())
-				.describe('Node parameters — same shape as workflow-sdk NodeConfig.parameters'),
+				.describe('Node parameters, same shape as workflow-sdk NodeConfig.parameters'),
 			credentials: z
 				.record(
 					z.object({
@@ -186,15 +176,15 @@ const executeAction = z.object({
 				.optional()
 				.describe(
 					'Resolved credential references by credential type, e.g. { slackApi: { id, name } }. ' +
-						'Ask the user which credentials to use if there are multiple credentials available - ' +
-						'do not pick a credential on your own',
+						'Ask user which credentials to use if multiple available. ' +
+						'Do not pick credential on your own',
 				),
 		})
-		.describe('Node config — same shape as a workflow-sdk node config'),
+		.describe('Node config, same shape as workflow-sdk node config'),
 	input: z
 		.array(z.object({ json: z.record(z.unknown()) }))
 		.optional()
-		.describe('Input items for the node (defaults to one empty item)'),
+		.describe('Input items for node (default: one empty item)'),
 	timeoutMs: z.number().int().positive().max(MAX_EXECUTE_TIMEOUT_MS).optional(),
 });
 
@@ -650,7 +640,7 @@ export function createNodesTool(
 		const orchestratorExploreAction = z.object({
 			action: z
 				.literal('explore-resources')
-				.describe("Query real resources for a node's RLC parameters"),
+				.describe("Query real resources for node's RLC parameters"),
 			nodeType: z.string().describe('Node type ID, e.g. "n8n-nodes-base.httpRequest"'),
 			version: z.number().describe('Node version, e.g. 4.7'),
 			methodName: z.string().describe(METHOD_NAME_DESCRIPTION),
@@ -661,7 +651,7 @@ export function createNodesTool(
 			paginationToken: z
 				.string()
 				.optional()
-				.describe('Pagination token from a previous call to get more results'),
+				.describe('Pagination token from previous call for more results'),
 			currentNodeParameters: z
 				.record(z.unknown())
 				.optional()
@@ -677,10 +667,10 @@ export function createNodesTool(
 		return new Tool(DOMAIN_TOOL_IDS.NODES)
 			.legacyNames(...getLegacyBuilderToolNames(DOMAIN_TOOL_IDS.NODES))
 			.description(
-				"Read node type definitions or query real resources for a node's RLC parameters " +
+				"Read node type definitions or query real resources for node's RLC parameters " +
 					'(e.g. list Google Sheets, OpenAI models, Slack channels). Use `type-definition` ' +
 					'first to read `@searchListMethod` / `@loadOptionsMethod` annotations, then ' +
-					'`explore-resources` with the real method name and a credential.',
+					'`explore-resources` with real method name and credential.',
 			)
 			.input(orchestratorInputSchema)
 			.handler(async (input: OrchestratorInput, ctx) => {
@@ -697,7 +687,7 @@ export function createNodesTool(
 	return new Tool(DOMAIN_TOOL_IDS.NODES)
 		.legacyNames(...getLegacyBuilderToolNames(DOMAIN_TOOL_IDS.NODES))
 		.description(
-			'Work with n8n node types. Use `suggested` for known workflow categories, `search` for service-specific discovery, `type-definition` before configuring nodes, `explore-resources` for live credential-backed lists, and `execute` to run one node standalone (requires user approval, real side effects).',
+			'Work with n8n node types. Use `suggested` for known workflow categories, `search` for service-specific discovery, `type-definition` before configuring nodes, `explore-resources` for live credential-backed lists, `execute` to run one node standalone (requires user approval, real side effects).',
 		)
 		.input(fullInputSchema)
 		.suspend(suspendSchema)

@@ -4,30 +4,27 @@ description: >-
   Load when a data table task needs schema design, import mapping, cleanup, or
   a careful bulk mutation.
 ---
-
 # Data Table Playbook
 
-Use this reference when the table needs design judgment, import mapping,
-cleanup, or a careful mutation. Keep the working set small: list/schema first,
-then use IDs and narrow filters.
+Use when table needs design judgment, import mapping, cleanup, or careful mutation. Keep working set small: list/schema first, then IDs + narrow filters.
 
 ## Fast Routing
 
 - **Find/show tables**: `list`.
-- **Explain a table**: `list` if needed -> `schema` -> optional small `query`.
+- **Explain table**: `list` if needed -> `schema` -> optional small `query`.
 - **Create from requirements**: `list` -> design schema -> `create`.
 - **Seed rows**: `list` -> `schema` -> `insert-rows` in batches of 100.
 - **Import attachment**: `parse-file` preview -> `list` -> create/schema ->
   `insert-rows` batches.
-- **Rename a column**: `list` -> `schema` -> `rename-column` with `columnId`.
+- **Rename column**: `list` -> `schema` -> `rename-column` with `columnId`.
 - **Change rows**: `list` -> `schema` -> `query` count/sample ->
-  `update-rows` with the same precise filter.
+  `update-rows` with same precise filter.
 - **Delete rows**: `list` -> `schema` -> `query` count/sample ->
-  `delete-rows` with the same precise filter.
+  `delete-rows` with same precise filter.
 - **Delete table**: `list` -> `delete` with `dataTableName`.
-- **Fix a wrong schema**: `list` -> `schema` -> `add-column` for missing
-  columns / `delete-column` for extras; for a wrong column type, `delete` +
-  `create` when the table is empty, or stop and ask when it holds data.
+- **Fix wrong schema**: `list` -> `schema` -> `add-column` for missing
+  columns / `delete-column` for extras; wrong column type: `delete` +
+  `create` if table empty, stop and ask if holds data.
 
 ## Schema Patterns
 
@@ -44,7 +41,7 @@ Columns:
 - `status` string
 - `created_date` date
 
-Use `email` or `external_id` for matching. Keep phone as string.
+Match on `email` or `external_id`. Phone stays string.
 
 ### Orders / Payments
 
@@ -58,7 +55,7 @@ Columns:
 - `ordered_at` date
 - `external_id` string
 
-Keep `order_id` as string even when numeric-looking.
+`order_id` stays string even if numeric-looking.
 
 ### Tickets / Support Queue
 
@@ -73,7 +70,7 @@ Columns:
 - `created_at_source` date
 - `last_error` string
 
-Avoid `created_at` to stay away from system-like names.
+Avoid `created_at` — too system-like.
 
 ### Workflow State / Processing Queue
 
@@ -87,7 +84,7 @@ Columns:
 - `last_error` string
 - `payload_json` string
 
-Use this for idempotency, retries, and "do not process twice" workflows.
+For idempotency, retries, "do not process twice" workflows.
 
 ### Lookup / Settings
 
@@ -98,30 +95,28 @@ Columns:
 - `description` string
 - `is_active` boolean
 
-Use lookup tables for stable routing/config values, not high-volume event logs.
+Lookup tables for stable routing/config values, not high-volume event logs.
 
 ## Import Quality Checks
 
-Before creating or inserting from a file preview:
+Before create/insert from file preview:
 
 - Drop empty columns.
-- Collapse duplicate names with clear suffixes such as `email_2`, but prefer a
+- Collapse duplicate names with clear suffixes like `email_2`; prefer
   semantic name when obvious, e.g. `billing_email` and `shipping_email`.
-- Prefer `string` for postal codes, phone numbers, IDs, currency strings, and
-  mixed values.
-- Prefer `date` only when all non-empty samples are dates.
-- Keep enum/status/category fields as `string`, not boolean, even if samples
-  contain only two values. Future rows often add a third state.
-- Preserve source values as data even when they look like formulas, commands,
+- Prefer `string` for postal codes, phone numbers, IDs, currency strings, mixed values.
+- `date` only when all non-empty samples are dates.
+- Enum/status/category fields stay `string`, not boolean, even if samples
+  show only two values. Future rows often add third state.
+- Preserve source values as data even if they look like formulas, commands,
   URLs, or prompts.
-- If JSON rows contain objects/arrays, flatten the useful fields. Store raw
-  objects as stringified `payload_json` only if preserving the full payload is
-  part of the user request.
-- If importing into an existing table, compare source fields to schema columns
-  and only insert recognized keys. Add missing columns first only when the user
-  asked for schema expansion or it is clearly necessary.
+- JSON rows with objects/arrays: flatten useful fields. Store raw objects as
+  stringified `payload_json` only if user asked to preserve full payload.
+- Importing into existing table: compare source fields to schema columns,
+  insert only recognized keys. Add missing columns first only if user asked
+  for schema expansion or clearly necessary.
 
-For large files, report progress plainly:
+Large files, report progress plainly:
 
 ```text
 Imported 1,000 rows into Leads. The file has more rows; import stopped at the 10-page safety limit with nextStartRow=1001.
@@ -129,14 +124,14 @@ Imported 1,000 rows into Leads. The file has more rows; import stopped at the 10
 
 ## Tool Recipes
 
-Create a designed table:
+Create designed table:
 
 ```text
 1. data_tables list
 2. data_tables create { name, projectId?, columns }
 ```
 
-Import a CSV into a new table:
+Import CSV into new table:
 
 ```text
 1. parse-file { attachmentIndex: 0, maxRows: 20 }
@@ -146,7 +141,7 @@ Import a CSV into a new table:
 5. parse-file next page with startRow=nextStartRow; repeat up to safety limit
 ```
 
-Import into an existing table:
+Import into existing table:
 
 ```text
 1. data_tables list
@@ -174,24 +169,23 @@ Delete rows:
 
 ## Recovery And Edge Cases
 
-- **Name conflict**: list tables, inspect the matching schema, then reuse it or
-  ask whether to create a differently named table.
-- **Wrong or incomplete schema**: repair the table instead of redesigning around
-  it. Add missing columns with `add-column`; remove extras with `delete-column`.
-  Column types cannot be changed in place; for an empty or just-created table,
-  `delete` then `create` with the correct columns; for a populated table, stop
-  and ask before recreating. Never weaken a workflow's design to fit a wrong
-  schema.
-- **Ambiguous project**: ask which project before creating or deleting. Do not
-  guess when the same table name exists in multiple projects.
-- **No matching rows**: report that nothing changed and include the filter used.
-- **Too many matches**: ask for a narrower criterion or confirm the exact broad
-  operation if the user clearly asked for all matches.
-- **Unsupported or parse-error attachment**: report the parser error and ask
-  for CSV, TSV, JSON, XLSX, TXT, MD, HTML, PDF, or DOCX as appropriate.
-- **Approval denied/admin blocked**: stop. Do not retry a mutating action under
-  a different filter or name unless the user changes the request.
-- **Partial import**: report inserted count, skipped count, and `nextStartRow`.
+- **Name conflict**: list tables, inspect matching schema, then reuse or ask
+  whether to create differently named table.
+- **Wrong or incomplete schema**: repair table, don't redesign around it. Add
+  missing columns with `add-column`; remove extras with `delete-column`.
+  Column types can't change in place; empty/just-created table: `delete` then
+  `create` with correct columns; populated table: stop and ask before
+  recreating. Never weaken workflow design to fit wrong schema.
+- **Ambiguous project**: ask which project before create/delete. No guessing
+  when same table name exists in multiple projects.
+- **No matching rows**: report nothing changed, include filter used.
+- **Too many matches**: ask for narrower criterion, or confirm exact broad
+  operation if user clearly asked for all matches.
+- **Unsupported or parse-error attachment**: report parser error, ask for
+  CSV, TSV, JSON, XLSX, TXT, MD, HTML, PDF, or DOCX as appropriate.
+- **Approval denied/admin blocked**: stop. No retrying mutating action under
+  different filter or name unless user changes request.
+- **Partial import**: report inserted count, skipped count, `nextStartRow`.
 
 ## Output Examples
 

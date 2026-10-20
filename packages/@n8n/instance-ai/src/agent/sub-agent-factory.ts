@@ -14,19 +14,19 @@ import { getDateTimeSection } from './system-prompt';
 const SUB_AGENT_PROTOCOL = `${SUBAGENT_OUTPUT_CONTRACT}
 
 ### Structured Result
-Return a concise result summary: IDs created, statuses, counts, errors encountered.
+Return concise result summary: IDs created, statuses, counts, errors encountered.
 
 ### Diagnostic Context (when relevant)
-If you encountered errors, retried operations, or made non-obvious decisions, add a brief
-diagnostic section at the end explaining:
-- What approaches you tried and why they failed
-- What blockers remain (missing credentials, permissions, API errors)
-- What assumptions you made
+If you hit errors, retried operations, or made non-obvious decisions, add brief
+diagnostic section at end explaining:
+- Approaches tried and why they failed
+- Blockers remaining (missing credentials, permissions, API errors)
+- Assumptions made
 
 Keep diagnostics to 2-3 sentences maximum. Omit entirely when the task succeeded cleanly.
 
 ### Delegate Rules
-- One tool call at a time unless truly independent. Minimum tool calls needed.
+- One tool call at a time unless truly independent. Use minimum tool calls.
 - You cannot delegate to other agents or create plans.
 - ${ASK_USER_FALLBACK}
 - ${UNTRUSTED_CONTENT_DOCTRINE}
@@ -43,7 +43,7 @@ export function buildSubAgentPrompt(role: string, instructions: string, timeZone
 
 ${getDateTimeSection(timeZone)}
 
-You are a sub-agent with the role: ${role}.
+Sub-agent role: ${role}.
 
 ## Task
 ${instructions}`;

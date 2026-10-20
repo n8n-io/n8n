@@ -12,19 +12,19 @@ import { PLANNED_TASK_KINDS, type OrchestrationContext, type PlannedTask } from 
 import { ORCHESTRATION_TOOL_IDS } from '../tool-ids';
 
 const plannedTaskSchema = z.object({
-	id: z.string().describe('Stable task identifier used by dependency edges'),
+	id: z.string().describe('Stable task ID used by dependency edges'),
 	title: z
 		.string()
 		.trim()
 		.min(1, 'Task title must not be empty — it is the label the user sees')
 		.describe('Short user-facing task title'),
 	kind: z.enum(PLANNED_TASK_KINDS),
-	spec: z.string().describe('Detailed executor briefing for this task'),
+	spec: z.string().describe('Detailed executor briefing for task'),
 	deps: z
 		.array(z.string())
 		.describe(
-			'Task IDs that must succeed before this task can start. ' +
-				'Workflows that consume outputs depend on workflows that produce them; independent workflows run in parallel.',
+			'Task IDs that must succeed before this task starts. ' +
+				'Workflows consuming outputs depend on workflows producing them; independent workflows run in parallel.',
 		),
 	workflowId: z
 		.string()
@@ -34,7 +34,7 @@ const plannedTaskSchema = z.object({
 		.boolean()
 		.optional()
 		.describe(
-			'Set true only when this build-workflow task is complete after saving a supporting sub-workflow. Do not set for helper sub-workflows created inside a larger main-workflow task.',
+			'Set true only when this build-workflow task is complete after saving supporting sub-workflow. Do not set for helper sub-workflows created inside larger main-workflow task.',
 		),
 });
 
@@ -45,15 +45,15 @@ const planInputSchema = z.object({
 			source: z
 				.enum(['planning-skill', 'replan'])
 				.describe(
-					'Use "planning-skill" for initial plan-worthy work after loading the planning skill; use "replan" only in planned-task replan follow-up turns.',
+					'Use "planning-skill" for initial plan-worthy work after loading planning skill; use "replan" only in planned-task replan follow-up turns.',
 				),
-			summary: z.string().min(1).describe('Brief summary of the plan and why it is needed'),
-			assumptions: z.array(z.string()).optional().describe('Important assumptions behind the plan'),
+			summary: z.string().min(1).describe('Brief summary of plan and why needed'),
+			assumptions: z.array(z.string()).optional().describe('Important assumptions behind plan'),
 			postBuildRunRequested: z
 				.boolean()
 				.optional()
 				.describe(
-					'Set true when the user explicitly asked to run, execute, or test a workflow after it is built. Omit or false otherwise.',
+					'Set true when user explicitly asked to run, execute, or test workflow after it is built. Omit or false otherwise.',
 				),
 		})
 		.describe('How this task graph was produced'),
@@ -157,13 +157,13 @@ export function createPlanTool(context: OrchestrationContext) {
 	return new Tool(ORCHESTRATION_TOOL_IDS.CREATE_TASKS)
 		.legacyNames(...getLegacyBuilderToolNames(ORCHESTRATION_TOOL_IDS.CREATE_TASKS))
 		.description(
-			'Submit a dependency-aware task graph for detached multi-step execution. ' +
+			'Submit dependency-aware task graph for detached multi-step execution. ' +
 				'Load via `load_tool` before calling (search "create tasks" if not visible). ' +
-				'Use after loading the `planning` skill for initial plan-worthy work, or during ' +
+				'Use after loading `planning` skill for initial plan-worthy work, or during ' +
 				'`<planned-task-follow-up type="replan">` when multiple dependent tasks still need scheduling. ' +
-				'Requires `planningContext.source` to be `planning-skill` or `replan` as appropriate. ' +
-				'The task list is shown to the user for approval before execution starts. ' +
-				'After calling workflow_builder_create_tasks, do not write visible text; the approval card is the user-visible surface.',
+				'Requires `planningContext.source` `planning-skill` or `replan` as appropriate. ' +
+				'Task list shown to user for approval before execution starts. ' +
+				'After calling workflow_builder_create_tasks, do not write visible text; approval card is user-visible surface.',
 		)
 		.input(planInputSchema)
 		.output(planOutputSchema)

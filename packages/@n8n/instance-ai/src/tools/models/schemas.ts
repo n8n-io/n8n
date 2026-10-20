@@ -8,7 +8,7 @@ export const searchModelsInputSchema = z
 			.min(1)
 			.max(100)
 			.describe(
-				'Canonical catalog provider ID, such as openai, google, anthropic, openrouter, aws-bedrock, or azure-openai. Model-family names such as Gemini or Claude are not provider IDs.',
+				'Canonical catalog provider ID, e.g. openai, google, anthropic, openrouter, aws-bedrock, azure-openai. Model-family names such as Gemini or Claude are not provider IDs.',
 			),
 		query: z
 			.string()
@@ -16,9 +16,9 @@ export const searchModelsInputSchema = z
 			.max(100)
 			.optional()
 			.describe(
-				'Optional case-insensitive substring filter on model IDs and names, applied before the limit. For OpenRouter, use claude or openai to select a model maker. Empty means no filter.',
+				'Optional case-insensitive substring filter on model IDs and names, applied before limit. For OpenRouter, use claude or openai to select a model maker. Empty means no filter.',
 			),
-		limit: z.number().int().min(1).max(10).default(10).describe('Maximum results; defaults to 10'),
+		limit: z.number().int().min(1).max(10).default(10).describe('Max results; default 10'),
 	})
 	.strict();
 

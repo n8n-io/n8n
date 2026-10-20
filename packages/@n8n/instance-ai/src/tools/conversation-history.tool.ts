@@ -18,16 +18,14 @@ import { DOMAIN_TOOL_IDS } from './tool-ids';
 // ── Action schemas ──────────────────────────────────────────────────────────
 
 const searchAction = z.object({
-	action: z
-		.literal('search')
-		.describe('Find past conversations by text, or list the most recent ones.'),
+	action: z.literal('search').describe('Find past conversations by text, or list most recent.'),
 	query: z
 		.string()
 		.min(2)
 		.max(200)
 		.optional()
 		.describe(
-			"Case-insensitive text matched against conversation titles, the user's messages, and answers the user gave to workflow_builder_ask_user questions. Matched as one exact phrase — prefer fewer, short, distinctive terms, and run separate searches for separate concepts. Omit to list the most recent conversations instead.",
+			'Case-insensitive text matched against conversation titles, user messages, and user answers to workflow_builder_ask_user questions. Matched as one exact phrase: use few short distinctive terms, run separate searches for separate concepts. Omit to list most recent conversations.',
 		),
 	limit: z
 		.number()
@@ -36,7 +34,7 @@ const searchAction = z.object({
 		.max(CONVERSATION_HISTORY_MAX_SEARCH_LIMIT)
 		.optional()
 		.describe(
-			`Max conversations to return (default 10 when searching, 5 when listing recent; max ${CONVERSATION_HISTORY_MAX_SEARCH_LIMIT}).`,
+			`Max conversations (default 10 searching, 5 listing recent; max ${CONVERSATION_HISTORY_MAX_SEARCH_LIMIT}).`,
 		),
 });
 
@@ -46,7 +44,7 @@ const getMessagesAction = z.object({
 	aroundMessageId: z
 		.string()
 		.optional()
-		.describe('Center the read on this message (id from a search excerpt).'),
+		.describe('Center read on this message (id from search excerpt).'),
 	before: z
 		.number()
 		.int()
@@ -54,7 +52,7 @@ const getMessagesAction = z.object({
 		.max(CONVERSATION_HISTORY_MAX_WINDOW_SIDE)
 		.optional()
 		.describe(
-			`Messages before the anchor. Without aroundMessageId, the last N messages of the conversation (max ${CONVERSATION_HISTORY_MAX_WINDOW_SIDE}).`,
+			`Messages before anchor. Without aroundMessageId: last N messages of conversation (max ${CONVERSATION_HISTORY_MAX_WINDOW_SIDE}).`,
 		),
 	after: z
 		.number()
@@ -63,7 +61,7 @@ const getMessagesAction = z.object({
 		.max(CONVERSATION_HISTORY_MAX_WINDOW_SIDE)
 		.optional()
 		.describe(
-			`Messages after the anchor. Without aroundMessageId, the first N messages of the conversation (max ${CONVERSATION_HISTORY_MAX_WINDOW_SIDE}).`,
+			`Messages after anchor. Without aroundMessageId: first N messages of conversation (max ${CONVERSATION_HISTORY_MAX_WINDOW_SIDE}).`,
 		),
 });
 
@@ -166,7 +164,7 @@ async function handleGetMessages(
 // ── Tool factory ─────────────────────────────────────────────────────────────
 
 const DESCRIPTION =
-	"Recall the user's past conversations in this project (the current conversation is excluded) — stated preferences, earlier requirements, prior work. `search` finds conversations by text, or lists the most recent ones when given no query; `get-messages` then reads a message window from one of them. Read-only.";
+	"Recall user's past conversations in this project (current one excluded): stated preferences, earlier requirements, prior work. `search` finds conversations by text, or lists most recent when no query; `get-messages` then reads a message window from one. Read-only.";
 
 export function createConversationHistoryTool(context: InstanceAiContext) {
 	return new Tool(DOMAIN_TOOL_IDS.CONVERSATION_HISTORY)

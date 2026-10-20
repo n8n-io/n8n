@@ -29,22 +29,22 @@ const updateChecklistAction = z.object({
 	action: z
 		.literal('update-checklist')
 		.describe(
-			'Write or update a lightweight visible checklist for multi-step work that does not need scheduler-driven execution. For coordinated background tasks, use workflow_builder_create_tasks instead.',
+			'Write or update lightweight visible checklist for multi-step work not needing scheduler-driven execution. For coordinated background tasks, use workflow_builder_create_tasks instead.',
 		),
 	tasks: z.array(checklistItemSchema).describe('Ordered list of tasks'),
 });
 
 const cancelTaskAction = z.object({
-	action: z.literal('cancel-task').describe('Cancel a running background task by its task ID'),
+	action: z.literal('cancel-task').describe('Cancel running background task by task ID'),
 	taskId: z.string().describe('Task ID (e.g. build-XXXXXXXX)'),
 });
 
 const correctTaskAction = z.object({
-	action: z.literal('correct-task').describe('Send a correction to a running background task'),
+	action: z.literal('correct-task').describe('Send correction to running background task'),
 	taskId: z.string().describe('Task ID (e.g. build-XXXXXXXX)'),
 	correction: z
 		.string()
-		.describe("The correction message from the user (e.g. 'use the Projects database')"),
+		.describe("Correction message from user (e.g. 'use the Projects database')"),
 });
 
 const inputSchema = sanitizeInputSchema(

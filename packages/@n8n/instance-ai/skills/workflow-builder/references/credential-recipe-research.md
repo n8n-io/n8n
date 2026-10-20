@@ -11,56 +11,29 @@ recommended_tools:
   - research
   - workflow_builder_workflows
 ---
-
 # Credential Recipe Research
 
-A recipe is only as good as the documentation it came from. This is a
-procedure, not guidance: execute every step with the `research` tool and keep
-only findings you can point to on a fetched page. Guessed URLs are how users
-end up on the wrong page with a key that can't be verified.
+Recipe only as good as docs it came from. This is procedure, not guidance: execute every step with `research` tool, keep only findings you can point to on fetched page. Guessed URLs send users to wrong page with key that can't be verified.
 
-Inputs: the service name and the API host(s) the workflow's nodes call.
+Inputs: service name + API host(s) workflow's nodes call.
 
 ## 1. Auth scheme (template)
 
-Fetch the provider's authentication docs — `research(action="web-search")`
-with `"<service> API authentication"`, then `fetch-url` the best docs hit.
-Record the scheme EXACTLY as documented: header name, prefix word, casing
-(`Authorization: Key {{api_key}}` vs `Bearer {{api_key}}` vs a custom header
-like `xi-api-key`). If the documented auth is basic, digest, or OAuth, stop:
-that is not expressible as a template — use the matching generic type instead
-(see the workflow-builder skill's credential ladder).
+Fetch provider's auth docs — `research(action="web-search")` with `"<service> API authentication"`, then `fetch-url` best docs hit. Record scheme EXACTLY as documented: header name, prefix word, casing (`Authorization: Key {{api_key}}` vs `Bearer {{api_key}}` vs custom header like `xi-api-key`). Documented auth is basic, digest, or OAuth → stop: not expressible as template — use matching generic type instead (see workflow-builder skill's credential ladder).
 
 ## 2. Key page (docsUrl)
 
-Find where a logged-in user CREATES or COPIES the key. The URL is not shown
-in the form — the n8n Assistant help thread presents it as THE place to get
-the value, so a wrong URL sends the user to a dead end with full confidence:
+Find where logged-in user CREATES or COPIES key. URL not shown in form — n8n Assistant help thread presents it as THE place to get value, so wrong URL sends user to dead end with full confidence:
 
-- Search `"<service> dashboard API keys"`, and scan the fetched auth docs for
-  phrases like "get your key from", "Dashboard → API Keys", "console",
-  "settings".
-- The answer normally lives on an app/console/dashboard host —
-  `console.apify.com/settings/integrations`,
-  `elevenlabs.io/app/settings/api-keys`, `replicate.com/account/api-tokens`,
-  `app.tavily.com/home` — not under `/docs`, `/reference`, or
-  `/documentation`.
-- Accept a docs-domain URL only when the fetched page shows keys are actually
-  issued there (some ReadMe-style logged-in portals do).
-- NEVER construct a dashboard path by analogy (`/account/api-keys`,
-  `/dashboard/keys`, …). Dashboards are apps behind a login: a fetch answers
-  200 for any invented route, so the path cannot be verified by fetching.
-  Emit a deep dashboard URL only when it appears VERBATIM on a page you
-  fetched; when the docs only describe navigation ("Dashboard → API Keys")
-  without a literal URL, use the dashboard/app root they reference — a
-  shallower real page beats a deeper invented one.
-- Nothing conclusive after both steps → omit docsUrl. Never pass off the API
-  reference as the key page.
+- Search `"<service> dashboard API keys"`, scan fetched auth docs for phrases like "get your key from", "Dashboard → API Keys", "console", "settings".
+- Answer normally on app/console/dashboard host — `console.apify.com/settings/integrations`, `elevenlabs.io/app/settings/api-keys`, `replicate.com/account/api-tokens`, `app.tavily.com/home` — not under `/docs`, `/reference`, or `/documentation`.
+- Accept docs-domain URL only when fetched page shows keys actually issued there (some ReadMe-style logged-in portals do).
+- NEVER construct dashboard path by analogy (`/account/api-keys`, `/dashboard/keys`, …). Dashboards are apps behind login: fetch answers 200 for any invented route, so path can't be verified by fetching. Emit deep dashboard URL only when it appears VERBATIM on fetched page; when docs only describe navigation ("Dashboard → API Keys") without literal URL, use dashboard/app root they reference — shallower real page beats deeper invented one.
+- Nothing conclusive after both steps → omit docsUrl. Never pass off API reference as key page.
 
 ## 3. Verification endpoint (testUrl)
 
-Find a documented, side-effect-free GET that rejects a bad key with 401/403.
-Check the API reference in this order and stop at the first qualifying hit:
+Find documented, side-effect-free GET that rejects bad key with 401/403. Check API reference in this order, stop at first qualifying hit:
 
 1. Account/profile/me endpoints — `/v1/account`, `/v2/users/me`, `/v1/user`.
 2. Usage/quota endpoints — e.g. fal's `/v1/models/usage`, Tavily's `/usage`.
@@ -68,21 +41,11 @@ Check the API reference in this order and stop at the first qualifying hit:
 
 Rules, all mandatory:
 
-- The endpoint must appear on a page you fetched — never construct a path by
-  analogy with other APIs.
-- Never one of the workflow's own endpoints, never a resource or action URL,
-  never anything that can trigger billable work. Setup rejects workflow-URL
-  collisions, and the probe reports unexpected statuses as "could not be
-  verified" — an invented URL only costs the user trust.
-- Skip endpoints that answer 2xx regardless of the key: auth-optional
-  endpoints (Pexels search) or services that signal auth errors in the
-  response body (Apollo's `auth/health`, TikTok) — a status probe cannot
-  verify through them.
-- Nothing qualifies → omit testUrl. The credential saves fine and the card
-  honestly reports it could not be verified, which beats a false green.
+- Endpoint must appear on fetched page — never construct path by analogy with other APIs.
+- Never workflow's own endpoints, never resource or action URL, never anything that can trigger billable work. Setup rejects workflow-URL collisions; probe reports unexpected statuses as "could not be verified" — invented URL only costs user trust.
+- Skip endpoints answering 2xx regardless of key: auth-optional endpoints (Pexels search) or services signaling auth errors in response body (Apollo's `auth/health`, TikTok) — status probe can't verify through them.
+- Nothing qualifies → omit testUrl. Credential saves fine, card honestly reports could not be verified — beats false green.
 
 ## 4. Compose
 
-Fill `credentialHints` (field list and example in the post-build-flow skill)
-from the findings above only. `suggestedName` names the service ("Apify API
-Token"); never include a real secret.
+Fill `credentialHints` (field list + example in post-build-flow skill) from findings above only. `suggestedName` names service ("Apify API Token"); never include real secret.

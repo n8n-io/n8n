@@ -19,37 +19,25 @@ const maxListLimit = 100;
 
 const activityRuntimeInputSchema = z.discriminatedUnion('action', [
 	z.object({
-		action: z
-			.literal('list')
-			.describe('Read the log — further back than the list you were given, or filtered.'),
-		category: z
-			.enum(['workflow', 'credential'])
-			.optional()
-			.describe('Restrict to one kind of entry.'),
+		action: z.literal('list').describe('Read log further back than given list, or filtered.'),
+		category: z.enum(['workflow', 'credential']).optional().describe('Restrict to one entry kind.'),
 		resourceId: z
 			.string()
 			.min(1)
 			.optional()
-			.describe('Restrict to one resource, e.g. a single workflow id.'),
-		beforeId: z
-			.number()
-			.int()
-			.optional()
-			.describe('Page backwards — only entries older than this id.'),
+			.describe('Restrict to one resource, e.g. one workflow id.'),
+		beforeId: z.number().int().optional().describe('Page back: only entries older than this id.'),
 		limit: z
 			.number()
 			.int()
 			.min(1)
 			.max(maxListLimit)
 			.optional()
-			.describe(`How many entries to return (default ${defaultListLimit}).`),
+			.describe(`Entries to return (default ${defaultListLimit}).`),
 	}),
 	z.object({
 		action: z.literal('expand').describe('Open one entry by its id.'),
-		id: z
-			.number()
-			.int()
-			.describe('The bracketed id of the entry, as shown in the list you were given.'),
+		id: z.number().int().describe('Bracketed entry id from given list.'),
 	}),
 ]);
 
@@ -84,14 +72,11 @@ const activityOutputSchema = z.object({
 export function createActivityTool(context: InstanceAiContext) {
 	return new Tool(DOMAIN_TOOL_IDS.ACTIVITY)
 		.description(
-			'Read the instance activity log — what has recently been created, changed, published, ' +
-				'or deleted here, and who did it. You are given a window of it at the start of a turn; ' +
-				'use this to look further back, to filter to one kind of entry or one resource, or to ' +
-				'open a single entry with `expand`. Expanding an entry also returns everything else the ' +
-				"log knows about the same resource, which is how you see a workflow's recent history at " +
-				'a glance. Read-only, and it returns log entries rather than live records — use ' +
-				'`workflow_builder_workflows`, `workflow_builder_executions` or `workflow_builder_credentials` with the ids it gives you for those. An ' +
-				'entry may name a resource that has since been deleted.',
+			'Read instance activity log: what was recently created, changed, published, or deleted here, and by whom. ' +
+				'You get a window of it at turn start; use this to look further back, filter to one entry kind or resource, or open one entry with `expand`. ' +
+				"`expand` also returns all other log entries for the same resource (a workflow's recent history at a glance). " +
+				'Read-only. Returns log entries, not live records: for those use `workflow_builder_workflows`, `workflow_builder_executions` or `workflow_builder_credentials` with the ids returned. ' +
+				'Entry may name a since-deleted resource.',
 		)
 		.input(activityInputSchema)
 		.output(activityOutputSchema)

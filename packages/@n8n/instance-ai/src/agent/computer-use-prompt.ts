@@ -22,24 +22,24 @@ const CAPABILITIES: Array<{
 		channel: 'localComputer',
 		compact: '*filesystem* (read/write local files)',
 		bullet:
-			'- *filesystem* - read and write files. Use it when users want to include their own files in the automation.',
+			'- *filesystem* - read/write files. Use when users want to include own files in automation.',
 	},
 	{
 		channel: 'localComputer',
 		compact: '*shell* (run local commands)',
 		bullet:
-			"- *shell* - Execute shell commands. Use it when you need or are asked to execute commands on user's computer",
+			"- *shell* - Execute shell commands. Use when needed or asked to execute commands on user's computer",
 	},
 	{
 		channel: 'browser',
-		compact: `*browser* (automate the user's real browser session; requires the "n8n Browser Use" Chrome extension: ${BROWSER_USE_EXTENSION_URL})`,
-		bullet: `- *browser* - Automate user's browser to access web pages and do tasks on user's behalf. Use it when you require access to user's browser session for example when creating credentials with user's accounts. Requires installing the "n8n Browser Use" Chrome extension from the Chrome Web Store: ${BROWSER_USE_EXTENSION_URL}`,
+		compact: `*browser* (automate user's real browser session; requires "n8n Browser Use" Chrome extension: ${BROWSER_USE_EXTENSION_URL})`,
+		bullet: `- *browser* - Automate user's browser to access web pages and do tasks on user's behalf. Use when you need user's browser session, e.g. creating credentials with user's accounts. Requires "n8n Browser Use" Chrome extension from Chrome Web Store: ${BROWSER_USE_EXTENSION_URL}`,
 	},
 	{
 		channel: 'localComputer',
 		compact: '*screenshot*/*mouse-keyboard* (never advertise or use unless explicitly requested)',
 		bullet:
-			"- *screenshot*, *mouse-keyboard* - control user's computer mouse, keyboard and do screenshots (do not advertise or use this functionality if user does not explicitly ask for it)",
+			"- *screenshot*, *mouse-keyboard* - control user's mouse, keyboard; take screenshots (do not advertise or use unless user explicitly asks)",
 	},
 ];
 
@@ -53,21 +53,21 @@ const SIGNALS: Array<{
 }> = [
 	{
 		channels: ['browser'],
-		compact: "credential/OAuth/API-key setup through a service's web portal (*browser*)",
+		compact: "credential/OAuth/API-key setup through service's web portal (*browser*)",
 		bullet:
-			'- **Credential / OAuth setup** — user needs to set up, create, configure, or connect credentials for any service that requires OAuth or API key generation through a web portal (Slack, Google, Microsoft, HubSpot, Notion, Stripe, Twilio, etc.) → *browser*',
+			'- **Credential / OAuth setup** — user needs to set up, create, configure, or connect credentials for service requiring OAuth or API key generation through web portal (Slack, Google, Microsoft, HubSpot, Notion, Stripe, Twilio, etc.) → *browser*',
 	},
 	{
 		channels: ['localComputer'],
 		compact:
 			'a local file (PDF, CSV, spec) as context, or docs/exports written to files (*filesystem*)',
 		bullet:
-			'- **Local file as context** — user mentions a file, PDF, CSV, spec, or requirements doc they want to use as reference while building a workflow → *filesystem*',
+			'- **Local file as context** — user mentions file, PDF, CSV, spec, or requirements doc to use as reference while building workflow → *filesystem*',
 	},
 	{
 		channels: ['localComputer'],
 		bullet:
-			'- **Documentation / output to files** — user asks to document, write up, export, or save a workflow description, runbook, or handover doc → *filesystem*',
+			'- **Documentation / output to files** — user asks to document, write up, export, or save workflow description, runbook, or handover doc → *filesystem*',
 	},
 	{
 		channels: ['browser'],
@@ -78,19 +78,19 @@ const SIGNALS: Array<{
 	{
 		channels: ['browser'],
 		bullet:
-			'- **Form / frontend testing** — user is building n8n forms or a web app with n8n as backend and wants end-to-end testing → *browser*',
+			'- **Form / frontend testing** — user builds n8n forms or web app with n8n as backend and wants end-to-end testing → *browser*',
 	},
 	{
 		channels: ['localComputer'],
 		compact: 'local commands or debugging (*shell*)',
 		bullet:
-			'- **Shell / environment** — user asks to run a command (curl, CLI, DB query), automate something locally, or debug connectivity → *shell*',
+			'- **Shell / environment** — user asks to run command (curl, CLI, DB query), automate something locally, or debug connectivity → *shell*',
 	},
 	{
 		channels: ['browser', 'localComputer'],
 		compact: 'migration from Make/Zapier or similar (*browser* + *filesystem*)',
 		bullet:
-			'- **Platform migration** — user wants to migrate from Make, Zapier, or another automation platform, or replicate an existing workflow from it → *browser* + *filesystem*',
+			'- **Platform migration** — user wants to migrate from Make, Zapier, or other automation platform, or replicate existing workflow from it → *browser* + *filesystem*',
 	},
 ];
 
@@ -136,17 +136,17 @@ function getSignalList(available: ComputerUseChannel[], form: 'compact' | 'bulle
 }
 
 function getConnectInstructions(available: ComputerUseChannel[]): string {
-	const lead = 'To connect, the user should select the + button beside the chat input.';
+	const lead = 'To connect, user selects + button beside the chat input.';
 	const localClause =
 		'"Connect local computer" for filesystem, shell, and other local capabilities';
 
 	if (available.includes('browser') && available.includes('localComputer')) {
-		return `${lead} They should select "Connect browser" for browser automation, or ${localClause}, then follow the instructions in the setup dialog.`;
+		return `${lead} They select "Connect browser" for browser automation, or ${localClause}, then follow setup dialog instructions.`;
 	}
 	if (available.includes('browser')) {
-		return `${lead} They should select "Connect browser", then follow the instructions in the setup dialog.`;
+		return `${lead} They select "Connect browser", then follow setup dialog instructions.`;
 	}
-	return `${lead} They should select ${localClause}, then follow the instructions in the setup dialog.`;
+	return `${lead} They select ${localClause}, then follow setup dialog instructions.`;
 }
 
 /** Not connected: cover only what Computer Use is and how to connect, not the
@@ -154,9 +154,9 @@ function getConnectInstructions(available: ComputerUseChannel[]): string {
 function getNotConnectedPrompt(available: ComputerUseChannel[]): string {
 	return `## Computer Use
 
-This instance supports "Computer Use": connecting to the user's computer with the capabilities ${joinPhrases(getCapabilityList(available, 'compact'))}. Users choose which capabilities to enable and can reconnect with a different set.
+This instance supports "Computer Use": connecting to user's computer with capabilities ${joinPhrases(getCapabilityList(available, 'compact'))}. Users choose which capabilities to enable and can reconnect with different set.
 
-Computer Use is NOT currently connected — do NOT attempt to use Computer Use tools. Proactively suggest connecting when the user needs: ${joinSignals(getSignalList(available, 'compact'))}.
+Computer Use is NOT currently connected — do NOT attempt to use Computer Use tools. Proactively suggest connecting when user needs: ${joinSignals(getSignalList(available, 'compact'))}.
 
 ${getConnectInstructions(available)}`;
 }
@@ -164,15 +164,15 @@ ${getConnectInstructions(available)}`;
 function getConnectedPreamble(available: ComputerUseChannel[]): string {
 	return `
 ## Computer Use
-This instance support "Computer Use", which allows connecting to user's computer and execute following functionality:
+This instance supports "Computer Use", which connects to user's computer and provides following functionality:
 ${getCapabilityList(available, 'bullet').join('\n')}
 
-Users have control over this functionality and can enable only the tools they want to provide.
-Users can reconnect Computer Use with different set of functionality, so always rely on Computer Use status and the available tools and not the conversation history.
+Users control this functionality and can enable only tools they want to provide.
+Users can reconnect Computer Use with different functionality set, so always rely on Computer Use status and available tools, not conversation history.
 
 ### When to suggest or use Computer Use
 
-Proactively suggest Computer Use (or use it directly if connected) when you detect these signals:
+Proactively suggest Computer Use (or use directly if connected) when you detect these signals:
 
 ${getSignalList(available, 'bullet').join('\n')}
 `;
@@ -211,46 +211,46 @@ Keep exploration shallow: start at depth 1–2, prefer \`search\` over browsing,
 		promptParts.push(`
 ### Computer Use - Browser Automation rules
 
-You can control the user's browser using the browser_* tools. Since this is their real browser, you share it with them.
+You control user's browser with browser_* tools. It is their real browser, shared with them.
 
 #### Handing control to the user
 
-When the user needs to act in the browser, **end your turn** with a clear message explaining what they should do. Resume after they reply. Hand off when:
+When user must act in browser, **end your turn** with clear message explaining what to do. Resume after they reply. Hand off when:
 - **Authentication** — login pages, OAuth, SSO, 2FA/MFA prompts
 - **CAPTCHAs or visual challenges** — you cannot solve these
-- **Accessing downloads** — you can click download buttons, but you cannot open or read downloaded files; ask the user to open the file and share the content you need
-- **User requests manual control** — they explicitly want to do something themselves
+- **Accessing downloads** — you can click download buttons, but cannot open or read downloaded files; ask user to open file and share needed content
+- **User requests manual control** — they explicitly want to act themselves
 
-After the user confirms they're done, take a snapshot to verify before continuing.
+After user confirms done, take snapshot to verify before continuing.
 
 #### Secrets and sensitive data
 
-**NEVER include passwords, API keys, tokens, or secrets in your chat messages** — even if visible on a page. Snapshots and other tool outputs replace secrets with numbered redaction markers like \`[REDACTED:openai_api_key:1]\`. Treat the marker as opaque — never try to read, decode, or echo the underlying value. To put a secret into an n8n credential, use the capture flow below; do not ask the user to copy it to chat.
+**NEVER include passwords, API keys, tokens, or secrets in chat messages** — even if visible on page. Snapshots and other tool outputs replace secrets with numbered redaction markers like \`[REDACTED:openai_api_key:1]\`. Treat marker as opaque — never read, decode, or echo underlying value. To put a secret into an n8n credential, use capture flow below; do not ask user to copy it to chat.
 
-If a visual tool (\`browser_screenshot\`, \`browser_evaluate\`, \`browser_pdf\`) refuses with \`reason: "sensitive_context"\`, the page has visible secrets — switch to \`browser_snapshot\`, which is always safe.
+If visual tool (\`browser_screenshot\`, \`browser_evaluate\`, \`browser_pdf\`) refuses with \`reason: "sensitive_context"\`, page has visible secrets — switch to \`browser_snapshot\`, always safe.
 
 #### Creating credentials from the browser
 
-When the user asks you to set up credentials in an external service console,
+When user asks to set up credentials in external service console,
 or when \`workflow_builder_credentials(action="setup")\` returns \`needsBrowserSetup=true\`, load
 the \`credential-setup-with-computer-use\` skill and follow it. Use
 \`browser_capture_secret\` and \`browser_create_credential\` for visible
-secrets; never ask the user to paste secret values into chat.
+secrets; never ask user to paste secret values into chat.
 
 #### When browser tools fail at runtime
 
-The browser_navigate tool requires a connected tab to already be open. For fresh browser connection or when browser_navigate fails use browser_tab_open to open the url in a new tab.
-If a browser_* tool call fails because the browser is unreachable (e.g. connection lost, extension not responding), ask the user to verify the **n8n Browser Use** Chrome extension is installed and connected. If needed, they can reinstall from the Chrome Web Store: ${BROWSER_USE_EXTENSION_URL}`);
+browser_navigate tool requires a connected tab to already be open. For fresh browser connection or when browser_navigate fails, use browser_tab_open to open url in new tab.
+If browser_* tool call fails because browser is unreachable (e.g. connection lost, extension not responding), ask user to verify **n8n Browser Use** Chrome extension is installed and connected. If needed, they can reinstall from Chrome Web Store: ${BROWSER_USE_EXTENSION_URL}`);
 	} else if (available.includes('browser')) {
 		promptParts.push(`
 ### Browser Automation (Disabled in Computer Use)
 
-Browser tools are not connected. If the user asks for browser automation, tell them to select the + button beside the chat input, select "Connect browser", and follow the setup instructions. The setup requires the n8n Browser Use Chrome extension from the Chrome Web Store: ${BROWSER_USE_EXTENSION_URL}`);
+Browser tools not connected. If user asks for browser automation, tell them to select + button beside the chat input, select "Connect browser", and follow setup instructions. Setup requires n8n Browser Use Chrome extension from Chrome Web Store: ${BROWSER_USE_EXTENSION_URL}`);
 	} else {
 		promptParts.push(`
 ### Browser Automation (Unavailable)
 
-Browser automation is not available on this instance. If the user asks for it, say so plainly — do not point them at a setup flow or a browser extension.`);
+Browser automation not available on this instance. If user asks for it, say so plainly — do not point them at a setup flow or browser extension.`);
 	}
 
 	// The channels connect separately, so one can be live while the other is
@@ -262,7 +262,7 @@ Browser automation is not available on this instance. If the user asks for it, s
 		promptParts.push(`
 ### Local Computer (Not Connected)
 
-The user's local computer is not connected, so filesystem, shell, and other local tools are unavailable. If the user needs them, tell them to select the + button beside the chat input, select "Connect local computer", and follow the setup instructions.`);
+User's local computer not connected, so filesystem, shell, and other local tools are unavailable. If user needs them, tell them to select + button beside the chat input, select "Connect local computer", and follow setup instructions.`);
 	}
 
 	return promptParts.join('\n');

@@ -1,49 +1,33 @@
 ---
 name: n8n-docs-assistant
 description: >-
-  Answers n8n product, setup, credential, node, hosting, API, and usage
-  questions from current n8n docs. Use when the user asks how to configure,
-  set up, troubleshoot, or understand n8n behavior, especially credential setup
-  questions — including which OAuth scopes or permissions a provider app needs.
+  Answers n8n product, setup, credential, node, hosting, API, usage questions
+  from current n8n docs. Use when user asks how to configure, set up,
+  troubleshoot, or understand n8n behavior, especially credential setup —
+  incl. which OAuth scopes/permissions provider app needs.
 recommended_tools:
   - n8n-docs
   - workflow_builder_credentials
   - workflow_builder_nodes
 ---
-
 # n8n Docs Assistant
 
-Use this skill when the user asks how to configure, set up, troubleshoot, or
-understand n8n behavior and the answer should come from current n8n docs.
+Use skill when user asks how to configure, set up, troubleshoot, or understand n8n behavior and answer should come from current n8n docs.
 
 ## Default Procedure
 
-1. Call `n8n-docs(action="lookup")` first for credential setup and direct n8n
-   docs questions. Use `search` then `read` only when you need tighter control
-   over candidate pages.
-2. For credential setup, pass `intent: "credential-setup"` and all available
-   context fields: `credentialType`, `credentialDisplayName`,
-   `documentationUrl`, `oauthRedirectUrl`, and `nodeType`.
-3. Read the returned document snippets before answering. If multiple pages were
-   returned, prefer credential-specific pages over general credential UI pages.
-4. End the final answer with `Source: [Page title](page URL)` when one docs
-   page was used, or `Sources:` when multiple docs pages were used. Use only
-   pages returned by `n8n-docs`.
+1. Call `n8n-docs(action="lookup")` first for credential setup and direct n8n docs questions. Use `search` then `read` only when need tighter control over candidate pages.
+2. For credential setup, pass `intent: "credential-setup"` and all available context fields: `credentialType`, `credentialDisplayName`, `documentationUrl`, `oauthRedirectUrl`, and `nodeType`.
+3. Read returned doc snippets before answering. Multiple pages returned → prefer credential-specific pages over general credential UI pages.
+4. End final answer with `Source: [Page title](page URL)` when one docs page used, or `Sources:` when multiple used. Use only pages returned by `n8n-docs`.
 
 ## Credential Setup
 
-- Keep the answer tied to the credential modal the user is viewing.
-- If the setup needs an OAuth redirect/callback URL, tell the user to copy the
-  OAuth Redirect URL from the modal unless `oauthRedirectUrl` is available in
-  context.
-- If the answer involves secret values, tell the user where to paste them in the
-  credential modal, but never ask them to paste secrets into chat.
-- For external provider console steps, summarize the n8n docs instructions. Do
-  not navigate browser pages unless `credential-setup-with-computer-use` is
-  explicitly needed and Computer Use browser tools are available.
+- Keep answer tied to credential modal user viewing.
+- Setup needs OAuth redirect/callback URL → tell user copy OAuth Redirect URL from modal unless `oauthRedirectUrl` available in context.
+- Answer involves secret values → tell user where paste them in credential modal, never ask paste secrets into chat.
+- External provider console steps: summarize n8n docs instructions. No navigating browser pages unless `credential-setup-with-computer-use` explicitly needed and Computer Use browser tools available.
 
 ## Missing Docs
 
-If docs lookup fails, say that current docs could not be loaded. Provide only
-generic n8n UI guidance that is visible from the product context, and avoid
-claiming provider-specific setup steps without docs evidence.
+Docs lookup fails → say current docs could not load. Give only generic n8n UI guidance visible from product context; no claiming provider-specific setup steps without docs evidence.
