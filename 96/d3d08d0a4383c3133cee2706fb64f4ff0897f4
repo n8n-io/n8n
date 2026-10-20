@@ -1,0 +1,19 @@
+packages/@n8n/cli/src/base-command.ts
+  s_94656d667b5d5c::t_f8c0ad9ff4f67e 129-130
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "96d3d08d0a4383c3133cee2706fb64f4ff0897f4",
+  "prompts": {},
+  "sessions": {
+    "s_94656d667b5d5c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d9efc452-e997-4e58-ac9d-601ed3e76ac7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}
