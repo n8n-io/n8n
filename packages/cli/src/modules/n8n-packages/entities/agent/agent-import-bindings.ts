@@ -220,7 +220,7 @@ export class AgentImportBindings {
 							sourceAgentId: conflict.sourceAgentId,
 							projectId: plan.input.context.projectId,
 							sourceTaskId: conflict.sourceTaskId,
-							targetIds: [conflict.sourceTaskId],
+							targetIds: [conflict.conflictingAgentId],
 						}),
 					),
 			);
