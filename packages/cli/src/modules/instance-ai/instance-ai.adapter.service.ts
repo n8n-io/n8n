@@ -114,6 +114,7 @@ import {
 	WorkflowNotFoundError,
 	FolderResolutionError,
 	WorkflowEditorLockedError,
+	formatRedactedError,
 } from '@n8n/instance-ai';
 import { hasGlobalScope, type Scope } from '@n8n/permissions';
 import { LessThan } from '@n8n/typeorm';
@@ -135,7 +136,6 @@ import {
 	type DataTableRows,
 	type WorkflowExecuteMode,
 	type ExecutionError,
-	type IRedactedErrorInfo,
 	type IRunData,
 	type ITaskData,
 	NodeConnectionTypes,
@@ -4786,13 +4786,6 @@ export async function extractExecutionResult(
 	nodeTypes?: NodeTypes,
 ): Promise<ExecutionResult> {
 	return (await extractExecutionOutcome(execution, includeOutputData, nodeTypes)).result;
-}
-
-/** Format an error that redaction reduced to its type, for the agent and telemetry. */
-function formatRedactedError(error: IRedactedErrorInfo): string {
-	// A refused run saves its error without a name, so the type can be missing.
-	const type = error.type ? `${error.type} error` : 'Error';
-	return `${type}${error.httpCode ? ` (${error.httpCode})` : ''} (details hidden by n8n)`;
 }
 
 /** Why `WorkflowRunner.run` refuses to run a workflow for a user. */

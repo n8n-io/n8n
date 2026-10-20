@@ -8,12 +8,14 @@ vi.mock('@n8n/instance-ai', async () => {
 		WorkflowNotFoundError,
 		WorkflowEditorLockedError,
 		FolderResolutionError,
+		formatRedactedError,
 	} = await import('@n8n/instance-ai/errors');
 	return {
 		WorkflowSaveConflictError,
 		WorkflowNotFoundError,
 		WorkflowEditorLockedError,
 		FolderResolutionError,
+		formatRedactedError,
 		wrapUntrustedData(content: string, source: string, label?: string): string {
 			const esc = (s: string) =>
 				s

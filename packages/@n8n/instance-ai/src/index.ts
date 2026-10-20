@@ -208,6 +208,7 @@ export {
 	WorkflowNotFoundError,
 	WorkflowEditorLockedError,
 	FolderResolutionError,
+	formatRedactedError,
 } from './errors';
 export {
 	LEGACY_PLANNED_TASK_KINDS,
