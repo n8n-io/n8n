@@ -11,6 +11,7 @@ import type { NodeTypes } from '@/node-types';
 import type { EngineAdditionalDataBuilder } from '../engine-additional-data';
 import type { EngineControlPlaneClient } from '../engine-control-plane-client';
 import type { EngineCredentialsClient } from '../engine-credentials-client';
+import type { EngineSubWorkflowClient } from '../engine-sub-workflow-client';
 import { EngineV2Runtime } from '../engine-v2.runtime';
 import { RemoteCredentialsHelper } from '../remote-credentials-helper';
 
@@ -59,6 +60,7 @@ const mocks = vi.hoisted(() => {
 			userId?: string;
 			projectId?: string;
 		}) => Promise<AdditionalData>;
+		resolveSubWorkflow: (request: unknown) => Promise<unknown>;
 	};
 
 	return {
@@ -99,6 +101,7 @@ describe('EngineV2Runtime', () => {
 
 	let controlPlaneClient: EngineControlPlaneClient;
 	let credentialsClient: EngineCredentialsClient;
+	let subWorkflowClient: EngineSubWorkflowClient;
 	const credentialsHelper = mock<CredentialsHelper>();
 	const credentialTypes = mock<CredentialTypes>();
 	const additionalDataBuilder = mock<EngineAdditionalDataBuilder>();
@@ -114,6 +117,7 @@ describe('EngineV2Runtime', () => {
 			mockLogger(),
 			controlPlaneClient,
 			credentialsClient,
+			subWorkflowClient,
 			credentialsHelper,
 			credentialTypes,
 			additionalDataBuilder,
@@ -148,6 +152,7 @@ describe('EngineV2Runtime', () => {
 		mocks.listen.error = undefined;
 		controlPlaneClient = mock<EngineControlPlaneClient>();
 		credentialsClient = mock<EngineCredentialsClient>();
+		subWorkflowClient = mock<EngineSubWorkflowClient>();
 		additionalDataBuilder.build.mockImplementation(
 			(_context, helper) =>
 				({
@@ -248,6 +253,21 @@ describe('EngineV2Runtime', () => {
 			expect(additionalDataBuilder.build).toHaveBeenCalledExactlyOnceWith(
 				stepContext,
 				expect.any(RemoteCredentialsHelper),
+			);
+		});
+
+		it('gives the step a sub-workflow resolver that asks the control plane', async () => {
+			await newRuntime().init(responseSender());
+			externalDependencies({ executionStore: {}, stepStore: {} });
+			const request = { workflowId: 'child' };
+			vi.mocked(subWorkflowClient.resolve).mockResolvedValue({ workflowId: 'child' } as never);
+
+			const resolved = await mocks.V1StepExecutor.mock.calls[0][0].resolveSubWorkflow(request);
+
+			expect(resolved).toEqual({ workflowId: 'child' });
+			expect(subWorkflowClient.resolve).toHaveBeenCalledExactlyOnceWith(
+				request,
+				expect.any(AbortSignal),
 			);
 		});
 

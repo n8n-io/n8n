@@ -7,9 +7,13 @@ import { deriveLoops, isBatchStepConfig } from '@n8n/engine';
 import type { GraphNode, StepExecutionContext, StepSlots, WorkflowGraph } from '@n8n/engine';
 import { ExecuteContext, UnrecognizedNodeTypeError } from 'n8n-core';
 import type {
+	CallbackManager,
+	ExecuteWorkflowData,
 	IConnections,
 	IExecuteData,
+	IExecuteWorkflowInfo,
 	INode,
+	INodeExecutionData,
 	INodeType,
 	INodeTypes,
 	IRunData,
@@ -24,6 +28,7 @@ import {
 	WorkflowExecuteModeList,
 } from 'n8n-workflow';
 
+import type { SubWorkflowCalls } from './sub-workflow-calls';
 import {
 	MAIN_CONNECTION_TYPE,
 	MANUAL_TRIGGER_TYPE,
@@ -274,6 +279,23 @@ export class DurableWaitExecuteContext extends ExecuteContext {
 	/** Only an explicit `false` makes a wait deadline-only. This matches core. */
 	acceptsResumeRequest = true;
 
+	/** Set right after construction: the sub-workflow calls of this run. */
+	subWorkflowCalls!: SubWorkflowCalls;
+
+	/**
+	 * Do not call super. Core hands the call to the host, which runs the child
+	 * in the process. The engine starts the child, so the call is recorded and
+	 * the host only resolves the workflow.
+	 */
+	async executeWorkflow(
+		workflowInfo: IExecuteWorkflowInfo,
+		inputData?: INodeExecutionData[],
+		_parentCallbackManager?: CallbackManager,
+		options?: { doNotWaitToFinish?: boolean; returnLastRunOnly?: boolean },
+	): Promise<ExecuteWorkflowData> {
+		return await this.subWorkflowCalls.call(workflowInfo, inputData ?? [], options);
+	}
+
 	async putExecutionToWait(
 		waitTill: Date,
 		options?: { acceptsResumeRequest?: boolean },
@@ -292,6 +314,7 @@ export function toV1ExecuteContext({
 	additionalData,
 	stepContext,
 	itemsByConnection,
+	subWorkflowCalls,
 }: CreateExecuteContextParams): DurableWaitExecuteContext {
 	const firstInput = itemsByConnection[0] ?? [];
 	const connectionInputData = firstInput.length > 0 ? firstInput : [{ json: {} }];
@@ -318,7 +341,7 @@ export function toV1ExecuteContext({
 	};
 	const mode = toV1ExecuteMode(stepContext);
 
-	return new DurableWaitExecuteContext(
+	const context = new DurableWaitExecuteContext(
 		workflow,
 		node,
 		additionalData,
@@ -330,4 +353,6 @@ export function toV1ExecuteContext({
 		executeData,
 		[],
 	);
+	context.subWorkflowCalls = subWorkflowCalls;
+	return context;
 }

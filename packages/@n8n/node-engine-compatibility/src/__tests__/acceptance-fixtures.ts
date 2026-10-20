@@ -15,6 +15,8 @@ import {
 	WorkflowStepExecution,
 } from '@n8n/engine';
 import { UnrecognizedNodeTypeError } from 'n8n-core';
+import { ExecuteWorkflow } from 'n8n-nodes-base/dist/nodes/ExecuteWorkflow/ExecuteWorkflow/ExecuteWorkflow.node';
+import { ExecuteWorkflowTrigger } from 'n8n-nodes-base/dist/nodes/ExecuteWorkflow/ExecuteWorkflowTrigger/ExecuteWorkflowTrigger.node';
 /* The Set and Merge source files predate strict mode, and Merge also uses path
 aliases this package does not resolve, so both come from dist. */
 import { Merge } from 'n8n-nodes-base/dist/nodes/Merge/Merge.node';
@@ -28,12 +30,15 @@ import { v7 as uuidv7 } from 'uuid';
 import { vi } from 'vitest';
 
 import { createEngineStepDataLoader } from '../engine-step-data-loader';
+import type { SubWorkflowResolver } from '../types';
 import { V1StepExecutor } from '../v1-step-executor';
 import { V1WorkflowConverter } from '../v1-workflow-converter';
 import { testAdditionalDataFactory, v1Workflow } from './fixtures';
 
 const registry = new Map<string, INodeType | IVersionedNodeType>([
 	['n8n-nodes-base.set', new SetNode()],
+	['n8n-nodes-base.executeWorkflow', new ExecuteWorkflow()],
+	['n8n-nodes-base.executeWorkflowTrigger', new ExecuteWorkflowTrigger()],
 	['n8n-nodes-base.merge', new Merge()],
 	['n8n-nodes-base.noOp', new NoOp()],
 	['n8n-nodes-base.splitOut', new SplitOut()],
@@ -313,11 +318,21 @@ export function makeRunWorkflow(getDataSource: () => EngineDataSource) {
 		graph: WorkflowGraph,
 		triggerOutputs: TriggerOutputs | null,
 		mode?: ExecutionMode,
+		{
+			resolveSubWorkflow,
+			finishCount = 1,
+		}: {
+			/** Resolves the sub-workflows the run calls, as the control plane would. */
+			resolveSubWorkflow?: SubWorkflowResolver;
+			/** How many executions must finish first: a child finishes before its parent. */
+			finishCount?: number;
+		} = {},
 	) {
 		const dataSource = getDataSource();
 
 		let done!: () => void;
 		const finished = new Promise<void>((resolve) => (done = resolve));
+		let finishedCount = 0;
 
 		const runtime = createEngineRuntime({
 			dataSource,
@@ -330,7 +345,7 @@ export function makeRunWorkflow(getDataSource: () => EngineDataSource) {
 				const finishExecution = executionStore.finishExecution.bind(executionStore);
 				vi.spyOn(executionStore, 'finishExecution').mockImplementation(async (id, status) => {
 					const recorded = await finishExecution(id, status);
-					done();
+					if (recorded && ++finishedCount === finishCount) done();
 					return recorded;
 				});
 
@@ -339,6 +354,7 @@ export function makeRunWorkflow(getDataSource: () => EngineDataSource) {
 						nodeTypes: realNodeTypes,
 						additionalDataFactory: testAdditionalDataFactory,
 						loadStepData: createEngineStepDataLoader(executionStore, stepStore),
+						resolveSubWorkflow,
 					}),
 				};
 			},
@@ -369,11 +385,20 @@ export function makeRunWorkflow(getDataSource: () => EngineDataSource) {
 				finished,
 				new Promise((_, reject) => {
 					setTimeout(() => {
-						reject(
-							new Error(
-								`execution ${executionId} never recorded an outcome: the engine stalled without calling finishExecution`,
-							),
-						);
+						// The step rows say where it stalled, so a failing case reads as one.
+						void dataSource
+							.getRepository(WorkflowStepExecution)
+							.find({ where: { executionId } })
+							.then((rows) => {
+								const states = rows.map(({ nodeId, status, error }) =>
+									[nodeId, status, error?.message].filter(Boolean).join(':'),
+								);
+								reject(
+									new Error(
+										`execution ${executionId} never recorded an outcome: the engine stalled without calling finishExecution. Steps: ${states.join(', ')}`,
+									),
+								);
+							});
 					}, 10_000).unref();
 				}),
 			]);
