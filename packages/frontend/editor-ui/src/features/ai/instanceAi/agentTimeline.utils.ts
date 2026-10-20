@@ -1,8 +1,14 @@
+import {
+	AGENT_BUILDER_TOOL_NAMES,
+	REMOVED_BUILDER_TOOL_NAMES,
+	WORKFLOW_BUILDER_TOOL_NAMES,
+} from '@n8n/api-types';
 import type {
 	InstanceAiAgentNode,
 	InstanceAiTimelineEntry,
 	InstanceAiToolCallState,
 } from '@n8n/api-types';
+import { isRecord } from '@n8n/utils/is-record';
 import { firstNonBlank, isActiveBuilderAgent, isBuilderAgent } from './builderAgents';
 import { isPreferenceWriteOutcome, SAVE_USER_PREFERENCE_TOOL_NAME } from './preferenceCard.utils';
 
@@ -71,7 +77,7 @@ type ToolCallKind =
  * UI; `hidden` calls are dropped without splitting a run.
  *
  * Builder calls delegated to a sub-agent (`*-with-agent`) are hidden — the
- * child agent section represents them. In-thread builds (`build-workflow`)
+ * child agent section represents them. In-thread builds (`workflow_builder_build_workflow`)
  * render as trace rows so the build step is visible inside the thinking block.
  */
 function classifyToolCall(tc: InstanceAiToolCallState): ToolCallKind {
@@ -143,7 +149,7 @@ export function buildTimelineBlocks(
 				// Keep the explanation before a confirmation outside the trace.
 				tc.confirmation === undefined &&
 				!(
-					tc.toolName === 'build-agent' &&
+					tc.toolName === AGENT_BUILDER_TOOL_NAMES.BUILD_AGENT &&
 					hasBuilderChildInResponse(entry.responseId, builderChildResponseIds)
 				)
 			) {
@@ -227,7 +233,7 @@ export function buildTimelineBlocks(
 		const tc = toolCallsById[entry.toolCallId];
 		if (!tc) return;
 		if (
-			tc.toolName === 'build-agent' &&
+			tc.toolName === AGENT_BUILDER_TOOL_NAMES.BUILD_AGENT &&
 			hasBuilderChildInResponse(entry.responseId, builderChildResponseIds)
 		) {
 			return;
@@ -318,9 +324,13 @@ export interface ArtifactInfo {
 	completedAt?: string;
 }
 
-/** The workflow a build-workflow / submit-workflow call wrote, if it wrote one. */
+/** The workflow a workflow_builder_build_workflow / submit-workflow call wrote, if it wrote one. */
 function workflowArtifactFromToolCall(tc: InstanceAiToolCallState): ArtifactInfo | undefined {
-	if (tc.toolName !== 'build-workflow' && tc.toolName !== 'submit-workflow') return undefined;
+	if (
+		tc.toolName !== WORKFLOW_BUILDER_TOOL_NAMES.BUILD_WORKFLOW &&
+		tc.toolName !== REMOVED_BUILDER_TOOL_NAMES.SUBMIT_WORKFLOW
+	)
+		return undefined;
 	if (!tc.result || typeof tc.result !== 'object') return undefined;
 	const result = tc.result as Record<string, unknown>;
 	if (typeof result.workflowId !== 'string') return undefined;
@@ -354,6 +364,45 @@ export function extractBuiltWorkflowArtifacts(
 		if (workflow && !artifacts.has(workflow.resourceId)) {
 			artifacts.set(workflow.resourceId, workflow);
 		}
+	}
+	return [...artifacts.values()];
+}
+
+/** The Agent an orchestrator builder call created or changed, if it did. */
+function agentArtifactFromToolCall(tc: InstanceAiToolCallState): ArtifactInfo | undefined {
+	if (tc.isLoading || !isRecord(tc.result)) return undefined;
+	const result = tc.result;
+	if (typeof result.agentId !== 'string') return undefined;
+	const changed =
+		tc.toolName === AGENT_BUILDER_TOOL_NAMES.SELECT_AGENT
+			? result.ok === true && result.agentChange === 'created'
+			: result.configMutated === true;
+	if (!changed) return undefined;
+
+	return {
+		type: 'agent',
+		resourceId: result.agentId,
+		name: typeof result.agentName === 'string' ? result.agentName : '',
+		...(typeof result.projectId === 'string' ? { projectId: result.projectId } : {}),
+		completedAt: tc.completedAt,
+	};
+}
+
+/**
+ * Agents the orchestrator created or changed with its own builder tool calls.
+ * Each Agent appears once, with the name and project of its latest change.
+ */
+export function extractBuiltAgentArtifacts(toolCalls: InstanceAiToolCallState[]): ArtifactInfo[] {
+	const artifacts = new Map<string, ArtifactInfo>();
+	for (const tc of toolCalls) {
+		const agent = agentArtifactFromToolCall(tc);
+		if (!agent) continue;
+		const previous = artifacts.get(agent.resourceId);
+		artifacts.set(agent.resourceId, {
+			...agent,
+			name: firstNonBlank(agent.name, previous?.name) ?? 'Untitled',
+			projectId: agent.projectId ?? previous?.projectId,
+		});
 	}
 	return [...artifacts.values()];
 }

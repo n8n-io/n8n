@@ -2,6 +2,7 @@ import {
 	buildFolderFilterOptions,
 	buildWorkflowTreeRows,
 	formatSourceControlUpdatedAt,
+	getProtectedInstanceTooltip,
 	getStatusText,
 	getStatusTheme,
 	getPullPriorityByStatus,
@@ -12,6 +13,7 @@ import type { useToast } from '@n8n/composables/useToast';
 import type { Router } from 'vue-router';
 
 import { SOURCE_CONTROL_FILE_STATUS, type SourceControlledFile } from '@n8n/api-types';
+import { PROTECTED_INSTANCE_DOCS_URL } from './sourceControl.constants';
 
 describe('source control utils', () => {
 	describe('getStatusText()', () => {
@@ -19,6 +21,16 @@ describe('source control utils', () => {
 			expect(getStatusText(SOURCE_CONTROL_FILE_STATUS.new)).toStrictEqual(
 				expect.stringContaining(SOURCE_CONTROL_FILE_STATUS.new),
 			);
+		});
+	});
+
+	describe('getProtectedInstanceTooltip()', () => {
+		it('links to the protected instance docs', () => {
+			const tooltip = getProtectedInstanceTooltip();
+
+			expect(tooltip).toContain('protected instance');
+			expect(tooltip).toContain(`href="${PROTECTED_INSTANCE_DOCS_URL}"`);
+			expect(tooltip).not.toContain('{link}');
 		});
 	});
 
