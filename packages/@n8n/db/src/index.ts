@@ -44,7 +44,7 @@ export { postgresMigrations } from './migrations/postgresdb';
 
 export { wrapMigration } from './migrations/migration-helpers';
 export * from './migrations/migration-types';
-export { DbConnection } from './connection/db-connection';
+export { DbConnection, type ManagedPostgresMarkers } from './connection/db-connection';
 export { DbConnectionMetrics } from './connection/db-connection-metrics';
 export { DbConnectionOptions } from './connection/db-connection-options';
 export type { DbPoolStats } from './connection/db-pool-stats';
