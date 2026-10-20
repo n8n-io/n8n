@@ -76,34 +76,28 @@ onUnmounted(() => {
 	<N8nDialog
 		:open="modalOpen"
 		size="2xlarge"
-		:container-class="$style.dialog"
 		:header="modalTitle"
 		@update:open="onDialogOpenUpdate"
 	>
-		<N8nDialogBody>
-			<div :class="$style.grid" :data-test-id="`${modalName}-modal`">
-				<div :class="$style.notice" data-test-id="info-callout">
-					<AppsRequiringCredsNotice
-						:app-credentials="appCredentials"
-						:source="props.data?.source"
-					/>
-				</div>
+		<N8nDialogBody :data-test-id="`${modalName}-modal`">
+			<div :class="$style.notice" data-test-id="info-callout">
+				<AppsRequiringCredsNotice :app-credentials="appCredentials" :source="props.data?.source" />
+			</div>
 
-				<div>
-					<ol :class="$style.appCredentialsContainer">
-						<SetupTemplateFormStep
-							v-for="(credentials, index) in credentialUsages"
-							:key="credentials.key"
-							:class="$style.appCredential"
-							:order="index + 1"
-							:credentials="credentials"
-							:selected-credential-id="selectedCredentialIdByKey[credentials.key]"
-							:source="props.data?.source"
-							@credential-selected="setCredential($event.credentialUsageKey, $event.credentialId)"
-							@credential-deselected="unsetCredential($event.credentialUsageKey)"
-						/>
-					</ol>
-				</div>
+			<div>
+				<ol :class="$style.appCredentialsContainer">
+					<SetupTemplateFormStep
+						v-for="(credentials, index) in credentialUsages"
+						:key="credentials.key"
+						:class="$style.appCredential"
+						:order="index + 1"
+						:credentials="credentials"
+						:selected-credential-id="selectedCredentialIdByKey[credentials.key]"
+						:source="props.data?.source"
+						@credential-selected="setCredential($event.credentialUsageKey, $event.credentialId)"
+						@credential-deselected="unsetCredential($event.credentialUsageKey)"
+					/>
+				</ol>
 			</div>
 		</N8nDialogBody>
 
@@ -122,22 +116,6 @@ onUnmounted(() => {
 </template>
 
 <style lang="scss" module>
-.dialog {
-	display: flex;
-	flex-direction: column;
-	max-height: 90%;
-}
-
-.grid {
-	min-height: 0;
-	overflow-y: auto;
-	margin: 0 auto;
-	margin-top: var(--spacing--lg);
-	display: flex;
-	flex-direction: column;
-	justify-content: center;
-}
-
 .notice {
 	margin-bottom: var(--spacing--2xl);
 }
