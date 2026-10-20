@@ -4,7 +4,8 @@ const showForLakebase = { resource: ['lakebase'] };
 const showForGetAll = { resource: ['lakebase'], operation: ['getAll'] };
 const showForFilter = { resource: ['lakebase'], operation: ['getAll', 'deleteRows'] };
 
-export const lakebaseParameters: INodeProperties[] = [
+// Shared with the Lakebase Chat Memory node, which has no resource parameter
+export const lakebaseLocators: INodeProperties[] = [
 	{
 		displayName: 'Project',
 		name: 'lakebaseProject',
@@ -12,9 +13,6 @@ export const lakebaseParameters: INodeProperties[] = [
 		default: { mode: 'list', value: '' },
 		required: true,
 		description: 'The Lakebase project',
-		displayOptions: {
-			show: showForLakebase,
-		},
 		modes: [
 			{
 				displayName: 'From List',
@@ -43,9 +41,6 @@ export const lakebaseParameters: INodeProperties[] = [
 		default: { mode: 'list', value: '' },
 		required: true,
 		description: 'The branch of the project',
-		displayOptions: {
-			show: showForLakebase,
-		},
 		modes: [
 			{
 				displayName: 'From List',
@@ -74,9 +69,6 @@ export const lakebaseParameters: INodeProperties[] = [
 		default: { mode: 'list', value: '' },
 		required: true,
 		description: 'The Postgres database on the branch',
-		displayOptions: {
-			show: showForLakebase,
-		},
 		modes: [
 			{
 				displayName: 'From List',
@@ -110,9 +102,6 @@ export const lakebaseParameters: INodeProperties[] = [
 		required: true,
 		description:
 			'The Postgres schema. To use a schema other than public, select By ID and enter its name.',
-		displayOptions: {
-			show: showForLakebase,
-		},
 		modes: [
 			{
 				displayName: 'From List',
@@ -145,9 +134,6 @@ export const lakebaseParameters: INodeProperties[] = [
 		default: { mode: 'list', value: '' },
 		required: true,
 		description: 'The table in the schema',
-		displayOptions: {
-			show: showForLakebase,
-		},
 		modes: [
 			{
 				displayName: 'From List',
@@ -166,9 +152,10 @@ export const lakebaseParameters: INodeProperties[] = [
 			},
 		],
 	},
+];
 
-	// Everything below this line belongs to the operations, not to PR #40407.
-	// Keep the locators above unmodified so that PR rebases in cleanly.
+export const lakebaseParameters: INodeProperties[] = [
+	...lakebaseLocators.map((p) => ({ ...p, displayOptions: { show: showForLakebase } })),
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
@@ -381,6 +368,7 @@ export const lakebaseParameters: INodeProperties[] = [
 				'lakebaseDatabase.value',
 				'lakebaseSchema.value',
 				'lakebaseTable.value',
+				'operation',
 			],
 			resourceMapper: {
 				resourceMapperMethod: 'getLakebaseMappingColumns',
@@ -397,6 +385,80 @@ export const lakebaseParameters: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: { resource: ['lakebase'], operation: ['insert'] },
+		},
+	},
+	{
+		displayName: 'Columns',
+		name: 'columns',
+		type: 'resourceMapper',
+		noDataExpression: true,
+		required: true,
+		default: {
+			mappingMode: 'defineBelow',
+			value: null,
+		},
+		typeOptions: {
+			loadOptionsDependsOn: [
+				'lakebaseProject.value',
+				'lakebaseBranch.value',
+				'lakebaseDatabase.value',
+				'lakebaseSchema.value',
+				'lakebaseTable.value',
+				'operation',
+			],
+			resourceMapper: {
+				resourceMapperMethod: 'getLakebaseMappingColumns',
+				mode: 'update',
+				fieldWords: {
+					singular: 'column',
+					plural: 'columns',
+				},
+				addAllFields: true,
+				// A composite primary key needs every component selected, or the filter
+				// picks up more rows than the one the user means
+				multiKeyMatch: true,
+				refreshStaleSchemaOnOpen: true,
+			},
+		},
+		displayOptions: {
+			show: { resource: ['lakebase'], operation: ['update'] },
+		},
+	},
+	{
+		displayName: 'Columns',
+		name: 'columns',
+		type: 'resourceMapper',
+		noDataExpression: true,
+		required: true,
+		default: {
+			mappingMode: 'defineBelow',
+			value: null,
+		},
+		typeOptions: {
+			loadOptionsDependsOn: [
+				'lakebaseProject.value',
+				'lakebaseBranch.value',
+				'lakebaseDatabase.value',
+				'lakebaseSchema.value',
+				'lakebaseTable.value',
+				'operation',
+			],
+			resourceMapper: {
+				resourceMapperMethod: 'getLakebaseMappingColumns',
+				mode: 'upsert',
+				fieldWords: {
+					singular: 'column',
+					plural: 'columns',
+				},
+				addAllFields: true,
+				// ON CONFLICT takes the whole key, so a table with a composite primary
+				// key needs every part of it selected
+				multiKeyMatch: true,
+				refreshStaleSchemaOnOpen: true,
+			},
+		},
+		displayOptions: {
+			show: { resource: ['lakebase'], operation: ['upsert'] },
 		},
 	},
 ];

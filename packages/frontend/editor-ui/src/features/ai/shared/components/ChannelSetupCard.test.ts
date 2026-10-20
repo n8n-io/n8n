@@ -202,42 +202,56 @@ vi.mock('@/features/agents/channels/teams/AgentChannelTeamsSetupKindSelector.vue
 	default: { template: '<div data-testid="mock-teams-setup-kind" />' },
 }));
 
-vi.mock('@/features/agents/channels/teams/AgentChannelTeamsSetupView.vue', () => ({
-	default: {
-		props: ['modelValue'],
-		emits: ['update:modelValue', 'persist', 'done', 'connect'],
-		setup(
-			_: unknown,
-			{
-				emit,
-				expose,
-			}: { emit: (...args: unknown[]) => void; expose: (exposed: Record<string, unknown>) => void },
-		) {
-			const canFinish = ref(false);
-			expose({
-				canFinish,
-				get keepOpenAfterConnect() {
-					return mocks.teamsKeepOpenAfterConnect;
+vi.mock('@/features/agents/channels/teams/AgentChannelTeamsSetupView.vue', async () => {
+	const { inject } = await import('vue');
+	const { AGENT_PERSONALISATION_KEY } = await import(
+		'@/features/agents/channels/agentPersonalisation'
+	);
+	return {
+		default: {
+			props: ['modelValue'],
+			emits: ['update:modelValue', 'persist', 'done', 'connect'],
+			setup(
+				_: unknown,
+				{
+					emit,
+					expose,
+				}: {
+					emit: (...args: unknown[]) => void;
+					expose: (exposed: Record<string, unknown>) => void;
 				},
-			});
-			function provision() {
-				emit('update:modelValue', 'teams-cred');
-				emit('persist');
-				canFinish.value = true;
-			}
-			function download() {
-				emit('update:modelValue', 'teams-cred');
-				emit('connect');
-			}
-			return { provision, download, finish: () => emit('done') };
-		},
-		template: `<div data-testid="mock-teams-setup">
+			) {
+				const canFinish = ref(false);
+				expose({
+					canFinish,
+					get keepOpenAfterConnect() {
+						return mocks.teamsKeepOpenAfterConnect;
+					},
+				});
+				function provision() {
+					emit('update:modelValue', 'teams-cred');
+					emit('persist');
+					canFinish.value = true;
+				}
+				function download() {
+					emit('update:modelValue', 'teams-cred');
+					emit('connect');
+				}
+				const personalisation = inject(AGENT_PERSONALISATION_KEY, null);
+				return { provision, download, finish: () => emit('done'), personalisation };
+			},
+			template: `<div
+				data-testid="mock-teams-setup"
+				:data-icon="personalisation?.icon"
+				:data-gradient-from="personalisation?.gradient.from"
+			>
 			<button data-testid="mock-teams-provision" @click="provision">Provision</button>
 			<button data-testid="mock-teams-download" @click="download">Download</button>
 			<button data-testid="mock-teams-done" @click="finish">Done</button>
 		</div>`,
-	},
-}));
+		},
+	};
+});
 
 vi.mock('@/features/agents/channels/linear/AgentChannelLinearSetup.vue', () => ({
 	default: {
@@ -696,6 +710,25 @@ describe('ChannelSetupCard', () => {
 			mocks.setCatalog(integrations);
 			mocks.ensureLoaded.mockResolvedValue(integrations);
 			mocks.reloadCatalog.mockResolvedValue(integrations);
+		});
+
+		it("hands the agent's own icon to the setup view", async () => {
+			mocks.getAgent.mockResolvedValue({
+				name: 'Agent',
+				id: 'agent-1',
+				schema: {
+					personalisation: {
+						icon: 'zap',
+						gradient: { from: '#2563EB', to: '#7C3AED', angle: 135, fromStop: 0, toStop: 100 },
+					},
+				},
+			});
+			const wrapper = mountCard({ integrationType: 'teams' });
+			await flushPromises();
+
+			const setup = wrapper.find('[data-testid="mock-teams-setup"]');
+			expect(setup.attributes('data-icon')).toBe('zap');
+			expect(setup.attributes('data-gradient-from')).toBe('#2563EB');
 		});
 
 		it('offers the setup choice in the header', async () => {

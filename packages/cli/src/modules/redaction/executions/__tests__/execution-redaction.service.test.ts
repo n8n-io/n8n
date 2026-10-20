@@ -1029,6 +1029,7 @@ describe('ExecutionRedactionService', () => {
 
 			expect(fullItemRedactionStrategy.apply).toHaveBeenCalledTimes(1);
 			const [, context] = fullItemRedactionStrategy.apply.mock.calls[0];
+			expect(context.redactedBySubWorkflow).toBe(true);
 			expect(context.userCanReveal).toBe(false);
 		});
 
@@ -1052,6 +1053,20 @@ describe('ExecutionRedactionService', () => {
 			await service.processExecution(execution, { user: mockUser });
 
 			expect(fullItemRedactionStrategy.apply).toHaveBeenCalledTimes(1);
+			const [, context] = fullItemRedactionStrategy.apply.mock.calls[0];
+			expect(context.redactedBySubWorkflow).toBe(true);
+		});
+
+		it('attributes the redaction to the workflow when its own policy already redacts the mode', async () => {
+			const execution = makeExecution({
+				channels: BOTH_CHANNELS,
+				subWorkflowRedaction: BOTH_CHANNELS,
+				mode: 'manual',
+			});
+			await service.processExecution(execution, { user: mockUser });
+
+			const [, context] = fullItemRedactionStrategy.apply.mock.calls[0];
+			expect(context.redactedBySubWorkflow).toBe(false);
 		});
 
 		it('combines the channels with a V1 snapshot', async () => {
@@ -1063,6 +1078,8 @@ describe('ExecutionRedactionService', () => {
 			await service.processExecution(execution, { user: mockUser });
 
 			expect(fullItemRedactionStrategy.apply).toHaveBeenCalledTimes(1);
+			const [, context] = fullItemRedactionStrategy.apply.mock.calls[0];
+			expect(context.redactedBySubWorkflow).toBe(true);
 		});
 
 		it('combines the channels with the workflow-setting fallback', async () => {
