@@ -32,6 +32,7 @@ const COLOR_FAMILIES: Record<TimelineColorKind, ColorFamily> = {
 	suspension: 'yellow',
 	'hitl-response': 'blue',
 	'background-task-signal': 'mint',
+	'background-task': 'mint',
 	idle: 'yellow',
 	subagent: 'mint',
 	approved: 'green',

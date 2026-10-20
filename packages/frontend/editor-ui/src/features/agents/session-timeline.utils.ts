@@ -19,6 +19,7 @@ import type {
 	ToolCallOutcome,
 } from './session-timeline.types';
 import type { AgentExecution } from './composables/useAgentThreadsApi';
+import { backgroundTaskPresentation } from './utils/background-task-timeline';
 import { backgroundJobResultLabel } from './utils/background-job-labels';
 import { isDelegateSubAgentTool } from './utils/delegate-tool';
 import {
@@ -108,7 +109,11 @@ export function isErroredToolCallTimelineItem(item: TimelineItem): boolean {
 }
 
 export function isErroredTimelineItem(item: TimelineItem): boolean {
-	return item.kind === 'execution-error' || isErroredToolCallTimelineItem(item);
+	return (
+		item.kind === 'execution-error' ||
+		item.backgroundTask?.status === 'failed' ||
+		isErroredToolCallTimelineItem(item)
+	);
 }
 
 /** Extracts a human-readable error message from a failed item's tool output. */
@@ -189,12 +194,24 @@ export function hitlTimelineName(item: TimelineItem, i18n: TimelineI18n): string
 }
 
 export type TimelineItemStatus = {
-	kind: 'hitl-response' | 'tool-error';
+	kind: 'hitl-response' | 'tool-error' | 'background-task';
 	labelKey: BaseTextKey;
 	theme: Extract<BadgeVariant, 'outline' | 'success' | 'danger'>;
 };
 
 export function timelineItemStatus(item: TimelineItem): TimelineItemStatus | undefined {
+	if (item.backgroundTask) {
+		return {
+			kind: 'background-task',
+			labelKey: backgroundTaskPresentation[item.backgroundTask.status].labelKey,
+			theme:
+				item.backgroundTask.status === 'failed'
+					? 'danger'
+					: item.backgroundTask.status === 'completed'
+						? 'success'
+						: 'outline',
+		};
+	}
 	if (item.kind === 'hitl-response') {
 		if (item.hitlResponseStatus === 'approved') {
 			return {
@@ -297,6 +314,13 @@ export function timelineItemSearchText(
 		parts.push(labelForKey('error'));
 	}
 
+	if (item.backgroundTask) {
+		parts.push(
+			item.backgroundTask.title,
+			labelForKey(`background-task-current-${item.backgroundTask.status}`),
+		);
+	}
+
 	for (const job of item.backgroundJobSignal?.tasks ?? []) {
 		parts.push(job.title, labelForKey(`background-task-${job.status}`));
 	}
@@ -373,6 +397,7 @@ const COLOR_MAP: Record<EventKind, string> = {
 	suspension: 'var(--color--warning)',
 	'hitl-response': 'var(--color--blue-400)',
 	'background-task-signal': 'var(--color--mint-600)',
+	'background-task': 'var(--color--mint-600)',
 };
 
 export function kindColorToken(kind: EventKind): string {

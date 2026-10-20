@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
 import { N8nIcon, N8nText } from '@n8n/design-system';
-import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
+import { formatTimelineTime } from '../../utils/timeline-time';
 
 import type { TimelineItem } from '../../session-timeline.types';
 
@@ -10,10 +10,7 @@ const props = defineProps<{
 	selected: boolean;
 }>();
 
-const time = computed(() => {
-	if (!props.item.timestamp) return '';
-	return convertToDisplayDate(new Date(props.item.timestamp).toISOString()).time;
-});
+const time = computed(() => formatTimelineTime(props.item.timestamp));
 </script>
 
 <template>

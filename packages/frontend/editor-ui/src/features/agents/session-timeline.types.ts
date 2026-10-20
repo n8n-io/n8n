@@ -1,4 +1,4 @@
-import type { AgentBackgroundJobSignal } from '@n8n/api-types';
+import type { AgentBackgroundJobDto, AgentBackgroundJobSignal } from '@n8n/api-types';
 import type { BadgeVariant } from '@n8n/design-system';
 import type { ThinkingSegment } from '@/features/ai/shared/agentsChat/types';
 
@@ -12,7 +12,8 @@ export type EventKind =
 	| 'execution-error'
 	| 'suspension'
 	| 'hitl-response'
-	| 'background-task-signal';
+	| 'background-task-signal'
+	| 'background-task';
 
 export type ToolCallOutcome = 'success' | 'error';
 export type TimelineActivityStatus = 'running' | 'waiting' | 'completed' | 'failed' | 'interrupted';
@@ -33,6 +34,8 @@ export interface TimelineItem {
 	content?: string;
 	thinkingSegments?: ThinkingSegment[];
 	backgroundJobSignal?: AgentBackgroundJobSignal;
+	/** Current task state. The task ID stays stable across updates. */
+	backgroundTask?: AgentBackgroundJobDto;
 	/** Display name of the chat platform user who wrote the turn (only set for `kind: 'user'`). */
 	authorName?: string;
 	/** Files attached to the user turn (only set for `kind: 'user'`). */

@@ -203,6 +203,7 @@ const headerTitle = computed((): string => {
 	const item = props.item;
 	if (!item) return '';
 	if (isSubAgent.value) return delegateLabel(i18n, item.subAgentName ?? '');
+	if (item.kind === 'background-task') return item.backgroundTask?.title ?? '';
 	if (item.kind === 'background-task-signal')
 		return i18n.baseText('agents.chat.backgroundTasks.resultsReceived');
 	if (item.kind === 'workflow') return item.workflowName ?? formatToolNameForDisplay(item.toolName);
@@ -226,7 +227,8 @@ const headerIcon = computed((): IconName => {
 	const item = props.item;
 	if (!item) return 'info';
 	if (isSubAgent.value) return 'bot';
-	if (item.kind === 'background-task-signal') return 'list-checks';
+	if (item.kind === 'background-task' || item.kind === 'background-task-signal')
+		return 'list-checks';
 	if (item.kind === 'workflow') return 'workflow';
 	if (item.kind === 'skill') return 'book-open';
 	if (item.kind === 'tool') return 'wrench';

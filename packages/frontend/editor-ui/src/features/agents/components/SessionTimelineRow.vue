@@ -4,6 +4,7 @@ import { useI18n } from '@n8n/i18n';
 import type { Component } from 'vue';
 import { computed } from 'vue';
 import type { EventKind, TimelineItem } from '../session-timeline.types';
+import SessionBackgroundTaskItem from './timeline-items/SessionBackgroundTaskItem.vue';
 import SessionBackgroundJobItem from './timeline-items/SessionBackgroundJobItem.vue';
 import SessionCapabilityItem from './timeline-items/SessionCapabilityItem.vue';
 import SessionExecutionErrorItem from './timeline-items/SessionExecutionErrorItem.vue';
@@ -15,6 +16,9 @@ const props = defineProps<{
 	selected: boolean;
 	searchQuery?: string;
 	agentName?: string;
+	projectId?: string;
+	agentId?: string;
+	threadId?: string;
 	personalisation?: AgentJsonConfig['personalisation'] | null;
 }>();
 
@@ -31,6 +35,7 @@ const componentByKind: Record<EventKind, Component> = {
 	suspension: SessionHitlItem,
 	'hitl-response': SessionHitlItem,
 	'background-task-signal': SessionBackgroundJobItem,
+	'background-task': SessionBackgroundTaskItem,
 };
 
 const timelineItemComponent = computed(function getTimelineItemComponent() {
@@ -43,6 +48,15 @@ const timelineItemProps = computed(function getTimelineItemProps() {
 		item: props.item,
 		selected: props.selected,
 	};
+
+	if (kind === 'background-task') {
+		return {
+			...baseProps,
+			projectId: props.projectId,
+			agentId: props.agentId,
+			threadId: props.threadId,
+		};
+	}
 
 	if (kind === 'user' || kind === 'agent') {
 		const fallbackSenderName =

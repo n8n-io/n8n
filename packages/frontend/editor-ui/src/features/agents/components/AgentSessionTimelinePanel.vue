@@ -18,6 +18,8 @@ import {
 	itemStatusFilterKey,
 } from '@/features/agents/session-timeline.utils';
 import { timelineColors } from '@/features/agents/session-timeline.styles';
+import { useAgentBackgroundJobs } from '@/features/agents/composables/useAgentBackgroundJobs';
+import { backgroundTasksToTimelineItems } from '@/features/agents/utils/background-task-timeline';
 import { useSubAgentNames } from '@/features/agents/composables/useSubAgentNames';
 import { resolveSubAgentName } from '@/features/agents/utils/delegate-tool';
 import { backgroundJobTimelineLabelKey } from '@/features/agents/utils/background-job-labels';
@@ -69,12 +71,39 @@ let removePushListener: (() => void) | undefined;
 let activeRequest: { identity: string; promise: Promise<void> } | undefined;
 
 /** Temporary test integration. Remove this block, the import, and the controls tag after testing. */
-const isDevelopment = import.meta.env.DEV;
+const shouldShowTestControls =
+	import.meta.env.DEV && Boolean(localStorage.getItem('N8N_SHOW_TRACE_CONTROLS'));
 const testItems = ref<TimelineItem[] | null>(null);
 const isTimelineLoading = computed(() => loading.value && testItems.value === null);
 
+const { allJobs } = useAgentBackgroundJobs({
+	projectId: () => props.projectId,
+	agentId: () => props.agentId,
+	threadId: () => props.threadId,
+	active: () => testItems.value === null,
+});
+
 const baseItems = computed<TimelineItem[]>(
-	() => testItems.value ?? flattenExecutionsToTimelineItems(executions.value),
+	() =>
+		testItems.value ??
+		[
+			...flattenExecutionsToTimelineItems(executions.value),
+			...backgroundTasksToTimelineItems(allJobs.value),
+		].sort((a, b) => a.timestamp - b.timestamp),
+);
+
+/** Keep selection on the same item when task data arrives after execution data. */
+watch(
+	baseItems,
+	(next, previous) => {
+		if (selectedIndex.value === null) return;
+		const selected = previous[selectedIndex.value];
+		if (!selected) return;
+		const key = timelineItemKey(selected);
+		const index = next.findIndex((item) => timelineItemKey(item) === key);
+		selectTimelineItem(index >= 0 ? index : null);
+	},
+	{ flush: 'sync' },
 );
 
 watch(testItems, () => {
@@ -328,7 +357,7 @@ useKeybindings({
 
 <template>
 	<div :class="$style.panel">
-		<SessionTimelineTestControls v-if="isDevelopment" @update="testItems = $event" />
+		<SessionTimelineTestControls v-if="shouldShowTestControls" @update="testItems = $event" />
 		<div v-if="!isTimelineLoading" :class="$style.subHeader">
 			<N8nInput
 				ref="searchInput"
@@ -366,6 +395,9 @@ useKeybindings({
 			<SessionTimelineTable
 				v-if="!isTimelineLoading"
 				ref="timelineTable"
+				:project-id="props.projectId"
+				:agent-id="props.agentId"
+				:thread-id="props.threadId"
 				:items="items"
 				:agent-name="props.agentName"
 				:personalisation="props.personalisation"

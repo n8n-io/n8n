@@ -2,13 +2,26 @@
 import { computed, ref, watch } from 'vue';
 import { N8nCheckbox } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import type { AgentBackgroundJobDto } from '@n8n/api-types';
 import type { TimelineActivityStatus, TimelineItem } from '../session-timeline.types';
+import { backgroundTasksToTimelineItems } from '../utils/background-task-timeline';
+import { TIME } from '@/app/constants/durations';
 
 /** Temporary display fixtures. Remove this file and the panel integration after testing. */
 const emit = defineEmits<{ update: [items: TimelineItem[] | null] }>();
 const i18n = useI18n();
 const enabled = ref(false);
 const empty = ref(false);
+const cycleBackgroundTasks = ref(false);
+const backgroundTaskStep = ref(0);
+const backgroundTaskStates = [
+	'running',
+	'paused',
+	'suspended',
+	'completed',
+	'failed',
+	'cancelled',
+] satisfies Array<AgentBackgroundJobDto['status']>;
 const start = Date.now() - 600_000;
 const states: TimelineActivityStatus[] = [
 	'running',
@@ -93,6 +106,11 @@ const types = [
 		item: { kind: 'hitl-response', hitlToolDisplayName: 'Send report' },
 	},
 	{
+		key: 'background-task',
+		label: 'agentSessions.timeline.backgroundTask',
+		item: { kind: 'background-task' },
+	},
+	{
 		key: 'background-task-signal',
 		label: 'agentSessions.timeline.testControls.background',
 		item: { kind: 'background-task-signal' },
@@ -104,6 +122,23 @@ const types = [
 }>;
 const selectedTypes = ref(
 	new Set(['user', 'skill', 'tool', 'subagent', 'node', 'workflow', 'agent']),
+);
+
+/** Keep the same task identity while its display state changes. */
+watch(
+	() =>
+		enabled.value &&
+		!empty.value &&
+		cycleBackgroundTasks.value &&
+		selectedTypes.value.has('background-task'),
+	function updateBackgroundTaskCycle(active, _previous, onCleanup) {
+		backgroundTaskStep.value = 0;
+		if (!active) return;
+		const timer = setInterval(function advanceBackgroundTask() {
+			backgroundTaskStep.value = (backgroundTaskStep.value + 1) % backgroundTaskStates.length;
+		}, TIME.SECOND * 3);
+		onCleanup(() => clearInterval(timer));
+	},
 );
 
 function toggle<T>(selection: Set<T>, value: T, checked: boolean) {
@@ -124,6 +159,35 @@ const samples = computed<TimelineItem[]>(function buildSamples() {
 	const orderedTypes = [...types.filter((type) => type.key !== 'agent'), types[1]];
 	for (const type of orderedTypes) {
 		if (!selectedTypes.value.has(type.key)) continue;
+		if (type.key === 'background-task') {
+			const taskStates = cycleBackgroundTasks.value
+				? [backgroundTaskStates[backgroundTaskStep.value]]
+				: backgroundTaskStates;
+			const tasks = taskStates.map(
+				(status, index): AgentBackgroundJobDto => ({
+					id: cycleBackgroundTasks.value
+						? 'sample-background-task-cycle'
+						: `sample-background-task-${status}`,
+					title: `Project research ${index + 1}`,
+					kind: 'subagent',
+					status,
+					startedAt: new Date(start).toISOString(),
+					settledAt:
+						status === 'completed' || status === 'failed' || status === 'cancelled'
+							? new Date(start + 1_000).toISOString()
+							: undefined,
+				}),
+			);
+			for (const task of backgroundTasksToTimelineItems(tasks)) {
+				if (
+					cycleBackgroundTasks.value ||
+					(task.activityStatus && selectedStates.value.has(task.activityStatus))
+				) {
+					result.push(task);
+				}
+			}
+			continue;
+		}
 		const state = capabilityStates[type.key];
 		if (state && !selectedStates.value.has(state)) continue;
 		const item: TimelineItem = {
@@ -219,6 +283,13 @@ watch(
 				/>
 			</div>
 		</fieldset>
+		<div :class="$style.options">
+			<N8nCheckbox
+				v-model="cycleBackgroundTasks"
+				:label="i18n.baseText('agentSessions.timeline.testControls.cycleBackgroundTasks')"
+				:disabled="!enabled || !selectedTypes.has('background-task')"
+			/>
+		</div>
 		<fieldset :disabled="!enabled">
 			<legend>{{ i18n.baseText('agentSessions.timeline.status') }}</legend>
 			<div :class="$style.options">

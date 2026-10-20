@@ -96,6 +96,8 @@ function popoverPillKind(item: TimelineItem) {
 function popoverLabel(item: TimelineItem): string {
 	if (isSubAgentTimelineItem(item)) return i18n.baseText('agentSessions.timeline.subAgent');
 	switch (item.kind) {
+		case 'background-task':
+			return i18n.baseText('agentSessions.timeline.backgroundTask');
 		case 'background-task-signal':
 			return i18n.baseText('agents.chat.backgroundTasks.resultsReceived');
 		case 'user':
@@ -126,6 +128,8 @@ function popoverName(item: TimelineItem): string {
 		return item.subAgentName ?? formatToolNameForDisplay(item.toolName);
 	}
 	switch (item.kind) {
+		case 'background-task':
+			return item.backgroundTask?.title ?? '';
 		case 'background-task-signal':
 			return backgroundJobSignalSummary(item, i18n);
 		case 'user':

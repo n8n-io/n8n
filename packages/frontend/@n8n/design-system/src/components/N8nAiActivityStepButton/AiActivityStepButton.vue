@@ -71,7 +71,6 @@ function handleClick(event: MouseEvent) {
 
 	&.nonInteractive {
 		cursor: default;
-		opacity: 1;
 
 		&:hover {
 			color: var(--text-color--subtler);
