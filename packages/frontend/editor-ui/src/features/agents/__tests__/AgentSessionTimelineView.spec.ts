@@ -6,7 +6,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import AgentSessionTimelineView from '../views/AgentSessionTimelineView.vue';
 import AgentSessionTimelinePanel from '../components/AgentSessionTimelinePanel.vue';
 import AgentSessionTimelineHeader from '../components/AgentSessionTimelineHeader.vue';
-import { AGENT_SESSION_DETAIL_VIEW } from '../constants';
+import { AGENT_BUILDER_VIEW, AGENT_SESSION_DETAIL_VIEW } from '../constants';
 
 function sessionThread(id: string) {
 	return {
@@ -133,6 +133,41 @@ describe('AgentSessionTimelineView', () => {
 			totalCost: 0.5,
 			durationLabel: '1.5s',
 		});
+	});
+
+	it.each(['thread-a', 'thread-c'])(
+		'opens the agent editor from session %s without a session-list query',
+		async (threadId) => {
+			const wrapper = await renderTimeline();
+			routeParams.threadId = threadId;
+			await nextTick();
+
+			wrapper.findComponent(AgentSessionTimelineHeader).vm.$emit('edit');
+
+			expect(routerPush).toHaveBeenCalledExactlyOnceWith({
+				name: AGENT_BUILDER_VIEW,
+				params: { projectId: 'p1', agentId: 'a1' },
+			});
+		},
+	);
+
+	it('uses the visible Edit agent text as the button name and emits edit', async () => {
+		const wrapper = shallowMount(AgentSessionTimelineHeader, {
+			props: {
+				breadcrumbItems: [],
+				projectIcon: { type: 'icon', value: 'user' },
+				sessionTitle: '',
+				sessionOptions: [],
+				showLangsmithExport: false,
+				langsmithExportLoading: false,
+			},
+		});
+		const button = wrapper.get('[data-testid="agent-session-timeline-edit"]');
+
+		expect(button.attributes('aria-label')).toBeUndefined();
+		await button.trigger('click');
+		expect(wrapper.emitted('edit')).toEqual([[]]);
+		expect(wrapper.emitted('close')).toBeUndefined();
 	});
 
 	it('navigates to the selected session', async () => {

@@ -225,22 +225,23 @@ describe('AgentSessionTimelineHeader', () => {
 
 		breadcrumbs.vm.$emit('itemSelected', { id: 'project-1' });
 		sessionPicker.vm.$emit('select', 'thread-1');
-		await wrapper.find('[data-testid="agent-session-timeline-close"]').trigger('click');
+		await wrapper.find('[data-testid="agent-session-timeline-edit"]').trigger('click');
 
 		expect(wrapper.emitted('breadcrumb-select')).toEqual([[{ id: 'project-1' }]]);
 		expect(wrapper.emitted('session-select')).toEqual([['thread-1']]);
-		expect(wrapper.emitted('close')).toEqual([[]]);
+		expect(wrapper.emitted('edit')).toEqual([[]]);
 	});
 
 	it('shows an outline Edit agent button with a pencil icon', () => {
 		const wrapper = mountNavigationHeader();
-		const closeButton = wrapper.find('[data-testid="agent-session-timeline-close"]');
+		const editButton = wrapper.find('[data-testid="agent-session-timeline-edit"]');
 
-		expect(closeButton.attributes('data-variant')).toBe('outline');
-		expect(closeButton.attributes('data-size')).toBe('medium');
-		expect(closeButton.attributes('data-icon-only')).toBeUndefined();
-		expect(closeButton.find('[data-icon="pencil"]').exists()).toBe(true);
-		expect(closeButton.text()).toBe('Edit agent');
+		expect(editButton.attributes('data-variant')).toBe('outline');
+		expect(editButton.attributes('data-size')).toBe('medium');
+		expect(editButton.attributes('data-icon-only')).toBeUndefined();
+		expect(editButton.find('[data-icon="pencil"]').exists()).toBe(true);
+		expect(editButton.text()).toBe('agentNode.ndv.referenced.editInBuilder');
+		expect(editButton.attributes('aria-label')).toBeUndefined();
 	});
 });
 

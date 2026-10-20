@@ -37,7 +37,7 @@ const emit = defineEmits<{
 	'breadcrumb-select': [item: PathItem];
 	'session-select': [sessionId: string];
 	'langsmith-export': [];
-	close: [];
+	edit: [];
 }>();
 
 const i18n = useI18n();
@@ -145,11 +145,9 @@ const costFormatter = new Intl.NumberFormat('en-US', {
 				variant="outline"
 				icon="pencil"
 				size="medium"
-				:aria-label="i18n.baseText('generic.close')"
-				data-testid="agent-session-timeline-close"
-				data-test-id="agent-session-timeline-close"
-				@click="emit('close')"
-				>Edit agent</N8nButton
+				data-testid="agent-session-timeline-edit"
+				@click="emit('edit')"
+				>{{ i18n.baseText('agentNode.ndv.referenced.editInBuilder') }}</N8nButton
 			>
 		</div>
 	</div>
