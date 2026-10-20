@@ -427,7 +427,6 @@ export class Expression {
 				LoggerProxy.warn(
 					'Native evaluation verify mode is ignored because it only applies to the vm or quickjs expression engine',
 				);
-				this.nativeEvaluation = 'off';
 			}
 			return;
 		}
