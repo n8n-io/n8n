@@ -26,7 +26,7 @@ export function parseWorkflowBuildOutcome(
 export class WorkflowVerificationObligationService {
 	constructor(
 		private readonly agentMemory: TypeORMAgentMemory,
-		private readonly isSetupPanelEnabled: () => boolean = () => false,
+		private readonly isSetupPanelEnabled: (threadId: string) => boolean = () => false,
 	) {}
 
 	private storage(): WorkflowLoopStorage {
@@ -56,7 +56,7 @@ export class WorkflowVerificationObligationService {
 	): WorkflowVerificationObligation {
 		return deriveWorkflowVerificationObligation(threadId, record, {
 			...options,
-			setupPanelEnabled: this.isSetupPanelEnabled(),
+			setupPanelEnabled: this.isSetupPanelEnabled(threadId),
 		});
 	}
 
@@ -97,7 +97,7 @@ export class WorkflowVerificationObligationService {
 		const options = {
 			source: 'planned',
 			plannedTaskId: task.id,
-			setupPanelEnabled: this.isSetupPanelEnabled(),
+			setupPanelEnabled: this.isSetupPanelEnabled(threadId),
 		} satisfies Parameters<typeof deriveWorkflowVerificationObligation>[2];
 		const record = await this.storage().getWorkItem(threadId, baseOutcome.workItemId);
 		const outcome = record?.lastBuildOutcome ?? baseOutcome;

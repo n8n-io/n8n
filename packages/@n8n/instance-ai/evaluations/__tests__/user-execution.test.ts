@@ -24,7 +24,7 @@ function saved(workflowId: string, success = true): CapturedEvent {
 		data: {
 			payload: {
 				toolCallId: workflowId,
-				toolName: 'build-workflow',
+				toolName: 'workflow_builder_build_workflow',
 				result: { workflowId, success },
 			},
 		},
@@ -92,6 +92,8 @@ describe('user execution during a conversation', () => {
 			undefined,
 			'progressive',
 			'progressive@1',
+			undefined,
+			undefined,
 		);
 	});
 

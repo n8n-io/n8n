@@ -1,35 +1,40 @@
 import {
 	ApplyPackageDto,
 	ApplyPackageResultDto,
+	ApplySelectionDto,
 	ContinueApplyPackageDto,
-	CreatePromotionConnectionDto,
+	ContinueApplySelectionDto,
+	CreatePromotionEnvironmentDto,
 	CreatePromotionProviderDto,
-	ListPromotionConnectionsQueryDto,
+	ListPromotionEnvironmentsQueryDto,
 	ListPromotionProvidersQueryDto,
+	ListPromotionRepositoriesQueryDto,
+	ListPromotionBranchesQueryDto,
 	MAX_ITEMS_PER_PAGE,
+	MAX_PROMOTION_DISCOVERY_ITEMS_PER_PAGE,
 	PromotePackageDto,
 	PromotePackageResultDto,
-	PromotionApplyConfigPublicDto,
+	PromoteSelectionRequestDto,
 	PromotionChangesDto,
 	PromotionChangesQueryDto,
 	PromotionCheckoutPublicDto,
-	PromotionConnectionListPublicDto,
-	PromotionConnectionProjectListPublicDto,
-	PromotionConnectionProjectPublicDto,
-	PromotionConnectionPublicDto,
+	PromotionEnvironmentListPublicDto,
+	PromotionEnvironmentProjectListPublicDto,
+	PromotionEnvironmentProjectPublicDto,
+	PromotionEnvironmentPublicDto,
 	PromotionProviderCreatedPublicDto,
 	PromotionProviderListPublicDto,
 	PromotionProviderPublicDto,
-	PromotionPromoteConfigPublicDto,
-	UpdatePromotionConnectionDto,
+	PromotionRepositoryListPublicDto,
+	PromotionBranchListPublicDto,
+	UpdatePromotionEnvironmentDto,
 	UpdatePromotionProviderDto,
-	UpsertPromotionApplyConfigDto,
-	UpsertPromotionPromoteConfigDto,
 	projectIdParamSchema,
-	promotionConnectionIdParamSchema,
 	promotionDirectionParamSchema,
+	promotionEnvironmentIdParamSchema,
 	promotionDirectionSchema,
 	promotionProviderIdParamSchema,
+	promotionRepositoryIdParamSchema,
 	type PromotionDirection,
 } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
@@ -49,7 +54,6 @@ import {
 	Licensed,
 	Param,
 	Post,
-	ProjectScope,
 	PublicApiController,
 	Put,
 	Query,
@@ -57,10 +61,12 @@ import {
 import { Container } from '@n8n/di';
 import type { Response } from 'express';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
+import {
+	BadRequestError,
+	ForbiddenError,
+	NotFoundError,
+	ServiceUnavailableError,
+} from '@n8n/errors';
 import {
 	encodeNextCursor,
 	resolveOffsetPagination,
@@ -69,9 +75,8 @@ import {
 const tags = ['Promotions'];
 
 /**
- * Providers hold credentials, connections point at a remote, and each connection
- * has up to one config per direction. A config is addressed by its direction, so
- * there is no config ID in any path.
+ * Providers hold credentials. An environment points at a remote for one direction
+ * and holds the settings of that direction.
  */
 @PublicApiController('/promotions')
 export class PromotionsPublicController {
@@ -85,7 +90,7 @@ export class PromotionsPublicController {
 	@GlobalScope('gitConnection:create')
 	@ApiSummary('Create a promotion provider')
 	@ApiDescription(
-		'Creates a provider and its authentication material. An SSH provider returns the generated public key; add it to the remote as a deploy key.',
+		'Creates a provider and its authentication material. A Git host provider validates authenticated API access before it saves. For GitLab, the service uses n8n as the Git transport username. Its auth.username is optional. The service ignores any supplied username. Plain Git token authentication requires auth.username. An SSH provider returns the generated public key; add it to the remote as a deploy key.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(201, PromotionProviderCreatedPublicDto)
@@ -103,7 +108,9 @@ export class PromotionsPublicController {
 	@ApiKeyScope('gitConnection:list')
 	@GlobalScope('gitConnection:list')
 	@ApiSummary('List promotion providers')
-	@ApiDescription('Returns a cursor-paginated list of providers, without their public keys.')
+	@ApiDescription(
+		'Returns a cursor-paginated list of providers, without their public configuration.',
+	)
 	@ApiTags(tags)
 	@ApiResponse(200, PromotionProviderListPublicDto)
 	@ApiErrorResponse(503)
@@ -146,11 +153,12 @@ export class PromotionsPublicController {
 	@GlobalScope('gitConnection:update')
 	@ApiSummary('Update a promotion provider')
 	@ApiDescription(
-		'Renames the provider, and replaces its credentials when `auth` is sent. New credentials apply to every connection that uses this provider. The authentication method cannot change.',
+		'Renames the provider, and replaces its credentials when `auth` is sent. A Git host provider can also update its base URL. A different API destination requires `auth` in the same request. Changed credentials and host settings are validated before they save. If another request changes the credentials or configuration before this update saves, the update returns 409. Reload the provider and try again. For GitLab, the service uses n8n as the Git transport username. Its auth.username is optional. The service ignores any supplied username. Plain Git token authentication requires auth.username. New credentials apply to every environment that uses this provider. The authentication method cannot change.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, PromotionProviderPublicDto)
 	@ApiErrorResponse(404)
+	@ApiErrorResponse(409)
 	@ApiErrorResponse(503)
 	async updatePromotionProvider(
 		_req: AuthenticatedRequest,
@@ -167,7 +175,7 @@ export class PromotionsPublicController {
 	@ApiKeyScope('gitConnection:delete')
 	@GlobalScope('gitConnection:delete')
 	@ApiSummary('Delete a promotion provider')
-	@ApiDescription('A provider used by a connection cannot be deleted.')
+	@ApiDescription('A provider used by an environment cannot be deleted.')
 	@ApiTags(tags)
 	@ApiResponse(204)
 	@ApiErrorResponse(404)
@@ -182,48 +190,113 @@ export class PromotionsPublicController {
 		await (await this.providersService()).delete(promotionProviderId);
 	}
 
-	// -- Connections ---------------------------------------------------------
+	@Get('/providers/:promotionProviderId/repositories')
+	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
+	@ApiKeyScope('gitConnection:discover')
+	@GlobalScope('gitConnection:discover')
+	@ApiSummary('List repositories of a promotion provider')
+	@ApiDescription(
+		'Lists repositories where the GitLab token identity has at least the Developer role. The token also needs Git write scope for promotions. Protected branches can restrict pushes. Use remoteUrl as an environment remote. Search matches names and namespaces in similarity order. Unfiltered results use ascending repository ID order. The limit is an upper bound. GitLab returns at most 100 items per page. Follow nextCursor even when a page has fewer items than the requested limit. A saved environment is not required. Invalid credentials return an error, not an empty list. If a response is too large, restart the list with a smaller limit and no cursor.',
+	)
+	@ApiTags(tags)
+	@ApiResponse(200, PromotionRepositoryListPublicDto)
+	@ApiErrorResponse(404)
+	@ApiErrorResponse(503)
+	async getPromotionProviderRepositories(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('promotionProviderId', promotionProviderIdParamSchema) promotionProviderId: string,
+		@Query query: ListPromotionRepositoriesQueryDto,
+	): Promise<PromotionRepositoryListPublicDto> {
+		const { offset, limit } = this.resolveDiscoveryPage(query);
+		const { data, hasNextPage } = await (await this.providersService()).listRepositories(
+			promotionProviderId,
+			{ offset, limit, search: query.search },
+		);
+		return {
+			data,
+			nextCursor: hasNextPage
+				? encodeNextCursor({ offset, limit, numberOfTotalRecords: offset + limit + 1 })
+				: null,
+		};
+	}
 
-	@Post('/connections')
+	@Get('/providers/:promotionProviderId/repositories/:repositoryId/branches')
+	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
+	@ApiKeyScope('gitConnection:discover')
+	@GlobalScope('gitConnection:discover')
+	@ApiSummary('List branches of a promotion repository')
+	@ApiDescription(
+		'Lists branches of the selected GitLab repository and identifies its default branch. Pass the URL-encoded fullPath from repository discovery, or the repositoryPath of a saved GitLab environment, as repositoryId. GitLab project IDs are also accepted, but environments do not store them. Supports branch search and cursor pagination. The limit is an upper bound. GitLab returns at most 100 items per page. Follow nextCursor even when a page has fewer items than the requested limit. A saved environment is not required. Invalid credentials and inaccessible repositories return errors, not empty lists. If a response is too large, restart the list with a smaller limit and no cursor.',
+	)
+	@ApiTags(tags)
+	@ApiResponse(200, PromotionBranchListPublicDto)
+	@ApiErrorResponse(404)
+	@ApiErrorResponse(503)
+	async getPromotionProviderRepositoryBranches(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('promotionProviderId', promotionProviderIdParamSchema) promotionProviderId: string,
+		@Param('repositoryId', promotionRepositoryIdParamSchema) repositoryId: string,
+		@Query query: ListPromotionBranchesQueryDto,
+	): Promise<PromotionBranchListPublicDto> {
+		const { offset, limit } = this.resolveDiscoveryPage(query);
+		const { data, hasNextPage } = await (await this.providersService()).listBranches(
+			promotionProviderId,
+			repositoryId,
+			{ offset, limit, search: query.search },
+		);
+		return {
+			data,
+			nextCursor: hasNextPage
+				? encodeNextCursor({ offset, limit, numberOfTotalRecords: offset + limit + 1 })
+				: null,
+		};
+	}
+
+	// -- Environments --------------------------------------------------------
+
+	@Post('/environments')
 	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
 	@ApiKeyScope('gitConnection:create')
 	@GlobalScope('gitConnection:create')
-	@ApiSummary('Create a promotion connection')
+	@ApiSummary('Create a promotion environment')
 	@ApiDescription(
-		'Creates a connection on an existing provider, with up to one initial configuration for each direction. Only one instance connection can exist.',
+		'Creates an environment for one direction on an existing provider. The settings must match the direction. A GitLab remote URL must belong to the saved provider. The environment stores only the repository path and derives remoteUrl from the current provider base URL. Plain Git environments keep the full remote URL. The instance can have one environment for each direction.',
 	)
 	@ApiTags(tags)
-	@ApiResponse(201, PromotionConnectionPublicDto)
+	@ApiResponse(201, PromotionEnvironmentPublicDto)
 	@ApiErrorResponse(404)
 	@ApiErrorResponse(409)
 	@ApiErrorResponse(503)
-	async createPromotionConnection(
+	async createPromotionEnvironment(
 		_req: AuthenticatedRequest,
 		_res: Response,
-		@Body input: CreatePromotionConnectionDto,
-	): Promise<PromotionConnectionPublicDto> {
-		return await (await this.connectionsService()).create(input);
+		@Body input: CreatePromotionEnvironmentDto,
+	): Promise<PromotionEnvironmentPublicDto> {
+		return await (await this.environmentsService()).create(input);
 	}
 
-	@Get('/connections')
+	@Get('/environments')
 	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
 	@ApiKeyScope('gitConnection:list')
 	@GlobalScope('gitConnection:list')
-	@ApiSummary('List promotion connections')
+	@ApiSummary('List promotion environments')
 	@ApiDescription(
-		'Returns a cursor-paginated list of connections with their configurations. Filter by `scope` for the instance connection, or by `providerId` to see which connections a provider edit affects.',
+		'Returns a cursor-paginated list of environments. Filter by `scope` and `direction` for the instance environments, or by `providerId` to see which environments a provider edit affects.',
 	)
 	@ApiTags(tags)
-	@ApiResponse(200, PromotionConnectionListPublicDto)
+	@ApiResponse(200, PromotionEnvironmentListPublicDto)
 	@ApiErrorResponse(503)
-	async getPromotionConnections(
+	async getPromotionEnvironments(
 		_req: AuthenticatedRequest,
 		_res: Response,
-		@Query query: ListPromotionConnectionsQueryDto,
-	): Promise<PromotionConnectionListPublicDto> {
+		@Query query: ListPromotionEnvironmentsQueryDto,
+	): Promise<PromotionEnvironmentListPublicDto> {
 		const { offset, limit } = this.resolvePage(query);
-		const { data, count } = await (await this.connectionsService()).list(offset, limit, {
+		const { data, count } = await (await this.environmentsService()).list(offset, limit, {
 			scope: query.scope,
+			direction: query.direction,
 			providerId: query.providerId,
 		});
 		return {
@@ -233,180 +306,102 @@ export class PromotionsPublicController {
 		};
 	}
 
-	@Get('/connections/:promotionConnectionId')
+	@Get('/environments/:promotionEnvironmentId')
 	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
 	@ApiKeyScope('gitConnection:read')
 	@GlobalScope('gitConnection:read')
-	@ApiSummary('Retrieve a promotion connection')
-	@ApiDescription('Returns the connection with its provider summary and its configurations.')
+	@ApiSummary('Retrieve a promotion environment')
+	@ApiDescription(
+		'Returns the environment with its provider summary and the state of its local checkout.',
+	)
 	@ApiTags(tags)
-	@ApiResponse(200, PromotionConnectionPublicDto)
+	@ApiResponse(200, PromotionEnvironmentPublicDto)
 	@ApiErrorResponse(404)
 	@ApiErrorResponse(503)
-	async getPromotionConnection(
+	async getPromotionEnvironment(
 		_req: AuthenticatedRequest,
 		_res: Response,
-		@Param('promotionConnectionId', promotionConnectionIdParamSchema)
-		promotionConnectionId: string,
-	): Promise<PromotionConnectionPublicDto> {
-		return await (await this.connectionsService()).findOne(promotionConnectionId);
+		@Param('promotionEnvironmentId', promotionEnvironmentIdParamSchema)
+		promotionEnvironmentId: string,
+	): Promise<PromotionEnvironmentPublicDto> {
+		return await (await this.environmentsService()).findOne(promotionEnvironmentId);
 	}
 
-	@Put('/connections/:promotionConnectionId')
+	@Put('/environments/:promotionEnvironmentId')
 	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
 	@ApiKeyScope('gitConnection:update')
 	@GlobalScope('gitConnection:update')
-	@ApiSummary('Update a promotion connection')
+	@ApiSummary('Update a promotion environment')
 	@ApiDescription(
-		'Updates the name, target, or provider. Scope cannot change, and configurations have their own routes.',
+		'Updates the name, provider, remote, or settings. A remote replaces the whole saved remote, and settings replace the whole saved settings. The settings must match the direction of the environment, so `createBranchOnPromotion` is always required for Promote. GitLab environments store a repository path and derive remoteUrl from the provider. Plain Git environments keep the full remote URL. If the provider changes during the update, the update returns 409. Reload the environment and try again. Direction and scope cannot change.',
 	)
 	@ApiTags(tags)
-	@ApiResponse(200, PromotionConnectionPublicDto)
+	@ApiResponse(200, PromotionEnvironmentPublicDto)
 	@ApiErrorResponse(404)
+	@ApiErrorResponse(409)
 	@ApiErrorResponse(503)
-	async updatePromotionConnection(
+	async updatePromotionEnvironment(
 		_req: AuthenticatedRequest,
 		_res: Response,
-		@Param('promotionConnectionId', promotionConnectionIdParamSchema)
-		promotionConnectionId: string,
-		@Body input: UpdatePromotionConnectionDto,
-	): Promise<PromotionConnectionPublicDto> {
-		return await (await this.connectionsService()).update(promotionConnectionId, input);
+		@Param('promotionEnvironmentId', promotionEnvironmentIdParamSchema)
+		promotionEnvironmentId: string,
+		@Body input: UpdatePromotionEnvironmentDto,
+	): Promise<PromotionEnvironmentPublicDto> {
+		return await (await this.environmentsService()).update(promotionEnvironmentId, input);
 	}
 
-	@Delete('/connections/:promotionConnectionId')
+	@Delete('/environments/:promotionEnvironmentId')
 	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
 	@ApiKeyScope('gitConnection:delete')
 	@GlobalScope('gitConnection:delete')
-	@ApiSummary('Delete a promotion connection')
+	@ApiSummary('Delete a promotion environment')
 	@ApiDescription(
-		'Deletes the connection with its configurations, project links, and local checkouts. Its provider is kept.',
+		'Deletes the environment with its project links and local checkout. Its provider is kept. Nothing in Git changes.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(204)
 	@ApiErrorResponse(404)
 	@ApiErrorResponse(503)
-	async deletePromotionConnection(
+	async deletePromotionEnvironment(
 		_req: AuthenticatedRequest,
 		_res: Response,
-		@Param('promotionConnectionId', promotionConnectionIdParamSchema)
-		promotionConnectionId: string,
+		@Param('promotionEnvironmentId', promotionEnvironmentIdParamSchema)
+		promotionEnvironmentId: string,
 	): Promise<void> {
-		await (await this.connectionsService()).delete(promotionConnectionId);
-	}
-
-	// -- Configurations ------------------------------------------------------
-
-	@Put('/connections/:promotionConnectionId/configs/apply')
-	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
-	@ApiKeyScope('gitConnection:update')
-	@GlobalScope('gitConnection:update')
-	@ApiSummary('Create or replace the Apply configuration')
-	@ApiDescription(
-		'Replaces the whole configuration, so an omitted name resets it to "Apply". Answers 200 whether it created or replaced.',
-	)
-	@ApiTags(tags)
-	@ApiResponse(200, PromotionApplyConfigPublicDto)
-	@ApiErrorResponse(404)
-	@ApiErrorResponse(409)
-	@ApiErrorResponse(503)
-	async upsertPromotionApplyConfig(
-		_req: AuthenticatedRequest,
-		_res: Response,
-		@Param('promotionConnectionId', promotionConnectionIdParamSchema)
-		promotionConnectionId: string,
-		@Body input: UpsertPromotionApplyConfigDto,
-	): Promise<PromotionApplyConfigPublicDto> {
-		return await (await this.connectionsService()).upsertConfig(promotionConnectionId, {
-			config: { direction: 'apply', settings: input.settings },
-			name: input.name,
-		});
-	}
-
-	@Put('/connections/:promotionConnectionId/configs/promote')
-	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
-	@ApiKeyScope('gitConnection:update')
-	@GlobalScope('gitConnection:update')
-	@ApiSummary('Create or replace the Promote configuration')
-	@ApiDescription(
-		'Replaces the whole configuration, so an omitted name resets it to "Promote" and `createBranchOnPromotion` is always required. Answers 200 whether it created or replaced.',
-	)
-	@ApiTags(tags)
-	@ApiResponse(200, PromotionPromoteConfigPublicDto)
-	@ApiErrorResponse(404)
-	@ApiErrorResponse(409)
-	@ApiErrorResponse(503)
-	async upsertPromotionPromoteConfig(
-		_req: AuthenticatedRequest,
-		_res: Response,
-		@Param('promotionConnectionId', promotionConnectionIdParamSchema)
-		promotionConnectionId: string,
-		@Body input: UpsertPromotionPromoteConfigDto,
-	): Promise<PromotionPromoteConfigPublicDto> {
-		return await (await this.connectionsService()).upsertConfig(promotionConnectionId, {
-			config: { direction: 'promote', settings: input.settings },
-			name: input.name,
-		});
-	}
-
-	@Delete('/connections/:promotionConnectionId/configs/:direction')
-	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
-	@ApiKeyScope('gitConnection:update')
-	@GlobalScope('gitConnection:update')
-	@ApiSummary('Remove one direction')
-	@ApiDescription('Deletes the configuration and its local checkout. Nothing in Git changes.')
-	@ApiTags(tags)
-	@ApiResponse(204)
-	@ApiErrorResponse(404)
-	@ApiErrorResponse(503)
-	async deletePromotionConfig(
-		_req: AuthenticatedRequest,
-		_res: Response,
-		@Param('promotionConnectionId', promotionConnectionIdParamSchema)
-		promotionConnectionId: string,
-		@Param('direction', promotionDirectionParamSchema) direction: string,
-	): Promise<void> {
-		await (await this.connectionsService()).deleteConfig(
-			promotionConnectionId,
-			parseDirection(direction),
-		);
+		await (await this.environmentsService()).delete(promotionEnvironmentId);
 	}
 
 	// -- Local checkouts -----------------------------------------------------
 
-	@Post('/connections/:promotionConnectionId/:direction/clone')
+	@Post('/environments/:promotionEnvironmentId/connect')
 	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
 	@ApiKeyScope('gitConnection:clone')
 	@GlobalScope('gitConnection:clone')
-	@ApiSummary("Clone one direction's repository")
+	@ApiSummary('Connect an environment')
 	@ApiDescription(
-		'Clones the configured branch into local storage on the instance that handles the request. Safe to call repeatedly. Cloning one direction does not make the other ready.',
+		'Prepares the environment on the instance that handles the request. For a Git provider, this clones the configured branch into local storage. Safe to call repeatedly. Connecting one environment does not make another ready.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, PromotionCheckoutPublicDto)
 	@ApiErrorResponse(400)
 	@ApiErrorResponse(404)
 	@ApiErrorResponse(503)
-	async clonePromotionCheckout(
+	async connectPromotionCheckout(
 		_req: AuthenticatedRequest,
 		_res: Response,
-		@Param('promotionConnectionId', promotionConnectionIdParamSchema)
-		promotionConnectionId: string,
-		@Param('direction', promotionDirectionParamSchema) direction: string,
+		@Param('promotionEnvironmentId', promotionEnvironmentIdParamSchema)
+		promotionEnvironmentId: string,
 	): Promise<PromotionCheckoutPublicDto> {
-		return await (await this.promotionsService()).clone(
-			promotionConnectionId,
-			parseDirection(direction),
-		);
+		return await (await this.promotionsService()).clone(promotionEnvironmentId);
 	}
 
-	@Post('/connections/:promotionConnectionId/:direction/disconnect')
+	@Post('/environments/:promotionEnvironmentId/disconnect')
 	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
 	@ApiKeyScope('gitConnection:clone')
 	@GlobalScope('gitConnection:clone')
-	@ApiSummary("Remove one direction's local checkout")
+	@ApiSummary("Remove an environment's local checkout")
 	@ApiDescription(
-		'Removes the local checkout and keeps the configuration, its credentials, and the trusted SSH host keys.',
+		'Removes the local checkout and keeps the environment, its credentials, and the trusted SSH host keys.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, PromotionCheckoutPublicDto)
@@ -415,99 +410,95 @@ export class PromotionsPublicController {
 	async disconnectPromotionCheckout(
 		_req: AuthenticatedRequest,
 		_res: Response,
-		@Param('promotionConnectionId', promotionConnectionIdParamSchema)
-		promotionConnectionId: string,
-		@Param('direction', promotionDirectionParamSchema) direction: string,
+		@Param('promotionEnvironmentId', promotionEnvironmentIdParamSchema)
+		promotionEnvironmentId: string,
 	): Promise<PromotionCheckoutPublicDto> {
-		return await (await this.promotionsService()).disconnect(
-			promotionConnectionId,
-			parseDirection(direction),
-		);
+		return await (await this.promotionsService()).disconnect(promotionEnvironmentId);
 	}
 
 	// -- Project links -------------------------------------------------------
 
-	@Get('/connections/:promotionConnectionId/projects')
+	@Get('/environments/:promotionEnvironmentId/projects')
 	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
 	@ApiKeyScope('gitConnection:read')
 	@GlobalScope('gitConnection:read')
-	@ApiSummary('List projects linked to a promotion connection')
+	@ApiSummary('List projects linked to a promotion environment')
 	@ApiTags(tags)
-	@ApiResponse(200, PromotionConnectionProjectListPublicDto)
+	@ApiResponse(200, PromotionEnvironmentProjectListPublicDto)
 	@ApiErrorResponse(404)
 	@ApiErrorResponse(503)
-	async getPromotionConnectionProjects(
+	async getPromotionEnvironmentProjects(
 		_req: AuthenticatedRequest,
 		_res: Response,
-		@Param('promotionConnectionId', promotionConnectionIdParamSchema)
-		promotionConnectionId: string,
-	): Promise<PromotionConnectionProjectListPublicDto> {
-		return await (await this.connectionsService()).listProjects(promotionConnectionId);
+		@Param('promotionEnvironmentId', promotionEnvironmentIdParamSchema)
+		promotionEnvironmentId: string,
+	): Promise<PromotionEnvironmentProjectListPublicDto> {
+		return await (await this.environmentsService()).listProjects(promotionEnvironmentId);
 	}
 
-	@Post('/connections/:promotionConnectionId/projects/:projectId')
+	@Post('/environments/:promotionEnvironmentId/projects/:projectId')
 	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
 	@ApiKeyScope('gitConnection:manageProjects')
 	@GlobalScope('gitConnection:manageProjects')
-	@ApiSummary('Link a project to a promotion connection')
+	@ApiSummary('Link a project to a promotion environment')
 	@ApiDescription(
-		'Links a team project to a project-scoped connection. A project can be linked to only one connection.',
+		'Links a team project to a project-scoped environment. A project can have one environment for each direction. A direction without a project environment uses the instance environment.',
 	)
 	@ApiTags(tags)
-	@ApiResponse(200, PromotionConnectionProjectPublicDto)
+	@ApiResponse(200, PromotionEnvironmentProjectPublicDto)
 	@ApiErrorResponse(400)
 	@ApiErrorResponse(403)
 	@ApiErrorResponse(404)
 	@ApiErrorResponse(409)
 	@ApiErrorResponse(503)
-	async addProjectToPromotionConnection(
+	async addProjectToPromotionEnvironment(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('promotionConnectionId', promotionConnectionIdParamSchema)
-		promotionConnectionId: string,
+		@Param('promotionEnvironmentId', promotionEnvironmentIdParamSchema)
+		promotionEnvironmentId: string,
 		@Param('projectId', projectIdParamSchema) projectId: string,
-	): Promise<PromotionConnectionProjectPublicDto> {
-		return await (await this.connectionsService()).addProject({
+	): Promise<PromotionEnvironmentProjectPublicDto> {
+		return await (await this.environmentsService()).addProject({
 			user: req.user,
-			connectionId: promotionConnectionId,
+			environmentId: promotionEnvironmentId,
 			projectId,
 		});
 	}
 
-	@Delete('/connections/:promotionConnectionId/projects/:projectId')
+	@Delete('/environments/:promotionEnvironmentId/projects/:projectId')
 	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
 	@ApiKeyScope('gitConnection:manageProjects')
 	@GlobalScope('gitConnection:manageProjects')
-	@ApiSummary('Unlink a project from a promotion connection')
+	@ApiSummary('Unlink a project from a promotion environment')
 	@ApiTags(tags)
 	@ApiResponse(204)
 	@ApiErrorResponse(403)
 	@ApiErrorResponse(404)
 	@ApiErrorResponse(409)
 	@ApiErrorResponse(503)
-	async removeProjectFromPromotionConnection(
+	async removeProjectFromPromotionEnvironment(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('promotionConnectionId', promotionConnectionIdParamSchema)
-		promotionConnectionId: string,
+		@Param('promotionEnvironmentId', promotionEnvironmentIdParamSchema)
+		promotionEnvironmentId: string,
 		@Param('projectId', projectIdParamSchema) projectId: string,
 	): Promise<void> {
-		await (await this.connectionsService()).removeProject({
+		await (await this.environmentsService()).removeProject({
 			user: req.user,
-			connectionId: promotionConnectionId,
+			environmentId: promotionEnvironmentId,
 			projectId,
 		});
 	}
 
 	// -- Package operations --------------------------------------------------
 
-	@Post('/connections/:promotionConnectionId/promote')
+	@Post('/environments/:promotionEnvironmentId/promote')
 	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
 	@ApiKeyScope('gitConnection:push')
 	@GlobalScope('gitConnection:push')
 	@ApiSummary('Promote all team projects')
 	@ApiDescription(
-		'Exports every team project, commits it, and pushes to the configured base branch or a new timestamped branch. The response reports the target branch in `git.branchName`. Personal projects are ignored. Requires the Promote direction to be cloned first, and is available on the instance connection only. The API key also needs variable:list when the workflows reference variables.',
+		'Exports every team project, commits it, and pushes to the configured base branch or a new timestamped branch. The response reports the target branch in `git.branchName`. Personal projects are ignored. Requires a connected Promote environment with instance scope. The API key also needs variable:list when the workflows reference variables.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, PromotePackageResultDto)
@@ -517,23 +508,23 @@ export class PromotionsPublicController {
 	async promotePackage(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('promotionConnectionId', promotionConnectionIdParamSchema)
-		promotionConnectionId: string,
+		@Param('promotionEnvironmentId', promotionEnvironmentIdParamSchema)
+		promotionEnvironmentId: string,
 		@Body input: PromotePackageDto,
 	): Promise<PromotePackageResultDto> {
-		return await (await this.promotionsService()).promote(promotionConnectionId, req.user, {
+		return await (await this.promotionsService()).promote(promotionEnvironmentId, req.user, {
 			...input,
 			canExportVariableValues: req.tokenGrant?.apiKeyScopes?.includes('variable:list') ?? false,
 		});
 	}
 
-	@Post('/connections/:promotionConnectionId/apply')
+	@Post('/environments/:promotionEnvironmentId/apply')
 	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
 	@ApiKeyScope('gitConnection:pull')
 	@GlobalScope('gitConnection:pull')
 	@ApiSummary('Apply a package to the instance')
 	@ApiDescription(
-		'Checks the full package at the configured branch tip. Optionally send expectedSource with the configId, branchName, and full commitSha from the reviewed change preview; status `source-changed` means the branch moved since that review and nothing was imported. Returns status `blocked` before import writes if bindings need setup. Retain configId and git for Continue. Status `applied` includes counts and warnings. Inspect status before reading counts. Existing target variable values, including empty strings, are preserved. Requires a cloned Apply direction on an instance connection. The API key needs the gitConnection:pull scope. The importer checks user write permissions; granular API-key write scopes are not passed to it.',
+		'Checks the full package at the configured branch tip. Optionally send expectedSource with the environmentId, branchName, and full commitSha from the reviewed change preview; status `source-changed` means the branch moved since that review and nothing was imported. Returns status `blocked` before import writes if bindings need setup or if the apply would delete team projects that the package does not hold. Retain environmentId and git for Continue. Status `applied` includes counts and warnings. Inspect status before reading counts. Existing target variable values, including empty strings, are preserved. Requires a connected Apply environment with instance scope. The API key needs the gitConnection:pull scope. The importer checks user write permissions; granular API-key write scopes are not passed to it.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, ApplyPackageResultDto)
@@ -545,24 +536,24 @@ export class PromotionsPublicController {
 	async applyPackage(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('promotionConnectionId', promotionConnectionIdParamSchema)
-		promotionConnectionId: string,
+		@Param('promotionEnvironmentId', promotionEnvironmentIdParamSchema)
+		promotionEnvironmentId: string,
 		@Body input: ApplyPackageDto,
 	): Promise<ApplyPackageResultDto> {
 		return await (await this.promotionsService()).apply(
-			promotionConnectionId,
+			promotionEnvironmentId,
 			req.user,
 			input.expectedSource,
 		);
 	}
 
-	@Post('/connections/:promotionConnectionId/apply/continue')
+	@Post('/environments/:promotionEnvironmentId/apply/continue')
 	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
 	@ApiKeyScope('gitConnection:pull')
 	@GlobalScope('gitConnection:pull')
 	@ApiSummary('Continue Apply after binding setup')
 	@ApiDescription(
-		'Rechecks the configured source and current target bindings. Send expectedSource with the configId, branchName, and full commitSha from the reviewed Apply result. Status `source-changed` requires a new Apply review. Status `blocked` returns fresh binding details without import writes. Status `applied` includes counts and warnings. Inspect status before reading counts. Existing target variable values are preserved. Requires the same cloned instance connection and permissions as Apply. The importer checks user write permissions; granular API-key write scopes are not passed to it. No server session or exactly-once guarantee is provided.',
+		'Rechecks the configured source and current target bindings. Send expectedSource with the environmentId, branchName, and full commitSha from the reviewed Apply result. Send `confirmDestructiveChanges: true` to also apply destructive data table changes and delete the reported team projects. Status `source-changed` requires a new Apply review. Status `blocked` returns fresh binding details without import writes. Status `applied` includes counts and warnings. Inspect status before reading counts. Existing target variable values are preserved. Requires the same connected instance environment and permissions as Apply. The importer checks user write permissions; granular API-key write scopes are not passed to it. No server session or exactly-once guarantee is provided.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, ApplyPackageResultDto)
@@ -573,12 +564,12 @@ export class PromotionsPublicController {
 	async continueApplyPackage(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('promotionConnectionId', promotionConnectionIdParamSchema)
-		promotionConnectionId: string,
+		@Param('promotionEnvironmentId', promotionEnvironmentIdParamSchema)
+		promotionEnvironmentId: string,
 		@Body input: ContinueApplyPackageDto,
 	): Promise<ApplyPackageResultDto> {
 		return await (await this.promotionsService()).continueApply(
-			promotionConnectionId,
+			promotionEnvironmentId,
 			req.user,
 			input,
 		);
@@ -589,10 +580,9 @@ export class PromotionsPublicController {
 	@Get('/projects/:projectId/changes/:direction')
 	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
 	@ApiKeyScope({ anyOf: ['gitConnection:push', 'gitConnection:pull'] })
-	@ProjectScope('project:export')
 	@ApiSummary('List the changes of a project in one direction')
 	@ApiDescription(
-		'Compares a team project on this instance with the branch of its promotion configuration and lists the workflows that differ. For `promote` the rows are what a promotion sends to the branch, and the key needs the gitConnection:push scope. For `apply` the rows are what applying the branch changes on this instance, and the key needs the gitConnection:pull scope. `commitSha` is the commit the rows were read from. Requires the direction to be cloned first.',
+		'Compares a team project on this instance with the branch of its promotion environment for that direction and lists the workflows that differ. For `promote` the rows are what a promotion sends to the branch, and the key needs the gitConnection:push scope. For `apply` the rows are what applying the branch changes on this instance, and the key needs the gitConnection:pull scope. `commitSha` is the commit the rows were read from. Requires the environment to be connected first.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, PromotionChangesDto)
@@ -622,6 +612,87 @@ export class PromotionsPublicController {
 		);
 	}
 
+	// -- Selective promote ---------------------------------------------------
+
+	@Post('/projects/:projectId/promote')
+	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
+	@ApiKeyScope('gitConnection:push')
+	@GlobalScope('gitConnection:push')
+	@ApiSummary("Promote a selection of a project's workflows")
+	@ApiDescription(
+		"Promotes a chosen set of a team project's workflows to the branch of the project's Promote environment. Send workflow ids only; the server reads each one now, so the push carries the current state. Live and archived workflows the project owns are exported, so an archived id stays on the branch as archived; an id the project no longer owns (its workflow is gone, or moved to another project) leaves the branch, matching the project's change list. A deletion the branch does not hold under this project rejects the whole request before any write. Requires a Promote environment to resolve for the project (its own Promote environment, otherwise the instance Promote environment), and requires it to be connected first. The API key also needs variable:list when the workflows reference variables.",
+	)
+	@ApiTags(tags)
+	@ApiResponse(200, PromotePackageResultDto)
+	@ApiErrorResponse(400)
+	@ApiErrorResponse(404)
+	@ApiErrorResponse(503)
+	async promoteProjectSelection(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('projectId', projectIdParamSchema) projectId: string,
+		@Body input: PromoteSelectionRequestDto,
+	): Promise<PromotePackageResultDto> {
+		return await (await this.promotionsService()).promoteProjectSelection(projectId, req.user, {
+			...input,
+			// Variable values only travel when the key may list them.
+			canExportVariableValues: req.tokenGrant?.apiKeyScopes?.includes('variable:list') ?? false,
+		});
+	}
+
+	// -- Selective apply -----------------------------------------------------
+
+	@Post('/projects/:projectId/apply')
+	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
+	@ApiKeyScope('gitConnection:pull')
+	@GlobalScope('gitConnection:pull')
+	@ApiSummary("Apply a selection of a project's workflows")
+	@ApiDescription(
+		"Applies selected workflow changes from the project's Apply branch. Send the selected change-list IDs in workflowIds. The server imports IDs present on the branch for this project. It removes instance workflows owned by this project when their IDs are absent from the branch. Duplicate or invalid IDs reject the whole request. Unselected content stays unchanged. Optionally send expectedSource with the environmentId, branchName, and full commitSha from the reviewed change preview. Status `source-changed` means the source changed since that review and nothing was imported. Status `blocked` returns binding details before import writes when the selection needs binding setup. Retain environmentId and git for Continue. Status `applied` includes counts and warnings. Inspect status before reading counts. Requires a connected Apply environment for the project: its own Apply environment, otherwise the instance Apply environment. The API key needs the gitConnection:pull scope. The importer checks user write permissions.",
+	)
+	@ApiTags(tags)
+	@ApiResponse(200, ApplyPackageResultDto)
+	@ApiErrorResponse(400)
+	@ApiErrorResponse(404)
+	@ApiErrorResponse(409)
+	@ApiErrorResponse(422)
+	@ApiErrorResponse(503)
+	async applyProjectSelection(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('projectId', projectIdParamSchema) projectId: string,
+		@Body input: ApplySelectionDto,
+	): Promise<ApplyPackageResultDto> {
+		return await (await this.promotionsService()).applyProjectSelection(projectId, req.user, input);
+	}
+
+	@Post('/projects/:projectId/apply/continue')
+	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
+	@ApiKeyScope('gitConnection:pull')
+	@GlobalScope('gitConnection:pull')
+	@ApiSummary('Continue applying a selection after binding setup')
+	@ApiDescription(
+		"Rechecks the project's Apply source and the current bindings for the selection. Resend the full selection in workflowIds. Send the required expectedSource with the environmentId, branchName, and full commitSha from the reviewed Apply result. Send `confirmDestructiveChanges: true` to also apply destructive data table changes. The server does not keep a session. Status `source-changed` requires a new Apply review. Status `blocked` returns fresh binding details before import writes. Status `applied` includes counts and warnings. Inspect status before reading counts. Unselected content stays unchanged. Requires the same connected Apply environment and permissions as the initial selection apply. The API key needs the gitConnection:pull scope. The importer checks user write permissions.",
+	)
+	@ApiTags(tags)
+	@ApiResponse(200, ApplyPackageResultDto)
+	@ApiErrorResponse(404)
+	@ApiErrorResponse(409)
+	@ApiErrorResponse(422)
+	@ApiErrorResponse(503)
+	async continueApplyProjectSelection(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('projectId', projectIdParamSchema) projectId: string,
+		@Body input: ContinueApplySelectionDto,
+	): Promise<ApplyPackageResultDto> {
+		return await (await this.promotionsService()).continueApplyProjectSelection(
+			projectId,
+			req.user,
+			input,
+		);
+	}
+
 	// -- Module access -------------------------------------------------------
 
 	private assertModuleActive() {
@@ -638,12 +709,12 @@ export class PromotionsPublicController {
 		return Container.get(PromotionProvidersService);
 	}
 
-	private async connectionsService() {
+	private async environmentsService() {
 		this.assertModuleActive();
-		const { PromotionConnectionsService } = await import(
-			'@/modules/promotions.ee/promotion-connections.service.js'
+		const { PromotionEnvironmentsService } = await import(
+			'@/modules/promotions.ee/promotion-environments.service.js'
 		);
-		return Container.get(PromotionConnectionsService);
+		return Container.get(PromotionEnvironmentsService);
 	}
 
 	private async promotionsService() {
@@ -674,6 +745,20 @@ export class PromotionsPublicController {
 			throw new BadRequestError('An invalid cursor was provided');
 		}
 		return { offset: page.offset, limit: Math.min(page.limit, MAX_ITEMS_PER_PAGE) };
+	}
+
+	private resolveDiscoveryPage(query: { cursor?: string; limit: number }) {
+		const page = this.resolvePage(query);
+		const limit = Math.min(page.limit, MAX_PROMOTION_DISCOVERY_ITEMS_PER_PAGE);
+		// GitLab uses page numbers, so the offset must start a complete page.
+		if (
+			!Number.isSafeInteger(page.offset) ||
+			(query.cursor && page.limit > MAX_PROMOTION_DISCOVERY_ITEMS_PER_PAGE) ||
+			page.offset % limit !== 0
+		) {
+			throw new BadRequestError('An invalid cursor was provided');
+		}
+		return { offset: page.offset, limit };
 	}
 }
 

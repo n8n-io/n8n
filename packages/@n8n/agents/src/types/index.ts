@@ -43,11 +43,15 @@ export type {
 	StreamChunk,
 	FinishReason,
 	TokenUsage,
+	PromptSizeUsage,
 	ModelConfig,
 	RunOptions,
 	ExecutionOptions,
+	AgentInputBoundary,
 	SmoothStreamOptions,
 	AgentExecutionCounter,
+	SideCallTask,
+	SideCallUsageReport,
 	PersistedExecutionOptions,
 	ResumeOptions,
 	GenerateResult,
@@ -60,6 +64,7 @@ export type {
 	AnthropicPromptCachingConfig,
 	OpenAIPromptCachingConfig,
 	PromptCachingConfig,
+	NativeToolDeferralConfig,
 } from './sdk/agent';
 export { FINISH_REASONS, isFinishReason } from './sdk/agent';
 
@@ -69,6 +74,7 @@ export type {
 	ToolContext,
 	ToolCancellationContext,
 	ToolExecutionContext,
+	ToolApprovalContext,
 	InterruptibleToolContext,
 	ToolSuspendOptions,
 	BuiltTool,
@@ -91,6 +97,7 @@ export type {
 	EpisodicMemoryMethods,
 	EpisodicMemoryPrompts,
 	EpisodicMemoryReflectFn,
+	EpisodicMemoryReflectResult,
 	EpisodicMemoryReflection,
 	EpisodicMemoryReflectionApply,
 	EpisodicMemoryReflectionApplyMerge,
@@ -138,9 +145,11 @@ export type {
 	ObservationLogMerge,
 	MemoryTaskUsageReport,
 	ObservationLogObserveFn,
+	ObservationLogObserveResult,
 	ObservationLogObserverInput,
 	ObservationLogReadOptions,
 	ObservationLogReflectFn,
+	ObservationLogReflectResult,
 	ObservationLogReflectorInput,
 	ObservationLogReflection,
 	ObservationLogReflectionResult,
@@ -203,3 +212,13 @@ export type {
 	ResolvedCredential,
 	CredentialListItem,
 } from './sdk/credential-provider';
+
+export type {
+	GuardrailsOptions,
+	ModelGuardrail,
+	GuardrailModelCallSource,
+	GuardrailModelCallContext,
+	GuardrailToolCallContext,
+	GuardrailDecision,
+	GuardrailStop,
+} from './sdk/guardrail';

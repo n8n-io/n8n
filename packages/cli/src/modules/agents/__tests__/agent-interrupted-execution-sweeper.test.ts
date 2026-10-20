@@ -17,19 +17,41 @@ function setup(options: { backgroundTasksEnabled?: boolean } = {}) {
 	const agentsConfig = mock<AgentsConfig>({
 		backgroundTasksEnabled: options.backgroundTasksEnabled ?? false,
 	});
+	const logger = mockLogger();
 	const sweeper = new AgentInterruptedExecutionSweeper(
-		mockLogger(),
+		logger,
 		repository,
 		executionService,
 		backgroundJobService,
 		agentWakeService,
 		agentsConfig,
 	);
-	return { sweeper, repository, executionService, backgroundJobService, agentWakeService };
+	return {
+		sweeper,
+		repository,
+		executionService,
+		backgroundJobService,
+		agentWakeService,
+		logger: logger.scoped('agents'),
+	};
+}
+
+function staleExecution(id: string): AgentExecution {
+	return {
+		id,
+		threadId: `thread-${id}`,
+		status: 'running',
+		startedAt: new Date(0),
+		updatedAt: new Date(0),
+	} as AgentExecution;
 }
 
 describe('AgentInterruptedExecutionSweeper', () => {
+	afterEach(() => vi.useRealTimers());
+
 	it('terminalizes an abandoned running execution', async () => {
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date('2026-01-01T00:02:00.000Z'));
 		const { sweeper, repository, executionService } = setup();
 		const execution = {
 			id: 'execution-1',
@@ -43,7 +65,10 @@ describe('AgentInterruptedExecutionSweeper', () => {
 
 		await sweeper.sweep();
 
-		expect(executionService.finalizeInterruptedExecution).toHaveBeenCalledWith(execution);
+		expect(executionService.finalizeInterruptedExecution).toHaveBeenCalledWith(
+			execution,
+			new Date('2026-01-01T00:00:00.000Z'),
+		);
 	});
 
 	it('leaves a recently active execution running in another process', async () => {
@@ -53,7 +78,9 @@ describe('AgentInterruptedExecutionSweeper', () => {
 				id: 'execution-1',
 				threadId: 'thread-1',
 				status: 'running',
-				startedAt: new Date(Date.now() - AgentInterruptedExecutionSweeper.LIVENESS_GRACE_MS * 2),
+				startedAt: new Date(
+					Date.now() - AgentInterruptedExecutionSweeper.LIVENESS_GRACE_SECONDS * 2 * 1000,
+				),
 				updatedAt: new Date(),
 			} as AgentExecution,
 		]);
@@ -84,5 +111,66 @@ describe('AgentInterruptedExecutionSweeper', () => {
 		await sweeper.sweep();
 
 		expect(agentWakeService.drainUnconsumed).toHaveBeenCalled();
+	});
+
+	it('stops before the next execution once the run is told to abort', async () => {
+		const { sweeper, repository, executionService } = setup();
+		const run = new AbortController();
+		repository.findRunning.mockResolvedValue([
+			staleExecution('execution-1'),
+			staleExecution('execution-2'),
+		]);
+		executionService.finalizeInterruptedExecution.mockImplementation(async () => {
+			run.abort();
+			return true;
+		});
+
+		await sweeper.sweep(run.signal);
+
+		expect(executionService.finalizeInterruptedExecution).toHaveBeenCalledTimes(1);
+	});
+
+	it('skips reconciliation and wake drain once the run is told to abort', async () => {
+		const { sweeper, repository, executionService, backgroundJobService, agentWakeService } =
+			setup();
+		const run = new AbortController();
+		repository.findRunning.mockResolvedValue([staleExecution('execution-1')]);
+		executionService.finalizeInterruptedExecution.mockImplementation(async () => {
+			run.abort();
+			return true;
+		});
+
+		await sweeper.sweep(run.signal);
+
+		expect(backgroundJobService.reconcileWorkflowJobs).not.toHaveBeenCalled();
+		expect(agentWakeService.drainUnconsumed).not.toHaveBeenCalled();
+	});
+
+	it('skips the wake drain and logs the stop once reconciliation aborts the run', async () => {
+		const { sweeper, repository, backgroundJobService, agentWakeService, logger } = setup({
+			backgroundTasksEnabled: true,
+		});
+		const run = new AbortController();
+		repository.findRunning.mockResolvedValue([]);
+		backgroundJobService.reconcile.mockImplementation(async () => {
+			run.abort();
+		});
+
+		await sweeper.sweep(run.signal);
+
+		expect(agentWakeService.drainUnconsumed).not.toHaveBeenCalled();
+		expect(logger.debug).toHaveBeenCalledWith('Stopped the interrupted execution sweep early', {
+			before: 'drain',
+		});
+	});
+
+	it('hands the signal to reconciliation', async () => {
+		const { sweeper, repository, backgroundJobService } = setup({ backgroundTasksEnabled: true });
+		const { signal } = new AbortController();
+		repository.findRunning.mockResolvedValue([]);
+
+		await sweeper.sweep(signal);
+
+		expect(backgroundJobService.reconcile).toHaveBeenCalledWith(signal);
 	});
 });

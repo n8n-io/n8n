@@ -14,9 +14,21 @@ export interface WorkflowImportResult {
 	contentImportPolicy?: ContentImportPolicyResult;
 }
 
+export interface CredentialImportResult {
+	id: string;
+	name: string;
+	type: string;
+	/**
+	 * Present when the content-import policy blocked this credential, which means it was not
+	 * imported. `checkErrors` stays empty: a check that cannot answer fails the whole pull, so
+	 * it never lands on a single credential's report.
+	 */
+	contentImportPolicy?: ContentImportPolicyResult;
+}
+
 export interface ImportResult {
 	workflows: WorkflowImportResult[];
-	credentials: Array<{ id: string; name: string; type: string }>;
+	credentials: CredentialImportResult[];
 	variables: { imported: string[] };
 	tags: { tags: TagEntity[]; mappings: WorkflowTagMapping[] };
 	removedFiles?: string[];

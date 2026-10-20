@@ -43,7 +43,14 @@ describe('messageHasVisibleContent', () => {
 					{ type: 'tool-call', toolCallId: 'tc-build', responseId: 'r1' },
 					{ type: 'child', agentId: 'builder-1', responseId: 'r1' },
 				],
-				toolCalls: [{ toolCallId: 'tc-build', toolName: 'build-agent', args: {}, isLoading: true }],
+				toolCalls: [
+					{
+						toolCallId: 'tc-build',
+						toolName: 'agent_builder_build_agent',
+						args: {},
+						isLoading: true,
+					},
+				],
 				children: [builderChild],
 			}),
 		);
@@ -66,7 +73,12 @@ describe('messageHasVisibleContent', () => {
 					{ type: 'child', agentId: 'builder-1', responseId: 'r2' },
 				],
 				toolCalls: [
-					{ toolCallId: 'tc-build-old', toolName: 'build-agent', args: {}, isLoading: false },
+					{
+						toolCallId: 'tc-build-old',
+						toolName: 'agent_builder_build_agent',
+						args: {},
+						isLoading: false,
+					},
 				],
 				children: [builderChild],
 			}),
@@ -77,6 +89,12 @@ describe('messageHasVisibleContent', () => {
 });
 
 describe('getAgentSectionTitle', () => {
+	test('uses the translated activity for an Agent Builder', () => {
+		const node = makeAgentNode({ activity: 'exploring', role: 'agent-builder' });
+
+		expect(getAgentSectionTitle(node, 'Exploring agent')).toBe('Exploring agent');
+	});
+
 	test('uses the title when the backend set one', () => {
 		const node = makeAgentNode({ title: 'Building agent', role: 'agent-builder' });
 

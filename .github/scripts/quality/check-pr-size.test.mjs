@@ -203,14 +203,21 @@ describe('countFilteredAdditions', () => {
 		assert.equal(countFilteredAdditions(files, EXCLUDE_PATTERNS), 50);
 	});
 
-	it('applies EXCLUDE_PATTERNS to packages/testing and pnpm-lock.yaml', () => {
+	it('excludes former testing workspaces but counts benchmark CLI source', () => {
 		const files = [
 			{ filename: 'packages/cli/src/service.ts', additions: 50 },
-			{ filename: 'packages/testing/playwright/tests/workflow.spec.ts', additions: 100 },
-			{ filename: 'packages/testing/playwright/pages/CanvasPage.ts', additions: 100 },
+			{ filename: 'packages/quality/testing/playwright/tests/workflow.spec.ts', additions: 100 },
+			{ filename: 'packages/quality/testing/playwright/pages/CanvasPage.ts', additions: 100 },
+			{ filename: 'packages/quality/policy/code-health/src/cli.ts', additions: 100 },
+			{ filename: 'packages/quality/environments/containers/service-stack.ts', additions: 100 },
+			{
+				filename: 'packages/quality/efficiency/microbenchmarks/benchmarks/bench-options.ts',
+				additions: 100,
+			},
+			{ filename: 'packages/quality/efficiency/scale/benchmark/src/commands/list.ts', additions: 100 },
 			{ filename: 'pnpm-lock.yaml', additions: 500 },
 		];
-		assert.equal(countFilteredAdditions(files, EXCLUDE_PATTERNS), 50);
+		assert.equal(countFilteredAdditions(files, EXCLUDE_PATTERNS), 150);
 	});
 
 	it('applies EXCLUDE_PATTERNS to markdown files', () => {

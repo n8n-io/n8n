@@ -5,13 +5,12 @@ import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError, NotFoundError } from '@n8n/errors';
 
 import { AgentIntegrationManagementService } from '../agent-integration-management.service';
 import type { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service';
 import type { AgentUpdateBroadcaster } from '../agent-update-broadcaster';
-import type { Agent } from '../entities/agent.entity';
+import type { ProjectAgent } from '../entities/agent.entity';
 import type {
 	AgentChatIntegration,
 	ChatIntegrationRegistry,
@@ -27,14 +26,14 @@ describe('AgentIntegrationManagementService', () => {
 	} satisfies AgentIntegrationConfig;
 	const replaced = { type: 'slack', credentialId: 'credential-0' } satisfies AgentIntegrationConfig;
 
-	function makeAgent(overrides: Partial<Agent> = {}): Agent {
+	function makeAgent(overrides: Partial<ProjectAgent> = {}): ProjectAgent {
 		return {
 			id: 'agent-1',
 			projectId: 'project-1',
 			activeVersionId: 'version-1',
 			integrations: [],
 			...overrides,
-		} as Agent;
+		} as ProjectAgent;
 	}
 
 	function makeService() {
@@ -82,7 +81,7 @@ describe('AgentIntegrationManagementService', () => {
 	 * Mirrors what the real delta does to the entity: it corrects `activeVersionId`
 	 * to the row it read, which is what callers derive their response from.
 	 */
-	function deltaResult(agent: Agent, published: boolean, extra: object = {}) {
+	function deltaResult(agent: ProjectAgent, published: boolean, extra: object = {}) {
 		agent.activeVersionId = published ? 'version-1' : null;
 		return { agent, changed: true, published, ...extra };
 	}
@@ -331,6 +330,103 @@ describe('AgentIntegrationManagementService', () => {
 
 			// Nothing was running, so there is nothing to put back.
 			expect(chatService.connect).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('connecting n8n Chat', () => {
+		const n8nChat = { type: 'n8n_chat', credentialId: '' } satisfies AgentIntegrationConfig;
+
+		it('adds the entry without any credential lookup or runtime start', async () => {
+			const { service, persistenceService, credentialsService, chatService } = makeService();
+			const agent = makeAgent();
+
+			await service.connect({ agent, user: user as never, integration: n8nChat });
+
+			expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).not.toHaveBeenCalled();
+			expect(chatService.connect).not.toHaveBeenCalled();
+			expect(chatService.validateBeforeConnect).not.toHaveBeenCalled();
+			expect(chatService.broadcastIntegrationChange).not.toHaveBeenCalled();
+			expect(persistenceService.applyIntegrationDelta).toHaveBeenCalledWith(
+				agent,
+				{ add: n8nChat },
+				{ user, modifiedBy: 'user' },
+			);
+		});
+
+		it('starts no runtime even for an already-published agent', async () => {
+			const { service, persistenceService, chatService } = makeService();
+			const agent = makeAgent();
+			persistenceService.applyIntegrationDelta.mockResolvedValue({
+				agent,
+				changed: true,
+				published: true,
+			});
+
+			await service.connect({ agent, user: user as never, integration: n8nChat });
+
+			expect(chatService.connect).not.toHaveBeenCalled();
+			expect(chatService.broadcastIntegrationChange).not.toHaveBeenCalled();
+		});
+
+		it('still notifies collaborators through the same push channel as other connects', async () => {
+			const { service, persistenceService, agentUpdateBroadcaster } = makeService();
+			const agent = makeAgent();
+			persistenceService.applyIntegrationDelta.mockResolvedValue({ agent, changed: true });
+
+			await service.connect({
+				agent,
+				user: user as never,
+				integration: n8nChat,
+				pushRef: 'writer-1',
+			});
+
+			expect(agentUpdateBroadcaster.notify).toHaveBeenCalledWith(
+				{ projectId: agent.projectId, agentId: agent.id, source: 'user' },
+				'writer-1',
+			);
+		});
+
+		it('keeps a single entry when connected twice', async () => {
+			const { service, persistenceService } = makeService();
+			const agent = makeAgent({ integrations: [n8nChat] });
+
+			await service.connect({ agent, user: user as never, integration: n8nChat });
+
+			// The persistence layer's own upsert handles this; the management
+			// service must still route it through the same add-delta path.
+			expect(persistenceService.applyIntegrationDelta).toHaveBeenCalledWith(
+				agent,
+				{ add: n8nChat },
+				{ user, modifiedBy: 'user' },
+			);
+		});
+	});
+
+	describe('disconnecting n8n Chat', () => {
+		const n8nChat = { type: 'n8n_chat', credentialId: '' } satisfies AgentIntegrationConfig;
+
+		it('removes the persisted entry', async () => {
+			const { service, persistenceService, chatService } = makeService();
+			const agent = makeAgent({ integrations: [n8nChat] });
+			persistenceService.applyIntegrationDelta.mockResolvedValue({
+				agent,
+				changed: true,
+				removed: n8nChat,
+			});
+
+			await service.disconnect({
+				agent,
+				user: user as never,
+				type: n8nChat.type,
+				credentialId: n8nChat.credentialId,
+			});
+
+			expect(persistenceService.applyIntegrationDelta).toHaveBeenCalledWith(
+				agent,
+				{ remove: { type: 'n8n_chat', credentialId: '' } },
+				{ user, modifiedBy: 'user' },
+			);
+			expect(chatService.disconnectChannel).toHaveBeenCalledWith(agent.id, n8nChat);
 		});
 	});
 

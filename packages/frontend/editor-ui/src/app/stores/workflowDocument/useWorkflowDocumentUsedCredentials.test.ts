@@ -11,7 +11,7 @@ function createCredential(overrides: Partial<IUsedCredential> = {}): IUsedCreden
 		id: '1',
 		name: 'Test Credential',
 		credentialType: 'testApi',
-		currentUserHasAccess: true,
+		currentUserCanUse: true,
 		...overrides,
 	};
 }

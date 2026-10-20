@@ -3,26 +3,41 @@ import { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { ControllerRegistryMetadata, type Controller } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import { randomUUID } from 'node:crypto';
+import request from 'supertest';
 
+import { AuthService } from '@/auth/auth.service';
+import { AUTH_COOKIE_NAME } from '@/constants';
+import { McpProtectedResource } from '@/modules/mcp/mcp-protected-resource';
 import { McpSettingsService } from '@/modules/mcp/mcp.settings.service';
-import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
-import { UrlService } from '@/services/url.service';
+import { UrlService } from '@n8n/backend-services';
+import { ProtectedResourceRegistry } from '@n8n/backend-services/auth';
 import { createOwner } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 
+import { OAuthClientRepository } from '../database/repositories/oauth-client.repository';
 import { OAuthServerConfig } from '../oauth-server.config';
 import type { OAuthController as OAuthControllerClass } from '../oauth.controller';
+import { pendingFlowFrom } from './oauth-flow-test-utils';
 
-const testServer = setupTestServer({ modules: ['oauth-server', 'mcp'], endpointGroups: ['mcp'] });
+const testServer = setupTestServer({
+	// Production order: the MCP middleware and metadata need the inbound-auth contracts.
+	modules: ['inbound-auth-core', 'oauth-server', 'mcp'],
+	endpointGroups: ['mcp'],
+});
 
 let owner: User;
 let mcpSettingsService: McpSettingsService;
+/** Every resource's scopes: the authorization server advertises the union. */
 let supportedScopes: string[];
+/** The MCP resource's own scopes, which its protected-resource metadata advertises. */
+let mcpScopes: string[];
 
 beforeAll(async () => {
 	owner = await createOwner();
 	mcpSettingsService = Container.get(McpSettingsService);
 	supportedScopes = Container.get(ProtectedResourceRegistry).getAllScopes();
+	mcpScopes = Container.get(McpProtectedResource).scopes;
 });
 
 afterEach(async () => {
@@ -40,6 +55,7 @@ describe('GET /.well-known/oauth-authorization-server', () => {
 			token_endpoint: expect.stringContaining('/mcp-oauth/token'),
 			registration_endpoint: expect.stringContaining('/mcp-oauth/register'),
 			revocation_endpoint: expect.stringContaining('/mcp-oauth/revoke'),
+			jwks_uri: expect.stringMatching(/\/rest\/\.well-known\/jwks\.json$/),
 			response_types_supported: ['code'],
 			grant_types_supported: ['authorization_code', 'refresh_token'],
 			token_endpoint_auth_methods_supported: ['none', 'client_secret_post', 'client_secret_basic'],
@@ -68,6 +84,7 @@ describe('GET /.well-known/oauth-authorization-server', () => {
 			token_endpoint,
 			registration_endpoint,
 			revocation_endpoint,
+			jwks_uri,
 		} = response.body;
 
 		expect(issuer).toMatch(/^https?:\/\//);
@@ -75,6 +92,7 @@ describe('GET /.well-known/oauth-authorization-server', () => {
 		expect(token_endpoint).toBe(`${issuer}/mcp-oauth/token`);
 		expect(registration_endpoint).toBe(`${issuer}/mcp-oauth/register`);
 		expect(revocation_endpoint).toBe(`${issuer}/mcp-oauth/revoke`);
+		expect(jwks_uri).toBe(`${issuer}/rest/.well-known/jwks.json`);
 	});
 
 	test('should include all required OAuth 2.1 fields', async () => {
@@ -139,7 +157,7 @@ describe('GET /.well-known/oauth-protected-resource/mcp-server/http', () => {
 			resource: expect.stringContaining('/mcp-server/http'),
 			bearer_methods_supported: ['header'],
 			authorization_servers: [expect.any(String)],
-			...(supportedScopes.length > 0 && { scopes_supported: supportedScopes }),
+			...(mcpScopes.length > 0 && { scopes_supported: mcpScopes }),
 		});
 	});
 
@@ -173,7 +191,7 @@ describe('GET /.well-known/oauth-protected-resource/mcp-server/http', () => {
 		);
 
 		expect(response.statusCode).toBe(200);
-		expect(response.body.scopes_supported).toEqual(supportedScopes);
+		expect(response.body.scopes_supported).toEqual(mcpScopes);
 	});
 
 	test('should be accessible without authentication', async () => {
@@ -211,7 +229,7 @@ describe('GET /.well-known/oauth-protected-resource (bare path)', () => {
 			resource: expect.stringContaining('/mcp-server/http'),
 			bearer_methods_supported: ['header'],
 			authorization_servers: [expect.any(String)],
-			...(supportedScopes.length > 0 && { scopes_supported: supportedScopes }),
+			...(mcpScopes.length > 0 && { scopes_supported: mcpScopes }),
 		});
 	});
 
@@ -660,7 +678,7 @@ describe('OAuth Discovery - Cross-validation', () => {
 		expect(protectedResource.authorization_servers).toContain(authServer.issuer);
 	});
 
-	test('should have consistent scopes between authorization server and protected resource', async () => {
+	test('should advertise every MCP scope on the authorization server', async () => {
 		const authServerResponse = await testServer.restlessAgent.get(
 			'/.well-known/oauth-authorization-server',
 		);
@@ -674,7 +692,8 @@ describe('OAuth Discovery - Cross-validation', () => {
 		const authServerScopes = authServerResponse.body.scopes_supported;
 		const protectedResourceScopes = protectedResourceResponse.body.scopes_supported;
 
-		expect(authServerScopes).toEqual(protectedResourceScopes);
+		// The public API's resource is registered too, so the server lists more than MCP's scopes.
+		expect(authServerScopes).toEqual(expect.arrayContaining(protectedResourceScopes));
 	});
 });
 
@@ -712,21 +731,29 @@ describe('Full authorization-code flow (PKCE)', () => {
 			state: 'flow-state',
 		});
 		expect(authorizeResponse.statusCode).toBe(302);
-		expect(authorizeResponse.headers.location).toBe('/oauth/consent');
 
-		const rawSetCookie: string | string[] = authorizeResponse.headers['set-cookie'] ?? [];
-		const setCookies = Array.isArray(rawSetCookie) ? rawSetCookie : [rawSetCookie];
-		const sessionCookie = setCookies
-			.map((cookie) => cookie.split(';')[0])
-			.find((cookie) => cookie.startsWith('n8n-oauth-session='));
+		// The redirect names this authorization request, so the consent screen can
+		// ask for the one it was opened for.
+		const { flowId, cookie: sessionCookie } = pendingFlowFrom(authorizeResponse);
+		expect(authorizeResponse.headers.location).toBe(`/oauth/consent?flow=${flowId}`);
 		expect(sessionCookie).toBeDefined();
 
-		// 3. Consent approval as an authenticated user
+		// 3. Consent approval as an authenticated user.
+		//
+		// Approving a scope the user cannot grant is rejected, so this approves the
+		// grantable subset. `communityPackage:install` is advertised in discovery,
+		// which is unauthenticated and describes what the resource supports, but it
+		// is withheld at consent here because the community-packages module is
+		// inactive in the test instance. `aiPreference:*` is withheld too: the test
+		// instance has no PostHog, so no user is in the preferences experiment arm.
+		const grantedScopes = mcpScopes.filter(
+			(scope) => scope !== 'communityPackage:install' && !scope.startsWith('aiPreference:'),
+		);
 		const authAgent = testServer.authAgentFor(owner);
 		authAgent.jar.setCookie(sessionCookie ?? '');
 		const consentResponse = await authAgent
 			.post('/consent/approve')
-			.send({ approved: true, scopes: supportedScopes });
+			.send({ approved: true, scopes: grantedScopes, flow: flowId });
 		expect(consentResponse.statusCode).toBe(200);
 
 		const redirectUrl = new URL(consentResponse.body.data.redirectUrl);
@@ -753,7 +780,7 @@ describe('Full authorization-code flow (PKCE)', () => {
 			token_type: 'Bearer',
 			expires_in: 3600,
 			refresh_token: expect.stringMatching(/^[a-f0-9]{64}$/),
-			scope: supportedScopes.join(' '),
+			scope: grantedScopes.join(' '),
 		});
 		expect(tokenResponse.statusCode).toBe(200);
 
@@ -769,6 +796,154 @@ describe('Full authorization-code flow (PKCE)', () => {
 		expect(refreshResponse.statusCode).toBe(200);
 		expect(refreshResponse.body.access_token).toEqual(expect.any(String));
 		expect(refreshResponse.body.access_token).not.toBe(tokenResponse.body.access_token);
+	});
+
+	// A client that starts two authorization requests from one browser (a desktop
+	// app that launches its bridge twice, or a user who retries) used to lose the
+	// first one: both requests shared a single session cookie, so the approval
+	// minted a code bound to the second request's PKCE challenge while the process
+	// waiting on the callback held the first request's verifier.
+	test('should keep two authorization requests from one browser independent', async () => {
+		const { createHash, randomBytes } = await import('node:crypto');
+		const pkcePair = () => {
+			const verifier = randomBytes(32).toString('base64url');
+			return { verifier, challenge: createHash('sha256').update(verifier).digest('base64url') };
+		};
+		const first = pkcePair();
+		const second = pkcePair();
+
+		const registerResponse = await testServer.restlessAgent.post('/mcp-oauth/register').send({
+			client_name: 'Concurrent Flow Client',
+			redirect_uris: ['https://example.com/callback'],
+			grant_types: ['authorization_code'],
+			token_endpoint_auth_method: 'none',
+		});
+		const clientId = registerResponse.body.client_id;
+
+		// One browser, so one cookie jar for both authorization requests. Its own
+		// agent, because the flow cookies outlive each request and the shared
+		// agents are reused by every other test in this file.
+		const browser = request.agent(testServer.app);
+		const authorize = async (codeChallenge: string, state: string) => {
+			const response = await browser.get('/mcp-oauth/authorize').query({
+				client_id: clientId,
+				redirect_uri: 'https://example.com/callback',
+				response_type: 'code',
+				code_challenge: codeChallenge,
+				code_challenge_method: 'S256',
+				state,
+			});
+			expect(response.statusCode).toBe(302);
+			const flow = pendingFlowFrom(response);
+			expect(flow.cookie).toBeDefined();
+			return flow;
+		};
+
+		// Both requests are pending at once, each with its own flow id and cookie.
+		const firstFlow = await authorize(first.challenge, 'state-first');
+		const secondFlow = await authorize(second.challenge, 'state-second');
+		expect(firstFlow.flowId).not.toBe(secondFlow.flowId);
+
+		// The consent screen carries both cookies and asks for one flow by id.
+		const consentAgent = testServer.authAgentFor(owner);
+		consentAgent.jar.setCookie(firstFlow.cookie ?? '');
+		consentAgent.jar.setCookie(secondFlow.cookie ?? '');
+
+		const details = await consentAgent.get(`/consent/details?flow=${firstFlow.flowId}`);
+		expect(details.body).toMatchObject({ data: { clientId } });
+
+		// Approve the first request, granting exactly what its screen offered.
+		const consentResponse = await consentAgent
+			.post('/consent/approve')
+			.send({ approved: true, scopes: details.body.data.scopes, flow: firstFlow.flowId });
+		expect(consentResponse.body).toMatchObject({ data: { status: 'success' } });
+
+		// The code carries the first request's state, and only the first request's
+		// verifier redeems it.
+		const redirectUrl = new URL(consentResponse.body.data.redirectUrl);
+		expect(redirectUrl.searchParams.get('state')).toBe('state-first');
+		const code = redirectUrl.searchParams.get('code');
+
+		const exchange = async (codeVerifier: string) =>
+			await testServer.restlessAgent.post('/mcp-oauth/token').type('form').send({
+				grant_type: 'authorization_code',
+				code: code!,
+				client_id: clientId,
+				code_verifier: codeVerifier,
+				redirect_uri: 'https://example.com/callback',
+			});
+
+		const wrongVerifier = await exchange(second.verifier);
+		expect(wrongVerifier.statusCode).toBe(400);
+		expect(wrongVerifier.body.error).toBe('invalid_grant');
+
+		const rightVerifier = await exchange(first.verifier);
+		expect(rightVerifier.body).toMatchObject({ access_token: expect.any(String) });
+
+		// The second request survived the first one's approval and is still decidable.
+		const secondConsent = await consentAgent
+			.post('/consent/approve')
+			.send({ approved: true, scopes: details.body.data.scopes, flow: secondFlow.flowId });
+		expect(secondConsent.body).toMatchObject({ data: { status: 'success' } });
+		expect(new URL(secondConsent.body.data.redirectUrl).searchParams.get('state')).toBe(
+			'state-second',
+		);
+	});
+
+	// Eviction depends on the browser offering its pending flow cookies back to
+	// /authorize, which is a property of how the cookies are scoped, not of the
+	// service. A mock request cannot show that: it is handed the cookies it is
+	// asked about. So this drives a real cookie jar past the cap and reads the
+	// result through the consent endpoint.
+	test('should evict the oldest pending flow once a browser passes the cap', async () => {
+		// Written straight to the table: the DCR endpoint is IP rate limited, and
+		// this test is about pending flows rather than registration.
+		const clientId = `pending-flow-cap-${randomUUID()}`;
+		await Container.get(OAuthClientRepository).save({
+			id: clientId,
+			name: 'Pending Flow Cap Client',
+			redirectUris: ['https://example.com/callback'],
+			grantTypes: ['authorization_code'],
+			tokenEndpointAuthMethod: 'none',
+		});
+
+		// One signed-in browser: no path prefix, so it reaches both the
+		// /mcp-oauth/authorize routes and the /rest/consent ones out of one jar,
+		// offering each the cookies that request's path is entitled to.
+		const browser = request.agent(testServer.app);
+		browser.jar.setCookie(
+			`${AUTH_COOKIE_NAME}=${Container.get(AuthService).issueJWT(owner, owner.mfaEnabled, 'test-browser-id')}`,
+		);
+
+		const authorize = async (state: string) => {
+			const response = await browser.get('/mcp-oauth/authorize').query({
+				client_id: clientId,
+				redirect_uri: 'https://example.com/callback',
+				response_type: 'code',
+				code_challenge: 'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM',
+				code_challenge_method: 'S256',
+				state,
+			});
+			expect(response.statusCode).toBe(302);
+			return pendingFlowFrom(response);
+		};
+
+		const flows = [];
+		for (const state of ['first', 'second', 'third', 'fourth']) {
+			flows.push(await authorize(state));
+		}
+		expect(new Set(flows.map((flow) => flow.flowId)).size).toBe(4);
+
+		// The cap is three, so the fourth request pushed the first one out and the
+		// browser no longer holds its cookie.
+		const evicted = await browser.get(`/rest/consent/details?flow=${flows[0].flowId}`);
+		expect(evicted.statusCode).toBe(400);
+
+		// The three newest survived, each still readable under its own flow id.
+		for (const flow of flows.slice(1)) {
+			const details = await browser.get(`/rest/consent/details?flow=${flow.flowId}`);
+			expect(details.body).toMatchObject({ data: { clientId } });
+		}
 	});
 });
 
@@ -922,6 +1097,32 @@ describe('IP rate limit configuration', () => {
 			const match = limitsBySuffix.find(([suffix]) => router.path.endsWith(suffix));
 			expect(match).toBeDefined();
 			expect(router.ipRateLimit).toEqual({ limit: match![1], windowMs });
+		}
+	});
+
+	test.each([
+		['GET', '/mcp-oauth/authorize'],
+		['POST', '/mcp-oauth/token'],
+		['POST', '/mcp-oauth/revoke'],
+		['POST', '/mcp-oauth/register'],
+		['GET', '/oauth/authorize'],
+		['POST', '/oauth/token'],
+		['POST', '/oauth/revoke'],
+		['POST', '/oauth/register'],
+	])('does not apply an SDK rate limit to %s %s', async (method, path) => {
+		const response =
+			method === 'GET'
+				? await testServer.restlessAgent.get(path)
+				: await testServer.restlessAgent.post(path).send({});
+
+		expect(response.statusCode).not.toBe(404);
+		expect(response.headers).not.toHaveProperty('ratelimit-policy');
+	});
+
+	test('does not cap authorization requests at the SDK default of 100', async () => {
+		for (let attempt = 0; attempt <= 100; attempt++) {
+			const response = await testServer.restlessAgent.get('/mcp-oauth/authorize');
+			expect(response.statusCode).toBe(400);
 		}
 	});
 

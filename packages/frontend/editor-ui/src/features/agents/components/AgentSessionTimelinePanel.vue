@@ -21,6 +21,7 @@ import {
 	itemStatusFilterKey,
 } from '@/features/agents/session-timeline.utils';
 import { useSubAgentNames } from '@/features/agents/composables/useSubAgentNames';
+import { useAgentTelemetry } from '@/features/agents/composables/useAgentTelemetry';
 import { resolveSubAgentName } from '@/features/agents/utils/delegate-tool';
 import { backgroundJobTimelineLabelKey } from '@/features/agents/utils/background-job-labels';
 import { shouldIgnoreCanvasShortcut } from '@/features/workflows/canvas/canvas.utils';
@@ -31,7 +32,7 @@ import type {
 	TimelineStatusFilterKey,
 } from '@/features/agents/session-timeline.types';
 import { useI18n } from '@n8n/i18n';
-import { N8nIcon, N8nInput } from '@n8n/design-system';
+import { N8nIcon, N8nInput, type BadgeVariant } from '@n8n/design-system';
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 import { useActiveElement, useDocumentVisibility, useEventListener } from '@vueuse/core';
 
@@ -50,6 +51,7 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const toast = useToast();
+const agentTelemetry = useAgentTelemetry();
 const sessionsStore = useAgentSessionsStore();
 const pushStore = usePushConnectionStore();
 const activeElement = useActiveElement();
@@ -136,11 +138,11 @@ function labelForKey(key: string): string {
 
 const STATUS_FILTER_OPTIONS = [
 	{ key: 'approved', badgeTheme: 'success' },
-	{ key: 'declined', badgeTheme: 'default' },
+	{ key: 'declined', badgeTheme: 'outline' },
 	{ key: 'error', badgeTheme: 'danger' },
 ] satisfies Array<{
 	key: TimelineStatusFilterKey;
-	badgeTheme: 'default' | 'success' | 'danger';
+	badgeTheme: Extract<BadgeVariant, 'outline' | 'success' | 'danger'>;
 }>;
 
 const filterOptions = computed<FilterOption[]>(() => {
@@ -215,6 +217,14 @@ function selectTimelineItem(index: number | null) {
 	highlightedIndex.value = index;
 }
 
+function onTimelineItemSelect(index: number | null) {
+	selectTimelineItem(index);
+	if (index === null) return;
+	const item = items.value[index];
+	if (!item) return;
+	agentTelemetry.trackClickedTraceItem({ agentId: props.agentId, itemType: item.kind });
+}
+
 function shouldHandleShortcut() {
 	const element = activeElement.value;
 	if (!(element instanceof Element)) return false;
@@ -261,7 +271,7 @@ function onKeyUp(event: KeyboardEvent) {
 	if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
 	if (highlightedIndex.value === selectedIndex.value) return;
 	event.preventDefault();
-	selectTimelineItem(highlightedIndex.value);
+	onTimelineItemSelect(highlightedIndex.value);
 }
 
 useEventListener(document, 'keyup', onKeyUp);
@@ -403,7 +413,7 @@ watch([() => props.projectId, () => props.agentId, () => props.threadId], loadTh
 				:session-end="bounds.end"
 				:visible-kinds="selectedFilters"
 				:selected-index="highlightedIndex"
-				@select="selectTimelineItem"
+				@select="onTimelineItemSelect"
 			/>
 		</div>
 
@@ -419,7 +429,7 @@ watch([() => props.projectId, () => props.agentId, () => props.threadId], loadTh
 					:selected-index="highlightedIndex"
 					:visible-kinds="selectedFilters"
 					:search-query="searchQuery"
-					@select="selectTimelineItem"
+					@select="onTimelineItemSelect"
 				/>
 			</div>
 			<Transition name="session-detail-panel">

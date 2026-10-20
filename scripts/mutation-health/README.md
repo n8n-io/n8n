@@ -129,13 +129,15 @@ pnpm mutate src/utils.ts --package-dir packages/@n8n/crdt --test-files 'src/__te
 ```
 
 `--test-files` needs a single target, so it does not combine with `--diff`.
+For `packages/cli`, diff mode automatically uses the test files changed in the
+patch. This keeps unrelated CLI tests out of Stryker's instrumented dry run.
 
-#### `packages/cli` requires it
+#### `packages/cli` test scope
 
 `packages/cli` runs vitest with `pool: 'forks'` and a global setup, so each test file costs a
 process. Related discovery finds hundreds of them for a typical source file, and the dry run alone
-outlives any usable timeout. A `packages/cli` target therefore **fails with exit `2`** until you
-name the test files:
+outlives any usable timeout. A named `packages/cli` target therefore **fails with exit `2`** until
+you name the test files:
 
 ```bash
 $ pnpm mutate packages/cli/src/credentials/external-secrets.utils.ts:32-68
@@ -145,6 +147,11 @@ Mutating packages/cli needs --test-files.
 Those runs also get `stryker.cli.mjs` instead of the shared default — same settings, with
 `vitest.related` turned off, because the explicit list already decides the scope. With it, the
 example above runs its 36-test file and finishes in seconds.
+
+In diff mode, the changed CLI test files provide the same explicit list. If a
+CLI patch changes source without changing a test, the command fails before
+Stryker starts. Add or update a covering test, or run a named target with the
+existing covering tests passed through `--test-files`.
 
 ### In-place mutation
 
@@ -184,8 +191,8 @@ Not scored:
 - `.vue` single-file components — every SFC package crashed Stryker's mutate step in the 2026-06 sweep, and the component layer is low-value to mutate.
 - Tests, declarations, stories, configs, migrations and build output.
 
-`packages/cli` is scored, but only with an explicit
-[`--test-files`](#packagescli-requires-it) list.
+`packages/cli` is scored with an explicit [`--test-files`](#packagescli-test-scope)
+list for named targets, or with the changed CLI tests in diff mode.
 
 ## Gate semantics
 

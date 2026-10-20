@@ -52,8 +52,8 @@ export function useAiGateway() {
 		await aiGatewayStore.fetchConfig();
 	}
 
-	async function saveAfterToggle(): Promise<void> {
-		await saveCurrentWorkflow({}, false, false, true);
+	async function saveAfterToggle(): Promise<boolean> {
+		return await saveCurrentWorkflow({}, false);
 	}
 
 	return {

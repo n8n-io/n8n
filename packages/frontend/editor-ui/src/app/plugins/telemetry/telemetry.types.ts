@@ -17,7 +17,7 @@ interface IUserNodesPanelSessionData {
 
 /**
  * Simplified version of:
- * https://github.com/rudderlabs/rudder-sdk-js/blob/master/dist/rudder-sdk-js/index.d.ts
+ * https://github.com/rudderlabs/rudder-sdk-js/blob/develop/packages/analytics-v1.1/types/index.d.ts
  */
 export interface RudderStack extends Array<unknown> {
 	[key: string]: unknown;

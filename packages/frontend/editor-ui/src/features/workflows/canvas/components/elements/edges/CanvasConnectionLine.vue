@@ -18,6 +18,10 @@ const connectionType = computed(
 	() => parseCanvasConnectionHandleString(connectingHandle.value?.handleId).type,
 );
 
+const isEmptyGroupInputDrag = computed(() => {
+	return connectingHandle.value?.isEmptyGroupTargetStart === true;
+});
+
 const classes = computed(() => {
 	return {
 		[$style.edge]: true,
@@ -29,10 +33,15 @@ const edgeStyle = computed(() => ({
 	...(connectionType.value === NodeConnectionTypes.Main ? {} : { strokeDasharray: '5,6' }),
 	strokeWidth: 2,
 	stroke: 'var(--color--foreground--shade-2)',
+	strokeLinecap: 'round',
+	strokeLinejoin: 'round',
 }));
 
 const renderData = computed(() =>
-	getEdgeRenderData(props, { connectionType: connectionType.value }),
+	getEdgeRenderData(props, {
+		connectionType: connectionType.value,
+		useBezierPath: isEmptyGroupInputDrag.value,
+	}),
 );
 
 const segments = computed(() => renderData.value.segments);

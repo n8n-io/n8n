@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import type { Logger } from '@n8n/backend-common';
-import { mockLogger } from '@n8n/backend-test-utils';
+import { mockLogger, mockInstance } from '@n8n/backend-test-utils';
 import type { Project, IExecutionResponse, ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
@@ -25,8 +25,11 @@ import { mock, captor } from 'vitest-mock-extended';
 import type { ActiveExecutions } from '@/active-executions';
 import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
+import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
+import { NodeTypes } from '@/node-types';
 import type { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
 import type { OwnershipService } from '@/services/ownership.service';
+import type { WorkflowPublisherService } from '@/workflows/workflow-publisher.service';
 import { WaitTracker } from '@/wait-tracker';
 import type { WorkflowRunner } from '@/workflow-runner';
 
@@ -35,6 +38,7 @@ vi.useFakeTimers({ shouldAdvanceTime: true });
 describe('WaitTracker', () => {
 	const activeExecutions = mock<ActiveExecutions>();
 	const ownershipService = mock<OwnershipService>();
+	const workflowPublisherService = mock<WorkflowPublisherService>();
 	const workflowRunner = mock<WorkflowRunner>();
 	const executionRepository = mock<ExecutionRepository>();
 	const executionPersistence = mock<ExecutionPersistence>();
@@ -45,6 +49,7 @@ describe('WaitTracker', () => {
 	const execution = mock<IExecutionResponse>({
 		id: '123',
 		finished: false,
+		storedAt: 'fs',
 		waitTill: new Date(Date.now() + 1000),
 		mode: 'manual',
 		data: mock({
@@ -68,12 +73,14 @@ describe('WaitTracker', () => {
 		logger = mock<Logger>();
 		(logger.scoped as Mock).mockReturnValue(logger);
 		Container.set(ExecutionPersistence, executionPersistence);
+		mockInstance(CredentialsPermissionChecker).getCredentialIdsForNodes.mockReturnValue([]);
 		executionRepository.findParkedOnSubExecution.mockResolvedValue([]);
 		waitTracker = new WaitTracker(
 			logger,
 			executionRepository,
 			executionPersistence,
 			ownershipService,
+			workflowPublisherService,
 			activeExecutions,
 			workflowRunner,
 			instanceSettings,
@@ -83,6 +90,17 @@ describe('WaitTracker', () => {
 
 	afterEach(() => {
 		vi.clearAllMocks();
+	});
+
+	it('reports waiting executions until their timers are stopped', async () => {
+		expect(waitTracker.getDiagnosticCounts()).toEqual({ waitingExecutions: 0 });
+		executionRepository.getWaitingExecutions.mockResolvedValue([execution]);
+
+		await waitTracker.getWaitingExecutions();
+		expect(waitTracker.getDiagnosticCounts()).toEqual({ waitingExecutions: 1 });
+
+		waitTracker.stopExecution(execution.id);
+		expect(waitTracker.getDiagnosticCounts()).toEqual({ waitingExecutions: 0 });
 	});
 
 	describe('init()', () => {
@@ -198,11 +216,67 @@ describe('WaitTracker', () => {
 					workflowData: execution.workflowData,
 					projectId: project.id,
 					pushRef: execution.data.pushRef,
+					userId: undefined,
+					callerAwaitsOutcome: 'none',
 				},
 				false,
 				false,
-				{ executionId: execution.id, expectedStatus: 'waiting' },
+				{ executionId: execution.id, expectedStatus: 'waiting', storedAt: 'fs' },
 			);
+		});
+
+		// The acting user is not a stored field, so a resume has to derive it again.
+		// Without it the run comes back unattributed and a credential only its
+		// publisher may use is refused halfway through.
+		it('restores the identity the run acts as', async () => {
+			workflowPublisherService.findActingUserIdForRestart.mockResolvedValueOnce('the-publisher');
+
+			await waitTracker.startExecution(execution.id);
+
+			expect(workflowRunner.run).toHaveBeenCalledWith(
+				expect.objectContaining({ userId: 'the-publisher' }),
+				false,
+				false,
+				expect.anything(),
+			);
+		});
+
+		it('waits for the old local segment before registering a suspended resume', async () => {
+			const oldCompletion = createDeferredPromise<IRun | undefined>();
+			const suspended = {
+				...execution,
+				status: 'waiting' as const,
+				data: { ...execution.data, waitReason: 'suspended' as const },
+			};
+			executionPersistence.findSingleExecution
+				.calledWith(execution.id)
+				.mockResolvedValue(suspended);
+			activeExecutions.has.mockReturnValueOnce(true);
+			activeExecutions.getPostExecutePromise.mockReturnValueOnce(oldCompletion.promise);
+
+			const resuming = waitTracker.startExecution(execution.id);
+			await vi.waitFor(() => expect(activeExecutions.getPostExecutePromise).toHaveBeenCalled());
+			expect(workflowRunner.run).not.toHaveBeenCalled();
+
+			oldCompletion.resolve(undefined);
+			await resuming;
+			expect(workflowRunner.run).toHaveBeenCalledOnce();
+		});
+
+		it('skips a suspended resume when the row is already running', async () => {
+			const claimed = {
+				...execution,
+				status: 'running' as const,
+				data: { ...execution.data, waitReason: 'suspended' as const },
+			};
+			executionPersistence.findSingleExecution.calledWith(execution.id).mockResolvedValue(claimed);
+			activeExecutions.has.mockReturnValueOnce(true);
+
+			await expect(waitTracker.startExecution(execution.id)).rejects.toThrow(
+				ExecutionAlreadyResumingError,
+			);
+			expect(activeExecutions.getPostExecutePromise).not.toHaveBeenCalled();
+			expect(workflowRunner.run).not.toHaveBeenCalled();
 		});
 
 		it('should reject when another process is already resuming the execution', async () => {
@@ -232,7 +306,7 @@ describe('WaitTracker', () => {
 				}),
 				false,
 				false,
-				{ executionId: execution.id, expectedStatus: 'waiting' },
+				{ executionId: execution.id, expectedStatus: 'waiting', storedAt: 'fs' },
 			);
 		});
 
@@ -256,6 +330,7 @@ describe('WaitTracker', () => {
 				const parentExecution = mock<IExecutionResponse>({
 					id: 'parent_execution_id',
 					finished: false,
+					storedAt: 'fs',
 					status: 'waiting',
 					data: createRunExecutionData({
 						executionData: { nodeExecutionStack: parentStack() },
@@ -304,6 +379,21 @@ describe('WaitTracker', () => {
 				return { parentExecution, subworkflowResults, postExecutePromise };
 			};
 
+			it('passes the saved child definition when a timer resumes the child', async () => {
+				setupParentExecutionTest(true);
+				const resume = vi
+					.spyOn(waitTracker, 'resumeParentExecution')
+					.mockResolvedValueOnce(undefined);
+				await waitTracker.startExecution(execution.id);
+				expect(resume).toHaveBeenCalledWith(
+					execution.data.parentExecution,
+					expect.any(Promise),
+					{ executionId: execution.id, workflowId: execution.workflowData.id },
+					execution.workflowData,
+				);
+				resume.mockRestore();
+			});
+
 			it('should resume parent execution once sub-workflow finishes by default', async () => {
 				// ARRANGE
 				const { parentExecution, postExecutePromise, subworkflowResults } =
@@ -326,10 +416,11 @@ describe('WaitTracker', () => {
 						workflowData: execution.workflowData,
 						projectId: project.id,
 						pushRef: execution.data.pushRef,
+						callerAwaitsOutcome: 'none',
 					},
 					false,
 					false,
-					{ executionId: execution.id, expectedStatus: 'waiting' },
+					{ executionId: execution.id, expectedStatus: 'waiting', storedAt: 'fs' },
 				);
 
 				// ACT 1
@@ -346,11 +437,12 @@ describe('WaitTracker', () => {
 						workflowData: parentExecution.workflowData,
 						projectId: project.id,
 						pushRef: parentExecution.data.pushRef,
+						callerAwaitsOutcome: 'none',
 						startedAt: parentExecution.startedAt,
 					},
 					false,
 					false,
-					{ executionId: parentExecution.id, expectedStatus: 'waiting' },
+					{ executionId: parentExecution.id, expectedStatus: 'waiting', storedAt: 'fs' },
 				);
 			});
 
@@ -399,7 +491,7 @@ describe('WaitTracker', () => {
 					}),
 					false,
 					false,
-					{ executionId: parentExecution.id, expectedStatus: 'waiting' },
+					{ executionId: parentExecution.id, expectedStatus: 'waiting', storedAt: 'fs' },
 				);
 			});
 
@@ -474,6 +566,7 @@ describe('WaitTracker', () => {
 				expect(workflowRunner.run).toHaveBeenNthCalledWith(1, expect.any(Object), false, false, {
 					executionId: execution.id,
 					expectedStatus: 'waiting',
+					storedAt: 'fs',
 				});
 
 				// ACT 2
@@ -514,6 +607,7 @@ describe('WaitTracker', () => {
 				expect(workflowRunner.run).toHaveBeenNthCalledWith(2, expect.any(Object), false, false, {
 					executionId: parentExecution.id,
 					expectedStatus: 'waiting',
+					storedAt: 'db',
 				});
 			});
 
@@ -585,7 +679,7 @@ describe('WaitTracker', () => {
 					}),
 					false,
 					false,
-					{ executionId: childExecution.id, expectedStatus: 'waiting' },
+					{ executionId: childExecution.id, expectedStatus: 'waiting', storedAt: 'fs' },
 				);
 			});
 
@@ -612,7 +706,7 @@ describe('WaitTracker', () => {
 					}),
 					false,
 					false,
-					{ executionId: execution.id, expectedStatus: 'waiting' },
+					{ executionId: execution.id, expectedStatus: 'waiting', storedAt: 'fs' },
 				);
 
 				// ACT 2 - Child execution goes into waiting state
@@ -718,6 +812,7 @@ describe('WaitTracker', () => {
 					expect(workflowRunner.run).toHaveBeenNthCalledWith(2, expect.any(Object), false, false, {
 						executionId: parentExecution.id,
 						expectedStatus: 'waiting',
+						storedAt: 'fs',
 					});
 					expect(workflowRunner.run).toHaveBeenCalledTimes(4);
 					expect(logger.error).toHaveBeenCalled();
@@ -746,6 +841,7 @@ describe('WaitTracker', () => {
 					expect(workflowRunner.run).toHaveBeenLastCalledWith(expect.any(Object), false, false, {
 						executionId: parentExecution.id,
 						expectedStatus: 'waiting',
+						storedAt: 'fs',
 					});
 					expect(logger.error).not.toHaveBeenCalled();
 				});
@@ -770,6 +866,7 @@ describe('WaitTracker', () => {
 					expect(workflowRunner.run).toHaveBeenCalledWith(expect.any(Object), false, false, {
 						executionId: parentExecution.id,
 						expectedStatus: 'waiting',
+						storedAt: 'fs',
 					});
 					expect(logger.error).toHaveBeenCalled();
 				});
@@ -916,30 +1013,69 @@ describe('WaitTracker', () => {
 			expect(executionRepository.findParkedOnSubExecution).toHaveBeenCalledTimes(2);
 		});
 
-		it('patches and resumes a parent whose tagged child has finished', async () => {
-			const parent = parkedParent([childId]);
-			executionPersistence.findSingleExecution.calledWith(parentId).mockResolvedValue(parent);
-			executionPersistence.findSingleExecution
-				.calledWith(childId)
-				.mockResolvedValue(finishedChild());
-			executionRepository.findStatusesByIds.mockResolvedValue([{ id: childId, status: 'success' }]);
+		it.each([false, true])(
+			'patches a finished child with single-output policy: %s',
+			async (singleOutput) => {
+				const parent = parkedParent([childId]);
+				const child = finishedChild();
+				if (singleOutput) {
+					child.data.subWorkflowOutput = { lastRunOnly: false };
+					const task = child.data.resultData.runData['Final Node'][0];
+					task.data = { main: [[], task.data!.main![0]] };
+					child.workflowData = {
+						...child.workflowData,
+						connections: {},
+						settings: {},
+						staticData: undefined,
+						nodes: [
+							{
+								id: 'final',
+								name: 'Final Node',
+								type: 'test',
+								typeVersion: 1,
+								parameters: {},
+								position: [0, 0],
+							},
+						],
+					};
+					mockInstance(NodeTypes).getByNameAndVersion.mockReturnValue({
+						description: {
+							name: 'test',
+							displayName: 'Test',
+							group: ['transform'],
+							version: 1,
+							description: '',
+							defaults: {},
+							inputs: ['main'],
+							outputs: ['main', 'main'],
+							properties: [],
+						},
+					});
+				}
+				executionPersistence.findSingleExecution.calledWith(parentId).mockResolvedValue(parent);
+				executionPersistence.findSingleExecution.calledWith(childId).mockResolvedValue(child);
+				executionRepository.findStatusesByIds.mockResolvedValue([
+					{ id: childId, status: 'success' },
+				]);
 
-			await waitTracker.resumeParentsOfFinishedSubExecutions();
+				await waitTracker.resumeParentsOfFinishedSubExecutions();
 
-			const dataCaptor = captor<{ data: IRunExecutionData }>();
-			expect(executionPersistence.updateExistingExecution).toHaveBeenCalledWith(
-				parentId,
-				dataCaptor,
-			);
-			expect(dataCaptor.value.data.executionData?.nodeExecutionStack[0].data.main).toEqual([
-				[{ json: { data: 'child output' }, pairedItem: { item: 0 } }],
-			]);
-			expect(workflowRunner.run).toHaveBeenCalledWith(expect.any(Object), false, false, {
-				executionId: parentId,
-				expectedStatus: 'waiting',
-			});
-			expect(logger.error).not.toHaveBeenCalled();
-		});
+				const dataCaptor = captor<{ data: IRunExecutionData }>();
+				expect(executionPersistence.updateExistingExecution).toHaveBeenCalledWith(
+					parentId,
+					dataCaptor,
+				);
+				expect(dataCaptor.value.data.executionData?.nodeExecutionStack[0].data.main).toEqual([
+					[{ json: { data: 'child output' }, pairedItem: { item: 0 } }],
+				]);
+				expect(workflowRunner.run).toHaveBeenCalledWith(expect.any(Object), false, false, {
+					executionId: parentId,
+					expectedStatus: 'waiting',
+					storedAt: 'db',
+				});
+				expect(logger.error).not.toHaveBeenCalled();
+			},
+		);
 
 		it('leaves the parent parked while its child is still waiting', async () => {
 			executionPersistence.findSingleExecution.mockResolvedValue(parkedParent([childId]));
@@ -1045,6 +1181,7 @@ describe('WaitTracker', () => {
 			expect(workflowRunner.run).toHaveBeenLastCalledWith(expect.any(Object), false, false, {
 				executionId: parentId,
 				expectedStatus: 'waiting',
+				storedAt: 'db',
 			});
 			expect(logger.error).not.toHaveBeenCalled();
 		});
@@ -1097,6 +1234,7 @@ describe('WaitTracker', () => {
 			expect(workflowRunner.run).toHaveBeenCalledWith(expect.any(Object), false, false, {
 				executionId: parentId,
 				expectedStatus: 'waiting',
+				storedAt: 'db',
 			});
 		});
 	});
@@ -1126,6 +1264,7 @@ describe('WaitTracker', () => {
 				executionRepository,
 				executionPersistence,
 				ownershipService,
+				workflowPublisherService,
 				activeExecutions,
 				workflowRunner,
 				mock<InstanceSettings>({ isLeader: false, isMultiMain: false }),

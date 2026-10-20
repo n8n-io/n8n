@@ -1,5 +1,4 @@
-import { entityFilePath } from '@/modules/n8n-packages/io/manifest-entry';
-import type { ManifestEntry, PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
+import type { PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
 
 /**
  * Where each project, folder and workflow lives on the branch, read from the
@@ -11,56 +10,45 @@ export type BranchLayout = Pick<PackageManifest, 'projects' | 'folders' | 'workf
 /** Entry kinds whose target is a directory that holds other entries. */
 const CONTAINER_KINDS = ['projects', 'folders'] as const;
 
-type ContainerKind = (typeof CONTAINER_KINDS)[number];
+export type ContainerKind = (typeof CONTAINER_KINDS)[number];
 
-/** A staging directory and the branch directory it lands in. */
-interface Pin {
+/** A renamed branch container directory and the path its rename moves it to. */
+export interface ContainerMove {
+	kind: ContainerKind;
 	from: string;
 	to: string;
 }
 
-/** Where the staging files land on the branch. */
-export interface Placement {
-	/** Staging paths that land elsewhere, longest first. */
-	pins: Pin[];
-	/** Staging files the branch already holds and keeps unchanged. */
-	keptFiles: Set<string>;
-}
-
-const entriesOf = (
-	state: Partial<Pick<PackageManifest, ContainerKind | 'workflows'>>,
-	kind: ContainerKind | 'workflows',
-): ManifestEntry[] => state[kind] ?? [];
-
 export const isUnder = (target: string, prefix: string) => target.startsWith(`${prefix}/`);
 
 /**
- * Where the staging files land. A project or folder the branch holds keeps its
- * directory, because renaming it would move every unselected workflow inside.
- * Paths under it are pinned back, so a selection lands next to its siblings.
+ * Containers whose branch path differs from the export path, deepest `from`
+ * first. The exporter only writes ancestors of selected workflows, so no
+ * unrelated container moves.
  */
-export function containerPlacement(existing: BranchLayout, staging: PackageManifest): Placement {
-	const pins: Pin[] = [];
-	const keptFiles = new Set<string>();
+export function containerMoves(existing: BranchLayout, staging: PackageManifest): ContainerMove[] {
+	const moves: ContainerMove[] = [];
 
 	for (const kind of CONTAINER_KINDS) {
-		const onBranch = new Map(entriesOf(existing, kind).map((e) => [e.id, e.target]));
-		for (const entry of entriesOf(staging, kind)) {
-			const to = onBranch.get(entry.id);
-			if (to === undefined) continue;
-			keptFiles.add(entityFilePath(kind, entry.target));
-			if (to !== entry.target) pins.push({ from: entry.target, to });
+		const onBranch = new Map((existing[kind] ?? []).map((e) => [e.id, e.target]));
+		for (const entry of staging[kind] ?? []) {
+			const from = onBranch.get(entry.id);
+			if (from === undefined || from === entry.target) continue;
+			moves.push({ kind, from, to: entry.target });
 		}
 	}
 
-	// Longest first, so a pinned folder wins over its pinned project.
-	return { pins: pins.sort((a, b) => b.from.length - a.from.length), keptFiles };
+	return moves.sort((a, b) => b.from.length - a.from.length);
 }
 
-/** Rewrite a staging path through the longest pin that covers it. */
-export function pinPath(target: string, pins: readonly Pin[]): string {
-	const pin = pins.find((p) => target === p.from || isUnder(target, p.from));
-	return pin ? `${pin.to}${target.slice(pin.from.length)}` : target;
+/** Rewrite a branch path through the deepest move that covers it, in any move order. */
+export function remapPath(target: string, moves: readonly ContainerMove[]): string {
+	let move: ContainerMove | undefined;
+	for (const m of moves) {
+		if (target !== m.from && !isUnder(target, m.from)) continue;
+		if (move === undefined || m.from.length > move.from.length) move = m;
+	}
+	return move ? `${move.to}${target.slice(move.from.length)}` : target;
 }
 
 /**

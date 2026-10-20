@@ -4,6 +4,7 @@ import { jsonParse } from 'n8n-workflow';
 
 import type {
 	IntegrationMessageContext,
+	IntegrationPlatformMessageContext,
 	IntegrationMessageSubject,
 	IntegrationSubjectPerson,
 	IntegrationMessageTarget,
@@ -59,6 +60,8 @@ export function isIntegrationMessageContext(value: unknown): value is Integratio
 		(context.messageId === undefined || typeof context.messageId === 'string') &&
 		(context.interactingUserId === undefined || typeof context.interactingUserId === 'string') &&
 		(context.agentUserId === undefined || typeof context.agentUserId === 'string') &&
+		(context.platformMessage === undefined ||
+			isIntegrationPlatformMessageContext(context.platformMessage)) &&
 		(context.subject === undefined || isIntegrationMessageSubject(context.subject)) &&
 		(context.replyExpectation === undefined ||
 			context.replyExpectation === 'required' ||
@@ -66,6 +69,31 @@ export function isIntegrationMessageContext(value: unknown): value is Integratio
 		(context.replyTarget === undefined || isIntegrationMessageTarget(context.replyTarget)) &&
 		(context.replyMessageId === undefined || typeof context.replyMessageId === 'string') &&
 		typeof context.updatedAt === 'string'
+	);
+}
+
+function isIntegrationPlatformMessageContext(
+	value: unknown,
+): value is IntegrationPlatformMessageContext {
+	if (!isRecord(value) || value.type !== 'telegram') return false;
+	return (
+		typeof value.chat_id === 'string' &&
+		typeof value.message_id === 'string' &&
+		(value.message_thread_id === undefined || typeof value.message_thread_id === 'string') &&
+		Array.isArray(value.attachments) &&
+		value.attachments.every(isTelegramMessageAttachmentContext)
+	);
+}
+
+function isTelegramMessageAttachmentContext(value: unknown): boolean {
+	return (
+		isRecord(value) &&
+		(value.type === 'image' ||
+			value.type === 'file' ||
+			value.type === 'video' ||
+			value.type === 'audio') &&
+		typeof value.file_id === 'string' &&
+		(value.file_unique_id === undefined || typeof value.file_unique_id === 'string')
 	);
 }
 

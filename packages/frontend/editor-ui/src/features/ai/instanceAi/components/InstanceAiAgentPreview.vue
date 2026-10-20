@@ -1,8 +1,8 @@
 <script setup lang="ts">
+import type { AgentCreationResource } from '@/features/agents/types';
 import { computed, onBeforeUnmount } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import AgentBuilderView from '@/features/agents/views/AgentBuilderView.vue';
-import type { AgentResource } from '@/features/agents/types';
 import { persistPendingAgent } from '../instanceAi.memory.api';
 import { isAgentEditingAgent } from '../canvasPreview.utils';
 import {
@@ -61,6 +61,13 @@ const isAgentBuilding = computed(() => {
 	return false;
 });
 
+// The prompt starts processing before the agent-builder event arrives.
+const showBuildingIndicator = computed(
+	() =>
+		isAgentBuilding.value ||
+		(thread.activeArtifactId === props.agentId && (thread.isSendingMessage || thread.isStreaming)),
+);
+
 async function syncAgentTarget(name: string) {
 	const metadata = instanceAiStore.getThreadMetadata(thread.id);
 	const target = getAgentBuilderTargetFromThreadMetadata(metadata);
@@ -90,12 +97,13 @@ async function syncAgentTarget(name: string) {
  * pending marker with the bound target. The builder treats resolution as the
  * acknowledgement, so the binding is durable before it stops drafting.
  */
-async function persistAgent(name: string): Promise<AgentResource> {
-	const target = { projectId: props.projectId, agentId: props.agentId };
+async function persistAgent(
+	target: Parameters<typeof persistPendingAgent>[2],
+): Promise<AgentCreationResource> {
 	const { agent, thread: updatedThread } = await persistPendingAgent(
 		rootStore.restApiContext,
 		thread.id,
-		{ ...target, name },
+		target,
 	);
 	// Authoritative: the server dropped the pending key, which a merge would keep.
 	// Skipped once this preview has been torn down or moved on, so a slow response
@@ -111,7 +119,7 @@ async function persistAgent(name: string): Promise<AgentResource> {
 <template>
 	<div :class="$style.root">
 		<Transition name="agent-building-indicator">
-			<AgentBuildingIndicator v-if="isAgentBuilding" />
+			<AgentBuildingIndicator v-if="showBuildingIndicator" />
 		</Transition>
 		<AgentBuilderView
 			artifact-mode

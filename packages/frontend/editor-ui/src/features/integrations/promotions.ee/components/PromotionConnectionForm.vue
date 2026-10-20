@@ -1,5 +1,10 @@
 <script setup lang="ts">
-import type { PromotionConfigCheckout, PromotionDirection } from '@n8n/api-types';
+import {
+	isPromotionGitHostType,
+	type PromotionDirection,
+	type PromotionEnvironmentCheckout,
+	type PromotionRepository,
+} from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
 import {
 	N8nButton,
@@ -18,24 +23,25 @@ import { useI18n } from '@n8n/i18n';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUsersStore } from '@n8n/stores/users.store';
-import { computed, reactive, ref } from 'vue';
+import { computed, reactive, ref, watch } from 'vue';
 
 import { usePromotionConnectionSave } from '../composables/usePromotionConnectionSave';
 import {
-	clonePromotionCheckout,
-	createPromotionConnection,
+	connectPromotionCheckout,
 	disconnectPromotionCheckout,
 	type PromotionConnection,
 	type PromotionProviderSummary,
 } from '../promotionsSettings.api';
 import PromotionCheckoutStatus from './PromotionCheckoutStatus.vue';
+import PromotionGitHostSelect from './PromotionGitHostSelect.vue';
 import {
-	buildConnectionCreatePayload,
 	connectionFormFrom,
 	emptyConnectionForm,
 	planConnectionWrites,
+	withEnvironment,
 	type ConnectionFormState,
 	type ConnectionWrite,
+	type PromotionProviderChange,
 } from '../promotionsSettings.utils';
 
 const props = defineProps<{
@@ -44,7 +50,8 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-	saved: [connection: PromotionConnection];
+	saved: [connection: PromotionConnection | null];
+	refresh: [];
 	'add-provider': [];
 }>();
 
@@ -65,7 +72,69 @@ const form = reactive<ConnectionFormState>(
 	props.connection ? connectionFormFrom(props.connection) : emptyConnectionForm(),
 );
 const baseline = ref(JSON.stringify(form));
-const isCreating = ref(false);
+const discoveryRevision = ref(0);
+let savedStateRevision = 0;
+const selectedProvider = computed(
+	() =>
+		props.providers.find(({ id }) => id === form.providerId) ??
+		(current.value?.provider.id === form.providerId ? current.value.provider : undefined),
+);
+const hasHostApi = computed(
+	() => selectedProvider.value && isPromotionGitHostType(selectedProvider.value.type),
+);
+
+watch(
+	() => props.connection,
+	(connection) => {
+		savedStateRevision++;
+		// Refresh saved state without replacing the draft.
+		current.value = connection;
+		// A provider host change keeps the path but changes the derived URL.
+		if (
+			form.repositoryPath &&
+			form.providerId === connection?.provider.id &&
+			form.repositoryPath === connection?.remote.repositoryPath
+		) {
+			form.remoteUrl = connection.remote.remoteUrl;
+		}
+		baseline.value = JSON.stringify(
+			connection ? connectionFormFrom(connection) : emptyConnectionForm(),
+		);
+	},
+);
+
+function applyProviderChange(change: PromotionProviderChange) {
+	if (
+		(change.hostChanged || change.credentialsChanged) &&
+		(change.id === form.providerId || change.id === current.value?.provider.id)
+	) {
+		// Pending writes can refer to either provider during reassignment.
+		savedStateRevision++;
+	}
+	if (change.id !== form.providerId) return;
+	// The new host rejects a URL picked from the old host, unless it is the saved repository.
+	if (
+		change.hostChanged &&
+		(form.providerId !== current.value?.provider.id ||
+			form.repositoryPath !== current.value?.remote.repositoryPath)
+	) {
+		form.remoteUrl = '';
+		form.repositoryPath = undefined;
+	}
+	if (change.hostChanged || change.credentialsChanged) discoveryRevision.value++;
+}
+
+function selectRepository(selected: PromotionRepository) {
+	if (
+		form.remoteUrl !== selected.remoteUrl ||
+		(form.repositoryPath !== undefined && form.repositoryPath !== selected.fullPath)
+	) {
+		form.apply.branchName = '';
+		form.promote.baseBranchName = '';
+	}
+	form.remoteUrl = selected.remoteUrl;
+	form.repositoryPath = selected.fullPath;
+}
 
 const resetTo = (connection: PromotionConnection | null) => {
 	current.value = connection;
@@ -74,13 +143,28 @@ const resetTo = (connection: PromotionConnection | null) => {
 	save.reset();
 };
 
-const isSaving = computed(() => isCreating.value || save.isSaving.value);
-const isDirty = computed(() => JSON.stringify(form) !== baseline.value);
+const isSaving = computed(() => save.isSaving.value);
+// Environments left out of step by a partial save still need a write after a reload.
+const isDirty = computed(
+	() =>
+		JSON.stringify(form) !== baseline.value ||
+		(current.value !== null && planConnectionWrites(form, current.value).length > 0),
+);
+const needsRepositorySelection = computed(
+	() => hasHostApi.value && !!form.remoteUrl && !form.repositoryPath,
+);
 
 // Let the API validate remote URLs so frontend rules cannot drift.
 const saveDisabledReason = computed(() => {
-	if (!form.providerId || !form.name.trim() || !form.remoteUrl.trim())
+	if (
+		!form.providerId ||
+		!form.name.trim() ||
+		!form.remoteUrl.trim() ||
+		(hasHostApi.value && !form.repositoryPath)
+	)
 		return i18n.baseText('settings.promotions.connection.form.incomplete');
+	if (!current.value && !form.apply.enabled && !form.promote.enabled)
+		return i18n.baseText('settings.promotions.connection.form.directionRequired');
 	if (
 		(form.apply.enabled && !form.apply.branchName.trim()) ||
 		(form.promote.enabled && !form.promote.baseBranchName.trim())
@@ -92,11 +176,9 @@ const saveDisabledReason = computed(() => {
 const failedParts = computed(() =>
 	save.failedWrites.value.map((write: ConnectionWrite) =>
 		i18n.baseText(
-			write.kind === 'connection'
-				? 'settings.promotions.connection.partialSave.part.connection'
-				: write.direction === 'apply'
-					? 'settings.promotions.connection.partialSave.part.apply'
-					: 'settings.promotions.connection.partialSave.part.promote',
+			write.direction === 'apply'
+				? 'settings.promotions.connection.partialSave.part.apply'
+				: 'settings.promotions.connection.partialSave.part.promote',
 		),
 	),
 );
@@ -106,49 +188,39 @@ const hasPartialFailure = computed(() => failedParts.value.length > 0);
 async function submit() {
 	if (saveDisabledReason.value !== undefined || isSaving.value) return;
 
-	const existing = current.value;
-
-	if (!existing) {
-		// Creation saves both directions in one request.
-		isCreating.value = true;
-		try {
-			const created = await createPromotionConnection(
-				rootStore.publicApiContext,
-				buildConnectionCreatePayload(form),
-			);
-			resetTo(created);
-			toast.showMessage({
-				title: i18n.baseText('settings.promotions.connection.toast.created'),
-				type: 'success',
-			});
-			emit('saved', created);
-		} catch (error) {
-			toast.showError(error, i18n.baseText('settings.promotions.connection.toast.error.save'));
-		} finally {
-			isCreating.value = false;
-		}
-		return;
-	}
+	const revision = discoveryRevision.value;
+	const savedRevision = savedStateRevision;
 
 	// Build a new plan so retries include only unsaved changes.
-	const result = await save.run(existing, planConnectionWrites(form, existing));
+	const writes = planConnectionWrites(form, current.value);
+	const result = await save.run(current.value, writes);
+	if (result.failed.length > 0) {
+		toast.showError(result.error, i18n.baseText('settings.promotions.connection.toast.error.save'));
+	} else {
+		toast.showMessage({
+			title: i18n.baseText(
+				writes.some(({ kind }) => kind === 'create')
+					? 'settings.promotions.connection.toast.created'
+					: 'settings.promotions.connection.toast.updated',
+			),
+			type: 'success',
+		});
+	}
+	if (revision !== discoveryRevision.value || savedRevision !== savedStateRevision) {
+		// Read saved state again after a provider edit or a concurrent refresh.
+		save.reset();
+		emit('refresh');
+		return;
+	}
 	current.value = result.connection;
 	emit('saved', result.connection);
 
-	if (result.failed.length > 0) {
-		toast.showError(result.error, i18n.baseText('settings.promotions.connection.toast.error.save'));
-		return;
-	}
-
-	baseline.value = JSON.stringify(form);
-	toast.showMessage({
-		title: i18n.baseText('settings.promotions.connection.toast.updated'),
-		type: 'success',
-	});
+	if (result.failed.length === 0) resetTo(result.connection);
 }
 
 function discard() {
 	resetTo(current.value);
+	discoveryRevision.value++;
 }
 
 // A clone reads the saved config, so Connect stays blocked until the direction is
@@ -158,7 +230,7 @@ const connecting = reactive<Record<PromotionDirection, 'connect' | 'disconnect' 
 	promote: false,
 });
 
-const savedCheckout = (direction: PromotionDirection): PromotionConfigCheckout | undefined =>
+const savedCheckout = (direction: PromotionDirection): PromotionEnvironmentCheckout | undefined =>
 	current.value?.configs[direction]?.checkout;
 
 // The saved branch is the one the checkout was cloned from, so the status text
@@ -173,6 +245,8 @@ const connectDisabledReason = (direction: PromotionDirection): string | undefine
 	if (!canClone.value) return i18n.baseText('settings.promotions.connection.checkout.noPermission');
 	if (!current.value?.configs[direction])
 		return i18n.baseText('settings.promotions.connection.checkout.saveFirst');
+	if (needsRepositorySelection.value)
+		return i18n.baseText('settings.promotions.discovery.repository.selectAgain');
 	if (isDirty.value)
 		return i18n.baseText('settings.promotions.connection.checkout.saveChangesFirst');
 	return undefined;
@@ -180,30 +254,32 @@ const connectDisabledReason = (direction: PromotionDirection): string | undefine
 
 // Update the saved connection in place so the status and the Promote button react
 // without a full reload. A fresh clone matches the config it was cloned from.
-function applyCheckout(direction: PromotionDirection, checkout: PromotionConfigCheckout) {
+function applyCheckout(direction: PromotionDirection, checkout: PromotionEnvironmentCheckout) {
 	const connection = current.value;
-	const config = connection?.configs[direction];
-	if (!connection || !config) return;
+	const environment = connection?.configs[direction];
+	if (!connection || !environment) return;
 	const updated: PromotionConnection = {
 		...connection,
-		configs: { ...connection.configs, [direction]: { ...config, checkout } },
+		configs: withEnvironment(connection.configs, { ...environment, checkout }),
 	};
 	current.value = updated;
 	emit('saved', updated);
 }
 
 async function connect(direction: PromotionDirection) {
-	if (!current.value || connectDisabledReason(direction) !== undefined) return;
+	const environment = current.value?.configs[direction];
+	if (!environment || connectDisabledReason(direction) !== undefined) return;
+	const revision = savedStateRevision;
 	connecting[direction] = 'connect';
 	try {
-		const result = await clonePromotionCheckout(
-			rootStore.publicApiContext,
-			current.value.id,
-			direction,
-		);
+		const result = await connectPromotionCheckout(rootStore.publicApiContext, environment.id);
+		if (revision !== savedStateRevision) {
+			emit('refresh');
+			return;
+		}
 		applyCheckout(direction, {
 			hasCheckout: result.hasCheckout,
-			matchesConfig: result.hasCheckout,
+			matchesEnvironment: result.hasCheckout,
 		});
 		toast.showMessage({
 			title: i18n.baseText('settings.promotions.connection.checkout.toast.connected'),
@@ -220,11 +296,17 @@ async function connect(direction: PromotionDirection) {
 }
 
 async function disconnect(direction: PromotionDirection) {
-	if (!current.value) return;
+	const environment = current.value?.configs[direction];
+	if (!environment) return;
+	const revision = savedStateRevision;
 	connecting[direction] = 'disconnect';
 	try {
-		await disconnectPromotionCheckout(rootStore.publicApiContext, current.value.id, direction);
-		applyCheckout(direction, { hasCheckout: false, matchesConfig: false });
+		await disconnectPromotionCheckout(rootStore.publicApiContext, environment.id);
+		if (revision !== savedStateRevision) {
+			emit('refresh');
+			return;
+		}
+		applyCheckout(direction, { hasCheckout: false, matchesEnvironment: false });
 		toast.showMessage({
 			title: i18n.baseText('settings.promotions.connection.checkout.toast.disconnected'),
 			type: 'success',
@@ -240,10 +322,22 @@ async function disconnect(direction: PromotionDirection) {
 }
 
 function selectProvider(id: string) {
+	if (id === form.providerId) return;
+	const previous = selectedProvider.value;
+	const next = props.providers.find((provider) => provider.id === id);
+	if (
+		(previous && isPromotionGitHostType(previous.type)) ||
+		(next && isPromotionGitHostType(next.type))
+	) {
+		form.remoteUrl = '';
+		form.apply.branchName = '';
+		form.promote.baseBranchName = '';
+	}
+	form.repositoryPath = undefined;
 	form.providerId = id;
 }
 
-defineExpose({ selectProvider });
+defineExpose({ selectProvider, applyProviderChange });
 </script>
 
 <template>
@@ -256,10 +350,11 @@ defineExpose({ selectProvider });
 			<div :class="$style.providerRow">
 				<N8nSelect
 					id="promotion-connection-provider"
-					v-model="form.providerId"
+					:model-value="form.providerId"
 					:disabled="isSaving"
 					:placeholder="i18n.baseText('settings.promotions.connection.form.provider.placeholder')"
 					data-test-id="promotion-connection-provider-select"
+					@update:model-value="selectProvider"
 				>
 					<N8nOption
 						v-for="provider in providers"
@@ -294,6 +389,36 @@ defineExpose({ selectProvider });
 		</N8nInputLabel>
 
 		<N8nInputLabel
+			v-if="hasHostApi"
+			input-name="promotion-connection-repository"
+			:label="i18n.baseText('settings.promotions.discovery.repository.label')"
+			required
+		>
+			<PromotionGitHostSelect
+				:model-value="form.remoteUrl"
+				kind="repository"
+				input-id="promotion-connection-repository"
+				:provider-id="form.providerId"
+				:revision="discoveryRevision"
+				:description-id="
+					needsRepositorySelection ? 'promotion-repository-selection-hint' : undefined
+				"
+				:disabled="isSaving"
+				data-test-id="promotion-connection-repository-select"
+				@selected="selectRepository"
+			/>
+			<N8nText
+				v-if="needsRepositorySelection"
+				id="promotion-repository-selection-hint"
+				size="small"
+				color="text-light"
+				role="status"
+			>
+				{{ i18n.baseText('settings.promotions.discovery.repository.selectAgain') }}
+			</N8nText>
+		</N8nInputLabel>
+		<N8nInputLabel
+			v-else
 			input-name="promotion-connection-remote-url"
 			:label="i18n.baseText('settings.promotions.connection.form.remoteUrl')"
 			required
@@ -332,10 +457,22 @@ defineExpose({ selectProvider });
 							required
 						>
 							<N8nInput
+								v-if="!hasHostApi"
 								id="promotion-connection-apply-branch"
 								v-model="form.apply.branchName"
 								:disabled="isSaving"
 								data-test-id="promotion-connection-apply-branch-input"
+							/>
+							<PromotionGitHostSelect
+								v-else
+								v-model="form.apply.branchName"
+								kind="branch"
+								input-id="promotion-connection-apply-branch"
+								:provider-id="form.providerId"
+								:repository-id="form.repositoryPath"
+								:revision="discoveryRevision"
+								:disabled="isSaving"
+								data-test-id="promotion-connection-apply-branch-select"
 							/>
 						</N8nInputLabel>
 						<PromotionCheckoutStatus
@@ -373,10 +510,22 @@ defineExpose({ selectProvider });
 							required
 						>
 							<N8nInput
+								v-if="!hasHostApi"
 								id="promotion-connection-promote-branch"
 								v-model="form.promote.baseBranchName"
 								:disabled="isSaving"
 								data-test-id="promotion-connection-promote-branch-input"
+							/>
+							<PromotionGitHostSelect
+								v-else
+								v-model="form.promote.baseBranchName"
+								kind="branch"
+								input-id="promotion-connection-promote-branch"
+								:provider-id="form.providerId"
+								:repository-id="form.repositoryPath"
+								:revision="discoveryRevision"
+								:disabled="isSaving"
+								data-test-id="promotion-connection-promote-branch-select"
 							/>
 						</N8nInputLabel>
 						<N8nSwitch

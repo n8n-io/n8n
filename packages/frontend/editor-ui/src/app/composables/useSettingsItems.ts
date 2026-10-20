@@ -3,16 +3,18 @@ import { useUserHelpers } from './useUserHelpers';
 import { useAiGateway } from './useAiGateway';
 import { useAiGatewayTopUp } from './useAiGatewayTopUp';
 import { computed } from 'vue';
-import type { IMenuItem } from '@n8n/design-system';
+import type { IMenuSettingItem } from '@n8n/frontend-module-sdk';
 import { useI18n } from '@n8n/i18n';
 import { VIEWS } from '../constants';
-import { isContextPreferencesEnabled } from '@/features/settings/context/context.utils';
+import { isContextEnabled } from '@/features/settings/context/context.utils';
 import { useUIStore } from '../stores/ui.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { hasPermission } from '../utils/rbac/permissions';
 import { MIGRATION_REPORT_TARGET_VERSION } from '@n8n/api-types';
 import { PROMOTIONS_SETTINGS_VIEW } from '@/features/integrations/promotions.ee/promotions.constants';
 import { usePromotionsEnabled } from '@/features/shared/promotions/usePromotionsEnabled';
+
+type ShellSettingsItem = IMenuSettingItem & { order: number };
 
 export function useSettingsItems() {
 	const router = useRouter();
@@ -24,10 +26,11 @@ export function useSettingsItems() {
 	const { balance } = useAiGateway();
 	const { openTopUp } = useAiGatewayTopUp();
 
-	const settingsItems = computed<IMenuItem[]>(() => {
-		const menuItems: IMenuItem[] = [
+	const settingsItems = computed<IMenuSettingItem[]>(() => {
+		const shellItems: ShellSettingsItem[] = [
 			{
 				id: 'settings-usage-and-plan',
+				order: 10,
 				icon: 'chart-column-decreasing',
 				label: i18n.baseText('settings.usageAndPlan.title'),
 				position: 'top',
@@ -36,7 +39,8 @@ export function useSettingsItems() {
 			},
 			{
 				id: 'settings-personal',
-				icon: 'circle-user-round',
+				order: 20,
+				icon: 'user',
 				label: i18n.baseText('settings.personal'),
 				position: 'top',
 				available: canUserAccessRouteByName(VIEWS.PERSONAL_SETTINGS),
@@ -44,7 +48,8 @@ export function useSettingsItems() {
 			},
 			{
 				id: 'settings-users',
-				icon: 'user-round',
+				order: 30,
+				icon: 'users',
 				label: i18n.baseText('settings.users'),
 				position: 'top',
 				available: canUserAccessRouteByName(VIEWS.USERS_SETTINGS),
@@ -52,6 +57,7 @@ export function useSettingsItems() {
 			},
 			{
 				id: 'settings-ai',
+				order: 40,
 				icon: 'sparkles',
 				label: i18n.baseText('settings.ai'),
 				position: 'top',
@@ -61,6 +67,7 @@ export function useSettingsItems() {
 			},
 			{
 				id: 'settings-n8n-connect',
+				order: 50,
 				icon: 'plug-zap',
 				label: i18n.baseText(
 					settingsStore.isAiGatewayCloudUbbEnabled ? 'settings.n8nCredits' : 'settings.n8nConnect',
@@ -82,7 +89,8 @@ export function useSettingsItems() {
 			},
 			{
 				id: 'settings-roles',
-				icon: 'user-round',
+				order: 60,
+				icon: 'users',
 				label: i18n.baseText('settings.roles'),
 				position: 'top',
 				available: canUserAccessRouteByName(VIEWS.ROLES_SETTINGS),
@@ -91,6 +99,7 @@ export function useSettingsItems() {
 			},
 			{
 				id: 'settings-api',
+				order: 70,
 				icon: 'plug',
 				label: i18n.baseText('settings.n8napi'),
 				position: 'top',
@@ -99,6 +108,7 @@ export function useSettingsItems() {
 			},
 			{
 				id: 'settings-external-secrets',
+				order: 80,
 				icon: 'vault',
 				label: i18n.baseText('settings.externalSecrets.title'),
 				position: 'top',
@@ -107,6 +117,7 @@ export function useSettingsItems() {
 			},
 			{
 				id: 'settings-credential-resolvers',
+				order: 90,
 				icon: 'key-round',
 				label: i18n.baseText('credentialResolver.view.title'),
 				position: 'top',
@@ -115,6 +126,7 @@ export function useSettingsItems() {
 			},
 			{
 				id: 'settings-source-control',
+				order: 100,
 				icon: 'git-branch',
 				label: i18n.baseText('settings.sourceControl.title'),
 				position: 'top',
@@ -123,6 +135,7 @@ export function useSettingsItems() {
 			},
 			{
 				id: 'settings-promotions',
+				order: 110,
 				icon: 'git-branch',
 				label: i18n.baseText('settings.promotions.title'),
 				position: 'top',
@@ -132,7 +145,8 @@ export function useSettingsItems() {
 			},
 			{
 				id: 'settings-sso',
-				icon: 'user-lock',
+				order: 120,
+				icon: 'lock',
 				label: i18n.baseText('settings.sso'),
 				position: 'top',
 				available: canUserAccessRouteByName(VIEWS.SSO_SETTINGS),
@@ -140,6 +154,7 @@ export function useSettingsItems() {
 			},
 			{
 				id: 'settings-encryption-keys',
+				order: 130,
 				icon: 'key-round',
 				label: i18n.baseText('settings.encryptionKeys'),
 				position: 'top',
@@ -150,6 +165,7 @@ export function useSettingsItems() {
 			},
 			{
 				id: 'settings-security',
+				order: 140,
 				icon: 'shield',
 				label: i18n.baseText('settings.security'),
 				position: 'top',
@@ -158,7 +174,8 @@ export function useSettingsItems() {
 			},
 			{
 				id: 'settings-ldap',
-				icon: 'network',
+				order: 150,
+				icon: 'ldap',
 				label: i18n.baseText('settings.ldap'),
 				position: 'top',
 				available: canUserAccessRouteByName(VIEWS.LDAP_SETTINGS),
@@ -166,7 +183,8 @@ export function useSettingsItems() {
 			},
 			{
 				id: 'settings-workersview',
-				icon: 'waypoints',
+				order: 160,
+				icon: 'wrench',
 				label: i18n.baseText('mainSidebar.workersView'),
 				position: 'top',
 				available:
@@ -174,56 +192,45 @@ export function useSettingsItems() {
 					hasPermission(['rbac'], { rbac: { scope: 'workersView:manage' } }),
 				route: { to: { name: VIEWS.WORKER_VIEW } },
 			},
-		];
-
-		menuItems.push({
-			id: 'settings-log-streaming',
-			icon: 'log-in',
-			label: i18n.baseText('settings.log-streaming'),
-			position: 'top',
-			available: canUserAccessRouteByName(VIEWS.LOG_STREAMING_SETTINGS),
-			route: { to: { name: VIEWS.LOG_STREAMING_SETTINGS } },
-		});
-
-		menuItems.push({
-			id: 'settings-community-nodes',
-			icon: 'box',
-			label: i18n.baseText('settings.communityNodes'),
-			position: 'top',
-			available: canUserAccessRouteByName(VIEWS.COMMUNITY_NODES),
-			route: { to: { name: VIEWS.COMMUNITY_NODES } },
-		});
-
-		if (MIGRATION_REPORT_TARGET_VERSION) {
-			menuItems.push({
+			{
+				id: 'settings-community-nodes',
+				order: 180,
+				icon: 'box',
+				label: i18n.baseText('settings.communityNodes'),
+				position: 'top',
+				available: canUserAccessRouteByName(VIEWS.COMMUNITY_NODES),
+				route: { to: { name: VIEWS.COMMUNITY_NODES } },
+			},
+			{
 				id: 'settings-migration-report',
-				icon: 'list-checks',
+				order: 190,
+				icon: 'clipboard',
 				label: i18n.baseText('settings.migrationReport'),
 				position: 'top',
-				available: canUserAccessRouteByName(VIEWS.MIGRATION_REPORT),
+				available:
+					!!MIGRATION_REPORT_TARGET_VERSION && canUserAccessRouteByName(VIEWS.MIGRATION_REPORT),
 				route: { to: { name: VIEWS.MIGRATION_REPORT } },
-			});
-		}
+			},
+			{
+				// The flag is read here because the middleware check does not run route guards.
+				id: 'settings-context',
+				order: 210,
+				icon: 'brain',
+				label: i18n.baseText('settings.context.title'),
+				position: 'top',
+				available: isContextEnabled() && canUserAccessRouteByName(VIEWS.SETTINGS_CONTEXT),
+				route: { to: { name: VIEWS.SETTINGS_CONTEXT } },
+				preview: true,
+			},
+		];
 
-		// Append module-registered settings sidebar items.
-		const moduleItems = uiStore.settingsSidebarItems;
-		const items = menuItems.concat(
-			moduleItems.filter((item) => !menuItems.some((m) => m.id === item.id)),
+		const moduleItems = uiStore.settingsSidebarItems.filter(
+			(item) => !shellItems.some((shellItem) => shellItem.id === item.id),
 		);
 
-		// After Instance-level MCP, which the MCP module appends late. The flag is read here
-		// because the middleware check does not run route guards.
-		const mcpIndex = items.findIndex((item) => item.id === 'settings-mcp');
-		items.splice(mcpIndex === -1 ? items.length : mcpIndex + 1, 0, {
-			id: 'settings-context',
-			icon: 'brain',
-			label: i18n.baseText('settings.context.title'),
-			position: 'top',
-			available: isContextPreferencesEnabled() && canUserAccessRouteByName(VIEWS.SETTINGS_CONTEXT),
-			route: { to: { name: VIEWS.SETTINGS_CONTEXT } },
-		});
-
-		return items;
+		return [...shellItems, ...moduleItems].sort(
+			(a, b) => (a.order ?? Number.MAX_SAFE_INTEGER) - (b.order ?? Number.MAX_SAFE_INTEGER),
+		);
 	});
 
 	const visibleSettingsItems = computed(() => settingsItems.value.filter((item) => item.available));

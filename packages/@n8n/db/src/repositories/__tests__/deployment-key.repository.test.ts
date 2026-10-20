@@ -1,23 +1,21 @@
-import type { DataSource } from '@n8n/typeorm';
-import type { Cipher } from 'n8n-core';
-import { mock } from 'vitest-mock-extended';
-
-import type { DbLockService } from '../../services/db-lock.service';
-import { DeploymentKeyRepository } from '../deployment-key.repository';
+import type { DeploymentKeyRepository } from '../deployment-key.repository';
 
 describe('DeploymentKeyRepository', () => {
-	describe('delete surface', () => {
-		const repository = new DeploymentKeyRepository(
-			mock<DataSource>(),
-			mock<DbLockService>(),
-			mock<Cipher>(),
-		);
-
-		test.each(['delete', 'remove', 'softDelete', 'softRemove', 'clear'] as const)(
-			'%s() always throws — keys are deactivated, never deleted',
-			async (method) => {
-				await expect(repository[method]()).rejects.toThrow('Deployment keys must never be deleted');
-			},
-		);
+	it('does not expose deletion or TypeORM escape hatches', () => {
+		expectTypeOf<DeploymentKeyRepository>().not.toHaveProperty('delete');
+		expectTypeOf<DeploymentKeyRepository>().not.toHaveProperty('remove');
+		expectTypeOf<DeploymentKeyRepository>().not.toHaveProperty('clear');
+		expectTypeOf<DeploymentKeyRepository>().not.toHaveProperty('manager');
+		expectTypeOf<DeploymentKeyRepository>().not.toHaveProperty('createQueryBuilder');
+		expectTypeOf<DeploymentKeyRepository>().not.toHaveProperty('find');
+		expectTypeOf<DeploymentKeyRepository>().not.toHaveProperty('findOne');
+		expectTypeOf<DeploymentKeyRepository>().not.toHaveProperty('findOneByOrFail');
+		expectTypeOf<DeploymentKeyRepository>().not.toHaveProperty('create');
+		expectTypeOf<DeploymentKeyRepository>().not.toHaveProperty('save');
+		expectTypeOf<DeploymentKeyRepository>().not.toHaveProperty('insert');
+		expectTypeOf<DeploymentKeyRepository>().not.toHaveProperty('update');
+		expectTypeOf<DeploymentKeyRepository>().not.toHaveProperty('insertOrIgnore');
+		expectTypeOf<DeploymentKeyRepository>().not.toHaveProperty('insertAsActive');
+		expectTypeOf<DeploymentKeyRepository>().not.toHaveProperty('promoteToActive');
 	});
 });

@@ -1,20 +1,22 @@
+import { PROMOTION_BRANCH_PREFIX } from '@n8n/api-types';
+
+export { PROMOTION_BRANCH_PREFIX };
+
 /** Comment embedded in generated SSH keys (visible when added as a deploy key). */
 export const PROMOTION_KEY_COMMENT = 'n8n promotions';
 
 export const GIT_DEFAULT_COMMIT_NAME = 'n8n user';
 export const GIT_DEFAULT_COMMIT_EMAIL = 'n8n@example.com';
 
-export const PROMOTION_BRANCH_PREFIX = 'n8n-promotion/';
+/** Default commit message for a project-scoped selective promote, used when the client sends none. */
+export const PROMOTE_SELECTION_COMMIT_MESSAGE = 'Promote a selection of project changes';
 
 /**
  * Subfolder of the checkout that holds the n8n-managed package. Keeping it
  * separate from the repository root leaves `.git` and any files the user commits
  * at the root untouched, and scopes cleanup to a single directory.
  */
-export const PACKAGE_SUBFOLDER = 'n8n-export';
-
-/** Config name used when a config write leaves `name` out. */
-export const DIRECTION_LABELS = { apply: 'Apply', promote: 'Promote' } as const;
+export const PACKAGE_SUBFOLDER = 'n8n';
 
 // Timeouts that bound how long a stalled Git operation can hang. Transport-level
 // limits (SSH, HTTP) fire first based on real network inactivity; the process

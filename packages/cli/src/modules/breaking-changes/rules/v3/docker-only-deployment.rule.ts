@@ -22,7 +22,7 @@ export class DockerOnlyDeploymentRule implements IBreakingChangeInstanceRule {
 			description:
 				'Support for running n8n via npm is removed. The new version must be run via the official Docker image.',
 			category: BreakingChangeCategory.infrastructure,
-			severity: 'medium',
+			impact: 'upgradeBlocked',
 			documentationUrl: 'https://docs.n8n.io/deploy/host-n8n',
 		};
 	}

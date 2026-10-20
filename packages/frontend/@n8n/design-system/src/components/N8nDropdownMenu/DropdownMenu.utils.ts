@@ -37,7 +37,7 @@ export function getItemDomId(instanceId: string, index: number) {
 }
 
 export function scrollHighlightedItemIntoView(container: HTMLElement | null) {
-	const highlightedItem = container?.querySelector('[data-menu-items] [aria-selected="true"]');
+	const highlightedItem = container?.querySelector('[data-menu-items] [data-virtual-highlighted]');
 
 	if (!(container && highlightedItem instanceof HTMLElement)) return;
 

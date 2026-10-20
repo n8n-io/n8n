@@ -5,6 +5,9 @@ import {
 	InstanceAiGatewayCreateCredentialDto,
 	InstanceAiFilesystemResponseDto,
 	InstanceAiRenameThreadRequestDto,
+	InstanceAiThreadTabsRequestDto,
+	InstanceAiPreferenceCardEditRequestDto,
+	InstanceAiPreferenceCardUndoRequestDto,
 	InstanceAiSendMessageRequest,
 	InstanceAiEventsQuery,
 	instanceAiGatewayKeySchema,
@@ -21,12 +24,18 @@ import {
 	InstanceAiEvalExecutionRequest,
 	InstanceAiEvalAgentExecutionRequest,
 	InstanceAiEvalCredentialAllowlistRequest,
+	InstanceAiEvalCredentialTestTargetRequest,
 	InstanceAiEvalRestoreThreadRequest,
 	InstanceAiEvalSeedDataTableRowsRequest,
 	findSeedFolderIssues,
 	findUnbackedSeedWorkflowTools,
 } from '@n8n/api-types';
-import type { InstanceAiAdminSettingsResponse, InstanceAiEvent } from '@n8n/api-types';
+import type {
+	InstanceAiAdminSettingsResponse,
+	InstanceAiEvalThreadMemoryResponse,
+	InstanceAiEvent,
+	InstanceAiThreadTabsResponse,
+} from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { AuthenticatedRequest, User, UserRepository } from '@n8n/db';
@@ -46,9 +55,11 @@ import {
 	Query,
 } from '@n8n/decorators';
 import type { StoredEvent } from '@n8n/instance-ai';
+import { hasGlobalScope } from '@n8n/permissions';
 import {
 	buildAgentTreeFromEvents,
 	clearedAgentBuilderTargetMetadata,
+	meterEvalUsage,
 	seedAgentBuilderTargetMetadata,
 } from '@n8n/instance-ai';
 import {
@@ -72,19 +83,19 @@ import { InstanceAiGatewayService } from './instance-ai-gateway.service';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
 import { InstanceAiModelCatalogService } from './instance-ai-model-catalog.service';
 import { InstanceAiPendingAgentService } from './instance-ai-pending-agent.service';
+import { InstanceAiPreferenceCardService } from './instance-ai-preference-card.service';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
+import { InstanceAiThreadTabsService } from './instance-ai-thread-tabs.service';
 import { InstanceAiVerificationService } from './instance-ai-verification.service';
 import { InstanceAiService } from './instance-ai.service';
+import { InstanceAiOnboardingService, startsOnboardingFirstTurn } from './onboarding';
 import { CredentialsService } from '@/credentials/credentials.service';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { Push } from '@/push';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { ProjectService } from '@/services/project.service.ee';
-import { UrlService } from '@/services/url.service';
+import { UrlService } from '@n8n/backend-services';
 
 type FlushableResponse = Response & { flush?: () => void };
 
@@ -94,11 +105,14 @@ const KEEP_ALIVE_INTERVAL_MS = 15_000;
 export class InstanceAiController {
 	private readonly gatewayApiKey: string;
 
+	private readonly instanceAiConfig: GlobalConfig['instanceAi'];
+
 	constructor(
 		private readonly instanceAiService: InstanceAiService,
 		private readonly gatewayService: InstanceAiGatewayService,
 		private readonly browserSessionService: InstanceAiBrowserSessionService,
 		private readonly memoryService: InstanceAiMemoryService,
+		private readonly onboarding: InstanceAiOnboardingService,
 		private readonly pendingAgentService: InstanceAiPendingAgentService,
 		private readonly settingsService: InstanceAiSettingsService,
 		private readonly modelCatalogService: InstanceAiModelCatalogService,
@@ -117,9 +131,12 @@ export class InstanceAiController {
 		private readonly projectService: ProjectService,
 		private readonly instanceAiErrorReporter: InstanceAiErrorReporterService,
 		private readonly publisher: Publisher,
+		private readonly preferenceCardService: InstanceAiPreferenceCardService,
 		globalConfig: GlobalConfig,
+		private readonly threadTabsService: InstanceAiThreadTabsService,
 	) {
 		this.gatewayApiKey = globalConfig.instanceAi.gatewayApiKey;
+		this.instanceAiConfig = globalConfig.instanceAi;
 	}
 
 	private requireInstanceAiEnabled(): void {
@@ -137,7 +154,7 @@ export class InstanceAiController {
 	private async requireModelConfigured(): Promise<void> {
 		if (!(await this.settingsService.isModelConfigured())) {
 			throw new BadRequestError(
-				'The n8n Assistant has no model configured. An instance owner can add one in Settings > n8n Assistant.',
+				'The n8n Assistant has no model configured. An instance owner can add one in Settings > Assistant.',
 			);
 		}
 	}
@@ -220,6 +237,15 @@ export class InstanceAiController {
 			throw new ConflictError('A run is already active for this thread');
 		}
 
+		// The override is an eval knob. It changes how often the observer runs, so a
+		// plain chat caller must not be able to set it.
+		if (
+			payload.observerThresholdTokens !== undefined &&
+			!hasGlobalScope(req.user, 'instanceAi:eval')
+		) {
+			throw new ForbiddenError('observerThresholdTokens requires the instanceAi:eval scope');
+		}
+
 		const runId = this.instanceAiService.startRun(
 			req.user,
 			threadId,
@@ -232,6 +258,7 @@ export class InstanceAiController {
 			payload.promptVersion,
 			payload.computerUseChannels,
 			payload.threadArtifacts,
+			payload.observerThresholdTokens,
 		);
 		return { runId };
 	}
@@ -571,6 +598,22 @@ export class InstanceAiController {
 			throw new BadRequestError(parseResult.error.errors[0].message);
 		}
 
+		// The host-seeded onboarding card has no run to resume: settle it and post the follow-up
+		// question as a finished synthetic run. The user's next chat message starts the first turn.
+		// Free text in the card starts that turn now, with the answers as the message, so the model
+		// check of `chat` applies; it runs before the card is consumed.
+		if (startsOnboardingFirstTurn(requestId, parseResult.data)) {
+			await this.requireModelConfigured();
+		}
+		const card = await this.onboarding.answerCard(req.user.id, requestId, parseResult.data);
+		if (card) {
+			const runId =
+				'firstMessage' in card
+					? this.instanceAiService.startRun(req.user, card.threadId, card.firstMessage)
+					: card.runId;
+			return { ok: true, runId };
+		}
+
 		const resolved = await this.instanceAiService.resolveConfirmation(
 			req.user.id,
 			requestId,
@@ -638,6 +681,44 @@ export class InstanceAiController {
 		await this.assertThreadAccess(req.user.id, threadId);
 		await this.instanceAiService.routeCorrectionToTask(threadId, taskId, payload.message);
 		return { ok: true };
+	}
+
+	// ── Preference card (the save_user_preference result in the chat) ────────
+	//
+	// The thread check is the ownership boundary. The row check is inside
+	// AiPreferenceService. The runId and the toolCallId are not verified against
+	// the log on purpose, and the check would cost a log read on every click.
+	// The fold ignores preference-card facts when it anchors a turn, so a wrong
+	// pair can only mis-render that one card's state in the caller's own thread.
+
+	@Post('/threads/:threadId/preferences/:preferenceId/undo')
+	@GlobalScope('instanceAi:message')
+	async undoPreference(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('threadId') threadId: string,
+		@Param('preferenceId') preferenceId: string,
+		@Body payload: InstanceAiPreferenceCardUndoRequestDto,
+	) {
+		this.requireInstanceAiEnabled();
+		await this.assertThreadAccess(req.user.id, threadId);
+		const event = await this.preferenceCardService.undo(req.user, threadId, preferenceId, payload);
+		// The card applies the fact at once; the stream delivers the same one later.
+		return { ok: true, event };
+	}
+
+	@Post('/threads/:threadId/preferences/:preferenceId/edit')
+	@GlobalScope('instanceAi:message')
+	async editPreference(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('threadId') threadId: string,
+		@Param('preferenceId') preferenceId: string,
+		@Body payload: InstanceAiPreferenceCardEditRequestDto,
+	) {
+		this.requireInstanceAiEnabled();
+		await this.assertThreadAccess(req.user.id, threadId);
+		return await this.preferenceCardService.edit(req.user, threadId, preferenceId, payload);
 	}
 
 	// ── Credits ──────────────────────────────────────────────────────────────
@@ -856,14 +937,21 @@ export class InstanceAiController {
 			origin: payload.origin ?? ('internal' as const),
 			sourceContext: payload.sourceContext,
 		};
-
 		try {
-			return await this.memoryService.ensureThread(
-				req.user.id,
-				requestedThreadId,
-				payload.projectId,
-				launchMetadata,
-			);
+			// An onboarding thread opens with the greeting and the first question card in place.
+			return payload.source === 'onboarding'
+				? await this.onboarding.ensureThread(
+						req.user,
+						requestedThreadId,
+						payload.projectId,
+						launchMetadata,
+					)
+				: await this.memoryService.ensureThread(
+						req.user.id,
+						requestedThreadId,
+						payload.projectId,
+						launchMetadata,
+					);
 		} catch (error) {
 			this.instanceAiErrorReporter.report(error, {
 				component: 'instance-ai-ensure-thread',
@@ -906,10 +994,38 @@ export class InstanceAiController {
 		return { thread };
 	}
 
+	@Get('/threads/:threadId/tabs')
+	@GlobalScope('instanceAi:message')
+	async getThreadTabs(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('threadId') threadId: string,
+	): Promise<InstanceAiThreadTabsResponse> {
+		this.requireInstanceAiEnabled();
+		await this.assertThreadAccess(req.user.id, threadId);
+		return { state: await this.threadTabsService.getState(threadId, req.user.id) };
+	}
+
+	@Put('/threads/:threadId/tabs')
+	@GlobalScope('instanceAi:message')
+	async saveThreadTabs(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('threadId') threadId: string,
+		@Body payload: InstanceAiThreadTabsRequestDto,
+	): Promise<InstanceAiThreadTabsResponse> {
+		this.requireInstanceAiEnabled();
+		await this.assertThreadAccess(req.user.id, threadId);
+		// The DTO strips unknown keys, so the payload is the state to save.
+		const state = { ...payload };
+		await this.threadTabsService.saveState(threadId, req.user.id, state);
+		return { state };
+	}
+
 	/**
 	 * Persist the pending new-agent artifact this thread has open, and bind it to
 	 * the thread in the same request. Idempotent under a concurrent writer on the
-	 * same client-minted id (the chat's build-agent tool), unlike the strict
+	 * same client-minted id (the chat's agent_builder_build_agent tool), unlike the strict
 	 * project-scoped agent create.
 	 */
 	@Post('/threads/:threadId/agent')
@@ -922,7 +1038,12 @@ export class InstanceAiController {
 	) {
 		this.requireInstanceAiEnabled();
 		await this.assertThreadAccess(req.user.id, threadId);
-		return await this.pendingAgentService.persistAndBind(req.user, threadId, payload);
+		return await this.pendingAgentService.persistAndBind(
+			req.user,
+			threadId,
+			payload,
+			req.headers?.['push-ref'],
+		);
 	}
 
 	@Get('/threads/:threadId/messages')
@@ -978,8 +1099,22 @@ export class InstanceAiController {
 		// already covered by these historical messages (prevents duplicates).
 		// Read from the log, so the cursor is valid across restarts and across
 		// mains sharing the database.
+		//
+		// The applied-preferences payload rides along because the messages
+		// endpoint is what opens a thread: without it a reopened thread could
+		// only claim "none applied" until its next turn.
+		//
+		// Cursor first, payload second, on purpose. A turn that commits its
+		// `preferences-applied` fact between the two reads then lands in the
+		// payload AND replays over SSE (a harmless repeat). The other order
+		// would move the cursor past a fact the payload never saw.
 		const nextEventId = await this.eventLog.getNextEventId(threadId);
-		return { ...result, nextEventId };
+		const appliedPreferences = await this.eventLog.getLastAppliedPreferences(threadId);
+		return {
+			...result,
+			nextEventId,
+			...(appliedPreferences ? { appliedPreferences } : {}),
+		};
 	}
 
 	@Get('/threads/:threadId/status')
@@ -1035,7 +1170,11 @@ export class InstanceAiController {
 		@Param('workflowId') workflowId: string,
 		@Body payload: InstanceAiEvalExecutionRequest,
 	) {
-		return await this.evalExecutionService.executeWithLlmMock(workflowId, req.user, payload);
+		// The mocks run on the eval model; the caller adds their usage to the case's cost.
+		const { result, usage } = await meterEvalUsage(
+			async () => await this.evalExecutionService.executeWithLlmMock(workflowId, req.user, payload),
+		);
+		return { ...result, llmUsage: usage };
 	}
 
 	// Runs for minutes; same client timeout handling as the workflow variant.
@@ -1047,7 +1186,11 @@ export class InstanceAiController {
 		@Param('agentId') agentId: string,
 		@Body payload: InstanceAiEvalAgentExecutionRequest,
 	) {
-		return await this.evalAgentExecutionService.executeWithLlmMock(agentId, req.user, payload);
+		const { result, usage } = await meterEvalUsage(
+			async () =>
+				await this.evalAgentExecutionService.executeWithLlmMock(agentId, req.user, payload),
+		);
+		return { ...result, llmUsage: usage };
 	}
 
 	/**
@@ -1072,6 +1215,48 @@ export class InstanceAiController {
 			payload.bypassCredentialTest,
 		);
 		return { ok: true };
+	}
+
+	/**
+	 * Send the thread's connection tests for one credential type to a provider
+	 * stand-in, so the agent's own test checks the captured secret.
+	 */
+	@Post('/eval/thread-credential-test-target')
+	@GlobalScope('instanceAi:eval')
+	async setThreadCredentialTestTarget(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body payload: InstanceAiEvalCredentialTestTargetRequest,
+	) {
+		this.requireInstanceAiEnabled();
+		// Redirecting a credential test sends its secret elsewhere, so only a
+		// throwaway eval instance offers it.
+		if (!this.instanceAiConfig.evalInstance) {
+			throw new NotFoundError('Credential test targets are only available on an eval instance');
+		}
+		await this.assertThreadAccess(req.user.id, payload.threadId);
+		const { threadId, ...target } = payload;
+		this.evalCredentialAllowlists.setTestTarget(threadId, target);
+		return { ok: true };
+	}
+
+	/**
+	 * Observational memory for a thread, for a context eval to assert on.
+	 *
+	 * Returns the observation text, an LLM-written summary of the user's conversation.
+	 * Gated like every other `/eval/` route: `instanceAi:eval` is owner/admin-only,
+	 * and `assertThreadAccess` keeps a caller to threads they can already read in full.
+	 */
+	@Get('/eval/threads/:threadId/memory')
+	@GlobalScope('instanceAi:eval')
+	async getEvalThreadMemory(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('threadId') threadId: string,
+	): Promise<InstanceAiEvalThreadMemoryResponse> {
+		this.requireInstanceAiEnabled();
+		await this.assertThreadAccess(req.user.id, threadId);
+		return await this.instanceAiService.getThreadMemory(req.user.id, threadId);
 	}
 
 	/**
@@ -1156,6 +1341,7 @@ export class InstanceAiController {
 			createdWorkflowIds = await this.evalThreadRestore.restoreWorkflows(
 				workflows,
 				projectId,
+				req.user,
 				idMap,
 				allowedCredentialIds ? new Set(allowedCredentialIds) : undefined,
 				folderIdMap,
@@ -1164,7 +1350,13 @@ export class InstanceAiController {
 			// (no trigger, webhook conflict, unresolved credential) must fail while the
 			// restore is still fully rollback-able. The rollback unpublishes.
 			publishedWorkflowIds = await this.evalThreadRestore.publishSeedWorkflows(workflows, req.user);
-			createdAgentIds = await this.evalThreadRestore.restoreAgents(agents, projectId, idMap);
+			createdAgentIds = await this.evalThreadRestore.restoreAgents(
+				agents,
+				projectId,
+				req.user,
+				idMap,
+				allowedCredentialIds ? new Set(allowedCredentialIds) : undefined,
+			);
 			// Built (and validated) BEFORE the message write: a rejected binding — two
 			// agents whose refs collide — must fail while the restore is still fully
 			// rollback-able, not after the messages have committed.
@@ -1181,7 +1373,7 @@ export class InstanceAiController {
 						)
 					: undefined;
 			// Bind the thread as the conversation that built these agents would have, or
-			// the live turn's first `build-agent` call is rejected as an unknown agentRef.
+			// the live turn's first `agent_builder_build_agent` call is rejected as an unknown agentRef.
 			// BEFORE the messages, and undoable: the catch restores the prior metadata,
 			// so a message failure can't leave a binding pointing at deleted agents, and
 			// a binding failure can't leave messages referencing them.
@@ -1211,7 +1403,7 @@ export class InstanceAiController {
 					// that triggered the rollback.
 				}
 			}
-			await this.evalThreadRestore.deleteAgents(createdAgentIds, projectId);
+			await this.evalThreadRestore.deleteAgents(createdAgentIds, projectId, req.user);
 			// Every seed this restore published, not only the created ones: a re-applied
 			// seed is not in `createdWorkflowIds`, so the delete below never sees it.
 			await this.evalThreadRestore.unpublishWorkflows(publishedWorkflowIds);

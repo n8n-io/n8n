@@ -1,4 +1,4 @@
-import { packageManifestSchema } from '../manifest.schema';
+import { manifestEntrySchema, packageManifestSchema } from '../manifest.schema';
 
 const validManifest = {
 	packageFormatVersion: '1',
@@ -11,6 +11,27 @@ const validManifest = {
 describe('packageManifestSchema', () => {
 	it('accepts a valid manifest', () => {
 		expect(() => packageManifestSchema.parse(validManifest)).not.toThrow();
+	});
+
+	it.each([
+		['projects/team/workflows/entry', true],
+		['folders/parent/folders/child/workflows/entry', true],
+		['agents/support', true],
+		['projects/team/agents/support', true],
+		['/workflows/entry', false],
+		['C:/workflows/entry', false],
+		['workflows\\entry', false],
+		['workflows//entry', false],
+		['./workflows/entry', false],
+		['../workflows/entry', false],
+		['workflows/./entry', false],
+		['workflows/../entry', false],
+		['workflows/entry/', false],
+		['workflows/entry/.', false],
+		['workflows/entry/..', false],
+	])('validates target "%s": %s', (target, valid) => {
+		const entry = { ...validManifest.workflows[0], target };
+		expect(manifestEntrySchema.safeParse(entry).success).toBe(valid);
 	});
 
 	it('rejects a manifest with an unsupported packageFormatVersion', () => {
@@ -31,13 +52,39 @@ describe('packageManifestSchema', () => {
 		expect(() => packageManifestSchema.parse(manifest)).toThrow(/duplicate/i);
 	});
 
+	it('preserves Agent entries', () => {
+		const agents = [{ id: 'agent-1', name: 'Support', target: 'agents/support' }];
+		expect(packageManifestSchema.parse({ ...validManifest, agents }).agents).toEqual(agents);
+	});
+
+	it('rejects duplicate Agent ids across package locations', () => {
+		const manifest = {
+			...validManifest,
+			agents: [
+				{ id: 'agent-1', name: 'Support', target: 'agents/support' },
+				{ id: 'agent-1', name: 'Copy', target: 'projects/team/agents/copy' },
+			],
+		};
+		expect(() => packageManifestSchema.parse(manifest)).toThrow(/Duplicate Agent id/);
+	});
+
 	it('rejects duplicate credential ids in requirements.credentials', () => {
 		const manifest = {
 			...validManifest,
 			requirements: {
 				credentials: [
-					{ id: 'cred-1', name: 'A', type: 'githubApi', usedByWorkflows: ['wf-abc'] },
-					{ id: 'cred-1', name: 'B', type: 'slackApi', usedByWorkflows: ['wf-abc'] },
+					{
+						id: 'cred-1',
+						name: 'A',
+						type: 'githubApi',
+						usedBy: [{ kind: 'workflow', id: 'wf-abc' }],
+					},
+					{
+						id: 'cred-1',
+						name: 'B',
+						type: 'slackApi',
+						usedBy: [{ kind: 'workflow', id: 'wf-abc' }],
+					},
 				],
 			},
 		};
@@ -50,8 +97,8 @@ describe('packageManifestSchema', () => {
 			...validManifest,
 			requirements: {
 				dataTables: [
-					{ id: 'dt-1', name: 'A', usedByWorkflows: ['wf-abc'] },
-					{ id: 'dt-1', name: 'B', usedByWorkflows: ['wf-abc'] },
+					{ id: 'dt-1', name: 'A', usedBy: [{ kind: 'workflow', id: 'wf-abc' }] },
+					{ id: 'dt-1', name: 'B', usedBy: [{ kind: 'workflow', id: 'wf-abc' }] },
 				],
 			},
 		};
@@ -63,7 +110,9 @@ describe('packageManifestSchema', () => {
 		const manifest = {
 			...validManifest,
 			requirements: {
-				workflows: [{ id: 'wf-child', name: 'Child workflow', usedByWorkflows: ['wf-abc'] }],
+				workflows: [
+					{ id: 'wf-child', name: 'Child workflow', usedBy: [{ kind: 'workflow', id: 'wf-abc' }] },
+				],
 			},
 		};
 
@@ -77,8 +126,8 @@ describe('packageManifestSchema', () => {
 			...validManifest,
 			requirements: {
 				workflows: [
-					{ id: 'wf-child', name: 'Child A', usedByWorkflows: ['wf-abc'] },
-					{ id: 'wf-child', name: 'Child B', usedByWorkflows: ['wf-abc'] },
+					{ id: 'wf-child', name: 'Child A', usedBy: [{ kind: 'workflow', id: 'wf-abc' }] },
+					{ id: 'wf-child', name: 'Child B', usedBy: [{ kind: 'workflow', id: 'wf-abc' }] },
 				],
 			},
 		};
@@ -124,8 +173,8 @@ describe('packageManifestSchema', () => {
 			...validManifest,
 			requirements: {
 				variables: [
-					{ name: 'API_URL', usedByWorkflows: ['wf-abc'] },
-					{ name: 'API_URL', usedByWorkflows: ['wf-abc'] },
+					{ name: 'API_URL', usedBy: [{ kind: 'workflow', id: 'wf-abc' }] },
+					{ name: 'API_URL', usedBy: [{ kind: 'workflow', id: 'wf-abc' }] },
 				],
 			},
 		};
@@ -157,6 +206,7 @@ describe('packageManifestSchema', () => {
 	it('accepts manifests with unknown sections for forward compatibility', () => {
 		const manifest = {
 			...validManifest,
+			unknownSection: [{ id: 'future-1' }],
 			credentials: [{ id: 'cred-1', name: 'Slack', target: 'credentials/slack' }],
 			requirements: { credentials: [], variables: [] },
 		};

@@ -23,6 +23,9 @@ import {
 	allowedMethodNames,
 	getSafeJSONMethod,
 	getSafeStringMethod,
+	isBuiltInPrototype,
+	isBuiltInPrototypeFunction,
+	isResolvedFromBuiltInPrototype,
 } from './validators';
 
 /**
@@ -469,6 +472,7 @@ class SDKInterpreter {
 
 			if (thisArg && typeof thisArg === 'object') {
 				func = (thisArg as Record<string, unknown>)[methodName];
+				this.assertNotBuiltInMember(thisArg, methodName, func, node);
 			}
 		} else {
 			throw new UnsupportedNodeError(
@@ -532,7 +536,25 @@ class SDKInterpreter {
 			);
 		}
 
-		return (obj as Record<string | number, unknown>)[propName];
+		const value = (obj as Record<string | number, unknown>)[propName];
+		this.assertNotBuiltInMember(obj, propName, value, node);
+		return value;
+	}
+
+	private assertNotBuiltInMember(
+		target: unknown,
+		propertyName: string | number,
+		value: unknown,
+		node: ESTree.Node,
+	): void {
+		if (isBuiltInPrototypeFunction(value) || isResolvedFromBuiltInPrototype(target, propertyName)) {
+			throw new SecurityError(
+				'built-in-method',
+				node.loc ?? undefined,
+				this.sourceCode,
+				'Built-in JavaScript methods are not available in SDK code.',
+			);
+		}
 	}
 
 	/**
@@ -958,6 +980,15 @@ class SDKInterpreter {
 				`Cannot assign property on ${String(obj)}`,
 				node.loc ?? undefined,
 				this.sourceCode,
+			);
+		}
+
+		if (typeof obj === 'function' || isBuiltInPrototype(obj)) {
+			throw new SecurityError(
+				'property-assignment-target',
+				node.loc ?? undefined,
+				this.sourceCode,
+				'Property assignment is only allowed on objects and arrays created in SDK code.',
 			);
 		}
 

@@ -6,8 +6,7 @@ import { createServer } from 'node:http';
 import request from 'supertest';
 import type TestAgent from 'supertest/lib/agent';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ContentTooLargeError } from '@/errors/response-errors/content-too-large.error';
+import { BadRequestError, ContentTooLargeError } from '@n8n/errors';
 import { rawBodyReader } from '@/middlewares';
 
 import { createMultiFormDataParser } from '../webhook-form-data';

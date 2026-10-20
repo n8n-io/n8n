@@ -16,7 +16,14 @@ export const API_KEY_SCOPE_GROUPS: Array<{ key: string; resources: ApiKeyResourc
 	{ key: 'members', resources: ['user'] },
 	{
 		key: 'instanceOperations',
-		resources: ['securityAudit', 'sourceControl', 'communityPackage', 'insights', 'nodeTypePolicy'],
+		resources: [
+			'securityAudit',
+			'sourceControl',
+			'communityPackage',
+			'insights',
+			'nodeTypePolicy',
+			'credentialTypePolicy',
+		],
 	},
 ];
 

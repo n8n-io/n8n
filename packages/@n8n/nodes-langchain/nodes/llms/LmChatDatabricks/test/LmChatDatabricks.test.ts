@@ -9,6 +9,7 @@ import {
 	createRefreshingAuthFetch,
 	makeN8nLlmFailedAttemptHandler,
 	getProxyAgent,
+	aiClientFetch,
 } from '@n8n/ai-utilities';
 import { DATABRICKS_PARTNER_USER_AGENT } from 'n8n-nodes-base/dist/nodes/Databricks/constants';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
@@ -17,17 +18,18 @@ import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
 
 import { LmChatDatabricks } from '../LmChatDatabricks.node';
-import { getDatabricksTokenProvider } from '../token-provider';
+import { getDatabricksTokenProvider } from '@utils/databricks/token-provider';
 
 vi.mock('@langchain/openai');
 vi.mock('@n8n/ai-utilities');
-vi.mock('../token-provider');
+vi.mock('@utils/databricks/token-provider');
 
 const MockedChatOpenAI = vi.mocked(ChatOpenAI);
 const mockedMakeN8nLlmFailedAttemptHandler = vi.mocked(makeN8nLlmFailedAttemptHandler);
 const mockedGetProxyAgent = vi.mocked(getProxyAgent);
 const mockedGetDatabricksTokenProvider = vi.mocked(getDatabricksTokenProvider);
 const mockedCreateRefreshingAuthFetch = vi.mocked(createRefreshingAuthFetch);
+const mockedAiClientFetch = vi.mocked(aiClientFetch);
 
 const mockTokenProvider = {
 	getToken: vi.fn(async () => 'test-token'),
@@ -132,6 +134,16 @@ describe('LmChatDatabricks', () => {
 			);
 		});
 
+		it('should build the refreshing fetch on top of the bounded aiClientFetch', async () => {
+			const ctx = setupMockContext();
+
+			await node.supplyData.call(ctx, 0);
+
+			expect(mockedCreateRefreshingAuthFetch).toHaveBeenCalledWith(
+				expect.objectContaining({ baseFetch: mockedAiClientFetch }),
+			);
+		});
+
 		it('should wire the refreshing fetch into ChatOpenAI', async () => {
 			const ctx = setupMockContext();
 
@@ -162,9 +174,12 @@ describe('LmChatDatabricks', () => {
 			await node.supplyData.call(ctx, 0);
 
 			const [, databricksHandler] = mockedMakeN8nLlmFailedAttemptHandler.mock.calls[0];
-			expect(() => databricksHandler?.(Object.assign(new Error('429 x'), { status: 429 }))).toThrow(
-				'Databricks rate limit reached for my-chat-endpoint',
-			);
+			const rateLimited = Object.assign(new Error('429 x'), { status: 429 });
+			expect(() => databricksHandler?.(rateLimited)).not.toThrow();
+			expect(rateLimited).toMatchObject({
+				message: 'Databricks rate limit reached for my-chat-endpoint',
+				description: expect.stringMatching(/throttling requests to this model service/),
+			});
 		});
 
 		it('should send the bearer and the partner User-Agent on every request', async () => {

@@ -12,6 +12,9 @@ import {
 } from '../constants';
 import { getConditions, getSearchFilters } from '../GenericFunctions';
 
+const databasePageSimplifyHint =
+	'When true, v1 returns id and properties under their original names, such as $json.Status. In v2, database pages return id, name, url, and property_ keys with snake_case names, such as $json.property_status. V2 replaces non-ASCII characters with separators before converting names. Rich-text values are strings. Status values use the status name when present. People values are arrays of email addresses, with {} for missing emails. Match expressions and verification output fixtures to the node version. When false, read the native properties object, including people entries when you need person names.';
+
 export const databasePageOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
@@ -187,6 +190,7 @@ export const databasePageFields: INodeProperties[] = [
 		},
 		default: true,
 		description: 'Whether to return a simplified version of the response instead of the raw data',
+		builderHint: { propertyHint: databasePageSimplifyHint },
 	},
 	{
 		displayName: 'Properties',
@@ -654,6 +658,7 @@ export const databasePageFields: INodeProperties[] = [
 		},
 		default: true,
 		description: 'Whether to return a simplified version of the response instead of the raw data',
+		builderHint: { propertyHint: databasePageSimplifyHint },
 	},
 	{
 		displayName: 'Properties',
@@ -1126,6 +1131,7 @@ export const databasePageFields: INodeProperties[] = [
 		},
 		default: true,
 		description: 'Whether to return a simplified version of the response instead of the raw data',
+		builderHint: { propertyHint: databasePageSimplifyHint },
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                databasePage:getAll                         */
@@ -1238,6 +1244,7 @@ export const databasePageFields: INodeProperties[] = [
 		},
 		default: true,
 		description: 'Whether to return a simplified version of the response instead of the raw data',
+		builderHint: { propertyHint: databasePageSimplifyHint },
 	},
 	...getSearchFilters('databasePage'),
 	{

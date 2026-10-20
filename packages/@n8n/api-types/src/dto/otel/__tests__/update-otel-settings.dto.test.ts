@@ -40,6 +40,26 @@ describe('UpdateOtelSettingsDto', () => {
 		expect(result.data.exporterProtocol).toBe('http/protobuf');
 	});
 
+	it('defaults the start span flags to false when omitted (body predates the fields)', () => {
+		const result = UpdateOtelSettingsDto.safeParse(validSettings);
+
+		assert(result.success, 'Expected a body without the start span flags to stay valid');
+		expect(result.data.emitWorkflowStartSpan).toBe(false);
+		expect(result.data.emitNodeStartSpan).toBe(false);
+	});
+
+	it('accepts the start span flags', () => {
+		const result = UpdateOtelSettingsDto.safeParse({
+			...validSettings,
+			emitWorkflowStartSpan: true,
+			emitNodeStartSpan: false,
+		});
+
+		assert(result.success, 'Expected the start span flags to be valid');
+		expect(result.data.emitWorkflowStartSpan).toBe(true);
+		expect(result.data.emitNodeStartSpan).toBe(false);
+	});
+
 	it('accepts a full body', () => {
 		const result = UpdateOtelSettingsDto.safeParse(validSettings);
 		expect(result.success).toBe(true);
@@ -94,6 +114,16 @@ describe('UpdateOtelSettingsDto', () => {
 
 		assert(result.success, `Expected ${exporterEndpoint} to be a valid exporter endpoint`);
 		expect(result.data.exporterEndpoint).toBe(exporterEndpoint);
+	});
+
+	it('trims whitespace around the exporter endpoint', () => {
+		const result = UpdateOtelSettingsDto.safeParse({
+			...validSettings,
+			exporterEndpoint: '  http://localhost:4318  ',
+		});
+
+		assert(result.success);
+		expect(result.data.exporterEndpoint).toBe('http://localhost:4318');
 	});
 
 	it.each(['localhost:4318', 'grpc://host:4317', 'ftp://x'])(
@@ -196,6 +226,16 @@ describe('TestOtelTraceDto', () => {
 
 		assert(result.success, 'Expected an https exporter endpoint to be valid');
 		expect(result.data.exporterEndpoint).toBe('https://collector.example.com:4317');
+	});
+
+	it('trims whitespace around the exporter endpoint', () => {
+		const result = TestOtelTraceDto.safeParse({
+			...validConnection,
+			exporterEndpoint: '  http://localhost:4318  ',
+		});
+
+		assert(result.success);
+		expect(result.data.exporterEndpoint).toBe('http://localhost:4318');
 	});
 
 	it('rejects a non-http exporter endpoint scheme', () => {

@@ -2,7 +2,7 @@
 import { truncate } from '@n8n/utils/string/truncate';
 import { VIEWS } from '@/app/constants';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
-import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useAgentProjectBreadcrumb } from '@/features/agents/composables/useAgentProjectBreadcrumb';
 import { useAgentSessionsStore } from '@/features/agents/agentSessions.store';
 import {
 	AGENT_BUILDER_VIEW,
@@ -25,6 +25,7 @@ import { useAgentExecutionUpdates } from '@/features/agents/composables/useAgent
 import { getAgent } from '@/features/agents/composables/useAgentApi';
 import { useAgentConfig } from '@/features/agents/composables/useAgentConfig';
 import { useAgentPermissions } from '@/features/agents/composables/useAgentPermissions';
+import { useBackOrFallback } from '@/features/agents/composables/useBackOrFallback';
 import type { AgentResource } from '@/features/agents/types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useI18n } from '@n8n/i18n';
@@ -38,7 +39,6 @@ const threadTitleOf = useThreadTitle();
 const route = useRoute();
 const router = useRouter();
 const sessionsStore = useAgentSessionsStore();
-const projectsStore = useProjectsStore();
 const {
 	isEnabled: isLangSmithExportEnabled,
 	isExporting,
@@ -65,11 +65,13 @@ const {
 	effectiveSessionId,
 	currentSessionHasMessages,
 	currentSessionIsEphemeral,
+	currentSessionIsLocallyMinted,
 	currentSessionTitle,
 	sessionMenu,
 	isDeletingSession,
 	onSessionPick,
 	onNewChat,
+	markSessionCreated,
 	deleteSession,
 } = useAgentBuilderSession({ routeBacked: computed(() => false), projectId, agentId });
 
@@ -81,7 +83,7 @@ const {
  */
 const isPreviewSessionStale = computed(
 	() =>
-		currentSessionIsEphemeral.value &&
+		currentSessionIsLocallyMinted.value &&
 		effectiveSessionId.value !== undefined &&
 		effectiveSessionId.value !== threadId.value,
 );
@@ -100,6 +102,8 @@ const triggerIcon = computed((): IconName => {
 			return 'slack';
 		case 'instance-ai':
 			return 'sparkles';
+		case 'n8n_chat_production':
+			return 'message-square';
 		default:
 			return 'bolt-filled';
 	}
@@ -115,6 +119,9 @@ const triggerLabel = computed((): string => {
 	if (source === 'instance-ai') {
 		return i18n.baseText('agentSessions.origin.instanceAi');
 	}
+	if (source === 'n8n_chat_production') {
+		return i18n.baseText('agentSessions.origin.n8nChat');
+	}
 	return source.charAt(0).toUpperCase() + source.slice(1);
 });
 
@@ -123,15 +130,7 @@ const sessionTitle = computed(() => {
 	return truncate(threadTitleOf(thread.value), 64);
 });
 
-const projectName = computed<string | null>(() => {
-	if (projectsStore.personalProject?.id === projectId.value) {
-		return i18n.baseText('projects.menu.personal');
-	}
-	const current = projectsStore.currentProject;
-	if (current && current.id === projectId.value) return current.name ?? null;
-	const match = projectsStore.myProjects.find((p) => p.id === projectId.value);
-	return match?.name ?? null;
-});
+const { projectName, projectIcon } = useAgentProjectBreadcrumb(projectId);
 
 const projectRoute = computed<RouteLocationRaw>(() => ({
 	name: VIEWS.PROJECTS_WORKFLOWS,
@@ -194,6 +193,12 @@ const totalTokens = computed(() => {
 });
 
 const hasLoadedThread = computed(() => thread.value?.id === threadId.value);
+const canPreviewSession = computed(
+	() =>
+		currentSessionIsLocallyMinted.value ||
+		(hasLoadedThread.value && thread.value?.canContinueInPreview === true),
+);
+const previewVisible = computed(() => canPreviewSession.value && isPreviewOpen.value);
 const totalCost = computed(() => thread.value?.totalCost ?? 0);
 const durationLabel = computed(() => formatDuration(thread.value?.totalDuration ?? 0));
 
@@ -217,6 +222,18 @@ const dockHasSession = computed(
 function onPanelLoaded(detail: ThreadDetail | null) {
 	thread.value = detail?.thread ?? null;
 	executions.value = detail?.executions ?? [];
+	upsertLoadedPreviewThread(projectId.value, agentId.value);
+}
+
+function upsertLoadedPreviewThread(targetProjectId: string, targetAgentId: string) {
+	const loadedThread = thread.value;
+	if (
+		loadedThread?.canContinueInPreview &&
+		loadedThread.projectId === targetProjectId &&
+		loadedThread.agentId === targetAgentId
+	) {
+		sessionsStore.upsertThread(loadedThread);
+	}
 }
 
 let previewLoadRequestId = 0;
@@ -236,7 +253,10 @@ watch(
 					filters: defaultAgentSessionFilters(),
 				}),
 			]);
-			if (requestId === previewLoadRequestId) agent.value = loadedAgent;
+			if (requestId === previewLoadRequestId) {
+				agent.value = loadedAgent;
+				upsertLoadedPreviewThread(nextProjectId, nextAgentId);
+			}
 		} finally {
 			if (requestId === previewLoadRequestId) previewInitialized.value = true;
 		}
@@ -290,22 +310,9 @@ function formatDate(fullDate: string): string {
 	return `${date} ${time}`;
 }
 
-function closeTimeline() {
-	/**
-	 * Get the last visited route from Vue router so we return to the correct starting point (e.g Preview)
-	 * If no state is available, it's most likey because the link was visited directly.
-	 * Here we fallback to default Agents view.
-	 */
-	const previousRoute = router.options.history.state.back;
-	const resolvedPreviousRoute =
-		typeof previousRoute === 'string' ? router.resolve(previousRoute) : null;
-
-	if (resolvedPreviousRoute?.matched.length) {
-		router.back();
-		return;
-	}
-	void router.push(agentExecutionsRoute.value);
-}
+// Returns to the correct starting point (e.g. Preview) when there is one;
+// otherwise falls back to the agent's executions tab, e.g. for a direct visit.
+const closeTimeline = useBackOrFallback(agentExecutionsRoute);
 
 function onBreadcrumbSelect(item: PathItem) {
 	if (item.id === projectId.value) {
@@ -331,6 +338,7 @@ async function onDeletePreviewSession(sessionId: string) {
 }
 
 function togglePreview() {
+	if (!canPreviewSession.value) return;
 	isPreviewOpen.value = !isPreviewOpen.value;
 }
 
@@ -344,6 +352,7 @@ function viewPreviewTrace() {
 	<div :class="$style.view">
 		<AgentSessionTimelineHeader
 			:breadcrumb-items="breadcrumbItems"
+			:project-icon="projectIcon"
 			:session-title="sessionTitle"
 			:session-options="sessionOptions"
 			:show-metrics="Boolean(thread)"
@@ -355,13 +364,16 @@ function viewPreviewTrace() {
 			:duration-label="durationLabel"
 			:show-langsmith-export="isLangSmithExportEnabled && hasLoadedThread"
 			:langsmith-export-loading="isExporting"
+			:show-preview="canPreviewSession"
+			:is-preview-open="previewVisible"
 			@breadcrumb-select="onBreadcrumbSelect"
 			@session-select="onSessionSelect"
 			@langsmith-export="sendSession({ projectId, agentId, threadId })"
+			@toggle-preview="togglePreview"
 			@close="closeTimeline"
 		/>
 
-		<div :class="[$style.content, { [$style.previewOpen]: isPreviewOpen }]">
+		<div :class="[$style.content, { [$style.previewOpen]: previewVisible }]">
 			<AgentSessionTimelinePanel
 				v-if="!isPreviewSessionStale"
 				:project-id="projectId"
@@ -378,7 +390,8 @@ function viewPreviewTrace() {
 			</div>
 
 			<AgentPreviewDock
-				:is-open="isPreviewOpen"
+				v-if="canPreviewSession"
+				:is-open="previewVisible"
 				:session-title="dockSessionTitle"
 				:session-options="sessionMenu"
 				:has-session="dockHasSession"
@@ -389,12 +402,14 @@ function viewPreviewTrace() {
 				:local-config="localConfig"
 				:connected-triggers="[]"
 				:effective-session-id="effectiveSessionId"
+				:new-session="currentSessionIsEphemeral"
 				:can-delete-session="canDeleteSession"
 				:is-deleting-session="isDeletingSession"
 				@view-trace="viewPreviewTrace"
 				@new-session="onNewChat"
 				@delete-session="onDeletePreviewSession"
 				@session-select="onSessionPick"
+				@session-created="markSessionCreated"
 				@close="togglePreview"
 			/>
 		</div>

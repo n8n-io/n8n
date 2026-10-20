@@ -133,6 +133,16 @@ export type ContentToolCall = ContentMetadata & {
 	input: JSONValue;
 
 	providerExecuted?: boolean;
+
+	/** Provider options for the result. Its item ID can differ from the call ID. */
+	resultProviderOptions?: ProviderOptions;
+
+	/**
+	 * Skills this tool activated programmatically (via `ctx.loadSkill`), so the
+	 * skill body can re-anchor to this result on a later turn instead of falling
+	 * back to the system prompt. Metadata only — never sent to the model.
+	 */
+	activatedSkillIds?: string[];
 } & (
 		| { state: 'pending'; suspension?: ToolCallSuspensionInfo }
 		| { state: 'resolved'; output: JSONValue; canceled?: boolean }

@@ -1,5 +1,8 @@
 import {
 	AgentJsonConfigSchema,
+	getAgentModelProviderCredentialTypes,
+	SUB_AGENT_TASK_DIFFICULTIES,
+	type AgentJsonConfig,
 	type InstanceAiEvalSeedAgent,
 	type InstanceAiEvalSeedDataTable,
 	type InstanceAiEvalSeedFolder,
@@ -16,6 +19,7 @@ import {
 } from '@n8n/db';
 import type { PolicedWorkflow, PolicyCleared } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
+import { getProviderPrefix } from '@n8n/ai-utilities/agent-config';
 import { isRecord } from '@n8n/utils/is-record';
 import {
 	jsonParse,
@@ -26,8 +30,8 @@ import {
 } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { AgentsService } from '@/modules/agents/agents.service';
+import { BadRequestError } from '@n8n/errors';
+import { AgentDraftService } from '@/modules/agents/agent-draft.service';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { hasViolations, PolicyViolationError } from '@/policy/policy-violation.error';
@@ -275,16 +279,19 @@ export class EvalThreadRestoreService {
 		}
 	}
 
-	/** Recreate each seed agent, config and skill bodies in one insert — an agent is
-	 *  a single row, so there are no skill files to write. Rolls back on failure.
+	/** Recreate each seed agent from its config. A seed skill body becomes a new
+	 *  skill of that agent only, and the agent ref points to the new id. Deleting
+	 *  the agent deletes the skill, so a rollback on failure leaves no skills behind.
 	 *  Names are not uniquified as seed data tables' are; see `remapSeedArtifactIds`. */
 	async restoreAgents(
 		agents: InstanceAiEvalSeedAgent[],
 		projectId: string,
+		user: User,
 		dataTableIdMap: Map<string, string> = new Map(),
+		allowedCredentialIds?: Set<string>,
 	): Promise<string[]> {
 		if (agents.length === 0) return [];
-		const agentsService = this.agentsService();
+		const agentsService = this.agentDrafts();
 		const created: string[] = [];
 		try {
 			for (const agent of agents) {
@@ -298,20 +305,59 @@ export class EvalThreadRestoreService {
 						`Seed agent ${agent.id} config became invalid after blanking its credentials`,
 					);
 				}
+				const schema = await this.bindModelCredentials(
+					config.data,
+					projectId,
+					allowedCredentialIds,
+				);
 				// `create` refuses a colliding id rather than overwriting, so a seed can
 				// never clobber an agent that already exists.
-				await agentsService.create(projectId, config.data.name, {
+				await agentsService.createDraft(user, projectId, schema.name, {
 					id: agent.id,
-					schema: config.data,
+					schema,
 					...(agent.skills ? { skills: agent.skills } : {}),
 				});
 				created.push(agent.id);
 			}
 		} catch (error) {
-			await this.deleteAgents(created, projectId);
+			await this.deleteAgents(created, projectId, user);
 			throw error;
 		}
 		return created;
+	}
+
+	/** Point each model at the thread project's one credential of its provider's
+	 *  type (among those the allowlist admits), as `resolveNodeCredentials` does
+	 *  for a node. Zero or several candidates keep the blank: the case declared no
+	 *  LLM credential, or any pick would be a guess. */
+	private async bindModelCredentials(
+		config: AgentJsonConfig,
+		projectId: string,
+		allowedCredentialIds?: Set<string>,
+	): Promise<AgentJsonConfig> {
+		const resolve = async (model: string) => {
+			const types = getAgentModelProviderCredentialTypes(getProviderPrefix(model));
+			if (types.length === 0) return undefined;
+			const candidates = (
+				await this.credentialsRepo.findByTypesInProject([...types], projectId)
+			).filter((c) => allowedCredentialIds?.has(c.id) ?? true);
+			return candidates.length === 1 ? candidates[0].id : undefined;
+		};
+
+		const bound = { ...config };
+		const credential = config.model ? await resolve(config.model) : undefined;
+		if (credential) bound.credential = credential;
+		const byDifficulty = config.subAgents?.modelsByDifficulty;
+		if (byDifficulty) {
+			const rebound = { ...byDifficulty };
+			for (const level of SUB_AGENT_TASK_DIFFICULTIES) {
+				const entry = rebound[level];
+				const id = entry && (await resolve(entry.model));
+				if (entry && id) rebound[level] = { ...entry, credential: id };
+			}
+			bound.subAgents = { ...config.subAgents, modelsByDifficulty: rebound };
+		}
+		return bound;
 	}
 
 	/** Rewrite the seed's authored data-table ids to the ones the restore just
@@ -332,10 +378,10 @@ export class EvalThreadRestoreService {
 
 	/** Best-effort delete (rollback of a failed restore). Resolved per id so a
 	 *  rollback can never throw over the failure that triggered it. */
-	async deleteAgents(agentIds: string[], projectId: string): Promise<void> {
+	async deleteAgents(agentIds: string[], projectId: string, user: User): Promise<void> {
 		for (const id of agentIds) {
 			try {
-				await this.agentsService().delete(id, projectId);
+				await this.agentDrafts().deleteDraft(user, projectId, id);
 			} catch {
 				// best-effort
 			}
@@ -344,11 +390,11 @@ export class EvalThreadRestoreService {
 
 	/** Lazy: constructor-injecting this would break every seeded restore — workflows
 	 *  and data tables included — on an instance where the agents module is off. */
-	private agentsService(): AgentsService {
+	private agentDrafts(): AgentDraftService {
 		if (!Container.get(ModuleRegistry).isActive('agents')) {
 			throw new BadRequestError('Seeding an agent requires the agents module to be enabled');
 		}
-		return Container.get(AgentsService);
+		return Container.get(AgentDraftService);
 	}
 
 	/** Recreate the seed workflows; returns the ids actually created (newly), and
@@ -356,6 +402,7 @@ export class EvalThreadRestoreService {
 	async restoreWorkflows(
 		workflows: InstanceAiEvalSeedWorkflow[],
 		projectId: string,
+		user: User,
 		dataTableIdMap: Map<string, string> = new Map(),
 		allowedCredentialIds?: Set<string>,
 		folderIdMap: Map<string, string> = new Map(),
@@ -366,6 +413,7 @@ export class EvalThreadRestoreService {
 				const isNew = await this.createWorkflowPinnedToId(
 					workflow,
 					projectId,
+					user,
 					dataTableIdMap,
 					allowedCredentialIds,
 					folderIdMap,
@@ -469,6 +517,7 @@ export class EvalThreadRestoreService {
 	private async createWorkflowPinnedToId(
 		workflow: InstanceAiEvalSeedWorkflow,
 		projectId: string,
+		user: User,
 		dataTableIdMap: Map<string, string>,
 		allowedCredentialIds: Set<string> | undefined,
 		folderIdMap: Map<string, string>,
@@ -538,10 +587,11 @@ export class EvalThreadRestoreService {
 			versionId: randomUUID(),
 			parentFolder: parentFolderId === null ? null : { id: parentFolderId },
 		});
-		const cleared = await this.enforceSeedWorkflowSave(workflow, entity, stored, projectId);
+		const cleared = await this.enforceSeedWorkflowSave(workflow, entity, stored, projectId, user);
 
 		await this.workflowRepo.runInTransaction({ policyCleared: cleared }, async (em, ctx) => {
 			if (stored) {
+				// oxlint-disable-next-line typescript/no-deprecated
 				const { name, nodes, connections, active, versionId, parentFolder } = entity;
 				await this.workflowRepo.updateContent(
 					workflow.id,
@@ -614,13 +664,17 @@ export class EvalThreadRestoreService {
 		entity: WorkflowEntity,
 		stored: PolicedWorkflow | null,
 		projectId: string,
+		user: User,
 	): Promise<PolicyCleared<'workflowSave'>> {
 		try {
-			return await this.policyEnforcementService.enforceWorkflowSave({
-				workflow: { id: stored?.id ?? null, name: entity.name, nodes: entity.nodes },
-				storedWorkflow: stored,
-				projectId,
-			});
+			return await this.policyEnforcementService.enforceWorkflowSave(
+				{
+					workflow: { id: stored?.id ?? null, name: entity.name, nodes: entity.nodes },
+					storedWorkflow: stored,
+					projectId,
+				},
+				{ kind: 'user', user },
+			);
 		} catch (error) {
 			if (error instanceof PolicyViolationError && hasViolations(error.violations)) {
 				throw new PolicyViolationError(

@@ -10,6 +10,7 @@ export const otlpProtocolSchema = z.enum(OTLP_PROTOCOLS);
 
 export const exporterEndpointSchema = z
 	.string()
+	.trim()
 	.url()
 	.regex(/^https?:\/\//i, 'Endpoint must start with http:// or https://. The scheme selects TLS.');
 
@@ -24,6 +25,9 @@ export class UpdateOtelSettingsDto extends Z.class({
 	tracesSampleRate: z.number().min(0).max(1),
 	startupConnectivityTimeoutMs: z.number().int().nonnegative(),
 	includeNodeSpans: z.boolean(),
+	// Defaulted so a body from before these fields existed still parses.
+	emitWorkflowStartSpan: z.boolean().default(false),
+	emitNodeStartSpan: z.boolean().default(false),
 	injectOutbound: z.boolean(),
 	productionExecutionsOnly: z.boolean(),
 }) {}

@@ -20,14 +20,12 @@ export interface AgentBuilderTelemetryDeps {
 	agent: Ref<AgentResource | null>;
 	/** Local (unsaved) config — the fingerprint source for emitted events. */
 	localConfig: Ref<AgentJsonConfig | null>;
-	connectedTriggers: Ref<string[]>;
 }
 
 interface EditSnapshot {
 	agentId: string;
 	status: AgentTelemetryStatus;
 	config: AgentJsonConfig | null;
-	connectedTriggers: string[];
 }
 
 /**
@@ -46,9 +44,15 @@ function integrationStatusEntriesFromConfig(
 
 	for (const integration of config?.integrations ?? []) {
 		if (!knownTypes.has(integration.type)) continue;
+		// Settings and approval ride along so a config seed does not blank what the
+		// status endpoint reported. The edit modal saves from that cache.
 		entries.push({
 			type: integration.type,
 			credentialId: integration.credentialId,
+			...('settings' in integration ? { settings: integration.settings } : {}),
+			...('approval' in integration && integration.approval
+				? { approval: integration.approval }
+				: {}),
 			status: isPublished ? 'starting' : 'configured',
 		});
 	}
@@ -64,7 +68,6 @@ export function useAgentBuilderTelemetry(deps: AgentBuilderTelemetryDeps) {
 			agentId: deps.agentId.value,
 			status: deriveAgentStatus(deps.agent.value),
 			config: deps.localConfig.value,
-			connectedTriggers: deps.connectedTriggers.value,
 		};
 	}
 

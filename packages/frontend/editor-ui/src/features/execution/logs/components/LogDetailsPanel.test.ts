@@ -1,5 +1,6 @@
 import { fireEvent, waitFor, within } from '@testing-library/vue';
 import { renderComponent } from '@/__tests__/render';
+import { moveResize, startResize } from '@/__tests__/resize';
 import LogDetailsPanel from './LogDetailsPanel.vue';
 import { createRouter, createWebHistory } from 'vue-router';
 import { createTestingPinia, type TestingPinia } from '@pinia/testing';
@@ -133,6 +134,54 @@ describe('LogDetailsPanel', () => {
 		expect(await outputPanel.findByText('Hello!')).toBeInTheDocument();
 	});
 
+	describe('responding model', () => {
+		function createModelRunData(generationInfo?: Record<string, unknown>) {
+			return createTestTaskData({
+				executionStatus: 'success',
+				executionTime: 10,
+				data: {
+					[NodeConnectionTypes.AiLanguageModel]: [
+						[{ json: { response: { generations: [[{ text: 'Hello', generationInfo }]] } } }],
+					],
+				},
+			});
+		}
+
+		function renderHeader(runData: ReturnType<typeof createTestTaskData>) {
+			const rendered = render({
+				isOpen: true,
+				logEntry: createLogEntry({ node: aiNode, runIndex: 0, runData }),
+				panels: LOG_DETAILS_PANEL_STATE.BOTH,
+				collapsingInputTableColumnName: null,
+				collapsingOutputTableColumnName: null,
+				isHeaderClickable: true,
+			});
+
+			return within(rendered.getByTestId('log-details-header'));
+		}
+
+		it('should show the model that answered in the header', () => {
+			const header = renderHeader(
+				createModelRunData({ finish_reason: 'stop', model_name: 'gpt-4.1-mini-2025-04-14' }),
+			);
+
+			expect(header.getByText('Answered by gpt-4.1-mini-2025-04-14')).toBeInTheDocument();
+		});
+
+		it('should not show a model when the run data has no model name', () => {
+			const header = renderHeader(createModelRunData({ finish_reason: 'stop' }));
+
+			expect(header.getByText('Success in 10ms')).toBeInTheDocument();
+			expect(header.queryByText(/Answered by/)).not.toBeInTheDocument();
+		});
+
+		it('should not show a model for a node that is not a chat model', () => {
+			const header = renderHeader(aiNodeRunData);
+
+			expect(header.queryByText(/Answered by/)).not.toBeInTheDocument();
+		});
+	});
+
 	it('should show a message in the output panel and data in the input panel when node is running', async () => {
 		const rendered = render({
 			isOpen: true,
@@ -164,10 +213,9 @@ describe('LogDetailsPanel', () => {
 			isHeaderClickable: true,
 		});
 
-		await fireEvent.mouseDown(rendered.getByTestId('resize-handle'));
-
-		window.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX: 0, clientY: 0 }));
-		window.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, clientX: 0, clientY: 0 }));
+		await startResize(rendered.getByTestId('resize-handle'), { width: 500 }, { clientX: 500 });
+		await moveResize({ clientX: 0 });
+		await fireEvent.mouseUp(window);
 
 		expect(rendered.emitted()).toEqual({ toggleInputOpen: [[false]] });
 	});
@@ -182,10 +230,9 @@ describe('LogDetailsPanel', () => {
 			isHeaderClickable: true,
 		});
 
-		await fireEvent.mouseDown(rendered.getByTestId('resize-handle'));
-
-		window.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX: 1000, clientY: 0 }));
-		window.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, clientX: 1000, clientY: 0 }));
+		await startResize(rendered.getByTestId('resize-handle'), { width: 500 }, { clientX: 500 });
+		await moveResize({ clientX: 1000 });
+		await fireEvent.mouseUp(window);
 
 		expect(rendered.emitted()).toEqual({ toggleOutputOpen: [[false]] });
 	});

@@ -55,7 +55,7 @@ const builderProjectId = computed(() =>
 const { canCreate } = useAgentPermissions(builderProjectId);
 
 const showBuildAgentCard = computed(() => {
-	return settingsStore.isModuleActive('agents') && canCreate.value;
+	return settingsStore.isAgentsEnabled && canCreate.value;
 });
 
 const handleReadyToRunClick = async () => {

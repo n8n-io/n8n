@@ -33,7 +33,7 @@ function createNodeReplacementRule({
 				title: `${removedNodeName} node removed`,
 				description: `The ${removedNodeName} node is no longer supported. ${recommendations.map(({ description }) => description).join(' ')}`,
 				category: BreakingChangeCategory.workflow,
-				severity: 'medium',
+				impact: 'executionsFail',
 			};
 		}
 

@@ -2,12 +2,18 @@
 // Event parsing: extract outcome and metrics from captured SSE events
 // ---------------------------------------------------------------------------
 
+import {
+	AGENT_BUILDER_TOOL_NAMES,
+	REMOVED_BUILDER_TOOL_NAMES,
+	resolveBuilderToolName,
+} from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 
 import {
 	DATA_TABLES_TOOL_ID,
 	DOMAIN_TOOL_IDS,
 	EVAL_CONFIG_TOOL_ID,
+	ORCHESTRATION_TOOL_IDS,
 } from '../../src/tools/tool-ids';
 import type {
 	AgentActivity,
@@ -26,7 +32,12 @@ import { getNestedRecord as getRecord, getString } from '../utils/safe-extract';
 // Tool names whose results contain resource IDs we need to track
 // ---------------------------------------------------------------------------
 
-const WORKFLOW_TOOLS = new Set(['build-workflow', 'submit-workflow', 'patch-workflow']);
+/** Tools that save a workflow; their results carry its id. */
+export const WORKFLOW_TOOLS = new Set<string>([
+	DOMAIN_TOOL_IDS.BUILD_WORKFLOW,
+	REMOVED_BUILDER_TOOL_NAMES.SUBMIT_WORKFLOW,
+	REMOVED_BUILDER_TOOL_NAMES.PATCH_WORKFLOW,
+]);
 
 // Retired standalone tool names, kept so captures from older backends still parse.
 const EXECUTION_TOOL_LEGACY = 'run-workflow';
@@ -68,7 +79,8 @@ export function extractOutcomeFromEvents(events: CapturedEvent[]): EventOutcome 
 
 			case 'tool-call': {
 				const payload = getRecord(data, 'payload') ?? data;
-				const toolName = getString(payload, 'toolName') ?? '';
+				// Captures from older backends carry former builder tool names.
+				const toolName = resolveBuilderToolName(getString(payload, 'toolName') ?? '');
 				const toolCallId = getString(payload, 'toolCallId') ?? getString(data, 'toolCallId') ?? '';
 				const argsRaw = getRecord(payload, 'args');
 
@@ -87,7 +99,9 @@ export function extractOutcomeFromEvents(events: CapturedEvent[]): EventOutcome 
 				const startEntry = toolCallStarts.get(toolCallId);
 				// tool-result events may not include toolName; fall back to the
 				// name captured from the corresponding tool-call event.
-				const toolName = getString(payload, 'toolName') ?? startEntry?.toolName ?? '';
+				const toolName = resolveBuilderToolName(
+					getString(payload, 'toolName') ?? startEntry?.toolName ?? '',
+				);
 				const result = payload.result ?? data.result;
 
 				const durationMs = startEntry ? event.timestamp - startEntry.timestamp : 0;
@@ -106,6 +120,7 @@ export function extractOutcomeFromEvents(events: CapturedEvent[]): EventOutcome 
 				extractResourceIds(toolName, args, result, workflowIds, executionIds, dataTableIds);
 				// Config-eval rides the same tool-result signal (eval-config create).
 				captureConfigEvalRef(toolName, args, result, artifactRefsByKey);
+				captureBuilderToolAgentRef(toolName, result, artifactRefsByKey);
 				break;
 			}
 
@@ -115,7 +130,9 @@ export function extractOutcomeFromEvents(events: CapturedEvent[]): EventOutcome 
 				const errorMsg = getString(payload, 'error') ?? getString(data, 'error') ?? 'Unknown error';
 
 				const startEntry = toolCallStarts.get(toolCallId);
-				const toolName = getString(payload, 'toolName') ?? startEntry?.toolName ?? '';
+				const toolName = resolveBuilderToolName(
+					getString(payload, 'toolName') ?? startEntry?.toolName ?? '',
+				);
 				const durationMs = startEntry ? event.timestamp - startEntry.timestamp : 0;
 				const args = startEntry?.args ?? {};
 
@@ -156,7 +173,7 @@ export function extractOutcomeFromEvents(events: CapturedEvent[]): EventOutcome 
 					activity.reasoning = `Tools: ${tools.join(', ')}`;
 				}
 
-				// The build-agent sub-agent announces the created agent via targetResource.
+				// Threads from before the builder ran inline announce the target via targetResource.
 				captureAgentRef(getRecord(payload, 'targetResource'), artifactRefsByKey);
 				break;
 			}
@@ -241,9 +258,28 @@ function captureConfigEvalRef(
 }
 
 /**
- * Capture an agent ref from an `agent-spawned` event's `targetResource`. The build-agent
- * sub-agent announces itself with `targetResource: { type: 'agent', id }` — the only agent
- * signal (its tool result carries no id). Deduped by type+id.
+ * Capture an agent ref from the builder tools that the orchestrator runs: a successful
+ * `agent_builder_select_agent` result, or any result stamped `configMutated: true`.
+ * Both carry the target `agentId`. Deduped by type+id.
+ */
+function captureBuilderToolAgentRef(
+	toolName: string,
+	result: unknown,
+	out: Map<string, ArtifactRef>,
+): void {
+	const record = toResultRecord(result);
+	const agentId = record ? getString(record, 'agentId') : undefined;
+	if (!record || !agentId) return;
+	const selected = toolName === AGENT_BUILDER_TOOL_NAMES.SELECT_AGENT && record.ok === true;
+	if (selected || record.configMutated === true) {
+		out.set(`agent:${agentId}`, { type: 'agent', id: agentId });
+	}
+}
+
+/**
+ * Capture an agent ref from an `agent-spawned` event's `targetResource`. Threads from
+ * before the builder ran inline announce the target with
+ * `targetResource: { type: 'agent', id }`. Deduped by type+id.
  */
 function captureAgentRef(
 	targetResource: Record<string, unknown> | undefined,
@@ -358,7 +394,7 @@ export function buildMetrics(events: CapturedEvent[], startTime: number): Instan
 // Per-turn conversation metrics
 // ---------------------------------------------------------------------------
 
-const PLAN_RECOVERY_TOOL_NAMES = new Set(['create-tasks']);
+const PLAN_RECOVERY_TOOL_NAMES = new Set<string>([ORCHESTRATION_TOOL_IDS.CREATE_TASKS]);
 
 export function buildConversationMetrics(events: CapturedEvent[]): ConversationMetrics {
 	const turns = splitEventsIntoTurns(events);
@@ -390,7 +426,7 @@ export function buildConversationMetrics(events: CapturedEvent[]): ConversationM
 				case 'tool-call': {
 					counter.toolCallCount++;
 					const toolName = getString(payload, 'toolName');
-					if (toolName && PLAN_RECOVERY_TOOL_NAMES.has(toolName)) {
+					if (toolName && PLAN_RECOVERY_TOOL_NAMES.has(resolveBuilderToolName(toolName))) {
 						planRecoveryPositions.push(j);
 					}
 					break;

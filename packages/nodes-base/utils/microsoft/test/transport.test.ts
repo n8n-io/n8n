@@ -43,6 +43,33 @@ describe('Microsoft Graph transport kernel', () => {
 		vi.resetAllMocks();
 	});
 
+	// The REAL Service Principal error shape: `requestWithAuthentication` wraps the
+	// underlying request error in a `NodeApiError`. The underlying (legacy-request)
+	// error carries `statusCode` + an `error` body + a `message` of the form
+	// `"<status> - <json>"`, and NodeApiError surfaces the status on `httpCode`
+	// (string) and copies that raw message into `messages`. A correlation id +
+	// reflected input ride the raw body — none of it may reach the surfaced
+	// message at ANY status.
+	const rawLeak =
+		'request-id: 11111111-2222-3333-4444-555555555555; client-request-id: aaaa; token=eyJ0eParrotedSecret; resource /teams/19:injected@thread.tacv2';
+	const wrappedGraphError = (statusCode: number, code: string, message = rawLeak) => {
+		const underlying = Object.assign(
+			new Error(`${statusCode} - ${JSON.stringify({ error: { code, message } })}`),
+			{
+				statusCode,
+				status: statusCode,
+				error: { error: { code, message } },
+				response: { status: statusCode, statusText: code, headers: {} },
+			},
+		);
+		return new NodeApiError(mockNode, underlying as unknown as JsonObject);
+	};
+	const delegatedError = (statusCode: number, code: string, message: string) =>
+		Object.assign(new Error(`${statusCode} - {"error":{"code":"${code}"}}`), {
+			statusCode,
+			error: { error: { code, message } },
+		});
+
 	describe('microsoftApiRequest', () => {
 		describe('graphApiBaseUrl from credentials', () => {
 			it.each([
@@ -259,28 +286,6 @@ describe('Microsoft Graph transport kernel', () => {
 			});
 
 			describe('error suppression (no raw Graph body leaks at any status)', () => {
-				// The REAL error shape: `requestWithAuthentication` wraps the underlying
-				// request error in a `NodeApiError`. The underlying (legacy-request) error
-				// carries `statusCode` + an `error` body + a `message` of the form
-				// `"<status> - <json>"`, and NodeApiError surfaces the status on `httpCode`
-				// (string) and copies that raw message into `messages`. A correlation id +
-				// reflected input ride the raw body — none of it may reach the surfaced
-				// message at ANY status.
-				const rawLeak =
-					'request-id: 11111111-2222-3333-4444-555555555555; client-request-id: aaaa; token=eyJ0eParrotedSecret; resource /teams/19:injected@thread.tacv2';
-				const realError = (statusCode: number, code: string) => {
-					const underlying = Object.assign(
-						new Error(`${statusCode} - {"error":{"code":"${code}","message":"${rawLeak}"}}`),
-						{
-							statusCode,
-							status: statusCode,
-							error: { error: { code, message: rawLeak } },
-							response: { status: statusCode, statusText: code, headers: {} },
-						},
-					);
-					return new NodeApiError(mockNode, underlying as unknown as JsonObject);
-				};
-
 				it.each([
 					[
 						401,
@@ -315,7 +320,7 @@ describe('Microsoft Graph transport kernel', () => {
 				])(
 					'maps HTTP %i to a static message and never leaks the raw body',
 					async (statusCode, code, expectedMessage) => {
-						mockRequestWithAuthentication.mockRejectedValue(realError(statusCode, code));
+						mockRequestWithAuthentication.mockRejectedValue(wrappedGraphError(statusCode, code));
 
 						const error = (await microsoftApiRequest
 							.call(mockExecuteFunctions, 'GET', '/v1.0/teams')
@@ -351,7 +356,7 @@ describe('Microsoft Graph transport kernel', () => {
 						if (name === 'resource') return 'channel';
 						return undefined;
 					});
-					mockRequestWithAuthentication.mockRejectedValue(realError(404, 'NotFound'));
+					mockRequestWithAuthentication.mockRejectedValue(wrappedGraphError(404, 'NotFound'));
 
 					const error = await microsoftApiRequest
 						.call(mockExecuteFunctions, 'GET', '/v1.0/teams/x/channels/y')
@@ -380,12 +385,6 @@ describe('Microsoft Graph transport kernel', () => {
 		});
 
 		describe('delegated OAuth2 error mapping', () => {
-			const delegatedError = (statusCode: number, code: string, message: string) =>
-				Object.assign(new Error(`${statusCode} - {"error":{"code":"${code}"}}`), {
-					statusCode,
-					error: { error: { code, message } },
-				});
-
 			beforeEach(() => {
 				mockExecuteFunctions.getCredentials.mockResolvedValue({ graphApiBaseUrl: '' });
 			});
@@ -534,6 +533,14 @@ describe('Microsoft Graph transport kernel', () => {
 
 		it.each(['.', '..', '...'])('rejects dots-only ids', (id) => {
 			expect(() => validateMicrosoftGraphId(id, mockNode)).toThrow();
+		});
+
+		it.each(['\uD800', 'e76f456f\uDC00'])('rejects an id with a lone surrogate (%j)', (id) => {
+			expect(() => validateMicrosoftGraphId(id, mockNode)).toThrow('The ID is not valid');
+		});
+
+		it('accepts a well-formed astral character (a surrogate pair is not a lone surrogate)', () => {
+			expect(validateMicrosoftGraphId('team-\u{1F600}', mockNode)).toBe('team-\u{1F600}');
 		});
 
 		it.each([
@@ -914,6 +921,192 @@ describe('Microsoft Graph transport kernel', () => {
 			expect(() =>
 				createMicrosoftGraphTransport({ defaultCredentialType: SERVICE_PRINCIPAL_AUTH }),
 			).toThrow('must be a delegated OAuth2 credential');
+		});
+	});
+
+	describe('forbiddenHints (endpoint-scoped 403 copy)', () => {
+		const ENDPOINT = '/teamwork/sendActivityNotification';
+		const HINTED_PATH = '/v1.0/users/x/teamwork/sendActivityNotification';
+		const OTHER_PATH = '/v1.0/teams/x/channels';
+		const GENERIC_APP_ONLY_403 =
+			'The app registration is missing a consented application permission for this operation. Grant the required Graph application permission and admin consent, then retry.';
+		const hinted = createMicrosoftGraphTransport({
+			defaultCredentialType: 'microsoftTeamsOAuth2Api',
+			forbiddenHints: [
+				{
+					endpoint: ENDPOINT,
+					match: 'custom text notifications',
+					message: 'Static hint message',
+					description: 'Static hint description',
+				},
+				{
+					endpoint: ENDPOINT,
+					match: 'TeamsActivity.Send',
+					message: 'App-only permission message',
+					description: 'App-only permission description',
+					delegated: {
+						message: 'Delegated permission message',
+						description: 'Delegated permission description',
+					},
+				},
+			],
+		});
+		const matchingText = `App x is not authorized to generate custom text notifications about y. ${rawLeak}`;
+		const roleText = `Missing role permissions on the request. API requires one of 'Channel.ReadBasic.All'. Roles on the request 'TeamsActivity.Send, User.Read.All'. ${rawLeak}`;
+		const scopeText =
+			"Missing scope permissions on the request. API requires one of 'TeamsActivity.Send'. Scopes on the request 'User.Read'.";
+		const channelsScopeText =
+			"Missing scope permissions on the request. API requires one of 'Channel.ReadBasic.All'. Scopes on the request 'TeamsActivity.Send, User.Read'.";
+		const send = async (request: typeof microsoftApiRequest, path = HINTED_PATH) =>
+			(await request
+				.call(mockExecuteFunctions, 'POST', path)
+				.catch((e: Error) => e)) as NodeApiError;
+
+		describe('under the Service Principal credential', () => {
+			beforeEach(() => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((name: string) =>
+					name === 'authentication' ? SERVICE_PRINCIPAL_AUTH : undefined,
+				);
+				mockExecuteFunctions.getCredentials.mockResolvedValue({ graphApiBaseUrl: '' });
+			});
+
+			it('maps a 403 whose Graph message contains a hint match to the hint copy and leaks nothing', async () => {
+				mockRequestWithAuthentication.mockRejectedValue(
+					wrappedGraphError(403, 'Forbidden', matchingText),
+				);
+
+				const error = await send(hinted.microsoftApiRequest);
+
+				expect(error).toBeInstanceOf(NodeApiError);
+				expect(error.httpCode).toBe('403');
+				expect(error.message).toBe('Static hint message');
+				expect(error.description).toBe('Static hint description');
+				for (const text of [
+					error.message,
+					error.description,
+					...error.messages,
+					JSON.stringify(error),
+				]) {
+					expect(text).not.toContain('request-id');
+					expect(text).not.toContain('token=');
+					expect(text).not.toContain('injected');
+				}
+			});
+
+			// The app-only copy, not the `delegated` one: under SP the hint text is read from the
+			// wrapped `NodeApiError`, so the delegated assertion below cannot cover this path.
+			it('applies the app-only copy of a hint that also carries a delegated copy', async () => {
+				mockRequestWithAuthentication.mockRejectedValue(
+					wrappedGraphError(403, 'Forbidden', roleText),
+				);
+
+				const error = await send(hinted.microsoftApiRequest);
+
+				expect(error.message).toBe('App-only permission message');
+				expect(error.description).toBe('App-only permission description');
+				expect(JSON.stringify(error)).not.toContain('request-id');
+			});
+
+			it('keeps the generic 403 copy when no hint matches', async () => {
+				mockRequestWithAuthentication.mockRejectedValue(
+					wrappedGraphError(403, 'Forbidden', `Insufficient privileges. ${rawLeak}`),
+				);
+
+				const error = await send(hinted.microsoftApiRequest);
+
+				expect(error.message).toBe(GENERIC_APP_ONLY_403);
+				expect(error.description).toBeUndefined();
+				expect(JSON.stringify(error)).not.toContain('request-id');
+			});
+
+			it('keeps the generic 403 copy when the hint text appears on another endpoint', async () => {
+				mockRequestWithAuthentication.mockRejectedValue(
+					wrappedGraphError(403, 'Forbidden', roleText),
+				);
+
+				const error = await send(hinted.microsoftApiRequest, OTHER_PATH);
+
+				expect(error.message).toBe(GENERIC_APP_ONLY_403);
+				expect(error.description).toBeUndefined();
+				expect(JSON.stringify(error)).not.toContain('request-id');
+			});
+
+			it('ignores a hint match on a status other than 403', async () => {
+				mockRequestWithAuthentication.mockRejectedValue(
+					wrappedGraphError(400, 'BadRequest', matchingText),
+				);
+
+				const error = await send(hinted.microsoftApiRequest);
+
+				expect(error.httpCode).toBe('400');
+				expect(error.message).toBe(
+					"Microsoft Graph rejected the request (HTTP 400). Check the operation's inputs and the app registration's permissions.",
+				);
+				expect(error.description).toBeUndefined();
+			});
+
+			it('the module-scope instance without hints keeps the generic 403', async () => {
+				mockRequestWithAuthentication.mockRejectedValue(
+					wrappedGraphError(403, 'Forbidden', matchingText),
+				);
+
+				const error = await send(microsoftApiRequest);
+
+				expect(error.message).toBe(GENERIC_APP_ONLY_403);
+				expect(error.description).toBeUndefined();
+			});
+		});
+
+		describe('under a delegated OAuth2 credential', () => {
+			beforeEach(() => {
+				mockExecuteFunctions.getNodeParameter.mockReturnValue('microsoftTeamsOAuth2Api');
+				mockExecuteFunctions.getCredentials.mockResolvedValue({ graphApiBaseUrl: '' });
+			});
+
+			it('applies the delegated copy and keeps the Graph text in messages', async () => {
+				mockRequestOAuth2.mockRejectedValue(delegatedError(403, 'Forbidden', scopeText));
+
+				const error = await send(hinted.microsoftApiRequest);
+
+				expect(error).toBeInstanceOf(NodeApiError);
+				expect(error.httpCode).toBe('403');
+				expect(error.message).toBe('Delegated permission message');
+				expect(error.description).toBe('Delegated permission description');
+				expect(error.messages).toContain(scopeText);
+				expect(mockRequestWithAuthentication).not.toHaveBeenCalled();
+			});
+
+			it('falls back to the hint copy when the hint has no delegated copy', async () => {
+				mockRequestOAuth2.mockRejectedValue(
+					delegatedError(403, 'Forbidden', 'x custom text notifications y'),
+				);
+
+				const error = await send(hinted.microsoftApiRequest);
+
+				expect(error.message).toBe('Static hint message');
+				expect(error.description).toBe('Static hint description');
+				expect(error.messages).toContain('x custom text notifications y');
+			});
+
+			it('passes the Graph text through when the hint text appears on another endpoint', async () => {
+				mockRequestOAuth2.mockRejectedValue(delegatedError(403, 'Forbidden', channelsScopeText));
+
+				const error = await send(hinted.microsoftApiRequest, OTHER_PATH);
+
+				expect(error.httpCode).toBe('403');
+				expect(error.message).toBe(channelsScopeText);
+			});
+
+			it('passes the Graph text through on a status other than 403', async () => {
+				mockRequestOAuth2.mockRejectedValue(
+					delegatedError(400, 'BadRequest', 'x custom text notifications y'),
+				);
+
+				const error = await send(hinted.microsoftApiRequest);
+
+				expect(error.httpCode).toBe('400');
+				expect(error.message).toBe('x custom text notifications y');
+			});
 		});
 	});
 });

@@ -1,16 +1,70 @@
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
-import type { INodeType, Workflow } from 'n8n-workflow';
+import type { INode, INodeType, Workflow } from 'n8n-workflow';
+import { CliWorkflowOperationError } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import {
+	findCliWorkflowStart,
+	findSubworkflowStart,
 	shouldAssignExecuteMethod,
 	getAllKeyPaths,
 	isWorkflowIdValid,
 	satisfiesToolCapability,
 	setMicrosoftObservabilityDefaults,
-	containsExpression,
 	stripToolSuffix,
 	withExpressionIsolate,
 } from '../utils';
+
+describe('workflow start selection', () => {
+	const manualTrigger = mock<INode>({
+		name: 'Manual Trigger',
+		type: 'n8n-nodes-base.manualTrigger',
+		disabled: false,
+	});
+	const executeWorkflowTrigger = mock<INode>({
+		name: 'Execute Workflow Trigger',
+		type: 'n8n-nodes-base.executeWorkflowTrigger',
+		disabled: false,
+	});
+	const disabledManualTrigger = mock<INode>({
+		name: 'Disabled Manual Trigger',
+		type: 'n8n-nodes-base.manualTrigger',
+		disabled: true,
+	});
+	const disabledExecuteWorkflowTrigger = mock<INode>({
+		name: 'Disabled Execute Workflow Trigger',
+		type: 'n8n-nodes-base.executeWorkflowTrigger',
+		disabled: true,
+	});
+
+	it('prefers an enabled subworkflow trigger for CLI execution', () => {
+		expect(findCliWorkflowStart([manualTrigger, executeWorkflowTrigger])).toBe(
+			executeWorkflowTrigger,
+		);
+	});
+
+	it('skips a disabled subworkflow trigger for CLI execution', () => {
+		expect(findCliWorkflowStart([disabledExecuteWorkflowTrigger, manualTrigger])).toBe(
+			manualTrigger,
+		);
+	});
+
+	it('skips a disabled manual trigger for CLI execution', () => {
+		expect(findCliWorkflowStart([disabledManualTrigger, manualTrigger])).toBe(manualTrigger);
+	});
+
+	it('rejects CLI execution when all start nodes are disabled', () => {
+		expect(() =>
+			findCliWorkflowStart([disabledExecuteWorkflowTrigger, disabledManualTrigger]),
+		).toThrow(CliWorkflowOperationError);
+	});
+
+	it('keeps disabled subworkflow triggers eligible for subworkflow execution', () => {
+		expect(findSubworkflowStart([manualTrigger, disabledExecuteWorkflowTrigger])).toBe(
+			disabledExecuteWorkflowTrigger,
+		);
+	});
+});
 
 describe('withExpressionIsolate', () => {
 	const acquireIsolate = vi.fn();
@@ -409,53 +463,5 @@ describe('setMicrosoftObservabilityDefaults', () => {
 
 		expect(process.env.ENABLE_OBSERVABILITY).toBe('custom-value');
 		expect(process.env.ENABLE_A365_OBSERVABILITY_EXPORTER).toBe('true');
-	});
-});
-
-describe('containsExpression', () => {
-	it('returns true for a simple expression with {{...}}', () => {
-		expect(containsExpression('={{value}}')).toBe(true);
-	});
-
-	it('returns true when {{...}} appears later in the string', () => {
-		expect(containsExpression('=hello {{world}}')).toBe(true);
-	});
-
-	it('returns true when there is content inside the braces (including spaces)', () => {
-		expect(containsExpression('={{ value }}')).toBe(true);
-	});
-
-	it('returns true when there is trailing content after the }}', () => {
-		expect(containsExpression('={{value}} + 1')).toBe(true);
-	});
-
-	it('returns false when the string does not start with "="', () => {
-		expect(containsExpression('hello {{world}}')).toBe(false);
-	});
-
-	it('returns false when the string starts with "=" but has no {{...}}', () => {
-		expect(containsExpression('=hello world')).toBe(false);
-	});
-
-	it('returns false for empty placeholder {{}}', () => {
-		expect(containsExpression('={{}}')).toBe(false);
-	});
-
-	it('returns false when the string uses single braces {..} instead of double {{..}}', () => {
-		expect(containsExpression('={value}')).toBe(false);
-	});
-
-	it('returns false when the braces are incomplete', () => {
-		expect(containsExpression('={{value}')).toBe(false);
-		expect(containsExpression('={value}}')).toBe(false);
-		expect(containsExpression('={{value')).toBe(false);
-	});
-
-	it('returns true when there are multiple placeholders and at least one matches', () => {
-		expect(containsExpression('=x {{a}} y {{b}}')).toBe(true);
-	});
-
-	it('returns false when the string is empty', () => {
-		expect(containsExpression('')).toBe(false);
 	});
 });

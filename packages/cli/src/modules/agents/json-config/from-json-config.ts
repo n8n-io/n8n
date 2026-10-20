@@ -22,16 +22,20 @@ import {
 	getProviderPrefix,
 	hasNativeWebSearchProvider,
 	isNativeWebSearchRequested,
+	isRoutedAnthropicModel,
 } from '@n8n/ai-utilities/agent-config';
-import type {
-	AgentSkill,
-	AgentJsonConfig,
-	AgentJsonMcpServerConfig,
-	AgentJsonMemoryConfig,
-	AgentJsonToolConfig,
-	AgentJsonSkillConfig,
+import {
+	AI_GATEWAY_MANAGED_TAG,
+	MANAGED_CREDENTIAL_TOKEN,
+	type AgentModelCredentialConfig,
+	type AgentSkill,
+	type AgentJsonConfig,
+	type AgentJsonMcpServerConfig,
+	type AgentJsonMemoryConfig,
+	type AgentJsonToolConfig,
+	type AgentJsonSkillConfig,
 } from '@n8n/api-types';
-import { MANAGED_CREDENTIAL_TOKEN } from '@n8n/api-types';
+import { UserError } from 'n8n-workflow';
 import { createHash } from 'crypto';
 import { z } from 'zod';
 
@@ -42,6 +46,10 @@ import {
 } from './embedding-credential';
 import { resolveCredentialAwareModelConfig } from './model-config';
 import { resolveProviderToolName } from './provider-tool-aliases';
+import {
+	resolveWebSearchGatewayProxyConfig,
+	type AiGatewaySearchCredentialResolver,
+} from './web-search-credential';
 import { buildVectorStore } from './vector-store-factory';
 
 export type { ManagedEmbeddingProviderOptions, ManagedEmbeddingProviderOptionsResolver };
@@ -65,13 +73,15 @@ const WEB_SEARCH_POLICY_INSTRUCTION =
 	'Use web search only on high-signal requests: explicit web/current/latest/live/recent/research/source requests, or questions that require up-to-date external facts. Do not use web search for static knowledge, uploaded knowledge, local config, codebase questions, or confirmation. Prefer answering directly or using local knowledge tools first. One search is usually enough; do not search repeatedly unless the user asks for deep research.';
 
 /**
- * Appended only for the in-app preview chat. The agent has no tool that edits
- * its own configuration, so without this it agrees to setup changes it cannot
- * make. The preview UI offers the AI Assistant hand-off beside this answer.
+ * Appended only for the in-app preview chat. Without this the agent agrees to
+ * setup changes it cannot make. The preview UI offers the n8n Assistant hand-off
+ * beside this answer.
  */
 const PREVIEW_SELF_MODIFICATION_POLICY =
 	'### Preview chat policy\n' +
-	'This conversation only runs you. You cannot change your own setup — instructions, model, tools, skills, knowledge, channels, integrations, schedules, name or any other configuration — and you have no tool that can. This holds whether or not the user names you as the owner of the thing: "add a tool" and "connect a Slack channel" are setup changes too. If the user asks for such a change, say plainly that you cannot make it here, and tell them to ask the AI Assistant, which edits the agent for them. Never claim a setup change was applied.';
+	'This conversation only runs you. You can change things in n8n, including your own setup, only through your tools. Your setup is your instructions, model, tools, skills, knowledge, channels, integrations, schedules, name and any other part of your configuration. A request that names no other owner, such as "add a tool" or "connect a Slack channel", is about your setup.\n' +
+	'If none of your tools can make a change that the user asks for, say plainly that you cannot make it here, and tell them to ask the n8n Assistant, which edits the agent for them.\n' +
+	'Never claim that a change was applied unless a tool result confirms it.';
 
 /** `null` drops the tool from the agent; `undefined` falls back to the inert marker tool. */
 export type ToolResolver = (
@@ -93,11 +103,6 @@ export type MemoryFactory = (params: AgentJsonMemoryConfig) => BuiltMemory | Pro
  * `buildFromJson`.
  */
 export type McpClientBuilder = (server: AgentJsonMcpServerConfig) => Promise<McpClient>;
-
-type MemoryWorkerModelConfig = {
-	model: string;
-	credential: string;
-};
 
 export interface BuildFromJsonOptions {
 	/** Executes custom tool handlers inside isolates. */
@@ -175,6 +180,7 @@ export async function buildFromJson(
 	// Tools
 	if (config.tools) {
 		for (const ref of config.tools) {
+			if (ref.enabled === false) continue;
 			const built = await resolveToolRef(ref, toolDescriptors, options);
 			if (built) {
 				agent.tool(built);
@@ -248,15 +254,19 @@ export async function buildFromJson(
 		if (config.config.reasoning) {
 			agent.reasoning(config.config.reasoning);
 		}
-		if (config.config.promptCaching) {
-			agent.promptCaching(config.config.promptCaching);
-		}
 		if (config.config.toolCallConcurrency) {
 			agent.toolCallConcurrency(config.config.toolCallConcurrency);
 		}
 		if (config.config.maxIterations) {
 			agent.configuration({ maxIterations: config.config.maxIterations });
 		}
+	}
+
+	if (config.config?.promptCaching) {
+		agent.promptCaching(config.config.promptCaching);
+	} else if (isRoutedAnthropicModel(config.model)) {
+		// Existing agents receive the cache default without a config update.
+		agent.promptCaching({ enabled: true });
 	}
 
 	return agent;
@@ -305,7 +315,7 @@ export function buildProviderToolsForModel(
 
 function buildFallbackWebSearchTool(
 	config: AgentJsonConfig,
-	credentialProvider: CredentialProvider,
+	credentialProvider: CredentialProvider & Partial<AiGatewaySearchCredentialResolver>,
 	webSearchFetch?: FetchFn,
 	fallbackWebSearch?: FallbackWebSearchHandler,
 ): BuiltTool | null {
@@ -323,10 +333,10 @@ function buildFallbackWebSearchTool(
 		};
 	}
 	if (webSearchConfig.provider !== 'brave' && webSearchConfig.provider !== 'searxng') {
-		throw new Error('Web search is enabled but no fallback search provider is configured.');
+		throw new UserError('Web search is enabled but no fallback search provider is configured.');
 	}
 	if (!webSearchConfig.credential) {
-		throw new Error('Web search is enabled but no search credential is configured.');
+		throw new UserError('Web search is enabled but no search credential is configured.');
 	}
 	const credentialId = webSearchConfig.credential;
 
@@ -337,33 +347,39 @@ function buildFallbackWebSearchTool(
 		inputSchema: WEB_SEARCH_INPUT_SCHEMA,
 		handler: async (input) => {
 			const args = WEB_SEARCH_INPUT_SCHEMA.parse(input);
-			const credential = await credentialProvider.resolve(credentialId);
 			const { braveSearch, searxngSearch } = await import('@n8n/ai-utilities');
+			const searchOptions = {
+				maxResults: args.maxResults,
+				includeDomains: args.includeDomains,
+				excludeDomains: args.excludeDomains,
+			};
 
 			if (webSearchConfig.provider === 'brave') {
+				// n8n Connect (Gateway credits): route through the AI gateway with a
+				// minted credential instead of the user's API key.
+				if (credentialId === AI_GATEWAY_MANAGED_TAG) {
+					const proxyConfig = await resolveWebSearchGatewayProxyConfig(
+						webSearchConfig.provider,
+						credentialProvider,
+					);
+					return await braveSearch('', args.query, { ...searchOptions, proxyConfig });
+				}
+				const credential = await credentialProvider.resolve(credentialId);
 				if (typeof credential.apiKey !== 'string') {
 					throw new Error('Brave Search credential is missing an API key.');
 				}
-				return await braveSearch(credential.apiKey, args.query, {
-					maxResults: args.maxResults,
-					includeDomains: args.includeDomains,
-					excludeDomains: args.excludeDomains,
-				});
+				return await braveSearch(credential.apiKey, args.query, searchOptions);
 			}
 
+			// SearXNG is self-hosted, so it has no gateway-served managed path.
+			if (credentialId === AI_GATEWAY_MANAGED_TAG) {
+				throw new UserError('Gateway credits web search is only available for Brave Search.');
+			}
+			const credential = await credentialProvider.resolve(credentialId);
 			if (typeof credential.apiUrl !== 'string') {
 				throw new Error('SearXNG credential is missing an API URL.');
 			}
-			return await searxngSearch(
-				credential.apiUrl,
-				args.query,
-				{
-					maxResults: args.maxResults,
-					includeDomains: args.includeDomains,
-					excludeDomains: args.excludeDomains,
-				},
-				webSearchFetch,
-			);
+			return await searxngSearch(credential.apiUrl, args.query, searchOptions, webSearchFetch);
 		},
 	};
 }
@@ -395,7 +411,6 @@ function getConfiguredSkillSource(
 			name: skill.name,
 			description: skill.description,
 			instructions: skill.instructions,
-			...(skill.allowedTools ? { allowedTools: skill.allowedTools } : {}),
 			linkedFiles,
 		});
 	}
@@ -629,7 +644,7 @@ async function resolveModelConfig(
 }
 
 async function resolveMemoryWorkerModelConfig(
-	config: MemoryWorkerModelConfig,
+	config: AgentModelCredentialConfig,
 	credentialProvider: CredentialProvider,
 ): Promise<ModelConfig> {
 	// Mirrors `resolveModelConfig`: an empty credential means "not configured",

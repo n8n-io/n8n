@@ -4,9 +4,6 @@ tags:
 summary: Retrieve folders
 description: Retrieve folders within a project. Supports filtering, sorting, field selection, and pagination.
 x-required-scope: folder:list
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 parameters:
   - schema:
       type: string

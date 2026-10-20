@@ -1,4 +1,4 @@
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError } from '@n8n/errors';
 
 import { resolveOffsetPagination } from '../pagination.service';
 
@@ -29,6 +29,12 @@ describe('resolveOffsetPagination', () => {
 			offset: 40,
 			limit: 25,
 		});
+	});
+
+	it('keeps the query limit when the decoded cursor has a limit of 0', () => {
+		const cursor = encodeCursor({ offset: 40, limit: 0 });
+
+		expect(resolveOffsetPagination({ limit: 100, cursor })).toEqual({ offset: 40, limit: 100 });
 	});
 
 	it('throws BadRequestError for an undecodable cursor', () => {

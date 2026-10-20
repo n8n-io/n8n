@@ -13,7 +13,7 @@ import type {
 import { CredentialTypes } from '@/credential-types';
 import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
 import { NodeTypes } from '@/node-types';
-import { UrlService } from '@/services/url.service';
+import { UrlService } from '@n8n/backend-services';
 
 import { ExecutionContextService } from 'n8n-core';
 import { AuthorizeIntentService } from './authorize-intent.service';

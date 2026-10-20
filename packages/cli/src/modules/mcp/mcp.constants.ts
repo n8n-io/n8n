@@ -52,6 +52,20 @@ export const MISSING_PROTOCOL_VERSION_ERROR_MESSAGE =
  */
 export const LIST_N8N_GATEWAY_SERVICES_TOOL_NAME = 'list_n8n_gateway_services';
 export const MCP_GET_USER_PREFERENCES_TOOL_NAME = 'get_user_preferences';
+export const MCP_SAVE_USER_PREFERENCE_TOOL_NAME = 'save_user_preference';
+export const MCP_UPDATE_USER_PREFERENCE_TOOL_NAME = 'update_user_preference';
+export const MCP_UNDO_USER_PREFERENCE_TOOL_NAME = 'undo_user_preference';
+
+/**
+ * Installs a vetted community package so its nodes become usable. Not in
+ * `@n8n/ai-workflow-builder` with the other builder tool constants because
+ * installing packages is an instance-administration action, not something the
+ * code-builder agent can do.
+ */
+export const INSTALL_COMMUNITY_NODE_TOOL = {
+	toolName: 'install_community_node',
+	displayTitle: 'Install Community Node',
+} as const;
 
 /**
  * Shared by the `get_user_preferences` description and the pointer in the server instructions,

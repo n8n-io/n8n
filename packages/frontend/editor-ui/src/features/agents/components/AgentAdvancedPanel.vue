@@ -2,7 +2,11 @@
 /** Advanced settings for memory and execution behavior. */
 import { ref, computed, watch } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
-import { AGENT_REASONING_LEVELS, type AgentReasoningLevel } from '@n8n/api-types';
+import {
+	AGENT_REASONING_LEVELS,
+	getModelPromptCachingCapability,
+	type AgentReasoningLevel,
+} from '@n8n/api-types';
 import { N8nInputNumber, N8nOption, N8nSelect, N8nSwitch2, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import AgentMemoryModelSetting from './AgentMemoryModelSetting.vue';
@@ -10,21 +14,12 @@ import AgentPanel from './AgentPanel.vue';
 
 import { useModelCatalog } from '../composables/useModelCatalog';
 import type { AgentJsonConfig } from '../types';
-import {
-	PROVIDER_CAPABILITIES,
-	ANTHROPIC_CACHE_TTL_OPTIONS,
-	type AnthropicCacheTtl,
-} from '../provider-capabilities';
-import { modelToString, parseModelString, parseProvider } from '../utils/model-string';
+import { ANTHROPIC_CACHE_TTL_OPTIONS, type AnthropicCacheTtl } from '../provider-capabilities';
+import { modelToString, parseModelString } from '../utils/model-string';
 import shared from '../styles/agent-panel.module.scss';
 
 const i18n = useI18n();
 const { catalog, ensureLoaded } = useModelCatalog();
-const DEFAULT_CAPABILITIES = {
-	promptCaching: false,
-	webSearch: false,
-	providerTools: [],
-} as const;
 
 function normalizeReasoningLevel(value: unknown): AgentReasoningLevel {
 	return AGENT_REASONING_LEVELS.find((level) => level === value) ?? 'medium';
@@ -42,7 +37,6 @@ const props = withDefaults(
 );
 const emit = defineEmits<{ 'update:config': [changes: Partial<AgentJsonConfig>] }>();
 
-const provider = computed(() => parseProvider(props.config?.model));
 const selectedModel = computed(() => parseModelString(modelToString(props.config?.model)));
 const selectedCatalogModel = computed(() => {
 	if (!selectedModel.value) return undefined;
@@ -58,7 +52,9 @@ const reasoningHintKey = computed(() => {
 	}
 	return 'agents.builder.advanced.reasoning.hint';
 });
-const capabilities = computed(() => PROVIDER_CAPABILITIES[provider.value] ?? DEFAULT_CAPABILITIES);
+const promptCachingCapability = computed(() =>
+	getModelPromptCachingCapability(modelToString(props.config?.model)),
+);
 
 watch(
 	() => props.projectId,
@@ -155,7 +151,7 @@ const CONCURRENCY_MAX = 100;
 const CONCURRENCY_DEFAULT = 5;
 const MAX_ITERATIONS_MIN = 1;
 const MAX_ITERATIONS_MAX = 200;
-const MAX_ITERATIONS_DEFAULT = 30;
+const MAX_ITERATIONS_DEFAULT = 100;
 const PROMPT_CACHING_TTL_DEFAULT: AnthropicCacheTtl = '1h';
 
 const {
@@ -246,8 +242,8 @@ function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 				/>
 
 				<div :class="$style.settingGroup">
-					<div :class="$style.row">
-						<div :class="$style.rowLabel">
+					<div :class="shared.settingRow">
+						<div :class="shared.settingLabel">
 							<N8nText step="sm" bold :class="shared.dataEntryLabel">{{
 								i18n.baseText('agents.builder.advanced.reasoning.label')
 							}}</N8nText>
@@ -262,7 +258,7 @@ function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 						<N8nSwitch2
 							:model-value="reasoningEnabled"
 							:disabled="props.disabled || isReasoningUnavailable"
-							:class="$style.switchControl"
+							:class="[$style.switchControl, shared.settingControl]"
 							data-testid="agent-reasoning-toggle"
 							@update:model-value="(v) => onReasoningToggle(Boolean(v))"
 						/>
@@ -273,15 +269,17 @@ function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 						:class="$style.subSettings"
 						data-testid="agent-reasoning-settings"
 					>
-						<div :class="$style.row">
-							<N8nText step="sm" bold :class="shared.dataEntryLabel">{{
-								i18n.baseText('agents.builder.advanced.reasoningEffort.label')
-							}}</N8nText>
+						<div :class="shared.settingRow">
+							<div :class="shared.settingLabel">
+								<N8nText step="sm" bold :class="shared.dataEntryLabel">{{
+									i18n.baseText('agents.builder.advanced.reasoningEffort.label')
+								}}</N8nText>
+							</div>
 							<N8nSelect
 								:model-value="reasoningLevel"
 								size="small"
 								:disabled="props.disabled || isReasoningUnavailable"
-								:class="$style.shortInput"
+								:class="shared.settingControlShort"
 								data-testid="agent-reasoning-effort-select"
 								@update:model-value="onReasoningLevelChange"
 							>
@@ -296,9 +294,9 @@ function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 					</div>
 				</div>
 
-				<div v-if="capabilities.promptCaching === 'ttl'" :class="$style.settingGroup">
-					<div :class="$style.row">
-						<div :class="$style.rowLabel">
+				<div v-if="promptCachingCapability === 'ttl'" :class="$style.settingGroup">
+					<div :class="shared.settingRow">
+						<div :class="shared.settingLabel">
 							<N8nText step="sm" bold :class="shared.dataEntryLabel">{{
 								i18n.baseText('agents.builder.advanced.promptCachingTtl.label')
 							}}</N8nText>
@@ -310,7 +308,7 @@ function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 							:model-value="anthropicTtl"
 							size="small"
 							:disabled="props.disabled"
-							:class="$style.shortInput"
+							:class="shared.settingControlShort"
 							data-testid="agent-prompt-caching-ttl-select"
 							@update:model-value="(v) => onAnthropicTtlChange(v as AnthropicCacheTtl)"
 						>
@@ -324,8 +322,8 @@ function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 					</div>
 				</div>
 
-				<div :class="$style.row">
-					<div :class="$style.rowLabel">
+				<div :class="shared.settingRow">
+					<div :class="shared.settingLabel">
 						<N8nText step="sm" bold :class="shared.dataEntryLabel">{{
 							i18n.baseText('agents.builder.advanced.concurrency.label')
 						}}</N8nText>
@@ -340,14 +338,14 @@ function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 						:precision="0"
 						:controls="false"
 						:disabled="props.disabled"
-						:class="$style.shortInput"
+						:class="shared.settingControlShort"
 						data-testid="agent-concurrency-input"
 						@update:model-value="onConcurrencyChange"
 					/>
 				</div>
 
-				<div :class="$style.row">
-					<div :class="$style.rowLabel">
+				<div :class="shared.settingRow">
+					<div :class="shared.settingLabel">
 						<N8nText step="sm" bold :class="shared.dataEntryLabel">{{
 							i18n.baseText('agents.builder.advanced.maxIterations.label')
 						}}</N8nText>
@@ -362,7 +360,7 @@ function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 						:precision="0"
 						:controls="false"
 						:disabled="props.disabled"
-						:class="$style.shortInput"
+						:class="shared.settingControlShort"
 						data-testid="agent-max-iterations-input"
 						@update:model-value="onMaxIterationsChange"
 					/>
@@ -392,38 +390,12 @@ function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 	gap: var(--spacing--2xs);
 }
 
-.row {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: var(--spacing--sm);
-	min-height: var(--spacing--xl);
-}
-
-.rowLabel {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--5xs);
-	flex: 1;
-	min-width: 0;
-}
-
 .subSettings {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--xs);
 	padding-left: var(--spacing--sm);
 	border-left: var(--border);
-}
-
-.shortInput {
-	width: 140px;
-	flex-shrink: 0;
-}
-
-.credentialSelect {
-	width: 220px;
-	flex-shrink: 0;
 }
 
 .switchControl:not([data-disabled]) {
