@@ -122,12 +122,7 @@ function openCredentialType() {
 </script>
 
 <template>
-	<N8nDialog
-		:open="modalOpen"
-		size="medium"
-		:container-class="$style.dialog"
-		@update:open="onDialogOpenUpdate"
-	>
+	<N8nDialog :open="modalOpen" size="medium" @update:open="onDialogOpenUpdate">
 		<N8nDialogBody v-if="loading">
 			<N8nSpinner />
 		</N8nDialogBody>
@@ -182,10 +177,3 @@ function openCredentialType() {
 		</template>
 	</N8nDialog>
 </template>
-
-<style module lang="scss">
-.dialog {
-	/* Previous dialog min-height. No spacing token. */
-	// min-height: 250px;
-}
-</style>
