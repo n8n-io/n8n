@@ -204,7 +204,7 @@ describe('MigrationRules', () => {
 				expect(screen.getByText('5 Workflows')).toBeInTheDocument();
 
 				// Impact tag
-				expect(screen.getByText('Executions fail')).toBeInTheDocument();
+				expect(screen.getByText('Executions will fail')).toBeInTheDocument();
 
 				// Documentation link
 				expect(screen.getAllByText('Documentation').length).toBeGreaterThan(0);
@@ -288,7 +288,7 @@ describe('MigrationRules', () => {
 				expect(screen.getByText('Test Rule 1')).toBeInTheDocument();
 				expect(screen.getByText('Test Rule 2')).toBeInTheDocument();
 				expect(screen.getByText('Test Rule 3')).toBeInTheDocument();
-				expect(screen.getByText('Executions fail')).toBeInTheDocument();
+				expect(screen.getByText('Executions will fail')).toBeInTheDocument();
 				expect(screen.getByText('Behavior changes')).toBeInTheDocument();
 				expect(screen.getByText('Upgrade blocked')).toBeInTheDocument();
 				expect(screen.getByText('Capability removed')).toBeInTheDocument();
@@ -545,7 +545,7 @@ describe('MigrationRules', () => {
 			},
 		);
 
-		it('should show when the report was last synced, from generatedAt', async () => {
+		it('should show when the report was last updated, from generatedAt', async () => {
 			// One year in the past, so the relative label is stable whatever the test date.
 			const generatedAt = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000);
 			vi.mocked(breakingChangesApi.getReport).mockResolvedValue(
@@ -563,12 +563,26 @@ describe('MigrationRules', () => {
 			renderComponent();
 
 			await waitFor(() => {
-				const lastSynced = screen.getByTestId('migration-report-last-synced');
-				expect(lastSynced).toHaveTextContent(/Last synced\s+1 year ago/);
+				const lastUpdated = screen.getByTestId('migration-report-last-updated');
+				expect(lastUpdated).toHaveTextContent(/Last updated\s+1 year ago/);
 			});
 		});
 
-		it('should update the last synced time after Refresh', async () => {
+		it('should show "Never updated" when the report has no generatedAt', async () => {
+			vi.mocked(breakingChangesApi.getReport).mockResolvedValue(
+				createMockReport({ report: { ...mockReport.report, generatedAt: undefined } }),
+			);
+
+			renderComponent();
+
+			await waitFor(() => {
+				expect(screen.getByTestId('migration-report-last-updated')).toHaveTextContent(
+					'Never updated',
+				);
+			});
+		});
+
+		it('should update the last updated time after Refresh', async () => {
 			const oldDate = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000);
 			const newDate = new Date(Date.now() - 60 * 1000);
 			vi.mocked(breakingChangesApi.getReport).mockResolvedValue(
@@ -581,13 +595,13 @@ describe('MigrationRules', () => {
 			renderComponent();
 
 			await waitFor(() => {
-				expect(screen.getByTestId('migration-report-last-synced')).toHaveTextContent(/1 year ago/);
+				expect(screen.getByTestId('migration-report-last-updated')).toHaveTextContent(/1 year ago/);
 			});
 
 			await userEvent.click(screen.getByText('Refresh'));
 
 			await waitFor(() => {
-				expect(screen.getByTestId('migration-report-last-synced')).toHaveTextContent(
+				expect(screen.getByTestId('migration-report-last-updated')).toHaveTextContent(
 					/1 minute ago/,
 				);
 			});
@@ -766,7 +780,7 @@ describe('MigrationRules', () => {
 			},
 			{
 				impact: 'executionsFail',
-				label: 'Executions fail',
+				label: 'Executions will fail',
 				tooltipText: 'will fail',
 			},
 			{

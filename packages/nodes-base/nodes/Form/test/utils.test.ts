@@ -1043,7 +1043,9 @@ describe('FormTrigger, formWebhook', () => {
 			await formWebhook(ctx);
 
 			expect(ctx.completeN8nOAuth2Flow).not.toHaveBeenCalled();
-			expect(ctx.beginN8nOAuth2Flow).toHaveBeenCalledWith(resourceUrl, { query: 'foo=bar&code=x' });
+			expect(ctx.beginN8nOAuth2Flow).toHaveBeenCalledWith(resourceUrl, {
+				query: 'foo=bar&code=x',
+			});
 		});
 
 		it('re-appends the query stashed as flow metadata on a valid callback', async () => {
@@ -1130,7 +1132,12 @@ describe('FormTrigger, formWebhook', () => {
 			const result = await formWebhook(ctx);
 
 			expect(ctx.validateN8nOAuth2Token).toHaveBeenCalledWith('as-token', resourceUrl);
-			expect(ctx.establishTriggerIdentity).toHaveBeenCalledWith('as-token', resourceUrl);
+			// The subject rides in the seal, so a worker never needs the token to resolve it.
+			expect(ctx.establishTriggerIdentity).toHaveBeenCalledWith(
+				'as-token',
+				resourceUrl,
+				authedUser.id,
+			);
 			expect(result).toMatchObject({ webhookResponse: { status: 200 } });
 		});
 
@@ -1147,6 +1154,44 @@ describe('FormTrigger, formWebhook', () => {
 			expect(ctx.establishTriggerIdentity).not.toHaveBeenCalled();
 			expect(status).toHaveBeenCalledWith(401);
 			expect(send).toHaveBeenCalled();
+			expect(result).toEqual({ noWebhookResponse: true });
+		});
+
+		it('names the resource metadata on the 401 when the token is rejected', async () => {
+			const ctx = mock<IWebhookFunctions>();
+			const { status, setHeader } = setupContext(ctx, {
+				method: 'POST',
+				headers: { 'x-auth-token': 'bad-token' },
+			});
+			const challenge =
+				'Bearer resource_metadata="http://localhost:5678/.well-known/oauth-protected-resource/form/test", error="invalid_token"';
+			ctx.validateN8nOAuth2Token.mockResolvedValue({
+				valid: false,
+				reason: 'invalid_token',
+				challenge,
+			});
+
+			await formWebhook(ctx);
+
+			expect(setHeader).toHaveBeenCalledWith('WWW-Authenticate', challenge);
+			expect(status).toHaveBeenCalledWith(401);
+		});
+
+		it('answers a POST without a token with a 401 that still carries the challenge', async () => {
+			const ctx = mock<IWebhookFunctions>();
+			const { status, setHeader } = setupContext(ctx, { method: 'POST' });
+			ctx.validateN8nOAuth2Token.mockResolvedValue({
+				valid: false,
+				reason: 'invalid_token',
+				challenge: 'Bearer resource_metadata="x"',
+			});
+
+			const result = await formWebhook(ctx);
+
+			expect(ctx.validateN8nOAuth2Token).toHaveBeenCalledWith('', resourceUrl);
+			expect(ctx.establishTriggerIdentity).not.toHaveBeenCalled();
+			expect(setHeader).toHaveBeenCalledWith('WWW-Authenticate', 'Bearer resource_metadata="x"');
+			expect(status).toHaveBeenCalledWith(401);
 			expect(result).toEqual({ noWebhookResponse: true });
 		});
 

@@ -144,6 +144,14 @@ describe('useWorkflowNavigationCommands', () => {
 			]);
 		});
 
+		it('uses the plus icon for workflow creation', () => {
+			const { commands } = createCommands();
+
+			expect(commands.value.find((command) => command.id === 'create-workflow')).toMatchObject({
+				icon: { props: { icon: 'plus' } },
+			});
+		});
+
 		it('returns no commands when the user cannot create workflows', () => {
 			projectsStore.currentProject = { id: 'team-1', scopes: ['workflow:read'] } as Project;
 

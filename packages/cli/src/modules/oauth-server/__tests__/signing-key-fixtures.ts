@@ -5,7 +5,7 @@ import type { JsonWebKey, KeyObject } from 'node:crypto';
 import { createPrivateKey, sign as cryptoSign } from 'node:crypto';
 import { mock } from 'vitest-mock-extended';
 
-import { JwtService } from '@/services/jwt.service';
+import { JwtService } from '@n8n/backend-services';
 
 import { OAUTH_SIGNING_KEY_TYPE } from '../oauth-signing-key.constants';
 import { OAuthSigningKeyService } from '../oauth-signing-key.service';

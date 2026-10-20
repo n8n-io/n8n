@@ -1,6 +1,5 @@
 import type {
 	AgentIntegrationDisconnectWarning,
-	AgentJsonConfig,
 	AgentIntegrationSettings,
 	ChatIntegrationDescriptor,
 } from '@n8n/api-types';
@@ -31,6 +30,12 @@ export interface AgentChannelViewExpose {
 	afterSave?: () => Promise<void>;
 	/** Keeps the modal open after connecting. The view emits `done` to close it. */
 	keepOpenAfterConnect?: boolean;
+	/**
+	 * Whether a setup that outlives the connect can be left now. The modal puts
+	 * the Done button in its own footer, where it is reachable without scrolling
+	 * to the end of a flow whose last step often waits on someone else.
+	 */
+	canFinish?: boolean;
 }
 
 export interface AgentChannelRuntimeContext {
@@ -67,8 +72,13 @@ export interface AgentChannelViewProps {
 	agentName: string;
 	projectId: string;
 	agentId: string;
-	personalisation?: AgentJsonConfig['personalisation'] | null;
 	ensureAgentPersisted?: () => Promise<void>;
+	/**
+	 * Saves the channel without closing the modal, and reports whether it
+	 * landed. For a view whose own buttons act on what n8n has saved: they wait
+	 * for this rather than for the footer, which closes the dialog under them.
+	 */
+	persistChannel?: () => Promise<boolean>;
 	forceNewCredential: boolean;
 	simpleSetup: boolean;
 	runtime: AgentChannelRuntime;
@@ -104,6 +114,8 @@ export interface AgentChannelPlatform {
 	getConnectedDescription?: (context: AgentChannelPresentationContext) => string;
 	headerContent?: {
 		setupModal?: Component;
+		/** The Assistant's setup card. Separate from the modal, so each platform opts in. */
+		setupCard?: Component;
 		editModal?: Component;
 	};
 	disconnectConfirmationComponent?: Component;

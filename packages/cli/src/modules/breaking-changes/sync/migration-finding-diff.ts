@@ -1,4 +1,4 @@
-import type { BreakingChangeVersion } from '@n8n/api-types';
+import type { BreakingChangeVersion, MigrationFindingStatus } from '@n8n/api-types';
 
 import type {
 	MigrationFinding,
@@ -39,14 +39,16 @@ const hitKey = (ruleId: string, workflowId: string) => `${ruleId}\u0000${workflo
 
 /**
  * Compares the scan hits for one batch of workflows with the stored findings.
- * Only `open`, `wont_fix` and `fixed` rows take part. An `open` or `wont_fix`
- * row without a hit is marked fixed, so a won't fix choice does not outlive
- * the issue. A `fixed` row with a hit is reopened. Rows in any other status
- * stay as they are. A pair listed in `unknown` is never inserted, marked fixed,
- * or reopened: a missing hit there means the pair was not decided, not that the
- * workflow is clean. The other rules on the same workflow are handled as usual.
- * TODO(CAT-4710): handle `notified` rows once triage can set them.
+ * Only `open`, `notified`, `wont_fix` and `fixed` rows take part. An `open`,
+ * `notified` or `wont_fix` row without a hit is marked fixed, so a won't fix
+ * choice does not outlive the issue. A `fixed` row with a hit is reopened. Rows
+ * in any other status stay as they are. A pair listed in `unknown` is never
+ * inserted, marked fixed, or reopened: a missing hit there means the pair was
+ * not decided, not that the workflow is clean. The other rules on the same
+ * workflow are handled as usual.
  */
+const RESOLVABLE_STATUSES = new Set<MigrationFindingStatus>(['open', 'notified', 'wont_fix']);
+
 export function diffMigrationFindings(input: MigrationFindingDiffInput): MigrationFindingDiff {
 	const { targetVersion, hits, existing, unknown = [] } = input;
 	const batchWorkflowIds = new Set(input.workflowIds);
@@ -69,9 +71,7 @@ export function diffMigrationFindings(input: MigrationFindingDiffInput): Migrati
 		if (unknownKeys.has(key)) continue;
 		const isHit = hitKeys.has(key);
 
-		if ((row.status === 'open' || row.status === 'wont_fix') && !isHit) {
-			diff.toMarkFixed.push(row.id);
-		}
+		if (RESOLVABLE_STATUSES.has(row.status) && !isHit) diff.toMarkFixed.push(row.id);
 		if (row.status === 'fixed' && isHit) diff.toReopen.push(row.id);
 	}
 

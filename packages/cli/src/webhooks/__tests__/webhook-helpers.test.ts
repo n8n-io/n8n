@@ -1,10 +1,22 @@
 import { Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
+import {
+	OAuth2FlowProxy,
+	type ProtectedResource,
+	ProtectedResourceRegistry,
+} from '@n8n/backend-services/auth';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { EngineConfig, ExecutionsConfig } from '@n8n/config';
 import type { Project, User } from '@n8n/db';
 import { UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import {
+	ResourceAdmission,
+	TrustedSourceStore,
+	type Refused,
+	type TrustedSource,
+} from '@n8n/inbound-auth';
+import type { Principal, SecurityContext } from '@n8n/permissions';
 import type { EndedMessage, ExecutionResponse } from '@n8n/engine';
 import type express from 'express';
 import {
@@ -71,9 +83,6 @@ import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.
 import { EngineV2Dispatcher } from '@/services/engine-v2-dispatcher.service';
 import { EngineV2WebhookResponseRegistry } from '@/modules/engine-v2/webhook-response/webhook-response-registry.service';
 import { OwnershipService } from '@/services/ownership.service';
-import { OAuth2FlowProxy } from '@/services/oauth2-flow-proxy.service';
-import type { ProtectedResource } from '@/services/protected-resource.registry';
-import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowRunner } from '@/workflow-runner';
@@ -1959,6 +1968,7 @@ describe('executeWebhook establishTriggerIdentity', () => {
 			RESOURCE_URL,
 			GRANT,
 			undefined,
+			undefined,
 		);
 		expect(additionalData.encryptedRunnerIdentity).toBe('sealed-context');
 	});
@@ -2020,7 +2030,14 @@ describe('executeWebhook additional data', () => {
 	 * Drives `executeWebhook` far enough for the node's `webhook()` to be called, and
 	 * hands back the `additionalData` that the webhook layer extended.
 	 */
-	const resolveAdditionalData = async () => {
+	const resolveAdditionalData = async (
+		req = mock<WebhookRequest>({
+			method: 'POST',
+			contentType: undefined,
+			originalUrl: '/form/abc',
+			ip: '203.0.113.7',
+		}),
+	) => {
 		resourceRegistry.getByResourceUrl.mockResolvedValue(undefined);
 		ownershipService.getWorkflowProjectCached.mockResolvedValue(
 			mock<Project>({ id: 'project-1', name: 'Project 1' }),
@@ -2073,7 +2090,7 @@ describe('executeWebhook additional data', () => {
 			undefined,
 			undefined,
 			undefined,
-			mock<WebhookRequest>({ method: 'POST', contentType: undefined }),
+			req,
 			mock<express.Response>({ headersSent: false }),
 			vi.fn(),
 			undefined,
@@ -2123,19 +2140,178 @@ describe('executeWebhook additional data', () => {
 
 	it('returns the OAuth flow proxy promises without replacement', async () => {
 		const beginPromise = new Promise<never>(() => {});
-		const completePromise = new Promise<never>(() => {});
 		const refreshPromise = new Promise<never>(() => {});
 		oauth2FlowProxy.begin.mockReturnValue(beginPromise);
-		oauth2FlowProxy.complete.mockReturnValue(completePromise);
-		oauth2FlowProxy.refreshVirtualClientToken.mockReturnValue(refreshPromise);
+		oauth2FlowProxy.refresh.mockReturnValue(refreshPromise);
 
 		const additionalData = await resolveAdditionalData();
 
-		expect(additionalData.beginN8nOAuth2Flow!('resource-url')).toBe(beginPromise);
-		expect(additionalData.completeN8nOAuth2Flow!('code', 'state')).toBe(completePromise);
+		expect(additionalData.beginN8nOAuth2Flow!('resource-url', undefined)).toBe(beginPromise);
+		expect(oauth2FlowProxy.begin).toHaveBeenCalledWith('resource-url', undefined);
 		expect(additionalData.refreshN8nOAuth2Flow!('refresh-token', 'resource-url')).toBe(
 			refreshPromise,
 		);
+	});
+
+	it('completes the flow with the callback request', async () => {
+		oauth2FlowProxy.complete.mockResolvedValue({ valid: false, reason: 'invalid_state' });
+
+		const additionalData = await resolveAdditionalData();
+
+		await expect(additionalData.completeN8nOAuth2Flow!('code', 'state')).resolves.toEqual({
+			valid: false,
+			reason: 'invalid_state',
+		});
+		expect(oauth2FlowProxy.complete).toHaveBeenCalledWith('code', 'state', {
+			method: 'POST',
+			url: '/form/abc',
+			ip: '203.0.113.7',
+		});
+	});
+
+	describe('validateN8nOAuth2Token', () => {
+		const RESOURCE_URL = 'https://n8n.test/form/abc';
+		const GRANT = { audiences: [RESOURCE_URL], executeAccessWorkflowId: WORKFLOW_ID };
+		const CALLBACK_REQUEST = { method: 'POST', url: '/form/abc', ip: '203.0.113.7' };
+
+		// The module init binds the contract; this harness loads no module.
+		const admission = mock<ResourceAdmission>();
+		Container.set(ResourceAdmission, admission);
+		const trustedSourceStore = mock<TrustedSourceStore>();
+		Container.set(TrustedSourceStore, trustedSourceStore);
+
+		const resource = mock<ProtectedResource>({
+			surface: 'trigger',
+			getResourceUrl: () => RESOURCE_URL,
+			getAudiences: () => [RESOURCE_URL],
+			getAcceptedSourceIds: () => ['idp-1'],
+			getGrant: () => GRANT,
+		});
+
+		const context: SecurityContext = {
+			subject: {
+				id: 'user-1',
+				type: 'human',
+				email: 'alice@example.com',
+				firstName: 'Alice',
+				lastName: 'Example',
+			} as Principal,
+			authMethod: 'oauth-access-token',
+			subjectClaim: { sourceId: 'idp-1', issuer: 'https://idp.example', subject: 'idp-alice' },
+			tokenScopes: [],
+		};
+
+		const sourceWithIdentity = (subject: 'binding' | 'n8n-user-id') =>
+			({ config: { identity: { subject } } }) as unknown as TrustedSource;
+
+		const request = () =>
+			mock<WebhookRequest>({
+				method: 'POST',
+				contentType: undefined,
+				originalUrl: '/form/abc',
+				ip: '203.0.113.7',
+				ctx: undefined,
+			});
+
+		/** The harness resets the registry; the resource is set after it ran. */
+		const resolveWithResource = async (req = request()) => {
+			const additionalData = await resolveAdditionalData(req);
+			resourceRegistry.getByResourceUrl.mockResolvedValue(resource);
+			return additionalData;
+		};
+
+		beforeEach(() => {
+			admission.admitBearer.mockResolvedValue({ ok: true, context });
+			trustedSourceStore.getById.mockResolvedValue(sourceWithIdentity('binding'));
+			executionContextService.buildTriggerIdentityCredentials.mockResolvedValue('sealed');
+		});
+
+		it('admits the bearer against the trigger resource and answers with the admitted user', async () => {
+			const req = request();
+			const { validateN8nOAuth2Token } = await resolveWithResource(req);
+
+			const result = await validateN8nOAuth2Token!('the-token', RESOURCE_URL);
+
+			expect(result).toEqual({
+				valid: true,
+				user: {
+					id: 'user-1',
+					email: 'alice@example.com',
+					firstName: 'Alice',
+					lastName: 'Example',
+				},
+			});
+			expect(admission.admitBearer).toHaveBeenCalledWith(resource, CALLBACK_REQUEST, 'the-token');
+			expect(req.ctx?.security).toBe(context);
+		});
+
+		// The admission decides and builds the challenge; the surface maps the reason to its answer.
+		it.each([
+			{ reason: 'source-not-accepted', answer: 'invalid_token' },
+			{ reason: 'insufficient_scope', answer: 'insufficient_scope' },
+		] as const)(
+			'answers a $reason refusal with $answer and the challenge',
+			async ({ reason, answer }) => {
+				const refusal: Refused = {
+					ok: false,
+					reason,
+					advertised: {
+						surface: 'trigger',
+						resource: { url: RESOURCE_URL, acceptedAudiences: [RESOURCE_URL] },
+						acceptedSourceIds: ['idp-1'],
+					},
+				};
+				admission.admitBearer.mockResolvedValue(refusal);
+				admission.challenge.mockResolvedValue('the-challenge');
+				const req = request();
+				const { validateN8nOAuth2Token } = await resolveWithResource(req);
+
+				const result = await validateN8nOAuth2Token!('the-token', RESOURCE_URL);
+
+				expect(result).toEqual({ valid: false, reason: answer, challenge: 'the-challenge' });
+				expect(admission.challenge).toHaveBeenCalledWith(refusal);
+				expect(req.ctx).toBeUndefined();
+			},
+		);
+
+		it('rejects a token for a resource that does not resolve', async () => {
+			const { validateN8nOAuth2Token } = await resolveWithResource();
+			resourceRegistry.getByResourceUrl.mockResolvedValue(undefined);
+
+			const result = await validateN8nOAuth2Token!('the-token', RESOURCE_URL);
+
+			expect(result).toEqual({ valid: false, reason: 'invalid_token' });
+			expect(admission.admitBearer).not.toHaveBeenCalled();
+		});
+
+		// Only a binding-mode source has a row the worker gate can re-check.
+		it.each([
+			{
+				name: 'seals the binding of a binding-mode source',
+				subject: 'binding',
+				binding: { sourceId: 'idp-1', subject: 'idp-alice' },
+			},
+			{
+				name: 'seals no binding for a source that names the user by id',
+				subject: 'n8n-user-id',
+				binding: undefined,
+			},
+		] as const)('$name into the trigger identity', async ({ subject, binding }) => {
+			trustedSourceStore.getById.mockResolvedValue(sourceWithIdentity(subject));
+			const { validateN8nOAuth2Token, establishTriggerIdentity } = await resolveWithResource();
+
+			await validateN8nOAuth2Token!('the-token', RESOURCE_URL);
+			await establishTriggerIdentity!('the-token', RESOURCE_URL, 'user-1');
+
+			expect(trustedSourceStore.getById).toHaveBeenCalledWith('idp-1');
+			expect(executionContextService.buildTriggerIdentityCredentials).toHaveBeenCalledWith(
+				'the-token',
+				RESOURCE_URL,
+				GRANT,
+				'user-1',
+				binding,
+			);
+		});
 	});
 });
 

@@ -20,6 +20,7 @@ export function toImportBlockedError(
 				issue.type === 'project-conflict' ||
 				issue.type === 'folder-conflict' ||
 				issue.type === 'variable-conflict' ||
+				issue.type === 'credential-conflict' ||
 				(issue.type === 'data-table-unresolved' &&
 					(issue.kind === 'id-conflict' || issue.kind === 'name-conflict')) ||
 				(issue.type === 'tag-unresolved' &&

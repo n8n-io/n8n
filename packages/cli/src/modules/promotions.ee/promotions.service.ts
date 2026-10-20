@@ -6,6 +6,7 @@ import type {
 	ContinueApplySelectionDto,
 	PromotePackageDto,
 	PromotePackageResultDto,
+	PromotionBindingConflict,
 	PromoteRequest,
 	PromotionCheckoutPublicDto,
 	PromotionDirection,
@@ -28,6 +29,7 @@ import { PackageImportConfig } from '@/modules/n8n-packages/n8n-packages.config'
 import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
 import { MANIFEST_FILE } from '@/modules/n8n-packages/spec/constants';
 import {
+	CredentialConflictPolicy,
 	DataTableMissingMode,
 	DataTableSchemaConflictPolicy,
 	ExportDependencyPolicy,
@@ -77,6 +79,11 @@ import { WorkingCopyUpdater, type SelectivePushOptions } from './working-copy-up
 
 type ProjectReconciliationResult = { deletedProjectIds: string[] };
 
+/** Conflicts that `confirmDestructiveChanges` lets the apply continue past. */
+function isConfirmableConflict(code: PromotionBindingConflict['code']): boolean {
+	return code === 'destructive-change' || code === 'project-deletion';
+}
+
 // Apply treats the package as source of truth. Callers cannot override this policy,
 // but a confirmed Continue uses `overwrite` for data tables.
 const IMPORT_POLICY: Omit<ImportRequest, 'user'> = {
@@ -87,6 +94,7 @@ const IMPORT_POLICY: Omit<ImportRequest, 'user'> = {
 	missingNodeTypeMode: MissingNodeTypeMode.Fail,
 	credentialMatchingMode: 'id-only',
 	credentialMissingMode: 'must-preexist',
+	credentialConflictPolicy: CredentialConflictPolicy.KeepExisting,
 	folderConflictPolicy: FolderConflictPolicy.Overwrite,
 	overwriteDeletionPolicy: OverwriteDeletionPolicy.HardDelete,
 	dataTableMatchingMode: 'by-id',
@@ -275,9 +283,20 @@ export class PromotionsService {
 
 		const { repositoryFolder } = this.workingDirectory.paths(input.configId);
 		const packageFolder = path.join(repositoryFolder, PACKAGE_SUBFOLDER);
-		if (!(await this.hasExportedPackage(packageFolder))) {
+		// No package yet means this selection becomes the first export.
+		const packageExisted = await pathExists(packageFolder);
+		if (
+			!(await pathExists(path.join(packageFolder, MANIFEST_FILE))) &&
+			(await this.gitService.hasCommittedPath({
+				paths: this.workingDirectory.paths(input.configId),
+				branchName,
+				configId: input.configId,
+				pathspec: `${PACKAGE_SUBFOLDER}/${MANIFEST_FILE}`,
+			}))
+		) {
+			// The commit holds a manifest the checkout lost. A push would drop branch content or metadata.
 			throw new BadRequestError(
-				'The local checkout has no exported package. Promote the instance first, then promote a selection.',
+				'The local copy of the promote branch is incomplete. Disconnect and connect it again in the instance connection settings.',
 			);
 		}
 
@@ -289,9 +308,11 @@ export class PromotionsService {
 		let keepPrePushBackup = false;
 
 		try {
-			await rm(prePushBackup, { recursive: true, force: true });
-			await cp(packageFolder, prePushBackup, { recursive: true, verbatimSymlinks: true });
-			backedUp = true;
+			if (packageExisted) {
+				await rm(prePushBackup, { recursive: true, force: true });
+				await cp(packageFolder, prePushBackup, { recursive: true, verbatimSymlinks: true });
+				backedUp = true;
+			}
 
 			// The exporter does the selecting: it writes the selected workflows and
 			// what they need, so nothing has to be filtered out afterwards.
@@ -366,10 +387,18 @@ export class PromotionsService {
 						{ packageFolder, backupFolder: prePushBackup, error: restoreError },
 					);
 				}
+			} else if (!packageExisted) {
+				await rm(packageFolder, { recursive: true, force: true }).catch((cleanupError: unknown) => {
+					this.logger.warn('Failed to remove the first selection after a failed promote', {
+						packageFolder,
+						error: cleanupError,
+					});
+				});
 			}
 			throw error;
 		} finally {
-			if (!keepPrePushBackup) {
+			// A first push has no backup of its own. Keep any backup left by an earlier failure.
+			if (packageExisted && !keepPrePushBackup) {
 				await rm(prePushBackup, { recursive: true, force: true }).catch((error: unknown) => {
 					this.logger.warn('Failed to remove the selection backup', { prePushBackup, error });
 				});
@@ -601,7 +630,7 @@ export class PromotionsService {
 			},
 		});
 		const blockingConflicts = confirmDestructiveChanges
-			? preflight.conflicts.filter(({ code }) => code !== 'destructive-change')
+			? preflight.conflicts.filter(({ code }) => !isConfirmableConflict(code))
 			: preflight.conflicts;
 		if (
 			preflight.missingBindings.length > 0 ||
@@ -702,7 +731,7 @@ export class PromotionsService {
 			sourceDir: packageFolder,
 		});
 		const blockingConflicts = confirmDestructiveChanges
-			? preflight.conflicts.filter(({ code }) => code !== 'destructive-change')
+			? preflight.conflicts.filter(({ code }) => !isConfirmableConflict(code))
 			: preflight.conflicts;
 		if (
 			preflight.missingBindings.length > 0 ||
@@ -739,7 +768,14 @@ export class PromotionsService {
 			{ sourceDir: packageFolder },
 		);
 		const importedProjectIds = result.projects.map((project) => project.localId);
-		const projectReconciliation = await this.reconcileTeamProjects(actor, importedProjectIds);
+		const confirmedProjectIds = preflight.conflicts.flatMap((conflict) =>
+			conflict.code === 'project-deletion' ? conflict.project.id : [],
+		);
+		const projectReconciliation = await this.reconcileTeamProjects(
+			actor,
+			importedProjectIds,
+			confirmedProjectIds,
+		);
 
 		return {
 			status: 'applied',
@@ -836,14 +872,6 @@ export class PromotionsService {
 		}
 	}
 
-	private async hasExportedPackage(packageFolder: string): Promise<boolean> {
-		try {
-			return (await stat(path.join(packageFolder, MANIFEST_FILE))).isFile();
-		} catch {
-			return false;
-		}
-	}
-
 	/**
 	 * A checkout counts as ready only when it exists and was cloned from the
 	 * configuration we just resolved. Another process may have changed the remote or
@@ -886,13 +914,18 @@ export class PromotionsService {
 		});
 	}
 
+	/** Deletes only the projects that the user confirmed and that the import did not keep. */
 	private async reconcileTeamProjects(
 		actor: User,
 		importedProjectIds: string[],
+		confirmedProjectIds: string[],
 	): Promise<ProjectReconciliationResult> {
 		const imported = new Set(importedProjectIds);
+		const confirmed = new Set(confirmedProjectIds);
 		const teamProjectIds = await this.projectRepository.findTeamProjectIds();
-		const removedProjectIds = teamProjectIds.filter((projectId) => !imported.has(projectId));
+		const removedProjectIds = teamProjectIds.filter(
+			(projectId) => confirmed.has(projectId) && !imported.has(projectId),
+		);
 
 		for (const projectId of removedProjectIds) {
 			await this.projectService.deleteProject(actor, projectId);
@@ -965,6 +998,17 @@ export class PromotionsService {
 				skipped: importResult.tags.skipped.length,
 			},
 		};
+	}
+}
+
+/** Throws on any error except a missing path, so an unreadable package never looks empty. */
+async function pathExists(target: string): Promise<boolean> {
+	try {
+		await stat(target);
+		return true;
+	} catch (error) {
+		if (error instanceof Error && 'code' in error && error.code === 'ENOENT') return false;
+		throw error;
 	}
 }
 

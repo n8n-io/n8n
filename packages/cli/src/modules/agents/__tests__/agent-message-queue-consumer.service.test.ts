@@ -186,7 +186,7 @@ describe('AgentMessageQueueConsumer', () => {
 		repository.findThreadIds.mockResolvedValue(['session']);
 		queue.claimNext.mockResolvedValueOnce(item).mockResolvedValue(null);
 		testRuns.executePreparedDraftRun.mockImplementation(async (input) => {
-			input.onBudgetNotice?.();
+			input.onBudgetNotice?.({ code: 'budget.alert' });
 			return {
 				status: 'completed',
 				response: '',
@@ -244,7 +244,7 @@ describe('AgentMessageQueueConsumer', () => {
 			yield {
 				type: 'tool-call-suspended',
 				toolCallId: 'call-1',
-				toolName: 'ask_questions',
+				toolName: 'agent_builder_ask_questions',
 				runId: 'run-1',
 				suspendPayload: { type: 'questions', questions: [] },
 			};

@@ -31,7 +31,9 @@ import { AgentRuntimeReconstructionService } from '@/modules/agents/agent-runtim
 import { hashAgentSandboxPrincipal } from '@/modules/agents/agent-sandbox-principal';
 import { AgentsSettingsService } from '@/modules/agents/agents-settings.service';
 import type { Agent as AgentEntity } from '@/modules/agents/entities/agent.entity';
+import { AgentSkillRefsService } from '@/modules/agents/agent-skill-refs.service';
 import { sanitizeToolName } from '@/modules/agents/json-config/agent-config-composition';
+import { fromAgentDocument, toAgentDocument } from '@/modules/agents/json-config/agent-document';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { createAgentCredentialProvider } from '@/modules/agents/utils/agent-credential-provider';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
@@ -97,9 +99,10 @@ export function mcpUrlsMatch(configUrl: string, remoteUrl: string): boolean {
 /**
  * Resolve canonical tool catalogs for configured MCP servers, so the mock
  * exposes the tools the real server would: registry entries carry the
- * server's declared catalog (matched by remote URL), and an allow-mode
- * toolFilter pins names even without a registry match. Best-effort —
- * without a match the mock's LLM-designed catalog applies.
+ * server's declared catalog (matched by remote URL), and a policy with both
+ * categories blocked pins its explicit non-blocked overrides even without a
+ * registry match. Best-effort — without a match the mock's LLM-designed
+ * catalog applies.
  */
 export async function resolveCanonicalMcpCatalogs(
 	mcpServers: NonNullable<AgentJsonConfig['mcpServers']>,
@@ -132,11 +135,12 @@ export async function resolveCanonicalMcpCatalogs(
 
 	for (const server of mcpServers) {
 		if (result[server.name]) continue;
-		if (server.toolFilter?.mode === 'allow' && server.toolFilter.tools.length > 0) {
-			result[server.name] = server.toolFilter.tools.map((name) => ({
-				name,
-				description: name,
-			}));
+		const permissions = server.toolPermissions;
+		if (permissions?.categories.read === 'blocked' && permissions.categories.write === 'blocked') {
+			const allowedTools = Object.entries(permissions.tools ?? {})
+				.filter(([, permission]) => permission !== 'blocked')
+				.map(([name]) => ({ name, description: name }));
+			if (allowedTools.length > 0) result[server.name] = allowedTools;
 		}
 	}
 
@@ -197,7 +201,12 @@ export class EvalAgentExecutionService {
 			return this.errorResult(`Agent ${agentId} has no JSON config to run.`);
 		}
 
-		const { config, skippedFeatures } = pruneConfigForEval(agentEntity.schema);
+		const agentSkillRefs = Container.get(AgentSkillRefsService);
+		const skillRefs = await agentSkillRefs.refsForDraft(agentEntity, {});
+		const { config, skippedFeatures } = pruneConfigForEval(
+			toAgentDocument(agentEntity.schema, skillRefs),
+		);
+		const pruned = fromAgentDocument(config);
 		if ((agentEntity.integrations ?? []).length > 0) {
 			skippedFeatures.push({
 				feature: 'integrations',
@@ -207,7 +216,7 @@ export class EvalAgentExecutionService {
 		}
 		// The entity is detached (never saved back); mutate the copy the
 		// runtime is built from so pruning applies to reconstruction too.
-		agentEntity.schema = config;
+		agentEntity.schema = pruned.config;
 		agentEntity.integrations = [];
 
 		const toolSummaries = summarizeTools(config, agentEntity.tools ?? {}, sanitizeToolName);
@@ -348,7 +357,11 @@ export class EvalAgentExecutionService {
 		let agent: RuntimeAgent;
 		try {
 			({ agent } = await reconstruction.reconstructFromAgentEntity(
-				agentEntity,
+				{
+					agent: agentEntity,
+					skillRefs: pruned.skillRefs,
+					skills: await agentSkillRefs.skillsForRefs(agentEntity, pruned.skillRefs, {}),
+				},
 				credentialProvider,
 				'test',
 				undefined,

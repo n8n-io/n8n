@@ -1,4 +1,10 @@
-import { createRunExecutionData, type IRunExecutionData } from 'n8n-workflow';
+import {
+	createRunExecutionData,
+	LoggerProxy,
+	type IRunExecutionData,
+	type Logger,
+} from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { InvalidExecutionMetadataError } from '@/errors/invalid-execution-metadata.error';
 
@@ -6,6 +12,8 @@ import {
 	setWorkflowExecutionMetadata,
 	setAllWorkflowExecutionMetadata,
 	KV_LIMIT,
+	KEY_MAX_LENGTH,
+	VALUE_MAX_LENGTH,
 	getWorkflowExecutionMetadata,
 	getAllWorkflowExecutionMetadata,
 } from '../execution-metadata';
@@ -148,29 +156,62 @@ describe('Execution Metadata functions', () => {
 		expect(metadata.test1).toBe('value1');
 	});
 
-	test('setWorkflowExecutionMetadata should truncate long keys', () => {
-		const { metadata, executionData } = createExecutionDataWithMetadata();
+	describe('truncation of long keys and values', () => {
+		const logger = mock<Logger>();
 
-		setWorkflowExecutionMetadata(
-			executionData,
-			'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaab',
-			'value1',
-		);
-
-		expect(metadata).toEqual({
-			aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa: 'value1',
+		beforeEach(() => {
+			vi.clearAllMocks();
+			LoggerProxy.init(logger);
 		});
-	});
 
-	test('setWorkflowExecutionMetadata should truncate long values', () => {
-		const { metadata, executionData } = createExecutionDataWithMetadata();
+		test('stores a value at the length limit in full and does not log', () => {
+			const { metadata, executionData } = createExecutionDataWithMetadata();
+			const value = 'a'.repeat(VALUE_MAX_LENGTH);
 
-		const longValue = 'a'.repeat(513);
+			setWorkflowExecutionMetadata(executionData, 'test1', value);
 
-		setWorkflowExecutionMetadata(executionData, 'test1', longValue);
+			expect(metadata.test1).toBe(value);
+			expect(logger.warn).not.toHaveBeenCalled();
+			expect(logger.error).not.toHaveBeenCalled();
+		});
 
-		expect(metadata).toEqual({
-			test1: longValue.slice(0, 512),
+		test('truncates a value over the length limit and logs one warning', () => {
+			const { metadata, executionData } = createExecutionDataWithMetadata();
+
+			setWorkflowExecutionMetadata(executionData, 'test1', 'a'.repeat(VALUE_MAX_LENGTH) + 'b');
+
+			expect(metadata.test1).toBe('a'.repeat(VALUE_MAX_LENGTH));
+			expect(logger.warn).toHaveBeenCalledTimes(1);
+			expect(logger.warn).toHaveBeenCalledWith(
+				`Custom data value over ${VALUE_MAX_LENGTH} characters long. Truncating to ${VALUE_MAX_LENGTH} characters.`,
+				undefined,
+			);
+			expect(logger.error).not.toHaveBeenCalled();
+		});
+
+		test('stores a key at the length limit in full and does not log', () => {
+			const { metadata, executionData } = createExecutionDataWithMetadata();
+			const key = 'a'.repeat(KEY_MAX_LENGTH);
+
+			setWorkflowExecutionMetadata(executionData, key, 'value1');
+
+			expect(metadata).toEqual({ [key]: 'value1' });
+			expect(logger.warn).not.toHaveBeenCalled();
+			expect(logger.error).not.toHaveBeenCalled();
+		});
+
+		test('truncates a key over the length limit and logs one warning', () => {
+			const { metadata, executionData } = createExecutionDataWithMetadata();
+
+			setWorkflowExecutionMetadata(executionData, 'a'.repeat(KEY_MAX_LENGTH) + 'b', 'value1');
+
+			expect(metadata).toEqual({ ['a'.repeat(KEY_MAX_LENGTH)]: 'value1' });
+			expect(logger.warn).toHaveBeenCalledTimes(1);
+			expect(logger.warn).toHaveBeenCalledWith(
+				`Custom data key over ${KEY_MAX_LENGTH} characters long. Truncating to ${KEY_MAX_LENGTH} characters.`,
+				undefined,
+			);
+			expect(logger.error).not.toHaveBeenCalled();
 		});
 	});
 

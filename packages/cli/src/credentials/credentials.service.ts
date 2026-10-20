@@ -628,10 +628,17 @@ export class CredentialsService {
 	 * @param options.workflowId The workflow that is being edited
 	 * @param options.projectId The project owning the workflow This is useful
 	 * for workflows that have not been saved yet.
+	 * @param options.excludePersonalRoute Skip the personal route, which lets a
+	 * user bring their own personal credentials into a team project they are a
+	 * member of. Agents set this because they do not support it yet. The
+	 * instance-wide shortcut for owners and admins in their personal project
+	 * stays in place.
 	 */
 	async getCredentialsAUserCanUseInAWorkflow(
 		user: User,
-		options: { workflowId: string } | { projectId: string },
+		options: ({ workflowId: string } | { projectId: string }) & {
+			excludePersonalRoute?: boolean;
+		},
 	): Promise<WorkflowCredentialResult[]> {
 		// necessary to get the scopes
 		const projectRelations = await this.projectService.getProjectRelationsForUser(user);
@@ -648,9 +655,10 @@ export class CredentialsService {
 				: (await this.findAllCredentialIdsForProject(options.projectId)).map((c) => c.id),
 		);
 
-		const personalRouteCredentialIds = isCredSharingEnabled()
-			? await this.findPersonalRouteCredentialIds(user, allCredentials, projectRelations, options)
-			: new Set<string>();
+		const personalRouteCredentialIds =
+			isCredSharingEnabled() && !options.excludePersonalRoute
+				? await this.findPersonalRouteCredentialIds(user, allCredentials, projectRelations, options)
+				: new Set<string>();
 
 		// the union of all three is every credential the user can use in this
 		// workflow or project
@@ -2047,20 +2055,23 @@ export class CredentialsService {
 		return await this.persistInstanceCredential({ ...dto, isManaged: false }, user, ctx, options);
 	}
 
-	/**
-	 * Creates an empty credential placeholder for package import. Skips field
-	 * validation so every known type can be stubbed; the insert still enforces
-	 * `credential:create` on the target project. A supplied `id` preserves source identity.
-	 */
 	async createStubCredential(
-		opts: { id?: string; name: string; type: string; projectId: string },
+		opts: {
+			id?: string;
+			name: string;
+			type: string;
+			projectId: string;
+			data?: ICredentialDataDecryptedObject;
+		},
 		user: User,
 	): Promise<CredentialsEntity> {
+		const data = opts.data ?? {};
+		await this.validateStubCredentialData(data, user, opts.projectId);
 		const encryptedCredential = await this.createEncryptedData({
 			id: opts.id ?? null,
 			name: opts.name,
 			type: opts.type,
-			data: {},
+			data,
 		});
 
 		const credentialEntity = this.credentialsRepository.create({
@@ -2075,7 +2086,7 @@ export class CredentialsService {
 				encryptedCredential,
 				user,
 				opts.projectId,
-				{},
+				data,
 			);
 		} catch (error) {
 			if (error instanceof CredentialIdConflictError) {
@@ -2087,11 +2098,22 @@ export class CredentialsService {
 		}
 	}
 
-	/**
-	 * Used to check credential data for creating a new credential.
-	 * TODO: consider refactoring enable using this for both creating and updating, right now only used for creation
-	 * (likely only affects the validateExternalSecretsPermissions call)
-	 */
+	async validateStubCredentialData(
+		data: ICredentialDataDecryptedObject,
+		user: User,
+		projectId: string,
+	): Promise<void> {
+		await validateExternalSecretsPermissions({ user, projectId, dataToSave: data });
+		if (this.externalSecretsConfig.externalSecretsForProjects) {
+			await validateAccessToReferencedSecretProviders(
+				projectId,
+				data,
+				this.externalSecretsProviderAccessCheckService,
+				'create',
+			);
+		}
+	}
+
 	async checkCredentialData(
 		type: string,
 		data: ICredentialDataDecryptedObject,

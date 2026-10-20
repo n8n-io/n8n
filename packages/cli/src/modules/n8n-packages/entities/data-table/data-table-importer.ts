@@ -5,6 +5,7 @@ import { UserError } from 'n8n-workflow';
 import { ForbiddenError } from '@n8n/errors';
 import type { DataTable } from '@/modules/data-table/data-table.entity';
 import { DataTableService } from '@/modules/data-table/data-table.service';
+import { orderColumnRenames, pairDataTableColumns } from '@/modules/data-table/utils/pair-columns';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
 import { diffDataTableSchema } from './data-table-compat';
@@ -23,7 +24,10 @@ import type {
 import { DataTableMatchingMode, DataTableSchemaConflictPolicy } from '../../n8n-packages.types';
 import type { DataTableMissingMode, ImportContext } from '../../n8n-packages.types';
 import type { PackageDataTableRequirement } from '../../spec/requirements.schema';
-import type { SerializedDataTable } from '../../spec/serialized/data-table.schema';
+import type {
+	SerializedDataTable,
+	SerializedDataTableColumn,
+} from '../../spec/serialized/data-table.schema';
 
 interface PlannedCreation {
 	table: SerializedDataTable;
@@ -34,7 +38,13 @@ interface PlannedUpdate extends DataTableUpdate {
 	requirement: PackageDataTableRequirement;
 }
 
-type RequirementEffect = TableEffect | { action: 'update'; operations: DataTableSchemaOperation[] };
+type PlannedAlignment = PlannedCreation;
+
+type RequirementEffect =
+	| TableEffect
+	| { action: 'update'; operations: DataTableSchemaOperation[] }
+	// Same visible schema; only column ids or stored positions differ. Users never see these, so the import adopts the package values silently.
+	| { action: 'align-columns' };
 
 @Service()
 export class DataTableImporter {
@@ -56,13 +66,14 @@ export class DataTableImporter {
 	): Promise<DataTableImportPlan> {
 		const requirements = request.requirements ?? [];
 		if (requirements.length === 0) {
-			return { creations: [], updates: [], failures: [], matchedCount: 0 };
+			return { creations: [], updates: [], columnAlignments: [], failures: [], matchedCount: 0 };
 		}
 
 		if (!this.moduleRegistry.isActive('data-table')) {
 			return {
 				creations: [],
 				updates: [],
+				columnAlignments: [],
 				failures: [{ kind: 'module-disabled' }],
 				matchedCount: 0,
 			};
@@ -79,6 +90,7 @@ export class DataTableImporter {
 
 		const creations: PlannedCreation[] = [];
 		const updates: PlannedUpdate[] = [];
+		const columnAlignments: PlannedAlignment[] = [];
 		const failures: DataTableResolutionFailure[] = [];
 		let matchedCount = 0;
 
@@ -103,15 +115,23 @@ export class DataTableImporter {
 			if (effect.action === 'create') creations.push({ table: packageTable, requirement });
 			else if (effect.action === 'update') {
 				updates.push({ table: packageTable, operations: effect.operations, requirement });
+			} else if (effect.action === 'align-columns') {
+				columnAlignments.push({ table: packageTable, requirement });
+				matchedCount++;
 			} else if (effect.action === 'fail') failures.push(effect.failure);
 			else if (matchedTargetTable) matchedCount++;
 		}
 
-		failures.push(...(await this.writeFailures(context, creations, updates)));
+		failures.push(...(await this.writeFailures(context, creations, updates, columnAlignments)));
+
+		await this.assertColumnIdsAvailable(
+			[...creations, ...updates, ...columnAlignments].map(({ table }) => table),
+		);
 
 		return {
 			creations: creations.map(({ table }) => table),
 			updates: updates.map(({ table, operations }) => ({ table, operations })),
+			columnAlignments: columnAlignments.map(({ table }) => table),
 			failures,
 			matchedCount,
 		};
@@ -140,20 +160,10 @@ export class DataTableImporter {
 				projectId: reference.projectId,
 				targetsById,
 			});
-			if (
-				!packageTable ||
-				!target ||
-				!findSchemaConflict(
-					DataTableSchemaConflictPolicy.OverwriteNonDestructive,
-					packageTable.columns,
-					target.columns,
-				)
-			) {
-				return [];
-			}
-			return [
-				{ table: packageTable, operations: diffDataTableSchema(packageTable, target), reference },
-			];
+			if (!packageTable || !target) return [];
+			const operations = diffDataTableSchema(packageTable, target);
+			if (!operations.some(({ destructive }) => destructive)) return [];
+			return [{ table: packageTable, operations, reference }];
 		});
 	}
 
@@ -168,7 +178,10 @@ export class DataTableImporter {
 		if (plan.creations.length > 0 && !(await hasProjectScope(context, 'dataTable:create'))) {
 			throw new ForbiddenError('User is missing a scope required to create a data table');
 		}
-		if (plan.updates.length > 0 && !(await hasProjectScope(context, 'dataTable:update'))) {
+		if (
+			plan.updates.length + plan.columnAlignments.length > 0 &&
+			!(await hasProjectScope(context, 'dataTable:update'))
+		) {
 			throw new ForbiddenError('User is missing a scope required to update a data table');
 		}
 
@@ -177,14 +190,41 @@ export class DataTableImporter {
 				context.projectId,
 				{ name: table.name, columns: table.columns },
 				table.id,
+				table.columns.map(({ id }) => id),
 			);
 		}
 
-		for (const { table } of plan.updates) {
+		for (const table of [...plan.updates.map(({ table }) => table), ...plan.columnAlignments]) {
 			await this.dataTableService.replaceSchema(table.id, context.projectId, {
 				name: table.name,
 				columns: table.columns,
 			});
+		}
+	}
+
+	/** Column ids are globally unique, so a package column id must not belong to another table. */
+	private async assertColumnIdsAvailable(tables: SerializedDataTable[]): Promise<void> {
+		const packageColumnsById = new Map<
+			string,
+			{ table: SerializedDataTable; column: SerializedDataTableColumn }
+		>();
+		for (const table of tables) {
+			for (const column of table.columns) {
+				if (column.id) packageColumnsById.set(column.id, { table, column });
+			}
+		}
+		if (packageColumnsById.size === 0) return;
+
+		const existing = await this.dataTableService.findTableIdsByColumnIds([
+			...packageColumnsById.keys(),
+		]);
+		for (const { id, dataTableId } of existing) {
+			const packageColumn = packageColumnsById.get(id);
+			if (packageColumn && packageColumn.table.id !== dataTableId) {
+				throw new UserError(
+					`Data table "${packageColumn.table.name}": column "${packageColumn.column.name}" has id "${id}", but a column in another data table already uses this id.`,
+				);
+			}
 		}
 	}
 
@@ -193,6 +233,7 @@ export class DataTableImporter {
 		context: ImportContext,
 		creations: PlannedCreation[],
 		updates: PlannedUpdate[],
+		alignments: PlannedAlignment[],
 	): Promise<DataTableResolutionFailure[]> {
 		const failures: DataTableResolutionFailure[] = [];
 
@@ -203,7 +244,8 @@ export class DataTableImporter {
 			});
 		}
 
-		if (updates.length > 0 && !(await hasProjectScope(context, 'dataTable:update'))) {
+		const changedTables = [...updates, ...alignments];
+		if (changedTables.length > 0 && !(await hasProjectScope(context, 'dataTable:update'))) {
 			failures.push({
 				kind: 'permission-denied',
 				missingScope: 'dataTable:update',
@@ -286,8 +328,22 @@ function resolveRequirement(
 			schemaConflictPolicy === DataTableSchemaConflictPolicy.Overwrite ||
 			schemaConflictPolicy === DataTableSchemaConflictPolicy.OverwriteNonDestructive
 		) {
+			const { pairs } = pairDataTableColumns(packageTable.columns, matchedTargetTable.columns);
 			const operations = diffDataTableSchema(packageTable, matchedTargetTable);
-			if (operations.length > 0) return { action: 'update', operations };
+			if (operations.length > 0) {
+				const [blocked] = orderColumnRenames(pairs).blocked;
+				if (blocked) {
+					throw new UserError(
+						`Data table "${packageTable.name}": cannot rename column "${blocked.target.name}" to "${blocked.source.name}". Another column has this name. Column name swaps and cycles are not supported.`,
+					);
+				}
+				return { action: 'update', operations };
+			}
+			const isAligned = pairs.every(
+				({ source, target }) =>
+					(source.id === undefined || source.id === target.id) && source.index === target.index,
+			);
+			if (!isAligned) return { action: 'align-columns' };
 		}
 		// Matched: used as-is. Ids are preserved on import, so the workflow
 		// node references already point at the matched table.

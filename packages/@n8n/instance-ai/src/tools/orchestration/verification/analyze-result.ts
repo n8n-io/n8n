@@ -333,7 +333,7 @@ function classifyVerificationFailure(
 			shouldEdit: false,
 			reason: 'mocked_credentials_or_placeholders',
 			guidance:
-				'Workflow verification reached an unresolved setup value. Stop code edits and route to workflows(action="setup").',
+				'Workflow verification reached an unresolved setup value. Stop code edits and route to workflow_builder_workflows(action="setup").',
 		});
 	}
 
@@ -356,8 +356,8 @@ function classifyVerificationFailure(
 				? 'mocked_credentials_or_placeholders'
 				: 'credential_or_setup_failure',
 			guidance: hasMockedCredentialContext
-				? 'Workflow submitted successfully, but verification is blocked by mocked credentials. Stop code edits and route to workflows(action="setup").'
-				: `Workflow submitted successfully, but verification requires credential or account setup. Stop code edits and route to workflows(action="setup").${quotaGuidance}`,
+				? 'Workflow submitted successfully, but verification is blocked by mocked credentials. Stop code edits and route to workflow_builder_workflows(action="setup").'
+				: `Workflow submitted successfully, but verification requires credential or account setup. Stop code edits and route to workflow_builder_workflows(action="setup").${quotaGuidance}`,
 		});
 	}
 
@@ -443,7 +443,7 @@ function buildCoverageNote(
 	const triggerScopeNote = triggerNodeName
 		? ` This pass started from trigger "${triggerNodeName}", so it covers that trigger's branch ` +
 			"only — nodes on another trigger's branch are expected to be unreached here. Call " +
-			'verify-built-workflow again with `triggerNodeName` set to each remaining trigger and ' +
+			'workflow_builder_verify_built_workflow again with `triggerNodeName` set to each remaining trigger and ' +
 			'treat coverage as the union of those passes. Do not edit, disable, reorder, or copy the ' +
 			'workflow to reach them.'
 		: '';
