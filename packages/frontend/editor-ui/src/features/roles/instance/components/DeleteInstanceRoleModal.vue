@@ -6,6 +6,7 @@ import {
 	N8nDialogBody,
 	N8nDialogFooter,
 	N8nDialogHeader,
+	N8nDialogDescription,
 	N8nDialogTitle,
 	N8nOption,
 	N8nSelect,
@@ -82,10 +83,10 @@ function onConfirm() {
 		</N8nDialogHeader>
 
 		<N8nDialogBody :class="$style.content">
-			<N8nText tag="p" size="medium" color="text-base">
+			<N8nDialogDescription>
 				<strong>{{ userCountText }}</strong>
 				{{ i18n.baseText('roles.instance.action.delete.reassign.description') }}
-			</N8nText>
+			</N8nDialogDescription>
 
 			<div :class="$style.field">
 				<N8nText tag="label" size="medium" color="text-dark">
