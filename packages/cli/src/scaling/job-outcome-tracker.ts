@@ -98,7 +98,8 @@ export class JobOutcomeTracker {
 		result?: JobFinishedProps,
 	) {
 		const jobKey = toJobKey(queueName, jobId);
-		await this.rebindFromRecovery(jobKey, executionId, false);
+		// Stay synchronous for a bound wait, so a completion event in the same tick cannot settle it before the result is stored
+		if (!this.pendingWaits.has(jobKey)) await this.rebindFromRecovery(jobKey, executionId);
 		if (result && this.acceptsReport(jobKey, executionId)) {
 			this.results.set(this.toOriginalKey(jobKey), { executionId, result });
 		}
@@ -109,7 +110,7 @@ export class JobOutcomeTracker {
 	/** Record a failure the worker reported, or reject the wait for it at once. */
 	async recordFailed(queueName: string, jobId: JobId, executionId: string, error: Error) {
 		const jobKey = toJobKey(queueName, jobId);
-		await this.rebindFromRecovery(jobKey, executionId, true);
+		await this.rebindFromRecovery(jobKey, executionId);
 		const settled = this.settle(jobKey, { error, succeeded: false });
 		if (settled) return;
 
@@ -136,7 +137,7 @@ export class JobOutcomeTracker {
 	/** Settle the wait for a job from a Bull event, which carries only the job ID. */
 	async settleByJobKey(queueName: string, jobId: JobId, error?: Error) {
 		const jobKey = toJobKey(queueName, jobId);
-		if (error) await this.rebindFromRecovery(jobKey, undefined, true);
+		if (error) await this.rebindFromRecovery(jobKey, undefined);
 		this.settle(jobKey, { error, succeeded: !error });
 	}
 
@@ -145,13 +146,8 @@ export class JobOutcomeTracker {
 	 * process. Until the rebind, a report under the fresh ID finds no wait, and a failure under the
 	 * old ID can come from a worker that woke up with the moved job. Rebind from the record first.
 	 */
-	private async rebindFromRecovery(
-		jobKey: string,
-		executionId: string | undefined,
-		failed: boolean,
-	) {
+	private async rebindFromRecovery(jobKey: string, executionId: string | undefined) {
 		const bound = this.pendingWaits.get(jobKey);
-		if (bound && !failed) return;
 		const wait = bound ?? (executionId === undefined ? undefined : this.findWait(executionId)?.[1]);
 		if (!wait) return;
 

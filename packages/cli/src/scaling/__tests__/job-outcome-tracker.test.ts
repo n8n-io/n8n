@@ -55,6 +55,14 @@ describe('JobOutcomeTracker', () => {
 			expect(tracker.popResult(job)).toBeUndefined();
 		});
 
+		it('should store the result for a bound wait in the same tick', () => {
+			// The completion event can arrive in the same tick and settle the wait
+			void tracker.waitFor(job);
+			void tracker.recordFinished('jobs', 'job-1', 'exec-1', result);
+
+			expect(tracker.popResult(job)).toBe(result);
+		});
+
 		it('should ignore the result for an execution this process did not enqueue', async () => {
 			// Bull broadcasts progress messages to every main and webhook process
 			activeExecutions.has.mockReturnValue(false);
