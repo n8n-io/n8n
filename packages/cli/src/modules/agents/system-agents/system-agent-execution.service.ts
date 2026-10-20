@@ -344,17 +344,26 @@ export class SystemAgentExecutionService {
 		const { resourceId } = payload;
 		const attachments = payload.attachments ?? [];
 		const controller = new AbortController();
-		const handle = await provider.prepareTurn({
-			type: 'start',
-			user,
-			thread,
-			resourceId,
-			abortSignal: controller.signal,
-			executionId: admission.executionId,
-			message: payload.message,
-			attachments,
-			options: payload.options ?? {},
-		});
+		// Until the runtime takes the turn, the claim signal (Stop, lost ownership) stops provider setup.
+		// The runtime then links the claim signal itself, so the link ends with setup.
+		const stopSetup = () => controller.abort(signal.reason);
+		signal.addEventListener('abort', stopSetup, { once: true });
+		let handle: SystemAgentTurnHandle;
+		try {
+			handle = await provider.prepareTurn({
+				type: 'start',
+				user,
+				thread,
+				resourceId,
+				abortSignal: controller.signal,
+				executionId: admission.executionId,
+				message: payload.message,
+				attachments,
+				options: payload.options ?? {},
+			});
+		} finally {
+			signal.removeEventListener('abort', stopSetup);
+		}
 		const text = handle.input ?? payload.message;
 		this.attachFileStore(handle, thread);
 		const input =

@@ -374,6 +374,33 @@ describe('SystemAgentExecutionService', () => {
 			});
 		});
 
+		it('aborts the provider setup when the claim stops during setup', async () => {
+			const { service, provider, handle } = setup([textChunk]);
+			const claim = new AbortController();
+			let abortedInSetup: boolean | undefined;
+			provider.prepareTurn.mockImplementation(async (turn: SystemAgentTurn) => {
+				claim.abort();
+				abortedInSetup = turn.abortSignal.aborted;
+				return handle;
+			});
+
+			await service.consume(claimFor(), user, claim.signal, vi.fn());
+
+			expect(abortedInSetup).toBe(true);
+		});
+
+		it('stops following the claim signal when setup ends', async () => {
+			const { service, provider } = setup([textChunk]);
+			const claim = new AbortController();
+
+			await service.consume(claimFor(), user, claim.signal, vi.fn());
+			claim.abort();
+
+			// After setup, the runtime owns the link between the claim signal and the turn.
+			const [turn] = provider.prepareTurn.mock.calls[0];
+			expect(turn.abortSignal.aborted).toBe(false);
+		});
+
 		it('runs the turn under the controller of the provider turn signal', async () => {
 			const { service, provider, turnExecutionService, prepared } = setup([textChunk]);
 			const claimSignal = new AbortController().signal;

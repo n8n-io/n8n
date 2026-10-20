@@ -68,6 +68,10 @@ async function until(check: () => boolean, timeoutMs = 10_000) {
 }
 
 interface TurnProbe {
+	/** Make `prepareTurn` wait for its signal, like a slow sandbox setup. */
+	slowSetup?: boolean;
+	setupStarted?: boolean;
+	setupEnd?: 'aborted' | 'timeout';
 	turnSignal?: AbortSignal;
 	providerAbort?: AbortController;
 	toolStarted?: boolean;
@@ -87,6 +91,17 @@ describe('System agent turn abort', () => {
 		authorize: async () => true,
 		async prepareTurn(turn: SystemAgentTurn) {
 			probe.turnSignal = turn.abortSignal;
+			if (probe.slowSetup) {
+				probe.setupStarted = true;
+				probe.setupEnd = await new Promise((resolve) => {
+					const timer = setTimeout(() => resolve('timeout'), 5_000);
+					turn.abortSignal.addEventListener('abort', () => {
+						clearTimeout(timer);
+						resolve('aborted');
+					});
+				});
+				turn.abortSignal.throwIfAborted();
+			}
 			probe.providerAbort = new AbortController();
 			// The tool waits for the run signal, so the turn stays active until it aborts.
 			const wait = new Tool('wait')
@@ -139,8 +154,7 @@ describe('System agent turn abort', () => {
 		probe = {};
 	});
 
-	/** Queue a message and wait until the turn runs the `wait` tool. */
-	async function startTurn() {
+	async function queueTurn() {
 		const thread = await service.createThread({ agentId: AGENT_ID, user: owner, projectId });
 		await service.sendMessage({
 			agentId: AGENT_ID,
@@ -148,6 +162,12 @@ describe('System agent turn abort', () => {
 			threadId: thread.id,
 			message: 'Go',
 		});
+		return thread;
+	}
+
+	/** Queue a message and wait until the turn runs the `wait` tool. */
+	async function startTurn() {
+		const thread = await queueTurn();
 		await until(() => probe.toolStarted === true);
 		return thread;
 	}
@@ -179,5 +199,18 @@ describe('System agent turn abort', () => {
 		expect(probe.turnSignal?.aborted).toBe(true);
 		expect(probe.outcome?.status).toBe('cancelled');
 		expect(await latestStatus(thread.id)).toBe('cancelled');
+	});
+
+	it('stops provider setup when the user cancels before the turn runs', async () => {
+		probe.slowSetup = true;
+		const thread = await queueTurn();
+		await until(() => probe.setupStarted === true);
+
+		expect(await service.cancel(AGENT_ID, owner, thread.id)).toBe(true);
+		await until(() => probe.setupEnd !== undefined);
+
+		expect(probe.setupEnd).toBe('aborted');
+		expect(probe.toolStarted).toBeUndefined();
+		await vi.waitFor(async () => expect(await latestStatus(thread.id)).toBe('cancelled'));
 	});
 });
