@@ -158,4 +158,33 @@ describe('OdooV2 — custom:getAll', () => {
 			offset: 0,
 		});
 	});
+
+	// NODE-6026: Older workflows store custom-model filters under filterRequest.
+	it.each(['filters', 'filterRequest'])(
+		'sends the display_name condition stored in %s when no records match',
+		async (filterParameter) => {
+			setupParams({
+				customResource: 'stock.valuation.layer',
+				filters: {},
+				[filterParameter]: {
+					filter: [{ fieldName: 'display_name', operator: 'equal', value: 'voeinrwoevin' }],
+				},
+			});
+			(transport.odooApiRequest as Mock).mockResolvedValue([]);
+
+			const result = await node.execute.call(exec);
+
+			expect(transport.odooApiRequest).toHaveBeenCalledExactlyOnceWith(
+				'stock.valuation.layer',
+				'search_read',
+				{
+					domain: [['display_name', '=', 'voeinrwoevin']],
+					fields: [],
+					limit: 10,
+					offset: 0,
+				},
+			);
+			expect(result).toEqual([[]]);
+		},
+	);
 });
