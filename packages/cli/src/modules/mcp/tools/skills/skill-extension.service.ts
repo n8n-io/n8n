@@ -46,6 +46,10 @@ function skillFiles(skill: AgentSkill, name: string) {
 	return [{ path: SKILL_MD_PATH, content: skillMd }, ...(skill.references ?? [])];
 }
 
+function toUriPath(filePath: string): string {
+	return filePath.split('/').map(encodeURIComponent).join('/');
+}
+
 function fileResource(uri: string, content: string) {
 	const bytes = Buffer.from(content, 'utf8');
 	return {
@@ -59,7 +63,7 @@ export function toSkillEntry(skillId: string, skill: AgentSkill) {
 	const name = toSkillName(skill.name);
 	const root = `skill://${skillId}/${name}`;
 	const [skillMd, ...references] = skillFiles(skill, name).map((file) =>
-		fileResource(`${root}/${file.path}`, file.content),
+		fileResource(`${root}/${toUriPath(file.path)}`, file.content),
 	);
 	return {
 		uri: skillMd.uri,
@@ -112,7 +116,9 @@ export class McpSkillExtensionService {
 				const skillName = detail ? toSkillName(detail.skill.name) : undefined;
 				const file =
 					detail && skillName === name
-						? skillFiles(detail.skill, skillName).find((candidate) => candidate.path === path)
+						? skillFiles(detail.skill, skillName).find(
+								(candidate) => toUriPath(candidate.path) === path,
+							)
 						: undefined;
 				if (!detail || !file) throw new ResourceNotFoundError(uri.href);
 				this.telemetry.track(TELEMETRY_EVENT.CONTEXT.MCP_READ_SKILL_FILE, {

@@ -249,6 +249,25 @@ describe('McpSkillExtensionService', () => {
 			});
 		});
 
+		it('reads a reference whose path has URI delimiters through its listed URI', async () => {
+			const skill: AgentSkill = {
+				...releaseNotes,
+				references: [{ path: 'references/my notes #1?.md', content: 'Notes' }],
+			};
+			skillsApi.get.mockResolvedValue(
+				mock<SkillDetail>({ id: 'skill_a1', scope: 'instance', projectId: null, skill }),
+			);
+			const referenceUri = toSkillEntry('skill_a1', skill).resources[1].uri;
+			const client = await connect(service);
+
+			const { result } = await client.request('resources/read', { uri: referenceUri });
+
+			expect(referenceUri).toBe(
+				'skill://skill_a1/release-notes-writer/references/my%20notes%20%231%3F.md',
+			);
+			expect(result.contents[0].text).toBe('Notes');
+		});
+
 		it('reports a SKILL.md read as skill_md', async () => {
 			const client = await connect(service);
 
