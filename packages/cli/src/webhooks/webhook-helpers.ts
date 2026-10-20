@@ -426,10 +426,6 @@ export const handleFormRedirectionCase = <T extends IWebhookResponseCallbackData
 const { formDataFileSizeMax } = Container.get(GlobalConfig).endpoints;
 const parseFormData = createMultiFormDataParser(formDataFileSizeMax);
 
-function isPrematureClose(error: unknown) {
-	return error instanceof Error && 'code' in error && error.code === 'ERR_STREAM_PREMATURE_CLOSE';
-}
-
 function isHttpFullResponse(response: unknown): response is IN8nHttpFullResponse {
 	// A missing body means that the response has an empty body.
 	return (
@@ -455,15 +451,7 @@ async function sendResponseNodeResponse(
 			applySandboxCSP(res);
 			try {
 				const stream = await Container.get(BinaryDataService).getAsStream(binaryData.id);
-				ResponseHelper.pipeStreamToResponse(stream, res, { end: false });
-				try {
-					await finished(stream);
-				} catch (error) {
-					// When the client disconnects, the stream is destroyed without an error.
-					if (!res.destroyed || !isPrematureClose(error)) throw error;
-					responder.respondWithNoResponse();
-					return;
-				}
+				await ResponseHelper.sendStreamToResponse(res, stream);
 			} finally {
 				void Container.get(WebhookResponseRelay).deleteOffloadedBody(response, {
 					workflowId: workflow.id,
@@ -502,7 +490,7 @@ async function sendResponseNodeResponse(
 			`Error with Webhook-Response for execution "${executionId}": "${error.message}"`,
 			{ executionId, workflowId: workflow.id },
 		);
-		// The client disconnected, so there is no response left to send the error on.
+		// The client left, or a stream that failed halfway destroyed the response.
 		if (res.destroyed) responder.respondWithNoResponse();
 		else responder.respondWithError(error);
 	}

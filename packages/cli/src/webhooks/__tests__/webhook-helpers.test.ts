@@ -80,6 +80,7 @@ import { WorkflowRunner } from '@/workflow-runner';
 import {
 	createLargeTempFile,
 	disconnectBeforeResponse,
+	failingStream,
 	readFirstChunkAndDisconnect,
 	readWholeBody,
 	startServer,
@@ -103,7 +104,8 @@ import { WebhookResponder } from '../webhook-responder';
 import { WebhookService } from '../webhook.service';
 import type { IWebhookResponseCallbackData, WebhookRequest } from '../webhook.types';
 
-vi.mock('stream/promises', () => ({
+vi.mock('stream/promises', async (importOriginal) => ({
+	...(await importOriginal<typeof import('stream/promises')>()),
 	finished: vi.fn(),
 }));
 
@@ -350,34 +352,6 @@ describe('setupResponseNodePromise', () => {
 		expect(res.end).toHaveBeenCalled();
 	});
 
-	test('should handle binary data with ID', async () => {
-		const mockStream = mock<Readable>();
-		binaryDataService.getAsStream.mockResolvedValue(mockStream);
-
-		setupResponseNodePromise(
-			responsePromise,
-			res,
-			new WebhookResponder(responseCallback),
-			workflowStartNode,
-			executionId,
-			workflow,
-		);
-
-		responsePromise.resolve({
-			body: { binaryData: { id: 'binary-123' } },
-			headers: { 'content-type': 'image/jpeg' },
-			statusCode: 200,
-		});
-		await new Promise(process.nextTick);
-
-		expect(binaryDataService.getAsStream).toHaveBeenCalledWith('binary-123');
-		expect(res.setHeaders).toHaveBeenCalledWith(new Map([['content-type', 'image/jpeg']]));
-		expect(res.setHeader).toHaveBeenCalledWith('Content-Security-Policy', getHtmlSandboxCSP());
-		expect(mockStream.pipe).toHaveBeenCalledWith(res, { end: false });
-		expect(finished).toHaveBeenCalledWith(mockStream);
-		expect(responseCallback).toHaveBeenCalledWith(null, { noWebhookResponse: true });
-	});
-
 	test('should reclaim an offloaded body once it has been streamed', async () => {
 		binaryDataService.getAsStream.mockResolvedValue(mock<Readable>());
 		const response = {
@@ -611,7 +585,7 @@ describe('setupResponseNodePromise', () => {
 	describe('binary data responses over a real connection', () => {
 		const binaryDataResponse = {
 			body: { binaryData: { id: 'binary-123' } },
-			headers: {},
+			headers: { 'content-type': 'image/jpeg' },
 			statusCode: 200,
 		} as unknown as IN8nHttpFullResponse;
 
@@ -671,25 +645,27 @@ describe('setupResponseNodePromise', () => {
 			await file.remove();
 		});
 
-		beforeEach(async () => {
+		beforeEach(() => {
 			streams = [];
-			const actual = await vi.importActual<typeof import('stream/promises')>('stream/promises');
-			vi.mocked(finished).mockImplementation(actual.finished);
 		});
 
 		afterEach(async () => {
-			vi.mocked(finished).mockReset();
 			for (const stream of streams) stream.destroy();
 			await server?.close();
 			server = undefined;
 		});
 
-		test('should send the whole file and close the source file', async () => {
+		test('should send the whole file with its headers and close the source file', async () => {
 			const stream = await openStream();
 			binaryDataService.getAsStream.mockResolvedValue(stream);
 			const url = await serveBinaryData();
 
-			expect(await readWholeBody(url)).toBe(file.sizeInBytes);
+			const response = await fetch(url);
+
+			expect(response.headers.get('content-type')).toBe('image/jpeg');
+			expect(response.headers.get('content-security-policy')).toBe(getHtmlSandboxCSP());
+			expect((await response.arrayBuffer()).byteLength).toBe(file.sizeInBytes);
+			expect(binaryDataService.getAsStream).toHaveBeenCalledWith('binary-123');
 			expect(await waitForClose(stream)).toBe(true);
 			expect(responseCallback).toHaveBeenCalledTimes(1);
 			expect(responseCallback).toHaveBeenCalledWith(null, { noWebhookResponse: true });
@@ -743,6 +719,21 @@ describe('setupResponseNodePromise', () => {
 			expect(errorReporter.error).toHaveBeenCalledWith(
 				expect.objectContaining({ message: 'read failed' }),
 			);
+		});
+
+		test('should end the response and report the error when the file fails during the download', async () => {
+			const stream = failingStream(3);
+			binaryDataService.getAsStream.mockResolvedValue(stream);
+			const url = await serveBinaryData();
+
+			await expect(readWholeBody(url)).rejects.toThrow();
+
+			await vi.waitFor(() => expect(responseCallback).toHaveBeenCalled());
+			expect(responseCallback).toHaveBeenCalledWith(null, { noWebhookResponse: true });
+			expect(errorReporter.error).toHaveBeenCalledWith(
+				expect.objectContaining({ message: 'read failed' }),
+			);
+			expect(logger.error).toHaveBeenCalledTimes(1);
 		});
 
 		test('should report a failure to open the stream while the client is connected', async () => {
