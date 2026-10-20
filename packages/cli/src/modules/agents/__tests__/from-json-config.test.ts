@@ -1358,9 +1358,11 @@ describe('buildFromJson()', () => {
 				},
 			);
 			const mintsAtBuild = mints;
-			await memorySpy.mock.calls[0][0]?.observe?.({} as never);
+			const observe = memorySpy.mock.calls[0][0]?.observe;
+			await observe?.({} as never);
+			await observe?.({} as never);
 
-			expect(mints).toBe(mintsAtBuild + 1);
+			expect(mints).toBe(mintsAtBuild + 2);
 			expect(observeSpy).toHaveBeenLastCalledWith(
 				expect.objectContaining({ apiKey: `jwt-${mints}` }),
 			);

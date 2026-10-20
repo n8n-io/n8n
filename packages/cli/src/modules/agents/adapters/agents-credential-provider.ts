@@ -4,6 +4,7 @@ import type {
 	CredentialListItem,
 	FetchFn,
 } from '@n8n/agents';
+import { Logger } from '@n8n/backend-common';
 import type { CredentialsEntity, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
@@ -89,7 +90,15 @@ export class AgentsCredentialProvider
 				token ??= await this.mintGatewayCredential(mint.credentialType).then(
 					(credential) => toResolvedCredential(credential).apiKey,
 					// The sent token can still be valid, so a failed mint must not fail the request.
-					() => undefined,
+					(error: unknown) => {
+						Container.get(Logger).warn(
+							'Failed to refresh the AI Gateway token of a model request',
+							{
+								error: error instanceof Error ? error.message : String(error),
+							},
+						);
+						return undefined;
+					},
 				);
 				if (!token) return await baseFetch(input, init);
 				headers.set(name, value.replace(sentToken, token));

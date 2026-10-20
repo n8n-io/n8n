@@ -1,3 +1,4 @@
+import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
@@ -118,7 +119,9 @@ describe('AgentsCredentialProvider', () => {
 			expect(aiGatewayService.getSyntheticCredential).toHaveBeenCalledTimes(1);
 		});
 
-		it('sends the request with its own token when the mint fails', async () => {
+		it('logs a failed mint and sends the request with its own token', async () => {
+			const logger = mock<Logger>();
+			Container.set(Logger, logger);
 			await provider.resolveAiGatewayModelCredential('openai');
 			aiGatewayService.getSyntheticCredential.mockRejectedValue(new Error('config fetch failed'));
 			const init = { headers: { authorization: 'Bearer jwt-1' } };
@@ -126,6 +129,9 @@ describe('AgentsCredentialProvider', () => {
 			await provider.createAiGatewayTokenRefreshFetch(baseFetch)(aiGatewayUrl, init);
 
 			expect(baseFetch).toHaveBeenCalledWith(aiGatewayUrl, init);
+			expect(logger.warn).toHaveBeenCalledWith(expect.any(String), {
+				error: 'config fetch failed',
+			});
 		});
 
 		it('replaces the older token of a model config minted before a newer one', async () => {
