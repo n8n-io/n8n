@@ -212,16 +212,6 @@ export {
 } from './types';
 export { deriveCredentialHosts } from './tools/workflows/credential-url-resolver';
 export { instanceAiBuilderThreadPrefix } from './tools/orchestration/builder-thread-id';
-export {
-	builderRequiredArtifactSchema,
-	builderRequiredArtifactsSchema,
-	REPORT_REQUIRED_ARTIFACT_TOOL_NAME,
-	reportRequiredArtifactInputSchema,
-} from './tools/orchestration/builder-required-artifact';
-export type {
-	BuilderRequiredArtifact,
-	ReportRequiredArtifactInput,
-} from './tools/orchestration/builder-required-artifact';
 export type { CredentialHostMeta } from './tools/workflows/credential-url-resolver';
 export {
 	agentBuilderTargetMetadata,
@@ -723,10 +713,8 @@ export type {
 	FolderSummary,
 	ServiceProxyConfig,
 	InstanceAiBuilderDelegate,
-	BuilderDelegateSession,
-	BuilderTurnStream,
-	BuilderOpenSuspension,
-	SessionWorkflowRef,
+	AgentValidationSummary,
+	BuilderToolsSession,
 	InstanceAiConversationHistoryReader,
 	ConversationHistoryMatchSource,
 	ConversationHistoryExcerpt,

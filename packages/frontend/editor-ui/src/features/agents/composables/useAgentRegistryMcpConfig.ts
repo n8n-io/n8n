@@ -7,6 +7,7 @@ import type {
 import { computed, effectScope, onScopeDispose, ref, watch, type ComputedRef } from 'vue';
 
 import { listenForModalChanges, useUIStore } from '@/app/stores/ui.store';
+import { useLatestFetch } from '@/app/composables/useLatestFetch';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 import {
 	listenForCredentialChanges,
@@ -127,7 +128,7 @@ export function useAgentRegistryMcpConfig(
 	const draftServer = ref<AgentRegistryMcpDraft | null>(null);
 	const persistedServer = ref<AgentRegistryMcpDraft | null>(null);
 	const discovery = ref<McpRegistryDiscoveryResponse | { status: 'connecting' } | null>(null);
-	let requestId = 0;
+	const { invalidate, next } = useLatestFetch();
 	const title = computed(() => draftServer.value?.name ?? data.value?.mcpServer.name ?? '');
 	const normalizedTitle = computed(() => title.value.trim());
 	const hasDuplicateTitle = computed(
@@ -190,7 +191,7 @@ export function useAgentRegistryMcpConfig(
 			};
 			return;
 		}
-		const currentRequestId = ++requestId;
+		const isCurrent = next();
 		discovery.value = { status: 'connecting' };
 		const result = await discoverRegistry(request).catch(
 			(): McpRegistryDiscoveryResponse => ({
@@ -199,17 +200,17 @@ export function useAgentRegistryMcpConfig(
 				tools: [],
 			}),
 		);
-		if (currentRequestId !== requestId) return;
+		if (!isCurrent()) return;
 		discovery.value = result;
 	}
 
 	async function initialize(modalData: AgentRegistryMcpModalData) {
-		const currentRequestId = ++requestId;
+		const isCurrent = next();
 		draftServer.value = { ...modalData.mcpServer };
 		persistedServer.value = modalData.isNew ? null : { ...modalData.mcpServer };
 		discovery.value = { status: 'connecting' };
 		const [catalog] = await Promise.all([fetchCatalog(), preloadCredentials()]);
-		if (currentRequestId !== requestId) return;
+		if (!isCurrent()) return;
 		catalogServer.value =
 			catalog.find(
 				(server) => server.nodeTypeName === modalData.mcpServer.metadata?.nodeTypeName,
@@ -224,7 +225,7 @@ export function useAgentRegistryMcpConfig(
 				void initialize(modalData);
 				return;
 			}
-			requestId++;
+			invalidate();
 			catalogServer.value = null;
 			draftServer.value = null;
 			persistedServer.value = null;

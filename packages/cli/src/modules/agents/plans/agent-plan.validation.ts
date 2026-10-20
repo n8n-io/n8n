@@ -15,7 +15,8 @@ export type AgentPlanReadiness = {
 	blocked: Array<{ id: string; blockedBy: string[] }>;
 };
 
-const isFinal = (status: AgentPlanStatus) => status !== 'pending' && status !== 'in_progress';
+export const isFinal = (status: AgentPlanStatus) =>
+	status !== 'pending' && status !== 'in_progress';
 
 function fail(id: string, message: string): never {
 	throw new AgentPlanValidationError(`Plan item ${id}: ${message}`);

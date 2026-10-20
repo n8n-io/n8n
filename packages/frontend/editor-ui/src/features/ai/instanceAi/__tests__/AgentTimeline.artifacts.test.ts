@@ -32,7 +32,7 @@ const rootNode = {
 	toolCalls: [
 		{
 			toolCallId: 'tc-build',
-			toolName: 'build-workflow',
+			toolName: 'workflow_builder_build_workflow',
 			args: {},
 			isLoading: false,
 			result: { success: true, workflowId: 'wf-1', workflowName: 'Simple Hello World' },

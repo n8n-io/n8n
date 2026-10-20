@@ -53,7 +53,7 @@ describe('agentTurnsAsText', () => {
 			{ userMessage: 'build it', steps: [{ kind: 'agent-text', text: 'Added a webhook.' }] },
 			{
 				userMessage: 'tweak',
-				steps: [{ kind: 'tool-call', toolName: 'build-workflow', args: {} }],
+				steps: [{ kind: 'tool-call', toolName: 'workflow_builder_build_workflow', args: {} }],
 			},
 			{ userMessage: 'add a filter', steps: [{ kind: 'agent-text', text: 'Added a filter.' }] },
 		];
@@ -257,7 +257,7 @@ describe('transcriptAsText', () => {
 				steps: [
 					{
 						kind: 'confirmation',
-						toolName: 'create-tasks',
+						toolName: 'workflow_builder_create_tasks',
 						resumeReason: 'approval',
 						approved: false,
 						message: 'Here is the plan, approve?',
@@ -272,7 +272,7 @@ describe('transcriptAsText', () => {
 		expect(text).toContain('user feedback: No — use a Webhook trigger, not a Schedule');
 	});
 
-	it('surfaces ask-user question types for process expectations', () => {
+	it('surfaces workflow_builder_ask_user question types for process expectations', () => {
 		const transcript: TranscriptTurn[] = [
 			{
 				steps: [
@@ -376,15 +376,15 @@ describe('perTurnToolCallCounts', () => {
 			{ userMessage: 'go', steps: [{ kind: 'agent-text', text: 'ok' }] },
 			{
 				steps: [
-					{ kind: 'tool-call', toolName: 'build-workflow' },
-					{ kind: 'tool-call', toolName: 'build-workflow' },
+					{ kind: 'tool-call', toolName: 'workflow_builder_build_workflow' },
+					{ kind: 'tool-call', toolName: 'workflow_builder_build_workflow' },
 					{ kind: 'tool-call', toolName: 'add-nodes' },
 				],
 			},
-			{ steps: [{ kind: 'tool-call', toolName: 'build-workflow' }] },
+			{ steps: [{ kind: 'tool-call', toolName: 'workflow_builder_build_workflow' }] },
 		];
 		expect(perTurnToolCallCounts(transcript)).toBe(
-			'Turn 2: build-workflow×2, add-nodes×1\nTurn 3: build-workflow×1',
+			'Turn 2: workflow_builder_build_workflow×2, add-nodes×1\nTurn 3: workflow_builder_build_workflow×1',
 		);
 	});
 

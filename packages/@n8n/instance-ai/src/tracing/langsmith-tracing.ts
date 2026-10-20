@@ -185,9 +185,15 @@ interface ProductOtelTraceRuntime {
 	spans: Map<string, OtelApiSpan>;
 	contexts: Map<string, OtelContext>;
 	pendingOperations: Map<string, InstanceAiTraceRun>;
+	/** Work started in the trace that can outlive the root run. The release waits for it. */
+	backgroundOperations: Set<Promise<unknown>>;
+	releaseDeferred: boolean;
 	shutdown: boolean;
 	lifetime: ProductTelemetryLifetime;
 }
+
+/** Upper limit for how long a background operation can keep a closed trace open. */
+const BACKGROUND_OPERATION_RELEASE_TIMEOUT_MS = 2 * 60 * 1000;
 
 interface OTelTracer {
 	startSpan(
@@ -303,7 +309,8 @@ function buildProductSpanAttributes(options: {
 
 	const tags = normalizeTags(DEFAULT_TAGS, options.tags);
 	if (tags?.length) {
-		attributes[LANGSMITH_SPAN_TAGS] = tags;
+		// LangSmith reads tags only from a comma-separated string, not from an array.
+		attributes[LANGSMITH_SPAN_TAGS] = tags.join(', ');
 	}
 
 	const metadata = buildProductSpanMetadata(options);
@@ -488,7 +495,19 @@ async function releaseProductOtelRuntime(
 	runtime: ProductOtelTraceRuntime,
 	traceId: string,
 ): Promise<void> {
-	if (runtime.shutdown) return;
+	if (runtime.shutdown || runtime.releaseDeferred) return;
+
+	if (runtime.backgroundOperations.size > 0) {
+		// Do not block the caller. Release after the background work settles, so its
+		// spans finish normally instead of being cancelled.
+		runtime.releaseDeferred = true;
+		void settleBackgroundOperations(runtime).then(async () => {
+			runtime.releaseDeferred = false;
+			runtime.backgroundOperations.clear();
+			await releaseProductOtelRuntime(runtime, traceId);
+		});
+		return;
+	}
 
 	runtime.shutdown = true;
 	for (const run of runtime.pendingOperations.values()) {
@@ -503,6 +522,27 @@ async function releaseProductOtelRuntime(
 	otelTraceRuntimes.delete(traceId);
 
 	await runtime.lifetime.release();
+}
+
+async function settleBackgroundOperations(runtime: ProductOtelTraceRuntime): Promise<void> {
+	let timer: NodeJS.Timeout | undefined;
+	const timeout = new Promise<void>((resolve) => {
+		timer = setTimeout(resolve, BACKGROUND_OPERATION_RELEASE_TIMEOUT_MS);
+		timer.unref?.();
+	});
+	const allSettled = (async () => {
+		// Operations can register while earlier ones are in flight.
+		while (runtime.backgroundOperations.size > 0) {
+			const operations = [...runtime.backgroundOperations];
+			await Promise.allSettled(operations);
+			for (const operation of operations) runtime.backgroundOperations.delete(operation);
+		}
+	})();
+	try {
+		await Promise.race([allSettled, timeout]);
+	} finally {
+		clearTimeout(timer);
+	}
 }
 
 async function withProxyHeaders<T>(
@@ -597,6 +637,25 @@ function getCurrentProductTrace():
 	| { runtime: ProductOtelTraceRuntime; currentRun: InstanceAiTraceRun }
 	| undefined {
 	return productTraceStorage.getStore();
+}
+
+/** Reuse the active product provider and parent for synchronous verification helpers. */
+export function getCurrentHelperTelemetry(name: string): BuiltTelemetry | undefined {
+	const current = getCurrentProductTrace();
+	if (!current || current.runtime.shutdown || !current.runtime.telemetry.enabled) return undefined;
+	return {
+		...current.runtime.telemetry,
+		functionId: name,
+		metadata: toTelemetryMetadata(current.currentRun.metadata, {
+			evalRole: 'helper',
+			agent_role: name,
+		}),
+		recordInputs: false,
+		recordOutputs: false,
+		runtimeRootSpanEnabled: true,
+		rootAnchored: false,
+		traceModelRequests: true,
+	};
 }
 
 function getActiveOtelContextWithSpan(expectedTraceId?: string): OtelContext | undefined {
@@ -1080,6 +1139,49 @@ async function startAndFinishProductChildSpan(
 	});
 }
 
+function isLiveTraceHandle(
+	tracing: InstanceAiTraceContext | undefined,
+): tracing is InstanceAiTraceContext {
+	return tracing !== undefined && (tracing.isLive?.() ?? true);
+}
+
+/** Whether {@link emitTraceOnlyChildRun} would export a run, so callers can skip costly payloads. */
+function trackBackgroundOperation(
+	runtime: ProductOtelTraceRuntime,
+	operation: Promise<unknown>,
+): void {
+	if (runtime.shutdown) return;
+	runtime.backgroundOperations.add(operation);
+	void operation
+		.catch(() => undefined)
+		.finally(() => runtime.backgroundOperations.delete(operation));
+}
+
+/**
+ * Keep the trace that `emitTraceOnlyChildRun` would export to open until
+ * `operation` settles, so detached work can still record its child run.
+ * Prefers the ambient trace for the same reason `emitTraceOnlyChildRun` does.
+ */
+export function keepTraceOpenUntilSettled(
+	fallbackTracing: InstanceAiTraceContext | undefined,
+	operation: Promise<unknown>,
+): void {
+	const currentTrace = getCurrentProductTrace();
+	if (currentTrace) {
+		trackBackgroundOperation(currentTrace.runtime, operation);
+		return;
+	}
+	if (isLiveTraceHandle(fallbackTracing)) fallbackTracing.keepOpenUntilSettled?.(operation);
+}
+
+export function canEmitTraceOnlyChildRun(fallbackTracing: InstanceAiTraceContext | undefined) {
+	const currentTrace = getCurrentProductTrace();
+	return (
+		(currentTrace !== undefined && !currentTrace.runtime.shutdown) ||
+		isLiveTraceHandle(fallbackTracing)
+	);
+}
+
 /**
  * Emit a trace-only child run, preferring the current turn's ambient trace: a
  * tool suspended in one turn and resumed in a later one holds a stale handle
@@ -1111,7 +1213,7 @@ export async function emitTraceOnlyChildRun(
 		return 'ambient';
 	}
 	// A dead handle's runs are spanless and export nothing — don't claim 'handle'.
-	if (fallbackTracing && (fallbackTracing.isLive?.() ?? true)) {
+	if (isLiveTraceHandle(fallbackTracing)) {
 		try {
 			const run = await fallbackTracing.startChildRun(fallbackTracing.actorRun, {
 				...init,
@@ -1318,6 +1420,7 @@ function createTraceContext(
 		finishRun,
 		failRun,
 		onMemoryTaskEvent,
+		keepOpenUntilSettled: (operation) => trackBackgroundOperation(otelRuntime, operation),
 		...(telemetryFactory ? { getTelemetry: telemetryFactory } : {}),
 		wrapTools: (tools, traceOptions) => {
 			if (ctx.replayMode === 'replay' && ctx.traceIndex && ctx.idRemapper) {
@@ -1717,6 +1820,7 @@ function createTelemetryFactory(options: {
 		if (options.baseTelemetry) {
 			return {
 				...options.baseTelemetry,
+				traceModelRequests: true,
 				functionId,
 				metadata,
 				recordInputs: true,
@@ -1767,6 +1871,8 @@ async function createProductOtelRuntime(
 		spans: new Map(),
 		contexts: new Map(),
 		pendingOperations: new Map(),
+		backgroundOperations: new Set(),
+		releaseDeferred: false,
 		shutdown: false,
 		lifetime: new ProductTelemetryLifetime(telemetry),
 	};
