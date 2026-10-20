@@ -19,6 +19,9 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 	})),
 }));
 
+/** Id of the pending authorization request the screen was opened for. */
+const FLOW_ID = 'ktest00-0123456789abcdef01234567';
+
 describe('useConsentStore', () => {
 	let consentStore: ReturnType<typeof useConsentStore>;
 
@@ -32,9 +35,10 @@ describe('useConsentStore', () => {
 		const details = { clientName: 'Test Client', clientId: 'client-1', scopes: [] };
 		getConsentDetails.mockResolvedValue(details);
 
-		const result = await consentStore.fetchConsentDetails();
+		const result = await consentStore.fetchConsentDetails(FLOW_ID);
 
 		expect(result).toEqual(details);
+		expect(getConsentDetails).toHaveBeenCalledWith(expect.anything(), FLOW_ID);
 		expect(consentStore.consentDetails).toEqual(details);
 		expect(consentStore.isLoading).toBe(false);
 	});
@@ -42,7 +46,7 @@ describe('useConsentStore', () => {
 	it('sets a resource_unavailable error code on a 422', async () => {
 		getConsentDetails.mockRejectedValue(new ResponseError('gone', { httpStatusCode: 422 }));
 
-		await expect(consentStore.fetchConsentDetails()).rejects.toThrow('gone');
+		await expect(consentStore.fetchConsentDetails(FLOW_ID)).rejects.toThrow('gone');
 
 		expect(consentStore.errorCode).toBe('resource_unavailable');
 		expect(consentStore.error).toBe('gone');
@@ -59,11 +63,11 @@ describe('useConsentStore', () => {
 				resolveStale = resolve;
 			}),
 		);
-		const staleCall = consentStore.fetchConsentDetails();
+		const staleCall = consentStore.fetchConsentDetails(FLOW_ID);
 
 		const freshDetails = { clientName: 'Fresh Client', clientId: 'client-2', scopes: [] };
 		getConsentDetails.mockResolvedValueOnce(freshDetails);
-		await consentStore.fetchConsentDetails();
+		await consentStore.fetchConsentDetails(FLOW_ID);
 
 		expect(consentStore.consentDetails).toEqual(freshDetails);
 
@@ -80,11 +84,11 @@ describe('useConsentStore', () => {
 				rejectStale = reject;
 			}),
 		);
-		const staleCall = consentStore.fetchConsentDetails().catch(() => {});
+		const staleCall = consentStore.fetchConsentDetails(FLOW_ID).catch(() => {});
 
 		const freshDetails = { clientName: 'Fresh Client', clientId: 'client-2', scopes: [] };
 		getConsentDetails.mockResolvedValueOnce(freshDetails);
-		await consentStore.fetchConsentDetails();
+		await consentStore.fetchConsentDetails(FLOW_ID);
 
 		rejectStale(new Error('stale failure'));
 		await staleCall;

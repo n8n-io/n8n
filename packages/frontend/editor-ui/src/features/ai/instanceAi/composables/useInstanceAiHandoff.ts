@@ -1,4 +1,5 @@
 import { useRouter } from 'vue-router';
+import { captureException } from '@sentry/vue';
 import { v4 as uuidv4 } from 'uuid';
 import {
 	instanceAiAgentAttachmentSchema,
@@ -572,6 +573,29 @@ export function useInstanceAiHandoff() {
 		);
 	}
 
+	/**
+	 * Navigate to a thread this hand-off just created. If the navigation fails or
+	 * is aborted, delete the thread so it doesn't linger unreached in the sidebar,
+	 * and report the cause.
+	 */
+	async function navigateToNewThread(threadId: string): Promise<boolean> {
+		let error: unknown;
+		try {
+			const failure = await router.push({ name: INSTANCE_AI_THREAD_VIEW, params: { threadId } });
+			if (!failure) return true;
+			error = failure;
+		} catch (thrown) {
+			error = thrown;
+		}
+		console.error('[instance-ai] Hand-off navigation failed', error);
+		captureException(error, { tags: { source: 'instance-ai-handoff' } });
+		clearPendingThreadHandoff(threadId);
+		// Silent: the open-failed toast below already tells the user.
+		await instanceAiStore.deleteThread(threadId, { silent: true });
+		showOpenFailed();
+		return false;
+	}
+
 	async function openThreadWithContext(
 		projectId: string,
 		context: InstanceAiHandoffContext,
@@ -663,6 +687,9 @@ export function useInstanceAiHandoff() {
 			}
 			const thread = instanceAiStore.getOrCreateRuntime(threadId, projectId);
 			prepare?.(threadId);
+			if (!(await navigateToNewThread(threadId))) return;
+			// Send only after the navigation lands, so a run never starts in a thread
+			// the user can't see.
 			void thread.sendMessage(message, {
 				authorship,
 				attachments,
@@ -670,7 +697,6 @@ export function useInstanceAiHandoff() {
 				handoffContext: options?.context,
 				responseStartedAtEpochMs,
 			});
-			await router.push({ name: INSTANCE_AI_THREAD_VIEW, params: { threadId } });
 		} finally {
 			handoffInFlight = false;
 		}
@@ -699,17 +725,7 @@ export function useInstanceAiHandoff() {
 				return false;
 			}
 			prepare?.(threadId);
-			try {
-				const failure = await router.push({ name: INSTANCE_AI_THREAD_VIEW, params: { threadId } });
-				if (failure) throw new Error('Navigation failed');
-			} catch {
-				// Same as the agent path: a thread nobody reached must not linger.
-				clearPendingThreadHandoff(threadId);
-				await instanceAiStore.deleteThread(threadId);
-				showOpenFailed();
-				return false;
-			}
-			return true;
+			return await navigateToNewThread(threadId);
 		} finally {
 			handoffInFlight = false;
 		}

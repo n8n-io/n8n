@@ -94,7 +94,7 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 	{
 		id: 'cloud-admin',
 		position: 'bottom',
-		label: 'Admin Panel',
+		label: i18n.baseText('mainSidebar.cloudConsole'),
 		icon: 'cloud',
 		available: settingsStore.isCloudDeployment && hasPermission(['instanceOwner']),
 	},

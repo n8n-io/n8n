@@ -24,6 +24,7 @@ import { getExperimentTelemetryPayload } from '@/experiments/utils';
 import {
 	INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPERIMENT,
 	INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_EXPERIMENT,
+	WORKFLOW_PREVIEWS_ABOVE_ASSISTANT_EXPERIMENT,
 } from '@/app/constants/experiments';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
@@ -47,6 +48,14 @@ import {
 	INSTANCE_AI_PROMPT_SUGGESTIONS_V2_VERSION,
 	useInstanceAiPromptSuggestionsV2Experiment,
 } from '@/experiments/instanceAiPromptSuggestionsV2';
+// Experiment cleanup (124_workflow_previews_above_assistant)
+import {
+	WORKFLOW_PREVIEWS_ABOVE_ASSISTANT_SUGGESTIONS_VERSION,
+	WorkflowPreviewsAboveAssistant,
+	useWorkflowPreviewsAboveAssistantExperiment,
+	type WorkflowPreviewExampleData,
+} from '@/experiments/workflowPreviewsAboveAssistant';
+// EOF Experiment cleanup
 import {
 	InstanceAiPersonalizedPromptSuggestions,
 	INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_VERSION,
@@ -173,6 +182,12 @@ const { isFeatureEnabled: isProactiveAgentExperimentEnabled } =
 	useInstanceAiProactiveAgentExperiment();
 const { isFeatureEnabled: isPromptSuggestionsV2ExperimentEnabled } =
 	useInstanceAiPromptSuggestionsV2Experiment();
+// Experiment cleanup (124_workflow_previews_above_assistant)
+const {
+	isFeatureEnabled: isWorkflowPreviewsAboveAssistantEnabled,
+	variant: workflowPreviewsAboveAssistantVariant,
+} = useWorkflowPreviewsAboveAssistantExperiment();
+// EOF Experiment cleanup
 const { isVariantEnabled: isSplitVariantEnabled } = useInstanceAiSplitEmptyStateExperiment();
 // Variant A replaces the empty state with an agent picker, variant B with a
 // "Chat with [agent]" picker — both force the default layout and win over
@@ -184,9 +199,22 @@ const forcesDefaultEmptyLayout = computed(
 );
 // Variant B's picker selection: null is n8n Assistant, matching its own v-model contract.
 const selectedChatAgent = ref<AgentChatListItem | null>(null);
+// Experiment cleanup (124_workflow_previews_above_assistant)
+const showWorkflowPreviewsAboveAssistant = computed(
+	() => isWorkflowPreviewsAboveAssistantEnabled.value && !forcesDefaultEmptyLayout.value,
+);
+// EOF Experiment cleanup
 // Experiment cleanup: remove with instanceAiSplitEmptyState.
 const splitPreviewPromptKey = ref<BaseTextKey | null>(null);
 const composerHasContent = ref(false);
+// Experiment cleanup (124_workflow_previews_above_assistant)
+const workflowPreviewPromptKey = ref<BaseTextKey | null>(null);
+const workflowPreviewInjectPulse = ref(false);
+const workflowPreviewInputProps = computed(() => ({
+	previewPromptKey: composerHasContent.value ? null : workflowPreviewPromptKey.value,
+	suggestionCatalogVersion: WORKFLOW_PREVIEWS_ABOVE_ASSISTANT_SUGGESTIONS_VERSION,
+}));
+// EOF Experiment cleanup
 const {
 	currentVariant: personalizedPromptSuggestionsVariant,
 	isTreatmentVariant: isPersonalizedPromptSuggestionsTreatmentVariant,
@@ -212,6 +240,7 @@ const shouldTrackPersonalizedPromptSuggestionsExposure = computed(
 		!showProactiveStarter.value &&
 		!isSplitLayoutActive.value &&
 		!forcesDefaultEmptyLayout.value &&
+		!showWorkflowPreviewsAboveAssistant.value && // Experiment cleanup (124_workflow_previews_above_assistant)
 		settingsStore.isWorkflowBuilderAvailable,
 );
 const personalizedPromptSuggestionResolution = ref<
@@ -231,6 +260,12 @@ const shouldTrackInspirationFromTaxonomyExposure = computed(() => {
 	if (showProactiveStarter.value || isSplitLayoutActive.value || forcesDefaultEmptyLayout.value) {
 		return false;
 	}
+
+	// Experiment cleanup (124_workflow_previews_above_assistant)
+	if (showWorkflowPreviewsAboveAssistant.value) {
+		return false;
+	}
+	// EOF Experiment cleanup
 
 	if (!settingsStore.isWorkflowBuilderAvailable) {
 		return false;
@@ -254,6 +289,16 @@ const personalizedPromptProfileOverride = usePersonalizedPromptProfileOverride()
 let personalizedPromptMetadataTimeout: ReturnType<typeof setTimeout> | null = null;
 let hasTrackedPersonalizedPromptSuggestionsExposure = false;
 let hasTrackedInspirationFromTaxonomyExposure = false;
+// Experiment cleanup (124_workflow_previews_above_assistant)
+let hasTrackedWorkflowPreviewsEmptyStateView = false;
+const shouldTrackWorkflowPreviewsEmptyStateView = computed(
+	() =>
+		workflowPreviewsAboveAssistantVariant.value !== null &&
+		!showProactiveStarter.value &&
+		!isSplitLayoutActive.value &&
+		!forcesDefaultEmptyLayout.value,
+);
+// EOF Experiment cleanup
 const isAnyPersonalizedSuggestionsTreatmentActive = computed(
 	() =>
 		isInspirationFromTaxonomyTreatmentVariant.value ||
@@ -393,6 +438,25 @@ watch(
 	},
 	{ immediate: true },
 );
+
+// Experiment cleanup (124_workflow_previews_above_assistant)
+watch(
+	shouldTrackWorkflowPreviewsEmptyStateView,
+	(shouldTrack) => {
+		const variant = workflowPreviewsAboveAssistantVariant.value;
+		if (!shouldTrack || hasTrackedWorkflowPreviewsEmptyStateView || variant === null) {
+			return;
+		}
+
+		telemetry.track(
+			TELEMETRY_EVENT.INSTANCE_AI.WORKFLOW_PREVIEWS_ABOVE_ASSISTANT_EXPOSED,
+			getExperimentTelemetryPayload(WORKFLOW_PREVIEWS_ABOVE_ASSISTANT_EXPERIMENT, variant),
+		);
+		hasTrackedWorkflowPreviewsEmptyStateView = true;
+	},
+	{ immediate: true },
+);
+// EOF Experiment cleanup
 
 watch(
 	[() => cloudPlanStore.state.initialized, () => cloudPlanStore.currentUserCloudInfo],
@@ -772,6 +836,30 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 	splitPreviewPromptKey.value = null;
 	void chatInputRef.value?.insertSuggestion(payload);
 }
+
+// Experiment cleanup (124_workflow_previews_above_assistant)
+function handleWorkflowPreviewPrompt(promptKey: BaseTextKey | null) {
+	workflowPreviewPromptKey.value = promptKey;
+}
+
+async function handleWorkflowPreviewExampleUse(
+	example: WorkflowPreviewExampleData,
+	position: number,
+) {
+	workflowPreviewPromptKey.value = null;
+	await chatInputRef.value?.insertSuggestion({
+		promptKey: example.promptKey,
+		suggestionId: example.id,
+		suggestionKind: 'prompt',
+		position,
+		prefillType: 'suggestion_catalog',
+	});
+
+	workflowPreviewInjectPulse.value = false;
+	await nextTick();
+	workflowPreviewInjectPulse.value = true;
+}
+// EOF Experiment cleanup
 </script>
 
 <template>
@@ -863,7 +951,29 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 					</div>
 				</template>
 			</InstanceAiSplitEmptyState>
-			<div v-else ref="emptyLayout" :class="$style.emptyLayout">
+			<div
+				v-else
+				ref="emptyLayout"
+				:class="[
+					$style.emptyLayout,
+					// Experiment cleanup (124_workflow_previews_above_assistant)
+					{ [$style.workflowPreviewsLayout]: showWorkflowPreviewsAboveAssistant },
+					// EOF Experiment cleanup
+				]"
+				data-test-id="instance-ai-empty-layout"
+			>
+				<!-- Experiment cleanup (124_workflow_previews_above_assistant) -->
+				<div
+					v-if="showWorkflowPreviewsAboveAssistant"
+					:class="$style.workflowPreviewSlot"
+					data-test-id="workflow-previews-above-assistant-slot"
+				>
+					<WorkflowPreviewsAboveAssistant
+						@preview-prompt="handleWorkflowPreviewPrompt"
+						@use-example="handleWorkflowPreviewExampleUse"
+					/>
+				</div>
+				<!-- EOF Experiment cleanup -->
 				<N8nChatAgentPicker
 					v-if="isAgentsN8nChatVariantB"
 					v-model="selectedChatAgent"
@@ -871,7 +981,17 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 					:disabled="isChatAgentPickerDisabled"
 				/>
 				<InstanceAiEmptyState v-else :title-key="emptyStateTitleKey" :show-title-icon="true" />
-				<div ref="centeredInput" :class="$style.centeredInput">
+				<div
+					ref="centeredInput"
+					:class="[
+						$style.centeredInput,
+						workflowPreviewInjectPulse && $style.promptInjected, // Experiment cleanup (124_workflow_previews_above_assistant)
+					]"
+					data-test-id="instance-ai-centered-input"
+					@animationend="
+						workflowPreviewInjectPulse = false // Experiment cleanup (124_workflow_previews_above_assistant)
+					"
+				>
 					<InstanceAiFreeNudge
 						:eligible="
 							store.creditsQuota !== undefined &&
@@ -900,7 +1020,13 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 						:mention-project-id="selectedProject"
 						:placeholder="isAgentsN8nChatVariantB ? n8nChatPickerPlaceholder : undefined"
 						:attach-only-mime-types="composerAttachOnlyMimeTypes"
-						v-bind="emptyStatePromptSuggestionProps"
+						v-bind="
+							// Experiment cleanup (124_workflow_previews_above_assistant)
+							showWorkflowPreviewsAboveAssistant
+								? workflowPreviewInputProps
+								: emptyStatePromptSuggestionProps
+							// EOF Experiment cleanup
+						"
 						@submit="handleSubmit"
 						@workflow-preview="handleWorkflowPreview"
 						@content-change="composerHasContent = $event"
@@ -917,7 +1043,11 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 				<N8nChatAgentSection v-if="isAgentsN8nChatVariantA" />
 				<Transition v-else-if="!isAgentsN8nChatVariantB" name="workflow-preview-fade">
 					<div
-						v-if="activeWorkflowPreview && hasSpaceForPreview"
+						v-if="
+							!showWorkflowPreviewsAboveAssistant && // Experiment cleanup (124_workflow_previews_above_assistant)
+							activeWorkflowPreview &&
+							hasSpaceForPreview
+						"
 						:class="$style.workflowPreviewWrapper"
 						:style="workflowPreviewWrapperStyle"
 					>
@@ -935,6 +1065,8 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion'; // Experiment cleanup (124_workflow_previews_above_assistant)
+
 .inputFooter {
 	padding-top: calc(var(--spacing--2xs) + var(--radius--xl));
 	padding-bottom: var(--spacing--2xs);
@@ -988,6 +1120,39 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 	flex-direction: column;
 	gap: var(--spacing--xs);
 }
+
+// Experiment cleanup (124_workflow_previews_above_assistant)
+.workflowPreviewsLayout {
+	gap: var(--spacing--lg);
+	padding: 0 var(--spacing--lg) var(--spacing--2xl);
+}
+
+.workflowPreviewSlot {
+	flex: 1;
+	min-height: 0;
+	width: 100%;
+}
+
+.promptInjected {
+	animation: prompt-injected var(--duration--base) var(--easing--ease-out);
+
+	@include motion.reduced-motion;
+}
+
+@keyframes prompt-injected {
+	0% {
+		transform: scale(1);
+	}
+
+	40% {
+		transform: scale(1.02);
+	}
+
+	100% {
+		transform: scale(1);
+	}
+}
+// EOF Experiment cleanup
 
 .workflowPreviewWrapper {
 	width: 100%;

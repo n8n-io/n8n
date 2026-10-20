@@ -357,8 +357,8 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 				setCurrentProject(null);
 			}
 
-			if (newRoute?.path?.includes('/reviews')) {
-				projectNavActiveId.value = 'workflow-reviews';
+			if (newRoute?.path?.includes('/inbox')) {
+				projectNavActiveId.value = 'inbox';
 				setCurrentProject(null);
 			}
 

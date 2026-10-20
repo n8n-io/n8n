@@ -58,7 +58,11 @@ const effectiveTextSize = computed(function getEffectiveTextSize() {
 			:size="effectiveIconSize"
 		/>
 		<slot name="leading" />
-		<N8nText :class="$style.label" :step="effectiveTextSize" bold>
+		<N8nText
+			:class="[$style.label, { [$style.hasIcon]: props.leadingIcon || props.trailingIcon }]"
+			:step="effectiveTextSize"
+			bold
+		>
 			<slot></slot>
 		</N8nText>
 		<slot name="trailing" />
@@ -91,7 +95,6 @@ const effectiveTextSize = computed(function getEffectiveTextSize() {
 	--n8n-badge--padding-inline-end: var(--spacing--2xs);
 	--n8n-badge--gap: var(--spacing--4xs);
 	--n8n-badge--radius: var(--radius--xs);
-	--n8n-badge--label-shift: 0;
 
 	border-radius: var(--n8n-badge--radius);
 	gap: var(--n8n-badge--gap);
@@ -104,7 +107,6 @@ const effectiveTextSize = computed(function getEffectiveTextSize() {
 
 .label {
 	@include utils.utils-ellipsis;
-	transform: translateY(var(--n8n-badge--label-shift));
 }
 
 .clickable {
@@ -134,7 +136,6 @@ const effectiveTextSize = computed(function getEffectiveTextSize() {
 	--n8n-badge--padding-inline-start: var(--spacing--2xs);
 	--n8n-badge--padding-inline-end: var(--spacing--2xs);
 	--n8n-badge--radius: var(--radius--2xs);
-	--n8n-badge--label-shift: 1px;
 }
 
 .xsmall {
@@ -142,28 +143,24 @@ const effectiveTextSize = computed(function getEffectiveTextSize() {
 	--n8n-badge--padding-inline-start: var(--spacing--2xs);
 	--n8n-badge--padding-inline-end: var(--spacing--2xs);
 	--n8n-badge--radius: var(--radius--2xs);
-	--n8n-badge--label-shift: 1px;
 }
 
 .small {
 	--n8n-badge--height: var(--height--sm);
 	--n8n-badge--padding-inline-start: var(--spacing--2xs);
 	--n8n-badge--padding-inline-end: var(--spacing--2xs);
-	--n8n-badge--label-shift: 0;
 }
 
 .medium {
 	--n8n-badge--height: var(--height--md);
 	--n8n-badge--padding-inline-start: var(--spacing--xs);
 	--n8n-badge--padding-inline-end: var(--spacing--xs);
-	--n8n-badge--label-shift: 0;
 }
 
 .large {
 	--n8n-badge--height: var(--height--lg);
 	--n8n-badge--padding-inline-start: var(--spacing--sm);
 	--n8n-badge--padding-inline-end: var(--spacing--sm);
-	--n8n-badge--label-shift: 0;
 }
 
 .xlarge {
@@ -171,7 +168,6 @@ const effectiveTextSize = computed(function getEffectiveTextSize() {
 	--n8n-badge--padding-inline-start: var(--spacing--sm);
 	--n8n-badge--padding-inline-end: var(--spacing--sm);
 	--n8n-badge--radius: var(--radius--sm);
-	--n8n-badge--label-shift: 0;
 }
 
 .filled {
@@ -234,6 +230,7 @@ const effectiveTextSize = computed(function getEffectiveTextSize() {
 	flex-shrink: 0;
 	opacity: 0.9;
 }
+
 .leadingIcon + .label {
 	margin-inline-end: calc(var(--n8n-badge--padding-inline-end) * 0.2);
 }

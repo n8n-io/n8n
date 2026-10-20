@@ -9,6 +9,7 @@ import type {
 	VerifyBuiltWorkflowOutput,
 	WorkflowTaskService,
 } from './types';
+import { emitWorkflowVerificationMetric } from './verification-metric';
 import type { OrchestrationContext } from '../../../types';
 import { createRemediation } from '../../../workflow-loop/remediation';
 import type {
@@ -51,7 +52,7 @@ export async function handleBlockedVerification(args: {
 		reason,
 		guidance,
 	});
-	context.logger.warn('verify-built-workflow: preflight blocked verification', {
+	context.logger.warn('workflow_builder_verify_built_workflow: preflight blocked verification', {
 		workItemId: input.workItemId,
 		workflowId,
 		reason,
@@ -71,6 +72,12 @@ export async function handleBlockedVerification(args: {
 	} catch {
 		// intentional: verification record persistence is advisory
 	}
+	await emitWorkflowVerificationMetric(context.tracing, {
+		source: 'blocked',
+		workflowId,
+		workItemId: input.workItemId,
+		reason,
+	});
 	try {
 		await workflowTaskService.reportVerificationVerdict({
 			workItemId: input.workItemId,
@@ -83,11 +90,14 @@ export async function handleBlockedVerification(args: {
 			summary: guidance,
 		});
 	} catch (error) {
-		context.logger.warn('verify-built-workflow: failed to persist terminal verdict', {
-			workItemId: input.workItemId,
-			workflowId,
-			error: error instanceof Error ? error.message : String(error),
-		});
+		context.logger.warn(
+			'workflow_builder_verify_built_workflow: failed to persist terminal verdict',
+			{
+				workItemId: input.workItemId,
+				workflowId,
+				error: error instanceof Error ? error.message : String(error),
+			},
+		);
 	}
 	return {
 		success: false,
@@ -150,6 +160,13 @@ export async function persistVerificationOutcome(args: {
 		},
 		previousProgress,
 	);
+	await emitWorkflowVerificationMetric(context.tracing, {
+		source: 'verify',
+		workflowId,
+		workItemId: input.workItemId,
+		executionId: result.executionId || undefined,
+		claim: storedClaim ?? claim,
+	});
 
 	if (analysis.remediation && !analysis.remediation.shouldEdit) {
 		await reportTerminalRemediation({
@@ -186,11 +203,14 @@ async function reportTerminalRemediation(args: {
 			summary: remediation.guidance,
 		});
 	} catch (error) {
-		context.logger.warn('verify-built-workflow: failed to persist terminal verdict', {
-			workItemId: input.workItemId,
-			workflowId,
-			error: error instanceof Error ? error.message : String(error),
-		});
+		context.logger.warn(
+			'workflow_builder_verify_built_workflow: failed to persist terminal verdict',
+			{
+				workItemId: input.workItemId,
+				workflowId,
+				error: error instanceof Error ? error.message : String(error),
+			},
+		);
 	}
 	try {
 		context.trackTelemetry?.('Builder remediation guard fired', {
@@ -203,10 +223,13 @@ async function reportTerminalRemediation(args: {
 			reason: remediation.reason,
 		});
 	} catch (error) {
-		context.logger.warn('verify-built-workflow: failed to emit remediation telemetry', {
-			workItemId: input.workItemId,
-			workflowId,
-			error: error instanceof Error ? error.message : String(error),
-		});
+		context.logger.warn(
+			'workflow_builder_verify_built_workflow: failed to emit remediation telemetry',
+			{
+				workItemId: input.workItemId,
+				workflowId,
+				error: error instanceof Error ? error.message : String(error),
+			},
+		);
 	}
 }
