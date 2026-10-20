@@ -197,7 +197,7 @@ describe('CloudBrowserLocalMcpServer', () => {
 			content: [
 				{
 					type: 'text',
-					text: 'This browser action needs a page with a web address. Use browser_navigate to open a site first.',
+					text: 'This browser action only works on websites. Use a website address.',
 				},
 			],
 			isError: true,

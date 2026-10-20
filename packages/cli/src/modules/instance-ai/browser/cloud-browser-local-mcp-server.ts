@@ -70,8 +70,7 @@ type SessionUnavailableReason = 'notStarted' | 'connectionLost' | 'idleTimeout';
 
 const RELEASED_MESSAGE = 'The browser job has ended. No browser tools can run.';
 
-const NO_HOST_MESSAGE =
-	'This browser action needs a page with a web address. Use browser_navigate to open a site first.';
+const NO_HOST_MESSAGE = 'This browser action only works on websites. Use a website address.';
 
 const START_SESSION_HINT = 'Call browser_start_session with a URL to open a session.';
 
