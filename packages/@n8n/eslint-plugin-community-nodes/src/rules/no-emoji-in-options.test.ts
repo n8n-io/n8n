@@ -112,6 +112,129 @@ ruleTester.run('no-emoji-in-options', NoEmojiInOptionsRule, {
 			`,
 		},
 		{
+			name: 'non-node class next to a node class in a .node.ts file is ignored',
+			filename: '/tmp/TestNode.node.ts',
+			code: `
+				import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
+
+				export class Helper {
+					description = { displayName: '🚀 Rocket' };
+				}
+
+				export class TestNode implements INodeType {
+					description: INodeTypeDescription = {
+						displayName: 'Test Node',
+						name: 'testNode',
+						properties: [],
+					};
+				}
+			`,
+		},
+		{
+			name: 'name inside a routing.send.body payload is not a rendered label',
+			filename: '/tmp/nodes/resources/create.ts',
+			code: `
+				import type { INodeProperties } from 'n8n-workflow';
+
+				export const createDescription: INodeProperties[] = [
+					{
+						displayName: 'Title',
+						name: 'title',
+						type: 'string',
+						default: '',
+						routing: { send: { type: 'body', property: 'payload', value: { name: '🚀 Rocket' } } },
+					},
+				];
+			`,
+		},
+		{
+			name: 'name inside a default object is not a rendered label',
+			filename: '/tmp/nodes/resources/create.ts',
+			code: `
+				import type { INodeProperties } from 'n8n-workflow';
+
+				export const createDescription: INodeProperties = {
+					displayName: 'Payload',
+					name: 'payload',
+					type: 'json',
+					default: { name: '🚀 Rocket', displayName: '🚀 Rocket' },
+				};
+			`,
+		},
+		{
+			name: 'name inside the value of an option is not a rendered label',
+			filename: '/tmp/nodes/resources/sortOptions.ts',
+			code: `
+				import type { INodePropertyOptions } from 'n8n-workflow';
+
+				export const sortOptions: INodePropertyOptions[] = [
+					{ name: 'Newest', value: { name: '🚀 Rocket' } },
+				];
+			`,
+		},
+		{
+			name: 'name inside a default object of a node class description is not a rendered label',
+			filename: '/tmp/TestNode.node.ts',
+			code: createNodeCode(`
+				displayName: 'Test Node',
+				name: 'testNode',
+				properties: [
+					{
+						displayName: 'Payload',
+						name: 'payload',
+						type: 'json',
+						default: { name: '🚀 Rocket' },
+						routing: { send: { type: 'body', property: 'payload', value: { name: '🚀 Rocket' } } },
+					},
+				],
+			`),
+		},
+		{
+			name: 'variable typed as INodePropertyRouting is not checked',
+			filename: '/tmp/nodes/resources/routing.ts',
+			code: `
+				import type { INodePropertyRouting } from 'n8n-workflow';
+
+				export const routing: INodePropertyRouting = {
+					output: {
+						postReceive: [{ type: 'set', properties: { name: '🚀 Rocket', displayName: '🚀 Rocket' } }],
+					},
+				};
+			`,
+		},
+		{
+			name: 'variable typed as INodeRequestSend is not checked',
+			filename: '/tmp/nodes/resources/send.ts',
+			code: `
+				import type { INodeRequestSend } from 'n8n-workflow';
+
+				export const send: INodeRequestSend = { type: 'body', property: 'name', value: '🚀 Rocket' };
+				export const sends: INodeRequestSend[] = [{ property: '🚀 Rocket' }];
+			`,
+		},
+		{
+			name: 'properties and options keys inside routing are not followed',
+			filename: '/tmp/nodes/resources/create.ts',
+			code: `
+				import type { INodeProperties } from 'n8n-workflow';
+
+				export const createDescription: INodeProperties[] = [
+					{
+						displayName: 'Title',
+						name: 'title',
+						type: 'string',
+						default: '',
+						routing: {
+							output: {
+								postReceive: [{ type: 'set', properties: { name: '🚀 Rocket' } }],
+							},
+							send: { options: [{ name: '🚀 Rocket' }], values: [{ displayName: '🚀 Rocket' }] },
+						},
+					},
+				];
+			`,
+		},
+		{
 			name: 'keyof INodeProperties is not a node property value',
 			filename: '/tmp/nodes/resources/keys.ts',
 			code: `
@@ -273,6 +396,44 @@ ruleTester.run('no-emoji-in-options', NoEmojiInOptionsRule, {
 					name: 'github',
 					properties: [],
 				} as INodeTypeDescription;
+			`,
+			errors: [{ messageId: 'emojiInOption', data: { key: 'displayName', emoji: '🚀' } }],
+		},
+		{
+			name: 'each emoji is reported once in a .node.ts file with a class description and a typed variable',
+			filename: '/tmp/TestNode.node.ts',
+			code: `
+				import type { INodeProperties, INodeType, INodeTypeDescription } from 'n8n-workflow';
+
+				const extraProperties: INodeProperties[] = [
+					{ displayName: 'Extra 🎉', name: 'extra', type: 'string', default: '' },
+				];
+
+				export class TestNode implements INodeType {
+					description: INodeTypeDescription = {
+						displayName: '🚀 Rocket Node',
+						name: 'testNode',
+						properties: extraProperties,
+					};
+				}
+			`,
+			errors: [
+				{ messageId: 'emojiInOption', data: { key: 'displayName', emoji: '🎉' } },
+				{ messageId: 'emojiInOption', data: { key: 'displayName', emoji: '🚀' } },
+			],
+		},
+		{
+			name: 'emoji is reported once for a typed variable nested in another typed variable',
+			filename: '/tmp/nodes/resources/nested.ts',
+			code: `
+				import type { INodeProperties } from 'n8n-workflow';
+
+				export const outer: INodeProperties[] = (() => {
+					const inner: INodeProperties[] = [
+						{ displayName: 'Inner 🚀', name: 'inner', type: 'string', default: '' },
+					];
+					return inner;
+				})();
 			`,
 			errors: [{ messageId: 'emojiInOption', data: { key: 'displayName', emoji: '🚀' } }],
 		},

@@ -4,6 +4,7 @@ import { AST_NODE_TYPES } from '@typescript-eslint/utils';
 import {
 	isNodeTypeClass,
 	findNodeDescriptionObject,
+	getPropertyKeyName,
 	getStringLiteralValue,
 	isFileType,
 	createRule,
@@ -17,6 +18,13 @@ const EMOJI_REGEX = /(\p{Extended_Pictographic}|\p{Regional_Indicator})/gu;
 
 /** Keys whose string values are surfaced to users as labels. */
 const LABEL_KEYS = new Set(['name', 'displayName']);
+
+/**
+ * Keys whose values hold more labelled objects. The walk enters only these, so
+ * data such as `default`, `value` and `routing` is never checked: it is not
+ * rendered in the editor.
+ */
+const STRUCTURAL_KEYS = new Set(['properties', 'options', 'values', 'defaults']);
 
 const ARRAY_TYPE_NAMES = new Set(['Array', 'ReadonlyArray']);
 
@@ -117,32 +125,36 @@ export const NoEmojiInOptionsRule = createRule({
 		};
 
 		const traverse = (node: TSESTree.Node): void => {
-			if (node.type === AST_NODE_TYPES.ObjectExpression) {
-				for (const property of node.properties) {
-					if (
-						property.type === AST_NODE_TYPES.Property &&
-						property.key.type === AST_NODE_TYPES.Identifier &&
-						LABEL_KEYS.has(property.key.name)
-					) {
-						checkLabelValue(property.key.name, property.value);
-					}
-				}
-			}
-
-			for (const key in node) {
-				if (key === 'parent') {
-					continue;
-				}
-				const child = node[key as keyof TSESTree.Node] as unknown;
-				if (Array.isArray(child)) {
-					for (const item of child) {
-						if (item && typeof item === 'object' && 'type' in item) {
-							traverse(item as TSESTree.Node);
+			switch (node.type) {
+				case AST_NODE_TYPES.TSAsExpression:
+				case AST_NODE_TYPES.TSSatisfiesExpression:
+					traverse(node.expression);
+					return;
+				case AST_NODE_TYPES.ArrayExpression:
+					for (const element of node.elements) {
+						if (element && element.type !== AST_NODE_TYPES.SpreadElement) {
+							traverse(element);
 						}
 					}
-				} else if (child && typeof child === 'object' && 'type' in child) {
-					traverse(child as TSESTree.Node);
-				}
+					return;
+				case AST_NODE_TYPES.ObjectExpression:
+					for (const property of node.properties) {
+						if (property.type !== AST_NODE_TYPES.Property) {
+							continue;
+						}
+						const key = getPropertyKeyName(property);
+						if (key === null) {
+							continue;
+						}
+						if (LABEL_KEYS.has(key)) {
+							checkLabelValue(key, property.value);
+						} else if (STRUCTURAL_KEYS.has(key)) {
+							traverse(property.value);
+						}
+					}
+					return;
+				default:
+					return;
 			}
 		};
 
