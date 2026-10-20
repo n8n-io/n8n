@@ -113,7 +113,7 @@ export function createBackgroundSubAgentHandler(
 		);
 
 		if (receipt.status === 'started') {
-			// A Stop can race the job insert. A disconnected chat does not cancel children.
+			// Full Stop also cancels detached jobs that start after the cancellation request.
 			if (ctx.abortSignal?.reason === PARENT_TASK_CANCELLED_REASON) {
 				await options.jobService.cancel(parentThreadId, receipt.jobId);
 			}

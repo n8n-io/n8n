@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 /**
- * Shared channel-setup body + orchestration for the `configure_channel`
+ * Shared channel-setup body + orchestration for the `agent_builder_configure_channel`
  * builder tool, rendered by the AI assistant (`InstanceAiChannelSetup.vue`).
  * Kept as its own component — rather than inlined into that consumer —
  * because it owns non-trivial body + composable wiring

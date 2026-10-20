@@ -138,7 +138,7 @@ export class CacheService extends TypedEmitter<CacheEvents> {
 	async setHash(key: string, hash: Hash) {
 		if (!this.cache) await this.init();
 
-		if (!key?.length) return;
+		if (!key?.length || Object.keys(hash).length === 0) return;
 
 		for (const hashKey in hash) {
 			if (hash[hashKey] === undefined || hash[hashKey] === null) return;

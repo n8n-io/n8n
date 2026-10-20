@@ -93,9 +93,6 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 				// (empty string for scope-less grants), so an absent claim
 				// unambiguously identifies a token minted before scoping shipped.
 				scope: scopes.join(' '),
-				meta: {
-					isOAuth: true,
-				},
 			},
 			audience,
 		);

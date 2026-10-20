@@ -20,6 +20,16 @@ describe('Agent.configuration()', () => {
 		expect(agent.configuration({ maxIterations: 5 })).toBe(agent);
 	});
 
+	it('keeps native tool deferral unchanged when a snapshot is edited', () => {
+		const agent = new Agent('test').nativeToolDeferral({ eagerToolNames: ['lookup'] });
+		const nativeToolDeferral = agent.snapshot.nativeToolDeferral!;
+
+		(nativeToolDeferral.eagerToolNames as string[]).push('write');
+		nativeToolDeferral.eagerToolNames = [];
+
+		expect(agent.snapshot.nativeToolDeferral).toEqual({ eagerToolNames: ['lookup'] });
+	});
+
 	it('returns undefined when no defaults and no per-call options are given', () => {
 		const agent = new Agent('test');
 		const result = (agent as unknown as WithPrivates).mergeWithDefaults();

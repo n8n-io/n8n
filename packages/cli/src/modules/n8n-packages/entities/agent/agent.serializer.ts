@@ -23,6 +23,7 @@ type AgentPackageKeyHandling = {
 	availableInMCP: 'copy';
 	project: 'exclude';
 	projectId: 'exclude';
+	scope: 'exclude';
 	createdAt: 'exclude';
 	updatedAt: 'exclude';
 	versionId: 'exclude';
