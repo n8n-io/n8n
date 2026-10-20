@@ -257,17 +257,18 @@ export class PromotionChangeService {
 			if (!resource) return [];
 			const branchContent = fromBranch && branchContents.get(fromBranch.path);
 			const localTable = fromBranch && localTables.get(fromBranch.id);
-			const instanceContent = fromInstance
-				? instance.contents.get(fromInstance.path)
-				: localTable?.content;
-			const branchSide: DetailSide = {
-				content: branchContent ?? null,
-				blobSha: branchContent === undefined ? null : gitBlobSha(branchContent),
-			};
-			const instanceSide: DetailSide = {
-				content: instanceContent ?? null,
-				blobSha: fromInstance?.blobSha ?? localTable?.blobSha ?? null,
-			};
+			const branchSide: DetailSide =
+				branchContent === undefined
+					? { content: null, blobSha: null }
+					: { content: branchContent, blobSha: gitBlobSha(branchContent) };
+			const instanceSide: DetailSide = fromInstance
+				? {
+						content: instance.contents.get(fromInstance.path) ?? null,
+						blobSha: fromInstance.blobSha,
+					}
+				: localTable
+					? { content: localTable.content, blobSha: localTable.blobSha }
+					: { content: null, blobSha: null };
 			const [before, after] =
 				direction === 'promote' ? [branchSide, instanceSide] : [instanceSide, branchSide];
 			return [
