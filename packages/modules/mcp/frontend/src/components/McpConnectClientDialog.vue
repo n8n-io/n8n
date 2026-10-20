@@ -167,7 +167,7 @@ const serverUrlDescription = computed(() =>
 				<N8nDialogTitle>
 					{{ i18n.baseText('settings.mcp.connectDialog.title') }}
 				</N8nDialogTitle>
-				<N8nDialogDescription :class="$style.description">
+				<N8nDialogDescription>
 					{{ i18n.baseText('settings.mcp.connectDialog.description') }}
 				</N8nDialogDescription>
 				<N8nTabs
@@ -410,10 +410,6 @@ const serverUrlDescription = computed(() =>
 	gap: var(--spacing--2xs);
 	min-width: 0;
 	width: 100%;
-}
-
-.description {
-	margin: 0;
 }
 
 .tabs {
