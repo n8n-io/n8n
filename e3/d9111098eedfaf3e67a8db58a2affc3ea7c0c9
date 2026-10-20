@@ -334,6 +334,7 @@ packages/@n8n/ai-utilities/package.json
   s_3867156de1fad7::t_3d877bd9f9537c 86
 packages/cli/src/modules/agents/__tests__/agents-builder-tools.service.test.ts
   s_3867156de1fad7::t_e507880d35f8f9 1609-1612,1615,1626,1654-1657,1668,1750-1753,1758
+  s_3867156de1fad7::t_780e33feb5e523 1613,1658,1754
 packages/frontend/editor-ui/package.json
   s_3867156de1fad7::t_2f9309360a687c 45
 packages/@n8n/ai-utilities/src/agent-config/model-capabilities.ts
@@ -349,6 +350,7 @@ packages/@n8n/ai-utilities/src/agent-config/index.ts
   s_c7b991e0487519::t_1c8e8eb71f01f2 2
 packages/@n8n/agents/src/runtime/loop/runtime-context.ts
   s_3867156de1fad7::t_b6999319aeca4d 33,181,188,205-207,211-212,228-235
+  s_3867156de1fad7::t_beff30cd28f63e 2
 packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
   s_3867156de1fad7::t_1b0024f873bc46 20,423,425
 packages/frontend/editor-ui/src/features/agents/components/AgentAdvancedPanel.vue
