@@ -13,7 +13,7 @@ export type Mode = 'single main' | 'multi-main';
 
 const loadedScripts = new Map<string, string>();
 
-/** `ioredis-mock` has no `call` and no `SCRIPT LOAD`, so this runs a loaded script with `EVAL`. */
+/** `ioredis-mock` cannot save scripts, so this fake saves them in a map and runs them with `EVAL`. */
 export function redisClient(
 	failsOn: (command: string) => boolean = () => false,
 	scripts: Map<string, string> = loadedScripts,
@@ -41,7 +41,10 @@ export function redisClient(
 	return mock<Redis>({ isCluster: false, call: call as Redis['call'] }) as unknown as Redis;
 }
 
-/** Like ioredis, it can send `SCRIPT LOAD` to a node that does not own the counters. */
+/**
+ * A real cluster can save a script on one node and then look for it on another node.
+ * This fake always does that, to test that the factory saves scripts on every node.
+ */
 export function redisCluster() {
 	const nodeWithoutCounters = redisClient(undefined, new Map());
 	const nodeWithCounters = redisClient(undefined, new Map());
