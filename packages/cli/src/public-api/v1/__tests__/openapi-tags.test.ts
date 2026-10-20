@@ -29,6 +29,41 @@ const childNames = new Set(childTags.map((tag) => tag.name));
 
 const compareNames = (a: string, b: string) => (a < b ? -1 : 1);
 
+// The API-166 sidebar taxonomy. Set the expected group here, not in `openapi.yml`,
+// so that a child under the wrong parent fails the test.
+const EXPECTED_GROUPS: Record<string, string[]> = {
+	BuildAndRun: [
+		'Credential',
+		'DataTable',
+		'Evaluation',
+		'Executions',
+		'Folders',
+		'Tags',
+		'Variables',
+		'Workflow',
+	],
+	AccessAndOrganization: ['Projects', 'Role', 'RoleMappingRule', 'User'],
+	InstanceSettings: [
+		'CredentialTypePolicy',
+		'LogStreaming',
+		'NodeTypePolicy',
+		'SecurityPolicy',
+		'SettingsLdap',
+		'SettingsOtel',
+		'SettingsSsoOidc',
+		'SettingsSsoSaml',
+	],
+	InstanceOperations: [
+		'Audit',
+		'CommunityPackage',
+		'Discover',
+		'Insights',
+		'N8nPackage',
+		'Promotions',
+		'SourceControl',
+	],
+};
+
 describe('openapi.yml tags', () => {
 	test('declares each tag name once', () => {
 		expect(new Set(tags.map((tag) => tag.name)).size).toBe(tags.length);
@@ -48,13 +83,30 @@ describe('openapi.yml tags', () => {
 		expect(tag.description).toEqual(expect.any(String));
 	});
 
+	test('groups each child tag under the parent in the API-166 taxonomy', () => {
+		const actualGroups = Object.fromEntries(
+			parentTags.map((parent) => [
+				parent.name,
+				childTags
+					.filter((child) => child['x-parent'] === parent.name)
+					.map((child) => child.name)
+					.sort(compareNames),
+			]),
+		);
+		expect(actualGroups).toEqual(
+			Object.fromEntries(
+				Object.entries(EXPECTED_GROUPS).map(([parent, children]) => [
+					parent,
+					[...children].sort(compareNames),
+				]),
+			),
+		);
+	});
+
 	test('lists each parent tag directly above its children, in alphabetical order', () => {
-		const expectedOrder = parentTags.flatMap((parent) => [
-			parent.name,
-			...childTags
-				.filter((child) => child['x-parent'] === parent.name)
-				.map((child) => child.name)
-				.sort(compareNames),
+		const expectedOrder = Object.entries(EXPECTED_GROUPS).flatMap(([parent, children]) => [
+			parent,
+			...[...children].sort(compareNames),
 		]);
 		expect(tags.map((tag) => tag.name)).toEqual(expectedOrder);
 	});
