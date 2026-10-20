@@ -39,7 +39,7 @@ const projectScopeUpdateSql = "scope = 'project'";
 /** Integration and publication state for channel runtime decisions. */
 export type AgentIntegrationState = Pick<Agent, 'integrations' | 'versionId' | 'activeVersionId'>;
 
-export type AgentImportIdentity = Pick<Agent, 'id' | 'name' | 'projectId' | 'sourceAgentId'>;
+export type AgentImportIdentity = Pick<Agent, 'id' | 'name' | 'projectId'>;
 
 export type AgentSummaryFilters = {
 	query?: string;
@@ -129,11 +129,8 @@ export class AgentRepository extends BaseRepository<Agent> {
 		for (const ids of chunkIds([...new Set(sourceAgentIds)])) {
 			agents.push(
 				...(await this.find({
-					select: ['id', 'name', 'projectId', 'sourceAgentId'],
-					where: [
-						{ projectId, sourceAgentId: In(ids) },
-						{ projectId, id: In(ids), sourceAgentId: IsNull() },
-					],
+					select: ['id', 'name', 'projectId'],
+					where: { projectId, id: In(ids) },
 				})),
 			);
 		}

@@ -1,13 +1,11 @@
 import type { AgentTaskConfig } from '@n8n/api-types';
 import { BaseRepository, chunkIds, TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, In, IsNull } from '@n8n/typeorm';
+import { DataSource, In } from '@n8n/typeorm';
 import isEqual from 'lodash/isEqual';
 
 import { AgentTask } from '../entities/agent-task.entity';
 import { getAgentTaskBody } from '../utils/agent-definition';
-
-export type AgentTaskImportIdentity = Pick<AgentTask, 'id' | 'agentId' | 'sourceTaskId'>;
 
 @Service()
 export class AgentTaskRepository extends BaseRepository<AgentTask> {
@@ -24,25 +22,6 @@ export class AgentTaskRepository extends BaseRepository<AgentTask> {
 
 	async findByIdAndAgentId(id: string, agentId: string): Promise<AgentTask | null> {
 		return await this.findOne({ where: { id, agentId } });
-	}
-
-	async findImportCandidates(
-		agentId: string,
-		sourceTaskIds: string[],
-	): Promise<AgentTaskImportIdentity[]> {
-		const tasks: AgentTaskImportIdentity[] = [];
-		for (const ids of chunkIds([...new Set(sourceTaskIds)])) {
-			tasks.push(
-				...(await this.find({
-					select: ['id', 'agentId', 'sourceTaskId'],
-					where: [
-						{ agentId, sourceTaskId: In(ids) },
-						{ agentId, id: In(ids), sourceTaskId: IsNull() },
-					],
-				})),
-			);
-		}
-		return tasks;
 	}
 
 	async findImportIdOwners(taskIds: string[]): Promise<Array<Pick<AgentTask, 'id' | 'agentId'>>> {

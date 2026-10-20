@@ -4,7 +4,6 @@ import { ForbiddenError } from '@n8n/errors';
 
 import { AgentTaskService } from '@/modules/agents/agent-task.service';
 import { AgentsService } from '@/modules/agents/agents.service';
-import { generateAgentResourceId } from '@/modules/agents/utils/agent-resource-id';
 
 import type {
 	AgentImportIdentities,
@@ -12,18 +11,13 @@ import type {
 	AgentImportMatches,
 	AgentTaskImportMappings,
 	PreparedAgent,
-	ResolvedAgentImportIdentity,
 } from './agent-import.types';
-import { WorkflowIdPolicy } from '../../n8n-packages.types';
-import { decideImportId } from '../import-id-policy';
-import { matchSourceIds } from '../match-source-ids';
 
 interface TaskMapping {
 	sourceAgentId: string;
 	targetAgentId: string;
 	sourceTaskId: string;
 	targetTaskId: string;
-	matched: boolean;
 }
 
 @Service()
@@ -42,7 +36,6 @@ export class AgentImportMatchService {
 			projectId: context.projectId,
 			sourceAgentIds: [...new Set(sourceAgentIds)],
 			matches: new Map(),
-			lineageConflicts: [],
 		};
 		if (sourceAgentIds.length === 0 || context.projectPendingCreation) return result;
 
@@ -58,44 +51,22 @@ export class AgentImportMatchService {
 			context.projectId,
 			result.sourceAgentIds,
 		);
-		const { matches, ambiguous } = matchSourceIds(
-			result.sourceAgentIds,
-			candidates,
-			(agent) => agent.sourceAgentId,
-		);
-		result.matches = matches;
-		result.lineageConflicts = [...ambiguous].map(([sourceAgentId, existingAgents]) => ({
-			sourceAgentId,
-			projectId: context.projectId,
-			existingAgents,
-		}));
+		result.matches = new Map(candidates.map((agent) => [agent.id, agent]));
 		return result;
 	}
 
 	/** Allocate only after matching. The planner decides which definitions it will apply. */
-	async allocateAgentIds(
-		matches: AgentImportMatches,
-		idPolicy: WorkflowIdPolicy = WorkflowIdPolicy.Source,
-	): Promise<AgentImportIdentities> {
+	async allocateAgentIds(matches: AgentImportMatches): Promise<AgentImportIdentities> {
 		const result: AgentImportIdentities = {
 			projectId: matches.projectId,
-			idPolicy,
 			identities: new Map(),
-			lineageConflicts: matches.lineageConflicts,
 			idConflicts: [],
 		};
-		const ambiguous = new Set(matches.lineageConflicts.map(({ sourceAgentId }) => sourceAgentId));
-		const unmatched = matches.sourceAgentIds.filter(
-			(id) => !matches.matches.has(id) && !ambiguous.has(id),
-		);
-		const owners =
-			idPolicy === WorkflowIdPolicy.Source
-				? await this.agentsService.findImportIdOwners(unmatched)
-				: [];
+		const unmatched = matches.sourceAgentIds.filter((id) => !matches.matches.has(id));
+		const owners = await this.agentsService.findImportIdOwners(unmatched);
 		const ownersById = new Map(owners.map((owner) => [owner.id, owner]));
 
 		for (const sourceAgentId of matches.sourceAgentIds) {
-			if (ambiguous.has(sourceAgentId)) continue;
 			const owner = ownersById.get(sourceAgentId);
 			if (owner) {
 				result.idConflicts.push({
@@ -106,8 +77,11 @@ export class AgentImportMatchService {
 				continue;
 			}
 			const existing = matches.matches.get(sourceAgentId) ?? null;
-			const targetAgentId = existing?.id ?? decideImportId(idPolicy, sourceAgentId);
-			result.identities.set(sourceAgentId, { sourceAgentId, targetAgentId, existing });
+			result.identities.set(sourceAgentId, {
+				sourceAgentId,
+				targetAgentId: sourceAgentId,
+				existing,
+			});
 		}
 		return result;
 	}
@@ -118,7 +92,6 @@ export class AgentImportMatchService {
 	): Promise<AgentTaskImportMappings> {
 		const result: AgentTaskImportMappings = {
 			taskIdsBySourceAgentId: new Map(),
-			lineageConflicts: [],
 			idConflicts: [],
 		};
 		const mappings: TaskMapping[] = [];
@@ -126,20 +99,23 @@ export class AgentImportMatchService {
 			const identity = identities.identities.get(agent.sourceAgentId);
 			if (!identity) continue;
 			result.taskIdsBySourceAgentId.set(agent.sourceAgentId, new Map());
-			mappings.push(
-				...(await this.matchTasks(identity, Object.keys(agent.tasks), identities.idPolicy, result)),
-			);
+			for (const sourceTaskId of Object.keys(agent.tasks)) {
+				mappings.push({
+					sourceAgentId: agent.sourceAgentId,
+					targetAgentId: identity.targetAgentId,
+					sourceTaskId,
+					targetTaskId: sourceTaskId,
+				});
+			}
 		}
-		const sourceCreates =
-			identities.idPolicy === WorkflowIdPolicy.Source
-				? mappings.filter(({ matched }) => !matched).map(({ targetTaskId }) => targetTaskId)
-				: [];
-		const owners = await this.agentTaskService.findImportIdOwners(sourceCreates);
+		const owners = await this.agentTaskService.findImportIdOwners(
+			mappings.map(({ targetTaskId }) => targetTaskId),
+		);
 		const ownersById = new Map(owners.map(({ id, agentId }) => [id, agentId]));
 		const available: TaskMapping[] = [];
 		for (const mapping of mappings) {
-			const conflictingAgentId = mapping.matched ? undefined : ownersById.get(mapping.targetTaskId);
-			if (conflictingAgentId !== undefined) {
+			const conflictingAgentId = ownersById.get(mapping.targetTaskId);
+			if (conflictingAgentId !== undefined && conflictingAgentId !== mapping.targetAgentId) {
 				result.idConflicts.push(toTaskIdConflict(mapping, conflictingAgentId));
 			} else {
 				available.push(mapping);
@@ -147,51 +123,6 @@ export class AgentImportMatchService {
 		}
 		collectTaskMappings(available, result);
 		return result;
-	}
-
-	private async matchTasks(
-		identity: ResolvedAgentImportIdentity,
-		sourceTaskIds: string[],
-		idPolicy: WorkflowIdPolicy,
-		result: AgentTaskImportMappings,
-	): Promise<TaskMapping[]> {
-		const { sourceAgentId, targetAgentId } = identity;
-		const candidates = await this.agentTaskService.findImportCandidates(
-			targetAgentId,
-			sourceTaskIds,
-		);
-		const { matches, ambiguous } = matchSourceIds(
-			sourceTaskIds,
-			candidates,
-			(task) => task.sourceTaskId,
-		);
-		for (const [sourceTaskId, tasks] of ambiguous) {
-			result.lineageConflicts.push({
-				sourceAgentId,
-				targetAgentId,
-				sourceTaskId,
-				existingTaskIds: tasks.map(({ id }) => id),
-			});
-		}
-		const reservedIds = new Set(candidates.map(({ id }) => id));
-		const mappings: TaskMapping[] = [];
-		for (const sourceTaskId of sourceTaskIds) {
-			if (ambiguous.has(sourceTaskId)) continue;
-			const existing = matches.get(sourceTaskId);
-			let targetTaskId = existing?.id ?? sourceTaskId;
-			if (!existing && idPolicy === WorkflowIdPolicy.New) {
-				targetTaskId = generateAgentResourceId('task', reservedIds);
-			}
-			reservedIds.add(targetTaskId);
-			mappings.push({
-				sourceAgentId,
-				targetAgentId,
-				sourceTaskId,
-				targetTaskId,
-				matched: existing !== undefined,
-			});
-		}
-		return mappings;
 	}
 }
 

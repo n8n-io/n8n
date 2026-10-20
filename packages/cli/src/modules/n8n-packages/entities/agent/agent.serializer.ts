@@ -24,7 +24,6 @@ type AgentPackageKeyHandling = {
 	project: 'exclude';
 	projectId: 'exclude';
 	scope: 'exclude';
-	sourceAgentId: 'exclude';
 	createdAt: 'exclude';
 	updatedAt: 'exclude';
 	versionId: 'exclude';

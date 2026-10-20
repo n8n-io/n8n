@@ -5,7 +5,6 @@ import { mock } from 'vitest-mock-extended';
 
 import type { AgentTaskService } from '@/modules/agents/agent-task.service';
 import type { AgentsService } from '@/modules/agents/agents.service';
-import type { AgentImportIdentity } from '@/modules/agents/repositories/agent.repository';
 
 import { looseAgentsFixture } from '../../../__tests__/fixtures/agent-package-fixtures';
 import { serializedAgentSchema } from '../../../spec/serialized/agent.schema';
@@ -18,7 +17,6 @@ function setup() {
 	agents.findImportCandidates.mockResolvedValue([]);
 	agents.findImportIdOwners.mockResolvedValue([]);
 	const tasks = mock<AgentTaskService>();
-	tasks.findImportCandidates.mockResolvedValue([]);
 	tasks.findImportIdOwners.mockResolvedValue([]);
 	return {
 		projects,
@@ -29,56 +27,7 @@ function setup() {
 	};
 }
 
-function candidate(id: string, sourceAgentId: string | null): AgentImportIdentity {
-	return { id, sourceAgentId, name: id, projectId: 'destination' };
-}
-
 describe('AgentImportMatchService', () => {
-	it.each([
-		{
-			name: 'local ID fallback',
-			candidates: [candidate('source', null)],
-			target: 'source',
-			conflicts: [],
-		},
-		{
-			name: 'recorded identity precedence',
-			candidates: [candidate('source', null), candidate('copy', 'source')],
-			target: 'copy',
-			conflicts: [],
-		},
-		{
-			name: 'foreign recorded identity',
-			candidates: [candidate('source', 'foreign')],
-			target: undefined,
-			conflicts: [],
-		},
-		{
-			name: 'ambiguous recorded identity',
-			candidates: [
-				candidate('copy-2', 'source'),
-				candidate('copy-1', 'source'),
-				candidate('source', null),
-			],
-			target: undefined,
-			conflicts: ['copy-1', 'copy-2'],
-		},
-	])('uses $name', async ({ candidates, target, conflicts }) => {
-		const { service, agents, context } = setup();
-		agents.findImportCandidates.mockResolvedValue(candidates);
-		const matches = await service.findBySourceAgentIds(context, ['source', 'source']);
-		expect(matches.sourceAgentIds).toEqual(['source']);
-		expect(matches.matches.get('source')?.id).toBe(target);
-		expect(
-			matches.lineageConflicts.flatMap(({ existingAgents }) => existingAgents.map(({ id }) => id)),
-		).toEqual(conflicts);
-		if (conflicts.length > 0) {
-			const identities = await service.allocateAgentIds(matches);
-			expect(identities.identities.size).toBe(0);
-			expect(identities.lineageConflicts).toEqual(matches.lineageConflicts);
-		}
-	});
-
 	it('checks project read access before reading destination Agents', async () => {
 		const { service, projects, agents, context } = setup();
 		projects.getProjectIds.mockResolvedValue(['different-project']);

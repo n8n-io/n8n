@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "agents" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar(128) NOT NULL, "projectId" varchar(255), "integrations" text NOT NULL DEFAULT ('[]'), "schema" text, "tools" text NOT NULL DEFAULT ('{}'), "skills" text NOT NULL DEFAULT ('{}'), "versionId" varchar(36), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "activeVersionId" varchar(36), "availableInMCP" boolean NOT NULL DEFAULT (false), "setupCompletedAt" datetime(3), "revision" integer NOT NULL DEFAULT (0), "scope" varchar(16) NOT NULL DEFAULT ('project'), "sourceAgentId" varchar(36), CONSTRAINT "CHK_agents_scope" CHECK (("scope" IN ('project', 'instance'))), CONSTRAINT "CHK_agents_scope_project" CHECK (("scope" = 'instance') = ("projectId" IS NULL)), CONSTRAINT "FK_940597dfe9753375309ce6aeea0" FOREIGN KEY ("activeVersionId") REFERENCES "agent_history" ("versionId") ON DELETE SET NULL ON UPDATE NO ACTION, CONSTRAINT "FK_a30d560207c4071d98aa03c179c" FOREIGN KEY ("projectId") REFERENCES "project" ("id") ON DELETE CASCADE ON UPDATE NO ACTION)
+CREATE TABLE "agents" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar(128) NOT NULL, "projectId" varchar(255), "integrations" text NOT NULL DEFAULT ('[]'), "schema" text, "tools" text NOT NULL DEFAULT ('{}'), "skills" text NOT NULL DEFAULT ('{}'), "versionId" varchar(36), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "activeVersionId" varchar(36), "availableInMCP" boolean NOT NULL DEFAULT (false), "setupCompletedAt" datetime(3), "revision" integer NOT NULL DEFAULT (0), "scope" varchar(16) NOT NULL DEFAULT ('project'), CONSTRAINT "CHK_agents_scope" CHECK (("scope" IN ('project', 'instance'))), CONSTRAINT "CHK_agents_scope_project" CHECK (("scope" = 'instance') = ("projectId" IS NULL)), CONSTRAINT "FK_940597dfe9753375309ce6aeea0" FOREIGN KEY ("activeVersionId") REFERENCES "agent_history" ("versionId") ON DELETE SET NULL ON UPDATE NO ACTION, CONSTRAINT "FK_a30d560207c4071d98aa03c179c" FOREIGN KEY ("projectId") REFERENCES "project" ("id") ON DELETE CASCADE ON UPDATE NO ACTION)
 ```
 
 </details>
@@ -27,7 +27,6 @@ CREATE TABLE "agents" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar(128
 | scope | varchar(16) | 'project' | false |  |  |  |
 | setupCompletedAt | datetime(3) |  | true |  |  |  |
 | skills | TEXT | '{}' | false |  |  |  |
-| sourceAgentId | varchar(36) |  | true |  |  |  |
 | tools | TEXT | '{}' | false |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | versionId | varchar(36) |  | true |  |  |  |
@@ -49,7 +48,6 @@ CREATE TABLE "agents" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar(128
 | ---- | ---------- |
 | IDX_a30d560207c4071d98aa03c179 | CREATE INDEX "IDX_a30d560207c4071d98aa03c179" ON "agents" ("projectId")  |
 | IDX_agents_projectId | CREATE INDEX "IDX_agents_projectId" ON "agents" ("projectId")  |
-| IDX_agents_projectId_sourceAgentId | CREATE INDEX "IDX_agents_projectId_sourceAgentId" ON "agents" ("projectId", "sourceAgentId")  |
 | sqlite_autoindex_agents_1 | PRIMARY KEY (id) |
 
 ## Relations
@@ -95,7 +93,6 @@ erDiagram
   varchar_16_ scope
   datetime_3_ setupCompletedAt
   TEXT skills
-  varchar_36_ sourceAgentId
   TEXT tools
   datetime_3_ updatedAt
   varchar_36_ versionId
@@ -240,7 +237,6 @@ erDiagram
   varchar_32_ id PK
   varchar_128_ name
   TEXT objective
-  varchar_32_ sourceTaskId
   varchar_64_ timezone
   datetime_3_ updatedAt
 }

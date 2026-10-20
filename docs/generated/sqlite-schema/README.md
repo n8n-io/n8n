@@ -30,13 +30,13 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [agent_plan](agent_plan.md) | 8 |  | table |
 | [agent_plan_history](agent_plan_history.md) | 6 |  | table |
 | [agent_skill_dependency](agent_skill_dependency.md) | 4 |  | table |
-| [agent_task_definition](agent_task_definition.md) | 9 |  | table |
+| [agent_task_definition](agent_task_definition.md) | 8 |  | table |
 | [agent_task_run_lock](agent_task_run_lock.md) | 6 |  | table |
 | [agent_task_snapshot](agent_task_snapshot.md) | 9 |  | table |
 | [agent_thread_grants](agent_thread_grants.md) | 4 |  | table |
 | [agent_version_skill_dependency](agent_version_skill_dependency.md) | 4 |  | table |
 | [agent_workflow_dependency](agent_workflow_dependency.md) | 3 |  | table |
-| [agents](agents.md) | 16 |  | table |
+| [agents](agents.md) | 15 |  | table |
 | [agents_memory_entries](agents_memory_entries.md) | 13 |  | table |
 | [agents_memory_entry_candidates](agents_memory_entry_candidates.md) | 14 |  | table |
 | [agents_memory_entry_locks](agents_memory_entry_locks.md) | 6 |  | table |
@@ -703,7 +703,6 @@ erDiagram
   varchar_32_ id PK
   varchar_128_ name
   TEXT objective
-  varchar_32_ sourceTaskId
   varchar_64_ timezone
   datetime_3_ updatedAt
 }
@@ -756,7 +755,6 @@ erDiagram
   varchar_16_ scope
   datetime_3_ setupCompletedAt
   TEXT skills
-  varchar_36_ sourceAgentId
   TEXT tools
   datetime_3_ updatedAt
   varchar_36_ versionId
