@@ -195,7 +195,7 @@ function onDialogOpenUpdate(open: boolean) {
 <template>
 	<N8nDialog
 		:open="modalOpen"
-		size="2xlarge"
+		size="large"
 		:show-close-button="false"
 		:container-class="$style.providerDialog"
 		@update:open="onDialogOpenUpdate"
@@ -236,7 +236,7 @@ function onDialogOpenUpdate(open: boolean) {
 			</div>
 		</N8nDialogHeader>
 		<N8nDialogBody>
-			<div v-if="provider" :class="$style.container">
+			<div v-if="provider">
 				<div v-if="connectionState !== 'initializing'" class="mb-l">
 					<N8nCallout
 						v-if="connectionState === 'connected' || connectionState === 'tested'"
@@ -313,12 +313,6 @@ function onDialogOpenUpdate(open: boolean) {
 </template>
 
 <style module lang="scss">
-.container {
-	> * {
-		overflow-wrap: break-word;
-	}
-}
-
 .header {
 	display: flex;
 	flex-direction: row;
@@ -350,19 +344,5 @@ function onDialogOpenUpdate(open: boolean) {
 		position: static;
 		margin-left: var(--spacing--xs);
 	}
-}
-
-.providerDialog {
-	header {
-		display: flex;
-		align-items: center;
-		flex-direction: row;
-	}
-}
-
-.footer {
-	display: flex;
-	flex-direction: row;
-	justify-content: flex-end;
 }
 </style>
