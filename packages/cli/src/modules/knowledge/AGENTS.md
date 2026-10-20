@@ -20,6 +20,8 @@ Three interfaces at the module root define the boundary. Every P0 PR implements 
 
 The agents module keeps the controllers, `getAgentOrThrow` and every user and project permission check, the three `Tool` definitions, the workspace half of the sandbox runtime, and the `AgentKnowledgeService` facade. The knowledge module never checks project membership. Ownership is the caller's job.
 
+The interfaces are compile-time contracts and have no runtime binding in this scaffold. The follow-up PR that first implements each one adds its binding: a concrete `@Service` for `KnowledgeRetriever` that consumers inject by class, and a registry `@Service` in this module for `KnowledgeSandboxProvider` that the agents module registers its adapter with during `init()` (the pattern of `workflow-index/agent-usage-provider-proxy.service.ts`). Until then, `knowledge-retriever.ts` reuses the request and result types from the agents module through `import type`, which is erased at runtime; the follow-up PR that moves `agent-knowledge-retrieval.ts` into `retrieval/` removes that reference.
+
 ## Layout after P0
 
 ```
@@ -50,7 +52,7 @@ vector-stores/                 connection test, factory, embedding credential, e
 
 `N8N_DISABLED_MODULES=knowledge` skips the module's `init()` and `entities()`. In this scaffold the module registers no entities and the agents module still registers `AgentFile`, so the guards below only switch the feature off. Once a follow-up PR moves `KnowledgeFile` here, the entity is not registered with TypeORM while the `agent_files` table still exists, and an unguarded repository call fails with a metadata error. The guards exist now so that move stays a pure move. This is the only kill switch P0 has.
 
-`knowledge-availability.ts` (`KnowledgeAvailability`) is the one place that answers whether knowledge is available: `isModuleActive()` and `isFileKnowledgeEnabled()` (module active and sandbox on). Every consumer asks it before a knowledge call, derives its own flags from it, and raises the error that fits its own surface. With the module off:
+`knowledge-availability.ts` (`KnowledgeAvailability`) is the one place that answers whether knowledge is available: `isModuleActive()` and `isFileKnowledgeEnabled()` (module active and sandbox on). Every consumer asks it before a knowledge call, derives its own flags from it, and raises the error that fits its own surface. The check runs at two levels on purpose: the controllers answer the user with the same 404 as the sandbox gate, and the facade protects the callers that bypass the controllers, today the deletion cascades. With the module off:
 
 - `agents.knowledgeBaseEnabled` is false, so the editor hides the files panel in the agent's Knowledge tab.
 - The file routes and the knowledge warm-up route return the same 404 as the sandbox gate: `Agent knowledge base is not enabled`.

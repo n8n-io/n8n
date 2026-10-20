@@ -11,7 +11,7 @@ import { SandboxSettingsService } from '@/services/sandbox-settings.service';
  * these answers instead of computing them.
  *
  * WIP Note: P1 serves `isFileKnowledgeEnabled()` to the editor as the `uploadsEnabled`
- * module setting (decision D11 on the plan page).
+ * module setting, so `agents.knowledgeBaseEnabled` becomes derived from it.
  */
 @Service()
 export class KnowledgeAvailability {
