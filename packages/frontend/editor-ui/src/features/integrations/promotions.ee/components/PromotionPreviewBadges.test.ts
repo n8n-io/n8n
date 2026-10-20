@@ -51,13 +51,10 @@ describe('PromotionPreviewBadges', () => {
 				'gitConnection:pull',
 			],
 		});
-		vi.mocked(settingsApi.fetchPromotionConnections).mockResolvedValue([
-			{
-				id: 'connection-1',
-				scope: 'instance',
-				configs: { promote: { id: 'config-1' }, apply: { id: 'config-2' } },
-			} as unknown as settingsApi.PromotionConnection,
-		]);
+		vi.mocked(settingsApi.fetchPromotionEnvironments).mockResolvedValue([
+			{ id: 'environment-1', scope: 'instance', direction: 'promote' },
+			{ id: 'environment-2', scope: 'instance', direction: 'apply' },
+		] as unknown as settingsApi.PromotionEnvironmentSummary[]);
 	});
 
 	it('should link each direction with changes to its preview page and hide a direction without changes', async () => {
