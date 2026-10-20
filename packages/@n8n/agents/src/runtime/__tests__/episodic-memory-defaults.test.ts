@@ -1,6 +1,7 @@
 import type * as AiImport from 'ai';
 
 import type { ModelConfig } from '../../types';
+import type { BilledUsageCollector } from '../../types/runtime/agent-runtime';
 import { createEpisodicMemoryReflectFn } from '../memory/episodic-memory-defaults';
 
 type GenerateTextCall = {
@@ -99,5 +100,57 @@ describe('episodic memory defaults', () => {
 		expect(counter.incrementTokenCount).toHaveBeenCalledWith(13);
 		expect(counter.incrementMessageCount).not.toHaveBeenCalled();
 		expect(counter.incrementToolCallCount).not.toHaveBeenCalled();
+	});
+
+	it('settles the billed amount for a gateway-managed reflect model, even without token usage', async () => {
+		const gatewayModel = { doGenerate: vi.fn(), gatewayManaged: true } as unknown as ModelConfig;
+		const window = { wrap: vi.fn(() => vi.fn()), settle: vi.fn(() => 0.002) };
+		const collector: BilledUsageCollector = { startWindow: vi.fn(() => window) };
+		mockGenerateText.mockImplementationOnce(async ({ output }) => {
+			return await Promise.resolve({
+				output: output.schema.parse({ drop: [], merge: [] }),
+				usage: undefined,
+				finalStep: { providerMetadata: undefined },
+			});
+		});
+
+		const result = await createEpisodicMemoryReflectFn(gatewayModel, {
+			billedUsage: collector,
+		})({
+			scope: { resourceId: 'user-1', threadId: 'thread-1' },
+			now: new Date('2026-05-12T15:00:00.000Z'),
+			seedEntryIds: [],
+			entries: [],
+			sources: [],
+		});
+
+		expect(collector.startWindow).toHaveBeenCalledTimes(1);
+		expect(result.billedCostUsd).toBe(0.002);
+		// The call carried no token usage: the cost rides a zero-token record.
+		expect(result.usage).toMatchObject({ promptTokens: 0, cost: 0.002 });
+	});
+
+	it('opens no window for an own-key reflect model', async () => {
+		const collector: BilledUsageCollector = { startWindow: vi.fn() };
+		mockGenerateText.mockImplementationOnce(async ({ output }) => {
+			return await Promise.resolve({
+				output: output.schema.parse({ drop: [], merge: [] }),
+				usage: { totalTokens: 13 },
+				finalStep: { providerMetadata: undefined },
+			});
+		});
+
+		const result = await createEpisodicMemoryReflectFn(fakeModel, {
+			billedUsage: collector,
+		})({
+			scope: { resourceId: 'user-1', threadId: 'thread-1' },
+			now: new Date('2026-05-12T15:00:00.000Z'),
+			seedEntryIds: [],
+			entries: [],
+			sources: [],
+		});
+
+		expect(collector.startWindow).not.toHaveBeenCalled();
+		expect(result.billedCostUsd).toBeUndefined();
 	});
 });

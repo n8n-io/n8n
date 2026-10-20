@@ -104,7 +104,7 @@ const BUDGET_STOP_TEXT = {
 	'budget.credits':
 		'⚠️ The Gateway credits balance is empty, so this agent stopped. Open n8n and top up Gateway credits to continue.',
 	'budget.freeCredits':
-		'⚠️ The free OpenAI credits are used up, so this agent stopped. Open the agent in n8n and connect your own OpenAI API key to continue.',
+		'⚠️ The free credits are used up, so this agent stopped. Open the agent in n8n and connect your own API key to continue.',
 } as const;
 
 function budgetStopText(code: string | undefined): string | undefined {

@@ -1134,6 +1134,9 @@ export class AgentExecutionOrchestratorService {
 			...(config.modelCredentialGatewayManaged !== undefined
 				? { modelCredentialGatewayManaged: config.modelCredentialGatewayManaged }
 				: {}),
+			...(config.chatSurface === 'preview' && config.onBudgetNotice
+				? { onBudgetNotice: config.onBudgetNotice }
+				: {}),
 			onExecutionRecorded: config.onExecutionRecorded,
 			chatSurface: config.chatSurface,
 			isWakeRun: config.isWakeRun,
@@ -1309,6 +1312,9 @@ export class AgentExecutionOrchestratorService {
 			...(runtime.budget !== undefined ? { budget: runtime.budget } : {}),
 			...(runtime.modelCredentialGatewayManaged !== undefined
 				? { modelCredentialGatewayManaged: runtime.modelCredentialGatewayManaged }
+				: {}),
+			...(config.chatSurface === 'preview' && config.onBudgetNotice
+				? { onBudgetNotice: config.onBudgetNotice }
 				: {}),
 			chatSurface: config.chatSurface,
 			automaticPreviewContinuation: config.automaticPreviewContinuation,

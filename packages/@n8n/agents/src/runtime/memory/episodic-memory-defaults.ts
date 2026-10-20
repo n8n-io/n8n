@@ -8,8 +8,10 @@ import type {
 	ModelConfig,
 	RetrievedEpisodicMemoryEntry,
 } from '../../types';
-import { getModelIdString } from '../../utils/model';
+import type { BilledUsageCollector } from '../../types/runtime/agent-runtime';
+import { getModelIdString, isGatewayManagedModel } from '../../utils/model';
 import { incrementTokenCountFromUsage } from '../loop/execution-counter';
+import { costOnlyUsage } from '../loop/side-call-cost';
 import { createModel } from '../model/model-factory';
 import { toTokenUsage } from '../streaming/stream';
 
@@ -52,6 +54,12 @@ const EpisodicMemoryReflectionSchema = z.object({
 
 export interface CreateEpisodicMemoryReflectFnOptions {
 	reflectionPrompt?: string;
+	/**
+	 * Provider-billed cost source. When the reflect model is gateway-managed,
+	 * each call opens its own window so its billed cost never mixes with
+	 * another in-flight call.
+	 */
+	billedUsage?: BilledUsageCollector;
 }
 
 export function buildEpisodicMemoryReflectorPrompt(input: EpisodicMemoryReflectorInput): string {
@@ -68,18 +76,24 @@ export function createEpisodicMemoryReflectFn(
 	options: CreateEpisodicMemoryReflectFnOptions = {},
 ): EpisodicMemoryReflectFn {
 	return async (input): Promise<EpisodicMemoryReflectResult> => {
+		const window = isGatewayManagedModel(model) ? options.billedUsage?.startWindow() : undefined;
 		const { generateText, Output } = await import('ai');
 		const response = await generateText({
-			model: createModel(model),
+			model: createModel(model, window?.wrap(undefined)),
 			instructions: options.reflectionPrompt ?? DEFAULT_EPISODIC_MEMORY_REFLECTION_PROMPT,
 			prompt: buildEpisodicMemoryReflectorPrompt(input),
 			output: Output.object({ schema: EpisodicMemoryReflectionSchema }),
 		});
 		incrementTokenCountFromUsage(input.executionCounter, response.usage);
+		const billedCostUsd = window?.settle();
+		const usage = toTokenUsage(response.usage, response.finalStep.providerMetadata);
 		return {
 			reflection: response.output,
-			usage: toTokenUsage(response.usage, response.finalStep.providerMetadata),
+			// The gateway bills the call whether or not the provider returned
+			// token counts, so a billed-only call still carries a cost.
+			usage: usage ?? (billedCostUsd !== undefined ? costOnlyUsage(billedCostUsd) : undefined),
 			model: getModelIdString(model),
+			...(billedCostUsd !== undefined ? { billedCostUsd } : {}),
 		};
 	};
 }

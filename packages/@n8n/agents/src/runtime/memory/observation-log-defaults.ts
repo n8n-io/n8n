@@ -13,6 +13,7 @@ import type { MemoryTaskUsageReport } from '../../types/sdk/observation-log';
 import type { BilledUsageCollector } from '../../types/runtime/agent-runtime';
 import { getModelIdString, isGatewayManagedModel } from '../../utils/model';
 import { incrementTokenCountFromUsage } from '../loop/execution-counter';
+import { costOnlyUsage } from '../loop/side-call-cost';
 import { loadAi } from '../model/lazy-ai';
 import { createModel } from '../model/model-factory';
 import { toTokenUsage } from '../streaming/stream';
@@ -188,11 +189,15 @@ export function createObservationLogObserveFn(
 		const tokenUsage = toTokenUsage(usage, finalStep.providerMetadata);
 		const billedCostUsd = window?.settle();
 		const modelId = getModelIdString(model);
-		if (options.onUsage && tokenUsage) {
+		// The gateway bills the call whether or not the provider returned token
+		// counts, so a billed-only call still carries a cost.
+		const reportUsage =
+			tokenUsage ?? (billedCostUsd !== undefined ? costOnlyUsage(billedCostUsd) : undefined);
+		if (options.onUsage && reportUsage) {
 			await options.onUsage({
 				task: 'observer',
 				model: modelId,
-				usage: tokenUsage,
+				usage: reportUsage,
 				reportId: crypto.randomUUID(),
 				...(billedCostUsd !== undefined ? { billedCostUsd } : {}),
 			});
@@ -200,7 +205,7 @@ export function createObservationLogObserveFn(
 
 		return {
 			text: text.trim(),
-			usage: tokenUsage,
+			usage: reportUsage,
 			model: modelId,
 			...(billedCostUsd !== undefined ? { billedCostUsd } : {}),
 		};
@@ -369,11 +374,15 @@ export function createObservationLogReflectFn(
 		const tokenUsage = toTokenUsage(usage, finalStep.providerMetadata);
 		const billedCostUsd = window?.settle();
 		const modelId = getModelIdString(model);
-		if (options.onUsage && tokenUsage) {
+		// The gateway bills the call whether or not the provider returned token
+		// counts, so a billed-only call still carries a cost.
+		const reportUsage =
+			tokenUsage ?? (billedCostUsd !== undefined ? costOnlyUsage(billedCostUsd) : undefined);
+		if (options.onUsage && reportUsage) {
 			await options.onUsage({
 				task: 'reflector',
 				model: modelId,
-				usage: tokenUsage,
+				usage: reportUsage,
 				reportId: crypto.randomUUID(),
 				...(billedCostUsd !== undefined ? { billedCostUsd } : {}),
 			});
@@ -396,7 +405,7 @@ export function createObservationLogReflectFn(
 					}),
 				})),
 			}),
-			usage: tokenUsage,
+			usage: reportUsage,
 			model: modelId,
 			...(billedCostUsd !== undefined ? { billedCostUsd } : {}),
 		};

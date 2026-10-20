@@ -223,7 +223,9 @@ describe('generateThreadTitle side-call cost', () => {
 					createdAt: new Date(),
 				} as never,
 			],
-			onSideCallUsage: (report) => reports.push(report),
+			onSideCallUsage: (report) => {
+				reports.push(report);
+			},
 		});
 
 		expect(collector.startWindow).toHaveBeenCalledTimes(1);
@@ -232,6 +234,76 @@ describe('generateThreadTitle side-call cost', () => {
 		expect(reports).toHaveLength(1);
 		expect(reports[0].cost).toBe(0.0042);
 		// The catalog is not consulted when the gateway reports the billed cost.
+		expect(mockGetModelCost).not.toHaveBeenCalled();
+	});
+
+	it('reports the billed amount when a gateway title call returns no usable title', async () => {
+		mockGenerateText.mockResolvedValue({ text: '' });
+		const window = { wrap: vi.fn(() => vi.fn()), settle: vi.fn(() => 0.002) };
+		const collector: BilledUsageCollector = { startWindow: vi.fn(() => window) };
+
+		const memory = new InMemoryMemory();
+		await memory.saveThread({ id: THREAD_ID, resourceId: RESOURCE_ID });
+
+		const reports: SideCallUsageReport[] = [];
+		await generateThreadTitle({
+			memory,
+			threadId: THREAD_ID,
+			resourceId: RESOURCE_ID,
+			titleConfig: { model: { id: MODEL_ID, gatewayManaged: true } },
+			agentModel: MODEL_ID,
+			billedUsage: collector,
+			turnDelta: [
+				{
+					id: 'm1',
+					role: 'user',
+					content: [{ type: 'text', text: 'Build a daily Berlin rain alert workflow' }],
+					createdAt: new Date(),
+				} as never,
+			],
+			onSideCallUsage: (report) => {
+				reports.push(report);
+			},
+		});
+
+		// The model returned nothing, but the gateway still billed the call.
+		expect(reports).toHaveLength(1);
+		expect(reports[0].cost).toBe(0.002);
+		expect(reports[0].usage).toMatchObject({ promptTokens: 0, cost: 0.002 });
+	});
+
+	it('reports the billed amount when a gateway title call returns no token usage', async () => {
+		mockGenerateText.mockResolvedValue({ text: '{"title":"Berlin rain alert","emoji":"rain"}' });
+		const window = { wrap: vi.fn(() => vi.fn()), settle: vi.fn(() => 0.002) };
+		const collector: BilledUsageCollector = { startWindow: vi.fn(() => window) };
+
+		const memory = new InMemoryMemory();
+		await memory.saveThread({ id: THREAD_ID, resourceId: RESOURCE_ID });
+
+		const reports: SideCallUsageReport[] = [];
+		await generateThreadTitle({
+			memory,
+			threadId: THREAD_ID,
+			resourceId: RESOURCE_ID,
+			titleConfig: { model: { id: MODEL_ID, gatewayManaged: true } },
+			agentModel: MODEL_ID,
+			billedUsage: collector,
+			turnDelta: [
+				{
+					id: 'm1',
+					role: 'user',
+					content: [{ type: 'text', text: 'Build a daily Berlin rain alert workflow' }],
+					createdAt: new Date(),
+				} as never,
+			],
+			onSideCallUsage: (report) => {
+				reports.push(report);
+			},
+		});
+
+		expect(reports).toHaveLength(1);
+		expect(reports[0].cost).toBe(0.002);
+		expect(reports[0].usage).toMatchObject({ promptTokens: 0, cost: 0.002 });
 		expect(mockGetModelCost).not.toHaveBeenCalled();
 	});
 
@@ -263,7 +335,9 @@ describe('generateThreadTitle side-call cost', () => {
 					createdAt: new Date(),
 				} as never,
 			],
-			onSideCallUsage: (report) => reports.push(report),
+			onSideCallUsage: (report) => {
+				reports.push(report);
+			},
 		});
 
 		expect(reports).toHaveLength(1);
@@ -297,7 +371,9 @@ describe('generateThreadTitle side-call cost', () => {
 					createdAt: new Date(),
 				} as never,
 			],
-			onSideCallUsage: (report) => reports.push(report),
+			onSideCallUsage: (report) => {
+				reports.push(report);
+			},
 		});
 
 		expect(collector.startWindow).not.toHaveBeenCalled();

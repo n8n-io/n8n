@@ -548,6 +548,7 @@ async function applyMemoryFromConfig(
 				memoryConfig.episodicMemory,
 				credentialProvider,
 				resolveManagedEmbeddingProviderOptions,
+				billedUsage,
 			),
 		);
 	}
@@ -605,6 +606,7 @@ async function resolveEpisodicMemoryJsonConfig(
 	config: Extract<NonNullable<AgentJsonMemoryConfig['episodicMemory']>, { enabled: true }>,
 	credentialProvider: CredentialProvider,
 	resolveManagedEmbeddingProviderOptions?: ManagedEmbeddingProviderOptionsResolver,
+	billedUsage?: BilledUsageCollector,
 ) {
 	const { DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL, createEpisodicMemoryReflectFn } = await import(
 		'@n8n/agents'
@@ -628,6 +630,7 @@ async function resolveEpisodicMemoryJsonConfig(
 		...(config.reflectorModel !== undefined && {
 			reflect: createEpisodicMemoryReflectFn(
 				await resolveMemoryWorkerModelConfig(config.reflectorModel, credentialProvider),
+				...(billedUsage !== undefined ? [{ billedUsage }] : []),
 			),
 		}),
 		...(config.topK !== undefined && { topK: config.topK }),

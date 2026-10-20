@@ -94,7 +94,7 @@ describe('raisedBudgetCaps', () => {
 });
 
 describe('isBudgetStopCode', () => {
-	it.each(['budget.monthly', 'budget.session', 'budget.credits'])(
+	it.each(['budget.monthly', 'budget.session', 'budget.credits', 'budget.freeCredits'])(
 		'blocks sending on %s',
 		(code) => {
 			expect(isBudgetStopCode(code)).toBe(true);

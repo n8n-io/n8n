@@ -836,8 +836,14 @@ export class MemoryOrchestrator {
 					// billed turn is priced even when a later save or applyReflection
 					// throws. Returning usageReports here would double-count.
 					onUsage: onSideCallUsage
-						? (model, usage) => {
-								void this.forwardSideCallUsage(onSideCallUsage, 'episodic', model, usage);
+						? (model, usage, billedCostUsd) => {
+								void this.forwardSideCallUsage(
+									onSideCallUsage,
+									'episodic',
+									model,
+									usage,
+									billedCostUsd,
+								);
 							}
 						: undefined,
 				});

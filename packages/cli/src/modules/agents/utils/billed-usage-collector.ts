@@ -8,10 +8,15 @@ import type { BilledUsageCollector, BilledUsageWindow, FetchFn } from '@n8n/agen
  */
 export const BILLED_USD_HEADER = 'x-n8n-billed-usd';
 
+/** Decimal dollars only, the whole value: a malformed header is ignored, not partially parsed. */
+const BILLED_USD_PATTERN = /^\d+(\.\d+)?$/;
+
 function parseBilledUsd(raw: string | null): number | undefined {
 	if (raw === null) return undefined;
-	const amount = Number.parseFloat(raw);
-	if (!Number.isFinite(amount) || amount < 0) return undefined;
+	const trimmed = raw.trim();
+	if (!BILLED_USD_PATTERN.test(trimmed)) return undefined;
+	const amount = Number(trimmed);
+	if (!Number.isFinite(amount)) return undefined;
 	return amount;
 }
 

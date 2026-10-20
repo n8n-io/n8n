@@ -5,12 +5,17 @@ import type {
 	RunOptions,
 	SideCallUsageReport,
 	SpendEntry,
+	SpendTotal,
 	StreamChunk,
 } from '@n8n/agents';
 import { budgetMonthKey } from '@n8n/agents';
-import type { AgentBackgroundJobSignal, BudgetGuardrailConfig } from '@n8n/api-types';
+import type {
+	AgentBackgroundJobSignal,
+	AgentBudgetNotice,
+	BudgetGuardrailConfig,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import { UnexpectedError } from 'n8n-workflow';
 
 import type { AgentChatSurface, AgentSessionMode } from './utils/agent-thread-access';
@@ -27,6 +32,7 @@ import {
 	type RecordMessageParams,
 	type StartExecutionParams,
 } from './agent-execution.service';
+import { AgentBudgetAlertService } from './agent-budget-alert.service';
 import { AgentSpendLedger } from './budget-guardrail';
 import { ExecutionRecorder } from './execution-recorder';
 import type { ToolRegistry } from './tool-registry';
@@ -63,6 +69,8 @@ interface ExecuteTurnConfig {
 	modelCredentialGatewayManaged?: boolean;
 	/** The chat surface this turn runs under. Undefined for integrations and tasks. */
 	chatSurface?: AgentChatSurface;
+	/** Preview chat sends the approaching-budget card. The run continues. */
+	onBudgetNotice?: (notice: AgentBudgetNotice) => void;
 	automaticPreviewContinuation?: boolean;
 	/** The abort signal is a wake lease, not a chat request. */
 	isWakeRun?: boolean;
@@ -540,11 +548,47 @@ export class AgentTurnExecutionService {
 			entries.push({ key: budgetMonthKey(config.context.agentId), usd: report.cost });
 		}
 		if (entries.length === 0) return;
-		void this.spendLedger.add(report.reportId, entries).catch((error: unknown) => {
-			this.logger.warn('Failed to record side-call budget spend', {
-				error: error instanceof Error ? error.message : String(error),
+		void this.spendLedger
+			.add(report.reportId, entries)
+			.then((totals) => this.maybeEmitSideCallAlert(config, totals))
+			.catch((error: unknown) => {
+				this.logger.warn('Failed to record side-call budget spend', {
+					error: error instanceof Error ? error.message : String(error),
+				});
 			});
-		});
+	}
+
+	/**
+	 * A side call can be the spend that crosses the monthly alert line. Without
+	 * this the alert never fires: the next model call's guardrail reads a total
+	 * already past the line, and its crossing check only fires on the crossing
+	 * call itself.
+	 */
+	private maybeEmitSideCallAlert(config: ExecuteTurnConfig, totals: SpendTotal[]): void {
+		const budget = config.budget;
+		const percent = budget?.alertThresholdPercent;
+		if (
+			budget?.enabled !== true ||
+			percent === undefined ||
+			budget.monthlyBudgetUsd === undefined ||
+			budget.monthlyBudgetUsd <= 0
+		) {
+			return;
+		}
+		const monthKey = budgetMonthKey(config.context.agentId);
+		const month = totals.find((total) => total.key === monthKey);
+		if (!month) return;
+		const alertLine = (budget.monthlyBudgetUsd * percent) / 100;
+		if (month.previousUsd >= alertLine || month.totalUsd < alertLine) return;
+		config.onBudgetNotice?.({ code: 'budget.alert' });
+		try {
+			Container.get(AgentBudgetAlertService).notifyMonthlyThreshold({
+				agentId: config.context.agentId,
+				alertThresholdPercent: percent,
+			});
+		} catch {
+			// The alert service is not registered — stay quiet.
+		}
 	}
 
 	private *streamStartTurnNotices(

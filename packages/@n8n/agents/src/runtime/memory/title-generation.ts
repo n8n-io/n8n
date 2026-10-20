@@ -13,7 +13,7 @@ import type { BilledUsageCollector } from '../../types/runtime/agent-runtime';
 import { getModelIdString, isGatewayManagedModel } from '../../utils/model';
 import { createFilteredLogger } from '../logger';
 import { incrementTokenCountFromUsage } from '../loop/execution-counter';
-import { computeSideCallCost } from '../loop/side-call-cost';
+import { computeSideCallCost, costOnlyUsage } from '../loop/side-call-cost';
 import { loadAi } from '../model/lazy-ai';
 import { createModel, type FetchFn } from '../model/model-factory';
 import { toTokenUsage } from '../streaming/stream';
@@ -274,7 +274,21 @@ export async function generateThreadTitle(opts: {
 			instructions: opts.titleConfig.instructions,
 			executionCounter: opts.executionCounter,
 		});
-		if (!generated) return;
+		// Settle right after the model call: a billed no-answer call still cost
+		// the wallet, and a billed call without token usage still carries a cost.
+		const billedCostUsd = window?.settle();
+		if (!generated) {
+			if (billedCostUsd !== undefined && opts.onSideCallUsage) {
+				await reportTitleUsage(
+					opts.onSideCallUsage,
+					getModelIdString(titleModelId),
+					costOnlyUsage(billedCostUsd),
+					opts.promptCaching,
+					billedCostUsd,
+				);
+			}
+			return;
+		}
 
 		const { title, emoji, usage } = generated;
 
@@ -286,13 +300,15 @@ export async function generateThreadTitle(opts: {
 		// breaks title generation. Awaited (not fire-and-forget) so the cost is
 		// captured deterministically before generateThreadTitle resolves, while
 		// still best-effort: reportTitleUsage swallows its own errors.
-		if (usage && opts.onSideCallUsage) {
+		const reportUsage =
+			usage ?? (billedCostUsd !== undefined ? costOnlyUsage(billedCostUsd) : undefined);
+		if (reportUsage && opts.onSideCallUsage) {
 			await reportTitleUsage(
 				opts.onSideCallUsage,
 				getModelIdString(titleModelId),
-				usage,
+				reportUsage,
 				opts.promptCaching,
-				window?.settle(),
+				billedCostUsd,
 			);
 		}
 

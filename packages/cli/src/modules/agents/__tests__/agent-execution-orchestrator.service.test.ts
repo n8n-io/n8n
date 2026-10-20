@@ -1126,6 +1126,78 @@ describe('AgentExecutionOrchestratorService', () => {
 			expect(spendLedger.add).not.toHaveBeenCalled();
 		});
 
+		it('fires the monthly alert when a side call crosses the alert line', async () => {
+			const onBudgetNotice = vi.fn();
+			const { stream, sdkStart } = makeTurn({
+				previewChat: true,
+				onBudgetNotice,
+				budget: {
+					enabled: true,
+					monthlyBudgetUsd: 20,
+					sessionCostCapUsd: 5,
+					alertThresholdPercent: 80,
+				},
+				modelCredentialGatewayManaged: true,
+			});
+			await collect(stream);
+
+			const options = sdkStart.mock.calls[0]?.[operation === 'start' ? 1 : 2] as
+				| (RunOptions & ExecutionOptions)
+				| undefined;
+			const onSideCallUsage = options?.onSideCallUsage;
+			if (!onSideCallUsage) throw new Error('Expected a side-call usage callback');
+			// The stub ledger reports the new total as the entry's usd with previous 0,
+			// so 17 crosses the alert line of 16 (80% of 20) from below.
+			await onSideCallUsage({
+				task: 'title' as const,
+				model: 'openai/gpt-5',
+				usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15 },
+				cost: 17,
+				reportId: 'report-1',
+			});
+			await vi.waitFor(() => {
+				expect(Container.get(AgentBudgetAlertService).notifyMonthlyThreshold).toHaveBeenCalledWith({
+					agentId,
+					alertThresholdPercent: 80,
+				});
+			});
+
+			expect(onBudgetNotice).toHaveBeenCalledWith({ code: 'budget.alert' });
+		});
+
+		it('does not fire the monthly alert when a side call stays below the alert line', async () => {
+			const onBudgetNotice = vi.fn();
+			const { stream, sdkStart } = makeTurn({
+				previewChat: true,
+				onBudgetNotice,
+				budget: {
+					enabled: true,
+					monthlyBudgetUsd: 20,
+					sessionCostCapUsd: 5,
+					alertThresholdPercent: 80,
+				},
+				modelCredentialGatewayManaged: true,
+			});
+			await collect(stream);
+
+			const options = sdkStart.mock.calls[0]?.[operation === 'start' ? 1 : 2] as
+				| (RunOptions & ExecutionOptions)
+				| undefined;
+			const onSideCallUsage = options?.onSideCallUsage;
+			if (!onSideCallUsage) throw new Error('Expected a side-call usage callback');
+			await onSideCallUsage({
+				task: 'title' as const,
+				model: 'openai/gpt-5',
+				usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15 },
+				cost: 10,
+				reportId: 'report-1',
+			});
+			await new Promise((resolve) => setImmediate(resolve));
+
+			expect(Container.get(AgentBudgetAlertService).notifyMonthlyThreshold).not.toHaveBeenCalled();
+			expect(onBudgetNotice).not.toHaveBeenCalledWith({ code: 'budget.alert' });
+		});
+
 		if (operation === 'resume') {
 			it('admits one automatic preview continuation for a suspended run', async () => {
 				const started = createDeferredPromise<AbortSignal>();

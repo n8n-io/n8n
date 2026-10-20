@@ -54,8 +54,8 @@ const walletLabel = computed(() => {
 	const balance = walletBalance.value;
 	if (balance === undefined) return undefined;
 	return balance <= 0
-		? i18n.baseText('aiGateway.wallet.noCredits')
-		: i18n.baseText('aiGateway.wallet.balanceRemaining', {
+		? i18n.baseText('agents.builder.budget.wallet.empty')
+		: i18n.baseText('agents.builder.budget.wallet.remaining', {
 				interpolate: { balance: `$${Number(balance).toFixed(2)}` },
 			});
 });
@@ -216,7 +216,7 @@ const sessionValue = computed(() => {
 					:class="shared.dataEntrySubLabel"
 					data-testid="agent-budget-wallet"
 				>
-					{{ i18n.baseText('agents.builder.budget.wallet.label') }} · {{ walletLabel }}
+					{{ walletLabel }}
 				</N8nText>
 			</div>
 

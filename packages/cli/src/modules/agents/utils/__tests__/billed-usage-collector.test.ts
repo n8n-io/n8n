@@ -42,6 +42,19 @@ describe('createBilledUsageCollector', () => {
 		expect(window.settle()).toBeUndefined();
 	});
 
+	it.each(['-0.001', '0.0042junk', '0.0042 junk', '1e-3', ''])(
+		'ignores the out-of-contract header value %j',
+		async (value) => {
+			const base = vi.fn().mockResolvedValue(responseWithHeader(value));
+			const collector = createBilledUsageCollector();
+			const window = collector.startWindow();
+
+			await window.wrap(base)('https://gw/v1/responses');
+
+			expect(window.settle()).toBeUndefined();
+		},
+	);
+
 	it('keeps windows isolated: one call never settles another call’s responses', async () => {
 		const base = vi
 			.fn()

@@ -11564,6 +11564,7 @@ describe('AgentRuntime — gateway billed cost', () => {
 
 	beforeEach(() => {
 		generateText.mockReset();
+		streamText.mockReset();
 		vi.mocked(getModelCost).mockReset().mockResolvedValue(undefined);
 	});
 
@@ -11676,6 +11677,89 @@ describe('AgentRuntime — gateway billed cost', () => {
 		expect(applyCostWithCatalog(gatewayRuntime, catalogCost, stamped)).toEqual(stamped);
 		expect(applyCostWithCatalog(ownKeyRuntime, catalogCost, stamped)).toMatchObject({ cost: 15 });
 	});
+
+	it('reports the summed billed amounts as the run aggregate cost', async () => {
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCalls([{ toolCallId: 'tc-1', toolName: 'echo', args: { v: 'x' } }]),
+			)
+			.mockResolvedValueOnce(makeGenerateSuccess('done'));
+		const { collector } = makeSequenceCollector([0.002, 0.0022]);
+		const echoTool = new ToolBuilder('echo')
+			.description('Echo the input')
+			.input(z.object({ v: z.string() }))
+			.handler(async (input) => await Promise.resolve(input))
+			.build();
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: gatewayModel,
+			instructions: 'test',
+			tools: [echoTool],
+			billedUsage: collector,
+			checkpointStorage: 'memory',
+		});
+
+		const result = await runtime.generate('hi');
+
+		// mergeUsage drops per-turn cost: without the billed total this would be
+		// the estimate (undefined here, the catalog has no price).
+		expect(result.usage).toMatchObject({ cost: expect.closeTo(0.0042, 7) });
+	});
+
+	it('stamps the summed billed cost on the stream finish chunk', async () => {
+		streamText.mockReturnValueOnce(makeStreamSuccess('Done'));
+		const { collector } = makeCollector(0.002);
+		const runtime = createGatewayRuntime(collector);
+
+		const { stream } = await runtime.stream('hi');
+		const chunks = await collectChunks(stream);
+
+		expect(chunks[chunks.length - 1]).toMatchObject({
+			type: 'finish',
+			usage: { cost: 0.002 },
+		});
+	});
+
+	it('bills a gateway turn that reports no token usage', async () => {
+		generateText.mockResolvedValue({
+			finishReason: 'stop',
+			usage: undefined,
+			response: {
+				messages: [{ role: 'assistant', content: [{ type: 'text', text: 'Done' }] }],
+			},
+			toolCalls: [],
+		});
+		const { collector } = makeCollector(0.002);
+		const hook = makeHook();
+		const runtime = createGatewayRuntime(collector);
+
+		await runtime.generate('hi', { guardrails: guardrailsOption(hook) });
+
+		expect(hook.after).toHaveBeenCalledTimes(1);
+		expect(hook.after.mock.calls[0][1]).toMatchObject({
+			promptTokens: 0,
+			completionTokens: 0,
+			totalTokens: 0,
+			cost: 0.002,
+		});
+	});
+
+	function makeSequenceCollector(settledValues: Array<number | undefined>) {
+		const windows: Array<{ wrap: Mock; settle: Mock }> = [];
+		let index = 0;
+		const collector: BilledUsageCollector = {
+			startWindow: vi.fn(() => {
+				const value = settledValues[Math.min(index++, settledValues.length - 1)];
+				const window = {
+					wrap: vi.fn((fetch?: FetchFn) => fetch ?? ((async () => new Response()) as FetchFn)),
+					settle: vi.fn(() => value),
+				};
+				windows.push(window);
+				return window;
+			}),
+		};
+		return { collector, windows };
+	}
 
 	function makeGenerateEmptyRetry() {
 		return {

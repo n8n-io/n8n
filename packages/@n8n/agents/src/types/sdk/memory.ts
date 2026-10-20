@@ -267,6 +267,8 @@ export interface EpisodicMemoryReflectResult {
 	usage?: TokenUsage;
 	/** Stable model id string of the model that produced the reflection. */
 	model: string;
+	/** Provider-billed USD for the call, when the model is gateway-managed and the gateway reported a cost. */
+	billedCostUsd?: number;
 }
 
 /**

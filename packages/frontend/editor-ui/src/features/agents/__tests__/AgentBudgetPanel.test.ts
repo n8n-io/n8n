@@ -70,11 +70,10 @@ vi.mock('@n8n/i18n', () => ({
 				'agents.builder.budget.usage.spent': '{spent} of {budget} used',
 				'agents.builder.budget.usage.estimate': 'estimate caption',
 				'agents.builder.budget.usage.billed': 'billed caption',
-				'agents.builder.budget.wallet.label': 'Wallet balance',
+				'agents.builder.budget.wallet.remaining': 'Wallet balance · {balance} left',
+				'agents.builder.budget.wallet.empty': 'Wallet balance · No credits',
 				'agents.builder.budget.monthly.value': '{amount}/month',
 				'agents.builder.budget.monthly.alert': 'Alert at {percent}%',
-				'aiGateway.wallet.balanceRemaining': '{balance} left',
-				'aiGateway.wallet.noCredits': 'No credits',
 			};
 			const template = copy[key] ?? key;
 			const values = options?.interpolate ?? {};

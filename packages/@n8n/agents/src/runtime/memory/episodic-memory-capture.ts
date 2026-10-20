@@ -11,7 +11,7 @@ import {
 } from './episodic-memory';
 import { DEFAULT_EPISODIC_MEMORY_CAPTURE_TOOL_INSTRUCTION } from './episodic-memory-defaults';
 import { normalizeFlatReflectionActions } from './memory-lifecycle';
-import { reportSideCallUsage } from './forward-usage';
+import { reportSideCallUsage, type SideCallUsageCallback } from './forward-usage';
 import { saveMessagesToThread } from './memory-store';
 import { redactText } from '../../sdk/guardrails';
 import { Tool } from '../../sdk/tool';
@@ -165,7 +165,7 @@ export interface RunEpisodicMemoryCandidateProcessorOpts {
 	 * billed embed/reflect turn priced even when later persistence throws.
 	 * Fire-and-forget from the caller's perspective.
 	 */
-	onUsage?: (model: string | undefined, usage: TokenUsage | undefined) => void | Promise<void>;
+	onUsage?: SideCallUsageCallback;
 }
 
 export type EpisodicMemoryUsageReport = {
@@ -441,7 +441,12 @@ async function runEpisodicMemoryReflection(
 		// reflect call is priced even when a later merge embed or
 		// applyReflection throws. The callback is best-effort: a throw or
 		// rejection never fails reflection.
-		reportSideCallUsage(opts.onUsage, reflectionResult.model, reflectionResult.usage);
+		reportSideCallUsage(
+			opts.onUsage,
+			reflectionResult.model,
+			reflectionResult.usage,
+			'billedCostUsd' in reflectionResult ? reflectionResult.billedCostUsd : undefined,
+		);
 	}
 	const reflection = normalizeEpisodicMemoryReflection(cluster, reflectionResult.reflection);
 	if (reflection.drop.length === 0 && reflection.merge.length === 0) return reports;

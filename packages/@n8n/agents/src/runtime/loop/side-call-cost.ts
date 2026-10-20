@@ -21,3 +21,12 @@ export async function computeSideCallCost(
 		anthropicCacheTtl: getEffectiveAnthropicCacheTtl(promptCaching, modelId),
 	});
 }
+
+/**
+ * A cost-bearing usage record for a billed call that reported no token
+ * counts. The gateway bills real USD whether or not the proxied provider
+ * returned usage, so the spend ledger still records the amount.
+ */
+export function costOnlyUsage(costUsd: number): TokenUsage {
+	return { promptTokens: 0, completionTokens: 0, totalTokens: 0, cost: costUsd };
+}

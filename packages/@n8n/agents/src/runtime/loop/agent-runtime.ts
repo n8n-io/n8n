@@ -60,6 +60,7 @@ import { generateThreadTitle } from '../memory/title-generation';
 import { AgentMessageList, type SerializedMessageList } from '../model/message-list';
 import { createModel } from '../model/model-factory';
 import { createModelTokenCounter } from '../model/model-token-counter';
+import { costOnlyUsage } from './side-call-cost';
 import { getEffectiveAnthropicCacheTtl } from '../model/prompt-cache';
 import { ActiveSkills } from '../skills/active-skills';
 import { activateSkillDependencyTools } from '../skills/skill-dependency-tools';
@@ -147,6 +148,8 @@ interface PreparedLoopContext extends LoopContext {
 
 interface LoopState {
 	totalUsage: TokenUsage | undefined;
+	/** Summed gateway-billed USD across this run's turns; drives the run's aggregate cost. */
+	totalBilledUsd?: number;
 	lastFinishReason: FinishReason;
 	structuredOutput: unknown;
 	maxIterations: number;
@@ -830,7 +833,7 @@ export class AgentRuntime {
 				return await sink.finishSuspended({
 					suspendRunId: this.runId,
 					list: prepared.list,
-					usage: state.totalUsage,
+					usage: this.totalUsageWithBilled(state),
 					suspensions: [],
 					finishReason: 'paused',
 				});
@@ -851,7 +854,7 @@ export class AgentRuntime {
 			list: ctx.list,
 			options: ctx.options,
 			finishReason: state.lastFinishReason,
-			usage: state.totalUsage,
+			usage: this.totalUsageWithBilled(state),
 			structuredOutput: state.structuredOutput,
 			guardrail: state.guardrailStop,
 		});
@@ -1123,7 +1126,12 @@ export class AgentRuntime {
 					})
 				: await sink.callModel(modelCallContext);
 			const billed = window?.settle();
-			if (turn.usage && billed !== undefined) turn.usage = { ...turn.usage, cost: billed };
+			// The gateway bills the call whether or not the provider returned
+			// token counts, so a billed-only call still carries a cost.
+			if (billed !== undefined) {
+				state.totalBilledUsd = (state.totalBilledUsd ?? 0) + billed;
+				turn.usage = turn.usage ? { ...turn.usage, cost: billed } : costOnlyUsage(billed);
+			}
 			// Price the turn before guardrails see it. The finish chunk prices
 			// the summed tokens later; mergeUsage drops per-turn cost.
 			turn.usage = this.applyCost(turn.usage);
@@ -1152,6 +1160,22 @@ export class AgentRuntime {
 		state.totalUsage = mergeUsage(state.totalUsage, turn.usage);
 		incrementTokenCountFromUsage(ctx.options?.executionCounter, turn.usage);
 		sink.reportUsage(state.totalUsage);
+	}
+
+	/**
+	 * The run's aggregate usage with the summed gateway-billed USD stamped on.
+	 * `mergeUsage` drops per-turn cost, so without this the aggregate would be
+	 * re-priced from the catalog instead of carrying what the gateway charged.
+	 * Unset when no turn reported a billed amount — the estimate then applies.
+	 */
+	private totalUsageWithBilled(state: LoopState): TokenUsage | undefined {
+		if (state.totalBilledUsd === undefined) return state.totalUsage;
+		const base = state.totalUsage ?? {
+			promptTokens: 0,
+			completionTokens: 0,
+			totalTokens: 0,
+		};
+		return { ...base, cost: state.totalBilledUsd };
 	}
 
 	private async finishToolBatch<T>(
@@ -1185,7 +1209,7 @@ export class AgentRuntime {
 			const result = await sink.finishSuspended({
 				suspendRunId: this.runId,
 				list,
-				usage: state.totalUsage,
+				usage: this.totalUsageWithBilled(state),
 				suspensions: batch.suspensions,
 			});
 			this.assertNotAborted(abortScope);
