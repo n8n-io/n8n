@@ -51,7 +51,6 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 			providerFor,
 			credentials,
 			{
-				excludeToolNames: ['agent-context'],
 				useEvalModelCatalog: true,
 				track: expect.any(Function),
 			},
