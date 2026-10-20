@@ -391,9 +391,14 @@ export class DataTableDetails extends BasePage {
 
 	async search(query: string) {
 		const searchInput = this.getSearchInput();
+		if ((await searchInput.inputValue()) === query) return;
+		// Wait for the debounced rows request of this query, not a fixed delay
+		const rowsResponse = this.page.waitForResponse((res) => {
+			const url = new URL(res.url());
+			return url.pathname.endsWith('/rows') && (url.searchParams.get('search') ?? '') === query;
+		});
 		await searchInput.fill(query);
-		// Wait for debounce
-		await this.page.waitForTimeout(300);
+		await rowsResponse;
 		await this.page.getByText('Loading...').waitFor({ state: 'hidden' });
 	}
 
