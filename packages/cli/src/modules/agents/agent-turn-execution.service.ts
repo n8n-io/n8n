@@ -4,9 +4,11 @@ import type {
 	ResumeOptions,
 	RunOptions,
 	SideCallUsageReport,
+	SpendEntry,
 	StreamChunk,
 } from '@n8n/agents';
-import type { AgentBackgroundJobSignal } from '@n8n/api-types';
+import { budgetMonthKey } from '@n8n/agents';
+import type { AgentBackgroundJobSignal, BudgetGuardrailConfig } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { UnexpectedError } from 'n8n-workflow';
@@ -25,6 +27,7 @@ import {
 	type RecordMessageParams,
 	type StartExecutionParams,
 } from './agent-execution.service';
+import { AgentSpendLedger } from './budget-guardrail';
 import { ExecutionRecorder } from './execution-recorder';
 import type { ToolRegistry } from './tool-registry';
 import { streamAgentChunks } from './utils/agent-stream';
@@ -56,6 +59,8 @@ interface ExecuteTurnConfig {
 	context: RecordingContext;
 	prepare: () => Promise<AgentTurnRequest>;
 	backgroundJobSignal?: AgentBackgroundJobSignal;
+	budget?: BudgetGuardrailConfig;
+	modelCredentialGatewayManaged?: boolean;
 	/** The chat surface this turn runs under. Undefined for integrations and tasks. */
 	chatSurface?: AgentChatSurface;
 	automaticPreviewContinuation?: boolean;
@@ -105,6 +110,7 @@ export class AgentTurnExecutionService {
 		private readonly messageQueue: AgentMessageQueueService,
 		private readonly steering: AgentMessageSteeringService,
 		private readonly toolApprovalService: AgentToolApprovalService,
+		private readonly spendLedger: AgentSpendLedger,
 	) {}
 
 	async getSessionMode(threadId: string): Promise<AgentSessionMode> {
@@ -511,8 +517,34 @@ export class AgentTurnExecutionService {
 		const threadId = config.context.threadId;
 		turn.options.onSideCallUsage = (report: SideCallUsageReport) => {
 			void this.agentExecutionService.recordSideCallUsage(executionId, threadId, report);
+			this.recordSideCallBudgetSpend(config, report);
 		};
 		return await this.startTurn(turn, config, recorder, state);
+	}
+
+	/**
+	 * A Gateway credits run bills its side calls (title generation, memory
+	 * observer/reflector) from the same wallet as its model calls, so their
+	 * cost joins the session and month buckets the budget guardrail reads.
+	 * `reportId` is the ledger call id, so a replayed report cannot double-count.
+	 * Own-key runs keep their side calls out of the budget ledger, as before.
+	 */
+	private recordSideCallBudgetSpend(config: ExecuteTurnConfig, report: SideCallUsageReport): void {
+		const budget = config.budget;
+		if (config.modelCredentialGatewayManaged !== true || budget?.enabled !== true) return;
+		const entries: SpendEntry[] = [];
+		if (budget.sessionCostCapUsd !== undefined && budget.sessionCostCapUsd > 0) {
+			entries.push({ key: config.context.threadId, usd: report.cost });
+		}
+		if (budget.monthlyBudgetUsd !== undefined && budget.monthlyBudgetUsd > 0) {
+			entries.push({ key: budgetMonthKey(config.context.agentId), usd: report.cost });
+		}
+		if (entries.length === 0) return;
+		void this.spendLedger.add(report.reportId, entries).catch((error: unknown) => {
+			this.logger.warn('Failed to record side-call budget spend', {
+				error: error instanceof Error ? error.message : String(error),
+			});
+		});
 	}
 
 	private *streamStartTurnNotices(

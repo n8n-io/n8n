@@ -317,6 +317,10 @@ export type {
 
 export { createModel } from './runtime/model/model-factory';
 export type { FetchFn, EmbeddingProviderOptions } from './runtime/model/model-factory';
+export type {
+	BilledUsageCollector,
+	BilledUsageWindow,
+} from './types/runtime/agent-runtime';
 export {
 	hasAzureApiKey,
 	hasAzureEntraToken,
@@ -519,5 +523,5 @@ export type {
 
 export type { JSONObject, JSONArray, JSONValue } from './types/utils/json';
 
-export { modelConfigToId } from './utils/model';
+export { modelConfigToId, isGatewayManagedModel } from './utils/model';
 export { isZodSchema, zodToJsonSchema } from './utils/zod';

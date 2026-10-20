@@ -94,6 +94,8 @@ export interface ObservationLogObserveResult {
 	usage?: TokenUsage;
 	/** Stable model id string of the model that produced the result. */
 	model: string;
+	/** Provider-billed USD for the call, when the model is gateway-managed and the gateway reported a cost. */
+	billedCostUsd?: number;
 }
 
 /**
@@ -123,6 +125,8 @@ export interface ObservationLogReflectResult {
 	usage?: TokenUsage;
 	/** Stable model id string of the model that produced the result. */
 	model: string;
+	/** Provider-billed USD for the call, when the model is gateway-managed and the gateway reported a cost. */
+	billedCostUsd?: number;
 }
 
 /**
@@ -142,6 +146,8 @@ export interface MemoryTaskUsageReport {
 	usage: TokenUsage;
 	/** Stable per-LLM-call id, generated once at the call site so hosts can build idempotent billing dedupe keys. */
 	reportId: string;
+	/** Provider-billed USD for the call, when the model is gateway-managed and the gateway reported a cost. */
+	billedCostUsd?: number;
 }
 
 export interface BuiltObservationLogStore {

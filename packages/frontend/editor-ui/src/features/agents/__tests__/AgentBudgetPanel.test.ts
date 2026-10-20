@@ -1,6 +1,6 @@
 import { flushPromises, mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { PushMessage } from '@n8n/api-types';
+import { AI_GATEWAY_MANAGED_TAG, type PushMessage } from '@n8n/api-types';
 
 import AgentBudgetMonthlyModal from '../components/AgentBudgetMonthlyModal.vue';
 import AgentBudgetPanel from '../components/AgentBudgetPanel.vue';
@@ -9,6 +9,24 @@ import type { AgentJsonConfig } from '../types';
 
 const getAgentBudgetSpend = vi.hoisted(() => vi.fn());
 const pushListeners = new Set<(event: PushMessage) => void>();
+
+const aiGatewayMock = vi.hoisted(() => ({
+	isEnabled: { value: false },
+	balance: { value: undefined as number | undefined },
+	fetchWallet: vi.fn().mockResolvedValue(undefined),
+	fetchConfig: vi.fn().mockResolvedValue(undefined),
+}));
+const gatewayConfigMock = vi.hoisted(() => ({
+	config: null as { supportsBilledCost?: boolean } | null,
+}));
+
+vi.mock('@/app/composables/useAiGateway', () => ({
+	useAiGateway: () => aiGatewayMock,
+}));
+
+vi.mock('@/app/stores/aiGateway.store', () => ({
+	useAiGatewayStore: () => gatewayConfigMock,
+}));
 
 vi.mock('../composables/useAgentApi', () => ({
 	getAgentBudgetSpend,
@@ -50,8 +68,13 @@ vi.mock('@n8n/i18n', () => ({
 				'agents.builder.budget.usage.none': 'No monthly budget',
 				'agents.builder.budget.usage.unavailable': 'Usage unavailable',
 				'agents.builder.budget.usage.spent': '{spent} of {budget} used',
+				'agents.builder.budget.usage.estimate': 'estimate caption',
+				'agents.builder.budget.usage.billed': 'billed caption',
+				'agents.builder.budget.wallet.label': 'Wallet balance',
 				'agents.builder.budget.monthly.value': '{amount}/month',
 				'agents.builder.budget.monthly.alert': 'Alert at {percent}%',
+				'aiGateway.wallet.balanceRemaining': '{balance} left',
+				'aiGateway.wallet.noCredits': 'No credits',
 			};
 			const template = copy[key] ?? key;
 			const values = options?.interpolate ?? {};
@@ -97,6 +120,11 @@ function mountPanel() {
 
 beforeEach(() => {
 	pushListeners.clear();
+	aiGatewayMock.isEnabled.value = false;
+	aiGatewayMock.balance.value = undefined;
+	aiGatewayMock.fetchWallet.mockClear();
+	aiGatewayMock.fetchConfig.mockClear();
+	gatewayConfigMock.config = null;
 });
 
 describe('AgentBudgetPanel', () => {
@@ -285,5 +313,108 @@ describe('AgentBudgetPanel', () => {
 		await flushPromises();
 
 		expect(getAgentBudgetSpend).not.toHaveBeenCalled();
+	});
+
+	it('shows the wallet balance for a Gateway credits agent', async () => {
+		getAgentBudgetSpend.mockReset().mockResolvedValue({ spentUsd: 42 });
+		aiGatewayMock.isEnabled.value = true;
+		aiGatewayMock.balance.value = 4.99;
+		const wrapper = mount(AgentBudgetPanel, {
+			props: {
+				config: { ...budgetConfig(), credential: AI_GATEWAY_MANAGED_TAG },
+				projectId: 'project-1',
+				agentId: 'agent-1',
+			},
+			global: {
+				stubs: {
+					I18nT: {
+						template: '<span><slot name="spent" /> of <slot name="budget" /> used</span>',
+					},
+				},
+			},
+		});
+		await flushPromises();
+
+		expect(aiGatewayMock.fetchWallet).toHaveBeenCalled();
+		expect(wrapper.get('[data-testid="agent-budget-wallet"]').text()).toContain(
+			'Wallet balance · $4.99 left',
+		);
+	});
+
+	it('shows No credits when the wallet is empty', async () => {
+		getAgentBudgetSpend.mockReset().mockResolvedValue({ spentUsd: 0 });
+		aiGatewayMock.isEnabled.value = true;
+		aiGatewayMock.balance.value = 0;
+		const wrapper = mount(AgentBudgetPanel, {
+			props: {
+				config: { ...budgetConfig(), credential: AI_GATEWAY_MANAGED_TAG },
+				projectId: 'project-1',
+				agentId: 'agent-1',
+			},
+			global: {
+				stubs: {
+					I18nT: {
+						template: '<span><slot name="spent" /> of <slot name="budget" /> used</span>',
+					},
+				},
+			},
+		});
+		await flushPromises();
+
+		expect(wrapper.get('[data-testid="agent-budget-wallet"]').text()).toContain('No credits');
+	});
+
+	it('hides the wallet line for an own-key agent', async () => {
+		getAgentBudgetSpend.mockReset().mockResolvedValue({ spentUsd: 42 });
+		aiGatewayMock.isEnabled.value = true;
+		aiGatewayMock.balance.value = 4.99;
+		const wrapper = mountPanel();
+		await flushPromises();
+
+		expect(wrapper.find('[data-testid="agent-budget-wallet"]').exists()).toBe(false);
+		expect(aiGatewayMock.fetchWallet).not.toHaveBeenCalled();
+	});
+
+	it('labels the figure as billed only when the gateway reports per-call cost', async () => {
+		getAgentBudgetSpend.mockReset().mockResolvedValue({ spentUsd: 42 });
+		aiGatewayMock.isEnabled.value = true;
+		gatewayConfigMock.config = { supportsBilledCost: true };
+		const gatewayWrapper = mount(AgentBudgetPanel, {
+			props: {
+				config: { ...budgetConfig(), credential: AI_GATEWAY_MANAGED_TAG },
+				projectId: 'project-1',
+				agentId: 'agent-1',
+			},
+			global: {
+				stubs: {
+					I18nT: {
+						template: '<span><slot name="spent" /> of <slot name="budget" /> used</span>',
+					},
+				},
+			},
+		});
+		await flushPromises();
+		expect(gatewayWrapper.text()).toContain('billed caption');
+		expect(gatewayWrapper.text()).not.toContain('estimate caption');
+
+		// Without the gateway capability the figure stays an estimate.
+		gatewayConfigMock.config = null;
+		const estimateWrapper = mount(AgentBudgetPanel, {
+			props: {
+				config: { ...budgetConfig(), credential: AI_GATEWAY_MANAGED_TAG },
+				projectId: 'project-1',
+				agentId: 'agent-1',
+			},
+			global: {
+				stubs: {
+					I18nT: {
+						template: '<span><slot name="spent" /> of <slot name="budget" /> used</span>',
+					},
+				},
+			},
+		});
+		await flushPromises();
+		expect(estimateWrapper.text()).toContain('estimate caption');
+		expect(estimateWrapper.text()).not.toContain('billed caption');
 	});
 });

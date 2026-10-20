@@ -21,4 +21,10 @@ export class AiGatewayConfigDto extends Z.class({
 	supportedActions: z.record(z.record(z.array(z.string()))).optional(),
 	minNodeTypeVersion: z.record(z.number()).optional(),
 	hiddenNodeProperties: z.record(z.array(z.string())).optional(),
+	/**
+	 * The gateway returns the billed USD on proxied model responses. Absent on
+	 * gateway versions that do not report per-call cost — agent budgets then
+	 * stay on the models.dev estimate.
+	 */
+	supportsBilledCost: z.boolean().optional(),
 }) {}

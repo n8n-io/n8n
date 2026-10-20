@@ -18,7 +18,13 @@ import type { RuntimeSkillSource } from '../../skills/types';
 import type { CheckpointStore, ModelConfig, SerializableAgentState } from '../../types';
 import { AgentEvent } from '../../types/runtime/event';
 import type { AgentEventData } from '../../types/runtime/event';
-import type { ExecutionOptions, GenerateResult, StreamChunk } from '../../types/sdk/agent';
+import type {
+	ExecutionOptions,
+	GenerateResult,
+	StreamChunk,
+	TokenUsage,
+} from '../../types/sdk/agent';
+import type { BilledUsageCollector } from '../../types/runtime/agent-runtime';
 import type {
 	GuardrailDecision,
 	GuardrailsOptions,
@@ -37,6 +43,7 @@ import { createBudgetGuardrail } from '../guardrails/budget-guardrail';
 import { spendLedger } from '../guardrails/__tests__/spend-ledger';
 import { AgentRuntime } from '../loop/agent-runtime';
 import { InMemoryMemory } from '../memory/memory-store';
+import type { FetchFn } from '../model/model-factory';
 import { OBSERVATION_CONTINUATION_REMINDER } from '../model/message-list';
 import { AgentEventBus } from '../state/event-bus';
 import { StaleResumeError } from '../state/run-state';
@@ -11551,3 +11558,146 @@ describe('Tool builder — ending the turn', () => {
 		expect(() => tool.build()).toThrow('cannot combine .endsTurnWhen() with .toModelOutput()');
 	});
 });
+
+describe('AgentRuntime — gateway billed cost', () => {
+	const gatewayModel: ModelConfig = { id: 'openai/gpt-4o-mini', gatewayManaged: true };
+
+	beforeEach(() => {
+		generateText.mockReset();
+		vi.mocked(getModelCost).mockReset().mockResolvedValue(undefined);
+	});
+
+	function makeCollector(settled: number | undefined) {
+		const window = {
+			wrap: vi.fn((fetch?: FetchFn) => fetch ?? ((async () => new Response()) as FetchFn)),
+			settle: vi.fn(() => settled),
+		};
+		const collector: BilledUsageCollector = { startWindow: vi.fn(() => window) };
+		return { collector, window };
+	}
+
+	function makeHook() {
+		return {
+			before: vi.fn<NonNullable<ModelGuardrail['before']>>().mockResolvedValue({ action: 'allow' }),
+			after: vi.fn<NonNullable<ModelGuardrail['after']>>().mockResolvedValue(undefined),
+		};
+	}
+
+	const guardrailsOption = (hook: ModelGuardrail): GuardrailsOptions => ({
+		hooks: [hook],
+		agentId: 'agent-1',
+		threadId: 'thread-1',
+	});
+
+	function createGatewayRuntime(
+		collector: BilledUsageCollector,
+		model: ModelConfig = gatewayModel,
+	) {
+		return new AgentRuntime({
+			name: 'test',
+			model,
+			instructions: 'You are a test assistant.',
+			billedUsage: collector,
+		});
+	}
+
+	it('stamps the turn usage with the settled billed amount before guardrails see it', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess('Done'));
+		const { collector, window } = makeCollector(0.0042);
+		const hook = makeHook();
+		const runtime = createGatewayRuntime(collector);
+
+		const result = await runtime.generate('hi', { guardrails: guardrailsOption(hook) });
+
+		expect(result.finishReason).toBe('stop');
+		expect(collector.startWindow).toHaveBeenCalledTimes(1);
+		expect(window.wrap).toHaveBeenCalledTimes(1);
+		expect(window.settle).toHaveBeenCalledTimes(1);
+		expect(hook.after).toHaveBeenCalledTimes(1);
+		expect(hook.after.mock.calls[0][1]).toMatchObject({ cost: 0.0042 });
+	});
+
+	it('falls back to the catalog estimate when the window reports no cost', async () => {
+		vi.mocked(getModelCost).mockResolvedValue({ input: 1_000_000, output: 1_000_000 });
+		generateText.mockResolvedValue(makeGenerateSuccess('Done'));
+		const { collector } = makeCollector(undefined);
+		const hook = makeHook();
+		const runtime = createGatewayRuntime(collector);
+
+		await runtime.generate('hi', { guardrails: guardrailsOption(hook) });
+
+		expect(collector.startWindow).toHaveBeenCalledTimes(1);
+		// 10 input + 5 output tokens at $1/token.
+		expect(hook.after.mock.calls[0][1]).toMatchObject({ cost: 15 });
+	});
+
+	it('opens a fresh window for every model call, including empty-turn retries', async () => {
+		generateText
+			.mockResolvedValueOnce(makeGenerateEmptyRetry())
+			.mockResolvedValueOnce(makeGenerateSuccess('Recovered'));
+		const { collector } = makeCollector(0.001);
+		const hook = makeHook();
+		const runtime = createGatewayRuntime(collector);
+
+		await runtime.generate('hi', { guardrails: guardrailsOption(hook) });
+
+		expect(generateText).toHaveBeenCalledTimes(2);
+		expect(collector.startWindow).toHaveBeenCalledTimes(2);
+		expect(hook.after).toHaveBeenCalledTimes(2);
+	});
+
+	it('opens no window for an own-key model and keeps the catalog estimate', async () => {
+		vi.mocked(getModelCost).mockResolvedValue({ input: 1_000_000, output: 1_000_000 });
+		generateText.mockResolvedValue(makeGenerateSuccess('Done'));
+		const { collector } = makeCollector(0.0042);
+		const hook = makeHook();
+		const runtime = createGatewayRuntime(collector, 'openai/gpt-4o-mini');
+
+		await runtime.generate('hi', { guardrails: guardrailsOption(hook) });
+
+		expect(collector.startWindow).not.toHaveBeenCalled();
+		expect(hook.after.mock.calls[0][1]).toMatchObject({ cost: 15 });
+	});
+
+	it('keeps a stamped cost for a gateway-managed model and overwrites it for an own-key model', () => {
+		const catalogCost = { input: 1_000_000, output: 1_000_000 };
+		const stamped: TokenUsage = {
+			promptTokens: 10,
+			completionTokens: 5,
+			totalTokens: 15,
+			cost: 0.0042,
+		};
+		const gatewayRuntime = createGatewayRuntime(makeCollector(undefined).collector);
+		const ownKeyRuntime = createGatewayRuntime(
+			makeCollector(undefined).collector,
+			'openai/gpt-4o-mini',
+		);
+
+		expect(applyCostWithCatalog(gatewayRuntime, catalogCost, stamped)).toEqual(stamped);
+		expect(applyCostWithCatalog(ownKeyRuntime, catalogCost, stamped)).toMatchObject({ cost: 15 });
+	});
+
+	function makeGenerateEmptyRetry() {
+		return {
+			finishReason: 'stop',
+			usage: { inputTokens: 10, outputTokens: 0, totalTokens: 10 },
+			response: { messages: [] },
+			toolCalls: [],
+		};
+	}
+});
+
+type RuntimeApplyCost = (usage: TokenUsage | undefined) => TokenUsage | undefined;
+
+function applyCostWithCatalog(
+	runtime: AgentRuntime,
+	modelCost: { input: number; output: number },
+	usage: TokenUsage,
+): TokenUsage | undefined {
+	const internals = runtime as unknown as {
+		modelCost: { input: number; output: number } | undefined;
+		applyCost: RuntimeApplyCost;
+	};
+	internals.modelCost = modelCost;
+	return internals.applyCost(usage);
+}

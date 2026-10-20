@@ -2,7 +2,7 @@ import { extractJsonCandidate } from '@n8n/ai-utilities/llm-output';
 import { isRecord } from '@n8n/utils/is-record';
 
 import { uniqueStrings } from './memory-lifecycle';
-import { reportSideCallUsage } from './forward-usage';
+import { reportSideCallUsage, type SideCallUsageCallback } from './forward-usage';
 import { redactText } from '../../sdk/guardrails';
 import type { AgentExecutionCounter, TokenUsage } from '../../types/sdk/agent';
 import type {
@@ -56,7 +56,7 @@ export interface RunObservationLogReflectorOpts {
 	 * success return) keeps a billed reflector call priced even when later
 	 * post-processing throws. Fire-and-forget from the caller's perspective.
 	 */
-	onUsage?: (model: string | undefined, usage: TokenUsage | undefined) => void | Promise<void>;
+	onUsage?: SideCallUsageCallback;
 }
 
 export type RunObservationLogReflectorResult =
@@ -205,11 +205,13 @@ export async function runObservationLogReflector(
 	const output = typeof reflectResult === 'string' ? reflectResult : reflectResult.text;
 	const reflectUsage = typeof reflectResult === 'string' ? undefined : reflectResult.usage;
 	const reflectModel = typeof reflectResult === 'string' ? undefined : reflectResult.model;
+	const reflectBilledCostUsd =
+		typeof reflectResult === 'string' ? undefined : reflectResult.billedCostUsd;
 	// Forward usage immediately after the model call, before parsing or
 	// persistence, so a billed reflector turn is priced even when the
 	// post-processing below throws. Fire-and-forget: never block on pricing,
 	// and never let a callback throw or rejection abort reflection.
-	reportSideCallUsage(opts.onUsage, reflectModel, reflectUsage);
+	reportSideCallUsage(opts.onUsage, reflectModel, reflectUsage, reflectBilledCostUsd);
 	const normalized = normalizeObservationLogReflection(
 		activeObservationLog,
 		withCreatedAt(parseObservationLogReflectionJson(output), now),

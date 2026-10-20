@@ -50,7 +50,7 @@ import type {
 } from '../../types/sdk/agent';
 import type { GuardrailStop } from '../../types/sdk/guardrail';
 import type { AgentMessage, ContentToolCall } from '../../types/sdk/message';
-import { getModelIdString } from '../../utils/model';
+import { getModelIdString, isGatewayManagedModel } from '../../utils/model';
 import { removeToolResultRun } from '../../workspace';
 import { GuardrailRunner } from '../guardrails/guardrail-runner';
 import { createFilteredLogger } from '../logger';
@@ -58,6 +58,7 @@ import { MemoryOrchestrator } from '../memory/memory-orchestrator';
 import { sanitizeOffloadedToolResultsForMemory } from '../memory/tool-result-memory';
 import { generateThreadTitle } from '../memory/title-generation';
 import { AgentMessageList, type SerializedMessageList } from '../model/message-list';
+import { createModel } from '../model/model-factory';
 import { createModelTokenCounter } from '../model/model-token-counter';
 import { getEffectiveAnthropicCacheTtl } from '../model/prompt-cache';
 import { ActiveSkills } from '../skills/active-skills';
@@ -773,6 +774,7 @@ export class AgentRuntime {
 			titleConfig: this.config.titleGeneration,
 			agentModel: this.config.model,
 			modelFetch: this.config.modelFetch,
+			...(this.config.billedUsage !== undefined ? { billedUsage: this.config.billedUsage } : {}),
 			turnDelta: list.turnDelta(),
 			executionCounter: options.executionCounter,
 			onSideCallUsage: options.onSideCallUsage,
@@ -1111,7 +1113,17 @@ export class AgentRuntime {
 					return undefined;
 				}
 			}
-			const turn = await sink.callModel(modelCallContext);
+			// A gateway-managed call gets its own model instance on a windowed
+			// transport, so only this call's responses settle its billed cost.
+			const window = this.startBilledWindow();
+			const turn = window
+				? await sink.callModel({
+						...modelCallContext,
+						model: createModel(this.config.model, window.wrap(this.config.modelFetch)),
+					})
+				: await sink.callModel(modelCallContext);
+			const billed = window?.settle();
+			if (turn.usage && billed !== undefined) turn.usage = { ...turn.usage, cost: billed };
 			// Price the turn before guardrails see it. The finish chunk prices
 			// the summed tokens later; mergeUsage drops per-turn cost.
 			turn.usage = this.applyCost(turn.usage);
@@ -1418,6 +1430,24 @@ export class AgentRuntime {
 		return getModelIdString(this.config.model);
 	}
 
+	/**
+	 * Whether the model credential resolves through the AI gateway. Only these
+	 * models keep a provider-reported cost and read the billed-usage collector.
+	 */
+	private get gatewayManaged(): boolean {
+		return isGatewayManagedModel(this.config.model);
+	}
+
+	/**
+	 * Opens a billed-cost window for one model call. Only gateway-managed
+	 * models with a configured collector bill from the provider response;
+	 * every other call keeps the catalog estimate.
+	 */
+	private startBilledWindow() {
+		if (!this.gatewayManaged) return undefined;
+		return this.config.billedUsage?.startWindow();
+	}
+
 	/** Fetch model cost from catalog. Retries on subsequent calls if the catalog was unavailable. */
 	private async ensureModelCost(): Promise<ModelCost | undefined> {
 		if (this.modelCost) return this.modelCost;
@@ -1429,9 +1459,16 @@ export class AgentRuntime {
 		return this.modelCost;
 	}
 
-	/** Apply cost to a TokenUsage object using catalog pricing. */
+	/**
+	 * Apply cost to a TokenUsage object using catalog pricing. A gateway-managed
+	 * model keeps a cost the call already carries (the provider-billed amount
+	 * the gateway returned); every other model is priced from the catalog, even
+	 * when the provider reported a cost of its own.
+	 */
 	private applyCost(usage: TokenUsage | undefined): TokenUsage | undefined {
-		if (!usage || !this.modelCost) return usage;
+		if (!usage) return usage;
+		if (this.gatewayManaged && usage.cost !== undefined) return usage;
+		if (!this.modelCost) return usage;
 		const anthropicCacheTtl = getEffectiveAnthropicCacheTtl(
 			this.config.promptCaching,
 			this.modelIdString,

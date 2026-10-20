@@ -10,7 +10,8 @@ import {
 } from './observation-log-reflector';
 import type { ModelConfig } from '../../types/sdk/agent';
 import type { MemoryTaskUsageReport } from '../../types/sdk/observation-log';
-import { getModelIdString } from '../../utils/model';
+import type { BilledUsageCollector } from '../../types/runtime/agent-runtime';
+import { getModelIdString, isGatewayManagedModel } from '../../utils/model';
 import { incrementTokenCountFromUsage } from '../loop/execution-counter';
 import { loadAi } from '../model/lazy-ai';
 import { createModel } from '../model/model-factory';
@@ -146,6 +147,12 @@ export interface CreateObservationLogObserveFnOptions {
 	maxRetries?: number;
 	/** Called with normalized token usage after each observer LLM call. */
 	onUsage?: (report: MemoryTaskUsageReport) => void | Promise<void>;
+	/**
+	 * Provider-billed cost source. When the observer model is gateway-managed,
+	 * each call opens its own window so its billed cost never mixes with
+	 * another in-flight call.
+	 */
+	billedUsage?: BilledUsageCollector;
 }
 
 export function buildObservationLogObserverPrompt(input: ObservationLogObserverInput): string {
@@ -168,8 +175,9 @@ export function createObservationLogObserveFn(
 	options: CreateObservationLogObserveFnOptions = {},
 ): ObservationLogObserveFn {
 	return async (input) => {
+		const window = isGatewayManagedModel(model) ? options.billedUsage?.startWindow() : undefined;
 		const { text, usage, finalStep } = await loadAi().generateText({
-			model: createModel(model),
+			model: createModel(model, window?.wrap(undefined)),
 			instructions: options.observerPrompt ?? DEFAULT_OBSERVATION_LOG_OBSERVER_PROMPT,
 			prompt: buildObservationLogObserverPrompt(input),
 			maxRetries: options.maxRetries ?? DEFAULT_OBSERVATION_LOG_OBSERVER_MAX_RETRIES,
@@ -178,6 +186,7 @@ export function createObservationLogObserveFn(
 		incrementTokenCountFromUsage(input.executionCounter, usage);
 
 		const tokenUsage = toTokenUsage(usage, finalStep.providerMetadata);
+		const billedCostUsd = window?.settle();
 		const modelId = getModelIdString(model);
 		if (options.onUsage && tokenUsage) {
 			await options.onUsage({
@@ -185,10 +194,16 @@ export function createObservationLogObserveFn(
 				model: modelId,
 				usage: tokenUsage,
 				reportId: crypto.randomUUID(),
+				...(billedCostUsd !== undefined ? { billedCostUsd } : {}),
 			});
 		}
 
-		return { text: text.trim(), usage: tokenUsage, model: modelId };
+		return {
+			text: text.trim(),
+			usage: tokenUsage,
+			model: modelId,
+			...(billedCostUsd !== undefined ? { billedCostUsd } : {}),
+		};
 	};
 }
 
@@ -305,6 +320,12 @@ export interface CreateObservationLogReflectFnOptions {
 	reflectorPrompt?: string;
 	/** Called with normalized token usage after each reflector LLM call. */
 	onUsage?: (report: MemoryTaskUsageReport) => void | Promise<void>;
+	/**
+	 * Provider-billed cost source. When the reflector model is gateway-managed,
+	 * each call opens its own window so its billed cost never mixes with
+	 * another in-flight call.
+	 */
+	billedUsage?: BilledUsageCollector;
 }
 
 export function buildObservationLogReflectorPrompt(input: ObservationLogReflectorInput): string {
@@ -336,8 +357,9 @@ export function createObservationLogReflectFn(
 				parentId: entry.parentId ? (referenceById.get(entry.parentId) ?? null) : null,
 			})),
 		);
+		const window = isGatewayManagedModel(model) ? options.billedUsage?.startWindow() : undefined;
 		const { text, usage, finalStep } = await loadAi().generateText({
-			model: createModel(model),
+			model: createModel(model, window?.wrap(undefined)),
 			instructions: options.reflectorPrompt ?? DEFAULT_OBSERVATION_LOG_REFLECTOR_PROMPT,
 			prompt: buildObservationLogReflectorPrompt({ ...input, renderedObservationLog }),
 			...buildAiSdkTelemetry(input.telemetry, { functionSuffix: 'memory-reflector' }),
@@ -345,6 +367,7 @@ export function createObservationLogReflectFn(
 		incrementTokenCountFromUsage(input.executionCounter, usage);
 
 		const tokenUsage = toTokenUsage(usage, finalStep.providerMetadata);
+		const billedCostUsd = window?.settle();
 		const modelId = getModelIdString(model);
 		if (options.onUsage && tokenUsage) {
 			await options.onUsage({
@@ -352,6 +375,7 @@ export function createObservationLogReflectFn(
 				model: modelId,
 				usage: tokenUsage,
 				reportId: crypto.randomUUID(),
+				...(billedCostUsd !== undefined ? { billedCostUsd } : {}),
 			});
 		}
 
@@ -374,6 +398,7 @@ export function createObservationLogReflectFn(
 			}),
 			usage: tokenUsage,
 			model: modelId,
+			...(billedCostUsd !== undefined ? { billedCostUsd } : {}),
 		};
 	};
 }

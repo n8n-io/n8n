@@ -163,11 +163,13 @@ function makeRuntime(
 	chunks: StreamChunk[] = [{ type: 'finish', finishReason: 'stop' }],
 	mcpServerAttributions = new Map<string, string>(),
 	budget?: BudgetGuardrailConfig,
+	modelCredentialGatewayManaged?: boolean,
 ) {
 	const toolRegistry: ToolRegistry = new Map();
 	return {
 		mcpServerAttributions,
 		budget,
+		modelCredentialGatewayManaged,
 		agent: {
 			name: 'Runtime Agent',
 			snapshot: { model: { provider: 'anthropic', name: 'claude-sonnet-4-5' } },
@@ -282,6 +284,7 @@ function makeService(sandboxEnabled = false) {
 			mock<AgentMessageQueueService>(),
 			mock<AgentMessageSteeringService>(),
 			toolApprovalService,
+			spendLedger,
 		),
 		telemetry,
 		runtimeCacheService,
@@ -307,6 +310,7 @@ function makeService(sandboxEnabled = false) {
 		executionRepository,
 		checkpointStorage,
 		executionService,
+		spendLedger,
 		toolApprovalService,
 		telemetry,
 		runtimeCacheService,
@@ -883,6 +887,7 @@ describe('AgentExecutionOrchestratorService', () => {
 			announceExecution = true,
 			onBudgetNotice,
 			budget,
+			modelCredentialGatewayManaged,
 		}: {
 			abortSignal?: AbortSignal;
 			previewChat?: boolean;
@@ -890,9 +895,10 @@ describe('AgentExecutionOrchestratorService', () => {
 			announceExecution?: boolean;
 			onBudgetNotice?: () => void;
 			budget?: BudgetGuardrailConfig;
+			modelCredentialGatewayManaged?: boolean;
 		} = {}) {
 			const fixtures = makeService();
-			const runtime = makeRuntime(undefined, undefined, budget);
+			const runtime = makeRuntime(undefined, undefined, budget, modelCredentialGatewayManaged);
 			fixtures.runtimeCacheService.getRuntime.mockResolvedValue(runtime);
 			fixtures.checkpointStorage.getStatus.mockResolvedValue({
 				status: 'active',
@@ -1038,6 +1044,86 @@ describe('AgentExecutionOrchestratorService', () => {
 			expect(sdkStart).not.toHaveBeenCalled();
 			expect(executionService.startExecutionRecording).toHaveBeenCalledOnce();
 			expect(runtimeCacheService.releaseRuntimeLease).toHaveBeenCalledOnce();
+		});
+
+		it('records gateway side-call cost on the session and month budget buckets', async () => {
+			const { stream, sdkStart, spendLedger, executionService } = makeTurn({
+				budget: { enabled: true, monthlyBudgetUsd: 20, sessionCostCapUsd: 5 },
+				modelCredentialGatewayManaged: true,
+			});
+			await collect(stream);
+
+			const options = sdkStart.mock.calls[0]?.[operation === 'start' ? 1 : 2] as
+				| (RunOptions & ExecutionOptions)
+				| undefined;
+			const onSideCallUsage = options?.onSideCallUsage;
+			if (!onSideCallUsage) throw new Error('Expected a side-call usage callback');
+			const report = {
+				task: 'title' as const,
+				model: 'openai/gpt-5',
+				usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15 },
+				cost: 0.0042,
+				reportId: 'report-1',
+			};
+			await onSideCallUsage(report);
+
+			expect(executionService.recordSideCallUsage).toHaveBeenCalledWith(
+				'execution-1',
+				'thread-1',
+				report,
+			);
+			const monthKey = `${agentId}:${new Date().toISOString().slice(0, 7)}`;
+			expect(spendLedger.add).toHaveBeenCalledWith('report-1', [
+				{ key: 'thread-1', usd: 0.0042 },
+				{ key: monthKey, usd: 0.0042 },
+			]);
+		});
+
+		it('writes no budget spend for a side call on an own-key run', async () => {
+			const { stream, sdkStart, spendLedger, executionService } = makeTurn({
+				budget: { enabled: true, monthlyBudgetUsd: 20, sessionCostCapUsd: 5 },
+			});
+			await collect(stream);
+
+			const options = sdkStart.mock.calls[0]?.[operation === 'start' ? 1 : 2] as
+				| (RunOptions & ExecutionOptions)
+				| undefined;
+			const onSideCallUsage = options?.onSideCallUsage;
+			if (!onSideCallUsage) throw new Error('Expected a side-call usage callback');
+			await onSideCallUsage({
+				task: 'title' as const,
+				model: 'openai/gpt-5',
+				usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15 },
+				cost: 0.0042,
+				reportId: 'report-1',
+			});
+
+			// The execution-row accounting is unchanged; the budget ledger is not.
+			expect(executionService.recordSideCallUsage).toHaveBeenCalledOnce();
+			expect(spendLedger.add).not.toHaveBeenCalled();
+		});
+
+		it('writes no budget spend for a gateway side call when no bucket is configured', async () => {
+			const { stream, sdkStart, spendLedger } = makeTurn({
+				budget: { enabled: false },
+				modelCredentialGatewayManaged: true,
+			});
+			await collect(stream);
+
+			const options = sdkStart.mock.calls[0]?.[operation === 'start' ? 1 : 2] as
+				| (RunOptions & ExecutionOptions)
+				| undefined;
+			const onSideCallUsage = options?.onSideCallUsage;
+			if (!onSideCallUsage) throw new Error('Expected a side-call usage callback');
+			await onSideCallUsage({
+				task: 'observer' as const,
+				model: 'openai/gpt-5',
+				usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15 },
+				cost: 0.0042,
+				reportId: 'report-1',
+			});
+
+			expect(spendLedger.add).not.toHaveBeenCalled();
 		});
 
 		if (operation === 'resume') {

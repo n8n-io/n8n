@@ -1,6 +1,7 @@
 import type {
 	AgentBuilder,
 	AgentMessage,
+	BilledUsageCollector,
 	BuiltMemory,
 	BuiltProviderTool,
 	BuiltTool,
@@ -123,6 +124,12 @@ export interface BuildFromJsonOptions {
 	resolveManagedEmbeddingProviderOptions?: ManagedEmbeddingProviderOptionsResolver;
 	/** Proxy-aware `fetch` for the agent's model calls (see `createAiProxyFetch`). */
 	modelFetch?: FetchFn;
+	/**
+	 * Provider-billed cost source for gateway-managed models. Set when the
+	 * model credential is the Gateway credits marker: model calls and gateway
+	 * side calls then stamp `usage.cost` with the USD the gateway reports.
+	 */
+	billedUsage?: BilledUsageCollector;
 	/** Policy-aware `fetch` for fallback web-search calls (see `createWebSearchFetch`). */
 	webSearchFetch?: FetchFn;
 	/**
@@ -165,6 +172,9 @@ export async function buildFromJson(
 	agent.model(resolvedModelConfig);
 	if (options.modelFetch) {
 		agent.modelFetch(options.modelFetch);
+	}
+	if (options.billedUsage) {
+		agent.billedUsage(options.billedUsage);
 	}
 
 	const configuredSkillSource = getConfiguredSkillSource(
@@ -243,6 +253,7 @@ export async function buildFromJson(
 			options.memoryFactory,
 			options.credentialProvider,
 			options.resolveManagedEmbeddingProviderOptions,
+			options.billedUsage,
 		);
 	}
 
@@ -523,6 +534,7 @@ async function applyMemoryFromConfig(
 	memoryFactory: MemoryFactory,
 	credentialProvider: CredentialProvider,
 	resolveManagedEmbeddingProviderOptions?: ManagedEmbeddingProviderOptionsResolver,
+	billedUsage?: BilledUsageCollector,
 ) {
 	const { Memory } = await import('@n8n/agents');
 	const memory = new Memory();
@@ -554,6 +566,7 @@ async function applyMemoryFromConfig(
 						observationalMemory.observerModel,
 						credentialProvider,
 					),
+					...(billedUsage !== undefined ? [{ billedUsage }] : []),
 				),
 			}),
 			...(observationalMemory?.reflectorModel !== undefined && {
@@ -562,6 +575,7 @@ async function applyMemoryFromConfig(
 						observationalMemory.reflectorModel,
 						credentialProvider,
 					),
+					...(billedUsage !== undefined ? [{ billedUsage }] : []),
 				),
 			}),
 			...(observationalMemory?.observerThresholdTokens !== undefined && {

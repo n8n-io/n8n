@@ -160,6 +160,7 @@ describe('SubAgentRunner', () => {
 				mock<AgentMessageQueueService>(),
 				mock<AgentMessageSteeringService>(),
 				toolApprovalService,
+				mock<AgentSpendLedger>(),
 			),
 			checkpointStorage,
 			logger,

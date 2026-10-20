@@ -1124,6 +1124,10 @@ export class AgentExecutionOrchestratorService {
 				threadId: config.memory.threadId,
 			},
 			backgroundJobSignal: config.backgroundJobSignal,
+			...(config.budget !== undefined ? { budget: config.budget } : {}),
+			...(config.modelCredentialGatewayManaged !== undefined
+				? { modelCredentialGatewayManaged: config.modelCredentialGatewayManaged }
+				: {}),
 			onExecutionRecorded: config.onExecutionRecorded,
 			chatSurface: config.chatSurface,
 			isWakeRun: config.isWakeRun,
@@ -1296,6 +1300,10 @@ export class AgentExecutionOrchestratorService {
 			toolRegistry: runtime.toolRegistry,
 			mcpServerAttributions: runtime.mcpServerAttributions,
 			context: { projectId: config.projectId, agentId: config.agentId, threadId },
+			...(runtime.budget !== undefined ? { budget: runtime.budget } : {}),
+			...(runtime.modelCredentialGatewayManaged !== undefined
+				? { modelCredentialGatewayManaged: runtime.modelCredentialGatewayManaged }
+				: {}),
 			chatSurface: config.chatSurface,
 			automaticPreviewContinuation: config.automaticPreviewContinuation,
 			onExecutionStarted: config.onExecutionStarted,

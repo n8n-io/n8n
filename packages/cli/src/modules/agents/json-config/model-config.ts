@@ -48,6 +48,9 @@ export async function resolveCredentialAwareModelConfig(
 		return {
 			id: model,
 			...mapCredentialForProvider(provider, raw),
+			// The runtime prices a gateway-managed model from the billed USD the
+			// gateway reports, not the catalog estimate.
+			gatewayManaged: true,
 			// The gateway serves OpenAI's Responses API, so pin the route here. The
 			// model factory otherwise asks the endpoint which API it speaks, and this
 			// one is known — /chat/completions rejects reasoning effort once tools are

@@ -34,6 +34,27 @@ export type VolatileInstructionsProvider = (
 	context: VolatileInstructionsContext,
 ) => Promise<string | undefined>;
 
+/**
+ * One model call's view of provider-reported billed cost. Responses are
+ * attributed through the wrapped transport, so a window never counts another
+ * call's response even when transports are shared.
+ */
+export interface BilledUsageWindow {
+	/** Wrap a transport so responses passing through it are attributed to this window. */
+	wrap(fetch: FetchFn | undefined): FetchFn;
+	/** Total billed USD captured through this window; undefined when no response reported a cost. */
+	settle(): number | undefined;
+}
+
+/**
+ * Reports the billed USD a provider returned on a proxied response. The
+ * runtime opens one window per model call on gateway-managed models and
+ * prefers the settled amount over the catalog estimate.
+ */
+export interface BilledUsageCollector {
+	startWindow(): BilledUsageWindow;
+}
+
 export interface AgentRuntimeConfig {
 	name: string;
 	model: ModelConfig;
@@ -43,6 +64,12 @@ export interface AgentRuntimeConfig {
 	 * HTTP_PROXY resolver.
 	 */
 	modelFetch?: FetchFn;
+	/**
+	 * Provider-billed cost source for gateway-managed models. Each model call
+	 * opens a window and stamps `usage.cost` with the settled amount; calls
+	 * without a reported cost keep the catalog estimate.
+	 */
+	billedUsage?: BilledUsageCollector;
 	instructions: string;
 	skillSource?: RuntimeSkillSource;
 	instructionProviderOptions?: ProviderOptions;

@@ -4,6 +4,10 @@ import { I18nT } from 'vue-i18n';
 import { N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
+
+import { useAiGateway } from '@/app/composables/useAiGateway';
+import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
 
 import { getAgentBudgetSpend } from '../composables/useAgentApi';
 import { useAgentExecutionUpdates } from '../composables/useAgentExecutionUpdates';
@@ -28,6 +32,8 @@ const emit = defineEmits<{ 'update:config': [changes: Partial<AgentJsonConfig>] 
 
 const i18n = useI18n();
 const rootStore = useRootStore();
+const aiGateway = useAiGateway();
+const aiGatewayStore = useAiGatewayStore();
 const monthlyOpen = ref(false);
 const sessionOpen = ref(false);
 const spentUsd = ref<number | undefined>();
@@ -37,6 +43,22 @@ let spendRequest = 0;
 const budget = computed(() => props.config?.config?.guardrails?.budget);
 const monthlyBudget = computed(() => parseBudgetAmount(budget.value?.monthlyBudgetUsd));
 const sessionCap = computed(() => parseBudgetAmount(budget.value?.sessionCostCapUsd));
+
+const gatewayManaged = computed(() => props.config?.credential === AI_GATEWAY_MANAGED_TAG);
+
+const billedCostWired = computed(() => aiGatewayStore.config?.supportsBilledCost === true);
+const walletBalance = computed(() =>
+	gatewayManaged.value && aiGateway.isEnabled.value ? aiGateway.balance.value : undefined,
+);
+const walletLabel = computed(() => {
+	const balance = walletBalance.value;
+	if (balance === undefined) return undefined;
+	return balance <= 0
+		? i18n.baseText('aiGateway.wallet.noCredits')
+		: i18n.baseText('aiGateway.wallet.balanceRemaining', {
+				interpolate: { balance: `$${Number(balance).toFixed(2)}` },
+			});
+});
 
 const usagePercent = computed(() => {
 	const limit = monthlyBudget.value;
@@ -87,12 +109,27 @@ watch(
 	{ immediate: true },
 );
 
+watch(
+	gatewayManaged,
+	(managed) => {
+		if (managed) {
+			void aiGateway.fetchConfig();
+			void aiGateway.fetchWallet();
+		}
+	},
+	{ immediate: true },
+);
+
 useAgentExecutionUpdates(
 	{
 		projectId: computed(() => props.projectId),
 		agentId: computed(() => props.agentId),
 	},
-	() => loadSpend(true),
+	() => {
+		loadSpend(true);
+		// A finished run debited the wallet; the TTL cache would serve a stale balance.
+		if (gatewayManaged.value) void aiGateway.fetchWallet({ force: true });
+	},
 );
 
 const monthlyValue = computed(() => {
@@ -166,9 +203,21 @@ const sessionValue = computed(() => {
 						<div :class="$style.fill" :style="{ width: `${usagePercent}%` }" />
 					</div>
 					<N8nText size="small" :class="shared.dataEntrySubLabel">
-						{{ i18n.baseText('agents.builder.budget.usage.estimate') }}
+						{{
+							gatewayManaged && billedCostWired
+								? i18n.baseText('agents.builder.budget.usage.billed')
+								: i18n.baseText('agents.builder.budget.usage.estimate')
+						}}
 					</N8nText>
 				</template>
+				<N8nText
+					v-if="walletLabel !== undefined"
+					size="small"
+					:class="shared.dataEntrySubLabel"
+					data-testid="agent-budget-wallet"
+				>
+					{{ i18n.baseText('agents.builder.budget.wallet.label') }} · {{ walletLabel }}
+				</N8nText>
 			</div>
 
 			<button

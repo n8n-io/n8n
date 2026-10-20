@@ -3,8 +3,10 @@ import type { LanguageModel } from 'ai';
 
 import type { SideCallUsageReport } from '../../types/sdk/agent';
 import type { BuiltMemory } from '../../types';
+import type { BilledUsageCollector } from '../../types/runtime/agent-runtime';
 import { generateThreadTitle } from '../memory/title-generation';
 import { InMemoryMemory } from '../memory/memory-store';
+import { createModel } from '../model/model-factory';
 
 type GenerateTextResult = {
 	text: string;
@@ -29,7 +31,7 @@ vi.mock('ai', async () => {
 });
 
 vi.mock('../model/model-factory', () => ({
-	createModel: () => ({}) as LanguageModel,
+	createModel: vi.fn(() => ({}) as LanguageModel),
 }));
 
 vi.mock('../../sdk/catalog', async (importOriginal) => ({
@@ -191,5 +193,114 @@ describe('generateThreadTitle side-call cost', () => {
 		const reports = await runTitle(memory);
 		expect(reports).toHaveLength(0);
 		expect(mockGenerateText).not.toHaveBeenCalled();
+	});
+
+	it('reports the billed amount over the estimate for a gateway-managed title model', async () => {
+		mockGenerateText.mockResolvedValue({
+			text: '{"title":"Berlin rain alert","emoji":"rain"}',
+			usage: { inputTokens: 100, outputTokens: 50, totalTokens: 150 },
+		});
+		const wrappedFetch = vi.fn();
+		const window = { wrap: vi.fn(() => wrappedFetch), settle: vi.fn(() => 0.0042) };
+		const collector: BilledUsageCollector = { startWindow: vi.fn(() => window) };
+
+		const memory = new InMemoryMemory();
+		await memory.saveThread({ id: THREAD_ID, resourceId: RESOURCE_ID });
+
+		const reports: SideCallUsageReport[] = [];
+		await generateThreadTitle({
+			memory,
+			threadId: THREAD_ID,
+			resourceId: RESOURCE_ID,
+			titleConfig: { model: { id: MODEL_ID, gatewayManaged: true } },
+			agentModel: MODEL_ID,
+			billedUsage: collector,
+			turnDelta: [
+				{
+					id: 'm1',
+					role: 'user',
+					content: [{ type: 'text', text: 'Build a daily Berlin rain alert workflow' }],
+					createdAt: new Date(),
+				} as never,
+			],
+			onSideCallUsage: (report) => reports.push(report),
+		});
+
+		expect(collector.startWindow).toHaveBeenCalledTimes(1);
+		// The title model is built on the windowed transport, not the shared fetch.
+		expect(vi.mocked(createModel).mock.calls[0][1]).toBe(wrappedFetch);
+		expect(reports).toHaveLength(1);
+		expect(reports[0].cost).toBe(0.0042);
+		// The catalog is not consulted when the gateway reports the billed cost.
+		expect(mockGetModelCost).not.toHaveBeenCalled();
+	});
+
+	it('keeps the catalog estimate for a gateway-managed title model when the window settles nothing', async () => {
+		mockGenerateText.mockResolvedValue({
+			text: '{"title":"Berlin rain alert","emoji":"rain"}',
+			usage: { inputTokens: 100, outputTokens: 50, totalTokens: 150 },
+		});
+		mockGetModelCost.mockResolvedValue({ input: 5, output: 15 });
+		const window = { wrap: vi.fn(() => vi.fn()), settle: vi.fn(() => undefined) };
+		const collector: BilledUsageCollector = { startWindow: vi.fn(() => window) };
+
+		const memory = new InMemoryMemory();
+		await memory.saveThread({ id: THREAD_ID, resourceId: RESOURCE_ID });
+
+		const reports: SideCallUsageReport[] = [];
+		await generateThreadTitle({
+			memory,
+			threadId: THREAD_ID,
+			resourceId: RESOURCE_ID,
+			titleConfig: { model: { id: MODEL_ID, gatewayManaged: true } },
+			agentModel: MODEL_ID,
+			billedUsage: collector,
+			turnDelta: [
+				{
+					id: 'm1',
+					role: 'user',
+					content: [{ type: 'text', text: 'Build a daily Berlin rain alert workflow' }],
+					createdAt: new Date(),
+				} as never,
+			],
+			onSideCallUsage: (report) => reports.push(report),
+		});
+
+		expect(reports).toHaveLength(1);
+		expect(reports[0].cost).toBeCloseTo(0.00125, 7);
+	});
+
+	it('opens no window for an own-key title model', async () => {
+		mockGenerateText.mockResolvedValue({
+			text: '{"title":"Berlin rain alert","emoji":"rain"}',
+			usage: { inputTokens: 100, outputTokens: 50, totalTokens: 150 },
+		});
+		mockGetModelCost.mockResolvedValue({ input: 5, output: 15 });
+		const collector: BilledUsageCollector = { startWindow: vi.fn() };
+
+		const memory = new InMemoryMemory();
+		await memory.saveThread({ id: THREAD_ID, resourceId: RESOURCE_ID });
+
+		const reports: SideCallUsageReport[] = [];
+		await generateThreadTitle({
+			memory,
+			threadId: THREAD_ID,
+			resourceId: RESOURCE_ID,
+			titleConfig: { model: MODEL_ID },
+			agentModel: MODEL_ID,
+			billedUsage: collector,
+			turnDelta: [
+				{
+					id: 'm1',
+					role: 'user',
+					content: [{ type: 'text', text: 'Build a daily Berlin rain alert workflow' }],
+					createdAt: new Date(),
+				} as never,
+			],
+			onSideCallUsage: (report) => reports.push(report),
+		});
+
+		expect(collector.startWindow).not.toHaveBeenCalled();
+		expect(reports).toHaveLength(1);
 	});
 });

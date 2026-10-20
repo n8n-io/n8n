@@ -21,6 +21,7 @@ import { FLAG_MEMORY_TOOL_NAME } from '../runtime/memory/episodic-memory-capture
 import type { ScopedMemoryTaskEvent } from '../runtime/memory/scoped-memory-task-runner';
 import { AgentMessageList } from '../runtime/model/message-list';
 import type { FetchFn } from '../runtime/model/model-factory';
+import type { BilledUsageCollector } from '../types/runtime/agent-runtime';
 import { mergeProviderOptions } from '../runtime/model/prompt-cache';
 import { AgentEventBus } from '../runtime/state/event-bus';
 import { RunStateManager } from '../runtime/state/run-state';
@@ -173,6 +174,8 @@ export class Agent implements BuiltAgent, AgentBuilder {
 
 	private modelFetchValue?: FetchFn;
 
+	private billedUsageCollector?: BilledUsageCollector;
+
 	private instructionProviderOpts?: ProviderOptions;
 
 	private instructionsText?: string;
@@ -195,8 +198,6 @@ export class Agent implements BuiltAgent, AgentBuilder {
 
 	private onMemoryTaskEvent?: (event: ScopedMemoryTaskEvent) => void;
 
-	// TODO: Guardrails are accepted by the builder API for forward
-	// compatibility but not yet wired to the runtime.
 	private inputGuardrails: BuiltGuardrail[] = [];
 
 	private outputGuardrails: BuiltGuardrail[] = [];
@@ -283,6 +284,16 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	 */
 	modelFetch(fetch: FetchFn): this {
 		this.modelFetchValue = fetch;
+		return this;
+	}
+
+	/**
+	 * Provide the provider-billed cost source for gateway-managed models. Each
+	 * model call opens a window and stamps `usage.cost` with the settled amount;
+	 * calls without a reported cost keep the catalog estimate.
+	 */
+	billedUsage(collector: BilledUsageCollector): this {
+		this.billedUsageCollector = collector;
 		return this;
 	}
 
@@ -1142,6 +1153,9 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			name: this.name,
 			model: modelConfig,
 			...(this.modelFetchValue !== undefined ? { modelFetch: this.modelFetchValue } : {}),
+			...(this.billedUsageCollector !== undefined
+				? { billedUsage: this.billedUsageCollector }
+				: {}),
 			instructions,
 			...(this.skillSource ? { skillSource: this.skillSource } : {}),
 			tools: allTools.length > 0 ? allTools : undefined,

@@ -172,6 +172,7 @@ function makeService() {
 			mock<AgentMessageQueueService>(),
 			mock<AgentMessageSteeringService>(),
 			mock<AgentToolApprovalService>(),
+			mock<AgentSpendLedger>(),
 		),
 		telemetry,
 		credentialsService,

@@ -703,8 +703,14 @@ export class MemoryOrchestrator {
 					// call (before persistence), so a billed observer turn is
 					// priced even when post-processing throws.
 					onUsage: onSideCallUsage
-						? (model, usage) => {
-								void this.forwardSideCallUsage(onSideCallUsage, 'observer', model, usage);
+						? (model, usage, billedCostUsd) => {
+								void this.forwardSideCallUsage(
+									onSideCallUsage,
+									'observer',
+									model,
+									usage,
+									billedCostUsd,
+								);
 							}
 						: undefined,
 				});
@@ -772,8 +778,14 @@ export class MemoryOrchestrator {
 					// call (before persistence), so a billed reflector turn is
 					// priced even when post-processing throws.
 					onUsage: onSideCallUsage
-						? (model, usage) => {
-								void this.forwardSideCallUsage(onSideCallUsage, 'reflector', model, usage);
+						? (model, usage, billedCostUsd) => {
+								void this.forwardSideCallUsage(
+									onSideCallUsage,
+									'reflector',
+									model,
+									usage,
+									billedCostUsd,
+								);
 							}
 						: undefined,
 				});
@@ -940,18 +952,21 @@ export class MemoryOrchestrator {
 
 	/**
 	 * Price a side-call model turn and forward it to the host so it can add the
-	 * USD cost to the execution and thread totals. Best-effort: a catalog
-	 * lookup or host failure is logged and never fails the memory task.
+	 * USD cost to the execution and thread totals. A provider-billed amount
+	 * from a gateway-managed model wins over the catalog estimate. Best-effort:
+	 * a catalog lookup or host failure is logged and never fails the memory task.
 	 */
 	private async forwardSideCallUsage(
 		onSideCallUsage: OnSideCallUsage | undefined,
 		task: SideCallTask,
 		model: string | undefined,
 		usage: TokenUsage | undefined,
+		billedCostUsd?: number,
 	): Promise<void> {
 		if (!onSideCallUsage || !usage || !model) return;
 		try {
-			const cost = await computeSideCallCost(model, usage, this.config.promptCaching);
+			const cost =
+				billedCostUsd ?? (await computeSideCallCost(model, usage, this.config.promptCaching));
 			if (cost === undefined) return;
 			await onSideCallUsage({ task, model, usage, cost, reportId: crypto.randomUUID() });
 		} catch (error) {

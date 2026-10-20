@@ -159,10 +159,29 @@ describe('resolveCredentialAwareModelConfig', () => {
 			id: 'openai/gpt-5',
 			apiKey: 'gateway-jwt',
 			baseURL: 'https://gw.example/v1/gateway/openai/v1',
+			// The runtime prices a gateway-managed model from the billed USD the
+			// gateway reports, not the catalog estimate.
+			gatewayManaged: true,
 			// The gateway serves OpenAI's Responses API; without this the model
 			// factory infers /chat/completions from the baseURL.
 			apiStyle: 'responses',
 		});
+	});
+
+	it('does not mark an own-key config as gateway-managed', async () => {
+		const credentialProvider = mock<CredentialProvider>();
+		credentialProvider.resolve.mockResolvedValue({
+			apiKey: 'real-key',
+			url: 'https://api.openai.com',
+		} as ResolvedCredential);
+
+		const result = await resolveCredentialAwareModelConfig(
+			'openai/gpt-5',
+			'cred-123',
+			credentialProvider,
+		);
+
+		expect(result).not.toHaveProperty('gatewayManaged');
 	});
 
 	it('throws for the managed tag when the provider cannot mint gateway credentials', async () => {

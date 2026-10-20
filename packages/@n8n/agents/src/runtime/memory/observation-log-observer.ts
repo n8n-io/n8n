@@ -1,7 +1,7 @@
 import { isSensitiveKey } from '@n8n/utils/redaction/sensitive-key';
 
 import { renderObservationLog } from './observation-log-renderer';
-import { reportSideCallUsage } from './forward-usage';
+import { reportSideCallUsage, type SideCallUsageCallback } from './forward-usage';
 import { redactText } from '../../sdk/guardrails';
 import type { AgentExecutionCounter, TokenUsage } from '../../types/sdk/agent';
 import type { BuiltMemory } from '../../types/sdk/memory';
@@ -97,7 +97,7 @@ export interface RunObservationLogObserverOpts {
 	 * success return) keeps a billed observer call priced even when later
 	 * post-processing throws. Fire-and-forget from the caller's perspective.
 	 */
-	onUsage?: (model: string | undefined, usage: TokenUsage | undefined) => void | Promise<void>;
+	onUsage?: SideCallUsageCallback;
 }
 
 export type RunObservationLogObserverResult =
@@ -266,11 +266,13 @@ export async function runObservationLogObserver(
 	const markdown = typeof observeResult === 'string' ? observeResult : observeResult.text;
 	const observeUsage = typeof observeResult === 'string' ? undefined : observeResult.usage;
 	const observeModel = typeof observeResult === 'string' ? undefined : observeResult.model;
+	const observeBilledCostUsd =
+		typeof observeResult === 'string' ? undefined : observeResult.billedCostUsd;
 	// Forward usage immediately after the model call, before parsing or
 	// persistence, so a billed observer turn is priced even when the
 	// post-processing below throws. Fire-and-forget: never block on pricing,
 	// and never let a callback throw or rejection abort observation.
-	reportSideCallUsage(opts.onUsage, observeModel, observeUsage);
+	reportSideCallUsage(opts.onUsage, observeModel, observeUsage, observeBilledCostUsd);
 
 	const noObservations = markdown.trim() === 'NO_OBSERVATIONS';
 	const parsed = noObservations

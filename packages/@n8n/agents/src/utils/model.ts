@@ -29,3 +29,18 @@ export function getModelIdString(model: ModelConfig): string {
 	}
 	return 'unknown';
 }
+
+/**
+ * Whether the model's credential resolves through the AI gateway: the host
+ * stamps `gatewayManaged: true` on the config when it mints a gateway
+ * credential. Only these models keep a provider-reported `usage.cost`; every
+ * other model is priced from the catalog estimate.
+ */
+export function isGatewayManagedModel(model: ModelConfig): boolean {
+	return (
+		typeof model === 'object' &&
+		model !== null &&
+		'gatewayManaged' in model &&
+		(model as { gatewayManaged?: unknown }).gatewayManaged === true
+	);
+}
