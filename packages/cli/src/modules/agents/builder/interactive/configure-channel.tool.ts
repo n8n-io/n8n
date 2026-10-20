@@ -6,6 +6,7 @@ import {
 	channelSuspendPayloadSchema,
 	type ChannelResumeData,
 	type ChannelSuspendPayload,
+	getLegacyBuilderToolNames,
 } from '@n8n/api-types';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { nanoid } from 'nanoid';
@@ -21,6 +22,7 @@ type ConfigureChannelInput = z.infer<typeof configureChannelInputSchema>;
 
 export function buildConfigureChannelTool(deps: ChannelSetupDeps): BuiltTool {
 	return new Tool(CONFIGURE_CHANNEL_TOOL_NAME)
+		.legacyNames(...getLegacyBuilderToolNames(CONFIGURE_CHANNEL_TOOL_NAME))
 		.description(
 			'Configure one available chat channel for the target agent. First call ' +
 				'agent-context with type "integrations" and pass a returned `type` as `integrationType`; do not infer ' +

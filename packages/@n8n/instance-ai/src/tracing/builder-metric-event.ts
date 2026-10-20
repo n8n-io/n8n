@@ -8,7 +8,7 @@
 import {
 	canEmitTraceOnlyChildRun,
 	emitTraceOnlyChildRun,
-	keepTraceOpenUntilSettled,
+	runDetachedInTrace,
 } from './langsmith-tracing';
 import type { InstanceAiTraceContext } from '../types';
 
@@ -35,14 +35,14 @@ export function canEmitBuilderMetric(tracing: InstanceAiTraceContext | undefined
 
 /**
  * Run work that only feeds a builder metric without blocking the caller. The
- * trace stays open until the work settles, so the metric still exports.
+ * metric stays a child of the current run even when that run finishes first,
+ * and the trace stays open until the work settles, so the metric still exports.
  */
 export function detachBuilderMetricWork(
 	tracing: InstanceAiTraceContext | undefined,
 	work: () => Promise<void>,
 ): void {
-	const operation = work().catch(() => undefined);
-	keepTraceOpenUntilSettled(tracing, operation);
+	runDetachedInTrace(tracing, work);
 }
 
 export async function emitBuilderMetric(
