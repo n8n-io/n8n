@@ -14,6 +14,7 @@ import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import {
 	createInstanceAiTraceContext,
 	createSelfHealingAgent,
+	generateWorkflowSource,
 	getSelfHealingResourceId,
 	orchestratorAgentId,
 	SELF_HEALING_PROFILE_VERSION,
@@ -524,20 +525,16 @@ export class SelfHealingAgentService {
 		shareParameters: boolean,
 		abortSignal: AbortSignal,
 	): Promise<void> {
-		const { generateWorkflowCode, buildImports } = await import('@n8n/workflow-sdk');
 		const workflow = toWorkflowJSON(
 			{ ...baseline.original, id: baseline.workflowId },
 			{ redactParameters: !shareParameters },
 		);
-		const body = generateWorkflowCode({ workflow, includeNodeIds: true, includePositions: false });
-		const imports = buildImports(body);
+		const source = await generateWorkflowSource(workflow);
 
-		await writeWorkspaceFile(
-			workspace,
-			CANDIDATE_FILE_PATH,
-			imports ? `${imports}\n\n${body}` : body,
-			{ logger: this.logger, abortSignal },
-		);
+		await writeWorkspaceFile(workspace, CANDIDATE_FILE_PATH, source, {
+			logger: this.logger,
+			abortSignal,
+		});
 	}
 
 	private async finish(

@@ -42,6 +42,7 @@ import type * as PrepareWorkflowForSaveMod from './tools/workflows/prepare-workf
 import type * as ResolveCredentialsMod from './tools/workflows/resolve-credentials';
 import type * as SetupWorkflowMod from './tools/workflows/setup-workflow.service';
 import type * as WorkflowSourceCompilerMod from './tools/workflows/workflow-source-compiler';
+import type * as WorkflowSourceGeneratorMod from './tools/workflows/workflow-source-generator';
 import type * as WorkflowNodeDiffMod from './tools/workflows/workflow-node-diff';
 import type * as ChatModelValidationMod from './tools/workflows/chat-model-validation';
 import type * as WorkflowValidationWarningsMod from './tools/workflows/workflow-validation-warnings';
@@ -172,6 +173,9 @@ const loadSetupWorkflow = lazyModule<typeof SetupWorkflowMod>(() =>
 );
 const loadWorkflowSourceCompiler = lazyModule<typeof WorkflowSourceCompilerMod>(() =>
 	require('./tools/workflows/workflow-source-compiler'),
+);
+const loadWorkflowSourceGenerator = lazyModule<typeof WorkflowSourceGeneratorMod>(() =>
+	require('./tools/workflows/workflow-source-generator'),
 );
 const loadWorkflowNodeDiff = lazyModule<typeof WorkflowNodeDiffMod>(() =>
 	require('./tools/workflows/workflow-node-diff'),
@@ -681,6 +685,8 @@ export type {
 } from './workflow-loop';
 export const compileWorkflowSource: typeof WorkflowSourceCompilerMod.compileWorkflowSource =
 	lazyFunction(() => loadWorkflowSourceCompiler().compileWorkflowSource);
+export const generateWorkflowSource: typeof WorkflowSourceGeneratorMod.generateWorkflowSource =
+	lazyFunction(() => loadWorkflowSourceGenerator().generateWorkflowSource);
 export const prepareWorkflowForSave: typeof PrepareWorkflowForSaveMod.prepareWorkflowForSave =
 	lazyFunction(() => loadPrepareWorkflowForSave().prepareWorkflowForSave);
 export const buildCredentialMap: typeof ResolveCredentialsMod.buildCredentialMap = lazyFunction(
