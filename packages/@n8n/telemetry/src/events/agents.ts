@@ -323,7 +323,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 	AGENT_KNOWLEDGE_SNAPSHOT: {
 		name: 'Agent knowledge snapshot',
 		description:
-			'Six-hourly count of the published agents of the instance and the knowledge they use. One event per instance, sent by one main instance only. A vector store counts only when it is in the published version of the agent. Knowledge files have no versions, so the file counts are the current files of each published agent. Includes agents published before this event existed.',
+			'Six-hourly count of the published agents of the instance and the knowledge they use. One event per instance, sent by one main instance only. A vector store counts only when it is in the published version of the agent. Knowledge files have no versions, so the file counts are the current files of each published agent. Includes agents published before this event existed. Each event carries totals, not increments: do not sum snapshots over time; take the latest one for each instance in a window.',
 		properties: z.object({
 			published_agent_count: z.number(),
 			published_with_files_count: z

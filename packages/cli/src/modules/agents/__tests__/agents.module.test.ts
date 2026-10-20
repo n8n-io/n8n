@@ -12,6 +12,7 @@ import { SandboxSettingsService } from '@/services/sandbox-settings.service';
 import { AgentUsageProviderProxy } from '@/modules/workflow-index/agent-usage-provider-proxy.service';
 
 import { AgentChannelMediaRetentionTask } from '../agent-channel-media-retention.task';
+import { AgentKnowledgeSnapshotTask } from '../agent-knowledge-snapshot.task';
 import { AgentCheckpointPruningTask } from '../agent-checkpoint-pruning.task';
 import { AgentInterruptedExecutionSweepTask } from '../agent-interrupted-execution-sweep.task';
 import { AgentsSettingsService } from '../agents-settings.service';
@@ -118,11 +119,12 @@ describe('AgentsModule', () => {
 	});
 
 	describe('systemTasks()', () => {
-		it('registers the pruning, sweep and media retention tasks', async () => {
+		it('registers the pruning, sweep, media retention and knowledge snapshot tasks', async () => {
 			await expect(module.systemTasks()).resolves.toEqual([
 				AgentCheckpointPruningTask,
 				AgentInterruptedExecutionSweepTask,
 				AgentChannelMediaRetentionTask,
+				AgentKnowledgeSnapshotTask,
 			]);
 		});
 	});

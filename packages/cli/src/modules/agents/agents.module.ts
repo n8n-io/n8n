@@ -217,10 +217,13 @@ export class AgentsModule implements ModuleInterface {
 		const { AgentChannelMediaRetentionTask } = await import(
 			'./agent-channel-media-retention.task.js'
 		);
+		const { AgentKnowledgeSnapshotTask } = await import('./agent-knowledge-snapshot.task.js');
+
 		return [
 			AgentCheckpointPruningTask,
 			AgentInterruptedExecutionSweepTask,
 			AgentChannelMediaRetentionTask,
+			AgentKnowledgeSnapshotTask,
 		];
 	}
 
