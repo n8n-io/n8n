@@ -11,11 +11,19 @@ $ npx @n8n/scan-community-package n8n-nodes-PACKAGE
 ### Credential names in scan results
 
 The programmatic `analyzePackageByName(packageName, version)` result includes
-`credentialNames`. This is a sorted list of unique internal credential type names
+`credentialNames` when source analysis extracts all declared credential names.
+This is a sorted list of unique internal credential type names
 from the provenance-attested source. The scanner uses the same static reader as
 the local credential-reference lint rules. It reads the `name` field of credential
 classes registered in `package.json` under `n8n.credentials`. It does not load or
 run the package. A package without credential definitions returns an empty list.
+If a declared credential source is missing, cannot be parsed, or has no literal
+name, the scan fails and omits `credentialNames`.
+
+Results can also omit `credentialNames` when provenance checks, source fetches,
+package downloads, or analysis fail. The approval service must require
+`passed: true` and a `credentialNames` array before it checks for collisions.
+It must not treat a missing value as an empty list.
 
 For example, a package can declare a credential with `name = 'githubApi'` and
 reference that name from its node. Its local reference checks pass because the

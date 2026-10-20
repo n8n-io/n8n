@@ -123,20 +123,24 @@ function resolveN8nFilePaths(packageJsonPath: string, filePaths: string[]): stri
 	return resolvedFiles;
 }
 
-export function readPackageJsonCredentials(packageJsonPath: string): Set<string> {
+/** Use strict mode when scan metadata must include every registered credential. */
+export function readPackageJsonCredentials(
+	packageJsonPath: string,
+	{ strict = false }: { strict?: boolean } = {},
+): Set<string> {
 	const n8nConfig = readPackageJsonN8n(packageJsonPath);
 	const credentialPaths = n8nConfig.credentials ?? [];
-	const credentialFiles = resolveN8nFilePaths(packageJsonPath, credentialPaths);
 	const credentialNames: string[] = [];
 
-	for (const credentialFile of credentialFiles) {
-		try {
-			const credentialName = extractCredentialNameFromFile(credentialFile);
-			if (credentialName) {
-				credentialNames.push(credentialName);
-			}
-		} catch {
-			// Silently continue if file can't be parsed
+	for (const credentialPath of credentialPaths) {
+		const [credentialFile] = resolveN8nFilePaths(packageJsonPath, [credentialPath]);
+		const credentialName = credentialFile ? extractCredentialNameFromFile(credentialFile) : null;
+		if (credentialName) {
+			credentialNames.push(credentialName);
+		} else if (strict) {
+			throw new Error(
+				`Could not read the credential name for ${credentialPath}. Check that its source file exists and declares a literal name.`,
+			);
 		}
 	}
 

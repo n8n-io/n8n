@@ -298,6 +298,7 @@ export const buildScanConfig = async () => {
 export const analyzePackage = async (
 	packageDir,
 	filePatterns = ['**/*.js', '**/*.ts', '**/*.json'],
+	{ includeCredentialNames = true } = {},
 ) => {
 	const eslint = new ESLint({
 		cwd: packageDir,
@@ -308,9 +309,11 @@ export const analyzePackage = async (
 
 	try {
 		const { readPackageJsonCredentials } = await import('@n8n/eslint-plugin-community-nodes');
-		const credentialNames = [
-			...readPackageJsonCredentials(path.join(packageDir, 'package.json')),
-		].sort();
+		const credentialNames = includeCredentialNames
+			? [
+					...readPackageJsonCredentials(path.join(packageDir, 'package.json'), { strict: true }),
+				].sort()
+			: undefined;
 
 		// Lint both JS and JSON files. JSON inclusion is required because rules
 		// such as `no-overrides-field`, `valid-peer-dependencies`, and
@@ -454,10 +457,15 @@ export const analyzePackageByName = async (packageName, version) => {
 		// published package.json; `.ts`/`.d.ts` declarations are covered better
 		// by the source scan and only false-positive on filename rules here.
 		const sourceResult = await analyzePackage(sourceDir, SOURCE_FILE_PATTERNS);
-		const distResult = await analyzePackage(packageDir, ['**/*.js', 'package.json']);
+		// Compiled packages need lint checks, but credential metadata comes from source.
+		const distResult = await analyzePackage(packageDir, ['**/*.js', 'package.json'], {
+			includeCredentialNames: false,
+		});
 		const analysisResult = {
 			passed: sourceResult.passed && distResult.passed,
-			credentialNames: sourceResult.credentialNames,
+			...(sourceResult.credentialNames === undefined
+				? {}
+				: { credentialNames: sourceResult.credentialNames }),
 			message: [sourceResult, distResult].find((r) => !r.passed)?.message,
 			details: [sourceResult.details, distResult.details].filter(Boolean).join('\n') || undefined,
 		};

@@ -349,6 +349,43 @@ export class Foo implements INodeType {
 			expect(result.passed, result.details ?? result.message).toBe(true);
 			expect(result.credentialNames).toEqual(['githubApi', 'otherApi']);
 		});
+
+		it.each([
+			['missing', undefined],
+			['unparseable', 'export class OtherApi implements ICredentialType {'],
+			[
+				'without a literal name',
+				'export class OtherApi implements ICredentialType { name = getCredentialName(); }',
+			],
+		])('fails when a registered credential source is %s', async (_label, source) => {
+			const packageJsonPath = path.join(fixtureDir, 'package.json');
+			const manifest = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+			manifest.n8n.credentials.push('dist/credentials/OtherApi.credentials.js');
+			fs.writeFileSync(packageJsonPath, JSON.stringify(manifest));
+			if (source !== undefined) {
+				fs.writeFileSync(path.join(fixtureDir, 'credentials/OtherApi.credentials.ts'), source);
+			}
+
+			const result = await scanFixture();
+
+			expect(result.passed).toBe(false);
+			expect(result.message).toContain(
+				'Could not read the credential name for dist/credentials/OtherApi.credentials.js',
+			);
+			expect(result).not.toHaveProperty('credentialNames');
+		});
+
+		it('fails when none of the registered credential sources exist', async () => {
+			fs.unlinkSync(path.join(fixtureDir, 'credentials/GithubApi.credentials.ts'));
+
+			const result = await scanFixture();
+
+			expect(result.passed).toBe(false);
+			expect(result.message).toContain(
+				'Could not read the credential name for dist/credentials/GithubApi.credentials.js',
+			);
+			expect(result).not.toHaveProperty('credentialNames');
+		});
 	});
 
 	it('lints package.json and flags forbidden `overrides` field (regression for CE-1023)', async () => {
