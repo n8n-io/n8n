@@ -116,10 +116,11 @@ export class PublicApiRateLimitSettingsService {
 		}
 	}
 
-	/** Mirrors how `@n8n/config` reads env vars: `_FILE` counts, a blank value does not. */
+	/** Mirrors how `@n8n/config` reads env vars: `_FILE` counts, a blank or quoted blank does not. */
 	private isEnvManaged(field: keyof PublicApiRateLimitSettings): boolean {
 		const envVar = ENV_VARS[field];
-		return !!process.env[envVar]?.trim() || !!process.env[`${envVar}_FILE`];
+		const value = process.env[envVar]?.trim().replace(/^(['"])(.*)\1$/, '$2');
+		return !!value?.trim() || !!process.env[`${envVar}_FILE`];
 	}
 
 	private buildSettings(
