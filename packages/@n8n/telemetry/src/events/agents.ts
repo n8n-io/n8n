@@ -664,6 +664,100 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 			agent_id: optionalAgentId,
 		}),
 	},
+	USER_CLICKED_AGENTS_TAB: {
+		name: 'User clicked agents tab',
+		description:
+			'The user activated a Build, Sessions, Knowledge, or Settings tab in the agent builder. Includes repeated clicks on the active tab. Excludes programmatic tab changes.',
+		properties: z.object({
+			agent_id: z.string(),
+			name: z.enum(['build', 'sessions', 'knowledge', 'settings']).describe('Activated tab'),
+			session_id: sessionId,
+		}),
+	},
+	USER_CLICKED_KNOWLEDGE_UPLOAD: {
+		name: 'User clicked knowledge upload',
+		description:
+			'The user opened the knowledge file picker in the agent builder. Includes clicks followed by cancellation. Does not report selected files.',
+		properties: z.object({
+			agent_id: z.string(),
+			session_id: sessionId,
+		}),
+	},
+	USER_CLICKED_TRACE_ITEM: {
+		name: 'User clicked trace item',
+		description:
+			'The user selected an agent session timeline item with the chart, table, or keyboard. Excludes selection restoration and deselection.',
+		properties: z.object({
+			agent_id: z.string(),
+			item_type: z
+				.enum([
+					'user',
+					'agent',
+					'skill',
+					'tool',
+					'node',
+					'workflow',
+					'execution-error',
+					'suspension',
+					'hitl-response',
+					'background-task-signal',
+				])
+				.describe('Selected timeline item kind. Does not include item content.'),
+			session_id: sessionId,
+		}),
+	},
+	USER_APPLIED_SESSION_FILTER: {
+		name: 'User applied session filter',
+		description:
+			'The user changed or cleared agent session filters. Fires once per action before results load, with only the names of changed fields.',
+		properties: z.object({
+			agent_id: z.string(),
+			filter_names: z
+				.array(z.enum(['status', 'origin', 'start_date', 'end_date']))
+				.describe('Changed filter fields. Does not include filter values or dates.'),
+			session_id: sessionId,
+		}),
+	},
+	USER_CLICKED_NEW_TEST_CHAT_ICON_FROM_TEST_PANEL: {
+		name: 'User clicked new test chat icon from test panel',
+		description:
+			'The user started a new test chat from the preview dock icon, its shortcut, or the standalone preview button.',
+		properties: z.object({
+			agent_id: z.string(),
+			source: z
+				.enum(['test-panel', 'shortcut', 'standalone'])
+				.describe('Origin of the new chat action'),
+			session_id: sessionId,
+		}),
+	},
+	USER_CLICKED_MORE_OPTIONS_FROM_TEST_PANEL: {
+		name: 'User clicked more options from test panel',
+		description:
+			'The user opened the preview dock More menu. Excludes menu closure and metadata refresh.',
+		properties: z.object({
+			agent_id: z.string(),
+			session_id: sessionId,
+		}),
+	},
+	USER_CLICKED_AN_OPTION_FROM_MORE_LIST: {
+		name: 'User clicked an option from more list',
+		description:
+			'The user selected an enabled preview dock More menu action. Fires before the action, even if it fails or the user cancels confirmation.',
+		properties: z.object({
+			agent_id: z.string(),
+			option: z
+				.enum([
+					'copy-link',
+					'copy-conversation',
+					'open-in-new-tab',
+					'toggle-full-width',
+					'export-session',
+					'delete-session',
+				])
+				.describe('Selected menu action'),
+			session_id: sessionId,
+		}),
+	},
 	USER_OPENED_AGENT_PREVIEW: {
 		name: 'User opened agent preview',
 		description: 'The user opened the agent preview panel in the builder.',
