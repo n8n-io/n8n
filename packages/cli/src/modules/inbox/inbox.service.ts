@@ -18,21 +18,17 @@ import { Service } from '@n8n/di';
 import { BadRequestError, ServiceUnavailableError } from '@n8n/errors';
 import { z } from 'zod';
 
-import {
-	InboxSourceRegistry,
-	type InboxSource,
-	type InboxSourceBoundary,
-} from './inbox-source.registry';
+import { InboxSourceRegistry, type InboxSourceBoundary } from './inbox-source.registry';
 
-const sourceOrder: InboxSourceType[] = ['workflow_review'];
+const sourceOrder: InboxSourceType[] = ['workflow_review', 'self_healing_result'];
 
 const cursorSchema = z
 	.object({
-		version: z.literal(1),
+		version: z.literal(2),
 		state: inboxStateSchema,
 		category: inboxCategorySchema.optional(),
 		after: z.object({
-			createdAt: z.string().datetime(),
+			updatedAt: z.string().datetime(),
 			type: inboxSourceTypeSchema,
 			id: z.string().min(1).max(128),
 		}),
@@ -42,12 +38,6 @@ const cursorSchema = z
 	.strict();
 
 type InboxCursor = z.infer<typeof cursorSchema>;
-
-type SourceReads<T> = {
-	successful: Array<{ type: InboxSourceType; value: T }>;
-	failedSources: InboxSourceType[];
-	disabledSources: InboxSourceType[];
-};
 
 class InboxUnavailableError extends ServiceUnavailableError {
 	override readonly meta: Record<string, unknown>;
@@ -70,28 +60,46 @@ export class InboxService {
 		const cursor = query.cursor
 			? this.decodeCursor(query.cursor, query.state, query.category, sourceTypes)
 			: undefined;
-		const reads = await this.readAvailableSources(
+		const {
+			available,
+			failedSources: unavailableSources,
+			disabledSources,
+		} = await this.registry.getAllAvailable(
 			cursor?.activeSources ?? this.registry.types().filter((type) => sourceTypes.includes(type)),
-			async (source) =>
-				await source.list(user, {
-					state: query.state,
-					...(query.category !== undefined ? { category: query.category } : {}),
-					limit: query.limit + 1,
-					boundary: this.boundaryFor(source.type, cursor?.after),
-				}),
 		);
-		const failedSources = [...new Set([...(cursor?.failedSources ?? []), ...reads.failedSources])];
+		const results = await Promise.allSettled(
+			available.map(
+				async (source) =>
+					await source.list(user, {
+						state: query.state,
+						...(query.category !== undefined ? { category: query.category } : {}),
+						limit: query.limit + 1,
+						boundary: this.boundaryFor(source.type, cursor?.after),
+					}),
+			),
+		);
+		const successful: Array<{ type: InboxSourceType; items: InboxItem[] }> = [];
+		const failedSources = [...new Set([...(cursor?.failedSources ?? []), ...unavailableSources])];
+		for (const [index, source] of available.entries()) {
+			const result = results[index];
+			if (result.status === 'rejected') {
+				this.logger.warn('Inbox source list failed', { type: source.type, error: result.reason });
+				failedSources.push(source.type);
+			} else {
+				successful.push({ type: source.type, items: result.value });
+			}
+		}
 		const status: InboxSourceStatus = {
 			partial: failedSources.length > 0,
 			failedSources,
-			disabledSources: reads.disabledSources,
+			disabledSources,
 		};
-		if (reads.successful.length === 0 && status.partial) {
+		if (successful.length === 0 && status.partial) {
 			throw new InboxUnavailableError(status);
 		}
 
 		const rows = this.mergeRows(
-			reads.successful.map(({ value }) => value),
+			successful.map(({ items }) => items),
 			query.limit + 1,
 		);
 		const data = rows.slice(0, query.limit);
@@ -105,11 +113,11 @@ export class InboxService {
 			nextCursor:
 				hasMore && last
 					? this.encodeCursor({
-							version: 1,
+							version: 2,
 							state: query.state,
 							...(query.category !== undefined ? { category: query.category } : {}),
-							after: { createdAt: last.createdAt, type: last.type, id: last.id },
-							activeSources: reads.successful.map(({ type }) => type),
+							after: { updatedAt: last.updatedAt, type: last.type, id: last.id },
+							activeSources: successful.map(({ type }) => type),
 							failedSources,
 						})
 					: null,
@@ -117,66 +125,42 @@ export class InboxService {
 	}
 
 	async getSummary(user: User): Promise<GetInboxSummaryResponse> {
-		const reads = await this.readAvailableSources(
-			this.registry.types(),
-			async (source) => await source.count(user),
+		const { available, failedSources, disabledSources } = await this.registry.getAllAvailable();
+		const results = await Promise.allSettled(
+			available.map(async (source) => await source.count(user)),
 		);
+		const counts = { open: 0, closed: 0 };
+		let successfulReads = 0;
+		for (const [index, source] of available.entries()) {
+			const result = results[index];
+			if (result.status === 'rejected') {
+				this.logger.warn('Inbox source count failed', { type: source.type, error: result.reason });
+				failedSources.push(source.type);
+			} else {
+				successfulReads++;
+				counts.open += result.value.open;
+				counts.closed += result.value.closed;
+			}
+		}
 		const status: InboxSourceStatus = {
-			partial: reads.failedSources.length > 0,
-			failedSources: reads.failedSources,
-			disabledSources: reads.disabledSources,
+			partial: failedSources.length > 0,
+			failedSources,
+			disabledSources,
 		};
-		if (reads.successful.length === 0 && status.partial) {
+		if (successfulReads === 0 && status.partial) {
 			throw new InboxUnavailableError(status);
 		}
 
-		return {
-			...status,
-			counts: status.partial
-				? null
-				: reads.successful.reduce(
-						(counts, { value }) => ({
-							open: counts.open + value.open,
-							closed: counts.closed + value.closed,
-						}),
-						{ open: 0, closed: 0 },
-					),
-		};
+		return { ...status, counts: status.partial ? null : counts };
 	}
 
 	async getSettings(): Promise<InboxSettings> {
-		const reads = await this.readAvailableSources(this.registry.types(), async () => true);
+		const { available, failedSources } = await this.registry.getAllAvailable();
 		return {
-			enabled: reads.successful.length > 0 || reads.failedSources.length > 0,
-			availableTypes: reads.successful.map(({ type }) => type),
-			failedTypes: reads.failedSources,
+			enabled: available.length > 0 || failedSources.length > 0,
+			availableTypes: available.map(({ type }) => type),
+			failedTypes: failedSources,
 		};
-	}
-
-	private async readAvailableSources<T>(
-		types: InboxSourceType[],
-		operation: (source: InboxSource) => Promise<T>,
-	): Promise<SourceReads<T>> {
-		const settled = await Promise.allSettled(
-			types.map(async (type): Promise<{ disabled: true } | { disabled: false; value: T }> => {
-				const source = this.registry.find(type);
-				if (!source || !(await source.isEnabled())) return { disabled: true };
-				return { disabled: false, value: await operation(source) };
-			}),
-		);
-		const reads: SourceReads<T> = { successful: [], failedSources: [], disabledSources: [] };
-		for (const [index, type] of types.entries()) {
-			const result = settled[index];
-			if (result.status === 'rejected') {
-				this.logger.warn('Inbox source read failed', { type, error: result.reason });
-				reads.failedSources.push(type);
-			} else if (result.value.disabled) {
-				reads.disabledSources.push(type);
-			} else {
-				reads.successful.push({ type, value: result.value.value });
-			}
-		}
-		return reads;
 	}
 
 	private boundaryFor(
@@ -184,10 +168,16 @@ export class InboxService {
 		after: InboxCursor['after'] | undefined,
 	): InboxSourceBoundary | undefined {
 		if (!after) return undefined;
-		const createdAt = new Date(after.createdAt);
-		if (type === after.type) return { mode: 'afterItem', createdAt, id: after.id };
-		// Other sources resume at older timestamps. Equal timestamps can be skipped.
-		return { mode: 'beforeTime', createdAt };
+		const updatedAt = new Date(after.updatedAt);
+		if (type === after.type) return { mode: 'afterItem', updatedAt, id: after.id };
+		// Later sources still have unread rows at the cursor's timestamp.
+		return {
+			mode:
+				sourceOrder.indexOf(type) > sourceOrder.indexOf(after.type)
+					? 'beforeOrAtTime'
+					: 'beforeTime',
+			updatedAt,
+		};
 	}
 
 	private mergeRows(pages: InboxItem[][], limit: number): InboxItem[] {
@@ -196,7 +186,7 @@ export class InboxService {
 			.flat()
 			.sort(
 				(left, right) =>
-					Date.parse(right.createdAt) - Date.parse(left.createdAt) ||
+					Date.parse(right.updatedAt) - Date.parse(left.updatedAt) ||
 					sourceOrder.indexOf(left.type) - sourceOrder.indexOf(right.type),
 			)
 			.slice(0, limit);

@@ -1,28 +1,23 @@
 <script lang="ts" setup>
-import { computed } from 'vue';
-
 import { useI18n } from '../../composables/useI18n';
 import N8nBadge from '../N8nBadge';
+import type { BadgeSize } from '../N8nBadge/Badge.type';
 
 defineOptions({ name: 'N8nPreviewBadge' });
 
-const props = withDefaults(
+withDefaults(
 	defineProps<{
-		size?: 'small' | 'medium';
+		size?: BadgeSize;
 		text?: string;
 	}>(),
-	{ size: 'small', text: undefined },
+	{ size: 'xxsmall', text: undefined },
 );
-
-const sizeMapping = computed(() => {
-	return props.size === 'small' ? 'xxsmall' : 'xsmall';
-});
 
 const { t } = useI18n();
 </script>
 
 <template>
-	<N8nBadge variant="secondary" :size="sizeMapping" :class="$style.preview">
+	<N8nBadge variant="secondary" :size="size" :class="$style.preview">
 		{{ text ?? t('previewBadge.preview') }}
 	</N8nBadge>
 </template>
@@ -30,7 +25,6 @@ const { t } = useI18n();
 <style lang="scss" module>
 .preview {
 	--n8n-badge--border-color: transparent;
-	--n8n-badge--height: auto;
 
 	position: relative;
 	overflow: hidden;

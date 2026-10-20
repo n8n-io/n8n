@@ -11,6 +11,8 @@ description: |-
 
   Credential references are resolved before any workflow is written.
 x-required-scope: workflow:import
+parameters:
+  - $ref: ../../../../shared/spec/parameters/idempotencyKey.yml
 requestBody:
   required: true
   content:

@@ -37,6 +37,7 @@ import type {
 	SkillDetail,
 	SkillListItem,
 	SkillListResponse,
+	SkillCreateMethod,
 	SkillNewNameQueryDto,
 	SkillNewNameResponse,
 	VectorStoreTestResult,
@@ -710,12 +711,13 @@ export const createAgentSkill = async (
 	agentId: string,
 	skill: AgentSkill,
 	availableTo?: AgentSkillAvailability,
+	method?: SkillCreateMethod,
 ): Promise<AgentSkillMutationResponse> => {
 	return await makeRestApiRequest<AgentSkillMutationResponse>(
 		context,
 		'POST',
 		`/projects/${projectId}/agents/v2/${agentId}/skills`,
-		availableTo ? { ...skill, availableTo } : skill,
+		{ ...skill, ...(availableTo ? { availableTo } : {}), ...(method ? { method } : {}) },
 	);
 };
 
