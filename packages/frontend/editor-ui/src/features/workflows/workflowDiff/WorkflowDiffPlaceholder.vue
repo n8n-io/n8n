@@ -82,7 +82,7 @@ import WorkflowDiffToolbar from './WorkflowDiffToolbar.vue';
 .illustration {
 	width: 60%;
 	height: 75%;
-	color: var(--color--text--tint-1);
+	color: var(--text-color--subtle);
 	opacity: 0.45;
 }
 
