@@ -25,7 +25,7 @@ import { OperationalError, UserError } from 'n8n-workflow';
 import type { InstanceSettings } from 'n8n-core';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
-import { AgentTaskCancellationRepository } from '@/modules/agents/repositories/agent-task-cancellation.repository';
+import type { AgentTaskCancellationRepository } from '@/modules/agents/repositories/agent-task-cancellation.repository';
 import type { AgentMessageSteeringService } from '../agent-message-steering.service';
 import type { AgentsSettingsService } from '../agents-settings.service';
 
@@ -997,11 +997,16 @@ describe('AgentExecutionOrchestratorService', () => {
 		it('marks task cancellation in the main model and tool checks', async () => {
 			const { stream, sdkStart, cancellations } = makeTurn({ previewChat: true });
 			await collect(stream);
-			cancellations.isCancelled.mockResolvedValue(true);
 			const options = sdkStart.mock.calls[0]?.[operation === 'start' ? 1 : 2] as
 				| (RunOptions & ExecutionOptions)
 				| undefined;
 			const hook = options?.guardrails?.hooks[0];
+			cancellations.isCancelled.mockResolvedValue(false);
+			expect(await hook?.before?.(mock())).toBeUndefined();
+			expect(await hook?.beforeTool?.(mock())).toBeUndefined();
+			expect(cancellations.isCancelled).toHaveBeenCalledWith('thread-1', 'execution-1');
+
+			cancellations.isCancelled.mockResolvedValue(true);
 			expect(await hook?.before?.(mock())).toEqual({
 				action: 'stop',
 				code: 'tasks-cancelled',

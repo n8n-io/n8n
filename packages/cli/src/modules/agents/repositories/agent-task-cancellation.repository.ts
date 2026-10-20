@@ -116,12 +116,11 @@ export class AgentTaskCancellationRepository extends BaseRepository<AgentExecuti
 	async isCancelled(threadId: string, executionId?: string, ctx: OperationContext = {}) {
 		const request = await this.latest(threadId, ctx);
 		if (!request) return false;
-		const execution = executionId
-			? await this.managerFor(ctx).findOneBy(AgentExecution, { id: executionId, threadId })
-			: await this.managerFor(ctx).findOne(AgentExecution, {
-					where: { threadId, status: 'running' },
-					order: { createdAt: 'DESC' },
-				});
+		if (executionId) return request.generation.executionIds.includes(executionId);
+		const execution = await this.managerFor(ctx).findOne(AgentExecution, {
+			where: { threadId, status: 'running' },
+			order: { createdAt: 'DESC' },
+		});
 		return Boolean(execution && request.generation.executionIds.includes(execution.id));
 	}
 

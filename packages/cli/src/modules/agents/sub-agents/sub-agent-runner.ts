@@ -360,9 +360,10 @@ export class SubAgentRunner {
 									{ ...notice, agentId: notice.agentId ?? runtimeSource.source.sourceId },
 						)
 				: undefined;
-			const checkCancellation = async (): Promise<GuardrailDecision | undefined> =>
-				(await this.cancellations.isCancelled(threadId, executionId))
-					? { action: 'stop', code: 'tasks-cancelled', canceled: true }
+			// Stops are saved on the root thread, so a child checks its ancestors.
+			const checkStopped = async (): Promise<GuardrailDecision | undefined> =>
+				(await this.cancellations.hasPausedAncestor(threadId, {}))
+					? { action: 'stop', code: 'tasks-stopped', canceled: true }
 					: undefined;
 			const executionOptions = withBudgetGuardrail(
 				{
@@ -378,16 +379,7 @@ export class SubAgentRunner {
 						(await context.shouldPause?.()) ||
 						(await this.cancellations.hasPausedAncestor(threadId, {})),
 					guardrails: {
-						hooks: [
-							{
-								before: checkCancellation,
-								beforeTool: async () =>
-									(await checkCancellation()) ??
-									((await this.cancellations.hasPausedAncestor(threadId, {}))
-										? { action: 'stop' as const, code: 'tasks-stopped', canceled: true as const }
-										: undefined),
-							},
-						],
+						hooks: [{ before: checkStopped, beforeTool: checkStopped }],
 					},
 				},
 				{
