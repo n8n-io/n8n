@@ -51,6 +51,13 @@ async function runTitle(
 		threadId: THREAD_ID,
 		resourceId: RESOURCE_ID,
 		titleConfig: { model: MODEL_ID },
+		telemetry: {
+			enabled: true,
+			recordInputs: false,
+			recordOutputs: false,
+			integrations: [],
+			functionId: 'helper-title',
+		},
 		agentModel: MODEL_ID,
 		turnDelta: [
 			{
@@ -83,6 +90,11 @@ describe('generateThreadTitle side-call cost', () => {
 
 		const reports = await runTitle(memory);
 
+		expect(mockGenerateText).toHaveBeenCalledWith(
+			expect.objectContaining({
+				telemetry: expect.objectContaining({ isEnabled: true, functionId: 'helper-title' }),
+			}),
+		);
 		expect(reports).toHaveLength(1);
 		const report = reports[0];
 		expect(report.task).toBe('title');

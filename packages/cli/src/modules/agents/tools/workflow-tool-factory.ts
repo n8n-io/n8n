@@ -46,7 +46,7 @@ import type { EphemeralNodeExecutor } from '@/node-execution/ephemeral-node-exec
 import { WebhookResponseRelay } from '@/scaling/webhook-response-relay';
 import type { WorkflowRunner } from '@/workflow-runner';
 
-import type { InstrumentToolAdditionalData } from '../agent-runtime-instrumentation';
+import type { InstrumentToolAdditionalData } from '../evaluation/agent-evaluation.contracts';
 import { decodeAgentSandboxHostMetadata } from '../agent-sandbox-principal';
 import { isTaskRunMemoryResourceId } from '../utils/agent-memory-scope';
 import { WorkflowToolUnavailableError } from './workflow-tool-unavailable-error';

@@ -466,7 +466,7 @@ function openAiUsageSettings() {
 			:docs-label="i18n.baseText('settings.n8nAgent.docsLabel')"
 		>
 			<template #titleTrailing>
-				<N8nPreviewBadge size="medium" />
+				<N8nPreviewBadge size="xsmall" />
 			</template>
 		</N8nSettingsPageHeader>
 

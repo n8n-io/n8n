@@ -520,7 +520,11 @@ describe('AgentSkillsService', () => {
 				schema: { ...baseConfig, skills: [{ type: 'skill', id: 'skill_a' }] },
 				skills: { skill_a: skill },
 			});
-			const fresh = { ...agent, versionId: 'v2' } as ProjectAgent;
+			const fresh = {
+				...agent,
+				versionId: 'v2',
+				schema: { ...agent.schema, instructions: 'Saved by a concurrent config edit.' },
+			} as ProjectAgent;
 			agentRepository.findByIdAndProjectId
 				.mockResolvedValueOnce(agent)
 				.mockResolvedValueOnce(fresh);
@@ -555,6 +559,13 @@ describe('AgentSkillsService', () => {
 			expect(agentUpdateBroadcaster.notify).toHaveBeenCalledWith(
 				{ projectId, agentId, source: 'user' },
 				'push-ref-1',
+			);
+			expect(modificationTelemetry.record).toHaveBeenCalledWith(
+				expect.objectContaining({
+					agent: fresh,
+					config: expect.objectContaining({ instructions: 'Saved by a concurrent config edit.' }),
+					changedParts: ['skills'],
+				}),
 			);
 			expect(agentRepository.saveDraftFenced).not.toHaveBeenCalled();
 			expect(result).toEqual({
