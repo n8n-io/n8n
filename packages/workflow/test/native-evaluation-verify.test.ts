@@ -2,6 +2,7 @@
 
 import type * as NativeEvaluation from '../src/expressions/native-evaluation';
 import { describeNatively } from '../src/expressions/native-evaluation';
+import type { IDataObject } from '../src/interfaces';
 
 const engine = process.env.N8N_EXPRESSION_ENGINE;
 
@@ -52,14 +53,14 @@ describe('Expression - native evaluation verify mode', () => {
 		vi.doUnmock('../src/expressions/native-evaluation');
 	});
 
-	const evaluate = (value: string) =>
+	const evaluate = (value: string, json: IDataObject = { name: 'secret-name' }) =>
 		modules.workflow.expression.getParameterValue(
 			value,
 			null,
 			0,
 			0,
 			'node',
-			[{ json: { name: 'secret-name' } }],
+			[{ json }],
 			'manual',
 			{},
 		);
@@ -134,6 +135,21 @@ describe('Expression - native evaluation verify mode', () => {
 			expect(report.mock.calls[0][0]).toMatchObject({ nativeResultType: 'error:Error' });
 		});
 
+		test('reports an object type without its own constructor key', () => {
+			evaluateNatively.mockReturnValueOnce({ handled: true, value: 'native' });
+
+			evaluate('={{ $json.body }}', { body: { constructor: { name: 'secret-type' } } });
+			expect(report.mock.calls[0][0]).toMatchObject({ engineResultType: 'Object' });
+		});
+
+		test('throws the engine error and does not report the same error', () => {
+			expect(() => evaluate("={{ $('Missing').item.json.a }}")).toThrow(
+				"Referenced node doesn't exist",
+			);
+			expect(evaluateNatively.mock.results[0].type).toBe('throw');
+			expect(report).not.toHaveBeenCalled();
+		});
+
 		test('does not report a match', () => {
 			expect(evaluate('={{ $json.name.slice(0, 6) }}')).toBe('secret');
 			expect(evaluateNatively).toHaveBeenCalled();
@@ -141,10 +157,17 @@ describe('Expression - native evaluation verify mode', () => {
 		});
 
 		test('only compares the sampled share', () => {
-			modules.Expression.setNativeEvaluationVerify(0, report);
+			modules.Expression.setNativeEvaluationVerify(0.5, report);
+			const random = vi.spyOn(Math, 'random');
 
+			random.mockReturnValueOnce(0.6);
 			expect(evaluate('={{ $json.name.padStart(1) }}')).toBe('secret-name');
 			expect(evaluateNatively).not.toHaveBeenCalled();
+
+			random.mockReturnValueOnce(0.4);
+			expect(evaluate('={{ $json.name.padStart(1) }}')).toBe('secret-name');
+			expect(evaluateNatively).toHaveBeenCalled();
+			random.mockRestore();
 		});
 
 		test('does not compare in on mode', () => {

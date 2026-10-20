@@ -94,8 +94,13 @@ describe('ExpressionEngineConfig', () => {
 			['on', 'on'],
 			['verify', 'verify'],
 			['off', 'off'],
+			['VERIFY', 'verify'],
 			['true', 'on'],
+			['TRUE', 'on'],
+			['1', 'on'],
 			['false', 'off'],
+			['False', 'off'],
+			['0', 'off'],
 		])('parses %s as %s', (value, mode) => {
 			vi.stubEnv('N8N_EXPRESSION_ENGINE_NATIVE_EVALUATION', value);
 			expect(Container.get(ExpressionEngineConfig).nativeEvaluation).toBe(mode);

@@ -54,8 +54,15 @@ function resultType(result: EvaluationResult): string {
 	const { value } = result;
 	if (value === null) return 'null';
 	if (Array.isArray(value)) return 'array';
-	if (typeof value === 'object') return value.constructor?.name ?? 'object';
+	if (typeof value === 'object') return prototypeName(value);
 	return typeof value;
+}
+
+function prototypeName(value: object): string {
+	const prototype: unknown = Object.getPrototypeOf(value);
+	const constructor: unknown =
+		typeof prototype === 'object' && prototype !== null ? prototype.constructor : undefined;
+	return typeof constructor === 'function' ? constructor.name : 'object';
 }
 
 // The proxy throws for a workflow that was never saved.
@@ -957,12 +964,12 @@ export class Expression {
 		const report = this.reportNativeVerifyMismatch;
 		if (!report) return;
 		try {
-			const description = describeNatively(expression);
-			if (description === null) return;
+			if (sameResult(native, engine)) return;
 
+			const description = describeNatively(expression);
 			// The engine reads its own clock, so its $now is a few ms after the
 			// proxy's and the two never match.
-			if (description.readsClock || sameResult(native, engine)) return;
+			if (description === null || description.readsClock) return;
 
 			const shape = {
 				skeleton: description.skeleton,

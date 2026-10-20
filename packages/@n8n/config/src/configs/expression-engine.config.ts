@@ -11,10 +11,19 @@ const expressionEngineSchema = z.enum(['legacy', 'vm', 'quickjs']);
  */
 const frontendExpressionEngineSchema = z.enum(['legacy', 'quickjs']);
 
-// `true` and `false` stay valid: the flag was a boolean before `verify` existed.
+// The flag was a boolean before `verify` existed, so boolean values stay valid.
+const BOOLEAN_MODES = new Map([
+	['true', 'on'],
+	['1', 'on'],
+	['false', 'off'],
+	['0', 'off'],
+]);
+
 const nativeEvaluationSchema = z
-	.enum(['off', 'on', 'verify', 'false', 'true'])
-	.transform((value) => (value === 'true' ? 'on' : value === 'false' ? 'off' : value));
+	.string()
+	.toLowerCase()
+	.transform((value) => BOOLEAN_MODES.get(value) ?? value)
+	.pipe(z.enum(['off', 'on', 'verify']));
 
 @Config
 export class ExpressionEngineConfig {

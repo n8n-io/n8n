@@ -22,7 +22,7 @@ export function skeletonOf(node: SimpleNode): string {
 		case 'param':
 			return 'x';
 		case 'member':
-			return `${skeletonOf(node.object)}${node.optional ? '?.' : '.'}${memberKey(node)}`;
+			return `${skeletonOf(node.object)}${access(node.optional)}${memberKey(node)}`;
 		case 'chain':
 			return skeletonOf(node.expression);
 		case 'unary':
@@ -33,13 +33,15 @@ export function skeletonOf(node: SimpleNode): string {
 		case 'conditional':
 			return `(${skeletonOf(node.test)} ? ${skeletonOf(node.consequent)} : ${skeletonOf(node.alternate)})`;
 		case 'call':
-			return `${skeletonOf(node.receiver)}${node.optional ? '?.' : '.'}${node.method}(${node.args.map(skeletonOf).join(', ')})`;
+			return `${skeletonOf(node.receiver)}${access(node.optional)}${node.method}(${node.args.map(skeletonOf).join(', ')})`;
 		case 'array':
 			return `[${node.elements.map(skeletonOf).join(', ')}]`;
 		case 'iterate':
-			return `${skeletonOf(node.receiver)}${node.optional ? '?.' : '.'}${node.method}(x => ${skeletonOf(node.body)})`;
+			return `${skeletonOf(node.receiver)}${access(node.optional)}${node.method}(x => ${skeletonOf(node.body)})`;
 	}
 }
+
+const access = (optional: boolean) => (optional ? '?.' : '.');
 
 // n8n's own item keys. `length` tells a string or array read apart.
 const KNOWN_KEYS = new Set(['json', 'binary', 'length']);
@@ -53,25 +55,27 @@ function memberKey(node: Extract<SimpleNode, { kind: 'member' }>): string {
 }
 
 export function readsClock(node: SimpleNode): boolean {
+	return node.kind === 'timeRoot' || childrenOf(node).some(readsClock);
+}
+
+function childrenOf(node: SimpleNode): SimpleNode[] {
 	switch (node.kind) {
-		case 'timeRoot':
-			return true;
 		case 'member':
-			return readsClock(node.object);
+			return [node.object];
 		case 'chain':
-			return readsClock(node.expression);
+			return [node.expression];
 		case 'unary':
-			return readsClock(node.argument);
+			return [node.argument];
 		case 'binary':
 		case 'logical':
-			return readsClock(node.left) || readsClock(node.right);
+			return [node.left, node.right];
 		case 'conditional':
-			return readsClock(node.test) || readsClock(node.consequent) || readsClock(node.alternate);
+			return [node.test, node.consequent, node.alternate];
 		case 'call':
-			return readsClock(node.receiver) || node.args.some(readsClock);
+			return [node.receiver, ...node.args];
 		case 'iterate':
-			return readsClock(node.receiver) || readsClock(node.body);
+			return [node.receiver, node.body];
 		default:
-			return false;
+			return [];
 	}
 }
