@@ -1,9 +1,13 @@
 /* eslint-disable @typescript-eslint/consistent-type-imports */
 /* eslint-disable @typescript-eslint/no-require-imports */
+import { splitModelId } from '@n8n/ai-utilities/agent-config';
 import { ensureUrlPathSuffix, isOpenAiCustomEndpoint } from '@n8n/ai-utilities/model-discovery';
 import type { EmbeddingModel, LanguageModel } from 'ai';
 import type * as Undici from 'undici';
 
+import type { NativeToolDeferral } from './native-tool-deferral';
+import { anthropicToolDeferral } from './native-tool-deferral/anthropic';
+import { openAiToolDeferral } from './native-tool-deferral/openai';
 import {
 	createGoogleVertexModel,
 	isGoogleVertexAnthropicModel,
@@ -20,6 +24,8 @@ import {
 	type ProviderId,
 	type ProviderCredentials,
 } from './provider-credentials';
+import type { BuiltTelemetry } from '../../types/telemetry';
+import { traceModelRequests } from '../telemetry/model-request-tracing';
 import type { ModelConfig } from '../../types/sdk/agent';
 import { getModelIdString } from '../../utils/model';
 
@@ -78,6 +84,7 @@ type EntryBuilder<P extends ProviderId> = (
 
 type RegistryEntry<P extends ProviderId = ProviderId> = {
 	build: EntryBuilder<P>;
+	toolDeferral?: NativeToolDeferral;
 };
 
 type ProviderRegistry = {
@@ -236,6 +243,7 @@ function openAiCompatibleEntry<P extends OpenAiCompatibleProviderId>(
  */
 const LANGUAGE_PROVIDERS: ProviderRegistry = {
 	openai: {
+		toolDeferral: openAiToolDeferral,
 		build: (creds, model, fetch) => {
 			const { createOpenAI } = require('@ai-sdk/openai') as typeof import('@ai-sdk/openai');
 			const { apiStyle, ...providerCreds } = creds;
@@ -277,6 +285,7 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 			}),
 	},
 	anthropic: {
+		toolDeferral: anthropicToolDeferral,
 		build: (creds, model, fetch) => {
 			const { createAnthropic } =
 				require('@ai-sdk/anthropic') as typeof import('@ai-sdk/anthropic');
@@ -489,11 +498,25 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 
 const SUPPORTED_PROVIDERS = Object.keys(LANGUAGE_PROVIDERS).join(', ');
 
+export function resolveNativeToolDeferral(config: ModelConfig): NativeToolDeferral | undefined {
+	// A pre-built model does not expose its endpoint.
+	if (isLanguageModel(config)) return undefined;
+	const { provider, model } = splitModelId(getModelIdString(config));
+	const entry = Object.entries(LANGUAGE_PROVIDERS).find(([id]) => id === provider)?.[1];
+	const implementation = entry?.toolDeferral;
+	if (!implementation?.supports(model, config)) return undefined;
+	return implementation;
+}
+
 /**
  * Provider packages are loaded dynamically via require() so only the
  * provider needed at runtime must be installed.
  */
-export function createModel(config: ModelConfig, fetch?: FetchFn): LanguageModel {
+export function createModel(
+	config: ModelConfig,
+	fetch?: FetchFn,
+	telemetry?: BuiltTelemetry,
+): LanguageModel {
 	if (isLanguageModel(config)) {
 		return config;
 	}
@@ -543,7 +566,10 @@ export function createModel(config: ModelConfig, fetch?: FetchFn): LanguageModel
 	}
 
 	// Caller-injected transport wins; fall back to the ambient env-proxy resolver.
-	const resolvedFetch = fetch ?? getProxyFetch();
+	const transport = fetch ?? getProxyFetch();
+	const resolvedFetch = telemetry?.traceModelRequests
+		? traceModelRequests(transport ?? globalFetch, telemetry, provider, modelName)
+		: transport;
 	// Type cast: the registry guarantees the schema and builder are aligned per provider.
 	return (entry.build as EntryBuilder<typeof provider>)(parsed.data, modelName, resolvedFetch);
 }

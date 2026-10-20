@@ -13,6 +13,7 @@ import {
 	type McpServerConnectionItem,
 	type NodeConnectionItem,
 	type ServiceConnectionItem,
+	type SkillConnectionItem,
 	type WorkflowConnectionItem,
 } from '../types';
 
@@ -33,6 +34,7 @@ function render(
 		| McpServerConnectionItem
 		| NodeConnectionItem
 		| ServiceConnectionItem
+		| SkillConnectionItem
 		| WorkflowConnectionItem,
 ) {
 	return renderRow({ props: { item }, pinia: createTestingPinia() });
@@ -99,6 +101,28 @@ const baseService: ServiceConnectionItem = {
 };
 
 describe('ToolRow', () => {
+	it('switches a detached skill on and an attached skill off', async () => {
+		const skill: SkillConnectionItem = {
+			id: 'skill:tone',
+			kind: 'skill',
+			skillId: 'tone',
+			title: 'Support tone',
+			status: 'none',
+			attached: false,
+		};
+		const detached = render(skill);
+		expect(detached.getByText('Detached')).toBeInTheDocument();
+		await userEvent.click(detached.getByTestId('tools-connection-row-attach'));
+		expect(detached.emitted('connect')).toEqual([[skill]]);
+		detached.unmount();
+
+		const attachedSkill = { ...skill, attached: true };
+		const attached = render(attachedSkill);
+		expect(attached.getByText('Attached')).toBeInTheDocument();
+		await userEvent.click(attached.getByTestId('tools-connection-row-attach'));
+		expect(attached.emitted('disconnect')).toEqual([[attachedSkill]]);
+	});
+
 	it('shows a Connect button for an available mcp-server and emits connect on click', async () => {
 		const { getByTestId, emitted } = render(baseMcp);
 
@@ -374,6 +398,28 @@ describe('ToolRow', () => {
 			disabled: true,
 			disabledReason: "Contains nodes that aren't supported as agent tools (Wait, Form)",
 		};
+
+		it('shows the disabled reason as plain text', () => {
+			const { getByTestId } = renderRow({
+				props: {
+					item: { ...disabledWorkflow, disabledReason: 'Rename <img src=x>_tag first' },
+				},
+				pinia: createTestingPinia(),
+				global: {
+					stubs: {
+						N8nTooltip: {
+							props: ['content'],
+							template:
+								'<span><slot /><span data-test-id="stub-tooltip-content"><span v-html="content" /><slot name="content" /></span></span>',
+						},
+					},
+				},
+			});
+
+			const content = getByTestId('stub-tooltip-content');
+			expect(content.querySelector('img')).toBeNull();
+			expect(content).toHaveTextContent('Rename <img src=x>_tag first');
+		});
 
 		it('renders a disabled marker instead of a connect/install action', () => {
 			const { getByTestId, queryByTestId } = render(disabledWorkflow);

@@ -385,7 +385,7 @@ describe('InstanceAiMessage', () => {
 	describe('answered questions', () => {
 		const answeredCall = {
 			toolCallId: 'tc-1',
-			toolName: 'ask-user',
+			toolName: 'workflow_builder_ask_user',
 			args: {},
 			isLoading: false,
 			confirmation: {

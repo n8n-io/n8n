@@ -6,16 +6,18 @@ import {
 } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import { zipSync } from 'fflate';
+import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { v5 as uuidv5 } from 'uuid';
 
+import type { TeamsAppIcons } from './teams-app-icons';
 import { sanitiseAppName, truncateToCodePoints } from '../../integration-helpers';
 
 const MANIFEST_VERSION = '1.16';
 const MANIFEST_SCHEMA = `https://developer.microsoft.com/json-schemas/teams/v${MANIFEST_VERSION}/MicrosoftTeams.schema.json`;
 
-/** Matches the colour of the bundled icons. */
+/** Matches the colour of the bundled icons, which are used when the agent's are not. */
 const ACCENT_COLOR = '#EA4B71';
 
 const DEFAULT_APP_NAME = 'n8n Agent';
@@ -55,6 +57,8 @@ export interface BuildTeamsManifestOptions {
 	 * only, with the name and description falling back to the agent's.
 	 */
 	settings?: AgentTeamsIntegrationSettings;
+	/** Drawn from the agent's personalisation. Absent means the bundled n8n icons. */
+	icons?: TeamsAppIcons;
 }
 
 /** The placeholder Microsoft's own resource-specific consent examples carry. */
@@ -121,7 +125,7 @@ export class TeamsManifestService {
 				color: 'color.png',
 				outline: 'outline.png',
 			},
-			accentColor: ACCENT_COLOR,
+			accentColor: options.icons?.accentColor ?? ACCENT_COLOR,
 			bots: [
 				{
 					botId: options.botId,
@@ -137,15 +141,29 @@ export class TeamsManifestService {
 	}
 
 	/**
+	 * What Teams would show from this manifest, so two builds can be compared.
+	 * The version is left out: it moves on every build without changing the app.
+	 * The agent's icon is included ahead of the package carrying it.
+	 */
+	fingerprint(manifest: TeamsAgentAppManifest, icon?: unknown): string {
+		const { version: _version, ...content } = manifest;
+		return createHash('sha256')
+			.update(JSON.stringify({ content, icon: icon ?? null }))
+			.digest('hex');
+	}
+
+	/**
 	 * A flat zip. A nested folder is the single most common reason the Teams
 	 * upload fails, so entries are added by name and never by directory.
 	 */
 	async buildPackage(options: BuildTeamsManifestOptions): Promise<Buffer> {
 		const manifest = this.buildManifest(options);
-		const [color, outline] = await Promise.all([
-			readFile(join(__dirname, 'assets', 'color.png')),
-			readFile(join(__dirname, 'assets', 'outline.png')),
-		]);
+		const [color, outline] = options.icons
+			? [options.icons.color, options.icons.outline]
+			: await Promise.all([
+					readFile(join(__dirname, 'assets', 'color.png')),
+					readFile(join(__dirname, 'assets', 'outline.png')),
+				]);
 
 		return Buffer.from(
 			zipSync({

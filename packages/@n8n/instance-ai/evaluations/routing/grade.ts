@@ -224,11 +224,13 @@ export function routeLabel(resolution: RouteResolution): string {
 		.join('>');
 }
 
-// `<route>:agent` passes a steer toward an Agent; `<route>:open` passes any steer except workflow only.
+// `<route>:agent` passes a steer toward an Agent, and `<route>:workflow` a steer toward a workflow.
+// `<route>:open` passes any steer except workflow only.
 function acceptTokenMatches(token: AcceptToken, { route, steer }: RouteResolution): boolean {
 	const [tokenRoute, tokenSteer] = token.split(':');
 	if (route !== tokenRoute) return false;
 	if (tokenSteer === 'agent') return steer === 'agent' || steer === 'both';
+	if (tokenSteer === 'workflow') return steer === 'workflow' || steer === 'both';
 	if (tokenSteer === 'open') return steer !== undefined && steer !== 'workflow';
 	return true;
 }
@@ -252,7 +254,13 @@ export function trialPasses(routingCase: RoutingCase, resolution: RouteResolutio
 	return routingCase.accepts.some((token) => acceptTokenMatches(token, resolution));
 }
 
-/** A case passes when at least 2 of 3 trials pass; other trial counts keep the ratio. */
-export function casePasses(passedTrials: number, totalTrials: number): boolean {
-	return totalTrials > 0 && passedTrials * 3 >= totalTrials * 2;
+/**
+ * A case passes when more than half of its graded trials pass. A trial with no route is not graded.
+ * LangTracer applies the same rule to the counts in `eval-results.json`, so the two verdicts agree.
+ */
+export function casePasses(
+	trials: Array<{ resolution: RouteResolution; passed: boolean }>,
+): boolean {
+	const graded = trials.filter((trial) => trial.resolution.route !== 'none');
+	return graded.filter((trial) => trial.passed).length * 2 > graded.length;
 }

@@ -184,7 +184,7 @@ text and `3xs` spacing. Keep warning and failure indicators distinct.
 ### Multi-step contract
 
 Use the multi-step component for Channels, Sub-agents, Tools, MCP servers,
-Workflows, and Vector stores.
+Workflows, Vector stores, and Skills.
 
 For tools, keep selection and configuration separate. The picker owns search,
 categories, rows, and connection entry points. After selection, route every
@@ -222,6 +222,40 @@ a direct pill edit. Save, Cancel, and Close exit the complete flow.
 | Small utility dialog      | Keep an appropriate small size. Use Cancel and one bottom-right primary action. JSON import and Agent duplication use this rule.                                                                               |
 | Channel platform setup    | A platform-owned setup action can stay in the inline modal content. The Agent shell still owns navigation and dismissal.                                                                                       |
 | Memory                    | Do not migrate Memory into this pattern in this change.                                                                                                                                                        |
+
+When the skills hub is on, `Add skill` starts with the `Skills` picker. The
+picker shows only skills that the Agent can use: skills of its project, skills
+of this Agent only, and global skills. Group them in the tabs All, the project
+name, This agent, and Global. Do not
+show a scope label or an icon in a row. Each row has a switch with the label
+`Attached` or `Detached`. The switch saves at once and keeps the picker open.
+This is an exception to the explicit row action. Disable a skill whose name is
+hard to tell apart from an attached skill, and give the reason in its tooltip.
+A row click opens a read-only preview with Back, Cancel, and `Add skill`. The
+preview of an attached skill shows `Detach` instead of `Add skill`. Both
+actions return to the picker. Do not edit a skill from the picker.
+`Create skill` shows on every tab. It opens the upload screen, and Back returns
+to the picker. The first field of the skill form is `Where can this skill be
+added?`: `This project`, `This agent only`, or `Global`. Each choice has an
+icon. The field starts from the tab: the project tab starts at `This project`,
+the Global tab at `Global`, and the other tabs at `This agent only`. Only a
+user who can create global skills sees `Global`. An existing skill that the
+user can edit shows the same field. Disable it, with a tooltip that gives the
+reason, when another Agent uses the skill. `Save skill` stays disabled until
+the user changes the skill or its target. Do not show the field when the
+skills hub is off. Then `Add skill` creates the skill on the Agent, without the picker.
+
+Show a read-only skill as a document, not as a disabled form. Show each label
+in muted text without the required mark, the description as text, and the
+instructions and references as rendered markdown. Put a muted hint before Cancel that tells the
+user how to edit the skill, or whom to ask. A skill that the user can use but
+not edit opens this way. Hide Save. Keep `Detach` for an attached skill, and
+`Add skill` for a preview of a skill that is not attached.
+
+A skill that the draft pins to an older version also opens read-only, with
+the hint that the agent uses an older version. Its primary action is
+`Use latest version`. The action removes the pin, saves the draft, and opens
+the latest version in the editor.
 
 New skills start with an upload screen. Make `Upload folder` the primary
 action. Support a single `SKILL.md` file and folder drops. Put `Add manually`

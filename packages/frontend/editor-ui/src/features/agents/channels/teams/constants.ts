@@ -5,6 +5,9 @@ export function entraApiPermissionsUrl(appId: string): string {
 	return `https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/ApplicationMenuBlade/~/CallAnAPI/appId/${encodeURIComponent(appId)}`;
 }
 
+// The bot's subscription and resource group are picked in Azure, so this lists every Azure Bot.
+export const AZURE_BOTS_URL = 'https://portal.azure.com/#browse/Microsoft.BotService%2FbotServices';
+
 export const ENTRA_APP_REGISTRATIONS_URL =
 	'https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade';
 
@@ -16,9 +19,17 @@ export interface TeamsAvailability {
 	readAllGroupMessages: boolean;
 }
 
-/** Files shared there live in SharePoint or OneDrive, which needs an admin's approval to read. */
-export function readsSharedConversations(availability: TeamsAvailability): boolean {
-	return availability.teamChannels || availability.groupChats;
+/**
+ * What the Graph approval unlocks for the surfaces that are on. The admin
+ * approves the same permissions either way; only what the agent gains differs.
+ */
+export type TeamsPermissionUse = 'directOnly' | 'groupChats' | 'teamChannels' | 'channelsAndGroups';
+
+export function permissionUseFor(availability: TeamsAvailability): TeamsPermissionUse {
+	if (availability.teamChannels && availability.groupChats) return 'channelsAndGroups';
+	if (availability.teamChannels) return 'teamChannels';
+	if (availability.groupChats) return 'groupChats';
+	return 'directOnly';
 }
 
 /** The settings a saved channel runs on, defaulted for a channel with none. */

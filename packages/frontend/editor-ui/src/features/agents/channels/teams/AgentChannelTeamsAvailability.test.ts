@@ -6,6 +6,7 @@ import type { RenderResult } from '@testing-library/vue';
 
 import AgentChannelTeamsAvailability from './AgentChannelTeamsAvailability.vue';
 import { availabilityFrom } from './constants';
+import { ActionDropdownTestStub } from '../../__tests__/utils/ActionDropdownTestStub';
 
 const copy = vi.fn();
 vi.mock('@n8n/composables/useClipboard', () => ({ useClipboard: () => ({ copy }) }));
@@ -14,23 +15,28 @@ configure({ testIdAttribute: 'data-testid' });
 
 const renderComponent = createComponentRenderer(AgentChannelTeamsAvailability, {
 	pinia: createTestingPinia(),
+	global: {
+		stubs: {
+			ActionDropdown: ActionDropdownTestStub,
+		},
+	},
 });
 
 async function openedUrl({ getByTestId }: Pick<RenderResult, 'getByTestId'>) {
 	const open = vi.spyOn(window, 'open').mockReturnValue(null);
-	await fireEvent.click(getByTestId('teams-file-access-link'));
+	await fireEvent.click(getByTestId('teams-file-access-approve'));
 	return String(open.mock.calls[0][0]);
 }
 
 const CONSENT_URL = 'https://login.microsoftonline.com/tenant-1/adminconsent?client_id=app-1';
 
 describe('AgentChannelTeamsAvailability', () => {
-	it('asks for no file access when only direct chat is on', () => {
-		const { queryByTestId } = renderComponent({
+	it('asks for the permissions when only direct chat is on, to find people by email', () => {
+		const { getByTestId } = renderComponent({
 			props: { modelValue: availabilityFrom(), fileAccessConsentUrl: CONSENT_URL },
 		});
 
-		expect(queryByTestId('teams-file-access')).toBeNull();
+		expect(getByTestId('teams-file-access')).toHaveTextContent('find people by email');
 	});
 
 	it('opens the one-step approval for an app n8n created', async () => {
@@ -56,7 +62,7 @@ describe('AgentChannelTeamsAvailability', () => {
 			},
 		});
 
-		await fireEvent.click(getByTestId('teams-file-access-link'));
+		await fireEvent.click(getByTestId('teams-file-access-approve'));
 
 		expect(assign).toHaveBeenCalledWith(CONSENT_URL);
 		vi.unstubAllGlobals();
@@ -67,9 +73,16 @@ describe('AgentChannelTeamsAvailability', () => {
 			props: { modelValue: availabilityFrom({ groupChats: true }), appId: 'app-1' },
 		});
 
-		expect(getByTestId('teams-file-access')).toHaveTextContent('Files.Read.All');
+		for (const permission of [
+			'User.ReadBasic.All',
+			'Team.ReadBasic.All',
+			'Channel.ReadBasic.All',
+			'Files.Read.All',
+		]) {
+			expect(getByTestId('teams-file-access')).toHaveTextContent(permission);
+		}
 		// The portal opens on Delegated permissions, which the agent cannot use.
-		expect(getByTestId('teams-file-access')).toHaveTextContent('Application permissions');
+		expect(getByTestId('teams-file-access')).toHaveTextContent('application permissions');
 		expect(await openedUrl({ getByTestId })).toContain('/CallAnAPI/appId/app-1');
 	});
 
@@ -79,6 +92,49 @@ describe('AgentChannelTeamsAvailability', () => {
 		});
 
 		expect(await openedUrl({ getByTestId })).toContain('ApplicationsListBlade');
+	});
+
+	it('confirms an approval only right after Microsoft returns from it', () => {
+		const { getByTestId, queryByTestId } = renderComponent({
+			props: {
+				modelValue: availabilityFrom({ teamChannels: true }),
+				fileAccessConsentUrl: CONSENT_URL,
+				fileAccessState: 'approved',
+			},
+		});
+
+		expect(getByTestId('teams-file-access-approved')).toHaveTextContent('Permissions approved.');
+		expect(queryByTestId('teams-file-access')).toBeNull();
+	});
+
+	it('says nothing while the settings hide it', () => {
+		const { queryByTestId } = renderComponent({
+			props: {
+				modelValue: availabilityFrom({ teamChannels: true }),
+				fileAccessConsentUrl: CONSENT_URL,
+				fileAccessState: 'hidden',
+			},
+		});
+
+		expect(queryByTestId('teams-file-access')).toBeNull();
+		expect(queryByTestId('teams-file-access-approved')).toBeNull();
+	});
+
+	it('names the organisation an administrator approves for', () => {
+		const { getByTestId } = renderComponent({
+			props: {
+				modelValue: availabilityFrom({ teamChannels: true }),
+				fileAccessConsentUrl: CONSENT_URL,
+				organization: 'Acme Corp',
+			},
+		});
+
+		expect(getByTestId('teams-file-access')).toHaveTextContent(
+			'Until an admin approves, the agent can’t find people by email, find channels by name, or read files in channels.',
+		);
+		expect(getByTestId('teams-file-access-approve')).toHaveTextContent(
+			'If you are an admin in Acme Corp',
+		);
 	});
 
 	it('copies the link, to send to an administrator', async () => {

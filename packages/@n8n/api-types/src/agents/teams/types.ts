@@ -86,6 +86,13 @@ export interface TeamsAgentSetupState {
 	 * the consent screen needs.
 	 */
 	fileAccessConsentUrl: string | null;
+	/** The Azure Bot the recommended setup made. Null for one made by hand or before n8n kept it. */
+	azureBot: { name: string; portalUrl: string } | null;
+	/**
+	 * The saved channel would build a different app than the one n8n last
+	 * handed over, so Teams holds an older version. False when n8n has no record.
+	 */
+	appOutdated: boolean;
 }
 
 /**
@@ -101,7 +108,8 @@ export type TeamsCredentialCheck =
 	  };
 
 /**
- * Whether the app may read files attached in channels and group chats. Read
+ * Whether an administrator approved the app's Graph permissions: reading files
+ * attached in channels and group chats, and finding people and channels. Read
  * from a fresh token, so it shows an approval at once, while a running agent
  * keeps its older token for up to an hour. `unknown` when Microsoft gave no
  * token to read it from.

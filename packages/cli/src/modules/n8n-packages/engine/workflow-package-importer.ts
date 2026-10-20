@@ -205,6 +205,7 @@ export class WorkflowPackageImporter {
 				matched: content.credentialResult.matched,
 				stubbed: content.credentialResult.stubbed,
 				seeded: content.credentialResult.seeded,
+				incomplete: content.credentialResult.incomplete,
 			},
 			dataTables: {
 				matched: content.dataTablePlan.matchedCount,

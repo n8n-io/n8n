@@ -9,7 +9,7 @@ import {
 	OAuthTokenVerifierProxy,
 	type TelemetryAuthContext,
 	type UserWithContext,
-} from '@/services/oauth-token-verifier-proxy.service';
+} from '@n8n/backend-services/auth';
 import { Telemetry } from '@/telemetry';
 
 import { McpServerApiKeyService } from './mcp-api-key.service';

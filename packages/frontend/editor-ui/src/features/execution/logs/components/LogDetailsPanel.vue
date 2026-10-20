@@ -78,6 +78,7 @@ const {
 	isRedacted,
 	canReveal,
 	isDynamicCredentials,
+	isSubWorkflowRedaction,
 	revealData,
 	credentialToShare,
 	openCredentialSharing,
@@ -260,6 +261,7 @@ function handleResizeEnd() {
 					<RedactedDataState
 						:title="locale.baseText('ndv.output.redacted.title')"
 						:is-dynamic-credentials="isDynamicCredentials"
+						:is-sub-workflow-redaction="isSubWorkflowRedaction"
 						:can-reveal="canReveal"
 						:credential-to-share="credentialToShare"
 						@share-credential="openCredentialSharing"
@@ -349,6 +351,7 @@ function handleResizeEnd() {
 					<RedactedDataState
 						:title="locale.baseText('ndv.output.redacted.title')"
 						:is-dynamic-credentials="isDynamicCredentials"
+						:is-sub-workflow-redaction="isSubWorkflowRedaction"
 						:can-reveal="canReveal"
 						:credential-to-share="credentialToShare"
 						@share-credential="openCredentialSharing"

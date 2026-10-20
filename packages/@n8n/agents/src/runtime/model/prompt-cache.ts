@@ -94,10 +94,14 @@ function buildAnthropicCacheControl(config: PromptCachingConfig | undefined): Pr
 	};
 }
 
-/** True when `providerOptions` carries an Anthropic `cacheControl` marker. */
-function hasAnthropicCacheControl(providerOptions: ProviderOptions | undefined): boolean {
+/** True when `providerOptions` carries an Anthropic cache marker. */
+export function hasAnthropicCacheControl(providerOptions: ProviderOptions | undefined): boolean {
 	const anthropic = providerOptions?.anthropic;
-	return isRecord(anthropic) && isRecord(anthropic.cacheControl);
+	return isRecord(anthropic) && isRecord(anthropic.cacheControl ?? anthropic.cache_control);
+}
+
+export function isAnthropicToolDeferred(tool: ToolSet[string]): boolean {
+	return tool.providerOptions?.anthropic?.deferLoading === true;
 }
 
 /**
@@ -256,7 +260,11 @@ export function applyRuntimeCacheBreakpoints(params: {
 		const staticTool = aiTools[staticToolCacheName];
 		// A caller marker on the static tool already anchors this breakpoint (and
 		// is counted in `used`); re-marking would evict the caller's cacheControl.
-		if (staticTool && !hasAnthropicCacheControl(staticTool.providerOptions)) {
+		if (
+			staticTool &&
+			!isAnthropicToolDeferred(staticTool) &&
+			!hasAnthropicCacheControl(staticTool.providerOptions)
+		) {
 			nextTools = {
 				...aiTools,
 				[staticToolCacheName]: {

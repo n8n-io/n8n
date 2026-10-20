@@ -2,7 +2,7 @@ import type { WorkflowsConfig } from '@n8n/config';
 import type { WorkflowEntity, WorkflowRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import type { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
+import type { WorkflowPublishedDataService } from '@n8n/backend-services';
 
 import { WorkflowToolUnavailableError } from '../workflow-tool-unavailable-error';
 import { WorkflowToolWorkflowLoader } from '../workflow-tool-workflow-loader.service';
