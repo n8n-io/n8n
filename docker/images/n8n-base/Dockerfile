@@ -16,14 +16,25 @@ RUN apk add --no-cache busybox-binsh && \
     # patched bytes come from bumping the pinned DHI digest instead. git and
     # openssl omitted: the base already provides git and the libssl3/libcrypto3
     # libs Node uses (the openssl CLI binary isn't needed at runtime).
+    # openssh-client-default: n8n only runs the ssh client (git over SSH), so
+    # the meta-package's sshd and sftp-server are left out.
     apk add --no-cache \
-        openssh \
+        openssh-client-default \
         graphicsmagick \
         tini \
         tzdata \
         ca-certificates \
         libc6-compat \
         librdkafka && \
+    # Security fixes that the pinned DHI digest does not include yet. The
+    # minimum versions fail the build if the repos cannot serve them. Remove an
+    # entry when a DHI digest bump includes its fix. npm is an exact pin:
+    # the DHI `npm-12` package also provides `npm` and would win a `>=`.
+    apk add --no-cache --upgrade \
+        'zlib>=1.3.2-r1' \
+        'libexpat>=2.9.0' \
+        'tiff>=4.7.2' \
+        'npm=11.21.1-r1' && \
     # Cleanup
     rm -rf /tmp/* /root/.npm /root/.cache/node /opt/yarn* && \
     apk del apk-tools
