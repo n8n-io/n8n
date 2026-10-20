@@ -30,6 +30,7 @@ import { ConflictError, NotFoundError } from '@n8n/errors';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { getWorkflowActiveStatusFromWorkflowData } from '@/executions/execution.utils';
 import { NodeTypes } from '@/node-types';
+import { withExpressionIsolate } from '@/utils';
 import { applyCors } from '@/utils/cors.util';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import { applyFormSandboxCSP } from '@/webhooks/webhook-response-headers';
@@ -69,15 +70,12 @@ export class WaitingWebhooks implements IWebhookManager {
 		const additionalData = await WorkflowExecuteAdditionalData.getBase({
 			workflowId: workflow.id,
 		});
-		await workflow.expression.acquireIsolate();
-		try {
-			return this.webhookService
+		return await withExpressionIsolate(workflow, async () =>
+			this.webhookService
 				.getNodeWebhooks(workflow, workflowStartNode, additionalData)
 				.filter((webhook) => this.isOwnRestartWebhook(webhook))
-				.map((webhook) => webhook.httpMethod);
-		} finally {
-			await workflow.expression.releaseIsolate();
-		}
+				.map((webhook) => webhook.httpMethod),
+		);
 	}
 
 	async findAccessControlOptions() {
