@@ -132,7 +132,7 @@ export class ImportPackageRequestDto extends Z.class(
 		workflowIdPolicy: optionalEnum(['new', 'source'], 'source').openapi(
 			importPackageRequestFieldDocs.workflowIdPolicy,
 		),
-		agentIdPolicy: optionalEnum(['new', 'source'], 'source').openapi(
+		agentIdPolicy: optionalEnum(['source'], 'source').openapi(
 			importPackageRequestFieldDocs.agentIdPolicy,
 		),
 		agentPublishingPolicy: optionalEnum(

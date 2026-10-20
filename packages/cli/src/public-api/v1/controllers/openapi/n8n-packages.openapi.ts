@@ -61,7 +61,7 @@ export const IMPORT_DESCRIPTION =
 	'returns HTTP 200.\n\n' +
 	'Selected-Agent exports use this endpoint. Agent content is rejected by `/import-selection`, ' +
 	'directory imports, and Promotions before writes.\n\n' +
-	'Example multipart fields: `conflictPolicy=new-version`, `agentIdPolicy=new`, ' +
+	'Example multipart fields: `conflictPolicy=new-version`, `agentIdPolicy=source`, ' +
 	'`agentPublishingPolicy=match-source`, `workflowPublishingPolicy=unpublish-all`, ' +
 	'and `bindings={"credentials":{"source-credential":"target-credential"}}`.';
 

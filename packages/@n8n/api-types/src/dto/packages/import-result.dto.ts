@@ -81,8 +81,8 @@ const importedAgentSummarySchema = z.object({
 	sourceAgentId: z.string().openapi({ description: 'Agent ID in the package.' }),
 	localId: z.string().openapi({
 		description:
-			'Agent ID on the target instance. New Agents use a fresh ID under `agentIdPolicy=new`. ' +
-			'Under `source`, they use the package ID. Updated and skipped Agents keep their destination ID.',
+			'Agent ID on the target instance. New Agents use the package ID. ' +
+			'Updated and skipped Agents keep their destination ID.',
 	}),
 	name: z.string(),
 	projectId: z.string(),
