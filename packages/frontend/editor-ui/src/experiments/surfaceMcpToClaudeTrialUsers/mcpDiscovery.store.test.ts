@@ -5,7 +5,7 @@ import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
 import { MCP_DISCOVERY_EXPERIMENT } from '@/app/constants/experiments';
 
-import { useMcpDiscoveryStore } from './mcpDiscovery.store';
+import { MCP_DISCOVERY_CONNECT_HINT_CALLOUT, useMcpDiscoveryStore } from './mcpDiscovery.store';
 
 const mocks = vi.hoisted(() => ({
 	request: vi.fn(),
@@ -18,7 +18,16 @@ const mocks = vi.hoisted(() => ({
 	setEligible: vi.fn(),
 	getVariant: vi.fn(),
 	flags: { variant: undefined as string | boolean | undefined },
-	users: { isInstanceOwner: true, currentUser: { id: 'member' } },
+	users: {
+		isInstanceOwner: true,
+		currentUser: { id: 'member' } as {
+			id: string;
+			settings?: { dismissedCallouts?: Record<string, boolean> } | null;
+		},
+		isCalloutDismissed: vi.fn(),
+		setCalloutDismissed: vi.fn(),
+		updateUserSettings: vi.fn(),
+	},
 	settings: {
 		moduleSettings: { mcp: { mcpAccessEnabled: false } },
 		settings: { license: { planName: 'Community' } },
@@ -36,7 +45,7 @@ vi.mock('axios', () => ({
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({ restApiContext: { baseUrl: '/rest' } }),
 }));
-vi.mock('@n8n/stores/users.store', () => ({ useUsersStore: () => mocks.users }));
+vi.mock('@n8n/stores/users.store', () => ({ useUsersStore: () => reactive(mocks.users) }));
 vi.mock('@n8n/composables/useTelemetry', () => ({ useTelemetry: () => ({ track: mocks.track }) }));
 vi.mock('@/app/stores/posthog.store', () => ({
 	usePostHog: () => ({
@@ -63,7 +72,20 @@ describe('MCP discovery store', () => {
 			},
 		};
 		setActivePinia(createPinia());
-		mocks.users.currentUser = { id: 'member' };
+		mocks.users.currentUser = { id: 'member', settings: {} };
+		mocks.users.isCalloutDismissed.mockImplementation((callout: string) =>
+			Boolean(reactive(mocks.users).currentUser.settings?.dismissedCallouts?.[callout]),
+		);
+		mocks.users.setCalloutDismissed.mockImplementation((callout: string) => {
+			const settings = reactive(mocks.users).currentUser.settings;
+			if (settings) {
+				settings.dismissedCallouts ??= {};
+				settings.dismissedCallouts[callout] = true;
+			}
+		});
+		mocks.users.updateUserSettings.mockImplementation(async (settings) => {
+			reactive(mocks.users).currentUser.settings = settings;
+		});
 		mocks.settings.moduleSettings.mcp.mcpAccessEnabled = false;
 	});
 
@@ -74,7 +96,6 @@ describe('MCP discovery store', () => {
 			mocks.request.mockResolvedValue({
 				status: 'assigned',
 				eligibleAt: 123,
-				coachmarkDismissed: false,
 			});
 			const store = useMcpDiscoveryStore();
 			await store.refresh();
@@ -98,7 +119,6 @@ describe('MCP discovery store', () => {
 		mocks.request.mockResolvedValue({
 			status: 'assigned',
 			eligibleAt: 123,
-			coachmarkDismissed: false,
 		});
 		const store = useMcpDiscoveryStore();
 		await store.refresh();
@@ -120,7 +140,7 @@ describe('MCP discovery store', () => {
 	});
 
 	it('does not expose a live treatment flag before eligibility', async () => {
-		mocks.request.mockResolvedValue({ status: 'waiting', coachmarkDismissed: false });
+		mocks.request.mockResolvedValue({ status: 'waiting' });
 		const store = useMcpDiscoveryStore();
 		await store.refresh();
 		expect(store.shouldShowEntryPoints).toBe(false);
@@ -136,13 +156,12 @@ describe('MCP discovery store', () => {
 		expect(mocks.track).not.toHaveBeenCalled();
 	});
 
-	it.each([{ status: 'unexpected' }, { coachmarkDismissed: 'false' }, { eligibleAt: '123' }])(
+	it.each([{ status: 'unexpected' }, { hasConnectedClaude: 'false' }, { eligibleAt: '123' }])(
 		'does not enroll or track exposure for an invalid response: %j',
 		async (invalidFields) => {
 			mocks.request.mockResolvedValue({
 				status: 'assigned',
 				eligibleAt: 123,
-				coachmarkDismissed: false,
 				...invalidFields,
 			});
 			const store = useMcpDiscoveryStore();
@@ -164,7 +183,7 @@ describe('MCP discovery store', () => {
 				},
 			};
 		});
-		mocks.request.mockResolvedValue({ status: 'waiting', coachmarkDismissed: false });
+		mocks.request.mockResolvedValue({ status: 'waiting' });
 		const store = useMcpDiscoveryStore();
 		await store.refresh();
 		mocks.cloud.currentUserCloudInfo = null;
@@ -182,7 +201,7 @@ describe('MCP discovery store', () => {
 
 	it('retries a failed plan request without using the Community license fallback', async () => {
 		mocks.cloud.getOwnerCurrentPlan.mockRejectedValueOnce(new Error('Unavailable'));
-		mocks.request.mockResolvedValue({ status: 'unknown', coachmarkDismissed: false });
+		mocks.request.mockResolvedValue({ status: 'unknown' });
 		const store = useMcpDiscoveryStore();
 		await store.refresh();
 		expect(store.state.status).toBe('unknown');
@@ -194,7 +213,6 @@ describe('MCP discovery store', () => {
 		mocks.request.mockResolvedValue({
 			status: 'assigned',
 			eligibleAt: 123,
-			coachmarkDismissed: false,
 		});
 		await store.refresh();
 		expect(store.isEnabled).toBe(true);
@@ -212,7 +230,6 @@ describe('MCP discovery store', () => {
 			mocks.request.mockResolvedValue({
 				status: 'assigned',
 				eligibleAt,
-				coachmarkDismissed: true,
 				hasUsedMcp: false,
 			});
 			const store = useMcpDiscoveryStore();
@@ -222,7 +239,6 @@ describe('MCP discovery store', () => {
 			expect(mocks.request.mock.calls[0]?.[0].data.isTrial).toBeUndefined();
 			expect(mocks.cloud.fetchUserCloudAccount).not.toHaveBeenCalled();
 			expect(store.state.eligibleAt).toBe(eligibleAt);
-			expect(store.coachmarkDismissed).toBe(true);
 			expect(store.isEnabled).toBe(true);
 			expect(store.shouldShowEntryPoints).toBe(variant === 'variant');
 			expect(mocks.setEligible).toHaveBeenCalledWith(true);
@@ -231,7 +247,7 @@ describe('MCP discovery store', () => {
 
 	it('does not infer false when Cloud omits trial status', async () => {
 		mocks.cloud.getOwnerCurrentPlan.mockResolvedValueOnce({});
-		mocks.request.mockResolvedValue({ status: 'unknown', coachmarkDismissed: false });
+		mocks.request.mockResolvedValue({ status: 'unknown' });
 		const store = useMcpDiscoveryStore();
 		await store.refresh();
 		expect(mocks.request.mock.calls[0]?.[0].data.isTrial).toBeUndefined();
@@ -247,8 +263,8 @@ describe('MCP discovery store', () => {
 			.mockResolvedValueOnce({ metadata: { group: 'trial' } })
 			.mockResolvedValueOnce({ metadata: { group: 'opt-in' } });
 		mocks.request
-			.mockResolvedValueOnce({ status: 'waiting', coachmarkDismissed: false })
-			.mockResolvedValueOnce({ status: 'excluded', coachmarkDismissed: false });
+			.mockResolvedValueOnce({ status: 'waiting' })
+			.mockResolvedValueOnce({ status: 'excluded' });
 		const store = useMcpDiscoveryStore();
 		await store.refresh();
 		await store.refresh();
@@ -264,7 +280,7 @@ describe('MCP discovery store', () => {
 	])('excludes a non-trial Cloud plan: %j', async (plan) => {
 		mocks.cloud.getOwnerCurrentPlan.mockResolvedValue(plan);
 		mocks.cloud.currentUserCloudInfo = null;
-		mocks.request.mockResolvedValue({ status: 'excluded', coachmarkDismissed: false });
+		mocks.request.mockResolvedValue({ status: 'excluded' });
 		const store = useMcpDiscoveryStore();
 		await store.refresh();
 		expect(mocks.request.mock.calls[0]?.[0].data.isTrial).toBe(false);
@@ -276,7 +292,6 @@ describe('MCP discovery store', () => {
 		mocks.request.mockResolvedValue({
 			status: 'assigned',
 			eligibleAt: 123,
-			coachmarkDismissed: false,
 		});
 		const store = useMcpDiscoveryStore();
 		await store.refresh();
@@ -323,7 +338,7 @@ describe('MCP discovery store', () => {
 				information: { surveyId: 'x0RS6StY', do_you_use_agents: ['ChatGPT'] },
 			};
 		});
-		mocks.request.mockResolvedValue({ status: 'excluded', coachmarkDismissed: false });
+		mocks.request.mockResolvedValue({ status: 'excluded' });
 		await store.refresh();
 		expect(mocks.request).toHaveBeenLastCalledWith(
 			expect.objectContaining({ data: { pickedClaude: false, isTrial: true } }),
@@ -333,7 +348,7 @@ describe('MCP discovery store', () => {
 
 	it('retries survey data that has not arrived on a later visit', async () => {
 		mocks.cloud.currentUserCloudInfo = {};
-		mocks.request.mockResolvedValue({ status: 'unknown', coachmarkDismissed: false });
+		mocks.request.mockResolvedValue({ status: 'unknown' });
 		const store = useMcpDiscoveryStore();
 		await store.refresh();
 		expect(mocks.request).toHaveBeenCalledTimes(1);
@@ -353,7 +368,6 @@ describe('MCP discovery store', () => {
 		mocks.request.mockResolvedValue({
 			status: 'assigned',
 			eligibleAt: 123,
-			coachmarkDismissed: false,
 		});
 		const store = useMcpDiscoveryStore();
 		await store.refresh();
@@ -371,25 +385,55 @@ describe('MCP discovery store', () => {
 		);
 	});
 
-	it('persists explicit dismissal through the authenticated endpoint', async () => {
-		mocks.request
-			.mockResolvedValueOnce({
-				status: 'assigned',
-				eligibleAt: 123,
-				coachmarkDismissed: false,
-			})
-			.mockResolvedValueOnce({ success: true });
+	it.each([{}, null])('persists dismissal in user settings, starting from %j', async (settings) => {
+		mocks.users.currentUser.settings = settings;
 		const store = useMcpDiscoveryStore();
-		await store.refresh();
+		store.state = { status: 'assigned' };
 		await store.dismissCoachmark();
-		expect(mocks.request).toHaveBeenLastCalledWith(
-			expect.objectContaining({
-				baseURL: '/rest',
-				method: 'POST',
-				url: '/me/mcp-discovery/dismiss',
-			}),
+
+		expect(mocks.users.setCalloutDismissed).toHaveBeenCalledWith(
+			MCP_DISCOVERY_CONNECT_HINT_CALLOUT,
 		);
+		expect(mocks.users.updateUserSettings).toHaveBeenCalledWith({
+			dismissedCallouts: { [MCP_DISCOVERY_CONNECT_HINT_CALLOUT]: true },
+		});
 		expect(store.coachmarkDismissed).toBe(true);
+		expect(mocks.request).not.toHaveBeenCalled();
+	});
+
+	it('preserves other dismissed callouts', async () => {
+		mocks.users.currentUser.settings = { dismissedCallouts: { anotherHint: true } };
+		const store = useMcpDiscoveryStore();
+		store.state = { status: 'assigned' };
+		await store.dismissCoachmark();
+		expect(mocks.users.updateUserSettings).toHaveBeenCalledWith({
+			dismissedCallouts: { anotherHint: true, [MCP_DISCOVERY_CONNECT_HINT_CALLOUT]: true },
+		});
+	});
+
+	it('reads saved dismissal on a fresh session and after a user change', () => {
+		mocks.users.currentUser.settings = {
+			dismissedCallouts: { [MCP_DISCOVERY_CONNECT_HINT_CALLOUT]: true },
+		};
+		const store = useMcpDiscoveryStore();
+		expect(store.coachmarkDismissed).toBe(true);
+		store.reset();
+		reactive(mocks.users).currentUser = { id: 'other', settings: {} };
+		expect(store.coachmarkDismissed).toBe(false);
+	});
+
+	it('keeps the hint closed locally when saving fails', async () => {
+		mocks.users.updateUserSettings.mockRejectedValueOnce(new Error('Unavailable'));
+		const store = useMcpDiscoveryStore();
+		store.state = { status: 'assigned' };
+		await expect(store.dismissCoachmark()).rejects.toThrow('Unavailable');
+		expect(store.coachmarkDismissed).toBe(true);
+	});
+
+	it('does not persist dismissal outside treatment', async () => {
+		await useMcpDiscoveryStore().dismissCoachmark();
+		expect(mocks.users.setCalloutDismissed).not.toHaveBeenCalled();
+		expect(mocks.users.updateUserSettings).not.toHaveBeenCalled();
 	});
 
 	it('advances the CTA through enable and Claude connection states', async () => {
@@ -400,7 +444,6 @@ describe('MCP discovery store', () => {
 		store.state = {
 			status: 'assigned',
 			eligibleAt: 123,
-			coachmarkDismissed: false,
 			hasConnectedClaude: false,
 		};
 		expect(store.ctaStage).toBe('connect');
@@ -413,17 +456,15 @@ describe('MCP discovery store', () => {
 		store.state = {
 			status: 'assigned',
 			eligibleAt: 123,
-			coachmarkDismissed: false,
 		};
 		const visit = Promise.withResolvers<unknown>();
-		mocks.request.mockReturnValueOnce(visit.promise).mockResolvedValueOnce({ success: true });
+		mocks.request.mockReturnValueOnce(visit.promise);
 		const refresh = store.refresh();
 		await store.dismissCoachmark();
 
 		visit.resolve({
 			status: 'assigned',
 			eligibleAt: 123,
-			coachmarkDismissed: false,
 			hasConnectedClaude: true,
 		});
 		await refresh;
@@ -432,28 +473,10 @@ describe('MCP discovery store', () => {
 		expect(store.state.hasConnectedClaude).toBe(true);
 	});
 
-	it('ignores a dismissal response after a reset for the same user', async () => {
-		const store = useMcpDiscoveryStore();
-		store.state = {
-			status: 'assigned',
-			eligibleAt: 123,
-			coachmarkDismissed: false,
-		};
-		const request = Promise.withResolvers<unknown>();
-		mocks.request.mockReturnValueOnce(request.promise);
-		const dismissal = store.dismissCoachmark();
-		store.reset();
-		request.resolve({ success: true });
-		await dismissal;
-
-		expect(store.state).toEqual({ status: 'inactive', coachmarkDismissed: false });
-	});
-
 	it('hides entries after MCP use while retaining experiment enrollment', async () => {
 		mocks.request.mockResolvedValue({
 			status: 'assigned',
 			eligibleAt: 123,
-			coachmarkDismissed: false,
 			hasConnectedClaude: true,
 			hasUsedMcp: true,
 		});
@@ -479,7 +502,6 @@ describe('MCP discovery store', () => {
 		resolve({
 			status: 'assigned',
 			eligibleAt: 123,
-			coachmarkDismissed: false,
 		});
 		await pending;
 		expect(store.isEnabled).toBe(false);
@@ -492,7 +514,6 @@ describe('MCP discovery store', () => {
 			mocks.request.mockResolvedValue({
 				status: 'assigned',
 				eligibleAt: 123,
-				coachmarkDismissed: false,
 				hasConnectedClaude: stage === 'build_in_claude',
 			});
 			const store = useMcpDiscoveryStore();

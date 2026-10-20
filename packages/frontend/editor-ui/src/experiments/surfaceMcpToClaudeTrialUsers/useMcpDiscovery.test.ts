@@ -43,10 +43,9 @@ vi.mock('@/app/stores/posthog.store', () => ({
 const assigned = (hasUsedMcp = false): McpDiscoveryState => ({
 	status: 'assigned',
 	eligibleAt: 123,
-	coachmarkDismissed: false,
 	hasUsedMcp,
 });
-const waiting: McpDiscoveryState = { status: 'waiting', coachmarkDismissed: false };
+const waiting: McpDiscoveryState = { status: 'waiting' };
 
 describe('MCP discovery enrollment polling', () => {
 	let scope: ReturnType<typeof effectScope>;
@@ -131,7 +130,7 @@ describe('MCP discovery enrollment polling', () => {
 	});
 
 	it('does not expand the sidebar for an excluded user', async () => {
-		mocks.request.mockResolvedValue({ status: 'excluded', coachmarkDismissed: false });
+		mocks.request.mockResolvedValue({ status: 'excluded' });
 		await start();
 		expect(mocks.ui.sidebarMenuCollapsed).toBe(true);
 		expect(localStorage.getItem('N8N_MCP_DISCOVERY_SIDEBAR_EXPANDED')).toBeNull();
@@ -157,8 +156,8 @@ describe('MCP discovery enrollment polling', () => {
 	it.each([
 		{ name: 'control', state: assigned() },
 		{ name: 'completed treatment', state: assigned(true) },
-		{ name: 'inactive', state: { status: 'inactive', coachmarkDismissed: false } },
-		{ name: 'excluded', state: { status: 'excluded', coachmarkDismissed: false } },
+		{ name: 'inactive', state: { status: 'inactive' } },
+		{ name: 'excluded', state: { status: 'excluded' } },
 	])('does not start polling for $name users', async ({ name, state }) => {
 		if (name === 'control') mocks.flags.variant = 'control';
 		mocks.request.mockResolvedValue(state);
@@ -190,7 +189,6 @@ describe('MCP discovery enrollment polling', () => {
 		});
 		mocks.request.mockImplementation(async ({ data }) => ({
 			status: data.pickedClaude === false ? 'excluded' : 'unknown',
-			coachmarkDismissed: false,
 		}));
 		await start();
 		expect(mocks.request.mock.calls[0]?.[0].data.pickedClaude).toBe(false);
@@ -220,9 +218,7 @@ describe('MCP discovery enrollment polling', () => {
 
 	it('retries the Cloud plan after a failure without a page reload', async () => {
 		mocks.cloud.getOwnerCurrentPlan.mockRejectedValueOnce(new Error('Unavailable'));
-		mocks.request
-			.mockResolvedValueOnce({ status: 'unknown', coachmarkDismissed: false })
-			.mockResolvedValue(assigned());
+		mocks.request.mockResolvedValueOnce({ status: 'unknown' }).mockResolvedValue(assigned());
 		await start();
 		expect(useMcpDiscoveryStore().state.status).toBe('unknown');
 		expect(mocks.request).toHaveBeenCalledTimes(1);
@@ -249,8 +245,8 @@ describe('MCP discovery enrollment polling', () => {
 	])('keeps polling through an unknown response for $name users', async ({ state }) => {
 		mocks.request
 			.mockResolvedValueOnce(state)
-			.mockResolvedValueOnce({ status: 'unknown', coachmarkDismissed: false })
-			.mockResolvedValueOnce({ status: 'unknown', coachmarkDismissed: false })
+			.mockResolvedValueOnce({ status: 'unknown' })
+			.mockResolvedValueOnce({ status: 'unknown' })
 			.mockResolvedValue(assigned());
 		await start();
 		await vi.advanceTimersByTimeAsync(120_000);
@@ -264,7 +260,7 @@ describe('MCP discovery enrollment polling', () => {
 	});
 
 	it('backs off repeated unknown responses and returns to minute polling after recovery', async () => {
-		mocks.request.mockResolvedValue({ status: 'unknown', coachmarkDismissed: false });
+		mocks.request.mockResolvedValue({ status: 'unknown' });
 		await start();
 		await vi.advanceTimersByTimeAsync(120_000);
 		expect(mocks.request).toHaveBeenCalledTimes(3);
@@ -284,7 +280,7 @@ describe('MCP discovery enrollment polling', () => {
 	});
 
 	it('clears the unknown retry delay when the user changes', async () => {
-		mocks.request.mockResolvedValue({ status: 'unknown', coachmarkDismissed: false });
+		mocks.request.mockResolvedValue({ status: 'unknown' });
 		await start();
 		await vi.advanceTimersByTimeAsync(120_000);
 		mocks.request.mockResolvedValueOnce(waiting).mockResolvedValue(assigned());

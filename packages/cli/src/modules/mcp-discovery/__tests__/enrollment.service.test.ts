@@ -254,25 +254,6 @@ describe('MCP discovery enrollment', () => {
 		expect((await service.visit(owner('owner'), { isTrial: true })).status).toBe('unknown');
 	});
 
-	it('keeps dismissal in shared storage across service instances', async () => {
-		await service.dismissCoachmark('owner');
-		const another = new McpDiscoveryEnrollmentService(
-			settings,
-			config,
-			consents,
-			apiKeys,
-			activityEvents,
-		);
-		expect(
-			(await another.visit(owner('owner'), { pickedClaude: true, isTrial: true }))
-				.coachmarkDismissed,
-		).toBe(true);
-		expect(
-			(await another.visit(owner('other'), { pickedClaude: true, isTrial: true }))
-				.coachmarkDismissed,
-		).toBe(false);
-	});
-
 	it('excludes an account that is not trialing', async () => {
 		expect(
 			(await service.visit(owner('owner'), { pickedClaude: true, isTrial: false })).status,

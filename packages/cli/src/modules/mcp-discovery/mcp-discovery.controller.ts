@@ -10,16 +10,10 @@ import { McpDiscoveryEnrollmentService } from './enrollment.service';
 export class McpDiscoveryController {
 	constructor(private readonly enrollment: McpDiscoveryEnrollmentService) {}
 
-	// Each route reads or changes only the authenticated user's experiment state.
+	// This route reads or changes only the authenticated user's experiment state.
 	@Post('/visit')
 	async visit(req: AuthenticatedRequest, _: Response, @Body payload: McpDiscoveryVisitRequestDto) {
 		return await this.enrollment.visit(req.user, payload);
-	}
-
-	@Post('/dismiss')
-	async dismiss(req: AuthenticatedRequest) {
-		await this.enrollment.dismissCoachmark(req.user.id);
-		return { success: true };
 	}
 }
 // EOF Experiment cleanup

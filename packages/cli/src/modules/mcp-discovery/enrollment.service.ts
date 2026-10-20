@@ -22,34 +22,27 @@ export class McpDiscoveryEnrollmentService {
 		private readonly activityEvents: McpDiscoveryActivityEvents,
 	) {}
 
-	async dismissCoachmark(userId: string): Promise<void> {
-		await this.settings.claimKey(discoveryUserKey(userId, 'coachmarkDismissed'), 'true');
-	}
-
 	async visit(
 		user: Pick<User, 'id' | 'role'>,
 		{ pickedClaude, isTrial }: McpDiscoveryVisitRequestDto = {},
 	): Promise<McpDiscoveryState> {
-		const inactive: McpDiscoveryState = { status: 'inactive', coachmarkDismissed: false };
+		const inactive: McpDiscoveryState = { status: 'inactive' };
 		if (this.config.deployment.type !== 'cloud') return inactive;
 		if (user.role.slug !== 'global:owner') return inactive;
 		const userId = user.id;
 		await this.activityEvents.flush(userId);
 
-		const dismissed = await this.settings.findByKey(discoveryUserKey(userId, 'coachmarkDismissed'));
-		const base = { coachmarkDismissed: dismissed?.value === 'true' };
-		const unknown: McpDiscoveryState = { ...base, status: 'unknown' };
+		const unknown: McpDiscoveryState = { status: 'unknown' };
 		const savedEligibility = await this.readEligibilityTime(userId);
 		if (savedEligibility !== undefined) {
 			return {
-				...base,
 				status: 'assigned',
 				eligibleAt: savedEligibility,
 				...(await this.getMcpState(userId)),
 			};
 		}
 		if (isTrial === undefined) return unknown;
-		if (!isTrial) return { ...base, status: 'excluded' };
+		if (!isTrial) return { status: 'excluded' };
 
 		// Instance creation dates are filtered by the PostHog release condition.
 		const now = Date.now();
@@ -64,14 +57,13 @@ export class McpDiscoveryEnrollmentService {
 			firstLoginAt: this.parseTimestamp(firstVisit?.value),
 			assistantMutationAt: mutation ? this.parseTimestamp(mutation.value) : null,
 		});
-		if (eligibility.status !== 'eligible') return { ...base, ...eligibility };
+		if (eligibility.status !== 'eligible') return eligibility;
 		await this.settings.claimKey(
 			discoveryUserKey(userId, 'eligibleAt'),
 			String(eligibility.eligibleAt),
 		);
 
 		return {
-			...base,
 			status: 'assigned',
 			eligibleAt: eligibility.eligibleAt,
 			...(await this.getMcpState(userId)),

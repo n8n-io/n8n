@@ -2,7 +2,6 @@
 export interface McpDiscoveryState {
 	status: 'inactive' | 'unknown' | 'waiting' | 'excluded' | 'assigned';
 	eligibleAt?: number;
-	coachmarkDismissed: boolean;
 	hasConnectedClaude?: boolean;
 	hasUsedMcp?: boolean;
 }

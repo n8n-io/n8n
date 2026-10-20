@@ -9,22 +9,25 @@ import { mockedStore } from '@/__tests__/utils';
 import { useMcpDiscoveryStore } from './mcpDiscovery.store';
 import McpConnectHint from './McpConnectHint.vue';
 
+const showError = vi.hoisted(() => vi.fn());
+vi.mock('@n8n/composables/useToast', () => ({ useToast: () => ({ showError }) }));
+
 const harness = defineComponent({
 	components: { McpConnectHint },
-	setup: () => ({ enabled: ref(true), dismissed: ref(false) }),
-	template: `<button>Outside</button><button @click="enabled = !enabled">Toggle MCP</button><McpConnectHint v-if="enabled" v-model:dismissed="dismissed"><button>Connect</button></McpConnectHint>`,
+	setup: () => ({ enabled: ref(true), dismissed: ref(false), connected: ref(false) }),
+	template: `<button>Outside</button><button @click="enabled = !enabled">Toggle MCP</button><McpConnectHint v-if="enabled" v-model:dismissed="dismissed"><button @click="connected = true">Connect</button></McpConnectHint><span v-if="connected">Connection flow opened</span>`,
 });
 const render = createComponentRenderer(harness);
 let pinia: ReturnType<typeof createTestingPinia>;
 let store: ReturnType<typeof mockedStore<typeof useMcpDiscoveryStore>>;
 beforeEach(() => {
+	showError.mockClear();
 	pinia = createTestingPinia();
 	store = mockedStore(useMcpDiscoveryStore);
 	store.isTreatment = true;
 	store.coachmarkDismissed = false;
 	store.state = {
 		status: 'assigned',
-		coachmarkDismissed: false,
 		hasConnectedClaude: false,
 		hasUsedMcp: false,
 		eligibleAt: 1,
@@ -50,6 +53,17 @@ it.each(['Got it', 'Connect'])('persists dismissal from %s', async (label) => {
 	await waitFor(() =>
 		expect(within(document.body).queryByTestId('mcp-connect-hint')).not.toBeInTheDocument(),
 	);
+});
+
+it('opens the connection flow even when dismissal cannot be saved', async () => {
+	const error = new Error('Unavailable');
+	store.dismissCoachmark.mockRejectedValueOnce(error);
+	const { getByRole, getByText } = render({ pinia });
+	await waitFor(() => expect(within(document.body).getByTestId('mcp-connect-hint')).toBeVisible());
+	await userEvent.click(getByRole('button', { name: 'Connect' }));
+	await waitFor(() => expect(showError).toHaveBeenCalledWith(error, expect.any(String)));
+	expect(getByText('Connection flow opened')).toBeVisible();
+	expect(within(document.body).queryByTestId('mcp-connect-hint')).not.toBeInTheDocument();
 });
 
 it('keeps an Escape dismissal after re-enabling MCP', async () => {

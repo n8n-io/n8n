@@ -16,6 +16,8 @@ import { getExperimentTelemetryPayload } from '@/experiments/utils';
 
 import { pickedClaudeInOnboarding } from './onboarding';
 
+export const MCP_DISCOVERY_CONNECT_HINT_CALLOUT = 'mcpDiscoveryConnectHint';
+
 export type McpDiscoveryPlacement = 'canvas' | 'sidebar' | 'footer' | 'create_menu';
 
 export const useMcpDiscoveryStore = defineStore(STORES.EXPERIMENT_MCP_DISCOVERY, () => {
@@ -25,7 +27,7 @@ export const useMcpDiscoveryStore = defineStore(STORES.EXPERIMENT_MCP_DISCOVERY,
 	const cloudPlan = useCloudPlanStore();
 	const posthog = usePostHog();
 	const telemetry = useTelemetry();
-	const state = ref<McpDiscoveryState>({ status: 'inactive', coachmarkDismissed: false });
+	const state = ref<McpDiscoveryState>({ status: 'inactive' });
 	const loading = ref(false);
 	let generation = 0;
 	const exposedVariants = new Set<string>();
@@ -43,7 +45,9 @@ export const useMcpDiscoveryStore = defineStore(STORES.EXPERIMENT_MCP_DISCOVERY,
 		if (!settings.moduleSettings.mcp?.mcpAccessEnabled) return 'build';
 		return state.value.hasConnectedClaude ? 'build_in_claude' : 'connect';
 	});
-	const coachmarkDismissed = computed(() => state.value.coachmarkDismissed);
+	const coachmarkDismissed = computed(() =>
+		users.isCalloutDismissed(MCP_DISCOVERY_CONNECT_HINT_CALLOUT),
+	);
 
 	// Flags may arrive after eligibility, or change through a live override.
 	watch(
@@ -71,7 +75,7 @@ export const useMcpDiscoveryStore = defineStore(STORES.EXPERIMENT_MCP_DISCOVERY,
 
 	function reset() {
 		generation++;
-		state.value = { status: 'inactive', coachmarkDismissed: false };
+		state.value = { status: 'inactive' };
 		loading.value = false;
 		exposedVariants.clear();
 		pickedClaude = undefined;
@@ -110,15 +114,11 @@ export const useMcpDiscoveryStore = defineStore(STORES.EXPERIMENT_MCP_DISCOVERY,
 				{ pickedClaude, isTrial },
 			);
 			if (requestGeneration !== generation || users.currentUser?.id !== userId) return;
-			const nextState = mcpDiscoveryStateSchema.parse(response);
-			state.value = {
-				...nextState,
-				coachmarkDismissed: state.value.coachmarkDismissed || nextState.coachmarkDismissed,
-			};
+			state.value = mcpDiscoveryStateSchema.parse(response);
 		} catch {
 			// Retry later. Do not infer eligibility from an unavailable API.
 			if (requestGeneration === generation && state.value.status !== 'assigned') {
-				state.value = { status: 'unknown', coachmarkDismissed: false };
+				state.value = { status: 'unknown' };
 			}
 		} finally {
 			if (requestGeneration === generation) loading.value = false;
@@ -143,11 +143,13 @@ export const useMcpDiscoveryStore = defineStore(STORES.EXPERIMENT_MCP_DISCOVERY,
 
 	async function dismissCoachmark() {
 		if (!isTreatment.value) return;
-		const userId = users.currentUser?.id;
-		const requestGeneration = generation;
-		await makeRestApiRequest(root.restApiContext, 'POST', '/me/mcp-discovery/dismiss');
-		if (requestGeneration !== generation || users.currentUser?.id !== userId) return;
-		state.value.coachmarkDismissed = true;
+		users.setCalloutDismissed(MCP_DISCOVERY_CONNECT_HINT_CALLOUT);
+		await users.updateUserSettings({
+			dismissedCallouts: {
+				...users.currentUser?.settings?.dismissedCallouts,
+				[MCP_DISCOVERY_CONNECT_HINT_CALLOUT]: true,
+			},
+		});
 	}
 
 	return {
