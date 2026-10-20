@@ -5,7 +5,6 @@ import {
 	SecurityViolationError,
 	TimeoutError,
 } from '@n8n/expression-runtime';
-import isEqual from 'lodash/isEqual';
 import { DateTime, Duration, Interval } from 'luxon';
 
 import { UnexpectedError, UserError } from './errors';
@@ -14,7 +13,12 @@ import { ExpressionError } from './errors/expression.error';
 import { evaluateExpression, setErrorHandler } from './expression-evaluator-proxy';
 import { expressionSandboxHooks, sanitizer, sanitizerName } from './expression-sandboxing';
 import { isExpression } from './expressions/expression-helpers';
-import { describeNatively, evaluateNatively } from './expressions/native-evaluation';
+import { evaluateNatively } from './expressions/native-evaluation';
+import {
+	DEFAULT_VERIFY_SAMPLE,
+	NativeVerifier,
+	type NativeVerifyMismatch,
+} from './expressions/native-evaluation/verify';
 import * as LoggerProxy from './logger-proxy';
 import { extend, extendOptional } from './extensions';
 import { extendSyntax } from './extensions/expression-extension';
@@ -33,66 +37,9 @@ const isSyntaxError = (error: unknown): error is SyntaxError =>
 const isExpressionError = (error: unknown): error is ExpressionError =>
 	error instanceof ExpressionError || error instanceof ExpressionExtensionError;
 
-function sameResult(a: ExpressionEvaluationOutcome, b: ExpressionEvaluationOutcome): boolean {
-	if (a.ok && b.ok) return isEqual(a.value, b.value);
-	if (a.ok || b.ok) return false;
-	return (
-		a.error instanceof Error &&
-		b.error instanceof Error &&
-		a.error.constructor === b.error.constructor &&
-		a.error.message === b.error.message
-	);
-}
-
-function hitEngineLimit(result: ExpressionEvaluationOutcome): boolean {
-	return !result.ok && (result.errorClass === 'timeout' || result.errorClass === 'memory_limit');
-}
-
-// Type names only: values and error messages can hold workflow data.
-function resultType(result: ExpressionEvaluationOutcome): string {
-	if (!result.ok) {
-		return `error:${result.errorClass}`;
-	}
-	const { value } = result;
-	if (value === null) return 'null';
-	if (Array.isArray(value)) return 'array';
-	if (typeof value === 'object') return prototypeName(value);
-	return typeof value;
-}
-
-function prototypeName(value: object): string {
-	const prototype: unknown = Object.getPrototypeOf(value);
-	const constructor: unknown =
-		typeof prototype === 'object' && prototype !== null ? prototype.constructor : undefined;
-	return typeof constructor === 'function' ? constructor.name : 'object';
-}
-
-// The proxy throws for a workflow that was never saved.
-function workflowIdOf(data: IWorkflowDataProxyData): string | undefined {
-	try {
-		const id: unknown = data.$workflow?.id;
-		return typeof id === 'string' ? id : undefined;
-	} catch {
-		return undefined;
-	}
-}
-
-// Each mismatch shape is reported once per process, up to this many, so a
-// common mismatch cannot spend the Sentry quota.
-const MAX_REPORTED_VERIFY_SHAPES = 1000;
-
-const DEFAULT_VERIFY_SAMPLE = 0.01;
+export type { NativeVerifyMismatch } from './expressions/native-evaluation/verify';
 
 export type NativeEvaluationMode = 'off' | 'on' | 'verify';
-
-/** Holds no workflow data. */
-export type NativeVerifyMismatch = {
-	engine: 'legacy' | 'vm' | 'quickjs';
-	skeleton: string;
-	nativeResultType: string;
-	engineResultType: string;
-	workflowId?: string;
-};
 
 const isTypeError = (error: unknown): error is TypeError =>
 	error instanceof TypeError || (error instanceof Error && error.name === 'TypeError');
@@ -353,11 +300,7 @@ export class Expression {
 
 	private static nativeEvaluation: NativeEvaluationMode = 'off';
 
-	private static nativeEvaluationVerifySample = DEFAULT_VERIFY_SAMPLE;
-
-	private static reportNativeVerifyMismatch?: (mismatch: NativeVerifyMismatch) => void;
-
-	private static readonly reportedVerifyShapes = new Set<string>();
+	private static nativeVerifier?: NativeVerifier;
 
 	private static shadowRunner?: ExpressionShadowRunner;
 
@@ -417,9 +360,12 @@ export class Expression {
 		reportNativeVerifyMismatch?: (mismatch: NativeVerifyMismatch) => void;
 	}): Promise<void> {
 		this.nativeEvaluation = options.nativeEvaluation ?? 'off';
-		this.nativeEvaluationVerifySample =
-			options.nativeEvaluationVerifySample ?? DEFAULT_VERIFY_SAMPLE;
-		this.reportNativeVerifyMismatch = options.reportNativeVerifyMismatch;
+		this.nativeVerifier = options.reportNativeVerifyMismatch
+			? new NativeVerifier(
+					options.nativeEvaluationVerifySample ?? DEFAULT_VERIFY_SAMPLE,
+					options.reportNativeVerifyMismatch,
+				)
+			: undefined;
 		if (options.engine === 'legacy') {
 			// Legacy differs from the isolates on purpose in places, so its
 			// differences would read as native bugs.
@@ -622,17 +568,14 @@ export class Expression {
 		reportMismatch?: (mismatch: NativeVerifyMismatch) => void,
 	): void {
 		this.nativeEvaluation = 'verify';
-		this.nativeEvaluationVerifySample = sample;
-		this.reportNativeVerifyMismatch = reportMismatch;
+		this.nativeVerifier = reportMismatch ? new NativeVerifier(sample, reportMismatch) : undefined;
 	}
 
 	private static shouldVerifyNative(): boolean {
 		return (
 			this.nativeEvaluation === 'verify' &&
-			this.reportNativeVerifyMismatch !== undefined &&
-			this.nativeEvaluationVerifySample > 0 &&
 			this.shouldUseVm() &&
-			Math.random() < this.nativeEvaluationVerifySample
+			this.nativeVerifier?.isSampled() === true
 		);
 	}
 
@@ -940,62 +883,30 @@ export class Expression {
 
 		// Execute the expression
 		const extendedExpression = extendSyntax(parameterValue);
-		if (nativeResult === undefined) {
-			const returnValue = this.renderExpression(extendedExpression, data, parameterValue);
-			return this.finalizeResolvedValue(returnValue, returnObjectAsString);
-		}
-
-		let engineResult: ExpressionEvaluationOutcome;
-		try {
-			engineResult = {
-				ok: true,
-				value: this.renderExpression(extendedExpression, data, parameterValue),
-			};
-		} catch (error) {
-			engineResult = { ok: false, error, errorClass: errorClassOf(error) };
-		}
-		Expression.reportNativeVerify(parameterValue, nativeResult, engineResult, data);
-
-		if (!engineResult.ok) throw engineResult.error;
-		return this.finalizeResolvedValue(engineResult.value, returnObjectAsString);
+		const returnValue =
+			nativeResult === undefined
+				? this.renderExpression(extendedExpression, data, parameterValue)
+				: this.renderAndVerify(extendedExpression, data, parameterValue, nativeResult);
+		return this.finalizeResolvedValue(returnValue, returnObjectAsString);
 	}
 
-	private static reportNativeVerify(
+	/** Returns or throws the engine's result, after comparing it with `native`. */
+	private renderAndVerify(
 		expression: string,
-		native: ExpressionEvaluationOutcome,
-		engine: ExpressionEvaluationOutcome,
 		data: IWorkflowDataProxyData,
-	): void {
-		const report = this.reportNativeVerifyMismatch;
-		if (!report) return;
+		source: string,
+		native: ExpressionEvaluationOutcome,
+	) {
+		let engine: ExpressionEvaluationOutcome;
 		try {
-			if (sameResult(native, engine) || hitEngineLimit(engine)) return;
-
-			const description = describeNatively(expression);
-			// The engine reads its own clock, so its $now is a few ms after the
-			// proxy's and the two never match.
-			if (description === null || description.readsClock) return;
-
-			const shape = {
-				skeleton: description.skeleton,
-				engine: this.expressionEngine,
-				nativeResultType: resultType(native),
-				engineResultType: resultType(engine),
-			};
-			const key = JSON.stringify(shape);
-			if (this.reportedVerifyShapes.has(key)) return;
-			if (this.reportedVerifyShapes.size >= MAX_REPORTED_VERIFY_SHAPES) return;
-			this.reportedVerifyShapes.add(key);
-			if (this.reportedVerifyShapes.size === MAX_REPORTED_VERIFY_SHAPES) {
-				LoggerProxy.warn(
-					'Native evaluation verify mode reached its report limit and stops reporting new differences',
-				);
-			}
-
-			report({ ...shape, workflowId: workflowIdOf(data) });
-		} catch {
-			// Reporting must never change what the caller gets.
+			engine = { ok: true, value: this.renderExpression(expression, data, source) };
+		} catch (error) {
+			engine = { ok: false, error, errorClass: errorClassOf(error) };
 		}
+		Expression.nativeVerifier?.compare(source, Expression.expressionEngine, native, engine, data);
+
+		if (!engine.ok) throw engine.error;
+		return engine.value;
 	}
 
 	private finalizeResolvedValue(
