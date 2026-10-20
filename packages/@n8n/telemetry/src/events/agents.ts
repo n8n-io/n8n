@@ -754,7 +754,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 				file_count: z
 					.number()
 					.describe(
-						'Files that the server received before it rejected the request. 0 when it rejected the request while it read the files, for example for a file type that is not allowed.',
+						'Files that the server accepted before it rejected the request. When the server rejects a file while it reads the request, the count does not include that file or any file after it.',
 					),
 				reason: knowledgeUploadServerFailureReason,
 			}),
