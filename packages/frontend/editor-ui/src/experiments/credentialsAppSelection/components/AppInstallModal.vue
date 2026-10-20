@@ -294,17 +294,15 @@ watch(
 			</div>
 		</N8nDialogBody>
 		<N8nDialogFooter>
-			<div :class="$style.footer">
-				<N8nButton
-					v-if="isAdminOrOwner"
-					:label="i18n.baseText('communityNodeDetails.install')"
-					icon="download"
-					:loading="loading"
-					:class="$style.installButton"
-					data-test-id="install-community-node-button"
-					@click="handleInstall"
-				/>
-			</div>
+			<N8nButton
+				v-if="isAdminOrOwner"
+				:label="i18n.baseText('communityNodeDetails.install')"
+				icon="download"
+				:loading="loading"
+				:class="$style.installButton"
+				data-test-id="install-community-node-button"
+				@click="handleInstall"
+			/>
 		</N8nDialogFooter>
 	</N8nDialog>
 </template>
@@ -370,12 +368,6 @@ watch(
 			color: var(--color--primary);
 		}
 	}
-}
-
-.footer {
-	display: flex;
-	justify-content: flex-end;
-	width: 100%;
 }
 
 .installButton {
