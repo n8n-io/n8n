@@ -1,4 +1,10 @@
-import type { CredentialProvider, ResolvedCredential, CredentialListItem } from '@n8n/agents';
+import type {
+	CredentialProvider,
+	ResolvedCredential,
+	CredentialListItem,
+	FetchFn,
+} from '@n8n/agents';
+import { Logger } from '@n8n/backend-common';
 import type { CredentialsEntity, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
@@ -11,7 +17,7 @@ import type { AiGatewayModelCredentialResolver } from '../json-config/model-conf
 import type { AiGatewaySearchCredentialResolver } from '../json-config/web-search-credential';
 import { decryptAgentCredential } from '../utils/decrypt-agent-credential';
 
-function toResolvedCredential(data: unknown): ResolvedCredential {
+function toResolvedCredential(data: unknown): ResolvedCredential & { apiKey: string } {
 	const resolved = data !== null && typeof data === 'object' && !Array.isArray(data) ? data : {};
 	const apiKey = 'apiKey' in resolved && typeof resolved.apiKey === 'string' ? resolved.apiKey : '';
 
@@ -29,6 +35,17 @@ function toResolvedCredential(data: unknown): ResolvedCredential {
 export class AgentsCredentialProvider
 	implements CredentialProvider, AiGatewayModelCredentialResolver, AiGatewaySearchCredentialResolver
 {
+	/**
+	 * AI Gateway tokens this provider set in model configs, and the origins they
+	 * are sent to. A sub-agent built later can get a newer token, so there can be
+	 * more than one.
+	 */
+	private aiGatewayModelMint?: {
+		credentialType: string;
+		configTokens: Set<string>;
+		origins: Set<string>;
+	};
+
 	constructor(
 		private readonly credentialsService: CredentialsService,
 		private readonly projectId: string,
@@ -49,7 +66,47 @@ export class AgentsCredentialProvider
 		if (!credentialType) {
 			throw new UserError(`Gateway credits do not support the "${provider}" model provider.`);
 		}
-		return await this.mintGatewayCredential(credentialType);
+		return await this.mintAiGatewayModelCredential(credentialType);
+	}
+
+	/**
+	 * Create a model `fetch` that sets the current AI Gateway token on a request
+	 * that carries a token from this provider. The token expires, but the runtime
+	 * that holds the model config can live longer. Other requests pass through.
+	 */
+	createAiGatewayTokenRefreshFetch(baseFetch: FetchFn): FetchFn {
+		return async (input, init) => {
+			const mint = this.aiGatewayModelMint;
+			const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+			if (!mint || !init?.headers || !URL.canParse(url) || !mint.origins.has(new URL(url).origin)) {
+				return await baseFetch(input, init);
+			}
+
+			const headers = new Headers(init.headers);
+			let token: string | undefined;
+			for (const [name, value] of [...headers]) {
+				const sentToken = value.replace(/^Bearer /, '');
+				if (!mint.configTokens.has(sentToken)) continue;
+				token ??= await this.mintGatewayCredential(mint.credentialType).then(
+					(credential) => toResolvedCredential(credential).apiKey,
+					// The sent token can still be valid, so a failed mint must not fail the request.
+					(error: unknown) => {
+						Container.get(Logger).warn(
+							'Failed to refresh the AI Gateway token of a model request',
+							{
+								error: error instanceof Error ? error.message : String(error),
+							},
+						);
+						return undefined;
+					},
+				);
+				if (!token) return await baseFetch(input, init);
+				headers.set(name, value.replace(sentToken, token));
+			}
+			if (!token) return await baseFetch(input, init);
+
+			return await baseFetch(input, { ...init, headers });
+		};
 	}
 
 	/**
@@ -60,6 +117,22 @@ export class AgentsCredentialProvider
 	 */
 	async resolveAiGatewaySearchCredential(credentialType: string): Promise<ResolvedCredential> {
 		return toResolvedCredential(await this.mintGatewayCredential(credentialType));
+	}
+
+	/** Mint a model credential and record its token for `createAiGatewayTokenRefreshFetch`. */
+	private async mintAiGatewayModelCredential(credentialType: string) {
+		const credential = await this.mintGatewayCredential(credentialType);
+		const mint = (this.aiGatewayModelMint ??= {
+			credentialType,
+			configTokens: new Set(),
+			origins: new Set(),
+		});
+		const { apiKey } = toResolvedCredential(credential);
+		if (apiKey) mint.configTokens.add(apiKey);
+		for (const value of Object.values(credential)) {
+			if (typeof value === 'string' && URL.canParse(value)) mint.origins.add(new URL(value).origin);
+		}
+		return credential;
 	}
 
 	/** Mint the gateway synthetic credential for an already-resolved credential type. */

@@ -1,4 +1,4 @@
-import type { CredentialProvider, ModelConfig, ResolvedCredential } from '@n8n/agents';
+import type { CredentialProvider, FetchFn, ModelConfig, ResolvedCredential } from '@n8n/agents';
 import { splitModelId } from '@n8n/ai-utilities/agent-config';
 import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 import { UserError } from 'n8n-workflow';
@@ -13,6 +13,8 @@ import { mapCredentialForProvider } from './credential-field-mapping';
  */
 export interface AiGatewayModelCredentialResolver {
 	resolveAiGatewayModelCredential(provider: string): Promise<ResolvedCredential>;
+	/** Create a model `fetch` that keeps the minted AI Gateway token current. */
+	createAiGatewayTokenRefreshFetch(baseFetch: FetchFn): FetchFn;
 }
 
 export async function resolveCredentialAwareModelConfig(

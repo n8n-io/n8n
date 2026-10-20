@@ -241,7 +241,7 @@ export async function buildFromJson(
 	if (config.memory?.enabled) {
 		await applyMemoryFromConfig(
 			agent,
-			config.memory,
+			withAiGatewayMemoryWorkerModels(config.memory, config),
 			options.memoryFactory,
 			options.credentialProvider,
 			options.resolveManagedEmbeddingProviderOptions,
@@ -548,6 +548,16 @@ async function applyMemoryFromConfig(
 		const { createObservationLogObserveFn, createObservationLogReflectFn } = await import(
 			'@n8n/agents'
 		);
+		const aiGatewayObserve = createAiGatewayMemoryWorker(
+			observationalMemory?.observerModel,
+			credentialProvider,
+			createObservationLogObserveFn,
+		);
+		const aiGatewayReflect = createAiGatewayMemoryWorker(
+			observationalMemory?.reflectorModel,
+			credentialProvider,
+			createObservationLogReflectFn,
+		);
 
 		memory.observationalMemory({
 			...(observationalMemory?.observerModel !== undefined && {
@@ -558,6 +568,7 @@ async function applyMemoryFromConfig(
 					),
 				),
 			}),
+			...(aiGatewayObserve && { observe: aiGatewayObserve }),
 			...(observationalMemory?.reflectorModel !== undefined && {
 				reflect: createObservationLogReflectFn(
 					await resolveMemoryWorkerModelConfig(
@@ -566,6 +577,7 @@ async function applyMemoryFromConfig(
 					),
 				),
 			}),
+			...(aiGatewayReflect && { reflect: aiGatewayReflect }),
 			...(observationalMemory?.observerThresholdTokens !== undefined && {
 				observerThresholdTokens: observationalMemory.observerThresholdTokens,
 			}),
@@ -611,6 +623,12 @@ async function resolveEpisodicMemoryJsonConfig(
 		throw new Error('Managed Episodic Memory embeddings require the AI assistant proxy.');
 	}
 
+	const aiGatewayReflect = createAiGatewayMemoryWorker(
+		config.reflectorModel,
+		credentialProvider,
+		createEpisodicMemoryReflectFn,
+	);
+
 	return {
 		enabled: true,
 		...(config.reflectorModel !== undefined && {
@@ -618,6 +636,7 @@ async function resolveEpisodicMemoryJsonConfig(
 				await resolveMemoryWorkerModelConfig(config.reflectorModel, credentialProvider),
 			),
 		}),
+		...(aiGatewayReflect && { reflect: aiGatewayReflect }),
 		...(config.topK !== undefined && { topK: config.topK }),
 		...(config.maxEntriesPerRun !== undefined && { maxEntriesPerRun: config.maxEntriesPerRun }),
 		embeddingProviderOptions,
@@ -636,6 +655,52 @@ async function resolveModelConfig(
 		credentialProvider,
 		config.modelDeploymentName,
 	);
+}
+
+/**
+ * A memory worker without its own model uses the main model. When the main model
+ * uses Gateway credits, set it as the worker model, so that the worker gets a
+ * fresh AI Gateway token on each call (see `createAiGatewayMemoryWorker`).
+ */
+function withAiGatewayMemoryWorkerModels(
+	memory: AgentJsonMemoryConfig,
+	config: AgentJsonConfig,
+): AgentJsonMemoryConfig {
+	if (config.credential !== AI_GATEWAY_MANAGED_TAG) return memory;
+
+	const mainModel = { model: config.model, credential: config.credential };
+	const { observationalMemory, episodicMemory } = memory;
+	return {
+		...memory,
+		observationalMemory: {
+			...observationalMemory,
+			observerModel: observationalMemory?.observerModel ?? mainModel,
+			reflectorModel: observationalMemory?.reflectorModel ?? mainModel,
+		},
+		...(episodicMemory?.enabled === true && {
+			episodicMemory: {
+				...episodicMemory,
+				reflectorModel: episodicMemory.reflectorModel ?? mainModel,
+			},
+		}),
+	};
+}
+
+/**
+ * Create a memory worker that mints its Gateway credits credential on each
+ * call, because an AI Gateway token expires while the runtime can live longer.
+ * It replaces the worker made at build, which still runs so that a bad config
+ * fails the build. Returns `undefined` when the model does not use Gateway credits.
+ */
+function createAiGatewayMemoryWorker<I, O>(
+	config: AgentModelCredentialConfig | undefined,
+	credentialProvider: CredentialProvider,
+	createWorker: (model: ModelConfig) => (input: I) => Promise<O>,
+): ((input: I) => Promise<O>) | undefined {
+	if (config?.credential !== AI_GATEWAY_MANAGED_TAG) return undefined;
+
+	return async (input) =>
+		await createWorker(await resolveMemoryWorkerModelConfig(config, credentialProvider))(input);
 }
 
 async function resolveMemoryWorkerModelConfig(
