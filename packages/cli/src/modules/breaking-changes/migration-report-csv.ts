@@ -15,7 +15,8 @@ const COLUMNS = [
 	'rule_id',
 	'rule_title',
 	'impact',
-	'open_workflows',
+	// Open and notified findings: a notification does not resolve a finding.
+	'unresolved_workflows',
 	'wont_fix_workflows',
 ] as const;
 

@@ -310,6 +310,11 @@ describe('BreakingChangesController', () => {
 				'Content-Disposition',
 				'attachment; filename="migration-report-v3-2026-10-20.csv"',
 			);
+			// A cross-origin editor, as in local development, reads the file name only when exposed.
+			expect(res.setHeader).toHaveBeenCalledWith(
+				'Access-Control-Expose-Headers',
+				'Content-Disposition',
+			);
 			expect(res.send).toHaveBeenCalledTimes(1);
 			const [body] = res.send.mock.calls[0];
 			expect(body).toMatch(/^target_version,current_version,synced_at,/);

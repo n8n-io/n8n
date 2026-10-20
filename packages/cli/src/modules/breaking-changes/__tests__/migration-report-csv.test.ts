@@ -7,7 +7,7 @@ type WorkflowRule = LightReport['workflowResults'][number];
 type InstanceRule = LightReport['instanceResults'][number];
 
 const HEADER =
-	'target_version,current_version,synced_at,total_workflows,affected_workflows,affected_instance_rules,rule_kind,rule_id,rule_title,impact,open_workflows,wont_fix_workflows';
+	'target_version,current_version,synced_at,total_workflows,affected_workflows,affected_instance_rules,rule_kind,rule_id,rule_title,impact,unresolved_workflows,wont_fix_workflows';
 
 function workflowRule(overrides: Partial<WorkflowRule> = {}): WorkflowRule {
 	return {

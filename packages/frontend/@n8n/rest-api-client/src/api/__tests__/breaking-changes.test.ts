@@ -2,10 +2,11 @@ import type { IRestApiContext } from '../../types';
 import * as utils from '../../utils';
 import { exportReport, notifyFindingOwners, updateFindingStatuses } from '../breaking-changes';
 
-// Keep the error class real: the export throws it, and the test inspects it.
+// Keep the error class real: the export test builds one.
 vi.mock('../../utils', async (importOriginal) => ({
 	...(await importOriginal<typeof utils>()),
 	makeRestApiRequest: vi.fn(),
+	requestResponse: vi.fn(),
 }));
 
 const context = {} as IRestApiContext;
@@ -52,70 +53,53 @@ describe('notifyFindingOwners', () => {
 });
 
 describe('exportReport', () => {
-	const fetchMock = vi.fn();
-	const restContext = { baseUrl: 'http://localhost:5678/rest' } as IRestApiContext;
+	const restContext = {
+		baseUrl: 'http://localhost:5678/rest',
+		pushRef: 'push-1',
+	} as IRestApiContext;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
-		vi.stubGlobal('fetch', fetchMock);
 	});
 
-	afterEach(() => {
-		vi.unstubAllGlobals();
-	});
-
-	function okResponse(blob: Blob, contentDisposition?: string) {
+	function csvResponse(blob: Blob, contentDisposition?: string) {
 		return {
-			ok: true,
-			headers: new Headers(contentDisposition ? { 'Content-Disposition': contentDisposition } : {}),
-			blob: async () => blob,
-		};
+			data: blob,
+			headers: contentDisposition ? { 'content-disposition': contentDisposition } : {},
+		} as unknown as Awaited<ReturnType<typeof utils.requestResponse>>;
 	}
 
-	it('fetches the CSV export with the version and returns the body with the server file name', async () => {
+	it('requests the CSV as a blob through the shared helper and returns it with the server file name', async () => {
 		const blob = new Blob(['target_version\r\n'], { type: 'text/csv' });
-		fetchMock.mockResolvedValueOnce(
-			okResponse(blob, 'attachment; filename="migration-report-v3-2026-10-20.csv"'),
+		vi.mocked(utils.requestResponse).mockResolvedValueOnce(
+			csvResponse(blob, 'attachment; filename="migration-report-v3-2026-10-20.csv"'),
 		);
 
 		const result = await exportReport(restContext, { version: 'v3' });
 
 		expect(result).toEqual({ blob, filename: 'migration-report-v3-2026-10-20.csv' });
-		expect(fetchMock).toHaveBeenCalledWith(
-			'http://localhost:5678/rest/breaking-changes/report/export?version=v3',
-			expect.objectContaining({ method: 'GET', credentials: 'include' }),
-		);
+		expect(utils.requestResponse).toHaveBeenCalledWith({
+			method: 'GET',
+			baseURL: 'http://localhost:5678/rest',
+			endpoint: '/breaking-changes/report/export',
+			headers: { 'push-ref': 'push-1' },
+			data: { version: 'v3' },
+			responseType: 'blob',
+		});
 	});
 
 	it('falls back to a fixed file name when the server names none', async () => {
-		fetchMock.mockResolvedValueOnce(okResponse(new Blob()));
+		vi.mocked(utils.requestResponse).mockResolvedValueOnce(csvResponse(new Blob()));
 
 		const result = await exportReport(restContext);
 
 		expect(result.filename).toBe('migration-report.csv');
 	});
 
-	it('fetches the default version when none is given', async () => {
-		fetchMock.mockResolvedValueOnce(okResponse(new Blob()));
+	it('lets the shared helper surface a refused export', async () => {
+		const error = new utils.ResponseError('Forbidden', { httpStatusCode: 403 });
+		vi.mocked(utils.requestResponse).mockRejectedValueOnce(error);
 
-		await exportReport(restContext);
-
-		expect(fetchMock).toHaveBeenCalledWith(
-			'http://localhost:5678/rest/breaking-changes/report/export',
-			expect.anything(),
-		);
-	});
-
-	it('throws the server message when the export is refused', async () => {
-		fetchMock.mockResolvedValueOnce({
-			ok: false,
-			status: 403,
-			json: async () => ({ message: 'Forbidden' }),
-		});
-
-		await expect(exportReport(restContext)).rejects.toMatchObject({
-			message: 'Forbidden',
-			httpStatusCode: 403,
-		});
+		await expect(exportReport(restContext)).rejects.toBe(error);
 	});
 });

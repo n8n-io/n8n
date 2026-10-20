@@ -164,6 +164,8 @@ export class BreakingChangesController {
 			'Content-Disposition',
 			`attachment; filename="${migrationReportCsvFilename(version, new Date())}"`,
 		);
+		// A cross-origin editor, as in local development, reads the file name only when exposed.
+		res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition');
 		res.send(toMigrationReportCsv(report));
 	}
 
