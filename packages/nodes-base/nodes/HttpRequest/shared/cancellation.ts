@@ -1,10 +1,10 @@
 import { sleep } from '@n8n/utils/sleep';
-import { ManualExecutionCancelledError } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 import type { IExecuteFunctions } from 'n8n-workflow';
 
 export function throwIfExecutionCancelled(context: IExecuteFunctions) {
 	if (context.getExecutionCancelSignal()?.aborted) {
-		throw new ManualExecutionCancelledError(context.getExecutionId());
+		throw new NodeOperationError(context.getNode(), 'The execution was canceled');
 	}
 }
 

@@ -111,7 +111,14 @@ export async function requestWithAuthenticationPaginated(
 		previousLength: 0,
 		previousHash: '',
 	};
+	const abortSignal = this.getExecutionCancelSignal?.();
+	const throwIfCancelled = () => {
+		if (abortSignal?.aborted) throw new NodeOperationError(node, 'The execution was canceled');
+	};
+
 	do {
+		throwIfCancelled();
+
 		paginateRequestData = resolveValue(
 			paginationOptions.request as unknown as NodeParameterValueType,
 			itemIndex,
@@ -252,7 +259,12 @@ export async function requestWithAuthenticationPaginated(
 					false,
 				) as number;
 
-				await sleep(requestInterval);
+				try {
+					await sleep(requestInterval, abortSignal);
+				} catch (error) {
+					throwIfCancelled();
+					throw error;
+				}
 			}
 			if (tempResponseData.statusCode < 200 || tempResponseData.statusCode >= 300) {
 				// We have it configured to let all requests pass no matter the response code

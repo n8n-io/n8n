@@ -1,5 +1,5 @@
 import FormData from 'form-data';
-import { ManualExecutionCancelledError, NodeHelpers } from 'n8n-workflow';
+import { NodeHelpers } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
 	INodeParameters,
@@ -80,7 +80,6 @@ describe('HttpRequestV3', () => {
 			continueOnFail: vi.fn(),
 			getMode: vi.fn(),
 			getExecutionCancelSignal: vi.fn(),
-			getExecutionId: vi.fn(() => '1'),
 		} as unknown as IExecuteFunctions;
 	});
 
@@ -308,7 +307,7 @@ describe('HttpRequestV3', () => {
 			const execution = node.execute.call(executeFunctions);
 			setTimeout(() => controller.abort(), 10);
 
-			await expect(execution).rejects.toBeInstanceOf(ManualExecutionCancelledError);
+			await expect(execution).rejects.toThrow('The execution was canceled');
 			expect(executeFunctions.helpers.request).toHaveBeenCalledTimes(1);
 		});
 
@@ -321,7 +320,7 @@ describe('HttpRequestV3', () => {
 			const execution = node.execute.call(executeFunctions);
 			setTimeout(() => controller.abort(), 10);
 
-			await expect(execution).rejects.toBeInstanceOf(ManualExecutionCancelledError);
+			await expect(execution).rejects.toThrow('The execution was canceled');
 			expect(executeFunctions.helpers.request).toHaveBeenCalledTimes(1);
 		});
 	});

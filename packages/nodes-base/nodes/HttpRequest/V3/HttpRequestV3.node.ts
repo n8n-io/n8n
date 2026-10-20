@@ -18,7 +18,6 @@ import type {
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import {
 	BINARY_ENCODING,
-	ExecutionCancelledError,
 	NodeApiError,
 	NodeConnectionTypes,
 	NodeOperationError,
@@ -811,7 +810,7 @@ export class HttpRequestV3 implements INodeType {
 				}
 			} catch (error) {
 				// A cancelled execution must not continue with the next items
-				if (error instanceof ExecutionCancelledError || !this.continueOnFail()) throw error;
+				if (this.getExecutionCancelSignal()?.aborted || !this.continueOnFail()) throw error;
 
 				requestPromises.push(Promise.reject(error).catch(() => {}));
 

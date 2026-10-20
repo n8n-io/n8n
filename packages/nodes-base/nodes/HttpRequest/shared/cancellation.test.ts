@@ -1,4 +1,3 @@
-import { ManualExecutionCancelledError } from 'n8n-workflow';
 import type { IExecuteFunctions } from 'n8n-workflow';
 
 import { sleepUnlessCancelled, throwIfExecutionCancelled } from './cancellation';
@@ -7,7 +6,7 @@ describe('HttpRequest cancellation helpers', () => {
 	const createContext = (signal?: AbortSignal) =>
 		({
 			getExecutionCancelSignal: () => signal,
-			getExecutionId: () => '1',
+			getNode: () => ({ name: 'HTTP Request' }),
 		}) as unknown as IExecuteFunctions;
 
 	describe('throwIfExecutionCancelled', () => {
@@ -20,7 +19,7 @@ describe('HttpRequest cancellation helpers', () => {
 			controller.abort();
 
 			expect(() => throwIfExecutionCancelled(createContext(controller.signal))).toThrow(
-				ManualExecutionCancelledError,
+				'The execution was canceled',
 			);
 		});
 	});
@@ -35,7 +34,7 @@ describe('HttpRequest cancellation helpers', () => {
 			controller.abort();
 
 			await expect(sleepUnlessCancelled(createContext(controller.signal), 60_000)).rejects.toThrow(
-				ManualExecutionCancelledError,
+				'The execution was canceled',
 			);
 		});
 
@@ -44,7 +43,7 @@ describe('HttpRequest cancellation helpers', () => {
 			const wait = sleepUnlessCancelled(createContext(controller.signal), 60_000);
 			controller.abort();
 
-			await expect(wait).rejects.toThrow(ManualExecutionCancelledError);
+			await expect(wait).rejects.toThrow('The execution was canceled');
 		});
 	});
 });
