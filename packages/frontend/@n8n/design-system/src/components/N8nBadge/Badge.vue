@@ -95,7 +95,6 @@ const effectiveTextSize = computed(function getEffectiveTextSize() {
 	--n8n-badge--padding-inline-end: var(--spacing--2xs);
 	--n8n-badge--gap: var(--spacing--4xs);
 	--n8n-badge--radius: var(--radius--xs);
-	--n8n-badge--label-shift: 0;
 
 	border-radius: var(--n8n-badge--radius);
 	gap: var(--n8n-badge--gap);
@@ -108,7 +107,6 @@ const effectiveTextSize = computed(function getEffectiveTextSize() {
 
 .label {
 	@include utils.utils-ellipsis;
-	transform: translateY(var(--n8n-badge--label-shift));
 }
 
 .clickable {
@@ -231,9 +229,6 @@ const effectiveTextSize = computed(function getEffectiveTextSize() {
 .trailingIcon {
 	flex-shrink: 0;
 	opacity: 0.9;
-}
-.label.hasIcon {
-	--n8n-badge--label-shift: 1px;
 }
 
 .leadingIcon + .label {
