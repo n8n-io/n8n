@@ -5,7 +5,7 @@ import {
 	AGENT_PREVIEW_CONTEXT_CLOSE_TAG,
 	AGENT_PREVIEW_CONTEXT_OPEN_TAG,
 } from './internal-messages';
-import type { AgentExecutionService } from '../agents/agent-execution.service';
+import type { AgentSessionDetail } from '@/modules/agents/agent-context.contracts';
 
 export type AgentPreviewHandoffResult = {
 	block: string;
@@ -39,7 +39,12 @@ export async function resolveAgentPreviewHandoff(
 	options: {
 		projectId: string;
 		userId: string;
-		getThreadDetail: AgentExecutionService['getThreadDetail'];
+		getThreadDetail: (
+			threadId: string,
+			projectId: string,
+			agentId: string,
+			userId: string,
+		) => Promise<AgentSessionDetail | null>;
 	},
 ): Promise<AgentPreviewHandoffResult> {
 	const detail = await options.getThreadDetail(
