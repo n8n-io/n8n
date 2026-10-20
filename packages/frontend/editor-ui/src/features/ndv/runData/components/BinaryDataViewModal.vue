@@ -145,7 +145,7 @@ function onDialogOpenUpdate(open: boolean) {
 <template>
 	<N8nDialog
 		:open="modalOpen"
-		size="cover"
+		size="2xlarge"
 		header="File Preview"
 		container-class="binary-data-view-dialog"
 		@update:open="onDialogOpenUpdate"
