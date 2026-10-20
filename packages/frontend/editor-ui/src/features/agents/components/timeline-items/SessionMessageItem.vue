@@ -57,7 +57,7 @@ const time = computed(function getTime(): string {
 				<AgentPersonalisationIcon v-else :personalisation="props.personalisation" :size="20" />
 				<N8nText step="sm" bold>{{ props.senderName }}</N8nText>
 			</div>
-			<N8nText step="xs" color="text-light" bold>{{ time }}</N8nText>
+			<N8nText step="xs" color="text-light" :class="$style.time" bold>{{ time }}</N8nText>
 		</div>
 		<CollapsibleRoot
 			v-model:open="expanded"
@@ -80,7 +80,7 @@ const time = computed(function getTime(): string {
 							:icon="expanded ? 'arrow-up' : 'arrow-down'"
 							icon-only
 							icon-size="medium"
-							variant="subtle"
+							variant="outline"
 							:class="$style.expandButton"
 							:aria-label="expandButtonLabel"
 						/>
@@ -163,5 +163,9 @@ const time = computed(function getTime(): string {
 .panelContent:hover .expandButton,
 .panelContent:focus-within .expandButton {
 	opacity: 1;
+}
+.time {
+	text-align: right;
+	font-variant-numeric: tabular-nums;
 }
 </style>

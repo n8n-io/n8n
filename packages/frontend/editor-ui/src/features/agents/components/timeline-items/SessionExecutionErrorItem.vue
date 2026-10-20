@@ -32,7 +32,9 @@ const time = computed(() => {
 	align-items: center;
 	justify-content: space-between;
 	gap: var(--spacing--2xs);
-	padding-inline: var(--spacing--sm);
+	margin-inline: var(--spacing--2xs);
+	padding-inline: var(--spacing--2xs);
+	padding-inline-end: var(--spacing--2xs);
 }
 .iconContainer {
 	display: inline-flex;
@@ -45,5 +47,7 @@ const time = computed(() => {
 }
 .timestamp {
 	margin-inline-start: auto;
+	text-align: right;
+	font-variant-numeric: tabular-nums;
 }
 </style>

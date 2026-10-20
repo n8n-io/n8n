@@ -393,23 +393,6 @@ export function kindColorToken(kind: EventKind): string {
 	return COLOR_MAP[kind];
 }
 
-const CHART_BLOCK_COLOR_MAP: Record<EventKind, string> = {
-	user: 'var(--color--blue-600)',
-	agent: 'var(--color--purple-600)',
-	skill: 'var(--color--orange-600)',
-	tool: 'var(--color--green-600)',
-	node: 'var(--color--neutral-600)',
-	workflow: 'var(--color--pink-600)',
-	'execution-error': 'var(--color--red-600)',
-	suspension: 'var(--color--yellow-600)',
-	'hitl-response': 'var(--color--blue-600)',
-	'background-task-signal': 'var(--color--mint-600)',
-};
-
-export function chartBlockColor(kind: EventKind): string {
-	return CHART_BLOCK_COLOR_MAP[kind];
-}
-
 export function builtinToolLabelKey(
 	toolName: string | undefined,
 	output?: unknown,
