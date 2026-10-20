@@ -46,7 +46,6 @@ export class AgentTaskRepository extends BaseRepository<AgentTask> {
 		agentId: string,
 		definitions: ReadonlyMap<string, AgentTaskConfig>,
 		ctx: OperationContext,
-		sourceTaskIds?: ReadonlyMap<string, string>,
 	): Promise<boolean> {
 		const repo = this.managerFor(ctx).getRepository(AgentTask);
 		const existing = await this.findByAgentId(agentId, ctx);
@@ -60,13 +59,11 @@ export class AgentTaskRepository extends BaseRepository<AgentTask> {
 			ctx,
 		);
 		for (const [id, body] of nextBodies) {
-			const sourceTaskId = sourceTaskIds?.get(id);
-			const content = { ...body, ...(sourceTaskId !== undefined ? { sourceTaskId } : {}) };
 			if (existingBodies.has(id)) {
-				await repo.update({ id, agentId }, content);
+				await repo.update({ id, agentId }, body);
 			} else {
 				// A task ID owned by another agent must fail, not move to this agent.
-				await repo.insert({ id, agentId, ...content });
+				await repo.insert({ id, agentId, ...body });
 			}
 		}
 		return changed;

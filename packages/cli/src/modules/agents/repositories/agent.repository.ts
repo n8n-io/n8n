@@ -806,7 +806,7 @@ export class AgentRepository extends BaseRepository<Agent> {
 	async saveDraftFenced(
 		agent: Agent,
 		ctx: OperationContext = {},
-		metadata: Pick<AgentDefinitionMetadata, 'sourceAgentId' | 'availableInMCP'> = {},
+		metadata: AgentDefinitionMetadata = {},
 	): Promise<boolean> {
 		const expectedRevision = agent.revision;
 		// Written explicitly (instead of the builder's CURRENT_TIMESTAMP default)
@@ -821,7 +821,6 @@ export class AgentRepository extends BaseRepository<Agent> {
 				integrations: agent.integrations,
 				tools: agent.tools,
 				versionId: agent.versionId,
-				...(metadata.sourceAgentId !== undefined ? { sourceAgentId: metadata.sourceAgentId } : {}),
 				...(metadata.availableInMCP !== undefined
 					? { availableInMCP: metadata.availableInMCP }
 					: {}),
@@ -833,7 +832,6 @@ export class AgentRepository extends BaseRepository<Agent> {
 			.execute();
 		const won = (result.affected ?? 0) > 0;
 		if (won) {
-			if (metadata.sourceAgentId !== undefined) agent.sourceAgentId = metadata.sourceAgentId;
 			if (metadata.availableInMCP !== undefined) agent.availableInMCP = metadata.availableInMCP;
 			agent.revision = expectedRevision + 1;
 			agent.updatedAt = updatedAt;

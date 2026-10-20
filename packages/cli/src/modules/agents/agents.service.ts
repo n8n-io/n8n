@@ -396,7 +396,6 @@ export class AgentsService {
 				integrations,
 				skills: definition.skills,
 				tools: definition.tools,
-				sourceAgentId: metadata?.sourceAgentId ?? null,
 				availableInMCP: metadata?.availableInMCP ?? false,
 				versionId: uuid(),
 				activeVersionId: null,
@@ -412,12 +411,7 @@ export class AgentsService {
 				throw error;
 			}
 			await this.agentSkillRefs.replaceDraftRefs(agent, skillRefs, ctx);
-			await this.agentTaskRepository.replaceForAgent(
-				id,
-				definition.tasks,
-				ctx,
-				metadata?.sourceTaskIds,
-			);
+			await this.agentTaskRepository.replaceForAgent(id, definition.tasks, ctx);
 		});
 		await Container.get(AgentSaveCompletionService).definitionSaved(
 			buildAgentMutationEvent(agent, skillRefs, projectId, { user, modifiedBy: 'user' }, []),

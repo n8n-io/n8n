@@ -29,9 +29,6 @@ export interface CompleteAgentDefinition extends Pick<Agent, 'name' | 'tools' | 
 
 /** Omitted metadata stays unchanged on ordinary saves and version restoration. */
 export interface AgentDefinitionMetadata {
-	sourceAgentId?: string | null;
-	/** Keyed by destination task ID. */
-	sourceTaskIds?: ReadonlyMap<string, string>;
 	availableInMCP?: boolean;
 }
 
