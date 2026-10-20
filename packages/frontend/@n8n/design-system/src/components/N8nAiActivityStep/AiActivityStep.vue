@@ -37,17 +37,13 @@ const props = withDefaults(
 );
 
 defineSlots<{
+	prefix?: () => unknown;
 	default?: () => unknown;
 	/** Replaces the callout text; the tooltip keeps showing `error`. */
 	errorCallout?: () => unknown;
 }>();
 
 const MAX_ERROR_TOOLTIP_LENGTH = 160;
-
-defineSlots<{
-	prefix?: () => unknown;
-	default?: () => unknown;
-}>();
 
 const isNested = inject(aiActivityStepGroupContext, false);
 
