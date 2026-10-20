@@ -3,6 +3,7 @@ packages/cli/src/modules/n8n-packages/__tests__/agent-import-application.integra
   s_71ad2034164515::t_f20926c36ac811 185-191
 packages/cli/src/modules/agents/__tests__/agent-config.service.test.ts
   s_71ad2034164515::t_a5318d05478cdc 32,111-114,119,124,137,171-238
+  s_d3c0f6f6f7d41c::t_343e2ac65ae1d9 110,115-118
 packages/cli/src/modules/agents/agent-config-preparation.service.ts
   s_71ad2034164515::t_489b7e4fd2bfc4 173-174,182-187
 packages/cli/test/integration/database/repositories/agent.repository.test.ts
