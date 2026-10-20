@@ -56,7 +56,7 @@ function deferred<T>() {
 	return { promise, resolve, reject };
 }
 
-const FINGERPRINT: ScopeFingerprint = { count: 1, versionSum: 1 };
+const FINGERPRINT: ScopeFingerprint = { count: 1, versionSum: 1, newestCreatedAt: 1000 };
 
 describe('TypeAvailabilityPolicySnapshot', () => {
 	let scopeRepository: ReturnType<typeof mock<TypeAvailabilityPolicyScopeRepository>>;
@@ -106,6 +106,29 @@ describe('TypeAvailabilityPolicySnapshot', () => {
 		expect(snapshot.read(KIND, null)).toBeNull();
 		expect(snapshot.read(KIND, 'project-1')).toBeNull();
 		expect(snapshot.projectScopes(KIND)).toBeNull();
+	});
+
+	it('answers reads from memory once loaded, with no repository call', async () => {
+		givenScopes([makeScope({ projectId: 'project-1' })]);
+		await snapshot.reload();
+		vi.clearAllMocks();
+
+		snapshot.read(KIND, null);
+		snapshot.read(KIND, 'project-1');
+		snapshot.projectScopes(KIND);
+
+		expect(scopeRepository.readFingerprint).not.toHaveBeenCalled();
+		expect(scopeRepository.findAllScopes).not.toHaveBeenCalled();
+		expect(attachmentRepository.listAttachmentsForScopes).not.toHaveBeenCalled();
+	});
+
+	it('reloads on a pubsub request', async () => {
+		await snapshot.reload();
+		givenScopes([makeScope({ defaultAction: 'deny' })]);
+
+		await snapshot.handleReloadRequest();
+
+		expect(snapshot.read(KIND, null)?.defaultAction).toBe('deny');
 	});
 
 	describe('reload', () => {
@@ -373,12 +396,12 @@ describe('TypeAvailabilityPolicySnapshot', () => {
 		});
 
 		it.each([
-			['scope count', { count: 2, versionSum: 1 }],
-			['version sum', { count: 1, versionSum: 2 }],
+			['scope count', { ...FINGERPRINT, count: 2 }],
+			['version sum', { ...FINGERPRINT, versionSum: 2 }],
+			// A deleted row replaced by a new one at the same version moves only this.
+			['newest creation', { ...FINGERPRINT, newestCreatedAt: 2000 }],
 		])('reloads when the %s changed', async (_name, changed) => {
-			scopeRepository.readFingerprint
-				.mockResolvedValueOnce({ count: 1, versionSum: 1 })
-				.mockResolvedValue(changed);
+			scopeRepository.readFingerprint.mockResolvedValueOnce(FINGERPRINT).mockResolvedValue(changed);
 			await snapshot.start();
 
 			await tick();

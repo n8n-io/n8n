@@ -147,7 +147,7 @@ hides every credential-only node, as before.
 ### What the second kind costs
 
 The snapshot holds both kinds, so the second kind costs no query at decision time. A snapshot
-reload reads every scope of every kind in 4 queries — pinned in
+reload reads every scope of every kind in 4 queries, up to 10,000 scopes — pinned in
 `node-type-policy.store-reads.test.ts`.
 
 ## What a violation looks like
@@ -250,12 +250,14 @@ The database stays the source of truth. Three things keep the snapshot fresh:
   command not in `IMMEDIATE_COMMANDS`, so a burst of writes costs one reload. Outside queue mode
   there is one process and no command.
 - **A poll catches a command that was lost.** Redis pubsub does not redeliver. Every 30 seconds,
-  each process reads `COUNT(*)` and `SUM(version)` of the scope table. Every write bumps a
-  version or adds a row, so a different result means a missed change, and the process reloads.
+  each process reads `COUNT(*)`, `SUM(version)` and `MAX(createdAt)` of the scope table. A delete
+  lowers the count, an update bumps a version, and an insert sets the newest `createdAt`. So a
+  different result means a missed change, and the process reloads.
   A process also reloads when its pubsub subscriber reconnects.
 
-A reload reads every scope of every kind in 4 queries, whatever the number of projects. Reloads
-run one at a time, so an older reload can never overwrite a newer one.
+A reload reads every scope of every kind in 4 queries. Above 10,000 scopes or attached policies,
+each further batch of 10,000 IDs adds one query. Reloads run one at a time, so an older reload can
+never overwrite a newer one.
 
 The module loads the snapshot in `init()`, before the process takes work. If that first load
 fails, the process still boots: decisions read the database directly, under the same deadline,
@@ -286,15 +288,11 @@ through a sealed repository method, and the lint rule that guards that has no al
   is no node type to evaluate there, and the credential's type is deliberately not a stand-in,
   so the decryption goes through.
 - **A policy change reaches other processes after the pubsub command, or within 30
-  seconds.** The command normally takes effect about 300 ms after the last write. If a process misses it, the
-  fingerprint poll finds the change on its next run.
-
-  The poll cannot see one case: in the same 30 seconds, a scope row is deleted and another is
-  created, and the deleted row had version 1. The count and the sum then do not change. Only a
-  project deletion deletes a scope row, and the command still covers the create.
-
+  seconds.** The command normally takes effect about 300 ms after the last write. If a process
+  misses it, the fingerprint poll finds the change on its next run.
 - **A row edited outside the service is picked up by the poll only.** A migration or manual
-  SQL publishes no command. The poll sees the change if it moves a version or the row count.
+  SQL publishes no command. The poll sees the change if it moves a version, the row count or
+  the newest `createdAt`.
 - **Type-level policy is not a data boundary.** Blocking a node does not block the API behind
   it, because HTTP Request and Code remain available. Load-time exclusion
   (`NODES_EXCLUDE`) is the stronger tool for the types that must never load.

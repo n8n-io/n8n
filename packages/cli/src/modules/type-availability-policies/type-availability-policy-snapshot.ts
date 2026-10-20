@@ -30,7 +30,9 @@ function scopeKey(kind: string, projectId: string | null): string {
 }
 
 function sameFingerprint(a: ScopeFingerprint, b: ScopeFingerprint): boolean {
-	return a.count === b.count && a.versionSum === b.versionSum;
+	return (
+		a.count === b.count && a.versionSum === b.versionSum && a.newestCreatedAt === b.newestCreatedAt
+	);
 }
 
 /**

@@ -21,7 +21,7 @@ type NewPolicyScope = {
 
 export type ProjectPolicyScope = TypeAvailabilityPolicyScope & { projectId: string };
 
-export type ScopeFingerprint = { count: number; versionSum: number };
+export type ScopeFingerprint = { count: number; versionSum: number; newestCreatedAt: number };
 
 const isProjectScope = (scope: TypeAvailabilityPolicyScope): scope is ProjectPolicyScope =>
 	scope.projectId !== null;
@@ -138,18 +138,27 @@ export class TypeAvailabilityPolicyScopeRepository extends BaseRepository<TypeAv
 	}
 
 	/**
-	 * Changes whenever a scope is written: every write bumps a version or adds a row. A
-	 * process compares it with the value it last loaded to find a reload it missed.
+	 * Changes whenever a scope is written. A delete lowers the count, an update bumps a version,
+	 * and an insert sets the newest `createdAt`, even when it replaces a deleted row.
 	 */
 	async readFingerprint(ctx: OperationContext): Promise<ScopeFingerprint> {
 		const row = await this.managerFor(ctx)
 			.createQueryBuilder(TypeAvailabilityPolicyScope, 'scope')
 			.select('COUNT(*)', 'count')
 			.addSelect('COALESCE(SUM(scope.version), 0)', 'versionSum')
-			.getRawOne<{ count: string | number; versionSum: string | number }>();
+			.addSelect('MAX(scope.createdAt)', 'newestCreatedAt')
+			.getRawOne<{
+				count: string | number;
+				versionSum: string | number;
+				newestCreatedAt: string | Date | null;
+			}>();
 
-		// Postgres returns both aggregates as strings.
-		return { count: Number(row?.count ?? 0), versionSum: Number(row?.versionSum ?? 0) };
+		// Postgres returns the aggregates as strings, and SQLite returns the timestamp as text.
+		return {
+			count: Number(row?.count ?? 0),
+			versionSum: Number(row?.versionSum ?? 0),
+			newestCreatedAt: row?.newestCreatedAt ? new Date(row.newestCreatedAt).getTime() : 0,
+		};
 	}
 
 	async findProjectScopes(kind: string, ctx: OperationContext): Promise<ProjectPolicyScope[]> {
