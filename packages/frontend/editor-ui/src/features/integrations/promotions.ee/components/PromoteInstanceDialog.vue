@@ -131,11 +131,7 @@ async function submit() {
 
 		<template v-if="!result">
 			<N8nDialogBody>
-				<form
-					id="promote-instance-form"
-					:class="$style.body"
-					@submit.prevent="submit"
-				>
+				<form id="promote-instance-form" :class="$style.body" @submit.prevent="submit">
 					<N8nText color="text-base">{{ bodyText }}</N8nText>
 
 					<N8nInputLabel
