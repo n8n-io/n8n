@@ -59,10 +59,6 @@ const props = defineProps<{
 	hideRevise?: boolean;
 	/** The complete view was opened on this case: expand it and scroll it into view. */
 	focused?: boolean;
-	/** The judge's proposed instruction for a failed check. Not `suggestion`: that is the correction note below. */
-	fixSuggestion?: string | null;
-	/** True from "Apply suggestion" until the rewrite and rerun settle. */
-	applyingSuggestion?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -75,8 +71,6 @@ const emit = defineEmits<{
 	'save-what-to-check': [text: string];
 	/** The trash icon's confirmed delete — this case and its example. */
 	'delete-check': [];
-	/** "Apply suggestion": rewrite the agent's instructions with the fix, then rerun. */
-	'apply-suggestion': [];
 	/** Small view only: the chevron or row was clicked. */
 	open: [];
 }>();
@@ -95,9 +89,6 @@ const root = ref<HTMLElement | null>(null);
 // nothing to correct.
 const needsCorrection = computed(() => props.status === 'work' || props.status === 'fail');
 
-const showFixSuggestion = computed(
-	() => props.view === 'complete' && needsCorrection.value && Boolean(props.fixSuggestion?.trim()),
-);
 // A "couldn't finish" case often has no output at all — it must still expand
 // to reach the correction form, so this isn't gated on output alone.
 const canExpand = computed(() => props.output !== null || needsCorrection.value);
@@ -355,19 +346,6 @@ watch(
 			</div>
 
 			<template v-if="needsCorrection">
-				<!-- No card: Apply suggestion and Actually fine sit in the actions bar. -->
-				<div
-					v-if="showFixSuggestion && fixSuggestion"
-					:class="$style.fixSuggestion"
-					:data-test-id="testId && `${testId}-suggestion-card`"
-				>
-					<N8nText bold color="text-dark" size="medium">
-						{{ i18n.baseText('agents.builder.agentEvals.suggestion.title') }}
-					</N8nText>
-					<N8nText color="text-dark" size="medium" :class="$style.fixSuggestionText">{{
-						fixSuggestion
-					}}</N8nText>
-				</div>
 				<template v-if="!hideRevise">
 					<N8nText bold color="text-dark" :class="$style.correctionHint">
 						{{ i18n.baseText('instanceAi.testAgentPreview.inputCorrectionHint') }}
@@ -397,17 +375,6 @@ watch(
 							@click="onSaveCheck"
 						>
 							{{ i18n.baseText('instanceAi.testAgentPreview.saveCorrection') }}
-						</N8nButton>
-						<N8nButton
-							v-if="showFixSuggestion && fixSuggestion"
-							variant="solid"
-							size="small"
-							:disabled="disabled"
-							:loading="applyingSuggestion"
-							:data-test-id="testId && `${testId}-suggestion-card-apply`"
-							@click="emit('apply-suggestion')"
-						>
-							{{ i18n.baseText('agents.builder.agentEvals.suggestion.apply') }}
 						</N8nButton>
 						<N8nButton
 							variant="outline"
@@ -587,18 +554,6 @@ watch(
 	display: block;
 	margin-top: var(--spacing--sm);
 	margin-bottom: var(--spacing--2xs);
-}
-
-.fixSuggestion {
-	display: flex;
-	flex-direction: column;
-	padding-top: var(--spacing--lg);
-}
-
-// Keep the line breaks of a suggestion, and wrap a long unbroken word in the row.
-.fixSuggestionText {
-	white-space: pre-wrap;
-	overflow-wrap: anywhere;
 }
 
 .correctionActions {

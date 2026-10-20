@@ -4,20 +4,9 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ref } from 'vue';
 
-import { ResponseError } from '@n8n/rest-api-client';
-
 import { createComponentRenderer } from '@/__tests__/render';
-import { agentsEventBus } from '../agents.eventBus';
 import { useAgentEvalsStore } from '../agentEvals.store';
-import {
-	MAX_APPLY_SUGGESTIONS,
-	type AgentEvalResultRecord,
-	type AgentEvalResultStatus,
-} from '../agentEvals.types';
-import {
-	AGENT_CONFIG_WRITE_KEY,
-	type AgentConfigWrite,
-} from '../components/agentBuilderInjectionKeys';
+import type { AgentEvalResultRecord, AgentEvalResultStatus } from '../agentEvals.types';
 import AgentEvalChecksPanel from '../components/AgentEvalChecksPanel.vue';
 
 configure({ testIdAttribute: 'data-testid' });
@@ -36,6 +25,7 @@ vi.mock('../components/AgentEvalTryRow.vue', () => ({
 		name: 'AgentEvalTryRow',
 		props: {
 			status: {},
+			date: {},
 			input: {},
 			output: {},
 			label: {},
@@ -43,17 +33,8 @@ vi.mock('../components/AgentEvalTryRow.vue', () => ({
 			disabled: { type: Boolean },
 			hideRevise: { type: Boolean },
 			focused: { type: Boolean },
-			fixSuggestion: {},
-			applyingSuggestion: { type: Boolean },
 		},
-		emits: [
-			'save-check',
-			'actually-fine',
-			'rerun-check',
-			'save-what-to-check',
-			'delete-check',
-			'apply-suggestion',
-		],
+		emits: ['save-check', 'actually-fine', 'rerun-check', 'save-what-to-check', 'delete-check'],
 		// A plain, testId-free button: a testid built from the row's own (which
 		// starts with the same "agent-eval-check-" every row testid shares) would
 		// match every row-counting `getAllByTestId(/agent-eval-check-/)` query in
@@ -61,18 +42,16 @@ vi.mock('../components/AgentEvalTryRow.vue', () => ({
 		template: `<div
 			:data-testid="testId"
 			:data-status="status"
+			:data-date="date"
 			:data-disabled="disabled"
 			:data-hide-revise="hideRevise"
 			:data-focused="focused"
-			:data-fix-suggestion="fixSuggestion"
-			:data-applying-suggestion="applyingSuggestion"
 		>
 			{{ input }}
 			<button @click="$emit('actually-fine')">actually fine</button>
 			<button @click="$emit('rerun-check')">run check</button>
 			<button @click="$emit('save-what-to-check', 'Mentions the refund window.')">save rule</button>
 			<button @click="$emit('delete-check')">delete check</button>
-			<button @click="$emit('apply-suggestion')">apply suggestion</button>
 		</div>`,
 	},
 }));
@@ -138,7 +117,6 @@ const render = (
 		focusedResultId?: string;
 	} = {},
 	inFlight = false,
-	runConfigWrite?: AgentConfigWrite,
 ) => {
 	const pinia = createTestingPinia({ stubActions: true });
 	const store = useAgentEvalsStore();
@@ -162,9 +140,6 @@ const render = (
 		...renderComponent({
 			pinia,
 			props: { disabled: review.disabled },
-			global: runConfigWrite
-				? { provide: { [AGENT_CONFIG_WRITE_KEY as symbol]: runConfigWrite } }
-				: {},
 		}),
 		store,
 	};
@@ -201,18 +176,6 @@ const renderWithGrowablePage = (allResults: AgentEvalResultRecord[], pageSize: n
 
 	return { ...renderComponent({ pinia }), store };
 };
-
-// Stands in for the builder's hook: it saves pending edits and locks editing before the write,
-// and reloads the config after it, whether or not the write threw.
-const builderWrite = (order: string[]): AgentConfigWrite =>
-	async function <T>(write: () => Promise<T>) {
-		order.push('lock');
-		try {
-			return await write();
-		} finally {
-			order.push('unlock');
-		}
-	};
 
 describe('AgentEvalChecksPanel', () => {
 	beforeEach(() => {
@@ -384,6 +347,37 @@ describe('AgentEvalChecksPanel', () => {
 		expect(getByTestId('agent-eval-checks-filter-needs-work')).toHaveTextContent('2');
 		expect(getByTestId('agent-eval-checks-filter-pass')).toHaveTextContent('2');
 		expect(getByTestId('agent-eval-checks-filter-all')).toHaveTextContent('4');
+	});
+
+	it('counts only finished checks in the status pills, and every check in "All"', () => {
+		const { getByTestId } = render(
+			{
+				results: [
+					result('pass-1', 'success'),
+					result('fail-1', 'error'),
+					result('running-1', 'running'),
+					result('new-1', 'new'),
+				],
+			},
+			true,
+		);
+
+		expect(getByTestId('agent-eval-checks-filter-needs-work')).toHaveTextContent('1');
+		expect(getByTestId('agent-eval-checks-filter-pass')).toHaveTextContent('1');
+		expect(getByTestId('agent-eval-checks-filter-all')).toHaveTextContent('4');
+	});
+
+	it('shows no time on a running check', () => {
+		const { getByTestId } = render(
+			{ results: [result('running-1', 'running'), result('pass-1', 'success')] },
+			true,
+		);
+
+		expect(getByTestId('agent-eval-check-running-1')).not.toHaveAttribute('data-date');
+		expect(getByTestId('agent-eval-check-pass-1')).toHaveAttribute(
+			'data-date',
+			'2026-01-01T00:00:00.000Z',
+		);
 	});
 
 	describe('pill visibility', () => {
@@ -570,248 +564,6 @@ describe('AgentEvalChecksPanel', () => {
 
 			await vi.waitFor(() => expect(showError).toHaveBeenCalled());
 			expect(getByTestId('agent-eval-check-c1')).toHaveAttribute('data-status', 'fail');
-		});
-	});
-
-	describe('fix suggestion', () => {
-		const failedWithSuggestion = {
-			...result('c1', 'success'),
-			verdict: {
-				status: 'completed' as const,
-				outcome: 'fail' as const,
-				reasoning: 'Off-task.',
-				suggestion: ' Politely decline requests outside invoice support. ',
-			},
-		};
-
-		it('passes the failed verdict’s suggestion to its row, and none to other rows', () => {
-			const { getByTestId } = render({ results: [failedWithSuggestion, result('c2', 'success')] });
-
-			expect(getByTestId('agent-eval-check-c1')).toHaveAttribute(
-				'data-fix-suggestion',
-				'Politely decline requests outside invoice support.',
-			);
-			expect(getByTestId('agent-eval-check-c2')).not.toHaveAttribute('data-fix-suggestion');
-		});
-
-		describe('applying it', () => {
-			const applyButton = (getByTestId: (id: string) => HTMLElement) =>
-				within(getByTestId('agent-eval-check-c1')).getByText('apply suggestion');
-
-			it('applies the result inside the builder’s locked write', async () => {
-				const user = userEvent.setup();
-				const order: string[] = [];
-				const emit = vi.spyOn(agentsEventBus, 'emit');
-				const { getByTestId, store } = render(
-					{ results: [failedWithSuggestion] },
-					false,
-					builderWrite(order),
-				);
-				vi.mocked(store.applySuggestions).mockImplementation(async () => {
-					order.push('apply');
-					return { configHash: 'hash-2', results: [] };
-				});
-
-				await user.click(applyButton(getByTestId));
-
-				await vi.waitFor(() => expect(order).toEqual(['lock', 'apply', 'unlock']));
-				expect(store.applySuggestions).toHaveBeenCalledWith('project-1', 'agent-1', ['c1']);
-				// The builder reloads its own config, so no event is needed.
-				expect(emit).not.toHaveBeenCalled();
-				expect(showError).not.toHaveBeenCalled();
-			});
-
-			it('tells other surfaces to refresh when there is no builder to lock', async () => {
-				const user = userEvent.setup();
-				const emit = vi.spyOn(agentsEventBus, 'emit');
-				const { getByTestId, store } = render({ results: [failedWithSuggestion] });
-				vi.mocked(store.applySuggestions).mockResolvedValue({ configHash: 'h', results: [] });
-
-				await user.click(applyButton(getByTestId));
-
-				await vi.waitFor(() =>
-					expect(emit).toHaveBeenCalledWith('agentUpdated', {
-						agentId: 'agent-1',
-						source: 'agent-evals',
-					}),
-				);
-			});
-
-			it('toasts when applying fails, and still lets the builder reload its config', async () => {
-				const user = userEvent.setup();
-				const order: string[] = [];
-				const { getByTestId, store } = render(
-					{ results: [failedWithSuggestion] },
-					false,
-					builderWrite(order),
-				);
-				vi.mocked(store.applySuggestions).mockRejectedValue(new Error('boom'));
-
-				await user.click(applyButton(getByTestId));
-
-				await vi.waitFor(() =>
-					expect(showError).toHaveBeenCalledWith(
-						expect.any(Error),
-						"Couldn't apply the suggestion",
-					),
-				);
-				expect(order).toEqual(['lock', 'unlock']);
-			});
-
-			it('says the agent changed elsewhere on a conflict', async () => {
-				const user = userEvent.setup();
-				const { getByTestId, store } = render({ results: [failedWithSuggestion] });
-				vi.mocked(store.applySuggestions).mockRejectedValue(
-					new ResponseError('conflict', { httpStatusCode: 409 }),
-				);
-
-				await user.click(applyButton(getByTestId));
-
-				await vi.waitFor(() =>
-					expect(showError).toHaveBeenCalledWith(
-						expect.any(ResponseError),
-						'Someone changed this agent. Reload the page, then try again.',
-					),
-				);
-			});
-
-			it('does not call the API when the builder fails to save its pending edits', async () => {
-				const user = userEvent.setup();
-				const failingWrite: AgentConfigWrite = async () => {
-					throw new Error('save failed');
-				};
-				const { getByTestId, store } = render(
-					{ results: [failedWithSuggestion] },
-					false,
-					failingWrite,
-				);
-
-				await user.click(applyButton(getByTestId));
-
-				await vi.waitFor(() => expect(showError).toHaveBeenCalled());
-				expect(store.applySuggestions).not.toHaveBeenCalled();
-			});
-		});
-	});
-
-	describe('apply all suggestions', () => {
-		const failedWith = (id: string, suggestion: string) => ({
-			...result(id, 'success'),
-			verdict: {
-				status: 'completed' as const,
-				outcome: 'fail' as const,
-				reasoning: 'Off-task.',
-				suggestion,
-			},
-		});
-		const BUTTON = 'agent-eval-checks-apply-all-suggestions';
-
-		it('is hidden when no failed check has a suggestion', () => {
-			const { queryByTestId } = render({
-				results: [result('c1', 'success'), result('c2', 'error')],
-			});
-
-			expect(queryByTestId(BUTTON)).not.toBeInTheDocument();
-		});
-
-		it('is hidden when a failed check has no suggestion', () => {
-			const failedWithout = {
-				...result('c1', 'success'),
-				verdict: { status: 'completed' as const, outcome: 'fail' as const, reasoning: 'No.' },
-			};
-			const { queryByTestId } = render({ results: [failedWithout] });
-
-			expect(queryByTestId(BUTTON)).not.toBeInTheDocument();
-		});
-
-		it('applies every suggestion in one request, inside the builder’s locked write', async () => {
-			const user = userEvent.setup();
-			const order: string[] = [];
-			const { getByTestId, store } = render(
-				{
-					results: [
-						failedWith('c1', 'Decline off-topic requests.'),
-						result('c2', 'success'),
-						failedWith('c3', 'Answer in one sentence.'),
-					],
-				},
-				false,
-				builderWrite(order),
-			);
-			vi.mocked(store.applySuggestions).mockImplementation(async () => {
-				order.push('apply');
-				return { configHash: 'hash-2', results: [] };
-			});
-
-			await user.click(getByTestId(BUTTON));
-
-			await vi.waitFor(() => expect(order).toEqual(['lock', 'apply', 'unlock']));
-			expect(store.applySuggestions).toHaveBeenCalledTimes(1);
-			expect(store.applySuggestions).toHaveBeenCalledWith('project-1', 'agent-1', ['c1', 'c3']);
-		});
-
-		it('sends a long list as successive requests of at most one request’s worth', async () => {
-			const user = userEvent.setup();
-			const many = Array.from({ length: MAX_APPLY_SUGGESTIONS + 2 }, (_, i) =>
-				failedWith(`c${i}`, `Fix ${i}.`),
-			);
-			const { getByTestId, store } = render({ results: many });
-			vi.mocked(store.applySuggestions).mockResolvedValue({ configHash: 'h', results: [] });
-
-			await user.click(getByTestId(BUTTON));
-
-			await vi.waitFor(() => expect(store.applySuggestions).toHaveBeenCalledTimes(2));
-			const calls = vi.mocked(store.applySuggestions).mock.calls;
-			expect(calls[0][2]).toHaveLength(MAX_APPLY_SUGGESTIONS);
-			expect(calls[1][2]).toEqual(['c10', 'c11']);
-		});
-
-		it('stops sending batches after the first one fails', async () => {
-			const user = userEvent.setup();
-			const many = Array.from({ length: MAX_APPLY_SUGGESTIONS + 2 }, (_, i) =>
-				failedWith(`c${i}`, `Fix ${i}.`),
-			);
-			const { getByTestId, store } = render({ results: many });
-			vi.mocked(store.applySuggestions).mockRejectedValue(new Error('boom'));
-
-			await user.click(getByTestId(BUTTON));
-
-			await vi.waitFor(() => expect(showError).toHaveBeenCalled());
-			expect(store.applySuggestions).toHaveBeenCalledTimes(1);
-		});
-
-		it('ignores a second apply while one is still being sent', async () => {
-			const user = userEvent.setup();
-			const { getByTestId, store } = render({
-				results: [failedWith('c1', 'Fix 1.'), failedWith('c2', 'Fix 2.')],
-			});
-			let finish: (value: { configHash: string; results: never[] }) => void = () => {};
-			vi.mocked(store.applySuggestions).mockImplementation(
-				async () => await new Promise((resolve) => (finish = resolve)),
-			);
-
-			await user.click(within(getByTestId('agent-eval-check-c1')).getByText('apply suggestion'));
-			await vi.waitFor(() => expect(store.applySuggestions).toHaveBeenCalledTimes(1));
-			expect(getByTestId('agent-eval-check-c2')).toHaveAttribute('data-disabled', 'true');
-			expect(getByTestId(BUTTON)).toBeDisabled();
-
-			// A click that still reaches the composable is ignored, not sent as a second write.
-			await user.click(within(getByTestId('agent-eval-check-c2')).getByText('apply suggestion'));
-			expect(store.applySuggestions).toHaveBeenCalledTimes(1);
-
-			finish({ configHash: 'h', results: [] });
-		});
-
-		it('toasts when applying fails', async () => {
-			const user = userEvent.setup();
-			const { getByTestId, store } = render({ results: [failedWith('c1', 'Fix.')] });
-			vi.mocked(store.applySuggestions).mockRejectedValue(new Error('boom'));
-
-			await user.click(getByTestId(BUTTON));
-
-			await vi.waitFor(() =>
-				expect(showError).toHaveBeenCalledWith(expect.any(Error), "Couldn't apply the suggestion"),
-			);
 		});
 	});
 
