@@ -2601,12 +2601,59 @@ describe('createDataTableAdapter', () => {
 	});
 
 	describe('instance read-only mode', () => {
+		type DataTableAdapter = ReturnType<typeof createDataTableAdapterForTests>['adapter'];
+
 		it('blocks write operations when instance is in read-only mode', async () => {
 			const { adapter } = createDataTableAdapterForTests({ branchReadOnly: true });
 
 			await expect(adapter.create('Test', [])).rejects.toThrow(
 				'Cannot modify data tables on a protected instance',
 			);
+		});
+
+		it.each([
+			['delete', async (adapter: DataTableAdapter) => await adapter.delete('dt-1')],
+			[
+				'addColumn',
+				async (adapter: DataTableAdapter) =>
+					await adapter.addColumn('dt-1', { name: 'col', type: 'string' }),
+			],
+			[
+				'deleteColumn',
+				async (adapter: DataTableAdapter) => await adapter.deleteColumn('dt-1', 'col-1'),
+			],
+			[
+				'renameColumn',
+				async (adapter: DataTableAdapter) => await adapter.renameColumn('dt-1', 'col-1', 'renamed'),
+			],
+		])('blocks %s when instance is in read-only mode', async (_name, run) => {
+			const { adapter } = createDataTableAdapterForTests({ branchReadOnly: true });
+
+			await expect(run(adapter)).rejects.toThrow(
+				'Cannot modify data tables on a protected instance',
+			);
+		});
+
+		it('allows row writes when instance is in read-only mode', async () => {
+			const { adapter, mockDataTableService } = createDataTableAdapterForTests({
+				branchReadOnly: true,
+			});
+			const mocks = mockDataTableService as unknown as Record<string, Mock>;
+			mocks.insertRows = vi.fn().mockResolvedValue(1);
+			mocks.updateRows = vi.fn().mockResolvedValue([{ id: 'row-1' }]);
+			mocks.deleteRows = vi.fn().mockResolvedValue([{ id: 'row-1' }]);
+			const filter = {
+				type: 'and' as const,
+				filters: [{ columnName: 'id', condition: 'eq' as const, value: 'row-1' }],
+			};
+
+			await adapter.insertRows('dt-1', [{ col: 'val' }]);
+			await adapter.updateRows('dt-1', filter, { col: 'new' });
+			await adapter.deleteRows('dt-1', filter);
+
+			expect(mocks.insertRows).toHaveBeenCalled();
+			expect(mocks.updateRows).toHaveBeenCalled();
+			expect(mocks.deleteRows).toHaveBeenCalled();
 		});
 
 		it('allows read operations when instance is in read-only mode', async () => {
@@ -7856,6 +7903,7 @@ describe('createContext — builder delegate wiring', () => {
 		);
 		const service = createAdapterWithGatewayMock(vi.fn());
 		const delegate = mock<InstanceAiBuilderDelegate>();
+		delegate.getBuilderTools.mockReturnValue([]);
 		mockBuilderModuleActive(delegate);
 		const moduleRegistry = Container.get(ModuleRegistry);
 		vi.mocked(moduleRegistry.isActive).mockReturnValue(moduleActive);
@@ -7874,7 +7922,7 @@ describe('createContext — builder delegate wiring', () => {
 		expect(context.agentBuilderTarget).toEqual(
 			expected ? { agentId: 'agent-42', projectId: 'proj-1' } : undefined,
 		);
-		expect(tools.has('build-agent')).toBe(expected);
+		expect(tools.has('agent_builder_select_agent')).toBe(expected);
 	});
 
 	it('enables deterministic Agent Builder model catalogs for eval threads', () => {

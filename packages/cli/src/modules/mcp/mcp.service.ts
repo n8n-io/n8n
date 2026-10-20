@@ -70,6 +70,7 @@ import { getAllowedToolNames } from './mcp-scopes';
 import {
 	areAgentToolsAvailable,
 	arePreferenceToolsEnabled,
+	areSkillToolsAvailable,
 	isCommunityNodeInstallAvailable,
 } from './mcp-tool-availability';
 import type {
@@ -826,6 +827,11 @@ export class McpService {
 				user,
 				allowedToolNames,
 			);
+		}
+
+		if (areSkillToolsAvailable(this.globalConfig, this.moduleRegistry)) {
+			const { McpSkillToolsService } = await import('./tools/skills/skill-tools.service.js');
+			Container.get(McpSkillToolsService).registerTools(registerIfAllowed, user);
 		}
 
 		return server;
