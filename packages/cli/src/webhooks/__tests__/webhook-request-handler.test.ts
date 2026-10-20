@@ -209,7 +209,10 @@ describe('WebhookRequestHandler', () => {
 			await handler(req, res);
 
 			expect(webhookManager.getWebhookMethods).not.toHaveBeenCalled();
-			expect(res.header).not.toHaveBeenCalledWith('Access-Control-Allow-Methods', expect.anything());
+			expect(res.header).not.toHaveBeenCalledWith(
+				'Access-Control-Allow-Methods',
+				expect.anything(),
+			);
 			expect(res.status).toHaveBeenCalledWith(200);
 		});
 
