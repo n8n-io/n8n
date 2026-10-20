@@ -1,5 +1,6 @@
 import { Service } from '@n8n/di';
 import type { SeededSteps, StartExecutionRequest, StepSlots, TriggerOutputs } from '@n8n/engine';
+import { NotImplementedError } from '@n8n/errors';
 import type {
 	INode,
 	INodeExecutionData,
@@ -254,13 +255,13 @@ export class EngineV2Dispatcher {
 		// its own, so they only matter where v1 starts the run at one: a single
 		// pinned node in place of the trigger.
 		if (this.startsAtPinnedNode(data)) {
-			throw new UserError(
+			throw new NotImplementedError(
 				'Engine v2 cannot start a run at a pinned node yet. Run the workflow from the trigger instead.',
 			);
 		}
 
 		if (data.agentRequest !== undefined) {
-			throw new UserError('Engine v2 cannot run a workflow as an AI tool yet.');
+			throw new NotImplementedError('Engine v2 cannot run a workflow as an AI tool yet.');
 		}
 
 		// `WorkflowRunner.run` returns through the v2 branch before it establishes the
@@ -273,7 +274,7 @@ export class EngineV2Dispatcher {
 			firedNode !== undefined &&
 			classifyTriggerIdentity(firedNode.type, firedNode.parameters).providesExternalIdentity
 		) {
-			throw new UserError(
+			throw new NotImplementedError(
 				`Engine v2 cannot run the "${firedNode.name}" trigger yet, because it takes credentials from the request.`,
 			);
 		}

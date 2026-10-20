@@ -1,4 +1,5 @@
 import { UUID_V7_PATTERN } from '@n8n/constants';
+import { NotImplementedError } from '@n8n/errors';
 import type {
 	INode,
 	INodeExecutionData,
@@ -607,7 +608,7 @@ describe('EngineV2Dispatcher', () => {
 			])('rejects $name', async ({ data, message }) => {
 				const attempt = dispatcher.start(runData(data));
 
-				await expect(attempt).rejects.toThrow(UserError);
+				await expect(attempt).rejects.toThrow(NotImplementedError);
 				await expect(attempt).rejects.toThrow(message);
 				expect(proxy.startExecution).not.toHaveBeenCalled();
 			});
