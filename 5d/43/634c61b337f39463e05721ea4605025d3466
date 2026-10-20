@@ -1,0 +1,21 @@
+packages/cli/src/modules/agents/__tests__/hub-assistant-skill-provider.service.test.ts
+  s_20d484677b459f::t_06493dadc0556b 65-76,83-89
+packages/cli/test/integration/agents/skill.repository.test.ts
+  s_20d484677b459f::t_06493dadc0556b 94-108
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5d43634c61b337f39463e05721ea4605025d3466",
+  "prompts": {},
+  "sessions": {
+    "s_20d484677b459f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1541d-6ef7-7ef0-a84b-83bd91fd72c5",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}
