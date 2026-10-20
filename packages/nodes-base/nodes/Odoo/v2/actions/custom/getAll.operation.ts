@@ -105,7 +105,11 @@ export async function execute(
 			const model = this.getNodeParameter('customResource', i, undefined, {
 				extractValue: true,
 			}) as string;
-			const filters = this.getNodeParameter('filters', i) as unknown as IOdooFilters;
+			let filters = this.getNodeParameter('filters', i, {}) as unknown as IOdooFilters;
+			if (!filters?.filter?.length) {
+				// Older workflows store custom-resource filters under filterRequest.
+				filters = this.getNodeParameter('filterRequest', i, {}) as unknown as IOdooFilters;
+			}
 			const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 			const options = this.getNodeParameter('options', i) as IDataObject;
 
