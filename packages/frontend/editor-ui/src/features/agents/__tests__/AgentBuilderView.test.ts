@@ -2056,6 +2056,17 @@ describe('AgentBuilderView — preview routing', () => {
 			expect(builderTelemetryMock.trackOpenedKnowledgeTab).toHaveBeenCalledTimes(1);
 		});
 
+		it('reports the knowledge tab again when the user switches agents on it', async () => {
+			routeQuery.section = 'knowledge';
+			await renderView({ knowledgeBaseEnabled: true });
+			expect(builderTelemetryMock.trackOpenedKnowledgeTab).toHaveBeenCalledTimes(1);
+
+			routeParams.agentId = 'a2';
+			await flushPromises();
+
+			expect(builderTelemetryMock.trackOpenedKnowledgeTab).toHaveBeenCalledTimes(2);
+		});
+
 		it('reports the knowledge tab when the user switches to it', async () => {
 			const wrapper = await renderView({ knowledgeBaseEnabled: true });
 			expect(builderTelemetryMock.trackOpenedKnowledgeTab).not.toHaveBeenCalled();

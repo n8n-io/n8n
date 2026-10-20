@@ -922,11 +922,15 @@ const builderTelemetry = useAgentBuilderTelemetry({
 	localConfig,
 });
 
+// Make sure each agent reports its own opening, also when the user switches agents on the knowledge tab.
 // `immediate` also reports a page that opens on the knowledge tab from its URL.
 watch(
-	activeMainTab,
-	(tab, previousTab) => {
-		if (tab === 'knowledge' && previousTab !== 'knowledge') {
+	[activeMainTab, agentId],
+	([tab, currentAgentId], previous) => {
+		const [previousTab, previousAgentId] = previous ?? [];
+		const isNewOpening = previousTab !== 'knowledge' || previousAgentId !== currentAgentId;
+
+		if (tab === 'knowledge' && isNewOpening) {
 			builderTelemetry.trackOpenedKnowledgeTab();
 		}
 	},
