@@ -14,6 +14,11 @@ visual language. This rule flags any emoji character (pictographs such as 🚀 o
 ✅, and regional-indicator flag emoji such as 🇺🇸) found in a `name` or
 `displayName` string within a node's `description`.
 
+The rule also checks node properties that live in other files, such as resource
+files imported into a node. It checks any variable typed as `INodeProperties`
+or an array of it (`INodeProperties[]`, `Array<INodeProperties>`, or a value
+cast with `as` or `satisfies`).
+
 Accented and non-Latin characters (e.g. `Café`, `日本語`) are allowed — only
 emoji are reported.
 

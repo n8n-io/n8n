@@ -94,10 +94,34 @@ ruleTester.run('no-emoji-in-options', NoEmojiInOptionsRule, {
 				],
 			`),
 		},
+		{
+			name: 'imported node resource file without emoji',
+			filename: '/tmp/nodes/GithubIssues/resources/issueComment/getAll.ts',
+			code: `
+				import type { INodeProperties } from 'n8n-workflow';
+
+				export const issueCommentOperations: INodeProperties[] = [
+					{
+						displayName: 'Operation',
+						name: 'operation',
+						type: 'options',
+						options: [{ name: 'Get Many', value: 'getAll' }],
+						default: 'getAll',
+					},
+				];
+			`,
+		},
+		{
+			name: 'variable that is not typed as INodeProperties is ignored in a non .node.ts file',
+			filename: '/tmp/helper.ts',
+			code: `
+				export const labels: Record<string, string>[] = [{ name: '🚀 Rocket' }];
+				export const other = { displayName: '🚀 Rocket' };
+			`,
+		},
 	],
 	invalid: [
 		{
-			// CE-2873: The node imports this object into its description properties.
 			name: 'emoji in option name from an imported node resource file',
 			filename: '/tmp/nodes/GithubIssues/resources/issueComment/getAll.ts',
 			code: `
@@ -114,6 +138,81 @@ ruleTester.run('no-emoji-in-options', NoEmojiInOptionsRule, {
 				};
 			`,
 			errors: [{ messageId: 'emojiInOption', data: { key: 'name', emoji: '✅' } }],
+		},
+		{
+			name: 'emoji in property displayName from an imported INodeProperties[] resource file',
+			filename: '/tmp/nodes/GithubIssues/resources/issueComment/getAll.ts',
+			code: `
+				import type { INodeProperties } from 'n8n-workflow';
+
+				export const issueCommentDescription: INodeProperties[] = [
+					{
+						displayName: 'Limit 🚀',
+						name: 'limit',
+						type: 'number',
+						default: 50,
+					},
+				];
+			`,
+			errors: [{ messageId: 'emojiInOption', data: { key: 'displayName', emoji: '🚀' } }],
+		},
+		{
+			name: 'emoji in nested option name from an imported INodeProperties[] resource file',
+			filename: '/tmp/nodes/GithubIssues/resources/issueComment/getAll.ts',
+			code: `
+				import type { INodeProperties } from 'n8n-workflow';
+
+				export const issueCommentDescription: INodeProperties[] = [
+					{
+						displayName: 'Additional Fields',
+						name: 'additionalFields',
+						type: 'collection',
+						default: {},
+						options: [
+							{
+								displayName: 'Sort',
+								name: 'sort',
+								type: 'options',
+								options: [{ name: '✅ Newest', value: 'newest' }],
+								default: 'newest',
+							},
+						],
+					},
+				];
+			`,
+			errors: [{ messageId: 'emojiInOption', data: { key: 'name', emoji: '✅' } }],
+		},
+		{
+			name: 'emoji in resource file typed as readonly INodeProperties[]',
+			filename: '/tmp/nodes/resources/a.ts',
+			code: `
+				export const a: readonly INodeProperties[] = [{ displayName: '🚀 A', name: 'a' }];
+			`,
+			errors: [{ messageId: 'emojiInOption', data: { key: 'displayName', emoji: '🚀' } }],
+		},
+		{
+			name: 'emoji in resource file typed as Array<INodeProperties>',
+			filename: '/tmp/nodes/resources/a.ts',
+			code: `
+				export const a: Array<INodeProperties> = [{ displayName: '🚀 A', name: 'a' }];
+			`,
+			errors: [{ messageId: 'emojiInOption', data: { key: 'displayName', emoji: '🚀' } }],
+		},
+		{
+			name: 'emoji in resource file cast with `as INodeProperties[]`',
+			filename: '/tmp/nodes/resources/a.ts',
+			code: `
+				export const a = [{ displayName: '🚀 A', name: 'a' }] as INodeProperties[];
+			`,
+			errors: [{ messageId: 'emojiInOption', data: { key: 'displayName', emoji: '🚀' } }],
+		},
+		{
+			name: 'emoji in resource file with `satisfies INodeProperties[]`',
+			filename: '/tmp/nodes/resources/a.ts',
+			code: `
+				export const a = [{ displayName: '🚀 A', name: 'a' }] satisfies INodeProperties[];
+			`,
+			errors: [{ messageId: 'emojiInOption', data: { key: 'displayName', emoji: '🚀' } }],
 		},
 		{
 			name: 'emoji in option name of a versioned node assigning description in its constructor',

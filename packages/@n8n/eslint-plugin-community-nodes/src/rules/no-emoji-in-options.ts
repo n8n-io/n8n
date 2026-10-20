@@ -18,6 +18,52 @@ const EMOJI_REGEX = /(\p{Extended_Pictographic}|\p{Regional_Indicator})/gu;
 /** Keys whose string values are surfaced to users as labels. */
 const LABEL_KEYS = new Set(['name', 'displayName']);
 
+const ARRAY_TYPE_NAMES = new Set(['Array', 'ReadonlyArray']);
+
+/**
+ * Matches `INodeProperties`, `INodeProperties[]`, `readonly INodeProperties[]`,
+ * `Array<INodeProperties>` and `ReadonlyArray<INodeProperties>`.
+ */
+const isNodePropertiesType = (typeNode: TSESTree.TypeNode): boolean => {
+	switch (typeNode.type) {
+		case AST_NODE_TYPES.TSArrayType:
+			return isNodePropertiesType(typeNode.elementType);
+		case AST_NODE_TYPES.TSTypeOperator:
+			return typeNode.typeAnnotation ? isNodePropertiesType(typeNode.typeAnnotation) : false;
+		case AST_NODE_TYPES.TSTypeReference: {
+			if (typeNode.typeName.type !== AST_NODE_TYPES.Identifier) {
+				return false;
+			}
+			if (typeNode.typeName.name === 'INodeProperties') {
+				return true;
+			}
+			const [elementType] = typeNode.typeArguments?.params ?? [];
+			return ARRAY_TYPE_NAMES.has(typeNode.typeName.name) && elementType
+				? isNodePropertiesType(elementType)
+				: false;
+		}
+		default:
+			return false;
+	}
+};
+
+/** Returns the type of a variable declared as `x: T = …`, `… as T` or `… satisfies T`. */
+const getDeclaredType = (
+	id: TSESTree.BindingName,
+	init: TSESTree.Expression,
+): TSESTree.TypeNode | undefined => {
+	if (id.type === AST_NODE_TYPES.Identifier && id.typeAnnotation) {
+		return id.typeAnnotation.typeAnnotation;
+	}
+	if (
+		init.type === AST_NODE_TYPES.TSAsExpression ||
+		init.type === AST_NODE_TYPES.TSSatisfiesExpression
+	) {
+		return init.typeAnnotation;
+	}
+	return undefined;
+};
+
 export const NoEmojiInOptionsRule = createRule({
 	name: 'no-emoji-in-options',
 	meta: {
@@ -99,16 +145,12 @@ export const NoEmojiInOptionsRule = createRule({
 				traverse(description);
 			},
 			VariableDeclarator(node) {
-				if (node.id.type !== AST_NODE_TYPES.Identifier || !node.init) {
+				if (!node.init) {
 					return;
 				}
 
-				const typeAnnotation = node.id.typeAnnotation?.typeAnnotation;
-				if (
-					typeAnnotation?.type !== AST_NODE_TYPES.TSTypeReference ||
-					typeAnnotation.typeName.type !== AST_NODE_TYPES.Identifier ||
-					typeAnnotation.typeName.name !== 'INodeProperties'
-				) {
+				const declaredType = getDeclaredType(node.id, node.init);
+				if (!declaredType || !isNodePropertiesType(declaredType)) {
 					return;
 				}
 
