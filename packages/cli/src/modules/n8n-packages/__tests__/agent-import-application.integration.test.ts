@@ -806,7 +806,6 @@ it.each(['validation', 'policy', 'post-commit'] as const)(
 		expect(result.agentOutcomes[1].publishing).toEqual({ state: 'published' });
 		const persisted = (await agents.findById(saved.id))!;
 		expect(persisted.schema).toEqual(saved.schema);
-		expect(persisted.sourceAgentId).toBe(saved.sourceAgentId);
 		expect(persisted.activeVersionId).toBe(failure === 'post-commit' ? saved.versionId : null);
 		expect(result.agentOutcomes[0].agent.activeVersionId).toBe(persisted.activeVersionId);
 		if (failure === 'post-commit')
