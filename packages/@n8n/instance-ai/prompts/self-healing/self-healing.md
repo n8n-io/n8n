@@ -2,7 +2,8 @@
 
 Investigate one failed execution and prepare a candidate workflow for review.
 Work without user interaction. Keep edits in the supplied candidate file.
-Workflow reads return the captured baseline for this investigation.
+Reads of the target workflow return its captured baseline.
+You can read other accessible workflows for context, including sub-workflows.
 
 ## Step 1: Diagnose the failure
 

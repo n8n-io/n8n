@@ -5,6 +5,7 @@ import type { Logger } from '@n8n/backend-common';
 import type { InstanceWriteAccessService } from '@n8n/backend-services';
 import type { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
+import { ForbiddenError } from '@n8n/errors';
 import {
 	createInstanceAiTraceContext,
 	createSelfHealingAgent,
@@ -692,13 +693,16 @@ describe('SelfHealingAgentService', () => {
 		expect(options.onFinish).toHaveBeenCalledTimes(1);
 	});
 
-	it('reads the captured graph after later workflow changes and rejects other targets', async () => {
+	it('reads the captured target graph and delegates other workflow reads to the adapter', async () => {
+		const otherWorkflow = { name: 'Sub-workflow', nodes: [] };
 		const context = mock<InstanceAiContext>({
 			workflowService: {
 				get: vi.fn().mockResolvedValue({ name: 'Later edit', versionId: 'v2', nodes: [] }),
+				getAsWorkflowJSON: vi.fn().mockResolvedValue(otherWorkflow),
 				getVersion: vi.fn().mockResolvedValue({ versionId: 'v1', nodes: [] }),
 			},
 		});
+		const originalService = context.workflowService;
 		adapter.createContext.mockReturnValueOnce(context);
 		await service.execute(input, options);
 		expect(await context.workflowService.get('workflow')).toMatchObject({
@@ -710,7 +714,20 @@ describe('SelfHealingAgentService', () => {
 			name: baseline.original.name,
 			nodes: [expect.objectContaining({ id: 'node-id', parameters: { value: 'original value' } })],
 		});
-		await expect(context.workflowService.get('another-workflow')).rejects.toThrow('assigned');
+		expect(await context.workflowService.get('another-workflow')).toMatchObject({
+			name: 'Later edit',
+			nodes: [],
+		});
+		expect(await context.workflowService.getAsWorkflowJSON('another-workflow', 'v2')).toBe(
+			otherWorkflow,
+		);
+		expect(originalService.getAsWorkflowJSON).toHaveBeenCalledWith('another-workflow', 'v2');
+		expect(await context.workflowService.getVersion?.('another-workflow', 'v2')).toEqual({
+			versionId: 'v1',
+			nodes: [],
+		});
+		expect(originalService.getVersion).toHaveBeenCalledWith('another-workflow', 'v2');
+		expect(suggestions.requireEditor).not.toHaveBeenCalledWith(user.id, 'another-workflow');
 		await expect(context.workflowService.getAsWorkflowJSON('workflow', 'v2')).rejects.toThrow(
 			'baseline',
 		);
@@ -722,6 +739,18 @@ describe('SelfHealingAgentService', () => {
 			'baseline',
 		);
 	});
+
+	it.each(['get', 'getAsWorkflowJSON', 'getVersion'] as const)(
+		'preserves adapter access rejection for other workflow reads through %s',
+		async (method) => {
+			const context = mock<InstanceAiContext>();
+			const error = new ForbiddenError('Read access required');
+			context.workflowService[method] = vi.fn().mockRejectedValue(error);
+			adapter.createContext.mockReturnValueOnce(context);
+			await service.execute(input, options);
+			await expect(context.workflowService[method]?.('another-workflow', 'v2')).rejects.toBe(error);
+		},
+	);
 
 	it('rejects a disabled gate at admission', () => {
 		config.instanceAi.workflowSuggestionsEnabled = false;

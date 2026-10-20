@@ -394,18 +394,11 @@ export class SelfHealingAgentService {
 	) {
 		const workflowService = context.workflowService;
 
-		const requireTarget = async (workflowId: string) => {
-			if (workflowId !== baseline.workflowId) {
-				throw new ForbiddenError('Read the workflow assigned to this investigation.');
-			}
-
-			await this.suggestions.requireEditor(user.id, workflowId);
-		};
-
 		context.workflowService = {
 			...workflowService,
 			get: async (workflowId) => {
-				await requireTarget(workflowId);
+				if (workflowId !== baseline.workflowId) return await workflowService.get(workflowId);
+				await this.suggestions.requireEditor(user.id, workflowId);
 				const detail = await workflowService.get(workflowId);
 
 				return {
@@ -426,7 +419,10 @@ export class SelfHealingAgentService {
 			},
 
 			getAsWorkflowJSON: async (workflowId, versionId) => {
-				await requireTarget(workflowId);
+				if (workflowId !== baseline.workflowId) {
+					return await workflowService.getAsWorkflowJSON(workflowId, versionId);
+				}
+				await this.suggestions.requireEditor(user.id, workflowId);
 				if (versionId && versionId !== baseline.expectedBaseline.publishedVersionId) {
 					throw new ForbiddenError('Read the published baseline assigned to this investigation.');
 				}
@@ -437,12 +433,15 @@ export class SelfHealingAgentService {
 				);
 			},
 			getVersion: async (workflowId, versionId) => {
-				await requireTarget(workflowId);
-				if (versionId !== baseline.expectedBaseline.publishedVersionId) {
-					throw new ForbiddenError('Read the published baseline assigned to this investigation.');
+				if (workflowId === baseline.workflowId) {
+					await this.suggestions.requireEditor(user.id, workflowId);
+					if (versionId !== baseline.expectedBaseline.publishedVersionId) {
+						throw new ForbiddenError('Read the published baseline assigned to this investigation.');
+					}
 				}
 				const version = await workflowService.getVersion?.(workflowId, versionId);
-				if (!version) throw new BadRequestError('The captured workflow version is unavailable.');
+				if (!version) throw new BadRequestError('The requested workflow version is unavailable.');
+				if (workflowId !== baseline.workflowId) return version;
 				return {
 					...version,
 					nodes: baseline.original.nodes.map((node) => ({
