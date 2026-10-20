@@ -40,7 +40,7 @@ import PromotionEnvironmentApply from './commands/promotion-environment/apply';
 import PromotionEnvironmentApplyContinue from './commands/promotion-environment/apply-continue';
 import PromotionEnvironmentApplySelection from './commands/promotion-environment/apply-selection';
 import PromotionEnvironmentApplySelectionContinue from './commands/promotion-environment/apply-selection-continue';
-import PromotionEnvironmentClone from './commands/promotion-environment/clone';
+import PromotionEnvironmentConnect from './commands/promotion-environment/connect';
 import PromotionEnvironmentCreate from './commands/promotion-environment/create';
 import PromotionEnvironmentDelete from './commands/promotion-environment/delete';
 import PromotionEnvironmentDisconnect from './commands/promotion-environment/disconnect';
@@ -114,7 +114,7 @@ export const commands = {
 	'promotion-environment:create': PromotionEnvironmentCreate,
 	'promotion-environment:update': PromotionEnvironmentUpdate,
 	'promotion-environment:delete': PromotionEnvironmentDelete,
-	'promotion-environment:clone': PromotionEnvironmentClone,
+	'promotion-environment:connect': PromotionEnvironmentConnect,
 	'promotion-environment:disconnect': PromotionEnvironmentDisconnect,
 	'promotion-environment:list-projects': PromotionEnvironmentListProjects,
 	'promotion-environment:list-changes': PromotionEnvironmentListChanges,

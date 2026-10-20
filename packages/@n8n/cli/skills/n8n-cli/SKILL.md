@@ -208,9 +208,9 @@ jq -r '.publicKey' provider.json   # add to the repository as a deploy key
 n8n-cli promotion-environment create --file=promote.json
 n8n-cli promotion-environment create --file=apply.json
 
-# 3. Clone each environment before you use it.
-n8n-cli promotion-environment clone <promoteId>
-n8n-cli promotion-environment clone <applyId>
+# 3. Connect each environment before you use it.
+n8n-cli promotion-environment connect <promoteId>
+n8n-cli promotion-environment connect <applyId>
 
 # 4. Promote from this instance, or apply to it.
 n8n-cli promotion-environment promote <promoteId> -m "Promote team projects"
@@ -285,7 +285,7 @@ Key points:
   password, not a Git host API token. `publicKey` is `null` for a `token` provider.
 - `createBranchOnPromotion` is always required in promote settings.
 - `promote` and `apply` work on an `instance` environment of their direction
-  only, and need it cloned first. Cloning one environment does not make another
+  only, and need it connected first. Connecting one environment does not make another
   ready.
 - A project can have one environment for each direction. A direction without a
   project environment uses the instance environment.

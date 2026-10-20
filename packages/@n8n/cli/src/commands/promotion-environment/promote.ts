@@ -4,7 +4,7 @@ import { BaseCommand } from '../../base-command';
 
 export default class PromotionEnvironmentPromote extends BaseCommand {
 	static override description =
-		'Export all team projects, commit, and push to the configured branch. Requires a cloned Promote environment with instance scope.';
+		'Export all team projects, commit, and push to the configured branch. Requires a connected Promote environment with instance scope.';
 
 	static override examples = [
 		'<%= config.bin %> promotion-environment promote env-1 --message="Promote team projects"',

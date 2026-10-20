@@ -3,7 +3,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 
 import type { N8nClient } from '../client';
 import PromotionEnvironmentAddProject from '../commands/promotion-environment/add-project';
-import PromotionEnvironmentClone from '../commands/promotion-environment/clone';
+import PromotionEnvironmentConnect from '../commands/promotion-environment/connect';
 import PromotionEnvironmentCreate from '../commands/promotion-environment/create';
 import PromotionEnvironmentDelete from '../commands/promotion-environment/delete';
 import PromotionEnvironmentDisconnect from '../commands/promotion-environment/disconnect';
@@ -102,10 +102,10 @@ const CASES: WiringCase[] = [
 		callArgs: ['env-1'],
 	},
 	{
-		title: 'promotion-environment clone',
-		commandClass: PromotionEnvironmentClone,
+		title: 'promotion-environment connect',
+		commandClass: PromotionEnvironmentConnect,
 		args: { id: 'env-1' },
-		method: 'clonePromotionCheckout',
+		method: 'connectPromotionCheckout',
 		callArgs: ['env-1'],
 	},
 	{

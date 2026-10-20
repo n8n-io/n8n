@@ -236,7 +236,7 @@ describe('N8nClient packages', () => {
 			expect(typeof init.body === 'string' ? JSON.parse(init.body) : init.body).toEqual(body);
 		});
 
-		it('clones and disconnects the checkout of an environment', async () => {
+		it('connects and disconnects the checkout of an environment', async () => {
 			const checkout = {
 				environmentId: 'env-1',
 				direction: 'promote',
@@ -245,13 +245,13 @@ describe('N8nClient packages', () => {
 			};
 			fetchMock.mockResolvedValue(jsonResponse(200, checkout));
 
-			await expect(client.clonePromotionCheckout('env-1')).resolves.toEqual(checkout);
+			await expect(client.connectPromotionCheckout('env-1')).resolves.toEqual(checkout);
 
 			fetchMock.mockResolvedValue(jsonResponse(200, { ...checkout, hasCheckout: false }));
 			await client.disconnectPromotionCheckout('env-1');
 
 			expect(requestLines(fetchMock)).toEqual([
-				'POST https://n8n.example.com/api/v1/promotions/environments/env-1/clone',
+				'POST https://n8n.example.com/api/v1/promotions/environments/env-1/connect',
 				'POST https://n8n.example.com/api/v1/promotions/environments/env-1/disconnect',
 			]);
 		});

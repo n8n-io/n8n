@@ -181,7 +181,7 @@ export interface ProjectPromotionChanges {
 	changes: PromotableResourceSummary[];
 }
 
-/** State of an environment's local checkout, after a clone or a disconnect. */
+/** State of an environment's local checkout, after a connect or a disconnect. */
 export type PromotionCheckoutResult = {
 	environmentId: string;
 	direction: PromotionDirection;
@@ -395,8 +395,8 @@ export class N8nClient {
 		return await this.del<undefined>(`/promotions/environments/${id}`);
 	}
 
-	async clonePromotionCheckout(id: string) {
-		return await this.post<PromotionCheckoutResult>(`/promotions/environments/${id}/clone`);
+	async connectPromotionCheckout(id: string) {
+		return await this.post<PromotionCheckoutResult>(`/promotions/environments/${id}/connect`);
 	}
 
 	async disconnectPromotionCheckout(id: string) {

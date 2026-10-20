@@ -34,9 +34,9 @@ echo '{"name":"GitHub","type":"git","auth":{"authType":"ssh-key","keyType":"ed25
 cat promote.json | n8n-cli promotion-environment create --stdin
 cat apply.json | n8n-cli promotion-environment create --stdin
 
-# 4. Clone each environment.
-n8n-cli promotion-environment clone env-1
-n8n-cli promotion-environment clone env-2
+# 4. Connect each environment.
+n8n-cli promotion-environment connect env-1
+n8n-cli promotion-environment connect env-2
 
 # 5. Promote from this instance, or apply to it.
 n8n-cli promotion-environment promote env-1 --message="Promote team projects"
@@ -173,15 +173,16 @@ echo '{"settings":{"schemaVersion":1,"baseBranchName":"main","createBranchOnProm
 `delete` also removes the project links and the local checkout. The provider
 stays. Nothing in Git changes.
 
-## `promotion-environment clone` / `disconnect`
+## `promotion-environment connect` / `disconnect`
 
 ```bash
-n8n-cli promotion-environment clone env-1
+n8n-cli promotion-environment connect env-1
 n8n-cli promotion-environment disconnect env-1
 ```
 
-`clone` copies the configured branch into local storage. You can run it again at
-any time. Cloning one environment does not make another environment ready.
+`connect` prepares the environment. For Git, it copies the configured branch
+into local storage. You can run it again at any time. Connecting one environment
+does not make another environment ready.
 
 `disconnect` removes the local checkout. The environment, its credentials, and
 the trusted SSH host keys stay.
@@ -203,7 +204,7 @@ n8n-cli promotion-environment promote env-1 -m "Promote team projects" --force
 | `-m, --message` | Commit message. Required. |
 | `--force` | Overwrite the remote branch when it has diverged. |
 
-Personal projects are not included. Clone the environment first. This command
+Personal projects are not included. Connect the environment first. This command
 works on an `instance` Promote environment only. The API key also needs
 `variable:list` when the workflows reference variables.
 
@@ -227,7 +228,7 @@ For `promote` the rows are what a promotion would send to the branch, and the
 API key needs `gitConnection:push`. For `apply` the rows are what applying the
 branch would change on this instance, and the key needs `gitConnection:pull`.
 `commitSha` is the commit the rows were read from. Table output shows the rows
-only. Use `--json` to get the rows and `commitSha` together. Clone the
+only. Use `--json` to get the rows and `commitSha` together. Connect the
 environment first. Use the `id` of each row to build a selective promote.
 
 ## `promotion-environment promote-selection`
@@ -249,7 +250,7 @@ n8n-cli promotion-environment promote-selection proj-abc -w wf-1 -m "Promote che
 Archived workflows stay on the branch as archived. A selected workflow that was
 deleted or moved to another project leaves this project's branch. The request
 fails before any write if the branch does not hold that workflow under this
-project. Clone that environment first. The API key also needs
+project. Connect that environment first. The API key also needs
 `variable:list` when the workflows reference variables.
 
 ## `promotion-environment apply`
@@ -288,7 +289,7 @@ each team project that the package does not hold, with all its workflows,
 credentials, and data tables. Preflight reports each such project as a
 `project-deletion` conflict.
 
-Clone the environment first. This command works on an `instance` Apply
+Connect the environment first. This command works on an `instance` Apply
 environment only. The API key needs `gitConnection:pull`.
 
 ## `promotion-environment apply-continue`
@@ -369,7 +370,7 @@ the `apply-selection-continue` command to run after you resolve the bindings; it
 resends the same workflow ids. With `--json`, the output is the full result for
 each status.
 
-Clone the environment first. The API key needs `gitConnection:pull`. The
+Connect the environment first. The API key needs `gitConnection:pull`. The
 environment is the project's own Apply environment when it has one, otherwise
 the instance Apply environment.
 
