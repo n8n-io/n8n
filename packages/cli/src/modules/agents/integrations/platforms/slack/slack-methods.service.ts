@@ -27,7 +27,7 @@ import {
 	slackSetupCacheKey,
 } from './slack-setup.types';
 import { AgentIntegrationManagementService } from '../../../agent-integration-management.service';
-import type { Agent } from '../../../entities/agent.entity';
+import type { ProjectAgent } from '../../../entities/agent.entity';
 import { AgentRepository } from '../../../repositories/agent.repository';
 import { stringProperty } from '../../integration-helpers';
 
@@ -104,7 +104,7 @@ export class SlackMethodsService {
 		return new SlackApiError(action, stringProperty(response, 'error') ?? 'unknown_error');
 	}
 
-	async getAgent(agentId: string, projectId: string): Promise<Agent> {
+	async getAgent(agentId: string, projectId: string): Promise<ProjectAgent> {
 		return await getAgentOrThrow(this.agentRepository, agentId, projectId);
 	}
 
@@ -200,7 +200,7 @@ export class SlackMethodsService {
 	}
 
 	async connectBotCredential(
-		agent: Agent,
+		agent: ProjectAgent,
 		user: User,
 		accessToken: string,
 		session: SlackAppSetupSession,

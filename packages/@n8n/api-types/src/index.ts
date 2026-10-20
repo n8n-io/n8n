@@ -11,6 +11,7 @@ export type * from './api-keys';
 export type * from './community-node-types';
 export type * from './quick-connect';
 export * from './agents/index';
+export * from './builder-tool-names';
 export * from './schemas/mcp-tool-permissions.schema';
 export * from './instance-registry-types';
 export type * from './instance-reporting';
@@ -169,8 +170,8 @@ export {
 	folderIdParamSchema,
 	logStreamingDestinationIdParamSchema,
 	projectIdParamSchema,
-	promotionConnectionIdParamSchema,
 	promotionDirectionParamSchema,
+	promotionEnvironmentIdParamSchema,
 	promotionProviderIdParamSchema,
 	roleMappingRuleIdParamSchema,
 	roleSlugParamSchema,
@@ -332,6 +333,7 @@ export type {
 	BreakingChangeAffectedWorkflow,
 	BreakingChangeWorkflowOwner,
 	MigrationWorkflowOwnerResponse,
+	MigrationOwnerCandidate,
 	MigrationOwnerSource,
 	BreakingChangeInstanceIssue,
 	BreakingChangeWorkflowIssue,
@@ -805,6 +807,7 @@ export {
 	MCP_APPS_VARIANT_CONTROL,
 	MCP_APPS_VARIANT_ENABLED,
 	MCP_AGENT_SCOPES,
+	MCP_SKILL_SCOPES,
 	MCP_INSTANCE_SCOPES,
 	MCP_CLIENT_BRAND_MATCHERS,
 	MCP_CLIENT_TYPE_FILTERS,

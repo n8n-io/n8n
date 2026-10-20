@@ -163,6 +163,8 @@ vi.mock('@n8n/design-system', async (importOriginal) => ({
 	useDropdownSearch: (await importOriginal<typeof import('@n8n/design-system')>())
 		.useDropdownSearch,
 	N8nInput: (await importOriginal<typeof import('@n8n/design-system')>()).N8nInput,
+	N8nVisuallyHidden: (await importOriginal<typeof import('@n8n/design-system')>())
+		.N8nVisuallyHidden,
 	N8nButton: { template: '<button><slot name="icon" /><slot /></button>' },
 	N8nCallout: { template: '<div><slot /><slot name="trailingContent" /></div>' },
 	N8nCard: { template: '<div><slot /></div>' },
@@ -346,6 +348,7 @@ vi.mock('../composables/useAgentTelemetry', () => ({
 	useAgentTelemetry: () => ({
 		trackSubmittedMessage: trackSubmittedMessageMock,
 		trackSentMessageToN8nChatAgent: trackSentMessageToN8nChatAgentMock,
+		trackClickedNewTestChat: vi.fn(),
 	}),
 }));
 
@@ -1576,23 +1579,19 @@ describe('AgentChatPanel', () => {
 			wrapper.unmount();
 		});
 
-		it('links a plan to the current session trace only when the session is available', async () => {
-			messagesMock.value = [planMessage(planView())];
-			const wrapper = mountPanel();
-			await wrapper.get('[data-testid="agent-chat-plan"] button').trigger('click');
-			expect(wrapper.find('[data-testid="agent-chat-plan-trace"]').exists()).toBe(false);
-			await wrapper.setProps({ continueSessionId: 't1' });
-			await wrapper.get('[data-testid="agent-chat-plan"] button').trigger('click');
-			expect(wrapper.get('[data-testid="agent-chat-plan-trace"]').attributes('href')).toBe(
-				'/projects/p1/agents/a1/sessions/t1',
-			);
-			await wrapper.setProps({ continueSessionId: 't2' });
-			await wrapper.get('[data-testid="agent-chat-plan"] button').trigger('click');
-			expect(wrapper.get('[data-testid="agent-chat-plan-trace"]').attributes('href')).toBe(
-				'/projects/p1/agents/a1/sessions/t2',
-			);
-			wrapper.unmount();
-		});
+		it.each([undefined, 't1', 't2'])(
+			'does not show a trace link in the plan card for session %s',
+			async (continueSessionId) => {
+				messagesMock.value = [planMessage(planView())];
+				const wrapper = mountPanel({ continueSessionId });
+				try {
+					await wrapper.get('[data-testid="agent-chat-plan"] button').trigger('click');
+					expect(wrapper.find('[data-testid="agent-chat-plan-trace"]').exists()).toBe(false);
+				} finally {
+					wrapper.unmount();
+				}
+			},
+		);
 	});
 
 	describe('background task panel', () => {

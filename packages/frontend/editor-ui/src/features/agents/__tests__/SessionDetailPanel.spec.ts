@@ -63,9 +63,14 @@ describe('SessionDetailPanel — user attachments', () => {
 		attachments: [{ id: 'att-1', fileName: 'photo.png', mimeType: 'image/png', sizeBytes: 33 }],
 	};
 
-	it('renders the attachments block for a user item with files', () => {
+	it('renders user text before the attachments block for a user item with files', () => {
 		const w = mountIt(userItem, { projectId: 'p1', agentId: 'a1' });
-		expect(w.find('[data-test-id="user-attachments"]').exists()).toBe(true);
+		const message = w.get('[data-test-id="markdown"]');
+		const attachments = w.get('[data-test-id="user-attachments"]');
+		expect(
+			message.element.compareDocumentPosition(attachments.element) &
+				Node.DOCUMENT_POSITION_FOLLOWING,
+		).toBeTruthy();
 	});
 
 	it('skips the attachments block without the project/agent scope for download URLs', () => {

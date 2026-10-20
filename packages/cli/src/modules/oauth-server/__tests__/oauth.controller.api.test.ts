@@ -8,6 +8,7 @@ import request from 'supertest';
 
 import { AuthService } from '@/auth/auth.service';
 import { AUTH_COOKIE_NAME } from '@/constants';
+import { McpProtectedResource } from '@/modules/mcp/mcp-protected-resource';
 import { McpSettingsService } from '@/modules/mcp/mcp.settings.service';
 import { UrlService } from '@n8n/backend-services';
 import { ProtectedResourceRegistry } from '@n8n/backend-services/auth';
@@ -19,16 +20,24 @@ import { OAuthServerConfig } from '../oauth-server.config';
 import type { OAuthController as OAuthControllerClass } from '../oauth.controller';
 import { pendingFlowFrom } from './oauth-flow-test-utils';
 
-const testServer = setupTestServer({ modules: ['oauth-server', 'mcp'], endpointGroups: ['mcp'] });
+const testServer = setupTestServer({
+	// Production order: the MCP middleware and metadata need the inbound-auth contracts.
+	modules: ['inbound-auth-core', 'oauth-server', 'mcp'],
+	endpointGroups: ['mcp'],
+});
 
 let owner: User;
 let mcpSettingsService: McpSettingsService;
+/** Every resource's scopes: the authorization server advertises the union. */
 let supportedScopes: string[];
+/** The MCP resource's own scopes, which its protected-resource metadata advertises. */
+let mcpScopes: string[];
 
 beforeAll(async () => {
 	owner = await createOwner();
 	mcpSettingsService = Container.get(McpSettingsService);
 	supportedScopes = Container.get(ProtectedResourceRegistry).getAllScopes();
+	mcpScopes = Container.get(McpProtectedResource).scopes;
 });
 
 afterEach(async () => {
@@ -148,7 +157,7 @@ describe('GET /.well-known/oauth-protected-resource/mcp-server/http', () => {
 			resource: expect.stringContaining('/mcp-server/http'),
 			bearer_methods_supported: ['header'],
 			authorization_servers: [expect.any(String)],
-			...(supportedScopes.length > 0 && { scopes_supported: supportedScopes }),
+			...(mcpScopes.length > 0 && { scopes_supported: mcpScopes }),
 		});
 	});
 
@@ -182,7 +191,7 @@ describe('GET /.well-known/oauth-protected-resource/mcp-server/http', () => {
 		);
 
 		expect(response.statusCode).toBe(200);
-		expect(response.body.scopes_supported).toEqual(supportedScopes);
+		expect(response.body.scopes_supported).toEqual(mcpScopes);
 	});
 
 	test('should be accessible without authentication', async () => {
@@ -220,7 +229,7 @@ describe('GET /.well-known/oauth-protected-resource (bare path)', () => {
 			resource: expect.stringContaining('/mcp-server/http'),
 			bearer_methods_supported: ['header'],
 			authorization_servers: [expect.any(String)],
-			...(supportedScopes.length > 0 && { scopes_supported: supportedScopes }),
+			...(mcpScopes.length > 0 && { scopes_supported: mcpScopes }),
 		});
 	});
 
@@ -669,7 +678,7 @@ describe('OAuth Discovery - Cross-validation', () => {
 		expect(protectedResource.authorization_servers).toContain(authServer.issuer);
 	});
 
-	test('should have consistent scopes between authorization server and protected resource', async () => {
+	test('should advertise every MCP scope on the authorization server', async () => {
 		const authServerResponse = await testServer.restlessAgent.get(
 			'/.well-known/oauth-authorization-server',
 		);
@@ -683,7 +692,8 @@ describe('OAuth Discovery - Cross-validation', () => {
 		const authServerScopes = authServerResponse.body.scopes_supported;
 		const protectedResourceScopes = protectedResourceResponse.body.scopes_supported;
 
-		expect(authServerScopes).toEqual(protectedResourceScopes);
+		// The public API's resource is registered too, so the server lists more than MCP's scopes.
+		expect(authServerScopes).toEqual(expect.arrayContaining(protectedResourceScopes));
 	});
 });
 
@@ -736,7 +746,7 @@ describe('Full authorization-code flow (PKCE)', () => {
 		// is withheld at consent here because the community-packages module is
 		// inactive in the test instance. `aiPreference:*` is withheld too: the test
 		// instance has no PostHog, so no user is in the preferences experiment arm.
-		const grantedScopes = supportedScopes.filter(
+		const grantedScopes = mcpScopes.filter(
 			(scope) => scope !== 'communityPackage:install' && !scope.startsWith('aiPreference:'),
 		);
 		const authAgent = testServer.authAgentFor(owner);

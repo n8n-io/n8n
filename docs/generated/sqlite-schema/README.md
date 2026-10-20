@@ -117,9 +117,8 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [project_pool_settings](project_pool_settings.md) | 4 |  | table |
 | [project_relation](project_relation.md) | 5 |  | table |
 | [project_secrets_provider_access](project_secrets_provider_access.md) | 5 |  | table |
-| [promotion_config](promotion_config.md) | 7 |  | table |
-| [promotion_connection](promotion_connection.md) | 7 |  | table |
-| [promotion_connection_project](promotion_connection_project.md) | 4 |  | table |
+| [promotion_environment](promotion_environment.md) | 9 |  | table |
+| [promotion_environment_project](promotion_environment_project.md) | 5 |  | table |
 | [promotion_provider](promotion_provider.md) | 8 |  | table |
 | [promotion_review](promotion_review.md) | 10 |  | table |
 | [promotion_run](promotion_run.md) | 8 |  | table |
@@ -345,16 +344,15 @@ erDiagram
 "project_relation" |o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "project_secrets_provider_access" |o--|| "secrets_provider_connection" : "FOREIGN KEY (secretsProviderConnectionId) REFERENCES secrets_provider_connection (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "project_secrets_provider_access" |o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"promotion_config" }o--|| "promotion_connection" : "FOREIGN KEY (connectionId) REFERENCES promotion_connection (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"promotion_connection" }o--|| "promotion_provider" : "FOREIGN KEY (providerId) REFERENCES promotion_provider (id) ON UPDATE NO ACTION ON DELETE RESTRICT MATCH NONE"
-"promotion_connection_project" }o--|| "promotion_connection" : "FOREIGN KEY (connectionId) REFERENCES promotion_connection (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"promotion_connection_project" |o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"promotion_environment" }o--|| "promotion_provider" : "FOREIGN KEY (providerId) REFERENCES promotion_provider (id) ON UPDATE NO ACTION ON DELETE RESTRICT MATCH NONE"
+"promotion_environment_project" }o--|| "promotion_environment" : "FOREIGN KEY (environmentId) REFERENCES promotion_environment (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"promotion_environment_project" |o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "promotion_review" }o--o| "user" : "FOREIGN KEY (approvedById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "promotion_review" }o--o| "user" : "FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
-"promotion_review" }o--o| "promotion_connection" : "FOREIGN KEY (connectionId) REFERENCES promotion_connection (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"promotion_review" }o--o| "promotion_environment" : "FOREIGN KEY (environmentId) REFERENCES promotion_environment (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "promotion_run" }o--o| "promotion_review" : "FOREIGN KEY (reviewId) REFERENCES promotion_review (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "promotion_run" }o--o| "user" : "FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
-"promotion_run" }o--o| "promotion_config" : "FOREIGN KEY (configId) REFERENCES promotion_config (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"promotion_run" }o--o| "promotion_environment" : "FOREIGN KEY (environmentId) REFERENCES promotion_environment (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "role_mapping_rule" }o--|| "role" : "FOREIGN KEY (role) REFERENCES role (slug) ON UPDATE CASCADE ON DELETE CASCADE MATCH NONE"
 "role_mapping_rule_project" |o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "role_mapping_rule_project" |o--|| "role_mapping_rule" : "FOREIGN KEY (roleMappingRuleId) REFERENCES role_mapping_rule (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -1517,27 +1515,21 @@ erDiagram
   INTEGER secretsProviderConnectionId PK
   datetime_3_ updatedAt
 }
-"promotion_config" {
-  varchar_36_ connectionId FK
+"promotion_environment" {
   datetime_3_ createdAt
   varchar_16_ direction
-  varchar_36_ id PK
+  varchar id PK
   varchar_128_ name
+  varchar_36_ providerId FK
+  TEXT remote
+  varchar_16_ scope
   TEXT settings
   datetime_3_ updatedAt
 }
-"promotion_connection" {
+"promotion_environment_project" {
   datetime_3_ createdAt
-  varchar_36_ id PK
-  varchar_128_ name
-  varchar_36_ providerId FK
-  varchar_16_ scope
-  TEXT target
-  datetime_3_ updatedAt
-}
-"promotion_connection_project" {
-  varchar_36_ connectionId FK
-  datetime_3_ createdAt
+  varchar_16_ direction PK
+  varchar environmentId FK
   varchar_36_ projectId PK
   datetime_3_ updatedAt
 }
@@ -1554,9 +1546,9 @@ erDiagram
 "promotion_review" {
   datetime_3_ approvedAt
   varchar approvedById FK
-  varchar_36_ connectionId FK
   datetime_3_ createdAt
   varchar createdById FK
+  varchar environmentId FK
   varchar id PK
   datetime_3_ lastStateChangeAt
   varchar_255_ remoteReviewId
@@ -1564,11 +1556,11 @@ erDiagram
   varchar_16_ type
 }
 "promotion_run" {
-  varchar_36_ configId FK
   datetime_3_ createdAt
   varchar createdById FK
   TEXT details
   varchar_16_ direction
+  varchar environmentId FK
   varchar id PK
   varchar reviewId FK
   varchar_16_ type

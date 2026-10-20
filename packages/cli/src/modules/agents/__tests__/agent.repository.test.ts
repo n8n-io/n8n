@@ -28,7 +28,7 @@ describe('AgentRepository', () => {
 			const result = await repository.findByIdAndProjectId('agent-1', 'project-1');
 
 			expect(repository.findOne).toHaveBeenCalledWith({
-				where: { id: 'agent-1', projectId: 'project-1' },
+				where: { id: 'agent-1', projectId: 'project-1', scope: 'project' },
 				relations: { activeVersion: true },
 			});
 			expect(result).toBe(agent);
@@ -44,14 +44,14 @@ describe('AgentRepository', () => {
 	});
 
 	describe('findById', () => {
-		it('calls findOne with the id alone and the activeVersion relation', async () => {
+		it('calls findOne with the id, the project scope and the activeVersion relation', async () => {
 			const agent = mock<Agent>({ id: 'agent-1' });
 			vi.spyOn(repository, 'findOne').mockResolvedValue(agent);
 
 			const result = await repository.findById('agent-1');
 
 			expect(repository.findOne).toHaveBeenCalledWith({
-				where: { id: 'agent-1' },
+				where: { id: 'agent-1', scope: 'project' },
 				relations: { activeVersion: true },
 			});
 			expect(result).toBe(agent);
@@ -75,7 +75,7 @@ describe('AgentRepository', () => {
 			const result = await repository.findByIdInProjects('agent-1', ['project-1', 'project-2']);
 
 			expect(repository.findOne).toHaveBeenCalledWith({
-				where: { id: 'agent-1', projectId: In(['project-1', 'project-2']) },
+				where: { id: 'agent-1', projectId: In(['project-1', 'project-2']), scope: 'project' },
 				relations: { activeVersion: true },
 			});
 			expect(result).toBe(agent);
@@ -90,11 +90,11 @@ describe('AgentRepository', () => {
 			const result = await repository.findByProjectId('project-1');
 
 			expect(repository.find).toHaveBeenCalledWith({
-				where: { projectId: 'project-1' },
+				where: { projectId: 'project-1', scope: 'project' },
 				relations: { activeVersion: true },
 				order: { updatedAt: 'DESC' },
 			});
-			expect(result).toBe(agents);
+			expect(result).toEqual(agents);
 		});
 
 		it('returns an empty array when the project has no agents', async () => {
@@ -139,10 +139,11 @@ describe('AgentRepository', () => {
 				'agent.availableInMCP',
 				'agent.updatedAt',
 			]);
-			expect(mockQb.where).toHaveBeenCalledWith('agent.projectId IN (:...projectIds)', {
+			expect(mockQb.where).toHaveBeenCalledWith("agent.scope = 'project'");
+			expect(mockQb.andWhere).toHaveBeenCalledWith('agent.projectId IN (:...projectIds)', {
 				projectIds: ['project-1'],
 			});
-			expect(mockQb.andWhere).not.toHaveBeenCalled();
+			expect(mockQb.andWhere).toHaveBeenCalledTimes(1);
 			expect(mockQb.take).not.toHaveBeenCalled();
 		});
 
@@ -152,7 +153,8 @@ describe('AgentRepository', () => {
 
 			await repository.findSummariesByProjectIds(null);
 
-			expect(mockQb.where).not.toHaveBeenCalled();
+			expect(mockQb.where).toHaveBeenCalledWith("agent.scope = 'project'");
+			expect(mockQb.andWhere).not.toHaveBeenCalled();
 		});
 
 		it('pushes all filters and the limit into the query', async () => {
@@ -209,7 +211,8 @@ describe('AgentRepository', () => {
 				sortBy: 'name:asc',
 			} as never);
 
-			expect(mockQb.where).toHaveBeenCalledWith('agent.projectId IN (:...projectIds)', {
+			expect(mockQb.where).toHaveBeenCalledWith("agent.scope = 'project'");
+			expect(mockQb.andWhere).toHaveBeenCalledWith('agent.projectId IN (:...projectIds)', {
 				projectIds: ['project-1'],
 			});
 			expect(mockQb.skip).toHaveBeenCalledWith(0);
@@ -226,7 +229,11 @@ describe('AgentRepository', () => {
 				take: 25,
 			} as never);
 
-			expect(mockQb.where).not.toHaveBeenCalled();
+			expect(mockQb.where).toHaveBeenCalledWith("agent.scope = 'project'");
+			expect(mockQb.andWhere).not.toHaveBeenCalledWith(
+				'agent.projectId IN (:...projectIds)',
+				expect.anything(),
+			);
 		});
 
 		it('applies the name search filter', async () => {
@@ -371,13 +378,14 @@ describe('AgentRepository', () => {
 	});
 
 	describe('findMcpAvailabilityCandidates', () => {
-		it('omits the where clause when all agents are requested', async () => {
+		it('filters only on the project scope when all agents are requested', async () => {
 			const find = vi.spyOn(repository, 'find').mockResolvedValue([]);
 
 			await repository.findMcpAvailabilityCandidates({ all: true });
 
 			expect(find).toHaveBeenCalledWith({
 				select: ['id', 'projectId', 'availableInMCP'],
+				where: { scope: 'project' },
 			});
 		});
 	});

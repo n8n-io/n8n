@@ -18,7 +18,7 @@ import { randomUUID } from 'node:crypto';
 import { AgentVersionSkillDependency } from '../entities/agent-version-skill-dependency.entity';
 import { AgentHistory } from '../entities/agent-history.entity';
 import { AgentSkillDependency } from '../entities/agent-skill-dependency.entity';
-import { Agent } from '../entities/agent.entity';
+import { Agent, isProjectAgent, type ProjectScoped } from '../entities/agent.entity';
 import { SkillFile } from '../entities/skill-file.entity';
 import { SkillVersion } from '../entities/skill-version.entity';
 import { Skill, type SkillSource } from '../entities/skill.entity';
@@ -495,7 +495,8 @@ export class SkillRepository extends BaseRepository<Skill> {
 			.innerJoin(AgentSkillDependency, 'dep', 'dep.agentId = agent.id')
 			.where('dep.skillId = :skillId', { skillId })
 			.select(['agent.id', 'agent.name', 'agent.projectId'])
-			.getMany();
+			.getMany()
+			.then((agents) => agents.filter(isProjectAgent));
 		const published = await manager
 			.createQueryBuilder(Agent, 'agent')
 			.where((qb) => {
@@ -510,9 +511,10 @@ export class SkillRepository extends BaseRepository<Skill> {
 			})
 			.setParameter('skillId', skillId)
 			.select(['agent.id', 'agent.name', 'agent.projectId', 'agent.activeVersionId'])
-			.getMany();
+			.getMany()
+			.then((agents) => agents.filter(isProjectAgent));
 
-		const isVisible = (agent: Pick<Agent, 'projectId'>) =>
+		const isVisible = (agent: ProjectScoped<Pick<Agent, 'projectId'>>) =>
 			projectIds === 'all' || projectIds.includes(agent.projectId);
 		const hidden = new Set(
 			[...drafted, ...published].filter((agent) => !isVisible(agent)).map((agent) => agent.id),
@@ -742,7 +744,7 @@ export class SkillRepository extends BaseRepository<Skill> {
 	async findAgents(
 		agentIds: string[],
 		ctx: OperationContext = {},
-	): Promise<Map<string, Pick<Agent, 'name' | 'projectId'>>> {
+	): Promise<Map<string, ProjectScoped<Pick<Agent, 'name' | 'projectId'>>>> {
 		const manager = this.managerFor(ctx);
 		const agents = await inChunks(
 			agentIds,
@@ -752,7 +754,9 @@ export class SkillRepository extends BaseRepository<Skill> {
 					select: ['id', 'name', 'projectId'],
 				}),
 		);
-		return new Map(agents.map(({ id, name, projectId }) => [id, { name, projectId }]));
+		return new Map(
+			agents.filter(isProjectAgent).map(({ id, name, projectId }) => [id, { name, projectId }]),
+		);
 	}
 
 	/**
