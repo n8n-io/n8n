@@ -19,7 +19,8 @@ const i18n = useI18n();
 </script>
 
 <template>
-	<WorkflowDiffPlaceholder>
+	<!-- The real diff follows a loading state, so the illustration would only flash. -->
+	<WorkflowDiffPlaceholder :hide-illustration="status === 'loading'">
 		<template #sourceLabel>
 			<PromotionWorkflowSideLabel side="before" :direction="direction" :branch-name="branchName" />
 		</template>

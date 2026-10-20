@@ -2,6 +2,8 @@
 import WorkflowDiffIllustration from './WorkflowDiffIllustration.vue';
 import WorkflowDiffPanels from './WorkflowDiffPanels.vue';
 import WorkflowDiffToolbar from './WorkflowDiffToolbar.vue';
+
+defineProps<{ hideIllustration?: boolean }>();
 </script>
 
 <template>
@@ -20,12 +22,12 @@ import WorkflowDiffToolbar from './WorkflowDiffToolbar.vue';
 					</template>
 					<template #source>
 						<div :class="$style.canvas">
-							<WorkflowDiffIllustration :class="$style.illustration" />
+							<WorkflowDiffIllustration v-if="!hideIllustration" :class="$style.illustration" />
 						</div>
 					</template>
 					<template #target>
 						<div :class="$style.canvas">
-							<WorkflowDiffIllustration :class="$style.illustration" />
+							<WorkflowDiffIllustration v-if="!hideIllustration" :class="$style.illustration" />
 						</div>
 					</template>
 				</WorkflowDiffPanels>
@@ -80,8 +82,8 @@ import WorkflowDiffToolbar from './WorkflowDiffToolbar.vue';
 }
 
 .illustration {
-	width: 60%;
-	height: 75%;
+	width: 30%;
+	height: 30%;
 	color: var(--text-color--subtle);
 	opacity: 0.45;
 }
