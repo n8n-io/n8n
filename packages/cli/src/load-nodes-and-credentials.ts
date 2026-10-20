@@ -701,18 +701,37 @@ export class LoadNodesAndCredentials {
 		}
 	}
 
-	recognizesNode(fullNodeType: string): boolean {
+	/**
+	 * Helper method to cleanly split a full node type into its NPM package name
+	 * and internal node type identifier by checking registered loaders first.
+	 */
+	private splitNodeType(fullNodeType: string): { packageName: string; nodeType: string } {
+		// 1. Check if the string starts with any of the registered loader names
+		for (const packageName of Object.keys(this.loaders)) {
+			if (fullNodeType.startsWith(packageName + '.')) {
+				return {
+					packageName,
+					nodeType: fullNodeType.substring(packageName.length + 1),
+				};
+			}
+		}
+
+		// 2. Fallback: Split from right-to-left at the final dot if the loader isn't matched
 		const lastDotIndex = fullNodeType.lastIndexOf('.');
-		if (lastDotIndex === -1) return false;
+		if (lastDotIndex !== -1) {
+			return {
+				packageName: fullNodeType.substring(0, lastDotIndex),
+				nodeType: fullNodeType.substring(lastDotIndex + 1),
+			};
+		}
 
-		// Edge case: If there's a slash after the last dot (e.g. pkg.foo/bar), split at the first dot.
-		// Otherwise, the last dot is our true package/node separator.
-		const hasSlashAfterDot = fullNodeType.indexOf('/', lastDotIndex) !== -1;
-		const dotIndex = hasSlashAfterDot ? fullNodeType.indexOf('.') : lastDotIndex;
-		if (dotIndex === -1) return false;
+		// 3. Fallback for edge cases where no dot is present at all
+		return { packageName: fullNodeType, nodeType: '' };
+	}
 
-		const packageName = fullNodeType.substring(0, dotIndex);
-		const nodeType = fullNodeType.substring(dotIndex + 1);
+	recognizesNode(fullNodeType: string): boolean {
+		const { packageName, nodeType } = this.splitNodeType(fullNodeType);
+		if (!nodeType) return false;
 
 		const { loaders } = this;
 		const loader = loaders[packageName];
@@ -727,19 +746,10 @@ export class LoadNodesAndCredentials {
 	// }
 
 	getNode(fullNodeType: string): LoadedClass<INodeType | IVersionedNodeType> {
-		const lastDotIndex = fullNodeType.lastIndexOf('.');
-		if (lastDotIndex === -1) {
+		const { packageName, nodeType } = this.splitNodeType(fullNodeType);
+		if (!nodeType) {
 			throw new UnrecognizedNodeTypeError('', fullNodeType);
 		}
-
-		const hasSlashAfterDot = fullNodeType.indexOf('/', lastDotIndex) !== -1;
-		const dotIndex = hasSlashAfterDot ? fullNodeType.indexOf('.') : lastDotIndex;
-		if (dotIndex === -1) {
-			throw new UnrecognizedNodeTypeError('', fullNodeType);
-		}
-
-		const packageName = fullNodeType.substring(0, dotIndex);
-		const nodeType = fullNodeType.substring(dotIndex + 1);
 
 		const { loaders } = this;
 		const loader = loaders[packageName];
@@ -779,20 +789,11 @@ export class LoadNodesAndCredentials {
 	 */
 
 	resolveNodeSourcePath(fullNodeType: string, sourcePath: string): string {
-		const lastDotIndex = fullNodeType.lastIndexOf('.');
-		let dotIndex = lastDotIndex;
-
-		if (lastDotIndex !== -1) {
-			const hasSlashAfterDot = fullNodeType.indexOf('/', lastDotIndex) !== -1;
-			dotIndex = hasSlashAfterDot ? fullNodeType.indexOf('.') : lastDotIndex;
-		}
-
-		const packageName = dotIndex !== -1 ? fullNodeType.substring(0, dotIndex) : fullNodeType;
+		const { packageName } = this.splitNodeType(fullNodeType);
 
 		const loader = this.loaders[packageName];
 		return loader ? loader.resolveSourcePath(sourcePath) : sourcePath;
 	}
-
 	// resolveNodeSourcePath(fullNodeType: string, sourcePath: string): string {
 	// 	const [packageName] = fullNodeType.split('.');
 	// 	const loader = this.loaders[packageName];

@@ -52,13 +52,22 @@ export type PackageResolver = (typeName: string) => string | null;
 // export const nodeTypePackageResolver: PackageResolver = (typeName) => typeName.split('.')[0];
 
 export const nodeTypePackageResolver: PackageResolver = (typeName) => {
+	// 1. Check for NPM organization scope (starts with @)
+	const isScoped = typeName.startsWith('@');
+
+	// 2. Find where the scope ends (the first slash following the '@')
+	const scopeEndIndex = isScoped ? typeName.indexOf('/') : 0;
+
+	// 3. Find the separator dot strictly from right-to-left
 	const lastDotIndex = typeName.lastIndexOf('.');
-	if (lastDotIndex === -1) return typeName;
 
-	const hasSlashAfterDot = typeName.indexOf('/', lastDotIndex) !== -1;
-	const dotIndex = hasSlashAfterDot ? typeName.indexOf('.') : lastDotIndex;
+	// 4. Ensure the last dot is further down the string than the organization scope
+	if (lastDotIndex !== -1 && lastDotIndex > scopeEndIndex) {
+		return typeName.substring(0, lastDotIndex);
+	}
 
-	return dotIndex !== -1 ? typeName.substring(0, dotIndex) : typeName;
+	// 5. Fallback if no valid separator dot is found (handles both with and without dots safely)
+	return typeName;
 };
 
 /** `ancestors` lists what a credential type is built on through `extends`; empty for node types. */
