@@ -13,7 +13,10 @@ import {
 } from '../entities';
 import type { User } from '../entities';
 import { StatisticsNames } from '../entities/types-db';
+import type { OperationContext } from '../services/transaction';
 import { chunkIds } from '../utils/chunk-ids';
+import { managerFor } from './execution-ledger.repository';
+import { toSqliteTimestamp } from '../utils/dialect-sql';
 
 type StatisticsInsertResult = 'insert' | 'failed' | 'alreadyExists';
 type StatisticsUpsertResult = StatisticsInsertResult | 'update';
@@ -27,6 +30,17 @@ export type FirstOccurrenceRow = {
 	workflowId: string;
 	workflowName: string | null;
 	firstEventMs: number;
+};
+
+/** Increments for one (workflowId, name) counter, summed from a batch of completed runs. */
+export type WorkflowStatisticsIncrement = {
+	workflowId: string;
+	name: StatisticsNames;
+	count: number;
+	rootCount: number;
+	latestEvent: Date;
+	firstEvent: Date;
+	workflowName: string | null;
 };
 
 /** One row returned by the fold query: the batch total (`delta_rows`) plus per-counter fold results. */
@@ -219,6 +233,98 @@ export class WorkflowStatisticsRepository extends Repository<WorkflowStatistics>
 			}));
 
 		return { increments: rows[0].delta_rows, firstOccurrences };
+	}
+
+	/** Adds pre-aggregated counter increments. Returns the counter rows it created. */
+	async addIncrements(
+		ctx: OperationContext,
+		increments: WorkflowStatisticsIncrement[],
+	): Promise<FirstOccurrenceRow[]> {
+		if (increments.length === 0) return [];
+
+		const inserted =
+			this.globalConfig.database.type === 'sqlite'
+				? await this.addIncrementsSqlite(ctx, increments)
+				: await this.addIncrementsPostgres(ctx, increments);
+
+		const byKey = new Map(increments.map((i) => [`${i.workflowId}:${i.name}`, i]));
+		return inserted.map((r) => {
+			const increment = byKey.get(`${r.workflowId}:${r.name}`);
+			return {
+				name: r.name,
+				workflowId: r.workflowId,
+				workflowName: increment?.workflowName ?? null,
+				firstEventMs: increment?.firstEvent.getTime() ?? Date.now(),
+			};
+		});
+	}
+
+	private async addIncrementsPostgres(
+		ctx: OperationContext,
+		increments: WorkflowStatisticsIncrement[],
+	): Promise<Array<{ workflowId: string; name: StatisticsNames }>> {
+		const stats = this.manager.connection.driver.escape(this.metadata.tableName);
+		const rows: Array<{ workflowId: string; name: StatisticsNames; inserted: boolean }> =
+			await managerFor(this.manager, ctx).query(
+				`INSERT INTO ${stats} ("workflowId", "name", "count", "rootCount", "latestEvent", "workflowName")
+				SELECT * FROM unnest($1::varchar[], $2::varchar[], $3::bigint[], $4::bigint[], $5::timestamptz[], $6::varchar[])
+				ON CONFLICT ("name", "workflowId") DO UPDATE SET
+					"count" = ${stats}."count" + EXCLUDED."count",
+					"rootCount" = ${stats}."rootCount" + EXCLUDED."rootCount",
+					"latestEvent" = GREATEST(${stats}."latestEvent", EXCLUDED."latestEvent"),
+					"workflowName" = COALESCE(EXCLUDED."workflowName", ${stats}."workflowName")
+				RETURNING "workflowId", "name", ("xmax" = 0) AS inserted`,
+				[
+					increments.map((i) => i.workflowId),
+					increments.map((i) => i.name),
+					increments.map((i) => i.count),
+					increments.map((i) => i.rootCount),
+					increments.map((i) => i.latestEvent),
+					increments.map((i) => i.workflowName),
+				],
+			);
+		return rows.filter((r) => r.inserted);
+	}
+
+	/** SQLite has one writer, so counters missing before the upsert are exactly the ones it creates. */
+	private async addIncrementsSqlite(
+		ctx: OperationContext,
+		increments: WorkflowStatisticsIncrement[],
+	): Promise<Array<{ workflowId: string; name: StatisticsNames }>> {
+		const stats = this.manager.connection.driver.escape(this.metadata.tableName);
+		const manager = managerFor(this.manager, ctx);
+		const created: Array<{ workflowId: string; name: StatisticsNames }> = [];
+
+		for (let offset = 0; offset < increments.length; offset += 500) {
+			const chunk = increments.slice(offset, offset + 500);
+			const workflowIds = [...new Set(chunk.map((i) => i.workflowId))];
+			const existing: Array<{ workflowId: string; name: StatisticsNames }> = await manager.query(
+				`SELECT "workflowId", "name" FROM ${stats}
+				WHERE "workflowId" IN (${workflowIds.map(() => '?').join(', ')})`,
+				workflowIds,
+			);
+			const known = new Set(existing.map((r) => `${r.workflowId}:${r.name}`));
+			created.push(...chunk.filter((i) => !known.has(`${i.workflowId}:${i.name}`)));
+
+			await manager.query(
+				`INSERT INTO ${stats} ("workflowId", "name", "count", "rootCount", "latestEvent", "workflowName")
+				VALUES ${chunk.map(() => '(?, ?, ?, ?, ?, ?)').join(', ')}
+				ON CONFLICT ("workflowId", "name") DO UPDATE SET
+					"count" = ${stats}."count" + EXCLUDED."count",
+					"rootCount" = ${stats}."rootCount" + EXCLUDED."rootCount",
+					"latestEvent" = MAX(${stats}."latestEvent", EXCLUDED."latestEvent"),
+					"workflowName" = COALESCE(EXCLUDED."workflowName", ${stats}."workflowName")`,
+				chunk.flatMap((i) => [
+					i.workflowId,
+					i.name,
+					i.count,
+					i.rootCount,
+					toSqliteTimestamp(i.latestEvent),
+					i.workflowName,
+				]),
+			);
+		}
+		return created;
 	}
 
 	async queryNumWorkflowsUserHasWithFiveOrMoreProdExecs(userId: User['id']): Promise<number> {

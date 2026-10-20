@@ -242,6 +242,8 @@ describe('Worker', () => {
 				mock<EventService>(),
 				mock<ExecutionsConfig>({ mode: 'queue' }),
 				mock<InstanceSettings>({ instanceType: 'worker' }),
+				mock(),
+				mock(),
 			);
 
 			const drainLoopInterval = 500;

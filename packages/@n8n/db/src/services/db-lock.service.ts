@@ -21,6 +21,8 @@ export const enum DbLock {
 	INSTANCE_AI_SETTINGS = 1007,
 	DATA_ENCRYPTION_KEY_SEED = 1008,
 	INSIGHTS_COMPACTION = 1009,
+	EXECUTION_LEDGER_FOLD = 1010,
+	EXECUTION_QUOTA_ADMISSION = 1011,
 	/** Reserved for integration tests — never use in production code */
 	TEST = 9999,
 }
@@ -223,6 +225,47 @@ export class DbLockService {
 			}
 			return await fn(tx);
 		});
+	}
+
+	/**
+	 * Holds session-level advisory locks on one connection while `fn` runs. Postgres only.
+	 * The context is bound to that connection, not to a transaction: each statement commits alone.
+	 */
+	async withSessionLocks<T>(
+		lockId: DbLock,
+		subKeys: number[],
+		fn: (ctx: OperationContext) => Promise<T>,
+	): Promise<T> {
+		const runner = this.dataSource.createQueryRunner();
+		await runner.connect();
+		// Taking the keys in one order keeps two callers from deadlocking.
+		const ordered = [...new Set(subKeys)].sort((a, b) => a - b);
+		const locked: number[] = [];
+		try {
+			for (const subKey of ordered) {
+				await runner.query('SELECT pg_advisory_lock($1, $2)', [lockId, subKey]);
+				locked.push(subKey);
+			}
+			return await fn({ trx: new TypeOrmTransaction(runner.manager) });
+		} finally {
+			for (const subKey of locked.reverse()) {
+				await runner.query('SELECT pg_advisory_unlock($1, $2)', [lockId, subKey]);
+			}
+			await runner.release();
+		}
+	}
+
+	/** Like {@link tryWithLock}, but hands `fn` an `OperationContext` to thread into repositories. */
+	async tryWithLockContext<T>(
+		lockId: DbLock,
+		fn: (ctx: OperationContext) => Promise<T>,
+		options?: { subKey?: number },
+	): Promise<T> {
+		return await this.tryWithLock(
+			lockId,
+			async (tx) => await fn({ trx: new TypeOrmTransaction(tx) }),
+			options,
+		);
 	}
 
 	/**

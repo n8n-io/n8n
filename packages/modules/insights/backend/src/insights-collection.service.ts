@@ -1,10 +1,10 @@
 import { Logger } from '@n8n/backend-common';
-import { isBillableExecution } from '@n8n/backend-services';
+import { computeTimeSavedMinutes, isBillableExecution } from '@n8n/backend-services';
 import { SharedWorkflowRepository } from '@n8n/db';
 import { OnLifecycleEvent, type WorkflowExecuteAfterContext } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { DateTime } from 'luxon';
-import { IRun, type ExecutionStatus, type WorkflowExecuteMode } from 'n8n-workflow';
+import type { ExecutionStatus, WorkflowExecuteMode } from 'n8n-workflow';
 
 import { InsightsMetadata } from './insights-metadata.entity';
 import { InsightsRaw } from './insights-raw.entity';
@@ -12,7 +12,7 @@ import { InsightsMetadataRepository } from './insights-metadata.repository';
 import { InsightsRawRepository } from './insights-raw.repository';
 import { InsightsConfig } from './insights.config';
 
-const shouldSkipStatus: Record<ExecutionStatus, boolean> = {
+export const shouldSkipStatus: Record<ExecutionStatus, boolean> = {
 	success: false,
 	crashed: false,
 	error: false,
@@ -24,7 +24,7 @@ const shouldSkipStatus: Record<ExecutionStatus, boolean> = {
 	waiting: true,
 };
 
-const shouldSkipMode: Record<WorkflowExecuteMode, boolean> = {
+export const shouldSkipMode: Record<WorkflowExecuteMode, boolean> = {
 	cli: false,
 	error: false,
 	retry: false,
@@ -148,6 +148,9 @@ export class InsightsCollectionService {
 		if (!this.isInitialized) {
 			return;
 		}
+
+		// PoC switch: the ledger fold writes these buckets instead.
+		if (process.env.N8N_INSIGHTS_SOURCE === 'ledger') return;
 
 		if (shouldSkipStatus[ctx.runData.status] || shouldSkipMode[ctx.runData.mode]) {
 			return;
@@ -345,44 +348,7 @@ export class InsightsCollectionService {
 		await flushPromise;
 	}
 
-	/**
-	 * Calculate the final time saved value by extracting SavedTime node metadata
-	 * and combining it with workflow settings based on the node's behavior.
-	 */
 	private calculateTimeSaved(ctx: WorkflowExecuteAfterContext): number {
-		const workflowTimeSaved = ctx.workflow.settings?.timeSavedPerExecution;
-
-		// backwards compatibility for legacy workflows with no time saved mode
-		if (ctx.workflow.settings?.timeSavedMode !== 'dynamic') {
-			return workflowTimeSaved ?? 0;
-		}
-
-		const nodeTimeSaved = this.extractTimeSavedFromNodes(ctx.runData);
-
-		return nodeTimeSaved;
-	}
-
-	/**
-	 * Extract and sum time saved from all SavedTime nodes in the workflow execution.
-	 * Returns undefined if no SavedTime nodes were executed.
-	 */
-	private extractTimeSavedFromNodes(runData: IRun): number {
-		let totalMinutes = 0;
-
-		const resultData = runData.data.resultData?.runData ?? {};
-
-		// Iterate through all node metadata
-		for (const nodeName in resultData) {
-			const taskData = resultData[nodeName];
-
-			// Each node can have multiple run indexes
-			for (const taskDataEntry of taskData) {
-				if (taskDataEntry?.metadata?.timeSaved) {
-					totalMinutes += taskDataEntry?.metadata?.timeSaved.minutes;
-				}
-			}
-		}
-
-		return totalMinutes;
+		return computeTimeSavedMinutes(ctx.workflow.settings, ctx.runData);
 	}
 }
