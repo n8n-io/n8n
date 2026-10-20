@@ -66,6 +66,8 @@ const timelineItemProps = computed(function getTimelineItemProps() {
 
 		return {
 			...baseProps,
+			projectId: props.projectId,
+			agentId: props.agentId,
 			senderName: props.item.authorName ?? fallbackSenderName,
 			messageMarkdown: props.item.content ?? '',
 			personalisation: props.personalisation,
