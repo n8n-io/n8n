@@ -554,12 +554,12 @@ it('checks project boundaries after allocating the whole package', async () => {
 	expect(tools?.[2]).toMatchObject({ node: { nodeParameters: { workflowId: expression } } });
 });
 
-it.each<WorkflowConflictPolicy>(['new-version', 'skip'])(
+it.each<ImportConflictPolicy>(['new-version', 'skip'])(
 	'checks task ownership across project plans under %s',
 	async (policy) => {
 		await agents.save({ id: 'first', name: 'First', projectId: project.id });
 		const requests = [input([agent('first')]), input([agent('second')], otherProject.id)];
-		requests[0].options.workflowConflictPolicy = policy;
+		requests[0].options.conflictPolicy = policy;
 		for (const request of requests) {
 			request.options.agentIdPolicy = 'source';
 			request.agents![0].tasks.task_shared = {
