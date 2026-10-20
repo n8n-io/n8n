@@ -19,7 +19,6 @@ import type { AgentExecutionThreadRepository } from '../repositories/agent-execu
 import type { AgentMessageQueueRepository } from '../repositories/agent-message-queue.repository';
 import type { AgentMessageRepository } from '../repositories/agent-message.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
-import type { AgentTaskCancellationRepository } from '../repositories/agent-task-cancellation.repository';
 
 function makeThread(overrides: Partial<AgentExecutionThread> = {}): AgentExecutionThread {
 	return mock<AgentExecutionThread>({
@@ -57,7 +56,6 @@ describe('AgentMessageQueueService', () => {
 			new Map([['thread-1', N8N_CHAT_PRODUCTION_SOURCE]]),
 		);
 		service = new AgentMessageQueueService(
-			mock<AgentTaskCancellationRepository>(),
 			txRunner,
 			repository,
 			threadRepository,

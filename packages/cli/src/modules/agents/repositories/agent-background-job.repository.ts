@@ -8,11 +8,10 @@ import {
 	type AgentBackgroundJobKind,
 	type AgentBackgroundJobStatus,
 } from '../entities/agent-background-job.entity';
-import { AgentTaskCancellationRepository } from './agent-task-cancellation.repository';
 import { AgentCheckpoint } from '../entities/agent-checkpoint.entity';
 import { AgentExecution } from '../entities/agent-execution.entity';
-import { AgentExecutionThreadRepository } from './agent-execution-thread.repository';
 
+import { AgentExecutionThreadRepository } from './agent-execution-thread.repository';
 type NewAgentBackgroundJobBase = {
 	sourceExecutionId?: string;
 	id: string;
@@ -68,15 +67,14 @@ export class AgentBackgroundJobRepository extends BaseRepository<AgentBackground
 		dataSource: DataSource,
 		transactionRunner: TransactionRunner,
 		private readonly threadRepository: AgentExecutionThreadRepository,
-		private readonly cancellations: AgentTaskCancellationRepository,
 	) {
 		super(AgentBackgroundJob, dataSource.manager, transactionRunner);
 	}
 
 	async insertSubAgentJobIfCapacity(job: NewSubAgentJob, limit: number): Promise<boolean> {
 		return await this.runInTransaction({}, async (manager, ctx) => {
-			await this.cancellations.lockScope(job.parentThreadId, ctx);
-			await this.cancellations.assertAdmission(job.parentThreadId, job.sourceExecutionId, ctx);
+			await this.threadRepository.lockScope(job.parentThreadId, ctx);
+			await this.threadRepository.assertAdmission(job.parentThreadId, job.sourceExecutionId, ctx);
 			if (!(await this.threadRepository.lockById(job.parentThreadId, ctx))) {
 				throw new UserError('Session not found');
 			}
@@ -95,7 +93,7 @@ export class AgentBackgroundJobRepository extends BaseRepository<AgentBackground
 		job: NewWorkflowJob,
 	): Promise<{ inserted: true } | { inserted: false; existing: AgentBackgroundJob }> {
 		await this.runInTransaction({}, async (manager, ctx) => {
-			await this.cancellations.lockScope(job.parentThreadId, ctx);
+			await this.threadRepository.lockScope(job.parentThreadId, ctx);
 			await manager
 				.createQueryBuilder()
 				.insert()

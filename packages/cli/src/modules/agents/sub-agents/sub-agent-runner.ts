@@ -35,7 +35,7 @@ import { isRecord } from '@n8n/utils/is-record';
 import { jsonParse, UserError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import { AgentTaskCancellationRepository } from '../repositories/agent-task-cancellation.repository';
+import { AgentExecutionThreadRepository } from '../repositories/agent-execution-thread.repository';
 import type { AgentRunTelemetryType } from '@/interfaces';
 
 import type { StartExecutionParams } from '../agent-execution.service';
@@ -168,7 +168,7 @@ type ForegroundOperation = {
 @Service()
 export class SubAgentRunner {
 	constructor(
-		private readonly cancellations: AgentTaskCancellationRepository,
+		private readonly threadRepository: AgentExecutionThreadRepository,
 		private readonly sourceResolver: SubAgentSourceResolver,
 		private readonly turnExecutionService: AgentTurnExecutionService,
 		private readonly checkpointStorage: N8NCheckpointStorage,
@@ -362,7 +362,7 @@ export class SubAgentRunner {
 				: undefined;
 			// Stops are saved on the root thread, so a child checks its ancestors.
 			const checkStopped = async (): Promise<GuardrailDecision | undefined> =>
-				(await this.cancellations.hasPausedAncestor(threadId, {}))
+				(await this.threadRepository.hasPausedAncestor(threadId, {}))
 					? { action: 'stop', code: 'tasks-stopped', canceled: true }
 					: undefined;
 			const executionOptions = withBudgetGuardrail(
@@ -377,7 +377,7 @@ export class SubAgentRunner {
 					executionCounter: context.executionCounter,
 					shouldPause: async () =>
 						(await context.shouldPause?.()) ||
-						(await this.cancellations.hasPausedAncestor(threadId, {})),
+						(await this.threadRepository.hasPausedAncestor(threadId, {})),
 					guardrails: {
 						hooks: [{ before: checkStopped, beforeTool: checkStopped }],
 					},

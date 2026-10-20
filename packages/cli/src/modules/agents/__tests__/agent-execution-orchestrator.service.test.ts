@@ -25,7 +25,7 @@ import { OperationalError, UserError } from 'n8n-workflow';
 import type { InstanceSettings } from 'n8n-core';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
-import type { AgentTaskCancellationRepository } from '@/modules/agents/repositories/agent-task-cancellation.repository';
+import type { AgentExecutionThreadRepository } from '@/modules/agents/repositories/agent-execution-thread.repository';
 import type { AgentMessageSteeringService } from '../agent-message-steering.service';
 import type { AgentsSettingsService } from '../agents-settings.service';
 
@@ -271,7 +271,7 @@ function makeService(sandboxEnabled = false) {
 	}));
 	executionService.finalizeExecution.mockResolvedValue('execution-1');
 	agentRunTracingService.build.mockResolvedValue(undefined);
-	const cancellations = mock<AgentTaskCancellationRepository>();
+	const cancellations = mock<AgentExecutionThreadRepository>();
 
 	const service = new AgentExecutionOrchestratorService(
 		mockLogger(),

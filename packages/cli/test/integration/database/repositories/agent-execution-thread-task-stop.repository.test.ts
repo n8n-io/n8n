@@ -8,7 +8,7 @@ import { AgentCheckpoint } from '@/modules/agents/entities/agent-checkpoint.enti
 import { AgentExecutionThread } from '@/modules/agents/entities/agent-execution-thread.entity';
 import { AgentExecution } from '@/modules/agents/entities/agent-execution.entity';
 import { AgentBackgroundJob } from '@/modules/agents/entities/agent-background-job.entity';
-import { AgentTaskCancellationRepository } from '@/modules/agents/repositories/agent-task-cancellation.repository';
+import { AgentExecutionThreadRepository } from '@/modules/agents/repositories/agent-execution-thread.repository';
 import { AgentMessageQueueRepository } from '@/modules/agents/repositories/agent-message-queue.repository';
 import { AgentMessageRepository } from '@/modules/agents/repositories/agent-message.repository';
 import { AgentPlanRepository } from '@/modules/agents/repositories/agent-plan.repository';
@@ -18,9 +18,9 @@ const beforeStop = new Date('2026-10-01T10:00:00.000Z');
 const cutoffAt = new Date('2026-10-01T10:01:00.000Z');
 const afterStop = new Date('2026-10-01T10:02:00.000Z');
 
-describe('Task cancellation persistence', () => {
+describe('AgentExecutionThreadRepository task stops', () => {
 	let db: DataSource;
-	let repository: AgentTaskCancellationRepository;
+	let repository: AgentExecutionThreadRepository;
 	let queue: AgentMessageQueueRepository;
 	let plans: AgentPlanRepository;
 	let thread: AgentExecutionThread;
@@ -31,7 +31,7 @@ describe('Task cancellation persistence', () => {
 		await testModules.loadModules(['agents']);
 		await testDb.init();
 		db = Container.get(DataSource);
-		repository = Container.get(AgentTaskCancellationRepository);
+		repository = Container.get(AgentExecutionThreadRepository);
 		queue = Container.get(AgentMessageQueueRepository);
 		plans = Container.get(AgentPlanRepository);
 		({ id: projectId } = await createTeamProject());

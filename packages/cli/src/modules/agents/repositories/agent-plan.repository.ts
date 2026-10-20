@@ -12,7 +12,7 @@ import { validate as isUuid } from 'uuid';
 
 import { AgentPlanHistory } from '../entities/agent-plan-history.entity';
 import { AgentPlan } from '../entities/agent-plan.entity';
-import { AgentTaskCancellationRepository } from './agent-task-cancellation.repository';
+import { AgentExecutionThreadRepository } from './agent-execution-thread.repository';
 
 export type AgentPlanRecord = Pick<
 	AgentPlan,
@@ -42,7 +42,7 @@ export class AgentPlanRepository extends BaseRepository<AgentPlan> {
 	constructor(
 		dataSource: DataSource,
 		transactionRunner: TransactionRunner,
-		private readonly cancellations: AgentTaskCancellationRepository,
+		private readonly threadRepository: AgentExecutionThreadRepository,
 	) {
 		super(AgentPlan, dataSource.manager, transactionRunner);
 	}
@@ -56,8 +56,8 @@ export class AgentPlanRepository extends BaseRepository<AgentPlan> {
 		const data = this.serializeData(input.data);
 
 		return await this.runInTransaction(ctx, async (manager, tx) => {
-			await this.cancellations.lockScope(input.threadId, tx);
-			await this.cancellations.assertAdmission(input.threadId, ctx.sourceExecutionId, tx);
+			await this.threadRepository.lockScope(input.threadId, tx);
+			await this.threadRepository.assertAdmission(input.threadId, ctx.sourceExecutionId, tx);
 			const now = new Date();
 			try {
 				await manager
@@ -186,8 +186,8 @@ export class AgentPlanRepository extends BaseRepository<AgentPlan> {
 		this.validateVersion(input.expectedRevision);
 
 		return await this.runInTransaction(ctx, async (manager, tx) => {
-			await this.cancellations.lockScope(input.threadId, tx);
-			await this.cancellations.assertAdmission(input.threadId, ctx.sourceExecutionId, tx);
+			await this.threadRepository.lockScope(input.threadId, tx);
+			await this.threadRepository.assertAdmission(input.threadId, ctx.sourceExecutionId, tx);
 			const now = new Date();
 			const query = manager
 				.createQueryBuilder()

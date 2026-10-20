@@ -12,7 +12,7 @@ import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { UnexpectedError } from 'n8n-workflow';
 
-import { AgentTaskCancellationRepository } from './repositories/agent-task-cancellation.repository';
+import { AgentExecutionThreadRepository } from './repositories/agent-execution-thread.repository';
 import type { AgentChatSurface, AgentSessionMode } from './utils/agent-thread-access';
 import { AgentExecutionRecordingError } from './agent-execution-recording.error';
 import { AgentTurnAlreadyRunningError } from './agent-turn-already-running.error';
@@ -100,7 +100,7 @@ function getMaxIterationsChunks(): StreamChunk[] {
 @Service()
 export class AgentTurnExecutionService {
 	constructor(
-		private readonly cancellations: AgentTaskCancellationRepository,
+		private readonly threadRepository: AgentExecutionThreadRepository,
 		private readonly logger: Logger,
 		private readonly agentExecutionService: AgentExecutionService,
 		private readonly chatExecutionService: AgentChatExecutionService,
@@ -516,7 +516,7 @@ export class AgentTurnExecutionService {
 	): Promise<ReadableStream<StreamChunk>> {
 		const { executionId, inputMessageIds } = admission;
 		const checkCancellation = async (): Promise<GuardrailDecision | undefined> =>
-			(await this.cancellations.isCancelled(config.context.threadId, executionId))
+			(await this.threadRepository.isCancelled(config.context.threadId, executionId))
 				? { action: 'stop', code: 'tasks-cancelled', canceled: true }
 				: undefined;
 		turn.options.guardrails = {

@@ -6,7 +6,7 @@ import { DataSource, InsertQueryBuilder } from '@n8n/typeorm';
 import type { JsonObject } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
-import { AgentTaskCancellationRepository } from '@/modules/agents/repositories/agent-task-cancellation.repository';
+import { AgentExecutionThreadRepository } from '@/modules/agents/repositories/agent-execution-thread.repository';
 import { AgentExecutionThread } from '@/modules/agents/entities/agent-execution-thread.entity';
 import { AgentPlanHistory } from '@/modules/agents/entities/agent-plan-history.entity';
 import { AgentPlan } from '@/modules/agents/entities/agent-plan.entity';
@@ -80,7 +80,7 @@ describe('AgentPlanRepository', () => {
 		const freshRepository = new AgentPlanRepository(
 			dataSource,
 			transactionRunner,
-			Container.get(AgentTaskCancellationRepository),
+			Container.get(AgentExecutionThreadRepository),
 		);
 
 		expect(await freshRepository.findActivePlan(threadId, {})).toEqual(plan);

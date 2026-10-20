@@ -26,7 +26,6 @@ import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 import { z } from 'zod';
 
-import { AgentTaskCancellationRepository } from '@/modules/agents/repositories/agent-task-cancellation.repository';
 import type { Telemetry } from '@/telemetry';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { ExternalHooks } from '@/external-hooks';
@@ -171,7 +170,7 @@ describe('AgentExecutionRepository', () => {
 		);
 		const executions = connection ? new AgentExecutionRepository(connection, txRunner) : repository;
 		const threads = connection
-			? new AgentExecutionThreadRepository(connection, txRunner)
+			? new AgentExecutionThreadRepository(connection, txRunner, new AgentsConfig())
 			: threadRepo;
 		const queueRepository = new AgentMessageQueueRepository(
 			connection ?? repository.manager.connection,
@@ -194,14 +193,7 @@ describe('AgentExecutionRepository', () => {
 		memory.getImplementation.mockReturnValue(memoryBackend);
 		const attachmentService = mock<AgentChatAttachmentService>();
 		const executionLogStore = mock<AgentExecutionLogStore>();
-		const cancellations = new AgentTaskCancellationRepository(
-			connection ?? repository.manager.connection,
-			txRunner,
-			threads,
-			new AgentsConfig(),
-		);
 		const executionService = new AgentExecutionService(
-			cancellations,
 			mockLogger(),
 			executions,
 			threads,
@@ -239,7 +231,6 @@ describe('AgentExecutionRepository', () => {
 			mock<AgentExecutionUpdateBroadcaster>(),
 		);
 		const queue = new AgentMessageQueueService(
-			cancellations,
 			txRunner,
 			queueRepository,
 			threads,
@@ -261,7 +252,6 @@ describe('AgentExecutionRepository', () => {
 			await finalize();
 		});
 		return {
-			cancellations,
 			steering,
 			settingsService,
 			txRunner,
@@ -275,7 +265,7 @@ describe('AgentExecutionRepository', () => {
 			attachmentService,
 			executionLogStore,
 			turns: new AgentTurnExecutionService(
-				cancellations,
+				threads,
 				mockLogger(),
 				executionService,
 				chatExecutionService,
@@ -507,7 +497,7 @@ describe('AgentExecutionRepository', () => {
 				);
 				const runner = new SubAgentBackgroundRunner(
 					new SubAgentRunner(
-						mock<AgentTaskCancellationRepository>(),
+						mock<AgentExecutionThreadRepository>(),
 						sourceResolver,
 						turns,
 						storage,
@@ -1700,12 +1690,12 @@ describe('AgentExecutionRepository', () => {
 			const first = await claim(services, threadId);
 			await finish(services, first);
 			const stopId = uuid();
-			await services.cancellations.saveStop(
+			await services.threads.saveStop(
 				{
 					threadId,
 					planId: null,
 					requestedAt: new Date().toISOString(),
-					generation: await services.cancellations.captureGeneration(threadId, {}),
+					generation: await services.threads.captureGeneration(threadId, {}),
 					failures: [],
 					pause: { id: stopId },
 				},
@@ -1764,7 +1754,7 @@ describe('AgentExecutionRepository', () => {
 				...recording,
 				record: recorder.getMessageRecord(),
 			});
-			await services.cancellations.finishPauseReport(threadId, stopId);
+			await services.threads.finishPauseReport(threadId, stopId);
 			const next = await claim(services, threadId);
 			expect(next.admission.inputMessageIds).toEqual([pending.messageId]);
 			await finish(services, next);

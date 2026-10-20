@@ -20,7 +20,7 @@ import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import type { AgentTaskCancellationRepository } from '@/modules/agents/repositories/agent-task-cancellation.repository';
+import type { AgentExecutionThreadRepository } from '@/modules/agents/repositories/agent-execution-thread.repository';
 import type { AgentMessageSteeringService } from '../../agent-message-steering.service';
 import type { AgentExecutionService } from '../../agent-execution.service';
 import type { AgentMessageQueueService } from '../../agent-message-queue.service';
@@ -131,7 +131,7 @@ describe('SubAgentRunner', () => {
 	let logger: Mocked<Logger>;
 	let checkpointStorage: Mocked<N8NCheckpointStorage>;
 	let credentialProvider: Mocked<CredentialProvider>;
-	let cancellations: Mocked<AgentTaskCancellationRepository>;
+	let cancellations: Mocked<AgentExecutionThreadRepository>;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -152,7 +152,7 @@ describe('SubAgentRunner', () => {
 		agentExecutionService.finalizeExecution.mockResolvedValue('agent-execution-1');
 		checkpointStorage = mock<N8NCheckpointStorage>();
 		logger = mock<Logger>();
-		cancellations = mock<AgentTaskCancellationRepository>();
+		cancellations = mock<AgentExecutionThreadRepository>();
 		runner = new SubAgentRunner(
 			cancellations,
 			sourceResolver,
