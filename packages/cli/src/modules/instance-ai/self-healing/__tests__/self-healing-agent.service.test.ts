@@ -153,6 +153,7 @@ describe('SelfHealingAgentService', () => {
 			createProxyRunConfig: vi.fn().mockResolvedValue({}),
 			assertCreditsAvailable: vi.fn().mockResolvedValue(undefined),
 			onActivity: vi.fn(),
+			onFinalizing: vi.fn(),
 			onComplete: vi.fn(),
 			getAbortReason: () => 'shutdown',
 			onFinish: vi.fn(),
@@ -345,6 +346,24 @@ describe('SelfHealingAgentService', () => {
 			'test/model',
 			stream,
 		);
+	});
+
+	it('enters finalization before claiming usage and accepting output', async () => {
+		credits.claimRunUsage.mockImplementationOnce(async () => {
+			expect(options.onFinalizing).toHaveBeenCalledTimes(1);
+			expect(options.onComplete).not.toHaveBeenCalled();
+			return 0.25;
+		});
+
+		const result = await service.execute(input, options);
+
+		expect(result).toMatchObject({
+			status: 'completed',
+			output: validOutput,
+			usage: { credits: 0.25 },
+		});
+		expect(credits.claimRunUsage).toHaveBeenCalledTimes(1);
+		expect(options.onComplete).toHaveBeenCalledExactlyOnceWith(result, controller.signal);
 	});
 
 	it('reports cancellation before acceptance when accounting outlasts the run', async () => {

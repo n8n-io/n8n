@@ -755,6 +755,8 @@ export class InstanceAiService {
 
 	private readonly runState = new RunStateRegistry<User>((user) => user.id);
 
+	private readonly finalizingSelfHealingRuns = new Set<string>();
+
 	private readonly backgroundTasks: BackgroundTaskManager;
 
 	private readonly memoryTaskRegistry = new MemoryTaskRegistry();
@@ -1548,6 +1550,9 @@ export class InstanceAiService {
 				createProxyRunConfig: async () => await this.createProxyRunConfig(input.user),
 				assertCreditsAvailable: async () => await this.assertAssistantCreditsAvailable(input.user),
 				onActivity: () => this.runState.touchActiveRun(threadId),
+				onFinalizing: () => {
+					this.finalizingSelfHealingRuns.add(runId);
+				},
 				onComplete: lifecycle.onComplete,
 				getAbortReason: () => {
 					if (this.liveness.consumeRunTimeout(runId).timedOut)
@@ -1583,6 +1588,7 @@ export class InstanceAiService {
 				},
 			})
 			.finally(() => {
+				this.finalizingSelfHealingRuns.delete(runId);
 				this.runState.clearActiveRun(threadId);
 				this.liveness.clearThreadState(threadId);
 			});
@@ -1691,8 +1697,8 @@ export class InstanceAiService {
 	}
 
 	/**
-	 * Stop every live run and background task for this user. A cached proxy
-	 * token would otherwise let those loops continue after the balance hits zero.
+	 * Stop runs that can still use credits. A cached proxy token would otherwise
+	 * let those loops continue after the balance hits zero.
 	 */
 	private stopRunsForQuotaExhaustion(user: User): void {
 		const threadIds = new Set(this.runState.listLiveThreadIdsForUser(user.id));
@@ -1702,6 +1708,9 @@ export class InstanceAiService {
 			}
 		}
 		for (const threadId of threadIds) {
+			const runId = this.runState.getActiveRunId(threadId);
+			if (runId && this.finalizingSelfHealingRuns.has(runId)) continue;
+
 			try {
 				this.cancelRun(threadId, 'quota_exhausted');
 			} catch (error) {

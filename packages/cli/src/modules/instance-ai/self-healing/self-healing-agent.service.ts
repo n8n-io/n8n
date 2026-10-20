@@ -101,6 +101,7 @@ export type SelfHealingRunOptions = {
 	createProxyRunConfig: () => Promise<ProxyRunConfig>;
 	assertCreditsAvailable: () => Promise<void>;
 	onActivity: () => void;
+	onFinalizing: () => void;
 	onComplete: SelfHealingRunLifecycle['onComplete'];
 	getAbortReason: () => string;
 	onFinish: (
@@ -263,6 +264,8 @@ export class SelfHealingAgentService {
 			result.reason = scrubSecretsInText(getErrorMessage(error)).slice(0, 1000);
 			this.logger.error('Self-healing run failed.', { threadId, runId, error: result.reason });
 		} finally {
+			// Model work has stopped. The final charge must not cancel result persistence.
+			options.onFinalizing();
 			result.usage.durationSeconds = (Date.now() - startedAt) / 1000;
 
 			if ('promptTokens' in result.usage) {

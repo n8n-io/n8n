@@ -1564,6 +1564,7 @@ describe('InstanceAiService — self-healing launcher', () => {
 			Object.create(InstanceAiService.prototype) as {
 				startSelfHealingRun: InstanceAiService['startSelfHealingRun'];
 				shutdown: InstanceAiService['shutdown'];
+				stopRunsForQuotaExhaustion: (user: User) => void;
 				drainInFlightExecutions: (timeoutMs: number) => Promise<void>;
 			},
 			{
@@ -1572,6 +1573,7 @@ describe('InstanceAiService — self-healing launcher', () => {
 					execute: vi.fn<SelfHealingAgentService['execute']>(),
 				},
 				runState: new RunStateRegistry<User>((user) => user.id),
+				finalizingSelfHealingRuns: new Set<string>(),
 				liveness: {
 					shutdown: vi.fn(),
 					clearThreadState: vi.fn(),
@@ -1583,7 +1585,13 @@ describe('InstanceAiService — self-healing launcher', () => {
 				eventService: { emit: vi.fn() },
 				eventBus: { clear: vi.fn() },
 				eventLog: { flushAll: vi.fn(async () => {}) },
-				backgroundTasks: { cancelAll: vi.fn(() => []) },
+				backgroundTasks: {
+					cancelAll: vi.fn(() => []),
+					cancelThread: vi.fn(() => []),
+					listRunningTasks: vi.fn(() => []),
+				},
+				cancelAwaitingApprovalPlan: vi.fn(),
+				suspendedThreads: { dropPendingConfirmationsForThread: vi.fn() },
 				gatewayService: { disconnectAll: vi.fn() },
 				browserSessionService: { shutdown: vi.fn(async () => {}) },
 				domainAccessTrackersByThread: new Map(),
@@ -1654,6 +1662,31 @@ describe('InstanceAiService — self-healing launcher', () => {
 		expect(service.runState.activeRunCount()).toBe(1);
 	});
 
+	it.each([false, true])('handles quota exhaustion with finalizing=%s', async (finalizing) => {
+		const service = createLauncher();
+		const pending = createDeferredPromise<SelfHealingRunResult>();
+		service.selfHealingAgent.execute.mockImplementation(async (_input, options) => {
+			if (finalizing) options.onFinalizing();
+			await pending.promise;
+			return {
+				...completedRun(options),
+				status: options.signal.aborted ? 'cancelled' : 'completed',
+			};
+		});
+		const run = service.startSelfHealingRun(input, lifecycle);
+		const options = service.selfHealingAgent.execute.mock.calls[0][1];
+		const other = service.runState.startRun({ threadId: 'other-chat', user: fakeUser });
+
+		service.stopRunsForQuotaExhaustion(fakeUser);
+
+		expect(options.signal.aborted).toBe(!finalizing);
+		expect(other.abortController.signal.aborted).toBe(true);
+		pending.resolve(completedRun(options));
+		expect((await run).status).toBe(finalizing ? 'completed' : 'cancelled');
+		expect(service.finalizingSelfHealingRuns.size).toBe(0);
+		expect(service.runState.getActiveRunId(options.threadId)).toBeUndefined();
+	});
+
 	it('checks the gate before registering a run', async () => {
 		const service = createLauncher();
 		service.selfHealingAgent.assertEnabled.mockImplementation(() => {
@@ -1679,31 +1712,35 @@ describe('InstanceAiService — self-healing launcher', () => {
 		expect(service.inFlightExecutions.size).toBe(0);
 	});
 
-	it('lets shutdown abort setup and waits for its cleanup to finish', async () => {
-		const service = createLauncher();
-		const cleanup = createDeferredPromise<undefined>();
-		service.selfHealingAgent.execute.mockImplementation(async (_input, options) => {
-			await new Promise<void>((resolve) =>
-				options.signal.addEventListener('abort', () => resolve(), { once: true }),
-			);
-			await cleanup.promise;
-			return { ...completedRun(options), status: 'cancelled', reason: options.getAbortReason() };
-		});
-		const run = service.startSelfHealingRun(input, lifecycle);
-		const { activeRuns } = service.runState.shutdown();
-		for (const active of activeRuns) active.abortController.abort('service_shutdown');
-		let drained = false;
-		const drain = service.drainInFlightExecutions(1000).then(() => {
-			drained = true;
-		});
-		await Promise.resolve();
-		expect(drained).toBe(false);
+	it.each([false, true])(
+		'lets shutdown abort with finalizing=%s and waits for cleanup',
+		async (finalizing) => {
+			const service = createLauncher();
+			const cleanup = createDeferredPromise<undefined>();
+			service.selfHealingAgent.execute.mockImplementation(async (_input, options) => {
+				if (finalizing) options.onFinalizing();
+				await new Promise<void>((resolve) =>
+					options.signal.addEventListener('abort', () => resolve(), { once: true }),
+				);
+				await cleanup.promise;
+				return { ...completedRun(options), status: 'cancelled', reason: options.getAbortReason() };
+			});
+			const run = service.startSelfHealingRun(input, lifecycle);
+			const { activeRuns } = service.runState.shutdown();
+			for (const active of activeRuns) active.abortController.abort('service_shutdown');
+			let drained = false;
+			const drain = service.drainInFlightExecutions(1000).then(() => {
+				drained = true;
+			});
+			await Promise.resolve();
+			expect(drained).toBe(false);
 
-		cleanup.resolve(undefined);
-		expect(await run).toMatchObject({ status: 'cancelled', reason: 'service_shutdown' });
-		await drain;
-		expect(service.inFlightExecutions.size).toBe(0);
-	});
+			cleanup.resolve(undefined);
+			expect(await run).toMatchObject({ status: 'cancelled', reason: 'service_shutdown' });
+			await drain;
+			expect(service.inFlightExecutions.size).toBe(0);
+		},
+	);
 
 	it('preserves finish reasons without starting chat title work', async () => {
 		const service = createLauncher();
