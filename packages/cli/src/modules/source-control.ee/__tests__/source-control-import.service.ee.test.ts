@@ -1772,8 +1772,23 @@ describe('SourceControlImportService', () => {
 				},
 			);
 
-			it('skips the length check for a node id that is not a string', async () => {
-				fsReadFile.mockResolvedValueOnce(workflowFile(12345));
+			it.each([
+				['a number', 12345],
+				['an object', { value: 'n1' }],
+				['null', null],
+			])('rejects a workflow with a node id that is %s before writing it', async (_, nodeId) => {
+				fsReadFile.mockResolvedValueOnce(workflowFile(nodeId));
+				const candidates = [mock<SourceControlledFile>({ file: '/mock/workflow1.json', id: '1' })];
+
+				await expect(service.importWorkflowFromWorkFolder(candidates, mockUserId)).rejects.toThrow(
+					'Workflow "Workflow 1" (/mock/workflow1.json): node "Webhook" has an ID that is not a string',
+				);
+
+				expect(workflowRepository.upsertImportedContent).not.toHaveBeenCalled();
+			});
+
+			it('imports a workflow with a node that has no id', async () => {
+				fsReadFile.mockResolvedValueOnce(workflowFile(undefined));
 				const candidates = [mock<SourceControlledFile>({ file: '/mock/workflow1.json', id: '1' })];
 
 				await service.importWorkflowFromWorkFolder(candidates, mockUserId);

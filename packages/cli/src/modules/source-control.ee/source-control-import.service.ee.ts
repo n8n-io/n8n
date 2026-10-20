@@ -875,11 +875,18 @@ export class SourceControlImportService {
 		}
 
 		// A pull does not run the full structure check, but trigger state, scheduled jobs
-		// and deduplication data are keyed on the node id, so its length is enforced here too.
-		// Repository files are not validated at runtime, so `id` may not be a string.
-		const nodeWithLongId = nodes.find(
-			(node) => typeof node.id === 'string' && [...node.id].length > NODE_ID_MAX_LENGTH,
-		);
+		// and deduplication data are keyed on the node id, so its type and length are enforced here too.
+		const nodeWithInvalidId = nodes.find((node) => {
+			const nodeId: unknown = node.id;
+			return nodeId !== undefined && typeof nodeId !== 'string';
+		});
+		if (nodeWithInvalidId) {
+			throw new UserError(
+				`Workflow "${importedWorkflow.name}" (${candidate.file}): node "${nodeWithInvalidId.name}" has an ID that is not a string. Fix the ID in the repository and pull again.`,
+			);
+		}
+
+		const nodeWithLongId = nodes.find((node) => [...(node.id ?? '')].length > NODE_ID_MAX_LENGTH);
 		if (nodeWithLongId) {
 			throw new UserError(
 				`Workflow "${importedWorkflow.name}" (${candidate.file}): node "${nodeWithLongId.name}" has an ID longer than ${NODE_ID_MAX_LENGTH} characters. Shorten the ID in the repository and pull again.`,
