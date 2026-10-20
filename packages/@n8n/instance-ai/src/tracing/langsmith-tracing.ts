@@ -639,6 +639,25 @@ function getCurrentProductTrace():
 	return productTraceStorage.getStore();
 }
 
+/** Reuse the active product provider and parent for synchronous verification helpers. */
+export function getCurrentHelperTelemetry(name: string): BuiltTelemetry | undefined {
+	const current = getCurrentProductTrace();
+	if (!current || current.runtime.shutdown || !current.runtime.telemetry.enabled) return undefined;
+	return {
+		...current.runtime.telemetry,
+		functionId: name,
+		metadata: toTelemetryMetadata(current.currentRun.metadata, {
+			evalRole: 'helper',
+			agent_role: name,
+		}),
+		recordInputs: false,
+		recordOutputs: false,
+		runtimeRootSpanEnabled: true,
+		rootAnchored: false,
+		traceModelRequests: true,
+	};
+}
+
 function getActiveOtelContextWithSpan(expectedTraceId?: string): OtelContext | undefined {
 	const activeContext = otelContext.active();
 	const activeSpanContext = otelTrace.getSpan(activeContext)?.spanContext();
@@ -1139,20 +1158,40 @@ function trackBackgroundOperation(
 }
 
 /**
- * Keep the trace that `emitTraceOnlyChildRun` would export to open until
- * `operation` settles, so detached work can still record its child run.
- * Prefers the ambient trace for the same reason `emitTraceOnlyChildRun` does.
+ * Run `work` detached from the caller, in the trace that `emitTraceOnlyChildRun`
+ * would export to, and keep that trace open until `work` settles. Prefers the
+ * ambient trace for the same reason `emitTraceOnlyChildRun` does. Without one,
+ * `work` is bound to the handle's actor run now: finishing a run drops its span
+ * context, so a child run started after that would land in a trace of its own.
  */
-export function keepTraceOpenUntilSettled(
+export function runDetachedInTrace(
 	fallbackTracing: InstanceAiTraceContext | undefined,
-	operation: Promise<unknown>,
+	work: () => Promise<void>,
 ): void {
 	const currentTrace = getCurrentProductTrace();
 	if (currentTrace) {
-		trackBackgroundOperation(currentTrace.runtime, operation);
+		trackBackgroundOperation(
+			currentTrace.runtime,
+			work().catch(() => undefined),
+		);
 		return;
 	}
-	if (isLiveTraceHandle(fallbackTracing)) fallbackTracing.keepOpenUntilSettled?.(operation);
+	if (!isLiveTraceHandle(fallbackTracing)) {
+		void work().catch(() => undefined);
+		return;
+	}
+	const run = fallbackTracing.actorRun;
+	const runtime = otelTraceRuntimes.get(run.traceId);
+	const spanContext = runtime?.contexts.get(run.id);
+	const operation = (
+		runtime && spanContext
+			? productTraceStorage.run(
+					{ runtime, currentRun: run },
+					async () => await otelContext.with(spanContext, work),
+				)
+			: work()
+	).catch(() => undefined);
+	fallbackTracing.keepOpenUntilSettled?.(operation);
 }
 
 export function canEmitTraceOnlyChildRun(fallbackTracing: InstanceAiTraceContext | undefined) {
@@ -1801,6 +1840,7 @@ function createTelemetryFactory(options: {
 		if (options.baseTelemetry) {
 			return {
 				...options.baseTelemetry,
+				traceModelRequests: true,
 				functionId,
 				metadata,
 				recordInputs: true,

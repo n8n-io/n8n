@@ -2,12 +2,12 @@
 name: progressive-building
 dependencies:
   tools:
-    - build-workflow
-    - verify-built-workflow
-    - workflows
-    - executions
+    - workflow_builder_build_workflow
+    - workflow_builder_verify_built_workflow
+    - workflow_builder_workflows
+    - workflow_builder_executions
 description: >-
-  Load before build-workflow and before scoping or planning new workflows and
+  Load before workflow_builder_build_workflow and before scoping or planning new workflows and
   feature additions, including requests spanning multiple workflows. Implement
   one increment per user message. Finish setup and inspect a successful real
   execution before offering another increment. Then wait for the next user
@@ -52,7 +52,7 @@ Ask a single-choice question if several named services are equally central.
 Otherwise state a reasonable starting assumption. Do not offer a multi-select
 list that adds services or triggers to the first version.
 
-The `planning` skill and `create-tasks` tool are unavailable in this mode.
+The `planning` skill and `workflow_builder_create_tasks` tool are unavailable in this mode.
 Keep additional workflows as later roadmap items.
 
 ## Build, set up, and run
@@ -66,7 +66,7 @@ Keep additional workflows as later roadmap items.
 4. After setup, offer only a live run for manual or schedule triggers. The execution
    approval card supplies consent. For event triggers, explain how to start
    listening for a test event and perform the event, then ask the user to report
-   back. Inspect the resulting execution with `executions`.
+   back. Inspect the resulting execution with `workflow_builder_executions`.
 5. Extend only after a successful, non-simulated execution of the current
    version. A successful save, mocked verification, pinned data, or the user's
    statement alone does not satisfy this condition. Confirm that every required
