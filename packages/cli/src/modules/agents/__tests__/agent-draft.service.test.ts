@@ -51,34 +51,45 @@ describe('AgentDraftService', () => {
 		vi.mocked(userHasScopes).mockResolvedValue(true);
 	});
 
-	it('requires create and update scopes before it adopts a draft', async () => {
-		const { service, agents } = setup();
-		agents.createOrAdopt.mockResolvedValue({
-			agent: draft,
-			adopted: true,
-			config: null,
-			configHash: null,
-		});
-		expect(
-			await service.createDraft(user, 'project-1', 'Draft name', {
+	it.each([undefined, 'builder' as const])(
+		'requires create and update scopes and preserves creation attribution: %s',
+		async (createdBy) => {
+			const { service, agents } = setup();
+			agents.createOrAdopt.mockResolvedValue({
+				agent: draft,
+				adopted: true,
+				config: null,
+				configHash: null,
+			});
+			expect(
+				await service.createDraft(user, 'project-1', 'Draft name', {
+					id: 'agent-1',
+					adoptOnCollision: true,
+					createdBy,
+				}),
+			).toEqual({
+				agentId: 'agent-1',
+				projectId: 'project-1',
+				name: 'Persisted name',
+				adopted: true,
+			});
+			expect(agents.createOrAdopt).toHaveBeenCalledWith('project-1', 'Draft name', {
 				id: 'agent-1',
 				adoptOnCollision: true,
-			}),
-		).toEqual({
-			agentId: 'agent-1',
-			projectId: 'project-1',
-			name: 'Persisted name',
-			adopted: true,
-		});
-		expect(userHasScopes).toHaveBeenCalledWith(user, ['agent:create', 'agent:update'], false, {
-			projectId: 'project-1',
-		});
-		vi.mocked(userHasScopes).mockResolvedValue(false);
-		await expect(service.createDraft(user, 'project-1', 'Draft name')).rejects.toThrow(
-			ForbiddenError,
-		);
-		expect(agents.createOrAdopt).toHaveBeenCalledTimes(1);
-	});
+				createdBy,
+				actor: { kind: 'user', user },
+				...(createdBy ? { user } : {}),
+			});
+			expect(userHasScopes).toHaveBeenCalledWith(user, ['agent:create', 'agent:update'], false, {
+				projectId: 'project-1',
+			});
+			vi.mocked(userHasScopes).mockResolvedValue(false);
+			await expect(service.createDraft(user, 'project-1', 'Draft name')).rejects.toThrow(
+				ForbiddenError,
+			);
+			expect(agents.createOrAdopt).toHaveBeenCalledTimes(1);
+		},
+	);
 
 	it.each([undefined, { instructions: 'Help users' }])(
 		'seeds a pending draft with the default model when the initial config has no model: %j',
