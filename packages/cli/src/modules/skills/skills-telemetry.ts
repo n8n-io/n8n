@@ -27,8 +27,8 @@ type SkillTelemetryTarget = Pick<Skill, 'id' | 'projectId' | 'agentId'>;
 export type SkillTelemetryRef = SkillTelemetryTarget | string;
 
 /**
- * Skills hub telemetry. Callers emit only once the write commits and only with the hub
- * on. An emit never fails the write: an error is logged and dropped.
+ * Skills telemetry. Callers emit only once the write commits, and only while skills are
+ * on (`SkillsHubRollout.isEnabled`). An emit never fails the write: an error is logged and dropped.
  */
 @Service()
 export class SkillsTelemetry {

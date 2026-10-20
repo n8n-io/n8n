@@ -243,7 +243,7 @@ export class AgentSkillRepository extends BaseRepository<AgentSkillDependency> {
 	}
 
 	/**
-	 * Whether the agent already has skills hub rows: a draft ref, an agent skill, or a pin
+	 * Whether the agent already has skill rows: a draft ref, an agent skill, or a pin
 	 * of one of its published versions. The startup copy leaves such an agent alone.
 	 */
 	async hasHubState(agentId: string, ctx: OperationContext = {}): Promise<boolean> {
@@ -296,7 +296,7 @@ export class AgentSkillRepository extends BaseRepository<AgentSkillDependency> {
 		);
 	}
 
-	/** Ids of the agents that have draft refs in the skills hub, in id order. */
+	/** Ids of the agents that have skill draft refs, in id order. */
 	async findAgentIdsWithDraftRefs(ctx: OperationContext = {}): Promise<string[]> {
 		// The primary key is (agentId, skillId), so one agent can have several rows.
 		const rows = await this.managerFor(ctx)

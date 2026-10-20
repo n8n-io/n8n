@@ -14,12 +14,12 @@ import { AgentRepository } from './repositories/agent.repository';
 import { AgentSkillRepository } from './repositories/agent-skill.repository';
 
 /**
- * The agent side of the skills hub: the attach check of agent skill refs, the pins of
- * publish and revert, and what the skills module asks about agents. The agents module
- * registers it as the `SkillAgentsProvider` on init.
+ * How agents use skills: the attach check of agent skill refs, the pins of publish and
+ * revert, and what the skills module asks about the agents that use a skill. The agents
+ * module registers it as the `SkillAgentsProvider` on init.
  */
 @Service()
-export class AgentSkillHubService implements SkillAgentsProvider {
+export class AgentSkillUsageService implements SkillAgentsProvider {
 	constructor(
 		private readonly agentSkillRepository: AgentSkillRepository,
 		private readonly agentRepository: AgentRepository,

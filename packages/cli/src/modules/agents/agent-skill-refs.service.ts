@@ -17,7 +17,7 @@ import {
 } from '@/modules/skills/skill.service';
 import { SkillsHubRollout } from '@/modules/skills/skills-hub-rollout';
 
-import { AgentSkillHubService } from './agent-skill-hub.service';
+import { AgentSkillUsageService } from './agent-skill-usage.service';
 import type { AgentHistory } from './entities/agent-history.entity';
 import type { Agent } from './entities/agent.entity';
 import { withoutLegacySkillRefs, type AgentSkillRefs } from './json-config/agent-document';
@@ -61,7 +61,7 @@ export class AgentSkillRefsService {
 		private readonly skillRepository: SkillRepository,
 		private readonly agentSkillRepository: AgentSkillRepository,
 		private readonly skillService: SkillService,
-		private readonly agentSkillHub: AgentSkillHubService,
+		private readonly agentSkillUsage: AgentSkillUsageService,
 		private readonly agentRepository: AgentRepository,
 		private readonly rollout: SkillsHubRollout,
 	) {}
@@ -175,7 +175,7 @@ export class AgentSkillRefsService {
 				(ref) => existingIds.has(ref.id) || Object.hasOwn(agent.skills ?? {}, ref.id),
 			);
 		}
-		const checked = await this.agentSkillHub.checkRefs(
+		const checked = await this.agentSkillUsage.checkRefs(
 			{ id: agent.id, projectId: agent.projectId },
 			toServiceRefs(refs),
 			ctx,
@@ -206,7 +206,7 @@ export class AgentSkillRefsService {
 			await this.writeLegacyDraft(agent, agent.schema, kept, agent.skills ?? {}, ctx);
 			return;
 		}
-		const checked = await this.agentSkillHub.checkRefs(
+		const checked = await this.agentSkillUsage.checkRefs(
 			{ id: agent.id, projectId: agent.projectId },
 			toServiceRefs(refs ?? []),
 			ctx,
@@ -236,7 +236,7 @@ export class AgentSkillRefsService {
 			);
 			return;
 		}
-		const restored = await this.agentSkillHub.restoreFromVersion(
+		const restored = await this.agentSkillUsage.restoreFromVersion(
 			version.versionId,
 			toServiceRefs(refs ?? []),
 			ctx,
@@ -440,7 +440,7 @@ export class AgentSkillRefsService {
 		ctx: OperationContext,
 	): Promise<void> {
 		if (snapshot.pins.size === 0) return;
-		await this.agentSkillHub.pinForPublish(agentVersionId, snapshot.pins, ctx);
+		await this.agentSkillUsage.pinForPublish(agentVersionId, snapshot.pins, ctx);
 	}
 
 	async availabilityOf(

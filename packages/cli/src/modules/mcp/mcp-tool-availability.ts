@@ -33,7 +33,7 @@ export function areAgentToolsAvailable(
 }
 
 /**
- * The skill tools follow the skills hub gate, as the REST API and n8n Assistant do. Tool
+ * The skill tools follow the skills gate, as the REST API and n8n Assistant do. Tool
  * registration and the consent scopes both use this check, so they always agree.
  */
 export function areSkillToolsAvailable(skillsHub: Pick<SkillsHubRollout, 'isEnabled'>): boolean {

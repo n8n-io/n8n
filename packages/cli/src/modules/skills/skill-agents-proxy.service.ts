@@ -61,7 +61,7 @@ export class SkillAgentsProxy implements SkillAgentsProvider {
 		this.provider = provider;
 	}
 
-	/** Whether the agents module registered its provider. The skills hub needs it to be on. */
+	/** Whether the agents module registered its provider. Skills stay off without it. */
 	get hasProvider(): boolean {
 		return this.provider !== null;
 	}

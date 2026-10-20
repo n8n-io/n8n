@@ -9,7 +9,7 @@ import type { Skill } from '@/modules/skills/skill.entity';
 import type { ResolvedSkillRow, SkillRepository } from '@/modules/skills/skill.repository';
 import { SkillService } from '@/modules/skills/skill.service';
 
-import { AgentSkillHubService } from '../agent-skill-hub.service';
+import { AgentSkillUsageService } from '../agent-skill-usage.service';
 import type { AgentUpdateBroadcaster } from '../agent-update-broadcaster';
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { AgentSkillRepository } from '../repositories/agent-skill.repository';
@@ -65,14 +65,20 @@ function versionRow(
 	};
 }
 
-describe('AgentSkillHubService', () => {
+describe('AgentSkillUsageService', () => {
 	const skills = mock<SkillRepository>();
 	const agentSkills = mock<AgentSkillRepository>();
 	const agents = mock<AgentRepository>();
 	const broadcaster = mock<AgentUpdateBroadcaster>();
 	// A real SkillService, so the names that agents see come from the mocked rows.
 	const skillService = new SkillService(mock(), skills, mock(), mock(), mock());
-	const service = new AgentSkillHubService(agentSkills, agents, skills, skillService, broadcaster);
+	const service = new AgentSkillUsageService(
+		agentSkills,
+		agents,
+		skills,
+		skillService,
+		broadcaster,
+	);
 
 	beforeEach(() => {
 		vi.resetAllMocks();

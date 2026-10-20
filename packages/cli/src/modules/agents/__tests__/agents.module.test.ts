@@ -38,7 +38,7 @@ import { AgentHistoryRepository } from '../repositories/agent-history.repository
 import { AgentCredentialDependencyRepository } from '../repositories/agent-credential-dependency.repository';
 import { AgentWorkflowDependencyRepository } from '../repositories/agent-workflow-dependency.repository';
 import { SkillsHubStartupCopy } from '../skills/skills-hub-startup-copy';
-import { AgentSkillHubService } from '../agent-skill-hub.service';
+import { AgentSkillUsageService } from '../agent-skill-usage.service';
 import { AgentRepository } from '../repositories/agent.repository';
 import { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 
@@ -66,7 +66,7 @@ function setUpContainerForInit() {
 	Container.set(AgentRepository, mock<AgentRepository>());
 	Container.set(SkillsHubRollout, mock<SkillsHubRollout>());
 	Container.set(SkillAgentsProxy, mock<SkillAgentsProxy>());
-	Container.set(AgentSkillHubService, mock<AgentSkillHubService>());
+	Container.set(AgentSkillUsageService, mock<AgentSkillUsageService>());
 	Container.set(SkillsHubStartupCopy, mock<SkillsHubStartupCopy>());
 	Container.set(FavoriteResourceResolverRegistry, mock<FavoriteResourceResolverRegistry>());
 	Container.set(AgentCredentialDependencyRepository, mock<AgentCredentialDependencyRepository>());

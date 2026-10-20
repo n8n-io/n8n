@@ -12,7 +12,7 @@ import type { SkillService } from '@/modules/skills/skill.service';
 import type { SkillsHubRollout } from '@/modules/skills/skills-hub-rollout';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
-import type { AgentSkillHubService } from '../agent-skill-hub.service';
+import type { AgentSkillUsageService } from '../agent-skill-usage.service';
 import { AgentSkillRefsService } from '../agent-skill-refs.service';
 import type { AgentHistory } from '../entities/agent-history.entity';
 import type { Agent } from '../entities/agent.entity';
@@ -44,7 +44,7 @@ describe('AgentSkillRefsService', () => {
 	let skillRepository: Mocked<SkillRepository>;
 	let agentSkillRepository: Mocked<AgentSkillRepository>;
 	let skillService: Mocked<SkillService>;
-	let agentSkillHub: Mocked<AgentSkillHubService>;
+	let agentSkillUsage: Mocked<AgentSkillUsageService>;
 	let agentRepository: Mocked<AgentRepository>;
 	let rollout: { isEnabled: boolean };
 	let service: AgentSkillRefsService;
@@ -55,14 +55,14 @@ describe('AgentSkillRefsService', () => {
 		skillRepository = mock<SkillRepository>();
 		agentSkillRepository = mock<AgentSkillRepository>();
 		skillService = mock<SkillService>();
-		agentSkillHub = mock<AgentSkillHubService>();
+		agentSkillUsage = mock<AgentSkillUsageService>();
 		agentRepository = mock<AgentRepository>();
 		rollout = { isEnabled: true };
 		service = new AgentSkillRefsService(
 			skillRepository,
 			agentSkillRepository,
 			skillService,
-			agentSkillHub,
+			agentSkillUsage,
 			agentRepository,
 			rollout as SkillsHubRollout,
 		);
@@ -165,7 +165,7 @@ describe('AgentSkillRefsService', () => {
 
 	describe('effectiveDraftRefs', () => {
 		it('returns the refs the attach check keeps and writes nothing', async () => {
-			agentSkillHub.checkRefs.mockResolvedValue([{ id: 'zeta' }]);
+			agentSkillUsage.checkRefs.mockResolvedValue([{ id: 'zeta' }]);
 
 			const refs = await service.effectiveDraftRefs(
 				agent,
@@ -183,7 +183,7 @@ describe('AgentSkillRefsService', () => {
 
 	describe('replaceDraftRefs', () => {
 		it('checks the refs and writes the dependency rows', async () => {
-			agentSkillHub.checkRefs.mockResolvedValue([
+			agentSkillUsage.checkRefs.mockResolvedValue([
 				{ id: 'zeta' },
 				{ id: 'alpha', versionId: pinId },
 			]);
@@ -197,7 +197,7 @@ describe('AgentSkillRefsService', () => {
 				ctx,
 			);
 
-			expect(agentSkillHub.checkRefs).toHaveBeenCalledWith(
+			expect(agentSkillUsage.checkRefs).toHaveBeenCalledWith(
 				{ id: 'agent-1', projectId: 'project-1' },
 				[{ id: 'zeta' }, { id: 'alpha', versionId: pinId }],
 				ctx,
@@ -213,7 +213,7 @@ describe('AgentSkillRefsService', () => {
 		});
 
 		it('removes every row when the refs are undefined', async () => {
-			agentSkillHub.checkRefs.mockResolvedValue([]);
+			agentSkillUsage.checkRefs.mockResolvedValue([]);
 
 			await service.replaceDraftRefs(agent, undefined, ctx);
 
@@ -233,7 +233,7 @@ describe('AgentSkillRefsService', () => {
 	});
 
 	it('restores the pins of a published version without the attach check', async () => {
-		agentSkillHub.restoreFromVersion.mockResolvedValue([{ id: 'zeta', versionId: pinId }]);
+		agentSkillUsage.restoreFromVersion.mockResolvedValue([{ id: 'zeta', versionId: pinId }]);
 
 		await service.restoreDraftRefs(
 			agent,
@@ -242,12 +242,12 @@ describe('AgentSkillRefsService', () => {
 			ctx,
 		);
 
-		expect(agentSkillHub.restoreFromVersion).toHaveBeenCalledWith(
+		expect(agentSkillUsage.restoreFromVersion).toHaveBeenCalledWith(
 			'version-1',
 			[{ id: 'zeta' }],
 			ctx,
 		);
-		expect(agentSkillHub.checkRefs).not.toHaveBeenCalled();
+		expect(agentSkillUsage.checkRefs).not.toHaveBeenCalled();
 		expect(agentSkillRepository.replaceDependencies).toHaveBeenCalledWith(
 			'agent-1',
 			[{ skillId: 'zeta', versionId: pinId }],
@@ -327,7 +327,7 @@ describe('AgentSkillRefsService', () => {
 		const user = mock<User>({ id: 'user-1' });
 
 		beforeEach(() => {
-			agentSkillHub.checkRefs.mockImplementation(async (_agent, refs) => refs);
+			agentSkillUsage.checkRefs.mockImplementation(async (_agent, refs) => refs);
 			skillService.create.mockResolvedValue('skill_created');
 			vi.mocked(userHasScopes).mockResolvedValue(true);
 		});
@@ -362,7 +362,7 @@ describe('AgentSkillRefsService', () => {
 				{ type: 'skill', id: 'skill_created' },
 			]);
 			// The attach check runs on every ref, so a ref to a skill of another project fails.
-			expect(agentSkillHub.checkRefs).toHaveBeenCalledWith(
+			expect(agentSkillUsage.checkRefs).toHaveBeenCalledWith(
 				{ id: 'agent-1', projectId: 'project-1' },
 				[{ id: 'shared' }, { id: 'skill_created' }],
 				ctx,
@@ -438,7 +438,7 @@ describe('AgentSkillRefsService', () => {
 			expect(skillService.resolveForAgentDraft).not.toHaveBeenCalled();
 			expect(skillService.create).not.toHaveBeenCalled();
 			// The ref stays a plain ref, so the attach check refuses it.
-			expect(agentSkillHub.checkRefs).toHaveBeenCalledWith(
+			expect(agentSkillUsage.checkRefs).toHaveBeenCalledWith(
 				{ id: 'agent-1', projectId: 'project-1' },
 				[{ id: 'private' }],
 				ctx,
@@ -545,7 +545,7 @@ describe('AgentSkillRefsService', () => {
 				{ type: 'skill', id: 'alpha' },
 			]);
 			expect(snapshot.skills).toEqual({ zeta: notes, alpha: notes });
-			expect(agentSkillHub.pinForPublish).toHaveBeenCalledWith('version-1', versionByRef, ctx);
+			expect(agentSkillUsage.pinForPublish).toHaveBeenCalledWith('version-1', versionByRef, ctx);
 		});
 
 		it('rejects a ref that resolves to no version', async () => {
@@ -566,7 +566,7 @@ describe('AgentSkillRefsService', () => {
 			expect(snapshot.schema?.skills).toEqual([]);
 			expect(snapshot.skills).toEqual({});
 			expect(skillService.snapshotForPublish).not.toHaveBeenCalled();
-			expect(agentSkillHub.pinForPublish).not.toHaveBeenCalled();
+			expect(agentSkillUsage.pinForPublish).not.toHaveBeenCalled();
 		});
 	});
 
@@ -626,7 +626,7 @@ describe('AgentSkillRefsService', () => {
 
 			expect(draft.schema?.skills).toEqual([{ type: 'skill', id: 'billing' }]);
 			expect(agentRepository.updateDraftSkills).toHaveBeenCalledWith(draft, ctx);
-			expect(agentSkillHub.checkRefs).not.toHaveBeenCalled();
+			expect(agentSkillUsage.checkRefs).not.toHaveBeenCalled();
 		});
 
 		it('creates skills as bodies on the agent row', async () => {
@@ -651,7 +651,7 @@ describe('AgentSkillRefsService', () => {
 
 			expect(draft.schema?.skills).toEqual([{ type: 'skill', id: 'notes' }]);
 			expect(draft.skills).toEqual({ notes });
-			expect(agentSkillHub.restoreFromVersion).not.toHaveBeenCalled();
+			expect(agentSkillUsage.restoreFromVersion).not.toHaveBeenCalled();
 		});
 
 		it('copies the refs and bodies into a new published version', async () => {

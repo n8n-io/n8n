@@ -4,7 +4,7 @@ Guidance for the skills module (`packages/cli/src/modules/skills`). See the [cli
 
 ## What the module owns
 
-- The skills hub tables: `skill`, `skill_version` and `skill_file`. Query them through `SkillRepository`.
+- The skill tables: `skill`, `skill_version` and `skill_file`. Query them through `SkillRepository`.
 - The rules of skills in `SkillService`: create, save, names, moves, permissions and the delete guard.
 - The settings page API (`/skills`, `SkillsApiService`), skills telemetry and the rollout setting (`SkillsHubRollout`).
 
