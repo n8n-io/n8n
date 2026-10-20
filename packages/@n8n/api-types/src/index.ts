@@ -333,6 +333,7 @@ export type {
 	BreakingChangeAffectedWorkflow,
 	BreakingChangeWorkflowOwner,
 	MigrationWorkflowOwnerResponse,
+	MigrationOwnerCandidate,
 	MigrationOwnerSource,
 	BreakingChangeInstanceIssue,
 	BreakingChangeWorkflowIssue,
