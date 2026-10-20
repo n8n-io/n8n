@@ -131,23 +131,46 @@ const buildFunctionBody = (expr: ExpressionKind) => {
 
 export type ParsedCode = ExpressionCode & { parsed: types.namedTypes.File };
 
-// This replaces any actual new lines with \n's. This only happens in
-// template strings.
+function escapeNewLines(value: string): string {
+	return value.replace(/\n/g, '\\n');
+}
+
+// Recast prints a changed template element back into the original source.
+// When that text ends with an identifier character and the next source
+// character is "$", recast inserts a space so the tokens do not merge.
+// The "n" in a rewritten "\n" is such a character, and the space becomes
+// part of the string. Setting original to null makes recast print the whole
+// template literal, which does not insert that space.
+function printTemplateLiteralFresh(node: { original?: unknown }): void {
+	node.original = null;
+}
+
+// Keep a line break inside a template literal on one generated line.
+// An escaped "\n" is already one line. Rewriting it marks the element as
+// changed and triggers the space above, so leave that element as it is.
 const fixStringNewLines = (node: types.namedTypes.File): types.namedTypes.File => {
-	const replace = (str: string): string => {
-		return str.replace(/\n/g, '\\n');
-	};
 	visit(node, {
 		visitTemplateElement(path) {
 			this.traverse(path);
-			const el = b.templateElement(
-				{
-					cooked: path.node.value.cooked === null ? null : replace(path.node.value.cooked),
-					raw: replace(path.node.value.raw),
-				},
-				path.node.tail,
+			if (!path.node.value.raw.includes('\n')) {
+				return;
+			}
+
+			const template = path.parent?.node;
+			const cooked = path.node.value.cooked;
+			path.replace(
+				b.templateElement(
+					{
+						cooked: cooked === null ? null : escapeNewLines(cooked),
+						raw: escapeNewLines(path.node.value.raw),
+					},
+					path.node.tail,
+				),
 			);
-			path.replace(el);
+
+			if (template?.type === 'TemplateLiteral') {
+				printTemplateLiteralFresh(template);
+			}
 		},
 	});
 
