@@ -76,7 +76,7 @@ test.describe(
 			await expect(n8n.canvas.getNodePinnedStatusIndicator(FAILING_WORKFLOW_TRIGGER)).toBeVisible();
 		});
 
-		// Pending: the fixture runs Code nodes, and engine v2 does not support task runners yet.
+		// TODO(CET-332): the fixture runs Code nodes, and engine v2 does not support task runners yet.
 		test('should exit debug mode after successful execution @engine:v2-pending', async ({
 			n8n,
 		}) => {

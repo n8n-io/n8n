@@ -397,7 +397,7 @@ test.describe(
 			await n8n.api.workflows.assertLatestExecutionRoutedToEngine(workflowId);
 		});
 
-		// Pending: engine v2 does not resolve paired items through a Merge node yet (CAT-2944).
+		// TODO(CET-333): engine v2 does not resolve paired items through a Merge node yet.
 		test('Paired items should be correctly mapped after passed through the merge node with more than two inputs @engine:v2-pending', async ({
 			n8n,
 		}) => {

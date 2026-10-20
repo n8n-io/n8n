@@ -25,7 +25,7 @@ test.describe(
 			);
 		});
 
-		// Pending: engine v2 does not run the chat trigger yet.
+		// TODO(CET-309): engine v2 does not run the chat trigger yet.
 		test('should do partial execution when using chat trigger and clicking NDV execute node @engine:v2-pending', async ({
 			n8n,
 		}) => {
@@ -44,7 +44,7 @@ test.describe(
 			);
 		});
 
-		// Pending: engine v2 does not run the chat trigger yet.
+		// TODO(CET-309): engine v2 does not run the chat trigger yet.
 		test('should do partial execution when using chat trigger and context-menu execute node @engine:v2-pending', async ({
 			n8n,
 		}) => {
