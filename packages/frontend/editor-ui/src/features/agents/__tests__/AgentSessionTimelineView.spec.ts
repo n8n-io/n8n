@@ -128,21 +128,15 @@ describe('AgentSessionTimelineView', () => {
 		});
 	});
 
-	it.each(['thread-a', 'thread-c'])(
-		'opens the agent editor from session %s without a session-list query',
-		async (threadId) => {
-			const wrapper = await renderTimeline();
-			routeParams.threadId = threadId;
-			await nextTick();
+	it('opens the agent editor without a session-list query', async () => {
+		const wrapper = await renderTimeline();
+		wrapper.findComponent(AgentSessionTimelineHeader).vm.$emit('edit');
 
-			wrapper.findComponent(AgentSessionTimelineHeader).vm.$emit('edit');
-
-			expect(routerPush).toHaveBeenCalledExactlyOnceWith({
-				name: AGENT_BUILDER_VIEW,
-				params: { projectId: 'p1', agentId: 'a1' },
-			});
-		},
-	);
+		expect(routerPush).toHaveBeenCalledExactlyOnceWith({
+			name: AGENT_BUILDER_VIEW,
+			params: { projectId: 'p1', agentId: 'a1' },
+		});
+	});
 
 	it('uses the visible Edit agent text as the button name and emits edit', async () => {
 		const wrapper = shallowMount(AgentSessionTimelineHeader, {

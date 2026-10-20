@@ -58,7 +58,13 @@ const time = computed(() => formatTimelineTime(props.item.timestamp));
 			:leave-to-class="$style.stateLeaveTo"
 		>
 			<div :key="`${task.id}:${task.status}`" :class="$style.stateContent">
-				<N8nAiActivityStepButton size="small" :interactive="false" full-width :tabindex="-1">
+				<N8nAiActivityStepButton
+					:class="$style.activityButton"
+					size="small"
+					:interactive="false"
+					full-width
+					:tabindex="-1"
+				>
 					<template #prefix>
 						<span role="img" :aria-label="statusLabel" :class="$style.icon">
 							<N8nSpinner v-if="task.status === 'running'" type="grid" size="medium" />
@@ -76,7 +82,7 @@ const time = computed(() => formatTimelineTime(props.item.timestamp));
 		</TransitionGroup>
 		<div :class="$style.actions">
 			<RouterLink
-				v-if="task.status === 'suspended' && projectId && agentId && threadId"
+				v-if="task.status === 'suspended' && task.approval && projectId && agentId && threadId"
 				:class="$style.approvalLink"
 				v-slot="{ href, navigate }"
 				:to="{
@@ -103,6 +109,12 @@ const time = computed(() => formatTimelineTime(props.item.timestamp));
 
 <style module lang="scss">
 @use '@n8n/design-system/css/mixins/motion';
+
+.row .activityButton {
+	--ai-activity-step--padding: var(--spacing--2xs);
+	--button--color--background-hover: var(--background--hover);
+	--button--color--background-active: var(--background--active);
+}
 
 .row {
 	display: flex;

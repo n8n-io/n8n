@@ -34,7 +34,13 @@ describe('SessionBackgroundTaskItem', () => {
 		await router.push('/');
 		const wrapper = mount(SessionBackgroundTaskItem, {
 			props: {
-				item: backgroundTasksToTimelineItems([{ ...task, status: 'suspended' }])[0],
+				item: backgroundTasksToTimelineItems([
+					{
+						...task,
+						status: 'suspended',
+						approval: { runId: 'background-job-job-1', toolCallId: 'gate-1' },
+					},
+				])[0],
 				selected: false,
 				projectId: 'project-1',
 				agentId: 'agent-1',
@@ -58,8 +64,27 @@ describe('SessionBackgroundTaskItem', () => {
 	it('does not offer approval navigation without parent session context', () => {
 		const wrapper = mount(SessionBackgroundTaskItem, {
 			props: {
+				item: backgroundTasksToTimelineItems([
+					{
+						...task,
+						status: 'suspended',
+						approval: { runId: 'background-job-job-1', toolCallId: 'gate-1' },
+					},
+				])[0],
+				selected: false,
+			},
+		});
+		expect(wrapper.find('[data-test-id="review-background-task-approval"]').exists()).toBe(false);
+	});
+
+	it('does not offer approval navigation for a suspension without an approval', () => {
+		const wrapper = mount(SessionBackgroundTaskItem, {
+			props: {
 				item: backgroundTasksToTimelineItems([{ ...task, status: 'suspended' }])[0],
 				selected: false,
+				projectId: 'project-1',
+				agentId: 'agent-1',
+				threadId: 'parent-thread',
 			},
 		});
 		expect(wrapper.find('[data-test-id="review-background-task-approval"]').exists()).toBe(false);
@@ -80,7 +105,7 @@ describe('SessionBackgroundTaskItem', () => {
 		{ status: 'suspended', label: 'Awaiting approval', icon: 'hourglass' },
 		{ status: 'completed', label: 'Done', icon: 'circle-check' },
 		{ status: 'failed', label: 'Failed', icon: 'circle-x' },
-		{ status: 'cancelled', label: 'Cancelled', icon: 'circle-x' },
+		{ status: 'cancelled', label: 'Canceled', icon: 'circle-x' },
 	] satisfies Array<{ status: AgentBackgroundJobDto['status']; label: string; icon: string }>)(
 		'shows the current $status state',
 		({ status, label, icon }) => {

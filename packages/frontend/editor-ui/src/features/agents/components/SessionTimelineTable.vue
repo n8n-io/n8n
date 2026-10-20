@@ -24,6 +24,8 @@ const props = defineProps<{
 	searchQuery?: string;
 }>();
 
+const emit = defineEmits<{ select: [index: number | null] }>();
+
 const i18n = useI18n();
 const tableRef = ref<HTMLElement | null>(null);
 const scrollerRef = ref<{
@@ -104,6 +106,49 @@ const rows = computed<Row[]>(function getRows() {
 const shouldVirtualizeRows = computed(function shouldVirtualize() {
 	return rows.value.length > VIRTUALIZE_AFTER_ROWS;
 });
+const tabbableEventIndex = computed(function getTabbableEventIndex() {
+	return rows.value.find((row) => row.index === props.selectedIndex)?.index ?? rows.value[0]?.index;
+});
+
+function onRowClick(event: MouseEvent, index: number) {
+	if (
+		event.target instanceof Element &&
+		event.target.closest(
+			'a, button, input, select, textarea, [role="button"], [contenteditable="true"]',
+		)
+	) {
+		return;
+	}
+	emit('select', index);
+}
+
+function onRowKeydown(event: KeyboardEvent) {
+	if (event.target !== event.currentTarget) return;
+	if (event.key === 'Escape') {
+		if (props.selectedIndex === null) return;
+		event.preventDefault();
+		emit('select', null);
+		return;
+	}
+
+	if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+	if (event.ctrlKey || event.altKey || event.shiftKey) return;
+	event.preventDefault();
+	const direction = event.key === 'ArrowDown' ? 1 : -1;
+	const currentIndex = rows.value.findIndex((row) => row.index === props.selectedIndex);
+	const nextIndex = event.metaKey
+		? direction === 1
+			? rows.value.length - 1
+			: 0
+		: currentIndex < 0
+			? direction === 1
+				? 0
+				: rows.value.length - 1
+			: Math.max(0, Math.min(rows.value.length - 1, currentIndex + direction));
+	const row = rows.value[nextIndex];
+	if (row) emit('select', row.index);
+}
+
 function updateScrollMask() {
 	if (!scrollContainer) {
 		canScrollUp.value = false;
@@ -138,7 +183,8 @@ function scrollSelectedIntoView(): void {
 		: 'smooth';
 	bindScrollContainer();
 	if (shouldVirtualizeRows.value) {
-		scrollerRef.value?.scrollToKey(rowId, behavior);
+		/** Row measurements can change the target offset during a smooth scroll. */
+		scrollerRef.value?.scrollToKey(rowId, 'auto');
 		return;
 	}
 
@@ -162,6 +208,27 @@ function scrollSelectedIntoView(): void {
 }
 
 defineExpose({ scrollSelectedIntoView });
+
+watch(
+	() => props.selectedIndex,
+	() => {
+		const activeElement = document.activeElement;
+		const shouldMoveFocus =
+			activeElement instanceof HTMLElement &&
+			tableRef.value?.contains(activeElement) === true &&
+			activeElement.matches('[data-timeline-row-id]');
+		void nextTick(async () => {
+			scrollSelectedIntoView();
+			if (!shouldMoveFocus) return;
+			await nextTick();
+			const rowId = rows.value.find((row) => row.index === props.selectedIndex)?.id;
+			if (!rowId) return;
+			tableRef.value
+				?.querySelector<HTMLElement>(`[data-timeline-row-id="${rowId}"]`)
+				?.focus({ preventScroll: true });
+		});
+	},
+);
 
 watch(
 	() => rows.value.length,
@@ -206,17 +273,24 @@ onBeforeUnmount(() => {
 					:class="$style.rowWrapper"
 					role="row"
 					:aria-selected="props.selectedIndex === row.index"
+					:tabindex="tabbableEventIndex === row.index ? 0 : -1"
+					@click="onRowClick($event, row.index)"
+					@keydown="onRowKeydown"
+					@keydown.enter.self.prevent="emit('select', row.index)"
+					@keydown.space.self.prevent="emit('select', row.index)"
 				>
-					<SessionTimelineRow
-						:project-id="props.projectId"
-						:agent-id="props.agentId"
-						:thread-id="props.threadId"
-						:item="row.item"
-						:agent-name="props.agentName"
-						:selected="props.selectedIndex === row.index"
-						:search-query="props.searchQuery"
-						:personalisation="props.personalisation"
-					/>
+					<div role="gridcell">
+						<SessionTimelineRow
+							:project-id="props.projectId"
+							:agent-id="props.agentId"
+							:thread-id="props.threadId"
+							:item="row.item"
+							:agent-name="props.agentName"
+							:selected="props.selectedIndex === row.index"
+							:search-query="props.searchQuery"
+							:personalisation="props.personalisation"
+						/>
+					</div>
 					<div v-if="rowIndex < rows.length - 1" :class="$style.divider"><span></span></div>
 				</div>
 			</template>
@@ -237,17 +311,24 @@ onBeforeUnmount(() => {
 					:class="$style.rowWrapper"
 					role="row"
 					:aria-selected="props.selectedIndex === row.index"
+					:tabindex="tabbableEventIndex === row.index ? 0 : -1"
+					@click="onRowClick($event, row.index)"
+					@keydown="onRowKeydown"
+					@keydown.enter.self.prevent="emit('select', row.index)"
+					@keydown.space.self.prevent="emit('select', row.index)"
 				>
-					<SessionTimelineRow
-						:project-id="props.projectId"
-						:agent-id="props.agentId"
-						:thread-id="props.threadId"
-						:item="row.item"
-						:agent-name="props.agentName"
-						:selected="props.selectedIndex === row.index"
-						:search-query="props.searchQuery"
-						:personalisation="props.personalisation"
-					/>
+					<div role="gridcell">
+						<SessionTimelineRow
+							:project-id="props.projectId"
+							:agent-id="props.agentId"
+							:thread-id="props.threadId"
+							:item="row.item"
+							:agent-name="props.agentName"
+							:selected="props.selectedIndex === row.index"
+							:search-query="props.searchQuery"
+							:personalisation="props.personalisation"
+						/>
+					</div>
 					<div v-if="row.id !== rows[rows.length - 1].id" :class="$style.divider">
 						<span></span>
 					</div>

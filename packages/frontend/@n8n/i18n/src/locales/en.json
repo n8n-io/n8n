@@ -8620,7 +8620,7 @@
 	"agentSessions.timeline.taskPaused": "Paused",
 	"agentSessions.timeline.taskCompleted": "Done",
 	"agentSessions.timeline.taskFailed": "Failed",
-	"agentSessions.timeline.taskCancelled": "Cancelled",
+	"agentSessions.timeline.taskCancelled": "Canceled",
 	"agents.chat.backgroundTasks.resultsReceived": "Background task results received",
 	"agents.chat.backgroundTasks.result": "{title} • {status}",
 	"agents.chat.backgroundTasks.runningCount": "Running {count} background task | Running {count} background tasks",

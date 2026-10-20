@@ -74,6 +74,15 @@ describe('devServerPlugin', () => {
 		});
 	});
 
+	it('lets HMR use each editor server instead of a shared port', () => {
+		for (const editorPort of ['8080', '8082']) {
+			const server = runConfigHook({ N8N_EDITOR_PORT: editorPort }, DEV)?.server;
+
+			expect(server?.port).toBe(Number(editorPort));
+			expect(server).not.toHaveProperty('hmr');
+		}
+	});
+
 	it('falls back to the default ports', () => {
 		expect(runConfigHook({}, DEV)?.server).toMatchObject({
 			port: 8080,
