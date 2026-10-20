@@ -6,20 +6,17 @@ import { v7 as uuidv7 } from 'uuid';
 
 import { createMember, createOwner } from '@test-integration/db/users';
 
-import { PromotionConfigRepository } from '../database/repositories/promotion-config.repository';
-import { PromotionConnectionRepository } from '../database/repositories/promotion-connection.repository';
+import { PromotionEnvironmentRepository } from '../database/repositories/promotion-environment.repository';
 import { PromotionProviderRepository } from '../database/repositories/promotion-provider.repository';
 import { PromotionReviewRepository } from '../database/repositories/promotion-review.repository';
 import { PromotionRunRepository } from '../database/repositories/promotion-run.repository';
 
 let providerRepository: PromotionProviderRepository;
-let connectionRepository: PromotionConnectionRepository;
-let configRepository: PromotionConfigRepository;
+let environmentRepository: PromotionEnvironmentRepository;
 let runRepository: PromotionRunRepository;
 let reviewRepository: PromotionReviewRepository;
 let owner: User;
-let connectionId: string;
-let configId: string;
+let environmentId: string;
 let providerId: string;
 
 beforeAll(async () => {
@@ -27,8 +24,7 @@ beforeAll(async () => {
 	await testDb.init();
 
 	providerRepository = Container.get(PromotionProviderRepository);
-	connectionRepository = Container.get(PromotionConnectionRepository);
-	configRepository = Container.get(PromotionConfigRepository);
+	environmentRepository = Container.get(PromotionEnvironmentRepository);
 	runRepository = Container.get(PromotionRunRepository);
 	reviewRepository = Container.get(PromotionReviewRepository);
 });
@@ -38,15 +34,14 @@ afterAll(async () => {
 });
 
 beforeEach(async () => {
-	// Runs point at reviews and configs, so delete the runs first.
+	// Runs point at reviews and environments, so delete the runs first.
 	await runRepository.delete({});
 	await reviewRepository.delete({});
-	await configRepository.delete({});
-	await connectionRepository.delete({});
+	await environmentRepository.delete({});
 	await providerRepository.delete({});
 	await testDb.truncate(['User']);
 	owner = await createOwner();
-	// Only one instance connection may exist, so every review of a test shares it.
+	// Only one instance Promote environment may exist, so every review of a test shares it.
 	const provider = await providerRepository.insertProvider({
 		name: 'repo',
 		type: 'git',
@@ -55,20 +50,15 @@ beforeEach(async () => {
 		auth: 'encrypted-repo',
 	});
 	providerId = provider.id;
-	const connection = await connectionRepository.insertConnection({
+	const environment = await environmentRepository.insertEnvironment({
 		name: 'repo',
 		scope: 'instance',
 		providerId: provider.id,
-		target: { schemaVersion: 1, remoteUrl: 'https://example.com/org/repo.git' },
-	});
-	connectionId = connection.id;
-	const config = await configRepository.insertConfig({
-		connectionId,
+		remote: { schemaVersion: 1, remoteUrl: 'https://example.com/org/repo.git' },
 		direction: 'promote',
-		name: 'Promote',
 		settings: { schemaVersion: 1, baseBranchName: 'main', createBranchOnPromotion: true },
 	});
-	configId = config.id;
+	environmentId = environment.id;
 });
 
 let reviewCount = 0;
@@ -77,13 +67,13 @@ async function insertReview(over: { id?: string; remoteReviewId?: string } = {})
 	reviewCount += 1;
 	const review = await reviewRepository.insertReview({
 		id: over.id ?? uuidv7(),
-		connectionId,
+		environmentId,
 		type: 'gitlab',
 		remoteReviewId: over.remoteReviewId ?? `7!${reviewCount}`,
 		createdById: owner.id,
 	});
 	const run = await runRepository.insertRun({
-		configId,
+		environmentId,
 		createdById: owner.id,
 		direction: 'promote',
 		type: 'git',
@@ -107,7 +97,7 @@ describe('PromotionReviewRepository', () => {
 			id: chosenReviewId,
 			state: 'open',
 			type: 'gitlab',
-			connectionId,
+			environmentId,
 			remoteReviewId: review.remoteReviewId,
 			lastStateChangeAt: null,
 			approvedById: null,
@@ -115,7 +105,7 @@ describe('PromotionReviewRepository', () => {
 			createdById: owner.id,
 		});
 		expect(found?.createdBy?.id).toBe(owner.id);
-		expect(found?.connection?.id).toBe(connectionId);
+		expect(found?.environment?.id).toBe(environmentId);
 		expect(found?.runs).toHaveLength(1);
 		expect(found?.runs[0]).toMatchObject({
 			direction: 'promote',
@@ -124,20 +114,19 @@ describe('PromotionReviewRepository', () => {
 			details: run.details,
 		});
 		expect(found?.runs[0]?.createdBy?.id).toBe(owner.id);
-		expect(found?.runs[0]?.config?.id).toBe(configId);
 		expect(found?.approvedBy).toBeNull();
 	});
 
 	it('attaches a recorded run to its review', async () => {
 		const review = await reviewRepository.insertReview({
 			id: uuidv7(),
-			connectionId,
+			environmentId,
 			type: 'gitlab',
 			remoteReviewId: '9!1',
 			createdById: owner.id,
 		});
 		const run = await runRepository.insertRun({
-			configId,
+			environmentId,
 			createdById: owner.id,
 			direction: 'promote',
 			type: 'git',
@@ -156,7 +145,7 @@ describe('PromotionReviewRepository', () => {
 		expect(found?.runs[0]).toMatchObject({ id: run.id, reviewId: review.id });
 	});
 
-	it('keeps the review when its config or approver is deleted', async () => {
+	it('keeps the review when its environment or approver is deleted', async () => {
 		const { review, run } = await insertReview();
 		const member = await createMember();
 		await reviewRepository.update(
@@ -164,14 +153,13 @@ describe('PromotionReviewRepository', () => {
 			{ approvedById: member.id, approvedAt: new Date() },
 		);
 
-		await connectionRepository.delete({ id: connectionId });
+		await environmentRepository.delete({ id: environmentId });
 		await Container.get(UserRepository).delete({ id: member.id });
 
 		const found = await reviewRepository.findByIdWithRelations(review.id);
-		expect(found).toMatchObject({ approvedById: null, connectionId: null });
-		expect(found?.connection).toBeNull();
-		expect(found?.runs[0]?.configId).toBeNull();
-		expect(found?.runs[0]?.config).toBeNull();
+		expect(found).toMatchObject({ approvedById: null, environmentId: null });
+		expect(found?.environment).toBeNull();
+		expect(found?.runs[0]?.environmentId).toBeNull();
 		expect(found?.runs[0]?.direction).toBe('promote');
 		expect(found?.runs[0]?.details).toEqual(run.details);
 		expect(found?.approvedBy).toBeNull();
@@ -241,24 +229,26 @@ describe('PromotionReviewRepository', () => {
 		expect(second.data.map((r) => r.id)).toEqual([olderReviewId]);
 	});
 
-	it('rejects a second review with the same remote id on one connection', async () => {
+	it('rejects a second review with the same remote id on one environment', async () => {
 		await insertReview({ remoteReviewId: '7!1' });
 
 		await expect(insertReview({ remoteReviewId: '7!1' })).rejects.toThrow();
 	});
 
-	it('allows the same remote id on another connection', async () => {
+	it('allows the same remote id on another environment', async () => {
 		await insertReview({ remoteReviewId: '7!1' });
-		const other = await connectionRepository.insertConnection({
+		const other = await environmentRepository.insertEnvironment({
 			name: 'other',
 			scope: 'projects',
 			providerId,
-			target: { schemaVersion: 1, remoteUrl: 'https://example.com/org/other.git' },
+			remote: { schemaVersion: 1, remoteUrl: 'https://example.com/org/other.git' },
+			direction: 'promote',
+			settings: { schemaVersion: 1, baseBranchName: 'main', createBranchOnPromotion: true },
 		});
 
 		const review = await reviewRepository.insertReview({
 			id: uuidv7(),
-			connectionId: other.id,
+			environmentId: other.id,
 			type: 'gitlab',
 			remoteReviewId: '7!1',
 			createdById: owner.id,
@@ -270,14 +260,14 @@ describe('PromotionReviewRepository', () => {
 	it('allows several reviews without a remote id', async () => {
 		await reviewRepository.insertReview({
 			id: uuidv7(),
-			connectionId,
+			environmentId,
 			type: 'gitlab',
 			remoteReviewId: null,
 			createdById: owner.id,
 		});
 		await reviewRepository.insertReview({
 			id: uuidv7(),
-			connectionId,
+			environmentId,
 			type: 'gitlab',
 			remoteReviewId: null,
 			createdById: owner.id,

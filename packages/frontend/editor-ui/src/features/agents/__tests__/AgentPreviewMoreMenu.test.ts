@@ -5,6 +5,7 @@ import { cleanup, render, screen, waitFor } from '@testing-library/vue';
 import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { mock } from 'vitest-mock-extended';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
 import AgentPreviewMoreMenu from '../components/AgentPreviewMoreMenu.vue';
 import type { AgentExecution, ThreadDetail } from '../composables/useAgentThreadsApi';
@@ -25,6 +26,16 @@ const { clipboardCopy, getThreadDetail, routerResolve, showError, showMessage } 
 		};
 	},
 );
+
+const track = vi.fn();
+vi.mock('@n8n/composables/useTelemetry', () => ({
+	useTelemetry: () => ({ track }),
+}));
+vi.mock('@n8n/stores/useRootStore', () => ({
+	useRootStore: () => ({ pushRef: 'session-xyz' }),
+}));
+
+const editorContext = { agent_id: 'agent-1', session_id: 'session-xyz' };
 
 vi.mock('@n8n/composables/useClipboard', function mockUseClipboard() {
 	return {
@@ -212,6 +223,10 @@ describe('AgentPreviewMoreMenu', function describeMenu() {
 			title: 'agents.builder.preview.more.linkCopied',
 			type: 'success',
 		});
+		expect(track).toHaveBeenCalledExactlyOnceWith(
+			TELEMETRY_EVENT.AGENTS.USER_CLICKED_AN_OPTION_FROM_MORE_LIST,
+			{ ...editorContext, option: 'copy-link' },
+		);
 	});
 
 	it('copies the supplied conversation markdown', async function copiesConversation() {
@@ -225,6 +240,10 @@ describe('AgentPreviewMoreMenu', function describeMenu() {
 			title: 'agents.builder.preview.more.conversationCopied',
 			type: 'success',
 		});
+		expect(track).toHaveBeenCalledExactlyOnceWith(
+			TELEMETRY_EVENT.AGENTS.USER_CLICKED_AN_OPTION_FROM_MORE_LIST,
+			{ ...editorContext, option: 'copy-conversation' },
+		);
 	});
 
 	it('does not copy an empty conversation', async function skipsEmptyConversation() {
@@ -235,6 +254,10 @@ describe('AgentPreviewMoreMenu', function describeMenu() {
 
 		expect(clipboardCopy).not.toHaveBeenCalled();
 		expect(showMessage).not.toHaveBeenCalled();
+		expect(track).toHaveBeenCalledExactlyOnceWith(
+			TELEMETRY_EVENT.AGENTS.USER_CLICKED_AN_OPTION_FROM_MORE_LIST,
+			{ ...editorContext, option: 'copy-conversation' },
+		);
 	});
 
 	it.each([
@@ -250,6 +273,13 @@ describe('AgentPreviewMoreMenu', function describeMenu() {
 
 		expect(showError).toHaveBeenCalledExactlyOnceWith(error, title);
 		expect(showMessage).not.toHaveBeenCalled();
+		expect(track).toHaveBeenCalledExactlyOnceWith(
+			TELEMETRY_EVENT.AGENTS.USER_CLICKED_AN_OPTION_FROM_MORE_LIST,
+			{ ...editorContext, option: itemId },
+		);
+		expect(track.mock.invocationCallOrder[0]).toBeLessThan(
+			clipboardCopy.mock.invocationCallOrder[0],
+		);
 	});
 
 	it('disables session-dependent copy actions without a session', function disablesCopy() {
@@ -257,6 +287,12 @@ describe('AgentPreviewMoreMenu', function describeMenu() {
 
 		expect(getMenuItem(wrapper, 'copy-link')).toMatchObject({ disabled: true });
 		expect(getMenuItem(wrapper, 'copy-conversation')).toMatchObject({ disabled: true });
+		for (const option of ['copy-link', 'copy-conversation', 'open-in-new-tab']) {
+			getDropdown(wrapper).vm.$emit('select', option);
+		}
+		expect(track).not.toHaveBeenCalled();
+		expect(clipboardCopy).not.toHaveBeenCalled();
+		expect(routerResolve).not.toHaveBeenCalled();
 	});
 
 	it('opens the active session in a new tab', function opensSession() {
@@ -273,6 +309,10 @@ describe('AgentPreviewMoreMenu', function describeMenu() {
 				query: { continueSessionId: 'thread-1' },
 			});
 			expect(open).toHaveBeenCalledExactlyOnceWith('/resolved-preview', '_blank', 'noopener');
+			expect(track).toHaveBeenCalledExactlyOnceWith(
+				TELEMETRY_EVENT.AGENTS.USER_CLICKED_AN_OPTION_FROM_MORE_LIST,
+				{ ...editorContext, option: 'open-in-new-tab' },
+			);
 		} finally {
 			open.mockRestore();
 		}
@@ -282,6 +322,10 @@ describe('AgentPreviewMoreMenu', function describeMenu() {
 		const wrapper = mountMenu();
 		getDropdown(wrapper).vm.$emit('select', 'toggle-full-width');
 		expect(wrapper.emitted('toggle-full-width')).toEqual([[]]);
+		expect(track).toHaveBeenCalledExactlyOnceWith(
+			TELEMETRY_EVENT.AGENTS.USER_CLICKED_AN_OPTION_FROM_MORE_LIST,
+			{ ...editorContext, option: 'toggle-full-width' },
+		);
 	});
 
 	it.each([false, true])(
@@ -311,6 +355,10 @@ describe('AgentPreviewMoreMenu', function describeMenu() {
 		});
 		getDropdown(wrapper).vm.$emit('select', 'delete-session');
 		expect(wrapper.emitted('delete-session')).toEqual([[]]);
+		expect(track).toHaveBeenCalledExactlyOnceWith(
+			TELEMETRY_EVENT.AGENTS.USER_CLICKED_AN_OPTION_FROM_MORE_LIST,
+			{ ...editorContext, option: 'delete-session' },
+		);
 	});
 
 	it('omits and guards deletion for viewers', function blocksViewerDeletion() {
@@ -319,6 +367,7 @@ describe('AgentPreviewMoreMenu', function describeMenu() {
 		expect(getMenuItem(wrapper, 'delete-session')).toBeUndefined();
 		getDropdown(wrapper).vm.$emit('select', 'delete-session');
 		expect(wrapper.emitted('delete-session')).toBeUndefined();
+		expect(track).not.toHaveBeenCalled();
 	});
 
 	it.each([{ hasSession: false }, { effectiveSessionId: undefined }, { isDeletingSession: true }])(
@@ -329,6 +378,7 @@ describe('AgentPreviewMoreMenu', function describeMenu() {
 			expect(getMenuItem(wrapper, 'delete-session')).toMatchObject({ disabled: true });
 			getDropdown(wrapper).vm.$emit('select', 'delete-session');
 			expect(wrapper.emitted('delete-session')).toBeUndefined();
+			expect(track).not.toHaveBeenCalled();
 		},
 	);
 
@@ -339,6 +389,9 @@ describe('AgentPreviewMoreMenu', function describeMenu() {
 	])('hides export with %j', function hidesExport(overrides) {
 		const wrapper = mountMenu({ isLangSmithExportEnabled: true, ...overrides });
 		expect(getMenuItem(wrapper, 'export-session')).toBeUndefined();
+		getDropdown(wrapper).vm.$emit('select', 'export-session');
+		expect(wrapper.emitted('export-session')).toBeUndefined();
+		expect(track).not.toHaveBeenCalled();
 	});
 
 	it('shows export with an icon and emits its event', function exportsSession() {
@@ -350,6 +403,10 @@ describe('AgentPreviewMoreMenu', function describeMenu() {
 		});
 		getDropdown(wrapper).vm.$emit('select', 'export-session');
 		expect(wrapper.emitted('export-session')).toEqual([[]]);
+		expect(track).toHaveBeenCalledExactlyOnceWith(
+			TELEMETRY_EVENT.AGENTS.USER_CLICKED_AN_OPTION_FROM_MORE_LIST,
+			{ ...editorContext, option: 'export-session' },
+		);
 	});
 
 	it('blocks another export while one is in progress', function blocksExport() {
@@ -358,12 +415,14 @@ describe('AgentPreviewMoreMenu', function describeMenu() {
 		expect(getMenuItem(wrapper, 'export-session')).toMatchObject({ disabled: true });
 		getDropdown(wrapper).vm.$emit('select', 'export-session');
 		expect(wrapper.emitted('export-session')).toBeUndefined();
+		expect(track).not.toHaveBeenCalled();
 	});
 
 	it('loads current metadata when the menu opens', async function refreshesMetadata() {
 		const wrapper = mountMenu();
 		await flushPromises();
 		getThreadDetail.mockClear();
+		expect(track).not.toHaveBeenCalled();
 
 		getDropdown(wrapper).vm.$emit('update:modelValue', true);
 		await flushPromises();
@@ -377,6 +436,12 @@ describe('AgentPreviewMoreMenu', function describeMenu() {
 		getDropdown(wrapper).vm.$emit('update:modelValue', false);
 		await flushPromises();
 		expect(getThreadDetail).toHaveBeenCalledTimes(1);
+		await wrapper.setProps({ effectiveSessionId: 'thread-2' });
+		await flushPromises();
+		expect(track).toHaveBeenCalledExactlyOnceWith(
+			TELEMETRY_EVENT.AGENTS.USER_CLICKED_MORE_OPTIONS_FROM_TEST_PANEL,
+			editorContext,
+		);
 	});
 
 	it.each([
@@ -472,6 +537,7 @@ describe('AgentPreviewMoreMenu with design system components', function describe
 		const view = render(AgentPreviewMoreMenu, {
 			props: { ...defaultProps, isDeletingSession: true },
 		});
+		expect(track).not.toHaveBeenCalled();
 
 		await user.click(screen.getByRole('button', { name: 'agents.builder.preview.more.label' }));
 		const fullWidthItem = await screen.findByRole('menuitemcheckbox', {
@@ -496,5 +562,12 @@ describe('AgentPreviewMoreMenu with design system components', function describe
 		await user.click(deleteItem);
 		expect(view.emitted('delete-session')).toBeUndefined();
 		expect(screen.getByRole('menu')).toBeVisible();
+		expect(track.mock.calls).toEqual([
+			[TELEMETRY_EVENT.AGENTS.USER_CLICKED_MORE_OPTIONS_FROM_TEST_PANEL, editorContext],
+			[
+				TELEMETRY_EVENT.AGENTS.USER_CLICKED_AN_OPTION_FROM_MORE_LIST,
+				{ ...editorContext, option: 'toggle-full-width' },
+			],
+		]);
 	});
 });

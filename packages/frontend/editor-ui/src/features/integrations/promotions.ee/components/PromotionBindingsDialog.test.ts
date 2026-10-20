@@ -284,7 +284,7 @@ it('forwards continueWith so Continue resumes the selection', async () => {
 		'team-a',
 		{
 			workflowIds: ['wf-a', 'wf-b'],
-			expectedSource: { configId: initial.configId, ...initial.git },
+			expectedSource: { environmentId: initial.environmentId, ...initial.git },
 		},
 	);
 	expect(continueApplyPromotion).not.toHaveBeenCalled();
@@ -353,8 +353,7 @@ it('returns a changed source to the caller and stops the session', async () => {
 	const initial = blocked({ missingBindings: [] });
 	const result = {
 		status: 'source-changed' as const,
-		connectionId: initial.connectionId,
-		configId: initial.configId,
+		environmentId: initial.environmentId,
 		git: { branchName: 'main', commitSha: 'b'.repeat(40) },
 	};
 	vi.mocked(continueApplyPromotion).mockResolvedValue(result);

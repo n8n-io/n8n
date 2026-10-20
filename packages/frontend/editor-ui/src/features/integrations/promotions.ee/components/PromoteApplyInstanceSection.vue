@@ -42,8 +42,8 @@ const canApply = computed(
 
 // Promote and apply each need a local checkout cloned from the current config. Until then
 // the backend rejects the request, so the buttons wait for Connect in the form below.
-const promoteConnected = computed(() => promoteConfig.value?.checkout.matchesConfig ?? false);
-const applyConnected = computed(() => applyConfig.value?.checkout.matchesConfig ?? false);
+const promoteConnected = computed(() => promoteConfig.value?.checkout.matchesEnvironment ?? false);
+const applyConnected = computed(() => applyConfig.value?.checkout.matchesEnvironment ?? false);
 </script>
 
 <template>
@@ -119,7 +119,7 @@ const applyConnected = computed(() => applyConfig.value?.checkout.matchesConfig 
 		<PromoteInstanceDialog
 			v-if="promoteDialogOpen && promoteConfig"
 			:open="promoteDialogOpen"
-			:connection-id="connection.id"
+			:environment-id="promoteConfig.id"
 			:base-branch-name="promoteConfig.settings.baseBranchName"
 			:create-branch-on-promotion="promoteConfig.settings.createBranchOnPromotion"
 			@update:open="promoteDialogOpen = $event"
@@ -127,7 +127,7 @@ const applyConnected = computed(() => applyConfig.value?.checkout.matchesConfig 
 		<ApplyInstanceDialog
 			v-if="applyDialogOpen && applyConfig"
 			:open="applyDialogOpen"
-			:connection-id="connection.id"
+			:environment-id="applyConfig.id"
 			:branch-name="applyConfig.settings.branchName"
 			@update:open="applyDialogOpen = $event"
 		/>

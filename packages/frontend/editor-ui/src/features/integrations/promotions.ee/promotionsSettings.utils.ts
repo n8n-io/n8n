@@ -1,18 +1,20 @@
 import type {
-	CreatePromotionConnectionDto,
+	CreatePromotionEnvironmentDto,
 	CreatePromotionProviderDto,
 	PromotionDirection,
 	PromotionProviderAuthType,
 	PromotionProviderType,
 	PromotionSshKeyType,
-	UpdatePromotionConnectionDto,
+	UpdatePromotionEnvironmentDto,
 	UpdatePromotionProviderDto,
-	UpsertPromotionApplyConfigDto,
-	UpsertPromotionPromoteConfigDto,
 } from '@n8n/api-types';
 import { promotionProviderTypeCapabilities } from '@n8n/api-types';
 
-import type { PromotionConnection, PromotionProvider } from './promotionsSettings.api';
+import type {
+	PromotionConnection,
+	PromotionEnvironment,
+	PromotionProvider,
+} from './promotionsSettings.api';
 
 export type ProviderFormState = {
 	name: string;
@@ -40,26 +42,40 @@ export const isSamePromotionHostUrl = (current: string, next: string): boolean =
 	}
 };
 
-type DirectionFormState = {
-	enabled: boolean;
-	/** Keep this name when updating the settings. If absent, the API uses the direction label. */
-	name?: string;
-};
-
 export type ConnectionFormState = {
 	name: string;
 	providerId: string;
 	remoteUrl: string;
 	repositoryPath?: string;
-	apply: DirectionFormState & { branchName: string };
-	promote: DirectionFormState & { baseBranchName: string; createBranchOnPromotion: boolean };
+	apply: { enabled: boolean; branchName: string };
+	promote: { enabled: boolean; baseBranchName: string; createBranchOnPromotion: boolean };
 };
 
 export type ConnectionWrite =
-	| { kind: 'connection'; payload: UpdatePromotionConnectionDto }
-	| { kind: 'config'; direction: 'apply'; payload: UpsertPromotionApplyConfigDto }
-	| { kind: 'config'; direction: 'promote'; payload: UpsertPromotionPromoteConfigDto }
-	| { kind: 'config-delete'; direction: PromotionDirection };
+	| { kind: 'create'; direction: PromotionDirection; payload: CreatePromotionEnvironmentDto }
+	| {
+			kind: 'update';
+			direction: PromotionDirection;
+			environmentId: string;
+			payload: UpdatePromotionEnvironmentDto;
+	  }
+	| { kind: 'delete'; direction: PromotionDirection; environmentId: string };
+
+export const withEnvironment = (
+	configs: PromotionConnection['configs'],
+	environment: PromotionEnvironment,
+): PromotionConnection['configs'] =>
+	environment.direction === 'apply'
+		? { ...configs, apply: environment }
+		: { ...configs, promote: environment };
+
+export const toConnection = (
+	configs: PromotionConnection['configs'],
+): PromotionConnection | null => {
+	const shared = configs.apply ?? configs.promote;
+	if (!shared) return null;
+	return { name: shared.name, provider: shared.provider, remote: shared.remote, configs };
+};
 
 export const emptyProviderForm = (): ProviderFormState => ({
 	name: '',
@@ -87,8 +103,8 @@ export const emptyConnectionForm = (): ConnectionFormState => ({
 	providerId: '',
 	remoteUrl: '',
 	repositoryPath: undefined,
-	apply: { enabled: false, name: undefined, branchName: '' },
-	promote: { enabled: false, name: undefined, baseBranchName: '', createBranchOnPromotion: false },
+	apply: { enabled: false, branchName: '' },
+	promote: { enabled: false, baseBranchName: '', createBranchOnPromotion: false },
 });
 
 export const connectionFormFrom = (connection: PromotionConnection): ConnectionFormState => {
@@ -97,34 +113,29 @@ export const connectionFormFrom = (connection: PromotionConnection): ConnectionF
 	return {
 		name: connection.name,
 		providerId: connection.provider.id,
-		remoteUrl: connection.target.remoteUrl,
-		repositoryPath: connection.target.repositoryPath,
+		remoteUrl: connection.remote.remoteUrl,
+		repositoryPath: connection.remote.repositoryPath,
 		apply: {
 			enabled: apply !== undefined,
-			name: apply?.name,
 			branchName: apply?.settings.branchName ?? '',
 		},
 		promote: {
 			enabled: promote !== undefined,
-			name: promote?.name,
 			baseBranchName: promote?.settings.baseBranchName ?? '',
 			createBranchOnPromotion: promote?.settings.createBranchOnPromotion ?? false,
 		},
 	};
 };
 
-const applyConfigPayload = (form: ConnectionFormState): UpsertPromotionApplyConfigDto => ({
-	name: form.apply.name,
-	settings: { schemaVersion: 1, branchName: form.apply.branchName.trim() },
+const applySettings = (form: ConnectionFormState) => ({
+	schemaVersion: 1 as const,
+	branchName: form.apply.branchName.trim(),
 });
 
-const promoteConfigPayload = (form: ConnectionFormState): UpsertPromotionPromoteConfigDto => ({
-	name: form.promote.name,
-	settings: {
-		schemaVersion: 1,
-		baseBranchName: form.promote.baseBranchName.trim(),
-		createBranchOnPromotion: form.promote.createBranchOnPromotion,
-	},
+const promoteSettings = (form: ConnectionFormState) => ({
+	schemaVersion: 1 as const,
+	baseBranchName: form.promote.baseBranchName.trim(),
+	createBranchOnPromotion: form.promote.createBranchOnPromotion,
 });
 
 export const buildProviderCreatePayload = (
@@ -175,67 +186,65 @@ export const buildProviderUpdatePayload = (
 	return payload;
 };
 
-export const buildConnectionCreatePayload = (
-	form: ConnectionFormState,
-): CreatePromotionConnectionDto => ({
-	name: form.name.trim(),
-	scope: 'instance',
-	providerId: form.providerId,
-	target: { schemaVersion: 1, remoteUrl: form.remoteUrl.trim() },
-	configs: {
-		...(form.apply.enabled && { apply: applyConfigPayload(form) }),
-		...(form.promote.enabled && { promote: promoteConfigPayload(form) }),
-	},
-});
-
-/** Returns only changed fields and configs. */
+/**
+ * Plans one write for each direction. Each environment is compared with its own
+ * stored values, so a retry after a partial save repeats only the unsaved writes.
+ */
 export const planConnectionWrites = (
 	form: ConnectionFormState,
-	current: PromotionConnection,
+	current: PromotionConnection | null,
 ): ConnectionWrite[] => {
-	const writes: ConnectionWrite[] = [];
-	const payload: UpdatePromotionConnectionDto = {};
-
 	const name = form.name.trim();
-	if (name !== current.name) payload.name = name;
-
 	const remoteUrl = form.remoteUrl.trim();
-	// A matching URL still needs a write when it converts a saved URL target to a path.
-	if (
-		remoteUrl !== current.target.remoteUrl ||
-		form.repositoryPath !== current.target.repositoryPath
-	) {
-		payload.target = { schemaVersion: 1, remoteUrl };
-	}
+	const remote = { schemaVersion: 1 as const, remoteUrl };
+	const desired = {
+		apply: form.apply.enabled
+			? { direction: 'apply' as const, settings: applySettings(form) }
+			: null,
+		promote: form.promote.enabled
+			? { direction: 'promote' as const, settings: promoteSettings(form) }
+			: null,
+	};
+	const { apply, promote } = current?.configs ?? {};
+	const settingsChanged = {
+		apply: apply?.settings.branchName !== desired.apply?.settings.branchName,
+		promote:
+			promote?.settings.baseBranchName !== desired.promote?.settings.baseBranchName ||
+			promote?.settings.createBranchOnPromotion !==
+				desired.promote?.settings.createBranchOnPromotion,
+	};
+	const writes: ConnectionWrite[] = [];
 
-	if (form.providerId !== current.provider.id) payload.providerId = form.providerId;
+	for (const direction of ['apply', 'promote'] as const) {
+		const environment = current?.configs[direction];
+		const wanted = desired[direction];
+		if (!wanted) {
+			if (environment) writes.push({ kind: 'delete', direction, environmentId: environment.id });
+			continue;
+		}
+		if (!environment) {
+			writes.push({
+				kind: 'create',
+				direction,
+				payload: { name, scope: 'instance', providerId: form.providerId, remote, ...wanted },
+			});
+			continue;
+		}
 
-	if (Object.keys(payload).length > 0) writes.push({ kind: 'connection', payload });
-
-	const applyPayload = applyConfigPayload(form);
-	const currentApply = current.configs.apply;
-	if (form.apply.enabled) {
-		const changed =
-			currentApply === undefined ||
-			currentApply.name !== applyPayload.name ||
-			currentApply.settings.branchName !== applyPayload.settings.branchName;
-		if (changed) writes.push({ kind: 'config', direction: 'apply', payload: applyPayload });
-	} else if (currentApply !== undefined) {
-		writes.push({ kind: 'config-delete', direction: 'apply' });
-	}
-
-	const promotePayload = promoteConfigPayload(form);
-	const currentPromote = current.configs.promote;
-	if (form.promote.enabled) {
-		const changed =
-			currentPromote === undefined ||
-			currentPromote.name !== promotePayload.name ||
-			currentPromote.settings.baseBranchName !== promotePayload.settings.baseBranchName ||
-			currentPromote.settings.createBranchOnPromotion !==
-				promotePayload.settings.createBranchOnPromotion;
-		if (changed) writes.push({ kind: 'config', direction: 'promote', payload: promotePayload });
-	} else if (currentPromote !== undefined) {
-		writes.push({ kind: 'config-delete', direction: 'promote' });
+		const payload: UpdatePromotionEnvironmentDto = {};
+		if (name !== environment.name) payload.name = name;
+		if (form.providerId !== environment.provider.id) payload.providerId = form.providerId;
+		// A matching URL still needs a write when it converts a saved URL remote to a path.
+		if (
+			remoteUrl !== environment.remote.remoteUrl ||
+			form.repositoryPath !== environment.remote.repositoryPath
+		) {
+			payload.remote = remote;
+		}
+		if (settingsChanged[direction]) payload.settings = wanted.settings;
+		if (Object.keys(payload).length > 0) {
+			writes.push({ kind: 'update', direction, environmentId: environment.id, payload });
+		}
 	}
 
 	return writes;
