@@ -1011,8 +1011,7 @@ onBeforeUnmount(() => {
 	<div>
 		<N8nDialog
 			:open="modalOpen"
-			size="full"
-			:container-class="$style.settingsDialog"
+			size="2xlarge"
 			:header="
 				i18n.baseText('workflowSettings.settingsFor', {
 					interpolate: { workflowName, workflowId },
@@ -1835,33 +1834,6 @@ onBeforeUnmount(() => {
 
 <style module lang="scss">
 @use '@/app/css/variables' as *;
-
-.settingsDialog {
-	display: flex;
-	flex-direction: column;
-	/* Match the previous modal cap. dvh keeps the cap on the viewport. */
-	max-height: 80dvh;
-	overflow: hidden;
-
-	/* Keep the previous 65% width. This beats the size preset. */
-	&#{&} {
-		--dialog--max-width: calc(100dvw - var(--spacing--lg));
-
-		@media (min-width: 640px) {
-			--dialog--max-width: 65%;
-		}
-	}
-
-	/*
-	 * Scroll the body only. `flex: 1` uses a 0% basis, so the body collapses
-	 * when the dialog height comes from max-height.
-	 */
-	:global([data-slot='dialog-body']) {
-		flex: 1 1 auto;
-		min-height: 0;
-		overflow-y: auto;
-	}
-}
 
 .workflow-settings {
 	font-size: var(--font-size--sm);
