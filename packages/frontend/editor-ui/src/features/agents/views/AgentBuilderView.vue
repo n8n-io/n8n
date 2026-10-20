@@ -116,6 +116,7 @@ import {
 	agentsEventBus,
 	type AgentUpdatedEvent,
 	type AgentCredentialHelpRequest,
+	type AgentEvalFixRequest,
 } from '../agents.eventBus';
 import { AGENTS_MODALS } from '../modals';
 import {
@@ -406,7 +407,7 @@ const aiPanelRef = useTemplateRef<InstanceType<typeof InstanceAiChatPanel>>('aiP
 // to land yet. Queue it and apply it once the panel actually mounts — closing
 // the preview navigates back to the builder, which renders the panel.
 const queuedAiHandoff = ref<{
-	context: InstanceAiHandoffContext;
+	context?: InstanceAiHandoffContext;
 	initialDraft?: PendingComposerDraft;
 	onAccepted?: () => void;
 	resolve: (accepted: boolean) => void;
@@ -427,7 +428,7 @@ watch(aiPanelRef, (panel) => {
 });
 
 async function handoffToAssistantPanel(
-	context: InstanceAiHandoffContext,
+	context: InstanceAiHandoffContext | undefined,
 	initialDraft?: PendingComposerDraft,
 	onAccepted?: () => void,
 ): Promise<boolean> {
@@ -476,6 +477,31 @@ function onCredentialHelpRequested(request: AgentCredentialHelpRequest) {
 	};
 }
 agentsEventBus.on('credentialHelpRequested', onCredentialHelpRequested);
+
+/**
+ * The Checks tab hands failing checks to the Assistant. The prompt goes into the
+ * composer, and the person sends it. No context chip: the checks are in the prompt.
+ */
+async function onEvalFixRequested(request: AgentEvalFixRequest) {
+	if (
+		isArtifactMode.value ||
+		request.projectId !== projectId.value ||
+		request.agentId !== agentId.value
+	) {
+		return;
+	}
+	const targetAgentId = request.agentId;
+	await handoffToAssistantPanel(
+		undefined,
+		{ text: request.prompt, prefillType: 'handoff_agent_change_request' },
+		() => agentEvalsStore.setEvalFixInAssistant(targetAgentId, true),
+	);
+}
+agentsEventBus.on('evalFixRequested', onEvalFixRequested);
+// Once the Assistant panel closes, the Checks tab offers its fix action again.
+watch(showAiPanel, (shown) => {
+	if (!shown && agentId.value) agentEvalsStore.setEvalFixInAssistant(agentId.value, false);
+});
 const aiPanelWidth = useStorage('N8N_AGENT_AI_PANEL_WIDTH', 400);
 type SidePanel = 'assistant' | 'preview';
 const preferredSidePanel = ref<SidePanel>('assistant');
@@ -2909,6 +2935,7 @@ onBeforeUnmount(async () => {
 	latestSessionsFetchRequestId++;
 	agentsEventBus.off('agentUpdated', onExternalAgentUpdated);
 	agentsEventBus.off('credentialHelpRequested', onCredentialHelpRequested);
+	agentsEventBus.off('evalFixRequested', onEvalFixRequested);
 	removeAgentUpdateListener();
 	pushConnectionStore.pushDisconnect();
 	clearTimeout(externalRefreshTimer);

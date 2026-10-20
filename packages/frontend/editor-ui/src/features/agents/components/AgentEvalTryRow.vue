@@ -59,6 +59,12 @@ const props = defineProps<{
 	hideRevise?: boolean;
 	/** The complete view was opened on this case: expand it and scroll it into view. */
 	focused?: boolean;
+	/** Asks the person if the reply looks right. Replaces "Actually fine". */
+	feedback?: boolean;
+	/** The person's saved vote on this check, if any. */
+	rating?: 'up' | 'down' | null;
+	/** True while a vote is being saved. */
+	ratingBusy?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -71,6 +77,10 @@ const emit = defineEmits<{
 	'save-what-to-check': [text: string];
 	/** The trash icon's confirmed delete — this case and its example. */
 	'delete-check': [];
+	/** "Looks right": the reply is fine. */
+	'looks-right': [];
+	/** "Looks wrong", sent with what the agent should have done. */
+	'looks-wrong': [correction: string];
 	/** Small view only: the chevron or row was clicked. */
 	open: [];
 }>();
@@ -154,6 +164,40 @@ function onActuallyFine() {
 function onRunCheck() {
 	emit('rerun-check');
 }
+
+// Only a finished check has a reply to judge.
+const showFeedback = computed(
+	() =>
+		props.feedback === true &&
+		props.view === 'complete' &&
+		props.status !== 'idle' &&
+		props.status !== 'waiting',
+);
+const correctingReply = ref(false);
+const correctionDraft = ref('');
+
+function onLooksWrong() {
+	correctionDraft.value = '';
+	correctingReply.value = true;
+}
+
+function onSendCorrection() {
+	const value = correctionDraft.value.trim();
+	if (!value) return;
+	emit('looks-wrong', value);
+}
+
+function onCancelCorrection() {
+	correctingReply.value = false;
+}
+
+// A saved vote closes the form.
+watch(
+	() => props.rating,
+	(rating) => {
+		if (rating) correctingReply.value = false;
+	},
+);
 
 const editingWhatToCheck = ref(false);
 const whatToCheckDraft = ref('');
@@ -345,6 +389,86 @@ watch(
 				</div>
 			</div>
 
+			<div v-if="showFeedback" :class="$style.feedback">
+				<N8nText
+					v-if="rating"
+					color="text-light"
+					size="small"
+					:class="$style.feedbackDone"
+					:data-test-id="testId && `${testId}-feedback-done`"
+				>
+					<N8nIcon icon="check" size="small" />
+					{{
+						i18n.baseText(
+							rating === 'up'
+								? 'agents.builder.agentEvals.feedback.markedRight'
+								: 'agents.builder.agentEvals.feedback.markedWrong',
+						)
+					}}
+				</N8nText>
+				<div v-else-if="correctingReply" :class="$style.correctionForm">
+					<N8nText bold color="text-dark" size="small" :class="$style.correctionQuestion">
+						{{ i18n.baseText('agents.builder.agentEvals.feedback.question') }}
+					</N8nText>
+					<N8nInput
+						v-model="correctionDraft"
+						size="small"
+						:disabled="disabled || ratingBusy"
+						:data-test-id="testId && `${testId}-correction-input`"
+						@keydown.enter="onSendCorrection"
+						@keydown.esc="onCancelCorrection"
+					/>
+					<div :class="$style.feedbackButtons">
+						<N8nButton
+							variant="ghost"
+							size="xsmall"
+							:disabled="ratingBusy"
+							:data-test-id="testId && `${testId}-correction-cancel`"
+							@click="onCancelCorrection"
+						>
+							{{ i18n.baseText('generic.cancel') }}
+						</N8nButton>
+						<N8nButton
+							variant="solid"
+							size="xsmall"
+							:disabled="disabled || !correctionDraft.trim()"
+							:loading="ratingBusy"
+							:data-test-id="testId && `${testId}-correction-send`"
+							@click="onSendCorrection"
+						>
+							{{ i18n.baseText('agents.builder.agentEvals.feedback.send') }}
+						</N8nButton>
+					</div>
+				</div>
+				<div v-else :class="$style.feedbackButtons">
+					<N8nButton
+						variant="ghost"
+						size="xsmall"
+						:disabled="disabled"
+						:loading="ratingBusy"
+						:data-test-id="testId && `${testId}-looks-right`"
+						@click="emit('looks-right')"
+					>
+						<template #icon>
+							<N8nIcon icon="thumbs-up" size="xsmall" />
+						</template>
+						{{ i18n.baseText('agents.builder.agentEvals.feedback.looksRight') }}
+					</N8nButton>
+					<N8nButton
+						variant="ghost"
+						size="xsmall"
+						:disabled="disabled || ratingBusy"
+						:data-test-id="testId && `${testId}-looks-wrong`"
+						@click="onLooksWrong"
+					>
+						<template #icon>
+							<N8nIcon icon="thumbs-down" size="xsmall" />
+						</template>
+						{{ i18n.baseText('agents.builder.agentEvals.feedback.looksWrong') }}
+					</N8nButton>
+				</div>
+			</div>
+
 			<template v-if="needsCorrection">
 				<template v-if="!hideRevise">
 					<N8nText bold color="text-dark" :class="$style.correctionHint">
@@ -364,7 +488,7 @@ watch(
 			</template>
 			<div :class="$style.correctionActions">
 				<div :class="$style.primaryActions">
-					<template v-if="needsCorrection">
+					<template v-if="needsCorrection && !feedback">
 						<N8nButton
 							v-if="!hideRevise"
 							variant="solid"
@@ -567,6 +691,36 @@ watch(
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
+}
+
+.feedback {
+	display: flex;
+	justify-content: flex-end;
+	padding-top: var(--spacing--xs);
+}
+
+.feedbackButtons {
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	gap: var(--spacing--4xs);
+}
+
+.feedbackDone {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+}
+
+.correctionForm {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+	width: 100%;
+}
+
+.correctionQuestion {
+	font-weight: var(--font-weight--medium);
 }
 
 .practiceBanner {

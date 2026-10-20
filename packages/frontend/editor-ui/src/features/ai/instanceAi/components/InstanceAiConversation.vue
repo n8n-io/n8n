@@ -780,12 +780,17 @@ function clearGeneratedDraft() {
 	generatedComposerDraft.value = null;
 }
 
-/** Body of the former assistant-handoff handler, once the host's own guards pass. */
-function applyHandoff(context: InstanceAiHandoffContext, initialDraft?: PendingComposerDraft) {
-	stashPendingHandoffContext(thread.id, context);
-	pendingComposerContext.value = context;
+/**
+ * Body of the former assistant-handoff handler, once the host's own guards pass.
+ * A hand-off with no context only puts its draft in the composer.
+ */
+function applyHandoff(context?: InstanceAiHandoffContext, initialDraft?: PendingComposerDraft) {
+	if (context) {
+		stashPendingHandoffContext(thread.id, context);
+		pendingComposerContext.value = context;
+	}
 
-	if (context.source === 'agent-preview') {
+	if (context?.source === 'agent-preview') {
 		void store
 			.updateThreadMetadata(thread.id, {
 				[INSTANCE_AI_AGENT_PREVIEW_VIEW_METADATA_KEY]: {

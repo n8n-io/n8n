@@ -20,6 +20,7 @@ import type {
 	AgentEvalVote,
 	ApplyAgentEvalSuggestionsResult,
 	ApplyPreviewSuggestionOptions,
+	CreateAgentEvalRatingPayload,
 	CreateDraftDatasetOptions,
 	GenerateDraftCasesOptions,
 	PreviewRunOptions,
@@ -173,6 +174,20 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 	 * because the checks panel mounts after the builder claims the request.
 	 */
 	const focusedEvalResult = ref<{ agentId: string; resultId: string } | null>(null);
+
+	/**
+	 * Agents whose failing checks the Assistant has: the builder sets this when the
+	 * hand-off lands and clears it when the Assistant panel closes. The Checks tab
+	 * hides its fix action meanwhile, since the actions are in the Assistant.
+	 */
+	const evalFixInAssistantByAgentId = ref<Record<string, boolean | undefined>>({});
+
+	const isEvalFixInAssistant = (agentId: string) =>
+		evalFixInAssistantByAgentId.value[agentId] === true;
+
+	const setEvalFixInAssistant = (agentId: string, active: boolean) => {
+		evalFixInAssistantByAgentId.value = { ...evalFixInAssistantByAgentId.value, [agentId]: active };
+	};
 
 	const requestEvalsFocus = (agentId: string, generate = false, resultId?: string) => {
 		pendingEvalsFocus.value = { agentId, generate, resultId };
@@ -1286,6 +1301,29 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 		}
 	};
 
+	// Saves one rating straight away, with no draft. The Checks tab asks for a vote
+	// and, on a down vote, what the agent should have done, in one step.
+	const rateResult = async (
+		projectId: string,
+		agentId: string,
+		runId: string,
+		resultId: string,
+		payload: CreateAgentEvalRatingPayload,
+	) => {
+		const record = await agentEvalsApi.rateResult(
+			rootStore.restApiContext,
+			projectId,
+			agentId,
+			resultId,
+			payload,
+		);
+		const current = getReview(runId);
+		patchReview(runId, {
+			ratingsByResultId: { ...current.ratingsByResultId, [resultId]: record },
+		});
+		return record;
+	};
+
 	// Persists the removal server-side, then drops it from the cached page.
 	// `deleteCase` alone only removes the Data Table row it came from — this
 	// result is a separate persisted snapshot that would otherwise survive and
@@ -1342,6 +1380,7 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 		setDraftCorrection,
 		cancelDraft,
 		saveReview,
+		rateResult,
 		reviewedCount,
 		isRunInFlight,
 		startPollingRun,
@@ -1372,6 +1411,8 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 		focusedEvalResult,
 		consumeFocusedEvalResult,
 		clearEvalsFocus,
+		isEvalFixInAssistant,
+		setEvalFixInAssistant,
 	};
 });
 

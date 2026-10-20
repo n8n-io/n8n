@@ -16,7 +16,9 @@ import { useI18n, type BaseTextKey } from '@n8n/i18n';
 
 import type { ToolCall } from '@/features/ai/shared/agentsChat/types';
 import type { AgentEvalCase } from '../agentEvals.types';
+import { agentsEventBus } from '../agents.eventBus';
 import { useAgentEvalsStore } from '../agentEvals.store';
+import { buildEvalCorrectionPrompt } from '../utils/agent-eval-fix-prompt';
 import {
 	readAgentAnswer,
 	readCaseRequest,
@@ -310,12 +312,68 @@ watch(
 	{ immediate: true },
 );
 
-async function onActuallyFine(resultId: string) {
+// The person's own vote on each shown check's reply.
+const ratingByRowId = computed(() => {
+	const ratings = shownReview.value.ratingsByResultId;
+	const votes: Record<string, 'up' | 'down'> = {};
+	for (const [resultId, rating] of Object.entries(ratings)) votes[resultId] = rating.vote;
+	return votes;
+});
+const ratingBusyIds = ref<string[]>([]);
+
+async function rate(row: CheckRow, save: () => Promise<unknown>) {
+	ratingBusyIds.value = [...ratingBusyIds.value, row.id];
 	try {
-		await store.acceptResult(props.projectId, props.agentId, resultId);
+		await save();
+		return true;
 	} catch (error) {
-		toast.showError(error, i18n.baseText('agents.builder.agentEvals.review.acceptCaseError'));
+		toast.showError(error, i18n.baseText('agents.builder.agentEvals.feedback.error'));
+		return false;
+	} finally {
+		ratingBusyIds.value = ratingBusyIds.value.filter((id) => id !== row.id);
 	}
+}
+
+// "Looks right" on a check that needs work also marks it as passing: the person
+// says the judge was wrong. This replaces the row's "Actually fine".
+async function onLooksRight(row: CheckRow) {
+	const runId = shownRunId.value;
+	await rate(row, async () => {
+		await store.rateResult(props.projectId, props.agentId, runId, row.id, { vote: 'up' });
+		if (row.status === 'work' || row.status === 'fail') {
+			await store.acceptResult(props.projectId, props.agentId, row.id);
+		}
+	});
+}
+
+// "Looks wrong" saves what the agent should have done, then hands the check to the
+// Assistant. It decides whether the rule or the agent's instructions were wrong.
+async function onLooksWrong(row: CheckRow, correction: string) {
+	const runId = shownRunId.value;
+	const saved = await rate(row, async () => {
+		await store.rateResult(props.projectId, props.agentId, runId, row.id, {
+			vote: 'down',
+			comment: correction,
+			correction: { finalText: correction },
+		});
+	});
+	if (!saved) return;
+	agentsEventBus.emit('evalFixRequested', {
+		projectId: props.projectId,
+		agentId: props.agentId,
+		prompt: buildEvalCorrectionPrompt(
+			{
+				rule: row.whatToCheck,
+				sampleMessage: row.input,
+				reply: row.output,
+				judgeReason: row.errorMessage,
+			},
+			correction,
+			i18n,
+		),
+		datasetId: shownReview.value.run?.datasetId,
+		checkCount: rows.value.length + notRunRows.value.length,
+	});
 }
 
 async function onRerunCheck(resultId: string) {
@@ -603,7 +661,11 @@ onBeforeUnmount(store.stopPollingRun);
 				view="complete"
 				:focused="row.id === focusedResultId"
 				:test-id="`agent-eval-check-${row.id}`"
-				@actually-fine="onActuallyFine(row.id)"
+				feedback
+				:rating="ratingByRowId[row.id] ?? null"
+				:rating-busy="ratingBusyIds.includes(row.id)"
+				@looks-right="onLooksRight(row)"
+				@looks-wrong="onLooksWrong(row, $event)"
 				@rerun-check="onRerunCheck(row.id)"
 				@save-what-to-check="onSaveWhatToCheck(row.id, $event)"
 				@delete-check="onDeleteCheck(row)"

@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ref } from 'vue';
 
 import { createComponentRenderer } from '@/__tests__/render';
+import { agentsEventBus } from '../agents.eventBus';
 import { useAgentEvalsStore } from '../agentEvals.store';
 import type { AgentEvalResultRecord, AgentEvalResultStatus } from '../agentEvals.types';
 import AgentEvalChecksPanel from '../components/AgentEvalChecksPanel.vue';
@@ -33,8 +34,17 @@ vi.mock('../components/AgentEvalTryRow.vue', () => ({
 			disabled: { type: Boolean },
 			hideRevise: { type: Boolean },
 			focused: { type: Boolean },
+			feedback: { type: Boolean },
+			rating: {},
 		},
-		emits: ['save-check', 'actually-fine', 'rerun-check', 'save-what-to-check', 'delete-check'],
+		emits: [
+			'save-check',
+			'looks-right',
+			'looks-wrong',
+			'rerun-check',
+			'save-what-to-check',
+			'delete-check',
+		],
 		// A plain, testId-free button: a testid built from the row's own (which
 		// starts with the same "agent-eval-check-" every row testid shares) would
 		// match every row-counting `getAllByTestId(/agent-eval-check-/)` query in
@@ -46,9 +56,12 @@ vi.mock('../components/AgentEvalTryRow.vue', () => ({
 			:data-disabled="disabled"
 			:data-hide-revise="hideRevise"
 			:data-focused="focused"
+			:data-feedback="feedback"
+			:data-rating="rating"
 		>
 			{{ input }}
-			<button @click="$emit('actually-fine')">actually fine</button>
+			<button @click="$emit('looks-right')">looks right</button>
+			<button @click="$emit('looks-wrong', 'It should decline.')">looks wrong</button>
 			<button @click="$emit('rerun-check')">run check</button>
 			<button @click="$emit('save-what-to-check', 'Mentions the refund window.')">save rule</button>
 			<button @click="$emit('delete-check')">delete check</button>
@@ -563,25 +576,47 @@ describe('AgentEvalChecksPanel', () => {
 		});
 	});
 
-	describe('"Actually fine"', () => {
-		it('persists a passing verdict through the store for a finished case', async () => {
+	describe('"Looks right" and "Looks wrong"', () => {
+		const failed = {
+			...result('c1', 'success'),
+			input: { input: 'What is the weather?', criteria: 'Declines off-topic requests' },
+			verdict: {
+				status: 'completed' as const,
+				outcome: 'fail' as const,
+				reasoning: 'It answered the weather question.',
+			},
+		};
+
+		it('asks every row for feedback', () => {
+			const { getByTestId } = render({ results: [result('c1', 'success')] });
+
+			expect(getByTestId('agent-eval-check-c1')).toHaveAttribute('data-feedback', 'true');
+		});
+
+		it('saves an up vote on a passing check, and leaves its verdict alone', async () => {
 			const user = userEvent.setup();
 			const { getByTestId, store } = render({ results: [result('c1', 'success')] });
 
-			await user.click(within(getByTestId('agent-eval-check-c1')).getByText('actually fine'));
+			await user.click(within(getByTestId('agent-eval-check-c1')).getByText('looks right'));
 
-			expect(store.acceptResult).toHaveBeenCalledWith('project-1', 'agent-1', 'c1');
+			expect(store.rateResult).toHaveBeenCalledWith('project-1', 'agent-1', 'run-1', 'c1', {
+				vote: 'up',
+			});
+			expect(store.acceptResult).not.toHaveBeenCalled();
 		});
 
 		// The judge never grades a case that errored, so the backend takes the user's
 		// call as a completed pass and the row reads as passing from it alone.
-		it('persists a pass for a case that errored too, instead of keeping it local', async () => {
+		it('saves an up vote and marks a check that needs work as passing', async () => {
 			const user = userEvent.setup();
 			const { getByTestId, store } = render({ results: [result('c1', 'error')] });
 
-			await user.click(within(getByTestId('agent-eval-check-c1')).getByText('actually fine'));
+			await user.click(within(getByTestId('agent-eval-check-c1')).getByText('looks right'));
 
-			expect(store.acceptResult).toHaveBeenCalledWith('project-1', 'agent-1', 'c1');
+			await vi.waitFor(() =>
+				expect(store.acceptResult).toHaveBeenCalledWith('project-1', 'agent-1', 'c1'),
+			);
+			expect(store.rateResult).toHaveBeenCalled();
 		});
 
 		it('shows an errored case as passing once its accepted verdict is stored', () => {
@@ -594,15 +629,78 @@ describe('AgentEvalChecksPanel', () => {
 			expect(getByTestId('agent-eval-check-c1')).toHaveAttribute('data-status', 'pass');
 		});
 
-		it('toasts and leaves the row alone when accepting fails', async () => {
+		it('toasts and hands nothing on when the vote cannot be saved', async () => {
 			const user = userEvent.setup();
-			const { getByTestId, store } = render({ results: [result('c1', 'error')] });
-			vi.mocked(store.acceptResult).mockRejectedValueOnce(new Error('forbidden'));
+			const emit = vi.spyOn(agentsEventBus, 'emit');
+			const { getByTestId, store } = render({ results: [failed] });
+			vi.mocked(store.rateResult).mockRejectedValueOnce(new Error('forbidden'));
 
-			await user.click(within(getByTestId('agent-eval-check-c1')).getByText('actually fine'));
+			await user.click(within(getByTestId('agent-eval-check-c1')).getByText('looks wrong'));
 
 			await vi.waitFor(() => expect(showError).toHaveBeenCalled());
-			expect(getByTestId('agent-eval-check-c1')).toHaveAttribute('data-status', 'fail');
+			expect(emit).not.toHaveBeenCalledWith('evalFixRequested', expect.anything());
+			emit.mockRestore();
+		});
+
+		it('saves a down vote with the correction, then hands the check to the Assistant', async () => {
+			const user = userEvent.setup();
+			const emit = vi.spyOn(agentsEventBus, 'emit');
+			const { getByTestId, store } = render({ results: [failed] });
+
+			await user.click(within(getByTestId('agent-eval-check-c1')).getByText('looks wrong'));
+
+			expect(store.rateResult).toHaveBeenCalledWith('project-1', 'agent-1', 'run-1', 'c1', {
+				vote: 'down',
+				comment: 'It should decline.',
+				correction: { finalText: 'It should decline.' },
+			});
+			await vi.waitFor(() =>
+				expect(emit).toHaveBeenCalledWith(
+					'evalFixRequested',
+					expect.objectContaining({ projectId: 'project-1', agentId: 'agent-1', checkCount: 1 }),
+				),
+			);
+			const request = emit.mock.calls.find(([event]) => event === 'evalFixRequested')?.[1];
+			const prompt = (request as { prompt: string }).prompt;
+			expect(prompt).toContain('It should decline.');
+			expect(prompt).toContain('Declines off-topic requests');
+			expect(prompt).toContain('What is the weather?');
+			expect(prompt).toContain('answer c1');
+			expect(prompt).toContain('It answered the weather question.');
+			emit.mockRestore();
+		});
+
+		it('passes the saved vote to its row', () => {
+			const pinia = createTestingPinia({ stubActions: true });
+			const store = useAgentEvalsStore();
+			vi.mocked(store.getReview).mockReturnValue({
+				run: null,
+				results: [result('c1', 'success')],
+				resultsCount: 1,
+				ratingsByResultId: {
+					c1: {
+						id: 'rating-1',
+						resultId: 'c1',
+						vote: 'up',
+						comment: null,
+						correction: null,
+						ratedById: null,
+						createdAt: '2026-01-01T00:00:00.000Z',
+						updatedAt: '2026-01-01T00:00:00.000Z',
+					},
+				},
+				pendingByResultId: {},
+				draftsByResultId: {},
+				counts: null,
+				loading: false,
+				loadingMore: false,
+			});
+			vi.mocked(store.isRunInFlight).mockReturnValue(false);
+			vi.mocked(store.consumeFocusedEvalResult).mockReturnValue(null);
+
+			const { getByTestId } = renderComponent({ pinia });
+
+			expect(getByTestId('agent-eval-check-c1')).toHaveAttribute('data-rating', 'up');
 		});
 	});
 
@@ -1330,11 +1428,11 @@ describe('AgentEvalChecksPanel', () => {
 		await vi.waitFor(() => expect(run2Loaded.value).toBe(run2All.length));
 	});
 
-	// Marking the last needs-work row "actually fine" makes `filteredRows` fall
+	// Marking the last needs-work row "looks right" makes `filteredRows` fall
 	// back to unfiltered already (guarded by the live count), but without also
 	// resetting `statusFilter` itself, no pill would read as selected even
 	// though every row is now showing.
-	it('resets the filter to "all" once marking the last needs-work row "actually fine" empties it', async () => {
+	it('resets the filter to "all" once marking the last needs-work row "looks right" empties it', async () => {
 		const pinia = createTestingPinia({ stubActions: true });
 		const store = useAgentEvalsStore();
 		const results = ref([result('pass-1', 'success'), result('fail-1', 'error')]);
@@ -1367,7 +1465,7 @@ describe('AgentEvalChecksPanel', () => {
 		expect(getAllByTestId(/agent-eval-check-/)).toHaveLength(1);
 
 		const row = getByTestId('agent-eval-check-fail-1');
-		await user.click(within(row).getByText('actually fine'));
+		await user.click(within(row).getByText('looks right'));
 
 		// The needs-work pill is gone (nothing needs work anymore) and every row
 		// shows again — "all" is active, not a stale "needs-work" with no pill lit.

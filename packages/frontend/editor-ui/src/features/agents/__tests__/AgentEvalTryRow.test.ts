@@ -168,6 +168,88 @@ describe('AgentEvalTryRow', () => {
 		});
 	});
 
+	describe('"Looks right" and "Looks wrong"', () => {
+		const renderFeedback = (overrides: Record<string, unknown> = {}) =>
+			renderComponent({ props: { testId: 'row', feedback: true, ...overrides } });
+
+		it('offers both under an opened, finished check', async () => {
+			const user = userEvent.setup();
+			const { getByTestId } = renderFeedback();
+			await user.click(getByTestId('row-toggle'));
+
+			expect(getByTestId('row-looks-right')).toHaveTextContent('Looks right');
+			expect(getByTestId('row-looks-wrong')).toHaveTextContent('Looks wrong');
+		});
+
+		it('replaces "Actually fine" with "Run check" on a check that needs work', async () => {
+			const user = userEvent.setup();
+			const { getByTestId, queryByTestId } = renderFeedback({
+				status: 'work',
+				hideRevise: true,
+			});
+			await user.click(getByTestId('row-toggle'));
+
+			expect(queryByTestId('row-actually-fine')).not.toBeInTheDocument();
+			expect(getByTestId('row-run-check')).toBeInTheDocument();
+		});
+
+		it('does not ask about a check that has no reply yet', async () => {
+			const user = userEvent.setup();
+			const { getByTestId, queryByTestId } = renderFeedback({ status: 'waiting' });
+			await user.click(getByTestId('row-toggle'));
+
+			expect(queryByTestId('row-looks-right')).not.toBeInTheDocument();
+		});
+
+		it('emits looks-right', async () => {
+			const user = userEvent.setup();
+			const { getByTestId, emitted } = renderFeedback();
+			await user.click(getByTestId('row-toggle'));
+
+			await user.click(getByTestId('row-looks-right'));
+
+			expect(emitted()['looks-right']).toEqual([[]]);
+		});
+
+		it('asks what it should have done, and sends the answer', async () => {
+			const user = userEvent.setup();
+			const { getByTestId, getByText, queryByTestId, emitted } = renderFeedback();
+			await user.click(getByTestId('row-toggle'));
+
+			await user.click(getByTestId('row-looks-wrong'));
+
+			expect(getByText('What should it have done?')).toBeInTheDocument();
+			expect(queryByTestId('row-looks-right')).not.toBeInTheDocument();
+			expect(getByTestId('row-correction-send')).toBeDisabled();
+
+			await user.type(getByTestId('row-correction-input'), 'Give the tracking link.');
+			await user.click(getByTestId('row-correction-send'));
+
+			expect(emitted()['looks-wrong']).toEqual([['Give the tracking link.']]);
+		});
+
+		it('brings the buttons back on "Cancel" and emits nothing', async () => {
+			const user = userEvent.setup();
+			const { getByTestId, emitted } = renderFeedback();
+			await user.click(getByTestId('row-toggle'));
+			await user.click(getByTestId('row-looks-wrong'));
+
+			await user.click(getByTestId('row-correction-cancel'));
+
+			expect(getByTestId('row-looks-right')).toBeInTheDocument();
+			expect(emitted()['looks-wrong']).toBeUndefined();
+		});
+
+		it('shows a quiet confirmation once the vote is saved', async () => {
+			const user = userEvent.setup();
+			const { getByTestId, queryByTestId } = renderFeedback({ rating: 'up' });
+			await user.click(getByTestId('row-toggle'));
+
+			expect(getByTestId('row-feedback-done')).toHaveTextContent('You marked this as right');
+			expect(queryByTestId('row-looks-right')).not.toBeInTheDocument();
+		});
+	});
+
 	describe('correction controls', () => {
 		const renderNeedsWork = (overrides: Record<string, unknown> = {}) =>
 			renderComponent({

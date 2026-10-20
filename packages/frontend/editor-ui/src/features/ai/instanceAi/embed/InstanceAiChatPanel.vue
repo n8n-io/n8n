@@ -114,17 +114,17 @@ const conversationRef = ref<InstanceType<typeof InstanceAiConversation> | null>(
  * conversation picks the stash up itself on mount (`syncThread`).
  */
 const queuedHandoff = ref<{
-	context: InstanceAiHandoffContext;
+	context?: InstanceAiHandoffContext;
 	draft?: PendingComposerDraft;
 } | null>(null);
 
 function stashHandoff(
 	threadId: string,
-	queued: { context: InstanceAiHandoffContext; draft?: PendingComposerDraft },
+	queued: { context?: InstanceAiHandoffContext; draft?: PendingComposerDraft },
 ) {
-	stashPendingHandoffContext(threadId, queued.context);
+	if (queued.context) stashPendingHandoffContext(threadId, queued.context);
 	if (queued.draft) stashPendingComposerDraft(threadId, queued.draft);
-	if (queued.context.source === 'agent-preview') {
+	if (queued.context?.source === 'agent-preview') {
 		const subjectIdAtQueue = props.subject.id;
 		void store
 			.updateThreadMetadata(threadId, {
@@ -162,7 +162,7 @@ function emitThreadId(threadId: string) {
  * thread the panel is about to resume or mint. Mirrors
  * `InstanceAiThreadView`'s `handleAgentPreviewAssistantHandoff`.
  */
-function handoff(context: InstanceAiHandoffContext, initialDraft?: PendingComposerDraft): boolean {
+function handoff(context?: InstanceAiHandoffContext, initialDraft?: PendingComposerDraft): boolean {
 	const conversation = conversationRef.value;
 	if (conversation) {
 		if (conversation.isDirty()) {
