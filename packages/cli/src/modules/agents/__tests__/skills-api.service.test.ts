@@ -442,6 +442,16 @@ describe('SkillsApiService', () => {
 			expect(detail.id).toBe('skill_new');
 		});
 
+		it('stores the source the caller passed', async () => {
+			vi.mocked(hasGlobalScope).mockReturnValue(true);
+
+			await service.create(user, payload({}), 'assistant');
+
+			expect(skillService.create).toHaveBeenCalledWith(
+				expect.objectContaining({ source: 'assistant' }),
+			);
+		});
+
 		it('refuses an agent skill for an agent that does not exist', async () => {
 			vi.mocked(userHasScopes).mockResolvedValue(true);
 
