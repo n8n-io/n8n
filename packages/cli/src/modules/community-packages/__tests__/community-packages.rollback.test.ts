@@ -202,6 +202,7 @@ describe('CommunityPackagesService install rollback (real filesystem)', () => {
 				conflictError,
 			);
 
+			expect(logger.error).toHaveBeenCalledWith(conflictError.message);
 			expect(existsSync(markerPath())).toBe(true);
 			expect(loadNodesAndCredentials.loadPackage).toHaveBeenCalledTimes(2);
 			expect(await ledgerDependencies()).toEqual({ [PACKAGE_NAME]: '1.0.0' });

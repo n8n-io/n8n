@@ -399,6 +399,26 @@ export class LoadNodesAndCredentials {
 	}
 
 	/**
+	 * Retry the packages that were rejected for a credential type conflict.
+	 */
+	async reloadRejectedPackages() {
+		for (const packageName of [...this.packageLoadErrors.keys()]) {
+			try {
+				await this.loadPackage(packageName);
+			} catch (error) {
+				// Still in conflict: the new rejection is already recorded.
+				if (error instanceof CredentialTypeConflictError) continue;
+
+				// The old reason no longer applies.
+				this.packageLoadErrors.delete(packageName);
+				this.logger.warn(`Failed to reload package "${packageName}"`, {
+					error: ensureError(error),
+				});
+			}
+		}
+	}
+
+	/**
 	 * Whether any of the node's credential types may be used to
 	 * make a request from a node other than itself.
 	 */

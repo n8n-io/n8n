@@ -1145,6 +1145,28 @@ describe('CommunityPackagesService', () => {
 			expect(loadNodesAndCredentials.loadPackage).not.toHaveBeenCalled();
 		});
 
+		test('should retry rejected packages after unloading, before rebuilding the registry', async () => {
+			const PACKAGE_NAME = 'n8n-nodes-test';
+			const installedPackage = mock<InstalledPackages>({ packageName: PACKAGE_NAME });
+			const callOrder: string[] = [];
+
+			loadNodesAndCredentials.unloadPackage.mockImplementation(async () => {
+				callOrder.push('unload');
+			});
+			loadNodesAndCredentials.reloadRejectedPackages.mockImplementation(async () => {
+				callOrder.push('reloadRejected');
+			});
+			loadNodesAndCredentials.postProcessLoaders.mockImplementation(async () => {
+				callOrder.push('postProcess');
+			});
+			vi.mocked(rm).mockResolvedValue(undefined);
+			installedPackageRepository.remove.mockResolvedValue(undefined as never);
+
+			await communityPackagesService.removePackage(PACKAGE_NAME, installedPackage);
+
+			expect(callOrder).toEqual(['unload', 'reloadRejected', 'postProcess']);
+		});
+
 		test('should log and not throw when publishing the uninstall event fails', async () => {
 			const PACKAGE_NAME = 'n8n-nodes-test';
 			const installedPackage = mock<InstalledPackages>({ packageName: PACKAGE_NAME });

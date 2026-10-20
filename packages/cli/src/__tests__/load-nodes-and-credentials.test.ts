@@ -1303,6 +1303,59 @@ describe('LoadNodesAndCredentials', () => {
 			expect(instance.getPackageLoadError('community-package')).toBeUndefined();
 		});
 
+		describe('reloadRejectedPackages', () => {
+			const reject = (packageName: string) =>
+				expect(() =>
+					instance['assertNoCredentialTypeConflicts'](createLoader(packageName, ['awsAssumeRole'])),
+				).toThrow();
+
+			it('should load a rejected package again and clear its recorded reason', async () => {
+				reject('community-package');
+				const loadPackage = vi.spyOn(instance, 'loadPackage').mockImplementation(async () => {
+					instance['assertNoCredentialTypeConflicts'](
+						createLoader('community-package', ['uniqueApi']),
+					);
+					return await mock();
+				});
+
+				await instance.reloadRejectedPackages();
+
+				expect(loadPackage).toHaveBeenCalledWith('community-package');
+				expect(instance.getPackageLoadError('community-package')).toBeUndefined();
+			});
+
+			it('should keep the recorded reason while the conflict remains', async () => {
+				reject('community-package');
+				vi.spyOn(instance, 'loadPackage').mockImplementation(async () => {
+					instance['assertNoCredentialTypeConflicts'](
+						createLoader('community-package', ['awsAssumeRole']),
+					);
+					return await mock();
+				});
+
+				await expect(instance.reloadRejectedPackages()).resolves.toBeUndefined();
+
+				expect(instance.getPackageLoadError('community-package')).toContain('awsAssumeRole');
+			});
+
+			it('should drop the recorded reason when the reload fails for another cause', async () => {
+				reject('community-package');
+				vi.spyOn(instance, 'loadPackage').mockRejectedValue(new Error('ENOENT'));
+
+				await expect(instance.reloadRejectedPackages()).resolves.toBeUndefined();
+
+				expect(instance.getPackageLoadError('community-package')).toBeUndefined();
+			});
+
+			it('should do nothing when no package was rejected', async () => {
+				const loadPackage = vi.spyOn(instance, 'loadPackage');
+
+				await instance.reloadRejectedPackages();
+
+				expect(loadPackage).not.toHaveBeenCalled();
+			});
+		});
+
 		it('should reject a loader on load without registering it', async () => {
 			const conflicting = createLoader('community-package', ['awsAssumeRole']);
 			conflicting.loadAll.mockResolvedValue(undefined);

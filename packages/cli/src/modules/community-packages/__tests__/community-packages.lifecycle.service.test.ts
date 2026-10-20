@@ -698,6 +698,11 @@ describe('CommunityPackagesLifecycleService', () => {
 		});
 
 		it('should rethrow a credential type conflict unwrapped on update', async () => {
+			communityPackagesService.parseNpmPackageName.mockReturnValue({
+				rawString: 'n8n-nodes-test',
+				packageName: 'n8n-nodes-test',
+				version: undefined,
+			});
 			communityPackagesService.findInstalledPackage.mockResolvedValue(mockPackage('1.0.0'));
 			communityPackagesService.updatePackage.mockRejectedValue(
 				new CredentialTypeConflictError('n8n-nodes-test', { awsAssumeRole: 'n8n-nodes-base' }),

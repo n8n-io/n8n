@@ -594,7 +594,11 @@ export class CommunityPackagesService {
 					previousVersion,
 				});
 				// Its message names the clashing credential types, so keep it for the caller.
-				if (error instanceof CredentialTypeConflictError) throw error;
+				// Client errors are not logged in production, so log it here.
+				if (error instanceof CredentialTypeConflictError) {
+					this.logger.error(error.message);
+					throw error;
+				}
 				throw new UnexpectedError(RESPONSE_ERROR_MESSAGES.PACKAGE_LOADING_FAILED, {
 					cause: error,
 				});
@@ -837,6 +841,7 @@ export class CommunityPackagesService {
 			}
 
 			await this.loadNodesAndCredentials.unloadPackage(packageName);
+			await this.loadNodesAndCredentials.reloadRejectedPackages();
 			await this.loadNodesAndCredentials.postProcessLoaders();
 			this.loadNodesAndCredentials.releaseTypes();
 			this.logger.info(`Community package uninstalled: ${packageName}`);
