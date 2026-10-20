@@ -349,6 +349,7 @@ packages/@n8n/ai-utilities/src/agent-config/index.ts
   s_c7b991e0487519::t_1c8e8eb71f01f2 2
 packages/@n8n/agents/src/runtime/loop/runtime-context.ts
   s_3867156de1fad7::t_b6999319aeca4d 2,3,5,31,165,172,189-191,195-196,209-216
+  s_3867156de1fad7::t_88bc46ba95a120 4
 packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
   s_3867156de1fad7::t_1b0024f873bc46 20,423,425
 packages/frontend/editor-ui/src/features/agents/components/AgentAdvancedPanel.vue
