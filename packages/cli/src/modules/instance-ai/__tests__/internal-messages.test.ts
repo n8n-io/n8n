@@ -873,7 +873,8 @@ describe('buildThreadArtifactsBlock', () => {
 		]);
 
 		expect(block).toContain('New unsaved Agent "New Agent" (pending id: `pending-1`');
-		expect(block).toContain('do not pass its pending id');
+		expect(block).toContain('Do not pass its pending id');
+		expect(block).toContain('If a different Agent is already bound, also pass `createNew: true`.');
 	});
 
 	it('keeps a tag inside an attachment name out of the JSON line and restores it on parse', () => {

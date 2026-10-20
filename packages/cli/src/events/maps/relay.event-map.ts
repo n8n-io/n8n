@@ -1450,7 +1450,8 @@ export type RelayEventMap = {
 		after: { defaultAction: PolicyAction; version: number };
 		rulesBefore: readonly PolicyRule[] | null;
 		rulesAfter: readonly PolicyRule[];
-		warningCount: number;
+		shadowWarningCount: number;
+		notLoadedWarningCount: number;
 	};
 
 	'node-type-policy-attachments-updated': {

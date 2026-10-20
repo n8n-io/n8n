@@ -1,5 +1,5 @@
 import { ListTagsQueryDto, publicApiUploadedFileSchema, Z } from '@n8n/api-types';
-import { LicenseState } from '@n8n/backend-common';
+import { LicenseState, type Logger } from '@n8n/backend-common';
 import type { EventService } from '@n8n/backend-services';
 import type { AuthStrategyRegistry } from '@n8n/backend-services/auth';
 import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
@@ -33,7 +33,9 @@ import {
 	OptionalWidgetBodyDto,
 	WidgetBodyDto,
 } from '@/public-api/__tests__/public-api-controller-test-utils';
+import type { IdempotencyKeyService } from '@/public-api/idempotency-key.service';
 import { PublicApiControllerRegistry } from '@/public-api/public-api-controller.registry';
+import type { PublicApiRateLimitService } from '@/public-api/public-api-rate-limit.service';
 import type { LastActiveAtService } from '@/services/last-active-at.service';
 
 vi.mock('@/permissions.ee/check-access', () => ({ userHasScopes: vi.fn() }));
@@ -42,6 +44,8 @@ describe('PublicApiControllerRegistry', () => {
 	const authStrategyRegistry = mock<AuthStrategyRegistry>();
 	const lastActiveAtService = mock<LastActiveAtService>();
 	const eventService = mock<EventService>();
+	const idempotencyKeyService = mock<IdempotencyKeyService>();
+	const logger = mock<Logger>();
 	const authenticatedUser = mock<User>({ id: 'user-1' });
 
 	function activate(): express.Express {
@@ -58,6 +62,9 @@ describe('PublicApiControllerRegistry', () => {
 			authStrategyRegistry,
 			lastActiveAtService,
 			eventService,
+			mock<PublicApiRateLimitService>({ createRouteLimiters: () => [] }),
+			idempotencyKeyService,
+			logger,
 		).activate(router, 'v1');
 		// mirrors the production mount, `apiController.use('/api/v1', ..., controllerRouter)`
 		app.use('/api/v1', router);
@@ -66,6 +73,7 @@ describe('PublicApiControllerRegistry', () => {
 
 	beforeEach(() => {
 		vi.resetAllMocks();
+		logger.scoped.mockReturnThis();
 		// mirrors the real strategies, which set `req.user` on success
 		authStrategyRegistry.authenticate.mockImplementation(async (req: AuthenticatedRequest) => {
 			req.user = authenticatedUser;
@@ -1039,6 +1047,156 @@ describe('PublicApiControllerRegistry', () => {
 			const response = await request(activate()).get('/api/v1/widgets').expect(404);
 
 			expect(response.headers['content-type']).toMatch(/text\/plain/);
+		});
+	});
+
+	describe('idempotency', () => {
+		it('replays a stored response and does not run the handler', async () => {
+			let calls = 0;
+			idempotencyKeyService.claim.mockResolvedValue({
+				outcome: 'replay',
+				responseStatus: 200,
+				responseBody: { id: 'cached' },
+			});
+
+			@Service()
+			class WidgetsPublicController {
+				@Post('/')
+				@ApiResponse(200)
+				method() {
+					calls += 1;
+					return { id: 'new' };
+				}
+			}
+			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+			const response = await request(activate())
+				.post('/api/v1/widgets')
+				.set('Idempotency-Key', 'abc')
+				.send({ name: 'A' })
+				.expect(200);
+
+			expect(response.body).toEqual({ id: 'cached' });
+			expect(calls).toBe(0);
+			expect(idempotencyKeyService.complete).not.toHaveBeenCalled();
+		});
+
+		it('stores a successful response and returns it', async () => {
+			idempotencyKeyService.claim.mockResolvedValue({ outcome: 'claimed', id: 'row-1' });
+
+			@Service()
+			class WidgetsPublicController {
+				@Post('/')
+				@ApiResponse(201)
+				method() {
+					return { id: 'new' };
+				}
+			}
+			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+			const response = await request(activate())
+				.post('/api/v1/widgets')
+				.set('Idempotency-Key', 'abc')
+				.send({ name: 'A' })
+				.expect(201);
+
+			expect(response.body).toEqual({ id: 'new' });
+			expect(idempotencyKeyService.complete).toHaveBeenCalledWith('row-1', 201, { id: 'new' });
+			expect(idempotencyKeyService.release).not.toHaveBeenCalled();
+		});
+
+		it('stores an empty 201 and sends no body', async () => {
+			idempotencyKeyService.claim.mockResolvedValue({ outcome: 'claimed', id: 'row-1' });
+
+			@Service()
+			class WidgetsPublicController {
+				@Post('/')
+				@ApiResponse(201)
+				method() {}
+			}
+			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+			const response = await request(activate())
+				.post('/api/v1/widgets')
+				.set('Idempotency-Key', 'abc')
+				.send({ name: 'A' })
+				.expect(201);
+
+			expect(response.text).toBe('');
+			expect(idempotencyKeyService.complete).toHaveBeenCalledWith('row-1', 201, null);
+		});
+
+		it('does not claim a key when controller middleware rejects the request', async () => {
+			@Service()
+			class WidgetsPublicController {
+				@Middleware()
+				reject(_req: express.Request, res: express.Response) {
+					res.status(400).json({ message: 'nope' });
+				}
+
+				@Post('/')
+				@ApiResponse(200)
+				method() {
+					return { id: 'new' };
+				}
+			}
+			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+			const response = await request(activate())
+				.post('/api/v1/widgets')
+				.set('Idempotency-Key', 'abc')
+				.send({ name: 'A' })
+				.expect(400);
+
+			expect(response.body).toEqual({ message: 'nope' });
+			expect(idempotencyKeyService.claim).not.toHaveBeenCalled();
+		});
+
+		it('releases the key when the handler fails', async () => {
+			idempotencyKeyService.claim.mockResolvedValue({ outcome: 'claimed', id: 'row-1' });
+
+			@Service()
+			class WidgetsPublicController {
+				@Post('/')
+				@ApiResponse(200)
+				method() {
+					throw new NotFoundError('missing');
+				}
+			}
+			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+			await request(activate())
+				.post('/api/v1/widgets')
+				.set('Idempotency-Key', 'abc')
+				.send({ name: 'A' })
+				.expect(404);
+
+			expect(idempotencyKeyService.release).toHaveBeenCalledWith('row-1');
+			expect(idempotencyKeyService.complete).not.toHaveBeenCalled();
+		});
+
+		it('releases the key when storing the response fails', async () => {
+			idempotencyKeyService.claim.mockResolvedValue({ outcome: 'claimed', id: 'row-1' });
+			idempotencyKeyService.complete.mockRejectedValue(new Error('db down'));
+
+			@Service()
+			class WidgetsPublicController {
+				@Post('/')
+				@ApiResponse(201)
+				method() {
+					return { id: 'new' };
+				}
+			}
+			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+			const response = await request(activate())
+				.post('/api/v1/widgets')
+				.set('Idempotency-Key', 'abc')
+				.send({ name: 'A' })
+				.expect(201);
+
+			expect(response.body).toEqual({ id: 'new' });
+			expect(idempotencyKeyService.release).toHaveBeenCalledWith('row-1');
 		});
 	});
 });

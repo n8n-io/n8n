@@ -214,7 +214,7 @@ test.describe(
 
 			await n8n.canvas.rightClickCanvas();
 			await n8n.canvas.getContextMenuItem('select_all').click();
-			await n8n.canvas.rightClickCanvas();
+			await n8n.canvas.rightClickNode(CODE_NODE_DISPLAY_NAME);
 			await n8n.canvas.getContextMenuItem('delete').click();
 
 			await expect(n8n.canvas.getCanvasNodes()).toHaveCount(0);

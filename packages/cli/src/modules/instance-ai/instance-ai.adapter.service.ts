@@ -166,14 +166,14 @@ import { LlmJudgeProviderRegistry } from '@/evaluation.ee/llm-judge-provider-reg
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { AgentsCredentialProvider } from '@/modules/agents/adapters/agents-credential-provider';
+import { AgentsBuilderService } from '@/modules/agents/builder/agents-builder.service';
 
 import {
 	scopeCredentialProvider,
 	type AgentCredentialProvider,
 } from './eval/scoped-credential-provider';
 import type { EvalCredentialTestTarget } from './eval/thread-credential-allowlist.service';
-import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instance-ai-builder-delegate.adapter';
+import { InstanceAiBuilderDelegateAdapterService } from './instance-ai-builder-delegate.adapter';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import {
@@ -375,6 +375,33 @@ function toTelemetryReason(
 // process-global and safe to memoize across users.
 let httpCredentialHostsCache: CredentialHostInfo[] | undefined;
 
+/** Instance AI feature flags, resolved for one user. */
+export interface InstanceAiFeatureFlags {
+	/** Config-based evals: never create evals the user can't run. */
+	configEvalsEnabled: boolean;
+	/** Past-conversation recall: tool, prompt section and first-turn hint. */
+	conversationHistoryEnabled: boolean;
+	/** Progressive workflow policy and planning-tool selection. */
+	progressiveBuildingEnabled: boolean;
+	/** Concise reply style. Applies only when the default build mode is selected. */
+	conciseStyleEnabled: boolean;
+	setupPanelEnabled: boolean;
+	setupPanelVariant?: 'control' | 'variant';
+	/** Node-usage context surface: the `node-usage` action and the `nodeTypes` filter on `list`. */
+	nodeUsageEnabled: boolean;
+	/** Node attachments from either the canvas or Assistant mentions rollout. */
+	nodeContextEnabled: boolean;
+	/** Per-user folder-exploration gate, passed into `createContext`. Fails
+	 *  closed with every other gate: `getFeatureFlags` never throws, it
+	 *  returns `{}` on a PostHog outage. */
+	folderExplorationEnabled: boolean;
+	/** Saved AI preferences on every user turn. */
+	aiPreferencesEnabled: boolean;
+	credentialDescriptionsEnabled: boolean;
+	/** Shared activity recording and retrieval use the same instance gate. */
+	instanceContextEnabled: boolean;
+}
+
 @Service()
 export class InstanceAiAdapterService {
 	private readonly logger: Logger;
@@ -495,7 +522,7 @@ export class InstanceAiAdapterService {
 			 *  A getter for the same reason as the bypass predicate. */
 			getCredentialTestTarget?: (credentialType: string) => EvalCredentialTestTarget | undefined;
 			/** Pre-bound agent for the build-existing-agent flow. When omitted, the
-			 *  assistant can create one via the build-agent tool. */
+			 *  assistant can create one via the agent_builder_build_agent tool. */
 			agentId?: string;
 			/** Per-user config-evals gate (via `resolveExperimentGates`). Falsy →
 			 *  eval-config service/tool not wired. */
@@ -654,10 +681,9 @@ export class InstanceAiAdapterService {
 		agentId: string,
 		getCredentialIdAllowlist?: () => string[] | undefined,
 	): AgentCredentialProvider {
-		const provider = new AgentsCredentialProvider(
-			this.credentialsService,
-			projectId,
+		const provider = Container.get(AgentsBuilderService).createCredentialProvider(
 			user,
+			projectId,
 			agentId,
 		);
 		return getCredentialIdAllowlist
@@ -670,7 +696,7 @@ export class InstanceAiAdapterService {
 	 * active. The adapter class is statically imported (so its `@Service` is
 	 * always registered), so the module-enabled check is what gates
 	 * agent-building. Returns null when the module is off, so `builderDelegate`
-	 * (and the build-agent sub-agent tool it powers) is simply absent from the
+	 * (and the agent builder tools it supplies) is simply absent from the
 	 * context.
 	 */
 	private getBuilderDelegateAdapter(): InstanceAiBuilderDelegateAdapterService | null {
@@ -702,31 +728,7 @@ export class InstanceAiAdapterService {
 	}
 
 	/** Resolves experiment assignments. */
-	async resolveExperimentGates(user: User): Promise<{
-		/** Config-based evals: never create evals the user can't run. */
-		configEvalsEnabled: boolean;
-		/** Past-conversation recall: tool, prompt section and first-turn hint. */
-		conversationHistoryEnabled: boolean;
-		/** Progressive workflow policy and planning-tool selection. */
-		progressiveBuildingEnabled: boolean;
-		/** Concise reply style. Applies only when the default build mode is selected. */
-		conciseStyleEnabled: boolean;
-		setupPanelEnabled: boolean;
-		setupPanelVariant?: 'control' | 'variant';
-		/** Node-usage context surface: the `node-usage` action and the `nodeTypes` filter on `list`. */
-		nodeUsageEnabled: boolean;
-		/** Node attachments from either the canvas or Assistant mentions rollout. */
-		nodeContextEnabled: boolean;
-		/** Per-user folder-exploration gate, passed into `createContext`. Fails
-		 *  closed with every other gate: `getFeatureFlags` never throws, it
-		 *  returns `{}` on a PostHog outage. */
-		folderExplorationEnabled: boolean;
-		/** Saved AI preferences on every user turn. */
-		aiPreferencesEnabled: boolean;
-		credentialDescriptionsEnabled: boolean;
-		/** Shared activity recording and retrieval use the same instance gate. */
-		instanceContextEnabled: boolean;
-	}> {
+	async resolveExperimentGates(user: User): Promise<InstanceAiFeatureFlags> {
 		let flags: Awaited<ReturnType<PostHogClient['getFeatureFlags']>> = {};
 		let instanceContextEnabled = false;
 		try {
@@ -2366,7 +2368,7 @@ export class InstanceAiAdapterService {
 				const target = nodes.find((node) => node.name === nodeName);
 				if (!target) {
 					throw new UserError(
-						`The workflow has no node named "${nodeName}". Use workflows(action="get-as-code") to see the node names.`,
+						`The workflow has no node named "${nodeName}". Use workflow_builder_workflows(action="get-as-code") to see the node names.`,
 					);
 				}
 				if (target.disabled) {
@@ -2446,7 +2448,7 @@ export class InstanceAiAdapterService {
 						throw new UserError(
 							`Node "${nodeName}" holds several tools, and a step run cannot pick one of them. ` +
 								`Run ${roots} instead, then read this node with ` +
-								'executions(action="get-node-output") on that execution: it holds what every ' +
+								'workflow_builder_executions(action="get-node-output") on that execution: it holds what every ' +
 								'tool call returned.',
 						);
 					}
@@ -2461,7 +2463,7 @@ export class InstanceAiAdapterService {
 							`Node "${nodeName}" runs through ${roots}, and ${upper} runs above another of them, ` +
 								`so a step run would run ${upper} and the nodes after it again. ` +
 								`Run ${upper} instead, then read this node with ` +
-								'executions(action="get-node-output") on that execution: it holds what every ' +
+								'workflow_builder_executions(action="get-node-output") on that execution: it holds what every ' +
 								'tool call returned.',
 						);
 					}
@@ -3491,7 +3493,6 @@ export class InstanceAiAdapterService {
 			},
 
 			async insertRows(dataTableId, rows, options) {
-				assertNotReadOnly();
 				const { projectId, tableName, resolvedId } = await resolveTableMeta(
 					['dataTable:writeRow'],
 					dataTableId,
@@ -3512,7 +3513,6 @@ export class InstanceAiAdapterService {
 			},
 
 			async updateRows(dataTableId, filter, data, options) {
-				assertNotReadOnly();
 				const { projectId, tableName, resolvedId } = await resolveTableMeta(
 					['dataTable:writeRow'],
 					dataTableId,
@@ -3533,7 +3533,6 @@ export class InstanceAiAdapterService {
 			},
 
 			async deleteRows(dataTableId, filter, options) {
-				assertNotReadOnly();
 				const { projectId, tableName, resolvedId } = await resolveTableMeta(
 					['dataTable:writeRow'],
 					dataTableId,

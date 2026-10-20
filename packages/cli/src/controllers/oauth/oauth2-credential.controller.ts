@@ -39,6 +39,7 @@ export class OAuth2CredentialController {
 	/** Verify and store app code. Generate access tokens and store for respective credential */
 	@Get('/callback', { usesTemplates: true, allowUnauthenticated: true })
 	async handleCallback(req: OAuthRequest.OAuth2Credential.Callback, res: Response) {
+		let credentialType: string | undefined;
 		try {
 			const { code, state: encodedState } = req.query;
 			if (!code || !encodedState) {
@@ -76,6 +77,7 @@ export class OAuth2CredentialController {
 
 			const [credential, decryptedDataOriginal, oauthCredentials, state, flowState] =
 				await this.oauthService.resolveCredential<OAuth2CredentialData>(req);
+			credentialType = credential.type;
 
 			if (typeof state.resource === 'string') {
 				oauthCredentials.resource = state.resource;
@@ -201,7 +203,7 @@ export class OAuth2CredentialController {
 			this.logger.error('OAuth2 callback failed', { error, cause: error.cause });
 			return this.oauthService.renderCallbackError(
 				res,
-				error.message,
+				this.oauthService.extractCallbackErrorMessage(error, credentialType),
 				this.oauthService.extractCallbackErrorReason(error),
 			);
 		}

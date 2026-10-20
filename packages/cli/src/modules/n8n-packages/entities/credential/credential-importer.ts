@@ -183,6 +183,7 @@ export class CredentialImporter {
 		const matched = [...resolution.successes.keys()];
 		const stubbed: string[] = [];
 		const seeded: string[] = [];
+		const incomplete: string[] = [];
 
 		const packageData = credentialMissingModeUsesPackageData(request.missingMode)
 			? packageDataBySourceId(request.requirements)
@@ -210,10 +211,17 @@ export class CredentialImporter {
 			);
 
 			bindings.set(sourceId, stubCredential.id);
-			(data !== undefined ? seeded : stubbed).push(sourceId);
+			if (data === undefined) {
+				stubbed.push(sourceId);
+			} else {
+				(request.requirements?.find(({ id }) => id === sourceId)?.packageDataIsComplete
+					? seeded
+					: incomplete
+				).push(sourceId);
+			}
 		}
 
-		return { bindings, matched, stubbed, seeded };
+		return { bindings, matched, stubbed, seeded, incomplete };
 	}
 }
 

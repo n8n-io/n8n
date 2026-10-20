@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
  * The checks-have-run view behind `useTestAgentPreviewFlag`: status
- * filter pills plus "Add a check" and "Run all checks" buttons up top, then each case as an
+ * filter segment control plus "Add a check" and "Run all checks" buttons up top, then each case as an
  * `AgentEvalTryRow` — replaces `AgentEvalResultsPanel`'s vote/comment review
  * model with the simpler row the rest of the preview flow already uses.
  *
@@ -10,7 +10,7 @@
  * never passes `label` to `AgentEvalTryRow`.
  */
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { N8nButton, N8nIcon } from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nSegmentControl } from '@n8n/design-system';
 import { useToast } from '@n8n/composables/useToast';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 
@@ -118,10 +118,15 @@ const needsWorkCount = computed(
 type StatusFilter = 'all' | 'pass' | 'needs-work';
 const statusFilter = ref<StatusFilter>('all');
 
+/** No avatar for "All" — it isn't one of `AgentAvatar`'s statuses. */
+const STATUS_FILTER_AVATARS: Record<StatusFilter, AgentAvatarKind | undefined> = {
+	'needs-work': 'work',
+	pass: 'pass',
+	all: undefined,
+};
+
 type StatusFilterOption = {
 	key: StatusFilter;
-	/** No avatar for "All" — it isn't one of `AgentAvatar`'s statuses. */
-	avatarKind?: AgentAvatarKind;
 	count: number;
 	labelKey: BaseTextKey;
 	/** "All" stays up regardless of count; the status pills only earn their
@@ -135,13 +140,11 @@ type StatusFilterOption = {
 const statusFilterOptions = computed<StatusFilterOption[]>(() => [
 	{
 		key: 'needs-work',
-		avatarKind: 'work',
 		count: needsWorkCount.value,
 		labelKey: 'agents.builder.agentEvals.checks.needsWork',
 	},
 	{
 		key: 'pass',
-		avatarKind: 'pass',
 		count: passedCount.value,
 		labelKey: 'agents.builder.agentEvals.checks.pass',
 	},
@@ -155,6 +158,16 @@ const statusFilterOptions = computed<StatusFilterOption[]>(() => [
 
 const visibleStatusFilters = computed(() =>
 	statusFilterOptions.value.filter((option) => option.alwaysShown || option.count > 0),
+);
+
+const statusFilterSegments = computed(() =>
+	visibleStatusFilters.value.map((option) => ({
+		value: option.key,
+		label: i18n.baseText(option.labelKey, {
+			adjustToNumber: option.count,
+			interpolate: { count: String(option.count) },
+		}),
+	})),
 );
 
 // Needs-work first, then pass, so the rows a reviewer should act on are
@@ -448,28 +461,24 @@ onBeforeUnmount(store.stopPollingRun);
 <template>
 	<section :class="$style.panel" data-testid="agent-eval-checks-panel">
 		<header :class="$style.header">
-			<div v-if="rows.length > 0" :class="$style.filters">
-				<N8nButton
-					v-for="option in visibleStatusFilters"
-					:key="option.key"
-					type="button"
-					size="small"
-					:variant="statusFilter === option.key ? 'brand' : 'outline'"
-					:aria-pressed="statusFilter === option.key"
-					:data-testid="`agent-eval-checks-filter-${option.key}`"
-					@click="setStatusFilter(option.key)"
-				>
-					<template v-if="option.avatarKind" #icon>
-						<AgentAvatar :kind="option.avatarKind" size="xs" />
-					</template>
-					{{
-						i18n.baseText(option.labelKey, {
-							adjustToNumber: option.count,
-							interpolate: { count: String(option.count) },
-						})
-					}}
-				</N8nButton>
-			</div>
+			<N8nSegmentControl
+				v-if="rows.length > 0"
+				:model-value="statusFilter"
+				:options="statusFilterSegments"
+				@update:model-value="setStatusFilter"
+			>
+				<template #option="{ value, label }">
+					<span :class="$style.filterOption" :data-testid="`agent-eval-checks-filter-${value}`">
+						<AgentAvatar
+							v-if="STATUS_FILTER_AVATARS[value]"
+							:kind="STATUS_FILTER_AVATARS[value]"
+							size="xs"
+							:class="$style.filterAvatar"
+						/>
+						{{ label }}
+					</span>
+				</template>
+			</N8nSegmentControl>
 			<div :class="$style.actions">
 				<N8nButton
 					v-if="applicableSuggestionIds.length > 0 && !showingPreviousRun"
@@ -576,10 +585,15 @@ onBeforeUnmount(store.stopPollingRun);
 	gap: var(--spacing--sm);
 }
 
-.filters {
-	display: flex;
+.filterOption {
+	display: inline-flex;
 	align-items: center;
-	gap: var(--spacing--2xs);
+	gap: var(--spacing--4xs);
+}
+
+/* 16px, between the avatar's xs and row sizes, so it fits the segment height. */
+.filterOption > .filterAvatar {
+	--avatar-size: 16px;
 }
 
 .actions {
@@ -609,6 +623,11 @@ onBeforeUnmount(store.stopPollingRun);
 .list > *:last-of-type {
 	border-radius: 0 0 var(--radius--xl) var(--radius--xl);
 	border-bottom: none;
+}
+
+/* A single row is both first and last, so it keeps all four corners. */
+.list > *:only-of-type {
+	border-radius: var(--radius--xl);
 }
 
 .list > *:hover {

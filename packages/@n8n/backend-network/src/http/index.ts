@@ -29,4 +29,4 @@ export {
 	isTransportFailure,
 	markHttpRequestError,
 } from './client-request-error';
-export type { HttpRequestClientOptions } from './client-options';
+export type { HttpConnectionPoolOptions, HttpRequestClientOptions } from './client-options';
