@@ -1,0 +1,21 @@
+packages/nodes-base/nodes/CircleCi/__tests__/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_d95c610437b293 24-28,32,37
+packages/nodes-base/nodes/ClickUp/__tests__/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_902c62a09c34a5 34-49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a57a9ceee7f45ab282a592429f1ab71f7b964b04",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

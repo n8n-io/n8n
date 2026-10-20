@@ -1,0 +1,27 @@
+packages/nodes-base/nodes/Microsoft/Teams/v2/transport/forbiddenHints.ts
+  s_92d5074f3a4a5b::t_0d5ced4e3c7eca 7,29-30,35-50,52-73,77-85,87-89,93-96
+  s_92d5074f3a4a5b::t_c499e35a550a35 31-34,74-76
+  s_92d5074f3a4a5b::t_cff3202c47e005 51
+  s_92d5074f3a4a5b::t_80062b47ad38e4 86
+packages/nodes-base/nodes/Microsoft/Teams/v2/test/transport/index.test.ts
+  s_92d5074f3a4a5b::t_c499e35a550a35 8,346-348,392-394,433-434,458,468-469,481,489,510,516
+  s_92d5074f3a4a5b::t_e97083100f6ccb 1-7,13,25-35,345,349-391,395-432,435-457,459-467,470-480,482-487,490-509,511-515,517-523
+  s_92d5074f3a4a5b::t_5efb6172fcc824 524
+  s_92d5074f3a4a5b::t_54fe7ba9f7d736 488
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8d6cff7c46eb3375f6cf34d1f3c9e5c38d979a90",
+  "prompts": {},
+  "sessions": {
+    "s_92d5074f3a4a5b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6c8351d8-9269-4843-8562-42fb3064df35",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": null
+    }
+  }
+}
