@@ -1,8 +1,8 @@
 import { z } from 'zod';
 
 /**
- * The version ids live beside `workflow.json`, not in it, so that publishing, or an import
- * that mints its own version, does not read as a change to the workflow's content.
+ * The version ids are in a separate file next to `workflow.json`. Then publishing a workflow,
+ * or an import that creates a new version, does not show as a change to the workflow.
  */
 export const serializedWorkflowMetadataSchema = z.object({
 	versionId: z.string(),

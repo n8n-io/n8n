@@ -1,20 +1,20 @@
 import { z } from 'zod';
 
-// Outer node shape is stable; per-node-type parameter shapes are not. We
-// validate the envelope and treat `parameters` as opaque — schema-validating
-// parameters per node type would be impossibly maintenance-heavy.
 const credentialReferenceSchema = z.object({
 	id: z.string().nullable(),
 	name: z.string(),
 	__aiGatewayManaged: z.boolean().optional(),
 });
 
+// Check only the fields that all nodes share. `parameters` must be an object,
+// but its content is not checked, because it is different for each node type.
 const nodeSchema = z.object({
 	id: z.string().min(1),
 	name: z.string().min(1),
 	type: z.string().min(1),
-	// `finite()`: JSON like `1e999` parses to Infinity, which would serialize to
-	// `null` in a missing-node-type issue and break the OpenAPI number contract.
+	// `finite()` rejects values such as `1e999`, which JSON parses to Infinity.
+	// The missing node type issue returns this value, and the API documents it
+	// as a number, but Infinity becomes `null` in a JSON response.
 	typeVersion: z.number().finite(),
 	position: z.tuple([z.number(), z.number()]),
 	parameters: z.record(z.unknown()),
@@ -32,7 +32,7 @@ const nodeSchema = z.object({
 	webhookId: z.string().optional(),
 });
 
-// IConnections shape: { [sourceNodeName]: { [outputType]: Array<Array<{ node, type, index }>> } }
+// Same shape as IConnections: { [sourceNodeName]: { [outputType]: Array<Array<{ node, type, index }>> } }
 const connectionLeafSchema = z.object({
 	node: z.string(),
 	type: z.string(),

@@ -1,6 +1,5 @@
+import { containsExpression } from '@n8n/utils/string/contains-expression';
 import { z } from 'zod';
-
-import { containsExpression } from '@/utils';
 
 const expressionStringSchema = z
 	.string()
