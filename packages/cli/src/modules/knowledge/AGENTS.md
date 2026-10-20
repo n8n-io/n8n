@@ -48,13 +48,13 @@ vector-stores/                 connection test, factory, embedding credential, e
 
 ## Disabled module
 
-`N8N_DISABLED_MODULES=knowledge` skips the module's `init()` and `entities()`. Its entities are then not registered with TypeORM while the `agent_files` table still exists, so a repository call fails. This is the only kill switch P0 has.
+`N8N_DISABLED_MODULES=knowledge` skips the module's `init()` and `entities()`. In this scaffold the module registers no entities and the agents module still registers `AgentFile`, so the guards below only switch the feature off. Once a follow-up PR moves `KnowledgeFile` here, the entity is not registered with TypeORM while the `agent_files` table still exists, and an unguarded repository call fails with a metadata error. The guards exist now so that move stays a pure move. This is the only kill switch P0 has.
 
 `knowledge-availability.ts` (`KnowledgeAvailability`) is the one place that answers whether knowledge is available: `isModuleActive()` and `isFileKnowledgeEnabled()` (module active and sandbox on). Every consumer asks it before a knowledge call, derives its own flags from it, and raises the error that fits its own surface. With the module off:
 
 - `agents.knowledgeBaseEnabled` is false, so the editor hides the files panel in the agent's Knowledge tab.
 - The file routes and the knowledge warm-up route return the same 404 as the sandbox gate: `Agent knowledge base is not enabled`.
-- The `AgentKnowledgeService` facade rejects every file operation before it touches the repository. `destroyKnowledgeSandbox` still runs: it needs no entity.
+- The `AgentKnowledgeService` facade rejects upload, list, warm-up and single-file delete before it touches the repository. `destroyKnowledgeSandbox` still runs: it needs no entity.
 - Runtime reconstruction attaches the workspace but not the knowledge tools, and does not query the file repository.
 - Agent and project deletion still delete the agent's files and their stored bytes. `deleteAllFilesForAgent` has no module gate: it is cleanup, not a feature entry point, and in P0 the agents module still registers the entity and the byte stores. PR-1 moves the entity into this module and must decide how that cleanup runs with the module off, or the bytes of deleted agents leak.
 - Vector stores keep working. They are plain code, not an entity.

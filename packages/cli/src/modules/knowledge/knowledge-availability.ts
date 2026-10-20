@@ -22,8 +22,10 @@ export class KnowledgeAvailability {
 
 	/**
 	 * Whether the knowledge module is active. `N8N_DISABLED_MODULES=knowledge`
-	 * skips its `entities()`, so a repository call would fail with a TypeORM
-	 * metadata error instead of a clear message.
+	 * skips its `init()` and `entities()`. Consumers check this before every
+	 * knowledge call so the feature switches off cleanly; once the module owns its
+	 * entities, an unguarded repository call would fail with a TypeORM metadata
+	 * error instead.
 	 */
 	isModuleActive(): boolean {
 		return this.moduleRegistry.isActive('knowledge');

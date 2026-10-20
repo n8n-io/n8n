@@ -414,7 +414,7 @@ describe('AgentRuntimeReconstructionService — workspace attachment', () => {
 		await reconstructWithWorkspace(service);
 
 		expect(builtAgent.workspace).toHaveBeenCalledWith(workspace);
-		// The file repository is never asked: with the module off it has no entity.
+		// The file repository is never asked while knowledge is off.
 		expect(agentFileRepository.hasFilesForAgent).not.toHaveBeenCalled();
 		for (const toolName of ['find_file', 'search_text', 'read_file']) {
 			expect(getInjectedToolNames()).not.toContain(toolName);

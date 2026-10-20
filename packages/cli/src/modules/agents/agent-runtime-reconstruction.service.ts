@@ -930,7 +930,8 @@ export class AgentRuntimeReconstructionService {
 			return undefined;
 		const parentWorkspaceHandle = await this.attachWorkspace(params);
 		const { agent, agentId, projectId } = params;
-		// The module check comes first: with the module off, the file repository has no entity.
+		// Module check first, so the file repository is not touched while knowledge is off.
+		// A follow-up PR moves its entity into the knowledge module.
 		if (
 			this.knowledgeAvailability.isModuleActive() &&
 			(await this.agentFileRepository.hasFilesForAgent(agentId))
