@@ -208,7 +208,8 @@ test('should exit with a crash when expression engine init fails', async () => {
 				idleTimeout: 30,
 				lazyAcquire: false,
 				compileCache: false,
-				nativeEvaluation: false,
+				nativeEvaluation: 'off',
+				nativeEvaluationVerifySample: 0.01,
 			},
 			generic: { gracefulShutdownTimeout: 30 },
 		}),
@@ -235,11 +236,76 @@ test('should exit with a crash when expression engine init fails', async () => {
 		idleTimeoutMs: 30_000, // the config value is in seconds
 		lazyAcquire: false,
 		compileCache: false,
-		nativeEvaluation: false,
+		nativeEvaluation: 'off',
+		nativeEvaluationVerifySample: 0.01,
+		reportNativeVerifyMismatch: expect.any(Function),
 		observability: expressionObservability,
 	});
 	expect(exitSpy).toHaveBeenCalledWith(expect.stringContaining('isolated-vm'), expect.any(Error));
+
+	const [{ reportNativeVerifyMismatch }] = initSpy.mock.calls[0];
+	reportNativeVerifyMismatch?.({
+		skeleton: '{{ $json.<id> }}',
+		engine: 'vm',
+		nativeResultType: 'string',
+		engineResultType: 'number',
+		workflowId: 'wf-1',
+	});
+	expect(errorReporter.info).toHaveBeenCalledWith(
+		'Native evaluation result differs from the expression engine',
+		{
+			tags: { expressionEngine: 'vm' },
+			extra: {
+				skeleton: '{{ $json.<id> }}',
+				nativeResultType: 'string',
+				engineResultType: 'number',
+				workflowId: 'wf-1',
+			},
+		},
+	);
 });
+
+test.each([
+	{ nativeEvaluation: 'verify', engine: 'vm', backendDsn: '', warns: true },
+	{ nativeEvaluation: 'verify', engine: 'vm', backendDsn: 'https://dsn', warns: false },
+	{ nativeEvaluation: 'verify', engine: 'legacy', backendDsn: '', warns: false },
+	{ nativeEvaluation: 'on', engine: 'vm', backendDsn: '', warns: false },
+] as const)(
+	'warns at startup when verify mode has no Sentry: $nativeEvaluation on $engine, dsn "$backendDsn"',
+	async ({ nativeEvaluation, engine, backendDsn, warns }) => {
+		// arrange
+
+		vi.spyOn(Expression, 'initExpressionEngine').mockResolvedValue();
+		Container.set(
+			GlobalConfig,
+			mock<GlobalConfig>({
+				taskRunners: {},
+				nodes: {},
+				expressionEngine: { engine, nativeEvaluation },
+				sentry: { backendDsn },
+				generic: { gracefulShutdownTimeout: 30 },
+			}),
+		);
+
+		class ExpressionCommand extends BaseCommand {
+			override needsExpressionEngine = true;
+		}
+
+		// act
+
+		await new ExpressionCommand().init();
+
+		// assert
+
+		const warning =
+			'Native evaluation verify mode reports differences only to Sentry, which is not configured';
+		if (warns) {
+			expect(logger.warn).toHaveBeenCalledWith(warning);
+		} else {
+			expect(logger.warn).not.toHaveBeenCalledWith(warning);
+		}
+	},
+);
 
 test('exitWithCrash logs the crash message to the console', async () => {
 	// arrange

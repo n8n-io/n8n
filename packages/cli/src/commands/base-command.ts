@@ -30,6 +30,7 @@ import {
 } from 'n8n-core';
 import { sleep } from '@n8n/utils/sleep';
 import { Expression, UnexpectedError } from 'n8n-workflow';
+import type { NativeVerifyMismatch } from 'n8n-workflow';
 
 import type { AbstractServer } from '@/abstract-server';
 import * as CrashJournal from '@/crash-journal';
@@ -272,6 +273,7 @@ export abstract class BaseCommand<F = never> {
 				nativeEvaluationVerifySample,
 			} = this.globalConfig.expressionEngine;
 			const observability = Container.get(ExpressionObservabilityProvider);
+			this.warnIfVerifyWithoutSentry();
 			try {
 				await Expression.initExpressionEngine({
 					engine,
@@ -284,6 +286,7 @@ export abstract class BaseCommand<F = never> {
 					compileCache,
 					nativeEvaluation,
 					nativeEvaluationVerifySample,
+					reportNativeVerifyMismatch: (mismatch) => this.reportNativeVerifyMismatch(mismatch),
 					observability,
 				});
 			} catch (error) {
@@ -297,6 +300,33 @@ export abstract class BaseCommand<F = never> {
 			// vm-configured instance fails loudly instead of silently using the legacy engine
 			Expression.setExpressionEngine(this.globalConfig.expressionEngine.engine);
 		}
+	}
+
+	private warnIfVerifyWithoutSentry() {
+		const { nativeEvaluation, engine } = this.globalConfig.expressionEngine;
+		if (
+			nativeEvaluation === 'verify' &&
+			engine !== 'legacy' &&
+			!this.globalConfig.sentry.backendDsn
+		) {
+			this.logger.warn(
+				'Native evaluation verify mode reports differences only to Sentry, which is not configured',
+			);
+		}
+	}
+
+	private reportNativeVerifyMismatch({
+		engine,
+		skeleton,
+		nativeResultType,
+		engineResultType,
+		workflowId,
+	}: NativeVerifyMismatch) {
+		// Not warn: it wraps the message in an Error, which is deduplicated by stack.
+		this.errorReporter.info('Native evaluation result differs from the expression engine', {
+			tags: { expressionEngine: engine },
+			extra: { skeleton, nativeResultType, engineResultType, workflowId },
+		});
 	}
 
 	/**

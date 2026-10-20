@@ -705,8 +705,8 @@ describe('GlobalConfig', () => {
 			allowWebhookIsolateSkip: true,
 			lazyAcquire: false,
 			compileCache: false,
-			nativeEvaluation: false,
-			nativeEvaluationVerifySample: 0,
+			nativeEvaluation: 'off',
+			nativeEvaluationVerifySample: 0.01,
 		},
 		instanceSettingsLoader: {
 			ownerManagedByEnv: false,

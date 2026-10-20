@@ -3,11 +3,8 @@ import type { SimpleNode } from './grammar';
 // The expression's shape without its user data, for verify-mode reports.
 // The grammar is closed, so every method, root and operator here comes from
 // an allowlist; only literals, field names and node names are user text, and
-// those are masked.
-// TODO(native-evaluation verify, CAT-4777): this masking is the user-data
-// boundary for anything sent off the instance, Sentry included. To send a
-// masked expression instead of a skeleton, extend this function rather than
-// redacting the raw text.
+// those are masked. This masking is the user-data boundary for what verify
+// mode sends to Sentry, so extend it rather than redacting the raw text.
 export function skeletonOf(node: SimpleNode): string {
 	switch (node.kind) {
 		case 'literal':

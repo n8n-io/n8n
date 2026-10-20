@@ -11,6 +11,11 @@ const expressionEngineSchema = z.enum(['legacy', 'vm', 'quickjs']);
  */
 const frontendExpressionEngineSchema = z.enum(['legacy', 'quickjs']);
 
+// `true` and `false` stay valid: the flag was a boolean before `verify` existed.
+const nativeEvaluationSchema = z
+	.enum(['off', 'on', 'verify', 'false', 'true'])
+	.transform((value) => (value === 'true' ? 'on' : value === 'false' ? 'off' : value));
+
 @Config
 export class ExpressionEngineConfig {
 	/**
@@ -116,24 +121,19 @@ export class ExpressionEngineConfig {
 	compileCache: boolean = false;
 
 	/**
-	 * Experimental: fast native evaluation. Simple expressions are evaluated
-	 * directly by n8n instead of the expression engine, so they never need an
-	 * isolate. Every other expression is evaluated by the engine as before.
-	 * Applies to every engine.
+	 * Experimental: evaluate simple expressions directly, without an isolate.
+	 * - `off` (default): the engine evaluates every expression.
+	 * - `on`: n8n evaluates simple expressions directly.
+	 * - `verify`: n8n evaluates a sample both ways, uses the engine's result and
+	 *   reports differences to Sentry. `vm` and `quickjs` only.
 	 */
-	@Env('N8N_EXPRESSION_ENGINE_NATIVE_EVALUATION')
-	nativeEvaluation: boolean = false;
+	@Env('N8N_EXPRESSION_ENGINE_NATIVE_EVALUATION', nativeEvaluationSchema)
+	nativeEvaluation: 'off' | 'on' | 'verify' = 'off';
 
-	/**
-	 * Experimental: share of simple expressions, from 0 to 1, that n8n evaluates both
-	 * directly and with the `vm` or `quickjs` expression engine to compare the results.
-	 * n8n uses the engine's result and logs any difference without workflow data. Only
-	 * applies while `N8N_EXPRESSION_ENGINE_NATIVE_EVALUATION` is false, and each
-	 * comparison costs an extra evaluation.
-	 */
+	/** Experimental: share of simple expressions, from 0 to 1, that `verify` mode compares. */
 	@Env(
 		'N8N_EXPRESSION_ENGINE_NATIVE_EVALUATION_VERIFY_SAMPLE',
 		z.number({ coerce: true }).min(0).max(1),
 	)
-	nativeEvaluationVerifySample: number = 0;
+	nativeEvaluationVerifySample: number = 0.01;
 }

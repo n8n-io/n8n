@@ -89,6 +89,27 @@ describe('ExpressionEngineConfig', () => {
 		});
 	});
 
+	describe('N8N_EXPRESSION_ENGINE_NATIVE_EVALUATION', () => {
+		test.each([
+			['on', 'on'],
+			['verify', 'verify'],
+			['off', 'off'],
+			['true', 'on'],
+			['false', 'off'],
+		])('parses %s as %s', (value, mode) => {
+			vi.stubEnv('N8N_EXPRESSION_ENGINE_NATIVE_EVALUATION', value);
+			expect(Container.get(ExpressionEngineConfig).nativeEvaluation).toBe(mode);
+		});
+
+		test('falls back to off on invalid value', () => {
+			const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+			vi.stubEnv('N8N_EXPRESSION_ENGINE_NATIVE_EVALUATION', 'sometimes');
+			expect(Container.get(ExpressionEngineConfig).nativeEvaluation).toBe('off');
+			expect(consoleWarnSpy).toHaveBeenCalled();
+		});
+	});
+
 	describe('N8N_EXPRESSION_ENGINE_TIMEOUT', () => {
 		test('overrides bridgeTimeout', () => {
 			vi.stubEnv('N8N_EXPRESSION_ENGINE_TIMEOUT', '1000');

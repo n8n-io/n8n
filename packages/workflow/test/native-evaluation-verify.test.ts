@@ -27,6 +27,7 @@ async function loadWithMockedNative() {
 
 describe('Expression - native evaluation verify mode', () => {
 	const warn = vi.fn();
+	const report = vi.fn();
 	let modules: Awaited<ReturnType<typeof loadWithMockedNative>>;
 	let evaluateNatively: typeof modules.evaluateNatively;
 
@@ -65,11 +66,11 @@ describe('Expression - native evaluation verify mode', () => {
 
 	beforeEach(() => {
 		modules.LoggerProxy.init({ error: vi.fn(), warn, info: vi.fn(), debug: vi.fn() });
-		modules.Expression.setNativeEvaluationVerifySample(1);
+		modules.Expression.setNativeEvaluationVerify(1, report);
 	});
 
 	afterEach(() => {
-		modules.Expression.setNativeEvaluationVerifySample(0);
+		modules.Expression.setNativeEvaluation(false);
 		vi.clearAllMocks();
 	});
 
@@ -97,23 +98,23 @@ describe('Expression - native evaluation verify mode', () => {
 	});
 
 	if (engine === 'vm' || engine === 'quickjs') {
-		test('returns the engine result and logs the mismatch without workflow data', () => {
+		test('returns the engine result and reports the mismatch without workflow data', () => {
 			evaluateNatively.mockReturnValueOnce({ handled: true, value: 'native' });
 
 			expect(evaluate('={{ $json.name.toUpperCase() }}')).toBe('SECRET-NAME');
-			expect(warn).toHaveBeenCalledTimes(1);
-			const [, meta] = warn.mock.calls[0];
-			expect(meta).toEqual({
+			expect(report).toHaveBeenCalledTimes(1);
+			expect(report).toHaveBeenCalledWith({
 				skeleton: '{{ $json.<id>.toUpperCase() }}',
 				engine,
-				nativeResult: 'string',
-				engineResult: 'string',
+				nativeResultType: 'string',
+				engineResultType: 'string',
 				workflowId: undefined,
 			});
-			expect(JSON.stringify(warn.mock.calls)).not.toContain('secret');
+			expect(JSON.stringify(report.mock.calls)).not.toContain('secret');
+			expect(warn).not.toHaveBeenCalled();
 		});
 
-		test('logs each mismatch shape once', () => {
+		test('reports each mismatch shape once', () => {
 			evaluateNatively
 				.mockReturnValueOnce({ handled: true, value: 42 })
 				.mockReturnValueOnce({ handled: true, value: 42 });
@@ -121,7 +122,7 @@ describe('Expression - native evaluation verify mode', () => {
 			evaluate('={{ $json.name.toLowerCase() }}');
 			evaluate('={{ $json.name.toLowerCase() }}');
 
-			expect(warn).toHaveBeenCalledTimes(1);
+			expect(report).toHaveBeenCalledTimes(1);
 		});
 
 		test('compares errors', () => {
@@ -130,49 +131,35 @@ describe('Expression - native evaluation verify mode', () => {
 			});
 
 			expect(evaluate('={{ $json.name.trim() }}')).toBe('secret-name');
-			expect(warn.mock.calls[0][1]).toMatchObject({ nativeResult: 'error:Error' });
+			expect(report.mock.calls[0][0]).toMatchObject({ nativeResultType: 'error:Error' });
 		});
 
-		test('does not log a match', () => {
+		test('does not report a match', () => {
 			expect(evaluate('={{ $json.name.slice(0, 6) }}')).toBe('secret');
 			expect(evaluateNatively).toHaveBeenCalled();
-			expect(warn).not.toHaveBeenCalled();
+			expect(report).not.toHaveBeenCalled();
 		});
 
-		test('never verifies while native evaluation is on', () => {
-			modules.Expression.setNativeEvaluation(true);
-			try {
-				evaluateNatively.mockReturnValueOnce({ handled: true, value: 'native' });
+		test('only compares the sampled share', () => {
+			modules.Expression.setNativeEvaluationVerify(0, report);
 
-				expect(evaluate('={{ $json.name.padEnd(1) }}')).toBe('native');
-				expect(warn).not.toHaveBeenCalled();
-			} finally {
-				modules.Expression.setNativeEvaluation(false);
-			}
-		});
-
-		test('ignores the sample when native evaluation is configured on', async () => {
-			await modules.Expression.initExpressionEngine({
-				engine: engine,
-				poolSize: 1,
-				maxCodeCacheSize: 1024,
-				bridgeTimeout: 5000,
-				bridgeMemoryLimit: 128,
-				nativeEvaluation: true,
-				nativeEvaluationVerifySample: 1,
-			});
-			modules.Expression.setNativeEvaluation(false);
-
-			expect(warn.mock.calls[0][0]).toContain('native evaluation is on');
-			evaluate('={{ $json.name.padStart(1) }}');
+			expect(evaluate('={{ $json.name.padStart(1) }}')).toBe('secret-name');
 			expect(evaluateNatively).not.toHaveBeenCalled();
+		});
+
+		test('does not compare in on mode', () => {
+			modules.Expression.setNativeEvaluation(true);
+			evaluateNatively.mockReturnValueOnce({ handled: true, value: 'native' });
+
+			expect(evaluate('={{ $json.name.padEnd(1) }}')).toBe('native');
+			expect(report).not.toHaveBeenCalled();
 		});
 
 		test('does not compare clock reads', () => {
 			evaluateNatively.mockReturnValueOnce({ handled: true, value: 0 });
 
 			evaluate('={{ $now.toMillis() }}');
-			expect(warn).not.toHaveBeenCalled();
+			expect(report).not.toHaveBeenCalled();
 		});
 	} else {
 		test('does nothing under the legacy engine', async () => {
@@ -182,8 +169,11 @@ describe('Expression - native evaluation verify mode', () => {
 				maxCodeCacheSize: 1024,
 				bridgeTimeout: 5000,
 				bridgeMemoryLimit: 128,
+				nativeEvaluation: 'verify',
 				nativeEvaluationVerifySample: 1,
+				reportNativeVerifyMismatch: report,
 			});
+			expect(warn).toHaveBeenCalledTimes(1);
 			expect(warn.mock.calls[0][0]).toContain('vm or quickjs');
 
 			expect(evaluate('={{ $json.name.toUpperCase() }}')).toBe('SECRET-NAME');

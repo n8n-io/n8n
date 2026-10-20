@@ -206,8 +206,8 @@ N8N_EXPRESSION_ENGINE_IDLE_TIMEOUT=       # seconds; unset = pool never scales t
 # Experimental
 N8N_EXPRESSION_ENGINE_LAZY_ACQUIRE=false  # create the isolate on the first evaluation that needs it
 N8N_EXPRESSION_ENGINE_COMPILE_CACHE=false # reuse the V8 compile cache for the runtime bundle ('vm' only)
-N8N_EXPRESSION_ENGINE_NATIVE_EVALUATION=false # interpret expressions that fit the native subset in-process, no isolate
-N8N_EXPRESSION_ENGINE_NATIVE_EVALUATION_VERIFY_SAMPLE=0 # 0 to 1; share also evaluated natively and compared with the engine; only while native is off ('vm'/'quickjs' only)
+N8N_EXPRESSION_ENGINE_NATIVE_EVALUATION=off # off | on | verify
+N8N_EXPRESSION_ENGINE_NATIVE_EVALUATION_VERIFY_SAMPLE=0.01 # 0 to 1; share compared in verify mode
 
 # Bridge limits
 N8N_EXPRESSION_ENGINE_TIMEOUT=5000        # ms; positive integer
