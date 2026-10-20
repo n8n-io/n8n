@@ -483,6 +483,33 @@ it('requires the production source before cancelling a suspended run', async () 
 	);
 });
 
+describe('cancel access for a task thread', () => {
+	const taskThread = mock<AgentExecutionThread>({
+		id: context.threadId,
+		projectId: context.projectId,
+		agentId: context.agentId,
+		accessScope: 'user',
+		ownerId: context.userId,
+		parentThreadId: null,
+		taskId: 'task-1',
+	});
+
+	it('refuses it on the Preview surface, like the Preview continue rule', async () => {
+		const { service, executionService } = makeService(false);
+		executionService.findThreadById.mockResolvedValue(taskThread);
+
+		await expect(service.requestCancel(context)).rejects.toThrow('Execution not found');
+	});
+
+	it('keeps the own cancel rule of n8n Chat, which does not check the task', async () => {
+		const { service, executionService, repository } = makeService(false);
+		executionService.findThreadById.mockResolvedValue(taskThread);
+		repository.findOneBy.mockResolvedValue({ ...running, source: 'n8n_chat_production' });
+
+		await expect(service.requestCancel({ ...context, surface: 'n8n-chat' })).resolves.toBe(true);
+	});
+});
+
 it('rejects preview and foreign executions on the production cancel route', async () => {
 	const { service, repository } = makeService();
 	const production = { ...context, surface: 'n8n-chat' as const };

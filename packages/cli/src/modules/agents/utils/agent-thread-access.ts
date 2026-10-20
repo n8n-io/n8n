@@ -73,8 +73,7 @@ export function canContinueThreadInPreview(
 ): boolean {
 	return (
 		!isSystemAgent &&
-		canUseTopLevelDraftThread(thread, userId) &&
-		thread.taskId === null &&
+		isOpenChatThread(thread, userId) &&
 		PREVIEW_THREAD_SOURCES.some(
 			(previewSource) => previewSource === (source?.trim().toLowerCase() ?? ''),
 		)
@@ -88,10 +87,7 @@ export function canContinueThreadInN8nChat(
 	isSystemAgent: boolean,
 ): boolean {
 	return (
-		!isSystemAgent &&
-		canUseTopLevelDraftThread(thread, userId) &&
-		thread.taskId === null &&
-		source === N8N_CHAT_PRODUCTION_SOURCE
+		!isSystemAgent && isOpenChatThread(thread, userId) && source === N8N_CHAT_PRODUCTION_SOURCE
 	);
 }
 
@@ -101,7 +97,7 @@ export function canContinueSystemThread(
 	userId: string,
 	isSystemAgent: boolean,
 ): boolean {
-	return isSystemAgent && canUseTopLevelDraftThread(thread, userId) && thread.taskId === null;
+	return isSystemAgent && isOpenChatThread(thread, userId);
 }
 
 /** Whether the user can continue the thread with a message on the chat surface. */
@@ -120,6 +116,14 @@ export function canContinueThreadOnSurface(
 		case 'preview':
 			return canContinueThreadInPreview(thread, userId, source, isSystemAgent);
 	}
+}
+
+/**
+ * The part that every chat surface shares: a top-level private thread of the
+ * user that is not a task thread.
+ */
+function isOpenChatThread(thread: AgentExecutionThread, userId: string): boolean {
+	return canUseTopLevelDraftThread(thread, userId) && thread.taskId === null;
 }
 
 export function canUseTopLevelDraftThread(thread: AgentExecutionThread, userId: string): boolean {
