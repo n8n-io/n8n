@@ -345,7 +345,7 @@ describe('PromotionsService', () => {
 			await expect(stat(stagingFolder)).rejects.toThrow();
 		});
 
-		it('refuses to promote before exporting when the direction is not cloned', async () => {
+		it('refuses to promote before exporting when the direction is not connected', async () => {
 			gitService.hasCheckout.mockResolvedValueOnce(false);
 
 			await expect(
@@ -353,7 +353,7 @@ describe('PromotionsService', () => {
 					canExportVariableValues: true,
 					commitMessage: 'm',
 				}),
-			).rejects.toThrow('not cloned');
+			).rejects.toThrow('not connected');
 			expect(n8nPackagesService.exportPackageToDirectory).not.toHaveBeenCalled();
 			expect(gitService.commitAndPush).not.toHaveBeenCalled();
 		});
@@ -375,7 +375,7 @@ describe('PromotionsService', () => {
 					canExportVariableValues: true,
 					commitMessage: 'm',
 				}),
-			).rejects.toThrow('not cloned');
+			).rejects.toThrow('not connected');
 			expect(n8nPackagesService.exportPackageToDirectory).not.toHaveBeenCalled();
 		});
 
@@ -462,7 +462,7 @@ describe('PromotionsService', () => {
 					canExportVariableValues: true,
 					commitMessage: 'm',
 				}),
-			).rejects.toThrow('not cloned');
+			).rejects.toThrow('not connected');
 			expect(n8nPackagesService.exportPackageToDirectory).not.toHaveBeenCalled();
 		});
 
@@ -918,7 +918,7 @@ describe('PromotionsService', () => {
 					commitMessage: 'm',
 					canExportVariableValues: true,
 				}),
-			).rejects.toThrow('not cloned');
+			).rejects.toThrow('not connected');
 			expect(n8nPackagesService.exportPackageToDirectory).not.toHaveBeenCalled();
 			expect(gitService.commitAndPush).not.toHaveBeenCalled();
 		});
@@ -942,7 +942,7 @@ describe('PromotionsService', () => {
 					commitMessage: 'm',
 					canExportVariableValues: true,
 				}),
-			).rejects.toThrow('not cloned');
+			).rejects.toThrow('not connected');
 			expect(n8nPackagesService.exportPackageToDirectory).not.toHaveBeenCalled();
 		});
 
@@ -1155,7 +1155,7 @@ describe('PromotionsService', () => {
 		it('refuses to read before the direction is cloned', async () => {
 			gitService.hasCheckout.mockResolvedValueOnce(false);
 
-			await expect(service.readBranchPackage('p1', 'apply')).rejects.toThrow('not cloned');
+			await expect(service.readBranchPackage('p1', 'apply')).rejects.toThrow('not connected');
 			expect(gitService.listBranchTree).not.toHaveBeenCalled();
 		});
 	});
@@ -1446,10 +1446,10 @@ describe('PromotionsService', () => {
 			expect(n8nPackagesService.importPackageFromDirectory).not.toHaveBeenCalled();
 		});
 
-		it('refuses to apply before fetching when the direction is not cloned', async () => {
+		it('refuses to apply before fetching when the direction is not connected', async () => {
 			gitService.hasCheckout.mockResolvedValueOnce(false);
 
-			await expect(service.apply(ENVIRONMENT_ID, actor)).rejects.toThrow('not cloned');
+			await expect(service.apply(ENVIRONMENT_ID, actor)).rejects.toThrow('not connected');
 			expect(gitService.refreshCheckout).not.toHaveBeenCalled();
 			expect(n8nPackagesService.importPackageFromDirectory).not.toHaveBeenCalled();
 		});

@@ -201,15 +201,15 @@ export const deletePromotionEnvironment = async (
 	});
 };
 
-/** Clones the environment's branch into local storage on the instance. Safe to repeat. */
-export const clonePromotionCheckout = async (
+/** Connects the environment on the instance. For Git, this clones its branch. Safe to repeat. */
+export const connectPromotionCheckout = async (
 	context: PublicApiContext,
 	environmentId: string,
 ): Promise<PromotionCheckoutPublicDto> =>
 	await request({
 		method: 'POST',
 		baseURL: context.baseUrl,
-		endpoint: `${promotionsApiRoot}/environments/${environmentId}/clone`,
+		endpoint: `${promotionsApiRoot}/environments/${environmentId}/connect`,
 	});
 
 /** Removes the environment's local checkout. Keeps the environment and its credentials. */

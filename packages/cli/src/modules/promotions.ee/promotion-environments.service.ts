@@ -245,7 +245,7 @@ export class PromotionEnvironmentsService {
 	): Promise<PromotionEnvironmentCheckout> {
 		const { repositoryFolder } = this.workingDirectory.paths(environment.id);
 		const hasCheckout = await this.gitService.hasCheckout(repositoryFolder);
-		if (!hasCheckout) return { hasCheckout: false, matchesConfig: false };
+		if (!hasCheckout) return { hasCheckout: false, matchesEnvironment: false };
 
 		// Read the remote the same way an operation does, so the reported state and the
 		// enforced state cannot drift. A remote this version cannot read is not usable.
@@ -253,13 +253,13 @@ export class PromotionEnvironmentsService {
 		try {
 			remote = resolvePromotionGitRemote(environment.provider, environment.remote);
 		} catch {
-			return { hasCheckout, matchesConfig: false };
+			return { hasCheckout, matchesEnvironment: false };
 		}
 
-		const matchesConfig = await this.workingDirectory.matchesDescriptor(
+		const matchesEnvironment = await this.workingDirectory.matchesDescriptor(
 			buildCacheDescriptor({ environmentId: environment.id, remote, config: resolved }),
 		);
-		return { hasCheckout, matchesConfig };
+		return { hasCheckout, matchesEnvironment };
 	}
 
 	private async checkSettings(

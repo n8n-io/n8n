@@ -265,7 +265,7 @@
 		"DELETE /promotions/environments/{promotionEnvironmentId}": {
 			"status": "gap"
 		},
-		"POST /promotions/environments/{promotionEnvironmentId}/clone": {
+		"POST /promotions/environments/{promotionEnvironmentId}/connect": {
 			"status": "gap"
 		},
 		"POST /promotions/environments/{promotionEnvironmentId}/disconnect": {

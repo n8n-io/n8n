@@ -279,9 +279,9 @@ paths:
       $ref: ./handlers/promotions/spec/paths/updatePromotionEnvironment.generated.yml
     delete:
       $ref: ./handlers/promotions/spec/paths/deletePromotionEnvironment.generated.yml
-  /promotions/environments/{promotionEnvironmentId}/clone:
+  /promotions/environments/{promotionEnvironmentId}/connect:
     post:
-      $ref: ./handlers/promotions/spec/paths/clonePromotionCheckout.generated.yml
+      $ref: ./handlers/promotions/spec/paths/connectPromotionCheckout.generated.yml
   /promotions/environments/{promotionEnvironmentId}/disconnect:
     post:
       $ref: ./handlers/promotions/spec/paths/disconnectPromotionCheckout.generated.yml

@@ -36,7 +36,7 @@ const api = vi.hoisted(() => ({
 	createPromotionEnvironment: vi.fn<typeof PromotionsApi.createPromotionEnvironment>(),
 	updatePromotionEnvironment: vi.fn<typeof PromotionsApi.updatePromotionEnvironment>(),
 	deletePromotionEnvironment: vi.fn<typeof PromotionsApi.deletePromotionEnvironment>(),
-	clonePromotionCheckout: vi.fn<typeof PromotionsApi.clonePromotionCheckout>(),
+	connectPromotionCheckout: vi.fn<typeof PromotionsApi.connectPromotionCheckout>(),
 	disconnectPromotionCheckout: vi.fn<typeof PromotionsApi.disconnectPromotionCheckout>(),
 }));
 
@@ -80,7 +80,7 @@ const applyConfig = (branchName: string) => ({
 	id: 'environment-apply',
 	direction: 'apply' as const,
 	settings: { schemaVersion: 1 as const, branchName },
-	checkout: { hasCheckout: false, matchesConfig: false },
+	checkout: { hasCheckout: false, matchesEnvironment: false },
 	...timestamps,
 });
 
@@ -88,7 +88,7 @@ const promoteConfig = (baseBranchName: string, createBranchOnPromotion = false) 
 	id: 'environment-promote',
 	direction: 'promote' as const,
 	settings: { schemaVersion: 1 as const, baseBranchName, createBranchOnPromotion },
-	checkout: { hasCheckout: false, matchesConfig: false },
+	checkout: { hasCheckout: false, matchesEnvironment: false },
 	...timestamps,
 });
 
@@ -692,8 +692,10 @@ describe('PromotionsSettingsView', () => {
 					.mockResolvedValue(applyOf(updated));
 				mockUpdates(updated);
 				const pending =
-					createDeferredPromise<Awaited<ReturnType<typeof PromotionsApi.clonePromotionCheckout>>>();
-				api.clonePromotionCheckout.mockReturnValueOnce(pending.promise);
+					createDeferredPromise<
+						Awaited<ReturnType<typeof PromotionsApi.connectPromotionCheckout>>
+					>();
+				api.connectPromotionCheckout.mockReturnValueOnce(pending.promise);
 				await renderReadyView();
 				await userEvent.click(screen.getByTestId('promotion-checkout-connect'));
 				if (state === 'replaced') {

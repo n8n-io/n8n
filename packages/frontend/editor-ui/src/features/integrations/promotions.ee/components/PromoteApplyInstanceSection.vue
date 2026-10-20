@@ -42,8 +42,8 @@ const canApply = computed(
 
 // Promote and apply each need a local checkout cloned from the current config. Until then
 // the backend rejects the request, so the buttons wait for Connect in the form below.
-const promoteConnected = computed(() => promoteConfig.value?.checkout.matchesConfig ?? false);
-const applyConnected = computed(() => applyConfig.value?.checkout.matchesConfig ?? false);
+const promoteConnected = computed(() => promoteConfig.value?.checkout.matchesEnvironment ?? false);
+const applyConnected = computed(() => applyConfig.value?.checkout.matchesEnvironment ?? false);
 </script>
 
 <template>

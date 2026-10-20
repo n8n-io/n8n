@@ -113,7 +113,7 @@ describe('PromotionEnvironmentsService', () => {
 
 			expect(result.checkout).toEqual({
 				hasCheckout: false,
-				matchesConfig: false,
+				matchesEnvironment: false,
 			});
 		});
 
@@ -131,7 +131,7 @@ describe('PromotionEnvironmentsService', () => {
 
 			expect(result.checkout).toEqual({
 				hasCheckout: true,
-				matchesConfig: true,
+				matchesEnvironment: true,
 			});
 		});
 
@@ -154,7 +154,7 @@ describe('PromotionEnvironmentsService', () => {
 
 			expect(result.checkout).toEqual({
 				hasCheckout: true,
-				matchesConfig: true,
+				matchesEnvironment: true,
 			});
 		});
 
@@ -178,7 +178,7 @@ describe('PromotionEnvironmentsService', () => {
 				remoteUrl: 'https://gitlab.example.com/platform/workflows.git',
 				checkoutBranchName: 'main',
 			});
-			expect((await service.findOne(ENVIRONMENT_ID)).checkout.matchesConfig).toBe(true);
+			expect((await service.findOne(ENVIRONMENT_ID)).checkout.matchesEnvironment).toBe(true);
 			gitlabEnvironment.provider.config = {
 				schemaVersion: 1,
 				baseUrl: 'https://other.example.com/installation',
@@ -189,7 +189,7 @@ describe('PromotionEnvironmentsService', () => {
 			);
 			expect(after.checkout).toEqual({
 				hasCheckout: true,
-				matchesConfig: false,
+				matchesEnvironment: false,
 			});
 		});
 
@@ -218,7 +218,7 @@ describe('PromotionEnvironmentsService', () => {
 
 			expect(result.checkout).toEqual({
 				hasCheckout: true,
-				matchesConfig: false,
+				matchesEnvironment: false,
 			});
 		});
 	});

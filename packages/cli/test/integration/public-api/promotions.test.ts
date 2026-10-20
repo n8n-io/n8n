@@ -111,7 +111,7 @@ describe('Promotions in Public API', () => {
 			remote,
 			provider: { id: providerId, type: 'git', authType: 'token' },
 			settings,
-			checkout: { hasCheckout: false, matchesConfig: false },
+			checkout: { hasCheckout: false, matchesEnvironment: false },
 		});
 		// The provider summary inside an environment never carries the public config.
 		expect(createResponse.body.provider).not.toHaveProperty('config');
@@ -135,7 +135,7 @@ describe('Promotions in Public API', () => {
 
 		const gitClone = vi.spyOn(Container.get(PromotionsGitService), 'clone').mockResolvedValue();
 		try {
-			const cloneResponse = await agent.post(`/promotions/environments/${id}/clone`);
+			const cloneResponse = await agent.post(`/promotions/environments/${id}/connect`);
 			expect(cloneResponse.status, JSON.stringify(cloneResponse.body)).toBe(200);
 			expect(cloneResponse.body).toEqual({
 				environmentId: id,
@@ -2302,7 +2302,7 @@ describe('Promotions in Public API', () => {
 			const response = await agent.get(`/promotions/projects/${project.id}/changes/apply`);
 
 			expect(response.status).toBe(400);
-			expect(response.body.message).toContain('not cloned');
+			expect(response.body.message).toContain('not connected');
 		});
 	});
 
@@ -2773,7 +2773,7 @@ describe('Promotions in Public API', () => {
 				.post(`/promotions/environments/${id}/promote`)
 				.send({ commitMessage: 'sync projects' });
 			expect(response.status).toBe(400);
-			expect(response.body.message).toContain('not cloned');
+			expect(response.body.message).toContain('not connected');
 		});
 
 		it('explains that Apply needs a clone first', async () => {
@@ -2785,9 +2785,9 @@ describe('Promotions in Public API', () => {
 				.post(`/promotions/environments/${id}/apply/continue`)
 				.send(continueBody);
 			expect(continued.status).toBe(400);
-			expect(continued.body.message).toContain('not cloned');
+			expect(continued.body.message).toContain('not connected');
 			expect(response.status).toBe(400);
-			expect(response.body.message).toContain('not cloned');
+			expect(response.body.message).toContain('not connected');
 		});
 
 		it('rejects Promote on an apply environment and Apply on a promote environment', async () => {

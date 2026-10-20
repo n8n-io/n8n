@@ -764,7 +764,7 @@ describe('Promote and Apply', () => {
 		const exportSpy = vi.spyOn(packagesService, 'exportPackageToDirectory');
 		try {
 			await expect(service.promote(environments.promote.id, owner, request)).rejects.toThrow(
-				'not cloned',
+				'not connected',
 			);
 			expect(exportSpy).not.toHaveBeenCalled();
 			await service.clone(environments.promote.id);
@@ -2912,7 +2912,7 @@ describe('Promotion base branch listing', () => {
 		await environmentRepository.update(environments.promote.id, {
 			settings: { schemaVersion: 1, baseBranchName: 'production', createBranchOnPromotion: false },
 		});
-		await expect(listBaseBranchFiles(project.id)).rejects.toThrow('not cloned');
+		await expect(listBaseBranchFiles(project.id)).rejects.toThrow('not connected');
 		await service.clone(environments.promote.id);
 
 		const files = await listBaseBranchFiles(project.id);

@@ -24,14 +24,14 @@ const environmentFields = {
 	updatedAt: '2026-09-01T00:00:00.000Z',
 };
 
-const promoteEnvironment = (matchesConfig: boolean, remoteUrl: string) =>
+const promoteEnvironment = (matchesEnvironment: boolean, remoteUrl: string) =>
 	({
 		...environmentFields,
 		id: 'environment-promote',
 		direction: 'promote',
 		remote: { schemaVersion: 1, remoteUrl },
 		settings: { schemaVersion: 1, baseBranchName: 'main', createBranchOnPromotion: false },
-		checkout: { hasCheckout: true, matchesConfig },
+		checkout: { hasCheckout: true, matchesEnvironment },
 	}) as PromotionEnvironment;
 
 const connectionOf = (...environments: PromotionEnvironment[]) =>
@@ -62,7 +62,7 @@ describe('usePromotionConnectionSave', () => {
 		const result = await run(current, [write]);
 
 		expect(result.failed).toEqual([]);
-		expect(result.connection?.configs.promote?.checkout.matchesConfig).toBe(false);
+		expect(result.connection?.configs.promote?.checkout.matchesEnvironment).toBe(false);
 	});
 
 	it('keeps a created environment when the other direction fails to save', async () => {

@@ -43,7 +43,7 @@ const publicEnvironment = {
 	createdAt: timestamp,
 	updatedAt: timestamp,
 };
-const checkout = { hasCheckout: false, matchesConfig: false };
+const checkout = { hasCheckout: false, matchesEnvironment: false };
 
 describe('CreatePromotionEnvironmentDto', () => {
 	it('accepts each direction with its own settings', () => {

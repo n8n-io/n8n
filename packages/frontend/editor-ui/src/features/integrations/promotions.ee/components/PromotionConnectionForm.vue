@@ -27,7 +27,7 @@ import { computed, reactive, ref, watch } from 'vue';
 
 import { usePromotionConnectionSave } from '../composables/usePromotionConnectionSave';
 import {
-	clonePromotionCheckout,
+	connectPromotionCheckout,
 	disconnectPromotionCheckout,
 	type PromotionConnection,
 	type PromotionProviderSummary,
@@ -272,14 +272,14 @@ async function connect(direction: PromotionDirection) {
 	const revision = savedStateRevision;
 	connecting[direction] = 'connect';
 	try {
-		const result = await clonePromotionCheckout(rootStore.publicApiContext, environment.id);
+		const result = await connectPromotionCheckout(rootStore.publicApiContext, environment.id);
 		if (revision !== savedStateRevision) {
 			emit('refresh');
 			return;
 		}
 		applyCheckout(direction, {
 			hasCheckout: result.hasCheckout,
-			matchesConfig: result.hasCheckout,
+			matchesEnvironment: result.hasCheckout,
 		});
 		toast.showMessage({
 			title: i18n.baseText('settings.promotions.connection.checkout.toast.connected'),
@@ -306,7 +306,7 @@ async function disconnect(direction: PromotionDirection) {
 			emit('refresh');
 			return;
 		}
-		applyCheckout(direction, { hasCheckout: false, matchesConfig: false });
+		applyCheckout(direction, { hasCheckout: false, matchesEnvironment: false });
 		toast.showMessage({
 			title: i18n.baseText('settings.promotions.connection.checkout.toast.disconnected'),
 			type: 'success',

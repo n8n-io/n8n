@@ -270,7 +270,7 @@ describe('PromotionBanners', () => {
 		server.get('/api/v1/promotions/environments', () => environments('apply'));
 		server.get(
 			'/rest/promotions/project-1/changes/apply',
-			() => new Response(400, {}, { message: 'The apply direction is not cloned' }),
+			() => new Response(400, {}, { message: 'The apply direction is not connected' }),
 		);
 		usersStore.currentUser = mock<IUser>({
 			globalScopes: ['gitConnection:list', 'gitConnection:pull'],

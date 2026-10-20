@@ -28,7 +28,7 @@ type Status = 'blocked' | 'not-connected' | 'connected' | 'stale';
 const status = computed<Status>(() => {
 	if (!props.checkout) return 'blocked';
 	if (!props.checkout.hasCheckout) return 'not-connected';
-	return props.checkout.matchesConfig ? 'connected' : 'stale';
+	return props.checkout.matchesEnvironment ? 'connected' : 'stale';
 });
 
 const isConnected = computed(() => props.checkout?.hasCheckout ?? false);

@@ -12,7 +12,7 @@ import type { PromotionConnection, PromotionProviderSummary } from '../promotion
 import PromotionConnectionForm from './PromotionConnectionForm.vue';
 
 const api = vi.hoisted(() => ({
-	clonePromotionCheckout: vi.fn<typeof PromotionsApi.clonePromotionCheckout>(),
+	connectPromotionCheckout: vi.fn<typeof PromotionsApi.connectPromotionCheckout>(),
 	disconnectPromotionCheckout: vi.fn<typeof PromotionsApi.disconnectPromotionCheckout>(),
 }));
 
@@ -40,7 +40,7 @@ const provider: PromotionProviderSummary = {
 
 const remote = { schemaVersion: 1 as const, remoteUrl: 'git@github.com:acme/workflows.git' };
 
-const applyConfig = (checkout = { hasCheckout: false, matchesConfig: false }) => ({
+const applyConfig = (checkout = { hasCheckout: false, matchesEnvironment: false }) => ({
 	id: 'environment-apply',
 	name: 'Production',
 	scope: 'instance' as const,
@@ -93,7 +93,7 @@ describe('PromotionConnectionForm', () => {
 		expect(getByTestId('promotion-checkout-status')).toHaveTextContent(
 			'Save this connection before you connect.',
 		);
-		expect(api.clonePromotionCheckout).not.toHaveBeenCalled();
+		expect(api.connectPromotionCheckout).not.toHaveBeenCalled();
 	});
 
 	it('blocks Connect and Disconnect without the clone scope', async () => {
@@ -102,7 +102,7 @@ describe('PromotionConnectionForm', () => {
 		const { getByTestId } = renderComponent({
 			props: {
 				connection: connectionWith({
-					apply: applyConfig({ hasCheckout: true, matchesConfig: false }),
+					apply: applyConfig({ hasCheckout: true, matchesEnvironment: false }),
 				}),
 			},
 		});
@@ -127,7 +127,7 @@ describe('PromotionConnectionForm', () => {
 	});
 
 	it('connects a saved direction and reports the new checkout', async () => {
-		api.clonePromotionCheckout.mockResolvedValue(checkoutResult(true));
+		api.connectPromotionCheckout.mockResolvedValue(checkoutResult(true));
 		const { getByTestId, emitted } = renderComponent({
 			props: { connection: connectionWith({ apply: applyConfig() }) },
 		});
@@ -135,14 +135,14 @@ describe('PromotionConnectionForm', () => {
 		await userEvent.click(getByTestId('promotion-checkout-connect'));
 
 		await waitFor(() =>
-			expect(api.clonePromotionCheckout).toHaveBeenCalledWith(
+			expect(api.connectPromotionCheckout).toHaveBeenCalledWith(
 				expect.anything(),
 				'environment-apply',
 			),
 		);
 		expect(lastSaved(emitted).configs.apply?.checkout).toEqual({
 			hasCheckout: true,
-			matchesConfig: true,
+			matchesEnvironment: true,
 		});
 		expect(mockShowMessage).toHaveBeenCalled();
 		expect(mockShowError).not.toHaveBeenCalled();
@@ -153,7 +153,7 @@ describe('PromotionConnectionForm', () => {
 		const { getByTestId, emitted } = renderComponent({
 			props: {
 				connection: connectionWith({
-					apply: applyConfig({ hasCheckout: true, matchesConfig: true }),
+					apply: applyConfig({ hasCheckout: true, matchesEnvironment: true }),
 				}),
 			},
 		});
@@ -168,14 +168,14 @@ describe('PromotionConnectionForm', () => {
 		);
 		expect(lastSaved(emitted).configs.apply?.checkout).toEqual({
 			hasCheckout: false,
-			matchesConfig: false,
+			matchesEnvironment: false,
 		});
 		expect(mockShowMessage).toHaveBeenCalled();
 	});
 
 	it('keeps the form usable when connecting fails', async () => {
 		const failure = new Error('git is unreachable');
-		api.clonePromotionCheckout.mockRejectedValueOnce(failure);
+		api.connectPromotionCheckout.mockRejectedValueOnce(failure);
 		const { getByTestId, emitted } = renderComponent({
 			props: { connection: connectionWith({ apply: applyConfig() }) },
 		});

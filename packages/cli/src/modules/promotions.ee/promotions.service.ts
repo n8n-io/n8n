@@ -868,7 +868,7 @@ export class PromotionsService {
 			cloned && (await this.workingDirectory.matchesDescriptor(this.descriptorFor(input)));
 		if (!current) {
 			throw new BadRequestError(
-				`This ${input.config.direction} environment is not cloned. Clone it before ${gerund}.`,
+				`This ${input.config.direction} environment is not connected. Connect it before ${gerund}.`,
 			);
 		}
 	}

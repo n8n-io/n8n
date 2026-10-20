@@ -27,7 +27,7 @@ const environmentFields = {
 	...timestamps,
 };
 
-const promoteConfig = (checkout = { hasCheckout: true, matchesConfig: true }) => ({
+const promoteConfig = (checkout = { hasCheckout: true, matchesEnvironment: true }) => ({
 	...environmentFields,
 	id: 'environment-promote',
 	direction: 'promote' as const,
@@ -35,7 +35,7 @@ const promoteConfig = (checkout = { hasCheckout: true, matchesConfig: true }) =>
 	checkout,
 });
 
-const applyConfig = (checkout = { hasCheckout: true, matchesConfig: true }) => ({
+const applyConfig = (checkout = { hasCheckout: true, matchesEnvironment: true }) => ({
 	...environmentFields,
 	id: 'environment-apply',
 	direction: 'apply' as const,
@@ -98,8 +98,8 @@ describe('PromoteApplyInstanceSection', () => {
 			props: {
 				connection: instanceConnection({
 					configs: {
-						promote: promoteConfig({ hasCheckout: false, matchesConfig: false }),
-						apply: applyConfig({ hasCheckout: false, matchesConfig: false }),
+						promote: promoteConfig({ hasCheckout: false, matchesEnvironment: false }),
+						apply: applyConfig({ hasCheckout: false, matchesEnvironment: false }),
 					},
 				}),
 			},

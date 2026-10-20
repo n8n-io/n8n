@@ -46,7 +46,7 @@ const environmentFields = {
 		createdAt: '2026-09-01T00:00:00.000Z',
 		updatedAt: '2026-09-01T00:00:00.000Z',
 	},
-	checkout: { hasCheckout: false, matchesConfig: false },
+	checkout: { hasCheckout: false, matchesEnvironment: false },
 	createdAt: '2026-09-01T00:00:00.000Z',
 	updatedAt: '2026-09-01T00:00:00.000Z',
 };

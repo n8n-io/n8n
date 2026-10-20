@@ -62,7 +62,7 @@ describe.skipIf(!fixturePath)('GitLab provider live compatibility', () => {
 		const promoteRoot = `/promotions/environments/${promote.body.id}`;
 		try {
 			for (const root of [promoteRoot, applyRoot]) {
-				const clone = await agent.post(`${root}/clone`);
+				const clone = await agent.post(`${root}/connect`);
 				expect(clone.status, JSON.stringify(clone.body)).toBe(200);
 				expect(clone.body.hasCheckout).toBe(true);
 			}

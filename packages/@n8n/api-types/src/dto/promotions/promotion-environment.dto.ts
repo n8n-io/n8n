@@ -36,7 +36,7 @@ export type PromotionEnvironmentRemote = z.infer<typeof promotionEnvironmentRemo
 const promotionEnvironmentRemotePublicSchema = promotionEnvironmentRemoteSchema.extend({
 	repositoryPath: z.string().optional().openapi({
 		description:
-			'The stored repository path of a GitLab remote. URL-encode it before you use it as repositoryId to list branches. Requests do not accept it.',
+			'The stored repository path of a Git host remote. URL-encode it before you use it as repositoryId to list branches. Requests do not accept it.',
 	}),
 });
 
@@ -188,7 +188,7 @@ export const promotionEnvironmentCheckoutSchema = z.object({
 	/** A local checkout exists for this environment on this instance. */
 	hasCheckout: z.boolean(),
 	/** The checkout was cloned from the current remote and branch, so it is not stale. */
-	matchesConfig: z.boolean(),
+	matchesEnvironment: z.boolean(),
 });
 export type PromotionEnvironmentCheckout = z.infer<typeof promotionEnvironmentCheckoutSchema>;
 
