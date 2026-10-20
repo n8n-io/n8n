@@ -307,6 +307,11 @@ export const analyzePackage = async (
 	});
 
 	try {
+		const { readPackageJsonCredentials } = await import('@n8n/eslint-plugin-community-nodes');
+		const credentialNames = [
+			...readPackageJsonCredentials(path.join(packageDir, 'package.json')),
+		].sort();
+
 		// Lint both JS and JSON files. JSON inclusion is required because rules
 		// such as `no-overrides-field`, `valid-peer-dependencies`, and
 		// `package-name-convention` only run against `package.json`. Without
@@ -318,7 +323,7 @@ export const analyzePackage = async (
 		});
 
 		if (filesToLint.length === 0) {
-			return { passed: true, message: 'No files found to analyze' };
+			return { passed: true, credentialNames, message: 'No files found to analyze' };
 		}
 
 		const results = await eslint.lintFiles(filesToLint);
@@ -329,12 +334,13 @@ export const analyzePackage = async (
 			const formattedResults = await formatter.format(results);
 			return {
 				passed: false,
+				credentialNames,
 				message: 'ESLint violations found',
 				details: formattedResults,
 			};
 		}
 
-		return { passed: true };
+		return { passed: true, credentialNames };
 	} catch (error) {
 		console.error(error);
 		return {
@@ -451,6 +457,7 @@ export const analyzePackageByName = async (packageName, version) => {
 		const distResult = await analyzePackage(packageDir, ['**/*.js', 'package.json']);
 		const analysisResult = {
 			passed: sourceResult.passed && distResult.passed,
+			credentialNames: sourceResult.credentialNames,
 			message: [sourceResult, distResult].find((r) => !r.passed)?.message,
 			details: [sourceResult.details, distResult.details].filter(Boolean).join('\n') || undefined,
 		};

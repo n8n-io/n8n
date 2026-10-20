@@ -125,3 +125,4 @@ const pluginWithConfigs = { ...plugin, configs } satisfies ESLint.Plugin;
 const n8nCommunityNodesPlugin = pluginWithConfigs;
 export default pluginWithConfigs;
 export { rules, configs, n8nCommunityNodesPlugin };
+export { readPackageJsonCredentials } from './utils/file-utils.js';

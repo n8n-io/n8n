@@ -302,12 +302,52 @@ export class Foo implements INodeType {
 			expect(result.details).toBeUndefined();
 		});
 
-		// CE-3457: githubApi matches a built-in type. Strapi needs this name to check uniqueness.
+		// Lint checks local references. Approval checks need names to compare across packages.
 		it('reports a built-in-colliding internal credential name for approval checks', async () => {
 			const result = await scanFixture();
 
 			expect(result.passed, result.details ?? result.message).toBe(true);
 			expect(result.credentialNames).toEqual(['githubApi']);
+		});
+
+		it('reports only registered credential definitions', async () => {
+			const credential = fs.readFileSync(
+				path.join(fixtureDir, 'credentials/GithubApi.credentials.ts'),
+				'utf8',
+			);
+			fs.writeFileSync(
+				path.join(fixtureDir, 'credentials/OtherApi.credentials.ts'),
+				credential.replaceAll('GithubApi', 'OtherApi').replaceAll('githubApi', 'otherApi'),
+			);
+
+			const result = await scanFixture();
+
+			expect(result.passed, result.details ?? result.message).toBe(true);
+			expect(result.credentialNames).toEqual(['githubApi']);
+		});
+
+		it('reports sorted, unique names from multiple registered credentials', async () => {
+			const credential = fs.readFileSync(
+				path.join(fixtureDir, 'credentials/GithubApi.credentials.ts'),
+				'utf8',
+			);
+			fs.writeFileSync(
+				path.join(fixtureDir, 'credentials/OtherApi.credentials.ts'),
+				credential.replaceAll('GithubApi', 'OtherApi').replaceAll('githubApi', 'otherApi'),
+			);
+			const packageJsonPath = path.join(fixtureDir, 'package.json');
+			const manifest = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+			manifest.n8n.credentials = [
+				'dist/credentials/OtherApi.credentials.js',
+				...manifest.n8n.credentials,
+				'dist/credentials/OtherApi.credentials.js',
+			];
+			fs.writeFileSync(packageJsonPath, JSON.stringify(manifest));
+
+			const result = await scanFixture();
+
+			expect(result.passed, result.details ?? result.message).toBe(true);
+			expect(result.credentialNames).toEqual(['githubApi', 'otherApi']);
 		});
 	});
 
@@ -347,6 +387,7 @@ export class Foo implements INodeType {
 		const result = await analyzePackage(fixtureDir);
 
 		expect(result.passed).toBe(true);
+		expect(result.credentialNames).toEqual([]);
 	});
 
 	it('flags forbidden lifecycle scripts in package.json', async () => {
@@ -471,5 +512,6 @@ export class Foo implements INodeType {
 
 		expect(result.passed).toBe(true);
 		expect(result.message).toBe('No files found to analyze');
+		expect(result.credentialNames).toEqual([]);
 	});
 });
