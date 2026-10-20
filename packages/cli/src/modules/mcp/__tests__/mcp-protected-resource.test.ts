@@ -29,16 +29,11 @@ import { CommunityPackagesConfig } from '@/modules/community-packages/community-
 import { ACTIVITY_LOG_TOOLS, INSTANCE_CONTEXT_TOOLS } from '../mcp-scopes';
 import { McpProtectedResource } from '../mcp-protected-resource';
 
-<<<<<<< HEAD
-const makeGlobalConfig = ({ builderEnabled = true, managedByEnv = false } = {}) =>
-=======
 const makeGlobalConfig = ({
 	builderEnabled = true,
-	tagsDisabled = false,
 	managedByEnv = false,
 	skillsHubEnabled = true,
 } = {}) =>
->>>>>>> 373c57797e811bd2d10a95e4562ee291a39c0f32
 	({
 		agents: { skillsHubEnabled },
 		endpoints: { mcpBuilderEnabled: builderEnabled },
