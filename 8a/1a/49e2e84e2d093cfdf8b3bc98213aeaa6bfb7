@@ -1,0 +1,20 @@
+packages/cli/test/integration/public-api/idempotency-key-cleanup.test.ts
+  s_431d091d538bae::t_ab03edfbff3d4a 26-27
+  s_431d091d538bae::t_642189a070d78e 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8a1a49e2e84e2d093cfdf8b3bc98213aeaa6bfb7",
+  "prompts": {},
+  "sessions": {
+    "s_431d091d538bae": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9f7a8e51-f69d-4f3a-9e73-e2a3e590bb78",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}

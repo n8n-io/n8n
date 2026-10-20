@@ -1,0 +1,21 @@
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/transport/index.test.ts
+  s_2e1fa95fc44f8f::t_c1c783b622d717 40-100
+packages/nodes-base/nodes/Microsoft/Outlook/v2/transport/index.ts
+  s_2e1fa95fc44f8f::t_c8d9b3127c1f35 14,95-104
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2adac687f5ea8bec9d5b1fcff3bd628adf6a9481",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

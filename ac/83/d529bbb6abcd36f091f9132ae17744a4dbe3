@@ -1,0 +1,28 @@
+packages/nodes-base/nodes/Jenkins/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_b7bdde44630b8f 12,14
+  s_2e1fa95fc44f8f::t_4ea49a205a96c9 18-21
+packages/nodes-base/nodes/Jenkins/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_de4d1f4cc04f9d 40-41
+  s_2e1fa95fc44f8f::t_eed37fa25c170b 42-43
+  s_2e1fa95fc44f8f::t_94529ed2e5c019 26,30,35-39,47,51
+packages/nodes-base/nodes/Jenkins/test/Jenkins.node.test.ts
+  s_2e1fa95fc44f8f::t_ce524cb3483c17 1-2,17,54-66
+packages/nodes-base/nodes/Jenkins/Jenkins.node.ts
+  s_2e1fa95fc44f8f::t_8d10cbd5f2f9ee 30-31,451,495,504,518,645
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ac83d529bbb6abcd36f091f9132ae17744a4dbe3",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": null
+    }
+  }
+}
