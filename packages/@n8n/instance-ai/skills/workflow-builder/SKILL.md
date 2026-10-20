@@ -1,9 +1,10 @@
 ---
 name: workflow-builder
 description: >-
-  Load before calling workflow_builder_build_workflow. Use for all single-workflow
+  Load before calling workflow_builder_build_workflow. Use for single-workflow
   work: new one-off workflows, existing-workflow edits, verification repairs,
-  and workflow-local data tables. Write or edit a workspace source file, run
+  and workflow-local data tables. For any other new workflow, load
+  intent-recognition first when it is listed. Write or edit a workspace source file, run
   workflow-sdk validate via workspace_execute_command, then call workflow_builder_build_workflow
   with filePath. When the workflow creates or writes Data Tables, load
   data-table-manager first, then this skill. Do not load planning or
