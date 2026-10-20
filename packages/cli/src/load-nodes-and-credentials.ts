@@ -701,15 +701,66 @@ export class LoadNodesAndCredentials {
 		}
 	}
 
+	/**
+	 * Helper method to cleanly split a full node type into its NPM package name
+	 * and internal node type identifier by checking registered loaders first.
+	 */
+	/**
+	 * Helper method to cleanly split a full node type into its NPM package name
+	 * and internal node type identifier by checking registered loaders first.
+	 */
+	private splitNodeType(fullNodeType: string): { packageName: string; nodeType: string } {
+		// Sort keys by length descending to match the longest/most specific package name first (e.g., 'foo.bar' before 'foo')
+		const sortedLoaderKeys = Object.keys(this.loaders).sort((a, b) => b.length - a.length);
+
+		// 1. Check if the string starts with any of the registered loader names
+		for (const packageName of sortedLoaderKeys) {
+			if (fullNodeType.startsWith(packageName + '.')) {
+				return {
+					packageName,
+					nodeType: fullNodeType.substring(packageName.length + 1),
+				};
+			}
+		}
+
+		// 2. Fallback: Split from right-to-left at the final dot if the loader isn't matched
+		const isScoped = fullNodeType.startsWith('@');
+		const scopeEndIndex = isScoped ? fullNodeType.indexOf('/') : 0;
+		const lastDotIndex = fullNodeType.lastIndexOf('.');
+
+		if (lastDotIndex !== -1 && lastDotIndex > scopeEndIndex) {
+			return {
+				packageName: fullNodeType.substring(0, lastDotIndex),
+				nodeType: fullNodeType.substring(lastDotIndex + 1),
+			};
+		}
+
+		// 3. Fallback for edge cases where no valid dot is present at all
+		return { packageName: fullNodeType, nodeType: '' };
+	}
+
 	recognizesNode(fullNodeType: string): boolean {
-		const [packageName, nodeType] = fullNodeType.split('.');
+		const { packageName, nodeType } = this.splitNodeType(fullNodeType);
+		if (!nodeType) return false;
+
 		const { loaders } = this;
 		const loader = loaders[packageName];
 		return !!loader && nodeType in loader.known.nodes;
 	}
 
+	// recognizesNode(fullNodeType: string): boolean {
+	// 	const [packageName, nodeType] = fullNodeType.split('.');
+	// 	const { loaders } = this;
+	// 	const loader = loaders[packageName];
+	// 	return !!loader && nodeType in loader.known.nodes;
+	// }
+
 	getNode(fullNodeType: string): LoadedClass<INodeType | IVersionedNodeType> {
-		const [packageName, nodeType] = fullNodeType.split('.');
+		const { packageName, nodeType } = this.splitNodeType(fullNodeType);
+		if (!nodeType) {
+			throw new UnrecognizedNodeTypeError('', fullNodeType);
+		}
+
 		const { loaders } = this;
 		const loader = loaders[packageName];
 		if (!loader) {
@@ -725,15 +776,39 @@ export class LoadNodesAndCredentials {
 		return loadedNode;
 	}
 
+	// getNode(fullNodeType: string): LoadedClass<INodeType | IVersionedNodeType> {
+	// 	const [packageName, nodeType] = fullNodeType.split('.');
+	// 	const { loaders } = this;
+	// 	const loader = loaders[packageName];
+	// 	if (!loader) {
+	// 		throw new UnrecognizedNodeTypeError(packageName, nodeType);
+	// 	}
+	// 	const loadedNode = loader.getNode(nodeType);
+	// 	if (
+	// 		this.shouldInjectContextEstablishmentHooks() &&
+	// 		'properties' in loadedNode.type.description
+	// 	) {
+	// 		this.augmentNodeTypeDescription(loadedNode.type.description);
+	// 	}
+	// 	return loadedNode;
+	// }
+
 	/**
 	 * Absolute path of a node's source file. A loader keeps the path relative to
 	 * its own package directory, so it must be resolved before any file access.
 	 */
+
 	resolveNodeSourcePath(fullNodeType: string, sourcePath: string): string {
-		const [packageName] = fullNodeType.split('.');
+		const { packageName } = this.splitNodeType(fullNodeType);
+
 		const loader = this.loaders[packageName];
 		return loader ? loader.resolveSourcePath(sourcePath) : sourcePath;
 	}
+	// resolveNodeSourcePath(fullNodeType: string, sourcePath: string): string {
+	// 	const [packageName] = fullNodeType.split('.');
+	// 	const loader = this.loaders[packageName];
+	// 	return loader ? loader.resolveSourcePath(sourcePath) : sourcePath;
+	// }
 
 	getCredential(credentialType: string): LoadedClass<ICredentialType> {
 		const { loadedCredentials } = this;
