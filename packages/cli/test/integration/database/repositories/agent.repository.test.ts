@@ -22,6 +22,7 @@ import type { Agent } from '@/modules/agents/entities/agent.entity';
 import type { NodeToolAiGatewayService } from '@/modules/agents/json-config/node-tool-ai-gateway.service';
 import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
 import { SkillRepository } from '@/modules/skills/skill.repository';
+import { AgentSkillRepository } from '@/modules/agents/repositories/agent-skill.repository';
 import { AgentTaskRepository } from '@/modules/agents/repositories/agent-task.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { getAgentConfigHash } from '@/modules/agents/utils/agent-config-hash';
@@ -232,7 +233,9 @@ describe('AgentRepository', () => {
 				'Skill reference write failed',
 			);
 			expect(await agentRepo.findById(id)).toBeNull();
-			expect((await skillRepo.findDependencies([id])).get(id) ?? []).toEqual([]);
+			expect(
+				(await Container.get(AgentSkillRepository).findDependencies([id])).get(id) ?? [],
+			).toEqual([]);
 			expect(completion.configurationCreated).not.toHaveBeenCalled();
 
 			const created = await service.createOrAdopt(projectId, 'Support Agent', options);
@@ -244,7 +247,9 @@ describe('AgentRepository', () => {
 			expect(await agentRepo.findById(id)).toMatchObject({
 				schema: { instructions: 'Help users' },
 			});
-			expect((await skillRepo.findDependencies([id])).get(id)).toMatchObject([{ skillId }]);
+			expect(
+				(await Container.get(AgentSkillRepository).findDependencies([id])).get(id),
+			).toMatchObject([{ skillId }]);
 			expect(completion.configurationCreated).toHaveBeenCalledOnce();
 
 			const adopted = await service.createOrAdopt(projectId, 'Losing request', {
