@@ -58,6 +58,9 @@ export class ModuleRegistry {
 		// resource with the oauth-server module's registry on init.
 		'oauth-server',
 		'mcp',
+		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+		'mcp-discovery',
+		// EOF Experiment cleanup
 		'provisioning',
 		'breaking-changes',
 		'source-control',

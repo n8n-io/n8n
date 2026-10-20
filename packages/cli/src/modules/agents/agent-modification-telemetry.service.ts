@@ -1,3 +1,6 @@
+// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+import { EventService } from '@n8n/backend-services';
+// EOF Experiment cleanup
 import type { AgentActor, AgentIntegrationConfig, AgentJsonConfig } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -193,13 +196,21 @@ function modificationProperties({
 /** Reports committed Agent creations and subsequent configuration changes. */
 @Service()
 export class AgentModificationTelemetryService {
-	constructor(private readonly telemetry: Telemetry) {}
+	constructor(
+		private readonly telemetry: Telemetry,
+		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+		private readonly eventService: EventService,
+		// EOF Experiment cleanup
+	) {}
 
 	record(event: AgentModificationEvent): void {
 		if (event.changedParts.length === 0) return;
 		try {
 			const { by } = event;
 			const properties = modificationProperties(event);
+			// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+			this.recordAssistantActivity(event, properties.capability_count, event.changedParts);
+			// EOF Experiment cleanup
 
 			if (by === 'user') {
 				this.telemetry.track(TELEMETRY_EVENT.AGENTS.USER_MODIFIED_AGENT, {
@@ -228,11 +239,38 @@ export class AgentModificationTelemetryService {
 				[],
 				event.agent.integrations ?? [],
 			);
-			this.trackCreation(event.by, modificationProperties({ ...event, changedParts }));
+			const properties = modificationProperties({ ...event, changedParts });
+			// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+			this.recordAssistantActivity(event, properties.capability_count);
+			// EOF Experiment cleanup
+			this.trackCreation(event.by, properties);
 		} catch {
 			// Telemetry must never fail a write that already succeeded.
 		}
 	}
+
+	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+	private recordAssistantActivity(
+		event: AgentCreationEvent,
+		capabilityCount: number,
+		changedParts?: AgentConfigPart[],
+	): void {
+		if (event.by !== 'builder') return;
+		// Empty shells and cosmetic changes alone do not count as Assistant use.
+		if (
+			!event.config?.model?.trim() &&
+			!event.config?.instructions?.trim() &&
+			capabilityCount === 0 &&
+			!changedParts?.some((part) => part !== 'name')
+		) {
+			return;
+		}
+		this.eventService.emit('experiment-assistant-change-saved', {
+			userId: event.user.id,
+			at: Date.now(),
+		});
+	}
+	// EOF Experiment cleanup
 
 	private trackCreation(
 		by: AgentActor,

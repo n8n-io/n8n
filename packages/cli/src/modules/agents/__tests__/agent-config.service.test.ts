@@ -1,4 +1,5 @@
-import type { EventService } from '@n8n/backend-services';
+// Experiment cleanup (123_surface_mcp_to_claude_trial_users): restore a type-only EventService import; keep the import.
+import { EventService } from '@n8n/backend-services';
 import type { Mocked } from 'vitest';
 import {
 	DEFAULT_AGENT_PERSONALISATION,
@@ -129,7 +130,8 @@ function makeService() {
 		new AgentSaveCompletionService(
 			eventService,
 			agentUpdateBroadcaster,
-			new AgentModificationTelemetryService(telemetry),
+			// Experiment cleanup (123_surface_mcp_to_claude_trial_users): remove only the mock<EventService>() argument.
+			new AgentModificationTelemetryService(telemetry, mock<EventService>()),
 		),
 		skillRefs,
 	);
