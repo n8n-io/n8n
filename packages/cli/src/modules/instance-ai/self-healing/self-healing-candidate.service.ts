@@ -1,5 +1,6 @@
 import type { WorkflowSuggestionBaseline } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { InstanceWriteAccessService } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ForbiddenError } from '@n8n/errors';
@@ -44,6 +45,7 @@ export class SelfHealingCandidateService {
 		private readonly logger: Logger,
 		private readonly enterpriseWorkflows: EnterpriseWorkflowService,
 		private readonly license: License,
+		private readonly writeAccess: InstanceWriteAccessService,
 	) {}
 
 	async compile(
@@ -129,6 +131,14 @@ export class SelfHealingCandidateService {
 	}
 
 	private async verifyExecution(input: CandidateInput, candidate: CompiledCandidate) {
+		if (this.writeAccess.isReadOnly()) {
+			return {
+				status: 'not_run',
+				error:
+					'Cannot verify execution on a protected instance. This instance is in read-only mode.',
+			};
+		}
+
 		const { baseline, context, abortSignal, user } = input;
 		const { runId } = context;
 		if (!runId) throw new UnexpectedError('The investigation context is missing.');
