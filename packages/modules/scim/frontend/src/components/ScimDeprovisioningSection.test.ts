@@ -167,6 +167,8 @@ describe('ScimDeprovisioningSection', () => {
 
 		expect(select('scim-data-action-select').value).toBe('transfer');
 		expect(screen.getByTestId('scim-transfer-target-name')).toHaveTextContent('Jan Kowalski');
+		// The avatar reads the name reactively, so it shows the initials of the stored target.
+		expect(screen.getByTestId('scim-transfer-target-row')).toHaveTextContent('JK');
 		expect(screen.queryByTestId('scim-transfer-target-invalid')).not.toBeInTheDocument();
 	});
 

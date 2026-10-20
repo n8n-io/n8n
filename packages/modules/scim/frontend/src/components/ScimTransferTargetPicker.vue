@@ -135,7 +135,16 @@ async function search(term: string) {
 	}
 }
 
+/** The label of the selected row. The input shows it, and it is not a search. */
+function selectedLabel(): string {
+	const entry = props.modelValue ? entryOf(props.modelValue) : null;
+	if (!entry) return '';
+	return entry.type === 'person' ? personLabel(entry) : entry.name;
+}
+
 function onSearchTerm(value: string) {
+	// Reka sets the input to the selected label on open and on select. That is not a query.
+	if (value && value === selectedLabel()) value = '';
 	if (value === query.value) return;
 	query.value = value;
 	if (value && !searchUsedEmitted) {
@@ -299,8 +308,11 @@ function onUpdateModelValue(value: string | string[] | undefined) {
 	emit('update:modelValue', { projectId: value, type: entry.type });
 }
 
+// Seeded in setup, not on mount: reka reports the selected label as the search
+// term during the first render, and the label must already be known by then.
+rememberStoredTarget(props.initialTarget);
+
 onMounted(() => {
-	rememberStoredTarget(props.initialTarget);
 	void search('');
 });
 

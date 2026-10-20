@@ -78,8 +78,10 @@ const target = computed(() => props.config.transferTarget);
 const targetName = computed(
 	() => target.value?.name ?? i18n.baseText('settings.scim.deprovisioning.transferTarget.owner'),
 );
-const [targetFirstName = '', ...targetRest] = (target.value?.name ?? '').split(' ');
-const targetLastName = targetRest.join(' ');
+const targetNameParts = computed(() => {
+	const [firstName = '', ...rest] = (target.value?.name ?? '').split(' ');
+	return { firstName, lastName: rest.join(' ') };
+});
 
 const dataActionDescription = computed(() =>
 	i18n.baseText(`settings.scim.deprovisioning.dataAction.description.${props.config.dataAction}`),
@@ -252,8 +254,8 @@ async function onTransferSave(pick: ScimTransferPick, searchUsed: boolean) {
 					<div :class="$style.target">
 						<N8nAvatar
 							v-if="target?.kind === 'person'"
-							:first-name="targetFirstName"
-							:last-name="targetLastName"
+							:first-name="targetNameParts.firstName"
+							:last-name="targetNameParts.lastName"
 							size="small"
 						/>
 						<span

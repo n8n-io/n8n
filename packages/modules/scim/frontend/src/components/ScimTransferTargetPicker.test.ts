@@ -142,6 +142,36 @@ describe('ScimTransferTargetPicker', () => {
 		vi.useRealTimers();
 	});
 
+	it('does not treat the selected label as a search term', async () => {
+		vi.useFakeTimers({ shouldAdvanceTime: true });
+		const { emitted } = createComponentRenderer(ScimTransferTargetPicker, {
+			pinia: createTestingPinia({ stubActions: false }),
+		})({
+			props: {
+				modelValue: 'p-jan',
+				initialTarget: {
+					projectId: 'p-jan',
+					kind: 'person',
+					name: 'Jan Kowalski',
+					email: 'jan@acme.io',
+					valid: true,
+				},
+			},
+		});
+		await openList();
+		await waitFor(() => expect(fetchScimTransferTargetsMock).toHaveBeenCalledTimes(1));
+
+		// Reka writes the selected label into the input when the list opens.
+		await userEvent.clear(screen.getByRole('combobox'));
+		await screen.getByRole('combobox').focus();
+		await userEvent.paste('Jan Kowalski');
+		await vi.advanceTimersByTimeAsync(400);
+
+		expect(fetchScimTransferTargetsMock).toHaveBeenCalledTimes(1);
+		expect(emitted('searchUsed')).toBeUndefined();
+		vi.useRealTimers();
+	});
+
 	it('emits the personal project id and the type when a person is picked', async () => {
 		const { emitted } = render();
 		await openList();
