@@ -15,10 +15,10 @@ describe('NewBadge', () => {
 		expect(getByText('Recently added')).toBeVisible();
 	});
 
-	it('uses the secondary variant and forwards its size', () => {
+	it('uses the primary variant and forwards its size', () => {
 		const wrapper = mount(NewBadge, { props: { size: 'small' } });
 		expect(wrapper.getComponent(N8nBadge).props()).toMatchObject({
-			variant: 'secondary',
+			variant: 'primary',
 			size: 'small',
 		});
 	});
