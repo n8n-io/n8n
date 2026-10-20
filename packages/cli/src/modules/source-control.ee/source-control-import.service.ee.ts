@@ -1345,9 +1345,20 @@ export class SourceControlImportService {
 			]),
 		].filter((workflowId) => existingWorkflowIds.has(workflowId));
 
-		const mappingsToImport = mappedTags.mappings.filter((mapping) =>
-			existingWorkflowIds.has(String(mapping.workflowId)),
+		const existingTagIds = new Set(
+			(await this.tagRepository.find({ select: ['id'] })).map((tag) => tag.id),
 		);
+		const mappingsToImport = mappedTags.mappings.filter((mapping) => {
+			if (!existingWorkflowIds.has(String(mapping.workflowId))) return false;
+			if (!existingTagIds.has(String(mapping.tagId))) {
+				this.logger.warn('Skipping tag mapping because the tag does not exist locally', {
+					tagId: mapping.tagId,
+					workflowId: mapping.workflowId,
+				});
+				return false;
+			}
+			return true;
+		});
 
 		/**
 		 * Use a transaction here as we "delete" them all and then "create" them again.
