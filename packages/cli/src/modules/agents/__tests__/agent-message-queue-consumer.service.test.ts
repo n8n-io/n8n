@@ -209,7 +209,7 @@ describe('AgentMessageQueueConsumer', () => {
 		expect(queue.recordFailure).toHaveBeenCalledWith(
 			item,
 			expect.objectContaining({ message: 'Agent execution startup lock was lost' }),
-			expect.any(AbortSignal),
+			undefined,
 		);
 		expect(sender.send).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }));
 	});
@@ -231,7 +231,7 @@ describe('AgentMessageQueueConsumer', () => {
 		);
 		const userSignal = chatExecutions.register.mock.calls[0][1].signal;
 		expect(userSignal.aborted).toBe(false);
-		expect(queue.recordFailure).toHaveBeenCalledWith(item, failure, userSignal);
+		expect(queue.recordFailure).toHaveBeenCalledWith(item, failure, undefined);
 		expect(sender.send).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }));
 	});
 	it('runs independent sessions without waiting and reuses each claimed execution', async () => {
@@ -386,7 +386,7 @@ describe('AgentMessageQueueConsumer', () => {
 		await vi.waitFor(() =>
 			expect(queue.settle).toHaveBeenCalledWith('session', item.admission.executionId),
 		);
-		expect(queue.recordFailure).toHaveBeenCalledWith(item, thrown, expect.any(AbortSignal));
+		expect(queue.recordFailure).toHaveBeenCalledWith(item, thrown, undefined);
 		expect(sender.send).toHaveBeenCalledWith({
 			type: 'error',
 			message: thrown.message,
@@ -436,7 +436,7 @@ describe('AgentMessageQueueConsumer', () => {
 						? 'This agent is not ready to run yet.'
 						: 'You can no longer execute this agent',
 			}),
-			expect.any(AbortSignal),
+			failure === 'invalid draft' ? expect.any(AbortSignal) : undefined,
 		);
 		expect(testRuns.executePreparedDraftRun).not.toHaveBeenCalled();
 		if (failure !== 'invalid draft') {
@@ -590,7 +590,7 @@ describe('AgentMessageQueueConsumer', () => {
 		expect(queue.recordFailure).toHaveBeenCalledWith(
 			item,
 			expect.objectContaining({ message: 'The message integration is no longer configured' }),
-			expect.any(AbortSignal),
+			undefined,
 		);
 	});
 });

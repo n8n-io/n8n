@@ -198,14 +198,12 @@ export class AgentMessageQueueConsumer {
 				await this.consumeIntegration(claim, signal, bridge);
 			}
 		} catch (error) {
-			await this.queue.recordFailure(claim, error, controller.signal);
 			const { isAbortError } = await import('@n8n/agents');
+			const requestedStop =
+				controller.signal.aborted && isAbortError(controller.signal.reason) && isAbortError(error);
+			await this.queue.recordFailure(claim, error, requestedStop ? controller.signal : undefined);
 
-			if (
-				controller.signal.aborted &&
-				isAbortError(controller.signal.reason) &&
-				isAbortError(error)
-			) {
+			if (requestedStop) {
 				sender?.send({ type: 'done', sessionId: thread.id, executionId: admission.executionId });
 				return;
 			}
