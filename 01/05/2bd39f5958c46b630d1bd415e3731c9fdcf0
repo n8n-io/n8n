@@ -1,0 +1,35 @@
+packages/workflow/src/expression.ts
+  s_933070d0aea825::t_4694631d7713fc 18
+  s_933070d0aea825::t_686a3043774a40 575,579-580,812
+packages/workflow/src/expressions/native-evaluation/compiler.ts
+  s_933070d0aea825::t_cee84aea26dee5 1-81
+packages/workflow/src/expressions/native-evaluation/index.ts
+  s_933070d0aea825::t_6b8f18937d6fcc 1
+  s_933070d0aea825::t_cee84aea26dee5 3,47-49
+packages/workflow/src/expressions/native-evaluation/verify.ts
+  s_933070d0aea825::t_cee84aea26dee5 3-4,15-41
+  s_933070d0aea825::t_686a3043774a40 76-77,80
+packages/workflow/src/expressions/native-evaluation/skeleton.ts
+  s_933070d0aea825::t_686a3043774a40 57-65
+packages/workflow/test/native-evaluation-verify.test.ts
+  s_933070d0aea825::t_4694631d7713fc 4
+  s_933070d0aea825::t_7fe436d69b4eea 234,238
+  s_933070d0aea825::t_734b46b8bcf3c7 92,95-102
+  s_933070d0aea825::t_57a9979d999bba 258-265
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "01052bd39f5958c46b630d1bd415e3731c9fdcf0",
+  "prompts": {},
+  "sessions": {
+    "s_933070d0aea825": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4ee3a819-a5dd-4ffe-994f-d18d7afd3f99",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}
