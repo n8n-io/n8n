@@ -106,8 +106,8 @@ export interface ImportOrchestrationInput {
 	importSource?: PackageImportSource;
 	/** Destination workflow IDs to remove, even under `merge`. */
 	explicitDeleteWorkflowIds?: string[];
-	/** The package sets where each workflow lives, project root included (project packages). */
-	packageSetsLayout?: boolean;
+	/** Treat the project root as a workflow location (project packages, which set the layout). */
+	checkRootPlacement: boolean;
 }
 
 /**
@@ -299,7 +299,7 @@ export class ImportOrchestrator {
 		const dataTablePlan = await this.dataTableImporter.plan(context, dataTableRequest);
 		const variablePlan = await this.variableImporter.plan(context, variableRequest);
 		const workflowPlan = await this.workflowImporter.plan(context, workflows, options, {
-			packageSetsLayout: input.packageSetsLayout ?? false,
+			checkRootPlacement: input.checkRootPlacement,
 		});
 		// Tags plan after workflows: only tags referenced by non-skipped workflows gate or create.
 		const tagPlan = await this.tagImporter.plan(

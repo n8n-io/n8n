@@ -415,7 +415,7 @@ describe('WorkflowImporter.plan', () => {
 				workflowPublishingPolicy: 'preserve-published-state',
 				missingNodeTypeMode: 'fail',
 			},
-			{ packageSetsLayout: false },
+			{ checkRootPlacement: false },
 		);
 
 		expect(plan.items[0]).toMatchObject({ action: 'update', archiveTransition: null });
@@ -457,7 +457,7 @@ describe('WorkflowImporter.plan', () => {
 				workflowPublishingPolicy: 'preserve-published-state',
 				missingNodeTypeMode: 'fail',
 			},
-			{ packageSetsLayout: false },
+			{ checkRootPlacement: false },
 		);
 
 		expect(plan.archiveForbidden).toEqual([

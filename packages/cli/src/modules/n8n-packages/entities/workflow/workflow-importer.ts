@@ -64,7 +64,7 @@ export class WorkflowImporter {
 		context: ImportContext,
 		prepared: PreparedWorkflow[],
 		options: ImportWorkflowProperties,
-		{ packageSetsLayout }: { packageSetsLayout: boolean },
+		{ checkRootPlacement }: { checkRootPlacement: boolean },
 	): Promise<WorkflowImportPlan> {
 		const { matches: existingBySourceWorkflowId, lineageConflicts } =
 			await this.workflowImportMatchService.findBySourceWorkflowIds(
@@ -118,7 +118,7 @@ export class WorkflowImporter {
 			// A `null` target is the project root. It is a location only when the package sets the
 			// layout. Otherwise no location was asked for, and the update keeps the current folder.
 			const targetFolderId = workflow.parentFolderId ?? context.folderId;
-			if (item.action === 'update' && (targetFolderId !== null || packageSetsLayout)) {
+			if (item.action === 'update' && (targetFolderId !== null || checkRootPlacement)) {
 				const existingParentFolderId = item.existing.parentFolder?.id ?? null;
 				if (existingParentFolderId !== targetFolderId) {
 					folderConflicts.push({
