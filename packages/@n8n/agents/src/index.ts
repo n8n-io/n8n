@@ -316,6 +316,7 @@ export type {
 } from './types';
 
 export { createModel } from './runtime/model/model-factory';
+export { getProxyFetch as resolveAmbientModelFetch } from './runtime/model/model-factory';
 export type { FetchFn, EmbeddingProviderOptions } from './runtime/model/model-factory';
 export type {
 	BilledUsageCollector,

@@ -2,6 +2,7 @@ import type { AgentMessageSteeringService } from '../agent-message-steering.serv
 import type { Agent as RuntimeAgent, ExecutionOptions, RunOptions, StreamChunk } from '@n8n/agents';
 import type { AgentJsonConfig } from '@n8n/api-types';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
+import { Logger } from '@n8n/backend-common';
 import type { AiConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
@@ -16,6 +17,8 @@ import { SkillService } from '../skills/skill.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { ExecutionLevelTracer } from '@/modules/otel/execution-level-tracer';
 import { AiGatewayService } from '@/services/ai-gateway.service';
+import { AiService } from '@/services/ai.service';
+import { OwnershipService } from '@/services/ownership.service';
 import type { Telemetry } from '@/telemetry';
 
 import type { AgentExecutionService } from '../agent-execution.service';
@@ -636,6 +639,46 @@ describe('AgentWorkflowExecutionService', () => {
 			expect.not.objectContaining({ userId: expect.anything() }),
 		);
 		expect(aiGatewayService.getWallet).toHaveBeenCalledWith('owner-1');
+	});
+
+	it('attaches the free-credits preflight for a free-credits workflow runtime', async () => {
+		const getBuilderInstanceCredits = vi
+			.fn()
+			.mockResolvedValue({ creditsQuota: 100, creditsClaimed: 100 });
+		Container.set(AiService, { getClient: async () => ({ getBuilderInstanceCredits }) });
+		const ownership = {
+			getPersonalProjectOwnerCached: vi.fn().mockResolvedValue({ id: 'owner-1' }),
+			getInstanceOwner: vi.fn(),
+		};
+		Container.set(OwnershipService, ownership);
+		Container.set(Logger, mock<Logger>());
+
+		const { service, agentRepository, reconstructionService } = makeService();
+		const runtime = { ...makeRuntime(), modelCredentialFreeAiCredits: true };
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+		reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
+
+		await service.executeForWorkflow(agentId, 'hello', 'execution-1', 'thread-1', projectId);
+
+		const options = runtime.agent.stream.mock.calls[0]?.[1] as RunOptions & ExecutionOptions;
+		const hook = options.guardrails?.hooks[0];
+		if (!hook?.before) throw new Error('Expected a free-credits preflight hook');
+		await expect(
+			hook.before({ callId: 'call-1', model: 'openai/gpt-5', source: 'turn' }),
+		).resolves.toEqual({ action: 'stop', code: 'budget.freeCredits' });
+		expect(getBuilderInstanceCredits).toHaveBeenCalledWith({ id: 'owner-1' });
+	});
+
+	it('attaches no free-credits preflight for an own-key workflow runtime', async () => {
+		const { service, agentRepository, reconstructionService } = makeService();
+		const runtime = makeRuntime();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+		reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
+
+		await service.executeForWorkflow(agentId, 'hello', 'execution-1', 'thread-1', projectId);
+
+		const options = runtime.agent.stream.mock.calls[0]?.[1] as RunOptions & ExecutionOptions;
+		expect(options.guardrails).toBeUndefined();
 	});
 
 	it('omits the telemetry option from stream() when AgentRunTracingService.build resolves undefined', async () => {

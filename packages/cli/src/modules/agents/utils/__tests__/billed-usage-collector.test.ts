@@ -64,11 +64,42 @@ describe('createBilledUsageCollector', () => {
 		const first = collector.startWindow();
 		const second = collector.startWindow();
 
-		await first.wrap(base)('https://gw/v1/responses');
-		await second.wrap(base)('https://gw/v1/responses');
+		// In flight at the same time: a shared-state implementation cannot hide
+		// behind sequential ordering.
+		await Promise.all([
+			first.wrap(base)('https://gw/v1/responses'),
+			second.wrap(base)('https://gw/v1/responses'),
+		]);
 
 		expect(first.settle()).toBe(0.001);
 		expect(second.settle()).toBe(0.005);
+	});
+
+	it('preserves the env-proxy fallback when wrapping an omitted transport', async () => {
+		const original = process.env.HTTP_PROXY;
+		process.env.HTTP_PROXY = 'http://proxy.example:8080';
+		const globalFetchSpy = vi
+			.spyOn(globalThis, 'fetch')
+			.mockResolvedValue(responseWithHeader('0.001'));
+		try {
+			const collector = createBilledUsageCollector();
+			const window = collector.startWindow();
+
+			await window.wrap(undefined)('https://gw/v1/responses');
+
+			// The env-proxy fallback routes through an undici dispatcher, the same
+			// one the model factory would have used without the window.
+			const [, init] = globalFetchSpy.mock.calls[0] as unknown as [
+				string,
+				{ dispatcher?: unknown },
+			];
+			expect(init?.dispatcher).toBeDefined();
+			expect(window.settle()).toBe(0.001);
+		} finally {
+			globalFetchSpy.mockRestore();
+			if (original === undefined) delete process.env.HTTP_PROXY;
+			else process.env.HTTP_PROXY = original;
+		}
 	});
 
 	it('passes the response through untouched', async () => {

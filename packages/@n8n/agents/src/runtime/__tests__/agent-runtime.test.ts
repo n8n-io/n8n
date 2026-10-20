@@ -11636,7 +11636,7 @@ describe('AgentRuntime — gateway billed cost', () => {
 		generateText
 			.mockResolvedValueOnce(makeGenerateEmptyRetry())
 			.mockResolvedValueOnce(makeGenerateSuccess('Recovered'));
-		const { collector } = makeCollector(0.001);
+		const { collector, windows } = makeSequenceCollector([0.001, 0.002]);
 		const hook = makeHook();
 		const runtime = createGatewayRuntime(collector);
 
@@ -11644,7 +11644,12 @@ describe('AgentRuntime — gateway billed cost', () => {
 
 		expect(generateText).toHaveBeenCalledTimes(2);
 		expect(collector.startWindow).toHaveBeenCalledTimes(2);
+		expect(windows).toHaveLength(2);
+		// Each call gets its own window and settles only its own billed cost.
+		expect(windows[0]).not.toBe(windows[1]);
 		expect(hook.after).toHaveBeenCalledTimes(2);
+		expect(hook.after.mock.calls[0][1]).toMatchObject({ cost: 0.001 });
+		expect(hook.after.mock.calls[1][1]).toMatchObject({ cost: 0.002 });
 	});
 
 	it('opens no window for an own-key model and keeps the catalog estimate', async () => {

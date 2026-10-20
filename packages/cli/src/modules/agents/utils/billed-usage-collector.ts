@@ -1,3 +1,4 @@
+import { resolveAmbientModelFetch } from '@n8n/agents';
 import type { BilledUsageCollector, BilledUsageWindow, FetchFn } from '@n8n/agents';
 
 /**
@@ -34,7 +35,9 @@ export function createBilledUsageCollector(): BilledUsageCollector {
 			return {
 				wrap(fetch) {
 					const base: FetchFn =
-						fetch ?? (async (input, init) => await globalThis.fetch(input, init));
+						fetch ??
+						resolveAmbientModelFetch() ??
+						(async (input, init) => await globalThis.fetch(input, init));
 					return async (input, init) => {
 						const response = await base(input, init);
 						const billed = parseBilledUsd(response.headers.get(BILLED_USD_HEADER));
