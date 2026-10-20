@@ -56,7 +56,11 @@ import {
 	productionChatMemoryResourceId,
 	userIdFromDraftChatMemoryResourceId,
 } from './utils/agent-memory-scope';
-import { withOpenSuspensions } from './utils/messages-envelope';
+import {
+	ownCheckpoint,
+	threadMessagesResponse,
+	withOpenSuspensions,
+} from './utils/messages-envelope';
 
 @RestController('/projects/:projectId/agents/v2')
 export class AgentChatController {
@@ -413,16 +417,10 @@ export class AgentChatController {
 		});
 		if (!history) throw new NotFoundError('Session not found');
 		const checkpoint = await this.checkpointStorage.findSuspendedForThread(agentId, threadId);
-		return {
-			...withOpenSuspensions(
-				history.messages,
-				checkpoint?.persistence?.resourceId === productionChatMemoryResourceId(req.user.id)
-					? checkpoint
-					: null,
-				{ appendInactiveCheckpointMessages: false },
-			),
-			activeExecutionId: history.activeExecutionId,
-		};
+		return threadMessagesResponse(
+			history,
+			ownCheckpoint(checkpoint, productionChatMemoryResourceId(req.user.id)),
+		);
 	}
 
 	// Same reasoning as `getProductionChatMessages`: the attachment's `resourceId`
@@ -872,16 +870,8 @@ export class AgentChatController {
 		) {
 			throw new NotFoundError(`Thread "${threadId}" not found`);
 		}
-		if (!history) {
-			if (checkpoint) return { ...withOpenSuspensions([], checkpoint), activeExecutionId: null };
-			throw new NotFoundError(`Thread "${threadId}" not found`);
-		}
-		return {
-			...withOpenSuspensions(history.messages, checkpoint, {
-				appendInactiveCheckpointMessages: false,
-			}),
-			activeExecutionId: history.activeExecutionId,
-		};
+		if (!history && !checkpoint) throw new NotFoundError(`Thread "${threadId}" not found`);
+		return threadMessagesResponse(history, checkpoint);
 	}
 
 	@Get('/:agentId/chat/messages')
@@ -909,9 +899,7 @@ export class AgentChatController {
 		);
 		return withOpenSuspensions(
 			messagesToDto(messages),
-			checkpoint?.persistence?.resourceId === draftChatMemoryResourceId(req.user.id)
-				? checkpoint
-				: null,
+			ownCheckpoint(checkpoint, draftChatMemoryResourceId(req.user.id)),
 		);
 	}
 

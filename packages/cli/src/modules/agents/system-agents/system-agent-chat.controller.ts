@@ -23,7 +23,7 @@ import { AgentMessageQueueService } from '../agent-message-queue.service';
 import type { FlushableResponse } from '../agent-sse-stream';
 import { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import { SYSTEM_CHAT_SOURCE } from '../utils/agent-thread-access';
-import { withOpenSuspensions } from '../utils/messages-envelope';
+import { ownCheckpoint, threadMessagesResponse } from '../utils/messages-envelope';
 import { parseThreadListLimit } from '../utils/parse-thread-list-limit';
 import { SystemAgentExecutionService } from './system-agent-execution.service';
 
@@ -205,19 +205,10 @@ export class SystemAgentChatController {
 			userId: req.user.id,
 		});
 		const checkpoint = await this.checkpointStorage.findSuspendedForThread(agentId, thread.id);
-		const ownCheckpoint =
-			checkpoint?.persistence?.resourceId === this.systemAgents.resourceIdFor(req.user)
-				? checkpoint
-				: null;
-		if (!history) {
-			return { ...withOpenSuspensions([], ownCheckpoint), activeExecutionId: null };
-		}
-		return {
-			...withOpenSuspensions(history.messages, ownCheckpoint, {
-				appendInactiveCheckpointMessages: false,
-			}),
-			activeExecutionId: history.activeExecutionId,
-		};
+		return threadMessagesResponse(
+			history,
+			ownCheckpoint(checkpoint, this.systemAgents.resourceIdFor(req.user)),
+		);
 	}
 
 	@Get('/:agentId/chat/attachments/:attachmentId')
