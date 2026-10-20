@@ -191,6 +191,31 @@ describe('WebhookRequestHandler', () => {
 			expect(res.json).toHaveBeenCalledWith(executeWebhookResponse.data);
 		});
 
+		it('should not look up the webhook methods for a non-preflight request', async () => {
+			const req = mock<WebhookRequest>({
+				path: '/',
+				method: 'GET',
+				headers: { origin: 'https://example.com' },
+				params: { path: 'test' },
+			});
+			const res = mock<Response>();
+			res.status.mockReturnValue(res);
+			webhookManager.executeWebhook.mockResolvedValueOnce({
+				responseCode: 200,
+				data: {},
+				headers: {},
+			});
+
+			await handler(req, res);
+
+			expect(webhookManager.getWebhookMethods).not.toHaveBeenCalled();
+			expect(res.header).not.toHaveBeenCalledWith(
+				'Access-Control-Allow-Methods',
+				expect.anything(),
+			);
+			expect(res.status).toHaveBeenCalledWith(200);
+		});
+
 		it('should send an error response if webhook execution throws', async () => {
 			class TestError extends ResponseError {}
 			const req = mock<WebhookRequest>({
