@@ -72,6 +72,35 @@ function makeService() {
 	const projectScopeService = mock<ProjectScopeService>();
 	const agentsSettingsService = mock<AgentsSettingsService>();
 	const agentPolicyService = mock<AgentPolicyService>();
+<<<<<<< HEAD
+=======
+	const workflowRepository = mock<WorkflowRepository>();
+	workflowRepository.findManyByAgentToolReferences.mockResolvedValue([]);
+	agentTaskRepository.findByAgentId.mockResolvedValue([]);
+	const telemetry = mock<Telemetry>();
+	const broadcaster = mock<AgentUpdateBroadcaster>();
+	const saveCompletion = new AgentSaveCompletionService(
+		eventService,
+		broadcaster,
+		new AgentModificationTelemetryService(
+			telemetry,
+			// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+			eventService,
+			// EOF Experiment cleanup
+		),
+	);
+	const setupCompletion = mock<AgentSetupCompletionService>();
+	setupCompletion.recordIfSetupComplete.mockResolvedValue(null);
+	const configPreparation = new AgentConfigPreparationService(
+		credentialsService,
+		workflowRepository,
+		mock<NodeToolAiGatewayService>(),
+		agentRepository,
+		agentTaskRepository,
+		skillRefs,
+		agentPolicyService,
+	);
+>>>>>>> 2ec85cac (feat(editor): Surface MCP to Claude trial users (no-changelog) (#40408))
 
 	agentsSettingsService.getEnabled.mockResolvedValue(true);
 	agentRepository.findByIdsAndProjectId.mockResolvedValue([]);

@@ -1072,6 +1072,9 @@ export class InstanceAiAdapterService {
 			executionPersistence,
 			license,
 			telemetry,
+			// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+			eventService,
+			// EOF Experiment cleanup
 			collaborationService,
 			policyEnforcementService,
 			workflowDependencyQueryService,
@@ -1806,6 +1809,12 @@ export class InstanceAiAdapterService {
 				}
 
 				if (threadId) {
+					// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+					eventService.emit('experiment-assistant-change-saved', {
+						userId: user.id,
+						at: Date.now(),
+					});
+					// EOF Experiment cleanup
 					telemetry.track('Builder created workflow', {
 						...setupExperimentProperties,
 						user_id: user.id,
@@ -1914,6 +1923,12 @@ export class InstanceAiAdapterService {
 				}
 
 				if (threadId) {
+					// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+					eventService.emit('experiment-assistant-change-saved', {
+						userId: user.id,
+						at: Date.now(),
+					});
+					// EOF Experiment cleanup
 					telemetry.track('Builder modified workflow', {
 						...setupExperimentProperties,
 						user_id: user.id,
