@@ -706,6 +706,7 @@ packages/cli/src/modules/n8n-packages/entities/agent/agent-importer.ts
   s_71ad2034164515::t_8c360363883854 126
   s_71ad2034164515::t_5720c2e9677be0 17-19,22-24,50-54,56-59,62-68,71-77,148-155,158-165,170-172,177-181,190-195,200-203,206-211,220-221,227-230,240-242
   s_71ad2034164515::t_8d1ba391844620 223
+  s_d3c0f6f6f7d41c::t_5c19e823425b55 7,36
 packages/cli/src/modules/agents/agent-policy.service.ts
   s_71ad2034164515::t_c92b746b369492 33-45
 packages/cli/src/modules/agents/agent-custom-tools.service.ts
