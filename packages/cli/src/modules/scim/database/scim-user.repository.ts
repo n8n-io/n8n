@@ -37,6 +37,7 @@ export class ScimUserRepository extends BaseRepository<User> {
 		const qb = this.managerFor(ctx)
 			.createQueryBuilder(User, 'user')
 			.leftJoinAndSelect('user.authIdentities', 'authIdentity')
+			.leftJoinAndSelect('user.role', 'role')
 			.orderBy('user.createdAt', 'ASC')
 			.addOrderBy('user.id', 'ASC');
 

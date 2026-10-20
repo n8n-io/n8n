@@ -10,7 +10,7 @@ vi.mock('openid-client', async () => ({
 	...openidClient,
 }));
 
-import { SCIM_OPT_IN_FLAG, type OidcConfigDto } from '@n8n/api-types';
+import { SCIM_N8N_USER_SCHEMA, SCIM_OPT_IN_FLAG, type OidcConfigDto } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import { EventService, JwtService } from '@n8n/backend-services';
 import {
@@ -472,19 +472,20 @@ describe('SCIM connection status', () => {
 });
 
 describe('SCIM /scim/v2/Users', () => {
-	it('creates a member, ignores roles and returns a Location header', async () => {
+	it('creates a member by default and returns a Location header', async () => {
 		const response = await scimRequest('post', '/Users', {
 			body: {
 				schemas: [USER_SCHEMA],
 				userName: 'New.User@Example.com',
 				name: { givenName: 'New', familyName: 'User' },
-				roles: [{ value: 'global:admin', primary: true }],
 			},
 		}).expect(201);
 
 		expect(response.headers.location).toBe(response.body.meta.location);
 		expect(response.headers.location).toMatch(new RegExp(`/scim/v2/Users/${response.body.id}$`));
-		expect(response.body).not.toHaveProperty('roles');
+		expect(response.body.schemas).toEqual([USER_SCHEMA, SCIM_N8N_USER_SCHEMA]);
+		expect(response.body.roles).toEqual([{ value: 'global:member', primary: true }]);
+		expect(response.body[SCIM_N8N_USER_SCHEMA]).toEqual({ instanceRole: 'global:member' });
 		expect(response.body.active).toBe(true);
 
 		const created = await reload(response.body.id);
@@ -493,7 +494,51 @@ describe('SCIM /scim/v2/Users', () => {
 		expect(created.disabled).toBe(false);
 	});
 
-	it('ignores roles on replace and patch', async () => {
+	it('creates an admin from the core roles attribute', async () => {
+		const response = await scimRequest('post', '/Users', {
+			body: {
+				schemas: [USER_SCHEMA],
+				userName: 'roles.admin@example.com',
+				roles: [{ value: 'global:admin', primary: true }],
+			},
+		}).expect(201);
+
+		expect((await reload(response.body.id)).role.slug).toBe('global:admin');
+	});
+
+	it('creates an admin from the n8n extension, which wins over roles', async () => {
+		const response = await scimRequest('post', '/Users', {
+			body: {
+				schemas: [USER_SCHEMA, SCIM_N8N_USER_SCHEMA],
+				userName: 'extension.admin@example.com',
+				roles: [{ value: 'global:member' }],
+				[SCIM_N8N_USER_SCHEMA]: { instanceRole: 'global:admin' },
+			},
+		}).expect(201);
+
+		expect((await reload(response.body.id)).role.slug).toBe('global:admin');
+	});
+
+	it.each([
+		['the owner role', { instanceRole: 'global:owner' }],
+		['an unknown role', { instanceRole: 'global:does-not-exist' }],
+		['a project role', { instanceRole: 'project:admin' }],
+	])('rejects %s with 400 invalidValue', async (_, extension) => {
+		const response = await scimRequest('post', '/Users', {
+			body: {
+				schemas: [USER_SCHEMA, SCIM_N8N_USER_SCHEMA],
+				userName: 'rejected@example.com',
+				[SCIM_N8N_USER_SCHEMA]: extension,
+			},
+		}).expect(400);
+
+		expect(response.body.scimType).toBe('invalidValue');
+		expect(
+			await Container.get(UserRepository).findOne({ where: { email: 'rejected@example.com' } }),
+		).toBeNull();
+	});
+
+	it('applies the role on replace and on each patch form', async () => {
 		const member = await createMember();
 
 		await scimRequest('put', `/Users/${member.id}`, {
@@ -503,14 +548,38 @@ describe('SCIM /scim/v2/Users', () => {
 				roles: [{ value: 'global:admin' }],
 			},
 		}).expect(200);
-		await scimRequest('patch', `/Users/${member.id}`, {
-			body: patchOps(
-				{ op: 'replace', path: 'roles', value: [{ value: 'global:admin' }] },
-				{ op: 'add', value: { roles: [{ value: 'global:admin' }] } },
-			),
-		}).expect(200);
+		expect((await reload(member.id)).role.slug).toBe('global:admin');
 
+		await scimRequest('patch', `/Users/${member.id}`, {
+			body: patchOps({ op: 'replace', path: 'roles', value: [{ value: 'global:member' }] }),
+		}).expect(200);
 		expect((await reload(member.id)).role.slug).toBe('global:member');
+
+		await scimRequest('patch', `/Users/${member.id}`, {
+			body: patchOps({
+				op: 'replace',
+				path: `${SCIM_N8N_USER_SCHEMA}:instanceRole`,
+				value: 'global:admin',
+			}),
+		}).expect(200);
+		expect((await reload(member.id)).role.slug).toBe('global:admin');
+
+		await scimRequest('patch', `/Users/${member.id}`, {
+			body: patchOps({
+				op: 'add',
+				value: { [SCIM_N8N_USER_SCHEMA]: { instanceRole: 'global:member' } },
+			}),
+		}).expect(200);
+		expect((await reload(member.id)).role.slug).toBe('global:member');
+	});
+
+	it('never changes the role of the instance owner', async () => {
+		const response = await scimRequest('patch', `/Users/${owner.id}`, {
+			body: patchOps({ op: 'replace', path: 'roles', value: [{ value: 'global:member' }] }),
+		}).expect(403);
+
+		expect(response.body.detail).toMatch(/owner/);
+		expect((await reload(owner.id)).role.slug).toBe('global:owner');
 	});
 
 	it('keeps a disabled user disabled when PUT omits active', async () => {
@@ -1195,14 +1264,28 @@ describe('GET /rest/scim/transfer-targets', () => {
 });
 
 describe('SCIM /scim/v2/Schemas', () => {
-	it('lists the User schema without roles and with the Schema schema id', async () => {
+	it('lists the User schema and the n8n extension with the assignable roles', async () => {
 		const response = await scimRequest('get', '/Schemas').expect(200);
 
-		const [user] = response.body.Resources;
+		const [user, extension] = response.body.Resources;
 		expect(user.schemas).toEqual(['urn:ietf:params:scim:schemas:core:2.0:Schema']);
-		expect(user.attributes.map((attribute: { name: string }) => attribute.name)).not.toContain(
-			'roles',
+		expect(user.attributes.map((attribute: { name: string }) => attribute.name)).toContain('roles');
+		expect(extension.id).toBe(SCIM_N8N_USER_SCHEMA);
+		const instanceRole = extension.attributes.find(
+			(attribute: { name: string }) => attribute.name === 'instanceRole',
 		);
+		expect(instanceRole.canonicalValues).toEqual(
+			expect.arrayContaining(['global:admin', 'global:member']),
+		);
+		expect(instanceRole.canonicalValues).not.toContain('global:owner');
+	});
+
+	it('declares the extension on the User resource type', async () => {
+		const response = await scimRequest('get', '/ResourceTypes').expect(200);
+
+		expect(response.body.Resources[0].schemaExtensions).toEqual([
+			{ schema: SCIM_N8N_USER_SCHEMA, required: false },
+		]);
 	});
 });
 

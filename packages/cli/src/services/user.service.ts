@@ -52,6 +52,8 @@ export const CHANGE_ROLE_ERROR_MESSAGES = {
 	NO_OWNER_ON_OWNER: 'Owner cannot change role on global owner',
 	CANNOT_CHANGE_OWN_ROLE: 'Cannot change your own global role',
 	INSTANCE_ROLES_MANAGED: 'Instance roles are managed automatically and cannot be changed manually',
+	INSTANCE_ROLE_MANAGED_BY_SCIM:
+		'The instance role of this user is managed by your identity provider through SCIM and cannot be changed manually',
 } as const;
 
 export const INVITE_ROLE_MANAGED_MESSAGE =
@@ -708,6 +710,10 @@ export class UserService {
 		const targetUser = await this.userRepository.findByIdWithRole(id);
 		if (targetUser === null) {
 			throw new NotFoundError(CHANGE_ROLE_ERROR_MESSAGES.NO_USER);
+		}
+
+		if (await provisioningService.isInstanceRoleOwnedByScim(targetUser)) {
+			throw new ForbiddenError(CHANGE_ROLE_ERROR_MESSAGES.INSTANCE_ROLE_MANAGED_BY_SCIM);
 		}
 
 		if (

@@ -1303,6 +1303,66 @@ describe('ProvisioningService', () => {
 			projectRepository.find.mockResolvedValue([]);
 		});
 
+		it('leaves the instance role alone while SCIM owns it, and still applies project roles', async () => {
+			const scimUser = mock<User>({
+				id: 'user-2',
+				email: 'scim@example.com',
+				isScimManaged: true,
+				role: mock<Role>({ slug: 'global:admin', roleType: 'global' }),
+			});
+			// Overrides on the shared instance, restored below so later tests see the real methods.
+			const originals = {
+				isInstanceRoleOwnedByScim: provisioningService['isInstanceRoleOwnedByScim'],
+				applyExpressionMappedInstanceRole: provisioningService['applyExpressionMappedInstanceRole'],
+				applyExpressionMappedProjectRoles: provisioningService['applyExpressionMappedProjectRoles'],
+			};
+			provisioningService['isInstanceRoleOwnedByScim'] = vi.fn().mockResolvedValue(true);
+			roleResolverService.resolveRoles.mockResolvedValue({
+				instanceRole: {
+					role: 'global:member',
+					matchedRuleId: null,
+					expression: null,
+					isFallback: true,
+				},
+				projectRoles: new Map([
+					[
+						'proj-1',
+						{
+							projectId: 'proj-1',
+							role: 'project:editor',
+							matchedRuleId: 'rule-2',
+							expression: '{{ true }}',
+						},
+					],
+				]),
+			});
+			const applyInstanceRole = vi.fn();
+			const applyProjectRoles = vi.fn();
+			provisioningService['applyExpressionMappedInstanceRole'] = applyInstanceRole;
+			provisioningService['applyExpressionMappedProjectRoles'] = applyProjectRoles;
+
+			try {
+				await provisioningService.provisionExpressionMappedRolesForUser(scimUser, {
+					$claims: {},
+					$provider: 'oidc',
+				});
+			} finally {
+				Object.assign(provisioningService, originals);
+			}
+
+			expect(applyInstanceRole).not.toHaveBeenCalled();
+			expect(applyProjectRoles).toHaveBeenCalledWith(
+				'user-2',
+				new Map([['proj-1', 'project:editor']]),
+			);
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'expression-mapping-roles-resolved',
+				expect.objectContaining({
+					instanceRole: expect.objectContaining({ previousRole: 'global:admin', changed: false }),
+				}),
+			);
+		});
+
 		it('should emit expression-mapping-roles-resolved with metadata', async () => {
 			roleResolverService.resolveRoles.mockResolvedValue({
 				instanceRole: {

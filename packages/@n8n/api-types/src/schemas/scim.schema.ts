@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { SCIM_N8N_USER_SCHEMA } from '../constants/scim';
+
 // SCIM 2.0 Meta schema
 export const scimMetaSchema = z.object({
 	resourceType: z.string(),
@@ -27,7 +29,23 @@ export const scimEmailSchema = z.object({
 	display: z.string().optional(),
 });
 
-// SCIM 2.0 User schema (core attributes)
+/** One entry of the core `roles` attribute (RFC 7643 section 4.1.2). The vocabulary is the service provider's. */
+export const scimRoleSchema = z.object({
+	value: z.string(),
+	display: z.string().optional(),
+	type: z.string().optional(),
+	primary: z.boolean().optional(),
+});
+
+/**
+ * The n8n extension attributes of a User. `instanceRole` is the slug of a
+ * global role, for example `global:admin`. The owner role is never accepted.
+ */
+export const scimUserExtensionSchema = z.object({
+	instanceRole: z.string().optional(),
+});
+
+// SCIM 2.0 User schema (core attributes plus the n8n extension)
 export const scimUserSchema = z.object({
 	schemas: z.array(z.string()).default(['urn:ietf:params:scim:schemas:core:2.0:User']),
 	id: z.string(),
@@ -37,6 +55,8 @@ export const scimUserSchema = z.object({
 	displayName: z.string().optional(),
 	emails: z.array(scimEmailSchema).optional(),
 	active: z.boolean().default(true),
+	roles: z.array(scimRoleSchema).optional(),
+	[SCIM_N8N_USER_SCHEMA]: scimUserExtensionSchema.optional(),
 	meta: scimMetaSchema.optional(),
 });
 
@@ -78,3 +98,5 @@ export type ScimError = z.infer<typeof scimErrorSchema>;
 export type ScimMeta = z.infer<typeof scimMetaSchema>;
 export type ScimUserName = z.infer<typeof scimUserNameSchema>;
 export type ScimEmail = z.infer<typeof scimEmailSchema>;
+export type ScimRole = z.infer<typeof scimRoleSchema>;
+export type ScimUserExtension = z.infer<typeof scimUserExtensionSchema>;

@@ -1,11 +1,16 @@
 import { z } from 'zod';
+
+import { SCIM_N8N_USER_SCHEMA } from '../../constants/scim';
+import { scimRoleSchema, scimUserExtensionSchema } from '../../schemas/scim.schema';
 import { Z } from '../../zod-class';
 
 /**
  * Body of POST and PUT /scim/v2/Users.
  *
- * `roles` is not declared, so the parser drops it. SSO role mapping owns the
- * instance role, and an IdP that sends roles must not get an error.
+ * The instance role arrives in the n8n extension as `instanceRole`, or in the
+ * core `roles` attribute for providers that map app roles there. Unknown
+ * attributes, such as the `password` that Okta sends on every create, are
+ * dropped rather than rejected.
  */
 export class ScimUserCreateDto extends Z.class({
 	schemas: z.array(z.string()).default(['urn:ietf:params:scim:schemas:core:2.0:User']),
@@ -35,4 +40,6 @@ export class ScimUserCreateDto extends Z.class({
 	// No default: a PUT that omits `active` must keep the current state.
 	// The service treats an omitted value as true only on create.
 	active: z.boolean().optional(),
+	roles: z.array(scimRoleSchema).optional(),
+	[SCIM_N8N_USER_SCHEMA]: scimUserExtensionSchema.optional(),
 }) {}
