@@ -9,7 +9,7 @@ describe('toPackagesError', () => {
 			issues: [
 				{
 					type: 'agent-conflict',
-					kind: 'task-lineage',
+					kind: 'task-id',
 					sourceAgentId: 'agent',
 					sourceTaskId: 'task',
 					projectId: 'project',
@@ -53,7 +53,7 @@ describe('toPackagesError', () => {
 		if (!(error instanceof ApiError)) throw new Error('Expected an API error');
 		expect(error.details).toBe(details);
 		expect(error.hint).toContain(
-			'Agent agent, task task conflicts in project project (task-lineage; targets: first, second)',
+			'Agent agent, task task conflicts in project project (task-id; targets: first, second)',
 		);
 		expect(error.hint).toContain('Agent agent at config.model: Invalid model');
 		expect(error.hint).toContain('workflow tool is inaccessible at config.workflows[0]');
