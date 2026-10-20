@@ -178,8 +178,12 @@ defect to remove, not a contract to preserve. Detail:
    build:data` alone is **not** enough after touching a controller: it runs
    the generator against the already-compiled `dist/`, so a new/changed
    controller silently doesn't show up unless `tsc` ran first.
-5. Add the route to `packages/nodes-base/nodes/N8n/n8n-api-coverage.json`.
-6. Tests.
+5. If the route uses a new tag in `@ApiTags`, declare that tag in the `tags:`
+   array of `v1/openapi.yml`. Give it an `x-parent` that names one of the
+   parent tags, and put it in alphabetical order under that parent.
+   `openapi-tags.test.ts` fails if the tag is not declared or is out of order.
+6. Add the route to `packages/nodes-base/nodes/N8n/n8n-api-coverage.json`.
+7. Tests.
 
 ## Testing
 
