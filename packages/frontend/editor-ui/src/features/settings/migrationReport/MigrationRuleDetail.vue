@@ -17,19 +17,20 @@ import {
 	N8nBadge,
 	N8nButton,
 	N8nDataTableServer,
-	N8nDropdownMenu,
 	N8nIcon,
 	N8nInfoTip,
 	N8nInput,
 	N8nLink,
 	N8nLoading,
+	N8nOption,
+	N8nSelect,
 	N8nSelectedItemsInfo,
 	N8nSettingsLayout,
 	N8nSettingsPageHeader,
 	N8nText,
 	N8nUserSelect,
 } from '@n8n/design-system';
-import type { DropdownMenuItemProps, IUser, TableHeader } from '@n8n/design-system';
+import type { IUser, TableHeader } from '@n8n/design-system';
 import * as breakingChangesApi from '@n8n/rest-api-client/api/breaking-changes';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
@@ -48,7 +49,6 @@ import ImpactTag from './components/ImpactTag.vue';
 import WorkflowFiltersPopover from './components/WorkflowFiltersPopover.vue';
 import {
 	DEFAULT_WORKFLOW_FILTERS,
-	UNASSIGNED_OWNER,
 	matchesWorkflowFilters,
 	type WorkflowFilters,
 } from './workflowFilters';
@@ -434,9 +434,10 @@ async function onBulkStatusChange(status: MigrationFindingTriageStatus) {
 }
 
 // The callout offers to dismiss open findings on workflows that did not run for
-// 12 months. The "Last run" filter uses the same rule, so "Review" can show them.
+// 12 months. The filters use the same rule, so "Review" can show them.
 const UNUSED_WORKFLOW_FILTERS: WorkflowFilters = {
 	...DEFAULT_WORKFLOW_FILTERS,
+	state: 'open',
 	lastRun: 'over12Months',
 };
 
@@ -444,9 +445,8 @@ const unusedOpenWorkflows = computed(() => {
 	const now = Date.now();
 	return state.value.affectedWorkflows.filter(
 		(workflow) =>
-			isUnresolved(workflow) &&
 			!isBusy(workflow) &&
-			matchesWorkflowFilters(workflow, UNUSED_WORKFLOW_FILTERS, now),
+			matchesWorkflowFilters(workflow, UNUSED_WORKFLOW_FILTERS, now, findingState(workflow)),
 	);
 });
 
@@ -579,7 +579,6 @@ async function onBulkNotify() {
 function reviewUnusedWorkflows() {
 	searchInput.value = '';
 	searchQuery.value = '';
-	stateFilter.value = 'open';
 	workflowFilters.value = { ...UNUSED_WORKFLOW_FILTERS };
 }
 
@@ -595,48 +594,65 @@ function workflowUrl(workflow: AffectedWorkflow): string {
 
 const sortBy = ref([{ id: 'numberOfExecutions', desc: true }]);
 
-type SortField = 'numberOfExecutions' | 'lastExecutedAt' | 'lastUpdatedAt' | 'name';
+// The sort options of the Sort select. Each option sets one column and direction.
+const sortOptions = computed(() => [
+	{
+		value: 'mostRuns',
+		id: 'numberOfExecutions',
+		desc: true,
+		label: i18n.baseText('settings.migrationReport.detail.sort.mostRuns'),
+	},
+	{
+		value: 'fewestRuns',
+		id: 'numberOfExecutions',
+		desc: false,
+		label: i18n.baseText('settings.migrationReport.detail.sort.fewestRuns'),
+	},
+	{
+		value: 'lastRun',
+		id: 'lastExecutedAt',
+		desc: true,
+		label: i18n.baseText('settings.migrationReport.detail.sort.lastRun'),
+	},
+	{
+		value: 'lastUpdated',
+		id: 'lastUpdatedAt',
+		desc: true,
+		label: i18n.baseText('settings.migrationReport.detail.sort.lastUpdated'),
+	},
+	{
+		value: 'nameAsc',
+		id: 'name',
+		desc: false,
+		label: i18n.baseText('settings.migrationReport.detail.sort.nameAsc'),
+	},
+	{
+		value: 'nameDesc',
+		id: 'name',
+		desc: true,
+		label: i18n.baseText('settings.migrationReport.detail.sort.nameDesc'),
+	},
+]);
 
-const sortFieldLabels = computed<Record<string, string>>(() => ({
-	numberOfExecutions: i18n.baseText('settings.migrationReport.detail.sort.executions'),
-	lastExecutedAt: i18n.baseText('settings.migrationReport.detail.sort.lastRun'),
-	lastUpdatedAt: i18n.baseText('settings.migrationReport.detail.sort.lastUpdated'),
-	name: i18n.baseText('settings.migrationReport.detail.table.name'),
-	owner: i18n.baseText('settings.migrationReport.detail.table.owner'),
-}));
-
-const sortMenuItems = computed<Array<DropdownMenuItemProps<SortField>>>(() =>
-	(['numberOfExecutions', 'lastExecutedAt', 'lastUpdatedAt', 'name'] as const).map((id) => ({
-		id,
-		label: sortFieldLabels.value[id],
-		checked: sortBy.value[0]?.id === id,
-	})),
-);
-
-const sortLabel = computed(() => {
+// A column header can also sort the table. A sort that no option describes
+// leaves the select empty, and the header shows the sort.
+const sortOption = computed(() => {
 	const current = sortBy.value[0];
-	if (!current) return i18n.baseText('settings.migrationReport.detail.sort.none');
-	return i18n.baseText('settings.migrationReport.detail.sort.label', {
-		interpolate: {
-			field: sortFieldLabels.value[current.id] ?? current.id,
-			direction: current.desc ? '↓' : '↑',
-		},
-	});
+	if (!current) return undefined;
+	return sortOptions.value.find(
+		(option) => option.id === current.id && option.desc === current.desc,
+	)?.value;
 });
 
-// Picking the current field again flips the direction. A new field starts in the
-// direction that shows the most relevant rows first.
-function onSortSelect(id: SortField) {
-	const current = sortBy.value[0];
-	const desc = current?.id === id ? !current.desc : id !== 'name';
-	sortBy.value = [{ id, desc }];
+function onSortChange(value: string) {
+	const option = sortOptions.value.find((candidate) => candidate.value === value);
+	if (option) sortBy.value = [{ id: option.id, desc: option.desc }];
 }
 
 // Filter state
 const searchInput = ref('');
 const searchQuery = ref(''); // Debounced value for filtering
 const workflowFilters = ref<WorkflowFilters>({ ...DEFAULT_WORKFLOW_FILTERS });
-const stateFilter = ref<MigrationFindingTriageStatus | undefined>();
 
 // Debounced search to avoid excessive filtering
 const debouncedSearch = useDebounceFn((value: string) => {
@@ -653,14 +669,10 @@ function findingState(workflow: AffectedWorkflow): MigrationFindingListedStatus 
 	return migratedWorkflowIds.value.has(workflow.id) ? 'migrated' : workflow.status;
 }
 
-// A notified finding still needs a fix, so it counts and filters as open.
+// A notified finding still needs a fix, so it counts as open.
 function isUnresolved(workflow: AffectedWorkflow): boolean {
 	const findingStatus = findingState(workflow);
 	return findingStatus === 'open' || findingStatus === 'notified';
-}
-
-function hasState(workflow: AffectedWorkflow, status: MigrationFindingTriageStatus): boolean {
-	return status === 'open' ? isUnresolved(workflow) : findingState(workflow) === status;
 }
 
 const wontFixCount = computed(
@@ -681,27 +693,12 @@ const assignedToMeCount = computed(
 			.length,
 );
 
-function quickFilterLabel(
-	key:
-		| 'settings.migrationReport.detail.quickFilter.assignedToMe'
-		| 'settings.migrationReport.detail.quickFilter.open'
-		| 'settings.migrationReport.detail.quickFilter.wontFix'
-		| 'settings.migrationReport.detail.quickFilter.unassigned',
-	count: number,
-): string {
-	return i18n.baseText(key, { interpolate: { count: String(count) } });
-}
-
-function toggleStateFilter(status: MigrationFindingTriageStatus) {
-	stateFilter.value = stateFilter.value === status ? undefined : status;
-}
-
-function toggleOwnerFilter(owner: string) {
-	workflowFilters.value = {
-		...workflowFilters.value,
-		owner: workflowFilters.value.owner === owner ? 'any' : owner,
-	};
-}
+const quickFilterCounts = computed(() => ({
+	assignedToMe: assignedToMeCount.value,
+	open: openCount.value,
+	wontFix: wontFixCount.value,
+	unassigned: unassignedCount.value,
+}));
 
 // The owners of the listed workflows, for the owner filter.
 const ownerFilterOptions = computed(() => {
@@ -721,8 +718,7 @@ const filteredWorkflows = computed(() => {
 	return state.value.affectedWorkflows.filter(
 		(workflow) =>
 			(!query || workflow.name.toLowerCase().includes(query)) &&
-			(!stateFilter.value || hasState(workflow, stateFilter.value)) &&
-			matchesWorkflowFilters(workflow, workflowFilters.value, now),
+			matchesWorkflowFilters(workflow, workflowFilters.value, now, findingState(workflow)),
 	);
 });
 
@@ -826,58 +822,6 @@ const sortedWorkflows = computed(() => {
 		</div>
 
 		<div :class="$style.toolbar">
-			<div :class="$style.quickFilters">
-				<N8nButton
-					v-if="currentUserId"
-					:variant="workflowFilters.owner === currentUserId ? 'solid' : 'outline'"
-					size="small"
-					icon="user"
-					:aria-pressed="workflowFilters.owner === currentUserId"
-					data-test-id="migration-rule-quick-filter-mine"
-					@click="toggleOwnerFilter(currentUserId)"
-				>
-					{{
-						quickFilterLabel(
-							'settings.migrationReport.detail.quickFilter.assignedToMe',
-							assignedToMeCount,
-						)
-					}}
-				</N8nButton>
-				<N8nButton
-					:variant="stateFilter === 'open' ? 'solid' : 'outline'"
-					size="small"
-					:aria-pressed="stateFilter === 'open'"
-					data-test-id="migration-rule-quick-filter-open"
-					@click="toggleStateFilter('open')"
-				>
-					{{ quickFilterLabel('settings.migrationReport.detail.quickFilter.open', openCount) }}
-				</N8nButton>
-				<N8nButton
-					:variant="stateFilter === 'wont_fix' ? 'solid' : 'outline'"
-					size="small"
-					:aria-pressed="stateFilter === 'wont_fix'"
-					data-test-id="migration-rule-quick-filter-wont-fix"
-					@click="toggleStateFilter('wont_fix')"
-				>
-					{{
-						quickFilterLabel('settings.migrationReport.detail.quickFilter.wontFix', wontFixCount)
-					}}
-				</N8nButton>
-				<N8nButton
-					:variant="workflowFilters.owner === UNASSIGNED_OWNER ? 'solid' : 'outline'"
-					size="small"
-					:aria-pressed="workflowFilters.owner === UNASSIGNED_OWNER"
-					data-test-id="migration-rule-quick-filter-unassigned"
-					@click="toggleOwnerFilter(UNASSIGNED_OWNER)"
-				>
-					{{
-						quickFilterLabel(
-							'settings.migrationReport.detail.quickFilter.unassigned',
-							unassignedCount,
-						)
-					}}
-				</N8nButton>
-			</div>
 			<N8nInput
 				:model-value="searchInput"
 				:placeholder="i18n.baseText('settings.migrationReport.detail.search.placeholder')"
@@ -891,22 +835,28 @@ const sortedWorkflows = computed(() => {
 					<N8nIcon icon="search" />
 				</template>
 			</N8nInput>
-		</div>
-
-		<div :class="$style.sortAndFilters">
-			<N8nDropdownMenu
-				:items="sortMenuItems"
-				placement="bottom-start"
+			<N8nSelect
+				:model-value="sortOption"
+				size="small"
+				:placeholder="i18n.baseText('settings.migrationReport.detail.sort.none')"
+				:class="$style.sort"
 				data-test-id="migration-rule-sort"
-				@select="onSortSelect"
+				@update:model-value="onSortChange"
 			>
-				<template #trigger>
-					<N8nButton variant="outline" size="small" data-test-id="migration-rule-sort-trigger">
-						{{ sortLabel }}
-					</N8nButton>
-				</template>
-			</N8nDropdownMenu>
-			<WorkflowFiltersPopover v-model="workflowFilters" :owners="ownerFilterOptions" />
+				<N8nOption
+					v-for="option in sortOptions"
+					:key="option.value"
+					:value="option.value"
+					:label="option.label"
+					data-test-id="migration-rule-sort-item"
+				/>
+			</N8nSelect>
+			<WorkflowFiltersPopover
+				v-model="workflowFilters"
+				:owners="ownerFilterOptions"
+				:current-user-id="currentUserId"
+				:counts="quickFilterCounts"
+			/>
 		</div>
 
 		<N8nDataTableServer
@@ -1183,28 +1133,21 @@ const sortedWorkflows = computed(() => {
 	height: calc(var(--spacing--3xl) + var(--spacing--2xl));
 }
 
+/* Matches the search, sort and filter row of the Overview lists. */
 .toolbar {
 	display: flex;
 	flex-wrap: wrap;
-	gap: var(--spacing--xs);
+	gap: var(--spacing--4xs);
 	align-items: center;
-	justify-content: space-between;
-	margin-bottom: var(--spacing--xs);
-}
-
-.quickFilters,
-.sortAndFilters {
-	display: flex;
-	flex-wrap: wrap;
-	gap: var(--spacing--2xs);
-	align-items: center;
-}
-
-.sortAndFilters {
+	justify-content: flex-end;
 	margin-bottom: var(--spacing--md);
 }
 
 .search {
 	flex: 0 1 20rem;
+}
+
+.sort {
+	width: 196px;
 }
 </style>

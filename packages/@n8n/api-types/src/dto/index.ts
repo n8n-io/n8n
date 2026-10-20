@@ -758,6 +758,7 @@ export {
 	promotionCheckoutPublicSchema,
 } from './promotions/promotion-checkout.dto';
 export * from './promotions/promotion-binding-preflight.dto';
+export * from './promotions/promotion-preview.dto';
 export {
 	CreatePromotionEnvironmentDto,
 	ListPromotionEnvironmentsQueryDto,
