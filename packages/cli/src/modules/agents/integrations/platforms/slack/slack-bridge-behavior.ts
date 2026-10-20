@@ -137,6 +137,8 @@ export async function createSlackResumeExecutionContext(params: {
 	agentId: string;
 	slackThreadContext?: SlackThreadContext;
 }): Promise<BridgeResumeExecutionContext> {
+	const slackThreadContext =
+		params.slackThreadContext ?? getSlackResumeThreadContext(params.thread);
 	// Post-and-edit replies do not need native stream recipient context.
 	return {
 		forceBuffered: false,
@@ -144,7 +146,7 @@ export async function createSlackResumeExecutionContext(params: {
 			chat: params.chat,
 			logger: params.logger,
 			agentId: params.agentId,
-			slackThreadContext: params.slackThreadContext,
+			slackThreadContext,
 			statusRetry: new AbortController(),
 		}),
 	};
@@ -408,6 +410,22 @@ function sanitizeSlackHistoryText(text: string): string {
 		/<(\/?)(slack_thread_history)\s*>/gi,
 		(_m, slash: string, name: string) => `[${slash}${name}]`,
 	);
+}
+
+function getSlackResumeThreadContext(
+	thread: Thread<unknown, unknown>,
+): SlackThreadContext | undefined {
+	let decoded: unknown;
+	try {
+		decoded = thread.adapter.decodeThreadId(thread.id);
+	} catch {
+		return undefined;
+	}
+	if (!isRecord(decoded)) return undefined;
+	const channelId = stringValue(decoded.channel);
+	const threadTs = stringValue(decoded.threadTs);
+	if (!channelId || !threadTs) return undefined;
+	return { channelId, threadTs, hasRealThreadTs: true, canUseThreadTs: true };
 }
 
 function getSlackThreadContext(

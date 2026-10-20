@@ -291,6 +291,52 @@ describe.each([
 	});
 });
 
+describe.each([
+	['streaming', false],
+	['buffered', true],
+])('AgentChatStreamConsumer — custom replies after progress (%s)', (_name, disableStreaming) => {
+	it('calls the handler for each custom reply after visible progress', async () => {
+		const { thread, streamedText, discrete } = makeStreamingThread();
+		const replies: Array<Extract<StreamChunk, { type: 'message' }>> = [
+			{
+				type: 'message',
+				message: { role: 'assistant', content: [{ type: 'text', text: 'First custom reply' }] },
+			},
+			{
+				type: 'message',
+				message: { role: 'assistant', content: [{ type: 'text', text: 'Second custom reply' }] },
+			},
+		];
+		const handleMessage = vi.fn().mockResolvedValue(true);
+		const consumer = makeStreamingConsumer({ disableStreaming, handleMessage });
+
+		await consumer.consume(
+			makeStream([
+				{ type: 'text-delta', id: 'progress', delta: 'Preparing the replies.' },
+				...replies,
+				{ type: 'finish', finishReason: 'stop' },
+			]),
+			thread,
+		);
+
+		expect(handleMessage).toHaveBeenCalledTimes(2);
+		expect(handleMessage).toHaveBeenNthCalledWith(
+			1,
+			replies[0],
+			thread,
+			...(disableStreaming ? [undefined] : []),
+		);
+		expect(handleMessage).toHaveBeenNthCalledWith(
+			2,
+			replies[1],
+			thread,
+			...(disableStreaming ? [undefined] : []),
+		);
+		expect(discrete).toEqual(disableStreaming ? [{ markdown: 'Preparing the replies.' }] : []);
+		expect(streamedText).toEqual(disableStreaming ? [] : ['Preparing the replies.']);
+	});
+});
+
 describe('AgentChatStreamConsumer — singleStreamedRunPerTurn', () => {
 	const textThenMessageThenText = (): StreamChunk[] => [
 		{ type: 'text-delta', id: 't-1', delta: 'Before' },

@@ -295,10 +295,12 @@ export class AgentChatStreamConsumer {
 						// Don't start new streaming post — wait for next text delta
 						break;
 					}
-					case 'message':
+					case 'message': {
 						await responseLifecycle.startDiscreteResponse();
-						responseState.hasVisibleResponse ||= await this.options.handleMessage(chunk, thread);
+						const posted = await this.options.handleMessage(chunk, thread);
+						responseState.hasVisibleResponse ||= posted;
 						break;
+					}
 					case 'error':
 						await responseLifecycle.startDiscreteResponse();
 						await this.postError(thread, chunk.error, responseState);

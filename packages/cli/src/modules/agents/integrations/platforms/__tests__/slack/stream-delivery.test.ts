@@ -10,10 +10,11 @@ import { AgentChatStreamConsumer } from '../../../agent-chat-stream-consumer';
 import type { ChatInstance } from '../../../chat-integration.service';
 import {
 	createSlackBridgeExecutionContext,
+	createSlackResumeExecutionContext,
 	SLACK_STREAMING_OPTIONS,
 } from '../../slack/slack-bridge-behavior';
 
-async function makeSlackContext(topLevel: boolean) {
+async function makeSlackContext(topLevel: boolean, resume = false) {
 	const threadTs = topLevel ? '1719000001.000100' : '1719000000.000100';
 	const { createSlackAdapter } = await import('@chat-adapter/slack');
 	const { createMemoryState } = await import('@chat-adapter/state-memory');
@@ -38,20 +39,25 @@ async function makeSlackContext(topLevel: boolean) {
 		channelId: 'slack:C_CHANNEL',
 		adapter,
 		stateAdapter: createMemoryState(),
-		currentMessage: message,
+		currentMessage: resume ? undefined : message,
 		...SLACK_STREAMING_OPTIONS,
 	});
 	const logger = mock<Logger>();
-	const context = await createSlackBridgeExecutionContext({
+	const params = {
 		chat: mock<ChatInstance>({ getAdapter: () => adapter }),
 		thread,
-		message,
 		logger,
 		agentId: 'agent-1',
-		integration: { type: 'slack', credentialId: 'slack-1' },
-		isNewMention: false,
-		replyExpectation: 'required',
-	});
+	};
+	const context = resume
+		? await createSlackResumeExecutionContext(params)
+		: await createSlackBridgeExecutionContext({
+				...params,
+				message,
+				integration: { type: 'slack', credentialId: 'slack-1' },
+				isNewMention: false,
+				replyExpectation: 'required',
+			});
 	return { thread, threadTs, logger, context };
 }
 
@@ -66,6 +72,9 @@ describe('Slack stream delivery', () => {
 		{ name: 'top-level silent finish', topLevel: true, textEnd: true, ending: 'silent' },
 		{ name: 'threaded turn error', topLevel: false, textEnd: true, ending: 'error' },
 		{ name: 'top-level turn error', topLevel: true, textEnd: true, ending: 'error' },
+		{ name: 'resumed action', topLevel: false, textEnd: true, ending: 'reply', resume: true },
+		{ name: 'resumed silent turn', topLevel: false, textEnd: true, ending: 'silent', resume: true },
+		{ name: 'resumed turn error', topLevel: false, textEnd: true, ending: 'error', resume: true },
 		{
 			name: 'text without a tool',
 			topLevel: false,
@@ -75,7 +84,7 @@ describe('Slack stream delivery', () => {
 		},
 	])(
 		'keeps one reply visible while the turn is active ($name)',
-		async ({ topLevel, textEnd, ending, toolCall = true }) => {
+		async ({ topLevel, textEnd, ending, toolCall = true, resume = false }) => {
 			const calls: Array<{ method: string; body: Record<string, string> }> = [];
 			let visibleStatus = '';
 			nock('https://slack.com')
@@ -92,7 +101,7 @@ describe('Slack stream delivery', () => {
 					if (method === 'assistant.threads.setStatus') visibleStatus = body.status;
 					return { ok: true, ts: '1719000999.000100', message: { ts: '1719000999.000100' } };
 				});
-			const { thread, threadTs, logger, context } = await makeSlackContext(topLevel);
+			const { thread, threadTs, logger, context } = await makeSlackContext(topLevel, resume);
 			const postErrorToThread = vi.fn().mockResolvedValue(undefined);
 			const consumer = new AgentChatStreamConsumer({
 				disableStreaming: false,
