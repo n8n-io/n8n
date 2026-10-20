@@ -90,6 +90,34 @@ describe('InstanceAiMessage', () => {
 		expect(getByText('Hello there')).toBeInTheDocument();
 	});
 
+	it.each(['Build from this image', ''])(
+		'renders a restored image with user text %j',
+		(content) => {
+			const { getByRole, queryByTestId } = renderComponent({
+				props: {
+					message: makeMessage({
+						role: 'user',
+						content,
+						attachments: [
+							{
+								type: 'file',
+								fileName: 'diagram.png',
+								mimeType: 'image/png',
+								data: 'aW1hZ2U=',
+							},
+						],
+					}),
+				},
+			});
+
+			expect(getByRole('img', { name: 'diagram.png' })).toHaveAttribute(
+				'src',
+				'data:image/png;base64,aW1hZ2U=',
+			);
+			expect(queryByTestId('attachment-preview-remove')).not.toBeInTheDocument();
+		},
+	);
+
 	it('should render assistant message with assistant wrapper', () => {
 		const { getByTestId, queryByTestId } = renderComponent({
 			props: {
