@@ -26,15 +26,20 @@ export class UserRepository extends BaseRepository<User> {
 		userIds: string[],
 		options?: {
 			includeRole?: boolean;
+			includeAuthIdentities?: boolean;
 			offset?: number;
 			limit?: number;
 		},
 	) {
+		const relations = [
+			...(options?.includeRole ? ['role'] : []),
+			...(options?.includeAuthIdentities ? ['authIdentities'] : []),
+		];
 		return await this.find({
 			where: { id: In(userIds) },
 			skip: options?.offset,
 			take: options?.limit,
-			relations: options?.includeRole ? ['role'] : undefined,
+			relations: relations.length > 0 ? relations : undefined,
 			order: { id: 'ASC' },
 		});
 	}

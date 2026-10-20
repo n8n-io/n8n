@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, inject, onBeforeUnmount, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { saveAs } from 'file-saver';
 import {
 	N8nActionDropdown,
@@ -11,7 +11,6 @@ import {
 	N8nText,
 } from '@n8n/design-system';
 import {
-	resolveAgentPersonalisation,
 	type AgentTeamsIntegrationSettings,
 	type ChatIntegrationDescriptor,
 	type TeamsAgentSetupState,
@@ -37,7 +36,7 @@ import {
 	AZURE_BOTS_URL,
 	ENTRA_APP_REGISTRATIONS_URL,
 	entraApiPermissionsUrl,
-	readsSharedConversations as readsShared,
+	permissionUseFor,
 	TEAMS_PACKAGE_FILENAME,
 	type TeamsAvailability,
 } from './constants';
@@ -51,7 +50,6 @@ import {
 	fetchTeamsAppPackage,
 	getTeamsSetupState,
 } from './api';
-import { AGENT_PERSONALISATION_KEY } from '../types';
 
 const credentialId = defineModel<string>({ default: '' });
 
@@ -91,12 +89,6 @@ const props = withDefaults(
 		ensureAgentPersisted: undefined,
 		persistChannel: undefined,
 	},
-);
-
-// The builder provides it. The default keeps the card drawable when mounted on its own.
-const personalisation = inject(
-	AGENT_PERSONALISATION_KEY,
-	computed(() => resolveAgentPersonalisation(null)),
 );
 
 const emit = defineEmits<{
@@ -427,7 +419,6 @@ async function refreshForCredential() {
 watch(credentialId, refreshForCredential, { immediate: true });
 
 const fileAccessStatus = ref<TeamsFileAccessCheck['status'] | null>(null);
-const readsSharedConversations = computed(() => readsShared(availability.value));
 /**
  * Microsoft confirms an approval only on the redirect back here, and applying
  * it can take an hour, so the approval is announced once, from the redirect.
@@ -443,8 +434,8 @@ const fileAccessApprovedNow = computed(() => fileAccessApprovedFor.value === cre
 async function loadFileAccess() {
 	fileAccessStatus.value = null;
 	const id = credentialId.value;
-	// Consumed only by a check that runs: the saved settings can arrive after the first call.
-	if (props.mode !== 'edit' || !id || !readsSharedConversations.value) return;
+	// Consumed only by a check that runs: the credential can arrive after the first call.
+	if (props.mode !== 'edit' || !id) return;
 	if (fileAccessJustApproved.value) {
 		fileAccessJustApproved.value = false;
 		fileAccessApprovedFor.value = id;
@@ -464,7 +455,7 @@ async function loadFileAccess() {
 	}
 }
 
-watch([credentialId, readsSharedConversations], loadFileAccess, { immediate: true });
+watch(credentialId, loadFileAccess, { immediate: true });
 
 /**
  * The settings say nothing until both the check and the setup state answer:
@@ -534,15 +525,13 @@ const steps = computed(() => [
 		id: 'download',
 		title: i18n.baseText('agents.channels.teams.setup.download.title'),
 	},
-	...(readsSharedConversations.value
-		? [
-				{
-					id: 'file-access',
-					title: i18n.baseText('agents.channels.teams.managed.fileAccess.title'),
-					description: i18n.baseText('agents.channels.teams.managed.fileAccess.description'),
-				},
-			]
-		: []),
+	{
+		id: 'file-access',
+		title: i18n.baseText('agents.channels.teams.managed.fileAccess.title'),
+		description: i18n.baseText(
+			`agents.channels.teams.managed.fileAccess.description.${permissionUseFor(availability.value)}`,
+		),
+	},
 	{
 		id: 'install',
 		title: i18n.baseText('agents.channels.teams.setup.install.title'),
@@ -794,6 +783,7 @@ defineExpose({
 							<N8nCopyInput
 								id="teams-messaging-endpoint-url"
 								:value="messagingEndpointUrl"
+								:label="i18n.baseText('agents.channels.teams.messagingEndpointUrl.label')"
 								size="large"
 								:class="$style.urlInput"
 								:copy-label="i18n.baseText('agents.builder.addTrigger.copy')"
@@ -853,7 +843,6 @@ defineExpose({
 						<AgentChannelTeamsIdentityCard
 							:name="defaultDisplayName"
 							:description="defaultDescription"
-							:personalisation="personalisation"
 							:tooltip="i18n.baseText('agents.channels.teams.setup.install.identityTooltip')"
 							:ready="ready"
 							:loading="downloading || loading"
@@ -980,7 +969,6 @@ defineExpose({
 					<AgentChannelTeamsIdentityCard
 						:name="effectiveDisplayName"
 						:description="effectiveDescription"
-						:personalisation="personalisation"
 						:tooltip="
 							savedIdentityOverride
 								? ''

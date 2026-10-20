@@ -355,7 +355,7 @@ export function useWorkflowCommands(): CommandGroup {
 				icon: {
 					component: N8nIcon,
 					props: {
-						icon: 'download',
+						icon: 'arrow-block-up',
 					},
 				},
 				keywords: [
@@ -393,7 +393,7 @@ export function useWorkflowCommands(): CommandGroup {
 				icon: {
 					component: N8nIcon,
 					props: {
-						icon: 'file-import',
+						icon: 'arrow-block-down',
 					},
 				},
 				handler: () => {

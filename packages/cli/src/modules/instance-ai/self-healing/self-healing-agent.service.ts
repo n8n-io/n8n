@@ -37,7 +37,7 @@ import { UnexpectedError } from 'n8n-workflow';
 import { N8N_VERSION, WORKFLOW_SDK_VERSION } from '@/constants';
 import type { ProxyTokenManager } from '@/services/proxy-token-manager';
 import { AiUsageService } from '@/services/ai-usage.service';
-import { modelStreamStallOptions } from '@/modules/agents/model-stream-stall-options';
+import { modelStreamStallOptions } from '@/utils/model-stream-stall-options';
 
 import { InProcessEventBus } from '../event-bus/in-process-event-bus';
 import { InstanceAiAdapterService } from '../instance-ai.adapter.service';

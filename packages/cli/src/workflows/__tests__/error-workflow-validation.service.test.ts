@@ -7,27 +7,11 @@ import { mock } from 'vitest-mock-extended';
 import { SubworkflowPolicyDenialError } from '@/errors/subworkflow-policy-denial.error';
 import type { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';
 import { NodeTypes } from '@/node-types';
-import {
-	ErrorWorkflowValidationService,
-	staticErrorWorkflowId,
-} from '@/workflows/error-workflow-validation.service';
+import { ErrorWorkflowValidationService } from '@/workflows/error-workflow-validation.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { PublishedWorkflowData, WorkflowPublishedDataService } from '@n8n/backend-services';
 
 const ERROR_TRIGGER_TYPE = 'n8n-nodes-base.errorTrigger';
-
-describe('staticErrorWorkflowId', () => {
-	it('returns the id for a concrete reference', () => {
-		expect(staticErrorWorkflowId('wf-1')).toBe('wf-1');
-	});
-
-	it.each([undefined, '', 'DEFAULT', '={{ $json.handler }}'])(
-		'returns undefined for %s, which names no concrete workflow',
-		(value) => {
-			expect(staticErrorWorkflowId(value)).toBeUndefined();
-		},
-	);
-});
 
 describe('ErrorWorkflowValidationService', () => {
 	const user = mock<User>({ id: 'user-1' });

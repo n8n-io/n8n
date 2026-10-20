@@ -183,7 +183,11 @@ export class ToolCallRunner {
 				suspension.abortObserved = true;
 				await this.cleanupAbortedTool(params, builtTool, input, suspension);
 				this.deps.onCancelled();
-				return this.buildCancelledOutcome(params, 'Run aborted');
+				return this.buildCancelledOutcome(
+					params,
+					'Run aborted',
+					'[Tool call canceled because the run stopped]',
+				);
 			}
 			return await this.toolError(params, error, builtTool);
 		}
@@ -324,9 +328,9 @@ export class ToolCallRunner {
 	private buildCancelledOutcome(
 		params: ProcessToolCallParams,
 		userMessage: string,
+		modelOutput = `[Tool call cancelled. User said: "${userMessage}"]`,
 	): ToolCallOutcome {
 		const { toolCallId, toolName, input, list } = params;
-		const modelOutput = `[Tool call cancelled. User said: "${userMessage}"]`;
 		this.eventBus.emit({
 			type: AgentEvent.ToolExecutionEnd,
 			toolCallId,

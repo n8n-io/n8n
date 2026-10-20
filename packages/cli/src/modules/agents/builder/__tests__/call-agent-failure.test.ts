@@ -8,7 +8,7 @@ describe('describeCallAgentFailure', () => {
 
 		expect(result.code).toBe('invalid_model');
 		expect(result.message).toContain('models/gemini-3.6-flash');
-		expect(result.message).toContain('resolve_llm');
+		expect(result.message).toContain('agent_builder_resolve_llm');
 	});
 
 	it('tells the agent not to touch the credential on a known model rejection', () => {
@@ -26,7 +26,7 @@ describe('describeCallAgentFailure', () => {
 
 		expect(result.code).toBe('execution_failed');
 		expect(result.message).toContain('404 Not Found');
-		expect(result.message).toContain('resolve_llm');
+		expect(result.message).toContain('agent_builder_resolve_llm');
 		expect(result.message).toMatch(/before suggesting anything about the credential/i);
 	});
 
@@ -46,7 +46,7 @@ describe('describeCallAgentFailure', () => {
 		expect(result.message).toMatch(/if this came from the model provider/i);
 	});
 
-	// `call_agent` runs the agent's tools too, so a tool's 404 often arrives in a
+	// `agent_builder_call_agent` runs the agent's tools too, so a tool's 404 often arrives in a
 	// message that also names the chat model. Blaming the model there would send
 	// the user after a model that works.
 	it.each([

@@ -1721,7 +1721,11 @@ describe('InstanceAiController', () => {
 				);
 
 				expect(memoryService.restoreThreadMessages).not.toHaveBeenCalled();
-				expect(evalThreadRestore.deleteAgents).toHaveBeenCalledWith(['agent-seed-1'], 'project-1');
+				expect(evalThreadRestore.deleteAgents).toHaveBeenCalledWith(
+					['agent-seed-1'],
+					'project-1',
+					expect.objectContaining({ id: expect.any(String) }),
+				);
 			});
 
 			it('should roll the binding back when the message write fails', async () => {
@@ -1734,7 +1738,11 @@ describe('InstanceAiController', () => {
 
 				await expect(controller.restoreEvalThread(req, res, agentPayload)).rejects.toThrow('boom');
 
-				expect(evalThreadRestore.deleteAgents).toHaveBeenCalledWith(['agent-seed-1'], 'project-1');
+				expect(evalThreadRestore.deleteAgents).toHaveBeenCalledWith(
+					['agent-seed-1'],
+					'project-1',
+					expect.objectContaining({ id: expect.any(String) }),
+				);
 				// The prior metadata survives AND the binding key is cleared — handing
 				// back only the snapshot would leave the thread bound to agents the
 				// rollback just deleted, because updateThread merges.
@@ -1753,7 +1761,11 @@ describe('InstanceAiController', () => {
 
 				// No messages were written, and the artifacts are rolled back.
 				expect(memoryService.restoreThreadMessages).not.toHaveBeenCalled();
-				expect(evalThreadRestore.deleteAgents).toHaveBeenCalledWith(['agent-seed-1'], 'project-1');
+				expect(evalThreadRestore.deleteAgents).toHaveBeenCalledWith(
+					['agent-seed-1'],
+					'project-1',
+					expect.objectContaining({ id: expect.any(String) }),
+				);
 			});
 		});
 
@@ -2411,7 +2423,12 @@ describe('InstanceAiController', () => {
 			await expect(controller.persistPendingAgent(req, res, THREAD_ID, payload)).resolves.toBe(
 				result,
 			);
-			expect(pendingAgentService.persistAndBind).toHaveBeenCalledWith(req.user, THREAD_ID, payload);
+			expect(pendingAgentService.persistAndBind).toHaveBeenCalledWith(
+				req.user,
+				THREAD_ID,
+				payload,
+				undefined,
+			);
 		});
 
 		it.each([

@@ -175,14 +175,25 @@ export type OAuth2FailureReason = 'invalid_token' | 'verifier_unavailable' | 'in
 
 export type N8nOAuth2ValidationResult =
 	| { valid: true; user: IUser }
-	| { valid: false; reason: OAuth2FailureReason };
+	| {
+			valid: false;
+			reason: OAuth2FailureReason;
+			/**
+			 * The `WWW-Authenticate` value for the 401 that answers this request. It names the
+			 * resource metadata, so a client can discover the issuers the resource accepts.
+			 */
+			challenge?: string;
+	  };
 
 export type N8nOAuth2FlowResult =
 	| {
 			valid: true;
 			token: string;
-			/** Rotated on every use. Never hand this to a browser document or to page script. */
-			refreshToken: string;
+			/**
+			 * Rotated on every use. Never hand this to a browser document or to page script.
+			 * Absent when the issuer granted no refresh token; the flow restarts when `token` expires.
+			 */
+			refreshToken?: string;
 			/** Lifetime of `token` in seconds, as the AS reports it. A duration, not an
 			 * absolute `exp`, so a browser scheduling off it is immune to clock skew. */
 			expiresIn: number;
@@ -1255,6 +1266,24 @@ export type DataTableProxyFunctions = {
 	getDataTableProxy?(dataTableId: string): Promise<IDataTableProjectService>;
 };
 
+/** What a node may ask of a trusted source: the surface it is used on and the capability it needs. */
+export type TrustedSourceFilter = {
+	surface: 'trigger';
+	capability?: 'verify-jwt' | 'redirect-login';
+};
+
+/** One entry of the trusted-source dropdown on a trigger node. */
+export type TrustedSourceOption = { id: string; name: string };
+
+export type TrustedSourceDirectory = {
+	listTrustedSources(filter: TrustedSourceFilter): Promise<TrustedSourceOption[]>;
+};
+
+export type TrustedSourceFunctions = {
+	// Optional to account for situations where the inbound-auth-core module is disabled
+	listTrustedSources?(filter: TrustedSourceFilter): Promise<TrustedSourceOption[]>;
+};
+
 export type CredentialCheckStatus = {
 	credentialId: string;
 	credentialName: string;
@@ -1506,7 +1535,10 @@ export interface ILoadOptionsFunctions extends FunctionsBase {
 	): NodeParameterValueType | object | undefined;
 	getCurrentNodeParameters(): INodeParameters | undefined;
 
-	helpers: RequestHelperFunctions & SSHTunnelFunctions & DataTableProxyFunctions;
+	helpers: RequestHelperFunctions &
+		SSHTunnelFunctions &
+		DataTableProxyFunctions &
+		TrustedSourceFunctions;
 }
 
 export type FieldValueOption = { name: string; type: FieldType | 'any' };
@@ -1642,6 +1674,10 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 	 * Optional `metadata` is stashed server-side against this flow's one-time `state`
 	 * (never sent to the browser) and returned by `completeN8nOAuth2Flow` on success —
 	 * a per-flow slot for carrying data (e.g. the original request query) across the bounce.
+	 *
+	 * The issuer the user signs in at is the trusted source the trigger's resource accepts,
+	 * read from the node's `trustedSource` parameter on the host side. Without one, the
+	 * instance's own OAuth2 server is used.
 	 */
 	beginN8nOAuth2Flow(resourceUrl: string, metadata?: Record<string, string>): Promise<string>;
 	/**
@@ -1650,6 +1686,9 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 	 * exchanges the code for an access token **server-side** (the code never reaches the
 	 * sandboxed form page), and validates it. Returns the token and resolved user on
 	 * success, or a failure reason.
+	 *
+	 * The resource must still accept the source the flow began with; a flow whose trigger
+	 * switched issuer in between is refused.
 	 */
 	completeN8nOAuth2Flow(code: string, state: string): Promise<N8nOAuth2FlowResult>;
 	/**

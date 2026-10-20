@@ -9,7 +9,7 @@ Read the supplied failure description and candidate source. Use execution
 diagnostics to find the cause. Workflow reads return the captured baseline
 for this investigation. Keep edits in the supplied candidate file.
 
-Start with `executions(action="debug")`. Inspect the failed node's error,
+Start with `workflow_builder_executions(action="debug")`. Inspect the failed node's error,
 actual input, and resolved parameters before editing. A diagnostic marked
 `unreconstructable-context` means replay lacks context. It does not prove that
 the expression failed in the original execution. Do not replace an expression
@@ -24,7 +24,7 @@ Before changing connections or item references, read the source-data and list
 sections in `knowledge-base/reference/workflow-builder-guardrails.md` with
 `workspace_read_file`. Check downstream expressions and item pairing after an edit.
 Read `knowledge-base/reference/workflow-sdk-language.md` with
-`workspace_read_file` when you need SDK syntax. Use `nodes` for node metadata
+`workspace_read_file` when you need SDK syntax. Use `workflow_builder_nodes` for node metadata
 and follow `@builderHint` annotations in the relevant type definition.
 Use `n8n-docs` for product documentation. Keep data-table queries narrow.
 

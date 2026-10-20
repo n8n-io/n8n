@@ -15,7 +15,7 @@ import { agentChannelKey, agentChannelRef, type AgentChannelRef } from '../utils
 import { AgentChannelStatusReporter } from './agent-channel-status-reporter';
 import { ChatIntegrationRegistry } from './agent-chat-integration';
 import { ChatIntegrationService } from './chat-integration.service';
-import type { Agent } from '../entities/agent.entity';
+import type { ProjectAgent } from '../entities/agent.entity';
 import type { AgentChannelStatus } from '../entities/agent-channel-status.entity';
 import { AgentChannelStatusRepository } from '../repositories/agent-channel-status.repository';
 import { AgentRepository } from '../repositories/agent.repository';
@@ -24,7 +24,7 @@ import { AgentRepository } from '../repositories/agent.repository';
 export type ChannelReconcileReason = 'startup' | 'leader-takeover' | 'interval';
 
 /** Channels a pass should see running, keyed by {@link agentChannelKey}. */
-type WantedChannels = Map<string, { agent: Agent; integration: AgentIntegrationConfig }>;
+type WantedChannels = Map<string, { agent: ProjectAgent; integration: AgentIntegrationConfig }>;
 
 /**
  * How long shutdown waits for a pass to finish before withdrawing anyway. Well
@@ -349,7 +349,7 @@ export class AgentChannelReconciler {
 		}
 	}
 
-	private collectWantedChannels(agents: Agent[]): WantedChannels {
+	private collectWantedChannels(agents: ProjectAgent[]): WantedChannels {
 		const wanted: WantedChannels = new Map();
 		for (const agent of agents) {
 			const integrations = (agent.integrations ?? []).filter(
@@ -366,7 +366,7 @@ export class AgentChannelReconciler {
 	}
 
 	private async settleChannel(
-		agent: Agent,
+		agent: ProjectAgent,
 		integration: AgentIntegrationConfig,
 		own: AgentChannelStatus | undefined,
 		reason: ChannelReconcileReason,
@@ -391,7 +391,7 @@ export class AgentChannelReconciler {
 	}
 
 	private async startWantedChannel(
-		agent: Agent,
+		agent: ProjectAgent,
 		integration: AgentIntegrationConfig,
 		own: AgentChannelStatus | undefined,
 		reason: ChannelReconcileReason,
