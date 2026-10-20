@@ -170,6 +170,13 @@ describe('Expression - native evaluation verify mode', () => {
 			random.mockRestore();
 		});
 
+		test('does not compare without a reporter', () => {
+			modules.Expression.setNativeEvaluationVerify(1);
+
+			expect(evaluate('={{ $json.name.trimEnd() }}')).toBe('secret-name');
+			expect(evaluateNatively).not.toHaveBeenCalled();
+		});
+
 		test('does not compare in on mode', () => {
 			modules.Expression.setNativeEvaluation(true);
 			evaluateNatively.mockReturnValueOnce({ handled: true, value: 'native' });

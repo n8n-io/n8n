@@ -625,6 +625,7 @@ export class Expression {
 	private static shouldVerifyNative(): boolean {
 		return (
 			this.nativeEvaluation === 'verify' &&
+			this.reportNativeVerifyMismatch !== undefined &&
 			this.nativeEvaluationVerifySample > 0 &&
 			this.shouldUseVm() &&
 			Math.random() < this.nativeEvaluationVerifySample

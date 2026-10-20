@@ -286,7 +286,9 @@ export abstract class BaseCommand<F = never> {
 					compileCache,
 					nativeEvaluation,
 					nativeEvaluationVerifySample,
-					reportNativeVerifyMismatch: (mismatch) => this.reportNativeVerifyMismatch(mismatch),
+					reportNativeVerifyMismatch: this.globalConfig.sentry.backendDsn
+						? (mismatch) => this.reportNativeVerifyMismatch(mismatch)
+						: undefined,
 					observability,
 				});
 			} catch (error) {
@@ -310,7 +312,7 @@ export abstract class BaseCommand<F = never> {
 			!this.globalConfig.sentry.backendDsn
 		) {
 			this.logger.warn(
-				'Native evaluation verify mode reports differences only to Sentry, which is not configured',
+				'Native evaluation verify mode does nothing because Sentry is not configured',
 			);
 		}
 	}

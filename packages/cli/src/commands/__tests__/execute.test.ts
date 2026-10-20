@@ -211,6 +211,7 @@ test('should exit with a crash when expression engine init fails', async () => {
 				nativeEvaluation: 'off',
 				nativeEvaluationVerifySample: 0.01,
 			},
+			sentry: { backendDsn: 'https://dsn' },
 			generic: { gracefulShutdownTimeout: 30 },
 		}),
 	);
@@ -297,8 +298,7 @@ test.each([
 
 		// assert
 
-		const warning =
-			'Native evaluation verify mode reports differences only to Sentry, which is not configured';
+		const warning = 'Native evaluation verify mode does nothing because Sentry is not configured';
 		if (warns) {
 			expect(logger.warn).toHaveBeenCalledWith(warning);
 		} else {
@@ -306,6 +306,34 @@ test.each([
 		}
 	},
 );
+
+test('passes no verify reporter when Sentry is not configured', async () => {
+	// arrange
+
+	const initSpy = vi.spyOn(Expression, 'initExpressionEngine').mockResolvedValue();
+	Container.set(
+		GlobalConfig,
+		mock<GlobalConfig>({
+			taskRunners: {},
+			nodes: {},
+			expressionEngine: { engine: 'vm', nativeEvaluation: 'verify' },
+			sentry: { backendDsn: '' },
+			generic: { gracefulShutdownTimeout: 30 },
+		}),
+	);
+
+	class ExpressionCommand extends BaseCommand {
+		override needsExpressionEngine = true;
+	}
+
+	// act
+
+	await new ExpressionCommand().init();
+
+	// assert
+
+	expect(initSpy.mock.calls[0][0].reportNativeVerifyMismatch).toBeUndefined();
+});
 
 test('exitWithCrash logs the crash message to the console', async () => {
 	// arrange
