@@ -68,6 +68,7 @@ function sharedSettings(
 		},
 		localGatewayDisabled: false,
 		browserUseEnabled: false,
+		cloudBrowserEnabled: false,
 		...overrides,
 	};
 }

@@ -36,6 +36,7 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 // Experiment cleanup: remove with openWorkflowInAssistant.
 import DefaultEditorSetting from '@/experiments/openWorkflowInAssistant/components/DefaultEditorSetting.vue';
+import { useInstanceAiCloudBrowserExperiment } from '@/experiments/instanceAiCloudBrowser';
 import { useInstanceAiComputerUseExperiment } from '@/experiments/instanceAiComputerUse';
 import { isContextPreferencesEnabled } from '@/features/settings/context/context.utils';
 import { useInstanceCredentialTest } from '../composables/useInstanceCredentialTest';
@@ -64,6 +65,7 @@ const {
 } = useInstanceAiConfiguration();
 
 const { isFeatureEnabled: isComputerUseExperimentEnabled } = useInstanceAiComputerUseExperiment();
+const { isEnabled: isCloudBrowserExperimentEnabled } = useInstanceAiCloudBrowserExperiment();
 
 const DOCS_URL = 'https://docs.n8n.io/deploy/host-n8n/configure-n8n/set-up-n8n-assistant';
 
@@ -72,6 +74,9 @@ const isEnabled = computed(
 	() => store.settings?.enabled ?? settingsStore.moduleSettings?.['instance-ai']?.enabled ?? false,
 );
 const isOff = computed(() => !isEnabled.value);
+const showCloudBrowserRow = computed(
+	() => isCloudBrowserExperimentEnabled.value && settingsStore.isAiGatewayEnabled,
+);
 const isMcpAccessEnabled = computed(() => store.settings?.mcpAccessEnabled ?? true);
 const isSelfManaged = computed(() => !store.isProxyEnabled && !store.isCloudManaged);
 const showCredentialsRows = computed(() => isAdmin.value && isSelfManaged.value);
@@ -442,6 +447,11 @@ function handleBrowserUseToggle(value: boolean) {
 	void store.save();
 }
 
+function handleCloudBrowserToggle(value: boolean) {
+	store.setField('cloudBrowserEnabled', value);
+	void store.save();
+}
+
 function handleMcpAccessToggle(value: boolean) {
 	store.setField('mcpAccessEnabled', value);
 	void store.save();
@@ -684,6 +694,23 @@ function openAiUsageSettings() {
 								:aria-label="i18n.baseText('settings.n8nAgent.browserUse.label')"
 								data-test-id="n8n-agent-browser-use-toggle"
 								@update:model-value="handleBrowserUseToggle"
+							/>
+						</template>
+					</N8nSettingsRow>
+
+					<N8nSettingsRow
+						v-if="showCloudBrowserRow"
+						:class="{ [$style.dim]: isOff }"
+						:title="i18n.baseText('settings.n8nAgent.cloudBrowser.label')"
+						:description="i18n.baseText('settings.n8nAgent.cloudBrowser.description')"
+					>
+						<template #action>
+							<N8nSwitch
+								:model-value="store.settings?.cloudBrowserEnabled ?? false"
+								:disabled="store.isSaving || isOff"
+								:aria-label="i18n.baseText('settings.n8nAgent.cloudBrowser.label')"
+								data-test-id="n8n-agent-cloud-browser-toggle"
+								@update:model-value="handleCloudBrowserToggle"
 							/>
 						</template>
 					</N8nSettingsRow>

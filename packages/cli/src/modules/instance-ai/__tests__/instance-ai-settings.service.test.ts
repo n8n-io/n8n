@@ -24,6 +24,7 @@ import type { UserService } from '@/services/user.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { InstanceCredentialBroker } from '@/credentials/instance-credential-broker';
 
+import type { InstanceAiCloudBrowserService } from '../browser/instance-ai-cloud-browser.service';
 import {
 	INSTANCE_AI_MODEL_CREDENTIAL_POLICY,
 	INSTANCE_AI_SEARCH_CREDENTIAL_POLICY,
@@ -67,6 +68,7 @@ describe('InstanceAiSettingsService', () => {
 	const instanceCredentialBroker = mock<InstanceCredentialBroker>();
 	const sandboxSettingsService = mock<SandboxSettingsService>();
 	const eventService = mock<EventService>();
+	const cloudBrowserService = mock<InstanceAiCloudBrowserService>();
 	const logger = mock<Logger>();
 
 	let service: InstanceAiSettingsService;
@@ -84,6 +86,7 @@ describe('InstanceAiSettingsService', () => {
 			instanceCredentialBroker,
 			sandboxSettingsService,
 			eventService,
+			cloudBrowserService,
 		);
 
 	beforeEach(() => {
@@ -1806,6 +1809,64 @@ describe('InstanceAiSettingsService', () => {
 				serviceUrl: 'http://sandbox-api:8080',
 				apiKey: 'credential-key',
 			});
+		});
+	});
+
+	describe('cloud browser setting', () => {
+		const admin = mock<User>({ id: 'admin-1' });
+
+		beforeEach(() => {
+			aiService.isProxyEnabled.mockReturnValue(false);
+			cloudBrowserService.isAvailable.mockResolvedValue(true);
+		});
+
+		it('is off by default', async () => {
+			expect((await service.getAdminSettings()).cloudBrowserEnabled).toBe(false);
+			expect(service.isCloudBrowserEnabled()).toBe(false);
+		});
+
+		it('turns on and is saved when the instance can use the cloud browser', async () => {
+			const result = await service.updateAdminSettings({ cloudBrowserEnabled: true }, admin);
+
+			expect(result.cloudBrowserEnabled).toBe(true);
+			expect(JSON.parse(persistedSettingsValue ?? '{}')).toMatchObject({
+				cloudBrowserEnabled: true,
+			});
+			expect(service.isCloudBrowserEnabled()).toBe(true);
+		});
+
+		it('turns on on cloud, where other fields are managed', async () => {
+			globalConfig.deployment.type = 'cloud';
+
+			await expect(
+				service.updateAdminSettings({ cloudBrowserEnabled: true }, admin),
+			).resolves.toMatchObject({ cloudBrowserEnabled: true });
+		});
+
+		it('refuses to turn on, and saves nothing, when the instance cannot use the cloud browser', async () => {
+			cloudBrowserService.isAvailable.mockResolvedValue(false);
+
+			await expect(
+				service.updateAdminSettings({ cloudBrowserEnabled: true }, admin),
+			).rejects.toThrow(UnprocessableRequestError);
+			expect(settingsRepository.upsertByKey).not.toHaveBeenCalled();
+		});
+
+		it('turns off even when the instance cannot use the cloud browser', async () => {
+			await service.updateAdminSettings({ cloudBrowserEnabled: true }, admin);
+			cloudBrowserService.isAvailable.mockResolvedValue(false);
+
+			const result = await service.updateAdminSettings({ cloudBrowserEnabled: false }, admin);
+
+			expect(result.cloudBrowserEnabled).toBe(false);
+		});
+
+		it('loads the saved toggle from the database', async () => {
+			persistedSettingsValue = JSON.stringify({ cloudBrowserEnabled: true });
+
+			await service.loadFromDb();
+
+			expect((await service.getAdminSettings()).cloudBrowserEnabled).toBe(true);
 		});
 	});
 

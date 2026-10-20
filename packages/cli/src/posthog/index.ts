@@ -3,6 +3,7 @@ import {
 	CANVAS_NODE_CONTEXT_FLAG,
 	CREDENTIAL_DESCRIPTIONS_FLAG,
 	INSTANCE_AI_NODE_USAGE_FLAG,
+	INSTANCE_AI_CLOUD_BROWSER_FLAG,
 	CONFIG_EVALUATIONS_ENABLED_VARIANT,
 	CONFIG_EVALUATIONS_FLAG,
 	EVAL_COLLECTIONS_FLAG,
@@ -196,11 +197,14 @@ export class PostHogClient {
 		// The editor and backend must use the same instance result.
 		const credentialDescriptionsEnabled =
 			(await this.getFeatureFlagForInstance(CREDENTIAL_DESCRIPTIONS_FLAG)) === true;
+		const cloudBrowserEnabled =
+			(await this.getFeatureFlagForInstance(INSTANCE_AI_CLOUD_BROWSER_FLAG)) === true;
 		return {
 			...overridden,
 			featureFlags: {
 				...overridden.featureFlags,
 				[CREDENTIAL_DESCRIPTIONS_FLAG]: credentialDescriptionsEnabled,
+				[INSTANCE_AI_CLOUD_BROWSER_FLAG]: cloudBrowserEnabled,
 			},
 		};
 	}
