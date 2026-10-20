@@ -112,6 +112,14 @@ ruleTester.run('no-emoji-in-options', NoEmojiInOptionsRule, {
 			`,
 		},
 		{
+			name: 'keyof INodeProperties is not a node property value',
+			filename: '/tmp/nodes/resources/keys.ts',
+			code: `
+				export const keys: (keyof INodeProperties)[] = [{ name: '🚀 Rocket' }];
+				export const key: keyof INodeProperties = { displayName: '🚀 Rocket' };
+			`,
+		},
+		{
 			name: 'variable that is not typed as INodeProperties is ignored in a non .node.ts file',
 			filename: '/tmp/helper.ts',
 			code: `
@@ -181,6 +189,92 @@ ruleTester.run('no-emoji-in-options', NoEmojiInOptionsRule, {
 				];
 			`,
 			errors: [{ messageId: 'emojiInOption', data: { key: 'name', emoji: '✅' } }],
+		},
+		{
+			name: 'emoji in option name from an INodePropertyOptions[] resource file',
+			filename: '/tmp/nodes/resources/sortOptions.ts',
+			code: `
+				import type { INodePropertyOptions } from 'n8n-workflow';
+
+				export const sortOptions: INodePropertyOptions[] = [
+					{ name: '✅ Newest', value: 'newest' },
+					{ name: 'Oldest', value: 'oldest' },
+				];
+			`,
+			errors: [{ messageId: 'emojiInOption', data: { key: 'name', emoji: '✅' } }],
+		},
+		{
+			name: 'emoji in a single INodePropertyOptions resource',
+			filename: '/tmp/nodes/resources/sortOptions.ts',
+			code: `
+				export const newest: INodePropertyOptions = { name: '✅ Newest', value: 'newest' };
+			`,
+			errors: [{ messageId: 'emojiInOption', data: { key: 'name', emoji: '✅' } }],
+		},
+		{
+			name: 'emoji in an INodePropertyCollection resource file',
+			filename: '/tmp/nodes/resources/filters.ts',
+			code: `
+				import type { INodePropertyCollection } from 'n8n-workflow';
+
+				export const filters: INodePropertyCollection = {
+					displayName: 'Filter 🚀',
+					name: 'filter',
+					values: [{ displayName: 'Status', name: 'status', type: 'string', default: '' }],
+				};
+			`,
+			errors: [{ messageId: 'emojiInOption', data: { key: 'displayName', emoji: '🚀' } }],
+		},
+		{
+			name: 'emoji in an INodePropertyCollection[] resource file',
+			filename: '/tmp/nodes/resources/filters.ts',
+			code: `
+				export const filters: INodePropertyCollection[] = [
+					{
+						displayName: 'Filter',
+						name: 'filter',
+						values: [{ displayName: 'Status 🎉', name: 'status', type: 'string', default: '' }],
+					},
+				];
+			`,
+			errors: [{ messageId: 'emojiInOption', data: { key: 'displayName', emoji: '🎉' } }],
+		},
+		{
+			name: 'emoji in an INodeTypeDescription from a versionDescription file',
+			filename: '/tmp/nodes/Github/v1/actions/versionDescription.ts',
+			code: `
+				import type { INodeTypeDescription } from 'n8n-workflow';
+
+				export const versionDescription: INodeTypeDescription = {
+					displayName: '🚀 Github',
+					name: 'github',
+					properties: [
+						{
+							displayName: 'Operation',
+							name: 'operation',
+							type: 'options',
+							options: [{ name: '✅ Create', value: 'create' }],
+							default: 'create',
+						},
+					],
+				};
+			`,
+			errors: [
+				{ messageId: 'emojiInOption', data: { key: 'displayName', emoji: '🚀' } },
+				{ messageId: 'emojiInOption', data: { key: 'name', emoji: '✅' } },
+			],
+		},
+		{
+			name: 'emoji in an INodeTypeDescription cast with `as` in a non .node.ts file',
+			filename: '/tmp/nodes/Github/v1/actions/versionDescription.ts',
+			code: `
+				export const versionDescription = {
+					displayName: '🚀 Github',
+					name: 'github',
+					properties: [],
+				} as INodeTypeDescription;
+			`,
+			errors: [{ messageId: 'emojiInOption', data: { key: 'displayName', emoji: '🚀' } }],
 		},
 		{
 			name: 'emoji in resource file typed as readonly INodeProperties[]',

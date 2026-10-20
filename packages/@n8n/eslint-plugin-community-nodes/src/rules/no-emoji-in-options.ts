@@ -21,20 +21,35 @@ const LABEL_KEYS = new Set(['name', 'displayName']);
 const ARRAY_TYPE_NAMES = new Set(['Array', 'ReadonlyArray']);
 
 /**
- * Matches `INodeProperties`, `INodeProperties[]`, `readonly INodeProperties[]`,
- * `Array<INodeProperties>` and `ReadonlyArray<INodeProperties>`.
+ * Types from `n8n-workflow` that describe user-facing node labels. Includes
+ * `INodeTypeDescription` for descriptions kept outside the `.node.ts` class,
+ * such as a `versionDescription.ts` file.
+ */
+const NODE_PROPERTY_TYPE_NAMES = new Set([
+	'INodeTypeDescription',
+	'INodeProperties',
+	'INodePropertyOptions',
+	'INodePropertyCollection',
+]);
+
+/**
+ * Matches a node property type (see `NODE_PROPERTY_TYPE_NAMES`), alone or as an
+ * array: `T`, `T[]`, `readonly T[]`, `Array<T>` and `ReadonlyArray<T>`.
  */
 const isNodePropertiesType = (typeNode: TSESTree.TypeNode): boolean => {
 	switch (typeNode.type) {
 		case AST_NODE_TYPES.TSArrayType:
 			return isNodePropertiesType(typeNode.elementType);
 		case AST_NODE_TYPES.TSTypeOperator:
-			return typeNode.typeAnnotation ? isNodePropertiesType(typeNode.typeAnnotation) : false;
+			// Skip `keyof` and `unique`: only `readonly T[]` wraps the property type.
+			return typeNode.operator === 'readonly' && typeNode.typeAnnotation
+				? isNodePropertiesType(typeNode.typeAnnotation)
+				: false;
 		case AST_NODE_TYPES.TSTypeReference: {
 			if (typeNode.typeName.type !== AST_NODE_TYPES.Identifier) {
 				return false;
 			}
-			if (typeNode.typeName.name === 'INodeProperties') {
+			if (NODE_PROPERTY_TYPE_NAMES.has(typeNode.typeName.name)) {
 				return true;
 			}
 			const [elementType] = typeNode.typeArguments?.params ?? [];
