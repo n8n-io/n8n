@@ -294,13 +294,8 @@ export class SelfHealingAgentService {
 					error: getErrorMessage(error),
 				});
 			}
-			if (signal.aborted) result.status = 'cancelled';
-			if (result.status === 'cancelled') {
-				result.reason = options.getAbortReason();
-				delete result.output;
-				delete result.candidate;
-				delete result.finishReason;
-				delete result.validationError;
+			if (signal.aborted || result.status === 'cancelled') {
+				this.markResultCancelled(result, options.getAbortReason());
 			}
 		}
 
@@ -308,12 +303,7 @@ export class SelfHealingAgentService {
 			await options.onComplete(result, signal);
 		} catch (error) {
 			if (signal.aborted && result.status !== 'cancelled') {
-				result.status = 'cancelled';
-				result.reason = options.getAbortReason();
-				delete result.output;
-				delete result.candidate;
-				delete result.finishReason;
-				delete result.validationError;
+				this.markResultCancelled(result, options.getAbortReason());
 			}
 			throw error;
 		} finally {
@@ -329,6 +319,15 @@ export class SelfHealingAgentService {
 				});
 		}
 		return result;
+	}
+
+	private markResultCancelled(result: SelfHealingRunResult, reason: string): void {
+		result.status = 'cancelled';
+		result.reason = reason;
+		delete result.output;
+		delete result.candidate;
+		delete result.finishReason;
+		delete result.validationError;
 	}
 
 	private async validateInput({ user, baseline, executionId }: SelfHealingRunInput) {
