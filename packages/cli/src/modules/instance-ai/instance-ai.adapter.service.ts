@@ -2738,10 +2738,7 @@ export class InstanceAiAdapterService {
 				// `workflow-execution.service` persists. `runData` stays `null` when the
 				// plan has none, so `createRunExecutionData` does not initialize it and
 				// turn a chain run into a partial one.
-				const offloadingManualExecutionsInQueueMode =
-					globalConfig.executions?.mode === 'queue' &&
-					process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS === 'true';
-				if (offloadingManualExecutionsInQueueMode) {
+				if (globalConfig.executions?.mode === 'queue') {
 					runData.executionData = createRunExecutionData({
 						startData: { destinationNode: runData.destinationNode },
 						resultData: { pinData: stepPinData, runData: plan.runData ?? null },
