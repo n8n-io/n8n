@@ -51,7 +51,7 @@ import { WorkflowSuggestionService } from '../workflow-suggestions/workflow-sugg
 import { toWorkflowJSON } from '../workflow-json';
 import { SelfHealingExecutionReferenceService } from './self-healing-execution-reference.service';
 import { SelfHealingCandidateService } from './self-healing-candidate.service';
-import { compileCandidateWorkflow, type CandidateWorkflowResult } from './candidate-workflow';
+import type { CandidateWorkflowResult } from './candidate-workflow';
 
 export type SelfHealingRunInput = {
 	user: User;
@@ -252,7 +252,10 @@ export class SelfHealingAgentService {
 				result.candidate = {
 					filePath,
 					compile: async () =>
-						await compileCandidateWorkflow({ baseline, context, filePath, abortSignal: signal }),
+						await this.candidates.compile(
+							{ baseline, context, filePath, abortSignal: signal },
+							await this.suggestions.requireEditor(baseline.backgroundUserId, baseline.workflowId),
+						),
 				};
 			}
 			if (stream.status === 'suspended') {

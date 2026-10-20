@@ -33,9 +33,7 @@ import {
 } from '../self-healing-agent.service';
 import type { SelfHealingExecutionReferenceService } from '../self-healing-execution-reference.service';
 import type { SelfHealingCandidateService } from '../self-healing-candidate.service';
-import { compileCandidateWorkflow, type CandidateWorkflowResult } from '../candidate-workflow';
-
-vi.mock('../candidate-workflow', () => ({ compileCandidateWorkflow: vi.fn() }));
+import type { CandidateWorkflowResult } from '../candidate-workflow';
 
 vi.mock('@n8n/instance-ai', async (importOriginal) => ({
 	...(await importOriginal<typeof import('@n8n/instance-ai')>()),
@@ -303,6 +301,7 @@ describe('SelfHealingAgentService', () => {
 	it('waits for result storage with final usage and the original candidate context', async () => {
 		const entered = createDeferredPromise();
 		const persisted = createDeferredPromise();
+		const currentUser = mock<User>({ id: user.id });
 		const candidate: CandidateWorkflowResult = {
 			success: true,
 			workflow: baseline.original,
@@ -315,9 +314,10 @@ describe('SelfHealingAgentService', () => {
 				resolvedCredentialsByNode: {},
 			},
 		};
-		vi.mocked(compileCandidateWorkflow).mockResolvedValue(candidate);
+		candidates.compile.mockResolvedValue(candidate);
 		options.onComplete = vi.fn(async (result) => {
 			expect(result.usage).toMatchObject({ credits: 0.25 });
+			suggestions.requireEditor.mockResolvedValueOnce(currentUser);
 			expect(await result.candidate?.compile()).toEqual(candidate);
 			entered.resolve();
 			await persisted.promise;
@@ -325,12 +325,13 @@ describe('SelfHealingAgentService', () => {
 		const pending = service.execute(input, options);
 		await entered.promise;
 		expect(options.onFinish).not.toHaveBeenCalled();
-		expect(compileCandidateWorkflow).toHaveBeenCalledWith(
+		expect(candidates.compile).toHaveBeenCalledWith(
 			expect.objectContaining({
 				baseline,
 				filePath: validOutput.candidateFilePath,
 				context: expect.objectContaining({ workspace: expect.anything() }),
 			}),
+			currentUser,
 		);
 		persisted.resolve();
 		await pending;
@@ -456,7 +457,7 @@ describe('SelfHealingAgentService', () => {
 
 		expect(result.candidate?.filePath).toBe(filePath);
 		await result.candidate?.compile();
-		expect(compileCandidateWorkflow).toHaveBeenCalledWith(expect.objectContaining({ filePath }));
+		expect(candidates.compile).toHaveBeenCalledWith(expect.objectContaining({ filePath }), user);
 	});
 
 	it('preserves valid output when accounting throws', async () => {
