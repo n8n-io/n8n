@@ -79,13 +79,14 @@ export class AppVersionRepository extends BaseRepository<AppVersion> {
 	async setLabel(
 		versionId: string,
 		label: string | null,
-		ctx: OperationContext,
+		ctx: OperationContext = {},
 	): Promise<AppVersion | null> {
-		const manager = this.managerFor(ctx);
-		const where = { id: versionId };
-		const result = await manager.update(AppVersion, where, { label });
-		if (!result.affected) return null;
-		return await manager.findOneBy(AppVersion, where);
+		return await this.runInTransaction(ctx, async (manager) => {
+			const where = { id: versionId };
+			const result = await manager.update(AppVersion, where, { label });
+			if (!result.affected) return null;
+			return await manager.findOneBy(AppVersion, where);
+		});
 	}
 
 	async clearBundles(versionIds: string[], ctx: OperationContext): Promise<void> {

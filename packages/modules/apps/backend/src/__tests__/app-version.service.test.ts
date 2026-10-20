@@ -1,5 +1,4 @@
 import { Logger } from '@n8n/backend-common';
-import { DbLockService, type OperationContext } from '@n8n/db';
 import { BadRequestError, ConflictError, NotFoundError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
@@ -21,9 +20,6 @@ function createService() {
 	const sourceVersions = mock<AppSourceVersionStore>();
 	const buildResults = mock<AppBuildResultStore>();
 	const retention = mock<AppRetentionService>();
-	const locks = mock<DbLockService>();
-	const ctx = mock<OperationContext>();
-	locks.withLockContext.mockImplementation(async (_key, fn) => await fn(ctx));
 	const version = mock<AppVersion>({
 		id: versionId,
 		appId,
@@ -43,7 +39,6 @@ function createService() {
 		sourceVersions,
 		buildResults,
 		retention,
-		locks,
 		mock<Logger>(),
 	);
 	return { service, apps, versions, sourceVersions, buildResults, retention, version };
@@ -140,7 +135,7 @@ describe('AppVersionService', () => {
 			});
 
 			expect(await service.attachBundle('project', appId, versionId, files)).toEqual(completed);
-			expect(buildResults.recordSuccess).toHaveBeenCalledWith(versionId, files);
+			expect(buildResults.recordSuccess).toHaveBeenCalledWith(appId, versionId, files);
 		},
 	);
 
@@ -179,6 +174,7 @@ describe('AppVersionService', () => {
 			...version,
 			label,
 		});
+		expect(versions.setLabel).toHaveBeenCalledWith(versionId, label);
 	});
 
 	it('rejects an oversized label before changing the version', async () => {

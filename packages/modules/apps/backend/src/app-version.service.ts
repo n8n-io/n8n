@@ -1,6 +1,6 @@
 import { appSchema, appVersionSchema } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { DbLock, DbLockService, type OperationContext } from '@n8n/db';
+import type { OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { BadRequestError, ConflictError, NotFoundError } from '@n8n/errors';
 import { randomUUID } from 'node:crypto';
@@ -23,7 +23,6 @@ export class AppVersionService {
 		private readonly sourceVersions: AppSourceVersionStore,
 		private readonly buildResults: AppBuildResultStore,
 		private readonly retention: AppRetentionService,
-		private readonly locks: DbLockService,
 		private readonly logger: Logger,
 	) {}
 
@@ -108,12 +107,10 @@ export class AppVersionService {
 		label: string | null,
 	): Promise<AppVersion> {
 		this.checkLabel(label);
-		return await this.locks.withLockContext(DbLock.APPS_STORAGE, async (ctx) => {
-			await this.getVersion(projectId, appId, versionId, ctx);
-			const version = await this.versions.setLabel(versionId, label, ctx);
-			if (!version) throw new NotFoundError('App version not found.');
-			return version;
-		});
+		await this.getVersion(projectId, appId, versionId);
+		const version = await this.versions.setLabel(versionId, label);
+		if (!version) throw new NotFoundError('App version not found.');
+		return version;
 	}
 
 	private async requireApp(projectId: string, appId: string, ctx: OperationContext = {}) {
