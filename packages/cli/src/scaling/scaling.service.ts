@@ -641,34 +641,43 @@ export class ScalingService {
 					 * A v1 message from an older worker carries no result, but it
 					 * still ends the wait for the job.
 					 */
-					void this.jobOutcomeTracker.recordFinished(
-						queue.name,
-						jobId,
-						msg.executionId,
-						msg.version === 2
-							? {
-									success: msg.success,
-									error: msg.error,
-									status: msg.status,
-									lastNodeExecuted: msg.lastNodeExecuted,
-									usedDynamicCredentials: msg.usedDynamicCredentials,
-									metadata: msg.metadata,
-									startedAt: new Date(msg.startedAt),
-									stoppedAt: new Date(msg.stoppedAt),
-									// Dropping `waitTill` here makes main mistake a waiting execution
-									// for a finished one and delete it when the workflow does not
-									// save successful executions
-									waitTill: msg.waitTill ? new Date(msg.waitTill) : null,
-								}
-							: undefined,
-					);
-
-					this.logger.info(`Execution ${msg.executionId} (job ${jobId}) finished`, {
-						workerId: msg.workerId,
-						executionId: msg.executionId,
-						jobId,
-						success: msg.success,
-					});
+					void this.jobOutcomeTracker
+						.recordFinished(
+							queue.name,
+							jobId,
+							msg.executionId,
+							msg.version === 2
+								? {
+										success: msg.success,
+										error: msg.error,
+										status: msg.status,
+										lastNodeExecuted: msg.lastNodeExecuted,
+										usedDynamicCredentials: msg.usedDynamicCredentials,
+										metadata: msg.metadata,
+										startedAt: new Date(msg.startedAt),
+										stoppedAt: new Date(msg.stoppedAt),
+										// Dropping `waitTill` here makes main mistake a waiting execution
+										// for a finished one and delete it when the workflow does not
+										// save successful executions
+										waitTill: msg.waitTill ? new Date(msg.waitTill) : null,
+									}
+								: undefined,
+						)
+						.then(() => {
+							this.logger.info(`Execution ${msg.executionId} (job ${jobId}) finished`, {
+								workerId: msg.workerId,
+								executionId: msg.executionId,
+								jobId,
+								success: msg.success,
+							});
+						})
+						.catch((error: Error) => {
+							this.logger.warn(`Failed to record the result of execution ${msg.executionId}`, {
+								executionId: msg.executionId,
+								jobId,
+								error,
+							});
+						});
 					break;
 				case 'job-failed':
 					this.logger.error(

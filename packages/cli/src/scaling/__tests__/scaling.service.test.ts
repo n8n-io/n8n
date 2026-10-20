@@ -150,6 +150,7 @@ describe('ScalingService', () => {
 		instanceSettings.instanceType = 'main';
 		instanceSettings.markAsLeader();
 		activeExecutions.getRunningExecutionIds.mockReturnValue([]);
+		jobOutcomeTracker.recordFinished.mockResolvedValue(undefined);
 		activeExecutions.cancelRunningExecutions.mockResolvedValue([]);
 		jobProcessor.getRunningJobsSummary.mockReturnValue([]);
 		jobProcessor.getJobsInPreflight.mockReturnValue([]);
