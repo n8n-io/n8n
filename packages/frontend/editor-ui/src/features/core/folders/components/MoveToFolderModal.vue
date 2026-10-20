@@ -43,6 +43,7 @@ import {
 	N8nCheckbox,
 	N8nDialog,
 	N8nDialogBody,
+	N8nDialogDescription,
 	N8nDialogFooter,
 	N8nText,
 	N8nTooltip,
@@ -462,21 +463,14 @@ onMounted(async () => {
 </script>
 
 <template>
-	<N8nDialog
-		:open="modalOpen"
-		size="medium"
-		:header="title"
-		:container-class="$style.container"
-		@update:open="onDialogOpenUpdate"
-	>
+	<N8nDialog :open="modalOpen" size="medium" :header="title" @update:open="onDialogOpenUpdate">
 		<N8nDialogBody>
-			<p
+			<N8nDialogDescription
 				v-if="props.data.resourceType === 'folder' && (workflowCount > 0 || subFolderCount > 0)"
-				:class="$style.description"
 				data-test-id="move-modal-description"
 			>
 				{{ descriptionMessage }}
-			</p>
+			</N8nDialogDescription>
 			<EnterpriseEdition :features="[EnterpriseEditionFeature.Sharing]" :class="$style.content">
 				<div :class="$style.block">
 					<N8nText color="text-dark">
@@ -665,18 +659,6 @@ onMounted(async () => {
 </template>
 
 <style module lang="scss">
-.container {
-	h1,
-	h2 {
-		max-width: 90%;
-	}
-}
-
-.description {
-	font-size: var(--font-size--sm);
-	margin: var(--spacing--sm) 0;
-}
-
 .block {
 	margin-bottom: var(--spacing--sm);
 }
