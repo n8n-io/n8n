@@ -1,7 +1,7 @@
 import type { SerializableAgentState } from '@n8n/agents';
 import type { AgentSseEvent } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { TransactionRunner, type User } from '@n8n/db';
+import { TransactionRunner, type OperationContext, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { NotFoundError } from '@n8n/errors';
 import { UserError } from 'n8n-workflow';
@@ -216,14 +216,19 @@ export class SystemAgentExecutionService {
 		changes: { title?: string; projectId?: string },
 	): Promise<AgentExecutionThread> {
 		const thread = await this.getThread(agentId, user, threadId);
-		if (changes.projectId && changes.projectId !== thread.projectId) {
-			await this.assertCanUse(agentId, user, changes.projectId);
-			if (await this.isBusy(thread)) {
-				throw new UserError('Wait for the current turn to finish before you change the project');
-			}
-		}
+		const { title, projectId } = changes;
+		const moving = projectId !== undefined && projectId !== thread.projectId;
+		if (moving) await this.assertCanUse(agentId, user, projectId);
 		await this.txRunner.run({}, async (ctx) => {
-			const { title, projectId } = changes;
+			if (moving) {
+				// Enqueue, claim and resume admission lock the thread too, so no turn
+				// can start between this check and the move.
+				const locked = await this.threadRepository.lockById(threadId, ctx);
+				if (!locked) throw new NotFoundError('Session not found');
+				if ((await this.resolveStatus(locked, ctx)).status !== 'idle') {
+					throw new UserError('Wait for the current turn to finish before you change the project');
+				}
+			}
 			const renamed =
 				title === undefined ||
 				(await this.threadRepository.renameOwned(agentId, user.id, threadId, title, ctx));
@@ -249,11 +254,6 @@ export class SystemAgentExecutionService {
 		if (!deleted) throw new NotFoundError('Session not found');
 	}
 
-	/** Whether the thread is not idle. It uses the same rule as `getStatus`. */
-	async isBusy(thread: AgentExecutionThread): Promise<boolean> {
-		return (await this.resolveStatus(thread)).status !== 'idle';
-	}
-
 	async getStatus(thread: AgentExecutionThread): Promise<{
 		status: SystemAgentThreadStatus;
 		latestExecutionId: string | null;
@@ -269,19 +269,23 @@ export class SystemAgentExecutionService {
 	 * so the thread is not idle between a turn and its follow-up. An open
 	 * suspension still wins: the queue waits for the user to answer it.
 	 */
-	private async resolveStatus(thread: AgentExecutionThread): Promise<{
+	private async resolveStatus(
+		thread: AgentExecutionThread,
+		ctx: OperationContext = {},
+	): Promise<{
 		status: SystemAgentThreadStatus;
 		checkpoint: SerializableAgentState | null;
 	}> {
-		if (await this.executionRepository.existsRunningByThread(thread.id)) {
+		if (await this.executionRepository.existsRunningByThread(thread.id, ctx)) {
 			return { status: 'running', checkpoint: null };
 		}
 		const checkpoint = await this.checkpointStorage.findSuspendedForThread(
 			thread.agentId,
 			thread.id,
+			ctx,
 		);
 		if (checkpoint) return { status: 'suspended', checkpoint };
-		const queued = await this.messageQueue.hasQueuedMessages(thread.id);
+		const queued = await this.messageQueue.hasQueuedMessages(thread.id, ctx);
 		return { status: queued ? 'running' : 'idle', checkpoint: null };
 	}
 

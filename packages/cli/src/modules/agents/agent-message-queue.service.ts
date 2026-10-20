@@ -196,8 +196,8 @@ export class AgentMessageQueueService {
 	}
 
 	/** Whether a message waits in the thread queue, hidden machine turns included. */
-	async hasQueuedMessages(threadId: string): Promise<boolean> {
-		return await this.repository.hasItems(threadId);
+	async hasQueuedMessages(threadId: string, ctx: OperationContext = {}): Promise<boolean> {
+		return await this.repository.hasItems(threadId, ctx);
 	}
 
 	async listPending(input: PendingMessageScope): Promise<AgentChatQueueResponse> {

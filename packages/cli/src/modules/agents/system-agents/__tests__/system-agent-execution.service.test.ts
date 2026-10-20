@@ -938,17 +938,46 @@ describe('SystemAgentExecutionService', () => {
 			expect(threadRepository.moveOwned).not.toHaveBeenCalled();
 		});
 
-		it('refuses to move a thread while a message waits in its queue', async () => {
-			const { service, threadRepository, executionRepository, checkpointStorage, messageQueue } =
-				setup();
-			executionRepository.existsRunningByThread.mockResolvedValue(false);
-			checkpointStorage.findSuspendedForThread.mockResolvedValue(null);
-			messageQueue.hasQueuedMessages.mockResolvedValue(true);
+		it.each(['running', 'suspended', 'queued'] as const)(
+			'refuses to move a thread with a %s turn, checked under the thread lock',
+			async (state) => {
+				const {
+					service,
+					threadRepository,
+					txRunner,
+					executionRepository,
+					checkpointStorage,
+					messageQueue,
+				} = setup();
+				const ctx = {};
+				txRunner.run.mockImplementation(async (_ctx, fn) => await fn(ctx));
+				threadRepository.lockById.mockResolvedValue({ ...thread });
+				executionRepository.existsRunningByThread.mockResolvedValue(state === 'running');
+				checkpointStorage.findSuspendedForThread.mockResolvedValue(
+					state === 'suspended' ? (suspendedCheckpoint() as never) : null,
+				);
+				messageQueue.hasQueuedMessages.mockResolvedValue(state === 'queued');
 
-			await expect(
-				service.updateThread(AGENT_ID, user, 'thread-1', { projectId: 'project-2' }),
-			).rejects.toThrow('Wait for the current turn to finish before you change the project');
-			expect(threadRepository.moveOwned).not.toHaveBeenCalled();
+				await expect(
+					service.updateThread(AGENT_ID, user, 'thread-1', { projectId: 'project-2' }),
+				).rejects.toThrow('Wait for the current turn to finish before you change the project');
+
+				expect(threadRepository.lockById).toHaveBeenCalledWith('thread-1', ctx);
+				// The status reads run in the same transaction as the lock.
+				expect(executionRepository.existsRunningByThread).toHaveBeenCalledWith('thread-1', ctx);
+				expect(threadRepository.moveOwned).not.toHaveBeenCalled();
+			},
+		);
+
+		it('renames a thread without the lock and the status check', async () => {
+			const { service, threadRepository, txRunner, executionRepository } = setup();
+			txRunner.run.mockImplementation(async (_ctx, fn) => await fn({}));
+			threadRepository.renameOwned.mockResolvedValue(true);
+
+			await service.updateThread(AGENT_ID, user, 'thread-1', { title: 'Renamed' });
+
+			expect(threadRepository.lockById).not.toHaveBeenCalled();
+			expect(executionRepository.existsRunningByThread).not.toHaveBeenCalled();
 		});
 
 		it('renames and moves a thread in one transaction', async () => {
@@ -965,6 +994,7 @@ describe('SystemAgentExecutionService', () => {
 			checkpointStorage.findSuspendedForThread.mockResolvedValue(null);
 			messageQueue.hasQueuedMessages.mockResolvedValue(false);
 			txRunner.run.mockImplementation(async (_ctx, fn) => await fn(ctx));
+			threadRepository.lockById.mockResolvedValue({ ...thread });
 			threadRepository.renameOwned.mockResolvedValue(true);
 			threadRepository.moveOwned.mockResolvedValue(true);
 
@@ -972,6 +1002,9 @@ describe('SystemAgentExecutionService', () => {
 				title: 'Renamed',
 				projectId: 'project-2',
 			});
+
+			expect(threadRepository.lockById).toHaveBeenCalledWith('thread-1', ctx);
+			expect(messageQueue.hasQueuedMessages).toHaveBeenCalledWith('thread-1', ctx);
 
 			expect(threadRepository.renameOwned).toHaveBeenCalledWith(
 				AGENT_ID,
