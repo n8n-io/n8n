@@ -87,7 +87,7 @@ export class SkillsApiService {
 			checkNameTaken: true,
 			target,
 			skill: payload.skill,
-			source: 'ui',
+			source,
 			createdById: user.id,
 		});
 		await this.skillsTelemetry.created(

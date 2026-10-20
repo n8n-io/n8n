@@ -108,7 +108,7 @@ const workflowFolderConflictIssueSchema = z
 			.string()
 			.nullable()
 			.openapi(workflowFolderConflictFieldDocs.existingParentFolderId),
-		targetFolderId: z.string().openapi(workflowFolderConflictFieldDocs.targetFolderId),
+		targetFolderId: z.string().nullable().openapi(workflowFolderConflictFieldDocs.targetFolderId),
 		name: z.string(),
 	})
 	.openapi(workflowFolderConflictIssueOpenApi);

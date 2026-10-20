@@ -176,7 +176,7 @@ export class AgentConfigService {
 		existingTaskIds: string[],
 	) {
 		const { id: agentId, projectId } = entity;
-		const { changedParts } = replacement;
+		const { changedParts, changedSettings } = replacement;
 
 		// Gate evaluated against the state about to be written; the marker is
 		// claimed and reported only once that write succeeded.
@@ -202,6 +202,7 @@ export class AgentConfigService {
 				user,
 				by: options.modifiedBy,
 				changedParts,
+				changedSettings,
 			},
 			options.pushRef,
 			emitSetupCompleted,

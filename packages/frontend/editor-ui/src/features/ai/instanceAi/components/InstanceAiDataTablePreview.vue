@@ -114,7 +114,10 @@ watch(
 		<div
 			v-for="table in tables"
 			:key="table.key"
-			:class="{ [$style.pendingTable]: table.key !== tableSlots.displayed?.key }"
+			:class="[
+				$style.tableSlot,
+				{ [$style.pendingTable]: table.key !== tableSlots.displayed?.key },
+			]"
 			:aria-hidden="table.key !== tableSlots.displayed?.key"
 			:inert="isLoading || undefined"
 			:data-table-id="table.dataTable.id"
@@ -148,6 +151,12 @@ watch(
 	min-height: 0;
 	position: relative;
 	height: 100%;
+}
+
+.tableSlot {
+	// The grid sizes to its rows, so the slot scrolls when a page exceeds the panel height.
+	height: 100%;
+	overflow: auto;
 }
 
 .pendingTable {

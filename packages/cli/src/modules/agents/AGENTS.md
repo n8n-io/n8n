@@ -9,8 +9,8 @@ Guidance for the agents module (`packages/cli/src/modules/agents`). See the [cli
 
 ## Backend boundary
 
-- Instance AI calls `AgentsBuilderService`, `AgentContextService`, `AgentDraftService`, and `AgentEvaluationService` directly. These services own their operations and access checks. Keep repositories, entities, and runtime reconstruction services private.
-- Keep contracts beside their owner: `agent-context.contracts.ts`, `agent-draft.contracts.ts`, `agent-credential-provider.contracts.ts`, `builder/builder-session.ts`, and `evaluation/agent-evaluation.contracts.ts`. Evaluation callers can also use `pruneConfigForEval` from `evaluation/evaluation-config.ts`.
+- Instance AI calls `AgentsBuilderService`, `AgentContextService`, `AgentDraftService`, `AgentEvaluationService`, and `SkillsApiService` directly. These services own their operations and access checks. Keep repositories, entities, and runtime reconstruction services private.
+- Keep contracts beside their owner: `agent-context.contracts.ts`, `agent-draft.contracts.ts`, `agent-credential-provider.contracts.ts`, `builder/builder-session.ts`, and `evaluation/agent-evaluation.contracts.ts`. Evaluation callers can also use `pruneConfigForEval` from `evaluation/evaluation-config.ts`. Skills callers can also use `SkillNameTakenError` and `skillNameTakenToolMessage` from `skills/skill-name-taken.error.ts`.
 - The `agents-instance-ai-boundary` Code Health rule lists the supported import paths. Do not add an umbrella facade or a barrel of internals.
 - Do not import the Instance AI backend or `@n8n/instance-ai` here. This includes types and tests.
 - Keep Agent data access, availability checks, and project authorization in Agents. Keep Assistant tools, presentation, model policy, and billing in Instance AI.

@@ -50,7 +50,6 @@ const mockBaseText = vi.fn((key: string, options?: { interpolate?: Record<string
 		'credentialEdit.credentialSharing.info.sharee.personal': 'Shared by personal project',
 		'credentialEdit.credentialSharing.info.personalSpaceRestricted':
 			"You don't have permission to share personal credentials",
-		'credentialEdit.credentialSharing.role.user': 'User',
 		'credentialEdit.credentialSharing.role.user.canUse': 'Can use',
 		'credentialEdit.credentialSharing.role.user.canUse.description':
 			"Can use this credential. Can't edit it.",
@@ -458,28 +457,7 @@ describe('CredentialSharing.ee', () => {
 	});
 
 	describe('IAM-1435: credential sharing role rename', () => {
-		it('keeps the "User" label and shows no static role badge when N8N_ENV_FEAT_CRED_SHARING is disabled', () => {
-			settingsStore.settings.envFeatureFlags = { N8N_ENV_FEAT_CRED_SHARING: 'false' };
-
-			const credential = createCredential({ sharedWithProjects: [testProjects[0]] });
-			const { queryByTestId, getByTestId } = renderComponent({
-				props: {
-					credentialId: credential.id,
-					credentialData: {},
-					credentialPermissions: { share: false },
-					credential,
-					modalBus: createEventBus(),
-				},
-			});
-
-			// Non-owner (static) view: no badge at all, since the flag is off
-			expect(queryByTestId('project-sharing-static-role')).not.toBeInTheDocument();
-			expect(getByTestId('project-sharing-list-item')).toBeInTheDocument();
-		});
-
-		it('shows a "Can use" role badge, with a "can\'t edit" description, when the flag is enabled and the viewer cannot share', () => {
-			settingsStore.settings.envFeatureFlags = { N8N_ENV_FEAT_CRED_SHARING: 'true' };
-
+		it('shows a "Can use" role badge, with a "can\'t edit" description, when the viewer cannot share', () => {
 			const credential = createCredential({ sharedWithProjects: [testProjects[0]] });
 			const { getByTestId } = renderComponent({
 				props: {
@@ -494,9 +472,7 @@ describe('CredentialSharing.ee', () => {
 			expect(getByTestId('project-sharing-static-role')).toHaveTextContent('Can use');
 		});
 
-		it('shows "Can use" as static text (no select) for the owner too, when the flag is enabled', () => {
-			settingsStore.settings.envFeatureFlags = { N8N_ENV_FEAT_CRED_SHARING: 'true' };
-
+		it('shows "Can use" as static text (no select) for the owner too', () => {
 			const credential = createCredential({ sharedWithProjects: [testProjects[0]] });
 			const { getByTestId, queryByTestId } = renderComponent({
 				props: {
@@ -510,25 +486,6 @@ describe('CredentialSharing.ee', () => {
 
 			expect(getByTestId('project-sharing-static-role')).toHaveTextContent('Can use');
 			expect(queryByTestId('project-sharing-role-select')).not.toBeInTheDocument();
-		});
-
-		it('uses "User" as the role option label in the editable select when the flag is disabled', async () => {
-			settingsStore.settings.envFeatureFlags = { N8N_ENV_FEAT_CRED_SHARING: 'false' };
-
-			const credential = createCredential({ sharedWithProjects: [testProjects[0]] });
-			const { getByTestId } = renderComponent({
-				props: {
-					credentialId: credential.id,
-					credentialData: {},
-					credentialPermissions: { share: true },
-					credential,
-					modalBus: createEventBus(),
-				},
-			});
-
-			const roleSelect = getByTestId('project-sharing-role-select');
-			const dropdownItems = await getDropdownItems(roleSelect);
-			expect(dropdownItems[0]).toHaveTextContent('User');
 		});
 	});
 
@@ -581,7 +538,6 @@ describe('CredentialSharing.ee', () => {
 			elements.map((element) => labels.find((label) => element.textContent?.includes(label)));
 
 		beforeEach(() => {
-			settingsStore.settings.envFeatureFlags = { N8N_ENV_FEAT_CRED_SHARING: 'true' };
 			projectsStore.myProjects = [marketing, operations, sales];
 			projectsStore.personalProject = ownerPersonalProject;
 		});
@@ -711,7 +667,6 @@ describe('CredentialSharing.ee', () => {
 		};
 
 		beforeEach(() => {
-			settingsStore.settings.envFeatureFlags = { N8N_ENV_FEAT_CRED_SHARING: 'true' };
 			projectsStore.personalProject = viewerPersonalProject;
 			projectsStore.myProjects = [
 				{ ...viewerPersonalProject, role: 'project:personalOwner' as const },
@@ -791,7 +746,6 @@ describe('CredentialSharing.ee', () => {
 		};
 
 		beforeEach(() => {
-			settingsStore.settings.envFeatureFlags = { N8N_ENV_FEAT_CRED_SHARING: 'true' };
 			projectsStore.myProjects = [marketingProject];
 			projectsStore.personalProject = ownerPersonalProject;
 		});
@@ -1149,38 +1103,6 @@ describe('CredentialSharing.ee', () => {
 					queryByText("You don't have permission to share personal credentials"),
 				).not.toBeInTheDocument();
 			});
-		});
-
-		it('does not fetch or show used-in projects when the flag is disabled', () => {
-			settingsStore.settings.envFeatureFlags = { N8N_ENV_FEAT_CRED_SHARING: 'false' };
-			getDependenciesMock.mockReturnValue({
-				dependencies: [
-					{
-						id: 'wf-1',
-						name: 'Email summary',
-						type: 'workflowParent',
-						projectId: 'marketing-project',
-					},
-				],
-				inaccessibleCount: 0,
-			});
-
-			const credential = createCredential({
-				homeProject: ownerPersonalProject,
-				sharedWithProjects: [],
-			});
-			const { queryByTestId } = renderComponent({
-				props: {
-					credentialId: credential.id,
-					credentialData: {},
-					credentialPermissions: { share: true },
-					credential,
-					modalBus: createEventBus(),
-				},
-			});
-
-			expect(fetchDependenciesMock).not.toHaveBeenCalled();
-			expect(queryByTestId('project-sharing-unshared-item')).not.toBeInTheDocument();
 		});
 
 		it('shows "Available to {owner}" instead of "Available to you" when the viewer has share permission but is not the credential\'s owner (e.g. an instance admin)', () => {

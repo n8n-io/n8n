@@ -45,12 +45,12 @@ it('uses the public API context and returns the complete result', async () => {
 	const context = { baseUrl: '/custom/api/v2' };
 	vi.mocked(request).mockResolvedValue(result);
 
-	const body = { expectedSource: { configId: result.configId, ...result.git } };
-	expect(await continueApplyPromotion(context, result.connectionId, body)).toBe(result);
+	const body = { expectedSource: { environmentId: result.environmentId, ...result.git } };
+	expect(await continueApplyPromotion(context, result.environmentId, body)).toBe(result);
 	expect(request).toHaveBeenLastCalledWith({
 		method: 'POST',
 		baseURL: context.baseUrl,
-		endpoint: '/promotions/connections/connection-id/apply/continue',
+		endpoint: '/promotions/environments/environment-id/apply/continue',
 		data: body,
 	});
 });
@@ -62,7 +62,7 @@ it('posts the selection to the project apply endpoint', async () => {
 
 	const body = {
 		workflowIds: ['wf-a', 'wf-b'],
-		expectedSource: { configId: result.configId, ...result.git },
+		expectedSource: { environmentId: result.environmentId, ...result.git },
 	};
 	expect(await applyProjectSelection(context, 'project-id', body)).toBe(result);
 	expect(request).toHaveBeenLastCalledWith({
@@ -80,7 +80,7 @@ it('posts the selection to the project apply continue endpoint', async () => {
 
 	const body = {
 		workflowIds: ['wf-a', 'wf-b'],
-		expectedSource: { configId: result.configId, ...result.git },
+		expectedSource: { environmentId: result.environmentId, ...result.git },
 	};
 	expect(await continueApplyProjectSelection(context, 'project-id', body)).toBe(result);
 	expect(request).toHaveBeenLastCalledWith({
