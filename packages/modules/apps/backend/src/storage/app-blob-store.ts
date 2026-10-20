@@ -15,7 +15,9 @@ import { Container, Service } from '@n8n/di';
 import { FsByteStoreService, StorageConfig } from 'n8n-core';
 import { randomUUID } from 'node:crypto';
 
+import type { AppArtifactRef } from '../app-artifact.entity';
 import { AppArtifactRepository } from '../app-artifact.repository';
+import { appStorageLockSubKey } from '../app-storage-lock';
 
 export type AppBlob = { storedAt: ExecutionDataStorageLocation; storageKey: string };
 
@@ -64,12 +66,16 @@ export class AppBlobStore {
 		return { storedAt, storageKey: storedAt === 'db' ? id : `apps/artifacts/${id}.tgz` };
 	}
 
-	async write(blob: AppBlob & { id: number }, body: Buffer): Promise<void> {
+	async write(blob: AppBlob & AppArtifactRef, body: Buffer): Promise<void> {
 		if (blob.storedAt === 'db') {
 			// Keep the database insert and reservation check together so cleanup cannot pass them.
-			await this.locks.withLockContext(DbLock.APPS_STORAGE, async (ctx) => {
-				await this.artifacts.storeDatabaseContent(blob, body, ctx);
-			});
+			await this.locks.withLockContext(
+				DbLock.APPS_STORAGE,
+				async (ctx) => {
+					await this.artifacts.storeDatabaseContent(blob, body, ctx);
+				},
+				{ subKey: appStorageLockSubKey(blob.appId) },
+			);
 		} else {
 			await this.stores.get(blob.storedAt).write(blob.storageKey, body, {
 				mimeType: 'application/gzip',

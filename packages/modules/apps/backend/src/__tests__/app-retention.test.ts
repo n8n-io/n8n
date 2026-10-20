@@ -4,6 +4,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { AppArtifactService } from '../app-artifact.service';
 import { AppRetentionService } from '../app-retention.service';
+import { appStorageLockSubKey } from '../app-storage-lock';
 import { AppStorageCleanupTask } from '../app-storage-cleanup.task';
 import { AppVersionRepository } from '../app-version.repository';
 import type { App } from '../app.entity';
@@ -56,6 +57,7 @@ describe('AppRetentionService', () => {
 		expect(locks.withLockContext).toHaveBeenCalledExactlyOnceWith(
 			DbLock.APPS_STORAGE,
 			expect.any(Function),
+			{ subKey: appStorageLockSubKey('app') },
 		);
 		expect(versions.listForRetention).toHaveBeenCalledExactlyOnceWith('app', ctx);
 		expect(buildResults.removeBundles).toHaveBeenCalledExactlyOnceWith(['old-bundle'], ctx);

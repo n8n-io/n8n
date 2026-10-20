@@ -13,9 +13,15 @@ export class AppArtifactRepository extends BaseRepository<AppArtifact> {
 		super(AppArtifact, dataSource.manager, txRunner);
 	}
 
-	async reserve(blob: AppBlob, sizeBytes: number, ctx: OperationContext): Promise<AppArtifact> {
+	async reserve(
+		appId: string,
+		blob: AppBlob,
+		sizeBytes: number,
+		ctx: OperationContext,
+	): Promise<AppArtifact> {
 		return await this.managerFor(ctx).save(AppArtifact, {
 			...blob,
+			appId,
 			sizeBytes,
 			uploadStatus: 'pending',
 		});
@@ -38,6 +44,7 @@ export class AppArtifactRepository extends BaseRepository<AppArtifact> {
 			AppArtifact,
 			{
 				id: ref.id,
+				appId: ref.appId,
 				storageKey: ref.storageKey,
 				uploadStatus: 'pending',
 				createdAt: MoreThanOrEqual(oldestAllowed),
@@ -61,6 +68,7 @@ export class AppArtifactRepository extends BaseRepository<AppArtifact> {
 		const manager = this.managerFor(ctx);
 		const artifact = await manager.findOneBy(AppArtifact, {
 			id: ref.id,
+			appId: ref.appId,
 			storageKey: ref.storageKey,
 			storedAt: 'db',
 			uploadStatus: 'pending',
@@ -97,6 +105,10 @@ export class AppArtifactRepository extends BaseRepository<AppArtifact> {
 	}
 
 	async removeUnused(ref: AppArtifactRef, ctx: OperationContext): Promise<void> {
-		await this.managerFor(ctx).delete(AppArtifact, { id: ref.id, storageKey: ref.storageKey });
+		await this.managerFor(ctx).delete(AppArtifact, {
+			id: ref.id,
+			appId: ref.appId,
+			storageKey: ref.storageKey,
+		});
 	}
 }

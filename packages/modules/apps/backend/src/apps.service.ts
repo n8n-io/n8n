@@ -11,6 +11,7 @@ import { DbLock, DbLockService, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 
+import { appStorageLockSubKey } from './app-storage-lock';
 import type { App } from './app.entity';
 import { AppRepository } from './app.repository';
 
@@ -75,6 +76,7 @@ export class AppsService {
 		const deleted = await this.locks.withLockContext(
 			DbLock.APPS_STORAGE,
 			async (ctx) => await this.appRepository.deleteInProject(projectId, appId, ctx),
+			{ subKey: appStorageLockSubKey(appId) },
 		);
 		if (!deleted) {
 			throw new NotFoundError('App not found');

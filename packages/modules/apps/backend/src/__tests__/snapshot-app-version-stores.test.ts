@@ -1,9 +1,10 @@
-import { DbLockService, type OperationContext } from '@n8n/db';
+import { DbLock, DbLockService, type OperationContext } from '@n8n/db';
 import { ConflictError, NotFoundError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import type { AppArtifact } from '../app-artifact.entity';
 import { AppArtifactService } from '../app-artifact.service';
+import { appStorageLockSubKey } from '../app-storage-lock';
 import type { AppVersion } from '../app-version.entity';
 import { AppVersionRepository } from '../app-version.repository';
 import type { App } from '../app.entity';
@@ -31,12 +32,14 @@ function createStores() {
 	const locks = mock<DbLockService>();
 	const ctx = mock<OperationContext>();
 	locks.withLockContext.mockImplementation(async (_key, fn) => await fn(ctx));
-	const artifact = mock<AppArtifact>({ id: 1 });
+	const artifact = mock<AppArtifact>({ id: 1, appId: version.appId });
 	archives.pack.mockResolvedValue(Buffer.from('archive'));
 	artifacts.upload.mockResolvedValue(artifact);
 	apps.findById.mockResolvedValue(mock<App>());
 	apps.advanceDraft.mockResolvedValue(true);
-	versions.findVersionById.mockResolvedValue(mock<AppVersion>({ bundleArtifactId: null }));
+	versions.findVersionById.mockResolvedValue(
+		mock<AppVersion>({ appId: version.appId, bundleArtifactId: null }),
+	);
 	versions.attachBundle.mockResolvedValue(true);
 	return {
 		source: new SnapshotAppSourceVersionStore(archives, artifacts, versions, apps, locks),
@@ -47,15 +50,20 @@ function createStores() {
 		apps,
 		artifact,
 		ctx,
+		locks,
 	};
 }
 
 describe('SnapshotAppSourceVersionStore', () => {
 	it('creates a source-backed version and advances the expected draft', async () => {
-		const { source, artifacts, versions, apps, artifact, ctx } = createStores();
+		const { source, artifacts, versions, apps, artifact, ctx, locks } = createStores();
 
 		await source.createVersion(version, files);
 
+		expect(artifacts.upload).toHaveBeenCalledWith(version.appId, Buffer.from('archive'));
+		expect(locks.withLockContext).toHaveBeenCalledWith(DbLock.APPS_STORAGE, expect.any(Function), {
+			subKey: appStorageLockSubKey(version.appId),
+		});
 		expect(artifacts.completeUpload).toHaveBeenCalledWith(artifact, ctx);
 		expect(versions.insertVersion).toHaveBeenCalledWith(
 			{ id: version.id, appId: version.appId, label: version.label, sourceArtifactId: artifact.id },
@@ -141,20 +149,29 @@ describe('SnapshotAppSourceVersionStore', () => {
 
 describe('SnapshotAppBuildResultStore', () => {
 	it('attaches the uploaded bundle in the upload-completion transaction', async () => {
-		const { builds, artifacts, versions, artifact, ctx } = createStores();
+		const { builds, artifacts, versions, artifact, ctx, locks } = createStores();
 
-		await builds.recordSuccess(version.id, files);
+		await builds.recordSuccess(version.appId, version.id, files);
 
+		expect(artifacts.upload).toHaveBeenCalledWith(version.appId, Buffer.from('archive'));
+		expect(locks.withLockContext).toHaveBeenCalledWith(DbLock.APPS_STORAGE, expect.any(Function), {
+			subKey: appStorageLockSubKey(version.appId),
+		});
 		expect(artifacts.completeUpload).toHaveBeenCalledWith(artifact, ctx);
 		expect(versions.attachBundle).toHaveBeenCalledWith(version.id, artifact.id, ctx);
 		expect(artifacts.discard).not.toHaveBeenCalled();
 	});
 
-	it('discards the bundle when the version disappears', async () => {
+	it.each([
+		{ reason: 'missing', target: null },
+		{ reason: 'in another app', target: mock<AppVersion>({ appId: 'other-app' }) },
+	])('discards the bundle when the version is $reason', async ({ target }) => {
 		const { builds, artifacts, versions, artifact } = createStores();
-		versions.findVersionById.mockResolvedValue(null);
+		versions.findVersionById.mockResolvedValue(target);
 
-		await expect(builds.recordSuccess(version.id, files)).rejects.toThrow(NotFoundError);
+		await expect(builds.recordSuccess(version.appId, version.id, files)).rejects.toThrow(
+			NotFoundError,
+		);
 
 		expect(versions.attachBundle).not.toHaveBeenCalled();
 		expect(artifacts.discard).toHaveBeenCalledWith(artifact);
@@ -164,7 +181,9 @@ describe('SnapshotAppBuildResultStore', () => {
 		const { builds, artifacts, versions, artifact } = createStores();
 		versions.attachBundle.mockResolvedValue(false);
 
-		await expect(builds.recordSuccess(version.id, files)).rejects.toThrow(ConflictError);
+		await expect(builds.recordSuccess(version.appId, version.id, files)).rejects.toThrow(
+			ConflictError,
+		);
 
 		expect(artifacts.discard).toHaveBeenCalledWith(artifact);
 	});
@@ -174,7 +193,7 @@ describe('SnapshotAppBuildResultStore', () => {
 		const error = new ConflictError('Upload expired.');
 		artifacts.completeUpload.mockRejectedValue(error);
 
-		await expect(builds.recordSuccess(version.id, files)).rejects.toBe(error);
+		await expect(builds.recordSuccess(version.appId, version.id, files)).rejects.toBe(error);
 
 		expect(versions.attachBundle).not.toHaveBeenCalled();
 		expect(artifacts.discard).toHaveBeenCalledWith(artifact);

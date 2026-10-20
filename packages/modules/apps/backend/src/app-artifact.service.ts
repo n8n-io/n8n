@@ -5,6 +5,7 @@ import { BadRequestError, ConflictError, NotFoundError, UnexpectedError } from '
 
 import type { AppArtifact, AppArtifactRef } from './app-artifact.entity';
 import { AppArtifactRepository } from './app-artifact.repository';
+import { appStorageLockSubKey } from './app-storage-lock';
 import { AppsConfig } from './apps.config';
 import { AppBlobStore } from './storage/app-blob-store';
 
@@ -20,7 +21,7 @@ export class AppArtifactService {
 		private readonly logger: Logger,
 	) {}
 
-	async upload(body: Buffer): Promise<AppArtifact> {
+	async upload(appId: string, body: Buffer): Promise<AppArtifact> {
 		if (body.length > this.config.maxArtifactSizeBytes) {
 			throw new BadRequestError(
 				'App artifact exceeds the compressed size limit. Reduce its size or increase the artifact limit.',
@@ -32,7 +33,7 @@ export class AppArtifactService {
 					'App artifact storage limit reached. Free storage space or increase the app storage limit.',
 				);
 			}
-			return await this.repository.reserve(this.blobs.newBlob(), body.length, ctx);
+			return await this.repository.reserve(appId, this.blobs.newBlob(), body.length, ctx);
 		});
 		try {
 			await this.blobs.write(artifact, body);
@@ -90,24 +91,33 @@ export class AppArtifactService {
 
 	private async deleteUnused(ref: AppArtifact, writeSettled = false): Promise<void> {
 		try {
-			const artifact = await this.locks.withLockContext(DbLock.APPS_STORAGE, async (ctx) => {
-				const row = await this.repository.findArtifact(ref.id, ctx);
-				// SQLite can reuse the ID after cleanup removes the original record.
-				if (!row || row.storageKey !== ref.storageKey) return writeSettled ? ref : null;
-				if (await this.repository.isReferenced(ref.id, ctx)) return null;
-				if (
-					!writeSettled &&
-					row.uploadStatus === 'pending' &&
-					row.createdAt.getTime() >= Date.now() - UPLOAD_LIFETIME_MS
-				)
-					return null;
-				return row;
-			});
+			const artifact = await this.locks.withLockContext(
+				DbLock.APPS_STORAGE,
+				async (ctx) => {
+					const row = await this.repository.findArtifact(ref.id, ctx);
+					// SQLite can reuse the ID after cleanup removes the original record.
+					if (!row || row.storageKey !== ref.storageKey || row.appId !== ref.appId)
+						return writeSettled ? ref : null;
+					if (await this.repository.isReferenced(ref.id, ctx)) return null;
+					if (
+						!writeSettled &&
+						row.uploadStatus === 'pending' &&
+						row.createdAt.getTime() >= Date.now() - UPLOAD_LIFETIME_MS
+					)
+						return null;
+					return row;
+				},
+				{ subKey: appStorageLockSubKey(ref.appId) },
+			);
 			if (!artifact) return;
 			await this.blobs.delete(artifact);
-			await this.locks.withLockContext(DbLock.APPS_STORAGE, async (ctx) => {
-				await this.repository.removeUnused(ref, ctx);
-			});
+			await this.locks.withLockContext(
+				DbLock.APPS_STORAGE,
+				async (ctx) => {
+					await this.repository.removeUnused(ref, ctx);
+				},
+				{ subKey: appStorageLockSubKey(ref.appId) },
+			);
 		} catch (error) {
 			this.logger.warn('Could not delete an unused app artifact.', { artifactId: ref.id, error });
 		}

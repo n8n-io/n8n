@@ -57,7 +57,7 @@ export class AppVersionService {
 		if (target.buildStatus !== 'queued' && target.buildStatus !== 'running') {
 			throw new ConflictError('This app version cannot accept a bundle. Check its build status.');
 		}
-		await this.buildResults.recordSuccess(versionId, files);
+		await this.buildResults.recordSuccess(appId, versionId, files);
 		const version = await this.requireVersion(versionId);
 		await this.prune(appId);
 		return version;

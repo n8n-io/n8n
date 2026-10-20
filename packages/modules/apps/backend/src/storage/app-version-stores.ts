@@ -25,7 +25,7 @@ export abstract class AppSourceVersionStore {
 
 export abstract class AppBuildResultStore {
 	/** Attaches a stored bundle and records build success atomically. */
-	abstract recordSuccess(versionId: string, files: AppFiles): Promise<void>;
+	abstract recordSuccess(appId: string, versionId: string, files: AppFiles): Promise<void>;
 
 	abstract readBundle(versionId: string): Promise<AppFiles>;
 

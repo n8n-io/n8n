@@ -13,7 +13,10 @@ import { FsByteStoreService, StorageConfig } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
 import { AppArtifactRepository } from '../app-artifact.repository';
+import { appStorageLockSubKey } from '../app-storage-lock';
 import { AppBlobStore } from '../storage/app-blob-store';
+
+const appId = '11111111-1111-4111-8111-111111111111';
 
 function createStore(mode: ExecutionDataStorageLocation = 'fs') {
 	const fs = mock<FsByteStoreService>();
@@ -44,7 +47,7 @@ it('writes, reads, and deletes filesystem bytes through the shared store', async
 	const { store, fs } = createStore('fs');
 	fs.read.mockResolvedValueOnce(body).mockResolvedValueOnce(null);
 	await store.init();
-	const blob = { ...store.newBlob(), id: 1 };
+	const blob = { ...store.newBlob(), id: 1, appId };
 	await store.write(blob, body);
 	expect(fs.write).toHaveBeenCalledWith(blob.storageKey, body, {
 		mimeType: 'application/gzip',
@@ -69,7 +72,7 @@ it('writes, reads, and deletes S3 bytes through the shared store', async () => {
 	Container.set(ObjectStoreService, client);
 	const { store } = createStore('s3');
 	await store.init();
-	const blob = { ...store.newBlob(), id: 1 };
+	const blob = { ...store.newBlob(), id: 1, appId };
 	await store.write(blob, body);
 	expect(client.put).toHaveBeenCalledWith(blob.storageKey, body, {
 		mimeType: 'application/gzip',
@@ -94,7 +97,7 @@ it('writes, reads, and deletes Azure bytes through the shared store', async () =
 	Container.set(AzureBlobService, client);
 	const { store } = createStore('az');
 	await store.init();
-	const blob = { ...store.newBlob(), id: 1 };
+	const blob = { ...store.newBlob(), id: 1, appId };
 	await store.write(blob, body);
 	expect(client.put).toHaveBeenCalledWith(blob.storageKey, body, {
 		mimeType: 'application/gzip',
@@ -107,14 +110,16 @@ it('writes, reads, and deletes Azure bytes through the shared store', async () =
 	expect(await store.read(blob)).toBeNull();
 });
 
-it('writes database content under the storage lock', async () => {
+it('writes database content under the owning app lock', async () => {
 	const { store, artifacts, locks, ctx } = createStore('db');
-	const blob = { ...store.newBlob(), id: 1 };
+	const blob = { ...store.newBlob(), id: 1, appId };
 	const body = Buffer.from('content');
 
 	await store.write(blob, body);
 
-	expect(locks.withLockContext).toHaveBeenCalledWith(DbLock.APPS_STORAGE, expect.any(Function));
+	expect(locks.withLockContext).toHaveBeenCalledWith(DbLock.APPS_STORAGE, expect.any(Function), {
+		subKey: appStorageLockSubKey(appId),
+	});
 	expect(artifacts.storeDatabaseContent).toHaveBeenCalledWith(blob, body, ctx);
 });
 

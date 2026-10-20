@@ -1,15 +1,20 @@
 import { Logger } from '@n8n/backend-common';
-import { DbLockService, type OperationContext } from '@n8n/db';
+import type { DatabaseConfig } from '@n8n/config';
+import { DbLock, DbLockService, type OperationContext } from '@n8n/db';
 import { BadRequestError, ConflictError, NotFoundError, UnexpectedError } from '@n8n/errors';
+import type { DataSource, EntityManager } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
 
 import type { AppArtifact } from '../app-artifact.entity';
 import { AppArtifactRepository } from '../app-artifact.repository';
 import { AppArtifactService } from '../app-artifact.service';
+import { appStorageLockSubKey } from '../app-storage-lock';
 import { AppsConfig } from '../apps.config';
 import { AppBlobStore } from '../storage/app-blob-store';
 
-function createService() {
+const appId = '11111111-1111-4111-8111-111111111111';
+
+function createService(dbLocks?: DbLockService) {
 	const ctx = mock<OperationContext>();
 	const repository = mock<AppArtifactRepository>();
 	const blobs = mock<AppBlobStore>();
@@ -17,6 +22,7 @@ function createService() {
 	locks.withLockContext.mockImplementation(async (_key, fn) => await fn(ctx));
 	const artifact = mock<AppArtifact>({
 		id: 1,
+		appId,
 		storageKey: 'apps/artifacts/original.tgz',
 		storedAt: 'fs',
 		sizeBytes: 4,
@@ -33,10 +39,10 @@ function createService() {
 		repository,
 		blobs,
 		mock<AppsConfig>({ maxArtifactSizeBytes: 100, maxStorageBytes: 1000 }),
-		locks,
+		dbLocks ?? locks,
 		mock<Logger>(),
 	);
-	return { service, ctx, repository, blobs, artifact };
+	return { service, ctx, repository, blobs, artifact, locks };
 }
 
 describe('AppArtifactService', () => {
@@ -45,7 +51,7 @@ describe('AppArtifactService', () => {
 	it('rejects an oversized artifact before reserving storage', async () => {
 		const { service, repository, blobs } = createService();
 
-		await expect(service.upload(Buffer.alloc(101))).rejects.toThrow(BadRequestError);
+		await expect(service.upload(appId, Buffer.alloc(101))).rejects.toThrow(BadRequestError);
 
 		expect(repository.reserve).not.toHaveBeenCalled();
 		expect(blobs.write).not.toHaveBeenCalled();
@@ -55,17 +61,50 @@ describe('AppArtifactService', () => {
 		const { service, repository, blobs } = createService();
 		repository.totalSize.mockResolvedValue(901);
 
-		await expect(service.upload(Buffer.alloc(100))).rejects.toThrow(BadRequestError);
+		await expect(service.upload(appId, Buffer.alloc(100))).rejects.toThrow(BadRequestError);
 
 		expect(repository.reserve).not.toHaveBeenCalled();
 		expect(blobs.write).not.toHaveBeenCalled();
 	});
 
 	it('accepts an upload at the artifact-size and total-quota limits', async () => {
-		const { service, repository, artifact } = createService();
+		const { service, repository, artifact, ctx } = createService();
 		repository.totalSize.mockResolvedValue(900);
 
-		expect(await service.upload(Buffer.alloc(100))).toEqual(artifact);
+		expect(await service.upload(appId, Buffer.alloc(100))).toEqual(artifact);
+		expect(repository.reserve).toHaveBeenCalledWith(
+			appId,
+			{ storedAt: artifact.storedAt, storageKey: artifact.storageKey },
+			100,
+			ctx,
+		);
+	});
+
+	it('serializes quota reservations for different apps', async () => {
+		const dataSource = mock<DataSource>();
+		const manager = mock<EntityManager>();
+		dataSource.manager.transaction = vi.fn(
+			async (fn: (tx: EntityManager) => Promise<unknown>) => await fn(manager),
+		) as never;
+		const locks = new DbLockService(dataSource, mock<DatabaseConfig>({ type: 'sqlite' }));
+		const { service, repository, artifact } = createService(locks);
+		let totalSize = 900;
+		repository.totalSize.mockImplementation(async () => totalSize);
+		repository.reserve.mockImplementation(async (ownerAppId, _blob, sizeBytes) => {
+			totalSize += sizeBytes;
+			return { ...artifact, appId: ownerAppId, sizeBytes };
+		});
+
+		const results = await Promise.allSettled([
+			service.upload(appId, Buffer.alloc(100)),
+			service.upload('22222222-2222-4222-8222-222222222222', Buffer.alloc(100)),
+		]);
+
+		expect(results).toEqual([
+			{ status: 'fulfilled', value: expect.objectContaining({ appId }) },
+			{ status: 'rejected', reason: expect.any(BadRequestError) },
+		]);
+		expect(totalSize).toBe(1000);
 	});
 
 	it('discards an upload that expires while bytes are written', async () => {
@@ -77,7 +116,7 @@ describe('AppArtifactService', () => {
 			vi.setSystemTime(now.getTime() + 31 * 60 * 1000);
 		});
 
-		await expect(service.upload(Buffer.from('test'))).rejects.toThrow(ConflictError);
+		await expect(service.upload(appId, Buffer.from('test'))).rejects.toThrow(ConflictError);
 
 		expect(blobs.delete).toHaveBeenCalledWith(artifact);
 	});
@@ -145,7 +184,7 @@ describe('AppArtifactService', () => {
 			if (operation === 'upload') {
 				const error = new Error('Write failed.');
 				blobs.write.mockRejectedValue(error);
-				await expect(service.upload(Buffer.from('test'))).rejects.toBe(error);
+				await expect(service.upload(appId, Buffer.from('test'))).rejects.toBe(error);
 			} else {
 				await service.discard(artifact);
 			}
@@ -208,9 +247,14 @@ describe('AppArtifactService', () => {
 	});
 
 	it('retains a failed deletion for retry and cleans the next artifact', async () => {
-		const { service, repository, blobs, artifact, ctx } = createService();
+		const { service, repository, blobs, artifact, ctx, locks } = createService();
 		artifact.uploadStatus = 'completed';
-		const next = mock<AppArtifact>({ ...artifact, id: 2, storageKey: 'apps/artifacts/next.tgz' });
+		const next = mock<AppArtifact>({
+			...artifact,
+			id: 2,
+			appId: '22222222-2222-4222-8222-222222222222',
+			storageKey: 'apps/artifacts/next.tgz',
+		});
 		repository.findUnused.mockResolvedValueOnce([artifact, next]);
 		repository.findArtifact.mockImplementation(async (id) =>
 			id === artifact.id ? artifact : next,
@@ -220,5 +264,14 @@ describe('AppArtifactService', () => {
 		await service.cleanup();
 
 		expect(repository.removeUnused).toHaveBeenCalledExactlyOnceWith(next, ctx);
+		for (const owner of [artifact, next]) {
+			expect(locks.withLockContext).toHaveBeenCalledWith(
+				DbLock.APPS_STORAGE,
+				expect.any(Function),
+				{
+					subKey: appStorageLockSubKey(owner.appId),
+				},
+			);
+		}
 	});
 });

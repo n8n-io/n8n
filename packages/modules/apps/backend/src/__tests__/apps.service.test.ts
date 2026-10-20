@@ -1,9 +1,10 @@
 import { CreateAppDto, ListAppsQueryDto, UpdateAppDto } from '@n8n/api-types';
 import { ProjectScopeService } from '@n8n/backend-services';
-import { DbLockService, type User } from '@n8n/db';
+import { DbLock, DbLockService, type User } from '@n8n/db';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
+import { appStorageLockSubKey } from '../app-storage-lock';
 import type { App } from '../app.entity';
 import { AppRepository } from '../app.repository';
 import { AppsService } from '../apps.service';
@@ -14,7 +15,7 @@ function createService() {
 	const locks = mock<DbLockService>();
 	locks.withLockContext.mockImplementation(async (_key, fn) => await fn({}));
 	const service = new AppsService(appRepository, projectScopeService, locks);
-	return { service, appRepository, projectScopeService };
+	return { service, appRepository, projectScopeService, locks };
 }
 
 describe('AppsService', () => {
@@ -147,7 +148,7 @@ describe('AppsService', () => {
 	);
 
 	it.each([1, 0])('handles app deletion when %i rows match', async (affected) => {
-		const { service, appRepository } = createService();
+		const { service, appRepository, locks } = createService();
 		const appId = '11111111-1111-4111-8111-111111111111';
 		appRepository.deleteInProject.mockResolvedValue(affected === 1);
 
@@ -158,5 +159,8 @@ describe('AppsService', () => {
 			await expect(deletion).rejects.toThrow(NotFoundError);
 		}
 		expect(appRepository.deleteInProject).toHaveBeenCalledWith('project-1', appId, {});
+		expect(locks.withLockContext).toHaveBeenCalledWith(DbLock.APPS_STORAGE, expect.any(Function), {
+			subKey: appStorageLockSubKey(appId),
+		});
 	});
 });

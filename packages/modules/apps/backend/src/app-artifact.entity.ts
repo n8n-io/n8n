@@ -26,4 +26,4 @@ export class AppArtifact extends WithTimestamps {
 	uploadStatus: 'pending' | 'completed';
 }
 
-export type AppArtifactRef = Pick<AppArtifact, 'id' | 'storageKey'>;
+export type AppArtifactRef = Pick<AppArtifact, 'id' | 'appId' | 'storageKey'>;
