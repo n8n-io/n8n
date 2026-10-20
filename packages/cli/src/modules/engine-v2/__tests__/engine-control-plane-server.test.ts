@@ -7,6 +7,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { EngineControlPlaneServer } from '../engine-control-plane-server';
 import type { EngineCredentialsController } from '../engine-credentials.controller';
+import type { EngineSubWorkflowController } from '../engine-sub-workflow.controller';
 import type { EngineLifecycleEventPushRelay } from '../engine-lifecycle-event-push-relay';
 import { EngineLifecycleEventController } from '../engine-lifecycle-event.controller';
 
@@ -47,6 +48,7 @@ describe('EngineControlPlaneServer', () => {
 			engineConfig(),
 			controller,
 			credentialsController,
+			mock<EngineSubWorkflowController>(),
 			mock<Logger>({ scoped: vi.fn().mockReturnValue(serverLogger) }),
 		);
 		await server.start();

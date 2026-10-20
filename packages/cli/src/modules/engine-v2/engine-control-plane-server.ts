@@ -11,11 +11,16 @@ import { send } from '@/response-helper';
 import { createEngineControlPlaneAuthMiddleware } from './engine-control-plane-auth.middleware';
 import { EngineCredentialsController } from './engine-credentials.controller';
 import { EngineLifecycleEventController } from './engine-lifecycle-event.controller';
-import { CREDENTIALS_RESOLVE_PATH, STATUS_CALLBACK_PATH } from './engine-v2.constants';
+import { EngineSubWorkflowController } from './engine-sub-workflow.controller';
+import {
+	CREDENTIALS_RESOLVE_PATH,
+	STATUS_CALLBACK_PATH,
+	SUB_WORKFLOWS_RESOLVE_PATH,
+} from './engine-v2.constants';
 
 /**
- * Receives lifecycle events from the data plane and resolves credentials for
- * it. It listens on its own host and port, separate from the REST API server,
+ * Receives lifecycle events from the data plane, and resolves credentials and
+ * sub-workflows for it. It listens on its own host and port, separate from the REST API server,
  * so an operator can restrict these internal routes to the network that the
  * data plane uses without touching the editor's routes.
  */
@@ -32,6 +37,7 @@ export class EngineControlPlaneServer {
 		private readonly engineConfig: EngineConfig,
 		private readonly lifecycleEventController: EngineLifecycleEventController,
 		private readonly credentialsController: EngineCredentialsController,
+		private readonly subWorkflowController: EngineSubWorkflowController,
 		private readonly logger: Logger,
 	) {
 		this.logger = this.logger.scoped('engine-v2');
@@ -113,6 +119,18 @@ export class EngineControlPlaneServer {
 			rawBodyReader,
 			bodyParser,
 			send(async (req, res) => await this.credentialsController.resolveCredential(req, res)),
+		);
+
+		app.post(
+			SUB_WORKFLOWS_RESOLVE_PATH,
+			createEngineControlPlaneAuthMiddleware(
+				this.engineConfig,
+				this.logger,
+				'sub-workflows:resolve',
+			),
+			rawBodyReader,
+			bodyParser,
+			send(async (req, res) => await this.subWorkflowController.resolveSubWorkflow(req, res)),
 		);
 	}
 }
