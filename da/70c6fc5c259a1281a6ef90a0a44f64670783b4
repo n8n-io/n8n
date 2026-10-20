@@ -862,6 +862,7 @@ packages/cli/src/modules/n8n-packages/__tests__/agent-import-planning.integratio
   s_71ad2034164515::t_e3610d26963116 294,543,613
   s_71ad2034164515::t_464c0ddc018bb1 258-260,548,616-618
   s_71ad2034164515::t_734ba3dd007431 587
+  s_d3c0f6f6f7d41c::t_7bd0fb84a1850e 457,462,464
 packages/cli/src/modules/agents/agent-config.service.ts
   s_71ad2034164515::t_c92b746b369492 460,486
   s_71ad2034164515::t_961dcd505c9228 44-48,117-122,127-131,137-141,147-149,153-161,163-164,168-170
@@ -965,6 +966,7 @@ packages/@n8n/api-types/src/dto/packages/import-package-request.openapi.ts
   s_71ad2034164515::t_fd7099debe6b33 57-67,74-75,82
   s_71ad2034164515::t_734ba3dd007431 55,69,260
   s_d3c0f6f6f7d41c::t_2fc52023346201 71-73,262-263
+  s_d3c0f6f6f7d41c::t_7bd0fb84a1850e 264
 packages/@n8n/cli/src/commands/package/import.ts
   s_71ad2034164515::t_e46cf7d0c73fdf 49,55
   s_d3c0f6f6f7d41c::t_bca7c775644af6 32
@@ -1127,6 +1129,7 @@ packages/cli/src/modules/n8n-packages/__tests__/fixtures/import-request.ts
   s_71ad2034164515::t_f9c6eff290075f 14
   s_71ad2034164515::t_87f57b02bb38e3 14
   s_71ad2034164515::t_734ba3dd007431 15
+  s_d3c0f6f6f7d41c::t_7bd0fb84a1850e 16
 packages/cli/src/modules/n8n-packages/__tests__/import-project-from-directory.integration.test.ts
   s_d3c0f6f6f7d41c::t_bca7c775644af6 38
   s_71ad2034164515::t_e32efd080014b2 38
@@ -1143,6 +1146,7 @@ packages/cli/test/integration/public-api/n8n-packages-import-agents.test.ts
   s_71ad2034164515::t_734ba3dd007431 286,298,349,376,378
   s_71ad2034164515::t_708c3eb90c66a1 304-307,363
   s_d3c0f6f6f7d41c::t_2fc52023346201 150,215,220,263,272,442
+  s_d3c0f6f6f7d41c::t_7bd0fb84a1850e 459-472
 packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow-importer.test.ts
   s_d3c0f6f6f7d41c::t_bca7c775644af6 31,415,456
   s_71ad2034164515::t_c32e78b2899554 31,415,456
@@ -1208,6 +1212,7 @@ packages/@n8n/api-types/src/dto/packages/import-result.dto.ts
   s_71ad2034164515::t_5605a7e11b9efe 14,71,79-82,85-96,261-263,281-288
   s_71ad2034164515::t_56486576c7f38e 18
   s_d3c0f6f6f7d41c::t_2fc52023346201 53
+  s_d3c0f6f6f7d41c::t_7bd0fb84a1850e 52
 packages/@n8n/api-types/src/dto/packages/__tests__/import-package-selection-request.dto.test.ts
   s_d3c0f6f6f7d41c::t_bca7c775644af6 22,42,128,134,143,149,156-157,159,161,191
   s_71ad2034164515::t_45aca1f1ca0eeb 22,42,128,134,143,149,156-157,159,161,191
