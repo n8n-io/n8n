@@ -1,0 +1,33 @@
+packages/nodes-base/nodes/Gitlab/__tests__/GitlabTrigger.test.ts
+  s_2e1fa95fc44f8f::t_95aee47f8955e1 4,8,100-101,104-105,140-154
+packages/nodes-base/nodes/Ghost/Ghost.node.ts
+  s_2e1fa95fc44f8f::t_ac16009f179d6e 11-16,27-28,144-145,154,278
+  s_2e1fa95fc44f8f::t_6592bbb58e5411 325
+  s_2e1fa95fc44f8f::t_ad601ac1da5c43 266
+packages/nodes-base/nodes/Gitlab/GitlabTrigger.node.ts
+  s_2e1fa95fc44f8f::t_36c6ffe3e0b070 10,81-87,94-95,197,241,280
+packages/nodes-base/nodes/Gitlab/__tests__/Gitlab.node.test.ts
+  s_2e1fa95fc44f8f::t_fc52641f6dec47 22,39,118-148,150-174,176,178-179,182,184-185,188,190-191,194,196,200,202,205-217
+packages/nodes-base/nodes/Gitlab/Gitlab.node.ts
+  s_2e1fa95fc44f8f::t_6ca0bf01387962 10-15,25-26,1392-1393,1404,1408,1506,1508,1519,1521,1532,1551,1553
+packages/nodes-base/nodes/Ghost/test/Ghost.node.test.ts
+  s_2e1fa95fc44f8f::t_246eb019396196 1-8,10-11,28-32,34-39,77-78
+  s_2e1fa95fc44f8f::t_0f075c8b4b82c1 9,12-27,33,40-76
+  s_2e1fa95fc44f8f::t_eaeb48222d2d15 79-84
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "df481ccb9013ead38d36dde851964cbc6e3baf14",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": null
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/nodes-base/nodes/Gitlab/Gitlab.node.ts
+  s_2e1fa95fc44f8f::t_b3d41eab9b0e67 717,749,849
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "90526d5e87e63f034ff166a19ed5d946c020a73e",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

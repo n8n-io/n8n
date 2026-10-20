@@ -1,0 +1,59 @@
+packages/nodes-base/nodes/Webhook/test/Webhook.test.ts
+  s_3428465b7508cc::t_e0aa7e72392124 305,309
+packages/@n8n/nodes-langchain/nodes/mcp/McpTrigger/McpTrigger.node.ts
+  s_3428465b7508cc::t_8cf5c65d820eda 250
+  s_3428465b7508cc::t_c10d1414fe347a 254-255
+packages/cli/src/webhooks/webhook-helpers.ts
+  s_3428465b7508cc::t_1e21633bc6889c 785,788,794,867,873-874,879,881,890,898-900,940
+packages/cli/src/modules/oauth-server/protected-resource-resolvers/utils.ts
+  s_3428465b7508cc::t_0242a36bb7a559 56,60,66-67
+packages/core/src/execution-engine/node-execution-context/utils/trusted-source-helper-functions.ts
+  s_3428465b7508cc::t_bcf2bac20672c0 1-2,4-6,9,11-12
+packages/workflow/src/interfaces.ts
+  s_3428465b7508cc::t_f316bca6ced9e1 178-180,185-186,1274,1277,1280-1283,1285-1286,1538-1541
+packages/cli/src/modules/inbound-auth-core/__tests__/oauth2-bearer.driver.test.ts
+  s_3428465b7508cc::t_b2eaae50c494dc 390-401
+packages/cli/src/modules/inbound-auth-core/authentication-pipeline.ts
+  s_3428465b7508cc::t_a4b2fe6770a686 34-35,37,38,39
+packages/cli/src/modules/inbound-auth-core/oauth2-bearer.driver.ts
+  s_3428465b7508cc::t_d5e8cddbb00ac2 203-204
+packages/cli/src/modules/oauth-server/__tests__/workflow-mcp-trigger-resource.resolver.api.test.ts
+  s_3428465b7508cc::t_bb579244341745 36,41,49-53,134-146
+  s_3428465b7508cc::t_be038eb5c3c106 147-148
+  s_3428465b7508cc::t_5fe0c4b8d58e7f 17-20
+packages/core/src/execution-engine/node-execution-context/load-options-context.ts
+  s_3428465b7508cc::t_bcf2bac20672c0 17,34
+packages/cli/src/webhooks/__tests__/webhook-helpers.test.ts
+  s_3428465b7508cc::t_3ec703c2e52f22 13,15,17-18
+packages/nodes-base/nodes/Webhook/Webhook.node.ts
+  s_3428465b7508cc::t_6be7c6c18de6a1 160,228,232-233,283-289
+packages/cli/src/modules/oauth-server/__tests__/oauth.controller.test.ts
+  s_3428465b7508cc::t_bb579244341745 166-167,176-177,179-190,192-193,195-197,200-201,213,215,217-219,222-225,227,229-230
+  s_3428465b7508cc::t_5413a841d50fb0 231-232
+packages/cli/src/modules/oauth-server/oauth.controller.ts
+  s_3428465b7508cc::t_b5f653dfe349e6 16,292,337,340-342
+  s_3428465b7508cc::t_1fd0cbe21d0615 343-345,347,355
+packages/cli/src/modules/inbound-auth-core/__tests__/authentication-pipeline.test.ts
+  s_3428465b7508cc::t_41731bb7b6ffc1 94,98
+  s_3428465b7508cc::t_c8f5b0bc03acfb 99-100
+packages/workflow/test/n8n-oauth2-auth.test.ts
+  s_3428465b7508cc::t_13e736f9fb4964 118-119,121-122,124,127-128
+packages/cli/src/modules/oauth-server/__tests__/workflow-webhook-trigger-resource.resolver.api.test.ts
+  s_3428465b7508cc::t_bb579244341745 48,54,70,260-272
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2db35064b47ed8c8098ca390412ef49b08fd572d",
+  "prompts": {},
+  "sessions": {
+    "s_3428465b7508cc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "528f7694-5b48-4311-b2ef-0a0f994fff37",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}
