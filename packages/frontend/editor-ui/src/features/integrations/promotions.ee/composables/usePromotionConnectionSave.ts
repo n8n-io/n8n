@@ -3,22 +3,21 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { ref } from 'vue';
 
 import {
-	deletePromotionConfig,
-	updatePromotionConnection,
-	upsertPromotionApplyConfig,
-	upsertPromotionPromoteConfig,
+	createPromotionEnvironment,
+	deletePromotionEnvironment,
+	updatePromotionEnvironment,
 	type PromotionConnection,
 } from '../promotionsSettings.api';
-import type { ConnectionWrite } from '../promotionsSettings.utils';
+import { toConnection, withEnvironment, type ConnectionWrite } from '../promotionsSettings.utils';
 
 export type ConnectionSaveResult = {
 	/** State after all successful writes. */
-	connection: PromotionConnection;
+	connection: PromotionConnection | null;
 	failed: ConnectionWrite[];
 	error?: unknown;
 };
 
-/** Saves independent writes. Target changes must succeed before direction settings. */
+/** Saves each direction's environment on its own, so one failure does not block the other. */
 export function usePromotionConnectionSave() {
 	const rootStore = useRootStore();
 
@@ -26,69 +25,50 @@ export function usePromotionConnectionSave() {
 	const failedWrites = ref<ConnectionWrite[]>([]);
 
 	const runWrite = async (
-		connectionId: string,
 		write: ConnectionWrite,
-		connection: PromotionConnection,
-	): Promise<PromotionConnection> => {
+		configs: PromotionConnection['configs'],
+	): Promise<PromotionConnection['configs']> => {
 		const context = rootStore.publicApiContext;
 
 		switch (write.kind) {
-			case 'connection': {
-				// The response re-reads every config, so its checkout state reflects the
-				// new target. Reusing the local configs would keep a stale checkout.
-				return await updatePromotionConnection(context, connectionId, write.payload);
-			}
-			case 'config': {
-				const config =
-					write.direction === 'apply'
-						? await upsertPromotionApplyConfig(context, connectionId, write.payload)
-						: await upsertPromotionPromoteConfig(context, connectionId, write.payload);
-				return {
-					...connection,
-					configs: { ...connection.configs, [write.direction]: config },
-				};
-			}
-			case 'config-delete': {
+			case 'create':
+				return withEnvironment(configs, await createPromotionEnvironment(context, write.payload));
+			case 'update':
+				// The response re-reads the checkout state, so a remote change cannot keep a stale one.
+				return withEnvironment(
+					configs,
+					await updatePromotionEnvironment(context, write.environmentId, write.payload),
+				);
+			case 'delete': {
 				try {
-					await deletePromotionConfig(context, connectionId, write.direction);
+					await deletePromotionEnvironment(context, write.environmentId);
 				} catch (error) {
-					// A config that is already gone means the delete is done, so a retry can finish.
+					// An environment that is already gone means the delete is done, so a retry can finish.
 					if (!(error instanceof ResponseError) || error.httpStatusCode !== 404) throw error;
 				}
-				const configs = { ...connection.configs };
-				delete configs[write.direction];
-				return { ...connection, configs };
+				const next = { ...configs };
+				delete next[write.direction];
+				return next;
 			}
 		}
 	};
 
 	const run = async (
-		current: PromotionConnection,
+		current: PromotionConnection | null,
 		writes: ConnectionWrite[],
 	): Promise<ConnectionSaveResult> => {
-		let connection = current;
+		let configs = { ...current?.configs };
 		const failed: ConnectionWrite[] = [];
 		let error: unknown;
-		let targetFailed = false;
 
 		isSaving.value = true;
 		try {
 			for (const write of writes) {
-				if (targetFailed && write.kind !== 'connection') {
-					failed.push(write);
-					continue;
-				}
 				try {
-					connection = await runWrite(current.id, write, connection);
+					configs = await runWrite(write, configs);
 				} catch (writeError) {
 					failed.push(write);
 					error ??= writeError;
-					if (
-						write.kind === 'connection' &&
-						(write.payload.target !== undefined || write.payload.providerId !== undefined)
-					) {
-						targetFailed = true;
-					}
 				}
 			}
 		} finally {
@@ -97,7 +77,7 @@ export function usePromotionConnectionSave() {
 
 		failedWrites.value = failed;
 
-		return { connection, failed, error };
+		return { connection: toConnection(configs), failed, error };
 	};
 
 	const reset = () => {

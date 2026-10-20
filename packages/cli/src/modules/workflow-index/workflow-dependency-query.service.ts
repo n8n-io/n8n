@@ -17,7 +17,6 @@ import { hasGlobalScope } from '@n8n/permissions';
 import { In, type FindManyOptions } from '@n8n/typeorm';
 
 import { CredentialsFinderService, RoleService } from '@n8n/backend-services';
-import { isCredSharingEnabled } from '@/constants/credential-sharing';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -174,11 +173,9 @@ export class WorkflowDependencyQueryService {
 			]);
 
 		// Only a credential's dependency details need each workflow's owning
-		// project (to link a "used in" workflow back to its project), and only
-		// while the feature that surfaces that link is enabled — so this never
-		// adds work to workflow/data-table dependency lookups or flag-off
-		// instances (e.g. the credentials list's pre-existing "N workflows" pill).
-		const needsWorkflowProject = resourceType === 'credential' && isCredSharingEnabled();
+		// project (to link a "used in" workflow back to its project), so this never
+		// adds work to workflow/data-table dependency lookups.
+		const needsWorkflowProject = resourceType === 'credential';
 		const workflowFindOptions: FindManyOptions<WorkflowEntity> = needsWorkflowProject
 			? {
 					where: { id: In([...maps.allWfIds]) },
@@ -239,9 +236,7 @@ export class WorkflowDependencyQueryService {
 		// Same usability rule as the node credential field, so a user with only
 		// see-rights sees the credential as unavailable in both places.
 		const listUnavailable =
-			options.listUnavailableCredentials === true &&
-			resourceType === 'workflow' &&
-			isCredSharingEnabled();
+			options.listUnavailableCredentials === true && resourceType === 'workflow';
 		const unusableCredIds = new Set(
 			listUnavailable
 				? (

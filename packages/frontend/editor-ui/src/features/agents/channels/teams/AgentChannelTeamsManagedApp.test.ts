@@ -1,5 +1,5 @@
 import { createComponentRenderer } from '@/__tests__/render';
-import type { TeamsCatalogState } from '@n8n/api-types';
+import { resolveAgentPersonalisation, type TeamsCatalogState } from '@n8n/api-types';
 import { createTestingPinia } from '@pinia/testing';
 import { configure, fireEvent, waitFor } from '@testing-library/vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -9,6 +9,7 @@ import { fetchTeamsAppPackage } from './api';
 import AgentChannelTeamsManagedApp from './AgentChannelTeamsManagedApp.vue';
 import type { TeamsChannelRuntime } from './useTeamsChannelRuntime';
 import { ActionDropdownTestStub } from '../../__tests__/utils/ActionDropdownTestStub';
+import { AGENT_PERSONALISATION_KEY } from '../agentPersonalisation';
 
 vi.mock('file-saver', () => ({ saveAs: vi.fn() }));
 
@@ -58,7 +59,7 @@ const buildRuntime = (overrides: Partial<TeamsChannelRuntime> = {}): TeamsChanne
 		...overrides,
 	}) as unknown as TeamsChannelRuntime;
 
-const render = (overrides: Record<string, unknown> = {}) => {
+const render = (overrides: Record<string, unknown> = {}, provide: Record<symbol, unknown> = {}) => {
 	const { runtime, ...rest } = overrides as { runtime?: TeamsChannelRuntime };
 	return renderComponent({
 		props: {
@@ -75,6 +76,7 @@ const render = (overrides: Record<string, unknown> = {}) => {
 			stubs: {
 				ActionDropdown: ActionDropdownTestStub,
 			},
+			provide,
 		},
 	});
 };
@@ -383,5 +385,33 @@ describe('AgentChannelTeamsManagedApp', () => {
 		expect(getByTestId('teams-managed-app-bot-link').getAttribute('href')).toContain(
 			'BotService%2FbotServices',
 		);
+	});
+
+	it("shows the agent's own icon on the identity card", () => {
+		const personalisation = computed(() => ({
+			icon: 'zap',
+			gradient: { from: '#2563EB', to: '#7C3AED', angle: 135, fromStop: 0, toStop: 100 },
+		}));
+
+		const { getByTestId } = render({}, { [AGENT_PERSONALISATION_KEY]: personalisation });
+
+		const tile = getByTestId('teams-identity').querySelector<HTMLElement>(
+			'[data-test-id="agent-personalisation-icon-tile"]',
+		);
+		expect(tile?.style.getPropertyValue('--agent-personalisation-gradient-from')).toBe('#2563EB');
+		expect(tile?.querySelector('[data-icon="zap"]')).toBeInTheDocument();
+	});
+
+	it('shows the default icon on the identity card without a provider', () => {
+		const defaults = resolveAgentPersonalisation(null);
+		const { getByTestId } = render();
+
+		const tile = getByTestId('teams-identity').querySelector<HTMLElement>(
+			'[data-test-id="agent-personalisation-icon-tile"]',
+		);
+		expect(tile?.style.getPropertyValue('--agent-personalisation-gradient-from')).toBe(
+			defaults.gradient.from,
+		);
+		expect(tile?.querySelector(`[data-icon="${defaults.icon}"]`)).toBeInTheDocument();
 	});
 });

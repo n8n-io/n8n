@@ -199,7 +199,7 @@ class WebhookRequestHandler {
 		const method = req.method;
 		const { path } = req.params;
 
-		if (this.webhookManager.getWebhookMethods) {
+		if (method === 'OPTIONS' && this.webhookManager.getWebhookMethods) {
 			try {
 				const allowedMethods = await this.webhookManager.getWebhookMethods(path);
 				res.header('Access-Control-Allow-Methods', ['OPTIONS', ...allowedMethods].join(', '));

@@ -1,3 +1,4 @@
+import { type SerializedTag, serializedTagSchema } from '@n8n/api-types';
 import type { TagEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 
@@ -5,7 +6,6 @@ import { packageDirectory, writeManifestEntry } from '../../io/manifest-entry';
 import type { PackageWriter } from '../../io/package-writer';
 import type { ManifestEntry } from '../../spec/manifest.schema';
 import type { PackageTagRequirement } from '../../spec/requirements.schema';
-import { serializedTagSchema, type SerializedTag } from '../../spec/serialized/tag.schema';
 import { definePackageSerializationPayload } from '../package-serialization.types';
 import { compareTagsByName, type WorkflowTagUsage } from './tag.types';
 

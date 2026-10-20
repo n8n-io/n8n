@@ -2,10 +2,8 @@ import type { CredentialProvider, ResolvedCredential } from '@n8n/agents';
 import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 import { mock } from 'vitest-mock-extended';
 
-import {
-	resolveCredentialAwareModelConfig,
-	type AiGatewayModelCredentialResolver,
-} from '../model-config';
+import { resolveCredentialAwareModelConfig } from '../model-config';
+import type { AiGatewayModelCredentialResolver } from '../../agent-credential-provider.contracts';
 
 const { getCachedCatalog } = vi.hoisted(() => ({ getCachedCatalog: vi.fn() }));
 vi.mock('@n8n/agents/catalog', () => ({ getCachedCatalog }));

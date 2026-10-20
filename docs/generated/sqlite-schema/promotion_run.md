@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "promotion_run" ("id" varchar PRIMARY KEY NOT NULL, "configId" varchar(36), "direction" varchar(16) NOT NULL, "type" varchar(16) NOT NULL, "createdById" varchar, "details" text, "reviewId" varchar, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_promotion_run_direction" CHECK ("direction" IN ('promote', 'apply')), CONSTRAINT "CHK_promotion_run_type" CHECK ("type" IN ('git')), CONSTRAINT "FK_promotion_run_configId" FOREIGN KEY ("configId") REFERENCES "promotion_config" ("id") ON DELETE SET NULL, CONSTRAINT "FK_promotion_run_createdById" FOREIGN KEY ("createdById") REFERENCES "user" ("id") ON DELETE SET NULL, CONSTRAINT "FK_promotion_run_reviewId" FOREIGN KEY ("reviewId") REFERENCES "promotion_review" ("id") ON DELETE SET NULL)
+CREATE TABLE "promotion_run" ("id" varchar PRIMARY KEY NOT NULL, "environmentId" varchar, "direction" varchar(16) NOT NULL, "type" varchar(16) NOT NULL, "createdById" varchar, "details" text, "reviewId" varchar, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_promotion_run_direction" CHECK ("direction" IN ('apply', 'promote')), CONSTRAINT "CHK_promotion_run_type" CHECK ("type" IN ('git')), CONSTRAINT "FK_promotion_run_environmentId" FOREIGN KEY ("environmentId") REFERENCES "promotion_environment" ("id") ON DELETE SET NULL, CONSTRAINT "FK_promotion_run_createdById" FOREIGN KEY ("createdById") REFERENCES "user" ("id") ON DELETE SET NULL, CONSTRAINT "FK_promotion_run_reviewId" FOREIGN KEY ("reviewId") REFERENCES "promotion_review" ("id") ON DELETE SET NULL)
 ```
 
 </details>
@@ -15,11 +15,11 @@ CREATE TABLE "promotion_run" ("id" varchar PRIMARY KEY NOT NULL, "configId" varc
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| configId | varchar(36) |  | true |  | [promotion_config](promotion_config.md) |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | createdById | varchar |  | true |  | [user](user.md) |  |
 | details | TEXT |  | true |  |  |  |
 | direction | varchar(16) |  | false |  |  |  |
+| environmentId | varchar |  | true |  | [promotion_environment](promotion_environment.md) |  |
 | id | varchar |  | false |  |  |  |
 | reviewId | varchar |  | true |  | [promotion_review](promotion_review.md) |  |
 | type | varchar(16) |  | false |  |  |  |
@@ -28,11 +28,11 @@ CREATE TABLE "promotion_run" ("id" varchar PRIMARY KEY NOT NULL, "configId" varc
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| - | CHECK | CHECK ("direction" IN ('promote', 'apply')) |
+| - | CHECK | CHECK ("direction" IN ('apply', 'promote')) |
 | - | CHECK | CHECK ("type" IN ('git')) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (reviewId) REFERENCES promotion_review (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE |
 | - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE |
-| - (Foreign key ID: 2) | FOREIGN KEY | FOREIGN KEY (configId) REFERENCES promotion_config (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE |
+| - (Foreign key ID: 2) | FOREIGN KEY | FOREIGN KEY (environmentId) REFERENCES promotion_environment (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE |
 | id | PRIMARY KEY | PRIMARY KEY (id) |
 | sqlite_autoindex_promotion_run_1 | PRIMARY KEY | PRIMARY KEY (id) |
 
@@ -40,8 +40,8 @@ CREATE TABLE "promotion_run" ("id" varchar PRIMARY KEY NOT NULL, "configId" varc
 
 | Name | Definition |
 | ---- | ---------- |
-| IDX_5c00951cc85ac1bc6f120b1e69 | CREATE INDEX "IDX_5c00951cc85ac1bc6f120b1e69" ON "promotion_run" ("configId")  |
 | IDX_b24c3e6b803dc496c8702f12ab | CREATE INDEX "IDX_b24c3e6b803dc496c8702f12ab" ON "promotion_run" ("reviewId")  |
+| IDX_fedd808ad4d5b9f813190e0ec7 | CREATE INDEX "IDX_fedd808ad4d5b9f813190e0ec7" ON "promotion_run" ("environmentId")  |
 | sqlite_autoindex_promotion_run_1 | PRIMARY KEY (id) |
 
 ## Relations
@@ -49,28 +49,19 @@ CREATE TABLE "promotion_run" ("id" varchar PRIMARY KEY NOT NULL, "configId" varc
 ```mermaid
 erDiagram
 
-"promotion_run" }o--o| "promotion_config" : "FOREIGN KEY (configId) REFERENCES promotion_config (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "promotion_run" }o--o| "user" : "FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"promotion_run" }o--o| "promotion_environment" : "FOREIGN KEY (environmentId) REFERENCES promotion_environment (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "promotion_run" }o--o| "promotion_review" : "FOREIGN KEY (reviewId) REFERENCES promotion_review (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 
 "promotion_run" {
-  varchar_36_ configId FK
   datetime_3_ createdAt
   varchar createdById FK
   TEXT details
   varchar_16_ direction
+  varchar environmentId FK
   varchar id PK
   varchar reviewId FK
   varchar_16_ type
-}
-"promotion_config" {
-  varchar_36_ connectionId FK
-  datetime_3_ createdAt
-  varchar_16_ direction
-  varchar_36_ id PK
-  varchar_128_ name
-  TEXT settings
-  datetime_3_ updatedAt
 }
 "user" {
   datetime_3_ createdAt
@@ -89,12 +80,23 @@ erDiagram
   TEXT settings
   datetime_3_ updatedAt
 }
+"promotion_environment" {
+  datetime_3_ createdAt
+  varchar_16_ direction
+  varchar id PK
+  varchar_128_ name
+  varchar_36_ providerId FK
+  TEXT remote
+  varchar_16_ scope
+  TEXT settings
+  datetime_3_ updatedAt
+}
 "promotion_review" {
   datetime_3_ approvedAt
   varchar approvedById FK
-  varchar_36_ connectionId FK
   datetime_3_ createdAt
   varchar createdById FK
+  varchar environmentId FK
   varchar id PK
   datetime_3_ lastStateChangeAt
   varchar_255_ remoteReviewId

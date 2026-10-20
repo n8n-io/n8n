@@ -82,6 +82,9 @@ describe('eligibleModules', () => {
 			'data-table',
 			'oauth-server',
 			'mcp',
+			// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+			'mcp-discovery',
+			// EOF Experiment cleanup
 			'provisioning',
 			'breaking-changes',
 			'source-control',
@@ -125,6 +128,9 @@ describe('eligibleModules', () => {
 			'data-table',
 			'oauth-server',
 			'mcp',
+			// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+			'mcp-discovery',
+			// EOF Experiment cleanup
 			'provisioning',
 			'breaking-changes',
 			'source-control',
