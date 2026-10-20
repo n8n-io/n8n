@@ -101,14 +101,12 @@ const handleSubmit = () => {
 	<N8nDialog
 		:open="modalOpen"
 		size="medium"
-		:container-class="$style.dialog"
 		:header="data.modalTitle"
 		@update:open="onDialogOpenUpdate"
 	>
 		<N8nDialogBody>
 			<form
 				:id="`${modalName}-form`"
-				:class="$style.content"
 				:data-test-id="`${modalName}-modal`"
 				@submit.prevent="handleSubmit"
 			>
@@ -141,18 +139,3 @@ const handleSubmit = () => {
 		</N8nDialogFooter>
 	</N8nDialog>
 </template>
-<style lang="scss" module>
-.dialog {
-	display: flex;
-	flex-direction: column;
-	max-height: 85vh;
-}
-
-.content {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--lg);
-	min-height: 0;
-	overflow-y: auto;
-}
-</style>
