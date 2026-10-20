@@ -20,7 +20,7 @@ import { AgentChatExecutionService } from '../agent-chat-execution.service';
 import { AgentChatRelayService } from '../agent-chat-relay.service';
 import { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
 import { AgentMessageQueueService } from '../agent-message-queue.service';
-import { toChatErrorEvent, type FlushableResponse } from '../agent-sse-stream';
+import type { FlushableResponse } from '../agent-sse-stream';
 import { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import { SYSTEM_CHAT_SOURCE } from '../utils/agent-thread-access';
 import { withOpenSuspensions } from '../utils/messages-envelope';
@@ -119,22 +119,19 @@ export class SystemAgentChatController {
 		@Param('agentId') agentId: string,
 		@Body payload: AgentChatResumeDto,
 	) {
-		const delivery = this.chatRelay.createChatStream(res);
-		try {
-			await this.systemAgents.resumeRun({
-				agentId,
-				user: req.user,
-				runId: payload.runId,
-				toolCallId: payload.toolCallId,
-				resumeData: payload.resumeData,
-				send: delivery.send,
-				onExecutionStarted: delivery.onExecutionStarted,
-			});
-		} catch (error) {
-			delivery.send(toChatErrorEvent(error, 'Resume failed'));
-		} finally {
-			delivery.close();
-		}
+		await this.chatRelay.relayResume(
+			res,
+			async ({ send, onExecutionStarted }) =>
+				await this.systemAgents.resumeRun({
+					agentId,
+					user: req.user,
+					runId: payload.runId,
+					toolCallId: payload.toolCallId,
+					resumeData: payload.resumeData,
+					send,
+					onExecutionStarted,
+				}),
+		);
 	}
 
 	/** Stop a running turn. Only the thread owner can stop it. */

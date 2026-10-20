@@ -45,7 +45,7 @@ import {
 	threadBelongsTo,
 } from './utils/agent-thread-access';
 import { messagesToDto } from './agent-message-mapper';
-import { type FlushableResponse, toChatErrorEvent } from './agent-sse-stream';
+import type { FlushableResponse } from './agent-sse-stream';
 import { AgentTestChatService, chatThreadId } from './agent-test-chat.service';
 import { AgentTestRunService } from './agent-test-run.service';
 import { AgentsService } from './agents.service';
@@ -173,10 +173,8 @@ export class AgentChatController {
 		@Param('agentId') agentId: string,
 		@Body payload: AgentChatResumeDto,
 	) {
-		const delivery = this.chatRelay.createChatStream(res);
-		const { send, onChunk, onExecutionStarted } = delivery;
-		let executionId: string | undefined;
-		try {
+		await this.chatRelay.relayResume(res, async ({ send, onChunk, onExecutionStarted }) => {
+			let executionId: string | undefined;
 			const stream = this.agentExecutionOrchestratorService.resumeForChat({
 				agentId,
 				projectId: req.params.projectId,
@@ -203,11 +201,7 @@ export class AgentChatController {
 			if (!suspended && !failed) {
 				send({ type: 'done', ...(executionId ? { executionId } : {}) });
 			}
-		} catch (error) {
-			send(toChatErrorEvent(error, 'Resume failed'));
-		} finally {
-			delivery.close();
-		}
+		});
 	}
 
 	@Post('/:agentId/chat', { usesTemplates: true })
@@ -289,9 +283,7 @@ export class AgentChatController {
 	) {
 		const { projectId } = req.params;
 		const { runId, toolCallId, resumeData } = payload;
-		const delivery = this.chatRelay.createChatStream(res);
-		const { send, onChunk, onExecutionStarted } = delivery;
-		try {
+		await this.chatRelay.relayResume(res, async ({ send, onChunk, onExecutionStarted }) => {
 			const result = await this.agentTestRunService.resumePreparedDraftRun({
 				agentId,
 				projectId,
@@ -311,11 +303,7 @@ export class AgentChatController {
 					...(result.executionId ? { executionId: result.executionId } : {}),
 				});
 			}
-		} catch (error) {
-			send(toChatErrorEvent(error, 'Resume failed'));
-		} finally {
-			delivery.close();
-		}
+		});
 	}
 
 	@Delete('/:agentId/chat/:threadId/executions/:executionId')

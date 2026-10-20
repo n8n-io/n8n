@@ -5,7 +5,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type { AgentChatAttachmentService } from '../../agent-chat-attachment.service';
 import type { AgentChatExecutionService } from '../../agent-chat-execution.service';
-import type { AgentChatRelayService } from '../../agent-chat-relay.service';
+import { AgentChatRelayService } from '../../agent-chat-relay.service';
 import type { AgentExecutionOrchestratorService } from '../../agent-execution-orchestrator.service';
 import type { AgentMessageQueueService } from '../../agent-message-queue.service';
 import type { FlushableResponse } from '../../agent-sse-stream';
@@ -23,6 +23,10 @@ const thread = { id: 'thread-1', projectId: 'project-1' } as AgentExecutionThrea
 function setup() {
 	const systemAgents = mock<SystemAgentExecutionService>();
 	const chatRelay = mock<AgentChatRelayService>();
+	// The real resume relay, around the stream that each test mocks.
+	chatRelay.relayResume.mockImplementation(
+		AgentChatRelayService.prototype.relayResume.bind(chatRelay),
+	);
 	const messageQueue = mock<AgentMessageQueueService>();
 	const chatExecutionService = mock<AgentChatExecutionService>();
 	const orchestrator = mock<AgentExecutionOrchestratorService>();
