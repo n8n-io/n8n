@@ -40,3 +40,32 @@ index 19eefc35d815e324e47c4fe4c152f39c7c547470..4f191ef9d9bbf401b846ec712e83e59d
            .then(processJobs, err => {
              if (!(this.closing && err.message === 'Connection is closed.')) {
                utils.emitSafe(this, 'error', err, 'Error processing job');
+@@ -1243,6 +1246,28 @@
+     //
+     try {
+       this.bclient.blocked = true;
++      // n8n patch: BRPOPLPUSH moves a job to active before its lock is set. If the
++      // event loop blocks in between, the stall check fails a job that never ran.
++      // BLMOVE to the same list only waits for a job, and moveToActive then claims
++      // and locks it in one script. Redis before 6.2 has no BLMOVE.
++      if (!this.n8nWithoutBlmove) {
++        try {
++          const ready = await this.bclient.blmove(
++            this.keys.wait,
++            this.keys.wait,
++            'RIGHT',
++            'RIGHT',
++            this.settings.drainDelay
++          );
++          this.bclient.blocked = false;
++          return ready ? this.moveToActive() : undefined;
++        } catch (err) {
++          if (!/unknown command/i.test(err.message)) {
++            throw err;
++          }
++          this.n8nWithoutBlmove = true;
++        }
++      }
+       const jobId = await this.bclient.brpoplpush(
+         this.keys.wait,
+         this.keys.active,
