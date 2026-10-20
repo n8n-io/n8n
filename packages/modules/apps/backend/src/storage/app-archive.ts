@@ -9,6 +9,12 @@ import { AppsConfig } from '../apps.config';
 
 const CHUNK_SIZE = 64 * 1024;
 
+function* slices(body: Buffer) {
+	for (let offset = 0; offset < body.length; offset += CHUNK_SIZE) {
+		yield body.subarray(offset, offset + CHUNK_SIZE);
+	}
+}
+
 @Service()
 export class AppArchive {
 	constructor(private readonly config: AppsConfig) {}
@@ -111,22 +117,8 @@ export class AppArchive {
 				entry.on('end', () => files.set(this.filePath(entry.path), Buffer.concat(chunks)));
 			},
 		});
-		let offset = 0;
-		const input = new Readable({
-			read() {
-				if (offset >= body.length) {
-					this.push(null);
-					return;
-				}
-				const chunk = body.subarray(offset, offset + CHUNK_SIZE);
-				offset += CHUNK_SIZE;
-				setImmediate(() => {
-					if (!this.destroyed) this.push(chunk);
-				});
-			},
-		});
 		try {
-			await pipeline(input, parser);
+			await pipeline(Readable.from(slices(body)), parser);
 		} catch (error) {
 			throw BadRequestError.wrap(
 				'App artifact is invalid or exceeds the archive limits. Check the files and configured limits.',
