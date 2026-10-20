@@ -531,8 +531,8 @@ export class Agent implements BuiltAgent, AgentBuilder {
 
 	/**
 	 * Enable prompt caching with defaults tuned for agent workloads. Anthropic
-	 * models get a `1h` instruction-level cache breakpoint; OpenAI models get
-	 * `24h` retention plus an auto-generated, per-agent-version `promptCacheKey`.
+	 * models, including Claude on OpenRouter and Vertex, get a `1h` instruction breakpoint.
+	 * OpenAI gets `24h` retention plus an auto-generated, per-agent-version `promptCacheKey`.
 	 * Pass `{ anthropic: false }` / `{ openai: false }` to disable per provider,
 	 * or override individual fields (e.g. `{ anthropic: { ttl: '5m' } }`).
 	 *

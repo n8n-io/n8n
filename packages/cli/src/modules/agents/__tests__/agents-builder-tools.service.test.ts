@@ -1601,9 +1601,13 @@ describe('AgentsBuilderToolsService', () => {
 		});
 
 		describe('prompt caching defaults', () => {
-			it('agent_builder_write_config defaults prompt caching to enabled for a supported provider when omitted', async () => {
+			it.each([
+				'anthropic/claude-sonnet-4-5',
+				'openrouter/anthropic/claude-sonnet-4.5',
+				'google-vertex/claude-sonnet-4-5',
+			])('agent_builder_write_config enables caching for %s when omitted', async (model) => {
 				const { service, agentsService } = makeService();
-				const currentConfig = { ...baseConfig, integrations: [] };
+				const currentConfig = { ...baseConfig, model, integrations: [] };
 				// Explicitly disable web search so its own write-path normalizer
 				// doesn't add unrelated config/providerTools keys to the expectation.
 				const updatedConfig: AgentJsonConfig = {
@@ -1614,7 +1618,7 @@ describe('AgentsBuilderToolsService', () => {
 					...currentConfig,
 					config: { webSearch: { enabled: false }, promptCaching: { enabled: true } },
 				};
-				agentsService.findById.mockResolvedValue(makeAgent(baseConfig));
+				agentsService.findById.mockResolvedValue(makeAgent(currentConfig));
 				agentsService.updateConfig.mockResolvedValue({
 					config: normalizedConfig,
 					configHash: 'config-hash',
@@ -1642,7 +1646,11 @@ describe('AgentsBuilderToolsService', () => {
 				);
 			});
 
-			it('agent_builder_write_config strips prompt caching when switching to an unsupported provider', async () => {
+			it.each([
+				'google/gemini-2.5-flash',
+				'openrouter/openai/gpt-5',
+				'google-vertex/gemini-2.5-pro',
+			])('agent_builder_write_config strips caching when switching to %s', async (model) => {
 				const { service, agentsService } = makeService();
 				const baseAgent = {
 					...baseConfig,
@@ -1652,7 +1660,7 @@ describe('AgentsBuilderToolsService', () => {
 				const currentConfig = { ...baseAgent };
 				const updatedConfig: AgentJsonConfig = {
 					...currentConfig,
-					model: 'google/gemini-2.5-flash',
+					model,
 					credential: 'Google Key',
 				};
 				const { config: _droppedConfig, ...normalizedConfig } = updatedConfig;
@@ -1734,10 +1742,15 @@ describe('AgentsBuilderToolsService', () => {
 				);
 			});
 
-			it('agent_builder_write_config preserves an explicit Anthropic ttl', async () => {
+			it.each([
+				'anthropic/claude-sonnet-4-5',
+				'openrouter/anthropic/claude-sonnet-4.5',
+				'google-vertex/claude-sonnet-4-5',
+			])('agent_builder_write_config preserves the cache TTL for %s', async (model) => {
 				const { service, agentsService } = makeService();
 				const baseAgent = {
 					...baseConfig,
+					model,
 					integrations: [],
 					config: { promptCaching: { enabled: true, anthropic: { ttl: '5m' as const } } },
 				};
