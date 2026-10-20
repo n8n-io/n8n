@@ -1,0 +1,120 @@
+import type { AssistantSkillContext, ProjectScopeService } from '@n8n/backend-services';
+import type { User } from '@n8n/db';
+import { mock } from 'vitest-mock-extended';
+
+import type { Skill } from '../entities/skill.entity';
+import type { SkillVersion } from '../entities/skill-version.entity';
+import type { ResolvedSkillRow, SkillRepository } from '../repositories/skill.repository';
+import { HubAssistantSkillProvider } from '../skills/hub-assistant-skill-provider.service';
+import type { SkillsHubRollout } from '../skills/skills-hub-rollout';
+
+describe('HubAssistantSkillProvider', () => {
+	const repository = mock<SkillRepository>();
+	const projects = mock<ProjectScopeService>();
+	const rollout = { isEnabled: true } as SkillsHubRollout;
+	const provider = new HubAssistantSkillProvider(rollout, projects, repository);
+	const context: AssistantSkillContext = { user: mock<User>(), projectId: 'project-1' };
+	let row: ResolvedSkillRow;
+
+	beforeEach(() => {
+		vi.resetAllMocks();
+		Object.assign(rollout, { isEnabled: true });
+		projects.getProjectIds.mockResolvedValue(['project-1', 'project-2']);
+		repository.findAssistantSkillSummaries.mockResolvedValue([]);
+		row = {
+			skill: mock<Skill>({
+				id: 'skill-1',
+				agentId: null,
+				projectId: null,
+				availableToAssistant: true,
+			}),
+			version: mock<SkillVersion>({
+				id: 'version-1',
+				version: 1,
+				name: 'Tone',
+				description: 'Writing style',
+				instructions: 'Be brief.',
+				frontmatter: null,
+			}),
+			files: [],
+		};
+		repository.findLatestSaved.mockImplementation(async () => new Map([['skill-1', row]]));
+	});
+
+	it('returns no skills and does not read storage when the flag is off', async () => {
+		Object.assign(rollout, { isEnabled: false });
+		expect(await provider.listSkills(context)).toEqual([]);
+		expect(await provider.readSkill(context, 'skill-1')).toBeNull();
+		expect(repository.findAssistantSkillSummaries).not.toHaveBeenCalled();
+		expect(repository.findLatestSaved).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		['project-1', ['project-1', 'project-2'], 'project-1'],
+		['project-1', null, 'project-1'],
+		['project-1', [], null],
+		[undefined, null, null],
+	] as const)(
+		'limits catalog reads to the authorized session project (%s, %s)',
+		async (projectId, allowed, expected) => {
+			projects.getProjectIds.mockResolvedValue(allowed === null ? null : [...allowed]);
+			await provider.listSkills({ ...context, projectId });
+			expect(repository.findAssistantSkillSummaries).toHaveBeenCalledWith(expected);
+		},
+	);
+
+	it('requires both list and read permissions for project skills', async () => {
+		await provider.listSkills(context);
+		expect(projects.getProjectIds).toHaveBeenCalledWith(context.user, [
+			'projectSkill:list',
+			'projectSkill:read',
+		]);
+	});
+
+	it.each([{ availableToAssistant: false }, { agentId: 'agent-1' }, { projectId: 'project-2' }])(
+		'refuses a supplied ID that is ineligible: %o',
+		async (fields) => {
+			Object.assign(row.skill, fields);
+			expect(await provider.readSkill(context, 'skill-1')).toBeNull();
+		},
+	);
+
+	it('refuses a project skill after access is removed', async () => {
+		row.skill.projectId = 'project-1';
+		projects.getProjectIds.mockResolvedValue([]);
+		expect(await provider.readSkill(context, 'skill-1')).toBeNull();
+	});
+
+	it('returns no project content without a session project, including for global roles', async () => {
+		row.skill.projectId = 'project-1';
+		projects.getProjectIds.mockResolvedValue(null);
+		expect(await provider.readSkill({ user: context.user }, 'skill-1')).toBeNull();
+	});
+
+	it.each([null, 'project-1'])(
+		'reads enabled content with its saved version (%s)',
+		async (projectId) => {
+			row.skill.projectId = projectId;
+			expect(await provider.readSkill(context, 'skill-1')).toEqual({
+				id: 'skill-1',
+				projectId,
+				versionId: 'version-1',
+				version: 1,
+				name: 'Tone',
+				description: 'Writing style',
+				instructions: 'Be brief.',
+				frontmatter: null,
+				files: [],
+			});
+		},
+	);
+
+	it('allows instance skills without project access', async () => {
+		projects.getProjectIds.mockResolvedValue([]);
+		expect(await provider.readSkill(context, 'skill-1')).not.toBeNull();
+	});
+
+	it('returns null for a missing skill', async () => {
+		expect(await provider.readSkill(context, 'missing')).toBeNull();
+	});
+});

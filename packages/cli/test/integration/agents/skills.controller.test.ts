@@ -50,6 +50,83 @@ describe('SkillsController', () => {
 		setSkillsHubFlag(true);
 	});
 
+	it('keeps new skills unavailable and lets an owner toggle without a new content version', async () => {
+		const {
+			body: { data: created },
+		} = await owner.post('/skills').send({ scope: 'instance', skill: body }).expect(200);
+		expect(created.availableToAssistant).toBe(false);
+		const {
+			body: { data: saved },
+		} = await owner
+			.patch(`/skills/${created.id}`)
+			.send({ baseSkillHash: created.skillHash, availableToAssistant: true })
+			.expect(200);
+		expect(saved.created).toBe(false);
+		expect(saved.version).toBe(created.latestVersion);
+		const {
+			body: { data: detail },
+		} = await owner.get(`/skills/${created.id}`).expect(200);
+		expect(detail.availableToAssistant).toBe(true);
+		await member
+			.patch(`/skills/${created.id}`)
+			.send({ baseSkillHash: created.skillHash, availableToAssistant: false })
+			.expect(403);
+		setSkillsHubFlag(false);
+		await owner
+			.patch(`/skills/${created.id}`)
+			.send({ baseSkillHash: created.skillHash, availableToAssistant: false })
+			.expect(404);
+	});
+
+	it('uses the project edit permission for the Assistant toggle', async () => {
+		const {
+			body: { data: created },
+		} = await editor
+			.post('/skills')
+			.send({ scope: 'project', projectId: project.id, skill: body })
+			.expect(200);
+		await viewer
+			.patch(`/skills/${created.id}`)
+			.send({ baseSkillHash: created.skillHash, availableToAssistant: true })
+			.expect(403);
+		await outsider
+			.patch(`/skills/${created.id}`)
+			.send({ baseSkillHash: created.skillHash, availableToAssistant: true })
+			.expect(404);
+		await editor
+			.patch(`/skills/${created.id}`)
+			.send({ baseSkillHash: created.skillHash, availableToAssistant: true })
+			.expect(200);
+	});
+
+	it('rolls back availability when the content save is refused', async () => {
+		const {
+			body: { data: created },
+		} = await owner.post('/skills').send({ scope: 'instance', skill: body }).expect(200);
+		await owner
+			.patch(`/skills/${created.id}`)
+			.send({ baseSkillHash: 'stale', availableToAssistant: true })
+			.expect(409);
+		const {
+			body: { data: detail },
+		} = await owner.get(`/skills/${created.id}`).expect(200);
+		expect(detail.availableToAssistant).toBe(false);
+	});
+
+	it('refuses Assistant availability on an agent-only skill', async () => {
+		const agent = await newAgent('Assistant toggle test', project.id);
+		const {
+			body: { data: created },
+		} = await owner
+			.post('/skills')
+			.send({ scope: 'agent', agentId: agent.id, skill: body })
+			.expect(200);
+		await owner
+			.patch(`/skills/${created.id}`)
+			.send({ baseSkillHash: created.skillHash, availableToAssistant: true })
+			.expect(400);
+	});
+
 	it('hides the skills API when the skills hub is off', async () => {
 		setSkillsHubFlag(false);
 

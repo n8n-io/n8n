@@ -59,6 +59,7 @@ export type SkillListItem = {
 	latestVersion: number;
 	/** Distinct agents that use the skill: draft refs plus published pins. */
 	usedByAgents: number;
+	availableToAssistant: boolean;
 	canEdit: boolean;
 	canDelete: boolean;
 	createdAt: string;
@@ -159,6 +160,8 @@ export class CreateSkillDto extends Z.class({
  * started from: a save based on an older version is refused with 409.
  */
 export class SaveSkillDto extends Z.class({
+	/** Changes availability without creating a content version. Agent-only skills cannot opt in. */
+	availableToAssistant: z.boolean().optional(),
 	name: skillNameSchema.optional(),
 	description: agentSkillShape.description.optional(),
 	instructions: agentSkillShape.instructions.optional(),

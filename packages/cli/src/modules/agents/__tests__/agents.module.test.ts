@@ -7,7 +7,11 @@ import { mock } from 'vitest-mock-extended';
 
 import { AiService } from '@/services/ai.service';
 import { ExecutionDataJsonStore } from '@/executions/execution-data/execution-data-json-store';
-import { FavoriteResourceResolverRegistry } from '@n8n/backend-services';
+import {
+	AssistantSkillProviderProxy,
+	FavoriteResourceResolverRegistry,
+} from '@n8n/backend-services';
+import { HubAssistantSkillProvider } from '../skills/hub-assistant-skill-provider.service';
 import { SandboxSettingsService } from '@/services/sandbox-settings.service';
 import { AgentUsageProviderProxy } from '@/modules/workflow-index/agent-usage-provider-proxy.service';
 
@@ -62,7 +66,7 @@ function setUpContainerForInit() {
 	Container.set(AgentSecureRuntime, mock<AgentSecureRuntime>());
 
 	Container.set(AgentRepository, mock<AgentRepository>());
-	Container.set(SkillsHubRollout, mock<SkillsHubRollout>());
+	Container.set(SkillsHubRollout, mock<SkillsHubRollout>({ isEnabled: false }));
 	Container.set(SkillsHubStartupCopy, mock<SkillsHubStartupCopy>());
 	Container.set(FavoriteResourceResolverRegistry, mock<FavoriteResourceResolverRegistry>());
 	Container.set(AgentCredentialDependencyRepository, mock<AgentCredentialDependencyRepository>());
@@ -150,6 +154,21 @@ describe('AgentsModule', () => {
 	});
 
 	describe('init()', () => {
+		it.each([false, true])(
+			'registers the Assistant provider only with the Hub flag (%s)',
+			async (enabled) => {
+				setUpContainerForInit();
+				Container.set(SkillsHubRollout, mock<SkillsHubRollout>({ isEnabled: enabled }));
+				const proxy = mock<AssistantSkillProviderProxy>();
+				const provider = mock<HubAssistantSkillProvider>();
+				Container.set(AssistantSkillProviderProxy, proxy);
+				Container.set(HubAssistantSkillProvider, provider);
+				await module.init();
+				if (enabled) expect(proxy.registerProvider).toHaveBeenCalledWith(provider);
+				else expect(proxy.registerProvider).not.toHaveBeenCalled();
+			},
+		);
+
 		it('registers WhatsApp in the chat integration registry, alongside every other platform', async () => {
 			const {
 				registry,

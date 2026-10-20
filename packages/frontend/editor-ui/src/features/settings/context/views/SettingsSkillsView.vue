@@ -36,7 +36,11 @@ import type {
 
 import SkillsTable from '../components/SkillsTable.vue';
 import { PREFERENCES_DEFAULT_PAGE_SIZE } from '../context.constants';
-import { canWriteInstanceSkillScope, canWriteProjectSkillScope } from '../context.utils';
+import {
+	canWriteInstanceSkillScope,
+	canWriteProjectSkillScope,
+	isContextSkillsEnabled,
+} from '../context.utils';
 import type { SkillListQuery } from '../skills.api';
 import { useSkillsStore } from '../skills.store';
 import { useSkillScopeDisplay } from '../skills.utils';
@@ -297,16 +301,20 @@ async function openEditModal(item: Pick<SkillListItem, 'id'>) {
 			skill: detail.skill,
 			skillId: detail.id,
 			readOnly: !detail.canEdit,
+			...(isContextSkillsEnabled() && detail.scope !== 'agent'
+				? { availableToAssistant: detail.availableToAssistant }
+				: {}),
 			scopeOptions: options,
 			initialScope: currentValue,
 			...scopeLock(detail),
 			existingSkillNames: [],
-			onConfirm: async ({ skill, scope }) =>
+			onConfirm: async ({ skill, scope, availableToAssistant }) =>
 				await onSave(
 					detail.id,
 					skill,
 					detail.skillHash,
 					scope !== currentValue ? scope : undefined,
+					availableToAssistant,
 				),
 		});
 	} catch (error) {
@@ -321,6 +329,7 @@ async function onSave(
 	skill: AgentSkill,
 	baseSkillHash: string,
 	newScope?: string,
+	availableToAssistant?: boolean,
 ): Promise<AgentSkillConfirmFailure | undefined> {
 	let created: boolean;
 	try {
@@ -332,13 +341,14 @@ async function onSave(
 			references: skill.references ?? [],
 			baseSkillHash,
 			...(newScope ? parseScope(newScope) : {}),
+			...(availableToAssistant !== undefined ? { availableToAssistant } : {}),
 		}));
 	} catch (error) {
 		return saveFailed(error);
 	}
-	// A move is a change even when the content stays the same. Only "Nothing to save"
+	// Scope and availability can change without a new content version. Only "Nothing to save"
 	// gets a message: a real change shows in the table.
-	if (created || newScope !== undefined) {
+	if (created || newScope !== undefined || availableToAssistant !== undefined) {
 		await load();
 		confirmIfHidden(id, 'saved');
 	} else {

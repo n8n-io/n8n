@@ -15,6 +15,15 @@ export class AgentsModule implements ModuleInterface {
 		// it on, each main copies inline agent skills into the hub before agents run.
 		const { SkillsHubRollout } = await import('./skills/skills-hub-rollout.js');
 		Container.get(SkillsHubRollout).init();
+		if (Container.get(SkillsHubRollout).isEnabled) {
+			const { AssistantSkillProviderProxy } = await import('@n8n/backend-services');
+			const { HubAssistantSkillProvider } = await import(
+				'./skills/hub-assistant-skill-provider.service.js'
+			);
+			Container.get(AssistantSkillProviderProxy).registerProvider(
+				Container.get(HubAssistantSkillProvider),
+			);
+		}
 		const { SkillsHubStartupCopy } = await import('./skills/skills-hub-startup-copy.js');
 		await Container.get(SkillsHubStartupCopy).runOnStartup();
 

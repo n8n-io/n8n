@@ -1,3 +1,4 @@
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { createComponentRenderer } from '@/__tests__/render';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import { createTestingPinia } from '@pinia/testing';
@@ -57,6 +58,7 @@ function skill(overrides: Partial<SkillListItem> = {}): SkillListItem {
 		source: 'ui',
 		createdBy: null,
 		latestVersion: 1,
+		availableToAssistant: false,
 		usedByAgents: 0,
 		canEdit: true,
 		canDelete: true,
@@ -334,6 +336,55 @@ describe('SettingsSkillsView', () => {
 	});
 
 	describe('edit', () => {
+		it.each([
+			['instance', true, false],
+			['project', true, false],
+			['agent', true, undefined],
+			['instance', false, undefined],
+		] as const)(
+			'shows availability only for eligible skills behind the Hub flag (%s, %s)',
+			async (scope, enabled, expected) => {
+				mockedStore(useSettingsStore).moduleSettings = {
+					agents: { skillsHubEnabled: enabled },
+				} as never;
+				skillsStore.skills = [skill()];
+				skillsStore.count = 1;
+				skillsStore.fetchSkill.mockResolvedValue(detail({ scope }));
+				const { getByText } = renderView();
+				await userEvent.click(getByText('research-search'));
+				await waitFor(() => expect(uiStore.openModalWithData).toHaveBeenCalled());
+				expect(lastModalData().availableToAssistant).toBe(expected);
+			},
+		);
+
+		it('persists a toggle-only save and reloads the list', async () => {
+			mockedStore(useSettingsStore).moduleSettings = {
+				agents: { skillsHubEnabled: true },
+			} as never;
+			skillsStore.skills = [skill()];
+			skillsStore.count = 1;
+			skillsStore.fetchSkill.mockResolvedValue(detail());
+			skillsStore.saveSkill.mockResolvedValue({
+				id: 's1',
+				versionId: 'v1',
+				version: 1,
+				created: false,
+				skill: detail().skill,
+				skillHash: 'hash-1',
+			});
+			const { getByText } = renderView();
+			await userEvent.click(getByText('research-search'));
+			await waitFor(() => expect(uiStore.openModalWithData).toHaveBeenCalled());
+			skillsStore.fetchSkills.mockClear();
+			await lastModalData().onConfirm({ skill: detail().skill, availableToAssistant: true });
+			expect(skillsStore.saveSkill).toHaveBeenCalledWith(
+				's1',
+				expect.objectContaining({ availableToAssistant: true }),
+			);
+			expect(skillsStore.fetchSkills).toHaveBeenCalled();
+			expect(showMessageMock).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'info' }));
+		});
+
 		it('opens a skill read-only when the user cannot change it', async () => {
 			skillsStore.skills = [skill({ canEdit: false })];
 			skillsStore.count = 1;

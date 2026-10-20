@@ -58,6 +58,62 @@ describe('SkillRepository', () => {
 		await testDb.terminate();
 	});
 
+	it('lists only enabled instance and session-project skills, with the latest metadata', async () => {
+		const instance = await createSkill();
+		const scoped = await createSkill({ projectId: project.id });
+		const other = await createSkill({ projectId: otherProject.id });
+		const agent = await createAgent('Agent-only skill');
+		const agentOnly = await createSkill({ agentId: agent.id });
+		await createSkill();
+		// A stored flag on an agent-only row must not make it eligible.
+		for (const id of [instance, scoped, other, agentOnly])
+			await skills.update(id, { availableToAssistant: true });
+		const versionId = await skills.insertSavedVersion(
+			scoped,
+			2,
+			content({ name: 'Updated' }),
+			null,
+		);
+		expect((await skills.findAssistantSkillSummaries(null)).map(({ id }) => id)).toEqual([
+			instance,
+		]);
+		const result = await skills.findAssistantSkillSummaries(project.id);
+		expect(result.map(({ id }) => id).sort()).toEqual([instance, scoped].sort());
+		expect(result.find(({ id }) => id === scoped)).toEqual({
+			id: scoped,
+			projectId: project.id,
+			name: 'Updated',
+			description: 'Write in our voice',
+			version: 2,
+			versionId,
+		});
+	});
+
+	it('refuses an availability update when the checked scope changed', async () => {
+		const id = await createSkill({ projectId: project.id });
+		await expect(
+			txRunner.run(
+				{},
+				async (ctx) =>
+					await skills.setAssistantAvailability(
+						id,
+						true,
+						{ projectId: otherProject.id, agentId: null },
+						ctx,
+					),
+			),
+		).rejects.toThrow('The skill scope changed');
+		expect((await skills.findByIds([id]))[0].availableToAssistant).toBe(false);
+	});
+
+	it('clears Assistant availability when a skill becomes agent-only', async () => {
+		const id = await createSkill();
+		const agent = await createAgent('Private scope');
+		await skills.update(id, { availableToAssistant: true });
+		await skills.updateTarget(id, { projectId: null, agentId: agent.id });
+		expect((await skills.findByIds([id]))[0].availableToAssistant).toBe(false);
+	});
+
 	let counter = 0;
 	async function createSkill(
 		target: { projectId?: string; agentId?: string } = {},

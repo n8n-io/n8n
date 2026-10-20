@@ -111,7 +111,12 @@ function renderModal({
 	/** Opens the modal as Settings > Context > Skills does: no agent, plus these fields. */
 	settings?: Pick<
 		AgentSkillModalData,
-		'readOnly' | 'scopeOptions' | 'initialScope' | 'scopeLockedReason' | 'getDefaultName'
+		| 'readOnly'
+		| 'scopeOptions'
+		| 'initialScope'
+		| 'scopeLockedReason'
+		| 'getDefaultName'
+		| 'availableToAssistant'
 	>;
 } & Pick<
 	AgentSkillModalData,
@@ -1430,6 +1435,7 @@ function makeListItem(
 		source: 'ui',
 		createdBy: null,
 		latestVersion: 1,
+		availableToAssistant: false,
 		usedByAgents: 0,
 		canEdit: true,
 		canDelete: true,
@@ -1465,3 +1471,45 @@ function makeReferences(count: number) {
 		content: 'Reference',
 	}));
 }
+
+describe('Assistant availability', () => {
+	const savedSkill = { name: 'Tone', description: 'Writing style', instructions: 'Be brief.' };
+	const settings = {
+		scopeOptions: [{ value: 'instance', label: 'Global', icon: 'globe' as const }],
+		initialScope: 'instance',
+	};
+
+	it('saves a toggle-only change with the existing form', async () => {
+		const onConfirm = vi.fn();
+		const { getByTestId } = renderModal({
+			skill: savedSkill,
+			skillId: 'skill-1',
+			onConfirm,
+			settings: { ...settings, availableToAssistant: false },
+		});
+		const save = getByTestId('agent-skill-create-save');
+		expect(save).toBeDisabled();
+		await userEvent.click(getByTestId('skill-assistant-availability'));
+		expect(save).not.toBeDisabled();
+		await userEvent.click(save);
+		await waitFor(() =>
+			expect(onConfirm).toHaveBeenCalledWith(
+				expect.objectContaining({ availableToAssistant: true, skill: savedSkill }),
+			),
+		);
+	});
+
+	it('hides the toggle for a read-only skill', () => {
+		const { queryByTestId } = renderModal({
+			skill: savedSkill,
+			skillId: 'skill-1',
+			settings: { ...settings, availableToAssistant: true, readOnly: true },
+		});
+		expect(queryByTestId('skill-assistant-availability')).not.toBeInTheDocument();
+	});
+
+	it('does not show the toggle when the caller does not enable it', () => {
+		const { queryByTestId } = renderModal({ skill: savedSkill, skillId: 'skill-1', settings });
+		expect(queryByTestId('skill-assistant-availability')).not.toBeInTheDocument();
+	});
+});

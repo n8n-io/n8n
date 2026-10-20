@@ -1,0 +1,67 @@
+import {
+	ProjectScopeService,
+	type AssistantSkillContext,
+	type AssistantSkillContent,
+	type AssistantSkillProvider,
+	type AssistantSkillSummary,
+} from '@n8n/backend-services';
+import { Service } from '@n8n/di';
+
+import { SkillRepository } from '../repositories/skill.repository';
+import { SkillsHubRollout } from './skills-hub-rollout';
+
+@Service()
+export class HubAssistantSkillProvider implements AssistantSkillProvider {
+	constructor(
+		private readonly rollout: SkillsHubRollout,
+		private readonly projectScopeService: ProjectScopeService,
+		private readonly skillRepository: SkillRepository,
+	) {}
+
+	async listSkills(context: AssistantSkillContext): Promise<AssistantSkillSummary[]> {
+		if (!this.rollout.isEnabled) return [];
+		return await this.skillRepository.findAssistantSkillSummaries(
+			await this.authorizedProject(context),
+		);
+	}
+
+	async readSkill(
+		context: AssistantSkillContext,
+		skillId: string,
+	): Promise<AssistantSkillContent | null> {
+		if (!this.rollout.isEnabled) return null;
+		const projectId = await this.authorizedProject(context);
+		const row = (await this.skillRepository.findLatestSaved([skillId])).get(skillId);
+		if (!row) return null;
+		const { skill, version, files } = row;
+		if (
+			!skill.availableToAssistant ||
+			skill.agentId !== null ||
+			(skill.projectId !== null && skill.projectId !== projectId)
+		)
+			return null;
+		return {
+			id: skill.id,
+			projectId: skill.projectId,
+			name: version.name,
+			description: version.description,
+			versionId: version.id,
+			version: version.version,
+			instructions: version.instructions,
+			frontmatter: version.frontmatter,
+			files: files.map(({ path, content }) => ({ path, content })),
+		};
+	}
+
+	private async authorizedProject({
+		user,
+		projectId,
+	}: AssistantSkillContext): Promise<string | null> {
+		if (!projectId) return null;
+		const projects = await this.projectScopeService.getProjectIds(user, [
+			'projectSkill:list',
+			'projectSkill:read',
+		]);
+		return projects === null || projects.includes(projectId) ? projectId : null;
+	}
+}

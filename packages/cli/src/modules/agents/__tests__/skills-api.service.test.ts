@@ -15,6 +15,7 @@ import type { ResolvedSkillRow, SkillRepository } from '../repositories/skill.re
 import { SkillsApiService } from '../skills/skills-api.service';
 import type { SkillService } from '../skills/skill.service';
 import type { SkillsTelemetry } from '../skills/skills-telemetry';
+import type { SkillsHubRollout } from '../skills/skills-hub-rollout';
 import { getAgentSkillHash } from '../utils/agent-config-hash';
 
 vi.mock('@/permissions.ee/check-access', () => ({ userHasScopes: vi.fn() }));
@@ -35,6 +36,7 @@ function skill(
 		projectId: target.projectId ?? null,
 		agentId: target.agentId ?? null,
 		source: 'ui',
+		availableToAssistant: false,
 		createdById: target.createdById ?? null,
 		createdAt: DATE,
 		updatedAt: DATE,
@@ -79,6 +81,7 @@ describe('SkillsApiService', () => {
 	const txRunner = mock<TransactionRunner>();
 	const userRepository = mock<UserRepository>();
 	const skillsTelemetry = mock<SkillsTelemetry>();
+	const rollout = mock<SkillsHubRollout>({ isEnabled: true });
 	const service = new SkillsApiService(
 		skillService,
 		repository,
@@ -86,12 +89,14 @@ describe('SkillsApiService', () => {
 		txRunner,
 		userRepository,
 		skillsTelemetry,
+		rollout,
 	);
 	const TX_CTX = { trx: {} } as OperationContext;
 	let visible: Skill[];
 
 	beforeEach(() => {
 		vi.resetAllMocks();
+		Object.assign(rollout, { isEnabled: true });
 		txRunner.run.mockImplementation(async (_ctx, fn) => await fn(TX_CTX));
 		visible = Object.keys(NAMES).map((id) => skill(id));
 		projectScopeService.getProjectIds.mockResolvedValue(['project-1']);
@@ -264,6 +269,7 @@ describe('SkillsApiService', () => {
 				createdBy: null,
 				latestVersion: 2,
 				usedByAgents: 2,
+				availableToAssistant: false,
 				canEdit: true,
 				canDelete: false,
 				createdAt: DATE.toISOString(),
@@ -514,6 +520,44 @@ describe('SkillsApiService', () => {
 			skill: { name: 'Brand voice', description: 'd', instructions: 'New.' },
 			followingAgentIds: ['agent-1'],
 		};
+
+		it('saves availability in the content transaction without passing it into the content', async () => {
+			skillService.save.mockResolvedValue({ ...saved, created: false, followingAgentIds: [] });
+			await service.update(
+				user,
+				'skill_a',
+				update({ availableToAssistant: true, baseSkillHash: 'base' }),
+			);
+			expect(repository.setAssistantAvailability).toHaveBeenCalledWith(
+				'skill_a',
+				true,
+				visible[0],
+				TX_CTX,
+			);
+			expect(skillService.save).toHaveBeenCalledWith(
+				'skill_a',
+				{ baseSkillHash: 'base' },
+				user.id,
+				TX_CTX,
+			);
+			expect(skillsTelemetry.updated).not.toHaveBeenCalled();
+		});
+
+		it('refuses availability changes without the existing edit permission', async () => {
+			skillService.canAccess.mockImplementation(async (_user, _skill, op) => op === 'read');
+			await expect(
+				service.update(user, 'skill_a', update({ availableToAssistant: true })),
+			).rejects.toThrow(ForbiddenError);
+			expect(repository.setAssistantAvailability).not.toHaveBeenCalled();
+		});
+
+		it('refuses availability changes when the Hub flag is off', async () => {
+			Object.assign(rollout, { isEnabled: false });
+			await expect(
+				service.update(user, 'skill_a', update({ availableToAssistant: true })),
+			).rejects.toThrow(NotFoundError);
+			expect(repository.setAssistantAvailability).not.toHaveBeenCalled();
+		});
 
 		it('saves the update for a user who may edit the skill', async () => {
 			skillService.save.mockResolvedValue(saved);

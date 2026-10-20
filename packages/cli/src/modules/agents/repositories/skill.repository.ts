@@ -10,6 +10,8 @@ import {
 import { Service } from '@n8n/di';
 import { Brackets, DataSource, In, IsNull, type EntityManager } from '@n8n/typeorm';
 import type { SkillUsage } from '@n8n/api-types';
+import { ConflictError, NotFoundError, UserError } from '@n8n/errors';
+import type { AssistantSkillSummary } from '@n8n/backend-services';
 import { UnexpectedError } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
@@ -160,6 +162,53 @@ export class SkillRepository extends BaseRepository<Skill> {
 		if (filter.take !== undefined) query.limit(filter.take);
 		const [skills, count] = await query.getManyAndCount();
 		return { skills, count };
+	}
+
+	/** Enabled instance skills and skills in the authorized session project. */
+	async findAssistantSkillSummaries(projectId: string | null): Promise<AssistantSkillSummary[]> {
+		return await this.createQueryBuilder('skill')
+			.innerJoin(SkillVersion, 'version', 'version.skillId = skill.id')
+			.where('skill.availableToAssistant = :enabled', { enabled: true })
+			.andWhere('skill.agentId IS NULL')
+			.andWhere('(skill.projectId IS NULL OR skill.projectId = :projectId)', { projectId })
+			.andWhere((qb) => {
+				const latest = qb
+					.subQuery()
+					.select('MAX(saved.version)')
+					.from(SkillVersion, 'saved')
+					.where('saved.skillId = skill.id')
+					.getQuery();
+				return `version.version = ${latest}`;
+			})
+			.select('skill.id', 'id')
+			.addSelect('skill.projectId', 'projectId')
+			.addSelect('version.id', 'versionId')
+			.addSelect('version.version', 'version')
+			.addSelect('version.name', 'name')
+			.addSelect('version.description', 'description')
+			.orderBy('skill.id', 'ASC')
+			.getRawMany<AssistantSkillSummary>();
+	}
+
+	/** Called in the same transaction as the content save and any scope change. */
+	async setAssistantAvailability(
+		skillId: string,
+		available: boolean,
+		checkedTarget: SkillTarget,
+		ctx: OperationContext,
+	): Promise<void> {
+		await this.lockForEdit([skillId], ctx);
+		const [skill] = await this.findByIds([skillId], ctx);
+		if (!skill) throw new NotFoundError('Skill not found');
+		if (skill.projectId !== checkedTarget.projectId || skill.agentId !== checkedTarget.agentId) {
+			throw new ConflictError('The skill scope changed. Reload the skill and try again.');
+		}
+		if (available && skill.agentId !== null) {
+			throw new UserError(
+				'Agent-only skills cannot be available to the Assistant. Change the skill scope first.',
+			);
+		}
+		await this.managerFor(ctx).update(Skill, skillId, { availableToAssistant: available });
 	}
 
 	async findByIds(ids: string[], ctx: OperationContext = {}): Promise<Skill[]> {
@@ -640,7 +689,12 @@ export class SkillRepository extends BaseRepository<Skill> {
 		await this.managerFor(ctx).update(
 			Skill,
 			{ id: skillId },
-			{ projectId: target.projectId, agentId: target.agentId, updatedAt: new Date() },
+			{
+				projectId: target.projectId,
+				agentId: target.agentId,
+				updatedAt: new Date(),
+				...(target.agentId ? { availableToAssistant: false } : {}),
+			},
 		);
 	}
 
