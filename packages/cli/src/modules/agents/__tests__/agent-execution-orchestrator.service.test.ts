@@ -1051,6 +1051,7 @@ describe('AgentExecutionOrchestratorService', () => {
 					stream,
 					runtime,
 					chatExecutionService,
+					backgroundJobs,
 					checkpointStorage,
 					executionService,
 					executionRepository,
@@ -1099,7 +1100,7 @@ describe('AgentExecutionOrchestratorService', () => {
 
 				await expect(resumeAgain()).rejects.toBeInstanceOf(AgentTurnAlreadyRunningError);
 
-				await chatExecutionService.onCancelExecution({
+				await chatExecutionService.onCancelForegroundExecution({
 					projectId,
 					agentId,
 					threadId: 'thread-1',
@@ -1111,6 +1112,7 @@ describe('AgentExecutionOrchestratorService', () => {
 				expect(runtime.agent.resume).toHaveBeenCalledOnce();
 				expect(onExecutionStarted).not.toHaveBeenCalled();
 				expect(signal.aborted).toBe(true);
+				expect(backgroundJobs.cancelForParent).not.toHaveBeenCalled();
 				release.resolve();
 				await result;
 				await expect(resumeAgain()).rejects.toBeInstanceOf(AgentTurnAlreadyRunningError);
@@ -1199,7 +1201,7 @@ describe('AgentExecutionOrchestratorService', () => {
 			await collect(stream);
 
 			expect(acquired).toHaveBeenCalledOnce();
-			const options = sdkStart.mock.calls[0].at(-1) as RunOptions;
+			const options = sdkStart.mock.calls[0].at(-1) as RunOptions & ExecutionOptions;
 			expect(options.abortSignal?.aborted).toBe(false);
 		});
 
@@ -1382,7 +1384,7 @@ describe('AgentExecutionOrchestratorService', () => {
 			const controller = new AbortController();
 			const error = new Error('Runtime ended');
 			const usage = { promptTokens: 2, completionTokens: 3, totalTokens: 5, cost: 0.01 };
-			const { stream, executionService, chatExecutionService } = makeTurn({
+			const { stream, executionService, chatExecutionService, backgroundJobs } = makeTurn({
 				previewChat: scenario.previewChat,
 				abortSignal: controller.signal,
 				runtimeChunks: [
@@ -1399,15 +1401,18 @@ describe('AgentExecutionOrchestratorService', () => {
 				chunks.push(chunk);
 				if (chunk.type !== 'text-delta' || !scenario.abort) continue;
 				if (scenario.name === 'requested stop') {
-					await chatExecutionService.onCancelExecution({
+					await chatExecutionService.onCancelForegroundExecution({
 						projectId,
 						agentId,
 						threadId: 'thread-1',
 						executionId: 'execution-1',
 						userId,
-						scope: 'foreground',
 					});
 				} else controller.abort(scenario.abortReason);
+			}
+
+			if (scenario.name === 'requested stop') {
+				expect(backgroundJobs.cancelForParent).not.toHaveBeenCalled();
 			}
 
 			expect(chunks.filter((chunk) => chunk.type === 'finish')).toEqual([
@@ -3949,50 +3954,63 @@ describe('AgentExecutionOrchestratorService', () => {
 		expect(runtimeCacheService.getRuntime).not.toHaveBeenCalled();
 	});
 
-	it('expires configured and inline child checkpoints when cancelling a suspended parent', async () => {
-		const { service, checkpointStorage } = makeService();
-		const checkpoint = makeCheckpoint({
-			configured: delegatedPending('configured', {
-				runId: 'configured-child-run',
-				toolCallId: 'configured-child-call',
-				taskPath: '/root/configured_0',
-				subAgentId: 'configured-agent',
-				childCount: 0,
-				threadId: 'configured-child-thread',
-				resumeContext: {
-					agentId: 'configured-agent',
-				},
-			}),
-			inline: delegatedPending('inline', {
-				runId: 'inline-child-run',
-				toolCallId: 'inline-child-call',
-				taskPath: '/root/inline_1',
-				subAgentId: 'inline',
-				childCount: 1,
-				resumeContext: {
+	it.each([false, true])(
+		'expires foreground child checkpoints when cancelling a suspended parent (cancel background jobs: %s)',
+		async (cancelBackgroundJobs) => {
+			const { service, checkpointStorage, backgroundJobs } = makeService();
+			const checkpoint = makeCheckpoint({
+				configured: delegatedPending('configured', {
+					runId: 'configured-child-run',
+					toolCallId: 'configured-child-call',
+					taskPath: '/root/configured_0',
+					subAgentId: 'configured-agent',
+					childCount: 0,
+					threadId: 'configured-child-thread',
+					resumeContext: {
+						agentId: 'configured-agent',
+					},
+				}),
+				inline: delegatedPending('inline', {
+					runId: 'inline-child-run',
+					toolCallId: 'inline-child-call',
+					taskPath: '/root/inline_1',
+					subAgentId: 'inline',
+					childCount: 1,
+					resumeContext: {
+						agentId,
+					},
+				}),
+			});
+			checkpointStorage.getStatus.mockResolvedValue({ status: 'active', checkpoint });
+			checkpointStorage.cancelSuspended.mockResolvedValue(true);
+
+			await expect(
+				service.cancelChatRun({
 					agentId,
-				},
-			}),
-		});
-		checkpointStorage.getStatus.mockResolvedValue({ status: 'active', checkpoint });
-		checkpointStorage.cancelSuspended.mockResolvedValue(true);
+					runId: 'run-1',
+					resourceId: 'draft-chat:user-1',
+					cancelBackgroundJobs,
+				}),
+			).resolves.toBe(true);
 
-		await expect(
-			service.cancelChatRun({
-				agentId,
-				runId: 'run-1',
-				resourceId: 'draft-chat:user-1',
-			}),
-		).resolves.toBe(true);
-
-		expect(checkpointStorage.delete).toHaveBeenCalledTimes(3);
-		expect(checkpointStorage.delete).toHaveBeenCalledWith(
-			'configured-child-run',
-			'configured-agent',
-		);
-		expect(checkpointStorage.delete).toHaveBeenCalledWith('inline-child-run', agentId);
-		expect(checkpointStorage.delete).toHaveBeenCalledWith('run-1', agentId);
-	});
+			if (cancelBackgroundJobs) {
+				expect(backgroundJobs.cancelForParent).toHaveBeenCalledWith(
+					agentId,
+					'thread-1',
+					'draft-chat:user-1',
+				);
+			} else {
+				expect(backgroundJobs.cancelForParent).not.toHaveBeenCalled();
+			}
+			expect(checkpointStorage.delete).toHaveBeenCalledTimes(3);
+			expect(checkpointStorage.delete).toHaveBeenCalledWith(
+				'configured-child-run',
+				'configured-agent',
+			);
+			expect(checkpointStorage.delete).toHaveBeenCalledWith('inline-child-run', agentId);
+			expect(checkpointStorage.delete).toHaveBeenCalledWith('run-1', agentId);
+		},
+	);
 
 	it('retries child cleanup from retained parent checkpoint references', async () => {
 		const { service, checkpointStorage } = makeService();
