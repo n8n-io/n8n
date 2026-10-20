@@ -732,6 +732,7 @@ describe('InsightsByPeriodRepository', () => {
 			}
 
 			async function setSessionTimeZone(timeZone: string) {
+				expect(Container.get(GlobalConfig).database.postgresdb.poolSize).toBe(1);
 				await repository.query(`SET TIME ZONE '${timeZone}'`);
 				onTestFinished(async () => {
 					await repository.query('RESET TIME ZONE');
