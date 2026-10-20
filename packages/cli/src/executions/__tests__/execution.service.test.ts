@@ -11,6 +11,7 @@ import type {
 	ExecutionRepository,
 	Project,
 	User,
+	WorkflowEntity,
 	WorkflowHistoryRepository,
 	WorkflowRepository,
 } from '@n8n/db';
@@ -481,7 +482,7 @@ describe('ExecutionService', () => {
 
 	describe('getLastSuccessfulExecution', () => {
 		beforeEach(() => {
-			workflowRepository.findSettings.mockResolvedValue({});
+			workflowRepository.findOne.mockResolvedValue(mock<WorkflowEntity>({ settings: {} }));
 		});
 
 		it('should return the redacted last successful execution for a workflow', async () => {
@@ -557,7 +558,9 @@ describe('ExecutionService', () => {
 			const mockUser = mock<User>();
 
 			beforeEach(() => {
-				workflowRepository.findSettings.mockResolvedValue({ engineType: 'v2' });
+				workflowRepository.findOne.mockResolvedValue(
+					mock<WorkflowEntity>({ settings: { engineType: 'v2' } }),
+				);
 			});
 
 			it('should read the latest successful execution from the data plane', async () => {

@@ -205,9 +205,12 @@ export class ExecutionService {
 		redactExecutionData?: boolean,
 	): Promise<IExecutionResponse | undefined> {
 		// A workflow runs on one engine, and only that engine holds its executions.
-		const settings = await this.workflowRepository.findSettings(workflowId);
+		const workflow = await this.workflowRepository.findOne({
+			select: ['settings'],
+			where: { id: workflowId },
+		});
 		const execution =
-			settings?.engineType === 'v2'
+			workflow?.settings?.engineType === 'v2'
 				? await this.engineV2ExecutionReader.findLatest({ status: ['success'] }, [workflowId])
 				: await this.lastSuccessfulV1Execution(workflowId);
 		if (!execution) return undefined;
