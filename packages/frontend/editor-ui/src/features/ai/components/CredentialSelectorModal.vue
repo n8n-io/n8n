@@ -121,71 +121,45 @@ function onCancel() {
 		@update:open="onDialogOpenUpdate"
 	>
 		<N8nDialogHeader>
-			<div :class="$style.header">
-				<CredentialIcon
-					:credential-type-name="data.credentialType"
-					:size="24"
-					:class="$style.icon"
-				/>
-				<N8nDialogTitle>{{ title }}</N8nDialogTitle>
-			</div>
+			<CredentialIcon :credential-type-name="data.credentialType" :size="24" :class="$style.icon" />
+			<N8nDialogTitle>{{ title }}</N8nDialogTitle>
 		</N8nDialogHeader>
-		<N8nDialogBody>
-			<div :class="$style.content">
-				<N8nText size="small" color="text-base">
-					{{ description }}
-				</N8nText>
-				<div :class="$style.credentialContainer">
-					<CredentialPicker
-						:class="$style.credentialPicker"
-						:app-name="displayName"
-						:credential-type="data.credentialType"
-						:selected-credential-id="selectedCredentialId"
-						:show-delete="data.showDelete ?? true"
-						:hide-create-new="data.hideCreateNew ?? true"
-						:data-testid="data.pickerDataTestId"
-						teleported
-						:credential-modal-append-to-body="data.appendToBody"
-						@credential-selected="onCredentialSelect"
-						@credential-deselected="onCredentialDeselect"
-						@credential-deleted="onDeleteCredential"
-						@credential-modal-opened="onCredentialModalOpened"
-					/>
-				</div>
+		<N8nDialogBody :class="$style.content">
+			<N8nText size="small" color="text-base">
+				{{ description }}
+			</N8nText>
+			<div :class="$style.credentialContainer">
+				<CredentialPicker
+					:class="$style.credentialPicker"
+					:app-name="displayName"
+					:credential-type="data.credentialType"
+					:selected-credential-id="selectedCredentialId"
+					:show-delete="data.showDelete ?? true"
+					:hide-create-new="data.hideCreateNew ?? true"
+					:data-testid="data.pickerDataTestId"
+					teleported
+					:credential-modal-append-to-body="data.appendToBody"
+					@credential-selected="onCredentialSelect"
+					@credential-deselected="onCredentialDeselect"
+					@credential-deleted="onDeleteCredential"
+					@credential-modal-opened="onCredentialModalOpened"
+				/>
 			</div>
 		</N8nDialogBody>
 		<N8nDialogFooter>
-			<div :class="$style.footer">
-				<N8nButton variant="outline" @click="onCancel">
-					{{ data.cancelLabel ?? i18n.baseText('chatHub.credentials.selector.cancel') }}
-				</N8nButton>
-				<N8nButton variant="solid" :disabled="!selectedCredentialId" @click="onConfirm">
-					{{ data.confirmLabel ?? i18n.baseText('chatHub.credentials.selector.confirm') }}
-				</N8nButton>
-			</div>
+			<N8nButton variant="outline" @click="onCancel">
+				{{ data.cancelLabel ?? i18n.baseText('chatHub.credentials.selector.cancel') }}
+			</N8nButton>
+			<N8nButton variant="solid" :disabled="!selectedCredentialId" @click="onConfirm">
+				{{ data.confirmLabel ?? i18n.baseText('chatHub.credentials.selector.confirm') }}
+			</N8nButton>
 		</N8nDialogFooter>
 	</N8nDialog>
 </template>
 
 <style lang="scss" module>
 .content {
-	display: flex;
-	flex-direction: column;
 	gap: var(--spacing--sm);
-}
-
-.footer {
-	display: flex;
-	justify-content: flex-end;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	width: 100%;
-}
-
-.header {
-	display: flex;
-	gap: var(--spacing--2xs);
-	align-items: center;
 }
 
 .icon {
@@ -202,11 +176,5 @@ function onCancel() {
 
 .credentialPicker {
 	width: 100%;
-}
-
-.credentialSelectorModal {
-	overflow: visible;
-	/* No height token matches the previous 250px dialog min-height. */
-	min-height: 250px;
 }
 </style>
