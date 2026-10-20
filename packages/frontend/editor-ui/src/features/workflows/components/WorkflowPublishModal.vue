@@ -15,7 +15,14 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { telemetry } from '@/app/plugins/telemetry';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useI18n } from '@n8n/i18n';
-import { N8nCallout, N8nButton, N8nDialog, N8nDialogBody, N8nLink } from '@n8n/design-system';
+import {
+	N8nCallout,
+	N8nButton,
+	N8nDialog,
+	N8nDialogBody,
+	N8nDialogFooter,
+	N8nLink,
+} from '@n8n/design-system';
 import WorkflowVersionForm from '@/app/components/WorkflowVersionForm.vue';
 import { getActivatableTriggerNodes } from '@/app/utils/nodeTypesUtils';
 import { useToast } from '@n8n/composables/useToast';
@@ -29,6 +36,8 @@ import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store
 import { generateVersionLabelFromId } from '@/features/workflows/workflowHistory/utils';
 
 defineOptions({ inheritAttrs: false });
+
+const PUBLISH_FORM_ID = 'workflow-publish-form';
 
 const i18n = useI18n();
 const uiStore = useUIStore();
@@ -288,13 +297,12 @@ async function handlePublish() {
 	<N8nDialog
 		:open="modalOpen"
 		size="medium"
-		:container-class="$style.dialog"
 		:header="i18n.baseText('workflows.publishModal.title')"
 		:close-on-overlay-click="false"
 		@update:open="onDialogOpenUpdate"
 	>
-		<N8nDialogBody>
-			<div :class="$style.content" data-test-id="workflowPublish-modal">
+		<N8nDialogBody data-test-id="workflowPublish-modal">
+			<form :id="PUBLISH_FORM_ID" @submit.prevent="handlePublish">
 				<N8nCallout
 					v-if="activeCalloutId === 'noTrigger'"
 					theme="danger"
@@ -349,48 +357,29 @@ async function handlePublish() {
 					description-test-id="workflow-publish-description-input"
 					@submit="handlePublish"
 				/>
-				<div :class="$style.actions">
-					<N8nButton
-						variant="outline"
-						:disabled="publishing"
-						:label="i18n.baseText('generic.cancel')"
-						data-test-id="workflow-publish-cancel-button"
-						@click="closeDialog"
-					/>
-					<N8nButton
-						:disabled="isPublishDisabled"
-						:loading="publishing"
-						:label="i18n.baseText('workflows.publish')"
-						data-test-id="workflow-publish-button"
-						@click="handlePublish"
-					/>
-				</div>
-			</div>
+			</form>
 		</N8nDialogBody>
+		<N8nDialogFooter>
+			<N8nButton
+				variant="outline"
+				:disabled="publishing"
+				:label="i18n.baseText('generic.cancel')"
+				data-test-id="workflow-publish-cancel-button"
+				@click="closeDialog"
+			/>
+			<N8nButton
+				type="submit"
+				:form="PUBLISH_FORM_ID"
+				:disabled="isPublishDisabled"
+				:loading="publishing"
+				:label="i18n.baseText('workflows.publish')"
+				data-test-id="workflow-publish-button"
+			/>
+		</N8nDialogFooter>
 	</N8nDialog>
 </template>
 
 <style lang="scss" module>
-.dialog {
-	display: flex;
-	flex-direction: column;
-	max-height: 85vh;
-}
-
-.content {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--lg);
-	min-height: 0;
-	overflow-y: auto;
-}
-
-.actions {
-	display: flex;
-	justify-content: flex-end;
-	gap: var(--spacing--xs);
-}
-
 .nodeLinks {
 	list-style-type: disc;
 	margin-top: var(--spacing--4xs);

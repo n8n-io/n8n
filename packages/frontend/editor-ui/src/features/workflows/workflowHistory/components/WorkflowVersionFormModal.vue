@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { N8nButton, N8nDialog, N8nDialogBody } from '@n8n/design-system';
+import { N8nButton, N8nDialog, N8nDialogBody, N8nDialogFooter } from '@n8n/design-system';
 import WorkflowVersionForm from '@/app/components/WorkflowVersionForm.vue';
 import { useI18n } from '@n8n/i18n';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -106,7 +106,12 @@ const handleSubmit = () => {
 		@update:open="onDialogOpenUpdate"
 	>
 		<N8nDialogBody>
-			<div :class="$style.content" :data-test-id="`${modalName}-modal`">
+			<form
+				:id="`${modalName}-form`"
+				:class="$style.content"
+				:data-test-id="`${modalName}-modal`"
+				@submit.prevent="handleSubmit"
+			>
 				<WorkflowVersionForm
 					ref="versionForm"
 					v-model:version-name="versionName"
@@ -115,24 +120,25 @@ const handleSubmit = () => {
 					:description-test-id="`${modalName}-description-input`"
 					@submit="handleSubmit"
 				/>
-				<div :class="$style.actions">
-					<N8nButton
-						variant="outline"
-						:disabled="submitting"
-						:label="i18n.baseText('generic.cancel')"
-						:data-test-id="`${modalName}-cancel-button`"
-						@click="closeDialog"
-					/>
-					<N8nButton
-						:loading="submitting"
-						:disabled="versionName.trim().length === 0"
-						:label="data.submitButtonLabel"
-						:data-test-id="`${modalName}-submit-button`"
-						@click="handleSubmit"
-					/>
-				</div>
-			</div>
+			</form>
 		</N8nDialogBody>
+		<N8nDialogFooter>
+			<N8nButton
+				variant="outline"
+				:disabled="submitting"
+				:label="i18n.baseText('generic.cancel')"
+				:data-test-id="`${modalName}-cancel-button`"
+				@click="closeDialog"
+			/>
+			<N8nButton
+				type="submit"
+				:form="`${modalName}-form`"
+				:loading="submitting"
+				:disabled="versionName.trim().length === 0"
+				:label="data.submitButtonLabel"
+				:data-test-id="`${modalName}-submit-button`"
+			/>
+		</N8nDialogFooter>
 	</N8nDialog>
 </template>
 <style lang="scss" module>
@@ -148,11 +154,5 @@ const handleSubmit = () => {
 	gap: var(--spacing--lg);
 	min-height: 0;
 	overflow-y: auto;
-}
-
-.actions {
-	display: flex;
-	justify-content: flex-end;
-	gap: var(--spacing--xs);
 }
 </style>
