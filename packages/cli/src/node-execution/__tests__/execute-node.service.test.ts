@@ -77,7 +77,6 @@ describe('ExecuteNodeService', () => {
 		executionPersistence,
 		instanceSettings,
 		deprecatedNodesValidationService,
-		credentialsPermissionChecker,
 	);
 
 	const user = mock<User>({ id: 'user-1' });
@@ -346,6 +345,14 @@ describe('ExecuteNodeService', () => {
 				},
 			});
 			expect(workflowRepository.delete).toHaveBeenCalledWith('temp-wf-1');
+		});
+
+		it('lets the runner decide when the credential check fails for another reason', async () => {
+			credentialsPermissionChecker.check.mockRejectedValueOnce(new Error('connection lost'));
+
+			await service.run(user, baseRequest());
+
+			expect(workflowRunner.run).toHaveBeenCalled();
 		});
 
 		it('reads the result back redacted for the user', async () => {

@@ -5,12 +5,7 @@ import { Service } from '@n8n/di';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { sleep } from '@n8n/utils/sleep';
 import { InstanceSettings } from 'n8n-core';
-import {
-	createRunExecutionData,
-	NodeError,
-	TimeoutExecutionCancelledError,
-	UserError,
-} from 'n8n-workflow';
+import { createRunExecutionData, NodeError, TimeoutExecutionCancelledError } from 'n8n-workflow';
 import type {
 	IDataObject,
 	INode,
@@ -30,7 +25,7 @@ import {
 	getExecutionRedaction,
 	loadExecutionForViewer,
 } from '@/executions/execution-viewer-reader';
-import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
+import { findCredentialRefusal } from '@/executions/pre-execution-checks';
 import { NodeTypes } from '@/node-types';
 import { WorkflowRunner } from '@/workflow-runner';
 import { DeprecatedNodesValidationService } from '@/workflows/deprecated-nodes-validation.service';
@@ -109,7 +104,6 @@ export class ExecuteNodeService {
 		private readonly executionPersistence: ExecutionPersistence,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly deprecatedNodesValidationService: DeprecatedNodesValidationService,
-		private readonly credentialsPermissionChecker: CredentialsPermissionChecker,
 	) {}
 
 	async run(user: User, request: ExecuteNodeRequest): Promise<ExecuteNodeResult> {
@@ -131,8 +125,11 @@ export class ExecuteNodeService {
 
 		const workflow = await this.createTemporaryWorkflow(request.projectId, node, timeoutMs);
 		try {
-			const refusal = await this.checkCredentialsUsable(workflow.id, node, user);
-			if (refusal) return { status: 'error', error: refusal };
+			const refusal = await findCredentialRefusal(workflow.id, [node], user.id);
+			if (refusal) {
+				const { message, description } = refusal;
+				return { status: 'error', error: { message, description, refused: true } };
+			}
 			return await this.execute(user, workflow, node, inputItems, timeoutMs);
 		} catch (error) {
 			return { status: 'error', error: this.toErrorResponse(error) };
@@ -195,25 +192,6 @@ export class ExecuteNodeService {
 					`You do not have access to the "${credentialType}" credential used by this node`,
 				);
 			}
-		}
-	}
-
-	/**
-	 * The check `WorkflowRunner.run` makes, made first for its message: the
-	 * runner saves a refused run as a failed execution, and redaction hides the
-	 * reason from a user who cannot use the credential.
-	 */
-	private async checkCredentialsUsable(
-		workflowId: string,
-		node: INode,
-		user: User,
-	): Promise<ExecuteNodeError | undefined> {
-		try {
-			await this.credentialsPermissionChecker.check(workflowId, [node], user.id);
-			return undefined;
-		} catch (error) {
-			if (!(error instanceof UserError)) throw error;
-			return { ...this.toErrorResponse(error), refused: true };
 		}
 	}
 
@@ -450,11 +428,7 @@ export class ExecuteNodeService {
 		}
 		if (error instanceof Error) {
 			this.logger.debug('Execute node failed', { error: error.message });
-			const description: unknown = Reflect.get(error, 'description');
-			return {
-				message: error.message,
-				...(typeof description === 'string' && description ? { description } : {}),
-			};
+			return { message: error.message };
 		}
 		// Errors read back from a persisted execution are revived as plain
 		// objects, not Error instances.
