@@ -147,7 +147,6 @@ async function onUpgradeClick() {
 </script>
 
 <template>
-	<!-- N8nDialog cannot pass a class to its overlay, so the 4px blur overlay class was dropped. -->
 	<N8nDialog
 		:open="modalOpen"
 		size="large"
