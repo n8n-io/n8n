@@ -20,6 +20,8 @@ import {
 	type ProviderId,
 	type ProviderCredentials,
 } from './provider-credentials';
+import type { BuiltTelemetry } from '../../types/telemetry';
+import { traceModelRequests } from '../telemetry/model-request-tracing';
 import type { ModelConfig } from '../../types/sdk/agent';
 import { getModelIdString } from '../../utils/model';
 
@@ -493,7 +495,11 @@ const SUPPORTED_PROVIDERS = Object.keys(LANGUAGE_PROVIDERS).join(', ');
  * Provider packages are loaded dynamically via require() so only the
  * provider needed at runtime must be installed.
  */
-export function createModel(config: ModelConfig, fetch?: FetchFn): LanguageModel {
+export function createModel(
+	config: ModelConfig,
+	fetch?: FetchFn,
+	telemetry?: BuiltTelemetry,
+): LanguageModel {
 	if (isLanguageModel(config)) {
 		return config;
 	}
@@ -543,7 +549,10 @@ export function createModel(config: ModelConfig, fetch?: FetchFn): LanguageModel
 	}
 
 	// Caller-injected transport wins; fall back to the ambient env-proxy resolver.
-	const resolvedFetch = fetch ?? getProxyFetch();
+	const transport = fetch ?? getProxyFetch();
+	const resolvedFetch = telemetry?.traceModelRequests
+		? traceModelRequests(transport ?? globalFetch, telemetry, provider, modelName)
+		: transport;
 	// Type cast: the registry guarantees the schema and builder are aligned per provider.
 	return (entry.build as EntryBuilder<typeof provider>)(parsed.data, modelName, resolvedFetch);
 }

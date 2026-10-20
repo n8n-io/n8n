@@ -849,6 +849,11 @@ export {
 	type PromotionReviewWorkflowChange,
 } from './promotions/promotion-review.dto';
 
-export { ScimConfigPatchDto } from './scim';
+export {
+	ScimConfigPatchDto,
+	ScimPatchRequestDto,
+	ScimQueryDto,
+	ScimUserCreateDto,
+} from './scim';
 export { CreateTrustedSourceDto } from './trusted-source/create-trusted-source.dto';
 export { UpdateTrustedSourceDto } from './trusted-source/update-trusted-source.dto';
