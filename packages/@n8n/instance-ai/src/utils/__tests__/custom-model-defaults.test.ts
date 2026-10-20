@@ -24,10 +24,19 @@ describe('resolveCustomModelExperimentDefaults', () => {
 		});
 	});
 
-	it('maps DeepSeek models to structured outputs only', () => {
+	it('maps DeepSeek models to structured outputs and streamed usage', () => {
 		expect(resolveCustomModelExperimentDefaults('custom/deepseek-ai/DeepSeek-V4-Pro')).toEqual({
 			supportsStructuredOutputs: true,
+			includeUsage: true,
 		});
+	});
+
+	it('lets an explicit includeUsage override win over the model map', () => {
+		expect(
+			resolveCustomModelExperimentDefaults('custom/deepseek-ai/DeepSeek-V4-Pro', {
+				includeUsage: false,
+			}),
+		).toEqual({ supportsStructuredOutputs: true, includeUsage: false });
 	});
 
 	it('returns nothing for unknown custom models', () => {

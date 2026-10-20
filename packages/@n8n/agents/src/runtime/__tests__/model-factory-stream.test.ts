@@ -67,4 +67,34 @@ describe('createModel streaming', () => {
 			totalTokens: 150,
 		});
 	});
+
+	it('requests streamed token usage from a custom endpoint when includeUsage is set', async () => {
+		const fetch = vi
+			.fn<typeof globalThis.fetch>()
+			.mockResolvedValue(
+				new Response(
+					[
+						{ choices: [{ index: 0, delta: { content: 'Hi' }, finish_reason: 'stop' }] },
+						{ choices: [], usage: { prompt_tokens: 12, completion_tokens: 3, total_tokens: 15 } },
+					]
+						.map((chunk) => `data: ${JSON.stringify({ id: 'completion-1', ...chunk })}\n\n`)
+						.join('') + 'data: [DONE]\n\n',
+					{ headers: { 'content-type': 'text/event-stream' } },
+				),
+			);
+		const model = createModel(
+			{
+				id: 'custom/deepseek-v4',
+				url: 'https://model.example.com/v1',
+				apiKey: 'test-key',
+				includeUsage: true,
+			},
+			fetch,
+		);
+		const result = streamText({ model, prompt: 'Hello', maxRetries: 0 });
+		await result.consumeStream();
+
+		expect(fetch.mock.calls[0][1]?.body).toContain('"stream_options":{"include_usage":true}');
+		await expect(result.totalUsage).resolves.toMatchObject({ inputTokens: 12, outputTokens: 3 });
+	});
 });
