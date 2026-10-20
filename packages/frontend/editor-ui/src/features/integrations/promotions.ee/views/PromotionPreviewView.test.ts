@@ -30,13 +30,13 @@ const renderComponent = createComponentRenderer(PromotionPreviewView, {
 	global: { plugins: [router] },
 });
 
-const connection = (configs: Record<string, unknown>) =>
+const environment = (direction: 'promote' | 'apply') =>
 	({
-		id: 'connection-1',
+		id: `environment-${direction}`,
 		scope: 'instance',
-		target: { schemaVersion: 1, remoteUrl: 'git@github.com:acme/workflows.git' },
-		configs,
-	}) as unknown as settingsApi.PromotionConnection;
+		direction,
+		remote: { schemaVersion: 1, remoteUrl: 'git@github.com:acme/workflows.git' },
+	}) as unknown as settingsApi.PromotionEnvironmentSummary;
 
 async function render(path = '/projects/p1/promotions/promote', direction = 'promote' as const) {
 	await router.push(path);
@@ -60,9 +60,7 @@ describe('PromotionPreviewView', () => {
 	beforeEach(() => {
 		invalidateInstancePromotionConnection();
 		Element.prototype.scrollIntoView = vi.fn();
-		vi.mocked(settingsApi.fetchPromotionConnections).mockResolvedValue([
-			connection({ promote: { id: 'config-1' } }),
-		]);
+		vi.mocked(settingsApi.fetchPromotionEnvironments).mockResolvedValue([environment('promote')]);
 		vi.mocked(api.getPromotionPreview).mockResolvedValue(billingPreview());
 		vi.mocked(api.getPromotionResourceDetails).mockReset();
 		vi.mocked(api.getPromotionResourceDetails).mockResolvedValue({ details: [], missingKeys: [] });
@@ -112,10 +110,8 @@ describe('PromotionPreviewView', () => {
 		expect(scrollIntoView).toHaveBeenCalledTimes(2);
 	});
 
-	it('should explain that the direction is not set up when the connection has no configuration for it', async () => {
-		vi.mocked(settingsApi.fetchPromotionConnections).mockResolvedValue([
-			connection({ apply: { id: 'config-2' } }),
-		]);
+	it('should explain that the direction is not set up when the instance has no environment for it', async () => {
+		vi.mocked(settingsApi.fetchPromotionEnvironments).mockResolvedValue([environment('apply')]);
 
 		const { getByTestId } = await render();
 
