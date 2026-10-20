@@ -121,16 +121,6 @@ const onSubmit = async () => {
 .row {
 	margin-bottom: 10px;
 }
-.container {
-	h1 {
-		max-width: 90%;
-	}
-}
-
-.description {
-	font-size: var(--font-size--sm);
-	margin: var(--spacing--sm) 0;
-}
 
 .footer {
 	display: flex;
