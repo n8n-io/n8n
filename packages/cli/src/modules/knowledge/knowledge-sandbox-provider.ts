@@ -12,7 +12,7 @@ import type { KnowledgeConsumerScope } from './knowledge-consumer-scope';
  * agents runtime handle that the mirror uses, so the agents adapter returns its
  * own handle as-is.
  */
-export interface KnowledgeSandboxHandle {
+export type KnowledgeSandboxHandle = {
 	/** The mirror paths depend on the provider's home directory. */
 	provider: SandboxProvider;
 	/** Passed back to `executeCommand`. */
@@ -21,7 +21,7 @@ export interface KnowledgeSandboxHandle {
 	filesystem: Pick<WorkspaceFilesystem, 'mkdir' | 'writeFile' | 'rmdir'>;
 	/** Serializes mirror syncs per sandbox. */
 	cacheKey: string;
-}
+};
 
 /**
  * What the knowledge module needs from a consumer: exactly the sandbox calls the

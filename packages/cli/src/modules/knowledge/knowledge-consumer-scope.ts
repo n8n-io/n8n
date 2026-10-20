@@ -6,11 +6,11 @@
  * project id and the agent id, and it must stay byte-identical so that existing
  * sandboxes survive.
  */
-export interface AgentKnowledgeConsumerScope {
+export type AgentKnowledgeConsumerScope = {
 	kind: 'agent';
 	projectId: string;
 	agentId: string;
-}
+};
 
 /** WIP Note: Follow-up phases will add further consumer kinds (for example Instance AI) as union members. */
 export type KnowledgeConsumerScope = AgentKnowledgeConsumerScope;
