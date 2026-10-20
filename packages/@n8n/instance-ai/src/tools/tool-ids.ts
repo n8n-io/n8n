@@ -76,6 +76,10 @@ export const ALWAYS_LOADED_TOOL_NAMES = new Set<string>([
 	DOMAIN_TOOL_IDS.PARSE_FILE,
 	DOMAIN_TOOL_IDS.BUILD_WORKFLOW,
 	DOMAIN_TOOL_IDS.NODES,
+	// Workflow builds that pick a model reach this tool mid-run. Loading it then changes the
+	// tool list and rewrites the whole cached prompt. The model-selection skill dependency
+	// also promotes it, but that silently fails when the declared name drifts from this ID.
+	DOMAIN_TOOL_IDS.SEARCH_MODELS,
 	ORCHESTRATION_TOOL_IDS.VERIFY_BUILT_WORKFLOW,
 	DOMAIN_TOOL_IDS.RESEARCH,
 	// Paired with RESEARCH on purpose: the research tool tells the agent to prefer
