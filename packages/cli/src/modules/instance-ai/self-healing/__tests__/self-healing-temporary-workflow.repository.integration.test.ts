@@ -106,6 +106,24 @@ it('permits cleanup only for marked temporary workflows', async () => {
 	expect(await repository.existsBy({ id: markerId(saved.id) })).toBe(false);
 });
 
+it('retires the cleanup marker without changing a restored workflow', async () => {
+	const { saved } = await fixture();
+	const workflows = Container.get(WorkflowRepository);
+	await workflows.update(saved.id, { isArchived: false });
+	const restored = await workflows.findOneByOrFail({ id: saved.id });
+	await repository.update(
+		{ id: markerId(saved.id) },
+		{ createdAt: new Date(Date.now() - 25 * 60 * 60 * 1000) },
+	);
+	expect(await repository.findAbandonedIds(new Date())).toEqual([saved.id]);
+
+	expect(await repository.findUnfinishedExecutionIds(saved.id)).toEqual([]);
+	expect(await repository.canDelete(saved.id)).toBe(false);
+	expect(await repository.existsBy({ id: markerId(saved.id) })).toBe(false);
+	expect(await repository.findAbandonedIds(new Date())).toEqual([]);
+	expect(await workflows.findOneByOrFail({ id: saved.id })).toEqual(restored);
+});
+
 it.each(['new', 'running', 'waiting', 'unknown'] as const)(
 	'defers cleanup while its execution is %s',
 	async (status) => {
