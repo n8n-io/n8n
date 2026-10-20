@@ -7,6 +7,8 @@ import SecuritySettings from './SecuritySettings.vue';
 import { EnterpriseEditionFeature } from '@/app/constants';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUsersStore } from '@n8n/stores/users.store';
+import { usePostHog } from '@/app/stores/posthog.store';
+import { PUBLIC_API_RATE_LIMIT_SETTINGS_FLAG } from '@n8n/api-types';
 
 const getSecuritySettings = vi.fn();
 const updateSecuritySettings = vi.fn();
@@ -14,6 +16,11 @@ const updateSecuritySettings = vi.fn();
 vi.mock('@n8n/rest-api-client/api/security-settings', () => ({
 	getSecuritySettings: (...args: unknown[]) => getSecuritySettings(...args),
 	updateSecuritySettings: (...args: unknown[]) => updateSecuritySettings(...args),
+}));
+
+vi.mock('@n8n/rest-api-client/api/public-api-rate-limit-settings', () => ({
+	getPublicApiRateLimitSettings: vi.fn().mockResolvedValue(undefined),
+	updatePublicApiRateLimitSettings: vi.fn(),
 }));
 
 const showToast = vi.fn();
@@ -68,6 +75,27 @@ describe('SecuritySettings', () => {
 		settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.WorkflowReviews] = false;
 		checkEnvFeatureFlag.mockReturnValue(false);
 		usersStore.updateEnforceMfa = vi.fn().mockResolvedValue(undefined);
+	});
+
+	describe('API key rate limits', () => {
+		it('does not show the section while its feature flag is off', async () => {
+			mockedStore(usePostHog).isFeatureEnabled.mockReturnValue(false);
+			const { queryByTestId } = renderView();
+
+			await waitFor(() => expect(getSecuritySettings).toHaveBeenCalled());
+
+			expect(queryByTestId('rate-limits-section')).not.toBeInTheDocument();
+		});
+
+		it('shows the section while its feature flag is on', async () => {
+			const posthogStore = mockedStore(usePostHog);
+			posthogStore.isFeatureEnabled.mockImplementation(
+				(flag) => flag === PUBLIC_API_RATE_LIMIT_SETTINGS_FLAG,
+			);
+			const { findByTestId } = renderView();
+
+			expect(await findByTestId('rate-limits-section')).toBeInTheDocument();
+		});
 	});
 
 	it('should render security heading and personal space section', async () => {

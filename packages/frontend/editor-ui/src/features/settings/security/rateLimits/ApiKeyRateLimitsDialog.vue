@@ -1,0 +1,336 @@
+<script setup lang="ts">
+import { computed, ref, watch } from 'vue';
+import type { PublicApiRateLimitSettings } from '@n8n/api-types';
+import {
+	N8nButton,
+	N8nDialog,
+	N8nDialogFooter,
+	N8nIcon,
+	N8nInput,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
+
+import {
+	RATE_LIMIT_GROUPS,
+	exceedsAllEndpointsLimit,
+	fromDraft,
+	getRowError,
+	isDraftEmpty,
+	isRowDefault,
+	toDraft,
+	type RateLimitDraft,
+	type RateLimitGroup,
+	type RateLimitRowKey,
+} from './rateLimits';
+
+const props = defineProps<{
+	open: boolean;
+	mode: 'enable' | 'edit';
+	settings: PublicApiRateLimitSettings;
+	defaults: PublicApiRateLimitSettings;
+	envManagedFields: Array<keyof PublicApiRateLimitSettings>;
+	saving: boolean;
+}>();
+
+const emit = defineEmits<{
+	'update:open': [open: boolean];
+	save: [settings: PublicApiRateLimitSettings];
+}>();
+
+const i18n = useI18n();
+
+const draft = ref<RateLimitDraft>(toDraft(props.settings));
+const touchedRows = ref(new Set<RateLimitRowKey>());
+const submitted = ref(false);
+
+watch(
+	() => props.open,
+	(open) => {
+		if (!open) return;
+		draft.value = toDraft(props.settings);
+		touchedRows.value = new Set();
+		submitted.value = false;
+	},
+);
+
+const groups = Object.entries(RATE_LIMIT_GROUPS) as Array<
+	[RateLimitGroup, (typeof RATE_LIMIT_GROUPS)[RateLimitGroup]]
+>;
+
+const rowKeys: RateLimitRowKey[] = ['globalRead', 'globalWrite', 'endpointRead', 'endpointWrite'];
+
+const isLimitLocked = (key: RateLimitRowKey) => props.envManagedFields.includes(`${key}Limit`);
+const isWindowLocked = (key: RateLimitRowKey) =>
+	props.envManagedFields.includes(`${key}WindowSeconds`);
+
+const rowError = (key: RateLimitRowKey) =>
+	submitted.value || touchedRows.value.has(key) ? getRowError(draft.value[key]) : undefined;
+
+const rowWarning = (key: RateLimitRowKey) =>
+	(key === 'endpointRead' || key === 'endpointWrite') && exceedsAllEndpointsLimit(draft.value, key);
+
+const canReset = (key: RateLimitRowKey) =>
+	!isLimitLocked(key) && !isWindowLocked(key) && !isRowDefault(draft.value, props.defaults, key);
+
+const hasErrors = computed(() =>
+	rowKeys.some((key) => getRowError(draft.value[key]) !== undefined),
+);
+const isEmpty = computed(() => isDraftEmpty(draft.value));
+const showFixMessage = computed(() => submitted.value && hasErrors.value);
+const willDisable = computed(() => props.mode === 'edit' && isEmpty.value && !hasErrors.value);
+
+const title = computed(() =>
+	props.mode === 'enable'
+		? i18n.baseText('settings.security.rateLimits.dialog.enable.title')
+		: i18n.baseText('settings.security.rateLimits.dialog.edit.title'),
+);
+
+const primaryLabel = computed(() => {
+	if (props.mode === 'enable') {
+		return i18n.baseText('settings.security.rateLimits.dialog.enable.button');
+	}
+	return willDisable.value
+		? i18n.baseText('settings.security.rateLimits.dialog.disable')
+		: i18n.baseText('settings.security.rateLimits.dialog.save');
+});
+
+const isPrimaryDisabled = computed(
+	() => props.mode === 'enable' && isEmpty.value && !hasErrors.value,
+);
+
+function defaultText(key: RateLimitRowKey) {
+	const limit = props.defaults[`${key}Limit`];
+	if (limit === 0) return i18n.baseText('settings.security.rateLimits.dialog.noLimit');
+	const window = props.defaults[`${key}WindowSeconds`];
+	return `${limit.toLocaleString('en-US')} / ${window} ${i18n.baseText('settings.security.rateLimits.dialog.seconds')}`;
+}
+
+function resetRow(key: RateLimitRowKey) {
+	draft.value[key] = toDraft(props.defaults)[key];
+}
+
+function resetAll() {
+	for (const key of rowKeys) if (canReset(key)) resetRow(key);
+}
+
+function save() {
+	submitted.value = true;
+	if (hasErrors.value) return;
+	emit('save', { ...fromDraft(draft.value, props.settings), enabled: !isEmpty.value });
+}
+</script>
+
+<template>
+	<N8nDialog
+		:open="open"
+		:header="title"
+		:description="i18n.baseText('settings.security.rateLimits.dialog.description')"
+		size="medium"
+		data-test-id="rate-limits-dialog"
+		@update:open="emit('update:open', $event)"
+	>
+		<div :class="$style.groups">
+			<div v-for="[group, rows] in groups" :key="group" :class="$style.group">
+				<div :class="$style.groupTitle">
+					<N8nText :bold="true">
+						{{ i18n.baseText(`settings.security.rateLimits.group.${group}`) }}
+					</N8nText>
+					<N8nTooltip
+						:content="i18n.baseText(`settings.security.rateLimits.group.${group}.tooltip`)"
+					>
+						<N8nIcon icon="info" size="small" color="text-light" />
+					</N8nTooltip>
+				</div>
+
+				<div v-for="kind in ['read', 'write'] as const" :key="kind" :class="$style.rowWrapper">
+					<div :class="$style.row">
+						<N8nText :class="$style.rowLabel">
+							{{ i18n.baseText(`settings.security.rateLimits.dialog.${kind}`) }}
+						</N8nText>
+						<N8nTooltip
+							:disabled="!isLimitLocked(rows[kind])"
+							:content="i18n.baseText('settings.security.rateLimits.envLocked')"
+						>
+							<N8nInput
+								v-model="draft[rows[kind]].limit"
+								size="medium"
+								inputmode="numeric"
+								:placeholder="i18n.baseText('settings.security.rateLimits.dialog.noLimit')"
+								:disabled="isLimitLocked(rows[kind])"
+								:data-test-id="`rate-limits-limit-${rows[kind]}`"
+								@blur="touchedRows.add(rows[kind])"
+							/>
+						</N8nTooltip>
+						<N8nText color="text-light" size="small">
+							{{ i18n.baseText('settings.security.rateLimits.dialog.requestsPer') }}
+						</N8nText>
+						<N8nTooltip
+							:disabled="!isWindowLocked(rows[kind])"
+							:content="i18n.baseText('settings.security.rateLimits.envLocked')"
+						>
+							<N8nInput
+								v-model="draft[rows[kind]].window"
+								size="medium"
+								inputmode="numeric"
+								:disabled="isWindowLocked(rows[kind])"
+								:data-test-id="`rate-limits-window-${rows[kind]}`"
+								@blur="touchedRows.add(rows[kind])"
+							>
+								<template #suffix>
+									{{ i18n.baseText('settings.security.rateLimits.dialog.seconds') }}
+								</template>
+							</N8nInput>
+						</N8nTooltip>
+						<div :class="$style.resetSlot">
+							<N8nTooltip
+								v-if="canReset(rows[kind])"
+								:content="
+									i18n.baseText('settings.security.rateLimits.dialog.reset', {
+										interpolate: { value: defaultText(rows[kind]) },
+									})
+								"
+							>
+								<N8nButton
+									variant="ghost"
+									size="small"
+									icon-only
+									:aria-label="
+										i18n.baseText('settings.security.rateLimits.dialog.reset', {
+											interpolate: { value: defaultText(rows[kind]) },
+										})
+									"
+									:data-test-id="`rate-limits-reset-${rows[kind]}`"
+									@click="resetRow(rows[kind])"
+								>
+									<N8nIcon icon="undo-2" />
+								</N8nButton>
+							</N8nTooltip>
+						</div>
+					</div>
+					<N8nText
+						v-if="rowError(rows[kind])"
+						size="small"
+						color="danger"
+						:class="$style.message"
+						:data-test-id="`rate-limits-error-${rows[kind]}`"
+					>
+						{{
+							i18n.baseText(`settings.security.rateLimits.dialog.error.${rowError(rows[kind])!}`)
+						}}
+					</N8nText>
+					<N8nText
+						v-else-if="rowWarning(rows[kind])"
+						size="small"
+						color="warning"
+						:class="$style.message"
+						:data-test-id="`rate-limits-warning-${rows[kind]}`"
+					>
+						{{ i18n.baseText('settings.security.rateLimits.dialog.warning.neverApplies') }}
+					</N8nText>
+				</div>
+			</div>
+		</div>
+
+		<N8nDialogFooter>
+			<div :class="$style.footer">
+				<div :class="$style.footerStart">
+					<N8nButton
+						v-if="rowKeys.some(canReset)"
+						variant="ghost"
+						size="small"
+						:label="i18n.baseText('settings.security.rateLimits.dialog.resetAll')"
+						data-test-id="rate-limits-reset-all"
+						@click="resetAll"
+					/>
+					<N8nText v-if="showFixMessage" size="small" color="danger">
+						{{ i18n.baseText('settings.security.rateLimits.dialog.error.fix') }}
+					</N8nText>
+					<N8nText v-else-if="willDisable" size="small" color="text-light">
+						{{ i18n.baseText('settings.security.rateLimits.dialog.disableNote') }}
+					</N8nText>
+				</div>
+				<N8nButton
+					variant="outline"
+					:label="i18n.baseText('settings.security.rateLimits.dialog.cancel')"
+					data-test-id="rate-limits-cancel"
+					@click="emit('update:open', false)"
+				/>
+				<N8nTooltip
+					:disabled="!isPrimaryDisabled"
+					:content="i18n.baseText('settings.security.rateLimits.dialog.enableTooltip')"
+				>
+					<N8nButton
+						:label="primaryLabel"
+						:disabled="isPrimaryDisabled"
+						:loading="saving"
+						data-test-id="rate-limits-save"
+						@click="save"
+					/>
+				</N8nTooltip>
+			</div>
+		</N8nDialogFooter>
+	</N8nDialog>
+</template>
+
+<style lang="scss" module>
+.groups {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--md);
+	padding: var(--spacing--sm) 0;
+}
+
+.group {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+}
+
+.groupTitle {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+}
+
+.rowWrapper {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--4xs);
+}
+
+.row {
+	display: grid;
+	grid-template-columns: var(--spacing--3xl) 1fr auto 1fr var(--spacing--xl);
+	align-items: center;
+	gap: var(--spacing--2xs);
+}
+
+.rowLabel {
+	white-space: nowrap;
+}
+
+.resetSlot {
+	display: flex;
+	justify-content: center;
+}
+
+.message {
+	padding-left: calc(var(--spacing--3xl) + var(--spacing--2xs));
+}
+
+.footer {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	width: 100%;
+}
+
+.footerStart {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	margin-right: auto;
+}
+</style>
