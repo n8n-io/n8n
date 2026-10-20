@@ -77,7 +77,6 @@ describe('ExecuteNodeService', () => {
 		executionPersistence,
 		instanceSettings,
 		deprecatedNodesValidationService,
-		executionRedactionServiceProxy,
 		credentialsPermissionChecker,
 	);
 
@@ -343,6 +342,7 @@ describe('ExecuteNodeService', () => {
 				error: {
 					message: 'Node "Node" uses the credential "Bot", which you cannot use',
 					description: 'Ask its owner to share this credential with you.',
+					refused: true,
 				},
 			});
 			expect(workflowRepository.delete).toHaveBeenCalledWith('temp-wf-1');

@@ -166,6 +166,10 @@ import { ConflictError, LockedError, NotFoundError } from '@n8n/errors';
 import { EvaluationConfigService } from '@/evaluation.ee/evaluation-config.service';
 import { LlmJudgeProviderRegistry } from '@/evaluation.ee/llm-judge-provider-registry';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
+import {
+	getExecutionRedaction,
+	loadExecutionForViewer,
+} from '@/executions/execution-viewer-reader';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
@@ -222,7 +226,6 @@ import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 import { isAgentsAccessEnabled } from './agents-access';
 import { extractResolvedNodeParameters } from './extract-resolved-node-parameters';
 import { waitForInstanceAiExecution } from './instance-ai-execution-wait';
-import { getExecutionRedaction, loadExecutionForViewer } from './instance-ai-execution-reader';
 import {
 	FOLDER_SCAN_LIMIT,
 	FOLDER_SCAN_PROJECT_LIMIT,
@@ -5074,6 +5077,17 @@ function capItemsBySerializedSize<T>(items: T[], maxBytes: number): T[] {
 const EXECUTE_NODE_DETAILS_SUPPRESSED =
 	'(upstream error details suppressed by the instance AI privacy setting; ask the user to share the node error from the UI)';
 
+/** What the model can do next about a redacted one-off node run. */
+function describeExecuteNodeRedaction(reason: string): string {
+	if (reason === 'credential_inaccessible') {
+		return (
+			'The node used a credential that is not owned by or shared with the user, so n8n hides the data. ' +
+			'Do not run the node again with this credential. Use a credential that the user owns or that is shared with them.'
+		);
+	}
+	return 'n8n hides the data of every run like this one, so do not run the node again to see it. Tell the user that n8n redacted the data.';
+}
+
 /**
  * The standalone execution row is deleted after the result is read, so unlike
  * workflow runs there is no get-node-output fallback for truncated or
@@ -5085,11 +5099,13 @@ export function redactExecuteNodeResult(
 ): InstanceAiExecuteNodeResult {
 	if (result.status === 'redacted') {
 		const redaction = { reason: result.reason };
+		const guidance = describeExecuteNodeRedaction(result.reason);
 		if (result.failed) {
 			return {
 				status: 'error',
 				error: {
 					message: formatRedactedError(result.error ?? { type: '' }),
+					description: guidance,
 					...(result.error?.type ? { nodeErrorType: result.error.type } : {}),
 				},
 				redaction,
@@ -5098,13 +5114,13 @@ export function redactExecuteNodeResult(
 		return {
 			status: 'success',
 			output: '',
-			outputSuppressed: `The node executed successfully, but n8n redacted its output for this user (${result.reason}).`,
+			outputSuppressed: `The node executed successfully, but n8n redacted its output for this user (${result.reason}). ${guidance}`,
 			redaction,
 		};
 	}
 
 	if (result.status === 'error') {
-		const { message, description, nodeErrorType } = result.error;
+		const { message, description, nodeErrorType, refused } = result.error;
 		const cappedDescription =
 			description && description.length > MAX_ERROR_CHARS
 				? `${description.slice(0, MAX_ERROR_CHARS)}…`
@@ -5113,11 +5129,13 @@ export function redactExecuteNodeResult(
 			status: 'error',
 			error: {
 				message,
-				description: allowSendingParameterValues
-					? cappedDescription
-					: description
-						? EXECUTE_NODE_DETAILS_SUPPRESSED
-						: undefined,
+				// A refusal is n8n's own text, so the privacy setting does not apply to it.
+				description:
+					allowSendingParameterValues || refused
+						? cappedDescription
+						: description
+							? EXECUTE_NODE_DETAILS_SUPPRESSED
+							: undefined,
 				nodeErrorType,
 			},
 		};

@@ -5,7 +5,12 @@ import { Service } from '@n8n/di';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { sleep } from '@n8n/utils/sleep';
 import { InstanceSettings } from 'n8n-core';
-import { createRunExecutionData, NodeError, TimeoutExecutionCancelledError } from 'n8n-workflow';
+import {
+	createRunExecutionData,
+	NodeError,
+	TimeoutExecutionCancelledError,
+	UserError,
+} from 'n8n-workflow';
 import type {
 	IDataObject,
 	INode,
@@ -18,9 +23,13 @@ import type {
 import { v4 as uuid } from 'uuid';
 
 import { ActiveExecutions } from '@/active-executions';
-import { CredentialsFinderService, ExecutionRedactionServiceProxy } from '@n8n/backend-services';
+import { CredentialsFinderService } from '@n8n/backend-services';
 import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
+import {
+	getExecutionRedaction,
+	loadExecutionForViewer,
+} from '@/executions/execution-viewer-reader';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import { NodeTypes } from '@/node-types';
 import { WorkflowRunner } from '@/workflow-runner';
@@ -55,6 +64,11 @@ export interface ExecuteNodeError {
 	message: string;
 	description?: string;
 	nodeErrorType?: string;
+	/**
+	 * n8n refused the run before it started. The message and the description
+	 * are n8n's own text, not data from the node or the service it calls.
+	 */
+	refused?: true;
 }
 
 export type ExecuteNodeResult =
@@ -95,7 +109,6 @@ export class ExecuteNodeService {
 		private readonly executionPersistence: ExecutionPersistence,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly deprecatedNodesValidationService: DeprecatedNodesValidationService,
-		private readonly executionRedactionServiceProxy: ExecutionRedactionServiceProxy,
 		private readonly credentialsPermissionChecker: CredentialsPermissionChecker,
 	) {}
 
@@ -118,10 +131,8 @@ export class ExecuteNodeService {
 
 		const workflow = await this.createTemporaryWorkflow(request.projectId, node, timeoutMs);
 		try {
-			// The check `WorkflowRunner.run` makes, made first for its message: the
-			// runner saves a refused run as a failed execution, and redaction hides
-			// the reason from a user who cannot use the credential.
-			await this.credentialsPermissionChecker.check(workflow.id, [node], user.id);
+			const refusal = await this.checkCredentialsUsable(workflow.id, node, user);
+			if (refusal) return { status: 'error', error: refusal };
 			return await this.execute(user, workflow, node, inputItems, timeoutMs);
 		} catch (error) {
 			return { status: 'error', error: this.toErrorResponse(error) };
@@ -184,6 +195,25 @@ export class ExecuteNodeService {
 					`You do not have access to the "${credentialType}" credential used by this node`,
 				);
 			}
+		}
+	}
+
+	/**
+	 * The check `WorkflowRunner.run` makes, made first for its message: the
+	 * runner saves a refused run as a failed execution, and redaction hides the
+	 * reason from a user who cannot use the credential.
+	 */
+	private async checkCredentialsUsable(
+		workflowId: string,
+		node: INode,
+		user: User,
+	): Promise<ExecuteNodeError | undefined> {
+		try {
+			await this.credentialsPermissionChecker.check(workflowId, [node], user.id);
+			return undefined;
+		} catch (error) {
+			if (!(error instanceof UserError)) throw error;
+			return { ...this.toErrorResponse(error), refused: true };
 		}
 	}
 
@@ -344,10 +374,7 @@ export class ExecuteNodeService {
 		nodeTypeName: string,
 		user: User,
 	): Promise<ExecuteNodeResult> {
-		const execution = await this.executionPersistence.findSingleExecution(executionId, {
-			includeData: true,
-			unflattenData: true,
-		});
+		const execution = await loadExecutionForViewer(executionId, user);
 
 		// The temp workflow is deleted after this read, so a waiting execution
 		// could never be resumed — report it instead of a false success.
@@ -360,21 +387,17 @@ export class ExecuteNodeService {
 			};
 		}
 
-		if (execution) {
-			// Redacts in place. Never reveals: a reveal is an audited user action in the editor.
-			await this.executionRedactionServiceProxy.processExecution(execution, { user });
-			const redactionInfo = execution.data?.redactionInfo;
-			if (redactionInfo?.isRedacted) {
-				const nodeRuns = execution.data.resultData.runData?.[NODE_NAME];
-				const error = execution.data.resultData.redactedError ?? nodeRuns?.at(-1)?.redactedError;
-				return {
-					status: 'redacted',
-					failed:
-						error !== undefined || execution.status === 'error' || execution.status === 'crashed',
-					reason: redactionInfo.reason,
-					...(error ? { error } : {}),
-				};
-			}
+		const redaction = execution && getExecutionRedaction(execution);
+		if (execution && redaction) {
+			const nodeRuns = execution.data.resultData.runData?.[NODE_NAME];
+			const error = execution.data.resultData.redactedError ?? nodeRuns?.at(-1)?.redactedError;
+			return {
+				status: 'redacted',
+				failed:
+					error !== undefined || execution.status === 'error' || execution.status === 'crashed',
+				reason: redaction.reason,
+				...(error ? { error } : {}),
+			};
 		}
 
 		const executionError = execution?.data?.resultData?.error;
