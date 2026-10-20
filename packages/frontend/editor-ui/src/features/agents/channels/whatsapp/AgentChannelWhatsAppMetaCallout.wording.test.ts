@@ -96,11 +96,21 @@ describe('WhatsApp Meta callout wording', () => {
 		expect(getByTestId('whatsapp-meta-callout')).toHaveTextContent(title);
 	});
 
-	it('leaves no placeholder in the headline when Meta gives no name or number', () => {
-		const { getByTestId } = renderComponent({
-			props: { status: { state: 'nameDeclined' } },
-		});
+	it.each([
+		['numberPending', 'Your number is pending activation'],
+		['dailyLimit', 'Your number reached its daily message limit'],
+		['nameInReviewBlocked', 'Your display name is in review'],
+		['nameDeclinedBlocked', 'Your display name wasn’t approved'],
+		['nameInReview', 'Your display name is in review'],
+		['nameDeclined', 'Your display name wasn’t approved'],
+	] as const)(
+		'words the %s headline without a gap when Meta gives no name or number',
+		(state, headline) => {
+			const { getByTestId } = renderComponent({ props: { status: { state } } });
 
-		expect(getByTestId('whatsapp-meta-callout').textContent).not.toMatch(/[{}]/);
-	});
+			const text = getByTestId('whatsapp-meta-callout').textContent ?? '';
+			expect(text).toContain(headline);
+			expect(text).not.toMatch(/[{}]|“”/);
+		},
+	);
 });

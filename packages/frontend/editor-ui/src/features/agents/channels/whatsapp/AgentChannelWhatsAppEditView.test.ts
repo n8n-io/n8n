@@ -111,4 +111,25 @@ describe('AgentChannelWhatsAppEditView', () => {
 
 		expect(askedCredential()).toBeUndefined();
 	});
+
+	it('keeps showing the status of the connected credential when another one is picked', async () => {
+		const wrapper = mountView({ connected: true, modelValue: 'cred-1' });
+		await flushPromises();
+
+		await wrapper.setProps({ modelValue: 'cred-2' });
+		await flushPromises();
+
+		expect(askedCredential()).toBe('cred-1');
+	});
+
+	it('asks for the status once the channel becomes connected', async () => {
+		const wrapper = mountView({ connected: false, modelValue: 'cred-1' });
+		await flushPromises();
+		expect(askedCredential()).toBeUndefined();
+
+		await wrapper.setProps({ connected: true });
+		await flushPromises();
+
+		expect(askedCredential()).toBe('cred-1');
+	});
 });

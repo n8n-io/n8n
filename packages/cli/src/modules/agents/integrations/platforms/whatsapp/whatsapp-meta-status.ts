@@ -15,13 +15,18 @@ export interface WhatsAppMetaSignals {
 	businessVerificationStatus?: string;
 }
 
-/** Meta has the request and is working on it, or is waiting on the business. */
-const IN_REVIEW_VERIFICATION = new Set(['pending', 'pending_need_more_info']);
+/** Meta has the request and is working on it. */
+const IN_REVIEW_VERIFICATION = new Set(['pending']);
 
-/** Verification is not under way, or it ended without the business verified. */
+/**
+ * Verification is not under way, ended without the business verified, or
+ * waits for the business to send more information. The user can act on each,
+ * so these show the "Verify your business" link.
+ */
 const NOT_VERIFIED_VERIFICATION = new Set([
 	'not_verified',
 	'pending_submission',
+	'pending_need_more_info',
 	'rejected',
 	'failed',
 	'revoked',

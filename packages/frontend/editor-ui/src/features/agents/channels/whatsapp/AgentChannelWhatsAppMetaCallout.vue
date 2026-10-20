@@ -4,7 +4,7 @@ import type { WhatsAppMetaStatus } from '@n8n/api-types';
 import { N8nCallout, N8nLink, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
-import { presentWhatsAppMetaState } from './metaStatus';
+import { metaTitleKey, presentWhatsAppMetaState } from './metaStatus';
 
 const props = defineProps<{ status: WhatsAppMetaStatus | null }>();
 
@@ -39,7 +39,7 @@ const interpolate = computed(() => ({
 				:color="presentation.theme === 'danger' ? 'danger' : 'text-dark'"
 				:class="$style.title"
 			>
-				{{ i18n.baseText(presentation.titleKey, { interpolate }) }}
+				{{ i18n.baseText(metaTitleKey(presentation, props.status ?? {}), { interpolate }) }}
 			</N8nText>
 			<N8nText size="small" color="text-light">
 				{{ i18n.baseText(presentation.descriptionKey) }}

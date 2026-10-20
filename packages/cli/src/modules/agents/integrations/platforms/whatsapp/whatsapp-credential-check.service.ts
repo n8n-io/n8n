@@ -217,9 +217,10 @@ export class WhatsAppCredentialCheckService {
 					fields:
 						'status,name_status,new_name_status,messaging_limit_tier,verified_name,display_phone_number',
 				}),
+				// The business read is optional. A failed request must not discard the phone read.
 				get(`/${encodeURIComponent(businessAccountId)}`, {
 					fields: 'business_verification_status',
-				}),
+				}).catch(() => undefined),
 			]);
 			if (phone.statusCode !== 200) return { state: 'unknown' };
 
@@ -229,9 +230,9 @@ export class WhatsAppCredentialCheckService {
 					nameStatus: stringProperty(phone.body, 'name_status'),
 					newNameStatus: stringProperty(phone.body, 'new_name_status'),
 					messagingLimitTier: stringProperty(phone.body, 'messaging_limit_tier'),
-					// The business read is optional. Without it, the number states still show.
+					// Without the business read, the number states still show.
 					businessVerificationStatus:
-						account.statusCode === 200
+						account?.statusCode === 200
 							? stringProperty(account.body, 'business_verification_status')
 							: undefined,
 				}),

@@ -36,6 +36,9 @@ describe('AgentChannelWhatsAppMetaCallout', () => {
 		expect(getByTestId('whatsapp-meta-callout')).toHaveTextContent(
 			'agents.channels.whatsapp.meta.numberPending.title',
 		);
+		expect(getByTestId('whatsapp-meta-callout')).toHaveTextContent(
+			'agents.channels.whatsapp.meta.numberPending.description',
+		);
 		expect(queryByTestId('whatsapp-meta-callout-action')).toBeNull();
 	});
 
@@ -64,7 +67,7 @@ describe('AgentChannelWhatsAppMetaCallout', () => {
 		const action = getByTestId('whatsapp-meta-callout-action');
 		expect(action).toHaveAttribute(
 			'href',
-			'https://business.facebook.com/wa/manage/phone-numbers/',
+			'https://business.facebook.com/latest/whatsapp_manager/phone_numbers/',
 		);
 		expect(action).toHaveAttribute('target', '_blank');
 	});

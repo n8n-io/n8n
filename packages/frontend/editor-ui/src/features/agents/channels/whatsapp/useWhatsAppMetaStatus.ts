@@ -32,6 +32,8 @@ export function useWhatsAppMetaStatus(
 	let timer: ReturnType<typeof setTimeout> | undefined;
 	// A slow answer for an earlier credential must not replace a newer one.
 	let run = 0;
+	// Within a credential, only the newest read may set the status.
+	let latestLoad = 0;
 
 	function stop() {
 		run++;
@@ -40,6 +42,7 @@ export function useWhatsAppMetaStatus(
 	}
 
 	async function load(current: number, credential: string) {
+		const thisLoad = ++latestLoad;
 		try {
 			const result = await getWhatsAppMetaStatus(
 				rootStore.restApiContext,
@@ -47,7 +50,7 @@ export function useWhatsAppMetaStatus(
 				agentId.value,
 				credential,
 			);
-			if (current !== run) return;
+			if (current !== run || thisLoad !== latestLoad) return;
 			status.value = result;
 		} catch {
 			// Keep the last answer.

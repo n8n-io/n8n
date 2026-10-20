@@ -1127,6 +1127,19 @@ describe('WhatsApp Cloud API integration scenarios', () => {
 			});
 		});
 
+		it('does not warn for a draft entry that has no credential', async () => {
+			const check = mock<WhatsAppCredentialCheckService>();
+			Container.set(WhatsAppCredentialCheckService, check);
+			const webhookVerification = mock<WhatsAppWebhookVerificationStore>();
+			const integration = createWhatsAppIntegration(undefined, webhookVerification);
+
+			const warning = await integration.onRemove({ ...removal, credentialId: '' });
+
+			expect(warning).toBeUndefined();
+			expect(check.getMetaStatus).not.toHaveBeenCalled();
+			expect(webhookVerification.clear).toHaveBeenCalledExactlyOnceWith('agent-1');
+		});
+
 		it('does not wait long on a slow Meta', async () => {
 			vi.useFakeTimers();
 			try {
@@ -1138,6 +1151,11 @@ describe('WhatsApp Cloud API integration scenarios', () => {
 				const pending = integration.onRemove(removal);
 				await vi.advanceTimersByTimeAsync(3_000);
 
+				expect(check.getMetaStatus).toHaveBeenCalledWith(
+					removal.user,
+					'project-1',
+					'cred-whatsapp',
+				);
 				expect(await pending).toEqual(expect.not.objectContaining({ details: expect.anything() }));
 			} finally {
 				vi.useRealTimers();

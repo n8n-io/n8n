@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, toRef } from 'vue';
+import { computed, ref, toRef, watch } from 'vue';
 
 import AgentChannelStandardEditView from '../AgentChannelStandardEditView.vue';
 import type { AgentChannelViewExpose, AgentChannelViewProps } from '../types';
@@ -13,11 +13,18 @@ const emit = defineEmits<{
 	create: [];
 	edit: [];
 }>();
-// Meta reviews only matter once the channel is connected.
+// The status is for the credential the channel runs on. Picking another one in
+// the select is not saved yet, so it must not change the callout.
+const connectedCredentialId = ref(props.connected ? credentialId.value : '');
+watch([() => props.connected, credentialId], () => {
+	if (props.connected && !connectedCredentialId.value) {
+		connectedCredentialId.value = credentialId.value;
+	}
+});
 const { status: metaStatus } = useWhatsAppMetaStatus(
 	toRef(props, 'projectId'),
 	toRef(props, 'agentId'),
-	computed(() => (props.connected ? credentialId.value : undefined)),
+	computed(() => connectedCredentialId.value || undefined),
 );
 const viewRef = ref<AgentChannelViewExpose>();
 const currentSettings = computed(() => viewRef.value?.currentSettings);

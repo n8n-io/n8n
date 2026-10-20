@@ -122,7 +122,9 @@ vi.mock('../composables/useAgentsN8nChatFlag', () => ({
 
 const { whatsAppMetaStatus, useWhatsAppMetaStatusSpy, refreshWhatsAppMetaStatusSpy } = vi.hoisted(
 	() => ({
-		whatsAppMetaStatus: { value: null as { state: string } | null },
+		whatsAppMetaStatus: {
+			value: null as { state: string; displayName?: string; displayPhoneNumber?: string } | null,
+		},
 		useWhatsAppMetaStatusSpy: vi.fn(),
 		refreshWhatsAppMetaStatusSpy: vi.fn(),
 	}),
@@ -624,7 +626,11 @@ describe('AgentTriggersSection', () => {
 			['businessNotVerified', 'agents.channels.whatsapp.meta.businessNotVerified.title'],
 			['businessInReview', 'agents.channels.whatsapp.meta.businessInReview.title'],
 		])('shows the amber warning with the headline for %s', async (state, headline) => {
-			whatsAppMetaStatus.value = { state };
+			whatsAppMetaStatus.value = {
+				state,
+				displayName: 'Acme Support',
+				displayPhoneNumber: '+1 555-184-1090',
+			};
 
 			const wrapper = mountWhatsApp();
 			await flushPromises();
@@ -637,7 +643,7 @@ describe('AgentTriggersSection', () => {
 		});
 
 		it('shows the red cross with the headline when a declined name blocks sending', async () => {
-			whatsAppMetaStatus.value = { state: 'nameDeclinedBlocked' };
+			whatsAppMetaStatus.value = { state: 'nameDeclinedBlocked', displayName: 'Acme Support' };
 
 			const wrapper = mountWhatsApp();
 			await flushPromises();
@@ -650,6 +656,17 @@ describe('AgentTriggersSection', () => {
 			expect(chip(wrapper).props('warning')).toBe(false);
 			const icon = wrapper.get('[data-testid="agent-chip-invalid-icon"]');
 			expect(icon.attributes('icon')).toBe('circle-x');
+		});
+
+		it('words the tooltip without a gap when Meta gives no number or name', async () => {
+			whatsAppMetaStatus.value = { state: 'dailyLimit' };
+
+			const wrapper = mountWhatsApp();
+			await flushPromises();
+
+			expect(chip(wrapper).props('warningReasons')).toEqual([
+				'agents.channels.whatsapp.meta.dailyLimit.titleNoNumber',
+			]);
 		});
 
 		it('keeps the triangle for other errors on the chip', async () => {

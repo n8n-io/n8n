@@ -226,6 +226,8 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 		ctx: AgentIntegrationRemovalContext,
 	): Promise<AgentIntegrationDisconnectWarning | undefined> {
 		await this.webhookVerification.clear(ctx.agentId);
+		// A draft entry has no credential, so no number was ever connected to this agent.
+		if (!ctx.credentialId) return undefined;
 		const displayPhoneNumber = await this.lookUpDisplayPhoneNumber(ctx);
 		return {
 			integrationType: this.type,

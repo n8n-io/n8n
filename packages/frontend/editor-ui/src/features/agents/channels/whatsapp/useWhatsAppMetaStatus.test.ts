@@ -153,4 +153,61 @@ describe('useWhatsAppMetaStatus', () => {
 			expect(getWhatsAppMetaStatus).toHaveBeenCalledTimes(2);
 		});
 	});
+
+	describe('older answers', () => {
+		function deferred() {
+			let resolve!: (value: { state: 'connected' | 'dailyLimit' }) => void;
+			const promise = new Promise<{ state: 'connected' | 'dailyLimit' }>((done) => {
+				resolve = done;
+			});
+			return { promise, resolve };
+		}
+
+		it('are ignored when the credential changed while they were on their way', async () => {
+			const first = deferred();
+			vi.mocked(getWhatsAppMetaStatus)
+				.mockReturnValueOnce(first.promise)
+				.mockResolvedValueOnce({ state: 'connected' });
+			const { credentialId, status } = setup('cred-1');
+
+			credentialId.value = 'cred-2';
+			await flushPromises();
+			expect(status()).toEqual({ state: 'connected' });
+
+			first.resolve({ state: 'dailyLimit' });
+			await flushPromises();
+
+			expect(status()).toEqual({ state: 'connected' });
+		});
+
+		it('are ignored when a refresh was asked for after them', async () => {
+			const first = deferred();
+			vi.mocked(getWhatsAppMetaStatus)
+				.mockReturnValueOnce(first.promise)
+				.mockResolvedValueOnce({ state: 'connected' });
+			const { status, refresh } = setup('cred-1', { poll: false });
+
+			refresh();
+			await flushPromises();
+			expect(status()).toEqual({ state: 'connected' });
+
+			first.resolve({ state: 'dailyLimit' });
+			await flushPromises();
+
+			expect(status()).toEqual({ state: 'connected' });
+		});
+
+		it('do not stop the timer when a refresh happens', async () => {
+			const { refresh } = setup('cred-1');
+			await flushPromises();
+			expect(getWhatsAppMetaStatus).toHaveBeenCalledTimes(1);
+
+			refresh();
+			await flushPromises();
+			await vi.advanceTimersByTimeAsync(60_000);
+
+			// The refresh and the next timed read.
+			expect(getWhatsAppMetaStatus).toHaveBeenCalledTimes(3);
+		});
+	});
 });

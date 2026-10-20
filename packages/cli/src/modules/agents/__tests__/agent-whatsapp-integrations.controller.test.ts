@@ -66,6 +66,10 @@ describe('AgentWhatsAppIntegrationsController', () => {
 
 			const result = await controller.metaStatus(request, undefined as never, 'agent-1', 'cred-1');
 
+			expect(agentRepository.existsBy).toHaveBeenCalledWith({
+				id: 'agent-1',
+				projectId: 'project-1',
+			});
 			expect(credentialCheckService.getMetaStatus).toHaveBeenCalledWith(
 				user,
 				'project-1',

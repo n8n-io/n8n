@@ -2,6 +2,7 @@
 import {
 	N8nButton,
 	N8nDialog,
+	N8nDialogDescription,
 	N8nDialogFooter,
 	N8nDialogHeader,
 	N8nDialogTitle,
@@ -37,9 +38,11 @@ const i18n = useI18n();
 			</N8nDialogTitle>
 		</N8nDialogHeader>
 		<div :class="$style.content">
-			<N8nText size="medium" color="text-light">
-				{{ i18n.baseText('agents.channels.whatsapp.remove.description') }}
-			</N8nText>
+			<N8nDialogDescription as-child>
+				<N8nText size="medium" color="text-light">
+					{{ i18n.baseText('agents.channels.whatsapp.remove.description') }}
+				</N8nText>
+			</N8nDialogDescription>
 		</div>
 		<N8nDialogFooter>
 			<div :class="$style.actions">

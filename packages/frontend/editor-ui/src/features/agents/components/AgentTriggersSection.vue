@@ -23,7 +23,7 @@ import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrations
 import { useAgentIntegrationStatus } from '../composables/useAgentIntegrationStatus';
 import AgentChannelModal, { type ChannelView } from './AgentChannelModal.vue';
 import AgentChipButton from './AgentChipButton.vue';
-import { presentWhatsAppMetaState } from '../channels/whatsapp/metaStatus';
+import { metaTitleKey, presentWhatsAppMetaState } from '../channels/whatsapp/metaStatus';
 import { useWhatsAppMetaStatus } from '../channels/whatsapp/useWhatsAppMetaStatus';
 import AgentChipRow from './AgentChipRow.vue';
 import AgentItemContextMenu from './AgentItemContextMenu.vue';
@@ -98,7 +98,7 @@ function channelMetaNotice(channel: string) {
 	if (!presentation) return undefined;
 	return {
 		isError: presentation.theme === 'danger',
-		message: i18n.baseText(presentation.titleKey, {
+		message: i18n.baseText(metaTitleKey(presentation, whatsAppMetaStatus.value), {
 			interpolate: {
 				number: whatsAppMetaStatus.value.displayPhoneNumber ?? '',
 				name: whatsAppMetaStatus.value.displayName ?? '',

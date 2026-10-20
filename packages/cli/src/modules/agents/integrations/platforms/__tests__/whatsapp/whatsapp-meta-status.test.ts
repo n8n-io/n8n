@@ -68,12 +68,12 @@ describe('resolveWhatsAppMetaState', () => {
 	it.each([
 		['not_verified', 'businessNotVerified'],
 		['pending_submission', 'businessNotVerified'],
+		['pending_need_more_info', 'businessNotVerified'],
 		['rejected', 'businessNotVerified'],
 		['failed', 'businessNotVerified'],
 		['revoked', 'businessNotVerified'],
 		['expired', 'businessNotVerified'],
 		['pending', 'businessInReview'],
-		['pending_need_more_info', 'businessInReview'],
 		['verified', 'connected'],
 		['ineligible', 'connected'],
 		['a value Meta adds later', 'connected'],
@@ -151,6 +151,26 @@ describe('WhatsAppCredentialCheckService.getMetaStatus', () => {
 			state: 'businessNotVerified',
 			displayName: 'Acme Support',
 			displayPhoneNumber: '+1 555-184-1090',
+		});
+	});
+
+	it('still reports the number state when the business request fails to reach Meta', async () => {
+		request.mockImplementation(async ({ url }: { url: string }) => {
+			if (url.endsWith('/222')) throw new Error('socket hang up');
+			return {
+				statusCode: 200,
+				body: {
+					status: 'RESTRICTED',
+					verified_name: 'Acme Support',
+					display_phone_number: '+1 555',
+				},
+			};
+		});
+
+		expect(await service.getMetaStatus(user, 'project-1', 'cred-1')).toEqual({
+			state: 'dailyLimit',
+			displayName: 'Acme Support',
+			displayPhoneNumber: '+1 555',
 		});
 	});
 
