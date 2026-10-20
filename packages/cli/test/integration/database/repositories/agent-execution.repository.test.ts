@@ -245,6 +245,9 @@ describe('AgentExecutionRepository', () => {
 			settingsService,
 		);
 		const chatExecutionService = mock<AgentChatExecutionService>();
+		chatExecutionService.withTurnLock.mockImplementation(
+			async (_threadId, action) => await action(new AbortController().signal),
+		);
 		chatExecutionService.settle.mockImplementation(async (_executionId, finalize) => {
 			await finalize();
 		});

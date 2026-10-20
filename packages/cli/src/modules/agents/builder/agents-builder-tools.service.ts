@@ -17,7 +17,7 @@ import {
 } from '@n8n/agents/tool';
 import {
 	applyNativeWebSearchDefaultOn,
-	getProviderPrefix,
+	getModelPromptCachingCapability,
 	rejectIfDynamicSelectorUsesFromAi,
 	rejectIfEmptyInstructions,
 	rejectIfUnsupportedNativeWebSearch,
@@ -27,7 +27,6 @@ import {
 	agentSkillSchema,
 	agentTaskSchema,
 	formatZodErrors,
-	PROVIDER_CAPABILITIES,
 	resolvePromptCaching,
 	AgentJsonConfigSchema,
 	isDraftAgentConfig,
@@ -412,17 +411,9 @@ function parseBuilderWriteConfig(incoming: unknown, currentConfig: AgentJsonConf
 	return AgentJsonConfigSchema.safeParse(sanitized);
 }
 
-/**
- * Prompt caching is mandatory for OpenAI/Anthropic: this write-path
- * normalizer guarantees `config.promptCaching` is force-enabled for those
- * providers (the user cannot disable it, even if the LLM wrote
- * `{ enabled: false }`), preserves an explicit Anthropic TTL, and strips the
- * field entirely for every other provider — regardless of what the builder
- * LLM wrote.
- */
+/** Enable caching for supported models and preserve an explicit cache TTL. */
 function applyPromptCachingBuilderDefaults(config: AgentJsonConfig): AgentJsonConfig {
-	const providerPrefix = getProviderPrefix(config.model);
-	const capability = PROVIDER_CAPABILITIES[providerPrefix]?.promptCaching ?? false;
+	const capability = getModelPromptCachingCapability(config.model);
 	const resolved = resolvePromptCaching(config.config?.promptCaching, capability);
 
 	if (!resolved) {
@@ -583,9 +574,8 @@ export class AgentsBuilderToolsService {
 		credentialProviderFor: (agentId: string) => CredentialProvider,
 		credentialService: BuilderCredentialService,
 		user: User,
-		options: BuilderToolsOptions & { excludeToolNames?: string[] } = {},
+		options: BuilderToolsOptions = {},
 	): BuiltTool[] {
-		const excluded = new Set(options.excludeToolNames ?? []);
 		const buildToolSet = (agentId: string, credentialProvider: CredentialProvider) => {
 			const { json, shared } = this.getTools(
 				agentId,
@@ -595,7 +585,7 @@ export class AgentsBuilderToolsService {
 				user,
 				options,
 			);
-			return [...json, ...shared].filter((tool) => !excluded.has(tool.name));
+			return [...json, ...shared];
 		};
 
 		const toolSetsByAgentId = new Map<string, Map<string, BuiltTool>>();

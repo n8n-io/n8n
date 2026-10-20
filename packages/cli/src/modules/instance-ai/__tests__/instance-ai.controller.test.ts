@@ -2293,7 +2293,12 @@ describe('InstanceAiController', () => {
 			await expect(controller.persistPendingAgent(req, res, THREAD_ID, payload)).resolves.toBe(
 				result,
 			);
-			expect(pendingAgentService.persistAndBind).toHaveBeenCalledWith(req.user, THREAD_ID, payload);
+			expect(pendingAgentService.persistAndBind).toHaveBeenCalledWith(
+				req.user,
+				THREAD_ID,
+				payload,
+				undefined,
+			);
 		});
 
 		it.each([
