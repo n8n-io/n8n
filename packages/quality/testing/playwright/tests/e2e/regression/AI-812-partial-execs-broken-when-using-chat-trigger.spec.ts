@@ -25,7 +25,8 @@ test.describe(
 			);
 		});
 
-		test('should do partial execution when using chat trigger and clicking NDV execute node', async ({
+		// TODO(CET-309): engine v2 does not run the chat trigger yet.
+		test('should do partial execution when using chat trigger and clicking NDV execute node @engine:v2-pending', async ({
 			n8n,
 		}) => {
 			await n8n.canvas.openNode('Edit Fields1');
@@ -43,7 +44,8 @@ test.describe(
 			);
 		});
 
-		test('should do partial execution when using chat trigger and context-menu execute node', async ({
+		// TODO(CET-309): engine v2 does not run the chat trigger yet.
+		test('should do partial execution when using chat trigger and context-menu execute node @engine:v2-pending', async ({
 			n8n,
 		}) => {
 			// Workaround to prevent the context menu be blocked by the tabbar

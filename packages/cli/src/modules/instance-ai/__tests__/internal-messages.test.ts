@@ -22,7 +22,7 @@ import {
 	getProjectContextSection,
 	AUTO_FOLLOW_UP_MESSAGE,
 } from '../internal-messages';
-import { renderAiPreferencesBlock } from '@/services/ai-preference.service';
+import { renderAiPreferencesBlock } from '@n8n/backend-services';
 
 /** A saved preference now carries its id. Ids do not affect rendering, so the text doubles as one. */
 const saved = (...texts: string[]) => texts.map((content) => ({ id: content, content }));

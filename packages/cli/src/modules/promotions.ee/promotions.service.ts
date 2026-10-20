@@ -810,6 +810,32 @@ export class PromotionsService {
 	}
 
 	/**
+	 * Reads files at a commit that an earlier change preview reported. The branch may have
+	 * moved since then, so this reads the commit and not the branch tip. Paths that the commit
+	 * does not hold are left out, for example the manifest before the first promotion.
+	 */
+	async readBranchFilesAtCommit(
+		projectId: string,
+		direction: PromotionDirection,
+		commitSha: string,
+		filePaths: readonly string[],
+	): Promise<Map<string, string>> {
+		const input = await this.resolver.resolveForProject(projectId, direction);
+		await this.assertCheckoutReady(input, 'reading branch files');
+		const operation = {
+			paths: this.workingDirectory.paths(input.environmentId),
+			branchName: checkoutBranchName(input.config),
+			environmentId: input.environmentId,
+			commitSha,
+		};
+		const existing = await this.gitService.findPathsAtCommit({ ...operation, filePaths });
+		return await this.gitService.readFilesAtCommit({
+			...operation,
+			filePaths: filePaths.filter((path) => existing.has(path)),
+		});
+	}
+
+	/**
 	 * Resolves the branch one promotion pushes to, honoring the resolved environment.
 	 * When the environment creates a branch per promotion, this validates the new name
 	 * and resets the checkout to the latest base, so the promotion builds on it.
