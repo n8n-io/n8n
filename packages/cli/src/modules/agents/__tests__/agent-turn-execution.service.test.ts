@@ -127,19 +127,19 @@ describe('onBeforeFinalize', () => {
 		expect(hookCall).toBeLessThan(finalizeCall);
 	});
 
-	it('reports an errored turn with its error', async () => {
+	it('reports an errored turn with the error that the stream reported', async () => {
+		const failure = new Error('model failed');
 		const { onBeforeFinalize } = await runTurn([
-			{ type: 'error', error: new Error('model failed') },
+			{ type: 'error', error: failure },
 			{ type: 'finish', finishReason: 'error' },
 		]);
 
-		expect(onBeforeFinalize).toHaveBeenCalledWith(
-			expect.objectContaining({
-				executionId: 'exec-1',
-				status: 'errored',
-				error: expect.anything(),
-			}),
-		);
+		// The same error object, not a copy or a normalized message.
+		expect(onBeforeFinalize).toHaveBeenCalledWith({
+			executionId: 'exec-1',
+			status: 'errored',
+			error: failure,
+		});
 	});
 
 	it('reports a cancelled turn', async () => {

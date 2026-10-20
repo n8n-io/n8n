@@ -123,8 +123,9 @@ function setup(
 	});
 
 	const txRunner = mock<TransactionRunner>();
+	const logger = mock<Logger>();
 	const service = new SystemAgentExecutionService(
-		mock<Logger>(),
+		logger,
 		registry,
 		agentRepository,
 		threadRepository,
@@ -142,6 +143,7 @@ function setup(
 
 	return {
 		service,
+		logger,
 		provider,
 		handle,
 		onChunk,
@@ -531,11 +533,12 @@ describe('SystemAgentExecutionService', () => {
 		});
 
 		it('logs a failed background resume instead of rejecting', async () => {
-			const { service, checkpointStorage, turnExecutionService } = setup();
+			const { service, logger, checkpointStorage, turnExecutionService } = setup();
 			checkpointStorage.findSuspendedForThread.mockResolvedValue(suspendedCheckpoint() as never);
+			const failure = new Error('resume broke');
 			// eslint-disable-next-line require-yield
 			turnExecutionService.execute.mockImplementation(async function* () {
-				throw new Error('resume broke');
+				throw failure;
 			});
 
 			const result = await service.resume({
@@ -546,6 +549,10 @@ describe('SystemAgentExecutionService', () => {
 			});
 
 			await expect(result.done).resolves.toBeUndefined();
+			expect(logger.warn).toHaveBeenCalledWith('System agent resume failed', {
+				threadId: 'thread-1',
+				error: failure,
+			});
 		});
 
 		it('runs the resumed turn under the controller of the provider turn signal', async () => {
