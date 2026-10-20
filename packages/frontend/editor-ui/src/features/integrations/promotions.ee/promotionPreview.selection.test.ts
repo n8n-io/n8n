@@ -7,12 +7,13 @@ import {
 	includedChangeCount,
 	initialSelectionState,
 	resolveInclusion,
+	selectionCheck,
 	toggleContainer,
 	toggleSelection,
 	type SelectionState,
 } from './promotionPreview.selection';
 
-const { reconciliation, reminders, kpiReport, formatCurrency } = billingResources;
+const { reconciliation, reminders, kpiReport, formatCurrency, payments } = billingResources;
 const graph = buildSelectionGraph(billingPreview(), 'promote');
 const selectedState = (...keys: string[]): SelectionState => ({
 	mode: 'custom',
@@ -171,5 +172,24 @@ describe('promotion preview selection', () => {
 		expect(state.selected.has(kpiReport.key)).toBe(true);
 		state = toggleSelection(state, graph, kpiReport.key, blocked);
 		expect(state.selected.has(kpiReport.key)).toBe(false);
+	});
+
+	it('should keep the checkbox of a selected workflow clearable after it becomes blocked, and lock every checkbox while the operation runs', () => {
+		const selected = new Set([reconciliation.key, kpiReport.key]);
+		const state = {
+			selected,
+			inclusion: resolveInclusion(graph, selected),
+			disabled: new Set([kpiReport.key]),
+			locked: false,
+		};
+		expect(selectionCheck(graph, kpiReport, state)).toEqual({
+			checked: true,
+			indeterminate: false,
+			disabled: false,
+		});
+
+		const locked = { ...state, locked: true };
+		expect(selectionCheck(graph, kpiReport, locked).disabled).toBe(true);
+		expect(selectionCheck(graph, payments, locked).disabled).toBe(true);
 	});
 });
