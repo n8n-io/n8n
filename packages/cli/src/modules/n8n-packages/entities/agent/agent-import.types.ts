@@ -13,17 +13,11 @@ export interface AgentPlanItem extends PreparedAgent {
 	action: ImportDecision['action'];
 	targetAgentId: string;
 	existing: Agent | null;
-	taskIds: Map<string, string>;
 	publishingAction: PublishingAction;
 }
 
 export interface AgentImportPlan {
 	items: AgentPlanItem[];
-	bindings: {
-		agents: Map<string, string>;
-		workflows: Map<string, string>;
-		credentials: Map<string, string>;
-	};
 	issues: AgentImportIssue[];
 }
 
@@ -65,15 +59,8 @@ export interface AgentImportIdentities {
 
 export interface AgentTaskIdConflict {
 	sourceAgentId: string;
-	targetAgentId: string;
 	sourceTaskId: string;
-	targetTaskId: string;
 	conflictingAgentId: string;
-}
-
-export interface AgentTaskImportMappings {
-	taskIdsBySourceAgentId: Map<string, Map<string, string>>;
-	idConflicts: AgentTaskIdConflict[];
 }
 
 export function requiredAgentScopes(plan: AgentImportPlan): Scope[] {
