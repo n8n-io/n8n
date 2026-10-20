@@ -1,0 +1,20 @@
+packages/nodes-base/nodes/Microsoft/Teams/v2/test/transport/index.test.ts
+  s_0fd56c87c41410::t_3297c0a3d9f55b 393,395-397,399
+  s_0fd56c87c41410::t_bce906a42b466e 367
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fb24132cbb7381be29cb993a4d91fc465588a253",
+  "prompts": {},
+  "sessions": {
+    "s_0fd56c87c41410": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6f2b8ccf-7f85-4dda-af2c-78de0a4425ac",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}
