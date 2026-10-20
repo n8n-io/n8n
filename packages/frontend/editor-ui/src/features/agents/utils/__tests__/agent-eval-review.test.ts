@@ -13,6 +13,7 @@ import {
 	readCaseWhatToCheck,
 	readCorrectionText,
 	readErrorMessage,
+	readFirstSentence,
 	readVerdictReasoning,
 	readVerdictSuggestion,
 	resolveReviewRowView,
@@ -137,6 +138,26 @@ describe('readErrorMessage', () => {
 		['undefined', undefined],
 	])('returns null for %s', (_label, input) => {
 		expect(readErrorMessage(input as IDataObject | null)).toBeNull();
+	});
+});
+
+describe('readFirstSentence', () => {
+	it('returns the first sentence of a longer text', () => {
+		expect(readFirstSentence('It did not decline. It answered the weather question.')).toBe(
+			'It did not decline.',
+		);
+	});
+
+	it('keeps a text with no sentence end whole', () => {
+		expect(readFirstSentence('  Off-task reply  ')).toBe('Off-task reply');
+	});
+
+	it('does not split inside a number', () => {
+		expect(readFirstSentence('It quoted 2.5 days. Too slow.')).toBe('It quoted 2.5 days.');
+	});
+
+	it.each([null, undefined, '', '   '])('reads %j as null', (value) => {
+		expect(readFirstSentence(value)).toBeNull();
 	});
 });
 

@@ -130,6 +130,17 @@ export function readVerdictReasoning(verdict: AgentEvalVerdict | null | undefine
 }
 
 /**
+ * The first sentence of a text, for a one-line summary of the judge's reasoning.
+ * A text with no sentence end reads whole. Null for a blank or absent text.
+ */
+export function readFirstSentence(text: string | null | undefined): string | null {
+	const trimmed = text?.trim();
+	if (!trimmed) return null;
+	const match = /^.+?[.!?](?=\s|$)/s.exec(trimmed);
+	return (match ? match[0] : trimmed).trim();
+}
+
+/**
  * The fix the judge's failure produced, when there is one. Only a graded fail
  * carries it, so a pass, a skipped or errored judge, and a blank value all read
  * as no suggestion.

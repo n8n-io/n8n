@@ -380,6 +380,45 @@ describe('AgentEvalChecksPanel', () => {
 		);
 	});
 
+	describe('verdict line', () => {
+		it('sums up the shown run above the filters', () => {
+			const { getByTestId } = render({
+				results: [
+					{
+						...result('c1', 'success'),
+						verdict: {
+							status: 'completed',
+							outcome: 'fail',
+							reasoning: 'It answered off-topic. It should decline.',
+						},
+					},
+					result('c2', 'success'),
+				],
+			});
+
+			expect(getByTestId('agent-eval-verdict-sentence')).toHaveTextContent(
+				'It answered off-topic.',
+			);
+		});
+
+		it('is hidden while there is no result and no run', () => {
+			const { queryByTestId } = render({ results: [] });
+
+			expect(queryByTestId('agent-eval-verdict-line')).not.toBeInTheDocument();
+		});
+
+		it('shows progress while a run is in flight', () => {
+			const { getByTestId } = render(
+				{ results: [result('c1', 'success'), result('c2', 'running')] },
+				true,
+			);
+
+			expect(getByTestId('agent-eval-verdict-sentence')).toHaveTextContent(
+				'Checking: 1 of 2 done…',
+			);
+		});
+	});
+
 	describe('pill visibility', () => {
 		// When every check has the same status, a status option and "All" would
 		// list the same rows, so only one summary option shows.

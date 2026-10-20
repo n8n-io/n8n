@@ -30,6 +30,7 @@ import { isDataTableDataset, toCaseSource } from '../utils/agentEvalCases.utils'
 import AgentAvatar, { type AgentAvatarKind } from './AgentAvatar.vue';
 import AgentEvalAddCheckPanel from './AgentEvalAddCheckPanel.vue';
 import AgentEvalTryRow from './AgentEvalTryRow.vue';
+import AgentEvalVerdictLine, { type VerdictLineCheck } from './AgentEvalVerdictLine.vue';
 
 const props = defineProps<{
 	projectId: string;
@@ -126,6 +127,29 @@ const notRunRows = computed<CheckRow[]>(() => {
 			toolCalls: [],
 			whatToCheck: item.whatToCheck || null,
 		}));
+});
+
+// The verdict line sums up the run the rows show. While a run is in flight, the
+// poll's tallies say how far it has got. Before the first poll, the rows do.
+const verdictChecks = computed<VerdictLineCheck[]>(() =>
+	rows.value.map((row) => ({
+		id: row.id,
+		status: row.status,
+		input: row.input,
+		output: row.output,
+		whatToCheck: row.whatToCheck,
+		reasoning: row.errorMessage,
+	})),
+);
+const verdictRunning = computed(() => inFlight.value || Boolean(props.rerunning));
+const verdictProgress = computed(() => {
+	const counts = review.value.counts;
+	if (counts) return { done: counts.total - counts.pending, total: counts.total };
+	const total = review.value.resultsCount;
+	const done = review.value.results.filter(
+		(result) => result.status !== 'new' && result.status !== 'running',
+	).length;
+	return { done, total };
 });
 
 async function loadCases() {
@@ -519,6 +543,15 @@ onBeforeUnmount(store.stopPollingRun);
 				{{ i18n.baseText('agents.builder.agentEvals.checks.description') }}
 			</N8nText>
 		</div>
+		<AgentEvalVerdictLine
+			v-if="rows.length > 0 || verdictRunning"
+			:checks="verdictChecks"
+			:running="verdictRunning"
+			:done="verdictProgress.done"
+			:total="verdictProgress.total"
+			:completed-at="shownReview.run?.completedAt ?? null"
+			:disabled="disabled || showingPreviousRun"
+		/>
 		<header :class="$style.header">
 			<N8nSegmentControl
 				v-if="sortedRows.length > 0"
