@@ -35,13 +35,13 @@ describe('AgentEvalExamplesSlider', () => {
 
 	it('names the slider with the visible count and keeps preview controls available', async () => {
 		const { getByRole, getAllByTestId } = renderComponent({ props: { disabled: true } });
-		const slider = getByRole('slider', { name: '2 checks' });
+		const slider = getByRole('slider', { name: '2 of 2 checks' });
 
 		expect(slider).toHaveAttribute('aria-valuemin', '1');
 		expect(slider).toHaveAttribute('aria-valuemax', '2');
 		await fireEvent.keyDown(slider, { key: 'Home' });
 
-		expect(getByRole('slider', { name: '1 check' })).toHaveAttribute('aria-valuenow', '1');
+		expect(getByRole('slider', { name: '1 of 2 checks' })).toHaveAttribute('aria-valuenow', '1');
 		expect(getAllByTestId('instance-ai-test-agent-examples-example')).toHaveLength(1);
 	});
 
