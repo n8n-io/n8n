@@ -1,0 +1,30 @@
+packages/nodes-base/nodes/Aws/S3/test/regression/legacy/V2GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_5b6ad3c697ab38 1-12,14-145
+  s_2e1fa95fc44f8f::t_440c40ab9165a0 13
+packages/nodes-base/nodes/Aws/S3/test/regression/requests.test.ts
+  s_2e1fa95fc44f8f::t_417b2c5ac8d766 15-16
+  s_2e1fa95fc44f8f::t_ae7eaac388b5d9 1-14,17-81,235-240,247-248,252-256,260-261,265-364,373,380,386,395,400,404-406
+  s_2e1fa95fc44f8f::t_954523f3828616 82-234,241-246,249-251,257-259,262-264,365-372,374-379,381-385,387-394,396-399,401-403
+packages/nodes-base/nodes/Aws/S3/test/regression/legacy/V1GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_5b6ad3c697ab38 1-171
+packages/nodes-base/nodes/Aws/S3/test/regression/legacy/AwsS3V1.ts
+  s_2e1fa95fc44f8f::t_050e42a78fd049 1-908
+packages/nodes-base/nodes/Aws/S3/test/regression/legacy/AwsS3V2.ts
+  s_2e1fa95fc44f8f::t_d509d5bf3ab6cd 1-1081
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a0c7144ee8fff890c0596bb3fd86133e15f7d89a",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

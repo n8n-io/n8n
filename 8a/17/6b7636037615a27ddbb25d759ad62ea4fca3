@@ -1,0 +1,27 @@
+packages/nodes-base/nodes/Storyblok/Storyblok.node.ts
+  s_2e1fa95fc44f8f::t_431166701da9a7 164
+packages/nodes-base/nodes/Storyblok/__tests__/requestUrlEncoding.test.ts
+  s_2e1fa95fc44f8f::t_6d66bd5b89ef3f 53-74
+packages/nodes-base/nodes/Strapi/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_a65d09be9c8f2f 14,18-24
+packages/nodes-base/nodes/Strapi/Strapi.node.ts
+  s_2e1fa95fc44f8f::t_b33fd6bfa46607 16,179,202,250,261,294,305,330,373
+packages/nodes-base/nodes/Strapi/__tests__/requestUrlEncoding.test.ts
+  s_2e1fa95fc44f8f::t_ab9c4dc3333528 6-21,23-24,26-40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8a176b7636037615a27ddbb25d759ad62ea4fca3",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}
