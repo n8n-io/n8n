@@ -15,7 +15,6 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import {
 	AgentModificationTelemetryService,
 	diffAgentConfigParts,
-	isUnconfiguredAgent,
 	type AgentActor,
 } from './agent-modification-telemetry.service';
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
@@ -186,7 +185,6 @@ export class AgentIntegrationPersistenceService {
 		context: CredentialIntegrationMutationContext,
 	): void {
 		const config = agent.schema ? toAgentDocument(agent.schema, skillRefs) : null;
-		const wasUnconfigured = isUnconfiguredAgent(config, previousIntegrations);
 		this.modificationTelemetry.record({
 			agent,
 			config,
@@ -199,7 +197,6 @@ export class AgentIntegrationPersistenceService {
 				previousIntegrations,
 				agent.integrations ?? [],
 			),
-			wasUnconfigured,
 		});
 	}
 	private async applyIntegrationAttempt(

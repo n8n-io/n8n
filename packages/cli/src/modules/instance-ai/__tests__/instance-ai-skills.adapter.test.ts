@@ -3,9 +3,9 @@ import { User } from '@n8n/db';
 import { ConflictError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
-import { InstanceAiSkillsAdapterService } from '../skills/instance-ai-skills.adapter';
-import { SkillNameTakenError } from '../skills/skill-name-taken.error';
-import type { SkillsApiService } from '../skills/skills-api.service';
+import { InstanceAiSkillsAdapterService } from '../instance-ai-skills.adapter';
+import { SkillNameTakenError } from '@/modules/agents/skills/skill-name-taken.error';
+import type { SkillsApiService } from '@/modules/agents/skills/skills-api.service';
 
 describe('InstanceAiSkillsAdapterService', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });

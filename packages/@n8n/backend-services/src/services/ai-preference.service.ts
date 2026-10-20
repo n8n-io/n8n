@@ -22,7 +22,7 @@ import type { Scope } from '@n8n/permissions';
 import { hasGlobalScope } from '@n8n/permissions';
 import { randomUUID } from 'node:crypto';
 
-import { AiPreferenceScopeFullError } from '@/errors/response-errors/ai-preference-scope-full.error';
+import { AiPreferenceScopeFullError } from '../errors/response-errors/ai-preference-scope-full.error';
 import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
 
 /** `type` lets the prompt name a personal project without its owner's name. */

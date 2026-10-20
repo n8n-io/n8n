@@ -2,6 +2,7 @@ import { RuleRunner } from '@n8n/rules-engine';
 import type { RuleSettingsMap } from '@n8n/rules-engine';
 
 import type { CodeHealthContext } from './context.js';
+import { AgentsInstanceAiBoundaryRule } from './rules/agents-instance-ai-boundary.rule.js';
 import { AdrConventionsRule } from './rules/adr-conventions.rule.js';
 import { CatalogViolationsRule } from './rules/catalog-violations.rule.js';
 import { EncryptionBoundaryRule } from './rules/encryption-boundary.rule.js';
@@ -16,6 +17,7 @@ import { TypeormPersistenceBoundaryRule } from './rules/typeorm-persistence-boun
 import { WorkflowPrTargetSafetyRule } from './rules/workflow-pr-target-safety.rule.js';
 
 export type { CodeHealthContext } from './context.js';
+export { AgentsInstanceAiBoundaryRule } from './rules/agents-instance-ai-boundary.rule.js';
 export { AdrConventionsRule } from './rules/adr-conventions.rule.js';
 export { CatalogViolationsRule } from './rules/catalog-violations.rule.js';
 export { EncryptionBoundaryRule } from './rules/encryption-boundary.rule.js';
@@ -31,6 +33,11 @@ export { TypeormPersistenceBoundaryRule } from './rules/typeorm-persistence-boun
 export { WorkflowPrTargetSafetyRule } from './rules/workflow-pr-target-safety.rule.js';
 
 const defaultRuleSettings: RuleSettingsMap = {
+	'agents-instance-ai-boundary': {
+		enabled: true,
+		severity: 'error',
+		options: {},
+	},
 	'adr-conventions': {
 		enabled: true,
 		severity: 'error',
@@ -154,6 +161,7 @@ function mergeSettings(defaults: RuleSettingsMap, overrides?: RuleSettingsMap): 
 
 export function createDefaultRunner(settings?: RuleSettingsMap): RuleRunner<CodeHealthContext> {
 	const runner = new RuleRunner<CodeHealthContext>();
+	runner.registerRule(new AgentsInstanceAiBoundaryRule());
 	runner.registerRule(new AdrConventionsRule());
 	runner.registerRule(new CatalogViolationsRule());
 	runner.registerRule(new WorkflowPrTargetSafetyRule());
