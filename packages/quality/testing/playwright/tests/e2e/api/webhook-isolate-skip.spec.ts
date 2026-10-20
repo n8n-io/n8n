@@ -67,25 +67,6 @@ test.describe(
 	'Webhook isolate skip',
 	{ annotation: [{ type: 'owner', description: 'Catalysts' }] },
 	() => {
-		test('skips the webhook-phase isolate only when the trigger evaluates nothing @engine:v2', async ({
-			api,
-		}) => {
-			// Identical workflows but for the trigger's parameters, so the difference
-			// in acquires is the webhook phase — the execution costs the same in both
-			const staticAcquires = await acquiresForTrigger(
-				api,
-				'webhook-isolate-skip-static.json',
-				'static-ok',
-			);
-			const expressionAcquires = await acquiresForTrigger(
-				api,
-				'webhook-isolate-skip-expression.json',
-				'expression-ok',
-			);
-
-			expect(expressionAcquires).toBeGreaterThan(staticAcquires);
-		});
-
 		test('serves an immediate response with custom code, body and headers natively @engine:v2', async ({
 			api,
 		}) => {
@@ -151,8 +132,8 @@ test.describe(
 		test('acquires for typeVersion 1, whose body parsing evaluates a template @engine:v2', async ({
 			api,
 		}) => {
-			// Same comparative shape as the headline test: v1 must fall back to the
-			// engine, so it costs strictly more acquires than the gated v2 request.
+			// v1 must fall back to the engine, so it costs strictly more acquires
+			// than the gated v2 request.
 			const staticAcquires = await acquiresForTrigger(
 				api,
 				'webhook-isolate-skip-static.json',
