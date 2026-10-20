@@ -1,10 +1,12 @@
 import type { IExpressionEvaluator, ObservabilityProvider } from '@n8n/expression-runtime';
 import {
 	classifyExpressionError,
+	EXPRESSION_METRICS,
 	MemoryLimitError,
 	SecurityViolationError,
 	TimeoutError,
 } from '@n8n/expression-runtime';
+import isEqual from 'lodash/isEqual';
 import { DateTime, Duration, Interval } from 'luxon';
 
 import { UnexpectedError, UserError } from './errors';
@@ -13,7 +15,7 @@ import { ExpressionError } from './errors/expression.error';
 import { evaluateExpression, setErrorHandler } from './expression-evaluator-proxy';
 import { expressionSandboxHooks, sanitizer, sanitizerName } from './expression-sandboxing';
 import { isExpression } from './expressions/expression-helpers';
-import { evaluateNatively } from './expressions/native-evaluation';
+import { describeNatively, evaluateNatively } from './expressions/native-evaluation';
 import * as LoggerProxy from './logger-proxy';
 import { extend, extendOptional } from './extensions';
 import { extendSyntax } from './extensions/expression-extension';
@@ -31,6 +33,44 @@ const isSyntaxError = (error: unknown): error is SyntaxError =>
 
 const isExpressionError = (error: unknown): error is ExpressionError =>
 	error instanceof ExpressionError || error instanceof ExpressionExtensionError;
+
+type EvaluationResult = { ok: true; value: unknown } | { ok: false; error: unknown };
+
+function sameResult(a: EvaluationResult, b: EvaluationResult): boolean {
+	if (a.ok && b.ok) return isEqual(a.value, b.value);
+	if (a.ok || b.ok) return false;
+	return (
+		a.error instanceof Error &&
+		b.error instanceof Error &&
+		a.error.constructor === b.error.constructor &&
+		a.error.message === b.error.message
+	);
+}
+
+// Type names only: values and error messages can hold workflow data.
+function resultType(result: EvaluationResult): string {
+	if (!result.ok) {
+		return `error:${result.error instanceof Error ? result.error.constructor.name : typeof result.error}`;
+	}
+	const { value } = result;
+	if (value === null) return 'null';
+	if (Array.isArray(value)) return 'array';
+	if (typeof value === 'object') return value.constructor?.name ?? 'object';
+	return typeof value;
+}
+
+// The proxy throws for a workflow that was never saved.
+function workflowIdOf(data: IWorkflowDataProxyData): string | undefined {
+	try {
+		const id: unknown = data.$workflow?.id;
+		return typeof id === 'string' ? id : undefined;
+	} catch {
+		return undefined;
+	}
+}
+
+// ponytail: logs each mismatch shape once per process, up to this many; the metric counts every one
+const MAX_REPORTED_VERIFY_SHAPES = 1000;
 
 const isTypeError = (error: unknown): error is TypeError =>
 	error instanceof TypeError || (error instanceof Error && error.name === 'TypeError');
@@ -288,6 +328,12 @@ export class Expression {
 
 	private static nativeEvaluation = false;
 
+	private static nativeEvaluationVerifySample = 0;
+
+	private static observability?: ObservabilityProvider;
+
+	private static readonly reportedVerifyShapes = new Set<string>();
+
 	private static shadowRunner?: ExpressionShadowRunner;
 
 	constructor(private readonly timezone: string) {}
@@ -337,9 +383,33 @@ export class Expression {
 		compileCache?: boolean;
 		/** Experimental: interpret expressions that fit the native subset in-process. Applies to every engine. */
 		nativeEvaluation?: boolean;
+		/**
+		 * Experimental: share of native-subset expressions to also evaluate natively
+		 * and compare with the vm or quickjs engine, returning the engine's result.
+		 * Only while native evaluation is off.
+		 */
+		nativeEvaluationVerifySample?: number;
 	}): Promise<void> {
 		this.nativeEvaluation = options.nativeEvaluation ?? false;
-		if (options.engine === 'legacy') return;
+		this.nativeEvaluationVerifySample = options.nativeEvaluationVerifySample ?? 0;
+		this.observability = options.observability;
+		if (this.nativeEvaluationVerifySample > 0 && this.nativeEvaluation) {
+			LoggerProxy.warn(
+				'Native evaluation verify sample is ignored because native evaluation is on',
+			);
+			this.nativeEvaluationVerifySample = 0;
+		}
+		if (options.engine === 'legacy') {
+			// Legacy differs from the isolates on purpose in places, so its
+			// differences would read as native bugs.
+			if (this.nativeEvaluationVerifySample > 0) {
+				LoggerProxy.warn(
+					'Native evaluation verify sample is ignored because it only applies to the vm or quickjs expression engine',
+				);
+				this.nativeEvaluationVerifySample = 0;
+			}
+			return;
+		}
 		if (options.engine === 'vm' && IS_FRONTEND) return;
 		this.expressionEngine = options.engine;
 
@@ -524,6 +594,22 @@ export class Expression {
 	/** Toggle native evaluation without restarting the engine. For tests and benchmarks; production sets `N8N_EXPRESSION_ENGINE_NATIVE_EVALUATION`. */
 	static setNativeEvaluation(enabled: boolean): void {
 		this.nativeEvaluation = enabled;
+	}
+
+	/** For tests; production sets `N8N_EXPRESSION_ENGINE_NATIVE_EVALUATION_VERIFY_SAMPLE`. */
+	static setNativeEvaluationVerifySample(sample: number): void {
+		this.nativeEvaluationVerifySample = sample;
+	}
+
+	// Never alongside native evaluation: running both on its fast path would
+	// only add cost.
+	private static shouldVerifyNative(): boolean {
+		return (
+			!this.nativeEvaluation &&
+			this.nativeEvaluationVerifySample > 0 &&
+			this.shouldUseVm() &&
+			Math.random() < this.nativeEvaluationVerifySample
+		);
 	}
 
 	static initializeGlobalContext(data: IDataObject) {
@@ -752,7 +838,16 @@ export class Expression {
 		// An expression that fits the native subset grammar is interpreted
 		// in-process, skipping the global-context setup, extendSyntax, and the
 		// engine (isolate). Everything else takes the regular pipeline below.
-		if (Expression.nativeEvaluation) {
+		// Verify mode evaluates natively here, then returns the engine's result.
+		let nativeResult: EvaluationResult | undefined;
+		if (Expression.shouldVerifyNative()) {
+			try {
+				const native = evaluateNatively(parameterValue, data);
+				if (native.handled) nativeResult = { ok: true, value: native.value };
+			} catch (error) {
+				nativeResult = { ok: false, error };
+			}
+		} else if (Expression.nativeEvaluation) {
 			const native = evaluateNatively(parameterValue, data);
 			if (native.handled) return this.finalizeResolvedValue(native.value, returnObjectAsString);
 		}
@@ -821,8 +916,64 @@ export class Expression {
 
 		// Execute the expression
 		const extendedExpression = extendSyntax(parameterValue);
-		const returnValue = this.renderExpression(extendedExpression, data, parameterValue);
-		return this.finalizeResolvedValue(returnValue, returnObjectAsString);
+		if (nativeResult === undefined) {
+			const returnValue = this.renderExpression(extendedExpression, data, parameterValue);
+			return this.finalizeResolvedValue(returnValue, returnObjectAsString);
+		}
+
+		let engineResult: EvaluationResult;
+		try {
+			engineResult = {
+				ok: true,
+				value: this.renderExpression(extendedExpression, data, parameterValue),
+			};
+		} catch (error) {
+			engineResult = { ok: false, error };
+		}
+		Expression.reportNativeVerify(parameterValue, nativeResult, engineResult, data);
+
+		if (!engineResult.ok) throw engineResult.error;
+		return this.finalizeResolvedValue(engineResult.value, returnObjectAsString);
+	}
+
+	private static reportNativeVerify(
+		expression: string,
+		native: EvaluationResult,
+		engine: EvaluationResult,
+		data: IWorkflowDataProxyData,
+	): void {
+		try {
+			const description = describeNatively(expression);
+			if (description === null) return;
+
+			// The engine reads its own clock, so its $now is a few ms after the
+			// proxy's and the two never match.
+			const outcome = description.readsClock
+				? 'unchecked'
+				: sameResult(native, engine)
+					? 'match'
+					: 'mismatch';
+			this.observability?.metrics.counter(EXPRESSION_METRICS.nativeVerify.name, 1, { outcome });
+			if (outcome !== 'mismatch') return;
+
+			const shape = {
+				skeleton: description.skeleton,
+				engine: this.expressionEngine,
+				nativeResult: resultType(native),
+				engineResult: resultType(engine),
+			};
+			const key = JSON.stringify(shape);
+			if (this.reportedVerifyShapes.has(key)) return;
+			if (this.reportedVerifyShapes.size >= MAX_REPORTED_VERIFY_SHAPES) return;
+			this.reportedVerifyShapes.add(key);
+
+			LoggerProxy.warn('Native evaluation result differs from the expression engine', {
+				...shape,
+				workflowId: workflowIdOf(data),
+			});
+		} catch {
+			// Reporting must never change what the caller gets.
+		}
 	}
 
 	private finalizeResolvedValue(

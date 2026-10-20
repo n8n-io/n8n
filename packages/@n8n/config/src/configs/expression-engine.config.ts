@@ -123,4 +123,17 @@ export class ExpressionEngineConfig {
 	 */
 	@Env('N8N_EXPRESSION_ENGINE_NATIVE_EVALUATION')
 	nativeEvaluation: boolean = false;
+
+	/**
+	 * Experimental: share of simple expressions, from 0 to 1, that n8n evaluates both
+	 * directly and with the `vm` or `quickjs` expression engine to compare the results.
+	 * n8n uses the engine's result and logs any difference without workflow data. Only
+	 * applies while `N8N_EXPRESSION_ENGINE_NATIVE_EVALUATION` is false, and each
+	 * comparison costs an extra evaluation.
+	 */
+	@Env(
+		'N8N_EXPRESSION_ENGINE_NATIVE_EVALUATION_VERIFY_SAMPLE',
+		z.number({ coerce: true }).min(0).max(1),
+	)
+	nativeEvaluationVerifySample: number = 0;
 }

@@ -269,6 +269,7 @@ export abstract class BaseCommand<F = never> {
 				lazyAcquire,
 				compileCache,
 				nativeEvaluation,
+				nativeEvaluationVerifySample,
 			} = this.globalConfig.expressionEngine;
 			const observability = Container.get(ExpressionObservabilityProvider);
 			try {
@@ -282,6 +283,7 @@ export abstract class BaseCommand<F = never> {
 					lazyAcquire,
 					compileCache,
 					nativeEvaluation,
+					nativeEvaluationVerifySample,
 					observability,
 				});
 			} catch (error) {

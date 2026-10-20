@@ -5,6 +5,7 @@ import { LruCache } from '@n8n/utils/lru-cache';
 import { EngineFallbackError, Env, bounded, evalChunk } from './evaluator';
 import { MAX_RESULT_LENGTH, clone, isObj, type SimpleNode } from './grammar';
 import { parseSimple, usesPolyfilledChain } from './parser';
+import { readsClock, skeletonOf } from './skeleton';
 import type { IWorkflowDataProxyData } from '../../interfaces';
 
 export {
@@ -129,6 +130,25 @@ function getCompiled(expression: string): CompiledExpression | null {
 /** Does the expression (leading `=` stripped) fit the native subset? */
 export function isNativelyEvaluable(expression: string): boolean {
 	return getCompiled(expression) !== null;
+}
+
+/**
+ * The shape of an expression in the native subset with its user data masked,
+ * and whether it reads `$now` or `$today`. Null outside the subset.
+ */
+export function describeNatively(
+	expression: string,
+): { skeleton: string; readsClock: boolean } | null {
+	const compiled = getCompiled(expression);
+	if (compiled === null) return null;
+
+	const parts = compiled.chunks.map((chunk) =>
+		chunk.type === 'text' ? (chunk.text === '' ? '' : '<text>') : `{{ ${skeletonOf(chunk.node)} }}`,
+	);
+	return {
+		skeleton: parts.join(''),
+		readsClock: compiled.chunks.some((chunk) => chunk.type === 'code' && readsClock(chunk.node)),
+	};
 }
 
 /**
