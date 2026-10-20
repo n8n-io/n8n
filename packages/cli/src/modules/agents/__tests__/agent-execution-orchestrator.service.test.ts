@@ -19,7 +19,7 @@ import {
 import { mockLogger } from '@n8n/backend-test-utils';
 import { LockService, type Logger } from '@n8n/backend-common';
 import type { AiConfig } from '@n8n/config';
-import { UserRepository, type User } from '@n8n/db';
+import type { UserRepository, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { OperationalError, UserError } from 'n8n-workflow';
@@ -4175,7 +4175,7 @@ describe('AgentExecutionOrchestratorService', () => {
 });
 
 describe('task approval resume', () => {
-	it('resumes a waiting task thread through the published runtime', async () => {
+	it('resumes an awaiting task thread through the published runtime', async () => {
 		const { service, executionService, checkpointStorage } = makeService();
 		executionService.findThreadById.mockResolvedValue({
 			id: 'thread-1',
@@ -4188,7 +4188,7 @@ describe('task approval resume', () => {
 		} as never);
 		executionService.findLatestSuspendedRun.mockResolvedValue({
 			source: 'task',
-			status: 'waiting',
+			status: 'awaiting',
 		} as never);
 		checkpointStorage.findApprovalRunId.mockResolvedValue('run-1');
 		const resumeForChat = vi
@@ -4231,7 +4231,7 @@ describe('task approval resume', () => {
 		} as never);
 		executionService.findLatestSuspendedRun.mockResolvedValue({
 			source: 'task',
-			status: 'waiting',
+			status: 'awaiting',
 		} as never);
 		checkpointStorage.findApprovalRunId.mockResolvedValue('run-1');
 		vi.spyOn(service, 'resumeForChat').mockImplementation(async function* () {
@@ -4257,7 +4257,7 @@ describe('task approval resume', () => {
 		});
 	});
 
-	it('rejects a session that is not a waiting task run', async () => {
+	it('rejects a session that is not an awaiting task run', async () => {
 		const { service, executionService, checkpointStorage } = makeService();
 		executionService.findLatestSuspendedRun.mockResolvedValue({
 			source: 'slack',

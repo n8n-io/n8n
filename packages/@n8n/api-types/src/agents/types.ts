@@ -14,7 +14,7 @@ export type AgentExecutionStatus =
 	| 'error'
 	| 'cancelled'
 	| 'interrupted'
-	| 'waiting';
+	| 'awaiting';
 
 export interface AgentSessionPreviewAccess {
 	canContinueInPreview: boolean;

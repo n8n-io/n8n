@@ -50,9 +50,10 @@ const stubs = {
 	SessionTimelineChart: { template: '<div data-test-id="chart-stub" />' },
 	SessionTimelineTable: {
 		name: 'SessionTimelineTable',
-		props: ['selectedIndex', 'items'],
+		props: ['selectedIndex', 'items', 'approval', 'approvalItem', 'approvalDisabled'],
+		emits: ['approve'],
 		template:
-			'<div data-test-id="table-stub" :data-selected-index="selectedIndex ?? undefined" :data-item-count="items.length" />',
+			'<div data-test-id="table-stub" :data-selected-index="selectedIndex ?? undefined" :data-item-count="items.length" :data-approval="String(Boolean(approval))" :data-approval-disabled="String(Boolean(approvalDisabled))" />',
 	},
 	SessionEventFilter: {
 		name: 'SessionEventFilter',
@@ -61,10 +62,7 @@ const stubs = {
 	},
 	SessionDetailPanel: {
 		name: 'SessionDetailPanel',
-		props: ['approval', 'approvalDisabled'],
-		emits: ['approve'],
-		template:
-			'<div data-test-id="detail-stub" :data-approval-disabled="String(Boolean(approvalDisabled))" />',
+		template: '<div data-test-id="detail-stub" />',
 	},
 	N8nInput: { template: '<input data-test-id="search-stub" />' },
 	N8nIcon: { template: '<i />' },
@@ -125,10 +123,10 @@ const errorFilterExecution = {
 	],
 } satisfies ThreadDetail['executions'][number];
 
-const waitingApprovalExecution = {
+const awaitingApprovalExecution = {
 	...keyboardExecution,
-	id: 'execution-waiting',
-	status: 'waiting',
+	id: 'execution-awaiting',
+	status: 'awaiting',
 	userMessage: null,
 	hitlStatus: 'suspended',
 	source: 'task',
@@ -148,10 +146,10 @@ const waitingApprovalExecution = {
 	],
 } satisfies ThreadDetail['executions'][number];
 
-function waitingDetail(status: 'waiting' | 'success' = 'waiting'): ThreadDetail {
+function awaitingDetail(status: 'awaiting' | 'success' = 'awaiting'): ThreadDetail {
 	return {
 		...detail,
-		executions: [{ ...waitingApprovalExecution, status }],
+		executions: [{ ...awaitingApprovalExecution, status }],
 	};
 }
 
@@ -482,24 +480,23 @@ describe('AgentSessionTimelinePanel', () => {
 		expect(wrapper.find('[data-test-id="table-stub"]').attributes('data-selected-index')).toBe('2');
 	});
 
-	async function openWaitingApproval(wrapper: ReturnType<typeof mountPanel>) {
-		await flushPromises();
-		wrapper.getComponent({ name: 'SessionTimelineTable' }).vm.$emit('select', 0);
-		await wrapper.vm.$nextTick();
-		return wrapper.getComponent({ name: 'SessionDetailPanel' });
+	function openAwaitingApproval(wrapper: ReturnType<typeof mountPanel>) {
+		return flushPromises().then(() => wrapper.getComponent({ name: 'SessionTimelineTable' }));
 	}
 
-	it('keeps the approval card disabled until a refresh leaves waiting', async () => {
+	it('shows the approval card inline and keeps it disabled until a refresh leaves awaiting', async () => {
 		getThreadDetail
-			.mockResolvedValueOnce(waitingDetail())
-			.mockResolvedValueOnce(waitingDetail())
-			.mockResolvedValueOnce(waitingDetail('success'));
+			.mockResolvedValueOnce(awaitingDetail())
+			.mockResolvedValueOnce(awaitingDetail())
+			.mockResolvedValueOnce(awaitingDetail('success'));
 		resumeTaskApproval.mockResolvedValue({ success: true });
 		const wrapper = mountPanel();
-		const detailPanel = await openWaitingApproval(wrapper);
+		const table = await openAwaitingApproval(wrapper);
 
-		detailPanel.vm.$emit('approve', { approved: true });
-		detailPanel.vm.$emit('approve', { approved: false });
+		expect(table.props('approval')).toBeDefined();
+
+		table.vm.$emit('approve', { approved: true });
+		table.vm.$emit('approve', { approved: false });
 		await flushPromises();
 
 		expect(resumeTaskApproval).toHaveBeenCalledTimes(1);
@@ -507,26 +504,26 @@ describe('AgentSessionTimelinePanel', () => {
 			toolCallId: 'call-1',
 			resumeData: { approved: true },
 		});
-		expect(detailPanel.props('approvalDisabled')).toBe(true);
+		expect(table.props('approvalDisabled')).toBe(true);
 
 		emitPush();
 		await flushPromises();
 
-		expect(detailPanel.props('approvalDisabled')).toBe(false);
-		expect(detailPanel.props('approval')).toBeUndefined();
+		expect(table.props('approvalDisabled')).toBe(false);
+		expect(table.props('approval')).toBeUndefined();
 	});
 
 	it('re-enables the card when the approval request fails', async () => {
-		getThreadDetail.mockResolvedValue(waitingDetail());
+		getThreadDetail.mockResolvedValue(awaitingDetail());
 		resumeTaskApproval.mockRejectedValue(new Error('nope'));
 		const wrapper = mountPanel();
-		const detailPanel = await openWaitingApproval(wrapper);
+		const table = await openAwaitingApproval(wrapper);
 
-		detailPanel.vm.$emit('approve', { approved: true });
+		table.vm.$emit('approve', { approved: true });
 		await flushPromises();
 
 		expect(showError).toHaveBeenCalled();
-		expect(detailPanel.props('approvalDisabled')).toBe(false);
+		expect(table.props('approvalDisabled')).toBe(false);
 	});
 
 	it('does not apply an in-flight approval to the session opened next', async () => {
@@ -536,17 +533,14 @@ describe('AgentSessionTimelinePanel', () => {
 				rejectResume = reject;
 			}),
 		);
-		getThreadDetail.mockResolvedValue(waitingDetail());
+		getThreadDetail.mockResolvedValue(awaitingDetail());
 		const wrapper = mountPanel();
-		const detailPanel = await openWaitingApproval(wrapper);
-		detailPanel.vm.$emit('approve', { approved: true });
+		const table = await openAwaitingApproval(wrapper);
+		table.vm.$emit('approve', { approved: true });
 
 		await wrapper.setProps({ threadId: 't2' });
 		await flushPromises();
-		wrapper.getComponent({ name: 'SessionTimelineTable' }).vm.$emit('select', 0);
-		await wrapper.vm.$nextTick();
-		const nextPanel = wrapper.getComponent({ name: 'SessionDetailPanel' });
-		expect(nextPanel.props('approvalDisabled')).toBe(false);
+		expect(table.props('approvalDisabled')).toBe(false);
 
 		const callsBeforeSettle = getThreadDetail.mock.calls.length;
 		rejectResume(new Error('nope'));
@@ -554,7 +548,7 @@ describe('AgentSessionTimelinePanel', () => {
 
 		expect(showError).not.toHaveBeenCalled();
 		expect(getThreadDetail).toHaveBeenCalledTimes(callsBeforeSettle);
-		expect(nextPanel.props('approvalDisabled')).toBe(false);
+		expect(table.props('approvalDisabled')).toBe(false);
 	});
 
 	it('does not refresh the next session when an earlier approval succeeds', async () => {
@@ -564,10 +558,10 @@ describe('AgentSessionTimelinePanel', () => {
 				resolveResume = resolve;
 			}),
 		);
-		getThreadDetail.mockResolvedValue(waitingDetail());
+		getThreadDetail.mockResolvedValue(awaitingDetail());
 		const wrapper = mountPanel();
-		const detailPanel = await openWaitingApproval(wrapper);
-		detailPanel.vm.$emit('approve', { approved: true });
+		const table = await openAwaitingApproval(wrapper);
+		table.vm.$emit('approve', { approved: true });
 
 		await wrapper.setProps({ threadId: 't2' });
 		await flushPromises();

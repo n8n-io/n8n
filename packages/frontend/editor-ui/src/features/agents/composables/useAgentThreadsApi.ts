@@ -40,7 +40,7 @@ export type AgentExecutionStatus =
 	| 'error'
 	| 'cancelled'
 	| 'interrupted'
-	| 'waiting';
+	| 'awaiting';
 export type AgentExecutionHitlStatus = 'suspended' | 'resumed';
 export type AgentExecutionFailureKind = 'execution' | 'tool' | 'node' | 'workflow';
 export type { AgentSessionOrigin, AgentSessionStatus };

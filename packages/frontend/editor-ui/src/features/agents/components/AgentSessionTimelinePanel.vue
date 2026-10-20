@@ -188,18 +188,30 @@ const selectedItem = computed<TimelineItem | null>(() =>
 );
 
 // The resume route returns once the run is started. Keep this thread's card
-// disabled until a refresh shows the session is no longer waiting.
+// disabled until a refresh shows the session is no longer awaiting.
 const pendingApprovalIdentity = ref<string | null>(null);
 
 const approvalDisabled = computed(() => pendingApprovalIdentity.value === threadIdentity());
 
-const sessionApproval = computed((): ApprovalInput | undefined => {
-	const item = selectedItem.value;
+// The approval suspension parked on the latest execution, if that execution is
+// still awaiting a decision. Independent of the selected row: the card sits
+// inline in the timeline table.
+const openApprovalItem = computed((): TimelineItem | null => {
 	const latest = executions.value.at(-1);
-	if (!item || !latest || latest.status !== 'waiting' || latest.id !== item.executionId) {
-		return undefined;
-	}
-	if (item.kind !== 'suspension' || item.hitlRequestType !== 'approval') return undefined;
+	if (!latest || latest.status !== 'awaiting') return null;
+	return (
+		items.value.find(
+			(item) =>
+				item.executionId === latest.id &&
+				item.kind === 'suspension' &&
+				item.hitlRequestType === 'approval',
+		) ?? null
+	);
+});
+
+const sessionApproval = computed((): ApprovalInput | undefined => {
+	const item = openApprovalItem.value;
+	if (!item) return undefined;
 	return parseApprovalInput(item.hitlRequest);
 });
 
@@ -208,7 +220,7 @@ function releasePendingApproval(identity: string) {
 }
 
 async function submitSessionApproval(resumeData: ApprovalResume) {
-	const toolCallId = selectedItem.value?.toolCallId;
+	const toolCallId = openApprovalItem.value?.toolCallId;
 	const identity = threadIdentity();
 	const { projectId, agentId, threadId } = props;
 	if (!toolCallId || pendingApprovalIdentity.value === identity) return;
@@ -344,7 +356,7 @@ async function fetchThreadDetail(initial: boolean) {
 		executions.value = result.executions;
 		if (
 			pendingApprovalIdentity.value === identity &&
-			result.executions.at(-1)?.status !== 'waiting'
+			result.executions.at(-1)?.status !== 'awaiting'
 		) {
 			pendingApprovalIdentity.value = null;
 		}
@@ -468,7 +480,11 @@ watch([() => props.projectId, () => props.agentId, () => props.threadId], loadTh
 					:selected-index="highlightedIndex"
 					:visible-kinds="selectedFilters"
 					:search-query="searchQuery"
+					:approval-item="openApprovalItem"
+					:approval="sessionApproval"
+					:approval-disabled="approvalDisabled"
 					@select="selectTimelineItem"
+					@approve="submitSessionApproval"
 				/>
 			</div>
 			<Transition name="session-detail-panel">
@@ -477,10 +493,7 @@ watch([() => props.projectId, () => props.agentId, () => props.threadId], loadTh
 						:item="selectedItem"
 						:project-id="props.projectId"
 						:agent-id="props.agentId"
-						:approval="sessionApproval"
-						:approval-disabled="approvalDisabled"
 						@close="selectTimelineItem(null)"
-						@approve="submitSessionApproval"
 					/>
 				</div>
 			</Transition>

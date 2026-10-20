@@ -382,11 +382,11 @@ export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
 			message,
 			occurredAt: Date.now(),
 		};
-		const waiting = await this.find({
+		const awaiting = await this.find({
 			select: ['id', 'failureSummary'],
-			where: { threadId: In(threadIds), status: 'waiting' },
+			where: { threadId: In(threadIds), status: 'awaiting' },
 		});
-		for (const execution of waiting) {
+		for (const execution of awaiting) {
 			const existing = execution.failureSummary;
 			const failureSummary: AgentExecutionFailureSummary = existing
 				? {
@@ -395,7 +395,7 @@ export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
 					}
 				: { count: 1, latest: expiry };
 			await this.update(
-				{ id: execution.id, status: 'waiting' },
+				{ id: execution.id, status: 'awaiting' },
 				{ status: 'error', error: message, failureSummary },
 			);
 		}

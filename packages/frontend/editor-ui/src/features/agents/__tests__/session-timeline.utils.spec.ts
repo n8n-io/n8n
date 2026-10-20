@@ -145,7 +145,7 @@ describe('kindColorToken', () => {
 		expect(kindColorToken('skill')).toBe('var(--color--orange-400)');
 		expect(kindColorToken('tool')).toBe('var(--color--success)');
 		expect(kindColorToken('workflow')).toBe('var(--color--primary)');
-		expect(kindColorToken('suspension')).toBe('var(--color--warning)');
+		expect(kindColorToken('suspension')).toBe('var(--color--purple-400)');
 	});
 });
 

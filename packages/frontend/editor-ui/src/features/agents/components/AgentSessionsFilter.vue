@@ -28,7 +28,7 @@ const statuses: Array<{ id: AgentSessionStatus | 'all'; name: string }> = [
 	{ id: 'error', name: i18n.baseText('agentSessions.status.error') },
 	{ id: 'cancelled', name: i18n.baseText('agentSessions.status.cancelled') },
 	{ id: 'interrupted', name: i18n.baseText('agentSessions.status.interrupted') },
-	{ id: 'waiting', name: i18n.baseText('agentSessions.status.waiting') },
+	{ id: 'awaiting', name: i18n.baseText('agentSessions.status.awaiting') },
 ];
 
 const origins: Array<{ id: AgentSessionOrigin | 'all'; name: string }> = [

@@ -87,19 +87,19 @@ describe('AddWaitingStatusToAgentExecution migration', () => {
 		}
 	}
 
-	it('accepts waiting and keeps rows that reference the execution', async () => {
+	it('accepts awaiting and keeps rows that reference the execution', async () => {
 		await runSingleMigration(MIGRATION_NAME);
 
 		await withContext(async (ctx) => {
 			await ctx.runQuery(
-				`UPDATE ${ctx.escape.tableName('agent_execution')} SET "status" = 'waiting' WHERE "id" = :executionId`,
+				`UPDATE ${ctx.escape.tableName('agent_execution')} SET "status" = 'awaiting' WHERE "id" = :executionId`,
 				{ executionId },
 			);
 			const executions = await ctx.runQuery<Array<{ status: string }>>(
 				`SELECT "status" FROM ${ctx.escape.tableName('agent_execution')} WHERE "id" = :executionId`,
 				{ executionId },
 			);
-			expect(executions).toEqual([{ status: 'waiting' }]);
+			expect(executions).toEqual([{ status: 'awaiting' }]);
 			expect(
 				await ctx.runQuery(
 					`SELECT "messageId" FROM ${ctx.escape.tableName('agent_execution_message_links')}`,
@@ -120,7 +120,7 @@ describe('AddWaitingStatusToAgentExecution migration', () => {
 		});
 	});
 
-	it('maps a waiting execution to error on rollback', async () => {
+	it('maps an awaiting execution to error on rollback', async () => {
 		// The SQLite subclass turns foreign keys off and opens its own transaction.
 		await dataSource.undoLastMigration({ transaction: 'none' });
 
@@ -132,7 +132,7 @@ describe('AddWaitingStatusToAgentExecution migration', () => {
 			expect(executions).toEqual([{ status: 'error' }]);
 			await expect(
 				ctx.runQuery(
-					`UPDATE ${ctx.escape.tableName('agent_execution')} SET "status" = 'waiting' WHERE "id" = :executionId`,
+					`UPDATE ${ctx.escape.tableName('agent_execution')} SET "status" = 'awaiting' WHERE "id" = :executionId`,
 					{ executionId },
 				),
 			).rejects.toThrow();

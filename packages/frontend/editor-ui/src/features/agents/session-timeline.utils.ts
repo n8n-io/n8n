@@ -369,7 +369,7 @@ const COLOR_MAP: Record<EventKind, string> = {
 	node: 'var(--color--text)',
 	workflow: 'var(--color--primary)',
 	'execution-error': 'var(--color--danger)',
-	suspension: 'var(--color--warning)',
+	suspension: 'var(--color--purple-400)',
 	'hitl-response': 'var(--color--blue-400)',
 	'background-task-signal': 'var(--color--mint-600)',
 };
@@ -386,7 +386,7 @@ const CHART_BLOCK_COLOR_MAP: Record<EventKind, string> = {
 	node: 'var(--color--neutral-600)',
 	workflow: 'var(--color--pink-600)',
 	'execution-error': 'var(--color--red-600)',
-	suspension: 'var(--color--yellow-600)',
+	suspension: 'var(--color--purple-600)',
 	'hitl-response': 'var(--color--blue-600)',
 	'background-task-signal': 'var(--color--mint-600)',
 };

@@ -33,7 +33,7 @@
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
 | CHK_agent_execution_hitlStatus | CHECK | CHECK ((("hitlStatus")::text = ANY ((ARRAY['suspended'::character varying, 'resumed'::character varying])::text[]))) |
-| CHK_agent_execution_status | CHECK | CHECK (((status)::text = ANY ((ARRAY['running'::character varying, 'success'::character varying, 'error'::character varying, 'cancelled'::character varying, 'interrupted'::character varying, 'waiting'::character varying])::text[]))) |
+| CHK_agent_execution_status | CHECK | CHECK (((status)::text = ANY ((ARRAY['running'::character varying, 'success'::character varying, 'error'::character varying, 'cancelled'::character varying, 'interrupted'::character varying, 'awaiting'::character varying])::text[]))) |
 | CHK_agent_execution_storedAt | CHECK | CHECK ((("storedAt")::text = ANY ((ARRAY['db'::character varying, 'fs'::character varying, 's3'::character varying, 'az'::character varying])::text[]))) |
 | FK_add2432fb6034cc18b6af299dce | FOREIGN KEY | FOREIGN KEY ("threadId") REFERENCES agent_execution_threads(id) ON DELETE CASCADE |
 | PK_ba438acc8532addc12d1ef17049 | PRIMARY KEY | PRIMARY KEY (id) |

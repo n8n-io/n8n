@@ -46,7 +46,7 @@ export const AGENT_SESSION_STATUSES = [
 	'error',
 	'cancelled',
 	'interrupted',
-	'waiting',
+	'awaiting',
 ] as const;
 
 export const AGENT_SESSION_ORIGINS = [

@@ -1628,7 +1628,7 @@
 	"agentSessions.status": "Status",
 	"agentSessions.status.cancelled": "Canceled",
 	"agentSessions.status.interrupted": "Interrupted",
-	"agentSessions.status.waiting": "Waiting for approval",
+	"agentSessions.status.awaiting": "Awaiting",
 	"agentSessions.status.running": "Running",
 	"agentSessions.duration": "Duration",
 	"agentSessions.sessionId": "Session ID",

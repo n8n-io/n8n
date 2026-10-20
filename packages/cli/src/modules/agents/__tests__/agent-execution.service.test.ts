@@ -1345,7 +1345,7 @@ describe('AgentExecutionService', () => {
 			},
 		];
 
-		it('records a task approval suspension as waiting and skips turn telemetry', async () => {
+		it('records a task approval suspension as awaiting and skips turn telemetry', async () => {
 			agentExecutionRepository.updateIfRunning.mockResolvedValue(true);
 			const record = makeMessageRecord({ timeline: approvalTimeline });
 
@@ -1373,7 +1373,7 @@ describe('AgentExecutionService', () => {
 
 			expect(agentExecutionRepository.updateIfRunning).toHaveBeenCalledWith(
 				'execution-1',
-				expect.objectContaining({ status: 'waiting' }),
+				expect.objectContaining({ status: 'awaiting' }),
 				undefined,
 				expect.any(Object),
 				undefined,

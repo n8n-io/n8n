@@ -28,6 +28,7 @@ export function pillColors(
 				color: 'var(--text-color--danger)',
 			};
 		case 'suspension':
+			return { backgroundColor: 'var(--color--purple-200)', color: 'var(--color--purple-950)' };
 		case 'idle':
 			return { backgroundColor: 'var(--color--yellow-200)', color: 'var(--color--yellow-950)' };
 		case 'hitl-response':

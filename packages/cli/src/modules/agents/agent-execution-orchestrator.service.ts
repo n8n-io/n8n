@@ -603,7 +603,7 @@ export class AgentExecutionOrchestratorService {
 			thread.projectId !== projectId ||
 			thread.agentId !== agentId ||
 			suspended?.source !== 'task' ||
-			suspended.status !== 'waiting'
+			suspended.status !== 'awaiting'
 		) {
 			throw new UserError('This session has no approval to resume');
 		}

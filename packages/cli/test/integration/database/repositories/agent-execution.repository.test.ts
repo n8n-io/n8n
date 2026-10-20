@@ -4202,14 +4202,14 @@ describe('AgentExecutionRepository', () => {
 				count: 2,
 				latest: { kind: 'tool' as const, name: 'Lookup', message: 'failed', occurredAt: 10 },
 			};
-			const waiting = await createExecution({
+			const awaiting = await createExecution({
 				threadId: thread.id,
-				status: 'waiting',
+				status: 'awaiting',
 				failureSummary: toolFailures,
 			});
 			const clean = await createExecution({
 				threadId: other.id,
-				status: 'waiting',
+				status: 'awaiting',
 				failureSummary: null,
 			});
 			const succeeded = await createExecution({
@@ -4220,7 +4220,7 @@ describe('AgentExecutionRepository', () => {
 
 			await repository.failExpiredWaitingApprovals([thread.id, other.id]);
 
-			const expired = await repository.findOneByOrFail({ id: waiting.id });
+			const expired = await repository.findOneByOrFail({ id: awaiting.id });
 			expect(expired.status).toBe('error');
 			expect(expired.error).toBe('This approval expired.');
 			expect(expired.failureSummary?.count).toBe(3);

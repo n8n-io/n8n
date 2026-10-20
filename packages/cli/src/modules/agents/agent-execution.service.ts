@@ -1259,7 +1259,7 @@ export class AgentExecutionService {
 
 	private trackFinishedTurn(params: RecordMessageParams, status: AgentExecutionStatus): void {
 		// A parked approval is neither a success nor a failure.
-		if (status === 'waiting' || !params.telemetry) return;
+		if (status === 'awaiting' || !params.telemetry) return;
 		const { agentId, threadId, record } = params;
 		try {
 			this.telemetry.trackAgentTurnFinished({
@@ -1310,7 +1310,7 @@ function executionStatus(
 		params.source === 'task' &&
 		record.timeline.some(isApprovalSuspension)
 	) {
-		return 'waiting';
+		return 'awaiting';
 	}
 	return 'success';
 }

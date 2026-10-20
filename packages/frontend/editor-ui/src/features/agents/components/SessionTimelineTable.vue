@@ -3,7 +3,9 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from '@n8n/i18n';
 import { N8nRecycleScroller } from '@n8n/design-system';
 import SessionTimelineRow from './SessionTimelineRow.vue';
+import ApprovalCard from './interactive/ApprovalCard.vue';
 import type { IdleRange, TimelineItem } from '../session-timeline.types';
+import type { ApprovalInput, ApprovalResume } from '@/features/ai/shared/agentsChat/types';
 import { filteredTimelineItemIndexes, formatDuration } from '../session-timeline.utils';
 import { backgroundJobTimelineLabelKey } from '../utils/background-job-labels';
 
@@ -17,9 +19,13 @@ const props = defineProps<{
 	visibleKinds: Set<string>;
 	searchQuery?: string;
 	idleRanges?: IdleRange[];
+	/** Suspension row the open approval belongs to. The card expands under it. */
+	approvalItem?: TimelineItem | null;
+	approval?: ApprovalInput;
+	approvalDisabled?: boolean;
 }>();
 
-const emit = defineEmits<{ select: [index: number] }>();
+const emit = defineEmits<{ select: [index: number]; approve: [resumeData: ApprovalResume] }>();
 
 const i18n = useI18n();
 const tableRef = ref<HTMLElement | null>(null);
@@ -100,6 +106,17 @@ const rows = computed<Row[]>(() => {
 });
 
 const shouldVirtualizeRows = computed(() => rows.value.length > VIRTUALIZE_AFTER_ROWS);
+
+// The card expands inline under its suspension row, so it is not part of the
+// row model and never touches selectedIndex or arrow-key navigation.
+function showsApprovalRow(row: Row): boolean {
+	return (
+		row.kind === 'event' &&
+		props.approval !== undefined &&
+		props.approvalItem?.executionId === row.item.executionId &&
+		props.approvalItem?.toolCallId === row.item.toolCallId
+	);
+}
 const tabbableEventIndex = computed(() => {
 	const selectedRow = rows.value.find(
 		(row) => row.kind === 'event' && row.index === props.selectedIndex,
@@ -272,6 +289,19 @@ watch(
 						{{ formatDuration(row.range.end - row.range.start) }}
 					</span>
 				</div>
+				<div
+					v-if="props.approval && showsApprovalRow(row)"
+					:class="$style.approvalRow"
+					data-test-id="timeline-approval-row"
+					@click.stop
+					@keydown.stop
+				>
+					<ApprovalCard
+						:input="props.approval"
+						:disabled="props.approvalDisabled"
+						@submit="emit('approve', $event)"
+					/>
+				</div>
 			</template>
 		</div>
 		<N8nRecycleScroller
@@ -308,6 +338,19 @@ watch(
 						{{ formatDuration(row.range.end - row.range.start) }}
 					</span>
 				</div>
+				<div
+					v-if="props.approval && showsApprovalRow(row)"
+					:class="$style.approvalRow"
+					data-test-id="timeline-approval-row"
+					@click.stop
+					@keydown.stop
+				>
+					<ApprovalCard
+						:input="props.approval"
+						:disabled="props.approvalDisabled"
+						@submit="emit('approve', $event)"
+					/>
+				</div>
 			</template>
 		</N8nRecycleScroller>
 		<div v-else data-test-id="timeline-empty" :class="$style.empty">
@@ -325,6 +368,11 @@ watch(
 
 .rowWrapper {
 	width: 100%;
+}
+
+.approvalRow {
+	width: 100%;
+	padding: var(--spacing--4xs) var(--spacing--sm) var(--spacing--xs);
 }
 
 .empty {
