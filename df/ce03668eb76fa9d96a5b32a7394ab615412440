@@ -1,0 +1,52 @@
+packages/cli/src/modules/agents/__tests__/agent-execution-thread.repository.test.ts
+  s_82789c69de1855::t_4adfbebc62b374 5,25
+packages/cli/src/modules/agents/repositories/agent-plan.repository.ts
+  s_82789c69de1855::t_4adfbebc62b374 15,45,59-60,189-190
+packages/cli/src/modules/agents/sub-agents/sub-agent-runner.ts
+  s_82789c69de1855::t_4adfbebc62b374 38,171,365,380
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_82789c69de1855::t_4adfbebc62b374 28,274
+packages/cli/test/integration/database/repositories/agent-execution-thread-task-stop.repository.test.ts
+  s_82789c69de1855::t_4adfbebc62b374 11,21,23,34
+packages/cli/src/modules/agents/__tests__/agent-turn-execution.service.test.ts
+  s_82789c69de1855::t_4adfbebc62b374 10,19
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_82789c69de1855::t_4adfbebc62b374 6,309
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_82789c69de1855::t_4adfbebc62b374 173,268,500,1693,1698,1757
+packages/cli/src/modules/agents/repositories/agent-execution-thread.repository.ts
+  s_82789c69de1855::t_4adfbebc62b374 3-4,25,33-35,48-49,88-92,720-1033
+  s_82789c69de1855::t_72d10bf4c2e00f 13-21,1034
+packages/cli/src/modules/agents/repositories/agent-background-job.repository.ts
+  s_82789c69de1855::t_4adfbebc62b374 76-77,96
+packages/cli/src/modules/agents/agent-message-queue.service.ts
+  s_82789c69de1855::t_4adfbebc62b374 361
+packages/cli/src/modules/agents/__tests__/agent-workflow-execution.service.test.ts
+  s_82789c69de1855::t_4adfbebc62b374 12,169
+packages/cli/src/modules/agents/agent-turn-execution.service.ts
+  s_82789c69de1855::t_4adfbebc62b374 15,103,519
+packages/cli/test/integration/agent-plan.service.test.ts
+  s_82789c69de1855::t_4adfbebc62b374 1,122
+packages/cli/test/integration/database/repositories/agent-plan.repository.test.ts
+  s_82789c69de1855::t_4adfbebc62b374 9,83
+packages/cli/src/modules/agents/sub-agents/__tests__/sub-agent-runner.test.ts
+  s_82789c69de1855::t_4adfbebc62b374 23,134,155
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_82789c69de1855::t_4adfbebc62b374 230-232,234,260
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "dfce03668eb76fa9d96a5b32a7394ab615412440",
+  "prompts": {},
+  "sessions": {
+    "s_82789c69de1855": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a159bb-d082-7922-91e3-bcc90434d8c6",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}
