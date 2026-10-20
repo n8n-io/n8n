@@ -154,26 +154,42 @@ export class SystemAgentExecutionService {
 		threadId?: string;
 		title?: string;
 	}): Promise<AgentExecutionThread> {
-		const provider = await this.assertCanUse(params.agentId, params.user, params.projectId);
-		const threadId = params.threadId ?? randomUUID();
-		const existing = await this.threadRepository.findOwnedById(
-			params.agentId,
-			params.user.id,
-			threadId,
-		);
-		if (existing) {
-			// The access check above ran for `params.projectId`, not for the project of this thread.
-			if (existing.projectId !== params.projectId) throw new NotFoundError('Session not found');
-			return existing;
+		return (await this.resolveSession(params)).thread;
+	}
+
+	/**
+	 * The session of a message or a new thread: an owned top-level session, or a
+	 * new one in the working project. The access floor runs once, on the project
+	 * of the session.
+	 */
+	private async resolveSession(params: {
+		agentId: string;
+		user: User;
+		/** The working project of a new session. An existing session keeps its own. */
+		projectId?: string;
+		threadId?: string;
+		title?: string;
+	}): Promise<{ provider: SystemAgentProvider; thread: AgentExecutionThread }> {
+		this.assertRegistered(params.agentId);
+		const owned = params.threadId
+			? await this.threadRepository.findOwnedById(params.agentId, params.user.id, params.threadId)
+			: null;
+		// The access check runs for one project, so an existing session must be in the requested one.
+		if (owned && params.projectId && owned.projectId !== params.projectId) {
+			throw new NotFoundError('Session not found');
 		}
-		return await this.txRunner.run({}, async (ctx) => {
-			let thread: AgentExecutionThread;
+		const projectId = owned?.projectId ?? params.projectId;
+		if (!projectId) throw new UserError('A new session needs a working project');
+		const provider = await this.assertCanUse(params.agentId, params.user, projectId);
+		if (owned) return { provider, thread: owned };
+		const thread = await this.txRunner.run({}, async (ctx) => {
+			let created: AgentExecutionThread;
 			try {
-				({ thread } = await this.threadRepository.findOrCreate(
-					threadId,
+				({ thread: created } = await this.threadRepository.findOrCreate(
+					params.threadId ?? randomUUID(),
 					provider.agentId,
 					provider.name,
-					params.projectId,
+					projectId,
 					{ accessScope: 'user', ownerId: params.user.id },
 					ctx,
 				));
@@ -183,19 +199,20 @@ export class SystemAgentExecutionService {
 				throw error;
 			}
 			// `findOrCreate` also matches a child thread of the user. A session is top-level.
-			if (thread.parentThreadId !== null) throw new NotFoundError('Session not found');
+			if (created.parentThreadId !== null) throw new NotFoundError('Session not found');
 			if (params.title) {
 				await this.threadRepository.renameOwned(
 					provider.agentId,
 					params.user.id,
-					thread.id,
+					created.id,
 					params.title,
 					ctx,
 				);
-				thread.title = params.title;
+				created.title = params.title;
 			}
-			return thread;
+			return created;
 		});
+		return { provider, thread };
 	}
 
 	async listThreads(agentId: string, user: User, limit?: number) {
@@ -490,24 +507,12 @@ export class SystemAgentExecutionService {
 			projectId: string,
 		) => Promise<StoredAttachmentRef[] | undefined>;
 	}): Promise<SystemQueueInput> {
-		this.assertRegistered(params.agentId);
-		const existing = params.sessionId
-			? await this.threadRepository.findOwnedById(params.agentId, params.user.id, params.sessionId)
-			: null;
-		if (existing && params.projectId && existing.projectId !== params.projectId) {
-			throw new NotFoundError('Session not found');
-		}
-		const projectId = existing?.projectId ?? params.projectId;
-		if (!projectId) throw new UserError('A new session needs a working project');
-		const provider = await this.assertCanUse(params.agentId, params.user, projectId);
-		const thread =
-			existing ??
-			(await this.createThread({
-				agentId: params.agentId,
-				user: params.user,
-				projectId,
-				...(params.sessionId ? { threadId: params.sessionId } : {}),
-			}));
+		const { provider, thread } = await this.resolveSession({
+			agentId: params.agentId,
+			user: params.user,
+			projectId: params.projectId,
+			threadId: params.sessionId,
+		});
 		const options =
 			(await provider.chatTurnOptions?.(params.user, thread, params.clientContext)) ?? {};
 		const attachments = await params.storeAttachments?.(thread.id, thread.projectId);

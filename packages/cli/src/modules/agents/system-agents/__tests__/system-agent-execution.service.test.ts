@@ -1124,6 +1124,52 @@ describe('SystemAgentExecutionService', () => {
 			});
 		});
 
+		it('checks access and looks up the session once for the first message of a new session', async () => {
+			const { service, provider, threadRepository, txRunner } = setup();
+			threadRepository.findOwnedById.mockResolvedValue(null);
+			txRunner.run.mockImplementation(async (_ctx, fn) => await fn({}));
+			threadRepository.findOrCreate.mockResolvedValue({
+				thread: { ...thread, id: 'thread-new' },
+				created: true,
+			} as never);
+			const chatTurnOptions = vi.fn(async () => ({ mode: 'build' }));
+			Object.assign(provider, { chatTurnOptions });
+
+			const input = await service.prepareChatMessage({
+				agentId: AGENT_ID,
+				user,
+				projectId: 'project-1',
+				sessionId: 'thread-new',
+				message: 'Hello',
+			});
+
+			expect(provider.authorize).toHaveBeenCalledTimes(1);
+			expect(userHasScopes).toHaveBeenCalledTimes(1);
+			expect(threadRepository.findOwnedById).toHaveBeenCalledTimes(1);
+			// The provider from the same lookup builds the turn options for the new thread.
+			expect(chatTurnOptions).toHaveBeenCalledWith(
+				user,
+				expect.objectContaining({ id: 'thread-new' }),
+				undefined,
+			);
+			expect(input.payload).toMatchObject({ options: { mode: 'build' } });
+		});
+
+		it('queues a message of an existing session without a transaction', async () => {
+			const { service, provider, txRunner } = setup();
+
+			const input = await service.prepareChatMessage({
+				agentId: AGENT_ID,
+				user,
+				sessionId: 'thread-1',
+				message: 'Hello',
+			});
+
+			expect(input).toMatchObject({ projectId: 'project-1', threadId: 'thread-1' });
+			expect(provider.authorize).toHaveBeenCalledTimes(1);
+			expect(txRunner.run).not.toHaveBeenCalled();
+		});
+
 		it('refuses to return an existing session of the user from another project', async () => {
 			const { service, threadRepository, txRunner } = setup();
 			threadRepository.findOwnedById.mockResolvedValue({ ...thread, projectId: 'project-2' });
