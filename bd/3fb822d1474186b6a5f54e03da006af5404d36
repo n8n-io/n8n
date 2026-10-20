@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/shared/TableStatusCell.vue
+  s_3f1f47b3da2a63::t_5280e9328a76d3 6,101
+packages/frontend/editor-ui/src/features/integrations/sourceControl.ee/components/SourceControlPushModal.vue
+  s_3f1f47b3da2a63::t_6b9dbfbf3abb19 1246
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bd3fb822d1474186b6a5f54e03da006af5404d36",
+  "prompts": {},
+  "sessions": {
+    "s_3f1f47b3da2a63": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a15a3d-4caf-74bc-a2ca-4d829e8d8428",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}
