@@ -61,8 +61,9 @@ export class AppArchive {
 	}
 
 	async readFile(body: Buffer, filePath: string): Promise<Buffer | null> {
-		const { files } = await this.parse(body, (name) => name === filePath);
-		return files.get(filePath) ?? null;
+		const normalizedPath = this.filePath(filePath);
+		const { files } = await this.parse(body, (name) => name === normalizedPath);
+		return files.get(normalizedPath) ?? null;
 	}
 
 	private async parse(body: Buffer, includeFile: (name: string) => boolean) {

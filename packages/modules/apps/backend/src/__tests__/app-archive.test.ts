@@ -56,6 +56,7 @@ describe('AppArchive', () => {
 		]);
 
 		expect(await archives.readFile(body, 'src/data.bin')).toEqual(content);
+		expect(await archives.readFile(body, './src/data.bin')).toEqual(content);
 		expect(await archives.readFile(body, 'empty.txt')).toEqual(Buffer.alloc(0));
 		expect(await archives.readFile(body, 'missing.txt')).toBeNull();
 	});
@@ -143,6 +144,7 @@ describe('AppArchive', () => {
 		'src//file',
 		'src/./file',
 	])('rejects the path %s', async (filePath) => {
+		await expect(archives.readFile(archive([]), filePath)).rejects.toThrow('invalid file path');
 		await expect(archives.pack(new Map([[filePath, Buffer.from('text')]]))).rejects.toThrow(
 			'invalid file path',
 		);
