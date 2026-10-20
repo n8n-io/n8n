@@ -10,7 +10,7 @@ import {
 import { Service } from '@n8n/di';
 import { Brackets, DataSource, In, IsNull, type EntityManager } from '@n8n/typeorm';
 import type { SkillUsage } from '@n8n/api-types';
-import { ConflictError, NotFoundError, UserError } from '@n8n/errors';
+import { ConflictError, NotFoundError } from '@n8n/errors';
 import type { AssistantSkillSummary } from '@n8n/backend-services';
 import { UnexpectedError } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
@@ -168,9 +168,12 @@ export class SkillRepository extends BaseRepository<Skill> {
 	async findAssistantSkillSummaries(projectId: string | null): Promise<AssistantSkillSummary[]> {
 		return await this.createQueryBuilder('skill')
 			.innerJoin(SkillVersion, 'version', 'version.skillId = skill.id')
+			.leftJoin(Agent, 'owner', 'owner.id = skill.agentId')
 			.where('skill.availableToAssistant = :enabled', { enabled: true })
-			.andWhere('skill.agentId IS NULL')
-			.andWhere('(skill.projectId IS NULL OR skill.projectId = :projectId)', { projectId })
+			.andWhere(
+				'(COALESCE(skill.projectId, owner.projectId) IS NULL OR COALESCE(skill.projectId, owner.projectId) = :projectId)',
+				{ projectId },
+			)
 			.andWhere((qb) => {
 				const latest = qb
 					.subQuery()
@@ -181,7 +184,7 @@ export class SkillRepository extends BaseRepository<Skill> {
 				return `version.version = ${latest}`;
 			})
 			.select('skill.id', 'id')
-			.addSelect('skill.projectId', 'projectId')
+			.addSelect('COALESCE(skill.projectId, owner.projectId)', 'projectId')
 			.addSelect('version.id', 'versionId')
 			.addSelect('version.version', 'version')
 			.addSelect('version.name', 'name')
@@ -202,11 +205,6 @@ export class SkillRepository extends BaseRepository<Skill> {
 		if (!skill) throw new NotFoundError('Skill not found');
 		if (skill.projectId !== checkedTarget.projectId || skill.agentId !== checkedTarget.agentId) {
 			throw new ConflictError('The skill scope changed. Reload the skill and try again.');
-		}
-		if (available && skill.agentId !== null) {
-			throw new UserError(
-				'Agent-only skills cannot be available to the Assistant. Change the skill scope first.',
-			);
 		}
 		await this.managerFor(ctx).update(Skill, skillId, { availableToAssistant: available });
 	}
@@ -689,12 +687,7 @@ export class SkillRepository extends BaseRepository<Skill> {
 		await this.managerFor(ctx).update(
 			Skill,
 			{ id: skillId },
-			{
-				projectId: target.projectId,
-				agentId: target.agentId,
-				updatedAt: new Date(),
-				...(target.agentId ? { availableToAssistant: false } : {}),
-			},
+			{ projectId: target.projectId, agentId: target.agentId, updatedAt: new Date() },
 		);
 	}
 

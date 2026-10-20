@@ -8,6 +8,7 @@ import {
 import { Service } from '@n8n/di';
 
 import { SkillRepository } from '../repositories/skill.repository';
+import { SkillService } from './skill.service';
 import { SkillsHubRollout } from './skills-hub-rollout';
 
 @Service()
@@ -16,6 +17,7 @@ export class HubAssistantSkillProvider implements AssistantSkillProvider {
 		private readonly rollout: SkillsHubRollout,
 		private readonly projectScopeService: ProjectScopeService,
 		private readonly skillRepository: SkillRepository,
+		private readonly skillService: SkillService,
 	) {}
 
 	async listSkills(context: AssistantSkillContext): Promise<AssistantSkillSummary[]> {
@@ -36,13 +38,14 @@ export class HubAssistantSkillProvider implements AssistantSkillProvider {
 		const { skill, version, files } = row;
 		if (
 			!skill.availableToAssistant ||
-			skill.agentId !== null ||
-			(skill.projectId !== null && skill.projectId !== projectId)
+			!(await this.skillService.canAccess(context.user, skill, 'read'))
 		)
 			return null;
+		const skillProjectId = await this.skillService.projectOf(skill);
+		if (skillProjectId !== null && skillProjectId !== projectId) return null;
 		return {
 			id: skill.id,
-			projectId: skill.projectId,
+			projectId: skillProjectId,
 			name: version.name,
 			description: version.description,
 			versionId: version.id,

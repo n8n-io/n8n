@@ -62,11 +62,12 @@ describe('SkillRepository', () => {
 		const instance = await createSkill();
 		const scoped = await createSkill({ projectId: project.id });
 		const other = await createSkill({ projectId: otherProject.id });
-		const agent = await createAgent('Agent-only skill');
-		const agentOnly = await createSkill({ agentId: agent.id });
+		const agent = await createAgent('Support');
+		const inherited = await createSkill({ agentId: agent.id });
+		const otherAgent = await createAgent('Sales', { projectId: otherProject.id });
+		const otherInherited = await createSkill({ agentId: otherAgent.id });
 		await createSkill();
-		// A stored flag on an agent-only row must not make it eligible.
-		for (const id of [instance, scoped, other, agentOnly])
+		for (const id of [instance, scoped, other, inherited, otherInherited])
 			await skills.update(id, { availableToAssistant: true });
 		const versionId = await skills.insertSavedVersion(
 			scoped,
@@ -78,7 +79,8 @@ describe('SkillRepository', () => {
 			instance,
 		]);
 		const result = await skills.findAssistantSkillSummaries(project.id);
-		expect(result.map(({ id }) => id).sort()).toEqual([instance, scoped].sort());
+		expect(result.map(({ id }) => id).sort()).toEqual([instance, scoped, inherited].sort());
+		expect(result.find(({ id }) => id === inherited)?.projectId).toBe(project.id);
 		expect(result.find(({ id }) => id === scoped)).toEqual({
 			id: scoped,
 			projectId: project.id,
@@ -106,12 +108,16 @@ describe('SkillRepository', () => {
 		expect((await skills.findByIds([id]))[0].availableToAssistant).toBe(false);
 	});
 
-	it('clears Assistant availability when a skill becomes agent-only', async () => {
+	it('preserves Assistant availability when the skill scope changes', async () => {
 		const id = await createSkill();
 		const agent = await createAgent('Private scope');
 		await skills.update(id, { availableToAssistant: true });
 		await skills.updateTarget(id, { projectId: null, agentId: agent.id });
-		expect((await skills.findByIds([id]))[0].availableToAssistant).toBe(false);
+		expect((await skills.findByIds([id]))[0].availableToAssistant).toBe(true);
+		expect(await skills.findAssistantSkillSummaries(null)).toEqual([]);
+		expect(await skills.findAssistantSkillSummaries(project.id)).toEqual([
+			expect.objectContaining({ id, projectId: project.id }),
+		]);
 	});
 
 	let counter = 0;

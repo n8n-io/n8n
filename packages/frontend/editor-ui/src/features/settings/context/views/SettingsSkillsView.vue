@@ -301,9 +301,7 @@ async function openEditModal(item: Pick<SkillListItem, 'id'>) {
 			skill: detail.skill,
 			skillId: detail.id,
 			readOnly: !detail.canEdit,
-			...(isContextSkillsEnabled() && detail.scope !== 'agent'
-				? { availableToAssistant: detail.availableToAssistant }
-				: {}),
+			...(isContextSkillsEnabled() ? { availableToAssistant: detail.availableToAssistant } : {}),
 			scopeOptions: options,
 			initialScope: currentValue,
 			...scopeLock(detail),

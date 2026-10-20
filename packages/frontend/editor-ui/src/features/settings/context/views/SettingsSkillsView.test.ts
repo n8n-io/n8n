@@ -339,10 +339,10 @@ describe('SettingsSkillsView', () => {
 		it.each([
 			['instance', true, false],
 			['project', true, false],
-			['agent', true, undefined],
+			['agent', true, false],
 			['instance', false, undefined],
 		] as const)(
-			'shows availability only for eligible skills behind the Hub flag (%s, %s)',
+			'shows availability for every skill scope behind the Hub flag (%s, %s)',
 			async (scope, enabled, expected) => {
 				mockedStore(useSettingsStore).moduleSettings = {
 					agents: { skillsHubEnabled: enabled },

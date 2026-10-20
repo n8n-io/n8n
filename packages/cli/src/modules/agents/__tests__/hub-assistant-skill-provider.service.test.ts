@@ -6,13 +6,15 @@ import type { Skill } from '../entities/skill.entity';
 import type { SkillVersion } from '../entities/skill-version.entity';
 import type { ResolvedSkillRow, SkillRepository } from '../repositories/skill.repository';
 import { HubAssistantSkillProvider } from '../skills/hub-assistant-skill-provider.service';
+import type { SkillService } from '../skills/skill.service';
 import type { SkillsHubRollout } from '../skills/skills-hub-rollout';
 
 describe('HubAssistantSkillProvider', () => {
 	const repository = mock<SkillRepository>();
 	const projects = mock<ProjectScopeService>();
 	const rollout = { isEnabled: true } as SkillsHubRollout;
-	const provider = new HubAssistantSkillProvider(rollout, projects, repository);
+	const skills = mock<SkillService>();
+	const provider = new HubAssistantSkillProvider(rollout, projects, repository, skills);
 	const context: AssistantSkillContext = { user: mock<User>(), projectId: 'project-1' };
 	let row: ResolvedSkillRow;
 
@@ -39,6 +41,8 @@ describe('HubAssistantSkillProvider', () => {
 			files: [],
 		};
 		repository.findLatestSaved.mockImplementation(async () => new Map([['skill-1', row]]));
+		skills.canAccess.mockResolvedValue(true);
+		skills.projectOf.mockImplementation(async () => row.skill.projectId);
 	});
 
 	it('returns no skills and does not read storage when the flag is off', async () => {
@@ -71,13 +75,43 @@ describe('HubAssistantSkillProvider', () => {
 		]);
 	});
 
-	it.each([{ availableToAssistant: false }, { agentId: 'agent-1' }, { projectId: 'project-2' }])(
+	it.each([{ availableToAssistant: false }, { projectId: 'project-2' }])(
 		'refuses a supplied ID that is ineligible: %o',
 		async (fields) => {
 			Object.assign(row.skill, fields);
 			expect(await provider.readSkill(context, 'skill-1')).toBeNull();
 		},
 	);
+
+	it('uses the existing skill permission check for content reads', async () => {
+		skills.canAccess.mockResolvedValue(false);
+		expect(await provider.readSkill(context, 'skill-1')).toBeNull();
+		expect(skills.canAccess).toHaveBeenCalledWith(context.user, row.skill, 'read');
+	});
+
+	it.each([
+		['project-1', ['project-1'], true],
+		['project-2', ['project-1', 'project-2'], false],
+		['project-1', [], false],
+		['project-1', null, true],
+	] as const)(
+		'uses the resolved skill project for content reads (%s, %s)',
+		async (projectId, allowed, eligible) => {
+			row.skill.agentId = 'agent-1';
+			skills.projectOf.mockResolvedValue(projectId);
+			projects.getProjectIds.mockResolvedValue(allowed === null ? null : [...allowed]);
+			const result = await provider.readSkill(context, 'skill-1');
+			if (eligible) expect(result).toMatchObject({ id: 'skill-1', projectId });
+			else expect(result).toBeNull();
+		},
+	);
+
+	it('requires a session project for content with a resolved project', async () => {
+		row.skill.agentId = 'agent-1';
+		skills.projectOf.mockResolvedValue('project-1');
+		projects.getProjectIds.mockResolvedValue(null);
+		expect(await provider.readSkill({ user: context.user }, 'skill-1')).toBeNull();
+	});
 
 	it('refuses a project skill after access is removed', async () => {
 		row.skill.projectId = 'project-1';

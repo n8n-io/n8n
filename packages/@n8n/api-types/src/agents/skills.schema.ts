@@ -160,7 +160,7 @@ export class CreateSkillDto extends Z.class({
  * started from: a save based on an older version is refused with 409.
  */
 export class SaveSkillDto extends Z.class({
-	/** Changes availability without creating a content version. Agent-only skills cannot opt in. */
+	/** Changes availability without creating a content version. */
 	availableToAssistant: z.boolean().optional(),
 	name: skillNameSchema.optional(),
 	description: agentSkillShape.description.optional(),
