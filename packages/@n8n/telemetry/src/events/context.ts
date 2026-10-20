@@ -52,9 +52,9 @@ const skillProjectId = z
 
 /** The surface that wrote the skill. Kept apart from `skill.source`, which stores no MCP value. */
 const skillSource = z
-	.enum(['ui', 'agent', 'mcp'])
+	.enum(['ui', 'agent', 'mcp', 'assistant'])
 	.describe(
-		'`ui` is the Skills settings page. `agent` is the agent builder: a person in its skill modal, or n8n Assistant when it builds the agent. `mcp` is an MCP client',
+		'`ui` is the Skills settings page. `agent` is the agent builder: a person in its skill modal, or n8n Assistant when it builds the agent. `mcp` is an MCP client. `assistant` is n8n Assistant outside the agent builder',
 	);
 
 /** Whether a person or an assistant wrote the text. */
@@ -325,7 +325,7 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 	USER_CREATED_SKILL: {
 		name: 'User created skill',
 		description:
-			'A skill was created in the skills hub, from the settings page, the agent builder or an MCP client. Fires once the create commits. A copy that the server makes on its own, such as the startup copy or an agent duplicate, reports nothing.',
+			'A skill was created in the skills hub, from the settings page, the agent builder, n8n Assistant or an MCP client. Fires once the create commits. A copy that the server makes on its own, such as the startup copy or an agent duplicate, reports nothing.',
 		properties: z.object({
 			user_id: userId,
 			skill_id: skillId,
@@ -352,12 +352,13 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 	USER_DELETED_SKILL: {
 		name: 'User deleted skill',
 		description:
-			'A user deleted a skill from the skills hub on the settings page. Fires once the delete commits. Removing a skill from one agent keeps the hub skill and reports nothing here.',
+			'A user deleted a skill from the skills hub, from the settings page, n8n Assistant or an MCP client. Fires once the delete commits. Removing a skill from one agent keeps the hub skill and reports nothing here.',
 		properties: z.object({
 			user_id: userId,
 			skill_id: skillId,
 			scope: skillScope,
 			project_id: skillProjectId,
+			source: skillSource,
 		}),
 	},
 });
