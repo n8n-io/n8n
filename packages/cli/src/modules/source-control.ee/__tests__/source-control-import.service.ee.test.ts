@@ -1755,14 +1755,22 @@ describe('SourceControlImportService', () => {
 				expect(workflowRepository.upsertImportedContent).not.toHaveBeenCalled();
 			});
 
-			it('imports a workflow with a node id of exactly NODE_ID_MAX_LENGTH characters', async () => {
-				fsReadFile.mockResolvedValueOnce(workflowFile('n'.repeat(NODE_ID_MAX_LENGTH)));
-				const candidates = [mock<SourceControlledFile>({ file: '/mock/workflow1.json', id: '1' })];
+			it.each([
+				['ASCII', 'n'],
+				['astral', '😀'],
+			])(
+				'imports a workflow with a node id of exactly NODE_ID_MAX_LENGTH %s characters',
+				async (_, character) => {
+					fsReadFile.mockResolvedValueOnce(workflowFile(character.repeat(NODE_ID_MAX_LENGTH)));
+					const candidates = [
+						mock<SourceControlledFile>({ file: '/mock/workflow1.json', id: '1' }),
+					];
 
-				await service.importWorkflowFromWorkFolder(candidates, mockUserId);
+					await service.importWorkflowFromWorkFolder(candidates, mockUserId);
 
-				expect(workflowRepository.upsertImportedContent).toHaveBeenCalled();
-			});
+					expect(workflowRepository.upsertImportedContent).toHaveBeenCalled();
+				},
+			);
 		});
 
 		describe('content-import policy enforcement', () => {

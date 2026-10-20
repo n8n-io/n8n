@@ -144,7 +144,8 @@ export function safeParseWorkflowStructure(input: unknown): WorkflowStructureVal
 		// save. A supplied id must be unique: it identifies a node independently of its name, and
 		// per-node state keyed on it would otherwise be shared between two nodes.
 		if (node.id !== undefined && node.id !== '') {
-			if (node.id.length > NODE_ID_MAX_LENGTH)
+			// Count code points, as Postgres varchar does, not UTF-16 code units.
+			if ([...node.id].length > NODE_ID_MAX_LENGTH)
 				issues.push({
 					path: ['nodes', index, 'id'],
 					message: `Node "${node.name}" has an ID longer than ${NODE_ID_MAX_LENGTH} characters`,

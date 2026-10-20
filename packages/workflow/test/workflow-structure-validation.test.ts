@@ -292,12 +292,15 @@ describe('workflow-structure-validation', () => {
 		]);
 	});
 
-	test('accepts a node id of exactly NODE_ID_MAX_LENGTH characters', () => {
+	test.each([
+		['ASCII', 'n'],
+		['astral', '😀'],
+	])('accepts a node id of exactly NODE_ID_MAX_LENGTH %s characters', (_, character) => {
 		const result = safeParseWorkflowStructure({
 			...validWorkflow,
 			nodes: [
 				validWorkflow.nodes[0],
-				{ ...validWorkflow.nodes[1], id: 'n'.repeat(NODE_ID_MAX_LENGTH) },
+				{ ...validWorkflow.nodes[1], id: character.repeat(NODE_ID_MAX_LENGTH) },
 			],
 		});
 

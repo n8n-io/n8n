@@ -876,7 +876,7 @@ export class SourceControlImportService {
 
 		// A pull does not run the full structure check, but trigger state, scheduled jobs
 		// and deduplication data are keyed on the node id, so its length is enforced here too.
-		const nodeWithLongId = nodes.find((node) => (node.id?.length ?? 0) > NODE_ID_MAX_LENGTH);
+		const nodeWithLongId = nodes.find((node) => [...(node.id ?? '')].length > NODE_ID_MAX_LENGTH);
 		if (nodeWithLongId) {
 			throw new UserError(
 				`Workflow "${importedWorkflow.name}" (${candidate.file}): node "${nodeWithLongId.name}" has an ID longer than ${NODE_ID_MAX_LENGTH} characters. Shorten the ID in the repository and pull again.`,
