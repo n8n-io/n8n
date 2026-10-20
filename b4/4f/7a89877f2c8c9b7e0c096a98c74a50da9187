@@ -1,0 +1,36 @@
+packages/nodes-base/nodes/FileMaker/__tests__/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_ce14957fd5e403 3-10
+  s_2e1fa95fc44f8f::t_a2dca90b3c113b 107-124
+packages/nodes-base/nodes/FileMaker/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_965e1a2e395829 8
+  s_2e1fa95fc44f8f::t_6297217f30a7a0 33-39
+  s_2e1fa95fc44f8f::t_1b4b26be7a6d2a 72
+  s_28e6bbc7021910::t_6406c78efb31c3 121,124,153,156,179,182,219,222,244,247
+packages/nodes-base/nodes/FileMaker/FileMaker.node.ts
+  s_2e1fa95fc44f8f::t_676d5ea1938318 692
+  s_2e1fa95fc44f8f::t_d0e6cbd1fa68fb 16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b44f7a89877f2c8c9b7e0c096a98c74a50da9187",
+  "prompts": {},
+  "sessions": {
+    "s_28e6bbc7021910": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a824afeb5b956032c",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

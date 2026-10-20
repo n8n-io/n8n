@@ -1,0 +1,88 @@
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionPreview.selection.ts
+  s_983eea3c47ac98::t_072a59e16079be 4
+  s_983eea3c47ac98::t_332bd2f1cc85c1 1-3,5-240
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectHeader.vue
+  s_983eea3c47ac98::t_332bd2f1cc85c1 26,483
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/PromotionResourceTree.vue
+  s_983eea3c47ac98::t_332bd2f1cc85c1 7,17-18,21,37,40,96-97,100,102,130,138,204
+  s_983eea3c47ac98::t_072a59e16079be 91,122,132
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionPreviewView.test.ts
+  s_983eea3c47ac98::t_072a59e16079be 52,134
+  s_983eea3c47ac98::t_332bd2f1cc85c1 10,14,29,37,59,73,78,80,99,122,131
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/PromotionChangeCard.vue
+  s_983eea3c47ac98::t_332bd2f1cc85c1 10,17-23,47,60,67,81-82,117,120,136,148,151,156,159,163-164,167,172,183,205,208,215,223
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionSelection.ts
+  s_983eea3c47ac98::t_332bd2f1cc85c1 16
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionPreview.selection.test.ts
+  s_983eea3c47ac98::t_332bd2f1cc85c1 1-136
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/PromotionFieldChanges.vue
+  s_983eea3c47ac98::t_332bd2f1cc85c1 9,21-27,34-35,51,62,79,85
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionChangeCount.ts
+  s_983eea3c47ac98::t_332bd2f1cc85c1 6,18
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionsSettings.utils.test.ts
+  s_983eea3c47ac98::t_c51ce288395c48 11,288-307
+  s_983eea3c47ac98::t_cd9942fdf7b62d 308
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionPreviewBadges.vue
+  s_983eea3c47ac98::t_332bd2f1cc85c1 9,30-31,35,41,47
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionResourceDetails.test.ts
+  s_983eea3c47ac98::t_332bd2f1cc85c1 10,12
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionPreview.workflow.test.ts
+  s_983eea3c47ac98::t_332bd2f1cc85c1 1-72
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionPreviewLabels.ts
+  s_983eea3c47ac98::t_332bd2f1cc85c1 5,11,13,15,18,21,23
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/PromotionChangeCard.test.ts
+  s_983eea3c47ac98::t_332bd2f1cc85c1 1-215
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionPreview.tree.test.ts
+  s_983eea3c47ac98::t_332bd2f1cc85c1 1-51
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/__tests__/module.descriptor.test.ts
+  s_983eea3c47ac98::t_332bd2f1cc85c1 9,63-64,71
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionPreview.workflow.ts
+  s_983eea3c47ac98::t_332bd2f1cc85c1 1-52
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionPreviewView.vue
+  s_983eea3c47ac98::t_332bd2f1cc85c1 27-28,30,33-34,48-57,61,66-68,75,105,113,123,133,135,144,147-162,168,171,177,184,188-189,193,195,205-206,209-210,217-219,243,247,304,308,323,330-341
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/PromotionResourceTree.test.ts
+  s_983eea3c47ac98::t_332bd2f1cc85c1 1-24,26-61
+  s_983eea3c47ac98::t_072a59e16079be 25
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionResourceDetails.ts
+  s_983eea3c47ac98::t_332bd2f1cc85c1 8
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotions.constants.ts
+  s_983eea3c47ac98::t_332bd2f1cc85c1 5-7
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_983eea3c47ac98::t_82c8dd9372cbf8 9764-9841
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/DataTableChangeDetails.vue
+  s_983eea3c47ac98::t_332bd2f1cc85c1 6,15,19,23,27,31,33,41,45,47,55,68,79
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionsSettings.utils.ts
+  s_983eea3c47ac98::t_79f790b8a235bd 43-50,53-55
+  s_983eea3c47ac98::t_bac92c76a07b7e 51-52
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/PromotionChangeCards.vue
+  s_983eea3c47ac98::t_332bd2f1cc85c1 1-75
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionPreviewBadges.test.ts
+  s_983eea3c47ac98::t_332bd2f1cc85c1 1-85
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionPreview.ts
+  s_983eea3c47ac98::t_332bd2f1cc85c1 8-9,12,22-23,28,35-37,78,84-93
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionPreview.tree.ts
+  s_983eea3c47ac98::t_33209e5c24e2c3 182-185
+  s_983eea3c47ac98::t_332bd2f1cc85c1 1-6,8-181,186-192
+  s_983eea3c47ac98::t_072a59e16079be 7
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/module.descriptor.ts
+  s_983eea3c47ac98::t_072a59e16079be 12,22
+  s_983eea3c47ac98::t_332bd2f1cc85c1 9,18-19,21,77-78
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionPreview.content.test.ts
+  s_983eea3c47ac98::t_332bd2f1cc85c1 1-146
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b104cf9a6108a067eabdbb6d1dd79b882032e041",
+  "prompts": {},
+  "sessions": {
+    "s_983eea3c47ac98": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6afe657c-702d-4003-8734-85a65b043c95",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

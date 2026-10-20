@@ -1,0 +1,33 @@
+packages/nodes-base/nodes/FileMaker/__tests__/workflow/workflow.test.ts
+  s_2e1fa95fc44f8f::t_edf1a61f70a506 1-57
+  s_2e1fa95fc44f8f::t_f11a22c8459b3e 58-60
+  s_deeb0320f0a5cd::t_9d53ada79fb241 61
+packages/nodes-base/nodes/FileMaker/__tests__/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_9c27654befe1d0 1-91
+packages/nodes-base/nodes/FileMaker/__tests__/workflow/workflow.json
+  s_deeb0320f0a5cd::t_d6a3edad557bf5 1-417
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3b207d429815104b399141f48ffb06822b210228",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_deeb0320f0a5cd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a5d46f28701a1c020",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

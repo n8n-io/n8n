@@ -1,0 +1,23 @@
+packages/nodes-base/nodes/Onfleet/Onfleet.node.ts
+  s_2e1fa95fc44f8f::t_3fc4068c094c0a 31-32
+packages/nodes-base/nodes/Onfleet/Onfleet.ts
+  s_2e1fa95fc44f8f::t_61c102db1a6666 10,1026-1030
+packages/nodes-base/nodes/Onfleet/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_6988650c5b9270 1-2,17-38,40-42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a871344a310d68d6822197a334634c5ad642d4ab",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}
