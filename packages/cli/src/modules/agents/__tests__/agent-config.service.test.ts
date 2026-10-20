@@ -41,7 +41,7 @@ import type { AgentTaskRepository } from '../repositories/agent-task.repository'
 import type { AgentRepository } from '../repositories/agent.repository';
 import { getAgentConfigHash } from '../utils/agent-config-hash';
 import type { CompleteAgentDefinition } from '../utils/agent-definition';
-import type { AgentPolicyService } from '../agent-policy.service';
+import { AgentPolicyService } from '../agent-policy.service';
 import {
 	composeStoredJsonConfig,
 	createAgentSkillRefsService,
