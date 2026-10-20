@@ -805,6 +805,8 @@ export {
 	promotePackageCountsSchema,
 	promotePackageResultSchema,
 	promotionGitResultSchema,
+	promotionPromoteWarningSchema,
+	type PromotionPromoteWarning,
 } from './promotions/promotion-operations.dto';
 export {
 	parsePromotionRunDetails,
@@ -820,7 +822,7 @@ export {
 	PromotionReviewDetailDto,
 	PromotionReviewListPublicDto,
 	PromotionReviewWorkflowDiffDto,
-	promotionMergeRequestResultSchema,
+	promotionReviewResultSchema,
 	promotionReviewChangeKindSchema,
 	promotionReviewDetailSchema,
 	promotionReviewListPublicSchema,
@@ -833,7 +835,7 @@ export {
 	promotionReviewTypeSchema,
 	promotionReviewWorkflowChangeSchema,
 	promotionReviewWorkflowDiffSchema,
-	type PromotionMergeRequestResult,
+	type PromotionReviewResult,
 	type PromotionReviewChangeKind,
 	type PromotionReviewRemote,
 	type PromotionReviewState,

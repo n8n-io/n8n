@@ -77,12 +77,14 @@ import { initNodeTypes, initCredentialsTypes, setupTestServer } from '@test-inte
 
 import { PromotionEnvironmentProjectRepository } from '../database/repositories/promotion-environment-project.repository';
 import { PromotionEnvironmentRepository } from '../database/repositories/promotion-environment.repository';
+import { PromotionRunRepository } from '../database/repositories/promotion-run.repository';
 import { PromotionProviderRepository } from '../database/repositories/promotion-provider.repository';
 import type { GitHostClients } from '../git-hosts/git-host-clients';
 import { PromotionBindingPreflightService } from '../promotion-binding-preflight.service';
 import { PromotionChangeService } from '../promotion-change.service';
 import { PromotionEnvironmentResolver } from '../promotion-environment.resolver';
 import { PromotionProvidersService } from '../promotion-providers.service';
+import { PromotionReviewsService } from '../promotion-reviews.service';
 import { PromotionWorkingDirectoryService } from '../promotion-working-directory.service';
 import { PromotionsGitService } from '../promotions-git.service';
 import { PromotionsService } from '../promotions.service';
@@ -138,6 +140,7 @@ beforeAll(async () => {
 beforeEach(async () => {
 	await Container.get(AgentRepository).delete({});
 	// Delete children before parents to satisfy the foreign keys.
+	await Container.get(PromotionRunRepository).delete({});
 	await linkRepository.delete({});
 	await environmentRepository.delete({});
 	await providerRepository.delete({});
@@ -191,6 +194,8 @@ beforeEach(async () => {
 		Container.get(PromotionBindingPreflightService),
 		Container.get(PackageDirectoryInventoryReader),
 		Container.get(PackageImportConfig),
+		Container.get(PromotionRunRepository),
+		Container.get(PromotionReviewsService),
 		logger,
 	);
 	Container.set(PromotionsService, service);
@@ -1423,8 +1428,7 @@ describe('Apply a project selection', () => {
 		await service.clone(environments.apply.id);
 		const { project, workflows } = await setupProjectWithWorkflows('Orders', ['Process order']);
 		const repository = Container.get(WorkflowRepository);
-		// The branch must carry a real (non-root) folder placement: the engine only checks for a clash
-		// when the branch workflow targets a folder, so promote the workflow from inside `branchFolder`.
+		// Promote the workflow from inside `branchFolder` so the branch carries a folder placement.
 		const branchFolder = await createFolder(project, { name: 'Branch folder' });
 		await repository.update(workflows[0].id, { parentFolder: branchFolder });
 		await service.promote(environments.promote.id, owner, {
@@ -1454,6 +1458,41 @@ describe('Apply a project selection', () => {
 						existingWorkflowId: workflows[0].id,
 						existingParentFolderId: localFolder.id,
 						targetFolderId: branchFolder.id,
+					}),
+				]),
+			},
+		});
+		expect(await snapshotApplyState()).toEqual(before);
+	});
+
+	it('rejects a selected workflow at the branch project root that is in a folder on the instance', async () => {
+		const remote = await createRemote();
+		const environments = await createInstanceEnvironments(remote.bareDir);
+		await service.clone(environments.promote.id);
+		await service.clone(environments.apply.id);
+		const { project, workflows } = await setupProjectWithWorkflows('Orders', ['Process order']);
+		await service.promote(environments.promote.id, owner, {
+			canExportVariableValues: true,
+			commitMessage: 'Export root workflow',
+		});
+		const localFolder = await createFolder(project, { name: 'Local folder' });
+		await Container.get(WorkflowRepository).update(workflows[0].id, { parentFolder: localFolder });
+		const before = await snapshotApplyState();
+
+		await expect(
+			service.applyProjectSelection(project.id, owner, {
+				workflowIds: [workflows[0].id],
+			}),
+		).rejects.toMatchObject({
+			httpStatusCode: 409,
+			meta: {
+				issues: expect.arrayContaining([
+					expect.objectContaining({
+						type: 'workflow-folder-conflict',
+						sourceWorkflowId: workflows[0].id,
+						existingWorkflowId: workflows[0].id,
+						existingParentFolderId: localFolder.id,
+						targetFolderId: null,
 					}),
 				]),
 			},

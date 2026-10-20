@@ -82,6 +82,11 @@ const selectedProvider = computed(
 const hasHostApi = computed(
 	() => selectedProvider.value && isPromotionGitHostType(selectedProvider.value.type),
 );
+const createBranchLabelKey = computed(() =>
+	hasHostApi.value
+		? 'settings.promotions.connection.promote.createBranch.gitlab'
+		: 'settings.promotions.connection.promote.createBranch.git',
+);
 
 watch(
 	() => props.connection,
@@ -531,11 +536,11 @@ defineExpose({ selectProvider, applyProviderChange });
 						<N8nSwitch
 							v-model="form.promote.createBranchOnPromotion"
 							:disabled="isSaving"
-							:label="i18n.baseText('settings.promotions.connection.promote.createBranch')"
+							:label="i18n.baseText(createBranchLabelKey)"
 							data-test-id="promotion-connection-create-branch-toggle"
 						/>
 						<N8nText size="small" color="text-light">
-							{{ i18n.baseText('settings.promotions.connection.promote.createBranch.description') }}
+							{{ i18n.baseText(`${createBranchLabelKey}.description`) }}
 						</N8nText>
 						<PromotionCheckoutStatus
 							:checkout="savedCheckout('promote')"

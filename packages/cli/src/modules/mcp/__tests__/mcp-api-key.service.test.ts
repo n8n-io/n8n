@@ -12,14 +12,17 @@ const makeUser = (id: string): User => ({ ...mock<User>(), id });
 describe('McpServerApiKeyService', () => {
 	let authStrategyRegistry: Mocked<AuthStrategyRegistry>;
 	let service: McpServerApiKeyService;
+	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+	let apiKeys: Mocked<ApiKeyRepository>;
+	// EOF Experiment cleanup
 
 	beforeEach(() => {
 		authStrategyRegistry = mock<AuthStrategyRegistry>();
-		service = new McpServerApiKeyService(
-			mock<ApiKeyRepository>(),
-			mock<JwtService>(),
-			authStrategyRegistry,
-		);
+		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+		apiKeys = mock<ApiKeyRepository>();
+		// EOF Experiment cleanup
+		// Experiment cleanup (123_surface_mcp_to_claude_trial_users): replace apiKeys with mock<ApiKeyRepository>(); keep the service.
+		service = new McpServerApiKeyService(apiKeys, mock<JwtService>(), authStrategyRegistry);
 	});
 
 	describe('verifyApiKey', () => {
@@ -70,6 +73,30 @@ describe('McpServerApiKeyService', () => {
 
 			expect(result?.caller).toEqual({ authType: 'api_key' });
 		});
+
+		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+		it('passes only the verified stored key ID for connection tracking', async () => {
+			const subject = makeUser('subject-1');
+			authStrategyRegistry.buildContextFromToken.mockResolvedValue({
+				subject,
+				scopes: [],
+				apiKeyId: 'key-1',
+			});
+			const result = await service.verifyApiKey('secret-key');
+			expect(result?.caller).toEqual({ authType: 'api_key', apiKeyId: 'key-1' });
+			expect(apiKeys.findOne).not.toHaveBeenCalled();
+		});
+
+		it('does not look up a key for a scoped JWT grant', async () => {
+			const subject = makeUser('subject-1');
+			const actor = makeUser('actor-1');
+			authStrategyRegistry.buildContextFromToken.mockResolvedValue({ subject, actor, scopes: [] });
+			const result = await service.verifyApiKey('scoped-jwt');
+			expect(result?.user).toBe(actor);
+			expect(result?.caller).toEqual({ authType: 'api_key' });
+			expect(apiKeys.findOne).not.toHaveBeenCalled();
+		});
+		// EOF Experiment cleanup
 
 		it('reports which strategy admitted the caller, for the log line', async () => {
 			const subject = makeUser('subject-1');
