@@ -469,10 +469,17 @@ describe('Telemetry', () => {
 	});
 
 	describe('trackAgentExecution', () => {
+		const firstMessageAt = '2026-10-09T08:14:22.517Z';
+
+		beforeEach(() => {
+			fakeTestSystemTime(firstMessageAt);
+		});
+
 		test('should aggregate agent execution counters by agent ID', () => {
 			telemetry.trackAgentExecution({ agent_id: 'agent-1', run_type: 'test', message_count: 1 });
 			telemetry.trackAgentExecution({ agent_id: 'agent-1', run_type: 'test', token_count: 15 });
 			telemetry.trackAgentExecution({ agent_id: 'agent-1', run_type: 'test', tool_call_count: 2 });
+			fakeTestSystemTime('2026-10-09T09:14:22.517Z');
 			telemetry.trackAgentExecution({ agent_id: 'agent-2', run_type: 'test', message_count: 1 });
 
 			expect(spyTrack).toHaveBeenCalledTimes(0);
@@ -480,6 +487,7 @@ describe('Telemetry', () => {
 				'agent-1:test': {
 					agent_id: 'agent-1',
 					run_type: 'test',
+					first_message_at: firstMessageAt,
 					message_count: 1,
 					token_count: 15,
 					tool_call_count: 2,
@@ -488,6 +496,7 @@ describe('Telemetry', () => {
 				'agent-2:test': {
 					agent_id: 'agent-2',
 					run_type: 'test',
+					first_message_at: '2026-10-09T09:14:22.517Z',
 					message_count: 1,
 					token_count: 0,
 					tool_call_count: 0,
@@ -498,9 +507,12 @@ describe('Telemetry', () => {
 
 		test('should flush source counters in one event and reset the buffer', () => {
 			const chatRun = { agent_id: 'agent-1', run_type: 'test' as const, source: 'chat' };
-			telemetry.trackAgentExecution({ ...chatRun, message_count: 2 });
+			fakeTestSystemTime('2026-10-09T08:00:00.000Z');
 			telemetry.trackAgentExecution({ ...chatRun, token_count: 10 });
 			telemetry.trackAgentExecution({ ...chatRun, tool_call_count: 1 });
+			fakeTestSystemTime(firstMessageAt);
+			telemetry.trackAgentExecution({ ...chatRun, message_count: 2 });
+			fakeTestSystemTime('2026-10-09T09:14:22.517Z');
 			telemetry.trackAgentExecution({
 				...chatRun,
 				source: 'instance-ai',
@@ -509,15 +521,17 @@ describe('Telemetry', () => {
 				tool_call_count: 1,
 			});
 
+			fakeTestSystemTime('2026-10-09T12:02:11.004Z');
 			// @ts-expect-error Calling private method
 			telemetry.flushAgentExecutionCounts();
 
 			expect(spyTrack).toHaveBeenCalledExactlyOnceWith(
 				TELEMETRY_EVENT.AGENTS.AGENT_EXECUTION_COUNT,
 				{
-					event_version: '2',
+					event_version: '3',
 					agent_id: 'agent-1',
 					run_type: 'test',
+					first_message_at: firstMessageAt,
 					message_count: 3,
 					token_count: 15,
 					tool_call_count: 2,
@@ -540,12 +554,14 @@ describe('Telemetry', () => {
 				source: 'n8n_chat',
 				message_count: 1,
 			});
+			fakeTestSystemTime('2026-10-09T09:14:22.517Z');
 			telemetry.trackAgentExecution({
 				agent_id: 'agent-1',
 				run_type: 'production',
 				source: 'n8n_chat_production',
 				message_count: 1,
 			});
+			fakeTestSystemTime('2026-10-09T10:14:22.517Z');
 			telemetry.trackAgentExecution({
 				agent_id: 'agent-1',
 				run_type: 'production',
@@ -561,6 +577,7 @@ describe('Telemetry', () => {
 				TELEMETRY_EVENT.AGENTS.AGENT_EXECUTION_COUNT,
 				expect.objectContaining({
 					run_type: 'test',
+					first_message_at: firstMessageAt,
 					message_count: 1,
 					counts_by_source: { n8n_chat: { message_count: 1, token_count: 0, tool_call_count: 0 } },
 				}),
@@ -569,6 +586,7 @@ describe('Telemetry', () => {
 				TELEMETRY_EVENT.AGENTS.AGENT_EXECUTION_COUNT,
 				expect.objectContaining({
 					run_type: 'production',
+					first_message_at: '2026-10-09T09:14:22.517Z',
 					message_count: 2,
 					counts_by_source: {
 						n8n_chat_production: { message_count: 1, token_count: 0, tool_call_count: 0 },
@@ -578,20 +596,21 @@ describe('Telemetry', () => {
 			);
 		});
 
-		test('should allow a post-flush window with tokens but no fresh user turn', () => {
+		test('should reset counters and the first message time between buffer windows', () => {
 			telemetry.trackAgentExecution({ agent_id: 'agent-1', run_type: 'test', message_count: 1 });
 
 			// @ts-expect-error Calling private method
 			telemetry.flushAgentExecutionCounts();
 			spyTrack.mockClear();
 
+			fakeTestSystemTime('2026-10-09T12:02:11.004Z');
 			telemetry.trackAgentExecution({ agent_id: 'agent-1', run_type: 'test', token_count: 20 });
 
 			// @ts-expect-error Calling private method
 			telemetry.flushAgentExecutionCounts();
 
 			expect(spyTrack).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.AGENT_EXECUTION_COUNT, {
-				event_version: '2',
+				event_version: '3',
 				agent_id: 'agent-1',
 				run_type: 'test',
 				message_count: 0,
@@ -599,7 +618,25 @@ describe('Telemetry', () => {
 				tool_call_count: 0,
 				counts_by_source: { unknown: { message_count: 0, token_count: 20, tool_call_count: 0 } },
 			});
+			expect(spyTrack.mock.calls[0][1]).not.toHaveProperty('first_message_at');
+			expect(
+				TELEMETRY_EVENT.AGENTS.AGENT_EXECUTION_COUNT.getValidationError(spyTrack.mock.calls[0][1]),
+			).toBeNull();
 			expect(telemetry.getAgentExecutionCountsBuffer()).toEqual({});
+
+			fakeTestSystemTime('2026-10-09T14:00:00.000Z');
+			telemetry.trackAgentExecution({ agent_id: 'agent-1', run_type: 'test', message_count: 1 });
+
+			// @ts-expect-error Calling private method
+			telemetry.flushAgentExecutionCounts();
+
+			expect(spyTrack).toHaveBeenLastCalledWith(
+				TELEMETRY_EVENT.AGENTS.AGENT_EXECUTION_COUNT,
+				expect.objectContaining({
+					message_count: 1,
+					first_message_at: '2026-10-09T14:00:00.000Z',
+				}),
+			);
 		});
 
 		test('should flush attributed and unattributed agent execution counters separately', () => {
@@ -621,17 +658,18 @@ describe('Telemetry', () => {
 			telemetry.flushAgentExecutionCounts();
 
 			expect(spyTrack).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.AGENT_EXECUTION_COUNT, {
-				event_version: '2',
+				event_version: '3',
 				agent_id: 'agent-1',
 				user_id: 'user-1',
 				run_type: 'test',
+				first_message_at: firstMessageAt,
 				message_count: 1,
 				token_count: 0,
 				tool_call_count: 0,
 				counts_by_source: { chat: { message_count: 1, token_count: 0, tool_call_count: 0 } },
 			});
 			expect(spyTrack).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.AGENT_EXECUTION_COUNT, {
-				event_version: '2',
+				event_version: '3',
 				agent_id: 'agent-1',
 				run_type: 'test',
 				message_count: 0,

@@ -11,7 +11,7 @@ import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types
 import { getMcpWorkflow } from './workflow-validation.utils';
 
 import { ExecutionPersistence } from '@/executions/execution-persistence';
-import type { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction-proxy.service';
+import type { ExecutionRedactionServiceProxy } from '@n8n/backend-services';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -98,7 +98,12 @@ export const createGetExecutionTool = (
 		};
 
 		try {
-			await getMcpWorkflow(workflowId, user, ['workflow:read'], workflowFinderService);
+			await getMcpWorkflow(
+				workflowId,
+				user,
+				['workflow:read', 'execution:read'],
+				workflowFinderService,
+			);
 
 			// Use lightweight metadata query when data isn't needed;
 			// split into branches so TypeScript can narrow each return type.

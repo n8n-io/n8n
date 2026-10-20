@@ -3,10 +3,14 @@ import '../../openapi-extend';
 import { z } from 'zod';
 
 import {
+	credentialConflictFieldDocs,
+	credentialConflictIssueOpenApi,
 	credentialPolicyViolationFieldDocs,
 	credentialPolicyViolationIssueOpenApi,
 	credentialUnresolvedFieldDocs,
 	credentialUnresolvedIssueOpenApi,
+	credentialUpdateForbiddenFieldDocs,
+	credentialUpdateForbiddenIssueOpenApi,
 	dataTableSchemaOperationOpenApi,
 	dataTableUnresolvedFieldDocs,
 	dataTableUnresolvedIssueOpenApi,
@@ -134,6 +138,29 @@ const credentialUnresolvedIssueSchema = z
 	})
 	.openapi(credentialUnresolvedIssueOpenApi);
 
+const credentialConflictIssueSchema = z
+	.object({
+		type: z.literal('credential-conflict'),
+		kind: z.enum(['differs', 'divergent']).openapi(credentialConflictFieldDocs.kind),
+		targetId: z.string().openapi(credentialConflictFieldDocs.targetId),
+		sourceIds: z.array(z.string()).openapi(credentialConflictFieldDocs.sourceIds),
+		name: z.string().openapi(credentialConflictFieldDocs.name),
+		usedBy: z.array(packageRequirementConsumerSchema).openapi(credentialConflictFieldDocs.usedBy),
+	})
+	.openapi(credentialConflictIssueOpenApi);
+
+const credentialUpdateForbiddenIssueSchema = z
+	.object({
+		type: z.literal('credential-update-forbidden'),
+		targetId: z.string().openapi(credentialUpdateForbiddenFieldDocs.targetId),
+		sourceIds: z.array(z.string()).openapi(credentialUpdateForbiddenFieldDocs.sourceIds),
+		name: z.string().openapi(credentialUpdateForbiddenFieldDocs.name),
+		usedBy: z
+			.array(packageRequirementConsumerSchema)
+			.openapi(credentialUpdateForbiddenFieldDocs.usedBy),
+	})
+	.openapi(credentialUpdateForbiddenIssueOpenApi);
+
 const projectConflictIssueSchema = z
 	.object({
 		type: z.literal('project-conflict'),
@@ -194,7 +221,7 @@ const folderRemovalForbiddenIssueSchema = z
 	})
 	.openapi(folderRemovalForbiddenIssueOpenApi);
 
-/** `destructive` operations delete the data in a column. */
+/** `destructive` operations remove the values in a column. */
 const dataTableSchemaOperationSchema = z
 	.discriminatedUnion('kind', [
 		z.object({
@@ -215,6 +242,12 @@ const dataTableSchemaOperationSchema = z
 			from: dataTableColumnTypeSchema,
 			to: dataTableColumnTypeSchema,
 			destructive: z.literal(true),
+		}),
+		z.object({
+			kind: z.literal('rename-column'),
+			from: z.string(),
+			to: z.string(),
+			destructive: z.literal(false),
 		}),
 		z.object({
 			kind: z.literal('reorder-columns'),
@@ -370,6 +403,8 @@ export const importBlockingIssueSchema = z
 		workflowFolderConflictIssueSchema,
 		workflowArchiveForbiddenIssueSchema,
 		credentialUnresolvedIssueSchema,
+		credentialConflictIssueSchema,
+		credentialUpdateForbiddenIssueSchema,
 		projectConflictIssueSchema,
 		folderConflictIssueSchema,
 		workflowRemovalForbiddenIssueSchema,

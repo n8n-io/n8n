@@ -50,6 +50,14 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_OBSERVER_MESSAGE_TOKENS')
 	observerMessageTokens: number = 30_000;
 
+	/**
+	 * Model for the background tasks that summarize n8n Assistant conversations into memory, in the same `provider/model` format as `N8N_INSTANCE_AI_MODEL`, for example `anthropic/claude-haiku-4-5`.
+	 * It uses the same provider and credentials as the main model, so set a model that provider offers.
+	 * When unset, or when the main model can't switch models, n8n uses the main model.
+	 */
+	@Env('N8N_INSTANCE_AI_MEMORY_MODEL')
+	memoryModel: string = '';
+
 	/** Token threshold for Reflector to condense observations. */
 	@Env('N8N_INSTANCE_AI_REFLECTOR_OBSERVATION_TOKENS')
 	reflectorObservationTokens: number = 40_000;
@@ -247,19 +255,6 @@ export class InstanceAiConfig {
 	 */
 	@Env('N8N_INSTANCE_AI_FOLDER_EXPLORATION_ENABLED')
 	folderExplorationEnabled: boolean = false;
-
-	/**
-	 * Activation-capped trial variant for n8n cloud experiment.
-	 * Set by the cloud dashboard at deploy time on one signup-experiment cohort only.
-	 */
-	@Env('N8N_INSTANCE_AI_ACTIVATION_CAPPED')
-	activationCapped: boolean = false;
-
-	/**
-	 * How many assistant messages the instance must have sent before {@link activationCapped} locking may apply.
-	 */
-	@Env('N8N_INSTANCE_AI_ACTIVATION_LOCK_MESSAGE_THRESHOLD')
-	activationLockMessageThreshold: number = 1;
 
 	/**
 	 * Max orchestrator runs executing concurrently on this process. A new user turn over

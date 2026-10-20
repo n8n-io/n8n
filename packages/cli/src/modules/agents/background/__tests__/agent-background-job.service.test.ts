@@ -755,6 +755,25 @@ describe('settle', () => {
 	});
 });
 
+describe('pruneExpiredPausedJobs', () => {
+	it('stops settling paused jobs once the signal aborts', async () => {
+		const { service, jobRepository } = setup();
+		const controller = new AbortController();
+		jobRepository.findPausedWithoutCheckpoint.mockResolvedValue([
+			makeJob({ id: 'job-1', status: 'paused', pauseRequestId: 'pause-1' }),
+			makeJob({ id: 'job-2', status: 'paused', pauseRequestId: 'pause-1' }),
+		]);
+		jobRepository.settleIfActive.mockImplementation(async () => {
+			controller.abort();
+			return true;
+		});
+
+		await service.pruneExpiredPausedJobs(undefined, controller.signal);
+
+		expect(jobRepository.settleIfActive).toHaveBeenCalledTimes(1);
+	});
+});
+
 describe('listForThread', () => {
 	it('settles a running sub-agent job whose child run was interrupted and no live handle exists', async () => {
 		const { service, jobRepository, executionRepository } = setup();

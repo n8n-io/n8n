@@ -12,6 +12,7 @@ import { isRecord } from '@n8n/utils/is-record';
 import { UnexpectedError } from 'n8n-workflow';
 import { z } from 'zod';
 
+import { honorsIdempotencyKey } from '@/idempotency/idempotency-request';
 import type { ResolvedPublicApiRoute } from '@/public-api/public-api-route-resolver';
 import {
 	isRequestBodyRequired,
@@ -23,6 +24,10 @@ import {
 import { applySchemaModifiers } from './schema-modifiers';
 
 const REQUEST_BODY_COMPONENT = 'RequestBody';
+
+const IDEMPOTENCY_KEY_PARAMETER = {
+	$ref: '../../../../shared/spec/parameters/idempotencyKey.yml',
+};
 
 // Query fields backed by shared hand-written parameter files instead of being generated
 const SHARED_PAGINATION_PARAMS: Record<string, { $ref: string }> = {
@@ -308,6 +313,12 @@ function buildResponses(
 		}
 	}
 
+	if (honorsIdempotencyKey(route.method, route.path)) {
+		responses[400] ??= ERROR_RESPONSE_REFS[400];
+		responses[409] ??= ERROR_RESPONSE_REFS[409];
+		responses[422] ??= ERROR_RESPONSE_REFS[422];
+	}
+
 	return responses;
 }
 
@@ -321,8 +332,7 @@ export interface GeneratedDecoratorOperation {
 
 /**
  * Builds one `RouteConfig` per route discovered on a `@PublicApiController` class.
- * A new `@PublicApiController` shows up here automatically; a legacy eov-routed endpoint (still hand-written YAML)
- * is untouched until it's migrated to the controller pattern.
+ * A new `@PublicApiController` shows up here automatically.
  *
  * Output path convention: `handlers/<first-path-segment>/spec/paths/<handlerName>.generated.yml`
  */
@@ -333,7 +343,11 @@ export function getDecoratorGeneratedOperations(
 
 	return publicApiRoutes.map((route) => {
 		const pathKey = toOpenApiPathTemplate(route.path);
-		const { parameters, requestQuery } = buildQueryConfig(route);
+		const { parameters: queryParameters, requestQuery } = buildQueryConfig(route);
+		const parameters: NonNullable<RouteConfig['parameters']> = queryParameters ?? [];
+		if (honorsIdempotencyKey(route.method, route.path)) {
+			parameters.push(IDEMPOTENCY_KEY_PARAMETER);
+		}
 		const requestParams = buildPathParams(route);
 		const requestBody = buildRequestBody(route);
 		const resource = route.path.split('/').find(Boolean) ?? 'root';
@@ -349,7 +363,7 @@ export function getDecoratorGeneratedOperations(
 				? { 'x-required-scope': scopeRequirementToString(route.apiKeyScope) }
 				: {}),
 			...(route.deprecated ? { deprecated: true } : {}),
-			...(parameters ? { parameters } : {}),
+			...(parameters.length ? { parameters } : {}),
 			...((requestParams ?? requestQuery ?? requestBody)
 				? {
 						request: {
@@ -360,11 +374,6 @@ export function getDecoratorGeneratedOperations(
 					}
 				: {}),
 			responses: buildResponses(route, resolveSchema),
-			// Satisfies express-openapi-validator's operation-handler installer, which requires
-			// every operation in the spec to resolve to something.
-			'x-eov-operation-id': 'unreachable',
-			'x-eov-operation-handler': 'v1/handlers/decorator-routed.handler',
-			'x-decorator-routed': true,
 		};
 
 		return {

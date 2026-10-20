@@ -2,7 +2,10 @@ import type { Scope } from '@n8n/permissions';
 import {
 	CHAT_TOOL_NODE_TYPE,
 	type ChunkType,
+	CODE_NODE_TYPE,
+	CODE_TOOL_LANGCHAIN_NODE_TYPE,
 	DATA_TABLE_TOOL_NODE_TYPE,
+	EXECUTE_WORKFLOW_NODE_TYPE,
 	type INode,
 	INodeSchema,
 	WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE,
@@ -709,11 +712,45 @@ export interface ChatHubToolDto {
 /** Tool types blocked for ALL users in the Chat Hub. */
 export const ALWAYS_BLOCKED_CHAT_HUB_TOOL_TYPES: string[] = [CHAT_TOOL_NODE_TYPE];
 
-/** Additional tool types blocked for chat-only users (global:chatUser). */
+/**
+ * Additional tool types blocked for chat-only users (global:chatUser).
+ * These tools run code or commands on the n8n instance, or access its files,
+ * workflows, data tables or agents. Tools that act on a remote system through
+ * a credential stay allowed: the credential limits what they can do.
+ * Chat users cannot build workflows, so they cannot add these tools either.
+ * A `*Tool` or `*HitlTool` variant of a listed node type is blocked too.
+ * Any node can have a `*HitlTool` variant, so the list also holds node types
+ * that are not usable as tools.
+ */
 export const CHAT_USER_BLOCKED_CHAT_HUB_TOOL_TYPES: string[] = [
 	WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE,
 	DATA_TABLE_TOOL_NODE_TYPE,
+	CODE_NODE_TYPE,
+	CODE_TOOL_LANGCHAIN_NODE_TYPE,
+	EXECUTE_WORKFLOW_NODE_TYPE,
+	'n8n-nodes-base.executeCommand',
+	'n8n-nodes-base.messageAnAgent',
+	'n8n-nodes-base.git',
+	'n8n-nodes-base.readWriteFile',
+	'n8n-nodes-base.n8n',
 ];
+
+/** Matches the node type registry, which resolves both suffixes to the base node type. */
+function withoutToolSuffix(type: string): string {
+	return type.replace(/HitlTool$/, '').replace(/Tool$/, '');
+}
+
+/** Compares base node types, so an entry also covers the base, `*Tool` and `*HitlTool` forms. */
+function isListed(list: string[], type: string): boolean {
+	const baseType = withoutToolSuffix(type);
+	return list.some((entry) => withoutToolSuffix(entry) === baseType);
+}
+
+/** Returns whether a user can add or run a tool of this type in the Chat Hub. */
+export function isChatHubToolTypeAllowed(type: string, user: { isChatUser: boolean }): boolean {
+	if (isListed(ALWAYS_BLOCKED_CHAT_HUB_TOOL_TYPES, type)) return false;
+	return !(user.isChatUser && isListed(CHAT_USER_BLOCKED_CHAT_HUB_TOOL_TYPES, type));
+}
 
 /**
  * Request schema for creating a chat hub tool

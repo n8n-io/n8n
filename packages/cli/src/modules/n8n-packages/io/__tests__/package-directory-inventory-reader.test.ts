@@ -204,6 +204,18 @@ describe('PackageDirectoryInventoryReader', () => {
 				}),
 			),
 		).rejects.toThrow('Package contains a duplicate data table id: dt1');
+		const withColumnId = (id: string) => ({
+			...dataTable(id),
+			columns: [{ id: 'col1', name: 'email', type: 'string', index: 0 }],
+		});
+		await expect(
+			reader.read(
+				sourceOf({
+					'data-tables/x/data-table.json': withColumnId('dt1'),
+					'data-tables/y/data-table.json': withColumnId('dt2'),
+				}),
+			),
+		).rejects.toThrow('Package contains a duplicate data table column id: col1');
 	});
 
 	it('rejects the same variable name twice in one scope but allows it in different scopes', async () => {

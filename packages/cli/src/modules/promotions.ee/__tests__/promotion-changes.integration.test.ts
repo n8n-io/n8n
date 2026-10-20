@@ -47,6 +47,7 @@ import { PromotionConnectionRepository } from '../database/repositories/promotio
 import { PromotionProviderRepository } from '../database/repositories/promotion-provider.repository';
 import { PromotionsService } from '../promotions.service';
 import { PromotionWorkingDirectoryService } from '../promotion-working-directory.service';
+import { storedAgentConfig } from '@/modules/agents/__tests__/test-utils/stored-agent-config';
 
 const instanceFolder = mkdtempSync(path.join(tmpdir(), 'promotion-preview-'));
 Container.set(
@@ -189,12 +190,14 @@ it('lists new, changed, moved, archived, restored and deleted workflows through 
 		id: 'local-agent',
 		name: 'Local Agent',
 		projectId: project.id,
-		schema: AgentJsonConfigSchema.parse({
-			name: 'Local Agent',
-			model: '',
-			instructions: '',
-			subAgents: { agents: [{ agentId: 'external-agent' }] },
-		}),
+		schema: storedAgentConfig(
+			AgentJsonConfigSchema.parse({
+				name: 'Local Agent',
+				model: '',
+				instructions: '',
+				subAgents: { agents: [{ agentId: 'external-agent' }] },
+			}),
+		),
 	});
 	const otherProject = await createTeamProject('Other', owner);
 	const publishable = await createWorkflowWithHistory(

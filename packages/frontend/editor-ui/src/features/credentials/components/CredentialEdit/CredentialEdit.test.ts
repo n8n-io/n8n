@@ -2,6 +2,7 @@ import { usePostHog } from '@/app/stores/posthog.store';
 import { createComponentRenderer } from '@/__tests__/render';
 import CredentialEdit from './CredentialEdit.vue';
 import { createTestingPinia } from '@pinia/testing';
+import { getActivePinia, setActivePinia } from 'pinia';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '../../credentials.constants';
 import { STORES } from '@n8n/stores';
 import { retry, mockedStore } from '@/__tests__/utils';
@@ -483,6 +484,56 @@ describe('CredentialEdit', () => {
 		await retry(() => expect(queryByText('Details')).toBeInTheDocument());
 		await retry(() => expect(queryByText('Connection')).toBeInTheDocument());
 		await retry(() => expect(queryByText('Sharing')).toBeInTheDocument());
+	});
+
+	test('opens on the tab the modal state asks for', async () => {
+		// createTestingPinia makes its pinia the active one; the tests after this one
+		// read stores from the renderer's pinia, so hand it back afterwards.
+		const rendererPinia = getActivePinia();
+		const pinia = createTestingPinia({
+			initialState: {
+				[STORES.UI]: {
+					modalStateById: {
+						[CREDENTIAL_EDIT_MODAL_KEY]: { open: true, initialTab: 'sharing' },
+					},
+				},
+				[STORES.SETTINGS]: {
+					settings: {
+						enterprise: { sharing: true, externalSecrets: false },
+						templates: { host: '' },
+					},
+				},
+			},
+		});
+		const credentialsStore = mockedStore(useCredentialsStore);
+		credentialsStore.state.credentialTypes = {
+			testApi: { name: 'testApi', displayName: 'Test API', properties: [] } as ICredentialType,
+		};
+		credentialsStore.getCredentialData.mockResolvedValueOnce({
+			id: '123',
+			name: 'Test API account',
+			type: 'testApi',
+			data: {},
+			isManaged: false,
+			sharedWithProjects: [],
+			scopes: ['credential:share'],
+			createdAt: '',
+			updatedAt: '',
+		});
+
+		const { findByTestId } = renderComponent({
+			props: { activeId: '123', modalName: CREDENTIAL_EDIT_MODAL_KEY, mode: 'edit' },
+			pinia,
+			global: {
+				stubs: { CredentialSharing: { template: '<div data-test-id="credential-sharing-tab" />' } },
+			},
+		});
+
+		try {
+			expect(await findByTestId('credential-sharing-tab')).toBeInTheDocument();
+		} finally {
+			if (rendererPinia) setActivePinia(rendererPinia);
+		}
 	});
 
 	test('shows Connection and Details for a managed credential', async () => {

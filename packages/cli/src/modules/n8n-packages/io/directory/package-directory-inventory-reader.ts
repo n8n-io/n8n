@@ -230,6 +230,7 @@ export class PackageDirectoryInventoryReader {
 	): Promise<InventoryDataTable[]> {
 		const dataTables: InventoryDataTable[] = [];
 		const seenIds = new Set<string>();
+		const seenColumnIds = new Set<string>();
 
 		for (const file of files.filter((f) => f.kind === 'dataTables')) {
 			if (!isCollectionLocation(file.segments, 'dataTables')) throw unsupportedLocation(file);
@@ -237,6 +238,9 @@ export class PackageDirectoryInventoryReader {
 			projectIdOf(file);
 			const dataTable = await this.readEntity(source, file, serializedDataTableSchema);
 			assertUnseen(seenIds, dataTable.id, 'data table id');
+			for (const { id } of dataTable.columns) {
+				if (id) assertUnseen(seenColumnIds, id, 'data table column id');
+			}
 			dataTables.push({ path: file.path, dataTable });
 		}
 
@@ -304,7 +308,12 @@ function unsupportedLocation(file: EntityFile): UserError {
 	);
 }
 
-function assertUnseen(seen: Set<string>, key: string, label: string, displayKey = key): void {
+export function assertUnseen(
+	seen: Set<string>,
+	key: string,
+	label: string,
+	displayKey = key,
+): void {
 	if (seen.has(key)) throw new UserError(`Package contains a duplicate ${label}: ${displayKey}`);
 	seen.add(key);
 }

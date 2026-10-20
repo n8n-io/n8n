@@ -82,6 +82,7 @@ interface IAgentExecutionCountsBuffer {
 		agent_id: string;
 		user_id?: string;
 		run_type: AgentRunTelemetryType;
+		first_message_at?: string;
 		counts_by_source: Record<string, IAgentExecutionCounts>;
 	};
 }
@@ -325,7 +326,7 @@ export class Telemetry {
 			// message_count = 0.
 			const { agent_id, user_id, run_type, ...counts } = this.agentExecutionCountsBuffer[bufferKey];
 			this.track(TELEMETRY_EVENT.AGENTS.AGENT_EXECUTION_COUNT, {
-				event_version: '2',
+				event_version: '3',
 				agent_id,
 				...(user_id ? { user_id } : {}),
 				run_type,
@@ -468,6 +469,9 @@ export class Telemetry {
 		};
 
 		const agentExecutionCounts = this.agentExecutionCountsBuffer[bufferKey];
+		if (message_count > 0) {
+			agentExecutionCounts.first_message_at ??= new Date().toISOString();
+		}
 		agentExecutionCounts.message_count += message_count;
 		agentExecutionCounts.token_count += token_count;
 		agentExecutionCounts.tool_call_count += tool_call_count;

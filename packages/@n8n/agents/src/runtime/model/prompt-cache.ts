@@ -4,6 +4,7 @@ import { isRecord } from '@n8n/utils/is-record';
 import type { ModelMessage, SystemModelMessage, ToolSet } from 'ai';
 import { createHash } from 'crypto';
 
+import { isGoogleVertexAnthropicModel } from './google-vertex';
 import type { PromptCachingConfig } from '../../types/sdk/agent';
 import type { JSONObject } from '../../types/utils/json';
 
@@ -58,7 +59,11 @@ function isEnabledForProvider(
 /** Providers that speak the Anthropic Messages API (including Vertex Claude). */
 export function isAnthropicMessagesProvider(modelId: string): boolean {
 	const provider = getProviderPrefix(modelId);
-	return provider === 'anthropic' || provider === 'google-vertex-anthropic';
+	return (
+		provider === 'anthropic' ||
+		provider === 'google-vertex-anthropic' ||
+		isGoogleVertexAnthropicModel(modelId)
+	);
 }
 
 /**

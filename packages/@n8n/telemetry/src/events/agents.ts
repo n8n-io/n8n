@@ -193,6 +193,38 @@ const agentPublish = {
 };
 
 export const AGENTS_TELEMETRY = defineTelemetryEvents({
+	AGENT_TEAMS_SETUP_STEP: {
+		name: 'Agent Teams setup step',
+		description:
+			"One step of the recommended Microsoft Teams setup finished or failed. Tells us which rung of the bot ladder people actually land on, which is the question the ladder exists to answer: n8n can only create the bot when the tenant has an Azure subscription, and a Microsoft 365 tenant does not come with one. `outcome: 'failed'` carries a `reason` naming the wall that was hit, never the message.",
+		properties: z.object({
+			agent_id: z.string(),
+			project_id: z.string(),
+			user_id: z.string(),
+			step: z
+				.enum(['connect', 'create_app', 'create_bot', 'availability', 'install'])
+				.describe('Which step of the recommended setup this reports'),
+			outcome: z.enum(['succeeded', 'failed']),
+			bot_route: z
+				.enum(['provisioned', 'manual'])
+				.optional()
+				.describe(
+					"Only on the bot step. 'provisioned' means n8n created it through Azure; 'manual' means the user was sent to make it themselves.",
+				),
+			install_route: z
+				.enum(['published', 'submitted', 'upload'])
+				.optional()
+				.describe(
+					"Only on the install step. 'submitted' means the account could not publish directly and the app went in for review.",
+				),
+			reason: z
+				.string()
+				.optional()
+				.describe(
+					'A fixed code for why the step failed, such as blocked_by_policy or cannot_register_apps. Never a message, which could carry tenant detail.',
+				),
+		}),
+	},
 	USER_RESPONDED_TO_AGENT_TOOL_APPROVAL: {
 		name: 'User responded to agent tool approval',
 		description:
@@ -237,9 +269,9 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 	AGENT_EXECUTION_COUNT: {
 		name: 'Agent execution count',
 		description:
-			'Six-hourly pulse of aggregate agent usage, bucketed by agent, run type and optional user. event_version 2 added run_type; version 1 rows are a mix of test and production and must not be read as production. token_count is broader than "Agent session metrics".cost_sum: it also covers LLM calls belonging to no single turn (title generation, observational/episodic memory, embeddings).',
+			'Six-hourly pulse of aggregate agent usage, bucketed by agent, run type and optional user. event_version 3 added first_message_at. event_version 2 added run_type; version 1 rows are a mix of test and production and must not be read as production. token_count is broader than "Agent session metrics".cost_sum: it also covers LLM calls belonging to no single turn (title generation, observational/episodic memory, embeddings).',
 		properties: z.object({
-			event_version: z.literal('2'),
+			event_version: z.literal('3'),
 			agent_id: z.string(),
 			user_id: z
 				.string()
@@ -247,6 +279,12 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 				.describe('Present only for runs with an n8n user — absent for chat integrations and cron'),
 			run_type: agentRunType,
 			...agentExecutionCounts,
+			first_message_at: z.iso
+				.datetime()
+				.optional()
+				.describe(
+					'ISO 8601 time of the first message in this buffer window. Absent when message_count is zero.',
+				),
 			counts_by_source: z
 				.record(agentRunSource, z.object(agentExecutionCounts))
 				.optional()
@@ -342,7 +380,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 	BUILDER_PUBLISHED_AGENT: {
 		name: 'Builder published agent',
 		description:
-			'The Instance AI builder published an agent version through its publish_agent tool. One of three same-shaped publish events ("User published agent", "MCP published agent") — union them for total agent publishing, or read one for that surface alone. Emitted from `AgentPublishService.publishAgent`; an idempotent no-op publish emits nothing.',
+			'The Instance AI builder published an agent version through its agent_builder_publish_agent tool. One of three same-shaped publish events ("User published agent", "MCP published agent") — union them for total agent publishing, or read one for that surface alone. Emitted from `AgentPublishService.publishAgent`; an idempotent no-op publish emits nothing.',
 		properties: z.object({
 			...agentPublish,
 			event_version: z.literal('1'),
@@ -369,7 +407,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 	BUILDER_UNPUBLISHED_AGENT: {
 		name: 'Builder unpublished agent',
 		description:
-			'The Instance AI builder unpublished an agent through its unpublish_agent tool. One of three same-shaped unpublish events ("User unpublished agent", "MCP unpublished agent") — union them for total agent unpublishing, or read one for that surface alone. Emitted from `AgentPublishService.unpublishAgent`.',
+			'The Instance AI builder unpublished an agent through its agent_builder_unpublish_agent tool. One of three same-shaped unpublish events ("User unpublished agent", "MCP unpublished agent") — union them for total agent unpublishing, or read one for that surface alone. Emitted from `AgentPublishService.unpublishAgent`.',
 		properties: z.object({
 			...agentActorIdentity,
 			event_version: z.literal('1'),
@@ -382,6 +420,16 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 		properties: z.object({
 			...agentActorIdentity,
 			event_version: z.literal('1'),
+		}),
+	},
+	USER_DISMISSED_AGENT_PUBLISHED_MODAL: {
+		name: 'User dismissed agent published modal',
+		description:
+			'The user closed the "Agent published" confirmation modal shown after a successful agent publish. `dont_show_again` reports the state of the "Don\'t show again" checkbox at dismissal; when checked, the modal is not shown on later publishes.',
+		properties: z.object({
+			agent_id: z.string(),
+			dont_show_again: z.boolean(),
+			session_id: sessionId.optional(),
 		}),
 	},
 	INSTANCE_AI_OPENED_FROM_AGENT_PREVIEW: {
@@ -424,7 +472,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 	BUILDER_ADDED_TASKS: {
 		name: 'Builder added tasks to agent',
 		description:
-			'The Instance AI builder created a scheduled task through the `create_tasks` tool. That path persists outside `AgentConfigService.updateConfig`, so it is not covered by "Builder modified agent" — this event stays until the task write path is folded in.',
+			'The Instance AI builder created a scheduled task through the `agent_builder_create_tasks` tool. That path persists outside `AgentConfigService.updateConfig`, so it is not covered by "Builder modified agent" — this event stays until the task write path is folded in.',
 		properties: z.object({
 			...builderSessionIdentity,
 			task_added: z.string().describe('Identifier of the newly added task'),
@@ -435,7 +483,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 	BUILDER_ADDED_TRIGGER: {
 		name: 'Builder added trigger to agent',
 		description:
-			'The Instance AI builder configured and persisted a chat channel for the target agent through the configure_channel tool, mirroring the frontend "User added trigger to agent" event.',
+			'The Instance AI builder configured and persisted a chat channel for the target agent through the agent_builder_configure_channel tool, mirroring the frontend "User added trigger to agent" event.',
 		properties: z.object({
 			...builderSessionIdentity,
 			trigger_type: z.string().describe('Chat integration type that was configured and persisted'),
@@ -444,7 +492,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 	BUILDER_ASKED_QUESTIONS: {
 		name: 'Builder asked questions',
 		description:
-			'The Instance AI builder used the ask_questions tool and suspended, showing the user a batch of questions to determine the shape of the agent.',
+			'The Instance AI builder used the agent_builder_ask_questions tool and suspended, showing the user a batch of questions to determine the shape of the agent.',
 		properties: z.object({
 			...builderSessionIdentity,
 			question_count: z.number(),
@@ -454,7 +502,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 	USER_ANSWERED_BUILDER_QUESTIONS: {
 		name: 'User answered builder questions',
 		description:
-			'The user resumed a builder ask_questions card by answering, skipping, or dismissing it.',
+			'The user resumed a builder agent_builder_ask_questions card by answering, skipping, or dismissing it.',
 		properties: z.object({
 			...builderSessionIdentity,
 			outcome: z.enum(['answered', 'skipped', 'dismissed']),
@@ -465,7 +513,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 	BUILDER_REQUESTED_CREDENTIAL: {
 		name: 'Builder requested credential',
 		description:
-			'The Instance AI builder used the ask_credential (or ask_embedding_credential) tool and suspended to show a credential picker card. Does not fire when the request auto-resolves without showing a card.',
+			'The Instance AI builder used the agent_builder_ask_credential (or agent_builder_ask_embedding_credential) tool and suspended to show a credential picker card. Does not fire when the request auto-resolves without showing a card.',
 		properties: z.object({
 			...builderSessionIdentity,
 			credential_type: z.string(),

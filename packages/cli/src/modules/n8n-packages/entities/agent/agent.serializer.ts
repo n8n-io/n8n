@@ -2,7 +2,6 @@ import { Service } from '@n8n/di';
 import type { z } from 'zod';
 
 import type { Agent } from '@/modules/agents/entities/agent.entity';
-import { composeJsonConfig } from '@/modules/agents/json-config/agent-config-composition';
 import type { AgentDefinition } from '@/modules/agents/utils/agent-definition';
 
 import {
@@ -24,6 +23,7 @@ type AgentPackageKeyHandling = {
 	availableInMCP: 'copy';
 	project: 'exclude';
 	projectId: 'exclude';
+	scope: 'exclude';
 	createdAt: 'exclude';
 	updatedAt: 'exclude';
 	versionId: 'exclude';
@@ -60,7 +60,8 @@ export class AgentSerializer {
 		definition: AgentDefinition,
 		integrations: Agent['integrations'],
 	): SerializedAgent {
-		const config = composeJsonConfig({ schema: definition.schema, integrations });
+		// The definition schema is already the document, with the skill refs.
+		const config = definition.schema ? { ...definition.schema, integrations } : null;
 		const content = serializedAgentSchema.parse(
 			serializePayload({
 				id: agent.id,

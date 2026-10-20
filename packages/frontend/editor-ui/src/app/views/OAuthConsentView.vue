@@ -4,6 +4,7 @@ import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useI18n } from '@n8n/i18n';
 import type { BaseTextKey } from '@n8n/i18n';
 import { onMounted, onUnmounted, computed, ref, watch } from 'vue';
+import { useRoute } from 'vue-router';
 import type { ConsentDetailsPicker } from '@n8n/rest-api-client/api/consent';
 import {
 	N8nButton,
@@ -22,6 +23,14 @@ import { useTelemetry } from '@n8n/composables/useTelemetry';
 import ScopesSelector from '@/app/components/scopes/ScopesSelector.vue';
 
 const consentStore = useConsentStore();
+
+const route = useRoute();
+// Id of the authorization request this screen was opened for, put in the URL by
+// the /authorize redirect. Without it the server has no session to show.
+const flowId = computed(() => (typeof route.query.flow === 'string' ? route.query.flow : ''));
+// The flow the details on screen belong to. Decisions name this one, not the
+// current URL, so the request the user approves is the request they were shown.
+const shownFlowId = ref('');
 
 const i18n = useI18n();
 const documentTitle = useDocumentTitle();
@@ -115,6 +124,7 @@ watch(
 const handleAllow = async () => {
 	try {
 		const response = await consentStore.approveConsent(
+			shownFlowId.value,
 			true,
 			hasScopes.value ? selectedScopes.value : undefined,
 		);
@@ -133,7 +143,7 @@ const handleAllow = async () => {
 
 const handleDeny = async () => {
 	try {
-		await consentStore.approveConsent(false);
+		await consentStore.approveConsent(shownFlowId.value, false);
 		telemetry.track('User denied MCP consent', {
 			client_name: clientDetails.value?.clientName,
 		});
@@ -149,11 +159,11 @@ const handleClose = () => {
 	window.location.href = window.BASE_PATH ?? '/';
 };
 
-onMounted(async () => {
-	documentTitle.set(i18n.baseText('oauth.consentView.title'));
+const loadDetails = async (flow: string) => {
 	try {
-		const details = await consentStore.fetchConsentDetails();
-		if (!isActive) return;
+		const details = await consentStore.fetchConsentDetails(flow);
+		if (!isActive || flow !== flowId.value) return;
+		shownFlowId.value = flow;
 		detailsResolved.value = true;
 		if (details?.autoApproved && details.redirectUrl) {
 			autoApprovedRedirect.value = true;
@@ -165,10 +175,28 @@ onMounted(async () => {
 			available_scopes_count: availableScopes.value.length,
 		});
 	} catch (err) {
-		if (!isActive) return;
+		if (!isActive || flow !== flowId.value) return;
+		shownFlowId.value = flow;
 		toast.showError(err, i18n.baseText('oauth.consentView.error.fetchDetails'));
 	}
+};
+
+onMounted(() => {
+	documentTitle.set(i18n.baseText('oauth.consentView.title'));
 });
+
+// A second /authorize can land on this route with a different flow while the
+// component stays mounted, which would leave one request on screen and another
+// under the buttons. Reload whenever the id changes.
+watch(
+	flowId,
+	async (flow) => {
+		detailsResolved.value = false;
+		shownFlowId.value = '';
+		await loadDetails(flow);
+	},
+	{ immediate: true },
+);
 </script>
 
 <template>
@@ -254,6 +282,14 @@ onMounted(async () => {
 						})
 					}}
 				</N8nHeading>
+				<!-- A resource that advertises scopes is not a workflow; the scope list says what it grants. -->
+				<N8nHeading v-else-if="resourceName && hasScopes" tag="h2" size="large" :bold="true">
+					{{
+						i18n.baseText('oauth.consentView.headingWithResource', {
+							interpolate: { clientName: clientDetails?.clientName ?? '', resourceName },
+						})
+					}}
+				</N8nHeading>
 				<N8nHeading v-else-if="resourceName" tag="h2" size="large" :bold="true">
 					{{
 						i18n.baseText('oauth.consentView.headingWithWorkflow', {
@@ -276,16 +312,16 @@ onMounted(async () => {
 							})
 						}}
 					</N8nText>
-					<N8nText v-else-if="resourceName" color="text-base" size="medium">
+					<N8nText v-else-if="hasScopes" color="text-base" size="medium">
 						{{
-							i18n.baseText('oauth.consentView.descriptionWithWorkflow', {
+							i18n.baseText('oauth.consentView.scopes.description', {
 								interpolate: { clientName: clientDetails?.clientName ?? '' },
 							})
 						}}
 					</N8nText>
-					<N8nText v-else-if="hasScopes" color="text-base" size="medium">
+					<N8nText v-else-if="resourceName" color="text-base" size="medium">
 						{{
-							i18n.baseText('oauth.consentView.scopes.description', {
+							i18n.baseText('oauth.consentView.descriptionWithWorkflow', {
 								interpolate: { clientName: clientDetails?.clientName ?? '' },
 							})
 						}}

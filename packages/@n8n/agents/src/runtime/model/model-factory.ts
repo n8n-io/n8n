@@ -5,6 +5,11 @@ import type { EmbeddingModel, LanguageModel } from 'ai';
 import type * as Undici from 'undici';
 
 import {
+	createGoogleVertexModel,
+	isGoogleVertexAnthropicModel,
+	parseGoogleVertexAuthOptions,
+} from './google-vertex';
+import {
 	endpointRouteKey,
 	guardOpenAiRoutes,
 	withChatCompletionsFallback,
@@ -15,6 +20,8 @@ import {
 	type ProviderId,
 	type ProviderCredentials,
 } from './provider-credentials';
+import type { BuiltTelemetry } from '../../types/telemetry';
+import { traceModelRequests } from '../telemetry/model-request-tracing';
 import type { ModelConfig } from '../../types/sdk/agent';
 import { getModelIdString } from '../../utils/model';
 
@@ -84,36 +91,6 @@ type OpenAiCompatibleCreds = {
 	baseURL?: string;
 	headers?: Record<string, string>;
 };
-
-/**
- * Parse a Vertex service-account JSON string into `googleAuthOptions`.
- * Accepts either a full SA JSON blob or the subset `{ client_email, private_key }`.
- * Returns undefined when unset so ADC can take over.
- */
-function parseGoogleVertexAuthOptions(
-	googleCredentials: string | undefined,
-): { credentials: Record<string, unknown> } | undefined {
-	if (!googleCredentials?.trim()) return undefined;
-	let parsed: unknown;
-	try {
-		parsed = JSON.parse(googleCredentials);
-	} catch {
-		throw new Error(
-			'Invalid credentials for provider "google-vertex-anthropic": googleCredentials must be valid JSON',
-		);
-	}
-	if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-		throw new Error(
-			'Invalid credentials for provider "google-vertex-anthropic": googleCredentials must be a JSON object',
-		);
-	}
-	const credentials = { ...(parsed as Record<string, unknown>) };
-	// SA keys often arrive with literal `\n` escapes when pasted into env files.
-	if (typeof credentials.private_key === 'string') {
-		credentials.private_key = credentials.private_key.replace(/\\n/g, '\n');
-	}
-	return { credentials };
-}
 
 /**
  * Azure OpenAI scope for Entra Bearer auth. Mirrors the LangChain Azure node's
@@ -221,7 +198,9 @@ export function isOfficialOpenAiBaseUrl(baseURL: string | undefined): boolean {
 
 /** Whether a model accepts the stable and volatile prompt sections as separate system messages. */
 export function supportsSplitSystemMessages(model: ModelConfig): boolean {
-	switch (getModelIdString(model).split('/')[0]) {
+	const modelId = getModelIdString(model);
+	if (isGoogleVertexAnthropicModel(modelId)) return true;
+	switch (modelId.split('/')[0]) {
 		case 'anthropic':
 		case 'google-vertex-anthropic':
 		case 'openrouter':
@@ -346,6 +325,9 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 			return createGoogle({ ...creds, baseURL: normalizedBaseURL, fetch })(model);
 		},
 	},
+	'google-vertex': {
+		build: createGoogleVertexModel,
+	},
 	xai: {
 		build: (creds, model, fetch) => {
 			const { createXai } = require('@ai-sdk/xai') as typeof import('@ai-sdk/xai');
@@ -432,6 +414,9 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 			// `…/openai/v1/openai`. Drive it as a plain OpenAI-compatible endpoint
 			// so the configured base is used verbatim.
 			if (endpointType === 'foundry') {
+				// The path segment Foundry matches against is the user-chosen
+				// deployment name, which can differ from the model it serves.
+				const deploymentId = deploymentName ?? model;
 				if (isEntra) {
 					// `buildOpenAiCompatible` has no `tokenProvider` slot, so wrap the
 					// transport to inject `Authorization: Bearer <token>` per request.
@@ -440,11 +425,17 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 						'azure-openai',
 						undefined,
 						{ baseURL },
-						model,
+						deploymentId,
 						withBearerAuth(fetch, tokenProvider),
 					);
 				}
-				return buildOpenAiCompatible('azure-openai', undefined, { apiKey, baseURL }, model, fetch);
+				return buildOpenAiCompatible(
+					'azure-openai',
+					undefined,
+					{ apiKey, baseURL },
+					deploymentId,
+					fetch,
+				);
 			}
 
 			// Classic Azure OpenAI (`*.openai.azure.com`, or `resourceName` only).
@@ -455,9 +446,10 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 			// selects the Responses API + the `/v1/` path, which Azure rejects with
 			// "API version not supported" for date-based versions.
 			//
-			// Azure deployments are user-named and surfaced in the deployment-based
-			// URL path. The catalog model id is not the deployment id, so prefer the
-			// user's `deploymentName` when provided and fall back to the model id.
+			// Azure deployments are user-named and surfaced in the URL path on
+			// both endpoint types. The catalog model id is not the deployment id,
+			// so prefer the user's `deploymentName` when provided and fall back to
+			// the model id.
 			const { createAzure } = require('@ai-sdk/azure') as typeof import('@ai-sdk/azure');
 			let normalizedBaseURL = baseURL;
 			// SDK expects url like `https://resourceName.openai.azure.com/openai`
@@ -503,7 +495,11 @@ const SUPPORTED_PROVIDERS = Object.keys(LANGUAGE_PROVIDERS).join(', ');
  * Provider packages are loaded dynamically via require() so only the
  * provider needed at runtime must be installed.
  */
-export function createModel(config: ModelConfig, fetch?: FetchFn): LanguageModel {
+export function createModel(
+	config: ModelConfig,
+	fetch?: FetchFn,
+	telemetry?: BuiltTelemetry,
+): LanguageModel {
 	if (isLanguageModel(config)) {
 		return config;
 	}
@@ -553,7 +549,10 @@ export function createModel(config: ModelConfig, fetch?: FetchFn): LanguageModel
 	}
 
 	// Caller-injected transport wins; fall back to the ambient env-proxy resolver.
-	const resolvedFetch = fetch ?? getProxyFetch();
+	const transport = fetch ?? getProxyFetch();
+	const resolvedFetch = telemetry?.traceModelRequests
+		? traceModelRequests(transport ?? globalFetch, telemetry, provider, modelName)
+		: transport;
 	// Type cast: the registry guarantees the schema and builder are aligned per provider.
 	return (entry.build as EntryBuilder<typeof provider>)(parsed.data, modelName, resolvedFetch);
 }

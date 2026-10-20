@@ -43,8 +43,24 @@ import type { NodeTypes } from '@/node-types';
 import type { PostHogClient } from '@/posthog';
 import type { OwnershipService } from '@/services/ownership.service';
 import type { Telemetry } from '@/telemetry';
+import { getCpuLimit, getMemoryLimit } from '@/utils/container-limits';
+
+// The runner may itself run in a container with limits.
+vi.mock('@/utils/container-limits', () => ({
+	getMemoryLimit: vi.fn(() => null),
+	getCpuLimit: vi.fn(() => ({ limit: null, source: 'cgroup_v2' as const, weight: null })),
+}));
 
 const flushPromises = async () => await new Promise((resolve) => setImmediate(resolve));
+
+const PLATFORM_ENV_VARS = [
+	'ECS_CONTAINER_METADATA_URI_V4',
+	'ECS_CONTAINER_METADATA_URI',
+	'CONTAINER_APP_NAME',
+	'WEBSITE_SITE_NAME',
+	'K_SERVICE',
+	'KUBERNETES_SERVICE_HOST',
+];
 
 const getDefaultInstanceSettingsLoaderConfig = () => ({
 	ownerManagedByEnv: false,
@@ -112,7 +128,6 @@ describe('TelemetryEventRelay', () => {
 			batchSize: 234,
 			optimizingTimeWindowHours: 400,
 			trimmingTimeWindowDays: 600,
-			trimOnStartUp: false,
 		},
 		host: 'localhost',
 		generic: {
@@ -759,7 +774,8 @@ describe('TelemetryEventRelay', () => {
 				after: { defaultAction: 'allow', version: 1 },
 				rulesBefore: null,
 				rulesAfter: [denyRule],
-				warningCount: 0,
+				shadowWarningCount: 0,
+				notLoadedWarningCount: 0,
 			});
 
 			expect(telemetry.track).toHaveBeenCalledWith(
@@ -781,7 +797,8 @@ describe('TelemetryEventRelay', () => {
 				after: { defaultAction: 'deny', version: 1 },
 				rulesBefore: null,
 				rulesAfter: [denyRule, allowPackageRule, delegateRule],
-				warningCount: 2,
+				shadowWarningCount: 2,
+				notLoadedWarningCount: 1,
 			};
 
 			eventService.emit('node-type-policy-saved', event);
@@ -811,6 +828,7 @@ describe('TelemetryEventRelay', () => {
 					allowed_types: ['n8n-nodes-base.code'],
 					previous_rule_count: null,
 					shadow_warning_count: 2,
+					not_loaded_warning_count: 1,
 					version: 1,
 				},
 			);
@@ -832,7 +850,8 @@ describe('TelemetryEventRelay', () => {
 				after: { defaultAction: 'allow', version: 1 },
 				rulesBefore: null,
 				rulesAfter: [credentialDenyRule],
-				warningCount: 0,
+				shadowWarningCount: 0,
+				notLoadedWarningCount: 0,
 			};
 
 			eventService.emit('node-type-policy-saved', event);
@@ -872,7 +891,8 @@ describe('TelemetryEventRelay', () => {
 				rulesAfter: [
 					{ id: 'rule-1', action: 'deny', selector: { kind: 'extends', value: 'oAuth2Api' } },
 				],
-				warningCount: 0,
+				shadowWarningCount: 0,
+				notLoadedWarningCount: 0,
 			});
 
 			expect(telemetry.track).toHaveBeenCalledWith(
@@ -901,7 +921,8 @@ describe('TelemetryEventRelay', () => {
 				after: { defaultAction: 'allow', version: 1 },
 				rulesBefore: null,
 				rulesAfter: [credentialPackageDenyRule],
-				warningCount: 0,
+				shadowWarningCount: 0,
+				notLoadedWarningCount: 0,
 			};
 
 			eventService.emit('node-type-policy-saved', event);
@@ -928,7 +949,8 @@ describe('TelemetryEventRelay', () => {
 				after: { defaultAction: 'deny', version: 1 },
 				rulesBefore: null,
 				rulesAfter: [],
-				warningCount: 0,
+				shadowWarningCount: 0,
+				notLoadedWarningCount: 0,
 			};
 
 			eventService.emit('node-type-policy-saved', event);
@@ -946,7 +968,8 @@ describe('TelemetryEventRelay', () => {
 				after: { defaultAction: 'deny', version: 5 },
 				rulesBefore: [denyRule],
 				rulesAfter: [allowPackageRule],
-				warningCount: 0,
+				shadowWarningCount: 0,
+				notLoadedWarningCount: 0,
 			};
 
 			eventService.emit('node-type-policy-saved', event);
@@ -976,7 +999,8 @@ describe('TelemetryEventRelay', () => {
 				after: { defaultAction: 'deny', version: 1 },
 				rulesBefore: null,
 				rulesAfter: [],
-				warningCount: 0,
+				shadowWarningCount: 0,
+				notLoadedWarningCount: 0,
 			};
 
 			eventService.emit('node-type-policy-saved', event);
@@ -1098,7 +1122,8 @@ describe('TelemetryEventRelay', () => {
 				after: { defaultAction: 'allow', version: 1 },
 				rulesBefore: null,
 				rulesAfter: [denyRule],
-				warningCount: 0,
+				shadowWarningCount: 0,
+				notLoadedWarningCount: 0,
 			});
 
 			expect(telemetry.track).toHaveBeenCalledWith(
@@ -1122,7 +1147,8 @@ describe('TelemetryEventRelay', () => {
 				after: { defaultAction: 'allow', version: 1 },
 				rulesBefore: null,
 				rulesAfter: [{ ...allowPackageRule, action: 'deny' }],
-				warningCount: 0,
+				shadowWarningCount: 0,
+				notLoadedWarningCount: 0,
 			});
 
 			expect(telemetry.track).toHaveBeenCalledWith(
@@ -1152,7 +1178,8 @@ describe('TelemetryEventRelay', () => {
 					action: 'allow' as const,
 					selector: { kind: 'name' as const, value: name },
 				})),
-				warningCount: 0,
+				shadowWarningCount: 0,
+				notLoadedWarningCount: 0,
 			});
 
 			const properties = vi.mocked(telemetry.track).mock.calls.at(-1)?.[1];
@@ -1175,7 +1202,8 @@ describe('TelemetryEventRelay', () => {
 				after: { defaultAction: 'deny', version: 1 },
 				rulesBefore: null,
 				rulesAfter: [],
-				warningCount: 0,
+				shadowWarningCount: 0,
+				notLoadedWarningCount: 0,
 			});
 
 			expect(telemetry.track).toHaveBeenCalledWith(
@@ -1282,6 +1310,286 @@ describe('TelemetryEventRelay', () => {
 			eventService.emit('node-type-policy-attachments-updated', event);
 
 			expect(telemetry.track).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('policy enforcement events', () => {
+		it('should track a user-blocked node-type violation on a workflow save', () => {
+			const event: RelayEventMap['policy-decision-blocked'] = {
+				actorType: 'user',
+				user: { id: 'user-1' },
+				point: 'workflowSave',
+				outcome: 'violation',
+				durationMs: 12,
+				checkIds: ['node-type-availability'],
+				violations: [
+					{
+						checkId: 'node-type-availability',
+						kind: 'node-type-unavailable',
+						subject: 'n8n-nodes-base.executeCommand',
+						subjectType: 'nodeType',
+						scope: 'instance',
+						matchedRuleId: 'rule-1',
+					},
+				],
+				workflowId: 'workflow-1',
+				projectId: 'project-1',
+			};
+
+			eventService.emit('policy-decision-blocked', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith(TELEMETRY_EVENT.POLICIES.POLICY_BLOCKED_ACTION, {
+				user_id: 'user-1',
+				actor_type: 'user',
+				point: 'workflowSave',
+				outcome: 'violation',
+				duration_ms: 12,
+				check_ids: ['node-type-availability'],
+				violation_count: 1,
+				violations: [
+					{
+						check_id: 'node-type-availability',
+						kind: 'node-type-unavailable',
+						subject_type: 'nodeType',
+						subject: 'n8n-nodes-base.executeCommand',
+						scope: 'instance',
+						matched_rule: true,
+					},
+				],
+				target_type: 'workflow',
+				workflow_id: 'workflow-1',
+				agent_id: undefined,
+				credential_id: undefined,
+				credential_type: undefined,
+				consumer_node_type: undefined,
+				project_id: 'project-1',
+			});
+		});
+
+		it('should never leak workflow, agent, user, or audit-only names', () => {
+			const event = {
+				actorType: 'user',
+				user: { id: 'user-1', email: 'alice@example.com' },
+				point: 'workflowSave',
+				outcome: 'violation',
+				durationMs: 12,
+				checkIds: ['node-type-availability'],
+				violations: [
+					{
+						checkId: 'node-type-availability',
+						kind: 'node-type-unavailable',
+						subject: 'n8n-nodes-base.executeCommand',
+						subjectType: 'nodeType',
+						scope: 'instance',
+						matchedRuleId: 'rule-1',
+					},
+				],
+				policyVersions: [{ scope: 'instance', version: 1 }],
+				correlationIds: ['corr-1'],
+				workflowId: 'workflow-1',
+				workflowName: 'My Secret Workflow',
+				agentName: 'My Agent',
+				projectId: 'project-1',
+			} as RelayEventMap['policy-decision-blocked'];
+
+			eventService.emit('policy-decision-blocked', event);
+
+			const [, properties] = vi.mocked(telemetry.track).mock.calls.at(-1)!;
+			expect(properties).not.toHaveProperty('workflowName');
+			expect(properties).not.toHaveProperty('agentName');
+			expect(properties).not.toHaveProperty('email');
+			expect(properties).not.toHaveProperty('matchedRuleId');
+			expect(properties).not.toHaveProperty('policyVersions');
+			expect(properties).not.toHaveProperty('correlationIds');
+			expect(JSON.stringify(properties)).not.toContain('alice@example.com');
+			expect(JSON.stringify(properties)).not.toContain('My Secret Workflow');
+			expect(JSON.stringify(properties)).not.toContain('My Agent');
+		});
+
+		it('should report a system actor without a user id', () => {
+			const event: RelayEventMap['policy-decision-blocked'] = {
+				actorType: 'system',
+				user: null,
+				systemReason: 'execution',
+				executionId: 'exec-1',
+				point: 'workflowStart',
+				outcome: 'violation',
+				durationMs: 5,
+				checkIds: ['node-type-availability'],
+				violations: [],
+				projectId: null,
+			};
+
+			eventService.emit('policy-decision-blocked', event);
+
+			const [, properties] = vi.mocked(telemetry.track).mock.calls.at(-1)!;
+			expect(properties).not.toHaveProperty('user_id');
+			expect(properties).not.toHaveProperty('execution_id');
+			expect(properties).toMatchObject({ actor_type: 'system', system_reason: 'execution' });
+		});
+
+		it('should null out the subject for a non-type-name subject type', () => {
+			const event: RelayEventMap['policy-decision-blocked'] = {
+				actorType: 'user',
+				user: { id: 'user-1' },
+				point: 'workflowSave',
+				outcome: 'violation',
+				durationMs: 5,
+				checkIds: ['domain-restriction'],
+				violations: [
+					{
+						checkId: 'domain-restriction',
+						kind: 'domain-not-allowed',
+						subject: 'internal.acme.com',
+						subjectType: 'domain',
+						scope: 'instance',
+						matchedRuleId: null,
+					},
+				],
+				workflowId: 'workflow-1',
+				projectId: null,
+			};
+
+			eventService.emit('policy-decision-blocked', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.POLICIES.POLICY_BLOCKED_ACTION,
+				expect.objectContaining({
+					violations: [expect.objectContaining({ subject_type: 'domain', subject: null })],
+				}),
+			);
+		});
+
+		it("should report matched_rule false when the scope's default action decided", () => {
+			const event: RelayEventMap['policy-decision-blocked'] = {
+				actorType: 'user',
+				user: { id: 'user-1' },
+				point: 'workflowSave',
+				outcome: 'violation',
+				durationMs: 5,
+				checkIds: ['node-type-availability'],
+				violations: [
+					{
+						checkId: 'node-type-availability',
+						kind: 'node-type-unavailable',
+						subject: 'n8n-nodes-base.executeCommand',
+						subjectType: 'nodeType',
+						scope: 'instance',
+						matchedRuleId: null,
+					},
+				],
+				workflowId: 'workflow-1',
+				projectId: null,
+			};
+
+			eventService.emit('policy-decision-blocked', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.POLICIES.POLICY_BLOCKED_ACTION,
+				expect.objectContaining({
+					violations: [expect.objectContaining({ matched_rule: false })],
+				}),
+			);
+		});
+
+		it('should target a credential on a credential decrypt block', () => {
+			const event: RelayEventMap['policy-decision-blocked'] = {
+				actorType: 'user',
+				user: { id: 'user-1' },
+				point: 'credentialDecrypt',
+				outcome: 'violation',
+				durationMs: 5,
+				checkIds: ['credential-type-availability'],
+				violations: [],
+				credentialId: 'credential-1',
+				credentialType: 'slackApi',
+				consumerNodeType: 'n8n-nodes-base.slack',
+				projectId: 'project-1',
+			};
+
+			eventService.emit('policy-decision-blocked', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.POLICIES.POLICY_BLOCKED_ACTION,
+				expect.objectContaining({
+					target_type: 'credential',
+					credential_type: 'slackApi',
+					consumer_node_type: 'n8n-nodes-base.slack',
+				}),
+			);
+		});
+
+		it('should target an agent on an agent create block', () => {
+			const event: RelayEventMap['policy-decision-blocked'] = {
+				actorType: 'user',
+				user: { id: 'user-1' },
+				point: 'workflowSave',
+				outcome: 'violation',
+				durationMs: 5,
+				checkIds: ['node-type-availability'],
+				violations: [],
+				agentId: null,
+				agentName: 'My Agent',
+				projectId: 'project-1',
+			};
+
+			eventService.emit('policy-decision-blocked', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.POLICIES.POLICY_BLOCKED_ACTION,
+				expect.objectContaining({ target_type: 'agent', agent_id: null }),
+			);
+		});
+
+		it('should cap listed violations at 50 while keeping the true count', () => {
+			const violations = Array.from({ length: 60 }, (_, index) => ({
+				checkId: `check-${index}`,
+				kind: 'node-type-unavailable',
+				subject: `n8n-nodes-base.node${index}`,
+				subjectType: 'nodeType',
+				scope: 'instance',
+				matchedRuleId: null,
+			}));
+
+			const event: RelayEventMap['policy-decision-blocked'] = {
+				actorType: 'user',
+				user: { id: 'user-1' },
+				point: 'workflowSave',
+				outcome: 'violation',
+				durationMs: 5,
+				checkIds: ['node-type-availability'],
+				violations,
+				workflowId: 'workflow-1',
+				projectId: null,
+			};
+
+			eventService.emit('policy-decision-blocked', event);
+
+			const [, properties] = vi.mocked(telemetry.track).mock.calls.at(-1)!;
+			expect(properties).toMatchObject({ violation_count: 60 });
+			expect((properties as { violations: unknown[] }).violations).toHaveLength(50);
+		});
+
+		it('should track a checkFailure outcome without leaking correlation ids', () => {
+			const event = {
+				actorType: 'user',
+				user: { id: 'user-1' },
+				point: 'workflowSave',
+				outcome: 'checkFailure',
+				durationMs: 5,
+				checkIds: ['node-type-availability'],
+				violations: [],
+				correlationIds: ['corr-1', 'corr-2'],
+				workflowId: 'workflow-1',
+				projectId: null,
+			} as RelayEventMap['policy-decision-blocked'];
+
+			eventService.emit('policy-decision-blocked', event);
+
+			const [, properties] = vi.mocked(telemetry.track).mock.calls.at(-1)!;
+			expect(properties).toMatchObject({ outcome: 'checkFailure' });
+			expect(properties).not.toHaveProperty('correlation_ids');
+			expect(properties).not.toHaveProperty('correlationIds');
 		});
 	});
 
@@ -3155,6 +3463,7 @@ describe('TelemetryEventRelay', () => {
 					workflowIdPolicy: 'new',
 					credentialMatchingMode: 'id-only',
 					credentialMissingMode: 'must-preexist',
+					credentialConflictPolicy: 'fail',
 					workflowPublishingPolicy: 'preserve-published-state',
 					missingNodeTypeMode: 'fail',
 					projectConflictPolicy: 'merge',
@@ -3225,6 +3534,7 @@ describe('TelemetryEventRelay', () => {
 				workflow_id_policy: 'new',
 				credential_matching_mode: 'id-only',
 				credential_missing_mode: 'must-preexist',
+				credential_conflict_policy: 'fail',
 				workflow_publishing_policy: 'preserve-published-state',
 				missing_node_type_mode: 'fail',
 				project_conflict_policy: 'merge',
@@ -3550,6 +3860,60 @@ describe('TelemetryEventRelay', () => {
 		beforeEach(() => {
 			dbConnection.getDbVersion.mockResolvedValue(null);
 			license.getPlanName.mockReturnValue('Community');
+			// The runner may itself run on a platform that sets these.
+			for (const name of PLATFORM_ENV_VARS) vi.stubEnv(name, '');
+		});
+
+		afterEach(() => {
+			vi.unstubAllEnvs();
+		});
+
+		it('should report the runtime on `server-started`', async () => {
+			vi.stubEnv('KUBERNETES_SERVICE_HOST', '10.0.0.1');
+
+			eventService.emit('server-started');
+			await flushPromises();
+
+			expect(telemetry.identify).toHaveBeenCalledWith(
+				expect.objectContaining({
+					system_info: expect.objectContaining({
+						runtime: 'kubernetes',
+						kubernetes_provider: expect.any(String),
+					}),
+				}),
+			);
+		});
+
+		it('should report the memory and CPU limits in KiB and CPUs on `server-started`', async () => {
+			vi.mocked(getMemoryLimit).mockReturnValueOnce(1024 ** 3);
+			vi.mocked(getCpuLimit).mockReturnValueOnce({ limit: 0.5, source: 'cgroup_v2', weight: 39 });
+
+			eventService.emit('server-started');
+			await flushPromises();
+
+			expect(telemetry.identify).toHaveBeenCalledWith(
+				expect.objectContaining({
+					system_info: expect.objectContaining({
+						memory_limit: 1024 ** 2,
+						cpu_limit: 0.5,
+						cpu_limit_source: 'cgroup_v2',
+						cpu_weight: 39,
+					}),
+				}),
+			);
+		});
+
+		it('should leave out the Kubernetes kind outside Kubernetes', async () => {
+			vi.stubEnv('ECS_CONTAINER_METADATA_URI_V4', 'http://169.254.170.2/v4/abc');
+
+			eventService.emit('server-started');
+			await flushPromises();
+
+			expect(telemetry.identify).toHaveBeenCalledWith(
+				expect.objectContaining({
+					system_info: expect.objectContaining({ runtime: 'ecs', kubernetes_provider: undefined }),
+				}),
+			);
 		});
 
 		it('should track on `server-started` event', async () => {
@@ -3600,6 +3964,11 @@ describe('TelemetryEventRelay', () => {
 					smtp_set_up: true,
 					system_info: {
 						is_docker: false,
+						runtime: 'other',
+						memory_limit: null,
+						cpu_limit: null,
+						cpu_limit_source: 'cgroup_v2',
+						cpu_weight: null,
 						cpus: expect.objectContaining({
 							count: expect.any(Number),
 							model: expect.any(String),
@@ -4670,6 +5039,30 @@ describe('TelemetryEventRelay', () => {
 					rules: [{ rule_id: 'removed-nodes-v3', impact: 'executionsFail', affected_workflows: 4 }],
 					synced_at: '2026-01-01T00:00:00.000Z',
 				},
+			);
+		});
+
+		it('omits synced_at when the report has no sync time', () => {
+			eventService.emit('migration-report-viewed', {
+				user: { id: 'user-1' },
+				targetVersion: 'v3',
+				refreshed: false,
+				report: {
+					report: {
+						targetVersion: 'v3',
+						currentVersion: '2.0.0',
+						instanceResults: [],
+						workflowResults: [],
+					},
+					totalWorkflows: 0,
+					totalAffectedWorkflows: 0,
+					shouldCache: false,
+				},
+			});
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.MIGRATION_REPORT.USER_VIEWED_MIGRATION_REPORT,
+				expect.objectContaining({ synced_at: undefined }),
 			);
 		});
 	});

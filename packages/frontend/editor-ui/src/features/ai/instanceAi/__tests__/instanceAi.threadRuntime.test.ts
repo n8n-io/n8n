@@ -13,6 +13,7 @@ import {
 	type InstanceAiTargetApproval,
 } from '@n8n/api-types';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import { deepCopy } from 'n8n-workflow';
 import { USER_TYPED_MESSAGE } from '../prefills';
 import {
 	createThreadRuntime,
@@ -2033,7 +2034,11 @@ describe('createThreadRuntime - response timing telemetry', () => {
 				type: 'tool-call',
 				runId: 'run-confirmation',
 				agentId: 'agent-root',
-				payload: { toolCallId: 'tc-confirmation', toolName: 'workflows', args: { action: 'run' } },
+				payload: {
+					toolCallId: 'tc-confirmation',
+					toolName: 'workflow_builder_workflows',
+					args: { action: 'run' },
+				},
 			}),
 		);
 		capturedOnMessage!(
@@ -2044,7 +2049,7 @@ describe('createThreadRuntime - response timing telemetry', () => {
 				payload: {
 					requestId: 'req-confirmation',
 					toolCallId: 'tc-confirmation',
-					toolName: 'workflows',
+					toolName: 'workflow_builder_workflows',
 					args: { action: 'run' },
 					severity: 'info',
 					message: 'Run this workflow?',
@@ -2063,7 +2068,7 @@ describe('createThreadRuntime - response timing telemetry', () => {
 
 	test('waits for completion when a confirmation is auto-approved', async () => {
 		const runtime = activeRuntime(registry);
-		runtime.addAlwaysAllowKey('workflows', { action: 'run' });
+		runtime.addAlwaysAllowKey('workflow_builder_workflows', { action: 'run' });
 		mockPostMessage.mockResolvedValueOnce({ runId: 'run-auto-approved' });
 		mockPostConfirmation.mockResolvedValueOnce({ ok: true });
 		await runtime.sendMessage('auto-approved action', { authorship: USER_TYPED_MESSAGE });
@@ -2073,7 +2078,11 @@ describe('createThreadRuntime - response timing telemetry', () => {
 				type: 'tool-call',
 				runId: 'run-auto-approved',
 				agentId: 'agent-root',
-				payload: { toolCallId: 'tc-auto', toolName: 'workflows', args: { action: 'run' } },
+				payload: {
+					toolCallId: 'tc-auto',
+					toolName: 'workflow_builder_workflows',
+					args: { action: 'run' },
+				},
 			}),
 		);
 		capturedOnMessage!(
@@ -2084,7 +2093,7 @@ describe('createThreadRuntime - response timing telemetry', () => {
 				payload: {
 					requestId: 'req-auto',
 					toolCallId: 'tc-auto',
-					toolName: 'workflows',
+					toolName: 'workflow_builder_workflows',
 					args: { action: 'run' },
 					severity: 'info',
 					message: 'Run this workflow?',
@@ -2266,7 +2275,7 @@ describe('createThreadRuntime - loadThreadStatus and HITL reconnect', () => {
 					toolCalls: [
 						{
 							toolCallId: 'tc-1',
-							toolName: 'workflows',
+							toolName: 'workflow_builder_workflows',
 							args: { action: 'run' },
 							isLoading: true,
 							confirmation: { requestId: 'req-1', severity: 'info', message: 'Run?' },
@@ -2314,7 +2323,7 @@ describe('createThreadRuntime - loadThreadStatus and HITL reconnect', () => {
 					toolCalls: [
 						{
 							toolCallId: 'tc-1',
-							toolName: 'workflows',
+							toolName: 'workflow_builder_workflows',
 							args: { action: 'run' },
 							isLoading: true,
 							confirmation: { requestId: 'req-deny', severity: 'info', message: 'Run?' },
@@ -2349,7 +2358,14 @@ describe('createThreadRuntime - loadThreadStatus and HITL reconnect', () => {
 					status: 'active',
 					textContent: '',
 					reasoning: '',
-					toolCalls: [{ toolCallId: 'tc-root', toolName: 'workflows', args: {}, isLoading: true }],
+					toolCalls: [
+						{
+							toolCallId: 'tc-root',
+							toolName: 'workflow_builder_workflows',
+							args: {},
+							isLoading: true,
+						},
+					],
 					children: [
 						{
 							agentId: 'agent-child',
@@ -2358,7 +2374,12 @@ describe('createThreadRuntime - loadThreadStatus and HITL reconnect', () => {
 							textContent: '',
 							reasoning: '',
 							toolCalls: [
-								{ toolCallId: 'tc-child', toolName: 'build-workflow', args: {}, isLoading: true },
+								{
+									toolCallId: 'tc-child',
+									toolName: 'workflow_builder_build_workflow',
+									args: {},
+									isLoading: true,
+								},
 							],
 							children: [],
 							timeline: [],
@@ -2410,7 +2431,14 @@ describe('createThreadRuntime - loadThreadStatus and HITL reconnect', () => {
 					status: 'active',
 					textContent: '',
 					reasoning: '',
-					toolCalls: [{ toolCallId: 'tc-root', toolName: 'workflows', args: {}, isLoading: true }],
+					toolCalls: [
+						{
+							toolCallId: 'tc-root',
+							toolName: 'workflow_builder_workflows',
+							args: {},
+							isLoading: true,
+						},
+					],
 					children: [],
 					timeline: [],
 				},
@@ -2449,7 +2477,14 @@ describe('createThreadRuntime - loadThreadStatus and HITL reconnect', () => {
 					status: 'active',
 					textContent: '',
 					reasoning: '',
-					toolCalls: [{ toolCallId: 'tc-root', toolName: 'workflows', args: {}, isLoading: true }],
+					toolCalls: [
+						{
+							toolCallId: 'tc-root',
+							toolName: 'workflow_builder_workflows',
+							args: {},
+							isLoading: true,
+						},
+					],
 					children: [],
 					timeline: [],
 				},
@@ -2778,12 +2813,12 @@ describe('createThreadRuntime - session always-allow', () => {
 
 	it('auto-approves matching generic-eligible confirmations after key is added', async () => {
 		const runtime = registry.getOrCreateRuntime(activeThreadId);
-		runtime.addAlwaysAllowKey('workflows', { action: 'run' });
+		runtime.addAlwaysAllowKey('workflow_builder_workflows', { action: 'run' });
 
 		pushPendingApproval(runtime, {
 			messageId: 'msg-auto',
 			requestId: 'req-auto',
-			toolName: 'workflows',
+			toolName: 'workflow_builder_workflows',
 			args: { action: 'run' },
 		});
 
@@ -2815,12 +2850,12 @@ describe('createThreadRuntime - session always-allow', () => {
 
 	it('does not auto-approve channel-setup confirmations even when the key matches', async () => {
 		const runtime = registry.getOrCreateRuntime(activeThreadId);
-		runtime.addAlwaysAllowKey('configure_channel', {});
+		runtime.addAlwaysAllowKey('agent_builder_configure_channel', {});
 
 		pushPendingApproval(runtime, {
 			messageId: 'msg-channel',
 			requestId: 'req-channel',
-			toolName: 'configure_channel',
+			toolName: 'agent_builder_configure_channel',
 			args: {},
 			channelConfig: { integrationType: 'slack', agentId: 'agent-1' },
 		});
@@ -2832,12 +2867,12 @@ describe('createThreadRuntime - session always-allow', () => {
 
 	it('does not auto-approve destructive confirmations even when the key matches', async () => {
 		const runtime = registry.getOrCreateRuntime(activeThreadId);
-		runtime.addAlwaysAllowKey('workflows', { action: 'delete' });
+		runtime.addAlwaysAllowKey('workflow_builder_workflows', { action: 'delete' });
 
 		pushPendingApproval(runtime, {
 			messageId: 'msg-destructive',
 			requestId: 'req-destructive',
-			toolName: 'workflows',
+			toolName: 'workflow_builder_workflows',
 			args: { action: 'delete' },
 			severity: 'destructive',
 		});
@@ -2849,12 +2884,12 @@ describe('createThreadRuntime - session always-allow', () => {
 
 	it('does not auto-approve target-agent approvals even when the outer tool key matches', async () => {
 		const runtime = registry.getOrCreateRuntime(activeThreadId);
-		runtime.addAlwaysAllowKey('build-agent', {});
+		runtime.addAlwaysAllowKey('agent_builder_build_agent', {});
 
 		pushPendingApproval(runtime, {
 			messageId: 'msg-target-approval',
 			requestId: 'req-target-approval',
-			toolName: 'build-agent',
+			toolName: 'agent_builder_build_agent',
 			targetApproval: {
 				toolName: 'delete_record',
 				args: { id: 'record-1' },
@@ -2868,12 +2903,12 @@ describe('createThreadRuntime - session always-allow', () => {
 
 	it('does not auto-approve credential destinations with a generic setup grant', async () => {
 		const runtime = registry.getOrCreateRuntime(activeThreadId);
-		runtime.addAlwaysAllowKey('workflows', { action: 'setup' });
+		runtime.addAlwaysAllowKey('workflow_builder_workflows', { action: 'setup' });
 
 		pushPendingApproval(runtime, {
 			messageId: 'msg-destination',
 			requestId: 'req-destination',
-			toolName: 'workflows',
+			toolName: 'workflow_builder_workflows',
 			args: { action: 'setup', workflowId: 'workflow-1' },
 			credentialDestination: {
 				origin: 'https://api.example.com',
@@ -2912,13 +2947,16 @@ describe('createThreadRuntime - session always-allow', () => {
 
 	it('scopes workflow update grants per workflow', async () => {
 		const runtime = registry.getOrCreateRuntime(activeThreadId);
-		runtime.addAlwaysAllowKey('workflows', { action: 'update', workflowId: 'wf-1' });
-		runtime.addAlwaysAllowKey('build-workflow', { workflowId: 'wf-1' });
+		runtime.addAlwaysAllowKey('workflow_builder_workflows', {
+			action: 'update',
+			workflowId: 'wf-1',
+		});
+		runtime.addAlwaysAllowKey('workflow_builder_build_workflow', { workflowId: 'wf-1' });
 
 		pushPendingApproval(runtime, {
 			messageId: 'msg-update-1',
 			requestId: 'req-update-1',
-			toolName: 'workflows',
+			toolName: 'workflow_builder_workflows',
 			args: { action: 'update', workflowId: 'wf-1' },
 		});
 		await vi.waitFor(() => {
@@ -2928,7 +2966,7 @@ describe('createThreadRuntime - session always-allow', () => {
 		pushPendingApproval(runtime, {
 			messageId: 'msg-build-1',
 			requestId: 'req-build-1',
-			toolName: 'build-workflow',
+			toolName: 'workflow_builder_build_workflow',
 			args: { workflowId: 'wf-1' },
 		});
 		await vi.waitFor(() => {
@@ -2938,7 +2976,7 @@ describe('createThreadRuntime - session always-allow', () => {
 		pushPendingApproval(runtime, {
 			messageId: 'msg-update-2',
 			requestId: 'req-update-2',
-			toolName: 'workflows',
+			toolName: 'workflow_builder_workflows',
 			args: { action: 'update', workflowId: 'wf-2' },
 		});
 		await new Promise((resolve) => setTimeout(resolve, 10));
@@ -2948,12 +2986,12 @@ describe('createThreadRuntime - session always-allow', () => {
 	it('scopes bound build-workflow grants from confirmation.workflowId when args omit it', async () => {
 		const runtime = registry.getOrCreateRuntime(activeThreadId);
 		// Bound saves often omit args.workflowId; the suspend payload carries it.
-		runtime.addAlwaysAllowKey('build-workflow', {}, 'wf-1');
+		runtime.addAlwaysAllowKey('workflow_builder_build_workflow', {}, 'wf-1');
 
 		pushPendingApproval(runtime, {
 			messageId: 'msg-bound-1',
 			requestId: 'req-bound-1',
-			toolName: 'build-workflow',
+			toolName: 'workflow_builder_build_workflow',
 			args: { filePath: 'src/workflows/main.workflow.ts' },
 			workflowId: 'wf-1',
 		});
@@ -2964,7 +3002,7 @@ describe('createThreadRuntime - session always-allow', () => {
 		pushPendingApproval(runtime, {
 			messageId: 'msg-bound-2',
 			requestId: 'req-bound-2',
-			toolName: 'build-workflow',
+			toolName: 'workflow_builder_build_workflow',
 			args: { filePath: 'src/workflows/other.workflow.ts' },
 			workflowId: 'wf-2',
 		});
@@ -2974,30 +3012,37 @@ describe('createThreadRuntime - session always-allow', () => {
 
 	it('does not store a blanket build-workflow always-allow key without a workflow id', () => {
 		const runtime = registry.getOrCreateRuntime(activeThreadId);
-		runtime.addAlwaysAllowKey('build-workflow', { filePath: 'src/workflows/main.workflow.ts' });
+		runtime.addAlwaysAllowKey('workflow_builder_build_workflow', {
+			filePath: 'src/workflows/main.workflow.ts',
+		});
 		expect(runtime.sessionAlwaysAllowKeys.size).toBe(0);
 	});
 
 	it('reports canAlwaysAllow false for unscoped workflow edits', () => {
 		const runtime = registry.getOrCreateRuntime(activeThreadId);
 		expect(
-			runtime.canAlwaysAllow('build-workflow', { filePath: 'src/workflows/main.workflow.ts' }),
+			runtime.canAlwaysAllow('workflow_builder_build_workflow', {
+				filePath: 'src/workflows/main.workflow.ts',
+			}),
 		).toBe(false);
-		expect(runtime.canAlwaysAllow('workflows', { action: 'update' })).toBe(false);
-		expect(runtime.canAlwaysAllow('build-workflow', {}, 'wf-1')).toBe(true);
-		expect(runtime.canAlwaysAllow('workflows', { action: 'update', workflowId: 'wf-1' })).toBe(
-			true,
-		);
+		expect(runtime.canAlwaysAllow('workflow_builder_workflows', { action: 'update' })).toBe(false);
+		expect(runtime.canAlwaysAllow('workflow_builder_build_workflow', {}, 'wf-1')).toBe(true);
+		expect(
+			runtime.canAlwaysAllow('workflow_builder_workflows', {
+				action: 'update',
+				workflowId: 'wf-1',
+			}),
+		).toBe(true);
 	});
 
 	it('scopes executions run grants per workflow', async () => {
 		const runtime = registry.getOrCreateRuntime(activeThreadId);
-		runtime.addAlwaysAllowKey('executions', { action: 'run', workflowId: 'wf-1' });
+		runtime.addAlwaysAllowKey('workflow_builder_executions', { action: 'run', workflowId: 'wf-1' });
 
 		pushPendingApproval(runtime, {
 			messageId: 'msg-wf-1',
 			requestId: 'req-wf-1',
-			toolName: 'executions',
+			toolName: 'workflow_builder_executions',
 			args: { action: 'run', workflowId: 'wf-1' },
 		});
 		await vi.waitFor(() => {
@@ -3007,7 +3052,7 @@ describe('createThreadRuntime - session always-allow', () => {
 		pushPendingApproval(runtime, {
 			messageId: 'msg-wf-2',
 			requestId: 'req-wf-2',
-			toolName: 'executions',
+			toolName: 'workflow_builder_executions',
 			args: { action: 'run', workflowId: 'wf-2' },
 		});
 		await new Promise((resolve) => setTimeout(resolve, 10));
@@ -3016,7 +3061,7 @@ describe('createThreadRuntime - session always-allow', () => {
 
 	it('clears keys on resetState', () => {
 		const runtime = registry.getOrCreateRuntime(activeThreadId);
-		runtime.addAlwaysAllowKey('workflows', { action: 'run' });
+		runtime.addAlwaysAllowKey('workflow_builder_workflows', { action: 'run' });
 		expect(runtime.sessionAlwaysAllowKeys.size).toBe(1);
 
 		runtime.resetState();
@@ -3026,12 +3071,12 @@ describe('createThreadRuntime - session always-allow', () => {
 	it('keeps the confirmation pending when auto-approve POST fails', async () => {
 		mockPostConfirmation.mockRejectedValueOnce(new Error('network down'));
 		const runtime = registry.getOrCreateRuntime(activeThreadId);
-		runtime.addAlwaysAllowKey('workflows', { action: 'run' });
+		runtime.addAlwaysAllowKey('workflow_builder_workflows', { action: 'run' });
 
 		pushPendingApproval(runtime, {
 			messageId: 'msg-fail',
 			requestId: 'req-fail',
-			toolName: 'workflows',
+			toolName: 'workflow_builder_workflows',
 			args: { action: 'run' },
 		});
 
@@ -3068,7 +3113,7 @@ describe('createThreadRuntime - "User viewed new builder workflow" telemetry', (
 				toolCalls: [
 					{
 						toolCallId: opts.toolCallId,
-						toolName: 'build-workflow',
+						toolName: 'workflow_builder_build_workflow',
 						args: {},
 						isLoading: false,
 						result: { success: true, workflowId: opts.workflowId },
@@ -3203,7 +3248,7 @@ describe('createThreadRuntime - "User viewed new builder workflow" telemetry', (
 						toolCalls: [
 							{
 								toolCallId: 'tc-hist',
-								toolName: 'build-workflow',
+								toolName: 'workflow_builder_build_workflow',
 								args: {},
 								isLoading: false,
 								result: { success: true, workflowId: 'wf-hist' },
@@ -3489,7 +3534,7 @@ describe('createThreadRuntime - pending plan review', () => {
 		const { confirmation, ...rest } = overrides;
 		return {
 			toolCallId: 'tc-plan',
-			toolName: 'create-tasks',
+			toolName: 'workflow_builder_create_tasks',
 			args: { tasks: [{ id: 't1', title: 'Ingest orders', kind: '', spec: '', deps: [] }] },
 			isLoading: true,
 			confirmation: {
@@ -3783,5 +3828,127 @@ describe('createThreadRuntime - onboarding exit', () => {
 		sse({ type: 'run-finish', runId: 'run-2', payload: { status: 'error' } });
 		expect(hooks.onOnboardingLeft).toHaveBeenCalledTimes(1);
 		expect(hooks.onOnboardingLeft).toHaveBeenCalledWith('thread-onboarding', 'run_failed');
+	});
+});
+
+describe('createThreadRuntime - follow-up run after a reconnect', () => {
+	let registry: RuntimeRegistry;
+
+	beforeEach(async () => {
+		setupRuntimePinia();
+		capturedOnMessage = null;
+		registry = createRuntimeRegistry();
+		activeThreadId = 'thread-follow-up';
+		activeRuntime(registry).connectSSE();
+		await vi.waitFor(() => {
+			expect(capturedOnMessage).not.toBeNull();
+		});
+	});
+
+	afterEach(() => {
+		activeRuntime(registry).closeSSE();
+		vi.clearAllMocks();
+	});
+
+	test('shows the next confirmation of a follow-up run after a run-sync rebuilt the tree', async () => {
+		const runtime = activeRuntime(registry);
+		const send = (event: Record<string, unknown>) => capturedOnMessage!(makeSSEEvent(event));
+
+		// Run 1 starts the message group. Run 2 is a follow-up in the same group
+		// and streams under its own orchestrator agent id.
+		send({
+			type: 'run-start',
+			runId: 'run-1',
+			agentId: 'orchestrator-run-1',
+			payload: { messageId: 'msg-1', messageGroupId: 'mg-1' },
+		});
+		send({
+			type: 'tool-call',
+			runId: 'run-1',
+			agentId: 'orchestrator-run-1',
+			payload: { toolCallId: 'tc-plan', toolName: 'create-tasks', args: {} },
+		});
+		send({
+			type: 'run-start',
+			runId: 'run-2',
+			agentId: 'orchestrator-run-2',
+			payload: { messageId: 'msg-2', messageGroupId: 'mg-1' },
+		});
+		send({
+			type: 'tool-call',
+			runId: 'run-2',
+			agentId: 'orchestrator-run-2',
+			payload: {
+				toolCallId: 'tc-folder',
+				toolName: 'workspace',
+				args: { action: 'create-folder' },
+			},
+		});
+		send({
+			type: 'confirmation-request',
+			runId: 'run-2',
+			agentId: 'orchestrator-run-2',
+			payload: {
+				requestId: 'req-folder',
+				toolCallId: 'tc-folder',
+				toolName: 'workspace',
+				args: { action: 'create-folder' },
+				severity: 'info',
+				message: 'Create folder?',
+			},
+		});
+
+		// A reconnect while the run waits: the run-sync frame replaces the tree
+		// with the server's fold, which is rooted at run 1's agent.
+		capturedInstance!.dispatchNamedEvent('run-sync', {
+			runId: 'run-2',
+			messageGroupId: 'mg-1',
+			runIds: ['run-1', 'run-2'],
+			agentTree: deepCopy(runtime.messages.at(-1)!.agentTree),
+			status: 'suspended',
+			backgroundTasks: [],
+		});
+
+		mockPostConfirmation.mockResolvedValueOnce({ ok: true, runId: 'run-2' });
+		await runtime.confirmAction('req-folder', { kind: 'approval', approved: true });
+		runtime.resolveConfirmation('req-folder', 'approved');
+
+		// The resumed segment: the approved tool's result, then a second tool call
+		// that asks for its own confirmation.
+		send({
+			type: 'tool-result',
+			runId: 'run-2',
+			agentId: 'orchestrator-run-2',
+			payload: { toolCallId: 'tc-folder', result: { id: 'folder-1' } },
+		});
+		send({
+			type: 'tool-call',
+			runId: 'run-2',
+			agentId: 'orchestrator-run-2',
+			payload: {
+				toolCallId: 'tc-move',
+				toolName: 'workspace',
+				args: { action: 'move-workflow-to-folder' },
+			},
+		});
+		send({
+			type: 'confirmation-request',
+			runId: 'run-2',
+			agentId: 'orchestrator-run-2',
+			payload: {
+				requestId: 'req-move',
+				toolCallId: 'tc-move',
+				toolName: 'workspace',
+				args: { action: 'move-workflow-to-folder' },
+				severity: 'info',
+				message: 'Move workflow?',
+			},
+		});
+		await nextTick();
+
+		expect(
+			runtime.pendingConfirmations.map((item) => item.toolCall.confirmation.requestId),
+		).toEqual(['req-move']);
+		expect(runtime.isAwaitingConfirmation).toBe(true);
 	});
 });

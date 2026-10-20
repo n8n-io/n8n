@@ -92,6 +92,8 @@ export function createHitlToolkit(
 			metadata: {
 				sourceNodeName: hitlNode.name,
 				gatedToolNodeName: tool.metadata?.sourceNodeName as string | undefined,
+				// Keep the partner label so the agent still appends it after approval
+				attribution: tool.metadata?.attribution,
 				originalSchema: tool.schema,
 			},
 		});

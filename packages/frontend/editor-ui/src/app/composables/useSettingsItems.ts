@@ -6,7 +6,7 @@ import { computed } from 'vue';
 import type { IMenuSettingItem } from '@n8n/frontend-module-sdk';
 import { useI18n } from '@n8n/i18n';
 import { VIEWS } from '../constants';
-import { isContextPreferencesEnabled } from '@/features/settings/context/context.utils';
+import { isContextEnabled } from '@/features/settings/context/context.utils';
 import { useUIStore } from '../stores/ui.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { hasPermission } from '../utils/rbac/permissions';
@@ -40,7 +40,7 @@ export function useSettingsItems() {
 			{
 				id: 'settings-personal',
 				order: 20,
-				icon: 'circle-user-round',
+				icon: 'user',
 				label: i18n.baseText('settings.personal'),
 				position: 'top',
 				available: canUserAccessRouteByName(VIEWS.PERSONAL_SETTINGS),
@@ -49,7 +49,7 @@ export function useSettingsItems() {
 			{
 				id: 'settings-users',
 				order: 30,
-				icon: 'user-round',
+				icon: 'users',
 				label: i18n.baseText('settings.users'),
 				position: 'top',
 				available: canUserAccessRouteByName(VIEWS.USERS_SETTINGS),
@@ -90,7 +90,7 @@ export function useSettingsItems() {
 			{
 				id: 'settings-roles',
 				order: 60,
-				icon: 'user-round',
+				icon: 'users',
 				label: i18n.baseText('settings.roles'),
 				position: 'top',
 				available: canUserAccessRouteByName(VIEWS.ROLES_SETTINGS),
@@ -146,7 +146,7 @@ export function useSettingsItems() {
 			{
 				id: 'settings-sso',
 				order: 120,
-				icon: 'user-lock',
+				icon: 'lock',
 				label: i18n.baseText('settings.sso'),
 				position: 'top',
 				available: canUserAccessRouteByName(VIEWS.SSO_SETTINGS),
@@ -175,7 +175,7 @@ export function useSettingsItems() {
 			{
 				id: 'settings-ldap',
 				order: 150,
-				icon: 'network',
+				icon: 'ldap',
 				label: i18n.baseText('settings.ldap'),
 				position: 'top',
 				available: canUserAccessRouteByName(VIEWS.LDAP_SETTINGS),
@@ -184,7 +184,7 @@ export function useSettingsItems() {
 			{
 				id: 'settings-workersview',
 				order: 160,
-				icon: 'waypoints',
+				icon: 'wrench',
 				label: i18n.baseText('mainSidebar.workersView'),
 				position: 'top',
 				available:
@@ -204,7 +204,7 @@ export function useSettingsItems() {
 			{
 				id: 'settings-migration-report',
 				order: 190,
-				icon: 'list-checks',
+				icon: 'clipboard',
 				label: i18n.baseText('settings.migrationReport'),
 				position: 'top',
 				available:
@@ -218,8 +218,7 @@ export function useSettingsItems() {
 				icon: 'brain',
 				label: i18n.baseText('settings.context.title'),
 				position: 'top',
-				available:
-					isContextPreferencesEnabled() && canUserAccessRouteByName(VIEWS.SETTINGS_CONTEXT),
+				available: isContextEnabled() && canUserAccessRouteByName(VIEWS.SETTINGS_CONTEXT),
 				route: { to: { name: VIEWS.SETTINGS_CONTEXT } },
 				preview: true,
 			},

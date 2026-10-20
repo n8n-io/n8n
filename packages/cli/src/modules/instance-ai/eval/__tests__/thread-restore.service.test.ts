@@ -638,6 +638,7 @@ describe('EvalThreadRestoreService', () => {
 				id: 'agent-original',
 				schema: agent.config,
 				skills: agent.skills,
+				skillCreator: evalUser,
 			});
 		});
 

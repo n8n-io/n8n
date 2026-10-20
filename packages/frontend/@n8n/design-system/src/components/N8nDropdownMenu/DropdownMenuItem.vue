@@ -329,27 +329,27 @@ onBeforeUnmount(() => {
 						:ui="trailingProps"
 					/>
 					<Icon
-						icon="chevron-right"
+						icon="chevron-right-12"
 						:class="$style['sub-indicator']"
 						:color="disabled ? 'text-xlight' : 'text-light'"
-						size="large"
+						:size="12"
 					/>
 				</span>
 				<span v-else-if="slots['item-trailing']" :class="$style['sub-indicator-action']">
 					<slot name="item-trailing" :item="props" :ui="trailingProps" />
 					<Icon
-						icon="chevron-right"
+						icon="chevron-right-12"
 						:class="$style['sub-indicator']"
 						:color="disabled ? 'text-xlight' : 'text-light'"
-						size="large"
+						:size="12"
 					/>
 				</span>
 				<Icon
 					v-else
-					icon="chevron-right"
+					icon="chevron-right-12"
 					:class="$style['sub-indicator']"
 					:color="disabled ? 'text-xlight' : 'text-light'"
-					size="large"
+					:size="12"
 				/>
 			</DropdownMenuSubTrigger>
 

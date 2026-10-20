@@ -4,9 +4,12 @@ import { computed, ref } from 'vue';
 import AgentChannelTeamsSetup from './AgentChannelTeamsSetup.vue';
 import AgentChannelStandardEditView from '../AgentChannelStandardEditView.vue';
 import type { AgentChannelViewExpose, AgentChannelViewProps } from '../types';
+import type { TeamsChannelRuntime } from './useTeamsChannelRuntime';
 
 const credentialId = defineModel<string>({ default: '' });
-defineProps<AgentChannelViewProps>();
+// Narrowed from `AgentChannelRuntime`: the settings reach for the Teams-only
+// parts of it to offer publishing, which the shared type does not carry.
+defineProps<Omit<AgentChannelViewProps, 'runtime'> & { runtime: TeamsChannelRuntime }>();
 const emit = defineEmits<{
 	create: [];
 	edit: [];
