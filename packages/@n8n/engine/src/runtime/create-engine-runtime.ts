@@ -89,6 +89,14 @@ export function createEngineRuntime({
 		? new BatchingLifecycleEventPublisher(dependencies.lifecycleEventCallback)
 		: noopLifecycleEventPublisher;
 
+	// One cancel path for the API and for an execution that ends with children.
+	const cancelExecution = new CancelExecutionService(
+		executionStore,
+		stepStore,
+		lifecycleEventPublisher,
+		responseSender,
+		stepQueue,
+	);
 	const orchestrationWorker = new OrchestrationWorker(
 		orchestrationQueue,
 		new ExecutionStartHandler(
@@ -104,6 +112,7 @@ export function createEngineRuntime({
 			orchestrationQueue,
 			lifecycleEventPublisher,
 			responseSender,
+			cancelExecution,
 		),
 	);
 	const waitSweeper = new WaitSweeper(stepStore, stepQueue, logger, waitSweepIntervalMs);
@@ -127,12 +136,7 @@ export function createEngineRuntime({
 
 	const { app } = createEngineServer({
 		startExecution,
-		cancelExecution: new CancelExecutionService(
-			executionStore,
-			stepStore,
-			lifecycleEventPublisher,
-			responseSender,
-		),
+		cancelExecution,
 		executionQuery: new ExecutionQueryService(executionViewStore),
 		identityVerifier,
 		logger,

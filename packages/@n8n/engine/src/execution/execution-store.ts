@@ -104,4 +104,10 @@ export interface ExecutionStore {
 	 * handlers do. Read the step rows to tell `running` from `waiting`.
 	 */
 	refreshLiveStatus(id: string): Promise<void>;
+
+	/**
+	 * The ids of the children of an execution that have not ended: `queued`,
+	 * `running` or `waiting`. A cancel cascades through them.
+	 */
+	loadLiveChildIds(parentExecutionId: string): Promise<string[]>;
 }

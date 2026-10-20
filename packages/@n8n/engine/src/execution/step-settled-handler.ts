@@ -15,7 +15,9 @@ import {
 	isLiveExecutionStatus,
 	isSettledStatus,
 	stepKeyId,
+	type ChildOutcome,
 	type ChildResult,
+	type StepError,
 	type StepKey,
 	type StepKeyId,
 	type StepSlots,
@@ -24,6 +26,11 @@ import { exitSourcesInto, loadTerminalIterations } from './loop-ledger';
 import { decideSuccessors, decisionKeys } from './settlement';
 import type { StepRecord, StepStore } from './step-store';
 import { validateStepContext } from './validate-step-context';
+
+/** Cancels the children of an execution that ended. `CancelExecutionService` implements it. */
+export interface ChildCanceller {
+	cancelChildren(parentExecutionId: string): Promise<void>;
+}
 
 /**
  * Handles the `step:settled` orchestration event: decides the fate of the
@@ -45,6 +52,7 @@ export class StepSettledHandler {
 		private readonly orchestrationQueue: WorkQueue<OrchestrationMessage>,
 		private readonly lifecycleEventPublisher: LifecycleEventPublisher,
 		private readonly responseSender: ExecutionResponseSender,
+		private readonly childCanceller: ChildCanceller,
 	) {}
 
 	async handle(event: StepSettledEvent): Promise<void> {
@@ -104,6 +112,29 @@ export class StepSettledHandler {
 		}
 
 		await this.stepStore.cancelPendingSteps(execution.id);
+
+		if (finished) await this.endedAsFailed(execution, step);
+	}
+
+	/**
+	 * What a failed execution owes beyond its own rows: its children end with
+	 * it, and a parent step that waits for it fails with the error.
+	 */
+	private async endedAsFailed(execution: ExecutionRecord, step: StepRecord): Promise<void> {
+		await this.childCanceller.cancelChildren(execution.id);
+		await this.resumeAwaitingParent(execution, {
+			status: 'failed',
+			error: await this.failureOf(execution, step),
+		});
+	}
+
+	/** The error of the step that failed the execution: this one, or the one the count found. */
+	private async failureOf(execution: ExecutionRecord, step: StepRecord): Promise<StepError> {
+		if (step.status === 'failed' && step.error) return step.error;
+		const failed = (await this.stepStore.loadAllSteps(execution.id)).find(
+			(row) => row.status === 'failed' && row.error,
+		);
+		return failed?.error ?? { name: 'Error', message: `Execution ${execution.id} failed` };
 	}
 
 	/** Plans the settled step's direct successors, returning how many were queued. */
@@ -221,26 +252,34 @@ export class StepSettledHandler {
 				at: finished.finishedAt.toISOString(),
 			});
 			this.announceEnd(execution, step, node, failed ? 'failed' : 'completed');
-			if (!failed) await this.resumeAwaitingParent(execution);
+			if (failed) {
+				await this.endedAsFailed(execution, step);
+			} else {
+				await this.resumeAwaitingParent(execution, {
+					status: 'completed',
+					result: await this.collectResult(execution),
+				});
+			}
 		}
 	}
 
 	/**
-	 * Resumes the parent step that waits for this execution, with its result.
+	 * Resumes the parent step that waits for this execution, with its outcome.
 	 * Only the branch that won `finishExecution` gets here, so the parent is
 	 * resumed once. Resume first, announce second, as the wait sweep does: the
 	 * row is `queued` before any worker can hear of it.
 	 */
-	private async resumeAwaitingParent(execution: ExecutionRecord): Promise<void> {
+	private async resumeAwaitingParent(
+		execution: ExecutionRecord,
+		outcome: ChildOutcome,
+	): Promise<void> {
 		const { parent } = execution;
 		if (!parent?.awaited) return;
 
-		const result = await this.collectResult(execution);
 		const resumed = await this.stepStore.resumeStep(parent.stepId, {
 			kind: 'child',
 			executionId: execution.id,
-			status: 'completed',
-			result,
+			...outcome,
 		});
 		// A parent step that is not waiting any more was cancelled with its
 		// execution, and nothing is owed to it.

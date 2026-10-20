@@ -102,6 +102,7 @@ function makeExecutionStore(
 		cancelExecution: vi.fn().mockResolvedValue(null),
 		loadSeededOutputs: vi.fn().mockResolvedValue(new Map()),
 		refreshLiveStatus: vi.fn(),
+		loadLiveChildIds: vi.fn().mockResolvedValue([]),
 	};
 }
 

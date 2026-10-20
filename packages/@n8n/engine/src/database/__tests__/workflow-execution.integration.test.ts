@@ -415,6 +415,26 @@ describe('workflow_execution table (integration)', () => {
 		expect((await viewStore.loadExecutionWithStepsView(id)).parent).toEqual(parent);
 	});
 
+	it('TypeOrmExecutionStore.loadLiveChildIds lists the children that have not ended', async () => {
+		const store = new TypeOrmExecutionStore(dataSource.getRepository(WorkflowExecution));
+		const parentId = generateId();
+		const link = (awaited: boolean) => ({ executionId: parentId, stepId: generateId(), awaited });
+		const [queued, running, waiting, completed, other] = Array.from({ length: 5 }, generateId);
+		await store.createExecution({ ...newRecord(queued), status: 'queued', parent: link(true) });
+		await store.createExecution({ ...newRecord(running), status: 'running', parent: link(false) });
+		await store.createExecution({ ...newRecord(waiting), status: 'waiting', parent: link(true) });
+		await store.createExecution({
+			...newRecord(completed),
+			status: 'completed',
+			parent: link(true),
+		});
+		await store.createExecution({ ...newRecord(other), status: 'running' });
+
+		expect((await store.loadLiveChildIds(parentId)).sort()).toEqual(
+			[queued, running, waiting].sort(),
+		);
+	});
+
 	it('TypeOrmExecutionViewStore.listExecutionViews filters by parent execution id', async () => {
 		const repo = dataSource.getRepository(WorkflowExecution);
 		const store = new TypeOrmExecutionStore(repo);

@@ -658,7 +658,8 @@ describe('step execution (integration)', () => {
 					};
 				}
 				if (request.node.id === 'call') {
-					return { outputs: [[{ json: { childResult: request.resume?.result } }]] };
+					const result = request.resume?.status === 'completed' ? request.resume.result : null;
+					return { outputs: [[{ json: { childResult: result } }]] };
 				}
 				return { outputs: [[{ json: { ran: request.node.id } }]] };
 			},
@@ -704,6 +705,64 @@ describe('step execution (integration)', () => {
 		expect(callRuns[0].resume).toBeUndefined();
 		expect(callRuns[1].resume?.kind).toBe('child');
 		expect(callRuns[1].inputs).toEqual([{}]);
+	});
+
+	it('fails the parent step with the child error when an awaited child fails', async () => {
+		const parentGraph: WorkflowGraph = {
+			nodes: [
+				{ id: 'trigger', name: 'Webhook', type: 'trigger' },
+				{ id: 'call', name: 'Call', type: 'v1-node' },
+			],
+			edges: [{ from: 'trigger', to: 'call', outputIndex: 0, inputIndex: 0 }],
+		};
+		const childGraph: WorkflowGraph = {
+			nodes: [
+				{ id: 'child-trigger', name: 'When Executed by Another Workflow', type: 'trigger' },
+				{ id: 'x', name: 'X', type: 'v1-node' },
+			],
+			edges: [{ from: 'child-trigger', to: 'x', outputIndex: 0, inputIndex: 0 }],
+		};
+		const childId = generateId();
+		const executor: IStepExecutor = {
+			execute: async (request) => {
+				await Promise.resolve();
+				if (request.node.id === 'x') throw new TypeError('child boom');
+				if (request.resume?.status === 'failed') {
+					throw new Error(`sub-workflow failed: ${request.resume.error.message}`);
+				}
+				return {
+					spawn: {
+						executionId: childId,
+						workflowId: 'wf-child',
+						graph: childGraph,
+						workflow: { id: 'wf-child' },
+						triggerOutputs: [[{ json: { in: 1 } }]],
+					},
+				};
+			},
+		};
+
+		const { execution, steps } = await runWorkflow(executor, [{}], {
+			workflowId: 'wf-parent-fails',
+			graph: parentGraph,
+			finishCount: 2,
+		});
+
+		expect(execution.status).toBe('failed');
+		const call = steps.find(({ nodeId }) => nodeId === 'call');
+		expect(call?.status).toBe('failed');
+		expect(call?.resumeCause).toEqual({
+			kind: 'child',
+			executionId: childId,
+			status: 'failed',
+			error: expect.objectContaining({ name: 'TypeError', message: 'child boom' }),
+		});
+		expect(call?.error).toMatchObject({ message: 'sub-workflow failed: child boom' });
+
+		const child = await dataSource
+			.getRepository(WorkflowExecution)
+			.findOneOrFail({ where: { id: childId } });
+		expect(child.status).toBe('failed');
 	});
 
 	it('is idempotent across duplicate step:ready deliveries', async () => {
