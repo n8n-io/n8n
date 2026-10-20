@@ -22,6 +22,7 @@ import { ExecutionRedactionService } from '@/modules/redaction/executions/execut
 import { Push } from '@/push';
 import { Telemetry } from '@/telemetry';
 import { affixRoleToSaveCredential } from '@test-integration/db/credentials';
+import { LicenseMocker } from '@test-integration/license';
 import { createExecution } from '@test-integration/db/executions';
 import { createMember, createOwner } from '@test-integration/db/users';
 import { initNodeTypes } from '@test-integration/utils';
@@ -52,6 +53,7 @@ describe('Instance AI execution redaction (integration)', () => {
 	let executionId: string;
 
 	const saveCredential = affixRoleToSaveCredential('credential:owner');
+	const licenseMocker = new LicenseMocker();
 
 	const nodes = (credential: { id: string; name: string }): INode[] => [
 		{
@@ -93,7 +95,8 @@ describe('Instance AI execution redaction (integration)', () => {
 	beforeAll(async () => {
 		await testDb.init();
 		await initNodeTypes(nodeTypesData());
-		Container.get(LicenseState).setLicenseProvider(Container.get(License));
+		licenseMocker.mock(Container.get(License));
+		licenseMocker.mockLicenseState(Container.get(LicenseState));
 		// What the redaction module wires up at startup.
 		Container.get(ExecutionRedactionServiceProxy).setExecutionRedaction(
 			Container.get(ExecutionRedactionService),
@@ -147,6 +150,7 @@ describe('Instance AI execution redaction (integration)', () => {
 
 	afterEach(async () => {
 		delete process.env.N8N_ENV_FEAT_CRED_SHARING;
+		licenseMocker.reset();
 		await testDb.truncate([
 			'ExecutionEntity',
 			'WorkflowEntity',
@@ -253,6 +257,68 @@ describe('Instance AI execution redaction (integration)', () => {
 
 			expect(output.redaction).toBeUndefined();
 			expect(JSON.stringify(output)).toContain('tok_secret');
+		});
+	});
+
+	describe('a workflow whose redaction policy covers the run', () => {
+		/** A failed trigger run of the workflow, saved with the redaction policy `all`. */
+		const createPolicyExecution = async () => {
+			licenseMocker.enable('feat:dataRedaction');
+			const data = createRunExecutionData({
+				resultData: {
+					lastNodeExecuted: 'Action Network',
+					runData: {
+						Trigger: [
+							{
+								startTime: 1,
+								executionTime: 1,
+								executionIndex: 0,
+								source: [],
+								data: { main: [[{ json: SECRET_OUTPUT }]] },
+							},
+						],
+						'Action Network': [
+							{
+								startTime: 2,
+								executionTime: 1,
+								executionIndex: 1,
+								source: [{ previousNode: 'Trigger' }],
+								executionStatus: 'error',
+								error: { name: 'NodeOperationError', message: SECRET_ERROR } as never,
+							},
+						],
+					},
+				},
+			});
+			const execution = await createExecution(
+				{ data: stringify(data), status: 'error', mode: 'trigger' },
+				{ ...workflow, settings: { redactionPolicy: 'all' } },
+			);
+			return execution.id;
+		};
+
+		it('gets redacted data, also for a project admin who may reveal it', async () => {
+			const policyExecutionId = await createPolicyExecution();
+
+			const result = await executionsFor(alice).getResult(policyExecutionId);
+			const debug = await executionsFor(alice).getDebugInfo(policyExecutionId);
+			const output = await executionsFor(alice).getNodeOutput(policyExecutionId, 'Trigger');
+
+			for (const response of [result, debug, output]) {
+				expect(response.redaction).toEqual({ reason: 'workflow_redaction_policy' });
+				expect(JSON.stringify(response)).not.toContain('tok_secret');
+			}
+			expect(debug.failedNode?.error).toBe('NodeOperationError error (details hidden by n8n)');
+		});
+
+		it('returns the full data without the license', async () => {
+			const policyExecutionId = await createPolicyExecution();
+			licenseMocker.reset();
+
+			const result = await executionsFor(alice).getResult(policyExecutionId);
+
+			expect(result.redaction).toBeUndefined();
+			expect(JSON.stringify(result.data)).toContain('tok_secret');
 		});
 	});
 

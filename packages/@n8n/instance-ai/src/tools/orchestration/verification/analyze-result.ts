@@ -520,8 +520,47 @@ export interface VerificationAnalysis {
 	nodesExecuted?: string[];
 	simulationNote?: string;
 	coverageNote?: string;
+	/** Set when n8n redacted the run's data for the user, so its output was not inspected. */
+	redactionNote?: string;
 	errorMessage?: string;
 	nodeErrors: ExecutionNodeError[];
+}
+
+/**
+ * A redacted run keeps only each error's type and HTTP status code. The
+ * classification still routes what those carry (credentials, rate limits),
+ * but a code repair needs the message, which the user cannot see.
+ */
+function blockRedactedRepair(
+	remediation: RemediationMetadata | undefined,
+	redaction: ExecutionRunResult['redaction'],
+	nodeErrors: ExecutionNodeError[],
+): RemediationMetadata | undefined {
+	if (!redaction || remediation?.shouldEdit !== true) return remediation;
+	const failedNodes = nodeErrors.map((nodeError) => nodeError.nodeName);
+	return createRemediation({
+		category: 'blocked',
+		shouldEdit: false,
+		reason: 'execution_redacted',
+		guidance:
+			`n8n redacted this run's data for the user (${redaction.reason}), so the error details are hidden. ` +
+			'Do not edit the workflow based on this run. ' +
+			(failedNodes.length > 0
+				? `Tell the user that ${failedNodes.join(', ')} failed and `
+				: 'Tell the user ') +
+			'that n8n hides the details. They can see them in the execution in the editor if their role lets them reveal redacted data.',
+	});
+}
+
+function buildRedactionNote(
+	redaction: ExecutionRunResult['redaction'],
+	success: boolean,
+): string | undefined {
+	if (!redaction || !success) return undefined;
+	return (
+		`n8n redacted this run's output for the user (${redaction.reason}). The run finished without ` +
+		'errors, but its output was not inspected. Tell the user that verification could not check what the nodes returned.'
+	);
 }
 
 export function analyzeVerificationResult(args: {
@@ -602,11 +641,12 @@ export function analyzeVerificationResult(args: {
 				chatModelRelatedNodeNames,
 				chatModelRecovery,
 			);
+	const allowedRemediation = blockRedactedRepair(failureRemediation, result.redaction, nodeErrors);
 	const budgetRemediation =
-		failureRemediation?.shouldEdit === true
+		allowedRemediation?.shouldEdit === true
 			? terminalRemediationFromState(stateBefore, runId)
 			: undefined;
-	const remediation = budgetRemediation ?? failureRemediation;
+	const remediation = budgetRemediation ?? allowedRemediation;
 
 	return {
 		success,
@@ -624,6 +664,7 @@ export function analyzeVerificationResult(args: {
 			(haltedGateNames ?? []).filter((name) => reachedNames.has(name)),
 			triggerNodeName,
 		),
+		redactionNote: buildRedactionNote(result.redaction, success),
 		errorMessage,
 		nodeErrors,
 	};
