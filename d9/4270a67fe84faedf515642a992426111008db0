@@ -707,6 +707,7 @@ packages/cli/src/modules/n8n-packages/entities/agent/agent-import-bindings.ts
   s_71ad2034164515::t_13c97519d4471a 5,70,82,84-94,84-89,91-93
   s_71ad2034164515::t_7b08ccb669bb8e 3,81
   s_71ad2034164515::t_961dcd505c9228 71-80
+  s_d3c0f6f6f7d41c::t_ed2e627a64086e 83
 packages/@n8n/api-types/src/dto/packages/import-blocking-issue.schema.ts
   s_71ad2034164515::t_811753698d4629 400-401,403-428
 packages/cli/src/modules/n8n-packages/engine/project-package-importer.ts
