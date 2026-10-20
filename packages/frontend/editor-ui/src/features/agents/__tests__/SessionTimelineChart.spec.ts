@@ -376,7 +376,9 @@ describe('SessionTimelineChart', () => {
 			await block.trigger('focus');
 			await vi.runAllTimersAsync();
 
-			expect(w.get('[data-test-id="timeline-hover-card"]').text()).toContain('Triage');
+			const details = w.get('[data-test-id="timeline-hover-card"]');
+			expect(details.text()).toContain('Skill');
+			expect(details.text()).toContain('Triage');
 		} finally {
 			w.unmount();
 			vi.useRealTimers();
@@ -435,7 +437,7 @@ it('shows the signal label and task status in the chart popover', async () => {
 			'true',
 		);
 		expect(wrapper.get('[data-test-id="timeline-hover-card"]').text()).toContain(
-			'Check invoices — Failed',
+			'Check invoices • Failed',
 		);
 	} finally {
 		wrapper.unmount();

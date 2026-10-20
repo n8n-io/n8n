@@ -95,6 +95,7 @@ const { isOpen } = useTimelineItemExpansion({
 			<div :class="$style.header">
 				<CollapsibleTrigger as-child>
 					<N8nAiActivityStepButton
+						:class="$style.activityButton"
 						size="small"
 						:interactive="canExpand"
 						:tabindex="canExpand ? undefined : -1"
@@ -145,6 +146,12 @@ const { isOpen } = useTimelineItemExpansion({
 </template>
 
 <style module lang="scss">
+.step .activityButton {
+	--ai-activity-step--padding: var(--spacing--2xs);
+	--button--color--background-hover: var(--background--hover);
+	--button--color--background-active: var(--background--active);
+}
+
 .step {
 	margin-inline: var(--spacing--2xs);
 	--ai-activity-step--color: var(--text-color--subtle);

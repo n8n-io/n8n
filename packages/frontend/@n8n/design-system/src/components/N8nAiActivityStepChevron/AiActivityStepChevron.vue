@@ -26,7 +26,8 @@ withDefaults(
 .chevron {
 	transition: transform var(--duration--snappy) var(--easing--ease-out);
 	transform-origin: center;
-	transform: translateY(1px);
+	/** Keep the optical offset when the transform rotates the icon. */
+	translate: 0 1px;
 }
 
 .open {

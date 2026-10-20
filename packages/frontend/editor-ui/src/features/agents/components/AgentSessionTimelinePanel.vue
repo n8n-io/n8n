@@ -10,7 +10,6 @@ import type {
 import SessionEventFilter from '@/features/agents/components/SessionEventFilter.vue';
 import SessionTimelineTable from '@/features/agents/components/SessionTimelineTable.vue';
 import SessionTimelineChart from '@/features/agents/components/SessionTimelineChart.vue';
-import SessionTimelineTestControls from './SessionTimelineTestControls.vue';
 import {
 	flattenExecutionsToTimelineItems,
 	sessionBounds,
@@ -70,26 +69,18 @@ let refreshPending = false;
 let removePushListener: (() => void) | undefined;
 let activeRequest: { identity: string; promise: Promise<void> } | undefined;
 
-/** Temporary test integration. Remove this block, the import, and the controls tag after testing. */
-const shouldShowTestControls =
-	import.meta.env.DEV && Boolean(localStorage.getItem('N8N_SHOW_TRACE_CONTROLS'));
-const testItems = ref<TimelineItem[] | null>(null);
-const isTimelineLoading = computed(() => loading.value && testItems.value === null);
-
 const { allJobs } = useAgentBackgroundJobs({
 	projectId: () => props.projectId,
 	agentId: () => props.agentId,
 	threadId: () => props.threadId,
-	active: () => testItems.value === null,
+	active: true,
 });
 
-const baseItems = computed<TimelineItem[]>(
-	() =>
-		testItems.value ??
-		[
-			...flattenExecutionsToTimelineItems(executions.value),
-			...backgroundTasksToTimelineItems(allJobs.value),
-		].sort((a, b) => a.timestamp - b.timestamp),
+const baseItems = computed<TimelineItem[]>(() =>
+	[
+		...flattenExecutionsToTimelineItems(executions.value),
+		...backgroundTasksToTimelineItems(allJobs.value),
+	].sort((a, b) => a.timestamp - b.timestamp),
 );
 
 /** Keep selection on the same item when task data arrives after execution data. */
@@ -105,12 +96,6 @@ watch(
 	},
 	{ flush: 'sync' },
 );
-
-watch(testItems, () => {
-	selectedFilters.value = new Set();
-	searchQuery.value = '';
-	selectTimelineItem(null);
-});
 
 // Resolve sub-agent ids to friendly names, loaded lazily and only when the
 // session actually contains delegations (mirrors how the chat resolves the
@@ -357,8 +342,7 @@ useKeybindings({
 
 <template>
 	<div :class="$style.panel">
-		<SessionTimelineTestControls v-if="shouldShowTestControls" @update="testItems = $event" />
-		<div v-if="!isTimelineLoading" :class="$style.subHeader">
+		<div v-if="!loading" :class="$style.subHeader">
 			<N8nInput
 				ref="searchInput"
 				v-model="searchQuery"
@@ -379,7 +363,7 @@ useKeybindings({
 			/>
 		</div>
 		<SessionTimelineChart
-			v-if="!isTimelineLoading"
+			v-if="!loading"
 			:items="items"
 			:session-start="bounds.start"
 			:session-end="bounds.end"
@@ -388,12 +372,12 @@ useKeybindings({
 			@select="onChartSelect"
 		/>
 		<div :class="$style.section">
-			<div v-if="isTimelineLoading" :class="$style.loading">
+			<div v-if="loading" :class="$style.loading">
 				{{ i18n.baseText('generic.loadingEllipsis') }}
 			</div>
 
 			<SessionTimelineTable
-				v-if="!isTimelineLoading"
+				v-if="!loading"
 				ref="timelineTable"
 				:project-id="props.projectId"
 				:agent-id="props.agentId"

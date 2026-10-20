@@ -48,5 +48,20 @@ const icon = computed((): IconName => {
 </script>
 
 <template>
-	<N8nIcon :icon="icon" size="medium" />
+	<span v-if="showLabel && label" :class="$style.withLabel">
+		<N8nIcon :icon="icon" size="medium" />
+		<span>{{ label }}</span>
+	</span>
+	<N8nIcon v-else :icon="icon" size="medium" />
 </template>
+
+<style module lang="scss">
+.withLabel {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	font-size: var(--font-size--3xs);
+	font-weight: var(--font-weight--medium);
+	line-height: 1;
+}
+</style>

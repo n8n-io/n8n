@@ -1,6 +1,6 @@
-import { mount } from '@vue/test-utils';
+import { enableAutoUnmount, mount } from '@vue/test-utils';
 import { createTestingPinia } from '@pinia/testing';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import SessionMessageItem from './SessionMessageItem.vue';
 import type { TimelineItem } from '../../session-timeline.types';
 
@@ -27,7 +27,53 @@ function mountMessage(
 	});
 }
 
+enableAutoUnmount(afterEach);
+
+afterEach(() => {
+	vi.restoreAllMocks();
+});
+
+async function mountExpandedMessage() {
+	vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue(
+		new DOMRect(0, 0, 100, 400),
+	);
+	const wrapper = mountMessage(userItem);
+	await wrapper.setProps({ messageMarkdown: 'A long message' });
+	const button = wrapper.get('button[aria-expanded]');
+	expect(button.attributes('aria-expanded')).toBe('false');
+	await button.trigger('click');
+	expect(button.attributes('aria-expanded')).toBe('true');
+	return wrapper;
+}
+
 describe('SessionMessageItem', () => {
+	it('keeps a message expanded when its object and content refresh', async () => {
+		const wrapper = await mountExpandedMessage();
+		await wrapper.setProps({
+			item: { ...userItem, content: 'Updated content' },
+			messageMarkdown: 'Updated content',
+		});
+
+		expect(wrapper.get('button[aria-expanded]').attributes('aria-expanded')).toBe('true');
+	});
+
+	it.each([{ kind: 'agent' as const }, { executionId: 'e2' }, { timestamp: 1000 }])(
+		'collapses a different message with identity %j',
+		async (identity) => {
+			const wrapper = await mountExpandedMessage();
+			await wrapper.setProps({ item: { ...userItem, ...identity } });
+
+			expect(wrapper.get('button[aria-expanded]').attributes('aria-expanded')).toBe('false');
+		},
+	);
+
+	it('lets the user collapse an expanded message', async () => {
+		const wrapper = await mountExpandedMessage();
+		await wrapper.get('button[aria-expanded]').trigger('click');
+
+		expect(wrapper.get('button[aria-expanded]').attributes('aria-expanded')).toBe('false');
+	});
+
 	it.each(['', 'Read this file.'])(
 		'renders attachments for a user message with text %j',
 		(content) => {

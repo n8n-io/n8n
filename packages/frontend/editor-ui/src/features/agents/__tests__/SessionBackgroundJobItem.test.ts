@@ -34,8 +34,8 @@ function renderItem(overrides: Partial<TimelineItem> = {}, searchQuery = '') {
 describe('SessionBackgroundJobItem', () => {
 	it('shows the task summary and time with collapsed details', () => {
 		const wrapper = renderItem();
-		expect(wrapper.get('button').text()).toContain('Research — Completed');
-		expect(wrapper.get('button').text()).toContain('Send report — Failed');
+		expect(wrapper.get('button').text()).toContain('Research • Completed');
+		expect(wrapper.get('button').text()).toContain('Send report • Failed');
 		expect(wrapper.text()).toContain('10:42');
 		expect(wrapper.get('button').attributes('aria-expanded')).toBe('false');
 	});
@@ -46,9 +46,9 @@ describe('SessionBackgroundJobItem', () => {
 		expect(wrapper.get('button').attributes('aria-expanded')).toBe('true');
 		const tasks = wrapper.get('[data-test-id="background-job-signal-details"]').findAll('li');
 		expect(tasks.map((task) => task.text())).toEqual([
-			'Research — Completed',
-			'Send report — Failed',
-			'Check data — Canceled',
+			'Research • Completed',
+			'Send report • Failed',
+			'Check data • Canceled',
 		]);
 	});
 

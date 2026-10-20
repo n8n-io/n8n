@@ -58,9 +58,6 @@ export const devServerPlugin = (env: NodeJS.ProcessEnv): Plugin => ({
 				host: true,
 				port: editorPort,
 				strictPort: true,
-				hmr: {
-					port: 24678,
-				},
 				proxy: {
 					[BACKEND_PROXY_PATTERN]: { target: `http://localhost:${backendPort}`, ws: true },
 				},

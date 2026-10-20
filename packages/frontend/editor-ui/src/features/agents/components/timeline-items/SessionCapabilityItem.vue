@@ -20,7 +20,10 @@ import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
 import { computed } from 'vue';
 import { useTimelineItemExpansion } from '../../composables/useTimelineItemExpansion';
 import type { TimelineItem } from '../../session-timeline.types';
-import { timelineItemErrorMessage } from '../../session-timeline.utils';
+import {
+	isErroredToolCallTimelineItem,
+	timelineItemErrorMessage,
+} from '../../session-timeline.utils';
 import { formatToolNameForDisplay, resolveToolNameForDisplay } from '../../utils/toolDisplayName';
 import SessionTimelinePill from '../SessionTimelinePill.vue';
 
@@ -64,11 +67,7 @@ const error = computed((): string | undefined => {
 	if (props.item.activityStatus === 'waiting' || isRunning.value || isInterrupted.value) {
 		return undefined;
 	}
-	if (
-		props.item.activityStatus !== 'failed' &&
-		props.item.toolOutcome !== 'error' &&
-		props.item.toolSuccess !== false
-	) {
+	if (props.item.activityStatus !== 'failed' && !isErroredToolCallTimelineItem(props.item)) {
 		return undefined;
 	}
 	return timelineItemErrorMessage(props.item) || i18n.baseText('agentSessions.timeline.toolError');
@@ -118,6 +117,7 @@ const { isOpen } = useTimelineItemExpansion({
 			<div :class="$style.header">
 				<CollapsibleTrigger as-child>
 					<N8nAiActivityStepButton
+						:class="$style.activityButton"
 						size="small"
 						:loading="isRunning"
 						:interactive="canExpand"
@@ -190,6 +190,12 @@ const { isOpen } = useTimelineItemExpansion({
 </template>
 
 <style module lang="scss">
+.step .activityButton {
+	--ai-activity-step--padding: var(--spacing--2xs);
+	--button--color--background-hover: var(--background--hover);
+	--button--color--background-active: var(--background--active);
+}
+
 .step {
 	margin-inline: var(--spacing--2xs);
 

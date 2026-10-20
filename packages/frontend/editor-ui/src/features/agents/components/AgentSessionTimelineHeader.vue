@@ -122,7 +122,7 @@ const costFormatter = new Intl.NumberFormat('en-US', {
 				:class="$style.descriptionList"
 				data-testid="agent-session-timeline-metadata"
 			>
-				<li>
+				<li v-if="metadata.trigger.label">
 					<N8nIcon color="text-light" :icon="metadata.trigger.icon" />
 					<N8nText step="xs" bold>{{ metadata.trigger.label }}</N8nText>
 				</li>

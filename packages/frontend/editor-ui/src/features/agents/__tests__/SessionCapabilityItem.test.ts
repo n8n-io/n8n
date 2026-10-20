@@ -63,10 +63,17 @@ describe('SessionCapabilityItem activity status', () => {
 		expect(wrapper.findComponent(N8nAnimatedCollapsibleContent).exists()).toBe(false);
 	});
 
-	it.each(['waiting', 'completed'] as const)('keeps %s rows expandable', (activityStatus) => {
+	it.each(['waiting', 'completed'] as const)('keeps %s rows expandable', async (activityStatus) => {
 		const wrapper = renderItem({ activityStatus });
 		expect(wrapper.get('button').attributes('aria-expanded')).toBe('false');
 		expect(wrapper.getComponent(N8nAiActivityStepButton).props('loading')).toBe(false);
+
+		await wrapper.get('button').trigger('click');
+		expect(wrapper.get('button').attributes('aria-expanded')).toBe('true');
+		expect(wrapper.text()).toContain('GET');
+
+		await wrapper.get('button').trigger('click');
+		expect(wrapper.get('button').attributes('aria-expanded')).toBe('false');
 	});
 
 	it('shows a danger alert icon with the error tooltip for a failed call', () => {
@@ -99,6 +106,9 @@ describe('SessionCapabilityItem activity status', () => {
 		await wrapper.setProps({ item: item({ activityStatus: 'completed' }) });
 		expect(wrapper.findComponent(N8nSpinner).exists()).toBe(false);
 		expect(wrapper.get('button').attributes('aria-expanded')).toBe('false');
+		await wrapper.get('button').trigger('click');
+		expect(wrapper.get('button').attributes('aria-expanded')).toBe('true');
+		expect(wrapper.text()).toContain('GET');
 	});
 
 	it('does not expand a running row for a matching search', async () => {

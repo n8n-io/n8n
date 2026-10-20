@@ -42,6 +42,10 @@ vi.mock('@/app/stores/pushConnection.store', () => ({
 	usePushConnectionStore: () => pushStore,
 }));
 
+vi.mock('@/features/agents/composables/useAgentBackgroundJobs', () => ({
+	useAgentBackgroundJobs: () => ({ allJobs: { value: [] } }),
+}));
+
 vi.mock('@/app/stores/nodeTypes.store', function () {
 	return {
 		useNodeTypesStore() {
@@ -58,8 +62,8 @@ vi.mock('@/features/agents/composables/useSubAgentNames', () => ({
 const stubs = {
 	SessionTimelineChart: {
 		name: 'SessionTimelineChart',
-		emits: ['select'],
-		template: '<div data-test-id="chart-stub" />',
+		props: ['selectedIndex'],
+		template: '<div data-test-id="chart-stub" :data-selected-index="selectedIndex" />',
 	},
 	SessionTimelineTable: {
 		name: 'SessionTimelineTable',
@@ -72,11 +76,6 @@ const stubs = {
 		name: 'SessionEventFilter',
 		props: ['available'],
 		template: '<div data-test-id="filter-stub" />',
-	},
-	SessionDetailPanel: {
-		name: 'SessionDetailPanel',
-		emits: ['close'],
-		template: '<div data-test-id="detail-stub" />',
 	},
 	N8nInput: { template: '<input data-test-id="search-stub" />' },
 	N8nIcon: { template: '<i />' },
@@ -151,7 +150,7 @@ function budgetStopExecution(code: string, id = 'execution-2') {
 
 function dispatchKeyboardEvent(type: 'keydown' | 'keyup', key: string) {
 	const event = new KeyboardEvent(type, { key, bubbles: true, cancelable: true });
-	document.dispatchEvent(event);
+	(document.activeElement ?? document).dispatchEvent(event);
 	return event;
 }
 
@@ -243,6 +242,20 @@ describe('AgentSessionTimelinePanel', () => {
 		expect(wrapper.find('[data-test-id="table-stub"]').exists()).toBe(true);
 	});
 
+	it('does not let stored test controls replace the loaded session', async () => {
+		localStorage.setItem('N8N_SHOW_TRACE_CONTROLS', '1');
+		try {
+			getThreadDetail.mockResolvedValueOnce({ ...detail, executions: [keyboardExecution] });
+			const wrapper = mountPanel();
+			await flushPromises();
+
+			expect(wrapper.findComponent({ name: 'SessionTimelineTestControls' }).exists()).toBe(false);
+			expect(wrapper.get('[data-test-id="table-stub"]').attributes('data-item-count')).toBe('2');
+		} finally {
+			localStorage.removeItem('N8N_SHOW_TRACE_CONTROLS');
+		}
+	});
+
 	it('offers status pills only for statuses present in the session', async () => {
 		getThreadDetail.mockResolvedValueOnce({
 			...detail,
@@ -291,6 +304,21 @@ describe('AgentSessionTimelinePanel', () => {
 		expect(showError).toHaveBeenCalled();
 	});
 
+	it('keeps row and chart selection in sync after row activation', async () => {
+		getThreadDetail.mockResolvedValueOnce({ ...detail, executions: [keyboardExecution] });
+		const wrapper = mountPanel({}, { renderTimelineTable: true });
+		await flushPromises();
+
+		const rows = wrapper.findAll('[data-test-id="timeline-row"]');
+		await rows[1].trigger('click');
+		expect(rows[1].attributes('aria-selected')).toBe('true');
+		expect(wrapper.get('[data-test-id="chart-stub"]').attributes('data-selected-index')).toBe('1');
+
+		await rows[0].trigger('keydown', { key: 'Enter' });
+		expect(rows[0].attributes('aria-selected')).toBe('true');
+		expect(rows[1].attributes('aria-selected')).toBe('false');
+	});
+
 	it('handles timeline shortcuts only while focus is within the panel', async () => {
 		getThreadDetail.mockResolvedValueOnce({
 			...detail,
@@ -314,52 +342,38 @@ describe('AgentSessionTimelinePanel', () => {
 			expect(document.activeElement).toBe(timelineRow.element);
 			const insideKeydown = dispatchKeyboardEvent('keydown', 'ArrowDown');
 			expect(insideKeydown.defaultPrevented).toBe(true);
-			expect(wrapper.find('[data-test-id="detail-stub"]').exists()).toBe(false);
+			await flushPromises();
+			expect(timelineRow.attributes('aria-selected')).toBe('true');
 
 			outsideButton.focus();
 			const outsideKeyup = dispatchKeyboardEvent('keyup', 'ArrowDown');
 			expect(outsideKeyup.defaultPrevented).toBe(false);
-			expect(wrapper.find('[data-test-id="detail-stub"]').exists()).toBe(false);
-			expect(track).not.toHaveBeenCalled();
+			expect(timelineRow.attributes('aria-selected')).toBe('true');
 
 			(timelineRow.element as HTMLElement).focus();
-			const insideKeyup = dispatchKeyboardEvent('keyup', 'ArrowDown');
-			expect(insideKeyup.defaultPrevented).toBe(true);
-			await flushPromises();
-			expect(wrapper.find('[data-test-id="detail-stub"]').exists()).toBe(true);
 
 			const moveKeydown = dispatchKeyboardEvent('keydown', 'ArrowDown');
 			expect(moveKeydown.defaultPrevented).toBe(true);
 			await flushPromises();
 			expect(document.activeElement).toBe(timelineRows[1].element);
+			expect(timelineRows[1].attributes('aria-selected')).toBe('true');
 			const moveKeyup = dispatchKeyboardEvent('keyup', 'ArrowDown');
-			expect(moveKeyup.defaultPrevented).toBe(true);
-			expect(track.mock.calls).toEqual([
-				[
-					TELEMETRY_EVENT.AGENTS.USER_CLICKED_TRACE_ITEM,
-					{ agent_id: 'a1', push_ref: 'session-xyz', item_type: 'user' },
-				],
-				[
-					TELEMETRY_EVENT.AGENTS.USER_CLICKED_TRACE_ITEM,
-					{ agent_id: 'a1', push_ref: 'session-xyz', item_type: 'agent' },
-				],
-			]);
+			expect(moveKeyup.defaultPrevented).toBe(false);
 
 			(wrapper.get('[data-test-id="search-stub"]').element as HTMLInputElement).focus();
 			const inputEscape = dispatchKeyboardEvent('keydown', 'Escape');
 			expect(inputEscape.defaultPrevented).toBe(false);
-			expect(wrapper.find('[data-test-id="detail-stub"]').exists()).toBe(true);
+			expect(timelineRows[1].attributes('aria-selected')).toBe('true');
 
 			outsideButton.focus();
 			const outsideEscape = dispatchKeyboardEvent('keydown', 'Escape');
 			expect(outsideEscape.defaultPrevented).toBe(false);
-			expect(wrapper.find('[data-test-id="detail-stub"]').exists()).toBe(true);
+			expect(timelineRows[1].attributes('aria-selected')).toBe('true');
 
-			(timelineRow.element as HTMLElement).focus();
-			dispatchKeyboardEvent('keydown', 'Escape');
+			(timelineRows[1].element as HTMLElement).focus();
+			expect(dispatchKeyboardEvent('keydown', 'Escape').defaultPrevented).toBe(true);
 			await flushPromises();
-			expect(wrapper.find('[data-test-id="detail-stub"]').exists()).toBe(false);
-			expect(track).toHaveBeenCalledTimes(2);
+			expect(timelineRows.every((row) => row.attributes('aria-selected') === 'false')).toBe(true);
 		} finally {
 			wrapper.unmount();
 			host.remove();

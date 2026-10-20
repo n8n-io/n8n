@@ -211,9 +211,7 @@ describe('AgentSessionTimelineHeader', () => {
 	it('does not render session metadata before it loads', () => {
 		const wrapper = mountNavigationHeader();
 
-		expect(wrapper.find('[data-icon="circle-dollar-sign"]').exists()).toBe(false);
-		expect(wrapper.find('[data-icon="clock"]').exists()).toBe(false);
-		expect(wrapper.find('[data-icon="slack"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="agent-session-timeline-metadata"]').exists()).toBe(false);
 	});
 
 	it('emits timeline header actions', async () => {
@@ -246,6 +244,18 @@ describe('AgentSessionTimelineHeader', () => {
 });
 
 describe('AgentSessionTimelineHeader metadata', () => {
+	it('omits an empty trigger but keeps token, cost, and duration details', () => {
+		const wrapper = mountHeader({
+			metadata: { ...metadata, trigger: { source: null, icon: 'bolt-filled', label: '' } },
+		});
+		const details = wrapper.get('[data-testid="agent-session-timeline-metadata"]');
+
+		expect(details.findAll('li')).toHaveLength(2);
+		expect(details.find('[data-icon="bolt-filled"]').exists()).toBe(false);
+		expect(details.text()).toContain('1.3K ($0.012)');
+		expect(details.text()).toContain('12 seconds');
+	});
+
 	it('displays the trigger, cost, and duration', () => {
 		const wrapper = mountHeader();
 
@@ -292,8 +302,16 @@ describe('AgentSessionTimelineHeader metadata', () => {
 	it('does not show metadata before it loads', () => {
 		const wrapper = mountHeader({ metadata: undefined });
 
-		expect(wrapper.find('[data-icon="hash"]').exists()).toBe(false);
-		expect(wrapper.find('[data-icon="clock"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="agent-session-timeline-metadata"]').exists()).toBe(false);
+	});
+
+	it('removes metadata when the loaded session is cleared', async () => {
+		const wrapper = mountHeader();
+		expect(wrapper.find('[data-testid="agent-session-timeline-metadata"]').exists()).toBe(true);
+
+		await wrapper.setProps({ metadata: undefined });
+
+		expect(wrapper.find('[data-testid="agent-session-timeline-metadata"]').exists()).toBe(false);
 	});
 
 	it('updates the displayed details when props change', async () => {

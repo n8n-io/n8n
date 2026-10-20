@@ -46,12 +46,9 @@ function measureContent() {
 
 useResizeObserver(messageContent, measureContent);
 watch(() => props.messageMarkdown, measureContent, { flush: 'post' });
-watch(
-	() => props.item,
-	() => {
-		expanded.value = false;
-	},
-);
+watch([() => props.item.kind, () => props.item.executionId, () => props.item.timestamp], () => {
+	expanded.value = false;
+});
 
 const time = computed(() => formatTimelineTime(props.item.timestamp));
 </script>
