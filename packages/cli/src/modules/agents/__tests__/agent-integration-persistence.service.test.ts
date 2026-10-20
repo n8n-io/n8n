@@ -1,6 +1,7 @@
+// Experiment cleanup (123_surface_mcp_to_claude_trial_users): restore a type-only EventService import; keep the import.
+import { EventService } from '@n8n/backend-services';
 /* eslint-disable @typescript-eslint/unbound-method -- mock-based tests intentionally reference unbound methods */
 import type { AgentIntegrationConfig, AgentJsonConfig } from '@n8n/api-types';
-import type { EventService } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { OperationalError, UserError } from 'n8n-workflow';
@@ -13,7 +14,7 @@ import { AgentIntegrationPersistenceService } from '../agent-integration-persist
 import { AgentModificationTelemetryService } from '../agent-modification-telemetry.service';
 import type { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import type { AgentSetupCompletionService } from '../agent-setup-completion.service';
-import type { Agent } from '../entities/agent.entity';
+import type { ProjectAgent } from '../entities/agent.entity';
 import type { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
 import type { AgentRepository } from '../repositories/agent.repository';
 import { createAgentSkillRefsService, storedAgentConfig } from './test-utils/stored-agent-config';
@@ -69,7 +70,7 @@ function setup(options: SetupOptions = {}) {
 		activeVersionId: options.activeVersionId === undefined ? 'version-1' : options.activeVersionId,
 		setupCompletedAt: null,
 		updatedAt: new Date('2025-01-01T00:00:00Z'),
-	} as Agent;
+	} as ProjectAgent;
 
 	agentRepository.findById.mockImplementation(async () => ({
 		...row,
@@ -99,7 +100,8 @@ function setup(options: SetupOptions = {}) {
 			runtimeCacheService,
 			chatIntegrationRegistry,
 			eventService,
-			new AgentModificationTelemetryService(telemetry),
+			// Experiment cleanup (123_surface_mcp_to_claude_trial_users): remove only the mock<EventService>() argument.
+			new AgentModificationTelemetryService(telemetry, mock<EventService>()),
 			credentialsService,
 			setupCompletionService,
 			createAgentSkillRefsService(),
@@ -700,7 +702,7 @@ describe('AgentIntegrationPersistenceService', () => {
 	});
 
 	describe('modification telemetry', () => {
-		it('reports the first channel on a blank agent as a creation', async () => {
+		it('reports the first channel on a saved draft as a modification', async () => {
 			const { service, agent, telemetry } = setup({ schema: blankConfig });
 
 			await service.applyIntegrationDelta(
@@ -710,18 +712,19 @@ describe('AgentIntegrationPersistenceService', () => {
 			);
 
 			expect(telemetry.track).toHaveBeenCalledWith(
-				TELEMETRY_EVENT.AGENTS.USER_CREATED_AGENT,
+				TELEMETRY_EVENT.AGENTS.USER_MODIFIED_AGENT,
 				expect.objectContaining({
 					agent_id: agentId,
 					project_id: projectId,
 					user_id: user.id,
 					changed_parts: ['triggers'],
+					changed_settings: [],
 					trigger_count: 1,
 					event_version: '2',
 				}),
 			);
 			expect(telemetry.track).not.toHaveBeenCalledWith(
-				TELEMETRY_EVENT.AGENTS.USER_MODIFIED_AGENT,
+				TELEMETRY_EVENT.AGENTS.USER_CREATED_AGENT,
 				expect.anything(),
 			);
 		});
@@ -743,7 +746,7 @@ describe('AgentIntegrationPersistenceService', () => {
 					agent_id: agentId,
 					changed_parts: ['triggers'],
 					trigger_count: 2,
-					event_version: '1',
+					event_version: '2',
 				}),
 			);
 			expect(telemetry.track).not.toHaveBeenCalledWith(

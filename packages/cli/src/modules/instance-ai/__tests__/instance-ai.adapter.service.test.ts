@@ -1,3 +1,6 @@
+// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+import { EventService } from '@n8n/backend-services';
+// EOF Experiment cleanup
 // Mock the barrel import so these adapter tests only exercise local formatting helpers.
 vi.mock('@n8n/instance-ai', async () => {
 	const {
@@ -1816,6 +1819,8 @@ import {
 	type CredentialsFinderService,
 	type InstanceWriteAccessService,
 	type RoleService,
+	AiPreferenceScopeFullError,
+	type AiPreferenceService,
 } from '@n8n/backend-services';
 import type { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import type { DataTableService } from '@/modules/data-table/data-table.service';
@@ -1826,7 +1831,6 @@ import {
 	WorkflowSaveConflictError,
 } from '@n8n/instance-ai/errors';
 import type { WorkflowService } from '@/workflows/workflow.service';
-import { AiPreferenceScopeFullError } from '@/errors/response-errors/ai-preference-scope-full.error';
 import {
 	BadRequestError,
 	ConflictError,
@@ -1836,15 +1840,20 @@ import {
 	NotFoundError,
 } from '@n8n/errors';
 import type { License } from '@/license';
-import type { AiPreferenceService } from '@/services/ai-preference.service';
 
 import type { OutboundHttp } from '@n8n/backend-network';
 import { ModuleRegistry } from '@n8n/backend-common';
-import type { InstanceAiBuilderDelegate, OrchestrationContext } from '@n8n/instance-ai';
+import type {
+	InstanceAiBuilderDelegate,
+	InstanceAiSkillService,
+	OrchestrationContext,
+} from '@n8n/instance-ai';
 
 import { InstanceAiAdapterService } from '../instance-ai.adapter.service';
-import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instance-ai-builder-delegate.adapter';
-import { AgentsCredentialProvider } from '@/modules/agents/adapters/agents-credential-provider';
+import { InstanceAiBuilderDelegateAdapterService } from '../instance-ai-builder-delegate.adapter';
+import { InstanceAiSkillsAdapterService } from '../instance-ai-skills.adapter';
+import { AgentsBuilderService } from '@/modules/agents/builder/agents-builder.service';
+import type { AgentCredentialProvider } from '@/modules/agents/agent-credential-provider.contracts';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
 const mockedUserHasScopes = vi.mocked(userHasScopes);
@@ -2601,12 +2610,59 @@ describe('createDataTableAdapter', () => {
 	});
 
 	describe('instance read-only mode', () => {
+		type DataTableAdapter = ReturnType<typeof createDataTableAdapterForTests>['adapter'];
+
 		it('blocks write operations when instance is in read-only mode', async () => {
 			const { adapter } = createDataTableAdapterForTests({ branchReadOnly: true });
 
 			await expect(adapter.create('Test', [])).rejects.toThrow(
 				'Cannot modify data tables on a protected instance',
 			);
+		});
+
+		it.each([
+			['delete', async (adapter: DataTableAdapter) => await adapter.delete('dt-1')],
+			[
+				'addColumn',
+				async (adapter: DataTableAdapter) =>
+					await adapter.addColumn('dt-1', { name: 'col', type: 'string' }),
+			],
+			[
+				'deleteColumn',
+				async (adapter: DataTableAdapter) => await adapter.deleteColumn('dt-1', 'col-1'),
+			],
+			[
+				'renameColumn',
+				async (adapter: DataTableAdapter) => await adapter.renameColumn('dt-1', 'col-1', 'renamed'),
+			],
+		])('blocks %s when instance is in read-only mode', async (_name, run) => {
+			const { adapter } = createDataTableAdapterForTests({ branchReadOnly: true });
+
+			await expect(run(adapter)).rejects.toThrow(
+				'Cannot modify data tables on a protected instance',
+			);
+		});
+
+		it('allows row writes when instance is in read-only mode', async () => {
+			const { adapter, mockDataTableService } = createDataTableAdapterForTests({
+				branchReadOnly: true,
+			});
+			const mocks = mockDataTableService as unknown as Record<string, Mock>;
+			mocks.insertRows = vi.fn().mockResolvedValue(1);
+			mocks.updateRows = vi.fn().mockResolvedValue([{ id: 'row-1' }]);
+			mocks.deleteRows = vi.fn().mockResolvedValue([{ id: 'row-1' }]);
+			const filter = {
+				type: 'and' as const,
+				filters: [{ columnName: 'id', condition: 'eq' as const, value: 'row-1' }],
+			};
+
+			await adapter.insertRows('dt-1', [{ col: 'val' }]);
+			await adapter.updateRows('dt-1', filter, { col: 'new' });
+			await adapter.deleteRows('dt-1', filter);
+
+			expect(mocks.insertRows).toHaveBeenCalled();
+			expect(mocks.updateRows).toHaveBeenCalled();
+			expect(mocks.deleteRows).toHaveBeenCalled();
 		});
 
 		it('allows read operations when instance is in read-only mode', async () => {
@@ -2637,6 +2693,9 @@ describe('createDataTableAdapter', () => {
 // ---------------------------------------------------------------------------
 
 function createWorkflowAdapterForTests(overrides?: {
+	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+	threadId?: string | null;
+	// EOF Experiment cleanup
 	setupPanelVariant?: 'control' | 'variant';
 	namedVersionsLicensed?: boolean;
 	foldersLicensed?: boolean;
@@ -2720,6 +2779,9 @@ function createWorkflowAdapterForTests(overrides?: {
 		preventTampering: vi.fn(async (data: unknown) => data),
 	};
 	const mockTelemetry = { track: vi.fn() };
+	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+	const discoveryActivity = mock<EventService>();
+	// EOF Experiment cleanup
 	const mockFolderRepository = {
 		getFolderPathsToRoot: vi.fn().mockResolvedValue(new Map<string, string[]>()),
 		getMany: vi.fn().mockResolvedValue([]),
@@ -2793,7 +2855,8 @@ function createWorkflowAdapterForTests(overrides?: {
 			isSharingEnabled: vi.fn().mockReturnValue(overrides?.sharingEnabled ?? false),
 		} as unknown as License,
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[26],
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[27],
+		// Experiment cleanup (123_surface_mcp_to_claude_trial_users): replace discoveryActivity with {}; keep this constructor argument.
+		discoveryActivity as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[27],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[28],
 		mockTelemetry as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[29],
 		mockAiBuilderTemporaryWorkflowRepository as unknown as AiBuilderTemporaryWorkflowRepository,
@@ -2828,7 +2891,8 @@ function createWorkflowAdapterForTests(overrides?: {
 	const boundProjectId =
 		overrides && 'projectId' in overrides ? (overrides.projectId ?? undefined) : 'team-project-id';
 	const context = service.createContext(mockUser, {
-		threadId: 'thread-1',
+		// Experiment cleanup (123_surface_mcp_to_claude_trial_users): restore threadId: 'thread-1'.
+		threadId: overrides?.threadId === null ? undefined : (overrides?.threadId ?? 'thread-1'),
 		projectId: boundProjectId,
 		folderExplorationEnabled: overrides?.folderExploration ?? false,
 		setupPanelVariant: overrides?.setupPanelVariant,
@@ -2837,6 +2901,9 @@ function createWorkflowAdapterForTests(overrides?: {
 	const adapter = context.workflowService;
 
 	return {
+		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+		discoveryActivity,
+		// EOF Experiment cleanup
 		adapter,
 		context,
 		savedWorkflow,
@@ -2870,6 +2937,69 @@ describe('createWorkflowAdapter', () => {
 		vi.clearAllMocks();
 		mockedUserHasScopes.mockResolvedValue(true);
 	});
+
+	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+	it('records Assistant creation and modification, but not publishing', async () => {
+		const { adapter, discoveryActivity, mockUser } = createWorkflowAdapterForTests();
+
+		await adapter.createFromWorkflowJSON(minimalWorkflowJSON);
+		expect(discoveryActivity.emit).toHaveBeenCalledWith('experiment-assistant-change-saved', {
+			userId: mockUser.id,
+			at: expect.any(Number),
+		});
+
+		await adapter.updateFromWorkflowJSON('wf-new', minimalWorkflowJSON);
+		expect(discoveryActivity.emit).toHaveBeenCalledTimes(2);
+
+		await adapter.publish('wf-new');
+		expect(discoveryActivity.emit).toHaveBeenCalledTimes(2);
+	});
+
+	it('does not record writes without the thread context required by Builder events', async () => {
+		const { adapter, discoveryActivity, mockTelemetry } = createWorkflowAdapterForTests({
+			threadId: null,
+		});
+
+		await adapter.createFromWorkflowJSON(minimalWorkflowJSON);
+		await adapter.updateFromWorkflowJSON('wf-new', minimalWorkflowJSON);
+
+		expect(discoveryActivity.emit).not.toHaveBeenCalled();
+		expect(mockTelemetry.track).not.toHaveBeenCalled();
+	});
+
+	it.each(['create', 'update'] as const)(
+		'does not record a failed Builder %s',
+		async (operation) => {
+			const { adapter, discoveryActivity, mockWorkflowService, mockTelemetry } =
+				createWorkflowAdapterForTests();
+			mockWorkflowService.update.mockRejectedValueOnce(new Error('Save failed'));
+
+			const result =
+				operation === 'create'
+					? adapter.createFromWorkflowJSON(minimalWorkflowJSON)
+					: adapter.updateFromWorkflowJSON('wf-new', minimalWorkflowJSON);
+			await expect(result).rejects.toThrow('Save failed');
+
+			expect(discoveryActivity.emit).not.toHaveBeenCalled();
+			expect(mockTelemetry.track).not.toHaveBeenCalled();
+		},
+	);
+
+	it('records a successful save even when telemetry fails', async () => {
+		const { adapter, discoveryActivity, mockTelemetry, mockUser } = createWorkflowAdapterForTests();
+		mockTelemetry.track.mockImplementationOnce(() => {
+			throw new Error('Telemetry unavailable');
+		});
+
+		await expect(adapter.updateFromWorkflowJSON('wf-new', minimalWorkflowJSON)).rejects.toThrow(
+			'Telemetry unavailable',
+		);
+		expect(discoveryActivity.emit).toHaveBeenCalledWith('experiment-assistant-change-saved', {
+			userId: mockUser.id,
+			at: expect.any(Number),
+		});
+	});
+	// EOF Experiment cleanup
 
 	it('summarizes pinned data as node names and item counts, without payloads', async () => {
 		const { adapter, mockWorkflowFinderService } = createWorkflowAdapterForTests();
@@ -7823,12 +7953,17 @@ describe('createContext — builder delegate wiring', () => {
 	function mockBuilderModuleActive(delegate: InstanceAiBuilderDelegate) {
 		const moduleRegistry = { isActive: vi.fn().mockReturnValue(true), settings: new Map() };
 		const builderDelegateAdapter = { createDelegate: vi.fn().mockReturnValue(delegate) };
+		const credentialProvider = mock<AgentCredentialProvider>();
+		const builderService = {
+			createCredentialProvider: vi.fn().mockReturnValue(credentialProvider),
+		};
 		vi.spyOn(Container, 'get').mockImplementation((token: unknown) => {
 			if (token === ModuleRegistry) return moduleRegistry;
 			if (token === InstanceAiBuilderDelegateAdapterService) return builderDelegateAdapter;
+			if (token === AgentsBuilderService) return builderService;
 			throw new Error(`Unexpected Container.get call in test: ${String(token)}`);
 		});
-		return builderDelegateAdapter;
+		return { ...builderDelegateAdapter, builderService, credentialProvider };
 	}
 
 	it.each([
@@ -7856,6 +7991,7 @@ describe('createContext — builder delegate wiring', () => {
 		);
 		const service = createAdapterWithGatewayMock(vi.fn());
 		const delegate = mock<InstanceAiBuilderDelegate>();
+		delegate.getBuilderTools.mockReturnValue([]);
 		mockBuilderModuleActive(delegate);
 		const moduleRegistry = Container.get(ModuleRegistry);
 		vi.mocked(moduleRegistry.isActive).mockReturnValue(moduleActive);
@@ -7874,10 +8010,10 @@ describe('createContext — builder delegate wiring', () => {
 		expect(context.agentBuilderTarget).toEqual(
 			expected ? { agentId: 'agent-42', projectId: 'proj-1' } : undefined,
 		);
-		expect(tools.has('build-agent')).toBe(expected);
+		expect(tools.has('agent_builder_select_agent')).toBe(expected);
 	});
 
-	it('enables deterministic Agent Builder model catalogs for eval threads', () => {
+	it('enables deterministic Agent Builder model catalogs for eval threads', async () => {
 		const service = createAdapterWithGatewayMock(vi.fn(), { telemetry: { track: vi.fn() } });
 		const delegate = mock<InstanceAiBuilderDelegate>();
 		const builderDelegateAdapter = mockBuilderModuleActive(delegate);
@@ -7885,7 +8021,7 @@ describe('createContext — builder delegate wiring', () => {
 		service.createContext(mockUser, {
 			threadId: 'thread-1',
 			projectId: 'proj-1',
-			getCredentialIdAllowlist: () => [],
+			getCredentialIdAllowlist: () => ['eval-credential'],
 		});
 
 		expect(builderDelegateAdapter.createDelegate).toHaveBeenCalledWith(
@@ -7895,17 +8031,21 @@ describe('createContext — builder delegate wiring', () => {
 			expect.anything(),
 			{ useEvalModelCatalog: true },
 		);
-		// The third argument is a provider factory, not a pre-built provider: it
-		// is called per turn with the concrete target agent id so Gateway spend
-		// carries the right id even when the agent is created mid-build.
-		// An eval thread gets the allowlist-scoped wrapper, not the raw provider.
 		const providerFor = builderDelegateAdapter.createDelegate.mock.calls[0][2] as (
 			agentId: string,
-		) => AgentsCredentialProvider;
+		) => AgentCredentialProvider;
 		const provider = providerFor('agent-42');
-		expect(provider).not.toBeInstanceOf(AgentsCredentialProvider);
-		expect(provider).toEqual(
-			expect.objectContaining({ list: expect.any(Function), resolve: expect.any(Function) }),
+		builderDelegateAdapter.credentialProvider.list.mockResolvedValue([
+			{ id: 'eval-credential', name: 'Eval', type: 'openAiApi' },
+			{ id: 'other-eval-credential', name: 'Other eval', type: 'openAiApi' },
+		]);
+		expect(await provider.list()).toEqual([
+			{ id: 'eval-credential', name: 'Eval', type: 'openAiApi' },
+		]);
+		expect(builderDelegateAdapter.builderService.createCredentialProvider).toHaveBeenCalledWith(
+			mockUser,
+			'proj-1',
+			'agent-42',
 		);
 	});
 
@@ -7917,8 +8057,13 @@ describe('createContext — builder delegate wiring', () => {
 
 		const providerFor = builderDelegateAdapter.createDelegate.mock.calls[0][2] as (
 			agentId: string,
-		) => AgentsCredentialProvider;
-		expect(providerFor('agent-42')).toBeInstanceOf(AgentsCredentialProvider);
+		) => AgentCredentialProvider;
+		expect(providerFor('agent-42')).toBe(builderDelegateAdapter.credentialProvider);
+		expect(builderDelegateAdapter.builderService.createCredentialProvider).toHaveBeenCalledWith(
+			mockUser,
+			'proj-1',
+			'agent-42',
+		);
 	});
 
 	it('exposes the delegate unwrapped, so creation telemetry stays in AgentsService', async () => {
@@ -8554,5 +8699,63 @@ describe('createCredentialAdapter', () => {
 
 			await expect(credentialService.credentialTypeExists!('gmailOAuth2Api')).resolves.toBe(false);
 		});
+	});
+});
+
+describe('createContext — skill service wiring', () => {
+	const mockUser = { id: 'user-1', role: { slug: 'global:member' } } as unknown as User;
+
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
+	it.each([
+		{
+			name: 'wires skills when the hub is on',
+			moduleActive: true,
+			hubEnabled: true,
+			agentsEnabled: true,
+			expected: true,
+		},
+		{
+			name: 'wires skills when Settings > Agents is off',
+			moduleActive: true,
+			hubEnabled: true,
+			agentsEnabled: false,
+			expected: true,
+		},
+		{
+			name: 'omits skills when the hub is off',
+			moduleActive: true,
+			hubEnabled: false,
+			agentsEnabled: true,
+			expected: false,
+		},
+		{
+			name: 'omits skills when the agents module is inactive',
+			moduleActive: false,
+			hubEnabled: true,
+			agentsEnabled: true,
+			expected: false,
+		},
+	])('$name', ({ moduleActive, hubEnabled, agentsEnabled, expected }) => {
+		const skillService = mock<InstanceAiSkillService>();
+		const moduleRegistry = {
+			isActive: vi.fn().mockReturnValue(moduleActive),
+			settings: new Map([['agents', { enabled: agentsEnabled, skillsHubEnabled: hubEnabled }]]),
+		};
+		vi.spyOn(Container, 'get').mockImplementation((token: unknown) => {
+			if (token === ModuleRegistry) return moduleRegistry;
+			if (token === InstanceAiSkillsAdapterService) {
+				return { createService: vi.fn().mockReturnValue(skillService) };
+			}
+			if (token === InstanceAiBuilderDelegateAdapterService) return { createDelegate: vi.fn() };
+			throw new Error(`Unexpected Container.get call in test: ${String(token)}`);
+		});
+		const service = createAdapterWithGatewayMock(vi.fn());
+
+		const context = service.createContext(mockUser, { threadId: 'thread-1', projectId: 'proj-1' });
+
+		expect(context.skillService).toBe(expected ? skillService : undefined);
 	});
 });
