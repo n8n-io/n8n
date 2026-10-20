@@ -11,14 +11,15 @@ describe('self-healing output', () => {
 	it.each([
 		{ outcome: 'fix_ready', candidateFilePath: 'self-healing/candidate.workflow.ts' },
 		{ outcome: 'needs_you', candidateFilePath: 'self-healing/candidate.workflow.ts' },
-		{ outcome: 'needs_you' },
-		{ outcome: 'could_not_fix' },
+		{ outcome: 'needs_you', candidateFilePath: null },
+		{ outcome: 'could_not_fix', candidateFilePath: null },
 	])('accepts $outcome with its candidate rules', (output) => {
 		expect(selfHealingOutputSchema.safeParse({ ...report, ...output }).success).toBe(true);
 	});
 
 	it.each([
 		{ outcome: 'fix_ready' },
+		{ outcome: 'needs_you', candidateFilePath: undefined },
 		{ outcome: 'could_not_fix', candidateFilePath: 'candidate.ts' },
 		{ outcome: 'needs_you', candidateFilePath: '' },
 		{ outcome: 'needs_you', summary: ' ' },
@@ -28,11 +29,18 @@ describe('self-healing output', () => {
 		{ outcome: 'failed' },
 		{ outcome: 'needs_you', workflowId: 'other-workflow' },
 	])('rejects invalid output %#', (output) => {
-		expect(selfHealingOutputSchema.safeParse({ ...report, ...output }).success).toBe(false);
+		expect(
+			selfHealingOutputSchema.safeParse({ ...report, candidateFilePath: null, ...output }).success,
+		).toBe(false);
 	});
 
 	it('accepts a title at the character limit and preserves report formatting', () => {
-		const output = { ...report, outcome: 'needs_you', summary: 'x'.repeat(80) };
+		const output = {
+			...report,
+			outcome: 'needs_you',
+			summary: 'x'.repeat(80),
+			candidateFilePath: null,
+		};
 		expect(selfHealingOutputSchema.parse(output)).toEqual(output);
 	});
 

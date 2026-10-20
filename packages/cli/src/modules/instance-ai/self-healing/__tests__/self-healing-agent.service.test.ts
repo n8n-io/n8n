@@ -416,6 +416,7 @@ describe('SelfHealingAgentService', () => {
 				outcome,
 				summary: 'The investigation needs follow-up.',
 				report: 'No candidate is ready.',
+				candidateFilePath: null,
 			};
 			stream.structuredOutput = output;
 			const result = await service.execute(input, options);

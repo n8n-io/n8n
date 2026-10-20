@@ -66,7 +66,8 @@ Missing credentials require `needs_you`, even when simulated verification
 succeeds. This investigation cannot create credentials. Explain which
 connections need setup. You can include a partial candidate with this outcome.
 
-Omit `candidateFilePath` when the candidate has no changes. State uncertainty
+Set `candidateFilePath` to `null` when there is no candidate, the candidate has
+no changes, or the outcome is `could_not_fix`. State uncertainty
 and incomplete checks clearly. Describe a verified candidate as ready for
 review; do not claim that the investigation applied or published a production fix.
 

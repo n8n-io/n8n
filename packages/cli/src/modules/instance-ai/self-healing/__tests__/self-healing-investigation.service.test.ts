@@ -89,6 +89,7 @@ describe('SelfHealingInvestigationService', () => {
 				outcome: 'could_not_fix',
 				summary: 'No fix found.',
 				report: 'The cause could not be determined.',
+				candidateFilePath: null,
 			},
 			usage: { credits: 2, turns: 3, durationSeconds: 10 },
 		};
@@ -156,6 +157,7 @@ describe('SelfHealingInvestigationService', () => {
 			outcome: 'needs_you' as const,
 			summary: `The response contained ${value}.`,
 			report: `Check the HTTP Request node. Authorization: Bearer ${value}`,
+			candidateFilePath: null,
 		};
 		run.output = output;
 
@@ -165,6 +167,7 @@ describe('SelfHealingInvestigationService', () => {
 			outcome: 'needs_you',
 			summary: 'The response contained [REDACTED].',
 			report: 'Check the HTTP Request node. Authorization: [REDACTED]',
+			candidateFilePath: null,
 		});
 		expect(output.report).toContain(value);
 	});

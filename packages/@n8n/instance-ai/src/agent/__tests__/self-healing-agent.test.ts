@@ -194,6 +194,7 @@ describe('createSelfHealingAgent', () => {
 					outcome: 'could_not_fix',
 					summary: 'No fix found',
 					report: 'No changes were made.',
+					candidateFilePath: null,
 				}),
 		});
 		const agent = await createSelfHealingAgent({
@@ -205,6 +206,15 @@ describe('createSelfHealingAgent', () => {
 		await stream.pipeTo(new WritableStream());
 		expect(model.doStreamCalls).toHaveLength(1);
 		const request = model.doStreamCalls[0];
+		expect(request.responseFormat).toMatchObject({
+			type: 'json',
+			schema: {
+				required: ['outcome', 'summary', 'report', 'candidateFilePath'],
+				properties: {
+					candidateFilePath: { anyOf: [{ type: 'string', minLength: 1 }, { type: 'null' }] },
+				},
+			},
+		});
 		const instructions = request.prompt
 			.filter((message) => message.role === 'system')
 			.map((message) => message.content)

@@ -50,7 +50,8 @@ The agent has no save, publish, credential setup, MCP, browser, or delegation to
 It does not request user confirmation or start follow-up runs.
 
 The runtime returns technical `status`, finish information, `usage`, and validated `output`
-when available. Output has `outcome`, `summary`, `report`, and an optional `candidateFilePath`.
+when available. Output requires `outcome`, `summary`, `report`, and `candidateFilePath`.
+Set `candidateFilePath` to `null` when there is no candidate.
 `fix_ready` requires a candidate path. `could_not_fix` excludes one.
 The result includes a candidate compiler when validated output names a candidate file.
 If final compilation reports mocked credential types, the producer changes `fix_ready` to `needs_you`.
