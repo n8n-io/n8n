@@ -4,6 +4,7 @@ import { useEventListener } from '@vueuse/core';
 import DiffBadge from '@/features/workflows/workflowDiff/DiffBadge.vue';
 import WorkflowDiffEmptyState from '@/features/workflows/workflowDiff/WorkflowDiffEmptyState.vue';
 import NodeDiff from '@/features/workflows/workflowDiff/NodeDiff.vue';
+import WorkflowDiffToolbar from './WorkflowDiffToolbar.vue';
 import WorkflowDiffContent from '@/features/workflows/workflowDiff/WorkflowDiffContent.vue';
 import WorkflowDiffNodeItem from '@/features/workflows/workflowDiff/WorkflowDiffNodeItem.vue';
 import { useProvideViewportSync } from '@/features/workflows/workflowDiff/useViewportSync';
@@ -20,14 +21,7 @@ import { telemetry } from '@/app/plugins/telemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
 import { ElDropdown, ElDropdownMenu } from 'element-plus';
-import {
-	N8nButton,
-	N8nCheckbox,
-	N8nHeading,
-	N8nIconButton,
-	N8nSegmentControl,
-	N8nText,
-} from '@n8n/design-system';
+import { N8nButton, N8nSegmentControl, N8nText } from '@n8n/design-system';
 
 const props = withDefaults(
 	defineProps<{
@@ -158,29 +152,20 @@ const onNodeChangeSelect = (change: { node: INodeUi; status: NodeDiffStatus }) =
 			:class="[$style.workflowDiffViewContainer, { [$style.fullscreen]: isFullscreen }]"
 			data-test-id="workflow-diff-view"
 		>
-			<div :class="$style.header">
-				<div :class="$style.headerLeft">
-					<slot name="header-prefix" />
-					<N8nIconButton
-						v-if="showBackButton"
-						variant="outline"
-						icon="arrow-left"
-						:class="[$style.backButton, 'mr-xs']"
-						icon-size="large"
-						@click="emit('back')"
-					/>
-					<N8nHeading v-if="!hideTitle || isFullscreen" tag="h4" size="medium">
-						{{ sourceWorkflow?.name || targetWorkflow?.name }}
-					</N8nHeading>
-				</div>
-
-				<div :class="$style.headerRight">
-					<N8nCheckbox
-						v-model="syncIsEnabled"
-						label-size="small"
-						:label="i18n.baseText('workflowDiff.syncViews')"
-						class="mb-0 mr-s"
-					/>
+			<WorkflowDiffToolbar
+				v-model:sync-is-enabled="syncIsEnabled"
+				:title="sourceWorkflow?.name || targetWorkflow?.name"
+				:hide-title="hideTitle"
+				:show-back-button="showBackButton"
+				:show-fullscreen-button="showFullscreenButton"
+				:is-fullscreen="isFullscreen"
+				@back="emit('back')"
+				@previous="previousNodeChange"
+				@next="nextNodeChange"
+				@fullscreen="toggleFullscreen"
+			>
+				<template #header-prefix><slot name="header-prefix" /></template>
+				<template #changes>
 					<ElDropdown
 						trigger="click"
 						:popper-options="{
@@ -285,38 +270,8 @@ const onNodeChangeSelect = (change: { node: INodeUi; status: NodeDiffStatus }) =
 							</ElDropdownMenu>
 						</template>
 					</ElDropdown>
-					<N8nIconButton
-						variant="outline"
-						icon="chevron-left"
-						:class="$style.navigationButton"
-						@click="previousNodeChange"
-					/>
-					<N8nIconButton
-						variant="outline"
-						icon="chevron-right"
-						:class="$style.navigationButton"
-						@click="nextNodeChange"
-					/>
-					<N8nIconButton
-						v-if="showFullscreenButton"
-						variant="outline"
-						:icon="isFullscreen ? 'minimize-2' : 'maximize-2'"
-						:title="
-							i18n.baseText(
-								isFullscreen ? 'workflowDiff.fullscreen.exit' : 'workflowDiff.fullscreen.enter',
-							)
-						"
-						:aria-label="
-							i18n.baseText(
-								isFullscreen ? 'workflowDiff.fullscreen.exit' : 'workflowDiff.fullscreen.enter',
-							)
-						"
-						:class="$style.fullscreenButton"
-						data-test-id="workflow-diff-fullscreen-toggle"
-						@click="toggleFullscreen"
-					/>
-				</div>
-			</div>
+				</template>
+			</WorkflowDiffToolbar>
 
 			<WorkflowDiffContent
 				:source-nodes="source.nodes"
@@ -367,10 +322,6 @@ const onNodeChangeSelect = (change: { node: INodeUi; status: NodeDiffStatus }) =
 	inset: 0;
 	z-index: var(--workflow-diff-fullscreen--z);
 	background: var(--color--background--light-3);
-}
-
-.fullscreenButton {
-	margin-left: var(--spacing--2xs);
 }
 
 .tabs {
@@ -437,27 +388,5 @@ const onNodeChangeSelect = (change: { node: INodeUi; status: NodeDiffStatus }) =
 			display: none;
 		}
 	}
-}
-
-.header {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	padding: 11px 16px;
-	border-bottom: 1px solid var(--color--foreground);
-
-	.navigationButton {
-		margin-left: var(--spacing--4xs);
-	}
-
-	.backButton {
-		border: none;
-	}
-}
-
-.headerLeft,
-.headerRight {
-	display: flex;
-	align-items: center;
 }
 </style>

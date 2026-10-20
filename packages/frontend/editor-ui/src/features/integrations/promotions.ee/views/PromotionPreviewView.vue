@@ -47,7 +47,7 @@ import {
 	totalChangeCount,
 	type ResourceKey,
 } from '../promotionPreview.selection';
-import { defaultOpenWorkflow, hasWorkflowDiff } from '../promotionPreview.workflow';
+import { defaultActiveWorkflow, hasWorkflowDiff } from '../promotionPreview.workflow';
 import { buildPreviewTree, cardOrder } from '../promotionPreview.tree';
 
 const props = defineProps<{ projectId: string; direction: PromotionDirection }>();
@@ -93,8 +93,14 @@ const selection = usePromotionSelection(graph, {
 	disabled: computed(() => blockers.value.blocked),
 	locked: operation.isBusy,
 });
-const openWorkflowKey = ref<ResourceKey>();
-const details = usePromotionResourceDetails(projectId, direction, preview, graph, openWorkflowKey);
+const activeWorkflowKey = ref<ResourceKey>();
+const details = usePromotionResourceDetails(
+	projectId,
+	direction,
+	preview,
+	graph,
+	activeWorkflowKey,
+);
 
 const title = computed(() => i18n.baseText(`promotions.preview.title.${props.direction}`));
 watch(title, (value) => documentTitle.set(value), { immediate: true });
@@ -121,22 +127,21 @@ const hasDiff = (key: ResourceKey) => {
 	return !!resource && hasWorkflowDiff(resource);
 };
 
-// One workflow diff is open at a time. A new preview keeps it open while the workflow still has
-// changes. The first preview opens the inspected or the first changed workflow.
+// One workflow diff is active at a time. A new preview keeps it while the workflow still has
+// changes. The first preview activates the inspected or the first changed workflow.
 watch(
 	order,
 	(keys, previous = []) => {
-		const key = openWorkflowKey.value;
+		const key = activeWorkflowKey.value;
 		if (key ? keys.includes(key) && hasDiff(key) : previous.length > 0) return;
-		openWorkflowKey.value = graph.value
-			? defaultOpenWorkflow(keys, graph.value.resources, inspectedKey.value)
+		activeWorkflowKey.value = graph.value
+			? defaultActiveWorkflow(keys, graph.value.resources, inspectedKey.value)
 			: undefined;
 	},
 	{ immediate: true },
 );
 async function inspect(key: string) {
-	// The inspected workflow can be closed since, because another diff opened.
-	if (hasDiff(key)) openWorkflowKey.value = key;
+	if (hasDiff(key)) activeWorkflowKey.value = key;
 	// The URL does not change for the same item, so scroll to its card again directly.
 	if (key === inspectedKey.value) {
 		await cards.value?.scrollToCard(key);
@@ -434,7 +439,7 @@ const treeResizer = useResizablePanel({
 					</N8nCallout>
 					<PromotionChangeCards
 						ref="cards"
-						v-model:open-workflow="openWorkflowKey"
+						v-model:active-workflow="activeWorkflowKey"
 						:order="order"
 						:graph="graph"
 						:direction="direction"
