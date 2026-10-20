@@ -27,7 +27,7 @@ import { AgentSaveCompletionService } from './agent-save-completion.service';
 import { AgentSetupCompletionService } from './agent-setup-completion.service';
 import { AgentSkillRefsService } from './agent-skill-refs.service';
 import { AgentsSettingsService } from './agents-settings.service';
-import type { Agent, ProjectAgent } from './entities/agent.entity';
+import type { ProjectAgent } from './entities/agent.entity';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import { syncAgentIntegrations } from './integrations/integrations-sync';
 import { assertSingleConnections } from './integrations/single-connection';

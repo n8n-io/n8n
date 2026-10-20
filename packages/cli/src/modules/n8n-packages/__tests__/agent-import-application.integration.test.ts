@@ -255,16 +255,16 @@ it('applies selected Agents with complete bodies, cycles, workflow bindings and 
 		project,
 	);
 	const completion = Container.get(AgentSaveCompletionService);
-	const configurationSaved = completion.configurationSaved.bind(completion);
+	const definitionSaved = completion.definitionSaved.bind(completion);
 	const observed = vi
-		.spyOn(completion, 'configurationSaved')
+		.spyOn(completion, 'definitionSaved')
 		.mockImplementation(async (event, ...args) => {
 			expect(await agents.findById(event.agent.id)).toMatchObject({
 				id: event.agent.id,
 				schema: event.agent.schema,
 			});
 			expect(await tasks.findByAgentId(event.agent.id)).toHaveLength(1);
-			await configurationSaved(event, ...args);
+			await definitionSaved(event, ...args);
 		});
 	const connect = vi.spyOn(Container.get(ChatIntegrationService), 'connect');
 	const schedule = vi.spyOn(Container.get(AgentTaskService), 'registerEnabledForAgent');
@@ -307,7 +307,7 @@ it('applies selected Agents with complete bodies, cycles, workflow bindings and 
 	expect(saved.integrations).toEqual([{ type: 'slack', credentialId: 'source-chat' }]);
 	expect(await Container.get(AgentHistoryRepository).count()).toBe(0);
 	expect(observed).toHaveBeenCalledTimes(2);
-	expect(runtimes.clearRuntimes).toHaveBeenCalledWith(saved.id);
+	expect(runtimes.clearRuntimes).not.toHaveBeenCalled();
 	expect(broadcaster.notify).toHaveBeenCalled();
 	expect(connect).not.toHaveBeenCalled();
 	expect(schedule).not.toHaveBeenCalled();
@@ -316,6 +316,10 @@ it('applies selected Agents with complete bodies, cycles, workflow bindings and 
 	);
 	expect(setupCompleted).toHaveLength(2);
 	for (const agent of [saved, child]) {
+		expect(telemetry.track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.AGENTS.USER_CREATED_AGENT,
+			expect.objectContaining({ agent_id: agent.id, event_version: '3' }),
+		);
 		expect(await agents.findById(agent.id)).toMatchObject({ setupCompletedAt: expect.any(Date) });
 		expect(setupCompleted).toContainEqual([
 			TELEMETRY_EVENT.AGENTS.AGENT_SETUP_COMPLETED,
@@ -330,6 +334,7 @@ it('reuses destination IDs, replaces removed content, skips writes and preserves
 	input.manifest.agents.splice(1);
 	const first = source(input);
 	const initial = (await importSelected(input)).scopes[0].imported.agentOutcomes[0].agent;
+	telemetry.track.mockClear();
 	const [task] = await tasks.findByAgentId(initial.id);
 	const history = Container.get(AgentHistoryRepository);
 	await history.saveVersion({
@@ -368,6 +373,14 @@ it('reuses destination IDs, replaces removed content, skips writes and preserves
 		},
 	});
 	expect(updated.agent.versionId).not.toBe(initial.versionId);
+	expect(telemetry.track).toHaveBeenCalledWith(
+		TELEMETRY_EVENT.AGENTS.USER_MODIFIED_AGENT,
+		expect.objectContaining({ agent_id: initial.id, event_version: '2' }),
+	);
+	expect(telemetry.track).not.toHaveBeenCalledWith(
+		TELEMETRY_EVENT.AGENTS.USER_CREATED_AGENT,
+		expect.anything(),
+	);
 	expect(updated.agent.schema).not.toHaveProperty('mcpServers');
 	expect(await tasks.findByAgentId(initial.id)).toMatchObject([
 		{ id: task.id, objective: 'Updated objective' },
