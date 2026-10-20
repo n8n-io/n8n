@@ -60,6 +60,12 @@ if (mode === 'record') {
 		writeFileSync(join(dir, 'exited'), String(code ?? 1));
 		process.exit(code ?? 1);
 	});
+	// A CLI that cannot start emits error, not exit. Without the marker, the run waits for ever.
+	child.on('error', (error) => {
+		console.error(`Cannot start ${bin}: ${error.message}`);
+		writeFileSync(join(dir, 'exited'), '127');
+		process.exit(127);
+	});
 } else if (mode === 'run') {
 	const self = new URL(import.meta.url).pathname;
 	// mouse and focus-events stop the tmux tips that Claude Code shows in the recorded screen.

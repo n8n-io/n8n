@@ -368,8 +368,9 @@ def build_branch(log_path):
 		say(f'build: done in {time.time() - started:.0f}s')
 
 
-def preflight(build, need_master):
-	"""Problems that stop a run (errors) or make the report less useful (warnings)."""
+def preflight(build, need_master, local_instances=True):
+	"""Problems that stop a run (errors) or make the report less useful (warnings).
+	local_instances is False with --branch-url: the branch runs then need no local build."""
 	errors, warnings = [], []
 	for tool in ('node', 'git') + (('pnpm',) if build or need_master else ()):
 		if not shutil.which(tool):
@@ -382,7 +383,7 @@ def preflight(build, need_master):
 		if res.returncode != 0:
 			errors.append('Playwright cannot start a browser: '
 			              f'{(res.stderr or res.stdout).strip()[:300]}. Run pnpm install, and install Google Chrome.')
-	if not build:
+	if not build and local_instances:
 		for path in ('packages/cli/dist', 'packages/frontend/editor-ui/dist/index.html'):
 			if not (REPO_ROOT / path).exists():
 				errors.append(f'{path} does not exist. Build first, or run without --no-build.')
@@ -691,7 +692,7 @@ def main():
 	print_estimate(est)
 	if args.estimate:
 		return
-	errors, warnings = preflight(build, compare_master)
+	errors, warnings = preflight(build, compare_master, local_instances=not args.branch_url)
 	for w in warnings:
 		say(f'warning: {w}')
 	if errors:
@@ -817,6 +818,7 @@ def main():
 			say(f'master is not available: {e}', 'master')
 			skip('master', f'Master is not available: {e}')
 
+	visual_error = None
 	try:
 		if build:
 			step('Build this checkout')
@@ -862,14 +864,21 @@ def main():
 		if compare_master:
 			step('Compare the visual captures with master')
 			progress.update(step='Comparing the captures with master')
-			subprocess.run(['node', 'visual_diff.mjs', str(run_dir)], cwd=HERE)
+			diff = subprocess.run(['node', 'visual_diff.mjs', str(run_dir)], cwd=HERE)
+			if diff.returncode != 0:
+				visual_error = f'visual_diff.mjs failed with exit code {diff.returncode}. The visual check is not complete.'
+				say(f'error: {visual_error}')
+				progress.update(visualError=visual_error)
 			trees = [r for r in compare_trees(run_dir) if r.get('ariaDiff')]
 			if trees:
 				say(f'{len(trees)} captures with a difference in the accessibility tree: '
 				    + ', '.join(f'{r["scenario"]}/{r["name"]}' for r in trees))
 
 		step('Summarize the runs for the judge')
-		(run_dir / 'summary.txt').write_text(report.summarize(run_dir))
+		summary = report.summarize(run_dir)
+		if visual_error:
+			summary = f'VISUAL CHECK FAILED: {visual_error}\n\n{summary}'
+		(run_dir / 'summary.txt').write_text(summary)
 		if not args.try_mode:
 			step('Build the report')
 			progress.update(step='Building the report')
@@ -902,7 +911,8 @@ def main():
 		'summary': str(run_dir / 'summary.txt'),
 		'results': {name: runs[name]['status'] for name in runs},
 		'visual': {'captures': len(visual_results),
-		           'changed': [f'{r["scenario"]}/{r["name"]}' for r in visual_results if r['status'] != 'unchanged']},
+		           'changed': [f'{r["scenario"]}/{r["name"]}' for r in visual_results if r['status'] != 'unchanged'],
+		           'error': visual_error},
 		'instancePorts': {i.name: i.port for i in instances} if keep else None,
 		'rerun': rerun,
 		'usage': 'The token usage comes in the next lines. The report updates when it is done.' if usage_later else None,

@@ -52,7 +52,7 @@ def langsmith_client():
 def fetch_calls(started_at, finished_at, traces=None):
 	"""LLM calls in the LangSmith project between two ISO times. traces keeps only the calls of these traces."""
 	call = langsmith_client()
-	project = setting('LANGSMITH_PROJECT', default='default')
+	project = setting('LANGSMITH_PROJECT', 'LANGCHAIN_PROJECT', default='instance-ai')
 
 	sessions = call('GET', '/api/v1/sessions?' + urllib.parse.urlencode({'name': project}))
 	if not sessions:

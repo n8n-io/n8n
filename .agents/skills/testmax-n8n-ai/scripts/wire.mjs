@@ -9,7 +9,6 @@
 import { createRequire } from 'node:module';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import vm from 'node:vm';
 
 import { repo } from './sdk.mjs';
 
@@ -369,68 +368,45 @@ function guardFetch(allow, blocked) {
 
 // --- Code nodes ------------------------------------------------------------------
 
-/** The variables of the Code node for one item: $input, $json, $('Node'), $now and the rest. */
-function codeContext(fns, index, extra) {
-	const proxy = fns.getWorkflowDataProxy(index);
-	const context = {};
-	for (const key of Object.keys(proxy)) {
-		try {
-			context[key] = proxy[key];
-		} catch {}
-	}
-	// The data proxy resolves these on access, so a copy of its keys holds only placeholders.
-	for (const key of ['$json', '$binary', '$data']) {
-		try {
-			context[key] = proxy[key];
-		} catch {
-			context[key] = undefined;
-		}
-	}
-	const quiet = () => undefined;
-	return vm.createContext({ ...context, ...extra, console: { log: quiet, info: quiet, warn: quiet, error: quiet, debug: quiet } });
-}
-
 /**
- * additionalData.startRunnerTask for JavaScript. The n8n server sends Code node jobs to a task
- * runner. Here the code runs in a node:vm context with the same variables. Python is not supported.
+ * additionalData.startRunnerTask. The n8n server sends Code node jobs to a sandboxed task runner.
+ * This process has no sandbox, so it never runs builder code. run_wire.mjs skips workflows with a
+ * Code node. This refusal catches a node type that it does not know.
  */
-async function startRunnerTask(_data, jobType, settings, fns) {
-	if (jobType !== 'javascript') return { ok: false, error: { message: `${jobType} code does not run in this test run.` } };
-	const script = new vm.Script(`(async () => {\n${settings.code}\n})()`);
-	const items = fns.getInputData();
-	try {
-		if (settings.nodeMode !== 'runOnceForEachItem') {
-			return { ok: true, result: await script.runInContext(codeContext(fns, 0, { items }), { timeout: 10_000 }) };
-		}
-		const { startIndex = 0, count = items.length } = settings.chunk ?? {};
-		const result = [];
-		for (let i = startIndex; i < Math.min(startIndex + count, items.length); i++) {
-			const value = await script.runInContext(codeContext(fns, i, { item: items[i] }), { timeout: 10_000 });
-			if (value !== undefined && value !== null) result.push(value);
-		}
-		return { ok: true, result };
-	} catch (error) {
-		return { ok: false, error: { message: error?.message ?? String(error), stack: error?.stack } };
-	}
+async function startRunnerTask(_data, jobType) {
+	return { ok: false, error: { message: `${jobType} code does not run in the in-process run.` } };
 }
 
 // --- Run -------------------------------------------------------------------------
 
+const CANCEL_GRACE_MS = 15_000;
+
+/** The value of promise, or null after ms. */
+async function within(promise, ms) {
+	let timer;
+	try {
+		return await Promise.race([promise, new Promise((resolve) => (timer = setTimeout(() => resolve(null), ms)))]);
+	} finally {
+		clearTimeout(timer);
+	}
+}
+
 /**
- * Run a workflow once. pinData holds the trigger and any pinned nodes. With realModels, model
- * sub-nodes get the real key and fetch can reach their API hosts.
- * Returns { status, error, runData, requests, blocked, ms }.
+ * Run a workflow once. pinData holds the trigger and any pinned nodes. triggerNode names the
+ * trigger to start from. With realModels, model sub-nodes get the real key and fetch can reach
+ * their API hosts. Returns { status, error, runData, requests, blocked, ms }.
  */
-export async function runWorkflow(workflow, { pinData, rows = () => undefined, realModels = false, timeoutMs = 90_000 }) {
+export async function runWorkflow(workflow, { pinData, triggerNode, rows = () => undefined, realModels = false, timeoutMs = 90_000 }) {
 	const { workflowLib, core, nodeTypes } = loadEngine();
 	const started = Date.now();
 	const ctx = { requests: [], rows };
 	const blocked = [];
 	const allow = new Set(realModels ? Object.values(MODEL_CREDENTIALS).flatMap((m) => m.hosts) : []);
 	const restore = guardFetch(allow, blocked);
+	let stillRunning = false;
 	try {
 		const instance = new workflowLib.Workflow({ id: 'wire-run', name: workflow.name, nodes: workflow.nodes, connections: workflow.connections, nodeTypes, active: false, settings: workflow.settings ?? {} });
-		const start = workflow.nodes.find((n) => pinData[n.name] && !n.disabled && Object.keys(workflow.connections ?? {}).includes(n.name) && /trigger|webhook/i.test(n.type));
+		const start = workflow.nodes.find((n) => (!triggerNode || n.name === triggerNode) && pinData[n.name] && !n.disabled && Object.keys(workflow.connections ?? {}).includes(n.name) && /trigger|webhook/i.test(n.type));
 		if (!start) return { status: 'error', error: 'No pinned trigger to start from.', runData: {}, requests: [], blocked, ms: 0 };
 		const hooks = new core.ExecutionLifecycleHooks('manual', 'wire-run', workflow);
 		const finished = new Promise((resolve) => hooks.addHandler('workflowExecuteAfter', (run) => resolve(run)));
@@ -440,7 +416,7 @@ export async function runWorkflow(workflow, { pinData, rows = () => undefined, r
 			credentialsHelper: credentialsHelper(realModels),
 			evalLlmMockHandler: wireHandler(ctx, allow),
 			startRunnerTask,
-			getRunnerStatus: (type) => (type === 'javascript' ? { available: true } : { available: false }),
+			getRunnerStatus: () => ({ available: false }),
 			variables: {},
 			restApiUrl: 'http://localhost:5678/rest',
 			instanceBaseUrl: 'http://localhost:5678',
@@ -459,16 +435,21 @@ export async function runWorkflow(workflow, { pinData, rows = () => undefined, r
 			resultData: { pinData },
 		});
 		const execute = new core.WorkflowExecute(additionalData, 'manual', runExecutionData);
-		let timer;
-		const timeout = new Promise((resolve) => (timer = setTimeout(() => resolve(null), timeoutMs)));
-		const run = await Promise.race([execute.processRunExecutionData(instance).then(() => finished), timeout]);
-		clearTimeout(timer);
-		if (!run) return { status: 'timeout', error: `No result after ${timeoutMs / 1000} s.`, runData: {}, requests: ctx.requests, blocked, ms: Date.now() - started };
+		const execution = execute.processRunExecutionData(instance);
+		const run = await within(execution.then(() => finished), timeoutMs);
+		if (!run) {
+			// Cancel aborts the running node. Wait for the engine to stop, so no request runs after the guard is gone.
+			execution.cancel();
+			stillRunning = !(await within(execution.then(() => true, () => true), CANCEL_GRACE_MS));
+			const error = `No result after ${timeoutMs / 1000} s.${stillRunning ? ' The run did not stop after the cancel.' : ''}`;
+			return { status: 'timeout', error, runData: {}, requests: ctx.requests, blocked, ms: Date.now() - started };
+		}
 		const error = run.data?.resultData?.error;
 		return { status: run.status, error: error ? error.message ?? String(error) : null, runData: run.data?.resultData?.runData ?? {}, requests: ctx.requests, blocked, ms: Date.now() - started };
 	} catch (error) {
 		return { status: 'error', error: `${error?.name ?? 'Error'}: ${error?.message ?? error}`, runData: {}, requests: ctx.requests, blocked, ms: Date.now() - started };
 	} finally {
-		restore();
+		// A run that did not stop keeps the guard. The process exits when all runs are done.
+		if (!stillRunning) restore();
 	}
 }

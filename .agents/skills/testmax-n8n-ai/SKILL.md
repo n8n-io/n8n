@@ -128,6 +128,9 @@ outcome:
   structured output parser, or the JSON example in the prompt of the node.
 - `expect`: `reach` lists node types that must run without an error,
   `skip` lists node types that must not run.
+- `triggerNode`: the name of the trigger that the scenario starts from, for a
+  workflow with more than one trigger. Without it, the scenario starts from
+  the trigger that reaches the most `reach` types.
 
 Without a scenarios file, `run_scenarios.py` makes one scenario for each
 value of the AI booleans, with no expectations.
@@ -330,8 +333,11 @@ changes the verdict.
 built `packages/core` and runs each workflow in process. Triggers and AI
 nodes get pinned data. Service nodes run their real code, and the core
 eval hook answers each HTTP request with a recorded fixture before any
-credential is used. Code nodes run in a local VM. No request leaves the
-machine, except the model calls of the real AI runs. Empty pickers get
+credential is used. The process has no sandbox, so it never runs builder
+code: a workflow with a Code, Function or AI Transform node gets no
+in-process runs, and the report shows the step as skipped, not failed. The
+pinned-data runs still run these nodes in the n8n task runner. No request
+leaves the machine, except the model calls of the real AI runs. Empty pickers get
 `mock-<parameter>` values for the run. Each scenario row lists the nodes
 that ran with their item counts, and each request. A failed check changes
 the verdict.

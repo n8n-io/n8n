@@ -3,7 +3,8 @@
 //
 //   node run_wire.mjs <run-dir>
 //
-// wire.mjs runs the workflow in this process. Only the trigger is pinned, and the AI root
+// wire.mjs runs the workflow in this process. A workflow with a Code node is skipped (see
+// CODE_NODE_TYPES). Only the trigger is pinned, and the AI root
 // nodes too, except in the real-AI scenarios. Every other node runs, and the HTTP requests of
 // the service nodes get answers in the documented shape of each API. Three kinds of scenario:
 //   contract  the scenarios of scenarios.json, with the AI output pinned as in run_scenarios.py
@@ -18,6 +19,16 @@ import { MODEL_CREDENTIALS, fillSetup, isWrite, loadEngine, modelKey, nodeCreden
 
 const ITEMS_PER_NODE = 3;
 const BODY_CHARS = 1500;
+// These nodes run code from the builder. This process holds the settings and has no sandbox, so a
+// workflow with one of them does not run here. The pinned-data runs run it in the n8n task runner.
+const CODE_NODE_TYPES = new Set([
+	'n8n-nodes-base.code',
+	'n8n-nodes-base.function',
+	'n8n-nodes-base.functionItem',
+	'n8n-nodes-base.aiTransform',
+	'@n8n/n8n-nodes-langchain.code',
+	'@n8n/n8n-nodes-langchain.toolCode',
+]);
 const readJson = (file) => (existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')) : null);
 
 /** Read a path such as `messages[0].from` from a value. */
@@ -165,6 +176,10 @@ function modelReadiness(g) {
 
 async function runBuilder(dir, cfg) {
 	const workflow = readJson(join(dir, 'workflow.json'));
+	const codeNodes = (workflow.nodes ?? []).filter((n) => !n.disabled && CODE_NODE_TYPES.has(n.type)).map((n) => n.name);
+	if (codeNodes.length) {
+		return { skipped: `Code nodes run only in the pinned-data run, not in process: ${codeNodes.join(', ')}.`, scenarios: [] };
+	}
 	const canvas = readJson(join(dir, 'canvas-issues.json'));
 	const { workflow: filledWorkflow, filled } = fillSetup(workflow, canvas);
 	const { g, kit, scenarios } = buildScenarios(workflow, cfg);
@@ -184,7 +199,7 @@ async function runBuilder(dir, cfg) {
 		}
 		const rows = (node) => Object.entries(scenario.byType ?? {}).find(([pattern]) => typeMatches(node.type, pattern))?.[1];
 		const trigger = Object.entries(scenario.pinData).find(([name]) => isTrigger(types[name] ?? ''))?.[1]?.map((i) => i.json) ?? [];
-		const result = await runWorkflow(filledWorkflow, { pinData: scenario.pinData, rows, realModels: scenario.kind === 'ai' });
+		const result = await runWorkflow(filledWorkflow, { pinData: scenario.pinData, triggerNode: scenario.triggerNode, rows, realModels: scenario.kind === 'ai' });
 		const nodes = nodeSummary(result.runData, types);
 		const errors = Object.entries(nodes).filter(([, n]) => n.error).map(([name, n]) => `${name}: ${n.error}`);
 		Object.assign(entry, {

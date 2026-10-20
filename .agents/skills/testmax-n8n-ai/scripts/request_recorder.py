@@ -44,6 +44,8 @@ class RequestRecorder:
 		self.upstream = urlparse(upstream)
 		self.out_file = out_file
 		self.lock = threading.Lock()
+		self.idle = threading.Condition(self.lock)
+		self.active = 0
 		self.last = {}
 		self.count = 0
 		self.started = time.time()
@@ -64,9 +66,21 @@ class RequestRecorder:
 		self.thread.start()
 		return self
 
-	def stop(self):
+	def stop(self, timeout=30):
+		"""Stop the server. Wait until the open requests are written, so count is final."""
 		self.server.shutdown()
+		with self.idle:
+			self.idle.wait_for(lambda: self.active == 0, timeout=timeout)
 		self.server.server_close()
+
+	def begin(self):
+		with self.lock:
+			self.active += 1
+
+	def end(self):
+		with self.idle:
+			self.active -= 1
+			self.idle.notify_all()
 
 	def record(self, method, path, body, encoding, status, error_text):
 		row = {'t': round(time.time() - self.started, 3), 'method': method, 'path': path, 'status': status}
@@ -125,6 +139,13 @@ class RequestRecorder:
 					self.rfile.readline()
 
 			def forward(self):
+				recorder.begin()
+				try:
+					self.forward_and_record()
+				finally:
+					recorder.end()
+
+			def forward_and_record(self):
 				body = self.read_body()
 				up = recorder.upstream
 				conn_class = http.client.HTTPSConnection if up.scheme == 'https' else http.client.HTTPConnection

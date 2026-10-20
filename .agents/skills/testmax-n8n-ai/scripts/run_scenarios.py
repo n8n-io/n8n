@@ -8,7 +8,9 @@ sdk.mjs makes the pin data: triggers, service nodes and AI root nodes are pinned
 nodes (Set, IF, Code, Aggregate, ...) run for real. The n8n MCP tool test_workflow runs the
 workflow, and get_workflow_execution reads the result of each node.
 Writes <builder>/exec.json. MCP runs a workflow only when its MCP access is on, so the script
-turns it on through the REST API when necessary, and records that in exec.json.
+turns it on through the REST API when necessary, records that in exec.json, and turns it off
+again after the scenarios. With several triggers, each scenario starts from the trigger that
+sdk.mjs picks (scenarios.json "triggerNode", or the trigger that reaches the "reach" types).
 """
 
 import json
@@ -82,14 +84,14 @@ def expectations(expect, nodes):
 	return results
 
 
-def ensure_mcp_access(client, workflow_id):
-	"""Turn on MCP access for the workflow. Returns True when the script changed the setting."""
+def set_mcp_access(client, workflow_id, on):
+	"""Set MCP access for the workflow. Returns True when the script changed the setting."""
 	wf = client.workflow(workflow_id)
 	settings = wf.get('settings') or {}
-	if settings.get('availableInMCP'):
+	if bool(settings.get('availableInMCP')) == on:
 		return False
 	client.request('PATCH', f'/rest/workflows/{workflow_id}',
-	               {'versionId': wf['versionId'], 'settings': {**settings, 'availableInMCP': True}})
+	               {'versionId': wf['versionId'], 'settings': {**settings, 'availableInMCP': on}})
 	return True
 
 
@@ -107,15 +109,30 @@ def run_builder(sub, scenarios_file, client, mcp, node):
 	plan = json.loads(subprocess.run(cmd, cwd=HERE, capture_output=True, text=True, check=True).stdout)
 	out.update(pinned=plan['pinned'], executed=plan['executed'])
 	try:
-		out['mcpAccessTurnedOn'] = ensure_mcp_access(client, workflow_id)
+		out['mcpAccessTurnedOn'] = set_mcp_access(client, workflow_id, True)
 	except Exception as e:
 		out['skipped'] = f'Could not turn on MCP access: {e}'
 		return out
+	try:
+		run_plan(plan, workflow_id, types, mcp, sub, out)
+	finally:
+		if out['mcpAccessTurnedOn']:
+			try:
+				set_mcp_access(client, workflow_id, False)
+			except Exception as e:
+				out['mcpAccessRestoreError'] = str(e)
+				print(f'[scenarios] {sub.name}: could not turn MCP access off again: {e}', flush=True)
+	return out
+
+
+def run_plan(plan, workflow_id, types, mcp, sub, out):
 	for scenario in plan['scenarios']:
 		entry = {'name': scenario['name'], 'expect': scenario['expect'], 'provenance': scenario['provenance']}
+		args = {'workflowId': workflow_id, 'pinData': scenario['pinData'], 'timeout': TIMEOUT_SECONDS}
+		if scenario.get('triggerNode'):
+			args['triggerNodeName'] = entry['triggerNode'] = scenario['triggerNode']
 		try:
-			result = mcp.call('test_workflow', {'workflowId': workflow_id, 'pinData': scenario['pinData'],
-			                                    'timeout': TIMEOUT_SECONDS})
+			result = mcp.call('test_workflow', args)
 			entry.update(status=result.get('status'), error=result.get('error'), executionId=result.get('executionId'))
 			if result.get('executionId'):
 				execution = mcp.call('get_workflow_execution', {'workflowId': workflow_id,
@@ -128,7 +145,6 @@ def run_builder(sub, scenarios_file, client, mcp, node):
 		print(f'[scenarios] {sub.name}: {scenario["name"]} -> {entry.get("status")}'
 		      + (f' ({entry["error"]})' if entry.get('error') else ''), flush=True)
 		out['scenarios'].append(entry)
-	return out
 
 
 def main():

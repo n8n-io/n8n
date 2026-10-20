@@ -69,7 +69,9 @@ flowchart LR
 
 ## Requirements
 
-Run `python3 $S/run.py --check` before the first run. It checks the tools,
+Run `python3 .agents/skills/testmax-assistant-ui/scripts/run.py --check`
+before the first run. The commands below use `$S` for this scripts folder.
+`--check` checks the tools,
 Chrome, the settings, the disk space and the master build, and prints the
 plan folder for this branch.
 
@@ -217,9 +219,9 @@ export default async function (t) {
 | `t.goto(path = '/assistant')` | Opens a page and waits for the chat input. Closes the "Try new n8n Assistant" dialog. |
 | `t.send(text)` | Types into the chat input, sends, and waits for the thread URL. Records the thread for the trace. |
 | `t.waitForIdle({timeout, settle})` | Waits until the thread has no active run. Returns `'idle'`, or `'suspended'` when the run waits for the user. |
-| `t.capture(name, {mask, maskText, root, fullPage})` | Saves a screen and its accessibility tree for the visual check. `mask` takes locators, and `maskText` takes texts: all elements with that text. Masked areas show as one color, and their text shows as `[masked]` in the tree. |
+| `t.capture(name, {mask, maskText, root, fullPage})` | Saves a screen and its accessibility tree for the visual check. `mask` takes locators, and `maskText` takes texts: all elements with that text. Masked areas show as one color. In the tree, the subtree of a `mask` element and each masked text show as `[masked]`. |
 | `t.api(method, path, body)` | Calls the n8n REST API as the signed-in user. Returns `data`. |
-| `t.threadStatus(threadId)` | Returns `{hasActiveRun, isSuspended, backgroundTasks}`. |
+| `t.threadStatus(threadId)` | Returns `{active, suspended, background}`: the thread has a run, the run waits for the user, and the number of running background tasks. |
 | `t.ai.*` | Locators for the Assistant: `chatInput`, `sendButton`, `stopButton`, `userMessages`, `assistantMessages`, `assistantText(text)`, `panelText(text)`, `sidebarToggle`, `threadList`, `newThreadButton`, `approveButton`, `denyButton`, `planApproveButton`, `previewPanel`, `previewCanvasNodes`, and more in `scripts/kit.mjs`. |
 | `t.expect`, `t.page`, `t.baseUrl`, `t.sleep(ms)` | Playwright `expect`, the page, the instance URL, and a pause. |
 
@@ -307,8 +309,9 @@ Open the live page for the user on each run. Do not skip this step. Do this:
 7. Stops the instances, compares the visual captures, writes `summary.txt`,
    and builds the report without verdicts.
 8. Prints a result table, the command to run the plan again, and one JSON
-   line: `runDir`, `report`, `live`, `summary`, `results` (the status of each
-   run), `visual` (the number of captures and the changed ones), `rerun` and
+   object on several lines: `runDir`, `report`, `live`, `summary`, `results`
+   (the status of each run), `visual` (the number of captures, the changed
+   ones, and the error when the visual comparison failed), `rerun` and
    `next`.
 9. Gets the tokens and cost from LangSmith, then builds the report again.
    LangSmith receives traces with a delay, so this can take up to 90 seconds.

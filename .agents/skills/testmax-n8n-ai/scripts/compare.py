@@ -148,7 +148,8 @@ def main():
 		sys.exit(f'Unknown builders: {", ".join(sorted(unknown))}. Use iai, claude, codex.')
 
 	root = Path(setting('COMPARE_RUNS_DIR', default='/tmp/builder-compare'))
-	run_dir = Path(args.run_dir) if args.run_dir else root / f'{datetime.now():%Y%m%d-%H%M}-{slug(case["title"])}'
+	# The child scripts run from HERE, so a relative path must not reach them.
+	run_dir = (Path(args.run_dir) if args.run_dir else root / f'{datetime.now():%Y%m%d-%H%M}-{slug(case["title"])}').resolve()
 	run_dir.mkdir(parents=True, exist_ok=True)
 	(run_dir / 'prompt.txt').write_text(prompt + '\n')
 	(run_dir / 'case.json').write_text(json.dumps(case, indent=2))
@@ -183,6 +184,10 @@ def main():
 		if 'claude' in builders and 'claude' not in skipped:
 			print('Docker is not running. Claude falls back to clean-process isolation.', flush=True)
 			isolation = 'clean'
+	if isolation == 'clean':
+		skipped.setdefault('codex', 'Codex runs only in a container. Clean isolation is for Claude only.')
+		if not status.get('claudeOnHost'):
+			skipped.setdefault('claude', 'Clean isolation runs claude on the host, and claude is not on PATH.')
 	skipped = {name: reason for name, reason in skipped.items() if name in builders}
 	for name, reason in skipped.items():
 		print(f'skip {name}: {reason}', flush=True)
@@ -219,6 +224,10 @@ def main():
 				cmd = [sys.executable, 'run_cli_builder.py', '--builder', builder, '--out', str(run_dir / builder),
 				       '--prompt-file', str(run_dir / 'prompt.txt'), '--isolation', isolation]
 			code = run(cmd, run_dir / f'{builder}.log', prefix=builder if parallel else None)
+			# run_cli_builder.py exits 0 when the CLI fails. run.json has the exit code of the CLI.
+			meta_file = run_dir / builder / 'run.json'
+			if code == 0 and meta_file.exists():
+				code = json.loads(meta_file.read_text()).get('exitCode') or 0
 			results[builder] = {'exitCode': code, 'seconds': round(time.time() - started)}
 			progress.builder(builder, status='done' if code == 0 else 'failed', finishedAt=time.time(), exitCode=code)
 

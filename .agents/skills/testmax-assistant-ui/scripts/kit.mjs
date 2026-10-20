@@ -18,6 +18,25 @@ import { expect } from '../../testmax-n8n-ai/scripts/n8n_browser.mjs';
 const THREAD_URL = /\/assistant\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/;
 const RUN_GRACE_MS = 10_000;
 
+/**
+ * Replace the accessibility subtree of each masked element with one line. Masked texts alone keep
+ * the structure, so a list with a different number of rows still shows as a change.
+ */
+function maskSubtrees(tree, subtrees) {
+	const lines = tree.split('\n');
+	for (const subtree of subtrees) {
+		const sub = subtree.split('\n').filter((l) => l.trim());
+		if (!sub.length || sub[0].startsWith('#')) continue;
+		for (let i = 0; i + sub.length <= lines.length; i++) {
+			if (!lines[i].endsWith(sub[0])) continue;
+			const indent = lines[i].slice(0, lines[i].length - sub[0].length);
+			if (indent.trim() || !sub.every((l, j) => lines[i + j] === indent + l)) continue;
+			lines.splice(i, sub.length, `${indent}- text: "[masked]"`);
+		}
+	}
+	return lines.join('\n');
+}
+
 /** The accessibility tree without the masked texts and the instance port, so branch and master compare. */
 function maskTree(tree, texts) {
 	let out = tree.replace(/localhost(:|%3A)\d+/g, 'localhost$1PORT');
@@ -74,6 +93,7 @@ export function createKit({ page, out, baseUrl, autoConfirm, emit }) {
 	const threads = [];
 	const prompts = [];
 	const ai = locators(page);
+	let stopped = false;
 	mkdirSync(join(out, 'captures'), { recursive: true });
 
 	const seconds = () => (Date.now() - started) / 1000;
@@ -97,26 +117,29 @@ export function createKit({ page, out, baseUrl, autoConfirm, emit }) {
 	}
 
 	async function record(kind, title, fn) {
+		if (stopped) throw new StepFailed('The scenario has stopped.');
 		const entry = { i: steps.length + 1, kind, title, status: 'running', t: seconds() };
 		steps.push(entry);
 		save();
 		emit(`${kind} ${title}`);
+		let value;
+		let failed = false;
 		try {
-			const value = typeof fn === 'function' ? await fn() : fn;
+			value = typeof fn === 'function' ? await fn() : fn;
 			if (value === false) throw new Error('The check returned false.');
-			entry.status = 'passed';
-			return value;
 		} catch (error) {
-			entry.status = 'failed';
+			failed = true;
 			entry.error = message(error);
-			emit(`${kind} failed: ${entry.error.split('\n')[0]}`);
-			if (kind === 'step') throw new StepFailed(entry.error);
-			return undefined;
-		} finally {
-			entry.duration = seconds() - entry.t;
-			entry.shot = await shot(`${kind}-${String(entry.i).padStart(2, '0')}.png`);
-			save();
 		}
+		// After a stop, run_scenario.mjs owns the steps. A late result must not change them.
+		if (stopped) throw new StepFailed('The scenario has stopped.');
+		entry.status = failed ? 'failed' : 'passed';
+		if (failed) emit(`${kind} failed: ${entry.error.split('\n')[0]}`);
+		entry.duration = seconds() - entry.t;
+		entry.shot = await shot(`${kind}-${String(entry.i).padStart(2, '0')}.png`);
+		if (!stopped) save();
+		if (failed && kind === 'step') throw new StepFailed(entry.error);
+		return failed ? undefined : value;
 	}
 
 	async function api(method, path, body) {
@@ -222,7 +245,7 @@ export function createKit({ page, out, baseUrl, autoConfirm, emit }) {
 			let seenRun = false;
 			let idleSince = null;
 			let suspendedSince = null;
-			while (Date.now() < deadline) {
+			while (!stopped && Date.now() < deadline) {
 				let s;
 				try {
 					s = await threadStatus(id);
@@ -300,7 +323,16 @@ export function createKit({ page, out, baseUrl, autoConfirm, emit }) {
 				const tree = await (root ?? page.locator('body'))
 					.ariaSnapshot({ timeout: 10_000 })
 					.catch((e) => `# ${message(e)}`);
-				writeFileSync(join(out, 'captures', `${name}.aria.yml`), maskTree(tree, texts) + '\n');
+				const subtrees = [];
+				for (const locator of mask) {
+					for (const element of await locator.all().catch(() => [])) {
+						subtrees.push(await element.ariaSnapshot({ timeout: 5_000 }).catch(() => ''));
+					}
+				}
+				writeFileSync(
+					join(out, 'captures', `${name}.aria.yml`),
+					maskTree(maskSubtrees(tree, subtrees), texts) + '\n',
+				);
 			});
 		},
 
@@ -309,5 +341,9 @@ export function createKit({ page, out, baseUrl, autoConfirm, emit }) {
 		threadStatus,
 		sleep: (ms) => page.waitForTimeout(ms),
 	};
-	return { t, steps, threads, prompts };
+	/** End the scenario: later steps throw, and a running step does not change the steps. */
+	const stop = () => {
+		stopped = true;
+	};
+	return { t, steps, threads, prompts, stop };
 }

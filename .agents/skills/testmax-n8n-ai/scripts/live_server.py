@@ -315,8 +315,9 @@ window.addEventListener('DOMContentLoaded', ()=>{
     const items = old ? [...old.querySelectorAll('.step')] : [];
     const active = items.find(b=>b.classList.contains('active'));
     const follow = first || !active || active === items[items.length - 1];
-    const listTop = old ? old.querySelector('.step-list').scrollTop : 0;
-    const paneTop = old ? old.querySelector('.step-pane').scrollTop : 0;
+    // A run with no trace yet has a .steps section without the list and the pane.
+    const listTop = old?.querySelector('.step-list')?.scrollTop ?? 0;
+    const paneTop = old?.querySelector('.step-pane')?.scrollTop ?? 0;
     const openState = {};
     section.querySelectorAll('.step-detail').forEach(d=>d.querySelectorAll('details').forEach((x, i)=>{ openState[`${d.dataset.step}:${i}`] = x.open; }));
     section.innerHTML = html;
@@ -333,6 +334,7 @@ window.addEventListener('DOMContentLoaded', ()=>{
     const next = root ? [...root.querySelectorAll('.step')] : [];
     if (!next.length) return;
     const list = root.querySelector('.step-list'), pane = root.querySelector('.step-pane');
+    if (!list || !pane) return;
     if (follow) {
       selectQuietly(root, next[next.length - 1].dataset.step);
       list.scrollTop = list.scrollHeight;

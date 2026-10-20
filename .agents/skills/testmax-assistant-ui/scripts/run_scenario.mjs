@@ -138,7 +138,7 @@ async function liveShot() {
 }
 const liveTimer = args.live ? setInterval(liveShot, LIVE_SHOT_MS) : null;
 
-const { t, threads, prompts, steps } = createKit({
+const { t, threads, prompts, steps, stop } = createKit({
 	page,
 	out,
 	baseUrl,
@@ -155,10 +155,11 @@ try {
 	await Promise.race([
 		scenario(t),
 		new Promise((_, reject) => {
-			timer = setTimeout(
-				() => reject(new Error(`The scenario did not finish in ${args['timeout-min']} minutes.`)),
-				timeoutMs,
-			);
+			timer = setTimeout(() => {
+				// The race does not end the scenario function. stop() makes its next step throw.
+				stop();
+				reject(new Error(`The scenario did not finish in ${args['timeout-min']} minutes.`));
+			}, timeoutMs);
 		}),
 	]);
 	if (steps.some((s) => s.status === 'failed')) result.status = 'failed';
@@ -172,6 +173,7 @@ try {
 	clearTimeout(timer);
 }
 
+stop();
 clearInterval(liveTimer);
 for (const s of steps.filter((x) => x.status === 'running')) {
 	s.status = 'failed';
@@ -197,3 +199,5 @@ Object.assign(result, {
 writeFileSync(join(out, 'console.json'), JSON.stringify({ consoleErrors, requestErrors }, null, 1));
 writeFileSync(join(out, 'result.json'), JSON.stringify(result, null, 2));
 emit(`result ${result.status}`);
+// A scenario that timed out can still wait on its own timers. The results are written, so end here.
+process.exit(0);

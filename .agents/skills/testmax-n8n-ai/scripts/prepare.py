@@ -78,6 +78,9 @@ def main():
 
 	token = None
 	if args.rotate:
+		if setting('N8N_MCP_TOKEN'):
+			# The clients would keep the configured token, which the rotation makes invalid.
+			sys.exit('Remove N8N_MCP_TOKEN from the config before you rotate the MCP key, then run prepare.py --rotate again.')
 		token = client.request('POST', '/rest/mcp/api-key/rotate')['apiKey']
 		save_token(token)
 	else:

@@ -59,10 +59,11 @@ class Recorder:
 		deadline = time.time() + timeout
 		while self.proc and time.time() < deadline:
 			try:
-				if self.lines.get(timeout=max(deadline - time.time(), 0.1)) == word:
+				if self.lines.get(timeout=min(max(deadline - time.time(), 0.1), 1)) == word:
 					return True
 			except queue.Empty:
-				pass
+				if self.proc.poll() is not None:
+					return False
 		return False
 
 	def send(self, line):

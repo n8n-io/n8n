@@ -33,6 +33,8 @@ LIVE = re.compile(r'\b(?:is|now) (?:live|active|published)\b', re.I)
 WORKFLOW_ID = re.compile(r'/workflow/([A-Za-z0-9]{8,})|\bID `?([A-Za-z0-9]{16})`?')
 CODE_SPAN = re.compile(r'`([^`\n]{2,80})`')
 INVALID = re.compile(r'"valid"\s*:\s*false|"success"\s*:\s*false', re.I)
+# A test tool can answer without a transport error and still report a failed execution.
+RUN_FAILED = re.compile(r'"status"\s*:\s*"(?:error|failed|crashed|canceled|cancelled)"|"success"\s*:\s*false', re.I)
 
 
 def clauses(message):
@@ -107,7 +109,7 @@ def test_check(message, events):
 	        and not VALIDATE_TOOL.search(e.get('name') or '') and not SHELL_TOOL.search(e.get('name') or '')]
 	scripts = [e for e in events if e['kind'] == 'code' and SCRIPT_PASSED.search(str(e.get('result') or ''))]
 	if pos:
-		ok_runs = [e for e in runs if not e.get('error')]
+		ok_runs = [e for e in runs if not e.get('error') and not RUN_FAILED.search(tool_text({'result': e.get('result')}))]
 		if ok_runs:
 			names = sorted({e['name'] for e in ok_runs})
 			return check('M4', True, 'The message says the workflow was tested', quote(pos) + [f'{len(ok_runs)} successful test call(s): {", ".join(names)}.'])

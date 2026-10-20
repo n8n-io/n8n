@@ -263,15 +263,18 @@ export function workflowReferences(g) {
 
 /**
  * Look up a path in a value. Returns 'found', 'missing' or 'unknown'.
- * 'unknown' means that a null or an opaque value hides the rest of the path.
+ * 'unknown' means that a null or an opaque value hides the rest of the path. An index past the
+ * end of a sample array is also 'unknown': the sample shows the shape of one item, not the count.
  */
 export function lookup(value, path) {
 	let current = value;
 	for (const key of path) {
 		if (current === null || current === undefined) return current === null ? 'unknown' : 'missing';
 		if (Array.isArray(current)) {
-			if (typeof key === 'number') current = current[key] ?? current[0];
-			else if (key === 'length') return 'found';
+			if (typeof key === 'number') {
+				if (key >= current.length) return 'unknown';
+				current = current[key];
+			} else if (key === 'length') return 'found';
 			else return 'missing';
 			continue;
 		}
@@ -543,10 +546,25 @@ export function pinPlan(workflow, scenarios = {}, only = null) {
 			pinData[node.name] = (Array.isArray(items) ? items : [items]).map((json) => ({ json }));
 			provenance[node.name] = source;
 		}
-		plan.scenarios.push({ name: scenario.name, expect: scenario.expect ?? {}, pinData, provenance, byType });
+		plan.scenarios.push({ name: scenario.name, expect: scenario.expect ?? {}, pinData, provenance, byType, triggerNode: scenarioTrigger(g, scenario) });
 		Object.assign(plan.pinned, provenance);
 	}
 	return plan;
+}
+
+/**
+ * The trigger that a scenario starts from, or null when the workflow has one trigger. Without
+ * scenario.triggerNode, it is the trigger whose downstream nodes match the most expect.reach types.
+ */
+function scenarioTrigger(g, scenario) {
+	if (g.triggers.length < 2) return null;
+	if (scenario.triggerNode && g.triggers.some((t) => t.name === scenario.triggerNode)) return scenario.triggerNode;
+	const reach = scenario.expect?.reach ?? [];
+	const score = (trigger) => {
+		const types = [...downstream(g, trigger.name)].map((name) => g.byName.get(name)?.type ?? '');
+		return reach.filter((pattern) => types.some((type) => typeMatches(type, pattern))).length;
+	};
+	return g.triggers.reduce((best, t) => (score(t) > score(best) ? t : best)).name;
 }
 
 /** Case pin data by node type. A scenario entry replaces a case entry for the same short type. */

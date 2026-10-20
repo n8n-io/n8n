@@ -62,11 +62,18 @@ def open_terminal(title, command, cols=None, rows=None):
 		# Resize the window so that the full screen of the CLI fits.
 		prefix += f"printf '\\033[8;{rows};{cols}t'; "
 	for launcher in log_window_launchers(prefix + command):
+		# osascript returns at once, but xterm and other emulators run as long as the window is open.
+		# A launcher that still runs after a short wait has opened its window.
 		try:
-			if subprocess.run(launcher, capture_output=True, timeout=15).returncode == 0:
-				return True
-		except (OSError, subprocess.TimeoutExpired):
+			proc = subprocess.Popen(launcher, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+			                        stderr=subprocess.DEVNULL, start_new_session=True)
+		except OSError:
 			continue
+		try:
+			if proc.wait(timeout=3) == 0:
+				return True
+		except subprocess.TimeoutExpired:
+			return True
 	return False
 
 

@@ -107,8 +107,11 @@ def connections(workflow):
 			for index, targets in enumerate(branches or []):
 				for target in targets or []:
 					branch = f'[{index}]' if len(branches) > 1 else ''
+					# Merge and other multi-input nodes need the input index to show which side an edge feeds.
+					target_index = target.get('index') or 0
+					inlet = f'[in {target_index}]' if target_index else ''
 					via = '' if kind == 'main' else f' ({kind})'
-					lines.append(f'  {source}{branch} -> {target["node"]}{via}')
+					lines.append(f'  {source}{branch} -> {target["node"]}{inlet}{via}')
 	return lines
 
 
