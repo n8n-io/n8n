@@ -41,19 +41,17 @@ const confirm = () => {
 		:header="i18n.baseText('mainSidebar.prompt.importWorkflowFromUrl')"
 		@update:open="onDialogOpenUpdate"
 	>
-		<N8nDialogBody>
-			<div :class="$style.noScrollbar" data-test-id="importWorkflowUrl-modal">
-				<N8nInput
-					v-model="url"
-					:placeholder="i18n.baseText('mainSidebar.prompt.workflowUrl')"
-					:state="isValid ? 'default' : 'error'"
-					data-test-id="workflow-url-import-input"
-					@keyup.enter="confirm"
-				/>
-				<p :class="$style['error-text']" :style="{ visibility: isValid ? 'hidden' : 'visible' }">
-					{{ i18n.baseText('mainSidebar.prompt.invalidUrl') }}
-				</p>
-			</div>
+		<N8nDialogBody data-test-id="importWorkflowUrl-modal">
+			<N8nInput
+				v-model="url"
+				:placeholder="i18n.baseText('mainSidebar.prompt.workflowUrl')"
+				:state="isValid ? 'default' : 'error'"
+				data-test-id="workflow-url-import-input"
+				@keyup.enter="confirm"
+			/>
+			<p :class="$style['error-text']" :style="{ visibility: isValid ? 'hidden' : 'visible' }">
+				{{ i18n.baseText('mainSidebar.prompt.invalidUrl') }}
+			</p>
 		</N8nDialogBody>
 		<N8nDialogFooter>
 			<N8nButton
@@ -84,9 +82,5 @@ const confirm = () => {
 	margin-top: var(--spacing--2xs);
 	height: var(--spacing--sm);
 	visibility: hidden;
-}
-
-.noScrollbar {
-	overflow: hidden;
 }
 </style>
