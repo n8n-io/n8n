@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { vResizeObserver } from '@vueuse/components';
 import type { AgentJsonConfig } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { N8nRecycleScroller } from '@n8n/design-system';
@@ -228,8 +229,9 @@ onBeforeUnmount(() => {
 			item-key="id"
 			role="rowgroup"
 		>
-			<template #default="{ item: row, index: rowIndex }">
+			<template #default="{ item: row, updateItemSize }">
 				<div
+					v-resize-observer="() => updateItemSize(row)"
 					data-test-id="timeline-row"
 					:data-timeline-row-id="row.id"
 					:class="$style.rowWrapper"
@@ -246,7 +248,9 @@ onBeforeUnmount(() => {
 						:search-query="props.searchQuery"
 						:personalisation="props.personalisation"
 					/>
-					<div v-if="rowIndex < rows.length - 1" :class="$style.divider"><span></span></div>
+					<div v-if="row.id !== rows[rows.length - 1].id" :class="$style.divider">
+						<span></span>
+					</div>
 				</div>
 			</template>
 		</N8nRecycleScroller>

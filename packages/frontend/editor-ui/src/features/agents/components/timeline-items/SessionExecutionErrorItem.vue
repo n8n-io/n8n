@@ -1,7 +1,9 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
+import { useI18n } from '@n8n/i18n';
 import { N8nIcon, N8nText } from '@n8n/design-system';
 import { formatTimelineTime } from '../../utils/timeline-time';
+import { executionErrorLabel, executionErrorMessage } from '../../session-timeline.utils';
 
 import type { TimelineItem } from '../../session-timeline.types';
 
@@ -10,6 +12,7 @@ const props = defineProps<{
 	selected: boolean;
 }>();
 
+const i18n = useI18n();
 const time = computed(() => formatTimelineTime(props.item.timestamp));
 </script>
 
@@ -18,7 +21,9 @@ const time = computed(() => formatTimelineTime(props.item.timestamp));
 		<span :class="$style.iconContainer">
 			<N8nIcon icon="circle-alert" color="danger" size="medium" />
 		</span>
-		<N8nText step="xs" bold color="danger">{{ item.content }} </N8nText>
+		<N8nText step="xs" bold color="danger">
+			{{ executionErrorLabel(item, i18n) }}: {{ executionErrorMessage(item, i18n) }}
+		</N8nText>
 		<N8nText step="xs" color="text-light" bold :class="$style.timestamp">{{ time }}</N8nText>
 	</div>
 </template>

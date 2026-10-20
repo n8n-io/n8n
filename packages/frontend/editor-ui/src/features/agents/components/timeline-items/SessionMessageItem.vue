@@ -8,9 +8,12 @@ import type { AgentJsonConfig } from '@n8n/api-types';
 import { N8nButton, N8nIcon, N8nText, N8nMarkdown, N8nTooltip } from '@n8n/design-system';
 import type { TimelineItem } from '../../session-timeline.types';
 import AgentPersonalisationIcon from '../AgentPersonalisationIcon.vue';
+import AgentChatMessageAttachments from '../AgentChatMessageAttachments.vue';
 
 interface MessageItem {
 	item: TimelineItem;
+	projectId?: string;
+	agentId?: string;
 	senderName: string;
 	messageMarkdown: string;
 	personalisation?: AgentJsonConfig['personalisation'] | null;
@@ -20,6 +23,15 @@ const COLLAPSED_MAX_HEIGHT = 256;
 
 const props = defineProps<MessageItem>();
 const i18n = useI18n();
+const attachments = computed(() => {
+	if (props.item.kind !== 'user') return [];
+	return (props.item.attachments ?? []).map(({ id, fileName, mimeType, sizeBytes }) => ({
+		fileId: id,
+		fileName,
+		mimeType,
+		sizeBytes,
+	}));
+});
 const expanded = ref(false);
 const isCollapsible = ref(false);
 const messageContent = useTemplateRef<HTMLElement>('messageContent');
@@ -66,6 +78,12 @@ const time = computed(() => formatTimelineTime(props.item.timestamp));
 				:style="{ maxHeight: isCollapsible && !expanded ? `${COLLAPSED_MAX_HEIGHT}px` : undefined }"
 			>
 				<div ref="messageContent" :class="$style.messageContent">
+					<AgentChatMessageAttachments
+						v-if="attachments.length > 0 && projectId && agentId"
+						:attachments="attachments"
+						:project-id="projectId"
+						:agent-id="agentId"
+					/>
 					<N8nMarkdown :content="props.messageMarkdown" />
 				</div>
 			</CollapsibleContent>

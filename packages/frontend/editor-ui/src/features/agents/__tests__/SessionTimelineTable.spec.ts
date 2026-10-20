@@ -18,8 +18,11 @@ vi.mock('@n8n/design-system', async (importOriginal) => ({
 	N8nRecycleScroller: {
 		name: 'N8nRecycleScroller',
 		props: ['items'],
+		setup() {
+			return { updateItemSize: vi.fn() };
+		},
 		template:
-			'<div class="recycle-scroller-wrapper" v-bind="$attrs"><slot v-for="item in items" :item="item" /></div>',
+			'<div class="recycle-scroller-wrapper" v-bind="$attrs"><slot v-for="item in items" :item="item" :update-item-size="updateItemSize" /></div>',
 	},
 	N8nTooltip: {
 		name: 'N8nTooltip',
@@ -75,6 +78,61 @@ function mountTable(
 }
 
 describe('SessionTimelineTable', () => {
+	it('updates the virtual row size after expansion, collapse, and content resize', async () => {
+		const resizeCallbacks = new Map<Element, () => void>();
+		vi.stubGlobal(
+			'ResizeObserver',
+			class implements ResizeObserver {
+				constructor(private callback: ResizeObserverCallback) {}
+
+				observe(target: Element) {
+					resizeCallbacks.set(target, () => this.callback([], this));
+				}
+
+				unobserve(target: Element) {
+					resizeCallbacks.delete(target);
+				}
+
+				disconnect() {}
+			},
+		);
+		const items = Array.from(
+			{ length: 101 },
+			(_, index): TimelineItem => ({
+				kind: 'user',
+				executionId: `e${index}`,
+				timestamp: index,
+				content: `message ${index}`,
+			}),
+		);
+		const w = mountTable({ items, selectedIndex: null, visibleKinds: new Set<string>() });
+
+		try {
+			await w.vm.$nextTick();
+			const row = w.get('[data-timeline-row-id="event-0"]');
+			const notifyResize = resizeCallbacks.get(row.element);
+			const scroller = w.getComponent({ name: 'N8nRecycleScroller' });
+			/** The scroller stub exposes the callback from setup. */
+			const { updateItemSize } = scroller.vm as typeof scroller.vm & {
+				updateItemSize: ReturnType<typeof vi.fn>;
+			};
+
+			expect(notifyResize).toBeDefined();
+			for (const height of [640, 280, 400]) {
+				Object.defineProperty(row.element, 'offsetHeight', { configurable: true, value: height });
+				notifyResize?.();
+				await w.vm.$nextTick();
+				expect(updateItemSize).toHaveBeenLastCalledWith(
+					expect.objectContaining({ id: 'event-0', item: items[0] }),
+				);
+			}
+			expect(updateItemSize).toHaveBeenCalledTimes(3);
+		} finally {
+			w.unmount();
+			vi.unstubAllGlobals();
+		}
+	});
+
 	it('renders one row per item when no filter is active', () => {
 		const w = mountTable({
 			items: makeItems(),

@@ -4,11 +4,7 @@ import { VIEWS } from '@/app/constants';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { useAgentProjectBreadcrumb } from '@/features/agents/composables/useAgentProjectBreadcrumb';
 import { useAgentSessionsStore } from '@/features/agents/agentSessions.store';
-import {
-	AGENT_BUILDER_VIEW,
-	AGENT_SESSION_DETAIL_VIEW,
-	EXECUTIONS_SECTION_KEY,
-} from '@/features/agents/constants';
+import { AGENT_BUILDER_VIEW, AGENT_SESSION_DETAIL_VIEW } from '@/features/agents/constants';
 import { useAgentSessionLangSmithExport } from '@/features/agents/composables/useAgentSessionLangSmithExport';
 import { useThreadTitle } from '@/features/agents/utils/thread-title';
 import {
@@ -20,7 +16,6 @@ import {
 import AgentSessionTimelineHeader from '@/features/agents/components/AgentSessionTimelineHeader.vue';
 import AgentSessionTimelinePanel from '@/features/agents/components/AgentSessionTimelinePanel.vue';
 import { useAgentConfig } from '@/features/agents/composables/useAgentConfig';
-import { useBackOrFallback } from '@/features/agents/composables/useBackOrFallback';
 import type { SessionTimelineMetadata } from '@/features/agents/types';
 import { useI18n } from '@n8n/i18n';
 import type { DropdownMenuItemProps, IconName, PathItem } from '@n8n/design-system';
@@ -100,11 +95,6 @@ const projectRoute = computed<RouteLocationRaw>(() => ({
 const agentRoute = computed<RouteLocationRaw>(() => ({
 	name: AGENT_BUILDER_VIEW,
 	params: { projectId: projectId.value, agentId: agentId.value },
-}));
-
-const agentExecutionsRoute = computed<RouteLocationRaw>(() => ({
-	...(typeof agentRoute.value === 'object' ? agentRoute.value : {}),
-	query: { section: EXECUTIONS_SECTION_KEY },
 }));
 
 const breadcrumbItems = computed<PathItem[]>(() => [
@@ -196,9 +186,9 @@ function formatDate(fullDate: string): string {
 	return `${date} ${time}`;
 }
 
-// Returns to the correct starting point (e.g. Preview) when there is one;
-// otherwise falls back to the agent's executions tab, e.g. for a direct visit.
-const closeTimeline = useBackOrFallback(agentExecutionsRoute);
+function onEditAgent() {
+	void router.push(agentRoute.value);
+}
 
 function onBreadcrumbSelect(item: PathItem) {
 	if (item.id === projectId.value) {
@@ -230,7 +220,7 @@ function onSessionSelect(nextThreadId: string) {
 			@breadcrumb-select="onBreadcrumbSelect"
 			@session-select="onSessionSelect"
 			@langsmith-export="sendSession({ projectId, agentId, threadId })"
-			@close="closeTimeline"
+			@edit="onEditAgent"
 		/>
 
 		<div :class="$style.content">
