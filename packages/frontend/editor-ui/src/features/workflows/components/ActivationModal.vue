@@ -139,13 +139,11 @@ const handleCheckboxChange = (checkboxValue: string | number | boolean) => {
 			</div>
 		</N8nDialogBody>
 
-		<N8nDialogFooter>
-			<div :class="$style.footer">
-				<N8nCheckbox :model-value="checked" @update:model-value="handleCheckboxChange">
-					<template #label> {{ i18n.baseText('generic.dontShowAgain') }}</template>
-				</N8nCheckbox>
-				<N8nButton :label="i18n.baseText('activationModal.gotIt')" @click="closeDialog" />
-			</div>
+		<N8nDialogFooter :class="$style.footer">
+			<N8nCheckbox :model-value="checked" @update:model-value="handleCheckboxChange">
+				<template #label> {{ i18n.baseText('generic.dontShowAgain') }}</template>
+			</N8nCheckbox>
+			<N8nButton :label="i18n.baseText('activationModal.gotIt')" @click="closeDialog" />
 		</N8nDialogFooter>
 	</N8nDialog>
 </template>
@@ -156,13 +154,6 @@ const handleCheckboxChange = (checkboxValue: string | number | boolean) => {
 }
 
 .footer {
-	display: flex;
-	justify-content: flex-end;
 	align-items: center;
-	width: 100%;
-
-	> button {
-		margin-left: auto;
-	}
 }
 </style>
