@@ -29,10 +29,11 @@ the credential checks read control-plane state.
    ADR-20260902-steps-declare-waits. On resume the step runs again, and the call returns
    the child's result. A fire-and-forget call does not suspend, but the child still records
    its parent.
-2. **The control plane resolves. The engine starts.** The shim asks the control plane for
-   the child's definition over an API call. The control plane applies the caller policy and
-   the credential checks and returns the graph. The engine starts the child itself when it
-   processes the step result, so admittance and the parent link apply in one place.
+2. **The control plane resolves the child, and the engine starts it.** When a node asks
+   for a sub-workflow, the shim calls the control plane. The control plane looks up the
+   workflow, applies the caller policy and the credential checks, and returns the graph.
+   The engine then starts the child itself as it processes the step result. Starting it in
+   the engine keeps admittance and the parent link in one place.
 3. **Suspend before start.** The engine suspends the parent step before it starts the
    child, so the child cannot end before the parent can resume. When the start fails,
    reconciliation recovers the waiting step.
