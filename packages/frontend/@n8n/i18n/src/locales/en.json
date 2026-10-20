@@ -4434,6 +4434,7 @@
 	"settings.api.scopes.group.projects": "Projects",
 	"settings.api.scopes.group.foldersTags": "Folders, tags",
 	"settings.api.scopes.group.members": "Members",
+	"settings.api.scopes.group.environments": "Environments",
 	"settings.api.scopes.group.instanceOperations": "Instance operations",
 	"settings.api.scopes.modal.title": "{label} scopes",
 	"settings.api.scopes.modal.empty": "This API key has no scopes.",

@@ -82,6 +82,24 @@ describe('groupScopes', () => {
 		expect(groups[4].scopes).toEqual(['folder:read', 'tag:read']);
 	});
 
+	it('puts source control scopes in the environments group, not instance operations', () => {
+		const groups = groupScopes([
+			'sourceControl:read',
+			'sourceControl:pull',
+			'sourceControl:push',
+			'securityAudit:generate',
+		]);
+
+		expect(groups).toEqual([
+			{
+				key: 'environments',
+				isFallback: false,
+				scopes: ['sourceControl:read', 'sourceControl:pull', 'sourceControl:push'],
+			},
+			{ key: 'instanceOperations', isFallback: false, scopes: ['securityAudit:generate'] },
+		]);
+	});
+
 	it('omits groups without available scopes', () => {
 		const groups = groupScopes(['workflow:read', 'user:list']);
 
