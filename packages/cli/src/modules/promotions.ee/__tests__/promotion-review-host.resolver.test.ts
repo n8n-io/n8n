@@ -11,15 +11,14 @@ describe('PromotionReviewHostResolver', () => {
 	const resolver = new PromotionReviewHostResolver(providersService);
 
 	const input = (over: Partial<PromotionOperationInput> = {}): PromotionOperationInput => ({
-		connectionId: 'conn1',
-		connectionScope: 'instance',
-		configId: 'config1',
+		environmentId: 'env1',
+		scope: 'instance',
 		providerId: 'prov1',
 		providerType: 'gitlab',
 		authType: 'token',
 		encryptedAuth: 'enc',
 		hostBaseUrl: 'https://gitlab.example.com/gitlab',
-		target: {
+		remote: {
 			schemaVersion: 1,
 			remoteUrl: 'https://gitlab.example.com/gitlab/platform/api.git',
 		},
@@ -78,7 +77,7 @@ describe('PromotionReviewHostResolver', () => {
 		await expect(
 			resolver.resolve(
 				input({
-					target: { schemaVersion: 1, remoteUrl: 'https://github.com/org/repo.git' },
+					remote: { schemaVersion: 1, remoteUrl: 'https://github.com/org/repo.git' },
 				}),
 			),
 		).rejects.toThrow('The repository URL must use the saved GitLab base URL.');

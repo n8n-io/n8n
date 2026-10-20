@@ -258,6 +258,11 @@ export function removeDefaultValues(
 		delete cleanedSettings.credentialResolverId;
 	}
 
+	// Remove redactCallerExecutions if it is on, because an unset value is on
+	if (cleanedSettings.redactCallerExecutions === true) {
+		delete cleanedSettings.redactCallerExecutions;
+	}
+
 	return cleanedSettings;
 }
 
@@ -558,9 +563,13 @@ export async function updateParentExecutionWithChildResults(
 
 	// The parent keeps a copy of the child's output (or error), so it redacts at least what the
 	// child redacts. The resume restores this context as is, so escalate it before it is saved.
+	// Without the child's saved workflow, the opt-out cannot be read, so the child's own
+	// channels pass up.
 	escalateSubWorkflowRedaction(
 		parentWithSubWorkflowResults.data.executionData?.runtimeData,
-		summarizeSubWorkflowRedaction(subworkflowResults.data, { includeOwn: true }),
+		summarizeSubWorkflowRedaction(subworkflowResults.data, {
+			includeOwn: childWorkflowData?.settings?.redactCallerExecutions !== false,
+		}),
 	);
 
 	if (subworkflowError) {

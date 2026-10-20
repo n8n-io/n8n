@@ -37,8 +37,7 @@ describe('PromotionReviewsService', () => {
 		email: 'ada@example.com',
 	});
 	const input = mock<PromotionOperationInput>({
-		connectionId: 'conn1',
-		configId: 'config-1',
+		environmentId: 'env-1',
 		config: {
 			direction: 'promote',
 			settings: { schemaVersion: 1, baseBranchName: 'staging', createBranchOnPromotion: true },
@@ -101,7 +100,7 @@ describe('PromotionReviewsService', () => {
 		expect(reviewRepository.insertReview).toHaveBeenCalledWith(
 			{
 				id: reviewId,
-				connectionId: 'conn1',
+				environmentId: 'env-1',
 				type: 'gitlab',
 				remoteReviewId: '7!3',
 				createdById: 'actor',

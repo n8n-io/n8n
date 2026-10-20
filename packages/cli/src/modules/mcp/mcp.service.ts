@@ -14,6 +14,7 @@ import {
 	FolderFinderService,
 	ExecutionRedactionServiceProxy,
 	WorkflowPublishedDataService,
+	AiPreferenceService,
 } from '@n8n/backend-services';
 import { ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import { ExecutionRepository, ProjectRepository, SharedWorkflowRepository, User } from '@n8n/db';
@@ -42,7 +43,6 @@ import { NodeCatalogService } from '@/node-catalog';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { AiGatewayService } from '@/services/ai-gateway.service';
-import { AiPreferenceService } from '@/services/ai-preference.service';
 import { FolderService } from '@/services/folder.service';
 import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
 import { ProjectService } from '@/services/project.service.ee';
@@ -70,6 +70,7 @@ import { getAllowedToolNames } from './mcp-scopes';
 import {
 	areAgentToolsAvailable,
 	arePreferenceToolsEnabled,
+	areSkillToolsAvailable,
 	isCommunityNodeInstallAvailable,
 } from './mcp-tool-availability';
 import type {
@@ -826,6 +827,11 @@ export class McpService {
 				user,
 				allowedToolNames,
 			);
+		}
+
+		if (areSkillToolsAvailable(this.globalConfig, this.moduleRegistry)) {
+			const { McpSkillToolsService } = await import('./tools/skills/skill-tools.service.js');
+			Container.get(McpSkillToolsService).registerTools(registerIfAllowed, user);
 		}
 
 		return server;

@@ -754,50 +754,36 @@ export {
 	type PromotionRepository,
 } from './promotions/promotion-repository.dto';
 export {
-	PromotionApplyConfigPublicDto,
-	PromotionPromoteConfigPublicDto,
-	UpsertPromotionApplyConfigDto,
-	UpsertPromotionPromoteConfigDto,
-	promotionApplyConfigPublicSchema,
-	promotionConfigCheckoutSchema,
-	promotionConfigSettingsSchema,
-	promotionConnectionConfigsPublicSchema,
-	promotionConnectionConfigsSummarySchema,
-	promotionDirectionSchema,
-	promotionGitApplySettingsSchema,
-	promotionGitPromoteSettingsSchema,
-	promotionGitSettingsSchemas,
-	promotionApplyConfigSummarySchema,
-	promotionPromoteConfigSummarySchema,
-	promotionPromoteConfigPublicSchema,
-	type PromotionConfigCheckout,
-	type PromotionConfigSettings,
-	type PromotionConnectionConfigsPublic,
-	type PromotionConnectionConfigsSummary,
-	type PromotionDirection,
-} from './promotions/promotion-config.dto';
-export {
 	PromotionCheckoutPublicDto,
 	promotionCheckoutPublicSchema,
 } from './promotions/promotion-checkout.dto';
 export * from './promotions/promotion-binding-preflight.dto';
+export * from './promotions/promotion-preview.dto';
 export {
-	CreatePromotionConnectionDto,
-	ListPromotionConnectionsQueryDto,
-	PromotionConnectionListPublicDto,
-	PromotionConnectionProjectListPublicDto,
-	PromotionConnectionProjectPublicDto,
-	PromotionConnectionPublicDto,
-	UpdatePromotionConnectionDto,
-	promotionConnectionProjectPublicSchema,
-	promotionConnectionPublicSchema,
-	promotionConnectionScopeSchema,
-	promotionConnectionSummarySchema,
-	promotionConnectionTargetSchema,
-	type PromotionConnectionSummary,
-	type PromotionConnectionScope,
-	type PromotionConnectionTarget,
-} from './promotions/promotion-connection.dto';
+	CreatePromotionEnvironmentDto,
+	ListPromotionEnvironmentsQueryDto,
+	PromotionEnvironmentListPublicDto,
+	PromotionEnvironmentProjectListPublicDto,
+	PromotionEnvironmentProjectPublicDto,
+	PromotionEnvironmentPublicDto,
+	UpdatePromotionEnvironmentDto,
+	promotionEnvironmentRemoteSchema,
+	promotionDirectionSchema,
+	promotionEnvironmentCheckoutSchema,
+	promotionEnvironmentProjectPublicSchema,
+	promotionEnvironmentPublicSchema,
+	promotionEnvironmentScopeSchema,
+	promotionEnvironmentSettingsSchema,
+	promotionEnvironmentSummarySchema,
+	promotionGitApplySettingsSchema,
+	promotionGitPromoteSettingsSchema,
+	type PromotionEnvironmentRemote,
+	type PromotionDirection,
+	type PromotionEnvironmentCheckout,
+	type PromotionEnvironmentScope,
+	type PromotionEnvironmentSettings,
+	type PromotionEnvironmentSummary,
+} from './promotions/promotion-environment.dto';
 export {
 	ApplyPackageDto,
 	ApplyPackageResultDto,
@@ -851,6 +837,11 @@ export {
 	type PromotionReviewWorkflowChange,
 } from './promotions/promotion-review.dto';
 
-export { ScimConfigPatchDto } from './scim';
+export {
+	ScimConfigPatchDto,
+	ScimPatchRequestDto,
+	ScimQueryDto,
+	ScimUserCreateDto,
+} from './scim';
 export { CreateTrustedSourceDto } from './trusted-source/create-trusted-source.dto';
 export { UpdateTrustedSourceDto } from './trusted-source/update-trusted-source.dto';

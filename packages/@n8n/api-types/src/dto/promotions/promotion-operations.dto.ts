@@ -50,8 +50,7 @@ export type PromotionPromoteWarning = z.infer<typeof promotionPromoteWarningSche
 
 /** Describes the instance that handled the request, not any other instance. */
 export const promotePackageResultSchema = z.object({
-	connectionId: n8nIdSchema,
-	configId: n8nIdSchema,
+	environmentId: n8nIdSchema,
 	counts: promotePackageCountsSchema,
 	git: promotionGitResultSchema,
 	/** Set when the push opened a review for the promotion branch. */
@@ -100,7 +99,7 @@ export const applyPackageCountsSchema = z.object({
 
 const expectedSourceSchema = z
 	.object({
-		configId: n8nIdSchema,
+		environmentId: n8nIdSchema,
 		branchName: z.string().min(1),
 		commitSha: z.string().regex(/^[0-9a-f]{40}([0-9a-f]{24})?$/),
 	})
@@ -161,8 +160,7 @@ export class ContinueApplySelectionDto extends Z.class(
 ) {}
 
 const applyPackageIdentitySchema = z.object({
-	connectionId: n8nIdSchema,
-	configId: n8nIdSchema,
+	environmentId: n8nIdSchema,
 	git: promotionGitResultSchema,
 });
 

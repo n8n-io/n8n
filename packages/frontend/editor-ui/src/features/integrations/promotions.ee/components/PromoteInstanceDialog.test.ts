@@ -22,8 +22,7 @@ vi.mock('@n8n/composables/useToast', () => ({
 
 const promoteResult = (branchName = 'main'): PromotePackageResultDto =>
 	({
-		connectionId: 'connection-1',
-		configId: 'config-promote',
+		environmentId: 'environment-1',
 		counts: {
 			workflows: 12,
 			folders: 2,
@@ -38,7 +37,7 @@ const promoteResult = (branchName = 'main'): PromotePackageResultDto =>
 const renderComponent = createComponentRenderer(PromoteInstanceDialog, {
 	props: {
 		open: true,
-		connectionId: 'connection-1',
+		environmentId: 'environment-1',
 		baseBranchName: 'main',
 		createBranchOnPromotion: false,
 		providerType: 'git',
@@ -72,7 +71,7 @@ describe('PromoteInstanceDialog', () => {
 		await userEvent.click(getByTestId('promote-confirm-button'));
 
 		await waitFor(() =>
-			expect(api.promotePackage).toHaveBeenCalledWith(expect.anything(), 'connection-1', {
+			expect(api.promotePackage).toHaveBeenCalledWith(expect.anything(), 'environment-1', {
 				commitMessage: 'Deploy today',
 			}),
 		);

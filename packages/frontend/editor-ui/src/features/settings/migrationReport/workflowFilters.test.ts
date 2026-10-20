@@ -86,6 +86,23 @@ describe('workflowFilters', () => {
 		expect(matches(workflow(), { owner: 'unassigned' })).toBe(true);
 	});
 
+	it('should filter the state that the page shows', () => {
+		expect(matches(workflow({ status: 'open' }), { state: 'open' })).toBe(true);
+		expect(matches(workflow({ status: 'open' }), { state: 'wont_fix' })).toBe(false);
+		expect(matches(workflow({ status: 'wont_fix' }), { state: 'wont_fix' })).toBe(true);
+		expect(matches(workflow({ status: 'notified' }), { state: 'open' })).toBe(true);
+		expect(matches(workflow({ status: 'notified' }), { state: 'wont_fix' })).toBe(false);
+		// A migrated row keeps its status, but the page shows it as migrated.
+		expect(
+			matchesWorkflowFilters(
+				workflow({ status: 'open' }),
+				{ ...DEFAULT_WORKFLOW_FILTERS, state: 'open' },
+				now,
+				'migrated',
+			),
+		).toBe(false);
+	});
+
 	it('should count the filters that differ from the default', () => {
 		expect(countActiveFilters(DEFAULT_WORKFLOW_FILTERS)).toBe(0);
 		expect(

@@ -2,7 +2,7 @@ import { Service } from '@n8n/di';
 
 import { BadRequestError } from '@n8n/errors';
 
-import { repositoryPathFromUrl } from './git-hosts/git-host-target';
+import { repositoryPathFromUrl } from './git-hosts/git-host-remote';
 import type { GitHostAccess } from './git-hosts/git-host.types';
 import { PromotionProvidersService } from './promotion-providers.service';
 import type { PromotionOperationInput } from './promotions.types';
@@ -14,7 +14,7 @@ export type PromotionReviewHost = Readonly<{
 }>;
 
 /**
- * Finds the host API behind a promotion connection. A plain Git provider has no
+ * Finds the host API behind a promotion environment. A plain Git provider has no
  * host API, so Promote pushes without opening a review.
  */
 @Service()
@@ -44,7 +44,7 @@ export class PromotionReviewHostResolver {
 				baseUrl: input.hostBaseUrl,
 				accessToken: credentials.password,
 			},
-			projectPath: repositoryPathFromUrl(input.hostBaseUrl, input.target.remoteUrl),
+			projectPath: repositoryPathFromUrl(input.hostBaseUrl, input.remote.remoteUrl),
 		};
 	}
 }

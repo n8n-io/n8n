@@ -88,7 +88,7 @@ export class PromotionReviewsService {
 					await this.reviewRepository.insertReview(
 						{
 							id: reviewId,
-							connectionId: input.connectionId,
+							environmentId: input.environmentId,
 							type,
 							remoteReviewId: parseRemoteReviewId(type, toGitLabReviewId({ projectId, iid })),
 							createdById: actor.id,

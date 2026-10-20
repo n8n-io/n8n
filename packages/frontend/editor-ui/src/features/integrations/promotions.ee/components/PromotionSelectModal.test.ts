@@ -68,13 +68,12 @@ const mockChanges = [
 /** The endpoint wraps the rows with the source and commit they were read from. */
 const changesBody = (
 	changes: unknown[],
-	source = { configId: 'config-1', branchName: 'main' },
+	source = { environmentId: 'config-1', branchName: 'main' },
 ) => ({ commitSha: 'a'.repeat(40), source, changes });
 
 const promoteResult = (branchName = 'main'): PromotePackageResultDto =>
 	({
-		connectionId: 'connection-1',
-		configId: 'config-promote',
+		environmentId: 'config-promote',
 		counts: {
 			workflows: 2,
 			folders: 0,
@@ -478,8 +477,7 @@ describe('PromotionSelectModal', () => {
 		const publishing = { published: 2, unpublished: 0, unchanged: 0, blocked: 0, failed: 0 };
 		const applyPackage = vi.fn((_schema: unknown, request: Request) => ({
 			receivedBody: JSON.parse(request.requestBody),
-			connectionId: 'connection-1',
-			configId: 'config-1',
+			environmentId: 'config-1',
 			status: 'applied',
 			counts: { workflows: { created: 1, updated: 1, archived: 0, deleted: 0, publishing } },
 			warnings: [],
@@ -529,7 +527,10 @@ describe('PromotionSelectModal', () => {
 		it('should pin the source the preview resolved for the project', async () => {
 			// A project with its own connection previews against that connection's config.
 			server.get('/rest/promotions/project-1/changes/apply', () => ({
-				data: changesBody(mockChanges, { configId: 'config-project', branchName: 'production' }),
+				data: changesBody(mockChanges, {
+					environmentId: 'config-project',
+					branchName: 'production',
+				}),
 			}));
 			mockedStore(useProjectsStore).fetchProject.mockResolvedValue(
 				createTestProject({ id: 'project-1' }),
@@ -542,7 +543,7 @@ describe('PromotionSelectModal', () => {
 
 			await waitFor(() => expect(applyPackage).toHaveBeenCalledTimes(1));
 			expect(applyPackage.mock.results[0].value.receivedBody.expectedSource).toEqual({
-				configId: 'config-project',
+				environmentId: 'config-project',
 				branchName: 'production',
 				commitSha: 'a'.repeat(40),
 			});
@@ -578,7 +579,11 @@ describe('PromotionSelectModal', () => {
 			// Only the selected workflows travel, pinned to the reviewed commit.
 			expect(applyPackage.mock.results[0].value.receivedBody).toEqual({
 				workflowIds: ['wf-001', 'wf-002'],
-				expectedSource: { configId: 'config-1', branchName: 'main', commitSha: 'a'.repeat(40) },
+				expectedSource: {
+					environmentId: 'config-1',
+					branchName: 'main',
+					commitSha: 'a'.repeat(40),
+				},
 			});
 			await waitFor(() =>
 				expect(showMessage).toHaveBeenCalledWith(
@@ -598,8 +603,7 @@ describe('PromotionSelectModal', () => {
 
 		it('should warn when applied workflows could not be published', async () => {
 			server.post('/api/v1/promotions/projects/project-1/apply', () => ({
-				connectionId: 'connection-1',
-				configId: 'config-1',
+				environmentId: 'config-1',
 				status: 'applied',
 				counts: {
 					workflows: {
@@ -741,8 +745,7 @@ describe('PromotionSelectModal', () => {
 			'should warn and keep the modal open when apply pauses with $result.status',
 			async ({ result, message }) => {
 				server.post('/api/v1/promotions/projects/project-1/apply', () => ({
-					connectionId: 'connection-1',
-					configId: 'config-1',
+					environmentId: 'config-1',
 					git: { commitSha: 'a'.repeat(40), branchName: 'main' },
 					...result,
 				}));

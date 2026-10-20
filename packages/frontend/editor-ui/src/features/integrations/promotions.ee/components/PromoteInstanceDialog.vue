@@ -21,7 +21,7 @@ import { promotePackage } from '../promotionsSettings.api';
 
 const props = defineProps<{
 	open: boolean;
-	connectionId: string;
+	environmentId: string;
 	baseBranchName: string;
 	createBranchOnPromotion: boolean;
 	providerType: PromotionProviderType;
@@ -102,7 +102,7 @@ async function submit() {
 
 	isSubmitting.value = true;
 	try {
-		result.value = await promotePackage(rootStore.publicApiContext, props.connectionId, {
+		result.value = await promotePackage(rootStore.publicApiContext, props.environmentId, {
 			commitMessage: commitMessage.value.trim(),
 		});
 	} catch (error) {

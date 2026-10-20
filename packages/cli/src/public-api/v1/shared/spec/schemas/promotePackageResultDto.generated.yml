@@ -1,10 +1,6 @@
 type: object
 properties:
-  connectionId:
-    type: string
-    minLength: 1
-    maxLength: 36
-  configId:
+  environmentId:
     type: string
     minLength: 1
     maxLength: 36
@@ -73,7 +69,6 @@ properties:
       required:
         - message
 required:
-  - connectionId
-  - configId
+  - environmentId
   - counts
   - git
