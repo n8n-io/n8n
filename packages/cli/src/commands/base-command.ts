@@ -328,6 +328,7 @@ export abstract class BaseCommand<F = never> {
 		this.errorReporter.info('Native evaluation result differs from the expression engine', {
 			tags: { expressionEngine: engine },
 			extra: { skeleton, nativeResultType, engineResultType, workflowId },
+			shouldIsolate: true,
 		});
 	}
 

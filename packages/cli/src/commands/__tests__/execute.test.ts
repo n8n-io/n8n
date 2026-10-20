@@ -262,6 +262,7 @@ test('should exit with a crash when expression engine init fails', async () => {
 				engineResultType: 'number',
 				workflowId: 'wf-1',
 			},
+			shouldIsolate: true,
 		},
 	);
 });

@@ -115,6 +115,21 @@ describe('Expression - native evaluation verify mode', () => {
 			expect(warn).not.toHaveBeenCalled();
 		});
 
+		test('reports the workflow ID', () => {
+			const { workflow } = modules;
+			const previousId = workflow.id;
+			workflow.id = 'wf-1';
+			try {
+				evaluateNatively.mockReturnValueOnce({ handled: true, value: 'native' });
+
+				evaluate('={{ $json.name.trimStart() }}');
+
+				expect(report.mock.calls[0][0]).toMatchObject({ workflowId: 'wf-1' });
+			} finally {
+				workflow.id = previousId;
+			}
+		});
+
 		test('reports each mismatch shape once', () => {
 			evaluateNatively
 				.mockReturnValueOnce({ handled: true, value: 42 })
@@ -170,6 +185,20 @@ describe('Expression - native evaluation verify mode', () => {
 			);
 			expect(evaluateNatively.mock.results[0].type).toBe('throw');
 			expect(report).not.toHaveBeenCalled();
+		});
+
+		test('reports two different errors', () => {
+			evaluateNatively.mockImplementationOnce(() => {
+				throw new Error('native failed');
+			});
+
+			expect(() => evaluate("={{ $node['Missing'].json.a }}")).toThrow(
+				"Referenced node doesn't exist",
+			);
+			expect(report.mock.calls[0][0]).toMatchObject({
+				nativeResultType: 'error:Error',
+				engineResultType: 'error:ExpressionError',
+			});
 		});
 
 		test('does not report a match', () => {

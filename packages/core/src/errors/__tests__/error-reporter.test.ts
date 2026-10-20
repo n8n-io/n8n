@@ -455,5 +455,16 @@ describe('ErrorReporter', () => {
 			});
 			expect(captureException).toHaveBeenCalledWith(error, { shouldIsolate: true });
 		});
+
+		it('captures an info message in a forked isolation scope when shouldIsolate is set', () => {
+			sentryErrorReporter.info('message', { shouldIsolate: true });
+
+			expect(withIsolationScope).toHaveBeenCalledTimes(1);
+			expect(isolationScopeMock.clearBreadcrumbs).toHaveBeenCalledTimes(1);
+			expect(captureException).toHaveBeenCalledWith('message', {
+				shouldIsolate: true,
+				level: 'info',
+			});
+		});
 	});
 });

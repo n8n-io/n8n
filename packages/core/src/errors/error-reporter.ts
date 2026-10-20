@@ -407,7 +407,7 @@ export class ErrorReporter {
 		this.error(warning, { ...options, level: 'warning' });
 	}
 
-	info(msg: string, options?: ReportingOptions) {
+	info(msg: string, options?: ErrorReportingOptions) {
 		this.report(msg, { ...options, level: 'info' });
 	}
 

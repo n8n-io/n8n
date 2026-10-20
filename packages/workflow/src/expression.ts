@@ -33,9 +33,7 @@ const isSyntaxError = (error: unknown): error is SyntaxError =>
 const isExpressionError = (error: unknown): error is ExpressionError =>
 	error instanceof ExpressionError || error instanceof ExpressionExtensionError;
 
-type EvaluationResult = { ok: true; value: unknown } | { ok: false; error: unknown };
-
-function sameResult(a: EvaluationResult, b: EvaluationResult): boolean {
+function sameResult(a: ExpressionEvaluationOutcome, b: ExpressionEvaluationOutcome): boolean {
 	if (a.ok && b.ok) return isEqual(a.value, b.value);
 	if (a.ok || b.ok) return false;
 	return (
@@ -47,9 +45,9 @@ function sameResult(a: EvaluationResult, b: EvaluationResult): boolean {
 }
 
 // Type names only: values and error messages can hold workflow data.
-function resultType(result: EvaluationResult): string {
+function resultType(result: ExpressionEvaluationOutcome): string {
 	if (!result.ok) {
-		return `error:${result.error instanceof Error ? result.error.constructor.name : typeof result.error}`;
+		return `error:${result.errorClass}`;
 	}
 	const { value } = result;
 	if (value === null) return 'null';
@@ -859,13 +857,13 @@ export class Expression {
 		// in-process, skipping the global-context setup, extendSyntax, and the
 		// engine (isolate). Everything else takes the regular pipeline below.
 		// Verify mode evaluates natively here, then returns the engine's result.
-		let nativeResult: EvaluationResult | undefined;
+		let nativeResult: ExpressionEvaluationOutcome | undefined;
 		if (Expression.shouldVerifyNative()) {
 			try {
 				const native = evaluateNatively(parameterValue, data);
 				if (native.handled) nativeResult = { ok: true, value: native.value };
 			} catch (error) {
-				nativeResult = { ok: false, error };
+				nativeResult = { ok: false, error, errorClass: errorClassOf(error) };
 			}
 		} else if (Expression.nativeEvaluation === 'on') {
 			const native = evaluateNatively(parameterValue, data);
@@ -941,14 +939,14 @@ export class Expression {
 			return this.finalizeResolvedValue(returnValue, returnObjectAsString);
 		}
 
-		let engineResult: EvaluationResult;
+		let engineResult: ExpressionEvaluationOutcome;
 		try {
 			engineResult = {
 				ok: true,
 				value: this.renderExpression(extendedExpression, data, parameterValue),
 			};
 		} catch (error) {
-			engineResult = { ok: false, error };
+			engineResult = { ok: false, error, errorClass: errorClassOf(error) };
 		}
 		Expression.reportNativeVerify(parameterValue, nativeResult, engineResult, data);
 
@@ -958,8 +956,8 @@ export class Expression {
 
 	private static reportNativeVerify(
 		expression: string,
-		native: EvaluationResult,
-		engine: EvaluationResult,
+		native: ExpressionEvaluationOutcome,
+		engine: ExpressionEvaluationOutcome,
 		data: IWorkflowDataProxyData,
 	): void {
 		const report = this.reportNativeVerifyMismatch;
