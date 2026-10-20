@@ -59,6 +59,14 @@ describe('Lakebase -> helpers', () => {
 			);
 		});
 
+		it.each(['..', '.'])('rejects the traversal function name %s', async (name) => {
+			const context = executeContext({ ...locators, lakebaseFunction: name });
+
+			await expect(resolveLakebaseFunctionUrl(context, 0)).rejects.toThrow(
+				`Invalid identifier: "${name}" is not allowed`,
+			);
+		});
+
 		it('asks for a function when the locator is empty', async () => {
 			const context = executeContext({ ...locators, lakebaseFunction: '' });
 
