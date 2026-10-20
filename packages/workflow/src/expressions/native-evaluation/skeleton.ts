@@ -54,8 +54,15 @@ function memberKey(node: Extract<SimpleNode, { kind: 'member' }>): string {
 	return KNOWN_KEYS.has(node.key) ? node.key : '<id>';
 }
 
-export function readsClock(node: SimpleNode): boolean {
-	return node.kind === 'timeRoot' || childrenOf(node).some(readsClock);
+// The engine reads its own clock, and a `$parameter` read evaluates that
+// parameter again, which can read the clock too. Two evaluations of such an
+// expression can differ without a bug.
+export function readsClockOrParameter(node: SimpleNode): boolean {
+	return (
+		node.kind === 'timeRoot' ||
+		(node.kind === 'root' && node.name === '$parameter') ||
+		childrenOf(node).some(readsClockOrParameter)
+	);
 }
 
 function childrenOf(node: SimpleNode): SimpleNode[] {

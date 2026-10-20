@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import type * as NativeEvaluation from '../src/expressions/native-evaluation';
-import { describeNatively } from '../src/expressions/native-evaluation';
+import { canVerifyNatively, nativeSkeleton } from '../src/expressions/native-evaluation/verify';
 import type { IDataObject } from '../src/interfaces';
 
 const engine = process.env.N8N_EXPRESSION_ENGINE;
@@ -89,12 +89,17 @@ describe('Expression - native evaluation verify mode', () => {
 			],
 			['{{ $json.list[0] ?? [1, "a"] }}', '{{ ($json.<id>.<num> ?? [<num>, <str>]) }}'],
 		])('%s', (expression, skeleton) => {
-			expect(describeNatively(expression)?.skeleton).toBe(skeleton);
+			expect(nativeSkeleton(expression)).toBe(skeleton);
 		});
 
-		test('flags clock reads', () => {
-			expect(describeNatively('{{ $now.toMillis() }}')?.readsClock).toBe(true);
-			expect(describeNatively('{{ $json.a }}')?.readsClock).toBe(false);
+		test.each([
+			['{{ $json.a }}', true],
+			['{{ $now.toMillis() }}', false],
+			['{{ $json.a > $today.year }}', false],
+			['{{ $parameter.a }}', false],
+			['{{ $json.list.filter(x => x === $parameter.a) }}', false],
+		])('can verify %s: %s', (expression, verifiable) => {
+			expect(canVerifyNatively(expression)).toBe(verifiable);
 		});
 	});
 
@@ -226,11 +231,11 @@ describe('Expression - native evaluation verify mode', () => {
 			const random = vi.spyOn(Math, 'random');
 
 			random.mockReturnValueOnce(0.6);
-			expect(evaluate('={{ $json.name.padStart(1) }}')).toBe('secret-name');
+			expect(evaluate('={{ $json.name.indexOf(1) }}')).toBe(-1);
 			expect(evaluateNatively).not.toHaveBeenCalled();
 
 			random.mockReturnValueOnce(0.4);
-			expect(evaluate('={{ $json.name.padStart(1) }}')).toBe('secret-name');
+			expect(evaluate('={{ $json.name.indexOf(1) }}')).toBe(-1);
 			expect(evaluateNatively).toHaveBeenCalled();
 			random.mockRestore();
 		});
@@ -250,12 +255,14 @@ describe('Expression - native evaluation verify mode', () => {
 			expect(report).not.toHaveBeenCalled();
 		});
 
-		test('does not compare clock reads', () => {
-			evaluateNatively.mockReturnValueOnce({ handled: true, value: 0 });
-
-			evaluate('={{ $now.toMillis() }}');
-			expect(report).not.toHaveBeenCalled();
-		});
+		test.each(['={{ $now.toMillis() }}', '={{ $parameter.a }}'])(
+			'does not evaluate %s twice',
+			(expression) => {
+				evaluate(expression);
+				expect(evaluateNatively).not.toHaveBeenCalled();
+				expect(report).not.toHaveBeenCalled();
+			},
+		);
 	} else {
 		test('does nothing under the legacy engine', async () => {
 			await modules.Expression.initExpressionEngine({

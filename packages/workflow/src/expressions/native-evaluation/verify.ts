@@ -1,6 +1,7 @@
 import isEqual from 'lodash/isEqual';
 
-import { describeNatively } from '.';
+import { getCompiled } from './compiler';
+import { readsClockOrParameter, skeletonOf } from './skeleton';
 import type { ExpressionEvaluationOutcome } from '../../expression';
 import type { IWorkflowDataProxyData } from '../../interfaces';
 import * as LoggerProxy from '../../logger-proxy';
@@ -10,6 +11,34 @@ import * as LoggerProxy from '../../logger-proxy';
 const MAX_REPORTED_SHAPES = 1000;
 
 export const DEFAULT_VERIFY_SAMPLE = 0.01;
+
+/**
+ * Whether verify mode can compare the expression: it fits the native subset
+ * and reads neither `$now`, `$today` nor `$parameter`.
+ */
+export function canVerifyNatively(expression: string): boolean {
+	const compiled = getCompiled(expression);
+	return (
+		compiled !== null &&
+		!compiled.chunks.some((chunk) => chunk.type === 'code' && readsClockOrParameter(chunk.node))
+	);
+}
+
+/** The shape of an expression with its user data masked. Null outside the native subset. */
+export function nativeSkeleton(expression: string): string | null {
+	const compiled = getCompiled(expression);
+	if (compiled === null) return null;
+
+	return compiled.chunks
+		.map((chunk) =>
+			chunk.type === 'text'
+				? chunk.text === ''
+					? ''
+					: '<text>'
+				: `{{ ${skeletonOf(chunk.node)} }}`,
+		)
+		.join('');
+}
 
 /** Holds no workflow data. */
 export type NativeVerifyMismatch = {
@@ -44,11 +73,11 @@ export class NativeVerifier {
 	): void {
 		try {
 			if (!sameResult(native, engine) && !hitEngineLimit(engine)) {
-				const description = describeNatively(expression);
-				if (description === null || description.readsClock) return;
+				const skeleton = nativeSkeleton(expression);
+				if (skeleton === null) return;
 
 				const shape = {
-					skeleton: description.skeleton,
+					skeleton,
 					engine: engineName,
 					nativeResultType: resultType(native),
 					engineResultType: resultType(engine),

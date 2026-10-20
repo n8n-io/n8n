@@ -15,6 +15,7 @@ import { expressionSandboxHooks, sanitizer, sanitizerName } from './expression-s
 import { isExpression } from './expressions/expression-helpers';
 import { evaluateNatively } from './expressions/native-evaluation';
 import {
+	canVerifyNatively,
 	DEFAULT_VERIFY_SAMPLE,
 	NativeVerifier,
 	type NativeVerifyMismatch,
@@ -571,11 +572,12 @@ export class Expression {
 		this.nativeVerifier = reportMismatch ? new NativeVerifier(sample, reportMismatch) : undefined;
 	}
 
-	private static shouldVerifyNative(): boolean {
+	private static shouldVerifyNative(expression: string): boolean {
 		return (
 			this.nativeEvaluation === 'verify' &&
 			this.shouldUseVm() &&
-			this.nativeVerifier?.isSampled() === true
+			this.nativeVerifier?.isSampled() === true &&
+			canVerifyNatively(expression)
 		);
 	}
 
@@ -807,7 +809,7 @@ export class Expression {
 		// engine (isolate). Everything else takes the regular pipeline below.
 		// Verify mode evaluates natively here, then returns the engine's result.
 		let nativeResult: ExpressionEvaluationOutcome | undefined;
-		if (Expression.shouldVerifyNative()) {
+		if (Expression.shouldVerifyNative(parameterValue)) {
 			try {
 				const native = evaluateNatively(parameterValue, data);
 				if (native.handled) nativeResult = { ok: true, value: native.value };
