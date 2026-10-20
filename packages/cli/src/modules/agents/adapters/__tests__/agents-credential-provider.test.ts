@@ -54,4 +54,101 @@ describe('AgentsCredentialProvider', () => {
 			expect(aiGatewayService.getSyntheticCredential).not.toHaveBeenCalled();
 		});
 	});
+
+	describe('createAiGatewayTokenRefreshFetch', () => {
+		const aiGatewayUrl = 'https://gw.example/v1/gateway/openai/v1/responses';
+		let aiGatewayService: ReturnType<typeof mock<AiGatewayService>>;
+		let baseFetch: ReturnType<typeof vi.fn<typeof fetch>>;
+		let provider: AgentsCredentialProvider;
+
+		const sentHeaders = () => new Headers(baseFetch.mock.calls[0][1]?.headers);
+
+		beforeEach(() => {
+			aiGatewayService = mock<AiGatewayService>();
+			aiGatewayService.getCredentialTypeForProvider.mockResolvedValue('openAiApi');
+			aiGatewayService.getSyntheticCredential
+				.mockResolvedValueOnce({ apiKey: 'jwt-1', url: 'https://gw.example/v1/gateway/openai/v1' })
+				.mockResolvedValue({ apiKey: 'jwt-2', url: 'https://gw.example/v1/gateway/openai/v1' });
+			Container.set(AiGatewayService, aiGatewayService);
+			baseFetch = vi.fn<typeof fetch>().mockResolvedValue(new Response());
+			provider = new AgentsCredentialProvider(mock<CredentialsService>(), 'proj-1');
+		});
+
+		it('passes requests through when no AI Gateway model credential was minted', async () => {
+			const init = { headers: { authorization: 'Bearer jwt-1' } };
+
+			await provider.createAiGatewayTokenRefreshFetch(baseFetch)(aiGatewayUrl, init);
+
+			expect(baseFetch).toHaveBeenCalledWith(aiGatewayUrl, init);
+			expect(aiGatewayService.getSyntheticCredential).not.toHaveBeenCalled();
+		});
+
+		it.each([
+			['authorization', 'Bearer jwt-1', 'Bearer jwt-2'],
+			['x-api-key', 'jwt-1', 'jwt-2'],
+		])(
+			'sets the current token in the %s header of an AI Gateway request',
+			async (name, sent, fresh) => {
+				await provider.resolveAiGatewayModelCredential('openai');
+
+				await provider.createAiGatewayTokenRefreshFetch(baseFetch)(aiGatewayUrl, {
+					headers: { [name]: sent, 'content-type': 'application/json' },
+				});
+
+				expect(sentHeaders().get(name)).toBe(fresh);
+				expect(sentHeaders().get('content-type')).toBe('application/json');
+			},
+		);
+
+		it('does not change requests to other origins or with other credentials', async () => {
+			await provider.resolveAiGatewayModelCredential('openai');
+			const refreshFetch = provider.createAiGatewayTokenRefreshFetch(baseFetch);
+			const otherOrigin = { headers: { authorization: 'Bearer jwt-1' } };
+			const otherCredential = { headers: { 'x-api-key': 'user-key' } };
+
+			await refreshFetch('https://api.anthropic.com/v1/messages', otherOrigin);
+			await refreshFetch(aiGatewayUrl, otherCredential);
+
+			expect(baseFetch).toHaveBeenNthCalledWith(
+				1,
+				'https://api.anthropic.com/v1/messages',
+				otherOrigin,
+			);
+			expect(baseFetch).toHaveBeenNthCalledWith(2, aiGatewayUrl, otherCredential);
+			expect(aiGatewayService.getSyntheticCredential).toHaveBeenCalledTimes(1);
+		});
+
+		it('sends the request with its own token when the mint fails', async () => {
+			await provider.resolveAiGatewayModelCredential('openai');
+			aiGatewayService.getSyntheticCredential.mockRejectedValue(new Error('config fetch failed'));
+			const init = { headers: { authorization: 'Bearer jwt-1' } };
+
+			await provider.createAiGatewayTokenRefreshFetch(baseFetch)(aiGatewayUrl, init);
+
+			expect(baseFetch).toHaveBeenCalledWith(aiGatewayUrl, init);
+		});
+
+		it('replaces the older token of a model config minted before a newer one', async () => {
+			await provider.resolveAiGatewayModelCredential('openai');
+			await provider.resolveAiGatewayModelCredential('openai');
+
+			await provider.createAiGatewayTokenRefreshFetch(baseFetch)(aiGatewayUrl, {
+				headers: { authorization: 'Bearer jwt-1' },
+			});
+
+			expect(sentHeaders().get('authorization')).toBe('Bearer jwt-2');
+		});
+
+		it('does not treat a refreshed token as a model config token', async () => {
+			await provider.resolveAiGatewayModelCredential('openai');
+			const refreshFetch = provider.createAiGatewayTokenRefreshFetch(baseFetch);
+			const refreshed = { headers: { authorization: 'Bearer jwt-2' } };
+
+			await refreshFetch(aiGatewayUrl, { headers: { authorization: 'Bearer jwt-1' } });
+			await refreshFetch(aiGatewayUrl, refreshed);
+
+			expect(baseFetch).toHaveBeenNthCalledWith(2, aiGatewayUrl, refreshed);
+			expect(aiGatewayService.getSyntheticCredential).toHaveBeenCalledTimes(2);
+		});
+	});
 });

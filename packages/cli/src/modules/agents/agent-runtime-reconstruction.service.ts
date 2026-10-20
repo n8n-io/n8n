@@ -79,7 +79,10 @@ import {
 } from './json-config/from-json-config';
 import { toAgentDocument } from './json-config/agent-document';
 import { buildMcpClientForServer } from './json-config/mcp-client-factory';
-import { resolveCredentialAwareModelConfig } from './json-config/model-config';
+import {
+	resolveCredentialAwareModelConfig,
+	type AiGatewayModelCredentialResolver,
+} from './json-config/model-config';
 import { AgentFileRepository } from './repositories/agent-file.repository';
 import { AgentRepository } from './repositories/agent.repository';
 import { AgentSecureRuntime } from './runtime/agent-secure-runtime';
@@ -120,7 +123,7 @@ export interface ReconstructAgentRuntimeParams extends AgentRuntimeAssets {
 	config: AgentJsonConfig;
 	memoryOwnerAgentId: string;
 	projectId: string;
-	credentialProvider: CredentialProvider;
+	credentialProvider: CredentialProvider & Partial<AiGatewayModelCredentialResolver>;
 	runtimeProfile: AgentRuntimeProfile;
 	/**
 	 * Telemetry classification of the run this runtime serves. Baked in at build
@@ -633,6 +636,7 @@ export class AgentRuntimeReconstructionService {
 		const aiMcpFetch = instrumentation?.mcpFetch ?? createAiMcpFetch(this.outboundHttp);
 		const webSearchFetch = createWebSearchFetch(this.outboundHttp);
 		const buildMcpClient = this.makeMcpClientFactory(options, aiMcpFetch, mcpServerAttributions);
+		const modelFetch = instrumentation?.modelFetch ?? aiProxyFetch;
 		const reconstructed = await buildFromJson(config, toolDescriptors, {
 			toolExecutor,
 			credentialProvider,
@@ -646,7 +650,7 @@ export class AgentRuntimeReconstructionService {
 			buildMcpClient,
 			resolveManagedEmbeddingProviderOptions: async () =>
 				await this.resolveManagedEmbeddingProviderOptions(projectId),
-			modelFetch: instrumentation?.modelFetch ?? aiProxyFetch,
+			modelFetch: credentialProvider.createAiGatewayTokenRefreshFetch?.(modelFetch) ?? modelFetch,
 			fallbackWebSearch: instrumentation?.webSearch,
 			// Only the mock MCP transport makes attaching auth-pending servers safe.
 			attachAuthPendingMcpServers: instrumentation?.mcpFetch !== undefined,

@@ -1324,6 +1324,49 @@ describe('buildFromJson()', () => {
 		expect(credentialProvider.resolve).toHaveBeenCalledWith('reflector-key');
 	});
 
+	it.each([
+		[
+			'its own model',
+			{},
+			{ observerModel: { model: 'openai/gpt-4o-mini', credential: AI_GATEWAY_MANAGED_TAG } },
+		],
+		['the main model', { model: 'openai/gpt-4o-mini', credential: AI_GATEWAY_MANAGED_TAG }, {}],
+	])(
+		'mints the Gateway credits credential of a memory worker that uses %s on each call',
+		async (_, mainModel, observationalMemory) => {
+			const memorySpy = vi.spyOn(AgentsRuntime.Memory.prototype, 'observationalMemory');
+			const observeSpy = vi
+				.spyOn(AgentsRuntime, 'createObservationLogObserveFn')
+				.mockImplementation(() => async () => '');
+			let mints = 0;
+			const credentialProvider = {
+				resolve: vi.fn().mockResolvedValue({ apiKey: 'model-key' }),
+				list: vi.fn().mockResolvedValue([]),
+				resolveAiGatewayModelCredential: vi.fn(async () => ({ apiKey: `jwt-${++mints}` })),
+			};
+
+			await buildFromJson(
+				makeConfig({
+					...mainModel,
+					memory: { enabled: true, storage: 'n8n', observationalMemory },
+				}),
+				{},
+				{
+					toolExecutor: makeMockToolExecutor(),
+					credentialProvider,
+					memoryFactory: vi.fn().mockReturnValue(makeMockMemoryBackend()),
+				},
+			);
+			const mintsAtBuild = mints;
+			await memorySpy.mock.calls[0][0]?.observe?.({} as never);
+
+			expect(mints).toBe(mintsAtBuild + 1);
+			expect(observeSpy).toHaveBeenLastCalledWith(
+				expect.objectContaining({ apiKey: `jwt-${mints}` }),
+			);
+		},
+	);
+
 	it('enables observational memory by default when memory is enabled', async () => {
 		const config = makeConfig({
 			memory: { enabled: true, storage: 'n8n' },
