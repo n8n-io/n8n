@@ -57,7 +57,7 @@ function exitCodeFor(result: ApplyPackageResult): number {
 function sourceChangedMessage(result: ApplyPackageResult): string {
 	return [
 		'The source changed since the review. Nothing was imported.',
-		`Current source: config ${result.configId}, branch ${result.git.branchName}, commit ${result.git.commitSha}.`,
+		`Current source: environment ${result.environmentId}, branch ${result.git.branchName}, commit ${result.git.commitSha}.`,
 		'Review the changes again, then apply the new commit.',
 	].join('\n');
 }
@@ -108,16 +108,16 @@ function isProjectDeletion(
 /** The `--expected-*` flags that pin a Continue run to the source a blocked Apply reported. */
 function expectedSourceArgs(result: BlockedResult): string {
 	return (
-		` --expected-config-id=${shellQuote(result.configId)}` +
+		` --expected-environment-id=${shellQuote(result.environmentId)}` +
 		` --expected-branch=${shellQuote(result.git.branchName)}` +
 		` --expected-commit-sha=${shellQuote(result.git.commitSha)}`
 	);
 }
 
-/** The command that resumes a blocked whole-connection Apply. */
-export function connectionContinueCommand(connectionId: string): ContinueCommand {
+/** The command that resumes a blocked whole-instance Apply. */
+export function environmentContinueCommand(environmentId: string): ContinueCommand {
 	return (result) =>
-		`n8n-cli promotion-connection apply-continue ${shellQuote(connectionId)}` +
+		`n8n-cli promotion-environment apply-continue ${shellQuote(environmentId)}` +
 		expectedSourceArgs(result);
 }
 
@@ -127,7 +127,7 @@ export function selectionContinueCommand(
 	workflowIds: string[],
 ): ContinueCommand {
 	return (result) =>
-		`n8n-cli promotion-connection apply-selection-continue ${shellQuote(projectId)}` +
+		`n8n-cli promotion-environment apply-selection-continue ${shellQuote(projectId)}` +
 		workflowIds.map((id) => ` -w ${shellQuote(id)}`).join('') +
 		expectedSourceArgs(result);
 }
