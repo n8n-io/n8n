@@ -31,7 +31,7 @@ import {
 	type StreamRunResult,
 } from '@n8n/instance-ai';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
-import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
+import { sanitizeErrorDetail } from '@n8n/utils/redaction/sanitize-error-detail';
 import { nanoid } from 'nanoid';
 import { UnexpectedError } from 'n8n-workflow';
 
@@ -43,6 +43,7 @@ import { modelStreamStallOptions } from '@/utils/model-stream-stall-options';
 import { InProcessEventBus } from '../event-bus/in-process-event-bus';
 import { InstanceAiAdapterService } from '../instance-ai.adapter.service';
 import { InstanceAiCreditService } from '../instance-ai-credit.service';
+import { InstanceAiErrorReporterService } from '../instance-ai-error-reporter.service';
 import { InstanceAiModelService } from '../instance-ai-model.service';
 import { InstanceAiSettingsService } from '../instance-ai-settings.service';
 import type { InstanceAiSandboxService } from '../sandbox/instance-ai-sandbox.service';
@@ -131,6 +132,7 @@ export class SelfHealingAgentService {
 		private readonly credits: InstanceAiCreditService,
 		private readonly events: InProcessEventBus,
 		private readonly candidates: SelfHealingCandidateService,
+		private readonly errorReporter: InstanceAiErrorReporterService,
 	) {}
 
 	assertEnabled(): void {
@@ -165,6 +167,7 @@ export class SelfHealingAgentService {
 		let tracing: InstanceAiTraceContext | undefined;
 		let modelId: ModelConfig | undefined;
 		let stream: StreamRunResult | undefined;
+		let providerStream = false;
 		const result: SelfHealingRunResult = {
 			threadId,
 			runId,
@@ -240,6 +243,9 @@ export class SelfHealingAgentService {
 				context,
 				modelId,
 				metadata,
+				onStreamStart: () => {
+					providerStream = true;
+				},
 			});
 			result.status = stream.status;
 			result.finishReason = stream.finishReason;
@@ -265,8 +271,7 @@ export class SelfHealingAgentService {
 		} catch (error) {
 			result.status = signal.aborted ? 'cancelled' : 'errored';
 			result.error = error;
-			result.reason = scrubSecretsInText(getErrorMessage(error)).slice(0, 1000);
-			this.logger.error('Self-healing run failed.', { threadId, runId, error: result.reason });
+			result.reason = sanitizeErrorDetail(getErrorMessage(error), 1000);
 		} finally {
 			// Model work has stopped. The final charge must not cancel result persistence.
 			options.onFinalizing();
@@ -297,6 +302,20 @@ export class SelfHealingAgentService {
 			if (signal.aborted || result.status === 'cancelled') {
 				this.markResultCancelled(result, options.getAbortReason());
 			}
+		}
+
+		if (result.status === 'errored' && result.error !== undefined) {
+			this.errorReporter.report(result.error, {
+				component: 'instance-ai-self-healing',
+				role: 'self-healing',
+				threadId,
+				runId,
+				userId: user.id,
+				projectId: baseline.projectId,
+				tracing,
+				providerStream,
+				sanitizeError: true,
+			});
 		}
 
 		try {
@@ -460,12 +479,14 @@ export class SelfHealingAgentService {
 		context,
 		modelId,
 		metadata,
+		onStreamStart,
 	}: {
 		input: SelfHealingRunInput;
 		options: SelfHealingRunOptions;
 		context: InstanceAiContext;
 		modelId: ModelConfig;
 		metadata: SelfHealingThreadMetadata;
+		onStreamStart: () => void;
 	}): Promise<StreamRunResult> {
 		const { user, baseline, executionId } = input;
 		const { runId, threadId, signal } = options;
@@ -491,8 +512,9 @@ export class SelfHealingAgentService {
 		});
 
 		signal.throwIfAborted();
-		const consume = async () =>
-			await streamAgentRun(
+		const consume = async () => {
+			onStreamStart();
+			return await streamAgentRun(
 				agent,
 				`${INVESTIGATION_MESSAGE}\n\nWorkflow: ${baseline.workflowId}\nFailed execution: ${executionId}\nCandidate: ${CANDIDATE_FILE_PATH}`,
 				{
@@ -513,6 +535,7 @@ export class SelfHealingAgentService {
 					onActivity: options.onActivity,
 				},
 			);
+		};
 
 		return tracing ? await tracing.withActiveSpan(tracing.actorRun, consume) : await consume();
 	}

@@ -6,6 +6,7 @@ import type { InstanceWriteAccessService } from '@n8n/backend-services';
 import type { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { ForbiddenError } from '@n8n/errors';
+import type { ErrorReporter } from 'n8n-core';
 import {
 	createInstanceAiTraceContext,
 	createSelfHealingAgent,
@@ -22,6 +23,7 @@ import type { AiUsageService } from '@/services/ai-usage.service';
 import type { InProcessEventBus } from '../../event-bus/in-process-event-bus';
 import type { InstanceAiAdapterService } from '../../instance-ai.adapter.service';
 import type { InstanceAiCreditService } from '../../instance-ai-credit.service';
+import { InstanceAiErrorReporterService } from '../../instance-ai-error-reporter.service';
 import type { InstanceAiModelService } from '../../instance-ai-model.service';
 import type { InstanceAiSettingsService } from '../../instance-ai-settings.service';
 import type { RuntimeSandboxEntry } from '../../sandbox/instance-ai-sandbox.service';
@@ -93,6 +95,8 @@ describe('SelfHealingAgentService', () => {
 		ai: {},
 	});
 	const logger = mock<Logger>();
+	logger.scoped.mockReturnValue(logger);
+	const errorReporter = mock<ErrorReporter>();
 	const suggestions = mock<WorkflowSuggestionService>();
 	const executions = mock<SelfHealingExecutionReferenceService>();
 	const memory = mock<TypeORMAgentMemory>();
@@ -120,6 +124,7 @@ describe('SelfHealingAgentService', () => {
 		credits,
 		events,
 		candidates,
+		new InstanceAiErrorReporterService(logger, errorReporter),
 	);
 	let controller: AbortController;
 	let options: SelfHealingRunOptions;
@@ -643,12 +648,44 @@ describe('SelfHealingAgentService', () => {
 		const result = await service.execute(input, options);
 		expect(result).toMatchObject({ status: 'cancelled', reason: 'shutdown' });
 		expect(createSelfHealingAgent).not.toHaveBeenCalled();
+		expect(errorReporter.error).not.toHaveBeenCalled();
+		expect(logger.error).not.toHaveBeenCalled();
 		expect(options.sandbox.destroySandbox).toHaveBeenCalledWith(
 			'internal-thread',
 			'thread_cleanup',
 			'actor',
 		);
 	});
+
+	it.each(['thrown', 'returned'] as const)(
+		'reports a %s stream error once with self-healing context',
+		async (kind) => {
+			const failure = new Error(
+				'Request failed: https://example.test/path?signature=private-value',
+			);
+			if (kind === 'thrown') vi.mocked(streamAgentRun).mockRejectedValueOnce(failure);
+			else stream = { ...stream, status: 'errored', error: failure };
+
+			const result = await service.execute(input, options);
+
+			expect(result.status).toBe('errored');
+			expect(errorReporter.error).toHaveBeenCalledExactlyOnceWith(
+				expect.objectContaining({ message: 'Request failed: https://example.test/path' }),
+				expect.objectContaining({
+					tags: expect.objectContaining({
+						component: 'instance-ai-self-healing',
+						role: 'self-healing',
+						threadId: options.threadId,
+						runId: options.runId,
+					}),
+				}),
+			);
+			expect(logger.error).toHaveBeenCalledTimes(1);
+			if (kind === 'thrown') {
+				expect(result.reason).toBe('Request failed: https://example.test/path');
+			}
+		},
+	);
 
 	it('finalizes a stream read failure and releases its incomplete workspace', async () => {
 		const failure = new Error('Connection closed');
@@ -691,6 +728,17 @@ describe('SelfHealingAgentService', () => {
 		expect(result.status).toBe('errored');
 		expect(result.output).toBeUndefined();
 		expect(options.onFinish).toHaveBeenCalledTimes(1);
+	});
+
+	it('reports transport errors during agent setup as setup failures', async () => {
+		vi.mocked(createSelfHealingAgent).mockRejectedValueOnce(
+			Object.assign(new TypeError('terminated'), {
+				cause: Object.assign(new Error('closed'), { code: 'ECONNRESET' }),
+			}),
+		);
+		await service.execute(input, options);
+		expect(errorReporter.error).toHaveBeenCalledTimes(1);
+		expect(streamAgentRun).not.toHaveBeenCalled();
 	});
 
 	it('reads the captured target graph and delegates other workflow reads to the adapter', async () => {
