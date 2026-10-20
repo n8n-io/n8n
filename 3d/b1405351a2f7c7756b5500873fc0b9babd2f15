@@ -49,6 +49,7 @@ packages/cli/src/modules/agents/__tests__/agent-draft.service.test.ts
   s_58620fba057bad::t_af15416c3de6a8 1-6,8-28,30-133
   s_58620fba057bad::t_5f05b1b0fab4f8 1-6,8-28,30-54,58-133
   s_58620fba057bad::t_4166e6d972a528 55-57
+  s_58620fba057bad::t_17e2e371f23a41 7,29
 packages/cli/src/modules/instance-ai/__tests__/instance-ai-pending-agent.service.test.ts
   s_58620fba057bad::t_af15416c3de6a8 4,7-8,13-15,17-18,20,23,27-28,32-35,37-43,45-47,49,54-75,77-82,85-103,105-109,111-141
   s_58620fba057bad::t_4166e6d972a528 13-15
