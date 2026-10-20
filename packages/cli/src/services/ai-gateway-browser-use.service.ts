@@ -1,9 +1,12 @@
-import { OutboundHttp } from '@n8n/backend-network';
 import { Service } from '@n8n/di';
 import type { IHttpRequestMethods } from 'n8n-workflow';
 import { OperationalError, UserError } from 'n8n-workflow';
 import { z } from 'zod';
-import { AiGatewayService, type AiGatewayRequestAttribution } from './ai-gateway.service';
+import {
+	AiGatewayService,
+	type AiGatewayErrorResponse,
+	type AiGatewayRequestAttribution,
+} from './ai-gateway.service';
 
 const BROWSERBASE_BROWSER_USE_GATEWAY_PATH = '/v1/gateway/browserbaseBrowserUse';
 
@@ -31,10 +34,7 @@ export type AiGatewayBrowserSession = z.infer<typeof createdSessionSchema>;
  */
 @Service()
 export class AiGatewayBrowserUseService {
-	constructor(
-		private readonly aiGatewayService: AiGatewayService,
-		private readonly outboundHttp: OutboundHttp,
-	) {}
+	constructor(private readonly aiGatewayService: AiGatewayService) {}
 
 	isGatewayBrowserUseEnabled(): boolean {
 		return this.aiGatewayService.isEnabled();
@@ -89,24 +89,14 @@ export class AiGatewayBrowserUseService {
 			gatewayPath: BROWSERBASE_BROWSER_USE_GATEWAY_PATH,
 			attribution,
 		});
-		const response = await this.outboundHttp
-			.requests({
-				useDefaultSsrfPolicy: 'unsafe', // the gateway base URL is n8n-owned configuration
-			})
-			.request({
-				method,
-				url: `${url}${path}`,
-				headers: { [BROWSERBASE_API_KEY_HEADER]: token },
-				body,
-				json: true,
-				returnFullResponse: true,
-				ignoreHttpStatusErrors: true,
-				disableFollowRedirect: true, // the session routes never redirect
-			});
-		if (response.statusCode < 200 || response.statusCode >= 300) {
-			throw toGatewayError(response);
-		}
-		return response.body;
+		return await this.aiGatewayService.gatewayRequest<unknown>({
+			method,
+			url: `${url}${path}`,
+			headers: { [BROWSERBASE_API_KEY_HEADER]: token },
+			body,
+			disableFollowRedirect: true, // the session routes never redirect
+			mapErrorResponse: toGatewayError,
+		});
 	}
 }
 
@@ -114,10 +104,7 @@ export class AiGatewayBrowserUseService {
  * Turns a failed response into an error: a `UserError` for 4xx, an `OperationalError` otherwise.
  * Only the gateway's own messages are passed on. Upstream ones are not written for users.
  */
-function toGatewayError(response: {
-	statusCode: number;
-	body: unknown;
-}): UserError | OperationalError {
+export function toGatewayError(response: AiGatewayErrorResponse): UserError | OperationalError {
 	const gatewayError = gatewayErrorSchema.safeParse(response.body);
 	const message = gatewayError.success
 		? gatewayError.data.error.message

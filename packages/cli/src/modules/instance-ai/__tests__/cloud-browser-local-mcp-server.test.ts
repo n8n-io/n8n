@@ -1,4 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
+import { GATEWAY_CONFIRMATION_REQUIRED_PREFIX, type McpToolCallResult } from '@n8n/api-types';
+import type { DomainAccessTracker } from '@n8n/instance-ai';
 import type { AffectedResource, BrowserToolkit, ToolDefinition } from '@n8n/mcp-browser';
 import { mock } from 'vitest-mock-extended';
 import { z } from 'zod';
@@ -8,6 +10,7 @@ import {
 	SESSION_IDLE_TIMEOUT_MS,
 	START_SESSION_TOOL_NAME,
 } from '../browser/cloud-browser-local-mcp-server';
+import type { BrowserDomainGate } from '../browser/browser.helpers';
 import type { CloudBrowserSessionProvider } from '../browser/cloud-browser-session-provider';
 
 describe('CloudBrowserLocalMcpServer', () => {
@@ -128,16 +131,31 @@ describe('CloudBrowserLocalMcpServer', () => {
 			return toolkit;
 		});
 		const logger = mock<Logger>();
+		// Allows every site unless a test says otherwise.
+		const tracker = mock<DomainAccessTracker>();
+		tracker.isHostAllowed.mockReturnValue(true);
+		const domainGate: BrowserDomainGate = { tracker, runId: 'run-1' };
 		const server = new CloudBrowserLocalMcpServer({
 			scope,
 			sessionProvider,
 			createToolkit,
 			toolContext: { dir: '/tmp' },
+			domainGate,
 			logger,
 		});
 		const start = async (args: Record<string, unknown>) =>
 			await server.callTool({ name: START_SESSION_TOOL_NAME, arguments: args });
-		return { server, sessionProvider, openSessions, createToolkit, toolkits, start, logger };
+		return {
+			server,
+			sessionProvider,
+			openSessions,
+			createToolkit,
+			toolkits,
+			start,
+			logger,
+			tracker,
+			domainGate,
+		};
 	}
 
 	describe('tool listing', () => {
@@ -162,99 +180,223 @@ describe('CloudBrowserLocalMcpServer', () => {
 		});
 	});
 
-	describe('getAffectedResources', () => {
-		it('gives the URL host for browser_start_session, without opening a session', async () => {
-			const { server, sessionProvider } = setup();
-
-			const resources = await server.getAffectedResources({
-				name: START_SESSION_TOOL_NAME,
-				arguments: { url: 'https://example.com/login' },
-			});
-
-			expect(resources).toEqual([hostResource('example.com')]);
-			expect(sessionProvider.createSession).not.toHaveBeenCalled();
+	describe('access gate', () => {
+		const deniedResult = {
+			content: [{ type: 'text', text: 'Access denied by user' }],
+			isError: true,
+		};
+		const toolOn = (toolkit: ReturnType<typeof fakeToolkit>, name: string) =>
+			toolkit.tools.find((tool) => tool.name === name)!;
+		/** The payload of a confirmation request, or `undefined` for any other result. */
+		const confirmationRequest = (result: McpToolCallResult): unknown => {
+			const text = result.content[0]?.type === 'text' ? result.content[0].text : '';
+			if (!result.isError || !text.startsWith(GATEWAY_CONFIRMATION_REQUIRED_PREFIX)) return;
+			return JSON.parse(text.slice(GATEWAY_CONFIRMATION_REQUIRED_PREFIX.length));
+		};
+		const domainRequest = (host: string) => ({
+			toolGroup: 'browser',
+			resource: host,
+			description: `Browser: ${host}`,
+			options: ['denyOnce', 'allowOnce', 'allowForSession'],
 		});
 
-		it.each([
-			['a URL with no host', 'about:blank'],
-			['a malformed URL', 'not a url'],
-		])('gives nothing for browser_start_session with %s', async (_case, url) => {
-			const { server } = setup();
+		describe('browser_start_session', () => {
+			it('asks about the URL host and opens no session', async () => {
+				const { sessionProvider, tracker, start } = setup();
+				tracker.isHostAllowed.mockReturnValue(false);
 
-			const resources = await server.getAffectedResources({
-				name: START_SESSION_TOOL_NAME,
-				arguments: { url },
+				const result = await start({ url: 'https://example.com/login' });
+
+				expect(confirmationRequest(result)).toEqual(domainRequest('example.com'));
+				expect(tracker.isHostAllowed).toHaveBeenCalledWith('example.com', 'run-1');
+				expect(sessionProvider.createSession).not.toHaveBeenCalled();
 			});
 
-			expect(resources).toEqual([]);
+			it.each([
+				['allowOnce', 'approveOnce'],
+				['allowForSession', 'approveDomain'],
+			] as const)(
+				'records %s and opens the session when the call runs again',
+				async (decision, method) => {
+					const { sessionProvider, tracker, start } = setup();
+					tracker.isHostAllowed.mockReturnValue(false);
+
+					const result = await start({ url: 'https://example.com', _confirmation: decision });
+
+					expect(result).toEqual({
+						content: [{ type: 'text', text: 'opened https://example.com' }],
+					});
+					expect(tracker[method]).toHaveBeenCalled();
+					expect(sessionProvider.createSession).toHaveBeenCalledTimes(1);
+				},
+			);
+
+			it('opens no session when the user denies the URL host', async () => {
+				const { sessionProvider, tracker, start } = setup();
+				tracker.isHostAllowed.mockReturnValue(false);
+
+				const result = await start({ url: 'https://example.com', _confirmation: 'denyOnce' });
+
+				expect(result).toEqual(deniedResult);
+				expect(sessionProvider.createSession).not.toHaveBeenCalled();
+			});
+
+			it('opens no session when the admin blocks browser access', async () => {
+				const { sessionProvider, domainGate, start } = setup();
+				domainGate.permissionMode = 'blocked';
+
+				const result = await start({ url: 'https://example.com' });
+
+				expect(result).toEqual({
+					content: [{ type: 'text', text: 'Browser access blocked by admin' }],
+					isError: true,
+				});
+				expect(sessionProvider.createSession).not.toHaveBeenCalled();
+			});
+
+			it('opens the session without asking when the admin allows every site', async () => {
+				const { sessionProvider, tracker, domainGate, start } = setup();
+				domainGate.permissionMode = 'always_allow';
+				tracker.isHostAllowed.mockReturnValue(false);
+
+				await start({ url: 'https://example.com' });
+
+				expect(sessionProvider.createSession).toHaveBeenCalledTimes(1);
+			});
+
+			it('does not ask about a URL with no host', async () => {
+				const { sessionProvider, tracker, start } = setup();
+				tracker.isHostAllowed.mockReturnValue(false);
+
+				await start({ url: 'about:blank' });
+
+				expect(sessionProvider.createSession).toHaveBeenCalledTimes(1);
+			});
 		});
 
-		it('gives what a tool on the active session touches', async () => {
-			const { server, start } = setup();
-			await start({ url: 'https://example.com' });
+		describe('other browser tools', () => {
+			it('asks about the page an action touches, and does not run it', async () => {
+				const { server, toolkits, tracker, start } = setup();
+				await start({ url: 'https://example.com' });
+				tracker.isHostAllowed.mockReturnValue(false);
 
-			const [click, navigate] = await Promise.all([
-				server.getAffectedResources({ name: 'browser_click', arguments: { ref: 'e1' } }),
-				server.getAffectedResources({
+				const result = await server.callTool({ name: 'browser_click', arguments: { ref: 'e1' } });
+
+				expect(confirmationRequest(result)).toEqual(domainRequest('current.example.com'));
+				expect(toolOn(toolkits[0], 'browser_click').execute).not.toHaveBeenCalled();
+			});
+
+			it("runs the action with the user's answer, without passing the answer to the tool", async () => {
+				const { server, toolkits, tracker, start } = setup();
+				await start({ url: 'https://example.com' });
+				tracker.isHostAllowed.mockReturnValue(false);
+
+				const result = await server.callTool({
+					name: 'browser_click',
+					arguments: { ref: 'e1', _confirmation: 'allowOnce' },
+				});
+
+				expect(result).toEqual({ content: [{ type: 'text', text: 'clicked e1' }] });
+				expect(tracker.approveOnce).toHaveBeenCalledWith('run-1', 'current.example.com');
+				expect(toolOn(toolkits[0], 'browser_click').execute).toHaveBeenCalledWith(
+					{ ref: 'e1' },
+					{ dir: '/tmp' },
+				);
+			});
+
+			it('asks about a credential write', async () => {
+				const { server, toolkits, start } = setup();
+				await start({ url: 'https://example.com' });
+
+				const result = await server.callTool({
+					name: 'browser_create_credential',
+					arguments: { name: 'Acme API' },
+				});
+
+				expect(confirmationRequest(result)).toEqual({
+					toolGroup: 'browser',
+					resource: 'credentials',
+					description: 'Create credential "Acme API"',
+					options: ['denyOnce', 'allowOnce'],
+				});
+				expect(toolOn(toolkits[0], 'browser_create_credential').execute).not.toHaveBeenCalled();
+			});
+
+			it('creates the credential when the user allows it once', async () => {
+				const { server, toolkits, start } = setup();
+				await start({ url: 'https://example.com' });
+
+				await server.callTool({
+					name: 'browser_create_credential',
+					arguments: { name: 'Acme API', _confirmation: 'allowOnce' },
+				});
+
+				expect(toolOn(toolkits[0], 'browser_create_credential').execute).toHaveBeenCalled();
+			});
+
+			it('applies the answer to the first resource that needs one, then asks about the next', async () => {
+				const { server, toolkits, tracker, start } = setup();
+				await start({ url: 'https://example.com' });
+				const click = toolOn(toolkits[0], 'browser_click');
+				click.getAffectedResources = () => [
+					hostResource('browser'),
+					hostResource('one.example.com'),
+					hostResource('two.example.com'),
+					hostResource('three.example.com'),
+				];
+				tracker.isHostAllowed.mockImplementation((host) => host === 'one.example.com');
+
+				const result = await server.callTool({
+					name: 'browser_click',
+					arguments: { ref: 'e1', _confirmation: 'allowOnce' },
+				});
+
+				expect(tracker.approveOnce).toHaveBeenCalledTimes(1);
+				expect(tracker.approveOnce).toHaveBeenCalledWith('run-1', 'two.example.com');
+				expect(confirmationRequest(result)).toEqual(domainRequest('three.example.com'));
+				expect(click.execute).not.toHaveBeenCalled();
+			});
+
+			it('does not run a tool whose resources cannot be read', async () => {
+				const { server, toolkits, start } = setup();
+				await start({ url: 'https://example.com' });
+				const click = toolOn(toolkits[0], 'browser_click');
+				click.getAffectedResources = () => {
+					throw new Error('no page');
+				};
+
+				const result = await server.callTool({ name: 'browser_click', arguments: { ref: 'e1' } });
+
+				expect(result.isError).toBe(true);
+				expect(click.execute).not.toHaveBeenCalled();
+			});
+
+			it('asks about an action called during a session start, on the new session', async () => {
+				const { server, sessionProvider, toolkits, tracker, start } = setup();
+				tracker.isHostAllowed.mockImplementation((host) => host === 'example.com');
+				let openSession!: () => void;
+				sessionProvider.createSession.mockImplementationOnce(async () => {
+					await new Promise<void>((resolve) => (openSession = resolve));
+					return { id: 'sess-1', connectUrl: 'wss://connect/1' };
+				});
+
+				const started = start({ url: 'https://example.com' });
+				await vi.waitFor(() => expect(sessionProvider.createSession).toHaveBeenCalled());
+				const navigated = server.callTool({
 					name: 'browser_navigate',
 					arguments: { url: 'https://other.example.com' },
-				}),
-			]);
+				});
+				openSession();
+				const [, result] = await Promise.all([started, navigated]);
 
-			expect(click).toEqual([hostResource('current.example.com')]);
-			expect(navigate).toEqual([hostResource('other.example.com')]);
-		});
-
-		it('gives a credential write for browser_create_credential', async () => {
-			const { server, start } = setup();
-			await start({ url: 'https://example.com' });
-
-			const resources = await server.getAffectedResources({
-				name: 'browser_create_credential',
-				arguments: { name: 'Acme API' },
+				expect(confirmationRequest(result)).toEqual(domainRequest('other.example.com'));
+				const navigate = toolOn(toolkits[0], 'browser_navigate');
+				expect(navigate.execute).toHaveBeenCalledTimes(1);
+				expect(navigate.execute).toHaveBeenCalledWith(
+					{ url: 'https://example.com' },
+					{ dir: '/tmp' },
+				);
 			});
-
-			expect(resources).toEqual([expect.objectContaining({ kind: 'credential-write' })]);
-		});
-
-		it('gives every resource a tool touches, without the page with no host', async () => {
-			const { server, toolkits, start } = setup();
-			await start({ url: 'https://example.com' });
-			const click = toolkits[0].tools.find(({ name }) => name === 'browser_click')!;
-			click.getAffectedResources = () => [
-				hostResource('one.example.com'),
-				hostResource('browser'),
-				hostResource('two.example.com'),
-			];
-
-			const resources = await server.getAffectedResources({
-				name: 'browser_click',
-				arguments: { ref: 'e1' },
-			});
-
-			expect(resources).toEqual([hostResource('one.example.com'), hostResource('two.example.com')]);
-		});
-
-		it('gives nothing for a tool when no session is open', async () => {
-			const { server } = setup();
-
-			const resources = await server.getAffectedResources({
-				name: 'browser_click',
-				arguments: { ref: 'e1' },
-			});
-
-			expect(resources).toEqual([]);
-		});
-
-		it.each([
-			['a hidden tool', 'browser_connect', {}],
-			['an unknown tool', 'browser_does_not_exist', {}],
-			['arguments that do not parse', 'browser_click', { ref: 1 }],
-		])('gives nothing for %s', async (_case, name, args) => {
-			const { server, start } = setup();
-			await start({ url: 'https://example.com' });
-
-			expect(await server.getAffectedResources({ name, arguments: args })).toEqual([]);
 		});
 	});
 
@@ -517,6 +659,65 @@ describe('CloudBrowserLocalMcpServer', () => {
 		);
 	});
 
+	describe('release', () => {
+		const releasedResult = {
+			content: [{ type: 'text', text: 'The browser job has ended. No browser tools can run.' }],
+			isError: true,
+		};
+
+		it('refuses every later call and opens no new session', async () => {
+			const { server, sessionProvider, toolkits, start } = setup();
+			await start({ url: 'https://example.com' });
+			await server.release();
+
+			const [restarted, clicked] = await Promise.all([
+				start({ url: 'https://example.org' }),
+				server.callTool({ name: 'browser_click', arguments: { ref: 'e1' } }),
+			]);
+
+			expect(restarted).toEqual(releasedResult);
+			expect(clicked).toEqual(releasedResult);
+			expect(sessionProvider.createSession).toHaveBeenCalledTimes(1);
+			const click = toolkits[0].tools.find(({ name }) => name === 'browser_click');
+			expect(click?.execute).not.toHaveBeenCalled();
+		});
+
+		it('opens no session for a start that waited for the release', async () => {
+			const { server, sessionProvider, openSessions, start } = setup();
+
+			const released = server.release();
+			const result = await start({ url: 'https://example.com' });
+			await released;
+
+			expect(result).toEqual(releasedResult);
+			expect(sessionProvider.createSession).not.toHaveBeenCalled();
+			expect(openSessions.size).toBe(0);
+		});
+
+		it('refuses an action that waited for the release', async () => {
+			const { server, toolkits, start } = setup();
+			await start({ url: 'https://example.com' });
+
+			const released = server.release();
+			const result = await server.callTool({ name: 'browser_click', arguments: { ref: 'e1' } });
+			await released;
+
+			expect(result).toEqual(releasedResult);
+			const click = toolkits[0].tools.find(({ name }) => name === 'browser_click');
+			expect(click?.execute).not.toHaveBeenCalled();
+		});
+
+		it('can be called twice', async () => {
+			const { server, sessionProvider, start } = setup();
+			await start({ url: 'https://example.com' });
+
+			await server.release();
+			await expect(server.release()).resolves.toBeUndefined();
+
+			expect(sessionProvider.releaseSession).toHaveBeenCalledTimes(1);
+		});
+	});
+
 	describe('idle release', () => {
 		beforeEach(() => vi.useFakeTimers());
 		afterEach(() => vi.useRealTimers());
@@ -530,16 +731,6 @@ describe('CloudBrowserLocalMcpServer', () => {
 			expect(openSessions.size).toBe(0);
 			const result = await server.callTool({ name: 'browser_click', arguments: { ref: 'e1' } });
 			expect(result).toEqual(idleResult);
-		});
-
-		it('says no session is open after the job released it', async () => {
-			const { server, start } = setup();
-			await start({ url: 'https://example.com' });
-			await server.release();
-
-			const result = await server.callTool({ name: 'browser_click', arguments: { ref: 'e1' } });
-
-			expect(result).toEqual(noSessionResult);
 		});
 
 		it('restarts the idle timeout after each tool call', async () => {

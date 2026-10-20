@@ -11,7 +11,14 @@ import type {
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { z } from 'zod';
 
-import { browserErrorResult, executeBrowserTool, toBrowserMcpTool } from './browser.helpers';
+import {
+	browserErrorResult,
+	executeBrowserTool,
+	gateBrowserAccess,
+	isBrowserAccessAllowed,
+	toBrowserMcpTool,
+	type BrowserDomainGate,
+} from './browser.helpers';
 import type {
 	CloudBrowserSessionScope,
 	CloudBrowserSessionProvider,
@@ -56,10 +63,12 @@ const START_SESSION_MCP_TOOL: McpTool = mcpToolSchema.parse({
 });
 
 /**
- * Why browser tools cannot run: no session was started (or the job released it), or
- * the session ended without the model asking for it.
+ * Why browser tools cannot run: no session was started, or the session ended without
+ * the model asking for it.
  */
 type SessionUnavailableReason = 'notStarted' | 'connectionLost' | 'idleTimeout';
+
+const RELEASED_MESSAGE = 'The browser job has ended. No browser tools can run.';
 
 const START_SESSION_HINT = 'Call browser_start_session with a URL to open a session.';
 
@@ -76,6 +85,8 @@ export interface CloudBrowserLocalMcpServerOptions {
 	sessionProvider: CloudBrowserSessionProvider;
 	createToolkit: (connectUrl?: string) => BrowserToolkit;
 	toolContext: ToolContext;
+	/** The sites the user approved and the admin's permissions. Required, so no call skips the check. */
+	domainGate: BrowserDomainGate;
 	logger: Logger;
 }
 
@@ -97,6 +108,12 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer {
 
 	/** Tool calls that have not returned yet. The idle timer runs only when this is zero. */
 	private pendingCalls = 0;
+
+	/**
+	 * Set by `release()` when the job ends. After that, the service no longer tracks this
+	 * server, so it must not open a session that nothing would release.
+	 */
+	private isReleased = false;
 
 	/**
 	 * Session starts and releases hold this lock, so they run one at a time and two
@@ -122,50 +139,31 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer {
 	}
 
 	async callTool(req: McpToolCallRequest): Promise<McpToolCallResult> {
+		if (this.isReleased) return browserErrorResult(RELEASED_MESSAGE);
+
 		this.clearIdleTimer();
 		this.pendingCalls++;
 		try {
+			// The user's answer when the call runs again after a confirmation request.
+			// The tool wrapper removes this key from the model's own arguments.
+			const { _confirmation: confirmation, ...args } = req.arguments;
 			if (req.name === START_SESSION_TOOL_NAME) {
-				return await this.startSession(req.arguments);
+				return await this.startSession(args, confirmation);
 			}
 			// wait for any session start or release that is still in progress
 			// so we do not try to use a session that is not ready
 			await this.sessionLock;
-			return await this.executeBrowserTool(req.name, req.arguments);
+			if (this.isReleased) return browserErrorResult(RELEASED_MESSAGE);
+			return await this.executeBrowserTool(req.name, args, confirmation);
 		} finally {
 			this.pendingCalls--;
 			this.scheduleIdleRelease();
 		}
 	}
 
-	/**
-	 * Returns the sites and credentials that a call would touch, without running it, so the
-	 * caller can ask the user for approval first. Returns an empty list when the call touches none.
-	 */
-	async getAffectedResources(req: McpToolCallRequest): Promise<AffectedResource[]> {
-		if (req.name === START_SESSION_TOOL_NAME) {
-			return this.getAffectedResourcesForStartSessionTool(req.arguments);
-		}
-
-		const tool = this.activeSession?.toolsByName.get(req.name);
-		if (!tool) return [];
-
-		// Arguments that do not parse make the call itself fail, so it touches nothing.
-		const args = tool.inputSchema.safeParse(req.arguments);
-		if (!args.success) return [];
-
-		const resources = await tool.getAffectedResources(args.data, this.options.toolContext);
-		return resources.filter((resource) => !isEmptyBrowserResource(resource));
-	}
-
 	/** A new session only loads its URL, so it touches the URL's host. A URL with no host touches none. */
-	private getAffectedResourcesForStartSessionTool(
-		rawArgs: Record<string, unknown>,
-	): AffectedResource[] {
-		const args = startSessionArgsSchema.safeParse(rawArgs);
-		if (!args.success) return [];
-
-		const host = new URL(args.data.url).hostname;
+	private getAffectedResourcesForStartSessionTool(url: string): AffectedResource[] {
+		const host = new URL(url).hostname;
 		if (!host) return [];
 		return [
 			{
@@ -177,18 +175,38 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer {
 		];
 	}
 
-	/** Ends the job's browser session, if one is open. */
+	/**
+	 * Ends the job's browser session, if one is open. The server then refuses every later
+	 * call, including calls that were waiting for this release.
+	 */
 	async release(): Promise<void> {
-		await this.withSessionLock(async () => await this.endActiveSession());
+		await this.withSessionLock(async () => {
+			this.isReleased = true;
+			await this.endActiveSession();
+		});
 	}
 
-	private async startSession(rawArgs: Record<string, unknown>): Promise<McpToolCallResult> {
+	private async startSession(
+		rawArgs: Record<string, unknown>,
+		confirmation: unknown,
+	): Promise<McpToolCallResult> {
 		const args = startSessionArgsSchema.safeParse(rawArgs);
 		if (!args.success) {
 			return browserErrorResult('browser_start_session needs a URL.');
 		}
 
 		return await this.withSessionLock(async () => {
+			// A start queued behind release() must not open a session.
+			if (this.isReleased) return browserErrorResult(RELEASED_MESSAGE);
+
+			// Check before a session opens, so a denied site costs no browser. The check never
+			// waits for the user: it returns a request, and the agent pauses outside this call.
+			const accessResult = await this.gateAccess(
+				this.getAffectedResourcesForStartSessionTool(args.data.url),
+				confirmation,
+			);
+			if (accessResult) return accessResult;
+
 			// we should only have one active session at a time, so close any existing one first
 			await this.endActiveSession();
 			this.sessionUnavailableReason = 'notStarted';
@@ -203,14 +221,23 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer {
 			}
 			this.activeSession = session;
 
-			return await this.executeBrowserTool('browser_navigate', { url: args.data.url });
+			const navigate = session.toolsByName.get('browser_navigate');
+			if (!navigate) {
+				return browserErrorResult('Unknown browser tool: browser_navigate');
+			}
+			// No access check: the URL was checked before the session opened.
+			return await executeBrowserTool(navigate, { url: args.data.url }, this.options.toolContext);
 		});
 	}
 
-	/** Runs one of the toolkit's tools on the active session. */
+	/**
+	 * Runs one of the toolkit's tools on the active session, after it checks every site and
+	 * credential the call touches.
+	 */
 	private async executeBrowserTool(
 		toolName: string,
 		args: Record<string, unknown>,
+		confirmation: unknown,
 	): Promise<McpToolCallResult> {
 		const session = await this.getConnectedSession();
 		if (!session) {
@@ -222,7 +249,41 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer {
 			return browserErrorResult(`Unknown browser tool: ${toolName}`);
 		}
 
-		return await executeBrowserTool(tool, args, this.options.toolContext);
+		// The check runs here, after the session lock, so it reads the session the tool runs on.
+		// If `getAffectedResources` throws, the helper returns an error and the tool does not run.
+		return await executeBrowserTool(
+			tool,
+			args,
+			this.options.toolContext,
+			async (parsedArgs) =>
+				await this.gateAccess(
+					await tool.getAffectedResources(parsedArgs, this.options.toolContext),
+					confirmation,
+				),
+		);
+	}
+
+	/**
+	 * Checks each site and credential write that a call touches, with the same gate as the
+	 * extension browser. Returns a result that stops the call, or `undefined` when the call
+	 * can run. When the call runs again after a request, the user's answer applies to the
+	 * first resource that still needs one.
+	 */
+	private async gateAccess(
+		resources: AffectedResource[],
+		confirmation: unknown,
+	): Promise<McpToolCallResult | undefined> {
+		const { domainGate } = this.options;
+		let answer = confirmation;
+		for (const resource of resources) {
+			if (isEmptyBrowserResource(resource) || isBrowserAccessAllowed(domainGate, resource))
+				continue;
+
+			const result = await gateBrowserAccess(domainGate, resource, answer);
+			answer = undefined;
+			if (result) return result;
+		}
+		return undefined;
 	}
 
 	/**

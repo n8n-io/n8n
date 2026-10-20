@@ -89,8 +89,18 @@ describe('PlaywrightAdapter direct CDP mode', () => {
 	}
 
 	function browserWithPages(pages: Array<ReturnType<typeof fakePage>>) {
+		const context = {
+			on: vi.fn(),
+			pages: () => pages,
+			newPage: vi.fn(async () => {
+				const page = fakePage('about:blank');
+				pages.push(page);
+				return page;
+			}),
+		};
 		return {
-			contexts: () => [{ on: vi.fn(), pages: () => pages }],
+			context,
+			contexts: () => [context],
 			newContext: vi.fn(),
 			on: vi.fn(),
 		};
@@ -149,6 +159,34 @@ describe('PlaywrightAdapter direct CDP mode', () => {
 		await adapter.launch({ browser: 'chrome' });
 
 		expect(await adapter.listTabs()).toEqual([expect.objectContaining({ url: 'about:blank' })]);
+	});
+
+	it('opens a page when the browser has none, so tools have a page to act on', async () => {
+		const browser = browserWithPages([]);
+		connectOverCDP.mockResolvedValue(browser);
+		const adapter = new PlaywrightAdapter(directConfig, {
+			cdpEndpoint: 'wss://connect.example.com',
+		});
+
+		await adapter.launch({ browser: 'chrome' });
+
+		expect(browser.context.newPage).toHaveBeenCalledTimes(1);
+		expect(await adapter.listTabs()).toEqual([expect.objectContaining({ url: 'about:blank' })]);
+	});
+
+	it('does not open a page when the browser already has one', async () => {
+		const browser = browserWithPages([fakePage('https://example.com/')]);
+		connectOverCDP.mockResolvedValue(browser);
+		const adapter = new PlaywrightAdapter(directConfig, {
+			cdpEndpoint: 'wss://connect.example.com',
+		});
+
+		await adapter.launch({ browser: 'chrome' });
+
+		expect(browser.context.newPage).not.toHaveBeenCalled();
+		expect(await adapter.listTabs()).toEqual([
+			expect.objectContaining({ url: 'https://example.com/' }),
+		]);
 	});
 
 	it('closes a page through Playwright', async () => {

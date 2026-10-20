@@ -1,13 +1,6 @@
-import type {
-	InstanceAiPermissionMode,
-	InstanceGatewayResourceDecision,
-	McpTool,
-	McpToolCallRequest,
-	McpToolCallResult,
-} from '@n8n/api-types';
-import { GATEWAY_CONFIRMATION_REQUIRED_PREFIX } from '@n8n/api-types';
+import type { McpTool, McpToolCallRequest, McpToolCallResult } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
-import type { DomainAccessTracker, LocalMcpServer } from '@n8n/instance-ai';
+import type { LocalMcpServer } from '@n8n/instance-ai';
 import type {
 	AffectedResource,
 	BrowserToolkit,
@@ -15,20 +8,15 @@ import type {
 	ToolDefinition,
 } from '@n8n/mcp-browser';
 
-import { browserErrorResult, executeBrowserTool, toBrowserMcpTool } from './browser.helpers';
+import {
+	browserErrorResult,
+	executeBrowserTool,
+	gateBrowserAccess,
+	toBrowserMcpTool,
+	type BrowserDomainGate,
+} from './browser.helpers';
 
-export interface BrowserDomainGate {
-	tracker: DomainAccessTracker;
-	runId: string;
-	/** Governs domain access — every browser tool whose affected resource is a host. */
-	permissionMode?: InstanceAiPermissionMode;
-	/**
-	 * Governs `browser_create_credential`, which reports `credentials` rather than a host.
-	 * Writing a credential to the instance is a different kind of action from reading a
-	 * page, so it carries its own permission.
-	 */
-	createCredentialPermissionMode?: InstanceAiPermissionMode;
-}
+export type { BrowserDomainGate } from './browser.helpers';
 
 const NO_DOMAIN = 'browser';
 
@@ -100,9 +88,7 @@ export class BrowserLocalMcpServer implements LocalMcpServer {
 			return undefined;
 		}
 
-		return affected.kind === 'credential-write'
-			? gateCredentialCreation(gate, affected, confirmation)
-			: await gateDomainAccess(gate, affected, confirmation);
+		return await gateBrowserAccess(gate, affected, confirmation);
 	}
 
 	private async affectedResource(
@@ -116,73 +102,4 @@ export class BrowserLocalMcpServer implements LocalMcpServer {
 			return undefined;
 		}
 	}
-}
-
-async function gateDomainAccess(
-	gate: BrowserDomainGate,
-	affected: AffectedResource,
-	confirmation: unknown,
-): Promise<McpToolCallResult | undefined> {
-	const host = affected.resource;
-
-	if (typeof confirmation === 'string') {
-		switch (confirmation) {
-			case 'allowForSession':
-				await gate.tracker.approveDomain(host);
-				return undefined;
-			case 'allowOnce':
-				gate.tracker.approveOnce(gate.runId, host);
-				return undefined;
-			default:
-				return browserErrorResult('Access denied by user');
-		}
-	}
-
-	if (gate.permissionMode === 'blocked') {
-		return browserErrorResult('Browser access blocked by admin');
-	}
-	if (gate.permissionMode !== 'always_allow' && !gate.tracker.isHostAllowed(host, gate.runId)) {
-		return confirmationRequiredResult(affected, ['denyOnce', 'allowOnce', 'allowForSession']);
-	}
-	return undefined;
-}
-
-/**
- * Credential creation is confirmed per call against its own permission: there is no
- * session-wide option, and the domain tracker plays no part in the decision.
- */
-function gateCredentialCreation(
-	gate: BrowserDomainGate,
-	affected: AffectedResource,
-	confirmation: unknown,
-): McpToolCallResult | undefined {
-	if (typeof confirmation === 'string') {
-		return confirmation === 'allowOnce' ? undefined : browserErrorResult('Access denied by user');
-	}
-
-	if (gate.createCredentialPermissionMode === 'blocked') {
-		return browserErrorResult('Credential creation blocked by admin');
-	}
-	if (gate.createCredentialPermissionMode !== 'always_allow') {
-		return confirmationRequiredResult(affected, ['denyOnce', 'allowOnce']);
-	}
-	return undefined;
-}
-
-function confirmationRequiredResult(
-	affected: AffectedResource,
-	options: InstanceGatewayResourceDecision[],
-): McpToolCallResult {
-	const payload = {
-		toolGroup: affected.toolGroup,
-		resource: affected.resource,
-		description: affected.description,
-		options,
-	};
-	return {
-		content: [
-			{ type: 'text', text: `${GATEWAY_CONFIRMATION_REQUIRED_PREFIX}${JSON.stringify(payload)}` },
-		],
-		isError: true,
-	};
 }

@@ -217,8 +217,16 @@ export class PlaywrightAdapter {
 
 		// With no relay there is no lazy activation, and pages that were open before
 		// we connected emit no 'page' event, so they are tracked now.
-		for (const page of this.requireContext().pages()) {
+		const context = this.requireContext();
+		for (const page of context.pages()) {
 			this.trackPage(page);
+		}
+		// Tools act on the first page, and with no relay nothing else can create one.
+		if (this.pageStates.size === 0) {
+			log.debug('direct CDP mode: no open page, creating one');
+			const page = await context.newPage();
+			// The 'page' event listener may have tracked it already.
+			if (!this.findPageState(page)) this.trackPage(page);
 		}
 		log.debug('launch complete, direct CDP connection');
 	}

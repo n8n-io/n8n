@@ -1,8 +1,19 @@
 import { zodSchemaToJsonSchema } from '@n8n/ai-utilities/json-schema';
-import type { McpTool, McpToolCallResult } from '@n8n/api-types';
-import { mcpToolCallResultSchema, mcpToolSchema } from '@n8n/api-types';
-import type { UserRepository } from '@n8n/db';
 import type {
+	InstanceAiPermissionMode,
+	InstanceGatewayResourceDecision,
+	McpTool,
+	McpToolCallResult,
+} from '@n8n/api-types';
+import {
+	GATEWAY_CONFIRMATION_REQUIRED_PREFIX,
+	mcpToolCallResultSchema,
+	mcpToolSchema,
+} from '@n8n/api-types';
+import type { UserRepository } from '@n8n/db';
+import type { DomainAccessTracker } from '@n8n/instance-ai';
+import type {
+	AffectedResource,
 	CreateCredentialPayload,
 	SecretsBuffer,
 	ToolContext,
@@ -14,6 +25,19 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
+
+export interface BrowserDomainGate {
+	tracker: DomainAccessTracker;
+	runId: string;
+	/** Governs domain access — every browser tool whose affected resource is a host. */
+	permissionMode?: InstanceAiPermissionMode;
+	/**
+	 * Governs `browser_create_credential`, which reports `credentials` rather than a host.
+	 * Writing a credential to the instance is a different kind of action from reading a
+	 * page, so it carries its own permission.
+	 */
+	createCredentialPermissionMode?: InstanceAiPermissionMode;
+}
 
 /** Converts a browser tool to an MCP tool, or returns `undefined` when its input schema has no MCP form. */
 export function toBrowserMcpTool(tool: ToolDefinition): McpTool | undefined {
@@ -108,4 +132,102 @@ export async function createBrowserWorkDir(folderName: string, userId: string): 
 	const workDir = join(tmpdir(), folderName, userId);
 	await mkdir(workDir, { recursive: true });
 	return workDir;
+}
+
+/**
+ * Checks one site or credential write against the gate. Returns a result that stops the
+ * call (a denial, or a request for the user to confirm), or `undefined` when the call can
+ * run. `confirmation` is the user's answer when the call runs again after a request.
+ */
+export async function gateBrowserAccess(
+	gate: BrowserDomainGate,
+	affected: AffectedResource,
+	confirmation: unknown,
+): Promise<McpToolCallResult | undefined> {
+	return affected.kind === 'credential-write'
+		? gateCredentialCreation(gate, affected, confirmation)
+		: await gateDomainAccess(gate, affected, confirmation);
+}
+
+/** Whether the gate lets a call touch the resource without asking the user. */
+export function isBrowserAccessAllowed(
+	gate: BrowserDomainGate,
+	affected: AffectedResource,
+): boolean {
+	if (affected.kind === 'credential-write') {
+		return gate.createCredentialPermissionMode === 'always_allow';
+	}
+	return (
+		gate.permissionMode === 'always_allow' ||
+		(gate.permissionMode !== 'blocked' && gate.tracker.isHostAllowed(affected.resource, gate.runId))
+	);
+}
+
+async function gateDomainAccess(
+	gate: BrowserDomainGate,
+	affected: AffectedResource,
+	confirmation: unknown,
+): Promise<McpToolCallResult | undefined> {
+	const host = affected.resource;
+
+	if (typeof confirmation === 'string') {
+		switch (confirmation) {
+			case 'allowForSession':
+				await gate.tracker.approveDomain(host);
+				return undefined;
+			case 'allowOnce':
+				gate.tracker.approveOnce(gate.runId, host);
+				return undefined;
+			default:
+				return browserErrorResult('Access denied by user');
+		}
+	}
+
+	if (gate.permissionMode === 'blocked') {
+		return browserErrorResult('Browser access blocked by admin');
+	}
+	if (gate.permissionMode !== 'always_allow' && !gate.tracker.isHostAllowed(host, gate.runId)) {
+		return confirmationRequiredResult(affected, ['denyOnce', 'allowOnce', 'allowForSession']);
+	}
+	return undefined;
+}
+
+/**
+ * Credential creation is confirmed per call against its own permission: there is no
+ * session-wide option, and the domain tracker plays no part in the decision.
+ */
+function gateCredentialCreation(
+	gate: BrowserDomainGate,
+	affected: AffectedResource,
+	confirmation: unknown,
+): McpToolCallResult | undefined {
+	if (typeof confirmation === 'string') {
+		return confirmation === 'allowOnce' ? undefined : browserErrorResult('Access denied by user');
+	}
+
+	if (gate.createCredentialPermissionMode === 'blocked') {
+		return browserErrorResult('Credential creation blocked by admin');
+	}
+	if (gate.createCredentialPermissionMode !== 'always_allow') {
+		return confirmationRequiredResult(affected, ['denyOnce', 'allowOnce']);
+	}
+	return undefined;
+}
+
+function confirmationRequiredResult(
+	affected: AffectedResource,
+	options: InstanceGatewayResourceDecision[],
+): McpToolCallResult {
+	const payload = {
+		toolGroup: affected.toolGroup,
+		resource: affected.resource,
+		description: affected.description,
+		options,
+	};
+	return {
+		content: [
+			{ type: 'text', text: `${GATEWAY_CONFIRMATION_REQUIRED_PREFIX}${JSON.stringify(payload)}` },
+		],
+		isError: true,
+	};
 }

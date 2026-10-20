@@ -1,13 +1,14 @@
 import type { Logger } from '@n8n/backend-common';
 import type { User, UserRepository } from '@n8n/db';
+import type { DomainAccessTracker } from '@n8n/instance-ai';
 import { mkdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { AiGatewayBrowserUseService } from '@/services/ai-gateway-browser-use.service';
 
+import type { BrowserDomainGate } from '../browser/browser.helpers';
 import { CloudBrowserLocalMcpServer } from '../browser/cloud-browser-local-mcp-server';
 import { InstanceAiCloudBrowserService } from '../browser/instance-ai-cloud-browser.service';
 
@@ -17,6 +18,7 @@ describe('InstanceAiCloudBrowserService', () => {
 	let service: InstanceAiCloudBrowserService;
 	const userRepository = mock<UserRepository>();
 	const credentialsService = mock<CredentialsService>();
+	const domainGate: BrowserDomainGate = { tracker: mock<DomainAccessTracker>(), runId: 'run-1' };
 	let release: ReturnType<typeof vi.spyOn>;
 	let aiGatewayBrowserUseService: ReturnType<typeof mock<AiGatewayBrowserUseService>>;
 
@@ -37,10 +39,10 @@ describe('InstanceAiCloudBrowserService', () => {
 	afterEach(() => vi.restoreAllMocks());
 
 	it('creates one server per job and finds it by job id', async () => {
-		const first = await service.createServer('user-1', 'thread-1', 'job-1');
-		const other = await service.createServer('user-1', 'thread-1', 'job-2');
+		const first = await service.createServer('user-1', 'thread-1', 'job-1', domainGate);
+		const other = await service.createServer('user-1', 'thread-1', 'job-2', domainGate);
 
-		expect(await service.createServer('user-1', 'thread-1', 'job-1')).toBe(first);
+		expect(await service.createServer('user-1', 'thread-1', 'job-1', domainGate)).toBe(first);
 		expect(other).not.toBe(first);
 		expect(service.findServer('job-1')).toBe(first);
 		expect(service.findServer('job-3')).toBeUndefined();
@@ -48,23 +50,23 @@ describe('InstanceAiCloudBrowserService', () => {
 
 	it('creates a single server when two calls for a job overlap', async () => {
 		const [first, second] = await Promise.all([
-			service.createServer('user-1', 'thread-1', 'job-1'),
-			service.createServer('user-1', 'thread-1', 'job-1'),
+			service.createServer('user-1', 'thread-1', 'job-1', domainGate),
+			service.createServer('user-1', 'thread-1', 'job-1', domainGate),
 		]);
 
 		expect(second).toBe(first);
 	});
 
 	it('refuses to return a job server to another user', async () => {
-		await service.createServer('user-1', 'thread-1', 'job-1');
+		await service.createServer('user-1', 'thread-1', 'job-1', domainGate);
 
-		await expect(service.createServer('user-2', 'thread-2', 'job-1')).rejects.toThrow(
+		await expect(service.createServer('user-2', 'thread-2', 'job-1', domainGate)).rejects.toThrow(
 			'Cloud browser job belongs to another user',
 		);
 	});
 
 	it('releases the job server and forgets it', async () => {
-		await service.createServer('user-1', 'thread-1', 'job-1');
+		await service.createServer('user-1', 'thread-1', 'job-1', domainGate);
 
 		await service.release('job-1');
 
@@ -79,8 +81,8 @@ describe('InstanceAiCloudBrowserService', () => {
 	});
 
 	it('releases every server on shutdown', async () => {
-		await service.createServer('user-1', 'thread-1', 'job-1');
-		await service.createServer('user-2', 'thread-2', 'job-2');
+		await service.createServer('user-1', 'thread-1', 'job-1', domainGate);
+		await service.createServer('user-2', 'thread-2', 'job-2', domainGate);
 
 		await service.shutdown();
 
@@ -90,7 +92,7 @@ describe('InstanceAiCloudBrowserService', () => {
 	});
 
 	it('gives the server the real browser tools, without the hidden ones', async () => {
-		const server = await service.createServer('user-1', 'thread-1', 'job-1');
+		const server = await service.createServer('user-1', 'thread-1', 'job-1', domainGate);
 
 		const names = server.getAvailableTools().map((tool) => tool.name);
 
@@ -110,11 +112,17 @@ describe('InstanceAiCloudBrowserService', () => {
 		).toBe(true);
 	});
 
+	it('gives the server the domain gate', async () => {
+		const server = await service.createServer('user-1', 'thread-1', 'job-1', domainGate);
+
+		expect(server['options'].domainGate).toBe(domainGate);
+	});
+
 	it('creates credentials as the job user', async () => {
 		const user = mock<User>({ id: 'user-1' });
 		userRepository.findOne.mockResolvedValue(user);
 		credentialsService.createUnmanagedCredential.mockResolvedValue({ id: 'cred-1' } as never);
-		const server = await service.createServer('user-1', 'thread-1', 'job-1');
+		const server = await service.createServer('user-1', 'thread-1', 'job-1', domainGate);
 		const payload = { name: 'Acme API', type: 'httpHeaderAuth', data: {} };
 
 		const result = await server['options'].toolContext.createCredential?.(payload);
@@ -127,20 +135,19 @@ describe('InstanceAiCloudBrowserService', () => {
 	});
 
 	it('gives each job its own secrets buffer', async () => {
-		const first = await service.createServer('user-1', 'thread-1', 'job-1');
-		const second = await service.createServer('user-1', 'thread-1', 'job-2');
+		const first = await service.createServer('user-1', 'thread-1', 'job-1', domainGate);
+		const second = await service.createServer('user-1', 'thread-1', 'job-2', domainGate);
 
 		first['options'].toolContext.secretsBuffer?.capture('acme', 'apiKey', 'secret');
 
 		expect(second['options'].toolContext.secretsBuffer?.getFields('acme')).toBeUndefined();
 	});
 
-	it('gives the tools a cloud browser folder for the user', async () => {
-		const server = await service.createServer('user-1', 'thread-1', 'job-1');
+	it('gives the tools the system temp folder, without creating a folder', async () => {
+		const server = await service.createServer('user-1', 'thread-1', 'job-1', domainGate);
 
-		const expected = join(tmpdir(), 'n8n-instance-ai-cloud-browser', 'user-1');
-		expect(server['options'].toolContext.dir).toBe(expected);
-		expect(mkdir).toHaveBeenCalledWith(expected, { recursive: true });
+		expect(server['options'].toolContext.dir).toBe(tmpdir());
+		expect(mkdir).not.toHaveBeenCalled();
 	});
 
 	it('is available only when the gateway can create browser sessions', () => {
@@ -154,16 +161,25 @@ describe('InstanceAiCloudBrowserService', () => {
 	it('refuses to create a server when the gateway cannot create browser sessions', async () => {
 		aiGatewayBrowserUseService.isGatewayBrowserUseEnabled.mockReturnValue(false);
 
-		await expect(service.createServer('user-1', 'thread-1', 'job-1')).rejects.toThrow(
+		await expect(service.createServer('user-1', 'thread-1', 'job-1', domainGate)).rejects.toThrow(
 			'Cloud browser use is not enabled',
 		);
 		expect(service.findServer('job-1')).toBeUndefined();
 	});
 
+	it('lets a later call create the server after a creation fails', async () => {
+		aiGatewayBrowserUseService.isGatewayBrowserUseEnabled.mockReturnValueOnce(false);
+		await expect(service.createServer('user-1', 'thread-1', 'job-1', domainGate)).rejects.toThrow();
+
+		const server = await service.createServer('user-1', 'thread-1', 'job-1', domainGate);
+
+		expect(service.findServer('job-1')).toBe(server);
+	});
+
 	it('creates and releases sessions through the gateway for the job', async () => {
 		const session = { id: 'sess-1', connectUrl: 'wss://connect' };
 		aiGatewayBrowserUseService.createSession.mockResolvedValue(session);
-		const server = await service.createServer('user-1', 'thread-1', 'job-1');
+		const server = await service.createServer('user-1', 'thread-1', 'job-1', domainGate);
 		const { sessionProvider, scope } = server['options'];
 
 		await expect(sessionProvider.createSession(scope)).resolves.toEqual(session);

@@ -113,6 +113,61 @@ describe('AiGatewayService', () => {
 		});
 	});
 
+	describe('gatewayRequest()', () => {
+		const request = { method: 'POST' as const, url: `${BASE_URL}/v1/gateway/x`, body: { a: 1 } };
+
+		it('returns the body of a successful response', async () => {
+			requestMock.mockResolvedValue(ok({ id: 'x-1' }));
+
+			await expect(makeService().gatewayRequest(request, 'Failed')).resolves.toEqual({
+				id: 'x-1',
+			});
+			expect(requestMock).toHaveBeenCalledWith(
+				expect.not.objectContaining({ disableFollowRedirect: expect.anything() }),
+			);
+		});
+
+		it('throws a UserError with the status code for an error message', async () => {
+			requestMock.mockResolvedValue(fail(503));
+
+			const result = makeService().gatewayRequest(request, 'Failed to do x');
+
+			await expect(result).rejects.toThrow(UserError);
+			await expect(result).rejects.toThrow('Failed to do x: HTTP 503');
+		});
+
+		it('throws a UserError with a default message when no error message is given', async () => {
+			requestMock.mockResolvedValue(fail(503));
+
+			await expect(makeService().gatewayRequest(request)).rejects.toThrow(
+				'Gateway credits request failed: HTTP 503',
+			);
+		});
+
+		it('throws the error that mapErrorResponse gives for the response', async () => {
+			requestMock.mockResolvedValue({ statusCode: 402, body: { reason: 'no credits' } });
+			const mapErrorResponse = vi.fn(() => new Error('mapped'));
+
+			await expect(
+				makeService().gatewayRequest({ ...request, mapErrorResponse }, 'Failed'),
+			).rejects.toThrow('mapped');
+			expect(mapErrorResponse).toHaveBeenCalledWith({
+				statusCode: 402,
+				body: { reason: 'no credits' },
+			});
+		});
+
+		it('does not follow redirects when asked not to', async () => {
+			requestMock.mockResolvedValue(ok({}));
+
+			await makeService().gatewayRequest({ ...request, disableFollowRedirect: true }, 'Failed');
+
+			expect(requestMock).toHaveBeenCalledWith(
+				expect.objectContaining({ disableFollowRedirect: true }),
+			);
+		});
+	});
+
 	describe('getGatewayConfig()', () => {
 		it('fetches and returns config from the gateway', async () => {
 			requestMock.mockResolvedValueOnce(ok(MOCK_GATEWAY_CONFIG));

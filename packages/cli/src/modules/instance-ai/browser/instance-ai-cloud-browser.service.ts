@@ -3,14 +3,15 @@ import { UserRepository } from '@n8n/db';
 import { OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { UnexpectedError } from 'n8n-workflow';
+import { tmpdir } from 'node:os';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { AiGatewayBrowserUseService } from '@/services/ai-gateway-browser-use.service';
 
 import {
 	createBrowserCredential,
-	createBrowserWorkDir,
 	createInMemorySecretsBuffer,
+	type BrowserDomainGate,
 } from './browser.helpers';
 import { CloudBrowserLocalMcpServer } from './cloud-browser-local-mcp-server';
 import type { CloudBrowserSessionProvider } from './cloud-browser-session-provider';
@@ -42,14 +43,17 @@ export class InstanceAiCloudBrowserService {
 		return this.aiGatewayBrowserUseService.isGatewayBrowserUseEnabled();
 	}
 
-	/** Returns the job's server, and creates it on first use. */
+	/**
+	 * Returns the job's server, and creates it on first use. `domainGate` holds the sites the user
+	 * approved and the admin's permissions. Only the first call for a job sets it.
+	 */
 	async createServer(
 		userId: string,
 		threadId: string,
 		jobId: string,
+		domainGate: BrowserDomainGate,
 	): Promise<CloudBrowserLocalMcpServer> {
 		const { createBrowserTools } = await import('@n8n/mcp-browser');
-		const workDir = await createBrowserWorkDir('n8n-instance-ai-cloud-browser', userId);
 
 		const existing = this.serversByJobId.get(jobId);
 		if (existing) {
@@ -67,7 +71,9 @@ export class InstanceAiCloudBrowserService {
 			createToolkit: (connectUrl) =>
 				createBrowserTools({ mode: 'direct_cdp' }, { cdpEndpoint: connectUrl }),
 			toolContext: {
-				dir: workDir,
+				// No tool the cloud browser shows reads `dir`. Before you show a tool that reads
+				// or writes files, give each user a folder of their own, as the extension browser does.
+				dir: tmpdir(),
 				// One buffer per job, so a job never sees secrets captured by another.
 				secretsBuffer: createInMemorySecretsBuffer(),
 				createCredential: async (payload) =>
@@ -78,6 +84,7 @@ export class InstanceAiCloudBrowserService {
 						payload,
 					),
 			},
+			domainGate,
 			logger: this.logger,
 		});
 		this.serversByJobId.set(jobId, { userId, server });

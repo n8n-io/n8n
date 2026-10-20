@@ -35,6 +35,12 @@ export interface AiGatewayRequestAttribution {
 	instanceAiJobId: string;
 }
 
+/** A gateway response with a status that is not 2xx. */
+export interface AiGatewayErrorResponse {
+	statusCode: number;
+	body: unknown;
+}
+
 interface GatewayUrlContext {
 	executionId?: string;
 	workflowId?: string;
@@ -101,15 +107,21 @@ export class AiGatewayService {
 
 	/**
 	 * Performs a request against the AI Gateway and returns the parsed body.
+	 *
+	 * For a status that is not 2xx, it throws the error from `options.mapErrorResponse` if it is
+	 * given. Otherwise it throws a `UserError` with `errorMessage` and the status code.
 	 */
-	private async gatewayRequest<T>(
+	async gatewayRequest<T>(
 		options: {
 			method: IHttpRequestMethods;
 			url: string;
 			headers?: Record<string, string>;
 			body?: unknown;
+			disableFollowRedirect?: boolean;
+			/** Returns the error to throw for a response with a status that is not 2xx. */
+			mapErrorResponse?: (response: AiGatewayErrorResponse) => Error;
 		},
-		errorMessage: string,
+		errorMessage = 'Gateway credits request failed',
 	): Promise<T> {
 		const response = await this.outboundHttp
 			.requests({
@@ -120,11 +132,14 @@ export class AiGatewayService {
 				url: options.url,
 				...(options.headers ? { headers: options.headers } : {}),
 				...(options.body !== undefined ? { body: options.body, json: true } : {}),
+				...(options.disableFollowRedirect ? { disableFollowRedirect: true } : {}),
 				returnFullResponse: true,
-				ignoreHttpStatusErrors: true, // A non-2xx status is surfaced as a `UserError` carrying the status code
+				ignoreHttpStatusErrors: true, // A non-2xx status is surfaced as an error below
 			});
 		if (response.statusCode < 200 || response.statusCode >= 300) {
-			throw new UserError(`${errorMessage}: HTTP ${response.statusCode}`);
+			throw options.mapErrorResponse
+				? options.mapErrorResponse({ statusCode: response.statusCode, body: response.body })
+				: new UserError(`${errorMessage}: HTTP ${response.statusCode}`);
 		}
 		return response.body as T;
 	}
