@@ -296,6 +296,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			transactionRunner,
 			saveCompletion,
 			skillRefs,
+			mock<ChatIntegrationRegistry>(),
 		);
 		agentCustomToolsService = new AgentCustomToolsService(
 			logger,
