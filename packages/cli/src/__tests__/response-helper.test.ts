@@ -11,6 +11,7 @@ import { LicenseEulaRequiredError } from '@/errors/response-errors/license-eula-
 import { PolicyViolationError } from '@/policy/policy-violation.error';
 import {
 	reportError,
+	send,
 	sendErrorResponse,
 	sendStreamToResponse,
 	sendSuccessResponse,
@@ -259,6 +260,30 @@ describe('sendSuccessResponse', () => {
 
 			expect(await waitForClose(stream)).toBe(true);
 		});
+	});
+});
+
+describe('send', () => {
+	let server: Awaited<ReturnType<typeof startServer>> | undefined;
+
+	afterEach(async () => {
+		await server?.close();
+		server = undefined;
+	});
+
+	it('should end the response without an error response when the handler fails after the response started', async () => {
+		let handled: Promise<void> | undefined;
+		const app = express();
+		app.get('/', (req, res) => {
+			handled = send(async (_req, startedRes) => {
+				startedRes.write('partial');
+				throw new Error('read failed');
+			})(req, res);
+		});
+		server = await startServer(app);
+
+		await expect(readWholeBody(server.url)).rejects.toThrow();
+		await expect(handled).resolves.toBeUndefined();
 	});
 });
 
