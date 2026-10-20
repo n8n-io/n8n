@@ -11,13 +11,12 @@ import type {
 	ExecutionRepository,
 	Project,
 	User,
-	WorkflowEntity,
 	WorkflowHistoryRepository,
 	WorkflowRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { QueryFailedError } from '@n8n/typeorm';
-import type { ExecutionSummary, IRun, IRunData, IRunExecutionData, ITaskData } from 'n8n-workflow';
+import type { IRun, IRunData, IRunExecutionData, ITaskData } from 'n8n-workflow';
 import { ManualExecutionCancelledError, WorkflowOperationError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
@@ -482,7 +481,7 @@ describe('ExecutionService', () => {
 
 	describe('getLastSuccessfulExecution', () => {
 		beforeEach(() => {
-			workflowRepository.findOneBy.mockResolvedValue(mock<WorkflowEntity>({ settings: {} }));
+			workflowRepository.findSettings.mockResolvedValue({});
 		});
 
 		it('should return the redacted last successful execution for a workflow', async () => {
@@ -558,29 +557,20 @@ describe('ExecutionService', () => {
 			const mockUser = mock<User>();
 
 			beforeEach(() => {
-				workflowRepository.findOneBy.mockResolvedValue(
-					mock<WorkflowEntity>({ settings: { engineType: 'v2' } }),
-				);
+				workflowRepository.findSettings.mockResolvedValue({ engineType: 'v2' });
 			});
 
 			it('should read the latest successful execution from the data plane', async () => {
 				const execution = mock<IExecutionResponse>({ id: V2_EXECUTION_ID, workflowId });
-				engineV2ExecutionReader.findMany.mockResolvedValue({
-					items: [mock<ExecutionSummary>({ id: V2_EXECUTION_ID })],
-					total: 1,
-					hasMore: false,
-				});
-				engineV2ExecutionReader.findOne.mockResolvedValue(execution);
+				engineV2ExecutionReader.findLatest.mockResolvedValue(execution);
 				executionRedactionServiceProxy.processExecution.mockResolvedValue(execution);
 
 				const result = await executionService.getLastSuccessfulExecution(workflowId, mockUser);
 
 				expect(result).toEqual(execution);
-				expect(engineV2ExecutionReader.findMany).toHaveBeenCalledWith(
-					{ status: ['success'], limit: 1 },
-					[workflowId],
-				);
-				expect(engineV2ExecutionReader.findOne).toHaveBeenCalledWith(V2_EXECUTION_ID, [workflowId]);
+				expect(engineV2ExecutionReader.findLatest).toHaveBeenCalledWith({ status: ['success'] }, [
+					workflowId,
+				]);
 				expect(executionPersistence.findMultipleExecutions).not.toHaveBeenCalled();
 				expect(executionRedactionServiceProxy.processExecution).toHaveBeenCalledWith(execution, {
 					user: mockUser,
@@ -589,12 +579,11 @@ describe('ExecutionService', () => {
 			});
 
 			it('should return undefined when the data plane has no successful execution', async () => {
-				engineV2ExecutionReader.findMany.mockResolvedValue({ items: [], total: 0, hasMore: false });
+				engineV2ExecutionReader.findLatest.mockResolvedValue(undefined);
 
 				const result = await executionService.getLastSuccessfulExecution(workflowId, mockUser);
 
 				expect(result).toBeUndefined();
-				expect(engineV2ExecutionReader.findOne).not.toHaveBeenCalled();
 				expect(executionRedactionServiceProxy.processExecution).not.toHaveBeenCalled();
 			});
 		});

@@ -22,6 +22,7 @@ export type {
 	StepDetail,
 } from './server';
 export type {
+	FindLatestExecutionRequest,
 	SearchExecutionsRequest,
 	SearchExecutionsResponse,
 	ExecutionListItem,

@@ -93,6 +93,7 @@ beforeAll(async () => {
 		startExecution,
 		getExecution,
 		searchExecutions,
+		findLatestExecution: vi.fn(),
 		cancelExecution,
 	});
 });

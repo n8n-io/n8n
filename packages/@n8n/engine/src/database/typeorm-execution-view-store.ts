@@ -8,6 +8,7 @@ import type {
 	ExecutionView,
 	ExecutionWithStepsView,
 	StepView,
+	ExecutionListFilter,
 	ExecutionListQuery,
 	ExecutionListItemView,
 } from '../execution/execution-view-store';
@@ -73,7 +74,7 @@ export class TypeOrmExecutionViewStore implements ExecutionViewStore {
 		return await this.buildListQuery(query).getCount();
 	}
 
-	private buildListQuery(query: ExecutionListQuery): SelectQueryBuilder<WorkflowExecution> {
+	private buildListQuery(query: ExecutionListFilter): SelectQueryBuilder<WorkflowExecution> {
 		const qb = this.executions.createQueryBuilder('execution');
 		if (query.workflowIds !== 'all') {
 			qb.andWhere('execution.workflow_id = ANY(:workflowIds)', { workflowIds: query.workflowIds });
@@ -95,6 +96,50 @@ export class TypeOrmExecutionViewStore implements ExecutionViewStore {
 		return row;
 	}
 
+	async loadExecutionWithStepsView(id: string): Promise<ExecutionWithStepsView> {
+		const row: ExecutionWithStepsRow | undefined = await this.withSteps(
+			this.selectExecution(id),
+		).getRawOne();
+		if (!row) throw new ExecutionNotFoundError(id);
+		return row;
+	}
+
+	async loadLatestExecutionWithStepsView(
+		filter: ExecutionListFilter,
+	): Promise<ExecutionWithStepsView | undefined> {
+		const row: ExecutionWithStepsRow | undefined = await this.withSteps(
+			this.selectExecutionColumns(this.buildListQuery(filter)),
+		)
+			.orderBy('execution.created_at', 'DESC')
+			.addOrderBy('execution.id', 'DESC')
+			.limit(1)
+			.getRawOne();
+		return row;
+	}
+
+	private selectExecution(id: string): SelectQueryBuilder<WorkflowExecution> {
+		return this.selectExecutionColumns(this.executions.createQueryBuilder('execution')).where(
+			'execution.id = :id',
+			{ id },
+		);
+	}
+
+	private selectExecutionColumns(
+		qb: SelectQueryBuilder<WorkflowExecution>,
+	): SelectQueryBuilder<WorkflowExecution> {
+		return qb
+			.select('execution.id', 'id')
+			.addSelect('execution.workflow_id', 'workflowId')
+			.addSelect('execution.status', 'status')
+			.addSelect('execution.mode', 'mode')
+			.addSelect(HOST_MODE, 'hostMode')
+			.addSelect('execution.graph', 'graph')
+			.addSelect('execution.workflow', 'workflow')
+			.addSelect('execution.created_at', 'createdAt')
+			.addSelect('execution.updated_at', 'updatedAt')
+			.addSelect('execution.finished_at', 'finishedAt');
+	}
+
 	/**
 	 * One query, so the status a caller reports cannot predate the steps beside
 	 * it. The steps are aggregated rather than joined row-per-step: a left join
@@ -103,8 +148,10 @@ export class TypeOrmExecutionViewStore implements ExecutionViewStore {
 	 * times. Grouping by the primary key is what lets the execution columns
 	 * survive the aggregate.
 	 */
-	async loadExecutionWithStepsView(id: string): Promise<ExecutionWithStepsView> {
-		const row: ExecutionWithStepsRow | undefined = await this.selectExecution(id)
+	private withSteps(
+		qb: SelectQueryBuilder<WorkflowExecution>,
+	): SelectQueryBuilder<WorkflowExecution> {
+		return qb
 			.addSelect(
 				`COALESCE(
 					json_agg(
@@ -125,25 +172,6 @@ export class TypeOrmExecutionViewStore implements ExecutionViewStore {
 				'steps',
 			)
 			.leftJoin(this.steps.metadata.tableName, 'step', 'step.execution_id = execution.id')
-			.groupBy('execution.id')
-			.getRawOne();
-		if (!row) throw new ExecutionNotFoundError(id);
-		return row;
-	}
-
-	private selectExecution(id: string): SelectQueryBuilder<WorkflowExecution> {
-		return this.executions
-			.createQueryBuilder('execution')
-			.select('execution.id', 'id')
-			.addSelect('execution.workflow_id', 'workflowId')
-			.addSelect('execution.status', 'status')
-			.addSelect('execution.mode', 'mode')
-			.addSelect(HOST_MODE, 'hostMode')
-			.addSelect('execution.graph', 'graph')
-			.addSelect('execution.workflow', 'workflow')
-			.addSelect('execution.created_at', 'createdAt')
-			.addSelect('execution.updated_at', 'updatedAt')
-			.addSelect('execution.finished_at', 'finishedAt')
-			.where('execution.id = :id', { id });
+			.groupBy('execution.id');
 	}
 }

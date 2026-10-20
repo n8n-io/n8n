@@ -78,6 +78,7 @@ beforeAll(async () => {
 		startExecution,
 		getExecution,
 		searchExecutions: vi.fn().mockResolvedValue({ items: [], nextCursor: null, total: 0 }),
+		findLatestExecution: vi.fn(),
 		cancelExecution: vi.fn(),
 	});
 	// The host hands the response registry its receiver at boot (`EngineV2Module.init`).

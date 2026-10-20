@@ -205,10 +205,10 @@ export class ExecutionService {
 		redactExecutionData?: boolean,
 	): Promise<IExecutionResponse | undefined> {
 		// A workflow runs on one engine, and only that engine holds its executions.
-		const workflow = await this.workflowRepository.findOneBy({ id: workflowId });
+		const settings = await this.workflowRepository.findSettings(workflowId);
 		const execution =
-			workflow?.settings?.engineType === 'v2'
-				? await this.lastSuccessfulEngineV2Execution(workflowId)
+			settings?.engineType === 'v2'
+				? await this.engineV2ExecutionReader.findLatest({ status: ['success'] }, [workflowId])
 				: await this.lastSuccessfulV1Execution(workflowId);
 		if (!execution) return undefined;
 
@@ -240,20 +240,6 @@ export class ExecutionService {
 		);
 
 		return executions[0];
-	}
-
-	/** The data plane lists newest first, and only the full read carries the run data. */
-	private async lastSuccessfulEngineV2Execution(
-		workflowId: string,
-	): Promise<IExecutionResponse | undefined> {
-		const { items } = await this.engineV2ExecutionReader.findMany(
-			{ status: ['success'], limit: 1 },
-			[workflowId],
-		);
-		const latest = items[0];
-		if (!latest || !isExecutionIdV2(latest.id)) return undefined;
-
-		return await this.engineV2ExecutionReader.findOne(latest.id, [workflowId]);
 	}
 
 	async retry({
