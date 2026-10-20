@@ -414,6 +414,62 @@ describe('AgentEvalChecksPanel', () => {
 			);
 		});
 
+		it('hands every failing check to the Assistant from "Fix with Assistant"', async () => {
+			const user = userEvent.setup();
+			const emit = vi.spyOn(agentsEventBus, 'emit');
+			const failedResult = (id: string) => ({
+				...result(id, 'success' as const),
+				verdict: {
+					status: 'completed' as const,
+					outcome: 'fail' as const,
+					reasoning: `Reason ${id}.`,
+				},
+			});
+			const { getByTestId } = render({
+				results: [failedResult('c1'), failedResult('c2'), result('c3', 'success')],
+			});
+
+			await user.click(getByTestId('agent-eval-verdict-fix'));
+
+			const request = emit.mock.calls.find(([event]) => event === 'evalFixRequested')?.[1];
+			expect(request).toMatchObject({ projectId: 'project-1', agentId: 'agent-1', checkCount: 3 });
+			const prompt = (request as { prompt: string }).prompt;
+			expect(prompt).toContain('Fix the 2 checks that need work.');
+			expect(prompt).toContain('Reason c1.');
+			expect(prompt).toContain('Reason c2.');
+			expect(prompt).not.toContain('request c3');
+			emit.mockRestore();
+		});
+
+		it('hides "Fix with Assistant" while the Assistant has the fix', () => {
+			const pinia = createTestingPinia({ stubActions: true });
+			const store = useAgentEvalsStore();
+			vi.mocked(store.getReview).mockReturnValue({
+				run: null,
+				results: [
+					{
+						...result('c1', 'success'),
+						verdict: { status: 'completed', outcome: 'fail', reasoning: 'Off-task.' },
+					},
+				],
+				resultsCount: 1,
+				ratingsByResultId: {},
+				pendingByResultId: {},
+				draftsByResultId: {},
+				counts: null,
+				loading: false,
+				loadingMore: false,
+			});
+			vi.mocked(store.isRunInFlight).mockReturnValue(false);
+			vi.mocked(store.consumeFocusedEvalResult).mockReturnValue(null);
+			vi.mocked(store.isEvalFixInAssistant).mockReturnValue(true);
+
+			const { queryByTestId, getByTestId } = renderComponent({ pinia });
+
+			expect(getByTestId('agent-eval-verdict-details')).toBeInTheDocument();
+			expect(queryByTestId('agent-eval-verdict-fix')).not.toBeInTheDocument();
+		});
+
 		it('is hidden while there is no result and no run', () => {
 			const { queryByTestId } = render({ results: [] });
 

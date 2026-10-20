@@ -18,7 +18,7 @@ import type { ToolCall } from '@/features/ai/shared/agentsChat/types';
 import type { AgentEvalCase } from '../agentEvals.types';
 import { agentsEventBus } from '../agents.eventBus';
 import { useAgentEvalsStore } from '../agentEvals.store';
-import { buildEvalCorrectionPrompt } from '../utils/agent-eval-fix-prompt';
+import { buildEvalCorrectionPrompt, buildEvalFixPrompt } from '../utils/agent-eval-fix-prompt';
 import {
 	readAgentAnswer,
 	readCaseRequest,
@@ -153,6 +153,26 @@ const verdictProgress = computed(() => {
 	).length;
 	return { done, total };
 });
+
+// The Assistant gets every failing check at once and makes one change for all.
+// The builder runs the checks again once the Assistant has changed the agent.
+function onFixWithAssistant(failing: VerdictLineCheck[]) {
+	agentsEventBus.emit('evalFixRequested', {
+		projectId: props.projectId,
+		agentId: props.agentId,
+		prompt: buildEvalFixPrompt(
+			failing.map((check) => ({
+				rule: check.whatToCheck,
+				sampleMessage: check.input,
+				reply: check.output,
+				judgeReason: check.reasoning,
+			})),
+			i18n,
+		),
+		datasetId: shownReview.value.run?.datasetId,
+		checkCount: rows.value.length + notRunRows.value.length,
+	});
+}
 
 async function loadCases() {
 	const source = resolveCaseSource();
@@ -609,6 +629,8 @@ onBeforeUnmount(store.stopPollingRun);
 			:total="verdictProgress.total"
 			:completed-at="shownReview.run?.completedAt ?? null"
 			:disabled="disabled || showingPreviousRun"
+			:hide-fix="store.isEvalFixInAssistant(agentId)"
+			@fix="onFixWithAssistant"
 		/>
 		<header :class="$style.header">
 			<N8nSegmentControl

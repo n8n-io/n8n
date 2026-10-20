@@ -1518,6 +1518,26 @@ describe('AgentBuilderView — preview routing', () => {
 		expect(localStorage.getItem('N8N_AGENT_PREVIEW_OPEN:p1:a1')).toBe('true');
 	});
 
+	it('puts failing checks from the Checks tab into the Assistant composer, with no context chip', async () => {
+		handoffMock.mockReturnValueOnce(true);
+		const wrapper = await renderView();
+
+		agentsEventBus.emit('evalFixRequested', {
+			projectId: 'p1',
+			agentId: 'a1',
+			prompt: 'Fix the 2 checks that need work.',
+			datasetId: 'ds-1',
+			checkCount: 2,
+		});
+		await flushPromises();
+
+		expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(true);
+		expect(handoffMock).toHaveBeenCalledWith(undefined, {
+			text: 'Fix the 2 checks that need work.',
+			prefillType: 'handoff_agent_change_request',
+		});
+	});
+
 	it.each([true, false])(
 		'hands credential help to the left panel (accepted: %s)',
 		async (accepted) => {

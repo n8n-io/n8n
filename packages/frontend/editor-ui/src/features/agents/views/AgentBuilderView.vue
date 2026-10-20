@@ -81,6 +81,7 @@ import { useAgentConfigValidation } from '../composables/useAgentConfigValidatio
 import { useAgentPermissions } from '../composables/useAgentPermissions';
 import { useAgentSessionsStore } from '../agentSessions.store';
 import { useAgentEvalsStore } from '../agentEvals.store';
+import { useAgentEvalFixHandoff } from '../composables/useAgentEvalFixHandoff';
 import { useAgentBuilderSession } from '../composables/useAgentBuilderSession';
 import type { AgentExecutionThread } from '../composables/useAgentThreadsApi';
 import {
@@ -116,7 +117,6 @@ import {
 	agentsEventBus,
 	type AgentUpdatedEvent,
 	type AgentCredentialHelpRequest,
-	type AgentEvalFixRequest,
 } from '../agents.eventBus';
 import { AGENTS_MODALS } from '../modals';
 import {
@@ -477,31 +477,6 @@ function onCredentialHelpRequested(request: AgentCredentialHelpRequest) {
 	};
 }
 agentsEventBus.on('credentialHelpRequested', onCredentialHelpRequested);
-
-/**
- * The Checks tab hands failing checks to the Assistant. The prompt goes into the
- * composer, and the person sends it. No context chip: the checks are in the prompt.
- */
-async function onEvalFixRequested(request: AgentEvalFixRequest) {
-	if (
-		isArtifactMode.value ||
-		request.projectId !== projectId.value ||
-		request.agentId !== agentId.value
-	) {
-		return;
-	}
-	const targetAgentId = request.agentId;
-	await handoffToAssistantPanel(
-		undefined,
-		{ text: request.prompt, prefillType: 'handoff_agent_change_request' },
-		() => agentEvalsStore.setEvalFixInAssistant(targetAgentId, true),
-	);
-}
-agentsEventBus.on('evalFixRequested', onEvalFixRequested);
-// Once the Assistant panel closes, the Checks tab offers its fix action again.
-watch(showAiPanel, (shown) => {
-	if (!shown && agentId.value) agentEvalsStore.setEvalFixInAssistant(agentId.value, false);
-});
 const aiPanelWidth = useStorage('N8N_AGENT_AI_PANEL_WIDTH', 400);
 type SidePanel = 'assistant' | 'preview';
 const preferredSidePanel = ref<SidePanel>('assistant');
@@ -2057,6 +2032,26 @@ function replaceConfigAndScheduleSave(nextConfig: AgentJsonConfig) {
 	});
 }
 
+// The Checks tab hands failing checks to the Assistant, and runs them again once
+// it has changed the agent. No context chip: the checks are in the prompt.
+useAgentEvalFixHandoff({
+	projectId,
+	agentId,
+	enabled: () => !isArtifactMode.value,
+	assistantBuilding: embeddedAiBuilding,
+	assistantShown: showAiPanel,
+	handoff: async (draft, onAccepted) => await handoffToAssistantPanel(undefined, draft, onAccepted),
+	saveEdits: flushAutosave,
+	refreshConfig: async () => await onConfigUpdated(),
+	readInstructions: () => localConfig.value?.instructions ?? null,
+	readConfigHash: () => configHash.value ?? null,
+	writeInstructions: async (instructions) => {
+		if (!localConfig.value || isEditingLocked.value) return false;
+		replaceConfigAndScheduleSave({ ...localConfig.value, instructions });
+		return (await flushAutosave()) === undefined;
+	},
+});
+
 function templateStarterMessage(template: AgentTemplate): PendingFirstMessage {
 	return {
 		message: locale.baseText('agents.builder.templates.prompt', {
@@ -2935,7 +2930,6 @@ onBeforeUnmount(async () => {
 	latestSessionsFetchRequestId++;
 	agentsEventBus.off('agentUpdated', onExternalAgentUpdated);
 	agentsEventBus.off('credentialHelpRequested', onCredentialHelpRequested);
-	agentsEventBus.off('evalFixRequested', onEvalFixRequested);
 	removeAgentUpdateListener();
 	pushConnectionStore.pushDisconnect();
 	clearTimeout(externalRefreshTimer);
