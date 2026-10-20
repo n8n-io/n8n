@@ -4,7 +4,6 @@ import type express from 'express';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { type IHttpRequestMethods } from 'n8n-workflow';
 import { Readable } from 'stream';
-import { finished } from 'stream/promises';
 
 import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';
 import { PrometheusWebhookAndFormMetricsService } from '@/metrics/prometheus/webhook-and-form-metrics.service';
@@ -86,7 +85,13 @@ class WebhookRequestHandler {
 				// that doesn't use that yet. We need to keep this here until all codepaths
 				// return a `WebhookResponse` instead.
 				// oxlint-disable-next-line typescript/no-deprecated
-				this.sendLegacyResponse(res, response.data, true, response.responseCode, response.headers);
+				await this.sendLegacyResponse(
+					res,
+					response.data,
+					true,
+					response.responseCode,
+					response.headers,
+				);
 			}
 		} catch (e) {
 			const error = ensureError(e);
@@ -102,6 +107,8 @@ class WebhookRequestHandler {
 				);
 			}
 
+			// A stream that failed after the first chunk has already destroyed the response.
+			if (res.headersSent) return;
 			return ResponseHelper.sendErrorResponse(res, error);
 		}
 	}
@@ -125,13 +132,10 @@ class WebhookRequestHandler {
 	private async sendStreamResponse(res: express.Response, webhookResponse: WebhookResponseStream) {
 		const { stream, code, headers } = webhookResponse;
 
-		this.setResponseStatus(res, code);
-		this.setResponseHeaders(res, headers);
-
-		stream.pipe(res, { end: false });
-		await finished(stream);
-
-		process.nextTick(() => res.end());
+		await ResponseHelper.sendStreamToResponse(res, stream, () => {
+			this.setResponseStatus(res, code);
+			this.setResponseHeaders(res, headers);
+		});
 	}
 
 	private sendStaticResponse(res: express.Response, webhookResponse: WebhookStaticResponse) {
@@ -162,7 +166,7 @@ class WebhookRequestHandler {
 	 * Sends a legacy response to the client, i.e. when the webhook response is not a `WebhookResponse`.
 	 * @deprecated Use `sendWebhookResponse` instead.
 	 */
-	private sendLegacyResponse(
+	private async sendLegacyResponse(
 		res: express.Response,
 		data: any,
 		raw?: boolean,
@@ -175,7 +179,7 @@ class WebhookRequestHandler {
 		}
 
 		if (data instanceof Readable) {
-			data.pipe(res);
+			await ResponseHelper.sendStreamToResponse(res, data);
 			return;
 		}
 

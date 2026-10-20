@@ -12,9 +12,59 @@ import { ErrorReporter } from 'n8n-core';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { FORM_TRIGGER_PATH_IDENTIFIER, NodeApiError } from 'n8n-workflow';
 import { Readable } from 'node:stream';
+import { pipeline } from 'node:stream/promises';
 import picocolors from 'picocolors';
 
 import { applySandboxCSP } from './webhooks/webhook-response-headers';
+
+/**
+ * Sends `stream` as the body of `res` and destroys `stream` however the call ends.
+ *
+ * Resolves when the body is sent or the client disconnected. Rejects with the stream
+ * error when the stream fails or ends early. A failure before the first chunk leaves
+ * the headers unsent, so the caller can still send an error response. A later failure
+ * destroys `res`, so the client sees an incomplete download instead of waiting.
+ *
+ * @param setHeaders Sets the status and headers. Runs after the first chunk is read.
+ */
+export async function sendStreamToResponse(
+	res: Response,
+	stream: Readable,
+	setHeaders?: () => void,
+): Promise<void> {
+	if (res.destroyed) {
+		stream.destroy();
+		return;
+	}
+
+	// Runs before pipeline's own listener, so the stream is still open when the client left first.
+	let clientDisconnected = false;
+	const onClose = () => {
+		clientDisconnected = !res.writableFinished && !stream.destroyed;
+		stream.destroy();
+	};
+	res.once('close', onClose);
+
+	try {
+		const chunks = stream[Symbol.asyncIterator]();
+		const first = await chunks.next();
+
+		setHeaders?.();
+
+		async function* body() {
+			if (!first.done) yield first.value;
+			yield* { [Symbol.asyncIterator]: () => chunks };
+		}
+		await pipeline(Readable.from(body()), res);
+	} catch (error) {
+		if (clientDisconnected) return;
+		// pipeline can reject with the response's premature close instead of the stream's own error.
+		throw stream.errored ?? error;
+	} finally {
+		res.off('close', onClose);
+		stream.destroy();
+	}
+}
 
 export function sendSuccessResponse(
 	res: Response,
@@ -32,7 +82,11 @@ export function sendSuccessResponse(
 	}
 
 	if (data instanceof Readable) {
-		data.pipe(res);
+		void sendStreamToResponse(res, data).catch((e: unknown) => {
+			const error = ensureError(e);
+			reportError(error);
+			if (!res.headersSent) sendErrorResponse(res, error);
+		});
 		return;
 	}
 
@@ -137,6 +191,12 @@ export function send<T, R extends Request, S extends Response>(
 					user: user ? { id: user.id } : undefined,
 				},
 			});
+
+			// The response already started, so destroying it is the only way to tell the client it failed.
+			if (res.headersSent) {
+				res.destroy();
+				return;
+			}
 
 			if (isUniqueConstraintError(error)) {
 				error.message = 'There is already an entry with this name';
