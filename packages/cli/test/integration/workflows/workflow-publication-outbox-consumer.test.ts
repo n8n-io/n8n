@@ -270,6 +270,45 @@ describe('WorkflowPublicationOutboxConsumer (integration)', () => {
 		]);
 	});
 
+	test('fails a stored version with a trigger node id that is too long, and keeps the old triggers', async () => {
+		const owner = await createOwner();
+
+		const running = scheduleNode('running');
+		const workflow = await createWorkflowWithHistory({ active: true, nodes: [running] }, owner);
+		await setActiveVersion(workflow.id, workflow.versionId);
+		await publishedVersionRepository.setPublishedVersion(workflow.id, workflow.versionId);
+		await activeWorkflowManager.add(workflow.id, 'activate');
+
+		// Write the version directly, as an older release or an external client could.
+		const tooLong = { ...scheduleNode('too-long'), id: 'n'.repeat(NODE_ID_MAX_LENGTH + 1) };
+		const fitting = scheduleNode('fitting');
+		const newVersionId = uuid();
+		await createWorkflowHistoryItem(workflow.id, {
+			versionId: newVersionId,
+			nodes: [tooLong, fitting],
+			connections: {},
+		});
+		await setActiveVersion(workflow.id, newVersionId);
+
+		await outboxRepository.enqueue(workflow.id, newVersionId, 'publish');
+		const record = await outboxRepository.claimNextPendingRecord();
+
+		await consumer.processRecord(record!, abortSignal);
+
+		const row = await outboxRepository.findOneBy({ id: record!.id });
+		expect(row?.status).toBe('failed');
+		expect(row?.errorMessage).toContain(`longer than ${NODE_ID_MAX_LENGTH} characters`);
+		expect(activeWorkflowTriggers.get(workflow.id)?.has(running.id)).toBe(true);
+		expect(activeWorkflowTriggers.get(workflow.id)?.has(fitting.id)).toBe(false);
+		const published = await publishedVersionRepository.getPublishedVersionWithRelations(
+			workflow.id,
+		);
+		expect(published?.publishedVersionId).toBe(workflow.versionId);
+		expect(await triggerStatusRepository.findByWorkflowId(workflow.id)).toEqual([
+			expect.objectContaining({ nodeId: fitting.id, status: 'failed' }),
+		]);
+	});
+
 	test('publishes a healed version for duplicate trigger node ids, then activates it', async () => {
 		const owner = await createOwner();
 

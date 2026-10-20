@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { NODE_ID_MAX_LENGTH } from '@n8n/constants';
 import {
 	WorkflowEntity,
 	WorkflowHistory,
@@ -154,6 +155,9 @@ export class WorkflowPublicationApplier {
 	): Promise<PublicationResult> {
 		const healSkip = await this.healBrokenNodeIds(workflow, newVersion);
 		if (healSkip !== null) return healSkip;
+
+		const oversized = this.rejectOversizedTriggerNodeIds(workflow, newVersion);
+		if (oversized !== null) return oversized;
 
 		const unrunnable = await this.handleUnrunnableVersion(
 			workflow,
@@ -703,6 +707,66 @@ export class WorkflowPublicationApplier {
 		});
 
 		return { type: 'skipped', reason: published.published ? 'node-ids-healed' : 'superseded' };
+	}
+
+	/**
+	 * Fails a version whose trigger node ids do not fit the columns keyed on them.
+	 * Saving rejects such ids, but versions stored before that check can still
+	 * carry them, and writing their trigger-status rows would fail. Runs before
+	 * any trigger is touched, so the old version's triggers keep running. As on a
+	 * policy refusal, every trigger is reported failed, so no `activated` row is
+	 * left for the reconciler to re-enqueue. Only the rows whose id fits are stored.
+	 */
+	private rejectOversizedTriggerNodeIds(
+		workflow: WorkflowEntity,
+		newVersion: WorkflowHistory,
+	): PublicationResult | null {
+		const oversized = newVersion.nodes.filter(
+			(node) => node.id.length > NODE_ID_MAX_LENGTH && this.holdsTriggerState(node),
+		);
+		if (oversized.length === 0) return null;
+
+		this.logger.warn('Published version carries trigger node ids that are too long', {
+			workflowId: workflow.id,
+			versionId: newVersion.versionId,
+			nodeNames: oversized.map((node) => node.name),
+		});
+
+		const names = oversized.map((node) => `"${node.name}"`).join(', ');
+		const subject =
+			oversized.length === 1 ? `trigger ${names} has a node ID` : `triggers ${names} have node IDs`;
+		const error = new UserError(
+			`Cannot publish workflow: ${subject} longer than ${NODE_ID_MAX_LENGTH} characters. Remove and re-add the affected nodes to give them new IDs.`,
+		);
+		const { runnable } = this.partitionByResolvability(newVersion);
+		const storable = this.workflowTriggerActivator
+			.getEnabledTriggerNodes(runnable)
+			.filter((node) => node.id.length <= NODE_ID_MAX_LENGTH);
+		return {
+			type: 'failed',
+			error,
+			triggerStatuses: this.buildTriggerStatuses(
+				storable,
+				this.workflowTriggerActivator.getTriggerKinds(storable),
+				{
+					activated: [],
+					failures: storable.map((node) => ({ nodeId: node.id, nodeName: node.name, error })),
+				},
+			),
+		};
+	}
+
+	/**
+	 * Whether publishing writes per-node trigger state for this node: an enabled
+	 * trigger, or a node whose type cannot load, which gets its own failed row.
+	 */
+	private holdsTriggerState(node: INode): boolean {
+		try {
+			const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+			return !node.disabled && isTriggerLikeNodeType(nodeType);
+		} catch {
+			return true;
+		}
 	}
 
 	private isTriggerLikeNode(node: INode): boolean {
