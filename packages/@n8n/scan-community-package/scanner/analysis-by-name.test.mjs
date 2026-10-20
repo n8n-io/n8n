@@ -24,8 +24,18 @@ afterEach(() => {
 	fs.rmSync(fixtureDir, { recursive: true, force: true });
 });
 
-it.each(['complete', 'missing credential', 'lint exception'])(
-	'returns credential metadata only after source extraction succeeds (%s)',
+it.each([
+	'complete',
+	'missing credential',
+	'lint exception',
+	'published-only credential',
+	'source-only credential',
+	'different credential path',
+	'reordered credentials',
+	'duplicate registration',
+	'no credentials',
+])(
+	'returns credential metadata only for matching registrations and complete source analysis (%s)',
 	async (scenario) => {
 		const packageName = 'n8n-nodes-fixture';
 		const version = '1.0.0';
@@ -49,6 +59,25 @@ it.each(['complete', 'missing credential', 'lint exception'])(
 				credentials: ['dist/credentials/GithubApi.credentials.js'],
 			},
 		};
+		const sourceManifest = structuredClone(manifest);
+		const publishedManifest = structuredClone(manifest);
+		const otherCredentialPath = 'dist/credentials/OtherApi.credentials.js';
+		if (['source-only credential', 'reordered credentials'].includes(scenario)) {
+			sourceManifest.n8n.credentials.push(otherCredentialPath);
+		}
+		if (['published-only credential', 'reordered credentials'].includes(scenario)) {
+			publishedManifest.n8n.credentials.unshift(otherCredentialPath);
+		}
+		if (scenario === 'different credential path') {
+			publishedManifest.n8n.credentials = [otherCredentialPath];
+		}
+		if (scenario === 'duplicate registration') {
+			publishedManifest.n8n.credentials.push(...publishedManifest.n8n.credentials);
+		}
+		if (scenario === 'no credentials') {
+			delete sourceManifest.n8n.credentials;
+			publishedManifest.n8n.credentials = [];
+		}
 		vi.spyOn(axios, 'get')
 			.mockResolvedValueOnce({
 				data: {
@@ -95,20 +124,31 @@ it.each(['complete', 'missing credential', 'lint exception'])(
 				fs.writeFileSync(path.join(options.cwd, 'fixture.tgz'), 'fixture archive');
 			} else if (command === 'tar') {
 				const target = args[args.indexOf('-C') + 1];
-				fs.writeFileSync(path.join(target, 'package.json'), JSON.stringify(manifest));
-				if (target === path.join(fixtureDir, `source-${commit}`)) {
+				const isSource = target === path.join(fixtureDir, `source-${commit}`);
+				fs.writeFileSync(
+					path.join(target, 'package.json'),
+					JSON.stringify(isSource ? sourceManifest : publishedManifest),
+				);
+				if (isSource) {
 					if (scenario === 'missing credential') return { status: 0 };
 					fs.mkdirSync(path.join(target, 'credentials'));
-					fs.writeFileSync(
-						path.join(target, 'credentials/GithubApi.credentials.ts'),
-						`export class GithubApi implements ICredentialType {
+					const credentialSource = `export class GithubApi implements ICredentialType {
 	name = 'githubApi';
 	displayName = 'Community API';
 	documentationUrl = 'https://example.com/credentials';
 	icon = 'file:fixture.svg';
 	properties = [];
 	test = { request: { baseURL: 'https://example.com', url: '/' } };
-}`,
+}`;
+					fs.writeFileSync(
+						path.join(target, 'credentials/GithubApi.credentials.ts'),
+						credentialSource,
+					);
+					fs.writeFileSync(
+						path.join(target, 'credentials/OtherApi.credentials.ts'),
+						credentialSource
+							.replaceAll('GithubApi', 'OtherApi')
+							.replaceAll('githubApi', 'otherApi'),
 					);
 					fs.writeFileSync(
 						path.join(target, 'credentials/fixture.svg'),
@@ -120,6 +160,10 @@ it.each(['complete', 'missing credential', 'lint exception'])(
 						path.join(target, 'dist/credentials/GithubApi.credentials.js'),
 						"exports.GithubApi = class GithubApi { constructor() { this.name = 'githubApi'; } };",
 					);
+					fs.writeFileSync(
+						path.join(target, otherCredentialPath),
+						"exports.OtherApi = class OtherApi { constructor() { this.name = 'otherApi'; } };",
+					);
 				}
 			}
 			return { status: 0 };
@@ -127,7 +171,18 @@ it.each(['complete', 'missing credential', 'lint exception'])(
 
 		const result = await analyzePackageByName(packageName, version);
 
-		if (scenario !== 'complete') {
+		if (
+			['published-only credential', 'source-only credential', 'different credential path'].includes(
+				scenario,
+			)
+		) {
+			expect(result.passed).toBe(false);
+			expect(result.message).toContain('Credential registrations differ');
+			expect(result).not.toHaveProperty('credentialNames');
+			return;
+		}
+
+		if (['missing credential', 'lint exception'].includes(scenario)) {
 			expect(result.passed).toBe(false);
 			expect(result).not.toHaveProperty('credentialNames');
 			expect(result.message).toContain(
@@ -143,7 +198,12 @@ it.each(['complete', 'missing credential', 'lint exception'])(
 			packageName,
 			version,
 			passed: true,
-			credentialNames: ['githubApi'],
+			credentialNames:
+				scenario === 'no credentials'
+					? []
+					: scenario === 'reordered credentials'
+						? ['githubApi', 'otherApi']
+						: ['githubApi'],
 		});
 	},
 );

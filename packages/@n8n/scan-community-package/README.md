@@ -20,6 +20,12 @@ run the package. A package without credential definitions returns an empty list.
 If a declared credential source is missing, cannot be parsed, or has no literal
 name, the scan fails and omits `credentialNames`.
 
+Before analysis, the scanner compares the `n8n.credentials` file paths in the
+source and published `package.json` files. It ignores entry order and duplicate
+paths. If the lists differ, the scan fails and omits `credentialNames`.
+This check requires a source registration for every published credential.
+It checks registrations, not whether the compiled credential names match the source.
+
 Results can also omit `credentialNames` when provenance checks, source fetches,
 package downloads, or analysis fail. The approval service must require
 `passed: true` and a `credentialNames` array before it checks for collisions.

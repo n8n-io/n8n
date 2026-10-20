@@ -354,6 +354,15 @@ export const analyzePackage = async (
 	}
 };
 
+const readCredentialRegistrations = (packageDir) => {
+	const manifest = JSON.parse(fs.readFileSync(path.join(packageDir, 'package.json'), 'utf8'));
+	const credentials = manifest.n8n?.credentials ?? [];
+	if (!Array.isArray(credentials) || !credentials.every((entry) => typeof entry === 'string')) {
+		throw new Error('Invalid n8n.credentials list. Register credential file paths in an array.');
+	}
+	return [...new Set(credentials)].sort();
+};
+
 export const analyzePackageByName = async (packageName, version) => {
 	try {
 		let exactVersion = version;
@@ -456,8 +465,23 @@ export const analyzePackageByName = async (packageName, version) => {
 		// into `dist/`. Scope the tarball leg to compiled `.js` and the
 		// published package.json; `.ts`/`.d.ts` declarations are covered better
 		// by the source scan and only false-positive on filename rules here.
+		const sourceCredentials = readCredentialRegistrations(sourceDir);
+		const publishedCredentials = readCredentialRegistrations(packageDir);
+		if (
+			sourceCredentials.length !== publishedCredentials.length ||
+			!sourceCredentials.every((entry, index) => entry === publishedCredentials[index])
+		) {
+			return {
+				packageName,
+				version: exactVersion,
+				passed: false,
+				message:
+					'Credential registrations differ between the source and the published package. Use the same n8n.credentials file paths in both package.json files.',
+			};
+		}
+
 		const sourceResult = await analyzePackage(sourceDir, SOURCE_FILE_PATTERNS);
-		// Compiled packages need lint checks, but credential metadata comes from source.
+		// Matching registrations let the source reader cover every published credential file.
 		const distResult = await analyzePackage(packageDir, ['**/*.js', 'package.json'], {
 			includeCredentialNames: false,
 		});
