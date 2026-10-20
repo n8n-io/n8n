@@ -1,8 +1,7 @@
 import type { AxiosRequestConfig } from 'axios';
 import axios from 'axios';
-import { Readable } from 'node:stream';
 
-import { digestAuthAxiosConfig, isFormDataInstance } from './utils';
+import { destroyRequestBody, digestAuthAxiosConfig } from './utils';
 import { HttpResponseSizeLimitError } from '../response-size-limit.error';
 
 export async function invokeAxios(axiosConfig: AxiosRequestConfig, authSendImmediately?: boolean) {
@@ -10,14 +9,8 @@ export async function invokeAxios(axiosConfig: AxiosRequestConfig, authSendImmed
 	try {
 		return await invokeWithChallengeAuth(axiosConfig, authSendImmediately);
 	} catch (error) {
-		// Axios does not destroy a stream body when the request fails. An unread file
-		// stream then holds its file handle until garbage collection.
-		// `isFormDataInstance` matches on `getHeaders` and `append` only, so check `destroy` too.
-		if (
-			body instanceof Readable ||
-			(isFormDataInstance(body) && typeof body.destroy === 'function')
-		)
-			body.destroy();
+		// Axios does not destroy a stream body when the request fails.
+		destroyRequestBody(body);
 		throw error;
 	}
 }

@@ -14,6 +14,7 @@ import { applyDefaultOutboundUserAgent } from './user-agent';
 import {
 	buildAgentOptions,
 	buildTargetUrl,
+	destroyRequestBody,
 	getBeforeRedirectFn,
 	isFormDataInstance,
 	isIgnoreStatusErrorConfig,
@@ -182,6 +183,19 @@ export async function httpRequest(
 	ssrfBridge?: SsrfBridge,
 ): Promise<IN8nHttpFullResponse | IN8nHttpResponse>;
 export async function httpRequest(
+	requestOptions: IHttpRequestOptions,
+	ssrfBridge?: SsrfBridge,
+): Promise<IN8nHttpFullResponse | IN8nHttpResponse> {
+	try {
+		return await sendHttpRequest(requestOptions, ssrfBridge);
+	} catch (error) {
+		// The URL, SSRF and domain checks can throw before axios reads the body.
+		destroyRequestBody(requestOptions.body);
+		throw error;
+	}
+}
+
+async function sendHttpRequest(
 	requestOptions: IHttpRequestOptions,
 	ssrfBridge?: SsrfBridge,
 ): Promise<IN8nHttpFullResponse | IN8nHttpResponse> {

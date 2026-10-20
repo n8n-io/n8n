@@ -17,6 +17,7 @@ import { invokeAxios } from './axios/invoke';
 import { buildAxiosConfigFromLegacyRequest, buildLegacyAgentOptions } from './axios/legacy';
 import { followSsrfRedirects, shouldFollowRedirectsManually } from './axios/redirect';
 import {
+	destroyRequestBody,
 	resolveLegacyRequestUrl,
 	throwIfDomainNotAllowed,
 	validateProxySsrf,
@@ -46,6 +47,22 @@ export interface LegacyRequestCallbacks {
  * @deprecated Backs the deprecated `request` helpers.
  */
 export async function executeLegacyRequest(
+	requestObject: IRequestOptions,
+	ssrfBridge: SsrfBridge | undefined,
+	logger: Logger,
+	callbacks?: LegacyRequestCallbacks,
+): Promise<unknown> {
+	try {
+		return await sendLegacyRequest(requestObject, ssrfBridge, logger, callbacks);
+	} catch (error) {
+		// The URL, SSRF and domain checks can throw before axios reads the body.
+		destroyRequestBody(requestObject.body);
+		destroyRequestBody(requestObject.formData);
+		throw error;
+	}
+}
+
+async function sendLegacyRequest(
 	requestObject: IRequestOptions,
 	ssrfBridge: SsrfBridge | undefined,
 	logger: Logger,

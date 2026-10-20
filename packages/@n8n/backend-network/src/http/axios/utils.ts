@@ -238,6 +238,24 @@ const streamOfFormDataValue = (value: unknown) => {
 	return undefined;
 };
 
+/**
+ * Destroys the streams in a request body: a stream, a `FormData`, or form fields that hold
+ * streams. A request that fails leaves an unread file stream open until garbage collection.
+ */
+export const destroyRequestBody = (body: unknown) => {
+	if (body instanceof Readable) {
+		body.destroy();
+	} else if (isFormDataInstance(body)) {
+		// `isFormDataInstance` matches on `getHeaders` and `append` only.
+		if (typeof body.destroy === 'function') body.destroy();
+	} else if (isRecord(body)) {
+		for (const field of Object.values(body)) {
+			const values: unknown[] = Array.isArray(field) ? field : [field];
+			values.forEach((value) => streamOfFormDataValue(value)?.destroy());
+		}
+	}
+};
+
 /** Converts a plain object into a `FormData` instance, handling arrays and option objects. */
 export const createFormDataObject = (data: Record<string, unknown>) => {
 	const formData = new FormData();

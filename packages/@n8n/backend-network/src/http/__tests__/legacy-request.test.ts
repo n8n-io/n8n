@@ -1,7 +1,7 @@
 import type { Logger } from '@n8n/backend-common';
 import { HttpRequestConfig, type SsrfProtectionConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
-import { jsonParse, type IRequestOptions } from 'n8n-workflow';
+import { jsonParse, type IHttpRequestOptions, type IRequestOptions } from 'n8n-workflow';
 import nock from 'nock';
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
@@ -514,37 +514,93 @@ describe('OutboundHttp.requests requestLegacy', () => {
 			});
 		};
 
+		/** Blocks every URL except the local test server. */
+		const blockingBridge = () =>
+			({
+				validateUrl: vi.fn(async (url: URL) =>
+					url.hostname === '127.0.0.1'
+						? { ok: true, result: undefined }
+						: { ok: false, error: new Error('Blocked') },
+				),
+				validateIp: vi.fn().mockReturnValue({ ok: true, result: undefined }),
+				validateRedirectSync: vi.fn(),
+				createSecureLookup: vi.fn().mockReturnValue(undefined),
+			}) as unknown as SsrfBridge;
+
 		const sendLegacy = async (options: IRequestOptions) =>
 			await makeFacade().requests({ useDefaultSsrfPolicy: 'unsafe' }).requestLegacy(options);
 
+		const sendHttpRequest = async (options: IHttpRequestOptions) =>
+			await makeFacade().requests({ useDefaultSsrfPolicy: 'unsafe' }).request(options);
+
+		const multipart = (stream: Readable) => ({
+			file: { value: stream, options: { filename: 'file.bin', knownLength: 1024 } },
+		});
+
 		it.each([
 			{
-				name: 'a binary body',
+				name: 'a binary body when the connection is refused',
+				error: /ECONNREFUSED/,
 				send: async (stream: Readable) =>
 					await sendLegacy({ url: refusedUrl, method: 'POST', body: stream }),
 			},
 			{
-				name: 'a multipart body',
+				name: 'a multipart body when the connection is refused',
+				error: /ECONNREFUSED/,
+				send: async (stream: Readable) =>
+					await sendLegacy({ url: refusedUrl, method: 'POST', formData: multipart(stream) }),
+			},
+			{
+				name: 'a binary body of httpRequest when the connection is refused',
+				error: /ECONNREFUSED/,
+				send: async (stream: Readable) =>
+					await sendHttpRequest({ url: refusedUrl, method: 'POST', body: stream }),
+			},
+			{
+				name: 'a binary body when the domain is not allowed',
+				error: 'Domain not allowed',
 				send: async (stream: Readable) =>
 					await sendLegacy({
 						url: refusedUrl,
 						method: 'POST',
-						formData: {
-							file: { value: stream, options: { filename: 'file.bin', knownLength: 1024 } },
-						},
+						body: stream,
+						allowedDomains: 'example.com',
 					}),
 			},
 			{
-				name: 'a binary body of httpRequest',
+				name: 'a multipart body when the domain is not allowed',
+				error: 'Domain not allowed',
 				send: async (stream: Readable) =>
-					await makeFacade()
-						.requests({ useDefaultSsrfPolicy: 'unsafe' })
-						.request({ url: refusedUrl, method: 'POST', body: stream }),
+					await sendLegacy({
+						url: refusedUrl,
+						method: 'POST',
+						formData: multipart(stream),
+						allowedDomains: 'example.com',
+					}),
 			},
-		])('should destroy the stream of $name when the request fails', async ({ send }) => {
+			{
+				name: 'a binary body of httpRequest when the domain is not allowed',
+				error: 'Domain not allowed',
+				send: async (stream: Readable) =>
+					await sendHttpRequest({
+						url: refusedUrl,
+						method: 'POST',
+						body: stream,
+						allowedDomains: 'example.com',
+					}),
+			},
+			{
+				name: 'a binary body when the URL is blocked',
+				error: 'Blocked',
+				send: async (stream: Readable) =>
+					await makeFacade(blockingBridge())
+						.requests()
+						.requestLegacy({ url: 'https://blocked.test/upload', method: 'POST', body: stream }),
+			},
+		])('should destroy the stream of $name', async ({ send, error }) => {
 			const stream = pendingStream();
 
-			await expect(send(stream)).rejects.toThrow(/ECONNREFUSED/);
+			await expect(send(stream)).rejects.toThrow(error);
 
 			expect(stream.destroyed).toBe(true);
 		});
