@@ -32,7 +32,7 @@ import {
 import { getAgentSkillHash } from '../utils/agent-config-hash';
 import { SkillGitSyncService } from './github/skill-git-sync.service';
 import { SkillService, toAgentSkill } from './skill.service';
-import { SkillsTelemetry } from './skills-telemetry';
+import { SkillsTelemetry, type SkillTelemetryMethod } from './skills-telemetry';
 
 function scopeOf(skill: Pick<Skill, 'projectId' | 'agentId'>): SkillScope {
 	if (skill.agentId) return 'agent';
@@ -87,7 +87,11 @@ export class SkillsApiService {
 		return { name: await this.skillService.freeName(query.name, target) };
 	}
 
-	async create(user: User, payload: CreateSkillDto): Promise<SkillDetail> {
+	async create(
+		user: User,
+		payload: CreateSkillDto,
+		method: SkillTelemetryMethod = payload.method ?? 'manual',
+	): Promise<SkillDetail> {
 		const target = await this.targetForCreate(user, payload);
 		const id = await this.skillService.create({
 			checkNameTaken: true,
@@ -96,12 +100,7 @@ export class SkillsApiService {
 			source: 'ui',
 			createdById: user.id,
 		});
-		await this.skillsTelemetry.created(
-			user.id,
-			[{ id, ...target }],
-			'ui',
-			payload.method ?? 'manual',
-		);
+		await this.skillsTelemetry.created(user.id, [{ id, ...target }], 'ui', method);
 		// No second access check: a custom role can create skills it cannot read later.
 		const [skill] = await this.skillRepository.findByIds([id]);
 		if (!skill) throw new NotFoundError('Skill not found');

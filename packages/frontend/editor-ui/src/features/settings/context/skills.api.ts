@@ -1,10 +1,13 @@
 import type {
 	AcceptSkillGitUpdateDto,
+	CheckSkillContentDto,
 	CreateSkillDto,
 	DiscoverGitHubSkillsDto,
 	DiscoverGitHubSkillsResponse,
 	ImportGitHubSkillsDto,
 	ImportGitHubSkillsResponse,
+	ImportSharedSkillDto,
+	SkillCheckResult,
 	SkillGitUpdateDetail,
 	SaveSkillDto,
 	SkillDetail,
@@ -121,6 +124,27 @@ export async function updateSkillVersionLabel(
 		'PATCH',
 		`${ENDPOINT}/${id}/versions/${version}`,
 		{ label },
+	);
+}
+
+/** Runs the security check on skill content. Nothing is stored. */
+export async function checkSkillContent(
+	context: IRestApiContext,
+	payload: CheckSkillContentDto,
+): Promise<SkillCheckResult> {
+	return await makeRestApiRequest<SkillCheckResult>(context, 'POST', `${ENDPOINT}/check`, payload);
+}
+
+/** Adds a skill from a share link. The server runs the check again before it stores it. */
+export async function importSharedSkill(
+	context: IRestApiContext,
+	payload: ImportSharedSkillDto,
+): Promise<SkillDetail> {
+	return await makeRestApiRequest<SkillDetail>(
+		context,
+		'POST',
+		`${ENDPOINT}/import-shared`,
+		payload,
 	);
 }
 

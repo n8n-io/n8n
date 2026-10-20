@@ -26,6 +26,7 @@ type SkillAction =
 	| 'edit'
 	| 'timeline'
 	| 'compare'
+	| 'shareLink'
 	| 'delete'
 	| 'reviewUpdate'
 	| 'checkGitHub'
@@ -56,6 +57,8 @@ const props = defineProps<{
 const emit = defineEmits<{
 	open: [skill: SkillListItem, view?: SkillOpenView];
 	delete: [skill: SkillListItem];
+	/** Opens the dialog that creates an encrypted share link for the skill. */
+	shareLink: [skill: SkillListItem];
 	/** Opens the review of the update from GitHub that waits for the skill. */
 	review: [skill: SkillListItem];
 	checkGitHub: [skill: SkillListItem];
@@ -151,6 +154,11 @@ function actionsFor(skill: SkillListItem): SkillActionItem[] {
 			// One version has nothing to compare with.
 			disabled: skill.latestVersion < 2,
 		},
+		{
+			value: 'shareLink',
+			label: i18n.baseText('settings.context.skills.actions.shareLink'),
+			divided: true,
+		},
 		...gitActionsFor(skill),
 		{
 			value: 'delete',
@@ -166,6 +174,7 @@ function actionsFor(skill: SkillListItem): SkillActionItem[] {
 function onAction(skill: SkillListItem, action: SkillAction) {
 	if (action === 'edit') emit('open', skill);
 	else if (action === 'timeline' || action === 'compare') emit('open', skill, action);
+	else if (action === 'shareLink') emit('shareLink', skill);
 	else if (action === 'reviewUpdate') emit('review', skill);
 	else if (action === 'checkGitHub') emit('checkGitHub', skill);
 	else if (action === 'openGitHub') {

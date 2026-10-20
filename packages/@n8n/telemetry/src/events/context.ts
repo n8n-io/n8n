@@ -59,9 +59,9 @@ const skillSource = z
 
 /** Whether a person or an assistant wrote the text. */
 const skillMethod = z
-	.enum(['manual', 'upload', 'ai'])
+	.enum(['manual', 'upload', 'ai', 'link'])
 	.describe(
-		'`manual` is text typed in the skill modal. `upload` is a SKILL.md file or folder parsed in the browser. `ai` is text that n8n Assistant or an MCP client wrote. Filter out `ai` to count the skills people write by hand',
+		'`manual` is text typed in the skill modal. `upload` is a SKILL.md file or folder parsed in the browser. `link` is a skill added from a share link. `ai` is text that n8n Assistant or an MCP client wrote. Filter out `ai` to count the skills people write by hand',
 	);
 
 export const CONTEXT_TELEMETRY = defineTelemetryEvents({

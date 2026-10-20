@@ -14,7 +14,7 @@ import type { ZodIssue } from 'zod';
 import type { SkillFrontmatter } from '../../entities/skill-version.entity';
 import type { SkillContent } from '../skill-content-hash';
 import type { GitHubClient, GitHubTreeEntry } from './github-client';
-import { checkSkillContent } from './skill-security-check';
+import { checkSkillContent } from '../skill-security-check';
 
 const SKILL_FILE = 'SKILL.md';
 /** More folders than this in one link is not a skill collection the import modal can show. */

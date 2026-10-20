@@ -1,4 +1,4 @@
-import type { SkillGitCheckResult, SkillGitFinding, SkillGitSkippedFile } from '@n8n/api-types';
+import type { SkillCheckFinding, SkillCheckResult, SkillSkippedFile } from '@n8n/api-types';
 
 /** Characters a reader cannot see: zero-width, direction overrides and Unicode tags. */
 const HIDDEN_CHARACTERS =
@@ -42,15 +42,15 @@ function lineList(lines: number[]) {
 }
 
 /**
- * The checks n8n runs on skill content from GitHub, on import and on every update. They
- * are deterministic, so the same content always gets the same result. "blocked" stops
+ * The checks n8n runs on skill content from outside this instance: GitHub imports and
+ * updates, and share links. They are deterministic, so the same content always gets the same result. "blocked" stops
  * the skill; "review" needs a person to confirm.
  */
 export function checkSkillContent(
 	files: CheckedFile[],
-	skippedFiles: SkillGitSkippedFile[],
-): SkillGitCheckResult {
-	const findings: SkillGitFinding[] = [];
+	skippedFiles: SkillSkippedFile[],
+): SkillCheckResult {
+	const findings: SkillCheckFinding[] = [];
 	const domains = new Set<string>();
 
 	for (const file of files) {

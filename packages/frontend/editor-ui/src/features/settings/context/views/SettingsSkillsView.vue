@@ -5,6 +5,7 @@ import { useDebounceFn } from '@vueuse/core';
 import type {
 	AgentSkill,
 	ImportGitHubSkillsResponse,
+	SkillDetail,
 	SkillCreateMethod,
 	SkillListItem,
 	SkillScope,
@@ -44,6 +45,8 @@ import type {
 
 import SkillGitHubImportModal from '../components/SkillGitHubImportModal.vue';
 import SkillGitUpdateReviewModal from '../components/SkillGitUpdateReviewModal.vue';
+import SkillShareImportModal from '../components/SkillShareImportModal.vue';
+import SkillShareLinkModal from '../components/SkillShareLinkModal.vue';
 import SkillsTable, { type SkillOpenView } from '../components/SkillsTable.vue';
 import { PREFERENCES_DEFAULT_PAGE_SIZE } from '../context.constants';
 import { canWriteInstanceSkillScope, canWriteProjectSkillScope } from '../context.utils';
@@ -51,6 +54,7 @@ import type { SkillListQuery } from '../skills.api';
 import { useSkillsStore } from '../skills.store';
 import { useSkillScopeDisplay } from '../skills.utils';
 import { skillsWithPendingUpdate } from '../skillsGitHub.utils';
+import { parseImportHash } from '../skillShare';
 
 const INSTANCE_SCOPE = 'instance';
 const PROJECT_SCOPE_PREFIX = 'project:';
@@ -480,6 +484,55 @@ async function onStopSync(skill: SkillListItem) {
 	await load();
 }
 
+// ---- Share links ----
+
+const shareSkillId = ref<string | null>(null);
+const shareOpen = computed({
+	get: () => shareSkillId.value !== null,
+	set: (open: boolean) => {
+		if (!open) shareSkillId.value = null;
+	},
+});
+const incomingShare = ref<{ id: string; key: string } | null>(null);
+const shareImportOpen = computed({
+	get: () => incomingShare.value !== null,
+	set: (open: boolean) => {
+		if (!open) incomingShare.value = null;
+	},
+});
+
+function openShareLink(skill: Pick<SkillListItem, 'id'>) {
+	shareSkillId.value = skill.id;
+}
+
+async function onSharedImported(skill: SkillDetail) {
+	await load();
+	showMessage({
+		title: i18n.baseText('settings.context.skills.shareImport.success', {
+			interpolate: { name: skill.name },
+		}),
+		type: 'success',
+	});
+}
+
+/**
+ * A share link lands here as `#share=<id>&k=<key>`. The fragment is read once and then
+ * removed, so the key does not stay in the address bar or in the history.
+ */
+async function takeIncomingShare() {
+	const share = parseImportHash(route.hash);
+	if (!share) return;
+	await router.replace({ ...route, hash: '' });
+	if (scopeOptions.value.length === 0) {
+		showMessage({
+			title: i18n.baseText('settings.context.skills.shareImport.noScope'),
+			type: 'warning',
+		});
+		return;
+	}
+	incomingShare.value = share;
+}
+
 async function goBack() {
 	await router.push({ name: VIEWS.SETTINGS_CONTEXT });
 }
@@ -494,6 +547,7 @@ onMounted(async () => {
 	}
 	// Deep links: one skill to open, or a new one to start. The skill may be on another
 	// page, so it is read by id rather than from the list.
+	await takeIncomingShare();
 	const { skillId, create, view } = route.query;
 	if (typeof skillId === 'string') {
 		await openEditModal(
@@ -601,6 +655,7 @@ onMounted(async () => {
 			:show-empty="showEmptyState"
 			@open="openEditModal"
 			@delete="onDelete"
+			@share-link="openShareLink"
 			@review="openReview"
 			@check-git-hub="onCheckGitHub"
 			@stop-sync="onStopSync"
@@ -629,6 +684,14 @@ onMounted(async () => {
 			:scope-options="scopeOptions"
 			:resolve-scope="parseScope"
 			@imported="onImported"
+		/>
+		<SkillShareLinkModal v-model:open="shareOpen" :skill-id="shareSkillId" />
+		<SkillShareImportModal
+			v-model:open="shareImportOpen"
+			:share="incomingShare"
+			:scope-options="scopeOptions"
+			:resolve-scope="parseScope"
+			@imported="onSharedImported"
 		/>
 		<SkillGitUpdateReviewModal
 			v-model:open="reviewOpen"

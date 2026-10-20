@@ -1,8 +1,10 @@
 import {
 	AcceptSkillGitUpdateDto,
+	CheckSkillContentDto,
 	CreateSkillDto,
 	DiscoverGitHubSkillsDto,
 	ImportGitHubSkillsDto,
+	ImportSharedSkillDto,
 	SkipSkillGitUpdateDto,
 	ListSkillsQueryDto,
 	SaveSkillDto,
@@ -25,6 +27,7 @@ import { BadRequestError } from '@n8n/errors';
 import type { NextFunction, Request, Response } from 'express';
 
 import { SkillsGitHubApiService } from './skills/github/skills-github-api.service';
+import { SkillShareApiService } from './skills/skill-share-api.service';
 import { SkillsApiService } from './skills/skills-api.service';
 import { SkillsHubRollout } from './skills/skills-hub-rollout';
 
@@ -38,6 +41,7 @@ export class SkillsController {
 		private readonly skillsApi: SkillsApiService,
 		private readonly rollout: SkillsHubRollout,
 		private readonly gitHubApi: SkillsGitHubApiService,
+		private readonly shareApi: SkillShareApiService,
 	) {}
 
 	/** Runs before the request is validated, so every request answers 404 while the flag is off. */
@@ -59,6 +63,22 @@ export class SkillsController {
 	@Get('/new-name')
 	async newName(req: AuthenticatedRequest, _res: Response, @Query query: SkillNewNameQueryDto) {
 		return await this.skillsApi.newName(req.user, query);
+	}
+
+	/** Runs the security check on skill content, before a share or an import. Stores nothing. */
+	@Post('/check')
+	check(_req: AuthenticatedRequest, _res: Response, @Body payload: CheckSkillContentDto) {
+		return this.shareApi.check(payload);
+	}
+
+	/** Adds a skill from a share link. The browser decrypted it; the server checks it again. */
+	@Post('/import-shared')
+	async importShared(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body payload: ImportSharedSkillDto,
+	) {
+		return await this.shareApi.importShared(req.user, payload);
 	}
 
 	/** Reads a public GitHub link and lists the skills in it, with their check results. */

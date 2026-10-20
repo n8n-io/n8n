@@ -13,7 +13,7 @@ import { SkillRepository } from '../repositories/skill.repository';
 export type SkillTelemetrySource = 'ui' | 'agent' | 'mcp';
 
 /** `manual` and `upload` come from the skill modal. `ai` is text an assistant wrote. */
-export type SkillTelemetryMethod = 'manual' | 'upload' | 'ai';
+export type SkillTelemetryMethod = 'manual' | 'upload' | 'ai' | 'link';
 
 type SkillPlace = { scope: SkillScope; project_id?: string };
 

@@ -1,5 +1,11 @@
 import { z } from 'zod';
 
+import type {
+	SkillCheckFinding,
+	SkillCheckLevel,
+	SkillCheckResult,
+	SkillSkippedFile,
+} from './skill-check.schema';
 import type { AgentSkill } from './types';
 import { Z } from '../zod-class';
 
@@ -8,34 +14,10 @@ export type SkillGitRefType = 'branch' | 'tag' | 'commit';
 
 export type SkillGitLinkStatus = 'ok' | 'unavailable' | 'rate_limited';
 
-/** The result of the security check for one piece of skill content. */
-export type SkillGitCheckLevel = 'passed' | 'review' | 'blocked';
-
-export type SkillGitFinding = {
-	/** "blocked" stops the skill. "review" needs a person to confirm. */
-	level: 'review' | 'blocked';
-	code:
-		| 'hidden_characters'
-		| 'invalid_skill'
-		| 'too_large'
-		| 'suspicious_instructions'
-		| 'possible_secret'
-		| 'external_links'
-		| 'files_not_imported';
-	message: string;
-	/** Short evidence, for example a line number or the list of domains. */
-	detail?: string;
-	/** The file the finding is about, relative to the skill folder. */
-	file?: string;
-};
-
-export type SkillGitCheckResult = {
-	result: SkillGitCheckLevel;
-	findings: SkillGitFinding[];
-};
-
-/** A file in the skill folder that n8n does not import. */
-export type SkillGitSkippedFile = { path: string; reason: string };
+export type SkillGitCheckLevel = SkillCheckLevel;
+export type SkillGitFinding = SkillCheckFinding;
+export type SkillGitCheckResult = SkillCheckResult;
+export type SkillGitSkippedFile = SkillSkippedFile;
 
 /** Where a synced skill comes from, and what n8n knows about it now. */
 export type SkillGitSourceInfo = {

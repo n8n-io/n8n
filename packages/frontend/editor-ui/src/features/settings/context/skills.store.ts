@@ -1,9 +1,12 @@
 import type {
 	AcceptSkillGitUpdateDto,
+	CheckSkillContentDto,
 	CreateSkillDto,
 	DiscoverGitHubSkillsResponse,
 	ImportGitHubSkillsDto,
 	ImportGitHubSkillsResponse,
+	ImportSharedSkillDto,
+	SkillCheckResult,
 	SkillGitUpdateDetail,
 	SaveSkillDto,
 	SkillDetail,
@@ -98,6 +101,16 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 		return await api.importGitHubSkills(rootStore.restApiContext, payload);
 	}
 
+	async function checkSkillContent(
+		skill: CheckSkillContentDto['skill'],
+	): Promise<SkillCheckResult> {
+		return await api.checkSkillContent(rootStore.restApiContext, { skill });
+	}
+
+	async function importSharedSkill(payload: ImportSharedSkillDto): Promise<SkillDetail> {
+		return await api.importSharedSkill(rootStore.restApiContext, payload);
+	}
+
 	async function fetchSkillGitUpdate(id: string): Promise<SkillGitUpdateDetail> {
 		return await api.getSkillGitUpdate(rootStore.restApiContext, id);
 	}
@@ -134,6 +147,8 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 		updateSkillVersionLabel,
 		discoverGitHubSkills,
 		importGitHubSkills,
+		checkSkillContent,
+		importSharedSkill,
 		fetchSkillGitUpdate,
 		acceptSkillGitUpdate,
 		skipSkillGitUpdate,
