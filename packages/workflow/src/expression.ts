@@ -44,6 +44,10 @@ function sameResult(a: ExpressionEvaluationOutcome, b: ExpressionEvaluationOutco
 	);
 }
 
+function hitEngineLimit(result: ExpressionEvaluationOutcome): boolean {
+	return !result.ok && (result.errorClass === 'timeout' || result.errorClass === 'memory_limit');
+}
+
 // Type names only: values and error messages can hold workflow data.
 function resultType(result: ExpressionEvaluationOutcome): string {
 	if (!result.ok) {
@@ -147,7 +151,10 @@ const KNOWN_ERROR_CLASSES = new Set(
 
 function errorClassOf(error: unknown): string {
 	// Timeout and memory errors share the name `ExpressionError`, so classify them first.
-	const runtimeClass = classifyExpressionError(error);
+	// `mapVmError` wraps them in an ExpressionError and keeps them as `cause`.
+	const runtimeClass = classifyExpressionError(
+		error instanceof ExpressionError && error.cause ? error.cause : error,
+	);
 	if (runtimeClass !== 'unknown') return runtimeClass;
 	// A minified build renames classes, and n8n errors take their `name` from the
 	// constructor, so check the class before the name. The subclass comes first.
@@ -963,7 +970,7 @@ export class Expression {
 		const report = this.reportNativeVerifyMismatch;
 		if (!report) return;
 		try {
-			if (sameResult(native, engine)) return;
+			if (sameResult(native, engine) || hitEngineLimit(engine)) return;
 
 			const description = describeNatively(expression);
 			// The engine reads its own clock, so its $now is a few ms after the

@@ -201,6 +201,23 @@ describe('Expression - native evaluation verify mode', () => {
 			});
 		});
 
+		test('does not report an engine timeout', async () => {
+			const { TimeoutError } = await import('@n8n/expression-runtime');
+			const evaluator = (
+				modules.Expression as unknown as { vmEvaluator: { evaluate: () => unknown } }
+			).vmEvaluator;
+			const evaluateSpy = vi.spyOn(evaluator, 'evaluate').mockImplementationOnce(() => {
+				throw new TimeoutError('timed out', {});
+			});
+			try {
+				expect(() => evaluate('={{ $json.name.charAt(0) }}')).toThrow('Expression timed out');
+				expect(evaluateNatively).toHaveBeenCalled();
+				expect(report).not.toHaveBeenCalled();
+			} finally {
+				evaluateSpy.mockRestore();
+			}
+		});
+
 		test('does not report a match', () => {
 			expect(evaluate('={{ $json.name.slice(0, 6) }}')).toBe('secret');
 			expect(evaluateNatively).toHaveBeenCalled();
