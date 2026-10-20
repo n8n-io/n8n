@@ -30,6 +30,13 @@ describe('rateLimits', () => {
 			expect(toDraft(settings).endpointWrite).toEqual({ limit: '', window: '60' });
 		});
 
+		it('keeps the stored window when an empty limit has an invalid window', () => {
+			const draft = toDraft(settings);
+			draft.globalRead = { limit: '', window: 'abc' };
+
+			expect(fromDraft(draft, settings).globalReadWindowSeconds).toBe(60);
+		});
+
 		it('turns an empty limit back into 0 and keeps the other values', () => {
 			const draft = toDraft(settings);
 			draft.globalRead = { limit: '', window: '30' };
@@ -70,15 +77,21 @@ describe('rateLimits', () => {
 	});
 
 	describe('exceedsAllEndpointsLimit', () => {
-		it('compares the limits by rate', () => {
-			const draft = toDraft(settings);
-			draft.endpointRead = { limit: '1000', window: '30' };
+		it.each([
+			{ endpoint: { limit: '1500', window: '60' }, exceeds: true },
+			{ endpoint: { limit: '1500', window: '30' }, exceeds: true },
+			{ endpoint: { limit: '1000', window: '30' }, exceeds: false },
+			{ endpoint: { limit: '1500', window: '120' }, exceeds: false },
+			{ endpoint: { limit: '1200', window: '60' }, exceeds: false },
+		])(
+			'is $exceeds for $endpoint.limit per $endpoint.window s against 1,200 per 60 s',
+			({ endpoint, exceeds }) => {
+				const draft = toDraft(settings);
+				draft.endpointRead = endpoint;
 
-			expect(exceedsAllEndpointsLimit(draft, 'endpointRead')).toBe(true);
-
-			draft.endpointRead = { limit: '1000', window: '60' };
-			expect(exceedsAllEndpointsLimit(draft, 'endpointRead')).toBe(false);
-		});
+				expect(exceedsAllEndpointsLimit(draft, 'endpointRead')).toBe(exceeds);
+			},
+		);
 
 		it('is false when one of the two limits is not set', () => {
 			const draft = toDraft({ ...settings, globalReadLimit: 0 });

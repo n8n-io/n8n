@@ -18,7 +18,6 @@ import {
 	fromDraft,
 	getRowError,
 	isDraftEmpty,
-	isRowDefault,
 	toDraft,
 	type RateLimitDraft,
 	type RateLimitGroup,
@@ -71,8 +70,11 @@ const rowError = (key: RateLimitRowKey) =>
 const rowWarning = (key: RateLimitRowKey) =>
 	(key === 'endpointRead' || key === 'endpointWrite') && exceedsAllEndpointsLimit(draft.value, key);
 
+const defaultDraft = computed(() => toDraft(props.defaults));
+
 const canReset = (key: RateLimitRowKey) =>
-	!isLimitLocked(key) && !isWindowLocked(key) && !isRowDefault(draft.value, props.defaults, key);
+	(!isLimitLocked(key) && draft.value[key].limit !== defaultDraft.value[key].limit) ||
+	(!isWindowLocked(key) && draft.value[key].window !== defaultDraft.value[key].window);
 
 const hasErrors = computed(() =>
 	rowKeys.some((key) => getRowError(draft.value[key]) !== undefined),
@@ -103,12 +105,18 @@ const isPrimaryDisabled = computed(
 function defaultText(key: RateLimitRowKey) {
 	const limit = props.defaults[`${key}Limit`];
 	if (limit === 0) return i18n.baseText('settings.security.rateLimits.dialog.noLimit');
-	const window = props.defaults[`${key}WindowSeconds`];
-	return `${limit.toLocaleString('en-US')} / ${window} ${i18n.baseText('settings.security.rateLimits.dialog.seconds')}`;
+	return i18n.baseText('settings.security.rateLimits.dialog.defaultValue', {
+		interpolate: {
+			limit: limit.toLocaleString(),
+			window: props.defaults[`${key}WindowSeconds`].toLocaleString(),
+		},
+	});
 }
 
+/** Fields that an environment variable sets keep their value. */
 function resetRow(key: RateLimitRowKey) {
-	draft.value[key] = toDraft(props.defaults)[key];
+	if (!isLimitLocked(key)) draft.value[key].limit = defaultDraft.value[key].limit;
+	if (!isWindowLocked(key)) draft.value[key].window = defaultDraft.value[key].window;
 }
 
 function resetAll() {

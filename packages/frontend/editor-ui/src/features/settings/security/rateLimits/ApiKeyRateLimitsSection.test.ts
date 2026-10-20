@@ -197,13 +197,37 @@ describe('ApiKeyRateLimitsSection', () => {
 		expect(limitInput('globalRead').value).toBe('1200');
 	});
 
+	it('names the toggle after its row', async () => {
+		const { getByRole } = await renderLoaded();
+
+		expect(getByRole('switch', { name: 'Enable API key rate limits' })).toBeInTheDocument();
+	});
+
+	it('resets the editable field of a row whose other field is locked', async () => {
+		const { getByTestId } = await renderLoaded({
+			enabled: true,
+			globalReadWindowSeconds: 30,
+			envManagedFields: ['globalReadWindowSeconds'],
+		});
+
+		await userEvent.click(getByTestId('rate-limits-edit'));
+		await userEvent.clear(limitInput('globalRead'));
+		await userEvent.type(limitInput('globalRead'), '5');
+		const reset = screen.getByTestId('rate-limits-reset-globalRead');
+		expect(reset).toHaveAccessibleName('Reset to default: 1,200 / 60 s');
+		await userEvent.click(reset);
+
+		expect(limitInput('globalRead').value).toBe('1200');
+		expect(screen.getByTestId<HTMLInputElement>('rate-limits-window-globalRead').value).toBe('30');
+	});
+
 	it('locks a field that an environment variable sets', async () => {
 		const { getByTestId } = await renderLoaded({
 			enabled: true,
 			envManagedFields: ['enabled', 'globalReadLimit'],
 		});
 
-		expect(getByTestId('rate-limits-toggle')).toHaveClass('is-disabled');
+		expect(getByTestId('rate-limits-toggle')).toBeDisabled();
 		await userEvent.click(getByTestId('rate-limits-edit'));
 		expect(limitInput('globalRead')).toBeDisabled();
 		expect(limitInput('globalWrite')).not.toBeDisabled();

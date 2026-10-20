@@ -44,15 +44,21 @@ export function toDraft(settings: PublicApiRateLimitSettings): RateLimitDraft {
 	};
 }
 
-/** Call only with a draft that has no row errors. */
+/**
+ * Call only with a draft that has no row errors. A row with no limit keeps the window of `base`
+ * when its window is invalid, because the API needs a valid window on every row.
+ */
 export function fromDraft(
 	draft: RateLimitDraft,
 	base: PublicApiRateLimitSettings,
 ): PublicApiRateLimitSettings {
 	const settings = { ...base };
 	for (const key of ROW_KEYS) {
+		const window = draft[key].window.trim();
 		settings[limitField(key)] = parseLimit(draft[key].limit);
-		settings[windowField(key)] = Number(draft[key].window);
+		if (WHOLE_NUMBER.test(window) && Number(window) >= 1) {
+			settings[windowField(key)] = Number(window);
+		}
 	}
 	return settings;
 }
@@ -69,30 +75,23 @@ export function isDraftEmpty(draft: RateLimitDraft): boolean {
 	return ROW_KEYS.every((key) => parseLimit(draft[key].limit) === 0);
 }
 
-export function isRowDefault(
-	draft: RateLimitDraft,
-	defaults: PublicApiRateLimitSettings,
-	key: RateLimitRowKey,
-): boolean {
-	const defaultRow = toDraft(defaults)[key];
-	return draft[key].limit === defaultRow.limit && draft[key].window === defaultRow.window;
-}
-
-/** A per-endpoint limit above the matching all-endpoints limit never applies. */
+/**
+ * A per-endpoint limit never applies when it is higher than the all-endpoints limit and its window
+ * is not longer. A longer window lets the endpoint count grow across several all-endpoints windows.
+ */
 export function exceedsAllEndpointsLimit(
 	draft: RateLimitDraft,
 	key: 'endpointRead' | 'endpointWrite',
 ): boolean {
-	const globalKey = key === 'endpointRead' ? 'globalRead' : 'globalWrite';
-	const rate = (rowKey: RateLimitRowKey) => {
-		const row = draft[rowKey];
-		if (getRowError(row) !== undefined) return 0;
-		const limit = parseLimit(row.limit);
-		return limit === 0 ? 0 : limit / Number(row.window);
-	};
-	const endpointRate = rate(key);
-	const globalRate = rate(globalKey);
-	return endpointRate > 0 && globalRate > 0 && endpointRate > globalRate;
+	const endpoint = draft[key];
+	const global = draft[key === 'endpointRead' ? 'globalRead' : 'globalWrite'];
+	if (getRowError(endpoint) !== undefined || getRowError(global) !== undefined) return false;
+
+	const endpointLimit = parseLimit(endpoint.limit);
+	const globalLimit = parseLimit(global.limit);
+	if (endpointLimit === 0 || globalLimit === 0) return false;
+
+	return endpointLimit > globalLimit && Number(endpoint.window) <= Number(global.window);
 }
 
 export function formatGroupSummary(
@@ -101,33 +100,43 @@ export function formatGroupSummary(
 	i18n: ReturnType<typeof useI18n>,
 ): string {
 	const { read, write } = RATE_LIMIT_GROUPS[group];
-	const requests = (key: RateLimitRowKey, kind: 'reads' | 'writes') => {
-		const count = settings[limitField(key)];
-		return i18n.baseText(`settings.security.rateLimits.summary.${kind}`, {
+	const plural = (key: 'reads' | 'writes' | 'window', count: number) =>
+		i18n.baseText(`settings.security.rateLimits.summary.${key}`, {
 			adjustToNumber: count,
-			interpolate: { count: count.toLocaleString('en-US') },
+			interpolate: { count: count.toLocaleString() },
 		});
-	};
-	const window = (key: RateLimitRowKey) => {
-		const seconds = settings[windowField(key)];
-		return i18n.baseText('settings.security.rateLimits.summary.window', {
-			adjustToNumber: seconds,
-			interpolate: { count: seconds.toLocaleString('en-US') },
+
+	const readLimit = settings[limitField(read)];
+	const writeLimit = settings[limitField(write)];
+	const readWindow = settings[windowField(read)];
+	const writeWindow = settings[windowField(write)];
+	const reads = plural('reads', readLimit);
+	const writes = plural('writes', writeLimit);
+
+	if (readLimit === 0 && writeLimit === 0) {
+		return i18n.baseText('settings.security.rateLimits.summary.noLimit');
+	}
+	if (writeLimit === 0) {
+		return i18n.baseText('settings.security.rateLimits.summary.readsOnly', {
+			interpolate: { reads, window: plural('window', readWindow) },
 		});
-	};
-
-	const hasRead = settings[limitField(read)] > 0;
-	const hasWrite = settings[limitField(write)] > 0;
-
-	if (!hasRead && !hasWrite) return i18n.baseText('settings.security.rateLimits.summary.noLimit');
-	if (!hasWrite) {
-		return `${requests(read, 'reads')} / ${window(read)} · ${i18n.baseText('settings.security.rateLimits.summary.noWriteLimit')}`;
 	}
-	if (!hasRead) {
-		return `${i18n.baseText('settings.security.rateLimits.summary.noReadLimit')} · ${requests(write, 'writes')} / ${window(write)}`;
+	if (readLimit === 0) {
+		return i18n.baseText('settings.security.rateLimits.summary.writesOnly', {
+			interpolate: { writes, window: plural('window', writeWindow) },
+		});
 	}
-	if (settings[windowField(read)] === settings[windowField(write)]) {
-		return `${requests(read, 'reads')} · ${requests(write, 'writes')} / ${window(read)}`;
+	if (readWindow === writeWindow) {
+		return i18n.baseText('settings.security.rateLimits.summary.sameWindow', {
+			interpolate: { reads, writes, window: plural('window', readWindow) },
+		});
 	}
-	return `${requests(read, 'reads')} / ${window(read)} · ${requests(write, 'writes')} / ${window(write)}`;
+	return i18n.baseText('settings.security.rateLimits.summary.differentWindows', {
+		interpolate: {
+			reads,
+			readWindow: plural('window', readWindow),
+			writes,
+			writeWindow: plural('window', writeWindow),
+		},
+	});
 }

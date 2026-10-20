@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useAsyncState } from '@vueuse/core';
-import { ElSwitch } from 'element-plus';
 import { I18nT } from 'vue-i18n';
 import type {
 	PublicApiRateLimitSettings,
@@ -13,6 +12,7 @@ import {
 	N8nSettingsRow,
 	N8nSettingsRowGroup,
 	N8nSettingsSection,
+	N8nSwitch,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
@@ -127,9 +127,10 @@ async function persist(next: PublicApiRateLimitSettings) {
 						:disabled="!isToggleLocked"
 						:content="i18n.baseText('settings.security.rateLimits.envLocked')"
 					>
-						<ElSwitch
+						<N8nSwitch
 							v-model="toggleValue"
 							size="large"
+							:aria-label="i18n.baseText('settings.security.rateLimits.enable.title')"
 							:disabled="isToggleLocked || isSaving"
 							data-test-id="rate-limits-toggle"
 						/>
