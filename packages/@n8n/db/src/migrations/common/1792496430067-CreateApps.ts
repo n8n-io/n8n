@@ -9,7 +9,7 @@ const sourceTypesBefore = [
 	'agent_chat_attachment',
 ];
 
-export class CreateApps1792385089420 implements ReversibleMigration {
+export class CreateApps1792496430067 implements ReversibleMigration {
 	async up(ctx: MigrationContext) {
 		const { createTable, column, addForeignKey } = ctx.schemaBuilder;
 
