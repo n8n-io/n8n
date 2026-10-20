@@ -178,17 +178,18 @@ function scrollSelectedIntoView(): void {
 	const rowId = rows.value.find((row) => row.index === selectedIndex)?.id;
 	if (!rowId) return;
 
-	const behavior = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-		? 'auto'
-		: 'smooth';
+	const behavior =
+		shouldVirtualizeRows.value || window.matchMedia('(prefers-reduced-motion: reduce)').matches
+			? 'auto'
+			: 'smooth';
 	bindScrollContainer();
-	if (shouldVirtualizeRows.value) {
+	const row = tableRef.value?.querySelector<HTMLElement>(`[data-timeline-row-id="${rowId}"]`);
+	if (shouldVirtualizeRows.value && !row) {
 		/** Row measurements can change the target offset during a smooth scroll. */
 		scrollerRef.value?.scrollToKey(rowId, 'auto');
 		return;
 	}
 
-	const row = tableRef.value?.querySelector<HTMLElement>(`[data-timeline-row-id="${rowId}"]`);
 	if (!row || !scrollContainer) return;
 
 	const rowBounds = row.getBoundingClientRect();

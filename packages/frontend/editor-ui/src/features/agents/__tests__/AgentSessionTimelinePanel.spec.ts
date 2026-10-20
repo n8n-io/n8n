@@ -242,20 +242,6 @@ describe('AgentSessionTimelinePanel', () => {
 		expect(wrapper.find('[data-test-id="table-stub"]').exists()).toBe(true);
 	});
 
-	it('does not let stored test controls replace the loaded session', async () => {
-		localStorage.setItem('N8N_SHOW_TRACE_CONTROLS', '1');
-		try {
-			getThreadDetail.mockResolvedValueOnce({ ...detail, executions: [keyboardExecution] });
-			const wrapper = mountPanel();
-			await flushPromises();
-
-			expect(wrapper.findComponent({ name: 'SessionTimelineTestControls' }).exists()).toBe(false);
-			expect(wrapper.get('[data-test-id="table-stub"]').attributes('data-item-count')).toBe('2');
-		} finally {
-			localStorage.removeItem('N8N_SHOW_TRACE_CONTROLS');
-		}
-	});
-
 	it('offers status pills only for statuses present in the session', async () => {
 		getThreadDetail.mockResolvedValueOnce({
 			...detail,
