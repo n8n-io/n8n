@@ -145,11 +145,7 @@ export class AgentConfigService {
 			config,
 			clearOmitted,
 		);
-		assertSingleConnections(
-			this.chatIntegrationRegistry,
-			replacement.previousIntegrations,
-			replacement.nextIntegrations,
-		);
+		assertSingleConnections(this.chatIntegrationRegistry, replacement.nextIntegrations);
 		if (replacement.nextSchema.skills !== undefined) {
 			// Validate, store and report the refs that are saved, not the submitted ones.
 			replacement.nextSchema.skills = await this.agentSkillRefs.effectiveDraftRefs(

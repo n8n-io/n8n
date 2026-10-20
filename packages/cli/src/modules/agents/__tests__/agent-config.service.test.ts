@@ -538,20 +538,20 @@ describe('AgentConfigService', () => {
 				expect(agentRepository.saveDraftFenced).not.toHaveBeenCalled();
 			});
 
-			it('still saves an agent that already holds two', async () => {
+			it('rejects a save of an agent that already holds two', async () => {
 				const both = [teams('teams-1'), teams('teams-2')];
 				const { service, agentRepository, agent } = makeTeamsService(both);
 
-				await service.updateConfig(
-					agentId,
-					projectId,
-					{ ...baseConfig, integrations: both },
-					user,
-					fencedOn(agent),
-				);
-
-				const saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as Agent;
-				expect(saved.integrations).toEqual(both);
+				await expect(
+					service.updateConfig(
+						agentId,
+						projectId,
+						{ ...baseConfig, integrations: both },
+						user,
+						fencedOn(agent),
+					),
+				).rejects.toThrow(BadRequestError);
+				expect(agentRepository.saveDraftFenced).not.toHaveBeenCalled();
 			});
 		});
 

@@ -319,12 +319,12 @@ describe('AgentIntegrationPersistenceService', () => {
 				expect(row.integrations).toEqual([teams('teams-1')]);
 			});
 
-			it('still saves an agent that already holds two', async () => {
+			it('lets an agent that holds two remove one', async () => {
 				const { service, agent, row } = setupTeams([teams('teams-1'), teams('teams-2')]);
 
-				await service.applyIntegrationDelta(agent, { add: teams('teams-1') }, byUser);
+				await service.applyIntegrationDelta(agent, { remove: teams('teams-2') }, byUser);
 
-				expect(row.integrations).toEqual([teams('teams-1'), teams('teams-2')]);
+				expect(row.integrations).toEqual([teams('teams-1')]);
 			});
 		});
 

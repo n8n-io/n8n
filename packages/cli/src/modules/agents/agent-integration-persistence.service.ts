@@ -228,7 +228,7 @@ export class AgentIntegrationPersistenceService {
 		}
 
 		const integrations = projectIntegrations(current, { add, remove });
-		assertSingleConnections(this.chatIntegrationRegistry, current, integrations);
+		assertSingleConnections(this.chatIntegrationRegistry, integrations);
 		// A channel write keeps the skill refs as they are.
 		const skillRefs = await this.agentSkillRefs.refsForDraft(agent, {});
 		const written = await this.persistIntegrations(
