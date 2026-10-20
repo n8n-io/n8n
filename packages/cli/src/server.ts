@@ -1,5 +1,6 @@
 import { inDevelopment, inProduction, ModuleRegistry } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
+import { AuthStrategyRegistry } from '@n8n/backend-services/auth';
 import { SecurityConfig } from '@n8n/config';
 import { HTML_NONCE_PLACEHOLDER, Time } from '@n8n/constants';
 import type { APIRequest, AuthenticatedRequest } from '@n8n/db';
@@ -59,6 +60,7 @@ import '@/controllers/workflow-statistics.controller';
 import '@/controllers/api-keys.controller';
 import '@/controllers/security-settings.controller';
 import '@/credentials/credentials.controller';
+import '@/credentials/credential-options.controller';
 import '@/events/events.controller';
 import '@/executions/executions.controller';
 import '@/node-execution/ephemeral-node-executor';
@@ -79,7 +81,6 @@ import { MfaService } from './mfa/mfa.service';
 import { BrowserUseServer } from './modules/instance-ai/browser/browser-use-server';
 import { PubSubRegistry } from './scaling/pubsub/pubsub.registry';
 import { ApiKeyAuthStrategy } from './services/api-key-auth.strategy';
-import { AuthStrategyRegistry } from './services/auth-strategy.registry';
 import { SessionCookieAuthStrategy } from './services/session-cookie-auth.strategy';
 
 @Service()

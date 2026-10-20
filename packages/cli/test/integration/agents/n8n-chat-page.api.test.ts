@@ -44,7 +44,6 @@ describe('n8n Chat page HTTP routes', () => {
 				schema: { name, model, instructions: 'Help' },
 				integrations: [chatIntegration],
 				tools: {},
-				skills: {},
 				versionId: randomUUID(),
 			}),
 		);
@@ -61,7 +60,6 @@ describe('n8n Chat page HTTP routes', () => {
 				...(subAgents ? { subAgents: { agents: subAgents } } : {}),
 			},
 			tools: {},
-			skills: {},
 			publishedBy: 'test',
 		});
 		await agentRepository.update({ id: agent.id }, { activeVersionId: versionId });

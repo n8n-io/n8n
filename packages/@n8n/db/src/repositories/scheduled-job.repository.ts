@@ -35,6 +35,7 @@ export type NewScheduledJob = Pick<
 	| 'fireAt'
 	| 'nextRunAt'
 	| 'maxAttempts'
+	| 'timeoutSeconds'
 	| 'misfirePolicy'
 	| 'misfireGraceSeconds'
 	| 'concurrencyLimit'
@@ -52,6 +53,7 @@ export type ScheduledJobDefinitionUpdate = Pick<
 	| 'fireAt'
 	| 'nextRunAt'
 	| 'maxAttempts'
+	| 'timeoutSeconds'
 	| 'misfirePolicy'
 	| 'misfireGraceSeconds'
 	| 'concurrencyLimit'
@@ -290,7 +292,11 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 		ids: number[],
 		update: Pick<
 			ScheduledJob,
-			'maxAttempts' | 'misfirePolicy' | 'misfireGraceSeconds' | 'concurrencyLimit'
+			| 'maxAttempts'
+			| 'timeoutSeconds'
+			| 'misfirePolicy'
+			| 'misfireGraceSeconds'
+			| 'concurrencyLimit'
 		>,
 	): Promise<void> {
 		if (ids.length === 0) return;

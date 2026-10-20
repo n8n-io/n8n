@@ -140,6 +140,7 @@ describe('exported files vs git blob hashes', () => {
 		);
 
 		expect(result.counts).toEqual({
+			agents: 0,
 			workflows: 1,
 			folders: 1,
 			credentials: 1,

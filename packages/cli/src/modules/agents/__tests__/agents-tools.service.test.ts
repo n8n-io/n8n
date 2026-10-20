@@ -43,16 +43,30 @@ describe('AgentsToolsService', () => {
 	});
 
 	describe('getSharedTools()', () => {
-		it('returns search_nodes, get_node_types, and list_credentials', () => {
+		it('returns agent_builder_search_nodes, agent_builder_get_node_types, and agent_builder_list_credentials', () => {
 			const { service } = makeService();
 			const names = service.getSharedTools(makeCredentialProvider(), 'hint').map((t) => t.name);
-			expect(names).toEqual(['search_nodes', 'get_node_types', 'list_credentials']);
+			expect(names).toEqual([
+				'agent_builder_search_nodes',
+				'agent_builder_get_node_types',
+				'agent_builder_list_credentials',
+			]);
+		});
+
+		it('keeps the former tool names as legacy names', () => {
+			const { service } = makeService();
+			const legacyNames = service
+				.getSharedTools(makeCredentialProvider(), 'hint')
+				.map((t) => t.legacyNames);
+			expect(legacyNames).toEqual([['search_nodes'], ['get_node_types'], ['list_credentials']]);
 		});
 	});
 
-	describe('list_credentials handler', () => {
+	describe('agent_builder_list_credentials handler', () => {
 		function getListTool(service: AgentsToolsService, provider: CredentialProvider) {
-			return service.getSharedTools(provider, 'hint').find((t) => t.name === 'list_credentials')!;
+			return service
+				.getSharedTools(provider, 'hint')
+				.find((t) => t.name === 'agent_builder_list_credentials')!;
 		}
 
 		it('returns all credentials when no types filter is provided', async () => {
@@ -105,11 +119,11 @@ describe('AgentsToolsService', () => {
 		});
 	});
 
-	describe('search_nodes handler', () => {
+	describe('agent_builder_search_nodes handler', () => {
 		function getSearchTool(service: AgentsToolsService) {
 			return service
 				.getSharedTools(makeCredentialProvider(), 'hint')
-				.find((t) => t.name === 'search_nodes')!;
+				.find((t) => t.name === 'agent_builder_search_nodes')!;
 		}
 
 		it('delegates to the node catalog with the agent tool-node filter', async () => {
@@ -175,11 +189,11 @@ describe('AgentsToolsService', () => {
 		});
 	});
 
-	describe('get_node_types handler', () => {
+	describe('agent_builder_get_node_types handler', () => {
 		function getTypesTool(service: AgentsToolsService) {
 			return service
 				.getSharedTools(makeCredentialProvider(), 'hint')
-				.find((t) => t.name === 'get_node_types')!;
+				.find((t) => t.name === 'agent_builder_get_node_types')!;
 		}
 
 		it('forwards string node IDs unchanged', async () => {

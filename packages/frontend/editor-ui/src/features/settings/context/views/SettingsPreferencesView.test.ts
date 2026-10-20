@@ -36,6 +36,7 @@ function preference(overrides: Partial<Preference> = {}): Preference {
 		projectId: null,
 		project: null,
 		source: 'ui',
+		createdBy: null,
 		scopes: ['aiPreference:read', 'aiPreference:update', 'aiPreference:delete'],
 		createdAt: '2026-09-08T00:00:00.000Z',
 		updatedAt: '2026-09-08T00:00:00.000Z',
@@ -107,7 +108,35 @@ describe('SettingsPreferencesView', () => {
 		renderView();
 		await new Promise(process.nextTick);
 
-		expect(contextStore.fetchPreferences).toHaveBeenCalledWith({ skip: 0, take: 50 });
+		expect(contextStore.fetchPreferences).toHaveBeenCalledWith({
+			skip: 0,
+			take: 50,
+			sortBy: 'updatedAt:desc',
+		});
+	});
+
+	it('reverses the last updated order on each header click', async () => {
+		contextStore.preferences = [preference()];
+		contextStore.count = 1;
+
+		const { getByText } = renderView();
+		await new Promise(process.nextTick);
+
+		await userEvent.click(getByText(/^Last updated/));
+		await new Promise(process.nextTick);
+		expect(contextStore.fetchPreferences).toHaveBeenLastCalledWith({
+			skip: 0,
+			take: 50,
+			sortBy: 'updatedAt:asc',
+		});
+
+		await userEvent.click(getByText(/^Last updated/));
+		await new Promise(process.nextTick);
+		expect(contextStore.fetchPreferences).toHaveBeenLastCalledWith({
+			skip: 0,
+			take: 50,
+			sortBy: 'updatedAt:desc',
+		});
 	});
 
 	it('opens the create modal from the toolbar', async () => {
@@ -312,14 +341,22 @@ describe('SettingsPreferencesView', () => {
 
 		await userEvent.click(getByTestId('pagination-next'));
 		await new Promise(process.nextTick);
-		expect(contextStore.fetchPreferences).toHaveBeenLastCalledWith({ skip: 50, take: 50 });
+		expect(contextStore.fetchPreferences).toHaveBeenLastCalledWith({
+			skip: 50,
+			take: 50,
+			sortBy: 'updatedAt:desc',
+		});
 
 		// Everything on the second page goes; page 1 no longer exists.
 		contextStore.count = 5;
 		await userEvent.click(getByTestId('preference-modal-stub-saved'));
 		await new Promise(process.nextTick);
 
-		expect(contextStore.fetchPreferences).toHaveBeenLastCalledWith({ skip: 0, take: 50 });
+		expect(contextStore.fetchPreferences).toHaveBeenLastCalledWith({
+			skip: 0,
+			take: 50,
+			sortBy: 'updatedAt:desc',
+		});
 	});
 
 	it('returns to the Context landing page', async () => {

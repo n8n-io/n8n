@@ -550,7 +550,7 @@ describe('workflow package export', () => {
 				service.exportPackage({
 					user: owner,
 					workflowIds: [parent.id],
-					missingWorkflowDependencyPolicy: 'fail',
+					dependencyPolicy: 'fail',
 				}),
 			).rejects.toThrow(PackageExportBlockedError);
 		});
@@ -581,7 +581,7 @@ describe('workflow package export', () => {
 			const { stream } = await service.exportPackage({
 				user: owner,
 				workflowIds: [workflowA.id],
-				missingWorkflowDependencyPolicy: 'include-in-package',
+				dependencyPolicy: 'include-in-package',
 			});
 			const { manifest, entries } = await readExport(stream);
 
@@ -629,7 +629,7 @@ describe('workflow package export', () => {
 				await service.exportPackage({
 					user: owner,
 					workflowIds: [parent.id],
-					missingWorkflowDependencyPolicy: 'include-in-package',
+					dependencyPolicy: 'include-in-package',
 				});
 
 				const exportedEvents = emitSpy.mock.calls.filter(
@@ -670,7 +670,7 @@ describe('workflow package export', () => {
 			const { stream } = await service.exportPackage({
 				user: owner,
 				workflowIds: [workflowA.id],
-				missingWorkflowDependencyPolicy: 'include-in-package',
+				dependencyPolicy: 'include-in-package',
 			});
 			const { manifest, entries } = await readExport(stream);
 
@@ -733,7 +733,7 @@ describe('workflow package export', () => {
 			const { stream } = await service.exportPackage({
 				user,
 				workflowIds,
-				missingWorkflowDependencyPolicy: 'reference-only',
+				dependencyPolicy: 'reference-only',
 			});
 			return await readExport(stream);
 		}
@@ -964,7 +964,7 @@ describe('workflow package export', () => {
 	describe('workflow version policy', () => {
 		it.each(['latest', 'published-strict'] as const)(
 			'exports a single-version workflow under %s',
-			async (workflowVersionPolicy) => {
+			async (versionPolicy) => {
 				const owner = await createOwner();
 				const project = await createTeamProject('Project A', owner);
 				const { workflow } = await buildVersionedWorkflow({
@@ -977,7 +977,7 @@ describe('workflow package export', () => {
 				const { stream } = await service.exportPackage({
 					user: owner,
 					workflowIds: [workflow.id],
-					workflowVersionPolicy,
+					versionPolicy,
 				});
 				const { manifest, entries } = await readExport(stream);
 
@@ -1023,7 +1023,7 @@ describe('workflow package export', () => {
 			const { stream } = await service.exportPackage({
 				user: owner,
 				workflowIds: [workflow.id],
-				workflowVersionPolicy: 'published-strict',
+				versionPolicy: 'published-strict',
 			});
 			const { manifest, entries } = await readExport(stream);
 
@@ -1051,7 +1051,7 @@ describe('workflow package export', () => {
 				service.exportPackage({
 					user: owner,
 					workflowIds: [workflow.id],
-					workflowVersionPolicy: 'published-strict',
+					versionPolicy: 'published-strict',
 				}),
 			).rejects.toThrow('1 workflow(s) have no published version. Export aborted.');
 		});
@@ -1074,7 +1074,7 @@ describe('workflow package export', () => {
 			const { stream } = await service.exportPackage({
 				user: owner,
 				workflowIds: [published.id, unpublished.id],
-				workflowVersionPolicy: 'prefer-published',
+				versionPolicy: 'prefer-published',
 			});
 			const { manifest, entries } = await readExport(stream);
 
@@ -1102,7 +1102,7 @@ describe('workflow package export', () => {
 			const { stream } = await service.exportPackage({
 				user: owner,
 				workflowIds: [published.id, unpublished.id],
-				workflowVersionPolicy: 'ignore-unpublished',
+				versionPolicy: 'ignore-unpublished',
 			});
 			const { manifest, entries } = await readExport(stream);
 
@@ -1129,8 +1129,8 @@ describe('workflow package export', () => {
 				service.exportPackage({
 					user: owner,
 					workflowIds: [parent.id],
-					workflowVersionPolicy: 'ignore-unpublished',
-					missingWorkflowDependencyPolicy: 'include-in-package',
+					versionPolicy: 'ignore-unpublished',
+					dependencyPolicy: 'include-in-package',
 				}),
 			).rejects.toThrow('1 sub-workflow dependency has no published version. Export aborted.');
 		});
@@ -1156,7 +1156,7 @@ describe('workflow package export', () => {
 			const { stream } = await service.exportPackage({
 				user: owner,
 				workflowIds: [workflow.id],
-				workflowVersionPolicy: 'published-strict',
+				versionPolicy: 'published-strict',
 			});
 			const { manifest } = await readExport(stream);
 

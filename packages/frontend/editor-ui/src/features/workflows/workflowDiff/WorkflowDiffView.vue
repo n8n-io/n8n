@@ -38,6 +38,9 @@ const props = withDefaults(
 		tidyUp?: boolean;
 		showBackButton?: boolean;
 		showFullscreenButton?: boolean;
+		/** Hides the workflow name when the parent already shows it. Fullscreen still shows it. */
+		hideTitle?: boolean;
+		canvasIdPrefix?: string;
 		source?: 'version_history' | 'push_pull_modal' | 'unknown';
 	}>(),
 	{
@@ -47,6 +50,8 @@ const props = withDefaults(
 		targetLabel: 'After',
 		showBackButton: false,
 		showFullscreenButton: false,
+		hideTitle: false,
+		canvasIdPrefix: undefined,
 		source: 'unknown',
 	},
 );
@@ -158,13 +163,13 @@ const onNodeChangeSelect = (change: { node: INodeUi; status: NodeDiffStatus }) =
 					<slot name="header-prefix" />
 					<N8nIconButton
 						v-if="showBackButton"
-						variant="subtle"
+						variant="outline"
 						icon="arrow-left"
 						:class="[$style.backButton, 'mr-xs']"
 						icon-size="large"
 						@click="emit('back')"
 					/>
-					<N8nHeading tag="h4" size="medium">
+					<N8nHeading v-if="!hideTitle || isFullscreen" tag="h4" size="medium">
 						{{ sourceWorkflow?.name || targetWorkflow?.name }}
 					</N8nHeading>
 				</div>
@@ -173,7 +178,7 @@ const onNodeChangeSelect = (change: { node: INodeUi; status: NodeDiffStatus }) =
 					<N8nCheckbox
 						v-model="syncIsEnabled"
 						label-size="small"
-						label="Sync views"
+						:label="i18n.baseText('workflowDiff.syncViews')"
 						class="mb-0 mr-s"
 					/>
 					<ElDropdown
@@ -185,7 +190,7 @@ const onNodeChangeSelect = (change: { node: INodeUi; status: NodeDiffStatus }) =
 						:popper-class="$style.popper"
 						@visible-change="onChangesDropdownVisibleChange"
 					>
-						<N8nButton variant="subtle" style="--button--radius: 4px 0 0 4px">
+						<N8nButton variant="outline" style="--button--radius: 4px 0 0 4px">
 							<div v-if="changesCount" :class="$style.circleBadge">
 								{{ changesCount }}
 							</div>
@@ -281,14 +286,14 @@ const onNodeChangeSelect = (change: { node: INodeUi; status: NodeDiffStatus }) =
 						</template>
 					</ElDropdown>
 					<N8nIconButton
-						variant="subtle"
+						variant="outline"
 						icon="chevron-left"
 						:class="$style.navigationButton"
 						style="--button--radius: 0; margin: 0 -1px"
 						@click="previousNodeChange"
 					/>
 					<N8nIconButton
-						variant="subtle"
+						variant="outline"
 						icon="chevron-right"
 						:class="$style.navigationButton"
 						style="--button--radius: 0 4px 4px 0"
@@ -296,7 +301,7 @@ const onNodeChangeSelect = (change: { node: INodeUi; status: NodeDiffStatus }) =
 					/>
 					<N8nIconButton
 						v-if="showFullscreenButton"
-						variant="subtle"
+						variant="outline"
 						:icon="isFullscreen ? 'minimize-2' : 'maximize-2'"
 						:title="
 							i18n.baseText(
@@ -332,6 +337,7 @@ const onNodeChangeSelect = (change: { node: INodeUi; status: NodeDiffStatus }) =
 				:apply-layout="tidyUp"
 				:nodes-diff="nodesDiff"
 				:connections-diff="connectionsDiff"
+				:canvas-id-prefix="canvasIdPrefix"
 				@close-aside="selectedDetailId = undefined"
 			>
 				<template v-if="$slots.sourceLabel" #sourceLabel>

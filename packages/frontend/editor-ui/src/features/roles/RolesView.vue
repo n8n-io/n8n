@@ -93,7 +93,7 @@ onMounted(async () => {
 
 		<N8nText color="text-base" class="mb-xl" tag="p">
 			{{ i18n.baseText('roles.description') }}
-			<N8nLink :href="CUSTOM_ROLES_DOCS_URL" target="_blank" new-window>{{
+			<N8nLink :href="CUSTOM_ROLES_DOCS_URL" target="_blank" new-window underline>{{
 				i18n.baseText('roles.description.docsLink')
 			}}</N8nLink>
 		</N8nText>

@@ -371,7 +371,7 @@ watch(
 		</div>
 		<N8nDialogFooter>
 			<N8nButton
-				variant="subtle"
+				variant="outline"
 				:label="i18n.baseText('settings.context.preferences.modal.cancel')"
 				data-test-id="preference-modal-cancel-button"
 				@click="closeModal"

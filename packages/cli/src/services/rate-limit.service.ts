@@ -6,6 +6,7 @@ import { BodyKeyedRateLimiterConfig } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import type { Request, RequestHandler } from 'express';
 import { rateLimit as expressRateLimit } from 'express-rate-limit';
+import type { Store } from 'express-rate-limit';
 import assert from 'node:assert';
 import type { ZodTypeAny } from 'zod';
 
@@ -71,6 +72,28 @@ export class RateLimitService {
 				const identifier = this.extractUserIdentifier(req);
 				return identifier.startsWith('skip:');
 			},
+		});
+	}
+
+	/**
+	 * Counts requests for each API key and never blocks. Requests without an API key are skipped.
+	 * The counts are stored on the request under `requestPropertyName`.
+	 */
+	createApiKeyRateLimitMiddleware(
+		limits: Required<RateLimiterLimits>,
+		{ requestPropertyName, store }: { requestPropertyName: string; store: Store },
+	): RequestHandler {
+		return expressRateLimit({
+			limit: limits.limit,
+			windowMs: limits.windowMs,
+			legacyHeaders: false,
+			standardHeaders: false,
+			requestPropertyName,
+			store,
+			handler: (_req, _res, next) => next(),
+			passOnStoreError: true,
+			skip: (req: AuthenticatedRequest): boolean => req.tokenGrant?.apiKeyId === undefined,
+			keyGenerator: (req: AuthenticatedRequest) => `apiKey:${req.tokenGrant?.apiKeyId}`,
 		});
 	}
 

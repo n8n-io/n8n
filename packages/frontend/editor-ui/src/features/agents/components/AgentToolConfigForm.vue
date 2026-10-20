@@ -7,12 +7,14 @@ import {
 } from '@n8n/frontend-module-type-availability-policies';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { extractFromAICalls, type INode } from 'n8n-workflow';
-import { computed, ref, watch } from 'vue';
+import { computed, effectScope, onBeforeUnmount, ref, watch } from 'vue';
 
 import { HTTP_REQUEST_NODE_TYPE, HTTP_REQUEST_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useUIStore } from '@/app/stores/ui.store';
-import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
+import {
+	listenForCredentialChanges,
+	useCredentialsStore,
+} from '@/features/credentials/credentials.store';
 import {
 	toolRefToNode,
 	updateToolRefFromNode,
@@ -66,20 +68,15 @@ const props = defineProps<{
 
 const emit = defineEmits<{
 	'update:title': [title: string];
-	'update:credentialModalOpen': [open: boolean];
+	'credential-deleted': [];
 	'update:restricted': [restricted: boolean];
 }>();
 
 const i18n = useI18n();
-const uiStore = useUIStore();
+const credentialsStore = useCredentialsStore();
 const nodeTypesStore = useNodeTypesStore();
 const httpRequestUrlErrorKey =
 	'agents.builder.validation.issue.httpRequestUrlFromAi' as BaseTextKey;
-
-const credentialModalOpen = computed(
-	() => uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY]?.open === true,
-);
-watch(credentialModalOpen, (open) => emit('update:credentialModalOpen', open), { immediate: true });
 
 function isMcpServerModalData(data: AgentToolConfigModalData): data is McpServerModalData {
 	return data.kind === 'mcpServer';
@@ -106,7 +103,7 @@ const workflowContentRef = ref<InstanceType<typeof AgentToolConfigWorkflowConten
 const isValid = ref(false);
 const submitCount = ref(0);
 const approvalRequired = ref(false);
-const mcpApproval = ref<AgentJsonMcpServerConfig['approval']>();
+const mcpPermissions = ref<AgentJsonMcpServerConfig['toolPermissions']>();
 const mcpApprovalValid = ref(true);
 const draftNode = ref<INode | null>(null);
 
@@ -175,9 +172,11 @@ watch(
 );
 
 watch(
-	() => mcpModalData.value?.mcpServer.approval,
-	(approval) => {
-		mcpApproval.value = approval;
+	() => mcpModalData.value?.mcpServer.toolPermissions,
+	(toolPermissions) => {
+		mcpPermissions.value = toolPermissions ?? {
+			categories: { read: 'always_allow', write: 'always_allow' },
+		};
 	},
 	{ immediate: true },
 );
@@ -193,6 +192,7 @@ watch(
 watch(title, (value) => emit('update:title', value), { immediate: true });
 
 const currentNode = computed(() => draftNode.value ?? initialNode.value);
+
 const hasHttpRequestUrlIssue = computed(() => {
 	const data = toolModalData.value;
 	if (data?.toolRef.type !== 'node') return false;
@@ -208,7 +208,9 @@ const hasHttpRequestUrlIssue = computed(() => {
 
 const canSave = computed(() => {
 	if (isCustomTool.value) return true;
-	if (isMcpTool.value) return isValid.value && mcpApprovalValid.value;
+	if (isMcpTool.value) {
+		return isValid.value && (!supportsApproval.value || mcpApprovalValid.value);
+	}
 	return isValid.value && !hasHttpRequestUrlIssue.value;
 });
 
@@ -243,13 +245,6 @@ function withApprovalRequirement(ref: AgentJsonToolRef): AgentJsonToolRef {
 	return updatedRef;
 }
 
-function withMcpApproval(server: AgentJsonMcpServerConfig): AgentJsonMcpServerConfig {
-	const updatedServer = { ...server };
-	if (supportsApproval.value && mcpApproval.value) updatedServer.approval = mcpApproval.value;
-	else delete updatedServer.approval;
-	return updatedServer;
-}
-
 function confirm(): boolean {
 	submitCount.value += 1;
 	if (!canSave.value) return false;
@@ -264,9 +259,19 @@ function confirm(): boolean {
 	if (isMcpTool.value) {
 		const currentMcpNode = mcpContentRef.value?.getNode();
 		const mcpData = mcpModalData.value;
-		if (!currentMcpNode || !mcpData) return false;
+		if (!currentMcpNode || !mcpData || !mcpPermissions.value) return false;
 		const updatedServer = nodeToMcpServer(currentMcpNode, mcpData.mcpServer);
-		mcpData.onConfirm(withMcpApproval(updatedServer));
+		mcpData.onConfirm({
+			...updatedServer,
+			toolPermissions: supportsApproval.value
+				? mcpPermissions.value
+				: {
+						categories: {
+							read: 'always_allow',
+							write: 'always_allow',
+						},
+					},
+		});
 		return true;
 	}
 
@@ -310,7 +315,21 @@ function handleNodeNameUpdate(name: string) {
 	nodeName.value = name;
 }
 
-defineExpose({ canSave, confirm, remove, changeTitle, credentialModalOpen, title });
+const credentialListeners = effectScope(true);
+credentialListeners.run(() => {
+	listenForCredentialChanges({
+		store: credentialsStore,
+		onCredentialDeleted: (credentialId) => {
+			const data = mcpModalData.value;
+			if (!data || data.mcpServer.credential !== credentialId) return;
+			data.onRemove?.();
+			emit('credential-deleted');
+		},
+	});
+});
+onBeforeUnmount(() => credentialListeners.stop());
+
+defineExpose({ canSave, confirm, remove, changeTitle });
 </script>
 
 <template>
@@ -356,6 +375,7 @@ defineExpose({ canSave, confirm, remove, changeTitle, credentialModalOpen, title
 				:initial-node="initialNode"
 				:existing-tool-names="data.existingToolNames"
 				:project-id="data.projectId"
+				:hidden-parameters="['include', 'includeTools', 'excludeTools']"
 				:read-only="isRestricted"
 				content-test-id="agent-tool-config-mcp-content"
 				@update:valid="isValid = $event"
@@ -382,8 +402,8 @@ defineExpose({ canSave, confirm, remove, changeTitle, credentialModalOpen, title
 				:disabled="isRestricted"
 			/>
 			<AgentToolConfigMcpApprovalSetting
-				v-if="isMcpTool && currentNode && supportsApproval"
-				v-model="mcpApproval"
+				v-if="isMcpTool && mcpPermissions && supportsApproval && currentNode"
+				v-model="mcpPermissions"
 				:node="currentNode"
 				:disabled="isRestricted"
 				:project-id="data.projectId"

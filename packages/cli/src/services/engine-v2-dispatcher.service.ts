@@ -1,5 +1,6 @@
 import { Service } from '@n8n/di';
 import type { SeededSteps, StartExecutionRequest, StepSlots, TriggerOutputs } from '@n8n/engine';
+import { NotImplementedError } from '@n8n/errors';
 import type {
 	INode,
 	INodeExecutionData,
@@ -120,21 +121,28 @@ export class EngineV2Dispatcher {
 	 * The files the trigger stored belong to the control plane until the data
 	 * plane accepts the run. A run that does not start leaves them to no one, so
 	 * a failure deletes them, but only when no run can exist: a run that uses
-	 * deleted files fails, while a kept file is deleted with its execution.
+	 * deleted files fails, while a kept file is deleted with its execution. Only
+	 * the fired trigger's payload is deleted: a planned run may root at reused
+	 * run data instead, whose files belong to the execution that produced them.
 	 */
 	async start(data: IWorkflowExecutionDataProcess): Promise<string> {
-		// A partial run, or one with pinned data, is planned here: the data plane
-		// gets a graph trimmed to what runs, plus the steps it records as done.
-		const plan = this.manualRunPlanner.applies(data) ? this.manualRunPlanner.plan(data) : undefined;
-		const trigger: FiredTrigger = plan
-			? { name: plan.triggerName, outputs: plan.triggerOutputs }
-			: this.resolveFiredTrigger(data);
+		const fired = this.resolveFiredTrigger(data);
 
 		let prepared: PreparedStart;
 		try {
+			this.assertAvailable();
+
+			// A partial run, or one with pinned data, is planned here: the data plane
+			// gets a graph trimmed to what runs, plus the steps it records as done.
+			const plan = this.manualRunPlanner.applies(data)
+				? this.manualRunPlanner.plan(data)
+				: undefined;
+			const trigger: FiredTrigger = plan
+				? { name: plan.triggerName, outputs: plan.triggerOutputs }
+				: fired;
 			prepared = await this.prepare(data, trigger, plan);
 		} catch (error) {
-			await this.payloadFiles.discard(trigger.outputs);
+			await this.payloadFiles.discard(fired.outputs);
 			throw error;
 		}
 
@@ -144,7 +152,7 @@ export class EngineV2Dispatcher {
 		} catch (error) {
 			// Assumes rejection: a dropped success response also releases a still-live session.
 			this.pushRegistry.release(executionId);
-			if (isStartRefusedBeforeSave(error)) await this.payloadFiles.discard(trigger.outputs);
+			if (isStartRefusedBeforeSave(error)) await this.payloadFiles.discard(fired.outputs);
 			throw error;
 		}
 
@@ -244,30 +252,31 @@ export class EngineV2Dispatcher {
 	}
 
 	/**
-	 * Rejects what the v2 path cannot do yet, in the order the user should hear
-	 * about it: the module being off comes first, so a workflow that would also
-	 * fail conversion does not report the conversion problem and hide the real
-	 * cause.
+	 * Checked before anything else, so a run that would also fail planning or
+	 * conversion does not report that problem and hide the real cause.
 	 */
-	private assertSupported(data: IWorkflowExecutionDataProcess, trigger: FiredTrigger): void {
+	private assertAvailable(): void {
 		if (!this.proxy.isAvailable()) {
 			throw new UserError(
 				'Engine v2 is not available. Enable the `engine-v2` module with N8N_ENABLED_MODULES.',
 			);
 		}
+	}
 
+	/** Rejects what the v2 path cannot do yet. */
+	private assertSupported(data: IWorkflowExecutionDataProcess, trigger: FiredTrigger): void {
 		// The editor still sends the start nodes of partial executions v1. v1 ignores
 		// them once it has run data or a trigger payload, and the planner derives
 		// its own, so they only matter where v1 starts the run at one: a single
 		// pinned node in place of the trigger.
 		if (this.startsAtPinnedNode(data)) {
-			throw new UserError(
+			throw new NotImplementedError(
 				'Engine v2 cannot start a run at a pinned node yet. Run the workflow from the trigger instead.',
 			);
 		}
 
 		if (data.agentRequest !== undefined) {
-			throw new UserError('Engine v2 cannot run a workflow as an AI tool yet.');
+			throw new NotImplementedError('Engine v2 cannot run a workflow as an AI tool yet.');
 		}
 
 		// `WorkflowRunner.run` returns through the v2 branch before it establishes the
@@ -280,7 +289,7 @@ export class EngineV2Dispatcher {
 			firedNode !== undefined &&
 			classifyTriggerIdentity(firedNode.type, firedNode.parameters).providesExternalIdentity
 		) {
-			throw new UserError(
+			throw new NotImplementedError(
 				`Engine v2 cannot run the "${firedNode.name}" trigger yet, because it takes credentials from the request.`,
 			);
 		}

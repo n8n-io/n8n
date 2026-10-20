@@ -7,6 +7,7 @@
  */
 
 import { Tool } from '@n8n/agents';
+import { getLegacyBuilderToolNames } from '@n8n/api-types';
 import { z } from 'zod';
 
 import { assignCredentialToNode, resolveCredentialForApply } from './credential-utils';
@@ -19,6 +20,7 @@ import {
 } from './saved-workflow-state';
 import { refreshWorkflowSourceFileBindingFromSave } from './workflow-file-bindings';
 import type { OrchestrationContext } from '../../types';
+import { ORCHESTRATION_TOOL_IDS } from '../tool-ids';
 
 export const applyWorkflowCredentialsInputSchema = z.object({
 	workItemId: z.string().describe('The work item ID from the build (wi_XXXXXXXX)'),
@@ -27,7 +29,8 @@ export const applyWorkflowCredentialsInputSchema = z.object({
 });
 
 export function createApplyWorkflowCredentialsTool(context: OrchestrationContext) {
-	return new Tool('apply-workflow-credentials')
+	return new Tool(ORCHESTRATION_TOOL_IDS.APPLY_WORKFLOW_CREDENTIALS)
+		.legacyNames(...getLegacyBuilderToolNames(ORCHESTRATION_TOOL_IDS.APPLY_WORKFLOW_CREDENTIALS))
 		.description(
 			'Apply real credentials to a workflow that was built with mocked credentials. ' +
 				'Only updates nodes that were mocked — never overwrites existing real credentials.',
@@ -108,7 +111,7 @@ export function createApplyWorkflowCredentialsTool(context: OrchestrationContext
 
 			// Refresh the simulation plan so the next verification executes the
 			// now-credentialed nodes instead of replaying the build-time mock.
-			// Best-effort: verify-built-workflow reconciles again on its own.
+			// Best-effort: workflow_builder_verify_built_workflow reconciles again on its own.
 			try {
 				const availableCredentials = await buildCredentialMap(
 					context.domainContext.credentialService,

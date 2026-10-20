@@ -26,7 +26,7 @@ describe('orderBySubWorkflowDependencies', () => {
 		// CHEDDAR (listed first) calls BRIE.
 		const ordered = orderBySubWorkflowDependencies(
 			[wf('CHEDDAR'), wf('BRIE')],
-			[requiredBy('BRIE', 'CHEDDAR')],
+			[requiredBy('BRIE', 'CHEDDAR'), { id: 'CHEDDAR', usedBy: [{ kind: 'agent', id: 'BRIE' }] }],
 		);
 
 		expect(idsOf(ordered)).toEqual(['BRIE', 'CHEDDAR']);

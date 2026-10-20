@@ -4,9 +4,11 @@ import { sleep } from '@n8n/utils/sleep';
 import type { IExecuteFunctions, IHttpRequestOptions, JsonObject } from 'n8n-workflow';
 import { NodeApiError, NodeError, NodeOperationError } from 'n8n-workflow';
 
+import { makeLakebaseErrorLegible } from './lakebaseErrors';
 import {
 	databricksApiRequest,
 	getActiveCredentialType,
+	makePermissionErrorLegible,
 	type DatabricksContext,
 } from '../actions/helpers';
 
@@ -14,7 +16,8 @@ import {
 // to take more than 1 s.
 const SCHEMA_CACHE_RETRY_DELAY_MS = 1_000;
 
-function errorBody(error: unknown): Record<string, unknown> | undefined {
+/** The JSON body of a failed Data API call, which carries the PostgREST or Postgres code */
+export function lakebaseErrorBody(error: unknown): Record<string, unknown> | undefined {
 	return error instanceof NodeApiError && isRecord(error.context.data)
 		? error.context.data
 		: undefined;
@@ -35,6 +38,30 @@ function isExpiredToken(error: unknown, body: Record<string, unknown> | undefine
 }
 
 /**
+ * A dropdown shows only an error's message, so the hint `lakebaseApiRequest` already
+ * attached is not visible there. Mutates rather than re-wraps, because only a
+ * NodeApiError carries its description as far as the dropdown.
+ */
+export function explainLakebaseSchemaError(error: unknown, openApiMessage: string): never {
+	if (error instanceof NodeApiError && lakebaseErrorBody(error)?.code === 'PGRST205') {
+		error.message = openApiMessage;
+		throw error;
+	}
+
+	makePermissionErrorLegible(error);
+	throw error;
+}
+
+export function assertLakebaseOAuth(context: DatabricksContext): void {
+	if (getActiveCredentialType(context) === 'databricksApi') {
+		throw new NodeOperationError(context.getNode(), 'Lakebase requires OAuth2 authentication', {
+			description:
+				'The Lakebase Data API does not accept personal access tokens. Set Authentication to OAuth2 and use a Databricks OAuth2 credential.',
+		});
+	}
+}
+
+/**
  * Pass JSON bodies only. The helper resends the request after a token refresh or a
  * schema-cache retry, so do not pass a stream or FormData body.
  */
@@ -42,12 +69,7 @@ export async function lakebaseApiRequest(
 	context: DatabricksContext,
 	options: IHttpRequestOptions,
 ): ReturnType<IExecuteFunctions['helpers']['httpRequestWithAuthentication']> {
-	if (getActiveCredentialType(context) === 'databricksApi') {
-		throw new NodeOperationError(context.getNode(), 'Lakebase requires OAuth2 authentication', {
-			description:
-				'The Lakebase Data API does not accept personal access tokens. Set Authentication to OAuth2 and use a Databricks OAuth2 credential.',
-		});
-	}
+	assertLakebaseOAuth(context);
 	const abortSignal =
 		'getExecutionCancelSignal' in context ? context.getExecutionCancelSignal() : undefined;
 
@@ -61,7 +83,7 @@ export async function lakebaseApiRequest(
 				oauth2: { skipRefreshWhileTokenIsFresh: true },
 			});
 		} catch (error) {
-			const body = errorBody(error);
+			const body = lakebaseErrorBody(error);
 			// Core refreshes only on the credential's tokenExpiredStatusCode (403);
 			// Lakebase signals expiry with 400 or 401.
 			if (!refreshed && isExpiredToken(error, body)) {
@@ -82,6 +104,7 @@ export async function lakebaseApiRequest(
 				await sleep(SCHEMA_CACHE_RETRY_DELAY_MS, abortSignal);
 				continue;
 			}
+			makeLakebaseErrorLegible(error, options);
 			throw error;
 		}
 	}

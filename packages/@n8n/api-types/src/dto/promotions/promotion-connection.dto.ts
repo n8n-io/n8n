@@ -27,14 +27,21 @@ export type PromotionConnectionScope = z.infer<typeof promotionConnectionScopeSc
  */
 const remoteUrlSchema = z.string().trim().min(1);
 
-/**
- * Plain Git points at a repository with its full SSH or HTTP(S) remote URL. A new
- * provider type adds its own target here and needs no remote URL.
- */
+/** Git host targets store a path internally. The API exposes the resolved clone URL. */
 export const promotionConnectionTargetSchema = z
-	.object({ schemaVersion: z.literal(1), remoteUrl: remoteUrlSchema })
+	.object({
+		schemaVersion: z.literal(1),
+		remoteUrl: remoteUrlSchema,
+	})
 	.strict();
 export type PromotionConnectionTarget = z.infer<typeof promotionConnectionTargetSchema>;
+
+const promotionConnectionTargetPublicSchema = promotionConnectionTargetSchema.extend({
+	repositoryPath: z.string().optional().openapi({
+		description:
+			'The stored repository path of a GitLab target. URL-encode it before you use it as repositoryId to list branches. Requests do not accept it.',
+	}),
+});
 
 export class CreatePromotionConnectionDto extends Z.class(
 	{
@@ -126,7 +133,7 @@ export const promotionConnectionPublicSchema = z.object({
 	id: n8nIdSchema,
 	name: z.string(),
 	scope: promotionConnectionScopeSchema,
-	target: promotionConnectionTargetSchema,
+	target: promotionConnectionTargetPublicSchema,
 	provider: promotionProviderSummarySchema,
 	configs: promotionConnectionConfigsPublicSchema,
 	createdAt: z.string().datetime(),
