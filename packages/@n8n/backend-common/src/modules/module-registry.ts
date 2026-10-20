@@ -83,6 +83,9 @@ export class ModuleRegistry {
 		'workflow-reviews',
 		'inbox',
 		'instance-ai',
+		// knowledge precedes agents: a module counts as active only after its own
+		// init, and the agents module reads `isActive('knowledge')` in `settings()`.
+		'knowledge',
 		'agents',
 		'agent-evals',
 		'scim',
