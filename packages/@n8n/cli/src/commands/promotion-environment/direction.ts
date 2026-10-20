@@ -4,7 +4,7 @@ import type { PromotionDirection } from '../../client';
 
 const DIRECTIONS: readonly PromotionDirection[] = ['apply', 'promote'];
 
-/** Positional argument for the commands that address one direction of a connection. */
+/** Positional argument for the commands that address one direction. */
 export const directionArg = Args.string({
 	description: 'Direction to address',
 	options: [...DIRECTIONS],

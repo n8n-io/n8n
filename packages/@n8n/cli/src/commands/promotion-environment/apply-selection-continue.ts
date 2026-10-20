@@ -4,12 +4,12 @@ import { PromotionApplyCommand, selectionContinueCommand } from './apply-command
 import { expectedSourceFlags, toExpectedSource } from './expected-source';
 import { BaseCommand } from '../../base-command';
 
-export default class PromotionConnectionApplySelectionContinue extends PromotionApplyCommand {
+export default class PromotionEnvironmentApplySelectionContinue extends PromotionApplyCommand {
 	static override description =
-		'Continue a selection Apply that was blocked on bindings, after they are set up. Resend the same workflow ids, and pass the config ID, branch, and commit SHA that the blocked Apply reported. Exits 3 when the source changed since then and 4 when bindings are still missing or a destructive data table change is not confirmed with --confirm-destructive-changes; nothing is imported in either case.';
+		'Continue a selection Apply that was blocked on bindings, after they are set up. Resend the same workflow ids, and pass the environment ID, branch, and commit SHA that the blocked Apply reported. Exits 3 when the source changed since then and 4 when bindings are still missing or a destructive data table change is not confirmed with --confirm-destructive-changes; nothing is imported in either case.';
 
 	static override examples = [
-		'<%= config.bin %> promotion-connection apply-selection-continue proj-abc -w wf-1 --expected-config-id=cfg-1 --expected-branch=main --expected-commit-sha=<full sha>',
+		'<%= config.bin %> promotion-environment apply-selection-continue proj-abc -w wf-1 --expected-environment-id=env-1 --expected-branch=main --expected-commit-sha=<full sha>',
 	];
 
 	static override args = { projectId: Args.string({ description: 'Project ID', required: true }) };
@@ -31,7 +31,7 @@ export default class PromotionConnectionApplySelectionContinue extends Promotion
 	};
 
 	async run() {
-		const { args, flags } = await this.parse(PromotionConnectionApplySelectionContinue);
+		const { args, flags } = await this.parse(PromotionEnvironmentApplySelectionContinue);
 		const expectedSource = toExpectedSource(flags);
 		// oclif enforces the required flags, so this only narrows the type.
 		if (!expectedSource) this.error('Pass all three --expected-* flags');

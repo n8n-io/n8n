@@ -1423,8 +1423,7 @@ describe('Apply a project selection', () => {
 		await service.clone(environments.apply.id);
 		const { project, workflows } = await setupProjectWithWorkflows('Orders', ['Process order']);
 		const repository = Container.get(WorkflowRepository);
-		// The branch must carry a real (non-root) folder placement: the engine only checks for a clash
-		// when the branch workflow targets a folder, so promote the workflow from inside `branchFolder`.
+		// Promote the workflow from inside `branchFolder` so the branch carries a folder placement.
 		const branchFolder = await createFolder(project, { name: 'Branch folder' });
 		await repository.update(workflows[0].id, { parentFolder: branchFolder });
 		await service.promote(environments.promote.id, owner, {
@@ -1454,6 +1453,41 @@ describe('Apply a project selection', () => {
 						existingWorkflowId: workflows[0].id,
 						existingParentFolderId: localFolder.id,
 						targetFolderId: branchFolder.id,
+					}),
+				]),
+			},
+		});
+		expect(await snapshotApplyState()).toEqual(before);
+	});
+
+	it('rejects a selected workflow at the branch project root that is in a folder on the instance', async () => {
+		const remote = await createRemote();
+		const environments = await createInstanceEnvironments(remote.bareDir);
+		await service.clone(environments.promote.id);
+		await service.clone(environments.apply.id);
+		const { project, workflows } = await setupProjectWithWorkflows('Orders', ['Process order']);
+		await service.promote(environments.promote.id, owner, {
+			canExportVariableValues: true,
+			commitMessage: 'Export root workflow',
+		});
+		const localFolder = await createFolder(project, { name: 'Local folder' });
+		await Container.get(WorkflowRepository).update(workflows[0].id, { parentFolder: localFolder });
+		const before = await snapshotApplyState();
+
+		await expect(
+			service.applyProjectSelection(project.id, owner, {
+				workflowIds: [workflows[0].id],
+			}),
+		).rejects.toMatchObject({
+			httpStatusCode: 409,
+			meta: {
+				issues: expect.arrayContaining([
+					expect.objectContaining({
+						type: 'workflow-folder-conflict',
+						sourceWorkflowId: workflows[0].id,
+						existingWorkflowId: workflows[0].id,
+						existingParentFolderId: localFolder.id,
+						targetFolderId: null,
 					}),
 				]),
 			},

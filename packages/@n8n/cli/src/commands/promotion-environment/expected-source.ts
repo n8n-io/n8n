@@ -27,16 +27,16 @@ export function parseNonEmpty(label: string) {
  * optional as a group: pass all three or none.
  */
 export function expectedSourceFlags({ required }: { required: boolean }) {
-	const group = ['expectedConfigId', 'expectedBranch', 'expectedCommitSha'];
+	const group = ['expectedEnvironmentId', 'expectedBranch', 'expectedCommitSha'];
 	const others = (name: string) => (required ? undefined : group.filter((flag) => flag !== name));
 
 	return {
-		expectedConfigId: Flags.string({
-			description: 'Apply config ID of the reviewed source (configs.apply.id)',
-			aliases: ['expected-config-id'],
+		expectedEnvironmentId: Flags.string({
+			description: 'Apply environment ID of the reviewed source',
+			aliases: ['expected-environment-id'],
 			required,
-			dependsOn: others('expectedConfigId'),
-			parse: parseNonEmpty('config ID'),
+			dependsOn: others('expectedEnvironmentId'),
+			parse: parseNonEmpty('environment ID'),
 		}),
 		expectedBranch: Flags.string({
 			description: 'Branch name of the reviewed source',
@@ -56,17 +56,21 @@ export function expectedSourceFlags({ required }: { required: boolean }) {
 }
 
 export function toExpectedSource(flags: {
-	expectedConfigId?: string;
+	expectedEnvironmentId?: string;
 	expectedBranch?: string;
 	expectedCommitSha?: string;
 }): PromotionExpectedSource | undefined {
-	const { expectedConfigId, expectedBranch, expectedCommitSha } = flags;
+	const { expectedEnvironmentId, expectedBranch, expectedCommitSha } = flags;
 	if (
-		expectedConfigId === undefined ||
+		expectedEnvironmentId === undefined ||
 		expectedBranch === undefined ||
 		expectedCommitSha === undefined
 	) {
 		return undefined;
 	}
-	return { configId: expectedConfigId, branchName: expectedBranch, commitSha: expectedCommitSha };
+	return {
+		environmentId: expectedEnvironmentId,
+		branchName: expectedBranch,
+		commitSha: expectedCommitSha,
+	};
 }
