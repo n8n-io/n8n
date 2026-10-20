@@ -2515,7 +2515,7 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(setAssistantStatus).toHaveBeenCalledWith('C123', '1779466577.518139', '');
 		});
 
-		it('clears assistant status before responding to top-level Slack channel mentions', async () => {
+		it('clears assistant status after finishing a top-level Slack channel reply', async () => {
 			const { bot, handlers } = makeBot();
 			const setAssistantStatus = vi.fn().mockResolvedValue(undefined);
 			bot.getAdapter.mockReturnValue({ setAssistantStatus });
@@ -2559,14 +2559,14 @@ describe('AgentChatBridge — consumeStream', () => {
 				'Thinking...',
 				['Thinking...'],
 			);
-			expect(setAssistantStatus).toHaveBeenNthCalledWith(2, 'C123', '1779466577.518139', '');
-			expect(setAssistantStatus.mock.invocationCallOrder[1]).toBeLessThan(
+			expect(setAssistantStatus).toHaveBeenLastCalledWith('C123', '1779466577.518139', '');
+			expect(setAssistantStatus.mock.invocationCallOrder.at(-1)).toBeGreaterThan(
 				thread.post.mock.invocationCallOrder[0],
 			);
-			expect(thread.post).toHaveBeenCalledWith({ markdown: 'Hello' });
+			expect(await drainIterable(thread.post.mock.calls[0][0])).toBe('Hello');
 		});
 
-		it('clears assistant status before responding directly to top-level Slack DMs', async () => {
+		it('clears assistant status after finishing a top-level Slack DM reply', async () => {
 			const { bot, handlers } = makeBot();
 			const setAssistantStatus = vi.fn().mockResolvedValue(undefined);
 			bot.getAdapter.mockReturnValue({ setAssistantStatus });
@@ -2609,11 +2609,11 @@ describe('AgentChatBridge — consumeStream', () => {
 				'Thinking...',
 				['Thinking...'],
 			);
-			expect(setAssistantStatus).toHaveBeenNthCalledWith(2, 'D123', '1779466577.518139', '');
-			expect(setAssistantStatus.mock.invocationCallOrder[1]).toBeLessThan(
+			expect(setAssistantStatus).toHaveBeenLastCalledWith('D123', '1779466577.518139', '');
+			expect(setAssistantStatus.mock.invocationCallOrder.at(-1)).toBeGreaterThan(
 				thread.post.mock.invocationCallOrder[0],
 			);
-			expect(thread.post).toHaveBeenCalledWith({ markdown: 'Hello' });
+			expect(await drainIterable(thread.post.mock.calls[0][0])).toBe('Hello');
 		});
 
 		it('uses the user message as a ready thread root for Agent view DMs', async () => {
@@ -2712,7 +2712,7 @@ describe('AgentChatBridge — consumeStream', () => {
 			await run;
 		});
 
-		it('does not re-set Slack DM status with a stale retry after it has been cleared', async () => {
+		it('cancels a sleeping Slack DM status retry when the turn finishes', async () => {
 			vi.useFakeTimers();
 			const { bot, handlers } = makeBot();
 			const invalidThreadError = Object.assign(new Error('invalid_thread_ts'), {
@@ -2725,9 +2725,59 @@ describe('AgentChatBridge — consumeStream', () => {
 			bot.getAdapter.mockReturnValue({ setAssistantStatus });
 			const thread = makeThread();
 			const agentExecutor = {
-				// Respond (which clears the status) while the initial "Thinking..."
-				// set is still waiting out its retry delay, then keep the stream open
-				// past that delay so the retry would otherwise fire after the clear.
+				executeForChatPublished: vi.fn(async function* () {
+					await new Promise((resolve) => setTimeout(resolve, 100));
+					yield { type: 'finish' as const, finishReason: 'stop' as const };
+				}),
+				resumeForChat: vi.fn(() => toStream([{ type: 'finish', finishReason: 'stop' }])),
+			};
+
+			makeQueuedBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				slackIntegration,
+			);
+
+			const run = handlers.mention!(thread, {
+				text: 'hi',
+				raw: {
+					type: 'message',
+					channel: 'D123',
+					channel_type: 'im',
+					ts: '1779466577.518139',
+				},
+				author: { userId: 'u1', userName: 'user1' },
+			});
+			await vi.advanceTimersByTimeAsync(0);
+			expect(setAssistantStatus).toHaveBeenCalledTimes(1);
+
+			await vi.advanceTimersByTimeAsync(100);
+			await run;
+			expect(setAssistantStatus).toHaveBeenLastCalledWith('D123', '1779466577.518139', '');
+
+			await vi.advanceTimersByTimeAsync(1000);
+			expect(setAssistantStatus.mock.calls.map((call) => call[2])).toEqual(['Thinking...', '']);
+			expect(thread.post).not.toHaveBeenCalled();
+		});
+
+		it('keeps Slack DM status active across progress and clears it at completion', async () => {
+			vi.useFakeTimers();
+			const { bot, handlers } = makeBot();
+			const invalidThreadError = Object.assign(new Error('invalid_thread_ts'), {
+				data: { error: 'invalid_thread_ts' },
+			});
+			const setAssistantStatus = vi
+				.fn()
+				.mockRejectedValueOnce(invalidThreadError)
+				.mockResolvedValue(undefined);
+			bot.getAdapter.mockReturnValue({ setAssistantStatus });
+			const thread = makeThread();
+			const agentExecutor = {
+				// Keep working after the progress message. The status retry must remain active.
 				executeForChatPublished: vi.fn(async function* (): AsyncGenerator<StreamChunk> {
 					yield { type: 'text-delta', id: 't1', delta: 'Hello' };
 					yield { type: 'message', message: { role: 'assistant', content: [] } };
@@ -2758,15 +2808,15 @@ describe('AgentChatBridge — consumeStream', () => {
 				author: { userId: 'u1', userName: 'user1' },
 			});
 
-			// Let the response flush and clear the status, then run past the retry
-			// delay and finish the stream.
-			await vi.advanceTimersByTimeAsync(2000);
+			await vi.advanceTimersByTimeAsync(750);
+			expect(setAssistantStatus.mock.calls.filter((c) => c[2] === 'Thinking...')).toHaveLength(2);
+			expect(setAssistantStatus.mock.calls.filter((c) => c[2] === '')).toHaveLength(0);
+			await vi.advanceTimersByTimeAsync(1250);
 			await run;
 
 			const thinkingCalls = setAssistantStatus.mock.calls.filter((c) => c[2] === 'Thinking...');
 			const clearCalls = setAssistantStatus.mock.calls.filter((c) => c[2] === '');
-			// The cleared retry must not re-set "Thinking..." — only the initial set.
-			expect(thinkingCalls).toHaveLength(1);
+			expect(thinkingCalls).toHaveLength(2);
 			expect(clearCalls).toHaveLength(1);
 			// The last status written must be the clear, never a stale "Thinking...".
 			expect(setAssistantStatus.mock.calls.at(-1)?.[2]).toBe('');
@@ -2833,11 +2883,11 @@ describe('AgentChatBridge — consumeStream', () => {
 			resolveSet();
 			await run;
 
-			expect(setAssistantStatus).toHaveBeenCalledTimes(2);
+			expect(setAssistantStatus).toHaveBeenCalledTimes(3);
 			expect(setAssistantStatus).toHaveBeenLastCalledWith('D123', '1779466577.518139', '');
 		});
 
-		it('sets a thinking status and buffers the response when resuming a Slack action', async () => {
+		it('sets a thinking status and streams the response when resuming a Slack action', async () => {
 			const { bot, handlers } = makeBot();
 			const thread = makeThread();
 			const deleteMessage = vi.fn().mockResolvedValue(undefined);
@@ -2880,7 +2930,7 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(thread.startTyping.mock.invocationCallOrder[0]).toBeLessThan(
 				thread.post.mock.invocationCallOrder[0],
 			);
-			expect(thread.post).toHaveBeenCalledWith({ markdown: 'Approved response' });
+			expect(await drainIterable(thread.post.mock.calls[0][0])).toBe('Approved response');
 			expect(agentExecutor.resumeForChat).toHaveBeenCalled();
 		});
 	});

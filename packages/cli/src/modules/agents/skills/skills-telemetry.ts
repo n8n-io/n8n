@@ -6,11 +6,10 @@ import { ensureError } from '@n8n/utils/errors/ensure-error';
 
 import { Telemetry } from '@/telemetry';
 
-import type { Skill } from '../entities/skill.entity';
+import type { Skill, SkillSource } from '../entities/skill.entity';
 import { SkillRepository } from '../repositories/skill.repository';
 
-/** The surface that wrote the skill. Not `skill.source`, which has no MCP value. */
-export type SkillTelemetrySource = 'ui' | 'agent' | 'mcp' | 'assistant';
+export type SkillTelemetrySource = SkillSource;
 
 /** `manual` and `upload` come from the skill modal. `ai` is text an assistant wrote. */
 export type SkillTelemetryMethod = 'manual' | 'upload' | 'ai';

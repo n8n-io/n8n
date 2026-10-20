@@ -202,6 +202,8 @@ export class SlackIntegration extends AgentChatIntegration {
 		return createSlackAdapter({
 			botToken,
 			signingSecret,
+			// Post-and-edit delivers short updates without a native stream buffer.
+			nativeStreaming: false,
 			agentView: this.usesAgentMessagingExperience(ctx.integration),
 		});
 	}

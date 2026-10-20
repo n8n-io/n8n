@@ -108,24 +108,37 @@ export interface PlatformAgentContext {
 
 export interface BridgeStatusHandle {
 	clearBeforeResponse(): Promise<void>;
+	/** Keep the status active while the reply is streamed or edited. */
+	keepDuringResponse?: boolean;
+	/** Restore the status when tools continue after a progress message. */
+	resumeAfterResponse?(): Promise<void>;
 }
 
 /**
- * Wrap a status handle so the underlying clear runs at most once, with every
- * caller awaiting the same in-flight clear. The bridge clears both from the
- * stream consumer (right before the first response) and from its cleanup
- * path, so this wrapper keeps platform handles free of dedupe concerns.
+ * Clear each active status once. Share the pending clear with cleanup callers.
+ * A resumed status needs its own clear before the next response or cleanup.
  */
 export function onceStatusHandle(
 	handle: BridgeStatusHandle | undefined,
 ): BridgeStatusHandle | undefined {
 	if (!handle) return undefined;
 	let clearing: Promise<void> | undefined;
+	const resume = handle.resumeAfterResponse?.bind(handle);
 	return {
+		keepDuringResponse: handle.keepDuringResponse,
 		clearBeforeResponse: async () => {
 			clearing ??= handle.clearBeforeResponse();
 			await clearing;
 		},
+		...(resume
+			? {
+					resumeAfterResponse: async () => {
+						await clearing;
+						clearing = undefined;
+						await resume();
+					},
+				}
+			: {}),
 	};
 }
 
