@@ -26,11 +26,11 @@ describe.skipIf(!REDIS_HOST || !REDIS_PORT)('idle worker job claim (real Redis)'
 
 	const key = (suffix: string) => `${prefix}:${QUEUE_NAME}:${suffix}`;
 
-	const createQueue = () => {
+	const createQueue = (drainDelaySeconds = 1) => {
 		const queue = new Bull<JobData>(QUEUE_NAME, {
 			prefix,
 			redis: { host: REDIS_HOST, port: REDIS_PORT },
-			settings: { maxStalledCount: 0, drainDelay: 1 },
+			settings: { maxStalledCount: 0, drainDelay: drainDelaySeconds },
 		}) as RawQueue;
 		queues.push(queue);
 		return queue;
@@ -109,5 +109,74 @@ describe.skipIf(!REDIS_HOST || !REDIS_PORT)('idle worker job claim (real Redis)'
 		await addJob(producer);
 		await worker.getNextJob();
 		expect(blmove).toHaveBeenCalledTimes(1);
+	});
+
+	describe('idle slots of one worker', () => {
+		/** Starts idle workers and counts every claim attempt they make. */
+		const startIdleWorkers = async (workerCount: number, concurrency: number, drainDelay = 1) => {
+			const workers = Array.from({ length: workerCount }, () => createQueue(drainDelay));
+			let claims = 0;
+			let started = 0;
+			for (const worker of workers) {
+				const claim = worker.moveToActive.bind(worker);
+				worker.moveToActive = async (jobId?: string) => {
+					claims++;
+					return await claim(jobId);
+				};
+				void worker.process(JOB_TYPE_NAME, concurrency, async () => {
+					started++;
+					await new Promise((resolve) => setTimeout(resolve, 200));
+				});
+			}
+			await Promise.all(queues.map(async (queue) => await queue.isReady()));
+			// Let every idle slot reach its wait
+			await new Promise((resolve) => setTimeout(resolve, 300));
+			return {
+				workers,
+				claims: () => claims,
+				started: () => started,
+				reset: () => {
+					claims = 0;
+					started = 0;
+				},
+			};
+		};
+
+		it('should make one claim in each idle worker for a new job', async () => {
+			const idle = await startIdleWorkers(3, 5);
+			const producer = createQueue();
+			idle.reset();
+
+			await addJob(producer);
+			await vi.waitFor(() => expect(idle.started()).toBe(1));
+			await new Promise((resolve) => setTimeout(resolve, 100));
+
+			expect(idle.claims()).toBe(3);
+		});
+
+		it('should start a burst of jobs on all idle slots', async () => {
+			const idle = await startIdleWorkers(2, 5);
+			const producer = createQueue();
+			idle.reset();
+
+			await Promise.all(Array.from({ length: 10 }, async () => await addJob(producer)));
+
+			await vi.waitFor(() => expect(idle.started()).toBe(10), { timeout: 2_000 });
+		});
+
+		it('should stop waiting at once when the worker pauses', async () => {
+			const {
+				workers: [worker],
+			} = await startIdleWorkers(1, 10, 5);
+			const startedAt = Date.now();
+
+			// Worker shutdown pauses the queue, then waits for every slot
+			await worker.pause(true, true);
+			await worker.whenCurrentJobsFinished();
+
+			// Bull's disconnects take up to 0.5 s each. A slot that waits again after the
+			// pause would hold the shutdown for the 5 s drain delay.
+			expect(Date.now() - startedAt).toBeLessThan(2_000);
+		});
 	});
 });
