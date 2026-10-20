@@ -332,7 +332,7 @@ describe('AgentRepository', () => {
 
 		it('replaces the complete draft and preserves existing task creation times', async () => {
 			setSkillsHubFlag(true);
-			const agent = await createAgent({ sourceAgentId: 'source-agent', availableInMCP: true });
+			const agent = await createAgent({ availableInMCP: true });
 			await Container.get(SkillRepository).createSkill(
 				{
 					id: 'writing',
@@ -350,7 +350,7 @@ describe('AgentRepository', () => {
 			);
 			const createdAt = new Date('2025-01-01T00:00:00.000Z');
 			await taskRepo.insert([
-				{ id: 'task-keep', sourceTaskId: 'source-task', agentId: agent.id, ...taskBody, createdAt },
+				{ id: 'task-keep', agentId: agent.id, ...taskBody, createdAt },
 				{ id: 'task-remove', agentId: agent.id, ...taskBody },
 			]);
 			const definitions = new Map([
@@ -402,7 +402,6 @@ describe('AgentRepository', () => {
 				tools: definition.tools,
 				revision: 1,
 				updatedAt: agent.updatedAt,
-				sourceAgentId: 'source-agent',
 				availableInMCP: true,
 			});
 			expect(stored?.schema).not.toHaveProperty('skills');
@@ -415,7 +414,6 @@ describe('AgentRepository', () => {
 				expect.arrayContaining([
 					expect.objectContaining({
 						id: 'task-keep',
-						sourceTaskId: 'source-task',
 						objective: 'Restored objective',
 						createdAt,
 					}),

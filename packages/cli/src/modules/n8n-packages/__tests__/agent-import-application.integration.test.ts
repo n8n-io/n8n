@@ -260,7 +260,7 @@ it('applies selected Agents with complete bodies, cycles, workflow bindings and 
 		.spyOn(completion, 'configurationSaved')
 		.mockImplementation(async (event, ...args) => {
 			expect(await agents.findById(event.agent.id)).toMatchObject({
-				sourceAgentId: event.agent.sourceAgentId,
+				id: event.agent.id,
 				schema: event.agent.schema,
 			});
 			expect(await tasks.findByAgentId(event.agent.id)).toHaveLength(1);
@@ -279,7 +279,7 @@ it('applies selected Agents with complete bodies, cycles, workflow bindings and 
 	const workflow = imported.scopes[0].imported.workflowOutcomes[0].workflow;
 	expect(saved.id).not.toBe(workflow.id);
 	expect(saved).toMatchObject({
-		sourceAgentId: first.id,
+		id: first.id,
 		skills: first.skills,
 		tools: first.tools,
 		availableInMCP: true,
@@ -297,7 +297,7 @@ it('applies selected Agents with complete bodies, cycles, workflow bindings and 
 	});
 	const [savedTask] = await tasks.findByAgentId(saved.id);
 	expect(savedTask).toMatchObject({
-		sourceTaskId: `${first.id}_task`,
+		id: `${first.id}_task`,
 		...first.tasks[`${first.id}_task`],
 	});
 	expect(saved.schema!.tasks![0].id).toBe(savedTask.id);
@@ -370,7 +370,7 @@ it('reuses destination IDs, replaces removed content, skips writes and preserves
 	expect(updated.agent.versionId).not.toBe(initial.versionId);
 	expect(updated.agent.schema).not.toHaveProperty('mcpServers');
 	expect(await tasks.findByAgentId(initial.id)).toMatchObject([
-		{ id: task.id, sourceTaskId: `${first.id}_task`, objective: 'Updated objective' },
+		{ id: task.id, objective: 'Updated objective' },
 	]);
 	expect(await tasks.count()).toBe(1);
 	expect(await history.count()).toBe(1);
@@ -449,11 +449,7 @@ it.each(['create', 'update'] as const)(
 	async (action) => {
 		const input = fixture();
 		const options = { workflowIdPolicy: 'source' } as const;
-		if (action === 'update') {
-			await importSelected(input, options);
-			await agents.update('research_source', { sourceAgentId: null });
-			await tasks.update({ agentId: 'research_source' }, { sourceTaskId: null });
-		}
+		if (action === 'update') await importSelected(input, options);
 		const first = source(input);
 		const second = source(input, 1);
 		first.config!.instructions = 'Keep this earlier save.';

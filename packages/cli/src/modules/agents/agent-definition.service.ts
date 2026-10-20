@@ -86,12 +86,7 @@ export class AgentDefinitionService {
 			} else {
 				await this.agentSkillRefs.replaceDraftRefs(agent, skillRefs, txCtx);
 			}
-			return await this.taskRepository.replaceForAgent(
-				agent.id,
-				definition.tasks,
-				txCtx,
-				metadata?.sourceTaskIds,
-			);
+			return await this.taskRepository.replaceForAgent(agent.id, definition.tasks, txCtx);
 		});
 	}
 }
