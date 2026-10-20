@@ -114,6 +114,8 @@ export class ErrorReporter {
 
 	private beforeSendFilter?: (event: ErrorEvent, hint: EventHint) => boolean;
 
+	private sentryActive = false;
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly tracing: Tracing,
@@ -198,6 +200,7 @@ export class ErrorReporter {
 					this.logger.warn(RELEASE_EXPIRATION_WARNING);
 					// eslint-disable-next-line @typescript-eslint/unbound-method
 					this.report = this.defaultReport;
+					this.sentryActive = false;
 				} else {
 					this.expirationTimer = setTimeout(checkForExpiration, ONE_DAY_IN_MS);
 				}
@@ -340,7 +343,12 @@ export class ErrorReporter {
 			}
 			captureException(error, options);
 		};
+		this.sentryActive = true;
 		this.beforeSendFilter = beforeSendFilter;
+	}
+
+	isSentryActive() {
+		return this.sentryActive;
 	}
 
 	async beforeSend(event: ErrorEvent, hint: EventHint) {

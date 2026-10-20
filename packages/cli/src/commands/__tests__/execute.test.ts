@@ -211,10 +211,10 @@ test('should exit with a crash when expression engine init fails', async () => {
 				nativeEvaluation: 'off',
 				nativeEvaluationVerifySample: 0.01,
 			},
-			sentry: { backendDsn: 'https://dsn' },
 			generic: { gracefulShutdownTimeout: 30 },
 		}),
 	);
+	errorReporter.isSentryActive.mockReturnValue(true);
 
 	class ExpressionCommand extends BaseCommand {
 		override needsExpressionEngine = true;
@@ -268,13 +268,13 @@ test('should exit with a crash when expression engine init fails', async () => {
 });
 
 test.each([
-	{ nativeEvaluation: 'verify', engine: 'vm', backendDsn: '', warns: true },
-	{ nativeEvaluation: 'verify', engine: 'vm', backendDsn: 'https://dsn', warns: false },
-	{ nativeEvaluation: 'verify', engine: 'legacy', backendDsn: '', warns: false },
-	{ nativeEvaluation: 'on', engine: 'vm', backendDsn: '', warns: false },
+	{ nativeEvaluation: 'verify', engine: 'vm', sentryActive: false, warns: true },
+	{ nativeEvaluation: 'verify', engine: 'vm', sentryActive: true, warns: false },
+	{ nativeEvaluation: 'verify', engine: 'legacy', sentryActive: false, warns: false },
+	{ nativeEvaluation: 'on', engine: 'vm', sentryActive: false, warns: false },
 ] as const)(
-	'warns at startup when verify mode has no Sentry: $nativeEvaluation on $engine, dsn "$backendDsn"',
-	async ({ nativeEvaluation, engine, backendDsn, warns }) => {
+	'warns at startup when verify mode has no Sentry: $nativeEvaluation on $engine, Sentry active $sentryActive',
+	async ({ nativeEvaluation, engine, sentryActive, warns }) => {
 		// arrange
 
 		vi.spyOn(Expression, 'initExpressionEngine').mockResolvedValue();
@@ -284,10 +284,10 @@ test.each([
 				taskRunners: {},
 				nodes: {},
 				expressionEngine: { engine, nativeEvaluation },
-				sentry: { backendDsn },
 				generic: { gracefulShutdownTimeout: 30 },
 			}),
 		);
+		errorReporter.isSentryActive.mockReturnValue(sentryActive);
 
 		class ExpressionCommand extends BaseCommand {
 			override needsExpressionEngine = true;
@@ -299,7 +299,7 @@ test.each([
 
 		// assert
 
-		const warning = 'Native evaluation verify mode does nothing because Sentry is not configured';
+		const warning = 'Native evaluation verify mode does nothing because Sentry is not active';
 		if (warns) {
 			expect(logger.warn).toHaveBeenCalledWith(warning);
 		} else {
@@ -308,7 +308,7 @@ test.each([
 	},
 );
 
-test('passes no verify reporter when Sentry is not configured', async () => {
+test('passes no verify reporter when Sentry is not active', async () => {
 	// arrange
 
 	const initSpy = vi.spyOn(Expression, 'initExpressionEngine').mockResolvedValue();
@@ -318,10 +318,10 @@ test('passes no verify reporter when Sentry is not configured', async () => {
 			taskRunners: {},
 			nodes: {},
 			expressionEngine: { engine: 'vm', nativeEvaluation: 'verify' },
-			sentry: { backendDsn: '' },
 			generic: { gracefulShutdownTimeout: 30 },
 		}),
 	);
+	errorReporter.isSentryActive.mockReturnValue(false);
 
 	class ExpressionCommand extends BaseCommand {
 		override needsExpressionEngine = true;

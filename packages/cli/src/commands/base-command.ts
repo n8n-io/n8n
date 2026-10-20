@@ -286,7 +286,7 @@ export abstract class BaseCommand<F = never> {
 					compileCache,
 					nativeEvaluation,
 					nativeEvaluationVerifySample,
-					reportNativeVerifyMismatch: this.globalConfig.sentry.backendDsn
+					reportNativeVerifyMismatch: this.errorReporter.isSentryActive()
 						? (mismatch) => this.reportNativeVerifyMismatch(mismatch)
 						: undefined,
 					observability,
@@ -309,11 +309,9 @@ export abstract class BaseCommand<F = never> {
 		if (
 			nativeEvaluation === 'verify' &&
 			engine !== 'legacy' &&
-			!this.globalConfig.sentry.backendDsn
+			!this.errorReporter.isSentryActive()
 		) {
-			this.logger.warn(
-				'Native evaluation verify mode does nothing because Sentry is not configured',
-			);
+			this.logger.warn('Native evaluation verify mode does nothing because Sentry is not active');
 		}
 	}
 
