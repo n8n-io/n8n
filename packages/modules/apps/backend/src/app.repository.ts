@@ -12,7 +12,7 @@ import {
 import { Service } from '@n8n/di';
 import { ConflictError } from '@n8n/errors';
 import { DataSource, In, Raw, type FindOptionsWhere } from '@n8n/typeorm';
-import { randomUUID } from 'node:crypto';
+import { v7 as uuidv7 } from 'uuid';
 
 import { App } from './app.entity';
 
@@ -30,7 +30,7 @@ export class AppRepository extends BaseRepository<App> {
 		try {
 			return await this.save({
 				...dto,
-				id: randomUUID(),
+				id: uuidv7(),
 				projectId,
 				draftVersionId: null,
 				publishedVersionId: null,

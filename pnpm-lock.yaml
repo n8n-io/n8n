@@ -7068,6 +7068,9 @@ importers:
       '@n8n/typeorm':
         specifier: workspace:*
         version: link:../../../@n8n/typeorm
+      uuid:
+        specifier: 'catalog:'
+        version: 11.1.1
     devDependencies:
       '@n8n/oxlint-config':
         specifier: workspace:*

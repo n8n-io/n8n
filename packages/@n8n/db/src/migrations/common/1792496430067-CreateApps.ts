@@ -1,5 +1,3 @@
-import { UserError } from 'n8n-workflow';
-
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
 const sourceTypesBefore = [
@@ -108,12 +106,9 @@ export class CreateApps1792496430067 implements ReversibleMigration {
 
 	async down(ctx: MigrationContext) {
 		const { dropForeignKey, dropTable } = ctx.schemaBuilder;
-		const [row] = await ctx.runQuery<Array<{ count: number | string }>>(
-			`SELECT COUNT(*) AS count FROM ${ctx.escape.tableName('binary_data')} WHERE ${ctx.escape.columnName('sourceType')} = 'app_artifact'`,
+		await ctx.runQuery(
+			`DELETE FROM ${ctx.escape.tableName('binary_data')} WHERE ${ctx.escape.columnName('sourceType')} = 'app_artifact'`,
 		);
-		if (Number(row.count) > 0) {
-			throw new UserError('Remove database-backed app artifacts before reverting this migration.');
-		}
 		await this.replaceSourceTypeCheck(ctx, sourceTypesBefore);
 
 		await dropForeignKey(
@@ -134,10 +129,24 @@ export class CreateApps1792496430067 implements ReversibleMigration {
 	}
 
 	private async replaceSourceTypeCheck(
-		{ schemaBuilder: { dropEnumCheck, addEnumCheck } }: MigrationContext,
+		{
+			schemaBuilder: { dropEnumCheck, addEnumCheck },
+			isPostgres,
+			runQuery,
+			escape,
+			tablePrefix,
+		}: MigrationContext,
 		values: string[],
 	) {
 		await dropEnumCheck('binary_data', 'sourceType', { recreatesOnSqlite: true });
+		if (isPostgres) {
+			const constraintName = escape.columnName(`CHK_${tablePrefix}binary_data_sourceType`);
+			const allowedValues = values.map((value) => `'${value}'`).join(', ');
+			await runQuery(
+				`ALTER TABLE ${escape.tableName('binary_data')} ADD CONSTRAINT ${constraintName} CHECK (${escape.columnName('sourceType')} IN (${allowedValues})) NOT VALID`,
+			);
+			return;
+		}
 		await addEnumCheck('binary_data', 'sourceType', values, { recreatesOnSqlite: true });
 	}
 }

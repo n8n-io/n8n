@@ -42,7 +42,8 @@
     "@n8n/decorators": "workspace:*",
     "@n8n/di": "workspace:*",
     "@n8n/errors": "workspace:*",
-    "@n8n/typeorm": "workspace:*"
+    "@n8n/typeorm": "workspace:*",
+    "uuid": "catalog:"
   },
   "devDependencies": {
     "@n8n/oxlint-config": "workspace:*",
