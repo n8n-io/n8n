@@ -1,5 +1,4 @@
 import { Service } from '@n8n/di';
-import type { IHttpRequestMethods } from 'n8n-workflow';
 import { OperationalError, UserError } from 'n8n-workflow';
 import { z } from 'zod';
 import {
@@ -8,7 +7,7 @@ import {
 	type AiGatewayRequestAttribution,
 } from './ai-gateway.service';
 
-const BROWSERBASE_BROWSER_USE_GATEWAY_PATH = '/v1/gateway/browserbaseBrowserUse';
+const BROWSERBASE_BROWSER_USE_PROVIDER = 'browserbaseBrowserUse';
 
 const BROWSERBASE_API_KEY_HEADER = 'X-BB-API-Key';
 
@@ -49,8 +48,15 @@ export class AiGatewayBrowserUseService {
 	}): Promise<AiGatewayBrowserSession> {
 		// Without keepAlive, Browserbase ends the session when the CDP connection
 		// drops, so a crashed or restarted instance cannot leave one running.
-		const body = await this.request(userId, attribution, 'POST', '/v1/sessions', {
-			keepAlive: false,
+		const body = await this.aiGatewayService.sendProviderRequest<unknown>({
+			provider: BROWSERBASE_BROWSER_USE_PROVIDER,
+			authHeaderKey: BROWSERBASE_API_KEY_HEADER,
+			method: 'POST',
+			path: '/v1/sessions',
+			body: { keepAlive: false },
+			userId,
+			attribution,
+			mapErrorResponse: toGatewayError,
 		});
 		const parsed = createdSessionSchema.safeParse(body);
 		if (!parsed.success) {
@@ -68,33 +74,14 @@ export class AiGatewayBrowserUseService {
 		attribution: AiGatewayRequestAttribution;
 		sessionId: string;
 	}): Promise<void> {
-		await this.request(
+		await this.aiGatewayService.sendProviderRequest({
+			provider: BROWSERBASE_BROWSER_USE_PROVIDER,
+			authHeaderKey: BROWSERBASE_API_KEY_HEADER,
+			method: 'POST',
+			path: `/v1/sessions/${encodeURIComponent(sessionId)}`,
+			body: { status: 'REQUEST_RELEASE' },
 			userId,
 			attribution,
-			'POST',
-			`/v1/sessions/${encodeURIComponent(sessionId)}`,
-			{ status: 'REQUEST_RELEASE' },
-		);
-	}
-
-	private async request(
-		userId: string,
-		attribution: AiGatewayRequestAttribution,
-		method: IHttpRequestMethods,
-		path: string,
-		body: Record<string, unknown>,
-	): Promise<unknown> {
-		const { url, token } = await this.aiGatewayService.getRequestTarget({
-			userId,
-			gatewayPath: BROWSERBASE_BROWSER_USE_GATEWAY_PATH,
-			attribution,
-		});
-		return await this.aiGatewayService.gatewayRequest<unknown>({
-			method,
-			url: `${url}${path}`,
-			headers: { [BROWSERBASE_API_KEY_HEADER]: token },
-			body,
-			disableFollowRedirect: true, // the session routes never redirect
 			mapErrorResponse: toGatewayError,
 		});
 	}

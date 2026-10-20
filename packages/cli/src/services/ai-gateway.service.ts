@@ -12,7 +12,7 @@ import { UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import type { ICredentialDataDecryptedObject, IHttpRequestMethods, INode } from 'n8n-workflow';
-import { OperationalError, UserError } from 'n8n-workflow';
+import { OperationalError, UnexpectedError, UserError } from 'n8n-workflow';
 
 import { N8N_VERSION, AI_ASSISTANT_SDK_VERSION } from '@/constants';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
@@ -77,6 +77,9 @@ export class AiGatewayService {
 
 	private static readonly GATEWAY_PATH_PREFIX = '/v1/gateway';
 
+	/** A provider name is one URL segment, so it cannot change the structure of the URL. */
+	private static readonly PROVIDER_NAME_PATTERN = /^[A-Za-z0-9_-]+$/;
+
 	constructor(
 		private readonly globalConfig: GlobalConfig,
 		private readonly license: License,
@@ -111,7 +114,7 @@ export class AiGatewayService {
 	 * For a status that is not 2xx, it throws the error from `options.mapErrorResponse` if it is
 	 * given. Otherwise it throws a `UserError` with `errorMessage` and the status code.
 	 */
-	async gatewayRequest<T>(
+	private async gatewayRequest<T>(
 		options: {
 			method: IHttpRequestMethods;
 			url: string;
@@ -274,22 +277,48 @@ export class AiGatewayService {
 	}
 
 	/**
-	 * Returns the URL and token for a request to a gateway provider on behalf of a
-	 * signed-in user. The URL carries the attribution as an exec context.
+	 * Sends a request to a gateway provider on behalf of a signed-in user, with the user's
+	 * gateway token in the `authHeaderKey` header. The URL is built here from `provider`
+	 * and `path`, and redirects are not followed, so the token cannot reach another host.
+	 * The URL carries the attribution as an exec context.
 	 */
-	async getRequestTarget({
+	async sendProviderRequest<T>({
+		provider,
+		authHeaderKey,
+		method,
+		path,
+		body,
 		userId,
-		gatewayPath,
 		attribution,
+		mapErrorResponse,
 	}: {
+		/** The gateway provider name, for example `browserbaseBrowserUse`. */
+		provider: string;
+		authHeaderKey: string;
+		method: IHttpRequestMethods;
+		/** The provider's own route, added after the provider's gateway URL, for example `/v1/sessions`. */
+		path: string;
+		body?: unknown;
 		userId: string;
-		gatewayPath: string;
 		attribution: AiGatewayRequestAttribution;
-	}): Promise<{ url: string; token: string }> {
+		mapErrorResponse?: (response: AiGatewayErrorResponse) => Error;
+	}): Promise<T> {
+		if (!AiGatewayService.PROVIDER_NAME_PATTERN.test(provider)) {
+			throw new UnexpectedError('Invalid gateway provider name', { extra: { provider } });
+		}
 		this.assertEnabled();
 		const baseUrl = this.requireBaseUrl();
 		const token = await this.getOrFetchToken(userId);
-		return { url: this.buildGatewayUrl(baseUrl, gatewayPath, attribution), token };
+		const gatewayPath = `${AiGatewayService.GATEWAY_PATH_PREFIX}/${provider}`;
+		const url = this.buildGatewayUrl(baseUrl, gatewayPath, attribution);
+		return await this.gatewayRequest<T>({
+			method,
+			url: `${url}${path}`,
+			headers: { [authHeaderKey]: token },
+			body,
+			disableFollowRedirect: true,
+			mapErrorResponse,
+		});
 	}
 
 	/**

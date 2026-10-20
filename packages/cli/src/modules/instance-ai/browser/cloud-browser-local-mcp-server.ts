@@ -70,6 +70,9 @@ type SessionUnavailableReason = 'notStarted' | 'connectionLost' | 'idleTimeout';
 
 const RELEASED_MESSAGE = 'The browser job has ended. No browser tools can run.';
 
+const NO_HOST_MESSAGE =
+	'This browser action needs a page with a web address. Use browser_navigate to open a site first.';
+
 const START_SESSION_HINT = 'Call browser_start_session with a URL to open a session.';
 
 const SESSION_UNAVAILABLE_MESSAGES: Record<SessionUnavailableReason, string> = {
@@ -85,7 +88,10 @@ export interface CloudBrowserLocalMcpServerOptions {
 	sessionProvider: CloudBrowserSessionProvider;
 	createToolkit: (connectUrl?: string) => BrowserToolkit;
 	toolContext: ToolContext;
-	/** The sites the user approved and the admin's permissions. Required, so no call skips the check. */
+	/**
+	 * The sites the user approved and the admin's permissions. Required, so no call skips the
+	 * check. `setDomainGate()` replaces it.
+	 */
 	domainGate: BrowserDomainGate;
 	logger: Logger;
 }
@@ -122,12 +128,22 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer {
 	 */
 	private sessionLock: Promise<unknown> = Promise.resolve();
 
+	/** Read on every call, so a replaced gate applies from the next call on. */
+	private domainGate: BrowserDomainGate;
+
 	constructor(private readonly options: CloudBrowserLocalMcpServerOptions) {
+		this.domainGate = options.domainGate;
+
 		const toolkit = options.createToolkit();
 		for (const tool of this.getAvailableToolsFromToolkit(toolkit)) {
 			const mcpTool = toBrowserMcpTool(tool);
 			if (mcpTool) this.toolList.push(mcpTool);
 		}
+	}
+
+	/** Replaces the gate, for example when a new run of the job brings new permissions. */
+	setDomainGate(domainGate: BrowserDomainGate): void {
+		this.domainGate = domainGate;
 	}
 
 	getAvailableTools(): McpTool[] {
@@ -161,10 +177,8 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer {
 		}
 	}
 
-	/** A new session only loads its URL, so it touches the URL's host. A URL with no host touches none. */
-	private getAffectedResourcesForStartSessionTool(url: string): AffectedResource[] {
-		const host = new URL(url).hostname;
-		if (!host) return [];
+	/** A new session only loads its URL, so it touches the URL's host. */
+	private getAffectedResourcesForStartSessionTool(host: string): AffectedResource[] {
 		return [
 			{
 				toolGroup: 'browser',
@@ -195,6 +209,10 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer {
 			return browserErrorResult('browser_start_session needs a URL.');
 		}
 
+		// Like the other tools, a session only opens pages with a web address.
+		const host = new URL(args.data.url).hostname;
+		if (!host) return browserErrorResult(NO_HOST_MESSAGE);
+
 		return await this.withSessionLock(async () => {
 			// A start queued behind release() must not open a session.
 			if (this.isReleased) return browserErrorResult(RELEASED_MESSAGE);
@@ -202,7 +220,7 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer {
 			// Check before a session opens, so a denied site costs no browser. The check never
 			// waits for the user: it returns a request, and the agent pauses outside this call.
 			const accessResult = await this.gateAccess(
-				this.getAffectedResourcesForStartSessionTool(args.data.url),
+				this.getAffectedResourcesForStartSessionTool(host),
 				confirmation,
 			);
 			if (accessResult) return accessResult;
@@ -265,19 +283,19 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer {
 
 	/**
 	 * Checks each site and credential write that a call touches, with the same gate as the
-	 * extension browser. Returns a result that stops the call, or `undefined` when the call
-	 * can run. When the call runs again after a request, the user's answer applies to the
-	 * first resource that still needs one.
+	 * extension browser. A call on a page with no host is refused. Returns a result that stops
+	 * the call, or `undefined` when the call can run. When the call runs again after a request,
+	 * the user's answer applies to the first resource that still needs one.
 	 */
 	private async gateAccess(
 		resources: AffectedResource[],
 		confirmation: unknown,
 	): Promise<McpToolCallResult | undefined> {
-		const { domainGate } = this.options;
+		const { domainGate } = this;
 		let answer = confirmation;
 		for (const resource of resources) {
-			if (isEmptyBrowserResource(resource) || isBrowserAccessAllowed(domainGate, resource))
-				continue;
+			if (isNoHostResource(resource)) return browserErrorResult(NO_HOST_MESSAGE);
+			if (isBrowserAccessAllowed(domainGate, resource)) continue;
 
 			const result = await gateBrowserAccess(domainGate, resource, answer);
 			answer = undefined;
@@ -394,9 +412,11 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer {
 }
 
 /**
- * The toolkit reports a page with no host, such as `about:blank`, as the host 'browser'.
- * That is not a real site, so the caller must not ask the user to approve it.
+ * The toolkit reports a page with no host as the host 'browser'. That covers `about:blank`,
+ * but also `data:`, `javascript:` and `file:` URLs, whose pages can reach any site, so the
+ * cloud browser refuses these calls. A real host called `browser` is refused too. That is
+ * harmless: a bare `browser` has no public DNS name, so it cannot load in the cloud browser.
  */
-function isEmptyBrowserResource(resource: AffectedResource): boolean {
+function isNoHostResource(resource: AffectedResource): boolean {
 	return resource.kind === 'host' && resource.resource === 'browser';
 }

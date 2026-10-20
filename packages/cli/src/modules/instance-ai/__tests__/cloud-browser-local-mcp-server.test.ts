@@ -193,6 +193,15 @@ describe('CloudBrowserLocalMcpServer', () => {
 			if (!result.isError || !text.startsWith(GATEWAY_CONFIRMATION_REQUIRED_PREFIX)) return;
 			return JSON.parse(text.slice(GATEWAY_CONFIRMATION_REQUIRED_PREFIX.length));
 		};
+		const noHostResult = {
+			content: [
+				{
+					type: 'text',
+					text: 'This browser action needs a page with a web address. Use browser_navigate to open a site first.',
+				},
+			],
+			isError: true,
+		};
 		const domainRequest = (host: string) => ({
 			toolGroup: 'browser',
 			resource: host,
@@ -254,6 +263,19 @@ describe('CloudBrowserLocalMcpServer', () => {
 				expect(sessionProvider.createSession).not.toHaveBeenCalled();
 			});
 
+			it('uses a replaced gate from the next call on', async () => {
+				const { server, sessionProvider, tracker, start } = setup();
+				server.setDomainGate({ tracker, runId: 'run-2', permissionMode: 'blocked' });
+
+				const result = await start({ url: 'https://example.com' });
+
+				expect(result).toEqual({
+					content: [{ type: 'text', text: 'Browser access blocked by admin' }],
+					isError: true,
+				});
+				expect(sessionProvider.createSession).not.toHaveBeenCalled();
+			});
+
 			it('opens the session without asking when the admin allows every site', async () => {
 				const { sessionProvider, tracker, domainGate, start } = setup();
 				domainGate.permissionMode = 'always_allow';
@@ -264,13 +286,25 @@ describe('CloudBrowserLocalMcpServer', () => {
 				expect(sessionProvider.createSession).toHaveBeenCalledTimes(1);
 			});
 
-			it('does not ask about a URL with no host', async () => {
-				const { sessionProvider, tracker, start } = setup();
-				tracker.isHostAllowed.mockReturnValue(false);
+			it.each(['about:blank', 'data:text/html,<p>hi</p>', 'file:///etc/passwd'])(
+				'refuses %s, which has no host, and opens no session',
+				async (url) => {
+					const { sessionProvider, start } = setup();
 
-				await start({ url: 'about:blank' });
+					const result = await start({ url });
 
-				expect(sessionProvider.createSession).toHaveBeenCalledTimes(1);
+					expect(result).toEqual(noHostResult);
+					expect(sessionProvider.createSession).not.toHaveBeenCalled();
+				},
+			);
+
+			it('refuses a host called "browser", which cannot load in the cloud browser', async () => {
+				const { sessionProvider, start } = setup();
+
+				const result = await start({ url: 'http://browser:8080' });
+
+				expect(result).toEqual(noHostResult);
+				expect(sessionProvider.createSession).not.toHaveBeenCalled();
 			});
 		});
 
@@ -339,7 +373,6 @@ describe('CloudBrowserLocalMcpServer', () => {
 				await start({ url: 'https://example.com' });
 				const click = toolOn(toolkits[0], 'browser_click');
 				click.getAffectedResources = () => [
-					hostResource('browser'),
 					hostResource('one.example.com'),
 					hostResource('two.example.com'),
 					hostResource('three.example.com'),
@@ -354,6 +387,32 @@ describe('CloudBrowserLocalMcpServer', () => {
 				expect(tracker.approveOnce).toHaveBeenCalledTimes(1);
 				expect(tracker.approveOnce).toHaveBeenCalledWith('run-1', 'two.example.com');
 				expect(confirmationRequest(result)).toEqual(domainRequest('three.example.com'));
+				expect(click.execute).not.toHaveBeenCalled();
+			});
+
+			it('refuses a navigation to a URL with no host', async () => {
+				const { server, toolkits, start } = setup();
+				await start({ url: 'https://example.com' });
+
+				const result = await server.callTool({
+					name: 'browser_navigate',
+					arguments: { url: 'about:blank' },
+				});
+
+				expect(result).toEqual(noHostResult);
+				expect(toolOn(toolkits[0], 'browser_navigate').execute).toHaveBeenCalledTimes(1);
+			});
+
+			it('refuses a page action on a page with no host, even when every site is allowed', async () => {
+				const { server, toolkits, domainGate, start } = setup();
+				await start({ url: 'https://example.com' });
+				domainGate.permissionMode = 'always_allow';
+				const click = toolOn(toolkits[0], 'browser_click');
+				click.getAffectedResources = () => [hostResource('browser')];
+
+				const result = await server.callTool({ name: 'browser_click', arguments: { ref: 'e1' } });
+
+				expect(result).toEqual(noHostResult);
 				expect(click.execute).not.toHaveBeenCalled();
 			});
 

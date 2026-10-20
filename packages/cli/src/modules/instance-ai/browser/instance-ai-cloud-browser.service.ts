@@ -45,7 +45,8 @@ export class InstanceAiCloudBrowserService {
 
 	/**
 	 * Returns the job's server, and creates it on first use. `domainGate` holds the sites the user
-	 * approved and the admin's permissions. Only the first call for a job sets it.
+	 * approved and the admin's permissions. Each call replaces the gate of the job's server, so
+	 * the newest permissions apply.
 	 */
 	async createServer(
 		userId: string,
@@ -62,6 +63,7 @@ export class InstanceAiCloudBrowserService {
 					extra: { jobId },
 				});
 			}
+			existing.server.setDomainGate(domainGate);
 			return existing.server;
 		}
 

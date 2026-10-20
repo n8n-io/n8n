@@ -115,7 +115,19 @@ describe('InstanceAiCloudBrowserService', () => {
 	it('gives the server the domain gate', async () => {
 		const server = await service.createServer('user-1', 'thread-1', 'job-1', domainGate);
 
-		expect(server['options'].domainGate).toBe(domainGate);
+		expect(server['domainGate']).toBe(domainGate);
+	});
+
+	it('gives the server the newest domain gate when a job asks for it again', async () => {
+		const server = await service.createServer('user-1', 'thread-1', 'job-1', domainGate);
+		const newGate: BrowserDomainGate = {
+			tracker: mock<DomainAccessTracker>(),
+			runId: 'run-2',
+			permissionMode: 'blocked',
+		};
+
+		expect(await service.createServer('user-1', 'thread-1', 'job-1', newGate)).toBe(server);
+		expect(server['domainGate']).toBe(newGate);
 	});
 
 	it('creates credentials as the job user', async () => {

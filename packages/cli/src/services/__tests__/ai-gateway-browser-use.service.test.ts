@@ -7,8 +7,6 @@ import {
 } from '@/services/ai-gateway-browser-use.service';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 
-const TARGET_URL =
-	'http://gateway.test/v1/gateway/exec/instance-ai/thread-1%7Cjob-1/browserbaseBrowserUse';
 const attribution = { instanceAiThreadId: 'thread-1', instanceAiJobId: 'job-1' };
 
 describe('AiGatewayBrowserUseService', () => {
@@ -17,7 +15,6 @@ describe('AiGatewayBrowserUseService', () => {
 
 	beforeEach(() => {
 		aiGatewayService = mock<AiGatewayService>();
-		aiGatewayService.getRequestTarget.mockResolvedValue({ url: TARGET_URL, token: 'user-jwt' });
 		service = new AiGatewayBrowserUseService(aiGatewayService);
 	});
 
@@ -27,9 +24,18 @@ describe('AiGatewayBrowserUseService', () => {
 		expect(service.isGatewayBrowserUseEnabled()).toBe(enabled);
 	});
 
+	const sessionRequest = {
+		provider: 'browserbaseBrowserUse',
+		authHeaderKey: 'X-BB-API-Key',
+		method: 'POST',
+		userId: 'user-1',
+		attribution,
+		mapErrorResponse: toGatewayError,
+	};
+
 	describe('createSession()', () => {
-		it('creates a session without keepAlive through the attributed gateway URL', async () => {
-			aiGatewayService.gatewayRequest.mockResolvedValue({
+		it('creates a session without keepAlive through the gateway', async () => {
+			aiGatewayService.sendProviderRequest.mockResolvedValue({
 				id: 'sess-1',
 				connectUrl: 'wss://connect.example.com',
 				status: 'RUNNING',
@@ -38,23 +44,15 @@ describe('AiGatewayBrowserUseService', () => {
 			const session = await service.createSession({ userId: 'user-1', attribution });
 
 			expect(session).toEqual({ id: 'sess-1', connectUrl: 'wss://connect.example.com' });
-			expect(aiGatewayService.getRequestTarget).toHaveBeenCalledWith({
-				userId: 'user-1',
-				gatewayPath: '/v1/gateway/browserbaseBrowserUse',
-				attribution,
-			});
-			expect(aiGatewayService.gatewayRequest).toHaveBeenCalledWith({
-				method: 'POST',
-				url: `${TARGET_URL}/v1/sessions`,
-				headers: { 'X-BB-API-Key': 'user-jwt' },
+			expect(aiGatewayService.sendProviderRequest).toHaveBeenCalledWith({
+				...sessionRequest,
+				path: '/v1/sessions',
 				body: { keepAlive: false },
-				disableFollowRedirect: true,
-				mapErrorResponse: toGatewayError,
 			});
 		});
 
 		it('throws when the response has no connect URL', async () => {
-			aiGatewayService.gatewayRequest.mockResolvedValue({ id: 'sess-1' });
+			aiGatewayService.sendProviderRequest.mockResolvedValue({ id: 'sess-1' });
 
 			await expect(service.createSession({ userId: 'user-1', attribution })).rejects.toThrow(
 				'invalid browser session',
@@ -63,19 +61,16 @@ describe('AiGatewayBrowserUseService', () => {
 	});
 
 	describe('releaseSession()', () => {
-		it('posts to the session route', async () => {
-			aiGatewayService.gatewayRequest.mockResolvedValue({});
+		it('posts a release to the session route', async () => {
+			aiGatewayService.sendProviderRequest.mockResolvedValue({});
 
 			await service.releaseSession({ userId: 'user-1', attribution, sessionId: 'sess/1' });
 
-			expect(aiGatewayService.gatewayRequest).toHaveBeenCalledWith(
-				expect.objectContaining({
-					method: 'POST',
-					url: `${TARGET_URL}/v1/sessions/sess%2F1`,
-					body: { status: 'REQUEST_RELEASE' },
-					mapErrorResponse: toGatewayError,
-				}),
-			);
+			expect(aiGatewayService.sendProviderRequest).toHaveBeenCalledWith({
+				...sessionRequest,
+				path: '/v1/sessions/sess%2F1',
+				body: { status: 'REQUEST_RELEASE' },
+			});
 		});
 	});
 });

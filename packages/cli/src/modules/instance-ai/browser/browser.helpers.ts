@@ -170,6 +170,11 @@ async function gateDomainAccess(
 ): Promise<McpToolCallResult | undefined> {
 	const host = affected.resource;
 
+	// Checked before the user's answer, so a block set while a request waits still applies.
+	if (gate.permissionMode === 'blocked') {
+		return browserErrorResult('Browser access blocked by admin');
+	}
+
 	if (typeof confirmation === 'string') {
 		switch (confirmation) {
 			case 'allowForSession':
@@ -183,9 +188,6 @@ async function gateDomainAccess(
 		}
 	}
 
-	if (gate.permissionMode === 'blocked') {
-		return browserErrorResult('Browser access blocked by admin');
-	}
 	if (gate.permissionMode !== 'always_allow' && !gate.tracker.isHostAllowed(host, gate.runId)) {
 		return confirmationRequiredResult(affected, ['denyOnce', 'allowOnce', 'allowForSession']);
 	}
@@ -201,13 +203,15 @@ function gateCredentialCreation(
 	affected: AffectedResource,
 	confirmation: unknown,
 ): McpToolCallResult | undefined {
+	// Checked before the user's answer, so a block set while a request waits still applies.
+	if (gate.createCredentialPermissionMode === 'blocked') {
+		return browserErrorResult('Credential creation blocked by admin');
+	}
+
 	if (typeof confirmation === 'string') {
 		return confirmation === 'allowOnce' ? undefined : browserErrorResult('Access denied by user');
 	}
 
-	if (gate.createCredentialPermissionMode === 'blocked') {
-		return browserErrorResult('Credential creation blocked by admin');
-	}
 	if (gate.createCredentialPermissionMode !== 'always_allow') {
 		return confirmationRequiredResult(affected, ['denyOnce', 'allowOnce']);
 	}
