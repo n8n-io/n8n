@@ -1,4 +1,8 @@
-import type { WhatsAppCredentialCheck, WhatsAppWebhookStatus } from '@n8n/api-types';
+import type {
+	WhatsAppCredentialCheck,
+	WhatsAppMetaStatus,
+	WhatsAppWebhookStatus,
+} from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Delete, Get, Param, Post, ProjectScope, RestController } from '@n8n/decorators';
 import { NotFoundError } from '@n8n/errors';
@@ -28,6 +32,26 @@ export class AgentWhatsAppIntegrationsController {
 		@Param('credentialId') credentialId: string,
 	): Promise<WhatsAppCredentialCheck> {
 		return await this.credentialCheckService.check(req.user, req.params.projectId, credentialId);
+	}
+
+	/**
+	 * Where Meta's review of the number, display name and business stands. The
+	 * settings poll this, because Meta can take days to finish.
+	 */
+	@Get('/:agentId/integrations/whatsapp/meta-status/:credentialId')
+	@ProjectScope('agent:read')
+	async metaStatus(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+		@Param('credentialId') credentialId: string,
+	): Promise<WhatsAppMetaStatus> {
+		await this.assertAgentExists(req.params.projectId, agentId);
+		return await this.credentialCheckService.getMetaStatus(
+			req.user,
+			req.params.projectId,
+			credentialId,
+		);
 	}
 
 	/** Polled by the setup until Meta completes the webhook handshake. */

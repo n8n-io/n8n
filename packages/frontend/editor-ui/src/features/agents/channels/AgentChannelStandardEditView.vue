@@ -7,6 +7,10 @@ import type { AgentChannelViewExpose, AgentChannelViewProps } from './types';
 
 const credentialId = defineModel<string>({ default: '' });
 defineProps<AgentChannelViewProps & { detailsComponent: Component }>();
+defineSlots<{
+	/** Notices about the whole channel, shown above the credential. */
+	top?: () => unknown;
+}>();
 const emit = defineEmits<{
 	create: [];
 	edit: [];
@@ -25,6 +29,7 @@ defineExpose({ currentSettings, validationError, saveLabel, beforeSave, afterSav
 <template>
 	<!-- The modal focuses this rather than the credential select, which opens on focus. -->
 	<div :class="$style.editView" tabindex="-1" data-agent-modal-autofocus>
+		<slot name="top" />
 		<AgentIntegrationCredentialConnection
 			v-model="credentialId"
 			:integration-type="integration.type"
