@@ -2,7 +2,13 @@
 import { computed, ref, watch } from 'vue';
 import { useDocumentVisibility, useIntervalFn } from '@vueuse/core';
 import type { RouteLocationRaw } from 'vue-router';
-import { type IconColor, N8nIcon, N8nScrollArea, N8nText } from '@n8n/design-system';
+import {
+	type IconColor,
+	N8nIcon,
+	N8nScrollArea,
+	N8nText,
+	N8nVisuallyHidden,
+} from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import type { AgentPlanItemStatus, AgentPlanView } from '../utils/agent-plan';
 import { formatAgentElapsedTime } from '../utils/agent-elapsed-time';
@@ -88,6 +94,9 @@ const statusIconColors: Record<AgentPlanItemStatus, IconColor> = {
 
 <template>
 	<div :class="$style.plan" data-testid="agent-chat-plan">
+		<N8nVisuallyHidden as-child>
+			<span role="status">{{ label }}</span>
+		</N8nVisuallyHidden>
 		<ChatCollapsibleContainer
 			:key="plan.planId"
 			v-model:expanded="expanded"
