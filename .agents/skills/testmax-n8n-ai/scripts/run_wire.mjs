@@ -3,10 +3,10 @@
 //
 //   node run_wire.mjs <run-dir>
 //
-// wire.mjs runs the workflow in this process. A workflow with a Code node is skipped (see
-// CODE_NODE_TYPES). Only the trigger is pinned, and the AI root
+// wire.mjs runs the workflow in this process. Only the trigger is pinned, and the AI root
 // nodes too, except in the real-AI scenarios. Every other node runs, and the HTTP requests of
-// the service nodes get answers in the documented shape of each API. Three kinds of scenario:
+// the service nodes get answers in the documented shape of each API. A node that runs must be on
+// the allow-list (runsInProcess), else the scenarios that run it are skipped. Three kinds of scenario:
 //   contract  the scenarios of scenarios.json, with the AI output pinned as in run_scenarios.py
 //   edge      the edge cases of the trigger (TRIGGER_KITS in sdk.mjs) and scenarios.json "edge"
 //   ai        scenarios.json "questions": the AI nodes call their real model with each question
@@ -14,13 +14,15 @@
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
-import { TRIGGER_KITS, graph, isAiNode, isTrigger, pinPlan, typeMatches } from './sdk.mjs';
+import { LOGIC_TYPES, TRIGGER_KITS, graph, isAiNode, isTrigger, pinPlan, typeMatches } from './sdk.mjs';
 import { MODEL_CREDENTIALS, fillSetup, isWrite, loadEngine, modelKey, nodeCredentialTypes, runWorkflow } from './wire.mjs';
 
 const ITEMS_PER_NODE = 3;
 const BODY_CHARS = 1500;
-// These nodes run code from the builder. This process holds the settings and has no sandbox, so a
-// workflow with one of them does not run here. The pinned-data runs run it in the n8n task runner.
+// This process holds the settings and has no sandbox. The eval hook answers only the requests that
+// go through the n8n request helpers. Database, SSH, FTP and SMTP clients, files and a shell bypass
+// it, so only the node types below run here.
+// These nodes run code from the builder. The pinned-data runs run them in the n8n task runner.
 const CODE_NODE_TYPES = new Set([
 	'n8n-nodes-base.code',
 	'n8n-nodes-base.function',
@@ -29,6 +31,23 @@ const CODE_NODE_TYPES = new Set([
 	'@n8n/n8n-nodes-langchain.code',
 	'@n8n/n8n-nodes-langchain.toolCode',
 ]);
+// Telegram is here because its credential has no authenticate block.
+const IN_PROCESS_TYPES = new Set([
+	...[...LOGIC_TYPES].filter((type) => !CODE_NODE_TYPES.has(type)),
+	'n8n-nodes-base.httpRequest',
+	'n8n-nodes-base.wait',
+	'n8n-nodes-base.telegram',
+]);
+// Each model node has a key in MODEL_CREDENTIALS. The other nodes call only the model or the helpers.
+const IN_PROCESS_AI_TYPES = new Set(
+	[
+		'agent', 'chainLlm', 'chainSummarization', 'informationExtractor', 'textClassifier', 'sentimentAnalysis',
+		'openAi', 'anthropic', 'googleGemini',
+		'lmChatOpenAi', 'lmChatAnthropic', 'lmChatGoogleGemini', 'lmChatMistralCloud', 'lmChatGroq',
+		'outputParserStructured', 'outputParserAutofixing', 'outputParserItemList',
+		'memoryBufferWindow', 'toolCalculator', 'toolThink', 'toolHttpRequest',
+	].map((type) => `@n8n/n8n-nodes-langchain.${type}`),
+);
 const readJson = (file) => (existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')) : null);
 
 /** Read a path such as `messages[0].from` from a value. */
@@ -174,15 +193,46 @@ function modelReadiness(g) {
 	});
 }
 
+const isHttpCredential = (name, { credentialType, parentTypes }) =>
+	credentialType(name).authenticate !== undefined || [name, ...parentTypes(name)].some((p) => p === 'oAuth1Api' || p === 'oAuth2Api');
+
+/**
+ * True for a node on the allow-list: the types above, declarative nodes, and nodes whose credentials
+ * all authenticate HTTP requests. A tool variant (slackTool) counts as its base node.
+ */
+export function runsInProcess(node) {
+	const base = node.type.startsWith('n8n-nodes-base.') && node.type.endsWith('Tool') ? node.type.slice(0, -'Tool'.length) : node.type;
+	if (IN_PROCESS_TYPES.has(base) || IN_PROCESS_AI_TYPES.has(base)) return true;
+	if (!base.startsWith('n8n-nodes-base.')) return false;
+	const engine = loadEngine();
+	try {
+		const { description } = engine.nodeTypes.getByNameAndVersion(base, node.typeVersion);
+		if (description.requestDefaults !== undefined) return true;
+		const credentials = (description.credentials ?? []).map((c) => c.name);
+		return credentials.length > 0 && credentials.every((name) => isHttpCredential(name, engine));
+	} catch {
+		return false;
+	}
+}
+
+/** The names and types of the nodes that run, when the pinned nodes do not, and are not on the allow-list. */
+function outsideAllowList(g, pinned) {
+	const running = new Set(g.nodes.filter((n) => !g.subnodes.has(n.name) && !pinned(n)).map((n) => n.name));
+	// A Set visits the entries that the loop adds, so this collects the sub-nodes of sub-nodes too.
+	for (const name of running) {
+		for (const e of g.edges) if (e.to === name && e.type.startsWith('ai_')) running.add(e.from);
+	}
+	return [...running].map((name) => g.byName.get(name)).filter((n) => !runsInProcess(n)).map((n) => `${n.name} (${n.type})`);
+}
+
 async function runBuilder(dir, cfg) {
 	const workflow = readJson(join(dir, 'workflow.json'));
-	const codeNodes = (workflow.nodes ?? []).filter((n) => !n.disabled && CODE_NODE_TYPES.has(n.type)).map((n) => n.name);
-	if (codeNodes.length) {
-		return { skipped: `Code nodes run only in the pinned-data run, not in process: ${codeNodes.join(', ')}.`, scenarios: [] };
-	}
+	const { g, kit, scenarios } = buildScenarios(workflow, cfg);
+	const outside = outsideAllowList(g, (n) => isTrigger(n.type) || isAiNode(g, n));
+	if (outside.length) return { skipped: `Nodes outside the in-process allow-list: ${outside.join(', ')}.`, scenarios: [] };
+	const outsideAi = outsideAllowList(g, (n) => isTrigger(n.type));
 	const canvas = readJson(join(dir, 'canvas-issues.json'));
 	const { workflow: filledWorkflow, filled } = fillSetup(workflow, canvas);
-	const { g, kit, scenarios } = buildScenarios(workflow, cfg);
 	const types = Object.fromEntries((workflow.nodes ?? []).map((n) => [n.name, n.type]));
 	const models = modelReadiness(g);
 	const out = { filled, models, scenarios: [] };
@@ -190,6 +240,10 @@ async function runBuilder(dir, cfg) {
 		const entry = { name: scenario.name, kind: scenario.kind, why: scenario.why, expect: scenario.expect ?? {}, derive: scenario.derive, pinned: Object.keys(scenario.pinData) };
 		if (scenario.kind === 'ai' && !models.length) {
 			out.scenarios.push({ ...entry, status: 'skipped', error: 'The workflow has no model sub-node.' });
+			continue;
+		}
+		if (scenario.kind === 'ai' && outsideAi.length) {
+			out.scenarios.push({ ...entry, status: 'skipped', error: `Nodes outside the in-process allow-list: ${outsideAi.join(', ')}.` });
 			continue;
 		}
 		if (scenario.kind === 'ai' && models.some((m) => !m.ready)) {

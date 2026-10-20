@@ -333,10 +333,22 @@ changes the verdict.
 built `packages/core` and runs each workflow in process. Triggers and AI
 nodes get pinned data. Service nodes run their real code, and the core
 eval hook answers each HTTP request with a recorded fixture before any
-credential is used. The process has no sandbox, so it never runs builder
-code: a workflow with a Code, Function or AI Transform node gets no
-in-process runs, and the report shows the step as skipped, not failed. The
-pinned-data runs still run these nodes in the n8n task runner. No request
+credential is used. The process has no sandbox, and the hook sees only the
+requests that go through the n8n request helpers. Thus each node that runs
+must be on an allow-list (`runsInProcess` in `run_wire.mjs`):
+
+- logic nodes from `LOGIC_TYPES`, HTTP Request, Wait and Telegram
+- declarative nodes
+- nodes whose credentials all authenticate HTTP requests (an `authenticate`
+  block or OAuth)
+- a fixed set of AI nodes, with models that have a key in `MODEL_CREDENTIALS`
+
+Code, Function and AI Transform nodes, and nodes with database, SSH, FTP,
+SMTP, file or shell access, are not on the list. If a node outside the
+list runs in a contract or edge scenario, the workflow gets no in-process
+runs. If it runs only in the real AI runs, only those runs are skipped. The
+report shows the step as skipped, not failed, with the names of the nodes.
+The pinned-data runs still run Code nodes in the n8n task runner. No request
 leaves the machine, except the model calls of the real AI runs. Empty pickers get
 `mock-<parameter>` values for the run. Each scenario row lists the nodes
 that ran with their item counts, and each request. A failed check changes

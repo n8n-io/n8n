@@ -23,8 +23,8 @@ sys.path.insert(0, str(SHARED))
 
 from n8n_api import REPO_ROOT, N8nClient, config, setting  # noqa: E402
 
-CACHE = Path(setting('FEATURE_TEST_CACHE', default=str(Path.home() / '.cache' / 'n8n-feature-test'))).expanduser()
-RUNS_ROOT = Path(setting('FEATURE_TEST_RUNS_DIR', default='/tmp/feature-test'))
+CACHE = Path(setting('FEATURE_TEST_CACHE', default=str(Path.home() / '.cache' / 'n8n-feature-test'))).expanduser().resolve()
+RUNS_ROOT = Path(setting('FEATURE_TEST_RUNS_DIR', default='/tmp/feature-test')).expanduser().resolve()
 PLANS_ROOT = CACHE / 'plans'
 TEMPLATE_VERSION = '1'
 # These settings belong to the instance that the user runs. A fresh instance must not reuse them.

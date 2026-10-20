@@ -126,7 +126,7 @@ def rerun_plan(arg):
 			sys.exit(f'No earlier run in {RUNS_ROOT}.')
 		run_dir = found[0]
 	else:
-		run_dir = Path(arg)
+		run_dir = Path(arg).expanduser().resolve()
 	copy = run_dir / 'plan' / 'scenarios.json'
 	if not copy.is_file():
 		sys.exit(f'{run_dir} has no plan/scenarios.json.')
@@ -699,7 +699,7 @@ def main():
 		sys.exit('The setup is not ready:\n  ' + '\n  '.join(errors))
 
 	if args.run_dir:
-		run_dir = Path(args.run_dir)
+		run_dir = Path(args.run_dir).expanduser().resolve()
 		run_dir.mkdir(parents=True, exist_ok=True)
 	else:
 		run_dir = new_run_dir(RUNS_ROOT / 'try' if args.try_mode else RUNS_ROOT, plan['name'])
