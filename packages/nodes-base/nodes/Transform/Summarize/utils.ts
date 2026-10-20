@@ -235,7 +235,7 @@ export function aggregateAndSplitData({
 			splitValue = String(splitValue);
 		}
 
-		if (options.skipEmptySplitFields && typeof splitValue !== 'number' && !splitValue) {
+		if (options.skipEmptySplitFields && isEmpty(splitValue)) {
 			continue;
 		}
 
