@@ -12,6 +12,7 @@ import {
 	N8nButton,
 	N8nDialog,
 	N8nDialogBody,
+	N8nDialogDescription,
 	N8nDialogFooter,
 	N8nDialogHeader,
 	N8nDialogTitle,
@@ -138,9 +139,9 @@ function openCredentialType() {
 			</N8nDialogHeader>
 			<N8nDialogBody>
 				<div>
-					<div :class="$style.subtitle">
+					<N8nDialogDescription>
 						{{ i18n.baseText('credentialSelectModal.selectAnAppOrServiceToConnectTo') }}
-					</div>
+					</N8nDialogDescription>
 					<N8nSelect
 						ref="selectRef"
 						filterable
@@ -186,11 +187,5 @@ function openCredentialType() {
 .dialog {
 	/* Previous dialog min-height. No spacing token. */
 	// min-height: 250px;
-}
-
-.subtitle {
-	margin-bottom: var(--spacing--sm);
-	font-size: var(--font-size--md);
-	line-height: var(--line-height--xl);
 }
 </style>
