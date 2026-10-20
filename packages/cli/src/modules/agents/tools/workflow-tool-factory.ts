@@ -696,7 +696,7 @@ async function assertTaskRunnerAvailable(workflow: WorkflowEntity) {
 
 	throw new UserError(
 		'This workflow has a node that runs code, such as a Code node, but this instance runs no task runner on the main process. ' +
-			'This happens in queue mode when OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS=true. ' +
+			'A main in queue mode can run without a task runner, because it offloads executions to workers. ' +
 			'An eval runs workflow tools on the main process, so the node cannot run.',
 	);
 }

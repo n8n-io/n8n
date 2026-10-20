@@ -520,6 +520,10 @@ describe('executeWorkflow → eval instrumentation', () => {
 			await expect(runInProcess(workflowWith(node))).rejects.toThrow(
 				/has a node that runs code, such as a Code node, but this instance runs no task runner on the main process/,
 			);
+			// Every queue-mode main can lack a task runner, so the message must not name one setting.
+			await expect(runInProcess(workflowWith(node))).rejects.not.toThrow(
+				/OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS/,
+			);
 			expect(subWorkflowExecute).not.toHaveBeenCalled();
 		});
 

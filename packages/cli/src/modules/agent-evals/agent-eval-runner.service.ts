@@ -570,7 +570,8 @@ export class AgentEvalRunnerService {
 		// is random for each process. After a restart it cannot show which runs the
 		// old process owned. In queue mode another main may own an incomplete run,
 		// so sweeping would error a live run. Skip there: a run that a restart
-		// interrupts stays `running`. A safe sweep needs a heartbeat. On a
+		// interrupts stays `running`, and a rerun or a cancel cannot finish it, because
+		// both need the owner process. A safe sweep needs a heartbeat. On a
 		// single-main instance every incomplete run at startup is this instance's
 		// own leftover.
 		if (this.globalConfig.executions.mode === 'queue') return;
