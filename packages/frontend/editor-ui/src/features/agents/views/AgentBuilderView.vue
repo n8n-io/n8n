@@ -3168,6 +3168,7 @@ useKeybindings({
 	<div :class="$style.root">
 		<AgentPreviewHeader
 			v-if="isStandalonePreview"
+			:agent-id="agentId"
 			:agent-name="agent?.name ?? agentName"
 			:agent-href="agentBuilderHref"
 			:session-title="currentSessionTitle"
