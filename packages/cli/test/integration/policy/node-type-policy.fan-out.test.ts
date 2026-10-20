@@ -14,7 +14,7 @@ import { TypeAvailabilityPolicySnapshot } from '@/modules/type-availability-poli
 import { TypeAvailabilityPolicyService } from '@/modules/type-availability-policies/type-availability-policy.service';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 
-import { clearPolicyCache } from './shared/policy-cache';
+import { reloadPolicySnapshot } from './shared/policy-snapshot';
 
 /**
  * One policy document attached to several scopes, edited once.
@@ -53,7 +53,7 @@ describe('node type policy document fan-out', () => {
 			'TypeAvailabilityPolicyScope',
 			'TypeAvailabilityPolicy',
 		]);
-		await clearPolicyCache();
+		await reloadPolicySnapshot();
 	});
 
 	afterEach(() => {
@@ -134,7 +134,7 @@ describe('node type policy document fan-out', () => {
 		expect(await versionsOf(scopes)).toEqual([2, 2, 2]);
 		expect((await policyRepo.findByIdAndKind(policy.id, KIND, ROOT))?.rules).toEqual([DENY_SLACK]);
 
-		await clearPolicyCache();
+		await reloadPolicySnapshot();
 		for (const projectId of projectIds) {
 			expect(await slackVerdict(projectId)).toBe('deny');
 		}

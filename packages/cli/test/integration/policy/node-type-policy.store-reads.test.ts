@@ -15,7 +15,7 @@ import { TypeAvailabilityPolicySnapshot } from '@/modules/type-availability-poli
 import { TypeAvailabilityPolicyService } from '@/modules/type-availability-policies/type-availability-policy.service';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 
-import { clearPolicyCache } from './shared/policy-cache';
+import { reloadPolicySnapshot } from './shared/policy-snapshot';
 
 /**
  * Pins how many SQL statements a policy decision and a snapshot reload cost.
@@ -58,7 +58,7 @@ describe('node type policy store reads', () => {
 			'TypeAvailabilityPolicyScope',
 			'TypeAvailabilityPolicy',
 		]);
-		await clearPolicyCache();
+		await reloadPolicySnapshot();
 	});
 
 	afterAll(async () => {
@@ -175,17 +175,17 @@ describe('node type policy store reads', () => {
 
 	describe('a snapshot reload', () => {
 		test('costs 2 queries when nothing is configured', async () => {
-			expect(await countQueries(async () => await clearPolicyCache())).toBe(2);
+			expect(await countQueries(async () => await reloadPolicySnapshot())).toBe(2);
 		});
 
 		test('costs the same 4 queries for one configured project or twenty', async () => {
 			await configureScope(null, true);
-			expect(await countQueries(async () => await clearPolicyCache())).toBe(4);
+			expect(await countQueries(async () => await reloadPolicySnapshot())).toBe(4);
 
 			for (let i = 0; i < 20; i++) {
 				await configureScope((await createTeamProject()).id, true);
 			}
-			expect(await countQueries(async () => await clearPolicyCache())).toBe(4);
+			expect(await countQueries(async () => await reloadPolicySnapshot())).toBe(4);
 		});
 	});
 

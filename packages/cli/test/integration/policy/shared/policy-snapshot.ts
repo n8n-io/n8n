@@ -8,6 +8,6 @@ import { TypeAvailabilityPolicySnapshot } from '@/modules/type-availability-poli
  * Call this wherever a test writes behind the service, such as truncating the policy tables.
  * Production writes go through the service, which reloads the snapshot itself.
  */
-export async function clearPolicyCache(): Promise<void> {
+export async function reloadPolicySnapshot(): Promise<void> {
 	await Container.get(TypeAvailabilityPolicySnapshot).reload();
 }
