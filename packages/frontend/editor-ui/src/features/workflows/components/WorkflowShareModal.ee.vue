@@ -292,14 +292,8 @@ watch(
 </script>
 
 <template>
-	<N8nDialog
-		:open="modalOpen"
-		size="medium"
-		:container-class="$style.dialog"
-		:header="modalTitle"
-		@update:open="onDialogOpenUpdate"
-	>
-		<N8nDialogBody data-test-id="workflowShare-modal">
+	<N8nDialog :open="modalOpen" size="medium" :header="modalTitle" @update:open="onDialogOpenUpdate">
+		<N8nDialogBody :class="$style.body" data-test-id="workflowShare-modal">
 			<div v-if="!isSharingEnabled" :class="$style.container">
 				<N8nText>
 					{{
@@ -309,90 +303,84 @@ watch(
 					}}
 				</N8nText>
 			</div>
-			<div v-else :class="$style.container">
-				<N8nInfoTip
-					v-if="!workflowPermissions.share && !isHomeTeamProject && !isPersonalSpaceRestricted"
-					:bold="false"
-					class="mb-s"
-				>
-					{{
-						i18n.baseText('workflows.shareModal.info.sharee', {
-							interpolate: { workflowOwnerName },
-						})
-					}}
-				</N8nInfoTip>
-				<EnterpriseEdition :features="[EnterpriseEditionFeature.Sharing]" :class="$style.content">
-					<div>
-						<ProjectSharing
-							v-if="workflowHomeProject"
-							v-model="sharedWithProjects"
-							:home-project="workflowHomeProject"
-							:search-fn="searchFn"
-							:filter-fn="filterFn"
-							:roles="workflowRoles"
-							:readonly="!workflowPermissions.share"
-							:static="isHomeTeamProject || !workflowPermissions.share"
-							:disabled-tooltip="
-								isPersonalSpaceRestricted
-									? i18n.baseText('workflows.shareModal.info.personalSpaceRestricted')
-									: undefined
+
+			<N8nInfoTip
+				v-if="!workflowPermissions.share && !isHomeTeamProject && !isPersonalSpaceRestricted"
+				:bold="false"
+				class="mb-s"
+			>
+				{{
+					i18n.baseText('workflows.shareModal.info.sharee', {
+						interpolate: { workflowOwnerName },
+					})
+				}}
+			</N8nInfoTip>
+			<EnterpriseEdition :features="[EnterpriseEditionFeature.Sharing]">
+				<div>
+					<ProjectSharing
+						v-if="workflowHomeProject"
+						v-model="sharedWithProjects"
+						:home-project="workflowHomeProject"
+						:search-fn="searchFn"
+						:filter-fn="filterFn"
+						:roles="workflowRoles"
+						:readonly="!workflowPermissions.share"
+						:static="isHomeTeamProject || !workflowPermissions.share"
+						:disabled-tooltip="
+							isPersonalSpaceRestricted
+								? i18n.baseText('workflows.shareModal.info.personalSpaceRestricted')
+								: undefined
+						"
+						:placeholder="i18n.baseText('workflows.shareModal.select.placeholder')"
+						:empty-options-text="i18n.baseText('workflows.shareModel.select.notFound')"
+						@project-added="onProjectAdded"
+						@project-removed="onProjectRemoved"
+					/>
+					<N8nInfoTip v-if="isHomeTeamProject" :bold="false" class="mt-s">
+						<I18nT keypath="workflows.shareModal.info.members" tag="span" scope="global">
+							<template #projectName>
+								{{ workflowHomeProject?.name }}
+							</template>
+							<template #members>
+								<strong>
+									{{
+										i18n.baseText('workflows.shareModal.info.members.number', {
+											interpolate: {
+												number: String(numberOfMembersInHomeTeamProject),
+											},
+											adjustToNumber: numberOfMembersInHomeTeamProject,
+										})
+									}}
+								</strong>
+							</template>
+						</I18nT>
+					</N8nInfoTip>
+				</div>
+				<template #fallback>
+					<N8nText>
+						<I18nT
+							:keypath="
+								uiStore.contextBasedTranslationKeys.workflows.sharing.unavailable.description
+									.tooltip
 							"
-							:placeholder="i18n.baseText('workflows.shareModal.select.placeholder')"
-							:empty-options-text="i18n.baseText('workflows.shareModel.select.notFound')"
-							@project-added="onProjectAdded"
-							@project-removed="onProjectRemoved"
-						/>
-						<N8nInfoTip v-if="isHomeTeamProject" :bold="false" class="mt-s">
-							<I18nT keypath="workflows.shareModal.info.members" tag="span" scope="global">
-								<template #projectName>
-									{{ workflowHomeProject?.name }}
-								</template>
-								<template #members>
-									<strong>
-										{{
-											i18n.baseText('workflows.shareModal.info.members.number', {
-												interpolate: {
-													number: String(numberOfMembersInHomeTeamProject),
-												},
-												adjustToNumber: numberOfMembersInHomeTeamProject,
-											})
-										}}
-									</strong>
-								</template>
-							</I18nT>
-						</N8nInfoTip>
-					</div>
-					<template #fallback>
-						<N8nText>
-							<I18nT
-								:keypath="
-									uiStore.contextBasedTranslationKeys.workflows.sharing.unavailable.description
-										.tooltip
-								"
-								tag="span"
-								scope="global"
-							>
-								<template #action />
-							</I18nT>
-						</N8nText>
-					</template>
-				</EnterpriseEdition>
-			</div>
+							tag="span"
+							scope="global"
+						>
+							<template #action />
+						</I18nT>
+					</N8nText>
+				</template>
+			</EnterpriseEdition>
 		</N8nDialogBody>
 
 		<N8nDialogFooter>
-			<div v-if="!isSharingEnabled" :class="$style.actionButtons">
-				<N8nButton @click="goToUpgrade">
-					{{
-						i18n.baseText(uiStore.contextBasedTranslationKeys.workflows.sharing.unavailable.button)
-					}}
-				</N8nButton>
-			</div>
-			<EnterpriseEdition
-				v-else
-				:features="[EnterpriseEditionFeature.Sharing]"
-				:class="$style.actionButtons"
-			>
+			<N8nButton @click="goToUpgrade" v-if="!isSharingEnabled">
+				{{
+					i18n.baseText(uiStore.contextBasedTranslationKeys.workflows.sharing.unavailable.button)
+				}}
+			</N8nButton>
+
+			<EnterpriseEdition v-else :features="[EnterpriseEditionFeature.Sharing]">
 				<N8nText v-show="isDirty" color="text-light" size="small" class="mr-xs">
 					{{ i18n.baseText('workflows.shareModal.changesHint') }}
 				</N8nText>
@@ -415,39 +403,7 @@ watch(
 </template>
 
 <style module lang="scss">
-.container {
-	display: flex;
-	flex-direction: column;
-	height: 100%;
-}
-
-.container > * {
-	overflow-wrap: break-word;
-}
-
-.content {
-	display: flex;
-	flex-direction: column;
-	height: 100%;
-	overflow-y: auto;
-}
-
-.usersList {
-	height: 100%;
-	overflow-y: auto;
-}
-
-.actionButtons {
-	display: flex;
-	justify-content: flex-end;
-	align-items: center;
-}
-
-.roleSelect {
-	max-width: 100px;
-}
-
-.roleSelectRemoveOption {
-	border-top: 1px solid var(--color--foreground);
+.body {
+	max-height: 450px;
 }
 </style>
