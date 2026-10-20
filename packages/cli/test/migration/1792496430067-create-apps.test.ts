@@ -89,9 +89,9 @@ describe('CreateApps migration', () => {
 		);
 		await runQuery(
 			`INSERT INTO ${escape.tableName('app_artifact')}
-			 (${['storedAt', 'storageKey', 'sizeBytes'].map(escape.columnName).join(', ')})
-			 VALUES ('db', :storageKey, 1)`,
-			{ storageKey: uuidv7() },
+			 (${['appId', 'storedAt', 'storageKey', 'sizeBytes'].map(escape.columnName).join(', ')})
+			 VALUES (:appId, 'db', :storageKey, 1)`,
+			{ appId, storageKey: uuidv7() },
 		);
 		const [artifact] = await runQuery<Array<{ id: number }>>(
 			`SELECT ${escape.columnName('id')} FROM ${escape.tableName('app_artifact')}`,
@@ -164,7 +164,7 @@ describe('CreateApps migration', () => {
 	});
 
 	it('deletes apps and versions with their project and keeps artifact storage references', async () => {
-		const { projectId, artifactId } = await insertAppWithVersion();
+		const { projectId, appId, artifactId } = await insertAppWithVersion();
 		const { escape, runQuery } = context;
 		await runQuery(
 			`DELETE FROM ${escape.tableName('project')} WHERE ${escape.columnName('id')} = :id`,
@@ -173,11 +173,15 @@ describe('CreateApps migration', () => {
 		for (const table of ['app', 'app_version']) {
 			expect(await runQuery<unknown[]>(`SELECT * FROM ${escape.tableName(table)}`)).toEqual([]);
 		}
-		const artifacts = await runQuery<Array<{ id: number; storedAt: string; storageKey: string }>>(
-			`SELECT ${['id', 'storedAt', 'storageKey'].map(escape.columnName).join(', ')}
+		const artifacts = await runQuery<
+			Array<{ id: number; appId: string; storedAt: string; storageKey: string }>
+		>(
+			`SELECT ${['id', 'appId', 'storedAt', 'storageKey'].map(escape.columnName).join(', ')}
 			 FROM ${escape.tableName('app_artifact')}`,
 		);
-		expect(artifacts).toEqual([{ id: artifactId, storedAt: 'db', storageKey: expect.any(String) }]);
+		expect(artifacts).toEqual([
+			{ id: artifactId, appId, storedAt: 'db', storageKey: expect.any(String) },
+		]);
 	});
 
 	it('reverts populated app tables, removes only app binaries, and can run again', async () => {
