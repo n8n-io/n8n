@@ -6,6 +6,13 @@ export class AppArtifact extends WithTimestamps {
 	@PrimaryGeneratedColumn()
 	id: number;
 
+	@Column({
+		type: 'uuid',
+		comment:
+			'No foreign key so the owning app ID remains available for cleanup after app deletion.',
+	})
+	appId: string;
+
 	@Column({ type: 'varchar', length: 2 })
 	storedAt: ExecutionDataStorageLocation;
 

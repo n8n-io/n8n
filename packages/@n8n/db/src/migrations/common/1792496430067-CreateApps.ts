@@ -37,6 +37,9 @@ export class CreateApps1792496430067 implements ReversibleMigration {
 
 		await createTable('app_artifact').withColumns(
 			column('id').int.primary.autoGenerate2,
+			column('appId').uuid.notNull.comment(
+				'No foreign key so the owning app ID remains available for cleanup after app deletion.',
+			),
 			column('storedAt')
 				.varchar(2)
 				.notNull.withEnumCheck(['db', 'fs', 's3', 'az'])

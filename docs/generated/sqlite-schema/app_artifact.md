@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "app_artifact" ("id" integer PRIMARY KEY NOT NULL, "storedAt" varchar(2) NOT NULL, "storageKey" text NOT NULL, "sizeBytes" integer NOT NULL, "uploadStatus" varchar(16) NOT NULL DEFAULT ('pending'), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_app_artifact_storedAt" CHECK ("storedAt" IN ('db', 'fs', 's3', 'az')), CONSTRAINT "CHK_app_artifact_uploadStatus" CHECK ("uploadStatus" IN ('pending', 'completed')))
+CREATE TABLE "app_artifact" ("id" integer PRIMARY KEY NOT NULL, "appId" varchar NOT NULL, "storedAt" varchar(2) NOT NULL, "storageKey" text NOT NULL, "sizeBytes" integer NOT NULL, "uploadStatus" varchar(16) NOT NULL DEFAULT ('pending'), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_app_artifact_storedAt" CHECK ("storedAt" IN ('db', 'fs', 's3', 'az')), CONSTRAINT "CHK_app_artifact_uploadStatus" CHECK ("uploadStatus" IN ('pending', 'completed')))
 ```
 
 </details>
@@ -15,6 +15,7 @@ CREATE TABLE "app_artifact" ("id" integer PRIMARY KEY NOT NULL, "storedAt" varch
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
+| appId | varchar |  | false |  |  |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | id | INTEGER |  | false | [app_version](app_version.md) |  |  |
 | sizeBytes | INTEGER |  | false |  |  |  |
@@ -40,6 +41,7 @@ erDiagram
 "app_version" }o--|| "app_artifact" : "FOREIGN KEY (sourceArtifactId) REFERENCES app_artifact (id) ON UPDATE NO ACTION ON DELETE RESTRICT MATCH NONE"
 
 "app_artifact" {
+  varchar appId
   datetime_3_ createdAt
   INTEGER id
   INTEGER sizeBytes

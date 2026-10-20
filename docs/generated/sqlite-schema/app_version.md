@@ -81,6 +81,7 @@ erDiagram
   varchar_16_ visibility
 }
 "app_artifact" {
+  varchar appId
   datetime_3_ createdAt
   INTEGER id
   INTEGER sizeBytes

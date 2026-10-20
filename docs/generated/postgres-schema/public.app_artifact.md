@@ -4,6 +4,7 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
+| appId | uuid |  | false |  |  | No foreign key so the owning app ID remains available for cleanup after app deletion. |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | id | integer |  | false | [public.app_version](public.app_version.md) |  |  |
 | sizeBytes | integer |  | false |  |  |  |
@@ -19,6 +20,7 @@
 | CHK_app_artifact_storedAt | CHECK | CHECK ((("storedAt")::text = ANY ((ARRAY['db'::character varying, 'fs'::character varying, 's3'::character varying, 'az'::character varying])::text[]))) |
 | CHK_app_artifact_uploadStatus | CHECK | CHECK ((("uploadStatus")::text = ANY ((ARRAY['pending'::character varying, 'completed'::character varying])::text[]))) |
 | PK_307f7470d2b759f7c4bc056d3a5 | PRIMARY KEY | PRIMARY KEY (id) |
+| app_artifact_appId_not_null | n | NOT NULL "appId" |
 | app_artifact_createdAt_not_null | n | NOT NULL "createdAt" |
 | app_artifact_id_not_null | n | NOT NULL id |
 | app_artifact_sizeBytes_not_null | n | NOT NULL "sizeBytes" |
@@ -42,6 +44,7 @@ erDiagram
 "public.app_version" }o--|| "public.app_artifact" : "FOREIGN KEY (#quot;sourceArtifactId#quot;) REFERENCES app_artifact(id) ON DELETE RESTRICT"
 
 "public.app_artifact" {
+  uuid appId
   timestamp_3__with_time_zone createdAt
   integer id
   integer sizeBytes

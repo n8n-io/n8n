@@ -76,6 +76,7 @@ erDiagram
   varchar_16_ visibility
 }
 "public.app_artifact" {
+  uuid appId
   timestamp_3__with_time_zone createdAt
   integer id
   integer sizeBytes
