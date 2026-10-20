@@ -679,6 +679,26 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 			skill_id: z.string(),
 		}),
 	},
+	USER_UPLOADED_AGENT_KNOWLEDGE_FILES: {
+		name: 'User uploaded agent knowledge files',
+		description:
+			'The user uploaded one or more files to the knowledge of an agent. Fires once for each upload request that stored all of its files. A failed upload stores no files and sends no event.',
+		properties: z.object({
+			agent_id: z.string(),
+			project_id: z.string(),
+			user_id: z.string(),
+			file_count: z.number(),
+			total_bytes: z.number().describe('Sum of size_bytes for all files in the upload'),
+			files: z.array(
+				z.object({
+					mime_type: z.string().describe('MIME type that the browser sent with the file'),
+					size_bytes: z
+						.number()
+						.describe('Size of the original file, not of the stored text extracted from a PDF'),
+				}),
+			),
+		}),
+	},
 	USER_STARTED_AGENT_CHANNEL_SETUP: {
 		name: 'User started agent channel setup',
 		description:
