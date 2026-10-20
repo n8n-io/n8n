@@ -3,7 +3,7 @@ import { Logger } from '@n8n/backend-common';
 import type { OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { BadRequestError, ConflictError, NotFoundError } from '@n8n/errors';
-import { randomUUID } from 'node:crypto';
+import { v7 as uuidv7 } from 'uuid';
 
 import { AppRetentionService } from './app-retention.service';
 import type { AppVersion } from './app-version.entity';
@@ -36,7 +36,7 @@ export class AppVersionService {
 		const app = await this.requireApp(projectId, appId);
 		this.checkDraft(app.draftVersionId, expectedDraftVersionId);
 		this.checkLabel(label);
-		const versionId = randomUUID();
+		const versionId = uuidv7();
 		await this.sourceVersions.createVersion(
 			{ id: versionId, appId, expectedDraftVersionId, label },
 			files,

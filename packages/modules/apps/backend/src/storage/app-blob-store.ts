@@ -13,7 +13,7 @@ import {
 } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { FsByteStoreService, StorageConfig } from 'n8n-core';
-import { randomUUID } from 'node:crypto';
+import { v7 as uuidv7 } from 'uuid';
 
 import type { AppArtifactRef } from '../app-artifact.entity';
 import { AppArtifactRepository } from '../app-artifact.repository';
@@ -62,7 +62,7 @@ export class AppBlobStore {
 
 	newBlob(): AppBlob {
 		const storedAt = this.config.modeTag;
-		const id = randomUUID();
+		const id = uuidv7();
 		return { storedAt, storageKey: storedAt === 'db' ? id : `apps/artifacts/${id}.tgz` };
 	}
 
