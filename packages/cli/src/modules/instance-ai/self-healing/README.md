@@ -26,8 +26,12 @@ The call returns `{ kind: 'investigation', investigationId }` or
 A workflow can have one unfinished investigation or pending suggestion.
 Repeated starts for the same failed execution return the original investigation, including after completion.
 Automatic triggers and eligibility for a new failure remain the caller's responsibility.
-After the actor loses access, the caller must require explicit re-enablement before starting new work.
-Re-enablement does not change the actor recorded on an existing investigation.
+The trigger/settings caller must disable self-healing when the background user is deleted
+or leaves the project. User deletion also removes that user's investigations and results.
+Leaving the project does not delete those records.
+After access loss, require explicit re-enablement before starting new work.
+The user who re-enables self-healing becomes the background user for new investigations.
+Re-enablement does not change the background user recorded on an existing investigation.
 
 The producer calls `InstanceAiService.startSelfHealingRun()` with its stored thread and run IDs.
 This uses the existing Assistant run lifecycle. It does not create another job runner.
