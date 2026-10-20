@@ -711,8 +711,8 @@ export class WorkflowPublicationApplier {
 
 	/**
 	 * Fails a version whose trigger node ids do not fit the columns keyed on them.
-	 * Saving rejects such ids, but versions stored before that check can still
-	 * carry them, and writing their trigger-status rows would fail. Runs before
+	 * A stored version can still carry such ids, and writing their trigger-status
+	 * rows would fail. Runs before
 	 * any trigger is touched, so the old version's triggers keep running. As on a
 	 * policy refusal, every trigger is reported failed, so no `activated` row is
 	 * left for the reconciler to re-enqueue. Only the rows whose id fits are stored.

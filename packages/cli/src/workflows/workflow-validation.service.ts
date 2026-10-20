@@ -275,7 +275,7 @@ export class WorkflowValidationService {
 	 * that every id-less node has in common — so both are reported together.
 	 *
 	 * An id longer than `NODE_ID_MAX_LENGTH` does not fit the columns keyed on it.
-	 * Saving rejects such ids, but versions stored before that check can still carry them.
+	 * External clients can supply such ids, so they are rejected here at publish time.
 	 */
 	validateTriggerNodeIds(triggerNodes: INode[]): WorkflowValidationResult {
 		const violations: string[] = [];
