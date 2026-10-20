@@ -589,7 +589,11 @@ export function createExecutionsTool(context: InstanceAiContext) {
 				'"Execute step" button. Use it to see what one node really returns — when ' +
 				'debugging a read node that failed a real execution, pass reuseExecutionId so ' +
 				'the node re-runs on the data it actually received. It runs for real, so do ' +
-				'not point it at a node that writes.',
+				'not point it at a node that writes. ' +
+				'A result with `redaction` set carries no output items: n8n hides that ' +
+				"execution's data from this user, for example because a node uses a colleague's " +
+				'personal credential. Tell the user so. Do not read the empty result as a bug, ' +
+				'and do not try to get the data another way.',
 		)
 		.input(inputSchema)
 		.suspend(suspendSchema)
