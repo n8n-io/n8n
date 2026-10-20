@@ -1079,8 +1079,8 @@ describe('resources in the preview', () => {
 			const project = await createTeamProject('Releases', owner);
 			const workflow = await createWorkflow({ name: 'Ship', nodes: [], connections: {} }, project);
 			const tag = await createTag({ name: 'release' }, workflow);
-			const connection = await createConnection(['promote', 'apply']);
-			await promoteBaseline(connection.id, owner);
+			const environments = await createInstanceEnvironments(['promote', 'apply']);
+			await promoteBaseline(environments.promote.id, owner);
 			await changeLocalTag(tag.id);
 
 			const agent = server.authAgentFor(owner);

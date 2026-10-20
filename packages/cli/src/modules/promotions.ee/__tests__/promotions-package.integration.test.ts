@@ -1669,12 +1669,12 @@ describe('Apply a project selection', () => {
 		'keeps the tag of a selected workflow when the local tag has $drift',
 		async ({ changeLocalTag }) => {
 			const remote = await createRemote();
-			const connection = await createInstanceConnection(remote.bareDir);
-			await service.clone(connection.id, 'promote');
-			await service.clone(connection.id, 'apply');
+			const environments = await createInstanceEnvironments(remote.bareDir);
+			await service.clone(environments.promote.id);
+			await service.clone(environments.apply.id);
 			const { project, workflows } = await setupProjectWithWorkflows('Orders', ['Tagged']);
 			const tag = await createTag({ name: 'release' }, workflows[0]);
-			await service.promote(connection.id, owner, {
+			await service.promote(environments.promote.id, owner, {
 				canExportVariableValues: true,
 				commitMessage: 'Export tagged workflow',
 			});
