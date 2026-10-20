@@ -50,7 +50,7 @@ vector-stores/                 connection test, factory, embedding credential, e
 
 `N8N_DISABLED_MODULES=knowledge` skips the module's `init()` and `entities()`. Its entities are then not registered with TypeORM while the `agent_files` table still exists, so a repository call fails. This is the only kill switch P0 has.
 
-`knowledge-availability.ts` (`KnowledgeAvailability`) is the one place that answers whether knowledge is available: `isModuleActive()` and `isFileKnowledgeEnabled()` (module active and sandbox on). Every consumer asks it before a knowledge call and derives its own flags from it. The agents module adds only its 404 in `AgentKnowledgeGate` (`packages/cli/src/modules/agents/agent-knowledge-gate.ts`). With the module off:
+`knowledge-availability.ts` (`KnowledgeAvailability`) is the one place that answers whether knowledge is available: `isModuleActive()` and `isFileKnowledgeEnabled()` (module active and sandbox on). Every consumer asks it before a knowledge call, derives its own flags from it, and raises the error that fits its own surface. With the module off:
 
 - `agents.knowledgeBaseEnabled` is false, so the editor hides the files panel in the agent's Knowledge tab.
 - The file routes and the knowledge warm-up route return the same 404 as the sandbox gate: `Agent knowledge base is not enabled`.

@@ -3,7 +3,10 @@ import type { AuthenticatedRequest } from '@n8n/db';
 import { Param, Post, ProjectScope, RestController } from '@n8n/decorators';
 import type { Response } from 'express';
 
-import { AgentKnowledgeGate } from './agent-knowledge-gate';
+import { NotFoundError } from '@n8n/errors';
+
+import { KnowledgeAvailability } from '@/modules/knowledge/knowledge-availability';
+
 import { AgentKnowledgeService } from './agent-knowledge.service';
 
 @RestController('/projects/:projectId/agents/v2')
@@ -11,7 +14,7 @@ export class AgentSandboxController {
 	constructor(
 		private readonly agentKnowledgeService: AgentKnowledgeService,
 		private readonly logger: Logger,
-		private readonly agentKnowledgeGate: AgentKnowledgeGate,
+		private readonly knowledgeAvailability: KnowledgeAvailability,
 	) {}
 
 	@Post('/:agentId/sandbox/knowledge/warmup')
@@ -22,13 +25,19 @@ export class AgentSandboxController {
 		@Param('projectId') projectId: string,
 		@Param('agentId') agentId: string,
 	): Promise<{ accepted: true }> {
-		this.agentKnowledgeGate.assertEnabled();
+		this.assertKnowledgeBaseEnabled();
 		res.status(202);
 		setImmediate(() => {
 			void this.warmKnowledgeSandboxInBackground(projectId, agentId);
 		});
 
 		return { accepted: true };
+	}
+
+	private assertKnowledgeBaseEnabled() {
+		if (!this.knowledgeAvailability.isFileKnowledgeEnabled()) {
+			throw new NotFoundError('Agent knowledge base is not enabled');
+		}
 	}
 
 	private async warmKnowledgeSandboxInBackground(

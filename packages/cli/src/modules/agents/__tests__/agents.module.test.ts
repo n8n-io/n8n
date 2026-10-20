@@ -39,8 +39,8 @@ import { SkillsHubRollout } from '../skills/skills-hub-rollout';
 import { SkillsHubStartupCopy } from '../skills/skills-hub-startup-copy';
 import { AgentRepository } from '../repositories/agent.repository';
 import { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
-import { AgentKnowledgeGate } from '../agent-knowledge-gate';
-import { makeAgentKnowledgeGate } from './test-utils/agent-knowledge-gate';
+import { KnowledgeAvailability } from '@/modules/knowledge/knowledge-availability';
+import { makeKnowledgeAvailability } from '@/modules/knowledge/__tests__/test-utils/knowledge-availability';
 
 /**
  * Stubs every dependency `AgentsModule.init()` resolves via `Container.get`,
@@ -154,8 +154,8 @@ describe('AgentsModule', () => {
 			async ({ sandboxEnabled, knowledgeActive, proxyEnabled, knowledgeBaseEnabled }) => {
 				Container.set(AgentsConfig, mock<AgentsConfig>({ modules: [] }));
 				Container.set(
-					AgentKnowledgeGate,
-					makeAgentKnowledgeGate({ sandboxEnabled, knowledgeActive }),
+					KnowledgeAvailability,
+					makeKnowledgeAvailability({ sandboxEnabled, knowledgeActive }),
 				);
 				Container.set(AiService, mock<AiService>({ isProxyEnabled: () => proxyEnabled }));
 

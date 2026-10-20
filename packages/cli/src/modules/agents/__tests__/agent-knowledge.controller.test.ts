@@ -4,11 +4,12 @@ import multer from 'multer';
 
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 
-import type { AgentKnowledgeGate } from '../agent-knowledge-gate';
+import type { KnowledgeAvailability } from '@/modules/knowledge/knowledge-availability';
+import { makeKnowledgeAvailability } from '@/modules/knowledge/__tests__/test-utils/knowledge-availability';
+
 import { AgentKnowledgeController } from '../agent-knowledge.controller';
 import type { AgentKnowledgeService } from '../agent-knowledge.service';
 import type { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
-import { makeAgentKnowledgeGate } from './test-utils/agent-knowledge-gate';
 import {
 	expectProjectScopedAgentRoutes,
 	getRoutesByHandlerName,
@@ -16,17 +17,17 @@ import {
 
 function makeController({
 	agentKnowledgeService = mock<AgentKnowledgeService>(),
-	agentKnowledgeGate = makeAgentKnowledgeGate(),
+	knowledgeAvailability = makeKnowledgeAvailability(),
 	runtimeCacheService = mock<AgentRuntimeCacheService>(),
 }: {
 	agentKnowledgeService?: Mocked<AgentKnowledgeService>;
-	agentKnowledgeGate?: AgentKnowledgeGate;
+	knowledgeAvailability?: KnowledgeAvailability;
 	runtimeCacheService?: Mocked<AgentRuntimeCacheService>;
 } = {}) {
 	return {
 		controller: new AgentKnowledgeController(
 			agentKnowledgeService,
-			agentKnowledgeGate,
+			knowledgeAvailability,
 			runtimeCacheService,
 		),
 		agentKnowledgeService,
@@ -126,11 +127,11 @@ describe('AgentKnowledgeController file deletion', () => {
 
 describe('AgentKnowledgeController knowledge base gating', () => {
 	it.each([
-		{ reason: 'the sandbox is disabled', gate: { sandboxEnabled: false } },
-		{ reason: 'the knowledge module is inactive', gate: { knowledgeActive: false } },
-	])('returns not found for file endpoints when $reason', async ({ gate }) => {
+		{ reason: 'the sandbox is disabled', availability: { sandboxEnabled: false } },
+		{ reason: 'the knowledge module is inactive', availability: { knowledgeActive: false } },
+	])('returns not found for file endpoints when $reason', async ({ availability }) => {
 		const { controller, agentKnowledgeService } = makeController({
-			agentKnowledgeGate: makeAgentKnowledgeGate(gate),
+			knowledgeAvailability: makeKnowledgeAvailability(availability),
 		});
 
 		await expect(

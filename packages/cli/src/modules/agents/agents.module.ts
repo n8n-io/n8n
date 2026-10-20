@@ -228,14 +228,14 @@ export class AgentsModule implements ModuleInterface {
 		const config = Container.get(AgentsConfig);
 		const { AgentsSettingsService } = await import('./agents-settings.service.js');
 		const { AiService } = await import('@/services/ai.service.js');
-		const { AgentKnowledgeGate } = await import('./agent-knowledge-gate.js');
+		const { KnowledgeAvailability } = await import('@/modules/knowledge/knowledge-availability.js');
 		const { SkillsHubRollout } = await import('./skills/skills-hub-rollout.js');
 		const aiService = Container.get(AiService);
 		const proxyEnabled = aiService.isProxyEnabled();
 		return {
 			enabled: await Container.get(AgentsSettingsService).getEnabled(),
 			modules: [...config.modules],
-			knowledgeBaseEnabled: Container.get(AgentKnowledgeGate).isEnabled(),
+			knowledgeBaseEnabled: Container.get(KnowledgeAvailability).isFileKnowledgeEnabled(),
 			proxyEnabled,
 			skillsHubEnabled: Container.get(SkillsHubRollout).isEnabled,
 		};
