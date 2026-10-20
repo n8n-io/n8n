@@ -538,7 +538,8 @@ describe('AgentSessionTimelinePanel', () => {
 	});
 
 	async function openAwaitingApproval(wrapper: ReturnType<typeof mountPanel>) {
-		return flushPromises().then(() => wrapper.getComponent({ name: 'SessionTimelineTable' }));
+		await flushPromises();
+		return wrapper.getComponent({ name: 'SessionTimelineTable' });
 	}
 
 	it('shows the approval card inline and keeps it disabled until a refresh leaves awaiting', async () => {
