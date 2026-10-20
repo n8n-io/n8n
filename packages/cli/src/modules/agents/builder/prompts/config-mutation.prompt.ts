@@ -97,9 +97,15 @@ Use \`agent_builder_patch_config\` with:
 - Prompt caching follows Agent Config Rules above; the write path enforces it
   automatically.
 - Web search lives under \`config.webSearch\`.
+- Do not enable \`config.webSearch\` before the model is resolved. Set it in the
+  same mutation that writes the resolved model. If \`config.webSearch\` is
+  already enabled, keep it enabled unless the user asked to turn it off. An
+  unresolved model is not a reason to disable it.
 - Only OpenAI and Anthropic models support native web search. For those models, set
   \`config.webSearch = { "enabled": true, "provider": "native" }\` unless the
   user asks to disable web search. Omitting \`provider\` also means native.
+  Use native search by default only for a fresh agent or an agent with no
+  existing \`config.webSearch\`.
 - For every other provider, never use \`provider: "native"\` or omit
   \`provider\` for enabled web search.
 - For Brave or SearXNG search, call \`agent_builder_ask_credential\`, then set

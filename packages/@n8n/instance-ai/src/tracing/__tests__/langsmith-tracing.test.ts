@@ -8,6 +8,12 @@ import type * as AsyncHooks from 'node:async_hooks';
 import type { Mock } from 'vitest';
 
 import { executeTool } from '../../__tests__/tool-test-utils';
+import { AGENT_BUILDER_TEST_TOOL_NAME } from '@n8n/api-types';
+import {
+	recordAgentBuilderToolResult,
+	recordAgentSelected,
+} from '../../tools/orchestration/agent-build-metrics';
+import type { AgentValidationSummary, OrchestrationContext } from '../../types';
 import { createToolRegistry } from '../../tool-registry';
 import { createAskUserTool } from '../../tools/shared/ask-user.tool';
 import {
@@ -2826,6 +2832,99 @@ describe('createInstanceAiTraceContext', () => {
 			expect(operation).toHaveBeenCalledTimes(2);
 			expect(agentsMock.getSpans()).toEqual([]);
 		});
+	});
+
+	describe('agent build metrics', () => {
+		const METRICS = ['agent_shown', 'agent_test', 'agent_build', 'agent_verification'];
+
+		async function runAgentBuild(options: { withProxy?: boolean } = {}) {
+			const tracing = await createInstanceAiTraceContext({
+				threadId: 'thread-agent-build',
+				messageId: 'message-agent-build',
+				runId: 'run-agent-build',
+				userId: 'user-agent-build',
+				input: { message: 'Build a support agent' },
+				...(options.withProxy
+					? {
+							proxyConfig: {
+								apiUrl: 'https://proxy.example.com/langsmith',
+								getAuthHeaders: async () =>
+									await Promise.resolve({ Authorization: 'Bearer proxy-token' }),
+							},
+						}
+					: {}),
+			});
+			expect(tracing).toBeDefined();
+			const actorRun = await startForegroundActor(tracing!);
+			const validation = createDeferredPromise<AgentValidationSummary>();
+			const context = {
+				tracing,
+				logger: { debug: vi.fn() },
+				domainContext: {
+					builderDelegate: { validateAgent: vi.fn(async () => await validation.promise) },
+				},
+			} as unknown as OrchestrationContext;
+			const provider = agentsMock.getProvider();
+			let endedAtShutdown: string[] = [];
+			provider.shutdown.mockImplementation(async () => {
+				endedAtShutdown = agentsMock
+					.getSpans()
+					.filter((span) => span.ended)
+					.map((span) => span.name);
+				await Promise.resolve();
+			});
+
+			// Tool calls run inside the orchestrator span.
+			await tracing!.withActiveSpan(actorRun, async () => {
+				recordAgentSelected(context, 'agent-1', { created: true });
+				recordAgentBuilderToolResult(context, 'agent-1', {
+					toolName: 'agent_builder_patch_config',
+					isError: false,
+					configMutated: true,
+				});
+				recordAgentBuilderToolResult(context, 'agent-1', {
+					toolName: AGENT_BUILDER_TEST_TOOL_NAME,
+					isError: false,
+					output: { status: 'completed' },
+					configMutated: false,
+				});
+				await Promise.resolve();
+			});
+
+			// The service order at the end of a run: finalize the orchestrator span,
+			// then finish the message trace.
+			await tracing!.finishRun(tracing!.actorRun, { outputs: { status: 'completed' } });
+			await tracing!.finishRun(tracing!.rootRun, { outputs: { status: 'completed' } });
+			// The Publish validation settles after both spans finished.
+			validation.resolve({ valid: true, issueCodes: [], issueCount: 0, capabilityCount: 1 });
+			await vi.waitFor(() => expect(provider.shutdown).toHaveBeenCalledTimes(1));
+
+			return { actorRun, endedAtShutdown: () => endedAtShutdown };
+		}
+
+		it.each([{ withProxy: false }, { withProxy: true }])(
+			'exports every metric under the orchestrator run before the trace shuts down (proxy: $withProxy)',
+			async ({ withProxy }) => {
+				const { actorRun, endedAtShutdown } = await runAgentBuild({ withProxy });
+
+				const spans = agentsMock.getSpans();
+				for (const name of METRICS) {
+					const span = spans.find((candidate) => candidate.name === name);
+					expect(span, name).toBeDefined();
+					expect({ name, traceId: span?.traceId, parent: span?.parentSpanId }).toEqual({
+						name,
+						traceId: actorRun.otelTraceId,
+						parent: actorRun.otelSpanId,
+					});
+					expect(span?.attributes).toHaveProperty('langsmith.metadata.success', true);
+					expect(span?.attributes).toHaveProperty(
+						'langsmith.metadata.thread_id',
+						'thread-agent-build',
+					);
+				}
+				expect(endedAtShutdown()).toEqual(expect.arrayContaining(METRICS));
+			},
+		);
 	});
 });
 

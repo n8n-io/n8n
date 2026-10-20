@@ -59,7 +59,8 @@ export interface AgentArtifactResult {
 	projectId?: string;
 	/** Unique per operation — changes even when the same agent is modified again. */
 	toolCallId: string;
-	kind: 'created' | 'mutated';
+	/** `selected` is an existing Agent that the build is about to change. */
+	kind: 'created' | 'selected' | 'mutated';
 }
 
 type AgentArtifactTarget = Pick<AgentArtifactResult, 'agentId' | 'projectId'>;
@@ -367,19 +368,55 @@ export function isAgentEditingWorkflow(
 	return false;
 }
 
+/** The agent a successful `agent_builder_select_agent` call selected, if any. */
+function getSelectedAgentId(tc: InstanceAiToolCallState): string | undefined {
+	if (tc.toolName !== AGENT_BUILDER_TOOL_NAMES.SELECT_AGENT || tc.isLoading) return undefined;
+	if (!isRecord(tc.result) || tc.result.ok !== true) return undefined;
+	return typeof tc.result.agentId === 'string' ? tc.result.agentId : undefined;
+}
+
+/**
+ * The agent the node's latest successful `agent_builder_select_agent` call
+ * selected. An earlier selection no longer counts once the node selects another agent.
+ */
+function getLatestSelectedAgentId(node: InstanceAiAgentNode): string | undefined {
+	for (let i = node.toolCalls.length - 1; i >= 0; i--) {
+		const agentId = getSelectedAgentId(node.toolCalls[i]);
+		if (agentId) return agentId;
+	}
+	return undefined;
+}
+
+/** Ids of the agents that active nodes selected last with `agent_builder_select_agent`. */
+export function getActiveSelectedAgentIds(node: InstanceAiAgentNode): Set<string> {
+	const ids = new Set<string>();
+	const visit = (current: InstanceAiAgentNode) => {
+		if (current.status === 'active') {
+			const agentId = getLatestSelectedAgentId(current);
+			if (agentId) ids.add(agentId);
+		}
+		for (const child of current.children) visit(child);
+	};
+	visit(node);
+	return ids;
+}
+
 /**
  * Whether the AI is actively working on agent `agentId` somewhere in this
  * agent tree — used to lock the agent artifact editor while a build is in
  * flight so user edits can't race builder config writes (the post-build
- * refetch would clobber them). Either signal is enough:
- *   1. The active agent tree has already created/mutated this agent — covers
- *      short gaps between tool calls while the run is still ongoing.
- *   2. An active agent-builder sub-agent targeting the agent — covers the
- *      whole build window from spawn to completion.
+ * refetch would clobber them). Any signal is enough:
+ *   1. The active run selected this agent last with `agent_builder_select_agent` —
+ *      covers the whole orchestrator build, including the reads and questions
+ *      before the first config write.
+ *   2. The active agent tree has already created/mutated this agent.
+ *   3. An active agent-builder sub-agent targeting the agent — threads from
+ *      before the builder ran in the orchestrator.
  */
 export function isAgentEditingAgent(node: InstanceAiAgentNode, agentId: string): boolean {
-	if (node.status === 'active' && getLatestAgentArtifactResult(node)?.agentId === agentId) {
-		return true;
+	if (node.status === 'active') {
+		if (getLatestSelectedAgentId(node) === agentId) return true;
+		if (getLatestAgentArtifactResult(node)?.agentId === agentId) return true;
 	}
 
 	if (
@@ -573,9 +610,12 @@ function matchAgentArtifactToolCall(
 			...(typeof result.projectId === 'string' ? { projectId: result.projectId } : {}),
 		};
 		if (tc.toolName === AGENT_BUILDER_TOOL_NAMES.SELECT_AGENT) {
-			return result.ok === true && result.agentChange === 'created'
-				? { ...ownTarget, toolCallId: tc.toolCallId, kind: 'created' }
-				: undefined;
+			if (result.ok !== true) return undefined;
+			return {
+				...ownTarget,
+				toolCallId: tc.toolCallId,
+				kind: result.agentChange === 'created' ? 'created' : 'selected',
+			};
 		}
 		if (result.configMutated === true) {
 			return { ...ownTarget, toolCallId: tc.toolCallId, kind: 'mutated' };

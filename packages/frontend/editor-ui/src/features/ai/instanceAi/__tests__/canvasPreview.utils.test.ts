@@ -13,6 +13,7 @@ import {
 	getExecutionResultsByWorkflow,
 	isAgentEditingWorkflow,
 	isAgentEditingAgent,
+	getActiveSelectedAgentIds,
 } from '../canvasPreview.utils';
 
 function makeToolCall(overrides: Partial<InstanceAiToolCallState>): InstanceAiToolCallState {
@@ -503,13 +504,33 @@ describe('getLatestAgentArtifactResult', () => {
 		});
 	});
 
-	test('returns no artifact when select-agent only selects an existing agent', () => {
+	test('reads a selected agent when select-agent selects an existing agent', () => {
+		const orchestrator = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolCallId: 'tc-select',
+					toolName: 'agent_builder_select_agent',
+					args: { agentRef: 'support' },
+					result: { ok: true, agentId: 'agent-9', projectId: 'project-1', agentChange: 'none' },
+				}),
+			],
+		});
+
+		expect(getLatestAgentArtifactResult(orchestrator)).toEqual({
+			agentId: 'agent-9',
+			projectId: 'project-1',
+			toolCallId: 'tc-select',
+			kind: 'selected',
+		});
+	});
+
+	test('returns no artifact when select-agent fails', () => {
 		const orchestrator = makeAgentNode({
 			toolCalls: [
 				makeToolCall({
 					toolName: 'agent_builder_select_agent',
-					args: { agentRef: 'support' },
-					result: { ok: true, agentId: 'agent-9', projectId: 'project-1', agentChange: 'none' },
+					args: { agentId: 'agent-9' },
+					result: { ok: false, agentId: 'agent-9', error: 'Agent agent-9 was not found.' },
 				}),
 			],
 		});
@@ -1655,5 +1676,123 @@ describe('isAgentEditingAgent', () => {
 		});
 		const parent = makeAgentNode({ children: [builder] });
 		expect(isAgentEditingAgent(parent, 'agent-1')).toBe(false);
+	});
+
+	test('locks while an active run has selected the agent without changing it', () => {
+		const node = makeAgentNode({
+			status: 'active',
+			toolCalls: [
+				makeToolCall({
+					toolName: 'agent_builder_select_agent',
+					result: { ok: true, agentId: 'agent-1', projectId: 'project-1', agentChange: 'none' },
+				}),
+			],
+		});
+		expect(isAgentEditingAgent(node, 'agent-1')).toBe(true);
+		expect(isAgentEditingAgent(node, 'agent-other')).toBe(false);
+	});
+
+	test('releases the previous agent once the active run selects another agent', () => {
+		const node = makeAgentNode({
+			status: 'active',
+			toolCalls: [
+				makeToolCall({
+					toolCallId: 'tc-select-a',
+					toolName: 'agent_builder_select_agent',
+					result: { ok: true, agentId: 'agent-a', agentChange: 'none' },
+				}),
+				makeToolCall({
+					toolCallId: 'tc-select-b',
+					toolName: 'agent_builder_select_agent',
+					result: { ok: true, agentId: 'agent-b', agentChange: 'none' },
+				}),
+				makeToolCall({
+					toolCallId: 'tc-select-failed',
+					toolName: 'agent_builder_select_agent',
+					result: { ok: false, agentId: 'agent-c' },
+				}),
+			],
+		});
+		expect(isAgentEditingAgent(node, 'agent-a')).toBe(false);
+		expect(isAgentEditingAgent(node, 'agent-b')).toBe(true);
+		expect(isAgentEditingAgent(node, 'agent-c')).toBe(false);
+	});
+
+	test('does not lock for a failed or finished agent selection', () => {
+		const selectAgent = (result: Record<string, unknown>, status: 'active' | 'completed') =>
+			makeAgentNode({
+				status,
+				toolCalls: [makeToolCall({ toolName: 'agent_builder_select_agent', result })],
+			});
+		expect(
+			isAgentEditingAgent(selectAgent({ ok: false, agentId: 'agent-1' }, 'active'), 'agent-1'),
+		).toBe(false);
+		expect(
+			isAgentEditingAgent(
+				selectAgent({ ok: true, agentId: 'agent-1', agentChange: 'none' }, 'completed'),
+				'agent-1',
+			),
+		).toBe(false);
+	});
+});
+
+describe('getActiveSelectedAgentIds', () => {
+	test('returns agents selected in active nodes only', () => {
+		const finished = makeAgentNode({
+			agentId: 'old-run',
+			toolCalls: [
+				makeToolCall({
+					toolName: 'agent_builder_select_agent',
+					result: { ok: true, agentId: 'agent-old' },
+				}),
+			],
+		});
+		const activeChild = makeAgentNode({
+			agentId: 'active-child',
+			status: 'active',
+			toolCalls: [
+				makeToolCall({
+					toolCallId: 'tc-child-select',
+					toolName: 'agent_builder_select_agent',
+					result: { ok: true, agentId: 'agent-child' },
+				}),
+			],
+		});
+		const root = makeAgentNode({
+			status: 'active',
+			children: [finished, activeChild],
+			toolCalls: [
+				makeToolCall({
+					toolCallId: 'tc-select',
+					toolName: 'agent_builder_select_agent',
+					result: { ok: true, agentId: 'agent-1', agentChange: 'none' },
+				}),
+				makeToolCall({
+					toolCallId: 'tc-loading',
+					toolName: 'agent_builder_select_agent',
+					isLoading: true,
+				}),
+			],
+		});
+		expect(getActiveSelectedAgentIds(root)).toEqual(new Set(['agent-1', 'agent-child']));
+	});
+
+	test('returns only the latest selection of an active node', () => {
+		const root = makeAgentNode({
+			status: 'active',
+			toolCalls: [
+				makeToolCall({
+					toolCallId: 'tc-select-a',
+					toolName: 'agent_builder_select_agent',
+					result: { ok: true, agentId: 'agent-a' },
+				}),
+				makeToolCall({
+					toolCallId: 'tc-select-b',
+					toolName: 'agent_builder_select_agent',
+					result: { ok: true, agentId: 'agent-b' },
+				}),
+			],
+		});
+		expect(getActiveSelectedAgentIds(root)).toEqual(new Set(['agent-b']));
 	});
 });

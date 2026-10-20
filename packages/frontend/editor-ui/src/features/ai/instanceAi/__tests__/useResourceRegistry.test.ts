@@ -739,7 +739,7 @@ describe('useResourceRegistry', () => {
 			});
 		});
 
-		test('registers an agent from a builder tool config change, not from a plain selection', async () => {
+		test('registers an agent from a successful selection and from a builder tool config change', async () => {
 			const { messages, producedArtifacts } = setup();
 
 			messages.value = [
@@ -748,7 +748,17 @@ describe('useResourceRegistry', () => {
 						toolCalls: [
 							makeToolCall({
 								toolName: 'agent_builder_select_agent',
-								result: { ok: true, agentId: 'agent-2', agentChange: 'none' },
+								result: {
+									ok: true,
+									agentId: 'agent-2',
+									agentName: 'Billing Bot',
+									projectId: 'project-1',
+									agentChange: 'none',
+								},
+							}),
+							makeToolCall({
+								toolName: 'agent_builder_select_agent',
+								result: { ok: false, agentId: 'agent-3', error: 'Agent agent-3 was not found.' },
 							}),
 							makeToolCall({
 								toolName: 'agent_builder_patch_config',
@@ -770,7 +780,12 @@ describe('useResourceRegistry', () => {
 				type: 'agent',
 				name: 'Support Bot',
 			});
-			expect(producedArtifacts.has('agent-2')).toBe(false);
+			expect(producedArtifacts.get('agent-2')).toMatchObject({
+				type: 'agent',
+				name: 'Billing Bot',
+				projectId: 'project-1',
+			});
+			expect(producedArtifacts.has('agent-3')).toBe(false);
 		});
 
 		test('does not register an Agent after a read-only builder turn', async () => {

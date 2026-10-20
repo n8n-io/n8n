@@ -94,8 +94,9 @@ export class InstanceAiBuilderDelegateAdapterService {
 
 			getBuilderTools: (resolveTargetAgentId, session) =>
 				this.agentsBuilderToolsService.getToolsForResolvedTarget(
-					async () => {
+					async (pinnedAgentId) => {
 						await assertAccess('agent:update');
+						if (pinnedAgentId) return pinnedAgentId;
 						const agentId = await resolveTargetAgentId();
 						if (!agentId) {
 							throw new UserError(
