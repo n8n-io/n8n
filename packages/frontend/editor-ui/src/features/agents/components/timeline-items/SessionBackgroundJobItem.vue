@@ -111,7 +111,7 @@ watch(
 
 <style module lang="scss">
 .step {
-	padding-inline: var(--spacing--sm);
+	margin-inline: var(--spacing--2xs);
 	--ai-activity-step--color: var(--text-color--subtle);
 }
 
@@ -120,6 +120,9 @@ watch(
 	align-items: center;
 	justify-content: space-between;
 	gap: var(--spacing--sm);
+	padding-inline-end: var(--spacing--2xs);
+	text-align: right;
+	font-variant-numeric: tabular-nums;
 
 	> button {
 		min-width: 0;
@@ -150,9 +153,11 @@ watch(
 	border: 0;
 	padding-inline: var(--spacing--md);
 	margin-block: 0;
-	margin-inline-start: calc(var(--spacing--2xs) + 2px);
 	border-left: var(--border);
 	border-radius: 0;
+
+	/** Align the rail with the icon center. */
+	transform: translateX(calc(var(--spacing--sm) + var(--spacing--5xs)));
 }
 
 .tasks {

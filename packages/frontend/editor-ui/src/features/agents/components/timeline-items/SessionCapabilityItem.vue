@@ -209,7 +209,7 @@ watch(
 
 <style module lang="scss">
 .step {
-	padding-inline: var(--spacing--sm);
+	margin-inline: var(--spacing--2xs);
 
 	--ai-activity-step--color: var(--text-color--subtle);
 }
@@ -245,6 +245,9 @@ watch(
 	align-items: center;
 	justify-content: space-between;
 	gap: var(--spacing--sm);
+	padding-inline-end: var(--spacing--2xs);
+	text-align: right;
+	font-variant-numeric: tabular-nums;
 
 	> button:disabled {
 		pointer-events: none;
@@ -268,10 +271,11 @@ watch(
 	border: 0;
 	padding-inline: var(--spacing--md);
 	margin-block: 0;
-	margin-inline-start: calc(var(--spacing--2xs) + 2px);
-
 	border-left: var(--border);
 	border-radius: 0;
+
+	/** Vertically aligns the rail with center of icon **/
+	transform: translateX(calc(var(--spacing--sm) + 2px));
 }
 
 .toolCode {

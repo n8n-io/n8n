@@ -14,10 +14,10 @@ import SessionTimelineTestControls from './SessionTimelineTestControls.vue';
 import {
 	flattenExecutionsToTimelineItems,
 	sessionBounds,
-	chartBlockColor,
 	isSubAgentTimelineItem,
 	itemStatusFilterKey,
 } from '@/features/agents/session-timeline.utils';
+import { timelineColors } from '@/features/agents/session-timeline.styles';
 import { useSubAgentNames } from '@/features/agents/composables/useSubAgentNames';
 import { resolveSubAgentName } from '@/features/agents/utils/delegate-tool';
 import { backgroundJobTimelineLabelKey } from '@/features/agents/utils/background-job-labels';
@@ -170,7 +170,7 @@ const filterOptions = computed<FilterOption[]>(() => {
 				key,
 				label: labelForKey(key),
 				presentation: 'swatch',
-				color: chartBlockColor(key),
+				color: timelineColors(key).chart,
 				count,
 			}),
 		),
@@ -379,18 +379,6 @@ useKeybindings({
 </template>
 
 <style module lang="scss">
-:global(body) {
-	--color--session-timeline-block-bg-alpha: 75%;
-}
-:global(body[data-theme='dark']) {
-	--color--session-timeline-block-bg-alpha: 45%;
-}
-@media (prefers-color-scheme: dark) {
-	:global(body:not([data-theme])) {
-		--color--session-timeline-block-bg-alpha: 45%;
-	}
-}
-
 .panel {
 	display: flex;
 	gap: var(--spacing--2xs);
@@ -424,7 +412,6 @@ useKeybindings({
 	flex-direction: column;
 	flex: 1;
 	min-height: 0;
-	background-color: var(--background--subtle);
 }
 .loading {
 	padding: var(--spacing--sm);

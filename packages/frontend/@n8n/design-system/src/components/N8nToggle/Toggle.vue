@@ -153,7 +153,7 @@ const pressed = computed({
 
 	height: var(--button--height);
 	padding: var(--button--padding);
-	border-radius: var(--button--radius);
+	border-radius: var(--button--radius, var(--radius--full));
 	font-size: var(--button--font-size);
 
 	--button--color--background: transparent;
@@ -208,35 +208,34 @@ const pressed = computed({
 	&.xsmall {
 		--button--height: var(--height--xs);
 		--button--padding: 0 var(--spacing--2xs);
-		--button--radius: var(--radius--3xs);
 		--button--font-size: var(--font-size--2xs);
 	}
 
 	&.small {
 		--button--height: var(--height--sm);
 		--button--padding: 0 var(--spacing--xs);
-		--button--radius: var(--radius--3xs);
+		border-radius: var(--radius--full);
 		--button--font-size: var(--font-size--xs);
 	}
 
 	&.medium {
 		--button--height: var(--height--md);
 		--button--padding: 0 var(--spacing--xs);
-		--button--radius: var(--radius--3xs);
+		border-radius: var(--radius--full);
 		--button--font-size: var(--font-size--sm);
 	}
 
 	&.large {
 		--button--height: var(--height--lg);
 		--button--padding: 0 var(--spacing--sm);
-		--button--radius: var(--radius--2xs);
+		border-radius: var(--radius--full);
 		--button--font-size: var(--font-size--sm);
 	}
 
 	&.xlarge {
 		--button--height: var(--height--xl);
 		--button--padding: 0 var(--spacing--sm);
-		--button--radius: var(--radius--xs);
+		border-radius: var(--radius--full);
 		--button--font-size: var(--font-size--md);
 	}
 

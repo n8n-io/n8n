@@ -61,15 +61,9 @@ function handleClick(event: MouseEvent) {
 	color: var(--ai-activity-step--color, var(--text-color--subtler));
 	font-size: var(--font-size--sm);
 	position: relative;
-	// Inherit header styles through the group without selecting nested buttons.
-	padding: var(--ai-activity-step--padding, 0);
+	padding: var(--ai-activity-step--padding, var(--spacing--2xs));
 	height: var(--ai-activity-step--height, var(--button--height));
 	min-height: var(--ai-activity-step--min-height, 0);
-
-	--button--padding: 0;
-	--button--font-size: var(--font-size--sm);
-	--button--color--background-active: transparent;
-	--button--color--background-hover: transparent;
 
 	&:hover {
 		color: var(--ai-activity-step--color, var(--text-color--subtle));
