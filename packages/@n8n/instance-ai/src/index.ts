@@ -43,6 +43,7 @@ import type * as ResolveCredentialsMod from './tools/workflows/resolve-credentia
 import type * as SetupWorkflowMod from './tools/workflows/setup-workflow.service';
 import type * as WorkflowSourceCompilerMod from './tools/workflows/workflow-source-compiler';
 import type * as WorkflowNodeDiffMod from './tools/workflows/workflow-node-diff';
+import type * as ChatModelValidationMod from './tools/workflows/chat-model-validation';
 import type * as WorkflowValidationWarningsMod from './tools/workflows/workflow-validation-warnings';
 import type * as SanitizeWebContentMod from './tools/web-research/sanitize-web-content';
 import type * as AgentSnapshotEventMod from './tracing/agent-snapshot-event';
@@ -174,6 +175,9 @@ const loadWorkflowSourceCompiler = lazyModule<typeof WorkflowSourceCompilerMod>(
 );
 const loadWorkflowNodeDiff = lazyModule<typeof WorkflowNodeDiffMod>(() =>
 	require('./tools/workflows/workflow-node-diff'),
+);
+const loadChatModelValidation = lazyModule<typeof ChatModelValidationMod>(() =>
+	require('./tools/workflows/chat-model-validation'),
 );
 const loadWorkflowValidationWarnings = lazyModule<typeof WorkflowValidationWarningsMod>(() =>
 	require('./tools/workflows/workflow-validation-warnings'),
@@ -690,6 +694,10 @@ export const stripStaleCredentialsFromWorkflow: typeof SetupWorkflowMod.stripSta
 export type { CredentialResolutionResult } from './tools/workflows/resolve-credentials';
 export const downgradeUnchangedNodeBlockers: typeof WorkflowNodeDiffMod.downgradeUnchangedNodeBlockers =
 	lazyFunction(() => loadWorkflowNodeDiff().downgradeUnchangedNodeBlockers);
+export const computeChangedNodeNames: typeof WorkflowNodeDiffMod.computeChangedNodeNames =
+	lazyFunction(() => loadWorkflowNodeDiff().computeChangedNodeNames);
+export const computeChatModelValidationIssues: typeof ChatModelValidationMod.computeChatModelValidationIssues =
+	lazyFunction(() => loadChatModelValidation().computeChatModelValidationIssues);
 export const partitionWarnings: typeof WorkflowValidationWarningsMod.partitionWarnings =
 	lazyFunction(() => loadWorkflowValidationWarnings().partitionWarnings);
 export const planVerificationSimulation: typeof VerificationSimulationMod.planVerificationSimulation =

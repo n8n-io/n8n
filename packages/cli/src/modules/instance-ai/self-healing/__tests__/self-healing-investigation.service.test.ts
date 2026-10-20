@@ -205,6 +205,7 @@ describe('SelfHealingInvestigationService', () => {
 				compile: vi.fn().mockResolvedValue({
 					success: true,
 					workflow: { nodes: [], connections: {} },
+					warnings: [],
 					credentialResolution: mock<CredentialResolutionResult>({ mockedCredentialTypes: [] }),
 				}),
 			};
@@ -216,11 +217,13 @@ describe('SelfHealingInvestigationService', () => {
 	);
 
 	it.each([
-		{ missing: true, outcome: 'needs_you' },
-		{ missing: false, outcome: 'fix_ready' },
+		{ missing: true, placeholders: false, outcome: 'needs_you' },
+		{ missing: false, placeholders: true, outcome: 'needs_you' },
+		{ missing: true, placeholders: true, outcome: 'needs_you' },
+		{ missing: false, placeholders: false, outcome: 'fix_ready' },
 	])(
-		'saves $outcome when simulated credentials are missing=$missing',
-		async ({ missing, outcome }) => {
+		'saves $outcome with missing credentials=$missing and placeholders=$placeholders',
+		async ({ missing, placeholders, outcome }) => {
 			const value = ['xoxb', '1234567890', 'abcdefghij'].join('-');
 			const output = {
 				outcome: 'fix_ready' as const,
@@ -235,6 +238,14 @@ describe('SelfHealingInvestigationService', () => {
 				compile: vi.fn().mockResolvedValue({
 					success: true,
 					workflow: graph,
+					warnings: placeholders
+						? [
+								{
+									code: 'unresolved_placeholders',
+									message: 'Fill in the channel in "Send message".',
+								},
+							]
+						: [],
 					credentialResolution: mock<CredentialResolutionResult>({
 						mockedNodeNames: ['Fetch Order'],
 						mockedCredentialTypes: missing ? ['httpHeaderAuth'] : [],
@@ -253,13 +264,16 @@ describe('SelfHealingInvestigationService', () => {
 			const resultInput = results.complete.mock.calls[0]?.[0];
 			expect(resultInput?.output.outcome).toBe(outcome);
 			expect(resultInput?.candidate?.graph).toEqual(graph);
-			if (missing) {
-				expect(resultInput?.output.summary).toContain('credentials');
+			if (missing || placeholders) {
+				expect(resultInput?.output.summary).toContain('setup');
 				expect(resultInput?.output.summary).not.toBe(output.summary);
-				expect(resultInput?.output.report).toContain('Fetch Order');
-				expect(resultInput?.output.report).toContain('[REDACTED]');
+				if (missing) {
+					expect(resultInput?.output.report).toContain('Fetch Order');
+					expect(resultInput?.output.report).toContain('[REDACTED]');
+					expect(resultInput?.output.report).toContain('httpHeaderAuth');
+				}
+				if (placeholders) expect(resultInput?.output.report).toContain('Fill in the channel');
 				expect(resultInput?.output.report).not.toContain(value);
-				expect(resultInput?.output.report).toContain('httpHeaderAuth');
 				expect(resultInput?.output.report).not.toContain('credential was created');
 				expect(resultInput?.output.report?.match(/^\*\*.+\*\*$/gm)).toEqual([
 					'**What happened**',
