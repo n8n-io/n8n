@@ -15,6 +15,7 @@ import {
 import type {
 	ICredentialType,
 	INodeProperties,
+	INodeType,
 	INodeTypeDescription,
 	KnownNodesAndCredentials,
 	NodeLoader,
