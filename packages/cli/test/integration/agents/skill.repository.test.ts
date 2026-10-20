@@ -8,6 +8,8 @@ import { TransactionRunner, type Project, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { randomUUID } from 'node:crypto';
 
+import type { AgentScope } from '@/modules/agents/entities/agent.entity';
+
 import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { SkillRepository } from '@/modules/agents/repositories/skill.repository';
@@ -83,12 +85,23 @@ describe('SkillRepository', () => {
 		expect(result.find(({ id }) => id === inherited)?.projectId).toBe(project.id);
 		expect(result.find(({ id }) => id === scoped)).toEqual({
 			id: scoped,
+			agentId: null,
 			projectId: project.id,
 			name: 'Updated',
 			description: 'Write in our voice',
 			version: 2,
 			versionId,
 		});
+	});
+
+	it('keeps ownership metadata when the skill has no resolved project', async () => {
+		const agent = await createAgent('Instance agent', { projectId: null, scope: 'instance' });
+		const id = await createSkill({ agentId: agent.id });
+		await skills.update(id, { availableToAssistant: true });
+
+		expect(await skills.findAssistantSkillSummaries(null)).toEqual([
+			expect.objectContaining({ id, agentId: agent.id, projectId: null }),
+		]);
 	});
 
 	it('removes an enabled skill from the catalog when its owner is deleted', async () => {
@@ -153,13 +166,17 @@ describe('SkillRepository', () => {
 		return id;
 	}
 
-	async function createAgent(name: string, options: { inSync?: boolean; projectId?: string } = {}) {
+	async function createAgent(
+		name: string,
+		options: { inSync?: boolean; projectId?: string | null; scope?: AgentScope } = {},
+	) {
 		const versionId = randomUUID();
 		const agent = await agents.save(
 			agents.create({
 				id: randomUUID(),
 				name,
-				projectId: options.projectId ?? project.id,
+				projectId: options.projectId === undefined ? project.id : options.projectId,
+				scope: options.scope ?? 'project',
 				integrations: [],
 				tools: {},
 				versionId,

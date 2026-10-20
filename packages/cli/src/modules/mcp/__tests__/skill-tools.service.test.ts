@@ -88,7 +88,13 @@ describe('McpSkillToolsService', () => {
 			});
 			expect(result.structuredContent).toEqual({
 				count: 1,
-				skills: [expect.objectContaining({ id: 'skill_a', name: 'Brand voice' })],
+				skills: [
+					expect.objectContaining({
+						id: 'skill_a',
+						name: 'Brand voice',
+						availableToAssistant: false,
+					}),
+				],
 			});
 		});
 
@@ -103,7 +109,7 @@ describe('McpSkillToolsService', () => {
 
 	describe('get_skill', () => {
 		it('returns the content and the hash for the next update', async () => {
-			skillsApi.get.mockResolvedValue(detail);
+			skillsApi.get.mockResolvedValue({ ...detail, availableToAssistant: true });
 
 			const result = await callTool('get_skill', { skillId: 'skill_a' });
 
@@ -113,6 +119,7 @@ describe('McpSkillToolsService', () => {
 				skill: detail.skill,
 				skillHash: 'hash-2',
 				usedBy: detail.usedBy,
+				availableToAssistant: true,
 			});
 		});
 
@@ -198,6 +205,24 @@ describe('McpSkillToolsService', () => {
 				created: true,
 				skillHash: 'hash-3',
 			});
+		});
+
+		it('passes an availability-only update through the skill API', async () => {
+			skillsApi.update.mockResolvedValue({ ...saved, created: false, version: 2 });
+
+			const result = await callTool('update_skill', {
+				skillId: 'skill_a',
+				availableToAssistant: true,
+				baseSkillHash: 'hash-2',
+			});
+
+			expect(skillsApi.update).toHaveBeenCalledWith(
+				user,
+				'skill_a',
+				{ availableToAssistant: true, baseSkillHash: 'hash-2' },
+				'mcp',
+			);
+			expect(result.structuredContent).toMatchObject({ created: false, version: 2 });
 		});
 
 		it('returns the latest hash when the skill changed since the client read it', async () => {

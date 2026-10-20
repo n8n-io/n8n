@@ -52,6 +52,9 @@ const createSkillInput = {
 const updateSkillInput = {
 	...skillIdInput,
 	...SaveSkillDto.schema.shape,
+	availableToAssistant: SaveSkillDto.schema.shape.availableToAssistant.describe(
+		'Allow the n8n Assistant to use this skill. Changing only this setting keeps the content version.',
+	),
 	baseSkillHash: SaveSkillDto.schema.shape.baseSkillHash.describe(
 		'skillHash from get_skill. The update is refused if the skill changed since',
 	),
@@ -74,6 +77,7 @@ function summary(item: SkillListItem) {
 		projectName: item.projectName,
 		agentId: item.agentId,
 		agentName: item.agentName,
+		availableToAssistant: item.availableToAssistant,
 		latestVersion: item.latestVersion,
 		usedByAgents: item.usedByAgents,
 		canEdit: item.canEdit,
@@ -190,7 +194,7 @@ export class McpSkillToolsService {
 			name: 'update_skill',
 			config: {
 				description:
-					'Update a skill. The update creates a new version of the skill. Pass only the fields to change.',
+					'Update a skill. Content changes create a new version. Changing only Assistant availability keeps the content version. Pass only the fields to change.',
 				inputSchema: updateSkillInput,
 				annotations: {
 					title: 'Update Skill',

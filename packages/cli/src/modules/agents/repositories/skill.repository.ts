@@ -41,6 +41,8 @@ export type ResolvedSkillRow = {
 	files: SkillFile[];
 };
 
+export type AssistantSkillSummaryRow = AssistantSkillSummary & Pick<Skill, 'agentId'>;
+
 /** A skill ref of an agent draft. A ref with `versionId` is pinned to that saved version. */
 export type SkillDependencyRef = { skillId: string; versionId?: string | null };
 
@@ -164,8 +166,8 @@ export class SkillRepository extends BaseRepository<Skill> {
 		return { skills, count };
 	}
 
-	/** Enabled instance skills and skills in the authorized session project. */
-	async findAssistantSkillSummaries(projectId: string | null): Promise<AssistantSkillSummary[]> {
+	/** Enabled metadata with ownership for the caller's permission check. */
+	async findAssistantSkillSummaries(projectId: string | null): Promise<AssistantSkillSummaryRow[]> {
 		return await this.createQueryBuilder('skill')
 			.innerJoin(SkillVersion, 'version', 'version.skillId = skill.id')
 			.leftJoin(Agent, 'owner', 'owner.id = skill.agentId')
@@ -184,13 +186,14 @@ export class SkillRepository extends BaseRepository<Skill> {
 				return `version.version = ${latest}`;
 			})
 			.select('skill.id', 'id')
+			.addSelect('skill.agentId', 'agentId')
 			.addSelect('COALESCE(skill.projectId, owner.projectId)', 'projectId')
 			.addSelect('version.id', 'versionId')
 			.addSelect('version.version', 'version')
 			.addSelect('version.name', 'name')
 			.addSelect('version.description', 'description')
 			.orderBy('skill.id', 'ASC')
-			.getRawMany<AssistantSkillSummary>();
+			.getRawMany<AssistantSkillSummaryRow>();
 	}
 
 	/** Called in the same transaction as the content save and any scope change. */

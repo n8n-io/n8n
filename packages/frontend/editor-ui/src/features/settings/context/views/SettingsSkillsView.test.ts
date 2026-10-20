@@ -337,19 +337,23 @@ describe('SettingsSkillsView', () => {
 
 	describe('edit', () => {
 		it.each([
-			['instance', true, false],
-			['project', true, false],
-			['agent', true, false],
-			['instance', false, undefined],
+			['instance', true, false, false],
+			['project', true, false, false],
+			['agent', true, false, false],
+			['instance', true, true, true],
+			['project', true, true, true],
+			['agent', true, true, true],
+			['instance', false, false, undefined],
+			['instance', false, true, undefined],
 		] as const)(
 			'shows availability for every skill scope behind the Hub flag (%s, %s)',
-			async (scope, enabled, expected) => {
+			async (scope, enabled, availableToAssistant, expected) => {
 				mockedStore(useSettingsStore).moduleSettings = {
 					agents: { skillsHubEnabled: enabled },
 				} as never;
 				skillsStore.skills = [skill()];
 				skillsStore.count = 1;
-				skillsStore.fetchSkill.mockResolvedValue(detail({ scope }));
+				skillsStore.fetchSkill.mockResolvedValue(detail({ scope, availableToAssistant }));
 				const { getByText } = renderView();
 				await userEvent.click(getByText('research-search'));
 				await waitFor(() => expect(uiStore.openModalWithData).toHaveBeenCalled());

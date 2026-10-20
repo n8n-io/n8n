@@ -22,9 +22,13 @@ export class HubAssistantSkillProvider implements AssistantSkillProvider {
 
 	async listSkills(context: AssistantSkillContext): Promise<AssistantSkillSummary[]> {
 		if (!this.rollout.isEnabled) return [];
-		return await this.skillRepository.findAssistantSkillSummaries(
+		const summaries = await this.skillRepository.findAssistantSkillSummaries(
 			await this.authorizedProject(context),
 		);
+		const canRead = await this.skillService.accessCheck(context.user, 'read');
+		return summaries
+			.filter((skill) => canRead(skill, skill.projectId))
+			.map(({ agentId: _agentId, ...summary }) => summary);
 	}
 
 	async readSkill(
