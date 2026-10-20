@@ -268,7 +268,11 @@ describe('SelfHealingAgentService', () => {
 			stream.usage?.usage,
 			'completed',
 		);
-		expect(options.sandbox.destroySandbox).not.toHaveBeenCalled();
+		expect(options.sandbox.destroySandbox).toHaveBeenCalledExactlyOnceWith(
+			options.threadId,
+			'thread_cleanup',
+			user.id,
+		);
 		expect(createSelfHealingAgent).toHaveBeenCalledWith(
 			expect.objectContaining({
 				context: expect.objectContaining({ threadId: options.threadId, runId: options.runId }),
@@ -325,6 +329,7 @@ describe('SelfHealingAgentService', () => {
 		const pending = service.execute(input, options);
 		await entered.promise;
 		expect(options.onFinish).not.toHaveBeenCalled();
+		expect(options.sandbox.destroySandbox).not.toHaveBeenCalled();
 		expect(candidates.compile).toHaveBeenCalledWith(
 			expect.objectContaining({
 				baseline,
@@ -337,11 +342,23 @@ describe('SelfHealingAgentService', () => {
 		await pending;
 		expect(options.onComplete).toHaveBeenCalledTimes(1);
 		expect(options.onFinish).toHaveBeenCalledTimes(1);
+		expect(options.sandbox.destroySandbox).toHaveBeenCalledTimes(1);
+	});
+
+	it('preserves the completed result when sandbox cleanup fails', async () => {
+		vi.mocked(options.sandbox.destroySandbox).mockRejectedValueOnce(new Error('Cleanup failed'));
+
+		await expect(service.execute(input, options)).resolves.toMatchObject({
+			status: 'completed',
+			output: validOutput,
+		});
+		expect(options.onComplete).toHaveBeenCalledTimes(1);
 	});
 
 	it('preserves runtime completion when result storage fails', async () => {
 		options.onComplete = vi.fn().mockRejectedValue(new Error('Storage unavailable'));
 		await expect(service.execute(input, options)).rejects.toThrow('Storage unavailable');
+		expect(options.sandbox.destroySandbox).toHaveBeenCalledTimes(1);
 		expect(options.onFinish).toHaveBeenCalledWith(
 			expect.objectContaining({ status: 'completed', finishReason: 'stop', output: validOutput }),
 			'test/model',
