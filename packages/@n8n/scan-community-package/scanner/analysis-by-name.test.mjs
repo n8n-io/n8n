@@ -28,6 +28,7 @@ it.each([
 	'complete',
 	'missing credential',
 	'lint exception',
+	'package download failure',
 	'published-only credential',
 	'source-only credential',
 	'different credential path',
@@ -43,6 +44,8 @@ it.each([
 		const { analyzePackageByName } = await import('./scanner.mjs');
 		if (scenario === 'lint exception') {
 			vi.spyOn(ESLint.prototype, 'lintFiles').mockRejectedValue(new Error('Fixture lint failure'));
+		}
+		if (['lint exception', 'package download failure'].includes(scenario)) {
 			vi.spyOn(console, 'error').mockImplementation(() => {});
 		}
 		const manifest = {
@@ -121,6 +124,9 @@ it.each([
 
 		vi.mocked(spawnSync).mockImplementation((command, args, options) => {
 			if (command === 'npm') {
+				if (scenario === 'package download failure') {
+					return { status: 1, stderr: Buffer.from('Fixture package download failure') };
+				}
 				fs.writeFileSync(path.join(options.cwd, 'fixture.tgz'), 'fixture archive');
 			} else if (command === 'tar') {
 				const target = args[args.indexOf('-C') + 1];
@@ -170,6 +176,13 @@ it.each([
 		});
 
 		const result = await analyzePackageByName(packageName, version);
+
+		if (scenario === 'package download failure') {
+			expect(result.passed).toBe(false);
+			expect(result.message).toContain('Fixture package download failure');
+			expect(result).not.toHaveProperty('credentialNames');
+			return;
+		}
 
 		if (
 			['published-only credential', 'source-only credential', 'different credential path'].includes(

@@ -295,6 +295,10 @@ export const buildScanConfig = async () => {
 	);
 };
 
+/**
+ * Return credential names only when extraction is enabled and analysis completes.
+ * Omit the field if analysis throws. An empty list means no credentials were declared.
+ */
 export const analyzePackage = async (
 	packageDir,
 	filePatterns = ['**/*.js', '**/*.ts', '**/*.json'],
@@ -363,6 +367,11 @@ const readCredentialRegistrations = (packageDir) => {
 	return [...new Set(credentials)].sort();
 };
 
+/**
+ * Return optional credential metadata from the attested source.
+ * Require both `passed: true` and a `credentialNames` array before collision checks.
+ * A missing field means metadata is unavailable, not that the package has no credentials.
+ */
 export const analyzePackageByName = async (packageName, version) => {
 	try {
 		let exactVersion = version;

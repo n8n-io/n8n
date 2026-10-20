@@ -26,7 +26,9 @@ paths. If the lists differ, the scan fails and omits `credentialNames`.
 This check requires a source registration for every published credential.
 It checks registrations, not whether the compiled credential names match the source.
 
-Results can also omit `credentialNames` when provenance checks, source fetches,
+`credentialNames` is optional. An empty array means that the package declares no
+credentials. A missing field means that credential metadata is unavailable.
+Results can omit `credentialNames` when provenance checks, source fetches,
 package downloads, or analysis fail. The approval service must require
 `passed: true` and a `credentialNames` array before it checks for collisions.
 It must not treat a missing value as an empty list.
