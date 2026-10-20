@@ -3,6 +3,7 @@ import { z } from 'zod';
 import type {
 	PromotionReviewRemoteError,
 	PromotionReviewState,
+	PromotionReviewSummary,
 } from './dto/promotions/promotion-review.dto';
 import type { WorkflowReviewInboxItem } from './dto/workflow-reviews/list-workflow-review-inbox.dto';
 import type { SelfHealingResultDetail } from './self-healing-results';
@@ -40,7 +41,11 @@ export type InboxPromotionReviewItem = {
 	state: InboxState;
 	reviewState: PromotionReviewState;
 	title: string | null;
+	webUrl: string | null;
 	branchName: string | null;
+	configName: string | null;
+	requester: PromotionReviewSummary['createdBy'];
+	approver: PromotionReviewSummary['approvedBy'];
 	remoteError: PromotionReviewRemoteError | null;
 	createdAt: string;
 	updatedAt: string;

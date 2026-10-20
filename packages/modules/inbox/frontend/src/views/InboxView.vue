@@ -54,6 +54,9 @@ const selectedListItem = computed(() =>
 const selectedReviewItem = computed(() =>
 	selectedListItem.value?.type === 'workflow_review' ? selectedListItem.value : undefined,
 );
+const selectedPromotionItem = computed(() =>
+	selectedListItem.value?.type === 'promotion_review' ? selectedListItem.value : undefined,
+);
 const detailTab = computed(() => (route.query.tab === 'changes' ? 'changes' : 'activity'));
 let isMounted = false;
 
@@ -198,10 +201,9 @@ onBeforeUnmount(() => {
 						/>
 						<PromotionReviewDetail
 							v-else-if="
-								selection?.type === 'promotion_review' &&
-								!store.disabledSources.includes(selection.type)
+								selectedPromotionItem && !store.disabledSources.includes('promotion_review')
 							"
-							:review-id="selection.id"
+							:item="selectedPromotionItem"
 						/>
 						<InboxEmptyState v-else />
 					</div>

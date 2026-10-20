@@ -141,7 +141,6 @@ export const API_KEY_RESOURCES = {
 		'push',
 		'manageProjects',
 		'pull',
-		'readReviews',
 	] as const,
 	workflowTags: ['update', 'list'] as const,
 	executionTags: ['update', 'list'] as const,

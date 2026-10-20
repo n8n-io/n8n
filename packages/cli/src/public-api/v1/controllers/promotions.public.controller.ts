@@ -25,7 +25,6 @@ import {
 	PromotionProviderCreatedPublicDto,
 	PromotionProviderListPublicDto,
 	PromotionProviderPublicDto,
-	PromotionReviewDetailDto,
 	PromotionRepositoryListPublicDto,
 	PromotionBranchListPublicDto,
 	UpdatePromotionEnvironmentDto,
@@ -36,7 +35,6 @@ import {
 	promotionDirectionSchema,
 	promotionProviderIdParamSchema,
 	promotionRepositoryIdParamSchema,
-	promotionReviewIdParamSchema,
 	type PromotionDirection,
 } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
@@ -695,28 +693,6 @@ export class PromotionsPublicController {
 		);
 	}
 
-	// -- Reviews -------------------------------------------------------------
-
-	@Get('/reviews/:promotionReviewId')
-	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
-	@ApiKeyScope('gitConnection:readReviews')
-	@GlobalScope('gitConnection:readReviews')
-	@ApiSummary('Retrieve a promotion review')
-	@ApiDescription(
-		'Returns the review with the configuration and branch of its newest promotion, and the merge request head commit from the Git host. remote and headCommitSha are null when the Git host did not answer, and remoteError gives the reason.',
-	)
-	@ApiTags(tags)
-	@ApiResponse(200, PromotionReviewDetailDto)
-	@ApiErrorResponse(404)
-	@ApiErrorResponse(503)
-	async getPromotionReview(
-		_req: AuthenticatedRequest,
-		_res: Response,
-		@Param('promotionReviewId', promotionReviewIdParamSchema) promotionReviewId: string,
-	): Promise<PromotionReviewDetailDto> {
-		return await (await this.reviewInboxService()).getDetail(promotionReviewId);
-	}
-
 	// -- Module access -------------------------------------------------------
 
 	private assertModuleActive() {
@@ -753,14 +729,6 @@ export class PromotionsPublicController {
 			'@/modules/promotions.ee/promotion-change.service.js'
 		);
 		return Container.get(PromotionChangeService);
-	}
-
-	private async reviewInboxService() {
-		this.assertModuleActive();
-		const { PromotionReviewInboxService } = await import(
-			'@/modules/promotions.ee/promotion-review-inbox.service.js'
-		);
-		return Container.get(PromotionReviewInboxService);
 	}
 
 	private resolvePage(query: { cursor?: string; limit: number }) {

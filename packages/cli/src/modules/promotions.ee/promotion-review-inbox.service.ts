@@ -2,10 +2,8 @@ import {
 	promotionRunDetailsSchemas,
 	type InboxCounts,
 	type InboxPromotionReviewItem,
-	type PromotionReviewDetail,
 	type PromotionReviewRemoteError,
 	type PromotionReviewState,
-	type PromotionReviewSummary,
 } from '@n8n/api-types';
 import { LicenseState, isEnvFeatureEnabled } from '@n8n/backend-common';
 import { LICENSE_FEATURES } from '@n8n/constants';
@@ -13,6 +11,7 @@ import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { hasGlobalScope } from '@n8n/permissions';
+import { singleFlight } from '@n8n/utils/promise/single-flight';
 
 import type { InboxSourceQuery } from '../inbox/inbox-source.registry';
 import type { PromotionReview } from './database/entities/promotion-review.entity';
@@ -22,8 +21,8 @@ import { PromotionRunRepository } from './database/repositories/promotion-run.re
 import {
 	GitLabMergeRequestClient,
 	parseGitLabReviewId,
-	type GitLabMergeRequest,
 } from './git-hosts/gitlab-merge-request.client';
+import type { GitLabMergeRequest } from './git-hosts/gitlab-merge-request.types';
 import { PromotionReviewHostResolver } from './promotion-review-host.resolver';
 
 type RemoteView = Readonly<{
@@ -32,11 +31,13 @@ type RemoteView = Readonly<{
 }>;
 
 /**
- * Promotion Reviews as an Inbox source. Each open list reads the open reviews from
- * the Git host and stores state changes. A host failure never changes a row.
+ * Promotion Reviews as an Inbox source. The first page of each tab and the counters
+ * share one sync of the open reviews with the Git host. A host failure never changes a row.
  */
 @Service()
 export class PromotionReviewInboxService {
+	private readonly syncOnce = singleFlight(async () => await this.syncOpenReviews());
+
 	constructor(
 		private readonly licenseState: LicenseState,
 		private readonly reviewRepository: PromotionReviewRepository,
@@ -54,25 +55,31 @@ export class PromotionReviewInboxService {
 
 	async listForInbox(user: User, query: InboxSourceQuery): Promise<InboxPromotionReviewItem[]> {
 		if (!canRead(user)) return [];
-		const synced =
-			query.state === 'open' ? await this.syncOpenReviews() : new Map<string, RemoteView>();
+		// A sync during "Load more" could move a review above the cursor, where the user never sees it.
+		const synced = query.boundary ? new Map<string, RemoteView>() : await this.syncOnce();
 		const reviews = await this.reviewRepository.findForInbox(query);
-		// Closed reviews are not synced. Read them for the title only.
-		const read = await this.readRemote(reviews.filter(({ id }) => !synced.has(id)));
-		const runs = await this.runRepository.findByReviewIds(reviews.map(({ id }) => id));
+		const runs = await this.newestRuns(reviews);
+		const read = await this.readRemote(
+			reviews.filter(({ id }) => !synced.has(id)),
+			runs,
+		);
 
 		return reviews.map((review) => {
-			const view = synced.get(review.id) ?? read.get(review.id);
+			const { mergeRequest, remoteError } = synced.get(review.id) ??
+				read.get(review.id) ?? { mergeRequest: null, remoteError: null };
+			const run = runs.get(review.id);
 			return {
 				type: 'promotion_review',
 				id: review.id,
 				state: query.state,
 				reviewState: review.state,
-				title: view?.mergeRequest?.title ?? null,
-				branchName:
-					gitDetails(newestRun(runs.filter((run) => run.reviewId === review.id)))?.branchName ??
-					null,
-				remoteError: view?.remoteError ?? null,
+				title: mergeRequest?.title ?? null,
+				webUrl: mergeRequest?.web_url ?? null,
+				branchName: branchOf(run),
+				configName: run?.config?.name ?? null,
+				requester: toReviewUser(review.createdBy),
+				approver: toReviewUser(review.approvedBy),
+				remoteError,
 				createdAt: review.createdAt.toISOString(),
 				updatedAt: (review.lastStateChangeAt ?? review.createdAt).toISOString(),
 			};
@@ -80,29 +87,14 @@ export class PromotionReviewInboxService {
 	}
 
 	async countForInbox(user: User): Promise<InboxCounts> {
-		return canRead(user) ? await this.reviewRepository.countForInbox() : { open: 0, closed: 0 };
-	}
-
-	async getDetail(id: string): Promise<PromotionReviewDetail> {
-		const review = await this.reviewRepository.findByIdWithRelations(id);
-		if (!review) throw new NotFoundError('Promotion review not found');
-
-		const view = await this.readOne(review);
-		const { mergeRequest } = view;
-		if (mergeRequest) await this.applyHostState(review, mergeRequest);
-		const run = newestRun(review.runs);
-
-		return {
-			...toSummary(review, view),
-			config: run?.config ? { id: run.config.id, name: run.config.name } : null,
-			branchName: gitDetails(run)?.branchName ?? null,
-			headCommitSha: mergeRequest?.diff_refs?.head_sha ?? null,
-		};
+		if (!canRead(user)) return { open: 0, closed: 0 };
+		await this.syncOnce();
+		return await this.reviewRepository.countForInbox();
 	}
 
 	private async syncOpenReviews(): Promise<Map<string, RemoteView>> {
 		const reviews = await this.reviewRepository.findOpenReviews();
-		const views = await this.readRemote(reviews);
+		const views = await this.readRemote(reviews, await this.newestRuns(reviews));
 		for (const review of reviews) {
 			const mergeRequest = views.get(review.id)?.mergeRequest;
 			if (mergeRequest) await this.applyHostState(review, mergeRequest);
@@ -110,25 +102,42 @@ export class PromotionReviewInboxService {
 		return views;
 	}
 
-	private async readRemote(reviews: PromotionReview[]): Promise<Map<string, RemoteView>> {
-		const views = await Promise.all(reviews.map(async (review) => await this.readOne(review)));
+	private async newestRuns(reviews: PromotionReview[]): Promise<Map<string, PromotionRun>> {
+		const runs = await this.runRepository.findByReviewIds(reviews.map(({ id }) => id));
+		const newest = new Map<string, PromotionRun>();
+		for (const run of runs.toSorted(
+			(a, b) => b.createdAt.getTime() - a.createdAt.getTime() || b.id.localeCompare(a.id),
+		)) {
+			if (run.reviewId && !newest.has(run.reviewId)) newest.set(run.reviewId, run);
+		}
+		return newest;
+	}
+
+	private async readRemote(
+		reviews: PromotionReview[],
+		runs: Map<string, PromotionRun>,
+	): Promise<Map<string, RemoteView>> {
+		const views = await Promise.all(
+			reviews.map(async (review) => await this.readOne(review, runs.get(review.id))),
+		);
 		return new Map(reviews.map(({ id }, index) => [id, views[index]]));
 	}
 
-	private async readOne({
-		type,
-		connection,
-		remoteReviewId,
-	}: PromotionReview): Promise<RemoteView> {
+	private async readOne(
+		{ type, connection, remoteReviewId }: PromotionReview,
+		run: PromotionRun | undefined,
+	): Promise<RemoteView> {
 		if (!connection || !remoteReviewId) return failed('no_connection');
 		try {
 			const access = await this.hostResolver.resolveForConnection(connection, type);
 			if (!access) return failed('no_connection');
-			const ref = parseGitLabReviewId(remoteReviewId);
-			return {
-				mergeRequest: await this.mergeRequests.getMergeRequest(access, ref),
-				remoteError: null,
-			};
+			const mergeRequest = await this.mergeRequests.getMergeRequest(
+				access,
+				parseGitLabReviewId(remoteReviewId),
+			);
+			// The stored ids are not unique across hosts. Only the branch n8n pushed proves it is ours.
+			if (mergeRequest.source_branch !== branchOf(run)) return failed('not_found');
+			return { mergeRequest, remoteError: null };
 		} catch (error) {
 			return failed(remoteErrorOf(error));
 		}
@@ -168,44 +177,13 @@ const toReviewState = ({
 	return detailed_merge_status === 'requested_changes' ? 'changes_requested' : 'open';
 };
 
-/** An allowlist: never return the provider, its config or its credentials. */
-const toSummary = (review: PromotionReview, view: RemoteView): PromotionReviewSummary => {
-	const { mergeRequest, remoteError } = view;
-	return {
-		id: review.id,
-		state: review.state,
-		remoteReviewId: review.remoteReviewId,
-		connection: review.connection
-			? { id: review.connection.id, name: review.connection.name }
-			: null,
-		createdBy: toReviewUser(review.createdBy),
-		approvedBy: toReviewUser(review.approvedBy),
-		createdAt: review.createdAt.toISOString(),
-		approvedAt: review.approvedAt?.toISOString() ?? null,
-		lastStateChangeAt: review.lastStateChangeAt?.toISOString() ?? null,
-		remote: mergeRequest
-			? {
-					title: mergeRequest.title,
-					webUrl: mergeRequest.web_url,
-					hasConflicts: mergeRequest.has_conflicts,
-				}
-			: null,
-		remoteError,
-	};
-};
-
 const toReviewUser = (user: User | null) =>
 	user
 		? { id: user.id, firstName: user.firstName, lastName: user.lastName, email: user.email }
 		: null;
 
-const newestRun = (runs: PromotionRun[]): PromotionRun | null =>
-	runs.toSorted(
-		(a, b) => b.createdAt.getTime() - a.createdAt.getTime() || b.id.localeCompare(a.id),
-	)[0] ?? null;
-
-const gitDetails = (run: PromotionRun | null) => {
+const branchOf = (run: PromotionRun | undefined) => {
 	if (!run) return null;
 	const parsed = promotionRunDetailsSchemas[run.type].safeParse(run.details);
-	return parsed.success ? parsed.data : null;
+	return parsed.success ? parsed.data.branchName : null;
 };

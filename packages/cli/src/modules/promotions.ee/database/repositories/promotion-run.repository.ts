@@ -22,7 +22,7 @@ export class PromotionRunRepository extends BaseRepository<PromotionRun> {
 
 	async findByReviewIds(reviewIds: string[]): Promise<PromotionRun[]> {
 		if (reviewIds.length === 0) return [];
-		return await this.findBy({ reviewId: In(reviewIds) });
+		return await this.find({ where: { reviewId: In(reviewIds) }, relations: { config: true } });
 	}
 
 	/** The only column that changes after insert. An amend inserts a new run instead. */

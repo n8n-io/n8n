@@ -298,9 +298,6 @@
 		"POST /promotions/environments/{promotionEnvironmentId}/apply": {
 			"status": "gap"
 		},
-		"GET /promotions/reviews/{promotionReviewId}": {
-			"status": "gap"
-		},
 		"GET /settings/security-policy": {
 			"status": "gap"
 		},

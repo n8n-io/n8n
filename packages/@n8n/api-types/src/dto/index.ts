@@ -829,7 +829,6 @@ export {
 	gitLabRemoteReviewIdSchema,
 	parseRemoteReviewId,
 	promotionRemoteReviewIdSchemas,
-	promotionReviewRemoteErrorSchema,
 	promotionReviewStateSchema,
 	promotionReviewSummarySchema,
 	promotionReviewTabSchema,

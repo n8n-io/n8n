@@ -16,16 +16,22 @@ const baseUrl = 'https://gitlab.example.com';
 const token = 'review-token';
 const projectId = 7;
 
-/** A merge request state, or the HTTP status GitLab answers with. Unknown iids answer 404. */
-type GitLabAnswer = { state: string; detailed_merge_status?: string } | number;
+/** A merge request, or the HTTP status GitLab answers with. Unknown iids answer 404. */
+type GitLabAnswer =
+	| { state: string; detailed_merge_status?: string; source_branch?: string }
+	| number;
 
-function gitlab(answers: Record<number, GitLabAnswer>) {
-	return nock(baseUrl)
+/** Answers like GitLab and returns the iids it was asked for, in call order. */
+function gitlab(answers: Record<number, GitLabAnswer>, { delayMs = 0 } = {}) {
+	const calls: number[] = [];
+	nock(baseUrl)
 		.persist()
 		.matchHeader('PRIVATE-TOKEN', token)
 		.get(new RegExp(`^/api/v4/projects/${projectId}/merge_requests/\\d+$`))
+		.delay(delayMs)
 		.reply((uri) => {
 			const iid = Number(uri.split('/').pop());
+			calls.push(iid);
 			const answer = answers[iid];
 			if (answer === undefined) return [404, { message: '404 Not found' }];
 			if (typeof answer === 'number') return [answer, {}];
@@ -39,11 +45,11 @@ function gitlab(answers: Record<number, GitLabAnswer>) {
 					description: 'Opened by n8n',
 					source_branch: `n8n-promotion/${iid}`,
 					target_branch: 'main',
-					diff_refs: { base_sha: 'a'.repeat(40), head_sha: 'b'.repeat(40) },
 					...answer,
 				},
 			];
 		});
+	return calls;
 }
 
 describe('Promotion reviews in the Inbox', () => {
@@ -97,6 +103,13 @@ describe('Promotion reviews in the Inbox', () => {
 		return connection.body.id as string;
 	}
 
+	/** A plain Git provider has no host API, so its reviews report no_connection. */
+	const createGitConnection = async (name: string) =>
+		await createConnection(
+			{ name, type: 'git', auth: { authType: 'token', username: 'u', password: 'p' } },
+			{ name, scope: 'projects', remoteUrl: `https://example.com/org/${name}.git` },
+		);
+
 	const inbox = async (user: User, query: Record<string, string>) =>
 		await testServer.authAgentFor(user).get('/inbox').query(query);
 
@@ -146,7 +159,7 @@ describe('Promotion reviews in the Inbox', () => {
 
 	afterEach(() => nock.cleanAll());
 
-	it('syncs reviews from GitLab, lists them by state, and keeps a review GitLab did not answer for', async () => {
+	it('syncs from any tab, keeps reviews GitLab did not answer for, and ignores a merge request from another branch', async () => {
 		const opened = await insertReview(1);
 		const changesRequested = await insertReview(2);
 		const merged = await insertReview(3);
@@ -154,12 +167,11 @@ describe('Promotion reviews in the Inbox', () => {
 		const notFound = await insertReview(5);
 		const rejected = await insertReview(6);
 		const unreachable = await insertReview(7);
-		const plainGit = await insertReview(8, {
-			connectionId: await createConnection(
-				{ name: 'Git', type: 'git', auth: { authType: 'token', username: 'u', password: 'p' } },
-				{ name: 'Plain', scope: 'projects', remoteUrl: 'https://example.com/org/repo.git' },
-			),
-		});
+		const otherBranch = await insertReview(8);
+		const plainGit = await insertReview(9, { connectionId: await createGitConnection('Plain') });
+		const deletedConnectionId = await createGitConnection('Deleted');
+		const deleted = await insertReview(10, { connectionId: deletedConnectionId });
+		await Container.get(PromotionConnectionRepository).delete({ id: deletedConnectionId });
 		gitlab({
 			1: { state: 'opened' },
 			2: { state: 'opened', detailed_merge_status: 'requested_changes' },
@@ -167,66 +179,88 @@ describe('Promotion reviews in the Inbox', () => {
 			4: { state: 'closed' },
 			6: 401,
 			7: 503,
+			8: { state: 'merged', source_branch: 'n8n-promotion/elsewhere' },
 		});
 
-		const open = await inbox(owner, { state: 'open', category: 'waiting' });
 		const closedList = await inbox(owner, { state: 'closed' });
-		const summary = await testServer.authAgentFor(owner).get('/inbox/summary');
+		const open = await inbox(owner, { state: 'open', category: 'waiting' });
 
-		expect(open.status, JSON.stringify(open.body)).toBe(200);
-		expect(open.body.data.data).toHaveLength(6);
+		expect(closedList.status, JSON.stringify(closedList.body)).toBe(200);
+		expect(closedList.body.data.data).toHaveLength(2);
+		expect(closedList.body.data.data).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ id: merged, state: 'closed', reviewState: 'merged' }),
+				expect.objectContaining({ id: closed, state: 'closed', reviewState: 'closed' }),
+			]),
+		);
+		expect(open.body.data.data).toHaveLength(8);
 		expect(open.body.data.data).toEqual(
 			expect.arrayContaining([
-				expect.objectContaining({
+				{
 					type: 'promotion_review',
 					id: opened,
 					state: 'open',
 					reviewState: 'open',
 					title: 'Promotion 1',
+					webUrl: `${baseUrl}/platform/workflows/-/merge_requests/1`,
 					branchName: 'n8n-promotion/1',
+					configName: 'To production',
+					requester: expect.objectContaining({ id: owner.id }),
+					approver: null,
 					remoteError: null,
-				}),
+					createdAt: expect.any(String),
+					updatedAt: expect.any(String),
+				},
 				expect.objectContaining({ id: changesRequested, reviewState: 'changes_requested' }),
 				expect.objectContaining({
 					id: notFound,
-					reviewState: 'open',
 					title: null,
+					webUrl: null,
 					branchName: 'n8n-promotion/5',
 					remoteError: 'not_found',
 				}),
 				expect.objectContaining({ id: rejected, remoteError: 'auth' }),
 				expect.objectContaining({ id: unreachable, remoteError: 'unreachable' }),
+				expect.objectContaining({
+					id: otherBranch,
+					reviewState: 'open',
+					title: null,
+					remoteError: 'not_found',
+				}),
 				expect.objectContaining({ id: plainGit, remoteError: 'no_connection' }),
+				expect.objectContaining({ id: deleted, remoteError: 'no_connection' }),
 			]),
 		);
-		expect(closedList.body.data.data).toHaveLength(2);
-		expect(closedList.body.data.data).toEqual(
-			expect.arrayContaining([
-				expect.objectContaining({
-					id: merged,
-					state: 'closed',
-					reviewState: 'merged',
-					title: 'Promotion 3',
-				}),
-				expect.objectContaining({
-					id: closed,
-					state: 'closed',
-					reviewState: 'closed',
-					title: 'Promotion 4',
-				}),
-			]),
-		);
-		expect(summary.body.data.counts).toEqual({ open: 6, closed: 2 });
 		expect(JSON.stringify([open.body, closedList.body])).not.toContain(token);
 	});
 
-	it('pages promotion reviews with the Inbox cursor, newest activity first', async () => {
+	it('answers the first page and the counters from one shared sync', async () => {
+		await insertReview(1);
+		const stillOpen = await insertReview(2);
+		const calls = gitlab({ 1: { state: 'merged' }, 2: { state: 'opened' } }, { delayMs: 300 });
+
+		const [open, summary] = await Promise.all([
+			inbox(owner, { state: 'open', category: 'waiting' }),
+			testServer.authAgentFor(owner).get('/inbox/summary'),
+		]);
+
+		expect(open.body.data.data.map(({ id }: { id: string }) => id)).toEqual([stillOpen]);
+		expect(summary.body.data.counts).toEqual({ open: 1, closed: 1 });
+		expect(calls.toSorted()).toEqual([1, 2]);
+	});
+
+	it('pages with the Inbox cursor and reads only the next batch from GitLab', async () => {
 		const oldest = await insertReview(1);
 		const middle = await insertReview(2);
 		const newest = await insertReview(3);
-		gitlab({ 1: { state: 'opened' }, 2: { state: 'opened' }, 3: { state: 'opened' } });
+		const calls = gitlab({
+			1: { state: 'opened' },
+			2: { state: 'opened' },
+			3: { state: 'opened' },
+		});
 
 		const first = await inbox(owner, { state: 'open', category: 'waiting', limit: '2' });
+		const callsForFirstPage = calls.length;
 		const second = await inbox(owner, {
 			state: 'open',
 			category: 'waiting',
@@ -237,6 +271,8 @@ describe('Promotion reviews in the Inbox', () => {
 		expect(first.body.data.data.map(({ id }: { id: string }) => id)).toEqual([newest, middle]);
 		expect(second.body.data.data.map(({ id }: { id: string }) => id)).toEqual([oldest]);
 		expect(second.body.data.nextCursor).toBeNull();
+		expect(callsForFirstPage).toBe(3);
+		expect(calls.slice(callsForFirstPage)).toEqual([1]);
 	});
 
 	it('hides promotion reviews from a member and while the rollout flag is off', async () => {
@@ -258,51 +294,6 @@ describe('Promotion reviews in the Inbox', () => {
 			expect(flagOff.body.data.disabledSources).toContain('promotion_review');
 		} finally {
 			process.env.N8N_ENV_FEAT_PROMOTIONS = 'true';
-		}
-	});
-
-	it('returns the review detail with GitLab details, and no_connection after the connection is deleted', async () => {
-		const id = await insertReview(1);
-		gitlab({ 1: { state: 'opened' } });
-		const agent = testServer.publicApiAgentFor(owner);
-
-		const detail = await agent.get(`/promotions/reviews/${id}`);
-
-		expect(detail.status, JSON.stringify(detail.body)).toBe(200);
-		expect(detail.body).toMatchObject({
-			id,
-			state: 'open',
-			connection: { id: connectionId, name: 'Workflows' },
-			config: { id: configId, name: 'To production' },
-			createdBy: { id: owner.id },
-			branchName: 'n8n-promotion/1',
-			headCommitSha: 'b'.repeat(40),
-			remote: { title: 'Promotion 1', webUrl: `${baseUrl}/platform/workflows/-/merge_requests/1` },
-			remoteError: null,
-		});
-		expect(JSON.stringify(detail.body)).not.toContain(token);
-		expect(detail.body.connection).not.toHaveProperty('provider');
-
-		await Container.get(PromotionConnectionRepository).delete({ id: connectionId });
-		const orphan = await agent.get(`/promotions/reviews/${id}`);
-		expect(orphan.body).toMatchObject({
-			connection: null,
-			remote: null,
-			remoteError: 'no_connection',
-			headCommitSha: null,
-		});
-
-		expect((await agent.get(`/promotions/reviews/${uuidv7()}`)).status).toBe(404);
-	});
-
-	it('rejects the detail for a member and for a key without the review scope', async () => {
-		const id = await insertReview(1);
-		const member = await createMemberWithApiKey();
-		const listOnlyOwner = await createOwnerWithApiKey({ scopes: ['gitConnection:list'] });
-
-		for (const user of [member, listOnlyOwner]) {
-			const response = await testServer.publicApiAgentFor(user).get(`/promotions/reviews/${id}`);
-			expect(response.status).toBe(403);
 		}
 	});
 });

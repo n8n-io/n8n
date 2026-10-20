@@ -60,6 +60,8 @@ export class PromotionReviewRepository extends BaseRepository<PromotionReview> {
 	async findForInbox({ state, limit, boundary }: InboxSourceQuery): Promise<PromotionReview[]> {
 		const query = this.createQueryBuilder('review')
 			.leftJoinAndSelect('review.environment', 'environment')
+			.leftJoinAndSelect('review.createdBy', 'createdBy')
+			.leftJoinAndSelect('review.approvedBy', 'approvedBy')
 			.where('review.state IN (:...states)', {
 				states: state === 'open' ? OPEN_STATES : TERMINAL_STATES,
 			})
