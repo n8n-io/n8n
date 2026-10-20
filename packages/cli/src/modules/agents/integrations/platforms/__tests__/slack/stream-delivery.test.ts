@@ -13,6 +13,48 @@ import {
 	SLACK_STREAMING_OPTIONS,
 } from '../../slack/slack-bridge-behavior';
 
+async function makeSlackContext(topLevel: boolean) {
+	const threadTs = topLevel ? '1719000001.000100' : '1719000000.000100';
+	const { createSlackAdapter } = await import('@chat-adapter/slack');
+	const { createMemoryState } = await import('@chat-adapter/state-memory');
+	const { ThreadImpl } = await import('chat');
+	const adapter = createSlackAdapter({
+		botToken: 'xoxb-test-token',
+		botUserId: 'U_BOT',
+		signingSecret: 'test-signing-secret',
+		nativeStreaming: false,
+	});
+	const message = mock<Message<unknown>>({
+		author: { userId: 'U_USER' },
+		raw: {
+			channel: 'C_CHANNEL',
+			ts: '1719000001.000100',
+			thread_ts: topLevel ? undefined : '1719000000.000100',
+			team: 'T_TEAM',
+		},
+	});
+	const thread = new ThreadImpl({
+		id: `slack:C_CHANNEL:${threadTs}`,
+		channelId: 'slack:C_CHANNEL',
+		adapter,
+		stateAdapter: createMemoryState(),
+		currentMessage: message,
+		...SLACK_STREAMING_OPTIONS,
+	});
+	const logger = mock<Logger>();
+	const context = await createSlackBridgeExecutionContext({
+		chat: mock<ChatInstance>({ getAdapter: () => adapter }),
+		thread,
+		message,
+		logger,
+		agentId: 'agent-1',
+		integration: { type: 'slack', credentialId: 'slack-1' },
+		isNewMention: false,
+		replyExpectation: 'required',
+	});
+	return { thread, threadTs, logger, context };
+}
+
 describe('Slack stream delivery', () => {
 	afterEach(() => nock.cleanAll());
 
@@ -22,8 +64,8 @@ describe('Slack stream delivery', () => {
 		{ name: 'stream without text-end', topLevel: false, textEnd: false, ending: 'reply' },
 		{ name: 'threaded silent finish', topLevel: false, textEnd: true, ending: 'silent' },
 		{ name: 'top-level silent finish', topLevel: true, textEnd: true, ending: 'silent' },
-		{ name: 'threaded failure', topLevel: false, textEnd: true, ending: 'error' },
-		{ name: 'top-level failure', topLevel: true, textEnd: true, ending: 'error' },
+		{ name: 'threaded turn error', topLevel: false, textEnd: true, ending: 'error' },
+		{ name: 'top-level turn error', topLevel: true, textEnd: true, ending: 'error' },
 		{
 			name: 'text without a tool',
 			topLevel: false,
@@ -50,48 +92,13 @@ describe('Slack stream delivery', () => {
 					if (method === 'assistant.threads.setStatus') visibleStatus = body.status;
 					return { ok: true, ts: '1719000999.000100', message: { ts: '1719000999.000100' } };
 				});
-			const { createSlackAdapter } = await import('@chat-adapter/slack');
-			const { createMemoryState } = await import('@chat-adapter/state-memory');
-			const { ThreadImpl } = await import('chat');
-			const threadTs = topLevel ? '1719000001.000100' : '1719000000.000100';
-			const adapter = createSlackAdapter({
-				botToken: 'xoxb-test-token',
-				botUserId: 'U_BOT',
-				signingSecret: 'test-signing-secret',
-				nativeStreaming: false,
-			});
-			const message = mock<Message<unknown>>({
-				author: { userId: 'U_USER' },
-				raw: {
-					channel: 'C_CHANNEL',
-					ts: '1719000001.000100',
-					thread_ts: topLevel ? undefined : '1719000000.000100',
-					team: 'T_TEAM',
-				},
-			});
-			const thread = new ThreadImpl({
-				id: `slack:C_CHANNEL:${threadTs}`,
-				channelId: 'slack:C_CHANNEL',
-				adapter,
-				stateAdapter: createMemoryState(),
-				currentMessage: message,
-				...SLACK_STREAMING_OPTIONS,
-			});
-			const logger = mock<Logger>();
-			const context = await createSlackBridgeExecutionContext({
-				chat: mock<ChatInstance>({ getAdapter: () => adapter }),
-				thread,
-				message,
-				logger,
-				agentId: 'agent-1',
-				integration: { type: 'slack', credentialId: 'slack-1' },
-				isNewMention: false,
-				replyExpectation: 'required',
-			});
+			const { thread, threadTs, logger, context } = await makeSlackContext(topLevel);
+			const postErrorToThread = vi.fn().mockResolvedValue(undefined);
 			const consumer = new AgentChatStreamConsumer({
 				disableStreaming: false,
 				logger,
-				postErrorToThread: vi.fn().mockRejectedValue(new Error('Unexpected delivery failure')),
+				postErrorToThread,
+				isIntegrationActionTool: (name) => name === 'save_reply',
 				handleSuspension: vi.fn().mockResolvedValue('skipped'),
 				handleMessage: vi.fn().mockResolvedValue(false),
 			});
@@ -112,11 +119,11 @@ describe('Slack stream delivery', () => {
 						type: 'tool-result',
 						toolCallId: 'save',
 						toolName: 'save_reply',
-						output: { ok: true },
+						output: ending === 'silent' ? { ok: true, silent: true } : { ok: true },
 					};
 				}
 				yield { type: 'finish-step' };
-				if (ending === 'reply') {
+				if (ending !== 'error') {
 					yield { type: 'start-step' };
 					yield { type: 'text-delta', id: 'answer', delta: 'The reply is saved.' };
 					yield { type: 'text-end', id: 'answer' };
@@ -172,6 +179,7 @@ describe('Slack stream delivery', () => {
 			await statusHandle?.clearBeforeResponse();
 			expect(calls).toHaveLength(callCount);
 			expect(visibleStatus).toBe('');
+			expect(postErrorToThread).not.toHaveBeenCalled();
 			expect(calls.filter((call) => call.method === 'chat.postMessage')).toHaveLength(1);
 			const updates = calls.filter((call) => call.method === 'chat.update');
 			expect(updates.every((call) => call.body.ts === '1719000999.000100')).toBe(true);
@@ -180,4 +188,65 @@ describe('Slack stream delivery', () => {
 			);
 		},
 	);
+
+	it.each([
+		{ method: 'chat.postMessage', topLevel: false },
+		{ method: 'chat.postMessage', topLevel: true },
+		{ method: 'chat.update', topLevel: false },
+		{ method: 'chat.update', topLevel: true },
+	])('clears status after $method fails (topLevel=$topLevel)', async ({ method, topLevel }) => {
+		const calls: Array<{ method: string; body: Record<string, string> }> = [];
+		let failed = false;
+		nock('https://slack.com')
+			.persist()
+			.post(/\/api\/.+/)
+			.reply(200, (uri, requestBody) => {
+				const calledMethod = uri.replace('/api/', '');
+				const body =
+					typeof requestBody === 'string'
+						? Object.fromEntries(new URLSearchParams(requestBody))
+						: (requestBody as Record<string, string>);
+				calls.push({ method: calledMethod, body });
+				if (calledMethod === method && !failed) {
+					failed = true;
+					return { ok: false, error: 'channel_not_found' };
+				}
+				return { ok: true, ts: '1719000999.000100', message: { ts: '1719000999.000100' } };
+			});
+		const { thread, threadTs, logger, context } = await makeSlackContext(topLevel);
+		const postErrorToThread = vi.fn(async () => {
+			await thread.post({ markdown: 'Could not deliver the reply.' });
+		});
+		const consumer = new AgentChatStreamConsumer({
+			disableStreaming: false,
+			logger,
+			postErrorToThread,
+			handleSuspension: vi.fn().mockResolvedValue('skipped'),
+			handleMessage: vi.fn().mockResolvedValue(false),
+		});
+		async function* stream(): AsyncGenerator<StreamChunk> {
+			yield { type: 'text-delta', id: 'progress', delta: 'Saving the reply.\n' };
+			yield { type: 'text-end', id: 'progress' };
+			yield { type: 'finish-step' };
+			yield { type: 'text-delta', id: 'answer', delta: 'The reply is saved.' };
+			yield { type: 'finish', finishReason: 'stop' };
+		}
+
+		await consumer.consume(stream(), thread, {
+			...context,
+			statusHandle: onceStatusHandle(context.statusHandle),
+		});
+
+		expect(failed).toBe(true);
+		expect(postErrorToThread).toHaveBeenCalledOnce();
+		expect(postErrorToThread).toHaveBeenCalledWith(thread, expect.any(Error), undefined);
+		expect(calls.at(-1)).toMatchObject({
+			method: 'assistant.threads.setStatus',
+			body: { channel_id: 'C_CHANNEL', thread_ts: threadTs, status: '' },
+		});
+		expect(calls.at(-2)).toMatchObject({
+			method: 'chat.postMessage',
+			body: { markdown_text: 'Could not deliver the reply.' },
+		});
+	});
 });

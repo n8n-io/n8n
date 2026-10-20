@@ -2712,6 +2712,58 @@ describe('AgentChatBridge — consumeStream', () => {
 			await run;
 		});
 
+		it('cancels a sleeping Slack DM status retry when the turn finishes', async () => {
+			vi.useFakeTimers();
+			const { bot, handlers } = makeBot();
+			const invalidThreadError = Object.assign(new Error('invalid_thread_ts'), {
+				data: { error: 'invalid_thread_ts' },
+			});
+			const setAssistantStatus = vi
+				.fn()
+				.mockRejectedValueOnce(invalidThreadError)
+				.mockResolvedValue(undefined);
+			bot.getAdapter.mockReturnValue({ setAssistantStatus });
+			const thread = makeThread();
+			const agentExecutor = {
+				executeForChatPublished: vi.fn(async function* () {
+					await new Promise((resolve) => setTimeout(resolve, 100));
+					yield { type: 'finish' as const, finishReason: 'stop' as const };
+				}),
+				resumeForChat: vi.fn(() => toStream([{ type: 'finish', finishReason: 'stop' }])),
+			};
+
+			makeQueuedBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				slackIntegration,
+			);
+
+			const run = handlers.mention!(thread, {
+				text: 'hi',
+				raw: {
+					type: 'message',
+					channel: 'D123',
+					channel_type: 'im',
+					ts: '1779466577.518139',
+				},
+				author: { userId: 'u1', userName: 'user1' },
+			});
+			await vi.advanceTimersByTimeAsync(0);
+			expect(setAssistantStatus).toHaveBeenCalledTimes(1);
+
+			await vi.advanceTimersByTimeAsync(100);
+			await run;
+			expect(setAssistantStatus).toHaveBeenLastCalledWith('D123', '1779466577.518139', '');
+
+			await vi.advanceTimersByTimeAsync(1000);
+			expect(setAssistantStatus.mock.calls.map((call) => call[2])).toEqual(['Thinking...', '']);
+			expect(thread.post).not.toHaveBeenCalled();
+		});
+
 		it('keeps Slack DM status active across progress and clears it at completion', async () => {
 			vi.useFakeTimers();
 			const { bot, handlers } = makeBot();

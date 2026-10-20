@@ -175,32 +175,45 @@ function makeStreamingConsumer(
 }
 
 describe('AgentChatStreamConsumer — stream delivery failure', () => {
-	it('does not wait for a failed post to consume text before starting a tool', async () => {
+	it('continues past a failed post and clears status after reporting the error', async () => {
 		const localThread = mock<Thread<unknown, unknown>>();
 		const error = new Error('Slack delivery failed');
 		localThread.post.mockRejectedValue(error);
 		const postErrorToThread = vi.fn().mockResolvedValue(undefined);
 		const consumer = makeStreamingConsumer({ postErrorToThread });
+		const clearBeforeResponse = vi.fn().mockResolvedValue(undefined);
+		const resumeAfterResponse = vi.fn().mockResolvedValue(undefined);
+		const toolStarted = vi.fn();
+		async function* stream(): AsyncGenerator<StreamChunk> {
+			yield { type: 'text-delta', id: 't-1', delta: 'Saving the reply.' };
+			yield { type: 'text-end', id: 't-1' };
+			yield { type: 'tool-call', toolCallId: 'save', toolName: 'save_reply', input: {} };
+			toolStarted();
+			yield { type: 'finish', finishReason: 'stop' };
+		}
 
-		await consumer.consume(
-			makeStream([
-				{ type: 'text-delta', id: 't-1', delta: 'Saving the reply.' },
-				{ type: 'text-end', id: 't-1' },
-				{ type: 'tool-call', toolCallId: 'save', toolName: 'save_reply', input: {} },
-				{ type: 'finish', finishReason: 'stop' },
-			]),
-			localThread,
-			{
-				statusHandle: {
-					keepDuringResponse: true,
-					clearBeforeResponse: vi.fn().mockResolvedValue(undefined),
-					resumeAfterResponse: vi.fn().mockResolvedValue(undefined),
-				},
+		await consumer.consume(stream(), localThread, {
+			statusHandle: {
+				keepDuringResponse: true,
+				clearBeforeResponse,
+				resumeAfterResponse,
 			},
-		);
+		});
 
 		expect(postErrorToThread).toHaveBeenCalledOnce();
 		expect(postErrorToThread).toHaveBeenCalledWith(localThread, error, undefined);
+		expect(toolStarted).toHaveBeenCalledOnce();
+		expect(toolStarted.mock.invocationCallOrder[0]).toBeGreaterThan(
+			localThread.post.mock.invocationCallOrder[0],
+		);
+		expect(postErrorToThread.mock.invocationCallOrder[0]).toBeGreaterThan(
+			toolStarted.mock.invocationCallOrder[0],
+		);
+		expect(resumeAfterResponse).toHaveBeenCalled();
+		expect(clearBeforeResponse).toHaveBeenCalledOnce();
+		expect(clearBeforeResponse.mock.invocationCallOrder[0]).toBeGreaterThan(
+			postErrorToThread.mock.invocationCallOrder[0],
+		);
 	});
 });
 
