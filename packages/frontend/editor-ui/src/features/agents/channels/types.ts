@@ -52,7 +52,13 @@ export interface AgentChannelRuntimeContext {
 export interface AgentChannelRestart {
 	/** The channel credential for the new setup, or '' to start without one. */
 	credentialId: string;
-	/** The account the new setup signs in with, for a platform that signs in first. */
+	/**
+	 * The sign-in for the new setup, for a platform whose setup signs in first
+	 * (for Teams, the Microsoft account that creates the app and the bot). It is
+	 * set when the user restarts by changing the sign-in. The runtime applies it
+	 * only after the channel is removed, so a cancelled restart keeps the old
+	 * sign-in. `credentialId` is the bot's own credential.
+	 */
 	signInCredentialId?: string;
 }
 

@@ -394,6 +394,7 @@ watch(
 				:connected-description="connectedDescription"
 				:error-message="errorMessage"
 				:error-is-conflict="errorIsConflict[integrationType]"
+				:saved-credential-id="connectedCredentials[integrationType] ?? ''"
 				:saved-settings="integrationSettings[integrationType]"
 				:is-published="Boolean(agent?.activeVersionId)"
 				:agent-name="agent?.name ?? agentId"

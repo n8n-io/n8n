@@ -35,6 +35,7 @@ const mocks = vi.hoisted(() => {
 		linearIntegration,
 		teamsIntegration,
 		teamsKeepOpenAfterConnect: false,
+		connectedCredentials: {} as Record<string, string>,
 		ensureLoaded: vi.fn(),
 		reloadCatalog: vi.fn(),
 		setCatalog: vi.fn<(integrations: ChatIntegrationDescriptor[]) => void>(),
@@ -94,7 +95,7 @@ vi.mock('@/features/agents/composables/useAgentIntegrationsCatalog', () => {
 
 vi.mock('@/features/agents/composables/useAgentIntegrationStatus', () => ({
 	useAgentIntegrationStatus: () => ({
-		connectedCredentials: ref<Record<string, string>>({}),
+		connectedCredentials: ref(mocks.connectedCredentials),
 		integrationSettings: ref({}),
 		integrationApproval: ref({}),
 		loadingMap: ref<Record<string, boolean>>({}),
@@ -215,7 +216,7 @@ vi.mock('@/features/agents/channels/teams/AgentChannelTeamsSetupView.vue', async
 	);
 	return {
 		default: {
-			props: ['modelValue'],
+			props: ['modelValue', 'savedCredentialId'],
 			emits: ['update:modelValue', 'persist', 'done', 'connect', 'restart'],
 			setup(
 				_: unknown,
@@ -256,6 +257,7 @@ vi.mock('@/features/agents/channels/teams/AgentChannelTeamsSetupView.vue', async
 			<button data-testid="mock-teams-done" @click="finish">Done</button>
 			<button data-testid="mock-teams-restart" @click="$emit('restart', { credentialId: '' })">Set up again</button>
 			<span data-testid="mock-teams-credential">{{ modelValue }}</span>
+			<span data-testid="mock-teams-saved-credential">{{ savedCredentialId }}</span>
 		</div>`,
 		},
 	};
@@ -312,6 +314,7 @@ describe('ChannelSetupCard', () => {
 		mocks.disconnect.mockResolvedValue({});
 		mocks.isConnected.mockReturnValue(false);
 		mocks.teamsKeepOpenAfterConnect = false;
+		mocks.connectedCredentials = {};
 		mocks.isConfigured.mockReturnValue(false);
 		mocks.getAgent.mockResolvedValue({ name: 'Agent', id: 'agent-1' });
 		mocks.createSlackAgentApp.mockResolvedValue({ installUrl: 'https://slack.com/oauth/install' });
@@ -774,6 +777,14 @@ describe('ChannelSetupCard', () => {
 			expect(mocks.connect).toHaveBeenCalledTimes(1);
 			expect(wrapper.emitted('resolve')).toBeUndefined();
 			expect(wrapper.find('[data-testid="channel-setup-card-skip"]').exists()).toBe(true);
+		});
+
+		it('hands the setup the credential the saved channel runs on', async () => {
+			mocks.connectedCredentials = { teams: 'teams-cred' };
+			const wrapper = mountCard({ integrationType: 'teams' });
+			await flushPromises();
+
+			expect(wrapper.find('[data-testid="mock-teams-saved-credential"]').text()).toBe('teams-cred');
 		});
 
 		it('removes the saved channel and starts the setup again', async () => {

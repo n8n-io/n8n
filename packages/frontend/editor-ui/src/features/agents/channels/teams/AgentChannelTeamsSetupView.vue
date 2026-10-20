@@ -165,11 +165,13 @@ defineExpose({
 			:error-message="errorMessage"
 			:error-is-conflict="errorIsConflict"
 			:force-new-credential="forceNewCredential"
+			:saved-credential-id="savedCredentialId"
 			:saved-settings="savedSettings"
 			@create="emit('create')"
 			@edit="emit('edit')"
 			@connect="emit('connect')"
 			@done="emit('done')"
+			@restart="emit('restart', $event)"
 		/>
 	</div>
 </template>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, ref } from 'vue';
 
 import AgentChannelTeamsSetup from './AgentChannelTeamsSetup.vue';
 import AgentChannelStandardEditView from '../AgentChannelStandardEditView.vue';
@@ -18,7 +18,7 @@ const emit = defineEmits<{
 	edit: [];
 	restart: [restart: AgentChannelRestart];
 }>();
-const { confirmRestart } = useTeamsSetupRestart();
+const { restartOnCredentialChange } = useTeamsSetupRestart();
 const viewRef = ref<AgentChannelViewExpose>();
 const currentSettings = computed(() => viewRef.value?.currentSettings);
 const validationError = computed(() => viewRef.value?.validationError ?? null);
@@ -26,14 +26,11 @@ const saveLabel = computed(() => viewRef.value?.saveLabel);
 const beforeSave = async () => await viewRef.value?.beforeSave?.();
 const afterSave = async () => await viewRef.value?.afterSave?.();
 
-// Another credential is another bot, which needs its own check and Azure Bot,
-// so it cannot be swapped in: the user sets the channel up again instead.
-watch(credentialId, async (next) => {
-	const saved = props.savedCredentialId;
-	if (!saved || !next || next === saved) return;
-	credentialId.value = saved;
-	if (await confirmRestart()) emit('restart', { credentialId: next });
-});
+restartOnCredentialChange(
+	credentialId,
+	() => props.savedCredentialId ?? '',
+	(restart) => emit('restart', restart),
+);
 
 defineExpose({ currentSettings, validationError, saveLabel, beforeSave, afterSave });
 </script>
