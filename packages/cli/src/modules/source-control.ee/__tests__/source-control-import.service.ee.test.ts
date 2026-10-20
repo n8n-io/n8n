@@ -1714,7 +1714,7 @@ describe('SourceControlImportService', () => {
 
 		describe('node id length', () => {
 			const mockUserId = 'user-id-123';
-			const workflowFile = (nodeId: string) =>
+			const workflowFile = (nodeId: unknown) =>
 				JSON.stringify({
 					id: '1',
 					name: 'Workflow 1',
@@ -1771,6 +1771,15 @@ describe('SourceControlImportService', () => {
 					expect(workflowRepository.upsertImportedContent).toHaveBeenCalled();
 				},
 			);
+
+			it('skips the length check for a node id that is not a string', async () => {
+				fsReadFile.mockResolvedValueOnce(workflowFile(12345));
+				const candidates = [mock<SourceControlledFile>({ file: '/mock/workflow1.json', id: '1' })];
+
+				await service.importWorkflowFromWorkFolder(candidates, mockUserId);
+
+				expect(workflowRepository.upsertImportedContent).toHaveBeenCalled();
+			});
 		});
 
 		describe('content-import policy enforcement', () => {
