@@ -184,6 +184,32 @@ describe('SourceControlPushModal', () => {
 		});
 	});
 
+	it.each(['created', 'modified'] as const)('shows the correct badge for %s', async (status) => {
+		const files: SourceControlledFile[] = [
+			{
+				id: 'workflow-status',
+				name: 'Status workflow',
+				type: 'workflow',
+				status,
+				location: 'local',
+				conflict: false,
+				file: '/workflow-status.json',
+			},
+		];
+		sourceControlStore.getAggregatedStatus.mockResolvedValue(files);
+
+		const { findByText } = renderModal({
+			pinia,
+			props: { data: { eventBus, status: files } },
+		});
+
+		const badge = (await findByText(status === 'created' ? 'New' : 'Modified')).closest(
+			'.n8n-badge',
+		);
+		expect(badge).toBeInTheDocument();
+		expect(badge?.className.includes('newBadge')).toBe(status === 'created');
+	});
+
 	it('should toggle checkboxes', async () => {
 		const status: SourceControlledFile[] = [
 			{

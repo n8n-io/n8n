@@ -56,6 +56,7 @@ import {
 	N8nInput,
 	N8nInputLabel,
 	N8nLink,
+	N8nNewBadge,
 	N8nNotice,
 	N8nOption,
 	N8nPopover,
@@ -303,7 +304,7 @@ function clearProjectFilter() {
 
 const statusFilterOptions: Array<{ label: string; value: SourceControlledFileStatus }> = [
 	{
-		label: 'New',
+		label: i18n.baseText('generic.new'),
 		value: SOURCE_CONTROL_FILE_STATUS.created,
 	},
 	{
@@ -1243,7 +1244,16 @@ onMounted(async () => {
 																:disabled="!renderMovedTooltip(row.file)"
 																placement="top"
 															>
-																<N8nBadge :variant="getStatusTheme(row.file.status)" size="xsmall">
+																<N8nNewBadge
+																	v-if="row.file.status === SOURCE_CONTROL_FILE_STATUS.created"
+																	:text="getStatusText(row.file.status)"
+																	size="xsmall"
+																/>
+																<N8nBadge
+																	v-else
+																	:variant="getStatusTheme(row.file.status)"
+																	size="xsmall"
+																>
 																	{{ getStatusText(row.file.status) }}
 																</N8nBadge>
 															</N8nTooltip>

@@ -3,7 +3,7 @@ import type { BaseTextKey } from '@n8n/i18n';
 import type { TestTableColumn } from './TestTableBase.vue';
 import { useI18n } from '@n8n/i18n';
 import { useRouter } from 'vue-router';
-import { N8nBadge, N8nTooltip, type BadgeVariant } from '@n8n/design-system';
+import { N8nBadge, N8nNewBadge, N8nTooltip, type BadgeVariant } from '@n8n/design-system';
 defineProps<{
 	column: TestTableColumn<T>;
 	row: T & { status: string };
@@ -98,7 +98,13 @@ function getErrorTooltipUrl(column: TestTableColumn<T>, row: T): string | undefi
 		<template #content>
 			<div v-n8n-html="getErrorTooltip(column, row)" />
 		</template>
-		<N8nBadge :variant="statusThemeMap[row.status]" class="mr-4xs">
+		<N8nNewBadge
+			v-if="row.status === 'new'"
+			:text="statusLabelMap[row.status]"
+			size="xsmall"
+			class="mr-4xs"
+		/>
+		<N8nBadge v-else :variant="statusThemeMap[row.status]" class="mr-4xs">
 			{{ statusLabelMap[row.status] }}
 		</N8nBadge>
 	</N8nTooltip>
