@@ -4,10 +4,10 @@ import {
 	N8nDialog,
 	N8nDialogBody,
 	N8nDialogHeader,
+	N8nDialogDescription,
 	N8nDialogTitle,
 	N8nIconButton,
 	N8nLoading,
-	N8nText,
 	N8nUserInfo,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -71,9 +71,9 @@ watch(
 			</div>
 		</N8nDialogHeader>
 		<N8nDialogBody :class="$style.body">
-			<N8nText color="text-base" size="small" :class="$style.description">
+			<N8nDialogDescription>
 				{{ i18n.baseText('workflowSettings.redactionMembersModal.description') }}
-			</N8nText>
+			</N8nDialogDescription>
 			<N8nLoading v-if="isLoading" :rows="3" />
 			<div v-else :class="$style.memberList">
 				<div v-for="member in membersData.members" :key="member.userId" :class="$style.memberRow">
@@ -97,11 +97,6 @@ watch(
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--xs);
-}
-
-.description {
-	display: block;
-	margin-bottom: var(--spacing--sm);
 }
 
 .memberList {
