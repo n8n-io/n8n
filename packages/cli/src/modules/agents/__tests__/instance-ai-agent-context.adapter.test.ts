@@ -16,7 +16,7 @@ import type { AgentsSettingsService } from '../agents-settings.service';
 import type { AgentsToolsService } from '../agents-tools.service';
 import type { AgentsService } from '../agents.service';
 import type { AttachableWorkflowsService } from '../attachable-workflows.service';
-import type { Agent } from '../entities/agent.entity';
+import type { ProjectAgent } from '../entities/agent.entity';
 import { InstanceAiAgentContextAdapterService } from '../instance-ai-agent-context.adapter';
 import { createAgentSkillRefsService, storedAgentConfig } from './test-utils/stored-agent-config';
 
@@ -73,7 +73,7 @@ const agent = {
 	versionId: 'draft-1',
 	activeVersionId: 'published-1',
 	updatedAt: new Date('2026-09-17T10:00:00.000Z'),
-} as unknown as Agent;
+} as unknown as ProjectAgent;
 
 describe('InstanceAiAgentContextAdapterService', () => {
 	beforeEach(() => {
@@ -271,7 +271,7 @@ describe('InstanceAiAgentContextAdapterService', () => {
 				instructions: 'Help users.',
 				skills: [{ type: 'skill', id: 'notes' }],
 			}),
-		} as Agent);
+		} as ProjectAgent);
 
 		const result = await service.createReader(user, 'project-1').lookup({
 			type: 'skills',

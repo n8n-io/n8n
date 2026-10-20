@@ -20,6 +20,7 @@ import AgentAdvancedPanel from './AgentAdvancedPanel.vue';
 import AgentBudgetPanel from './AgentBudgetPanel.vue';
 import AgentCapabilitiesSection from './AgentCapabilitiesSection.vue';
 import AgentTriggersSection from './AgentTriggersSection.vue';
+import { provideAgentPersonalisation } from '../channels/agentPersonalisation';
 import AgentIdentityHeader from './AgentIdentityHeader.vue';
 import AgentInfoPanel from './AgentInfoPanel.vue';
 import AgentFilesPanel from './AgentFilesPanel.vue';
@@ -68,6 +69,9 @@ const props = defineProps<{
 }>();
 
 const childrenDisabled = computed(() => !props.canEditAgent);
+provideAgentPersonalisation(
+	() => props.localConfig?.personalisation ?? props.agent?.schema?.personalisation,
+);
 const isKnowledgeAdvancedExpanded = ref(false);
 
 const settingsStore = useSettingsStore();
@@ -231,7 +235,6 @@ defineExpose({ onSetupTaskAction });
 							:saved-description="savedDescription"
 							:save-description="saveDescription"
 							:task-refs="localConfig?.tasks ?? []"
-							:personalisation="localConfig?.personalisation ?? agent?.schema?.personalisation"
 							:reload-key="tasksReloadKey"
 							@update:connected-triggers="emit('update:connected-triggers', $event)"
 							@trigger-added="emit('trigger-added', $event)"

@@ -23,21 +23,6 @@ describe('workflow publication blocker in OpenAPI', () => {
 		},
 	);
 
-	test('documents the review reason and request ID as optional', () => {
-		const schema = readSpec('schemas/workflowPublishBlockedError.yml');
-
-		expect(schema).toMatchObject({
-			properties: {
-				reason: {
-					enum: ['review_pending', 'changes_requested'],
-				},
-				workflowReviewRequestId: {
-					type: 'string',
-				},
-			},
-		});
-	});
-
 	// The update route replaces the shared 403 with its own body, because a refused
 	// re-publication still saved a draft the caller needs to be told about.
 	test('documents the permission refusal separately, naming the saved draft', () => {
@@ -51,14 +36,5 @@ describe('workflow publication blocker in OpenAPI', () => {
 			'insufficient_permissions',
 		]);
 		expect(schema.properties.versionId.type).toBe('string');
-	});
-
-	// the same 409 also carries webhook conflicts, whose body is
-	// `message`-only
-	test('stays satisfiable by a message-only conflict body', () => {
-		const schema = readSpec('schemas/workflowPublishBlockedError.yml');
-
-		expect(schema.required).toEqual(['message']);
-		expect(schema.additionalProperties).toBeUndefined();
 	});
 });

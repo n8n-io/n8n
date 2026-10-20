@@ -702,7 +702,7 @@ describe('makeDataTableOperationsForUser', () => {
 		it('should reject createDataTable on a read-only instance', async () => {
 			const ops = dataTableProxyService.makeDataTableOperationsForUser(user);
 			await expect(ops.createDataTable(PROJECT_ID, { name: 'test', columns: [] })).rejects.toThrow(
-				'Cannot modify data tables on a protected instance. This instance is in read-only mode.',
+				'Cannot change the data table structure on a protected instance.',
 			);
 			expect(dataTableServiceMock.createDataTable).not.toHaveBeenCalled();
 		});
@@ -710,7 +710,7 @@ describe('makeDataTableOperationsForUser', () => {
 		it('should reject updateDataTable on a read-only instance', async () => {
 			const ops = dataTableProxyService.makeDataTableOperationsForUser(user);
 			await expect(ops.updateDataTable('dt-1', PROJECT_ID, { name: 'renamed' })).rejects.toThrow(
-				'Cannot modify data tables on a protected instance. This instance is in read-only mode.',
+				'Cannot change the data table structure on a protected instance.',
 			);
 			expect(dataTableServiceMock.updateDataTable).not.toHaveBeenCalled();
 		});
@@ -719,16 +719,14 @@ describe('makeDataTableOperationsForUser', () => {
 			const ops = dataTableProxyService.makeDataTableOperationsForUser(user);
 			await expect(
 				ops.addColumn('dt-1', PROJECT_ID, { name: 'col', type: 'string' }),
-			).rejects.toThrow(
-				'Cannot modify data tables on a protected instance. This instance is in read-only mode.',
-			);
+			).rejects.toThrow('Cannot change the data table structure on a protected instance.');
 			expect(dataTableServiceMock.addColumn).not.toHaveBeenCalled();
 		});
 
 		it('should reject deleteColumn on a read-only instance', async () => {
 			const ops = dataTableProxyService.makeDataTableOperationsForUser(user);
 			await expect(ops.deleteColumn('dt-1', PROJECT_ID, 'col-1')).rejects.toThrow(
-				'Cannot modify data tables on a protected instance. This instance is in read-only mode.',
+				'Cannot change the data table structure on a protected instance.',
 			);
 			expect(dataTableServiceMock.deleteColumn).not.toHaveBeenCalled();
 		});
@@ -737,51 +735,54 @@ describe('makeDataTableOperationsForUser', () => {
 			const ops = dataTableProxyService.makeDataTableOperationsForUser(user);
 			await expect(
 				ops.renameColumn('dt-1', PROJECT_ID, 'col-1', { name: 'new_name' }),
-			).rejects.toThrow(
-				'Cannot modify data tables on a protected instance. This instance is in read-only mode.',
-			);
+			).rejects.toThrow('Cannot change the data table structure on a protected instance.');
 			expect(dataTableServiceMock.renameColumn).not.toHaveBeenCalled();
 		});
 
 		it('should reject deleteDataTable on a read-only instance', async () => {
 			const ops = dataTableProxyService.makeDataTableOperationsForUser(user);
 			await expect(ops.deleteDataTable('dt-1', PROJECT_ID)).rejects.toThrow(
-				'Cannot modify data tables on a protected instance. This instance is in read-only mode.',
+				'Cannot change the data table structure on a protected instance.',
 			);
 			expect(dataTableServiceMock.deleteDataTable).not.toHaveBeenCalled();
 		});
 
-		it('should reject insertRows on a read-only instance', async () => {
+		it('should allow insertRows on a read-only instance', async () => {
+			const ops = dataTableProxyService.makeDataTableOperationsForUser(user);
+			await ops.insertRows('dt-1', PROJECT_ID, [{ name: 'test' }], 'count');
+			expect(dataTableServiceMock.insertRows).toHaveBeenCalled();
+		});
+
+		it('should allow updateRows on a read-only instance', async () => {
+			const ops = dataTableProxyService.makeDataTableOperationsForUser(user);
+			await ops.updateRows('dt-1', PROJECT_ID, {
+				filter: { filters: [{ columnName: 'x', condition: 'eq', value: 'y' }], type: 'and' },
+				data: { x: 'z' },
+			});
+			expect(dataTableServiceMock.updateRows).toHaveBeenCalled();
+		});
+
+		it('should allow deleteRows on a read-only instance', async () => {
+			const ops = dataTableProxyService.makeDataTableOperationsForUser(user);
+			await ops.deleteRows('dt-1', PROJECT_ID, {
+				filter: { filters: [{ columnName: 'x', condition: 'eq', value: 'y' }], type: 'and' },
+			});
+			expect(dataTableServiceMock.deleteRows).toHaveBeenCalled();
+		});
+
+		it('should allow clearRows on a read-only instance', async () => {
+			const ops = dataTableProxyService.makeDataTableOperationsForUser(user);
+			await ops.clearRows('dt-1', PROJECT_ID);
+			expect(dataTableServiceMock.clearRows).toHaveBeenCalled();
+		});
+
+		it('should still require the writeRow scope for row writes on a read-only instance', async () => {
+			userHasScopesSpy.mockResolvedValue(false);
 			const ops = dataTableProxyService.makeDataTableOperationsForUser(user);
 			await expect(ops.insertRows('dt-1', PROJECT_ID, [{ name: 'test' }], 'count')).rejects.toThrow(
-				'Cannot modify data tables on a protected instance. This instance is in read-only mode.',
+				"User does not have 'dataTable:writeRow' access on project",
 			);
 			expect(dataTableServiceMock.insertRows).not.toHaveBeenCalled();
-		});
-
-		it('should reject updateRows on a read-only instance', async () => {
-			const ops = dataTableProxyService.makeDataTableOperationsForUser(user);
-			await expect(
-				ops.updateRows('dt-1', PROJECT_ID, {
-					filter: { filters: [{ columnName: 'x', condition: 'eq', value: 'y' }], type: 'and' },
-					data: { x: 'z' },
-				}),
-			).rejects.toThrow(
-				'Cannot modify data tables on a protected instance. This instance is in read-only mode.',
-			);
-			expect(dataTableServiceMock.updateRows).not.toHaveBeenCalled();
-		});
-
-		it('should reject deleteRows on a read-only instance', async () => {
-			const ops = dataTableProxyService.makeDataTableOperationsForUser(user);
-			await expect(
-				ops.deleteRows('dt-1', PROJECT_ID, {
-					filter: { filters: [{ columnName: 'x', condition: 'eq', value: 'y' }], type: 'and' },
-				}),
-			).rejects.toThrow(
-				'Cannot modify data tables on a protected instance. This instance is in read-only mode.',
-			);
-			expect(dataTableServiceMock.deleteRows).not.toHaveBeenCalled();
 		});
 
 		it('should allow getColumns on a read-only instance', async () => {

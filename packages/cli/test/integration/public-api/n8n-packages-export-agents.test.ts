@@ -51,7 +51,7 @@ let workflow: WorkflowEntity;
 let repository: AgentRepository;
 
 beforeAll(async () => {
-	await setSkillsHubFlag(true);
+	setSkillsHubFlag(true);
 	repository = Container.get(AgentRepository);
 	Container.get(InstanceSettings).markAsLeader();
 });

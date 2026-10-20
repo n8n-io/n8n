@@ -4,10 +4,8 @@ tags:
 summary: Add a column to a data table
 description: Add a new column to an existing data table.
 x-required-scope: dataTableColumn:create
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 parameters:
+  - $ref: ../../../../shared/spec/parameters/idempotencyKey.yml
   - schema:
       type: string
       format: nanoid
@@ -63,3 +61,5 @@ responses:
     $ref: ../../../../shared/spec/responses/conflict.yml
   '415':
     $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml
+  '422':
+    $ref: ../../../../shared/spec/responses/unprocessableEntity.yml

@@ -10,9 +10,6 @@ vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({ baseText: (key: string) => key }),
 }));
 
-const showMessage = vi.fn();
-vi.mock('@n8n/composables/useToast', () => ({ useToast: () => ({ showMessage }) }));
-
 const skill = { name: 'Skill', description: 'A skill', instructions: 'Do it.' };
 
 describe('AgentSkillsSection', () => {
@@ -35,7 +32,7 @@ describe('AgentSkillsSection', () => {
 		expect(current.find('[data-testid="agent-chip-warning-icon"]').exists()).toBe(false);
 	});
 
-	it('does not open an outdated skill and tells the user to add it again', async () => {
+	it('opens an outdated skill like any other skill', async () => {
 		const wrapper = mount(AgentSkillsSection, {
 			props: {
 				skills: [
@@ -50,11 +47,6 @@ describe('AgentSkillsSection', () => {
 		await outdated.trigger('click');
 		await current.trigger('click');
 
-		expect(wrapper.emitted('open-skill')).toEqual([['current']]);
-		expect(showMessage).toHaveBeenCalledWith({
-			type: 'warning',
-			title: 'agents.builder.skills.outdated.title',
-			message: 'agents.builder.skills.outdated.warning',
-		});
+		expect(wrapper.emitted('open-skill')).toEqual([['outdated'], ['current']]);
 	});
 });

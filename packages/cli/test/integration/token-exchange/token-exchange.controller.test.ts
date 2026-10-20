@@ -14,7 +14,7 @@ import {
 	type IssuedJwtPayload,
 	type TokenExchangeSuccessResponse,
 } from '@/modules/token-exchange/token-exchange.types';
-import { JwtService } from '@/services/jwt.service';
+import { JwtService } from '@n8n/backend-services';
 
 import { createUser } from '../shared/db/users';
 import * as utils from '../shared/utils';

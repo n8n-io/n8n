@@ -1,6 +1,5 @@
 import type {
 	AgentIntegrationDisconnectWarning,
-	AgentJsonConfig,
 	AgentIntegrationSettings,
 	ChatIntegrationDescriptor,
 } from '@n8n/api-types';
@@ -73,7 +72,6 @@ export interface AgentChannelViewProps {
 	agentName: string;
 	projectId: string;
 	agentId: string;
-	personalisation?: AgentJsonConfig['personalisation'] | null;
 	ensureAgentPersisted?: () => Promise<void>;
 	/**
 	 * Saves the channel without closing the modal, and reports whether it
@@ -116,6 +114,8 @@ export interface AgentChannelPlatform {
 	getConnectedDescription?: (context: AgentChannelPresentationContext) => string;
 	headerContent?: {
 		setupModal?: Component;
+		/** The Assistant's setup card. Separate from the modal, so each platform opts in. */
+		setupCard?: Component;
 		editModal?: Component;
 	};
 	disconnectConfirmationComponent?: Component;

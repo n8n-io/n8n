@@ -104,10 +104,7 @@ export class CredentialExporter {
 		return { entries, requirements };
 	}
 
-	/**
-	 * A credential has no owner column: its owner is the project on the
-	 * `credential:owner` sharing. Undefined for a global credential.
-	 */
+	/** A credential has no owner column: its owner is the project on the `credential:owner` sharing. */
 	private ownerProjectId(credential: CredentialsEntity): string | undefined {
 		return credential.shared?.find((sharing) => sharing.role === 'credential:owner')?.projectId;
 	}

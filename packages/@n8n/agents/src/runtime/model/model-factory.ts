@@ -20,6 +20,8 @@ import {
 	type ProviderId,
 	type ProviderCredentials,
 } from './provider-credentials';
+import type { BuiltTelemetry } from '../../types/telemetry';
+import { traceModelRequests } from '../telemetry/model-request-tracing';
 import type { ModelConfig } from '../../types/sdk/agent';
 import { getModelIdString } from '../../utils/model';
 
@@ -412,6 +414,9 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 			// `…/openai/v1/openai`. Drive it as a plain OpenAI-compatible endpoint
 			// so the configured base is used verbatim.
 			if (endpointType === 'foundry') {
+				// The path segment Foundry matches against is the user-chosen
+				// deployment name, which can differ from the model it serves.
+				const deploymentId = deploymentName ?? model;
 				if (isEntra) {
 					// `buildOpenAiCompatible` has no `tokenProvider` slot, so wrap the
 					// transport to inject `Authorization: Bearer <token>` per request.
@@ -420,11 +425,17 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 						'azure-openai',
 						undefined,
 						{ baseURL },
-						model,
+						deploymentId,
 						withBearerAuth(fetch, tokenProvider),
 					);
 				}
-				return buildOpenAiCompatible('azure-openai', undefined, { apiKey, baseURL }, model, fetch);
+				return buildOpenAiCompatible(
+					'azure-openai',
+					undefined,
+					{ apiKey, baseURL },
+					deploymentId,
+					fetch,
+				);
 			}
 
 			// Classic Azure OpenAI (`*.openai.azure.com`, or `resourceName` only).
@@ -435,9 +446,10 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 			// selects the Responses API + the `/v1/` path, which Azure rejects with
 			// "API version not supported" for date-based versions.
 			//
-			// Azure deployments are user-named and surfaced in the deployment-based
-			// URL path. The catalog model id is not the deployment id, so prefer the
-			// user's `deploymentName` when provided and fall back to the model id.
+			// Azure deployments are user-named and surfaced in the URL path on
+			// both endpoint types. The catalog model id is not the deployment id,
+			// so prefer the user's `deploymentName` when provided and fall back to
+			// the model id.
 			const { createAzure } = require('@ai-sdk/azure') as typeof import('@ai-sdk/azure');
 			let normalizedBaseURL = baseURL;
 			// SDK expects url like `https://resourceName.openai.azure.com/openai`
@@ -483,7 +495,11 @@ const SUPPORTED_PROVIDERS = Object.keys(LANGUAGE_PROVIDERS).join(', ');
  * Provider packages are loaded dynamically via require() so only the
  * provider needed at runtime must be installed.
  */
-export function createModel(config: ModelConfig, fetch?: FetchFn): LanguageModel {
+export function createModel(
+	config: ModelConfig,
+	fetch?: FetchFn,
+	telemetry?: BuiltTelemetry,
+): LanguageModel {
 	if (isLanguageModel(config)) {
 		return config;
 	}
@@ -533,7 +549,10 @@ export function createModel(config: ModelConfig, fetch?: FetchFn): LanguageModel
 	}
 
 	// Caller-injected transport wins; fall back to the ambient env-proxy resolver.
-	const resolvedFetch = fetch ?? getProxyFetch();
+	const transport = fetch ?? getProxyFetch();
+	const resolvedFetch = telemetry?.traceModelRequests
+		? traceModelRequests(transport ?? globalFetch, telemetry, provider, modelName)
+		: transport;
 	// Type cast: the registry guarantees the schema and builder are aligned per provider.
 	return (entry.build as EntryBuilder<typeof provider>)(parsed.data, modelName, resolvedFetch);
 }
