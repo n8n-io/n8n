@@ -248,7 +248,7 @@ export const destroyRequestBody = (body: unknown) => {
 	} else if (isFormDataInstance(body)) {
 		// `isFormDataInstance` matches on `getHeaders` and `append` only.
 		if (typeof body.destroy === 'function') body.destroy();
-	} else if (isRecord(body)) {
+	} else if (isRecord(body) && !ArrayBuffer.isView(body)) {
 		for (const field of Object.values(body)) {
 			const values: unknown[] = Array.isArray(field) ? field : [field];
 			values.forEach((value) => streamOfFormDataValue(value)?.destroy());
