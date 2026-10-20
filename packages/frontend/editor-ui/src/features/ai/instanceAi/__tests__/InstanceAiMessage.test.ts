@@ -93,7 +93,7 @@ describe('InstanceAiMessage', () => {
 	it.each(['Build from this image', ''])(
 		'renders a restored image with user text %j',
 		(content) => {
-			const { getByRole, queryByTestId } = renderComponent({
+			const { getByRole, getByText, queryByTestId } = renderComponent({
 				props: {
 					message: makeMessage({
 						role: 'user',
@@ -115,6 +115,12 @@ describe('InstanceAiMessage', () => {
 				'data:image/png;base64,aW1hZ2U=',
 			);
 			expect(queryByTestId('attachment-preview-remove')).not.toBeInTheDocument();
+			if (content) {
+				expect(
+					getByText(content).compareDocumentPosition(getByRole('img', { name: 'diagram.png' })) &
+						Node.DOCUMENT_POSITION_FOLLOWING,
+				).toBeTruthy();
+			}
 		},
 	);
 
