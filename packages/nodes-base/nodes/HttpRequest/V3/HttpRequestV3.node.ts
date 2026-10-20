@@ -16,9 +16,9 @@ import type {
 	ICredentialDataDecryptedObject,
 } from 'n8n-workflow';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import { sleep } from '@n8n/utils/sleep';
 import {
 	BINARY_ENCODING,
+	ExecutionCancelledError,
 	NodeApiError,
 	NodeConnectionTypes,
 	NodeOperationError,
@@ -47,6 +47,7 @@ import {
 } from '../GenericFunctions';
 import { setFilename } from './utils/binaryData';
 import { mimeTypeFromResponse } from './utils/parse';
+import { sleepUnlessCancelled, throwIfExecutionCancelled } from '../shared/cancellation';
 import { configureResponseOptimizer } from '../shared/optimizeResponse';
 
 import { binaryToStringWithEncodingDetection } from './utils/buffer-decoding';
@@ -178,8 +179,6 @@ export class HttpRequestV3 implements INodeType {
 		}> = [];
 
 		const updadeQueryParameter = updadeQueryParameterConfig(nodeVersion);
-
-		const abortSignal = this.getExecutionCancelSignal();
 
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			try {
@@ -345,11 +344,11 @@ export class HttpRequestV3 implements INodeType {
 				const batchInterval = batching?.batch.batchInterval;
 
 				// Stop sending requests when the execution is cancelled
-				abortSignal?.throwIfAborted();
+				throwIfExecutionCancelled(this);
 
 				if (itemIndex > 0 && batchSize >= 0 && batchInterval > 0) {
 					if (itemIndex % batchSize === 0) {
-						await sleep(batchInterval, abortSignal);
+						await sleepUnlessCancelled(this, batchInterval);
 					}
 				}
 
@@ -812,7 +811,7 @@ export class HttpRequestV3 implements INodeType {
 				}
 			} catch (error) {
 				// A cancelled execution must not continue with the next items
-				if (abortSignal?.aborted || !this.continueOnFail()) throw error;
+				if (error instanceof ExecutionCancelledError || !this.continueOnFail()) throw error;
 
 				requestPromises.push(Promise.reject(error).catch(() => {}));
 

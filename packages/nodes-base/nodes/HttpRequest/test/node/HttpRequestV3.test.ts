@@ -1,5 +1,5 @@
 import FormData from 'form-data';
-import { NodeHelpers } from 'n8n-workflow';
+import { ManualExecutionCancelledError, NodeHelpers } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
 	INodeParameters,
@@ -80,6 +80,7 @@ describe('HttpRequestV3', () => {
 			continueOnFail: vi.fn(),
 			getMode: vi.fn(),
 			getExecutionCancelSignal: vi.fn(),
+			getExecutionId: vi.fn(() => '1'),
 		} as unknown as IExecuteFunctions;
 	});
 
@@ -305,9 +306,9 @@ describe('HttpRequestV3', () => {
 			(executeFunctions.getExecutionCancelSignal as Mock).mockReturnValue(controller.signal);
 
 			const execution = node.execute.call(executeFunctions);
-			setTimeout(() => controller.abort(new Error('Execution cancelled')), 10);
+			setTimeout(() => controller.abort(), 10);
 
-			await expect(execution).rejects.toThrow('Execution cancelled');
+			await expect(execution).rejects.toBeInstanceOf(ManualExecutionCancelledError);
 			expect(executeFunctions.helpers.request).toHaveBeenCalledTimes(1);
 		});
 
@@ -318,9 +319,9 @@ describe('HttpRequestV3', () => {
 			(executeFunctions.getExecutionCancelSignal as Mock).mockReturnValue(controller.signal);
 
 			const execution = node.execute.call(executeFunctions);
-			setTimeout(() => controller.abort(new Error('Execution cancelled')), 10);
+			setTimeout(() => controller.abort(), 10);
 
-			await expect(execution).rejects.toThrow('Execution cancelled');
+			await expect(execution).rejects.toBeInstanceOf(ManualExecutionCancelledError);
 			expect(executeFunctions.helpers.request).toHaveBeenCalledTimes(1);
 		});
 	});
