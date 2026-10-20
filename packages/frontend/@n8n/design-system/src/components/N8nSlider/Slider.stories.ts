@@ -39,7 +39,7 @@ export const Controlled: Story = {
 	render: (args) => ({
 		components: { Slider },
 		setup() {
-			const value = ref<SliderValue>([50]);
+			const value = ref<SliderValue>(args.defaultValue ?? [20]);
 			return { args, value };
 		},
 		template: '<Slider v-bind="args" v-model="value" />',

@@ -211,7 +211,7 @@ describe('components/N8nSlider', () => {
 		expect(wrapper.emitted('valueCommit')).toBeUndefined();
 	});
 
-	it('commits the current value on pointer release without a value update', async () => {
+	it.each([50, 80])('commits the pointer value %s on release', async (pointerValue) => {
 		const wrapper = render(Slider, { props: { label: 'Volume', defaultValue: [50] } });
 		const control = wrapper.getByRole('slider');
 		vi.spyOn(control, 'getBoundingClientRect').mockReturnValue({
@@ -231,20 +231,38 @@ describe('components/N8nSlider', () => {
 
 		await fireEvent.pointerDown(control, { pointerId: 1, button: 0, clientX: 50 });
 
-		expect(wrapper.emitted('valueCommit')).toBeUndefined();
-
-		await fireEvent.pointerUp(control, { pointerId: 1, button: 0, clientX: 50 });
-
 		expect(control).toHaveAttribute('aria-valuenow', '50');
 		expect(wrapper.emitted('update:modelValue')).toBeUndefined();
-		expect(wrapper.emitted('valueCommit')).toEqual([[[50]]]);
+		expect(wrapper.emitted('valueCommit')).toBeUndefined();
+
+		await fireEvent.pointerMove(control, { pointerId: 1, buttons: 1, clientX: pointerValue });
+
+		expect(control).toHaveAttribute('aria-valuenow', String(pointerValue));
+		expect(wrapper.emitted('update:modelValue')).toEqual(
+			pointerValue === 50 ? undefined : [[[pointerValue]]],
+		);
+		expect(wrapper.emitted('valueCommit')).toBeUndefined();
+
+		await fireEvent.pointerUp(control, { pointerId: 1, button: 0, clientX: pointerValue });
+
+		expect(control).toHaveAttribute('aria-valuenow', String(pointerValue));
+		expect(wrapper.emitted('update:modelValue')).toEqual(
+			pointerValue === 50 ? undefined : [[[pointerValue]]],
+		);
+		expect(wrapper.emitted('valueCommit')).toEqual([[[pointerValue]]]);
 		expect(control.releasePointerCapture).toHaveBeenCalledWith(1);
 	});
 
 	it('ignores keys when disabled', async () => {
 		const wrapper = render(Slider, { props: { label: 'Volume', disabled: true } });
 
-		await fireEvent.keyDown(wrapper.getByRole('slider'), { key: 'ArrowUp' });
+		const control = wrapper.getByRole('slider');
+
+		expect(control.parentElement).toHaveClass('disabled');
+		expect(control).toHaveAttribute('aria-disabled', 'true');
+		expect(control).toHaveAttribute('tabindex', '-1');
+
+		await fireEvent.keyDown(control, { key: 'ArrowUp' });
 
 		expect(wrapper.emitted('update:modelValue')).toBeUndefined();
 		expect(wrapper.emitted('valueCommit')).toBeUndefined();

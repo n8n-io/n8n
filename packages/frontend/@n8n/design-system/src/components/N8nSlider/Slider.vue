@@ -283,16 +283,31 @@ function handleDragEnd(event: PointerEvent) {
 		@include focus.focus-ring-with-border;
 	}
 
-	&:hover .fill::after {
+	&:not(.disabled):hover .fill::after {
 		outline-color: var(--border-color);
 	}
 
-	&:hover .hashmarks {
+	&:not(.disabled):hover .hashmarks {
 		opacity: 1;
 	}
 
-	&.dragging {
+	&.dragging:not(.disabled) {
 		cursor: ew-resize;
+	}
+
+	&.disabled {
+		cursor: not-allowed;
+		background-color: var(--background--disabled);
+		border-color: var(--background--disabled);
+
+		.fill {
+			background-color: var(--background--brand--disabled);
+
+			&::after {
+				background-color: var(--background--subtle);
+				box-shadow: none;
+			}
+		}
 	}
 
 	&.mini {

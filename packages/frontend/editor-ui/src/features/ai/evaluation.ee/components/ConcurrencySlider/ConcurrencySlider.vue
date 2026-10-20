@@ -7,6 +7,7 @@ interface ConcurrencySliderProps {
 	max?: number;
 	step?: number;
 	disabled?: boolean;
+	/** @deprecated Accepted for compatibility. Fixed percentage markers do not represent concurrency steps. */
 	showStops?: boolean;
 	label?: string;
 }
@@ -40,7 +41,7 @@ function onCommit([value]: SliderValue) {
 		:max-value="max"
 		:step="step"
 		:disabled="disabled"
-		:show-step-markers="showStops"
+		:show-step-markers="false"
 		:aria-label="label"
 		hide-value
 		size="small"
