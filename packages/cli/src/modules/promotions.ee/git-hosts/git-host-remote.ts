@@ -1,9 +1,9 @@
 import {
 	isPromotionGitHostType,
-	promotionConnectionTargetSchema,
+	promotionEnvironmentRemoteSchema,
 	promotionGitHostBaseUrlSchema,
 	promotionGitHostConfigSchema,
-	type PromotionConnectionTarget,
+	type PromotionEnvironmentRemote,
 } from '@n8n/api-types';
 import { z } from 'zod';
 
@@ -20,12 +20,15 @@ const repositoryPathSchema = z.string().refine((value) => {
 	);
 });
 
-export const promotionStoredConnectionTargetSchema = z.union([
-	promotionConnectionTargetSchema,
+/** The provider type picks the shape. See `resolvePromotionRemote`. */
+export const promotionStoredEnvironmentRemoteSchema = z.union([
+	promotionEnvironmentRemoteSchema,
 	z.object({ schemaVersion: z.literal(1), repositoryPath: repositoryPathSchema }).strict(),
 ]);
 
-export type PromotionStoredConnectionTarget = z.infer<typeof promotionStoredConnectionTargetSchema>;
+export type PromotionStoredEnvironmentRemote = z.infer<
+	typeof promotionStoredEnvironmentRemoteSchema
+>;
 type GitHostProvider = Pick<PromotionProvider, 'type' | 'config'>;
 
 export function repositoryPathFromUrl(baseUrl: string, remoteUrl: string): string {
@@ -55,27 +58,27 @@ export function repositoryPathFromUrl(baseUrl: string, remoteUrl: string): strin
 	return path;
 }
 
-export function storePromotionTarget(
+export function storePromotionRemote(
 	provider: GitHostProvider,
-	target: PromotionConnectionTarget,
-): PromotionStoredConnectionTarget {
-	if (!isPromotionGitHostType(provider.type)) return target;
+	remote: PromotionEnvironmentRemote,
+): PromotionStoredEnvironmentRemote {
+	if (!isPromotionGitHostType(provider.type)) return remote;
 	return {
 		schemaVersion: 1,
-		repositoryPath: repositoryPathFromUrl(hostBaseUrl(provider), target.remoteUrl),
+		repositoryPath: repositoryPathFromUrl(hostBaseUrl(provider), remote.remoteUrl),
 	};
 }
 
-export function resolvePromotionTarget(
+export function resolvePromotionRemote(
 	provider: GitHostProvider,
 	stored: unknown,
-): PromotionConnectionTarget {
-	const parsed = promotionStoredConnectionTargetSchema.safeParse(stored);
-	if (!parsed.success) throw new BadRequestError('The stored connection target cannot be read');
+): PromotionEnvironmentRemote {
+	const parsed = promotionStoredEnvironmentRemoteSchema.safeParse(stored);
+	if (!parsed.success) throw new BadRequestError('The stored environment remote cannot be read');
 	if ('remoteUrl' in parsed.data) return parsed.data;
 	if (!isPromotionGitHostType(provider.type)) {
 		throw new BadRequestError(
-			'Plain Git connections need a remote URL. Update the connection target.',
+			'Plain Git environments need a remote URL. Update the environment remote.',
 		);
 	}
 	return {
@@ -84,16 +87,16 @@ export function resolvePromotionTarget(
 	};
 }
 
-export function resolvePromotionGitTarget(
+export function resolvePromotionGitRemote(
 	provider: GitHostProvider,
 	stored: unknown,
-): PromotionConnectionTarget {
-	const target = resolvePromotionTarget(provider, stored);
-	if (!isPromotionGitHostType(provider.type)) return target;
+): PromotionEnvironmentRemote {
+	const remote = resolvePromotionRemote(provider, stored);
+	if (!isPromotionGitHostType(provider.type)) return remote;
 	const baseUrl = hostBaseUrl(provider);
 	let repositoryPath: string;
 	try {
-		repositoryPath = repositoryPathFromUrl(baseUrl, target.remoteUrl);
+		repositoryPath = repositoryPathFromUrl(baseUrl, remote.remoteUrl);
 	} catch {
 		throw new BadRequestError(
 			'The saved repository URL does not use the GitLab base URL. Select the repository again.',

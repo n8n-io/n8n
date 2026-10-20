@@ -571,7 +571,7 @@ function toChanges(
 ): PromotionChanges {
 	return {
 		commitSha: branch.commitSha,
-		source: { configId: branch.configId, branchName: branch.branchName },
+		source: { environmentId: branch.environmentId, branchName: branch.branchName },
 		changes: applyQuery(rows, query),
 	};
 }

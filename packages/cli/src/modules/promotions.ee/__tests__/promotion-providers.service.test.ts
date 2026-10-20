@@ -2,10 +2,10 @@ import type { CreatePromotionProviderDto, UpdatePromotionProviderDto } from '@n8
 import type { Cipher } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import { BadRequestError, ConflictError, NotFoundError } from '@n8n/errors';
+import { BadRequestError, NotFoundError } from '@n8n/errors';
 
 import type { PromotionProvider } from '../database/entities/promotion-provider.entity';
-import type { PromotionConnectionRepository } from '../database/repositories/promotion-connection.repository';
+import type { PromotionEnvironmentRepository } from '../database/repositories/promotion-environment.repository';
 import type { PromotionProviderRepository } from '../database/repositories/promotion-provider.repository';
 import type { GitHostClients } from '../git-hosts/git-host-clients';
 import { PromotionProvidersService } from '../promotion-providers.service';
@@ -13,13 +13,13 @@ import type { PromotionsGitService } from '../promotions-git.service';
 
 describe('PromotionProvidersService', () => {
 	const providerRepository = mock<PromotionProviderRepository>();
-	const connectionRepository = mock<PromotionConnectionRepository>();
+	const environmentRepository = mock<PromotionEnvironmentRepository>();
 	const gitService = mock<PromotionsGitService>();
 	const cipher = mock<Cipher>();
 
 	const service = new PromotionProvidersService(
 		providerRepository,
-		connectionRepository,
+		environmentRepository,
 		gitService,
 		cipher,
 		mock<GitHostClients>(),
@@ -62,7 +62,6 @@ describe('PromotionProvidersService', () => {
 		cipher.encryptV2.mockImplementation(async (value) => `enc:${value as string}`);
 		cipher.decryptV2.mockImplementation(async (value) => value.replace(/^enc:/, ''));
 		gitService.generateSshKeyPair.mockResolvedValue({ publicKey: 'PUB', privateKey: 'PRIV' });
-		connectionRepository.countByProviderId.mockResolvedValue(0);
 		providerRepository.updateProviderIfUnchanged.mockResolvedValue(true);
 	});
 
@@ -157,16 +156,6 @@ describe('PromotionProvidersService', () => {
 			await expect(
 				service.update('missing', { name: 'x' } as UpdatePromotionProviderDto),
 			).rejects.toThrow(NotFoundError);
-		});
-	});
-
-	describe('delete', () => {
-		it('refuses to delete a provider a connection still uses', async () => {
-			providerRepository.findById.mockResolvedValue(sshProvider());
-			connectionRepository.countByProviderId.mockResolvedValue(1);
-
-			await expect(service.delete('prov1')).rejects.toThrow(ConflictError);
-			expect(providerRepository.deleteProvider).not.toHaveBeenCalled();
 		});
 	});
 
