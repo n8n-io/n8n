@@ -36,10 +36,20 @@ import {
 	INSTANCE_CONTEXT_SURFACE_DEPTH,
 	type InstanceAiEvalThreadMemoryResponse,
 	type InstanceAiThreadArtifactsContext,
+	resolveBuilderToolName,
+	WORKFLOW_BUILDER_TOOL_NAMES,
 } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { SsrfProtectionService } from '@n8n/backend-network';
-import { EventService, InstanceWriteAccessService, UrlService } from '@n8n/backend-services';
+import {
+	EventService,
+	InstanceWriteAccessService,
+	UrlService,
+	AI_PREFERENCES_CLEARED_BLOCK,
+	AiPreferenceService,
+	buildAppliedPreferencesPayload,
+	renderAiPreferencesBlock,
+} from '@n8n/backend-services';
 import {
 	GlobalConfig,
 	SsrfProtectionConfig,
@@ -65,6 +75,7 @@ import {
 	threadProvenanceMetadata,
 	createInternalOperationTraceContext,
 	emitAgentSnapshotTraceEvent,
+	carryAgentBuildRunState,
 	createInstanceAiLivenessPolicyConfig,
 	InstanceAiLivenessPolicy,
 	McpClientManager,
@@ -151,19 +162,13 @@ import { nanoid } from 'nanoid';
 
 import { N8N_VERSION, WORKFLOW_SDK_VERSION } from '@/constants';
 import { BadRequestError, ForbiddenError } from '@n8n/errors';
-import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instance-ai-builder-delegate.adapter';
-import { InstanceAiAgentContextAdapterService } from '@/modules/agents/instance-ai-agent-context.adapter';
-import { modelStreamStallOptions } from '@/modules/agents/model-stream-stall-options';
+import { InstanceAiBuilderDelegateAdapterService } from './instance-ai-builder-delegate.adapter';
+import { InstanceAiAgentContextAdapterService } from './instance-ai-agent-context.adapter';
+import { modelStreamStallOptions } from '@/utils/model-stream-stall-options';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { Push } from '@/push';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
-import {
-	AI_PREFERENCES_CLEARED_BLOCK,
-	AiPreferenceService,
-	buildAppliedPreferencesPayload,
-	renderAiPreferencesBlock,
-} from '@/services/ai-preference.service';
 import { AiUsageService } from '@/services/ai-usage.service';
 import { AiService } from '@/services/ai.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
@@ -273,8 +278,8 @@ import {
 } from './tracing';
 import { WorkflowVerificationObligationService } from './workflow-verification-obligation-service';
 import { WorkflowVerificationTaskProjector } from './workflow-verification-task-projector';
-import { AgentExecutionService } from '../agents/agent-execution.service';
-import { formatPreviewSessionContext } from '../agents/builder/format-preview-context';
+import { AgentContextService } from '@/modules/agents/agent-context.service';
+import { formatPreviewSessionContext } from './format-agent-session-context';
 
 /**
  * A resource attachment as the trace records it: the reference, not its contents.
@@ -2095,8 +2100,8 @@ export class InstanceAiService {
 		const { activeRuns, suspendedRuns, pendingThreadIds } = this.runState.shutdown();
 		const threadsWithPendingHitl = new Set(pendingThreadIds);
 		for (const run of activeRuns) {
-			// Runs holding an inline HITL confirmation (`create-tasks`,
-			// sub-agent `ask-user`) sit in `activeRuns` because the orchestrator
+			// Runs holding an inline HITL confirmation (`workflow_builder_create_tasks`,
+			// sub-agent `workflow_builder_ask_user`) sit in `activeRuns` because the orchestrator
 			// is alive — it's just awaiting the in-process Promise. Their
 			// `instance_ai_pending_confirmations` row survives the restart and
 			// `handleOrphanedConfirmation` will issue the user-visible
@@ -2990,14 +2995,14 @@ export class InstanceAiService {
 	}
 
 	/**
-	 * Resolve the agents execution service only when the Assistant can use
+	 * Resolve the Agent context service only when the Assistant can use
 	 * Agents. Mirrors the builder-delegate gate so agent-preview handoff is
 	 * absent (rather than exploding) when Agents are off.
 	 */
-	private getAgentExecutionService(): AgentExecutionService | null {
+	private getAgentContextService(): AgentContextService | null {
 		if (!isAgentsAccessEnabled()) return null;
 		try {
-			return Container.get(AgentExecutionService);
+			return Container.get(AgentContextService);
 		} catch {
 			return null;
 		}
@@ -3041,9 +3046,9 @@ export class InstanceAiService {
 		}
 
 		context.resolvePreviewSession = async (ref) => {
-			const service = this.getAgentExecutionService();
+			const service = this.getAgentContextService();
 			if (!service) return null;
-			const detail = await service.getThreadDetail(ref.threadId, projectId, ref.agentId, user.id);
+			const detail = await service.readSession(user, projectId, ref.agentId, ref.threadId);
 			if (!detail) return null;
 			const transcript = formatPreviewSessionContext(
 				detail.thread,
@@ -3277,7 +3282,9 @@ export class InstanceAiService {
 		toolName: string | undefined,
 		suspendPayload: Record<string, unknown> | undefined,
 	): string | undefined {
-		if (toolName !== 'workflows' || !suspendPayload) return undefined;
+		if (!toolName || !suspendPayload) return undefined;
+		if (resolveBuilderToolName(toolName) !== WORKFLOW_BUILDER_TOOL_NAMES.WORKFLOWS)
+			return undefined;
 		if (!Array.isArray(suspendPayload.setupRequests)) return undefined;
 		return typeof suspendPayload.workflowId === 'string' ? suspendPayload.workflowId : undefined;
 	}
@@ -4106,7 +4113,7 @@ export class InstanceAiService {
 					...(PLANNED_TASK_PERMISSION_OVERRIDES.checkpoint ?? {}),
 				} as typeof context.permissions;
 				// Scope the runWorkflow override to the workflows this checkpoint is verifying:
-				// the orchestrator can call `executions(action="run")` on a depended-on workflow
+				// the orchestrator can call `workflow_builder_executions(action="run")` on a depended-on workflow
 				// without HITL, but any other workflow id still requires user approval.
 				const runPolicy = await this.getCheckpointRunPolicy(threadId, checkpoint.checkpointTaskId);
 				context.allowedRunWorkflowIds = runPolicy.allowedWorkflowIds;
@@ -4182,14 +4189,15 @@ export class InstanceAiService {
 					);
 				}
 				await this.assertAgentPreviewHandoffScopes(user, projectId);
-				const agentExecutionService = this.getAgentExecutionService();
-				if (!agentExecutionService) {
+				const agents = this.getAgentContextService();
+				if (!agents) {
 					throw new UserError('Agent preview handoff is not available');
 				}
 				const resolved = await resolveAgentPreviewHandoff(handoffContext, {
 					projectId,
 					userId: user.id,
-					getThreadDetail: agentExecutionService.getThreadDetail.bind(agentExecutionService),
+					getThreadDetail: async (threadId, projectId, agentId) =>
+						await agents.readSession(user, projectId, agentId, threadId),
 				});
 				handoffContextBlock = resolved.block;
 				agentPreviewTitleFallback = resolved.titleFallback;
@@ -5008,7 +5016,7 @@ export class InstanceAiService {
 			// not when it merely suspended for HITL):
 			//   1. Checkpoint deadlock fallback — if this run was a checkpoint
 			//      follow-up and the orchestrator exited without calling
-			//      complete-checkpoint, mark the task failed so the scheduler
+			//      workflow_builder_complete_checkpoint, mark the task failed so the scheduler
 			//      can transition to awaiting_replan. Runs even on a stop: the
 			//      cancelled run's context is the only thing that knows about
 			//      this follow-up, so skipping it strands the task at `running`.
@@ -5064,7 +5072,7 @@ export class InstanceAiService {
 				// that child is still running, leave the checkpoint running. The
 				// child's settlement path re-emits `orchestrate-checkpoint` so the
 				// orchestrator re-enters the same checkpoint context and can then
-				// call `complete-checkpoint`.
+				// call `workflow_builder_complete_checkpoint`.
 				const inflightChildren = this.backgroundTasks.getRunningTasksByParentCheckpoint(
 					threadId,
 					checkpointTaskId,
@@ -5920,6 +5928,9 @@ export class InstanceAiService {
 			}
 			resumeAgent = rebuilt.agent;
 			resumeModelId = rebuilt.modelId;
+			if (orchestrationContext) {
+				carryAgentBuildRunState(orchestrationContext, rebuilt.orchestrationContext);
+			}
 			resumeOrchestrationContext = rebuilt.orchestrationContext;
 		}
 

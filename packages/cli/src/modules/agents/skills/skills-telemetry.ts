@@ -10,7 +10,7 @@ import type { Skill } from '../entities/skill.entity';
 import { SkillRepository } from '../repositories/skill.repository';
 
 /** The surface that wrote the skill. Not `skill.source`, which has no MCP value. */
-export type SkillTelemetrySource = 'ui' | 'agent' | 'mcp';
+export type SkillTelemetrySource = 'ui' | 'agent' | 'mcp' | 'assistant';
 
 /** `manual` and `upload` come from the skill modal. `ai` is text an assistant wrote. */
 export type SkillTelemetryMethod = 'manual' | 'upload' | 'ai';
@@ -82,13 +82,18 @@ export class SkillsTelemetry {
 	}
 
 	/** Takes the skill as read before the delete, since the row is gone after it. */
-	async deleted(userId: string, skill: SkillTelemetryTarget): Promise<void> {
+	async deleted(
+		userId: string,
+		skill: SkillTelemetryTarget,
+		source: SkillTelemetrySource,
+	): Promise<void> {
 		await this.safely(async () => {
 			const placeOf = await this.placeResolver([skill]);
 			this.telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_DELETED_SKILL, {
 				user_id: userId,
 				skill_id: skill.id,
 				...placeOf(skill),
+				source,
 			});
 		});
 	}

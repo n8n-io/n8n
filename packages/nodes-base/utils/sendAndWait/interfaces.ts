@@ -7,8 +7,8 @@ export interface IEmail {
 	bcc?: string;
 	replyTo?: string;
 	inReplyTo?: string;
+	/** Serialized to the MIME `References` header by Gmail's `encodeEmail`. */
 	reference?: string;
-	references?: string;
 	subject: string;
 	body: string;
 	htmlBody?: string;

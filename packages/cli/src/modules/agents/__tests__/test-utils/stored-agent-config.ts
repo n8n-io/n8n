@@ -152,9 +152,9 @@ export function composeStoredJsonConfig(
  * A run source for an agent fixture, with the skill refs that its stored
  * config holds and the given skill bodies.
  */
-export function storedRunSource(
-	agent: Agent,
+export function storedRunSource<T extends Agent>(
+	agent: T,
 	skills: Record<string, AgentSkill> = {},
-): AgentRunSource {
+): AgentRunSource<T> {
 	return { agent, skillRefs: storedSkillRefs(agent), skills };
 }

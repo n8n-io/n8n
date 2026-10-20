@@ -10,7 +10,7 @@ import type { TeamsChannelRuntime } from './useTeamsChannelRuntime';
 import { checkTeamsFileAccess, fetchTeamsAppPackage, getTeamsSetupState } from './api';
 import { fileAccessJustApproved } from './fileAccessConsent';
 import { ActionDropdownTestStub } from '../../__tests__/utils/ActionDropdownTestStub';
-import { AGENT_PERSONALISATION_KEY } from '../types';
+import { AGENT_PERSONALISATION_KEY } from '../agentPersonalisation';
 
 vi.mock('@n8n/i18n', async (importOriginal) => ({
 	...(await importOriginal()),
@@ -592,7 +592,7 @@ describe('AgentChannelTeamsEditView', () => {
 
 	it("shows the agent's own icon on the identity card", async () => {
 		const personalisation = computed(() => ({
-			icon: 'heart',
+			icon: 'zap',
 			gradient: { from: '#2563EB', to: '#7C3AED', angle: 135, fromStop: 0, toStop: 100 },
 		}));
 		const { container, getByTestId } = renderHost({
@@ -604,5 +604,6 @@ describe('AgentChannelTeamsEditView', () => {
 			'[data-test-id="agent-personalisation-icon-tile"]',
 		);
 		expect(tile?.style.getPropertyValue('--agent-personalisation-gradient-from')).toBe('#2563EB');
+		expect(tile?.querySelector('[data-icon="zap"]')).toBeInTheDocument();
 	});
 });

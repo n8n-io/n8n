@@ -19,7 +19,6 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 import {
 	type AgentMutationTelemetryContext,
 	buildAgentMutationEvent,
-	captureAgentMutation,
 } from './agent-modification-telemetry.service';
 import { AgentSaveCompletionService } from './agent-save-completion.service';
 import { AgentSkillRefsService } from './agent-skill-refs.service';
@@ -159,7 +158,6 @@ export class AgentSkillsService {
 
 		const previous = await this.agentSkillRefs.readDraft(entity, {});
 		this.assertNoNameClashes(previous.skills, bodies);
-		const snapshot = captureAgentMutation(entity, previous.skillRefs);
 
 		markAgentDraftDirty(entity);
 		const { ids, skillRefs } = await this.transactionRunner.run({}, async (ctx) => {
@@ -183,7 +181,7 @@ export class AgentSkillsService {
 		});
 
 		await this.saveCompletion.bodySaved(
-			buildAgentMutationEvent(entity, skillRefs, projectId, context, snapshot, { skills: true }),
+			buildAgentMutationEvent(entity, skillRefs, projectId, context, ['skills']),
 			context.pushRef,
 		);
 
@@ -305,7 +303,6 @@ export class AgentSkillsService {
 			}
 		}
 		await this.skillService.assertCanEdit(context.user, [skillId]);
-		const snapshot = captureAgentMutation(entity, skillRefs);
 
 		if (pinned) markAgentDraftDirty(entity);
 		const saved = await this.transactionRunner.run({}, async (ctx) => {
@@ -345,8 +342,7 @@ export class AgentSkillsService {
 				await this.agentSkillRefs.refsForDraft(fresh, {}),
 				projectId,
 				context,
-				snapshot,
-				{ skills: true },
+				['skills'],
 			),
 			context.pushRef,
 		);
@@ -395,8 +391,6 @@ export class AgentSkillsService {
 		if (!previousSkillRefs?.some((ref) => ref.id === skillId)) {
 			throw new NotFoundError('Skill not found');
 		}
-		const snapshot = captureAgentMutation(entity, previousSkillRefs);
-
 		markAgentDraftDirty(entity);
 		const skillRefs = await this.transactionRunner.run({}, async (ctx) => {
 			await saveAgentDraftFenced(this.agentRepository, entity, ctx);
@@ -408,7 +402,7 @@ export class AgentSkillsService {
 			return await this.agentSkillRefs.refsForDraft(entity, ctx);
 		});
 		await this.saveCompletion.bodySaved(
-			buildAgentMutationEvent(entity, skillRefs, projectId, context, snapshot, { skills: true }),
+			buildAgentMutationEvent(entity, skillRefs, projectId, context, ['skills']),
 			context.pushRef,
 		);
 
@@ -435,14 +429,13 @@ export class AgentSkillsService {
 		// Every body on the agent row counts, with or without a ref, as on master.
 		const { [skillId]: _self, ...others } = entity.skills ?? {};
 		this.assertNoNameClashes(others, [updated]);
-		const snapshot = captureAgentMutation(entity, skillRefs);
 		entity.skills = { ...entity.skills, [skillId]: updated };
 		markAgentDraftDirty(entity);
 		await this.transactionRunner.run({}, async (ctx) => {
 			await saveAgentDraftFenced(this.agentRepository, entity, ctx);
 		});
 		await this.saveCompletion.bodySaved(
-			buildAgentMutationEvent(entity, skillRefs, projectId, context, snapshot, { skills: true }),
+			buildAgentMutationEvent(entity, skillRefs, projectId, context, ['skills']),
 			context.pushRef,
 		);
 		this.logger.debug('Updated agent skill', { agentId: entity.id, projectId, skillId });

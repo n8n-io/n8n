@@ -21,6 +21,7 @@ import {
 	itemStatusFilterKey,
 } from '@/features/agents/session-timeline.utils';
 import { useSubAgentNames } from '@/features/agents/composables/useSubAgentNames';
+import { useAgentTelemetry } from '@/features/agents/composables/useAgentTelemetry';
 import { resolveSubAgentName } from '@/features/agents/utils/delegate-tool';
 import { backgroundJobTimelineLabelKey } from '@/features/agents/utils/background-job-labels';
 import { shouldIgnoreCanvasShortcut } from '@/features/workflows/canvas/canvas.utils';
@@ -52,6 +53,7 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const toast = useToast();
+const agentTelemetry = useAgentTelemetry();
 const sessionsStore = useAgentSessionsStore();
 const pushStore = usePushConnectionStore();
 const activeElement = useActiveElement();
@@ -270,6 +272,14 @@ function selectTimelineItem(index: number | null) {
 	highlightedIndex.value = index;
 }
 
+function onTimelineItemSelect(index: number | null) {
+	selectTimelineItem(index);
+	if (index === null) return;
+	const item = items.value[index];
+	if (!item) return;
+	agentTelemetry.trackClickedTraceItem({ agentId: props.agentId, itemType: item.kind });
+}
+
 function shouldHandleShortcut() {
 	const element = activeElement.value;
 	if (!(element instanceof Element)) return false;
@@ -316,7 +326,7 @@ function onKeyUp(event: KeyboardEvent) {
 	if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
 	if (highlightedIndex.value === selectedIndex.value) return;
 	event.preventDefault();
-	selectTimelineItem(highlightedIndex.value);
+	onTimelineItemSelect(highlightedIndex.value);
 }
 
 useEventListener(document, 'keyup', onKeyUp);
@@ -464,7 +474,7 @@ watch([() => props.projectId, () => props.agentId, () => props.threadId], loadTh
 				:session-end="bounds.end"
 				:visible-kinds="selectedFilters"
 				:selected-index="highlightedIndex"
-				@select="selectTimelineItem"
+				@select="onTimelineItemSelect"
 			/>
 		</div>
 
@@ -483,7 +493,7 @@ watch([() => props.projectId, () => props.agentId, () => props.threadId], loadTh
 					:approval-item="openApprovalItem"
 					:approval="sessionApproval"
 					:approval-disabled="approvalDisabled"
-					@select="selectTimelineItem"
+					@select="onTimelineItemSelect"
 					@approve="submitSessionApproval"
 				/>
 			</div>

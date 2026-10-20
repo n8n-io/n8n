@@ -117,9 +117,8 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.project_pool_settings](public.project_pool_settings.md) | 4 |  | BASE TABLE |
 | [public.project_relation](public.project_relation.md) | 5 |  | BASE TABLE |
 | [public.project_secrets_provider_access](public.project_secrets_provider_access.md) | 5 |  | BASE TABLE |
-| [public.promotion_config](public.promotion_config.md) | 7 |  | BASE TABLE |
-| [public.promotion_connection](public.promotion_connection.md) | 7 |  | BASE TABLE |
-| [public.promotion_connection_project](public.promotion_connection_project.md) | 4 |  | BASE TABLE |
+| [public.promotion_environment](public.promotion_environment.md) | 9 |  | BASE TABLE |
+| [public.promotion_environment_project](public.promotion_environment_project.md) | 5 |  | BASE TABLE |
 | [public.promotion_provider](public.promotion_provider.md) | 8 |  | BASE TABLE |
 | [public.promotion_review](public.promotion_review.md) | 10 |  | BASE TABLE |
 | [public.promotion_run](public.promotion_run.md) | 8 |  | BASE TABLE |
@@ -363,15 +362,14 @@ erDiagram
 "public.project_relation" }o--|| "public.role" : "FOREIGN KEY (role) REFERENCES role(slug)"
 "public.project_secrets_provider_access" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.project_secrets_provider_access" }o--|| "public.secrets_provider_connection" : "FOREIGN KEY (#quot;secretsProviderConnectionId#quot;) REFERENCES secrets_provider_connection(id) ON DELETE CASCADE"
-"public.promotion_config" }o--|| "public.promotion_connection" : "FOREIGN KEY (#quot;connectionId#quot;) REFERENCES promotion_connection(id) ON DELETE CASCADE"
-"public.promotion_connection" }o--|| "public.promotion_provider" : "FOREIGN KEY (#quot;providerId#quot;) REFERENCES promotion_provider(id) ON DELETE RESTRICT"
-"public.promotion_connection_project" |o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
-"public.promotion_connection_project" }o--|| "public.promotion_connection" : "FOREIGN KEY (#quot;connectionId#quot;) REFERENCES promotion_connection(id) ON DELETE CASCADE"
+"public.promotion_environment" }o--|| "public.promotion_provider" : "FOREIGN KEY (#quot;providerId#quot;) REFERENCES promotion_provider(id) ON DELETE RESTRICT"
+"public.promotion_environment_project" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
+"public.promotion_environment_project" }o--|| "public.promotion_environment" : "FOREIGN KEY (#quot;environmentId#quot;) REFERENCES promotion_environment(id) ON DELETE CASCADE"
 "public.promotion_review" }o--o| "public.user" : "FOREIGN KEY (#quot;approvedById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 "public.promotion_review" }o--o| "public.user" : "FOREIGN KEY (#quot;createdById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
-"public.promotion_review" }o--o| "public.promotion_connection" : "FOREIGN KEY (#quot;connectionId#quot;) REFERENCES promotion_connection(id) ON DELETE SET NULL"
+"public.promotion_review" }o--o| "public.promotion_environment" : "FOREIGN KEY (#quot;environmentId#quot;) REFERENCES promotion_environment(id) ON DELETE SET NULL"
 "public.promotion_run" }o--o| "public.user" : "FOREIGN KEY (#quot;createdById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
-"public.promotion_run" }o--o| "public.promotion_config" : "FOREIGN KEY (#quot;configId#quot;) REFERENCES promotion_config(id) ON DELETE SET NULL"
+"public.promotion_run" }o--o| "public.promotion_environment" : "FOREIGN KEY (#quot;environmentId#quot;) REFERENCES promotion_environment(id) ON DELETE SET NULL"
 "public.promotion_run" }o--o| "public.promotion_review" : "FOREIGN KEY (#quot;reviewId#quot;) REFERENCES promotion_review(id) ON DELETE SET NULL"
 "public.role_mapping_rule" }o--|| "public.role" : "FOREIGN KEY (role) REFERENCES role(slug) ON UPDATE CASCADE ON DELETE CASCADE"
 "public.role_mapping_rule_project" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
@@ -1531,27 +1529,21 @@ erDiagram
   integer secretsProviderConnectionId FK
   timestamp_3__with_time_zone updatedAt
 }
-"public.promotion_config" {
-  varchar_36_ connectionId FK
+"public.promotion_environment" {
   timestamp_3__with_time_zone createdAt
   varchar_16_ direction
-  varchar_36_ id
+  uuid id
   varchar_128_ name
+  varchar_36_ providerId FK
+  json remote
+  varchar_16_ scope
   json settings
   timestamp_3__with_time_zone updatedAt
 }
-"public.promotion_connection" {
+"public.promotion_environment_project" {
   timestamp_3__with_time_zone createdAt
-  varchar_36_ id
-  varchar_128_ name
-  varchar_36_ providerId FK
-  varchar_16_ scope
-  json target
-  timestamp_3__with_time_zone updatedAt
-}
-"public.promotion_connection_project" {
-  varchar_36_ connectionId FK
-  timestamp_3__with_time_zone createdAt
+  varchar_16_ direction
+  uuid environmentId FK
   varchar_36_ projectId FK
   timestamp_3__with_time_zone updatedAt
 }
@@ -1568,9 +1560,9 @@ erDiagram
 "public.promotion_review" {
   timestamp_3__with_time_zone approvedAt
   uuid approvedById FK
-  varchar_36_ connectionId FK
   timestamp_3__with_time_zone createdAt
   uuid createdById FK
+  uuid environmentId FK
   uuid id
   timestamp_3__with_time_zone lastStateChangeAt
   varchar_255_ remoteReviewId
@@ -1578,11 +1570,11 @@ erDiagram
   varchar_16_ type
 }
 "public.promotion_run" {
-  varchar_36_ configId FK
   timestamp_3__with_time_zone createdAt
   uuid createdById FK
   json details
   varchar_16_ direction
+  uuid environmentId FK
   uuid id
   uuid reviewId FK
   varchar_16_ type

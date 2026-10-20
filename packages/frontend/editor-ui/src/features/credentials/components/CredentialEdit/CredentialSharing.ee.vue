@@ -23,7 +23,6 @@ import type { EventBus } from '@n8n/utils/event-bus';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { computed, onMounted, ref, watch } from 'vue';
 import { getResourcePermissions } from '@n8n/permissions';
-import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 import { useDependencies } from '@/app/composables/useDependencies';
 
 import { N8nButton, N8nEmptyState, N8nInfoTip, N8nText, N8nTooltip } from '@n8n/design-system';
@@ -55,9 +54,6 @@ const projectsStore = useProjectsStore();
 const rolesStore = useRolesStore();
 
 const pageRedirectionHelper = usePageRedirectionHelper();
-
-const { check: envFeatureFlag } = useEnvFeatureFlag();
-const isCredSharingEnabled = computed(() => envFeatureFlag.value('CRED_SHARING'));
 
 const sharedWithProjects = ref([...(props.credential?.sharedWithProjects ?? [])]);
 
@@ -105,20 +101,13 @@ const isPersonalSpaceRestricted = computed(
 );
 const credentialRoleTranslations = computed<Record<string, string>>(() => {
 	return {
-		'credential:user': isCredSharingEnabled.value
-			? i18n.baseText('credentialEdit.credentialSharing.role.user.canUse')
-			: i18n.baseText('credentialEdit.credentialSharing.role.user'),
+		'credential:user': i18n.baseText('credentialEdit.credentialSharing.role.user.canUse'),
 	};
 });
 
-const credentialRoleDescriptions = computed<Record<string, string> | undefined>(() => {
-	if (!isCredSharingEnabled.value) return undefined;
-	return {
-		'credential:user': i18n.baseText(
-			'credentialEdit.credentialSharing.role.user.canUse.description',
-		),
-	};
-});
+const credentialRoleDescriptions = computed<Record<string, string>>(() => ({
+	'credential:user': i18n.baseText('credentialEdit.credentialSharing.role.user.canUse.description'),
+}));
 
 const credentialRoles = computed<AllRolesMap['credential']>(() => {
 	return rolesStore.processedCredentialRoles.map(
@@ -134,31 +123,26 @@ const credentialRoles = computed<AllRolesMap['credential']>(() => {
 	);
 });
 
-const confirmRemoval = computed(() => {
-	if (!isCredSharingEnabled.value) return undefined;
-	return (project: ProjectSharingData) => {
-		const { name } = splitName(project.name ?? '');
-		return {
-			title: i18n.baseText('credentialEdit.credentialSharing.unshare.confirm.title'),
-			message: i18n.baseText('credentialEdit.credentialSharing.unshare.confirm.message', {
-				interpolate: { name: name ?? project.name ?? '' },
-			}),
-			confirmButtonText: i18n.baseText(
-				'credentialEdit.credentialSharing.unshare.confirm.confirmButtonText',
-			),
-			cancelButtonText: i18n.baseText(
-				'credentialEdit.credentialSharing.unshare.confirm.cancelButtonText',
-			),
-		};
+const confirmRemoval = (project: ProjectSharingData) => {
+	const { name } = splitName(project.name ?? '');
+	return {
+		title: i18n.baseText('credentialEdit.credentialSharing.unshare.confirm.title'),
+		message: i18n.baseText('credentialEdit.credentialSharing.unshare.confirm.message', {
+			interpolate: { name: name ?? project.name ?? '' },
+		}),
+		confirmButtonText: i18n.baseText(
+			'credentialEdit.credentialSharing.unshare.confirm.confirmButtonText',
+		),
+		cancelButtonText: i18n.baseText(
+			'credentialEdit.credentialSharing.unshare.confirm.cancelButtonText',
+		),
 	};
-});
+};
 
 const { fetchDependencies, getDependencies } = useDependencies();
 
 onMounted(() => {
-	if (isCredSharingEnabled.value) {
-		void fetchDependencies([props.credentialId], 'credential');
-	}
+	void fetchDependencies([props.credentialId], 'credential');
 });
 
 /**
@@ -167,8 +151,6 @@ onMounted(() => {
  * so the share permission only gates the Share button.
  */
 const usedInProjects = computed(() => {
-	if (!isCredSharingEnabled.value) return [];
-
 	const deps = getDependencies(props.credentialId, 'credential');
 	if (!deps) return [];
 
@@ -339,7 +321,7 @@ function goToUpgrade() {
 				:roles="credentialRoles"
 				:role-descriptions="credentialRoleDescriptions"
 				:confirm-removal="confirmRemoval"
-				:sort-selected="isCredSharingEnabled"
+				sort-selected
 				:unshared-projects="usedInProjects"
 				:home-project="homeProject"
 				:readonly="!credentialPermissions.share"

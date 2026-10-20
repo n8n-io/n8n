@@ -1,3 +1,4 @@
+import type { SerializedCredential } from '@n8n/api-types';
 import { CredentialsFinderService } from '@n8n/backend-services';
 import type { CredentialsEntity, User } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -24,7 +25,6 @@ import type {
 } from './credential.types';
 import type { ImportBindingMap, ImportContext } from '../../n8n-packages.types';
 import { mergeRequirementConsumers } from '../../spec/requirement-consumers';
-import type { SerializedCredential } from '../../spec/serialized/credential.schema';
 
 @Service()
 export class CredentialImporter {
