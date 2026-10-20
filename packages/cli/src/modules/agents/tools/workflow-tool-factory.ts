@@ -574,18 +574,28 @@ export async function executeWorkflow(
 			completedRun && context.executionMode === 'integrated'
 				? formatResult(executionId, completedRun.status, completedRun.data, allOutputs)
 				: await extractResult(executionId, allOutputs);
-		if (isWorkflowToolResponse(webhookResponse)) {
-			const response = await Container.get(WebhookResponseRelay).restoreOffloadedBody(
-				webhookResponse,
-				{ reclaim: true, context: { workflowId: workflow.id, executionId } },
-			);
-			result.data = {
-				...(result.data ?? {}),
-				response: truncateWebhookResponse(response),
-			};
-		}
-		return result;
+		return await attachWebhookResponse(result, webhookResponse, workflow.id, executionId);
 	});
+}
+
+/** Adds the Respond to Webhook response to the tool result, with its body restored and truncated. */
+async function attachWebhookResponse(
+	result: WorkflowToolExecutionResult,
+	webhookResponse: IExecuteResponsePromiseData | undefined,
+	workflowId: string,
+	executionId: string,
+): Promise<WorkflowToolExecutionResult> {
+	if (!isWorkflowToolResponse(webhookResponse)) return result;
+
+	const response = await Container.get(WebhookResponseRelay).restoreOffloadedBody(webhookResponse, {
+		reclaim: true,
+		context: { workflowId, executionId },
+	});
+	result.data = {
+		...(result.data ?? {}),
+		response: truncateWebhookResponse(response),
+	};
+	return result;
 }
 
 /** The foreground tool owns cancellation until it hands the workflow to a background job. */
@@ -638,9 +648,6 @@ async function withWorkflowCancellation<T>(
  * Like the regular path, it stops the execution when the agent run aborts and
  * when the tool timeout passes. The engine alone checks its deadline only
  * between nodes, so a hung node needs this hard stop.
- *
- * Not covered yet: a Respond to Webhook response does not reach the tool,
- * because only `WorkflowRunner` connects the response promise.
  */
 async function executeInProcess(
 	workflow: WorkflowEntity,
@@ -662,8 +669,9 @@ async function executeInProcess(
 		executionTimeoutTimestamp: Date.now() + DEFAULT_TIMEOUT_MS,
 	});
 
-	// The sub-workflow path sets the execution ID before it calls the hook.
+	// The sub-workflow path sets the execution ID and the lifecycle hooks before it calls the callback.
 	let executionId: string | undefined;
+	let webhookResponse: IExecuteResponsePromiseData | undefined;
 	const settled = runSubWorkflow({ id: workflow.id }, additionalData, {
 		parentProjectId: context.projectId,
 		loadedWorkflowData: runData.workflowData,
@@ -671,6 +679,10 @@ async function executeInProcess(
 		executionMode: context.executionMode,
 		configureAdditionalData: (integratedAdditionalData) => {
 			executionId = integratedAdditionalData.executionId;
+			// Only `WorkflowRunner` connects a response promise, so take the response from the hook.
+			integratedAdditionalData.hooks?.addHandler('sendResponse', (response) => {
+				webhookResponse ??= response;
+			});
 			configureAdditionalData(integratedAdditionalData);
 		},
 	}).then(
@@ -708,7 +720,8 @@ async function executeInProcess(
 			activeExecutions.stopExecution(executionId, new TimeoutExecutionCancelledError(executionId));
 			return { executionId, status: 'error', error: message };
 		}
-		return await extractResult(outcome, allOutputs);
+		const result = await extractResult(outcome, allOutputs);
+		return await attachWebhookResponse(result, webhookResponse, workflow.id, outcome);
 	} finally {
 		clearTimeout(timeoutId);
 		if (onAbort) abortSignal?.removeEventListener('abort', onAbort);

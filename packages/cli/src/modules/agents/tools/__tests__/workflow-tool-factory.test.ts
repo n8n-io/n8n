@@ -603,6 +603,91 @@ describe('executeWorkflow → eval instrumentation', () => {
 	});
 });
 
+describe('executeWorkflow → in-process webhook response', () => {
+	const relay = mock<WebhookResponseRelay>();
+
+	// A run that sends a response through the lifecycle hook, as a Respond to Webhook node does.
+	const runSendingResponses = (...responses: IExecuteResponsePromiseData[]) =>
+		subWorkflowExecute.mockImplementation(async (_info, _additionalData, options) => {
+			const handlers: Record<string, (response: IExecuteResponsePromiseData) => void> = {};
+			await options.configureAdditionalData({
+				executionId: 'exec-1',
+				hooks: {
+					addHandler: (name: string, handler: (response: IExecuteResponsePromiseData) => void) => {
+						handlers[name] = handler;
+					},
+				},
+			});
+			for (const response of responses) handlers.sendResponse?.(response);
+			return { executionId: 'exec-1', data: [null] };
+		});
+
+	const runInstrumented = async () =>
+		await executeWorkflow(
+			workflow,
+			triggerNode,
+			{},
+			buildContext(vi.fn(), { instrumentToolAdditionalData: vi.fn() }),
+			false,
+			'Lookup_workflow',
+		);
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		getBase.mockResolvedValue({ userId: 'user-1' });
+		Container.set(ExecutionPersistence, {
+			findSingleExecution: vi
+				.fn()
+				.mockResolvedValue({ status: 'success', data: { resultData: { runData: {} } } }),
+		} as unknown as ExecutionPersistence);
+		Container.set(WebhookResponseRelay, relay);
+	});
+
+	afterEach(() => {
+		subWorkflowExecute.mockReset();
+		Container.reset();
+	});
+
+	it('returns the Respond to Webhook response, with the restored body', async () => {
+		const relayed = {
+			body: { binaryData: { id: 'database:abc' } },
+			headers: {},
+			statusCode: 200,
+		} as IExecuteResponsePromiseData;
+		const restored = { body: { hello: 'world' }, headers: {}, statusCode: 200 };
+		relay.restoreOffloadedBody.mockResolvedValue(restored);
+		runSendingResponses(relayed);
+
+		const result = await runInstrumented();
+
+		expect(relay.restoreOffloadedBody).toHaveBeenCalledWith(relayed, {
+			reclaim: true,
+			context: { workflowId: 'wf-1', executionId: 'exec-1' },
+		});
+		expect(result.data?.response).toEqual(restored);
+	});
+
+	it('keeps the first response when a run sends more than one', async () => {
+		const first = { body: 'first', headers: {}, statusCode: 200 } as IExecuteResponsePromiseData;
+		const second = { body: 'second', headers: {}, statusCode: 200 } as IExecuteResponsePromiseData;
+		relay.restoreOffloadedBody.mockImplementation(async (response) => response);
+		runSendingResponses(first, second);
+
+		const result = await runInstrumented();
+
+		expect(result.data?.response).toEqual(first);
+	});
+
+	it('adds no response when no node sends one', async () => {
+		runSendingResponses();
+
+		const result = await runInstrumented();
+
+		expect(relay.restoreOffloadedBody).not.toHaveBeenCalled();
+		expect(result.data?.response).toBeUndefined();
+	});
+});
+
 describe('executeWorkflow → webhook response', () => {
 	const relay = mock<WebhookResponseRelay>();
 
