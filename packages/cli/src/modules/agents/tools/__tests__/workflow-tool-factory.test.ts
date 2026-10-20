@@ -22,6 +22,7 @@ import type { EphemeralNodeExecutor } from '@/node-execution/ephemeral-node-exec
 import { WebhookResponseRelay } from '@/scaling/webhook-response-relay';
 import type { WorkflowRunner } from '@/workflow-runner';
 
+import { AgentFileBridge } from '../../agent-file-bridge.service';
 import {
 	encodeAgentSandboxHostMetadata,
 	hashAgentSandboxPrincipal,
@@ -913,6 +914,71 @@ describe('workflow tool → parentAgentRun stamping', () => {
 		const executionData = await runToolWith(contextExtras, ctx);
 
 		expect(executionData?.parentAgentRun).toBeUndefined();
+	});
+});
+
+describe('workflow tool → binary output', () => {
+	const binaryItem = {
+		json: { revisedPrompt: 'a cat' },
+		binary: { data: { id: 'filesystem-v2:x', data: 'filesystem-v2', mimeType: 'image/png' } },
+	};
+	const file = { fileId: 'aid-1', fileName: 'data.png', mimeType: 'image/png', sizeBytes: 3 };
+
+	async function runTool(ctx: object) {
+		Container.set(ExecutionPersistence, {
+			findSingleExecution: vi.fn().mockResolvedValue({
+				status: 'success',
+				data: { resultData: { runData: { OpenAI: [{ data: { main: [[binaryItem]] } }] } } },
+			}),
+		} as unknown as ExecutionPersistence);
+		const bridge = mock<AgentFileBridge>();
+		bridge.adoptFromItems.mockResolvedValue({
+			items: [{ json: { revisedPrompt: 'a cat' }, binary: { data: 'aid-1' } }],
+			files: [file],
+		});
+		Container.set(AgentFileBridge, bridge);
+
+		const workflowLoader = mock<WorkflowToolWorkflowLoader>();
+		workflowLoader.loadWorkflow.mockResolvedValue(workflow);
+		const tool = await resolveWorkflowTool(
+			{ type: 'workflow', workflow: 'Lookup workflow' },
+			buildContext(vi.fn().mockResolvedValue('exec-1'), { workflowLoader, agentId: 'agent-1' }),
+		);
+		const output = await tool.handler?.({}, ctx as never);
+		return { output, bridge, tool };
+	}
+
+	afterEach(() => {
+		Container.reset();
+	});
+
+	it('adopts binary output as agent files and lists them as metadata', async () => {
+		const { output, bridge, tool } = await runTool({ persistence: { threadId: 't-1' } });
+
+		expect(bridge.adoptFromItems).toHaveBeenCalledWith(
+			[binaryItem],
+			{ agentId: 'agent-1', projectId: 'p1', threadId: 't-1' },
+			expect.any(Map),
+		);
+		expect(output).toEqual({
+			executionId: 'exec-1',
+			status: 'success',
+			data: { OpenAI: [{ revisedPrompt: 'a cat', binary: { data: 'aid-1' } }] },
+			files: [file],
+		});
+		// The model sees the same JSON, with no file parts.
+		expect(tool.toModelOutput).toBeUndefined();
+	});
+
+	it('drops the binary when the run has no thread', async () => {
+		const { output, bridge } = await runTool({});
+
+		expect(bridge.adoptFromItems).not.toHaveBeenCalled();
+		expect(output).toEqual({
+			executionId: 'exec-1',
+			status: 'success',
+			data: { OpenAI: [{ revisedPrompt: 'a cat' }] },
+		});
 	});
 });
 

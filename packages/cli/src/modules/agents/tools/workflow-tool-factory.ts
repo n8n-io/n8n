@@ -7,6 +7,7 @@ import {
 	WORKFLOW_TOOL_TRIGGER_DISPLAY_NAME,
 	WORKFLOW_WAIT_SUSPEND_TYPE,
 	type AgentJsonToolConfig,
+	type AgentToolOutputFile,
 	type SUPPORTED_WORKFLOW_TOOL_TRIGGERS,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
@@ -21,6 +22,7 @@ import type {
 	IDataObject,
 	IExecuteResponsePromiseData,
 	INode,
+	INodeExecutionData,
 	IPinData,
 	IRun,
 	IWorkflowExecutionDataProcess,
@@ -47,6 +49,7 @@ import { WebhookResponseRelay } from '@/scaling/webhook-response-relay';
 import type { WorkflowRunner } from '@/workflow-runner';
 
 import type { InstrumentToolAdditionalData } from '../evaluation/agent-evaluation.contracts';
+import { AgentFileBridge } from '../agent-file-bridge.service';
 import { decodeAgentSandboxHostMetadata } from '../agent-sandbox-principal';
 import { isTaskRunMemoryResourceId } from '../utils/agent-memory-scope';
 import { WorkflowToolUnavailableError } from './workflow-tool-unavailable-error';
@@ -57,9 +60,11 @@ import type {
 import {
 	AgentBackgroundJobService,
 	collectResultData,
+	collectResultItems,
 	EXECUTION_OUTCOME_UNKNOWN_ERROR,
 	serializeWorkflowJobResult,
 	settlementStatusForExecution,
+	toResultData,
 } from '../background/agent-background-job.service';
 import { sanitizeToolName } from '../json-config/agent-config-composition';
 
@@ -135,11 +140,16 @@ interface WorkflowToolResult {
 	error?: string;
 	/** Explains a non-obvious outcome to the model, e.g. that the user stopped waiting. */
 	note?: string;
+	jobId?: string;
+	/** Binary output, stored as agent files. The model gets this metadata, not the bytes. */
+	files?: AgentToolOutputFile[];
 }
 
-/** Internal result, carrying wait details that are stripped before the model sees them. */
+/** Internal result, carrying details that are stripped before the model sees them. */
 export interface WorkflowToolExecutionResult extends WorkflowToolResult {
 	wait?: WorkflowWaitState;
+	/** Set only when the output has binary data, for {@link finishResult} to store. */
+	items?: Record<string, INodeExecutionData[]>;
 }
 
 function isWorkflowToolResponse(value: unknown): value is IExecuteResponsePromiseData {
@@ -643,7 +653,9 @@ function formatResult(
 	allOutputs: boolean,
 ): WorkflowToolExecutionResult {
 	const runData = data?.resultData?.runData;
-	const resultData = runData ? collectResultData(runData, allOutputs) : {};
+	const items = runData ? collectResultItems(runData, allOutputs) : {};
+	const resultData = toResultData(items);
+	const hasBinary = Object.values(items).some((nodeItems) => nodeItems.some((item) => item.binary));
 	const normalisedStatus = normaliseExecutionStatus(status);
 	const wait = normalisedStatus === 'waiting' ? extractWaitState(data) : undefined;
 
@@ -653,6 +665,7 @@ function formatResult(
 		data: Object.keys(resultData).length > 0 ? resultData : undefined,
 		error: data?.resultData?.error?.message,
 		...(wait ? { wait } : {}),
+		...(hasBinary ? { items } : {}),
 	};
 }
 
@@ -741,9 +754,31 @@ function extractWaitState(data: IRun['data'] | undefined): WorkflowWaitState | u
 	return bounded ? { waitTill } : {};
 }
 
-function withoutWaitState(result: WorkflowToolExecutionResult): WorkflowToolResult {
-	const { wait: _wait, ...rest } = result;
-	return rest;
+/**
+ * Strip the internal details and store binary output as agent files. In the
+ * data, each binary entry becomes its file ID, and `files` lists the metadata.
+ * Without a thread there is no scope for the files, so the binary is dropped.
+ */
+async function finishResult(
+	result: WorkflowToolExecutionResult,
+	context: Pick<WorkflowToolContext, 'agentId' | 'projectId'>,
+	ctx: WaitToolContext,
+): Promise<WorkflowToolResult> {
+	const { wait: _wait, items, ...rest } = result;
+	const threadId = ctx.persistence?.threadId;
+	if (!threadId || !items) return rest;
+
+	const bridge = Container.get(AgentFileBridge);
+	const scope = { agentId: context.agentId ?? null, projectId: context.projectId, threadId };
+	const data = { ...rest.data };
+	const files: AgentToolOutputFile[] = [];
+	const stored = new Map<string, AgentToolOutputFile>();
+	for (const [nodeName, nodeItems] of Object.entries(items)) {
+		const adopted = await bridge.adoptFromItems(nodeItems, scope, stored);
+		data[nodeName] = adopted.items.map(({ json, binary }) => (binary ? { ...json, binary } : json));
+		files.push(...adopted.files);
+	}
+	return { ...rest, data, files };
 }
 
 /**
@@ -841,7 +876,7 @@ async function backgroundWaitingExecution(
 			// even if another writer settled the job.
 			await consumeInlineMail(jobService, agentRun.threadId, jobId);
 
-			return { ...withoutWaitState(fresh), jobId };
+			return { ...(await finishResult(fresh, context, ctx)), jobId };
 		}
 
 		const continuesAt = result.wait?.waitTill
@@ -1125,6 +1160,7 @@ function assembleWorkflowTool(
 				error: z.string().optional(),
 				note: z.string().optional(),
 				jobId: z.string().optional(),
+				files: z.array(z.custom<AgentToolOutputFile>()).optional(),
 			}),
 		)
 		.suspend(WAIT_SUSPEND_SCHEMA)
@@ -1169,14 +1205,14 @@ function assembleWorkflowTool(
 			// second execution, so say so.
 			if (result.status === 'waiting' && isWaitCancelled(ctx.resumeData)) {
 				return {
-					...withoutWaitState(result),
+					...(await finishResult(result, context, ctx)),
 					note: 'The user stopped waiting for this workflow. It is still paused — do not start it again.',
 				};
 			}
 
 			// A wait due within the poll window resolves inline. Only a wait the poll
 			// did not settle is handed to the background.
-			if (result.status !== 'waiting') return withoutWaitState(result);
+			if (result.status !== 'waiting') return await finishResult(result, context, ctx);
 
 			const waiting = result;
 			return await withWorkflowCancellation(
@@ -1198,7 +1234,9 @@ function assembleWorkflowTool(
 						if (backgrounded) return backgrounded;
 					}
 
-					if (result.status !== 'waiting' || !supportsHitl) return withoutWaitState(result);
+					if (result.status !== 'waiting' || !supportsHitl) {
+						return await finishResult(result, context, ctx);
+					}
 
 					current ??= await loadCurrentWorkflow(context, reference);
 					ctx.abortSignal?.throwIfAborted();
