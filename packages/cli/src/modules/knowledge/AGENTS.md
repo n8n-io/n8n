@@ -24,7 +24,7 @@ The agents module keeps the controllers, `getAgentOrThrow` and every user and pr
 
 ```
 knowledge.module.ts            default-enabled, unlicensed; entities()
-knowledge.config.ts            upload limits as env vars; defaults equal the api-types constants
+knowledge.config.ts            upload limits as env vars (follow-up PR, together with the code that reads them)
 knowledge-consumer-scope.ts    the scope
 knowledge-retriever.ts         offered to consumers
 knowledge-sandbox-provider.ts  required from a consumer
@@ -43,7 +43,7 @@ vector-stores/                 connection test, factory, embedding credential, e
 - Naming freeze in P0: the facade keeps the name `AgentKnowledgeService`. Repository methods keep `findByAgentId`, `hasFilesForAgent` and `findByIdAndAgentId` until P1.
 - Business logic must not import `@n8n/typeorm`. Put operator queries behind use-case-named repository methods.
 - Tool names, descriptions, inputs and outputs stay byte-identical through P0. Sandbox ids stay unchanged.
-- The JSDoc on every `@Env` property in `knowledge.config.ts` is public documentation. Follow the `n8n:env-var-docs` skill.
+- Add an `@Env` property only in the PR that reads it: its JSDoc is exported to the public environment variable reference, so a variable must not appear there before it does something. Follow the `n8n:env-var-docs` skill. The upload limits (`MAX_AGENT_FILE_SIZE_BYTES`, `MAX_AGENT_FILES_PER_UPLOAD`, `MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES` in `@n8n/api-types`) become `KnowledgeConfig` env vars in a follow-up PR, together with the upload middleware and the size check that read them, and with the editor reading the same values from module settings so both sides agree.
 - Log with `logger.scoped('knowledge')`.
 
 ## Disabled module
