@@ -1,6 +1,23 @@
-import type { INodeProperties } from 'n8n-workflow';
+import type {
+	IExecuteSingleFunctions,
+	IHttpRequestOptions,
+	INodeProperties,
+	PreSendAction,
+} from 'n8n-workflow';
 
-import { prepareAddUserToProjectBody } from './GenericFunctions';
+const prepareAddUserToProjectBody: PreSendAction = async function (
+	this: IExecuteSingleFunctions,
+	requestOptions: IHttpRequestOptions,
+): Promise<IHttpRequestOptions> {
+	const userId = this.getNodeParameter('userId') as string;
+	const role = this.getNodeParameter('role') as string;
+
+	requestOptions.body = {
+		relations: [{ userId, role }],
+	};
+
+	return requestOptions;
+};
 
 export const projectOperations: INodeProperties[] = [
 	{

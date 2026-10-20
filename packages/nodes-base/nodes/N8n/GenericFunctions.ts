@@ -234,23 +234,3 @@ export const prepareWorkflowUpdateBody: PreSendAction = async function (
 
 	return requestOptions;
 };
-
-/**
- * A helper function to build the request body for adding a user to a project.
- * The API expects a 'relations' array, which the declarative routing cannot
- * build from separate fields, so it is set here from the 'userId' and 'role'
- * node parameters.
- */
-export const prepareAddUserToProjectBody: PreSendAction = async function (
-	this: IExecuteSingleFunctions,
-	requestOptions: IHttpRequestOptions,
-): Promise<IHttpRequestOptions> {
-	const userId = this.getNodeParameter('userId') as string;
-	const role = this.getNodeParameter('role') as string;
-
-	requestOptions.body = {
-		relations: [{ userId, role }],
-	};
-
-	return requestOptions;
-};

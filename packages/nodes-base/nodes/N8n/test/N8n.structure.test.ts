@@ -13,14 +13,11 @@ function collectUrls(value: unknown): string[] {
 }
 
 describe('n8n Node Structure', () => {
-	it('audit operation default should be one of its options', () => {
-		const operation = auditOperations[0];
-		const values = (operation.options as Array<{ value: string }>).map((o) => o.value);
-		expect(values).toContain(operation.default);
-	});
-
-	it('project operation default should be one of its options', () => {
-		const operation = projectOperations[0];
+	it.each([
+		['audit', auditOperations],
+		['project', projectOperations],
+	])('%s operation default should be one of its options', (_resource, operations) => {
+		const operation = operations[0];
 		const values = (operation.options as Array<{ value: string }>).map((o) => o.value);
 		expect(values).toContain(operation.default);
 	});
