@@ -9,8 +9,10 @@ import type {
 	WorkflowMigrationResult,
 } from '@n8n/api-types';
 
+import { getBrowserId } from '@n8n/constants';
+
 import type { IRestApiContext } from '../types';
-import { makeRestApiRequest, get } from '../utils';
+import { makeRestApiRequest, get, ResponseError } from '../utils';
 
 type BreakingChangeQuery = {
 	version?: BreakingChangeVersion;
@@ -32,6 +34,50 @@ export async function refreshReport(
 		: '/breaking-changes/report/refresh';
 
 	return await makeRestApiRequest(context, 'POST', refreshUrl);
+}
+
+export type MigrationReportExport = { blob: Blob; filename: string };
+
+const DEFAULT_EXPORT_FILENAME = 'migration-report.csv';
+
+/** The file name from a `Content-Disposition: attachment; filename="..."` header. */
+function attachmentFilename(response: Response): string | undefined {
+	const header = response.headers.get('Content-Disposition');
+	return header?.match(/filename="([^"]+)"/)?.[1];
+}
+
+/**
+ * The overview as a CSV file, named by the server. Plain `fetch`: the shared
+ * request helper parses every body as JSON, and this one is text.
+ */
+export async function exportReport(
+	context: IRestApiContext,
+	query?: BreakingChangeQuery,
+): Promise<MigrationReportExport> {
+	const exportUrl = query?.version
+		? `${context.baseUrl}/breaking-changes/report/export?version=${query.version}`
+		: `${context.baseUrl}/breaking-changes/report/export`;
+
+	const response = await fetch(exportUrl, {
+		method: 'GET',
+		credentials: 'include',
+		headers: { 'browser-id': getBrowserId() },
+	});
+	if (!response.ok) {
+		const body: unknown = await response.json().catch(() => undefined);
+		const message =
+			typeof body === 'object' &&
+			body !== null &&
+			'message' in body &&
+			typeof body.message === 'string'
+				? body.message
+				: `Could not export the migration report (${response.status})`;
+		throw new ResponseError(message, { httpStatusCode: response.status });
+	}
+	return {
+		blob: await response.blob(),
+		filename: attachmentFilename(response) ?? DEFAULT_EXPORT_FILENAME,
+	};
 }
 
 export async function getReportForRule(

@@ -1,8 +1,12 @@
 import type { IRestApiContext } from '../../types';
 import * as utils from '../../utils';
-import { notifyFindingOwners, updateFindingStatuses } from '../breaking-changes';
+import { exportReport, notifyFindingOwners, updateFindingStatuses } from '../breaking-changes';
 
-vi.mock('../../utils');
+// Keep the error class real: the export throws it, and the test inspects it.
+vi.mock('../../utils', async (importOriginal) => ({
+	...(await importOriginal<typeof utils>()),
+	makeRestApiRequest: vi.fn(),
+}));
 
 const context = {} as IRestApiContext;
 
@@ -44,5 +48,74 @@ describe('notifyFindingOwners', () => {
 			'/breaking-changes/report/removed-nodes-v3/workflows/notify',
 			{ workflowIds: ['wf-1'] },
 		);
+	});
+});
+
+describe('exportReport', () => {
+	const fetchMock = vi.fn();
+	const restContext = { baseUrl: 'http://localhost:5678/rest' } as IRestApiContext;
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		vi.stubGlobal('fetch', fetchMock);
+	});
+
+	afterEach(() => {
+		vi.unstubAllGlobals();
+	});
+
+	function okResponse(blob: Blob, contentDisposition?: string) {
+		return {
+			ok: true,
+			headers: new Headers(contentDisposition ? { 'Content-Disposition': contentDisposition } : {}),
+			blob: async () => blob,
+		};
+	}
+
+	it('fetches the CSV export with the version and returns the body with the server file name', async () => {
+		const blob = new Blob(['target_version\r\n'], { type: 'text/csv' });
+		fetchMock.mockResolvedValueOnce(
+			okResponse(blob, 'attachment; filename="migration-report-v3-2026-10-20.csv"'),
+		);
+
+		const result = await exportReport(restContext, { version: 'v3' });
+
+		expect(result).toEqual({ blob, filename: 'migration-report-v3-2026-10-20.csv' });
+		expect(fetchMock).toHaveBeenCalledWith(
+			'http://localhost:5678/rest/breaking-changes/report/export?version=v3',
+			expect.objectContaining({ method: 'GET', credentials: 'include' }),
+		);
+	});
+
+	it('falls back to a fixed file name when the server names none', async () => {
+		fetchMock.mockResolvedValueOnce(okResponse(new Blob()));
+
+		const result = await exportReport(restContext);
+
+		expect(result.filename).toBe('migration-report.csv');
+	});
+
+	it('fetches the default version when none is given', async () => {
+		fetchMock.mockResolvedValueOnce(okResponse(new Blob()));
+
+		await exportReport(restContext);
+
+		expect(fetchMock).toHaveBeenCalledWith(
+			'http://localhost:5678/rest/breaking-changes/report/export',
+			expect.anything(),
+		);
+	});
+
+	it('throws the server message when the export is refused', async () => {
+		fetchMock.mockResolvedValueOnce({
+			ok: false,
+			status: 403,
+			json: async () => ({ message: 'Forbidden' }),
+		});
+
+		await expect(exportReport(restContext)).rejects.toMatchObject({
+			message: 'Forbidden',
+			httpStatusCode: 403,
+		});
 	});
 });
