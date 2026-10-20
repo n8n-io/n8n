@@ -289,6 +289,7 @@ export abstract class BaseCommand<F = never> {
 					reportNativeVerifyMismatch: this.errorReporter.isSentryActive()
 						? (mismatch) => this.reportNativeVerifyMismatch(mismatch)
 						: undefined,
+					canReportNativeVerifyMismatch: () => this.errorReporter.isSentryActive(),
 					observability,
 				});
 			} catch (error) {

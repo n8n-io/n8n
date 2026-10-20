@@ -359,12 +359,15 @@ export class Expression {
 		/** Share of native-subset expressions, from 0 to 1, that `verify` compares. */
 		nativeEvaluationVerifySample?: number;
 		reportNativeVerifyMismatch?: (mismatch: NativeVerifyMismatch) => void;
+		/** Whether reports can be sent now. `verify` compares nothing while this is false. */
+		canReportNativeVerifyMismatch?: () => boolean;
 	}): Promise<void> {
 		this.nativeEvaluation = options.nativeEvaluation ?? 'off';
 		this.nativeVerifier = options.reportNativeVerifyMismatch
 			? new NativeVerifier(
 					options.nativeEvaluationVerifySample ?? DEFAULT_VERIFY_SAMPLE,
 					options.reportNativeVerifyMismatch,
+					options.canReportNativeVerifyMismatch,
 				)
 			: undefined;
 		if (options.engine === 'legacy') {
@@ -567,9 +570,12 @@ export class Expression {
 	static setNativeEvaluationVerify(
 		sample: number,
 		reportMismatch?: (mismatch: NativeVerifyMismatch) => void,
+		canReportMismatch?: () => boolean,
 	): void {
 		this.nativeEvaluation = 'verify';
-		this.nativeVerifier = reportMismatch ? new NativeVerifier(sample, reportMismatch) : undefined;
+		this.nativeVerifier = reportMismatch
+			? new NativeVerifier(sample, reportMismatch, canReportMismatch)
+			: undefined;
 	}
 
 	private static shouldVerifyNative(expression: string): boolean {

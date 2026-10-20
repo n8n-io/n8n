@@ -56,11 +56,12 @@ export class NativeVerifier {
 	constructor(
 		private readonly sample: number,
 		private readonly report: (mismatch: NativeVerifyMismatch) => void,
+		private readonly canReport: () => boolean = () => true,
 	) {}
 
-	/** Draws whether this evaluation is part of the sample. */
+	/** Draws whether this evaluation is part of the sample. False while reports cannot be sent. */
 	isSampled(): boolean {
-		return this.sample > 0 && Math.random() < this.sample;
+		return this.sample > 0 && this.canReport() && Math.random() < this.sample;
 	}
 
 	/** Reports `native` when it differs from `engine`. Never throws. */

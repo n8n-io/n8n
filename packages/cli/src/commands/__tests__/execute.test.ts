@@ -240,6 +240,7 @@ test('should exit with a crash when expression engine init fails', async () => {
 		nativeEvaluation: 'off',
 		nativeEvaluationVerifySample: 0.01,
 		reportNativeVerifyMismatch: expect.any(Function),
+		canReportNativeVerifyMismatch: expect.any(Function),
 		observability: expressionObservability,
 	});
 	expect(exitSpy).toHaveBeenCalledWith(expect.stringContaining('isolated-vm'), expect.any(Error));
@@ -291,6 +292,36 @@ test('reports a native verify mismatch to Sentry without the request scope', asy
 			shouldIsolate: true,
 		},
 	);
+});
+
+test('stops native verify reports when Sentry turns off', async () => {
+	// arrange
+
+	const initSpy = vi.spyOn(Expression, 'initExpressionEngine').mockResolvedValue();
+	Container.set(
+		GlobalConfig,
+		mock<GlobalConfig>({
+			taskRunners: {},
+			nodes: {},
+			expressionEngine: { engine: 'vm', nativeEvaluation: 'verify' },
+			generic: { gracefulShutdownTimeout: 30 },
+		}),
+	);
+	errorReporter.isSentryActive.mockReturnValue(true);
+
+	class ExpressionCommand extends BaseCommand {
+		override needsExpressionEngine = true;
+	}
+	await new ExpressionCommand().init();
+	const [{ canReportNativeVerifyMismatch }] = initSpy.mock.calls[0];
+
+	// act
+
+	errorReporter.isSentryActive.mockReturnValue(false);
+
+	// assert
+
+	expect(canReportNativeVerifyMismatch?.()).toBe(false);
 });
 
 test.each([
