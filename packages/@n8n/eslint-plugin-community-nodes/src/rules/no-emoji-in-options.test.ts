@@ -235,6 +235,29 @@ ruleTester.run('no-emoji-in-options', NoEmojiInOptionsRule, {
 			`,
 		},
 		{
+			name: 'search routing and validation inside a resource locator mode are not followed',
+			filename: '/tmp/nodes/resources/resourceLocator.ts',
+			code: `
+				import type { INodeProperties } from 'n8n-workflow';
+
+				export const repository: INodeProperties = {
+					displayName: 'Repository',
+					name: 'repository',
+					type: 'resourceLocator',
+					default: { mode: 'list', value: '' },
+					modes: [
+						{
+							displayName: 'From List',
+							name: 'list',
+							type: 'list',
+							search: { send: { property: 'name', value: '🚀 Rocket' } },
+							validation: [{ type: 'regex', properties: { name: '🚀 Rocket' } }],
+						},
+					],
+				};
+			`,
+		},
+		{
 			name: 'keyof INodeProperties is not a node property value',
 			filename: '/tmp/nodes/resources/keys.ts',
 			code: `
@@ -434,6 +457,25 @@ ruleTester.run('no-emoji-in-options', NoEmojiInOptionsRule, {
 					];
 					return inner;
 				})();
+			`,
+			errors: [{ messageId: 'emojiInOption', data: { key: 'displayName', emoji: '🚀' } }],
+		},
+		{
+			name: 'emoji in a resource locator mode displayName',
+			filename: '/tmp/nodes/resources/resourceLocator.ts',
+			code: `
+				import type { INodeProperties } from 'n8n-workflow';
+
+				export const repository: INodeProperties = {
+					displayName: 'Repository',
+					name: 'repository',
+					type: 'resourceLocator',
+					default: { mode: 'list', value: '' },
+					modes: [
+						{ displayName: 'From List 🚀', name: 'list', type: 'list' },
+						{ displayName: 'By URL', name: 'url', type: 'string' },
+					],
+				};
 			`,
 			errors: [{ messageId: 'emojiInOption', data: { key: 'displayName', emoji: '🚀' } }],
 		},

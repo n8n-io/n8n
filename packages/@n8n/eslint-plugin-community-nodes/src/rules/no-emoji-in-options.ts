@@ -24,7 +24,7 @@ const LABEL_KEYS = new Set(['name', 'displayName']);
  * data such as `default`, `value` and `routing` is never checked: it is not
  * rendered in the editor.
  */
-const STRUCTURAL_KEYS = new Set(['properties', 'options', 'values', 'defaults']);
+const STRUCTURAL_KEYS = new Set(['properties', 'options', 'values', 'defaults', 'modes']);
 
 const ARRAY_TYPE_NAMES = new Set(['Array', 'ReadonlyArray']);
 
