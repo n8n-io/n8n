@@ -481,6 +481,61 @@ describe('executeWorkflow → eval instrumentation', () => {
 		expect(context.subworkflowPolicyChecker.checkForProject).toHaveBeenCalledWith(workflow, 'p1');
 	});
 
+	describe('waiting executions', () => {
+		const stop = vi.fn();
+		const runInstrumented = async () =>
+			await executeWorkflow(
+				workflow,
+				triggerNode,
+				{},
+				buildContext(vi.fn(), { instrumentToolAdditionalData: vi.fn() }),
+				false,
+				'Lookup_workflow',
+			);
+
+		beforeEach(() => {
+			Container.set(ExecutionService, { stop } as unknown as ExecutionService);
+		});
+
+		it('stops an execution that waits and reports an error', async () => {
+			findSingleExecution.mockResolvedValue({
+				status: 'waiting',
+				data: {
+					resultData: { runData: {} },
+					waitTill: new Date(Date.now() + 5 * 60_000).toISOString(),
+				},
+			});
+
+			const result = await runInstrumented();
+
+			expect(stop).toHaveBeenCalledWith('exec-1', ['wf-1']);
+			expect(result).toMatchObject({
+				executionId: 'exec-1',
+				status: 'error',
+				error: expect.stringContaining('An eval cannot resume it with mocked services'),
+			});
+		});
+
+		it('stops an execution that waits for an event with no end time', async () => {
+			findSingleExecution.mockResolvedValue({
+				status: 'waiting',
+				data: { resultData: { runData: {} } },
+			});
+
+			const result = await runInstrumented();
+
+			expect(stop).toHaveBeenCalledWith('exec-1', ['wf-1']);
+			expect(result.status).toBe('error');
+		});
+
+		it('does not stop an execution that finished', async () => {
+			const result = await runInstrumented();
+
+			expect(stop).not.toHaveBeenCalled();
+			expect(result.status).toBe('success');
+		});
+	});
+
 	describe('abort and timeout', () => {
 		const stopExecution = vi.fn();
 		const buildInProcessContext = (abortSignal?: AbortSignal) => ({

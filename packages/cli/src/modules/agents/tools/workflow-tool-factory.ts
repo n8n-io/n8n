@@ -641,6 +641,26 @@ async function withWorkflowCancellation<T>(
 }
 
 /**
+ * A waiting execution is saved and resumed later through `WorkflowRunner`. That run
+ * has no eval mock, so the nodes after the wait would call real services. Stop the
+ * execution now and report an error instead.
+ */
+async function stopWaitingExecution(
+	executionId: string,
+	workflowId: string,
+): Promise<WorkflowToolExecutionResult> {
+	const { ExecutionService } = await import('@/executions/execution.service.js');
+	await Container.get(ExecutionService).stop(executionId, [workflowId]);
+
+	return {
+		executionId,
+		status: 'error',
+		error:
+			'This workflow waits for a time or an event. An eval cannot resume it with mocked services, so the run stopped at the wait.',
+	};
+}
+
+/**
  * Runs the tool workflow in this process through the sub-workflow path, which
  * is never enqueued — also in queue mode. The path reads the result from the
  * execution store, the same as a manual run through `WorkflowRunner`.
@@ -721,6 +741,7 @@ async function executeInProcess(
 			return { executionId, status: 'error', error: message };
 		}
 		const result = await extractResult(outcome, allOutputs);
+		if (result.status === 'waiting') return await stopWaitingExecution(outcome, workflow.id);
 		return await attachWebhookResponse(result, webhookResponse, workflow.id, outcome);
 	} finally {
 		clearTimeout(timeoutId);
