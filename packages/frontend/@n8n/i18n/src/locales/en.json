@@ -9676,6 +9676,8 @@
 	"tools.connection.detail.back": "Back",
 	"tools.connection.detail.officialServer": "Official {service} MCP server",
 	"tools.connection.detail.server": "{service} MCP server",
+	"tools.connection.detail.aiGatewayServer": "{service} via Gateway credits",
+	"tools.connection.detail.maintainedByN8n": "Maintained by n8n",
 	"tools.connection.detail.publishedBy": "Published by",
 	"tools.connection.detail.versionValue": "Version {version}",
 	"tools.connection.detail.publisher": "Publisher",

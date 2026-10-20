@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 import { N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 import type { McpServerConnectionItem } from './types';
 
 const props = defineProps<{
@@ -10,7 +11,15 @@ const props = defineProps<{
 
 const i18n = useI18n();
 
-const hasMetadata = computed(() => Boolean(props.item.publisher) || Boolean(props.item.version));
+// With Gateway credits, n8n runs the connection, so the server's publisher does not apply.
+const usesAiGateway = computed(
+	() =>
+		props.item.credentials?.some(
+			({ aiGateway, credentialId }) => aiGateway && credentialId === AI_GATEWAY_MANAGED_TAG,
+		) ?? false,
+);
+const hasPublisher = computed(() => usesAiGateway.value || Boolean(props.item.publisher));
+const hasMetadata = computed(() => hasPublisher.value || Boolean(props.item.version));
 </script>
 
 <template>
@@ -19,9 +28,11 @@ const hasMetadata = computed(() => Boolean(props.item.publisher) || Boolean(prop
 			<N8nText :class="$style.serverName" tag="h3">
 				{{
 					i18n.baseText(
-						item.isOfficial
-							? 'tools.connection.detail.officialServer'
-							: 'tools.connection.detail.server',
+						usesAiGateway
+							? 'tools.connection.detail.aiGatewayServer'
+							: item.isOfficial
+								? 'tools.connection.detail.officialServer'
+								: 'tools.connection.detail.server',
 						{ interpolate: { service: item.title } },
 					)
 				}}
@@ -32,7 +43,10 @@ const hasMetadata = computed(() => Boolean(props.item.publisher) || Boolean(prop
 				:class="$style.metadata"
 				data-test-id="tools-connection-detail-metadata"
 			>
-				<span v-if="item.publisher" :class="$style.publisher">
+				<span v-if="usesAiGateway" :class="$style.publisher">
+					{{ i18n.baseText('tools.connection.detail.maintainedByN8n') }}
+				</span>
+				<span v-else-if="item.publisher" :class="$style.publisher">
 					{{ i18n.baseText('tools.connection.detail.publishedBy') }}
 					<a
 						v-if="item.publisher.url"
@@ -45,7 +59,7 @@ const hasMetadata = computed(() => Boolean(props.item.publisher) || Boolean(prop
 					</a>
 					<span v-else>{{ item.publisher.name }}</span>
 				</span>
-				<span v-if="item.publisher && item.version" aria-hidden="true">&nbsp;·&nbsp;</span>
+				<span v-if="hasPublisher && item.version" aria-hidden="true">&nbsp;·&nbsp;</span>
 				<span v-if="item.version" :class="$style.version">
 					{{
 						i18n.baseText('tools.connection.detail.versionValue', {
