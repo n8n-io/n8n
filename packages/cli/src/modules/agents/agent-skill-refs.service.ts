@@ -13,7 +13,12 @@ import type { Agent } from './entities/agent.entity';
 import { withoutLegacySkillRefs, type AgentSkillRefs } from './json-config/agent-document';
 import { AgentRepository } from './repositories/agent.repository';
 import { SkillRepository } from './repositories/skill.repository';
-import { SkillService, toAgentSkill, type SkillRef } from './skills/skill.service';
+import {
+	SkillService,
+	toAgentSkill,
+	type SkillMoveOptions,
+	type SkillRef,
+} from './skills/skill.service';
 import { SkillsHubRollout } from './skills/skills-hub-rollout';
 import { getAgentSkillHash } from './utils/agent-config-hash';
 import { getMissingSkillIds } from './utils/agent-missing-skill-ids';
@@ -359,6 +364,7 @@ export class AgentSkillRefsService {
 						skill,
 						source: 'agent',
 						createdById: creatorId,
+						checkNameTaken: true,
 					},
 					ctx,
 				),
@@ -446,8 +452,15 @@ export class AgentSkillRefsService {
 		skillId: string,
 		availableTo: AgentSkillAvailability,
 		ctx: OperationContext,
+		options: SkillMoveOptions = {},
 	): Promise<void> {
-		await this.skillService.changeTarget(skillId, targetFor(agent, availableTo), agent.id, ctx);
+		await this.skillService.changeTarget(
+			skillId,
+			targetFor(agent, availableTo),
+			agent.id,
+			ctx,
+			options,
+		);
 	}
 
 	private async writeLegacyDraft(

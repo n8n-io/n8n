@@ -45,6 +45,7 @@ describe('EnterpriseWorkflowService', () => {
 			mock(), // policyEnforcementService
 			mock(), // nodeTypes
 			mock(), // credentialsPermissionChecker
+			mock(), // workflowHistoryRepository
 		);
 	});
 

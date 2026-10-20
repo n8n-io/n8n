@@ -15,6 +15,7 @@ import AgentChannelTeamsManagedSetup from './AgentChannelTeamsManagedSetup.vue';
 import type { TeamsChannelRuntime } from './useTeamsChannelRuntime';
 import { entraApiPermissionsUrl } from './constants';
 import { ActionDropdownTestStub } from '../../__tests__/utils/ActionDropdownTestStub';
+import { AGENT_PERSONALISATION_KEY } from '../agentPersonalisation';
 
 vi.mock('file-saver', () => ({ saveAs: vi.fn() }));
 
@@ -105,8 +106,12 @@ const stubs = {
 	ActionDropdown: ActionDropdownTestStub,
 };
 
-const render = (overrides: Record<string, unknown> = {}) =>
-	renderComponent({ props: props(overrides), pinia: createTestingPinia(), global: { stubs } });
+const render = (overrides: Record<string, unknown> = {}, provide: Record<symbol, unknown> = {}) =>
+	renderComponent({
+		props: props(overrides),
+		pinia: createTestingPinia(),
+		global: { stubs, provide },
+	});
 
 describe('AgentChannelTeamsManagedSetup', () => {
 	beforeEach(() => {
@@ -142,10 +147,18 @@ describe('AgentChannelTeamsManagedSetup', () => {
 	 * one resource — so the single prompt covering both is the administrator
 	 * consent, offered here.
 	 */
-	it('offers one administrator prompt covering both Microsoft APIs', () => {
+	it('copies one administrator prompt covering both Microsoft APIs', async () => {
 		const { getByTestId } = render();
 
-		expect(getByTestId('teams-admin-consent').getAttribute('href')).toContain('adminconsent');
+		await fireEvent.click(getByTestId('teams-admin-consent'));
+
+		expect(copySpy).toHaveBeenCalledWith(expect.stringContaining('adminconsent'));
+		expect(showMessage).toHaveBeenCalledWith(
+			expect.objectContaining({
+				type: 'success',
+				title: 'agents.channels.teams.managed.fileAccess.copied',
+			}),
+		);
 	});
 
 	it('offers no administrator prompt where the setup cannot run', () => {
@@ -291,6 +304,19 @@ describe('AgentChannelTeamsManagedSetup', () => {
 				'agents.channels.teams.managed.connect.failed',
 			);
 		});
+	});
+
+	it('offers the admin link inside the error once a sign-in did not finish', async () => {
+		const { getByTestId, queryByTestId } = render({
+			runtime: buildRuntime({ connectManagerCredential: vi.fn().mockResolvedValue(false) }),
+		});
+
+		await fireEvent.click(getByTestId('teams-manager-connect'));
+		await waitFor(() => expect(getByTestId('teams-manager-error')).toBeVisible());
+
+		expect(queryByTestId('teams-admin-consent')).not.toBeInTheDocument();
+		await fireEvent.click(getByTestId('teams-manager-error-admin-consent'));
+		expect(copySpy).toHaveBeenCalledWith(expect.stringContaining('adminconsent'));
 	});
 
 	it('reports a sign-in that threw', async () => {
@@ -829,30 +855,46 @@ describe('AgentChannelTeamsManagedSetup', () => {
 			await waitFor(() => expect(provisionBot).toHaveBeenCalledWith('sub-1'));
 		});
 
-		it('keeps the availability panel editable once the bot is up', async () => {
-			const { getByTestId } = render(
-				signedIn({
-					provisionedApp: ref({
-						credentialId: 'bot-cred-1',
-						appId: 'app-1',
-						appName: 'Support Bot (n8n)',
-						organizationName: 'Acme Corp',
-						entraAppUrl: 'https://entra.microsoft.com/app-1',
-						fileAccessConsentUrl: null,
-						secretExpiresAt: '2028-09-17T00:00:00Z',
-					}),
-					provisionedBot: ref({
-						botName: 'support-bot-1',
-						resourceGroup: 'n8n-agents',
-						subscriptionId: 'sub-1',
-					}),
+		const botUp = () =>
+			signedIn({
+				provisionedApp: ref({
+					credentialId: 'bot-cred-1',
+					appId: 'app-1',
+					appName: 'Support Bot (n8n)',
+					organizationName: 'Acme Corp',
+					entraAppUrl: 'https://entra.microsoft.com/app-1',
+					fileAccessConsentUrl: null,
+					secretExpiresAt: '2028-09-17T00:00:00Z',
 				}),
-			);
+				provisionedBot: ref({
+					botName: 'support-bot-1',
+					resourceGroup: 'n8n-agents',
+					subscriptionId: 'sub-1',
+				}),
+			});
+
+		it('keeps the availability panel editable once the bot is up', async () => {
+			const { getByTestId } = render(botUp());
 
 			// Settings stay editable once the bot is up, and the install step opens
 			// beside them rather than behind a gate.
 			await waitFor(() => expect(getByTestId('teams-availability')).toBeVisible());
 			expect(getByTestId('teams-install-download-package')).toBeVisible();
+		});
+
+		it("shows the agent's own icon on the install card", async () => {
+			const personalisation = computed(() => ({
+				icon: 'zap',
+				gradient: { from: '#2563EB', to: '#7C3AED', angle: 135, fromStop: 0, toStop: 100 },
+			}));
+			const { getByTestId } = render(botUp(), { [AGENT_PERSONALISATION_KEY]: personalisation });
+
+			await waitFor(() => expect(getByTestId('teams-identity')).toBeVisible());
+			const tile = getByTestId('teams-identity').querySelector<HTMLElement>(
+				'[data-test-id="agent-personalisation-icon-tile"]',
+			);
+			expect(tile?.style.getPropertyValue('--agent-personalisation-gradient-from')).toBe('#2563EB');
+			expect(tile?.querySelector('[data-icon="zap"]')).toBeInTheDocument();
 		});
 
 		// The secret's expiry belongs to the connected channel's settings, not here:
@@ -1074,6 +1116,7 @@ describe('AgentChannelTeamsManagedSetup', () => {
 			await fireEvent.click(getByTestId('teams-publish'));
 
 			await waitFor(() => expect(getByTestId('teams-install-progress')).toBeVisible());
+			expect(getByTestId('teams-install-menu')).toHaveAttribute('aria-busy', 'true');
 			expect(queryByTestId('teams-catalog-state')).not.toBeInTheDocument();
 
 			finishPublish();
@@ -1165,6 +1208,8 @@ describe('AgentChannelTeamsManagedSetup', () => {
 				expect(getByText('agents.channels.teams.managed.finish.published Acme Corp')).toBeVisible(),
 			);
 			expect(getByTestId('teams-finish-download-package')).toBeVisible();
+			expect(getByTestId('teams-install-menu')).toBeVisible();
+			expect(getByTestId('teams-publish')).toBeDisabled();
 			// Nothing was added to anyone's Teams, so nothing says it was.
 			expect(
 				queryByText('agents.channels.teams.setup.install.description'),
@@ -1271,10 +1316,21 @@ describe('AgentChannelTeamsManagedSetup', () => {
 		const renderWith = (overrides: Record<string, unknown>) =>
 			renderComponent({ props: props(overrides), pinia: createTestingPinia(), global: { stubs } });
 
-		it('leaves the step out when the agent works only in direct chats', () => {
-			const { queryByText } = renderWith(deployed(CONSENT_URL, { teamChannels: false }));
+		it('keeps the step when the agent works only in direct chats, to find people by email', () => {
+			const { getByText } = renderWith(deployed(CONSENT_URL, { teamChannels: false }));
 
-			expect(queryByText('agents.channels.teams.managed.fileAccess.title')).not.toBeInTheDocument();
+			expect(getByText('agents.channels.teams.managed.fileAccess.title')).toBeInTheDocument();
+			expect(
+				getByText('agents.channels.teams.managed.fileAccess.description.directOnly'),
+			).toBeInTheDocument();
+		});
+
+		it('describes what the approval unlocks for the surfaces that are on', () => {
+			const { getByText } = renderWith(deployed(CONSENT_URL));
+
+			expect(
+				getByText('agents.channels.teams.managed.fileAccess.description.teamChannels'),
+			).toBeInTheDocument();
 		});
 
 		it('asks for file access in its own step, before the last one', async () => {

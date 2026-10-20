@@ -443,28 +443,6 @@ describe('AgentEvalChecksPanel', () => {
 			expect(getAllByTestId(/agent-eval-check-/)).toHaveLength(4);
 		});
 
-		it('marks the selected status filter', async () => {
-			const user = userEvent.setup();
-			const { getByTestId } = renderFour();
-
-			const all = getByTestId('agent-eval-checks-filter-all');
-			const pass = getByTestId('agent-eval-checks-filter-pass');
-
-			expect(all).toHaveAttribute('aria-pressed', 'true');
-			expect(all.className).toContain('brand');
-			expect(pass).toHaveAttribute('aria-pressed', 'false');
-			expect(pass.className).toContain('outline');
-			expect(pass.className).not.toContain('brand');
-
-			await user.click(pass);
-
-			expect(pass).toHaveAttribute('aria-pressed', 'true');
-			expect(pass.className).toContain('brand');
-			expect(all).toHaveAttribute('aria-pressed', 'false');
-			expect(all.className).toContain('outline');
-			expect(all.className).not.toContain('brand');
-		});
-
 		it('filters down to only passing rows', async () => {
 			const user = userEvent.setup();
 			const { getAllByTestId, getByTestId } = renderFour();
@@ -481,6 +459,35 @@ describe('AgentEvalChecksPanel', () => {
 			await user.click(getByTestId('agent-eval-checks-filter-needs-work'));
 
 			expect(getAllByTestId(/agent-eval-check-/)).toHaveLength(2);
+		});
+
+		it('shows the filter as one segment control, with the chosen option checked', async () => {
+			const user = userEvent.setup();
+			const { getAllByRole, getByTestId } = renderFour();
+			const segment = (key: string) =>
+				getByTestId(`agent-eval-checks-filter-${key}`).closest('[role="radio"]');
+
+			expect(getAllByRole('radio')).toHaveLength(3);
+			expect(segment('all')).toHaveAttribute('aria-checked', 'true');
+
+			await user.click(getByTestId('agent-eval-checks-filter-pass'));
+
+			expect(segment('pass')).toHaveAttribute('aria-checked', 'true');
+			expect(segment('all')).toHaveAttribute('aria-checked', 'false');
+		});
+
+		it('shows a status avatar on each status option, and none on "All"', () => {
+			const { getByTestId } = renderFour();
+
+			expect(
+				within(getByTestId('agent-eval-checks-filter-needs-work')).getByRole('img'),
+			).toBeInTheDocument();
+			expect(
+				within(getByTestId('agent-eval-checks-filter-pass')).getByRole('img'),
+			).toBeInTheDocument();
+			expect(
+				within(getByTestId('agent-eval-checks-filter-all')).queryByRole('img'),
+			).not.toBeInTheDocument();
 		});
 	});
 
@@ -1469,7 +1476,10 @@ describe('AgentEvalChecksPanel', () => {
 		await vi.waitFor(() =>
 			expect(queryByTestId('agent-eval-checks-filter-needs-work')).not.toBeInTheDocument(),
 		);
-		expect(getByTestId('agent-eval-checks-filter-all')).toHaveAttribute('aria-pressed', 'true');
+		expect(getByTestId('agent-eval-checks-filter-all').closest('[role="radio"]')).toHaveAttribute(
+			'aria-checked',
+			'true',
+		);
 		expect(getAllByTestId(/agent-eval-check-/)).toHaveLength(2);
 	});
 });
