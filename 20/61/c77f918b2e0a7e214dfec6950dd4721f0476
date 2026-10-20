@@ -1,0 +1,34 @@
+packages/@n8n/db/src/migrations/common/1792483572900-AddTaskStopToAgentExecutionThreads.ts
+  s_1591750099a54f::t_6031a3621132cd 3
+  s_1591750099a54f::t_1a184b04ac4b90 10
+packages/cli/test/migration/1792483572900-add-task-stop-to-agent-execution-threads.test.ts
+  s_1591750099a54f::t_6031a3621132cd 13
+packages/@n8n/db/src/migrations/common/1792483572837-AddSourceExecutionToAgentBackgroundJob.ts
+  s_1591750099a54f::t_6031a3621132cd 3
+packages/@n8n/db/src/migrations/common/1792483572963-AddPlanTaskToAgentBackgroundJob.ts
+  s_1591750099a54f::t_6031a3621132cd 3
+packages/cli/test/migration/1792483572837-add-source-execution-to-agent-background-job.test.ts
+  s_1591750099a54f::t_6031a3621132cd 13
+docs/generated/sqlite-schema/agent_background_job.md
+  ai_agent 9,46-47
+packages/cli/test/migration/1792483572963-add-plan-task-to-agent-background-job.test.ts
+  s_1591750099a54f::t_6031a3621132cd 13
+packages/cli/test/integration/database/repositories/agent-background-job.repository.test.ts
+  s_1591750099a54f::t_1a184b04ac4b90 78-81
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2061c77f918b2e0a7e214dfec6950dd4721f0476",
+  "prompts": {},
+  "sessions": {
+    "s_1591750099a54f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "000260ee-e485-4717-a1cc-d691a4e7f235",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}
