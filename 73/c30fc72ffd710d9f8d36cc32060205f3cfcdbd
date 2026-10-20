@@ -130,12 +130,15 @@ packages/cli/src/modules/instance-ai/eval/__tests__/agent-execution.service.test
 packages/cli/src/modules/agents/builder/agents-builder.service.ts
   s_58620fba057bad::t_5bee3019161cce 44
   s_58620fba057bad::t_aca595935e946b 7,8,9,11,18,20,32-33,41-43,48-49,52,92-94
+  s_58620fba057bad::t_c4d93c867caafe 2-3,10,24-28,37-38,51,70,72-73,75-77,81,86,89-90,103,107,115-116,121-123
+  s_58620fba057bad::t_050bb4cd64a2fc 1,4-6,12-17,19,21-23,29-31,34-36,39-40,45-47,50,53-69,71,74,78-80,82-85,87-88,91,95-102,104-106,108-114,117-120
 packages/cli/src/utils/__tests__/model-stream-stall-options.test.ts
   s_58620fba057bad::t_aca595935e946b 3
   s_58620fba057bad::t_d7c0ef23295e5a 1-45
 packages/cli/src/modules/agents/builder/builder-session.ts
   s_58620fba057bad::t_aca595935e946b 1-2,3-9,11,12,14
   s_58620fba057bad::t_3cf9a7a516976e 1-2,3-9,11,12,14
+  s_58620fba057bad::t_050bb4cd64a2fc 10,13
 packages/cli/src/modules/agents/builder/interactive/ask-credential.tool.ts
   s_58620fba057bad::t_aca595935e946b 18,51,63
   s_58620fba057bad::t_3cf9a7a516976e 18,51,63
@@ -159,6 +162,7 @@ packages/cli/src/modules/instance-ai/eval/scoped-credential-provider.ts
 packages/cli/src/modules/instance-ai/instance-ai-builder-delegate.adapter.ts
   s_58620fba057bad::t_aca595935e946b 10,13,20,21,57,59,67
   s_58620fba057bad::t_f87a49814205d9 2-4,5,6-7,8-9,13-14,16-19,24-25,26-28,30-32,33,57,59,63-66,68-69
+  s_58620fba057bad::t_050bb4cd64a2fc 1,11-12,15,22-23,29,34-56,58,60-62
 packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
   s_58620fba057bad::t_aca595935e946b 1846-1848,7874-7875,7877,7881,7884,7934,7955-7963,7967,7976-7981
   s_58620fba057bad::t_43ff7629690b67 1846
@@ -172,12 +176,15 @@ packages/cli/src/modules/instance-ai/__tests__/instance-ai-builder-delegate.adap
   s_58620fba057bad::t_323ef95adee07c 61-62
   s_58620fba057bad::t_e74989c2aab3df 40-41,67
   s_58620fba057bad::t_b5d48e7fabc232 91
+  s_58620fba057bad::t_c4d93c867caafe 8,10,93
 packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
   s_58620fba057bad::t_aca595935e946b 554,641,647-649,717,768,782
   s_58620fba057bad::t_3cf9a7a516976e 554,641,647-649,717,768,782
+  s_58620fba057bad::t_050bb4cd64a2fc 45,584,589,593,605-607,613-620,645-646,650-656
 packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
   s_58620fba057bad::t_aca595935e946b 168,175,686
   s_58620fba057bad::t_4d22957a15f9c6 175,686
+  s_58620fba057bad::t_050bb4cd64a2fc 684
 packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
   s_58620fba057bad::t_aca595935e946b 291
   s_58620fba057bad::t_43ff7629690b67 291
