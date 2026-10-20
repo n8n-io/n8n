@@ -58,9 +58,9 @@ import {
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
+import { staticErrorWorkflowId } from './error-workflow-id';
 import {
 	ErrorWorkflowValidationService,
-	staticErrorWorkflowId,
 	type ErrorWorkflowProblem,
 } from './error-workflow-validation.service';
 import { DeprecatedNodesValidationService } from './deprecated-nodes-validation.service';
