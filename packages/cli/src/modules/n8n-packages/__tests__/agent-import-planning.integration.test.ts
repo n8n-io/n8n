@@ -231,7 +231,7 @@ it('plans cycles, typed bindings and task IDs without changing definitions or de
 	expect(a.skills).toEqual(first.skills);
 	expect(a.tools).toEqual(first.tools);
 	expect(a.config?.skills).toEqual(first.config?.skills);
-	expect(a.taskIds.get('task_source')).not.toBe('task_source');
+	expect(a.taskIds.get('task_source')).toBe('task_source');
 	expect(Object.keys(a.tasks)).toEqual([a.config?.tasks?.[0].id]);
 	expect(plan.agentPlan!.bindings.workflows.get('shared')).toBe(workflowId);
 	expect(request.agents).toEqual(original);
@@ -242,10 +242,9 @@ it.each<WorkflowConflictPolicy>(['new-version', 'skip', 'fail'])(
 	'applies %s without resolving unused skipped definitions',
 	async (policy) => {
 		const existing = await agents.save({
-			id: 'destination',
+			id: 'source',
 			name: 'Existing',
 			projectId: project.id,
-			sourceAgentId: 'source',
 		});
 		const source = agent('source');
 		if (policy === 'skip') source.config!.credential = 'unavailable';
@@ -297,12 +296,11 @@ it.each<WorkflowConflictPolicy>(['new-version', 'skip', 'fail'])(
 	},
 );
 
-it('resolves dependency source and exact IDs and rejects missing references without writes', async () => {
+it('resolves dependency IDs and rejects missing references without writes', async () => {
 	await agents.save({
-		id: 'child-local',
+		id: 'child-source',
 		name: 'Child',
 		projectId: project.id,
-		sourceAgentId: 'child-source',
 	});
 	const workflow = await createWorkflow({ name: 'Lookup', nodes: [], connections: {} }, project);
 	await Container.get(WorkflowRepository).update(workflow.id, {
@@ -321,7 +319,7 @@ it('resolves dependency source and exact IDs and rejects missing references with
 	const plan = await planner.plan(request);
 	expect(plan.blockingIssues).toEqual([]);
 	expect(plan.agentPlan!.items[0].config).toMatchObject({
-		subAgents: { agents: [{ agentId: 'child-local' }] },
+		subAgents: { agents: [{ agentId: 'child-source' }] },
 		tools: [{ workflowId: workflow.id }, { workflowId: workflow.id }],
 	});
 	request.agentRequirements = [{ id: 'missing', usedBy: [{ kind: 'agent', id: 'parent' }] }];
@@ -550,21 +548,20 @@ it.each(['create', 'update', 'publish', 'unpublish'] as const)(
 		await linkUserToProject(member, project, role.slug);
 		if (action !== 'create') {
 			await agents.save({
-				id: 'existing',
-				sourceAgentId: 'source',
+				id: 'source',
 				name: 'Existing',
 				projectId: project.id,
 			});
 			if (action === 'unpublish') {
 				await Container.get(AgentHistoryRepository).saveVersion({
-					agentId: 'existing',
+					agentId: 'source',
 					versionId: 'published',
 					schema: null,
 					skills: {},
 					tools: {},
 					publishedBy: 'Test',
 				});
-				await agents.update('existing', { activeVersionId: 'published' });
+				await agents.update('source', { activeVersionId: 'published' });
 			}
 		}
 		const request = input([agent('source')]);

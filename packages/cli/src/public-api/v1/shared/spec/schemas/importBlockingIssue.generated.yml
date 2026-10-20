@@ -9,9 +9,7 @@ oneOf:
         type: string
         enum:
           - existing
-          - lineage
           - id
-          - task-lineage
           - task-id
       sourceAgentId:
         type: string

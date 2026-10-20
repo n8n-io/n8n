@@ -57,16 +57,7 @@ export class AgentImporter {
 			context,
 			agents.map((a) => a.sourceAgentId),
 		);
-		const identities = await this.matcher.allocateAgentIds(matches, options.workflowIdPolicy);
-		for (const conflict of identities.lineageConflicts) {
-			plan.issues.push({
-				type: 'agent-conflict',
-				kind: 'lineage',
-				sourceAgentId: conflict.sourceAgentId,
-				projectId: context.projectId,
-				targetIds: conflict.existingAgents.map(({ id }) => id),
-			});
-		}
+		const identities = await this.matcher.allocateAgentIds(matches);
 		for (const conflict of identities.idConflicts) {
 			plan.issues.push({
 				type: 'agent-conflict',
@@ -144,16 +135,6 @@ export class AgentImporter {
 		plan: AgentImportPlan,
 	): Promise<void> {
 		const tasks = await this.matcher.mapTaskIds(active, identities);
-		for (const conflict of tasks.lineageConflicts) {
-			plan.issues.push({
-				type: 'agent-conflict',
-				kind: 'task-lineage',
-				sourceAgentId: conflict.sourceAgentId,
-				projectId: context.projectId,
-				sourceTaskId: conflict.sourceTaskId,
-				targetIds: conflict.existingTaskIds,
-			});
-		}
 		for (const conflict of tasks.idConflicts) {
 			plan.issues.push({
 				type: 'agent-conflict',
