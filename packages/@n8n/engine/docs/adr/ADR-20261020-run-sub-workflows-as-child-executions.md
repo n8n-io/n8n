@@ -24,11 +24,13 @@ the credential checks read control-plane state.
 
 ## Decision
 
-1. **A sub-workflow call is a wait.** The step suspends when it starts the child and
-   resumes when the child ends, through the mechanism of
-   ADR-20260902-steps-declare-waits. On resume the step runs again, and the call returns
-   the child's result. A fire-and-forget call does not suspend, but the child still records
-   its parent.
+1. **A sub-workflow call is a wait.** The engine suspends the step before it starts the
+   child and resumes it when the child ends, as it suspends and resumes a waiting step
+   (ADR-20260902-steps-declare-waits). The step does not declare a wait. It asks for a
+   child, and the engine suspends it on that child. On resume the Execute Sub-workflow node
+   runs again, and the call returns the child's result. This holds for that node because
+   its work before the call has no side effects. A fire-and-forget call does not suspend,
+   but the child still records its parent.
 2. **The control plane resolves the child, and the engine starts it.** When a node asks
    for a sub-workflow, the shim calls the control plane. The control plane looks up the
    workflow, applies the caller policy and the credential checks, and returns the graph.
@@ -37,9 +39,10 @@ the credential checks read control-plane state.
 3. **Suspend before start.** The engine suspends the parent step before it starts the
    child, so the child cannot end before the parent can resume. When the start fails,
    reconciliation recovers the waiting step.
-4. **The child returns all its terminal branches, concatenated.** Engine v1 returns the
-   output of the last node that ran. This is a breaking change for a child with several end
-   branches.
+4. **The child returns all its terminal branches, concatenated.** The branches are ordered
+   as engine v1 orders execution, by canvas position from top to bottom, and then by run.
+   Engine v1 returns the output of the last node that ran. This is a breaking change for a
+   child with several end branches.
 5. **Cancellation cascades.** Cancelling a parent cancels its children, awaited or not. A
    timeout that ends the parent does the same, once engine v2 has timeouts.
 6. **Dropped features.** The "run once for each item" mode and the inline, local file and
@@ -60,6 +63,8 @@ the credential checks read control-plane state.
 
 - The wait ADR's rule that no node code runs on a resume holds for deadline and request
   resumes only.
+- A caller with side effects before its `executeWorkflow` call cannot use the replay. The
+  AI Agent tools need their own design (CET-291).
 - The child row carries a parent link that the engine alone sets. The read path can show
   parent and sub-execution links.
 - A parent that awaits a child reports `waiting`. Engine v1 reports `running`.

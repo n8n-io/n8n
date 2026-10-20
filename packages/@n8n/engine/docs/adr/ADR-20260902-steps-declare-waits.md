@@ -51,8 +51,8 @@ or do both. When it does both, the first of the two ends the wait.
    declaration and returns it as the step result. How a wait is implemented is
    the engine's decision and not the node's. Engine v1 sleeps in the process for
    a short time wait. Engine v2 declares every wait, including a wait with no
-   deadline. A wait for a sub-execution is no declaration. It is a spawn, which
-   ADR-20261020-run-sub-workflows-as-child-executions defines. The converter
+   deadline. A wait for a sub-execution is no declaration.
+   ADR-20261020-run-sub-workflows-as-child-executions covers it. The converter
    does not rewrite wait nodes. This one mechanism covers the Wait node, all
    send-and-wait nodes, and expression-valued wait parameters.
 2. **The engine suspends the step.** A step that returns a declaration moves to
@@ -183,8 +183,8 @@ or do both. When it does both, the first of the two ends the wait.
   or sweeps, so the bound is one sweep interval. Engine v1 fires a short time
   wait on time and loses it if the worker dies, so engine v2 matches v1 on time
   and improves on it after a failure.
-- A v1 node that waits for a sub-execution does not declare a wait. It returns a
-  spawn, and the engine suspends the step on the child. The Context puts that
+- A v1 node that waits for a sub-execution does not declare a wait. It asks for
+  a child, and the engine suspends the step on the child. The Context puts that
   pause out of scope here.
 - Because the execution row records a status that the step rows decide, one
   statement must calculate the status and write it. Two statements are not
