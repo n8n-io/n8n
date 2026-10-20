@@ -10,6 +10,7 @@ import { BadRequestError, NotFoundError } from '@n8n/errors';
 
 import { Telemetry } from '@/telemetry';
 
+import { AgentKnowledgeUploadError } from './agent-knowledge-upload.error';
 import { AgentKnowledgeService } from './agent-knowledge.service';
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
 import { AgentSandboxRuntimeService } from './agent-sandbox-runtime.service';
@@ -17,6 +18,7 @@ import {
 	AgentUploadMiddleware,
 	cleanupUploadedTempFiles,
 	describeMulterError,
+	multerFailureReason,
 } from './agent-upload.middleware';
 
 const agentUploadMiddleware = Container.get(AgentUploadMiddleware);
@@ -68,7 +70,11 @@ export class AgentKnowledgeController {
 			if (req.fileUploadError) {
 				const error = req.fileUploadError;
 				if (error instanceof multer.MulterError) {
-					throw new BadRequestError(`File upload error: ${describeMulterError(error)}`);
+					const message = `File upload error: ${describeMulterError(error)}`;
+					const reason = multerFailureReason(error);
+					throw reason
+						? new AgentKnowledgeUploadError(message, reason)
+						: new BadRequestError(message);
 				}
 				throw error;
 			}
@@ -86,6 +92,7 @@ export class AgentKnowledgeController {
 			// path hands them to AgentKnowledgeService (which cleans up its own temp
 			// files), but these early bail-outs return first, so clean up here.
 			await cleanupUploadedTempFiles(files);
+			this.trackUploadFailed(req, projectId, agentId, files.length, error);
 			throw error;
 		}
 	}
@@ -93,15 +100,26 @@ export class AgentKnowledgeController {
 	@Delete('/:agentId/files/:fileId')
 	@ProjectScope('agent:update')
 	async deleteFile(
-		_req: AuthenticatedRequest<{ projectId: string }>,
+		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
 		@Param('projectId') projectId: string,
 		@Param('agentId') agentId: string,
 		@Param('fileId') fileId: string,
 	) {
 		this.assertKnowledgeBaseEnabled();
-		await this.agentKnowledgeService.deleteFile(agentId, projectId, fileId);
+
+		const deleted = await this.agentKnowledgeService.deleteFile(agentId, projectId, fileId);
+
 		this.runtimeCacheService.clearRuntimes(agentId);
+
+		if (deleted) {
+			this.telemetry.track(TELEMETRY_EVENT.AGENTS.USER_REMOVED_AGENT_KNOWLEDGE, {
+				agent_id: agentId,
+				project_id: projectId,
+				user_id: req.user.id,
+			});
+		}
+
 		return { success: true };
 	}
 
@@ -125,6 +143,30 @@ export class AgentKnowledgeController {
 			file_count: files.length,
 			total_bytes: totalBytes,
 			files,
+		});
+	}
+
+	private trackUploadFailed(
+		req: AuthenticatedRequest,
+		projectId: string,
+		agentId: string,
+		fileCount: number,
+		error: unknown,
+	) {
+		// A disabled knowledge base or a missing agent is not a rejected upload.
+		if (error instanceof NotFoundError) {
+			return;
+		}
+
+		const reason = error instanceof AgentKnowledgeUploadError ? error.reason : 'unknown';
+
+		this.telemetry.track(TELEMETRY_EVENT.AGENTS.USER_FAILED_AGENT_KNOWLEDGE_UPLOAD, {
+			stage: 'server',
+			agent_id: agentId,
+			project_id: projectId,
+			user_id: req.user.id,
+			file_count: fileCount,
+			reason,
 		});
 	}
 }

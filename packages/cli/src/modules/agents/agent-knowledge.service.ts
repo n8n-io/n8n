@@ -14,6 +14,7 @@ import path from 'node:path';
 import type { Readable } from 'node:stream';
 import { BadRequestError } from '@n8n/errors';
 
+import { AgentKnowledgeUploadError } from './agent-knowledge-upload.error';
 import { getAgentOrThrow } from './utils/get-agent-or-throw';
 import {
 	AgentKnowledgeFileStore,
@@ -80,12 +81,13 @@ export class AgentKnowledgeService {
 		await this.agentSandboxRuntimeService.warmKnowledgeSandbox(projectId, agentId);
 	}
 
-	async deleteFile(agentId: string, projectId: string, fileId: string): Promise<void> {
+	/** Returns false when the agent has no file with this id, so nothing was deleted. */
+	async deleteFile(agentId: string, projectId: string, fileId: string): Promise<boolean> {
 		await getAgentOrThrow(this.agentRepository, agentId, projectId);
 
 		const file = await this.agentFileRepository.findByIdAndAgentId(fileId, agentId);
 		if (!file) {
-			return;
+			return false;
 		}
 
 		await this.agentFileRepository.delete({ id: fileId, agentId });
@@ -103,6 +105,8 @@ export class AgentKnowledgeService {
 		} else {
 			await this.agentSandboxRuntimeService.destroyKnowledgeSandbox(projectId, agentId);
 		}
+
+		return true;
 	}
 
 	async deleteAllFilesForAgent(_projectId: string, agentId: string): Promise<void> {
@@ -205,8 +209,9 @@ export class AgentKnowledgeService {
 			.replaceAll('\u0000', '')
 			.trim();
 		if (!extractedText) {
-			throw new BadRequestError(
+			throw new AgentKnowledgeUploadError(
 				'PDF contains no extractable text and cannot be added to knowledge',
+				'pdf_no_text',
 			);
 		}
 		return extractedText;
@@ -227,8 +232,9 @@ export class AgentKnowledgeService {
 		);
 		const uploadTotalSizeBytes = files.reduce((total, file) => total + file.size, 0);
 		if (existingTotalSizeBytes + uploadTotalSizeBytes > MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES) {
-			throw new BadRequestError(
+			throw new AgentKnowledgeUploadError(
 				`Knowledge base limit reached. The total size can't be larger than ${MAX_AGENT_KNOWLEDGE_BASE_SIZE_GB} GB.`,
+				'total_limit',
 			);
 		}
 
@@ -262,16 +268,18 @@ export class AgentKnowledgeService {
 		}
 	}
 
-	private duplicateFileNameError(fileName: string): BadRequestError {
-		return new BadRequestError(
+	private duplicateFileNameError(fileName: string): AgentKnowledgeUploadError {
+		return new AgentKnowledgeUploadError(
 			`A knowledge file named "${fileName}" already exists for this agent`,
+			'duplicate_name',
 		);
 	}
 
 	private validateMetadataLength(label: string, value: string) {
 		if (value.length > MAX_AGENT_FILE_METADATA_LENGTH) {
-			throw new BadRequestError(
+			throw new AgentKnowledgeUploadError(
 				`${label} must be ${MAX_AGENT_FILE_METADATA_LENGTH} characters or less`,
+				'invalid_file_name',
 			);
 		}
 	}
