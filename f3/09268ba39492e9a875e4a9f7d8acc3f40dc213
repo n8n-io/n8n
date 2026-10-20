@@ -11,6 +11,7 @@ packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.agent-context
   s_58620fba057bad::t_954d8815cdf36f 7-8,20,64-123
 packages/cli/src/modules/agents/__tests__/agent-context.service.test.ts
   s_58620fba057bad::t_954d8815cdf36f 1-19,21-79,81-277,279-433
+  s_58620fba057bad::t_957db1e7671e0e 20,80,278
 packages/cli/src/modules/instance-ai/agent-preview-handoff.ts
   s_58620fba057bad::t_954d8815cdf36f 8,42-47
 packages/cli/src/modules/instance-ai/instance-ai.service.ts
