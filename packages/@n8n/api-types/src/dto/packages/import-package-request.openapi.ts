@@ -76,9 +76,9 @@ export const importPackageRequestFieldDocs = {
 	},
 	agentIdPolicy: {
 		description:
-			'Controls IDs for newly created Agents. `source` (default) uses the package ID. ' +
-			'`new` assigns a fresh ID and retains the source identity for later imports. ' +
-			'Matched Agents keep their destination ID. This setting is independent of `workflowIdPolicy`.',
+			'New Agents and tasks use their package IDs. `source` is the only supported value. ' +
+			'Reimports match those IDs in the destination project. An ID owned outside the destination ' +
+			'causes a conflict. Imports do not move existing Agents or tasks.',
 	},
 	agentPublishingPolicy: {
 		description:

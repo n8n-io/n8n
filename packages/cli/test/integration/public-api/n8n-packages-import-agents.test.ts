@@ -147,7 +147,7 @@ async function upload(packageBuffer: Buffer, fields: Record<string, string> = {}
 		.post('/n8n-packages/import')
 		.field({
 			conflictPolicy: 'new-version',
-			agentIdPolicy: 'new',
+			agentIdPolicy: 'source',
 			projectId: destination.id,
 			...fields,
 		})
@@ -211,8 +211,8 @@ it.each(['loose', 'project'] as const)(
 		const archive = await download(
 			shape === 'project' ? { projectIds: [sourceProject.id] } : undefined,
 		);
+		await agents.delete({ projectId: sourceProject.id });
 		if (shape === 'project') {
-			await agents.delete({ projectId: sourceProject.id });
 			await Container.get(WorkflowRepository).delete(workflow.id);
 			await Container.get(ProjectRepository).delete(sourceProject.id);
 		}
@@ -227,6 +227,7 @@ it.each(['loose', 'project'] as const)(
 			expect(result.projects).toMatchObject([{ localId: projectId, status: 'created' }]);
 		for (const [index, source] of sourceAgents.entries()) {
 			const localId = result.bindings.agents[source.id];
+			expect(localId).toBe(source.id);
 			expect(response.body.agents).toContainEqual({
 				sourceAgentId: source.id,
 				localId,
@@ -238,7 +239,7 @@ it.each(['loose', 'project'] as const)(
 			});
 			const saved = await agents.findById(localId);
 			expect(saved).toMatchObject({
-				sourceAgentId: source.id,
+				id: source.id,
 				skills: source.skills,
 				tools: source.tools,
 				availableInMCP: source.availableInMCP,
@@ -249,7 +250,7 @@ it.each(['loose', 'project'] as const)(
 			});
 			const [task] = await tasks.findByAgentId(localId);
 			expect(task).toMatchObject({
-				sourceTaskId: `${source.id}_task`,
+				id: `${source.id}_task`,
 				objective: 'Summarize the open requests.',
 			});
 			expect(saved!.schema!.tasks![0].id).toBe(task.id);
@@ -268,7 +269,7 @@ it.each(['loose', 'project'] as const)(
 				options: expect.objectContaining({
 					conflictPolicy: 'new-version',
 					workflowConflictPolicy: 'new-version',
-					agentIdPolicy: 'new',
+					agentIdPolicy: 'source',
 				}),
 			}),
 		);
@@ -278,6 +279,7 @@ it.each(['loose', 'project'] as const)(
 it('shares conflict policy across mixed content and keeps ID and publication policies independent', async () => {
 	const workflow = await addWorkflowDependency();
 	const archive = await download();
+	await agents.delete({ projectId: sourceProject.id });
 	await Container.get(WorkflowRepository).delete(workflow.id);
 	const created = await upload(archive, {
 		workflowIdPolicy: 'source',
@@ -287,7 +289,7 @@ it('shares conflict policy across mixed content and keeps ID and publication pol
 	expect(created.statusCode).toBe(200);
 	const initial = ImportResultDto.parse(created.body);
 	expect(initial.bindings.workflows[workflow.id]).toBe(workflow.id);
-	expect(initial.bindings.agents[workflow.id]).not.toBe(workflow.id);
+	expect(initial.bindings.agents[workflow.id]).toBe(workflow.id);
 	expect(initial.workflows[0].publishing.state).toBe('published');
 	expect(initial.agents.map(({ publishing }) => publishing.state)).toEqual([
 		'unchanged',
@@ -328,6 +330,7 @@ it('shares conflict policy across mixed content and keeps ID and publication pol
 
 it('imports with Agent-only grants and skips with no write grants', async () => {
 	const archive = await download();
+	await agents.delete({ projectId: sourceProject.id });
 	const member = await createMemberWithApiKey({
 		scopes: ['agent:import', 'agent:read', 'agent:create'],
 	});
@@ -354,6 +357,7 @@ it.each(['read', 'create', 'update', 'publish', 'unpublish'] as const)(
 	'requires the planned agent:%s API-key grant',
 	async (action) => {
 		const archive = await download();
+		await agents.delete({ projectId: sourceProject.id });
 		if (action === 'update' || action === 'unpublish') {
 			expect((await upload(archive, { agentPublishingPolicy: 'publish-all' })).statusCode).toBe(
 				200,
@@ -382,6 +386,7 @@ it.each(['project:viewer', 'project:chatUser'] as const)(
 	'rejects an import for %s despite API-key grants',
 	async (role) => {
 		const archive = await download();
+		await agents.delete({ projectId: sourceProject.id });
 		const member = await createMemberWithApiKey({
 			scopes: ['agent:import', 'agent:read', 'agent:create'],
 		});
@@ -408,6 +413,7 @@ it.each(['agent:import', 'workflow:import'] as const)(
 );
 
 it('reports a blocked plan without creating the destination project', async () => {
+	await agents.delete({ projectId: sourceProject.id });
 	const fixture = projectAgentsFixture();
 	delete fixture.manifest.requirements;
 	const entry = fixture.manifest.agents[0];
@@ -432,7 +438,9 @@ it('returns saved definitions and continues when one publication fails', async (
 	sourceAgents[0].schema!.model = '';
 	sourceAgents[0].schema!.credential = '';
 	await agents.save(sourceAgents[0]);
-	const response = await upload(await download(), { agentPublishingPolicy: 'publish-all' });
+	const archive = await download();
+	await agents.delete({ projectId: sourceProject.id });
+	const response = await upload(archive, { agentPublishingPolicy: 'publish-all' });
 	expect(response.statusCode).toBe(200);
 	const result = ImportResultDto.parse(response.body);
 	expect(result.agents[0]).toMatchObject({

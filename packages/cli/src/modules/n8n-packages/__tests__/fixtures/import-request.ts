@@ -14,7 +14,7 @@ const DEFAULTS = {
 	conflictPolicy: 'fail',
 	workflowPublishingPolicy: 'preserve-published-state',
 	workflowIdPolicy: 'new',
-	agentIdPolicy: 'new',
+	agentIdPolicy: 'source',
 	agentPublishingPolicy: 'preserve-published-state',
 	missingNodeTypeMode: 'fail',
 	projectConflictPolicy: 'merge',

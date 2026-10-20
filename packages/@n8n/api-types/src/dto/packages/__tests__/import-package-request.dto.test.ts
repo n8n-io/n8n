@@ -359,7 +359,7 @@ describe('ImportPackageRequestDto', () => {
 
 	// An omitted folder policy follows the project policy. Other policies have fixed defaults.
 	describe.each([
-		{ field: 'agentIdPolicy', values: ['new', 'source'], expected: 'source' },
+		{ field: 'agentIdPolicy', values: ['source'], expected: 'source' },
 		{
 			field: 'agentPublishingPolicy',
 			values: ['preserve-published-state', 'match-source', 'publish-all', 'unpublish-all'],

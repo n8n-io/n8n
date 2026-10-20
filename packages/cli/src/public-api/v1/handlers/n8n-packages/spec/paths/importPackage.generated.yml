@@ -17,7 +17,7 @@ description: |-
 
   Selected-Agent exports use this endpoint. Agent content is rejected by `/import-selection`, directory imports, and Promotions before writes.
 
-  Example multipart fields: `conflictPolicy=new-version`, `agentIdPolicy=new`, `agentPublishingPolicy=match-source`, `workflowPublishingPolicy=unpublish-all`, and `bindings={"credentials":{"source-credential":"target-credential"}}`.
+  Example multipart fields: `conflictPolicy=new-version`, `agentIdPolicy=source`, `agentPublishingPolicy=match-source`, `workflowPublishingPolicy=unpublish-all`, and `bindings={"credentials":{"source-credential":"target-credential"}}`.
 x-required-scope: workflow:import,agent:import
 parameters:
   - $ref: ../../../../shared/spec/parameters/idempotencyKey.yml
@@ -84,10 +84,9 @@ requestBody:
           agentIdPolicy:
             type: string
             enum:
-              - new
               - source
             default: source
-            description: Controls IDs for newly created Agents. `source` (default) uses the package ID. `new` assigns a fresh ID and retains the source identity for later imports. Matched Agents keep their destination ID. This setting is independent of `workflowIdPolicy`.
+            description: New Agents and tasks use their package IDs. `source` is the only supported value. Reimports match those IDs in the destination project. An ID owned outside the destination causes a conflict. Imports do not move existing Agents or tasks.
           agentPublishingPolicy:
             type: string
             enum:
