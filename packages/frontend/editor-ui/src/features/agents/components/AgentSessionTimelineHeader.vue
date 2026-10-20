@@ -5,7 +5,7 @@ import {
 	N8nDropdownMenu,
 	N8nIcon,
 	N8nIconButton,
-	N8nToggle,
+	N8nText,
 	N8nTooltip,
 	TOOLTIP_DELAY_MS,
 	type DropdownMenuItemProps,
@@ -15,30 +15,28 @@ import {
 
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
+import type { SessionTimelineMetadata } from '@/features/agents/types';
+import ProjectIcon from '@/features/collaboration/projects/components/ProjectIcon.vue';
 
 interface SessionDropdownData {
 	date: string;
 	active: boolean;
 }
 
-const props = withDefaults(
-	defineProps<{
-		breadcrumbItems: PathItem[];
-		projectIcon: IconOrEmoji;
-		sessionTitle: string;
-		sessionOptions: Array<DropdownMenuItemProps<string, SessionDropdownData>>;
-		showLangsmithExport: boolean;
-		langsmithExportLoading: boolean;
-		isSidePanelVisible?: boolean;
-	}>(),
-	{ isSidePanelVisible: false },
-);
+const props = defineProps<{
+	breadcrumbItems: PathItem[];
+	projectIcon: IconOrEmoji;
+	sessionTitle: string;
+	sessionOptions: Array<DropdownMenuItemProps<string, SessionDropdownData>>;
+	showLangsmithExport: boolean;
+	langsmithExportLoading: boolean;
+	metadata?: SessionTimelineMetadata;
+}>();
 
 const emit = defineEmits<{
 	'breadcrumb-select': [item: PathItem];
 	'session-select': [sessionId: string];
 	'langsmith-export': [];
-	'toggle-side-panel': [];
 	close: [];
 }>();
 
@@ -49,6 +47,14 @@ const breadcrumbItems = computed(() =>
 		index === 0 ? { ...item, icon: props.projectIcon } : item,
 	),
 );
+const tokenFormatter = new Intl.NumberFormat('en-US', {
+	notation: 'compact',
+	maximumFractionDigits: 1,
+});
+
+const costFormatter = new Intl.NumberFormat('en-US', {
+	maximumFractionDigits: 4,
+});
 </script>
 
 <template>
@@ -111,27 +117,29 @@ const breadcrumbItems = computed(() =>
 					@click="emit('langsmith-export')"
 				/>
 			</N8nTooltip>
-			<N8nTooltip
-				:content="
-					i18n.baseText(
-						props.isSidePanelVisible ? 'mainSidebar.state.collapse' : 'mainSidebar.state.expand',
-					)
-				"
+			<ul
+				v-if="metadata"
+				:class="$style.descriptionList"
+				data-testid="agent-session-timeline-metadata"
 			>
-				<N8nToggle
-					variant="ghost"
-					icon="list"
-					size="medium"
-					:label="
-						i18n.baseText(
-							props.isSidePanelVisible ? 'mainSidebar.state.collapse' : 'mainSidebar.state.expand',
-						)
-					"
-					:aria-pressed="props.isSidePanelVisible"
-					data-testid="agent-session-timeline-side-panel-toggle"
-					@click="emit('toggle-side-panel')"
-				/>
-			</N8nTooltip>
+				<li>
+					<N8nIcon color="text-light" :icon="metadata.trigger.icon" />
+					<N8nText step="xs" bold>{{ metadata.trigger.label }}</N8nText>
+				</li>
+				<li>
+					<N8nIcon color="text-light" icon="hash" />
+					<N8nText step="xs" bold>
+						{{ tokenFormatter.format(metadata.totalTokens).toUpperCase() }}
+						<span :class="$style.innerLabel"
+							>(${{ costFormatter.format(metadata.totalCost) }})</span
+						>
+					</N8nText>
+				</li>
+				<li>
+					<N8nIcon color="text-light" icon="clock" />
+					<N8nText step="xs" bold>{{ metadata.durationLabel }}</N8nText>
+				</li>
+			</ul>
 
 			<N8nButton
 				variant="outline"
@@ -148,6 +156,8 @@ const breadcrumbItems = computed(() =>
 </template>
 
 <style module lang="scss">
+@use '@n8n/design-system/css/mixins/utils';
+
 .topBar {
 	display: flex;
 	align-items: center;
@@ -180,7 +190,7 @@ const breadcrumbItems = computed(() =>
 .topBarRight {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--3xs);
+	gap: var(--spacing--xs);
 	font-size: var(--font-size--xs);
 	font-weight: var(--font-weight--medium);
 	user-select: none;
@@ -233,5 +243,39 @@ const breadcrumbItems = computed(() =>
 	text-align: right;
 	white-space: nowrap;
 	margin-left: auto;
+}
+.descriptionList {
+	display: flex;
+	flex-direction: row;
+	gap: var(--spacing--sm);
+
+	.innerLabel {
+		color: var(--text-color--subtler);
+	}
+
+	li {
+		min-width: 0;
+		display: flex;
+		justify-content: flex-start;
+		align-items: center;
+		gap: var(--spacing--2xs);
+		height: var(--height--sm);
+		font-size: var(--font-size--sm);
+		padding-inline: var(--spacing--xs);
+		margin-inline: calc(var(--spacing--xs) * -1);
+		background-color: transparent;
+		border-radius: var(--radius);
+		user-select: none;
+
+		:global(.n8n-icon) {
+			flex-shrink: 0;
+			height: auto;
+		}
+
+		:global(.n8n-text) {
+			flex: 1;
+			@include utils.utils-ellipsis;
+		}
+	}
 }
 </style>

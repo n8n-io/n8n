@@ -6,7 +6,6 @@ import { createPinia, setActivePinia } from 'pinia';
 import AgentSessionTimelineView from '../views/AgentSessionTimelineView.vue';
 import AgentSessionTimelinePanel from '../components/AgentSessionTimelinePanel.vue';
 import AgentSessionTimelineHeader from '../components/AgentSessionTimelineHeader.vue';
-import SessionTimelineSidePanel from '../components/SessionTimelineSidePanel.vue';
 import { AGENT_SESSION_DETAIL_VIEW } from '../constants';
 
 function sessionThread(id: string) {
@@ -128,7 +127,7 @@ describe('AgentSessionTimelineView', () => {
 		expect(wrapper.findComponent(AgentSessionTimelineHeader).props('sessionTitle')).toBe(
 			'Session title',
 		);
-		expect(wrapper.findComponent(SessionTimelineSidePanel).props('metadata')).toEqual({
+		expect(wrapper.findComponent(AgentSessionTimelineHeader).props('metadata')).toEqual({
 			trigger: { source: null, icon: 'bolt-filled', label: '' },
 			totalTokens: 30,
 			totalCost: 0.5,
@@ -145,17 +144,5 @@ describe('AgentSessionTimelineView', () => {
 			name: AGENT_SESSION_DETAIL_VIEW,
 			params: { projectId: 'p1', agentId: 'a1', threadId: 'thread-c' },
 		});
-	});
-
-	it('keeps the timeline visible when the side panel is toggled', async () => {
-		const wrapper = await renderTimeline();
-		const sidePanel = wrapper.findComponent(SessionTimelineSidePanel);
-		const wasVisible = sidePanel.props('isVisible');
-
-		await wrapper.findComponent(AgentSessionTimelineHeader).vm.$emit('toggle-side-panel');
-		await nextTick();
-
-		expect(sidePanel.props('isVisible')).toBe(!wasVisible);
-		expect(wrapper.findComponent(AgentSessionTimelinePanel).exists()).toBe(true);
 	});
 });

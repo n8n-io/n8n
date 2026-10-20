@@ -21,7 +21,6 @@ import {
 } from '@/features/agents/composables/useAgentThreadsApi';
 import AgentSessionTimelineHeader from '@/features/agents/components/AgentSessionTimelineHeader.vue';
 import AgentSessionTimelinePanel from '@/features/agents/components/AgentSessionTimelinePanel.vue';
-import SessionTimelineSidePanel from '@/features/agents/components/SessionTimelineSidePanel.vue';
 import { useAgentConfig } from '@/features/agents/composables/useAgentConfig';
 import { useBackOrFallback } from '@/features/agents/composables/useBackOrFallback';
 import type { AgentResource } from '@/features/agents/types';
@@ -33,7 +32,7 @@ import { useToast } from '@n8n/composables/useToast';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useI18n } from '@n8n/i18n';
 import type { DropdownMenuItemProps, IconName, PathItem } from '@n8n/design-system';
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter, type RouteLocationRaw } from 'vue-router';
 
 const i18n = useI18n();
@@ -58,11 +57,6 @@ const threadId = computed(() => route.params.threadId as string);
 // title/metrics/trigger without a second fetch of the same thread.
 const thread = ref<AgentExecutionThread | null>(null);
 const executions = ref<AgentExecution[]>([]);
-const isSidePanelVisible = ref<boolean>(true);
-
-onMounted(() => {
-	isSidePanelVisible.value = window.innerWidth >= 400;
-});
 
 const triggerSource = computed((): string | null => {
 	if (executions.value.length === 0) return null;
@@ -284,11 +278,10 @@ function viewPreviewTrace() {
 			:session-options="sessionOptions"
 			:show-langsmith-export="isLangSmithExportEnabled && hasLoadedThread"
 			:langsmith-export-loading="isExporting"
-			:is-side-panel-visible="isSidePanelVisible"
+			:metadata="thread ? sessionMetadata : undefined"
 			@breadcrumb-select="onBreadcrumbSelect"
 			@session-select="onSessionSelect"
 			@langsmith-export="sendSession({ projectId, agentId, threadId })"
-			@toggle-side-panel="isSidePanelVisible = !isSidePanelVisible"
 			@close="closeTimeline"
 		/>
 
@@ -301,12 +294,6 @@ function viewPreviewTrace() {
 				:agent-name="thread?.agentName"
 				:personalisation="localConfig?.personalisation"
 				@loaded="onPanelLoaded"
-			/>
-			<SessionTimelineSidePanel
-				v-if="thread"
-				:thread="thread"
-				:metadata="sessionMetadata"
-				:is-visible="isSidePanelVisible"
 			/>
 		</div>
 	</div>
