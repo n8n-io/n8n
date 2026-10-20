@@ -3283,4 +3283,87 @@ describe('AgentsBuilderToolsService', () => {
 			expect(agentsService.findById).not.toHaveBeenCalled();
 		});
 	});
+
+	describe('getToolsForResolvedTarget', () => {
+		/** A suspending tool that reports the agent it was built for. */
+		function makeTargetedTools(service: AgentsBuilderToolsService) {
+			vi.spyOn(service, 'getTools').mockImplementation((targetAgentId) => ({
+				json: [
+					{
+						name: 'probe',
+						description: 'probe',
+						suspendSchema: {},
+						resumeSchema: {},
+						handler: async (_input, toolCtx) => {
+							if (!('suspend' in toolCtx)) throw new Error('expected an interruptible context');
+							if (toolCtx.resumeData === undefined) {
+								return await toolCtx.suspend({ ask: true }, { continuation: { step: 1 } });
+							}
+							return { targetAgentId, continuation: toolCtx.continuation };
+						},
+					},
+				],
+				shared: [],
+			}));
+		}
+
+		function getProbe(
+			service: AgentsBuilderToolsService,
+			resolve: (pinnedAgentId?: string) => Promise<string>,
+		) {
+			return service
+				.getToolsForResolvedTarget(
+					resolve,
+					projectId,
+					() => credentialProvider,
+					credentialService,
+					user,
+				)
+				.find((tool) => tool.name === 'probe')!;
+		}
+
+		it('pins the suspending agent and resumes on it after the binding moves', async () => {
+			const { service } = makeService();
+			makeTargetedTools(service);
+			let boundAgentId = 'agent-a';
+			const resolve = vi.fn(async (pinnedAgentId?: string) => pinnedAgentId ?? boundAgentId);
+			const probe = getProbe(service, resolve);
+			const suspend = vi.fn().mockResolvedValue(undefined as never);
+
+			await probe.handler!({}, { ...ctx, suspend });
+
+			expect(suspend).toHaveBeenCalledWith(
+				{ ask: true },
+				{ continuation: { builderTargetAgentId: 'agent-a', inner: { step: 1 } } },
+			);
+
+			boundAgentId = 'agent-b';
+			const result = await probe.handler!(
+				{},
+				{
+					...ctx,
+					resumeData: { answer: 'yes' },
+					continuation: { builderTargetAgentId: 'agent-a', inner: { step: 1 } },
+				},
+			);
+
+			expect(resolve).toHaveBeenLastCalledWith('agent-a');
+			expect(result).toEqual({ targetAgentId: 'agent-a', continuation: { step: 1 } });
+		});
+
+		it('resolves the bound agent for a continuation saved without a pin', async () => {
+			const { service } = makeService();
+			makeTargetedTools(service);
+			const resolve = vi.fn(async (pinnedAgentId?: string) => pinnedAgentId ?? 'agent-b');
+			const probe = getProbe(service, resolve);
+
+			const result = await probe.handler!(
+				{},
+				{ ...ctx, resumeData: { answer: 'yes' }, continuation: { step: 1 } },
+			);
+
+			expect(resolve).toHaveBeenLastCalledWith(undefined);
+			expect(result).toEqual({ targetAgentId: 'agent-b', continuation: { step: 1 } });
+		});
+	});
 });

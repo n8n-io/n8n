@@ -26,6 +26,7 @@ import type * as InstanceContextReachMod from './stream/instance-context-reach';
 import type * as MapChunkMod from './stream/map-chunk';
 import type * as UsageAccumulatorMod from './stream/usage-accumulator';
 import type * as WorkSummaryAccumulatorMod from './stream/work-summary-accumulator';
+import type * as AgentBuildMetricsMod from './tools/orchestration/agent-build-metrics';
 import type * as AgentPersistenceMod from './tools/orchestration/agent-persistence';
 import type * as AgentContextToolMod from './tools/agent-context.tool';
 import type * as SanitizeWebContentMod from './tools/web-research/sanitize-web-content';
@@ -93,6 +94,9 @@ const loadTraceReplay = lazyModule(
 );
 const loadAgentSnapshotEvent = lazyModule(
 	() => require('./tracing/agent-snapshot-event') as typeof AgentSnapshotEventMod,
+);
+const loadAgentBuildMetrics = lazyModule(
+	() => require('./tools/orchestration/agent-build-metrics') as typeof AgentBuildMetricsMod,
 );
 const loadInstanceAgent = lazyModule(
 	() => require('./agent/instance-agent') as typeof InstanceAgentMod,
@@ -246,6 +250,9 @@ export type {
 	AgentSnapshotArtifact,
 	AgentSnapshotReason,
 } from './tracing/agent-snapshot-event';
+
+export const carryAgentBuildRunState: typeof AgentBuildMetricsMod.carryAgentBuildRunState =
+	lazyFunction(() => loadAgentBuildMetrics().carryAgentBuildRunState);
 
 // Plain re-export, not a lazyFunction: this is a pure mapping with no imports,
 // so it costs nothing to load eagerly.

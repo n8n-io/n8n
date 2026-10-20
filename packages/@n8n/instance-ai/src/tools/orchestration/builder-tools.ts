@@ -1,6 +1,11 @@
-import type { BuiltTool } from '@n8n/agents';
+import type { BuiltTool, InterruptibleToolContext, ToolContext } from '@n8n/agents';
 import { isRecord } from '@n8n/utils/is-record';
 
+import {
+	recordAgentBuilderResumed,
+	recordAgentBuilderSuspended,
+	recordAgentBuilderToolResult,
+} from './agent-build-metrics';
 import {
 	resolveAgentBuilderTarget,
 	saveAgentBuilderTarget,
@@ -11,6 +16,7 @@ import {
 	type AgentSnapshotArtifact,
 	type AgentSnapshotReason,
 } from '../../tracing/agent-snapshot-event';
+import { canEmitBuilderMetric } from '../../tracing/builder-metric-event';
 import type { InstanceAiBuilderDelegate, OrchestrationContext } from '../../types';
 
 /** Emit an `agent-snapshot` for the builder's target. Best-effort at both ends. */
@@ -56,14 +62,17 @@ async function refreshTargetName(
 	context: OrchestrationContext,
 	delegate: InstanceAiBuilderDelegate,
 	target: AgentBuilderTarget,
+	options: { persist: boolean },
 ): Promise<AgentBuilderTarget> {
 	const domainContext = context.domainContext;
 	try {
 		const name = await delegate.resolveAgentName(target.agentId);
-		if (!name || name === target.name || !domainContext) return target;
+		if (!name || name === target.name) return target;
 		const renamed = { ...target, name };
-		domainContext.agentBuilderTarget = renamed;
-		await saveAgentBuilderTarget(domainContext, renamed);
+		if (options.persist && domainContext) {
+			domainContext.agentBuilderTarget = renamed;
+			await saveAgentBuilderTarget(domainContext, renamed);
+		}
 		return renamed;
 	} catch (error) {
 		context.logger.warn('Failed to refresh agent name after a builder config change', {
@@ -82,9 +91,18 @@ async function onAgentConfigMutated(
 	const domainContext = context.domainContext;
 	if (!domainContext) return {};
 	const bound = await resolveAgentBuilderTarget(domainContext);
-	if (bound?.agentId !== agentId) return {};
+	// A resumed call keeps the agent that suspended it, so the thread can be bound
+	// to another agent by now. Label the changed agent, but do not rebind the thread.
+	const isBound = bound?.agentId === agentId;
+	const projectId = isBound ? bound.projectId : domainContext.projectId;
+	if (!projectId) return {};
 
-	const target = await refreshTargetName(context, delegate, bound);
+	const target = await refreshTargetName(
+		context,
+		delegate,
+		isBound ? bound : { agentId, projectId },
+		{ persist: isBound },
+	);
 	await snapshotAgent(context, delegate, target, 'config-updated');
 	await domainContext.onArtifactChanged?.({
 		type: 'agent',
@@ -118,11 +136,65 @@ export function createAgentBuilderTools(
 		return {
 			...tool,
 			handler: async (input, ctx) => {
-				const result = await handler(input, ctx);
+				if ('resumeData' in ctx && ctx.resumeData !== undefined) recordAgentBuilderResumed(context);
+				let suspended = false;
+				const trackedCtx: ToolContext | InterruptibleToolContext =
+					'suspend' in ctx
+						? {
+								...ctx,
+								suspend: async (payload, options) => {
+									suspended = true;
+									recordAgentBuilderSuspended(context);
+									return await ctx.suspend(payload, options);
+								},
+							}
+						: ctx;
+
+				let result: unknown;
+				try {
+					result = await handler(input, trackedCtx);
+				} catch (error) {
+					if (!suspended) await recordToolCall(context, tool.name, { isError: true });
+					throw error;
+				}
+				if (suspended) return result;
+
 				const agentId = mutatedAgentId(result);
+				await recordToolCall(context, tool.name, {
+					isError: false,
+					output: result,
+					mutatedAgentId: agentId,
+				});
 				if (!agentId || !isRecord(result)) return result;
 				return { ...result, ...(await onAgentConfigMutated(context, delegate, agentId)) };
 			},
 		};
 	});
+}
+
+/** Feed the agent build metrics. Best-effort: a metric must never fail the tool call. */
+async function recordToolCall(
+	context: OrchestrationContext,
+	toolName: string,
+	call: { isError: boolean; output?: unknown; mutatedAgentId?: string },
+): Promise<void> {
+	// No trace, no target read.
+	if (!canEmitBuilderMetric(context.tracing)) return;
+	try {
+		const domainContext = context.domainContext;
+		const agentId =
+			call.mutatedAgentId ??
+			(domainContext ? (await resolveAgentBuilderTarget(domainContext))?.agentId : undefined);
+		if (!agentId) return;
+		recordAgentBuilderToolResult(context, agentId, {
+			toolName,
+			isError: call.isError,
+			output: call.output,
+			configMutated: call.mutatedAgentId !== undefined,
+		});
+	} catch (error) {
+		context.logger.debug(
+			`[agent-build-metrics] recording ${toolName} failed: ${error instanceof Error ? error.message : String(error)}`,
+		);
+	}
 }
