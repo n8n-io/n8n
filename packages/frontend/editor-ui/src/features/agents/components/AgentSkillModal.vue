@@ -5,9 +5,11 @@ import { computed, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import {
 	AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
+	AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH,
 	AGENT_SKILL_REFERENCE_MAX_COUNT,
 	skillNameKey,
 	type AgentSkillAvailability,
+	type SkillCreateMethod,
 	type SkillDetail,
 	type SkillListItem,
 } from '@n8n/api-types';
@@ -94,6 +96,8 @@ export type AgentSkillModalData = {
 		skill: AgentSkill;
 		availableTo?: AgentSkillAvailability;
 		scope?: string;
+		/** Set on create only: whether the user typed the skill or uploaded it. */
+		method?: SkillCreateMethod;
 	}) => AgentSkillConfirmResult | Promise<AgentSkillConfirmResult>;
 	outdated?: boolean;
 	onUseLatestVersion?: (id: string) => void;
@@ -142,6 +146,8 @@ const submitted = ref(false);
 const formIsValid = ref(false);
 const selectedPath = ref(SKILL_FILE);
 const isEditing = computed(() => !!props.data.skillId);
+// An upload lands on the edit step like a saved skill does, so the step alone cannot tell.
+const createMethod = ref<SkillCreateMethod>('manual');
 const hasPicker = !props.data.skillId && !!props.data.hubSkillsEnabled && !!props.data.onAttach;
 const step = ref<'select' | 'preview' | 'upload' | 'manual' | 'edit'>(
 	props.data.skill || props.data.skillId ? 'edit' : hasPicker ? 'select' : 'upload',
@@ -181,6 +187,7 @@ async function refreshDefaultName() {
 }
 
 function onAddManually() {
+	createMethod.value = 'manual';
 	step.value = 'manual';
 	void refreshDefaultName();
 }
@@ -376,6 +383,34 @@ const validationErrors = computed<Partial<Record<keyof AgentSkill, string>>>(() 
 	return errors;
 });
 
+/** Reference files that block a save: empty, or longer than the limit. */
+const invalidReferencePaths = computed(() =>
+	(skill.value.references ?? [])
+		.filter(
+			(reference) =>
+				!reference.content.trim() ||
+				reference.content.length > AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH,
+		)
+		.map((reference) => reference.path),
+);
+const visibleInvalidReferencePaths = computed(() =>
+	submitted.value ? invalidReferencePaths.value : [],
+);
+
+/**
+ * A blocked save must show why. Open the file that holds the problem: the first broken
+ * reference, else SKILL.md when its fields are invalid and a reference is open.
+ */
+function showFirstInvalidFile() {
+	const [firstInvalidReference] = invalidReferencePaths.value;
+	if (firstInvalidReference) {
+		selectedPath.value = firstInvalidReference;
+		return;
+	}
+	const { references: _references, ...skillFileErrors } = validationErrors.value;
+	if (Object.keys(skillFileErrors).length > 0) selectedPath.value = SKILL_FILE;
+}
+
 const visibleErrors = computed(() =>
 	submitted.value || openedWithMissingContent.value ? validationErrors.value : {},
 );
@@ -501,6 +536,7 @@ onMounted(() => {
 });
 
 function onSkillUploaded(importedSkill: AgentSkill) {
+	createMethod.value = 'upload';
 	skill.value = normalizeSkill(importedSkill);
 	serverNameError.value = '';
 	selectedPath.value = SKILL_FILE;
@@ -594,7 +630,10 @@ function closeModal() {
 async function onSave() {
 	if (defaultNameLoading.value || isSaving.value) return;
 	submitted.value = true;
-	if (!canSave.value) return;
+	if (!canSave.value) {
+		showFirstInvalidFile();
+		return;
+	}
 
 	const payload = normalizeSkill({
 		name: skill.value.name.trim(),
@@ -612,6 +651,7 @@ async function onSave() {
 			skill: payload,
 			...(showAvailabilitySelect.value && targetChanged ? { availableTo: availableTo.value } : {}),
 			...(canChangeScope.value ? { scope: scope.value } : {}),
+			...(isEditing.value ? {} : { method: createMethod.value }),
 		});
 	} catch {
 		// The caller reports its own errors. Keep the modal open with the user's edits.
@@ -758,6 +798,7 @@ function onRemove() {
 						:selected-path="selectedPath"
 						:add-reference-disabled="!canAddReference"
 						:read-only="editorLocked"
+						:invalid-paths="visibleInvalidReferencePaths"
 						@add-reference="onAddReference"
 						@remove-reference="onRemoveReference"
 						@select="selectedPath = $event"

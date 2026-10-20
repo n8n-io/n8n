@@ -26,7 +26,7 @@ vi.mock('@n8n/composables/useToast', () => ({
 }));
 
 const renderComponent = createComponentRenderer(ApplyInstanceDialog, {
-	props: { open: true, connectionId: 'connection-1', branchName: 'main' },
+	props: { open: true, environmentId: 'environment-1', branchName: 'main' },
 });
 
 describe('ApplyInstanceDialog', () => {
@@ -68,7 +68,7 @@ describe('ApplyInstanceDialog', () => {
 
 		// The whole-branch apply carries no expectedSource, so the branch tip is applied.
 		await waitFor(() =>
-			expect(api.applyPromotion).toHaveBeenCalledWith(expect.anything(), 'connection-1'),
+			expect(api.applyPromotion).toHaveBeenCalledWith(expect.anything(), 'environment-1'),
 		);
 		// Project counts are reported too, because an instance apply can delete projects.
 		expect(mockShowMessage).toHaveBeenCalledWith(
@@ -200,8 +200,7 @@ describe('ApplyInstanceDialog', () => {
 	it('warns and closes when the source changed', async () => {
 		api.applyPromotion.mockResolvedValue({
 			status: 'source-changed',
-			connectionId: 'connection-1',
-			configId: 'config-apply',
+			environmentId: 'environment-1',
 			git: { branchName: 'main', commitSha: 'b'.repeat(40) },
 		});
 		const { findByTestId, emitted } = renderComponent();

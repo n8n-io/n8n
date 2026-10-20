@@ -1966,11 +1966,10 @@ describe('NodeCredentials', () => {
 			expect(getByIdSpy).not.toHaveBeenCalled();
 		});
 
-		it('leaves the selection untouched when a picked id is in neither the list nor the store', async () => {
-			// After a deletion the store listener re-selects the last credential in the
-			// usable slice. With a host-supplied list that id can be unknown to both the
-			// displayed rows and the flat map; the pick must then be dropped, not applied
-			// with undefined fields or thrown.
+		it('does not re-select a usable-slice ghost after deleting the host-list selection', async () => {
+			// After a deletion the store listener must re-select only from the host-
+			// displayed rows. A usable-slice "ghost" id that is not in the host list
+			// must not be applied; with no remaining host rows the selection clears.
 			const nodeWithSelection: INodeUi = {
 				...httpNodeNoCreds,
 				credentials: { openAiApi: { id: 'payload-older', name: 'Older payload cred' } },
@@ -1982,7 +1981,7 @@ describe('NodeCredentials', () => {
 			vi.spyOn(credentialsApi, 'deleteCredential').mockResolvedValue(true);
 
 			const { emitted } = renderComponent({
-				props: { node: nodeWithSelection, credentials: [olderCred] },
+				props: { node: nodeWithSelection, credentials: [olderCred], skipAutoSelect: true },
 			});
 
 			// Subscribes the component to store mutations for this credential type.
@@ -1992,7 +1991,10 @@ describe('NodeCredentials', () => {
 			await credentialsStore.deleteCredential({ id: 'payload-older' });
 			await nextTick();
 
-			expect(emitted('credentialSelected')).toBeUndefined();
+			const payloads = emitted('credentialSelected') as [SelectedPayload][] | undefined;
+			expect(payloads).toHaveLength(1);
+			expect(payloads?.[0]?.[0]?.properties.credentials).toEqual({});
+			expect(payloads?.[0]?.[0]?.properties.credentials).not.toHaveProperty('openAiApi');
 		});
 	});
 
@@ -3365,6 +3367,37 @@ describe('NodeCredentials', () => {
 			expect(screen.getByTestId('node-credential-private-connect')).toBeEnabled();
 		});
 
+		it('keeps Connect available when the credential exists only in the usable slice', async () => {
+			credentialsStore.state.credentials = {};
+			credentialsStore.usableCredentials = {
+				'private-cred-id': { ...privateCredential, connectedByMe: false },
+			};
+			credentialsStore.hasFetchedUsableCredentials = true;
+			renderComponent({ props: { node: notionNode, overrideCredType: 'openAiApi' } });
+
+			expect(screen.getByTestId('node-credential-private-connect')).toBeEnabled();
+		});
+
+		it('keeps Connect available with a host list after the flat map is cleared', async () => {
+			// Instance AI passes a host-supplied list and may clear the flat map when an
+			// unrelated scoped fetch lands. Private Connect must still resolve via the
+			// usable slice — host-list authoritativeness only applies to delete reselection.
+			const hostPrivate = { ...privateCredential, connectedByMe: false };
+			credentialsStore.state.credentials = {};
+			credentialsStore.usableCredentials = { 'private-cred-id': hostPrivate };
+			credentialsStore.hasFetchedUsableCredentials = true;
+			renderComponent({
+				props: {
+					node: notionNode,
+					overrideCredType: 'openAiApi',
+					credentials: [hostPrivate],
+					skipAutoSelect: true,
+				},
+			});
+
+			expect(screen.getByTestId('node-credential-private-connect')).toBeEnabled();
+		});
+
 		it('disables the Connect button when the user lacks connect permission', async () => {
 			credentialsStore.state.credentials = {
 				'private-cred-id': {
@@ -3506,13 +3539,6 @@ describe('NodeCredentials', () => {
 			};
 		}
 
-		beforeEach(() => {
-			settingsStore.settings = {
-				...settingsStore.settings,
-				granularCredentialSharing: true,
-			} as unknown as FrontendSettings;
-		});
-
 		it('names the project the credentials are shared with, and puts yours first', async () => {
 			inTeamProject('Sales Ops');
 			seedBothRoutes();
@@ -3618,25 +3644,6 @@ describe('NodeCredentials', () => {
 				'Available in this project',
 			);
 		});
-
-		it('renders no headings at all while the feature flag is off', async () => {
-			settingsStore.settings = {
-				...settingsStore.settings,
-				granularCredentialSharing: false,
-			} as unknown as FrontendSettings;
-			inTeamProject();
-			seedBothRoutes();
-			renderComponent();
-
-			await userEvent.click(screen.getByTestId('node-credentials-select'));
-
-			expect(
-				await screen.findByTestId('node-credentials-select-item-personal-cred'),
-			).toBeInTheDocument();
-			expect(screen.getByTestId('node-credentials-select-item-project-cred')).toBeInTheDocument();
-			expect(screen.queryByTestId(YOURS_HEADER)).not.toBeInTheDocument();
-			expect(screen.queryByTestId(SHARED_HEADER)).not.toBeInTheDocument();
-		});
 	});
 
 	describe('a current credential the user cannot use', () => {
@@ -3663,11 +3670,7 @@ describe('NodeCredentials', () => {
 			},
 		});
 
-		function setUp({ flag = true, usable = true, canUse = false } = {}) {
-			settingsStore.settings = {
-				...settingsStore.settings,
-				granularCredentialSharing: flag,
-			} as unknown as FrontendSettings;
+		function setUp({ usable = true, canUse = false } = {}) {
 			projectsStore.currentProject = {
 				id: 'marketing',
 				name: 'Marketing',
@@ -3870,21 +3873,6 @@ describe('NodeCredentials', () => {
 			const option = screen.getByTestId('node-credentials-select-item-alice-cred');
 			expect(option).not.toHaveClass('is-disabled');
 			expect(option).toHaveTextContent("Alice Chen's · not shared with Marketing");
-		});
-
-		it('changes nothing while the feature flag is off', async () => {
-			setUp({ flag: false });
-
-			expect(screen.queryByTestId('node-credentials-unusable-warning')).not.toBeInTheDocument();
-
-			await userEvent.click(screen.getByTestId('node-credentials-select'));
-
-			expect(
-				await screen.findByTestId('node-credentials-select-item-team-cred'),
-			).toBeInTheDocument();
-			expect(
-				screen.queryByTestId('node-credentials-select-item-alice-cred'),
-			).not.toBeInTheDocument();
 		});
 	});
 });

@@ -73,11 +73,30 @@ const comparisonDocumentSchema = planSchema.shape.document.passthrough().extend(
 	),
 });
 const comparisonPlanSchema = planSchema.extend({ document: comparisonDocumentSchema });
-const updateInputSchema = z.object({
-	planId: z.string().uuid(),
-	expectedRevision: z.number().int().positive(),
-	document: comparisonDocumentSchema,
+const taskUpdateSchema = taskSchema.partial().required({ id: true }).passthrough().extend({
+	resultSummary: z.string().nullable().optional(),
 });
+const itemUpdateSchema = taskUpdateSchema.extend({
+	kind: z.enum(['task', 'group']).optional(),
+	tasks: z.array(taskUpdateSchema).optional(),
+});
+const updateInputSchema = z
+	.object({
+		planId: z.string().uuid(),
+		expectedRevision: z.number().int().positive(),
+		document: comparisonDocumentSchema.partial().extend({
+			presentation: planSchema.shape.document.shape.presentation
+				.unwrap()
+				.partial()
+				.extend({ detail: z.string().trim().min(1).nullable().optional() })
+				.strict()
+				.nullable()
+				.optional(),
+			items: z.array(itemUpdateSchema).optional(),
+		}),
+		removeItemIds: z.array(z.string().uuid()).optional(),
+	})
+	.strict();
 const progressFields = ['title', 'status', 'resultSummary', 'startedAt', 'endedAt'];
 
 function planSubstance(document: z.infer<typeof comparisonDocumentSchema>) {
@@ -90,6 +109,43 @@ function planSubstance(document: z.infer<typeof comparisonDocumentSchema>) {
 				: {}),
 		})),
 	};
+}
+
+function itemsHaveOnlyProgressUpdates(
+	items: z.infer<typeof comparisonDocumentSchema>['items'],
+	updates: Array<z.infer<typeof itemUpdateSchema>>,
+): boolean {
+	const previousItems = new Map(items.map((item) => [item.id, item]));
+	const updatedIds = new Set<string>();
+	return updates.every((update) => {
+		const previous = previousItems.get(update.id);
+		if (!previous || updatedIds.has(update.id)) return false;
+		updatedIds.add(update.id);
+		if (
+			!Object.entries(omit(update, [...progressFields, 'tasks'])).every(([field, value]) =>
+				isEqual(previous[field], value),
+			)
+		) {
+			return false;
+		}
+		return (
+			update.tasks === undefined ||
+			(previous.kind === 'group' && itemsHaveOnlyProgressUpdates(previous.tasks, update.tasks))
+		);
+	});
+}
+
+function isProgressUpdate(
+	previous: z.infer<typeof comparisonDocumentSchema>,
+	update: z.infer<typeof updateInputSchema>,
+): boolean {
+	return (
+		!update.removeItemIds?.length &&
+		Object.entries(omit(update.document, ['presentation', 'items'])).every(([field, value]) =>
+			isEqual(previous[field], value),
+		) &&
+		itemsHaveOnlyProgressUpdates(previous.items, update.document.items ?? [])
+	);
 }
 
 export function buildAgentPlanDisplayGroups(messages: ChatMessage[]): DisplayGroup[] {
@@ -136,11 +192,7 @@ export function buildAgentPlanDisplayGroups(messages: ChatMessage[]): DisplayGro
 
 				const previous = plans.get(input.data.planId)?.get(input.data.expectedRevision);
 
-				if (
-					previous &&
-					!previous.closed &&
-					isEqual(planSubstance(previous.document), planSubstance(input.data.document))
-				) {
+				if (previous && !previous.closed && isProgressUpdate(previous.document, input.data)) {
 					hiddenCalls.add(call.toolCallId);
 				}
 			}

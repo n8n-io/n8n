@@ -20,7 +20,7 @@ import type { AppliedResult, BlockedApplyResult } from '../promotions.types';
 
 const props = defineProps<{
 	open: boolean;
-	connectionId: string;
+	environmentId: string;
 	branchName: string;
 }>();
 
@@ -108,7 +108,7 @@ async function submit() {
 	isSubmitting.value = true;
 	try {
 		// Whole-branch apply: no expectedSource, so the current branch tip is applied.
-		const result = await applyPromotion(rootStore.publicApiContext, props.connectionId);
+		const result = await applyPromotion(rootStore.publicApiContext, props.environmentId);
 		if (result.status === 'applied') {
 			await onApplied(result);
 			return;

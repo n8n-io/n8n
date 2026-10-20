@@ -1,4 +1,4 @@
-import { LicenseState } from '@n8n/backend-common';
+import { LicenseState, Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import { AuthStrategyRegistry } from '@n8n/backend-services/auth';
 import type { BooleanLicenseFeature } from '@n8n/constants';
@@ -19,6 +19,11 @@ import { z } from 'zod';
 import type { ZodTypeAny } from 'zod';
 
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
+import {
+	createIdempotencyMiddleware,
+	takeIdempotencyClaimId,
+} from '@/idempotency/idempotency.middleware';
+import { IdempotencyKeyService } from '@/public-api/idempotency-key.service';
 import { BadRequestError, UnsupportedMediaTypeError } from '@n8n/errors';
 import { License } from '@/license';
 import { assertContentType } from '@/public-api/media-types/content-type';
@@ -37,6 +42,7 @@ import {
 	resolveSuccessStatus,
 } from '@/public-api/public-api-route-resolver';
 import { formatValidationError } from '@/public-api/public-api-validation-error';
+import { PublicApiRateLimitService } from '@/public-api/public-api-rate-limit.service';
 import { sendPublicApiErrorResponse } from '@/public-api/v1/public-api-error-response';
 import { LastActiveAtService } from '@/services/last-active-at.service';
 
@@ -81,9 +87,13 @@ export class PublicApiControllerRegistry {
 		private readonly authStrategyRegistry: AuthStrategyRegistry,
 		private readonly lastActiveAtService: LastActiveAtService,
 		private readonly eventService: EventService,
+		private readonly rateLimitService: PublicApiRateLimitService,
+		private readonly idempotencyKeyService: IdempotencyKeyService,
+		private readonly logger: Logger,
 	) {}
 
 	activate(router: Router, apiVersion: string) {
+		const idempotency = createIdempotencyMiddleware(this.idempotencyKeyService);
 		const methodsByTemplate = new Map<string, string[]>();
 		for (const route of resolvePublicApiRoutes()) {
 			const methods = methodsByTemplate.get(route.path) ?? [];
@@ -124,7 +134,7 @@ export class PublicApiControllerRegistry {
 		for (const controllerClass of this.metadata.controllerClasses) {
 			const metadata = this.metadata.getControllerMetadata(controllerClass);
 			if (!metadata.isPublicApi) continue;
-			this.activateController(router, controllerClass, apiVersion);
+			this.activateController(router, controllerClass, apiVersion, idempotency);
 		}
 
 		// A known path with a method no controller serves.
@@ -137,7 +147,12 @@ export class PublicApiControllerRegistry {
 		}
 	}
 
-	private activateController(parent: Router, controllerClass: Controller, apiVersion: string) {
+	private activateController(
+		parent: Router,
+		controllerClass: Controller,
+		apiVersion: string,
+		idempotency: RequestHandler,
+	) {
 		const metadata = this.metadata.getControllerMetadata(controllerClass);
 		const controllerRouter = createRouter({ mergeParams: true });
 		const prefix = metadata.basePath.replace(/\/+/g, '/').replace(/\/$/, '') || '/';
@@ -195,21 +210,26 @@ export class PublicApiControllerRegistry {
 						`${controllerClass.name}.${handlerName}`,
 						result,
 					);
+					await this.releaseIdempotencyClaim(res);
 					return;
 				}
 
 				const result = await controller[handlerName](...args);
 
-				if (res.headersSent) return;
+				if (res.headersSent) {
+					await this.releaseIdempotencyClaim(res);
+					return;
+				}
 
 				if (successStatus === 204 || (!route.responseDto && result === undefined)) {
+					await this.storeIdempotencyResponse(res, successStatus, null);
 					res.status(successStatus).send();
 					return;
 				}
 
-				res
-					.status(successStatus)
-					.json(route.responseDto ? route.responseDto.parse(result) : result);
+				const body = route.responseDto ? route.responseDto.parse(result) : result;
+				await this.storeIdempotencyResponse(res, successStatus, body);
+				res.status(successStatus).json(body);
 			};
 
 			const middlewares: RequestHandler[] = [];
@@ -219,6 +239,9 @@ export class PublicApiControllerRegistry {
 			}
 
 			middlewares.push(this.createAuthMiddleware(apiVersion, prefix));
+			middlewares.push(
+				...this.rateLimitService.createRouteLimiters(route.method, route.rateLimitAccess),
+			);
 
 			// Path param validation must run before the scope checks, so that a malformed param always
 			// returns 400, rather than 404 or 403 depending on the caller's access.
@@ -249,12 +272,13 @@ export class PublicApiControllerRegistry {
 				middlewares.push(this.createBodyMiddleware(bodyArg.media, bodyRequired, bodyArg.handler));
 			}
 
-			middlewares.push(...controllerMiddlewares, ...(route.middlewares ?? []));
+			middlewares.push(...controllerMiddlewares, ...(route.middlewares ?? []), idempotency);
 
 			const finalHandler: RequestHandler = async (req, res, next) => {
 				try {
 					await handler(req, res);
 				} catch (error) {
+					await this.releaseIdempotencyClaim(res);
 					if (res.headersSent) {
 						next(error);
 						return;
@@ -267,6 +291,37 @@ export class PublicApiControllerRegistry {
 			};
 
 			controllerRouter[route.method](route.path, ...middlewares, finalHandler);
+		}
+	}
+
+	private async storeIdempotencyResponse(
+		res: Response,
+		status: number,
+		body: unknown,
+	): Promise<void> {
+		const id = takeIdempotencyClaimId(res);
+		if (!id) return;
+
+		try {
+			await this.idempotencyKeyService.complete(id, status, body);
+		} catch (error) {
+			this.logger.error('Failed to store an idempotency response', { error });
+			await this.releaseIdempotencyClaimById(id);
+		}
+	}
+
+	private async releaseIdempotencyClaim(res: Response): Promise<void> {
+		const id = takeIdempotencyClaimId(res);
+		if (!id) return;
+
+		await this.releaseIdempotencyClaimById(id);
+	}
+
+	private async releaseIdempotencyClaimById(id: string): Promise<void> {
+		try {
+			await this.idempotencyKeyService.release(id);
+		} catch (error) {
+			this.logger.error('Failed to release an idempotency key', { error });
 		}
 	}
 

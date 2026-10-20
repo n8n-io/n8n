@@ -225,6 +225,13 @@ export interface AgentConfigMutationResponse extends AgentConfigResponse {
 	versionId: string | null;
 }
 
+/** Saved state returned with an Agent creation response. */
+export interface AgentCreationState {
+	config: AgentJsonConfig | null;
+	configHash: string | null;
+	adopted: boolean;
+}
+
 export interface AgentSkillMutationResponse {
 	id: string;
 	skill: AgentSkill;

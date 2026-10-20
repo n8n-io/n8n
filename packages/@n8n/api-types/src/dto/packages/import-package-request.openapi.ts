@@ -30,6 +30,8 @@ export const importPackageRequestFieldDocs = {
 			'was retained. ' +
 			'Otherwise, also when the package has no completeness flag, it is listed under ' +
 			'`credentials.incomplete` and blocks workflow publishing with `incomplete-credential`. ' +
+			'`create-with-values` requires the `credential:create` scope when the import creates ' +
+			'a credential. ' +
 			'`must-preexist` requires every referenced credential to already exist.',
 	},
 	bindings: {
