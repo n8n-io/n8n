@@ -751,7 +751,11 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 				agent_id: z.string(),
 				project_id: z.string(),
 				user_id: z.string(),
-				file_count: z.number().describe('Files in the rejected request'),
+				file_count: z
+					.number()
+					.describe(
+						'Files that the server received before it rejected the request. 0 when it rejected the request while it read the files, for example for a file type that is not allowed.',
+					),
 				reason: knowledgeUploadServerFailureReason,
 			}),
 		]),

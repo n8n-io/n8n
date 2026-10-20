@@ -10,6 +10,7 @@ import type { Logger } from '@n8n/backend-common';
 
 import type { AgentKnowledgeFileStore } from '../agent-knowledge-file-store';
 import type { AgentKnowledgeMirrorService } from '../agent-knowledge-mirror.service';
+import { AgentKnowledgeUploadError } from '../agent-knowledge-upload.error';
 import { AgentKnowledgeService } from '../agent-knowledge.service';
 import type { AgentSandboxRuntimeService } from '../agent-sandbox-runtime.service';
 import type { AgentFile } from '../entities/agent-file.entity';
@@ -377,6 +378,15 @@ describe('AgentKnowledgeService', () => {
 					makeMulterFile({ originalname: 'a'.repeat(256) }),
 				]),
 			).rejects.toMatchObject({ reason: 'invalid_file_name' });
+		});
+
+		it('gives a too long MIME type no reason, so it is reported as unknown', async () => {
+			const upload = service.uploadFiles(agentId, projectId, [
+				makeMulterFile({ mimetype: 'a'.repeat(256) }),
+			]);
+
+			await expect(upload).rejects.toThrow('MIME type must be');
+			await expect(upload).rejects.not.toBeInstanceOf(AgentKnowledgeUploadError);
 		});
 
 		it('gives a full knowledge base the total_limit reason', async () => {

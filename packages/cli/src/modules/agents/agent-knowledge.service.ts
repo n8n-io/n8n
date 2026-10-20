@@ -14,7 +14,10 @@ import path from 'node:path';
 import type { Readable } from 'node:stream';
 import { BadRequestError } from '@n8n/errors';
 
-import { AgentKnowledgeUploadError } from './agent-knowledge-upload.error';
+import {
+	AgentKnowledgeUploadError,
+	type AgentKnowledgeUploadFailureReason,
+} from './agent-knowledge-upload.error';
 import { getAgentOrThrow } from './utils/get-agent-or-throw';
 import {
 	AgentKnowledgeFileStore,
@@ -219,7 +222,8 @@ export class AgentKnowledgeService {
 
 	private validateUploadMetadata(files: Express.Multer.File[]) {
 		for (const file of files) {
-			this.validateMetadataLength('File name', file.originalname);
+			this.validateMetadataLength('File name', file.originalname, 'invalid_file_name');
+			// No reason fits a MIME type that is too long, so the failure event reports `unknown`.
 			this.validateMetadataLength('MIME type', file.mimetype);
 		}
 	}
@@ -275,12 +279,14 @@ export class AgentKnowledgeService {
 		);
 	}
 
-	private validateMetadataLength(label: string, value: string) {
+	private validateMetadataLength(
+		label: string,
+		value: string,
+		reason?: AgentKnowledgeUploadFailureReason,
+	) {
 		if (value.length > MAX_AGENT_FILE_METADATA_LENGTH) {
-			throw new AgentKnowledgeUploadError(
-				`${label} must be ${MAX_AGENT_FILE_METADATA_LENGTH} characters or less`,
-				'invalid_file_name',
-			);
+			const message = `${label} must be ${MAX_AGENT_FILE_METADATA_LENGTH} characters or less`;
+			throw reason ? new AgentKnowledgeUploadError(message, reason) : new BadRequestError(message);
 		}
 	}
 

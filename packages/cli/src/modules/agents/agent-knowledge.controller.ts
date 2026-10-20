@@ -22,6 +22,7 @@ import {
 } from './agent-upload.middleware';
 
 const agentUploadMiddleware = Container.get(AgentUploadMiddleware);
+const KNOWLEDGE_FILES_FIELD = 'files';
 
 @RestController('/projects/:projectId/agents/v2')
 export class AgentKnowledgeController {
@@ -52,7 +53,7 @@ export class AgentKnowledgeController {
 	}
 
 	@Post('/:agentId/files', {
-		middlewares: [agentUploadMiddleware.array('files')],
+		middlewares: [agentUploadMiddleware.array(KNOWLEDGE_FILES_FIELD)],
 	})
 	@ProjectScope('agent:update')
 	async uploadFiles(
@@ -71,7 +72,7 @@ export class AgentKnowledgeController {
 				const error = req.fileUploadError;
 				if (error instanceof multer.MulterError) {
 					const message = `File upload error: ${describeMulterError(error)}`;
-					const reason = multerFailureReason(error);
+					const reason = multerFailureReason(error, KNOWLEDGE_FILES_FIELD);
 					throw reason
 						? new AgentKnowledgeUploadError(message, reason)
 						: new BadRequestError(message);

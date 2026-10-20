@@ -43,10 +43,12 @@ export function describeMulterError(error: multer.MulterError): string {
 /** The multer codes that `describeMulterError` explains. Other codes have no fixed reason. */
 export function multerFailureReason(
 	error: multer.MulterError,
+	filesFieldName: string,
 ): AgentKnowledgeUploadFailureReason | undefined {
 	switch (error.code) {
 		case 'LIMIT_UNEXPECTED_FILE':
-			return 'too_many_files';
+			// Multer uses this code for a file part with another field name too.
+			return error.field === filesFieldName ? 'too_many_files' : undefined;
 		case 'LIMIT_FILE_SIZE':
 			return 'file_size';
 		default:

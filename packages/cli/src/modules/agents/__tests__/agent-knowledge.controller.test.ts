@@ -229,15 +229,16 @@ describe('AgentKnowledgeController upload telemetry', () => {
 		}
 
 		it.each([
-			['LIMIT_FILE_SIZE', 'file_size'],
-			['LIMIT_UNEXPECTED_FILE', 'too_many_files'],
-			['LIMIT_PART_COUNT', 'unknown'],
-		] as const)('reports the multer code %s as %s', async (code, reason) => {
+			['LIMIT_FILE_SIZE', 'files', 'file_size'],
+			['LIMIT_UNEXPECTED_FILE', 'files', 'too_many_files'],
+			['LIMIT_UNEXPECTED_FILE', 'attachments', 'unknown'],
+			['LIMIT_PART_COUNT', undefined, 'unknown'],
+		] as const)('reports the multer code %s on field %s as %s', async (code, field, reason) => {
 			const { controller, telemetry } = makeController();
 
 			await expect(
 				controller.uploadFiles(
-					fakeUploadRequest({ fileUploadError: new multer.MulterError(code) }),
+					fakeUploadRequest({ fileUploadError: new multer.MulterError(code, field) }),
 					mock<Response>(),
 					'project-1',
 					'agent-1',
