@@ -1,5 +1,5 @@
 import type { NodeMigration } from '../node-migration';
-import { asParameters } from '../parameter-readers';
+import { readOptions } from '../parameter-readers';
 import { AGENT_NODE_TYPE } from '../../rules/v3/agent-node-mode';
 
 /**
@@ -16,6 +16,7 @@ import { AGENT_NODE_TYPE } from '../../rules/v3/agent-node-mode';
  *   the opposite. An unconnected output parser is ignored in both versions.
  *
  * Refuses when:
+ * - `options` is not an object.
  * - The node is below 1.3 and has no prompt.
  *
  * Accepted changes:
@@ -25,7 +26,7 @@ import { AGENT_NODE_TYPE } from '../../rules/v3/agent-node-mode';
 export const agentToolsV1ToV2: NodeMigration = {
 	ruleId: 'agent-node-version-v3',
 	migrate: (node) => {
-		const { agent: _agent, options, ...parameters } = node.parameters;
+		const { agent: _agent, options: _options, ...parameters } = node.parameters;
 
 		if (node.typeVersion < 1.3) {
 			if (!parameters.text) {
@@ -43,7 +44,7 @@ export const agentToolsV1ToV2: NodeMigration = {
 				typeVersion: 2.2,
 				parameters: {
 					...parameters,
-					options: { ...(asParameters(options) ?? {}), enableStreaming: false },
+					options: { ...readOptions(node.parameters), enableStreaming: false },
 				},
 			},
 		};

@@ -44,6 +44,24 @@ describe('agentToolsV1ToV2 migration', () => {
 		expect(result.node.parameters).toEqual({ options: { enableStreaming: false } });
 	});
 
+	it('keeps the prompt source and output parser from version 1.3', () => {
+		const result = agentToolsV1ToV2.migrate(
+			createAgentNode(1.3, { agent: 'toolsAgent', promptType: 'auto', hasOutputParser: false }),
+		);
+
+		expect(result.node.parameters).toEqual({
+			promptType: 'auto',
+			hasOutputParser: false,
+			options: { enableStreaming: false },
+		});
+	});
+
+	it('refuses a node whose options are not an object', () => {
+		const node = createAgentNode(1.9, { agent: 'toolsAgent', options: '={{ $json.options }}' });
+
+		expect(() => agentToolsV1ToV2.migrate(node)).toThrow('not in a supported format');
+	});
+
 	it('does not change the input node', () => {
 		const node = createAgentNode(1.9, { agent: 'toolsAgent', options: { maxIterations: 5 } });
 
