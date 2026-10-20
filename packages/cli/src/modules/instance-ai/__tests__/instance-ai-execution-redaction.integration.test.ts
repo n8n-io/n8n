@@ -108,8 +108,6 @@ describe('Instance AI execution redaction (integration)', () => {
 	});
 
 	beforeEach(async () => {
-		process.env.N8N_ENV_FEAT_CRED_SHARING = 'true';
-
 		const teamProject = await createTeamProject('Team', alice);
 		await linkUserToProject(bob, teamProject, 'project:editor');
 		const credential = await saveCredential(randomCredentialPayload(), { user: alice });
@@ -149,7 +147,6 @@ describe('Instance AI execution redaction (integration)', () => {
 	});
 
 	afterEach(async () => {
-		delete process.env.N8N_ENV_FEAT_CRED_SHARING;
 		licenseMocker.reset();
 		await testDb.truncate([
 			'ExecutionEntity',
@@ -316,17 +313,6 @@ describe('Instance AI execution redaction (integration)', () => {
 			licenseMocker.reset();
 
 			const result = await executionsFor(alice).getResult(policyExecutionId);
-
-			expect(result.redaction).toBeUndefined();
-			expect(JSON.stringify(result.data)).toContain('tok_secret');
-		});
-	});
-
-	describe('with the flag off', () => {
-		it('returns the full result, as before', async () => {
-			delete process.env.N8N_ENV_FEAT_CRED_SHARING;
-
-			const result = await executionsFor(bob).getResult(executionId);
 
 			expect(result.redaction).toBeUndefined();
 			expect(JSON.stringify(result.data)).toContain('tok_secret');
