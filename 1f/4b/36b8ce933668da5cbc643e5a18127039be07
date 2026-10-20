@@ -1,0 +1,87 @@
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  ai_agent 1,924,1293
+packages/cli/src/modules/agents/agents.module.ts
+  s_20d484677b459f::t_b44a55c27650e3 18-19,26
+  s_20d484677b459f::t_2ff9eadbd89ed9 20-25
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-skills.service.test.ts
+  s_20d484677b459f::t_9150001433c113 1-2,104-116,121-126
+  s_20d484677b459f::t_2ff9eadbd89ed9 117-120
+  s_20d484677b459f::t_ae1cfb2e243fa8 3,38
+packages/cli/test/integration/agents/skill.repository.test.ts
+  s_20d484677b459f::t_75875fc8b94d16 61-68,80-81,90-93,106-116
+  s_20d484677b459f::t_2ff9eadbd89ed9 69-79,82-89,94-105
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_20d484677b459f::t_ae1cfb2e243fa8 3531-3532
+packages/frontend/editor-ui/src/features/settings/context/components/SkillsTable.test.ts
+  s_20d484677b459f::t_ae1cfb2e243fa8 34
+packages/cli/src/modules/agents/skills/skills-api.service.ts
+  s_20d484677b459f::t_6fd911ed6b460f 118,126,142-149,154-155
+  s_20d484677b459f::t_7846beff0bc258 27,49,114-116
+  s_20d484677b459f::t_0a0409f7d7f105 139-140,163
+  s_20d484677b459f::t_b44a55c27650e3 166,310
+  s_20d484677b459f::t_2ff9eadbd89ed9 150-153
+packages/@n8n/api-types/src/agents/__tests__/skills.schema.test.ts
+  s_20d484677b459f::t_2ff9eadbd89ed9 72-92
+packages/frontend/editor-ui/src/features/agents/components/AgentSkillModal.vue
+  s_20d484677b459f::t_2ff9eadbd89ed9 166-169,666-668
+  s_20d484677b459f::t_7846beff0bc258 24,81-82,102,164-165,170,438,872-883
+packages/frontend/editor-ui/src/features/settings/context/views/SettingsSkillsView.test.ts
+  s_20d484677b459f::t_c4a14ababfb7d2 1,350-360,364-366,375-379,384-387
+  s_20d484677b459f::t_ae1cfb2e243fa8 61
+  s_20d484677b459f::t_2ff9eadbd89ed9 339-349,361-363,367-374,380-383
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSkillModal.test.ts
+  s_20d484677b459f::t_2ff9eadbd89ed9 114-119,1477-1480,1484-1489,1495-1499,1503-1507
+  s_20d484677b459f::t_ae1cfb2e243fa8 1438
+  s_20d484677b459f::t_c4a14ababfb7d2 1474-1476,1481-1483,1490-1494,1500-1502,1508-1515
+packages/cli/src/modules/agents/__tests__/skills-api.service.test.ts
+  s_20d484677b459f::t_2ff9eadbd89ed9 526-542,548-550,556-558
+  s_20d484677b459f::t_ae1cfb2e243fa8 18,39,84,92,272
+  s_20d484677b459f::t_9150001433c113 99,524-525,543-547,551-555,559-560
+packages/cli/test/integration/agents/skills.controller.test.ts
+  s_20d484677b459f::t_75875fc8b94d16 53,57,64-65,69,74,79-81,100-102,113-117,128-129
+  s_20d484677b459f::t_2ff9eadbd89ed9 54-56,58-63,66-68,70-73,75-78,82-99,103-112,118-127
+packages/cli/src/modules/agents/__tests__/agents.module.test.ts
+  s_20d484677b459f::t_2ff9eadbd89ed9 157-170
+  s_20d484677b459f::t_85207c23036c7e 10-13
+packages/@n8n/api-types/src/agents/skills.schema.ts
+  s_20d484677b459f::t_6fd911ed6b460f 62,163-164
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentCapabilitiesActions.test.ts
+  s_20d484677b459f::t_ae1cfb2e243fa8 651
+packages/cli/src/modules/agents/skills/hub-assistant-skill-provider.service.ts
+  s_20d484677b459f::t_2ff9eadbd89ed9 23-25,28-31,37-42,56-59,61-64
+  s_20d484677b459f::t_b44a55c27650e3 1-22,26-27,32-36,43-55,60,65-67
+packages/frontend/editor-ui/src/features/settings/context/views/SettingsSkillsView.vue
+  s_20d484677b459f::t_7846beff0bc258 304,311,317,332,344,351
+  s_20d484677b459f::t_0a0409f7d7f105 349
+  s_20d484677b459f::t_2ff9eadbd89ed9 39-43,305-306
+packages/@n8n/backend-services/src/services/assistant-skill-provider-proxy.service.ts
+  s_20d484677b459f::t_2ff9eadbd89ed9 45-48
+  s_20d484677b459f::t_6fd911ed6b460f 1-27,29-44,49-51
+  s_20d484677b459f::t_c85d8cf83629ee 28
+packages/cli/src/modules/agents/__tests__/hub-assistant-skill-provider.service.test.ts
+  s_20d484677b459f::t_2ff9eadbd89ed9 25-38,57-64,68-71,74-80,94-110
+  s_20d484677b459f::t_9150001433c113 1-24,39-56,65-67,72-73,81-93,111-120
+packages/cli/src/modules/agents/repositories/skill.repository.ts
+  s_20d484677b459f::t_2ff9eadbd89ed9 175-180,207-209,692-697
+  s_20d484677b459f::t_6fd911ed6b460f 13-14,167-174,181-206,210-211
+packages/@n8n/backend-services/src/index.ts
+  s_20d484677b459f::t_6fd911ed6b460f 108
+packages/cli/src/modules/instance-ai/instance-ai-skills.service.ts
+  s_20d484677b459f::t_b44a55c27650e3 6,68-77
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1f4b36b8ce933668da5cbc643e5a18127039be07",
+  "prompts": {},
+  "sessions": {
+    "s_20d484677b459f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1541d-6ef7-7ef0-a84b-83bd91fd72c5",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}
