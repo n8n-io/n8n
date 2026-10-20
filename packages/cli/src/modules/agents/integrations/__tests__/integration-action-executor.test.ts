@@ -338,7 +338,7 @@ describe('ChatIntegrationActionExecutor', () => {
 		expect(chat.openDM).not.toHaveBeenCalled();
 	});
 
-	it('opens a DM through chat.openDM for platforms other than WhatsApp', async () => {
+	it('falls back to chat.openDM when a non-WhatsApp adapter cannot open a DM', async () => {
 		const thread = { id: 'telegram:42', post: vi.fn().mockResolvedValue({ id: '1' }) };
 		const chat = mock<ChatInstance>();
 		chat.openDM.mockResolvedValue(thread as never);
@@ -358,8 +358,8 @@ describe('ChatIntegrationActionExecutor', () => {
 			awaitResponse: false,
 		});
 
+		expect(chat.getAdapter).toHaveBeenCalledWith('telegram');
 		expect(chat.openDM).toHaveBeenCalledWith('42');
-		expect(chat.getAdapter).not.toHaveBeenCalled();
 	});
 
 	it('re-anchors a Slack DM at the sent message ts when openDM returns the channel pseudo-thread', async () => {

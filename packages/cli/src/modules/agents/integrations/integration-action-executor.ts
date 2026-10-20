@@ -280,6 +280,10 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 		// The Chat SDK guesses the adapter from the user ID's shape and knows one
 		// shape per platform, so a Teams Entra object ID would not reach Teams.
 		const adapter = chat.getAdapter(params.descriptor.integration.type);
+		// It has no shape for a WhatsApp phone number at all, so there is nothing to fall back to.
+		if (!supportsOpenDM(adapter) && params.descriptor.integration.type === 'whatsapp') {
+			return unsupportedAction(params.descriptor.integration.type, 'send_dm');
+		}
 		const thread = supportsOpenDM(adapter)
 			? chat.thread(await adapter.openDM(input.userId))
 			: await chat.openDM(input.userId);
@@ -299,22 +303,6 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 				target: { type: 'dm', userId: input.userId, threadId },
 			}),
 		};
-	}
-
-	/**
-	 * `chat.openDM` guesses the adapter from the user ID format, and it has no
-	 * rule for a WhatsApp phone number. Only WhatsApp opens the DM on its own
-	 * adapter. Other platforms keep the inference.
-	 */
-	private async openDirectMessageThread(
-		chat: ChatInstance,
-		descriptor: IntegrationToolConnectionDescriptor,
-		userId: string,
-	) {
-		if (descriptor.integration.type !== 'whatsapp') return await chat.openDM(userId);
-		const adapter = chat.getAdapter('whatsapp');
-		if (!supportsOpenDM(adapter)) return undefined;
-		return chat.thread(await adapter.openDM(userId));
 	}
 
 	private async editMessageInCurrentThread(
