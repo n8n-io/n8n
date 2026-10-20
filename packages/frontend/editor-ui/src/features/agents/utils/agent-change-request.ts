@@ -7,9 +7,8 @@ import {
 } from './fix-with-assistant';
 
 /**
- * Detects preview-chat messages that ask the agent to change itself. The
- * preview chat only runs the agent — configuration changes belong to the AI
- * Assistant — so a match surfaces a hand-off note next to the message.
+ * Detects preview-chat messages that ask the agent to change itself. A match
+ * shows a hand-off note that points to the n8n Assistant for setup changes.
  *
  * ponytail: English keyword heuristic. Swap for a classifier if it misses too
  * much, e.g. for non-English messages.
