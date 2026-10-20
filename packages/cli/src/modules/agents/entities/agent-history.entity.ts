@@ -1,4 +1,4 @@
-import { type AgentJsonConfig, type AgentSkill } from '@n8n/api-types';
+import { type AgentSkill, type StoredAgentConfig } from '@n8n/api-types';
 import { JsonColumn, WithTimestamps } from '@n8n/db';
 import {
 	Column,
@@ -31,7 +31,7 @@ export class AgentHistory extends WithTimestamps {
 	agent: Relation<Agent>;
 
 	@JsonColumn({ nullable: true, default: null })
-	schema: AgentJsonConfig | null;
+	schema: StoredAgentConfig | null;
 
 	@JsonColumn({ nullable: true, default: null })
 	tools: Agent['tools'] | null;

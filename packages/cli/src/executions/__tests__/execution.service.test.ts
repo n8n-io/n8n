@@ -1,5 +1,5 @@
 import { DeleteExecutionsDto } from '@n8n/api-types';
-import type { EventService } from '@n8n/backend-services';
+import type { EventService, ExecutionRedactionServiceProxy } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type {
@@ -29,7 +29,7 @@ import { BadRequestError, NotFoundError } from '@n8n/errors';
 import type { EngineV2ExecutionReader } from '@/executions/engine-v2-execution-reader.service';
 import { MissingExecutionDataError } from '@/executions/execution-data/missing-execution-data.error';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
-import type { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction-proxy.service';
+
 import { ExecutionService } from '@/executions/execution.service';
 import type { ExecutionRequest } from '@/executions/execution.types';
 import type { ExecutionStopService } from '@/scaling/execution-stop.service';
@@ -398,6 +398,19 @@ describe('ExecutionService', () => {
 
 		const erroredRun = (error: boolean) =>
 			[{ error: error ? new Error('boom') : undefined }] as unknown as ITaskData[];
+
+		it('should mark the retry as awaited to completion', async () => {
+			const { service, workflowRunner } = buildRetryService();
+			executionPersistence.findWithUnflattenedData.mockResolvedValue(
+				buildCrashedExecution({ lastNodeExecuted: 'Some Node', runData: {} }),
+			);
+
+			await service.retry(retryArgs());
+
+			expect(workflowRunner.run).toHaveBeenCalledWith(
+				expect.objectContaining({ callerAwaitsOutcome: 'completion' }),
+			);
+		});
 
 		it('should not throw when retrying a crashed execution whose runData is undefined', async () => {
 			const { service, workflowRunner } = buildRetryService();

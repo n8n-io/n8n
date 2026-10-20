@@ -631,10 +631,6 @@ export class CanvasPage extends BasePage {
 		await this.canvasPane().click({ position: { x: 10, y: 10 } });
 	}
 
-	async openCanvasContextMenu(): Promise<void> {
-		await this.canvasPane().click({ button: 'right', position: { x: 10, y: 10 } });
-	}
-
 	// Connection helpers
 	connectionBetweenNodes(sourceNodeName: string, targetNodeName: string): Locator {
 		return this.page.locator(

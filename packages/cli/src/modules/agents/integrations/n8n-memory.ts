@@ -165,22 +165,29 @@ export class N8nMemoryImpl
 	async saveThread(thread: Omit<Thread, 'createdAt' | 'updatedAt'>): Promise<Thread> {
 		await this.resourceRepository.ensureExists(thread.resourceId);
 
-		const existing = await this.threadRepository.findOneBy({ id: thread.id });
-
-		if (existing) {
-			// `resourceId` is treated as immutable on existing threads. Some thread
-			// IDs can receive messages from more than one resource; overwriting the
-			// column on each save would make ownership depend on the last writer.
-			// Per-user scoping is enforced at the message level via resourceId.
-			if (thread.title !== undefined) existing.title = thread.title;
-			if (thread.metadata !== undefined) {
-				// Thread metadata carries runtime-owned keys such as integration
-				// message context, so caller updates merge into the existing blob.
-				existing.metadata = this.mergeThreadMetadata(existing.metadata, thread.metadata);
-			}
-			const saved = await this.threadRepository.save(existing);
-			return this.toThread(saved);
-		}
+		// `resourceId` is treated as immutable on existing threads. Some thread
+		// IDs can receive messages from more than one resource; overwriting the
+		// column on each save would make ownership depend on the last writer.
+		// Per-user scoping is enforced at the message level via resourceId.
+		// The merge runs on the locked row, so a save cannot revert a concurrent
+		// `patchThread`.
+		const updated = await this.threadRepository.patchThread(
+			thread.id,
+			(row) => {
+				if (thread.title === undefined && thread.metadata === undefined) return null;
+				return {
+					title: thread.title,
+					// Thread metadata carries runtime-owned keys such as integration
+					// message context, so caller updates merge into the existing blob.
+					metadata:
+						thread.metadata === undefined
+							? undefined
+							: this.mergeThreadMetadata(row.metadata, thread.metadata),
+				};
+			},
+			{},
+		);
+		if (updated) return this.toThread(updated);
 
 		const entity = this.threadRepository.create({
 			id: thread.id,
@@ -190,6 +197,38 @@ export class N8nMemoryImpl
 		});
 		const saved = await this.threadRepository.save(entity);
 		return this.toThread(saved);
+	}
+
+	/**
+	 * Read, update and write one thread in one transaction. Unlike `saveThread`,
+	 * the update replaces the metadata, so a caller can remove keys. Concurrent
+	 * patches do not lose updates: see `AgentThreadRepository.patchThread`.
+	 *
+	 * When `update` returns `null` or `undefined`, nothing is written and the
+	 * current thread is returned. Returns `null` when the thread does not exist.
+	 */
+	async patchThread(
+		args: {
+			threadId: string;
+			update: (
+				current: Thread,
+			) => { title?: string; metadata?: Record<string, unknown> } | null | undefined;
+		},
+		ctx: OperationContext = {},
+	): Promise<Thread | null> {
+		const row = await this.threadRepository.patchThread(
+			args.threadId,
+			(locked) => {
+				const patch = args.update(this.toThread(locked));
+				if (!patch) return null;
+				return {
+					title: patch.title,
+					metadata: patch.metadata === undefined ? undefined : JSON.stringify(patch.metadata),
+				};
+			},
+			ctx,
+		);
+		return row ? this.toThread(row) : null;
 	}
 
 	async deleteThread(threadId: string, ctx: OperationContext = {}): Promise<void> {

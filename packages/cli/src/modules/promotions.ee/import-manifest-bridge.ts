@@ -80,7 +80,9 @@ function dropSelectedUsers<T extends { usedBy: PackageRequirementConsumer[] }>(
 	const kept = rows
 		.map((row) => ({
 			...row,
-			usedBy: row.usedBy.filter(({ id }) => !selectedWorkflowIds.has(id)),
+			usedBy: row.usedBy.filter(
+				({ kind, id }) => kind === 'workflow' && !selectedWorkflowIds.has(id),
+			),
 		}))
 		.filter((row) => row.usedBy.length > 0);
 	return kept.length > 0 ? kept : undefined;
@@ -291,7 +293,7 @@ function mergeRequirementRows<T extends { usedBy: PackageRequirementConsumer[] }
 	const byKey = new Map<string, T>();
 	for (const row of leftover ?? []) {
 		const usedBy = remainingUsers(
-			row.usedBy.filter(({ id }) => !selectedWorkflowIds.has(id)),
+			row.usedBy.filter(({ kind, id }) => kind === 'workflow' && !selectedWorkflowIds.has(id)),
 			remainingWorkflowIds,
 		);
 		if (usedBy.length === 0) continue;

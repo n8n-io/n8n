@@ -14,6 +14,7 @@ import {
 	type Logger,
 	type ManagedBackgroundTask,
 	type SandboxConfig,
+	type VerifiedWorkspaceBundles,
 } from '@n8n/instance-ai';
 import type { ErrorReporter } from 'n8n-core';
 import { OperationalError, UnexpectedError } from 'n8n-workflow';
@@ -36,6 +37,8 @@ export type RuntimeSandboxEntry = {
 	sandbox: NonNullable<Awaited<ReturnType<typeof createSandbox>>>;
 	workspace: NonNullable<ReturnType<typeof createWorkspace>>;
 	configFingerprint: string;
+	/** Prebaked bundles already verified in this sandbox, shared across runs. */
+	verifiedBundles: VerifiedWorkspaceBundles;
 	setupComplete: boolean;
 	setupPromise: Promise<void> | undefined;
 	expiresAt: number;
@@ -419,7 +422,9 @@ export class InstanceAiSandboxService {
 	): Promise<void> {
 		if (entry.setupComplete) return;
 
-		entry.setupPromise ??= setupSandboxWorkspace(entry.workspace, context)
+		entry.setupPromise ??= setupSandboxWorkspace(entry.workspace, context, {
+			verifiedBundles: entry.verifiedBundles,
+		})
 			.then(() => {
 				entry.setupComplete = true;
 			})
@@ -481,6 +486,7 @@ export class InstanceAiSandboxService {
 			sandbox,
 			workspace,
 			configFingerprint: cacheState.fingerprint,
+			verifiedBundles: new Map(),
 			setupComplete: false,
 			setupPromise: undefined,
 			expiresAt: this.nextSandboxExpiry(),

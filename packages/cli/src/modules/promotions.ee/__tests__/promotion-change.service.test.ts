@@ -32,9 +32,16 @@ const manifest: PackageManifest = {
 				usedBy: [
 					{ kind: 'workflow', id: 'wfA' },
 					{ kind: 'workflow', id: 'wfB' },
+					{ kind: 'agent', id: 'wfA' },
 				],
 			},
-			{ name: 'TOKEN', usedBy: [{ kind: 'workflow', id: 'wfB' }] },
+			{
+				name: 'TOKEN',
+				usedBy: [
+					{ kind: 'workflow', id: 'wfB' },
+					{ kind: 'agent', id: 'wfA' },
+				],
+			},
 		],
 	},
 };

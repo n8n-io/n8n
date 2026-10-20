@@ -333,19 +333,19 @@ describe('N8nClient packages', () => {
 			expect(init.body).toBe(JSON.stringify({ workflowIds: ['a'], folderIds: ['f1'] }));
 		});
 
-		it('includes the missing workflow dependency policy when provided', async () => {
+		it('includes the dependency policy when provided', async () => {
 			fetchMock.mockResolvedValue(binaryResponse(200, new Uint8Array([1])));
 
 			await client.exportPackage({
 				projectIds: ['proj-1'],
-				missingWorkflowDependencyPolicy: 'include-in-package',
+				dependencyPolicy: 'include-in-package',
 			});
 
 			const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
 			expect(init.body).toBe(
 				JSON.stringify({
 					projectIds: ['proj-1'],
-					missingWorkflowDependencyPolicy: 'include-in-package',
+					dependencyPolicy: 'include-in-package',
 				}),
 			);
 		});
@@ -412,17 +412,17 @@ describe('N8nClient packages', () => {
 			expect(init.body).toBe(JSON.stringify({ workflowIds: ['a'], includeTags: false }));
 		});
 
-		it('includes the workflow version policy when provided', async () => {
+		it('includes the version policy when provided', async () => {
 			fetchMock.mockResolvedValue(binaryResponse(200, new Uint8Array([1])));
 
 			await client.exportPackage({
 				workflowIds: ['a'],
-				workflowVersionPolicy: 'published-strict',
+				versionPolicy: 'published-strict',
 			});
 
 			const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
 			expect(init.body).toBe(
-				JSON.stringify({ workflowIds: ['a'], workflowVersionPolicy: 'published-strict' }),
+				JSON.stringify({ workflowIds: ['a'], versionPolicy: 'published-strict' }),
 			);
 		});
 

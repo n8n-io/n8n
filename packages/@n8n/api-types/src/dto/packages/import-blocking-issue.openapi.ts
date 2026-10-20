@@ -78,6 +78,46 @@ export const credentialUnresolvedIssueOpenApi: ZodOpenAPIMetadata = {
 	description: 'A credential reference that could not be resolved in the target project.',
 };
 
+export const credentialConflictFieldDocs = {
+	kind: {
+		description:
+			'`differs`: under `credentialConflictPolicy=fail`, the package would change the ' +
+			'name or values of the destination credential. `divergent`: under `overwrite`, two or ' +
+			'more package credentials with different names or values resolve to one destination ' +
+			'credential. The import does not select one of them.',
+	},
+	targetId: { description: 'Id of the destination credential.' },
+	sourceIds: {
+		description:
+			'Ids of the package credentials that resolve to the destination credential. For ' +
+			'`differs`, the package credentials that would change it.',
+	},
+	name: { description: 'Name of the destination credential.' },
+	usedBy: { description: 'Package consumers that use the listed package credentials.' },
+} as const satisfies Record<string, ZodOpenAPIMetadata>;
+
+export const credentialConflictIssueOpenApi: ZodOpenAPIMetadata = {
+	description:
+		'A matched credential that the credential conflict policy does not let the import ' +
+		'change. Only a credential that the import can update is checked: a credential owned by ' +
+		'a project of the import. Values are never reported.',
+};
+
+export const credentialUpdateForbiddenFieldDocs = {
+	targetId: { description: 'Id of the destination credential.' },
+	sourceIds: { description: 'Ids of the package credentials that resolve to it.' },
+	name: { description: 'Name of the destination credential.' },
+	usedBy: { description: 'Package consumers that use the listed package credentials.' },
+} as const satisfies Record<string, ZodOpenAPIMetadata>;
+
+export const credentialUpdateForbiddenIssueOpenApi: ZodOpenAPIMetadata = {
+	description:
+		'A matched credential that the import can update, but the caller has no ' +
+		'`credential:update` permission on it. Only under `credentialConflictPolicy` `overwrite` ' +
+		'or `fail`. The import does not read its values, so this blocks also when the package ' +
+		'would not change it. Use `keep-existing` to bind it without a change.',
+};
+
 export const projectConflictFieldDocs = {
 	name: { description: "The project's name as it appears in the package." },
 } as const satisfies Record<string, ZodOpenAPIMetadata>;
@@ -179,7 +219,7 @@ export const dataTableUnresolvedFieldDocs = {
 export const dataTableSchemaOperationOpenApi: ZodOpenAPIMetadata = {
 	description:
 		'A single change `dataTableSchemaConflictPolicy=overwrite` would make (or made) to a ' +
-		"matched target table's schema. `destructive` operations delete the data in a column.",
+		"matched target table's schema. `destructive` operations remove the values in a column.",
 };
 
 export const dataTableUnresolvedIssueOpenApi: ZodOpenAPIMetadata = {
@@ -298,4 +338,16 @@ export const policyViolationIssueOpenApi: ZodOpenAPIMetadata = {
 		'skipping the workflow: the import rewrites cross-workflow references to the ids each ' +
 		'workflow would get, so dropping one leaves the workflows that call it pointing at a row ' +
 		'nothing ever wrote.',
+};
+
+export const credentialPolicyViolationFieldDocs = {
+	sourceId: { description: 'Credential id as it appears in the package.' },
+	usedBy: { description: 'Package consumers that use this credential.' },
+} as const satisfies Record<string, ZodOpenAPIMetadata>;
+
+export const credentialPolicyViolationIssueOpenApi: ZodOpenAPIMetadata = {
+	description:
+		'A credential the import would write that the credential-save policy refused, for ' +
+		'example a stub of a credential type this instance does not allow. The import stops ' +
+		'before any writes.',
 };

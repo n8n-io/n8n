@@ -6,7 +6,12 @@
  * behaviour the RFC asks for and the one users will call a bug — "my old workflow saves but
  * will not run" — so it is worth pinning on the real paths rather than in the check's own tests.
  */
-import { createWorkflow, createWorkflowWithHistory, testDb } from '@n8n/backend-test-utils';
+import {
+	createWorkflow,
+	createWorkflowWithHistory,
+	getPersonalProject,
+	testDb,
+} from '@n8n/backend-test-utils';
 import { WorkflowsConfig } from '@n8n/config';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import { ExecutionRepository, WorkflowRepository, type IWorkflowDb, type User } from '@n8n/db';
@@ -97,6 +102,7 @@ const expectedViolation = {
 	subjectType: 'nodeType',
 	scope: 'instance',
 	matchedRuleId: 'deny-set',
+	optInAvailable: false,
 };
 
 beforeAll(async () => {
@@ -254,7 +260,8 @@ describe('starting a run', () => {
 			violations?: unknown[];
 		};
 
-		expect(error?.violations).toEqual([expectedViolation]);
+		const { id: projectId } = await getPersonalProject(owner);
+		expect(error?.violations).toEqual([{ ...expectedViolation, projectId }]);
 	});
 
 	test('fails the run of a workflow whose inline agent has a blocked node tool', async () => {
@@ -273,7 +280,8 @@ describe('starting a run', () => {
 			unflattenData: true,
 		});
 		const error = stored?.data.resultData.error as unknown as { violations?: unknown[] };
-		expect(error?.violations).toEqual([expectedViolation]);
+		const { id: projectId } = await getPersonalProject(owner);
+		expect(error?.violations).toEqual([{ ...expectedViolation, projectId }]);
 	});
 
 	test('runs as usual when no rule matches the workflow', async () => {

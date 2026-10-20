@@ -83,7 +83,7 @@ export type CrashedExecution = {
 	mode: WorkflowExecuteMode;
 	startedAt: Date | null;
 	stoppedAt: Date;
-	tracingContext?: { traceparent: string; tracestate?: string };
+	tracingContext?: { traceparent: string; tracestate?: string; identity?: Record<string, string> };
 	workflowVersionId?: string;
 	retryOf?: string;
 	workflowCustomTelemetryTags?: IWorkflowSettings['customTelemetryTags'];
@@ -183,7 +183,7 @@ const MAX_UPDATE_BATCH_SIZE = 900;
 
 @Service()
 export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
-	private hardDeletionBatchSize = 100;
+	readonly hardDeletionBatchSize = 100;
 
 	constructor(
 		dataSource: DataSource,
@@ -733,7 +733,8 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			.execute();
 	}
 
-	async findSoftDeletedExecutions() {
+	/** One batch of soft-deleted executions past the buffer, newest id first, below `before` when given. */
+	async findSoftDeletedExecutions(before?: string) {
 		const isPostgres = this.globalConfig.database.type === 'postgresdb';
 		const bufferMs =
 			this.globalConfig.executions.pruneDataHardDeleteBuffer * Time.hours.toMilliseconds;
@@ -742,7 +743,9 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			select: ['workflowId', 'id', 'storedAt'],
 			where: {
 				deletedAt: Raw((column) => `${column} <= ${dbNowPlusMsLiteral(isPostgres, -bufferMs)}`),
+				...(before === undefined ? {} : { id: LessThan(before) }),
 			},
+			order: { id: 'DESC' },
 			take: this.hardDeletionBatchSize,
 
 			/**

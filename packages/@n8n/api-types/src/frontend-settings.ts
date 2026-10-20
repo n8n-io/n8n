@@ -6,6 +6,7 @@ import type {
 	ChatProviderSettingsDto,
 } from './chat-hub';
 import type { QuickConnectOption } from './quick-connect';
+import type { InboxSettings } from './inbox';
 import type { InsightsDateRange } from './schemas/insights.schema';
 import type { WorkflowReviewsPolicy } from './workflow-reviews-policy';
 
@@ -239,6 +240,7 @@ export interface FrontendSettings {
 		enforced: boolean;
 	};
 	workflowReviews?: WorkflowReviewsPolicy;
+	inbox?: InboxSettings;
 	folders: {
 		enabled: boolean;
 	};
@@ -413,8 +415,6 @@ export type FrontendModuleSettings = {
 		sandboxUnavailableReason: string | null;
 		/** When true, orchestrator LLM step / workflow code debug is captured (`N8N_INSTANCE_AI_RUN_DEBUG_ENABLED`). */
 		runDebugEnabled: boolean;
-		/** Whether this instance is in the activation-capped trial cohort (`N8N_INSTANCE_AI_ACTIVATION_CAPPED`). Optional. */
-		activationCapped?: boolean;
 	};
 
 	/**
@@ -465,6 +465,8 @@ export type FrontendModuleSettings = {
 		knowledgeBaseEnabled: boolean;
 		/** Whether the AI Assistant proxy is available to the agents module. */
 		proxyEnabled: boolean;
+		/** Whether agents use the skills hub (`N8N_AGENTS_SKILLS_HUB_ENABLED`, read at startup). */
+		skillsHubEnabled?: boolean;
 	};
 };
 

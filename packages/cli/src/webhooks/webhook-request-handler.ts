@@ -21,7 +21,12 @@ import {
 	isWebhookResponse,
 	isWebhookStreamResponse,
 } from '@/webhooks/webhook-response';
-import { applySandboxCSP, WebhookResponseHeaders } from '@/webhooks/webhook-response-headers';
+import {
+	applySandboxCSP,
+	setRouteSandboxSetting,
+	WebhookResponseHeaders,
+	type WebhookSandboxSetting,
+} from '@/webhooks/webhook-response-headers';
 import type {
 	IWebhookManager,
 	WebhookOptionsRequest,
@@ -34,6 +39,7 @@ class WebhookRequestHandler {
 	constructor(
 		private readonly webhookManager: IWebhookManager,
 		private readonly expectedNodeType?: ExpectedWebhookNodeType,
+		private readonly sandboxSetting: WebhookSandboxSetting = 'webhook',
 	) {}
 
 	/**
@@ -42,6 +48,12 @@ class WebhookRequestHandler {
 	 */
 	async handleRequest(req: WebhookRequest | WebhookOptionsRequest, res: express.Response) {
 		const method = req.method;
+
+		// Set the sandbox before any writer runs, so that every response of the route has it,
+		// for all status codes and content types. Only an n8n page that must keep its origin
+		// replaces or removes it. Later writers follow the same setting through `res.locals`.
+		setRouteSandboxSetting(res, this.sandboxSetting);
+		applySandboxCSP(res);
 
 		if (method !== 'OPTIONS' && !WEBHOOK_METHODS.includes(method)) {
 			return ResponseHelper.sendErrorResponse(
@@ -280,12 +292,16 @@ function trackWebhookMetrics(
  * recorded on each response: webhook requests via `observeWebhookRequest`,
  * form submissions (POST only) via `observeFormSubmission`. No metrics are
  * emitted for other node types.
+ *
+ * `sandboxSetting` selects the operator setting for the sandbox CSP. It defaults to the
+ * form setting for form routes and to the webhook setting for all other routes.
  */
 export function createWebhookHandlerFor(
 	webhookManager: IWebhookManager,
 	expectedNodeType?: ExpectedWebhookNodeType,
+	sandboxSetting: WebhookSandboxSetting = expectedNodeType === 'form' ? 'form' : 'webhook',
 ): express.RequestHandler {
-	const handler = new WebhookRequestHandler(webhookManager, expectedNodeType);
+	const handler = new WebhookRequestHandler(webhookManager, expectedNodeType, sandboxSetting);
 	const metricsService = Container.get(PrometheusWebhookAndFormMetricsService);
 
 	return async (req, res) => {

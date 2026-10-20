@@ -44,7 +44,7 @@ export default defineComponent({
 	h6 {
 		margin-top: var(--spacing--lg);
 		margin-bottom: var(--spacing--sm);
-		font-weight: var(--font-weight--bold);
+		font-weight: var(--font-weight--medium);
 		line-height: var(--line-height--lg);
 		border-bottom: var(--border-width) solid var(--border-color--light);
 
@@ -88,7 +88,7 @@ export default defineComponent({
 	}
 
 	strong {
-		font-weight: var(--font-weight--bold);
+		font-weight: var(--font-weight--medium);
 	}
 
 	em {

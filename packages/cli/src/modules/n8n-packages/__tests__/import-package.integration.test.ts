@@ -17,12 +17,14 @@ import {
 	WorkflowHistoryRepository,
 	WorkflowRepository,
 	CredentialsRepository,
+	SecretsProviderConnectionRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { Credentials } from 'n8n-core';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { CredentialTypes } from '@/credential-types';
-import { BadRequestError, UnprocessableRequestError } from '@n8n/errors';
+import { BadRequestError, ForbiddenError, UnprocessableRequestError } from '@n8n/errors';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import {
 	affixRoleToSaveCredential,
@@ -54,6 +56,7 @@ import {
 	WIRE_VERSION_ID,
 	type PackageWorkflow,
 } from './fixtures/package-fixtures';
+import { buildWorkflowReferencingCredential } from './utils/test-builders';
 import { streamToBuffer } from './utils/tar-support';
 
 type ImportPackageParams = Pick<ImportPackageRequest, 'user' | 'packageBuffer'> &
@@ -140,6 +143,7 @@ beforeEach(async () => {
 		'Project',
 		'CredentialsEntity',
 		'SharedCredentials',
+		'SecretsProviderConnection',
 	]);
 });
 
@@ -1859,6 +1863,12 @@ describe('ImportPipeline credential matching modes', () => {
 			});
 
 			expect(result.bindings.credentials).toEqual({ [SOURCE_CRED_ID]: target.id });
+			expect(result.credentials).toEqual({
+				matched: [SOURCE_CRED_ID],
+				stubbed: [],
+				seeded: [],
+				incomplete: [],
+			});
 		});
 
 		it('does not match when only the name is equal but the type differs', async () => {
@@ -2215,7 +2225,12 @@ describe('credential-missing-mode: create-stub', () => {
 			),
 		});
 
-		expect(result.credentials).toEqual({ matched: [], stubbed: ['missing-cred'] });
+		expect(result.credentials).toEqual({
+			matched: [],
+			stubbed: ['missing-cred'],
+			seeded: [],
+			incomplete: [],
+		});
 		expect(result.bindings.credentials['missing-cred']).toBe('missing-cred');
 
 		const workflow = await Container.get(WorkflowRepository).findOneOrFail({
@@ -2371,6 +2386,475 @@ describe('credential-missing-mode: create-stub', () => {
 
 		const stored = await Container.get(WorkflowRepository).findOneByOrFail({ id: active.id });
 		expect(stored.activeVersionId).toBe(originalActiveVersionId);
+	});
+
+	it('does not require the credential:create scope for create-stub', async () => {
+		const owner = await createOwner();
+
+		const result = await importPackage({
+			user: owner,
+			credentialMissingMode: 'create-stub',
+			apiKeyScopes: ['workflow:import'],
+			packageBuffer: await buildImportPackageBuffer(
+				[
+					serializedWorkflowWithCredential({
+						id: 'wf-missing-cred',
+						name: 'Missing cred workflow',
+						credentialId: 'missing-cred',
+						credentialName: 'Missing GitHub',
+					}),
+				],
+				{ sourceId },
+			),
+		});
+
+		expect(result.credentials.stubbed).toEqual(['missing-cred']);
+	});
+});
+
+describe('credential-missing-mode: create-with-values', () => {
+	const sourceId = 'create-with-values-test';
+	beforeEach(async () => {
+		await Container.get(SecretsProviderConnectionRepository).save({
+			providerKey: 'github',
+			type: 'dummy',
+			encryptedSettings: '{}',
+		});
+	});
+	afterEach(() => licenseMocker.reset());
+
+	const scheduleTriggerNodes = () => [
+		{
+			id: 'schedule-trigger',
+			name: 'Schedule Trigger',
+			type: 'n8n-nodes-base.scheduleTrigger',
+			typeVersion: 1,
+			position: [0, 0] as [number, number],
+			parameters: {},
+		},
+	];
+	const credentialNode = (credentialId: string, credentialName: string) => ({
+		id: 'http-node',
+		name: 'HTTP Request',
+		type: 'n8n-nodes-base.httpRequest',
+		typeVersion: 1,
+		position: [300, 0] as [number, number],
+		parameters: {},
+		credentials: {
+			[PACKAGE_GITHUB_CREDENTIAL_TYPE]: { id: credentialId, name: credentialName },
+		},
+	});
+
+	it('lists a credential as incomplete when its package data has no completeness flag', async () => {
+		const owner = await createOwner();
+
+		const result = await importPackage({
+			user: owner,
+			credentialMissingMode: 'create-with-values',
+			packageBuffer: await buildImportPackageBuffer(
+				[
+					serializedWorkflowWithCredential({
+						id: 'wf-seeded',
+						name: 'Seeded cred workflow',
+						credentialId: 'missing-cred',
+						credentialName: 'Missing GitHub',
+					}),
+				],
+				{
+					sourceId,
+					credentials: [
+						{
+							id: 'missing-cred',
+							name: 'Missing GitHub',
+							type: PACKAGE_GITHUB_CREDENTIAL_TYPE,
+							data: { accessToken: '={{ $secrets.github.token }}' },
+						},
+					],
+				},
+			),
+		});
+
+		expect(result.credentials).toEqual({
+			matched: [],
+			stubbed: [],
+			seeded: [],
+			incomplete: ['missing-cred'],
+		});
+
+		const targetId = result.bindings.credentials['missing-cred'];
+		const stored = await Container.get(CredentialsRepository).findOneByOrFail({ id: targetId });
+		const decrypted = await new Credentials(
+			{ id: stored.id, name: stored.name },
+			stored.type,
+			stored.data,
+		).getData();
+		expect(decrypted).toEqual({ accessToken: '={{ $secrets.github.token }}' });
+	});
+
+	it('rejects seeded external-secret data when the user lacks externalSecret:list', async () => {
+		const member = await createMember();
+
+		await expect(
+			importPackage({
+				user: member,
+				credentialMissingMode: 'create-with-values',
+				packageBuffer: await buildImportPackageBuffer(
+					[
+						serializedWorkflowWithCredential({
+							id: 'wf-seeded',
+							name: 'Seeded cred workflow',
+							credentialId: 'missing-cred',
+							credentialName: 'Missing GitHub',
+						}),
+					],
+					{
+						sourceId,
+						credentials: [
+							{
+								id: 'missing-cred',
+								name: 'Missing GitHub',
+								type: PACKAGE_GITHUB_CREDENTIAL_TYPE,
+								data: { accessToken: '={{ $secrets.github.token }}' },
+							},
+						],
+					},
+				),
+			}),
+		).rejects.toThrow('Lacking permissions to reference external secrets in credentials');
+		expect(await Container.get(CredentialsRepository).count()).toBe(0);
+		expect(await Container.get(WorkflowRepository).count()).toBe(0);
+	});
+
+	it('publishes workflows with seeded credentials but blocks those with fallback stubs', async () => {
+		const owner = await createOwner();
+
+		const result = await importPackage({
+			user: owner,
+			credentialMissingMode: 'create-with-values',
+			workflowPublishingPolicy: WorkflowPublishingPolicy.PublishAll,
+			packageBuffer: await buildImportPackageBuffer(
+				[
+					serializedWorkflow({
+						id: 'wf-seeded',
+						name: 'Seeded',
+						publishedVersionId: WIRE_VERSION_ID,
+						nodes: [...scheduleTriggerNodes(), credentialNode('seeded-cred', 'Seeded GitHub')],
+					}),
+					serializedWorkflow({
+						id: 'wf-stubbed',
+						name: 'Stubbed',
+						publishedVersionId: WIRE_VERSION_ID,
+						nodes: [
+							...scheduleTriggerNodes(),
+							{ ...credentialNode('bare-cred', 'Bare GitHub'), id: 'http-node-2' },
+						],
+					}),
+				],
+				{
+					sourceId,
+					credentials: [
+						{
+							id: 'seeded-cred',
+							name: 'Seeded GitHub',
+							type: PACKAGE_GITHUB_CREDENTIAL_TYPE,
+							data: { accessToken: '={{ $secrets.github.token }}' },
+							dataIsComplete: true,
+						},
+					],
+				},
+			),
+		});
+
+		expect(result.credentials).toEqual({
+			matched: [],
+			stubbed: ['bare-cred'],
+			seeded: ['seeded-cred'],
+			incomplete: [],
+		});
+
+		const seeded = result.workflows.find(
+			({ sourceWorkflowId }) => sourceWorkflowId === 'wf-seeded',
+		);
+		const stubbed = result.workflows.find(
+			({ sourceWorkflowId }) => sourceWorkflowId === 'wf-stubbed',
+		);
+		expect(seeded?.publishing).toEqual({ state: 'published' });
+		expect(stubbed?.publishing).toEqual({ state: 'blocked', blockedReason: 'stub-credential' });
+	});
+
+	it('blocks publishing a workflow whose credential the import created from partial package data', async () => {
+		licenseMocker.enable('feat:projectRole:admin');
+		licenseMocker.setQuota('quota:maxTeamProjects', 100);
+		const owner = await createOwner();
+		const project = await createTeamProject('Partial data', owner);
+		const credential = await saveOwnedCredential(
+			{
+				name: 'Header Auth',
+				type: 'httpHeaderAuth',
+				data: { name: 'X-Auth', value: '={{ $secrets.github.token }}' },
+			},
+			{ project },
+		);
+		await buildWorkflowReferencingCredential({ name: 'Uses header auth', project, credential });
+		const { stream } = await Container.get(N8nPackagesService).exportPackage({
+			user: owner,
+			projectIds: [project.id],
+		});
+		const packageBuffer = await streamToBuffer(stream);
+
+		await testDb.truncate([
+			'Folder',
+			'Project',
+			'ProjectRelation',
+			'SharedWorkflow',
+			'WorkflowEntity',
+			'SharedCredentials',
+			'CredentialsEntity',
+		]);
+		const importer = await createOwner();
+
+		const result = await importPackage({
+			user: importer,
+			packageBuffer,
+			credentialMissingMode: 'create-with-values',
+			workflowPublishingPolicy: WorkflowPublishingPolicy.PublishAll,
+			variableParentPolicy: undefined,
+		});
+
+		expect(result.credentials).toEqual({
+			matched: [],
+			stubbed: [],
+			seeded: [],
+			incomplete: [credential.id],
+		});
+		expect(result.workflows[0]?.publishing).toEqual({
+			state: 'blocked',
+			blockedReason: 'incomplete-credential',
+		});
+	});
+
+	it('reports an empty stub or a missing node type before an incomplete credential', async () => {
+		const owner = await createOwner();
+		const incompleteNode = credentialNode('incomplete-cred', 'Incomplete GitHub');
+
+		const result = await importPackage({
+			user: owner,
+			credentialMissingMode: 'create-with-values',
+			missingNodeTypeMode: 'import-anyway',
+			workflowPublishingPolicy: WorkflowPublishingPolicy.PublishAll,
+			packageBuffer: await buildImportPackageBuffer(
+				[
+					serializedWorkflow({
+						id: 'wf-stub',
+						name: 'Stub',
+						nodes: [
+							...scheduleTriggerNodes(),
+							incompleteNode,
+							{ ...credentialNode('bare-cred', 'Bare GitHub'), id: 'http-node-2', name: 'HTTP 2' },
+						],
+					}),
+					serializedWorkflow({
+						id: 'wf-unknown',
+						name: 'Unknown node type',
+						nodes: [
+							...scheduleTriggerNodes(),
+							incompleteNode,
+							{
+								id: 'unknown-node',
+								name: 'Unknown Node',
+								type: 'n8n-nodes-community.chatBot',
+								typeVersion: 1,
+								position: [600, 0] as [number, number],
+								parameters: {},
+							},
+						],
+					}),
+				],
+				{
+					sourceId,
+					credentials: [
+						{
+							id: 'incomplete-cred',
+							name: 'Incomplete GitHub',
+							type: PACKAGE_GITHUB_CREDENTIAL_TYPE,
+							data: { accessToken: '={{ $secrets.github.token }}' },
+							dataIsComplete: false,
+						},
+					],
+				},
+			),
+		});
+
+		expect(result.credentials).toEqual({
+			matched: [],
+			stubbed: ['bare-cred'],
+			seeded: [],
+			incomplete: ['incomplete-cred'],
+		});
+		const publishingOf = (id: string) =>
+			result.workflows.find(({ sourceWorkflowId }) => sourceWorkflowId === id)?.publishing;
+		expect(publishingOf('wf-stub')).toEqual({ state: 'blocked', blockedReason: 'stub-credential' });
+		expect(publishingOf('wf-unknown')).toEqual({
+			state: 'blocked',
+			blockedReason: 'missing-node-type',
+		});
+	});
+
+	it('keeps the prior published version active when an incomplete credential blocks republishing an update', async () => {
+		const owner = await createOwner();
+		const personalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+			owner.id,
+		);
+		const active = await createActiveWorkflow({ name: 'Published workflow' }, personalProject);
+		await Container.get(WorkflowRepository).update(active.id, {
+			sourceWorkflowId: 'wf-incomplete-update',
+		});
+		const originalActiveVersionId = active.activeVersionId;
+
+		const result = await importPackage({
+			user: owner,
+			credentialMissingMode: 'create-with-values',
+			workflowConflictPolicy: WorkflowConflictPolicy.NewVersion,
+			workflowPublishingPolicy: WorkflowPublishingPolicy.PreservePublishedState,
+			packageBuffer: await buildImportPackageBuffer(
+				[
+					{
+						...serializedWorkflowWithCredential({
+							id: 'wf-incomplete-update',
+							name: 'Published workflow updated',
+							credentialId: 'incomplete-cred',
+							credentialName: 'Incomplete GitHub',
+						}),
+						publishedVersionId: WIRE_VERSION_ID,
+					},
+				],
+				{
+					sourceId,
+					credentials: [
+						{
+							id: 'incomplete-cred',
+							name: 'Incomplete GitHub',
+							type: PACKAGE_GITHUB_CREDENTIAL_TYPE,
+							data: { accessToken: '={{ $secrets.github.token }}' },
+							dataIsComplete: false,
+						},
+					],
+				},
+			),
+		});
+
+		const summary = result.workflows.find(
+			({ sourceWorkflowId }) => sourceWorkflowId === 'wf-incomplete-update',
+		);
+
+		expect(summary?.status).toBe('updated');
+		expect(summary?.activeVersionId).toBe(originalActiveVersionId);
+		expect(summary?.publishing).toEqual({
+			state: 'unchanged',
+			skippedPublishReason: 'incomplete-credential',
+		});
+	});
+
+	it('rejects a package whose bundled credential data carries literal values', async () => {
+		const owner = await createOwner();
+
+		await expect(
+			importPackage({
+				user: owner,
+				credentialMissingMode: 'create-with-values',
+				packageBuffer: await buildImportPackageBuffer(
+					[
+						serializedWorkflowWithCredential({
+							id: 'wf-leak',
+							name: 'Leaky workflow',
+							credentialId: 'leaky-cred',
+							credentialName: 'Leaky GitHub',
+						}),
+					],
+					{
+						sourceId,
+						credentials: [
+							{
+								id: 'leaky-cred',
+								name: 'Leaky GitHub',
+								type: PACKAGE_GITHUB_CREDENTIAL_TYPE,
+								data: { accessToken: 'ghp_literal_secret' },
+							},
+						],
+					},
+				),
+			}),
+		).rejects.toThrow('failed schema validation');
+
+		expect(await Container.get(CredentialsRepository).count()).toBe(0);
+	});
+
+	it('requires the credential:create scope when create-with-values creates a credential, and writes nothing without it', async () => {
+		const owner = await createOwner();
+		const packageBuffer = await buildImportPackageBuffer(
+			[
+				serializedWorkflowWithCredential({
+					id: 'wf-missing-cred',
+					name: 'Missing cred workflow',
+					credentialId: 'missing-cred',
+					credentialName: 'Missing GitHub',
+				}),
+			],
+			{ sourceId },
+		);
+
+		await expect(
+			importPackage({
+				user: owner,
+				credentialMissingMode: 'create-with-values',
+				apiKeyScopes: ['workflow:import'],
+				packageBuffer,
+			}),
+		).rejects.toThrow(ForbiddenError);
+		expect(await Container.get(CredentialsRepository).count()).toBe(0);
+		expect(await Container.get(WorkflowRepository).count()).toBe(0);
+
+		const result = await importPackage({
+			user: owner,
+			credentialMissingMode: 'create-with-values',
+			apiKeyScopes: ['workflow:import', 'credential:create'],
+			packageBuffer,
+		});
+		expect(result.credentials.stubbed).toEqual(['missing-cred']);
+	});
+
+	it('does not require the credential:create scope when every credential resolves', async () => {
+		const owner = await createOwner();
+		const personalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+			owner.id,
+		);
+		const credential = await saveOwnedCredential(githubCredentialPayload({ name: 'GitHub' }), {
+			project: personalProject,
+		});
+
+		const result = await importPackage({
+			user: owner,
+			credentialMissingMode: 'create-with-values',
+			apiKeyScopes: ['workflow:import'],
+			packageBuffer: await buildImportPackageBuffer(
+				[
+					serializedWorkflowWithCredential({
+						id: 'wf-resolved-cred',
+						name: 'Resolved cred workflow',
+						credentialId: credential.id,
+						credentialName: credential.name,
+					}),
+				],
+				{ sourceId },
+			),
+		});
+
+		expect(result.credentials).toEqual({
+			matched: [credential.id],
+			stubbed: [],
+			seeded: [],
+			incomplete: [],
+		});
 	});
 });
 

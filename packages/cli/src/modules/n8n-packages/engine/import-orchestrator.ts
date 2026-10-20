@@ -2,12 +2,18 @@ import { LicenseState } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 
 import { NodeTypes } from '@/node-types';
+import type { PolicyActor } from '@/policy/policy-enforcement-backend';
 
+import {
+	credentialConflicts,
+	forbiddenCredentialUpdates,
+} from '../entities/credential/credential-conflict-policy';
 import { CredentialImporter } from '../entities/credential/credential-importer';
 import { workflowsBlockedFromPublish } from '../entities/credential/credential-missing-mode';
 import type {
 	CredentialApplyResult,
 	CredentialBindingRequest,
+	CredentialImportPlan,
 	CredentialResolution,
 	CredentialResolutionFailure,
 } from '../entities/credential/credential.types';
@@ -76,8 +82,13 @@ import type {
 	PackageWorkflowRequirement,
 } from '../spec/requirements.schema';
 import { ContentImportPolicyGate, contentImportTransport } from './content-import-policy';
+import { CredentialSavePolicyGate } from './credential-save-policy';
 import { toImportBlockedError } from './import-blocked.error';
-import { assertDataTableWritesAllowed, assertVariableWritesAllowed } from './import-gates';
+import {
+	assertCredentialWritesAllowed,
+	assertDataTableWritesAllowed,
+	assertVariableWritesAllowed,
+} from './import-gates';
 
 export interface ImportOrchestrationInput {
 	context: ImportContext;
@@ -117,7 +128,7 @@ export interface ImportContentResult {
 export interface ImportPlan {
 	input: ImportOrchestrationInput;
 	folderContext: FolderImportContext;
-	credentialPlan: CredentialResolution;
+	credentialPlan: CredentialImportPlan;
 	workflowPlan: WorkflowImportPlan;
 	folderPlan: FolderImportPlan;
 	dataTablePlan: DataTableImportPlan;
@@ -146,6 +157,7 @@ export class ImportOrchestrator {
 		private readonly workflowRemover: WorkflowRemover,
 		private readonly workflowPublisher: WorkflowPublisher,
 		private readonly contentImportPolicyGate: ContentImportPolicyGate,
+		private readonly credentialSavePolicyGate: CredentialSavePolicyGate,
 		private readonly nodeTypes: NodeTypes,
 		private readonly licenseState: LicenseState,
 	) {}
@@ -171,8 +183,20 @@ export class ImportOrchestrator {
 			options.apiKeyScopes,
 			plans.map((plan) => plan.dataTablePlan),
 		);
+		assertCredentialWritesAllowed(
+			options.apiKeyScopes,
+			plans.map(({ input, credentialPlan }) => ({
+				missingMode: input.credentialRequest.missingMode,
+				resolution: credentialPlan,
+			})),
+		);
 
-		for (const { input, variablePlan } of plans) {
+		for (const { input, variablePlan, credentialPlan } of plans) {
+			await this.credentialImporter.assertCanCreate(
+				input.context,
+				input.credentialRequest,
+				credentialPlan,
+			);
 			if (variablePlan.creations.length > 0) {
 				await this.variableImporter.assertCanCreate(
 					input.context,
@@ -213,6 +237,21 @@ export class ImportOrchestrator {
 						}),
 					),
 			);
+		}
+
+		// Across scopes: one destination credential can be reached from several projects.
+		if (plans.length > 0) {
+			const credentialPlans = plans.map((plan) => plan.credentialPlan);
+			for (const forbidden of forbiddenCredentialUpdates(credentialPlans)) {
+				issues.push({ type: 'credential-update-forbidden', ...forbidden });
+			}
+			const conflicts = credentialConflicts(
+				plans[0].input.credentialRequest.conflictPolicy,
+				credentialPlans,
+			);
+			for (const conflict of conflicts) {
+				issues.push({ type: 'credential-conflict', ...conflict });
+			}
 		}
 
 		const quotaFailure = await this.variableImporter.quotaFailure(
@@ -295,11 +334,18 @@ export class ImportOrchestrator {
 			(nodeType) => this.nodeTypes.getSupportedVersions(nodeType),
 		);
 
+		const actor: PolicyActor = { kind: 'user', user: context.user };
 		const refusedByPolicy = await this.contentImportPolicyGate.refusedWorkflows(
 			workflowPlan.items,
 			context.projectId,
 			contentImportTransport(input.importSource),
-			{ kind: 'user', user: context.user },
+			actor,
+		);
+		const refusedStubs = await this.credentialSavePolicyGate.refusedStubs(
+			credentialRequest,
+			credentialPlan,
+			context.projectId,
+			actor,
 		);
 
 		const blockingIssues = this.collectBlockingIssues({
@@ -318,7 +364,7 @@ export class ImportOrchestrator {
 			missingNodeTypeMode: options.missingNodeTypeMode,
 		});
 
-		blockingIssues.push(...refusedByPolicy);
+		blockingIssues.push(...refusedByPolicy, ...refusedStubs);
 
 		return {
 			input,
@@ -371,15 +417,21 @@ export class ImportOrchestrator {
 		await this.dataTableImporter.apply(context, dataTablePlan);
 
 		// Which workflows the publish phase must leave inactive. Known only now, because it depends
-		// on which credentials actually ended up stubbed.
+		// on which credentials actually ended up stubbed or incomplete.
 		const blockedFromPublish = new Map<string, WorkflowPublishingBlockedReason>();
+		// Weakest reason first, so a later, stronger reason overwrites it.
+		for (const sourceWorkflowId of workflowsBlockedFromPublish(
+			credentialRequest.requirements,
+			new Set(credentialResult.incomplete),
+		)) {
+			blockedFromPublish.set(sourceWorkflowId, 'incomplete-credential');
+		}
 		for (const sourceWorkflowId of workflowsBlockedFromPublish(
 			credentialRequest.requirements,
 			new Set(credentialResult.stubbed),
 		)) {
 			blockedFromPublish.set(sourceWorkflowId, 'stub-credential');
 		}
-		// A workflow blocked for both reasons reports missing-node-type: it physically can't run.
 		for (const sourceWorkflowId of workflowsWithMissingNodeTypes(plan.missingNodeTypes)) {
 			blockedFromPublish.set(sourceWorkflowId, 'missing-node-type');
 		}
@@ -553,7 +605,10 @@ function toDataTableBlockingIssue(
 		const writtenIds = new Set(
 			failure.missingScope === 'dataTable:create'
 				? plan.creations.map(({ id }) => id)
-				: plan.updates.map(({ table }) => table.id),
+				: [
+						...plan.updates.map(({ table }) => table.id),
+						...plan.columnAlignments.map(({ id }) => id),
+					],
 		);
 		requirements = requirements.filter(({ id }) => writtenIds.has(id));
 	}

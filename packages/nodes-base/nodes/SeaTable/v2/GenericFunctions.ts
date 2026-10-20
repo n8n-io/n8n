@@ -52,7 +52,11 @@ export async function getBaseAccessToken(
 		url: `${resolveBaseUri(ctx)}/api/v2.1/dtable/app-access-token/`,
 		json: true,
 	};
-	ctx.base = await this.helpers.httpRequest(options);
+	try {
+		ctx.base = await this.helpers.httpRequest(options);
+	} catch (error) {
+		throw new NodeApiError(this.getNode(), error as JsonObject);
+	}
 }
 
 export function escapeSqlString(value: string): string {

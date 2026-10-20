@@ -1181,8 +1181,20 @@ function closeNodeCreator() {
 	}
 }
 
-function onCreateSticky() {
-	void onAddNodesAndConnections({ nodes: [{ type: STICKY_NODE_TYPE }], connections: [] });
+function onCursorPosition(position: VueFlowXYPosition) {
+	lastClickPosition.value = [position.x, position.y];
+}
+
+function onCreateSticky(position?: VueFlowXYPosition) {
+	const stickyPosition: XYPosition | undefined = position ? [position.x, position.y] : undefined;
+	if (stickyPosition) {
+		lastClickPosition.value = stickyPosition;
+	}
+	void onAddNodesAndConnections(
+		{ nodes: [{ type: STICKY_NODE_TYPE }], connections: [] },
+		false,
+		stickyPosition,
+	);
 }
 
 function onClickConnectionAdd(connection: Connection) {
@@ -2211,6 +2223,7 @@ onBeforeUnmount(() => {
 			@delete:connection="onDeleteConnection"
 			@click:connection:add="onClickConnectionAdd"
 			@click:pane="onClickPane"
+			@cursor:position="onCursorPosition"
 			@create:node="onOpenNodeCreatorFromCanvas"
 			@create:sticky="onCreateSticky"
 			@delete:nodes="onDeleteNodes"
@@ -2272,7 +2285,7 @@ onBeforeUnmount(() => {
 					<template v-if="containsChatTriggerNodes">
 						<CanvasChatButton
 							v-if="isChatHubAvailable ? isChatHubPanelOpen : isLogsPanelOpen"
-							variant="subtle"
+							variant="outline"
 							:label="i18n.baseText('chat.hide')"
 							:class="$style.chatButton"
 							@click="onToggleChat"
@@ -2283,7 +2296,7 @@ onBeforeUnmount(() => {
 							:shortcut="{ keys: ['c'] }"
 						>
 							<CanvasChatButton
-								:variant="isRunWorkflowButtonVisible ? 'subtle' : 'solid'"
+								:variant="isRunWorkflowButtonVisible ? 'outline' : 'solid'"
 								:label="i18n.baseText('chat.open')"
 								:class="$style.chatButton"
 								@click="onOpenChat"

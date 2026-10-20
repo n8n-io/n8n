@@ -124,13 +124,17 @@ const openWorkflowPreview = inject<((workflowId: string) => boolean) | undefined
 	'openWorkflowPreview',
 	undefined,
 );
-const { showCreditWarning, quotaLocked } = storeToRefs(store);
+const { isLowCredits, isOutOfCredits } = storeToRefs(store);
 const rootStore = useRootStore();
 const i18n = useI18n();
 const toast = useToast();
 const telemetry = useTelemetry();
 const { goToUpgrade } = usePageRedirectionHelper();
-const creditBanner = useCreditWarningBanner(showCreditWarning);
+const creditBanner = useCreditWarningBanner(isLowCredits);
+const outOfCreditsMessage = computed(() => {
+	if (!isOutOfCredits.value) return undefined;
+	return i18n.baseText('instanceAi.error.outOfCredits.title');
+});
 
 const pendingComposerContext = ref<InstanceAiHandoffContext | null>(null);
 const pendingComposerDraft = ref<PendingComposerDraft | null>(null);
@@ -1004,10 +1008,11 @@ defineExpose({
 							<WorkflowBuilderUnavailableNotice v-if="!settingsStore.isWorkflowBuilderAvailable" />
 							<LimitedModeNotice />
 							<CreditWarningBanner
-								v-if="creditBanner.visible.value"
+								v-if="isOutOfCredits || creditBanner.visible.value"
 								:credits-remaining="store.creditsRemaining"
 								:credits-quota="store.creditsQuota"
-								:amounts-hidden="quotaLocked"
+								:message="outOfCreditsMessage"
+								:dismissible="!isOutOfCredits"
 								@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
 								@dismiss="creditBanner.dismiss()"
 							/>
@@ -1024,6 +1029,7 @@ defineExpose({
 										ref="chatInputRef"
 										key="chat-input"
 										:is-streaming="thread.isStreaming"
+										:is-out-of-credits="isOutOfCredits"
 										:is-submitting="
 											thread.isSendingMessage ||
 											isPlanChangeInFlight ||
@@ -1085,14 +1091,15 @@ defineExpose({
 	// Allow flex item to shrink below content size so reka-ui viewport scrolls
 	min-height: 0;
 
-	:global([data-orientation='vertical'][data-orientation='vertical']) {
+	// Only the scrollbar, a direct child: menus inside the chat are vertical too.
+	> :global([data-orientation='vertical'][data-orientation='vertical']) {
 		background: transparent;
 		padding: 0;
 		// Sit above the sticky input dock (z-index: 3) so its gradient doesn't cover the scrollbar
 		z-index: 4;
 	}
 
-	:global([data-orientation='vertical'][data-orientation='vertical'] > *) {
+	> :global([data-orientation='vertical'][data-orientation='vertical'] > *) {
 		background: light-dark(var(--color--neutral-400), var(--color--neutral-600));
 
 		&:hover {

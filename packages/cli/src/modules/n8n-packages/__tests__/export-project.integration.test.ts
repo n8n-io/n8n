@@ -20,7 +20,7 @@ import { createProjectVariable } from '@test-integration/db/variables';
 
 import { PackageEntityNotFoundError } from '../entities/package-export.errors';
 import { N8nPackagesService } from '../n8n-packages.service';
-import { MissingWorkflowDependencyPolicy } from '../n8n-packages.types';
+import { ExportDependencyPolicy } from '../n8n-packages.types';
 import { FORMAT_VERSION } from '../spec/constants';
 import { readExport } from './utils/tar-support';
 import {
@@ -195,7 +195,7 @@ describe('project package export', () => {
 			const { stream } = await service.exportPackage({
 				user: owner,
 				projectIds: [projectA.id],
-				missingWorkflowDependencyPolicy: 'include-in-package',
+				dependencyPolicy: 'include-in-package',
 			});
 			const { manifest, entries } = await readExport(stream);
 
@@ -237,7 +237,7 @@ describe('project package export', () => {
 		const { stream } = await service.exportPackage({
 			user: owner,
 			projectIds: [projectA.id],
-			missingWorkflowDependencyPolicy: 'include-in-package',
+			dependencyPolicy: 'include-in-package',
 		});
 		const { manifest } = await readExport(stream);
 
@@ -261,7 +261,7 @@ describe('project package export', () => {
 		const { stream } = await service.exportPackage({
 			user: owner,
 			projectIds: [projectA.id],
-			missingWorkflowDependencyPolicy: 'include-in-package',
+			dependencyPolicy: 'include-in-package',
 		});
 		const { manifest } = await readExport(stream);
 
@@ -627,7 +627,7 @@ describe('project package export — with folders / workflows', () => {
 		const { stream } = await service.exportPackage({
 			user: owner,
 			projectIds: [project.id],
-			workflowVersionPolicy: 'ignore-unpublished',
+			versionPolicy: 'ignore-unpublished',
 		});
 		const { manifest, entries } = await readExport(stream);
 
@@ -697,7 +697,7 @@ describe('project package export — workflow selection', () => {
 			user,
 			projectIds: [projectId],
 			projectWorkflowIds,
-			missingWorkflowDependencyPolicy: MissingWorkflowDependencyPolicy.ReferenceOnly,
+			dependencyPolicy: ExportDependencyPolicy.ReferenceOnly,
 		});
 		return await readExport(stream);
 	}
@@ -835,8 +835,8 @@ describe('project package export — workflow selection', () => {
 			user: owner,
 			projectIds: [project.id],
 			projectWorkflowIds: [published.id, draft.id],
-			workflowVersionPolicy: 'ignore-unpublished',
-			missingWorkflowDependencyPolicy: MissingWorkflowDependencyPolicy.ReferenceOnly,
+			versionPolicy: 'ignore-unpublished',
+			dependencyPolicy: ExportDependencyPolicy.ReferenceOnly,
 		});
 		const { manifest } = await readExport(stream);
 
