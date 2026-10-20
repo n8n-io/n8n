@@ -922,6 +922,17 @@ const builderTelemetry = useAgentBuilderTelemetry({
 	localConfig,
 });
 
+// `immediate` also reports a page that opens on the knowledge tab from its URL.
+watch(
+	activeMainTab,
+	(tab, previousTab) => {
+		if (tab === 'knowledge' && previousTab !== 'knowledge') {
+			builderTelemetry.trackOpenedKnowledgeTab();
+		}
+	},
+	{ immediate: true },
+);
+
 /**
  * The backend owns runnable validation so the chat entry point either opens
  * Preview or stays in the builder.
@@ -1020,8 +1031,11 @@ async function fetchAgentFiles(
 
 async function onUploadAgentFiles(files: File[]) {
 	if (files.length === 0) return;
+	builderTelemetry.trackStartedFileUpload(files.length);
+
 	const oversizedFiles = files.filter((file) => file.size > MAX_AGENT_FILE_SIZE_BYTES);
 	if (oversizedFiles.length > 0) {
+		builderTelemetry.trackRejectedFileUpload('file_size', oversizedFiles.length);
 		showError(
 			new Error(
 				locale.baseText('agents.builder.files.uploadFileTooLarge.message', {
@@ -1035,6 +1049,7 @@ async function onUploadAgentFiles(files: File[]) {
 	if (filesWithinLimit.length === 0) return;
 
 	if (filesWithinLimit.length > MAX_AGENT_FILES_PER_UPLOAD) {
+		builderTelemetry.trackRejectedFileUpload('too_many_files', filesWithinLimit.length);
 		showError(
 			new Error(
 				locale.baseText('agents.builder.files.uploadTooManyFiles.message' as BaseTextKey, {
@@ -1052,6 +1067,7 @@ async function onUploadAgentFiles(files: File[]) {
 	);
 	const uploadTotalSizeBytes = filesWithinLimit.reduce((total, file) => total + file.size, 0);
 	if (existingTotalSizeBytes + uploadTotalSizeBytes > MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES) {
+		builderTelemetry.trackRejectedFileUpload('total_limit', filesWithinLimit.length);
 		showError(
 			new Error(
 				locale.baseText('agents.builder.files.uploadTotalTooLarge.message' as BaseTextKey, {
@@ -3088,6 +3104,7 @@ function onConfirmVectorStore(vectorStore: AgentJsonVectorStoreConfig, originalN
 }
 
 function onOpenAddVectorStoreModal() {
+	builderTelemetry.trackStartedVectorStoreSetup();
 	const vectorStores = localConfig.value?.vectorStores ?? [];
 	uiStore.openModalWithData({
 		name: AGENT_VECTOR_STORES_MODAL_KEY,
