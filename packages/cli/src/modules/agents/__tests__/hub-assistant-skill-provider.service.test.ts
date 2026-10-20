@@ -62,14 +62,31 @@ describe('HubAssistantSkillProvider', () => {
 		'limits catalog reads to the authorized session project (%s, %s)',
 		async (projectId, allowed, expected) => {
 			projects.getProjectIds.mockResolvedValue(allowed === null ? null : [...allowed]);
-			await provider.listSkills({ ...context, projectId });
+			const summaries = [
+				{
+					id: 'skill-1',
+					projectId: expected,
+					name: 'Tone',
+					description: 'Writing style',
+					versionId: 'version-1',
+					version: 1,
+				},
+			];
+			repository.findAssistantSkillSummaries.mockResolvedValue(summaries);
+			expect(await provider.listSkills({ ...context, projectId })).toEqual(summaries);
 			expect(repository.findAssistantSkillSummaries).toHaveBeenCalledWith(expected);
 		},
 	);
 
 	it('requires both list and read permissions for project skills', async () => {
 		await provider.listSkills(context);
-		expect(projects.getProjectIds).toHaveBeenCalledWith(context.user, [
+		await provider.readSkill(context, 'skill-1');
+		expect(projects.getProjectIds).toHaveBeenCalledTimes(2);
+		expect(projects.getProjectIds).toHaveBeenNthCalledWith(1, context.user, [
+			'projectSkill:list',
+			'projectSkill:read',
+		]);
+		expect(projects.getProjectIds).toHaveBeenNthCalledWith(2, context.user, [
 			'projectSkill:list',
 			'projectSkill:read',
 		]);

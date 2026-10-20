@@ -91,6 +91,21 @@ describe('SkillRepository', () => {
 		});
 	});
 
+	it('removes an enabled skill from the catalog when its owner is deleted', async () => {
+		const agent = await createAgent('Support');
+		const id = await createSkill({ agentId: agent.id });
+		await skills.update(id, { availableToAssistant: true });
+		expect(await skills.findAssistantSkillSummaries(project.id)).toEqual([
+			expect.objectContaining({ id, projectId: project.id }),
+		]);
+
+		await agents.delete(agent.id);
+
+		expect(await skills.findByIds([id])).toEqual([]);
+		expect(await skills.findAssistantSkillSummaries(project.id)).toEqual([]);
+		expect(await skills.findAssistantSkillSummaries(null)).toEqual([]);
+	});
+
 	it('refuses an availability update when the checked scope changed', async () => {
 		const id = await createSkill({ projectId: project.id });
 		await expect(
