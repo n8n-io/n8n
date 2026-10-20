@@ -62,6 +62,8 @@ describe.skipIf(!REDIS_HOST || !REDIS_PORT)('idle worker job claim (real Redis)'
 
 	afterEach(async () => {
 		await Promise.all(queues.map(async (queue) => await queue.close()));
+		const leftover = await control.keys(`${prefix}:*`);
+		if (leftover.length > 0) await control.del(...leftover);
 	});
 
 	afterAll(async () => {
