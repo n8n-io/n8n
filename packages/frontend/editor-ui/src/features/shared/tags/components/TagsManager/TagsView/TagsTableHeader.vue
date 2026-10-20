@@ -3,7 +3,6 @@ import { ref } from 'vue';
 import { MAX_TAG_NAME_LENGTH } from '../../../tags.constants';
 import { useI18n } from '@n8n/i18n';
 
-import { ElCol, ElRow } from 'element-plus';
 import { N8nButton, N8nIcon, N8nInput } from '@n8n/design-system';
 withDefaults(
 	defineProps<{
@@ -37,8 +36,8 @@ const onSearchChange = (search: string) => {
 </script>
 
 <template>
-	<ElRow class="tags-header">
-		<ElCol :span="10">
+	<div :class="$style.header">
+		<div :class="$style.search">
 			<N8nInput
 				:placeholder="i18n.baseText('tagsTableHeader.searchTags')"
 				:model-value="search"
@@ -51,23 +50,27 @@ const onSearchChange = (search: string) => {
 					<N8nIcon icon="search" />
 				</template>
 			</N8nInput>
-		</ElCol>
-		<ElCol :span="14">
-			<N8nButton
-				v-if="canCreate"
-				:disabled="disabled"
-				icon="plus"
-				:label="i18n.baseText('tagsTableHeader.addNew')"
-				size="large"
-				float="right"
-				@click="onAddNew"
-			/>
-		</ElCol>
-	</ElRow>
+		</div>
+		<N8nButton
+			v-if="canCreate"
+			:disabled="disabled"
+			icon="plus"
+			:label="i18n.baseText('tagsTableHeader.addNew')"
+			size="large"
+			@click="onAddNew"
+		/>
+	</div>
 </template>
 
-<style lang="scss" scoped>
-.tags-header {
-	margin-bottom: 15px;
+<style lang="scss" module>
+.header {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--xs);
+	margin-bottom: var(--spacing--sm);
+}
+
+.search {
+	flex: 1;
 }
 </style>
