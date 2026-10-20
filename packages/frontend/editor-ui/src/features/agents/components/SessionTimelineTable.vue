@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { vResizeObserver } from '@vueuse/components';
+import { vElementSize } from '@vueuse/components';
 import type { AgentJsonConfig } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { N8nRecycleScroller } from '@n8n/design-system';
@@ -306,7 +306,7 @@ onBeforeUnmount(() => {
 		>
 			<template #default="{ item: row, updateItemSize }">
 				<div
-					v-resize-observer="() => updateItemSize(row)"
+					v-element-size="() => updateItemSize(row)"
 					data-test-id="timeline-row"
 					:data-timeline-row-id="row.id"
 					:class="$style.rowWrapper"
