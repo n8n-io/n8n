@@ -27,6 +27,7 @@ import {
 	COMMUNITY_PACKAGE_TOOLS,
 	getAllowedToolNames,
 	INSTANCE_CONTEXT_TOOLS,
+	SKILL_TOOLS,
 	TOOLS_BY_SCOPE,
 } from '../mcp-scopes';
 import { McpConfig } from '../mcp.config';
@@ -39,6 +40,7 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import { ExecutionListService } from '@/executions/execution-list.service';
 
 import { ExecutionService } from '@/executions/execution.service';
+import { SkillsApiService } from '@/modules/agents/skills/skills-api.service';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
 import { InstanceContextService } from '@/modules/instance-ai/instance-context.service';
 import {
@@ -141,6 +143,16 @@ describe('getAllowedToolNames', () => {
 		expect(allowed).toContain('unpublish_agent');
 	});
 
+	it('grants only the read skill tools with skill:read', () => {
+		expect(getAllowedToolNames(['skill:read'])).toEqual(new Set(['search_skills', 'get_skill']));
+	});
+
+	it('grants the read skill tools with skill:write too', () => {
+		expect(getAllowedToolNames(['skill:write'])).toEqual(
+			new Set(['create_skill', 'update_skill', 'delete_skill', 'search_skills', 'get_skill']),
+		);
+	});
+
 	it('grants only call_agent with agent:execute', () => {
 		expect(getAllowedToolNames(['agent:execute'])).toEqual(new Set(['call_agent']));
 	});
@@ -159,11 +171,15 @@ describe('McpService scope enforcement', () => {
 		builderEnabled = true,
 		foldersLicensed = true,
 		instanceAiActive = false,
+		agentsActive = false,
+		skillsHubEnabled = false,
 		postHogClient = mockInstance(PostHogClient),
 	}: {
 		builderEnabled?: boolean;
 		foldersLicensed?: boolean;
 		instanceAiActive?: boolean;
+		agentsActive?: boolean;
+		skillsHubEnabled?: boolean;
 		postHogClient?: PostHogClient;
 	} = {}) =>
 		new McpService(
@@ -185,6 +201,7 @@ describe('McpService scope enforcement', () => {
 				},
 				tags: { disabled: false },
 				diagnostics: { enabled: false, frontendConfig: '' },
+				agents: { skillsHubEnabled },
 			}),
 			mockInstance(Telemetry),
 			mockInstance(WorkflowRunner),
@@ -218,7 +235,11 @@ describe('McpService scope enforcement', () => {
 			mockInstance(ModuleRegistry, {
 				isActive: vi
 					.fn()
-					.mockImplementation((name: string) => instanceAiActive && name === 'instance-ai'),
+					.mockImplementation(
+						(name: string) =>
+							(instanceAiActive && name === 'instance-ai') || (agentsActive && name === 'agents'),
+					),
+				settings: { get: () => undefined } as unknown as ModuleRegistry['settings'],
 			}),
 			mockInstance(EventService),
 			mockInstance(FolderService),
@@ -243,8 +264,9 @@ describe('McpService scope enforcement', () => {
 		const server = await buildService().getServer(user, mcpFeatureFlags());
 		const registered = getRegisteredToolNames(server);
 
-		// Agent tools require the agents module (inactive here); their own
-		// drift guard lives in agent-tools.service.test.ts. Community-package
+		// Agent and skill tools require the agents module (inactive here). The agent
+		// tools' own drift guard lives in agent-tools.service.test.ts, and the skill
+		// tools are covered by the skills hub tests below. Community-package
 		// tools need that module, the verified catalog, and a scope-bearing
 		// caller; their registration guard lives in
 		// install-community-node.registration.test.ts. Instance-context tools
@@ -253,11 +275,30 @@ describe('McpService scope enforcement', () => {
 			(name) =>
 				!registered.has(name) &&
 				!AGENT_TOOLS.has(name) &&
+				!SKILL_TOOLS.has(name) &&
 				!COMMUNITY_PACKAGE_TOOLS.has(name) &&
 				!INSTANCE_CONTEXT_TOOLS.has(name),
 		);
 		expect(unregistered).toEqual([]);
 	});
+
+	it.each([true, false])(
+		'registers the skill tools only when the skills hub is on: %s',
+		async (skillsHubEnabled) => {
+			mockInstance(SkillsApiService);
+			const server = await buildService({
+				builderEnabled: false,
+				agentsActive: true,
+				skillsHubEnabled,
+			}).getServer(user, mcpFeatureFlags());
+			const registered = getRegisteredToolNames(server);
+
+			expect(registered.has('mutate_agent')).toBe(false);
+			expect([...SKILL_TOOLS].filter((name) => registered.has(name))).toEqual(
+				skillsHubEnabled ? [...SKILL_TOOLS] : [],
+			);
+		},
+	);
 
 	it.each([true, false])(
 		'sets all context tools and the resource from the shared flag override: %s',

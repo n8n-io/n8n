@@ -4,6 +4,7 @@ import { AuthorizationServerMetadataSchema } from '@n8n/inbound-auth';
 import type { JWK } from 'jose';
 import { mock } from 'vitest-mock-extended';
 
+import type { AccessTokenRepository } from '../database/repositories/oauth-access-token.repository';
 import { OAuthServerLocalAuthorizationServer } from '../oauth-local-authorization-server';
 import type { OAuthSigningJwksProvider } from '../oauth-signing-jwks.provider';
 
@@ -24,7 +25,13 @@ describe('OAuthServerLocalAuthorizationServer', () => {
 	const urlService = mock<UrlService>();
 	const registry = mock<ProtectedResourceRegistry>();
 	const jwksProvider = mock<OAuthSigningJwksProvider>();
-	const server = new OAuthServerLocalAuthorizationServer(urlService, registry, jwksProvider);
+	const accessTokens = mock<AccessTokenRepository>();
+	const server = new OAuthServerLocalAuthorizationServer(
+		urlService,
+		registry,
+		jwksProvider,
+		accessTokens,
+	);
 
 	beforeEach(() => {
 		vi.resetAllMocks();
@@ -68,6 +75,17 @@ describe('OAuthServerLocalAuthorizationServer', () => {
 			jwksProvider.getPublicJwks.mockResolvedValue([signingJwk]);
 
 			await expect(server.getJwks()).resolves.toEqual({ keys: [signingJwk] });
+		});
+	});
+
+	describe('isAccessTokenActive', () => {
+		test('answers from the access token rows', async () => {
+			accessTokens.isActive.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+
+			await expect(server.isAccessTokenActive('live')).resolves.toBe(true);
+			await expect(server.isAccessTokenActive('revoked')).resolves.toBe(false);
+			expect(accessTokens.isActive).toHaveBeenNthCalledWith(1, 'live');
+			expect(accessTokens.isActive).toHaveBeenNthCalledWith(2, 'revoked');
 		});
 	});
 });

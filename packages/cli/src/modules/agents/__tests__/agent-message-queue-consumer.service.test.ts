@@ -244,7 +244,7 @@ describe('AgentMessageQueueConsumer', () => {
 			yield {
 				type: 'tool-call-suspended',
 				toolCallId: 'call-1',
-				toolName: 'ask_questions',
+				toolName: 'agent_builder_ask_questions',
 				runId: 'run-1',
 				suspendPayload: { type: 'questions', questions: [] },
 			};

@@ -60,6 +60,7 @@ import { getIntegrationToolConnectionDescriptors } from '../integration-tools';
 import type { IntegrationMessageContext } from '../integration-tool-types';
 import { LinearIntegration } from '../platforms/linear-integration';
 import { SlackIntegration } from '../platforms/slack/slack-integration';
+import { TeamsIntegration } from '../platforms/teams/teams-integration';
 import type { ChatIntegrationService, ChatInstance } from '../chat-integration.service';
 import type { AgentIntegrationConfig } from '@n8n/api-types';
 import type { RichCardComponentType } from '@n8n/api-types';
@@ -1615,5 +1616,93 @@ describe('ChatIntegrationActionExecutor — rate-limit handling', () => {
 			},
 		});
 		expect(guard.isBlocked('slack:cred-a')).toBe(false);
+	});
+});
+
+describe('ChatIntegrationActionExecutor — Teams sends without an inbound message', () => {
+	const teams: AgentIntegrationConfig = { type: 'teams', credentialId: 'cred-teams' };
+
+	function setup(adapter: Record<string, unknown> = {}) {
+		const registry = new ChatIntegrationRegistry();
+		registry.register(new TeamsIntegration(mock<Logger>(), mock<AgentRepository>()));
+		const chat = mock<ChatInstance>();
+		chat.getAdapter.mockReturnValue(adapter);
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
+		const executor = new ChatIntegrationActionExecutor(
+			chatIntegrationService,
+			registry,
+			new ChannelRateLimitGuard(),
+		);
+		const descriptor = getIntegrationToolConnectionDescriptors([teams], 'agent-1')[0];
+		return { chat, executor, descriptor };
+	}
+
+	it('opens a DM for an Entra object ID through the Teams adapter', async () => {
+		const objectId = '6b1f0c4e-1111-4222-8333-944455556666';
+		const thread = {
+			id: 'teams:dm',
+			post: vi.fn().mockResolvedValue({ id: 'msg-1', threadId: 'teams:dm' }),
+		};
+		const openDM = vi.fn().mockResolvedValue('teams:dm');
+		const { chat, executor, descriptor } = setup({ openDM });
+		chat.thread.mockReturnValue(thread as never);
+
+		const result = await executor.execute({
+			descriptor,
+			action: 'send_dm',
+			input: { userId: objectId, message: { text: 'Morning brief' } },
+			awaitResponse: false,
+		});
+
+		expect(openDM).toHaveBeenCalledWith(objectId);
+		expect(chat.openDM).not.toHaveBeenCalled();
+		expect(thread.post).toHaveBeenCalledWith('Morning brief');
+		expect(result).toMatchObject({
+			ok: true,
+			messageContext: { target: { type: 'dm', userId: objectId, threadId: 'teams:dm' } },
+		});
+	});
+
+	it('posts to a raw Teams conversation ID', async () => {
+		const channel = { post: vi.fn().mockResolvedValue({ id: 'msg-1' }) };
+		const encodeThreadId = vi.fn(() => 'teams:encoded');
+		const { chat, executor, descriptor } = setup({ encodeThreadId });
+		chat.channel.mockReturnValue(channel as never);
+
+		const result = await executor.execute({
+			descriptor,
+			action: 'send_channel_message',
+			input: { channelId: '19:abc@thread.tacv2', message: { text: 'Morning brief' } },
+			awaitResponse: false,
+		});
+
+		expect(encodeThreadId).toHaveBeenCalledWith(
+			expect.objectContaining({ conversationId: '19:abc@thread.tacv2' }),
+		);
+		expect(chat.channel).toHaveBeenCalledWith('teams:encoded');
+		expect(channel.post).toHaveBeenCalledWith('Morning brief');
+		expect(result).toMatchObject({ ok: true });
+	});
+
+	it('explains a refused send instead of passing the adapter error through', async () => {
+		const openDM = vi
+			.fn()
+			.mockRejectedValue(
+				Object.assign(new Error('Permission denied'), { code: 'PERMISSION_DENIED' }),
+			);
+		const { executor, descriptor } = setup({ openDM });
+
+		const result = await executor.execute({
+			descriptor,
+			action: 'send_dm',
+			input: { userId: '29:abc', message: { text: 'Morning brief' } },
+			awaitResponse: false,
+		});
+
+		expect(result).toEqual({
+			ok: false,
+			error: { code: 'PERMISSION_NOT_GRANTED', message: expect.stringContaining('installed') },
+		});
 	});
 });

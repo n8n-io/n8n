@@ -222,6 +222,8 @@ describe('buildFromJson()', () => {
 		const preview = await build(true);
 		expect(preview).toContain('You are a test agent.');
 		expect(preview).toContain('Preview chat policy');
+		expect(preview).toContain('including your own setup, only through your tools');
+		expect(preview).not.toContain('you have no tool that can');
 		expect(await build(false)).toBe('You are a test agent.');
 		expect(await build()).toBe('You are a test agent.');
 	});

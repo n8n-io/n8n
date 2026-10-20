@@ -2413,7 +2413,7 @@ const headerActions = computed(() => {
 	actions.push({
 		id: 'export-json',
 		label: locale.baseText('agents.builder.exportJson' as BaseTextKey),
-		icon: 'download',
+		icon: 'arrow-block-up',
 		divided: actions.length > 0,
 	});
 
@@ -2421,7 +2421,7 @@ const headerActions = computed(() => {
 		actions.push({
 			id: 'import-json',
 			label: locale.baseText('agents.builder.importJson' as BaseTextKey),
-			icon: 'upload',
+			icon: 'arrow-block-down',
 		});
 	}
 
