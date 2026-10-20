@@ -4,8 +4,8 @@ import multer from 'multer';
 
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 
-import type { KnowledgeAvailability } from '@/modules/knowledge/knowledge-availability';
-import { makeKnowledgeAvailability } from '@/modules/knowledge/__tests__/test-utils/knowledge-availability';
+import type { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge-availability.service';
+import { makeKnowledgeAvailabilityService } from '@/modules/knowledge/__tests__/test-utils/knowledge-availability.service';
 
 import { AgentKnowledgeController } from '../agent-knowledge.controller';
 import type { AgentKnowledgeService } from '../agent-knowledge.service';
@@ -17,17 +17,17 @@ import {
 
 function makeController({
 	agentKnowledgeService = mock<AgentKnowledgeService>(),
-	knowledgeAvailability = makeKnowledgeAvailability(),
+	knowledgeAvailabilityService = makeKnowledgeAvailabilityService(),
 	runtimeCacheService = mock<AgentRuntimeCacheService>(),
 }: {
 	agentKnowledgeService?: Mocked<AgentKnowledgeService>;
-	knowledgeAvailability?: KnowledgeAvailability;
+	knowledgeAvailabilityService?: KnowledgeAvailabilityService;
 	runtimeCacheService?: Mocked<AgentRuntimeCacheService>;
 } = {}) {
 	return {
 		controller: new AgentKnowledgeController(
 			agentKnowledgeService,
-			knowledgeAvailability,
+			knowledgeAvailabilityService,
 			runtimeCacheService,
 		),
 		agentKnowledgeService,
@@ -127,11 +127,11 @@ describe('AgentKnowledgeController file deletion', () => {
 
 describe('AgentKnowledgeController knowledge base gating', () => {
 	it.each([
-		{ reason: 'the sandbox is disabled', availability: { sandboxEnabled: false } },
-		{ reason: 'the knowledge module is inactive', availability: { knowledgeActive: false } },
+		{ reason: 'the sandbox is disabled', availability: { isSandboxEnabled: false } },
+		{ reason: 'the knowledge module is inactive', availability: { isKnowledgeActive: false } },
 	])('returns not found for file endpoints when $reason', async ({ availability }) => {
 		const { controller, agentKnowledgeService } = makeController({
-			knowledgeAvailability: makeKnowledgeAvailability(availability),
+			knowledgeAvailabilityService: makeKnowledgeAvailabilityService(availability),
 		});
 
 		await expect(

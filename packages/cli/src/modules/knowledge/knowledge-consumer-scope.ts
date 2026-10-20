@@ -1,5 +1,7 @@
 /**
- * Who is asking for knowledge. Every call across the module boundary carries a scope.
+ * Identifies the consumer a knowledge call is made for and bounds the knowledge
+ * it can reach. An agent scope reaches that agent's files. Every call across the
+ * module boundary carries a scope.
  *
  * `projectId` stays in the scope although the module does not check project
  * membership: the knowledge sandbox id is derived from the instance id, the
@@ -12,5 +14,5 @@ export type AgentKnowledgeConsumerScope = {
 	agentId: string;
 };
 
-/** WIP Note: Follow-up phases will add further consumer kinds (for example Instance AI) as union members. */
+/** Union of the consumer kinds. Add a kind here when a new consumer needs knowledge. */
 export type KnowledgeConsumerScope = AgentKnowledgeConsumerScope;

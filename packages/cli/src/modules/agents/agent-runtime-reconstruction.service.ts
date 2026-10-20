@@ -51,7 +51,7 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 import { AiService } from '@/services/ai.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
 import { createAiMcpFetch, createAiProxyFetch, createWebSearchFetch } from '@/utils/ai-proxy-fetch';
-import { KnowledgeAvailability } from '@/modules/knowledge/knowledge-availability';
+import { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge-availability.service';
 import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -296,7 +296,7 @@ export class AgentRuntimeReconstructionService {
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly agentChatAttachmentService: AgentChatAttachmentService,
 		private readonly credentialsService: CredentialsService,
-		private readonly knowledgeAvailability: KnowledgeAvailability,
+		private readonly knowledgeAvailabilityService: KnowledgeAvailabilityService,
 	) {}
 
 	async reconstructFromAgentEntity(
@@ -1000,9 +1000,8 @@ export class AgentRuntimeReconstructionService {
 		throwIfAborted(params.abortSignal);
 		const { agent, agentId, projectId } = params;
 		// Module check first, so the file repository is not touched while knowledge is off.
-		// A follow-up PR moves its entity into the knowledge module.
 		const hasFiles =
-			this.knowledgeAvailability.isModuleActive() &&
+			this.knowledgeAvailabilityService.isModuleActive() &&
 			(await this.agentFileRepository.hasFilesForAgent(agentId));
 		throwIfAborted(params.abortSignal);
 		if (hasFiles) {

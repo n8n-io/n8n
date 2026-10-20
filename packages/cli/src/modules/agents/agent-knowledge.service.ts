@@ -14,7 +14,7 @@ import path from 'node:path';
 import type { Readable } from 'node:stream';
 import { BadRequestError } from '@n8n/errors';
 
-import { KnowledgeAvailability } from '@/modules/knowledge/knowledge-availability';
+import { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge-availability.service';
 
 import { getAgentOrThrow } from './utils/get-agent-or-throw';
 import {
@@ -39,7 +39,7 @@ export class AgentKnowledgeService {
 		private readonly agentKnowledgeMirrorService: AgentKnowledgeMirrorService,
 		private readonly agentKnowledgeFileStore: AgentKnowledgeFileStore,
 		private readonly logger: Logger,
-		private readonly knowledgeAvailability: KnowledgeAvailability,
+		private readonly knowledgeAvailabilityService: KnowledgeAvailabilityService,
 	) {}
 
 	async uploadFiles(
@@ -48,7 +48,7 @@ export class AgentKnowledgeService {
 		files: Express.Multer.File[],
 	): Promise<AgentFileDto[]> {
 		try {
-			this.knowledgeAvailability.assertModuleActive();
+			this.knowledgeAvailabilityService.assertModuleActive();
 			await getAgentOrThrow(this.agentRepository, agentId, projectId);
 			this.validateUploadMetadata(files);
 			await this.validateUploadBatch(agentId, files);
@@ -72,14 +72,14 @@ export class AgentKnowledgeService {
 	}
 
 	async listFiles(agentId: string, projectId: string): Promise<AgentFileDto[]> {
-		this.knowledgeAvailability.assertModuleActive();
+		this.knowledgeAvailabilityService.assertModuleActive();
 		await getAgentOrThrow(this.agentRepository, agentId, projectId);
 		const files = await this.agentFileRepository.findByAgentId(agentId);
 		return files.map((file) => toAgentFileDto(file));
 	}
 
 	async warmKnowledgeSandbox(agentId: string, projectId: string): Promise<void> {
-		this.knowledgeAvailability.assertModuleActive();
+		this.knowledgeAvailabilityService.assertModuleActive();
 		await getAgentOrThrow(this.agentRepository, agentId, projectId);
 		if (!(await this.agentFileRepository.hasFilesForAgent(agentId))) return;
 
@@ -87,7 +87,7 @@ export class AgentKnowledgeService {
 	}
 
 	async deleteFile(agentId: string, projectId: string, fileId: string): Promise<void> {
-		this.knowledgeAvailability.assertModuleActive();
+		this.knowledgeAvailabilityService.assertModuleActive();
 		await getAgentOrThrow(this.agentRepository, agentId, projectId);
 
 		const file = await this.agentFileRepository.findByIdAndAgentId(fileId, agentId);
@@ -113,10 +113,8 @@ export class AgentKnowledgeService {
 	}
 
 	/**
-	 * Called from the agent and project deletion cascades. No module gate: this is
-	 * cleanup, not a feature entry point, and the agents module still registers
-	 * `AgentFile` and the byte stores, so it works with the knowledge module off.
-	 * Skipping it would leave stored bytes that no row points at.
+	 * Cleanup for the agent and project deletion cascades. Not gated on the
+	 * knowledge module: skipping it would leave stored bytes that no row points at.
 	 */
 	async deleteAllFilesForAgent(_projectId: string, agentId: string): Promise<void> {
 		const files = await this.agentFileRepository.findByAgentId(agentId);

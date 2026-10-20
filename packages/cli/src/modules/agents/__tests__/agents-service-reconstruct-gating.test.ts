@@ -30,8 +30,8 @@ import type { AiService } from '@/services/ai.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
-import type { KnowledgeAvailability } from '@/modules/knowledge/knowledge-availability';
-import { makeKnowledgeAvailability } from '@/modules/knowledge/__tests__/test-utils/knowledge-availability';
+import type { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge-availability.service';
+import { makeKnowledgeAvailabilityService } from '@/modules/knowledge/__tests__/test-utils/knowledge-availability.service';
 
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import type { AgentKnowledgeMirrorService } from '../agent-knowledge-mirror.service';
@@ -112,7 +112,7 @@ function makeReconstructionService(
 		agentFileRepository?: AgentFileRepository;
 		agentWorkspaceService?: AgentWorkspaceService;
 		agentKnowledgeMirrorService?: AgentKnowledgeMirrorService;
-		knowledgeAvailability?: KnowledgeAvailability;
+		knowledgeAvailabilityService?: KnowledgeAvailabilityService;
 	} = {},
 ): AgentRuntimeReconstructionService {
 	const secureRuntime = mock<AgentSecureRuntime>();
@@ -148,7 +148,7 @@ function makeReconstructionService(
 		mock<WorkflowFinderService>(),
 		mock<AgentChatAttachmentService>(),
 		mock<CredentialsService>(),
-		overrides.knowledgeAvailability ?? makeKnowledgeAvailability(),
+		overrides.knowledgeAvailabilityService ?? makeKnowledgeAvailabilityService(),
 	);
 }
 
@@ -413,7 +413,7 @@ describe('AgentRuntimeReconstructionService — workspace attachment', () => {
 			agentSandboxRuntimeService,
 			agentFileRepository,
 			agentWorkspaceService,
-			knowledgeAvailability: makeKnowledgeAvailability({ knowledgeActive: false }),
+			knowledgeAvailabilityService: makeKnowledgeAvailabilityService({ isKnowledgeActive: false }),
 		});
 
 		await reconstructWithWorkspace(service);

@@ -8,9 +8,9 @@ import type {
 import type { KnowledgeConsumerScope } from './knowledge-consumer-scope';
 
 /**
- * A sandbox the module mirrors knowledge files into. This is the subset of the
- * agents runtime handle that the mirror uses, so the agents adapter returns its
- * own handle as-is.
+ * A sandbox the module mirrors knowledge files into: the subset of the agents
+ * sandbox runtime handle that the module uses, so the agents module can return
+ * its own handle as-is.
  */
 export type KnowledgeSandboxHandle = {
 	/** The mirror paths depend on the provider's home directory. */
@@ -24,12 +24,10 @@ export type KnowledgeSandboxHandle = {
 };
 
 /**
- * What the knowledge module needs from a consumer: exactly the sandbox calls the
- * mirror service makes today, plus `warm` and `destroy`.
- * WIP Note: P1 sandbox inversion can shrink this interface to the scope type.
- *
- * The agents module implements it over its sandbox runtime. Sandbox ids and
- * lifecycle settings stay with that implementation, unchanged.
+ * What the knowledge module needs from a consumer: a sandbox to mirror knowledge
+ * files into, a way to run commands in it, and its warm-up and teardown. The
+ * agents module implements it over its sandbox runtime, which keeps ownership of
+ * sandbox ids and lifecycle settings.
  */
 export interface KnowledgeSandboxProvider {
 	/** Throws when the sandbox is off or the scope cannot form a storage path. */

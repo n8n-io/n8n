@@ -12,7 +12,7 @@ import type { OauthService } from '@/oauth/oauth.service';
 import type { AiService } from '@/services/ai.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-import { makeKnowledgeAvailability } from '@/modules/knowledge/__tests__/test-utils/knowledge-availability';
+import { makeKnowledgeAvailabilityService } from '@/modules/knowledge/__tests__/test-utils/knowledge-availability.service';
 import type { WorkflowRepository } from '@n8n/db';
 
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
@@ -83,7 +83,7 @@ function makeService() {
 		mock<WorkflowFinderService>(),
 		mock<AgentChatAttachmentService>(),
 		mock<CredentialsService>(),
-		makeKnowledgeAvailability(),
+		makeKnowledgeAvailabilityService(),
 	);
 
 	return { service, workspaceService };

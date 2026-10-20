@@ -9,8 +9,8 @@ import { MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import { NotFoundError } from '@n8n/errors';
 
-import type { KnowledgeAvailability } from '@/modules/knowledge/knowledge-availability';
-import { makeKnowledgeAvailability } from '@/modules/knowledge/__tests__/test-utils/knowledge-availability';
+import type { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge-availability.service';
+import { makeKnowledgeAvailabilityService } from '@/modules/knowledge/__tests__/test-utils/knowledge-availability.service';
 
 import type { AgentKnowledgeFileStore } from '../agent-knowledge-file-store';
 import type { AgentKnowledgeMirrorService } from '../agent-knowledge-mirror.service';
@@ -145,7 +145,9 @@ describe('AgentKnowledgeService', () => {
 	let logger: Mocked<Logger>;
 	let service: AgentKnowledgeService;
 
-	function makeService(knowledgeAvailability: KnowledgeAvailability = makeKnowledgeAvailability()) {
+	function makeService(
+		knowledgeAvailabilityService: KnowledgeAvailabilityService = makeKnowledgeAvailabilityService(),
+	) {
 		return new AgentKnowledgeService(
 			agentRepository,
 			agentFileRepository as unknown as AgentFileRepository,
@@ -153,7 +155,7 @@ describe('AgentKnowledgeService', () => {
 			agentKnowledgeMirrorService,
 			agentKnowledgeFileStore,
 			logger,
-			knowledgeAvailability,
+			knowledgeAvailabilityService,
 		);
 	}
 
@@ -489,7 +491,7 @@ describe('AgentKnowledgeService', () => {
 
 	describe('with the knowledge module inactive', () => {
 		beforeEach(() => {
-			service = makeService(makeKnowledgeAvailability({ knowledgeActive: false }));
+			service = makeService(makeKnowledgeAvailabilityService({ isKnowledgeActive: false }));
 			agentRepository.findByIdAndProjectId.mockResolvedValue({
 				id: agentId,
 				projectId,

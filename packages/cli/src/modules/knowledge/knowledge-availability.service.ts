@@ -9,12 +9,9 @@ import { SandboxSettingsService } from '@/services/sandbox-settings.service';
  * Answers whether knowledge is available on this instance. Consumers ask here
  * before they call into the module and derive their own availability flags from
  * these answers instead of computing them.
- *
- * WIP Note: P1 serves `isFileKnowledgeEnabled()` to the editor as the `uploadsEnabled`
- * module setting, so `agents.knowledgeBaseEnabled` becomes derived from it.
  */
 @Service()
-export class KnowledgeAvailability {
+export class KnowledgeAvailabilityService {
 	constructor(
 		private readonly moduleRegistry: ModuleRegistry,
 		private readonly sandboxSettingsService: SandboxSettingsService,

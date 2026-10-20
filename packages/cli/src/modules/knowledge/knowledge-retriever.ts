@@ -13,9 +13,8 @@ import type { KnowledgeConsumerScope } from './knowledge-consumer-scope';
  * What the knowledge module offers to a consumer. The agents module exposes
  * these operations as the `find_file`, `search_text` and `read_file` tools.
  *
- * WIP Note: The request and result types are today's, unchanged: tool inputs and outputs
- * stay byte-identical through P0. They come from the agents module until follow-up PRs
- * move `agent-knowledge-retrieval.ts` into `retrieval/retrieval-schemas.ts` here.
+ * The request and result types are shared with the agents module so that tool
+ * inputs and outputs stay identical.
  */
 export interface KnowledgeRetriever {
 	/** Whether the scope holds any knowledge files. Consumers attach the tools only when it does. */

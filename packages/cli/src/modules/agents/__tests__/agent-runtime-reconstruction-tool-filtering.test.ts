@@ -28,7 +28,7 @@ import type { AiService } from '@/services/ai.service';
 import { WorkflowRunner } from '@/workflow-runner';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-import { makeKnowledgeAvailability } from '@/modules/knowledge/__tests__/test-utils/knowledge-availability';
+import { makeKnowledgeAvailabilityService } from '@/modules/knowledge/__tests__/test-utils/knowledge-availability.service';
 
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import type { AgentKnowledgeMirrorService } from '../agent-knowledge-mirror.service';
@@ -175,7 +175,7 @@ function makeService(overrides: {
 		workflowFinderService,
 		mock<AgentChatAttachmentService>(),
 		credentialsService,
-		makeKnowledgeAvailability(),
+		makeKnowledgeAvailabilityService(),
 	);
 
 	return {

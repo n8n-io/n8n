@@ -39,8 +39,8 @@ import { SkillsHubRollout } from '../skills/skills-hub-rollout';
 import { SkillsHubStartupCopy } from '../skills/skills-hub-startup-copy';
 import { AgentRepository } from '../repositories/agent.repository';
 import { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
-import { KnowledgeAvailability } from '@/modules/knowledge/knowledge-availability';
-import { makeKnowledgeAvailability } from '@/modules/knowledge/__tests__/test-utils/knowledge-availability';
+import { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge-availability.service';
+import { makeKnowledgeAvailabilityService } from '@/modules/knowledge/__tests__/test-utils/knowledge-availability.service';
 
 /**
  * Stubs every dependency `AgentsModule.init()` resolves via `Container.get`,
@@ -132,30 +132,30 @@ describe('AgentsModule', () => {
 	describe('settings()', () => {
 		it.each([
 			{
-				sandboxEnabled: true,
-				knowledgeActive: true,
+				isSandboxEnabled: true,
+				isKnowledgeActive: true,
 				proxyEnabled: false,
 				knowledgeBaseEnabled: true,
 			},
 			{
-				sandboxEnabled: false,
-				knowledgeActive: true,
+				isSandboxEnabled: false,
+				isKnowledgeActive: true,
 				proxyEnabled: true,
 				knowledgeBaseEnabled: false,
 			},
 			{
-				sandboxEnabled: true,
-				knowledgeActive: false,
+				isSandboxEnabled: true,
+				isKnowledgeActive: false,
 				proxyEnabled: true,
 				knowledgeBaseEnabled: false,
 			},
 		])(
-			'reports knowledgeBaseEnabled=$knowledgeBaseEnabled for sandbox=$sandboxEnabled and knowledge module=$knowledgeActive, independent of proxy=$proxyEnabled',
-			async ({ sandboxEnabled, knowledgeActive, proxyEnabled, knowledgeBaseEnabled }) => {
+			'reports knowledgeBaseEnabled=$knowledgeBaseEnabled for sandbox=$isSandboxEnabled and knowledge module=$isKnowledgeActive, independent of proxy=$proxyEnabled',
+			async ({ isSandboxEnabled, isKnowledgeActive, proxyEnabled, knowledgeBaseEnabled }) => {
 				Container.set(AgentsConfig, mock<AgentsConfig>({ modules: [] }));
 				Container.set(
-					KnowledgeAvailability,
-					makeKnowledgeAvailability({ sandboxEnabled, knowledgeActive }),
+					KnowledgeAvailabilityService,
+					makeKnowledgeAvailabilityService({ isSandboxEnabled, isKnowledgeActive }),
 				);
 				Container.set(AiService, mock<AiService>({ isProxyEnabled: () => proxyEnabled }));
 

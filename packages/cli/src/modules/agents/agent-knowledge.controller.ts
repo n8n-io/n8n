@@ -6,7 +6,7 @@ import multer from 'multer';
 
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 
-import { KnowledgeAvailability } from '@/modules/knowledge/knowledge-availability';
+import { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge-availability.service';
 
 import { AgentKnowledgeService } from './agent-knowledge.service';
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
@@ -22,13 +22,13 @@ const agentUploadMiddleware = Container.get(AgentUploadMiddleware);
 export class AgentKnowledgeController {
 	constructor(
 		private readonly agentKnowledgeService: AgentKnowledgeService,
-		private readonly knowledgeAvailability: KnowledgeAvailability,
+		private readonly knowledgeAvailabilityService: KnowledgeAvailabilityService,
 		private readonly runtimeCacheService: AgentRuntimeCacheService,
 	) {}
 
 	/** Knowledge base endpoints require the knowledge module and an enabled Agent sandbox. */
 	private assertKnowledgeBaseEnabled() {
-		if (!this.knowledgeAvailability.isFileKnowledgeEnabled()) {
+		if (!this.knowledgeAvailabilityService.isFileKnowledgeEnabled()) {
 			throw new NotFoundError('Agent knowledge base is not enabled');
 		}
 	}
