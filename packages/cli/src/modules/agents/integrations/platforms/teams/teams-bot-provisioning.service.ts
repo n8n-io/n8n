@@ -11,6 +11,7 @@ import { BadRequestError } from '@n8n/errors';
 import { armNextLinkPath, type ArmResponse, TeamsArmService } from './teams-arm.service';
 import { graphErrorCode } from './teams-graph.service';
 import { TeamsArmTemplateService } from './teams-arm-template.service';
+import { TeamsCredentialNotesService } from './teams-credential-notes.service';
 import { TEAMS_MANAGER_CREDENTIAL_TYPE } from './teams-managed-setup.service';
 import { AZURE_RESOURCE, TeamsManagerTokenService } from './teams-manager-token.service';
 import { stringProperty } from '../../integration-helpers';
@@ -30,6 +31,10 @@ const RESOURCE_GROUP = 'n8n-agents';
 /** Bot Service is a global resource; its resource group still needs a region. */
 const RESOURCE_GROUP_LOCATION = 'westeurope';
 
+export function botResourceId(subscriptionId: string, botName: string): string {
+	return `/subscriptions/${subscriptionId}/resourceGroups/${RESOURCE_GROUP}/providers/Microsoft.BotService/botServices/${botName}`;
+}
+
 /** `properties.msaAppId` of an existing bot resource. */
 function botAppIdOf(body: unknown): string | undefined {
 	if (!isRecord(body)) return undefined;
@@ -46,6 +51,8 @@ export interface ProvisionBotOptions extends ListSubscriptionsOptions {
 	projectId: string;
 	agentId: string;
 	agentName: string;
+	/** The channel credential, which keeps where the bot is so the settings can link to it. */
+	credentialId: string;
 	subscriptionId: string;
 	/** Entra application (client) ID the bot signs its messages with. */
 	msaAppId: string;
@@ -70,6 +77,7 @@ export class TeamsBotProvisioningService {
 		private readonly tokens: TeamsManagerTokenService,
 		private readonly armTemplateService: TeamsArmTemplateService,
 		private readonly credentialsFinderService: CredentialsFinderService,
+		private readonly notes: TeamsCredentialNotesService,
 	) {}
 
 	/**
@@ -143,7 +151,7 @@ export class TeamsBotProvisioningService {
 			(await this.findBotByAppId(token, options.subscriptionId, options.msaAppId)) ??
 			this.armTemplateService.botNameFor(options.agentName, options.agentId);
 
-		const scope = `/subscriptions/${options.subscriptionId}/resourceGroups/${RESOURCE_GROUP}/providers/Microsoft.BotService/botServices/${botName}`;
+		const scope = botResourceId(options.subscriptionId, botName);
 
 		// The bot name is derived from the agent, so a re-run lands on the bot made
 		// last time. Azure fixes a bot's app id at creation, so one left over from
@@ -193,6 +201,12 @@ export class TeamsBotProvisioningService {
 			);
 		}
 
+		// Azure has no read of a bot by the app it signs for without the
+		// subscription, so the channel credential keeps both for the settings link.
+		await this.notes.write(options.user, options.credentialId, {
+			azureBotName: botName,
+			azureSubscriptionId: options.subscriptionId,
+		});
 		return { botName, resourceGroup: RESOURCE_GROUP, subscriptionId: options.subscriptionId };
 	}
 

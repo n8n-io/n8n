@@ -23,7 +23,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { TOKEN_EXCHANGE_ISSUER } from '@/modules/token-exchange/token-exchange.types';
 import { CredentialsTester } from '@/services/credentials-tester.service';
-import { JwtService } from '@/services/jwt.service';
+import { JwtService } from '@n8n/backend-services';
 import { affixRoleToSaveCredential, createCredentials } from '@test-integration/db/credentials';
 import {
 	createAnnotationTags,
@@ -84,7 +84,7 @@ describe('Public API endpoints with API key scopes', () => {
 		const { ScopedJwtStrategy } = await import(
 			'@/modules/token-exchange/services/scoped-jwt.strategy.js'
 		);
-		const { AuthStrategyRegistry } = await import('@/services/auth-strategy.registry.js');
+		const { AuthStrategyRegistry } = await import('@n8n/backend-services/auth');
 		Container.get(AuthStrategyRegistry).register(Container.get(ScopedJwtStrategy));
 	});
 

@@ -8,13 +8,18 @@ import type {
 	IHttpRequestOptions,
 	ILoadOptionsFunctions,
 	IPollFunctions,
+	ISupplyDataFunctions,
 } from 'n8n-workflow';
 
 import { DATABRICKS_PARTNER_USER_AGENT } from '../constants';
 
 import type { DatabricksCredentials, OpenAPISchema } from './interfaces';
 
-export type DatabricksContext = IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions;
+export type DatabricksContext =
+	| IExecuteFunctions
+	| ILoadOptionsFunctions
+	| IPollFunctions
+	| ISupplyDataFunctions;
 export type DatabricksCredentialType = 'databricksApi' | 'databricksOAuth2Api';
 
 const RATE_LIMIT_MAX_RETRIES = 3;

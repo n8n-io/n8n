@@ -55,7 +55,7 @@ const markdownContent = computed(() => ({
 					@update:model-value="onSelectArtifact"
 				/>
 				<div :class="$style.headerActions">
-					<N8nIconButton variant="ghost" text icon="download" @click="emit('download')" />
+					<N8nIconButton variant="ghost" text icon="arrow-circle-down" @click="emit('download')" />
 					<N8nIconButton variant="ghost" text icon="x" @click="emit('close')" />
 				</div>
 			</div>

@@ -374,7 +374,7 @@ const redirectToDataTables = () => {
 						@mouseleave="isUploadHovered = false"
 					>
 						<N8nIcon
-							icon="file"
+							icon="cloud-arrow-up"
 							:size="24"
 							:color="isUploadHovered ? 'text-dark' : 'text-light'"
 							:class="$style.uploadIcon"

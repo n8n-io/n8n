@@ -40,9 +40,16 @@ parameters:
     required: false
     name: excludePinnedData
     in: query
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
+  - schema:
+      type: string
+      enum:
+        - 'true'
+        - 'false'
+      default: 'false'
+      description: Set to `true` to add `parentFolder` to each workflow. `parentFolder` holds the folder `id`, or is `null` at the project root.
+    required: false
+    name: includeParentFolder
+    in: query
 responses:
   '200':
     description: Operation successful.
@@ -543,6 +550,15 @@ responses:
                       - autosaved
                       - createdAt
                       - updatedAt
+                  parentFolder:
+                    type: object
+                    nullable: true
+                    properties:
+                      id:
+                        type: string
+                    required:
+                      - id
+                    description: Folder that contains the workflow, or null at the project root. The field is present only when `includeParentFolder` is `true`.
                 required:
                   - id
                   - name

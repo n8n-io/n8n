@@ -2,7 +2,7 @@ import { ApiKey, BaseRepository, TransactionRunner, type OperationContext } from
 import { Service } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 
-import { TOKEN_PURPOSES } from '@/services/token-purposes';
+import { TOKEN_PURPOSES } from '@n8n/backend-services';
 
 /**
  * SCIM provisioning keys are ordinary API keys reserved by their audience.
