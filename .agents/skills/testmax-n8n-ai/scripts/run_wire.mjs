@@ -228,7 +228,7 @@ function outsideAllowList(workflow, g, start, pinData) {
 			for (const { node } of targets ?? []) {
 				if (seen.has(node)) continue;
 				seen.add(node);
-				if (g.byName.has(node) && !pinData[node]) running.add(node);
+				if (g.byName.has(node) && !Object.hasOwn(pinData, node)) running.add(node);
 			}
 		}
 	}

@@ -393,7 +393,7 @@ async function within(promise, ms) {
 
 /** The pinned trigger that a run starts from: triggerNode, or else the first pinned trigger. */
 export const startNode = (workflow, pinData, triggerNode) =>
-	workflow.nodes.find((n) => (!triggerNode || n.name === triggerNode) && pinData[n.name] && !n.disabled && Object.keys(workflow.connections ?? {}).includes(n.name) && /trigger|webhook/i.test(n.type));
+	workflow.nodes.find((n) => (!triggerNode || n.name === triggerNode) && Object.hasOwn(pinData, n.name) && !n.disabled && Object.keys(workflow.connections ?? {}).includes(n.name) && /trigger|webhook/i.test(n.type));
 
 /**
  * Run a workflow once. pinData holds the trigger and any pinned nodes. triggerNode names the
