@@ -1,8 +1,5 @@
 import type {
-	ICredentialsDecrypted,
-	ICredentialTestFunctions,
 	IExecuteFunctions,
-	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeBaseDescription,
@@ -14,7 +11,8 @@ import { oldVersionNotice } from '@utils/descriptions';
 
 import { pgInsertV2, pgQueryV2, pgUpdate, wrapData } from './genericFunctions';
 import { configurePostgres } from '../transport';
-import type { PgpConnection, PostgresNodeCredentials } from '../v2/helpers/interfaces';
+import type { PostgresNodeCredentials } from '../v2/helpers/interfaces';
+import { postgresConnectionTest } from '../v2/methods/credentialTest';
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Postgres',
@@ -294,37 +292,7 @@ export class PostgresV1 implements INodeType {
 
 	methods = {
 		credentialTest: {
-			async postgresConnectionTest(
-				this: ICredentialTestFunctions,
-				credential: ICredentialsDecrypted,
-			): Promise<INodeCredentialTestResult> {
-				const credentials = credential.data as PostgresNodeCredentials;
-
-				let connection: PgpConnection | undefined;
-
-				try {
-					const { db } = await configurePostgres.call(this, credentials, {});
-
-					// Acquires a new connection that can be used to to run multiple
-					// queries on the same connection and must be released again
-					// manually.
-					connection = await db.connect();
-				} catch (error) {
-					return {
-						status: 'Error',
-						message: error.message,
-					};
-				} finally {
-					if (connection) {
-						// release connection
-						await connection.done();
-					}
-				}
-				return {
-					status: 'OK',
-					message: 'Connection successful!',
-				};
-			},
+			postgresConnectionTest,
 		},
 	};
 
