@@ -77,6 +77,40 @@ describe('AgentMessageQueueService', () => {
 		);
 	});
 
+	describe('claimNext', () => {
+		it('reads the Agents setting before it locks the thread', async () => {
+			settingsService.getEnabled.mockResolvedValue(true);
+			threadRepository.lockById.mockResolvedValue(null);
+
+			await service.claimNext('thread-1', async () => true);
+
+			// Disabling Agents locks the setting and then the threads. The same order prevents a deadlock.
+			const [settingsCall] = settingsService.getEnabled.mock.invocationCallOrder;
+			const [lockCall] = threadRepository.lockById.mock.invocationCallOrder;
+			expect(settingsCall).toBeLessThan(lockCall);
+		});
+
+		it('does not claim a project agent thread while Agents are turned off', async () => {
+			settingsService.getEnabled.mockResolvedValue(false);
+			threadRepository.lockById.mockResolvedValue(makeThread());
+
+			expect(await service.claimNext('thread-1', async () => true)).toBeNull();
+			expect(steering.releaseInactive).not.toHaveBeenCalled();
+		});
+
+		it('keeps claiming a system agent thread while Agents are turned off', async () => {
+			systemAgents.register(mock<SystemAgentProvider>({ agentId: 'system-agent' }));
+			settingsService.getEnabled.mockResolvedValue(false);
+			threadRepository.lockById.mockResolvedValue(makeThread({ agentId: 'system-agent' }));
+			steering.releaseInactive.mockResolvedValue(false);
+			executionRepository.existsRunningByThread.mockResolvedValue(true);
+
+			// A running turn blocks the claim, but only after the setting check let the thread through.
+			expect(await service.claimNext('thread-1', async () => true)).toBeNull();
+			expect(steering.releaseInactive).toHaveBeenCalled();
+		});
+	});
+
 	describe('hidden system turns', () => {
 		const systemThread = () => makeThread({ agentId: 'system-agent' });
 

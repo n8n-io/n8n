@@ -366,13 +366,14 @@ export class AgentMessageQueueService {
 	): Promise<ClaimedAgentMessage | null> {
 		let steeringChanged = false;
 		const claimed = await this.txRunner.run({}, async (ctx) => {
+			// Read the setting before the thread lock. Disabling Agents locks the setting
+			// and then the threads, so the opposite order can deadlock on PostgreSQL.
+			const enabled = await this.settingsService.getEnabled(ctx);
 			const thread = await this.threadRepository.lockById(threadId, ctx);
 			if (!thread) return null;
 
 			// The admin setting for custom agents does not apply to system agents.
-			if (!this.systemAgents.has(thread.agentId) && !(await this.settingsService.getEnabled(ctx))) {
-				return null;
-			}
+			if (!enabled && !this.systemAgents.has(thread.agentId)) return null;
 
 			steeringChanged = await this.steering.releaseInactive(thread, ctx);
 			if (await this.isBlocked(thread, ctx)) return null;
