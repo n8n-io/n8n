@@ -1,7 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { DynamicTool } from '@langchain/core/tools';
-import { CredentialsRepository, type CredentialsEntity } from '@n8n/db';
+import { CredentialAccessRepository, CredentialsRepository, type CredentialsEntity } from '@n8n/db';
 import { StructuredToolkit } from 'n8n-core';
 import {
 	Expression,
@@ -92,6 +92,7 @@ describe('isAgentProviderNode', () => {
 describe('EphemeralNodeExecutor', () => {
 	const nodeTypes = mockInstance(NodeTypes);
 	const credentialsRepository = mockInstance(CredentialsRepository);
+	const credentialAccessRepository = mockInstance(CredentialAccessRepository);
 	const logger = mockInstance(Logger);
 	const policyEnforcementService = mockInstance(PolicyEnforcementService);
 	// Node execution constructs `SSHClientsManager` via DI, whose constructor does
@@ -105,6 +106,7 @@ describe('EphemeralNodeExecutor', () => {
 		credentialsRepository,
 		logger,
 		policyEnforcementService,
+		credentialAccessRepository,
 	);
 
 	const toolDescription: INodeTypeDescription = {
@@ -123,6 +125,7 @@ describe('EphemeralNodeExecutor', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		mockGetBase.mockResolvedValue({});
+		credentialAccessRepository.findCredentialNames.mockResolvedValue([]);
 	});
 
 	describe('validateNodeForExecution (via executeInline)', () => {
@@ -422,6 +425,7 @@ describe('EphemeralNodeExecutor', () => {
 				'c1',
 			]);
 			expect(observedCredentials).toEqual({ slackApi: { id: 'c1', name: 'Current Slack' } });
+			expect(credentialAccessRepository.findCredentialNames).not.toHaveBeenCalled();
 		});
 
 		it('throws when credentialDetails are missing an id', async () => {
@@ -440,7 +444,7 @@ describe('EphemeralNodeExecutor', () => {
 			).rejects.toThrow(/missing an id/);
 		});
 
-		it('reports the credential ID when it is not accessible', async () => {
+		it('reports only the credential ID when the credential no longer exists', async () => {
 			mockToolNodeWithSupplyData();
 			credentialsRepository.findCredentialsUsableInProject.mockResolvedValue([]);
 
@@ -449,11 +453,33 @@ describe('EphemeralNodeExecutor', () => {
 					nodeType: 'n8n-nodes-base.slack',
 					nodeTypeVersion: 1,
 					nodeParameters: {},
-					credentialDetails: { slackApi: { id: 'c1', name: 'Prod Slack' } },
+					credentialDetails: { slackApi: { id: 'c1', name: 'Old Slack' } },
 					inputData: [],
 					projectId: 'p-1',
 				}),
 			).rejects.toThrow('Credential with ID "c1" is not accessible or does not exist.');
+		});
+
+		it('reports the current name and ID when a renamed credential is not accessible', async () => {
+			mockToolNodeWithSupplyData();
+			credentialsRepository.findCredentialsUsableInProject.mockResolvedValue([]);
+			credentialAccessRepository.findCredentialNames.mockResolvedValue([
+				{ id: 'c1', name: 'Current Slack' },
+			]);
+
+			await expect(
+				executor.executeInline({
+					nodeType: 'n8n-nodes-base.slack',
+					nodeTypeVersion: 1,
+					nodeParameters: {},
+					credentialDetails: { slackApi: { id: 'c1', name: 'Old Slack' } },
+					inputData: [],
+					projectId: 'p-1',
+				}),
+			).rejects.toThrow(
+				'Credential "Current Slack" with ID "c1" is not accessible or does not exist.',
+			);
+			expect(credentialAccessRepository.findCredentialNames).toHaveBeenCalledWith(['c1']);
 		});
 
 		it('throws when the resolved credential has a different type than the slot', async () => {
@@ -908,20 +934,23 @@ describe('EphemeralNodeExecutor', () => {
 				mockNodeType({ description: toolDescription, supplyData }),
 			);
 			credentialsRepository.findCredentialsUsableInProject.mockResolvedValue([]);
+			credentialAccessRepository.findCredentialNames.mockResolvedValue([
+				{ id: 'c1', name: 'Current Slack' },
+			]);
 
 			const result = await executor.introspectSupplyDataToolSchema({
 				projectId: 'p-1',
 				nodeType: '@n8n/n8n-nodes-langchain.toolWikipedia',
 				nodeTypeVersion: 1,
 				nodeParameters: {},
-				credentials: { slackApi: { id: 'c1', name: 'Prod Slack' } },
+				credentials: { slackApi: { id: 'c1', name: 'Old Slack' } },
 			});
 
 			expect(result).toBeNull();
 			expect(supplyData).not.toHaveBeenCalled();
 			expect(logger.warn).toHaveBeenCalledWith('supplyData tool introspection failed', {
 				nodeType: '@n8n/n8n-nodes-langchain.toolWikipedia',
-				error: expect.stringMatching(/not accessible or does not exist/),
+				error: 'Credential "Current Slack" with ID "c1" is not accessible or does not exist.',
 			});
 		});
 

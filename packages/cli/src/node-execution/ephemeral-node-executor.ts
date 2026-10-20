@@ -1,5 +1,5 @@
 import { Logger } from '@n8n/backend-common';
-import { CredentialsRepository } from '@n8n/db';
+import { CredentialAccessRepository, CredentialsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { Tool as LangChainTool, type Tool as LangChainToolType } from '@langchain/core/tools';
@@ -156,6 +156,7 @@ export class EphemeralNodeExecutor {
 		private readonly credentialsRepository: CredentialsRepository,
 		private readonly logger: Logger,
 		private readonly policyEnforcementService: PolicyEnforcementService,
+		private readonly credentialAccessRepository: CredentialAccessRepository,
 	) {}
 
 	/**
@@ -227,9 +228,14 @@ export class EphemeralNodeExecutor {
 			);
 
 			if (!credential) {
-				throw new UserError(`Credential with ID "${d.id}" is not accessible or does not exist.`, {
-					extra: { credType, credentialId: d.id },
-				});
+				const [currentCredential] = await this.credentialAccessRepository.findCredentialNames([
+					d.id,
+				]);
+				const name = currentCredential ? ` "${currentCredential.name}"` : '';
+				throw new UserError(
+					`Credential${name} with ID "${d.id}" is not accessible or does not exist.`,
+					{ extra: { credType, credentialId: d.id } },
+				);
 			}
 
 			if (credential.type !== credType) {

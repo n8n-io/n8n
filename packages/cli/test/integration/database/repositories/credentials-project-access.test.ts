@@ -1,6 +1,8 @@
 import { createTeamProject, getPersonalProject, testDb } from '@n8n/backend-test-utils';
+import { CredentialsFinderService } from '@n8n/backend-services';
 import { CredentialsRepository, SharedCredentialsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { hasGlobalScope } from '@n8n/permissions';
 
 import { createCredentials } from '../../shared/db/credentials';
 import { createMember } from '../../shared/db/users';
@@ -81,6 +83,31 @@ describe('CredentialsRepository.findCredentialsUsableInProject', () => {
 		]);
 		expect(await repository.findCredentialsUsableInProject(project.id, ['missing-id'])).toEqual([]);
 		expect(await repository.findCredentialsUsableInProject(project.id, [])).toEqual([]);
+	});
+
+	it('matches workflow credential access for a member in a different project', async () => {
+		const member = await createMember();
+		const project = await getPersonalProject(member);
+		const credential = await createCredentials(
+			{ name: 'Global Slack', type: 'slackApi', data: '', isGlobal: true },
+			await createTeamProject(),
+		);
+		const finder = Container.get(CredentialsFinderService);
+
+		expect(hasGlobalScope(member, 'credential:use')).toBe(false);
+		expect(await finder.findUnusableCredentialsForUser(member, [credential.id])).toEqual([]);
+		expect(await repository.findCredentialsUsableInProject(project.id, [credential.id])).toEqual([
+			{ id: credential.id, name: credential.name, type: credential.type },
+		]);
+
+		await repository.update(credential.id, { isGlobal: false });
+
+		expect(await repository.findCredentialsUsableInProject(project.id, [credential.id])).toEqual(
+			[],
+		);
+		expect(await finder.findUnusableCredentialsForUser(member, [credential.id])).toEqual([
+			expect.objectContaining({ id: credential.id, name: credential.name, exists: true }),
+		]);
 	});
 
 	it('keeps a renamed global credential accessible after its owner moves', async () => {
