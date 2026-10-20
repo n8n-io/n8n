@@ -391,6 +391,10 @@ async function within(promise, ms) {
 	}
 }
 
+/** The pinned trigger that a run starts from: triggerNode, or else the first pinned trigger. */
+export const startNode = (workflow, pinData, triggerNode) =>
+	workflow.nodes.find((n) => (!triggerNode || n.name === triggerNode) && pinData[n.name] && !n.disabled && Object.keys(workflow.connections ?? {}).includes(n.name) && /trigger|webhook/i.test(n.type));
+
 /**
  * Run a workflow once. pinData holds the trigger and any pinned nodes. triggerNode names the
  * trigger to start from. With realModels, model sub-nodes get the real key and fetch can reach
@@ -406,7 +410,7 @@ export async function runWorkflow(workflow, { pinData, triggerNode, rows = () =>
 	let stillRunning = false;
 	try {
 		const instance = new workflowLib.Workflow({ id: 'wire-run', name: workflow.name, nodes: workflow.nodes, connections: workflow.connections, nodeTypes, active: false, settings: workflow.settings ?? {} });
-		const start = workflow.nodes.find((n) => (!triggerNode || n.name === triggerNode) && pinData[n.name] && !n.disabled && Object.keys(workflow.connections ?? {}).includes(n.name) && /trigger|webhook/i.test(n.type));
+		const start = startNode(workflow, pinData, triggerNode);
 		if (!start) return { status: 'error', error: 'No pinned trigger to start from.', runData: {}, requests: [], blocked, ms: 0 };
 		const hooks = new core.ExecutionLifecycleHooks('manual', 'wire-run', workflow);
 		const finished = new Promise((resolve) => hooks.addHandler('workflowExecuteAfter', (run) => resolve(run)));

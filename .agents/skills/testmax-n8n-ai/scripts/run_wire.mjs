@@ -15,7 +15,7 @@ import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
 import { LOGIC_TYPES, TRIGGER_KITS, graph, isAiNode, isTrigger, pinPlan, typeMatches } from './sdk.mjs';
-import { MODEL_CREDENTIALS, fillSetup, isWrite, loadEngine, modelKey, nodeCredentialTypes, runWorkflow } from './wire.mjs';
+import { MODEL_CREDENTIALS, fillSetup, isWrite, loadEngine, modelKey, nodeCredentialTypes, runWorkflow, startNode } from './wire.mjs';
 
 const ITEMS_PER_NODE = 3;
 const BODY_CHARS = 1500;
@@ -159,10 +159,12 @@ function buildScenarios(workflow, cfg) {
 	const kit = triggerNode ? TRIGGER_KITS[triggerNode.type] : undefined;
 	const contract = cfg.scenarios?.length ? cfg.scenarios : null;
 	const edges = [...(kit?.edges ?? []), ...(cfg.edge ?? [])];
+	// The triggerNode of pinPlan stays: a name from scenarios.json can be missing in this workflow.
+	const merge = (s, entry, kind) => ({ ...s, ...entry, triggerNode: s.triggerNode, kind });
 	const list = [
-		...(contract ? pinPlan(workflow, cfg, contract).scenarios.map((s, i) => ({ ...s, ...contract[i], kind: 'contract' })) : pinPlan(workflow, cfg).scenarios.map((s) => ({ ...s, kind: 'contract' }))),
-		...pinPlan(workflow, cfg, edges).scenarios.map((s, i) => ({ ...s, ...edges[i], kind: 'edge' })),
-		...pinPlan(workflow, cfg, cfg.questions ?? []).scenarios.map((s, i) => ({ ...s, ...cfg.questions[i], kind: 'ai' })),
+		...(contract ? pinPlan(workflow, cfg, contract).scenarios.map((s, i) => merge(s, contract[i], 'contract')) : pinPlan(workflow, cfg).scenarios.map((s) => merge(s, {}, 'contract'))),
+		...pinPlan(workflow, cfg, edges).scenarios.map((s, i) => merge(s, edges[i], 'edge')),
+		...pinPlan(workflow, cfg, cfg.questions ?? []).scenarios.map((s, i) => merge(s, cfg.questions[i], 'ai')),
 	];
 	const keep = (name) => {
 		const node = g.byName.get(name);
@@ -170,8 +172,6 @@ function buildScenarios(workflow, cfg) {
 	};
 	return {
 		g,
-		kit,
-		triggerNode,
 		scenarios: list.map((s) => {
 			const pinData = Object.fromEntries(
 				Object.entries(s.pinData).filter(([name]) => keep(name) && !(s.kind === 'ai' && isAiNode(g, g.byName.get(name)))),
@@ -215,10 +215,23 @@ export function runsInProcess(node) {
 	}
 }
 
-/** The names and types of the nodes that run, when the pinned nodes do not, and are not on the allow-list. */
-function outsideAllowList(g, pinned) {
-	const running = new Set(g.nodes.filter((n) => !g.subnodes.has(n.name) && !pinned(n)).map((n) => n.name));
-	// A Set visits the entries that the loop adds, so this collects the sub-nodes of sub-nodes too.
+/**
+ * The names and types of the nodes that run from the start trigger and are not on the allow-list.
+ * Pinned nodes do not run. A disabled node passes its input on, so the walk goes through it.
+ */
+function outsideAllowList(workflow, g, start, pinData) {
+	const seen = new Set([start]);
+	const running = new Set();
+	// A Set visits the entries that the loop adds.
+	for (const name of seen) {
+		for (const targets of workflow.connections?.[name]?.main ?? []) {
+			for (const { node } of targets ?? []) {
+				if (seen.has(node)) continue;
+				seen.add(node);
+				if (g.byName.has(node) && !pinData[node]) running.add(node);
+			}
+		}
+	}
 	for (const name of running) {
 		for (const e of g.edges) if (e.to === name && e.type.startsWith('ai_')) running.add(e.from);
 	}
@@ -227,10 +240,7 @@ function outsideAllowList(g, pinned) {
 
 async function runBuilder(dir, cfg) {
 	const workflow = readJson(join(dir, 'workflow.json'));
-	const { g, kit, scenarios } = buildScenarios(workflow, cfg);
-	const outside = outsideAllowList(g, (n) => isTrigger(n.type) || isAiNode(g, n));
-	if (outside.length) return { skipped: `Nodes outside the in-process allow-list: ${outside.join(', ')}.`, scenarios: [] };
-	const outsideAi = outsideAllowList(g, (n) => isTrigger(n.type));
+	const { g, scenarios } = buildScenarios(workflow, cfg);
 	const canvas = readJson(join(dir, 'canvas-issues.json'));
 	const { workflow: filledWorkflow, filled } = fillSetup(workflow, canvas);
 	const types = Object.fromEntries((workflow.nodes ?? []).map((n) => [n.name, n.type]));
@@ -242,8 +252,10 @@ async function runBuilder(dir, cfg) {
 			out.scenarios.push({ ...entry, status: 'skipped', error: 'The workflow has no model sub-node.' });
 			continue;
 		}
-		if (scenario.kind === 'ai' && outsideAi.length) {
-			out.scenarios.push({ ...entry, status: 'skipped', error: `Nodes outside the in-process allow-list: ${outsideAi.join(', ')}.` });
+		const start = startNode(workflow, scenario.pinData, scenario.triggerNode);
+		const outside = start ? outsideAllowList(workflow, g, start.name, scenario.pinData) : [];
+		if (outside.length) {
+			out.scenarios.push({ ...entry, status: 'skipped', error: `Nodes outside the in-process allow-list: ${outside.join(', ')}.` });
 			continue;
 		}
 		if (scenario.kind === 'ai' && models.some((m) => !m.ready)) {
@@ -252,7 +264,8 @@ async function runBuilder(dir, cfg) {
 			continue;
 		}
 		const rows = (node) => Object.entries(scenario.byType ?? {}).find(([pattern]) => typeMatches(node.type, pattern))?.[1];
-		const trigger = Object.entries(scenario.pinData).find(([name]) => isTrigger(types[name] ?? ''))?.[1]?.map((i) => i.json) ?? [];
+		const trigger = start ? scenario.pinData[start.name].map((i) => i.json) : [];
+		const kit = start ? TRIGGER_KITS[start.type] : undefined;
 		const result = await runWorkflow(filledWorkflow, { pinData: scenario.pinData, triggerNode: scenario.triggerNode, rows, realModels: scenario.kind === 'ai' });
 		const nodes = nodeSummary(result.runData, types);
 		const errors = Object.entries(nodes).filter(([, n]) => n.error).map(([name, n]) => `${name}: ${n.error}`);

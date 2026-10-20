@@ -20,7 +20,8 @@ const RUN_GRACE_MS = 10_000;
 
 /**
  * Replace the accessibility subtree of each masked element with one line. Masked texts alone keep
- * the structure, so a list with a different number of rows still shows as a change.
+ * the structure, so a list with a different number of rows still shows as a change. Each subtree
+ * replaces only its first unmasked match, so an unmasked element with the same content stays.
  */
 function maskSubtrees(tree, subtrees) {
 	const lines = tree.split('\n');
@@ -32,6 +33,7 @@ function maskSubtrees(tree, subtrees) {
 			const indent = lines[i].slice(0, lines[i].length - sub[0].length);
 			if (indent.trim() || !sub.every((l, j) => lines[i + j] === indent + l)) continue;
 			lines.splice(i, sub.length, `${indent}- text: "[masked]"`);
+			break;
 		}
 	}
 	return lines.join('\n');

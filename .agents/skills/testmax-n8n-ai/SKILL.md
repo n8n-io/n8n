@@ -344,10 +344,11 @@ must be on an allow-list (`runsInProcess` in `run_wire.mjs`):
 - a fixed set of AI nodes, with models that have a key in `MODEL_CREDENTIALS`
 
 Code, Function and AI Transform nodes, and nodes with database, SSH, FTP,
-SMTP, file or shell access, are not on the list. If a node outside the
-list runs in a contract or edge scenario, the workflow gets no in-process
-runs. If it runs only in the real AI runs, only those runs are skipped. The
-report shows the step as skipped, not failed, with the names of the nodes.
+SMTP, file or shell access, are not on the list. Each scenario checks the
+nodes that run from its trigger. Pinned nodes do not run, so a node under
+a pinned AI node counts only in the real AI runs. If a node outside the list
+would run, the scenario is skipped. The report shows it as skipped, not
+failed, with the names of the nodes.
 The pinned-data runs still run Code nodes in the n8n task runner. No request
 leaves the machine, except the model calls of the real AI runs. Empty pickers get
 `mock-<parameter>` values for the run. Each scenario row lists the nodes
