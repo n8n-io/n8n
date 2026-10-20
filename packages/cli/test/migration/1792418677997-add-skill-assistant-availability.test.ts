@@ -2,6 +2,7 @@ import {
 	createTestMigrationContext,
 	initDbUpToMigration,
 	runSingleMigration,
+	undoLastSingleMigration,
 	type TestMigrationContext,
 } from '@n8n/backend-test-utils';
 import { DbConnection } from '@n8n/db';
@@ -57,7 +58,7 @@ describe('Skill Assistant availability migration', () => {
 		expect((await readFlags()).filter((row) => Boolean(row.availableToAssistant))).toHaveLength(1);
 
 		await context.queryRunner.release();
-		await Container.get(DataSource).undoLastMigration();
+		await undoLastSingleMigration();
 		await runSingleMigration(migration);
 		context = createTestMigrationContext(Container.get(DataSource));
 		expect((await readFlags()).map((row) => Boolean(row.availableToAssistant))).toEqual([
