@@ -25,7 +25,6 @@ export class AppVersionRepository extends BaseRepository<AppVersion> {
 			await this.managerFor(ctx).insert(AppVersion, {
 				...data,
 				bundleArtifactId: null,
-				buildTaskId: null,
 				buildStatus: 'queued',
 			});
 		} catch (error) {
