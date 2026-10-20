@@ -24,7 +24,7 @@ function applyReasoning(params: CallOptions): CallOptions {
 function normalizeUsage(usage: ModelUsage): ModelUsage {
 	const { total, cacheRead, cacheWrite } = usage.inputTokens;
 	if (total === undefined || cacheWrite === undefined) return usage;
-	// The adapter includes cache writes in noCache. Price each token only once.
+	// The adapter includes cache writes in noCache. Remove them from that count.
 	return {
 		...usage,
 		inputTokens: {

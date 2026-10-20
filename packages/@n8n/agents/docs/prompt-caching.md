@@ -302,8 +302,10 @@ means the TTL is too short for the traffic pattern, or the cached prefix
 isn't byte-stable across calls.
 
 For OpenRouter, the runtime removes cache-write tokens from the adapter's
-uncached-input count in both generated and streamed responses. Each input
-token belongs to one cost bucket. Raw provider usage remains unchanged.
+uncached-input count in both generated and streamed responses. It sets negative
+results to zero. It preserves the reported cache-read and cache-write counts.
+If these counts overlap, their sum can exceed the total input token count.
+Raw provider usage remains unchanged.
 
 `GenerateResult.usage.cost` / the `finish` chunk's `usage.cost` factor in the
 model catalog's cache rates when available. One known approximation: the

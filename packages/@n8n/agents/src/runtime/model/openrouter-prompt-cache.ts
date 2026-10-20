@@ -27,6 +27,7 @@ function getCacheTtl(control: CacheControl): CacheTtl {
 /** Count wire breakpoints, including the marker copied to each tool result. */
 function getMessageCacheControls(message: ModelMessage): Array<CacheControl | undefined> {
 	const control = getCacheControl(message.providerOptions);
+	// The adapter reads only message options for these roles.
 	if (message.role === 'system' || message.role === 'assistant') return [control];
 	if (message.role === 'tool') {
 		return message.content
