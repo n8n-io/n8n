@@ -517,12 +517,11 @@ export class AgentWorkflowExecutionService {
 							},
 						}
 					: {}),
-				// Same owner resolution for the free-credits quota: the claimer's
-				// personal project is almost always the run's project.
+				// Same reasoning for the free-credits quota: the managed credential
+				// bills its claimer, not the triggering telemetry user.
 				...(params.modelCredentialFreeAiCredits
 					? {
 							freeAiCredits: {
-								...(telemetryUserId !== undefined ? { userId: telemetryUserId } : {}),
 								projectId: tracing.projectId,
 							},
 						}

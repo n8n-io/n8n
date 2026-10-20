@@ -681,6 +681,42 @@ describe('AgentWorkflowExecutionService', () => {
 		expect(options.guardrails).toBeUndefined();
 	});
 
+	it('resolves the free-credits quota owner from the project, not the telemetry user', async () => {
+		const getBuilderInstanceCredits = vi
+			.fn()
+			.mockResolvedValue({ creditsQuota: 100, creditsClaimed: 50 });
+		Container.set(AiService, { getClient: async () => ({ getBuilderInstanceCredits }) });
+		const ownership = {
+			getPersonalProjectOwnerCached: vi.fn().mockResolvedValue({ id: 'owner-1' }),
+			getInstanceOwner: vi.fn(),
+		};
+		Container.set(OwnershipService, ownership);
+		Container.set(Logger, mock<Logger>());
+
+		const { service, agentRepository, reconstructionService } = makeService();
+		const runtime = { ...makeRuntime(), modelCredentialFreeAiCredits: true };
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+		reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
+
+		await service.executeForWorkflow(
+			agentId,
+			'hello',
+			'execution-1',
+			'thread-1',
+			projectId,
+			'telemetry-user-99',
+		);
+
+		const options = runtime.agent.stream.mock.calls[0]?.[1] as RunOptions & ExecutionOptions;
+		const hook = options.guardrails?.hooks[0];
+		if (!hook?.before) throw new Error('Expected a free-credits preflight hook');
+		await expect(
+			hook.before({ callId: 'call-1', model: 'openai/gpt-5', source: 'turn' }),
+		).resolves.toEqual({ action: 'allow' });
+		expect(ownership.getPersonalProjectOwnerCached).toHaveBeenCalledWith(projectId);
+		expect(getBuilderInstanceCredits).toHaveBeenCalledWith({ id: 'owner-1' });
+	});
+
 	it('omits the telemetry option from stream() when AgentRunTracingService.build resolves undefined', async () => {
 		const { service, agentRepository, reconstructionService, agentRunTracingService } =
 			makeService();
