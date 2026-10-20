@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { ExpressionEvaluator } from '../../evaluator/expression-evaluator';
 import type { BridgeConfig, RuntimeBridge } from '../../types';
@@ -28,7 +28,22 @@ describe('QuickJsBridge after a host error in a guest call', () => {
 		await newBridge();
 	}
 
+	/** Breaks the runtime, then makes the rebuild on the replacement module fail once. */
+	async function failRebuild(bridge: QuickJsBridge, beforeFailure?: () => void): Promise<void> {
+		expect(() => bridge.execute(OVERFLOW, deepData)).toThrow(NATIVE_OVERFLOW);
+		await waitForReplacementModule();
+		vi.spyOn(
+			bridge as unknown as { verifyProxySystem(): void },
+			'verifyProxySystem',
+		).mockImplementationOnce(() => {
+			beforeFailure?.();
+			throw new Error('rebuild failed');
+		});
+		expect(() => bridge.execute('return 1 + 1;', {})).toThrow('rebuild failed');
+	}
+
 	afterEach(async () => {
+		vi.restoreAllMocks();
 		await Promise.all(bridges.splice(0).map(async (bridge) => await bridge.dispose()));
 	});
 
@@ -100,6 +115,40 @@ describe('QuickJsBridge after a host error in a guest call', () => {
 		await newBridge({ runtimeBundle: markedBundle('other') });
 
 		expect(bridge.execute('return globalThis.__bundleMarker;', {})).toBe('own');
+	});
+
+	it('should retry the rebuild on the next execute after a failed rebuild', async () => {
+		const bridge = await newBridge();
+		await failRebuild(bridge);
+
+		expect(bridge.execute('return 1 + 1;', {})).toBe(2);
+	});
+
+	it('should keep the current WASM module when a bridge with a failed rebuild is disposed', async () => {
+		const bridge = await newBridge();
+		await failRebuild(bridge);
+
+		await bridge.dispose();
+
+		const next = new QuickJsBridge();
+		bridges.push(next);
+		expect(() => next.initializeSync()).not.toThrow();
+	});
+
+	it('should retire the WASM module when the runtime of a failed rebuild cannot be freed', async () => {
+		const bridge = await newBridge();
+		await failRebuild(bridge, () => {
+			const { runtime } = bridge as unknown as { runtime: { dispose(): void } };
+			vi.spyOn(runtime, 'dispose').mockImplementationOnce(() => {
+				throw new Error('free aborted');
+			});
+		});
+
+		const next = new QuickJsBridge();
+		bridges.push(next);
+		expect(() => next.initializeSync()).toThrow(/not loaded yet/);
+		await waitForReplacementModule();
+		expect(bridge.execute('return 1 + 1;', {})).toBe(2);
 	});
 });
 

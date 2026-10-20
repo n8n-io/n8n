@@ -1422,7 +1422,32 @@ export class QuickJsBridge implements RuntimeBridge {
 		}
 		// The process-wide bundle cache holds the bundle of the bridge that
 		// initialized last, which can differ from the bundle of this bridge.
-		this.setupContext(_quickjsWasm, this.runtimeBundle);
+		try {
+			this.setupContext(_quickjsWasm, this.runtimeBundle);
+		} catch (error) {
+			// Clears this.vm, so the next execute() tries the rebuild again.
+			this.discardFailedRuntime();
+			throw error;
+		}
+	}
+
+	/**
+	 * Free the runtime of a failed rebuild. It ran no guest call, so it can
+	 * usually be freed. If the free aborts, the module is unusable.
+	 */
+	private discardFailedRuntime(): void {
+		try {
+			for (const handle of this.intlHandles) handle.dispose();
+			this.vm?.dispose();
+			this.runtime?.dispose();
+		} catch {
+			if (this.wasm) retireQuickJSWasm(this.wasm, this.logger);
+		} finally {
+			this.intlHandles = [];
+			this.vm = undefined;
+			this.runtime = undefined;
+			this.wasm = undefined;
+		}
 	}
 
 	/**
