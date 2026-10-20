@@ -773,6 +773,7 @@ export class AgentRuntime {
 			threadId: options.persistence.threadId,
 			resourceId: options.persistence.resourceId,
 			titleConfig: this.config.titleGeneration,
+			telemetry: this.telemetry.resolve(options),
 			agentModel: this.config.model,
 			modelFetch: this.config.modelFetch,
 			turnDelta: list.turnDelta(),
