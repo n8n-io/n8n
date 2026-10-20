@@ -17,7 +17,15 @@ const { t } = useI18n();
 </script>
 
 <template>
-	<N8nBadge variant="filled" :size="size">
+	<N8nBadge :size="size" :class="$style.badge">
 		{{ text ?? t('previewBadge.preview') }}
 	</N8nBadge>
 </template>
+
+<style lang="scss" module>
+.badge {
+	border-style: dashed;
+	border-width: 1.5px;
+	--n8n-badge--text-color: var(--text-color--subtle);
+}
+</style>
