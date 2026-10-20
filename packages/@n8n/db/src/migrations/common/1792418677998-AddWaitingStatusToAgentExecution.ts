@@ -7,7 +7,7 @@ const statusesAfter = [...statusesBefore, 'awaiting'];
 // The status is unreleased. A dev database that applied an earlier revision of
 // this migration ('waiting') must be reset, not migrated forward.
 
-export class AddWaitingStatusToAgentExecution1792158464205 implements ReversibleMigration {
+export class AddWaitingStatusToAgentExecution1792418677998 implements ReversibleMigration {
 	async up({ schemaBuilder }: MigrationContext) {
 		await schemaBuilder.dropEnumCheck(executionTable, 'status', { recreatesOnSqlite: true });
 		await schemaBuilder.addEnumCheck(executionTable, 'status', statusesAfter, {
