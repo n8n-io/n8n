@@ -116,7 +116,8 @@ packages/cli/src/posthog/                               @n8n-io/growth
 packages/cli/src/modules/data-table/                    @n8n-io/knowledge
 
 packages/cli/src/evaluation.ee/                         @n8n-io/ai-trust
-packages/cli/src/chat/                                  @n8n-io/ai
+packages/cli/src/chat/                                  @n8n-io/ai-agents
+packages/cli/src/modules/agents/                        @n8n-io/ai-agents
 packages/cli/src/tool-generation/                       @n8n-io/ai
 packages/modules/workflow-builder/                     @n8n-io/ai-assistant
 packages/cli/src/modules/mcp/                           @n8n-io/context
@@ -207,10 +208,28 @@ packages/frontend/editor-ui/src/features/agents/channels/ @n8n-io/nodes
 
 packages/@n8n/instance-ai/                              @n8n-io/ai-assistant
 packages/@n8n/nodes-langchain/                          @n8n-io/ai
-packages/@n8n/ai-utilities/                             @n8n-io/ai
+packages/@n8n/nodes-langchain/nodes/agents/             @n8n-io/ai-agents
+packages/@n8n/nodes-langchain/nodes/chains/             @n8n-io/ai-agents
+packages/@n8n/nodes-langchain/nodes/code/               @n8n-io/ai-agents
+packages/@n8n/nodes-langchain/nodes/output_parser/      @n8n-io/ai-agents
+packages/@n8n/nodes-langchain/nodes/llms/               @n8n-io/ai-agents
+packages/@n8n/nodes-langchain/nodes/vendors/            @n8n-io/ai-agents
+packages/@n8n/nodes-langchain/nodes/ModelSelector/      @n8n-io/ai-agents
+packages/@n8n/nodes-langchain/nodes/embeddings/        @n8n-io/ai-agents
+packages/@n8n/nodes-langchain/nodes/vector_store/       @n8n-io/ai-agents
+packages/@n8n/nodes-langchain/nodes/document_loaders/   @n8n-io/ai-agents
+packages/@n8n/nodes-langchain/nodes/text_splitters/     @n8n-io/ai-agents
+packages/@n8n/nodes-langchain/nodes/retrievers/         @n8n-io/ai-agents
+packages/@n8n/nodes-langchain/nodes/rerankers/          @n8n-io/ai-agents
+packages/@n8n/nodes-langchain/nodes/memory/             @n8n-io/ai-agents
+packages/@n8n/nodes-langchain/nodes/tools/              @n8n-io/ai-agents
+packages/@n8n/nodes-langchain/nodes/ToolExecutor/       @n8n-io/ai-agents
+packages/@n8n/nodes-langchain/nodes/trigger/            @n8n-io/ai-agents
+packages/@n8n/ai-utilities/                             @n8n-io/ai-agents
 packages/@n8n/ai-workflow-builder.ee/                   @n8n-io/ai-assistant
-packages/@n8n/agents/                                   @n8n-io/ai
-packages/frontend/@n8n/chat/                            @n8n-io/ai
+packages/@n8n/agents/                                   @n8n-io/ai-agents
+packages/frontend/@n8n/chat/                            @n8n-io/ai-agents
+packages/frontend/editor-ui/src/features/agents/        @n8n-io/ai-agents
 
 # Chat Hub
 
