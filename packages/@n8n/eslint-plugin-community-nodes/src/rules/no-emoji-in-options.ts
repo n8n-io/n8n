@@ -124,32 +124,41 @@ export const NoEmojiInOptionsRule = createRule({
 			});
 		};
 
-		const traverse = (node: TSESTree.Node): void => {
+		const traverse = (node: TSESTree.Node, isMode = false): void => {
 			switch (node.type) {
 				case AST_NODE_TYPES.TSAsExpression:
 				case AST_NODE_TYPES.TSSatisfiesExpression:
-					traverse(node.expression);
+					traverse(node.expression, isMode);
+					return;
+				case AST_NODE_TYPES.ConditionalExpression:
+					traverse(node.consequent, isMode);
+					traverse(node.alternate, isMode);
+					return;
+				case AST_NODE_TYPES.SpreadElement:
+					traverse(node.argument, isMode);
 					return;
 				case AST_NODE_TYPES.ArrayExpression:
 					for (const element of node.elements) {
-						if (element && element.type !== AST_NODE_TYPES.SpreadElement) {
-							traverse(element);
+						if (element) {
+							traverse(element, isMode);
 						}
 					}
 					return;
 				case AST_NODE_TYPES.ObjectExpression:
 					for (const property of node.properties) {
-						if (property.type !== AST_NODE_TYPES.Property) {
+						if (property.type === AST_NODE_TYPES.SpreadElement) {
+							traverse(property, isMode);
 							continue;
 						}
 						const key = getPropertyKeyName(property);
 						if (key === null) {
 							continue;
 						}
-						if (LABEL_KEYS.has(key)) {
+						// Mode names are internal identifiers. Only displayName is a label.
+						if (isMode ? key === 'displayName' : LABEL_KEYS.has(key)) {
 							checkLabelValue(key, property.value);
-						} else if (STRUCTURAL_KEYS.has(key)) {
-							traverse(property.value);
+						} else if (!isMode && STRUCTURAL_KEYS.has(key)) {
+							traverse(property.value, key === 'modes');
 						}
 					}
 					return;

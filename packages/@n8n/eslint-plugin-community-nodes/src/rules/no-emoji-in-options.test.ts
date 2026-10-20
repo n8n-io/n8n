@@ -258,6 +258,39 @@ ruleTester.run('no-emoji-in-options', NoEmojiInOptionsRule, {
 			`,
 		},
 		{
+			name: 'resource locator mode names are internal identifiers',
+			filename: '/tmp/nodes/resources/resourceLocator.ts',
+			code: `
+				export const repository: INodeProperties = {
+					displayName: 'Repository',
+					name: 'repository',
+					type: 'resourceLocator',
+					default: { mode: 'list🚀', value: '' },
+					modes: [
+						{ displayName: 'From List', name: 'list🚀', type: 'list' },
+						...(flag ? [{ displayName: 'By URL', name: 'url🎉', type: 'string' }] : [
+							{ ...({ displayName: 'By ID', name: 'id✅', type: 'string' } as const) },
+						]),
+					],
+				};
+			`,
+		},
+		{
+			name: 'spreads and conditionals do not expose routing, default, or option value data as labels',
+			filename: '/tmp/nodes/resources/create.ts',
+			code: `
+				export const field: INodeProperties = {
+					...{
+						displayName: 'Payload',
+						name: 'payload',
+						default: flag ? { name: '🚀' } : { displayName: '🎉' },
+						routing: { ...{ properties: [{ name: '🚀' }] } },
+						options: [...[{ name: 'Create', value: { ...{ name: '🎉' } } }]],
+					},
+				};
+			`,
+		},
+		{
 			name: 'keyof INodeProperties is not a node property value',
 			filename: '/tmp/nodes/resources/keys.ts',
 			code: `
@@ -275,6 +308,82 @@ ruleTester.run('no-emoji-in-options', NoEmojiInOptionsRule, {
 		},
 	],
 	invalid: [
+		{
+			name: 'emoji in both branches of conditional options',
+			filename: '/tmp/nodes/resources/operation.ts',
+			code: `
+				export const operation: INodeProperties = {
+					displayName: 'Operation',
+					name: 'operation',
+					options: check({ name: '✅' })
+						? [{ name: 'Create 🚀', value: 'create' }]
+						: [{ name: 'Delete 🎉', value: 'delete' }],
+				};
+			`,
+			errors: [
+				{ messageId: 'emojiInOption', data: { key: 'name', emoji: '🚀' } },
+				{ messageId: 'emojiInOption', data: { key: 'name', emoji: '🎉' } },
+			],
+		},
+		{
+			name: 'emoji in a conditional typed initializer',
+			filename: '/tmp/nodes/resources/operation.ts',
+			code: `
+				export const operation: INodeProperties = flag
+					? { displayName: 'Create 🚀', name: 'create' }
+					: { displayName: 'Delete 🎉', name: 'delete' };
+			`,
+			errors: [
+				{ messageId: 'emojiInOption', data: { key: 'displayName', emoji: '🚀' } },
+				{ messageId: 'emojiInOption', data: { key: 'displayName', emoji: '🎉' } },
+			],
+		},
+		{
+			name: 'emoji in a static array spread',
+			filename: '/tmp/nodes/resources/operation.ts',
+			code: `
+				export const fields: INodeProperties[] = [...[{
+					displayName: 'Operation 🚀',
+					name: 'operation',
+					options: [...([{ name: 'Create 🎉', value: 'create' }] as const)],
+				}]];
+			`,
+			errors: [
+				{ messageId: 'emojiInOption', data: { key: 'displayName', emoji: '🚀' } },
+				{ messageId: 'emojiInOption', data: { key: 'name', emoji: '🎉' } },
+			],
+		},
+		{
+			name: 'emoji in static object spreads in a node description',
+			filename: '/tmp/TestNode.node.ts',
+			code: createNodeCode(`
+				...{ displayName: 'Node 🚀' },
+				properties: [{
+					...{ options: [{ ...{ name: 'Create 🎉', value: 'create' } }] },
+				}],
+			`),
+			errors: [
+				{ messageId: 'emojiInOption', data: { key: 'displayName', emoji: '🚀' } },
+				{ messageId: 'emojiInOption', data: { key: 'name', emoji: '🎉' } },
+			],
+		},
+		{
+			name: 'only mode displayName is checked through spreads and conditionals',
+			filename: '/tmp/nodes/resources/resourceLocator.ts',
+			code: `
+				export const repository: INodeProperties = {
+					displayName: 'Repository',
+					name: 'repository',
+					modes: (flag ? [...[{
+						...{ displayName: 'From List 🚀', name: 'list✅', type: 'list' },
+					}]] : [{ displayName: 'By URL 🎉', name: 'url✅', type: 'string' }]) satisfies INodePropertyMode[],
+				};
+			`,
+			errors: [
+				{ messageId: 'emojiInOption', data: { key: 'displayName', emoji: '🚀' } },
+				{ messageId: 'emojiInOption', data: { key: 'displayName', emoji: '🎉' } },
+			],
+		},
 		{
 			name: 'emoji in option name from an imported node resource file',
 			filename: '/tmp/nodes/GithubIssues/resources/issueComment/getAll.ts',
