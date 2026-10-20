@@ -32,6 +32,7 @@ import {
 	CredentialsFinderService,
 	FolderFinderService,
 	InstanceWriteAccessService,
+	AiPreferenceService,
 } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import { Time, TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
@@ -196,7 +197,6 @@ import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PostHogClient } from '@/posthog';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 import { writeAssistantPreference } from '@/services/ai-preference-write';
-import { AiPreferenceService } from '@/services/ai-preference.service';
 import { FolderService } from '@/services/folder.service';
 import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
 import { ProjectService } from '@/services/project.service.ee';

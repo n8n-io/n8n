@@ -1038,7 +1038,12 @@ export class InstanceAiController {
 	) {
 		this.requireInstanceAiEnabled();
 		await this.assertThreadAccess(req.user.id, threadId);
-		return await this.pendingAgentService.persistAndBind(req.user, threadId, payload);
+		return await this.pendingAgentService.persistAndBind(
+			req.user,
+			threadId,
+			payload,
+			req.headers?.['push-ref'],
+		);
 	}
 
 	@Get('/threads/:threadId/messages')

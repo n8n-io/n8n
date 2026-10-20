@@ -64,6 +64,10 @@ const publicApiResource: ProtectedResource = {
 beforeEach(() => {
 	vi.resetAllMocks();
 	urlService.getInstanceBaseUrl.mockReturnValue('https://n8n.test');
+	authenticationService.advertise.mockResolvedValue({
+		authorizationServers: ['https://n8n.test'],
+		challenges: [],
+	});
 	controller = new OAuthController(urlService, registry, localServer, authenticationService);
 });
 
@@ -121,9 +125,9 @@ describe('OAuthController', () => {
 			expect(registry.getByResourcePath).toHaveBeenCalledWith('/webhook/orders?method=GET');
 		});
 
-		test('returns the RFC 9728 metadata document for a resolved resource', async () => {
+		test('returns the RFC 9728 metadata document for a surface outside the pipeline', async () => {
 			const scopes = ['tool:listWorkflows', 'tool:getWorkflowDetails'];
-			registry.getByResourcePath.mockResolvedValue(resource(scopes));
+			registry.getByResourcePath.mockResolvedValue({ ...resource(scopes), surface: 'trigger' });
 			const res = makeRes();
 
 			await controller.protectedResourceMetadata(makeReq(['mcp-server', 'http']), res);
@@ -137,6 +141,30 @@ describe('OAuthController', () => {
 				scopes_supported: scopes,
 			});
 			expect(authenticationService.advertise).not.toHaveBeenCalled();
+		});
+
+		test('lists the issuers of the trusted sources accepted on the instance-mcp surface', async () => {
+			registry.getByResourcePath.mockResolvedValue(resource(['tool:listWorkflows']));
+			authenticationService.advertise.mockResolvedValue({
+				authorizationServers: ['https://n8n.test', 'https://idp.example'],
+				challenges: [],
+			});
+			const res = makeRes();
+
+			await controller.protectedResourceMetadata(makeReq(['mcp-server', 'http']), res);
+
+			expect(authenticationService.advertise).toHaveBeenCalledWith({
+				surface: 'instance-mcp',
+				resource: {
+					url: 'https://n8n.test/mcp-server/http',
+					acceptedAudiences: ['https://n8n.test/mcp-server/http'],
+				},
+			});
+			expect(res.json).toHaveBeenCalledWith(
+				expect.objectContaining({
+					authorization_servers: ['https://n8n.test', 'https://idp.example'],
+				}),
+			);
 		});
 
 		test('lists the issuers of the trusted sources accepted on the public-api surface', async () => {

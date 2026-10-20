@@ -1,5 +1,7 @@
 import {
 	sanitizeToolName as sanitizeMcpToolName,
+	raceWithAbort,
+	throwIfAborted,
 	type Agent as RuntimeAgent,
 	type GenerateResult,
 } from '@n8n/agents';
@@ -19,6 +21,7 @@ import type { User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import type { EvalLlmMockHandler } from 'n8n-core';
 
+import type { AgentEvaluationPreparation } from '@/modules/agents/evaluation/agent-evaluation.contracts';
 import { AgentEvaluationService } from '@/modules/agents/evaluation/agent-evaluation.service';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
@@ -67,6 +70,18 @@ const MAX_RECORDED_TOOL_VALUE_CHARS = 4_000;
 // a node tool's sanitized name) merges into one record — accepted, the
 // interceptedRequests still disambiguate.
 type ToolLedger = Map<string, InstanceAiEvalInterceptedRequest[]>;
+
+interface AgentRunEvidence {
+	recorder: ReturnType<typeof createAgentModelTurnRecorder>;
+	toolLedger: ToolLedger;
+	credentialHelpers: EvalMockedCredentialsHelper[];
+}
+
+interface AgentRunOutput {
+	result: GenerateResult;
+	segmentToolCalls: NonNullable<GenerateResult['toolCalls']>;
+	autoApprovedToolNames: Set<string>;
+}
 
 /**
  * One URL is the other or a path-boundary prefix of it — bare prefix overlap
@@ -190,7 +205,7 @@ export class EvalAgentExecutionService {
 		const prepared = await Container.get(AgentEvaluationService).prepare(user, projectId, agentId);
 		if (prepared.error !== undefined) return this.errorResult(prepared.error);
 		const preparation = prepared.preparation;
-		const { config, skippedFeatures, tools: toolSummaries } = preparation;
+		const { config, tools: toolSummaries } = preparation;
 
 		// The scenario signal steers seed + mock generation. A fixed case input
 		// doubles as that signal (bounded) so the generated context, per-tool
@@ -238,7 +253,30 @@ export class EvalAgentExecutionService {
 			createAiProxyFetch(this.outboundHttp),
 			this.logger,
 		);
+		const evidence = { recorder, toolLedger, credentialHelpers };
+		const instrumentation = await this.createRuntimeInstrumentation(
+			config,
+			seed,
+			scenarioSignal,
+			mockHandler,
+			evidence,
+		);
+		return await this.executePreparedRuntime(
+			preparation,
+			instrumentation,
+			seed,
+			evidence,
+			options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+		);
+	}
 
+	private async createRuntimeInstrumentation(
+		config: AgentJsonConfig,
+		seed: InstanceAiEvalAgentScenarioSeed,
+		scenarioSignal: string | undefined,
+		mockHandler: EvalLlmMockHandler,
+		{ recorder, toolLedger, credentialHelpers }: AgentRunEvidence,
+	): Promise<Parameters<AgentEvaluationPreparation['buildRuntime']>[0]> {
 		const pendingMcpCalls = new Map<string, McpMockToolCall[]>();
 		const mcpCallIdentity = (serverName: string, toolName: string) =>
 			JSON.stringify([serverName, toolName]);
@@ -317,116 +355,156 @@ export class EvalAgentExecutionService {
 			},
 		});
 
+		return {
+			modelFetch: recorder.fetch,
+			mcpFetch,
+			onMcpToolCallSettled: ({ serverName, toolName, modelToolName }) => {
+				recordSettledMcpCall(serverName, toolName, modelToolName);
+			},
+			webSearch: webSearchMock,
+			configureToolAdditionalData: (additionalData, toolContext) => {
+				const helper = new EvalMockedCredentialsHelper(
+					additionalData.credentialsHelper,
+					undefined,
+					this.logger,
+				);
+				credentialHelpers.push(helper);
+				additionalData.credentialsHelper = helper;
+				additionalData.evalLlmMockHandler = this.createRecordingMockHandler(
+					mockHandler,
+					toolContext.toolName,
+					toolLedger,
+				);
+			},
+		};
+	}
+
+	private async executePreparedRuntime(
+		preparation: AgentEvaluationPreparation,
+		instrumentation: Parameters<AgentEvaluationPreparation['buildRuntime']>[0],
+		seed: InstanceAiEvalAgentScenarioSeed,
+		evidence: AgentRunEvidence,
+		timeoutMs: number,
+	): Promise<InstanceAiEvalAgentExecutionResult> {
+		const { config, skippedFeatures } = preparation;
+		const { recorder, toolLedger, credentialHelpers } = evidence;
+		const budgetSignal = AbortSignal.timeout(timeoutMs);
 		let agent: RuntimeAgent;
 		try {
-			agent = await preparation.buildRuntime({
-				modelFetch: recorder.fetch,
-				mcpFetch,
-				onMcpToolCallSettled: ({ serverName, toolName, modelToolName }) => {
-					recordSettledMcpCall(serverName, toolName, modelToolName);
-				},
-				webSearch: webSearchMock,
-				configureToolAdditionalData: (additionalData, toolContext) => {
-					const helper = new EvalMockedCredentialsHelper(
-						additionalData.credentialsHelper,
-						undefined,
-						this.logger,
-					);
-					credentialHelpers.push(helper);
-					additionalData.credentialsHelper = helper;
-					additionalData.evalLlmMockHandler = this.createRecordingMockHandler(
-						mockHandler,
-						toolContext.toolName,
-						toolLedger,
-					);
-				},
-			});
+			agent = await raceWithAbort(async () => {
+				const runtime = await preparation.buildRuntime(instrumentation, budgetSignal);
+				if (budgetSignal.aborted) await this.closeRuntime(runtime);
+				throwIfAborted(budgetSignal);
+				return runtime;
+			}, budgetSignal);
 		} catch (error) {
-			const message = error instanceof Error ? error.message : String(error);
-			return this.errorResult(`Failed to build agent runtime: ${message}`, seed, skippedFeatures);
+			return this.errorResult(
+				this.runErrorMessage(error, budgetSignal, timeoutMs, 'Failed to build agent runtime'),
+				seed,
+				skippedFeatures,
+			);
 		}
 
-		const errors: string[] = [];
-		// GenerateResult.toolCalls carry no toolCallId — approvals are attributed
-		// by tool name, enough to flag auto-approval for the judge.
-		const autoApprovedToolNames = new Set<string>();
-		const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
 		const maxIterations = Math.min(
 			config.config?.maxIterations ?? DEFAULT_MAX_ITERATIONS,
 			MAX_ITERATIONS_CAP,
 		);
+		let output: AgentRunOutput;
+		try {
+			output = await this.generateWithAutoApprovals(agent, seed.openingMessage, {
+				abortSignal: budgetSignal,
+				maxIterations,
+			});
+		} catch (error) {
+			// Flush so the failure result carries the recorded response bodies too.
+			await recorder.flush();
+			return this.errorResult(
+				this.runErrorMessage(error, budgetSignal, timeoutMs, 'Agent run failed'),
+				seed,
+				skippedFeatures,
+				{ modelTurns: recorder.turns, toolLedger, credentialHelpers },
+			);
+		} finally {
+			await recorder.flush();
+			if (budgetSignal.aborted) void this.closeRuntime(agent);
+			else await this.closeRuntime(agent);
+		}
+		return this.executionResult(output, preparation, seed, evidence);
+	}
 
-		let result: GenerateResult;
-		// Each resume returns its own GenerateResult segment — collect tool
-		// calls across all of them so pre-suspension calls aren't lost.
+	private async closeRuntime(agent: RuntimeAgent) {
+		try {
+			await agent.close();
+		} catch (error) {
+			this.logger.warn('[EvalAgentMock] Agent runtime teardown failed', {
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
+	}
+
+	private runErrorMessage(
+		error: unknown,
+		budgetSignal: AbortSignal,
+		timeoutMs: number,
+		prefix: string,
+	) {
+		if (budgetSignal.aborted) {
+			const seconds = Math.round(timeoutMs / 1000);
+			return `Agent run exceeded its ${seconds}s eval budget and was stopped`;
+		}
+		const message = error instanceof Error ? error.message : String(error);
+		return `${prefix}: ${message}`;
+	}
+
+	private async generateWithAutoApprovals(
+		agent: RuntimeAgent,
+		openingMessage: string,
+		options: { abortSignal: AbortSignal; maxIterations: number },
+	): Promise<AgentRunOutput> {
+		const autoApprovedToolNames = new Set<string>();
 		const segmentToolCalls: NonNullable<GenerateResult['toolCalls']> = [];
 		const collectToolCalls = (segment: GenerateResult) => {
 			for (const entry of segment.toolCalls ?? []) {
 				if (!segmentToolCalls.includes(entry)) segmentToolCalls.push(entry);
 			}
 		};
-		const budgetSignal = AbortSignal.timeout(timeoutMs);
-		try {
-			result = await agent.generate(seed.openingMessage, {
-				abortSignal: budgetSignal,
-				maxIterations,
-			});
+		let result = await raceWithAbort(
+			async () => await agent.generate(openingMessage, options),
+			options.abortSignal,
+		);
+		collectToolCalls(result);
+		let approvals = 0;
+		while (approvals < MAX_AUTO_APPROVALS) {
+			const pending = result.pendingSuspend?.[0];
+			if (!pending) break;
+			autoApprovedToolNames.add(pending.toolName);
+			approvals++;
+			result = await raceWithAbort(
+				async () =>
+					await agent.approve('generate', {
+						runId: pending.runId,
+						toolCallId: pending.toolCallId,
+						...options,
+					}),
+				options.abortSignal,
+			);
 			collectToolCalls(result);
-
-			// Approval-gated tools suspend the run. In real usage the user
-			// approves in the UI; the eval happy-path stands in for them, and
-			// flags every call it approved.
-			let approvals = 0;
-			while (approvals < MAX_AUTO_APPROVALS) {
-				const pending = result.pendingSuspend?.[0];
-				if (!pending) break;
-				autoApprovedToolNames.add(pending.toolName);
-				approvals++;
-				result = await agent.approve('generate', {
-					runId: pending.runId,
-					toolCallId: pending.toolCallId,
-					abortSignal: budgetSignal,
-					maxIterations,
-				});
-				collectToolCalls(result);
-			}
-			if ((result.pendingSuspend?.length ?? 0) > 0) {
-				errors.push(`Run still suspended after ${MAX_AUTO_APPROVALS} auto-approvals`);
-			}
-		} catch (error) {
-			const message = error instanceof Error ? error.message : String(error);
-			// Flush so the failure result carries the recorded response bodies too.
-			await recorder.flush();
-			// A budget abort is the harness killing the run for time, NOT the builder
-			// failing. Say so in the words the WORKFLOW path already uses, so the one
-			// classifier (`isServerBudgetStop`) covers both — wrapping it as a plain
-			// `Agent run failed:` let a timed-out agent run score as a builder verdict,
-			// which is the misattribution this whole path exists to prevent.
-			if (budgetSignal.aborted) {
-				const seconds = Math.round(timeoutMs / 1000);
-				return this.errorResult(
-					`Agent run exceeded its ${seconds}s eval budget and was stopped`,
-					seed,
-					skippedFeatures,
-					{ modelTurns: recorder.turns, toolLedger, credentialHelpers },
-				);
-			}
-			return this.errorResult(`Agent run failed: ${message}`, seed, skippedFeatures, {
-				modelTurns: recorder.turns,
-				toolLedger,
-				credentialHelpers,
-			});
-		} finally {
-			await recorder.flush();
-			try {
-				await agent.close();
-			} catch (error) {
-				this.logger.warn('[EvalAgentMock] Agent runtime teardown failed', {
-					error: error instanceof Error ? error.message : String(error),
-				});
-			}
 		}
+		return { result, segmentToolCalls, autoApprovedToolNames };
+	}
 
+	private executionResult(
+		{ result, segmentToolCalls, autoApprovedToolNames }: AgentRunOutput,
+		preparation: AgentEvaluationPreparation,
+		seed: InstanceAiEvalAgentScenarioSeed,
+		{ recorder, toolLedger, credentialHelpers }: AgentRunEvidence,
+	): InstanceAiEvalAgentExecutionResult {
+		const { tools: toolSummaries, skippedFeatures, config } = preparation;
+		const mcpServers = config.mcpServers ?? [];
+		const errors: string[] = [];
+		if ((result.pendingSuspend?.length ?? 0) > 0) {
+			errors.push(`Run still suspended after ${MAX_AUTO_APPROVALS} auto-approvals`);
+		}
 		if (result.error !== undefined) {
 			errors.push(
 				`Model run error: ${result.error instanceof Error ? result.error.message : String(result.error)}`,

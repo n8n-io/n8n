@@ -16,7 +16,6 @@ import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
 import {
 	type AgentMutationTelemetryContext,
 	buildAgentMutationEvent,
-	captureAgentMutation,
 } from './agent-modification-telemetry.service';
 import { AgentExecutionOrchestratorService } from './agent-execution-orchestrator.service';
 import { AgentChangePublisher } from './agent-change-publisher.service';
@@ -154,7 +153,6 @@ export class AgentTaskService {
 		if (!agent.schema) throw new BadRequestError('Agent has no config yet');
 
 		const skillRefs = await this.agentSkillRefs.refsForDraft(agent, {});
-		const previous = captureAgentMutation(agent, skillRefs);
 
 		const tasks = dtos.map((dto) => {
 			const taskId = generateAgentResourceId(
@@ -179,7 +177,7 @@ export class AgentTaskService {
 			await this.taskRepository.saveDefinitions(tasks, ctx);
 		});
 		this.saveCompletion.taskSaved(
-			buildAgentMutationEvent(agent, skillRefs, projectId, context, previous, { tasks: true }),
+			buildAgentMutationEvent(agent, skillRefs, projectId, context, ['tasks']),
 			context.pushRef,
 		);
 
@@ -225,7 +223,6 @@ export class AgentTaskService {
 		if (!changed) return { task: this.toDto(task), changed: false };
 
 		const skillRefs = await this.agentSkillRefs.refsForDraft(agent, {});
-		const previous = captureAgentMutation(agent, skillRefs);
 
 		const saved = await this.transactionRunner.run({}, async (ctx) => {
 			markAgentDraftDirty(agent);
@@ -234,7 +231,7 @@ export class AgentTaskService {
 			return savedTask;
 		});
 		this.saveCompletion.taskSaved(
-			buildAgentMutationEvent(agent, skillRefs, projectId, context, previous, { tasks: true }),
+			buildAgentMutationEvent(agent, skillRefs, projectId, context, ['tasks']),
 			context.pushRef,
 		);
 
@@ -252,7 +249,6 @@ export class AgentTaskService {
 		const agent = await getAgentOrThrow(this.agentRepository, agentId, projectId);
 
 		const skillRefs = await this.agentSkillRefs.refsForDraft(agent, {});
-		const previous = captureAgentMutation(agent, skillRefs);
 
 		if (agent.schema?.tasks) {
 			agent.schema.tasks = agent.schema.tasks.filter((ref) => ref.id !== taskId);
@@ -264,7 +260,7 @@ export class AgentTaskService {
 			await this.taskRepository.deleteForAgent(agentId, [taskId], ctx);
 		});
 		this.saveCompletion.taskSaved(
-			buildAgentMutationEvent(agent, skillRefs, projectId, context, previous, { tasks: true }),
+			buildAgentMutationEvent(agent, skillRefs, projectId, context, ['tasks']),
 			context.pushRef,
 		);
 
