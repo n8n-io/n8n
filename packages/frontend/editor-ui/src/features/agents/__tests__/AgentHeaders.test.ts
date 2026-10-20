@@ -1,10 +1,11 @@
 /* eslint-disable import-x/no-extraneous-dependencies -- test-only patterns */
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { mount, type VueWrapper } from '@vue/test-utils';
-import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { enableAutoUnmount, mount, type VueWrapper } from '@vue/test-utils';
+
+import AgentSessionTimelineHeader from '../components/AgentSessionTimelineHeader.vue';
+import type { SessionTimelineMetadata } from '../types';
 
 import AgentPreviewHeader from '../components/AgentPreviewHeader.vue';
-import AgentSessionTimelineHeader from '../components/AgentSessionTimelineHeader.vue';
 
 const track = vi.fn();
 vi.mock('@n8n/composables/useTelemetry', () => ({
@@ -21,6 +22,7 @@ vi.mock('@n8n/i18n', () => ({
 }));
 
 vi.mock('@n8n/design-system', () => ({
+	N8nText: { template: '<span><slot /></span>' },
 	N8nIcon: { template: '<i v-bind="$attrs" :data-icon="icon"></i>', props: ['icon', 'size'] },
 	N8nButton: {
 		name: 'N8nButton',
@@ -60,104 +62,11 @@ vi.mock('@n8n/design-system', () => ({
 	N8nDropdownMenu: {
 		name: 'N8nDropdownMenu',
 		template:
-			'<div v-bind="$attrs"><slot name="trigger" /><slot name="item-label" :item="items[0]" /><slot name="item-trailing" :item="items[0]" /></div>',
+			'<div v-bind="$attrs"><slot name="trigger" /><slot v-if="items.length" name="item-label" :item="items[0]" /><slot v-if="items.length" name="item-trailing" :item="items[0]" /></div>',
 		props: ['items', 'maxHeight', 'extraPopperClass'],
 		emits: ['select'],
 	},
 }));
-
-type DropdownStubWrapper = VueWrapper<{
-	items: Array<{ id: string; label?: string; data?: { date: string; active: boolean } }>;
-	$emit: (event: 'select', value: string) => void;
-}>;
-
-type BreadcrumbsStubWrapper = VueWrapper<{
-	items: Array<{
-		id: string;
-		label: string;
-		href?: string;
-		icon?: { type: 'icon' | 'emoji'; value: string };
-	}>;
-	$emit: (event: 'itemSelected', value: { id: string }) => void;
-}>;
-
-const breadcrumbItems = [
-	{ id: 'project-1', label: 'My project', href: '/projects/project-1' },
-	{ id: 'agent-1', label: 'Darwin', href: '/projects/project-1/agents/agent-1' },
-];
-
-describe('AgentSessionTimelineHeader', () => {
-	function mountHeader() {
-		return mount(AgentSessionTimelineHeader, {
-			props: {
-				breadcrumbItems,
-				projectIcon: { type: 'icon', value: 'user' },
-				sessionTitle: 'Support session',
-				sessionOptions: [
-					{
-						id: 'thread-1',
-						label: 'Support session',
-						data: { date: 'Jan 1 10:00', active: true },
-					},
-				],
-				showLangsmithExport: false,
-				langsmithExportLoading: false,
-			},
-		});
-	}
-
-	it('renders breadcrumbs and the session picker', () => {
-		const wrapper = mountHeader();
-		const breadcrumbs = wrapper.findComponent({ name: 'N8nBreadcrumbs' }) as BreadcrumbsStubWrapper;
-
-		expect(breadcrumbs.vm.items.map((item) => item.id)).toEqual(['project-1', 'agent-1']);
-		expect(wrapper.find('[data-testid="session-header-switcher"]').exists()).toBe(true);
-		expect(wrapper.text()).toContain('Support session');
-		expect(wrapper.text()).toContain('Jan 1 10:00');
-	});
-
-	it('passes the project icon to the first breadcrumb', () => {
-		const wrapper = mountHeader();
-		const breadcrumbs = wrapper.findComponent({ name: 'N8nBreadcrumbs' }) as BreadcrumbsStubWrapper;
-
-		expect(breadcrumbs.vm.items[0].icon).toEqual({ type: 'icon', value: 'user' });
-	});
-
-	it('does not render session metadata', () => {
-		const wrapper = mountHeader();
-
-		expect(wrapper.find('[data-icon="circle-dollar-sign"]').exists()).toBe(false);
-		expect(wrapper.find('[data-icon="clock"]').exists()).toBe(false);
-		expect(wrapper.find('[data-icon="slack"]').exists()).toBe(false);
-	});
-
-	it('emits timeline header actions', async () => {
-		const wrapper = mountHeader();
-		const breadcrumbs = wrapper.findComponent({ name: 'N8nBreadcrumbs' }) as BreadcrumbsStubWrapper;
-		const sessionPicker = wrapper.findComponent(
-			'[data-testid="session-header-switcher"]',
-		) as DropdownStubWrapper;
-
-		breadcrumbs.vm.$emit('itemSelected', { id: 'project-1' });
-		sessionPicker.vm.$emit('select', 'thread-1');
-		await wrapper.find('[data-testid="agent-session-timeline-close"]').trigger('click');
-
-		expect(wrapper.emitted('breadcrumb-select')).toEqual([[{ id: 'project-1' }]]);
-		expect(wrapper.emitted('session-select')).toEqual([['thread-1']]);
-		expect(wrapper.emitted('close')).toEqual([[]]);
-	});
-
-	it('shows an outline Edit agent button with a pencil icon', () => {
-		const wrapper = mountHeader();
-		const closeButton = wrapper.find('[data-testid="agent-session-timeline-close"]');
-
-		expect(closeButton.attributes('data-variant')).toBe('outline');
-		expect(closeButton.attributes('data-size')).toBe('medium');
-		expect(closeButton.attributes('data-icon-only')).toBeUndefined();
-		expect(closeButton.find('[data-icon="pencil"]').exists()).toBe(true);
-		expect(closeButton.text()).toBe('Edit agent');
-	});
-});
 
 describe('AgentPreviewHeader', () => {
 	function mountPreviewHeader() {
@@ -213,5 +122,198 @@ describe('AgentPreviewHeader', () => {
 
 		expect(wrapper.emitted('session-select')).toEqual([['week']]);
 		expect(wrapper.emitted('delete-session')).toEqual([['week']]);
+	});
+});
+
+const metadata: SessionTimelineMetadata = {
+	trigger: { source: 'slack', icon: 'message-circle', label: 'Slack' },
+	totalTokens: 1250,
+	totalCost: 0.012,
+	durationLabel: '12 seconds',
+};
+
+const iconStub = {
+	props: ['icon'],
+	template: '<span :data-icon="icon" />',
+};
+
+enableAutoUnmount(afterEach);
+
+function mountHeader(props: { metadata?: SessionTimelineMetadata } = {}) {
+	return mount(AgentSessionTimelineHeader, {
+		props: {
+			breadcrumbItems: [],
+			projectIcon: { type: 'icon', value: 'user' },
+			sessionTitle: 'Review invoices',
+			sessionOptions: [],
+			showLangsmithExport: false,
+			langsmithExportLoading: false,
+			metadata,
+			...props,
+		},
+		global: { stubs: { N8nIcon: iconStub } },
+	});
+}
+
+type DropdownStubWrapper = VueWrapper<{
+	items: Array<{ id: string; label?: string; data?: { date: string; active: boolean } }>;
+	$emit: (event: 'select', value: string) => void;
+}>;
+
+type BreadcrumbsStubWrapper = VueWrapper<{
+	items: Array<{ id: string; label: string; href?: string }>;
+	$emit: (event: 'itemSelected', value: { id: string }) => void;
+}>;
+
+const breadcrumbItems = [
+	{ id: 'project-1', label: 'My project', href: '/projects/project-1' },
+	{ id: 'agent-1', label: 'Darwin', href: '/projects/project-1/agents/agent-1' },
+];
+
+describe('AgentSessionTimelineHeader', () => {
+	function mountNavigationHeader() {
+		return mount(AgentSessionTimelineHeader, {
+			props: {
+				breadcrumbItems,
+				projectIcon: { type: 'icon', value: 'user' },
+				sessionTitle: 'Support session',
+				sessionOptions: [
+					{
+						id: 'thread-1',
+						label: 'Support session',
+						data: { date: 'Jan 1 10:00', active: true },
+					},
+				],
+				showLangsmithExport: false,
+				langsmithExportLoading: false,
+			},
+		});
+	}
+
+	it('renders breadcrumbs and the session picker', () => {
+		const wrapper = mountNavigationHeader();
+		const breadcrumbs = wrapper.findComponent({ name: 'N8nBreadcrumbs' }) as BreadcrumbsStubWrapper;
+
+		expect(breadcrumbs.vm.items.map((item) => item.id)).toEqual(['project-1', 'agent-1']);
+		expect(wrapper.find('[data-testid="session-header-switcher"]').exists()).toBe(true);
+		expect(wrapper.text()).toContain('Support session');
+		expect(wrapper.text()).toContain('Jan 1 10:00');
+	});
+
+	it('shows the project icon before the breadcrumb', () => {
+		const wrapper = mountNavigationHeader();
+		const icon = wrapper.getComponent({ name: 'ProjectIcon' });
+
+		expect(icon.props('icon')).toEqual({ type: 'icon', value: 'user' });
+		expect(icon.props('size')).toBe('mini');
+	});
+
+	it('does not render session metadata before it loads', () => {
+		const wrapper = mountNavigationHeader();
+
+		expect(wrapper.find('[data-icon="circle-dollar-sign"]').exists()).toBe(false);
+		expect(wrapper.find('[data-icon="clock"]').exists()).toBe(false);
+		expect(wrapper.find('[data-icon="slack"]').exists()).toBe(false);
+	});
+
+	it('emits timeline header actions', async () => {
+		const wrapper = mountNavigationHeader();
+		const breadcrumbs = wrapper.findComponent({ name: 'N8nBreadcrumbs' }) as BreadcrumbsStubWrapper;
+		const sessionPicker = wrapper.findComponent(
+			'[data-testid="session-header-switcher"]',
+		) as DropdownStubWrapper;
+
+		breadcrumbs.vm.$emit('itemSelected', { id: 'project-1' });
+		sessionPicker.vm.$emit('select', 'thread-1');
+		await wrapper.find('[data-testid="agent-session-timeline-close"]').trigger('click');
+
+		expect(wrapper.emitted('breadcrumb-select')).toEqual([[{ id: 'project-1' }]]);
+		expect(wrapper.emitted('session-select')).toEqual([['thread-1']]);
+		expect(wrapper.emitted('close')).toEqual([[]]);
+	});
+
+	it('shows an outline Edit agent button with a pencil icon', () => {
+		const wrapper = mountNavigationHeader();
+		const closeButton = wrapper.find('[data-testid="agent-session-timeline-close"]');
+
+		expect(closeButton.attributes('data-variant')).toBe('outline');
+		expect(closeButton.attributes('data-size')).toBe('medium');
+		expect(closeButton.attributes('data-icon-only')).toBeUndefined();
+		expect(closeButton.find('[data-icon="pencil"]').exists()).toBe(true);
+		expect(closeButton.text()).toBe('Edit agent');
+	});
+});
+
+describe('AgentSessionTimelineHeader metadata', () => {
+	it('displays the trigger, cost, and duration', () => {
+		const wrapper = mountHeader();
+
+		expect(wrapper.text()).toContain('Slack');
+		expect(wrapper.text()).toContain('($0.012)');
+		expect(wrapper.text()).toContain('12 seconds');
+	});
+
+	it('uses the supplied trigger icon', () => {
+		const wrapper = mountHeader({
+			metadata: { ...metadata, trigger: { source: null, icon: 'calendar', label: 'Schedule' } },
+		});
+
+		expect(wrapper.find('[data-icon="calendar"]').exists()).toBe(true);
+		expect(wrapper.find('[data-icon="message-circle"]').exists()).toBe(false);
+	});
+
+	it.each([
+		[0, '0'],
+		[999, '999'],
+		[1250, '1.3K'],
+		[1000000, '1M'],
+	])('formats %i tokens as %s', (totalTokens, expected) => {
+		const wrapper = mountHeader({ metadata: { ...metadata, totalTokens } });
+
+		expect(
+			wrapper.get('[data-testid="agent-session-timeline-metadata"] li:nth-child(2)').text(),
+		).toBe(`${expected} ($0.012)`);
+	});
+
+	it.each([
+		[0, '0'],
+		[0.012, '0.012'],
+		[0.123456, '0.1235'],
+		[1.5, '1.5'],
+	])('formats cost %s as %s', (totalCost, expected) => {
+		const wrapper = mountHeader({ metadata: { ...metadata, totalCost } });
+
+		expect(wrapper.get('[data-testid="agent-session-timeline-metadata"]').text()).toContain(
+			`($${expected})`,
+		);
+	});
+
+	it('does not show metadata before it loads', () => {
+		const wrapper = mountHeader({ metadata: undefined });
+
+		expect(wrapper.find('[data-icon="hash"]').exists()).toBe(false);
+		expect(wrapper.find('[data-icon="clock"]').exists()).toBe(false);
+	});
+
+	it('updates the displayed details when props change', async () => {
+		const wrapper = mountHeader();
+
+		await wrapper.setProps({
+			metadata: {
+				trigger: { source: null, icon: 'calendar', label: 'Schedule' },
+				totalTokens: 1000000,
+				totalCost: 0.5,
+				durationLabel: '1 minute',
+			},
+		});
+
+		expect(wrapper.text()).toContain('Schedule');
+		expect(
+			wrapper.get('[data-testid="agent-session-timeline-metadata"] li:nth-child(2)').text(),
+		).toBe('1M ($0.5)');
+		expect(wrapper.text()).toContain('1 minute');
+		expect(wrapper.text()).not.toContain('Slack');
+		expect(wrapper.text()).not.toContain('12 seconds');
+		expect(wrapper.find('[data-icon="calendar"]').exists()).toBe(true);
 	});
 });
