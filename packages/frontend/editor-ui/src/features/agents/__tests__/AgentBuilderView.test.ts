@@ -3913,8 +3913,9 @@ describe('AgentBuilderView — three-column shell', () => {
 	});
 
 	it.each([
-		{ savedWidth: null, expectedWidth: 400 },
+		{ savedWidth: null, expectedWidth: 480 },
 		{ savedWidth: '560', expectedWidth: 560 },
+		{ savedWidth: '900', expectedWidth: 720 },
 	])(
 		'starts the AI resize wrapper at $expectedWidth with saved width $savedWidth',
 		async function ({ savedWidth, expectedWidth }) {
@@ -3928,16 +3929,16 @@ describe('AgentBuilderView — three-column shell', () => {
 			expect(dock.element.parentElement?.style.getPropertyValue('--agent-ai-panel-width')).toBe(
 				`${expectedWidth}px`,
 			);
-			expect(localStorage.getItem('N8N_AGENT_AI_PANEL_WIDTH')).toBe(String(expectedWidth));
+			expect(localStorage.getItem('N8N_AGENT_AI_PANEL_WIDTH')).toBe(savedWidth);
 
 			await resizer.get('[data-dir="right"]').trigger('dblclick');
 			await flushPromises();
 
-			expect(resizer.props('width')).toBe(460);
+			expect(resizer.props('width')).toBe(480);
 			expect(dock.element.parentElement?.style.getPropertyValue('--agent-ai-panel-width')).toBe(
-				'460px',
+				'480px',
 			);
-			expect(localStorage.getItem('N8N_AGENT_AI_PANEL_WIDTH')).toBe('460');
+			expect(localStorage.getItem('N8N_AGENT_AI_PANEL_WIDTH')).toBe('480');
 		},
 	);
 
@@ -4195,6 +4196,91 @@ describe('AgentBuilderView — three-column shell', () => {
 		await wrapper.find('[data-testid="ai-panel-emit-close"]').trigger('click');
 		expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(false);
 		expect(wrapper.find('[data-testid="agent-builder-instance-ai-btn"]').exists()).toBe(true);
+	});
+
+	it.each([
+		{ containerWidth: 800, expectedWidth: 320 },
+		{ containerWidth: 1600, expectedWidth: 480 },
+		{ containerWidth: 2400, expectedWidth: 720 },
+	])(
+		'uses responsive defaults at $containerWidth px',
+		async ({ containerWidth, expectedWidth }) => {
+			const wrapper = await renderView();
+			const vm = wrapper.vm as unknown as { builderContainerWidth: number };
+			vm.builderContainerWidth = containerWidth;
+			await nextTick();
+			await wrapper.get('[data-testid="agent-builder-instance-ai-btn"]').trigger('click');
+			const aiResizer = wrapper
+				.get('[data-testid="agent-ai-dock"]')
+				.getComponent({ name: 'ResizeWrapper' });
+			const previewResizer = wrapper
+				.findAllComponents({ name: 'ResizeWrapper' })
+				.find((resizer) => resizer.props('supportedDirections').includes('left'));
+
+			expect(aiResizer.props('width')).toBe(expectedWidth);
+			expect(aiResizer.props('defaultWidth')).toBe(expectedWidth);
+			expect(previewResizer?.props('defaultWidth')).toBe(expectedWidth);
+			expect(localStorage.getItem('N8N_AGENT_AI_PANEL_WIDTH')).toBeNull();
+		},
+	);
+
+	it('hides the preview resize handle when the preview is closed', async () => {
+		const wrapper = await renderView();
+		const resizer = wrapper
+			.findAllComponents({ name: 'ResizeWrapper' })
+			.find((component) => component.props('supportedDirections').includes('left'));
+
+		expect(resizer?.classes()).toContain('previewResizeWrapper');
+		expect(resizer?.classes()).not.toContain('previewResizeOpen');
+		expect(resizer?.find('[data-dir="left"]').exists()).toBe(false);
+	});
+
+	it('keeps saved AI widths during automatic layout changes', async () => {
+		localStorage.setItem('N8N_AGENT_AI_PANEL_WIDTH', '680');
+		localStorage.setItem('N8N_AGENT_PREVIEW_OPEN:p1:a1', 'true');
+		const wrapper = await renderView();
+		const vm = wrapper.vm as unknown as { builderContainerWidth: number };
+		vm.builderContainerWidth = 1200;
+		await nextTick();
+		await wrapper.get('[data-testid="agent-builder-instance-ai-btn"]').trigger('click');
+		const resizer = wrapper
+			.get('[data-testid="agent-ai-dock"]')
+			.getComponent({ name: 'ResizeWrapper' });
+
+		expect(resizer.props('width')).toBeLessThan(680);
+		expect(localStorage.getItem('N8N_AGENT_AI_PANEL_WIDTH')).toBe('680');
+		vm.builderContainerWidth = 2400;
+		await nextTick();
+		expect(resizer.props('width')).toBe(680);
+		expect(localStorage.getItem('N8N_AGENT_AI_PANEL_WIDTH')).toBe('680');
+	});
+
+	it('resets the preview to the current responsive default', async () => {
+		localStorage.setItem('N8N_AGENT_PREVIEW_OPEN:p1:a1', 'true');
+		const wrapper = await renderView();
+		const vm = wrapper.vm as unknown as {
+			builderContainerWidth: number;
+			onPreviewDockResize: (data: { width: number }) => void;
+		};
+		vm.builderContainerWidth = 1600;
+		vm.onPreviewDockResize({ width: 640 });
+		await nextTick();
+		const resizer = wrapper
+			.findAllComponents({ name: 'ResizeWrapper' })
+			.find((component) => component.props('supportedDirections').includes('left'));
+		expect(resizer?.props('width')).toBe(640);
+		expect(resizer?.classes()).toContain('previewResizeWrapper');
+		expect(resizer?.classes()).toContain('previewResizeOpen');
+		await resizer?.get('[data-dir="left"]').trigger('mousedown');
+		window.dispatchEvent(new MouseEvent('mouseup'));
+		await nextTick();
+		await resizer?.get('[data-dir="left"]').trigger('mousedown');
+		window.dispatchEvent(new MouseEvent('mouseup'));
+		await nextTick();
+		await resizer?.get('[data-dir="left"]').trigger('dblclick');
+		await flushPromises();
+		expect(resizer?.props('width')).toBe(480);
+		expect(localStorage.getItem('N8N_AGENT_AI_PANEL_WIDTH')).toBeNull();
 	});
 
 	it('closes the preview when opening the AI panel would make the editor too narrow', async () => {
