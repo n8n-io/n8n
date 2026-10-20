@@ -479,7 +479,18 @@ export class GoogleSheetsTrigger implements INodeType {
 					} else {
 						pageToken = undefined;
 
-						if (!revisions?.length) {
+						if (!Array.isArray(revisions)) {
+							throw new NodeOperationError(
+								this.getNode(),
+								'Could not retrieve document revisions',
+								{
+									description:
+										'Use OAuth2 authentication, or enable "Impersonate a User" in your service account credential. For impersonation, configure domain-wide delegation in Google Workspace.',
+								},
+							);
+						}
+
+						if (revisions.length === 0) {
 							return null;
 						}
 
