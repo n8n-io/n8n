@@ -1,6 +1,5 @@
 import {
 	Workspace,
-	type BuiltMemory,
 	type BuiltTool,
 	type WorkspaceFilesystem,
 	type WorkspaceSandbox,
@@ -79,9 +78,17 @@ function modelTurn(parts: MockStreamPart[], callsTool = false): MockStreamResult
 	};
 }
 
+function outputTurn(output: Record<string, unknown>): MockStreamResult {
+	return modelTurn([
+		{ type: 'text-start', id: 'result' },
+		{ type: 'text-delta', id: 'result', delta: JSON.stringify(output) },
+		{ type: 'text-end', id: 'result' },
+	]);
+}
+
 describe('createSelfHealingAgent', () => {
 	it('runs the factory, read tools, verifier, and stream consumer with a deterministic model', async () => {
-		// Agent.build() reads model prices. Keep this deterministic test offline.
+		// Keep model pricing requests offline.
 		vi.spyOn(globalThis, 'fetch').mockResolvedValue(Response.json({}));
 		const context = createContext();
 		vi.mocked(context.executionService.getStatus).mockResolvedValue({
@@ -119,11 +126,7 @@ describe('createSelfHealingAgent', () => {
 				],
 				true,
 			),
-			modelTurn([
-				{ type: 'text-start', id: 'result' },
-				{ type: 'text-delta', id: 'result', delta: JSON.stringify(output) },
-				{ type: 'text-end', id: 'result' },
-			]),
+			outputTurn(output),
 		];
 		const model = new MockLanguageModelV3({
 			doStream: async () => {
@@ -164,35 +167,50 @@ describe('createSelfHealingAgent', () => {
 		expect(verifyCandidate).toHaveBeenCalledTimes(1);
 		expect(turns).toHaveLength(0);
 
-		const buildMemory = async (instance: typeof agent) =>
-			await (instance as unknown as { build(): Promise<{ memory: BuiltMemory }> }).build();
-		const { memory } = await buildMemory(agent);
-		expect(await memory.getMessages('internal-thread')).not.toHaveLength(0);
-		const nextAgent = await createAgent();
-		const { memory: nextMemory } = await buildMemory(nextAgent);
-		expect(await nextMemory.getMessages('internal-thread')).toEqual([]);
+		const persistence = { threadId: 'internal-thread', resourceId: 'ia-self-healing:actor' };
+		turns.push(outputTurn(output));
+		const continued = await agent.stream('Continue the investigation.', { persistence });
+		await continued.stream.pipeTo(new WritableStream());
+		expect(JSON.stringify(model.doStreamCalls.at(-1)?.prompt)).toContain(output.summary);
+
+		const nextAgent = await createSelfHealingAgent({ context, modelId: model, verifyCandidate });
+		turns.push(outputTurn(output));
+		const fresh = await nextAgent.stream('Investigate another failure.', { persistence });
+		await fresh.stream.pipeTo(new WritableStream());
+		expect(model.doStreamCalls).toHaveLength(5);
+		expect(JSON.stringify(model.doStreamCalls.at(-1)?.prompt)).not.toContain(output.summary);
 	});
 
-	it('restricts the final SDK tools and loads the investigation skill before inference', async () => {
+	it('restricts the final SDK tools and includes the investigation prompt', async () => {
 		const context = createContext();
 		context.workspace = new Workspace({
 			filesystem: mock<WorkspaceFilesystem>({ status: 'ready', basePath: '/workspace' }),
 			sandbox: mock<WorkspaceSandbox>({ status: 'running' }),
 		});
-		const agent = await createAgent(context);
-		const config = await (
-			agent as unknown as {
-				build(): Promise<{
-					tools: BuiltTool[];
-					instructions: string;
-					checkpointStorage?: unknown;
-					observationalMemory?: unknown;
-					skillSource?: unknown;
-				}>;
-			}
-		).build();
+		vi.spyOn(globalThis, 'fetch').mockResolvedValue(Response.json({}));
+		const model = new MockLanguageModelV3({
+			doStream: async () =>
+				outputTurn({
+					outcome: 'could_not_fix',
+					summary: 'No fix found',
+					report: 'No changes were made.',
+				}),
+		});
+		const agent = await createSelfHealingAgent({
+			context,
+			modelId: model,
+			verifyCandidate: vi.fn<SelfHealingCandidateVerifier>(),
+		});
+		const { stream } = await agent.stream('Investigate the failed execution.');
+		await stream.pipeTo(new WritableStream());
+		expect(model.doStreamCalls).toHaveLength(1);
+		const request = model.doStreamCalls[0];
+		const instructions = request.prompt
+			.filter((message) => message.role === 'system')
+			.map((message) => message.content)
+			.join('\n');
 
-		expect(config.tools.map((tool) => tool.name).sort()).toEqual(
+		expect(request.tools?.map((tool) => tool.name).sort()).toEqual(
 			[
 				DOMAIN_TOOL_IDS.WORKFLOWS,
 				DOMAIN_TOOL_IDS.EXECUTIONS,
@@ -208,13 +226,12 @@ describe('createSelfHealingAgent', () => {
 				'workspace_execute_command',
 			].sort(),
 		);
-		expect(config.instructions).toContain('# Self-healing');
-		expect(config.instructions).toContain('knowledge-base/reference/workflow-sdk-language.md');
-		expect(config.instructions).toContain('Filesystem access is scoped to `/workspace`');
-		expect(config.instructions).toContain('execute commands in the workspace');
-		expect(config.checkpointStorage).toBe('memory');
-		expect(config.observationalMemory).toBeUndefined();
-		expect(config.skillSource).toBeUndefined();
+		expect(instructions).toContain('# Self-healing');
+		expect(instructions).toContain('knowledge-base/reference/workflow-sdk-language.md');
+		expect(instructions).toContain('Filesystem access is scoped to `/workspace`');
+		expect(instructions).toContain('execute commands in the workspace');
+		expect(agent.hasCheckpointStorage()).toBe(true);
+		expect(agent.snapshot.hasObservationalMemory).toBe(false);
 		expect(await loadInstanceAiSkills().loadSkill('self-healing')).toBeNull();
 	});
 

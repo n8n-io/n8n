@@ -116,12 +116,12 @@ const loadAgentBuildMetrics = lazyModule(
 const loadInstanceAgent = lazyModule(
 	() => require('./agent/instance-agent') as typeof InstanceAgentMod,
 );
-const loadSelfHealingAgent = lazyModule(
-	() => require('./agent/self-healing-agent') as typeof SelfHealingAgentMod,
+const loadSelfHealingAgent = lazyModule<typeof SelfHealingAgentMod>(() =>
+	require('./agent/self-healing-agent'),
 );
-const loadSelfHealing = lazyModule(() => require('./self-healing') as typeof SelfHealingMod);
-const loadWorkspaceFiles = lazyModule(
-	() => require('./workspace/workspace-files') as typeof WorkspaceFilesMod,
+const loadSelfHealing = lazyModule<typeof SelfHealingMod>(() => require('./self-healing'));
+const loadWorkspaceFiles = lazyModule<typeof WorkspaceFilesMod>(() =>
+	require('./workspace/workspace-files'),
 );
 const loadAiaModelDefaults = lazyModule(
 	() => require('./agent/aia-model-defaults') as typeof AiaModelDefaultsMod,
