@@ -56,7 +56,7 @@ export function looksLikeAgentChangeRequest(text: string): boolean {
 }
 
 /**
- * Draft that hands a preview-chat change request to the AI Assistant. The user
+ * Draft that hands a preview-chat change request to the n8n Assistant. The user
  * wrote this sentence themselves and sees it in the composer, so it goes across
  * as plain text — no fencing, no "treat this as data" preamble. It is still
  * scrubbed, because a pasted secret should not travel to another surface.
