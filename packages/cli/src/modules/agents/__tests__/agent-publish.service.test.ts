@@ -907,32 +907,52 @@ describe('AgentPublishService', () => {
 		);
 	});
 
-	it('reports a revert as a modification of the parts the restored schema changed', async () => {
-		const { service, agentRepository, agentHistoryRepository, taskSnapshotRepository, telemetry } =
-			makeService();
-		const agent = makeAgent({
-			activeVersionId: 'current-active',
-			activeVersion: makeHistory({ versionId: 'current-active' }),
-			schema: { ...schema, instructions: 'Draft instructions' },
-		});
-		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
-		agentHistoryRepository.findByVersionAndAgentId.mockResolvedValue(
-			makeHistory({ versionId: 'older-version', schema: { ...schema, name: 'Older Agent' } }),
-		);
-		taskSnapshotRepository.findByVersionId.mockResolvedValue([]);
+	it.each(['published', 'selected'] as const)(
+		'reports settings restored by a %s-version revert',
+		async (target) => {
+			const {
+				service,
+				agentRepository,
+				agentHistoryRepository,
+				taskSnapshotRepository,
+				telemetry,
+			} = makeService();
+			const restoredSchema: AgentJsonConfig = {
+				...schema,
+				name: 'Older Agent',
+				config: { toolCallConcurrency: 2 },
+			};
+			const agent = makeAgent({
+				activeVersionId: 'current-active',
+				activeVersion: makeHistory({ versionId: 'current-active', schema: restoredSchema }),
+				schema: { ...schema, instructions: 'Draft instructions', config: { maxIterations: 20 } },
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+			agentHistoryRepository.findByVersionAndAgentId.mockResolvedValue(
+				makeHistory({ versionId: 'older-version', schema: restoredSchema }),
+			);
+			taskSnapshotRepository.findByVersionId.mockResolvedValue([]);
 
-		await service.revertToVersion(agentId, projectId, 'older-version', user, 'user');
+			if (target === 'published') {
+				await service.revertToPublishedAgent(agentId, projectId, user, 'user');
+			} else {
+				await service.revertToVersion(agentId, projectId, 'older-version', user, 'user');
+			}
 
-		expect(telemetry.track).toHaveBeenCalledWith(
-			TELEMETRY_EVENT.AGENTS.USER_MODIFIED_AGENT,
-			expect.objectContaining({
-				agent_id: agentId,
-				user_id: user.id,
-				changed_parts: ['instructions', 'name'],
-				has_published_version: true,
-			}),
-		);
-	});
+			expect(agent.schema).toEqual(restoredSchema);
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.AGENTS.USER_MODIFIED_AGENT,
+				expect.objectContaining({
+					agent_id: agentId,
+					user_id: user.id,
+					changed_parts: ['instructions', 'name', 'config'],
+					changed_settings: ['tool_concurrency', 'max_iterations'],
+					event_version: '2',
+					has_published_version: true,
+				}),
+			);
+		},
+	);
 
 	it('reports sidecar body-only reverts when schema references are unchanged', async () => {
 		const {
@@ -984,6 +1004,7 @@ describe('AgentPublishService', () => {
 			expect.objectContaining({
 				agent_id: agentId,
 				changed_parts: ['tools', 'skills', 'tasks'],
+				changed_settings: [],
 				has_published_version: true,
 			}),
 		);

@@ -461,13 +461,16 @@ describe('AgentBuilderEditorColumn', () => {
 		]);
 	});
 
-	it('opens preview chat from the Triggers card', async function opensPreviewChat() {
-		const wrapper = await mountColumn({ agent: { isRunnable: true } as AgentResource });
+	it.each([true, false])(
+		'handles preview clicks from the Triggers card when runnable is %s',
+		async (isRunnable) => {
+			const wrapper = await mountColumn({ agent: { isRunnable } as AgentResource });
 
-		await wrapper.get('[data-testid="agent-triggers-preview-chat-button"]').trigger('click');
+			await wrapper.get('[data-testid="agent-triggers-preview-chat-button"]').trigger('click');
 
-		expect(wrapper.emitted('open-preview')).toEqual([[]]);
-	});
+			expect(wrapper.emitted('open-preview')).toEqual(isRunnable ? [['icon']] : undefined);
+		},
+	);
 
 	it('renders the episodic memory row on the Agent tab', async function rendersMemoryOnAgentTab() {
 		const wrapper = await mountColumn();
