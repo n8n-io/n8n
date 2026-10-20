@@ -1,6 +1,7 @@
 import {
 	type AgentBackgroundJobsResponse,
 	AgentChatMessageDto,
+	AgentChatCancelDto,
 	AgentChatQueueUpdateDto,
 	AgentChatQueueSteerDto,
 	AgentChatQueueReorderDto,
@@ -19,6 +20,7 @@ import {
 	Patch,
 	Post,
 	ProjectScope,
+	Query,
 	RestController,
 } from '@n8n/decorators';
 import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
@@ -171,11 +173,10 @@ export class AgentChatController {
 		@Param('agentId') agentId: string,
 		@Body payload: AgentChatResumeDto,
 	) {
-		const execution = this.chatRelay.createChatExecution(res);
-		const { send, onChunk, abortSignal, onExecutionStarted } = execution;
+		const delivery = this.chatRelay.createChatStream(res);
+		const { send, onChunk, onExecutionStarted } = delivery;
 		let executionId: string | undefined;
 		try {
-			abortSignal.throwIfAborted();
 			const stream = this.agentExecutionOrchestratorService.resumeForChat({
 				agentId,
 				projectId: req.params.projectId,
@@ -191,7 +192,6 @@ export class AgentChatController {
 				onExecutionRecorded: (id) => {
 					executionId = id;
 				},
-				abortSignal,
 			});
 			let suspended = false;
 			let failed = false;
@@ -206,7 +206,7 @@ export class AgentChatController {
 		} catch (error) {
 			send(toChatErrorEvent(error, 'Resume failed'));
 		} finally {
-			execution.close();
+			delivery.close();
 		}
 	}
 
@@ -289,10 +289,9 @@ export class AgentChatController {
 	) {
 		const { projectId } = req.params;
 		const { runId, toolCallId, resumeData } = payload;
-		const execution = this.chatRelay.createChatExecution(res);
-		const { send, onChunk, abortSignal, onExecutionStarted } = execution;
+		const delivery = this.chatRelay.createChatStream(res);
+		const { send, onChunk, onExecutionStarted } = delivery;
 		try {
-			abortSignal.throwIfAborted();
 			const result = await this.agentTestRunService.resumePreparedDraftRun({
 				agentId,
 				projectId,
@@ -305,7 +304,6 @@ export class AgentChatController {
 				onChunk,
 				onBudgetNotice: (notice) => send({ type: 'budget-notice', ...notice }),
 				onExecutionStarted,
-				abortSignal,
 			});
 			if (result.status === 'completed') {
 				send({
@@ -316,7 +314,7 @@ export class AgentChatController {
 		} catch (error) {
 			send(toChatErrorEvent(error, 'Resume failed'));
 		} finally {
-			execution.close();
+			delivery.close();
 		}
 	}
 
@@ -328,6 +326,7 @@ export class AgentChatController {
 		@Param('agentId') agentId: string,
 		@Param('threadId') threadId: string,
 		@Param('executionId') executionId: string,
+		@Query payload: AgentChatCancelDto = {},
 	) {
 		const cancelRequested = await this.chatExecutionService.requestCancel({
 			projectId: req.params.projectId,
@@ -336,6 +335,7 @@ export class AgentChatController {
 			executionId,
 			userId: req.user.id,
 			surface: 'preview',
+			...(payload.scope ? { scope: payload.scope } : {}),
 		});
 		return { cancelRequested };
 	}
@@ -347,6 +347,7 @@ export class AgentChatController {
 		_res: Response,
 		@Param('agentId') agentId: string,
 		@Param('runId') runId: string,
+		@Query payload: AgentChatCancelDto = {},
 	) {
 		const { projectId } = req.params;
 		const agent = await this.agentsService.findById(agentId, projectId);
@@ -356,6 +357,7 @@ export class AgentChatController {
 			agentId,
 			runId,
 			resourceId: draftChatMemoryResourceId(req.user.id),
+			...(payload.scope === 'foreground' ? { cancelBackgroundJobs: false } : {}),
 		});
 		return { cancelled };
 	}

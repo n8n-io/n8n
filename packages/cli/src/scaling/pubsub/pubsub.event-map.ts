@@ -155,6 +155,8 @@ export type PubSubCommandMap = {
 		productionN8nChat?: boolean;
 	};
 
+	'cancel-agent-chat-foreground': PubSubCommandMap['cancel-agent-chat-execution'];
+
 	'relay-agent-message-queue-update': {
 		data: PushPayload<'agentMessageQueueUpdated'>;
 		userIds: string[];
