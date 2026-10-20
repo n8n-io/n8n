@@ -449,6 +449,15 @@ export const importBlockingIssueSchema = z
 		policyViolationIssueSchema,
 		credentialPolicyViolationIssueSchema,
 	])
+	.refine(
+		(issue) =>
+			issue.type !== 'agent-conflict' ||
+			(issue.kind === 'task-id') === (issue.sourceTaskId !== undefined),
+		{
+			path: ['sourceTaskId'],
+			message: 'Task ID conflicts require sourceTaskId. Other conflicts must omit it.',
+		},
+	)
 	.openapi('ImportBlockingIssue');
 
 export type ImportBlockingIssue = z.infer<typeof importBlockingIssueSchema>;
