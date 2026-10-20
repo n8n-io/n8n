@@ -1,4 +1,9 @@
-import { SCHEDULED_JOB_NAME_MAX_LENGTH, ScheduledJobMisfirePolicy } from '@n8n/constants';
+import {
+	SCHEDULED_JOB_NAME_MAX_LENGTH,
+	SCHEDULED_JOB_OWNER_ID_MAX_LENGTH,
+	SCHEDULED_JOB_OWNER_MEMBER_ID_MAX_LENGTH,
+	ScheduledJobMisfirePolicy,
+} from '@n8n/constants';
 import { mock } from 'vitest-mock-extended';
 
 import { ScheduledJobOwnerRegistry } from '../../reconciliation/owner';
@@ -192,6 +197,22 @@ describe('createJobProvisioner', () => {
 				provisioner.provision({ owner: owner('a'.repeat(255), 'm'.repeat(36)) }, desired),
 			).resolves.toMatchObject({ inserted: [{ id: 1, name: 'wf:node:0' }] });
 		});
+
+		it('counts owner ids in characters, not UTF-16 code units', async () => {
+			const { provisioner } = makeProvisioner();
+
+			await expect(
+				provisioner.provision(
+					{
+						owner: owner(
+							'😀'.repeat(SCHEDULED_JOB_OWNER_ID_MAX_LENGTH),
+							'😀'.repeat(SCHEDULED_JOB_OWNER_MEMBER_ID_MAX_LENGTH),
+						),
+					},
+					desired,
+				),
+			).resolves.toMatchObject({ inserted: [{ id: 1, name: 'wf:node:0' }] });
+		});
 	});
 
 	describe('job name guardrail', () => {
@@ -210,9 +231,12 @@ describe('createJobProvisioner', () => {
 			expect(provisionTransaction).not.toHaveBeenCalled();
 		});
 
-		it('provisions a job name sitting exactly on its limit', async () => {
+		it.each([
+			['ASCII', 'n'],
+			['astral', '😀'],
+		])('provisions a job name of exactly its limit in %s characters', async (_, character) => {
 			const { provisioner } = makeProvisioner();
-			const name = 'n'.repeat(SCHEDULED_JOB_NAME_MAX_LENGTH);
+			const name = character.repeat(SCHEDULED_JOB_NAME_MAX_LENGTH);
 
 			await expect(
 				provisioner.provision({ owner: owner('thing-1') }, named(name)),

@@ -122,15 +122,15 @@ function assertProvisionableOwner(
 	if (!owners.has(ownerType)) {
 		throw new UnregisteredOwnerTypeError(ownerType);
 	}
-	if (ownerId === '' || ownerId.length > SCHEDULED_JOB_OWNER_ID_MAX_LENGTH) {
-		throw new InvalidOwnerIdError(ownerId.length, SCHEDULED_JOB_OWNER_ID_MAX_LENGTH);
+	const ownerIdLength = characterCount(ownerId);
+	if (ownerIdLength === 0 || ownerIdLength > SCHEDULED_JOB_OWNER_ID_MAX_LENGTH) {
+		throw new InvalidOwnerIdError(ownerIdLength, SCHEDULED_JOB_OWNER_ID_MAX_LENGTH);
 	}
-	if (
-		ownerMemberId !== null &&
-		(ownerMemberId === '' || ownerMemberId.length > SCHEDULED_JOB_OWNER_MEMBER_ID_MAX_LENGTH)
-	) {
+	if (ownerMemberId === null) return;
+	const ownerMemberIdLength = characterCount(ownerMemberId);
+	if (ownerMemberIdLength === 0 || ownerMemberIdLength > SCHEDULED_JOB_OWNER_MEMBER_ID_MAX_LENGTH) {
 		throw new InvalidOwnerMemberIdError(
-			ownerMemberId.length,
+			ownerMemberIdLength,
 			SCHEDULED_JOB_OWNER_MEMBER_ID_MAX_LENGTH,
 		);
 	}
@@ -143,8 +143,15 @@ function assertProvisionableOwner(
  * @throws {InvalidJobNameError} when a name is too long to store.
  */
 function assertStorableNames(desired: DesiredJob[]): void {
-	const tooLong = desired.find((job) => job.name.length > SCHEDULED_JOB_NAME_MAX_LENGTH);
-	if (tooLong) {
-		throw new InvalidJobNameError(tooLong.name.length, SCHEDULED_JOB_NAME_MAX_LENGTH);
+	for (const { name } of desired) {
+		const length = characterCount(name);
+		if (length > SCHEDULED_JOB_NAME_MAX_LENGTH) {
+			throw new InvalidJobNameError(length, SCHEDULED_JOB_NAME_MAX_LENGTH);
+		}
 	}
+}
+
+/** Counts code points, as Postgres varchar does, not UTF-16 code units. */
+function characterCount(value: string): number {
+	return [...value].length;
 }
