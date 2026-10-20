@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
+import { formatTimelineTime } from '../../utils/timeline-time';
 import {
 	N8nAiActivityStepButton,
 	N8nAiActivityStepChevron,
@@ -11,7 +11,8 @@ import {
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
-import { computed, ref, watch } from 'vue';
+import { computed } from 'vue';
+import { useTimelineItemExpansion } from '../../composables/useTimelineItemExpansion';
 import type { TimelineItem } from '../../session-timeline.types';
 import {
 	hitlRequestLabelKey,
@@ -27,7 +28,6 @@ const props = defineProps<{
 }>();
 
 const i18n = useI18n();
-const isOpen = ref(false);
 
 const label = computed(function getLabel() {
 	return hitlTimelineName(props.item, i18n);
@@ -42,10 +42,7 @@ const status = computed(function getStatus() {
 	);
 });
 
-const time = computed(function getTime() {
-	if (!props.item.timestamp) return '';
-	return convertToDisplayDate(new Date(props.item.timestamp).toISOString()).time;
-});
+const time = computed(() => formatTimelineTime(props.item.timestamp));
 
 function parseContent(value: unknown): unknown {
 	if (typeof value !== 'string') return value;
@@ -81,20 +78,11 @@ const canExpand = computed(function getCanExpand() {
 	return content.value !== undefined;
 });
 
-watch(
-	[() => props.searchQuery, canExpand],
-	function onSearchQueryChange([query, expandable]) {
-		const normalized = query?.trim().toLowerCase();
-		if (!expandable || !normalized) {
-			isOpen.value = false;
-			return;
-		}
-		if (`${label.value}\n${contentCode.value}`.toLowerCase().includes(normalized)) {
-			isOpen.value = true;
-		}
-	},
-	{ immediate: true },
-);
+const { isOpen } = useTimelineItemExpansion({
+	searchQuery: () => props.searchQuery,
+	canExpand,
+	searchableText: () => `${label.value}\n${contentCode.value}`,
+});
 </script>
 
 <template>

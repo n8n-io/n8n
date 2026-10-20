@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
+import { formatTimelineTime } from '../../utils/timeline-time';
 import {
 	N8nAiActivityStepButton,
 	N8nAiActivityStepChevron,
@@ -17,7 +17,8 @@ import {
 import { useI18n } from '@n8n/i18n';
 import { truncate } from '@n8n/utils/string/truncate';
 import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
-import { computed, ref, watch } from 'vue';
+import { computed } from 'vue';
+import { useTimelineItemExpansion } from '../../composables/useTimelineItemExpansion';
 import type { TimelineItem } from '../../session-timeline.types';
 import { timelineItemErrorMessage } from '../../session-timeline.utils';
 import { formatToolNameForDisplay, resolveToolNameForDisplay } from '../../utils/toolDisplayName';
@@ -75,10 +76,7 @@ const error = computed((): string | undefined => {
 
 const errorTooltip = computed(() => (error.value ? truncate(error.value, 160) : ''));
 
-const time = computed((): string => {
-	if (!props.item.timestamp) return '';
-	return convertToDisplayDate(new Date(props.item.timestamp).toISOString()).time;
-});
+const time = computed(() => formatTimelineTime(props.item.timestamp));
 
 function stringifyJson(value: unknown): string {
 	if (typeof value === 'string') {
@@ -91,36 +89,19 @@ function stringifyJson(value: unknown): string {
 	return JSON.stringify(value, null, 2) ?? String(value);
 }
 
-const isOpen = ref(false);
-
 const searchableText = computed((): string => {
 	return [
 		label.value,
 		props.item.toolInput !== undefined ? stringifyJson(props.item.toolInput) : '',
 		props.item.toolOutput !== undefined ? stringifyJson(props.item.toolOutput) : '',
-	]
-		.join('\n')
-		.toLowerCase();
+	].join('\n');
 });
 
-watch(
-	[() => props.searchQuery, canExpand],
-	function onSearchQueryChange([query, expandable]) {
-		if (!expandable) {
-			isOpen.value = false;
-			return;
-		}
-		const normalized = query?.trim().toLowerCase();
-		if (normalized) {
-			if (searchableText.value.includes(normalized)) {
-				isOpen.value = true;
-			}
-			return;
-		}
-		isOpen.value = false;
-	},
-	{ immediate: true },
-);
+const { isOpen } = useTimelineItemExpansion({
+	searchQuery: () => props.searchQuery,
+	canExpand,
+	searchableText,
+});
 </script>
 
 <template>
@@ -145,6 +126,7 @@ watch(
 					>
 						<template #prefix>
 							<span :class="$style.iconContainer">
+								<span role="status"></span>
 								<N8nSpinner v-if="isRunning" type="grid" size="medium" />
 								<N8nIcon
 									v-else-if="isInterrupted"
