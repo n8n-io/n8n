@@ -1,5 +1,6 @@
 import { convertArrayToReadableStream, MockLanguageModelV3 } from 'ai/test';
 
+import type { TokenUsage } from '../../../types/sdk/agent';
 import type { StreamWriterGuard } from '../../streaming/stream-writer-guard';
 import type { RunServices } from '../run-output-sink';
 import { StreamSink } from '../stream-sink';
@@ -84,5 +85,63 @@ describe('StreamSink', () => {
 			}),
 		).rejects.toHaveProperty('name', 'AI_NoOutputGeneratedError');
 		expect(model.doStreamCalls).toHaveLength(2);
+	});
+});
+
+describe('StreamSink getTerminalFinish', () => {
+	function makeSink(applyCost: RunServices['applyCost']) {
+		const guard = { write: async () => {} } as unknown as StreamWriterGuard;
+		return new StreamSink(guard, { modelId: 'mock/scripted', applyCost } as RunServices, {
+			modelStreamIdleTimeoutMs: 0,
+			smoothStream: false,
+		});
+	}
+
+	it('preserves the completed turns’ billed total on the terminal finish', () => {
+		const sink = makeSink((usage) => usage);
+		sink.reportUsage({ promptTokens: 10, completionTokens: 5, totalTokens: 15 }, 0.0042);
+
+		const { usage } = sink.getTerminalFinish();
+
+		expect(usage).toEqual({ promptTokens: 10, completionTokens: 5, totalTokens: 15, cost: 0.0042 });
+	});
+
+	it('merges in-flight raw tokens without adding to the billed cost', () => {
+		const sink = makeSink((usage) => usage);
+		sink.reportUsage({ promptTokens: 10, completionTokens: 5, totalTokens: 15 }, 0.0042);
+		// The in-flight turn's raw capture: tokens merge, its unknown cost does not.
+		(sink as unknown as { rawUsageReader: { getUsage(): TokenUsage } }).rawUsageReader = {
+			getUsage: () => ({ promptTokens: 3, completionTokens: 1, totalTokens: 4 }),
+		};
+
+		const { usage } = sink.getTerminalFinish();
+
+		expect(usage).toEqual({ promptTokens: 13, completionTokens: 6, totalTokens: 19, cost: 0.0042 });
+	});
+
+	it('emits a cost-only record when billed turns reported no token usage', () => {
+		const sink = makeSink((usage) => usage);
+		sink.reportUsage(undefined, 0.001);
+
+		const { usage } = sink.getTerminalFinish();
+
+		expect(usage).toEqual({ promptTokens: 0, completionTokens: 0, totalTokens: 0, cost: 0.001 });
+	});
+
+	it('leaves the estimate to applyCost when no billed total was reported', () => {
+		const applyCost = vi.fn((usage: TokenUsage | undefined) =>
+			usage ? { ...usage, cost: 99 } : usage,
+		);
+		const sink = makeSink(applyCost);
+		sink.reportUsage({ promptTokens: 10, completionTokens: 5, totalTokens: 15 }, undefined);
+
+		const { usage } = sink.getTerminalFinish();
+
+		expect(applyCost).toHaveBeenCalledWith({
+			promptTokens: 10,
+			completionTokens: 5,
+			totalTokens: 15,
+		});
+		expect(usage).toEqual({ promptTokens: 10, completionTokens: 5, totalTokens: 15, cost: 99 });
 	});
 });

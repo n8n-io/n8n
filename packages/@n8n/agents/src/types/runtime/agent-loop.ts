@@ -125,8 +125,10 @@ export interface RunOutputSink<TResult> {
 	 * Report the run's cumulative token usage after each turn. Streaming
 	 * implementations keep it so an aborted run can still emit a terminal
 	 * finish chunk carrying the tokens consumed before the stop.
+	 * `billedTotalUsd` is the summed gateway-billed cost of the completed
+	 * turns so far, kept for the same terminal chunk on gateway-managed runs.
 	 */
-	reportUsage(usage: TokenUsage | undefined): void;
+	reportUsage(usage: TokenUsage | undefined, billedTotalUsd?: number): void;
 	/**
 	 * Signal that the just-returned turn's messages have been folded into the list.
 	 * Streaming implementations drop the retained streamed text here so a later abort

@@ -125,6 +125,7 @@ describe('episodic memory defaults', () => {
 		});
 
 		expect(collector.startWindow).toHaveBeenCalledTimes(1);
+		if (!('reflection' in result)) throw new Error('Expected a reflect result object');
 		expect(result.billedCostUsd).toBe(0.002);
 		// The call carried no token usage: the cost rides a zero-token record.
 		expect(result.usage).toMatchObject({ promptTokens: 0, cost: 0.002 });
@@ -151,6 +152,7 @@ describe('episodic memory defaults', () => {
 		});
 
 		expect(collector.startWindow).not.toHaveBeenCalled();
+		if (!('reflection' in result)) throw new Error('Expected a reflect result object');
 		expect(result.billedCostUsd).toBeUndefined();
 	});
 });

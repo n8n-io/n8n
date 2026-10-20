@@ -3,7 +3,8 @@ import type * as AiImport from 'ai';
 
 import type { ObservationLogEntry } from '../../types/sdk/observation-log';
 import type { BuiltTelemetry } from '../../types/telemetry';
-import type { BilledUsageCollector } from '../../types/runtime/agent-runtime';
+import type { BilledUsageCollector, BilledUsageWindow } from '../../types/runtime/agent-runtime';
+import type { FetchFn } from '../model/model-factory';
 import { InMemoryMemory } from '../memory/memory-store';
 import {
 	buildObservationLogReflectorPrompt,
@@ -360,8 +361,8 @@ describe('observation-log reflector defaults', () => {
 
 	it('forwards the billed cost on a zero-token record when a gateway reflector call reports no usage', async () => {
 		mockGenerateText.mockResolvedValue({ text: '{"drop":[],"merge":[]}' });
-		const window = {
-			wrap: vi.fn((fetch?: unknown) => fetch ?? vi.fn()),
+		const window: BilledUsageWindow = {
+			wrap: vi.fn((fetch?: FetchFn) => fetch ?? ((async () => new Response()) as FetchFn)),
 			settle: vi.fn(() => 0.002),
 		};
 		const collector: BilledUsageCollector = { startWindow: vi.fn(() => window) };

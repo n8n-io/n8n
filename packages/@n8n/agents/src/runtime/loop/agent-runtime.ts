@@ -1159,7 +1159,7 @@ export class AgentRuntime {
 	): void {
 		state.totalUsage = mergeUsage(state.totalUsage, turn.usage);
 		incrementTokenCountFromUsage(ctx.options?.executionCounter, turn.usage);
-		sink.reportUsage(state.totalUsage);
+		sink.reportUsage(state.totalUsage, state.totalBilledUsd);
 	}
 
 	/**

@@ -65,6 +65,7 @@ export function getProxyFetch(): FetchFn | undefined {
 	return async (url, init) =>
 		await globalThis.fetch(url, {
 			...init,
+			// @ts-expect-error dispatcher is a valid undici option for Node.js fetch
 			dispatcher,
 		});
 }

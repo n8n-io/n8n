@@ -75,6 +75,7 @@ export class StreamSink implements RunOutputSink<void> {
 	}
 
 	private lastUsage: TokenUsage | undefined;
+	private lastBilledTotalUsd: number | undefined;
 	// Reads the in-flight turn's usage from the provider's raw stream events so an
 	// aborted run can still be billed (the SDK reports no usage on abort). The
 	// provider-specific translation lives behind `RawUsageReader`; undefined when
@@ -94,8 +95,9 @@ export class StreamSink implements RunOutputSink<void> {
 		private readonly options: ExecutionOptions | undefined,
 	) {}
 
-	reportUsage(usage: TokenUsage | undefined): void {
+	reportUsage(usage: TokenUsage | undefined, billedTotalUsd?: number): void {
 		this.lastUsage = usage;
+		this.lastBilledTotalUsd = billedTotalUsd;
 		// The just-completed turn is now folded into `usage`; its raw capture is
 		// stale and must not be re-added to a later between-turns abort total.
 		this.rawUsageReader = undefined;
@@ -123,9 +125,17 @@ export class StreamSink implements RunOutputSink<void> {
 	 * twice.
 	 */
 	getTerminalFinish(): { usage?: TokenUsage; model: string } {
-		const usage = this.services.applyCost(
-			mergeUsage(this.lastUsage, this.rawUsageReader?.getUsage()),
-		);
+		const merged = mergeUsage(this.lastUsage, this.rawUsageReader?.getUsage());
+		// Completed turns keep their billed total; the in-flight turn's cost is
+		// unknown (its window never settles on abort), so only its tokens merge.
+		const withBilled =
+			this.lastBilledTotalUsd !== undefined
+				? {
+						...(merged ?? { promptTokens: 0, completionTokens: 0, totalTokens: 0 }),
+						cost: this.lastBilledTotalUsd,
+					}
+				: merged;
+		const usage = this.services.applyCost(withBilled);
 		return { ...(usage && { usage }), model: this.services.modelId };
 	}
 
