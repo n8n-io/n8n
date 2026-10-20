@@ -159,41 +159,30 @@ const confirm = async () => {
 					/>
 				</div>
 			</div>
+
+			<div :class="$style.notice">
+				<N8nText size="xsmall" tag="span">
+					{{ i18n.baseText('communityPlusModal.notice') }}
+					<a :href="COMMUNITY_PLUS_DOCS_URL" target="_blank">
+						{{ i18n.baseText('generic.moreInfo') }}
+					</a>
+				</N8nText>
+			</div>
 		</N8nDialogBody>
 		<N8nDialogFooter>
-			<div :class="$style.footer">
-				<div :class="$style.notice">
-					<N8nText size="xsmall" tag="span">
-						{{ i18n.baseText('communityPlusModal.notice') }}
-						<a :href="COMMUNITY_PLUS_DOCS_URL" target="_blank">
-							{{ i18n.baseText('generic.moreInfo') }}
-						</a>
-					</N8nText>
-				</div>
-				<div :class="$style.buttons">
-					<N8nButton
-						variant="ghost"
-						:class="$style.skip"
-						:disabled="isLoading"
-						@click="closeDialog"
-						>{{ i18n.baseText('communityPlusModal.button.skip') }}</N8nButton
-					>
-					<N8nButton :disabled="!valid || isLoading" variant="solid" @click="confirm">
-						{{ i18n.baseText('communityPlusModal.button.confirm') }}
-					</N8nButton>
-				</div>
-			</div>
+			<N8nButton variant="ghost" :class="$style.skip" :disabled="isLoading" @click="closeDialog">{{
+				i18n.baseText('communityPlusModal.button.skip')
+			}}</N8nButton>
+			<N8nButton :disabled="!valid || isLoading" variant="solid" @click="confirm">
+				{{ i18n.baseText('communityPlusModal.button.confirm') }}
+			</N8nButton>
 		</N8nDialogFooter>
 	</N8nDialog>
 </template>
 
 <style lang="scss" module>
-.footer {
-	width: 100%;
-}
-
 .notice {
-	margin-bottom: var(--spacing--lg);
+	margin-top: var(--spacing--lg);
 }
 
 .features {
@@ -216,11 +205,5 @@ const confirm = async () => {
 			margin-bottom: var(--spacing--4xs);
 		}
 	}
-}
-
-.buttons {
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
 }
 </style>
