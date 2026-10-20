@@ -114,7 +114,7 @@ describe('Promotion Git checkout', () => {
 			credentials,
 			paths,
 			branchName: 'main',
-			configId: 'config-1',
+			environmentId: 'environment-1',
 		});
 
 		const git = (...args: string[]) =>

@@ -58,7 +58,7 @@ export const promotionReviewSummarySchema = z.object({
 	state: promotionReviewStateSchema,
 	/** Host reference for the review type. GitLab stores `<projectId>!<iid>`. NULL when the review lives in n8n. */
 	remoteReviewId: z.string().nullable(),
-	connection: z.object({ id: n8nIdSchema, name: z.string() }).nullable(),
+	environment: z.object({ id: n8nIdSchema, name: z.string() }).nullable(),
 	createdBy: reviewUserSchema.nullable(),
 	approvedBy: reviewUserSchema.nullable(),
 	createdAt: z.string().datetime(),

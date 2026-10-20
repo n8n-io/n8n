@@ -95,6 +95,7 @@ export type {
 	AnthropicPromptCachingConfig,
 	OpenAIPromptCachingConfig,
 	PromptCachingConfig,
+	NativeToolDeferralConfig,
 	BuiltTelemetry,
 	AttributeValue,
 	ObservationCursor,

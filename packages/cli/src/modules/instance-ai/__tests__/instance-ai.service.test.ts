@@ -56,6 +56,7 @@ vi.mock('@n8n/instance-ai', async () => {
 		},
 		createDomainAccessTracker: vi.fn(),
 		emitAgentSnapshotTraceEvent: vi.fn(async () => await Promise.resolve('emitted')),
+		carryAgentBuildRunState: vi.fn(),
 		createSandbox: vi.fn(),
 		createWorkspace: vi.fn(),
 		createLazyRuntimeWorkspace: vi.fn(
@@ -271,6 +272,7 @@ import {
 	setupSandboxWorkspace,
 	shutdownProductTelemetryProviders,
 	emitAgentSnapshotTraceEvent,
+	carryAgentBuildRunState,
 	threadProvenanceMetadata,
 	type BuilderUsageItem,
 	type WorkSummary,
@@ -278,6 +280,7 @@ import {
 	type ManagedBackgroundTask,
 	type InstanceAiTraceContext,
 	type ModelConfig,
+	type OrchestrationContext,
 	type TraceStatus,
 	type WorkflowVerificationObligation,
 } from '@n8n/instance-ai';
@@ -285,13 +288,10 @@ import type { ErrorReporter } from 'n8n-core';
 import { UserError } from 'n8n-workflow';
 import type { Mock, MockedFunction } from 'vitest';
 
-import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instance-ai-builder-delegate.adapter';
+import { InstanceAiBuilderDelegateAdapterService } from '../instance-ai-builder-delegate.adapter';
 import { ForbiddenError } from '@n8n/errors';
 import { userHasScopes } from '@/permissions.ee/check-access';
-import {
-	AI_PREFERENCES_CLEARED_BLOCK,
-	renderAiPreferencesBlock,
-} from '@/services/ai-preference.service';
+import { AI_PREFERENCES_CLEARED_BLOCK, renderAiPreferencesBlock } from '@n8n/backend-services';
 
 import { EvalThreadCredentialAllowlistService } from '../eval/thread-credential-allowlist.service';
 import {
@@ -2904,7 +2904,7 @@ describe('InstanceAiService — suspended run user revalidation', () => {
 		);
 	});
 
-	it.each(['workflows', 'build-agent'])(
+	it.each(['workflow_builder_workflows', 'agent_builder_build_agent', 'build-agent'])(
 		'rebuilds the suspended %s call when autoSetup is set',
 		async (toolName) => {
 			const service = createSuspendedRunResumeService();
@@ -2954,6 +2954,35 @@ describe('InstanceAiService — suspended run user revalidation', () => {
 			expect(resumeDataArg).not.toHaveProperty('requiresAgentRebuild');
 		},
 	);
+
+	it('carries the agent build state to the rebuilt orchestration context', async () => {
+		const service = createSuspendedRunResumeService();
+		const suspended = service.runState.findSuspendedByRequestId('req-1');
+		const previousContext = { id: 'previous' } as unknown as OrchestrationContext;
+		const rebuiltContext = { id: 'rebuilt' } as unknown as OrchestrationContext;
+		service.runState.findSuspendedByRequestId.mockReturnValue({
+			...suspended,
+			orchestrationContext: previousContext,
+		});
+		service.revalidateActiveUser.mockResolvedValue({ id: 'user-1', disabled: false } as User);
+		service.rebuildAgentForResume.mockResolvedValue({
+			agent: { id: 'rebuilt-agent' },
+			modelId: { provider: 'anthropic', model: 'claude' },
+			orchestrationContext: rebuiltContext,
+		});
+
+		await service.resumeSuspendedRun('user-1', 'req-1', {
+			approved: true,
+			connectedSlugs: ['github'],
+		});
+
+		expect(carryAgentBuildRunState).toHaveBeenCalledWith(previousContext, rebuiltContext);
+		expect(service.processResumedStream).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.anything(),
+			expect.objectContaining({ orchestrationContext: rebuiltContext }),
+		);
+	});
 
 	it('fails the resume and cancels the run when the rebuild fails', async () => {
 		const service = createSuspendedRunResumeService();
@@ -6060,7 +6089,7 @@ describe('InstanceAiService — deterministic workflow setup follow-up', () => {
 		const service = createSetupFollowUpService({});
 
 		expect(
-			service.getWorkflowSetupSuspensionWorkflowId('workflows', {
+			service.getWorkflowSetupSuspensionWorkflowId('workflow_builder_workflows', {
 				workflowId: 'wf-1',
 				setupRequests: [],
 			}),
@@ -6068,11 +6097,17 @@ describe('InstanceAiService — deterministic workflow setup follow-up', () => {
 		expect(
 			service.getWorkflowSetupSuspensionWorkflowId('workflows', {
 				workflowId: 'wf-1',
+				setupRequests: [],
+			}),
+		).toBe('wf-1');
+		expect(
+			service.getWorkflowSetupSuspensionWorkflowId('workflow_builder_workflows', {
+				workflowId: 'wf-1',
 				message: 'Publish workflow?',
 			}),
 		).toBeUndefined();
 		expect(
-			service.getWorkflowSetupSuspensionWorkflowId('credentials', {
+			service.getWorkflowSetupSuspensionWorkflowId('workflow_builder_credentials', {
 				workflowId: 'wf-1',
 				setupRequests: [],
 			}),

@@ -99,7 +99,7 @@ const credentialConflictSchema = z.object({
 	consumers: consumersSchema,
 });
 
-const dataTableChangeSchema = z.discriminatedUnion('kind', [
+export const promotionDataTableChangeSchema = z.discriminatedUnion('kind', [
 	z.object({
 		kind: z.literal('add-column'),
 		column: z.string(),
@@ -178,7 +178,7 @@ export const promotionBindingConflictSchema = z.discriminatedUnion('code', [
 		name: z.string(),
 		consumers: consumersSchema,
 		/** Every change that the import would make, destructive or not. */
-		changes: z.array(dataTableChangeSchema).min(1),
+		changes: z.array(promotionDataTableChangeSchema).min(1),
 	}),
 ]);
 
@@ -224,4 +224,5 @@ export type PromotionCredentialExpressionData = z.infer<
 	typeof promotionCredentialExpressionDataSchema
 >;
 export type PromotionBindingConflict = z.infer<typeof promotionBindingConflictSchema>;
+export type PromotionDataTableChange = z.infer<typeof promotionDataTableChangeSchema>;
 export type PromotionBindingPreflightResult = z.infer<typeof promotionBindingPreflightResultSchema>;

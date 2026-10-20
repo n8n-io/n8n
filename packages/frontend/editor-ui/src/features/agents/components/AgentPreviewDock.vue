@@ -9,6 +9,10 @@ import { useKeybindings } from '@/app/composables/useKeybindings';
 import ChatHistoryDropdownTrigger from '@/features/ai/shared/components/ChatHistoryDropdownTrigger.vue';
 
 import { useAgentSessionLangSmithExport } from '../composables/useAgentSessionLangSmithExport';
+import {
+	useAgentTelemetry,
+	type AgentPreviewNewChatSource,
+} from '../composables/useAgentTelemetry';
 
 import type {
 	AgentContinueLoadedEvent,
@@ -82,6 +86,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const agentTelemetry = useAgentTelemetry();
 const dock = useTemplateRef<HTMLElement>('dock');
 const {
 	isEnabled: isLangSmithExportEnabled,
@@ -122,7 +127,8 @@ function exportSession() {
 	});
 }
 
-function createNewSession() {
+function createNewSession(source: Exclude<AgentPreviewNewChatSource, 'standalone'>) {
+	agentTelemetry.trackClickedNewTestChat({ agentId: props.agentId, source });
 	emit('new-session');
 }
 
@@ -182,7 +188,7 @@ useKeybindings({
 	'ctrl+shift+;': {
 		allowInInputs: true,
 		disabled: () => !props.isOpen,
-		run: createNewSession,
+		run: () => createNewSession('shortcut'),
 	},
 });
 
@@ -249,7 +255,7 @@ defineExpose({ clearBudgetStops });
 							icon-size="large"
 							:aria-label="i18n.baseText('agents.builder.chat.newChat.label')"
 							data-testid="agent-preview-new-chat-btn"
-							@click="createNewSession"
+							@click="createNewSession('test-panel')"
 						/>
 					</KeyboardShortcutTooltip>
 

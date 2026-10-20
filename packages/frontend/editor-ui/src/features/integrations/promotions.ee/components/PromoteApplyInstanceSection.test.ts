@@ -13,39 +13,43 @@ const timestamps = {
 	updatedAt: '2026-09-01T00:00:00.000Z',
 };
 
-const promoteConfig = (checkout = { hasCheckout: true, matchesConfig: true }) => ({
-	id: 'config-promote',
-	name: 'Promote',
+const environmentFields = {
+	name: 'Production',
+	scope: 'instance' as const,
+	remote: { schemaVersion: 1 as const, remoteUrl: 'git@github.com:acme/workflows.git' },
+	provider: {
+		id: 'provider-ssh',
+		name: 'Production key',
+		type: 'git' as const,
+		authType: 'ssh-key' as const,
+		...timestamps,
+	},
+	...timestamps,
+};
+
+const promoteConfig = (checkout = { hasCheckout: true, matchesEnvironment: true }) => ({
+	...environmentFields,
+	id: 'environment-promote',
+	direction: 'promote' as const,
 	settings: { schemaVersion: 1 as const, baseBranchName: 'main', createBranchOnPromotion: false },
 	checkout,
-	...timestamps,
 });
 
-const applyConfig = (checkout = { hasCheckout: true, matchesConfig: true }) => ({
-	id: 'config-apply',
-	name: 'Apply',
+const applyConfig = (checkout = { hasCheckout: true, matchesEnvironment: true }) => ({
+	...environmentFields,
+	id: 'environment-apply',
+	direction: 'apply' as const,
 	settings: { schemaVersion: 1 as const, branchName: 'main' },
 	checkout,
-	...timestamps,
 });
 
-const instanceConnection = (overrides: Partial<PromotionConnection> = {}): PromotionConnection =>
-	({
-		id: 'connection-1',
-		name: 'Production',
-		scope: 'instance',
-		target: { schemaVersion: 1, remoteUrl: 'git@github.com:acme/workflows.git' },
-		provider: {
-			id: 'provider-ssh',
-			name: 'Production key',
-			type: 'git',
-			authType: 'ssh-key',
-			...timestamps,
-		},
-		configs: { promote: promoteConfig(), apply: applyConfig() },
-		...timestamps,
-		...overrides,
-	}) as PromotionConnection;
+const instanceConnection = (overrides: Partial<PromotionConnection> = {}): PromotionConnection => ({
+	name: environmentFields.name,
+	remote: environmentFields.remote,
+	provider: environmentFields.provider,
+	configs: { promote: promoteConfig(), apply: applyConfig() },
+	...overrides,
+});
 
 const renderComponent = createComponentRenderer(PromoteApplyInstanceSection);
 
@@ -94,8 +98,8 @@ describe('PromoteApplyInstanceSection', () => {
 			props: {
 				connection: instanceConnection({
 					configs: {
-						promote: promoteConfig({ hasCheckout: false, matchesConfig: false }),
-						apply: applyConfig({ hasCheckout: false, matchesConfig: false }),
+						promote: promoteConfig({ hasCheckout: false, matchesEnvironment: false }),
+						apply: applyConfig({ hasCheckout: false, matchesEnvironment: false }),
 					},
 				}),
 			},

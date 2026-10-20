@@ -1,5 +1,5 @@
 /**
- * Consolidated nodes tool — list, search, describe, type-definition, suggested,
+ * Consolidated workflow_builder_nodes tool — list, search, describe, type-definition, suggested,
  * explore-resources, execute.
  */
 import { Tool, type ToolContext } from '@n8n/agents';
@@ -12,6 +12,7 @@ import {
 	type SearchableNodeType,
 } from '@n8n/ai-utilities/node-catalog';
 import {
+	getLegacyBuilderToolNames,
 	buildExecuteNodeSessionGrantKey,
 	instanceAiApprovalResumeSchema,
 	instanceAiConfirmationSeveritySchema,
@@ -27,6 +28,7 @@ import { needsModelSelection } from './nodes/model-selection';
 import { pickPreferredChatModelNode } from './nodes/preferred-chat-model';
 import { addSetupPreference, type NodeWithSetupPreference } from './nodes/setup-preference';
 import { buildCredentialMap } from './workflows/resolve-credentials';
+import { DOMAIN_TOOL_IDS } from './tool-ids';
 
 // ── Action schemas ──────────────────────────────────────────────────────────
 
@@ -65,7 +67,7 @@ const searchAction = z.object({
 		.literal('search')
 		.describe(
 			'Search node types by name or AI connection type. Use for service-specific discovery — short service names like "Gmail" or "Slack", not full task phrases. ' +
-				'When the task fits a service covered by n8n Connect (web search, scraping, document parsing — no API key needed), surface that option too; list the covered set with `nodes(action="list", gatewayCreditsOnly=true)`.',
+				'When the task fits a service covered by n8n Connect (web search, scraping, document parsing — no API key needed), surface that option too; list the covered set with `workflow_builder_nodes(action="list", gatewayCreditsOnly=true)`.',
 		),
 	query: z
 		.string()
@@ -118,7 +120,7 @@ const suggestedAction = z.object({
 			'Get curated node recommendations by category. Call first when the workflow fits a known category. ' +
 				'The curated list is a starting point, not the full set: also add any n8n Connect covered services ' +
 				'relevant to the category (they run on Gateway credits, no API key needed). Check coverage with ' +
-				'`nodes(action="list", gatewayCreditsOnly=true)` or `credentials(action="search-types", gatewayCreditsOnly=true)`.',
+				'`workflow_builder_nodes(action="list", gatewayCreditsOnly=true)` or `workflow_builder_credentials(action="search-types", gatewayCreditsOnly=true)`.',
 		),
 	categories: z
 		.array(z.string())
@@ -346,7 +348,7 @@ async function handleDescribe(
 
 /**
  * Resolve TypeScript type definitions for a validated list of node requests.
- * Used by the consolidated `nodes` tool's `type-definition` action.
+ * Used by the consolidated `workflow_builder_nodes` tool's `type-definition` action.
  */
 async function resolveNodeTypeDefinitions(
 	context: InstanceAiContext,
@@ -672,7 +674,8 @@ export function createNodesTool(
 
 		type OrchestratorInput = z.infer<typeof orchestratorInputSchema>;
 
-		return new Tool('nodes')
+		return new Tool(DOMAIN_TOOL_IDS.NODES)
+			.legacyNames(...getLegacyBuilderToolNames(DOMAIN_TOOL_IDS.NODES))
 			.description(
 				"Read node type definitions or query real resources for a node's RLC parameters " +
 					'(e.g. list Google Sheets, OpenAI models, Slack channels). Use `type-definition` ' +
@@ -691,7 +694,8 @@ export function createNodesTool(
 			.build();
 	}
 
-	return new Tool('nodes')
+	return new Tool(DOMAIN_TOOL_IDS.NODES)
+		.legacyNames(...getLegacyBuilderToolNames(DOMAIN_TOOL_IDS.NODES))
 		.description(
 			'Work with n8n node types. Use `suggested` for known workflow categories, `search` for service-specific discovery, `type-definition` before configuring nodes, `explore-resources` for live credential-backed lists, and `execute` to run one node standalone (requires user approval, real side effects).',
 		)
