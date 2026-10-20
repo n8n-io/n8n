@@ -3495,7 +3495,7 @@
 	"settings.sections.integrations": "Integrations",
 	"settings.sections.security": "Security",
 	"settings.sections.operations": "Operations",
-	"settings.sections.billing": "Usage & billing",
+	"settings.sections.billing": "Billing",
 	"settings.authCookie.insecureConnection.title": "Your n8n server is configured to use a secure cookie, however you are either visiting this via an insecure URL, or using Safari.",
 	"settings.authCookie.insecureConnection.fixIntro": "To fix this, please consider the following options:",
 	"settings.authCookie.insecureConnection.option.tls": "Setup TLS/HTTPS (<strong>recommended</strong>), or",

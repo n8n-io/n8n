@@ -126,7 +126,6 @@ describe('useSettingsItems', () => {
 				'settings-agents',
 				'settings-context',
 				'settings-ai',
-				'settings-n8n-connect',
 				'settings-chat-hub',
 				'settings-api',
 				'settings-community-nodes',
@@ -140,6 +139,7 @@ describe('useSettingsItems', () => {
 				'settings-log-streaming',
 				'settings-opentelemetry',
 				'settings-migration-report',
+				'settings-n8n-connect',
 				'settings-usage-and-plan',
 			]);
 		});
@@ -176,7 +176,6 @@ describe('useSettingsItems', () => {
 						'settings-agents',
 						'settings-context',
 						'settings-ai',
-						'settings-n8n-connect',
 						'settings-chat-hub',
 					],
 				},
@@ -210,7 +209,7 @@ describe('useSettingsItems', () => {
 				{
 					id: 'billing',
 					title: 'settings.sections.billing',
-					items: ['settings-usage-and-plan'],
+					items: ['settings-n8n-connect', 'settings-usage-and-plan'],
 				},
 			]);
 		});
@@ -310,7 +309,7 @@ describe('useSettingsItems', () => {
 
 			expect(ids.indexOf('settings-context')).toBe(ids.indexOf('settings-agents') + 1);
 			expect(ids.indexOf('settings-context')).toBe(ids.indexOf('settings-ai') - 1);
-			expect(ids.indexOf('settings-chat-hub')).toBe(ids.indexOf('settings-n8n-connect') + 1);
+			expect(ids.indexOf('settings-chat-hub')).toBe(ids.indexOf('settings-ai') + 1);
 			expect(ids.indexOf('settings-chat-hub')).toBe(ids.indexOf('settings-community-nodes') - 1);
 		});
 
@@ -386,6 +385,15 @@ describe('useSettingsItems', () => {
 		);
 
 		expect(item?.available).toBe(true);
+	});
+
+	it('lists Gateway credits first under Billing', () => {
+		const billing = useSettingsItems().settingsSections.value.find(({ id }) => id === 'billing');
+
+		expect(billing?.items.map(({ id }) => id)).toEqual([
+			'settings-n8n-connect',
+			'settings-usage-and-plan',
+		]);
 	});
 
 	it('links to the n8n Connect settings page for the legacy cohort', () => {

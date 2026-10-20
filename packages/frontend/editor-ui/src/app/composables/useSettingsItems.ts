@@ -101,7 +101,7 @@ export function useSettingsItems() {
 				route: { to: { name: VIEWS.AUTHENTICATION_SETTINGS } },
 			},
 			// AI (modules add MCP at 10, Assistant at 20, Agents at 30 and Chat at 70).
-			// Features come first, then the cross-cutting usage and billing pages. Chat is last
+			// Features come first, then the cross-cutting AI usage controls. Chat is last
 			// because it is on its way out.
 			{
 				id: 'settings-ai',
@@ -113,29 +113,6 @@ export function useSettingsItems() {
 				available:
 					settingsStore.isAiAssistantEnabled && canUserAccessRouteByName(VIEWS.AI_SETTINGS),
 				route: { to: { name: VIEWS.AI_SETTINGS } },
-			},
-			{
-				id: 'settings-n8n-connect',
-				order: 60,
-				section: 'ai',
-				icon: 'plug-zap',
-				label: i18n.baseText(
-					settingsStore.isAiGatewayCloudUbbEnabled ? 'settings.n8nCredits' : 'settings.n8nConnect',
-				),
-				position: 'top',
-				available:
-					settingsStore.isAiGatewayEnabled &&
-					(settingsStore.isAiGatewayCloudUbbEnabled ||
-						canUserAccessRouteByName(VIEWS.AI_GATEWAY_SETTINGS)),
-				route: settingsStore.isAiGatewayCloudUbbEnabled
-					? undefined
-					: { to: { name: VIEWS.AI_GATEWAY_SETTINGS } },
-				creditsTag:
-					balance.value !== undefined
-						? i18n.baseText('aiGateway.wallet.balanceRemaining', {
-								interpolate: { balance: `$${Number(balance.value).toFixed(2)}` },
-							})
-						: undefined,
 			},
 			{
 				// The flag is read here because the middleware check does not run route guards.
@@ -258,10 +235,34 @@ export function useSettingsItems() {
 					!!MIGRATION_REPORT_TARGET_VERSION && canUserAccessRouteByName(VIEWS.MIGRATION_REPORT),
 				route: { to: { name: VIEWS.MIGRATION_REPORT } },
 			},
-			// Usage & billing
+			// Billing. Gateway credits is a wallet with a top-up flow, so it lives with
+			// the money pages, not with the AI feature controls.
+			{
+				id: 'settings-n8n-connect',
+				order: 10,
+				section: 'billing',
+				icon: 'plug-zap',
+				label: i18n.baseText(
+					settingsStore.isAiGatewayCloudUbbEnabled ? 'settings.n8nCredits' : 'settings.n8nConnect',
+				),
+				position: 'top',
+				available:
+					settingsStore.isAiGatewayEnabled &&
+					(settingsStore.isAiGatewayCloudUbbEnabled ||
+						canUserAccessRouteByName(VIEWS.AI_GATEWAY_SETTINGS)),
+				route: settingsStore.isAiGatewayCloudUbbEnabled
+					? undefined
+					: { to: { name: VIEWS.AI_GATEWAY_SETTINGS } },
+				creditsTag:
+					balance.value !== undefined
+						? i18n.baseText('aiGateway.wallet.balanceRemaining', {
+								interpolate: { balance: `$${Number(balance.value).toFixed(2)}` },
+							})
+						: undefined,
+			},
 			{
 				id: 'settings-usage-and-plan',
-				order: 10,
+				order: 20,
 				section: 'billing',
 				icon: 'chart-column-decreasing',
 				label: i18n.baseText('settings.usageAndPlan.title'),

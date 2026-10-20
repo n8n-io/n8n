@@ -269,12 +269,12 @@ describe('MainSidebar', () => {
 
 			getByText('Settings').click();
 			const personalSection = await findByTestId('main-sidebar-settings-section-personal');
-			const aiSection = await findByTestId('main-sidebar-settings-section-ai');
+			const billingSection = await findByTestId('main-sidebar-settings-section-billing');
 
 			// Routed links render through the mocked RouterLink, so only the credits link has text.
 			expect(within(personalSection).getByText('Personal')).toBeInTheDocument();
-			expect(within(aiSection).getByText('AI')).toBeInTheDocument();
-			expect(within(aiSection).getByText('Gateway credits')).toBeInTheDocument();
+			expect(within(billingSection).getByText('Billing')).toBeInTheDocument();
+			expect(within(billingSection).getByText('Gateway credits')).toBeInTheDocument();
 			expect(queryByTestId('main-sidebar-settings-section-general')).not.toBeInTheDocument();
 		});
 

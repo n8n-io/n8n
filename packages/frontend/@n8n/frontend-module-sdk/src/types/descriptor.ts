@@ -26,7 +26,7 @@ export type ModulePlaceholderPage = {
 
 /**
  * A heading in the settings sidebar. The shell lists them in this order:
- * Personal, People & access, AI, Integrations, Security, Operations, Usage & billing.
+ * Personal, People & access, AI, Integrations, Security, Operations, Billing.
  */
 export type SettingsSectionId =
 	| 'personal'

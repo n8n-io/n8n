@@ -195,7 +195,7 @@ you use a surface.
 ### Position of a settings link
 
 The settings sidebar lists its links under headings: Personal, People & access, AI, Integrations,
-Security, Operations and Usage & billing.
+Security, Operations and Billing.
 
 Each item in `settingsPages` accepts an optional `section` (`'personal' | 'people' | 'ai' |
 'integrations' | 'security' | 'operations' | 'billing'`) and an optional integer `order`. The

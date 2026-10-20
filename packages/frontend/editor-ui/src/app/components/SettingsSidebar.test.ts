@@ -15,7 +15,7 @@ vi.mock('../composables/useSettingsItems', () => ({
 		settingsSections: ref([
 			{ id: 'general', title: undefined, items: [moduleLink] },
 			{ id: 'personal', title: 'Personal', items: [personal] },
-			{ id: 'ai', title: 'AI', items: [credits] },
+			{ id: 'billing', title: 'Billing', items: [credits] },
 		]),
 		handleSettingsItemSelect: handleSettingsItemSelectMock,
 	}),
@@ -49,8 +49,8 @@ describe('SettingsSidebar', () => {
 		expect(getByTestId('settings-section-personal')).toContainElement(
 			getByText('Profile & preferences'),
 		);
-		expect(getByTestId('settings-section-ai')).toContainElement(getByText('AI'));
-		expect(getByTestId('settings-section-ai')).toContainElement(getByText('Gateway credits'));
+		expect(getByTestId('settings-section-billing')).toContainElement(getByText('Billing'));
+		expect(getByTestId('settings-section-billing')).toContainElement(getByText('Gateway credits'));
 	});
 
 	it('keeps the back link out of the scrolling list', () => {
