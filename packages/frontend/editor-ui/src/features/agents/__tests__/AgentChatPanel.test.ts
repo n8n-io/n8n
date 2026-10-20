@@ -360,6 +360,12 @@ vi.mock('@/app/composables/useAiGateway', () => ({
 	}),
 }));
 
+const getBuilderCreditsMock = vi.hoisted(() => vi.fn());
+vi.mock('@/features/ai/assistant/assistant.api', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@/features/ai/assistant/assistant.api')>()),
+	getBuilderCredits: getBuilderCreditsMock,
+}));
+
 vi.mock('../composables/agentTelemetry.utils', () => ({
 	deriveAgentStatus: vi.fn(() => 'draft'),
 	buildAgentConfigFingerprint: vi.fn().mockResolvedValue({
@@ -399,6 +405,7 @@ describe('AgentChatPanel', () => {
 		aiGatewayIsEnabledMock.value = false;
 		aiGatewayBalanceMock.value = undefined;
 		aiGatewayFetchWalletMock.mockReset().mockResolvedValue(undefined);
+		getBuilderCreditsMock.mockReset();
 	});
 
 	function mountPanel(
@@ -3181,6 +3188,112 @@ describe('AgentChatPanel', () => {
 			wrapper.unmount();
 		} finally {
 			visibilitySpy.mockRestore();
+		}
+	});
+
+	it('blocks sending on a free-credits stop', async () => {
+		messagesMock.value = [
+			{
+				id: 'assistant-1',
+				role: 'assistant',
+				content: '',
+				status: 'success',
+				budgetNotices: [{ id: 'notice-1', code: 'budget.freeCredits' }],
+			},
+		];
+		const wrapper = mountPanel();
+		await flushPromises();
+		const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
+		chatInput.vm.$emit('update:modelValue', 'keep going');
+		await nextTick();
+
+		expect(chatInput.props('canSubmit')).toBe(false);
+		wrapper.unmount();
+	});
+
+	it('clears a free-credits stop when the model credential changes', async () => {
+		messagesMock.value = [
+			{
+				id: 'assistant-1',
+				role: 'assistant',
+				content: '',
+				status: 'success',
+				budgetNotices: [{ id: 'notice-1', code: 'budget.freeCredits' }],
+			},
+		];
+		const wrapper = mountPanel({
+			agentConfig: { ...defaultAgentConfig, credential: 'cred-free' },
+		});
+		await flushPromises();
+		const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
+		expect(chatInput.props('canSubmit')).toBe(false);
+
+		await wrapper.setProps({
+			agentConfig: { ...defaultAgentConfig, credential: 'cred-own-key' },
+		});
+		await nextTick();
+
+		expect(clearBudgetNoticesMock).toHaveBeenCalledExactlyOnceWith(new Set(['budget.freeCredits']));
+		expect(messagesMock.value[0]?.budgetNotices).toEqual([]);
+		chatInput.vm.$emit('update:modelValue', 'keep going');
+		await nextTick();
+		expect(chatInput.props('canSubmit')).toBe(true);
+		wrapper.unmount();
+	});
+
+	it('clears a free-credits stop when the quota poll finds remaining quota', async () => {
+		vi.useFakeTimers();
+		try {
+			getBuilderCreditsMock.mockResolvedValue({ creditsQuota: 100, creditsClaimed: 50 });
+			messagesMock.value = [
+				{
+					id: 'assistant-1',
+					role: 'assistant',
+					content: '',
+					status: 'success',
+					budgetNotices: [{ id: 'notice-1', code: 'budget.freeCredits' }],
+				},
+			];
+			const wrapper = mountPanel();
+			await flushPromises();
+
+			expect(clearBudgetNoticesMock).not.toHaveBeenCalled();
+			await vi.advanceTimersByTimeAsync(31_000);
+			await flushPromises();
+
+			expect(getBuilderCreditsMock).toHaveBeenCalled();
+			expect(clearBudgetNoticesMock).toHaveBeenCalledWith(new Set(['budget.freeCredits']));
+			wrapper.unmount();
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it('keeps the free-credits stop while the quota stays exhausted', async () => {
+		vi.useFakeTimers();
+		try {
+			getBuilderCreditsMock.mockResolvedValue({ creditsQuota: 100, creditsClaimed: 100 });
+			messagesMock.value = [
+				{
+					id: 'assistant-1',
+					role: 'assistant',
+					content: '',
+					status: 'success',
+					budgetNotices: [{ id: 'notice-1', code: 'budget.freeCredits' }],
+				},
+			];
+			const wrapper = mountPanel();
+			await flushPromises();
+
+			await vi.advanceTimersByTimeAsync(31_000);
+			await flushPromises();
+
+			expect(clearBudgetNoticesMock).not.toHaveBeenCalled();
+			const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
+			expect(chatInput.props('canSubmit')).toBe(false);
+			wrapper.unmount();
+		} finally {
+			vi.useRealTimers();
 		}
 	});
 

@@ -10,6 +10,7 @@ import {
 } from '@n8n/agents';
 import {
 	isAgentBudgetNoticeCode,
+	UNLIMITED_CREDITS,
 	type AgentBudgetNotice,
 	type BudgetGuardrailConfig,
 } from '@n8n/api-types';
@@ -17,6 +18,8 @@ import { Logger } from '@n8n/backend-common';
 import { Container, Service } from '@n8n/di';
 
 import { AiGatewayService } from '@/services/ai-gateway.service';
+import { AiService } from '@/services/ai.service';
+import { OwnershipService } from '@/services/ownership.service';
 
 import { AgentBudgetAlertService } from './agent-budget-alert.service';
 import {
@@ -135,6 +138,15 @@ export interface BudgetAttachInput {
 		userId?: string;
 		projectId?: string;
 		workflowId?: string;
+	};
+	/**
+	 * Set when the run's model credential is the n8n-managed free OpenAI
+	 * credits credential: the preflight stops the next model call with
+	 * `budget.freeCredits` when the owner's AI credits quota is exhausted.
+	 */
+	freeAiCredits?: {
+		userId?: string;
+		projectId?: string;
 	};
 	/**
 	 * Saved agent to email when the month total crosses the alert.
@@ -317,6 +329,61 @@ function createWalletPreflightHook(
 }
 
 /**
+ * Resolves the user whose quota a managed credential bills: the run's user,
+ * else the personal project owner, else the instance owner. Managed
+ * credentials live in the claimer's personal project, so the run's user is
+ * almost always the claimer; the fallbacks cover workflow runs.
+ */
+async function resolveQuotaOwnerId(context: {
+	userId?: string;
+	projectId?: string;
+}): Promise<string | undefined> {
+	if (context.userId) return context.userId;
+	const ownership = Container.get(OwnershipService);
+	const owner = context.projectId
+		? await ownership.getPersonalProjectOwnerCached(context.projectId)
+		: null;
+	if (owner) return owner.id;
+	try {
+		return (await ownership.getInstanceOwner()).id;
+	} catch {
+		return undefined;
+	}
+}
+
+/**
+ * Stops the next model call with `budget.freeCredits` when the free OpenAI
+ * credits quota the run bills is exhausted. The AI service proxy enforces the
+ * quota itself, so a failed check never stops a turn: the call runs and the
+ * proxy remains the hard stop.
+ */
+function createFreeAiCreditsPreflightHook(
+	context: NonNullable<BudgetAttachInput['freeAiCredits']>,
+): ModelGuardrail {
+	return {
+		async before() {
+			try {
+				const ownerId = await resolveQuotaOwnerId(context);
+				if (!ownerId) return { action: 'allow' };
+				const client = await Container.get(AiService).getClient();
+				const { creditsQuota, creditsClaimed } = await client.getBuilderInstanceCredits({
+					id: ownerId,
+				});
+				if (creditsQuota === UNLIMITED_CREDITS) return { action: 'allow' };
+				return creditsClaimed >= creditsQuota
+					? { action: 'stop' as const, code: 'budget.freeCredits' }
+					: { action: 'allow' as const };
+			} catch (error) {
+				Container.get(Logger).warn('Free AI credits quota check failed; letting the call run', {
+					error: error instanceof Error ? error.message : String(error),
+				});
+				return { action: 'allow' };
+			}
+		},
+	};
+}
+
+/**
  * Appends the wallet preflight for a Gateway credits model and the budget hook
  * when a bucket is on. The preflight also attaches with no budget configured:
  * an empty wallet stops a run with no caps at all.
@@ -330,6 +397,7 @@ export function withBudgetGuardrail<T extends RunOptions & ExecutionOptions>(
 
 	const hooks: ModelGuardrail[] = [];
 	if (input.gatewayWallet) hooks.push(createWalletPreflightHook(input.gatewayWallet));
+	if (input.freeAiCredits) hooks.push(createFreeAiCreditsPreflightHook(input.freeAiCredits));
 	if (limits) {
 		const ledger = input.ledger ?? Container.get(AgentSpendLedger);
 		const onNotice = monthlyAlertNotice(input, limits.alertThresholdPercent);

@@ -236,6 +236,8 @@ export interface StreamChatResponseConfig extends ChatExecutionInput, ChatExecut
 	budget?: BudgetGuardrailConfig;
 	/** See `ReconstructedAgentRuntime.modelCredentialGatewayManaged`. */
 	modelCredentialGatewayManaged?: boolean;
+	/** See `ReconstructedAgentRuntime.modelCredentialFreeAiCredits`. */
+	modelCredentialFreeAiCredits?: boolean;
 	/** See `AgentRuntime.mcpServerAttributions`. */
 	mcpServerAttributions: Map<string, string>;
 	userId?: string;
@@ -768,6 +770,7 @@ export class AgentExecutionOrchestratorService {
 					mcpServerAttributions: runtime.mcpServerAttributions,
 					budget: runtime.budget,
 					modelCredentialGatewayManaged: runtime.modelCredentialGatewayManaged,
+					modelCredentialFreeAiCredits: runtime.modelCredentialFreeAiCredits,
 					agentId,
 					message,
 					modelMessage,
@@ -849,6 +852,7 @@ export class AgentExecutionOrchestratorService {
 					mcpServerAttributions: runtime.mcpServerAttributions,
 					budget: runtime.budget,
 					modelCredentialGatewayManaged: runtime.modelCredentialGatewayManaged,
+					modelCredentialFreeAiCredits: runtime.modelCredentialFreeAiCredits,
 					agentId,
 					projectId,
 					message,
@@ -908,6 +912,7 @@ export class AgentExecutionOrchestratorService {
 					mcpServerAttributions: runtime.mcpServerAttributions,
 					budget: runtime.budget,
 					modelCredentialGatewayManaged: runtime.modelCredentialGatewayManaged,
+					modelCredentialFreeAiCredits: runtime.modelCredentialFreeAiCredits,
 					agentId,
 					message,
 					memory,
@@ -967,6 +972,7 @@ export class AgentExecutionOrchestratorService {
 					mcpServerAttributions: runtime.mcpServerAttributions,
 					budget: runtime.budget,
 					modelCredentialGatewayManaged: runtime.modelCredentialGatewayManaged,
+					modelCredentialFreeAiCredits: runtime.modelCredentialFreeAiCredits,
 					agentId,
 					userId: user.id,
 					message,
@@ -1344,6 +1350,14 @@ export class AgentExecutionOrchestratorService {
 								},
 							}
 						: {}),
+					...(runtime.modelCredentialFreeAiCredits
+						? {
+								freeAiCredits: {
+									...(config.user?.id !== undefined ? { userId: config.user.id } : {}),
+									projectId: config.projectId,
+								},
+							}
+						: {}),
 					...(config.chatSurface === 'preview' && config.onBudgetNotice
 						? { onNotice: config.onBudgetNotice }
 						: {}),
@@ -1630,6 +1644,7 @@ export class AgentExecutionOrchestratorService {
 			mcpServerAttributions: runtime.mcpServerAttributions,
 			budget: runtime.budget,
 			modelCredentialGatewayManaged: runtime.modelCredentialGatewayManaged,
+			modelCredentialFreeAiCredits: runtime.modelCredentialFreeAiCredits,
 			agentId,
 			userId: user.id,
 			message,
@@ -1748,6 +1763,14 @@ export class AgentExecutionOrchestratorService {
 								},
 							}
 						: {}),
+					...(config.modelCredentialFreeAiCredits
+						? {
+								freeAiCredits: {
+									...(userId !== undefined ? { userId } : {}),
+									projectId,
+								},
+							}
+						: {}),
 					...(config.chatSurface === 'preview' && config.onBudgetNotice
 						? { onNotice: config.onBudgetNotice }
 						: {}),
@@ -1850,6 +1873,7 @@ export class AgentExecutionOrchestratorService {
 			mcpServerAttributions: runtime.mcpServerAttributions,
 			budget: runtime.budget,
 			modelCredentialGatewayManaged: runtime.modelCredentialGatewayManaged,
+			modelCredentialFreeAiCredits: runtime.modelCredentialFreeAiCredits,
 			agentId,
 			...(access.ownerId ? { userId: access.ownerId } : {}),
 			message,

@@ -187,7 +187,8 @@ export type AgentBudgetNoticeCode =
 	| 'budget.alert'
 	| 'budget.session'
 	| 'budget.monthly'
-	| 'budget.credits';
+	| 'budget.credits'
+	| 'budget.freeCredits';
 
 /** A budget alert or stop. `agentId` is the budget owner; absent for the run's own agent. */
 export interface AgentBudgetNotice {
@@ -200,6 +201,7 @@ export function isAgentBudgetNoticeCode(code: string): code is AgentBudgetNotice
 		code === 'budget.alert' ||
 		code === 'budget.session' ||
 		code === 'budget.monthly' ||
-		code === 'budget.credits'
+		code === 'budget.credits' ||
+		code === 'budget.freeCredits'
 	);
 }

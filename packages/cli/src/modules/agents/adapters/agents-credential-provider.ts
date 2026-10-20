@@ -1,7 +1,7 @@
 import type { CredentialProvider, ResolvedCredential, CredentialListItem } from '@n8n/agents';
 import type { CredentialsEntity, User } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { UserError } from 'n8n-workflow';
+import { OPEN_AI_API_CREDENTIAL_TYPE, UserError } from 'n8n-workflow';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 import { CredentialsHelper } from '@/credentials-helper';
@@ -70,6 +70,17 @@ export class AgentsCredentialProvider
 			projectId: this.projectId,
 			agentId: this.agentId,
 		});
+	}
+
+	/**
+	 * Whether the credential is the n8n-managed free OpenAI credits credential:
+	 * a managed `openAiApi` credential that bills the owner's AI credits quota
+	 * through the AI service proxy. The budget guardrail preflights that quota
+	 * for these, the same way it preflights the wallet for Gateway credits.
+	 */
+	async isFreeAiCreditsCredential(credentialId: string): Promise<boolean> {
+		const credential = await this.findCredentialEntity(credentialId);
+		return credential?.isManaged === true && credential.type === OPEN_AI_API_CREDENTIAL_TYPE;
 	}
 
 	/**

@@ -4,6 +4,8 @@ import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
 import { AiGatewayService } from '@/services/ai-gateway.service';
+import { AiService } from '@/services/ai.service';
+import { OwnershipService } from '@/services/ownership.service';
 
 import { AgentBudgetAlertService } from '../agent-budget-alert.service';
 import { withBudgetGuardrail } from '../budget-guardrail';
@@ -394,5 +396,114 @@ describe('withBudgetGuardrail wallet preflight', () => {
 
 		expect(attached).toBe(base);
 		expect(attached.guardrails).toBeUndefined();
+	});
+});
+
+describe('withBudgetGuardrail free AI credits preflight', () => {
+	const callCtx = { callId: 'call-1', model: 'openai/gpt-5', source: 'turn' as const };
+	const getBuilderInstanceCredits = vi.fn();
+	const ownership = {
+		getPersonalProjectOwnerCached: vi.fn(),
+		getInstanceOwner: vi.fn(),
+	};
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		Container.set(AiService, { getClient: async () => ({ getBuilderInstanceCredits }) });
+		Container.set(OwnershipService, ownership);
+		Container.set(Logger, mock<Logger>());
+	});
+
+	afterEach(() => {
+		Container.reset();
+	});
+
+	it('attaches the preflight with no budget bucket when the model runs on free credits', () => {
+		const attached = withBudgetGuardrail(base, {
+			sessionId: 'thread-1',
+			agentId: 'agent-1',
+			freeAiCredits: { userId: 'user-1' },
+		});
+
+		expect(attached).not.toBe(base);
+		expect(attached.guardrails?.hooks).toHaveLength(1);
+	});
+
+	it('stops the next model call with budget.freeCredits when the quota is exhausted', async () => {
+		getBuilderInstanceCredits.mockResolvedValue({ creditsQuota: 100, creditsClaimed: 100 });
+		const attached = withBudgetGuardrail(base, {
+			sessionId: 'thread-1',
+			agentId: 'agent-1',
+			freeAiCredits: { userId: 'user-1' },
+		});
+		const hook = attached.guardrails?.hooks[0];
+		if (!hook?.before) throw new Error('Expected a free-credits preflight hook');
+
+		await expect(hook.before(callCtx)).resolves.toEqual({
+			action: 'stop',
+			code: 'budget.freeCredits',
+		});
+		expect(getBuilderInstanceCredits).toHaveBeenCalledWith({ id: 'user-1' });
+	});
+
+	it('lets the call run while quota remains', async () => {
+		getBuilderInstanceCredits.mockResolvedValue({ creditsQuota: 100, creditsClaimed: 99.5 });
+		const attached = withBudgetGuardrail(base, {
+			sessionId: 'thread-1',
+			agentId: 'agent-1',
+			freeAiCredits: { userId: 'user-1' },
+		});
+		const hook = attached.guardrails?.hooks[0];
+		if (!hook?.before) throw new Error('Expected a free-credits preflight hook');
+
+		await expect(hook.before(callCtx)).resolves.toEqual({ action: 'allow' });
+	});
+
+	it('lets the call run on an unlimited quota', async () => {
+		getBuilderInstanceCredits.mockResolvedValue({ creditsQuota: -1, creditsClaimed: 500 });
+		const attached = withBudgetGuardrail(base, {
+			sessionId: 'thread-1',
+			agentId: 'agent-1',
+			freeAiCredits: { userId: 'user-1' },
+		});
+		const hook = attached.guardrails?.hooks[0];
+		if (!hook?.before) throw new Error('Expected a free-credits preflight hook');
+
+		await expect(hook.before(callCtx)).resolves.toEqual({ action: 'allow' });
+	});
+
+	it('resolves the personal project owner when the run has no user', async () => {
+		ownership.getPersonalProjectOwnerCached.mockResolvedValue({ id: 'owner-1' });
+		getBuilderInstanceCredits.mockResolvedValue({ creditsQuota: 100, creditsClaimed: 100 });
+		const attached = withBudgetGuardrail(base, {
+			sessionId: 'thread-1',
+			agentId: 'agent-1',
+			freeAiCredits: { projectId: 'project-1' },
+		});
+		const hook = attached.guardrails?.hooks[0];
+		if (!hook?.before) throw new Error('Expected a free-credits preflight hook');
+
+		await expect(hook.before(callCtx)).resolves.toEqual({
+			action: 'stop',
+			code: 'budget.freeCredits',
+		});
+		expect(getBuilderInstanceCredits).toHaveBeenCalledWith({ id: 'owner-1' });
+	});
+
+	it('lets the call run when the quota read fails', async () => {
+		getBuilderInstanceCredits.mockRejectedValue(new Error('proxy unreachable'));
+		const attached = withBudgetGuardrail(base, {
+			sessionId: 'thread-1',
+			agentId: 'agent-1',
+			freeAiCredits: { userId: 'user-1' },
+		});
+		const hook = attached.guardrails?.hooks[0];
+		if (!hook?.before) throw new Error('Expected a free-credits preflight hook');
+
+		await expect(hook.before(callCtx)).resolves.toEqual({ action: 'allow' });
+		expect(Container.get(Logger).warn).toHaveBeenCalledWith(
+			'Free AI credits quota check failed; letting the call run',
+			{ error: 'proxy unreachable' },
+		);
 	});
 });

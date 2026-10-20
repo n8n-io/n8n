@@ -4,7 +4,8 @@ export type BudgetNoticeCode =
 	| 'budget.monthly'
 	| 'budget.session'
 	| 'budget.alert'
-	| 'budget.credits';
+	| 'budget.credits'
+	| 'budget.freeCredits';
 
 export type BudgetAmountField = 'monthlyBudgetUsd' | 'sessionCostCapUsd';
 
@@ -149,8 +150,13 @@ export function raisedBudgetCaps(
 
 export function isBudgetStopCode(
 	code: string,
-): code is 'budget.monthly' | 'budget.session' | 'budget.credits' {
-	return code === 'budget.monthly' || code === 'budget.session' || code === 'budget.credits';
+): code is 'budget.monthly' | 'budget.session' | 'budget.credits' | 'budget.freeCredits' {
+	return (
+		code === 'budget.monthly' ||
+		code === 'budget.session' ||
+		code === 'budget.credits' ||
+		code === 'budget.freeCredits'
+	);
 }
 
 /** Notice codes a persisted change to one cap resolves. The alert rides with the monthly cap. */

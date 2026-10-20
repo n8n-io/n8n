@@ -182,7 +182,12 @@ export interface AgentsChatMessage {
 	/** Live preview only. Budget stop or alert cards for this turn. */
 	budgetNotices?: Array<{
 		id: string;
-		code: 'budget.monthly' | 'budget.session' | 'budget.alert' | 'budget.credits';
+		code:
+			| 'budget.monthly'
+			| 'budget.session'
+			| 'budget.alert'
+			| 'budget.credits'
+			| 'budget.freeCredits';
 		agentId?: string;
 	}>;
 	/** Host events of this turn, in arrival order. Host extensions render them. */

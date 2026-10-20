@@ -32,6 +32,11 @@ vi.mock('@n8n/i18n', () => ({
 				'agents.chat.budget.credits.dismissed':
 					'The chat resumes once the new balance is detected.',
 				'agents.chat.budget.credits.topUp': 'Top up',
+				'agents.chat.budget.freeCredits.title': 'Your free credits are used up.',
+				'agents.chat.budget.freeCredits.message':
+					'This agent stopped because the free credits are used up. Connect your own API key in the model selector to keep going.',
+				'agents.chat.budget.freeCredits.dismissed':
+					'The chat resumes as soon as you connect your own API key or the quota renews.',
 			})[key] ?? key,
 	}),
 }));
@@ -45,7 +50,12 @@ const N8nInputNumber = defineComponent({
 
 describe('AgentBudgetNoticeCard', () => {
 	function mountCard(
-		code: 'budget.monthly' | 'budget.session' | 'budget.alert' | 'budget.credits',
+		code:
+			| 'budget.monthly'
+			| 'budget.session'
+			| 'budget.alert'
+			| 'budget.credits'
+			| 'budget.freeCredits',
 		props: { canIncrease?: boolean; pending?: boolean } = {},
 	) {
 		return mount(AgentBudgetNoticeCard, {
@@ -134,5 +144,14 @@ describe('AgentBudgetNoticeCard', () => {
 		expect(wrapper.find('[data-testid="agent-budget-notice-top-up"]').exists()).toBe(true);
 		expect(wrapper.find('[data-testid="agent-budget-notice-dismissed"]').exists()).toBe(false);
 		expect(wrapper.emitted('increase')).toBeUndefined();
+	});
+
+	it('renders the free-credits stop with guidance and no amount input', () => {
+		const wrapper = mountCard('budget.freeCredits');
+		expect(wrapper.text()).toContain('Your free credits are used up.');
+		expect(wrapper.text()).toContain('Connect your own API key in the model selector');
+		expect(wrapper.find('[data-testid="agent-budget-notice-amount"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="agent-budget-notice-top-up"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="agent-budget-notice-increase"]').exists()).toBe(false);
 	});
 });

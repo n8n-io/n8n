@@ -659,7 +659,12 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 
 	function attachBudgetNotice(
 		session: StreamSession,
-		code: 'budget.monthly' | 'budget.session' | 'budget.alert' | 'budget.credits',
+		code:
+			| 'budget.monthly'
+			| 'budget.session'
+			| 'budget.alert'
+			| 'budget.credits'
+			| 'budget.freeCredits',
 		agentId?: string,
 	): void {
 		const msg = ensureCurrent(session);

@@ -351,9 +351,11 @@ export class SubAgentRunner {
 			const forwardBudgetNotice = context.onBudgetNotice
 				? (notice: AgentBudgetNotice) =>
 						context.onBudgetNotice?.(
-							// Session spend and the credits wallet are shared scopes: no
-							// child owns them, so the notice carries no owner.
-							notice.code === 'budget.session' || notice.code === 'budget.credits'
+							// Session spend and the credits balances are shared scopes:
+							// no child owns them, so the notice carries no owner.
+							notice.code === 'budget.session' ||
+								notice.code === 'budget.credits' ||
+								notice.code === 'budget.freeCredits'
 								? { code: notice.code }
 								: // The innermost budget owner wins.
 									{ ...notice, agentId: notice.agentId ?? runtimeSource.source.sourceId },
@@ -380,6 +382,14 @@ export class SubAgentRunner {
 					...(reconstructed.modelCredentialGatewayManaged
 						? {
 								gatewayWallet: {
+									...(context.user?.id !== undefined ? { userId: context.user.id } : {}),
+									projectId: context.projectId,
+								},
+							}
+						: {}),
+					...(reconstructed.modelCredentialFreeAiCredits
+						? {
+								freeAiCredits: {
 									...(context.user?.id !== undefined ? { userId: context.user.id } : {}),
 									projectId: context.projectId,
 								},
@@ -456,7 +466,12 @@ export class SubAgentRunner {
 				// failure with the reason, and the preview chat gets the card.
 				status = 'failed';
 				const code = result.guardrail?.code;
-				if (code === 'budget.session' || code === 'budget.monthly' || code === 'budget.credits') {
+				if (
+					code === 'budget.session' ||
+					code === 'budget.monthly' ||
+					code === 'budget.credits' ||
+					code === 'budget.freeCredits'
+				) {
 					forwardBudgetNotice?.({ code });
 				}
 			}

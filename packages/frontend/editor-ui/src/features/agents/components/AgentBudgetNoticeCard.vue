@@ -38,6 +38,11 @@ const COPY: Record<
 		message: 'agents.chat.budget.credits.message',
 		dismissed: 'agents.chat.budget.credits.dismissed',
 	},
+	'budget.freeCredits': {
+		title: 'agents.chat.budget.freeCredits.title',
+		message: 'agents.chat.budget.freeCredits.message',
+		dismissed: 'agents.chat.budget.freeCredits.dismissed',
+	},
 };
 
 const props = withDefaults(
@@ -62,6 +67,13 @@ const amount = ref<number | undefined>();
 
 const copy = computed(() => COPY[props.code]);
 const isCredits = computed(() => props.code === 'budget.credits');
+/** Only the cap codes have an amount to raise; the credits codes clear outside this save flow. */
+const hasCapField = computed(
+	() =>
+		props.code === 'budget.session' ||
+		props.code === 'budget.monthly' ||
+		props.code === 'budget.alert',
+);
 const field = computed<BudgetAmountField>(() =>
 	props.code === 'budget.session' ? 'sessionCostCapUsd' : 'monthlyBudgetUsd',
 );
@@ -94,7 +106,7 @@ function topUp() {
 				{{ i18n.baseText(copy.dismissed) }}
 			</N8nText>
 			<template v-else>
-				<label v-if="canIncrease && copy.input !== undefined" :class="$style.amount">
+				<label v-if="canIncrease && hasCapField && copy.input !== undefined" :class="$style.amount">
 					<N8nText size="small">{{ i18n.baseText(copy.input) }}</N8nText>
 					<N8nInputNumber
 						:model-value="amount"
@@ -126,7 +138,7 @@ function topUp() {
 						{{ i18n.baseText('agents.chat.budget.credits.topUp') }}
 					</N8nButton>
 					<N8nButton
-						v-else-if="canIncrease"
+						v-else-if="canIncrease && hasCapField"
 						size="medium"
 						:loading="pending"
 						data-testid="agent-budget-notice-increase"

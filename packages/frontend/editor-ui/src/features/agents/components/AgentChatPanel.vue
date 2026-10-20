@@ -34,6 +34,7 @@ import {
 	MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES,
 	MAX_AGENT_CHAT_ATTACHMENT_SIZE_MB,
 	MAX_AGENT_CHAT_ATTACHMENTS_PER_MESSAGE,
+	UNLIMITED_CREDITS,
 	getProviderAttachmentCapabilities,
 	acceptedMimeTypesFromCapabilities,
 } from '@n8n/api-types';
@@ -50,6 +51,7 @@ import AttachmentPreview from '@/features/ai/instanceAi/components/AttachmentPre
 import InstanceAiResourceChip from '@/features/ai/instanceAi/components/InstanceAiResourceChip.vue';
 import { useAgentChatStream } from '../composables/useAgentChatStream';
 import { useAiGateway } from '@/app/composables/useAiGateway';
+import { getBuilderCredits } from '@/features/ai/assistant/assistant.api';
 import {
 	findTailOpenInteractive,
 	getMessageInteractives,
@@ -946,6 +948,43 @@ watch(documentVisibility, (visibility) => {
 		void refreshWalletAndMaybeClearCredits();
 	}
 });
+
+const hasFreeCreditsStop = computed(() =>
+	messages.value.some((message) =>
+		message.budgetNotices?.some((notice) => notice.code === 'budget.freeCredits'),
+	),
+);
+// A free-credits stop clears two ways: the quota renews, or the user switches
+// the model to their own key — the remedy the card points at. Poll for the
+// first; watch the agent's credential for the second. Stays blocked on a
+// fetch error: the next run would stop against the same exhausted quota.
+const freeCreditsRecheck = useIntervalFn(
+	async () => {
+		try {
+			const { creditsQuota, creditsClaimed } = await getBuilderCredits(rootStore.restApiContext);
+			if (creditsQuota === UNLIMITED_CREDITS || creditsQuota - creditsClaimed > 0) {
+				clearBudgetNotices(new Set(['budget.freeCredits']));
+			}
+		} catch {
+			// Keep the stop: the quota state is unknown.
+		}
+	},
+	30 * TIME.SECOND,
+	{ immediate: false },
+);
+watchEffect((onCleanup) => {
+	if (!hasFreeCreditsStop.value) return;
+	freeCreditsRecheck.resume();
+	onCleanup(() => freeCreditsRecheck.pause());
+});
+watch(
+	() => props.agentConfig?.credential,
+	(credential, previous) => {
+		if (credential !== previous && previous !== undefined) {
+			clearBudgetNotices(new Set(['budget.freeCredits']));
+		}
+	},
+);
 const canIncreaseBudget = computed(() => props.increaseBudget !== undefined);
 const budgetIncreasePending = ref(false);
 const isRetrying = ref(false);

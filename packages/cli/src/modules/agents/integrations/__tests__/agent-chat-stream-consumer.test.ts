@@ -361,6 +361,8 @@ const MONTHLY_BUDGET_MESSAGE =
 	'⚠️ This agent reached its monthly budget and stopped. Open the agent in n8n and increase the cap.';
 const CREDITS_BUDGET_MESSAGE =
 	'⚠️ The Gateway credits balance is empty, so this agent stopped. Open n8n and top up Gateway credits to continue.';
+const FREE_CREDITS_BUDGET_MESSAGE =
+	'⚠️ The free credits are used up, so this agent stopped. Open the agent in n8n and connect your own API key to continue.';
 
 describe('AgentChatStreamConsumer — budget stop', () => {
 	it('posts the session message once and clears the status when the run never starts', async () => {
@@ -421,6 +423,22 @@ describe('AgentChatStreamConsumer — budget stop', () => {
 		);
 
 		expect(localThread.post).toHaveBeenCalledWith({ markdown: CREDITS_BUDGET_MESSAGE });
+		expect(postErrorToThread).not.toHaveBeenCalled();
+	});
+
+	it('posts the free-credits message when the quota stop ends the run', async () => {
+		const postErrorToThread = vi.fn().mockResolvedValue(undefined);
+		const consumer = makeConsumer(postErrorToThread);
+		const localThread = mock<Thread<unknown, unknown>>();
+
+		await consumer.consume(
+			makeStream([
+				{ type: 'finish', finishReason: 'guardrail', guardrail: { code: 'budget.freeCredits' } },
+			]),
+			localThread,
+		);
+
+		expect(localThread.post).toHaveBeenCalledWith({ markdown: FREE_CREDITS_BUDGET_MESSAGE });
 		expect(postErrorToThread).not.toHaveBeenCalled();
 	});
 

@@ -91,6 +91,8 @@ interface WorkflowAgentStreamParams {
 	savedAgentId?: string;
 	/** See `ReconstructedAgentRuntime.modelCredentialGatewayManaged`. */
 	modelCredentialGatewayManaged?: boolean;
+	/** See `ReconstructedAgentRuntime.modelCredentialFreeAiCredits`. */
+	modelCredentialFreeAiCredits?: boolean;
 	telemetryUserId?: string;
 	runType: AgentRunTelemetryType;
 	outputSchema?: JSONSchema7;
@@ -263,6 +265,7 @@ export class AgentWorkflowExecutionService {
 		agent?: BuiltAgent;
 		budget?: BudgetGuardrailConfig;
 		modelCredentialGatewayManaged?: boolean;
+		modelCredentialFreeAiCredits?: boolean;
 		error?: string;
 	}> {
 		if (!runSource.agent.schema) {
@@ -296,6 +299,7 @@ export class AgentWorkflowExecutionService {
 				...applied,
 				budget: reconstructed.budget,
 				modelCredentialGatewayManaged: reconstructed.modelCredentialGatewayManaged,
+				modelCredentialFreeAiCredits: reconstructed.modelCredentialFreeAiCredits,
 			};
 		} catch (e) {
 			return {
@@ -328,6 +332,7 @@ export class AgentWorkflowExecutionService {
 		agent?: BuiltAgent;
 		budget?: BudgetGuardrailConfig;
 		modelCredentialGatewayManaged?: boolean;
+		modelCredentialFreeAiCredits?: boolean;
 		error?: string;
 	}> {
 		try {
@@ -350,6 +355,7 @@ export class AgentWorkflowExecutionService {
 				...applied,
 				budget: reconstructed.budget,
 				modelCredentialGatewayManaged: reconstructed.modelCredentialGatewayManaged,
+				modelCredentialFreeAiCredits: reconstructed.modelCredentialFreeAiCredits,
 			};
 		} catch (e) {
 			return {
@@ -508,6 +514,16 @@ export class AgentWorkflowExecutionService {
 							gatewayWallet: {
 								projectId: tracing.projectId,
 								...(tracing.workflowId !== undefined ? { workflowId: tracing.workflowId } : {}),
+							},
+						}
+					: {}),
+				// Same owner resolution for the free-credits quota: the claimer's
+				// personal project is almost always the run's project.
+				...(params.modelCredentialFreeAiCredits
+					? {
+							freeAiCredits: {
+								...(telemetryUserId !== undefined ? { userId: telemetryUserId } : {}),
+								projectId: tracing.projectId,
 							},
 						}
 					: {}),
@@ -725,8 +741,14 @@ export class AgentWorkflowExecutionService {
 		params: StoredWorkflowExecutionContext,
 	): Promise<ExecuteAgentData> {
 		const { agentId, projectId, threadId, outputSchema, sandboxScope } = params;
-		const { agentInstance, recordingParams, runType, budget, modelCredentialGatewayManaged } =
-			await this.prepareStoredWorkflowRun(params);
+		const {
+			agentInstance,
+			recordingParams,
+			runType,
+			budget,
+			modelCredentialGatewayManaged,
+			modelCredentialFreeAiCredits,
+		} = await this.prepareStoredWorkflowRun(params);
 		try {
 			const run = await this.streamCompiledWorkflowAgent(agentInstance, params, {
 				telemetryAgentId: agentId,
@@ -734,6 +756,7 @@ export class AgentWorkflowExecutionService {
 				runType,
 				budget,
 				modelCredentialGatewayManaged,
+				modelCredentialFreeAiCredits,
 				recordingParams: { ...recordingParams, agentName: agentInstance.name },
 				...(sandboxScope
 					? { sandboxScope: { projectId, principalHash: sandboxScope.principalHash } }
@@ -812,6 +835,7 @@ export class AgentWorkflowExecutionService {
 			runType,
 			budget: compiled.budget,
 			modelCredentialGatewayManaged: compiled.modelCredentialGatewayManaged,
+			modelCredentialFreeAiCredits: compiled.modelCredentialFreeAiCredits,
 		};
 	}
 
@@ -867,6 +891,7 @@ export class AgentWorkflowExecutionService {
 			| 'sandboxScope'
 			| 'budget'
 			| 'modelCredentialGatewayManaged'
+			| 'modelCredentialFreeAiCredits'
 		>,
 	): Promise<WorkflowAgentRunOutcome> {
 		const {
@@ -963,6 +988,7 @@ export class AgentWorkflowExecutionService {
 				runType,
 				budget: compiled.budget,
 				modelCredentialGatewayManaged: compiled.modelCredentialGatewayManaged,
+				modelCredentialFreeAiCredits: compiled.modelCredentialFreeAiCredits,
 			});
 			this.trackInlineRun(params, syntheticAgentId, runType, runtimeConfig, run);
 			return this.buildWorkflowResult({ run, session: null, outputSchema });

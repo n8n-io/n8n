@@ -117,6 +117,12 @@ export interface ReconstructedAgentRuntime {
 	 * preflight.
 	 */
 	modelCredentialGatewayManaged?: boolean;
+	/**
+	 * The main model credential is the n8n-managed free OpenAI credits
+	 * credential: the run bills the owner's AI credits quota through the AI
+	 * service proxy, so the budget guardrail also preflights that quota.
+	 */
+	modelCredentialFreeAiCredits?: boolean;
 }
 
 export interface SubAgentDelegationConfig {
@@ -603,6 +609,7 @@ export class AgentRuntimeReconstructionService {
 			parentAgentIdForDelegation: options.parentAgentIdForDelegation ?? options.memoryOwnerAgentId,
 			backgroundTasksEnabled,
 		});
+		const modelCredentialFreeAiCredits = await this.probeFreeAiCreditsCredential(options);
 		return {
 			agent: runtime.agent,
 			toolRegistry: buildToolRegistry(runtime.resolvedTools),
@@ -613,7 +620,29 @@ export class AgentRuntimeReconstructionService {
 			...(options.config.credential === AI_GATEWAY_MANAGED_TAG
 				? { modelCredentialGatewayManaged: true }
 				: {}),
+			...(modelCredentialFreeAiCredits ? { modelCredentialFreeAiCredits: true } : {}),
 		};
+	}
+
+	/**
+	 * Whether the main model credential is the n8n-managed free OpenAI credits
+	 * credential. Best-effort: a failed probe never blocks the build — the
+	 * proxy stays the hard stop on an exhausted quota.
+	 */
+	private async probeFreeAiCreditsCredential(
+		options: RuntimeReconstructionOptions,
+	): Promise<boolean> {
+		const credentialId = options.config.credential;
+		if (!credentialId || credentialId === AI_GATEWAY_MANAGED_TAG) return false;
+		const provider = options.credentialProvider;
+		if (!('isFreeAiCreditsCredential' in provider)) return false;
+		try {
+			return await (
+				provider as { isFreeAiCreditsCredential: (id: string) => Promise<boolean> }
+			).isFreeAiCreditsCredential(credentialId);
+		} catch {
+			return false;
+		}
 	}
 
 	private async buildConfiguredRuntime(
