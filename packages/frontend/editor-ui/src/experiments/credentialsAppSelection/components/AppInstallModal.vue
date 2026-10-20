@@ -6,6 +6,7 @@ import {
 	N8nDialogBody,
 	N8nDialogFooter,
 	N8nDialogHeader,
+	N8nDialogDescription,
 	N8nDialogTitle,
 	N8nText,
 	N8nIcon,
@@ -236,9 +237,9 @@ watch(
 		</N8nDialogHeader>
 		<N8nDialogBody>
 			<div :class="$style.content" data-test-id="app-install-modal">
-				<N8nText v-if="description" color="text-base" size="medium" :class="$style.description">
+				<N8nDialogDescription v-if="description">
 					{{ description }}
-				</N8nText>
+				</N8nDialogDescription>
 
 				<div :class="$style.separator" />
 
@@ -330,12 +331,6 @@ watch(
 .content {
 	display: flex;
 	flex-direction: column;
-}
-
-.description {
-	margin-top: var(--spacing--md);
-	margin-bottom: var(--spacing--xl);
-	line-height: 1.6;
 }
 
 .separator {
