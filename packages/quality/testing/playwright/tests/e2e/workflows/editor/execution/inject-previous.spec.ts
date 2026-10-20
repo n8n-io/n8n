@@ -11,6 +11,8 @@ test.describe(
 		annotation: [{ type: 'owner', description: 'Catalysts' }],
 	},
 	() => {
+		// Pending: the last-successful-execution read covers control-plane executions only,
+		// so a workflow on engine v2 has no previous execution to inject.
 		test('can map keys from previous execution @engine:v2-pending', async ({ n8n }) => {
 			await n8n.start.fromImportedWorkflow('NDV-debug-generate-data.json');
 
@@ -39,6 +41,7 @@ test.describe(
 			await expect(n8n.ndv.inputPanel.getSchemaItemText('firstName')).toBeVisible();
 		});
 
+		// Pending: same last-successful-execution gap as above.
 		test('can pin data from previous execution @engine:v2-pending', async ({ n8n }) => {
 			await n8n.start.fromImportedWorkflow('NDV-debug-generate-data.json');
 
