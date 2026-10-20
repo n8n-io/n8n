@@ -1,0 +1,71 @@
+packages/@n8n/cli/src/commands/promotion-environment/disconnect.ts
+  s_94656d667b5d5c::t_8ebada6ac52944 6,10,20
+packages/@n8n/cli/src/commands/promotion-environment/list-changes.ts
+  s_94656d667b5d5c::t_8ebada6ac52944 14,19-20,42
+packages/@n8n/cli/src/__tests__/promotion-environment-list-changes.test.ts
+  s_94656d667b5d5c::t_8ebada6ac52944 5,43,60
+packages/@n8n/cli/src/commands/promotion-environment/clone.ts
+  s_94656d667b5d5c::t_8ebada6ac52944 6,10,20
+packages/@n8n/cli/src/__tests__/promotion-environment-operations.test.ts
+  ai_agent 68-71
+  s_94656d667b5d5c::t_8ebada6ac52944 5-8,13-15,86,98,104,127,133,201,220,296,302,315,376,382,411,436,445,516,522,528,557
+packages/@n8n/cli/src/index.ts
+  s_94656d667b5d5c::t_8ebada6ac52944 38-56,114-132
+packages/@n8n/cli/src/commands/promotion-environment/list-projects.ts
+  s_94656d667b5d5c::t_8ebada6ac52944 5,8,15
+packages/@n8n/cli/package.json
+  s_94656d667b5d5c::t_8ebada6ac52944 69
+packages/@n8n/cli/src/commands/promotion-environment/set-config.ts
+  s_94656d667b5d5c::t_8ebada6ac52944 6,11-13,28
+packages/@n8n/cli/src/commands/promotion-environment/add-project.ts
+  s_94656d667b5d5c::t_8ebada6ac52944 5,21
+  ai_agent 9-11
+packages/@n8n/cli/src/commands/promotion-environment/apply-command.ts
+  s_94656d667b5d5c::t_8ebada6ac52944 120,130
+packages/@n8n/cli/src/commands/promotion-environment/promote-selection.ts
+  s_94656d667b5d5c::t_8ebada6ac52944 5,10,32
+packages/@n8n/cli/src/commands/promotion-environment/delete.ts
+  s_94656d667b5d5c::t_8ebada6ac52944 5,9,16
+packages/@n8n/cli/src/commands/promotion-environment/create.ts
+  s_94656d667b5d5c::t_8ebada6ac52944 5,10-11,21
+packages/@n8n/cli/src/commands/promotion-environment/remove-project.ts
+  s_94656d667b5d5c::t_8ebada6ac52944 5,9,20
+packages/@n8n/cli/src/commands/promotion-environment/apply-continue.ts
+  s_94656d667b5d5c::t_8ebada6ac52944 7,12,28
+packages/@n8n/cli/src/commands/promotion-environment/apply.ts
+  s_94656d667b5d5c::t_8ebada6ac52944 7,12-13,24
+packages/@n8n/cli/src/commands/promotion-environment/promote.ts
+  s_94656d667b5d5c::t_8ebada6ac52944 5,10,29
+packages/@n8n/cli/src/commands/promotion-environment/list.ts
+  s_94656d667b5d5c::t_8ebada6ac52944 5,9-11,28
+packages/@n8n/cli/src/commands/promotion-environment/update.ts
+  s_94656d667b5d5c::t_8ebada6ac52944 5,10-11,23
+packages/@n8n/cli/src/commands/promotion-environment/apply-selection.ts
+  s_94656d667b5d5c::t_8ebada6ac52944 7,12-13,30
+packages/@n8n/cli/src/__tests__/promotion-environment-list.test.ts
+  s_94656d667b5d5c::t_8ebada6ac52944 5,21,35
+packages/@n8n/cli/src/commands/promotion-environment/delete-config.ts
+  s_94656d667b5d5c::t_8ebada6ac52944 6,10,20
+packages/@n8n/cli/src/commands/promotion-environment/get.ts
+  s_94656d667b5d5c::t_8ebada6ac52944 5,9,16
+packages/@n8n/cli/src/commands/promotion-environment/apply-selection-continue.ts
+  s_94656d667b5d5c::t_8ebada6ac52944 7,12,34
+packages/@n8n/cli/src/__tests__/promotion-command-wiring.test.ts
+  s_94656d667b5d5c::t_8ebada6ac52944 5-16,80-81,87-88,93-94,100-101,107-108,114-115,121-122,128-129,135-136,142-143,149-150,156-157
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f5fa0e80cd3c3c6f4d457974dbce30803b51180e",
+  "prompts": {},
+  "sessions": {
+    "s_94656d667b5d5c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d9efc452-e997-4e58-ac9d-601ed3e76ac7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

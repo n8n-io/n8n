@@ -1,0 +1,21 @@
+pnpm-lock.yaml
+  ai_agent 1938
+packages/@n8n/backend-services/package.json
+  s_925dcfedebf0c9::t_20ea846294b6e7 70
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "cc21d640e7d60897c0fedef91edef87a613c60dc",
+  "prompts": {},
+  "sessions": {
+    "s_925dcfedebf0c9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4e954afe-0aa2-4cb1-89bb-81545b98a90a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Uddish Verma <uddish.verma@n8n.io>"
+    }
+  }
+}

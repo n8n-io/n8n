@@ -1,0 +1,23 @@
+packages/nodes-base/nodes/Matrix/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_1a2d78e9787808 11-17,88-90
+packages/nodes-base/nodes/Matrix/Matrix.node.ts
+  s_2e1fa95fc44f8f::t_d4df722954b03f 27-28
+packages/nodes-base/nodes/Matrix/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_0b6d3ba7ac2912 1-2,19-37,39-41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "01d1624df25d218cb11fdbee6d272deed3a2a8aa",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

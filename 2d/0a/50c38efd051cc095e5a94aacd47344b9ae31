@@ -1,0 +1,28 @@
+packages/cli/src/modules/agents/agents-settings.service.ts
+  h_2f80f0e06f710c 66,69
+packages/cli/src/modules/agents/__tests__/agent-message-queue.service.test.ts
+  s_e92830925d26bd::t_5c6c83e1362a9a 23-24,53,58,76,80-181
+packages/cli/src/modules/agents/system-agents/system-agent-execution.service.ts
+  s_e92830925d26bd::t_e8122de9bbb902 373
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2d0a50c38efd051cc095e5a94aacd47344b9ae31",
+  "prompts": {},
+  "humans": {
+    "h_2f80f0e06f710c": {
+      "author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_e92830925d26bd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "64210ad3-6224-4064-8ef3-34fcfb92dd90",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}
