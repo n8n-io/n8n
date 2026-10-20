@@ -1,5 +1,4 @@
 import {
-	SCHEDULED_JOB_NAME_MAX_LENGTH,
 	SCHEDULED_JOB_OWNER_ID_MAX_LENGTH,
 	SCHEDULED_JOB_OWNER_MEMBER_ID_MAX_LENGTH,
 	ScheduledJobMisfirePolicy,
@@ -207,32 +206,6 @@ describe('createJobProvisioner', () => {
 					desired,
 				),
 			).resolves.toMatchObject({ inserted: [{ id: 1, name: 'wf:node:0' }] });
-		});
-	});
-
-	describe('job name guardrail', () => {
-		const named = (name: string): DesiredJob[] => [{ ...desired[0], name }];
-
-		it('refuses a job name longer than its column, before anything is written', async () => {
-			const { provisioner, provisionTransaction } = makeProvisioner();
-
-			await expect(
-				provisioner.provision(
-					{ owner: owner('thing-1') },
-					named('n'.repeat(SCHEDULED_JOB_NAME_MAX_LENGTH + 1)),
-				),
-			).rejects.toThrow('Scheduled job name must fit its length limit');
-
-			expect(provisionTransaction).not.toHaveBeenCalled();
-		});
-
-		it('provisions a job name sitting exactly on its limit', async () => {
-			const { provisioner } = makeProvisioner();
-			const name = 'n'.repeat(SCHEDULED_JOB_NAME_MAX_LENGTH);
-
-			await expect(
-				provisioner.provision({ owner: owner('thing-1') }, named(name)),
-			).resolves.toMatchObject({ inserted: [{ id: 1, name }] });
 		});
 	});
 });

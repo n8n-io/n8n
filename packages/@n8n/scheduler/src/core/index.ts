@@ -109,7 +109,6 @@ export {
 	DuplicateOwnerResolverError,
 	InvalidOwnerTypeError,
 	UnregisteredOwnerTypeError,
-	InvalidJobNameError,
 	InvalidOwnerIdError,
 	InvalidOwnerMemberIdError,
 	InvalidRunOptionError,

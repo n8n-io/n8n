@@ -171,9 +171,6 @@ export const ScheduledJobOwnerType = {
 	Agent: 'agent',
 } as const;
 
-/** Longest accepted job `name`. */
-export const SCHEDULED_JOB_NAME_MAX_LENGTH = 255;
-
 /** Longest accepted `ownerType`. */
 export const SCHEDULED_JOB_OWNER_TYPE_MAX_LENGTH = 32;
 
