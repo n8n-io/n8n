@@ -832,6 +832,12 @@ export class McpService {
 		if (areSkillToolsAvailable(this.globalConfig, this.moduleRegistry)) {
 			const { McpSkillToolsService } = await import('./tools/skills/skill-tools.service.js');
 			Container.get(McpSkillToolsService).registerTools(registerIfAllowed, user);
+			if (allowedToolNames?.has('get_skill') ?? true) {
+				const { McpSkillExtensionService } = await import(
+					'./tools/skills/skill-extension.service.js'
+				);
+				Container.get(McpSkillExtensionService).register(server, user);
+			}
 		}
 
 		return server;

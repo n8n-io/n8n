@@ -1,0 +1,136 @@
+import {
+	type McpServer,
+	ProtocolError,
+	ProtocolErrorCode,
+	ResourceNotFoundError,
+	ResourceTemplate,
+} from '@modelcontextprotocol/server';
+import { type AgentSkill, ListSkillsQueryDto, SKILLS_MAX_PAGE_SIZE } from '@n8n/api-types';
+import type { User } from '@n8n/db';
+import { Service } from '@n8n/di';
+import { NotFoundError } from '@n8n/errors';
+import { createHash } from 'node:crypto';
+import { z } from 'zod';
+
+import { SkillRepository } from '@/modules/agents/repositories/skill.repository';
+import { toAgentSkill } from '@/modules/agents/skills/skill.service';
+import { SkillsApiService } from '@/modules/agents/skills/skills-api.service';
+
+export const SKILLS_EXTENSION_ID = 'io.modelcontextprotocol/skills';
+
+const SKILL_NAME_MAX_LENGTH = 64;
+const SKILL_MD_PATH = 'SKILL.md';
+const SKILL_MD_URI_PATTERN = /^skill:\/\/([^/]+)\/([^/]+)\/SKILL\.md$/;
+
+const listParams = z.object({ cursor: z.string().regex(/^\d+$/).optional() });
+const getParams = z.object({ uri: z.string() });
+
+export function toSkillName(hubName: string): string {
+	const name = hubName
+		.toLowerCase()
+		.replace(/[^a-z0-9]+/g, '-')
+		.slice(0, SKILL_NAME_MAX_LENGTH)
+		.replace(/^-|-$/g, '');
+	return name || 'skill';
+}
+
+function skillFiles(skill: AgentSkill, name: string) {
+	const skillMd = `---\nname: ${name}\ndescription: ${JSON.stringify(skill.description)}\n---\n\n${skill.instructions}\n`;
+	return [{ path: SKILL_MD_PATH, content: skillMd }, ...(skill.references ?? [])];
+}
+
+function fileResource(uri: string, content: string) {
+	const bytes = Buffer.from(content, 'utf8');
+	return {
+		uri,
+		digest: `sha256:${createHash('sha256').update(bytes).digest('hex')}`,
+		size: bytes.length,
+	};
+}
+
+export function toSkillEntry(skillId: string, skill: AgentSkill) {
+	const name = toSkillName(skill.name);
+	const root = `skill://${skillId}/${name}`;
+	const [skillMd, ...references] = skillFiles(skill, name).map((file) =>
+		fileResource(`${root}/${file.path}`, file.content),
+	);
+	return {
+		uri: skillMd.uri,
+		frontmatter: { name, description: skill.description },
+		digest: skillMd.digest,
+		resources: [skillMd, ...references],
+	};
+}
+
+@Service()
+export class McpSkillExtensionService {
+	constructor(
+		private readonly skillsApi: SkillsApiService,
+		private readonly skillRepository: SkillRepository,
+	) {}
+
+	register(server: McpServer, user: User): void {
+		server.server.registerCapabilities({
+			resources: {},
+			extensions: { [SKILLS_EXTENSION_ID]: {} },
+		});
+
+		server.server.setRequestHandler(
+			'skills/list',
+			{ params: listParams },
+			async ({ cursor }) => await this.list(user, Number(cursor ?? 0)),
+		);
+
+		server.server.setRequestHandler('skills/get', { params: getParams }, async ({ uri }) => {
+			const [, skillId = '', name] = SKILL_MD_URI_PATTERN.exec(uri) ?? [];
+			const skill = await this.readableSkill(user, skillId);
+			if (!skill || toSkillName(skill.name) !== name) {
+				throw new ProtocolError(ProtocolErrorCode.InvalidParams, `Unknown skill: ${uri}`);
+			}
+			return { skill: toSkillEntry(skillId, skill) };
+		});
+
+		server.registerResource(
+			'skill-file',
+			new ResourceTemplate('skill://{skillId}/{name}/{+path}', { list: undefined }),
+			{ description: 'A file of a skills hub skill' },
+			async (uri, { skillId, name, path }) => {
+				const skill = typeof skillId === 'string' ? await this.readableSkill(user, skillId) : null;
+				const skillName = skill ? toSkillName(skill.name) : undefined;
+				const file =
+					skill && skillName === name
+						? skillFiles(skill, skillName).find((candidate) => candidate.path === path)
+						: undefined;
+				if (!file) throw new ResourceNotFoundError(uri.href);
+				return {
+					contents: [{ uri: uri.href, mimeType: 'text/markdown', text: file.content }],
+				};
+			},
+		);
+	}
+
+	private async list(user: User, skip: number) {
+		const { count, data } = await this.skillsApi.list(
+			user,
+			ListSkillsQueryDto.parse({ skip: String(skip), take: String(SKILLS_MAX_PAGE_SIZE) }),
+		);
+		const ids = data.filter((item) => item.scope !== 'agent').map((item) => item.id);
+		const rows = await this.skillRepository.findLatestSaved(ids);
+		const skills = ids.flatMap((id) => {
+			const row = rows.get(id);
+			return row ? [toSkillEntry(id, toAgentSkill(row))] : [];
+		});
+		const next = skip + data.length;
+		return { skills, ...(next < count ? { nextCursor: String(next) } : {}) };
+	}
+
+	private async readableSkill(user: User, skillId: string): Promise<AgentSkill | null> {
+		try {
+			const detail = await this.skillsApi.get(user, skillId);
+			return detail.scope === 'agent' ? null : detail.skill;
+		} catch (error) {
+			if (error instanceof NotFoundError) return null;
+			throw error;
+		}
+	}
+}

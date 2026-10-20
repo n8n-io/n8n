@@ -41,6 +41,7 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import { ExecutionListService } from '@/executions/execution-list.service';
 
 import { ExecutionService } from '@/executions/execution.service';
+import { SkillRepository } from '@/modules/agents/repositories/skill.repository';
 import { SkillsApiService } from '@/modules/agents/skills/skills-api.service';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
 import { InstanceContextService } from '@/modules/instance-ai/instance-context.service';
@@ -286,6 +287,7 @@ describe('McpService scope enforcement', () => {
 		'registers the skill tools only when the skills hub is on: %s',
 		async (skillsHubEnabled) => {
 			mockInstance(SkillsApiService);
+			mockInstance(SkillRepository);
 			const server = await buildService({
 				builderEnabled: false,
 				agentsActive: true,
@@ -296,6 +298,29 @@ describe('McpService scope enforcement', () => {
 			expect(registered.has('mutate_agent')).toBe(false);
 			expect([...SKILL_TOOLS].filter((name) => registered.has(name))).toEqual(
 				skillsHubEnabled ? [...SKILL_TOOLS] : [],
+			);
+		},
+	);
+
+	it.each([
+		['the skills hub on and an API key', true, undefined, true],
+		['the skills hub on and skill:read', true, ['skill:read'], true],
+		['the skills hub on and skill:write', true, ['skill:write'], true],
+		['the skills hub on and no skill scope', true, ['workflow:read'], false],
+		['the skills hub off', false, undefined, false],
+	])(
+		'declares the skills extension with %s: %s',
+		async (_, skillsHubEnabled, grantedScopes, declared) => {
+			mockInstance(SkillsApiService);
+			mockInstance(SkillRepository);
+			const server = await buildService({
+				builderEnabled: false,
+				agentsActive: true,
+				skillsHubEnabled,
+			}).getServer(user, mcpFeatureFlags(), undefined, { grantedScopes });
+
+			expect(server.server.getCapabilities().extensions).toEqual(
+				declared ? { 'io.modelcontextprotocol/skills': {} } : undefined,
 			);
 		},
 	);
