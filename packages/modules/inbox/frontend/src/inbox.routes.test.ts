@@ -105,7 +105,7 @@ it('links a promotion review row to its detail route', () => {
 		title: null,
 		webUrl: null,
 		branchName: null,
-		configName: null,
+		environmentName: null,
 		requester: null,
 		approver: null,
 		remoteError: null,

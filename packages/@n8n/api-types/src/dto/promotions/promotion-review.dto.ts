@@ -51,7 +51,7 @@ export type PromotionReviewRemote = z.infer<typeof promotionReviewRemoteSchema>;
 
 /**
  * Why the host data of a review is missing. Computed for each request and never stored.
- * `no_connection` means the connection was deleted or its provider no longer matches.
+ * `no_connection` means the environment was deleted or its provider no longer matches.
  */
 export type PromotionReviewRemoteError = 'not_found' | 'auth' | 'unreachable' | 'no_connection';
 

@@ -41,11 +41,11 @@ const stateBadge: Record<PromotionReviewState, BadgeVariant> = {
 				</N8nLink>
 			</div>
 			<div :class="$style.meta">
-				<span v-if="item.configName" :class="$style.metaItem">
+				<span v-if="item.environmentName" :class="$style.metaItem">
 					<N8nText size="small" color="text-light">
 						{{ i18n.baseText('inbox.promotionReview.detail.promoteTo') }}
 					</N8nText>
-					<N8nText size="small" bold>{{ item.configName }}</N8nText>
+					<N8nText size="small" bold>{{ item.environmentName }}</N8nText>
 				</span>
 				<span v-if="item.approver" :class="$style.metaItem">
 					<N8nText size="small" color="text-light">

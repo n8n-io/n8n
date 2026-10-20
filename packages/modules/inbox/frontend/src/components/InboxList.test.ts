@@ -260,7 +260,7 @@ it('renders promotion review rows with the branch as fallback title and the GitL
 		title: 'Promote the thing',
 		webUrl: null,
 		branchName: 'n8n-promotion/1',
-		configName: null,
+		environmentName: null,
 		requester: null,
 		approver: null,
 		remoteError: null,

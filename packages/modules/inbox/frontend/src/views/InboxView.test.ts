@@ -452,7 +452,7 @@ function promotionItem(): InboxPromotionReviewItem {
 		title: 'Promote the thing',
 		webUrl: null,
 		branchName: 'n8n-promotion/1',
-		configName: null,
+		environmentName: null,
 		requester: null,
 		approver: null,
 		remoteError: null,

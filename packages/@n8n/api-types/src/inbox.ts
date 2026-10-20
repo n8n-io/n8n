@@ -43,7 +43,7 @@ export type InboxPromotionReviewItem = {
 	title: string | null;
 	webUrl: string | null;
 	branchName: string | null;
-	configName: string | null;
+	environmentName: string | null;
 	requester: PromotionReviewSummary['createdBy'];
 	approver: PromotionReviewSummary['approvedBy'];
 	remoteError: PromotionReviewRemoteError | null;

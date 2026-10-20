@@ -4,11 +4,12 @@ import { Container } from '@n8n/di';
 import nock from 'nock';
 import { v7 as uuidv7 } from 'uuid';
 
-import { PromotionConfigRepository } from '@/modules/promotions.ee/database/repositories/promotion-config.repository';
-import { PromotionConnectionRepository } from '@/modules/promotions.ee/database/repositories/promotion-connection.repository';
+import { PromotionEnvironmentRepository } from '@/modules/promotions.ee/database/repositories/promotion-environment.repository';
 import { PromotionProviderRepository } from '@/modules/promotions.ee/database/repositories/promotion-provider.repository';
 import { PromotionReviewRepository } from '@/modules/promotions.ee/database/repositories/promotion-review.repository';
 import { PromotionRunRepository } from '@/modules/promotions.ee/database/repositories/promotion-run.repository';
+import { PromotionEnvironmentResolver } from '@/modules/promotions.ee/promotion-environment.resolver';
+import { PromotionReviewsService } from '@/modules/promotions.ee/promotion-reviews.service';
 import { createMemberWithApiKey, createOwnerWithApiKey } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 
@@ -59,14 +60,14 @@ describe('Promotion reviews in the Inbox', () => {
 		modules: ['inbox', 'promotions'],
 	});
 	let owner: User;
-	let connectionId: string;
-	let configId: string;
+	let environmentId: string;
 	let reviewRepository: PromotionReviewRepository;
 
-	async function insertReview(iid: number, over: { connectionId?: string } = {}) {
+	async function insertReview(iid: number, over: { environmentId?: string } = {}) {
+		const reviewEnvironmentId = over.environmentId ?? environmentId;
 		const review = await reviewRepository.insertReview({
 			id: uuidv7(),
-			connectionId: over.connectionId ?? connectionId,
+			environmentId: reviewEnvironmentId,
 			type: 'gitlab',
 			remoteReviewId: `${projectId}!${iid}`,
 			createdById: owner.id,
@@ -76,7 +77,7 @@ describe('Promotion reviews in the Inbox', () => {
 			{ createdAt: new Date(Date.UTC(2026, 9, iid)) },
 		);
 		await Container.get(PromotionRunRepository).insertRun({
-			configId,
+			environmentId: reviewEnvironmentId,
 			createdById: owner.id,
 			direction: 'promote',
 			type: 'git',
@@ -86,26 +87,28 @@ describe('Promotion reviews in the Inbox', () => {
 		return review.id;
 	}
 
-	async function createConnection(
+	async function createEnvironment(
 		provider: object,
 		target: { name: string; scope: string; remoteUrl: string },
 	) {
 		const agent = testServer.publicApiAgentFor(owner);
 		const created = await agent.post('/promotions/providers').send(provider);
 		expect(created.status, JSON.stringify(created.body)).toBe(201);
-		const connection = await agent.post('/promotions/connections').send({
+		const environment = await agent.post('/promotions/environments').send({
 			name: target.name,
 			scope: target.scope,
 			providerId: created.body.provider.id,
-			target: { schemaVersion: 1, remoteUrl: target.remoteUrl },
+			remote: { schemaVersion: 1, remoteUrl: target.remoteUrl },
+			direction: 'promote',
+			settings: { schemaVersion: 1, baseBranchName: 'main', createBranchOnPromotion: true },
 		});
-		expect(connection.status, JSON.stringify(connection.body)).toBe(201);
-		return connection.body.id as string;
+		expect(environment.status, JSON.stringify(environment.body)).toBe(201);
+		return environment.body.id as string;
 	}
 
 	/** A plain Git provider has no host API, so its reviews report no_connection. */
-	const createGitConnection = async (name: string) =>
-		await createConnection(
+	const createGitEnvironment = async (name: string) =>
+		await createEnvironment(
 			{ name, type: 'git', auth: { authType: 'token', username: 'u', password: 'p' } },
 			{ name, scope: 'projects', remoteUrl: `https://example.com/org/${name}.git` },
 		);
@@ -126,8 +129,7 @@ describe('Promotion reviews in the Inbox', () => {
 		testServer.license.reset();
 		await Container.get(PromotionRunRepository).delete({});
 		await reviewRepository.delete({});
-		await Container.get(PromotionConfigRepository).delete({});
-		await Container.get(PromotionConnectionRepository).delete({});
+		await Container.get(PromotionEnvironmentRepository).delete({});
 		await Container.get(PromotionProviderRepository).delete({});
 		await testDb.truncate(['User']);
 		owner = await createOwnerWithApiKey();
@@ -138,26 +140,79 @@ describe('Promotion reviews in the Inbox', () => {
 			.get('/api/v4/projects')
 			.query(true)
 			.reply(200, []);
-		connectionId = await createConnection(
+		environmentId = await createEnvironment(
 			{
 				name: 'GitLab',
 				type: 'gitlab',
 				auth: { authType: 'token', password: token },
 				config: { schemaVersion: 1, baseUrl },
 			},
-			{ name: 'Workflows', scope: 'instance', remoteUrl: `${baseUrl}/platform/workflows.git` },
+			{ name: 'To production', scope: 'instance', remoteUrl: `${baseUrl}/platform/workflows.git` },
 		);
 		validation.done();
-		const config = await Container.get(PromotionConfigRepository).insertConfig({
-			connectionId,
-			direction: 'promote',
-			name: 'To production',
-			settings: { schemaVersion: 1, baseBranchName: 'main', createBranchOnPromotion: true },
-		});
-		configId = config.id;
 	});
 
 	afterEach(() => nock.cleanAll());
+
+	it('lists the review opened by the promotion write path for its environment', async () => {
+		const branchName = 'n8n-promotion/1';
+		const commitSha = 'c'.repeat(40);
+		const run = await Container.get(PromotionRunRepository).insertRun({
+			environmentId,
+			createdById: owner.id,
+			direction: 'promote',
+			type: 'git',
+			details: { schemaVersion: 1, branchName, commitSha },
+			reviewId: null,
+		});
+		const opened = nock(baseUrl)
+			.matchHeader('PRIVATE-TOKEN', token)
+			.post('/api/v4/projects/platform%2Fworkflows/merge_requests', {
+				source_branch: branchName,
+				target_branch: 'main',
+				title: 'Promotion 1',
+				description: /^Opened by n8n/,
+				remove_source_branch: false,
+			})
+			.reply(201, {
+				iid: 1,
+				project_id: projectId,
+				web_url: `${baseUrl}/platform/workflows/-/merge_requests/1`,
+				title: 'Promotion 1',
+				description: 'Opened by n8n',
+				state: 'opened',
+				source_branch: branchName,
+				target_branch: 'main',
+			});
+		const input = await Container.get(PromotionEnvironmentResolver).resolveForEnvironment(
+			environmentId,
+			'promote',
+		);
+		const result = await Container.get(PromotionReviewsService).openMergeRequest(
+			input,
+			owner,
+			{ branchName, baseBranchName: 'main', commitSha, title: 'Promotion 1' },
+			run.id,
+		);
+		opened.done();
+		expect(result.warnings).toEqual([]);
+		expect(result.review).toMatchObject({ number: 1 });
+		gitlab({ 1: { state: 'opened' } });
+
+		const response = await inbox(owner, { state: 'open', category: 'waiting' });
+
+		expect(response.status, JSON.stringify(response.body)).toBe(200);
+		expect(response.body.data.data).toEqual([
+			expect.objectContaining({
+				id: result.review?.reviewId,
+				title: 'Promotion 1',
+				branchName,
+				environmentName: 'To production',
+				requester: expect.objectContaining({ id: owner.id }),
+				remoteError: null,
+			}),
+		]);
+	});
 
 	it('syncs from any tab, keeps reviews GitLab did not answer for, and ignores a merge request from another branch', async () => {
 		const opened = await insertReview(1);
@@ -168,10 +223,10 @@ describe('Promotion reviews in the Inbox', () => {
 		const rejected = await insertReview(6);
 		const unreachable = await insertReview(7);
 		const otherBranch = await insertReview(8);
-		const plainGit = await insertReview(9, { connectionId: await createGitConnection('Plain') });
-		const deletedConnectionId = await createGitConnection('Deleted');
-		const deleted = await insertReview(10, { connectionId: deletedConnectionId });
-		await Container.get(PromotionConnectionRepository).delete({ id: deletedConnectionId });
+		const plainGit = await insertReview(9, { environmentId: await createGitEnvironment('Plain') });
+		const deletedEnvironmentId = await createGitEnvironment('Deleted');
+		const deleted = await insertReview(10, { environmentId: deletedEnvironmentId });
+		await Container.get(PromotionEnvironmentRepository).delete({ id: deletedEnvironmentId });
 		gitlab({
 			1: { state: 'opened' },
 			2: { state: 'opened', detailed_merge_status: 'requested_changes' },
@@ -204,7 +259,7 @@ describe('Promotion reviews in the Inbox', () => {
 					title: 'Promotion 1',
 					webUrl: `${baseUrl}/platform/workflows/-/merge_requests/1`,
 					branchName: 'n8n-promotion/1',
-					configName: 'To production',
+					environmentName: 'To production',
 					requester: expect.objectContaining({ id: owner.id }),
 					approver: null,
 					remoteError: null,

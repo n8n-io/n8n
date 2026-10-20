@@ -76,7 +76,7 @@ export class PromotionReviewInboxService {
 				title: mergeRequest?.title ?? null,
 				webUrl: mergeRequest?.web_url ?? null,
 				branchName: branchOf(run),
-				configName: run?.config?.name ?? null,
+				environmentName: run?.environment?.name ?? null,
 				requester: toReviewUser(review.createdBy),
 				approver: toReviewUser(review.approvedBy),
 				remoteError,
@@ -124,12 +124,12 @@ export class PromotionReviewInboxService {
 	}
 
 	private async readOne(
-		{ type, connection, remoteReviewId }: PromotionReview,
+		{ type, environment, remoteReviewId }: PromotionReview,
 		run: PromotionRun | undefined,
 	): Promise<RemoteView> {
-		if (!connection || !remoteReviewId) return failed('no_connection');
+		if (!environment || !remoteReviewId) return failed('no_connection');
 		try {
-			const access = await this.hostResolver.resolveForConnection(connection, type);
+			const access = await this.hostResolver.resolveForEnvironment(environment, type);
 			if (!access) return failed('no_connection');
 			const mergeRequest = await this.mergeRequests.getMergeRequest(
 				access,

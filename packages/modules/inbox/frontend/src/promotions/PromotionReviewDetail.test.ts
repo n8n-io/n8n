@@ -11,7 +11,7 @@ const item = (props: Partial<InboxPromotionReviewItem> = {}): InboxPromotionRevi
 	title: 'Promote the thing',
 	webUrl: 'https://gitlab.example.com/platform/workflows/-/merge_requests/1',
 	branchName: 'n8n-promotion/1',
-	configName: 'To production',
+	environmentName: 'To production',
 	requester: { id: 'u1', firstName: 'Ada', lastName: 'Lovelace', email: 'ada@example.com' },
 	approver: null,
 	remoteError: null,
