@@ -103,7 +103,7 @@ const { isOpen } = useTimelineItemExpansion({
 					>
 						<template #prefix>
 							<span :class="$style.iconContainer">
-								<SessionTimelinePill :kind="item.kind" />
+								<SessionTimelinePill :kind="item.kind" :label="label" />
 							</span>
 						</template>
 						{{ label }}

@@ -306,7 +306,7 @@ onBeforeUnmount(() => {
 		>
 			<template #default="{ item: row, updateItemSize }">
 				<div
-					v-element-size="() => updateItemSize(row)"
+					v-element-size="() => updateItemSize({ id: row.id })"
 					data-test-id="timeline-row"
 					:data-timeline-row-id="row.id"
 					:class="$style.rowWrapper"

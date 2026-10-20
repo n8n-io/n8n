@@ -139,7 +139,7 @@ const { isOpen } = useTimelineItemExpansion({
 									<N8nIcon icon="circle-alert" color="danger" size="medium" />
 								</N8nTooltip>
 								<NodeIcon v-else-if="nodeType" :node-type="nodeType" :size="20" />
-								<SessionTimelinePill v-else :kind="item.kind" />
+								<SessionTimelinePill v-else :kind="item.kind" :label="label" />
 							</span>
 						</template>
 						{{ label }}

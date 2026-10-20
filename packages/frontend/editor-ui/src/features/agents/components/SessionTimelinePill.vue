@@ -1,12 +1,12 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
-import { N8nIcon, type IconName } from '@n8n/design-system';
+import { N8nBadge, N8nIcon, type IconName } from '@n8n/design-system';
 import type { EventKind } from '../session-timeline.types';
 
 const props = withDefaults(
 	defineProps<{
 		kind: EventKind | 'idle' | 'subagent';
-		label?: string;
+		label: string;
 		showLabel?: boolean;
 	}>(),
 	{
@@ -48,11 +48,10 @@ const icon = computed((): IconName => {
 </script>
 
 <template>
-	<span v-if="showLabel && label" :class="$style.withLabel">
-		<N8nIcon :icon="icon" size="medium" />
-		<span>{{ label }}</span>
-	</span>
-	<N8nIcon v-else :icon="icon" size="medium" />
+	<N8nBadge v-if="showLabel && label" :leading-icon="icon" variant="filled" size="xxsmall">
+		{{ label }}
+	</N8nBadge>
+	<N8nIcon v-else :aria-label="label" :icon="icon" size="medium" />
 </template>
 
 <style module lang="scss">

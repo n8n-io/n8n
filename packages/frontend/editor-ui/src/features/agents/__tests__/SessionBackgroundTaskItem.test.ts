@@ -50,7 +50,10 @@ describe('SessionBackgroundTaskItem', () => {
 		});
 		const link = wrapper.get('[data-test-id="review-background-task-approval"]');
 		expect(link.text()).toBe('Approve');
-		const destination = router.resolve(link.attributes('href'));
+		const href = link.attributes('href');
+		expect(href).toBeDefined();
+		if (href === undefined) throw new Error('Approval link must have an href');
+		const destination = router.resolve(href);
 		expect(destination.name).toBe(AGENT_BUILDER_VIEW);
 		expect(destination.params).toEqual({ projectId: 'project-1', agentId: 'agent-1' });
 		expect(destination.query).toEqual({

@@ -1,6 +1,6 @@
 /* eslint-disable import-x/no-extraneous-dependencies -- test-only patterns */
 import { describe, it, expect, vi } from 'vitest';
-import { mount } from '@vue/test-utils';
+import { mount, type VueWrapper } from '@vue/test-utils';
 import { N8nIcon } from '@n8n/design-system';
 import { createRouter, createMemoryHistory, type Router } from 'vue-router';
 import SessionTimelineTable from '../components/SessionTimelineTable.vue';
@@ -142,9 +142,7 @@ describe('SessionTimelineTable', () => {
 			for (const height of [640, 280, 400]) {
 				notifyResize?.(height);
 				await w.vm.$nextTick();
-				expect(updateItemSize).toHaveBeenLastCalledWith(
-					expect.objectContaining({ id: 'event-0', item: items[0] }),
-				);
+				expect(updateItemSize).toHaveBeenLastCalledWith({ id: 'event-0' });
 			}
 			expect(updateItemSize).toHaveBeenCalledTimes(3);
 		} finally {
@@ -227,7 +225,11 @@ describe('SessionTimelineTable', () => {
 		expect(badges[0].text()).toBe('Declined');
 		const rows = w.findAll('[data-test-id="timeline-row"]');
 		expect(
-			rows[0].findAllComponents(N8nIcon).some((icon) => icon.props('icon') === 'circle-alert'),
+			rows[0]
+				.findAllComponents(N8nIcon)
+				.some(
+					(icon: VueWrapper<InstanceType<typeof N8nIcon>>) => icon.props('icon') === 'circle-alert',
+				),
 		).toBe(false);
 		expect(rows[0].text()).toContain('Protected action');
 		expect(rows[0].text()).not.toContain('Approval');
@@ -262,10 +264,17 @@ describe('SessionTimelineTable', () => {
 			const rows = w.findAll('[data-test-id="timeline-row"]');
 			const errorIcon = rows[0]
 				.findAllComponents(N8nIcon)
-				.find((icon) => icon.props('icon') === 'circle-alert');
+				.find(
+					(icon: VueWrapper<InstanceType<typeof N8nIcon>>) => icon.props('icon') === 'circle-alert',
+				);
 			expect(errorIcon?.props('color')).toBe('danger');
 			expect(
-				rows[1].findAllComponents(N8nIcon).some((icon) => icon.props('icon') === 'circle-alert'),
+				rows[1]
+					.findAllComponents(N8nIcon)
+					.some(
+						(icon: VueWrapper<InstanceType<typeof N8nIcon>>) =>
+							icon.props('icon') === 'circle-alert',
+					),
 			).toBe(false);
 		},
 	);
@@ -288,7 +297,9 @@ describe('SessionTimelineTable', () => {
 
 		const errorIcon = w
 			.findAllComponents(N8nIcon)
-			.find((icon) => icon.props('icon') === 'circle-alert');
+			.find(
+				(icon: VueWrapper<InstanceType<typeof N8nIcon>>) => icon.props('icon') === 'circle-alert',
+			);
 		expect(errorIcon?.props('color')).toBe('danger');
 	});
 
@@ -310,7 +321,9 @@ describe('SessionTimelineTable', () => {
 		expect(w.get('[data-test-id="timeline-row"]').text()).toContain('Model request failed');
 		const errorIcon = w
 			.findAllComponents(N8nIcon)
-			.find((icon) => icon.props('icon') === 'circle-alert');
+			.find(
+				(icon: VueWrapper<InstanceType<typeof N8nIcon>>) => icon.props('icon') === 'circle-alert',
+			);
 		expect(errorIcon?.props('color')).toBe('danger');
 	});
 
@@ -353,7 +366,9 @@ describe('SessionTimelineTable', () => {
 		if (filterKey === 'error') {
 			const errorIcon = w
 				.findAllComponents(N8nIcon)
-				.find((icon) => icon.props('icon') === 'circle-alert');
+				.find(
+					(icon: VueWrapper<InstanceType<typeof N8nIcon>>) => icon.props('icon') === 'circle-alert',
+				);
 			expect(errorIcon?.props('color')).toBe('danger');
 		} else {
 			expect(w.text()).toContain(label);
