@@ -1,0 +1,27 @@
+packages/cli/src/modules/agents/entities/agent-execution-thread.entity.ts
+  h_7555c3ee6524cf 24
+packages/cli/src/modules/agents/types/agent-task-stop.ts
+  s_1591750099a54f::t_ebd848f254374d 3,7,10,12,17,21,26
+  s_1591750099a54f::t_cf8234f7847fc8 15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4cd5d45799c7d8859f2f76b9f4abb18a7fde5744",
+  "prompts": {},
+  "humans": {
+    "h_7555c3ee6524cf": {
+      "author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_1591750099a54f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "000260ee-e485-4717-a1cc-d691a4e7f235",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}
