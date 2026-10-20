@@ -1,0 +1,21 @@
+packages/cli/src/modules/agents/agent-message-queue.service.ts
+  s_fed97bb708b207::t_9ea7423d6c30fd 98-102,108
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_fed97bb708b207::t_3cba9ae1dcf08e 2696-2705
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6f01a27ac9f2cf98d29c33b18a65e20e0346f8d0",
+  "prompts": {},
+  "sessions": {
+    "s_fed97bb708b207": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cbcebc6a-186a-4e6c-b061-08c416ee2fd4",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

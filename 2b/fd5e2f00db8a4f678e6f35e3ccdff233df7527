@@ -1,0 +1,19 @@
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/__tests__/oauth.test.ts
+  s_65df6e3df54a2b::t_42aeba393095e7 345
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2bfd5e2f00db8a4f678e6f35e3ccdff233df7527",
+  "prompts": {},
+  "sessions": {
+    "s_65df6e3df54a2b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4994b4fe-7939-41c5-bb7b-bf227f7b542b",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,25 @@
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/DataTableChangeDetails.vue
+  s_983eea3c47ac98::t_48fae84474c0cd 2-3,8,68-71
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/PromotionChangeCard.test.ts
+  s_983eea3c47ac98::t_56b8df8f970433 95,109
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionPreview.content.test.ts
+  s_983eea3c47ac98::t_48fae84474c0cd 128
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionPreview.content.ts
+  s_983eea3c47ac98::t_48fae84474c0cd 155
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f3d9770f138ac3d6afb343676ba90412cf18b462",
+  "prompts": {},
+  "sessions": {
+    "s_983eea3c47ac98": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6afe657c-702d-4003-8734-85a65b043c95",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}
