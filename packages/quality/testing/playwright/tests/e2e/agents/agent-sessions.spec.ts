@@ -162,14 +162,29 @@ test.describe('Agent sessions', { annotation: [{ type: 'owner', description: 'Ag
 		await n8n.start.fromHome();
 		await n8n.agentSessions.goto(project.id, agentId, threadId);
 
-		await n8n.agentSessions.openTimelineItem(NODE_TOOL_NAME);
-		await expect(n8n.agentSessions.getInputRunData()).toContainText(NODE_INPUT_MARKER);
-		await expect(n8n.agentSessions.getOutputRunData()).toContainText(NODE_OUTPUT_MARKER);
+		const nodeTrigger = n8n.agentSessions.getTimelineToolTrigger(NODE_TOOL_NAME);
+		await expect(nodeTrigger).toHaveAttribute('aria-expanded', 'false');
+		await nodeTrigger.click();
+		await expect(nodeTrigger).toHaveAttribute('aria-expanded', 'true');
+		await expect(n8n.agentSessions.getTimelineToolInput(NODE_TOOL_NAME)).toContainText(
+			NODE_INPUT_MARKER,
+		);
+		await expect(n8n.agentSessions.getTimelineToolOutput(NODE_TOOL_NAME)).toContainText(
+			NODE_OUTPUT_MARKER,
+		);
 
-		await n8n.agentSessions.openTimelineItem(WORKFLOW_TOOL_NAME);
-		await expect(n8n.agentSessions.getWorkflowInput()).toContainText(WORKFLOW_INPUT_MARKER);
-		await expect(n8n.agentSessions.getWorkflowOutput()).toContainText(WORKFLOW_OUTPUT_MARKER);
-		await expect(n8n.agentSessions.getWorkflowOutput()).toContainText('Last node');
-		await expect(n8n.agentSessions.getOpenFullExecution()).toBeVisible();
+		const workflowTrigger = n8n.agentSessions.getTimelineToolTrigger(WORKFLOW_TOOL_NAME);
+		await expect(workflowTrigger).toHaveAttribute('aria-expanded', 'false');
+		await workflowTrigger.click();
+		await expect(workflowTrigger).toHaveAttribute('aria-expanded', 'true');
+		await expect(n8n.agentSessions.getTimelineToolInput(WORKFLOW_TOOL_NAME)).toContainText(
+			WORKFLOW_INPUT_MARKER,
+		);
+		await expect(n8n.agentSessions.getTimelineToolOutput(WORKFLOW_TOOL_NAME)).toContainText(
+			WORKFLOW_OUTPUT_MARKER,
+		);
+		await expect(n8n.agentSessions.getTimelineToolOutput(WORKFLOW_TOOL_NAME)).toContainText(
+			'Last node',
+		);
 	});
 });

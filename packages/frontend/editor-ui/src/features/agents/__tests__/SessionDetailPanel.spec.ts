@@ -657,6 +657,6 @@ it('shows each task and its translated status in signal details', () => {
 	expect(wrapper.text()).toContain('Background task results received');
 	const details = wrapper.get('[data-test-id="background-job-signal-details"]');
 	expect(details.findAll('li')).toHaveLength(2);
-	expect(details.text()).toContain('Check invoices — Completed');
-	expect(details.text()).toContain('Wait for reply — Canceled');
+	expect(details.text()).toContain('Check invoices • Completed');
+	expect(details.text()).toContain('Wait for reply • Canceled');
 });
