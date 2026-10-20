@@ -350,7 +350,14 @@ describe('SessionTimelineTable', () => {
 		});
 
 		expect(w.findAll('[data-test-id="timeline-row"]')).toHaveLength(1);
-		expect(w.text()).toContain(label);
+		if (filterKey === 'error') {
+			const errorIcon = w
+				.findAllComponents(N8nIcon)
+				.find((icon) => icon.props('icon') === 'circle-alert');
+			expect(errorIcon?.props('color')).toBe('danger');
+		} else {
+			expect(w.text()).toContain(label);
+		}
 	});
 
 	it('hides items whose filterKey is not in visibleKinds', () => {
@@ -499,7 +506,52 @@ describe('SessionTimelineTable', () => {
 		},
 	);
 
-	it('jumps to a selected virtual row without a smooth scroll', async () => {
+	it.each([
+		{ position: 'inside', top: 150, expectedTop: null },
+		{ position: 'above', top: 80, expectedTop: 180 },
+		{ position: 'below', top: 280, expectedTop: 220 },
+	])(
+		'adjusts scrolling for a rendered virtual row $position the viewport',
+		async ({ top, expectedTop }) => {
+			const items = Array.from(
+				{ length: 101 },
+				(_, index): TimelineItem => ({
+					kind: 'user',
+					executionId: `e${index}`,
+					timestamp: index,
+					content: 'Message',
+				}),
+			);
+			const w = mountTable({ items, selectedIndex: null, visibleKinds: new Set<string>() });
+			try {
+				const scroller = w.getComponent({ name: 'N8nRecycleScroller' });
+				const { scrollToKey } = scroller.vm as typeof scroller.vm & {
+					scrollToKey: ReturnType<typeof vi.fn>;
+				};
+				const container = w.get<HTMLElement>('.recycle-scroller-wrapper').element;
+				container.scrollTop = 200;
+				vi.spyOn(container, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 100, 400, 200));
+				vi.spyOn(
+					w.get('[data-timeline-row-id="event-1"]').element,
+					'getBoundingClientRect',
+				).mockReturnValue(new DOMRect(0, top, 400, 40));
+				const scrollTo = vi.spyOn(container, 'scrollTo');
+				await w.setProps({ selectedIndex: 1 });
+				await w.vm.$nextTick();
+				expect(scrollToKey).not.toHaveBeenCalled();
+				if (expectedTop === null) {
+					expect(scrollTo).not.toHaveBeenCalled();
+				} else {
+					expect(scrollTo).toHaveBeenCalledExactlyOnceWith({ top: expectedTop, behavior: 'auto' });
+				}
+			} finally {
+				w.unmount();
+				vi.restoreAllMocks();
+			}
+		},
+	);
+
+	it('jumps to an unrendered virtual row without a smooth scroll', async () => {
 		const items = Array.from(
 			{ length: 101 },
 			(_, index): TimelineItem => ({
@@ -517,6 +569,8 @@ describe('SessionTimelineTable', () => {
 				scrollToKey: ReturnType<typeof vi.fn>;
 			};
 
+			/** Simulate a row outside the virtual scroller's rendered range. */
+			w.get('[data-timeline-row-id="event-100"]').element.remove();
 			await w.setProps({ selectedIndex: 100 });
 			await w.vm.$nextTick();
 
