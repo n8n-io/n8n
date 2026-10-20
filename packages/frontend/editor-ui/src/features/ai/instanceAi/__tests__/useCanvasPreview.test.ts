@@ -2,10 +2,11 @@ import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { ref, reactive, nextTick, type Ref } from 'vue';
 import { flushPromises } from '@vue/test-utils';
 import { DEBOUNCE_TIME } from '@/app/constants';
-import type {
-	InstanceAiMessage,
-	InstanceAiAgentNode,
-	InstanceAiToolCallState,
+import {
+	AGENT_BUILDER_TOOL_NAMES,
+	type InstanceAiMessage,
+	type InstanceAiAgentNode,
+	type InstanceAiToolCallState,
 } from '@n8n/api-types';
 import { useCanvasPreview } from '../useCanvasPreview';
 import type { ResourceEntry } from '../useResourceRegistry';
@@ -329,7 +330,7 @@ describe('useCanvasPreview', () => {
 					agentTree: makeAgentNode({
 						toolCalls: [
 							makeToolCall({
-								toolName: 'verify-built-workflow',
+								toolName: 'workflow_builder_verify_built_workflow',
 								args: { workflowId: 'wf-1' },
 								result: { executionId: 'exec-1', status: 'success' },
 							}),
@@ -356,7 +357,7 @@ describe('useCanvasPreview', () => {
 					agentTree: makeAgentNode({
 						toolCalls: [
 							makeToolCall({
-								toolName: 'verify-built-workflow',
+								toolName: 'workflow_builder_verify_built_workflow',
 								args: { workflowId: 'wf-1' },
 								result: { executionId: 'exec-1', status: 'success' },
 							}),
@@ -487,7 +488,7 @@ describe('useCanvasPreview', () => {
 						toolCalls: [
 							makeToolCall({
 								toolCallId: 'tc-build',
-								toolName: 'build-workflow',
+								toolName: 'workflow_builder_build_workflow',
 								result: { success: true, workflowId: 'wf-new' },
 							}),
 						],
@@ -512,7 +513,7 @@ describe('useCanvasPreview', () => {
 						toolCalls: [
 							makeToolCall({
 								toolCallId: 'tc-build',
-								toolName: 'build-workflow',
+								toolName: 'workflow_builder_build_workflow',
 								result: { success: true, workflowId: 'wf-historical' },
 							}),
 						],
@@ -538,7 +539,7 @@ describe('useCanvasPreview', () => {
 						toolCalls: [
 							makeToolCall({
 								toolCallId: 'tc-build',
-								toolName: 'build-workflow',
+								toolName: 'workflow_builder_build_workflow',
 								result: { success: true, workflowId: 'wf-1' },
 							}),
 						],
@@ -564,7 +565,7 @@ describe('useCanvasPreview', () => {
 						toolCalls: [
 							makeToolCall({
 								toolCallId: 'tc-1',
-								toolName: 'build-workflow',
+								toolName: 'workflow_builder_build_workflow',
 								result: { success: true, workflowId: 'wf-1' },
 							}),
 						],
@@ -591,7 +592,7 @@ describe('useCanvasPreview', () => {
 						toolCalls: [
 							makeToolCall({
 								toolCallId: 'tc-update',
-								toolName: 'workflows',
+								toolName: 'workflow_builder_workflows',
 								args: { action: 'update', workflowId: 'wf-1' },
 								result: { success: true, workflowId: 'wf-1' },
 							}),
@@ -617,7 +618,7 @@ describe('useCanvasPreview', () => {
 						toolCalls: [
 							makeToolCall({
 								toolCallId: 'tc-update',
-								toolName: 'workflows',
+								toolName: 'workflow_builder_workflows',
 								args: { action: 'update', workflowId: 'wf-1' },
 								result: { success: true },
 							}),
@@ -645,7 +646,7 @@ describe('useCanvasPreview', () => {
 						toolCalls: [
 							makeToolCall({
 								toolCallId: 'tc-update',
-								toolName: 'workflows',
+								toolName: 'workflow_builder_workflows',
 								args: { action: 'update', workflowId: 'wf-1' },
 								result: { success: true },
 							}),
@@ -672,7 +673,7 @@ describe('useCanvasPreview', () => {
 						toolCalls: [
 							makeToolCall({
 								toolCallId: 'tc-build',
-								toolName: 'build-workflow',
+								toolName: 'workflow_builder_build_workflow',
 								result: { success: true, workflowId: 'wf-1' },
 							}),
 						],
@@ -690,12 +691,12 @@ describe('useCanvasPreview', () => {
 						toolCalls: [
 							makeToolCall({
 								toolCallId: 'tc-build',
-								toolName: 'build-workflow',
+								toolName: 'workflow_builder_build_workflow',
 								result: { success: true, workflowId: 'wf-1' },
 							}),
 							makeToolCall({
 								toolCallId: 'tc-update',
-								toolName: 'workflows',
+								toolName: 'workflow_builder_workflows',
 								args: { action: 'update', workflowId: 'wf-1' },
 								result: { success: true, workflowId: 'wf-1' },
 							}),
@@ -910,6 +911,60 @@ describe('useCanvasPreview', () => {
 			expect(ctx.activeTabId.value).toBe('agent-7');
 			expect(ctx.isPreviewVisible.value).toBe(true);
 		});
+
+		test.each([
+			{
+				label: 'creates an Agent',
+				toolName: AGENT_BUILDER_TOOL_NAMES.SELECT_AGENT,
+				result: { ok: true, agentId: 'agent-7', projectId: 'p1', agentChange: 'created' },
+			},
+			{
+				label: 'changes an Agent config',
+				toolName: AGENT_BUILDER_TOOL_NAMES.WRITE_CONFIG,
+				result: { ok: true, agentId: 'agent-7', projectId: 'p1', configMutated: true },
+			},
+		])(
+			'auto-opens preview when an orchestrator builder tool $label',
+			async ({ toolName, result }) => {
+				const ctx = setup();
+				registerAgent(ctx.thread, 'agent-7', 'Support Agent', 'p1');
+
+				ctx.thread.messages = [
+					makeMessage({
+						agentTree: makeAgentNode({
+							toolCalls: [makeToolCall({ toolCallId: 'tc-builder', toolName, result })],
+						}),
+					}),
+				];
+				await nextTick();
+
+				expect(ctx.activeTabId.value).toBe('agent-7');
+				expect(ctx.isPreviewVisible.value).toBe(true);
+			},
+		);
+
+		test('does not auto-open when the orchestrator selects an existing Agent', async () => {
+			const ctx = setup();
+			registerAgent(ctx.thread, 'agent-7', 'Support Agent', 'p1');
+
+			ctx.thread.messages = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolCallId: 'tc-select',
+								toolName: AGENT_BUILDER_TOOL_NAMES.SELECT_AGENT,
+								result: { ok: true, agentId: 'agent-7', projectId: 'p1', agentChange: 'none' },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(ctx.activeTabId.value).toBeUndefined();
+			expect(ctx.isPreviewVisible.value).toBe(false);
+		});
 	});
 
 	describe('auto-open data table preview', () => {
@@ -924,7 +979,7 @@ describe('useCanvasPreview', () => {
 						toolCalls: [
 							makeToolCall({
 								toolCallId: 'tc-create-dt',
-								toolName: 'data-tables',
+								toolName: 'data_tables',
 								args: { action: 'create' },
 								result: { table: { id: 'dt-1', name: 'Test Table' } },
 							}),
@@ -951,7 +1006,7 @@ describe('useCanvasPreview', () => {
 							toolCalls: [
 								makeToolCall({
 									toolCallId: `tc-${action}-dt`,
-									toolName: 'data-tables',
+									toolName: 'data_tables',
 									args: { action, dataTableId: 'Inspect Table' },
 									result: {
 										dataTableId: 'dt-inspect',
@@ -982,7 +1037,7 @@ describe('useCanvasPreview', () => {
 						toolCalls: [
 							makeToolCall({
 								toolCallId: 'tc-create-dt',
-								toolName: 'data-tables',
+								toolName: 'data_tables',
 								args: { action: 'create' },
 								result: { table: { id: 'dt-1', name: 'Test Table' } },
 							}),
@@ -1006,7 +1061,7 @@ describe('useCanvasPreview', () => {
 						toolCalls: [
 							makeToolCall({
 								toolCallId: 'tc-create-dt',
-								toolName: 'data-tables',
+								toolName: 'data_tables',
 								args: { action: 'create' },
 								result: { table: { id: 'dt-1', name: 'Test Table' } },
 							}),
@@ -1030,7 +1085,7 @@ describe('useCanvasPreview', () => {
 						toolCalls: [
 							makeToolCall({
 								toolCallId: 'tc-create-dt',
-								toolName: 'data-tables',
+								toolName: 'data_tables',
 								args: { action: 'create' },
 								result: { table: { id: 'dt-1' } },
 							}),
@@ -1056,7 +1111,7 @@ describe('useCanvasPreview', () => {
 					agentTree: makeAgentNode({
 						toolCalls: [
 							makeToolCall({
-								toolName: 'data-tables',
+								toolName: 'data_tables',
 								args: { action: 'delete', dataTableId: 'dt-1' },
 								result: { success: true },
 							}),
@@ -1079,7 +1134,7 @@ describe('useCanvasPreview', () => {
 					agentTree: makeAgentNode({
 						toolCalls: [
 							makeToolCall({
-								toolName: 'data-tables',
+								toolName: 'data_tables',
 								args: { action: 'delete', dataTableId: 'dt-other' },
 								result: { success: true },
 							}),
@@ -1103,7 +1158,7 @@ describe('useCanvasPreview', () => {
 					agentTree: makeAgentNode({
 						toolCalls: [
 							makeToolCall({
-								toolName: 'data-tables',
+								toolName: 'data_tables',
 								args: { action: 'delete', dataTableId: 'dt-1' },
 								result: { success: true },
 							}),
@@ -1306,7 +1361,7 @@ describe('useCanvasPreview', () => {
 					toolCalls: [
 						makeToolCall({
 							toolCallId,
-							toolName: 'build-workflow',
+							toolName: 'workflow_builder_build_workflow',
 							result: { success: true, workflowId },
 						}),
 					],
@@ -1699,7 +1754,7 @@ describe('useCanvasPreview', () => {
 					toolCalls: [
 						makeToolCall({
 							toolCallId,
-							toolName: 'build-workflow',
+							toolName: 'workflow_builder_build_workflow',
 							result: { success: true, workflowId },
 						}),
 					],
@@ -1778,7 +1833,7 @@ describe('useCanvasPreview', () => {
 					toolCalls: [
 						makeToolCall({
 							toolCallId: 'tc-delete',
-							toolName: 'data-tables',
+							toolName: 'data_tables',
 							args: { action: 'delete', dataTableId: 'dt-1' },
 							result: { success: true },
 						}),

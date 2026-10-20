@@ -52,7 +52,7 @@ import {
 import { AgentValidationService } from '@/modules/agents/agent-validation.service';
 import { AgentsService } from '@/modules/agents/agents.service';
 import { AttachableWorkflowsService } from '@/modules/agents/attachable-workflows.service';
-import type { Agent } from '@/modules/agents/entities/agent.entity';
+import type { ProjectAgent } from '@/modules/agents/entities/agent.entity';
 import { composeJsonConfig } from '@/modules/agents/json-config/agent-config-composition';
 import { listMcpServerTools } from '@/modules/agents/json-config/mcp-client-factory';
 import { sanitizeUnknownAgentCredentials } from '@/modules/agents/json-config/sanitize-unknown-agent-credentials';
@@ -86,6 +86,7 @@ import type {
 	ToolDefinition,
 	UserCalledMCPToolEventPayload,
 } from '../../mcp.types';
+import { toolResult } from '../tool-result.utils';
 
 const MCP_SERVER_DISCOVERY_LIMIT = 20;
 const MODEL_DISCOVERY_LIMIT = 50;
@@ -426,14 +427,6 @@ type MutationResource = {
 	type: 'skill' | 'task' | 'customTool';
 	id: string;
 };
-
-function toolResult(data: Record<string, unknown>, isError = false) {
-	return {
-		content: [{ type: 'text' as const, text: JSON.stringify(data) }],
-		structuredContent: data,
-		...(isError ? { isError: true } : {}),
-	};
-}
 
 @Service()
 export class McpAgentToolsService {
@@ -1127,7 +1120,7 @@ export class McpAgentToolsService {
 		};
 	}
 
-	private async getAgentSnapshot(user: User, agent: Agent) {
+	private async getAgentSnapshot(user: User, agent: ProjectAgent) {
 		const { id: agentId, projectId } = agent;
 		const config = await this.configFromEntity(agent);
 		const credentialProvider = this.credentialProvider(user, projectId);
@@ -1231,7 +1224,7 @@ export class McpAgentToolsService {
 		return getAgentConfigHash(await this.agentConfigService.getConfig(agentId, projectId));
 	}
 
-	private async configFromEntity(agent: Agent): Promise<AgentJsonConfig> {
+	private async configFromEntity(agent: ProjectAgent): Promise<AgentJsonConfig> {
 		const config = composeJsonConfig(agent, await this.agentSkillRefs.refsForDraft(agent, {}));
 		if (!config) throw new UserError('Agent has no JSON config yet.');
 		return config;
@@ -1243,7 +1236,7 @@ export class McpAgentToolsService {
 
 	private async callAgent(
 		user: User,
-		agent: Agent,
+		agent: ProjectAgent,
 		request: CallAgentInput['request'],
 		abortSignal?: AbortSignal,
 	): Promise<Record<string, unknown>> {
@@ -1642,7 +1635,7 @@ export class McpAgentToolsService {
 	 * the node-tool JSON-Schema checks from `validateConfig`, so validate_agent
 	 * and publish_agent cannot drift from the canonical validator.
 	 */
-	private async validateAgent(user: User, agent: Agent) {
+	private async validateAgent(user: User, agent: ProjectAgent) {
 		const projectId = agent.projectId;
 		const config = await this.configFromEntity(agent);
 		const credentialProvider = this.credentialProvider(user, projectId);
@@ -1808,7 +1801,11 @@ export class McpAgentToolsService {
 			: await this.connectIntegration(user, input, agent);
 	}
 
-	private async disconnectIntegration(user: User, input: UpdateIntegrationInput, agent: Agent) {
+	private async disconnectIntegration(
+		user: User,
+		input: UpdateIntegrationInput,
+		agent: ProjectAgent,
+	) {
 		const { credentialId } = input;
 		if (!credentialId) throw new UserError('credentialId is required to disconnect');
 		if (input.managerCredentialId || input.workspaceId) {
@@ -1833,7 +1830,7 @@ export class McpAgentToolsService {
 		};
 	}
 
-	private async connectIntegration(user: User, input: UpdateIntegrationInput, agent: Agent) {
+	private async connectIntegration(user: User, input: UpdateIntegrationInput, agent: ProjectAgent) {
 		const managedTarget = this.managedSlackTarget(input);
 		if (managedTarget) return await this.installManagedSlackApp(user, agent, managedTarget);
 		if (!input.credentialId) {
@@ -1878,7 +1875,7 @@ export class McpAgentToolsService {
 
 	private async installManagedSlackApp(
 		user: User,
-		agent: Agent,
+		agent: ProjectAgent,
 		target: { managerCredentialId: string; workspaceId: string },
 	) {
 		// Managed setup stores the new bot token as a credential in the project.
@@ -1943,7 +1940,7 @@ export class McpAgentToolsService {
 	private async connectWithCredential(
 		user: User,
 		input: UpdateIntegrationInput,
-		agent: Agent,
+		agent: ProjectAgent,
 		credentialId: string,
 	) {
 		const candidate = {
@@ -2000,7 +1997,7 @@ export class McpAgentToolsService {
 	 * `search_agents` intentionally still sees every accessible agent so
 	 * clients can tell the user what exists.
 	 */
-	private async resolveAgent(user: User, agentId: string): Promise<Agent> {
+	private async resolveAgent(user: User, agentId: string): Promise<ProjectAgent> {
 		const agent = await this.agentsService.findByIdForUser(agentId, user);
 		if (!agent) throw new UserError(`Agent "${agentId}" not found`);
 		if (!agent.availableInMCP) {

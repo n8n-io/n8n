@@ -1,27 +1,28 @@
 <script setup lang="ts">
 /** How the agent appears in Teams, with the package that carries it. */
 import { N8nButton, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
-import type { AgentJsonConfig } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import AgentPersonalisationIcon from '../../components/AgentPersonalisationIcon.vue';
+import { injectAgentPersonalisation } from '../agentPersonalisation';
 
 withDefaults(
 	defineProps<{
 		name: string;
 		description: string;
-		personalisation?: AgentJsonConfig['personalisation'] | null;
 		tooltip?: string;
 		ready: boolean;
 		loading?: boolean;
 		/** Teams holds an older version of what this card shows. */
 		outdated?: boolean;
 	}>(),
-	{ personalisation: null, tooltip: '', loading: false, outdated: false },
+	{ tooltip: '', loading: false, outdated: false },
 );
 
 const emit = defineEmits<{ download: [] }>();
 
 const i18n = useI18n();
+
+const personalisation = injectAgentPersonalisation();
 </script>
 
 <template>
