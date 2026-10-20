@@ -51,6 +51,7 @@ import { useTrialIntroModalStore } from '@/experiments/trialIntroModal/stores/tr
 import EmptyStateLayout from '@/app/components/layouts/EmptyStateLayout.vue';
 import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/readyToRun.store';
 import { useEmptyStateDetection } from '@/features/workflows/readyToRun/composables/useEmptyStateDetection';
+import { useAgentListStore } from '@/features/agents/agentList.store';
 import { InsightsSummary, useInsightsStore } from '@n8n/frontend-module-insights';
 import { useWorkflowsEmptyState } from '@/features/workflows/composables/useWorkflowsEmptyState';
 import type {
@@ -172,6 +173,7 @@ const readyToRunWorkflowsStore = useReadyToRunWorkflowsStore();
 const personalizedTemplatesV2Store = usePersonalizedTemplatesV2Store();
 const personalizedTemplatesV3Store = usePersonalizedTemplatesV3Store();
 const readyToRunStore = useReadyToRunStore();
+const agentListStore = useAgentListStore();
 const trialIntroModalStore = useTrialIntroModalStore();
 
 const documentTitle = useDocumentTitle();
@@ -795,6 +797,7 @@ const fetchEmptyStateData = async () => {
 			credentialsStore.fetchAllCredentials(),
 			variablesEnabled ? environmentsStore.fetchAllVariables() : Promise.resolve(),
 			dataTablesEnabled ? dataTableStore.fetchDataTables('', 1, 1) : Promise.resolve(),
+			settingsStore.isAgentsEnabled ? agentListStore.fetchTotalCount() : Promise.resolve(),
 		]);
 	} catch (error) {
 		toast.showError(error, i18n.baseText('workflows.list.error.fetching.emptyStateData'));
