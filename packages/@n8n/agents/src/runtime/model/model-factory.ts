@@ -1,18 +1,15 @@
 /* eslint-disable @typescript-eslint/consistent-type-imports */
 /* eslint-disable @typescript-eslint/no-require-imports */
-import { splitModelId } from '@n8n/ai-utilities/agent-config';
+import { isGoogleVertexAnthropicModel, splitModelId } from '@n8n/ai-utilities/agent-config';
 import { ensureUrlPathSuffix, isOpenAiCustomEndpoint } from '@n8n/ai-utilities/model-discovery';
 import type { EmbeddingModel, LanguageModel } from 'ai';
 import type * as Undici from 'undici';
 
+import { createGoogleVertexModel, parseGoogleVertexAuthOptions } from './google-vertex';
 import type { NativeToolDeferral } from './native-tool-deferral';
 import { anthropicToolDeferral } from './native-tool-deferral/anthropic';
 import { openAiToolDeferral } from './native-tool-deferral/openai';
-import {
-	createGoogleVertexModel,
-	isGoogleVertexAnthropicModel,
-	parseGoogleVertexAuthOptions,
-} from './google-vertex';
+import { wrapOpenRouterModel } from './openrouter';
 import {
 	endpointRouteKey,
 	guardOpenAiRoutes,
@@ -375,7 +372,9 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 		build: (creds, model, fetch) => {
 			const { createOpenRouter } =
 				require('@openrouter/ai-sdk-provider') as typeof import('@openrouter/ai-sdk-provider');
-			return createOpenRouter({ apiKey: creds.apiKey, baseURL: creds.baseURL, fetch })(model);
+			return wrapOpenRouterModel(
+				createOpenRouter({ apiKey: creds.apiKey, baseURL: creds.baseURL, fetch })(model),
+			);
 		},
 	},
 	nvidia: openAiCompatibleEntry('nvidia', 'https://integrate.api.nvidia.com/v1', {}),
