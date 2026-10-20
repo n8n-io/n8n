@@ -389,5 +389,11 @@ describe('EngineV2ManualRunPlanner', () => {
 				),
 			).toThrow(/Cannot start from a disabled trigger/);
 		});
+
+		it('refuses run data without a destination', () => {
+			expect(() => planner.plan(runData({ runData: fullRunData(TRIGGER, A) }))).toThrow(
+				/needs a destination node/,
+			);
+		});
 	});
 });

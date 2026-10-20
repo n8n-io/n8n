@@ -76,6 +76,10 @@ export class EngineV2ManualRunPlanner {
 		const workflow = this.toWorkflow(data);
 		const pinData = data.pinData ?? {};
 		const destination = this.resolveDestination(workflow, data.destinationNode);
+		// v1 asserts the same: run data without a destination is a caller error, not a full run.
+		if (data.runData !== undefined && destination === undefined) {
+			throw new UserError('A run from existing data needs a destination node');
+		}
 		const root = this.resolveRoot(workflow, data, destination);
 
 		// Disabled nodes go first, so a disabled node never cuts the subgraph short.
