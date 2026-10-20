@@ -121,49 +121,36 @@ async function onImport() {
 		:header="i18n.baseText('importCurlModal.title')"
 		@update:open="onDialogOpenUpdate"
 	>
-		<N8nDialogBody>
-			<div :class="$style.container">
-				<N8nInputLabel :label="i18n.baseText('importCurlModal.input.label')" color="text-dark">
-					<N8nInput
-						ref="inputRef"
-						:model-value="curlCommand"
-						type="textarea"
-						:rows="5"
-						data-test-id="import-curl-modal-input"
-						:placeholder="i18n.baseText('importCurlModal.input.placeholder')"
-						@update:model-value="onInput"
-						@focus="onFocus"
-					/>
-				</N8nInputLabel>
-			</div>
+		<N8nDialogBody :class="$style.container">
+			<N8nInputLabel :label="i18n.baseText('importCurlModal.input.label')" color="text-dark">
+				<N8nInput
+					ref="inputRef"
+					:model-value="curlCommand"
+					type="textarea"
+					:rows="5"
+					data-test-id="import-curl-modal-input"
+					:placeholder="i18n.baseText('importCurlModal.input.placeholder')"
+					@update:model-value="onInput"
+					@focus="onFocus"
+				/>
+			</N8nInputLabel>
 		</N8nDialogBody>
 		<N8nDialogFooter>
-			<div :class="$style.modalFooter">
-				<N8nNotice
-					:class="$style.notice"
-					:content="i18n.baseText('ImportCurlModal.notice.content')"
-				/>
-				<div>
-					<N8nButton
-						float="right"
-						:label="i18n.baseText('importCurlModal.button.label')"
-						data-test-id="import-curl-modal-button"
-						@click="onImport"
-					/>
-				</div>
-			</div>
+			<N8nNotice
+				:class="$style.notice"
+				:content="i18n.baseText('ImportCurlModal.notice.content')"
+			/>
+
+			<N8nButton
+				:label="i18n.baseText('importCurlModal.button.label')"
+				data-test-id="import-curl-modal-button"
+				@click="onImport"
+			/>
 		</N8nDialogFooter>
 	</N8nDialog>
 </template>
 
 <style module lang="scss">
-.modalFooter {
-	justify-content: space-between;
-	display: flex;
-	flex-direction: row;
-	width: 100%;
-}
-
 .notice {
 	margin: 0;
 }
