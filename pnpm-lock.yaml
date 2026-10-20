@@ -6600,9 +6600,6 @@ importers:
       '@lezer/highlight':
         specifier: 'catalog:'
         version: 1.2.3(patch_hash=97f85e6fe46f23015ea0dd420e33d584bc2dc71633910cf131321da31b27ca8c)
-      '@n8n/ai-utilities':
-        specifier: workspace:*
-        version: link:../../@n8n/ai-utilities
       '@n8n/api-types':
         specifier: workspace:*
         version: link:../../@n8n/api-types

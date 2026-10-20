@@ -20,10 +20,6 @@ export const appAliases = (editorUiDir: string): Alias[] => [
 ];
 
 export const editorUiAliases = (editorUiDir: string, packagesDir: string): Alias[] => [
-	{
-		find: '@n8n/ai-utilities/agent-config/model-capabilities',
-		replacement: resolve(packagesDir, '@n8n/ai-utilities/src/agent-config/model-capabilities.ts'),
-	},
 	// Allow direct import of the runtime IIFE bundle (for ?raw use in editor-ui).
 	// Must precede the @n8n/expression-runtime stub in appAliases, or the stub
 	// (which matches the sub-path too) would intercept it. The regex preserves the

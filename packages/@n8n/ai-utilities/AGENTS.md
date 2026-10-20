@@ -6,7 +6,6 @@ model configuration, and model output.
 ## Public subpaths
 
 - `agent-config`
-- `agent-config/model-capabilities` (browser-safe model capability checks)
 - `fromai-helpers`
 - `generic-text-editor`
 - `http-proxy-agent`

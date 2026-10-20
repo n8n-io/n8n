@@ -1,4 +1,4 @@
-import { getModelPromptCachingCapability } from '../model-capabilities';
+import { getModelPromptCachingCapability } from '../provider-capabilities';
 
 describe('getModelPromptCachingCapability', () => {
 	it.each<[string, 'ttl' | boolean]>([

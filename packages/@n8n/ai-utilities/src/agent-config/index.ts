@@ -4,7 +4,7 @@ export {
 	isGoogleVertexAnthropicModel,
 	isOpenRouterAnthropicModel,
 	isRoutedAnthropicModel,
-} from './model-capabilities';
+} from '@n8n/api-types';
 export {
 	getNativeWebSearchProviderTools,
 	hasNativeWebSearchProvider,

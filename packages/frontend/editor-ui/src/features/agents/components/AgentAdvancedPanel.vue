@@ -2,10 +2,13 @@
 /** Advanced settings for memory and execution behavior. */
 import { ref, computed, watch } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
-import { AGENT_REASONING_LEVELS, type AgentReasoningLevel } from '@n8n/api-types';
+import {
+	AGENT_REASONING_LEVELS,
+	getModelPromptCachingCapability,
+	type AgentReasoningLevel,
+} from '@n8n/api-types';
 import { N8nInputNumber, N8nOption, N8nSelect, N8nSwitch2, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { getModelPromptCachingCapability } from '@n8n/ai-utilities/agent-config/model-capabilities';
 import AgentMemoryModelSetting from './AgentMemoryModelSetting.vue';
 import AgentPanel from './AgentPanel.vue';
 
