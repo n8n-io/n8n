@@ -478,7 +478,9 @@ it.each<WorkflowConflictPolicy>(['new-version', 'skip'])(
 			expect.objectContaining({
 				type: 'agent-conflict',
 				kind: 'task-id',
+				sourceAgentId: 'second',
 				sourceTaskId: 'task_shared',
+				targetIds: ['first'],
 			}),
 		);
 	},
