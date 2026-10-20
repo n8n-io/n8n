@@ -4,16 +4,18 @@ import { createTestingPinia } from '@pinia/testing';
 import { vi } from 'vitest';
 import DownloadDataTableModal from '@/features/core/dataTable/components/DownloadDataTableModal.vue';
 
-const ModalStub = {
+const DialogStub = {
+	props: ['header', 'description'],
 	template: `
-		<div>
-			<slot name="header" />
-			<slot name="title" />
-			<slot name="content" />
-			<slot name="footer" />
+		<div role="dialog">
+			<h2 v-if="header">{{ header }}</h2>
+			<p v-if="description">{{ description }}</p>
+			<slot />
 		</div>
 	`,
 };
+
+const dialogPartStub = { template: '<div><slot /></div>' };
 
 vi.mock('@n8n/i18n', async (importOriginal) => ({
 	...(await importOriginal()),
@@ -34,7 +36,11 @@ const renderComponent = createComponentRenderer(DownloadDataTableModal, {
 	},
 	global: {
 		stubs: {
-			Modal: ModalStub,
+			Dialog: DialogStub,
+			DialogHeader: dialogPartStub,
+			DialogTitle: dialogPartStub,
+			DialogFooter: dialogPartStub,
+			DialogDescription: dialogPartStub,
 		},
 	},
 });

@@ -17,16 +17,15 @@ import ExpressionOutput from '@/features/shared/editors/components/InlineExpress
 import VirtualSchema from '@/features/ndv/runData/components/VirtualSchema.vue';
 import OutputItemSelect from '@/features/shared/editors/components/InlineExpressionEditor/OutputItemSelect.vue';
 import { useI18n } from '@n8n/i18n';
+import { ParameterInputModalContextKey } from '@/app/constants/injectionKeys';
 import { useDebounce } from '@n8n/composables/useDebounce';
 import DraggableTarget from '@/app/components/DraggableTarget.vue';
 import { dropInExpressionEditor } from '@/features/shared/editors/plugins/codemirror/dragAndDrop';
 
-import { APP_MODALS_ELEMENT_ID } from '@/app/constants';
-import { ParameterInputModalContextKey } from '@/app/constants/injectionKeys';
 import { useThrottleFn } from '@vueuse/core';
 
-import { ElDialog } from 'element-plus';
 import {
+	N8nDialog,
 	N8nIcon,
 	N8nInput,
 	N8nSegmentControl,
@@ -34,8 +33,9 @@ import {
 	N8nText,
 	type ResizeData,
 } from '@n8n/design-system';
-import { useStyles } from '@n8n/composables/useStyles';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+
+defineOptions({ inheritAttrs: false });
 const DEFAULT_LEFT_SIDEBAR_WIDTH = 360;
 const parameterModalContext = inject(ParameterInputModalContextKey, undefined);
 
@@ -65,7 +65,6 @@ const emit = defineEmits<{
 const ndvStore = injectNDVStore();
 const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
-const { APP_Z_INDEXES } = useStyles();
 
 const lastSuccessfulExecution = computed(
 	() => workflowExecutionStateStore.value.lastSuccessfulExecution,
@@ -152,6 +151,10 @@ function closeDialog() {
 	emit('closeDialog');
 }
 
+function onDialogOpenUpdate(open: boolean) {
+	if (!open) closeDialog();
+}
+
 async function onDrop(expression: string, event: MouseEvent) {
 	if (!inputEditor.value) return;
 
@@ -166,14 +169,13 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 </script>
 
 <template>
-	<ElDialog
-		width="calc(100% - var(--spacing--3xl))"
-		:append-to="parameterModalContext?.appendTo ?? `#${APP_MODALS_ELEMENT_ID}`"
-		:append-to-body="parameterModalContext?.appendTo === 'body'"
-		:class="$style.modal"
-		:model-value="dialogVisible"
-		:before-close="closeDialog"
-		:z-index="APP_Z_INDEXES.MODALS"
+	<N8nDialog
+		:open="dialogVisible"
+		size="cover"
+		:stacked="parameterModalContext !== undefined"
+		:show-close-button="false"
+		:container-class="$style.modal"
+		@update:open="onDialogOpenUpdate"
 	>
 		<button :class="$style.close" @click="closeDialog">
 			<Close height="18" width="18" />
@@ -278,28 +280,18 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 				</div>
 			</div>
 		</div>
-	</ElDialog>
+	</N8nDialog>
 </template>
 
 <style module lang="scss">
 @use '@/app/css/variables' as *;
 
 .modal {
-	--dialog--close--spacing--top: var(--spacing--md);
+	--n8n-dialog-content--padding: 0;
 	display: flex;
 	flex-direction: column;
 	overflow: clip;
-	height: calc(100% - var(--spacing--4xl));
-	margin-bottom: 0;
-
-	:global(.el-dialog__body) {
-		height: 100%;
-		padding: var(--spacing--sm);
-	}
-
-	:global(.el-dialog__header) {
-		display: none;
-	}
+	height: calc(100dvh - var(--spacing--4xl));
 }
 
 .container {

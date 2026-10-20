@@ -2,7 +2,9 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { fireEvent } from '@testing-library/vue';
 import { flushPromises } from '@vue/test-utils';
 import { reactive } from 'vue';
+import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
+import { useUIStore } from '@/app/stores/ui.store';
 import BrowserUseSetupContent from '../BrowserUseSetupContent.vue';
 import BrowserUseSetupModal from '../BrowserUseSetupModal.vue';
 import type { BrowserUseExtensionState } from '../../../utils/browserUseExtension';
@@ -71,15 +73,10 @@ function installExtensionMock(responses: Record<string, unknown>): void {
 	(globalThis as { chrome?: unknown }).chrome = { runtime };
 }
 
+const MODAL_NAME = 'browserUseSetup';
+
 const renderComponent = createComponentRenderer(BrowserUseSetupModal, {
-	props: { modalName: 'browserUseSetup' },
-	global: {
-		stubs: {
-			Modal: {
-				template: '<div><slot name="content" /></div>',
-			},
-		},
-	},
+	props: { modalName: MODAL_NAME },
 });
 
 const CHROME_WINDOWS =
@@ -102,6 +99,8 @@ describe('BrowserUseSetupModal', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		setUserAgent(CHROME_WINDOWS);
+		createTestingPinia({ stubActions: false });
+		useUIStore().openModal(MODAL_NAME);
 		settingsStoreMock.mockReturnValue(makeSettingsStore());
 		detectExtensionMock.mockResolvedValue('unknown');
 	});
@@ -277,9 +276,11 @@ describe('BrowserUseSetupModal', () => {
 		expect(store.fetchBrowserConnectUrl).not.toHaveBeenCalled();
 	});
 
-	it('does not render the unsupported browser message on a Chromium browser', () => {
-		const { queryByTestId } = renderComponent();
+	it('does not render the unsupported browser message on a Chromium browser', async () => {
+		const { getByTestId, queryByTestId } = renderComponent();
+		await flushPromises();
 
+		expect(getByTestId('browser-use-install-extension')).toBeInTheDocument();
 		expect(queryByTestId('browser-use-unsupported-browser')).toBeNull();
 	});
 
@@ -288,8 +289,9 @@ describe('BrowserUseSetupModal', () => {
 			setUserAgent(SAFARI_MACOS);
 		});
 
-		it('renders the unsupported browser message instead of the connect steps', () => {
+		it('renders the unsupported browser message instead of the connect steps', async () => {
 			const { getByTestId, queryByTestId } = renderComponent();
+			await flushPromises();
 
 			expect(getByTestId('browser-use-unsupported-browser')).toBeInTheDocument();
 			expect(queryByTestId('browser-use-install-extension')).toBeNull();
