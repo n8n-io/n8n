@@ -30,6 +30,7 @@ describe('AgentModificationTelemetryService Assistant activity', () => {
 		projectId: 'project-1',
 		by: 'builder',
 		changedParts: ['instructions'],
+		wasUnconfigured: false,
 	} satisfies Parameters<AgentModificationTelemetryService['record']>[0];
 	const telemetry = mock<Telemetry>();
 	const activity = mock<EventService>();
@@ -38,7 +39,7 @@ describe('AgentModificationTelemetryService Assistant activity', () => {
 	beforeEach(() => vi.clearAllMocks());
 
 	it('counts committed Builder creation with a configured agent', () => {
-		service.recordCreation(event);
+		service.record({ ...event, wasUnconfigured: true });
 
 		expect(activity.emit).toHaveBeenCalledExactlyOnceWith('experiment-assistant-change-saved', {
 			userId: user.id,
@@ -46,7 +47,7 @@ describe('AgentModificationTelemetryService Assistant activity', () => {
 		});
 		expect(telemetry.track).toHaveBeenCalledExactlyOnceWith(
 			TELEMETRY_EVENT.AGENTS.BUILDER_CREATED_AGENT,
-			expect.objectContaining({ user_id: user.id, event_version: '3' }),
+			expect.objectContaining({ user_id: user.id, event_version: '2' }),
 		);
 	});
 
@@ -61,7 +62,7 @@ describe('AgentModificationTelemetryService Assistant activity', () => {
 			});
 			expect(telemetry.track).toHaveBeenCalledExactlyOnceWith(
 				TELEMETRY_EVENT.AGENTS.BUILDER_MODIFIED_AGENT,
-				expect.objectContaining({ changed_parts: [part], event_version: '2' }),
+				expect.objectContaining({ changed_parts: [part], event_version: '1' }),
 			);
 		},
 	);
@@ -73,10 +74,11 @@ describe('AgentModificationTelemetryService Assistant activity', () => {
 			agent: Object.assign(new Agent(), { schema: emptyConfig, integrations: [] }),
 			config: emptyConfig,
 			changedParts: ['name'],
+			wasUnconfigured: true,
 		});
 
 		expect(activity.emit).not.toHaveBeenCalled();
-		expect(telemetry.track).toHaveBeenCalledOnce();
+		expect(telemetry.track).not.toHaveBeenCalled();
 	});
 
 	it('does not count creating an empty agent shell', () => {
@@ -85,10 +87,10 @@ describe('AgentModificationTelemetryService Assistant activity', () => {
 			model: '',
 			instructions: '',
 		} satisfies AgentJsonConfig;
-		service.recordCreation({ ...event, config: emptyConfig });
+		service.record({ ...event, config: emptyConfig, wasUnconfigured: true });
 
 		expect(activity.emit).not.toHaveBeenCalled();
-		expect(telemetry.track).toHaveBeenCalledOnce();
+		expect(telemetry.track).not.toHaveBeenCalled();
 	});
 
 	it('counts removing the last configured content as a modification', () => {
@@ -111,7 +113,7 @@ describe('AgentModificationTelemetryService Assistant activity', () => {
 	it.each(['user', 'mcp'] as const)(
 		'does not count %s writes as Assistant activity',
 		async (by) => {
-			service.recordCreation({ ...event, by });
+			service.record({ ...event, by, wasUnconfigured: true });
 			service.record({ ...event, by });
 
 			expect(activity.emit).not.toHaveBeenCalled();
@@ -119,14 +121,14 @@ describe('AgentModificationTelemetryService Assistant activity', () => {
 		},
 	);
 
-	it.each(['record', 'recordCreation'] as const)(
-		'records activity when %s telemetry fails',
-		(method) => {
+	it.each([false, true])(
+		'records activity when telemetry fails (first write: %s)',
+		(wasUnconfigured) => {
 			telemetry.track.mockImplementationOnce(() => {
 				throw new Error('Telemetry unavailable');
 			});
 
-			expect(() => service[method](event)).not.toThrow();
+			expect(() => service.record({ ...event, wasUnconfigured })).not.toThrow();
 			expect(activity.emit).toHaveBeenCalledExactlyOnceWith('experiment-assistant-change-saved', {
 				userId: user.id,
 				at: expect.any(Number),

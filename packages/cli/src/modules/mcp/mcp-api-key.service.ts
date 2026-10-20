@@ -76,32 +76,21 @@ export class McpServerApiKeyService {
 					// Every non-OAuth bearer token the strategy chain admits is reported
 					// as `api_key`, token-exchange scoped JWTs included. The distinction
 					// between them is not surfaced to telemetry or log streaming.
-					caller: { authType: 'api_key' },
+					caller: {
+						authType: 'api_key',
+						// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+						...(tokenGrant.apiKeyId ? { apiKeyId: tokenGrant.apiKeyId } : {}),
+						// EOF Experiment cleanup
+					},
 				};
 			}
 
 			return {
-<<<<<<< HEAD
 				user: null,
 				context: {
 					reason: 'invalid_token',
 					auth_type: 'api_key',
 				},
-=======
-				user: tokenGrant.actor ?? tokenGrant.subject,
-				actor: tokenGrant.actor,
-				// Every non-OAuth bearer token the strategy chain admits is reported
-				// as `api_key`, token-exchange scoped JWTs included. The distinction
-				// between them is not surfaced to telemetry or log streaming.
-				caller: {
-					authType: 'api_key',
-					// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
-					...(tokenGrant.apiKeyId ? { apiKeyId: tokenGrant.apiKeyId } : {}),
-					// EOF Experiment cleanup
-				},
-				// Only the API-key strategy sets `apiKeyId`; a token-exchange grant has none.
-				authMethod: tokenGrant.apiKeyId === undefined ? 'scoped-jwt' : 'api-key',
->>>>>>> 2ec85cac (feat(editor): Surface MCP to Claude trial users (no-changelog) (#40408))
 			};
 		} catch (error) {
 			const errorForSure = ensureError(error);

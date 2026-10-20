@@ -172,16 +172,18 @@ export class AgentModificationTelemetryService {
 	record(event: AgentModificationEvent): void {
 		if (event.changedParts.length === 0) return;
 		try {
-<<<<<<< HEAD
 			const { agent, config, by, wasUnconfigured } = event;
 			if (wasUnconfigured && isUnconfiguredAgent(config, agent.integrations)) return;
-=======
-			const { by } = event;
-			const properties = modificationProperties(event);
+
 			// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
-			this.recordAssistantActivity(event, properties.capability_count, event.changedParts);
+			if (by === 'builder') {
+				this.eventService.emit('experiment-assistant-change-saved', {
+					userId: event.user.id,
+					at: Date.now(),
+				});
+			}
+
 			// EOF Experiment cleanup
->>>>>>> 2ec85cac (feat(editor): Surface MCP to Claude trial users (no-changelog) (#40408))
 
 			const properties = modificationProperties(event);
 			if (wasUnconfigured) {
@@ -200,52 +202,7 @@ export class AgentModificationTelemetryService {
 		}
 	}
 
-<<<<<<< HEAD
 	private recordCreation(
-=======
-	recordCreation(event: AgentCreationEvent): void {
-		try {
-			const changedParts = diffAgentConfigParts(
-				null,
-				event.config,
-				[],
-				event.agent.integrations ?? [],
-			);
-			const properties = modificationProperties({ ...event, changedParts });
-			// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
-			this.recordAssistantActivity(event, properties.capability_count);
-			// EOF Experiment cleanup
-			this.trackCreation(event.by, properties);
-		} catch {
-			// Telemetry must never fail a write that already succeeded.
-		}
-	}
-
-	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
-	private recordAssistantActivity(
-		event: AgentCreationEvent,
-		capabilityCount: number,
-		changedParts?: AgentConfigPart[],
-	): void {
-		if (event.by !== 'builder') return;
-		// Empty shells and cosmetic changes alone do not count as Assistant use.
-		if (
-			!event.config?.model?.trim() &&
-			!event.config?.instructions?.trim() &&
-			capabilityCount === 0 &&
-			!changedParts?.some((part) => part !== 'name')
-		) {
-			return;
-		}
-		this.eventService.emit('experiment-assistant-change-saved', {
-			userId: event.user.id,
-			at: Date.now(),
-		});
-	}
-	// EOF Experiment cleanup
-
-	private trackCreation(
->>>>>>> 2ec85cac (feat(editor): Surface MCP to Claude trial users (no-changelog) (#40408))
 		by: AgentActor,
 		properties: ReturnType<typeof modificationProperties>,
 	): void {
