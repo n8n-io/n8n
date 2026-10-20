@@ -139,8 +139,7 @@ export async function runAgent(
 		}
 		// Save conversation to memory including any tool call context
 		if (memory && input && result?.output) {
-			const previousCount = response?.metadata?.previousRequests?.length;
-			await saveToMemory(input, result.output, memory, steps, previousCount);
+			await saveToMemory(input, result.output, memory, steps);
 			if (memoryHits) {
 				memoryHits.saves++;
 			}
@@ -172,8 +171,7 @@ export async function runAgent(
 			}
 			// Save conversation to memory including any tool call context
 			if (memory && input && modelResponse.returnValues.output) {
-				const previousCount = response?.metadata?.previousRequests?.length;
-				await saveToMemory(input, modelResponse.returnValues.output, memory, steps, previousCount);
+				await saveToMemory(input, modelResponse.returnValues.output, memory, steps);
 				if (memoryHits) {
 					memoryHits.saves++;
 				}
