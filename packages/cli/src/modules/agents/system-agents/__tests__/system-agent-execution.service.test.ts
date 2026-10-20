@@ -8,6 +8,7 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 
 import type { AgentChatAttachmentService } from '../../agent-chat-attachment.service';
 import type { AgentChatExecutionService } from '../../agent-chat-execution.service';
+import { AgentConversationStateService } from '../../agent-conversation-state.service';
 import type { AgentExecutionService } from '../../agent-execution.service';
 import type {
 	AgentMessageQueueService,
@@ -135,6 +136,8 @@ function setup(
 		checkpointStorage,
 		txRunner,
 		attachmentService,
+		// The real service, so the status tests check the real reads and precedence.
+		new AgentConversationStateService(executionRepository, checkpointStorage),
 	);
 
 	return {

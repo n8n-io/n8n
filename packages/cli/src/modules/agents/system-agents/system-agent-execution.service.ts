@@ -9,6 +9,7 @@ import { randomUUID } from 'node:crypto';
 
 import { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import { AgentChatExecutionService } from '../agent-chat-execution.service';
+import { AgentConversationStateService } from '../agent-conversation-state.service';
 import { AgentExecutionService, type StartExecutionParams } from '../agent-execution.service';
 import type { ClaimedAgentMessage } from '../agent-message-queue.service';
 import { AgentMessageQueueService } from '../agent-message-queue.service';
@@ -99,6 +100,7 @@ export class SystemAgentExecutionService {
 		private readonly checkpointStorage: N8NCheckpointStorage,
 		private readonly txRunner: TransactionRunner,
 		private readonly attachmentService: AgentChatAttachmentService,
+		private readonly conversationState: AgentConversationStateService,
 	) {}
 
 	/** Register a provider and make sure its instance agent row exists. */
@@ -276,15 +278,13 @@ export class SystemAgentExecutionService {
 		status: SystemAgentThreadStatus;
 		checkpoint: SerializableAgentState | null;
 	}> {
-		if (await this.executionRepository.existsRunningByThread(thread.id, ctx)) {
-			return { status: 'running', checkpoint: null };
-		}
-		const checkpoint = await this.checkpointStorage.findSuspendedForThread(
+		const { running, suspendedCheckpoint } = await this.conversationState.inspect(
 			thread.agentId,
 			thread.id,
 			ctx,
 		);
-		if (checkpoint) return { status: 'suspended', checkpoint };
+		if (running) return { status: 'running', checkpoint: null };
+		if (suspendedCheckpoint) return { status: 'suspended', checkpoint: suspendedCheckpoint };
 		const queued = await this.messageQueue.hasQueuedMessages(thread.id, ctx);
 		return { status: queued ? 'running' : 'idle', checkpoint: null };
 	}
