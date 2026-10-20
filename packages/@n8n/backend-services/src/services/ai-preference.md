@@ -8,9 +8,9 @@ through `AiPreferenceService`.
 ## The data
 
 One table, `ai_preference`. See
-[the table](../../../@n8n/db/src/migrations/common/1788882375989-CreateAiPreferenceTable.ts),
-[the `source` column with its backfill](../../../@n8n/db/src/migrations/common/1789479099132-AddSourceToAiPreference.ts)
-and [the entity](../../../@n8n/db/src/entities/ai-preference.ts).
+[the table](../../../db/src/migrations/common/1788882375989-CreateAiPreferenceTable.ts),
+[the `source` column with its backfill](../../../db/src/migrations/common/1789479099132-AddSourceToAiPreference.ts)
+and [the entity](../../../db/src/entities/ai-preference.ts).
 
 | Column | Meaning |
 | --- | --- |
@@ -61,7 +61,7 @@ person wrote by hand. A row that fails the check answers like one that does not 
 ## The assistant write
 
 Every assistant surface writes through `writeAssistantPreference` in
-[`ai-preference-write.ts`](./ai-preference-write.ts): the n8n Assistant tool with
+[`ai-preference-write.ts`](../../../../cli/src/services/ai-preference-write.ts): the n8n Assistant tool with
 `surface: 'aia'` and the MCP tool with `surface: 'mcp'`. It sets `source`, maps a refusal
 to one of six reasons (`too_long`, `scope_full`, `duplicate`, `not_permitted`,
 `blocked_by_admin`, `failed`) and fires the events, so the two surfaces cannot drift.
@@ -114,7 +114,7 @@ create defaults a missing `userId` to the caller, because a create has no owner 
 ## The two caps
 
 Both numbers live in
-[`ai-preference.schema.ts`](../../../@n8n/api-types/src/schemas/ai-preference.schema.ts),
+[`ai-preference.schema.ts`](../../../api-types/src/schemas/ai-preference.schema.ts),
 so one value serves every reader:
 
 - `AI_PREFERENCE_CONTENT_MAX_LENGTH` is 2,000 characters for one preference. The request
@@ -190,14 +190,14 @@ rows and never widens them. The menu keeps a row the lookup does not return and 
 as removed, so the list the user sees stays the list the turn carried.
 
 See
-[the streaming protocol](../../../@n8n/instance-ai/docs/streaming-protocol.md#preferences-applied)
+[the streaming protocol](../../../instance-ai/docs/streaming-protocol.md#preferences-applied)
 for the frame, and `buildAppliedPreferencesPayload` in
 [`ai-preference.service.ts`](./ai-preference.service.ts) for the mapping.
 
 ## Telemetry
 
 The events live in the `CONTEXT` domain of
-[`@n8n/telemetry`](../../../@n8n/telemetry/src/events/context.ts). Three cover the settings
+[`@n8n/telemetry`](../../../telemetry/src/events/context.ts). Three cover the settings
 area. Six more cover the assistant paths: the preferences applied to a turn, an assistant
 write, the confirmation shown and answered, the scope accepted against the scope offered,
 and a refused write with its reason.
