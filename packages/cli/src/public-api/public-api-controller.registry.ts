@@ -80,7 +80,6 @@ function routePath(prefix: string, req: Request): string {
 	return path.length > 1 && path.endsWith('/') ? path.slice(0, -1) : path;
 }
 
-/** The route template with the API version, for example `/v1/workflows/:id`. */
 function toEndpointPath(apiVersion: string, prefix: string, routeTemplate: string): string {
 	const path = `/${apiVersion}${prefix === '/' ? '' : prefix}${routeTemplate}`;
 	return path.endsWith('/') ? path.slice(0, -1) : path;

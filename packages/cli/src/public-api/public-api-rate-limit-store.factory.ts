@@ -10,10 +10,27 @@ import { InstanceSettings } from 'n8n-core';
 import { RedisStore } from 'rate-limit-redis';
 import type { Options as RedisStoreOptions, RedisReply } from 'rate-limit-redis';
 
-/** A slow Redis must not hold a Public API request open. */
-const COMMAND_TIMEOUT_MS = 500;
+/** Logs once when Redis starts to fail, and once when it works again. */
+class RedisHealth {
+	private failing = false;
 
-type RedisHealth = { onSuccess: () => void; onFailure: (error: unknown) => void };
+	constructor(private readonly logger: Logger) {}
+
+	succeeded() {
+		if (!this.failing) return;
+		this.failing = false;
+		this.logger.info('Public API rate limiting can reach Redis again');
+	}
+
+	failed(error: unknown) {
+		if (this.failing) return;
+		this.failing = true;
+		this.logger.warn(
+			'Public API rate limiting cannot reach Redis. Requests are not limited until Redis is back.',
+			{ error: ensureError(error) },
+		);
+	}
+}
 
 class ReportingRedisStore extends RedisStore {
 	constructor(
@@ -21,66 +38,51 @@ class ReportingRedisStore extends RedisStore {
 		private readonly health: RedisHealth,
 	) {
 		super(options);
-		// The store loads its scripts here and again when a command needs them. Nothing awaits
-		// these first loads, so a failure would be an unhandled rejection.
+		// Nothing awaits these first script loads, so a failure would be an unhandled rejection.
+		// The store loads the scripts again when it needs them.
 		this.incrementScriptSha.catch(() => {});
 		this.getScriptSha.catch(() => {});
 	}
 
-	/** On a failure, `passOnStoreError` lets the request pass. */
 	async increment(key: string): Promise<IncrementResponse> {
 		try {
 			const response = await super.increment(key);
-			this.health.onSuccess();
+			this.health.succeeded();
 			return response;
 		} catch (error) {
-			this.health.onFailure(error);
+			this.health.failed(error);
 			throw error;
 		}
 	}
 
-	/** On a failure, the count stays one too high until the window ends. */
+	/** Does not throw, so that a failed decrement does not stop the 429. */
 	async decrement(key: string): Promise<void> {
 		try {
 			await super.decrement(key);
 		} catch (error) {
-			this.health.onFailure(error);
+			this.health.failed(error);
 		}
 	}
 }
 
 /**
- * Creates the stores for the Public API rate-limit counts. A single main keeps them in memory.
- * On multi-main, the counts are in Redis, so that all mains share them.
+ * A single main keeps the Public API rate-limit counts in memory. On multi-main, the counts are
+ * in Redis, so that all mains share them.
  */
 @Service()
 export class PublicApiRateLimitStoreFactory {
 	private redisClient: Redis | Cluster | undefined;
 
-	private redisFails = false;
-
-	private readonly redisHealth: RedisHealth = {
-		onSuccess: () => {
-			if (!this.redisFails) return;
-			this.redisFails = false;
-			this.logger.info('Public API rate limiting can reach Redis again');
-		},
-		onFailure: (error) => {
-			if (this.redisFails) return;
-			this.redisFails = true;
-			this.logger.warn(
-				'Public API rate limiting cannot reach Redis. Requests are not limited until Redis is back.',
-				{ error: ensureError(error) },
-			);
-		},
-	};
+	private readonly redisHealth: RedisHealth;
 
 	constructor(
-		private readonly logger: Logger,
+		logger: Logger,
 		private readonly globalConfig: GlobalConfig,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly redisClientService: RedisClientService,
-	) {}
+	) {
+		this.redisHealth = new RedisHealth(logger);
+	}
 
 	/** @param name Identifies one limiter. Two limiters must not use the same name. */
 	create(name: string): Store {
@@ -88,19 +90,15 @@ export class PublicApiRateLimitStoreFactory {
 
 		const prefix = this.redisClientService.toValidPrefix(this.globalConfig.redis.prefix);
 		return new ReportingRedisStore(
-			{
-				prefix: `${prefix}:rate-limit:public-api:${name}:`,
-				sendCommand: async (command: string, ...args: string[]) =>
-					await this.sendRedisCommand(command, args),
-			},
+			{ prefix: `${prefix}:rate-limit:public-api:${name}:`, sendCommand: this.sendRedisCommand },
 			this.redisHealth,
 		);
 	}
 
-	private async sendRedisCommand(command: string, args: string[]): Promise<RedisReply> {
+	private sendRedisCommand = async (command: string, ...args: string[]): Promise<RedisReply> => {
 		const client = this.getRedisClient();
-		// A cluster sends a command without a key, such as `SCRIPT LOAD`, to any one node. `EVALSHA`
-		// runs on the node that owns the counter, so load the scripts on every node.
+		// A cluster sends `SCRIPT LOAD` to any one node, but `EVALSHA` runs on the node that owns
+		// the counter. So load the scripts on every node.
 		if (client.isCluster && command === 'SCRIPT') {
 			const [sha] = await Promise.all(
 				(client as Cluster).nodes('master').map(async (node) => await node.call(command, ...args)),
@@ -108,14 +106,14 @@ export class PublicApiRateLimitStoreFactory {
 			return sha as RedisReply;
 		}
 		return (await client.call(command, ...args)) as RedisReply;
-	}
+	};
 
 	private getRedisClient() {
+		// A slow or unreachable Redis must not hold a request open. The command fails fast and
+		// `passOnStoreError` lets the request pass.
 		this.redisClient ??= this.redisClientService.createClient({
 			type: 'rate-limit(n8n)',
-			// Without the offline queue, a command fails at once while Redis is down, so the request
-			// passes instead of waiting for a reconnect.
-			extraOptions: { commandTimeout: COMMAND_TIMEOUT_MS, enableOfflineQueue: false },
+			extraOptions: { commandTimeout: 500, enableOfflineQueue: false },
 		});
 		return this.redisClient;
 	}

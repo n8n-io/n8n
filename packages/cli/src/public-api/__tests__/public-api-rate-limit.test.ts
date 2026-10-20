@@ -48,10 +48,7 @@ const authenticatedUser = mock<User>({ id: 'user-1' });
 
 const loadedScripts = new Map<string, string>();
 
-/**
- * A client for the shared `ioredis-mock` data. The mock has no `call` and no `SCRIPT LOAD`, so this
- * runs a loaded script with `EVAL`.
- */
+/** `ioredis-mock` has no `call` and no `SCRIPT LOAD`, so this runs a loaded script with `EVAL`. */
 function redisClient(
 	failsOn: (command: string) => boolean = () => false,
 	scripts: Map<string, string> = loadedScripts,
@@ -79,10 +76,7 @@ function redisClient(
 	return mock<Redis>({ isCluster: false, call: call as Redis['call'] }) as unknown as Redis;
 }
 
-/**
- * A cluster of two nodes, each with its own scripts. Like ioredis, it sends a command without a key,
- * such as `SCRIPT LOAD`, to any node. Here that is always the node that does not own the counters.
- */
+/** Like ioredis, it can send `SCRIPT LOAD` to a node that does not own the counters. */
 function redisCluster() {
 	const nodeWithoutCounters = redisClient(undefined, new Map());
 	const nodeWithCounters = redisClient(undefined, new Map());
