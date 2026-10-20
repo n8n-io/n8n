@@ -1462,11 +1462,11 @@ describe('Apply a project selection', () => {
 
 	it('rejects a selected workflow at the branch project root that is in a folder on the instance', async () => {
 		const remote = await createRemote();
-		const connection = await createInstanceConnection(remote.bareDir);
-		await service.clone(connection.id, 'promote');
-		await service.clone(connection.id, 'apply');
+		const environments = await createInstanceEnvironments(remote.bareDir);
+		await service.clone(environments.promote.id);
+		await service.clone(environments.apply.id);
 		const { project, workflows } = await setupProjectWithWorkflows('Orders', ['Process order']);
-		await service.promote(connection.id, owner, {
+		await service.promote(environments.promote.id, owner, {
 			canExportVariableValues: true,
 			commitMessage: 'Export root workflow',
 		});
