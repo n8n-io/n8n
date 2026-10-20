@@ -90,28 +90,26 @@ function onDialogOpenUpdate(open: boolean) {
 		:header="`Conflicting ${webhookTypeUi.title} Path`"
 		@update:open="onDialogOpenUpdate"
 	>
-		<N8nDialogBody>
-			<div data-test-id="workflowActivationConflictingWebhook-modal">
-				<N8nCallout theme="danger" data-test-id="conflicting-webhook-callout">
-					A {{ webhookTypeUi.callout }} '{{ data.node }}' in the workflow '{{ data.workflowName }}'
-					uses a conflicting URL path, so this workflow cannot be activated
-				</N8nCallout>
+		<N8nDialogBody :class="$style.body" data-test-id="workflowActivationConflictingWebhook-modal">
+			<N8nCallout theme="danger" data-test-id="conflicting-webhook-callout">
+				A {{ webhookTypeUi.callout }} '{{ data.node }}' in the workflow '{{ data.workflowName }}'
+				uses a conflicting URL path, so this workflow cannot be activated
+			</N8nCallout>
+			<div>
 				<div>
-					<div>
-						<N8nText color="text-base"> You can deactivate </N8nText>
-						<N8nLink :to="workflowUrl" :underline="true">{{ data.workflowName }}</N8nLink>
-						{{ ' ' }}
-						<N8nText color="text-base" data-test-id="conflicting-webhook-suggestion">
-							{{ webhookTypeUi.suggestion }}
-						</N8nText>
-					</div>
-				</div>
-				<div data-test-id="conflicting-webhook-path">
-					<N8nText color="text-light"> {{ webhookUrl }}/</N8nText>
-					<N8nText color="text-dark" bold>
-						{{ data.webhookPath }}
+					<N8nText color="text-base"> You can deactivate </N8nText>
+					<N8nLink :to="workflowUrl" :underline="true">{{ data.workflowName }}</N8nLink>
+					{{ ' ' }}
+					<N8nText color="text-base" data-test-id="conflicting-webhook-suggestion">
+						{{ webhookTypeUi.suggestion }}
 					</N8nText>
 				</div>
+			</div>
+			<div data-test-id="conflicting-webhook-path">
+				<N8nText color="text-light"> {{ webhookUrl }}/</N8nText>
+				<N8nText color="text-dark" bold>
+					{{ data.webhookPath }}
+				</N8nText>
 			</div>
 		</N8nDialogBody>
 		<N8nDialogFooter>
@@ -125,3 +123,8 @@ function onDialogOpenUpdate(open: boolean) {
 		</N8nDialogFooter>
 	</N8nDialog>
 </template>
+<style module lang="scss">
+.body {
+	gap: var(--spacing--md);
+}
+</style>
