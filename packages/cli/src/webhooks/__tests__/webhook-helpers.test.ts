@@ -60,7 +60,6 @@ import {
 	UserError,
 } from 'n8n-workflow';
 import { Readable } from 'stream';
-import { finished } from 'stream/promises';
 import { mock, type MockProxy } from 'vitest-mock-extended';
 
 import { ActiveExecutions } from '@/active-executions';
