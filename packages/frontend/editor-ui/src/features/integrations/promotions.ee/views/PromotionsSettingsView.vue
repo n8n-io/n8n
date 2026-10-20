@@ -23,13 +23,17 @@ import PromotionConnectionForm from '../components/PromotionConnectionForm.vue';
 import PromotionProviderDialog from '../components/PromotionProviderDialog.vue';
 import { invalidateInstancePromotionConnection } from '../composables/useInstancePromotionConnection';
 import {
-	fetchPromotionConnection,
-	fetchPromotionConnections,
+	fetchPromotionEnvironment,
+	fetchPromotionEnvironments,
 	fetchPromotionProviders,
 	type PromotionConnection,
 	type PromotionProviderSummary,
 } from '../promotionsSettings.api';
-import type { PromotionProviderChange } from '../promotionsSettings.utils';
+import {
+	toConnection,
+	withEnvironment,
+	type PromotionProviderChange,
+} from '../promotionsSettings.utils';
 
 const i18n = useI18n();
 const toast = useToast();
@@ -63,15 +67,17 @@ async function load() {
 	isInitialLoading.value = !hasLoaded.value;
 	loadError.value = false;
 	try {
-		const [loadedProviders, connections] = await Promise.all([
+		const [loadedProviders, environments] = await Promise.all([
 			fetchPromotionProviders(rootStore.publicApiContext),
-			fetchPromotionConnections(rootStore.publicApiContext, { scope: 'instance' }),
+			fetchPromotionEnvironments(rootStore.publicApiContext, { scope: 'instance' }),
 		]);
 		if (!isLatestLoad()) return;
-		const summary = connections[0];
-		const loadedConnection = summary
-			? await fetchPromotionConnection(rootStore.publicApiContext, summary.id)
-			: null;
+		const details = await Promise.all(
+			environments.map(
+				async ({ id }) => await fetchPromotionEnvironment(rootStore.publicApiContext, id),
+			),
+		);
+		const loadedConnection = toConnection(details.reduce(withEnvironment, {}));
 		if (!isLatestLoad()) return;
 		providers.value = loadedProviders;
 		// A save can finish while connection detail is loading.
@@ -143,7 +149,7 @@ function onProviderDeleted() {
 	pendingLoad = load();
 }
 
-function onConnectionSaved(saved: PromotionConnection) {
+function onConnectionSaved(saved: PromotionConnection | null) {
 	connectionRevision++;
 	connection.value = saved;
 	// The project header caches the instance connection per page load.

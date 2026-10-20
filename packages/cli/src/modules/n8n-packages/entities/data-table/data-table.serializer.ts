@@ -1,13 +1,13 @@
+import {
+	type SerializedDataTable,
+	type SerializedDataTableColumn,
+	serializedDataTableSchema,
+} from '@n8n/api-types';
 import { Service } from '@n8n/di';
 
 import type { DataTableColumn } from '@/modules/data-table/data-table-column.entity';
 import type { DataTable } from '@/modules/data-table/data-table.entity';
 
-import {
-	serializedDataTableSchema,
-	type SerializedDataTableColumn,
-	type SerializedDataTable,
-} from '../../spec/serialized/data-table.schema';
 import { definePackageSerializationPayload } from '../package-serialization.types';
 
 type DataTablePackageKeyHandling = {

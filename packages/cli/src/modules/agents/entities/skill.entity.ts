@@ -23,6 +23,9 @@ export class Skill extends WithTimestamps {
 	@Column({ type: 'varchar', length: 36, nullable: true })
 	agentId: string | null;
 
+	@Column({ type: 'boolean', default: false })
+	availableToAssistant: boolean;
+
 	@Column({ type: 'varchar', length: 16 })
 	source: SkillSource;
 

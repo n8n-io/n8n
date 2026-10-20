@@ -38,8 +38,8 @@ describe('McpServerApiKeyService', () => {
 			expect(authStrategyRegistry.buildContextFromToken).toHaveBeenCalledWith('any-token', {
 				audience: 'mcp-server-api',
 			});
-			expect(result.user).toBe(subject);
-			expect(result.actor).toBeUndefined();
+			expect(result?.user).toBe(subject);
+			expect(result?.actor).toBeUndefined();
 		});
 
 		it('returns the actor as user when delegation is present', async () => {
@@ -53,8 +53,8 @@ describe('McpServerApiKeyService', () => {
 
 			const result = await service.verifyApiKey('token');
 
-			expect(result.user).toBe(actor);
-			expect(result.actor).toBe(actor);
+			expect(result?.user).toBe(actor);
+			expect(result?.actor).toBe(actor);
 		});
 
 		it('reports `api_key` for a delegated token-exchange grant, not a distinct type', async () => {
@@ -71,7 +71,7 @@ describe('McpServerApiKeyService', () => {
 
 			const result = await service.verifyApiKey('scoped-jwt');
 
-			expect(result.caller).toEqual({ authType: 'api_key' });
+			expect(result?.caller).toEqual({ authType: 'api_key' });
 		});
 
 		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
@@ -83,7 +83,7 @@ describe('McpServerApiKeyService', () => {
 				apiKeyId: 'key-1',
 			});
 			const result = await service.verifyApiKey('secret-key');
-			expect(result.caller).toEqual({ authType: 'api_key', apiKeyId: 'key-1' });
+			expect(result?.caller).toEqual({ authType: 'api_key', apiKeyId: 'key-1' });
 			expect(apiKeys.findOne).not.toHaveBeenCalled();
 		});
 
@@ -92,19 +92,41 @@ describe('McpServerApiKeyService', () => {
 			const actor = makeUser('actor-1');
 			authStrategyRegistry.buildContextFromToken.mockResolvedValue({ subject, actor, scopes: [] });
 			const result = await service.verifyApiKey('scoped-jwt');
-			expect(result.user).toBe(actor);
-			expect(result.caller).toEqual({ authType: 'api_key' });
+			expect(result?.user).toBe(actor);
+			expect(result?.caller).toEqual({ authType: 'api_key' });
 			expect(apiKeys.findOne).not.toHaveBeenCalled();
 		});
 		// EOF Experiment cleanup
 
-		it('returns a rejection context when the registry returns null', async () => {
+		it('reports which strategy admitted the caller, for the log line', async () => {
+			const subject = makeUser('subject-1');
+			authStrategyRegistry.buildContextFromToken.mockResolvedValueOnce({
+				subject,
+				scopes: [],
+				apiKeyId: 'key-1',
+			} satisfies TokenGrant);
+			authStrategyRegistry.buildContextFromToken.mockResolvedValueOnce({
+				subject,
+				scopes: [],
+			} satisfies TokenGrant);
+
+			expect((await service.verifyApiKey('api-key'))?.authMethod).toBe('api-key');
+			expect((await service.verifyApiKey('scoped-jwt'))?.authMethod).toBe('scoped-jwt');
+		});
+
+		it('abstains when no strategy knows the token', async () => {
 			authStrategyRegistry.buildContextFromToken.mockResolvedValue(null);
+
+			expect(await service.verifyApiKey('unknown-token')).toBeNull();
+		});
+
+		it('returns a rejection context when a strategy refuses the token', async () => {
+			authStrategyRegistry.buildContextFromToken.mockResolvedValue(false);
 
 			const result = await service.verifyApiKey('bad-token');
 
-			expect(result.user).toBeNull();
-			expect(result.context).toEqual({ reason: 'invalid_token', auth_type: 'api_key' });
+			expect(result?.user).toBeNull();
+			expect(result?.context).toEqual({ reason: 'invalid_token', auth_type: 'api_key' });
 		});
 
 		it.each([
@@ -116,8 +138,8 @@ describe('McpServerApiKeyService', () => {
 
 			const result = await service.verifyApiKey('token');
 
-			expect(result.user).toBeNull();
-			expect(result.context).toEqual({
+			expect(result?.user).toBeNull();
+			expect(result?.context).toEqual({
 				reason,
 				auth_type: 'api_key',
 				error_details: message,

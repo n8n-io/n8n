@@ -14,7 +14,7 @@ import { AgentIntegrationPersistenceService } from '../agent-integration-persist
 import { AgentModificationTelemetryService } from '../agent-modification-telemetry.service';
 import type { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import type { AgentSetupCompletionService } from '../agent-setup-completion.service';
-import type { Agent } from '../entities/agent.entity';
+import type { ProjectAgent } from '../entities/agent.entity';
 import type { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
 import type { AgentRepository } from '../repositories/agent.repository';
 import { createAgentSkillRefsService, storedAgentConfig } from './test-utils/stored-agent-config';
@@ -70,7 +70,7 @@ function setup(options: SetupOptions = {}) {
 		activeVersionId: options.activeVersionId === undefined ? 'version-1' : options.activeVersionId,
 		setupCompletedAt: null,
 		updatedAt: new Date('2025-01-01T00:00:00Z'),
-	} as Agent;
+	} as ProjectAgent;
 
 	agentRepository.findById.mockImplementation(async () => ({
 		...row,
@@ -702,7 +702,7 @@ describe('AgentIntegrationPersistenceService', () => {
 	});
 
 	describe('modification telemetry', () => {
-		it('reports the first channel on a blank agent as a creation', async () => {
+		it('reports the first channel on a saved draft as a modification', async () => {
 			const { service, agent, telemetry } = setup({ schema: blankConfig });
 
 			await service.applyIntegrationDelta(
@@ -712,7 +712,7 @@ describe('AgentIntegrationPersistenceService', () => {
 			);
 
 			expect(telemetry.track).toHaveBeenCalledWith(
-				TELEMETRY_EVENT.AGENTS.USER_CREATED_AGENT,
+				TELEMETRY_EVENT.AGENTS.USER_MODIFIED_AGENT,
 				expect.objectContaining({
 					agent_id: agentId,
 					project_id: projectId,
@@ -723,7 +723,7 @@ describe('AgentIntegrationPersistenceService', () => {
 				}),
 			);
 			expect(telemetry.track).not.toHaveBeenCalledWith(
-				TELEMETRY_EVENT.AGENTS.USER_MODIFIED_AGENT,
+				TELEMETRY_EVENT.AGENTS.USER_CREATED_AGENT,
 				expect.anything(),
 			);
 		});
@@ -745,7 +745,7 @@ describe('AgentIntegrationPersistenceService', () => {
 					agent_id: agentId,
 					changed_parts: ['triggers'],
 					trigger_count: 2,
-					event_version: '1',
+					event_version: '2',
 				}),
 			);
 			expect(telemetry.track).not.toHaveBeenCalledWith(

@@ -60,6 +60,8 @@ import type {
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { OwnershipService } from '@/services/ownership.service';
+import { getCpuLimit, getMemoryLimit } from '@/utils/container-limits';
+import { detectDbVendor, detectRedisVendor } from '@/utils/detect-managed-services';
 import { detectKubernetesProvider, detectRuntime } from '@/utils/detect-runtime';
 
 import { EventRelay } from './event-relay';
@@ -1835,11 +1837,29 @@ export class TelemetryEventRelay extends EventRelay {
 		const authenticationMethod = config.getEnv('userManagement.authenticationMethod');
 		const dbVersion = await this.dbConnection.getDbVersion();
 		const runtime = detectRuntime(process.env, this.instanceSettings.isDocker);
+		const memoryLimit = getMemoryLimit();
+		const cpu = getCpuLimit();
+		const dbVendor =
+			this.globalConfig.database.type === 'postgresdb'
+				? detectDbVendor(
+						this.globalConfig.database.postgresdb.host,
+						await this.dbConnection.getManagedPostgresMarkers(),
+					)
+				: undefined;
+		const redisVendor =
+			this.globalConfig.executions.mode === 'queue'
+				? detectRedisVendor(
+						this.globalConfig.queue.bull.redis.host,
+						this.globalConfig.queue.bull.redis.clusterNodes,
+					)
+				: undefined;
 
 		const info = {
 			version_cli: N8N_VERSION,
 			db_type: this.globalConfig.database.type,
 			db_version: dbVersion,
+			db_vendor: dbVendor,
+			redis_vendor: redisVendor,
 			n8n_version_notifications_enabled: this.globalConfig.versionNotifications.enabled,
 			n8n_disable_production_main_process:
 				this.globalConfig.endpoints.disableProductionWebhooksOnMainProcess,
@@ -1855,6 +1875,10 @@ export class TelemetryEventRelay extends EventRelay {
 					speed: cpus[0].speed,
 				},
 				is_docker: this.instanceSettings.isDocker,
+				memory_limit: memoryLimit === null ? null : memoryLimit / 1024,
+				cpu_limit: cpu.limit,
+				cpu_limit_source: cpu.source,
+				cpu_weight: cpu.weight,
 				runtime,
 				kubernetes_provider:
 					runtime === 'kubernetes' ? detectKubernetesProvider(os.release()) : undefined,

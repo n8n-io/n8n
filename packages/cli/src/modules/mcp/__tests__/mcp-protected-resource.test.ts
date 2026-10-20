@@ -33,8 +33,10 @@ const makeGlobalConfig = ({
 	builderEnabled = true,
 	tagsDisabled = false,
 	managedByEnv = false,
+	skillsHubEnabled = true,
 } = {}) =>
 	({
+		agents: { skillsHubEnabled },
 		endpoints: { mcpBuilderEnabled: builderEnabled },
 		tags: { disabled: tagsDisabled },
 		instanceSettingsLoader: { communityPackagesManagedByEnv: managedByEnv },
@@ -82,6 +84,31 @@ describe('McpProtectedResource', () => {
 			expect(scopeTools['agent:read']).toBeUndefined();
 		});
 
+		it('withholds skill scopes and tools when the skills hub is off', async () => {
+			const hubOffResource = new McpProtectedResource(
+				urlService,
+				mcpSettingsService,
+				mcpConfig,
+				makeGlobalConfig({ skillsHubEnabled: false }),
+				moduleRegistry,
+				licenseState,
+				postHogClient,
+			);
+
+			expect(hubOffResource.scopes).toContain('agent:read');
+			expect(hubOffResource.scopes).not.toContain('skill:read');
+			expect(hubOffResource.scopes).not.toContain('skill:write');
+			expect(await hubOffResource.getScopeTools()).not.toHaveProperty('skill:read');
+		});
+
+		it('keeps skill scopes when Agents is disabled', () => {
+			vi.mocked(moduleRegistry.settings.get).mockReturnValue({ enabled: false });
+
+			expect(resource.scopes).not.toContain('agent:read');
+			expect(resource.scopes).toContain('skill:read');
+			expect(resource.scopes).toContain('skill:write');
+		});
+
 		it('should expose the full tool mapping when all features are enabled', async () => {
 			const scopeTools = await resource.getScopeTools();
 
@@ -90,6 +117,8 @@ describe('McpProtectedResource', () => {
 			expect(scopeTools['workflow:read']).toContain('search_workflows');
 			expect(scopeTools['workflow:read']).toContain('search_nodes');
 			expect(scopeTools['agent:read']).toContain('search_agents');
+			expect(scopeTools['skill:read']).toContain('search_skills');
+			expect(scopeTools['skill:write']).toContain('create_skill');
 			expect(scopeTools['tag:read']).toContain('list_workflow_tags');
 		});
 

@@ -389,9 +389,9 @@ erDiagram
 "public.promotion_review" {
   timestamp_3__with_time_zone approvedAt
   uuid approvedById FK
-  varchar_36_ connectionId FK
   timestamp_3__with_time_zone createdAt
   uuid createdById FK
+  uuid environmentId FK
   uuid id
   timestamp_3__with_time_zone lastStateChangeAt
   varchar_255_ remoteReviewId
@@ -399,11 +399,11 @@ erDiagram
   varchar_16_ type
 }
 "public.promotion_run" {
-  varchar_36_ configId FK
   timestamp_3__with_time_zone createdAt
   uuid createdById FK
   json details
   varchar_16_ direction
+  uuid environmentId FK
   uuid id
   uuid reviewId FK
   varchar_16_ type
@@ -427,6 +427,7 @@ erDiagram
 }
 "public.skill" {
   varchar_36_ agentId FK
+  boolean availableToAssistant
   timestamp_3__with_time_zone createdAt
   uuid createdById FK
   varchar_36_ id

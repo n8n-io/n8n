@@ -644,6 +644,12 @@ watch(
 	},
 );
 
+// Variant B: the project dropdown follows the picked agent's project, and goes
+// back to the entry project when the user switches back to the Assistant.
+watch(selectedChatAgent, (agent) => {
+	selectedProject.value = agent ? agent.project.id : resolveInitialProjectId();
+});
+
 type ShelfSuggestionPayload = InstanceAiPrefillDeclaration & {
 	promptKey: BaseTextKey;
 	suggestionId: string;

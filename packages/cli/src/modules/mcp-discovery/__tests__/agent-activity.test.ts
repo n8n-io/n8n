@@ -30,7 +30,6 @@ describe('AgentModificationTelemetryService Assistant activity', () => {
 		projectId: 'project-1',
 		by: 'builder',
 		changedParts: ['instructions'],
-		wasUnconfigured: false,
 	} satisfies Parameters<AgentModificationTelemetryService['record']>[0];
 	const telemetry = mock<Telemetry>();
 	const activity = mock<EventService>();
@@ -38,8 +37,8 @@ describe('AgentModificationTelemetryService Assistant activity', () => {
 
 	beforeEach(() => vi.clearAllMocks());
 
-	it('counts the first write that configures an agent as creation', () => {
-		service.record({ ...event, wasUnconfigured: true });
+	it('counts committed Builder creation with a configured agent', () => {
+		service.recordCreation(event);
 
 		expect(activity.emit).toHaveBeenCalledExactlyOnceWith('experiment-assistant-change-saved', {
 			userId: user.id,
@@ -47,7 +46,7 @@ describe('AgentModificationTelemetryService Assistant activity', () => {
 		});
 		expect(telemetry.track).toHaveBeenCalledExactlyOnceWith(
 			TELEMETRY_EVENT.AGENTS.BUILDER_CREATED_AGENT,
-			expect.objectContaining({ user_id: user.id, event_version: '2' }),
+			expect.objectContaining({ user_id: user.id, event_version: '3' }),
 		);
 	});
 
@@ -62,7 +61,7 @@ describe('AgentModificationTelemetryService Assistant activity', () => {
 			});
 			expect(telemetry.track).toHaveBeenCalledExactlyOnceWith(
 				TELEMETRY_EVENT.AGENTS.BUILDER_MODIFIED_AGENT,
-				expect.objectContaining({ changed_parts: [part], event_version: '1' }),
+				expect.objectContaining({ changed_parts: [part], event_version: '2' }),
 			);
 		},
 	);
@@ -73,12 +72,33 @@ describe('AgentModificationTelemetryService Assistant activity', () => {
 			...event,
 			agent: Object.assign(new Agent(), { schema: emptyConfig, integrations: [] }),
 			config: emptyConfig,
-			wasUnconfigured: true,
 			changedParts: ['name'],
 		});
 
 		expect(activity.emit).not.toHaveBeenCalled();
-		expect(telemetry.track).not.toHaveBeenCalled();
+		expect(telemetry.track).toHaveBeenCalledOnce();
+	});
+
+	it('does not count creating an empty agent shell', () => {
+		const emptyConfig = {
+			name: 'New agent',
+			model: '',
+			instructions: '',
+		} satisfies AgentJsonConfig;
+		service.recordCreation({ ...event, config: emptyConfig });
+
+		expect(activity.emit).not.toHaveBeenCalled();
+		expect(telemetry.track).toHaveBeenCalledOnce();
+	});
+
+	it('counts removing the last configured content as a modification', () => {
+		const emptyConfig = { name: 'Support', model: '', instructions: '' } satisfies AgentJsonConfig;
+		service.record({ ...event, config: emptyConfig, changedParts: ['model', 'instructions'] });
+
+		expect(activity.emit).toHaveBeenCalledExactlyOnceWith('experiment-assistant-change-saved', {
+			userId: user.id,
+			at: expect.any(Number),
+		});
 	});
 
 	it('does not count a save with no changes', () => {
@@ -91,24 +111,27 @@ describe('AgentModificationTelemetryService Assistant activity', () => {
 	it.each(['user', 'mcp'] as const)(
 		'does not count %s writes as Assistant activity',
 		async (by) => {
-			service.record({ ...event, by, wasUnconfigured: true });
-			service.record({ ...event, by, wasUnconfigured: false });
+			service.recordCreation({ ...event, by });
+			service.record({ ...event, by });
 
 			expect(activity.emit).not.toHaveBeenCalled();
 			expect(telemetry.track).toHaveBeenCalledTimes(2);
 		},
 	);
 
-	it('records activity even when telemetry fails', () => {
-		telemetry.track.mockImplementationOnce(() => {
-			throw new Error('Telemetry unavailable');
-		});
+	it.each(['record', 'recordCreation'] as const)(
+		'records activity when %s telemetry fails',
+		(method) => {
+			telemetry.track.mockImplementationOnce(() => {
+				throw new Error('Telemetry unavailable');
+			});
 
-		expect(() => service.record(event)).not.toThrow();
-		expect(activity.emit).toHaveBeenCalledExactlyOnceWith('experiment-assistant-change-saved', {
-			userId: user.id,
-			at: expect.any(Number),
-		});
-	});
+			expect(() => service[method](event)).not.toThrow();
+			expect(activity.emit).toHaveBeenCalledExactlyOnceWith('experiment-assistant-change-saved', {
+				userId: user.id,
+				at: expect.any(Number),
+			});
+		},
+	);
 });
 // EOF Experiment cleanup
