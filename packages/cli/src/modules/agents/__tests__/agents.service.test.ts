@@ -221,6 +221,7 @@ describe('AgentsService', () => {
 					event_version: version,
 				}),
 			);
+			expect(telemetry.track.mock.calls[0]?.[1]).not.toHaveProperty('changed_settings');
 		},
 	);
 

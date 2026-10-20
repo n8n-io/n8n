@@ -716,6 +716,7 @@ describe('AgentIntegrationPersistenceService', () => {
 					project_id: projectId,
 					user_id: user.id,
 					changed_parts: ['triggers'],
+					changed_settings: [],
 					trigger_count: 1,
 					event_version: '2',
 				}),

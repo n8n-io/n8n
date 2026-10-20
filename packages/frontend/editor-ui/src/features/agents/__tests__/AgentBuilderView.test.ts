@@ -5,6 +5,7 @@ import { nextTick, ref, computed, reactive } from 'vue';
 import { createPinia, setActivePinia } from 'pinia';
 import { MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES, type PushMessage } from '@n8n/api-types';
 import { ResponseError } from '@n8n/rest-api-client';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { persistPendingAgent } from '@/features/ai/instanceAi/instanceAi.memory.api';
 import type {
 	AgentJsonConfig,
@@ -2185,20 +2186,28 @@ describe('AgentBuilderView — preview routing', () => {
 		expect(wrapper.find('[data-testid="agent-build-chat-show-button"]').exists()).toBe(false);
 	});
 
-	it('opens the preview dock from the header preview action', async () => {
+	it.each([
+		{ component: 'AgentBuilderHeader', source: 'primary' },
+		{ component: 'AgentBuilderEditorColumn', source: 'icon' },
+	])('attributes the preview action from $component to $source', async ({ component, source }) => {
 		const wrapper = await renderView();
-		const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
+		trackMock.mockClear();
 
-		header.vm.$emit('open-preview');
+		wrapper.findComponent({ name: component }).vm.$emit('open-preview', source);
 		await flushPromises();
 
 		expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).props('isOpen')).toBe(true);
 		expect(routerPush).not.toHaveBeenCalled();
+		expect(trackMock).toHaveBeenCalledExactlyOnceWith(
+			TELEMETRY_EVENT.AGENTS.USER_OPENED_AGENT_PREVIEW,
+			{ agent_id: 'a1', source },
+		);
 	});
 
 	it('opens Preview with the selected task instructions', async () => {
 		const wrapper = await renderView();
 		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+		trackMock.mockClear();
 
 		editor.vm.$emit('preview-task', 'Test these instructions');
 		await flushPromises();
@@ -2209,6 +2218,10 @@ describe('AgentBuilderView — preview routing', () => {
 				isOpen: true,
 				initialPrompt: 'Test these instructions',
 			}),
+		);
+		expect(trackMock).toHaveBeenCalledExactlyOnceWith(
+			TELEMETRY_EVENT.AGENTS.USER_OPENED_AGENT_PREVIEW,
+			{ agent_id: 'a1' },
 		);
 
 		preview.vm.$emit('initial-consumed');
@@ -2320,37 +2333,52 @@ describe('AgentBuilderView — preview routing', () => {
 		expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).props('isOpen')).toBe(true);
 	});
 
-	it('navigates to an artifact Preview trace without changing the dock session', async () => {
-		fetchedSessionThreads.push({ id: 'thread-1', updatedAt: '2026-01-01T00:00:00Z' });
-		const windowOpen = vi.spyOn(window, 'open').mockImplementation(() => null);
-		const wrapper = await renderView({
-			props: {
-				artifactMode: true,
-				artifactProjectId: 'p2',
-				artifactAgentId: 'a2',
-			},
-		});
-		wrapper.findComponent({ name: 'AgentBuilderHeader' }).vm.$emit('open-preview');
-		await flushPromises();
-		const dock = wrapper.findComponent({ name: 'AgentPreviewDock' });
-		routerPush.mockClear();
+	it.each([
+		{ artifactMode: false, projectId: 'p1', agentId: 'a1' },
+		{ artifactMode: true, projectId: 'p2', agentId: 'a2' },
+	])(
+		'records a trace-details click with artifact mode $artifactMode',
+		async ({ artifactMode, projectId, agentId }) => {
+			fetchedSessionThreads.push({ id: 'thread-1', updatedAt: '2026-01-01T00:00:00Z' });
+			const windowOpen = vi.spyOn(window, 'open').mockImplementation(() => null);
+			const wrapper = await renderView({
+				props: {
+					artifactMode,
+					artifactProjectId: projectId,
+					artifactAgentId: agentId,
+				},
+			});
+			wrapper.findComponent({ name: 'AgentBuilderHeader' }).vm.$emit('open-preview');
+			await flushPromises();
+			const dock = wrapper.findComponent({ name: 'AgentPreviewDock' });
+			routerPush.mockClear();
+			expect(trackMock).not.toHaveBeenCalledWith(
+				TELEMETRY_EVENT.AGENTS.USER_CLICKED_TRACE_DETAILS_FROM_TEST_PANEL,
+				expect.anything(),
+			);
+			trackMock.mockClear();
 
-		dock.vm.$emit('view-trace');
-		await nextTick();
+			dock.vm.$emit('view-trace');
+			await nextTick();
 
-		expect(routerPush).toHaveBeenCalledExactlyOnceWith({
-			name: 'AgentSessionDetailView',
-			params: {
-				projectId: 'p2',
-				agentId: 'a2',
-				threadId: 'thread-1',
-			},
-		});
-		expect(windowOpen).not.toHaveBeenCalled();
-		expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).props('effectiveSessionId')).toBe(
-			'thread-1',
-		);
-	});
+			expect(routerPush).toHaveBeenCalledExactlyOnceWith({
+				name: 'AgentSessionDetailView',
+				params: {
+					projectId,
+					agentId,
+					threadId: 'thread-1',
+				},
+			});
+			expect(windowOpen).not.toHaveBeenCalled();
+			expect(trackMock).toHaveBeenCalledExactlyOnceWith(
+				TELEMETRY_EVENT.AGENTS.USER_CLICKED_TRACE_DETAILS_FROM_TEST_PANEL,
+				{ agent_id: agentId, session_id: 'tab-1' },
+			);
+			expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).props('effectiveSessionId')).toBe(
+				'thread-1',
+			);
+		},
+	);
 
 	it('flushes edits and persists an unsaved artifact before a Preview message', async () => {
 		mockPendingAgentRow('a2');
@@ -2706,6 +2734,16 @@ describe('AgentBuilderView — preview routing', () => {
 			continueSessionId: string;
 		};
 		expect(replaceQuery.continueSessionId).not.toBe('stale-missing-thread');
+		const dock = wrapper.findComponent({ name: 'AgentPreviewDock' });
+		expect(dock.props('hasSession')).toBe(false);
+		trackMock.mockClear();
+		routerPush.mockClear();
+
+		dock.vm.$emit('view-trace');
+		await nextTick();
+
+		expect(trackMock).not.toHaveBeenCalled();
+		expect(routerPush).not.toHaveBeenCalled();
 	});
 
 	it('rebinds an unknown session introduced by an in-place route change', async () => {

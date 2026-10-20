@@ -1,7 +1,7 @@
 import type { AgentActor, AgentIntegrationConfig, AgentJsonConfig } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import { TELEMETRY_EVENT, type InferTelemetryProps } from '@n8n/telemetry';
 import isEqual from 'lodash/isEqual';
 
 import { Telemetry } from '@/telemetry';
@@ -35,6 +35,10 @@ export type AgentConfigPart =
 	| 'subAgents'
 	| 'mcpServers'
 	| 'vectorStores';
+
+export type AgentConfigSetting = NonNullable<
+	InferTelemetryProps<typeof TELEMETRY_EVENT.AGENTS.USER_MODIFIED_AGENT>['changed_settings']
+>[number];
 
 /** Declaration order of the telemetry enum, so payloads are stable. */
 const CONFIG_PARTS = [
@@ -77,6 +81,64 @@ export function diffAgentConfigParts(
 	});
 }
 
+const CONFIG_SETTINGS: Array<{
+	name: AgentConfigSetting;
+	select: (config: AgentJsonConfig | null) => unknown;
+}> = [
+	{
+		name: 'monthly_budget',
+		select: (config) => config?.config?.guardrails?.budget?.monthlyBudgetUsd,
+	},
+	{
+		name: 'budget_alert',
+		select: (config) => config?.config?.guardrails?.budget?.alertThresholdPercent,
+	},
+	{
+		name: 'session_cost_cap',
+		select: (config) => config?.config?.guardrails?.budget?.sessionCostCapUsd,
+	},
+	{
+		name: 'custom_model_routing',
+		select: (config) => [
+			config?.subAgents?.modelsByDifficulty?.low?.model,
+			config?.subAgents?.modelsByDifficulty?.medium?.model,
+			config?.subAgents?.modelsByDifficulty?.high?.model,
+		],
+	},
+	{
+		name: 'memory_model',
+		select: (config) => {
+			const episodicMemory = config?.memory?.episodicMemory;
+			return [
+				config?.memory?.observationalMemory?.observerModel?.model,
+				config?.memory?.observationalMemory?.reflectorModel?.model,
+				episodicMemory?.enabled ? episodicMemory.reflectorModel?.model : undefined,
+			];
+		},
+	},
+	{
+		name: 'cache_duration',
+		select: (config) => config?.config?.promptCaching?.anthropic?.ttl,
+	},
+	{
+		name: 'tool_concurrency',
+		select: (config) => config?.config?.toolCallConcurrency,
+	},
+	{
+		name: 'max_iterations',
+		select: (config) => config?.config?.maxIterations,
+	},
+];
+
+export function diffAgentConfigSettings(
+	previous: AgentJsonConfig | null,
+	next: AgentJsonConfig | null,
+): AgentConfigSetting[] {
+	return CONFIG_SETTINGS.filter(({ select }) => !isEqual(select(previous), select(next))).map(
+		({ name }) => name,
+	);
+}
+
 export interface AgentModificationEvent {
 	/** Post-save entity, so the reported profile is the one that landed. */
 	agent: Agent;
@@ -86,9 +148,10 @@ export interface AgentModificationEvent {
 	user: User;
 	by: AgentActor;
 	changedParts: AgentConfigPart[];
+	changedSettings?: AgentConfigSetting[];
 }
 
-export type AgentCreationEvent = Omit<AgentModificationEvent, 'changedParts'>;
+export type AgentCreationEvent = Omit<AgentModificationEvent, 'changedParts' | 'changedSettings'>;
 
 export type AgentSidecarChanges = Partial<Record<'tools' | 'skills' | 'tasks', boolean>>;
 
@@ -138,8 +201,16 @@ export class AgentModificationTelemetryService {
 			const { by } = event;
 			const properties = modificationProperties(event);
 
+			if (by === 'user') {
+				this.telemetry.track(TELEMETRY_EVENT.AGENTS.USER_MODIFIED_AGENT, {
+					...properties,
+					changed_settings: event.changedSettings ?? [],
+					event_version: '2',
+				});
+				return;
+			}
+
 			const entry = {
-				user: TELEMETRY_EVENT.AGENTS.USER_MODIFIED_AGENT,
 				builder: TELEMETRY_EVENT.AGENTS.BUILDER_MODIFIED_AGENT,
 				mcp: TELEMETRY_EVENT.AGENTS.MCP_MODIFIED_AGENT,
 			}[by];
