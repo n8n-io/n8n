@@ -48,6 +48,9 @@ function sameResult(a: EvaluationResult, b: EvaluationResult): boolean {
 }
 
 // Type names only: values and error messages can hold workflow data.
+// TODO(native-evaluation verify, CAT-4777): if these become Sentry tags, map
+// them to a fixed list (any object to `object`, unknown error classes to
+// `error:other`); constructor names are open-ended today.
 function resultType(result: EvaluationResult): string {
 	if (!result.ok) {
 		return `error:${result.error instanceof Error ? result.error.constructor.name : typeof result.error}`;
@@ -70,6 +73,9 @@ function workflowIdOf(data: IWorkflowDataProxyData): string | undefined {
 }
 
 // ponytail: logs each mismatch shape once per process, up to this many; the metric counts every one
+// TODO(native-evaluation verify, CAT-4777): with Sentry, its fingerprint
+// grouping replaces this dedup. Keep a per-process cap anyway so a common
+// mismatch cannot spend the Sentry quota.
 const MAX_REPORTED_VERIFY_SHAPES = 1000;
 
 const isTypeError = (error: unknown): error is TypeError =>
@@ -953,6 +959,9 @@ export class Expression {
 				: sameResult(native, engine)
 					? 'match'
 					: 'mismatch';
+			// TODO(native-evaluation verify, CAT-4777): drop this counter and its
+			// definition if Sentry replaces Prometheus. Sentry only sees mismatches,
+			// so the match rate needs another source (or none).
 			this.observability?.metrics.counter(EXPRESSION_METRICS.nativeVerify.name, 1, { outcome });
 			if (outcome !== 'mismatch') return;
 
@@ -967,6 +976,12 @@ export class Expression {
 			if (this.reportedVerifyShapes.size >= MAX_REPORTED_VERIFY_SHAPES) return;
 			this.reportedVerifyShapes.add(key);
 
+			// TODO(native-evaluation verify, CAT-4777): report to Sentry instead.
+			// This package has no Sentry access, so pass a reporter into
+			// initExpressionEngine next to `observability` and let the cli wire
+			// core's ErrorReporter. Use the shape as the fingerprint so events
+			// group per skeleton, and send only the shape and workflow ID: never the
+			// expression text, values or error messages.
 			LoggerProxy.warn('Native evaluation result differs from the expression engine', {
 				...shape,
 				workflowId: workflowIdOf(data),

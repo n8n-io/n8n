@@ -72,6 +72,7 @@ export const EXPRESSION_METRICS = {
 		labels: [],
 		help: 'Expression pool scaled to zero after inactivity.',
 	},
+	// TODO(native-evaluation verify, CAT-4777): remove if verify reports move to Sentry.
 	nativeVerify: {
 		name: 'expression.native.verify',
 		kind: 'counter',
