@@ -1016,6 +1016,7 @@ export type {
 	ScimUserExtension,
 } from './schemas/scim.schema';
 export {
+	scimRoleValue,
 	scimUserSchema,
 	scimPatchRequestSchema,
 	scimListResponseSchema,

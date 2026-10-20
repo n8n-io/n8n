@@ -605,6 +605,10 @@ describe('ScimService', () => {
 		it.each([
 			['a roles path', [{ op: 'replace', path: 'roles', value: [{ value: 'global:admin' }] }]],
 			[
+				'a roles path with bare strings',
+				[{ op: 'replace', path: 'roles', value: ['global:admin'] }],
+			],
+			[
 				'a path-less roles value',
 				[{ op: 'replace', value: { roles: [{ value: 'global:admin' }] } }],
 			],

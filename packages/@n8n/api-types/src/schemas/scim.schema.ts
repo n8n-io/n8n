@@ -29,13 +29,24 @@ export const scimEmailSchema = z.object({
 	display: z.string().optional(),
 });
 
-/** One entry of the core `roles` attribute (RFC 7643 section 4.1.2). The vocabulary is the service provider's. */
-export const scimRoleSchema = z.object({
-	value: z.string(),
-	display: z.string().optional(),
-	type: z.string().optional(),
-	primary: z.boolean().optional(),
-});
+/**
+ * One entry of the core `roles` attribute (RFC 7643 section 4.1.2). The
+ * vocabulary is the service provider's. Okta's profile editor types `roles` as
+ * a string array, so a bare string is accepted and read as its `value`.
+ */
+export const scimRoleSchema = z.union([
+	z.object({
+		value: z.string(),
+		display: z.string().optional(),
+		type: z.string().optional(),
+		primary: z.boolean().optional(),
+	}),
+	z.string(),
+]);
+
+/** The `value` of a roles entry, whichever shape it came in. */
+export const scimRoleValue = (role: z.infer<typeof scimRoleSchema>): string =>
+	typeof role === 'string' ? role : role.value;
 
 /**
  * The n8n extension attributes of a User. `instanceRole` is the slug of a

@@ -30,6 +30,13 @@ describe('ScimUserCreateDto', () => {
 		expect(result.data?.[SCIM_N8N_USER_SCHEMA]).toEqual({ instanceRole: 'global:admin' });
 	});
 
+	it('accepts bare strings in roles, as Okta sends a string-array attribute', () => {
+		const result = ScimUserCreateDto.safeParse({ ...base, roles: ['global:admin'] });
+
+		expect(result.success).toBe(true);
+		expect(result.data?.roles).toEqual(['global:admin']);
+	});
+
 	it('rejects a roles entry without a value', () => {
 		expect(ScimUserCreateDto.safeParse({ ...base, roles: [{ primary: true }] }).success).toBe(
 			false,

@@ -5,7 +5,7 @@ import type {
 	ScimListResponse,
 	ScimPatchRequestDto,
 } from '@n8n/api-types';
-import { SCIM_N8N_USER_SCHEMA } from '@n8n/api-types';
+import { SCIM_N8N_USER_SCHEMA, scimRoleValue } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { AuthProviderType, Role } from '@n8n/db';
@@ -215,7 +215,7 @@ export class ScimService {
 				'n8n users have a single instance role; the roles attribute must contain exactly one entry',
 			);
 		}
-		return roles[0].value;
+		return scimRoleValue(roles[0]);
 	}
 
 	/**
@@ -427,9 +427,10 @@ export class ScimService {
 	private toScimRoles(value: unknown[]): ScimRole[] {
 		return value.filter(
 			(role): role is ScimRole =>
-				typeof role === 'object' &&
-				role !== null &&
-				typeof (role as { value?: unknown }).value === 'string',
+				typeof role === 'string' ||
+				(typeof role === 'object' &&
+					role !== null &&
+					typeof (role as { value?: unknown }).value === 'string'),
 		);
 	}
 

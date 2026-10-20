@@ -506,6 +506,18 @@ describe('SCIM /scim/v2/Users', () => {
 		expect((await reload(response.body.id)).role.slug).toBe('global:admin');
 	});
 
+	it('creates an admin from a bare string in roles, as Okta sends it', async () => {
+		const response = await scimRequest('post', '/Users', {
+			body: {
+				schemas: [USER_SCHEMA],
+				userName: 'string.admin@example.com',
+				roles: ['global:admin'],
+			},
+		}).expect(201);
+
+		expect((await reload(response.body.id)).role.slug).toBe('global:admin');
+	});
+
 	it('creates an admin from the n8n extension, which wins over roles', async () => {
 		const response = await scimRequest('post', '/Users', {
 			body: {
