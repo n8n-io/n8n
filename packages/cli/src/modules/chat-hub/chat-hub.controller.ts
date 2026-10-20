@@ -41,10 +41,9 @@ import { Container } from '@n8n/di';
 import { sanitizeFilename } from '@n8n/utils/files/sanitize-filename';
 import type { NextFunction, Request, Response } from 'express';
 import multer from 'multer';
-import { pipeline } from 'node:stream/promises';
 
 import { BadRequestError, ForbiddenError } from '@n8n/errors';
-import { sendErrorResponse } from '@/response-helper';
+import { sendErrorResponse, sendStreamToResponse } from '@/response-helper';
 
 import { ChatHubAgentService } from './chat-hub-agent.service';
 import { extractAuthenticationMetadata } from './chat-hub-extractor';
@@ -137,55 +136,29 @@ export class ChatHubController {
 		const [{ mimeType, fileName }, attachmentAsStreamOrBuffer] =
 			await this.chatAttachmentService.getAttachment(sessionId, messageId, attachmentIndex);
 
-		res.setHeader('Content-Type', mimeType);
+		const setHeaders = () => {
+			res.setHeader('Content-Type', mimeType);
 
-		if (attachmentAsStreamOrBuffer.fileSize) {
-			res.setHeader('Content-Length', attachmentAsStreamOrBuffer.fileSize);
-		}
+			if (attachmentAsStreamOrBuffer.fileSize) {
+				res.setHeader('Content-Length', attachmentAsStreamOrBuffer.fileSize);
+			}
 
-		if (!mimeType || !ViewableMimeTypes.includes(mimeType.toLowerCase())) {
-			// Force download if file is not viewable
-			res.setHeader(
-				'Content-Disposition',
-				`attachment${fileName ? `; filename=${sanitizeFilename(fileName)}` : ''}`,
-			);
-		}
+			if (!mimeType || !ViewableMimeTypes.includes(mimeType.toLowerCase())) {
+				// Force download if file is not viewable
+				res.setHeader(
+					'Content-Disposition',
+					`attachment${fileName ? `; filename=${sanitizeFilename(fileName)}` : ''}`,
+				);
+			}
+		};
 
 		if (attachmentAsStreamOrBuffer.type === 'buffer') {
+			setHeaders();
 			res.send(attachmentAsStreamOrBuffer.buffer);
 			return;
 		}
 
-		const { stream } = attachmentAsStreamOrBuffer;
-
-		// pipeline does not destroy the source if the client is already gone.
-		if (res.destroyed) {
-			stream.destroy();
-			return;
-		}
-
-		// pipeline also rejects with ERR_STREAM_PREMATURE_CLOSE when the source closes early,
-		// so only treat it as a disconnect if the response closed while the source was open.
-		let clientDisconnected = false;
-		res.once('close', () => {
-			clientDisconnected = !res.writableFinished && !stream.destroyed;
-		});
-
-		// pipeline destroys the source when the client disconnects during the download,
-		// so aborted downloads don't leak file descriptors.
-		try {
-			await pipeline(stream, res);
-		} catch (error) {
-			if (
-				clientDisconnected &&
-				error instanceof Error &&
-				'code' in error &&
-				error.code === 'ERR_STREAM_PREMATURE_CLOSE'
-			) {
-				return;
-			}
-			throw error;
-		}
+		await sendStreamToResponse(res, attachmentAsStreamOrBuffer.stream, setHeaders);
 	}
 
 	@GlobalScope('chatHub:message')

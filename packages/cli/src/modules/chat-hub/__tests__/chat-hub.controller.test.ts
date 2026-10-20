@@ -8,13 +8,9 @@ import type { ModuleRegistry } from '@n8n/backend-common';
 import type { AuthenticatedRequest } from '@n8n/db';
 import type { ModuleSettings } from '@n8n/decorators';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
-import type { NextFunction, Request, Response } from 'express';
-import type { ReadStream } from 'node:fs';
-import { mkdtemp, open, rm, writeFile } from 'node:fs/promises';
-import { createServer, get, type ClientRequest, type Server, type ServerResponse } from 'node:http';
-import type { AddressInfo } from 'node:net';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import express, { type NextFunction, type Request, type Response } from 'express';
+import { get } from 'node:http';
+import type { Readable } from 'node:stream';
 import type { IBinaryData, INode } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
@@ -25,8 +21,20 @@ import type { ChatHubToolService } from '../chat-hub-tool.service';
 import type { ChatHubAttachmentService } from '../chat-hub.attachment.service';
 import { ChatHubController } from '../chat-hub.controller';
 import type { ChatHubService } from '../chat-hub.service';
+import {
+	createLargeTempFile,
+	disconnectBeforeResponse,
+	failingStream,
+	readFirstChunkAndDisconnect,
+	readWholeBody,
+	startServer,
+	waitForClose,
+} from '@test/file-stream-server';
 
-vi.mock('@/response-helper');
+vi.mock('@/response-helper', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@/response-helper')>()),
+	sendErrorResponse: vi.fn(),
+}));
 
 describe('ChatHubController', () => {
 	const settingsMap = new Map<string, ModuleSettings>();
@@ -156,9 +164,6 @@ describe('ChatHubController', () => {
 	});
 
 	describe('getMessageAttachment', () => {
-		const FILE_SIZE = 8 * 1024 * 1024;
-		const CLOSE_TIMEOUT_MS = 2000;
-
 		const chatService = mock<ChatHubService>();
 		const chatAttachmentService = mock<ChatHubAttachmentService>();
 		const attachmentController = new ChatHubController(
@@ -171,21 +176,15 @@ describe('ChatHubController', () => {
 		);
 		const userReq = mock<AuthenticatedRequest>({ user: { id: 'user-1' } });
 
-		type HandlerOutcome = { error: unknown };
-
-		let tempDir: string;
-		let filePath: string;
-		let server: Server | undefined;
-		const openedStreams: ReadStream[] = [];
+		let file: Awaited<ReturnType<typeof createLargeTempFile>>;
+		let server: Awaited<ReturnType<typeof startServer>> | undefined;
 
 		beforeAll(async () => {
-			tempDir = await mkdtemp(join(tmpdir(), 'n8n-chat-hub-attachment-'));
-			filePath = join(tempDir, 'a.bin');
-			await writeFile(filePath, Buffer.alloc(FILE_SIZE, 1));
+			file = await createLargeTempFile();
 		});
 
 		afterAll(async () => {
-			await rm(tempDir, { recursive: true, force: true });
+			await file.remove();
 		});
 
 		beforeEach(() => {
@@ -193,148 +192,102 @@ describe('ChatHubController', () => {
 		});
 
 		afterEach(async () => {
-			for (const stream of openedStreams.splice(0)) stream.destroy();
-			if (server) {
-				const current = server;
-				server = undefined;
-				current.closeAllConnections();
-				await new Promise<void>((resolve) => current.close(() => resolve()));
-			}
+			await server?.close();
+			server = undefined;
 		});
 
-		const openFileStream = async () => {
-			const handle = await open(filePath, 'r');
-			const stream = handle.createReadStream();
-			openedStreams.push(stream);
-			return stream;
-		};
-
 		const attachmentResult = (
-			stream: ReadStream,
+			stream: Readable,
 		): Awaited<ReturnType<ChatHubAttachmentService['getAttachment']>> => [
 			{ mimeType: 'application/octet-stream', fileName: 'a.bin' } as IBinaryData,
-			{ type: 'stream', stream, fileSize: FILE_SIZE },
+			{ type: 'stream', stream, fileSize: file.sizeInBytes },
 		];
 
-		const startAttachmentServer = async () => {
-			const handlerSettled = createDeferredPromise<HandlerOutcome>();
-			const serverResponse = createDeferredPromise<ServerResponse>();
-			server = createServer((_req, serverRes) => {
-				serverResponse.resolve(serverRes);
-				attachmentController
-					.getMessageAttachment(
-						userReq,
-						serverRes as unknown as Response,
-						'session-1' as ChatSessionId,
-						'message-1' as ChatMessageId,
-						'0',
-					)
-					.then(
-						() => handlerSettled.resolve({ error: undefined }),
-						(error: unknown) => handlerSettled.resolve({ error }),
-					);
+		/** Serves the attachment download. `beforeHandling` runs first on each response. */
+		const serveAttachment = async (beforeHandling?: (res: Response) => void) => {
+			const handled: Array<Promise<void>> = [];
+			const app = express();
+			app.get('/', (_req, res) => {
+				beforeHandling?.(res);
+				const handling = attachmentController.getMessageAttachment(
+					userReq,
+					res,
+					'session-1' as ChatSessionId,
+					'message-1' as ChatMessageId,
+					'0',
+				);
+				// The tests await the outcome later, so a rejection must not count as unhandled.
+				handling.catch(() => {});
+				handled.push(handling);
 			});
-			await new Promise<void>((resolve) => server!.listen(0, '127.0.0.1', resolve));
-			const { port } = server.address() as AddressInfo;
-			return {
-				port,
-				handlerSettled: handlerSettled.promise,
-				serverResponse: serverResponse.promise,
-			};
+			server = await startServer(app);
+			return { url: server.url, handled };
 		};
-
-		const request = (port: number): ClientRequest => {
-			const clientReq = get({ host: '127.0.0.1', port, path: '/' });
-			// The client destroys the socket on purpose, so ignore the reset error.
-			clientReq.on('error', () => {});
-			return clientReq;
-		};
-
-		const readWholeBody = async (port: number) =>
-			await new Promise<{ statusCode?: number; bytes: number }>((resolve, reject) => {
-				const clientReq = get({ host: '127.0.0.1', port, path: '/' }, (clientRes) => {
-					let bytes = 0;
-					clientRes.on('data', (chunk: Buffer) => {
-						bytes += chunk.length;
-					});
-					clientRes.on('end', () => resolve({ statusCode: clientRes.statusCode, bytes }));
-					clientRes.on('error', reject);
-				});
-				clientReq.on('error', reject);
-			});
-
-		const readFirstChunkAndDisconnect = async (port: number) =>
-			await new Promise<void>((resolve) => {
-				const clientReq = request(port);
-				clientReq.on('response', (clientRes) => {
-					clientRes.once('data', () => {
-						clientReq.destroy();
-						resolve();
-					});
-				});
-			});
 
 		it('should send the whole file and resolve', async () => {
-			const stream = await openFileStream();
+			const stream = await file.openStream();
 			chatAttachmentService.getAttachment.mockResolvedValue(attachmentResult(stream));
-			const { port, handlerSettled } = await startAttachmentServer();
+			const { url, handled } = await serveAttachment();
 
-			const body = await readWholeBody(port);
-
-			expect(body).toEqual({ statusCode: 200, bytes: FILE_SIZE });
-			expect(await handlerSettled).toEqual({ error: undefined });
-			await vi.waitFor(() => expect(stream.closed).toBe(true), { timeout: CLOSE_TIMEOUT_MS });
+			expect(await readWholeBody(url)).toBe(file.sizeInBytes);
+			await expect(handled[0]).resolves.toBeUndefined();
+			expect(await waitForClose(stream)).toBe(true);
 		});
 
 		it('should close the file stream and settle when the client disconnects mid-download', async () => {
-			const stream = await openFileStream();
+			const stream = await file.openStream();
 			chatAttachmentService.getAttachment.mockResolvedValue(attachmentResult(stream));
-			const { port, handlerSettled } = await startAttachmentServer();
+			const { url, handled } = await serveAttachment();
 
-			await readFirstChunkAndDisconnect(port);
+			await readFirstChunkAndDisconnect(url);
 
-			await vi.waitFor(() => expect(stream.closed).toBe(true), { timeout: CLOSE_TIMEOUT_MS });
-			expect(await handlerSettled).toEqual({ error: undefined });
-		});
-
-		it('should reject when the file stream closes before it ends', async () => {
-			const stream = await openFileStream();
-			chatAttachmentService.getAttachment.mockResolvedValue(attachmentResult(stream));
-			const { port, handlerSettled } = await startAttachmentServer();
-
-			const clientReq = request(port);
-			clientReq.on('response', (clientRes) => {
-				clientRes.once('data', () => stream.destroy());
-				clientRes.on('error', () => {});
-			});
-
-			expect(await handlerSettled).toEqual({
-				error: expect.objectContaining({ code: 'ERR_STREAM_PREMATURE_CLOSE' }),
-			});
-			await vi.waitFor(() => expect(stream.closed).toBe(true), { timeout: CLOSE_TIMEOUT_MS });
+			expect(await waitForClose(stream)).toBe(true);
+			await expect(handled[0]).resolves.toBeUndefined();
 		});
 
 		it('should close the file stream and settle when the client disconnects before the response starts', async () => {
-			const stream = await openFileStream();
+			const stream = await file.openStream();
 			const requestReceived = createDeferredPromise();
 			const releaseAttachment = createDeferredPromise();
+			const responseClosed = createDeferredPromise();
 			chatAttachmentService.getAttachment.mockImplementation(async () => {
 				requestReceived.resolve();
 				await releaseAttachment.promise;
 				return attachmentResult(stream);
 			});
-			const { port, handlerSettled, serverResponse } = await startAttachmentServer();
+			const { url, handled } = await serveAttachment((res) =>
+				res.once('close', () => responseClosed.resolve()),
+			);
 
-			const clientReq = request(port);
-			await requestReceived.promise;
-			const serverRes = await serverResponse;
-			const responseClosed = new Promise<void>((resolve) => serverRes.once('close', resolve));
-			clientReq.destroy();
-			await responseClosed;
+			await disconnectBeforeResponse(url, requestReceived.promise);
+			await responseClosed.promise;
 			releaseAttachment.resolve();
 
-			await vi.waitFor(() => expect(stream.closed).toBe(true), { timeout: CLOSE_TIMEOUT_MS });
-			expect(await handlerSettled).toEqual({ error: undefined });
+			expect(await waitForClose(stream)).toBe(true);
+			await expect(handled[0]).resolves.toBeUndefined();
+		});
+
+		it('should reject when the file stream closes before it ends', async () => {
+			const stream = await file.openStream();
+			chatAttachmentService.getAttachment.mockResolvedValue(attachmentResult(stream));
+			const { url, handled } = await serveAttachment();
+
+			get(url, (clientRes) => {
+				clientRes.once('data', () => stream.destroy());
+				clientRes.on('error', () => {});
+			}).on('error', () => {});
+
+			await vi.waitFor(() => expect(handled).toHaveLength(1));
+			await expect(handled[0]).rejects.toMatchObject({ code: 'ERR_STREAM_PREMATURE_CLOSE' });
+		});
+
+		it('should end the response and reject when the file fails during the download', async () => {
+			const stream = failingStream(3);
+			chatAttachmentService.getAttachment.mockResolvedValue(attachmentResult(stream));
+			const { url, handled } = await serveAttachment();
+
+			await expect(readWholeBody(url)).rejects.toThrow();
+			await expect(handled[0]).rejects.toThrow('read failed');
 		});
 	});
 });
