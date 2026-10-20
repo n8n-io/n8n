@@ -163,7 +163,7 @@ describe('ScimTransferTargetPicker', () => {
 
 		// Reka writes the selected label into the input when the list opens.
 		await userEvent.clear(screen.getByRole('combobox'));
-		await screen.getByRole('combobox').focus();
+		screen.getByRole('combobox').focus();
 		await userEvent.paste('Jan Kowalski');
 		await vi.advanceTimersByTimeAsync(400);
 
