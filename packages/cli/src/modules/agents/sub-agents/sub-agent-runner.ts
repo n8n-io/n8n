@@ -43,7 +43,7 @@ import { BACKGROUND_SUB_AGENT_METADATA_KEY } from '../background/sub-agent-backg
 import type { IntegrationMessageContext } from '../integrations/integration-tool-types';
 import { AgentTurnExecutionService } from '../agent-turn-execution.service';
 import { AgentToolApprovalService } from '../agent-tool-approval.service';
-import type { AgentRuntimeInstrumentation } from '../agent-runtime-instrumentation';
+import type { AgentRuntimeInstrumentation } from '../evaluation/agent-evaluation.contracts';
 import {
 	decodeAgentSandboxHostMetadata,
 	encodeAgentSandboxHostMetadata,

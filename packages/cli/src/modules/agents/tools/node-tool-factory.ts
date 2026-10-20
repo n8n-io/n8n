@@ -16,7 +16,7 @@ import { z } from 'zod';
 import { resolveToolNodeType, type EphemeralNodeExecutor } from '@/node-execution';
 import { NodeTypes } from '@/node-types';
 
-import type { InstrumentToolAdditionalData } from '../agent-runtime-instrumentation';
+import type { InstrumentToolAdditionalData } from '../evaluation/agent-evaluation.contracts';
 import { toPolicyRefusalResult } from './policy-refusal';
 
 type NodeToolInputSchema = JSONSchema7 | z.ZodType;
