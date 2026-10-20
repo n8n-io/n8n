@@ -1,5 +1,5 @@
 import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
-import { LicenseState } from '@n8n/backend-common';
+import { LicenseState, Logger } from '@n8n/backend-common';
 import {
 	createTeamProject,
 	createWorkflow,
@@ -785,6 +785,7 @@ it.each(['publish', 'unpublish'] as const)(
 it.each(['validation', 'policy', 'post-commit'] as const)(
 	'retains imported definitions after a %s publication failure',
 	async (failure) => {
+		const warning = vi.spyOn(Container.get(Logger), 'warn');
 		const input = publishableFixture();
 		if (failure === 'validation') source(input).config!.instructions = '';
 		const content = await orchestrator.apply(
@@ -794,7 +795,7 @@ it.each(['validation', 'policy', 'post-commit'] as const)(
 		if (failure === 'policy') deniedPublishName = saved.name;
 		if (failure === 'post-commit')
 			broadcaster.notify.mockImplementationOnce(() => {
-				throw new Error('Broadcast failed');
+				throw new Error('Broadcast failed: api_key=sample-key');
 			});
 		const result = await orchestrator.publishPackage({
 			user: owner,
@@ -808,8 +809,15 @@ it.each(['validation', 'policy', 'post-commit'] as const)(
 		expect(persisted.schema).toEqual(saved.schema);
 		expect(persisted.activeVersionId).toBe(failure === 'post-commit' ? saved.versionId : null);
 		expect(result.agentOutcomes[0].agent.activeVersionId).toBe(persisted.activeVersionId);
-		if (failure === 'post-commit')
-			expect(result.agentOutcomes[0].publishing.error).toBe('Broadcast failed');
+		if (failure === 'post-commit') {
+			const expectedError = 'Broadcast failed: [REDACTED]';
+			expect(result.agentOutcomes[0].publishing.error).toBe(expectedError);
+			expect(warning).toHaveBeenCalledWith('Failed to apply publishing policy to imported Agent', {
+				agentId: saved.id,
+				action: 'publish',
+				error: expectedError,
+			});
+		}
 	},
 );
 

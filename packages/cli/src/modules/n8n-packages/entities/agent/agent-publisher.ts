@@ -4,6 +4,7 @@ import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ForbiddenError } from '@n8n/errors';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 
 import { AgentPublishService } from '@/modules/agents/agent-publish.service';
 import { AgentsService } from '@/modules/agents/agents.service';
@@ -80,7 +81,7 @@ export class AgentPublisher {
 			);
 			return { ...imported, agent: unpublished, publishing: { state: 'unpublished' } };
 		} catch (error) {
-			const message = ensureError(error).message;
+			const message = scrubSecretsInText(ensureError(error).message);
 			this.logger.warn('Failed to apply publishing policy to imported Agent', {
 				agentId: agent.id,
 				action,
