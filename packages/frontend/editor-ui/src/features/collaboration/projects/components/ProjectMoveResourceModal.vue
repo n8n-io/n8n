@@ -38,6 +38,7 @@ import {
 	N8nDialogBody,
 	N8nDialogFooter,
 	N8nDialogHeader,
+	N8nDialogDescription,
 	N8nDialogTitle,
 	N8nText,
 	N8nTooltip,
@@ -218,12 +219,12 @@ onMounted(async () => {
 <template>
 	<N8nDialog :open="modalOpen" size="medium" @update:open="onDialogOpenUpdate">
 		<N8nDialogHeader data-test-id="project-move-resource-modal">
-			<N8nDialogTitle class="pr-s">
+			<N8nDialogTitle>
 				{{ i18n.baseText('projects.move.resource.modal.title') }}
 			</N8nDialogTitle>
 		</N8nDialogHeader>
 		<N8nDialogBody :class="$style.content">
-			<N8nText>
+			<N8nDialogDescription>
 				<I18nT keypath="projects.move.resource.modal.message" scope="global">
 					<template #resourceName>
 						<strong>{{ resourceName }}</strong></template
@@ -243,7 +244,7 @@ onMounted(async () => {
 						</I18nT>
 					</template>
 				</I18nT>
-			</N8nText>
+			</N8nDialogDescription>
 			<ProjectSharing
 				v-model="selectedProject"
 				:search-fn="searchFn"
