@@ -74,7 +74,7 @@ const onDialogOpenUpdate = (open: boolean) => {
 	<div v-if="dialogVisible">
 		<N8nDialog
 			:open="dialogVisible"
-			size="full"
+			size="2xlarge"
 			:stacked="parameterModalContext !== undefined"
 			:header="`${i18n.baseText('textEdit.edit')} ${i18n
 				.nodeText(activeNode?.type)
