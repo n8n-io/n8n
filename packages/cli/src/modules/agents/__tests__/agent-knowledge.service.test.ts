@@ -505,10 +505,6 @@ describe('AgentKnowledgeService', () => {
 			['listFiles', async () => await service.listFiles(agentId, projectId)],
 			['warmKnowledgeSandbox', async () => await service.warmKnowledgeSandbox(agentId, projectId)],
 			['deleteFile', async () => await service.deleteFile(agentId, projectId, 'file-1')],
-			[
-				'deleteAllFilesForAgent',
-				async () => await service.deleteAllFilesForAgent(projectId, agentId),
-			],
 		])('rejects %s before touching the repository', async (_name, call) => {
 			await agentFileRepository.save(makeAgentFile({ id: 'file-1' }));
 
@@ -518,6 +514,18 @@ describe('AgentKnowledgeService', () => {
 			expect(agentKnowledgeFileStore.write).not.toHaveBeenCalled();
 			expect(agentKnowledgeFileStore.delete).not.toHaveBeenCalled();
 			expect(agentSandboxRuntimeService.warmKnowledgeSandbox).not.toHaveBeenCalled();
+		});
+
+		it('still deletes all files and their blobs on agent deletion', async () => {
+			const file = makeAgentFile({ id: 'file-1' });
+			await agentFileRepository.save(file);
+
+			await service.deleteAllFilesForAgent(projectId, agentId);
+
+			expect(await agentFileRepository.findByAgentId(agentId)).toHaveLength(0);
+			expect(agentKnowledgeFileStore.delete).toHaveBeenCalledWith([
+				{ storedAt: file.storedAt, storageKey: file.storageKey },
+			]);
 		});
 
 		it('still destroys the sandbox, which needs no module entity', async () => {

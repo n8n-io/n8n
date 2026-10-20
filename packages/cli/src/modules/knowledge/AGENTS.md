@@ -56,7 +56,7 @@ vector-stores/                 connection test, factory, embedding credential, e
 - The file routes and the knowledge warm-up route return the same 404 as the sandbox gate: `Agent knowledge base is not enabled`.
 - The `AgentKnowledgeService` facade rejects every file operation before it touches the repository. `destroyKnowledgeSandbox` still runs: it needs no entity.
 - Runtime reconstruction attaches the workspace but not the knowledge tools, and does not query the file repository.
-- Agent and project deletion catch the facade error, log a warning and continue. The `agent_files` rows go with the agent through the foreign key; the stored bytes stay behind while the module is off.
+- Agent and project deletion still delete the agent's files and their stored bytes. `deleteAllFilesForAgent` has no module gate: it is cleanup, not a feature entry point, and in P0 the agents module still registers the entity and the byte stores. PR-1 moves the entity into this module and must decide how that cleanup runs with the module off, or the bytes of deleted agents leak.
 - Vector stores keep working. They are plain code, not an entity.
 
 Each guard has a test. A new consumer or a new knowledge call in the agents module asks `KnowledgeAvailability` and gets a test.

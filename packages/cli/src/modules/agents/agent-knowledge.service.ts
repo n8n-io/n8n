@@ -113,12 +113,12 @@ export class AgentKnowledgeService {
 	}
 
 	/**
-	 * Called from the agent and project deletion cascades, which catch and log a
-	 * failure. With the knowledge module off, the rows still go with the agent
-	 * through the foreign key; only the stored bytes stay behind.
+	 * Called from the agent and project deletion cascades. No module gate: this is
+	 * cleanup, not a feature entry point, and the agents module still registers
+	 * `AgentFile` and the byte stores, so it works with the knowledge module off.
+	 * Skipping it would leave stored bytes that no row points at.
 	 */
 	async deleteAllFilesForAgent(_projectId: string, agentId: string): Promise<void> {
-		this.knowledgeAvailability.assertModuleActive();
 		const files = await this.agentFileRepository.findByAgentId(agentId);
 		await this.agentFileRepository.delete({ agentId });
 		if (files.length > 0) {
