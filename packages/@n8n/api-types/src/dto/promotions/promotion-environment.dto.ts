@@ -11,10 +11,7 @@ import { publicApiPaginationSchema } from '../pagination/pagination.dto';
 export const promotionDirectionSchema = z.enum(['apply', 'promote']);
 export type PromotionDirection = z.infer<typeof promotionDirectionSchema>;
 
-/**
- * `instance` covers the whole instance. `projects` covers the projects linked to
- * the environment. The instance has at most one environment for each direction.
- */
+/** The instance has at most one `instance` environment for each direction. */
 export const promotionEnvironmentScopeSchema = z.enum(['instance', 'projects']);
 export type PromotionEnvironmentScope = z.infer<typeof promotionEnvironmentScopeSchema>;
 
@@ -47,7 +44,6 @@ const promotionEnvironmentRemotePublicSchema = promotionEnvironmentRemoteSchema.
  */
 const branchNameSchema = z.string().trim().min(1).max(255);
 
-/** Apply imports the package from `branchName`. */
 export const promotionGitApplySettingsSchema = z
 	.object({ schemaVersion: z.literal(1), branchName: branchNameSchema })
 	.strict();
@@ -82,7 +78,6 @@ export type PromotionEnvironmentSettings = z.infer<typeof promotionEnvironmentSe
 const createPromotionEnvironmentFields = {
 	name: promotionDisplayNameSchema,
 	scope: promotionEnvironmentScopeSchema,
-	/** Providers are created on their own route. An environment only picks one. */
 	providerId: n8nIdSchema,
 	remote: promotionEnvironmentRemoteSchema,
 };
@@ -166,11 +161,6 @@ export class UpdatePromotionEnvironmentDto implements UpdatePromotionEnvironment
 	}
 }
 
-/**
- * The `providerId` filter shows which environments a provider edit affects. The
- * instance settings page asks for `scope=instance` rather than taking whichever
- * environment comes first.
- */
 export class ListPromotionEnvironmentsQueryDto extends Z.class({
 	limit: publicApiPaginationSchema.limit,
 	cursor: z.string().optional(),
@@ -185,7 +175,6 @@ export class ListPromotionEnvironmentsQueryDto extends Z.class({
  * branch, so both flags report on this replica only. Other replicas may differ.
  */
 export const promotionEnvironmentCheckoutSchema = z.object({
-	/** A local checkout exists for this environment on this instance. */
 	hasCheckout: z.boolean(),
 	/** The checkout was cloned from the current remote and branch, so it is not stale. */
 	matchesEnvironment: z.boolean(),

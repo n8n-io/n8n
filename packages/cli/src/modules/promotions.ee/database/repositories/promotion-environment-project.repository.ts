@@ -49,18 +49,14 @@ export class PromotionEnvironmentProjectRepository extends BaseRepository<Promot
 	}
 
 	/**
-	 * Unlinks a project only if it still belongs to this environment. An
-	 * entity-based remove would delete whichever link holds the project and
-	 * direction now, including one reassigned after the caller's read. Returns the
-	 * number of links removed, so a lost race is distinguishable from a successful
-	 * unlink.
+	 * Deletes by both keys, so a link reassigned after the caller's read survives.
+	 * Returns 0 when the link no longer belongs to this environment.
 	 */
 	async unlinkProject(projectId: string, environmentId: string): Promise<number> {
 		const result = await this.delete({ projectId, environmentId });
 		return result.affected ?? 0;
 	}
 
-	/** Project IDs linked to an environment, ordered for a stable response. */
 	async findProjectIdsByEnvironment(environmentId: string): Promise<string[]> {
 		const rows = await this.find({
 			where: { environmentId },

@@ -13,10 +13,9 @@ import {
 import { PromotionEnvironment } from './promotion-environment.entity';
 
 /**
- * Links a project to a promotion environment. The `(projectId, direction)`
- * primary key gives a project one environment for each direction at most. An
- * environment can hold many links, or none. Which projects and environments are
- * eligible spans tables, so the service checks that rather than the schema.
+ * The `(projectId, direction)` primary key gives a project one environment for
+ * each direction at most. Which projects and environments are eligible spans
+ * tables, so the service checks that rather than the schema.
  *
  * The foreign key to `project` is declared in the migration and not as a
  * `@ManyToOne`, to keep this module apart from the core `Project` entity. This
