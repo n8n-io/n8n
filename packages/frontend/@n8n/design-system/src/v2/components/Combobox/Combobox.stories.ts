@@ -343,6 +343,52 @@ export const ItemsTypes = {
 	},
 } satisfies Story;
 
+export const StickyGroupLabels = {
+	name: 'Sticky Group Labels',
+	render: (args) => ({
+		components: { Combobox, N8nButton },
+		setup() {
+			const value = ref(args.modelValue);
+			const combobox = ref<{ clearSearch: () => void } | null>(null);
+
+			function clearSearch() {
+				combobox.value?.clearSearch();
+			}
+
+			return { args, value, combobox, clearSearch };
+		},
+		template: `
+		<div style="${storyContainerStyle}; display: flex; flex-direction: column; gap: var(--spacing--xs);">
+			<Combobox
+				ref="combobox"
+				v-bind="args"
+				v-model="value"
+				content-class="sticky-group-labels-story"
+				placeholder="Scroll the list..."
+			/>
+			<N8nButton label="Clear search" variant="outline" size="small" @click="clearSearch" />
+		</div>
+		<component is="style">
+			.sticky-group-labels-story { --combobox-content--max-height: 240px; }
+		</component>
+		`,
+	}),
+	args: {
+		items: fruitItems,
+		modelValue: undefined,
+		stickyGroupLabels: true,
+		scrollMask: true,
+	},
+	parameters: {
+		docs: {
+			description: {
+				story:
+					'Two large groups with `stickyGroupLabels` and `scrollMask`. Each label stays pinned while its rows scroll under it, and the next label replaces it. The bottom edge fades. Type to filter, then use the button to call the exposed `clearSearch()`.',
+			},
+		},
+	},
+} satisfies Story;
+
 export const Sizes = {
 	render: (args) => ({
 		components: { Combobox },

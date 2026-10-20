@@ -88,3 +88,70 @@ export const Custom: Story = {
 		default: 'This is a custom callout.',
 	},
 };
+
+const ThemedLinksTemplate: Story = {
+	render: (args) => ({
+		components: { N8nCallout, N8nLink },
+		setup() {
+			return { args };
+		},
+		template: `
+			<N8nCallout v-bind="args">
+				{{ args.default }}
+				<template #actions>
+					<N8nLink size="small" theme="secondary">Open settings</N8nLink>
+				</template>
+			</N8nCallout>
+		`,
+	}),
+	args: {
+		theme: 'info',
+		themedLinks: true,
+		default: 'Links take the theme text colour.',
+	},
+};
+
+export const ThemedLinksInfo: Story = {
+	...ThemedLinksTemplate,
+	args: { ...ThemedLinksTemplate.args, theme: 'info' },
+};
+
+export const ThemedLinksSuccess: Story = {
+	...ThemedLinksTemplate,
+	args: { ...ThemedLinksTemplate.args, theme: 'success' },
+};
+
+export const ThemedLinksWarning: Story = {
+	...ThemedLinksTemplate,
+	args: { ...ThemedLinksTemplate.args, theme: 'warning' },
+};
+
+export const ThemedLinksDanger: Story = {
+	...ThemedLinksTemplate,
+	args: { ...ThemedLinksTemplate.args, theme: 'danger' },
+};
+
+export const ThemedLinksFallback: Story = {
+	render: () => ({
+		components: { N8nCallout, N8nLink },
+		template: `
+			<div style="display: flex; flex-direction: column; gap: var(--spacing--xs);">
+				<N8nCallout theme="secondary" themed-links>
+					Secondary keeps the default link colour.
+					<template #actions>
+						<N8nLink size="small" theme="secondary">Open settings</N8nLink>
+					</template>
+				</N8nCallout>
+				<N8nCallout theme="custom" icon="git-branch" themed-links>
+					Custom keeps the default link colour.
+					<template #actions>
+						<N8nLink size="small" theme="secondary">Open settings</N8nLink>
+					</template>
+				</N8nCallout>
+			</div>
+		`,
+	}),
+	args: {
+		theme: 'secondary',
+	},
+};

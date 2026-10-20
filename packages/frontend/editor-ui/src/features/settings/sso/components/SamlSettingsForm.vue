@@ -12,6 +12,7 @@ import { computed, onMounted, ref } from 'vue';
 import UserRoleProvisioningDropdown from '../provisioning/components/UserRoleProvisioningDropdown.vue';
 import { useUserRoleProvisioningForm } from '../provisioning/composables/useUserRoleProvisioningForm';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import ConfirmProvisioningDialog from '../provisioning/components/ConfirmProvisioningDialog.vue';
 import RoleMappingRuleEditor from '../provisioning/components/RoleMappingRuleEditor.vue';
@@ -158,8 +159,12 @@ const sendTrackingEvent = (config?: SamlPreferences) => {
 };
 
 const promptConfirmDisablingSamlLogin = async () => {
+	// Turning SSO off also turns SCIM off on the backend. The admin reads that before they confirm.
+	const messageKey = useSettingsStore().moduleSettings.scim?.scimEnabled
+		? 'settings.sso.confirmMessage.beforeSaveForm.scim.message'
+		: 'settings.sso.confirmMessage.beforeSaveForm.message';
 	const confirmAction = await message.confirm(
-		i18n.baseText('settings.sso.confirmMessage.beforeSaveForm.message', {
+		i18n.baseText(messageKey, {
 			interpolate: { protocol: 'SAML' },
 		}),
 		i18n.baseText('settings.sso.confirmMessage.beforeSaveForm.headline', {

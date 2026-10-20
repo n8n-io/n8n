@@ -4,8 +4,11 @@ import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHe
 import { useSSOStore, SupportedProtocols, type SupportedProtocolType } from '../sso.store';
 import { useI18n } from '@n8n/i18n';
 import { computed, onMounted, ref, useTemplateRef } from 'vue';
-import { onBeforeRouteLeave, type NavigationGuardNext } from 'vue-router';
+import { onBeforeRouteLeave, useRouter, type NavigationGuardNext } from 'vue-router';
 import { ElDialog } from 'element-plus';
+import { SCIM_SETTINGS_VIEW } from '@n8n/frontend-module-scim';
+import { useRBACStore } from '@n8n/stores/rbac.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 
 import {
 	N8nEmptyState,
@@ -14,6 +17,10 @@ import {
 	N8nOption,
 	N8nSelect,
 	N8nSettingsPageHeader,
+	N8nSettingsRow,
+	N8nSettingsRowConfigure,
+	N8nSettingsRowGroup,
+	N8nSettingsSection,
 	N8nText,
 } from '@n8n/design-system';
 import SamlSettingsForm from '../components/SamlSettingsForm.vue';
@@ -21,7 +28,10 @@ import OidcSettingsForm from '../components/OidcSettingsForm.vue';
 import { useUserRoleProvisioningStore } from '../provisioning/composables/userRoleProvisioning.store';
 
 const i18n = useI18n();
+const router = useRouter();
 const ssoStore = useSSOStore();
+const settingsStore = useSettingsStore();
+const rbacStore = useRBACStore();
 const provisioningStore = useUserRoleProvisioningStore();
 const documentTitle = useDocumentTitle();
 const pageRedirectionHelper = usePageRedirectionHelper();
@@ -54,6 +64,29 @@ const options = computed(() => {
 const hasAnySsoEnabled = computed(
 	() => ssoStore.isEnterpriseSamlEnabled || ssoStore.isEnterpriseOidcEnabled,
 );
+
+/**
+ * The SCIM entry row shows only while the SCIM module is licensed, the pre-GA
+ * opt-in is on for the instance, and the user may manage SCIM. The backend
+ * evaluates the opt-in once for the instance; the page reads that result and
+ * never evaluates the flag for the current user.
+ */
+const showScimSection = computed(
+	() =>
+		Boolean(settingsStore.isModuleActive('scim')) &&
+		settingsStore.moduleSettings.scim?.available === true &&
+		rbacStore.hasScope('scim:manage'),
+);
+
+const scimRowDescription = computed(() =>
+	settingsStore.moduleSettings.scim?.scimEnabled
+		? i18n.baseText('settings.sso.provisioning.scim.enabled')
+		: i18n.baseText('settings.sso.provisioning.scim.disabled'),
+);
+
+function openScimSettings() {
+	void router.push({ name: SCIM_SETTINGS_VIEW });
+}
 
 const activeForm = computed(() => {
 	if (authProtocol.value === SupportedProtocols.SAML) return samlFormRef.value;
@@ -178,6 +211,28 @@ onMounted(() => {
 			</template>
 		</N8nEmptyState>
 
+		<N8nSettingsSection
+			v-if="showScimSection"
+			:title="i18n.baseText('settings.sso.provisioning.title')"
+			:description="i18n.baseText('settings.sso.provisioning.description')"
+			:class="$style.provisioning"
+			data-test-id="sso-provisioning-section"
+		>
+			<N8nSettingsRowGroup>
+				<N8nSettingsRow
+					:title="i18n.baseText('settings.sso.provisioning.scim')"
+					:description="scimRowDescription"
+					clickable
+					data-test-id="sso-scim-row"
+					@click="openScimSettings"
+				>
+					<template #action>
+						<N8nSettingsRowConfigure />
+					</template>
+				</N8nSettingsRow>
+			</N8nSettingsRowGroup>
+		</N8nSettingsSection>
+
 		<ElDialog
 			v-model="showUnsavedChangesDialog"
 			:title="i18n.baseText('settings.sso.settings.unsavedChanges.title')"
@@ -228,6 +283,10 @@ onMounted(() => {
 
 .actionBox {
 	margin-top: var(--spacing--lg);
+}
+
+.provisioning {
+	margin-top: var(--spacing--2xl);
 }
 
 .dialogFooter {

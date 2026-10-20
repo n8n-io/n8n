@@ -26,6 +26,24 @@ export function useSettingsItems() {
 	const { balance } = useAiGateway();
 	const { openTopUp } = useAiGatewayTopUp();
 
+	/**
+	 * Names of the SSO route and of every route under its path, such as `/settings/sso/scim`.
+	 * Modules register those routes as flat children of `/settings`, so `router-link-active`
+	 * does not cover them. The list is read when the sidebar renders, after module routes exist.
+	 */
+	const getSsoRouteNames = (): string[] => {
+		const routes = router.getRoutes();
+		const ssoPath = routes.find((route) => route.name === VIEWS.SSO_SETTINGS)?.path;
+		if (!ssoPath) return [VIEWS.SSO_SETTINGS];
+
+		const subRouteNames = routes
+			.filter((route) => route.path.startsWith(`${ssoPath}/`))
+			.map((route) => route.name)
+			.filter((name): name is string => typeof name === 'string');
+
+		return [VIEWS.SSO_SETTINGS, ...subRouteNames];
+	};
+
 	const settingsItems = computed<IMenuSettingItem[]>(() => {
 		const shellItems: ShellSettingsItem[] = [
 			{
@@ -151,6 +169,7 @@ export function useSettingsItems() {
 				position: 'top',
 				available: canUserAccessRouteByName(VIEWS.SSO_SETTINGS),
 				route: { to: { name: VIEWS.SSO_SETTINGS } },
+				activateOnRouteNames: getSsoRouteNames(),
 			},
 			{
 				id: 'settings-encryption-keys',

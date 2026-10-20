@@ -61,6 +61,15 @@ export type ComboboxProps = Omit<ComboboxRootProps<ComboboxValue>, 'dir' | 'open
 		loading?: boolean;
 		teleported?: boolean;
 		portalTarget?: string | HTMLElement;
+		/**
+		 * Pin each group label to the top of the list while its rows scroll under it.
+		 * The next group's label replaces it when that group reaches the top.
+		 */
+		stickyGroupLabels?: boolean;
+		/**
+		 * Fade out the bottom edge of the list to show that more rows follow.
+		 */
+		scrollMask?: boolean;
 	};
 
 export type ComboboxEmits = ComboboxRootEmits<ComboboxValue | ComboboxValue[] | undefined> & {

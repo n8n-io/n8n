@@ -56,6 +56,8 @@ Use `type: 'group'` for sections. The `label` is optional. Each group maps to it
 - `loading?: boolean` — Show `N8nSpinner` (dots, medium) in place of the clear button and the popup button. In multiple mode the spinner stays at the end of the tags field while the tags scroll. The anchor sets `aria-busy`. The spinner's accessible name is "Searching". Set this while replacing `items` from a remote search. Default: `false`
 - `teleported?: boolean` — Whether to teleport the dropdown to body. Default: `true`
 - `portalTarget?: string | HTMLElement` — Portal target element (e.g. pop-out window's `document.body`). When set, portals content to the specified element.
+- `stickyGroupLabels?: boolean` — Pin each group label to the top of the list while its rows scroll under it. The next group's label replaces it when that group reaches the top. Default: `false`
+- `scrollMask?: boolean` — Fade out the bottom edge of the list to show that more rows follow. A keyboard-highlighted last row scrolls above the fade. Default: `false`
 
 **UI Props**
 
@@ -84,6 +86,7 @@ The dropdown content defaults to a max height of **500px** with vertical scrolli
 
 - `anchorRef` — Ref to the `ComboboxAnchor` element
 - `focusOnInput()` — Focus the combobox input
+- `clearSearch()` — Clear the search text, show the full list again, and keep focus in the input. Emits `update:searchTerm` with `''`.
 
 **Attributes**
 
@@ -385,6 +388,24 @@ const value = ref<string[]>(['apple']);
 .narrow-combobox {
   --combobox-content--max-height: 300px;
 }
+```
+
+**Long grouped lists**
+
+Use `sticky-group-labels` so the current section stays visible while its rows scroll. Use `scroll-mask` to fade the bottom edge. Both are off by default.
+
+```vue
+<N8nCombobox2
+  ref="combobox"
+  :items="groupedItems"
+  sticky-group-labels
+  scroll-mask
+/>
+```
+
+```typescript
+// Reset the search from outside the component. Focus stays in the input.
+combobox.value?.clearSearch();
 ```
 
 **Remote search**

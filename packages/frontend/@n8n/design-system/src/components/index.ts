@@ -108,7 +108,7 @@ export { default as N8nLoading } from './N8nLoading';
 export { default as N8nMarkdown } from './N8nMarkdown';
 /** @deprecated Use N8nChatActions with `showRating` instead. */
 export { default as N8nMessageRating } from './AskAssistantChat/messages/MessageRating.vue';
-export { default as N8nMenuItem } from './N8nMenuItem';
+export { default as N8nMenuItem, doesMenuItemMatchCurrentRoute } from './N8nMenuItem';
 export { default as N8nNavigationDropdown } from './N8nNavigationDropdown';
 export { default as N8nNodeCreatorNode } from './N8nNodeCreatorNode';
 export { default as N8nNodeIcon } from './N8nNodeIcon';

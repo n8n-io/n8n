@@ -88,6 +88,17 @@ describe('N8nSettingsLayout', () => {
 		}
 	});
 
+	it('marks the back row with a global class for the settings shell', () => {
+		render(N8nSettingsLayout, {
+			props: { showBack: true },
+			slots: { default: 'content' },
+		});
+
+		const backRow = screen.getByTestId('settings-back-button').parentElement;
+
+		expect(backRow).toHaveClass('n8n-settings-layout-back-row');
+	});
+
 	it('renders the back action outside the centered content column', () => {
 		const { container } = render(N8nSettingsLayout, {
 			props: { showBack: true },

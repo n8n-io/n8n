@@ -227,15 +227,6 @@ onMounted(async () => {
 	padding-top: 0;
 }
 
-/* Pin the back action to the top-left of the settings area (the shell's
-   content container is position: relative), independent of the centered column. */
-.layout > div:first-child {
-	position: absolute;
-	top: var(--spacing--lg);
-	left: var(--spacing--lg);
-	width: auto;
-}
-
 .actions {
 	display: flex;
 	justify-content: flex-end;

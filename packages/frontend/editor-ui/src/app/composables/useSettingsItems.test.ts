@@ -19,8 +19,11 @@ const promotionsFlag = ref('false');
 const canUserAccessRouteByName = vi.hoisted(() => vi.fn<(name: string) => boolean>(() => true));
 const contextEnabled = vi.hoisted(() => ({ value: true }));
 const openTopUpMock = vi.hoisted(() => vi.fn());
+const registeredRoutes = ref<Array<{ name?: string | symbol; path: string }>>([]);
 
-vi.mock('vue-router', () => ({ useRouter: vi.fn(() => ({})) }));
+vi.mock('vue-router', () => ({
+	useRouter: vi.fn(() => ({ getRoutes: () => registeredRoutes.value })),
+}));
 vi.mock('./useUserHelpers', () => ({
 	useUserHelpers: vi.fn(() => ({ canUserAccessRouteByName })),
 }));
@@ -84,6 +87,57 @@ describe('useSettingsItems', () => {
 		promotionsFlag.value = 'false';
 		canUserAccessRouteByName.mockReturnValue(true);
 		contextEnabled.value = true;
+		registeredRoutes.value = [{ name: VIEWS.SSO_SETTINGS, path: '/settings/sso' }];
+	});
+
+	describe('the SSO item', () => {
+		const ssoItem = () =>
+			useSettingsItems().settingsItems.value.find(({ id }) => id === 'settings-sso');
+
+		it('activates on the SSO route and on every route under its path', () => {
+			registeredRoutes.value = [
+				{ name: VIEWS.USERS_SETTINGS, path: '/settings/users' },
+				{ name: VIEWS.SSO_SETTINGS, path: '/settings/sso' },
+				{ name: 'ScimSettings', path: '/settings/sso/scim' },
+				{ name: 'SsoProvidersSettings', path: '/settings/sso/providers/new' },
+				{ name: 'SsoxSettings', path: '/settings/ssox' },
+				{ name: Symbol('unnamed'), path: '/settings/sso/unnamed' },
+			];
+
+			expect(ssoItem()?.activateOnRouteNames).toEqual([
+				VIEWS.SSO_SETTINGS,
+				'ScimSettings',
+				'SsoProvidersSettings',
+			]);
+		});
+
+		it('reads the SSO path from the router instead of a fixed value', () => {
+			registeredRoutes.value = [
+				{ name: VIEWS.SSO_SETTINGS, path: '/custom/sso' },
+				{ name: 'ScimSettings', path: '/custom/sso/scim' },
+				{ name: 'OtherSettings', path: '/settings/sso/other' },
+			];
+
+			expect(ssoItem()?.activateOnRouteNames).toEqual([VIEWS.SSO_SETTINGS, 'ScimSettings']);
+		});
+
+		it('falls back to its own route name when the SSO route is not registered', () => {
+			registeredRoutes.value = [{ name: 'ScimSettings', path: '/settings/sso/scim' }];
+
+			expect(ssoItem()?.activateOnRouteNames).toEqual([VIEWS.SSO_SETTINGS]);
+		});
+
+		it('is the only shell item with explicit route matches', () => {
+			registeredRoutes.value.push({ name: 'ScimSettings', path: '/settings/sso/scim' });
+
+			const itemsWithMatches = useSettingsItems()
+				.settingsItems.value.filter(
+					(item) => item.activateOnRouteNames ?? item.activateOnRoutePaths,
+				)
+				.map(({ id }) => id);
+
+			expect(itemsWithMatches).toEqual(['settings-sso']);
+		});
 	});
 
 	describe('sidebar order', () => {

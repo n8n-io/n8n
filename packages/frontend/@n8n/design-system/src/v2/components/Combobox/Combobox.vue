@@ -57,6 +57,8 @@ const props = withDefaults(defineProps<ComboboxProps>(), {
 	clearable: false,
 	loading: false,
 	teleported: true,
+	stickyGroupLabels: false,
+	scrollMask: false,
 });
 
 const { t } = useI18n();
@@ -245,11 +247,6 @@ function focusOnInput() {
 	getInputElement()?.focus();
 }
 
-defineExpose({
-	anchorRef,
-	focusOnInput,
-});
-
 const sizes: Record<ComboboxSizes, string> = {
 	mini: $style.mini,
 	small: $style.small,
@@ -282,6 +279,23 @@ function getDisplayValue(value: unknown): string {
 }
 
 const searchTerm = ref(getDisplayValue(rootModelValue.value));
+
+/**
+ * Clear the search text and show the full list again. Reka refilters only on a
+ * native input event, so this drives the input element instead of the ref. That
+ * event also emits `update:searchTerm` with ''.
+ */
+function clearSearch() {
+	searchTerm.value = '';
+	clearSearchInput();
+	focusOnInput();
+}
+
+defineExpose({
+	anchorRef,
+	focusOnInput,
+	clearSearch,
+});
 
 function hasValue(value: ComboboxValue | ComboboxValue[] | undefined): boolean {
 	if (props.multiple) {
@@ -486,7 +500,7 @@ function onTagsUpdate(value: TagsInputValue[]) {
 				:side="props.side"
 				:side-offset="props.sideOffset"
 			>
-				<ComboboxViewport :class="$style.comboboxViewport">
+				<ComboboxViewport :class="[$style.comboboxViewport, props.scrollMask && $style.scrollMask]">
 					<ComboboxEmpty :class="$style.comboboxEmpty" role="status">
 						{{ emptyText }}
 					</ComboboxEmpty>
@@ -496,7 +510,10 @@ function onTagsUpdate(value: TagsInputValue[]) {
 						:key="`section-${sectionIndex}`"
 						:class="$style.comboboxGroup"
 					>
-						<ComboboxLabel v-if="section.label && section.group" :class="$style.comboboxLabel">
+						<ComboboxLabel
+							v-if="section.label && section.group"
+							:class="[$style.comboboxLabel, props.stickyGroupLabels && $style.stickyLabel]"
+						>
 							<slot name="label" :item="section.group">
 								{{ section.label }}
 							</slot>
@@ -533,6 +550,7 @@ function onTagsUpdate(value: TagsInputValue[]) {
 @use '@n8n/design-system/css/mixins/focus';
 @use '@n8n/design-system/css/mixins/input' as input-mixin;
 @use '@n8n/design-system/css/mixins/popover' as popover;
+@use '@n8n/design-system/css/mixins/mixins' as scroll-mask;
 
 .comboboxAnchor {
 	@include input-mixin.size-variables('large');
@@ -765,11 +783,19 @@ function onTagsUpdate(value: TagsInputValue[]) {
 
 .comboboxViewport {
 	--combobox-viewport--padding: var(--spacing--4xs);
+	--combobox-viewport--scroll-mask-size: var(--spacing--sm);
 
 	flex: 1 1 auto;
 	min-height: 0;
 	overflow-y: auto;
 	padding: var(--combobox-viewport--padding);
+}
+
+.scrollMask {
+	@include scroll-mask.scroll-mask(bottom, var(--combobox-viewport--scroll-mask-size));
+
+	// Keep a keyboard-highlighted last row above the fade.
+	scroll-padding-block-end: var(--combobox-viewport--scroll-mask-size);
 }
 
 .comboboxEmpty {
@@ -783,6 +809,15 @@ function onTagsUpdate(value: TagsInputValue[]) {
 	padding: var(--spacing--3xs) var(--spacing--2xs) var(--spacing--4xs);
 	color: var(--text-color--subtler);
 	font-size: var(--font-size--2xs);
+}
+
+// The group is the containing block, so the next group's label pushes this one out.
+// `top: 0` is the visible edge of the viewport: its padding scrolls away with the rows.
+.stickyLabel {
+	position: sticky;
+	top: 0;
+	z-index: 1;
+	background-color: var(--background--surface);
 }
 
 .comboboxGroup {
