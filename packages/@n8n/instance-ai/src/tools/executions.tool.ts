@@ -1,8 +1,9 @@
 /**
- * Consolidated executions tool — list, get, run, debug, get-node-output,
+ * Consolidated workflow_builder_executions tool — list, get, run, debug, get-node-output,
  * get-resolved-node-parameters, stop.
  */
 import {
+	getLegacyBuilderToolNames,
 	buildRunStepSessionGrantKey,
 	buildRunWorkflowSessionGrantKey,
 	instanceAiApprovalDetailsSchema,
@@ -18,6 +19,7 @@ import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import type { InstanceAiContext } from '../types';
 import { approvalSummarySchema, formatApprovalMessage } from './approval-copy';
 import { recordLiveRunVerification } from './orchestration/verification/record-live-run';
+import { DOMAIN_TOOL_IDS } from './tool-ids';
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
@@ -87,8 +89,8 @@ const runAction = z.object({
 			'Name of the trigger node to start the run from. REQUIRED when the workflow has ' +
 				'more than one trigger: without it a single trigger is auto-detected and the other ' +
 				"triggers' branches never run. To run each branch, call run once per trigger. " +
-				"Trigger names come from build-workflow's `triggerNodes` or " +
-				'workflows(action="get-as-code"). Never disable, delete, or otherwise edit a saved ' +
+				"Trigger names come from workflow_builder_build_workflow's `triggerNodes` or " +
+				'workflow_builder_workflows(action="get-as-code"). Never disable, delete, or otherwise edit a saved ' +
 				'workflow to reach a branch — use this instead.',
 		),
 	timeout: z
@@ -573,14 +575,15 @@ async function handleStop(context: InstanceAiContext, input: Extract<Input, { ac
 // ── Tool factory ───────────────────────────────────────────────────────────
 
 export function createExecutionsTool(context: InstanceAiContext) {
-	return new Tool('executions')
+	return new Tool(DOMAIN_TOOL_IDS.EXECUTIONS)
+		.legacyNames(...getLegacyBuilderToolNames(DOMAIN_TOOL_IDS.EXECUTIONS))
 		.description(
 			'Manage workflow executions — list, inspect, run, run one node, debug, ' +
 				'get node output, get resolved node parameters for a past run, and stop. ' +
 				'action="run" is how you satisfy "trigger/run my <workflow>": find the workflow with ' +
-				'workflows(action="list"), then run it here with the user\'s values as inputData — ' +
+				'workflow_builder_workflows(action="list"), then run it here with the user\'s values as inputData — ' +
 				'do not treat such a request as a request to build something. ' +
-				'To verify a workflow you built, use verify-built-workflow, not action="run". ' +
+				'To verify a workflow you built, use workflow_builder_verify_built_workflow, not action="run". ' +
 				'Reserve action="run" for runs the user explicitly asked for: it runs the workflow live with no pin data and prompts the user for approval. ' +
 				'action="run-step" runs a single node of the saved workflow, like the canvas ' +
 				'"Execute step" button. Use it to see what one node really returns — when ' +

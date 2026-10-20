@@ -13,9 +13,7 @@ import type {
 	MigrationNotifySkipReason,
 } from '@n8n/api-types';
 import { useUIStore } from '@/app/stores/ui.store';
-import { getUsers } from '@n8n/rest-api-client/api/users';
 import {
-	N8nAvatar,
 	N8nBadge,
 	N8nButton,
 	N8nDataTableServer,
@@ -69,11 +67,12 @@ const props = defineProps<{ migrationRuleId: string }>();
 
 const router = useRouter();
 
-// The page needs only `breakingChanges:list`. A migration, a state change or
-// an owner choice needs `breakingChanges:migrate`.
-const canMigrate = computed(() => rbacStore.hasScope('breakingChanges:migrate'));
-// A notification is an email, so the instance needs SMTP.
-const canNotify = computed(() => canMigrate.value && settingsStore.isSmtpSetup);
+// The server lists only the workflows the user can edit, and editing a workflow
+// allows triaging and migrating it. So every row is editable. A notification
+// emails other users, so it needs `breakingChanges:migrate` and SMTP.
+const canNotify = computed(
+	() => rbacStore.hasScope('breakingChanges:migrate') && settingsStore.isSmtpSetup,
+);
 
 const { state, isLoading } = useAsyncState<BreakingChangeRuleDetailResult>(
 	async () => {
@@ -97,10 +96,10 @@ const { state, isLoading } = useAsyncState<BreakingChangeRuleDetailResult>(
 
 type AffectedWorkflow = BreakingChangeRuleDetailWorkflow;
 
-// The picker searches the members of the focused row's project. One result list
+// The picker lists the users who can open the focused row's workflow. One list
 // serves every row, since only one picker is open at a time.
 const isLoadingUsers = ref(false);
-const activeProjectId = ref<string | undefined>();
+const activeWorkflowId = ref<string | undefined>();
 const memberOptions = ref<IUser[]>([]);
 
 function userOption(user: {
@@ -123,9 +122,9 @@ function userOption(user: {
 // tick before the row takes it as its value, so the picker can resolve the label.
 const incomingOwners = ref(new Map<string, BreakingChangeWorkflowOwner>());
 
-/** The members found for the row's project, plus the row's owner so the picker never shows a bare id. */
+/** The candidates for the row's workflow, plus the row's owner so the picker never shows a bare id. */
 function ownerOptionsFor(workflow: AffectedWorkflow): IUser[] {
-	const options = workflow.homeProjectId === activeProjectId.value ? [...memberOptions.value] : [];
+	const options = workflow.id === activeWorkflowId.value ? [...memberOptions.value] : [];
 	for (const owner of [workflow.owner, incomingOwners.value.get(workflow.id)]) {
 		// The picker needs an email on every option; an owner without one is left out.
 		if (owner?.email && !options.some((option) => option.id === owner.id)) {
@@ -135,24 +134,21 @@ function ownerOptionsFor(workflow: AffectedWorkflow): IUser[] {
 	return options;
 }
 
-// A focus or a keystroke can start a new search before the last one answered;
+// A focus on another row can start a new load before the last one answered;
 // only the latest answer may fill the list.
 let memberRequestSequence = 0;
 
-async function loadMembers(projectId: string | undefined, query = '') {
+async function loadMembers(workflowId: string) {
 	const sequence = ++memberRequestSequence;
 	isLoadingUsers.value = true;
 	try {
-		const { items } = await getUsers(rootStore.restApiContext, {
-			skip: 0,
-			take: 50,
-			filter: {
-				...(projectId ? { projectId } : {}),
-				...(query.trim() ? { fullText: query.trim() } : {}),
-			},
-		});
+		const candidates = await breakingChangesApi.getWorkflowOwnerCandidates(
+			rootStore.restApiContext,
+			workflowId,
+		);
 		if (sequence !== memberRequestSequence) return;
-		memberOptions.value = items.map(userOption);
+		// The picker needs an email on every option.
+		memberOptions.value = candidates.filter((user) => user.email).map(userOption);
 	} catch (error) {
 		toast.showError(
 			error,
@@ -164,16 +160,11 @@ async function loadMembers(projectId: string | undefined, query = '') {
 }
 
 function onOwnerPickerFocus(workflow: AffectedWorkflow) {
-	if (activeProjectId.value === workflow.homeProjectId && memberOptions.value.length > 0) return;
-	activeProjectId.value = workflow.homeProjectId;
+	if (activeWorkflowId.value === workflow.id && memberOptions.value.length > 0) return;
+	activeWorkflowId.value = workflow.id;
 	memberOptions.value = [];
-	void loadMembers(workflow.homeProjectId);
+	void loadMembers(workflow.id);
 }
-
-const searchMembers = useDebounceFn(
-	async (query: string) => await loadMembers(activeProjectId.value, query),
-	getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH),
-);
 
 // A quick second change can answer before the first; only the latest answer may land.
 const ownerRequestSequence = new Map<string, number>();
@@ -213,8 +204,7 @@ function ownerLabel(workflow: AffectedWorkflow): string {
 	);
 }
 
-// Migrate needs the same scope as a state change.
-const showMigrate = computed(() => state.value.migratable && canMigrate.value);
+const showMigrate = computed(() => state.value.migratable);
 
 /** Rule descriptions arrive with or without a trailing period; the header copy always ends in one. */
 const ruleDescription = computed(() => {
@@ -800,7 +790,7 @@ const sortedWorkflows = computed(() => {
 		</N8nSettingsPageHeader>
 
 		<div
-			v-if="!isLoading && canMigrate && unusedOpenWorkflows.length > 0"
+			v-if="!isLoading && unusedOpenWorkflows.length > 0"
 			:class="$style.unusedCallout"
 			data-test-id="migration-rule-unused-callout"
 		>
@@ -923,7 +913,7 @@ const sortedWorkflows = computed(() => {
 			:key="String(state.migratable)"
 			v-model:sort-by="sortBy"
 			v-model:selection="selectedWorkflowIds"
-			:show-select="canMigrate"
+			show-select
 			:item-selectable="isSelectable"
 			:items-per-page="sortedWorkflows.length + 1"
 			:items="sortedWorkflows"
@@ -998,7 +988,6 @@ const sortedWorkflows = computed(() => {
 			</template>
 			<template #[`item.owner`]="{ item }">
 				<N8nUserSelect
-					v-if="canMigrate"
 					size="small"
 					:users="ownerOptionsFor(item)"
 					hide-email-in-label
@@ -1006,28 +995,17 @@ const sortedWorkflows = computed(() => {
 					borderless
 					:model-value="item.owner?.id ?? ''"
 					:placeholder="i18n.baseText('settings.migrationReport.detail.table.unassigned')"
-					remote
-					:remote-method="searchMembers"
 					:loading="isLoadingUsers"
 					clearable
 					data-test-id="migration-owner-select"
 					@focus="onOwnerPickerFocus(item)"
 					@update:model-value="(userId: string) => onOwnerChange(item, userId)"
 				/>
-				<div v-else :class="$style.ownerLabel">
-					<N8nAvatar
-						size="xsmall"
-						:first-name="item.owner?.firstName"
-						:last-name="item.owner?.lastName"
-					/>
-					<span :class="$style.truncate">{{ ownerLabel(item) }}</span>
-				</div>
 			</template>
 			<template #[`item.status`]="{ item }">
 				<FindingStateSelect
 					:model-value="item.status"
 					:disabled="
-						!canMigrate ||
 						savingWorkflowIds.has(item.id) ||
 						notifyingWorkflowIds.has(item.id) ||
 						migratedWorkflowIds.has(item.id)
@@ -1187,13 +1165,6 @@ const sortedWorkflows = computed(() => {
 
 .nodeNames {
 	font-family: var(--font-family--monospace);
-}
-
-.ownerLabel {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	min-width: 0;
 }
 
 .actions {

@@ -132,10 +132,10 @@ describe('useDataTableOperations', () => {
 
 	describe('column editing lock', () => {
 		it('blocks column mutations after editing is locked', async () => {
-			const readOnly = ref(false);
+			const schemaReadOnly = ref(false);
 			params.colDefs.value = [{ colId: 'name-column', field: 'name', headerName: 'name' }];
-			const operations = useDataTableOperations({ ...params, readOnly });
-			readOnly.value = true;
+			const operations = useDataTableOperations({ ...params, schemaReadOnly });
+			schemaReadOnly.value = true;
 
 			expect(await operations.onAddColumn({ name: 'description', type: 'string' })).toEqual({
 				success: false,
@@ -151,15 +151,15 @@ describe('useDataTableOperations', () => {
 		});
 
 		it('blocks column deletion when editing is locked during confirmation', async () => {
-			const readOnly = ref(false);
+			const schemaReadOnly = ref(false);
 			params.colDefs.value = [{ colId: 'name-column', field: 'name', headerName: 'name' }];
 			const confirmation = createDeferredPromise<typeof MODAL_CONFIRM>();
 			confirmMock.mockReturnValue(confirmation.promise);
-			const operations = useDataTableOperations({ ...params, readOnly });
+			const operations = useDataTableOperations({ ...params, schemaReadOnly });
 
 			const deletion = operations.onDeleteColumn('name-column');
 			expect(confirmMock).toHaveBeenCalled();
-			readOnly.value = true;
+			schemaReadOnly.value = true;
 			confirmation.resolve(MODAL_CONFIRM);
 			await deletion;
 
@@ -340,9 +340,9 @@ describe('useDataTableOperations', () => {
 		});
 
 		it('ignores queued move events after editing is locked', async () => {
-			const readOnly = ref(false);
-			const { onColumnMoved } = useDataTableOperations({ ...params, readOnly });
-			readOnly.value = true;
+			const schemaReadOnly = ref(false);
+			const { onColumnMoved } = useDataTableOperations({ ...params, schemaReadOnly });
+			schemaReadOnly.value = true;
 
 			await onColumnMoved({
 				finished: true,
@@ -358,13 +358,13 @@ describe('useDataTableOperations', () => {
 		it.each(['success', 'failure'])(
 			'reconciles a move started before editing was locked: %s',
 			async (result) => {
-				const readOnly = ref(false);
+				const schemaReadOnly = ref(false);
 				const response = createDeferredPromise<boolean>();
 				vi.mocked(dataTableStore.moveDataTableColumn).mockReturnValue(response.promise);
 				const moveColumnByIndex = vi.fn();
 				params.gridApi.value = { moveColumnByIndex } as unknown as GridApi;
 				params.colDefs.value = [{ colId: 'col1', field: 'name' }];
-				const { onColumnMoved } = useDataTableOperations({ ...params, readOnly });
+				const { onColumnMoved } = useDataTableOperations({ ...params, schemaReadOnly });
 
 				const move = onColumnMoved({
 					finished: true,
@@ -373,7 +373,7 @@ describe('useDataTableOperations', () => {
 					column: createMockColumn('col1'),
 				} as unknown as ColumnMovedEvent);
 				expect(dataTableStore.moveDataTableColumn).toHaveBeenCalled();
-				readOnly.value = true;
+				schemaReadOnly.value = true;
 				if (result === 'success') {
 					response.resolve(true);
 				} else {
