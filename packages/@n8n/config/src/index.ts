@@ -68,6 +68,7 @@ export { positiveIntSchema, nonnegativeIntSchema } from './schemas';
 export type { TaskRunnerMode } from './configs/runners.config';
 export { TaskRunnersConfig } from './configs/runners.config';
 export { SecurityConfig } from './configs/security.config';
+export { PublicApiRateLimitConfig } from './configs/public-api.config';
 export {
 	DEFAULT_CONTENT_SECURITY_POLICY,
 	isLegacyBooleanSetting,
