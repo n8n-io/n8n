@@ -19,8 +19,7 @@ const consumer = (...ids: string[]) => [
 ];
 
 const check = (preflight: Partial<ApplyCheckResult['preflight']> = {}): ApplyCheckResult => ({
-	connectionId: 'connection-1',
-	configId: 'config-1',
+	environmentId: 'environment-1',
 	git: { branchName: 'main', commitSha: 'c'.repeat(40) },
 	preflight: {
 		missingProjects: [],

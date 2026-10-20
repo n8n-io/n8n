@@ -83,8 +83,7 @@ const consumers = (...ids: string[]) => [
 ];
 
 const check = (preflight: Partial<ApplyCheckResult['preflight']> = {}): ApplyCheckResult => ({
-	connectionId: 'connection-1',
-	configId: 'config-1',
+	environmentId: 'environment-apply',
 	git: { branchName: 'main', commitSha: COMMIT_SHA },
 	preflight: {
 		missingProjects: [],
@@ -97,12 +96,14 @@ const check = (preflight: Partial<ApplyCheckResult['preflight']> = {}): ApplyChe
 	movedWorkflows: [],
 });
 
-const expectedSource = { configId: 'config-1', branchName: 'main', commitSha: COMMIT_SHA };
+const expectedSource = {
+	environmentId: 'environment-apply',
+	branchName: 'main',
+	commitSha: COMMIT_SHA,
+};
 
 async function renderApply() {
-	vi.mocked(settingsApi.fetchPromotionConnections).mockResolvedValue([
-		connection({ apply: { id: 'config-1' } }),
-	]);
+	vi.mocked(settingsApi.fetchPromotionEnvironments).mockResolvedValue([environment('apply')]);
 	return await render('/projects/p1/promotions/apply', 'apply');
 }
 
@@ -275,10 +276,9 @@ describe('PromotionPreviewView', () => {
 		vi.mocked(api.getApplyBlockers).mockResolvedValue(
 			check({ conflicts: [{ ...destructiveChange, id: 't1', consumers: consumers('w1', 'w2') }] }),
 		);
-		const { connectionId, configId, git } = check();
+		const { environmentId, git } = check();
 		vi.mocked(settingsApi.applyProjectSelection).mockResolvedValue({
-			connectionId,
-			configId,
+			environmentId,
 			git,
 			status: 'source-changed',
 		});

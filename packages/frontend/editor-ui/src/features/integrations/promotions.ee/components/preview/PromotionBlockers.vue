@@ -42,8 +42,7 @@ const i18n = useI18n();
 
 const asBlockedResult = (check: ApplyCheckResult): BlockedApplyResult => ({
 	status: 'blocked',
-	connectionId: check.connectionId,
-	configId: check.configId,
+	environmentId: check.environmentId,
 	git: check.git,
 	preflight: check.preflight,
 });

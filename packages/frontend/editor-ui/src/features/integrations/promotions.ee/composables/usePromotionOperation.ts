@@ -113,7 +113,7 @@ export function usePromotionOperation(
 
 	async function apply(request: OperationRequest, source: ApplyCheckResult) {
 		// Apply the commit that the page shows. A branch that moved since is reported, not applied.
-		const expectedSource = { configId: source.configId, ...source.git };
+		const expectedSource = { environmentId: source.environmentId, ...source.git };
 		const result = request.confirmDestructiveChanges
 			? await continueApplyProjectSelection(rootStore.publicApiContext, projectId.value, {
 					workflowIds: request.workflowIds,
