@@ -13,7 +13,6 @@ import {
 	N8nDialog,
 	N8nDialogBody,
 	N8nDialogFooter,
-	N8nDialogHeader,
 	N8nDialogTitle,
 	N8nIcon,
 	N8nLink,
@@ -245,13 +244,8 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-	<N8nDialog
-		:open="modalOpen"
-		size="xlarge"
-		:container-class="$style.modal"
-		@update:open="onDialogOpenUpdate"
-	>
-		<N8nDialogHeader :class="$style.headerBand">
+	<N8nDialog :open="modalOpen" size="xlarge" @update:open="onDialogOpenUpdate">
+		<N8nDialogBody :class="$style.body">
 			<div :class="$style.header">
 				<div :class="$style.headerGraphic">
 					<SurfaceMcpBridgeGraphic size="hero" />
@@ -271,8 +265,6 @@ onBeforeUnmount(() => {
 					{{ i18n.baseText('experiments.surfaceMcpToNewCloudUsers.onboarding.description') }}
 				</N8nText>
 			</div>
-		</N8nDialogHeader>
-		<N8nDialogBody>
 			<div :class="$style.content" data-test-id="mcp-onboarding-modal-content">
 				<!-- Step 1: Enable MCP access -->
 				<section :class="$style.section">
@@ -503,18 +495,13 @@ onBeforeUnmount(() => {
 <style lang="scss" module>
 @use '@n8n/design-system/css/mixins/motion.scss' as motion;
 
-.modal {
-	overflow: hidden;
+.body {
+	--n8n-dialog-body--padding-block-start: 0;
+	--n8n-dialog-body--padding-block-end: 0;
+	--n8n-dialog-body--padding-inline: 0;
 }
 
 // --- Header (centered hero) -----------------------------------------------
-
-.headerBand {
-	--n8n-dialog-region--padding: 0;
-	/* The hero is centered. The close button sits in the hero gutter. */
-	--n8n-dialog-header--padding-inline-end: 0;
-	padding: 0;
-}
 
 .header {
 	display: flex;
@@ -547,6 +534,8 @@ onBeforeUnmount(() => {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--lg);
+	padding-inline: var(--n8n-dialog-region--padding, var(--spacing--md));
+	padding-block-end: var(--n8n-dialog-region--padding, var(--spacing--md));
 }
 
 .section {
