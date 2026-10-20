@@ -9,6 +9,9 @@ import { OAuthConsentService } from './oauth-consent.service';
 import { OAuthSessionService } from './oauth-session.service';
 import { ForbiddenError } from '@n8n/errors';
 
+/** `flow` names the pending authorization request to read, set by the /authorize redirect. */
+type ConsentDetailsRequest = AuthenticatedRequest<{}, {}, {}, { flow?: string }>;
+
 @RestController('/consent')
 export class OAuthConsentController {
 	constructor(
@@ -18,20 +21,22 @@ export class OAuthConsentController {
 	) {}
 
 	@Get('/details', { usesTemplates: true })
-	async getConsentDetails(req: AuthenticatedRequest, res: Response) {
+	async getConsentDetails(req: ConsentDetailsRequest, res: Response) {
+		const flowId = typeof req.query.flow === 'string' ? req.query.flow : '';
+
 		try {
-			const sessionToken = this.getAndValidateSessionToken(req, res);
+			const sessionToken = this.getAndValidateSessionToken(req, res, flowId);
 			if (!sessionToken) return;
 
 			const consentDetails = await this.consentService.getConsentDetails(sessionToken, req.user);
 
 			if (!consentDetails) {
-				this.sendInvalidSessionError(res, true);
+				this.sendInvalidSessionError(res, flowId, true);
 				return;
 			}
 
 			if (!consentDetails.ok) {
-				this.oauthSessionService.clearSession(res);
+				this.oauthSessionService.clearSession(res, flowId);
 				if (consentDetails.reason === 'forbidden') {
 					this.sendErrorResponse(
 						res,
@@ -46,7 +51,7 @@ export class OAuthConsentController {
 
 			if (consentDetails.autoApproved) {
 				// The session's decision is already made — consume it, same as a manual approval.
-				this.oauthSessionService.clearSession(res);
+				this.oauthSessionService.clearSession(res, flowId);
 				res.json({
 					data: {
 						autoApproved: true,
@@ -72,7 +77,7 @@ export class OAuthConsentController {
 			});
 		} catch (error) {
 			this.logger.error('Failed to get consent details', { error });
-			this.oauthSessionService.clearSession(res);
+			this.oauthSessionService.clearSession(res, flowId);
 			this.sendErrorResponse(res, 500, 'Failed to load authorization details');
 		}
 	}
@@ -84,7 +89,7 @@ export class OAuthConsentController {
 		@Body payload: ApproveConsentRequestDto,
 	) {
 		try {
-			const sessionToken = this.getAndValidateSessionToken(req, res);
+			const sessionToken = this.getAndValidateSessionToken(req, res, payload.flow);
 			if (!sessionToken) return;
 
 			const result = await this.consentService.handleConsentDecision(
@@ -94,7 +99,7 @@ export class OAuthConsentController {
 				payload.scopes,
 			);
 
-			this.oauthSessionService.clearSession(res);
+			this.oauthSessionService.clearSession(res, payload.flow);
 
 			res.json({
 				data: {
@@ -104,7 +109,7 @@ export class OAuthConsentController {
 			});
 		} catch (error) {
 			this.logger.error('Failed to process consent', { error });
-			this.oauthSessionService.clearSession(res);
+			this.oauthSessionService.clearSession(res, payload.flow);
 			if (error instanceof ForbiddenError) {
 				this.sendErrorResponse(
 					res,
@@ -126,17 +131,27 @@ export class OAuthConsentController {
 		});
 	}
 
-	private sendInvalidSessionError(res: Response, clearCookie = false): void {
+	private sendInvalidSessionError(res: Response, flowId: string, clearCookie = false): void {
 		if (clearCookie) {
-			this.oauthSessionService.clearSession(res);
+			this.oauthSessionService.clearSession(res, flowId);
 		}
 		this.sendErrorResponse(res, 400, 'Invalid or expired authorization session');
 	}
 
-	private getAndValidateSessionToken(req: AuthenticatedRequest, res: Response): string | null {
-		const sessionToken = this.oauthSessionService.getSessionToken(req.cookies);
+	/**
+	 * Resolve the pending authorization request the caller names. An unknown
+	 * flow id reads as an expired session: the browser only reaches this screen
+	 * through an /authorize redirect carrying the id, and the first decision
+	 * made on a flow consumes it.
+	 */
+	private getAndValidateSessionToken(
+		req: AuthenticatedRequest,
+		res: Response,
+		flowId: string,
+	): string | null {
+		const sessionToken = this.oauthSessionService.getSessionToken(req.cookies, flowId);
 		if (!sessionToken) {
-			this.sendInvalidSessionError(res);
+			this.sendInvalidSessionError(res, flowId);
 			return null;
 		}
 
@@ -145,7 +160,7 @@ export class OAuthConsentController {
 			return sessionToken;
 		} catch (error) {
 			this.logger.debug('Invalid session token', { error });
-			this.sendInvalidSessionError(res, true);
+			this.sendInvalidSessionError(res, flowId, true);
 			return null;
 		}
 	}

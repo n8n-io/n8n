@@ -60,6 +60,8 @@ import type {
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { OwnershipService } from '@/services/ownership.service';
+import { getCpuLimit, getMemoryLimit } from '@/utils/container-limits';
+import { detectKubernetesProvider, detectRuntime } from '@/utils/detect-runtime';
 
 import { EventRelay } from './event-relay';
 import { Telemetry } from '../../telemetry';
@@ -133,6 +135,21 @@ function countRuleActions(rules: readonly PolicyRule[]) {
  */
 const MAX_LISTED_POLICY_TYPES = 100;
 
+/** Keeps a block on a workflow with many blocked nodes under the 32 KB payload cap. */
+const MAX_LISTED_VIOLATIONS = 50;
+
+/** Subject types whose subject is a type name. Any other subject is open text and stays out. */
+const TYPE_NAME_SUBJECT_TYPES = new Set(['nodeType', 'credentialType']);
+
+/** An agent or credential create has a `null` id, so test for the key's presence, not its value. */
+function policedTargetType(
+	event: RelayEventMap['policy-decision-blocked'],
+): 'workflow' | 'agent' | 'credential' {
+	if (event.credentialType !== undefined) return 'credential';
+	if (event.agentId !== undefined) return 'agent';
+	return 'workflow';
+}
+
 /**
  * What a saved policy makes of every type this instance knows, within the policy's own kind
  * (node types or credential types). Runs the same evaluation the node panel runs, once per
@@ -160,6 +177,7 @@ function countSelectorKinds(rules: readonly PolicyRule[]) {
 	return {
 		name_selector_count: rules.filter((rule) => rule.selector.kind === 'name').length,
 		package_selector_count: rules.filter((rule) => rule.selector.kind === 'package').length,
+		extends_selector_count: rules.filter((rule) => rule.selector.kind === 'extends').length,
 	};
 }
 
@@ -238,6 +256,7 @@ export class TelemetryEventRelay extends EventRelay {
 			'node-type-policy-document-deleted': (event) => this.nodeTypePolicyDocumentDeleted(event),
 			'node-type-policy-attachments-updated': (event) =>
 				this.nodeTypePolicyAttachmentsUpdated(event),
+			'policy-decision-blocked': (event) => this.policyDecisionBlocked(event),
 			'external-secrets-provider-settings-saved': (event) =>
 				this.externalSecretsProviderSettingsSaved(event),
 			'external-secrets-provider-reloaded': (event) => this.externalSecretsProviderReloaded(event),
@@ -578,7 +597,8 @@ export class TelemetryEventRelay extends EventRelay {
 		after,
 		rulesBefore,
 		rulesAfter,
-		warningCount,
+		shadowWarningCount,
+		notLoadedWarningCount,
 	}: RelayEventMap['node-type-policy-saved']) {
 		if (!isPolicyKind(kind)) return;
 
@@ -586,7 +606,7 @@ export class TelemetryEventRelay extends EventRelay {
 			kind === CREDENTIAL_TYPES_KIND
 				? Object.keys(this.loadNodesAndCredentials.knownCredentials)
 				: Object.keys(this.nodeTypes.getKnownTypes());
-		const types = typeNames.map(policedTypeFor(kind, this.nodeTypes));
+		const types = typeNames.map(policedTypeFor(kind, this.nodeTypes, this.loadNodesAndCredentials));
 		const resolvePackage = packageResolverFor(kind, this.loadNodesAndCredentials);
 
 		this.telemetry.track(
@@ -602,7 +622,8 @@ export class TelemetryEventRelay extends EventRelay {
 				...countSelectorKinds(rulesAfter),
 				...summarizeTypeAvailability(rulesAfter, after.defaultAction, types, resolvePackage),
 				previous_rule_count: rulesBefore?.length ?? null,
-				shadow_warning_count: warningCount,
+				shadow_warning_count: shadowWarningCount,
+				not_loaded_warning_count: notLoadedWarningCount,
 				version: after.version,
 			},
 		);
@@ -691,6 +712,42 @@ export class TelemetryEventRelay extends EventRelay {
 				previous_attachment_count: before.attachments.length,
 			},
 		);
+	}
+
+	// #endregion
+
+	// #region Policy enforcement
+
+	/** Workflow, agent and user names stay in the audit log; only ids and type names leave. */
+	private policyDecisionBlocked(event: RelayEventMap['policy-decision-blocked']) {
+		this.telemetry.track(TELEMETRY_EVENT.POLICIES.POLICY_BLOCKED_ACTION, {
+			...(event.actorType === 'user'
+				? { user_id: event.user.id, actor_type: 'user' }
+				: { actor_type: 'system', system_reason: event.systemReason }),
+			point: event.point,
+			outcome: event.outcome,
+			duration_ms: event.durationMs,
+			check_ids: event.checkIds,
+			violation_count: event.violations.length,
+			violations: event.violations.slice(0, MAX_LISTED_VIOLATIONS).map((violation) => ({
+				check_id: violation.checkId,
+				kind: violation.kind,
+				subject_type: violation.subjectType,
+				subject:
+					violation.subjectType !== null && TYPE_NAME_SUBJECT_TYPES.has(violation.subjectType)
+						? violation.subject
+						: null,
+				scope: violation.scope,
+				matched_rule: violation.matchedRuleId !== null,
+			})),
+			target_type: policedTargetType(event),
+			workflow_id: event.workflowId,
+			agent_id: event.agentId,
+			credential_id: event.credentialId,
+			credential_type: event.credentialType,
+			consumer_node_type: event.consumerNodeType,
+			project_id: event.projectId,
+		});
 	}
 
 	// #endregion
@@ -1352,6 +1409,7 @@ export class TelemetryEventRelay extends EventRelay {
 			workflow_id_policy: options.workflowIdPolicy,
 			credential_matching_mode: options.credentialMatchingMode,
 			credential_missing_mode: options.credentialMissingMode,
+			credential_conflict_policy: options.credentialConflictPolicy,
 			workflow_publishing_policy: options.workflowPublishingPolicy,
 			missing_node_type_mode: options.missingNodeTypeMode,
 			project_conflict_policy: options.projectConflictPolicy,
@@ -1401,6 +1459,7 @@ export class TelemetryEventRelay extends EventRelay {
 	}: RelayEventMap['n8n-package-exported']) {
 		this.telemetry.track('User exported n8n package', {
 			user_id: user.id,
+			agent_count: counts.agents,
 			workflow_count: counts.workflows,
 			folder_count: counts.folders,
 			credential_count: counts.credentials,
@@ -1415,6 +1474,7 @@ export class TelemetryEventRelay extends EventRelay {
 	private packageExportFailed({
 		user,
 		reason,
+		agentIds,
 		workflowIds,
 		folderIds,
 		projectIds,
@@ -1422,6 +1482,7 @@ export class TelemetryEventRelay extends EventRelay {
 		this.telemetry.track('User package export failed', {
 			user_id: user.id,
 			reason,
+			agent_count: agentIds?.length ?? 0,
 			workflow_count: workflowIds?.length ?? 0,
 			folder_count: folderIds?.length ?? 0,
 			project_count: projectIds?.length ?? 0,
@@ -1774,6 +1835,9 @@ export class TelemetryEventRelay extends EventRelay {
 		const isS3Licensed = this.license.isBinaryDataS3Licensed();
 		const authenticationMethod = config.getEnv('userManagement.authenticationMethod');
 		const dbVersion = await this.dbConnection.getDbVersion();
+		const runtime = detectRuntime(process.env, this.instanceSettings.isDocker);
+		const memoryLimit = getMemoryLimit();
+		const cpu = getCpuLimit();
 
 		const info = {
 			version_cli: N8N_VERSION,
@@ -1794,6 +1858,13 @@ export class TelemetryEventRelay extends EventRelay {
 					speed: cpus[0].speed,
 				},
 				is_docker: this.instanceSettings.isDocker,
+				memory_limit: memoryLimit === null ? null : memoryLimit / 1024,
+				cpu_limit: cpu.limit,
+				cpu_limit_source: cpu.source,
+				cpu_weight: cpu.weight,
+				runtime,
+				kubernetes_provider:
+					runtime === 'kubernetes' ? detectKubernetesProvider(os.release()) : undefined,
 			},
 			execution_variables: {
 				executions_mode: this.globalConfig.executions.mode,
@@ -1810,11 +1881,11 @@ export class TelemetryEventRelay extends EventRelay {
 			workflow_history: {
 				compaction_optimizing_time_window_hours:
 					this.globalConfig.workflowHistoryCompaction.optimizingTimeWindowHours,
-				compaction_trim_on_start_up: this.globalConfig.workflowHistoryCompaction.trimOnStartUp,
 				compaction_trimming_time_window_days:
 					this.globalConfig.workflowHistoryCompaction.trimmingTimeWindowDays,
 			},
 			n8n_deployment_type: this.globalConfig.deployment.type,
+			n8n_deployment_artifact: this.globalConfig.deployment.artifact || undefined,
 			n8n_binary_data_mode: this.binaryDataConfig.mode,
 			smtp_set_up: this.globalConfig.userManagement.emails.mode === 'smtp',
 			ldap_allowed: authenticationMethod === 'ldap',
@@ -1891,6 +1962,7 @@ export class TelemetryEventRelay extends EventRelay {
 			release_channel: this.globalConfig.generic.releaseChannel,
 			executions_mode: this.globalConfig.executions.mode,
 			n8n_deployment_type: this.globalConfig.deployment.type,
+			n8n_deployment_artifact: this.globalConfig.deployment.artifact || undefined,
 			db_type: this.globalConfig.database.type,
 			db_version: dbVersion,
 
@@ -2402,7 +2474,9 @@ export class TelemetryEventRelay extends EventRelay {
 				impact: rule.ruleImpact,
 				affected_workflows: rule.nbAffectedWorkflows,
 			})),
-			synced_at: new Date(report.report.generatedAt).toISOString(),
+			synced_at: report.report.generatedAt
+				? new Date(report.report.generatedAt).toISOString()
+				: undefined,
 		});
 	}
 

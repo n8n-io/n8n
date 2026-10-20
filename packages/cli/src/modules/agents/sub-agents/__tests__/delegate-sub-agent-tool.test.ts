@@ -343,6 +343,32 @@ describe('createN8nDelegateSubAgentTool', () => {
 		);
 	});
 
+	it('fails loudly when an inline sub-agent has no parent identity', async () => {
+		const tool = createN8nDelegateSubAgentTool({
+			runner,
+			sourcesById: { 'agent-2': source },
+			projectId,
+			credentialProvider,
+			runType: 'production',
+		} as unknown as Parameters<typeof createN8nDelegateSubAgentTool>[0]);
+
+		await expect(
+			tool.handler?.(
+				{
+					subAgentId: INLINE_SUB_AGENT_ID,
+					taskName: 'Research API',
+					goal: 'Find behavior.',
+				},
+				{ runId: 'parent-run-1' },
+			),
+		).resolves.toMatchObject({
+			status: 'failed',
+			answer: '',
+			error: 'Inline sub-agent parent Agent identity is missing',
+		});
+		expect(runner.run).not.toHaveBeenCalled();
+	});
+
 	it('routes a configured child resume to the exact persisted checkpoint', async () => {
 		runner.resumeForeground.mockResolvedValue(foregroundResult);
 		const parentExecutionCounter = {

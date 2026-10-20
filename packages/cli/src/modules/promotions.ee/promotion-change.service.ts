@@ -28,8 +28,8 @@ import {
 import { generateSlug } from '@/modules/n8n-packages/io/slug.utils';
 import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
 import {
-	MissingWorkflowDependencyPolicy,
-	WorkflowVersionPolicy,
+	ExportDependencyPolicy,
+	ExportVersionPolicy,
 } from '@/modules/n8n-packages/n8n-packages.types';
 import { MANIFEST_FILE } from '@/modules/n8n-packages/spec/constants';
 import {
@@ -57,7 +57,10 @@ const DEPENDENCY_COLLECTIONS = {
 	tags: 'tags',
 	workflows: 'workflows',
 	nodeTypes: null,
-} as const satisfies Record<keyof PackageRequirements, ManifestEntityCollection | null>;
+} as const satisfies Record<
+	Exclude<keyof PackageRequirements, 'agents'>,
+	ManifestEntityCollection | null
+>;
 
 const GIT_SCOPES = {
 	promote: 'gitConnection:push',
@@ -244,11 +247,12 @@ export class PromotionChangeService {
 			{
 				user,
 				projectIds: [projectId],
+				includeAgents: false,
 				includeArchivedWorkflows: true,
 				includeTags: true,
 				includeVariableValues: true,
-				workflowVersionPolicy: WorkflowVersionPolicy.Latest,
-				missingWorkflowDependencyPolicy: MissingWorkflowDependencyPolicy.ReferenceOnly,
+				versionPolicy: ExportVersionPolicy.Latest,
+				dependencyPolicy: ExportDependencyPolicy.ReferenceOnly,
 			},
 			{
 				writeDirectory: (path) => writer.writeDirectory(path),
@@ -333,7 +337,7 @@ export function scopeManifestToProject(
 		const kept = rows
 			?.map((row) => ({
 				...row,
-				usedBy: row.usedBy.filter(({ id }) => workflowIds.has(id)),
+				usedBy: row.usedBy.filter(({ kind, id }) => kind === 'workflow' && workflowIds.has(id)),
 			}))
 			.filter((row) => row.usedBy.length > 0);
 		return kept?.length ? kept : undefined;

@@ -263,6 +263,31 @@
 		},
 		{
 			"parameters": {
+				"path": "webhook-last-node-binary-error-text-html",
+				"responseMode": "lastNode",
+				"responseData": "firstEntryBinary",
+				"responseBinaryPropertyName": "missing",
+				"options": {
+					"rawBody": false,
+					"responseHeaders": {
+						"entries": [
+							{
+								"name": "content-type",
+								"value": "text/html"
+							}
+						]
+					}
+				}
+			},
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [528, 400],
+			"id": "59454933-01cf-49d0-b117-719b26ec913e",
+			"name": "Webhook last item binary error header content-type html",
+			"webhookId": "29667448-6068-429b-8110-18de01047797"
+		},
+		{
+			"parameters": {
 				"content": "## Respond Using Respond to Webhook",
 				"height": 800,
 				"width": 624,
@@ -554,6 +579,17 @@
 		},
 		"Webhook response data content-type text/html": {
 			"main": [[]]
+		},
+		"Webhook last item binary error header content-type html": {
+			"main": [
+				[
+					{
+						"node": "Build html file",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
 		}
 	},
 	"active": true,

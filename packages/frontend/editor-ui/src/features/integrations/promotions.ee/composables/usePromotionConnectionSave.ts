@@ -18,7 +18,7 @@ export type ConnectionSaveResult = {
 	error?: unknown;
 };
 
-/** Tries every write and returns the successful state and failed writes. */
+/** Saves independent writes. Target changes must succeed before direction settings. */
 export function usePromotionConnectionSave() {
 	const rootStore = useRootStore();
 
@@ -69,15 +69,26 @@ export function usePromotionConnectionSave() {
 		let connection = current;
 		const failed: ConnectionWrite[] = [];
 		let error: unknown;
+		let targetFailed = false;
 
 		isSaving.value = true;
 		try {
 			for (const write of writes) {
+				if (targetFailed && write.kind !== 'connection') {
+					failed.push(write);
+					continue;
+				}
 				try {
 					connection = await runWrite(current.id, write, connection);
 				} catch (writeError) {
 					failed.push(write);
 					error ??= writeError;
+					if (
+						write.kind === 'connection' &&
+						(write.payload.target !== undefined || write.payload.providerId !== undefined)
+					) {
+						targetFailed = true;
+					}
 				}
 			}
 		} finally {

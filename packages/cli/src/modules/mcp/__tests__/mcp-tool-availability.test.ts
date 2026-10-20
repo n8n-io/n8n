@@ -1,11 +1,12 @@
 import type { ModuleRegistry } from '@n8n/backend-common';
+import type { GlobalConfig } from '@n8n/config';
 import { User } from '@n8n/db';
 import * as permissions from '@n8n/permissions';
 import { mock } from 'vitest-mock-extended';
 
 import type { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
 
-import { isCommunityNodeInstallAvailable } from '../mcp-tool-availability';
+import { areSkillToolsAvailable, isCommunityNodeInstallAvailable } from '../mcp-tool-availability';
 
 vi.mock('@n8n/permissions', async (importOriginal) => ({
 	...(await importOriginal<typeof permissions>()),
@@ -139,5 +140,44 @@ describe('isCommunityNodeInstallAvailable', () => {
 				user,
 			),
 		).toBe(false);
+	});
+});
+
+describe('areSkillToolsAvailable', () => {
+	const moduleRegistry = mock<ModuleRegistry>({ settings: mock<ModuleRegistry['settings']>() });
+
+	const globalConfig = ({ builderEnabled = true, skillsHubEnabled = true } = {}) =>
+		({
+			endpoints: { mcpBuilderEnabled: builderEnabled },
+			agents: { skillsHubEnabled },
+		}) as unknown as GlobalConfig;
+
+	beforeEach(() => {
+		moduleRegistry.isActive.mockReturnValue(true);
+		vi.mocked(moduleRegistry.settings.get).mockReturnValue(undefined);
+	});
+
+	it('is available when the agents module is active and the skills hub is on', () => {
+		expect(areSkillToolsAvailable(globalConfig(), moduleRegistry)).toBe(true);
+	});
+
+	it('does not depend on the agent tools', () => {
+		vi.mocked(moduleRegistry.settings.get).mockReturnValue({ enabled: false });
+
+		expect(areSkillToolsAvailable(globalConfig({ builderEnabled: false }), moduleRegistry)).toBe(
+			true,
+		);
+	});
+
+	it('is unavailable when the skills hub is off', () => {
+		expect(areSkillToolsAvailable(globalConfig({ skillsHubEnabled: false }), moduleRegistry)).toBe(
+			false,
+		);
+	});
+
+	it('is unavailable when the agents module is inactive', () => {
+		moduleRegistry.isActive.mockReturnValue(false);
+
+		expect(areSkillToolsAvailable(globalConfig(), moduleRegistry)).toBe(false);
 	});
 });

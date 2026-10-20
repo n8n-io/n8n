@@ -30,6 +30,7 @@ const removedRow = (): AiPreferenceDto => ({
 	projectId: null,
 	project: null,
 	source: 'mcp',
+	createdBy: null,
 	scopes: ['aiPreference:read', 'aiPreference:update', 'aiPreference:delete'],
 	createdAt: new Date(Date.now() - 120_000).toISOString(),
 	updatedAt: new Date().toISOString(),

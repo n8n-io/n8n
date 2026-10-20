@@ -94,7 +94,11 @@ export class ExecutionEntity {
 	storedAt: ExecutionDataStorageLocation;
 
 	@Column({ type: jsonColumnType, nullable: true })
-	tracingContext: { traceparent: string; tracestate?: string } | null;
+	tracingContext: {
+		traceparent: string;
+		tracestate?: string;
+		identity?: Record<string, string>;
+	} | null;
 	/**
 	 * Optional caller-supplied key that uniquely identifies this logical
 	 * execution. Enforced unique via an index, so concurrent attempts

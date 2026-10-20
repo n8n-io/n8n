@@ -3,7 +3,12 @@
  * while a credential that predates the rule stays editable. The lock belongs at decryption,
  * so the refusal here is about not letting someone set up what can never work.
  */
-import { createTeamProject, randomCredentialPayload, testDb } from '@n8n/backend-test-utils';
+import {
+	createTeamProject,
+	getPersonalProject,
+	randomCredentialPayload,
+	testDb,
+} from '@n8n/backend-test-utils';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import { CredentialsRepository, type User } from '@n8n/db';
 import { PolicyCheckMetadata } from '@n8n/decorators';
@@ -38,14 +43,21 @@ let credentialsRepository: CredentialsRepository;
 const denyGithubAtInstanceScope = async () =>
 	await putCredentialTypePolicy(ownerAgent, null, { rules: [denyRule('deny-github', BLOCKED)] });
 
-const violationFor = (credentialType: string, scope: 'instance' | 'project', ruleId: string) => ({
+const violationFor = (
+	credentialType: string,
+	scope: 'instance' | 'project',
+	ruleId: string,
+	{ projectId, optInAvailable = false }: { projectId?: string; optInAvailable?: boolean } = {},
+) => ({
 	kind: 'credential-type-unavailable',
 	checkId: CHECK_ID,
-	message: `Credential type "${credentialType}" is blocked by ${scope === 'instance' ? 'an instance policy' : "this project's policy"}`,
+	message: `Credential type "${credentialType}" is blocked by ${scope === 'instance' ? 'an instance policy' : 'a project policy'}`,
 	subject: credentialType,
 	subjectType: 'credentialType',
 	scope,
 	matchedRuleId: ruleId,
+	...(projectId !== undefined && { projectId }),
+	optInAvailable,
 });
 
 beforeAll(async () => {
@@ -111,7 +123,7 @@ describe('POST /credentials', () => {
 			.expect(403);
 
 		expect(response.body.meta.violations).toEqual([
-			violationFor(BLOCKED, 'project', 'deny-github'),
+			violationFor(BLOCKED, 'project', 'deny-github', { projectId: project.id }),
 		]);
 		await expect(credentialsRepository.count()).resolves.toBe(0);
 	});
@@ -147,8 +159,9 @@ describe('PATCH /credentials/:credentialId', () => {
 			.send({ ...randomCredentialPayload({ type: BLOCKED }), name: credential.name })
 			.expect(403);
 
+		const { id: projectId } = await getPersonalProject(owner);
 		expect(response.body.meta.violations).toEqual([
-			violationFor(BLOCKED, 'instance', 'deny-github'),
+			violationFor(BLOCKED, 'instance', 'deny-github', { projectId }),
 		]);
 
 		const stored = await credentialsRepository.findOneBy({ id: credential.id });

@@ -899,7 +899,7 @@ const toolNames = {
 	conversation: {
 		expand: '`activity(action="expand", id=N)`',
 		list: '`activity(action="list")`',
-		workflows: '`workflows(action="list")`',
+		workflows: '`workflow_builder_workflows(action="list")`',
 	},
 	mcp: {
 		expand: '`expand_instance_activity(id=N)`',
@@ -975,7 +975,7 @@ function renderRuns(runs: RunSummary[], isUpdate: boolean, now: Date): string[] 
 				? `ran ${run.total}×, all succeeded`
 				: `ran ${run.total}×, ${run.failed} failed`;
 		// The failure itself, not the newest run, which on a schedule that has since recovered is a
-		// success. `executions` fetches the live record from this id.
+		// success. `workflow_builder_executions` fetches the live record from this id.
 		const failure = run.lastFailedExecutionId
 			? `last failure execution:${run.lastFailedExecutionId}`
 			: '';
@@ -1056,7 +1056,7 @@ function toActivityEntry(row: ActivityEvent, currentUserId: string): InstanceAiA
  * exist, they carry their own permission checks, and duplicating them would drift from them.
  *
  * Named in the caller's own vocabulary,
- * because the two surfaces do not share tool names. An MCP client handed `workflows(action="get")`
+ * because the two surfaces do not share tool names. An MCP client handed `workflow_builder_workflows(action="get")`
  * would be told to call a tool its server does not expose.
  */
 function liveRecordHint(
@@ -1069,9 +1069,9 @@ function liveRecordHint(
 	> = {
 		conversation: {
 			workflow: row.resourceId
-				? `workflows(action="get", workflowId="${row.resourceId}")`
+				? `workflow_builder_workflows(action="get", workflowId="${row.resourceId}")`
 				: undefined,
-			credential: 'credentials(action="list")',
+			credential: 'workflow_builder_credentials(action="list")',
 		},
 		mcp: {
 			workflow: row.resourceId ? `get_workflow_details(workflowId="${row.resourceId}")` : undefined,

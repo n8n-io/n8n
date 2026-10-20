@@ -14,14 +14,20 @@ export const GMAIL_GUIDE: NodeTypeGuide = {
 - **authentication**: OAuth2 or Service Account
 
 #### Simplify Option (CRITICAL)
-- **simplify: false** - Returns FULL email with body, attachments, headers
-- **simplify: true** - Returns LIMITED data (subject, snippet only, NO body)
+The parameter is named **simple**, not "simplify". Default: true.
+- **simple: false** - Returns the FULL parsed email with body, attachments and headers. The sender is the object \`$json.from\`: read the address with \`$json.from.value[0].address\`. The body is in \`$json.text\` and \`$json.html\`.
+- **simple: true** - Returns a LIMITED flat item (subject, snippet, labels, NO body). The sender is the string \`$json.From\`, for example "Sara Chen <sara@example.com>".
 
-ALWAYS set simplify to FALSE when:
-- Workflow needs to analyze email content/body
-- AI Agent will process or summarize emails
-- Email content is used for decision making
+Read the sender from the field that matches the setting. \`$json.From\` is undefined when simple is false.
+
+These shapes are for the **message** operations. For **thread:get**, both settings flatten the headers, so \`$json.From\` works. With simple false, thread:get returns the Gmail API payload: the body is encoded in base64url in \`payload.parts[].body.data\` (look through nested parts), and there is no \`$json.from\`, \`$json.text\` or \`$json.html\`.
+
+Set simple to false only when:
+- Workflow needs the email body to analyze or summarize it
+- AI Agent will process the email text
 - Attachments need to be accessed
+
+Keep simple true when the workflow only filters or routes by sender, subject or labels.
 
 #### Gmail Filter Queries
 For Gmail Trigger nodes, use comprehensive search filters with OR operators:
@@ -40,7 +46,7 @@ NOT just: "subject:delivery" (misses many relevant emails)
    - Configure to, subject, and message fields
 
 2. **Reading Emails for AI Analysis**:
-   - Set simplify to false (required for full email body)
+   - Set simple to false (required for full email body) and read the sender from \`$json.from.value[0].address\`
    - Configure appropriate filter query
    - Pass full email data to AI Agent
 

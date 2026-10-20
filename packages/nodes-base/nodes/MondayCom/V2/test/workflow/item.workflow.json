@@ -1,0 +1,211 @@
+{
+	"name": "Monday.com V2 Test - Items",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-32, 400],
+			"id": "0a1b2c3d-0000-4000-8000-000000000001",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"authentication": "accessToken",
+				"resource": "item",
+				"operation": "createItem",
+				"createAs": "item",
+				"boardId": { "__rl": true, "mode": "id", "value": "123" },
+				"name": "New Item",
+				"columnValuesMode": "json",
+				"createOptions": {}
+			},
+			"type": "n8n-nodes-base.mondayCom",
+			"typeVersion": 2,
+			"position": [192, 100],
+			"id": "0a1b2c3d-0000-4000-8000-000000000002",
+			"name": "Item > Create",
+			"credentials": {
+				"mondayComApi": { "id": "monday-test-cred", "name": "Monday.com (test)" }
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "accessToken",
+				"resource": "item",
+				"operation": "updateItem",
+				"boardId": { "__rl": true, "mode": "id", "value": "123" },
+				"itemId": { "__rl": true, "mode": "id", "value": "11" },
+				"columnValuesMode": "json",
+				"columnValuesJson": "{\"text_1\": \"hi\"}",
+				"createOptions": {}
+			},
+			"type": "n8n-nodes-base.mondayCom",
+			"typeVersion": 2,
+			"position": [192, 250],
+			"id": "0a1b2c3d-0000-4000-8000-000000000003",
+			"name": "Item > Update",
+			"credentials": {
+				"mondayComApi": { "id": "monday-test-cred", "name": "Monday.com (test)" }
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "accessToken",
+				"resource": "item",
+				"operation": "getItem",
+				"itemInputMode": "id",
+				"itemId": "11",
+				"simplify": true,
+				"getItemOptions": {}
+			},
+			"type": "n8n-nodes-base.mondayCom",
+			"typeVersion": 2,
+			"position": [192, 400],
+			"id": "0a1b2c3d-0000-4000-8000-000000000004",
+			"name": "Item > Get",
+			"credentials": {
+				"mondayComApi": { "id": "monday-test-cred", "name": "Monday.com (test)" }
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "accessToken",
+				"resource": "item",
+				"operation": "getItems",
+				"boardId": { "__rl": true, "mode": "id", "value": "123" },
+				"itemFilters": {},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.mondayCom",
+			"typeVersion": 2,
+			"position": [192, 550],
+			"id": "0a1b2c3d-0000-4000-8000-000000000005",
+			"name": "Item > Get Many",
+			"credentials": {
+				"mondayComApi": { "id": "monday-test-cred", "name": "Monday.com (test)" }
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "accessToken",
+				"resource": "item",
+				"operation": "archiveOrDeleteItem",
+				"itemsMode": "single",
+				"archiveOrDeleteAction": "archive",
+				"boardId": { "__rl": true, "mode": "id", "value": "123" },
+				"itemId": { "__rl": true, "mode": "id", "value": "11" }
+			},
+			"type": "n8n-nodes-base.mondayCom",
+			"typeVersion": 2,
+			"position": [192, 700],
+			"id": "0a1b2c3d-0000-4000-8000-000000000006",
+			"name": "Item > Archive",
+			"credentials": {
+				"mondayComApi": { "id": "monday-test-cred", "name": "Monday.com (test)" }
+			}
+		}
+	],
+	"pinData": {
+		"Item > Create": [
+			{
+				"json": {
+					"id": "201",
+					"name": "New Item",
+					"url": "https://acme.monday.com/boards/123/pulses/201",
+					"state": "active",
+					"board": { "id": "123", "name": "CRM" },
+					"group": { "id": "topics", "title": "Topics" },
+					"column_values": []
+				}
+			}
+		],
+		"Item > Update": [
+			{
+				"json": {
+					"id": "11",
+					"name": "My Item",
+					"url": "https://acme.monday.com/boards/123/pulses/11",
+					"state": "active",
+					"board": { "id": "123", "name": "CRM" },
+					"group": { "id": "topics", "title": "Topics" },
+					"column_values": [{ "id": "text_1", "type": "text", "text": "hi", "value": "\"hi\"" }]
+				}
+			}
+		],
+		"Item > Get": [
+			{
+				"json": {
+					"id": "11",
+					"name": "My Item",
+					"state": "active",
+					"url": "https://acme.monday.com/boards/123/pulses/11",
+					"created_at": "2026-01-01T00:00:00Z",
+					"updated_at": "2026-01-02T00:00:00Z",
+					"board": { "id": "123", "name": "CRM" },
+					"group": { "id": "topics", "title": "Topics" },
+					"parent_item": null,
+					"columns": { "Notes": "hello", "Status": "Done" }
+				}
+			}
+		],
+		"Item > Get Many": [
+			{
+				"json": {
+					"id": "11",
+					"name": "My Item",
+					"state": "active",
+					"url": "https://acme.monday.com/boards/123/pulses/11",
+					"created_at": "2026-01-01T00:00:00Z",
+					"updated_at": "2026-01-02T00:00:00Z",
+					"group": { "id": "topics", "title": "Topics" },
+					"column_values": [
+						{ "id": "text_1", "type": "text", "text": "hello", "value": "\"hello\"" }
+					]
+				}
+			},
+			{
+				"json": {
+					"id": "12",
+					"name": "Second Item",
+					"state": "active",
+					"url": "https://acme.monday.com/boards/123/pulses/12",
+					"created_at": "2026-01-03T00:00:00Z",
+					"updated_at": "2026-01-03T00:00:00Z",
+					"group": { "id": "topics", "title": "Topics" },
+					"column_values": []
+				}
+			}
+		],
+		"Item > Archive": [
+			{
+				"json": {
+					"id": "11",
+					"name": "My Item",
+					"state": "archived",
+					"action": "archive"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{ "node": "Item > Create", "type": "main", "index": 0 },
+					{ "node": "Item > Update", "type": "main", "index": 0 },
+					{ "node": "Item > Get", "type": "main", "index": 0 },
+					{ "node": "Item > Get Many", "type": "main", "index": 0 },
+					{ "node": "Item > Archive", "type": "main", "index": 0 }
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "00000000-0000-4000-8000-000000000000",
+	"id": "MondayComV2ItemTest",
+	"tags": []
+}

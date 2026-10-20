@@ -37,6 +37,8 @@ const defaultSettings: OtelSettings = {
 	tracesSampleRate: 1.0,
 	startupConnectivityTimeoutMs: 2_000,
 	includeNodeSpans: true,
+	emitWorkflowStartSpan: false,
+	emitNodeStartSpan: false,
 	injectOutbound: true,
 	productionExecutionsOnly: true,
 };
@@ -85,6 +87,17 @@ export const useOtelStore = defineStore(OTEL_STORE, () => {
 		} finally {
 			saving.value = false;
 		}
+	}
+
+	// Applies only the status. Other fields keep their unsaved draft values.
+	async function saveEnabled(enabled: boolean): Promise<void> {
+		const updated = await updateOtelSettings(rootStore.restApiContext, {
+			...savedSettings.value,
+			enabled,
+		});
+		savedSettings.value = extractSettings(updated);
+		settings.value = { ...settings.value, enabled: updated.enabled };
+		envManagedFields.value = updated.envManagedFields;
 	}
 
 	function discardChanges(): void {
@@ -140,6 +153,7 @@ export const useOtelStore = defineStore(OTEL_STORE, () => {
 		testTimestamp,
 		fetchSettings,
 		saveSettings,
+		saveEnabled,
 		discardChanges,
 		sendTestTrace,
 		resetTestState,

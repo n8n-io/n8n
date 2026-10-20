@@ -409,7 +409,7 @@ defineExpose({
 				>
 					<MarkdownEditorExpandedViewButton
 						:is-expanded-view="isExpandedViewOpen"
-						variant="subtle"
+						variant="outline"
 						icon-size="medium"
 						@toggle="isExpandedViewOpen = !isExpandedViewOpen"
 					/>
@@ -424,7 +424,7 @@ defineExpose({
 							:icon="expandButtonIcon"
 							icon-only
 							icon-size="medium"
-							variant="subtle"
+							variant="outline"
 							:class="$style.expandButton"
 							:aria-label="expandButtonLabel"
 							@click="toggleCollapsed"
@@ -471,7 +471,7 @@ defineExpose({
 }
 
 .dialog {
-	--n8n-dialog-content--padding: var(--spacing--5xs) 0 0 0;
+	--n8n-dialog-content--padding: 0;
 	max-height: var(--markdown-editor-max-height);
 }
 

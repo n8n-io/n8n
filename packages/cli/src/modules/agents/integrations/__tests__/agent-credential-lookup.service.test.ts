@@ -1,6 +1,6 @@
 import { mock } from 'vitest-mock-extended';
 
-import type { CredentialsEntity } from '@n8n/db';
+import type { CredentialsEntity, User } from '@n8n/db';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 
@@ -73,5 +73,36 @@ describe('AgentCredentialLookupService', () => {
 	it('refuses a credential visible to neither', async () => {
 		expect(await service.decryptForProject(PROJECT_ID, CREDENTIAL_ID, TYPE)).toBeNull();
 		expect(credentialsService.decrypt).not.toHaveBeenCalled();
+	});
+
+	describe('decryptForUser', () => {
+		const user = mock<User>();
+
+		beforeEach(() => {
+			credentialsService.findAllCredentialIdsForProject.mockResolvedValue([
+				mock<CredentialsEntity>({ id: CREDENTIAL_ID, type: TYPE }),
+			]);
+		});
+
+		it('asks for the credentials the user can use without the personal route', async () => {
+			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+				{ id: CREDENTIAL_ID },
+			] as never);
+
+			expect(await service.decryptForUser(user, PROJECT_ID, CREDENTIAL_ID, TYPE)).toEqual({
+				clientId: 'a-client',
+			});
+			expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledWith(user, {
+				projectId: PROJECT_ID,
+				excludePersonalRoute: true,
+			});
+		});
+
+		it('refuses a credential that is not in the usable list', async () => {
+			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([] as never);
+
+			expect(await service.decryptForUser(user, PROJECT_ID, CREDENTIAL_ID, TYPE)).toBeNull();
+			expect(credentialsService.decrypt).not.toHaveBeenCalled();
+		});
 	});
 });

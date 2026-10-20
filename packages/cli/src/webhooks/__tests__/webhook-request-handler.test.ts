@@ -1,7 +1,11 @@
 import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { type Response } from 'express';
-import { isWebhookHtmlSandboxingDisabled, getHtmlSandboxCSP } from 'n8n-core';
+import {
+	isFormHtmlSandboxingDisabled,
+	isWebhookHtmlSandboxingDisabled,
+	getHtmlSandboxCSP,
+} from 'n8n-core';
 import { OperationalError, randomString } from 'n8n-workflow';
 import type { IHttpRequestMethods } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
@@ -18,6 +22,7 @@ import type {
 vi.mock('n8n-core', async () => ({
 	...(await vi.importActual<typeof import('n8n-core')>('n8n-core')),
 	isWebhookHtmlSandboxingDisabled: vi.fn().mockReturnValue(false),
+	isFormHtmlSandboxingDisabled: vi.fn().mockReturnValue(false),
 	getHtmlSandboxCSP: vi.fn().mockReturnValue('sandbox allow-downloads allow-forms allow-modals'),
 }));
 
@@ -335,7 +340,7 @@ describe('WebhookRequestHandler', () => {
 		});
 
 		it('should not set CSP sandbox header when sandboxing is disabled', async () => {
-			vi.mocked(isWebhookHtmlSandboxingDisabled).mockReturnValueOnce(true);
+			vi.mocked(isWebhookHtmlSandboxingDisabled).mockReturnValue(true);
 
 			const req = mock<WebhookRequest>({
 				path: '/',
@@ -354,7 +359,174 @@ describe('WebhookRequestHandler', () => {
 
 			await handler(req, res);
 
-			expect(res.setHeader).not.toHaveBeenCalledWith('Content-Security-Policy', expect.anything());
+			expect(res.setHeader).not.toHaveBeenCalledWith(
+				'Content-Security-Policy',
+				getHtmlSandboxCSP(),
+			);
+		});
+
+		describe('on every exit path', () => {
+			const sandboxCSP = 'sandbox allow-scripts';
+
+			const cspSetBefore = (res: ReturnType<typeof mock<Response>>, writer: 'json' | 'send') => {
+				const cspCall = res.setHeader.mock.calls.findIndex(
+					([name]) => name === 'Content-Security-Policy',
+				);
+				expect(cspCall).not.toBe(-1);
+				expect(res.setHeader.mock.calls[cspCall][1]).toBe(sandboxCSP);
+				expect(res.setHeader.mock.invocationCallOrder[cspCall]).toBeLessThan(
+					res[writer].mock.invocationCallOrder[0],
+				);
+			};
+
+			beforeEach(() => {
+				vi.mocked(getHtmlSandboxCSP).mockReturnValue(sandboxCSP);
+			});
+
+			it('should set the sandbox header before an error response is sent', async () => {
+				const req = mock<WebhookRequest>({ path: '/', method: 'GET', params: { path: 'test' } });
+				const res = mock<Response>();
+				res.status.mockReturnValue(res);
+				webhookManager.executeWebhook.mockRejectedValueOnce(new OperationalError('Test error'));
+
+				await handler(req, res);
+
+				expect(res.status).toHaveBeenCalledWith(500);
+				cspSetBefore(res, 'json');
+			});
+
+			it('should set the sandbox header on a legacy response without headers', async () => {
+				const req = mock<WebhookRequest>({ path: '/', method: 'GET', params: { path: 'test' } });
+				const res = mock<Response>();
+				// A node can pass a plain string body to `sendResponse()`, without a headers object.
+				webhookManager.executeWebhook.mockResolvedValueOnce({
+					responseCode: 200,
+					data: '<p>text</p>',
+				} as unknown as IWebhookResponseCallbackData);
+
+				await handler(req, res);
+
+				expect(res.send).toHaveBeenCalledWith('<p>text</p>');
+				cspSetBefore(res, 'send');
+			});
+
+			it('should set the sandbox header for an unsupported method', async () => {
+				const req = mock<WebhookRequest>({
+					path: '/',
+					method: 'CONNECT' as IHttpRequestMethods,
+				});
+				const res = mock<Response>();
+				res.status.mockReturnValue(res);
+
+				await handler(req, res);
+
+				cspSetBefore(res, 'json');
+			});
+
+			it('should set the sandbox header when the node writes the response', async () => {
+				const req = mock<WebhookRequest>({ path: '/', method: 'GET', params: { path: 'test' } });
+				const res = mock<Response>();
+				webhookManager.executeWebhook.mockImplementationOnce(async (_req, response) => {
+					response.send('<p>text</p>');
+					return { noWebhookResponse: true };
+				});
+
+				await handler(req, res);
+
+				cspSetBefore(res, 'send');
+			});
+		});
+
+		describe('sandbox setting of the route', () => {
+			const formHandlers = [
+				['a form route', createWebhookHandlerFor(webhookManager, 'form')],
+				[
+					'a route that selects the form setting',
+					createWebhookHandlerFor(webhookManager, undefined, 'form'),
+				],
+			] as const;
+
+			test.each(formHandlers)('should follow the form setting on %s', async (_, formHandler) => {
+				vi.mocked(isFormHtmlSandboxingDisabled).mockReturnValue(true);
+				vi.mocked(isWebhookHtmlSandboxingDisabled).mockReturnValue(false);
+				vi.mocked(getHtmlSandboxCSP).mockReturnValue('sandbox allow-scripts');
+
+				const req = mock<WebhookRequest>({ path: '/', method: 'GET', params: { path: 'test' } });
+				const res = mock<Response>();
+				webhookManager.executeWebhook.mockResolvedValueOnce({ noWebhookResponse: true });
+
+				await (formHandler as typeof handler)(req, res);
+
+				expect(res.setHeader).not.toHaveBeenCalledWith(
+					'Content-Security-Policy',
+					'sandbox allow-scripts',
+				);
+			});
+
+			it('should not sandbox a form response when only form sandboxing is disabled', async () => {
+				vi.mocked(isFormHtmlSandboxingDisabled).mockReturnValue(true);
+				vi.mocked(isWebhookHtmlSandboxingDisabled).mockReturnValue(false);
+				vi.mocked(getHtmlSandboxCSP).mockReturnValue('sandbox allow-scripts');
+				const formHandler = createWebhookHandlerFor(webhookManager, 'form') as typeof handler;
+
+				const req = mock<WebhookRequest>({ path: '/', method: 'GET', params: { path: 'test' } });
+				const res = mock<Response>();
+				webhookManager.executeWebhook.mockResolvedValueOnce({
+					responseCode: 200,
+					data: '<p>text</p>',
+					headers: { 'content-type': 'text/html' },
+				} as unknown as IWebhookResponseCallbackData);
+
+				await formHandler(req, res);
+
+				expect(res.setHeaders).toHaveBeenCalled();
+				expect(res.setHeader).not.toHaveBeenCalledWith(
+					'Content-Security-Policy',
+					'sandbox allow-scripts',
+				);
+				expect(res.send).toHaveBeenCalledWith('<p>text</p>');
+			});
+
+			it('should keep the form sandbox on a form response when webhook sandboxing is disabled', async () => {
+				vi.mocked(isFormHtmlSandboxingDisabled).mockReturnValue(false);
+				vi.mocked(isWebhookHtmlSandboxingDisabled).mockReturnValue(true);
+				vi.mocked(getHtmlSandboxCSP).mockReturnValue('sandbox allow-scripts');
+				const formHandler = createWebhookHandlerFor(webhookManager, 'form') as typeof handler;
+
+				const req = mock<WebhookRequest>({ path: '/', method: 'GET', params: { path: 'test' } });
+				const res = mock<Response>();
+				webhookManager.executeWebhook.mockResolvedValueOnce({
+					responseCode: 200,
+					data: { ok: true },
+					headers: { 'content-type': 'text/html' },
+				});
+
+				await formHandler(req, res);
+
+				expect(res.setHeader).toHaveBeenCalledWith(
+					'Content-Security-Policy',
+					'sandbox allow-scripts',
+				);
+				expect(res.removeHeader).not.toHaveBeenCalled();
+				expect(res.json).toHaveBeenCalledWith({ ok: true });
+			});
+
+			it('should follow the webhook setting on other routes', async () => {
+				vi.mocked(isFormHtmlSandboxingDisabled).mockReturnValue(true);
+				vi.mocked(isWebhookHtmlSandboxingDisabled).mockReturnValue(false);
+				vi.mocked(getHtmlSandboxCSP).mockReturnValue('sandbox allow-scripts');
+
+				const req = mock<WebhookRequest>({ path: '/', method: 'GET', params: { path: 'test' } });
+				const res = mock<Response>();
+				webhookManager.executeWebhook.mockResolvedValueOnce({ noWebhookResponse: true });
+
+				await handler(req, res);
+
+				expect(res.setHeader).toHaveBeenCalledWith(
+					'Content-Security-Policy',
+					'sandbox allow-scripts',
+				);
+			});
 		});
 	});
 });

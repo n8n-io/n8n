@@ -1,10 +1,12 @@
 import type { Logger } from '@n8n/backend-common';
+import type { User } from '@n8n/db';
+import { Container } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { ConflictError } from '@n8n/errors';
 
-import type { Agent } from '../../entities/agent.entity';
+import type { ProjectAgent } from '../../entities/agent.entity';
 import type { AgentRepository } from '../../repositories/agent.repository';
 import type {
 	AgentChatIntegrationContext,
@@ -15,6 +17,7 @@ import {
 	TEAMS_CLIENT_SECRET as CLIENT_SECRET,
 	TEAMS_TENANT_ID as TENANT_ID,
 } from './helpers/teams/synthetic-fixtures';
+import { TeamsCleanupService } from '../platforms/teams/teams-cleanup.service';
 import { TeamsIntegration } from '../platforms/teams/teams-integration';
 
 const createTeamsAdapter = vi.fn(() => ({ name: 'teams' }));
@@ -87,6 +90,53 @@ describe('TeamsIntegration', () => {
 		// webhooks is what makes that default correct here.
 		it('runs on every main', () => {
 			expect(integration.requiresLeader()).toBe(false);
+		});
+
+		it('offers sends that need no inbound message, for scheduled tasks', () => {
+			expect(integration.actions).toEqual(
+				expect.arrayContaining(['send_dm', 'send_channel_message']),
+			);
+		});
+	});
+
+	describe('normalizeChannelId', () => {
+		const adapter = { encodeThreadId: vi.fn(() => 'teams:encoded') };
+
+		it('has the adapter encode a raw conversation ID with the pinned service URL', () => {
+			expect(integration.normalizeChannelId('19:abc@thread.tacv2', adapter)).toBe('teams:encoded');
+			expect(adapter.encodeThreadId).toHaveBeenCalledWith({
+				conversationId: '19:abc@thread.tacv2',
+				serviceUrl: 'https://smba.trafficmanager.net/teams/',
+			});
+		});
+
+		it('leaves an ID that is already encoded untouched', () => {
+			expect(integration.normalizeChannelId('teams:abc:def', adapter)).toBe('teams:abc:def');
+		});
+
+		it('prefixes a bare ID like any other platform', () => {
+			expect(integration.normalizeChannelId('abc', adapter)).toBe('teams:abc');
+		});
+	});
+
+	describe('describeActionError', () => {
+		const permissionDenied = Object.assign(new Error('Permission denied'), {
+			code: 'PERMISSION_DENIED',
+		});
+
+		it.each([
+			['send_dm', 'installed'],
+			['send_channel_message', 'added to the team'],
+		] as const)('tells the agent how to unblock a refused %s', (action, hint) => {
+			expect(integration.describeActionError(action, permissionDenied)).toEqual({
+				code: 'PERMISSION_NOT_GRANTED',
+				message: expect.stringContaining(hint),
+			});
+		});
+
+		it('keeps the default error for anything else', () => {
+			expect(integration.describeActionError('send_dm', new Error('boom'))).toBeUndefined();
+			expect(integration.describeActionError('respond', permissionDenied)).toBeUndefined();
 		});
 	});
 
@@ -198,7 +248,7 @@ describe('TeamsIntegration', () => {
 	describe('onBeforeConnect', () => {
 		it('rejects a credential another agent already connected', async () => {
 			agentRepository.findByIntegrationCredential.mockResolvedValue([
-				mock<Agent>({ name: 'Support bot' }),
+				mock<ProjectAgent>({ name: 'Support bot' }),
 			]);
 
 			await expect(integration.onBeforeConnect(connectionContext())).rejects.toThrow(ConflictError);
@@ -362,6 +412,40 @@ describe('TeamsIntegration', () => {
 					isNewMention,
 				}),
 			).toBe(expected);
+		});
+	});
+
+	/**
+	 * The hook is the only wiring between integration removal and the cleanup
+	 * service, and the lifecycle tests mock `onRemove` away.
+	 */
+	describe('onRemove', () => {
+		it('asks the cleanup service about this project and credential', async () => {
+			const user = mock<User>({ id: 'user-1' });
+			const warning = {
+				integrationType: 'teams' as const,
+				code: 'resources_not_deleted' as const,
+				action: { type: 'open_url' as const, url: 'https://entra.microsoft.com' },
+				details: { appId: 'app-1' },
+			};
+			const cleanupService = mock<TeamsCleanupService>();
+			cleanupService.describeLeftovers.mockResolvedValue(warning);
+			Container.set(TeamsCleanupService, cleanupService);
+
+			await expect(
+				integration.onRemove({
+					user,
+					agentId: AGENT_ID,
+					projectId: 'project-1',
+					credentialId: CREDENTIAL_ID,
+				}),
+			).resolves.toEqual(warning);
+
+			expect(cleanupService.describeLeftovers).toHaveBeenCalledWith({
+				user,
+				projectId: 'project-1',
+				credentialId: CREDENTIAL_ID,
+			});
 		});
 	});
 });

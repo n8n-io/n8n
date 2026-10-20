@@ -46,6 +46,7 @@ import type {
 	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiEvalAgentExecutionResult,
 	InstanceAiEvalCredentialAllowlistRequest,
+	InstanceAiEvalCredentialTestTargetRequest,
 	InstanceAiEvalExecutionResult,
 	InstanceAiEvalLlmUsage,
 	InstanceAiEvalRestoreThreadRequest,
@@ -1106,6 +1107,70 @@ describe('InstanceAiController', () => {
 		});
 	});
 
+	describe('setThreadCredentialTestTarget', () => {
+		const target = {
+			credentialType: 'slackApi',
+			baseUrl: 'http://stand-in.test:4100',
+			urlField: 'url',
+		};
+		const payload = { threadId: THREAD_ID, ...target };
+
+		it('should require instanceAi:eval scope', () => {
+			expect(scopeOf('setThreadCredentialTestTarget')).toEqual({
+				scope: 'instanceAi:eval',
+				globalOnly: true,
+			});
+		});
+
+		beforeEach(() => {
+			globalConfig.instanceAi.evalInstance = true;
+		});
+
+		afterEach(() => {
+			globalConfig.instanceAi.evalInstance = false;
+		});
+
+		it('should set the test target for an owned thread', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+
+			const result = await controller.setThreadCredentialTestTarget(
+				req,
+				res,
+				payload as InstanceAiEvalCredentialTestTargetRequest,
+			);
+
+			expect(result).toEqual({ ok: true });
+			expect(evalCredentialAllowlists.getTestTarget(THREAD_ID, 'slackApi')).toEqual(target);
+		});
+
+		it('should reject a thread that does not exist', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('not_found');
+
+			await expect(
+				controller.setThreadCredentialTestTarget(
+					req,
+					res,
+					payload as InstanceAiEvalCredentialTestTargetRequest,
+				),
+			).rejects.toThrow(NotFoundError);
+		});
+
+		it('should refuse the target on an instance that is not an eval instance', async () => {
+			globalConfig.instanceAi.evalInstance = false;
+			evalCredentialAllowlists.clearThread(THREAD_ID);
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+
+			await expect(
+				controller.setThreadCredentialTestTarget(
+					req,
+					res,
+					payload as InstanceAiEvalCredentialTestTargetRequest,
+				),
+			).rejects.toThrow(NotFoundError);
+			expect(evalCredentialAllowlists.getTestTarget(THREAD_ID, 'slackApi')).toBeUndefined();
+		});
+	});
+
 	describe('getEvalThreadMemory', () => {
 		const memory: InstanceAiEvalThreadMemoryResponse = {
 			observations: [{ marker: 'critical', text: 'Posting via HTTP Request', tokenCount: 7 }],
@@ -1526,7 +1591,11 @@ describe('InstanceAiController', () => {
 				);
 
 				expect(memoryService.restoreThreadMessages).not.toHaveBeenCalled();
-				expect(evalThreadRestore.deleteAgents).toHaveBeenCalledWith(['agent-seed-1'], 'project-1');
+				expect(evalThreadRestore.deleteAgents).toHaveBeenCalledWith(
+					['agent-seed-1'],
+					'project-1',
+					expect.objectContaining({ id: expect.any(String) }),
+				);
 			});
 
 			it('should roll the binding back when the message write fails', async () => {
@@ -1539,7 +1608,11 @@ describe('InstanceAiController', () => {
 
 				await expect(controller.restoreEvalThread(req, res, agentPayload)).rejects.toThrow('boom');
 
-				expect(evalThreadRestore.deleteAgents).toHaveBeenCalledWith(['agent-seed-1'], 'project-1');
+				expect(evalThreadRestore.deleteAgents).toHaveBeenCalledWith(
+					['agent-seed-1'],
+					'project-1',
+					expect.objectContaining({ id: expect.any(String) }),
+				);
 				// The prior metadata survives AND the binding key is cleared — handing
 				// back only the snapshot would leave the thread bound to agents the
 				// rollback just deleted, because updateThread merges.
@@ -1558,7 +1631,11 @@ describe('InstanceAiController', () => {
 
 				// No messages were written, and the artifacts are rolled back.
 				expect(memoryService.restoreThreadMessages).not.toHaveBeenCalled();
-				expect(evalThreadRestore.deleteAgents).toHaveBeenCalledWith(['agent-seed-1'], 'project-1');
+				expect(evalThreadRestore.deleteAgents).toHaveBeenCalledWith(
+					['agent-seed-1'],
+					'project-1',
+					expect.objectContaining({ id: expect.any(String) }),
+				);
 			});
 		});
 

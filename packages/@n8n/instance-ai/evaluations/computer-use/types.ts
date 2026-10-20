@@ -135,7 +135,7 @@ export interface TraceToolsMustNotErrorGrader {
 	maxErrors?: number;
 	/** Optional substring filter on toolName. Default 'browser' covers browser_navigate, browser_tab_open. */
 	toolNamePrefix?: string;
-	/** Tool names exempted from the count. Defaults to ['ask-user', 'pause-for-user'] — those legitimately "interrupt" rather than fail. */
+	/** Tool names exempted from the count. Defaults to ['workflow_builder_ask_user', 'pause-for-user'] — those legitimately "interrupt" rather than fail. */
 	ignoreTools?: string[];
 }
 
@@ -199,9 +199,9 @@ export interface LlmTaskCompletedGrader {
 	 * pause-for-user containing locations for both Client ID and Client Secret").
 	 */
 	criteria?: string;
-	/** Defaults to a small/cheap judge. */
+	/** Defaults to the judge model (`N8N_INSTANCE_AI_EVAL_JUDGE_MODEL`). */
 	model?: string;
-	/** Override timeout (default 30_000 ms). */
+	/** Override timeout (default 60_000 ms). */
 	timeoutMs?: number;
 }
 

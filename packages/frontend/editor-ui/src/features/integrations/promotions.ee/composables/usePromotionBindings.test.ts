@@ -8,6 +8,7 @@ import {
 	blocked,
 	consumers,
 	credential,
+	projectDeletion,
 	savedCredential,
 	variable,
 } from '../__tests__/bindings.fixtures';
@@ -187,6 +188,25 @@ it('submits once with the original source and allows warnings', async () => {
 	expect(session.canContinue.value).toBe(false);
 	await session.continueApply();
 	expect(continueApplyPromotion).toHaveBeenCalledTimes(1);
+});
+
+it('asks to review project deletions and confirms them on Continue', async () => {
+	vi.mocked(continueApplyPromotion).mockResolvedValue(applied);
+	const session = usePromotionBindings();
+	const result = blocked({ missingBindings: [], conflicts: [projectDeletion] });
+	session.start(result, instance);
+	expect(session.mode.value).toBe('review');
+	expect(session.projectDeletions.value).toEqual([projectDeletion]);
+	expect(session.hardConflicts.value).toEqual([]);
+	expect(await session.continueApply()).toBe(applied);
+	expect(continueApplyPromotion).toHaveBeenCalledWith(
+		{ baseUrl: '/custom/api/v1' },
+		result.connectionId,
+		{
+			expectedSource: { configId: result.configId, ...result.git },
+			confirmDestructiveChanges: true,
+		},
+	);
 });
 
 it('continues a selection through the project endpoint', async () => {

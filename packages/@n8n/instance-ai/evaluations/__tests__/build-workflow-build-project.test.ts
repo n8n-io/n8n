@@ -126,4 +126,27 @@ describe('buildWorkflow build project', () => {
 			{ type: 'agent', id: 'agent-1', projectId: 'build-project' },
 		]);
 	});
+
+	it("reports the agent's reads of another build's workflow, even when the build fails", async () => {
+		const actual =
+			await vi.importActual<typeof import('../outcome/event-parser')>('../outcome/event-parser');
+		vi.mocked(extractOutcomeFromEvents).mockImplementationOnce((events) => ({
+			...actual.extractOutcomeFromEvents(events),
+			toolCalls: [
+				{
+					toolCallId: 'call-1',
+					toolName: 'workflows',
+					args: { action: 'get', workflowId: 'other-wf' },
+					result: { id: 'other-wf' },
+					durationMs: 0,
+				},
+			],
+		}));
+		const { client } = makeClient();
+
+		const result = await buildWorkflow({ client, ...baseConfig });
+
+		expect(result.success).toBe(false);
+		expect(result.foreignWorkflowReads).toEqual(['other-wf']);
+	});
 });

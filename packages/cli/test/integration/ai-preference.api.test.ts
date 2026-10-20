@@ -63,6 +63,7 @@ async function seed(attributes: {
 	projectId?: string | null;
 	source?: AiPreferenceSource;
 	createdAt?: Date;
+	updatedAt?: Date;
 }) {
 	const row = await repository().save(
 		repository().create({
@@ -78,6 +79,9 @@ async function seed(attributes: {
 	// tie. A test that asserts an order sets the value it means.
 	if (attributes.createdAt) {
 		await repository().update(row.id, { createdAt: attributes.createdAt });
+	}
+	if (attributes.updatedAt) {
+		await repository().update(row.id, { updatedAt: attributes.updatedAt });
 	}
 	return row;
 }
@@ -208,6 +212,22 @@ describe('POST /ai-preferences', () => {
 
 		const stored = await repository().findOneByOrFail({ id: response.body.data.id });
 		expect(stored.createdById).toBe(member.id);
+	});
+
+	test('returns the author on the row, to the author and to other readers', async () => {
+		const created = await ownerAgent
+			.post('/ai-preferences')
+			.send({ content: 'Everyone.', scope: 'instance' });
+		const author = { id: owner.id, email: owner.email };
+		expect(created.body.data.createdBy).toMatchObject(author);
+
+		const listed = await memberAgent.get('/ai-preferences');
+		expect(listed.body.data.data).toEqual([
+			expect.objectContaining({
+				id: created.body.data.id,
+				createdBy: expect.objectContaining(author),
+			}),
+		]);
 	});
 
 	test('trims the content and refuses a blank preference', async () => {
@@ -416,6 +436,37 @@ describe('GET /ai-preferences', () => {
 		const response = await memberAgent.get('/ai-preferences');
 
 		expect(contentsOf(response)).toEqual(['first', 'second', 'third']);
+	});
+
+	test('sorts the rows by the requested date', async () => {
+		await seed({
+			content: 'a',
+			userId: member.id,
+			createdAt: new Date('2026-01-01'),
+			updatedAt: new Date('2026-03-01'),
+		});
+		await seed({
+			content: 'b',
+			userId: member.id,
+			createdAt: new Date('2026-02-01'),
+			updatedAt: new Date('2026-01-15'),
+		});
+		await seed({
+			content: 'c',
+			userId: member.id,
+			createdAt: new Date('2026-03-01'),
+			updatedAt: new Date('2026-02-01'),
+		});
+
+		const response = await memberAgent.get('/ai-preferences').query({ sortBy: 'updatedAt:desc' });
+
+		expect(contentsOf(response)).toEqual(['a', 'c', 'b']);
+	});
+
+	test('refuses an unknown sort', async () => {
+		const response = await memberAgent.get('/ai-preferences').query({ sortBy: 'content:asc' });
+
+		expect(response.statusCode).toBe(400);
 	});
 
 	test('hides the rows of a project the caller is not a member of', async () => {

@@ -1,6 +1,10 @@
 import '../../controllers';
 
-import { ApplyPackageResultDto } from '@n8n/api-types';
+import {
+	ApplyPackageResultDto,
+	PromotionBranchListPublicDto,
+	PromotionRepositoryListPublicDto,
+} from '@n8n/api-types';
 import { ControllerRegistryMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { OpenAPIV3 } from 'openapi-types';
@@ -73,4 +77,27 @@ describe('Apply response documentation', () => {
 			}
 		},
 	);
+});
+
+describe('Discovery response documentation', () => {
+	it.each([
+		['getPromotionProviderRepositories', PromotionRepositoryListPublicDto],
+		['getPromotionProviderRepositoryBranches', PromotionBranchListPublicDto],
+	] as const)('%s declares its response and access gates', (handler, responseDto) => {
+		const route = Container.get(ControllerRegistryMetadata)
+			.getControllerMetadata(PromotionsPublicController as never)
+			.routes.get(handler);
+		expect(route?.responseDto).toBe(responseDto);
+		expect(route?.accessScope).toEqual({ scope: 'gitConnection:discover', globalOnly: true });
+		expect(route?.apiKeyScope).toBe('gitConnection:discover');
+		expect(route?.licenseFeature).toBe('feat:gitConnections');
+		const outputPath = `handlers/promotions/spec/paths/${handler}.generated.yml`;
+		const operation = parse(
+			getGeneratedArtifacts().find((artifact) => artifact.outputPath === outputPath)!.content,
+		) as OpenAPIV3.OperationObject;
+		expect(operation).toHaveProperty('x-required-scope', 'gitConnection:discover');
+		expect(operation.parameters).toContainEqual({
+			$ref: '../../../../shared/spec/parameters/limit.yml',
+		});
+	});
 });

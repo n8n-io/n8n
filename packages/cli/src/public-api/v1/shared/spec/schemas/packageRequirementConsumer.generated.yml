@@ -4,6 +4,7 @@ properties:
     type: string
     enum:
       - workflow
+      - agent
   id:
     type: string
     minLength: 1
