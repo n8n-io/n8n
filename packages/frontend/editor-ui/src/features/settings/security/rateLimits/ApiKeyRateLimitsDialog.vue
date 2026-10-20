@@ -102,14 +102,15 @@ const isPrimaryDisabled = computed(
 	() => props.mode === 'enable' && isEmpty.value && !hasErrors.value,
 );
 
-function defaultText(key: RateLimitRowKey) {
-	const limit = props.defaults[`${key}Limit`];
-	if (limit === 0) return i18n.baseText('settings.security.rateLimits.dialog.noLimit');
+/** The values that the row will have after a reset. Locked fields keep their value. */
+function resetText(key: RateLimitRowKey) {
+	const limit = Number(isLimitLocked(key) ? draft.value[key].limit : defaultDraft.value[key].limit);
+	if (!limit) return i18n.baseText('settings.security.rateLimits.dialog.noLimit');
+	const window = Number(
+		isWindowLocked(key) ? draft.value[key].window : defaultDraft.value[key].window,
+	);
 	return i18n.baseText('settings.security.rateLimits.dialog.defaultValue', {
-		interpolate: {
-			limit: limit.toLocaleString(),
-			window: props.defaults[`${key}WindowSeconds`].toLocaleString(),
-		},
+		interpolate: { limit: limit.toLocaleString(), window: window.toLocaleString() },
 	});
 }
 
@@ -196,7 +197,7 @@ function save() {
 								v-if="canReset(rows[kind])"
 								:content="
 									i18n.baseText('settings.security.rateLimits.dialog.reset', {
-										interpolate: { value: defaultText(rows[kind]) },
+										interpolate: { value: resetText(rows[kind]) },
 									})
 								"
 							>
@@ -206,7 +207,7 @@ function save() {
 									icon-only
 									:aria-label="
 										i18n.baseText('settings.security.rateLimits.dialog.reset', {
-											interpolate: { value: defaultText(rows[kind]) },
+											interpolate: { value: resetText(rows[kind]) },
 										})
 									"
 									:data-test-id="`rate-limits-reset-${rows[kind]}`"

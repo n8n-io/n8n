@@ -214,7 +214,7 @@ describe('ApiKeyRateLimitsSection', () => {
 		await userEvent.clear(limitInput('globalRead'));
 		await userEvent.type(limitInput('globalRead'), '5');
 		const reset = screen.getByTestId('rate-limits-reset-globalRead');
-		expect(reset).toHaveAccessibleName('Reset to default: 1,200 / 60 s');
+		expect(reset).toHaveAccessibleName('Reset to default: 1,200 / 30 s');
 		await userEvent.click(reset);
 
 		expect(limitInput('globalRead').value).toBe('1200');
