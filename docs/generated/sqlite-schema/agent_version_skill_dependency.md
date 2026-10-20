@@ -67,6 +67,7 @@ erDiagram
 }
 "skill" {
   varchar_36_ agentId FK
+  boolean availableToAssistant
   datetime_3_ createdAt
   varchar createdById FK
   varchar_36_ id PK

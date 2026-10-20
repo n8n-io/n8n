@@ -58,18 +58,15 @@ export class PromotionProviderRepository extends BaseRepository<PromotionProvide
 	}
 
 	/**
-	 * The foreign key from `promotion_connection` is the final guard, so a
-	 * connection created after the caller's check still cannot lose its provider.
+	 * The foreign key from `promotion_environment` is the final guard, so an
+	 * environment created after the caller's check still cannot lose its provider.
 	 */
 	async deleteProvider(id: string): Promise<void> {
 		try {
 			await this.delete({ id });
 		} catch (error) {
 			if (isForeignKeyConstraintError(error)) {
-				throw new PromotionConflictError(
-					'provider-in-use',
-					'This provider is used by a connection',
-				);
+				throw new PromotionConflictError('This provider is used by a promotion environment');
 			}
 			throw error;
 		}

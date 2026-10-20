@@ -1840,10 +1840,15 @@ import type { License } from '@/license';
 
 import type { OutboundHttp } from '@n8n/backend-network';
 import { ModuleRegistry } from '@n8n/backend-common';
-import type { InstanceAiBuilderDelegate, OrchestrationContext } from '@n8n/instance-ai';
+import type {
+	InstanceAiBuilderDelegate,
+	InstanceAiSkillService,
+	OrchestrationContext,
+} from '@n8n/instance-ai';
 
 import { InstanceAiAdapterService } from '../instance-ai.adapter.service';
 import { InstanceAiBuilderDelegateAdapterService } from '../instance-ai-builder-delegate.adapter';
+import { InstanceAiSkillsAdapterService } from '../instance-ai-skills.adapter';
 import { AgentsBuilderService } from '@/modules/agents/builder/agents-builder.service';
 import type { AgentCredentialProvider } from '@/modules/agents/agent-credential-provider.contracts';
 import { userHasScopes } from '@/permissions.ee/check-access';
@@ -8617,5 +8622,63 @@ describe('createCredentialAdapter', () => {
 
 			await expect(credentialService.credentialTypeExists!('gmailOAuth2Api')).resolves.toBe(false);
 		});
+	});
+});
+
+describe('createContext — skill service wiring', () => {
+	const mockUser = { id: 'user-1', role: { slug: 'global:member' } } as unknown as User;
+
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
+	it.each([
+		{
+			name: 'wires skills when the hub is on',
+			moduleActive: true,
+			hubEnabled: true,
+			agentsEnabled: true,
+			expected: true,
+		},
+		{
+			name: 'wires skills when Settings > Agents is off',
+			moduleActive: true,
+			hubEnabled: true,
+			agentsEnabled: false,
+			expected: true,
+		},
+		{
+			name: 'omits skills when the hub is off',
+			moduleActive: true,
+			hubEnabled: false,
+			agentsEnabled: true,
+			expected: false,
+		},
+		{
+			name: 'omits skills when the agents module is inactive',
+			moduleActive: false,
+			hubEnabled: true,
+			agentsEnabled: true,
+			expected: false,
+		},
+	])('$name', ({ moduleActive, hubEnabled, agentsEnabled, expected }) => {
+		const skillService = mock<InstanceAiSkillService>();
+		const moduleRegistry = {
+			isActive: vi.fn().mockReturnValue(moduleActive),
+			settings: new Map([['agents', { enabled: agentsEnabled, skillsHubEnabled: hubEnabled }]]),
+		};
+		vi.spyOn(Container, 'get').mockImplementation((token: unknown) => {
+			if (token === ModuleRegistry) return moduleRegistry;
+			if (token === InstanceAiSkillsAdapterService) {
+				return { createService: vi.fn().mockReturnValue(skillService) };
+			}
+			if (token === InstanceAiBuilderDelegateAdapterService) return { createDelegate: vi.fn() };
+			throw new Error(`Unexpected Container.get call in test: ${String(token)}`);
+		});
+		const service = createAdapterWithGatewayMock(vi.fn());
+
+		const context = service.createContext(mockUser, { threadId: 'thread-1', projectId: 'proj-1' });
+
+		expect(context.skillService).toBe(expected ? skillService : undefined);
 	});
 });

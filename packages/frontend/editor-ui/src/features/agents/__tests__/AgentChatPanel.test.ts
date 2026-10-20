@@ -348,6 +348,7 @@ vi.mock('../composables/useAgentTelemetry', () => ({
 	useAgentTelemetry: () => ({
 		trackSubmittedMessage: trackSubmittedMessageMock,
 		trackSentMessageToN8nChatAgent: trackSentMessageToN8nChatAgentMock,
+		trackClickedNewTestChat: vi.fn(),
 	}),
 }));
 

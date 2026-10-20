@@ -20,7 +20,7 @@ index 1642d3fb35cbd64b553291660fc63bae2e7f2ef5..3301e3fbc7296f545b65331dad1f12c8
          }
        };
 diff --git a/lib/queue.js b/lib/queue.js
-index 19eefc35d815e324e47c4fe4c152f39c7c547470..4f191ef9d9bbf401b846ec712e83e59dda5b5fb7 100755
+index 19eefc35d815e324e47c4fe4c152f39c7c547470..d3124c7cac18b0ad26d1e0ddb20b3b76c1b35bc1 100755
 --- a/lib/queue.js
 +++ b/lib/queue.js
 @@ -1112,12 +1112,15 @@ Queue.prototype._processJobOnNextTick = function(
@@ -40,3 +40,90 @@ index 19eefc35d815e324e47c4fe4c152f39c7c547470..4f191ef9d9bbf401b846ec712e83e59d
            .then(processJobs, err => {
              if (!(this.closing && err.message === 'Connection is closed.')) {
                utils.emitSafe(this, 'error', err, 'Error processing job');
+@@ -1238,29 +1241,66 @@ Queue.prototype.getNextJob = async function() {
+   }
+ 
+   if (this.drained) {
+-    //
+-    // Waiting for new jobs to arrive
+-    //
+-    try {
+-      this.bclient.blocked = true;
+-      const jobId = await this.bclient.brpoplpush(
+-        this.keys.wait,
+-        this.keys.active,
+-        this.settings.drainDelay
+-      );
+-      this.bclient.blocked = false;
++    // n8n patch: the idle slots of this queue take turns to wait for a job, so a
++    // new job wakes one slot in each idle worker, not every idle slot.
++    const turn = (this.n8nIdleTurn || Promise.resolve()).then(() =>
++      this.n8nWaitForJob()
++    );
++    this.n8nIdleTurn = turn.catch(() => {});
++    return turn;
++  } else {
++    return this.moveToActive();
++  }
++};
+ 
+-      if (jobId) {
+-        return this.moveToActive(jobId);
+-      }
+-    } catch (err) {
+-      // Swallow error if locally paused since we did force a disconnection
+-      if (!(this.paused && err.message === 'Connection is closed.')) {
+-        throw err;
++Queue.prototype.n8nWaitForJob = async function() {
++  // A slot whose turn comes after a pause or close must not start a new wait
++  if (this.closing || this.paused) {
++    return;
++  }
++
++  //
++  // Waiting for new jobs to arrive
++  //
++  try {
++    this.bclient.blocked = true;
++    // n8n patch: BRPOPLPUSH moves a job to active before its lock is set. If the
++    // event loop blocks in between, the stall check fails a job that never ran.
++    // BLMOVE to the same list only waits for a job, and moveToActive then claims
++    // and locks it in one script. Redis before 6.2 has no BLMOVE.
++    if (!this.n8nWithoutBlmove) {
++      try {
++        const ready = await this.bclient.blmove(
++          this.keys.wait,
++          this.keys.wait,
++          'RIGHT',
++          'RIGHT',
++          this.settings.drainDelay
++        );
++        this.bclient.blocked = false;
++        return ready ? this.moveToActive() : undefined;
++      } catch (err) {
++        if (!/unknown command/i.test(err.message)) {
++          throw err;
++        }
++        this.n8nWithoutBlmove = true;
+       }
+     }
+-  } else {
+-    return this.moveToActive();
++    const jobId = await this.bclient.brpoplpush(
++      this.keys.wait,
++      this.keys.active,
++      this.settings.drainDelay
++    );
++    this.bclient.blocked = false;
++
++    if (jobId) {
++      return this.moveToActive(jobId);
++    }
++  } catch (err) {
++    // Swallow error if locally paused since we did force a disconnection
++    if (!(this.paused && err.message === 'Connection is closed.')) {
++      throw err;
++    }
+   }
+ };
+ 
