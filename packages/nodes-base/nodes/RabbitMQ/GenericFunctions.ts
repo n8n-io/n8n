@@ -9,7 +9,7 @@ import type {
 	IRun,
 	ITriggerFunctions,
 } from 'n8n-workflow';
-import { jsonParse } from 'n8n-workflow';
+import { jsonParse, setSafeObjectProperty } from 'n8n-workflow';
 
 import { sleep } from '@n8n/utils/sleep';
 import type { ExchangeType, Options, RabbitMQCredentials, TriggerOptions } from './types';
@@ -65,7 +65,7 @@ export const parseAssertOptionArguments = (options: Options | TriggerOptions) =>
 	const args: IDataObject = {};
 	if (options.arguments?.argument?.length) {
 		for (const { key, value } of options.arguments.argument) {
-			if (key) args[key] = value;
+			if (key) setSafeObjectProperty(args, key, value);
 		}
 	}
 	return args;
