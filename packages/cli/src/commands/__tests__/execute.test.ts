@@ -243,6 +243,29 @@ test('should exit with a crash when expression engine init fails', async () => {
 		observability: expressionObservability,
 	});
 	expect(exitSpy).toHaveBeenCalledWith(expect.stringContaining('isolated-vm'), expect.any(Error));
+});
+
+test('reports a native verify mismatch to Sentry without the request scope', async () => {
+	// arrange
+
+	const initSpy = vi.spyOn(Expression, 'initExpressionEngine').mockResolvedValue();
+	Container.set(
+		GlobalConfig,
+		mock<GlobalConfig>({
+			taskRunners: {},
+			nodes: {},
+			expressionEngine: { engine: 'vm', nativeEvaluation: 'verify' },
+			generic: { gracefulShutdownTimeout: 30 },
+		}),
+	);
+	errorReporter.isSentryActive.mockReturnValue(true);
+
+	class ExpressionCommand extends BaseCommand {
+		override needsExpressionEngine = true;
+	}
+	await new ExpressionCommand().init();
+
+	// act
 
 	const [{ reportNativeVerifyMismatch }] = initSpy.mock.calls[0];
 	reportNativeVerifyMismatch?.({
@@ -252,6 +275,9 @@ test('should exit with a crash when expression engine init fails', async () => {
 		engineResultType: 'number',
 		workflowId: 'wf-1',
 	});
+
+	// assert
+
 	expect(errorReporter.info).toHaveBeenCalledWith(
 		'Native evaluation result differs from the expression engine',
 		{
