@@ -395,7 +395,7 @@ const { width } = useElementSize(defNameRef);
 <template>
 	<N8nDialog
 		:open="modalOpen"
-		:size="isTypeAbstract ? 'medium' : 'full'"
+		:size="isTypeAbstract ? 'medium' : '2xlarge'"
 		:container-class="isTypeAbstract ? $style.abstractDialog : $style.settingsDialog"
 		@update:open="onDialogOpenUpdate"
 	>
@@ -403,114 +403,109 @@ const { width } = useElementSize(defNameRef);
 			<N8nSpinner />
 		</N8nDialogBody>
 		<template v-else>
-			<N8nDialogHeader>
+			<N8nDialogHeader :class="isTypeAbstract ? undefined : $style.dialogHeader">
 				<template v-if="isTypeAbstract">
 					<N8nDialogTitle>Add new destination</N8nDialogTitle>
 				</template>
 				<template v-else>
-					<div :class="$style.header">
+					<div ref="defNameRef" :class="$style.destinationInfo">
 						<N8nDialogTitle as-child>
-							<div ref="defNameRef" :class="$style.destinationInfo">
-								<N8nInlineTextEdit
-									:max-width="width - 10"
-									data-test-id="subtitle-showing-type"
-									:model-value="headerLabel"
-									:readonly="isTypeAbstract"
-									@update:model-value="onLabelChange"
-								/>
-								<N8nText size="small" tag="p" color="text-light">{{
-									!isTypeAbstract ? i18n.baseText(typeLabelName) : 'Select type'
-								}}</N8nText>
-							</div>
-						</N8nDialogTitle>
-						<div :class="$style.destinationActions">
-							<N8nButton
-								variant="outline"
-								v-if="nodeParameters && hasOnceBeenSaved && unchanged"
-								:icon="
-									testMessageSent ? (testMessageResult ? 'check' : 'triangle-alert') : undefined
-								"
-								:title="
-									testMessageSent && testMessageResult
-										? 'Event sent and returned OK'
-										: 'Event returned with error'
-								"
-								label="Send Test-Event"
-								:disabled="!hasOnceBeenSaved || !unchanged"
-								data-test-id="destination-test-button"
-								@click="sendTestEvent"
+							<N8nInlineTextEdit
+								:max-width="width - 10"
+								data-test-id="subtitle-showing-type"
+								:model-value="headerLabel"
+								@update:model-value="onLabelChange"
 							/>
-							<template v-if="canManageLogStreaming">
-								<N8nIconButton
-									variant="outline"
-									v-if="nodeParameters && hasOnceBeenSaved"
-									:title="i18n.baseText('settings.log-streaming.delete')"
-									icon="trash-2"
-									:disabled="isSaving"
-									:loading="isDeleting"
-									data-test-id="destination-delete-button"
-									@click="removeThis"
-								/>
-								<SaveButton
-									:saved="unchanged && hasOnceBeenSaved"
-									:disabled="unchanged || !isFormValid"
-									:saving-label="i18n.baseText('settings.log-streaming.saving')"
-									data-test-id="destination-save-button"
-									@click="saveDestination"
-								/>
-							</template>
-						</div>
+						</N8nDialogTitle>
+						<N8nText size="small" tag="p" color="text-light" :class="$style.typeName">
+							{{ i18n.baseText(typeLabelName) }}
+						</N8nText>
+					</div>
+					<div :class="$style.destinationActions">
+						<N8nButton
+							variant="outline"
+							v-if="nodeParameters && hasOnceBeenSaved && unchanged"
+							:icon="testMessageSent ? (testMessageResult ? 'check' : 'triangle-alert') : undefined"
+							:title="
+								testMessageSent && testMessageResult
+									? 'Event sent and returned OK'
+									: 'Event returned with error'
+							"
+							label="Send Test-Event"
+							:disabled="!hasOnceBeenSaved || !unchanged"
+							data-test-id="destination-test-button"
+							@click="sendTestEvent"
+						/>
+						<template v-if="canManageLogStreaming">
+							<N8nIconButton
+								variant="outline"
+								v-if="nodeParameters && hasOnceBeenSaved"
+								:title="i18n.baseText('settings.log-streaming.delete')"
+								icon="trash-2"
+								:disabled="isSaving"
+								:loading="isDeleting"
+								data-test-id="destination-delete-button"
+								@click="removeThis"
+							/>
+							<SaveButton
+								:saved="unchanged && hasOnceBeenSaved"
+								:disabled="unchanged || !isFormValid"
+								:saving-label="i18n.baseText('settings.log-streaming.saving')"
+								data-test-id="destination-save-button"
+								@click="saveDestination"
+							/>
+						</template>
 					</div>
 				</template>
 			</N8nDialogHeader>
-			<N8nDialogBody>
-				<div :class="$style.container" data-test-id="destination-modal">
-					<template v-if="isTypeAbstract">
-						<N8nInputLabel
-							:class="$style.typeSelector"
-							:label="i18n.baseText('settings.log-streaming.selecttype')"
-							:tooltip-text="i18n.baseText('settings.log-streaming.selecttypehint')"
-							:bold="false"
-							size="medium"
-							:underline="false"
+			<N8nDialogBody :class="isTypeAbstract ? undefined : $style.body">
+				<div v-if="isTypeAbstract" data-test-id="destination-modal">
+					<N8nInputLabel
+						:class="$style.typeSelector"
+						:label="i18n.baseText('settings.log-streaming.selecttype')"
+						:tooltip-text="i18n.baseText('settings.log-streaming.selecttypehint')"
+						:bold="false"
+						size="medium"
+						:underline="false"
+					>
+						<N8nSelect
+							ref="typeSelectRef"
+							:model-value="typeSelectValue"
+							:placeholder="typeSelectPlaceholder"
+							data-test-id="select-destination-type"
+							name="name"
+							@update:model-value="onTypeSelectInput"
 						>
-							<N8nSelect
-								ref="typeSelectRef"
-								:model-value="typeSelectValue"
-								:placeholder="typeSelectPlaceholder"
-								data-test-id="select-destination-type"
-								name="name"
-								@update:model-value="onTypeSelectInput"
-							>
-								<N8nOption
-									v-for="option in typeSelectOptions || []"
-									:key="option.value"
-									:value="option.value"
-									:label="i18n.baseText(option.label)"
-								/>
-							</N8nSelect>
-							<div class="mt-m text-right">
-								<N8nButton
-									size="large"
-									data-test-id="select-destination-button"
-									:disabled="!typeSelectValue"
-									@click="onContinueAddClicked"
-								>
-									{{ i18n.baseText(`settings.log-streaming.continue`) }}
-								</N8nButton>
-							</div>
-						</N8nInputLabel>
-					</template>
-					<template v-else>
-						<div :class="$style.sidebar">
-							<N8nMenuItem
-								v-for="item in sidebarItems"
-								:key="item.id"
-								:item="item"
-								:active="activeTab === item.id"
-								@click="() => onTabSelect(item.id)"
+							<N8nOption
+								v-for="option in typeSelectOptions || []"
+								:key="option.value"
+								:value="option.value"
+								:label="i18n.baseText(option.label)"
 							/>
+						</N8nSelect>
+						<div :class="$style.continueRow">
+							<N8nButton
+								size="large"
+								data-test-id="select-destination-button"
+								:disabled="!typeSelectValue"
+								@click="onContinueAddClicked"
+							>
+								{{ i18n.baseText(`settings.log-streaming.continue`) }}
+							</N8nButton>
 						</div>
+					</N8nInputLabel>
+				</div>
+				<div v-else :class="$style.modalLayout" data-test-id="destination-modal">
+					<nav :class="$style.sidebar">
+						<N8nMenuItem
+							v-for="item in sidebarItems"
+							:key="item.id"
+							:item="item"
+							:active="activeTab === item.id"
+							@click="() => onTabSelect(item.id)"
+						/>
+					</nav>
+					<div :class="$style.contentArea">
 						<div v-if="activeTab === 'settings'" ref="content" :class="$style.mainContent">
 							<template v-if="isTypeWebhook">
 								<ParameterInputList
@@ -560,7 +555,7 @@ const { width } = useElementSize(defNameRef);
 								/>
 							</div>
 						</div>
-					</template>
+					</div>
 				</div>
 			</N8nDialogBody>
 		</template>
@@ -575,13 +570,28 @@ const { width } = useElementSize(defNameRef);
 	overflow-y: auto;
 }
 
-.settingsDialog {
-	/* Previous dialog height. No spacing token. */
-	height: 650px;
-	max-height: 650px;
+.continueRow {
+	display: flex;
+	justify-content: flex-end;
+	margin-top: var(--spacing--md);
+}
+
+.settingsDialog.settingsDialog {
 	display: flex;
 	flex-direction: column;
 	overflow: hidden;
+	/* Previous dialog height. No spacing token for 650px. */
+	height: min(650px, calc(100dvh - var(--spacing--lg)));
+	max-height: min(650px, calc(100dvh - var(--spacing--lg)));
+	/* Room for the title and the type label, so the header does not grow. */
+	--log-stream-dialog-header--height: calc(
+		var(--n8n-dialog-region--padding) * 2 + var(--n8n-dialog-title--line) + var(--spacing--4xs) +
+			var(--font-size--2xs) * var(--line-height--lg)
+	);
+	/* Center the close button on the save button. */
+	--n8n-dialog-close--inset-block-start: calc(
+		(var(--log-stream-dialog-header--height) - var(--n8n-dialog-close--size)) / 2
+	);
 }
 
 .typeSelector {
@@ -600,24 +610,64 @@ const { width } = useElementSize(defNameRef);
 	margin-bottom: 1em;
 }
 
-.mainContent {
-	flex: 1;
-	overflow: auto;
-	padding-left: 1em;
-	padding-right: 1em;
-	padding-bottom: 2em;
+.dialogHeader.dialogHeader {
+	align-items: center;
+	flex-wrap: nowrap;
+	width: 100%;
+}
+
+.settingsDialog .dialogHeader {
+	box-sizing: border-box;
+	min-height: var(--log-stream-dialog-header--height);
+	padding-block: var(--n8n-dialog-region--padding);
+}
+
+.body {
+	&.body {
+		--n8n-dialog-body--padding-block-start: 0;
+		--n8n-dialog-body--padding-block-end: 0;
+		--n8n-dialog-body--padding-inline: 0;
+		flex: 1 1 auto;
+		min-height: 0;
+		overflow: hidden;
+		border-block: var(--border);
+	}
+}
+
+.modalLayout {
+	display: flex;
+	flex: 1 1 auto;
+	flex-direction: row;
+	align-items: stretch;
+	min-width: 0;
+	min-height: 0;
+	overflow: hidden;
 }
 
 .sidebar {
-	padding-top: 1em;
-	max-width: 170px;
-	min-width: 170px;
-	margin-right: var(--spacing--lg);
-	flex-grow: 1;
+	display: flex;
+	flex: 0 0 calc(var(--spacing--4xl) + var(--spacing--3xl));
+	flex-direction: column;
+	min-height: 0;
+	overflow: auto;
+	padding: var(--spacing--xs);
+	border-inline-end: var(--border);
 
 	ul {
 		padding: 0 !important;
 	}
+}
+
+.contentArea {
+	flex: 1 1 auto;
+	min-width: 0;
+	min-height: 0;
+	overflow: auto;
+	padding: var(--n8n-dialog-region--padding, var(--spacing--md));
+}
+
+.mainContent {
+	min-width: 0;
 }
 
 .cardTitle {
@@ -625,32 +675,27 @@ const { width } = useElementSize(defNameRef);
 	font-weight: var(--font-weight--medium);
 }
 
-.header {
-	display: flex;
-	min-height: 61px;
-}
-
-.container {
-	display: flex;
-	height: 100%;
-}
-
 .destinationInfo {
-	flex-grow: 1;
 	display: flex;
-	width: 100%;
+	flex: 1 1 auto;
 	flex-direction: column;
 	gap: var(--spacing--4xs);
+	min-width: 0;
+	overflow: hidden;
+}
+
+.typeName {
+	margin: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 .destinationActions {
 	display: flex;
 	flex-direction: row;
 	align-items: center;
-	margin-right: var(--spacing--xl);
-
-	> * {
-		margin-left: var(--spacing--2xs);
-	}
+	flex-shrink: 0;
+	gap: var(--spacing--2xs);
 }
 </style>
