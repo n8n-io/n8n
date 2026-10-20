@@ -1190,9 +1190,10 @@ describe('AgentChatController attachment download', () => {
 
 		it('should send the whole file and close it', async () => {
 			const stream = await file.openStream();
-			const { url } = await serveAttachment(async () => stream);
+			const { url, handled } = await serveAttachment(async () => stream);
 
 			expect(await readWholeBody(url)).toBe(file.sizeInBytes);
+			await expect(handled[0]).resolves.toBeUndefined();
 			expect(await waitForClose(stream)).toBe(true);
 		});
 
