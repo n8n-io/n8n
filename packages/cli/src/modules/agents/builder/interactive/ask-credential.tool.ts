@@ -15,7 +15,7 @@ import {
 } from '@n8n/api-types';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { nanoid } from 'nanoid';
-import type { InstanceAiCredentialService } from '@n8n/instance-ai';
+import type { BuilderCredentialService } from '../builder-session';
 import type { BuilderTrackFn } from '../builder-config-telemetry';
 import type { CredentialSetupDeps } from './setup-tool.types';
 
@@ -48,7 +48,7 @@ function withNodeCredentialMap(
 
 /** Existing credentials of the requested type — used both for the suspend card and to resolve a display name on resume. */
 async function listExistingCredentials(
-	credentialService: InstanceAiCredentialService,
+	credentialService: BuilderCredentialService,
 	projectId: string,
 	credentialType: string,
 ): Promise<Array<Pick<CredentialListItem, 'id' | 'name'>>> {
@@ -60,7 +60,7 @@ async function listExistingCredentials(
 async function resolveResume(
 	input: AskCredentialInput,
 	resumeData: CredentialResumeData,
-	credentialService: InstanceAiCredentialService,
+	credentialService: BuilderCredentialService,
 	projectId: string,
 	track: BuilderTrackFn,
 ): Promise<AskCredentialToolResult> {

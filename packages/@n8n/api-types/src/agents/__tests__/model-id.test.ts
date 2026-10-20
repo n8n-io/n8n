@@ -5,8 +5,9 @@ describe('getProviderPrefix', () => {
 		expect(getProviderPrefix('anthropic/claude-sonnet-4-5')).toBe('anthropic');
 	});
 
-	it('returns an empty string when there is no prefix', () => {
+	it('returns an empty string when the provider or model is missing', () => {
 		expect(getProviderPrefix('claude-sonnet-4-5')).toBe('');
+		expect(getProviderPrefix('anthropic/')).toBe('');
 	});
 });
 

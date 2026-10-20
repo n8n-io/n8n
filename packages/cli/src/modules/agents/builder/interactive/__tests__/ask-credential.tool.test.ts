@@ -1,5 +1,5 @@
 import type { CredentialListItem } from '@n8n/agents';
-import type { InstanceAiCredentialService } from '@n8n/instance-ai';
+import type { BuilderCredentialService } from '../../builder-session';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
@@ -20,15 +20,15 @@ function makeCtx(overrides?: { resumeData?: unknown }): TestCtx {
 	return { resumeData: overrides?.resumeData, suspend: vi.fn(async (x: unknown) => x) };
 }
 
-function makeCredentialService(creds: CredentialListItem[]): InstanceAiCredentialService {
-	const credentialService = mock<InstanceAiCredentialService>();
+function makeCredentialService(creds: CredentialListItem[]): BuilderCredentialService {
+	const credentialService = mock<BuilderCredentialService>();
 	credentialService.list.mockImplementation(async (options) =>
 		options?.type ? creds.filter((c) => c.type === options.type) : creds,
 	);
 	return credentialService;
 }
 
-function expectListed(credentialService: InstanceAiCredentialService, credentialType: string) {
+function expectListed(credentialService: BuilderCredentialService, credentialType: string) {
 	expect(credentialService.list).toHaveBeenCalledWith({
 		type: credentialType,
 		projectId: 'project-1',

@@ -47,7 +47,7 @@ describe('InstanceAiSkillsService', () => {
 				profile: resolvePromptProfile({ mode: 'progressive' }).profile,
 			});
 
-			expect(skills.disabledTools).toEqual(['create-tasks']);
+			expect(skills.disabledTools).toEqual(['workflow_builder_create_tasks']);
 			expect(skills.source.registry.skills.map(({ id }) => id)).not.toContain('planning');
 		});
 

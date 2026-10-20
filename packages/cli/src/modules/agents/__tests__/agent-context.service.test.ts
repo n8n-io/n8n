@@ -8,7 +8,12 @@ import type { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-reg
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { ForbiddenError, NotFoundError } from '@n8n/errors';
 
-import type { AgentExecutionService, ThreadListItem } from '../agent-execution.service';
+import type { AgentConfigService } from '../agent-config.service';
+import type {
+	AgentExecutionService,
+	ThreadDetail,
+	ThreadListItem,
+} from '../agent-execution.service';
 import type { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service';
 import type { AgentSkillsService } from '../agent-skills.service';
 import type { AgentTaskService } from '../agent-task.service';
@@ -17,7 +22,7 @@ import type { AgentsToolsService } from '../agents-tools.service';
 import type { AgentsService } from '../agents.service';
 import type { AttachableWorkflowsService } from '../attachable-workflows.service';
 import type { ProjectAgent } from '../entities/agent.entity';
-import { InstanceAiAgentContextAdapterService } from '../instance-ai-agent-context.adapter';
+import { AgentContextService } from '../agent-context.service';
 import { createAgentSkillRefsService, storedAgentConfig } from './test-utils/stored-agent-config';
 
 vi.mock('@/permissions.ee/check-access', () => ({ userHasScopes: vi.fn() }));
@@ -33,8 +38,9 @@ function makeService() {
 	const agentsToolsService = mock<AgentsToolsService>();
 	const agentSkillRefs = createAgentSkillRefsService();
 	const agentsSettingsService = mock<AgentsSettingsService>();
+	const agentConfigService = mock<AgentConfigService>();
 	agentsSettingsService.assertEnabled.mockResolvedValue(undefined);
-	const service = new InstanceAiAgentContextAdapterService(
+	const service = new AgentContextService(
 		agentsService,
 		agentSkillsService,
 		agentTaskService,
@@ -45,6 +51,7 @@ function makeService() {
 		agentsToolsService,
 		agentSkillRefs,
 		agentsSettingsService,
+		agentConfigService,
 	);
 	return {
 		service,
@@ -58,6 +65,7 @@ function makeService() {
 		agentsToolsService,
 		agentSkillRefs,
 		agentsSettingsService,
+		agentConfigService,
 	};
 }
 
@@ -75,7 +83,7 @@ const agent = {
 	updatedAt: new Date('2026-09-17T10:00:00.000Z'),
 } as unknown as ProjectAgent;
 
-describe('InstanceAiAgentContextAdapterService', () => {
+describe('AgentContextService', () => {
 	beforeEach(() => {
 		vi.mocked(userHasScopes).mockReset();
 		vi.mocked(userHasScopes).mockResolvedValue(true);
@@ -353,13 +361,163 @@ describe('InstanceAiAgentContextAdapterService', () => {
 		expect(result).toMatchObject({ sessions: [{ threadId: 'thread-1', status: 'error' }] });
 	});
 
-	it('does not read context when the user lacks Agent read access', async () => {
+	it('reads scoped session details and reports missing sessions', async () => {
+		const { service, agentsService, agentExecutionService } = makeService();
+		const createdAt = new Date('2026-09-17T10:00:00.000Z');
+		const updatedAt = new Date('2026-09-17T10:05:00.000Z');
+		const detail: ThreadDetail = {
+			thread: Object.assign(mock<ThreadDetail['thread']>(), {
+				id: 'thread-1',
+				agentId: 'agent-1',
+				agentName: 'Support Agent',
+				projectId: 'project-1',
+				ownerId: user.id,
+				accessScope: 'user',
+				title: ' Failed request ',
+				emoji: null,
+				parentThreadId: null,
+				parentAgentId: null,
+				taskId: null,
+				taskVersionId: null,
+				sessionNumber: 2,
+				createdAt,
+				updatedAt,
+				totalPromptTokens: 10,
+				totalCompletionTokens: 5,
+				totalDuration: 100,
+				totalCost: 0.02,
+			}),
+			executions: [
+				Object.assign(mock<ThreadDetail['executions'][number]>(), {
+					id: 'execution-1',
+					threadId: 'thread-1',
+					status: 'error',
+					inputMessageIds: ['message-1'],
+					inputMessages: [
+						{
+							id: 'message-1',
+							role: 'user',
+							content: [{ type: 'text', text: 'Help with billing.' }],
+						},
+					],
+					userMessage: 'Help with billing.',
+					model: 'test-model',
+					duration: 100,
+					promptTokens: 10,
+					completionTokens: 5,
+					totalTokens: 15,
+					cost: 0.02,
+					error: 'Request failed',
+					timeline: [
+						{ type: 'input', messageId: 'message-1', timestamp: 1 },
+						{ type: 'text', content: 'Checking billing.', timestamp: 2, endTime: 3 },
+					],
+					failureSummary: {
+						count: 1,
+						latest: { kind: 'execution', name: null, message: 'Request failed', occurredAt: 3 },
+					},
+					source: 'preview',
+					startedAt: createdAt,
+					stoppedAt: updatedAt,
+					createdAt,
+					updatedAt,
+					author: null,
+					attachments: [],
+					hitlStatus: null,
+					acceptsSteering: false,
+					storedAt: 'db',
+				}),
+			],
+		};
+		agentsService.findById.mockResolvedValue(agent);
+		agentExecutionService.getThreadDetail.mockResolvedValue(detail);
+		const reader = service.createReader(user, 'project-1');
+		const lookup = { type: 'session', agentId: 'agent-1', threadId: 'thread-1' } as const;
+
+		expect(await reader.lookup(lookup)).toEqual({
+			session: {
+				threadId: 'thread-1',
+				agentId: 'agent-1',
+				agentName: 'Support Agent',
+				title: 'Failed request',
+				sessionNumber: 2,
+				createdAt: '2026-09-17T10:00:00.000Z',
+				updatedAt: '2026-09-17T10:05:00.000Z',
+				status: 'error',
+				origin: 'preview',
+				failureCount: 1,
+				totalPromptTokens: 10,
+				totalCompletionTokens: 5,
+				totalDuration: 100,
+			},
+			sessionDetail: {
+				thread: {
+					id: 'thread-1',
+					agentId: 'agent-1',
+					agentName: 'Support Agent',
+					title: ' Failed request ',
+					sessionNumber: 2,
+					createdAt,
+					updatedAt,
+				},
+				executions: [
+					{
+						id: 'execution-1',
+						status: 'error',
+						inputMessageIds: ['message-1'],
+						inputMessages: [
+							{
+								id: 'message-1',
+								role: 'user',
+								content: [{ type: 'text', text: 'Help with billing.' }],
+							},
+						],
+						userMessage: 'Help with billing.',
+						model: 'test-model',
+						duration: 100,
+						totalTokens: 15,
+						error: 'Request failed',
+						timeline: [
+							{ type: 'input', messageId: 'message-1', timestamp: 1 },
+							{ type: 'text', content: 'Checking billing.', timestamp: 2, endTime: 3 },
+						],
+					},
+				],
+			},
+		});
+		expect(agentExecutionService.getThreadDetail).toHaveBeenCalledWith(
+			'thread-1',
+			'project-1',
+			'agent-1',
+			user.id,
+		);
+
+		agentExecutionService.getThreadDetail.mockResolvedValue(null);
+		expect(await reader.lookup(lookup)).toEqual({ notFound: true });
+	});
+
+	it('does not read context when Agent read access is denied or revoked', async () => {
 		const { service, agentsService } = makeService();
+		const reader = service.createReader(user, 'project-1');
 		vi.mocked(userHasScopes).mockResolvedValue(false);
 
-		await expect(
-			service.createReader(user, 'project-1').lookup({ type: 'agents' }),
-		).rejects.toThrow("You don't have permission to read Agents in this project.");
+		await expect(reader.lookup({ type: 'agents' })).rejects.toThrow(
+			"You don't have permission to read Agents in this project.",
+		);
+		expect(agentsService.findByProjectId).not.toHaveBeenCalled();
+
+		vi.mocked(userHasScopes).mockResolvedValue(true);
+		agentsService.findByProjectId.mockResolvedValue([agent]);
+		await expect(reader.lookup({ type: 'agents' })).resolves.toMatchObject({
+			agents: [{ agentId: 'agent-1' }],
+		});
+
+		agentsService.findByProjectId.mockClear();
+		vi.mocked(userHasScopes).mockResolvedValue(false);
+
+		await expect(reader.lookup({ type: 'agents' })).rejects.toThrow(
+			"You don't have permission to read Agents in this project.",
+		);
 		expect(agentsService.findByProjectId).not.toHaveBeenCalled();
 	});
 
@@ -395,5 +553,35 @@ describe('InstanceAiAgentContextAdapterService', () => {
 			results: '## HTTP Request',
 			queriesWithNoResults: [],
 		});
+	});
+
+	it('distinguishes a fresh draft from a failed artifact read', async () => {
+		const { service, agentConfigService } = makeService();
+		agentConfigService.getConfig
+			.mockRejectedValueOnce(new UserError('No config'))
+			.mockRejectedValueOnce(new Error('Read failed'));
+		expect(await service.readArtifact(user, 'project-1', 'agent-1')).toBeNull();
+		await expect(service.readArtifact(user, 'project-1', 'agent-1')).rejects.toThrow('Read failed');
+	});
+
+	it('scopes session reads to the user and checks access on each read', async () => {
+		const { service, agentExecutionService, agentsSettingsService } = makeService();
+		agentExecutionService.getThreadDetail.mockResolvedValue(null);
+		expect(await service.readSession(user, 'project-1', 'agent-1', 'thread-1')).toBeNull();
+		expect(agentExecutionService.getThreadDetail).toHaveBeenCalledWith(
+			'thread-1',
+			'project-1',
+			'agent-1',
+			user.id,
+		);
+		vi.mocked(userHasScopes).mockResolvedValue(false);
+		await expect(service.readSession(user, 'project-1', 'agent-1', 'thread-1')).rejects.toThrow(
+			ForbiddenError,
+		);
+		agentsSettingsService.assertEnabled.mockRejectedValue(new NotFoundError('Agents are disabled'));
+		await expect(service.readSession(user, 'project-1', 'agent-1', 'thread-1')).rejects.toThrow(
+			'Agents are disabled',
+		);
+		expect(agentExecutionService.getThreadDetail).toHaveBeenCalledTimes(1);
 	});
 });
