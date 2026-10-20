@@ -36,7 +36,6 @@ import { v4 as uuid } from 'uuid';
 
 import { BadRequestError } from '@n8n/errors';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
-import { isCredSharingEnabled } from '@/constants/credential-sharing';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import { NodeTypes } from '@/node-types';
@@ -504,12 +503,9 @@ export async function updateParentExecutionWithChildResults(
 	// On resume the parent's flagged 'waiting' task is popped and the node re-runs disabled
 	// (never calling `executeWorkflow` again), so the child's private-credential usage must
 	// ride on the stack entry to reach the freshly stamped task (see `WorkflowExecute`).
-	const childCredentialIds =
-		isCredSharingEnabled() && childWorkflowData
-			? Container.get(CredentialsPermissionChecker).getCredentialIdsForNodes(
-					childWorkflowData.nodes,
-				)
-			: [];
+	const childCredentialIds = childWorkflowData
+		? Container.get(CredentialsPermissionChecker).getCredentialIdsForNodes(childWorkflowData.nodes)
+		: [];
 	const dynamicCredentialsUsage = summarizeDynamicCredentialsUsage(
 		subworkflowResults.data,
 		childCredentialIds,
