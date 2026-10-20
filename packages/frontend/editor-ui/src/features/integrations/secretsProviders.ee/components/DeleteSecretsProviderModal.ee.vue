@@ -13,11 +13,11 @@ import {
 	N8nButton,
 	N8nDialog,
 	N8nDialogBody,
+	N8nDialogDescription,
 	N8nDialogFooter,
 	N8nInput,
 	N8nLink,
 	N8nInputLabel,
-	N8nText,
 } from '@n8n/design-system';
 import { SECRETS_PROVIDER_CONNECTION_MODAL_KEY, VIEWS } from '@/app/constants';
 
@@ -157,8 +157,8 @@ function onCancel() {
 		@update:open="onDialogOpenUpdate"
 	>
 		<N8nDialogBody>
-			<div v-if="shouldShowConfirmation" :class="$style.content">
-				<N8nText size="medium" color="text-base">
+			<div v-if="shouldShowConfirmation">
+				<N8nDialogDescription>
 					{{
 						i18n.baseText('settings.secretsProviderConnections.delete.description', {
 							interpolate: {
@@ -167,20 +167,22 @@ function onCancel() {
 							},
 						})
 					}}
-				</N8nText>
+				</N8nDialogDescription>
 
-				<div v-if="!isLoadingCredentials" :class="$style.impact">
-					<N8nText size="medium" color="text-base" bold>
-						{{ i18n.baseText('settings.secretsProviderConnections.delete.impact.title') }}
-					</N8nText>
+				<div v-if="!isLoadingCredentials">
+					<N8nDialogDescription>
+						<strong>
+							{{ i18n.baseText('settings.secretsProviderConnections.delete.impact.title') }}
+						</strong>
+					</N8nDialogDescription>
 					<ul>
 						<li>
-							<N8nText size="medium" color="text-base">
+							<N8nDialogDescription>
 								<N8nLink data-test-id="credentials-link" :to="credentialsPageUrl" target="_blank">
 									{{ credentialsLabel }}
 								</N8nLink>
 								{{ i18n.baseText('settings.secretsProviderConnections.delete.impact.description') }}
-							</N8nText>
+							</N8nDialogDescription>
 						</li>
 					</ul>
 				</div>
@@ -202,53 +204,32 @@ function onCancel() {
 					</N8nInputLabel>
 				</div>
 			</div>
-			<div v-else :class="$style.content">
-				<N8nText size="medium" color="text-base">
+			<div v-else>
+				<N8nDialogDescription>
 					{{ i18n.baseText('settings.secretsProviderConnections.delete.description.noImpact') }}
-				</N8nText>
+				</N8nDialogDescription>
 			</div>
 		</N8nDialogBody>
 
 		<N8nDialogFooter>
-			<div :class="$style.footer">
-				<N8nButton variant="outline" @click="onCancel">
-					{{ i18n.baseText('generic.cancel') }}
-				</N8nButton>
-				<N8nButton
-					variant="destructive"
-					:disabled="!deleteEnabled"
-					:loading="isDeleting"
-					data-test-id="confirm-delete-button"
-					@click="onConfirmDelete"
-				>
-					{{ i18n.baseText('generic.delete') }}
-				</N8nButton>
-			</div>
+			<N8nButton variant="outline" @click="onCancel">
+				{{ i18n.baseText('generic.cancel') }}
+			</N8nButton>
+			<N8nButton
+				variant="destructive"
+				:disabled="!deleteEnabled"
+				:loading="isDeleting"
+				data-test-id="confirm-delete-button"
+				@click="onConfirmDelete"
+			>
+				{{ i18n.baseText('generic.delete') }}
+			</N8nButton>
 		</N8nDialogFooter>
 	</N8nDialog>
 </template>
 
 <style lang="scss" module>
-.content {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--md);
-}
-
-.impact {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--2xs);
-}
-
 .confirmation {
 	margin-top: var(--spacing--xs);
-}
-
-.footer {
-	display: flex;
-	justify-content: flex-end;
-	gap: var(--spacing--xs);
-	width: 100%;
 }
 </style>
