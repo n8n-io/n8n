@@ -1,0 +1,19 @@
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_fa7df4b3f4577d::t_96603953959e32 1054,1103,1115,1204,1387,1404,1414-1417,3957-3985,3987-3994,3996-4013
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "86ddd8abbc6596202f4d2207f33b49993ed1613f",
+  "prompts": {},
+  "sessions": {
+    "s_fa7df4b3f4577d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1585d-1093-7f53-a90c-e85f9af32754",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}
