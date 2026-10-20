@@ -158,40 +158,44 @@ function save() {
 						<N8nText :class="$style.rowLabel">
 							{{ i18n.baseText(`settings.security.rateLimits.dialog.${kind}`) }}
 						</N8nText>
-						<N8nTooltip
-							:disabled="!isLimitLocked(rows[kind])"
-							:content="i18n.baseText('settings.security.rateLimits.envLocked')"
-						>
-							<N8nInput
-								v-model="draft[rows[kind]].limit"
-								size="medium"
-								inputmode="numeric"
-								:placeholder="i18n.baseText('settings.security.rateLimits.dialog.noLimit')"
-								:disabled="isLimitLocked(rows[kind])"
-								:data-test-id="`rate-limits-limit-${rows[kind]}`"
-								@blur="touchedRows.add(rows[kind])"
-							/>
-						</N8nTooltip>
-						<N8nText color="text-light" size="small">
+						<div :class="$style.field">
+							<N8nTooltip
+								:disabled="!isLimitLocked(rows[kind])"
+								:content="i18n.baseText('settings.security.rateLimits.envLocked')"
+							>
+								<N8nInput
+									v-model="draft[rows[kind]].limit"
+									size="medium"
+									inputmode="numeric"
+									:placeholder="i18n.baseText('settings.security.rateLimits.dialog.noLimit')"
+									:disabled="isLimitLocked(rows[kind])"
+									:data-test-id="`rate-limits-limit-${rows[kind]}`"
+									@blur="touchedRows.add(rows[kind])"
+								/>
+							</N8nTooltip>
+						</div>
+						<N8nText color="text-light" size="small" :class="$style.requestsPer">
 							{{ i18n.baseText('settings.security.rateLimits.dialog.requestsPer') }}
 						</N8nText>
-						<N8nTooltip
-							:disabled="!isWindowLocked(rows[kind])"
-							:content="i18n.baseText('settings.security.rateLimits.envLocked')"
-						>
-							<N8nInput
-								v-model="draft[rows[kind]].window"
-								size="medium"
-								inputmode="numeric"
-								:disabled="isWindowLocked(rows[kind])"
-								:data-test-id="`rate-limits-window-${rows[kind]}`"
-								@blur="touchedRows.add(rows[kind])"
+						<div :class="$style.field">
+							<N8nTooltip
+								:disabled="!isWindowLocked(rows[kind])"
+								:content="i18n.baseText('settings.security.rateLimits.envLocked')"
 							>
-								<template #suffix>
-									{{ i18n.baseText('settings.security.rateLimits.dialog.seconds') }}
-								</template>
-							</N8nInput>
-						</N8nTooltip>
+								<N8nInput
+									v-model="draft[rows[kind]].window"
+									size="medium"
+									inputmode="numeric"
+									:disabled="isWindowLocked(rows[kind])"
+									:data-test-id="`rate-limits-window-${rows[kind]}`"
+									@blur="touchedRows.add(rows[kind])"
+								>
+									<template #suffix>
+										{{ i18n.baseText('settings.security.rateLimits.dialog.seconds') }}
+									</template>
+								</N8nInput>
+							</N8nTooltip>
+						</div>
 						<div :class="$style.resetSlot">
 							<N8nTooltip
 								v-if="canReset(rows[kind])"
@@ -311,13 +315,23 @@ function save() {
 
 .row {
 	display: grid;
-	grid-template-columns: var(--spacing--3xl) 1fr auto 1fr var(--spacing--xl);
+	/* `minmax(0, …)` lets the inputs shrink, so the row never overflows the dialog. */
+	grid-template-columns: var(--spacing--3xl) minmax(0, 3fr) auto minmax(0, 2fr) var(--spacing--xl);
 	align-items: center;
 	gap: var(--spacing--2xs);
 }
 
-.rowLabel {
+.rowLabel,
+.requestsPer {
 	white-space: nowrap;
+}
+
+.field {
+	min-width: 0;
+
+	> * {
+		width: 100%;
+	}
 }
 
 .resetSlot {
