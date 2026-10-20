@@ -35,7 +35,6 @@ function onUpdate([value]: SliderValue) {
 
 <style lang="scss" module>
 .slider {
-	--n8n-slider--fill: var(--background--brand);
 	width: 100%;
 	min-width: 0;
 	max-width: 100%;

@@ -335,6 +335,7 @@ function handleDragEnd(event: PointerEvent) {
 	}
 }
 .control {
+	container-type: size;
 	touch-action: none;
 	position: absolute;
 	inset: 0;
@@ -364,7 +365,7 @@ function handleDragEnd(event: PointerEvent) {
 	isolation: isolate;
 	position: relative;
 	/** Keep the handle and its outline inside the control at the minimum value. */
-	min-width: calc(1em + var(--spacing--5xs));
+	min-width: 100cqh;
 	height: 100%;
 	background-color: var(
 		--n8n-slider--fill,
@@ -382,12 +383,13 @@ function handleDragEnd(event: PointerEvent) {
 		inset-inline-end: 1px;
 		inset-block: 1px;
 		display: grid;
-		width: 1em;
+		aspect-ratio: 1;
 		place-items: center;
 		font-size: var(--font-size--md);
 		font-weight: var(--font-weight--bold);
 		text-align: center;
 		color: var(--text-color--disabled);
+		box-shadow: var(--shadow--xs);
 		background-color: transparent;
 	}
 
@@ -399,7 +401,7 @@ function handleDragEnd(event: PointerEvent) {
 		border-radius: var(--n8n-slider--radius, var(--radius--3xs));
 		opacity: 1;
 		transition: all var(--duration--snappy) var(--easing--ease-out);
-		width: 1em;
+		aspect-ratio: 1;
 		background-color: light-dark(var(--background--surface), var(--color--neutral-700));
 		box-shadow: var(--shadow--xs);
 		outline: 1px solid transparent;
