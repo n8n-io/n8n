@@ -64,8 +64,9 @@ erDiagram
 }
 "public.app_version" {
   uuid appId FK
+  integer buildAttempts
   varchar_16_ buildStatus
-  bigint buildTaskId FK
+  timestamp_3__with_time_zone buildStatusUpdatedAt
   integer bundleArtifactId FK
   timestamp_3__with_time_zone createdAt
   uuid id

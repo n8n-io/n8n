@@ -1,7 +1,7 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
 export class CreateApps1792385089420 implements ReversibleMigration {
-	async up({ schemaBuilder: { createTable, column, addForeignKey }, isSqlite }: MigrationContext) {
+	async up({ schemaBuilder: { createTable, column, addForeignKey } }: MigrationContext) {
 		await createTable('app')
 			.withColumns(
 				column('id').uuid.primary,
@@ -50,19 +50,17 @@ export class CreateApps1792385089420 implements ReversibleMigration {
 				column('label').varchar(255),
 				column('sourceArtifactId').int.notNull,
 				column('bundleArtifactId').int,
-				(isSqlite ? column('buildTaskId').int : column('buildTaskId').bigint).comment(
-					'Current build task; null before dispatch or after task cleanup',
-				),
+				column('buildAttempts').int.notNull.default(0),
 				column('buildStatus')
 					.varchar(16)
 					.notNull.default("'queued'")
 					.withEnumCheck(['queued', 'running', 'succeeded', 'failed'])
 					.comment('Build state: queued, running, succeeded, or failed'),
+				column('buildStatusUpdatedAt').timestampTimezone(),
 			)
 			.withTimestamps.withIndexOn('appId')
 			.withIndexOn('sourceArtifactId')
 			.withIndexOn('bundleArtifactId')
-			.withIndexOn('buildTaskId')
 			.withForeignKey('appId', {
 				tableName: 'app',
 				columnName: 'id',
@@ -75,11 +73,6 @@ export class CreateApps1792385089420 implements ReversibleMigration {
 			})
 			.withForeignKey('bundleArtifactId', {
 				tableName: 'app_artifact',
-				columnName: 'id',
-				onDelete: 'SET NULL',
-			})
-			.withForeignKey('buildTaskId', {
-				tableName: 'scheduled_task',
 				columnName: 'id',
 				onDelete: 'SET NULL',
 			});

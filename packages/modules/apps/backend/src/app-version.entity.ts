@@ -1,5 +1,5 @@
 import type { AppBuildStatus } from '@n8n/api-types';
-import { dbType, idStringifier, WithTimestamps } from '@n8n/db';
+import { DateTimeColumn, WithTimestamps } from '@n8n/db';
 import { Column, Entity, Index, PrimaryColumn } from '@n8n/typeorm';
 
 @Entity({ name: 'app_version' })
@@ -22,17 +22,12 @@ export class AppVersion extends WithTimestamps {
 	@Column({ type: 'int', nullable: true })
 	bundleArtifactId: number | null;
 
-	@Index()
-	@Column({
-		type: dbType === 'sqlite' ? 'integer' : 'bigint',
-		nullable: true,
-		transformer: {
-			...idStringifier,
-			from: (value: number | null) => (value === null ? null : idStringifier.from(value)),
-		},
-	})
-	buildTaskId: string | null;
+	@Column({ type: 'int', default: 0 })
+	buildAttempts: number;
 
 	@Column({ type: 'varchar', length: 16, default: 'queued' })
 	buildStatus: AppBuildStatus;
+
+	@DateTimeColumn({ precision: 3, nullable: true })
+	buildStatusUpdatedAt: Date | null;
 }

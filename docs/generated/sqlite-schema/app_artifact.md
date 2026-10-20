@@ -50,8 +50,9 @@ erDiagram
 }
 "app_version" {
   varchar appId FK
+  INTEGER buildAttempts
   varchar_16_ buildStatus
-  INTEGER buildTaskId FK
+  datetime_3_ buildStatusUpdatedAt
   INTEGER bundleArtifactId FK
   datetime_3_ createdAt
   varchar id PK
