@@ -168,6 +168,21 @@ describe('runScriptedGateVerification — merge consistency', () => {
 		expect(result.status).toBe('error');
 	});
 
+	it('discloses that a redacted pass was not inspected, whichever pass it was', async () => {
+		const run = vi
+			.fn()
+			.mockResolvedValueOnce({
+				...approvePassResult,
+				redaction: { reason: 'workflow_redaction_policy' },
+			})
+			.mockResolvedValueOnce(declinePassResult);
+
+		const { analysis } = await runScriptedGateVerification(makeArgs(run));
+
+		expect(analysis.success).toBe(true);
+		expect(analysis.redactionNote).toContain('output was not inspected');
+	});
+
 	it('discloses simulated nodes reached only in an earlier pass', async () => {
 		const run = vi
 			.fn()
