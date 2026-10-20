@@ -481,19 +481,17 @@ watch(documentVisibility, (visibility) => {
 <template>
 	<N8nDialog :open="modalOpen" size="xlarge" @update:open="onDialogOpenUpdate">
 		<template v-if="!isLoadingAgent">
-			<N8nDialogHeader>
-				<div :class="$style.header">
-					<N8nDialogTitle>{{ title }}</N8nDialogTitle>
-					<N8nButton
-						v-if="isEditMode"
-						variant="outline"
-						icon="trash-2"
-						:class="$style.deleteButton"
-						:disabled="isDeleting"
-						:loading="isDeleting"
-						@click="onDelete"
-					/>
-				</div>
+			<N8nDialogHeader :class="$style.header">
+				<N8nDialogTitle>{{ title }}</N8nDialogTitle>
+				<N8nButton
+					v-if="isEditMode"
+					variant="outline"
+					icon="trash-2"
+					:class="$style.deleteButton"
+					:disabled="isDeleting"
+					:loading="isDeleting"
+					@click="onDelete"
+				/>
 			</N8nDialogHeader>
 			<N8nDialogBody>
 				<div :class="$style.contentWrapper">
@@ -719,12 +717,7 @@ watch(documentVisibility, (visibility) => {
 
 <style lang="scss" module>
 .header {
-	display: flex;
-	flex: 1;
-	align-items: center;
 	justify-content: space-between;
-	gap: var(--spacing--s);
-	min-width: 0;
 }
 
 .contentWrapper {
