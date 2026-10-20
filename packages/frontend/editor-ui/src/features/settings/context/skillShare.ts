@@ -59,7 +59,9 @@ async function streamThrough(
 	bytes: Uint8Array,
 	stream: GenericTransformStream,
 ): Promise<Uint8Array> {
-	const piped = new Blob([bytes]).stream().pipeThrough(stream);
+	const source = new Response(bytes).body;
+	if (!source) throw new SkillShareError('bad_payload');
+	const piped = source.pipeThrough(stream);
 	return new Uint8Array(await new Response(piped).arrayBuffer());
 }
 
@@ -180,6 +182,26 @@ export function parseImportHash(hash: string): { id: string; key: string } | nul
 	const id = params.get('share');
 	const key = params.get('k');
 	return id && key ? { id, key } : null;
+}
+
+const PENDING_SHARE_STORAGE_KEY = 'N8N_SKILL_SHARE_PENDING';
+
+/**
+ * The sign-in redirect keeps the path but drops the fragment. Runs when the app loads,
+ * before the route guards, and keeps an incoming share for this tab until the Skills
+ * page reads it.
+ */
+export function keepIncomingShare(location: Pick<Location, 'pathname' | 'hash'>) {
+	if (!location.pathname.endsWith('/settings/context/skills')) return;
+	if (parseImportHash(location.hash))
+		sessionStorage.setItem(PENDING_SHARE_STORAGE_KEY, location.hash);
+}
+
+/** The incoming share from the fragment, or the one kept before a sign-in. Read once. */
+export function takeIncomingShare(hash: string): { id: string; key: string } | null {
+	const kept = sessionStorage.getItem(PENDING_SHARE_STORAGE_KEY);
+	sessionStorage.removeItem(PENDING_SHARE_STORAGE_KEY);
+	return parseImportHash(hash) ?? (kept ? parseImportHash(kept) : null);
 }
 
 function readLinks(): Record<string, SkillShareLinkRecord[]> {

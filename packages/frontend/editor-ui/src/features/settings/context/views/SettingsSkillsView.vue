@@ -54,7 +54,7 @@ import type { SkillListQuery } from '../skills.api';
 import { useSkillsStore } from '../skills.store';
 import { useSkillScopeDisplay } from '../skills.utils';
 import { skillsWithPendingUpdate } from '../skillsGitHub.utils';
-import { parseImportHash } from '../skillShare';
+import { takeIncomingShare as readIncomingShare } from '../skillShare';
 
 const INSTANCE_SCOPE = 'instance';
 const PROJECT_SCOPE_PREFIX = 'project:';
@@ -516,13 +516,14 @@ async function onSharedImported(skill: SkillDetail) {
 }
 
 /**
- * A share link lands here as `#share=<id>&k=<key>`. The fragment is read once and then
- * removed, so the key does not stay in the address bar or in the history.
+ * A share link lands here as `#share=<id>&k=<key>`, or comes back from sign-in through
+ * session storage. The fragment is read once and then removed, so the key does not stay
+ * in the address bar or in the history.
  */
 async function takeIncomingShare() {
-	const share = parseImportHash(route.hash);
+	const share = readIncomingShare(route.hash);
 	if (!share) return;
-	await router.replace({ ...route, hash: '' });
+	if (route.hash) await router.replace({ ...route, hash: '' });
 	if (scopeOptions.value.length === 0) {
 		showMessage({
 			title: i18n.baseText('settings.context.skills.shareImport.noScope'),

@@ -7,6 +7,10 @@ import {
 	isContextPreferencesEnabledOnceEvaluated,
 	isContextSkillsEnabled,
 } from './context.utils';
+import { keepIncomingShare } from './skillShare';
+
+// Module descriptors load before the route guards, so a share link survives a sign-in.
+keepIncomingShare(window.location);
 
 /**
  * No `custom` middleware: the initializer would gate the routes on a backend module,

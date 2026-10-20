@@ -39,7 +39,7 @@ vi.mock('@n8n/composables/useToast', () => ({
 
 vi.mock('vue-router', () => ({
 	useRouter: () => ({ push }),
-	useRoute: () => ({ params: {}, query: routeQuery }),
+	useRoute: () => ({ params: {}, query: routeQuery, hash: '' }),
 	RouterLink: vi.fn(),
 }));
 
