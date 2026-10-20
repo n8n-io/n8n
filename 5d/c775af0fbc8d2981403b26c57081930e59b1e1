@@ -643,6 +643,9 @@ packages/cli/src/modules/agents/agents.service.ts
   s_c9a35d8cddcbb4::t_a2ef96b02fca74 463
   s_71ad2034164515::t_961dcd505c9228 24-30
   s_d3c0f6f6f7d41c::t_c057a57cc01518 76-81,82-94,179,181-182,185,333-393,395-397,399-402,737-741
+  s_d3c0f6f6f7d41c::t_3042b83d01b05a 273-277,394
+  s_d3c0f6f6f7d41c::t_460ad4acda483a 183-184,233,247,298,398
+  s_d3c0f6f6f7d41c::t_d899c1753c2590 403-409
 packages/cli/src/modules/agents/agent-task.service.ts
   s_71ad2034164515::t_1eb2704e9ceed4 94-96
   s_c9a35d8cddcbb4::t_3f98b077b9ab12 97
@@ -797,6 +800,9 @@ packages/@n8n/api-types/src/dto/packages/__tests__/import-result.dto.test.ts
   s_d3c0f6f6f7d41c::t_674a8ad35086b4 132
 packages/cli/src/modules/agents/agent-config.service.ts
   s_d3c0f6f6f7d41c::t_c057a57cc01518 8-9,29,39-43,90-120,123-153,171-172,174-177
+  s_d3c0f6f6f7d41c::t_3042b83d01b05a 159-168
+  s_d3c0f6f6f7d41c::t_d899c1753c2590 25,30
+  s_d3c0f6f6f7d41c::t_0270e27f7d4462 15-18,24,32,62,121-122,154-158,169-170,173
 packages/cli/src/modules/agents/__tests__/agent-publish.service.test.ts
   s_d3c0f6f6f7d41c::t_c057a57cc01518 863,908
 packages/cli/src/modules/n8n-packages/entities/workflow/references/__tests__/sub-workflow-node.reference.test.ts
@@ -813,6 +819,7 @@ packages/cli/src/modules/n8n-packages/entities/workflow/references/sub-workflow-
   s_d3c0f6f6f7d41c::t_c057a57cc01518 1
 packages/cli/src/modules/agents/agent-save-completion.service.ts
   s_d3c0f6f6f7d41c::t_c057a57cc01518 2-4,13,33-37,39-50,57-63
+  s_d3c0f6f6f7d41c::t_0270e27f7d4462 38,51-56
 packages/cli/src/modules/agents/__tests__/agent-custom-tools.service.test.ts
   s_d3c0f6f6f7d41c::t_c057a57cc01518 114,210
 packages/cli/src/modules/agents/utils/agent-draft.utils.ts
@@ -823,6 +830,8 @@ packages/cli/src/modules/agents/agent-config-preparation.service.ts
   s_d3c0f6f6f7d41c::t_c057a57cc01518 10-12,14,29,33-36,38-40,111-192,193-269
 packages/cli/src/modules/agents/utils/agent-definition.ts
   s_d3c0f6f6f7d41c::t_c057a57cc01518 24-43
+packages/@n8n/telemetry/src/events/agents.ts
+  s_d3c0f6f6f7d41c::t_460ad4acda483a 329,347
 ---
 {
   "schema_version": "authorship/3.0.0",
