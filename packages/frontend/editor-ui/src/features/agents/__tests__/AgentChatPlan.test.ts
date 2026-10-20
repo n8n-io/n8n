@@ -240,7 +240,7 @@ describe('AgentChatPlan', () => {
 		expect(wrapper.text()).not.toContain('Plan closed');
 		expect(trigger.text()).not.toContain('Stopped checking');
 		expect(indicator().props()).toMatchObject({ icon: 'list-checks', spin: false });
-		expect(trigger.text().match(/One source remains unchecked\./g)).toHaveLength(1);
+		expect(wrapper.text().match(/One source remains unchecked\./g)).toHaveLength(2);
 		expect(wrapper.get('[data-testid="agent-chat-plan-details"]').text()).not.toContain(
 			'One source remains unchecked.',
 		);
