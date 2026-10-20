@@ -2912,6 +2912,62 @@ describe('AgentBuilderView — configuration validation', () => {
 		expect(header.attributes('data-config-validation-status')).toBe('invalid');
 	});
 
+	it('shows setup tasks after the assistant finishes building an agent artifact', async () => {
+		const wrapper = await renderView({
+			props: {
+				artifactMode: true,
+				artifactProjectId: 'p1',
+				artifactAgentId: 'a1',
+				artifactEditingLocked: true,
+			},
+		});
+		const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
+
+		expect(header.props('tasks')).toBeUndefined();
+
+		await wrapper.setProps({ artifactEditingLocked: false });
+		expect(header.props('tasks')).toEqual(
+			expect.arrayContaining([expect.objectContaining({ id: 'add-tool', state: 'todo' })]),
+		);
+
+		await wrapper.setProps({ artifactEditingLocked: true });
+		expect(header.props('tasks')).toBeUndefined();
+	});
+
+	it('hides setup tasks while the embedded assistant builds the agent', async () => {
+		const wrapper = await renderView();
+		const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
+		await wrapper.find('[data-testid="agent-builder-instance-ai-btn"]').trigger('click');
+		expect(header.props('tasks')).toBeDefined();
+
+		await wrapper.find('[data-testid="ai-panel-emit-building"]').trigger('click');
+		expect(header.props('tasks')).toBeUndefined();
+
+		await wrapper.find('[data-testid="ai-panel-stop-building"]').trigger('click');
+		expect(header.props('tasks')).toEqual(
+			expect.arrayContaining([expect.objectContaining({ id: 'add-tool', state: 'todo' })]),
+		);
+	});
+
+	it.each([false, true])(
+		'hides setup tasks before an agent exists with artifact mode %s',
+		async (artifactMode) => {
+			mockPendingAgentRow('a1');
+			if (!artifactMode) history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
+			const wrapper = await renderView({
+				props: {
+					artifactMode,
+					artifactProjectId: 'p1',
+					artifactAgentId: 'a1',
+					artifactAgentPending: artifactMode,
+				},
+			});
+
+			expect(wrapper.findComponent({ name: 'AgentBuilderHeader' }).props('tasks')).toBeUndefined();
+			expect(createAgentMock).not.toHaveBeenCalled();
+		},
+	);
+
 	it.each(['tool', 'MCP server', 'both'])(
 		'completes the add-tool setup task when adding %s',
 		async (kind) => {

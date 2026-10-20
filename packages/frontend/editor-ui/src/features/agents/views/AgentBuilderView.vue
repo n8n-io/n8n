@@ -864,8 +864,15 @@ const setupChecklistContext = computed(() => {
 		},
 	};
 });
-const { tasks: setupTasks, isVisible: areSetupTasksVisible } =
+const { tasks: setupTasks, isVisible: isSetupChecklistVisible } =
 	useAgentSetupTasks(setupChecklistContext);
+const areSetupTasksVisible = computed(
+	() =>
+		isSetupChecklistVisible.value &&
+		!isUnsaved.value &&
+		!props.artifactEditingLocked &&
+		!embeddedAiBuilding.value,
+);
 const builderHeader = useTemplateRef<{ publishAgent: () => Promise<void> | undefined }>(
 	'builderHeader',
 );
