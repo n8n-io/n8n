@@ -11,19 +11,58 @@ import type { Request, Response } from 'express';
 import { ErrorReporter } from 'n8n-core';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { FORM_TRIGGER_PATH_IDENTIFIER, NodeApiError } from 'n8n-workflow';
-import { finished, Readable } from 'node:stream';
+import { Readable } from 'node:stream';
+import { pipeline } from 'node:stream/promises';
 import picocolors from 'picocolors';
 
 import { applySandboxCSP } from './webhooks/webhook-response-headers';
 
 /**
- * Pipes `stream` into `res`, and destroys `stream` when `res` closes, also when
- * `res` closed before this call. `pipe` alone keeps the source open when the
- * client disconnects, so a file stream holds its file handle until garbage collection.
+ * Sends `stream` as the body of `res` and destroys `stream` however the call ends.
+ *
+ * Resolves when the body is sent or the client disconnected. Rejects with the stream
+ * error when the stream fails or ends early. A failure before the first chunk leaves
+ * the headers unsent, so the caller can still send an error response. A later failure
+ * destroys `res`, so the client sees an incomplete download instead of waiting.
+ *
+ * @param setHeaders Sets the status and headers. Runs after the first chunk is read.
  */
-export function pipeStreamToResponse(stream: Readable, res: Response, options?: { end?: boolean }) {
-	finished(res, () => stream.destroy());
-	stream.pipe(res, options);
+export async function sendStreamToResponse(
+	res: Response,
+	stream: Readable,
+	setHeaders?: () => void,
+): Promise<void> {
+	if (res.destroyed) {
+		stream.destroy();
+		return;
+	}
+
+	// Runs before pipeline's own listener, so the stream is still open when the client left first.
+	let clientDisconnected = false;
+	const onClose = () => {
+		clientDisconnected = !res.writableFinished && !stream.destroyed;
+		stream.destroy();
+	};
+	res.once('close', onClose);
+
+	try {
+		const chunks = stream[Symbol.asyncIterator]();
+		const first = await chunks.next();
+
+		setHeaders?.();
+
+		async function* body() {
+			if (!first.done) yield first.value;
+			yield* { [Symbol.asyncIterator]: () => chunks };
+		}
+		await pipeline(Readable.from(body()), res);
+	} catch (error) {
+		if (clientDisconnected) return;
+		throw error;
+	} finally {
+		res.off('close', onClose);
+		stream.destroy();
+	}
 }
 
 export function sendSuccessResponse(
@@ -42,7 +81,11 @@ export function sendSuccessResponse(
 	}
 
 	if (data instanceof Readable) {
-		pipeStreamToResponse(data, res);
+		void sendStreamToResponse(res, data).catch((e: unknown) => {
+			const error = ensureError(e);
+			reportError(error);
+			if (!res.headersSent) sendErrorResponse(res, error);
+		});
 		return;
 	}
 

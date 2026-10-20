@@ -3,7 +3,7 @@ import http from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import type { Readable } from 'node:stream';
+import { Readable } from 'node:stream';
 
 /**
  * Temp file that is larger than the socket buffers, so a download stops in the
@@ -74,5 +74,20 @@ export async function waitForClose(stream: Readable, timeoutMs = 2000) {
 			clearTimeout(timer);
 			resolve(true);
 		});
+	});
+}
+
+/** Sends `chunksBeforeError` chunks of 64 KB, then fails like a disk or object store read error. */
+export function failingStream(chunksBeforeError: number) {
+	let sent = 0;
+	return new Readable({
+		read() {
+			if (sent === chunksBeforeError) {
+				this.destroy(new Error('read failed'));
+				return;
+			}
+			sent++;
+			setTimeout(() => this.push(Buffer.alloc(64 * 1024)), 1);
+		},
 	});
 }
