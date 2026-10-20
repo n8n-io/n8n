@@ -5064,6 +5064,65 @@ describe('OauthService', () => {
 				expect(registerPayload.scope).toBe('openid profile');
 				expect(persisted.scope).toBe('openid profile');
 			});
+
+			const mockAuthServerWithScopes = (scopes: string[]) => {
+				vi.mocked(httpClientMock.get).mockResolvedValueOnce({
+					data: {
+						issuer: 'https://auth.atlassian.com',
+						authorization_endpoint: 'https://auth.atlassian.com/authorize',
+						token_endpoint: 'https://auth.atlassian.com/oauth/token',
+						registration_endpoint: 'https://auth.atlassian.com/dcr/register',
+						grant_types_supported: ['authorization_code', 'refresh_token'],
+						code_challenge_methods_supported: ['S256'],
+						scopes_supported: scopes,
+					},
+				});
+				vi.mocked(httpClientMock.post).mockResolvedValueOnce({
+					data: { client_id: 'registered-client-id' },
+				});
+			};
+
+			it('adds offline_access when the auth server offers it and the resource omits it', async () => {
+				mockProtectedResourceDiscovery(['mcp']);
+				mockAuthServerWithScopes(['mcp', 'offline_access']);
+
+				const { registerPayload, clientOptions, persisted } = await runAtlassianFlow();
+
+				expect(registerPayload.scope).toBe('mcp offline_access');
+				expect(persisted.scope).toBe('mcp offline_access');
+				expect(clientOptions.scopes?.join(clientOptions.scopesSeparator)).toBe(
+					'mcp offline_access',
+				);
+			});
+
+			it('does not repeat offline_access when the resource already advertises it', async () => {
+				mockProtectedResourceDiscovery(['mcp', 'offline_access']);
+				mockAuthServerWithScopes(['mcp', 'offline_access']);
+
+				const { persisted } = await runAtlassianFlow();
+
+				expect(persisted.scope).toBe('mcp offline_access');
+			});
+
+			// A scope the authorization server does not advertise would be rejected at the
+			// authorize step, so a missing offline_access stays missing.
+			it('leaves the scopes alone when the auth server does not offer offline_access', async () => {
+				mockProtectedResourceDiscovery(['mcp']);
+				mockAuthServerWithScopes(['mcp']);
+
+				const { persisted } = await runAtlassianFlow();
+
+				expect(persisted.scope).toBe('mcp');
+			});
+
+			it('leaves the scopes alone when the auth server advertises no scopes', async () => {
+				mockProtectedResourceDiscovery(['mcp']);
+				mockAuthServerWithoutScopes();
+
+				const { persisted } = await runAtlassianFlow();
+
+				expect(persisted.scope).toBe('mcp');
+			});
 		});
 
 		describe('convertCredentialToOptions', () => {
