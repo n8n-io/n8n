@@ -243,6 +243,8 @@ export class MailchimpTrigger implements INodeType {
 				webhookData.sources = sources;
 				if (typeof webhook.signing_secret === 'string') {
 					webhookData.webhookSecret = webhook.signing_secret;
+				} else {
+					delete webhookData.webhookSecret;
 				}
 				return true;
 			},

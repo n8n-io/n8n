@@ -20,14 +20,18 @@ describe('MailchimpTrigger', () => {
 		return `t=${timestamp},v1=${hmac.digest('hex')}`;
 	}
 
-	function createWebhookContext(webhookData: IDataObject, signatureHeader?: string) {
+	function createWebhookContext(
+		webhookData: IDataObject,
+		signatureHeader?: string,
+		request: { rawBody?: Buffer } = { rawBody },
+	) {
 		const res = { status: vi.fn().mockReturnThis(), send: vi.fn().mockReturnThis(), end: vi.fn() };
 		const ctx = {
 			getWorkflowStaticData: vi.fn().mockReturnValue(webhookData),
 			getWebhookName: vi.fn().mockReturnValue('default'),
 			getRequestObject: vi.fn().mockReturnValue({
 				body,
-				rawBody,
+				rawBody: request.rawBody,
 				header: vi.fn((name: string) =>
 					name.toLowerCase() === 'x-mailchimp-signature' ? signatureHeader : undefined,
 				),
@@ -64,8 +68,8 @@ describe('MailchimpTrigger', () => {
 			expect(webhookData.webhookSecret).toBe(signingSecret);
 		});
 
-		it('should not store a secret when Mailchimp returns none', async () => {
-			const webhookData: IDataObject = {};
+		it('should clear a stored secret when Mailchimp returns none', async () => {
+			const webhookData: IDataObject = { webhookSecret: 'previous-secret' };
 			vi.mocked(mailchimpApiRequest).mockResolvedValue({ id: 'webhook-id' });
 
 			await trigger.webhookMethods.default.create.call(createHookContext(webhookData));
@@ -114,6 +118,19 @@ describe('MailchimpTrigger', () => {
 			['an expired timestamp', () => sign(Math.floor(Date.now() / 1000) - 600)],
 		])('should reject a request with %s', async (_, getHeader) => {
 			const { ctx, res } = createWebhookContext(signedWebhookData(), getHeader());
+
+			const result = await trigger.webhook.call(ctx);
+
+			expect(result).toEqual({ noWebhookResponse: true });
+			expect(res.status).toHaveBeenCalledWith(401);
+		});
+
+		it('should reject a signed request without a raw body', async () => {
+			const { ctx, res } = createWebhookContext(
+				signedWebhookData(),
+				sign(Math.floor(Date.now() / 1000)),
+				{},
+			);
 
 			const result = await trigger.webhook.call(ctx);
 
