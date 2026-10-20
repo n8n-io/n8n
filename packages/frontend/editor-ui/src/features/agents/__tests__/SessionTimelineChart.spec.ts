@@ -377,7 +377,7 @@ describe('SessionTimelineChart', () => {
 			await vi.runAllTimersAsync();
 
 			const details = w.get('[data-test-id="timeline-hover-card"]');
-			expect(details.text()).toContain('Skill');
+			expect(details.find('[aria-label="Skill"]').exists()).toBe(true);
 			expect(details.text()).toContain('Triage');
 		} finally {
 			w.unmount();

@@ -160,6 +160,7 @@ const { isOpen } = useTimelineItemExpansion({
 							{{ i18n.baseText('agentSessions.timeline.input') }}
 						</N8nText>
 						<N8nCodeBlock
+							data-test-id="timeline-tool-input"
 							:code="stringifyJson(item.toolInput)"
 							language="json"
 							:class="$style.toolCode"
@@ -178,6 +179,7 @@ const { isOpen } = useTimelineItemExpansion({
 							{{ i18n.baseText('agentSessions.timeline.output') }}
 						</N8nText>
 						<N8nCodeBlock
+							data-test-id="timeline-tool-output"
 							:code="stringifyJson(item.toolOutput)"
 							language="json"
 							:class="$style.toolCode"

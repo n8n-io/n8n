@@ -230,27 +230,17 @@ export class AgentSessionsPage extends BasePage {
 		});
 	}
 
-	async openTimelineItem(name: string): Promise<void> {
-		await this.getTimelineRows().filter({ hasText: name }).click();
+	getTimelineToolInput(name: string): Locator {
+		return this.getTimelineToolRow(name).getByTestId('timeline-tool-input');
 	}
 
-	getInputRunData(): Locator {
-		return this.page.getByTestId('agent-session-run-data-input');
+	getTimelineToolOutput(name: string): Locator {
+		return this.getTimelineToolRow(name).getByTestId('timeline-tool-output');
 	}
 
-	getOutputRunData(): Locator {
-		return this.page.getByTestId('agent-session-run-data-output');
-	}
-
-	getWorkflowInput(): Locator {
-		return this.page.getByTestId('workflow-input');
-	}
-
-	getWorkflowOutput(): Locator {
-		return this.page.getByTestId('workflow-output');
-	}
-
-	getOpenFullExecution(): Locator {
-		return this.page.getByTestId('open-full-execution');
+	private getTimelineToolRow(name: string): Locator {
+		return this.getTimelineRows().filter({
+			has: this.page.getByRole('button', { name, exact: true }),
+		});
 	}
 }
