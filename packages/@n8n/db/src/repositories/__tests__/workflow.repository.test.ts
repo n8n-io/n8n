@@ -606,6 +606,28 @@ describe('WorkflowRepository', () => {
 		});
 	});
 
+	describe('findSettings', () => {
+		it('selects only the settings column', async () => {
+			const settings: IWorkflowSettings = { engineType: 'v2' };
+			const findOneSpy = vi
+				.spyOn(workflowRepository, 'findOne')
+				.mockResolvedValue(Object.assign(new WorkflowEntity(), { settings }));
+
+			await expect(workflowRepository.findSettings('workflow1')).resolves.toEqual(settings);
+
+			expect(findOneSpy).toHaveBeenCalledWith({
+				select: ['settings'],
+				where: { id: 'workflow1' },
+			});
+		});
+
+		it('returns undefined for a workflow that does not exist', async () => {
+			vi.spyOn(workflowRepository, 'findOne').mockResolvedValue(null);
+
+			await expect(workflowRepository.findSettings('missing')).resolves.toBeUndefined();
+		});
+	});
+
 	describe('getIdsAfter', () => {
 		it('should return the first ids when no cursor is given', async () => {
 			const findSpy = vi
