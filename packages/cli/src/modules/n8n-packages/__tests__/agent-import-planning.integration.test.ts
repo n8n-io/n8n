@@ -231,9 +231,8 @@ it('plans cycles, typed bindings and task IDs without changing definitions or de
 	expect(a.skills).toEqual(first.skills);
 	expect(a.tools).toEqual(first.tools);
 	expect(a.config?.skills).toEqual(first.config?.skills);
-	expect(a.taskIds.get('task_source')).toBe('task_source');
-	expect(Object.keys(a.tasks)).toEqual([a.config?.tasks?.[0].id]);
-	expect(plan.agentPlan!.bindings.workflows.get('shared')).toBe(workflowId);
+	expect(a.tasks).toEqual(first.tasks);
+	expect(a.config?.tasks).toEqual(first.config?.tasks);
 	expect(request.agents).toEqual(original);
 	expect(await records()).toEqual(before);
 });
@@ -289,7 +288,7 @@ it.each<WorkflowConflictPolicy>(['new-version', 'skip', 'fail'])(
 			expect(plan.credentialPlan.failures).toEqual([]);
 			expect(plan.credentialPlan.stubIds.size).toBe(0);
 			if (policy === 'skip') {
-				expect(plan.agentPlan!.items[0].taskIds.size).toBe(0);
+				expect(plan.agentPlan!.items[0].tasks).toEqual(source.tasks);
 				await planner.assertNotBlocked([plan], { apiKeyScopes: ['agent:read'] });
 			}
 		}
@@ -453,27 +452,37 @@ it('checks project boundaries after allocating the whole package', async () => {
 	expect(tools?.[2]).toMatchObject({ node: { nodeParameters: { workflowId: expression } } });
 });
 
-it('reports task ownership conflicts across project plans', async () => {
-	const requests = [input([agent('first')]), input([agent('second')], otherProject.id)];
-	for (const request of requests) {
-		request.options.workflowIdPolicy = 'source';
-		request.agents![0].tasks.task_shared = {
-			name: 'Summary',
-			objective: 'Summarize.',
-			cronExpression: '0 9 * * *',
-			timezone: null,
-		};
-		request.agents![0].config!.tasks = [{ type: 'task', id: 'task_shared', enabled: false }];
-	}
-	const plans = await planner.planPackage(requests);
-	expect(plans.flatMap((plan) => plan.blockingIssues)).toContainEqual(
-		expect.objectContaining({
-			type: 'agent-conflict',
-			kind: 'task-id',
-			sourceTaskId: 'task_shared',
-		}),
-	);
-});
+it.each<WorkflowConflictPolicy>(['new-version', 'skip'])(
+	'checks task ownership across project plans under %s',
+	async (policy) => {
+		await agents.save({ id: 'first', name: 'First', projectId: project.id });
+		const requests = [input([agent('first')]), input([agent('second')], otherProject.id)];
+		requests[0].options.workflowConflictPolicy = policy;
+		for (const request of requests) {
+			request.options.workflowIdPolicy = 'source';
+			request.agents![0].tasks.task_shared = {
+				name: 'Summary',
+				objective: 'Summarize.',
+				cronExpression: '0 9 * * *',
+				timezone: null,
+			};
+			request.agents![0].config!.tasks = [{ type: 'task', id: 'task_shared', enabled: false }];
+		}
+		const plans = await planner.planPackage(requests);
+		const issues = plans.flatMap((plan) => plan.blockingIssues);
+		if (policy === 'skip') {
+			expect(issues).toEqual([]);
+			return;
+		}
+		expect(issues).toContainEqual(
+			expect.objectContaining({
+				type: 'agent-conflict',
+				kind: 'task-id',
+				sourceTaskId: 'task_shared',
+			}),
+		);
+	},
+);
 
 it('blocks unavailable Agent tool node types without changing destination records', async () => {
 	const source = agent('source', {

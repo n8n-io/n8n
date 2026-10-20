@@ -9,15 +9,13 @@ import type {
 	AgentImportIdentities,
 	AgentImportMatchContext,
 	AgentImportMatches,
-	AgentTaskImportMappings,
+	AgentTaskIdConflict,
 	PreparedAgent,
 } from './agent-import.types';
 
-interface TaskMapping {
+interface ImportedTask {
 	sourceAgentId: string;
-	targetAgentId: string;
 	sourceTaskId: string;
-	targetTaskId: string;
 }
 
 @Service()
@@ -86,68 +84,45 @@ export class AgentImportMatchService {
 		return result;
 	}
 
-	async mapTaskIds(
+	async findTaskIdConflicts(
 		agents: Array<Pick<PreparedAgent, 'sourceAgentId' | 'tasks'>>,
-		identities: AgentImportIdentities,
-	): Promise<AgentTaskImportMappings> {
-		const result: AgentTaskImportMappings = {
-			taskIdsBySourceAgentId: new Map(),
-			idConflicts: [],
-		};
-		const mappings: TaskMapping[] = [];
-		for (const agent of agents) {
-			const identity = identities.identities.get(agent.sourceAgentId);
-			if (!identity) continue;
-			result.taskIdsBySourceAgentId.set(agent.sourceAgentId, new Map());
-			for (const sourceTaskId of Object.keys(agent.tasks)) {
-				mappings.push({
-					sourceAgentId: agent.sourceAgentId,
-					targetAgentId: identity.targetAgentId,
-					sourceTaskId,
-					targetTaskId: sourceTaskId,
-				});
-			}
-		}
+	): Promise<AgentTaskIdConflict[]> {
+		const importedTasks = agents.flatMap(({ sourceAgentId, tasks }) =>
+			Object.keys(tasks).map((sourceTaskId) => ({ sourceAgentId, sourceTaskId })),
+		);
 		const owners = await this.agentTaskService.findImportIdOwners(
-			mappings.map(({ targetTaskId }) => targetTaskId),
+			importedTasks.map(({ sourceTaskId }) => sourceTaskId),
 		);
 		const ownersById = new Map(owners.map(({ id, agentId }) => [id, agentId]));
-		const available: TaskMapping[] = [];
-		for (const mapping of mappings) {
-			const conflictingAgentId = ownersById.get(mapping.targetTaskId);
-			if (conflictingAgentId !== undefined && conflictingAgentId !== mapping.targetAgentId) {
-				result.idConflicts.push(toTaskIdConflict(mapping, conflictingAgentId));
+		const conflicts: AgentTaskIdConflict[] = [];
+		const available: ImportedTask[] = [];
+		for (const task of importedTasks) {
+			const conflictingAgentId = ownersById.get(task.sourceTaskId);
+			if (conflictingAgentId !== undefined && conflictingAgentId !== task.sourceAgentId) {
+				conflicts.push({ ...task, conflictingAgentId });
 			} else {
-				available.push(mapping);
+				available.push(task);
 			}
 		}
-		collectTaskMappings(available, result);
-		return result;
+		return [...conflicts, ...findPlannedTaskIdConflicts(available)];
 	}
 }
 
-function toTaskIdConflict(mapping: TaskMapping, conflictingAgentId: string) {
-	const { sourceAgentId, sourceTaskId, targetAgentId, targetTaskId } = mapping;
-	return { sourceAgentId, sourceTaskId, targetAgentId, targetTaskId, conflictingAgentId };
-}
-
-function collectTaskMappings(mappings: TaskMapping[], result: AgentTaskImportMappings): void {
-	const byTargetId = new Map<string, TaskMapping[]>();
-	for (const mapping of mappings) {
-		const group = byTargetId.get(mapping.targetTaskId) ?? [];
-		group.push(mapping);
-		byTargetId.set(mapping.targetTaskId, group);
+function findPlannedTaskIdConflicts(tasks: ImportedTask[]): AgentTaskIdConflict[] {
+	const byTaskId = new Map<string, ImportedTask[]>();
+	for (const task of tasks) {
+		const group = byTaskId.get(task.sourceTaskId) ?? [];
+		group.push(task);
+		byTaskId.set(task.sourceTaskId, group);
 	}
-	for (const group of byTargetId.values()) {
-		for (const mapping of group) {
-			const other = group.find(({ targetAgentId }) => targetAgentId !== mapping.targetAgentId);
-			if (other) {
-				result.idConflicts.push(toTaskIdConflict(mapping, other.targetAgentId));
-				continue;
-			}
-			result.taskIdsBySourceAgentId
-				.get(mapping.sourceAgentId)
-				?.set(mapping.sourceTaskId, mapping.targetTaskId);
+	const conflicts: AgentTaskIdConflict[] = [];
+	for (const task of tasks) {
+		const other = byTaskId
+			.get(task.sourceTaskId)
+			?.find(({ sourceAgentId }) => sourceAgentId !== task.sourceAgentId);
+		if (other) {
+			conflicts.push({ ...task, conflictingAgentId: other.sourceAgentId });
 		}
 	}
+	return conflicts;
 }

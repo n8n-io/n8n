@@ -17,7 +17,6 @@ import { AgentImportMatchService } from './agent-import-match.service';
 import {
 	requiredAgentScopes,
 	type AgentImportMatchContext,
-	type AgentImportIdentities,
 	type ResolvedAgentImportIdentity,
 	type AgentImportPlan,
 	type AgentPlanItem,
@@ -49,7 +48,6 @@ export class AgentImporter {
 	): Promise<AgentImportPlan> {
 		const plan: AgentImportPlan = {
 			items: [],
-			bindings: { agents: new Map(), workflows: new Map(), credentials: new Map() },
 			issues: [],
 		};
 		if (agents.length === 0) return plan;
@@ -74,7 +72,7 @@ export class AgentImporter {
 		await this.assertScopes(context, requiredAgentScopes(plan));
 		const active = plan.items.filter(({ action }) => action !== 'skip');
 		if (active.length > 0) await this.settingsService.assertEnabled();
-		await this.planTasks(context, active, identities, plan);
+		for (const item of active) plan.issues.push(...agentBodyIssues(item));
 		return plan;
 	}
 
@@ -122,37 +120,8 @@ export class AgentImporter {
 			action,
 			targetAgentId: identity.targetAgentId,
 			existing,
-			taskIds: new Map(),
 			publishingAction,
 		});
-		plan.bindings.agents.set(agent.sourceAgentId, identity.targetAgentId);
-	}
-
-	private async planTasks(
-		context: AgentImportMatchContext,
-		active: AgentPlanItem[],
-		identities: AgentImportIdentities,
-		plan: AgentImportPlan,
-	): Promise<void> {
-		const tasks = await this.matcher.mapTaskIds(active, identities);
-		for (const conflict of tasks.idConflicts) {
-			plan.issues.push({
-				type: 'agent-conflict',
-				kind: 'task-id',
-				sourceAgentId: conflict.sourceAgentId,
-				projectId: context.projectId,
-				sourceTaskId: conflict.sourceTaskId,
-				targetIds: [conflict.targetTaskId],
-			});
-		}
-		for (const item of active) {
-			plan.issues.push(...agentBodyIssues(item));
-			item.taskIds = tasks.taskIdsBySourceAgentId.get(item.sourceAgentId) ?? new Map();
-			item.tasks = Object.fromEntries(
-				Object.entries(item.tasks).map(([id, body]) => [item.taskIds.get(id) ?? id, body]),
-			);
-			for (const ref of item.config?.tasks ?? []) ref.id = item.taskIds.get(ref.id) ?? ref.id;
-		}
 	}
 
 	async validate(

@@ -9,7 +9,6 @@ import { AgentImportMatchService } from './agent-import-match.service';
 import type {
 	AgentImportIssue,
 	AgentImportMatchContext,
-	AgentImportPlan,
 	AgentPlanItem,
 } from './agent-import.types';
 import type { ImportPlan } from '../../engine/import-orchestrator';
@@ -71,8 +70,7 @@ export class AgentImportBindings {
 			}
 		}
 		for (const plan of plans) await this.resolveScope(plan, agents, workflows);
-		const taskOwners = new Map<string, string>();
-		for (const plan of plans) this.checkTaskOwners(plan, taskOwners);
+		await this.checkTaskOwners(plans);
 	}
 
 	private async resolveScope(
@@ -95,7 +93,7 @@ export class AgentImportBindings {
 		];
 		const agentTargets = await this.resolveAgents(context, idsFor('agent'), agents);
 		const workflowTargets = await this.resolveWorkflows(context, idsFor('workflow'), workflows);
-		agentPlan.bindings.credentials = new Map([
+		const credentialBindings = new Map([
 			...plan.credentialPlan.successes,
 			...plan.credentialPlan.stubIds,
 		]);
@@ -104,10 +102,10 @@ export class AgentImportBindings {
 				item,
 				refs,
 				{ agent: agentTargets, workflow: workflowTargets },
-				agentPlan,
+				agentPlan.issues,
 				context.projectId,
 			);
-			bindCredentials(item, agentPlan, context.projectId);
+			bindCredentials(item, credentialBindings, agentPlan.issues, context.projectId);
 		}
 	}
 
@@ -203,24 +201,29 @@ export class AgentImportBindings {
 		return resolved;
 	}
 
-	private checkTaskOwners(plan: ImportPlan, owners: Map<string, string>): void {
-		const { agentPlan } = plan;
-		if (!agentPlan) return;
-		for (const item of agentPlan.items) {
-			for (const [sourceTaskId, taskId] of item.taskIds) {
-				const owner = owners.get(taskId);
-				if (owner && owner !== item.targetAgentId) {
-					agentPlan.issues.push({
-						type: 'agent-conflict',
-						kind: 'task-id',
-						sourceAgentId: item.sourceAgentId,
-						projectId: plan.input.context.projectId,
-						sourceTaskId,
-						targetIds: [taskId],
-					});
-				}
-				owners.set(taskId, item.targetAgentId);
-			}
+	private async checkTaskOwners(plans: ImportPlan[]): Promise<void> {
+		const items = plans.flatMap(
+			({ agentPlan }) => agentPlan?.items.filter(({ action }) => action !== 'skip') ?? [],
+		);
+		const conflicts = await this.agentMatcher.findTaskIdConflicts(items);
+		for (const plan of plans) {
+			const { agentPlan } = plan;
+			if (!agentPlan) continue;
+			const sourceAgentIds = new Set(agentPlan.items.map(({ sourceAgentId }) => sourceAgentId));
+			agentPlan.issues.push(
+				...conflicts
+					.filter(({ sourceAgentId }) => sourceAgentIds.has(sourceAgentId))
+					.map(
+						(conflict): AgentImportIssue => ({
+							type: 'agent-conflict',
+							kind: 'task-id',
+							sourceAgentId: conflict.sourceAgentId,
+							projectId: plan.input.context.projectId,
+							sourceTaskId: conflict.sourceTaskId,
+							targetIds: [conflict.sourceTaskId],
+						}),
+					),
+			);
 		}
 	}
 }
@@ -229,7 +232,7 @@ function bindReferences(
 	item: AgentPlanItem,
 	refs: EntityReference[],
 	targets: Record<EntityReference['kind'], Map<string, DependencyTarget>>,
-	plan: AgentImportPlan,
+	issues: AgentImportIssue[],
 	projectId: string,
 ): void {
 	for (const ref of refs) {
@@ -239,7 +242,7 @@ function bindReferences(
 		if (!('reason' in target) && ref.projectLocal && !target.inProject)
 			target = { reason: 'inaccessible' };
 		if ('reason' in target) {
-			plan.issues.push({
+			issues.push({
 				type: 'agent-dependency-unresolved',
 				sourceAgentId: item.sourceAgentId,
 				projectId,
@@ -250,19 +253,22 @@ function bindReferences(
 			});
 			continue;
 		}
-		const bindings = ref.kind === 'agent' ? plan.bindings.agents : plan.bindings.workflows;
-		bindings.set(ref.id, target.id);
 		ref.setId?.(target.id);
 	}
 }
 
-function bindCredentials(item: AgentPlanItem, plan: AgentImportPlan, projectId: string): void {
+function bindCredentials(
+	item: AgentPlanItem,
+	bindings: Map<string, string>,
+	issues: AgentImportIssue[],
+	projectId: string,
+): void {
 	visitAgentCredentialReferences(item.config, ({ id, path, managedToken, setId }) => {
 		if (!id || id === managedToken) return;
-		const targetId = plan.bindings.credentials.get(id);
+		const targetId = bindings.get(id);
 		if (targetId) setId(targetId);
 		else
-			plan.issues.push({
+			issues.push({
 				type: 'agent-dependency-unresolved',
 				sourceAgentId: item.sourceAgentId,
 				projectId,
