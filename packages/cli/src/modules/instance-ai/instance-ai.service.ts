@@ -67,6 +67,7 @@ import {
 	threadProvenanceMetadata,
 	createInternalOperationTraceContext,
 	emitAgentSnapshotTraceEvent,
+	carryAgentBuildRunState,
 	createInstanceAiLivenessPolicyConfig,
 	InstanceAiLivenessPolicy,
 	McpClientManager,
@@ -5924,6 +5925,9 @@ export class InstanceAiService {
 			}
 			resumeAgent = rebuilt.agent;
 			resumeModelId = rebuilt.modelId;
+			if (orchestrationContext) {
+				carryAgentBuildRunState(orchestrationContext, rebuilt.orchestrationContext);
+			}
 			resumeOrchestrationContext = rebuilt.orchestrationContext;
 		}
 

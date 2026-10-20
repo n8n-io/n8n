@@ -8,6 +8,7 @@ import type {
 import {
 	buildTimelineBlocks,
 	extractArtifacts,
+	extractBuiltAgentArtifacts,
 	extractBuiltWorkflowArtifacts,
 	isStreamingTimelineEntry,
 } from '../agentTimeline.utils';
@@ -351,6 +352,61 @@ describe('extractBuiltWorkflowArtifacts', () => {
 		expect(
 			extractBuiltWorkflowArtifacts([
 				makeToolCall({ toolName: 'workflow_builder_build_workflow', isLoading: true }),
+			]),
+		).toEqual([]);
+	});
+});
+
+describe('extractBuiltAgentArtifacts', () => {
+	test('returns a created or changed Agent once, with its latest name', () => {
+		const toolCalls = [
+			makeToolCall({
+				toolCallId: 'tc-1',
+				toolName: 'agent_builder_select_agent',
+				result: {
+					ok: true,
+					agentId: 'agent-1',
+					projectId: 'project-1',
+					agentName: 'Untitled agent',
+					agentChange: 'created',
+				},
+			}),
+			makeToolCall({
+				toolCallId: 'tc-2',
+				toolName: 'agent_builder_write_config',
+				result: {
+					ok: true,
+					configMutated: true,
+					agentId: 'agent-1',
+					agentName: 'Support triage',
+				},
+				completedAt: '2026-10-01T10:00:00.000Z',
+			}),
+		];
+
+		expect(extractBuiltAgentArtifacts(toolCalls)).toEqual([
+			{
+				type: 'agent',
+				resourceId: 'agent-1',
+				name: 'Support triage',
+				projectId: 'project-1',
+				completedAt: '2026-10-01T10:00:00.000Z',
+			},
+		]);
+	});
+
+	test('ignores selections, reads, and calls that are still running', () => {
+		expect(
+			extractBuiltAgentArtifacts([
+				makeToolCall({
+					toolName: 'agent_builder_select_agent',
+					result: { ok: true, agentId: 'agent-1', projectId: 'project-1', agentChange: 'none' },
+				}),
+				makeToolCall({
+					toolName: 'agent_builder_patch_config',
+					result: { ok: false, agentId: 'agent-1' },
+				}),
+				makeToolCall({ toolName: 'agent_builder_write_config', isLoading: true }),
 			]),
 		).toEqual([]);
 	});

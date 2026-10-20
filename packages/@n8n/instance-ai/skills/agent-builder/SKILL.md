@@ -457,7 +457,10 @@ Use this to resolve the target Agent's main `model` and `credential`.
    model.
 5. If `agent_builder_resolve_llm` reports `unknown_model`, retry with a value
    from the returned `availableModels` or ask with
-   `agent_builder_ask_questions`. When `availableModelsTruncated: true`, the
+   `agent_builder_ask_questions`. This can also occur when you call it with no
+   model. The returned `availableModels` is the live list of the credential, so
+   pick from it. Do not guess, and do not reuse the model id that you just
+   tried. When `availableModelsTruncated: true`, the
    list is only a sample, so ask instead of assuming that the model is absent.
    If it reports `model_lookup_failed`, retry `agent_builder_resolve_llm`. Do
    not guess a model.
@@ -468,6 +471,8 @@ Use this to resolve the target Agent's main `model` and `credential`.
 7. If the model is still unresolved when the user asks to run or publish the
    Agent, leave the draft with `model: ""` and tell the user that the Agent
    needs a model and credential first, in the panel or here in chat.
+8. If the user dismisses a model-change question on an existing Agent, keep
+   the current model and credential unchanged.
 
 Rules:
 
@@ -483,6 +488,15 @@ Rules:
 - For Episodic Memory, load `agent-builder-memory` and use
   `agent_builder_ask_embedding_credential`.
 - The web-search rules are in the `agent-builder-config` skill.
+
+Verify:
+
+- The persisted `model` is in `provider/model` form.
+- A new non-empty `credential` that you wrote came from
+  `agent_builder_resolve_llm`. Keep a model and credential that the Agent
+  already had.
+- A model change keeps an existing Brave or SearXNG `config.webSearch`,
+  unless the user asked to change the web-search method.
 
 ## Memory
 
@@ -507,6 +521,12 @@ Load `agent-builder-memory` for Episodic, long-term, or cross-session memory,
 worker models, threshold or budget tuning, or to disable memory. Do not load it
 for ordinary fresh-Agent creation.
 
+Verify:
+
+- A fresh Agent has enabled n8n memory, unless the user disabled it.
+- A fresh Agent sets `observationalMemory.enabled` to `true`, unless the user
+  disabled it.
+
 ## Tools
 
 Use this before you add, change, or remove entries in `tools[]`,
@@ -517,12 +537,15 @@ follow it. It covers the chat-integration-versus-callable-tool decision, chat
 integration setup, and MCP servers. Load `agent-builder-node-tools` before you
 configure a node tool.
 
-- Chat or trigger integration: call `agent-context({ type: "integrations" })`,
-  then `agent_builder_configure_channel` with a returned type.
+- Chat or trigger integration: call `agent-context({ type: "integrations" })`
+  without `queries`, then `agent_builder_configure_channel` with a returned
+  type. Do not use the queried integration lookup for chat or trigger
+  integrations.
 - A configured chat integration generates its own context and action tools for
   every top-level Agent run, including scheduled tasks. When its capabilities
   include the requested action, do not add a same-platform node, MCP, or
-  workflow tool.
+  workflow tool. A scheduled or proactive message with no inbound conversation
+  is not, by itself, a reason to add another tool.
 - Callable external service: for each requested non-chat service, call
   `agent-context({ type: "integrations", queries })` separately, with `queries`
   as alternative search terms for that one service. Do not infer MCP
@@ -534,7 +557,8 @@ configure a node tool.
 
 Use `agent_builder_search_nodes` directly only when the user explicitly asks
 for an n8n node, to refine node results, or when a verified MCP server lacks the
-requested capability.
+requested capability. To refine MCP results, send another `agent-context`
+integration query.
 
 Preference order for non-chat callable services:
 
@@ -565,6 +589,19 @@ Gotchas:
 - Do not invent MCP servers, node type names, workflow names, credential ids,
   or provider tool keys.
 - Do not duplicate an action that a configured chat integration supplies.
+
+Verify:
+
+- Chat and trigger integrations came from the `agent-context` channel list
+  without `queries`. `agent_builder_configure_channel` or the initial-build
+  `agent_builder_finish_setup` channel card set them up.
+- Each non-chat callable service came from its own `agent-context`
+  integration search, unless the user explicitly asked for an n8n node or a
+  custom MCP server.
+- Workflow tools reference the workflow ids and names that `agent-context`
+  returned.
+- Provider tool keys match the configured model provider and the valid key
+  list.
 
 ## Example flows
 

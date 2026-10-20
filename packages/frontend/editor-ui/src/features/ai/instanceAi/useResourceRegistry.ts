@@ -214,16 +214,17 @@ function entryFromAgentBuilderTarget(
 }
 
 /**
- * Agent builder results: `agent_builder_select_agent` on create, and any builder tool
+ * Agent builder results: a successful `agent_builder_select_agent`, and any builder tool
  * stamped with `configMutated: true`. Both carry `agentId`, `projectId`, and `agentName`.
+ * Selecting an existing Agent registers it before its first change, so its tab opens
+ * when the build starts.
  */
 function extractFromAgentBuilderResult(tc: InstanceAiToolCallState, col: Collections): void {
 	if (!tc.result || typeof tc.result !== 'object') return;
 	const result = tc.result as Record<string, unknown>;
 	if (typeof result.agentId !== 'string') return;
-	const isCreate =
-		tc.toolName === AGENT_BUILDER_TOOL_NAMES.SELECT_AGENT && result.agentChange === 'created';
-	if (!isCreate && result.configMutated !== true) return;
+	const isSelected = tc.toolName === AGENT_BUILDER_TOOL_NAMES.SELECT_AGENT && result.ok === true;
+	if (!isSelected && result.configMutated !== true) return;
 
 	const existing = col.produced.get(result.agentId);
 	const entry: ResourceEntry = {

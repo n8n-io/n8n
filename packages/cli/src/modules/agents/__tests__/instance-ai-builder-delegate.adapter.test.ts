@@ -100,7 +100,7 @@ const session = { threadId: 'thread-1', runId: 'run-1' };
 function captureTargetResolver(
 	ctx: ReturnType<typeof setup>,
 	resolveTargetAgentId: () => Promise<string | undefined>,
-): () => Promise<string> {
+): (pinnedAgentId?: string) => Promise<string> {
 	ctx.delegate.getBuilderTools(resolveTargetAgentId, session);
 	const [resolver] = ctx.agentsBuilderToolsService.getToolsForResolvedTarget.mock.calls[0];
 	return resolver;
@@ -148,6 +148,20 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 			expect(checkAccess.userHasScopes).toHaveBeenCalledWith(ctx.user, ['agent:update'], false, {
 				projectId: 'project-1',
 			});
+		});
+
+		it('keeps the pinned agent of a resumed call after the access checks', async () => {
+			const ctx = setup();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			const resolveTargetAgentId = vi.fn(async () => 'agent-2');
+
+			const resolver = captureTargetResolver(ctx, resolveTargetAgentId);
+
+			await expect(resolver('agent-1')).resolves.toBe('agent-1');
+			expect(checkAccess.userHasScopes).toHaveBeenCalledWith(ctx.user, ['agent:update'], false, {
+				projectId: 'project-1',
+			});
+			expect(resolveTargetAgentId).not.toHaveBeenCalled();
 		});
 
 		it('fails a tool call when no agent is selected', async () => {

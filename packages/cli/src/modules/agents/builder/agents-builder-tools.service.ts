@@ -4,6 +4,9 @@ import {
 	type BuiltTool,
 	type CredentialProvider,
 	type InterruptibleToolContext,
+	type JSONValue,
+	type ToolContext,
+	type ToolSuspendOptions,
 } from '@n8n/agents';
 import {
 	APPROVAL_RESUME_SCHEMA,
@@ -341,6 +344,51 @@ interface BuilderToolsOptions {
 /** Placeholder agent id for the tool set that only supplies tool definitions. */
 const UNRESOLVED_TARGET_AGENT_ID = '';
 
+/**
+ * Continuation of a builder tool that suspended for a per-call target. It pins
+ * the agent the call started on, and wraps the tool's own continuation.
+ */
+const pinnedTargetContinuationSchema = z
+	.object({
+		builderTargetAgentId: z.string().min(1),
+		inner: z.custom<JSONValue>().optional(),
+	})
+	.strict();
+
+function isInterruptibleContext(
+	ctx: ToolContext | InterruptibleToolContext,
+): ctx is InterruptibleToolContext {
+	return 'suspend' in ctx && typeof ctx.suspend === 'function';
+}
+
+/**
+ * Pin `agentId` on every suspension of the call, so its resume targets the same
+ * agent. The tool sees only its own continuation.
+ */
+function withPinnedTarget(
+	ctx: InterruptibleToolContext,
+	agentId: string,
+	innerContinuation: JSONValue | undefined,
+): InterruptibleToolContext {
+	return {
+		...ctx,
+		continuation: innerContinuation,
+		suspend: async (payload: unknown, options?: ToolSuspendOptions) => {
+			const inner =
+				options && Object.prototype.hasOwnProperty.call(options, 'continuation')
+					? options.continuation
+					: innerContinuation;
+			return await ctx.suspend(payload, {
+				...options,
+				continuation: {
+					builderTargetAgentId: agentId,
+					...(inner !== undefined ? { inner } : {}),
+				},
+			});
+		},
+	};
+}
+
 function snapshotFromConfig(config: AgentJsonConfig | null): AgentConfigSnapshot {
 	return {
 		config,
@@ -536,9 +584,12 @@ export class AgentsBuilderToolsService {
 	 * handler resolves the target when it runs, then delegates to the tool built
 	 * for that agent. Tool names, schemas, and descriptions do not depend on the
 	 * agent, so a tool set built for a placeholder id supplies them.
+	 *
+	 * A suspended call keeps its agent: the host can select another agent while
+	 * the call waits, so the resume passes the pinned id to the resolver.
 	 */
 	getToolsForResolvedTarget(
-		resolveTargetAgentId: () => Promise<string>,
+		resolveTargetAgentId: (pinnedAgentId?: string) => Promise<string>,
 		projectId: string,
 		credentialProviderFor: (agentId: string) => CredentialProvider,
 		credentialService: InstanceAiCredentialService,
@@ -571,10 +622,16 @@ export class AgentsBuilderToolsService {
 		return buildToolSet(UNRESOLVED_TARGET_AGENT_ID).map((template) => ({
 			...template,
 			handler: async (input, ctx) => {
-				const agentId = await resolveTargetAgentId();
+				const pinned = isInterruptibleContext(ctx)
+					? pinnedTargetContinuationSchema.safeParse(ctx.continuation)
+					: undefined;
+				const pinnedTarget = pinned?.success ? pinned.data : undefined;
+				const agentId = await resolveTargetAgentId(pinnedTarget?.builderTargetAgentId);
 				const handler = toolFor(agentId, template.name)?.handler;
 				if (!handler) throw new UnexpectedError(`Builder tool "${template.name}" has no handler`);
-				return await handler(input, ctx);
+				if (!isInterruptibleContext(ctx)) return await handler(input, ctx);
+				const innerContinuation = pinnedTarget ? pinnedTarget.inner : ctx.continuation;
+				return await handler(input, withPinnedTarget(ctx, agentId, innerContinuation));
 			},
 		}));
 	}

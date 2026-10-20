@@ -8,6 +8,7 @@ import type {
 	InstanceAiTimelineEntry,
 	InstanceAiToolCallState,
 } from '@n8n/api-types';
+import { isRecord } from '@n8n/utils/is-record';
 import { firstNonBlank, isActiveBuilderAgent, isBuilderAgent } from './builderAgents';
 import { isPreferenceWriteOutcome, SAVE_USER_PREFERENCE_TOOL_NAME } from './preferenceCard.utils';
 
@@ -363,6 +364,45 @@ export function extractBuiltWorkflowArtifacts(
 		if (workflow && !artifacts.has(workflow.resourceId)) {
 			artifacts.set(workflow.resourceId, workflow);
 		}
+	}
+	return [...artifacts.values()];
+}
+
+/** The Agent an orchestrator builder call created or changed, if it did. */
+function agentArtifactFromToolCall(tc: InstanceAiToolCallState): ArtifactInfo | undefined {
+	if (tc.isLoading || !isRecord(tc.result)) return undefined;
+	const result = tc.result;
+	if (typeof result.agentId !== 'string') return undefined;
+	const changed =
+		tc.toolName === AGENT_BUILDER_TOOL_NAMES.SELECT_AGENT
+			? result.ok === true && result.agentChange === 'created'
+			: result.configMutated === true;
+	if (!changed) return undefined;
+
+	return {
+		type: 'agent',
+		resourceId: result.agentId,
+		name: typeof result.agentName === 'string' ? result.agentName : '',
+		...(typeof result.projectId === 'string' ? { projectId: result.projectId } : {}),
+		completedAt: tc.completedAt,
+	};
+}
+
+/**
+ * Agents the orchestrator created or changed with its own builder tool calls.
+ * Each Agent appears once, with the name and project of its latest change.
+ */
+export function extractBuiltAgentArtifacts(toolCalls: InstanceAiToolCallState[]): ArtifactInfo[] {
+	const artifacts = new Map<string, ArtifactInfo>();
+	for (const tc of toolCalls) {
+		const agent = agentArtifactFromToolCall(tc);
+		if (!agent) continue;
+		const previous = artifacts.get(agent.resourceId);
+		artifacts.set(agent.resourceId, {
+			...agent,
+			name: firstNonBlank(agent.name, previous?.name) ?? 'Untitled',
+			projectId: agent.projectId ?? previous?.projectId,
+		});
 	}
 	return [...artifacts.values()];
 }

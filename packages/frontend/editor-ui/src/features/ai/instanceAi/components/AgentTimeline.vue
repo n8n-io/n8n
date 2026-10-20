@@ -9,6 +9,7 @@ import { computed, inject } from 'vue';
 import {
 	buildTimelineBlocks,
 	extractArtifacts,
+	extractBuiltAgentArtifacts,
 	extractBuiltWorkflowArtifacts,
 	isStreamingTimelineEntry,
 	type ArtifactInfo,
@@ -167,35 +168,63 @@ function visibleArtifacts(artifacts: ArtifactInfo[]): ArtifactInfo[] {
 	);
 }
 
-/**
- * Workflows built by this agent's own tool calls, keyed by the thinking block
- * that built them. Only the embedded panel needs these cards: the full view
- * opens the built workflow in its preview panel instead.
- */
-const builtWorkflowsByBlock = computed(() => {
-	const byBlock = new Map<string, ArtifactInfo[]>();
-	if (!embedSubject || props.visibleEntries) return byBlock;
+function blockToolCalls(block: TimelineBlock): InstanceAiToolCallState[] {
+	// A finish-setup call that ends on its questions phase renders as a questions block.
+	if (block.type === 'questions') return [block.toolCall];
+	if (block.type !== 'thinking') return [];
+	return block.entries.flatMap((entry) =>
+		entry.type === 'tool-call' && toolCallsById.value[entry.toolCallId]
+			? [toolCallsById.value[entry.toolCallId]]
+			: [],
+	);
+}
 
-	const seenIds = new Set<string>();
+/**
+ * Workflows and Agents built by this agent's own tool calls, keyed by the
+ * thinking or questions block that built them. A workflow card shows only in the embedded
+ * panel, because the full view opens the built workflow in its preview panel.
+ * An Agent card shows in both views, after the last block that changed it,
+ * once the run settles: mid-build the preview tab shows progress, and the
+ * block the card anchors to can still change.
+ */
+const builtArtifactsByBlock = computed(() => {
+	const byBlock = new Map<string, ArtifactInfo[]>();
+	if (props.visibleEntries) return byBlock;
+
+	const showAgentCards = props.agentNode.status !== 'active';
+	const seenWorkflowIds = new Set<string>();
+	const latestAgents = new Map<string, { blockKey: string; artifact: ArtifactInfo }>();
 	for (const block of renderBlocks.value) {
-		if (block.type !== 'thinking') continue;
-		const toolCalls = block.entries.flatMap((entry) =>
-			entry.type === 'tool-call' && toolCallsById.value[entry.toolCallId]
-				? [toolCallsById.value[entry.toolCallId]]
-				: [],
-		);
-		const artifacts = visibleArtifacts(extractBuiltWorkflowArtifacts(toolCalls)).filter(
-			(artifact) => !seenIds.has(artifact.resourceId),
-		);
-		for (const artifact of artifacts) seenIds.add(artifact.resourceId);
-		if (artifacts.length > 0) byBlock.set(block.key, artifacts);
+		const toolCalls = blockToolCalls(block);
+		if (toolCalls.length === 0) continue;
+
+		if (embedSubject) {
+			const workflows = visibleArtifacts(extractBuiltWorkflowArtifacts(toolCalls)).filter(
+				(artifact) => !seenWorkflowIds.has(artifact.resourceId),
+			);
+			for (const artifact of workflows) seenWorkflowIds.add(artifact.resourceId);
+			if (workflows.length > 0) byBlock.set(block.key, workflows);
+		}
+
+		if (!showAgentCards) continue;
+		for (const artifact of visibleArtifacts(extractBuiltAgentArtifacts(toolCalls))) {
+			const previous = latestAgents.get(artifact.resourceId)?.artifact;
+			latestAgents.set(artifact.resourceId, {
+				blockKey: block.key,
+				artifact: { ...artifact, projectId: artifact.projectId ?? previous?.projectId },
+			});
+		}
+	}
+
+	for (const { blockKey, artifact } of latestAgents.values()) {
+		byBlock.set(blockKey, [...(byBlock.get(blockKey) ?? []), artifact]);
 	}
 	return byBlock;
 });
 
 function blockArtifacts(block: TimelineBlock): ArtifactInfo[] {
 	if (block.type === 'child') return visibleArtifacts(extractArtifacts(block.child));
-	return builtWorkflowsByBlock.value.get(block.key) ?? [];
+	return builtArtifactsByBlock.value.get(block.key) ?? [];
 }
 
 function getPlanReviewStatus(tc: InstanceAiToolCallState): PlanReviewStatus {
@@ -350,7 +379,19 @@ function handlePlanDeny(tc: InstanceAiToolCallState) {
 			/>
 
 			<!-- Answered questions (read-only after resolution) -->
-			<AnsweredQuestions v-else-if="block.type === 'questions'" :tool-call="block.toolCall" />
+			<template v-else-if="block.type === 'questions'">
+				<AnsweredQuestions :tool-call="block.toolCall" />
+				<ArtifactCard
+					v-for="artifact in blockArtifacts(block)"
+					:key="artifact.resourceId"
+					:type="artifact.type"
+					:name="resolveArtifactName(artifact)"
+					:resource-id="artifact.resourceId"
+					:project-id="artifact.projectId"
+					:archived="thread.producedArtifacts.get(artifact.resourceId)?.archived"
+					:metadata="formatArtifactMetadata(artifact)"
+				/>
+			</template>
 
 			<!-- A preference the assistant saved: edit or undo it from the latest turn -->
 			<PreferenceCard
