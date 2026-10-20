@@ -192,6 +192,12 @@ export function send<T, R extends Request, S extends Response>(
 				},
 			});
 
+			// The response already started, so destroying it is the only way to tell the client it failed.
+			if (res.headersSent) {
+				res.destroy();
+				return;
+			}
+
 			if (isUniqueConstraintError(error)) {
 				error.message = 'There is already an entry with this name';
 			}
