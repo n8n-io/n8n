@@ -58,7 +58,20 @@ export interface RouteResolution {
 	judgeError?: string;
 	/** The questions that the user proxy answered before this route, in order. */
 	questions?: RouteResolution[];
+	/** Eval only: the orchestrator's calls up to this route, with the skill name for `load_skill`. */
+	calls?: string;
 }
+
+const callTrail = (steps: TraceStep[]): string =>
+	steps
+		.flatMap((step) =>
+			step.kind !== 'call'
+				? []
+				: step.toolName === 'load_skill'
+					? [`load_skill(${JSON.stringify(step.args.name ?? step.args.skillId)})`]
+					: [step.toolName],
+		)
+		.join(' > ');
 
 /** The user proxy answers at most this many questions in a trial. */
 export const MAX_ANSWERS = 2;
@@ -178,6 +191,7 @@ export function createRouteWatcher(
 					steer: verdict.steer,
 					evidence: `${call.toolName} call`,
 					judgeReason: verdict.reason,
+					calls: callTrail(steps),
 				};
 				const answers = countAnswers(steps);
 				// Only a question card waits for the user. Any other call would run before the answer.
@@ -210,6 +224,7 @@ export function createRouteWatcher(
 				steer: verdict.steer,
 				evidence,
 				judgeReason: verdict.reason,
+				calls: callTrail(steps),
 			});
 		},
 	};

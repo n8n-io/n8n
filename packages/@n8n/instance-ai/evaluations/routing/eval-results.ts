@@ -47,7 +47,8 @@ function trialVerdict(expectation: string, trial: RoutingTrial): BuildExpectatio
 		};
 	}
 	const judge = resolution.judgeReason ? ` Judge: ${resolution.judgeReason}` : '';
-	const reason = `Route ${routeLabel(resolution)} from ${resolution.evidence}.${judge}`;
+	const calls = [...(resolution.questions ?? []), resolution].map((r) => r.calls ?? '').join(' | ');
+	const reason = `Route ${routeLabel(resolution)} from ${resolution.evidence}.${judge} Calls: ${calls}.`;
 	return passed
 		? { expectation, pass: true, reason }
 		: { expectation, pass: false, reason, attribution: 'builder_issue' };

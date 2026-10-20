@@ -184,6 +184,7 @@ describe('createRouteWatcher', () => {
 			steer: 'workflow',
 			evidence: 'workflow_builder_build_workflow call',
 			judgeReason: 'Picks workflow.',
+			calls: 'search-nodes > workflow_builder_build_workflow',
 		});
 		expect(judge).toHaveBeenCalledTimes(2);
 		expect(judge).toHaveBeenLastCalledWith({
@@ -192,6 +193,16 @@ describe('createRouteWatcher', () => {
 				{ kind: 'call', toolName: 'workflow_builder_build_workflow', args: {} },
 			],
 		});
+	});
+
+	it('names the loaded skill in the call trail', async () => {
+		const watcher = createRouteWatcher(judgeReturning(stop('agent', 'agent')));
+		const events = [callEvent('load_skill', { name: 'intent-recognition' })];
+
+		expect(await watcher.beforeToolCall(pending('agent_builder_build_agent'), events)).toBe(true);
+		expect(
+			(await watcher.resolve({ instanceEvents: events, streamStatus: 'stopped-on-route' })).calls,
+		).toBe('load_skill("intent-recognition") > agent_builder_build_agent');
 	});
 
 	it('lets the run go on when the judge stops without a route', async () => {
