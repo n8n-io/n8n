@@ -862,7 +862,6 @@ describe('AgentPublishService', () => {
 			agentId,
 			new Map([['task-1', expect.objectContaining({ objective: 'Summarize messages' })]]),
 			expect.anything(),
-			undefined,
 		);
 	});
 
@@ -907,7 +906,6 @@ describe('AgentPublishService', () => {
 			agentId,
 			new Map([['task-1', expect.objectContaining({ objective: 'Use the older task objective' })]]),
 			expect.anything(),
-			undefined,
 		);
 	});
 
