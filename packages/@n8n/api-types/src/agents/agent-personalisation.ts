@@ -1,6 +1,10 @@
 import { oklchToRgb, rgbToHex } from '@n8n/utils/color/oklch';
 
-import { DEFAULT_AGENT_PERSONALISATION, type AgentJsonConfig } from './agent-json-config.schema';
+import {
+	DEFAULT_AGENT_PERSONALISATION,
+	HexColorSchema,
+	type AgentJsonConfig,
+} from './agent-json-config.schema';
 
 export type AgentPersonalisation = NonNullable<AgentJsonConfig['personalisation']>;
 type AgentPersonalisationGradient = AgentPersonalisation['gradient'];
@@ -58,12 +62,29 @@ export function getRandomAgentPersonalisationGradient(
 	};
 }
 
+/**
+ * Stored configs skip the schema, so a gradient can hold values it rejects.
+ * Drawn as they are, they turn into NaN: a blank or black tile.
+ */
+function isDrawableGradient({ from, to, angle, fromStop, toStop }: AgentPersonalisationGradient) {
+	return (
+		HexColorSchema.safeParse(from).success &&
+		HexColorSchema.safeParse(to).success &&
+		[angle, fromStop, toStop].every(Number.isFinite) &&
+		toStop > fromStop
+	);
+}
+
 export function resolveAgentPersonalisation(
 	value?: Partial<AgentPersonalisation> | null,
 ): AgentPersonalisation {
+	const gradient = { ...DEFAULT_AGENT_PERSONALISATION.gradient, ...value?.gradient };
+	const icon: unknown = value?.icon;
 	return {
-		icon: value?.icon ?? DEFAULT_AGENT_PERSONALISATION_ICON,
-		gradient: { ...DEFAULT_AGENT_PERSONALISATION.gradient, ...value?.gradient },
+		icon: typeof icon === 'string' && icon ? icon : DEFAULT_AGENT_PERSONALISATION_ICON,
+		gradient: isDrawableGradient(gradient)
+			? gradient
+			: { ...DEFAULT_AGENT_PERSONALISATION.gradient },
 	};
 }
 

@@ -1,4 +1,4 @@
-import type { AgentPersonalisation } from '@n8n/api-types';
+import { DEFAULT_AGENT_PERSONALISATION, type AgentPersonalisation } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { icons as lucide } from '@iconify-json/lucide';
@@ -136,10 +136,24 @@ describe('renderTeamsAppIcons', () => {
 		await expect(renderTeamsAppIcons(null)).resolves.toBeDefined();
 	});
 
-	it('returns undefined for an icon name Lucide does not have', async () => {
-		await expect(
-			renderTeamsAppIcons(personalisation('not-a-lucide-icon')),
-		).resolves.toBeUndefined();
+	it('draws the default agent icon for an icon name Lucide does not have', async () => {
+		const unknown = await render(personalisation('not-a-lucide-icon'));
+		const fallback = await render(personalisation(DEFAULT_AGENT_PERSONALISATION.icon));
+
+		expect(unknown).toEqual(fallback);
+	});
+
+	it('draws the icon on the default gradient for a stored gradient the schema would reject', async () => {
+		const icons = await render({
+			icon: 'heart',
+			gradient: { ...personalisation('heart').gradient, from: '#X000FF' },
+		});
+		const onDefault = await render({
+			icon: 'heart',
+			gradient: { ...DEFAULT_AGENT_PERSONALISATION.gradient },
+		});
+
+		expect(icons).toEqual(onDefault);
 	});
 
 	it('renders downloads that arrive together one at a time', async () => {
@@ -161,10 +175,6 @@ describe('renderTeamsAppIcons', () => {
 		const missing: string[] = [];
 		for (const name of Object.keys(lucide.icons)) {
 			const svgs = await buildTeamsIconSvgs(name, personalisation(name).gradient);
-			if (!svgs) {
-				missing.push(name);
-				continue;
-			}
 			// One wasm instance serves the whole loop, so each render is freed by hand.
 			const resvg = new Resvg(svgs.outline);
 			const image = resvg.render();
@@ -183,7 +193,7 @@ describe('renderTeamsAppIcons', () => {
 
 	it('reads the same Lucide release the editor picker offers', () => {
 		// The picker reads Lucide from `@iconify/json`, a separately versioned
-		// package. If the two drift, a picked icon falls back to the n8n icons.
+		// package. If the two drift, a picked icon falls back to the default icon.
 		const designSystem = join(__dirname, '../../../../../../../../frontend/@n8n/design-system');
 		const editorSet: { lastModified?: number; icons: Record<string, unknown> } = JSON.parse(
 			readFileSync(

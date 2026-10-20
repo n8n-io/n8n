@@ -11,6 +11,8 @@ vi.mock('@iconify-json/lucide', () => ({
 		height: 24,
 		icons: {
 			line: { body: '<path stroke="currentColor" stroke-width="2" d="M2 2L22 22"/>' },
+			// The default agent icon, drawn for a name the set does not have.
+			bot: { body: '<path stroke="currentColor" stroke-width="2" d="M2 22L22 2"/>' },
 			unclosed: { body: '<g stroke="currentColor"' },
 		},
 	},
@@ -85,9 +87,7 @@ describe('renderTeamsAppIcons when the icon cannot be drawn', () => {
 	});
 
 	it('does not log an icon name Lucide does not have', async () => {
-		await expect(
-			renderTeamsAppIcons({ icon: 'not-a-lucide-icon', gradient }),
-		).resolves.toBeUndefined();
+		await renderTeamsAppIcons({ icon: 'not-a-lucide-icon', gradient });
 		expect(logger.warn).not.toHaveBeenCalled();
 	});
 });
