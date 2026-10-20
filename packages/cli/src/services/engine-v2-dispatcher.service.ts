@@ -114,18 +114,25 @@ export class EngineV2Dispatcher {
 	 * deleted files fails, while a kept file is deleted with its execution.
 	 */
 	async start(data: IWorkflowExecutionDataProcess): Promise<string> {
-		// A partial run, or one with pinned data, is planned here: the data plane
-		// gets a graph trimmed to what runs, plus the steps it records as done.
-		const plan = this.manualRunPlanner.applies(data) ? this.manualRunPlanner.plan(data) : undefined;
-		const trigger: FiredTrigger = plan
-			? { name: plan.triggerName, outputs: plan.triggerOutputs }
-			: this.resolveFiredTrigger(data);
+		// The run owns only the payload its trigger just produced. A plan may root
+		// the run at reused run data instead, whose files belong to that execution.
+		const fired = this.resolveFiredTrigger(data);
 
 		let prepared: PreparedStart;
 		try {
+			this.assertAvailable();
+
+			// A partial run, or one with pinned data, is planned here: the data plane
+			// gets a graph trimmed to what runs, plus the steps it records as done.
+			const plan = this.manualRunPlanner.applies(data)
+				? this.manualRunPlanner.plan(data)
+				: undefined;
+			const trigger: FiredTrigger = plan
+				? { name: plan.triggerName, outputs: plan.triggerOutputs }
+				: fired;
 			prepared = await this.prepare(data, trigger, plan);
 		} catch (error) {
-			await this.payloadFiles.discard(trigger.outputs);
+			await this.payloadFiles.discard(fired.outputs);
 			throw error;
 		}
 
@@ -135,7 +142,7 @@ export class EngineV2Dispatcher {
 		} catch (error) {
 			// Assumes rejection: a dropped success response also releases a still-live session.
 			this.pushRegistry.release(executionId);
-			if (isStartRefusedBeforeSave(error)) await this.payloadFiles.discard(trigger.outputs);
+			if (isStartRefusedBeforeSave(error)) await this.payloadFiles.discard(fired.outputs);
 			throw error;
 		}
 
@@ -238,18 +245,19 @@ export class EngineV2Dispatcher {
 	}
 
 	/**
-	 * Rejects what the v2 path cannot do yet, in the order the user should hear
-	 * about it: the module being off comes first, so a workflow that would also
-	 * fail conversion does not report the conversion problem and hide the real
-	 * cause.
+	 * Checked before anything else, so a run that would also fail planning or
+	 * conversion does not report that problem and hide the real cause.
 	 */
-	private assertSupported(data: IWorkflowExecutionDataProcess, trigger: FiredTrigger): void {
+	private assertAvailable(): void {
 		if (!this.proxy.isAvailable()) {
 			throw new UserError(
 				'Engine v2 is not available. Enable the `engine-v2` module with N8N_ENABLED_MODULES.',
 			);
 		}
+	}
 
+	/** Rejects what the v2 path cannot do yet. */
+	private assertSupported(data: IWorkflowExecutionDataProcess, trigger: FiredTrigger): void {
 		// The editor still sends the start nodes of partial executions v1. v1 ignores
 		// them once it has run data or a trigger payload, and the planner derives
 		// its own, so they only matter where v1 starts the run at one: a single

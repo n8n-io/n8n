@@ -569,9 +569,12 @@ describe('EngineV2Dispatcher', () => {
 		});
 
 		describe('rejections', () => {
-			it('reports the module being off first', async () => {
+			it('reports the module being off before a planner refusal', async () => {
 				proxy.isAvailable.mockReturnValue(false);
-				// also unsupported, to prove the module check wins
+				manualRunPlanner.applies.mockReturnValue(true);
+				manualRunPlanner.plan.mockImplementation(() => {
+					throw new NotImplementedError('planner refusal');
+				});
 				const data = runData({
 					destinationNode: { nodeName: SET_NODE.name, mode: 'inclusive' as const },
 				});
@@ -579,6 +582,7 @@ describe('EngineV2Dispatcher', () => {
 				await expect(dispatcher.start(data)).rejects.toThrow(
 					'Engine v2 is not available. Enable the `engine-v2` module with N8N_ENABLED_MODULES.',
 				);
+				expect(manualRunPlanner.plan).not.toHaveBeenCalled();
 			});
 
 			it("ignores the editor's start nodes when the run has run data", async () => {
@@ -871,6 +875,41 @@ describe('EngineV2Dispatcher', () => {
 
 				expect(payloadFiles.discard).toHaveBeenCalledExactlyOnceWith(outputs);
 				expect(proxy.startExecution).not.toHaveBeenCalled();
+			});
+
+			it('deletes them when the planner refuses the run', async () => {
+				manualRunPlanner.applies.mockReturnValue(true);
+				manualRunPlanner.plan.mockImplementation(() => {
+					throw new NotImplementedError('planner refusal');
+				});
+
+				await expect(
+					dispatcher.start(triggerRunData(outputs, { executionMode: 'manual' })),
+				).rejects.toThrow('planner refusal');
+
+				expect(payloadFiles.discard).toHaveBeenCalledExactlyOnceWith(outputs);
+			});
+
+			it('leaves the reused files of a planned run alone when it is refused', async () => {
+				// The plan roots the run at a node with run data from an earlier
+				// execution, so its files are that execution's to keep.
+				manualRunPlanner.applies.mockReturnValue(true);
+				manualRunPlanner.plan.mockReturnValue({
+					workflow: workflow(),
+					triggerName: SET_NODE.name,
+					triggerOutputs: [[{ json: { from: 'runData' } }]],
+					seeded: [],
+				});
+				payloadFiles.claimForExecution.mockRejectedValueOnce(new Error('disk gone'));
+				const data = runData({
+					destinationNode: { nodeName: SET_NODE.name, mode: 'inclusive' as const },
+				});
+
+				await expect(dispatcher.start(data)).rejects.toThrow('disk gone');
+
+				// Only the run's own payload, which a manual run without a trigger
+				// payload defaults to.
+				expect(payloadFiles.discard).toHaveBeenCalledExactlyOnceWith([[{ json: {} }]]);
 			});
 		});
 	});
