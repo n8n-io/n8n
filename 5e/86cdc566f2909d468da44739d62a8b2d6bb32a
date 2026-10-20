@@ -1,0 +1,26 @@
+packages/nodes-base/nodes/Microsoft/Excel/test/v2/node/worksheet/clear.workflow.json
+  s_2e1fa95fc44f8f::t_8ae12b7554a0aa 70-99
+  s_2e1fa95fc44f8f::t_b94f6bda8e2db3 116-122
+  s_2e1fa95fc44f8f::t_45f75c96126117 138-142
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/worksheet/clear.operation.ts
+  s_2e1fa95fc44f8f::t_d470498d592326 90-94,97-104
+  s_2e1fa95fc44f8f::t_42db1aa797a922 105-107
+packages/nodes-base/nodes/Microsoft/Excel/test/v2/node/worksheet/clear.test.ts
+  s_2e1fa95fc44f8f::t_38a57cd424da0b 16-21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5e86cdc566f2909d468da44739d62a8b2d6bb32a",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}
