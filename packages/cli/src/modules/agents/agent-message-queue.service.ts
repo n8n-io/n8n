@@ -95,20 +95,18 @@ export class AgentMessageQueueService {
 		const { payload } = input;
 
 		// Only the system kind reaches a system agent. Project lookups never return instance agents.
-		// System agents run even when the admin turns off custom agents.
-		const isSystem = payload.kind === 'system';
-		if (!isSystem) await this.settingsService.assertEnabled();
-
-		const agent = isSystem
-			? this.systemAgents.get(input.agentId)
-			: await this.agentRepository.findByIdAndProjectId(input.agentId, input.projectId);
+		const agent =
+			payload.kind === 'system'
+				? this.systemAgents.get(input.agentId)
+				: await this.agentRepository.findByIdAndProjectId(input.agentId, input.projectId);
 		if (!agent) throw new UserError('Agent not found');
+		await this.settingsService.assertEnabledFor(input.agentId);
 
 		const messageId = queuedMessageId(input.agentId, input.threadId, payload);
 		let item: AgentMessageQueue;
 		try {
 			item = await this.txRunner.run({}, async (ctx) => {
-				if (!isSystem) await this.settingsService.assertEnabled(ctx);
+				await this.settingsService.assertEnabledFor(input.agentId, ctx);
 				await this.executionService.prepareThread(
 					{
 						...input,
@@ -372,8 +370,7 @@ export class AgentMessageQueueService {
 			const thread = await this.threadRepository.lockById(threadId, ctx);
 			if (!thread) return null;
 
-			// The admin setting for custom agents does not apply to system agents.
-			if (!enabled && !this.systemAgents.has(thread.agentId)) return null;
+			if (!enabled && this.settingsService.appliesTo(thread.agentId)) return null;
 
 			steeringChanged = await this.steering.releaseInactive(thread, ctx);
 			if (await this.isBlocked(thread, ctx)) return null;

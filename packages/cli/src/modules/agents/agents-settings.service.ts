@@ -64,8 +64,8 @@ export class AgentsSettingsService {
 		for (const threadId of await this.queue.findThreadIds(ctx)) {
 			const thread = await this.threads.lockById(threadId, ctx);
 
-			// The setting does not apply to system agents, so their queued messages stay.
-			if (!thread || this.systemAgents.has(thread.agentId)) continue;
+			// Queued messages of agents that the setting does not cover stay.
+			if (!thread || !this.appliesTo(thread.agentId)) continue;
 
 			for (const item of await this.queue.listPending(threadId, ctx)) {
 				if (item.steeringExecutionId !== null) continue;
@@ -75,6 +75,19 @@ export class AgentsSettingsService {
 			}
 		}
 		return removed;
+	}
+
+	/**
+	 * The setting covers custom agents. A registered system agent keeps
+	 * running when an admin turns custom agents off.
+	 */
+	appliesTo(agentId: string): boolean {
+		return !this.systemAgents.has(agentId);
+	}
+
+	/** Throws when the setting is off and applies to the agent. */
+	async assertEnabledFor(agentId: string, ctx: OperationContext = {}): Promise<void> {
+		if (this.appliesTo(agentId)) await this.assertEnabled(ctx);
 	}
 
 	async assertEnabled(ctx: OperationContext = {}): Promise<void> {

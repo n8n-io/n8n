@@ -56,6 +56,8 @@ describe('AgentMessageQueueService', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		systemAgents = new SystemAgentRegistry();
+		// The real policy: the setting covers every agent except a registered system agent.
+		settingsService.appliesTo.mockImplementation((agentId) => !systemAgents.has(agentId));
 		txRunner.run.mockImplementation(async (ctx, fn) => await fn(ctx));
 		executionRepository.findFirstSourceByThreadIds.mockResolvedValue(
 			new Map([['thread-1', N8N_CHAT_PRODUCTION_SOURCE]]),
