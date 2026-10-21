@@ -60,49 +60,63 @@ describe('LDAP login concurrency (IAM-1526)', () => {
 			queueMicrotask(() => socket.emit('close'));
 			return socket;
 		});
-		socket.write = vi.fn((buffer: Buffer, callback: () => void) => {
-			const reader = new BerReader(buffer);
-			reader.readSequence();
-			const messageId = reader.readInt()!;
-			const operation = reader.readSequence();
+		socket.write = vi.fn(
+			(
+				buffer: string | Uint8Array,
+				encodingOrCallback?: BufferEncoding | ((error?: Error | null) => void),
+				callback?: (error?: Error | null) => void,
+			) => {
+				const reader = new BerReader(
+					typeof buffer === 'string'
+						? Buffer.from(
+								buffer,
+								typeof encodingOrCallback === 'string' ? encodingOrCallback : 'utf8',
+							)
+						: Buffer.from(buffer),
+				);
+				const onWrite = typeof encodingOrCallback === 'function' ? encodingOrCallback : callback;
+				reader.readSequence();
+				const messageId = reader.readInt()!;
+				const operation = reader.readSequence();
 
-			queueMicrotask(() => {
-				callback();
-				if (operation === ProtocolOperation.LDAP_REQ_BIND) {
-					socket.emit('data', response(messageId, ProtocolOperation.LDAP_RES_BIND, success));
-				} else if (operation === ProtocolOperation.LDAP_REQ_SEARCH) {
-					reader.readString(); // Search base.
-					reader.readEnumeration(); // Scope.
-					reader.readEnumeration(); // Alias policy.
-					reader.readInt(); // Size limit.
-					reader.readInt(); // Time limit.
-					reader.readBoolean(); // Attribute values.
-					const filter = FilterParser.parse(reader).toString();
-					const user = users.find(({ uid }) => filter.includes(`(uid=${uid})`));
-					if (user) {
-						socket.emit(
-							'data',
-							response(messageId, ProtocolOperation.LDAP_RES_SEARCH_ENTRY, (writer) => {
-								writer.writeString(user.dn);
-								writer.startSequence();
-								for (const [attribute, value] of Object.entries(user)) {
-									if (attribute === 'dn') continue;
+				queueMicrotask(() => {
+					onWrite?.();
+					if (operation === ProtocolOperation.LDAP_REQ_BIND) {
+						socket.emit('data', response(messageId, ProtocolOperation.LDAP_RES_BIND, success));
+					} else if (operation === ProtocolOperation.LDAP_REQ_SEARCH) {
+						reader.readString(); // Search base.
+						reader.readEnumeration(); // Scope.
+						reader.readEnumeration(); // Alias policy.
+						reader.readInt(); // Size limit.
+						reader.readInt(); // Time limit.
+						reader.readBoolean(); // Attribute values.
+						const filter = FilterParser.parse(reader).toString();
+						const user = users.find(({ uid }) => filter.includes(`(uid=${uid})`));
+						if (user) {
+							socket.emit(
+								'data',
+								response(messageId, ProtocolOperation.LDAP_RES_SEARCH_ENTRY, (writer) => {
+									writer.writeString(user.dn);
 									writer.startSequence();
-									writer.writeString(attribute);
-									writer.startSequence(ProtocolOperation.LBER_SET);
-									writer.writeString(value);
+									for (const [attribute, value] of Object.entries(user)) {
+										if (attribute === 'dn') continue;
+										writer.startSequence();
+										writer.writeString(attribute);
+										writer.startSequence(ProtocolOperation.LBER_SET);
+										writer.writeString(value);
+										writer.endSequence();
+										writer.endSequence();
+									}
 									writer.endSequence();
-									writer.endSequence();
-								}
-								writer.endSequence();
-							}),
-						);
+								}),
+							);
+						}
+						socket.emit('data', response(messageId, ProtocolOperation.LDAP_RES_SEARCH, success));
 					}
-					socket.emit('data', response(messageId, ProtocolOperation.LDAP_RES_SEARCH, success));
-				}
-			});
-			return true;
-		});
+				});
+				return true;
+			},
+		);
 
 		// Deliver both connection events after both concurrent logins start to connect.
 		if (connect) queueMicrotask(() => socket.emit('secureConnect'));

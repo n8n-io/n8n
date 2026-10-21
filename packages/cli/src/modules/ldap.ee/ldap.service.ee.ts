@@ -192,7 +192,9 @@ export class LdapService implements IPasswordAuthHandler<User> {
 	}
 
 	/** Use a separate client for each operation to keep bindings isolated. */
-	private async withClient<T>(operation: (client: Client) => Promise<T>): Promise<T> {
+	private async withClient<T>(
+		operation: (client: Client, searchTimeout: number) => Promise<T>,
+	): Promise<T> {
 		if (this.config === undefined) {
 			throw new UnexpectedError('Service cannot be used without setting the property config');
 		}
@@ -205,10 +207,11 @@ export class LdapService implements IPasswordAuthHandler<User> {
 			this.config.connectionPort,
 			this.config.connectionSecurity,
 		);
-		const timeout =
-			(this.config.searchTimeout > 0
+		const searchTimeout =
+			this.config.searchTimeout > 0
 				? this.config.searchTimeout
-				: LDAP_DEFAULT_CONFIGURATION.searchTimeout) * 1000;
+				: LDAP_DEFAULT_CONFIGURATION.searchTimeout;
+		const timeout = searchTimeout * 1000;
 		const ldapOptions: ClientOptions = { url, timeout, connectTimeout: timeout };
 		const tlsOptions: ConnectionOptions = {};
 
@@ -226,9 +229,13 @@ export class LdapService implements IPasswordAuthHandler<User> {
 			if (this.config.connectionSecurity === 'startTls') {
 				await client.startTLS(tlsOptions);
 			}
-			return await operation(client);
+			return await operation(client, searchTimeout);
 		} finally {
-			await client.unbind();
+			try {
+				await client.unbind();
+			} catch (error) {
+				this.logger.debug('LDAP - Failed to unbind client', { error });
+			}
 		}
 	}
 
@@ -237,13 +244,13 @@ export class LdapService implements IPasswordAuthHandler<User> {
 	 * (if any, else a anonymous binding will be attempted)
 	 */
 	async searchWithAdminBinding(filter: string): Promise<LdapUser[]> {
-		return await this.withClient(async (client) => {
+		return await this.withClient(async (client, searchTimeout) => {
 			await client.bind(this.config.bindingAdminDn, this.config.bindingAdminPassword);
 			const { searchEntries } = await client.search(this.config.baseDn, {
 				attributes: getMappingAttributes(this.config),
 				explicitBufferAttributes: BINARY_AD_ATTRIBUTES,
 				filter,
-				timeLimit: this.config.searchTimeout,
+				timeLimit: searchTimeout,
 				paged: { pageSize: this.config.searchPageSize },
 				...(this.config.searchPageSize === 0 && { paged: true }),
 			});
