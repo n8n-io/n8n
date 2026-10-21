@@ -1,0 +1,225 @@
+<script setup lang="ts">
+import type { PromotionResource } from '@n8n/api-types';
+import { N8nCheckbox, N8nIcon, N8nText } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
+import { computed } from 'vue';
+
+import { usePromotionPreviewLabels } from '../../composables/usePromotionPreviewLabels';
+import {
+	containerCheckState,
+	selectableDescendants,
+	selectableKeys,
+	type Inclusion,
+	type ResourceKey,
+	type SelectionGraph,
+} from '../../promotionPreview.selection';
+import { flattenPreviewTree, isContainer, type PreviewTreeItem } from '../../promotionPreview.tree';
+
+const props = defineProps<{
+	tree: PreviewTreeItem[];
+	graph: SelectionGraph;
+	selected: ReadonlySet<ResourceKey>;
+	inclusion: Inclusion;
+	/** Included changes, out of the total in the tab above the tree. */
+	includedChanges: number;
+	totalChanges: number;
+	inspectedKey?: ResourceKey;
+}>();
+
+const emit = defineEmits<{
+	toggle: [key: ResourceKey];
+	toggleContainer: [key: ResourceKey];
+	selectAll: [];
+	clear: [];
+	inspect: [key: ResourceKey];
+}>();
+
+const i18n = useI18n();
+const { changeLabel } = usePromotionPreviewLabels();
+
+const rows = computed(() =>
+	flattenPreviewTree(props.tree).map(({ item, indent }) => {
+		const resource = props.graph.resources.get(item.id);
+		return { item, indent, resource, check: resource ? checkbox(resource) : undefined };
+	}),
+);
+
+const selectableCount = computed(() => selectableKeys(props.graph).length);
+
+const allState = computed(() => {
+	if (props.selected.size === 0) return 'unchecked';
+	return props.selected.size >= selectableCount.value ? 'checked' : 'indeterminate';
+});
+
+/**
+ * Workflows toggle themselves, projects and folders toggle the workflows inside them, and
+ * dependencies stay read-only: they are checked while a selected workflow needs them.
+ */
+function checkbox(resource: PromotionResource) {
+	if (resource.selectable) {
+		return { checked: props.selected.has(resource.key), indeterminate: false, disabled: false };
+	}
+	if (isContainer(resource)) {
+		const state = containerCheckState(props.graph, props.selected, resource.key);
+		return {
+			checked: state === 'checked',
+			indeterminate: state === 'indeterminate',
+			disabled: selectableDescendants(props.graph, resource.key).length === 0,
+		};
+	}
+	return {
+		checked: props.inclusion.included.has(resource.key),
+		indeterminate: false,
+		disabled: true,
+	};
+}
+
+function onToggle(resource: PromotionResource) {
+	if (isContainer(resource)) emit('toggleContainer', resource.key);
+	else emit('toggle', resource.key);
+}
+</script>
+
+<template>
+	<div :class="$style.tree" data-test-id="promotion-preview-tree">
+		<div :class="$style.row">
+			<N8nCheckbox
+				:model-value="allState === 'checked'"
+				:indeterminate="allState === 'indeterminate'"
+				:aria-label="i18n.baseText('promotions.preview.tree.selectAll')"
+				data-test-id="promotion-preview-select-all"
+				@update:model-value="allState === 'checked' ? emit('clear') : emit('selectAll')"
+			/>
+			<N8nText step="xs" color="text-base" data-test-id="promotion-preview-counts">
+				{{
+					i18n.baseText('promotions.preview.tree.selectedOfTotal', {
+						adjustToNumber: totalChanges,
+						interpolate: {
+							selected: String(includedChanges),
+							total: String(totalChanges),
+						},
+					})
+				}}
+			</N8nText>
+		</div>
+
+		<ul :class="$style.list" role="list">
+			<template v-for="{ item, indent, resource, check } in rows" :key="item.id">
+				<li v-if="item.kind === 'section'" :class="$style.heading">
+					<N8nText step="2xs" bold color="text-base">
+						{{ item.label }}
+					</N8nText>
+				</li>
+				<li
+					v-else-if="resource && check"
+					:class="[$style.row, $style.resource, { [$style.inspected]: inspectedKey === item.id }]"
+					data-test-id="promotion-preview-tree-row"
+					:data-resource-key="item.id"
+				>
+					<N8nCheckbox
+						:model-value="check.checked"
+						:indeterminate="check.indeterminate"
+						:disabled="check.disabled"
+						:aria-label="
+							i18n.baseText('promotions.preview.tree.select', { interpolate: { name: item.label } })
+						"
+						data-test-id="promotion-preview-tree-checkbox"
+						@update:model-value="onToggle(resource)"
+					/>
+					<button
+						type="button"
+						:class="$style.name"
+						:style="{ '--preview-tree--indent': indent }"
+						:aria-current="inspectedKey === item.id ? 'true' : undefined"
+						@click="emit('inspect', item.id)"
+					>
+						<N8nIcon v-if="item.icon" :icon="item.icon" size="small" :class="$style.icon" />
+						<N8nText step="xs" color="text-dark" :class="$style.label">{{ item.label }}</N8nText>
+						<N8nText step="2xs" color="text-light" :class="$style.meta">
+							{{ changeLabel(resource) }}
+						</N8nText>
+					</button>
+				</li>
+			</template>
+		</ul>
+	</div>
+</template>
+
+<style module lang="scss">
+.tree {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	min-height: 0;
+	overflow-y: auto;
+	padding: var(--spacing--xs) var(--spacing--2xs);
+}
+
+.list {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.row {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	min-height: var(--height--md);
+	padding: 0 var(--spacing--2xs);
+	border-radius: var(--radius--3xs);
+}
+
+/* Same color for hover and selection as the items of the main menu. */
+.resource:hover,
+.inspected {
+	background-color: var(--background--subtle);
+}
+
+.heading {
+	display: flex;
+	align-items: center;
+	min-height: var(--height--sm);
+	padding: 0 var(--spacing--2xs);
+}
+
+.heading:not(:first-child) {
+	margin-top: var(--spacing--xs);
+}
+
+.name {
+	display: flex;
+	flex: 1;
+	align-items: center;
+	gap: var(--spacing--3xs);
+	min-width: 0;
+	align-self: stretch;
+	padding: 0;
+	padding-left: calc(var(--preview-tree--indent) * var(--spacing--xs));
+	border: none;
+	background: none;
+	text-align: left;
+	cursor: pointer;
+
+	&:focus-visible {
+		outline: var(--focus--border-width) solid var(--focus--outline-color);
+		outline-offset: calc(-1 * var(--focus--border-width));
+	}
+}
+
+.icon {
+	flex-shrink: 0;
+	color: var(--icon-color);
+}
+
+.label {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.meta {
+	flex-shrink: 0;
+	white-space: nowrap;
+}
+</style>
