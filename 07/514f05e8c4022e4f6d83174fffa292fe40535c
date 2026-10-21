@@ -1,0 +1,281 @@
+docs/generated/postgres-schema/README.md
+  s_71ad2034164515::t_d5b23d2cf6aec8 39,767
+docs/generated/postgres-schema/public.agent_background_job.md
+  s_d3c0f6f6f7d41c::t_6400b93cfd11f5 95
+docs/generated/postgres-schema/public.agent_channel_status.md
+  s_d3c0f6f6f7d41c::t_f601418883db29 70
+docs/generated/postgres-schema/public.agent_chat_attachments.md
+  s_d3c0f6f6f7d41c::t_8777d818800754 75
+docs/generated/postgres-schema/public.agent_chat_subscriptions.md
+  s_d3c0f6f6f7d41c::t_8b54d4f214f8dd 56
+docs/generated/postgres-schema/public.agent_checkpoints.md
+  s_d3c0f6f6f7d41c::t_4fdbef20dd23dd 58
+docs/generated/postgres-schema/public.agent_credential_dependency.md
+  s_d3c0f6f6f7d41c::t_e9d9880a00bce1 49
+docs/generated/postgres-schema/public.agent_eval_dataset.md
+  s_d3c0f6f6f7d41c::t_4954c8e5247d53 69
+docs/generated/postgres-schema/public.agent_execution_threads.md
+  s_d3c0f6f6f7d41c::t_9646406e640a38 102
+docs/generated/postgres-schema/public.agent_files.md
+  s_d3c0f6f6f7d41c::t_bcbda98c5f6134 70
+docs/generated/postgres-schema/public.agent_history.md
+  s_d3c0f6f6f7d41c::t_79214d8b863140 67
+docs/generated/postgres-schema/public.agent_skill_dependency.md
+  s_71ad2034164515::t_6a4674e4da5b62 53
+docs/generated/postgres-schema/public.agent_task_definition.md
+  s_d3c0f6f6f7d41c::t_b31386808688e6 64
+docs/generated/postgres-schema/public.agent_task_run_lock.md
+  s_d3c0f6f6f7d41c::t_eda28fe8a6b1ca 55
+docs/generated/postgres-schema/public.agent_workflow_dependency.md
+  s_d3c0f6f6f7d41c::t_8f8c9265939495 49
+docs/generated/postgres-schema/public.agents.md
+  s_71ad2034164515::t_9faf09cc3b0bad 13,91
+docs/generated/postgres-schema/public.agents_memory_entries.md
+  s_d3c0f6f6f7d41c::t_8518a7b3e1375a 82
+docs/generated/postgres-schema/public.agents_memory_entry_candidates.md
+  s_d3c0f6f6f7d41c::t_5a94b8a31864ce 91
+docs/generated/postgres-schema/public.agents_memory_entry_locks.md
+  s_d3c0f6f6f7d41c::t_96360d154ec208 58
+docs/generated/postgres-schema/public.agents_memory_entry_sources.md
+  s_d3c0f6f6f7d41c::t_0be4b39031edaa 80
+docs/generated/postgres-schema/public.agents_observation_cursors.md
+  s_d3c0f6f6f7d41c::t_f14cde44cfebbf 58
+docs/generated/postgres-schema/public.agents_observation_locks.md
+  s_d3c0f6f6f7d41c::t_62a295d2d46d38 62
+docs/generated/postgres-schema/public.agents_observations.md
+  s_d3c0f6f6f7d41c::t_e872583daee62c 81
+docs/generated/postgres-schema/public.project.md
+  s_71ad2034164515::t_8bf2fa5475c2f4 148
+docs/generated/postgres-schema/public.skill.md
+  s_71ad2034164515::t_cbc96748e2fd40 65
+docs/generated/sqlite-schema/README.md
+  s_71ad2034164515::t_eae28f1899fa55 39,753
+docs/generated/sqlite-schema/agent_background_job.md
+  s_d3c0f6f6f7d41c::t_c61595a416b108 97
+docs/generated/sqlite-schema/agent_channel_status.md
+  s_d3c0f6f6f7d41c::t_b21f5ec38627fb 77
+docs/generated/sqlite-schema/agent_chat_attachments.md
+  s_d3c0f6f6f7d41c::t_f57113af77d6d0 77
+docs/generated/sqlite-schema/agent_chat_subscriptions.md
+  s_d3c0f6f6f7d41c::t_ab420a3b1de7ac 65
+docs/generated/sqlite-schema/agent_checkpoints.md
+  s_d3c0f6f6f7d41c::t_d27e9c7a2c9348 66
+docs/generated/sqlite-schema/agent_credential_dependency.md
+  s_d3c0f6f6f7d41c::t_c7559dfcb80914 59
+docs/generated/sqlite-schema/agent_eval_dataset.md
+  s_d3c0f6f6f7d41c::t_6e34be92e82d6b 74
+docs/generated/sqlite-schema/agent_execution_threads.md
+  s_d3c0f6f6f7d41c::t_17255607826577 102
+docs/generated/sqlite-schema/agent_files.md
+  s_d3c0f6f6f7d41c::t_ac37bc35667ffd 73
+docs/generated/sqlite-schema/agent_history.md
+  s_d3c0f6f6f7d41c::t_6828390b09a0ca 74
+docs/generated/sqlite-schema/agent_skill_dependency.md
+  s_71ad2034164515::t_63ddc49f99a7ea 63
+docs/generated/sqlite-schema/agent_task_definition.md
+  s_d3c0f6f6f7d41c::t_57b80f033ac151 69
+docs/generated/sqlite-schema/agent_task_run_lock.md
+  s_d3c0f6f6f7d41c::t_319c80baafb6bc 62
+docs/generated/sqlite-schema/agent_workflow_dependency.md
+  s_d3c0f6f6f7d41c::t_f03ec67d78dbaf 59
+docs/generated/sqlite-schema/agents.md
+  s_71ad2034164515::t_dfc27224f2ac13 9,24,93
+docs/generated/sqlite-schema/agents_memory_entries.md
+  s_d3c0f6f6f7d41c::t_428f103ef95e95 85
+docs/generated/sqlite-schema/agents_memory_entry_candidates.md
+  s_d3c0f6f6f7d41c::t_f13143cfb3ad67 90
+docs/generated/sqlite-schema/agents_memory_entry_locks.md
+  s_d3c0f6f6f7d41c::t_e2816a288ef96d 65
+docs/generated/sqlite-schema/agents_memory_entry_sources.md
+  s_d3c0f6f6f7d41c::t_d594aa55b0ba98 84
+docs/generated/sqlite-schema/agents_observation_cursors.md
+  s_d3c0f6f6f7d41c::t_b0ef54ca9f44fc 65
+docs/generated/sqlite-schema/agents_observation_locks.md
+  s_d3c0f6f6f7d41c::t_23858e5ca05561 69
+docs/generated/sqlite-schema/agents_observations.md
+  s_d3c0f6f6f7d41c::t_a842d6e951c788 84
+docs/generated/sqlite-schema/project.md
+  s_71ad2034164515::t_3033a25fb8d004 154
+docs/generated/sqlite-schema/skill.md
+  s_71ad2034164515::t_a362c2111af860 73
+packages/@n8n/api-types/src/agents/agent-config-validation.schema.ts
+  s_71ad2034164515::t_d3d42271dbaff0 30
+packages/@n8n/api-types/src/agents/dto.ts
+  s_d3c0f6f6f7d41c::t_c2c0c2ec0957e7 356,437
+packages/@n8n/api-types/src/agents/index.ts
+  s_d3c0f6f6f7d41c::t_42dd854dc53cb2 6
+packages/@n8n/api-types/src/agents/slack/dto.ts
+  s_71ad2034164515::t_c855e6abb3b0d3 7,13
+packages/@n8n/api-types/src/agents/types.ts
+  s_71ad2034164515::t_0e4ff5f854ae55 3-8,168-172
+packages/@n8n/api-types/src/dto/packages/__tests__/import-result.dto.test.ts
+  s_71ad2034164515::t_a8123c21c50e7a 89
+packages/@n8n/api-types/src/dto/packages/import-package-request.openapi.ts
+  s_71ad2034164515::t_548a0f68b7cbe2 66-68
+packages/@n8n/api-types/src/dto/packages/import-result.dto.ts
+  s_71ad2034164515::t_6d69a650f1dadd 7,19-20,29-34,42-47,53,92-94
+packages/@n8n/cli/docs/commands/package.md
+  s_71ad2034164515::t_252d0a17654107 47-49,132-152
+packages/@n8n/cli/src/__tests__/package-import.test.ts
+  s_71ad2034164515::t_f90a4602c4f187 7,134-179
+packages/@n8n/cli/src/commands/package/import.ts
+  s_71ad2034164515::t_b3e6e8cd25830a 11-12
+packages/cli/src/modules/agents/__tests__/agent-config.service.test.ts
+  s_71ad2034164515::t_78bd04d1792a9e 501-504,511,555,559-562,996-997,1685,1700
+packages/cli/src/modules/agents/__tests__/agent-integration-management.service.test.ts
+  s_d3c0f6f6f7d41c::t_39f0e006797114 97,111-127,150-152,282,466-468
+packages/cli/src/modules/agents/__tests__/agent-integration-persistence.service.test.ts
+  s_71ad2034164515::t_9a9ecccc4f6464 3,13,42,70,82,87,110,210
+packages/cli/src/modules/agents/__tests__/agent-integrations.controller.test.ts
+  s_d3c0f6f6f7d41c::t_2dc3052b5dfefb 17-18,59-61,627-652
+packages/cli/src/modules/agents/__tests__/agent-publish.service.test.ts
+  s_71ad2034164515::t_9f7843e208bd90 487,494-512,895-902,907,932
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_71ad2034164515::t_d6a97c54536c5e 49,339
+packages/cli/src/modules/agents/__tests__/agents.service.test.ts
+  s_71ad2034164515::t_a6d5772083d349 153-154,195,212-215,220,231-232,335,355-356,403-406,452,454-457
+packages/cli/src/modules/agents/agent-config.service.ts
+  s_71ad2034164515::t_af778dd0f8311c 30-31,153-156,252-258,412-415
+packages/cli/src/modules/agents/agent-integration-management.service.ts
+  s_d3c0f6f6f7d41c::t_6a500fef6d2163 29,81,85-100,110-111,119-152,258-261,275-281,297,302,314,321-323,411,416,422
+packages/cli/src/modules/agents/agent-integration-persistence.service.ts
+  s_71ad2034164515::t_206e4b10f2c51e 10,18-19,26,30-41,55-57,66,85,97-99,116,160,171,200,208-210,221,225-231,235,244-246,248-302,308,318,329,336
+packages/cli/src/modules/agents/agent-integrations.controller.ts
+  s_71ad2034164515::t_b6bbc4406bb753 4,16,40,66,94-103,127,130-137
+packages/cli/src/modules/agents/agent-modification-telemetry.service.ts
+  s_71ad2034164515::t_48539e45672bef 13,105-110,135-136
+packages/cli/src/modules/agents/agent-publish.service.ts
+  s_71ad2034164515::t_8b8e9a8147b092 50,150-153,239
+packages/cli/src/modules/agents/agent-slack-integrations.controller.ts
+  s_71ad2034164515::t_15edeb41210b36 38,111
+packages/cli/src/modules/agents/agent-validation.service.ts
+  s_71ad2034164515::t_e1f86c236564b5 55-56,76,194,223,239,249,260,272,340
+packages/cli/src/modules/agents/agents.service.ts
+  s_71ad2034164515::t_bcebae3ae8e268 73,199,275
+packages/cli/src/modules/agents/entities/agent.entity.ts
+  s_d3c0f6f6f7d41c::t_117be36e1c28bc 7,36-42
+packages/cli/src/modules/agents/integrations/__tests__/chat-integration.service.test.ts
+  s_d3c0f6f6f7d41c::t_ea01107a5a83c4 147-149,298-344,1409-1411,1613,1707-1709
+packages/cli/src/modules/agents/integrations/__tests__/slack-app-setup.service.test.ts
+  s_71ad2034164515::t_c8702d8f4a001c 227,234,239-282,385,477-479,1197-1199,1666-1671,1680-1681
+packages/cli/src/modules/agents/integrations/__tests__/slack-integration.test.ts
+  s_71ad2034164515::t_852dcb132a1702 136-176
+packages/cli/src/modules/agents/integrations/__tests__/slack-methods.service.test.ts
+  s_d3c0f6f6f7d41c::t_60bffba1c644b9 82-84
+packages/cli/src/modules/agents/integrations/agent-chat-integration.ts
+  s_71ad2034164515::t_f0343ae96104d9 50-51,436-438
+packages/cli/src/modules/agents/integrations/channel-status-report.ts
+  s_71ad2034164515::t_3383a232942179 41
+packages/cli/src/modules/agents/integrations/chat-integration.service.ts
+  s_71ad2034164515::t_d7076969b50a8b 15,49,97-98,255,264-284,319,328-333,381,389,393,416,1379,1382,1397,1409-1428
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-integration.ts
+  s_71ad2034164515::t_41f7d7cfcc8059 9,12,29,119-138
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-managed-setup.service.ts
+  s_d3c0f6f6f7d41c::t_8488077ecee572 13,65,268-270,280,312-336,409-416,421-422,443-444,446-448,920-921
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-manual-setup.service.ts
+  s_71ad2034164515::t_88c00a9c8c8c12 19,22,57,89,119-120
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-methods.service.ts
+  s_d3c0f6f6f7d41c::t_e6099a31443142 33,210,218-219,234,243-273,321
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-setup.types.ts
+  s_71ad2034164515::t_387d0624bb6509 36-37,62-67,76,83-84
+packages/cli/src/modules/agents/json-config/agent-config-composition.ts
+  s_71ad2034164515::t_7989f26064d8f4 6,15,21
+packages/cli/src/modules/agents/repositories/agent.repository.ts
+  s_71ad2034164515::t_65e1cf871d5270 30-33,504,519,528,692
+packages/cli/src/modules/agents/utils/agent-channel.ts
+  s_71ad2034164515::t_6f4a29dbd7cd23 1-2,9-23
+packages/cli/src/modules/mcp/__tests__/agent-tools.service.test.ts
+  s_71ad2034164515::t_a5e2b525c722d4 37,191,193,1848,1860,2251-2291,2293-2295,2302,2304-2305,2308-2311,2314-2315,2320-2324,2330-2331,2337,2340-2344,2347-2349,2351,2354,2358-2360,2362
+packages/cli/src/modules/mcp/tools/agents/agent-reference.ts
+  s_d3c0f6f6f7d41c::t_fab9a16f2e2cd1 170-174,180-191
+packages/cli/src/modules/mcp/tools/agents/agent-slack-setup.ts
+  s_d3c0f6f6f7d41c::t_717548fe5b72df 4,10,12-13,18-22
+packages/cli/src/modules/mcp/tools/agents/agent-tools.service.ts
+  s_71ad2034164515::t_d07c3fd762920b 33,353,360,367,378,465,1082,1180,1729,1836,1841-1863,1865-1883,1902
+packages/cli/src/modules/n8n-packages/__tests__/agent-import-application.integration.test.ts
+  s_71ad2034164515::t_e3782a51654e50 33-35,41-42,53,122,367-370,451-563,756-760,763,792,798-799,943,975
+packages/cli/src/modules/n8n-packages/engine/import-result.ts
+  s_71ad2034164515::t_2025649fc236ca 106,116
+packages/cli/src/modules/n8n-packages/entities/agent/__tests__/agent.exporter.test.ts
+  s_d3c0f6f6f7d41c::t_5f9d8feb1949b1 1,74-91
+packages/cli/src/modules/n8n-packages/entities/agent/agent-import.types.ts
+  s_71ad2034164515::t_db851df640139c 1,43
+packages/cli/src/modules/n8n-packages/entities/agent/agent-publisher.ts
+  s_71ad2034164515::t_2ab8951cb198ed 10,22,38-39,45-48,51,99
+packages/cli/src/modules/n8n-packages/entities/agent/agent.exporter.ts
+  s_d3c0f6f6f7d41c::t_bcfbdde36f37e7 8,63
+packages/cli/src/modules/n8n-packages/entities/publishing.ts
+  s_71ad2034164515::t_de2d71fab707d2 13-14
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/importPackage.generated.yml
+  s_71ad2034164515::t_0ce3216930e1e0 76
+packages/cli/src/public-api/v1/shared/spec/schemas/importResultDto.generated.yml
+  s_71ad2034164515::t_d70469a740d0d6 22-59,91,100,107-108,177,186,193-194
+packages/cli/src/scaling/pubsub/pubsub.event-map.ts
+  s_71ad2034164515::t_9e62b13198defd 358
+packages/cli/test/integration/public-api/n8n-packages-import-agents.test.ts
+  s_71ad2034164515::t_7c1c873f7a9049 190-239,287
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_71ad2034164515::t_8d51f3427634e8 9147,9620-9624
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChannelModal.test.ts
+  s_71ad2034164515::t_7e15b827f307a7 4-8,16,52,81-88,112-113,223-224,367-401,409
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentTriggersSection.test.ts
+  s_71ad2034164515::t_6c26f669e2a42e 8,83-89,110,135,173-174,246-270
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentIntegrationStatus.test.ts
+  s_71ad2034164515::t_160ce761facec0 94-124
+packages/frontend/editor-ui/src/features/agents/channels/slack/AgentChannelSlackSetupView.vue
+  s_71ad2034164515::t_c748fa2282f92c 24
+packages/frontend/editor-ui/src/features/agents/channels/slack/api.ts
+  s_71ad2034164515::t_c5b2d918f8b861 37,41,87,93
+packages/frontend/editor-ui/src/features/agents/channels/slack/useSlackChannelRuntime.test.ts
+  s_71ad2034164515::t_7e974231969355 58,63,224-229,231,233-248
+packages/frontend/editor-ui/src/features/agents/channels/slack/useSlackChannelRuntime.ts
+  s_71ad2034164515::t_b54536ed9361a2 173,259
+packages/frontend/editor-ui/src/features/agents/channels/telegram/AgentChannelTelegramSetup.test.ts
+  s_71ad2034164515::t_ef0a0ec27aebd1 23-48
+packages/frontend/editor-ui/src/features/agents/channels/types.ts
+  s_71ad2034164515::t_8275086fb36845 50
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelModal.vue
+  s_71ad2034164515::t_684841b3e49ebe 36,81-82,85-93,206,237,241-242,504,604-607,616-629,645-648,675,694-696,738,744-748,784,794
+packages/frontend/editor-ui/src/features/agents/components/AgentSchedulesRow.vue
+  s_71ad2034164515::t_96fa3207f27b1c 75
+packages/frontend/editor-ui/src/features/agents/components/AgentTriggersSection.vue
+  s_71ad2034164515::t_58e34f03f61e6d 73-74,78-79,130,149,155-160,179-189,212-240,295,301,308-314,372,396-407,432
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  s_d3c0f6f6f7d41c::t_5f53b9a91611f9 402,427,439,445
+packages/frontend/editor-ui/src/features/agents/composables/useAgentIntegrationStatus.ts
+  s_71ad2034164515::t_5abcd5c4628918 10,30,68,119-121,124-125,133-140,166-169,199,255-259,262-265,305-319,343-344
+packages/frontend/editor-ui/src/features/agents/utils/agentValidationIssueMessages.ts
+  s_71ad2034164515::t_37e9f63b941429 14
+packages/frontend/editor-ui/src/features/agents/utils/telegramAccessSettings.ts
+  s_71ad2034164515::t_b0d044e61711bf 11,19-20
+packages/frontend/editor-ui/src/features/ai/shared/components/ChannelSetupCard.test.ts
+  s_71ad2034164515::t_abc12eba2e615c 2-3,7,44-45,91-113,270-289,311-312,318,410-428,430-431,459,464-481
+packages/frontend/editor-ui/src/features/ai/shared/components/ChannelSetupCard.vue
+  s_71ad2034164515::t_2ec04a562aafa9 64-65,80-99,125,129-137,146,150-151,189-191,230-231,254-256,258,383-402,419-421,480-486
+packages/nodes-base/credentials/SlackApi.credentials.ts
+  s_71ad2034164515::t_044ab038c644bd 60-71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "07514f05e8c4022e4f6d83174fffa292fe40535c",
+  "prompts": {},
+  "sessions": {
+    "s_71ad2034164515": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10d43-fdb2-7132-8573-764fd1bad9f7",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_d3c0f6f6f7d41c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a152e5-4005-7111-8ca3-6a9ab5e71d29",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
