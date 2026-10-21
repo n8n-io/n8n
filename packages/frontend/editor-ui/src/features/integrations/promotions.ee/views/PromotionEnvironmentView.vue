@@ -374,7 +374,7 @@ onBeforeRouteLeave(() => {
 										data-test-id="promotion-environment-edit-credentials"
 										@click="dialogOpen = true"
 									>
-										{{ i18n.baseText('settings.promotions.environment.editCredentials') }}
+										{{ i18n.baseText('settings.promotions.environment.editProvider') }}
 									</N8nButton>
 								</div>
 							</N8nFormInput>
