@@ -3,7 +3,6 @@ import type {
 	TeamsManagedSetupState,
 	TeamsManagerCredentialSummary,
 } from '@n8n/api-types';
-import { Logger } from '@n8n/backend-common';
 import type { ClientOAuth2Options } from '@n8n/client-oauth2';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -95,7 +94,6 @@ export class TeamsManagedSetupService {
 		private readonly oauthService: OauthService,
 		private readonly namingService: NamingService,
 		private readonly externalHooks: ExternalHooks,
-		private readonly logger: Logger,
 	) {}
 
 	/**
@@ -148,10 +146,8 @@ export class TeamsManagedSetupService {
 		};
 		try {
 			await this.externalHooks.run('oauth2.authenticate', [options]);
-		} catch (error) {
-			this.logger.warn('[Teams] Could not prepare the administrator consent link', {
-				error: error instanceof Error ? error.message : String(error),
-			});
+		} catch {
+			// `ExternalHooks.run` already logs and reports the failure.
 			return null;
 		}
 
