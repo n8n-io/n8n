@@ -98,6 +98,19 @@ describe('TypeormPersistenceBoundaryRule', () => {
 		expect(await analyze()).toHaveLength(1);
 	});
 
+	it('does not infer persistence from a local BaseRepository import', async () => {
+		writePackage();
+		write('packages/example/src/base-repository.ts', 'export class BaseRepository {}\n');
+		write(
+			'packages/example/src/workflow.service.ts',
+			"import { In } from '@n8n/typeorm';\nimport { BaseRepository } from './base-repository';\nexport class WorkflowService extends BaseRepository {}\n",
+		);
+
+		expect(await analyze()).toEqual([
+			expect.stringContaining('workflow.service.ts:1 Business logic imports TypeORM directly.'),
+		]);
+	});
+
 	it('always rejects guarded TypeORM re-exports from @n8n/db', async () => {
 		writePackage();
 		write(
@@ -191,10 +204,12 @@ describe('TypeormPersistenceBoundaryRule', () => {
 			writePackage();
 			write(
 				'packages/example/src/api-key.repository.ts',
-				fs.readFileSync(
-					path.join(repositoryRoot, 'packages/@n8n/db/src/repositories/api-key.repository.ts'),
-					'utf8',
-				),
+				fs
+					.readFileSync(
+						path.join(repositoryRoot, 'packages/@n8n/db/src/repositories/api-key.repository.ts'),
+						'utf8',
+					)
+					.replace("from './base-repository'", "from '@n8n/db'"),
 			);
 
 			expect(await analyze()).toEqual([]);
