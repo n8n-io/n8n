@@ -215,7 +215,7 @@ describe('n8n-docs tool', () => {
 		expect(result.documents?.[0].content).toContain('OAuth Redirect URL');
 	});
 
-	// Without this the model has to chain `credentials(action="search-types")` to fetch
+	// Without this the model has to chain `workflow_builder_credentials(action="search-types")` to fetch
 	// the URL itself, and when it skips that step ranking falls back to query tokens,
 	// lands on the wrong pages, and the answer comes from memory (AGENT-743).
 	describe('resolving documentationUrl from the credential type', () => {

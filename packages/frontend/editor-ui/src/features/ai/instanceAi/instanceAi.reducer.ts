@@ -1,12 +1,15 @@
+import { isRecord } from '@n8n/utils/is-record';
 import { reactive } from 'vue';
 import {
 	getRenderHint,
+	canAcceptInstanceAiEvent,
 	createInitialState,
 	reduceEvent as reduceRunEvent,
 	toAgentTree,
 	findAgent,
 	stateFromAgentTree,
 	isSafeObjectKey,
+	resolveBuilderToolName,
 } from '@n8n/api-types';
 import type {
 	InstanceAiEvent,
@@ -112,11 +115,34 @@ function createRunState(rootAgentId?: string): AgentRunState {
 }
 
 /**
+ * Rewrite former builder tool names in a persisted snapshot tree to their
+ * current names, in place. Live events get the same treatment in the shared
+ * reducer, so the UI only has to handle current names. Persisted trees can be
+ * malformed, so it skips invalid entries and leaves repair to `stateFromAgentTree`.
+ */
+export function normalizeAgentTreeToolNames(node: unknown): void {
+	if (!isRecord(node)) return;
+	if (Array.isArray(node.toolCalls)) {
+		for (const toolCall of node.toolCalls) {
+			if (isRecord(toolCall) && typeof toolCall.toolName === 'string') {
+				toolCall.toolName = resolveBuilderToolName(toolCall.toolName);
+			}
+		}
+	}
+	if (Array.isArray(node.children)) {
+		for (const child of node.children) {
+			normalizeAgentTreeToolNames(child);
+		}
+	}
+}
+
+/**
  * Index a snapshot tree (session restore / run-sync) into a reactive run state.
  * The tree's nodes are adopted, not copied — live events keep mutating the
  * exact objects the message already renders.
  */
 export function createRunStateFromTree(tree: InstanceAiAgentNode): AgentRunState | undefined {
+	normalizeAgentTreeToolNames(tree);
 	const runState = stateFromAgentTree(tree);
 	return runState ? reactive(runState) : undefined;
 }
@@ -195,6 +221,14 @@ export function handleEvent(state: InstanceAiReducerState, event: InstanceAiEven
 	if (!state.groupIdByRunId) state.groupIdByRunId = new Map();
 	if (!state.runStateByGroupId) state.runStateByGroupId = new Map();
 	if (!hasSafeEventKeys(event)) return state.activeRunId;
+	const groupId =
+		event.type === 'run-start'
+			? (event.payload.messageGroupId ?? resolveGroupId(state, event.runId))
+			: resolveGroupId(state, event.runId);
+	const existingState = state.runStateByGroupId.get(groupId);
+	if (existingState && !canAcceptInstanceAiEvent(existingState.lifecycle, event)) {
+		return state.activeRunId;
+	}
 
 	// Mid-run replay guard: if we receive events for a runId that has no
 	// message yet (e.g., reconnect missed the run-start), create the message

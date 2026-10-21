@@ -57,7 +57,6 @@ import {
 	NodeHelpers,
 } from 'n8n-workflow';
 
-import { isCredSharingEnabled } from '@/constants/credential-sharing';
 import { CredentialTypes } from '@/credential-types';
 import { createCredentialsFromCredentialsEntity, CredentialsHelper } from '@/credentials-helper';
 import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
@@ -620,10 +619,10 @@ export class CredentialsService {
 
 	/**
 	 * Returns credentials the user can use in this workflow or project: shared
-	 * with it directly, global, or — behind {@link isCredSharingEnabled} — owned
-	 * by the user's own personal project while the user also belongs to it (the
-	 * personal route). A credential shared with the project but not with the
-	 * requesting user, and not reachable via either of those routes, is excluded.
+	 * with it directly, global, or owned by the user's own personal project while
+	 * the user also belongs to it (the personal route). A credential shared with
+	 * the project but not with the requesting user, and not reachable via either
+	 * of those routes, is excluded.
 	 * @param user The user making the request
 	 * @param options.workflowId The workflow that is being edited
 	 * @param options.projectId The project owning the workflow This is useful
@@ -655,10 +654,9 @@ export class CredentialsService {
 				: (await this.findAllCredentialIdsForProject(options.projectId)).map((c) => c.id),
 		);
 
-		const personalRouteCredentialIds =
-			isCredSharingEnabled() && !options.excludePersonalRoute
-				? await this.findPersonalRouteCredentialIds(user, allCredentials, projectRelations, options)
-				: new Set<string>();
+		const personalRouteCredentialIds = options.excludePersonalRoute
+			? new Set<string>()
+			: await this.findPersonalRouteCredentialIds(user, allCredentials, projectRelations, options);
 
 		// the union of all three is every credential the user can use in this
 		// workflow or project
@@ -714,7 +712,7 @@ export class CredentialsService {
 	 * The ids, among `candidateCredentials`, that the user can use here only
 	 * via the personal route: granted to the user's own personal project (owned
 	 * by it, or shared with it directly), where the user also belongs to the
-	 * workflow's/project's project(s). See {@link isCredSharingEnabled}.
+	 * workflow's/project's project(s).
 	 */
 	private async findPersonalRouteCredentialIds(
 		user: User,

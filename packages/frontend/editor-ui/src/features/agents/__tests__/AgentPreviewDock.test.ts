@@ -1,11 +1,20 @@
 /* eslint-disable import-x/no-extraneous-dependencies -- test-only patterns */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { enableAutoUnmount, mount, shallowMount } from '@vue/test-utils';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
 import AgentPreviewDock from '../components/AgentPreviewDock.vue';
 import AgentPreviewChatPage from '../components/AgentPreviewChatPage.vue';
 
 enableAutoUnmount(afterEach);
+
+const track = vi.fn();
+vi.mock('@n8n/composables/useTelemetry', () => ({
+	useTelemetry: () => ({ track }),
+}));
+vi.mock('@n8n/stores/useRootStore', () => ({
+	useRootStore: () => ({ pushRef: 'session-xyz' }),
+}));
 
 vi.mock('../composables/useAgentSessionLangSmithExport', () => ({
 	useAgentSessionLangSmithExport: () => ({
@@ -293,6 +302,10 @@ describe('AgentPreviewDock', () => {
 		expect(wrapper.emitted('view-trace')).toEqual([[]]);
 		expect(wrapper.emitted('new-session')).toEqual([[]]);
 		expect(wrapper.emitted('close')).toEqual([[]]);
+		expect(track).toHaveBeenCalledExactlyOnceWith(
+			TELEMETRY_EVENT.AGENTS.USER_CLICKED_NEW_TEST_CHAT_ICON_FROM_TEST_PANEL,
+			{ agent_id: 'agent-1', session_id: 'session-xyz', source: 'test-panel' },
+		);
 	});
 
 	it.each([
@@ -381,6 +394,7 @@ describe('AgentPreviewDock', () => {
 
 	it('creates a new session from the keyboard shortcut', async function () {
 		const wrapper = mountDock();
+		expect(track).not.toHaveBeenCalled();
 		await wrapper.vm.$nextTick();
 		document.dispatchEvent(
 			new KeyboardEvent('keydown', {
@@ -395,6 +409,10 @@ describe('AgentPreviewDock', () => {
 		);
 
 		expect(wrapper.emitted('new-session')).toEqual([[]]);
+		expect(track).toHaveBeenCalledExactlyOnceWith(
+			TELEMETRY_EVENT.AGENTS.USER_CLICKED_NEW_TEST_CHAT_ICON_FROM_TEST_PANEL,
+			{ agent_id: 'agent-1', session_id: 'session-xyz', source: 'shortcut' },
+		);
 	});
 
 	describe('Escape key events', function () {

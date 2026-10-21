@@ -3,7 +3,7 @@ import type { User } from '@n8n/db';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { mock } from 'vitest-mock-extended';
 
-import type { AiPreferenceService } from '@/services/ai-preference.service';
+import type { AiPreferenceService } from '@n8n/backend-services';
 import type { Telemetry } from '@/telemetry';
 
 import type { InProcessEventBus } from '../event-bus/in-process-event-bus';

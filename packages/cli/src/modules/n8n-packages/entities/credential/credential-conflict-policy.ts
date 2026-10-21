@@ -1,3 +1,4 @@
+import type { SerializedCredentialData } from '@n8n/api-types';
 import type { CredentialsEntity } from '@n8n/db';
 import isEqual from 'lodash/isEqual';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
@@ -14,7 +15,6 @@ import type {
 } from './credential.types';
 import { CredentialConflictPolicy } from '../../n8n-packages.types';
 import { mergeRequirementConsumers } from '../../spec/requirement-consumers';
-import type { SerializedCredentialData } from '../../spec/serialized/credential.schema';
 
 export function resolveCredentialConflictPolicy(
 	policy: CredentialConflictPolicy | undefined,
