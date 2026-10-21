@@ -871,11 +871,13 @@ function onRemove() {
 							</N8nInputLabel>
 							<N8nInputLabel
 								v-if="showAssistantAvailability"
+								input-name="skill-assistant-availability"
 								:label="i18n.baseText('settings.context.skills.assistant.label')"
 								:tooltip-text="i18n.baseText('settings.context.skills.assistant.tooltip')"
 								size="small"
 							>
 								<N8nSwitch
+									id="skill-assistant-availability"
 									v-model="availableToAssistant"
 									:aria-label="i18n.baseText('settings.context.skills.assistant.label')"
 									:disabled="editorLocked"
