@@ -27,6 +27,8 @@
 // ---------------------------------------------------------------------------
 
 import { Tool, type BuiltTool, type GuardrailsOptions } from '@n8n/agents';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import { AGENT_BUILDER_TOOL_NAMES, type InstanceAiEvent, type TaskList } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import { nanoid } from 'nanoid';
@@ -409,15 +411,28 @@ async function stopAtAgentBuild(
 	return await Promise.resolve(agentSelected && STUB_BUILDER_TOOL_NAMES.includes(call.toolName));
 }
 
+// Eval branch only: the real builder tool names, descriptions, and input schemas, dumped from
+// packages/cli AgentsBuilderToolsService, so the model sees what production shows.
+const REAL_BUILDER_TOOLS = new Map(
+	(
+		JSON.parse(readFileSync(path.join(__dirname, 'agent-builder-tools.json'), 'utf8')) as Array<{
+			name: string;
+			description: string;
+			inputSchema: Exclude<BuiltTool['inputSchema'], z.ZodType | undefined>;
+		}>
+	).map((tool) => [tool.name, tool]),
+);
+
 /** Builder tools that accept any input and report success, so routing is all that is graded. */
 function createStubBuilderTools(): BuiltTool[] {
-	return STUB_BUILDER_TOOL_NAMES.map((name) =>
-		new Tool(name)
-			.description(`Discovery stub for ${name}.`)
-			.input(z.object({}).passthrough())
+	return STUB_BUILDER_TOOL_NAMES.map((name) => {
+		const real = REAL_BUILDER_TOOLS.get(name);
+		return new Tool(name)
+			.description(real?.description ?? `Discovery stub for ${name}.`)
+			.input(real?.inputSchema ?? z.object({}).passthrough())
 			.handler(async () => await Promise.resolve({ ok: true }))
-			.build(),
-	);
+			.build();
+	});
 }
 
 function createStubBuilderDelegate(): InstanceAiBuilderDelegate {
