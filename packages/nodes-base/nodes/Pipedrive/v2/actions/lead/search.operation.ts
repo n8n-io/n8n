@@ -137,10 +137,12 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				qs.fields = (additionalFields.fields as string[]).join(',');
 			}
 
+			// Only whole positive numbers are IDs. parseInt would turn "7abc" into 7.
 			const toId = (name: string, input: unknown) => {
-				const id = parseInt(String(input), 10);
-				if (Number.isNaN(id)) {
-					throw new NodeOperationError(this.getNode(), `${name} "${input}" is not a number`, {
+				const value = String(input).trim();
+				const id = Number(value);
+				if (!/^[1-9]\d*$/.test(value) || !Number.isSafeInteger(id)) {
+					throw new NodeOperationError(this.getNode(), `${name} "${input}" is not a valid ID`, {
 						itemIndex: i,
 					});
 				}
@@ -163,14 +165,18 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			// at most 100 items for each page.
 			qs.limit = returnAll ? 100 : qs.limit;
 			const results: IDataObject[] = [];
+			const seenCursors = new Set<string>();
 			let morePages = true;
 			while (morePages) {
 				const page = await pipedriveApiRequest.call(this, 'GET', '/leads/search', {}, qs);
 				const pageItems = ((page.data as IDataObject)?.items as IDataObject[]) ?? [];
 				results.push(...pageItems);
 				const nextCursor = page.additionalData?.next_cursor as string | undefined;
-				// Stop on the last page, and also when a page brings no progress.
-				morePages = returnAll && !!nextCursor && pageItems.length > 0 && nextCursor !== qs.cursor;
+				// Stop on the last page, and also when a page brings no progress or a cursor
+				// comes back, so a cursor cycle cannot loop forever.
+				morePages =
+					returnAll && !!nextCursor && pageItems.length > 0 && !seenCursors.has(nextCursor);
+				if (nextCursor) seenCursors.add(nextCursor);
 				qs.cursor = nextCursor;
 			}
 			const responseData = { data: { items: results } };

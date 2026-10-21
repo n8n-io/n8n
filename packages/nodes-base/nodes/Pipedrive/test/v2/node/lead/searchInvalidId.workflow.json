@@ -19,7 +19,7 @@
 				"returnAll": false,
 				"limit": 2,
 				"additionalFields": {
-					"organizationId": "Test Org LLC"
+					"organizationId": "7abc"
 				}
 			},
 			"id": "e5e5e5e5-1111-2222-3333-444444444444",
@@ -48,7 +48,7 @@
 		"No Operation, do nothing": [
 			{
 				"json": {
-					"error": "Organization ID \"Test Org LLC\" is not a number"
+					"error": "Organization ID \"7abc\" is not a valid ID"
 				}
 			}
 		]
