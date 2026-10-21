@@ -96,7 +96,7 @@
 		},
 		{
 			"name": "Skill",
-			"path": "packages/cli/src/modules/agents/entities/skill.entity.ts",
+			"path": "packages/cli/src/modules/skills/skill.entity.ts",
 			"reason": "Project-scoped skills belong to the project's agents, which are not transferred either (see Agent); both are dropped via FK cascade. Instance skills carry no projectId."
 		},
 		{
@@ -113,6 +113,11 @@
 			"name": "SelfHealingResult",
 			"path": "packages/cli/src/modules/instance-ai/self-healing/database/self-healing-result.entity.ts",
 			"reason": "Keeps the original project and investigation identity. Deleted via FK cascade when the original project, workflow, background user, or attached suggestion is deleted."
+		},
+		{
+			"name": "SelfHealingInvestigation",
+			"path": "packages/cli/src/modules/instance-ai/self-healing/database/self-healing-investigation.entity.ts",
+			"reason": "Keeps the original actor, project, and workflow baseline. A workflow transfer prevents completion. Deleted via FK cascade with the original project, workflow, background user, or completed result."
 		}
 	]
 }

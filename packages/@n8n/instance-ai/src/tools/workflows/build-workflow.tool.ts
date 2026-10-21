@@ -6,18 +6,14 @@ import {
 } from '@n8n/api-types';
 import { Tool, type RuntimeSkillLoader } from '@n8n/agents';
 import { hasPlaceholderDeep } from '@n8n/utils/placeholder';
-import {
-	dropInvalidWorkflowJsonGroups,
-	SDK_IMPORTABLE_FUNCTIONS,
-	type WorkflowJSON,
-} from '@n8n/workflow-sdk';
-import { makeGetNodeTypeForGrouping, UnexpectedError } from 'n8n-workflow';
+import { SDK_IMPORTABLE_FUNCTIONS, type WorkflowJSON } from '@n8n/workflow-sdk';
+import { UnexpectedError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
 import { computeChatModelValidationIssues } from './chat-model-validation';
 import { planVerificationSimulation } from './plan-verification-simulation';
-import { preserveExistingNodePositions } from './preserve-node-positions';
+import { prepareWorkflowForSave } from './prepare-workflow-for-save';
 import {
 	buildCredentialMap,
 	buildCredentialResolutionNote,
@@ -74,14 +70,9 @@ import {
 	type WorkflowSourceFileBinding,
 } from './workflow-file-bindings';
 import {
-	ensureUniqueNodeIds,
-	ensureWebhookIds,
 	getReferencedWorkflowIds,
 	hasLostAllSavedNodeIds,
-	preserveExistingNodeIds,
 	isTriggerNodeType,
-	preserveExistingNodeGroupIds,
-	preserveExistingSetupValues,
 } from './workflow-json-utils';
 import { computeChangedNodeNames, downgradeUnchangedNodeBlockers } from './workflow-node-diff';
 import { compileWorkflowSource } from './workflow-source-compiler';
@@ -90,7 +81,6 @@ import {
 	GROUP_DROPPED_OVER_CEILING_CODE,
 	groupingDecisionBlocker,
 	NODE_GROUP_DROPPED_CODE,
-	nodeGroupDroppedWarnings,
 	partitionWarnings,
 	summarizeWorkflowTopLevelItems,
 	topLevelItemsWarning,
@@ -1332,28 +1322,9 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			await stripStaleCredentialsFromWorkflow(context, json);
 
 			try {
-				let droppedGroupCount = 0;
-				// Runs first: the passes below key off node ids, so they must be unique.
-				ensureUniqueNodeIds(json);
-				// Recovers the saved id of a surviving node whose source declared none — layered
-				// under the declared id, so a rename still follows the id.
-				await preserveExistingNodeIds(json, targetWorkflowId, context);
-				await preserveExistingSetupValues(json, targetWorkflowId, context);
-				await ensureWebhookIds(json, targetWorkflowId, context);
-				await preserveExistingNodeGroupIds(json, targetWorkflowId, context);
-				const groupCountBeforeDrop = json.nodeGroups?.length ?? 0;
-				const droppedGroupWarnings = nodeGroupDroppedWarnings(
-					dropInvalidWorkflowJsonGroups(
-						json,
-						context.nodeTypesProvider
-							? makeGetNodeTypeForGrouping(context.nodeTypesProvider)
-							: null,
-					),
-				);
-				droppedGroupCount = groupCountBeforeDrop - (json.nodeGroups?.length ?? 0);
+				const { groupCountBeforeDrop, droppedGroupCount, droppedGroupWarnings } =
+					await prepareWorkflowForSave(json, targetWorkflowId, context);
 				informational.push(...droppedGroupWarnings);
-				// After the drop: placement reads group membership.
-				await preserveExistingNodePositions(json, targetWorkflowId, context);
 
 				const topLevel = summarizeWorkflowTopLevelItems(json);
 				const grouping: GroupingOutcome = {
