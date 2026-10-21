@@ -1,4 +1,5 @@
 import isEqualWith from 'lodash/isEqualWith';
+import isNil from 'lodash/isNil';
 
 import { getCompiled } from './compiler';
 import { readsClockOrParameter, skeletonOf } from './skeleton';
@@ -124,14 +125,23 @@ function compareResults(
 // TODO(native-evaluation verify, CET-447): share the bounded comparison with the QuickJS shadow.
 function compareValues(a: unknown, b: unknown, maxComparedPairs = MAX_COMPARED_PAIRS): Comparison {
 	let remaining = maxComparedPairs;
-	const compare = (x: unknown, y: unknown): boolean | undefined => {
+	const compare = (
+		x: unknown,
+		y: unknown,
+		_key?: unknown,
+		parent?: unknown,
+	): boolean | undefined => {
 		remaining--;
 		if (remaining < 0) {
 			throw new ComparisonTooLargeError();
 		}
-		// QuickJS drops object keys that hold undefined from its results.
+		// QuickJS drops object keys that hold undefined from its results,
+		// and turns array items that hold undefined into null, like JSON.
 		if (isObject(x) && isObject(y)) {
 			return sameDefinedEntries(x, y, compare);
+		}
+		if (Array.isArray(parent) && isNil(x) && isNil(y)) {
+			return true;
 		}
 		return undefined;
 	};

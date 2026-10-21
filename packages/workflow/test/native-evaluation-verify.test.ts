@@ -235,6 +235,19 @@ describe('Expression - native evaluation verify mode', () => {
 			expect(report).not.toHaveBeenCalled();
 		});
 
+		test('does not report an array item that holds undefined', () => {
+			evaluate('={{ $json.list }}', { list: [1, undefined, 2] });
+			expect(evaluateNatively).toHaveBeenCalled();
+			expect(report).not.toHaveBeenCalled();
+		});
+
+		test('reports a different array item next to an item that holds undefined', () => {
+			evaluateNatively.mockReturnValueOnce({ handled: true, value: [3, undefined, 2] });
+
+			evaluate('={{ $json.list }}', { list: [1, undefined, 2] });
+			expect(report).toHaveBeenCalledTimes(1);
+		});
+
 		test('reports a different object value next to a key that holds undefined', () => {
 			evaluateNatively.mockReturnValueOnce({ handled: true, value: { n: 2, u: undefined } });
 
