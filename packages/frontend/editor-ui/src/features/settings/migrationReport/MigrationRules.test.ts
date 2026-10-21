@@ -266,7 +266,15 @@ describe('MigrationRules', () => {
 					targetVersion: '2.0.0',
 					currentVersion: '1.0.0',
 					workflowResults: [
-						// Listed before the executionsFail rule, so a tie in the impact order fails the test.
+						{
+							...mockWorkflowIssue,
+							ruleId: 'rule-2',
+							ruleTitle: 'Test Rule 2',
+							ruleImpact: 'behaviorChanges' as const,
+							nbAffectedWorkflows: 3,
+						},
+						// Listed between its neighbours in the input: after the behaviorChanges rule and
+						// before the executionsFail rule. A tie with either one then fails the test.
 						{
 							...mockWorkflowIssue,
 							ruleId: 'rule-5',
@@ -275,13 +283,6 @@ describe('MigrationRules', () => {
 							nbAffectedWorkflows: 2,
 						},
 						mockWorkflowIssue,
-						{
-							...mockWorkflowIssue,
-							ruleId: 'rule-2',
-							ruleTitle: 'Test Rule 2',
-							ruleImpact: 'behaviorChanges' as const,
-							nbAffectedWorkflows: 3,
-						},
 						{
 							...mockWorkflowIssue,
 							ruleId: 'rule-3',
@@ -488,14 +489,15 @@ describe('MigrationRules', () => {
 					currentVersion: '1.0.0',
 					workflowResults: [],
 					instanceResults: [
-						// Listed before the executionsFail rule, so a tie in the impact order fails the test.
+						mockInstanceIssue,
+						// Listed between its neighbours in the input: after the behaviorChanges rule and
+						// before the executionsFail rule. A tie with either one then fails the test.
 						{
 							...mockInstanceIssue,
 							ruleId: 'rule-6',
 							ruleTitle: 'Instance Rule 5',
 							ruleImpact: 'executionsMightFail' as const,
 						},
-						mockInstanceIssue,
 						{
 							...mockInstanceIssue,
 							ruleId: 'rule-3',
