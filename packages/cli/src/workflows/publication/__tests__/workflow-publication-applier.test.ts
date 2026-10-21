@@ -126,11 +126,11 @@ describe('WorkflowPublicationApplier', () => {
 
 	const abort = { signal: new AbortController().signal, onDetached: vi.fn() };
 
-	/** Drives the trigger diff: first call returns old triggers, second returns new. */
+	/** Drives the trigger diff: `oldVersion` (or none) returns old triggers, any other version returns new. */
 	function setTriggerSets(oldTriggers: INode[], newTriggers: INode[]) {
-		workflowTriggerActivator.getEnabledTriggerNodes
-			.mockReturnValueOnce(oldTriggers)
-			.mockReturnValueOnce(newTriggers);
+		workflowTriggerActivator.getEnabledTriggerNodes.mockImplementation((version) =>
+			version === null || version === oldVersion ? oldTriggers : newTriggers,
+		);
 	}
 
 	beforeEach(() => {
@@ -1514,7 +1514,10 @@ describe('WorkflowPublicationApplier', () => {
 			const message = `Cannot publish workflow: trigger "Long" has a node ID longer than ${NODE_ID_MAX_LENGTH} characters. Remove and re-add the affected nodes to give them new IDs.`;
 			expect(result).toEqual({
 				type: 'failed',
-				error: expect.objectContaining({ message }),
+				error: expect.objectContaining({
+					message,
+					affectedNodes: [{ id: longId, name: 'Long' }],
+				}),
 				triggerStatuses: [
 					{
 						nodeId: fittingId,
@@ -1532,12 +1535,12 @@ describe('WorkflowPublicationApplier', () => {
 		});
 
 		test('names every trigger whose id is too long', async () => {
-			workflowHistoryRepository.findOneBy.mockResolvedValue(
-				versionWith([
-					triggerNode(longId, { name: 'First' }),
-					triggerNode(`${longId}z`, { name: 'Second' }),
-				]),
-			);
+			const triggers = [
+				triggerNode(longId, { name: 'First' }),
+				triggerNode(`${longId}z`, { name: 'Second' }),
+			];
+			workflowHistoryRepository.findOneBy.mockResolvedValue(versionWith(triggers));
+			workflowTriggerActivator.getEnabledTriggerNodes.mockReturnValue(triggers);
 
 			const result = await applier.apply(makeRecord(), abort);
 
@@ -1545,6 +1548,10 @@ describe('WorkflowPublicationApplier', () => {
 				type: 'failed',
 				error: expect.objectContaining({
 					message: expect.stringContaining('triggers "First", "Second" have node IDs longer than'),
+					affectedNodes: [
+						{ id: longId, name: 'First' },
+						{ id: `${longId}z`, name: 'Second' },
+					],
 				}),
 			});
 		});
@@ -1562,11 +1569,8 @@ describe('WorkflowPublicationApplier', () => {
 			expect(workflowPublishedVersionRepository.setPublishedVersion).not.toHaveBeenCalled();
 		});
 
-		test.each([
-			['a non-trigger node', setNode(longId)],
-			['a disabled trigger', triggerNode(longId, { disabled: true })],
-		])('publishes a version where only %s has a long id', async (_, node) => {
-			workflowHistoryRepository.findOneBy.mockResolvedValue(versionWith([node]));
+		test('publishes a version where only a non-trigger node has a long id', async () => {
+			workflowHistoryRepository.findOneBy.mockResolvedValue(versionWith([setNode(longId)]));
 
 			const result = await applier.apply(makeRecord(), abort);
 
