@@ -3499,6 +3499,7 @@ describe('TelemetryEventRelay', () => {
 					credentials: {
 						matched: 2,
 						created: 1,
+						updated: 4,
 						requirements: 3,
 					},
 					dataTables: {
@@ -3556,6 +3557,7 @@ describe('TelemetryEventRelay', () => {
 				folders_removed: 1,
 				credentials_matched: 2,
 				credentials_created: 1,
+				credentials_updated: 4,
 				credentials_required: 3,
 				data_tables_matched: 1,
 				data_tables_created: 1,
