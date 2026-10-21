@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { promotionProviderTypeCapabilities, supportsPromotionAuthType } from '@n8n/api-types';
+import { promotionProviderTypeCapabilities, type PromotionProviderType } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
 import {
 	N8nButton,
@@ -15,16 +15,13 @@ import {
 	N8nOption,
 	N8nSelect,
 	N8nText,
-	useMessage,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, nextTick, onMounted, reactive, ref, useTemplateRef, watch } from 'vue';
 
-import { MODAL_CONFIRM } from '@/app/constants';
 import {
 	createPromotionProvider,
-	deletePromotionProvider,
 	fetchPromotionEnvironments,
 	fetchPromotionProvider,
 	updatePromotionProvider,
@@ -44,20 +41,19 @@ import {
 const props = defineProps<{
 	open: boolean;
 	providerId?: string;
+	type?: PromotionProviderType;
 }>();
 
 const emit = defineEmits<{
 	'update:open': [value: boolean];
 	saved: [change: PromotionProviderChange];
-	deleted: [id: string];
 }>();
 
 const i18n = useI18n();
 const toast = useToast();
-const message = useMessage();
 const rootStore = useRootStore();
 
-const form = reactive<ProviderFormState>(emptyProviderForm());
+const form = reactive<ProviderFormState>(emptyProviderForm(props.type));
 
 const step = ref<'form' | 'key'>('form');
 const current = ref<PromotionProvider | null>(null);
@@ -73,18 +69,6 @@ const isEdit = computed(() => props.providerId !== undefined);
 const capabilities = computed(() => promotionProviderTypeCapabilities[form.type]);
 
 watch(
-	() => form.type,
-	() => {
-		if (!supportsPromotionAuthType(form.type, form.authType)) {
-			form.authType = capabilities.value.authTypes[0];
-		}
-		form.username = '';
-		form.password = '';
-		saveError.value = undefined;
-	},
-);
-
-watch(
 	() => [form.baseUrl, form.password],
 	() => {
 		saveError.value = undefined;
@@ -93,11 +77,10 @@ watch(
 
 const title = computed(() => {
 	if (step.value === 'key') return i18n.baseText('settings.promotions.provider.dialog.title.key');
-	return i18n.baseText(
-		isEdit.value
-			? 'settings.promotions.provider.dialog.title.edit'
-			: 'settings.promotions.provider.dialog.title.add',
-	);
+	if (isEdit.value) return i18n.baseText('settings.promotions.provider.dialog.title.edit');
+	return i18n.baseText('settings.promotions.provider.dialog.title.add', {
+		interpolate: { type: i18n.baseText(`settings.promotions.providers.type.${form.type}`) },
+	});
 });
 
 const ariaDescription = computed(() =>
@@ -108,7 +91,6 @@ const ariaDescription = computed(() =>
 	),
 );
 
-// Provider lists omit the SSH public key.
 const storedPublicKey = computed(() => {
 	const config = current.value?.config;
 	return config && 'publicKey' in config ? config.publicKey : null;
@@ -174,11 +156,6 @@ function focusStep() {
 function onOpenAutoFocus(event: Event) {
 	event.preventDefault();
 	focusStep();
-}
-
-// The page restores focus after it renders the provider list.
-function onCloseAutoFocus(event: Event) {
-	event.preventDefault();
 }
 
 // The component mounts after the dialog opens, so load it on mount.
@@ -270,38 +247,6 @@ async function submit() {
 		isSubmitting.value = false;
 	}
 }
-
-async function onDelete() {
-	const existing = current.value;
-	if (!existing) return;
-
-	const confirmed = await message.confirm(
-		i18n.baseText('settings.promotions.provider.delete.confirm.message'),
-		i18n.baseText('settings.promotions.provider.delete.confirm.title'),
-		{
-			confirmButtonText: i18n.baseText('settings.promotions.provider.delete.confirm.button'),
-			customClass: 'el-message-box--destructive',
-			showClose: true,
-		},
-	);
-
-	if (confirmed !== MODAL_CONFIRM) return;
-
-	isSubmitting.value = true;
-	try {
-		await deletePromotionProvider(rootStore.publicApiContext, existing.id);
-		toast.showMessage({
-			title: i18n.baseText('settings.promotions.provider.toast.deleted'),
-			type: 'success',
-		});
-		emit('deleted', existing.id);
-		close();
-	} catch (error) {
-		toast.showError(error, i18n.baseText('settings.promotions.provider.toast.error.delete'));
-	} finally {
-		isSubmitting.value = false;
-	}
-}
 </script>
 
 <template>
@@ -311,7 +256,6 @@ async function onDelete() {
 		:aria-description="ariaDescription"
 		data-test-id="promotion-provider-dialog"
 		@open-auto-focus="onOpenAutoFocus"
-		@close-auto-focus="onCloseAutoFocus"
 		@update:open="onOpenChange"
 	>
 		<N8nDialogHeader>
@@ -331,13 +275,15 @@ async function onDelete() {
 					:copied-label="i18n.baseText('generic.copiedToClipboard')"
 					data-test-id="promotion-provider-public-key"
 				/>
-				<N8nText size="small" color="text-light">
+				<N8nText :class="$style.hint" size="small" color="text-light">
 					{{ i18n.baseText('settings.promotions.provider.publicKey.hint') }}
 				</N8nText>
 			</N8nInputLabel>
 			<N8nDialogFooter>
 				<N8nButton ref="doneButton" data-test-id="promotion-provider-done-button" @click="close">
-					{{ i18n.baseText('generic.close') }}
+					{{
+						i18n.baseText(isEdit ? 'generic.close' : 'settings.promotions.provider.dialog.continue')
+					}}
 				</N8nButton>
 			</N8nDialogFooter>
 		</div>
@@ -369,25 +315,6 @@ async function onDelete() {
 					:disabled="isLoading || isSubmitting"
 					data-test-id="promotion-provider-name-input"
 				/>
-			</N8nInputLabel>
-
-			<N8nInputLabel
-				input-name="promotion-provider-type"
-				:label="i18n.baseText('settings.promotions.provider.form.type')"
-			>
-				<N8nSelect
-					id="promotion-provider-type"
-					v-model="form.type"
-					:teleported="false"
-					:disabled="isLoading || isSubmitting || isEdit"
-					data-test-id="promotion-provider-type-select"
-				>
-					<N8nOption value="git" :label="i18n.baseText('settings.promotions.providers.type.git')" />
-					<N8nOption
-						value="gitlab"
-						:label="i18n.baseText('settings.promotions.providers.type.gitlab')"
-					/>
-				</N8nSelect>
 			</N8nInputLabel>
 
 			<N8nInputLabel
@@ -506,6 +433,7 @@ async function onDelete() {
 						v-model="form.password"
 						type="password"
 						autocomplete="new-password"
+						:placeholder="isEdit && !hasHostUrlChange ? '••••••••' : undefined"
 						:disabled="isLoading || isSubmitting"
 						data-test-id="promotion-provider-password-input"
 					/>
@@ -520,16 +448,14 @@ async function onDelete() {
 				</N8nText>
 
 				<N8nText
-					v-if="isEdit"
+					v-if="isEdit && (!capabilities.hasHostApi || hasHostUrlChange)"
 					size="small"
 					:color="capabilities.hasHostApi ? 'text-base' : 'text-light'"
 				>
 					{{
 						i18n.baseText(
 							capabilities.hasHostApi
-								? hasHostUrlChange
-									? 'settings.promotions.provider.form.accessToken.urlChangeHint'
-									: 'settings.promotions.provider.form.accessToken.keepHint'
+								? 'settings.promotions.provider.form.accessToken.urlChangeHint'
 								: 'settings.promotions.provider.form.credentials.keepHint',
 						)
 					}}
@@ -550,17 +476,6 @@ async function onDelete() {
 
 			<N8nDialogFooter>
 				<N8nButton
-					v-if="isEdit"
-					:class="$style.deleteAction"
-					type="button"
-					variant="destructive"
-					:disabled="isInUse || isSubmitting"
-					data-test-id="promotion-provider-delete-button"
-					@click="onDelete"
-				>
-					{{ i18n.baseText('generic.delete') }}
-				</N8nButton>
-				<N8nButton
 					type="button"
 					variant="outline"
 					:disabled="isSubmitting"
@@ -575,7 +490,9 @@ async function onDelete() {
 					:loading="isSubmitting"
 					data-test-id="promotion-provider-save-button"
 				>
-					{{ i18n.baseText('generic.save') }}
+					{{
+						i18n.baseText(isEdit ? 'generic.save' : 'settings.promotions.provider.dialog.continue')
+					}}
 				</N8nButton>
 			</N8nDialogFooter>
 		</form>
@@ -587,9 +504,11 @@ async function onDelete() {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--md);
+	margin-top: var(--spacing--sm);
 }
 
-.deleteAction {
-	margin-right: auto;
+.hint {
+	display: block;
+	margin-top: var(--spacing--2xs);
 }
 </style>
