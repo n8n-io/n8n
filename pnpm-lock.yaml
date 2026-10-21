@@ -8482,6 +8482,9 @@ importers:
       '@n8n/expression-runtime':
         specifier: workspace:*
         version: link:../../../@n8n/expression-runtime
+      n8n:
+        specifier: workspace:*
+        version: link:../../../cli
       n8n-workflow:
         specifier: workspace:*
         version: link:../../../workflow
