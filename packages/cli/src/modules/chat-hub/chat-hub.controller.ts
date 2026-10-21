@@ -43,7 +43,7 @@ import type { NextFunction, Request, Response } from 'express';
 import multer from 'multer';
 
 import { BadRequestError, ForbiddenError } from '@n8n/errors';
-import { sendErrorResponse } from '@/response-helper';
+import { sendErrorResponse, sendStreamToResponse } from '@/response-helper';
 
 import { ChatHubAgentService } from './chat-hub-agent.service';
 import { extractAuthenticationMetadata } from './chat-hub-extractor';
@@ -136,30 +136,29 @@ export class ChatHubController {
 		const [{ mimeType, fileName }, attachmentAsStreamOrBuffer] =
 			await this.chatAttachmentService.getAttachment(sessionId, messageId, attachmentIndex);
 
-		res.setHeader('Content-Type', mimeType);
+		const setHeaders = () => {
+			res.setHeader('Content-Type', mimeType);
 
-		if (attachmentAsStreamOrBuffer.fileSize) {
-			res.setHeader('Content-Length', attachmentAsStreamOrBuffer.fileSize);
-		}
+			if (attachmentAsStreamOrBuffer.fileSize) {
+				res.setHeader('Content-Length', attachmentAsStreamOrBuffer.fileSize);
+			}
 
-		if (!mimeType || !ViewableMimeTypes.includes(mimeType.toLowerCase())) {
-			// Force download if file is not viewable
-			res.setHeader(
-				'Content-Disposition',
-				`attachment${fileName ? `; filename=${sanitizeFilename(fileName)}` : ''}`,
-			);
-		}
+			if (!mimeType || !ViewableMimeTypes.includes(mimeType.toLowerCase())) {
+				// Force download if file is not viewable
+				res.setHeader(
+					'Content-Disposition',
+					`attachment${fileName ? `; filename=${sanitizeFilename(fileName)}` : ''}`,
+				);
+			}
+		};
 
 		if (attachmentAsStreamOrBuffer.type === 'buffer') {
+			setHeaders();
 			res.send(attachmentAsStreamOrBuffer.buffer);
 			return;
 		}
 
-		return await new Promise<void>((resolve, reject) => {
-			attachmentAsStreamOrBuffer.stream.on('end', resolve);
-			attachmentAsStreamOrBuffer.stream.on('error', reject);
-			attachmentAsStreamOrBuffer.stream.pipe(res);
-		});
+		await sendStreamToResponse(res, attachmentAsStreamOrBuffer.stream, setHeaders);
 	}
 
 	@GlobalScope('chatHub:message')

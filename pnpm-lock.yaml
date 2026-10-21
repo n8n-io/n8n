@@ -4619,6 +4619,9 @@ importers:
       '@n8n/constants':
         specifier: workspace:*
         version: link:../constants
+      jssha:
+        specifier: 3.3.1
+        version: 3.3.1
       nanoid:
         specifier: 'catalog:'
         version: 3.3.18
@@ -6886,6 +6889,9 @@ importers:
       fast-json-stable-stringify:
         specifier: ^2.1.0
         version: 2.1.0
+      fflate:
+        specifier: 'catalog:'
+        version: 0.8.3
       file-saver:
         specifier: ^2.0.2
         version: 2.0.5
@@ -8476,6 +8482,9 @@ importers:
       '@n8n/expression-runtime':
         specifier: workspace:*
         version: link:../../../@n8n/expression-runtime
+      n8n:
+        specifier: workspace:*
+        version: link:../../../cli
       n8n-workflow:
         specifier: workspace:*
         version: link:../../../workflow

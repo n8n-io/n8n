@@ -606,6 +606,9 @@ describe('GlobalConfig', () => {
 			webhookResponseRelayOffloadEnabled: false,
 			preExecuteErrorCreatesExecution: false,
 		},
+		memoryGuard: {
+			enabled: false,
+		},
 		diagnostics: {
 			enabled: true,
 			frontendConfig: '1zPn9bgWPzlQc0p8Gj1uiK6DOTn;https://telemetry.n8n.io',
@@ -706,6 +709,7 @@ describe('GlobalConfig', () => {
 			lazyAcquire: false,
 			compileCache: false,
 			nativeEvaluation: false,
+			nativeEvaluationVerifySample: 0,
 		},
 		instanceSettingsLoader: {
 			ownerManagedByEnv: false,
