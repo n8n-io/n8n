@@ -7,8 +7,6 @@ export const frontendConfig = defineConfig({
 	env: { browser: true, node: true },
 	rules: {
 		'unicorn/filename-case': 'off',
-		// The import ban runs here. The `<ElDialog>` template check stays on ESLint:
-		// Oxlint does not visit Vue template nodes.
 		'n8n-local-rules/no-element-plus-dialog': 'error',
 		'n8n-local-rules/no-reka-ui-dialog': 'error',
 		'n8n-local-rules/no-reka-ui-pagination': 'error',
