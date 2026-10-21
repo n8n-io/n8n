@@ -89,13 +89,7 @@ function mailtoHref(email: string): string {
 					</div>
 				</li>
 			</ul>
-			<N8nText
-				v-else
-				tag="p"
-				size="small"
-				color="text-base"
-				data-test-id="contact-admin-empty"
-			>
+			<N8nText v-else tag="p" size="small" color="text-base" data-test-id="contact-admin-empty">
 				{{ i18n.baseText('typeAvailabilityPolicies.contactAdmin.empty') }}
 			</N8nText>
 		</N8nDialogBody>
