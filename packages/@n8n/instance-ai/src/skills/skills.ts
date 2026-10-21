@@ -1,4 +1,8 @@
-import { loadRuntimeSkillSourceFromDirectory, type RuntimeSkillSource } from '@n8n/agents';
+import {
+	filterRuntimeSkillSource,
+	loadRuntimeSkillSourceFromDirectory,
+	type RuntimeSkillSource,
+} from '@n8n/agents';
 import { GROUPING_GUIDANCE } from '@n8n/workflow-sdk/prompts/sdk-reference';
 import { TOP_LEVEL_ITEM_CEILING } from 'n8n-workflow';
 import { resolve } from 'node:path';
@@ -7,6 +11,19 @@ import { composeSkillVariants } from './skill-variants';
 import { PROMPT_FRAGMENT_SKILLS, type PromptProfile } from '../prompts/prompt-profiles';
 
 export const INSTANCE_AI_SKILLS_DIR = resolve(__dirname, '..', '..', 'skills');
+
+// Experiment: the Assistant builds only Agents, so every workflow and one-off skill is hidden.
+const AGENTS_ONLY_HIDDEN_SKILLS = [
+	'workflow-builder',
+	'progressive-building',
+	'planning',
+	'planned-task-runtime',
+	'suggest-automations',
+	'debugging-executions',
+	'data-table-manager',
+	'intent-recognition',
+	'instance-awareness',
+];
 
 let cachedSkills: RuntimeSkillSource | undefined;
 const cachedProfiles = new Map<string, ReturnType<typeof composeSkillVariants>>();
@@ -25,9 +42,12 @@ function substituteSkillPlaceholders(instructions: string): string {
 
 /** Every bundled skill, including the fragments that prompt profiles append to other skills. */
 export function loadInstanceAiSkills(): RuntimeSkillSource {
-	cachedSkills ??= loadRuntimeSkillSourceFromDirectory(INSTANCE_AI_SKILLS_DIR, {
-		transformInstructions: substituteSkillPlaceholders,
-	});
+	cachedSkills ??= filterRuntimeSkillSource(
+		loadRuntimeSkillSourceFromDirectory(INSTANCE_AI_SKILLS_DIR, {
+			transformInstructions: substituteSkillPlaceholders,
+		}),
+		AGENTS_ONLY_HIDDEN_SKILLS,
+	);
 	return cachedSkills;
 }
 

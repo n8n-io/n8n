@@ -210,10 +210,6 @@ export async function createInstanceAgent(
 			conversationHistoryEnabled: Boolean(context.conversationHistoryService),
 			preferenceSavingEnabled: Boolean(context.aiPreferenceService),
 			setupPanelEnabled: isSetupPanelEnabled(context),
-			workspaceRoot:
-				orchestrationContext?.workspace && orchestrationContext.workspaceRoot
-					? orchestrationContext.workspaceRoot
-					: undefined,
 		},
 	);
 
@@ -256,7 +252,6 @@ export async function createInstanceAgent(
 	if (telemetry) {
 		agent.telemetry(telemetry);
 	}
-	if (orchestrationContext?.workspace) agent.workspace(orchestrationContext.workspace);
 	if (skills) agent.skills(skills);
 
 	if (options.memory) {
