@@ -1,0 +1,33 @@
+packages/frontend/@n8n/design-system/src/components/PreviewBadge/PreviewBadge.vue
+  s_c59e21f9b5250b::t_932c7759846f07 20
+packages/frontend/@n8n/design-system/src/components/index.ts
+  s_c59e21f9b5250b::t_79960271045940 139
+  s_c59e21f9b5250b::t_251bd9a5463346 160
+packages/frontend/@n8n/design-system/src/components/NewBadge/NewBadge.stories.ts
+  s_c59e21f9b5250b::t_c47ca54b652309 1-49
+packages/frontend/@n8n/design-system/src/components/PreviewBadge/PreviewBadge.test.ts
+  s_c59e21f9b5250b::t_2c5eee179a3cdd 2-4,9-16
+packages/frontend/@n8n/design-system/src/components/N8nMenuItem/MenuItem.vue
+  s_c59e21f9b5250b::t_8e977bb0f9bcc4 14,181
+packages/frontend/@n8n/design-system/src/components/NewBadge/NewBadge.test.ts
+  s_c59e21f9b5250b::t_0f2b5b1bd1f786 1-25
+packages/frontend/@n8n/design-system/src/components/NewBadge/NewBadge.vue
+  s_c59e21f9b5250b::t_36685c29e19ed6 1-18,22-24,26-74,76-90
+  s_c59e21f9b5250b::t_517a1974841f88 19-21,25,75,91
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bfe41609fede4be7f72584e0aa95d05c27afa085",
+  "prompts": {},
+  "sessions": {
+    "s_c59e21f9b5250b": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a159d0-203b-73e2-a6c9-a261f76f0c06",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}
