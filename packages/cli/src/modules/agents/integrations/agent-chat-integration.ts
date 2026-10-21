@@ -358,6 +358,12 @@ export abstract class AgentChatIntegration {
 	readonly internal: boolean = false;
 
 	/**
+	 * True when an agent can hold only one connection of this type, because
+	 * inbound webhooks carry nothing that tells two connections apart.
+	 */
+	readonly singleConnectionPerAgent: boolean = false;
+
+	/**
 	 * True when this integration needs a platform Chat SDK instance (adapter +
 	 * credential) to execute actions and context queries. Internal channels
 	 * (e.g. the in-app n8n chat) set this to false — the executors then skip

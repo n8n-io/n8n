@@ -9,6 +9,7 @@ import {
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { User, WorkflowRepository, TransactionRunner } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { BadRequestError } from '@n8n/errors';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import set from 'lodash/set';
 import { mock } from 'vitest-mock-extended';
@@ -30,6 +31,10 @@ import { AgentSetupCompletionService } from '../agent-setup-completion.service';
 import type { AgentUpdateBroadcaster } from '../agent-update-broadcaster';
 import type { AgentValidationService } from '../agent-validation.service';
 import type { Agent, ProjectAgent } from '../entities/agent.entity';
+import type {
+	AgentChatIntegration,
+	ChatIntegrationRegistry,
+} from '../integrations/agent-chat-integration';
 import { syncAgentIntegrations } from '../integrations/integrations-sync';
 import type { NodeToolAiGatewayService } from '../json-config/node-tool-ai-gateway.service';
 import type { AgentTaskRepository } from '../repositories/agent-task.repository';
@@ -96,6 +101,7 @@ function makeService() {
 	const telemetry = mock<Telemetry>();
 	const agentUpdateBroadcaster = mock<AgentUpdateBroadcaster>();
 	const agentPolicyService = mock<AgentPolicyService>();
+	const chatIntegrationRegistry = mock<ChatIntegrationRegistry>();
 
 	agentValidationService.validateLoadedAgentConfiguration.mockResolvedValue({
 		status: 'valid',
@@ -134,10 +140,12 @@ function makeService() {
 			new AgentModificationTelemetryService(telemetry, mock<EventService>()),
 		),
 		skillRefs,
+		chatIntegrationRegistry,
 	);
 
 	return {
 		service,
+		chatIntegrationRegistry,
 		agentPolicyService,
 		agentRepository,
 		agentTaskRepository,
@@ -503,6 +511,58 @@ describe('AgentConfigService', () => {
 			saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as ProjectAgent;
 			expect(saved.integrations).toEqual([]);
 			expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
+		});
+
+		describe('platform with one connection per agent', () => {
+			const teams = (credentialId: string): AgentIntegrationConfig => ({
+				type: 'teams',
+				credentialId,
+			});
+
+			function makeTeamsService(integrations: AgentIntegrationConfig[]) {
+				const context = makeService();
+				context.chatIntegrationRegistry.get.mockReturnValue(
+					mock<AgentChatIntegration>({
+						singleConnectionPerAgent: true,
+						displayLabel: 'Microsoft Teams',
+					}),
+				);
+				const agent = makeAgent({ integrations });
+				context.agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+				mockAccessibleCredentials(context.credentialsService, ['teams-1', 'teams-2']);
+				return { ...context, agent };
+			}
+
+			it('rejects a config that adds a second connection', async () => {
+				const { service, agentRepository, agent } = makeTeamsService([teams('teams-1')]);
+
+				await expect(
+					service.updateConfig(
+						agentId,
+						projectId,
+						{ ...baseConfig, integrations: [teams('teams-1'), teams('teams-2')] },
+						user,
+						fencedOn(agent),
+					),
+				).rejects.toThrow(BadRequestError);
+				expect(agentRepository.saveDraftFenced).not.toHaveBeenCalled();
+			});
+
+			it('rejects a save of an agent that already holds two', async () => {
+				const both = [teams('teams-1'), teams('teams-2')];
+				const { service, agentRepository, agent } = makeTeamsService(both);
+
+				await expect(
+					service.updateConfig(
+						agentId,
+						projectId,
+						{ ...baseConfig, integrations: both },
+						user,
+						fencedOn(agent),
+					),
+				).rejects.toThrow(BadRequestError);
+				expect(agentRepository.saveDraftFenced).not.toHaveBeenCalled();
+			});
 		});
 
 		it('keeps omitted integrations without syncing channels', async () => {

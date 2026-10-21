@@ -8,9 +8,13 @@ import { PROMOTIONS_SETTINGS_VIEW } from '../promotions.constants';
 
 const stub = { render: () => null };
 
-// Avoid loading the view during route tests.
+// Avoid loading the views during route tests.
 const moduleRoutes = (PromotionsModule.routes ?? []).map(
-	(route) => ({ ...route, component: stub }) as RouteRecordRaw,
+	(route) =>
+		({
+			...route,
+			children: route.children?.map((child) => ({ ...child, component: stub })),
+		}) as RouteRecordRaw,
 );
 
 const createTestRouter = () =>

@@ -366,6 +366,12 @@ export type RelayEventMap = {
 		reason?: string;
 	};
 
+	'user-login-email-conflict': {
+		user: UserLike;
+		authenticationMethod: AuthenticationMethod;
+		assertedEmail: string;
+	};
+
 	'user-changed-role': {
 		userId: string;
 		targetUserId: string;
