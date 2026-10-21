@@ -21,12 +21,14 @@ export function agentSkillToMarkdown(skill: AgentSkill): string {
 }
 
 /**
- * A lone SKILL.md, or a zip with a `<name>/` folder when the skill has reference files,
- * so that the upload can read the download back as it is.
+ * A lone SKILL.md, or a zip with a `<name>/` folder when the skill has reference files.
+ * The upload reads the SKILL.md, or the folder once the zip is unzipped.
  */
 export async function exportAgentSkill(skill: AgentSkill): Promise<AgentSkillExport> {
 	const markdown = agentSkillToMarkdown(skill);
-	const baseName = skill.name.trim().replace(/[\\/:*?"<>|]+/g, '-') || 'skill';
+	const safeName = skill.name.trim().replace(/[\\/:*?"<>|]+/g, '-');
+	// A name of only dots would make the archive paths point outside the skill folder.
+	const baseName = /^\.*$/.test(safeName) ? 'skill' : safeName;
 	const references = skill.references ?? [];
 
 	if (references.length === 0) {

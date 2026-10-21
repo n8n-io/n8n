@@ -66,4 +66,16 @@ describe('agentSkillExport', () => {
 		});
 		await expect(useAgentSkillImport().importSkillFiles(files)).resolves.toEqual(skill);
 	});
+
+	it.each(['.', '..', '  '])('names the folder `skill` for the name %j', async (name) => {
+		const result = await exportAgentSkill({
+			...base,
+			name,
+			references: [{ path: 'references/style.md', content: '# Style' }],
+		});
+
+		expect(result.fileName).toBe('skill.zip');
+		const entries = unzipSync(await blobBytes(result.blob));
+		expect(Object.keys(entries).sort()).toEqual(['skill/SKILL.md', 'skill/references/style.md']);
+	});
 });
