@@ -2,6 +2,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
+import { within } from '@testing-library/vue';
 import { ref } from 'vue';
 
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
@@ -61,15 +62,17 @@ function preference(overrides: Partial<Preference> = {}): Preference {
  * a button that plays the dialog's `saved` event back to the page.
  */
 const PreferenceModalStub = {
-	props: ['open', 'preference'],
+	props: ['open', 'preference', 'example'],
 	emits: ['saved', 'update:open'],
 	template: `
 		<div
 			data-test-id="preference-modal-stub"
 			:data-open="String(open)"
 			:data-preference-id="preference?.id ?? ''"
+			:data-example-id="example?.id ?? ''"
 		>
 			<button data-test-id="preference-modal-stub-saved" @click="$emit('saved')" />
+			<button data-test-id="preference-modal-stub-close" @click="$emit('update:open', false)" />
 		</div>
 	`,
 };
@@ -374,6 +377,39 @@ describe('SettingsPreferencesView', () => {
 			expect(getByText(/^Last updated/)).toBeInTheDocument();
 		},
 	);
+
+	it('opens the create modal with the example from "Use example"', async () => {
+		contextStore.preferences = [];
+		contextStore.count = 0;
+		emptyStateVariant.value = 'examples';
+
+		const { findByTestId, getByTestId } = renderView();
+		await userEvent.click(
+			within(await findByTestId('preferences-example-answers')).getByRole('button'),
+		);
+
+		const modal = getByTestId('preference-modal-stub');
+		expect(modal).toHaveAttribute('data-open', 'true');
+		expect(modal).toHaveAttribute('data-preference-id', '');
+		expect(modal).toHaveAttribute('data-example-id', 'answers');
+	});
+
+	it('opens the create modal without the example after an example was closed', async () => {
+		contextStore.preferences = [];
+		contextStore.count = 0;
+		emptyStateVariant.value = 'examples';
+
+		const { findByTestId, getByTestId } = renderView();
+		await userEvent.click(
+			within(await findByTestId('preferences-example-answers')).getByRole('button'),
+		);
+		await userEvent.click(getByTestId('preference-modal-stub-close'));
+		await userEvent.click(getByTestId('preferences-create-button'));
+
+		const modal = getByTestId('preference-modal-stub');
+		expect(modal).toHaveAttribute('data-open', 'true');
+		expect(modal).toHaveAttribute('data-example-id', '');
+	});
 
 	it('tracks no empty state experiment exposure when the page has preferences', async () => {
 		contextStore.preferences = [preference()];
