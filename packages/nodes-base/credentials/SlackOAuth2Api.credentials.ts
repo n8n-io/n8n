@@ -37,12 +37,29 @@ export const userScopes = [
 	// can still run message:search on node versions <= 2.6
 	// which call the deprecated search.messages.
 	'search:read',
+
+	// Scopes for MCP, not used in the node directly
+	'canvases:read',
+	'canvases:write',
+	'emoji:read',
+	'im:write',
+	'lists:read',
+	'lists:write',
+	'mpim:write',
+	'search:read.files',
+	'search:read.users',
 ];
 
 export class SlackOAuth2Api implements ICredentialType {
 	name = 'slackOAuth2Api';
 
 	extends = ['oAuth2Api'];
+
+	oauth2 = {
+		tokenType: 'Bearer',
+		// initial slack authentication returns the access token in authed_user
+		property: 'authed_user.access_token',
+	};
 
 	displayName = 'Slack OAuth2 API';
 

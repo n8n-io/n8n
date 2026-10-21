@@ -298,7 +298,6 @@ describe('McpRegistryApiClient', () => {
 
 			expect(result).toEqual([]);
 		});
-
 		it('should forward the abort signal to paginatedRequest', async () => {
 			const { signal } = new AbortController();
 			mockPaginatedRequest.mockResolvedValue([]);

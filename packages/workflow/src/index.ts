@@ -41,6 +41,7 @@ export * from './node-validation';
 export * from './node-grouping-validation';
 export * from './empty-group-anchor';
 export * from './mcp-helpers';
+export * from './oauth2-helpers';
 export * from './tool-helpers';
 export * from './trigger-credential-gate';
 export * from './trigger-identity';
