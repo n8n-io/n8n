@@ -6674,6 +6674,8 @@ export class InstanceAiService {
 				await this.taskProjector.syncFromWorkflowLoop(opts.threadId, opts.runId);
 				if (reschedule) {
 					await this.maybeStartWorkflowSetupFollowUp(opts.user, opts.threadId);
+					// A browser task that ended while this run was live or suspended left its result waiting.
+					await this.cloudBrowserTaskService.deliverPendingResults(opts.user, opts.threadId);
 				}
 			}
 			if (errorReporterExecutionToken) {
