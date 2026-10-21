@@ -133,6 +133,7 @@ vi.mock('@n8n/instance-ai', async () => {
 		WorkflowLoopStorage: class {},
 		ThreadTaskStorage: class {},
 		PlannedTaskStorage: class {},
+		CloudBrowserTaskStorage: class {},
 		PlannedTaskCoordinator: class {},
 		InstanceAiTerminalResponseGuard: class {
 			constructor(private readonly options: { runId: string; rootAgentId: string }) {}
@@ -726,6 +727,10 @@ function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 	return service;
 }
 
+function stubCloudBrowserTasks() {
+	return { startTask: vi.fn(), deliverResults: vi.fn(async () => {}) };
+}
+
 function stubInitialRunSurface(
 	service: TerminalGuardOrderServiceInternals,
 	instanceContextEnabled = false,
@@ -756,6 +761,7 @@ function stubInitialRunSurface(
 		resolveProjectContextSection: vi.fn(async () => ''),
 		createAgentFromEnvironment: vi.fn(async () => ({})),
 		buildOrchestratorAgentStreamOptions: vi.fn(() => ({})),
+		cloudBrowserTasks: stubCloudBrowserTasks(),
 		domainAccessTrackersByThread: new Map(),
 	});
 	vi.mocked(createInstanceAiTraceContext).mockResolvedValueOnce(undefined);
@@ -999,6 +1005,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		service.schedulePlannedTasks = vi.fn();
 		service.sendCorrectionToTask = vi.fn();
 		service.domainAccessTrackersByThread = new Map();
+		Object.assign(service, { cloudBrowserTasks: stubCloudBrowserTasks() });
 		service.browserSessionService = { findMcpServer: vi.fn(() => undefined) };
 		service.threadGrantRepo = { findKeys: vi.fn(async () => new Set<string>()) };
 		service.sandboxService = new InstanceAiSandboxService({
@@ -1362,6 +1369,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		service.schedulePlannedTasks = vi.fn();
 		service.sendCorrectionToTask = vi.fn();
 		service.domainAccessTrackersByThread = new Map();
+		Object.assign(service, { cloudBrowserTasks: stubCloudBrowserTasks() });
 		service.browserSessionService = { findMcpServer: vi.fn(() => undefined) };
 		service.threadGrantRepo = { findKeys: vi.fn(async () => new Set<string>()) };
 		service.sandboxService = new InstanceAiSandboxService({
@@ -1449,6 +1457,7 @@ describe('InstanceAiService — shutdown', () => {
 		service.sandboxService = { stopSandboxExpiryTimers: vi.fn() };
 		service.browserSessionService = { shutdown: vi.fn(async () => {}) };
 		service.domainAccessTrackersByThread = new Map();
+		Object.assign(service, { cloudBrowserTasks: stubCloudBrowserTasks() });
 		service.eventBus = { clear: vi.fn() };
 		service.eventLog = { flushAll: vi.fn(async () => {}) };
 		service._mcpClientManager = { disconnect: vi.fn(async () => {}) };
@@ -4031,6 +4040,7 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 			gatewayService: { disconnectAll: vi.fn() },
 			browserSessionService: { shutdown: vi.fn(async () => {}) },
 			sandboxService: { stopSandboxExpiryTimers: vi.fn() },
+			cloudBrowserTasks: stubCloudBrowserTasks(),
 			domainAccessTrackersByThread: new Map(),
 			eventLog: { flushAll: vi.fn(async () => {}) },
 		});
@@ -5167,6 +5177,7 @@ describe('InstanceAiService run input gates', () => {
 			shouldPreserveHitlOnShutdown: vi.fn(() => true),
 			runState: { clearActiveRun: vi.fn(), hasSuspendedRun: vi.fn(() => true) },
 			telemetry: { track: vi.fn() },
+			cloudBrowserTasks: stubCloudBrowserTasks(),
 			domainAccessTrackersByThread: new Map(),
 			updateInternalFollowUpFailureStreak: vi.fn(),
 		}) as {
@@ -5295,6 +5306,7 @@ describe('InstanceAiService — user message persistence on cancel', () => {
 		// hasSuspendedRun → true short-circuits the finally's post-run scheduling
 		service.runState = { clearActiveRun: vi.fn(), hasSuspendedRun: vi.fn(() => true) };
 		service.domainAccessTrackersByThread = new Map();
+		Object.assign(service, { cloudBrowserTasks: stubCloudBrowserTasks() });
 		service.instanceAiErrorReporter = {
 			beginRun: vi.fn(() => Symbol('error-reporter-execution')),
 			endRun: vi.fn(),
@@ -6357,6 +6369,7 @@ describe('InstanceAiService — clearThreadState agent-builder cleanup', () => {
 		service.failedInternalFollowUpStreaks = new Map();
 		service.liveness = { clearThreadState: vi.fn() };
 		service.domainAccessTrackersByThread = new Map();
+		Object.assign(service, { cloudBrowserTasks: stubCloudBrowserTasks() });
 		service.evalCredentialAllowlists = new EvalThreadCredentialAllowlistService();
 		service.eventBus = { clearThread: vi.fn() };
 		service.tracing = {

@@ -209,6 +209,7 @@ export async function createInstanceAgent(
 			// for flagged-in users on project-bound runs.
 			conversationHistoryEnabled: Boolean(context.conversationHistoryService),
 			preferenceSavingEnabled: Boolean(context.aiPreferenceService),
+			cloudBrowserEnabled: Boolean(orchestrationContext?.startCloudBrowserTask),
 			setupPanelEnabled: isSetupPanelEnabled(context),
 			workspaceRoot:
 				orchestrationContext?.workspace && orchestrationContext.workspaceRoot

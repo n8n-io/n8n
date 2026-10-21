@@ -39,7 +39,9 @@ function deriveActivity(messages: InstanceAiMessage[]): { label: string; detail?
 	const tree = lastMsg.agentTree;
 
 	// Check active children first (sub-agents)
-	const activeChild = tree.children.find((c: InstanceAiAgentNode) => c.status === 'active');
+	const activeChild = tree.children.find(
+		(c: InstanceAiAgentNode) => c.status === 'active' && !c.hideSteps,
+	);
 	if (activeChild) {
 		const activityKey = getAgentActivityKey(activeChild);
 		const roleLabel =

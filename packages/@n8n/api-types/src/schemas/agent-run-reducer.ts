@@ -492,6 +492,7 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 					subtitle: event.payload.subtitle,
 					goal: event.payload.goal,
 					targetResource: event.payload.targetResource,
+					hideSteps: event.payload.hideSteps,
 				};
 				state.agentsById[event.agentId] = child;
 				state.parentByAgentId[event.agentId] = event.payload.parentId;

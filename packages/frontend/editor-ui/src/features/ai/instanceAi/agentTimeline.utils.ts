@@ -223,8 +223,9 @@ export function buildTimelineBlocks(
 			const child = childrenById[entry.agentId];
 			// Running builder sub-agents are extracted and rendered at the bottom
 			// of the conversation by InstanceAiView; once a builder finishes it
-			// reappears here in its chronological slot.
-			if (child && !isActiveBuilderAgent(child)) {
+			// reappears here in its chronological slot. A sub-agent with `hideSteps` is never
+			// drawn here; its approval cards still show in the confirmation panel.
+			if (child && !child.hideSteps && !isActiveBuilderAgent(child)) {
 				pushStandalone({ type: 'child', key: `child-${idx}`, child });
 			}
 			return;

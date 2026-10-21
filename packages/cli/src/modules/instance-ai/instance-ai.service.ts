@@ -186,6 +186,8 @@ import {
 } from './instance-context.service';
 import { composeLocalMcpServers } from './browser/composite-local-mcp-server';
 import { InstanceAiBrowserSessionService } from './browser/instance-ai-browser-session.service';
+import { InstanceAiCloudBrowserTaskService } from './browser/instance-ai-cloud-browser-task.service';
+import { InstanceAiCloudBrowserService } from './browser/instance-ai-cloud-browser.service';
 import { enabledToolCategories, resolveComputerUseState } from './computer-use-availability';
 import { dropRejectedAttachmentsFromHistory } from './drop-rejected-attachments';
 import { EvalThreadCredentialAllowlistService } from './eval/thread-credential-allowlist.service';
@@ -802,6 +804,8 @@ export class InstanceAiService {
 
 	private readonly terminalOutcome: InstanceAiTerminalOutcomeService;
 
+	private readonly cloudBrowserTaskService: InstanceAiCloudBrowserTaskService;
+
 	private readonly liveness: InstanceAiLivenessService<SuspendedRunState<User>>;
 
 	/** Owns DB persistence of suspended runs + orphan-confirmation restoration. */
@@ -848,6 +852,7 @@ export class InstanceAiService {
 		private readonly settingsService: InstanceAiSettingsService,
 		private readonly gatewayService: InstanceAiGatewayService,
 		private readonly browserSessionService: InstanceAiBrowserSessionService,
+		private readonly cloudBrowserService: InstanceAiCloudBrowserService,
 		private readonly memoryService: InstanceAiMemoryService,
 		private readonly agentMemory: TypeORMAgentMemory,
 		private readonly checkpointStore: TypeORMAgentCheckpointStore,
@@ -960,6 +965,17 @@ export class InstanceAiService {
 				const { tracingProxyConfig } = await this.createProxyRunConfig({ id: ownerId });
 				return { userId: ownerId, proxyConfig: tracingProxyConfig };
 			},
+		});
+		this.cloudBrowserTaskService = new InstanceAiCloudBrowserTaskService({
+			logger: this.logger,
+			eventBus: this.eventBus,
+			backgroundTaskManager: this.backgroundTasks,
+			cloudBrowserService: this.cloudBrowserService,
+			agentMemory: this.agentMemory,
+			runState: this.runState,
+			suspendedThreads: this.suspendedThreads,
+			startFollowUpRun: async (user, threadId, message, messageGroupId) =>
+				await this.startInternalFollowUpRun(user, threadId, message, messageGroupId),
 		});
 		this.terminalOutcome = new InstanceAiTerminalOutcomeService({
 			// The terminal guard and outcome-replay dedup must see the run's events
@@ -2619,6 +2635,7 @@ export class InstanceAiService {
 		const adminSettings = await this.settingsService.getAdminSettings();
 		const localGatewayDisabledGlobally = adminSettings.localGatewayDisabled;
 		const browserUseEnabledGlobally = adminSettings.browserUseEnabled;
+		const cloudBrowserEnabledGlobally = adminSettings.cloudBrowserEnabled;
 		const mcpConnectionsAvailable = this.areMcpConnectionsAvailable();
 		const localGatewayDisabledForUser = await this.settingsService.isLocalGatewayDisabledForUser(
 			user.id,
@@ -2974,6 +2991,25 @@ export class InstanceAiService {
 			nodeDefinitionDirs: nodeDefDirs.length > 0 ? nodeDefDirs : undefined,
 			domainContext: context,
 		};
+
+		if (cloudBrowserEnabledGlobally && (await this.cloudBrowserService.isAvailable())) {
+			orchestrationContext.startCloudBrowserTask = async (input) =>
+				await this.cloudBrowserTaskService.startTask(input, {
+					runId,
+					user,
+					threadId,
+					messageGroupId,
+					modelId,
+					modelStreamStallOptions: orchestrationContext.modelStreamStallOptions,
+					tracing: orchestrationContext.tracing,
+					domainGate: {
+						tracker: domainTracker,
+						runId,
+						permissionMode: context.permissions?.fetchUrl,
+						createCredentialPermissionMode: context.permissions?.createCredential,
+					},
+				});
+		}
 
 		return {
 			context,
@@ -5043,6 +5079,8 @@ export class InstanceAiService {
 				await this.taskProjector.syncFromWorkflowLoop(threadId, runId);
 				if (reschedule) {
 					await this.maybeStartWorkflowSetupFollowUp(user, threadId);
+					// A browser task that ended while this run was live left its result waiting.
+					await this.cloudBrowserTaskService.deliverPendingResults(user, threadId);
 				}
 			}
 			if (errorReporterExecutionToken) {

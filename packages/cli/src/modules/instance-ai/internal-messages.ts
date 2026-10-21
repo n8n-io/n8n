@@ -70,6 +70,10 @@ export const WORKFLOW_SETUP_STATE_CLOSE_TAG = '</workflow-setup-state>';
 export const WORKFLOW_TEST_REQUEST_OPEN_TAG = '<workflow-test-request>';
 export const WORKFLOW_TEST_REQUEST_CLOSE_TAG = '</workflow-test-request>';
 
+/** A cloud browser task ended. Sent as an internal follow-up turn*/
+export const CLOUD_BROWSER_TASK_COMPLETED_OPEN_TAG = '<cloud-browser-task-completed>';
+export const CLOUD_BROWSER_TASK_COMPLETED_CLOSE_TAG = '</cloud-browser-task-completed>';
+
 export function buildWorkflowTestRequestBlock(workflowId: string): string {
 	return [
 		WORKFLOW_TEST_REQUEST_OPEN_TAG,
@@ -93,7 +97,7 @@ export function buildWorkflowTestRequestBlock(workflowId: string): string {
  * content is the workflow context).
  */
 const TASK_CONTEXT_BLOCK =
-	/^(?:<thread-context>\n[\s\S]*?\n<\/thread-context>|<running-tasks>\n[\s\S]*?\n<\/running-tasks>|<planned-task-follow-up[\s\S]*?\n<\/planned-task-follow-up>|<planning-blueprint>\n[\s\S]*?\n<\/planning-blueprint>|<background-task-completed>\n[\s\S]*?\n<\/background-task-completed>|<workflow-verification-follow-up>\n[\s\S]*?\n<\/workflow-verification-follow-up>|<workflow-setup-required>\n[\s\S]*?\n<\/workflow-setup-required>|<workflow-setup-state>\n[\s\S]*?\n<\/workflow-setup-state>|<workflow-test-request>\n[\s\S]*?\n<\/workflow-test-request>|<editor-context>\n[\s\S]*?\n<\/editor-context>|<credential-context>\n[\s\S]*?\n<\/credential-context>|<agent-preview-context>\n[\s\S]*?\n<\/agent-preview-context>|<instance-context>\n[\s\S]*?\n<\/instance-context>|<thread-artifacts>\n[\s\S]*?\n<\/thread-artifacts>)(?:\n\n|$)/;
+	/^(?:<thread-context>\n[\s\S]*?\n<\/thread-context>|<running-tasks>\n[\s\S]*?\n<\/running-tasks>|<planned-task-follow-up[\s\S]*?\n<\/planned-task-follow-up>|<planning-blueprint>\n[\s\S]*?\n<\/planning-blueprint>|<background-task-completed>\n[\s\S]*?\n<\/background-task-completed>|<workflow-verification-follow-up>\n[\s\S]*?\n<\/workflow-verification-follow-up>|<workflow-setup-required>\n[\s\S]*?\n<\/workflow-setup-required>|<workflow-setup-state>\n[\s\S]*?\n<\/workflow-setup-state>|<workflow-test-request>\n[\s\S]*?\n<\/workflow-test-request>|<editor-context>\n[\s\S]*?\n<\/editor-context>|<credential-context>\n[\s\S]*?\n<\/credential-context>|<agent-preview-context>\n[\s\S]*?\n<\/agent-preview-context>|<instance-context>\n[\s\S]*?\n<\/instance-context>|<thread-artifacts>\n[\s\S]*?\n<\/thread-artifacts>|<cloud-browser-task-completed>\n[\s\S]*?\n<\/cloud-browser-task-completed>)(?:\n\n|$)/;
 
 /**
  * Captures the leading JSON line inside a thread-artifacts block (hand-off

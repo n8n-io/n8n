@@ -2,6 +2,7 @@ import { DateTime } from 'luxon';
 
 import { COMMUNICATION_STYLE_SECTION } from './communication-style.prompt';
 import { getComputerUsePrompt } from './computer-use-prompt';
+import { ORCHESTRATION_TOOL_IDS } from '../tools/tool-ids';
 import {
 	SCOPE_GROUNDING_GUARDRAIL,
 	SECRET_ASK_GUARDRAIL,
@@ -26,6 +27,8 @@ interface SystemPromptOptions {
 	conversationHistoryEnabled?: boolean;
 	/** The save_user_preference tool is wired; tell the model when to reach for it. */
 	preferenceSavingEnabled?: boolean;
+	/** The start-cloud-browser-task tool is wired; tell the model when and how to delegate to it. */
+	cloudBrowserEnabled?: boolean;
 	/** Setup panel v2 flag: `workflow_builder_workflows(action="setup")` announces instead of opening a card. */
 	setupPanelEnabled?: boolean;
 }
@@ -175,6 +178,24 @@ function getPreferenceSavingSection(): string {
 When the user's own words describe a lasting rule, choice, or thing to avoid for future work, not only for the current task, call \`save_user_preference\` and save it. Do not save a one-off instruction for the current task, and do not save casual chat. Do not tell the user you saved a preference until the tool returns a success. Tell them they can edit or undo it from the card in the chat. If the tool refuses the text as too long, shorten it to the limit the result names and call it once more. On any other refusal, tell the user why nothing was saved and do not call it again in this turn.`;
 }
 
+function getCloudBrowserSection(): string {
+	return `
+## Cloud Browser
+
+Use \`${ORCHESTRATION_TOOL_IDS.START_CLOUD_BROWSER_TASK}\` when the user asks you to look something up or do something on a website, and no node, API or web search covers it. Each task runs in the background in its own cloud browser, so you and the user can keep working. It needs no extension and no connection.
+
+The Computer Use section describes the user's own browser, which is a different thing. Where that section says browser automation needs the user to connect their browser, that applies to their browser only, never to the cloud browser.
+- **Prefer the cloud browser** for lookups, comparisons, and tasks on sites that need no sign-in, whether or not the user's browser is connected.
+- **Prefer the user's browser** (browser_* tools) when the task needs their signed-in session or their own accounts, for example OAuth, a service console they are logged in to, or anything they want to watch. Suggest "Connect browser" only for those tasks.
+
+- **Write a complete goal.** The browser agent cannot see this conversation. Say which site to use, what to find or do, and what to report back. Add \`startUrl\` when you know the page.
+- **Split independent goals into parallel tasks**, for example one task for each site to compare. Keep steps that depend on each other in one task.
+- **After you start a task**, tell the user in one sentence that it runs in the background. Continue with work that does not depend on it, or end your turn. Do not wait for it and do not poll. The result arrives as a follow-up message when the task ends.
+- **When a result arrives**, tell the user what the task was about and what it found, in a few sentences, then continue any work that waited for it.
+- **When a task is blocked** because a site needs a sign-in or blocks automated browsers, tell the user plainly. The browser agent cannot sign in for them.
+- The browser agent asks the user for site approvals itself. Do not ask for them before you start a task.`;
+}
+
 function getLicenseLimitationsSection(licenseHints?: string[]): string {
 	if (!licenseHints?.length) return '';
 
@@ -255,6 +276,7 @@ export function createSystemPromptRenderer(communicationStyleSection: string) {
 			workspaceRoot,
 			conversationHistoryEnabled,
 			preferenceSavingEnabled,
+			cloudBrowserEnabled,
 			setupPanelEnabled,
 		} = options;
 
@@ -299,6 +321,7 @@ Don't fabricate provider setup mechanics (credential field names, secret values,
 ${UNTRUSTED_CONTENT_DOCTRINE}
 
 ${getComputerUsePrompt({ state: computerUseState })}
+${cloudBrowserEnabled ? getCloudBrowserSection() : ''}
 ${getLicenseLimitationsSection(licenseHints)}
 ${getReadOnlySection(branchReadOnly)}
 ${getLimitedModeSection(parameterValuesHidden)}

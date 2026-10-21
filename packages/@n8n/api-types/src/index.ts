@@ -410,6 +410,7 @@ export {
 	instanceAiConfirmationSeveritySchema,
 	instanceAiAgentStatusSchema,
 	instanceAiAgentKindSchema,
+	INSTANCE_AI_CLOUD_BROWSER_AGENT_ROLE,
 	instanceAiEventSchema,
 	taskItemSchema,
 	taskListSchema,

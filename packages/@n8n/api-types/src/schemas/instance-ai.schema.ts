@@ -319,6 +319,9 @@ export const instanceAiAgentKindSchema = z.enum([
 ]);
 export type InstanceAiAgentKind = z.infer<typeof instanceAiAgentKindSchema>;
 
+/** Role of the cloud browser sub-agent. The UI uses it to show the cloud browser approval card. */
+export const INSTANCE_AI_CLOUD_BROWSER_AGENT_ROLE = 'cloud-browser';
+
 // ---------------------------------------------------------------------------
 // Domain access gating (shared across any tool that fetches external URLs)
 // ---------------------------------------------------------------------------
@@ -487,6 +490,10 @@ export const agentSpawnedPayloadSchema = z.object({
 	targetResource: agentSpawnedTargetResourceSchema
 		.optional()
 		.describe('Resource this agent works on'),
+	hideSteps: z
+		.boolean()
+		.optional()
+		.describe('Hide this sub-agent and its steps from the chat. Its approval cards still show'),
 });
 
 export const agentCompletedPayloadSchema = z.object({
@@ -2080,6 +2087,11 @@ export interface InstanceAiAgentNode {
 	title?: string;
 	/** Brief task description for distinguishing sibling agents. */
 	subtitle?: string;
+	/**
+	 * Hide this sub-agent and its steps from the chat, including its title row. Its approval cards
+	 * still show.
+	 */
+	hideSteps?: boolean;
 	/** Full task description for tooltip/details. */
 	goal?: string;
 	/** Resource this agent works on. */
