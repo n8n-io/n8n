@@ -27,6 +27,8 @@ const ENV_VARS: Record<keyof PublicApiRateLimitSettings, string> = {
 
 const FIELDS = Object.keys(ENV_VARS) as Array<keyof PublicApiRateLimitSettings>;
 
+const DEFAULTS: PublicApiRateLimitSettings = { ...new PublicApiRateLimitConfig() };
+
 const LIMIT_FIELDS = [
 	'globalReadLimit',
 	'globalWriteLimit',
@@ -84,7 +86,7 @@ export class PublicApiRateLimitSettingsService {
 	private toResponse(settings: PublicApiRateLimitSettings): PublicApiRateLimitSettingsResponse {
 		return {
 			...settings,
-			defaults: { ...new PublicApiRateLimitConfig() },
+			defaults: DEFAULTS,
 			envManagedFields: FIELDS.filter((field) => this.isEnvManaged(field)),
 		};
 	}
@@ -115,11 +117,23 @@ export class PublicApiRateLimitSettingsService {
 		return !!value?.trim() || !!process.env[`${envVar}_FILE`];
 	}
 
+	private valueFor<K extends keyof PublicApiRateLimitSettings>(
+		field: K,
+		values: Partial<PublicApiRateLimitSettings>,
+	): PublicApiRateLimitSettings[K] {
+		if (this.isEnvManaged(field)) return this.config[field];
+
+		const value = values[field];
+		if (value !== undefined) return value;
+
+		return DEFAULTS[field];
+	}
+
 	private mergeWithEnvAndConfig(
 		values: Partial<PublicApiRateLimitSettings>,
 	): PublicApiRateLimitSettings {
 		const pick = <K extends keyof PublicApiRateLimitSettings>(field: K) =>
-			this.isEnvManaged(field) ? this.config[field] : (values[field] ?? this.config[field]);
+			this.valueFor(field, values);
 
 		return {
 			enabled: pick('enabled'),
